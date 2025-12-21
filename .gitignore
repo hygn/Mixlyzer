@@ -1,0 +1,36 @@
+# Python artifacts
+__pycache__/
+*.py[cod]
+*.pyd
+*.so
+*.dylib
+*.egg-info/
+*.egg
+*.log
+*.npz
+
+# Virtual envs
+.venv/
+.env/
+env/
+venv/
+.uv/
+
+# IDE/editor
+.vscode/
+.idea/
+
+# OS cruft
+.DS_Store
+Thumbs.db
+
+# Build / packaging outputs
+dist/
+build/
+!build/*.spec
+
+# User data / caches
+library/
+debug/
+ffmpeg.exe
+config.json
