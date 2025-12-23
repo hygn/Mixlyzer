@@ -26,7 +26,7 @@ Thumbs.db
 
 # Build / packaging outputs
 dist/
-build/
+build/*
 !build/*.spec
 
 # User data / caches
