@@ -137,7 +137,7 @@ class MainPane(QtWidgets.QWidget):
         volume_v = QtWidgets.QVBoxLayout(volume_box)
         volume_v.setContentsMargins(0, 0, 0, 0)
         volume_v.setSpacing(2)
-        self.vol_slider = QtWidgets.QSlider(QtCore.Qt.Vertical)
+        self.vol_slider = _OneStepWheelSlider(QtCore.Qt.Vertical)
         self.vol_slider.setRange(0, 100)
         self.vol_slider.setValue(50)
         self.vol_slider.setToolTip("Volume")
