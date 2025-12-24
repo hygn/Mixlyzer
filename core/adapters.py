@@ -12,7 +12,11 @@ def normalize_gui_buffers(features: dict, gp: GlobalParams) -> dict:
         if lo is not None and mid is not None and hi is not None:
             img = build_wave_image(lo, mid, hi, min_env, max_env, height_px=128) # (H,T,3)
             out["wave_img_np"] = img.swapaxes(0, 1) # (T,H,3)
-            out["wave_img_np_preview"] = gen_img_mipmap(img, ds_scale=16).swapaxes(0, 1)
+            len_t = img.shape[1]
+            ds_scale = int(np.clip(len_t / 4096, 1, None))
+            print(f"[Waveform] Time axis size of waveform = {len_t} px")
+            print(f"[Waveform] Downscale factor for overview = {ds_scale}x ({int(len_t/ds_scale)} px)")
+            out["wave_img_np_preview"] = gen_img_mipmap(img, ds_scale=ds_scale).swapaxes(0, 1)
 
     env_hop = out.get("env_hop_length", None)
     if env_hop is not None and out.get("lo_env") is not None:
