@@ -33,7 +33,7 @@ class TempoSegment:
 def _compute_odf(y: np.ndarray, sr: int, hop: int = 256) -> tuple[np.ndarray, float]:
     """Compute ODF from audio. \\
     Currenly using only librosa ODF but there is room for improvements"""
-    odf1 = librosa.onset.onset_strength(y=y, sr=sr, hop_length=hop).astype(np.float32)
+    odf1 = librosa.onset.onset_strength(y=y, sr=sr, hop_length=hop, center=False).astype(np.float32)
     hop_t = hop / float(sr)
     return odf1, hop_t
 
@@ -760,6 +760,7 @@ def bpm_dynamic_phase_sync(
     bpm_bounds: tuple[float, float] = (128.0, 260.0),
     fine_phase_bins: int = 128,
 ) -> dict:
+    t_offset = 0.5 * hop_length / float(sr)
     if not isinstance(audio, np.ndarray) or audio.ndim != 1:
         raise ValueError("audio must be 1-D np.ndarray (mono)")
 
@@ -782,9 +783,6 @@ def bpm_dynamic_phase_sync(
     )
 
     beats_time = np.asarray(sorted(beats_all), dtype=float)
-    beats_frames = np.clip(
-        np.round(beats_time / hop_t).astype(np.int32), 0, max(0, len(odf) - 1)
-    )
 
     track_dur = len(audio) / sr if len(audio) else 0.0
     if tempo_segments:
@@ -803,11 +801,6 @@ def bpm_dynamic_phase_sync(
             tempo_segments[-1].end = float(track_dur)
     if refined_beats.size:
         beats_time = refined_beats.astype(float)
-        beats_frames = np.clip(
-            np.round(beats_time / hop_t).astype(np.int32), 0, max(0, len(odf) - 1)
-        )
-
-    tempo_segment_dicts = [seg.to_dict() for seg in tempo_segments]
 
     # Tempo stats
     dur_sec = len(audio) / float(sr)
@@ -821,6 +814,19 @@ def bpm_dynamic_phase_sync(
         tempo_global = float("nan")
         tempo_bt = float("nan")
     
+    # Shift beat times back by t_offset before returning outputs.
+    beats_time = beats_time + t_offset
+    first_beat = first_beat + t_offset
+    seg_meta = [(s + t_offset, e + t_offset, bpm) for s, e, bpm in seg_meta]
+    if tempo_segments:
+        for seg in tempo_segments:
+            seg.start += t_offset
+            seg.end += t_offset
+            seg.inizio += t_offset
+    tempo_segment_dicts = [seg.to_dict() for seg in tempo_segments]
+    beats_frames = np.clip(
+        np.round(beats_time / hop_t).astype(np.int32), 0, max(0, len(odf) - 1)
+    )
     score = _score_beats_against_odf(beats_time, odf, hop_t)
 
     return {
@@ -851,6 +857,7 @@ def bpm_phase_sync(
     if not isinstance(audio, np.ndarray) or audio.ndim != 1:
         raise ValueError("audio must be 1-D np.ndarray (mono)")
 
+    t_offset = 0.5 * hop_length / float(sr)
     hop_for_odf = int(hop_length)
     print(f"[seg] computing ODF via librosa.onset.onset_strength (hop={hop_for_odf})")
     odf, hop_t = _compute_odf(audio, sr, hop_for_odf)
@@ -891,6 +898,19 @@ def bpm_phase_sync(
         tempo_global = float("nan")
         tempo_bt = float("nan")
     
+    # Shift beat times back by t_offset before returning outputs.
+    beats_time = beats_time + t_offset
+    first_beat = first_beat + t_offset
+    seg_meta = [(s + t_offset, e + t_offset, bpm) for s, e, bpm in seg_meta]
+    if tempo_segments:
+        for seg in tempo_segments:
+            seg.start += t_offset
+            seg.end += t_offset
+            seg.inizio += t_offset
+    tempo_segment_dicts = [seg.to_dict() for seg in tempo_segments]
+    beats_frames = np.clip(
+        np.round(beats_time / hop_t).astype(np.int32), 0, max(0, len(odf) - 1)
+    )
     score = _score_beats_against_odf(beats_time, odf, hop_t)
 
     return {
