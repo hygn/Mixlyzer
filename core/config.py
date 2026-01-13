@@ -8,6 +8,8 @@ from typing_extensions import TypeForm
 @dataclass
 class libconfig:
     libpath: str
+    write_log: bool
+    logpath: str
 
 @dataclass
 class viewconfig:
@@ -73,7 +75,7 @@ class config:
         )
 
 def default_cfg():
-    lcfg = libconfig(libpath="library")
+    lcfg = libconfig(libpath="library", logpath="mixlyzer.log", write_log=False)
     acfg = analysisconfig(analysis_samp_rate=22050,
                           chroma_method="cens",
                           chroma_hop_length=512,
@@ -82,7 +84,7 @@ def default_cfg():
                           use_hpss=True,
                           bpm_hop_length=128,
                           bpm_win_length=5000,
-                          bpm_max=240,
+                          bpm_max=220,
                           bpm_min=110,
                           bpm_dynamic=True,
                           bpm_adaptive_window=True,

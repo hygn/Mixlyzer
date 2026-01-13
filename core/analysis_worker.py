@@ -63,7 +63,8 @@ def _analysis_process_entry(
                 "payload": payload,
             }
         )
-    except Exception as exc:  # pragma: no cover - defensive path
+    except Exception as exc:
+        traceback.print_exc()
         queue.put(
             {
                 "type": "error",

@@ -41,7 +41,14 @@ class SettingsDialog(QDialog):
         self.tab_lib = QWidget()
         f = QFormLayout(self.tab_lib)
         self.ed_libpath = QLineEdit()
+        self.cb_write_log = QCheckBox("Write log to file")
+        self.ed_logpath = QLineEdit()
+        self.lbl_log_note = QLabel("Logging settings apply on next app launch.")
+        self.lbl_log_note.setWordWrap(True)
         f.addRow("Library Path", self.ed_libpath)
+        f.addRow(self.cb_write_log)
+        f.addRow("Log Path", self.ed_logpath)
+        f.addRow(self.lbl_log_note)
         self.tabs.addTab(self.tab_lib, "Library")
 
     def _make_tab_view(self):
@@ -160,6 +167,8 @@ class SettingsDialog(QDialog):
 
         # lib
         self.ed_libpath.setText(cfg.libconfig.libpath)
+        self.cb_write_log.setChecked(bool(cfg.libconfig.write_log))
+        self.ed_logpath.setText(cfg.libconfig.logpath)
 
         # view
         v = cfg.viewconfig
@@ -183,8 +192,8 @@ class SettingsDialog(QDialog):
         self.sp_bpm_win.setValue(int(a.bpm_win_length))
         self.sp_bpm_min.setValue(int(a.bpm_min))
         self.sp_bpm_max.setValue(int(a.bpm_max))
-        self.cb_bpm_dynamic.setChecked(int(a.bpm_dynamic))
-        self.cb_bpm_adaptive_win.setChecked(int(a.bpm_adaptive_window))
+        self.cb_bpm_dynamic.setChecked(bool(a.bpm_dynamic))
+        self.cb_bpm_adaptive_win.setChecked(bool(a.bpm_adaptive_window))
         self.sp_env_frame_ms.setValue(int(a.env_frame_ms))
         self._set_band(self.sp_env_lo_lo,  self.sp_env_lo_hi,  a.env_lo)
         self._set_band(self.sp_env_mid_lo, self.sp_env_mid_hi, a.env_mid)
@@ -232,6 +241,8 @@ class SettingsDialog(QDialog):
             ),
             libconfig=libconfig(
                 libpath=self.ed_libpath.text().strip(),
+                write_log=bool(self.cb_write_log.isChecked()),
+                logpath=self.ed_logpath.text().strip(),
             ),
             viewconfig=viewconfig(
                 display_waveform=bool(self.cb_waveform.isChecked()),

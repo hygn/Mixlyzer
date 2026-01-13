@@ -290,6 +290,7 @@ def _segment_reanalysis_entry(
         else:
             raise ValueError(f"Unknown analyze type: {analyze_type}")
     except Exception as exc:
+        traceback.print_exc()
         queue.put(
             {
                 "type": "error",

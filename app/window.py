@@ -5,6 +5,7 @@ import ctypes
 import atexit
 import json
 
+from app.print_hook import install_print_hook, log_environment_info
 from core.event_bus import EventBus
 from core.model import DataModel, GlobalParams
 from core.timeline import TimelineCoordinator
@@ -41,6 +42,9 @@ class AppWindow(QtWidgets.QMainWindow):
         self.setWindowIcon(QtGui.QIcon("assets/images/mixlyzer.png"))
 
         self.cfg = load_cfg()
+        if self.cfg.libconfig.write_log:
+            install_print_hook(log_path=self.cfg.libconfig.logpath)
+            log_environment_info(log_path=self.cfg.libconfig.logpath)
 
         # Core objects
         self.bus = EventBus()
