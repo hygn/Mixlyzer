@@ -1,4 +1,3 @@
-# settings_ui_autosave.py
 from typing import Tuple
 from dataclasses import is_dataclass, asdict
 from PySide6.QtCore import Qt, Signal

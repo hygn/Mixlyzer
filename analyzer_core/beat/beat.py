@@ -127,15 +127,18 @@ def estimate_bpm_and_grid(odf: np.ndarray, odf_lp: np.ndarray, sr: int, hop: int
     
     print(f"[sweep] bpm cands = {bpm_cands}")
 
-    def best_phase_for_bpm(odf, bpm: float, base_bins: int = None, sigma_frac: float = 0.05) -> tuple[float, float]:
+    T_pad = int(2 ** np.ceil(np.log2(T)))
+    _X_fft = np.fft.rfft(xw, n=T_pad)
+    _freqs = np.fft.rfftfreq(T_pad, d=1.0)
+
+    def best_phase_for_bpm(bpm: float, base_bins: int = None, sigma_frac: float = 0.05) -> tuple[float, float]:
         """Get best phase and score for specific BPM using FFT (Gaussian pulse train)"""
-        period = 60.0 / bpm / hop_t  # in frames(samples)
+        period = float(60.0 / bpm / hop_t)  # in frames(samples)
         if not np.isfinite(period) or period < 3.0:
             return 0.0, -1e18
         bins = max(128, phase_bins if base_bins is None else base_bins)
-        T_pad = int(2 ** np.ceil(np.log2(T)))
-        X = np.fft.rfft(odf, n=T_pad)
-        freqs = np.fft.rfftfreq(T_pad, d=1.0)  # cycles/sample, so 2π*freqs is rad/sample
+        X = _X_fft
+        freqs = _freqs
         Np = int(T / period)
         # finite comb
         denom = 1.0 - np.exp(-2j * np.pi * freqs * period)
@@ -152,9 +155,9 @@ def estimate_bpm_and_grid(odf: np.ndarray, odf_lp: np.ndarray, sr: int, hop: int
         val_best = float(vals[k])
         return phi_best, val_best
 
-    def score_from_bestphase(odf, bpm: float, base_bins=None) -> tuple[float, float]:
+    def score_from_bestphase(bpm: float, base_bins=None) -> tuple[float, float]:
         # Wrapper for best_phase_for_bpm and apply some scoring rule
-        phi_b, val_b = best_phase_for_bpm(odf, bpm, base_bins=base_bins if base_bins else max(phase_bins, 128))
+        phi_b, val_b = best_phase_for_bpm(bpm, base_bins=base_bins if base_bins else max(phase_bins, 128))
         if not np.isfinite(val_b):
             return phi_b, -1e18
         if abs(bpm - int(bpm)) > 0.1:
@@ -164,7 +167,7 @@ def estimate_bpm_and_grid(odf: np.ndarray, odf_lp: np.ndarray, sr: int, hop: int
     def refine_bpm_phase(bpm0: float) -> tuple[float, float, float]:
         """By sweeping BPM in specific range, get best BPM and phase"""
         bpm = float(np.clip(bpm0, bpm_lo, bpm_hi))
-        phi, val = score_from_bestphase(xw, bpm)
+        phi, val = score_from_bestphase(bpm)
         best_local = (val, bpm, phi)
 
         # coarse local sweep
@@ -174,7 +177,7 @@ def estimate_bpm_and_grid(odf: np.ndarray, odf_lp: np.ndarray, sr: int, hop: int
                            0.05, dtype=float)
         if b_grid.size:
             for b in b_grid:
-                phi_b, v = score_from_bestphase(xw, b)
+                phi_b, v = score_from_bestphase(b)
                 if v > best_local[0]:
                     best_local = (v, b, phi_b)
         print(f"[sweep] sweep => {best_local[1]} BPM, Φ = {best_local[2]}, v = {best_local[0]}")
@@ -185,10 +188,10 @@ def estimate_bpm_and_grid(odf: np.ndarray, odf_lp: np.ndarray, sr: int, hop: int
                            min(bpm_hi, bpm + 0.1) + 1e-12,
                            0.01, dtype=float)
         for b in b_grid:
-            phi_b, v = score_from_bestphase(xw, b)
+            phi_b, v = score_from_bestphase(b)
             if v > best_local[0]:
                 best_local = (v, b, phi_b)
-        
+
         print(f"[sweep] sweep => {best_local[1]} BPM, Φ = {best_local[2]}, v = {best_local[0]}")
 
         # micro sweep
@@ -197,7 +200,7 @@ def estimate_bpm_and_grid(odf: np.ndarray, odf_lp: np.ndarray, sr: int, hop: int
                            min(bpm_hi, bpm + 0.02) + 1e-12,
                            0.001, dtype=float)
         for b in b_grid:
-            phi_b, v = score_from_bestphase(xw, b)
+            phi_b, v = score_from_bestphase(b)
             if v > best_local[0]:
                 best_local = (v, b, phi_b)
         
