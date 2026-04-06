@@ -1,4 +1,5 @@
 from typing import Tuple
+from collections import deque
 from dataclasses import is_dataclass, asdict
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
@@ -12,6 +13,8 @@ class SettingsDialog(QDialog):
     def __init__(self, bus:EventBus=None):
         super().__init__()
         self.saveJsonRequested = bus.sig_setting_saveJsonRequested
+        self._bus = bus
+        self._refresh_samples = deque(maxlen=32)
         self.setWindowTitle("Settings")
         self.setModal(False)
 
@@ -34,6 +37,8 @@ class SettingsDialog(QDialog):
         root.addWidget(self.btn_box)
 
         self._current_cfg = None 
+        if self._bus is not None:
+            self._bus.sig_ui_draw_interval.connect(self._on_ui_draw_interval)
 
     # Tabs
     def _make_tab_library(self):
@@ -59,17 +64,24 @@ class SettingsDialog(QDialog):
         self.cb_keystrip = QCheckBox("Display keystrip")
         self.cb_JumpCUE = QCheckBox("Display JumpCUE")
         self.cb_metronome = QCheckBox("Enable metronome")
+        self.sp_fps = QSpinBox()
+        self.sp_fps.setRange(1, 240)
+        self.sp_fps.setSingleStep(5)
 
         self.ed_record_img_path = QLineEdit()
         self.ed_metronome_wav_path = QLineEdit()
+        self.lbl_fps = QLabel("Waiting for FPS...")
+        self.lbl_fps.setToolTip("Measured from actual pyqtgraph plot repaint intervals.")
 
         f.addRow(self.cb_waveform)
         f.addRow(self.cb_beatgrid)
         f.addRow(self.cb_keystrip)
         f.addRow(self.cb_JumpCUE)
         f.addRow(self.cb_metronome)
+        f.addRow("FPS", self.sp_fps)
         f.addRow("Record image path", self.ed_record_img_path)
         f.addRow("Metronome WAV path", self.ed_metronome_wav_path)
+        f.addRow("Actual FPS", self.lbl_fps)
 
         self.tabs.addTab(self.tab_view, "View")
 
@@ -176,6 +188,7 @@ class SettingsDialog(QDialog):
         self.cb_keystrip.setChecked(bool(v.display_keystrip))
         self.cb_JumpCUE.setChecked(bool(v.display_JumpCUE))
         self.cb_metronome.setChecked(bool(v.enable_metronome))
+        self.sp_fps.setValue(int(v.fps))
         self.ed_record_img_path.setText(v.record_img_path)
         self.ed_metronome_wav_path.setText(v.metronome_wav_path)
 
@@ -248,6 +261,7 @@ class SettingsDialog(QDialog):
                 display_beatgrid=bool(self.cb_beatgrid.isChecked()),
                 display_keystrip=bool(self.cb_keystrip.isChecked()),
                 display_JumpCUE=bool(self.cb_JumpCUE.isChecked()),
+                fps=int(self.sp_fps.value()),
                 enable_metronome=bool(self.cb_metronome.isChecked()),
                 record_img_path=self.ed_record_img_path.text().strip(),
                 metronome_wav_path=self.ed_metronome_wav_path.text().strip(),
@@ -271,5 +285,12 @@ class SettingsDialog(QDialog):
 
     def _on_cancel(self):
         self.reject()
+
+    def _on_ui_draw_interval(self, dt_ms: float):
+        if 1.0 <= dt_ms <= 1000.0:
+            self._refresh_samples.append(float(dt_ms))
+            avg_ms = sum(self._refresh_samples) / len(self._refresh_samples)
+            fps = 1000.0 / avg_ms if avg_ms > 0 else 0.0
+            self.lbl_fps.setText(f"{avg_ms:.1f} ms ({fps:.1f} FPS)")
 
 

@@ -122,8 +122,10 @@ def extract_tags(path: str) -> tuple[str, str, str, str]:
             or title
         )
         ar = (
-            _pick_from_track(general_track, "artist", "album_artist", "album_performer", "album_composer", "performer")
-            or _pick_from_track(audio_track, "artist", "album_artist", "album_performer", "album_composer", "performer")
+            _pick_from_track(general_track, "artist", "performer")
+            or _pick_from_track(audio_track, "artist", "performer")
+            or _pick_from_track(general_track, "album_artist", "album_performer", "album_composer")
+            or _pick_from_track(audio_track, "album_artist", "album_performer", "album_composer")
             or ""
         )
         al = (

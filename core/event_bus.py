@@ -59,3 +59,6 @@ class EventBus(QtCore.QObject):
 
     sig_jump_arm = QtCore.Signal(object)
     sig_jump_disarm = QtCore.Signal()
+
+    # UI timing
+    sig_ui_draw_interval = QtCore.Signal(float)

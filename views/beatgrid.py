@@ -12,10 +12,10 @@ class BeatgridView(ViewPlugin):
         self.beats_time = None   # np.ndarray of seconds [0..duration]
         self.downbeats_time = None
         self.duration = 0.0
-        self._lines = {}         # {int index -> pg.InfiniteLine}
-        self._downbeat_markers = {}  # {int index -> (top_item, bottom_item)}
         self.pen = pg.mkPen((200, 200, 200), width=1)
         self.downbeat_pen = pg.mkPen((255, 60, 60), width=2)
+        self._beat_lines_item = None
+        self._downbeat_lines_item = None
 
         self.bus.sig_time_changed.connect(self._on_time)
         self.bus.sig_window_changed.connect(self._on_window)
@@ -26,6 +26,10 @@ class BeatgridView(ViewPlugin):
     def attach(self, plot: pg.PlotItem):
         self.plot = plot
         plot.setYRange(0.0, 1.0, padding=0.02)
+        self._beat_lines_item = pg.PlotDataItem(pen=self.pen, connect="finite")
+        self._downbeat_lines_item = pg.PlotDataItem(pen=self.downbeat_pen, connect="finite")
+        plot.addItem(self._beat_lines_item)
+        plot.addItem(self._downbeat_lines_item)
         vb = plot.getViewBox()
         if hasattr(vb, "sigRangeChanged"):
             vb.sigRangeChanged.connect(self._refresh_lines)
@@ -33,11 +37,11 @@ class BeatgridView(ViewPlugin):
     def detach(self):
         if self.plot is None:
             return
-        for line in self._lines.values():
-            if line.scene() is not None:
-                line.scene().removeItem(line)
-        self._lines.clear()
-        self._clear_downbeat_markers()
+        for item in (self._beat_lines_item, self._downbeat_lines_item):
+            if item is not None and item.scene() is not None:
+                self.plot.removeItem(item)
+        self._beat_lines_item = None
+        self._downbeat_lines_item = None
         vb = self.plot.getViewBox()
         try:
             vb.sigRangeChanged.disconnect(self._refresh_lines)
@@ -67,12 +71,15 @@ class BeatgridView(ViewPlugin):
 
     # core
     def _refresh_lines(self, *args):
-        if self.plot is None or self.beats_time is None or len(self.beats_time) == 0:
-            self._clear_downbeat_markers()
+        if self.plot is None or self._beat_lines_item is None or self._downbeat_lines_item is None:
+            return
+        if self.beats_time is None or len(self.beats_time) == 0:
+            self._beat_lines_item.setData([], [])
+            self._downbeat_lines_item.setData([], [])
             return
 
         try:
-            (vxmin, vxmax), _ = self.plot.viewRange()
+            (vxmin, vxmax), (y_min, y_max) = self.plot.viewRange()
         except Exception:
             return
 
@@ -83,71 +90,22 @@ class BeatgridView(ViewPlugin):
 
         pad = max(0.0, (vxmax - vxmin) * 0.02)
         mask = (pos >= (vxmin - pad)) & (pos <= (vxmax + pad))
-        visible_idx = np.nonzero(mask)[0]
+        visible_pos = pos[mask]
+        self._beat_lines_item.setData(*self._build_vertical_segments(visible_pos, y_min, y_max))
 
-        keep = set(int(i) for i in visible_idx)
-        for idx in list(self._lines.keys()):
-            if idx not in keep:
-                line = self._lines.pop(idx, None)
-                if line is not None and line.scene() is not None:
-                    line.scene().removeItem(line)
-
-        for idx in visible_idx:
-            idx = int(idx)
-            p = float(pos[idx])
-            line = self._lines.get(idx)
-            if line is None:
-                line = pg.InfiniteLine(pos=p, angle=90, pen=self.pen, movable=False)
-                self._lines[idx] = line
-                self.plot.addItem(line)
-            else:
-                line.setPos(p)
-
-        self._refresh_downbeat_markers(left, vxmin, vxmax, pad)
-
-    def _refresh_downbeat_markers(self, left: float, vxmin: float, vxmax: float, pad: float) -> None:
-        if self.plot is None:
-            return
         if self.downbeats_time is None or len(self.downbeats_time) == 0:
-            self._clear_downbeat_markers()
+            self._downbeat_lines_item.setData([], [])
             return
 
-        y_min, y_max = self.plot.viewRange()[1]
         span = max(1e-6, float(y_max - y_min))
         cap = span * 0.08
         top_seg = (y_max - cap, y_max)
         bottom_seg = (y_min, y_min + cap)
 
-        pos = left + self.downbeats_time
-        mask = (pos >= (vxmin - pad)) & (pos <= (vxmax + pad))
-        visible_idx = np.nonzero(mask)[0]
-        keep = set(int(i) for i in visible_idx)
-        for idx in list(self._downbeat_markers.keys()):
-            if idx not in keep:
-                top_item, bot_item = self._downbeat_markers.pop(idx, (None, None))
-                for item in (top_item, bot_item):
-                    if item is not None:
-                        try:
-                            self.plot.removeItem(item)
-                        except Exception:
-                            pass
-
-        for idx in visible_idx:
-            idx = int(idx)
-            p = float(pos[idx])
-            marker = self._downbeat_markers.get(idx)
-            if marker is None:
-                top_item = pg.PlotDataItem([p, p], list(top_seg), pen=self.downbeat_pen)
-                bot_item = pg.PlotDataItem([p, p], list(bottom_seg), pen=self.downbeat_pen)
-                self._downbeat_markers[idx] = (top_item, bot_item)
-                self.plot.addItem(top_item)
-                self.plot.addItem(bot_item)
-            else:
-                top_item, bot_item = marker
-                if top_item is not None:
-                    top_item.setData([p, p], list(top_seg))
-                if bot_item is not None:
-                    bot_item.setData([p, p], list(bottom_seg))
+        downbeat_pos = left + self.downbeats_time
+        downbeat_mask = (downbeat_pos >= (vxmin - pad)) & (downbeat_pos <= (vxmax + pad))
+        visible_downbeats = downbeat_pos[downbeat_mask]
+        self._downbeat_lines_item.setData(*self._build_downbeat_segments(visible_downbeats, top_seg, bottom_seg))
     
     def _on_beatgrid_updated(self, bg_seg=None):
         f = self.model.features or {}
@@ -156,20 +114,29 @@ class BeatgridView(ViewPlugin):
         self.duration = float(self.model.duration_sec or 0.0)
         self._refresh_lines()
 
-    def _clear_downbeat_markers(self) -> None:
-        if not self._downbeat_markers:
-            return
-        if self.plot is None:
-            self._downbeat_markers.clear()
-            return
-        for top_item, bot_item in self._downbeat_markers.values():
-            for item in (top_item, bot_item):
-                if item is not None:
-                    try:
-                        self.plot.removeItem(item)
-                    except Exception:
-                        pass
-        self._downbeat_markers.clear()
+    @staticmethod
+    def _build_vertical_segments(xs, y0: float, y1: float):
+        xs = np.asarray(xs, dtype=float)
+        if xs.size == 0:
+            return ([], [])
+        x = np.repeat(xs, 3)
+        y = np.empty(xs.size * 3, dtype=float)
+        y[0::3] = y0
+        y[1::3] = y1
+        y[2::3] = np.nan
+        x[2::3] = np.nan
+        return x, y
+
+    @classmethod
+    def _build_downbeat_segments(cls, xs, top_seg, bottom_seg):
+        xs = np.asarray(xs, dtype=float)
+        if xs.size == 0:
+            return ([], [])
+        top_x, top_y = cls._build_vertical_segments(xs, float(top_seg[0]), float(top_seg[1]))
+        bot_x, bot_y = cls._build_vertical_segments(xs, float(bottom_seg[0]), float(bottom_seg[1]))
+        x = np.concatenate([top_x, bot_x])
+        y = np.concatenate([top_y, bot_y])
+        return x, y
 
     @staticmethod
     def _build_downbeats_from_segments(tempo_segments):

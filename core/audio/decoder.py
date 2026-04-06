@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import subprocess
+import threading
 
 import numpy as np
 
@@ -9,6 +10,68 @@ try:
     import soundfile as sf  # lightweight header probe
 except Exception:  # pragma: no cover
     sf = None
+
+
+_ffmpeg_warm_lock = threading.Lock()
+_ffmpeg_warmed = False
+
+
+def _windows_subprocess_kwargs() -> dict:
+    creationflags = 0
+    startupinfo = None
+    if os.name == "nt":
+        creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+        startupinfo = subprocess.STARTUPINFO()
+        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        startupinfo.wShowWindow = getattr(subprocess, "SW_HIDE", 0)
+    return {
+        "creationflags": creationflags,
+        "startupinfo": startupinfo,
+    }
+
+
+def warm_ffmpeg_decoder() -> None:
+    """
+    Warm the external FFmpeg decoder path once per process.
+    This pays process startup / binary paging cost during app startup rather
+    than on the first real track decode.
+    """
+    global _ffmpeg_warmed
+    with _ffmpeg_warm_lock:
+        if _ffmpeg_warmed:
+            return
+        print("[Decoder] Warming FFmpeg")
+        args = [
+            "ffmpeg",
+            "-hide_banner",
+            "-nostats",
+            "-v",
+            "error",
+            "-f",
+            "lavfi",
+            "-i",
+            "anullsrc=r=48000:cl=stereo",
+            "-t",
+            "0.05",
+            "-f",
+            "null",
+            "-",
+        ]
+        try:
+            proc = subprocess.run(
+                args,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                check=False,
+                **_windows_subprocess_kwargs(),
+            )
+            if proc.returncode == 0:
+                _ffmpeg_warmed = True
+                print("[Decoder] FFmpeg warm complete")
+            else:
+                print(f"[Decoder] FFmpeg warm failed rc={proc.returncode}")
+        except Exception as exc:
+            print(f"[Decoder] FFmpeg warm exception: {exc}")
 
 
 def decode_to_memmap(path: str, sr: int, ch: int) -> np.ndarray:
@@ -41,20 +104,13 @@ def decode_to_memmap(path: str, sr: int, ch: int) -> np.ndarray:
         "pipe:1",
     ]
 
-    creationflags = 0
-    startupinfo = None
-    if os.name == "nt":
-        creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
-        startupinfo = subprocess.STARTUPINFO()
-        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-        startupinfo.wShowWindow = getattr(subprocess, "SW_HIDE", 0)
+    popen_kwargs = _windows_subprocess_kwargs()
 
     proc = subprocess.Popen(
         args,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
-        creationflags=creationflags,
-        startupinfo=startupinfo,
+        **popen_kwargs,
     )
     stdout, stderr = proc.communicate()
 
@@ -98,19 +154,12 @@ def get_samplerate(path: str) -> int:
         "default=nw=1:nk=1",
         path,
     ]
-    creationflags = 0
-    startupinfo = None
-    if os.name == "nt":
-        creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
-        startupinfo = subprocess.STARTUPINFO()
-        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-        startupinfo.wShowWindow = getattr(subprocess, "SW_HIDE", 0)
+    popen_kwargs = _windows_subprocess_kwargs()
     try:
         out = subprocess.check_output(
             args,
             stderr=subprocess.STDOUT,
-            creationflags=creationflags,
-            startupinfo=startupinfo,
+            **popen_kwargs,
         )
         sr_str = out.decode(errors="ignore").strip()
         sr_val = int(sr_str) if sr_str else 0

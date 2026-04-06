@@ -1,6 +1,7 @@
 ﻿from __future__ import annotations
 
 from typing import List, Optional, Type
+import time
 
 from PySide6 import QtWidgets, QtGui, QtCore
 import pyqtgraph as pg
@@ -20,6 +21,25 @@ from ui.beatgrid_edit_panel import BeatgridEditPanel
 
 
 pg.setConfigOptions(antialias=False, useOpenGL=False)
+
+
+class _TrackedGraphicsLayoutWidget(pg.GraphicsLayoutWidget):
+    def __init__(self, bus: EventBus, *args, **kwargs):
+        self._bus = bus
+        self._last_paint_ts = None
+        super().__init__(*args, **kwargs)
+
+    def paintEvent(self, event):
+        now = time.perf_counter()
+        if self._last_paint_ts is not None:
+            dt_ms = (now - self._last_paint_ts) * 1000.0
+            if 1.0 <= dt_ms <= 1000.0:
+                try:
+                    self._bus.sig_ui_draw_interval.emit(dt_ms)
+                except Exception:
+                    pass
+        self._last_paint_ts = now
+        super().paintEvent(event)
 
 
 class _OneStepWheelSlider(QtWidgets.QSlider):
@@ -57,7 +77,7 @@ class MainPane(QtWidgets.QWidget):
         self._key_segments = None
 
         # Plot container
-        self.gl = pg.GraphicsLayoutWidget(show=True)
+        self.gl = _TrackedGraphicsLayoutWidget(self.bus, show=True)
         self.p = self.gl.addPlot(row=0, col=0, viewBox=NoDragNoWheelViewBox())
         self.p.hideAxis("left")
         self.p.hideAxis("bottom")

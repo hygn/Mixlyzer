@@ -1,51 +1,69 @@
 from __future__ import annotations
 
-from typing import Dict, Optional, Tuple
+from typing import Optional
 
 import numpy as np
+import threading
 from PySide6 import QtCore, QtMultimedia, QtGui
 
-from core.audio.decoder import decode_to_memmap
+from core.audio.decoder import decode_to_memmap, warm_ffmpeg_decoder
 from core.audio.feeder import PCMFeeder
 from core.event_bus import EventBus
 from pymediainfo import MediaInfo
 import base64
 
 
-class _DecodeWorker(QtCore.QObject):
-    finished = QtCore.Signal(int, str, object, int)
-    error = QtCore.Signal(int, str)
+def _thread_tag(obj: QtCore.QObject | None = None) -> str:
+    qt_thread = QtCore.QThread.currentThread()
+    qt_name = qt_thread.objectName() if qt_thread is not None else ""
+    if not qt_name:
+        qt_name = f"qt@{id(qt_thread):x}" if qt_thread is not None else "qt@none"
+    affinity = ""
+    if obj is not None:
+        try:
+            obj_thread = obj.thread()
+            obj_name = obj_thread.objectName() if obj_thread is not None else ""
+            if not obj_name:
+                obj_name = f"qt@{id(obj_thread):x}" if obj_thread is not None else "qt@none"
+            affinity = f" affinity={obj_name}"
+        except Exception:
+            affinity = ""
+    return f"py={threading.get_ident()} cur={qt_name}{affinity}"
 
-    def __init__(self, token: int, path: str, rate: int, ch: int):
-        print("[Player] Decoder init")
+
+class _AudioWorker(QtCore.QObject):
+    time_changed = QtCore.Signal(float)
+    duration_changed = QtCore.Signal(float)
+    playback_status = QtCore.Signal(bool)
+    transport_enabled = QtCore.Signal(bool)
+
+    def __init__(self) -> None:
         super().__init__()
-        self._token = token
-        self._path = path
-        self._rate = rate
-        self._ch = ch
+        self.fmt: Optional[QtMultimedia.QAudioFormat] = None
+        self.audio: Optional[QtMultimedia.QAudioSink] = None
+        self.rate: int = 0
+        self.ch: int = 0
+        self._feeder: Optional[PCMFeeder] = None
+
+        self._path: Optional[str] = None
+        self._is_playing = False
+        self._last_emit_ms = -1
+        self._duration_ms = 0
+        self._buffer_ready = False
+        self._desired_buffer_ms: int = 80
+
+        self._scrubbing = False
+        self._saved_buffer_ms = None
+        self._saved_chunk_frames = None
+        self._decode_token = 0
+
+        self._frame = QtCore.QTimer(self)
+        self._frame.setTimerType(QtCore.Qt.PreciseTimer)
+        self._frame.setInterval(16)
+        self._frame.timeout.connect(self._tick_time)
 
     @QtCore.Slot()
-    def run(self):
-        try:
-            pcm = decode_to_memmap(self._path, self._rate, self._ch)
-            arr = np.array(pcm, dtype=np.float32, order="C", copy=False)
-            duration_ms = int(round((arr.shape[0] * 1000.0) / max(1, self._rate)))
-            self.finished.emit(self._token, self._path, arr, duration_ms)
-            print("[Player] Decoder finished")
-        except Exception as exc:
-            self.error.emit(self._token, str(exc))
-            print("[Player] Decoder error")
-
-
-class PlayerController(QtCore.QObject):
-    """
-    Audio controller that pre-decodes tracks and feeds them to QAudioSink.
-    """
-
-    def __init__(self, bus: EventBus):
-        super().__init__()
-        self.bus = bus
-
+    def initialize(self) -> None:
         out_dev = QtMultimedia.QMediaDevices.defaultAudioOutput()
         fmt = out_dev.preferredFormat()
         fmt.setSampleFormat(QtMultimedia.QAudioFormat.Float)
@@ -55,88 +73,66 @@ class PlayerController(QtCore.QObject):
 
         self.rate = fmt.sampleRate()
         self.ch = fmt.channelCount()
-
         self._feeder = PCMFeeder(self.audio, self.rate, self.ch, self)
+        self._feeder.finished.connect(self._on_feeder_finished)
+        self._warm_backend()
 
-        self._path: Optional[str] = None
-        self._is_playing = False
-        self._last_emit_ms = -1
-        self._duration_ms = 0
-        self._buffer_ready = False
-        self._decode_token = 0
-        self._decode_jobs: Dict[int, Tuple[QtCore.QThread, _DecodeWorker]] = {}
-
-        self._frame = QtCore.QTimer(self)
-        self._frame.setTimerType(QtCore.Qt.PreciseTimer)
-        self._frame.setInterval(16)
-        self._frame.timeout.connect(self._tick_time)
-
-        self._bps = 4
-        self._desired_buffer_ms: int = 80
-
-        # scrub state
-        self._scrubbing = False
-        self._saved_buffer_ms = None
-        self._saved_chunk_frames = None
-
-        # bus connections
-        bus.sig_scrub_begin.connect(self._on_scrub_begin)
-        bus.sig_scrub_update.connect(self._on_scrub_update)
-        bus.sig_scrub_end.connect(self._on_scrub_end)
-        bus.sig_seek_requested.connect(self.seek)
-        bus.sig_volume_changed.connect(
-            lambda v: self.audio.setVolume(max(0.0, min(1.0, v)))
-        )
-        bus.sig_jump_arm.connect(self._on_jump_arm)
-        bus.sig_jump_disarm.connect(lambda: self._feeder.disarm_jump())
-
-        try:
-            bus.sig_tempo_mode_changed.connect(self.set_tempo_mode)
-            bus.sig_tempo_factor_changed.connect(self.set_tempo_factor)
-        except Exception:
-            pass
-
-    def _apply_buffer_ms(self):
-        """Reconfigure QAudioSink buffer size if needed."""
-        bpf = self.ch * 4  # float32 bytes per frame
-        buf_bytes = int(self.rate * (self._desired_buffer_ms / 1000.0) * bpf)
-        try:
-            self.audio.setBufferSize(max(bpf, buf_bytes))
-        except Exception:
-            pass
-
-    # public API
-    def set_source(self, path: str):
+    @QtCore.Slot(str)
+    def prepare_source(self, path: str) -> None:
         self.pause()
         self._path = path
         self._buffer_ready = False
         self._duration_ms = 0
         self._last_emit_ms = -1
-        self.bus.sig_playback_status.emit(False)
-        self.bus.sig_duration_changed.emit(0.0)
-        self.bus.sig_time_changed.emit(0.0)
-        try:
-            self.bus.sig_transport_enabled.emit(False)
-        except Exception:
-            pass
-
+        self.playback_status.emit(False)
+        self.duration_changed.emit(0.0)
+        self.time_changed.emit(0.0)
+        self.transport_enabled.emit(False)
         self._decode_token += 1
-        token = self._decode_token
-        self._start_decode_job(token, path)
+        try:
+            pcm = decode_to_memmap(path, self.rate, self.ch)
+            pcm_array = np.array(pcm, dtype=np.float32, order="C", copy=False)
+            duration_ms = int(round((pcm_array.shape[0] * 1000.0) / max(1, self.rate)))
+            self.set_predecoded_buffer(pcm_array, duration_ms)
+        except Exception as exc:
+            print(f"[Player] Decode error: {exc}")
+            self.playback_status.emit(False)
+            self.transport_enabled.emit(True)
 
-    def get_source(self) -> Optional[str]:
-        return self._path
+    @QtCore.Slot(object, int)
+    def set_predecoded_buffer(self, pcm: object, duration_ms: int) -> None:
+        if self._feeder is None:
+            return
+        try:
+            pcm_array = np.asarray(pcm, dtype=np.float32, order="C")
+            self._feeder.set_predecoded_buffer(pcm_array)
+        except Exception as exc:
+            print(f"[Player] Failed to load decoded buffer: {exc}")
+            self._buffer_ready = False
+            self.transport_enabled.emit(True)
+            return
 
-    def play(self):
-        if not self._path or self._is_playing or not self._buffer_ready:
+        self._buffer_ready = True
+        self._duration_ms = int(duration_ms)
+        self.duration_changed.emit(self._duration_ms / 1000.0)
+        self.time_changed.emit(0.0)
+        self.playback_status.emit(False)
+        self.transport_enabled.emit(True)
+
+    @QtCore.Slot()
+    def play(self) -> None:
+        if not self._path or self._is_playing or not self._buffer_ready or self._feeder is None:
             return
         self._apply_buffer_ms()
         self._feeder.start()
         self._is_playing = True
         self._frame.start()
-        self.bus.sig_playback_status.emit(True)
+        self.playback_status.emit(True)
 
-    def pause(self):
+    @QtCore.Slot()
+    def pause(self) -> None:
+        if self.audio is None or self._feeder is None:
+            return
         if not self._is_playing:
             try:
                 self.audio.reset()
@@ -157,12 +153,15 @@ class PlayerController(QtCore.QObject):
         self._feeder.stop()
 
         self._is_playing = False
-        self.bus.sig_playback_status.emit(False)
+        self.playback_status.emit(False)
 
         self._last_emit_ms = -1
         self._emit_time(cur_ms)
 
-    def stop(self):
+    @QtCore.Slot()
+    def stop(self) -> None:
+        if self.audio is None or self._feeder is None:
+            return
         self._apply_buffer_ms()
         self._frame.stop()
         try:
@@ -182,72 +181,54 @@ class PlayerController(QtCore.QObject):
 
         self._is_playing = False
         self._last_emit_ms = -1
-        self.bus.sig_playback_status.emit(False)
-
+        self.playback_status.emit(False)
         self._emit_time(0)
 
-    def seek(self, sec: float):
-        if not self._buffer_ready:
+    @QtCore.Slot(float)
+    def seek(self, sec: float) -> None:
+        if not self._buffer_ready or self._feeder is None:
             return
         frames = int(round(max(0.0, sec) * self.rate))
         self._feeder.seek_frames(frames)
         if self._is_playing:
-            try:
-                self.audio.reset()
-            except Exception:
-                pass
+            if self.audio is not None:
+                try:
+                    self.audio.reset()
+                except Exception:
+                    pass
             self._feeder.reset_counters()
             self._feeder.start()
         else:
-            self.bus.sig_time_changed.emit(sec)
+            self.time_changed.emit(sec)
 
-    # tempo control
-    def set_tempo_mode(self, mode: str):
+    @QtCore.Slot(str)
+    def set_tempo_mode(self, mode: str) -> None:
+        if self._feeder is None:
+            return
         m = (mode or "speed").lower()
         self._feeder.set_mode(m if m in ("none", "speed") else "speed")
 
-    def set_tempo_factor(self, factor: float):
+    @QtCore.Slot(float)
+    def set_tempo_factor(self, factor: float) -> None:
+        if self._feeder is None:
+            return
         self._feeder.set_factor(float(factor))
 
-    # timeline helpers
-    def _track_now_ms(self) -> float:
-        frame = (
-            self._feeder.input_playhead_abs_frame()
-            if self._is_playing
-            else self._feeder.current_base_frame()
-        )
-        return (frame * 1000.0) / max(1, self.rate)
-
-    def _emit_time(self, ms: int):
-        if ms != self._last_emit_ms:
-            self._last_emit_ms = ms
-            self.bus.sig_time_changed.emit(ms / 1000.0)
-
-    def _tick_time(self):
-        cur = self._track_now_ms()
-        if self._duration_ms and cur >= self._duration_ms:
-            cur = self._duration_ms
-            self._emit_time(cur)
-            self.pause()
+    @QtCore.Slot(float)
+    def set_volume(self, value: float) -> None:
+        if self.audio is None:
             return
-        self._emit_time(cur)
-    
-    def _on_jump_arm(self, payload):
-        label = payload["label"]
-        cue = payload["cue"]
-        jump_start = None
-        jump_dest = None
-        if cue["forward"]["label"] == label: 
-            jump_start = cue["forward"]["point"]
-            jump_dest = cue["backward"]["point"]
-        elif cue["backward"]["label"] == label: 
-            jump_start = cue["backward"]["point"]
-            jump_dest = cue["forward"]["point"]
-        self._feeder.arm_jump(jump_start, jump_dest)
+        self.audio.setVolume(max(0.0, min(1.0, value)))
 
-    # scrub handling
-    def _on_scrub_begin(self):
-        if self._scrubbing:
+    @QtCore.Slot(int)
+    def set_refresh_fps(self, fps: int) -> None:
+        fps = max(1, min(240, int(fps)))
+        interval_ms = max(1, int(round(1000.0 / fps)))
+        self._frame.setInterval(interval_ms)
+
+    @QtCore.Slot()
+    def scrub_begin(self) -> None:
+        if self._scrubbing or self.audio is None or self._feeder is None:
             return
         self._scrubbing = True
         try:
@@ -264,16 +245,18 @@ class PlayerController(QtCore.QObject):
         if self._is_playing:
             self._feeder.start()
 
-    def _on_scrub_update(self, sec: float):
-        if not self._buffer_ready:
+    @QtCore.Slot(float)
+    def scrub_update(self, sec: float) -> None:
+        if not self._buffer_ready or self._feeder is None:
             return
         frames = int(round(sec * self.rate))
         self._feeder.seek_frames(frames)
         if not self._is_playing:
-            self.bus.sig_time_changed.emit(sec)
+            self.time_changed.emit(sec)
 
-    def _on_scrub_end(self, _sec: float):
-        if not self._is_playing:
+    @QtCore.Slot(float)
+    def scrub_end(self, _sec: float) -> None:
+        if not self._is_playing or self._feeder is None:
             return
         if self._saved_buffer_ms is not None:
             self._desired_buffer_ms = self._saved_buffer_ms
@@ -283,75 +266,238 @@ class PlayerController(QtCore.QObject):
             self._saved_chunk_frames = None
         self._scrubbing = False
 
-    # async decode helpers
-    def _start_decode_job(self, token: int, path: str):
-        thread = QtCore.QThread(self)
-        worker = _DecodeWorker(token, path, self.rate, self.ch)
-        worker.moveToThread(thread)
-        thread.started.connect(worker.run)
-        worker.finished.connect(self._on_decode_ready)
-        worker.error.connect(self._on_decode_error)
-        worker.finished.connect(thread.quit)
-        worker.error.connect(thread.quit)
-        worker.finished.connect(worker.deleteLater)
-        worker.error.connect(worker.deleteLater)
-        thread.finished.connect(thread.deleteLater)
-
-        self._decode_jobs[token] = (thread, worker)
-        thread.start()
-
-    @QtCore.Slot(int, str, object, int)
-    def _on_decode_ready(self, token: int, path: str, pcm: object, duration_ms: int):
-        print("[Player] Buffer ready")
-        self._cleanup_decode_job(token)
-        if token != self._decode_token:
+    @QtCore.Slot(object)
+    def arm_jump(self, payload: object) -> None:
+        if self._feeder is None or not isinstance(payload, dict):
             return
+        label = payload["label"]
+        cue = payload["cue"]
+        jump_start = None
+        jump_dest = None
+        if cue["forward"]["label"] == label:
+            jump_start = cue["forward"]["point"]
+            jump_dest = cue["backward"]["point"]
+        elif cue["backward"]["label"] == label:
+            jump_start = cue["backward"]["point"]
+            jump_dest = cue["forward"]["point"]
+        self._feeder.arm_jump(jump_start, jump_dest)
 
-        try:
-            pcm_array = np.asarray(pcm, dtype=np.float32, order="C")
-            self._feeder.set_predecoded_buffer(pcm_array)
-        except Exception as exc:
-            print(f"[Player] Failed to load decoded buffer: {exc}")
-            self._buffer_ready = False
-            return
+    @QtCore.Slot()
+    def disarm_jump(self) -> None:
+        if self._feeder is not None:
+            self._feeder.disarm_jump()
 
-        self._buffer_ready = True
-        self._duration_ms = duration_ms
-        self.bus.sig_duration_changed.emit(self._duration_ms / 1000.0)
-        self.bus.sig_time_changed.emit(0.0)
-        self.bus.sig_playback_status.emit(False)
-        try:
-            self.bus.sig_transport_enabled.emit(True)
-        except Exception:
-            pass
-
-    @QtCore.Slot(int, str)
-    def _on_decode_error(self, token: int, message: str):
-        self._cleanup_decode_job(token)
-        if token != self._decode_token:
-            return
+    @QtCore.Slot()
+    def shutdown(self) -> None:
+        self.stop()
         self._buffer_ready = False
-        print(f"[Player] Decode error: {message}")
-        self.bus.sig_playback_status.emit(False)
+        self.transport_enabled.emit(False)
+        if self.audio is not None:
+            try:
+                self.audio.stop()
+            except Exception:
+                pass
+
+    def _apply_buffer_ms(self) -> None:
+        if self.audio is None:
+            return
+        bpf = self.ch * 4
+        buf_bytes = int(self.rate * (self._desired_buffer_ms / 1000.0) * bpf)
         try:
-            self.bus.sig_transport_enabled.emit(True)
+            self.audio.setBufferSize(max(bpf, buf_bytes))
         except Exception:
             pass
 
-    def _cleanup_decode_job(self, token: int):
-        entry = self._decode_jobs.pop(token, None)
-        if not entry:
+    def _warm_backend(self) -> None:
+        """
+        Force Qt Multimedia to open the output path during app startup so the
+        first real track load does not pay the cold-start penalty.
+        """
+        if self.audio is None:
             return
-        thread, worker = entry
+        bpf = max(1, self.ch * 4)
+        warm_frames = max(1, min(1024, self.rate // 20 if self.rate > 0 else 1024))
+        silence = np.zeros((warm_frames, self.ch), dtype=np.float32)
+        dev = None
         try:
-            if thread.isRunning():
-                thread.quit()
+            self._apply_buffer_ms()
+            dev = self.audio.start()
+            if dev is not None:
+                dev.write(silence.astype("<f4", copy=False).tobytes())
         except Exception:
             pass
+        finally:
+            try:
+                self.audio.reset()
+            except Exception:
+                pass
+
+    def _track_now_ms(self) -> float:
+        if self._feeder is None:
+            return 0.0
+        frame = (
+            self._feeder.input_playhead_abs_frame()
+            if self._is_playing
+            else self._feeder.current_base_frame()
+        )
+        return (frame * 1000.0) / max(1, self.rate)
+
+    def _emit_time(self, ms: int) -> None:
+        if ms != self._last_emit_ms:
+            self._last_emit_ms = ms
+            self.time_changed.emit(ms / 1000.0)
+
+    @QtCore.Slot()
+    def _tick_time(self) -> None:
+        cur = self._track_now_ms()
+        if self._duration_ms and cur >= self._duration_ms:
+            cur = self._duration_ms
+            self._emit_time(cur)
+            self.pause()
+            return
+        self._emit_time(cur)
+
+    @QtCore.Slot(int)
+    def _on_feeder_finished(self, _code: int) -> None:
+        self.pause()
+
+
+class PlayerController(QtCore.QObject):
+    """
+    Audio controller that pre-decodes tracks and feeds them to QAudioSink.
+    """
+
+    _cmd_prepare_source = QtCore.Signal(str)
+    _cmd_play = QtCore.Signal()
+    _cmd_pause = QtCore.Signal()
+    _cmd_stop = QtCore.Signal()
+    _cmd_seek = QtCore.Signal(float)
+    _cmd_set_tempo_mode = QtCore.Signal(str)
+    _cmd_set_tempo_factor = QtCore.Signal(float)
+    _cmd_set_volume = QtCore.Signal(float)
+    _cmd_set_refresh_fps = QtCore.Signal(int)
+    _cmd_scrub_begin = QtCore.Signal()
+    _cmd_scrub_update = QtCore.Signal(float)
+    _cmd_scrub_end = QtCore.Signal(float)
+    _cmd_arm_jump = QtCore.Signal(object)
+    _cmd_disarm_jump = QtCore.Signal()
+    _cmd_shutdown = QtCore.Signal()
+
+    def __init__(self, bus: EventBus):
+        super().__init__()
+        self.bus = bus
+        out_dev = QtMultimedia.QMediaDevices.defaultAudioOutput()
+        fmt = out_dev.preferredFormat()
+        fmt.setSampleFormat(QtMultimedia.QAudioFormat.Float)
+        self.rate = fmt.sampleRate()
+        self.ch = fmt.channelCount()
+
+        self._path: Optional[str] = None
+
+        self._audio_thread = QtCore.QThread(self)
+        self._audio_thread.setObjectName("AudioThread")
+        self._audio_worker = _AudioWorker()
+        self._audio_worker.moveToThread(self._audio_thread)
+
+        self._cmd_prepare_source.connect(self._audio_worker.prepare_source, QtCore.Qt.QueuedConnection)
+        self._cmd_play.connect(self._audio_worker.play, QtCore.Qt.QueuedConnection)
+        self._cmd_pause.connect(self._audio_worker.pause, QtCore.Qt.QueuedConnection)
+        self._cmd_stop.connect(self._audio_worker.stop, QtCore.Qt.QueuedConnection)
+        self._cmd_seek.connect(self._audio_worker.seek, QtCore.Qt.QueuedConnection)
+        self._cmd_set_tempo_mode.connect(self._audio_worker.set_tempo_mode, QtCore.Qt.QueuedConnection)
+        self._cmd_set_tempo_factor.connect(self._audio_worker.set_tempo_factor, QtCore.Qt.QueuedConnection)
+        self._cmd_set_volume.connect(self._audio_worker.set_volume, QtCore.Qt.QueuedConnection)
+        self._cmd_set_refresh_fps.connect(self._audio_worker.set_refresh_fps, QtCore.Qt.QueuedConnection)
+        self._cmd_scrub_begin.connect(self._audio_worker.scrub_begin, QtCore.Qt.QueuedConnection)
+        self._cmd_scrub_update.connect(self._audio_worker.scrub_update, QtCore.Qt.QueuedConnection)
+        self._cmd_scrub_end.connect(self._audio_worker.scrub_end, QtCore.Qt.QueuedConnection)
+        self._cmd_arm_jump.connect(self._audio_worker.arm_jump, QtCore.Qt.QueuedConnection)
+        self._cmd_disarm_jump.connect(self._audio_worker.disarm_jump, QtCore.Qt.QueuedConnection)
+        self._cmd_shutdown.connect(self._audio_worker.shutdown, QtCore.Qt.QueuedConnection)
+
+        self._audio_worker.time_changed.connect(self.bus.sig_time_changed)
+        self._audio_worker.duration_changed.connect(self.bus.sig_duration_changed)
+        self._audio_worker.playback_status.connect(self.bus.sig_playback_status)
+        self._audio_worker.transport_enabled.connect(self.bus.sig_transport_enabled)
+
+        self._audio_thread.started.connect(self._audio_worker.initialize)
+        self._audio_thread.finished.connect(self._audio_worker.deleteLater)
+        self._audio_thread.start()
+        threading.Thread(
+            target=warm_ffmpeg_decoder,
+            name="FFmpegWarmup",
+            daemon=True,
+        ).start()
+
+        app = QtCore.QCoreApplication.instance()
+        if app is not None:
+            app.aboutToQuit.connect(self.shutdown)
+
+        # bus connections
+        bus.sig_scrub_begin.connect(self._cmd_scrub_begin.emit)
+        bus.sig_scrub_update.connect(self._cmd_scrub_update.emit)
+        bus.sig_scrub_end.connect(self._cmd_scrub_end.emit)
+        bus.sig_seek_requested.connect(self.seek)
+        bus.sig_volume_changed.connect(self._cmd_set_volume.emit)
+        bus.sig_jump_arm.connect(self._cmd_arm_jump.emit)
+        bus.sig_jump_disarm.connect(self._cmd_disarm_jump.emit)
+
         try:
-            worker.deleteLater()
+            bus.sig_tempo_mode_changed.connect(self.set_tempo_mode)
+            bus.sig_tempo_factor_changed.connect(self.set_tempo_factor)
         except Exception:
             pass
+
+    # public API
+    def set_source(self, path: str):
+        self._path = path
+        self._cmd_prepare_source.emit(path)
+
+    def get_source(self) -> Optional[str]:
+        return self._path
+
+    def audio_thread(self) -> QtCore.QThread:
+        return self._audio_thread
+
+    def connect_audio_time(self, slot) -> None:
+        self._audio_worker.time_changed.connect(slot, QtCore.Qt.DirectConnection)
+
+    def play(self):
+        if not self._path:
+            return
+        self._cmd_play.emit()
+
+    def set_refresh_fps(self, fps: int):
+        self._cmd_set_refresh_fps.emit(int(fps))
+
+    def pause(self):
+        self._cmd_pause.emit()
+
+    def stop(self):
+        self._cmd_stop.emit()
+
+    def seek(self, sec: float):
+        self._cmd_seek.emit(sec)
+
+    # tempo control
+    def set_tempo_mode(self, mode: str):
+        self._cmd_set_tempo_mode.emit(mode)
+
+    def set_tempo_factor(self, factor: float):
+        self._cmd_set_tempo_factor.emit(float(factor))
+
+    def shutdown(self) -> None:
+        if self._audio_thread.isRunning():
+            try:
+                QtCore.QMetaObject.invokeMethod(
+                    self._audio_worker,
+                    "shutdown",
+                    QtCore.Qt.BlockingQueuedConnection,
+                )
+            except Exception:
+                pass
+            self._audio_thread.quit()
+            self._audio_thread.wait(2000)
 
     # artwork
     def getAlbumArt(self, path: Optional[str] = None) -> Optional[QtGui.QImage]:

@@ -28,6 +28,8 @@ from analyzer_core.global_analyzer import getAlbumArt, extract_tags
 from core.config import config, analysisconfig, keyconfig, libconfig, viewconfig, load_cfg
 
 class AppWindow(QtWidgets.QMainWindow):
+    _sig_metronome_set_beats = QtCore.Signal(object, float)
+
     def __init__(self):
         super().__init__()
         appid = "org.hygn.mixylzer"
@@ -51,6 +53,7 @@ class AppWindow(QtWidgets.QMainWindow):
         self.model = DataModel()
         self.tl = TimelineCoordinator(self.bus)
         self.player = PlayerController(self.bus)
+        self.player.set_refresh_fps(self.cfg.viewconfig.fps)
 
         # Main UI pane
         self.pane = MainPane(self.bus, self.model, self.tl, self.cfg)
@@ -104,10 +107,19 @@ class AppWindow(QtWidgets.QMainWindow):
             parent=self,
         )
 
-        self.metro = MetronomeController(bus=self.bus, tl=self.tl, model=self.model, click_wav_path=self.cfg.viewconfig.metronome_wav_path)
+        self.metro = MetronomeController(
+            click_wav_path=self.cfg.viewconfig.metronome_wav_path,
+        )
         self.metro.set_downbeat_cycle(1)
-        if self.cfg.viewconfig.enable_metronome: self.metro.start()
-        else: self.metro.stop()
+        self.metro.moveToThread(self.player.audio_thread())
+        self.player.connect_audio_time(self.metro._on_time_changed)
+        self._sig_metronome_set_beats.connect(self.metro.set_beats, QtCore.Qt.QueuedConnection)
+        QtCore.QMetaObject.invokeMethod(self.metro, "initialize_audio", QtCore.Qt.QueuedConnection)
+        if self.cfg.viewconfig.enable_metronome:
+            QtCore.QMetaObject.invokeMethod(self.metro, "start", QtCore.Qt.QueuedConnection)
+        else:
+            QtCore.QMetaObject.invokeMethod(self.metro, "stop", QtCore.Qt.QueuedConnection)
+        self.bus.sig_beatgrid_edited.connect(self._sync_metronome_beats)
 
     # DnD
     def dragEnterEvent(self, e: QtGui.QDragEnterEvent):
@@ -352,6 +364,13 @@ class AppWindow(QtWidgets.QMainWindow):
     def _on_features_loaded(self):
         self.bus.sig_window_changed.emit(self.tl.window_sec)
         self.bus.sig_center_changed.emit(self.tl.center_t)
+        self._sync_metronome_beats()
+
+    def _sync_metronome_beats(self):
+        beats = None
+        if self.model.features:
+            beats = self.model.features.get("beats_time_sec")
+        self._sig_metronome_set_beats.emit(beats, float(self.tl.current_time))
 
     def _on_settings_save(self, _config: config):
         with open("config.json", "r") as f:
@@ -360,9 +379,17 @@ class AppWindow(QtWidgets.QMainWindow):
             json.dump(_config.to_dict(), f)
         if prev_cfg["viewconfig"] != _config.to_dict()["viewconfig"]:
             self.bus.sig_reload_UI.emit(_config)
-            if _config.viewconfig.enable_metronome: self.metro.start()
-            else: self.metro.stop()
-            self.metro.set_soundfile(_config.viewconfig.metronome_wav_path)
+            self.player.set_refresh_fps(_config.viewconfig.fps)
+            if _config.viewconfig.enable_metronome:
+                QtCore.QMetaObject.invokeMethod(self.metro, "start", QtCore.Qt.QueuedConnection)
+            else:
+                QtCore.QMetaObject.invokeMethod(self.metro, "stop", QtCore.Qt.QueuedConnection)
+            QtCore.QMetaObject.invokeMethod(
+                self.metro,
+                "set_soundfile",
+                QtCore.Qt.QueuedConnection,
+                QtCore.Q_ARG(str, _config.viewconfig.metronome_wav_path),
+            )
 
     def _open_support(self):
         # Non-modal dialog; reuse instance

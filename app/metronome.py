@@ -1,79 +1,82 @@
 from PySide6 import QtCore, QtMultimedia
 import numpy as np
 
+
 class MetronomeController(QtCore.QObject):
     sig_tick = QtCore.Signal(float, int)
 
-    def __init__(self, bus, tl, model, click_wav_path: str, parent=None):
+    def __init__(self, click_wav_path: str, parent=None):
         super().__init__(parent)
-        self.bus = bus
-        self.tl = tl
-        self.model = model
 
         self.beats_time = None  # np.ndarray[float] (sec)
         self.next_idx = 0
         self.enabled = False
 
-        # Timing/performance guardrails 
         self.latency_guard = 0.020
         self.seek_threshold = 0.200
         self.max_ticks_per_call = 4
         self._prev_time = None
         self._in_cb = False
         self.last_tick_time = -1.0
+        self._current_time = 0.0
 
-        # Sound 
-        self.click = QtMultimedia.QSoundEffect(self)
-        self.click.setSource(QtCore.QUrl.fromLocalFile(click_wav_path))
+        self._click: QtMultimedia.QSoundEffect | None = None
+        self._soundfile = click_wav_path
         self._base_volume = 0.9
-        self.click.setVolume(self._base_volume)
 
-        # Signal hookups
-        self.bus.sig_features_loaded.connect(self._on_features_loaded)
-        self.bus.sig_time_changed.connect(self._on_time_changed)
-        self.bus.sig_beatgrid_edited.connect(self._on_beatgrid_edit)
-
-        # Options
         self.downbeat_cycle = None
 
+    @QtCore.Slot()
+    def initialize_audio(self):
+        if self._click is not None:
+            return
+        self._click = QtMultimedia.QSoundEffect(self)
+        self._click.setSource(QtCore.QUrl.fromLocalFile(self._soundfile))
+        self._click.setVolume(self._base_volume)
+
     # Public API
+    @QtCore.Slot()
     def start(self):
         self.enabled = True
         self._reset_pointer()
 
+    @QtCore.Slot()
     def stop(self):
         self.enabled = False
 
+    @QtCore.Slot(float)
     def set_volume(self, v: float):
         self._base_volume = float(np.clip(v, 0.0, 1.0))
-        self.click.setVolume(self._base_volume)
+        if self._click is not None:
+            self._click.setVolume(self._base_volume)
 
+    @QtCore.Slot(object)
     def set_downbeat_cycle(self, n_beats: int | None):
         self.downbeat_cycle = int(n_beats) if n_beats and n_beats > 0 else None
-        
-    def set_soundfile(self, click_wav_path):
-        self.click.setSource(QtCore.QUrl.fromLocalFile(click_wav_path))
 
-    # Internals 
-    def _on_features_loaded(self):
-        f = self.model.features or {}
-        bt = f.get("beats_time_sec")
+    @QtCore.Slot(str)
+    def set_soundfile(self, click_wav_path):
+        self._soundfile = click_wav_path
+        if self._click is not None:
+            self._click.setSource(QtCore.QUrl.fromLocalFile(click_wav_path))
+
+    @QtCore.Slot(object, float)
+    def set_beats(self, beats_time, current_time: float = 0.0):
+        bt = beats_time
         if bt is None or len(bt) == 0:
             self.beats_time = None
             self.next_idx = 0
+            self._current_time = float(current_time)
+            self._prev_time = self._current_time
+            self.last_tick_time = -1.0
             return
         self.beats_time = np.asarray(bt, dtype=float)
+        self._current_time = float(current_time)
         self._reset_pointer()
-    
-    def _on_beatgrid_edit(self):
-        f = self.model.features or {}
-        bt = f.get("beats_time_sec")
-        if bt is None or len(bt) == 0:
-            self.beats_time = None
-            self.next_idx = 0
-            return
-        self.beats_time = np.asarray(bt, dtype=float)
-        self._reset_pointer()
+
+    @QtCore.Slot()
+    def clear_beats(self):
+        self.set_beats(None, self._current_time)
 
     def _reset_pointer(self):
         if self.beats_time is None or len(self.beats_time) == 0:
@@ -81,22 +84,23 @@ class MetronomeController(QtCore.QObject):
             self._prev_time = None
             self.last_tick_time = -1.0
             return
-        t = float(self.tl.current_time)
+        t = float(self._current_time)
         self.next_idx = int(np.searchsorted(self.beats_time, t, side="right"))
         self._prev_time = t
         self.last_tick_time = -1.0
 
     @QtCore.Slot(float)
     def _on_time_changed(self, t: float):
+        self._current_time = float(t)
         if self._in_cb:
             return
         self._in_cb = True
         try:
             if not self.enabled or self.beats_time is None:
-                self._prev_time = float(t)
+                self._prev_time = self._current_time
                 return
 
-            cur = float(t)
+            cur = self._current_time
 
             # Seek detection: big jumps skip pending ticks and realign pointer
             if self._prev_time is None or abs(cur - self._prev_time) >= self.seek_threshold:
@@ -131,6 +135,8 @@ class MetronomeController(QtCore.QObject):
             self._in_cb = False
 
     def _tick(self, when_sec: float, idx: int, is_sub: bool = False):
+        if self._click is None:
+            return
         # Downbeat accent
         if self.downbeat_cycle:
             accent = (idx % self.downbeat_cycle == 0) and not is_sub
@@ -138,7 +144,7 @@ class MetronomeController(QtCore.QObject):
             accent = (not is_sub)
 
         vol = (1.0 if accent else 0.6) * self._base_volume
-        self.click.setVolume(max(0.0, min(1.0, vol)))
-        self.click.play()
+        self._click.setVolume(max(0.0, min(1.0, vol)))
+        self._click.play()
 
         self.sig_tick.emit(when_sec, idx)
