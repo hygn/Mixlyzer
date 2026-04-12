@@ -12,7 +12,7 @@ from typing import Optional
 from analyzer_core.key.key import *
 from analyzer_core.beat.beat import *
 from analyzer_core.self_correlation.JumpCUE import JumpCueEngine
-from core.audio.decoder import decode_to_memmap
+from core.audio.decoder import decode_to_memmap, get_total_samples
 from core.library_handler import LibraryDB
 from core.analysis_lib_handler import FeatureNPZStore
 from core.config import config
@@ -498,6 +498,7 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
         "bpm": bpm_out,
         "key": key_int,
         "duration_sec": duration_out,
+        "total_samples": int(get_total_samples(path) or 0),
         "rating": 0,
         "added_ts": int(time.time()),
         "comment": comment,

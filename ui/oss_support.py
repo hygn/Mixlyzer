@@ -114,6 +114,7 @@ class SupportDialog(QtWidgets.QDialog):
             ("scikit-image", "https://github.com/scikit-image/scikit-image"),
             ("pymediainfo", "https://github.com/sbraz/pymediainfo"),
             ("pyqtgraph", "https://pyqtgraph.org/"),
+            ("pymem", "https://github.com/srounet/Pymem"),
             ("tqdm", "https://github.com/tqdm/tqdm"),
             ("colorama", "https://github.com/tartley/colorama"),
             ("FFmpeg", "https://ffmpeg.org/donations.html"),
@@ -167,6 +168,7 @@ class SupportDialog(QtWidgets.QDialog):
             "scikit-image": "skimage",
             "pymediainfo": "pymediainfo",
             "pyqtgraph": "pyqtgraph",
+            "pymem": "pymem",
             "tqdm": "tqdm",
             "colorama": "colorama",
         }

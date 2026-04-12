@@ -15,6 +15,7 @@ class TrackRow:
     bpm: Optional[float] = None
     key: Optional[int] = None          # integer Key
     duration: Optional[float] = None   # seconds
+    total_samples: Optional[int] = None
     rating: int = 0
     added_ts: int = 0                  # epoch seconds
     comment: str = ""
@@ -44,6 +45,7 @@ class TrackRow:
             bpm=float(meta["bpm"]) if meta.get("bpm") is not None else None,
             key=int(key) if key is not None else None,
             duration=( float(meta["duration_sec"])),
+            total_samples=(int(meta["total_samples"]) if meta.get("total_samples") is not None else None),
             rating=int(meta.get("rating", 0)),
             added_ts=int(added_ts),
             comment=meta.get("comment",""),
@@ -64,6 +66,7 @@ class TrackRow:
             "bpm": self.bpm,
             "key": self.key,
             "duration_sec": self.duration,
+            "total_samples": self.total_samples,
             "rating": self.rating,
             "added_ts": self.added_ts,
             "comment": self.comment,
@@ -93,6 +96,7 @@ class LibraryDB:
             bpm         REAL,
             key         INTEGER,
             duration    REAL,
+            total_samples INTEGER,
             rating      INTEGER DEFAULT 0,
             added_ts    INTEGER NOT NULL,
             comment     TEXT DEFAULT '',
@@ -142,8 +146,8 @@ class LibraryDB:
         None values are left untouched via COALESCE.
         """
         q = """
-        INSERT INTO tracks(path, uid, title, artist, album, bpm, key, duration, rating, added_ts, comment, file_mtime, file_size)
-        VALUES(:path, :uid, :title, :artist, :album, :bpm, :key, :duration, :rating, :added_ts, :comment, :file_mtime, :file_size)
+        INSERT INTO tracks(path, uid, title, artist, album, bpm, key, duration, total_samples, rating, added_ts, comment, file_mtime, file_size)
+        VALUES(:path, :uid, :title, :artist, :album, :bpm, :key, :duration, :total_samples, :rating, :added_ts, :comment, :file_mtime, :file_size)
         ON CONFLICT(path) DO UPDATE SET
             uid        = COALESCE(excluded.uid,        tracks.uid),
             title      = COALESCE(excluded.title,      tracks.title),
@@ -152,6 +156,7 @@ class LibraryDB:
             bpm        = COALESCE(excluded.bpm,        tracks.bpm),
             key        = COALESCE(excluded.key,        tracks.key),
             duration   = COALESCE(excluded.duration,   tracks.duration),
+            total_samples = COALESCE(excluded.total_samples, tracks.total_samples),
             rating     = COALESCE(excluded.rating,     tracks.rating),
             added_ts   = CASE WHEN tracks.added_ts IS NULL OR tracks.added_ts=0 THEN excluded.added_ts ELSE tracks.added_ts END,
             comment    = COALESCE(excluded.comment,    tracks.comment),

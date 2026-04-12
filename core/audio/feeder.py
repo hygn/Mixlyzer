@@ -156,6 +156,19 @@ class PCMFeeder(QtCore.QObject):
         except Exception:
             return 0.0
 
+    def _queued_input_frames_float(self) -> float:
+        """
+        Estimate queued frames in *input* frame units.
+        In speed mode, queued device frames correspond to more/less source
+        frames depending on the playback factor.
+        """
+        q_out = self._queued_out_frames_float()
+        if q_out <= 0.0:
+            return 0.0
+        if self._mode == "speed":
+            return q_out * float(max(0.25, min(4.0, self._factor)))
+        return q_out
+
     def input_playhead_frames(self) -> float:
         """
         Return current position (frames, float) with delay compensated in *input* terms.
@@ -205,8 +218,8 @@ class PCMFeeder(QtCore.QObject):
             t = frame / self.rate
             if self._feeder_prev_t < self._jump_start and t > self._jump_start:
                 # Keep device running; skip only what is already queued to avoid stutter
-                queued = self._queued_out_frames_float()
-                safety = min(self._chunk_frames, int(round(queued)))
+                queued_in = self._queued_input_frames_float()
+                safety = min(int(self._chunk_frames * max(1.0, self._factor)), int(round(queued_in)))
                 target_frame = int(round(self._jump_dest * self.rate + safety))
                 self.seek_frames(target_frame)
                 self.reset_counters()  # clear delay map so playhead math matches new base

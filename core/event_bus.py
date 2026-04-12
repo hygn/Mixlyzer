@@ -11,6 +11,8 @@ class EventBus(QtCore.QObject):
     sig_center_changed = QtCore.Signal(float)    # center_t
     sig_playback_status = QtCore.Signal(bool)
     sig_transport_enabled = QtCore.Signal(bool)
+    sig_external_sync_enabled = QtCore.Signal(bool)
+    sig_external_sync_state = QtCore.Signal(object)
     sig_volume_changed = QtCore.Signal(float)
     sig_tempo_factor_changed = QtCore.Signal(float)
     sig_tempo_mode_changed = QtCore.Signal(str)

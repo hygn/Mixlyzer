@@ -19,4 +19,5 @@ dependencies = [
     "soundfile>=0.13.1",
     "tqdm>=4.67.1",
     "pip-licenses>=5.5.0",
+    "pymem>=1.14.0",
 ]

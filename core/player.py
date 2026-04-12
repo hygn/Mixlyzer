@@ -393,6 +393,7 @@ class PlayerController(QtCore.QObject):
         self.ch = fmt.channelCount()
 
         self._path: Optional[str] = None
+        self._external_sync_enabled = False
 
         self._audio_thread = QtCore.QThread(self)
         self._audio_thread.setObjectName("AudioThread")
@@ -447,10 +448,20 @@ class PlayerController(QtCore.QObject):
             bus.sig_tempo_factor_changed.connect(self.set_tempo_factor)
         except Exception:
             pass
+        try:
+            bus.sig_external_sync_enabled.connect(self._on_external_sync_enabled)
+        except Exception:
+            pass
 
     # public API
     def set_source(self, path: str):
         self._path = path
+        if self._external_sync_enabled:
+            self.bus.sig_duration_changed.emit(0.0)
+            self.bus.sig_time_changed.emit(0.0)
+            self.bus.sig_transport_enabled.emit(False)
+            self.bus.sig_playback_status.emit(False)
+            return
         self._cmd_prepare_source.emit(path)
 
     def get_source(self) -> Optional[str]:
@@ -465,18 +476,31 @@ class PlayerController(QtCore.QObject):
     def play(self):
         if not self._path:
             return
+        if self._external_sync_enabled:
+            self.bus.sig_playback_status.emit(False)
+            return
         self._cmd_play.emit()
 
     def set_refresh_fps(self, fps: int):
         self._cmd_set_refresh_fps.emit(int(fps))
 
     def pause(self):
+        if self._external_sync_enabled:
+            self.bus.sig_playback_status.emit(False)
+            return
         self._cmd_pause.emit()
 
     def stop(self):
+        if self._external_sync_enabled:
+            self.bus.sig_playback_status.emit(False)
+            self.bus.sig_time_changed.emit(0.0)
+            return
         self._cmd_stop.emit()
 
     def seek(self, sec: float):
+        if self._external_sync_enabled:
+            self.bus.sig_time_changed.emit(max(0.0, float(sec)))
+            return
         self._cmd_seek.emit(sec)
 
     # tempo control
@@ -498,6 +522,16 @@ class PlayerController(QtCore.QObject):
                 pass
             self._audio_thread.quit()
             self._audio_thread.wait(2000)
+
+    @QtCore.Slot(bool)
+    def _on_external_sync_enabled(self, enabled: bool) -> None:
+        self._external_sync_enabled = bool(enabled)
+        if self._external_sync_enabled:
+            self._cmd_pause.emit()
+            self.bus.sig_playback_status.emit(False)
+            self.bus.sig_transport_enabled.emit(False)
+        elif self._path:
+            self._cmd_prepare_source.emit(self._path)
 
     # artwork
     def getAlbumArt(self, path: Optional[str] = None) -> Optional[QtGui.QImage]:

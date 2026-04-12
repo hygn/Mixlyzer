@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 import threading
 
@@ -14,6 +15,13 @@ except Exception:  # pragma: no cover
 
 _ffmpeg_warm_lock = threading.Lock()
 _ffmpeg_warmed = False
+
+
+def _ffmpeg_command() -> str:
+    root_ffmpeg = os.path.join(os.getcwd(), "ffmpeg.exe")
+    if os.name == "nt" and os.path.exists(root_ffmpeg):
+        return root_ffmpeg
+    return "ffmpeg"
 
 
 def _windows_subprocess_kwargs() -> dict:
@@ -42,7 +50,7 @@ def warm_ffmpeg_decoder() -> None:
             return
         print("[Decoder] Warming FFmpeg")
         args = [
-            "ffmpeg",
+            _ffmpeg_command(),
             "-hide_banner",
             "-nostats",
             "-v",
@@ -82,7 +90,7 @@ def decode_to_memmap(path: str, sr: int, ch: int) -> np.ndarray:
     print("[Decoder] Starting FFmpeg")
 
     args = [
-        "ffmpeg",
+        _ffmpeg_command(),
         "-hide_banner",
         "-nostats",
         "-v",
@@ -132,7 +140,7 @@ def decode_to_memmap(path: str, sr: int, ch: int) -> np.ndarray:
 def get_samplerate(path: str) -> int:
     """
     Probe media sample rate without full decode.
-    Tries soundfile header read first; falls back to ffprobe.
+    Tries soundfile header read first; falls back to ffmpeg stderr parsing.
     """
     if sf is not None:
         try:
@@ -142,29 +150,67 @@ def get_samplerate(path: str) -> int:
         except Exception:
             pass
 
+    sample_rate, _duration_sec = _probe_audio_stream(path)
+    return sample_rate
+
+
+def get_total_samples(path: str) -> int:
+    """
+    Probe total audio sample frames without full decode.
+    Tries soundfile header read first; falls back to ffmpeg stderr parsing.
+    """
+    if sf is not None:
+        try:
+            info = sf.info(path)
+            frames = int(getattr(info, "frames", 0) or 0)
+            if frames > 0:
+                return frames
+        except Exception:
+            pass
+
+    sample_rate, duration_sec = _probe_audio_stream(path)
+    if sample_rate <= 0 or duration_sec <= 0.0:
+        return 0
+    total = int(round(duration_sec * sample_rate))
+    return total if total > 0 else 0
+
+
+def _probe_audio_stream(path: str) -> tuple[int, float]:
     args = [
-        "ffprobe",
-        "-v",
-        "error",
-        "-select_streams",
-        "a:0",
-        "-show_entries",
-        "stream=sample_rate",
-        "-of",
-        "default=nw=1:nk=1",
+        _ffmpeg_command(),
+        "-hide_banner",
+        "-i",
         path,
     ]
     popen_kwargs = _windows_subprocess_kwargs()
     try:
-        out = subprocess.check_output(
+        proc = subprocess.run(
             args,
-            stderr=subprocess.STDOUT,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+            check=False,
             **popen_kwargs,
         )
-        sr_str = out.decode(errors="ignore").strip()
-        sr_val = int(sr_str) if sr_str else 0
-        if sr_val > 0:
-            return sr_val
+        text = (proc.stderr or b"").decode(errors="ignore")
+        if not text:
+            return 0, 0.0
+
+        sample_rate_match = re.search(r"(\d+)\s*Hz", text, flags=re.IGNORECASE)
+        if not sample_rate_match:
+            return 0, 0.0
+        sample_rate = int(sample_rate_match.group(1))
+
+        duration_match = re.search(
+            r"Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)",
+            text,
+            flags=re.IGNORECASE,
+        )
+        if not duration_match:
+            return sample_rate, 0.0
+        hours = int(duration_match.group(1))
+        minutes = int(duration_match.group(2))
+        seconds = float(duration_match.group(3))
+        duration_sec = (hours * 3600.0) + (minutes * 60.0) + seconds
+        return sample_rate, duration_sec
     except Exception:
-        pass
-    return 0
+        return 0, 0.0

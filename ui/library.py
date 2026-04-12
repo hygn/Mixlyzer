@@ -87,6 +87,7 @@ class LibraryWidget(QtWidgets.QWidget):
         self.bus = bus
         self.cfg = cfg
         self.model = model
+        self._external_sync_enabled = bool(getattr(cfg, "externalsyncconfig", None) and cfg.externalsyncconfig.enabled)
         self._all_tracks: List[Track] = []
         self._edit_dlg: EditSongDialog | None = None
         self._export_dlg: ExportTrackDialog | None = None
@@ -138,6 +139,7 @@ class LibraryWidget(QtWidgets.QWidget):
 
         # Initial load
         self.bus.sig_lib_updated.connect(self.reload)
+        self.bus.sig_external_sync_enabled.connect(self._on_external_sync_enabled)
         self.reload_from_db()
 
     # Data loading
@@ -235,6 +237,13 @@ class LibraryWidget(QtWidgets.QWidget):
 
 
     def _on_activate(self, idx: QtCore.QModelIndex):
+        if self._external_sync_enabled:
+            QtWidgets.QMessageBox.information(
+                self,
+                "External Sync",
+                "Track loading is disabled while External Sync is enabled.",
+            )
+            return
         r = idx.row()
         if not (0 <= r < self.table.rowCount()):
             return
@@ -245,6 +254,9 @@ class LibraryWidget(QtWidgets.QWidget):
         path = item.text()
         if path:
             self.bus.sig_request_load_track.emit(path)
+
+    def _on_external_sync_enabled(self, enabled: bool) -> None:
+        self._external_sync_enabled = bool(enabled)
 
     def _on_context_menu(self, pos):
         menu = QtWidgets.QMenu(self)

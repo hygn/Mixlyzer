@@ -13,6 +13,7 @@ from core.player import PlayerController
 from core.library_handler import LibraryDB
 from core.analysis_lib_handler import FeatureNPZStore
 from core.taskmanager import taskmanager
+from core.external_sync import ExternalSyncController
 from .metronome import MetronomeController
 
 from ui.pane import MainPane
@@ -54,6 +55,20 @@ class AppWindow(QtWidgets.QMainWindow):
         self.tl = TimelineCoordinator(self.bus)
         self.player = PlayerController(self.bus)
         self.player.set_refresh_fps(self.cfg.viewconfig.fps)
+        self.external_sync = ExternalSyncController(
+            self.bus,
+            self.model,
+            self.cfg.externalsyncconfig,
+            poll_fps=self.cfg.viewconfig.fps,
+            status_callback=self.statusBar().showMessage,
+            load_track_callback=self._load_track_from_external_sync,
+            seek_callback=self.player.seek,
+            current_path_getter=lambda: self.current_path,
+            track_exists_callback=self._track_exists_in_library,
+            track_duration_callback=self._track_duration_in_library,
+            track_total_samples_callback=self._track_total_samples_in_library,
+            failure_callback=self._on_external_sync_failure,
+        )
 
         # Main UI pane
         self.pane = MainPane(self.bus, self.model, self.tl, self.cfg)
@@ -90,6 +105,8 @@ class AppWindow(QtWidgets.QMainWindow):
 
         # status
         self.current_path: str | None = None
+        self._external_sync_pending_seek: float | None = None
+        self._external_sync_applied_enabled: bool | None = None
         self._analysis_workers: dict[int, AnalysisWorker] = {}
         self._analysis_context: dict[int, dict] = {}
 
@@ -120,12 +137,17 @@ class AppWindow(QtWidgets.QMainWindow):
         else:
             QtCore.QMetaObject.invokeMethod(self.metro, "stop", QtCore.Qt.QueuedConnection)
         self.bus.sig_beatgrid_edited.connect(self._sync_metronome_beats)
+        self._apply_external_sync_mode(self.cfg.externalsyncconfig)
 
     # DnD
     def dragEnterEvent(self, e: QtGui.QDragEnterEvent):
         if e.mimeData().hasUrls(): e.acceptProposedAction()
 
     def dropEvent(self, e: QtGui.QDropEvent):
+        if self._is_external_sync_active():
+            self.statusBar().showMessage("External Sync is enabled. Local track loading is disabled.")
+            e.ignore()
+            return
         try:
             urls = e.mimeData().urls()
             if not urls: return
@@ -194,6 +216,9 @@ class AppWindow(QtWidgets.QMainWindow):
         self._analysis_context.pop(taskid, None)
 
     def analyze_file(self, path: str):
+        if self._is_external_sync_active():
+            self.statusBar().showMessage("External Sync is enabled. Local track loading is disabled.")
+            return
         self._start_analysis(path, force_analyze=False, finished_slot=self._on_features_ready)
 
     def reanalyze_file(self, path: str):
@@ -280,6 +305,9 @@ class AppWindow(QtWidgets.QMainWindow):
                 stop_playback=True,
                 refresh_source=True,
             )
+            if self._external_sync_pending_seek is not None:
+                self.player.seek(float(self._external_sync_pending_seek))
+                self._external_sync_pending_seek = None
 
         self.taskmanager.updatetask(feat["taskid"], "Finished", 1)
         self.taskmanager.rmtask(feat["taskid"])
@@ -372,11 +400,66 @@ class AppWindow(QtWidgets.QMainWindow):
             beats = self.model.features.get("beats_time_sec")
         self._sig_metronome_set_beats.emit(beats, float(self.tl.current_time))
 
+    def _track_exists_in_library(self, path: str) -> bool:
+        cfg = load_cfg()
+        db = LibraryDB(os.path.join(cfg.libconfig.libpath, "library.db"))
+        db.connect()
+        try:
+            return db.get(path) is not None
+        finally:
+            db.close()
+
+    def _track_duration_in_library(self, path: str) -> float | None:
+        cfg = load_cfg()
+        db = LibraryDB(os.path.join(cfg.libconfig.libpath, "library.db"))
+        db.connect()
+        try:
+            row = db.get(path)
+            return float(row.duration) if row and row.duration is not None else None
+        finally:
+            db.close()
+
+    def _track_total_samples_in_library(self, path: str) -> int | None:
+        cfg = load_cfg()
+        db = LibraryDB(os.path.join(cfg.libconfig.libpath, "library.db"))
+        db.connect()
+        try:
+            row = db.get(path)
+            return int(row.total_samples) if row and row.total_samples is not None else None
+        finally:
+            db.close()
+
+    def _load_track_from_external_sync(self, path: str, time_sec: float) -> None:
+        self.statusBar().showMessage(f"External Sync loading: {os.path.basename(path)}")
+        self._external_sync_pending_seek = float(time_sec)
+        self._start_analysis(path, force_analyze=False, finished_slot=self._on_features_ready)
+
+    def _on_external_sync_failure(self, message: str) -> None:
+        failed_cfg = self.cfg.to_dict()
+        failed_cfg["externalsyncconfig"]["enabled"] = False
+        new_cfg = config.from_dict(failed_cfg)
+        with open("config.json", "w", encoding="utf-8") as f:
+            json.dump(new_cfg.to_dict(), f)
+        self.cfg = new_cfg
+        self.cfgwin.set_config(new_cfg)
+        self.external_sync.set_config(new_cfg.externalsyncconfig)
+        self._apply_external_sync_mode(new_cfg.externalsyncconfig)
+        QtWidgets.QMessageBox.warning(
+            self,
+            "Memory Sync Disabled",
+            message,
+        )
+
     def _on_settings_save(self, _config: config):
         with open("config.json", "r") as f:
             prev_cfg = json.load(f)
         with open("config.json", "w") as f:
             json.dump(_config.to_dict(), f)
+        self.cfg = _config
+        self.cfgwin.set_config(_config)
+        self.external_sync.set_config(_config.externalsyncconfig)
+        self.external_sync.set_poll_fps(_config.viewconfig.fps)
+        self._apply_external_sync_mode(_config.externalsyncconfig)
         if prev_cfg["viewconfig"] != _config.to_dict()["viewconfig"]:
             self.bus.sig_reload_UI.emit(_config)
             self.player.set_refresh_fps(_config.viewconfig.fps)
@@ -390,6 +473,8 @@ class AppWindow(QtWidgets.QMainWindow):
                 QtCore.Qt.QueuedConnection,
                 QtCore.Q_ARG(str, _config.viewconfig.metronome_wav_path),
             )
+        elif prev_cfg.get("externalsyncconfig") != _config.to_dict().get("externalsyncconfig"):
+            self.bus.sig_reload_UI.emit(_config)
 
     def _open_support(self):
         # Non-modal dialog; reuse instance
@@ -401,3 +486,26 @@ class AppWindow(QtWidgets.QMainWindow):
         self.about_dialog.show()
         self.about_dialog.raise_()
         self.about_dialog.activateWindow()
+
+    def _is_external_sync_active(self) -> bool:
+        return bool(self.cfg.externalsyncconfig.enabled)
+
+    def _apply_external_sync_mode(self, sync_cfg) -> None:
+        enabled = bool(sync_cfg.enabled)
+        state_changed = (self._external_sync_applied_enabled is None) or (self._external_sync_applied_enabled != enabled)
+        self._external_sync_applied_enabled = enabled
+        if state_changed:
+            self.bus.sig_external_sync_enabled.emit(enabled)
+        if enabled:
+            if state_changed:
+                self.player.pause()
+            mode_desc = "Time Sync" if str(sync_cfg.mode) == "time" else "Sample Index Sync"
+            target_desc = (
+                f"{mode_desc}, process={sync_cfg.memory_process_name or 'manual'}, "
+                f"deck1.path={sync_cfg.memory_deck1.path.offsets}, "
+                f"deck2.path={sync_cfg.memory_deck2.path.offsets}"
+            )
+            self.statusBar().showMessage(
+                f"External Sync enabled via {target_desc}. "
+                f"Local play/load is locked."
+            )

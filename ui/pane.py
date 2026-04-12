@@ -104,6 +104,9 @@ class MainPane(QtWidgets.QWidget):
 
         self._is_playing = False
         self._transport_enabled = True
+        self._external_sync_enabled = bool(
+            getattr(getattr(self.cfg, "externalsyncconfig", None), "enabled", False)
+        )
         self.plugins: List[ViewPlugin] = []
 
         # Signals
@@ -118,6 +121,7 @@ class MainPane(QtWidgets.QWidget):
         self.bus.sig_jumpcue_updated.connect(self._on_jumpcue_updated)
         try:
             self.bus.sig_transport_enabled.connect(self._on_transport_enabled)
+            self.bus.sig_external_sync_enabled.connect(self._on_external_sync_enabled)
         except Exception:
             pass
 
@@ -349,6 +353,13 @@ class MainPane(QtWidgets.QWidget):
         self._on_playback_state_changed(False)
 
     def _on_click_play(self):
+        if self._external_sync_enabled:
+            QtWidgets.QMessageBox.information(
+                self,
+                "External Sync",
+                "Playback is disabled while External Sync is enabled.",
+            )
+            return
         want_play = not bool(getattr(self, "_is_playing", False))
         if want_play:
             self.bus.sig_play_requested.emit(True)
@@ -508,15 +519,27 @@ class MainPane(QtWidgets.QWidget):
 
     def _on_transport_enabled(self, enabled: bool) -> None:
         self._transport_enabled = bool(enabled)
+        self._refresh_transport_buttons()
+
+    def _on_external_sync_enabled(self, enabled: bool) -> None:
+        self._external_sync_enabled = bool(enabled)
+        self._refresh_transport_buttons()
+
+    def _refresh_transport_buttons(self) -> None:
+        can_use_transport = self._transport_enabled and not self._external_sync_enabled
         for btn_name in ("btn_play", "btn_stop"):
             btn = getattr(self, btn_name, None)
             if btn is not None:
-                btn.setEnabled(self._transport_enabled)
+                btn.setEnabled(can_use_transport)
 
     def _on_reload_requested(self, cfg: config):
         self.cfg = cfg
+        self._external_sync_enabled = bool(
+            getattr(getattr(cfg, "externalsyncconfig", None), "enabled", False)
+        )
         self.track_info.set_config(cfg)
         self._install_views_from_config(cfg)
+        self._refresh_transport_buttons()
         print("UI Reloaded")
 
     def _on_key_segments_updated(self) -> None:

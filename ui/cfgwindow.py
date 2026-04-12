@@ -1,11 +1,21 @@
 from typing import Tuple
 from collections import deque
 from dataclasses import is_dataclass, asdict
+import csv
+import io
+import json
+from pathlib import Path
+import subprocess
 from PySide6.QtCore import Qt, Signal
+from PySide6 import QtGui
 from PySide6.QtWidgets import (
     QDialog, QTabWidget, QWidget, QVBoxLayout, QFormLayout, QHBoxLayout,
-    QLineEdit, QCheckBox, QComboBox, QSpinBox, QDoubleSpinBox, QLabel, QDialogButtonBox, QGroupBox)
-from core.config import config, libconfig, viewconfig, analysisconfig, keyconfig
+    QLineEdit, QCheckBox, QComboBox, QSpinBox, QDoubleSpinBox, QLabel, QDialogButtonBox, QGroupBox, QPushButton,
+    QScrollArea)
+from core.config import (
+    config, libconfig, viewconfig, analysisconfig, keyconfig, externalsyncconfig,
+    memorydeckconfig, memoryvalueconfig,
+)
 from core.event_bus import EventBus
 
 class SettingsDialog(QDialog):
@@ -23,6 +33,7 @@ class SettingsDialog(QDialog):
         self._make_tab_view()
         self._make_tab_analysis()
         self._make_tab_key()
+        self._make_tab_external_sync()
 
         self.btn_box = QDialogButtonBox(
             QDialogButtonBox.Ok | QDialogButtonBox.Cancel | QDialogButtonBox.Apply
@@ -171,6 +182,75 @@ class SettingsDialog(QDialog):
         # Deprecated: moved under Analysis -> Key (Advanced)
         pass
 
+    def _make_tab_external_sync(self):
+        self.tab_external_sync = QWidget()
+        root = QVBoxLayout(self.tab_external_sync)
+        f = QFormLayout()
+
+        self.cb_external_sync_enabled = QCheckBox("Enable external sync")
+        self.cmb_external_sync_mode = QComboBox()
+        self.cmb_external_sync_mode.addItems(["Time Sync", "Sample Index Sync"])
+
+        self.cmb_memory_process = QComboBox()
+        self.cmb_memory_process.setEditable(True)
+        self.btn_memory_process_refresh = QPushButton("Refresh")
+        self.deck1_specs = self._make_memory_deck_group("Deck 1")
+        self.deck2_specs = self._make_memory_deck_group("Deck 2")
+
+        self.grp_memory = QGroupBox("Memory")
+        f_memory = QFormLayout(self.grp_memory)
+        process_row = QWidget()
+        process_row_layout = QHBoxLayout(process_row)
+        process_row_layout.setContentsMargins(0, 0, 0, 0)
+        process_row_layout.setSpacing(6)
+        process_row_layout.addWidget(self.cmb_memory_process, 1)
+        process_row_layout.addWidget(self.btn_memory_process_refresh, 0)
+        f_memory.addRow("Process", process_row)
+        self.lbl_memory_process_warning = QLabel(
+            "Warning: attaching memory sync to an unrelated process can trigger "
+            "anti-cheat or antivirus false positives. Only target software you trust "
+            "and explicitly intend to sync with."
+        )
+        self.lbl_memory_process_warning.setWordWrap(True)
+        self.lbl_memory_process_warning.setStyleSheet("color: #d8a441;")
+        f_memory.addRow(self.lbl_memory_process_warning)
+        self.lbl_memory_process_blocked = QLabel("")
+        self.lbl_memory_process_blocked.setWordWrap(True)
+        self.lbl_memory_process_blocked.setStyleSheet("color: #d86f41;")
+        f_memory.addRow(self.lbl_memory_process_blocked)
+
+        self.lbl_external_sync_note = QLabel(
+            "When enabled, local track loading and transport playback are restricted "
+            "so the external software remains the source of truth."
+        )
+        self.lbl_external_sync_note.setWordWrap(True)
+
+        f.addRow(self.cb_external_sync_enabled)
+        f.addRow("Mode", self.cmb_external_sync_mode)
+        f.addRow(self.lbl_external_sync_note)
+        root.addLayout(f)
+        self.memory_scroll = QScrollArea()
+        self.memory_scroll.setWidgetResizable(True)
+        self.memory_scroll.setMinimumHeight(340)
+        self.memory_scroll_contents = QWidget()
+        memory_scroll_layout = QVBoxLayout(self.memory_scroll_contents)
+        memory_scroll_layout.setContentsMargins(0, 0, 0, 0)
+        memory_scroll_layout.setSpacing(8)
+        memory_scroll_layout.addWidget(self.grp_memory)
+        memory_scroll_layout.addWidget(self.deck1_specs["group"])
+        memory_scroll_layout.addWidget(self.deck2_specs["group"])
+        memory_scroll_layout.addStretch(1)
+        self.memory_scroll.setWidget(self.memory_scroll_contents)
+        root.addWidget(self.memory_scroll)
+        root.addStretch(1)
+
+        self.cmb_external_sync_mode.currentIndexChanged.connect(self._sync_external_sync_mode_ui)
+        self.btn_memory_process_refresh.clicked.connect(self._refresh_memory_processes)
+        self._refresh_memory_processes()
+        self._sync_external_sync_mode_ui()
+
+        self.tabs.addTab(self.tab_external_sync, "External Sync")
+
     # Public API
     def set_config(self, cfg: config):
         assert is_dataclass(cfg), "cfg must be a dataclass 'config'"
@@ -220,8 +300,122 @@ class SettingsDialog(QDialog):
         self.sp_pitch_fifth.setValue(float(k.pitch_fifth))
         self.sp_pitch_others.setValue(float(k.pitch_others))
 
+        # external sync
+        x = cfg.externalsyncconfig
+        self.cb_external_sync_enabled.setChecked(bool(x.enabled))
+        self.cmb_external_sync_mode.setCurrentIndex(0 if x.mode == "time" else 1)
+        self._set_selected_memory_process(str(x.memory_process_name), int(x.memory_process_pid))
+        self._set_memory_deck(self.deck1_specs, x.memory_deck1)
+        self._set_memory_deck(self.deck2_specs, x.memory_deck2)
+        self._sync_external_sync_mode_ui()
+
     def _set_band(self, sp_lo: QDoubleSpinBox, sp_hi: QDoubleSpinBox, band: Tuple[float, float]):
         sp_lo.setValue(float(band[0])); sp_hi.setValue(float(band[1]))
+
+    def _make_memory_value_group(
+        self,
+        title: str,
+        *,
+        include_length: bool = False,
+        include_encoding: bool = False,
+        include_bit_pos: bool = False,
+        include_multiplier: bool = False,
+    ) -> dict:
+        group = QGroupBox(title)
+        form = QFormLayout(group)
+        ed_offsets = QLineEdit()
+        ed_offsets.setPlaceholderText("00000000,00,00,00")
+        cmb_type = QComboBox()
+        cmb_type.addItems(["float", "bool", "str", "int"])
+        widgets = {
+            "group": group,
+            "offsets": ed_offsets,
+            "value_type": cmb_type,
+        }
+        form.addRow("Offset chain", ed_offsets)
+        form.addRow("Type", cmb_type)
+        if include_length:
+            sp_length = QSpinBox()
+            sp_length.setRange(0, 1_000_000)
+            widgets["length"] = sp_length
+            form.addRow("Length", sp_length)
+        if include_encoding:
+            ed_encoding = QLineEdit()
+            widgets["encoding"] = ed_encoding
+            form.addRow("Encoding", ed_encoding)
+        if include_bit_pos:
+            sp_bit_pos = QSpinBox()
+            sp_bit_pos.setRange(0, 63)
+            widgets["bit_pos"] = sp_bit_pos
+            form.addRow("Bit position", sp_bit_pos)
+        if include_multiplier:
+            sp_multiplier = QDoubleSpinBox()
+            sp_multiplier.setDecimals(8)
+            sp_multiplier.setRange(-1_000_000.0, 1_000_000.0)
+            sp_multiplier.setSingleStep(0.01)
+            widgets["multiplier"] = sp_multiplier
+            form.addRow("Multiplier", sp_multiplier)
+        return widgets
+
+    def _make_memory_deck_group(self, title: str) -> dict:
+        group = QGroupBox(title)
+        layout = QVBoxLayout(group)
+        time_spec = self._make_memory_value_group("Time", include_multiplier=True)
+        sample_index_spec = self._make_memory_value_group("Current Sample Index")
+        path_spec = self._make_memory_value_group("Path", include_length=True, include_encoding=True)
+        active_spec = self._make_memory_value_group("Active", include_bit_pos=True)
+        loaded_spec = self._make_memory_value_group("Loaded", include_bit_pos=True)
+        layout.addWidget(time_spec["group"])
+        layout.addWidget(sample_index_spec["group"])
+        layout.addWidget(path_spec["group"])
+        layout.addWidget(active_spec["group"])
+        layout.addWidget(loaded_spec["group"])
+        return {
+            "group": group,
+            "time": time_spec,
+            "sample_index": sample_index_spec,
+            "path": path_spec,
+            "active": active_spec,
+            "loaded": loaded_spec,
+        }
+
+    def _set_memory_value(self, widgets: dict, spec: memoryvalueconfig) -> None:
+        widgets["offsets"].setText(str(spec.offsets))
+        widgets["value_type"].setCurrentText(str(spec.value_type))
+        if "length" in widgets:
+            widgets["length"].setValue(int(spec.length))
+        if "encoding" in widgets:
+            widgets["encoding"].setText(str(spec.encoding))
+        if "bit_pos" in widgets:
+            widgets["bit_pos"].setValue(int(spec.bit_pos))
+        if "multiplier" in widgets:
+            widgets["multiplier"].setValue(float(spec.multiplier))
+
+    def _get_memory_value(self, widgets: dict) -> memoryvalueconfig:
+        return memoryvalueconfig(
+            offsets=widgets["offsets"].text().strip(),
+            value_type=widgets["value_type"].currentText(),
+            length=int(widgets["length"].value()) if "length" in widgets else 0,
+            encoding=widgets["encoding"].text().strip() if "encoding" in widgets else "utf-8",
+            bit_pos=int(widgets["bit_pos"].value()) if "bit_pos" in widgets else 0,
+            multiplier=float(widgets["multiplier"].value()) if "multiplier" in widgets else 1.0,
+        )
+
+    def _set_memory_deck(self, widgets: dict, deck_cfg: memorydeckconfig) -> None:
+        self._set_memory_value(widgets["time"], deck_cfg.time)
+        self._set_memory_value(widgets["sample_index"], deck_cfg.sample_index)
+        self._set_memory_value(widgets["path"], deck_cfg.path)
+        self._set_memory_value(widgets["active"], deck_cfg.active)
+        self._set_memory_value(widgets["loaded"], deck_cfg.loaded)
+
+    def _get_memory_deck(self, widgets: dict) -> memorydeckconfig:
+        return memorydeckconfig(
+            time=self._get_memory_value(widgets["time"]),
+            sample_index=self._get_memory_value(widgets["sample_index"]),
+            path=self._get_memory_value(widgets["path"]),
+            active=self._get_memory_value(widgets["active"]),
+            loaded=self._get_memory_value(widgets["loaded"]),
+        )
 
     def get_config(self):
         return config(
@@ -266,6 +460,14 @@ class SettingsDialog(QDialog):
                 record_img_path=self.ed_record_img_path.text().strip(),
                 metronome_wav_path=self.ed_metronome_wav_path.text().strip(),
             ),
+            externalsyncconfig=externalsyncconfig(
+                enabled=bool(self.cb_external_sync_enabled.isChecked()),
+                mode=("time" if self.cmb_external_sync_mode.currentIndex() == 0 else "sample_index"),
+                memory_process_name=self._memory_process_name(),
+                memory_process_pid=self._memory_process_pid(),
+                memory_deck1=self._get_memory_deck(self.deck1_specs),
+                memory_deck2=self._get_memory_deck(self.deck2_specs),
+            ),
         )
 
     def get_dict(self) -> dict:
@@ -292,5 +494,162 @@ class SettingsDialog(QDialog):
             avg_ms = sum(self._refresh_samples) / len(self._refresh_samples)
             fps = 1000.0 / avg_ms if avg_ms > 0 else 0.0
             self.lbl_fps.setText(f"{avg_ms:.1f} ms ({fps:.1f} FPS)")
+
+    def _sync_external_sync_mode_ui(self):
+        is_time_sync = self.cmb_external_sync_mode.currentIndex() == 0
+        self.memory_scroll.setVisible(True)
+        for deck_widgets in (self.deck1_specs, self.deck2_specs):
+            deck_widgets["time"]["group"].setVisible(is_time_sync)
+            deck_widgets["sample_index"]["group"].setVisible(not is_time_sync)
+
+    def _refresh_memory_processes(self):
+        current_name = self._memory_process_name()
+        current_pid = self._memory_process_pid()
+        self.cmb_memory_process.blockSignals(True)
+        self.cmb_memory_process.clear()
+        processes = self._list_running_processes()
+        processes.sort(
+            key=lambda proc: (
+                1 if self._is_denied_process_name(str(proc.get("name") or "")) else 0,
+                str(proc.get("name") or "").lower(),
+                int(proc.get("pid") or 0),
+            )
+        )
+        model = self.cmb_memory_process.model()
+        for proc in processes:
+            denied = self._is_denied_process_name(str(proc.get("name") or ""))
+            label = f'{proc["name"]} (PID {proc["pid"]})'
+            if denied:
+                label = f"[Blocked] {label}"
+            self.cmb_memory_process.addItem(label, proc)
+            row = self.cmb_memory_process.count() - 1
+            item = model.item(row) if hasattr(model, "item") else None
+            if item is not None and denied:
+                item.setFlags(item.flags() & ~Qt.ItemIsEnabled & ~Qt.ItemIsSelectable)
+                item.setForeground(QtGui.QColor("#888888"))
+        self.cmb_memory_process.blockSignals(False)
+        self._set_selected_memory_process(current_name, current_pid)
+
+    def _set_selected_memory_process(self, process_name: str, process_pid: int):
+        target_name = (process_name or "").strip().lower()
+        if self._is_denied_process_name(target_name):
+            self.cmb_memory_process.setCurrentIndex(-1)
+            self.cmb_memory_process.setEditText("")
+            self.lbl_memory_process_blocked.setText(
+                f"Blocked by denylist: {process_name.strip()}"
+            )
+            return
+        target_pid = int(process_pid or 0)
+        for idx in range(self.cmb_memory_process.count()):
+            data = self.cmb_memory_process.itemData(idx)
+            if not isinstance(data, dict):
+                continue
+            item_name = str(data.get("name") or "").strip().lower()
+            item_pid = int(data.get("pid") or 0)
+            if target_pid and item_pid == target_pid:
+                self.cmb_memory_process.setCurrentIndex(idx)
+                self.lbl_memory_process_blocked.setText("")
+                return
+            if target_name and item_name == target_name:
+                self.cmb_memory_process.setCurrentIndex(idx)
+                self.lbl_memory_process_blocked.setText("")
+                return
+        text = process_name.strip() if process_name else ""
+        if target_pid:
+            text = f"{text} (PID {target_pid})".strip()
+        if self._is_denied_process_name(text):
+            self.cmb_memory_process.setCurrentIndex(-1)
+            self.cmb_memory_process.setEditText("")
+            self.lbl_memory_process_blocked.setText(
+                f"Blocked by denylist: {process_name.strip()}"
+            )
+            return
+        self.cmb_memory_process.setEditText(text)
+        self.lbl_memory_process_blocked.setText("")
+
+    def _memory_process_name(self) -> str:
+        data = self.cmb_memory_process.currentData()
+        if isinstance(data, dict):
+            name = str(data.get("name") or "").strip()
+            return "" if self._is_denied_process_name(name) else name
+        text = self.cmb_memory_process.currentText().strip()
+        name = text.split(" (PID ", 1)[0].strip()
+        if self._is_denied_process_name(name):
+            self.lbl_memory_process_blocked.setText(f"Blocked by denylist: {name}")
+            return ""
+        return name
+
+    def _memory_process_pid(self) -> int:
+        data = self.cmb_memory_process.currentData()
+        if isinstance(data, dict):
+            try:
+                return int(data.get("pid") or 0)
+            except Exception:
+                return 0
+        text = self.cmb_memory_process.currentText().strip()
+        if " (PID " in text and text.endswith(")"):
+            try:
+                return int(text.rsplit(" (PID ", 1)[1][:-1])
+            except Exception:
+                return 0
+        return 0
+
+    def _list_running_processes(self) -> list[dict]:
+        try:
+            out = subprocess.check_output(
+                ["tasklist", "/FO", "CSV", "/NH"],
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            )
+        except Exception:
+            return []
+        rows = []
+        reader = csv.reader(io.StringIO(out))
+        for row in reader:
+            if len(row) < 2:
+                continue
+            name = str(row[0]).strip()
+            pid_text = str(row[1]).strip()
+            try:
+                pid = int(pid_text)
+            except Exception:
+                continue
+            if not name:
+                continue
+            rows.append({"name": name, "pid": pid})
+        rows.sort(key=lambda item: (item["name"].lower(), item["pid"]))
+        return rows
+
+    def _is_denied_process_name(self, name: str) -> bool:
+        target = self._normalize_process_name(name)
+        if not target:
+            return False
+        deny = self._load_process_denylist()
+        return target in deny
+
+    def _load_process_denylist(self) -> set[str]:
+        cache = getattr(self, "_process_denylist_cache", None)
+        if isinstance(cache, set):
+            return cache
+        denylist_path = Path("process_denylist.json")
+        names: set[str] = set()
+        try:
+            payload = json.loads(denylist_path.read_text(encoding="utf-8"))
+        except Exception:
+            payload = {}
+        for item in payload.get("blocked_process_names", []):
+            text = self._normalize_process_name(item)
+            if text:
+                names.add(text)
+        self._process_denylist_cache = names
+        return names
+
+    def _normalize_process_name(self, name: str) -> str:
+        text = str(name or "").strip().lower()
+        if text.endswith(".exe"):
+            text = text[:-4]
+        return text
 
 
