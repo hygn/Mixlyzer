@@ -38,3 +38,31 @@ def moving_average(x: np.ndarray, win: int) -> np.ndarray:
     y = np.convolve(x_pad, kernel, mode="valid")
 
     return y
+
+
+def offset_beats_and_segments(
+    beats_time,
+    tempo_segments,
+    offset_sec: float,
+    track_duration: float,
+):
+    offset_sec = float(offset_sec or 0.0)
+    beats = np.asarray(beats_time, dtype=float)
+    segments = np.asarray(tempo_segments, dtype=float)
+    if abs(offset_sec) < 1e-12:
+        return beats, segments
+
+    if beats.size:
+        beats = beats + offset_sec
+        beats = beats[np.isfinite(beats)]
+        beats = beats[(beats >= 0.0) & (beats <= track_duration)]
+        beats = beats.astype(np.float32, copy=False)
+
+    if segments.ndim == 2 and segments.shape[1] >= 4 and segments.size:
+        shifted = segments.astype(float, copy=True)
+        shifted[:, 0] = np.clip(shifted[:, 0] + offset_sec, 0.0, track_duration)
+        shifted[:, 1] = np.clip(shifted[:, 1] + offset_sec, 0.0, track_duration)
+        shifted[:, 3] = np.clip(shifted[:, 3] + offset_sec, 0.0, track_duration)
+        segments = shifted
+
+    return beats, segments

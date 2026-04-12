@@ -66,6 +66,7 @@ class analysisconfig:
     bpm_max: int
     bpm_dynamic: bool
     bpm_adaptive_window: bool
+    beatgrid_offset_msec: float
     env_frame_ms: int
     env_lo: Tuple[float, float]
     env_mid: Tuple[float, float]
@@ -178,6 +179,7 @@ def default_cfg():
         bpm_min=110,
         bpm_dynamic=True,
         bpm_adaptive_window=True,
+        beatgrid_offset_msec=0.0,
         env_frame_ms=4,
         env_lo=(20.0, 200.0),
         env_mid=(200.0, 3000.0),

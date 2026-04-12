@@ -19,6 +19,7 @@ from core.config import config
 from core.adapters import normalize_gui_buffers
 from core.model import GlobalParams
 from core.taskmanager import taskmanager
+from analyzer_core.utils import offset_beats_and_segments
 
 def fast_load(path: str, target_sr) -> np.ndarray:
     path = Path(path)
@@ -220,6 +221,45 @@ def timesig_exp(lags):
     best = int(numer[score.argmax()])
     return best, dict(zip(numer, score))
 
+
+def _apply_beatgrid_offset(synced_bpm: dict, offset_sec: float, track_duration: float) -> dict:
+    out = dict(synced_bpm)
+    beats, _ = offset_beats_and_segments(
+        out.get("beats_time", ()),
+        (),
+        offset_sec,
+        track_duration,
+    )
+    out["beats_time"] = beats
+
+    shifted_segments = []
+    for seg in out.get("tempo_segments") or ():
+        if not isinstance(seg, dict):
+            continue
+        row = np.asarray(
+            [[
+                float(seg.get("segment_start", seg.get("start", 0.0))),
+                float(seg.get("segment_end", seg.get("end", 0.0))),
+                float(seg.get("bpm", 0.0)),
+                float(seg.get("inizio", seg.get("segment_start", seg.get("start", 0.0)))),
+            ]],
+            dtype=float,
+        )
+        _, shifted = offset_beats_and_segments((), row, offset_sec, track_duration)
+        seg_shifted = dict(seg)
+        if shifted.size:
+            seg_shifted["segment_start"] = float(shifted[0, 0])
+            seg_shifted["segment_end"] = float(shifted[0, 1])
+            if "start" in seg_shifted:
+                seg_shifted["start"] = float(shifted[0, 0])
+            if "end" in seg_shifted:
+                seg_shifted["end"] = float(shifted[0, 1])
+            seg_shifted["inizio"] = float(shifted[0, 3])
+        shifted_segments.append(seg_shifted)
+    out["tempo_segments"] = shifted_segments
+    return out
+
+
 def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:int, force_analyze: bool = False):
     l = LibraryDB(os.path.join(config.libconfig.libpath, "library.db"))
     l.connect()
@@ -319,6 +359,11 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
     else:
         synced_bpm = bpm_phase_sync(global_sr, gcf.bpm_hop_length, gcf.bpm_hop_length, audio=y_perc, audio_lp=lp_y, win_s=gcf.bpm_win_length/1000, step_s=0.1,
                                             bpm_bounds=(gcf.bpm_min,gcf.bpm_max))
+    synced_bpm = _apply_beatgrid_offset(
+        synced_bpm,
+        float(gcf.beatgrid_offset_msec) / 1000.0,
+        float(features.get("duration_sec", 0.0)),
+    )
     features["tempo_global"] = synced_bpm["tempo_global"]
     features["beats_time_sec"] = synced_bpm["beats_time"]
     tempo_segments = synced_bpm["tempo_segments"]

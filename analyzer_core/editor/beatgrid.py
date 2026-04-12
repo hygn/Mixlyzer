@@ -4,6 +4,7 @@ import librosa
 from scipy.signal import filtfilt
 
 from analyzer_core.global_analyzer import fast_load, _butter_bandpass
+from analyzer_core.utils import offset_beats_and_segments
 from analyzer_core.beat.beat import (
     build_grid_from_period_phase,
     _compute_odf,
@@ -208,6 +209,7 @@ def reanalyze_segment_from_file(
         use_only_prev_bpm=use_only_prev_bpm if prev is not None else False,
     )
     bpm_est = float(bpm_est) if np.isfinite(bpm_est) else float(bpm)
+    beatgrid_offset_sec = float(getattr(gcf, "beatgrid_offset_msec", 0.0) or 0.0) / 1000.0
 
     beats_local = np.asarray(beats_local, dtype=float)
     if beats_local.size:
@@ -231,6 +233,13 @@ def reanalyze_segment_from_file(
     seg_updated[segment_index, 1] = end
     seg_updated[segment_index, 2] = bpm_est
     seg_updated[segment_index, 3] = new_inizio
+    if abs(beatgrid_offset_sec) > 1e-12:
+        beats_updated, seg_updated = offset_beats_and_segments(
+            beats_updated,
+            seg_updated,
+            beatgrid_offset_sec,
+            total_duration,
+        )
 
     if progress_cb:
         progress_cb("Segment updated", 0.9)

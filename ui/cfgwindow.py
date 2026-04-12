@@ -117,12 +117,14 @@ class SettingsDialog(QDialog):
         self.sp_bpm_win = QSpinBox(); self.sp_bpm_win.setRange(1000, 60000); self.sp_bpm_win.setSingleStep(64)
         self.sp_bpm_min = QSpinBox(); self.sp_bpm_min.setRange(60,  400)
         self.sp_bpm_max = QSpinBox(); self.sp_bpm_max.setRange(100, 800)
+        self.sp_beatgrid_offset = QDoubleSpinBox(); self.sp_beatgrid_offset.setRange(-10000.0, 10000.0); self.sp_beatgrid_offset.setDecimals(3); self.sp_beatgrid_offset.setSingleStep(1.0)
         f_beat.addRow(self.cb_bpm_dynamic)
         f_beat.addRow(self.cb_bpm_adaptive_win)
         f_beat.addRow("BPM hop length (samp)", self.sp_bpm_hop)
         f_beat.addRow("BPM Autocorrelation win_length (ms)", self.sp_bpm_win)
         f_beat.addRow("BPM min", self.sp_bpm_min)
         f_beat.addRow("BPM max", self.sp_bpm_max)
+        f_beat.addRow("Beatgrid offset (msec)", self.sp_beatgrid_offset)
 
         # Key (Chroma analysis)
         tab_key = QWidget(); f_key = QFormLayout(tab_key)
@@ -286,6 +288,7 @@ class SettingsDialog(QDialog):
         self.sp_bpm_max.setValue(int(a.bpm_max))
         self.cb_bpm_dynamic.setChecked(bool(a.bpm_dynamic))
         self.cb_bpm_adaptive_win.setChecked(bool(a.bpm_adaptive_window))
+        self.sp_beatgrid_offset.setValue(float(a.beatgrid_offset_msec))
         self.sp_env_frame_ms.setValue(int(a.env_frame_ms))
         self._set_band(self.sp_env_lo_lo,  self.sp_env_lo_hi,  a.env_lo)
         self._set_band(self.sp_env_mid_lo, self.sp_env_mid_hi, a.env_mid)
@@ -432,6 +435,7 @@ class SettingsDialog(QDialog):
                 bpm_max=int(self.sp_bpm_max.value()),
                 bpm_dynamic=bool(self.cb_bpm_dynamic.isChecked()),
                 bpm_adaptive_window=bool(self.cb_bpm_adaptive_win.isChecked()),
+                beatgrid_offset_msec=float(self.sp_beatgrid_offset.value()),
                 env_frame_ms=int(self.sp_env_frame_ms.value()),
                 env_lo=(float(self.sp_env_lo_lo.value()), float(self.sp_env_lo_hi.value())),
                 env_mid=(float(self.sp_env_mid_lo.value()), float(self.sp_env_mid_hi.value())),
