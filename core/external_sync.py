@@ -34,7 +34,6 @@ class ExternalSyncController(QtCore.QObject):
         status_callback: Callable[[str], None] | None = None,
         load_track_callback: Callable[[str, float], None] | None = None,
         seek_callback: Callable[[float], None] | None = None,
-        current_path_getter: Callable[[], str | None] | None = None,
         track_exists_callback: Callable[[str], bool] | None = None,
         track_duration_callback: Callable[[str], float | None] | None = None,
         track_total_samples_callback: Callable[[str], int | None] | None = None,
@@ -49,12 +48,16 @@ class ExternalSyncController(QtCore.QObject):
         self._status_callback = status_callback
         self._load_track_callback = load_track_callback
         self._seek_callback = seek_callback
-        self._current_path_getter = current_path_getter
         self._track_exists_callback = track_exists_callback
         self._track_duration_callback = track_duration_callback
         self._track_total_samples_callback = track_total_samples_callback
         self._failure_callback = failure_callback
         self._missing_path_logged: str | None = None
+        self._pending_external_path: str | None = None
+        self._pending_external_raw_path: str | None = None
+        self._pending_external_time_sec: float = 0.0
+        self._analysis_request_inflight: str | None = None
+        self._analysis_request_raw_path: str | None = None
         self._load_request_inflight: str | None = None
         self._blocked_process_logged: str | None = None
         self._pm: pymem.Pymem | None = None
@@ -69,6 +72,7 @@ class ExternalSyncController(QtCore.QObject):
         self.bus.sig_time_changed.connect(self._on_time_changed)
         self.bus.sig_playback_status.connect(self._on_playback_status_changed)
         self.bus.sig_features_loaded.connect(self._on_features_loaded)
+        self.bus.sig_lib_updated.connect(self._on_library_updated)
         self.bus.sig_properties_loaded.connect(self.publish_state)
 
         self._apply_polling_state()
@@ -76,6 +80,11 @@ class ExternalSyncController(QtCore.QObject):
     def set_config(self, cfg: externalsyncconfig) -> None:
         self._cfg = cfg
         self._missing_path_logged = None
+        self._pending_external_path = None
+        self._pending_external_raw_path = None
+        self._pending_external_time_sec = 0.0
+        self._analysis_request_inflight = None
+        self._analysis_request_raw_path = None
         self._load_request_inflight = None
         self._blocked_process_logged = None
         self._process_list_cache = []
@@ -153,7 +162,27 @@ class ExternalSyncController(QtCore.QObject):
 
     @QtCore.Slot()
     def _on_features_loaded(self) -> None:
+        loaded_path = self._loaded_track_path()
         self._load_request_inflight = None
+        if loaded_path and loaded_path == self._pending_external_path:
+            self._clear_pending_external()
+        if loaded_path and loaded_path == self._analysis_request_inflight:
+            self._analysis_request_inflight = None
+            self._analysis_request_raw_path = None
+        self._missing_path_logged = None
+        QtCore.QTimer.singleShot(0, self._drive_pending_external)
+        self.publish_state()
+
+    @QtCore.Slot(object)
+    def _on_library_updated(self, _data) -> None:
+        if (
+            self._analysis_request_inflight
+            and self._analysis_request_raw_path
+            and self._track_exists_in_library(self._analysis_request_raw_path)
+        ):
+            self._analysis_request_inflight = None
+            self._analysis_request_raw_path = None
+        QtCore.QTimer.singleShot(0, self._drive_pending_external)
         self.publish_state()
 
     @QtCore.Slot()
@@ -201,28 +230,96 @@ class ExternalSyncController(QtCore.QObject):
         time_sec = max(0.0, float(external.get("time_sec") or 0.0))
 
         if not loaded or not path:
-            return
-        current_path = (self._current_path_getter() or "").strip() if self._current_path_getter else ""
-        norm_current = os.path.normcase(os.path.normpath(current_path)) if current_path else ""
-        norm_external = os.path.normcase(os.path.normpath(path))
-
-        if norm_current != norm_external:
-            if self._track_exists_callback and not self._track_exists_callback(path):
-                if self._missing_path_logged != norm_external:
-                    self._missing_path_logged = norm_external
-                    self._log(f"External Sync skipped load for non-library path: {path}")
-                return
+            self._clear_pending_external()
+            self._analysis_request_inflight = None
+            self._analysis_request_raw_path = None
+            self._load_request_inflight = None
             self._missing_path_logged = None
-            if self._load_request_inflight != norm_external and self._load_track_callback is not None:
-                self._load_request_inflight = norm_external
-                self._load_track_callback(path, time_sec)
+            return
+        norm_external = self._normalize_path(path)
+        loaded_path = self._loaded_track_path()
+
+        if loaded_path and loaded_path == norm_external:
+            self._clear_pending_external()
+            self._analysis_request_inflight = None
+            self._analysis_request_raw_path = None
+            self._missing_path_logged = None
+            self._load_request_inflight = None
+            if self._seek_callback is None:
+                return
+            self._seek_callback(time_sec)
             return
 
-        self._missing_path_logged = None
-        self._load_request_inflight = None
-        if self._seek_callback is None:
+        self._pending_external_path = norm_external
+        self._pending_external_raw_path = path
+        self._pending_external_time_sec = time_sec
+        self._drive_pending_external()
+
+    def _drive_pending_external(self) -> None:
+        pending_path = self._pending_external_path
+        pending_raw_path = self._pending_external_raw_path
+        if not pending_path or not pending_raw_path:
             return
-        self._seek_callback(time_sec)
+
+        loaded_path = self._loaded_track_path()
+        if loaded_path and loaded_path == pending_path:
+            self._clear_pending_external()
+            self._analysis_request_inflight = None
+            self._analysis_request_raw_path = None
+            self._missing_path_logged = None
+            self._load_request_inflight = None
+            return
+
+        if self._load_request_inflight or self._analysis_request_inflight:
+            return
+
+        if self._track_exists_in_library(pending_raw_path):
+            self._missing_path_logged = None
+            self._request_track_load(pending_raw_path, self._pending_external_time_sec)
+            return
+
+        if self._missing_path_logged != pending_path:
+            self._missing_path_logged = pending_path
+            self._log(f"External Sync analyzing external track before load: {pending_raw_path}")
+        self._request_track_analysis(pending_raw_path, self._pending_external_time_sec)
+
+    def _request_track_analysis(self, path: str, time_sec: float) -> None:
+        norm_path = self._normalize_path(path)
+        if self._analysis_request_inflight == norm_path or self._load_track_callback is None:
+            return
+        self._analysis_request_inflight = norm_path
+        self._analysis_request_raw_path = path
+        self._load_track_callback(path, time_sec)
+
+    def _request_track_load(self, path: str, time_sec: float) -> None:
+        norm_path = self._normalize_path(path)
+        if self._load_request_inflight == norm_path or self._load_track_callback is None:
+            return
+        self._load_request_inflight = norm_path
+        self._load_track_callback(path, time_sec)
+
+    def _clear_pending_external(self) -> None:
+        self._pending_external_path = None
+        self._pending_external_raw_path = None
+        self._pending_external_time_sec = 0.0
+
+    def _loaded_track_path(self) -> str:
+        props = self.model.properties if isinstance(self.model.properties, dict) else {}
+        return self._normalize_path(props.get("path"))
+
+    def _normalize_path(self, path: str | None) -> str:
+        raw = str(path or "").strip()
+        if not raw:
+            return ""
+        return os.path.normcase(os.path.normpath(raw))
+
+    def _track_exists_in_library(self, path: str) -> bool:
+        if self._track_exists_callback is None:
+            return False
+        try:
+            return bool(self._track_exists_callback(path))
+        except Exception:
+            return False
 
     def _read_active_deck(self, pm: pymem.Pymem) -> dict[str, Any] | None:
         decks: list[tuple[int, memorydeckconfig, bool]] = []
@@ -291,12 +388,11 @@ class ExternalSyncController(QtCore.QObject):
         return (clamped_index / total_samples) * duration_sec
 
     def _resolve_track_duration(self, path: str) -> float:
-        target = os.path.normcase(os.path.normpath(str(path or "").strip()))
+        target = self._normalize_path(path)
         if not target:
             return 0.0
-        current_path = (self._current_path_getter() or "").strip() if self._current_path_getter else ""
-        norm_current = os.path.normcase(os.path.normpath(current_path)) if current_path else ""
-        if norm_current and norm_current == target:
+        loaded_path = self._loaded_track_path()
+        if loaded_path and loaded_path == target:
             try:
                 return float(self.model.duration_sec or 0.0)
             except Exception:
@@ -309,13 +405,20 @@ class ExternalSyncController(QtCore.QObject):
         return 0.0
 
     def _resolve_track_total_samples(self, path: str) -> float:
-        target = os.path.normcase(os.path.normpath(str(path or "").strip()))
+        sample_source = str(getattr(self._cfg, "total_sample_count_source", "reference_sample_rate"))
+        if sample_source == "reference_sample_rate":
+            duration_sec = self._resolve_track_duration(path)
+            reference_sample_rate = max(1.0, float(getattr(self._cfg, "reference_sample_rate", 44100) or 44100))
+            if duration_sec <= 0.0:
+                return 0.0
+            return max(0.0, float(int(round(duration_sec * reference_sample_rate))))
+
+        target = self._normalize_path(path)
         if not target:
             return 0.0
         props = self.model.properties if isinstance(self.model.properties, dict) else {}
-        current_path = (self._current_path_getter() or "").strip() if self._current_path_getter else ""
-        norm_current = os.path.normcase(os.path.normpath(current_path)) if current_path else ""
-        if norm_current and norm_current == target:
+        loaded_path = self._loaded_track_path()
+        if loaded_path and loaded_path == target:
             try:
                 return max(0.0, float(props.get("total_samples") or 0.0))
             except Exception:

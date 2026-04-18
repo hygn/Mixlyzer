@@ -9,9 +9,12 @@ from core.event_bus import EventBus
 import time
 from dataclasses import dataclass, field
 import copy
+import os
 from core.analysis_lib_handler import FeatureNPZStore
 from core.config import load_cfg
+from core.library_handler import LibraryDB
 from core.model import DataModel
+from core.linear_segments import build_bpm_segments, build_key_segments
 from utils.keystrip import build_keystrip_buffer
 from utils.labels import KEY_DISPLAY_LABELS
 from utils.jump_cues import extract_jump_cue_pairs
@@ -115,7 +118,7 @@ class logs:
 class SaveWorker(QtCore.QObject):
     finished = QtCore.Signal()
 
-    def save(self, store: FeatureNPZStore, uid, *, beatgrid=None, segments=None, key_segments=None, key_np=None, jump_cues_np=None, jump_cues_extracted=None):
+    def save(self, store: FeatureNPZStore, libpath: str, uid, *, beatgrid=None, segments=None, key_segments=None, key_np=None, jump_cues_np=None, jump_cues_extracted=None):
         try:
             if uid is None:
                 return
@@ -136,6 +139,13 @@ class SaveWorker(QtCore.QObject):
             if jump_cues_extracted is not None:
                 prev_feat["jump_cues_extracted"] = jump_cues_extracted
             store.save(uid, prev_feat)
+            db = LibraryDB(os.path.join(libpath, "library.db"))
+            db.connect()
+            try:
+                db.replace_bpm_segments(uid, build_bpm_segments(prev_feat.get("tempo_segments")))
+                db.replace_key_segments(uid, build_key_segments(prev_feat.get("key_segments")))
+            finally:
+                db.close()
         except Exception:
             pass
         finally:
@@ -863,6 +873,7 @@ class BeatgridEditPanel(QtWidgets.QWidget):
         thread.started.connect(
             lambda: save_worker.save(
                 store,
+                cfg.libconfig.libpath,
                 self.uid,
                 beatgrid=beatgrid,
                 segments=segments,

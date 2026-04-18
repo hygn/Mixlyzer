@@ -46,6 +46,8 @@ class memorydeckconfig:
 class externalsyncconfig:
     enabled: bool
     mode: Literal["time", "sample_index"]
+    total_sample_count_source: Literal["reference_sample_rate", "file"]
+    reference_sample_rate: int
     memory_process_name: str
     memory_process_pid: int
     memory_deck1: memorydeckconfig
@@ -206,6 +208,8 @@ def default_cfg():
     xcfg = externalsyncconfig(
         enabled=False,
         mode="time",
+        total_sample_count_source="reference_sample_rate",
+        reference_sample_rate=44100,
         memory_process_name="",
         memory_process_pid=0,
         memory_deck1=memorydeckconfig(

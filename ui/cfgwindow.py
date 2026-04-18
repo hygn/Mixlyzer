@@ -192,6 +192,11 @@ class SettingsDialog(QDialog):
         self.cb_external_sync_enabled = QCheckBox("Enable external sync")
         self.cmb_external_sync_mode = QComboBox()
         self.cmb_external_sync_mode.addItems(["Time Sync", "Sample Index Sync"])
+        self.cmb_total_sample_count_source = QComboBox()
+        self.cmb_total_sample_count_source.addItems(["from reference sample rate", "from file"])
+        self.sp_reference_sample_rate = QSpinBox()
+        self.sp_reference_sample_rate.setRange(1, 384000)
+        self.sp_reference_sample_rate.setSingleStep(100)
 
         self.cmb_memory_process = QComboBox()
         self.cmb_memory_process.setEditable(True)
@@ -229,6 +234,8 @@ class SettingsDialog(QDialog):
 
         f.addRow(self.cb_external_sync_enabled)
         f.addRow("Mode", self.cmb_external_sync_mode)
+        f.addRow("Total Sample Count Source", self.cmb_total_sample_count_source)
+        f.addRow("Reference Sample Rate", self.sp_reference_sample_rate)
         f.addRow(self.lbl_external_sync_note)
         root.addLayout(f)
         self.memory_scroll = QScrollArea()
@@ -247,6 +254,7 @@ class SettingsDialog(QDialog):
         root.addStretch(1)
 
         self.cmb_external_sync_mode.currentIndexChanged.connect(self._sync_external_sync_mode_ui)
+        self.cmb_total_sample_count_source.currentIndexChanged.connect(self._sync_external_sync_mode_ui)
         self.btn_memory_process_refresh.clicked.connect(self._refresh_memory_processes)
         self._refresh_memory_processes()
         self._sync_external_sync_mode_ui()
@@ -307,6 +315,10 @@ class SettingsDialog(QDialog):
         x = cfg.externalsyncconfig
         self.cb_external_sync_enabled.setChecked(bool(x.enabled))
         self.cmb_external_sync_mode.setCurrentIndex(0 if x.mode == "time" else 1)
+        self.cmb_total_sample_count_source.setCurrentIndex(
+            0 if x.total_sample_count_source == "reference_sample_rate" else 1
+        )
+        self.sp_reference_sample_rate.setValue(int(x.reference_sample_rate))
         self._set_selected_memory_process(str(x.memory_process_name), int(x.memory_process_pid))
         self._set_memory_deck(self.deck1_specs, x.memory_deck1)
         self._set_memory_deck(self.deck2_specs, x.memory_deck2)
@@ -467,6 +479,12 @@ class SettingsDialog(QDialog):
             externalsyncconfig=externalsyncconfig(
                 enabled=bool(self.cb_external_sync_enabled.isChecked()),
                 mode=("time" if self.cmb_external_sync_mode.currentIndex() == 0 else "sample_index"),
+                total_sample_count_source=(
+                    "reference_sample_rate"
+                    if self.cmb_total_sample_count_source.currentIndex() == 0
+                    else "file"
+                ),
+                reference_sample_rate=int(self.sp_reference_sample_rate.value()),
                 memory_process_name=self._memory_process_name(),
                 memory_process_pid=self._memory_process_pid(),
                 memory_deck1=self._get_memory_deck(self.deck1_specs),
@@ -501,7 +519,10 @@ class SettingsDialog(QDialog):
 
     def _sync_external_sync_mode_ui(self):
         is_time_sync = self.cmb_external_sync_mode.currentIndex() == 0
+        use_reference_sample_rate = self.cmb_total_sample_count_source.currentIndex() == 0
         self.memory_scroll.setVisible(True)
+        self.cmb_total_sample_count_source.setEnabled(not is_time_sync)
+        self.sp_reference_sample_rate.setEnabled((not is_time_sync) and use_reference_sample_rate)
         for deck_widgets in (self.deck1_specs, self.deck2_specs):
             deck_widgets["time"]["group"].setVisible(is_time_sync)
             deck_widgets["sample_index"]["group"].setVisible(not is_time_sync)

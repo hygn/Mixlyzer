@@ -63,7 +63,6 @@ class AppWindow(QtWidgets.QMainWindow):
             status_callback=self.statusBar().showMessage,
             load_track_callback=self._load_track_from_external_sync,
             seek_callback=self.player.seek,
-            current_path_getter=lambda: self.current_path,
             track_exists_callback=self._track_exists_in_library,
             track_duration_callback=self._track_duration_in_library,
             track_total_samples_callback=self._track_total_samples_in_library,
@@ -224,7 +223,23 @@ class AppWindow(QtWidgets.QMainWindow):
     def reanalyze_file(self, path: str):
         self._start_analysis(path, force_analyze=True, finished_slot=self._on_features_reanalyze)
 
+    def _find_inflight_analysis_task(self, path: str) -> int | None:
+        norm_path = os.path.normcase(os.path.normpath(path))
+        for taskid, ctx in self._analysis_context.items():
+            ctx_path = str(ctx.get("path") or "").strip()
+            if not ctx_path:
+                continue
+            if os.path.normcase(os.path.normpath(ctx_path)) == norm_path:
+                return taskid
+        return None
+
     def _start_analysis(self, path: str, *, force_analyze: bool, finished_slot):
+        inflight_taskid = self._find_inflight_analysis_task(path)
+        if inflight_taskid is not None:
+            basename = os.path.basename(path)
+            self.statusBar().showMessage(f"Analysis already in progress: {basename}")
+            return
+
         self.segment_manager.cancel_all("Segment reanalysis canceled (track changed)")
         self.statusBar().showMessage(f"Analyzing: {os.path.basename(path)}")
 
@@ -430,7 +445,9 @@ class AppWindow(QtWidgets.QMainWindow):
             db.close()
 
     def _load_track_from_external_sync(self, path: str, time_sec: float) -> None:
-        self.statusBar().showMessage(f"External Sync loading: {os.path.basename(path)}")
+        exists_in_library = self._track_exists_in_library(path)
+        action = "loading" if exists_in_library else "analyzing"
+        self.statusBar().showMessage(f"External Sync {action}: {os.path.basename(path)}")
         self._external_sync_pending_seek = float(time_sec)
         self._start_analysis(path, force_analyze=False, finished_slot=self._on_features_ready)
 

@@ -131,7 +131,8 @@ class MainPane(QtWidgets.QWidget):
     # UI layout
     def _init_header_ui(self) -> None:
         ov_height = self.ov.maximumHeight() if hasattr(self, "ov") else 0
-        HEADER_H = TrackInfoPanel.HEADER_H + ov_height + BeatgridEditPanel.ROW_H
+        editor_toggle_h = 24
+        HEADER_H = TrackInfoPanel.HEADER_H + ov_height + editor_toggle_h + BeatgridEditPanel.ROW_H
         self.header = QtWidgets.QWidget()
         self.header.setMinimumHeight(HEADER_H)
         self.header.setMaximumHeight(HEADER_H)
@@ -287,12 +288,19 @@ class MainPane(QtWidgets.QWidget):
         top_row.addWidget(ctrl_box, 0, QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
 
         header_v.addWidget(self.ov, 0, QtCore.Qt.AlignTop)
+        self.cb_show_editors = QtWidgets.QCheckBox("Show Editors")
+        self.cb_show_editors.setChecked(False)
+        self.cb_show_editors.setMinimumHeight(editor_toggle_h)
+        self.cb_show_editors.setMaximumHeight(editor_toggle_h)
+        header_v.addWidget(self.cb_show_editors, 0, QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop)
         header_v.addWidget(self.track_edit, 0, QtCore.Qt.AlignTop)
 
         # Wire transport buttons
         self.btn_tempo_reset.clicked.connect(self._on_click_tempo_reset)
         self.btn_stop.clicked.connect(self._on_click_stop)
         self.btn_play.clicked.connect(self._on_click_play)
+        self.cb_show_editors.toggled.connect(self._set_editor_panel_visible)
+        self._set_editor_panel_visible(False)
 
     # View management
     def install_default(self) -> None:
@@ -541,6 +549,16 @@ class MainPane(QtWidgets.QWidget):
         self._install_views_from_config(cfg)
         self._refresh_transport_buttons()
         print("UI Reloaded")
+
+    def _set_editor_panel_visible(self, visible: bool) -> None:
+        show = bool(visible)
+        if hasattr(self, "track_edit"):
+            self.track_edit.setVisible(show)
+        ov_height = self.ov.maximumHeight() if hasattr(self, "ov") else 0
+        toggle_h = self.cb_show_editors.maximumHeight() if hasattr(self, "cb_show_editors") else 24
+        header_h = TrackInfoPanel.HEADER_H + ov_height + toggle_h + (BeatgridEditPanel.ROW_H if show else 0)
+        self.header.setMinimumHeight(header_h)
+        self.header.setMaximumHeight(header_h)
 
     def _on_key_segments_updated(self) -> None:
         key_segments = self.model.features.get("key_segments")

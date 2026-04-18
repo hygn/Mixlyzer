@@ -19,6 +19,7 @@ from core.config import config
 from core.adapters import normalize_gui_buffers
 from core.model import GlobalParams
 from core.taskmanager import taskmanager
+from core.linear_segments import build_bpm_segments, build_key_segments
 from analyzer_core.utils import offset_beats_and_segments
 
 def fast_load(path: str, target_sr) -> np.ndarray:
@@ -153,10 +154,24 @@ def _merge_track_properties(properties: dict, track, *, preserve_existing: bool)
     return merged
 
 
-def _persist_analysis_result(library: LibraryDB, store: FeatureNPZStore, features: dict, properties: dict):
+def _persist_analysis_result(
+    library: LibraryDB,
+    store: FeatureNPZStore,
+    features: dict,
+    properties: dict,
+    *,
+    bpm_segments=None,
+    key_segments=None,
+):
     uid = library.upsert_meta(properties)
     library.conn.commit()
     properties["uid"] = uid
+    if bpm_segments is not None:
+        library.replace_bpm_segments(uid, bpm_segments)
+        library.conn.commit()
+    if key_segments is not None:
+        library.replace_key_segments(uid, key_segments)
+        library.conn.commit()
     store.save(uid, dict(features))
     return library.list_all()
 
@@ -553,12 +568,21 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
     properties = _merge_track_properties(properties, track, preserve_existing=bool(force_analyze and track is not None))
     if track and track.uid:
         properties["uid"] = track.uid
+    bpm_segments = build_bpm_segments(features.get("tempo_segments"))
+    key_segments_db = build_key_segments(features.get("key_segments"))
     features_properties = {"features": features, "properties": properties, "update_db": True, "taskid":taskid}
     yield {"status": "Saving"}
     print("[Analyzer] Saving Results")
     taskmgr.updatetask(taskid, "Saving Result", 0.92)
     try:
-        lib_full = _persist_analysis_result(l, feature_store, features, properties)
+        lib_full = _persist_analysis_result(
+            l,
+            feature_store,
+            features,
+            properties,
+            bpm_segments=bpm_segments,
+            key_segments=key_segments_db,
+        )
     finally:
         l.close()
     features_properties["library"] = lib_full
