@@ -5,7 +5,6 @@ from typing import Optional
 from urllib.parse import unquote, urlparse
 
 import numpy as np
-from PIL import Image
 from PySide6 import QtCore, QtWidgets
 import soundfile as sf
 from core.analysis_lib_handler import FeatureNPZStore
@@ -56,31 +55,19 @@ class ExportTrackDialog(QtWidgets.QDialog):
         form.addRow("Destination Folder", dest_layout)
 
         self.chk_rekordbox = QtWidgets.QCheckBox("Rekordbox XML")
-        self.chk_waveform = QtWidgets.QCheckBox("Waveform Image")
         self.chk_rendered_jump = QtWidgets.QCheckBox("Prerender JumpCUE Audio")
         self.chk_rendered_jump.setToolTip("Write WAV files with JumpCUE skips baked in.")
         self.chk_rekordbox.setChecked(True)
-        self.chk_waveform.setChecked(False)
         self.chk_rendered_jump.setChecked(False)
         self.cmb_jump_pair = QtWidgets.QComboBox()
         self.cmb_jump_pair.setEnabled(False)
-        self.cmb_jump_pair.setPlaceholderText("No JumpCUE pairs")
-        self.chk_jump_dir_bwd_fwd = QtWidgets.QCheckBox("B->A (forward)")
-        self.chk_jump_dir_fwd_bwd = QtWidgets.QCheckBox("A->B (return)")
-        self.chk_jump_dir_bwd_fwd.setChecked(True)
-        self.chk_jump_dir_fwd_bwd.setChecked(False)
-        jump_dir_layout = QtWidgets.QHBoxLayout()
-        jump_dir_layout.addWidget(self.chk_jump_dir_bwd_fwd)
-        jump_dir_layout.addWidget(self.chk_jump_dir_fwd_bwd)
-        jump_dir_layout.addStretch(1)
+        self.cmb_jump_pair.setPlaceholderText("No JumpCUE directions")
         export_opts = QtWidgets.QHBoxLayout()
         export_opts.addWidget(self.chk_rekordbox)
-        export_opts.addWidget(self.chk_waveform)
         export_opts.addWidget(self.chk_rendered_jump)
         export_opts.addStretch(1)
         form.addRow("Include", export_opts)
-        form.addRow("JumpCUE Pair", self.cmb_jump_pair)
-        form.addRow("JumpCUE Direction", jump_dir_layout)
+        form.addRow("JumpCUE", self.cmb_jump_pair)
 
         self.btn_export = QtWidgets.QPushButton("Export")
         self.btn_cancel = QtWidgets.QPushButton("Cancel")
@@ -160,9 +147,8 @@ class ExportTrackDialog(QtWidgets.QDialog):
             return
 
         export_xml = self.chk_rekordbox.isChecked()
-        export_wave = self.chk_waveform.isChecked()
         export_jump = self.chk_rendered_jump.isChecked()
-        if not (export_xml or export_wave or export_jump):
+        if not (export_xml or export_jump):
             QtWidgets.QMessageBox.warning(
                 self,
                 "Export Track",
@@ -193,36 +179,19 @@ class ExportTrackDialog(QtWidgets.QDialog):
                 return
             exported.append(("Rekordbox XML", xml_path))
 
-        if export_wave:
-            image_path = self._write_waveform_image(dest_dir, features)
-            if image_path is None:
-                return
-            exported.append(("Waveform Image", image_path))
-        
         if export_jump:
             if not self._jump_pairs:
                 self._populate_jump_pairs()
-            pair = self._selected_jump_pair()
-            if pair is None:
+            selection = self._selected_jump_pair()
+            if selection is None:
                 QtWidgets.QMessageBox.warning(
                     self,
                     "Export Track",
-                    "Select a JumpCUE pair to render.",
+                    "Select a JumpCUE direction to render.",
                 )
                 return
-            directions: list[tuple[str, str]] = []
-            if self.chk_jump_dir_bwd_fwd.isChecked():
-                directions.append(("backward", "forward"))
-            if self.chk_jump_dir_fwd_bwd.isChecked():
-                directions.append(("forward", "backward"))
-            if not directions:
-                QtWidgets.QMessageBox.warning(
-                    self,
-                    "Export Track",
-                    "Select at least one JumpCUE direction (B→A or A→B).",
-                )
-                return
-            jump_exports = self._write_jumpcue_audio(dest_dir, features, pair, directions)
+            pair, directions = selection
+            jump_exports = self._write_jumpcue_audio(dest_dir, features, pair, [directions])
             if jump_exports is None:
                 return
             exported.extend(jump_exports)
@@ -260,16 +229,23 @@ class ExportTrackDialog(QtWidgets.QDialog):
         for idx, pair in enumerate(pairs):
             fwd = str(pair.get("forward", {}).get("label", "")).strip()
             bwd = str(pair.get("backward", {}).get("label", "")).strip()
-            self.cmb_jump_pair.addItem(f"{idx + 1}: {bwd}->{fwd}")
+            self.cmb_jump_pair.addItem(f"{idx + 1}: {fwd}->{bwd}", (pair, ("forward", "backward")))
+            self.cmb_jump_pair.addItem(f"{idx + 1}: {bwd}->{fwd}", (pair, ("backward", "forward")))
         self.cmb_jump_pair.setEnabled(bool(pairs))
 
-    def _selected_jump_pair(self) -> Optional[dict]:
-        if not self._jump_pairs:
+    def _selected_jump_pair(self) -> Optional[tuple[dict, tuple[str, str]]]:
+        if self.cmb_jump_pair.count() <= 0:
             return None
         idx = int(self.cmb_jump_pair.currentIndex())
-        if idx < 0 or idx >= len(self._jump_pairs):
+        if idx < 0:
             return None
-        return self._jump_pairs[idx]
+        data = self.cmb_jump_pair.itemData(idx)
+        if not isinstance(data, tuple) or len(data) != 2:
+            return None
+        pair, direction = data
+        if not isinstance(pair, dict) or not isinstance(direction, tuple) or len(direction) != 2:
+            return None
+        return pair, direction
 
     def _write_xml(
         self,
@@ -301,65 +277,6 @@ class ExportTrackDialog(QtWidgets.QDialog):
             QtWidgets.QMessageBox.critical(self, "Export Track", f"Failed to write XML file:\n{exc}")
             return None
         return xml_path
-
-    def _write_waveform_image(
-        self,
-        dest_dir: Path,
-        features: dict[str, np.ndarray],
-    ) -> Optional[Path]:
-        assert self._track is not None
-        wave = features.get("wave_img_np")
-        if wave is None:
-            wave = features.get("wave_img_np_preview")
-        if wave is None:
-            QtWidgets.QMessageBox.warning(
-                self, "Export Track", "Waveform image is not available for this track."
-            )
-            return None
-
-        arr = np.asarray(wave)
-        if arr.size == 0:
-            QtWidgets.QMessageBox.warning(
-                self, "Export Track", "Waveform data is empty and cannot be exported."
-            )
-            return None
-
-        if arr.ndim == 2:
-            arr = arr[..., np.newaxis]
-        if arr.ndim == 3 and arr.shape[2] == 1:
-            arr = np.repeat(arr, 3, axis=2)
-        if arr.ndim != 3 or arr.shape[2] not in (3, 4):
-            QtWidgets.QMessageBox.warning(
-                self, "Export Track", "Waveform data has an unsupported shape."
-            )
-            return None
-
-        arr = np.clip(arr, 0, 255).astype(np.uint8, copy=False)
-        # Stored arrays are (time, height, channels); transpose for image saving.
-        arr = np.transpose(arr, (1, 0, 2))
-        arr = np.ascontiguousarray(arr)
-
-        mode = "RGB" if arr.shape[2] == 3 else "RGBA"
-        image = Image.fromarray(arr, mode=mode)
-
-        title = self._track.title or (self._source.stem if self._source else "track")
-        filename = f"{sanitize_filename(title)}_waveform.png"
-        image_path = dest_dir / filename
-        if image_path.exists():
-            reply = QtWidgets.QMessageBox.question(
-                self,
-                "Export Track",
-                f"'{image_path.name}' already exists.\nOverwrite?",
-                QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,
-            )
-            if reply != QtWidgets.QMessageBox.StandardButton.Yes:
-                return None
-        try:
-            image.save(image_path)
-        except OSError as exc:
-            QtWidgets.QMessageBox.critical(self, "Export Track", f"Failed to save waveform image:\n{exc}")
-            return None
-        return image_path
 
     def _write_jumpcue_audio(
         self,

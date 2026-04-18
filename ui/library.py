@@ -179,7 +179,7 @@ class LibraryWidget(QtWidgets.QWidget):
         transition_lay.addWidget(self.sp_transition_min_duration, 1, 7)
         transition_lay.addWidget(self.cb_key_first_segment, 1, 8)
         transition_lay.setColumnStretch(9, 1)
-        self.transition_box.setVisible(True)
+        self.transition_box.setVisible(False)
 
         # Table
         self.table = QtWidgets.QTableWidget()
@@ -239,6 +239,11 @@ class LibraryWidget(QtWidgets.QWidget):
         self.bus.sig_external_sync_enabled.connect(self._on_external_sync_enabled)
         self.reload_from_db()
         self._sync_transition_type_ui()
+
+    def set_transition_search_visible(self, visible: bool) -> None:
+        self.cb_transition_bpm.setChecked(False)
+        self.cb_transition_key.setChecked(False)
+        self.transition_box.setVisible(bool(visible))
 
     # Data loading
     def reload_from_db(self):

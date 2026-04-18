@@ -4,7 +4,7 @@ import numpy as np
 import librosa
 from analyzer_core.global_analyzer import fast_load
 from core.config import config
-from utils.jump_cues import extract_jump_cue_pairs
+from utils.jump_cues import build_jump_cues_np, extract_jump_cue_pairs
 
 def reanalyze_jumpCUE(path:str, cfg:config, beats_time_arr:np.ndarray, *,
     progress_cb: Optional[Callable[[str, float], None]] = None,):
@@ -37,66 +37,9 @@ def reanalyze_jumpCUE(path:str, cfg:config, beats_time_arr:np.ndarray, *,
             print("[JumpCUE] pairs", jump_pairs)
         else:
             print("[JumpCUE] no jump-compatible pairs detected")
-        # Flatten arrays for NPZ persistence
-        if jump_pairs:
-            labels_fwd = [str(p["forward"].get("label", "")) for p in jump_pairs]
-            starts_fwd = [float(p["forward"].get("start", 0.0)) for p in jump_pairs]
-            ends_fwd = [float(p["forward"].get("end", 0.0)) for p in jump_pairs]
-            labels_bwd = [str(p["backward"].get("label", "")) for p in jump_pairs]
-            starts_bwd = [float(p["backward"].get("start", 0.0)) for p in jump_pairs]
-            ends_bwd = [float(p["backward"].get("end", 0.0)) for p in jump_pairs]
-            lag_beats = [float(p.get("lag_beats", 0.0)) for p in jump_pairs]
-            lag_sec = [float(p.get("lag_sec", 0.0)) for p in jump_pairs]
-            scores = [float(p.get("score", 0.0)) for p in jump_pairs]
-            confs = [float(p.get("confidence", 0.0)) for p in jump_pairs]
-            points_fwd = [float(p["forward"].get("point", 0.0)) for p in jump_pairs]
-            points_bwd = [float(p["backward"].get("point", 0.0)) for p in jump_pairs]
-            label_width_f = max(1, max(len(s) for s in labels_fwd))
-            label_width_b = max(1, max(len(s) for s in labels_bwd))
-            jump_cues_np = {
-                "forward_label": np.asarray(labels_fwd, dtype=f"U{label_width_f}"),
-                "forward_start": np.asarray(starts_fwd, dtype=np.float32),
-                "forward_end": np.asarray(ends_fwd, dtype=np.float32),
-                "forward_point": np.asarray(points_fwd, dtype=np.float32),
-                "backward_label": np.asarray(labels_bwd, dtype=f"U{label_width_b}"),
-                "backward_start": np.asarray(starts_bwd, dtype=np.float32),
-                "backward_end": np.asarray(ends_bwd, dtype=np.float32),
-                "backward_point": np.asarray(points_bwd, dtype=np.float32),
-                "lag_beats": np.asarray(lag_beats, dtype=np.float32),
-                "lag_sec": np.asarray(lag_sec, dtype=np.float32),
-                "score": np.asarray(scores, dtype=np.float32),
-                "confidence": np.asarray(confs, dtype=np.float32),
-            }
-        else:
-            jump_cues_np = {
-                "forward_label": np.asarray([], dtype="U1"),
-                "forward_start": np.asarray([], dtype=np.float32),
-                "forward_end": np.asarray([], dtype=np.float32),
-                "forward_point": np.asarray([], dtype=np.float32),
-                "backward_label": np.asarray([], dtype="U1"),
-                "backward_start": np.asarray([], dtype=np.float32),
-                "backward_end": np.asarray([], dtype=np.float32),
-                "backward_point": np.asarray([], dtype=np.float32),
-                "lag_beats": np.asarray([], dtype=np.float32),
-                "lag_sec": np.asarray([], dtype=np.float32),
-                "score": np.asarray([], dtype=np.float32),
-                "confidence": np.asarray([], dtype=np.float32),
-            }
+        jump_cues_np = build_jump_cues_np(jump_pairs, canonicalize_labels=True)
     else:
-        jump_cues_np = {
-            "forward_label": np.asarray([], dtype="U1"),
-            "forward_start": np.asarray([], dtype=np.float32),
-            "forward_end": np.asarray([], dtype=np.float32),
-            "forward_point": np.asarray([], dtype=np.float32),
-            "backward_label": np.asarray([], dtype="U1"),
-            "backward_start": np.asarray([], dtype=np.float32),
-            "backward_end": np.asarray([], dtype=np.float32),
-            "backward_point": np.asarray([], dtype=np.float32),
-            "lag_beats": np.asarray([], dtype=np.float32),
-            "lag_sec": np.asarray([], dtype=np.float32),
-            "score": np.asarray([], dtype=np.float32),
-            "confidence": np.asarray([], dtype=np.float32),
-        }
+        jump_cues_np = build_jump_cues_np([], canonicalize_labels=True)
     
     jump_cues_extracted = extract_jump_cue_pairs({"jump_cues_np":jump_cues_np})
     if progress_cb:

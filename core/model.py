@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from typing import Optional, Callable, Any
+import numpy as np
 from PySide6 import QtCore
 from PySide6.QtGui import QImage
 
@@ -77,6 +78,8 @@ class DataModel(QtCore.QObject):
         self.duration_sec: float = 0.0
         self.gp: Optional[GlobalParams] = None
         self.album_art: Optional[QImage] = None
+        self.predecoded_pcm: Any = None
+        self.predecoded_rate: int = 0
 
     def _wrap_observable(self, mapping: dict, name: str) -> _ObservableDict:
         if isinstance(mapping, _ObservableDict):
@@ -93,12 +96,22 @@ class DataModel(QtCore.QObject):
         self.gp = gp
         self.duration_sec = duration_sec
         self.album_art = album_art
+        self.predecoded_pcm = None
+        self.predecoded_rate = 0
         self._notify_changed("load")
         print(f"[DataModel] Summary {self.debug_summary()}")
 
     def set_album_art(self, album_art: Optional[QImage]):
         self.album_art = album_art
         self._notify_changed("album_art set")
+
+    def set_predecoded_audio(self, pcm: Any, sample_rate: int) -> None:
+        try:
+            self.predecoded_pcm = np.asarray(pcm, dtype=np.float32, order="C")
+        except Exception:
+            self.predecoded_pcm = pcm
+        self.predecoded_rate = int(sample_rate)
+        self._notify_changed("predecoded_audio set")
 
     def debug_summary(self) -> str:
         """Return a human-readable snapshot of current model state for debugging."""

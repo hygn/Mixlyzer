@@ -36,6 +36,7 @@ class _AudioWorker(QtCore.QObject):
     duration_changed = QtCore.Signal(float)
     playback_status = QtCore.Signal(bool)
     transport_enabled = QtCore.Signal(bool)
+    predecoded_buffer_ready = QtCore.Signal(object, int)
 
     def __init__(self) -> None:
         super().__init__()
@@ -114,6 +115,7 @@ class _AudioWorker(QtCore.QObject):
 
         self._buffer_ready = True
         self._duration_ms = int(duration_ms)
+        self.predecoded_buffer_ready.emit(pcm_array, self._duration_ms)
         self.duration_changed.emit(self._duration_ms / 1000.0)
         self.time_changed.emit(0.0)
         self.playback_status.emit(False)
@@ -383,9 +385,10 @@ class PlayerController(QtCore.QObject):
     _cmd_disarm_jump = QtCore.Signal()
     _cmd_shutdown = QtCore.Signal()
 
-    def __init__(self, bus: EventBus):
+    def __init__(self, bus: EventBus, model=None):
         super().__init__()
         self.bus = bus
+        self.model = model
         out_dev = QtMultimedia.QMediaDevices.defaultAudioOutput()
         fmt = out_dev.preferredFormat()
         fmt.setSampleFormat(QtMultimedia.QAudioFormat.Float)
@@ -420,6 +423,7 @@ class PlayerController(QtCore.QObject):
         self._audio_worker.duration_changed.connect(self.bus.sig_duration_changed)
         self._audio_worker.playback_status.connect(self.bus.sig_playback_status)
         self._audio_worker.transport_enabled.connect(self.bus.sig_transport_enabled)
+        self._audio_worker.predecoded_buffer_ready.connect(self._on_predecoded_buffer_ready, QtCore.Qt.QueuedConnection)
 
         self._audio_thread.started.connect(self._audio_worker.initialize)
         self._audio_thread.finished.connect(self._audio_worker.deleteLater)
@@ -532,6 +536,12 @@ class PlayerController(QtCore.QObject):
             self.bus.sig_transport_enabled.emit(False)
         elif self._path:
             self._cmd_prepare_source.emit(self._path)
+
+    @QtCore.Slot(object, int)
+    def _on_predecoded_buffer_ready(self, pcm: object, duration_ms: int) -> None:
+        if self.model is None:
+            return
+        self.model.set_predecoded_audio(pcm, self.rate)
 
     # artwork
     def getAlbumArt(self, path: Optional[str] = None) -> Optional[QtGui.QImage]:

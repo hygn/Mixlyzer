@@ -17,7 +17,7 @@ from core.model import DataModel
 from core.linear_segments import build_bpm_segments, build_key_segments
 from utils.keystrip import build_keystrip_buffer
 from utils.labels import KEY_DISPLAY_LABELS
-from utils.jump_cues import extract_jump_cue_pairs
+from utils.jump_cues import build_jump_cues_np, extract_jump_cue_pairs
 
 MAX_LOG_HISTORY = 50
 BUTTON_STYLESHEET = """
@@ -553,12 +553,25 @@ class BeatgridEditPanel(QtWidgets.QWidget):
             JumpCUE = []
         self._JumpCUE = JumpCUE
         self.jc_selection.clear()
-        labels = []
-        for i in self._JumpCUE:
-            labels.append(i["backward"]["label"])
-        for i in self._JumpCUE:
-            labels.append(i["forward"]["label"])
-        self.jc_selection.addItems(labels)
+        pair_entries = []
+        for pair in self._JumpCUE:
+            forward = dict(pair.get("forward", {}) or {})
+            backward = dict(pair.get("backward", {}) or {})
+            fwd_label = str(forward.get("label", "") or "").strip()
+            bwd_label = str(backward.get("label", "") or "").strip()
+            if not fwd_label or not bwd_label:
+                continue
+            fwd_point = float(forward.get("point", forward.get("start", 0.0)) or 0.0)
+            bwd_point = float(backward.get("point", backward.get("start", 0.0)) or 0.0)
+            pair_entries.append((fwd_point, bwd_point, fwd_label, bwd_label, pair))
+            pair_entries.append((bwd_point, fwd_point, bwd_label, fwd_label, pair))
+        pair_entries.sort(key=lambda item: (item[0], item[1], item[2], item[3]))
+        for src_point, dst_point, src_label, dst_label, pair in pair_entries:
+            if dst_point >= src_point:
+                display = f"F:{src_label}->{dst_label}"
+            else:
+                display = f"B:{src_label}<-{dst_label}"
+            self.jc_selection.addItem(display, {"cue": pair, "label": src_label})
         self.bus.sig_jump_disarm.emit()
         self.jc_jumptest.setText("ARM")
         self._jump_armed = False
@@ -602,15 +615,21 @@ class BeatgridEditPanel(QtWidgets.QWidget):
     
     def _arm_next_jumpCUE_jump(self):
         if not self._jump_armed:
-            label = self.jc_selection.currentText()
+            payload = self.jc_selection.currentData()
+            label = ""
             cue = None
-            for i in self._JumpCUE:
-                if i["backward"]["label"] == label:
-                    cue = i
-                    break
-                elif i["forward"]["label"] == label:
-                    cue = i
-                    break
+            if isinstance(payload, dict):
+                label = str(payload.get("label", "") or "").strip()
+                cue = payload.get("cue")
+            if cue is None and self._JumpCUE:
+                label = self.jc_selection.currentText().split("->", 1)[0].strip()
+                for i in self._JumpCUE:
+                    if str(i.get("forward", {}).get("label", "")).strip() == label:
+                        cue = i
+                        break
+                    if str(i.get("backward", {}).get("label", "")).strip() == label:
+                        cue = i
+                        break
             self.bus.sig_jump_arm.emit({"cue": cue, "label": label})
             self.jc_jumptest.setText("DISARM")
             self._jump_armed = True
@@ -715,50 +734,17 @@ class BeatgridEditPanel(QtWidgets.QWidget):
             try:
                 self.model.features["jump_cues_extracted"] = copy.deepcopy(self._JumpCUE)
                 self.model.features["jump_cues_np"] = self._jumpcues_to_np(self._JumpCUE)
+            except ValueError as exc:
+                QtWidgets.QMessageBox.warning(self, "Invalid JumpCUE Label", str(exc))
             except Exception:
                 pass
         self.bus.sig_jumpcue_updated.emit()
 
     @staticmethod
     def _jumpcues_to_np(jump_cues: list[dict]):
-        cues = jump_cues or []
-        if not isinstance(cues, list):
+        if jump_cues is not None and not isinstance(jump_cues, list):
             return None
-        if not cues:
-            return {
-                "forward_label": np.asarray([], dtype="U1"),
-                "forward_start": np.asarray([], dtype=np.float32),
-                "forward_end": np.asarray([], dtype=np.float32),
-                "forward_point": np.asarray([], dtype=np.float32),
-                "backward_label": np.asarray([], dtype="U1"),
-                "backward_start": np.asarray([], dtype=np.float32),
-                "backward_end": np.asarray([], dtype=np.float32),
-                "backward_point": np.asarray([], dtype=np.float32),
-                "lag_beats": np.asarray([], dtype=np.float32),
-                "lag_sec": np.asarray([], dtype=np.float32),
-                "score": np.asarray([], dtype=np.float32),
-                "confidence": np.asarray([], dtype=np.float32),
-            }
-        labels_fwd = [str(p.get("forward", {}).get("label", "")) for p in cues]
-        labels_bwd = [str(p.get("backward", {}).get("label", "")) for p in cues]
-        label_width_f = max(1, max(len(s) for s in labels_fwd))
-        label_width_b = max(1, max(len(s) for s in labels_bwd))
-        def _fld(role, key):
-            return [float(p.get(role, {}).get(key, 0.0)) for p in cues]
-        return {
-            "forward_label": np.asarray(labels_fwd, dtype=f"U{label_width_f}"),
-            "forward_start": np.asarray(_fld("forward", "start"), dtype=np.float32),
-            "forward_end": np.asarray(_fld("forward", "end"), dtype=np.float32),
-            "forward_point": np.asarray(_fld("forward", "point"), dtype=np.float32),
-            "backward_label": np.asarray(labels_bwd, dtype=f"U{label_width_b}"),
-            "backward_start": np.asarray(_fld("backward", "start"), dtype=np.float32),
-            "backward_end": np.asarray(_fld("backward", "end"), dtype=np.float32),
-            "backward_point": np.asarray(_fld("backward", "point"), dtype=np.float32),
-            "lag_beats": np.asarray([float(p.get("lag_beats", 0.0)) for p in cues], dtype=np.float32),
-            "lag_sec": np.asarray([float(p.get("lag_sec", 0.0)) for p in cues], dtype=np.float32),
-            "score": np.asarray([float(p.get("score", 0.0)) for p in cues], dtype=np.float32),
-            "confidence": np.asarray([float(p.get("confidence", 0.0)) for p in cues], dtype=np.float32),
-        }
+        return build_jump_cues_np(jump_cues or [])
     
     def apply_update_from_external(self, *, beatgrid=None, segments=None, key_segments=None, key_image=None) -> None:
         updated = False
@@ -866,7 +852,11 @@ class BeatgridEditPanel(QtWidgets.QWidget):
         beatgrid = np.asarray(self._beatgrid, dtype=float).copy() if self._beatgrid is not None else None
         segments = np.asarray(self._segments, dtype=float).copy() if self._segments is not None else None
         key_segments = np.asarray(self._key_segments, dtype=float).copy() if self._key_segments is not None else None
-        jump_cues_np = self._jumpcues_to_np(self._JumpCUE)
+        try:
+            jump_cues_np = self._jumpcues_to_np(self._JumpCUE)
+        except ValueError as exc:
+            QtWidgets.QMessageBox.warning(self, "Invalid JumpCUE Label", str(exc))
+            return
         jump_cues_extracted = copy.deepcopy(self._JumpCUE)
         self._save_in_progress = True
         self.btn_save.setEnabled(False)

@@ -53,7 +53,7 @@ class AppWindow(QtWidgets.QMainWindow):
         self.bus = EventBus()
         self.model = DataModel()
         self.tl = TimelineCoordinator(self.bus)
-        self.player = PlayerController(self.bus)
+        self.player = PlayerController(self.bus, model=self.model)
         self.player.set_refresh_fps(self.cfg.viewconfig.fps)
         self.external_sync = ExternalSyncController(
             self.bus,
@@ -477,8 +477,12 @@ class AppWindow(QtWidgets.QMainWindow):
         self.external_sync.set_config(_config.externalsyncconfig)
         self.external_sync.set_poll_fps(_config.viewconfig.fps)
         self._apply_external_sync_mode(_config.externalsyncconfig)
-        if prev_cfg["viewconfig"] != _config.to_dict()["viewconfig"]:
-            self.bus.sig_reload_UI.emit(_config)
+        prev_vcfg = prev_cfg.get("viewconfig", {})
+        new_vcfg = _config.to_dict()["viewconfig"]
+        _VIEW_LAYOUT_KEYS = {"display_waveform", "display_beatgrid", "display_keystrip", "display_JumpCUE"}
+        layout_changed = any(prev_vcfg.get(k) != new_vcfg.get(k) for k in _VIEW_LAYOUT_KEYS)
+        viewconfig_changed = prev_vcfg != new_vcfg
+        if viewconfig_changed:
             self.player.set_refresh_fps(_config.viewconfig.fps)
             if _config.viewconfig.enable_metronome:
                 QtCore.QMetaObject.invokeMethod(self.metro, "start", QtCore.Qt.QueuedConnection)
@@ -490,6 +494,8 @@ class AppWindow(QtWidgets.QMainWindow):
                 QtCore.Qt.QueuedConnection,
                 QtCore.Q_ARG(str, _config.viewconfig.metronome_wav_path),
             )
+        if layout_changed:
+            self.bus.sig_reload_UI.emit(_config)
         elif prev_cfg.get("externalsyncconfig") != _config.to_dict().get("externalsyncconfig"):
             self.bus.sig_reload_UI.emit(_config)
 

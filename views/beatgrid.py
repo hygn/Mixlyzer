@@ -30,6 +30,8 @@ class BeatgridView(ViewPlugin):
         self._downbeat_lines_item = pg.PlotDataItem(pen=self.downbeat_pen, connect="finite")
         plot.addItem(self._beat_lines_item)
         plot.addItem(self._downbeat_lines_item)
+        self._beat_lines_item.setZValue(10)
+        self._downbeat_lines_item.setZValue(11)
         vb = plot.getViewBox()
         if hasattr(vb, "sigRangeChanged"):
             vb.sigRangeChanged.connect(self._refresh_lines)

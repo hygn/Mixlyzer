@@ -288,11 +288,21 @@ class MainPane(QtWidgets.QWidget):
         top_row.addWidget(ctrl_box, 0, QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
 
         header_v.addWidget(self.ov, 0, QtCore.Qt.AlignTop)
+        toggle_row = QtWidgets.QHBoxLayout()
+        toggle_row.setContentsMargins(0, 0, 0, 0)
+        toggle_row.setSpacing(12)
         self.cb_show_editors = QtWidgets.QCheckBox("Show Editors")
         self.cb_show_editors.setChecked(False)
         self.cb_show_editors.setMinimumHeight(editor_toggle_h)
         self.cb_show_editors.setMaximumHeight(editor_toggle_h)
-        header_v.addWidget(self.cb_show_editors, 0, QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop)
+        self.cb_show_transition_search = QtWidgets.QCheckBox("Show Transition Search")
+        self.cb_show_transition_search.setChecked(False)
+        self.cb_show_transition_search.setMinimumHeight(editor_toggle_h)
+        self.cb_show_transition_search.setMaximumHeight(editor_toggle_h)
+        toggle_row.addWidget(self.cb_show_editors, 0, QtCore.Qt.AlignLeft)
+        toggle_row.addWidget(self.cb_show_transition_search, 0, QtCore.Qt.AlignLeft)
+        toggle_row.addStretch(1)
+        header_v.addLayout(toggle_row)
         header_v.addWidget(self.track_edit, 0, QtCore.Qt.AlignTop)
 
         # Wire transport buttons
@@ -300,7 +310,9 @@ class MainPane(QtWidgets.QWidget):
         self.btn_stop.clicked.connect(self._on_click_stop)
         self.btn_play.clicked.connect(self._on_click_play)
         self.cb_show_editors.toggled.connect(self._set_editor_panel_visible)
+        self.cb_show_transition_search.toggled.connect(self._set_transition_search_visible)
         self._set_editor_panel_visible(False)
+        self._set_transition_search_visible(True)
 
     # View management
     def install_default(self) -> None:
@@ -559,6 +571,10 @@ class MainPane(QtWidgets.QWidget):
         header_h = TrackInfoPanel.HEADER_H + ov_height + toggle_h + (BeatgridEditPanel.ROW_H if show else 0)
         self.header.setMinimumHeight(header_h)
         self.header.setMaximumHeight(header_h)
+
+    def _set_transition_search_visible(self, visible: bool) -> None:
+        if hasattr(self, "lib") and hasattr(self.lib, "set_transition_search_visible"):
+            self.lib.set_transition_search_visible(bool(visible))
 
     def _on_key_segments_updated(self) -> None:
         key_segments = self.model.features.get("key_segments")

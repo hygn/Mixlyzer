@@ -8,6 +8,7 @@ import numpy as np
 from core.analysis_lib_handler import FeatureNPZStore
 from core.library_handler import LibraryDB
 from core.linear_segments import build_bpm_segments, build_key_segments
+from utils.jump_cues import build_jump_cues_np, extract_jump_cue_pairs
 
 
 SOURCE_VERSION = "0.1.1"
@@ -48,10 +49,20 @@ def migrate_library_with_progress(lib_path: Path, logger=print, progress_callbac
                     features = store.load(uid)
                     bpm_segments = build_bpm_segments(features.get("tempo_segments"))
                     key_segments = build_key_segments(features.get("key_segments"))
+                    jump_pairs = extract_jump_cue_pairs(features)
+                    features["jump_cues_np"] = build_jump_cues_np(jump_pairs, canonicalize_labels=True)
+                    for key in list(features.keys()):
+                        if isinstance(key, str) and key.startswith("jump_cues_np."):
+                            features.pop(key, None)
+                    features.pop("wave_img_np", None)
+                    store.save(uid, features)
                     db.replace_bpm_segments(uid, bpm_segments)
                     db.replace_key_segments(uid, key_segments)
                     updated += 1
-                    logger(f"[{index}/{len(tracks)}] OK {track.title or track.path} -> bpm={len(bpm_segments)} key={len(key_segments)}")
+                    logger(
+                        f"[{index}/{len(tracks)}] OK {track.title or track.path} "
+                        f"-> bpm={len(bpm_segments)} key={len(key_segments)} jumpcue={len(jump_pairs)}"
+                    )
                 except Exception as exc:
                     failed += 1
                     logger(f"[{index}/{len(tracks)}] SKIP {track.title or track.path} -> {exc}")

@@ -13,7 +13,7 @@ def apply_contrast_stretch(img, low_p=10, high_p=98):
     imgf = np.clip((imgf - lo) / (hi - lo + 1e-8), 0.0, 1.0)
     return (imgf * 255.0 + 0.5).astype(np.uint8)
 
-def build_wave_image(lo, mid, hi, min_env, max_env, height_px=110, downsample=4, white_threshold=0.05):
+def build_wave_image(lo, mid, hi, min_env, max_env, height_px=110, downsample=2, white_threshold=0.05):
     print("[Render] Rendering Waveform image")
 
     lo = np.nan_to_num(np.asarray(lo, dtype=float), nan=0.0)
@@ -35,6 +35,12 @@ def build_wave_image(lo, mid, hi, min_env, max_env, height_px=110, downsample=4,
     threshold = white_threshold * max_mag
     low_mask = magnitudes < threshold
     rgb_norm[low_mask] = [1.0, 1.0, 1.0]
+    active_mask = ~low_mask
+    if np.any(active_mask):
+        active_rgb = rgb_norm[active_mask]
+        min_idx = np.argmin(active_rgb, axis=1)
+        active_rgb[np.arange(active_rgb.shape[0]), min_idx] = 0.0
+        rgb_norm[active_mask] = active_rgb
     rgb8 = (np.clip(rgb_norm, 0.0, 1.0) * 255.0 + 0.5).astype(np.uint8)
 
     img = np.zeros((H, T, 3), dtype=np.uint8)
