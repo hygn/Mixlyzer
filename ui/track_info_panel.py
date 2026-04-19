@@ -100,6 +100,7 @@ class TrackInfoPanel(QtWidgets.QWidget):
         self._record_last_cache_key: Optional[int] = None
         self._record_cache_step_deg = 2  # rotate in coarse steps to limit redraw work
         self._record_base_pix = QtGui.QPixmap()
+        self._record_base_dpr = 1.0
         self._current_time = 0.0
         self._last_album_art: Optional[QtGui.QImage] = None
 
@@ -223,6 +224,12 @@ class TrackInfoPanel(QtWidgets.QWidget):
         base = self._record_base_pix
         if base.isNull():
             return
+        dpr = self.record_label.devicePixelRatioF()
+        if abs(dpr - self._record_base_dpr) > 1e-6:
+            self._load_record_pixmap(self._last_album_art)
+            base = self._record_base_pix
+            if base.isNull():
+                return
         angle = ((time_sec * (33.3333333 / 60) * 360) % 360)
         step = max(1, int(getattr(self, "_record_cache_step_deg", 2)))
         cache_key = int(round(angle / step) * step) % 360
@@ -231,11 +238,21 @@ class TrackInfoPanel(QtWidgets.QWidget):
         self._record_last_cache_key = cache_key
         rotated = self._record_rotation_cache.get(cache_key)
         if rotated is None:
-            tr = QtGui.QTransform()
-            tr.translate(base.width() / 2, base.height() / 2)
-            tr.rotate(cache_key)
-            tr.translate(-base.width() / 2, -base.height() / 2)
-            rotated = base.transformed(tr, QtCore.Qt.SmoothTransformation)
+            logical_size = self.record_label.size()
+            pixel_w = max(1, int(round(logical_size.width() * dpr)))
+            pixel_h = max(1, int(round(logical_size.height() * dpr)))
+            rotated = QtGui.QPixmap(pixel_w, pixel_h)
+            rotated.setDevicePixelRatio(dpr)
+            rotated.fill(QtCore.Qt.transparent)
+
+            painter = QtGui.QPainter(rotated)
+            painter.setRenderHint(QtGui.QPainter.Antialiasing, True)
+            painter.setRenderHint(QtGui.QPainter.SmoothPixmapTransform, True)
+            painter.translate(logical_size.width() / 2, logical_size.height() / 2)
+            painter.rotate(cache_key)
+            painter.translate(-logical_size.width() / 2, -logical_size.height() / 2)
+            painter.drawPixmap(0, 0, base)
+            painter.end()
             self._record_rotation_cache[cache_key] = rotated
         self.record_label.setPixmap(rotated)
 
@@ -262,7 +279,10 @@ class TrackInfoPanel(QtWidgets.QWidget):
         vinyl_path: Optional[str] = None,
     ):
         size = size or self.HEADER_H - 4
-        base = QtGui.QPixmap(size, size)
+        dpr = self.record_label.devicePixelRatioF() if hasattr(self, "record_label") else 1.0
+        pixel_size = max(1, int(round(size * dpr)))
+        base = QtGui.QPixmap(pixel_size, pixel_size)
+        base.setDevicePixelRatio(dpr)
         base.fill(QtCore.Qt.transparent)
         painter = QtGui.QPainter(base)
         painter.setRenderHint(QtGui.QPainter.Antialiasing, True)
@@ -336,6 +356,7 @@ class TrackInfoPanel(QtWidgets.QWidget):
         painter.end()
 
         self._record_base_pix = base
+        self._record_base_dpr = dpr
         self._record_rotation_cache.clear()
         self._record_last_cache_key = None
         self.update_record_pix(self._current_time)

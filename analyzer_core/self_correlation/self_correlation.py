@@ -7,7 +7,6 @@ from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.cluster import KMeans
 from scipy.sparse.linalg import eigsh
 from scipy.ndimage import gaussian_filter1d, gaussian_filter
-import matplotlib.pyplot as plt
 from scipy.signal import find_peaks
 
 
