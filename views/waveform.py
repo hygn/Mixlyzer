@@ -6,7 +6,7 @@ from collections import deque
 import librosa
 import numpy as np
 import pyqtgraph as pg
-from PySide6 import QtCore, QtGui
+from PySide6 import QtCore, QtGui, QtWidgets
 from scipy.signal import butter, sosfiltfilt
 
 from analyzer_core.global_analyzer import _band_envelope_rms, frame_minmax
@@ -129,31 +129,12 @@ def _render_waveform_segment(segment: np.ndarray, sample_rate: int, *, width: in
     env_frame_len = max(1, int(round(frame_ms * 1e-3 * float(sample_rate))))
     env_hop = env_frame_len
 
-    low_input = mono
-    if mono.size > 1:
-        fade_len = min(int(round(0.01 * sample_rate)), mono.size // 2)
-        fade = np.ones(mono.size, dtype=np.float32)
-        if fade_len > 0:
-            ramp = np.linspace(0.0, 1.0, fade_len, dtype=np.float32)
-            fade[:fade_len] = ramp
-            fade[-fade_len:] = ramp[::-1]
-        low_input = mono * fade
-
-    lo_env = _band_envelope_rms_safe(low_input, sample_rate, lo_low, lo_high, env_frame_len, env_hop, cfg.env_order)
+    lo_env = _band_envelope_rms_safe(mono, sample_rate, lo_low, lo_high, env_frame_len, env_hop, cfg.env_order)
     mid_env = _band_envelope_rms_safe(mono, sample_rate, mid_low, mid_high, env_frame_len, env_hop, cfg.env_order)
     hi_env = _band_envelope_rms_safe(mono, sample_rate, hi_low, hi_high, env_frame_len, env_hop, cfg.env_order)
     min_env, max_env = frame_minmax(mono, env_hop)
     min_env = np.nan_to_num(min_env, nan=0.0, posinf=0.0, neginf=0.0)
     max_env = np.nan_to_num(max_env, nan=0.0, posinf=0.0, neginf=0.0)
-
-    def _norm(x: np.ndarray) -> np.ndarray:
-        x = np.nan_to_num(x, nan=0.0, posinf=0.0, neginf=0.0)
-        m = float(np.max(x)) if x.size else 0.0
-        return (x / m) if m > 1e-12 else x
-
-    lo_env = _norm(lo_env)
-    mid_env = _norm(mid_env)
-    hi_env = _norm(hi_env)
 
     t_len = min(len(lo_env), len(mid_env), len(hi_env), len(min_env), len(max_env))
     if t_len <= 0:
@@ -366,6 +347,8 @@ class WaveformView(ViewPlugin):
         self._canvas_width = 0
         self._chunk_count = 0
         self._chunk_items: list[pg.ImageItem | None] = []
+        self._preview_item: pg.ImageItem | None = None
+        self._preview_source = None
         self._in_scene: set[int] = set()
         self._submitted_chunks: set[int] = set()
         self._scrubbing = False
@@ -392,12 +375,14 @@ class WaveformView(ViewPlugin):
 
     def attach(self, plot: pg.PlotItem):
         self.plot = plot
+        self._ensure_preview_item()
         scene = plot.scene()
         if scene:
             for view in scene.views():
                 view.setRenderHint(QtGui.QPainter.RenderHint.SmoothPixmapTransform, True)
 
     def detach(self):
+        self._clear_preview_item()
         self._remove_all_chunk_items()
         if self._worker_thread.isRunning():
             QtCore.QMetaObject.invokeMethod(
@@ -410,6 +395,7 @@ class WaveformView(ViewPlugin):
 
     def render_initial(self):
         self.duration = float(self.model.duration_sec or 0.0)
+        self._update_preview_image()
         self._allocate_canvas(force=True)
         self._evaluate_render_targets()
         self._set_rect(force=True)
@@ -431,6 +417,7 @@ class WaveformView(ViewPlugin):
             return
         self._last_pcm = new_pcm
         self.duration = new_duration
+        self._update_preview_image()
         self._allocate_canvas(force=True)
         self._evaluate_render_targets()
         self._set_rect(force=True)
@@ -449,6 +436,53 @@ class WaveformView(ViewPlugin):
         item.setOpts(interpolation="bilinear")
         item.setZValue(-1)
         return item
+
+    def _ensure_preview_item(self) -> None:
+        if self.plot is None or self._preview_item is not None:
+            return
+        item = pg.ImageItem()
+        if hasattr(item, "setAutoDownsample"):
+            item.setAutoDownsample(True)
+        if hasattr(item, "setCacheMode"):
+            item.setCacheMode(QtWidgets.QGraphicsItem.DeviceCoordinateCache)
+        item.setOpts(interpolation="bilinear")
+        item.setZValue(-2)
+        self.plot.addItem(item)
+        self._preview_item = item
+
+    def _clear_preview_item(self) -> None:
+        if self._preview_item is not None and self._preview_item.scene() is not None:
+            self._preview_item.scene().removeItem(self._preview_item)
+        self._preview_item = None
+        self._preview_source = None
+
+    def _update_preview_image(self) -> None:
+        if self.plot is None:
+            return
+        self._ensure_preview_item()
+        if self._preview_item is None:
+            return
+        wave_data = self.model.features.get("wave_img_np_preview") if isinstance(self.model.features, dict) else None
+        if wave_data is None:
+            self._preview_item.setVisible(False)
+            self._preview_source = None
+            return
+        wave_arr = wave_data if isinstance(wave_data, np.ndarray) else np.asarray(wave_data)
+        if wave_arr.ndim != 3 or wave_arr.size == 0:
+            self._preview_item.setVisible(False)
+            self._preview_source = None
+            return
+        if self._preview_source is not wave_data:
+            self._preview_item.setImage(
+                np.ascontiguousarray(wave_arr, dtype=np.uint8),
+                autoLevels=False,
+                levels=self._wave_levels,
+            )
+            self._preview_source = wave_data
+        self._preview_item.setVisible(True)
+        self._preview_item.setRect(
+            QtCore.QRectF(self._left_offset, 0.14, max(self.duration, 1e-3), 1.0 - 0.24)
+        )
 
     def _allocate_canvas(self, force: bool = False) -> int:
         duration = max(0.0, float(self.model.duration_sec or 0.0))
@@ -596,6 +630,10 @@ class WaveformView(ViewPlugin):
         if not force and abs(left - self._left_offset) < 1e-9:
             return
         self._left_offset = left
+        if self._preview_item is not None:
+            self._preview_item.setRect(
+                QtCore.QRectF(self._left_offset, 0.14, max(self.duration, 1e-3), 1.0 - 0.24)
+            )
         for i in self._in_scene:
             item = self._chunk_items[i]
             if item is not None:

@@ -460,12 +460,6 @@ class PlayerController(QtCore.QObject):
     # public API
     def set_source(self, path: str):
         self._path = path
-        if self._external_sync_enabled:
-            self.bus.sig_duration_changed.emit(0.0)
-            self.bus.sig_time_changed.emit(0.0)
-            self.bus.sig_transport_enabled.emit(False)
-            self.bus.sig_playback_status.emit(False)
-            return
         self._cmd_prepare_source.emit(path)
 
     def get_source(self) -> Optional[str]:
@@ -542,6 +536,9 @@ class PlayerController(QtCore.QObject):
         if self.model is None:
             return
         self.model.set_predecoded_audio(pcm, self.rate)
+        if self._external_sync_enabled:
+            self.bus.sig_transport_enabled.emit(False)
+            self.bus.sig_playback_status.emit(False)
 
     # artwork
     def getAlbumArt(self, path: Optional[str] = None) -> Optional[QtGui.QImage]:

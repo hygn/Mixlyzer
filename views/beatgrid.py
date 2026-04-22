@@ -1,4 +1,4 @@
-from PySide6 import QtCore
+from PySide6 import QtCore, QtGui, QtWidgets
 import pyqtgraph as pg
 import numpy as np
 from .base import ViewPlugin, register_view
@@ -12,10 +12,11 @@ class BeatgridView(ViewPlugin):
         self.beats_time = None   # np.ndarray of seconds [0..duration]
         self.downbeats_time = None
         self.duration = 0.0
-        self.pen = pg.mkPen((200, 200, 200), width=1)
-        self.downbeat_pen = pg.mkPen((255, 60, 60), width=2)
-        self._beat_lines_item = None
-        self._downbeat_lines_item = None
+        self.pen = pg.mkPen((200, 200, 200), width=1, cosmetic=True)
+        self.downbeat_pen = pg.mkPen((255, 60, 60), width=2, cosmetic=True)
+        self._beat_lines_item: QtWidgets.QGraphicsPathItem | None = None
+        self._downbeat_lines_item: QtWidgets.QGraphicsPathItem | None = None
+        self._cached_track_range = None
 
         self.bus.sig_time_changed.connect(self._on_time)
         self.bus.sig_window_changed.connect(self._on_window)
@@ -26,8 +27,10 @@ class BeatgridView(ViewPlugin):
     def attach(self, plot: pg.PlotItem):
         self.plot = plot
         plot.setYRange(0.0, 1.0, padding=0.02)
-        self._beat_lines_item = pg.PlotDataItem(pen=self.pen, connect="finite")
-        self._downbeat_lines_item = pg.PlotDataItem(pen=self.downbeat_pen, connect="finite")
+        self._beat_lines_item = QtWidgets.QGraphicsPathItem()
+        self._beat_lines_item.setPen(self.pen)
+        self._downbeat_lines_item = QtWidgets.QGraphicsPathItem()
+        self._downbeat_lines_item.setPen(self.downbeat_pen)
         plot.addItem(self._beat_lines_item)
         plot.addItem(self._downbeat_lines_item)
         self._beat_lines_item.setZValue(10)
@@ -56,28 +59,31 @@ class BeatgridView(ViewPlugin):
         self.beats_time = f.get("beats_time_sec")  # seconds from start
         self.downbeats_time = self._build_downbeats_from_segments(f.get("tempo_segments"))
         self.duration = float(self.model.duration_sec or 0.0)
-        self._refresh_lines()
+        self._refresh_lines(force=True)
 
     # bus callbacks
     def _on_time(self, _t: float):
-        self._refresh_lines()
+        self._update_item_offset()
+        self._refresh_lines_if_needed()
 
     def _on_window(self, _w: float):
-        self._refresh_lines()
+        self._refresh_lines(force=True)
 
     def _on_center(self, _c: float):
-        self._refresh_lines()
+        self._update_item_offset()
+        self._refresh_lines_if_needed()
 
     def _on_features_loaded(self):
         self.render_initial()
 
     # core
-    def _refresh_lines(self, *args):
+    def _refresh_lines(self, *args, force: bool = False):
         if self.plot is None or self._beat_lines_item is None or self._downbeat_lines_item is None:
             return
         if self.beats_time is None or len(self.beats_time) == 0:
-            self._beat_lines_item.setData([], [])
-            self._downbeat_lines_item.setData([], [])
+            self._beat_lines_item.setPath(QtGui.QPainterPath())
+            self._downbeat_lines_item.setPath(QtGui.QPainterPath())
+            self._cached_track_range = None
             return
 
         try:
@@ -86,17 +92,30 @@ class BeatgridView(ViewPlugin):
             return
 
         left = float(self.tl.center_t - self.tl.current_time)
-
-        t = self.beats_time
-        pos = left + t
-
         pad = max(0.0, (vxmax - vxmin) * 0.02)
-        mask = (pos >= (vxmin - pad)) & (pos <= (vxmax + pad))
-        visible_pos = pos[mask]
-        self._beat_lines_item.setData(*self._build_vertical_segments(visible_pos, y_min, y_max))
+        track_min = float(vxmin - left - pad)
+        track_max = float(vxmax - left + pad)
+        cached = self._cached_track_range
+        if (
+            not force
+            and cached is not None
+            and track_min >= cached[0]
+            and track_max <= cached[1]
+        ):
+            self._update_item_offset()
+            return
+
+        cache_pad = max(0.25, (track_max - track_min) * 0.5)
+        cache_min = track_min - cache_pad
+        cache_max = track_max + cache_pad
+
+        visible_beats = self._slice_visible_times(self.beats_time, cache_min, cache_max)
+        self._beat_lines_item.setPath(self._build_vertical_path(visible_beats, y_min, y_max))
 
         if self.downbeats_time is None or len(self.downbeats_time) == 0:
-            self._downbeat_lines_item.setData([], [])
+            self._downbeat_lines_item.setPath(QtGui.QPainterPath())
+            self._cached_track_range = (cache_min, cache_max)
+            self._update_item_offset()
             return
 
         span = max(1e-6, float(y_max - y_min))
@@ -104,41 +123,72 @@ class BeatgridView(ViewPlugin):
         top_seg = (y_max - cap, y_max)
         bottom_seg = (y_min, y_min + cap)
 
-        downbeat_pos = left + self.downbeats_time
-        downbeat_mask = (downbeat_pos >= (vxmin - pad)) & (downbeat_pos <= (vxmax + pad))
-        visible_downbeats = downbeat_pos[downbeat_mask]
-        self._downbeat_lines_item.setData(*self._build_downbeat_segments(visible_downbeats, top_seg, bottom_seg))
+        visible_downbeats = self._slice_visible_times(self.downbeats_time, cache_min, cache_max)
+        self._downbeat_lines_item.setPath(
+            self._build_downbeat_path(visible_downbeats, top_seg, bottom_seg)
+        )
+        self._cached_track_range = (cache_min, cache_max)
+        self._update_item_offset()
     
     def _on_beatgrid_updated(self, bg_seg=None):
         f = self.model.features or {}
         self.beats_time = f.get("beats_time_sec")
         self.downbeats_time = self._build_downbeats_from_segments(f.get("tempo_segments"))
         self.duration = float(self.model.duration_sec or 0.0)
-        self._refresh_lines()
+        self._cached_track_range = None
+        self._refresh_lines(force=True)
+
+    def _refresh_lines_if_needed(self) -> None:
+        if self.plot is None:
+            return
+        try:
+            (vxmin, vxmax), _ = self.plot.viewRange()
+        except Exception:
+            return
+        left = float(self.tl.center_t - self.tl.current_time)
+        pad = max(0.0, (vxmax - vxmin) * 0.02)
+        track_min = float(vxmin - left - pad)
+        track_max = float(vxmax - left + pad)
+        cached = self._cached_track_range
+        if cached is None or track_min < cached[0] or track_max > cached[1]:
+            self._refresh_lines(force=True)
+
+    def _update_item_offset(self) -> None:
+        left = float(self.tl.center_t - self.tl.current_time)
+        for item in (self._beat_lines_item, self._downbeat_lines_item):
+            if item is not None:
+                item.setPos(left, 0.0)
 
     @staticmethod
-    def _build_vertical_segments(xs, y0: float, y1: float):
+    def _slice_visible_times(times, t_min: float, t_max: float):
+        arr = np.asarray(times, dtype=float)
+        if arr.size == 0:
+            return arr
+        lo = int(np.searchsorted(arr, t_min, side="left"))
+        hi = int(np.searchsorted(arr, t_max, side="right"))
+        return arr[lo:hi]
+
+    @staticmethod
+    def _build_vertical_path(xs, y0: float, y1: float):
         xs = np.asarray(xs, dtype=float)
         if xs.size == 0:
-            return ([], [])
+            return QtGui.QPainterPath()
         x = np.repeat(xs, 3)
         y = np.empty(xs.size * 3, dtype=float)
         y[0::3] = y0
         y[1::3] = y1
         y[2::3] = np.nan
         x[2::3] = np.nan
-        return x, y
+        return pg.arrayToQPath(x, y, connect="finite")
 
     @classmethod
-    def _build_downbeat_segments(cls, xs, top_seg, bottom_seg):
+    def _build_downbeat_path(cls, xs, top_seg, bottom_seg):
         xs = np.asarray(xs, dtype=float)
         if xs.size == 0:
-            return ([], [])
-        top_x, top_y = cls._build_vertical_segments(xs, float(top_seg[0]), float(top_seg[1]))
-        bot_x, bot_y = cls._build_vertical_segments(xs, float(bottom_seg[0]), float(bottom_seg[1]))
-        x = np.concatenate([top_x, bot_x])
-        y = np.concatenate([top_y, bot_y])
-        return x, y
+            return QtGui.QPainterPath()
+        top_path = cls._build_vertical_path(xs, float(top_seg[0]), float(top_seg[1]))
+        bot_path = cls._build_vertical_path(xs, float(bottom_seg[0]), float(bottom_seg[1]))
+        return top_path.united(bot_path)
 
     @staticmethod
     def _build_downbeats_from_segments(tempo_segments):

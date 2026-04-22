@@ -13,12 +13,6 @@ def downsample_blur_stride(img: np.ndarray, factor: int, sigma: float = 0.8):
     blurred = gaussian_filter1d(img.astype(float), sigma=sigma*factor, axis=1)
     return blurred[:, ::factor, :].astype(np.uint8)
 
-def apply_contrast_stretch(img, low_p=10, high_p=98):
-    imgf = img.astype(np.float32) / 255.0
-    lo, hi = np.percentile(imgf, [low_p, high_p])
-    imgf = np.clip((imgf - lo) / (hi - lo + 1e-8), 0.0, 1.0)
-    return (imgf * 255.0 + 0.5).astype(np.uint8)
-
 
 def _render_wave_columns_py(y_top, y_bot, rgb8, height_px: int):
     t_len = int(rgb8.shape[0])
@@ -85,17 +79,24 @@ def build_wave_image(lo, mid, hi, min_env, max_env, height_px=110, downsample=2,
 
     rgb = np.stack([lo, mid, hi], axis=1)
     magnitudes = np.linalg.norm(rgb, axis=1)
-    max_mag = float(magnitudes.max()) if magnitudes.size else 1.0
-    scale = np.clip(magnitudes, 1e-8, None)
-    rgb_norm = rgb / scale[:, None]
-    threshold = white_threshold * max_mag
+    threshold = max(0.0, float(white_threshold))
     low_mask = magnitudes < threshold
-    rgb_norm[low_mask] = [1.0, 1.0, 1.0]
+    scale = np.clip(np.max(rgb, axis=1), 1e-8, None)
+    rgb_norm = np.ones_like(rgb)
     active_mask = ~low_mask
+    rgb_norm[active_mask] = rgb[active_mask] / scale[active_mask, None]
+    rgb_norm[low_mask] = [1.0, 1.0, 1.0]
     if np.any(active_mask):
         active_rgb = rgb_norm[active_mask]
-        min_idx = np.argmin(active_rgb, axis=1)
-        active_rgb[np.arange(active_rgb.shape[0]), min_idx] = 0.0
+        sat = 1.0 - np.min(active_rgb, axis=1)
+        sat_floor = 0.7
+        boost_mask = sat < sat_floor
+        if np.any(boost_mask):
+            boost_idx = np.where(boost_mask)[0]
+            sat_safe = np.clip(sat[boost_idx], 1e-8, None)
+            boost = sat_floor / sat_safe
+            boosted = 1.0 - (1.0 - active_rgb[boost_idx]) * boost[:, None]
+            active_rgb[boost_idx] = np.clip(boosted, 0.0, 1.0)
         rgb_norm[active_mask] = active_rgb
     rgb8 = (np.clip(rgb_norm, 0.0, 1.0) * 255.0 + 0.5).astype(np.uint8)
 
@@ -108,7 +109,6 @@ def build_wave_image(lo, mid, hi, min_env, max_env, height_px=110, downsample=2,
     img = render_fn(y_top.astype(np.int32, copy=False), y_bot.astype(np.int32, copy=False), rgb8, H)
     if downsample > 1:
         img = downsample_blur_stride(img, downsample)
-    img = apply_contrast_stretch(img)
 
     return img
 
