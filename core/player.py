@@ -272,16 +272,22 @@ class _AudioWorker(QtCore.QObject):
     def arm_jump(self, payload: object) -> None:
         if self._feeder is None or not isinstance(payload, dict):
             return
-        label = payload["label"]
-        cue = payload["cue"]
         jump_start = None
         jump_dest = None
-        if cue["forward"]["label"] == label:
-            jump_start = cue["forward"]["point"]
-            jump_dest = cue["backward"]["point"]
-        elif cue["backward"]["label"] == label:
-            jump_start = cue["backward"]["point"]
-            jump_dest = cue["forward"]["point"]
+        source = payload.get("source")
+        target = payload.get("target")
+        if isinstance(source, dict) and isinstance(target, dict):
+            jump_start = source.get("point", source.get("start"))
+            jump_dest = target.get("point", target.get("start"))
+        else:
+            label = payload["label"]
+            cue = payload["cue"]
+            if cue["forward"]["label"] == label:
+                jump_start = cue["forward"]["point"]
+                jump_dest = cue["backward"]["point"]
+            elif cue["backward"]["label"] == label:
+                jump_start = cue["backward"]["point"]
+                jump_dest = cue["forward"]["point"]
         self._feeder.arm_jump(jump_start, jump_dest)
 
     @QtCore.Slot()

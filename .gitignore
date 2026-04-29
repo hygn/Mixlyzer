@@ -35,3 +35,4 @@ library/
 debug/
 ffmpeg.exe
 config.json
+*.xml

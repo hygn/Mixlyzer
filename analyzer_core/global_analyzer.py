@@ -11,6 +11,7 @@ from PySide6 import QtGui
 from typing import Optional
 from analyzer_core.key.key import *
 from analyzer_core.beat.beat import *
+from analyzer_core.beat.beat import _compute_odf
 from analyzer_core.self_correlation.JumpCUE import JumpCueEngine
 from utils.jump_cues import build_jump_cues_np
 from core.audio.decoder import decode_to_memmap, get_total_samples
@@ -357,24 +358,59 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
     taskmgr.updatetask(taskid, "Tempo Analyzing", 0.30)
     b, a = _butter_bandpass(20, 200, global_sr, order=4)
     lp_y = filtfilt(b, a, y_perc).astype(np.float32)
+    odf_cached, hop_t_cached = _compute_odf(y_perc, global_sr, gcf.bpm_hop_length)
+    odf_lp_cached, _ = _compute_odf(lp_y, global_sr, gcf.bpm_hop_length)
     if gcf.bpm_dynamic:
         cur_score = 0
         synced_bpm_best = {}
         w_mpls = [1, 2, 4, None] if gcf.bpm_adaptive_window else [1]
         for win_multiplier in w_mpls:
             if win_multiplier != None:
-                synced_bpm = bpm_dynamic_phase_sync(global_sr, gcf.bpm_hop_length, gcf.bpm_hop_length, audio=y_perc, audio_lp=lp_y, win_s=gcf.bpm_win_length*win_multiplier/1000, step_s=0.25,
-                                                    bpm_bounds=(gcf.bpm_min,gcf.bpm_max))
+                synced_bpm = bpm_dynamic_phase_sync(
+                    global_sr,
+                    gcf.bpm_hop_length,
+                    gcf.bpm_hop_length,
+                    audio=y_perc,
+                    audio_lp=lp_y,
+                    win_s=gcf.bpm_win_length*win_multiplier/1000,
+                    step_s=0.25,
+                    bpm_bounds=(gcf.bpm_min,gcf.bpm_max),
+                    odf_precomputed=odf_cached,
+                    odf_lp_precomputed=odf_lp_cached,
+                    hop_t_precomputed=hop_t_cached,
+                )
             else:
-                synced_bpm = bpm_phase_sync(global_sr, gcf.bpm_hop_length, gcf.bpm_hop_length, audio=y_perc, audio_lp=lp_y, win_s=gcf.bpm_win_length/1000, step_s=0.1,
-                                            bpm_bounds=(gcf.bpm_min,gcf.bpm_max))
+                synced_bpm = bpm_phase_sync(
+                    global_sr,
+                    gcf.bpm_hop_length,
+                    gcf.bpm_hop_length,
+                    audio=y_perc,
+                    audio_lp=lp_y,
+                    win_s=gcf.bpm_win_length/1000,
+                    step_s=0.1,
+                    bpm_bounds=(gcf.bpm_min,gcf.bpm_max),
+                    odf_precomputed=odf_cached,
+                    odf_lp_precomputed=odf_lp_cached,
+                    hop_t_precomputed=hop_t_cached,
+                )
             if cur_score <= synced_bpm["score"]:
                 synced_bpm_best = synced_bpm
                 cur_score = synced_bpm["score"]
         synced_bpm = synced_bpm_best
     else:
-        synced_bpm = bpm_phase_sync(global_sr, gcf.bpm_hop_length, gcf.bpm_hop_length, audio=y_perc, audio_lp=lp_y, win_s=gcf.bpm_win_length/1000, step_s=0.1,
-                                            bpm_bounds=(gcf.bpm_min,gcf.bpm_max))
+        synced_bpm = bpm_phase_sync(
+            global_sr,
+            gcf.bpm_hop_length,
+            gcf.bpm_hop_length,
+            audio=y_perc,
+            audio_lp=lp_y,
+            win_s=gcf.bpm_win_length/1000,
+            step_s=0.1,
+            bpm_bounds=(gcf.bpm_min,gcf.bpm_max),
+            odf_precomputed=odf_cached,
+            odf_lp_precomputed=odf_lp_cached,
+            hop_t_precomputed=hop_t_cached,
+        )
     synced_bpm = _apply_beatgrid_offset(
         synced_bpm,
         float(gcf.beatgrid_offset_msec) / 1000.0,
@@ -424,9 +460,17 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
             print("[JumpCUE] pairs", jump_pairs)
         else:
             print("[JumpCUE] no jump-compatible pairs detected")
-        features["jump_cues_np"] = build_jump_cues_np(jump_pairs, canonicalize_labels=True)
+        features["jump_cues_np"] = build_jump_cues_np(
+            jump_pairs,
+            canonicalize_labels=True,
+            merge_coincident=True,
+        )
     else:
-        features["jump_cues_np"] = build_jump_cues_np([], canonicalize_labels=True)
+        features["jump_cues_np"] = build_jump_cues_np(
+            [],
+            canonicalize_labels=True,
+            merge_coincident=True,
+        )
 
     #best, scores= timesig_exp(jump_result.report.beat_ssm.peak_indices)
     features["timesignature"] = 4

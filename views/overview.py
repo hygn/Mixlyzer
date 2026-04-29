@@ -2,7 +2,8 @@ from PySide6 import QtCore, QtWidgets, QtGui
 import numpy as np
 import pyqtgraph as pg
 from core.event_bus import EventBus
-from utils.jump_cues import extract_jump_cue_pairs
+from utils.jumpcue_colors import get_jumpcue_pair_color
+from utils.jump_cues import extract_jump_cue_pairs, extract_jump_cue_graph
 
 
 class SeekOnlyViewBox(pg.ViewBox):
@@ -90,14 +91,6 @@ class OverviewWidget(QtWidgets.QWidget):
             (138, 43, 226, 40),
         ]
         self.jump_items: list[tuple[pg.BarGraphItem, pg.ScatterPlotItem, pg.TextItem]] = []
-        self.jump_colors = [
-            (34, 139, 34),
-            (0, 153, 204),
-            (220, 120, 20),
-            (148, 0, 211),
-            (210, 105, 30),
-            (0, 128, 128),
-        ]
         self.img_key  = pg.ImageItem(); self.p.addItem(self.img_key)
         if hasattr(self.img_key, "setAutoDownsample"):
             self.img_key.setAutoDownsample(True)
@@ -129,6 +122,8 @@ class OverviewWidget(QtWidgets.QWidget):
         self._jump_arrow_head: pg.ArrowItem | None = None
         self._armed_jump: tuple[float, float] | None = None
         self._jump_pairs: list[dict] = []
+        self._jump_cues: list[dict] = []
+        self._jump_links: list[dict] = []
 
         self.bus.sig_time_changed.connect(self._on_time)
         self.bus.sig_duration_changed.connect(self._on_duration)
@@ -183,7 +178,8 @@ class OverviewWidget(QtWidgets.QWidget):
             self.img_key.setRect(QtCore.QRectF(0.0, 0.0, self.duration, self.KEY_H))
         jump_pairs = extract_jump_cue_pairs(features)
         self._jump_pairs = jump_pairs
-        self._render_jump_cues(self._jump_pairs)
+        self._jump_cues, self._jump_links = extract_jump_cue_graph(features)
+        self._render_jump_cues(self._jump_cues)
         self._tempo_segments = features.get("tempo_segments")
         self._render_segments(self._tempo_segments)
         self._apply_selection_graphics()
@@ -196,7 +192,8 @@ class OverviewWidget(QtWidgets.QWidget):
         if extracted is None and jc_block is not None:
             extracted = extract_jump_cue_pairs({"jump_cues_np": jc_block})
         self._jump_pairs = extracted or []
-        self._render_jump_cues(self._jump_pairs)
+        self._jump_cues, self._jump_links = extract_jump_cue_graph(feats)
+        self._render_jump_cues(self._jump_cues)
 
     def update_key_image(self, key_img) -> None:
         if key_img is None:
@@ -232,14 +229,9 @@ class OverviewWidget(QtWidgets.QWidget):
     def _resolve_jump_points(self, payload) -> tuple[float | None, float | None]:
         if not isinstance(payload, dict):
             return (None, None)
-        cue = payload.get("cue")
-        label = str(payload.get("label", "")).strip()
-        if not cue and label:
-            for pair in self._jump_pairs:
-                if (pair.get("forward", {}).get("label") == label) or (pair.get("backward", {}).get("label") == label):
-                    cue = pair
-                    break
-        if not cue:
+        source = payload.get("source")
+        target = payload.get("target")
+        if not isinstance(source, dict) or not isinstance(target, dict):
             return (None, None)
 
         def _pick_point(block):
@@ -251,18 +243,8 @@ class OverviewWidget(QtWidgets.QWidget):
             except Exception:
                 return None
 
-        forward = cue.get("forward") or {}
-        backward = cue.get("backward") or {}
-        start = dest = None
-        if forward.get("label") == label:
-            start = _pick_point(forward)
-            dest = _pick_point(backward)
-        elif backward.get("label") == label:
-            start = _pick_point(backward)
-            dest = _pick_point(forward)
-        else:
-            start = _pick_point(forward)
-            dest = _pick_point(backward)
+        start = _pick_point(source)
+        dest = _pick_point(target)
 
         if start is None or dest is None:
             return (None, None)
@@ -345,22 +327,23 @@ class OverviewWidget(QtWidgets.QWidget):
         except Exception:
             view_min, view_max = -float("inf"), float("inf")
 
-        data: list[tuple[float, float, tuple[int, int, int], str]] = []
-        for idx, pair in enumerate(cues):
-            color = self.jump_colors[idx % len(self.jump_colors)]
-            for role in ("forward", "backward"):
-                point = pair.get(role) or {}
-                label = str(point.get("label", "")).strip()
-                if not label:
-                    continue
-                start = float(point.get("start", 0.0))
-                end = float(point.get("end", start))
-                j_pnt = float(point.get("point", start))
-                if end <= start:
-                    end = start + max(0.01, self.duration * 0.002)
-                if end < view_min - 0.1 or start > view_max + 0.1:
-                    continue
-                data.append((start, end, j_pnt, color, label))
+        data: list[tuple[float, float, float, tuple[int, int, int], str]] = []
+        for cue in cues:
+            label = str(cue.get("label", "")).strip()
+            if not label:
+                continue
+            color = cue.get("color")
+            if not isinstance(color, tuple) or len(color) != 3:
+                color_idx = int(cue.get("color_index", cue.get("component_index", 0)) or 0)
+                color = get_jumpcue_pair_color(color_idx)
+            start = float(cue.get("start", 0.0))
+            end = float(cue.get("end", start))
+            j_pnt = float(cue.get("point", start))
+            if end <= start:
+                end = start + max(0.01, self.duration * 0.002)
+            if end < view_min - 0.1 or start > view_max + 0.1:
+                continue
+            data.append((start, end, j_pnt, color, label))
 
         if not data:
             for bar, marker, text in self.jump_items:

@@ -58,12 +58,25 @@ class SettingsDialog(QDialog):
         self.ed_libpath = QLineEdit()
         self.cb_write_log = QCheckBox("Write log to file")
         self.ed_logpath = QLineEdit()
+        self.cb_rekordbox_sync = QCheckBox("Sync with Rekordbox XML")
+        self.ed_rekordbox_xml_path = QLineEdit()
+        self.btn_rekordbox_sync_now = QPushButton("Sync Now")
         self.lbl_log_note = QLabel("Logging settings apply on next app launch.")
+        self.lbl_rekordbox_note = QLabel(
+            "When enabled, library updates incrementally sync a full Rekordbox XML file. "
+            "Use Sync Now to rebuild the whole XML explicitly."
+        )
         self.lbl_log_note.setWordWrap(True)
+        self.lbl_rekordbox_note.setWordWrap(True)
         f.addRow("Library Path", self.ed_libpath)
         f.addRow(self.cb_write_log)
         f.addRow("Log Path", self.ed_logpath)
+        f.addRow(self.cb_rekordbox_sync)
+        f.addRow("Rekordbox XML Path", self.ed_rekordbox_xml_path)
+        f.addRow(self.btn_rekordbox_sync_now)
+        f.addRow(self.lbl_rekordbox_note)
         f.addRow(self.lbl_log_note)
+        self.btn_rekordbox_sync_now.clicked.connect(self._sync_rekordbox_now)
         self.tabs.addTab(self.tab_lib, "Library")
 
     def _make_tab_view(self):
@@ -270,6 +283,8 @@ class SettingsDialog(QDialog):
         self.ed_libpath.setText(cfg.libconfig.libpath)
         self.cb_write_log.setChecked(bool(cfg.libconfig.write_log))
         self.ed_logpath.setText(cfg.libconfig.logpath)
+        self.cb_rekordbox_sync.setChecked(bool(cfg.libconfig.rekordbox_sync_enabled))
+        self.ed_rekordbox_xml_path.setText(cfg.libconfig.rekordbox_xml_path)
 
         # view
         v = cfg.viewconfig
@@ -465,6 +480,8 @@ class SettingsDialog(QDialog):
                 libpath=self.ed_libpath.text().strip(),
                 write_log=bool(self.cb_write_log.isChecked()),
                 logpath=self.ed_logpath.text().strip(),
+                rekordbox_sync_enabled=bool(self.cb_rekordbox_sync.isChecked()),
+                rekordbox_xml_path=self.ed_rekordbox_xml_path.text().strip(),
             ),
             viewconfig=viewconfig(
                 display_waveform=bool(self.cb_waveform.isChecked()),
@@ -516,6 +533,13 @@ class SettingsDialog(QDialog):
             avg_ms = sum(self._refresh_samples) / len(self._refresh_samples)
             fps = 1000.0 / avg_ms if avg_ms > 0 else 0.0
             self.lbl_fps.setText(f"{avg_ms:.1f} ms ({fps:.1f} FPS)")
+
+    def _sync_rekordbox_now(self) -> None:
+        if self._bus is None:
+            return
+        cfg = self.get_config()
+        self.saveJsonRequested.emit(cfg)
+        self._bus.sig_rekordbox_sync_requested.emit(True)
 
     def _sync_external_sync_mode_ui(self):
         is_time_sync = self.cmb_external_sync_mode.currentIndex() == 0

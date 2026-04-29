@@ -204,7 +204,6 @@ def reanalyze_segment_from_file(
         hop,
         bpm_lo=bpm_lo,
         bpm_hi=bpm_hi,
-        phase_bins=128,
         prev_bpm=prev,
         use_only_prev_bpm=use_only_prev_bpm if prev is not None else False,
     )

@@ -454,11 +454,16 @@ class LibraryWidget(QtWidgets.QWidget):
             if rec:
                 uids.append(rec.uid)
         l.delete_paths(paths)
+        lib_full = l.list_all()
         l.close()
         n = FeatureNPZStore(base_dir=self.cfg.libconfig.libpath, compressed=True)
         for uid in uids:
             n.delete(uid)
-        self.reload_from_db()
+        self.bus.sig_lib_updated.emit(lib_full)
+        for uid in uids:
+            track_uid = str(uid or "").strip()
+            if track_uid:
+                self.bus.sig_rekordbox_sync_track_requested.emit(track_uid)
 
     # CSV
     def _on_export_csv(self):

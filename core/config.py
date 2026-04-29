@@ -9,6 +9,8 @@ class libconfig:
     libpath: str
     write_log: bool
     logpath: str
+    rekordbox_sync_enabled: bool
+    rekordbox_xml_path: str
 
 
 @dataclass
@@ -167,7 +169,13 @@ def _default_memory_value(
 
 
 def default_cfg():
-    lcfg = libconfig(libpath="library", logpath="mixlyzer.log", write_log=False)
+    lcfg = libconfig(
+        libpath="library",
+        logpath="mixlyzer.log",
+        write_log=False,
+        rekordbox_sync_enabled=False,
+        rekordbox_xml_path="",
+    )
     acfg = analysisconfig(
         analysis_samp_rate=22050,
         chroma_method="cens",

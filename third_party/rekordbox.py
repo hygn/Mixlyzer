@@ -1,21 +1,21 @@
 from __future__ import annotations
 
-import hashlib
 import re
 from datetime import datetime
 from pathlib import Path
 import math
 from typing import Callable, Optional
 from urllib.parse import quote
+from uuid import UUID
 from xml.dom import minidom
 from xml.etree import ElementTree as ET
 
 import numpy as np
 
 from core.library_handler import TrackRow
+from utils.jumpcue_colors import get_jumpcue_pair_color
 from utils.labels import idx_to_labels
-from utils.jump_cues import extract_jump_cue_pairs
-from utils.jump_cues import extract_jump_cue_pairs
+from utils.jump_cues import extract_jump_cue_graph
 
 ResolvePath = Callable[[str | None], Optional[Path]]
 
@@ -117,29 +117,6 @@ def build_rekordbox_xml(
             Battito=str(int(tempo.get("battito", 1))),
         )
 
-    position_marks = _extract_jump_marks(features)
-    jump_letters = "ABCDEFGH"
-    for idx, mark in enumerate(sorted(position_marks, key=lambda m: m["start"])):
-        color = mark.get("color", (40, 226, 20))
-        slot = mark.get("slot")
-        if isinstance(slot, (int, np.integer)) and 0 <= slot < len(jump_letters):
-            num_value = int(slot)
-            label = mark["name"] or f"Jump {jump_letters[num_value]}"
-        else:
-            num_value = idx % len(jump_letters)
-            label = mark["name"] or f"Jump {jump_letters[num_value]}"
-        ET.SubElement(
-            track_elem,
-            "POSITION_MARK",
-            Name=label,
-            Type="0",
-            Start=f"{mark['start']:.3f}",
-            Num=str(num_value),
-            Red=str(color[0]),
-            Green=str(color[1]),
-            Blue=str(color[2]),
-        )
-
     jump_letters = "ABCDEFGH"
     for idx, mark in enumerate(sorted(position_marks, key=lambda m: m["start"])):
         color = mark.get("color", (40, 226, 20))
@@ -197,91 +174,34 @@ def _extract_tempo_segments(features: dict[str, np.ndarray]) -> np.ndarray:
 
 
 def _extract_jump_marks(features: dict[str, np.ndarray]) -> list[dict[str, object]]:
-    """Extract jump cue marks using the normalized jump_cues_np format."""
+    """Extract graph-wise jump cue marks using the normalized jump_cues_np format."""
 
-    pairs = extract_jump_cue_pairs(features)
-    if not pairs:
+    cues, _links = extract_jump_cue_graph(features)
+    if not cues:
         return []
 
     marks: list[dict[str, object]] = []
-    forward_idx = 0
-    backward_idx = 0
-
-    def _append_mark(segment: dict, color: tuple[int, int, int], role: str) -> None:
-        nonlocal forward_idx, backward_idx
-        label = str(segment.get("label", "")).strip()
-        point = segment.get("point")
+    for cue in cues:
+        label = str(cue.get("label", "")).strip()
+        point = cue.get("point")
         if point is None:
-            return
+            continue
         point_val = float(point)
         if not np.isfinite(point_val):
-            return
+            continue
+        color = cue.get("color")
+        if not isinstance(color, tuple) or len(color) != 3:
+            color_index = int(cue.get("color_index", cue.get("component_index", 0)) or 0)
+            color = get_jumpcue_pair_color(color_index)
         slot = _slot_index(label)
-        if role == "forward":
-            forward_idx += 1
-            ordinal = forward_idx
-        else:
-            backward_idx += 1
-            ordinal = backward_idx
-        if not label:
-            if role == "forward":
-                label_to_use = f"Jump F{ordinal}"
-            else:
-                label_to_use = f"Jump B{ordinal}"
-        else:
-            label_to_use = label
-        marks.append({"name": label_to_use, "start": point_val, "color": color, "slot": slot})
-
-    for pair in pairs:
-        forward = pair.get("forward") or {}
-        backward = pair.get("backward") or {}
-        _append_mark(forward, (40, 226, 20), "forward")
-        _append_mark(backward, (226, 126, 40), "backward")
-
-    return marks
-
-
-def _extract_jump_marks(features: dict[str, np.ndarray]) -> list[dict[str, object]]:
-    """Extract jump cue marks using the normalized jump_cues_np format."""
-
-    pairs = extract_jump_cue_pairs(features)
-    if not pairs:
-        return []
-
-    marks: list[dict[str, object]] = []
-    forward_idx = 0
-    backward_idx = 0
-
-    def _append_mark(segment: dict, color: tuple[int, int, int], role: str) -> None:
-        nonlocal forward_idx, backward_idx
-        label = str(segment.get("label", "")).strip()
-        point = segment.get("point")
-        if point is None:
-            return
-        point_val = float(point)
-        if not np.isfinite(point_val):
-            return
-        slot = _slot_index(label)
-        if role == "forward":
-            forward_idx += 1
-            ordinal = forward_idx
-        else:
-            backward_idx += 1
-            ordinal = backward_idx
-        if not label:
-            if role == "forward":
-                label_to_use = f"Jump F{ordinal}"
-            else:
-                label_to_use = f"Jump B{ordinal}"
-        else:
-            label_to_use = label
-        marks.append({"name": label_to_use, "start": point_val, "color": color, "slot": slot})
-
-    for pair in pairs:
-        forward = pair.get("forward") or {}
-        backward = pair.get("backward") or {}
-        _append_mark(forward, (40, 226, 20), "forward")
-        _append_mark(backward, (226, 126, 40), "backward")
+        marks.append(
+            {
+                "name": label or "",
+                "start": point_val,
+                "color": color,
+                "slot": slot,
+            }
+        )
 
     return marks
 
@@ -379,15 +299,10 @@ def _safe_scalar(value: Optional[np.ndarray]) -> float:
 def _generate_track_id(track: Optional[TrackRow]) -> str:
     if track is None:
         return "0"
-    source = (track.uid or track.path or "")[:64]
-    source = source or "0"
-    if source.isdigit():
-        return source
-    try:
-        digest = hashlib.md5(source.encode("utf-8"), usedforsecurity=False).hexdigest()
-    except TypeError:
-        digest = hashlib.md5(source.encode("utf-8")).hexdigest()
-    return str(int(digest[:8], 16))
+    uid = str(track.uid or "").strip()
+    if not uid:
+        raise ValueError("Track uid is required to generate Rekordbox TrackID.")
+    return str(UUID(uid).int)
 
 
 def _kind_from_path(path: Optional[Path]) -> str:

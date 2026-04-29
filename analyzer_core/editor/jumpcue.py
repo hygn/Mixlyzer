@@ -37,9 +37,17 @@ def reanalyze_jumpCUE(path:str, cfg:config, beats_time_arr:np.ndarray, *,
             print("[JumpCUE] pairs", jump_pairs)
         else:
             print("[JumpCUE] no jump-compatible pairs detected")
-        jump_cues_np = build_jump_cues_np(jump_pairs, canonicalize_labels=True)
+        jump_cues_np = build_jump_cues_np(
+            jump_pairs,
+            canonicalize_labels=True,
+            merge_coincident=True,
+        )
     else:
-        jump_cues_np = build_jump_cues_np([], canonicalize_labels=True)
+        jump_cues_np = build_jump_cues_np(
+            [],
+            canonicalize_labels=True,
+            merge_coincident=True,
+        )
     
     jump_cues_extracted = extract_jump_cue_pairs({"jump_cues_np":jump_cues_np})
     if progress_cb:

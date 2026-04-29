@@ -60,7 +60,6 @@ def build_grid_from_period_phase(total_len_frames: int,
 
 def estimate_bpm_and_grid(odf: np.ndarray, odf_lp: np.ndarray, sr: int, hop: int,
                           bpm_lo: float, bpm_hi: float,
-                          phase_bins: int = 128,
                           gamma_peak: float = 1.5,
                           prev_bpm: float = None,
                           use_only_prev_bpm:bool = False) -> tuple[float, np.ndarray, np.ndarray, np.ndarray]:
@@ -127,37 +126,57 @@ def estimate_bpm_and_grid(odf: np.ndarray, odf_lp: np.ndarray, sr: int, hop: int
     
     print(f"[sweep] bpm cands = {bpm_cands}")
 
-    T_pad = int(2 ** np.ceil(np.log2(T)))
-    _X_fft = np.fft.rfft(xw, n=T_pad)
-    _freqs = np.fft.rfftfreq(T_pad, d=1.0)
+    frame_idx = np.arange(T, dtype=float)
 
-    def best_phase_for_bpm(bpm: float, base_bins: int = None, sigma_frac: float = 0.05) -> tuple[float, float]:
-        """Get best phase and score for specific BPM using FFT (Gaussian pulse train)"""
+    def best_phase_for_bpm(bpm: float, sigma_frac: float = 0.05) -> tuple[float, float]:
+        """Get best phase and score for specific BPM by direct circular fold."""
         period = float(60.0 / bpm / hop_t)  # in frames(samples)
         if not np.isfinite(period) or period < 3.0:
             return 0.0, -1e18
-        bins = max(128, phase_bins if base_bins is None else base_bins)
-        X = _X_fft
-        freqs = _freqs
-        Np = int(T / period)
-        # finite comb
-        denom = 1.0 - np.exp(-2j * np.pi * freqs * period)
-        comb = (1.0 - np.exp(-2j * np.pi * freqs * Np * period)) / (denom + 1e-12)
-        sigma = float(sigma_frac * period)  # sigma in samples
-        G = np.exp(-0.5 * (2.0 * np.pi * freqs * sigma) ** 2) # Gaussian pulse shape in frequency
-        geom = comb * G  # Gaussian pulse train spectrum
-        corr = np.fft.irfft(X * np.conj(geom), n=T_pad)
-        corr = corr[: int(np.floor(period))]
-        step = len(corr) / bins
-        vals = np.array([corr[int(i * step)] for i in range(bins)], dtype=float)
-        k = int(np.argmax(vals))
-        phi_best = float(k * (period / bins))
-        val_best = float(vals[k])
+
+        phase_bins = max(3, int(np.ceil(period)))
+        phase_pos = np.mod(frame_idx, period)
+        base = np.floor(phase_pos).astype(np.int32)
+        frac = phase_pos - base
+        nxt = (base + 1) % phase_bins
+
+        folded = np.bincount(base, weights=xw * (1.0 - frac), minlength=phase_bins)
+        folded += np.bincount(nxt, weights=xw * frac, minlength=phase_bins)
+        corr = np.asarray(folded, dtype=float)
+
+        sigma = float(sigma_frac * period)
+        if sigma > 1e-6:
+            corr = gaussian_filter1d(corr, sigma=sigma, mode="wrap")
+        if corr.size == 0 or not np.any(np.isfinite(corr)):
+            return 0.0, -1e18
+        k = int(np.argmax(corr))
+        phi_best = float(k)
+        val_best = float(corr[k])
+
+        # Quadratic peak interpolation for sub-frame phase on the circular score.
+        if 0 < k < (corr.size - 1):
+            y0 = float(corr[k - 1])
+            y1 = float(corr[k])
+            y2 = float(corr[k + 1])
+            denom_q = y0 - (2.0 * y1) + y2
+            if abs(denom_q) > 1e-12:
+                delta = 0.5 * (y0 - y2) / denom_q
+                delta = float(np.clip(delta, -1.0, 1.0))
+                phi_best = float(k + delta)
+        elif corr.size >= 3 and k in (0, corr.size - 1):
+            left = float(corr[(k - 1) % corr.size])
+            mid = float(corr[k])
+            right = float(corr[(k + 1) % corr.size])
+            denom_q = left - (2.0 * mid) + right
+            if abs(denom_q) > 1e-12:
+                delta = 0.5 * (left - right) / denom_q
+                delta = float(np.clip(delta, -1.0, 1.0))
+                phi_best = float((k + delta) % corr.size)
         return phi_best, val_best
 
-    def score_from_bestphase(bpm: float, base_bins=None) -> tuple[float, float]:
+    def score_from_bestphase(bpm: float) -> tuple[float, float]:
         # Wrapper for best_phase_for_bpm and apply some scoring rule
-        phi_b, val_b = best_phase_for_bpm(bpm, base_bins=base_bins if base_bins else max(phase_bins, 128))
+        phi_b, val_b = best_phase_for_bpm(bpm)
         if not np.isfinite(val_b):
             return phi_b, -1e18
         if abs(bpm - int(bpm)) > 0.1:
@@ -668,7 +687,6 @@ def _estimate_tempo_segments(
     sr: int,
     hop_for_odf: int,
     bpm_bounds: tuple[float, float],
-    fine_phase_bins: int,
     hop_t: float,
 ) -> tuple[list[TempoSegment], list[float], list[tuple[float, float, float]], float]:
     beats_all: list[float] = []
@@ -695,7 +713,6 @@ def _estimate_tempo_segments(
             hop_for_odf,
             bpm_lo=bpm_bounds[0],
             bpm_hi=bpm_bounds[1],
-            phase_bins=fine_phase_bins,
             prev_bpm=None,
         )
         seg_meta.append((start_sec, end_sec, float(bpm_est) if np.isfinite(bpm_est) else np.nan))
@@ -761,16 +778,23 @@ def bpm_dynamic_phase_sync(
     audio: np.ndarray,
     audio_lp: np.ndarray,
     bpm_bounds: tuple[float, float] = (128.0, 260.0),
-    fine_phase_bins: int = 128,
+    odf_precomputed: np.ndarray | None = None,
+    odf_lp_precomputed: np.ndarray | None = None,
+    hop_t_precomputed: float | None = None,
 ) -> dict:
     t_offset = 0.5 * hop_length / float(sr)
     if not isinstance(audio, np.ndarray) or audio.ndim != 1:
         raise ValueError("audio must be 1-D np.ndarray (mono)")
 
     hop_for_odf = int(hop_length)
-    print(f"[seg] computing ODF via librosa.onset.onset_strength (hop={hop_for_odf})")
-    odf, hop_t = _compute_odf(audio, sr, hop_for_odf)
-    odf_lp, _ =  _compute_odf(audio_lp, sr, hop_for_odf)
+    if odf_precomputed is None or odf_lp_precomputed is None or hop_t_precomputed is None:
+        print(f"[seg] computing ODF via librosa.onset.onset_strength (hop={hop_for_odf})")
+        odf, hop_t = _compute_odf(audio, sr, hop_for_odf)
+        odf_lp, _ = _compute_odf(audio_lp, sr, hop_for_odf)
+    else:
+        odf = np.asarray(odf_precomputed, dtype=np.float32)
+        odf_lp = np.asarray(odf_lp_precomputed, dtype=np.float32)
+        hop_t = float(hop_t_precomputed)
     
     seg_frames, boundaries = _coarse_segment_track(odf, sr, hop_for_odf, hop_t, win_s, step_s, seg_min_s = win_s/2)
 
@@ -781,7 +805,6 @@ def bpm_dynamic_phase_sync(
         sr,
         hop_for_odf,
         bpm_bounds,
-        fine_phase_bins,
         hop_t,
     )
 
@@ -855,16 +878,23 @@ def bpm_phase_sync(
     audio: np.ndarray,
     audio_lp: np.ndarray,
     bpm_bounds: tuple[float, float] = (128.0, 260.0),
-    fine_phase_bins: int = 128,
+    odf_precomputed: np.ndarray | None = None,
+    odf_lp_precomputed: np.ndarray | None = None,
+    hop_t_precomputed: float | None = None,
 ) -> dict:
     if not isinstance(audio, np.ndarray) or audio.ndim != 1:
         raise ValueError("audio must be 1-D np.ndarray (mono)")
 
     t_offset = 0.5 * hop_length / float(sr)
     hop_for_odf = int(hop_length)
-    print(f"[seg] computing ODF via librosa.onset.onset_strength (hop={hop_for_odf})")
-    odf, hop_t = _compute_odf(audio, sr, hop_for_odf)
-    odf_lp, _ =  _compute_odf(audio_lp, sr, hop_for_odf)
+    if odf_precomputed is None or odf_lp_precomputed is None or hop_t_precomputed is None:
+        print(f"[seg] computing ODF via librosa.onset.onset_strength (hop={hop_for_odf})")
+        odf, hop_t = _compute_odf(audio, sr, hop_for_odf)
+        odf_lp, _ = _compute_odf(audio_lp, sr, hop_for_odf)
+    else:
+        odf = np.asarray(odf_precomputed, dtype=np.float32)
+        odf_lp = np.asarray(odf_lp_precomputed, dtype=np.float32)
+        hop_t = float(hop_t_precomputed)
 
     seg_frames = [(0, len(odf) - 1)]
     boundaries = np.array([], dtype=np.int32)
@@ -876,7 +906,6 @@ def bpm_phase_sync(
         sr,
         hop_for_odf,
         bpm_bounds,
-        fine_phase_bins,
         hop_t,
     )
 

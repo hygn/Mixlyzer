@@ -156,6 +156,9 @@ class EditSongDialog(QDialog):
             db.close()
             if self._bus is not None:
                 self._bus.sig_lib_updated.emit(lib_full)
+                track_uid = str(updated.uid or "").strip()
+                if track_uid:
+                    self._bus.sig_rekordbox_sync_track_requested.emit(track_uid)
         except Exception as e:
             # For now, surface the error by re-raising; caller can catch via Qt
             raise

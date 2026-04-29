@@ -50,7 +50,11 @@ def migrate_library_with_progress(lib_path: Path, logger=print, progress_callbac
                     bpm_segments = build_bpm_segments(features.get("tempo_segments"))
                     key_segments = build_key_segments(features.get("key_segments"))
                     jump_pairs = extract_jump_cue_pairs(features)
-                    features["jump_cues_np"] = build_jump_cues_np(jump_pairs, canonicalize_labels=True)
+                    features["jump_cues_np"] = build_jump_cues_np(
+                        jump_pairs,
+                        canonicalize_labels=True,
+                        merge_coincident=True,
+                    )
                     for key in list(features.keys()):
                         if isinstance(key, str) and key.startswith("jump_cues_np."):
                             features.pop(key, None)

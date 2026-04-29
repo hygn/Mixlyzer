@@ -17,7 +17,8 @@ from core.model import DataModel
 from core.linear_segments import build_bpm_segments, build_key_segments
 from utils.keystrip import build_keystrip_buffer
 from utils.labels import KEY_DISPLAY_LABELS
-from utils.jump_cues import build_jump_cues_np, extract_jump_cue_pairs
+from utils.jump_cues import build_jump_cues_np, extract_jump_cue_pairs, build_jump_cue_graph
+from utils.jumpcue_colors import get_jumpcue_pair_color
 
 MAX_LOG_HISTORY = 50
 BUTTON_STYLESHEET = """
@@ -116,7 +117,7 @@ class logs:
         return 0 <= self.relidx < len(self.log) - 1
 
 class SaveWorker(QtCore.QObject):
-    finished = QtCore.Signal()
+    finished = QtCore.Signal(object)
 
     def save(self, store: FeatureNPZStore, libpath: str, uid, *, beatgrid=None, segments=None, key_segments=None, key_np=None, jump_cues_np=None, jump_cues_extracted=None):
         try:
@@ -149,7 +150,7 @@ class SaveWorker(QtCore.QObject):
         except Exception:
             pass
         finally:
-            self.finished.emit()
+            self.finished.emit(uid)
         return
             
 
@@ -188,6 +189,7 @@ class BeatgridEditPanel(QtWidgets.QWidget):
         self.tempo_multiplier = 1
         self.duration = 1e-3
         self._JumpCUE = []
+        self._jumpcue_graph_cues: list[dict] = []
         self._jump_armed = False
         self._init_ui()
         self.edit_log = logs(
@@ -345,14 +347,29 @@ class BeatgridEditPanel(QtWidgets.QWidget):
         self.jc_reanalyze.setText("RA")
         self.jc_reanalyze.setToolTip("Recompute JumpCUE pairs using current beatgrid")
 
-        self.jc_selection = QtWidgets.QComboBox()
-        self.jc_selection.setToolTip("Select JumpCUE label/pair")
-        self.jc_selection.setFixedHeight(self.BTN_HEIGHT)
-        self.jc_selection.setSizeAdjustPolicy(QtWidgets.QComboBox.SizeAdjustPolicy.AdjustToContents)
+        self.jc_source_selection = QtWidgets.QComboBox()
+        self.jc_source_selection.setToolTip("Select source JumpCUE")
+        self.jc_source_selection.setFixedSize(self.BTN_WIDTH // 2, self.BTN_HEIGHT)
+        self.jc_source_selection.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
+        self.jc_source_selection.setSizeAdjustPolicy(QtWidgets.QComboBox.SizeAdjustPolicy.AdjustToContents)
+
+        self.jc_target_selection = QtWidgets.QComboBox()
+        self.jc_target_selection.setToolTip("Select target JumpCUE")
+        self.jc_target_selection.setFixedSize(self.BTN_WIDTH // 2, self.BTN_HEIGHT)
+        self.jc_target_selection.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
+        self.jc_target_selection.setSizeAdjustPolicy(QtWidgets.QComboBox.SizeAdjustPolicy.AdjustToContents)
+
+        self.jc_selection_wrap = QtWidgets.QWidget()
+        self.jc_selection_wrap.setFixedSize(self.BTN_WIDTH, self.BTN_HEIGHT)
+        jc_layout = QtWidgets.QHBoxLayout(self.jc_selection_wrap)
+        jc_layout.setContentsMargins(0, 0, 0, 0)
+        jc_layout.setSpacing(0)
+        jc_layout.addWidget(self.jc_source_selection)
+        jc_layout.addWidget(self.jc_target_selection)
 
         self.jc_jumptest = QtWidgets.QToolButton()
         self.jc_jumptest.setText("ARM")
-        self.jc_jumptest.setToolTip("Arm jump: follow selected label to its paired target")
+        self.jc_jumptest.setToolTip("Arm jump: transition from the selected source cue to the selected target cue")
 
         # Edit Panel
         self.edits_label = QtWidgets.QLabel("Edits: ")
@@ -445,7 +462,7 @@ class BeatgridEditPanel(QtWidgets.QWidget):
 
         grid.addWidget(self.JumpCUE_label, 0, 10, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
         grid.addWidget(self.jc_reanalyze, 0, 11, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-        grid.addWidget(self.jc_selection, 1, 11, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
+        grid.addWidget(self.jc_selection_wrap, 1, 11, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
         grid.addWidget(self.jc_jumptest, 2, 11, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
 
         grid.addWidget(self.edits_label, 0, 14, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
@@ -484,7 +501,8 @@ class BeatgridEditPanel(QtWidgets.QWidget):
         
         self.jc_jumptest.clicked.connect(self._arm_next_jumpCUE_jump)
         self.jc_reanalyze.clicked.connect(self._reanalyze_jumpCUE)
-        self.jc_selection.currentIndexChanged.connect(self._jc_selection_changed)
+        self.jc_source_selection.currentIndexChanged.connect(self._jc_source_selection_changed)
+        self.jc_target_selection.currentIndexChanged.connect(self._jc_target_selection_changed)
     def set_track_uid(self, uid):
         self.uid = uid
         self._zeroBPM()
@@ -552,29 +570,12 @@ class BeatgridEditPanel(QtWidgets.QWidget):
         if JumpCUE == None:
             JumpCUE = []
         self._JumpCUE = JumpCUE
-        self.jc_selection.clear()
-        pair_entries = []
-        for pair in self._JumpCUE:
-            forward = dict(pair.get("forward", {}) or {})
-            backward = dict(pair.get("backward", {}) or {})
-            fwd_label = str(forward.get("label", "") or "").strip()
-            bwd_label = str(backward.get("label", "") or "").strip()
-            if not fwd_label or not bwd_label:
-                continue
-            fwd_point = float(forward.get("point", forward.get("start", 0.0)) or 0.0)
-            bwd_point = float(backward.get("point", backward.get("start", 0.0)) or 0.0)
-            pair_entries.append((fwd_point, bwd_point, fwd_label, bwd_label, pair))
-            pair_entries.append((bwd_point, fwd_point, bwd_label, fwd_label, pair))
-        pair_entries.sort(key=lambda item: (item[0], item[1], item[2], item[3]))
-        for src_point, dst_point, src_label, dst_label, pair in pair_entries:
-            if dst_point >= src_point:
-                display = f"F:{src_label}->{dst_label}"
-            else:
-                display = f"B:{src_label}<-{dst_label}"
-            self.jc_selection.addItem(display, {"cue": pair, "label": src_label})
-        self.bus.sig_jump_disarm.emit()
-        self.jc_jumptest.setText("ARM")
-        self._jump_armed = False
+        self._jumpcue_graph_cues, _links = build_jump_cue_graph(self._JumpCUE)
+        prev_source_id = self._current_jumpcue_source_id()
+        prev_target_id = self._current_jumpcue_target_id()
+        self._populate_jumpcue_combo(self.jc_source_selection, self._jumpcue_graph_cues, preferred_cue_id=prev_source_id)
+        self._refresh_jumpcue_target_combo(preferred_target_id=prev_target_id)
+        self._reset_jumpcue_arm_state()
 
     def update_time(self, t: float) -> None:
         segs = self._segments
@@ -615,30 +616,202 @@ class BeatgridEditPanel(QtWidgets.QWidget):
     
     def _arm_next_jumpCUE_jump(self):
         if not self._jump_armed:
-            payload = self.jc_selection.currentData()
-            label = ""
-            cue = None
+            payload = self._current_jumpcue_payload()
             if isinstance(payload, dict):
-                label = str(payload.get("label", "") or "").strip()
-                cue = payload.get("cue")
-            if cue is None and self._JumpCUE:
-                label = self.jc_selection.currentText().split("->", 1)[0].strip()
-                for i in self._JumpCUE:
-                    if str(i.get("forward", {}).get("label", "")).strip() == label:
-                        cue = i
-                        break
-                    if str(i.get("backward", {}).get("label", "")).strip() == label:
-                        cue = i
-                        break
-            self.bus.sig_jump_arm.emit({"cue": cue, "label": label})
-            self.jc_jumptest.setText("DISARM")
-            self._jump_armed = True
+                self.bus.sig_jump_arm.emit(payload)
+                self.jc_jumptest.setText("DISARM")
+                self._jump_armed = True
         else:
-            self.jc_jumptest.setText("ARM")
-            self.bus.sig_jump_disarm.emit()
-            self._jump_armed = False
-    
-    def _jc_selection_changed(self):
+            self._reset_jumpcue_arm_state()
+
+    def _jc_source_selection_changed(self):
+        self._refresh_jumpcue_target_combo(preferred_target_id=self._current_jumpcue_target_id())
+        self._apply_jumpcue_combo_style()
+        self._reset_jumpcue_arm_state()
+
+    def _jc_target_selection_changed(self):
+        self._apply_jumpcue_combo_style()
+        self._reset_jumpcue_arm_state()
+
+    @staticmethod
+    def _jumpcue_color_for_component(color_or_index) -> tuple[int, int, int]:
+        if isinstance(color_or_index, tuple) and len(color_or_index) == 3:
+            try:
+                return (int(color_or_index[0]), int(color_or_index[1]), int(color_or_index[2]))
+            except Exception:
+                pass
+        return get_jumpcue_pair_color(int(color_or_index or 0))
+
+    @classmethod
+    def _jumpcue_item_brushes(cls, color) -> tuple[QtGui.QBrush, QtGui.QBrush]:
+        sr, sg, sb = cls._jumpcue_color_for_component(color)
+        bg = QtGui.QBrush(QtGui.QColor(sr, sg, sb, 96))
+        luminance = (0.299 * sr) + (0.587 * sg) + (0.114 * sb)
+        fg = QtGui.QBrush(QtGui.QColor(0, 0, 0) if luminance >= 140 else QtGui.QColor(255, 255, 255))
+        return bg, fg
+
+    def _apply_jumpcue_combo_style(self) -> None:
+        self._apply_jumpcue_combo_style_for(self.jc_source_selection)
+        self._apply_jumpcue_combo_style_for(self.jc_target_selection)
+
+    def _apply_jumpcue_combo_style_for(self, combo: QtWidgets.QComboBox) -> None:
+        payload = self._current_jumpcue_cue(combo)
+        if not isinstance(payload, dict):
+            self._reset_jumpcue_combo_palette(combo)
+            return
+        color = payload.get("color", payload.get("color_index", payload.get("component_index", 0)))
+        sr, sg, sb = self._jumpcue_color_for_component(color)
+        luminance = (0.299 * sr) + (0.587 * sg) + (0.114 * sb)
+        text_color = "#000000" if luminance >= 140 else "#FFFFFF"
+        base_color = QtGui.QColor(sr, sg, sb, 96)
+        solid_color = QtGui.QColor(sr, sg, sb)
+        fg_qcolor = QtGui.QColor(text_color)
+        palette = combo.palette()
+        palette.setColor(QtGui.QPalette.ColorRole.Base, base_color)
+        palette.setColor(QtGui.QPalette.ColorRole.Button, base_color)
+        palette.setColor(QtGui.QPalette.ColorRole.Text, fg_qcolor)
+        palette.setColor(QtGui.QPalette.ColorRole.ButtonText, fg_qcolor)
+        palette.setColor(QtGui.QPalette.ColorRole.Highlight, solid_color.darker(110))
+        palette.setColor(QtGui.QPalette.ColorRole.HighlightedText, fg_qcolor)
+        combo.setPalette(palette)
+        combo.setStyleSheet("")
+        view = combo.view()
+        if view is not None:
+            view_palette = view.palette()
+            view_palette.setColor(QtGui.QPalette.ColorRole.Base, base_color)
+            view_palette.setColor(QtGui.QPalette.ColorRole.Text, fg_qcolor)
+            view_palette.setColor(QtGui.QPalette.ColorRole.Highlight, solid_color.darker(110))
+            view_palette.setColor(QtGui.QPalette.ColorRole.HighlightedText, fg_qcolor)
+            view.setPalette(view_palette)
+            view.setStyleSheet("")
+
+    def _reset_jumpcue_combo_palette(self, combo: QtWidgets.QComboBox) -> None:
+        standard_palette = self.style().standardPalette()
+        combo.setPalette(standard_palette)
+        combo.setStyleSheet("")
+        view = combo.view()
+        if view is not None:
+            view.setPalette(standard_palette)
+            view.setStyleSheet("")
+
+    @staticmethod
+    def _find_jumpcue_combo_index(combo: QtWidgets.QComboBox, cue_id: int | None) -> int:
+        if cue_id is None:
+            return -1
+        for idx in range(combo.count()):
+            payload = combo.itemData(idx)
+            if isinstance(payload, dict) and int(payload.get("id", -1)) == int(cue_id):
+                return idx
+        return -1
+
+    def _populate_jumpcue_combo(
+        self,
+        combo: QtWidgets.QComboBox,
+        cues: list[dict],
+        *,
+        preferred_cue_id: int | None = None,
+        disabled_cue_id: int | None = None,
+    ) -> None:
+        with QtCore.QSignalBlocker(combo):
+            combo.clear()
+            for cue in cues:
+                label = str(cue.get("label", "") or "").strip()
+                if not label:
+                    continue
+                combo.addItem(label, cue)
+                idx = combo.count() - 1
+                color = cue.get("color", cue.get("color_index", cue.get("component_index", 0)))
+                bg_brush, fg_brush = self._jumpcue_item_brushes(color)
+                combo.setItemData(idx, bg_brush, QtCore.Qt.BackgroundRole)
+                combo.setItemData(idx, fg_brush, QtCore.Qt.ForegroundRole)
+                if disabled_cue_id is not None and int(cue.get("id", -1)) == int(disabled_cue_id):
+                    model = combo.model()
+                    item = model.item(idx) if hasattr(model, "item") else None
+                    if item is not None:
+                        item.setEnabled(False)
+            if combo.count() > 0:
+                cue_idx = self._find_jumpcue_combo_index(combo, preferred_cue_id)
+                if cue_idx < 0 or not self._is_jumpcue_combo_index_enabled(combo, cue_idx):
+                    cue_idx = self._first_enabled_jumpcue_combo_index(combo)
+                combo.setCurrentIndex(cue_idx if cue_idx >= 0 else 0)
+
+    @staticmethod
+    def _is_jumpcue_combo_index_enabled(combo: QtWidgets.QComboBox, idx: int) -> bool:
+        if idx < 0 or idx >= combo.count():
+            return False
+        model = combo.model()
+        item = model.item(idx) if hasattr(model, "item") else None
+        if item is None:
+            return True
+        return bool(item.isEnabled())
+
+    @classmethod
+    def _first_enabled_jumpcue_combo_index(cls, combo: QtWidgets.QComboBox) -> int:
+        for idx in range(combo.count()):
+            if cls._is_jumpcue_combo_index_enabled(combo, idx):
+                return idx
+        return -1
+
+    def _refresh_jumpcue_target_combo(self, *, preferred_target_id: int | None = None) -> None:
+        self._populate_jumpcue_combo(
+            self.jc_target_selection,
+            self._jumpcue_graph_cues,
+            preferred_cue_id=preferred_target_id,
+            disabled_cue_id=self._current_jumpcue_source_id(),
+        )
+        self._apply_jumpcue_combo_style()
+
+    def _current_jumpcue_source_id(self) -> int | None:
+        return self._current_jumpcue_cue_id(self.jc_source_selection)
+
+    def _current_jumpcue_target_id(self) -> int | None:
+        return self._current_jumpcue_cue_id(self.jc_target_selection)
+
+    @staticmethod
+    def _current_jumpcue_cue(combo: QtWidgets.QComboBox) -> dict | None:
+        payload = combo.currentData()
+        if isinstance(payload, dict):
+            return payload
+        return None
+
+    def _current_jumpcue_cue_id(self, combo: QtWidgets.QComboBox) -> int | None:
+        payload = self._current_jumpcue_cue(combo)
+        if isinstance(payload, dict):
+            return int(payload.get("id", -1))
+        return None
+
+    def _current_jumpcue_payload(self) -> dict | None:
+        source = self._current_jumpcue_cue(self.jc_source_selection)
+        target = self._current_jumpcue_cue(self.jc_target_selection)
+        if not isinstance(source, dict) or not isinstance(target, dict):
+            return None
+        source_id = int(source.get("id", -1))
+        target_id = int(target.get("id", -1))
+        if source_id < 0 or target_id < 0:
+            return None
+        source_graph_idx = int(source.get("graph_idx", source.get("component_index", 0)) or 0)
+        color = source.get("color", source.get("color_index", source.get("component_index", 0)))
+        return {
+            "kind": "F",
+            "source_id": source_id,
+            "target_id": target_id,
+            "source_label": str(source.get("label", "") or ""),
+            "target_label": str(target.get("label", "") or ""),
+            "source": dict(source),
+            "target": dict(target),
+            "source_point": float(source.get("point", source.get("start", 0.0)) or 0.0),
+            "target_point": float(target.get("point", target.get("start", 0.0)) or 0.0),
+            "component_index": source_graph_idx,
+            "graph_idx": source_graph_idx,
+            "color_index": source_graph_idx,
+            "color": color,
+            "lag_beats": 0.0,
+            "lag_sec": abs(float(target.get("point", 0.0) or 0.0) - float(source.get("point", 0.0) or 0.0)),
+            "score": 1.0,
+            "confidence": 1.0,
+        }
+
+    def _reset_jumpcue_arm_state(self) -> None:
         self.jc_jumptest.setText("ARM")
         self.bus.sig_jump_disarm.emit()
         self._jump_armed = False
@@ -888,10 +1061,16 @@ class BeatgridEditPanel(QtWidgets.QWidget):
     def _shift_beatgrid_backward(self) -> None:
         self._shift_segment_by_offset(-0.01)
 
-    def _on_save_finished(self) -> None:
+    def _on_save_finished(self, saved_uid=None) -> None:
         self._save_in_progress = False
         self.btn_save.setEnabled(self._edit_enabled)
         self.btn_save.setStyleSheet(BUTTON_STYLESHEET)
+        uid = str(saved_uid or "").strip()
+        if uid:
+            try:
+                self.bus.sig_rekordbox_sync_track_requested.emit(uid)
+            except Exception:
+                pass
 
     def _shift_beatgrid_minus_halfpi(self) -> None:
         self._shift_segment_by_phase(-0.5)

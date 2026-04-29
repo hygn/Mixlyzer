@@ -37,6 +37,8 @@ class EventBus(QtCore.QObject):
 
     # Config Window
     sig_setting_saveJsonRequested = QtCore.Signal(object)
+    sig_rekordbox_sync_requested = QtCore.Signal(bool)
+    sig_rekordbox_sync_track_requested = QtCore.Signal(str)
 
     # reload configs
     sig_reload_UI = QtCore.Signal(object)

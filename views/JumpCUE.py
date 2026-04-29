@@ -9,7 +9,8 @@ from pyqtgraph.graphicsItems.ScatterPlotItem import ScatterPlotItem
 from pyqtgraph.graphicsItems.TextItem import TextItem
 
 from .base import ViewPlugin, register_view
-from utils.jump_cues import extract_jump_cue_pairs
+from utils.jumpcue_colors import get_jumpcue_pair_color
+from utils.jump_cues import extract_jump_cue_pairs, extract_jump_cue_graph
 
 
 @register_view("JumpCUEView")
@@ -20,20 +21,12 @@ class JumpCUEView(ViewPlugin):
     BLOCK_HEIGHT = 0.06
     MARKER_SIZE = 10
 
-    COLORS = [
-        (34, 139, 34),
-        (0, 153, 204),
-        (220, 120, 20),
-        (148, 0, 211),
-        (210, 105, 30),
-        (0, 128, 128),
-    ]
-
     def __init__(self, bus, model, tl):
         super().__init__(bus, model, tl)
         self.plot: pg.PlotItem | None = None
         self._duration = 0.0
         self._pairs: List[dict] = []
+        self._cues: List[dict] = []
         self._items: List[Tuple[BarGraphItem, ScatterPlotItem, TextItem]] = []
 
         self._font = QtGui.QFont()
@@ -75,6 +68,7 @@ class JumpCUEView(ViewPlugin):
     def render_initial(self):
         f = self.model.features or {}
         self._pairs = extract_jump_cue_pairs(f)
+        self._cues, _links = extract_jump_cue_graph(f)
         self._duration = float(self.model.duration_sec or 0.0)
         self._refresh()
 
@@ -88,6 +82,7 @@ class JumpCUEView(ViewPlugin):
         if extracted is None and jc_block is not None:
             extracted = extract_jump_cue_pairs({"jump_cues_np": jc_block})
         self._pairs = extracted or []
+        self._cues, _links = extract_jump_cue_graph(f)
         self._duration = float(self.model.duration_sec or 0.0)
         self._refresh()
 
@@ -108,7 +103,7 @@ class JumpCUEView(ViewPlugin):
             marker.setVisible(False)
             text.setVisible(False)
 
-        if not self._pairs:
+        if not self._cues:
             return
 
         try:
@@ -117,25 +112,26 @@ class JumpCUEView(ViewPlugin):
             view_min, view_max = -float("inf"), float("inf")
 
         visible_entries: list[tuple[float, float, float, Tuple[int, int, int], str]] = []
-        for idx, pair in enumerate(self._pairs):
-            color = self.COLORS[idx % len(self.COLORS)]
-            for role in ("forward", "backward"):
-                seg = pair.get(role) or {}
-                label = str(seg.get("label", "")).strip()
-                if not label:
-                    continue
-                start = float(seg.get("start", 0.0))
-                end = float(seg.get("end", start))
-                point = float(seg.get("point", start))
-                if end <= start:
-                    end = start + max(0.01, (self._duration or 1.0) * 0.002)
+        for cue in self._cues:
+            label = str(cue.get("label", "")).strip()
+            if not label:
+                continue
+            color = cue.get("color")
+            if not isinstance(color, tuple) or len(color) != 3:
+                color_idx = int(cue.get("color_index", cue.get("component_index", 0)) or 0)
+                color = get_jumpcue_pair_color(color_idx)
+            start = float(cue.get("start", 0.0))
+            end = float(cue.get("end", start))
+            point = float(cue.get("point", start))
+            if end <= start:
+                end = start + max(0.01, (self._duration or 1.0) * 0.002)
 
-                x_start = left + start
-                x_end = left + end
-                x_point = left + point
-                if x_end < view_min - 0.1 or x_start > view_max + 0.1:
-                    continue
-                visible_entries.append((x_start, x_end, x_point, color, label))
+            x_start = left + start
+            x_end = left + end
+            x_point = left + point
+            if x_end < view_min - 0.1 or x_start > view_max + 0.1:
+                continue
+            visible_entries.append((x_start, x_end, x_point, color, label))
 
         if not visible_entries:
             return

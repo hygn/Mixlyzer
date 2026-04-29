@@ -1,13 +1,19 @@
 from __future__ import annotations
 import os, sqlite3, time, csv
-import hashlib
 from contextlib import contextmanager
 from dataclasses import dataclass, asdict
 from typing import Iterable, List, Optional, Dict, Any, Tuple
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from core.linear_segments import harmonic_compatible_keys
 from utils.labels import idx_to_labels
+
+
+def _canonical_uuid4(value: object) -> str:
+    parsed = UUID(str(value).strip())
+    if parsed.version != 4:
+        raise ValueError(f"Expected UUIDv4, got version {parsed.version}")
+    return str(parsed)
 
 @dataclass
 class TrackRow:
@@ -28,7 +34,7 @@ class TrackRow:
 
     @staticmethod
     def _stable_uid_from_meta() -> Optional[str]:
-       return uuid4().__str__()
+        return str(uuid4())
 
     @staticmethod
     def from_meta(meta: Dict[str, Any]) -> "TrackRow":
@@ -37,6 +43,7 @@ class TrackRow:
         uid = meta.get("uid")
         if uid is None:
             uid = TrackRow._stable_uid_from_meta()
+        uid = _canonical_uuid4(uid)
         added_ts = meta.get("added_ts") or int(time.time())
         return TrackRow(
             path=str(meta.get("path") or meta.get("track_id")),

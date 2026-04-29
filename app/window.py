@@ -14,6 +14,7 @@ from core.library_handler import LibraryDB
 from core.analysis_lib_handler import FeatureNPZStore
 from core.taskmanager import taskmanager
 from core.external_sync import ExternalSyncController
+from core.rekordbox_sync import RekordboxXmlSync
 from .metronome import MetronomeController
 
 from ui.pane import MainPane
@@ -68,6 +69,7 @@ class AppWindow(QtWidgets.QMainWindow):
             track_total_samples_callback=self._track_total_samples_in_library,
             failure_callback=self._on_external_sync_failure,
         )
+        self.rekordbox_sync = RekordboxXmlSync(cfg_getter=lambda: self.cfg, parent=self)
 
         # Main UI pane
         self.pane = MainPane(self.bus, self.model, self.tl, self.cfg)
@@ -98,6 +100,8 @@ class AppWindow(QtWidgets.QMainWindow):
         self.bus.sig_features_loaded.connect(self._on_features_loaded)
         self.bus.sig_request_load_track.connect(self.analyze_file)
         self.bus.sig_setting_saveJsonRequested.connect(self._on_settings_save)
+        self.bus.sig_rekordbox_sync_requested.connect(self.rekordbox_sync.sync_requested)
+        self.bus.sig_rekordbox_sync_track_requested.connect(self.rekordbox_sync.sync_track_requested)
         self.bus.sig_reanalyze_requested.connect(self.reanalyze_file)
 
         self.resize(1280, 860)
@@ -310,6 +314,7 @@ class AppWindow(QtWidgets.QMainWindow):
         duration_sec = float(feat_std.get("duration_sec"))
         if update_db:
             self._emit_library_update(cfg, lib_rows)
+            self._sync_rekordbox_track(properties.get("uid"))
 
         if auto_load:
             self._apply_model_update(
@@ -349,6 +354,7 @@ class AppWindow(QtWidgets.QMainWindow):
         duration_sec = float(feat_std.get("duration_sec"))
         if update_db:
             self._emit_library_update(cfg, lib_rows)
+            self._sync_rekordbox_track(properties.get("uid"))
             if is_current_track:
                 self._apply_model_update(
                     feat_std,
@@ -403,6 +409,11 @@ class AppWindow(QtWidgets.QMainWindow):
             lib_rows = l.list_all()
             l.close()
         self.bus.sig_lib_updated.emit(lib_rows)
+
+    def _sync_rekordbox_track(self, uid: object) -> None:
+        track_uid = str(uid or "").strip()
+        if track_uid:
+            self.bus.sig_rekordbox_sync_track_requested.emit(track_uid)
 
     def _on_features_loaded(self):
         self.bus.sig_window_changed.emit(self.tl.window_sec)
@@ -477,6 +488,18 @@ class AppWindow(QtWidgets.QMainWindow):
         self.external_sync.set_config(_config.externalsyncconfig)
         self.external_sync.set_poll_fps(_config.viewconfig.fps)
         self._apply_external_sync_mode(_config.externalsyncconfig)
+        prev_lcfg = prev_cfg.get("libconfig", {})
+        new_lcfg = _config.to_dict().get("libconfig", {})
+        rekordbox_cfg_changed = any(
+            prev_lcfg.get(k) != new_lcfg.get(k)
+            for k in ("rekordbox_sync_enabled", "rekordbox_xml_path")
+        )
+        if (
+            rekordbox_cfg_changed
+            and _config.libconfig.rekordbox_sync_enabled
+            and _config.libconfig.rekordbox_xml_path.strip()
+        ):
+            self.bus.sig_rekordbox_sync_requested.emit(True)
         prev_vcfg = prev_cfg.get("viewconfig", {})
         new_vcfg = _config.to_dict()["viewconfig"]
         _VIEW_LAYOUT_KEYS = {"display_waveform", "display_beatgrid", "display_keystrip", "display_JumpCUE"}
