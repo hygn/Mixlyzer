@@ -15,6 +15,22 @@ def _canonical_uuid4(value: object) -> str:
         raise ValueError(f"Expected UUIDv4, got version {parsed.version}")
     return str(parsed)
 
+
+def _canonical_uuid4_or_none(value: object) -> Optional[str]:
+    text = str(value or "").strip()
+    if not text:
+        return None
+    return _canonical_uuid4(text)
+
+
+def _track_row_from_db_row(row: sqlite3.Row) -> "TrackRow":
+    data = dict(row)
+    try:
+        data["uid"] = _canonical_uuid4_or_none(data.get("uid"))
+    except ValueError:
+        data["uid"] = None
+    return TrackRow(**data)
+
 @dataclass
 class TrackRow:
     path: str                  # PRIMARY KEY
@@ -270,15 +286,20 @@ class LibraryDB:
     def get(self, path: str) -> Optional[TrackRow]:
         cur = self.conn.execute("SELECT * FROM tracks WHERE path=?;", (path,))
         row = cur.fetchone()
-        return TrackRow(**dict(row)) if row else None
+        return _track_row_from_db_row(row) if row else None
 
     def get_by_uid(self, uid: str) -> Optional[TrackRow]:
+        try:
+            uid = _canonical_uuid4(uid)
+        except ValueError:
+            return None
         cur = self.conn.execute("SELECT * FROM tracks WHERE uid=?;", (uid,))
         row = cur.fetchone()
-        return TrackRow(**dict(row)) if row else None
+        return _track_row_from_db_row(row) if row else None
 
     def update_uid(self, path: str, uid: Optional[str]):
         """Set/update UID for the given path (allows None)."""
+        uid = _canonical_uuid4_or_none(uid)
         self.conn.execute("UPDATE tracks SET uid=? WHERE path=?;", (uid, path))
         self.conn.commit()
 
@@ -298,7 +319,7 @@ class LibraryDB:
             self.conn.execute("DELETE FROM tracks WHERE path=?;", (old_path,))
 
     def replace_bpm_segments(self, track_uid: str, segments: Iterable[BpmSegmentRow | Dict[str, Any]]):
-        uid = str(track_uid or "").strip()
+        uid = _canonical_uuid4_or_none(track_uid)
         if not uid:
             return
         rows = []
@@ -329,7 +350,7 @@ class LibraryDB:
                 )
 
     def replace_key_segments(self, track_uid: str, segments: Iterable[KeySegmentRow | Dict[str, Any]]):
-        uid = str(track_uid or "").strip()
+        uid = _canonical_uuid4_or_none(track_uid)
         if not uid:
             return
         rows = []
@@ -366,6 +387,7 @@ class LibraryDB:
                 )
 
     def get_bpm_segments(self, track_uid: str) -> List[BpmSegmentRow]:
+        track_uid = _canonical_uuid4(track_uid)
         cur = self.conn.execute(
             """
             SELECT track_uid, seq_index, start_sec, end_sec, duration_sec, bpm, bpm_rounded
@@ -378,6 +400,7 @@ class LibraryDB:
         return [BpmSegmentRow(**dict(row)) for row in cur.fetchall()]
 
     def get_key_segments(self, track_uid: str) -> List[KeySegmentRow]:
+        track_uid = _canonical_uuid4(track_uid)
         cur = self.conn.execute(
             """
             SELECT track_uid, seq_index, start_sec, end_sec, duration_sec, key_value, key_label
@@ -507,7 +530,7 @@ class LibraryDB:
             q += " LIMIT ? OFFSET ?"
             params = (limit, offset)
         cur = self.conn.execute(q, params)
-        return [TrackRow(**dict(row)) for row in cur.fetchall()]
+        return [_track_row_from_db_row(row) for row in cur.fetchall()]
 
     def search_like(self, query: str, cols: Tuple[str,...]=("title","artist","album","comment"),
                     order_by: str = "added_ts DESC", limit: Optional[int]=200, offset:int=0) -> List[TrackRow]:
@@ -519,7 +542,7 @@ class LibraryDB:
             q += " LIMIT ? OFFSET ?"
             params += [limit, offset]
         cur = self.conn.execute(q, tuple(params))
-        return [TrackRow(**dict(row)) for row in cur.fetchall()]
+        return [_track_row_from_db_row(row) for row in cur.fetchall()]
 
     # Utilities 
     def export_csv(self, out_path: str):
@@ -547,9 +570,9 @@ class LibraryDB:
     @staticmethod
     def npz_path_for(base_dir: str, uid: str) -> str:
         os.makedirs(base_dir, exist_ok=True)
-        return os.path.join(base_dir, f"{uid}.npz")
+        return os.path.join(base_dir, f"{_canonical_uuid4(uid)}.npz")
 
     @staticmethod
     def json_path_for(base_dir: str, uid: str) -> str:
         os.makedirs(base_dir, exist_ok=True)
-        return os.path.join(base_dir, f"{uid}.json")
+        return os.path.join(base_dir, f"{_canonical_uuid4(uid)}.json")

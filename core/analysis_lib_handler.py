@@ -3,9 +3,15 @@ import os, json, tempfile, shutil
 from typing import Any, Dict, Iterable, Optional, Tuple
 import numpy as np
 
+from core.library_handler import _canonical_uuid4
+
 def _ensure_dir(d: str) -> str:
     os.makedirs(d, exist_ok=True)
     return d
+
+
+def _validated_uid(uid: str) -> str:
+    return _canonical_uuid4(uid)
 
 def _atomic_write_bytes(path: str, data: bytes) -> None:
     """Write to a temp file, then atomically replace via os.replace."""
@@ -95,7 +101,7 @@ class FeatureNPZStore:
         self.sep = sep
 
     def path(self, uid: str) -> str:
-        return os.path.join(self.base_dir, f"{uid}.npz")
+        return os.path.join(self.base_dir, f"{_validated_uid(uid)}.npz")
 
     def save(self, uid: str, features: Dict[str, Any]) -> str:
         """
@@ -104,6 +110,7 @@ class FeatureNPZStore:
         """
         if not isinstance(features, dict):
             raise TypeError("features must be a dict")
+        safe_uid = _validated_uid(uid)
 
         # 1) Flatten & sanitize keys
         flat = _flatten_dict(features, sep=self.sep)
@@ -123,7 +130,7 @@ class FeatureNPZStore:
 
         # 2) Serialize NPZ bytes
         # np.savez* only accepts file paths, so temp file -> read bytes -> atomic replace
-        tmp_path = os.path.join(self.base_dir, f".tmp_write_{uid}.npz")
+        tmp_path = os.path.join(self.base_dir, f".tmp_write_{safe_uid}.npz")
         _ensure_dir(self.base_dir)
         if self.compressed:
             np.savez_compressed(tmp_path, **kv)
@@ -135,7 +142,7 @@ class FeatureNPZStore:
         os.remove(tmp_path)
 
         # 3) Atomic save
-        final = self.path(uid)
+        final = self.path(safe_uid)
         _atomic_write_bytes(final, data)
         return final
 
@@ -150,11 +157,13 @@ class FeatureNPZStore:
             return {k: npz[k] for k in npz.files}
 
     def exists(self, uid: str) -> bool:
-        return os.path.exists(self.path(uid))
+        try:
+            return os.path.exists(self.path(uid))
+        except ValueError:
+            return False
 
     def delete(self, uid: str) -> None:
         try:
             os.remove(self.path(uid))
-        except FileNotFoundError:
+        except (FileNotFoundError, ValueError):
             pass
-

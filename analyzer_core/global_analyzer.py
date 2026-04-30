@@ -282,13 +282,16 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
     l.connect()
     track = l.get(path)
     feature_store = FeatureNPZStore(base_dir=config.libconfig.libpath, compressed=True)
-    if (track is not None) and (not force_analyze):
-        feat = feature_store.load(track.uid)
-        l.close()
-        metadata = track.to_meta()
-        features_properties = {"features": feat, "properties": metadata, "update_db": False, "taskid":taskid}
-        yield features_properties
-        return
+    if (track is not None) and track.uid and (not force_analyze):
+        try:
+            feat = feature_store.load(track.uid)
+            l.close()
+            metadata = track.to_meta()
+            features_properties = {"features": feat, "properties": metadata, "update_db": False, "taskid":taskid}
+            yield features_properties
+            return
+        except (FileNotFoundError, ValueError):
+            pass
     
     title, artist, album, comment = extract_tags(path)
     yield {"status": "Loading"}

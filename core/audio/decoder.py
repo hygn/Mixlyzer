@@ -4,6 +4,7 @@ import os
 import re
 import subprocess
 import threading
+from pathlib import Path
 
 import numpy as np
 
@@ -15,12 +16,13 @@ except Exception:  # pragma: no cover
 
 _ffmpeg_warm_lock = threading.Lock()
 _ffmpeg_warmed = False
+_PROJECT_ROOT = Path(__file__).resolve().parents[2]
+_BUNDLED_FFMPEG = _PROJECT_ROOT / "ffmpeg.exe"
 
 
 def _ffmpeg_command() -> str:
-    root_ffmpeg = os.path.join(os.getcwd(), "ffmpeg.exe")
-    if os.name == "nt" and os.path.exists(root_ffmpeg):
-        return root_ffmpeg
+    if os.name == "nt" and _BUNDLED_FFMPEG.exists():
+        return str(_BUNDLED_FFMPEG)
     return "ffmpeg"
 
 

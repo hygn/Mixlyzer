@@ -177,7 +177,7 @@ class AppWindow(QtWidgets.QMainWindow):
         store = FeatureNPZStore(base_dir=cfg.libconfig.libpath, compressed=True)
         try:
             return store.load(uid)
-        except FileNotFoundError:
+        except (FileNotFoundError, ValueError):
             return None
 
     def _handle_worker_error(self, taskid: int, message: str) -> None:
@@ -264,22 +264,26 @@ class AppWindow(QtWidgets.QMainWindow):
         l.connect()
         track = l.get(path)
         auto_load = track is not None
-        if (track != None) and (not force_analyze):
-            f = FeatureNPZStore(base_dir=cfg.libconfig.libpath, compressed=True)
-            feat = f.load(track.uid)
-            l.close()
-            metadata = track.to_meta()
-            # Cached library load: set album art immediately.
-            self._set_album_art(thumb)
-            features_properties = {
-                "features": feat,
-                "properties": metadata,
-                "update_db": False,
-                "taskid": taskid,
-                "auto_load": True,
-            }
-            self._on_features_ready(features_properties)
-            return
+        if (track != None) and track.uid and (not force_analyze):
+            try:
+                f = FeatureNPZStore(base_dir=cfg.libconfig.libpath, compressed=True)
+                feat = f.load(track.uid)
+                l.close()
+                metadata = track.to_meta()
+                # Cached library load: set album art immediately.
+                self._set_album_art(thumb)
+                features_properties = {
+                    "features": feat,
+                    "properties": metadata,
+                    "update_db": False,
+                    "taskid": taskid,
+                    "auto_load": True,
+                }
+                self._on_features_ready(features_properties)
+                return
+            except (FileNotFoundError, ValueError):
+                pass
+        l.close()
 
         worker = AnalysisWorker(path, cfg, taskid, force_analyze=force_analyze, parent=self)
         self._analysis_workers[taskid] = worker

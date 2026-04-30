@@ -60,6 +60,7 @@ class ExternalSyncController(QtCore.QObject):
         self._analysis_request_raw_path: str | None = None
         self._load_request_inflight: str | None = None
         self._blocked_process_logged: str | None = None
+        self._invalid_external_path_logged: str | None = None
         self._pm: pymem.Pymem | None = None
         self._pm_pid: int = 0
         self._process_list_cache: list[dict[str, int | str]] = []
@@ -87,6 +88,7 @@ class ExternalSyncController(QtCore.QObject):
         self._analysis_request_raw_path = None
         self._load_request_inflight = None
         self._blocked_process_logged = None
+        self._invalid_external_path_logged = None
         self._process_list_cache = []
         self._process_list_cache_ts = 0.0
         self._close_process_handle()
@@ -235,8 +237,21 @@ class ExternalSyncController(QtCore.QObject):
             self._analysis_request_raw_path = None
             self._load_request_inflight = None
             self._missing_path_logged = None
+            self._invalid_external_path_logged = None
             return
-        norm_external = self._normalize_path(path)
+        validated_path = self._validate_external_track_path(path)
+        if not validated_path:
+            if self._invalid_external_path_logged != path:
+                self._invalid_external_path_logged = path
+                self._log(f"External Sync ignored unsafe track path: {path}")
+            self._clear_pending_external()
+            self._analysis_request_inflight = None
+            self._analysis_request_raw_path = None
+            self._load_request_inflight = None
+            self._missing_path_logged = None
+            return
+        self._invalid_external_path_logged = None
+        norm_external = validated_path
         loaded_path = self._loaded_track_path()
 
         if loaded_path and loaded_path == norm_external:
@@ -251,7 +266,7 @@ class ExternalSyncController(QtCore.QObject):
             return
 
         self._pending_external_path = norm_external
-        self._pending_external_raw_path = path
+        self._pending_external_raw_path = validated_path
         self._pending_external_time_sec = time_sec
         self._drive_pending_external()
 
@@ -312,6 +327,29 @@ class ExternalSyncController(QtCore.QObject):
         if not raw:
             return ""
         return os.path.normcase(os.path.normpath(raw))
+
+    def _validate_external_track_path(self, path: str | None) -> str:
+        raw = str(path or "").strip()
+        if not raw:
+            return ""
+        if raw.startswith(("\\\\", "//")):
+            return ""
+        try:
+            expanded = Path(raw).expanduser()
+        except Exception:
+            return ""
+        if not expanded.is_absolute():
+            return ""
+        try:
+            candidate = expanded.resolve(strict=False)
+        except Exception:
+            return ""
+        try:
+            if not candidate.exists() or not candidate.is_file():
+                return ""
+        except OSError:
+            return ""
+        return self._normalize_path(str(candidate))
 
     def _track_exists_in_library(self, path: str) -> bool:
         if self._track_exists_callback is None:
@@ -489,7 +527,15 @@ class ExternalSyncController(QtCore.QObject):
 
     def _resolve_target_pid(self) -> int:
         if int(self._cfg.memory_process_pid) > 0:
-            return int(self._cfg.memory_process_pid)
+            target_pid = int(self._cfg.memory_process_pid)
+            proc = self._process_info_for_pid(target_pid)
+            if proc is None:
+                return 0
+            process_name = str(proc.get("name") or "")
+            if self._is_denied_process_name(process_name):
+                self._log_blocked_process(process_name)
+                return 0
+            return target_pid
         target_name = str(self._cfg.memory_process_name or "").strip().lower()
         if not target_name:
             return 0
@@ -500,6 +546,12 @@ class ExternalSyncController(QtCore.QObject):
                     return 0
                 return int(proc.get("pid") or 0)
         return 0
+
+    def _process_info_for_pid(self, pid: int) -> dict[str, int | str] | None:
+        for proc in self._list_running_processes():
+            if int(proc.get("pid") or 0) == int(pid):
+                return proc
+        return None
 
     def _list_running_processes(self) -> list[dict[str, int | str]]:
         now = time.monotonic()
@@ -546,12 +598,43 @@ class ExternalSyncController(QtCore.QObject):
             )
             if not pm.process_handle:
                 return None
+            proc = self._process_info_for_pid(pid)
+            process_name = str(proc.get("name") or self._cfg.memory_process_name or pid) if proc else str(
+                self._cfg.memory_process_name or pid
+            )
+            image_path = self._query_process_image_path(pm.process_handle)
+            if self._is_denied_process_name(process_name) or self._is_denied_process_image_path(image_path):
+                self._log_blocked_process(process_name or str(pid), image_path=image_path)
+                try:
+                    ctypes.windll.kernel32.CloseHandle(pm.process_handle)
+                except Exception:
+                    pass
+                return None
             pm.check_wow64()
         except Exception:
             return None
         self._pm = pm
         self._pm_pid = int(pid)
         return pm
+
+    def _query_process_image_path(self, process_handle) -> str:
+        if os.name != "nt" or not process_handle:
+            return ""
+        buffer_len = 32768
+        buffer = ctypes.create_unicode_buffer(buffer_len)
+        size = ctypes.c_ulong(buffer_len)
+        try:
+            ok = ctypes.windll.kernel32.QueryFullProcessImageNameW(
+                process_handle,
+                0,
+                buffer,
+                ctypes.byref(size),
+            )
+        except Exception:
+            return ""
+        if not ok:
+            return ""
+        return str(buffer.value or "").strip()
 
     def _close_process_handle(self) -> None:
         pm = self._pm
@@ -587,13 +670,18 @@ class ExternalSyncController(QtCore.QObject):
             except Exception:
                 pass
 
-    def _log_blocked_process(self, process_name: str) -> None:
+    def _log_blocked_process(self, process_name: str, *, image_path: str = "") -> None:
         name = str(process_name or "").strip()
         normalized = self._normalize_process_name(name)
-        if self._blocked_process_logged == normalized:
+        path_key = self._normalize_process_image_path(image_path)
+        cache_key = f"{normalized}|{path_key}"
+        if self._blocked_process_logged == cache_key:
             return
-        self._blocked_process_logged = normalized
-        self._log(f"External Sync blocked for denied process: {name}")
+        self._blocked_process_logged = cache_key
+        if path_key:
+            self._log(f"External Sync blocked for denied process: {name} ({image_path})")
+        else:
+            self._log(f"External Sync blocked for denied process: {name}")
 
     def _is_denied_process_name(self, name: str) -> bool:
         target = self._normalize_process_name(name)
@@ -602,24 +690,48 @@ class ExternalSyncController(QtCore.QObject):
         return target in self._load_process_denylist()
 
     def _load_process_denylist(self) -> set[str]:
-        cache = getattr(self, "_process_denylist_cache", None)
-        if isinstance(cache, set):
-            return cache
-        denylist_path = Path("process_denylist.json")
+        payload = self._load_process_denylist_payload()
         names: set[str] = set()
-        try:
-            payload = json.loads(denylist_path.read_text(encoding="utf-8"))
-        except Exception:
-            payload = {}
         for item in payload.get("blocked_process_names", []):
             text = self._normalize_process_name(item)
             if text:
                 names.add(text)
-        self._process_denylist_cache = names
         return names
+
+    def _load_process_path_keywords(self) -> tuple[str, ...]:
+        payload = self._load_process_denylist_payload()
+        keywords: list[str] = []
+        for item in payload.get("blocked_path_keywords", []):
+            text = self._normalize_process_image_path(item)
+            if text:
+                keywords.append(text)
+        return tuple(keywords)
+
+    def _load_process_denylist_payload(self) -> dict[str, Any]:
+        cache = getattr(self, "_process_denylist_cache", None)
+        if isinstance(cache, dict):
+            return cache
+        denylist_path = Path("process_denylist.json")
+        try:
+            payload = json.loads(denylist_path.read_text(encoding="utf-8"))
+        except Exception:
+            payload = {}
+        if not isinstance(payload, dict):
+            payload = {}
+        self._process_denylist_cache = payload
+        return payload
+
+    def _is_denied_process_image_path(self, image_path: str) -> bool:
+        normalized = self._normalize_process_image_path(image_path)
+        if not normalized:
+            return False
+        return any(keyword in normalized for keyword in self._load_process_path_keywords())
 
     def _normalize_process_name(self, name: str) -> str:
         text = str(name or "").strip().lower()
         if text.endswith(".exe"):
             text = text[:-4]
         return text
+
+    def _normalize_process_image_path(self, image_path: str) -> str:
+        return str(image_path or "").strip().lower().replace("/", "\\")
