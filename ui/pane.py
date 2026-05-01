@@ -3,7 +3,7 @@
 from typing import List, Optional, Type
 import time
 
-from PySide6 import QtWidgets, QtGui, QtCore
+from PySide6 import QtWidgets, QtGui, QtCore, QtMultimedia
 import pyqtgraph as pg
 import numpy as np
 
@@ -111,6 +111,7 @@ class MainPane(QtWidgets.QWidget):
 
         # Signals
         self.bus.sig_time_changed.connect(self._on_time)
+        self.bus.sig_output_peak_dbfs.connect(self._on_output_peak_dbfs)
         self.bus.sig_features_loaded.connect(self._on_features)
         self.bus.sig_properties_loaded.connect(self._on_properties)
         self.bus.sig_albumart_loaded.connect(self._on_albumart)
@@ -162,9 +163,22 @@ class MainPane(QtWidgets.QWidget):
         volume_v = QtWidgets.QVBoxLayout(volume_box)
         volume_v.setContentsMargins(0, 0, 0, 0)
         volume_v.setSpacing(2)
+        default_volume_db = -6.0
+        default_volume_linear = 10.0 ** (default_volume_db / 20.0)
+        default_volume_slider = int(
+            round(
+                QtMultimedia.QAudio.convertVolume(
+                    default_volume_linear,
+                    QtMultimedia.QAudio.LinearVolumeScale,
+                    QtMultimedia.QAudio.LogarithmicVolumeScale,
+                )
+                * 100.0
+            )
+        )
+
         self.vol_slider = _OneStepWheelSlider(QtCore.Qt.Vertical)
         self.vol_slider.setRange(0, 100)
-        self.vol_slider.setValue(50)
+        self.vol_slider.setValue(max(0, min(100, default_volume_slider)))
         self.vol_slider.setToolTip("Volume")
 
         self.l_volume = QtWidgets.QLabel("Volume")
@@ -188,12 +202,8 @@ class MainPane(QtWidgets.QWidget):
         _match_track_info_height(volume_box)
         top_row.addWidget(volume_box, 0, QtCore.Qt.AlignVCenter)
 
-        self.vol_slider.valueChanged.connect(
-            lambda value: (
-                self.v_volume.setText(f"{value}%"),
-                self.bus.sig_volume_changed.emit(value / 100)
-            )
-        )
+        self.vol_slider.valueChanged.connect(self._on_volume_slider_changed)
+        QtCore.QTimer.singleShot(0, lambda: self._on_volume_slider_changed(self.vol_slider.value()))
 
         # Tempo column
         tempo_box = QtWidgets.QWidget()
@@ -386,6 +396,16 @@ class MainPane(QtWidgets.QWidget):
         else:
             self.bus.sig_pause_requested.emit(True)
 
+    def _on_volume_slider_changed(self, value: int) -> None:
+        self.v_volume.setText(f"{value}%")
+        slider_norm = max(0.0, min(1.0, float(value) / 100.0))
+        linear_volume = QtMultimedia.QAudio.convertVolume(
+            slider_norm,
+            QtMultimedia.QAudio.LogarithmicVolumeScale,
+            QtMultimedia.QAudio.LinearVolumeScale,
+        )
+        self.bus.sig_volume_changed.emit(float(linear_volume))
+
     # Signals
     def _on_time(self, t: float):
         self.current_time = t
@@ -523,6 +543,9 @@ class MainPane(QtWidgets.QWidget):
 
     def _on_albumart(self):
         self.track_info.update_album_art(getattr(self.model, "album_art", None))
+
+    def _on_output_peak_dbfs(self, dbfs: float) -> None:
+        self.track_info.set_output_peak_dbfs(dbfs)
 
     def _on_playback_state_changed(self, is_playing: bool):
         self._is_playing = bool(is_playing)

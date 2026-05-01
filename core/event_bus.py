@@ -14,6 +14,7 @@ class EventBus(QtCore.QObject):
     sig_external_sync_enabled = QtCore.Signal(bool)
     sig_external_sync_state = QtCore.Signal(object)
     sig_volume_changed = QtCore.Signal(float)
+    sig_output_peak_dbfs = QtCore.Signal(float)
     sig_tempo_factor_changed = QtCore.Signal(float)
     sig_tempo_mode_changed = QtCore.Signal(str)
     sig_stop_requested = QtCore.Signal(bool)

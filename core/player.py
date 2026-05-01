@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from typing import Optional
 
 import numpy as np
@@ -37,6 +38,7 @@ class _AudioWorker(QtCore.QObject):
     playback_status = QtCore.Signal(bool)
     transport_enabled = QtCore.Signal(bool)
     predecoded_buffer_ready = QtCore.Signal(object, int)
+    output_peak_dbfs = QtCore.Signal(float)
 
     def __init__(self) -> None:
         super().__init__()
@@ -57,6 +59,8 @@ class _AudioWorker(QtCore.QObject):
         self._saved_buffer_ms = None
         self._saved_chunk_frames = None
         self._decode_token = 0
+        self._volume_linear = 10.0 ** (-6.0 / 20.0)
+        self._last_peak_pre_volume_dbfs = -24.0
 
         self._frame = QtCore.QTimer(self)
         self._frame.setTimerType(QtCore.Qt.PreciseTimer)
@@ -70,12 +74,13 @@ class _AudioWorker(QtCore.QObject):
         fmt.setSampleFormat(QtMultimedia.QAudioFormat.Float)
         self.fmt = fmt
         self.audio = QtMultimedia.QAudioSink(out_dev, fmt, self)
-        self.audio.setVolume(0.5)
+        self.audio.setVolume(self._volume_linear)
 
         self.rate = fmt.sampleRate()
         self.ch = fmt.channelCount()
         self._feeder = PCMFeeder(self.audio, self.rate, self.ch, self)
         self._feeder.finished.connect(self._on_feeder_finished)
+        self._feeder.peak_level.connect(self._on_peak_level_pre_volume)
         self._warm_backend()
 
     @QtCore.Slot(str)
@@ -88,6 +93,7 @@ class _AudioWorker(QtCore.QObject):
         self.playback_status.emit(False)
         self.duration_changed.emit(0.0)
         self.time_changed.emit(0.0)
+        self.output_peak_dbfs.emit(-24.0)
         self.transport_enabled.emit(False)
         self._decode_token += 1
         try:
@@ -98,6 +104,7 @@ class _AudioWorker(QtCore.QObject):
         except Exception as exc:
             print(f"[Player] Decode error: {exc}")
             self.playback_status.emit(False)
+            self.output_peak_dbfs.emit(-24.0)
             self.transport_enabled.emit(True)
 
     @QtCore.Slot(object, int)
@@ -110,6 +117,7 @@ class _AudioWorker(QtCore.QObject):
         except Exception as exc:
             print(f"[Player] Failed to load decoded buffer: {exc}")
             self._buffer_ready = False
+            self.output_peak_dbfs.emit(-24.0)
             self.transport_enabled.emit(True)
             return
 
@@ -120,6 +128,7 @@ class _AudioWorker(QtCore.QObject):
         self.time_changed.emit(0.0)
         self.playback_status.emit(False)
         self.transport_enabled.emit(True)
+        self.output_peak_dbfs.emit(-24.0)
 
     @QtCore.Slot()
     def play(self) -> None:
@@ -156,6 +165,7 @@ class _AudioWorker(QtCore.QObject):
 
         self._is_playing = False
         self.playback_status.emit(False)
+        self.output_peak_dbfs.emit(-24.0)
 
         self._last_emit_ms = -1
         self._emit_time(cur_ms)
@@ -184,6 +194,7 @@ class _AudioWorker(QtCore.QObject):
         self._is_playing = False
         self._last_emit_ms = -1
         self.playback_status.emit(False)
+        self.output_peak_dbfs.emit(-24.0)
         self._emit_time(0)
 
     @QtCore.Slot(float)
@@ -218,15 +229,20 @@ class _AudioWorker(QtCore.QObject):
 
     @QtCore.Slot(float)
     def set_volume(self, value: float) -> None:
+        self._volume_linear = max(0.0, min(1.0, float(value)))
         if self.audio is None:
+            self._emit_adjusted_peak()
             return
-        self.audio.setVolume(max(0.0, min(1.0, value)))
+        self.audio.setVolume(self._volume_linear)
+        self._emit_adjusted_peak()
 
     @QtCore.Slot(int)
     def set_refresh_fps(self, fps: int) -> None:
         fps = max(1, min(240, int(fps)))
         interval_ms = max(1, int(round(1000.0 / fps)))
         self._frame.setInterval(interval_ms)
+        if self._feeder is not None:
+            self._feeder.set_peak_emit_interval_ms(interval_ms)
 
     @QtCore.Slot()
     def scrub_begin(self) -> None:
@@ -299,6 +315,7 @@ class _AudioWorker(QtCore.QObject):
     def shutdown(self) -> None:
         self.stop()
         self._buffer_ready = False
+        self.output_peak_dbfs.emit(-24.0)
         self.transport_enabled.emit(False)
         if self.audio is not None:
             try:
@@ -369,6 +386,20 @@ class _AudioWorker(QtCore.QObject):
     def _on_feeder_finished(self, _code: int) -> None:
         self.pause()
 
+    @QtCore.Slot(float)
+    def _on_peak_level_pre_volume(self, dbfs: float) -> None:
+        self._last_peak_pre_volume_dbfs = float(dbfs)
+        self._emit_adjusted_peak()
+
+    def _emit_adjusted_peak(self) -> None:
+        floor_dbfs = -24.0
+        if self._volume_linear <= 1e-9:
+            self.output_peak_dbfs.emit(floor_dbfs)
+            return
+        adjusted = float(self._last_peak_pre_volume_dbfs) + (20.0 * math.log10(self._volume_linear))
+        adjusted = max(floor_dbfs, min(0.0, adjusted))
+        self.output_peak_dbfs.emit(adjusted)
+
 
 class PlayerController(QtCore.QObject):
     """
@@ -429,6 +460,7 @@ class PlayerController(QtCore.QObject):
         self._audio_worker.duration_changed.connect(self.bus.sig_duration_changed)
         self._audio_worker.playback_status.connect(self.bus.sig_playback_status)
         self._audio_worker.transport_enabled.connect(self.bus.sig_transport_enabled)
+        self._audio_worker.output_peak_dbfs.connect(self.bus.sig_output_peak_dbfs)
         self._audio_worker.predecoded_buffer_ready.connect(self._on_predecoded_buffer_ready, QtCore.Qt.QueuedConnection)
 
         self._audio_thread.started.connect(self._audio_worker.initialize)

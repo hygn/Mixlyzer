@@ -88,6 +88,90 @@ class MarqueeLabel(QtWidgets.QLabel):
         self._hold_ticks = max(0, math.ceil(self.HOLD_MS / self.STEP_MS))
 
 
+class VerticalPeakMeter(QtWidgets.QWidget):
+    FLOOR_DBFS = -24.0
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._display_dbfs = self.FLOOR_DBFS
+        self._target_dbfs = self.FLOOR_DBFS
+        self._peak_hold_dbfs = self.FLOOR_DBFS
+        self._hold_ms = 500
+        self._fall_db_per_sec = 24.0
+        self._peak_fall_db_per_sec = 36.0
+        self._peak_hold_deadline = QtCore.QDeadlineTimer(self._hold_ms)
+        self._anim = QtCore.QTimer(self)
+        self._anim.setInterval(16)
+        self._anim.timeout.connect(self._tick)
+        self.setFixedWidth(10)
+        self.setMinimumHeight(TrackInfoPanel.HEADER_H - 6)
+        self.setMaximumHeight(TrackInfoPanel.HEADER_H - 6)
+        self._anim.start()
+
+    def set_level_dbfs(self, dbfs: float) -> None:
+        value = max(self.FLOOR_DBFS, min(0.0, float(dbfs)))
+        self._target_dbfs = value
+        if value >= self._display_dbfs:
+            self._display_dbfs = value
+        if value >= self._peak_hold_dbfs:
+            self._peak_hold_dbfs = value
+            self._peak_hold_deadline = QtCore.QDeadlineTimer(self._hold_ms)
+        self.update()
+
+    def reset_level(self) -> None:
+        self._display_dbfs = self.FLOOR_DBFS
+        self._target_dbfs = self.FLOOR_DBFS
+        self._peak_hold_dbfs = self.FLOOR_DBFS
+        self.update()
+
+    def _tick(self) -> None:
+        dt = self._anim.interval() / 1000.0
+        changed = False
+        if self._display_dbfs > self._target_dbfs:
+            next_dbfs = max(self._target_dbfs, self._display_dbfs - (self._fall_db_per_sec * dt))
+            if abs(next_dbfs - self._display_dbfs) > 1e-6:
+                self._display_dbfs = next_dbfs
+                changed = True
+        if self._peak_hold_deadline.hasExpired():
+            next_peak = max(self._display_dbfs, self._peak_hold_dbfs - (self._peak_fall_db_per_sec * dt))
+            if abs(next_peak - self._peak_hold_dbfs) > 1e-6:
+                self._peak_hold_dbfs = next_peak
+                changed = True
+        if changed:
+            self.update()
+
+    def paintEvent(self, event: QtGui.QPaintEvent) -> None:
+        super().paintEvent(event)
+        painter = QtGui.QPainter(self)
+        painter.setRenderHint(QtGui.QPainter.Antialiasing, True)
+        rect = self.rect().adjusted(3, 2, -3, -2)
+        painter.fillRect(rect, QtGui.QColor("#111"))
+        painter.setPen(QtGui.QPen(QtGui.QColor("#444"), 1))
+        painter.drawRect(rect)
+
+        fill_ratio = (self._display_dbfs - self.FLOOR_DBFS) / abs(self.FLOOR_DBFS)
+        fill_ratio = max(0.0, min(1.0, fill_ratio))
+        fill_h = int(round(rect.height() * fill_ratio))
+        if fill_h > 0:
+            fill_rect = QtCore.QRect(rect.left() + 1, rect.bottom() - fill_h + 1, rect.width() - 1, fill_h - 1)
+            grad_rect = rect.adjusted(1, 1, -1, -1)
+            grad = QtGui.QLinearGradient(grad_rect.topLeft(), grad_rect.bottomLeft())
+            grad.setColorAt(0.0, QtGui.QColor("#ff4d4d"))
+            grad.setColorAt(0.35, QtGui.QColor("#ffcf40"))
+            grad.setColorAt(1.0, QtGui.QColor("#34d399"))
+            painter.save()
+            painter.setClipRect(fill_rect)
+            painter.fillRect(grad_rect, grad)
+            painter.restore()
+
+        peak_ratio = (self._peak_hold_dbfs - self.FLOOR_DBFS) / abs(self.FLOOR_DBFS)
+        peak_ratio = max(0.0, min(1.0, peak_ratio))
+        peak_y = rect.bottom() - int(round(rect.height() * peak_ratio))
+        painter.setPen(QtGui.QPen(QtGui.QColor("#f8fafc"), 2))
+        painter.drawLine(rect.left() + 1, peak_y, rect.right() - 1, peak_y)
+        painter.end()
+
+
 class TrackInfoPanel(QtWidgets.QWidget):
     """Header widget that displays central track information."""
 
@@ -184,6 +268,9 @@ class TrackInfoPanel(QtWidgets.QWidget):
         self.record_label.setAlignment(QtCore.Qt.AlignCenter)
         layout.addWidget(self.record_label, 0, QtCore.Qt.AlignVCenter)
 
+        self.peak_meter = VerticalPeakMeter()
+        layout.addWidget(self.peak_meter, 0, QtCore.Qt.AlignVCenter)
+
     # External
     def set_title(self, text: str):
         self.title_label.set_marquee_text((text or "").strip())
@@ -259,6 +346,9 @@ class TrackInfoPanel(QtWidgets.QWidget):
     def set_config(self, cfg: config):
         self.cfg = cfg
         self._load_record_pixmap(self._last_album_art)
+
+    def set_output_peak_dbfs(self, dbfs: float):
+        self.peak_meter.set_level_dbfs(dbfs)
 
     # Internal helper
     def _set_placeholder_cover(self):
