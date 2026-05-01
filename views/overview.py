@@ -83,6 +83,11 @@ class OverviewWidget(QtWidgets.QWidget):
         except Exception:
             pass
         self.img_wave.setOpts(interpolation='nearest')
+        self.played_overlay = QtWidgets.QGraphicsRectItem()
+        self.played_overlay.setPen(pg.mkPen(None))
+        self.played_overlay.setBrush(pg.mkBrush(0, 0, 0, 140))
+        self.played_overlay.setZValue(2)
+        self.p.addItem(self.played_overlay)
         self.segment_regions: list[pg.LinearRegionItem] = []
         self.segment_colors = [
             (70, 130, 180, 40),
@@ -96,6 +101,7 @@ class OverviewWidget(QtWidgets.QWidget):
             self.img_key.setAutoDownsample(True)
         
         self.line_now = pg.InfiniteLine(angle=90, pen=pg.mkPen((255,200,50), width=2)); self.p.addItem(self.line_now)
+        self.line_now.setZValue(30)
 
         self.duration = 0.0
         self.KEY_H = 0.25
@@ -124,6 +130,7 @@ class OverviewWidget(QtWidgets.QWidget):
         self._jump_pairs: list[dict] = []
         self._jump_cues: list[dict] = []
         self._jump_links: list[dict] = []
+        self._wave_bottom = self.KEY_H
 
         self.bus.sig_time_changed.connect(self._on_time)
         self.bus.sig_duration_changed.connect(self._on_duration)
@@ -144,6 +151,7 @@ class OverviewWidget(QtWidgets.QWidget):
 
         wave_bottom = self.KEY_H
         wave_top = wave_bottom + 1.0
+        self._wave_bottom = wave_bottom
         self._wave_top = wave_top
         self._selection_marker_y = wave_top + 0.012
         self._cue_block_height = 0.1
@@ -184,6 +192,7 @@ class OverviewWidget(QtWidgets.QWidget):
         self._render_segments(self._tempo_segments)
         self._apply_selection_graphics()
         self._clear_jump_arrow()
+        self._update_played_overlay()
     
     def _on_jumpcue_updated(self) -> None:
         feats = self.model.features
@@ -210,10 +219,12 @@ class OverviewWidget(QtWidgets.QWidget):
     def _on_time(self, t: float):
         self._current_time = float(np.clip(t, 0.0, max(self.duration, 0.0)))
         self.line_now.setPos(self._current_time)
+        self._update_played_overlay()
 
     def _on_duration(self, d: float):
         self.duration = float(d)
         self.p.setXRange(0.0, max(0.1, self.duration), padding=0.0)
+        self._update_played_overlay()
 
     def _on_jump_arm(self, payload) -> None:
         start, dest = self._resolve_jump_points(payload)
@@ -562,6 +573,14 @@ class OverviewWidget(QtWidgets.QWidget):
             return
         marker.setData([value], [y])
         marker.setVisible(True)
+
+    def _update_played_overlay(self) -> None:
+        if self.played_overlay is None:
+            return
+        width = float(np.clip(self._current_time, 0.0, max(self.duration, 0.0)))
+        height = max(0.0, self._wave_top)
+        self.played_overlay.setRect(QtCore.QRectF(0.0, 0.0, width, height))
+        self.played_overlay.setVisible(width > 0.0 and height > 0.0)
 
     # seeking by click/drag
     def _map_scene_pos_to_time(self, ev) -> float | None:

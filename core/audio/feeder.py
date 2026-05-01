@@ -22,6 +22,7 @@ class PCMFeeder(QtCore.QObject):
 
     finished = QtCore.Signal(int)  # playback finished signal (code 0)
     peak_level = QtCore.Signal(float)  # peak dBFS
+    playhead_time = QtCore.Signal(float)  # precise playback time in sec
 
     def __init__(self, audio: QtMultimedia.QAudioSink, rate: int, channels: int,
                  parent: Optional[QtCore.QObject] = None):
@@ -64,6 +65,8 @@ class PCMFeeder(QtCore.QObject):
         self._peak_emit_interval_ms = 16
         self._peak_floor_dbfs = -24.0
         self._last_peak_emit_ms = -10**9
+        self._time_emit_interval_ms = 5
+        self._last_time_emit_ms = -10**9
 
     # Configuration API
     def set_predecoded_buffer(self, pcm: np.ndarray):
@@ -88,6 +91,7 @@ class PCMFeeder(QtCore.QObject):
         self._feeder_prev_t = 0
         self._last_written_frames = 0
         self._last_peak_emit_ms = -10**9
+        self._last_time_emit_ms = -10**9
 
     def set_mode(self, mode: str):
         m = (mode or "speed").lower()
@@ -115,6 +119,7 @@ class PCMFeeder(QtCore.QObject):
         self._flush_timer.start()
         self._sent_finished = False
         self._last_peak_emit_ms = -10**9
+        self._last_time_emit_ms = -10**9
 
     def stop(self):
         """Stop audio/timer; leave time tracking/mapping intact."""
@@ -136,6 +141,7 @@ class PCMFeeder(QtCore.QObject):
         self._speed.pos = 0.0
         self._sent_finished = False
         self.peak_level.emit(float(self._peak_floor_dbfs))
+        self.playhead_time.emit(float(self.current_base_frame() / max(1, self.rate)))
 
     def seek_frames(self, f_idx: int):
         """Jump to input-frame index (without resetting the device)."""
@@ -144,6 +150,7 @@ class PCMFeeder(QtCore.QObject):
         self._read_idx = f_idx
         self._total_in_consumed = 0
         self._speed.pos = 0.0
+        self.playhead_time.emit(float(self._abs_base_frames / max(1, self.rate)))
 
     def reset_counters(self):
         """Reset base counters to clear delay-compensation mapping."""
@@ -249,12 +256,14 @@ class PCMFeeder(QtCore.QObject):
         except Exception:
             frames_free = 0
         if frames_free <= 0:
+            self._emit_playhead_time()
             return
 
         max_out_frames = min(frames_free, self._chunk_frames)
 
         # If source drained, emit finished once
         if self._read_idx >= self._len:
+            self._emit_playhead_time()
             if not self._sent_finished:
                 self._sent_finished = True
                 self.finished.emit(0)
@@ -278,6 +287,7 @@ class PCMFeeder(QtCore.QObject):
             self._last_written_frames = produced
 
         if produced <= 0:
+            self._emit_playhead_time()
             return
         
 
@@ -293,6 +303,7 @@ class PCMFeeder(QtCore.QObject):
             return
 
         self._emit_peak_level(out)
+        self._emit_playhead_time()
 
         # Output/input mapping metadata (for delay correction)
         self._out_map.append((int(produced), int(consumed)))
@@ -321,3 +332,11 @@ class PCMFeeder(QtCore.QObject):
         dbfs = max(self._peak_floor_dbfs, min(0.0, dbfs))
         self._last_peak_emit_ms = now_ms
         self.peak_level.emit(dbfs)
+
+    def _emit_playhead_time(self, *, force: bool = False) -> None:
+        now_ms = int(QtCore.QDateTime.currentMSecsSinceEpoch())
+        if (not force) and ((now_ms - self._last_time_emit_ms) < int(self._time_emit_interval_ms)):
+            return
+        self._last_time_emit_ms = now_ms
+        cur_sec = float(self.input_playhead_abs_frame() / max(1, self.rate))
+        self.playhead_time.emit(cur_sec)

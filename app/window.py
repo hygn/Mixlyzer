@@ -132,7 +132,7 @@ class AppWindow(QtWidgets.QMainWindow):
         )
         self.metro.set_downbeat_cycle(1)
         self.metro.moveToThread(self.player.audio_thread())
-        self.player.connect_audio_time(self.metro._on_time_changed)
+        self.player.connect_precise_audio_time(self.metro._on_time_changed)
         self._sig_metronome_set_beats.connect(self.metro.set_beats, QtCore.Qt.QueuedConnection)
         QtCore.QMetaObject.invokeMethod(self.metro, "initialize_audio", QtCore.Qt.QueuedConnection)
         if self.cfg.viewconfig.enable_metronome:

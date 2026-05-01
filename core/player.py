@@ -34,6 +34,7 @@ def _thread_tag(obj: QtCore.QObject | None = None) -> str:
 
 class _AudioWorker(QtCore.QObject):
     time_changed = QtCore.Signal(float)
+    precise_time_changed = QtCore.Signal(float)
     duration_changed = QtCore.Signal(float)
     playback_status = QtCore.Signal(bool)
     transport_enabled = QtCore.Signal(bool)
@@ -81,6 +82,7 @@ class _AudioWorker(QtCore.QObject):
         self._feeder = PCMFeeder(self.audio, self.rate, self.ch, self)
         self._feeder.finished.connect(self._on_feeder_finished)
         self._feeder.peak_level.connect(self._on_peak_level_pre_volume)
+        self._feeder.playhead_time.connect(self.precise_time_changed)
         self._warm_backend()
 
     @QtCore.Slot(str)
@@ -93,6 +95,7 @@ class _AudioWorker(QtCore.QObject):
         self.playback_status.emit(False)
         self.duration_changed.emit(0.0)
         self.time_changed.emit(0.0)
+        self.precise_time_changed.emit(0.0)
         self.output_peak_dbfs.emit(-24.0)
         self.transport_enabled.emit(False)
         self._decode_token += 1
@@ -126,6 +129,7 @@ class _AudioWorker(QtCore.QObject):
         self.predecoded_buffer_ready.emit(pcm_array, self._duration_ms)
         self.duration_changed.emit(self._duration_ms / 1000.0)
         self.time_changed.emit(0.0)
+        self.precise_time_changed.emit(0.0)
         self.playback_status.emit(False)
         self.transport_enabled.emit(True)
         self.output_peak_dbfs.emit(-24.0)
@@ -169,6 +173,7 @@ class _AudioWorker(QtCore.QObject):
 
         self._last_emit_ms = -1
         self._emit_time(cur_ms)
+        self.precise_time_changed.emit(cur_ms / 1000.0)
 
     @QtCore.Slot()
     def stop(self) -> None:
@@ -196,6 +201,7 @@ class _AudioWorker(QtCore.QObject):
         self.playback_status.emit(False)
         self.output_peak_dbfs.emit(-24.0)
         self._emit_time(0)
+        self.precise_time_changed.emit(0.0)
 
     @QtCore.Slot(float)
     def seek(self, sec: float) -> None:
@@ -213,6 +219,7 @@ class _AudioWorker(QtCore.QObject):
             self._feeder.start()
         else:
             self.time_changed.emit(sec)
+            self.precise_time_changed.emit(sec)
 
     @QtCore.Slot(str)
     def set_tempo_mode(self, mode: str) -> None:
@@ -508,6 +515,9 @@ class PlayerController(QtCore.QObject):
 
     def connect_audio_time(self, slot) -> None:
         self._audio_worker.time_changed.connect(slot, QtCore.Qt.DirectConnection)
+
+    def connect_precise_audio_time(self, slot) -> None:
+        self._audio_worker.precise_time_changed.connect(slot, QtCore.Qt.DirectConnection)
 
     def play(self):
         if not self._path:
