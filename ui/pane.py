@@ -18,6 +18,7 @@ from core.config import config
 from ui.mainplotvbx import NoDragNoWheelViewBox
 from ui.track_info_panel import TrackInfoPanel
 from ui.beatgrid_edit_panel import BeatgridEditPanel
+from utils.volume import slider_percent_to_linear
 
 
 pg.setConfigOptions(antialias=False, useOpenGL=False)
@@ -163,22 +164,20 @@ class MainPane(QtWidgets.QWidget):
         volume_v = QtWidgets.QVBoxLayout(volume_box)
         volume_v.setContentsMargins(0, 0, 0, 0)
         volume_v.setSpacing(2)
-        default_volume_db = -6.0
-        default_volume_linear = 10.0 ** (default_volume_db / 20.0)
+        playback_cfg = getattr(self.cfg, "playbackconfig", None)
         default_volume_slider = int(
-            round(
-                QtMultimedia.QAudio.convertVolume(
-                    default_volume_linear,
-                    QtMultimedia.QAudio.LinearVolumeScale,
-                    QtMultimedia.QAudio.LogarithmicVolumeScale,
-                )
-                * 100.0
+            max(
+                0,
+                min(
+                    100,
+                    int(getattr(playback_cfg, "default_volume_percent", 100) or 100),
+                ),
             )
         )
 
         self.vol_slider = _OneStepWheelSlider(QtCore.Qt.Vertical)
         self.vol_slider.setRange(0, 100)
-        self.vol_slider.setValue(max(0, min(100, default_volume_slider)))
+        self.vol_slider.setValue(default_volume_slider)
         self.vol_slider.setToolTip("Volume")
 
         self.l_volume = QtWidgets.QLabel("Volume")
@@ -398,12 +397,14 @@ class MainPane(QtWidgets.QWidget):
 
     def _on_volume_slider_changed(self, value: int) -> None:
         self.v_volume.setText(f"{value}%")
-        slider_norm = max(0.0, min(1.0, float(value) / 100.0))
-        linear_volume = QtMultimedia.QAudio.convertVolume(
-            slider_norm,
-            QtMultimedia.QAudio.LogarithmicVolumeScale,
-            QtMultimedia.QAudio.LinearVolumeScale,
+        trim_dbfs = float(
+            getattr(
+                getattr(self.cfg, "playbackconfig", None),
+                "volume_trim_dbfs",
+                -6.0,
+            )
         )
+        linear_volume = slider_percent_to_linear(value, trim_dbfs)
         self.bus.sig_volume_changed.emit(float(linear_volume))
 
     # Signals
@@ -584,6 +585,16 @@ class MainPane(QtWidgets.QWidget):
         self._install_views_from_config(cfg)
         self._refresh_transport_buttons()
         print("UI Reloaded")
+
+    def apply_playback_config(self, cfg: config) -> None:
+        self.cfg = cfg
+        playback_cfg = getattr(cfg, "playbackconfig", None)
+        default_volume = int(getattr(playback_cfg, "default_volume_percent", 100) or 100)
+        default_volume = max(0, min(100, default_volume))
+        self.vol_slider.blockSignals(True)
+        self.vol_slider.setValue(default_volume)
+        self.vol_slider.blockSignals(False)
+        self._on_volume_slider_changed(default_volume)
 
     def _set_editor_panel_visible(self, visible: bool) -> None:
         show = bool(visible)

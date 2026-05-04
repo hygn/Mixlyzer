@@ -20,9 +20,16 @@ class viewconfig:
     display_keystrip: bool
     display_JumpCUE: bool
     fps: int
-    enable_metronome: bool
+    reduce_fps_when_occluded: bool
     record_img_path: str
+
+
+@dataclass
+class playbackconfig:
+    enable_metronome: bool
     metronome_wav_path: str
+    volume_trim_dbfs: float
+    default_volume_percent: int
 
 
 @dataclass
@@ -93,6 +100,7 @@ class config:
     keyconfig: keyconfig
     libconfig: libconfig
     viewconfig: viewconfig
+    playbackconfig: playbackconfig
     externalsyncconfig: externalsyncconfig
 
     def to_dict(self) -> dict:
@@ -209,9 +217,14 @@ def default_cfg():
         display_keystrip=True,
         display_JumpCUE=True,
         fps=60,
-        metronome_wav_path="assets/sound/click.wav",
+        reduce_fps_when_occluded=True,
         record_img_path="assets/images/vinyl.png",
+    )
+    pcfg = playbackconfig(
         enable_metronome=False,
+        metronome_wav_path="assets/sound/click.wav",
+        volume_trim_dbfs=-6.0,
+        default_volume_percent=100,
     )
     xcfg = externalsyncconfig(
         enabled=False,
@@ -240,6 +253,7 @@ def default_cfg():
         analysisconfig=acfg,
         keyconfig=kcfg,
         viewconfig=vcfg,
+        playbackconfig=pcfg,
         externalsyncconfig=xcfg,
     )
 
@@ -264,6 +278,18 @@ def load_cfg() -> config:
         with open("config.json", "r", encoding="utf-8") as f:
             loaded = json.load(f)
             merged = _merge_defaults(cfg.to_dict(), loaded if isinstance(loaded, dict) else {})
+            if isinstance(loaded, dict) and not isinstance(loaded.get("playbackconfig"), dict):
+                legacy_view = loaded.get("viewconfig", {})
+                if isinstance(legacy_view, dict):
+                    merged["playbackconfig"]["enable_metronome"] = bool(
+                        legacy_view.get(
+                            "enable_metronome",
+                            merged["playbackconfig"]["enable_metronome"],
+                        )
+                    )
+                    legacy_wav = legacy_view.get("metronome_wav_path")
+                    if legacy_wav is not None:
+                        merged["playbackconfig"]["metronome_wav_path"] = str(legacy_wav)
             cfg = config.from_dict(merged)
     except (TypeError, FileNotFoundError, json.JSONDecodeError):
         with open("config.json", "w", encoding="utf-8") as f:

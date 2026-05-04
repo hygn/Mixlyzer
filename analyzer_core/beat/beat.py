@@ -151,7 +151,7 @@ def estimate_bpm_and_grid(odf: np.ndarray, odf_lp: np.ndarray, sr: int, hop: int
             return 0.0, -1e18
         k = int(np.argmax(corr))
         phi_best = float(k)
-        val_best = float(corr[k])
+        val_best = float(corr[k] - np.median(corr))
 
         # Quadratic peak interpolation for sub-frame phase on the circular score.
         if 0 < k < (corr.size - 1):

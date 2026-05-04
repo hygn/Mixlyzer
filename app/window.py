@@ -16,6 +16,8 @@ from core.taskmanager import taskmanager
 from core.external_sync import ExternalSyncController
 from core.rekordbox_sync import RekordboxXmlSync
 from .metronome import MetronomeController
+from utils.window_visibility import is_window_fully_hidden
+from utils.volume import slider_percent_to_linear
 
 from ui.pane import MainPane
 from ui.cfgwindow import SettingsDialog
@@ -31,6 +33,9 @@ from core.config import config, analysisconfig, keyconfig, libconfig, viewconfig
 
 class AppWindow(QtWidgets.QMainWindow):
     _sig_metronome_set_beats = QtCore.Signal(object, float)
+    _WINDOW_VISIBILITY_POLL_MS = 33
+    _HIDDEN_REFRESH_FPS = 1
+    _HIDDEN_ENTER_POLLS = 5
 
     def __init__(self):
         super().__init__()
@@ -54,7 +59,11 @@ class AppWindow(QtWidgets.QMainWindow):
         self.bus = EventBus()
         self.model = DataModel()
         self.tl = TimelineCoordinator(self.bus)
-        self.player = PlayerController(self.bus, model=self.model)
+        self.player = PlayerController(
+            self.bus,
+            model=self.model,
+            default_volume_linear=self._default_volume_linear_from_cfg(self.cfg),
+        )
         self.player.set_refresh_fps(self.cfg.viewconfig.fps)
         self.external_sync = ExternalSyncController(
             self.bus,
@@ -112,6 +121,13 @@ class AppWindow(QtWidgets.QMainWindow):
         self._external_sync_applied_enabled: bool | None = None
         self._analysis_workers: dict[int, AnalysisWorker] = {}
         self._analysis_context: dict[int, dict] = {}
+        self._effective_refresh_fps: int | None = None
+        self._hidden_visibility_streak = 0
+        self._visibility_refresh_enabled = False
+        self._visibility_refresh_failed = False
+        self._visibility_refresh_timer = QtCore.QTimer(self)
+        self._visibility_refresh_timer.setInterval(self._WINDOW_VISIBILITY_POLL_MS)
+        self._visibility_refresh_timer.timeout.connect(self._update_refresh_fps_for_visibility)
 
         # task manager
         self.taskmanager = taskmanager(self.bus)
@@ -128,19 +144,20 @@ class AppWindow(QtWidgets.QMainWindow):
         )
 
         self.metro = MetronomeController(
-            click_wav_path=self.cfg.viewconfig.metronome_wav_path,
+            click_wav_path=self.cfg.playbackconfig.metronome_wav_path,
         )
         self.metro.set_downbeat_cycle(1)
         self.metro.moveToThread(self.player.audio_thread())
         self.player.connect_precise_audio_time(self.metro._on_time_changed)
         self._sig_metronome_set_beats.connect(self.metro.set_beats, QtCore.Qt.QueuedConnection)
         QtCore.QMetaObject.invokeMethod(self.metro, "initialize_audio", QtCore.Qt.QueuedConnection)
-        if self.cfg.viewconfig.enable_metronome:
+        if self.cfg.playbackconfig.enable_metronome:
             QtCore.QMetaObject.invokeMethod(self.metro, "start", QtCore.Qt.QueuedConnection)
         else:
             QtCore.QMetaObject.invokeMethod(self.metro, "stop", QtCore.Qt.QueuedConnection)
         self.bus.sig_beatgrid_edited.connect(self._sync_metronome_beats)
         self._apply_external_sync_mode(self.cfg.externalsyncconfig)
+        self._apply_visibility_refresh_setting(force=True)
 
     # DnD
     def dragEnterEvent(self, e: QtGui.QDragEnterEvent):
@@ -506,12 +523,16 @@ class AppWindow(QtWidgets.QMainWindow):
             self.bus.sig_rekordbox_sync_requested.emit(True)
         prev_vcfg = prev_cfg.get("viewconfig", {})
         new_vcfg = _config.to_dict()["viewconfig"]
+        prev_pcfg = prev_cfg.get("playbackconfig", {})
+        new_pcfg = _config.to_dict()["playbackconfig"]
         _VIEW_LAYOUT_KEYS = {"display_waveform", "display_beatgrid", "display_keystrip", "display_JumpCUE"}
         layout_changed = any(prev_vcfg.get(k) != new_vcfg.get(k) for k in _VIEW_LAYOUT_KEYS)
         viewconfig_changed = prev_vcfg != new_vcfg
+        playbackconfig_changed = prev_pcfg != new_pcfg
         if viewconfig_changed:
-            self.player.set_refresh_fps(_config.viewconfig.fps)
-            if _config.viewconfig.enable_metronome:
+            self._apply_visibility_refresh_setting(force=True)
+        if playbackconfig_changed:
+            if _config.playbackconfig.enable_metronome:
                 QtCore.QMetaObject.invokeMethod(self.metro, "start", QtCore.Qt.QueuedConnection)
             else:
                 QtCore.QMetaObject.invokeMethod(self.metro, "stop", QtCore.Qt.QueuedConnection)
@@ -519,8 +540,9 @@ class AppWindow(QtWidgets.QMainWindow):
                 self.metro,
                 "set_soundfile",
                 QtCore.Qt.QueuedConnection,
-                QtCore.Q_ARG(str, _config.viewconfig.metronome_wav_path),
+                QtCore.Q_ARG(str, _config.playbackconfig.metronome_wav_path),
             )
+            self.pane.apply_playback_config(_config)
         if layout_changed:
             self.bus.sig_reload_UI.emit(_config)
         elif prev_cfg.get("externalsyncconfig") != _config.to_dict().get("externalsyncconfig"):
@@ -539,6 +561,79 @@ class AppWindow(QtWidgets.QMainWindow):
 
     def _is_external_sync_active(self) -> bool:
         return bool(self.cfg.externalsyncconfig.enabled)
+
+    def is_fully_hidden_from_user(self) -> bool:
+        return bool(is_window_fully_hidden(self))
+
+    def _initialize_visibility_refresh(self) -> bool:
+        try:
+            self.is_fully_hidden_from_user()
+        except Exception as exc:
+            self._visibility_refresh_enabled = False
+            self._visibility_refresh_failed = True
+            print(f"[WindowVisibility] disabled: {exc}")
+            return False
+        self._visibility_refresh_enabled = True
+        self._visibility_refresh_failed = False
+        self._update_refresh_fps_for_visibility(force=True)
+        return True
+
+    def _apply_visibility_refresh_setting(self, *, force: bool = False) -> None:
+        enabled_by_cfg = bool(getattr(self.cfg.viewconfig, "reduce_fps_when_occluded", True))
+        if not enabled_by_cfg:
+            self._visibility_refresh_timer.stop()
+            self._visibility_refresh_enabled = False
+            self._visibility_refresh_failed = False
+            self._hidden_visibility_streak = 0
+            self._apply_effective_refresh_fps(int(self.cfg.viewconfig.fps), force=True)
+            return
+        if self._visibility_refresh_enabled:
+            self._update_refresh_fps_for_visibility(force=force)
+            if not self._visibility_refresh_timer.isActive():
+                self._visibility_refresh_timer.start()
+            return
+        if self._initialize_visibility_refresh():
+            if not self._visibility_refresh_timer.isActive():
+                self._visibility_refresh_timer.start()
+        else:
+            self._apply_effective_refresh_fps(int(self.cfg.viewconfig.fps), force=True)
+
+    def _apply_effective_refresh_fps(self, fps: int, *, force: bool = False) -> None:
+        fps = max(1, min(240, int(fps)))
+        if (not force) and self._effective_refresh_fps == fps:
+            return
+        self._effective_refresh_fps = fps
+        self.player.set_refresh_fps(fps)
+
+    @QtCore.Slot()
+    def _update_refresh_fps_for_visibility(self, *, force: bool = False) -> None:
+        if not self._visibility_refresh_enabled:
+            return
+        target_fps = int(self.cfg.viewconfig.fps)
+        try:
+            is_hidden = self.is_fully_hidden_from_user()
+        except Exception as exc:
+            if not self._visibility_refresh_failed:
+                print(f"[WindowVisibility] disabled during polling: {exc}")
+            self._visibility_refresh_failed = True
+            self._visibility_refresh_enabled = False
+            self._visibility_refresh_timer.stop()
+            self._hidden_visibility_streak = 0
+            self._apply_effective_refresh_fps(int(self.cfg.viewconfig.fps), force=True)
+            return
+        if is_hidden:
+            self._hidden_visibility_streak += 1
+        else:
+            self._hidden_visibility_streak = 0
+        if self._hidden_visibility_streak >= self._HIDDEN_ENTER_POLLS:
+            target_fps = self._HIDDEN_REFRESH_FPS
+        self._apply_effective_refresh_fps(target_fps, force=force)
+
+    def _default_volume_linear_from_cfg(self, cfg: config) -> float:
+        playback_cfg = getattr(cfg, "playbackconfig", None)
+        trim_dbfs = float(getattr(playback_cfg, "volume_trim_dbfs", -6.0))
+        default_percent = int(getattr(playback_cfg, "default_volume_percent", 100) or 100)
+        return slider_percent_to_linear(default_percent, trim_dbfs)
 
     def _apply_external_sync_mode(self, sync_cfg) -> None:
         enabled = bool(sync_cfg.enabled)

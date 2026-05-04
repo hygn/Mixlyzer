@@ -41,7 +41,7 @@ class _AudioWorker(QtCore.QObject):
     predecoded_buffer_ready = QtCore.Signal(object, int)
     output_peak_dbfs = QtCore.Signal(float)
 
-    def __init__(self) -> None:
+    def __init__(self, *, default_volume_linear: float = 1.0) -> None:
         super().__init__()
         self.fmt: Optional[QtMultimedia.QAudioFormat] = None
         self.audio: Optional[QtMultimedia.QAudioSink] = None
@@ -60,7 +60,7 @@ class _AudioWorker(QtCore.QObject):
         self._saved_buffer_ms = None
         self._saved_chunk_frames = None
         self._decode_token = 0
-        self._volume_linear = 10.0 ** (-6.0 / 20.0)
+        self._volume_linear = max(0.0, min(1.0, float(default_volume_linear)))
         self._last_peak_pre_volume_dbfs = -24.0
 
         self._frame = QtCore.QTimer(self)
@@ -429,7 +429,7 @@ class PlayerController(QtCore.QObject):
     _cmd_disarm_jump = QtCore.Signal()
     _cmd_shutdown = QtCore.Signal()
 
-    def __init__(self, bus: EventBus, model=None):
+    def __init__(self, bus: EventBus, model=None, *, default_volume_linear: float = 1.0):
         super().__init__()
         self.bus = bus
         self.model = model
@@ -444,7 +444,7 @@ class PlayerController(QtCore.QObject):
 
         self._audio_thread = QtCore.QThread(self)
         self._audio_thread.setObjectName("AudioThread")
-        self._audio_worker = _AudioWorker()
+        self._audio_worker = _AudioWorker(default_volume_linear=default_volume_linear)
         self._audio_worker.moveToThread(self._audio_thread)
 
         self._cmd_prepare_source.connect(self._audio_worker.prepare_source, QtCore.Qt.QueuedConnection)

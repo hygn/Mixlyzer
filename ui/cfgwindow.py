@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (
     QLineEdit, QCheckBox, QComboBox, QSpinBox, QDoubleSpinBox, QLabel, QDialogButtonBox, QGroupBox, QPushButton,
     QScrollArea)
 from core.config import (
-    config, libconfig, viewconfig, analysisconfig, keyconfig, externalsyncconfig,
+    config, libconfig, viewconfig, playbackconfig, analysisconfig, keyconfig, externalsyncconfig,
     memorydeckconfig, memoryvalueconfig,
 )
 from core.event_bus import EventBus
@@ -31,6 +31,7 @@ class SettingsDialog(QDialog):
         self.tabs = QTabWidget(self)
         self._make_tab_library()
         self._make_tab_view()
+        self._make_tab_playback()
         self._make_tab_analysis()
         self._make_tab_key()
         self._make_tab_external_sync()
@@ -87,13 +88,12 @@ class SettingsDialog(QDialog):
         self.cb_beatgrid = QCheckBox("Display beatgrid")
         self.cb_keystrip = QCheckBox("Display keystrip")
         self.cb_JumpCUE = QCheckBox("Display JumpCUE")
-        self.cb_metronome = QCheckBox("Enable metronome")
+        self.cb_reduce_fps_when_occluded = QCheckBox("Reduce FPS when occluded")
         self.sp_fps = QSpinBox()
         self.sp_fps.setRange(1, 240)
         self.sp_fps.setSingleStep(5)
 
         self.ed_record_img_path = QLineEdit()
-        self.ed_metronome_wav_path = QLineEdit()
         self.lbl_fps = QLabel("Waiting for FPS...")
         self.lbl_fps.setToolTip("Measured from actual pyqtgraph plot repaint intervals.")
 
@@ -101,13 +101,33 @@ class SettingsDialog(QDialog):
         f.addRow(self.cb_beatgrid)
         f.addRow(self.cb_keystrip)
         f.addRow(self.cb_JumpCUE)
-        f.addRow(self.cb_metronome)
+        f.addRow(self.cb_reduce_fps_when_occluded)
         f.addRow("FPS", self.sp_fps)
         f.addRow("Record image path", self.ed_record_img_path)
-        f.addRow("Metronome WAV path", self.ed_metronome_wav_path)
         f.addRow("Actual FPS", self.lbl_fps)
 
         self.tabs.addTab(self.tab_view, "View")
+
+    def _make_tab_playback(self):
+        self.tab_playback = QWidget()
+        f = QFormLayout(self.tab_playback)
+
+        self.cb_metronome = QCheckBox("Enable metronome")
+        self.ed_metronome_wav_path = QLineEdit()
+        self.sp_volume_trim_dbfs = QDoubleSpinBox()
+        self.sp_volume_trim_dbfs.setRange(-60.0, 0.0)
+        self.sp_volume_trim_dbfs.setDecimals(2)
+        self.sp_volume_trim_dbfs.setSingleStep(0.5)
+        self.sp_default_volume_percent = QSpinBox()
+        self.sp_default_volume_percent.setRange(0, 100)
+        self.sp_default_volume_percent.setSingleStep(1)
+
+        f.addRow(self.cb_metronome)
+        f.addRow("Metronome WAV path", self.ed_metronome_wav_path)
+        f.addRow("Trim", self.sp_volume_trim_dbfs)
+        f.addRow("Default volume (%)", self.sp_default_volume_percent)
+
+        self.tabs.addTab(self.tab_playback, "Playback")
 
     def _make_tab_analysis(self):
         self.tab_analysis = QWidget()
@@ -154,10 +174,11 @@ class SettingsDialog(QDialog):
         grp_adv = QGroupBox("Advanced")
         f_adv = QFormLayout(grp_adv)
         self.sp_min_offset = QDoubleSpinBox(); self.sp_min_offset.setDecimals(3); self.sp_min_offset.setRange(0.0, 1e6)
-        self.sp_pitch_self = QDoubleSpinBox(); self.sp_pitch_self.setRange(-1e9, 1e9); self.sp_pitch_self.setDecimals(6)
-        self.sp_pitch_semitone = QDoubleSpinBox(); self.sp_pitch_semitone.setRange(-1e9, 1e9); self.sp_pitch_semitone.setDecimals(6)
-        self.sp_pitch_fifth = QDoubleSpinBox(); self.sp_pitch_fifth.setRange(-1e9, 1e9); self.sp_pitch_fifth.setDecimals(6)
-        self.sp_pitch_others = QDoubleSpinBox(); self.sp_pitch_others.setRange(-1e9, 1e9); self.sp_pitch_others.setDecimals(6)
+        self.sp_min_offset.setSingleStep(0.0001)
+        self.sp_pitch_self = QDoubleSpinBox(); self.sp_pitch_self.setRange(-1e9, 1e9); self.sp_pitch_self.setDecimals(6); self.sp_pitch_self.setSingleStep(0.0001)
+        self.sp_pitch_semitone = QDoubleSpinBox(); self.sp_pitch_semitone.setRange(-1e9, 1e9); self.sp_pitch_semitone.setDecimals(6); self.sp_pitch_semitone.setSingleStep(0.0001)
+        self.sp_pitch_fifth = QDoubleSpinBox(); self.sp_pitch_fifth.setRange(-1e9, 1e9); self.sp_pitch_fifth.setDecimals(6); self.sp_pitch_fifth.setSingleStep(0.0001)
+        self.sp_pitch_others = QDoubleSpinBox(); self.sp_pitch_others.setRange(-1e9, 1e9); self.sp_pitch_others.setDecimals(6); self.sp_pitch_others.setSingleStep(0.0001)
         f_adv.addRow("Min offset", self.sp_min_offset)
         f_adv.addRow("Pitch: self", self.sp_pitch_self)
         f_adv.addRow("Pitch: semitone", self.sp_pitch_semitone)
@@ -292,10 +313,15 @@ class SettingsDialog(QDialog):
         self.cb_beatgrid.setChecked(bool(v.display_beatgrid))
         self.cb_keystrip.setChecked(bool(v.display_keystrip))
         self.cb_JumpCUE.setChecked(bool(v.display_JumpCUE))
-        self.cb_metronome.setChecked(bool(v.enable_metronome))
+        self.cb_reduce_fps_when_occluded.setChecked(bool(v.reduce_fps_when_occluded))
         self.sp_fps.setValue(int(v.fps))
         self.ed_record_img_path.setText(v.record_img_path)
-        self.ed_metronome_wav_path.setText(v.metronome_wav_path)
+
+        p = cfg.playbackconfig
+        self.cb_metronome.setChecked(bool(p.enable_metronome))
+        self.ed_metronome_wav_path.setText(p.metronome_wav_path)
+        self.sp_volume_trim_dbfs.setValue(float(p.volume_trim_dbfs))
+        self.sp_default_volume_percent.setValue(int(p.default_volume_percent))
 
         # analysis
         a = cfg.analysisconfig
@@ -489,9 +515,14 @@ class SettingsDialog(QDialog):
                 display_keystrip=bool(self.cb_keystrip.isChecked()),
                 display_JumpCUE=bool(self.cb_JumpCUE.isChecked()),
                 fps=int(self.sp_fps.value()),
-                enable_metronome=bool(self.cb_metronome.isChecked()),
+                reduce_fps_when_occluded=bool(self.cb_reduce_fps_when_occluded.isChecked()),
                 record_img_path=self.ed_record_img_path.text().strip(),
+            ),
+            playbackconfig=playbackconfig(
+                enable_metronome=bool(self.cb_metronome.isChecked()),
                 metronome_wav_path=self.ed_metronome_wav_path.text().strip(),
+                volume_trim_dbfs=float(self.sp_volume_trim_dbfs.value()),
+                default_volume_percent=int(self.sp_default_volume_percent.value()),
             ),
             externalsyncconfig=externalsyncconfig(
                 enabled=bool(self.cb_external_sync_enabled.isChecked()),
