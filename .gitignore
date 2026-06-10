@@ -36,3 +36,7 @@ debug/
 ffmpeg.exe
 config.json
 *.xml
+
+# dataset file (will be splitted into separate repo.)
+annotator/
+benchmark/

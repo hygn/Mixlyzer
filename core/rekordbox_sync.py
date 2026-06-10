@@ -272,8 +272,9 @@ class RekordboxXmlSync(QtCore.QObject):
         raw = str(path or "").strip()
         if not raw:
             return None
-        candidate = Path(raw).expanduser()
-        return candidate if candidate.exists() else candidate
+        # Intentionally returns the candidate even when it does not exist:
+        # callers re-check .exists() and fall back to the stored path/size.
+        return Path(raw).expanduser()
 
 
 def _build_track_element(

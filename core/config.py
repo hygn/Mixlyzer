@@ -19,6 +19,7 @@ class viewconfig:
     display_beatgrid: bool
     display_keystrip: bool
     display_JumpCUE: bool
+    use_output_volume_as_peak_meter_input: bool
     fps: int
     reduce_fps_when_occluded: bool
     record_img_path: str
@@ -216,6 +217,7 @@ def default_cfg():
         display_beatgrid=True,
         display_keystrip=True,
         display_JumpCUE=True,
+        use_output_volume_as_peak_meter_input=True,
         fps=60,
         reduce_fps_when_occluded=True,
         record_img_path="assets/images/vinyl.png",

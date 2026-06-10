@@ -4,7 +4,6 @@ from dataclasses import is_dataclass, asdict
 import csv
 import io
 import json
-from pathlib import Path
 import subprocess
 from PySide6.QtCore import Qt, Signal
 from PySide6 import QtGui
@@ -17,6 +16,7 @@ from core.config import (
     memorydeckconfig, memoryvalueconfig,
 )
 from core.event_bus import EventBus
+from core.resource_paths import process_denylist_path
 
 class SettingsDialog(QDialog):
 
@@ -88,6 +88,9 @@ class SettingsDialog(QDialog):
         self.cb_beatgrid = QCheckBox("Display beatgrid")
         self.cb_keystrip = QCheckBox("Display keystrip")
         self.cb_JumpCUE = QCheckBox("Display JumpCUE")
+        self.cb_use_output_volume_as_peak_meter_input = QCheckBox(
+            "Use output volume as peak meter input"
+        )
         self.cb_reduce_fps_when_occluded = QCheckBox("Reduce FPS when occluded")
         self.sp_fps = QSpinBox()
         self.sp_fps.setRange(1, 240)
@@ -101,6 +104,7 @@ class SettingsDialog(QDialog):
         f.addRow(self.cb_beatgrid)
         f.addRow(self.cb_keystrip)
         f.addRow(self.cb_JumpCUE)
+        f.addRow(self.cb_use_output_volume_as_peak_meter_input)
         f.addRow(self.cb_reduce_fps_when_occluded)
         f.addRow("FPS", self.sp_fps)
         f.addRow("Record image path", self.ed_record_img_path)
@@ -313,6 +317,9 @@ class SettingsDialog(QDialog):
         self.cb_beatgrid.setChecked(bool(v.display_beatgrid))
         self.cb_keystrip.setChecked(bool(v.display_keystrip))
         self.cb_JumpCUE.setChecked(bool(v.display_JumpCUE))
+        self.cb_use_output_volume_as_peak_meter_input.setChecked(
+            bool(v.use_output_volume_as_peak_meter_input)
+        )
         self.cb_reduce_fps_when_occluded.setChecked(bool(v.reduce_fps_when_occluded))
         self.sp_fps.setValue(int(v.fps))
         self.ed_record_img_path.setText(v.record_img_path)
@@ -514,6 +521,9 @@ class SettingsDialog(QDialog):
                 display_beatgrid=bool(self.cb_beatgrid.isChecked()),
                 display_keystrip=bool(self.cb_keystrip.isChecked()),
                 display_JumpCUE=bool(self.cb_JumpCUE.isChecked()),
+                use_output_volume_as_peak_meter_input=bool(
+                    self.cb_use_output_volume_as_peak_meter_input.isChecked()
+                ),
                 fps=int(self.sp_fps.value()),
                 reduce_fps_when_occluded=bool(self.cb_reduce_fps_when_occluded.isChecked()),
                 record_img_path=self.ed_record_img_path.text().strip(),
@@ -703,26 +713,31 @@ class SettingsDialog(QDialog):
         return rows
 
     def _is_denied_process_name(self, name: str) -> bool:
+        deny = self._load_process_denylist()
+        if deny is None:
+            # Fail closed: if the denylist cannot be read, treat every process
+            # as denied so an unsafe target can never be picked.
+            return True
         target = self._normalize_process_name(name)
         if not target:
             return False
-        deny = self._load_process_denylist()
         return target in deny
 
-    def _load_process_denylist(self) -> set[str]:
+    def _load_process_denylist(self) -> set[str] | None:
         cache = getattr(self, "_process_denylist_cache", None)
         if isinstance(cache, set):
             return cache
-        denylist_path = Path("process_denylist.json")
-        names: set[str] = set()
         try:
-            payload = json.loads(denylist_path.read_text(encoding="utf-8"))
+            payload = json.loads(process_denylist_path().read_text(encoding="utf-8"))
         except Exception:
-            payload = {}
-        for item in payload.get("blocked_process_names", []):
-            text = self._normalize_process_name(item)
-            if text:
-                names.add(text)
+            # Not cached, so a transient error recovers on the next call.
+            return None
+        names: set[str] = set()
+        if isinstance(payload, dict):
+            for item in payload.get("blocked_process_names", []):
+                text = self._normalize_process_name(item)
+                if text:
+                    names.add(text)
         self._process_denylist_cache = names
         return names
 

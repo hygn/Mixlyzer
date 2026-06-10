@@ -19,6 +19,7 @@ from PySide6 import QtCore
 from core.config import externalsyncconfig, memorydeckconfig, memoryvalueconfig
 from core.event_bus import EventBus
 from core.model import DataModel
+from core.resource_paths import process_denylist_path
 
 
 class ExternalSyncController(QtCore.QObject):
@@ -60,7 +61,9 @@ class ExternalSyncController(QtCore.QObject):
         self._analysis_request_raw_path: str | None = None
         self._load_request_inflight: str | None = None
         self._blocked_process_logged: str | None = None
+        self._denylist_unavailable_logged: bool = False
         self._invalid_external_path_logged: str | None = None
+        self._validated_external_paths: dict[str, str] = {}
         self._pm: pymem.Pymem | None = None
         self._pm_pid: int = 0
         self._process_list_cache: list[dict[str, int | str]] = []
@@ -88,7 +91,9 @@ class ExternalSyncController(QtCore.QObject):
         self._analysis_request_raw_path = None
         self._load_request_inflight = None
         self._blocked_process_logged = None
+        self._denylist_unavailable_logged = False
         self._invalid_external_path_logged = None
+        self._validated_external_paths = {}
         self._process_list_cache = []
         self._process_list_cache_ts = 0.0
         self._close_process_handle()
@@ -332,24 +337,35 @@ class ExternalSyncController(QtCore.QObject):
         raw = str(path or "").strip()
         if not raw:
             return ""
+        cached = self._validated_external_paths.get(raw)
+        if cached is not None:
+            return cached
         if raw.startswith(("\\\\", "//")):
+            self._validated_external_paths[raw] = ""
             return ""
         try:
             expanded = Path(raw).expanduser()
         except Exception:
+            self._validated_external_paths[raw] = ""
             return ""
         if not expanded.is_absolute():
+            self._validated_external_paths[raw] = ""
             return ""
         try:
             candidate = expanded.resolve(strict=False)
         except Exception:
+            self._validated_external_paths[raw] = ""
             return ""
         try:
             if not candidate.exists() or not candidate.is_file():
+                self._validated_external_paths[raw] = ""
                 return ""
         except OSError:
+            self._validated_external_paths[raw] = ""
             return ""
-        return self._normalize_path(str(candidate))
+        normalized = self._normalize_path(str(candidate))
+        self._validated_external_paths[raw] = normalized
+        return normalized
 
     def _track_exists_in_library(self, path: str) -> bool:
         if self._track_exists_callback is None:
@@ -528,13 +544,6 @@ class ExternalSyncController(QtCore.QObject):
     def _resolve_target_pid(self) -> int:
         if int(self._cfg.memory_process_pid) > 0:
             target_pid = int(self._cfg.memory_process_pid)
-            proc = self._process_info_for_pid(target_pid)
-            if proc is None:
-                return 0
-            process_name = str(proc.get("name") or "")
-            if self._is_denied_process_name(process_name):
-                self._log_blocked_process(process_name)
-                return 0
             return target_pid
         target_name = str(self._cfg.memory_process_name or "").strip().lower()
         if not target_name:
@@ -684,13 +693,17 @@ class ExternalSyncController(QtCore.QObject):
             self._log(f"External Sync blocked for denied process: {name}")
 
     def _is_denied_process_name(self, name: str) -> bool:
+        payload = self._load_process_denylist_payload()
+        if payload is None:
+            # Fail closed: if the denylist cannot be read, deny every process
+            # rather than silently allowing attachment to protected targets.
+            return True
         target = self._normalize_process_name(name)
         if not target:
             return False
-        return target in self._load_process_denylist()
+        return target in self._denied_process_names(payload)
 
-    def _load_process_denylist(self) -> set[str]:
-        payload = self._load_process_denylist_payload()
+    def _denied_process_names(self, payload: dict[str, Any]) -> set[str]:
         names: set[str] = set()
         for item in payload.get("blocked_process_names", []):
             text = self._normalize_process_name(item)
@@ -698,8 +711,7 @@ class ExternalSyncController(QtCore.QObject):
                 names.add(text)
         return names
 
-    def _load_process_path_keywords(self) -> tuple[str, ...]:
-        payload = self._load_process_denylist_payload()
+    def _denied_path_keywords(self, payload: dict[str, Any]) -> tuple[str, ...]:
         keywords: list[str] = []
         for item in payload.get("blocked_path_keywords", []):
             text = self._normalize_process_image_path(item)
@@ -707,25 +719,34 @@ class ExternalSyncController(QtCore.QObject):
                 keywords.append(text)
         return tuple(keywords)
 
-    def _load_process_denylist_payload(self) -> dict[str, Any]:
+    def _load_process_denylist_payload(self) -> dict[str, Any] | None:
         cache = getattr(self, "_process_denylist_cache", None)
         if isinstance(cache, dict):
             return cache
-        denylist_path = Path("process_denylist.json")
         try:
-            payload = json.loads(denylist_path.read_text(encoding="utf-8"))
-        except Exception:
-            payload = {}
+            payload = json.loads(process_denylist_path().read_text(encoding="utf-8"))
+        except Exception as exc:
+            # Do NOT cache the failure so a transient error (e.g. file briefly
+            # locked) can recover on a later poll. Log once per failure streak
+            # to avoid flooding the poll loop.
+            if not self._denylist_unavailable_logged:
+                self._denylist_unavailable_logged = True
+                self._log(f"Process denylist unavailable ({exc}); blocking all processes.")
+            return None
         if not isinstance(payload, dict):
             payload = {}
         self._process_denylist_cache = payload
+        self._denylist_unavailable_logged = False
         return payload
 
     def _is_denied_process_image_path(self, image_path: str) -> bool:
+        payload = self._load_process_denylist_payload()
+        if payload is None:
+            return True  # Fail closed (see _is_denied_process_name).
         normalized = self._normalize_process_image_path(image_path)
         if not normalized:
             return False
-        return any(keyword in normalized for keyword in self._load_process_path_keywords())
+        return any(keyword in normalized for keyword in self._denied_path_keywords(payload))
 
     def _normalize_process_name(self, name: str) -> str:
         text = str(name or "").strip().lower()

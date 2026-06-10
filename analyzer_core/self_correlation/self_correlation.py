@@ -38,23 +38,36 @@ def mel_beat_matrix(
     if B <= 0:
         return np.zeros((n_mels, 0), dtype=float), 1.0, 0.5
 
-    # Per-beat Mel power
-    max_len = int(np.max(beat_ends - beat_starts))
-    max_len = int(max(512, min(max_len, 65536)))
-    n_fft = 1 << int(np.ceil(np.log2(max_len)))
-    mel_fb = librosa.filters.mel(sr=sr, n_fft=int(n_fft), n_mels=int(max(8, n_mels)),
-                                 fmin=float(mel_fmin), fmax=(float(mel_fmax) if mel_fmax else None))
-    M = mel_fb.shape[0]
+    # Frame-level Mel power then beat-synchronous median pooling
+    beat_lengths = np.maximum(1, beat_ends - beat_starts)
+    median_len = int(np.median(beat_lengths)) if beat_lengths.size else 2048
+    target_n_fft = int(np.clip(median_len // 2, 512, 4096))
+    n_fft = 1 << int(np.ceil(np.log2(max(32, target_n_fft))))
+    hop_length = int(max(128, min(1024, n_fft // 4)))
+    mel_full = librosa.feature.melspectrogram(
+        y=np.asarray(y, dtype=float),
+        sr=sr,
+        n_fft=int(n_fft),
+        hop_length=int(hop_length),
+        n_mels=int(max(8, n_mels)),
+        fmin=float(mel_fmin),
+        fmax=(float(mel_fmax) if mel_fmax else None),
+        power=2.0,
+        center=True,
+    ).astype(float)
+    M, T = mel_full.shape
     beat_mel = np.zeros((M, B), dtype=float)
+    beat_frames = librosa.time_to_frames(beats_time, sr=sr, hop_length=int(hop_length))
+    beat_frames = np.asarray(beat_frames, dtype=int)
+    beat_frames = np.clip(beat_frames, 0, max(0, T))
     for i in range(B):
-        s = int(max(0, beat_starts[i])); e = int(min(len(y), beat_ends[i]))
-        if e - s < 2:
+        f0 = int(beat_frames[i])
+        f1 = int(beat_frames[i + 1]) if (i + 1) < beat_frames.size else int(T)
+        f0 = max(0, min(f0, T))
+        f1 = max(f0 + 1, min(max(f1, f0 + 1), T))
+        if f0 >= T:
             continue
-        seg = y[s:e].astype(float)
-        w = np.hanning(len(seg))
-        X = np.fft.rfft(seg * w, n=n_fft)
-        P = (np.abs(X) ** 2)
-        beat_mel[:, i] = mel_fb @ P
+        beat_mel[:, i] = np.median(mel_full[:, f0:f1], axis=1)
 
     # Log-compress then whiten across time (per Mel bin)
     mel_log = np.log1p(beat_mel)

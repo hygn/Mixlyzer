@@ -18,7 +18,7 @@ from core.config import config
 from ui.mainplotvbx import NoDragNoWheelViewBox
 from ui.track_info_panel import TrackInfoPanel
 from ui.beatgrid_edit_panel import BeatgridEditPanel
-from utils.volume import slider_percent_to_linear
+from utils.volume import slider_percent_to_linear, trim_dbfs_to_linear
 
 
 pg.setConfigOptions(antialias=False, useOpenGL=False)
@@ -406,6 +406,17 @@ class MainPane(QtWidgets.QWidget):
         )
         linear_volume = slider_percent_to_linear(value, trim_dbfs)
         self.bus.sig_volume_changed.emit(float(linear_volume))
+        use_output_volume = bool(
+            getattr(
+                getattr(self.cfg, "viewconfig", None),
+                "use_output_volume_as_peak_meter_input",
+                True,
+            )
+        )
+        peak_meter_gain = (
+            linear_volume if use_output_volume else trim_dbfs_to_linear(trim_dbfs)
+        )
+        self.bus.sig_peak_meter_gain_changed.emit(float(peak_meter_gain))
 
     # Signals
     def _on_time(self, t: float):
@@ -588,13 +599,9 @@ class MainPane(QtWidgets.QWidget):
 
     def apply_playback_config(self, cfg: config) -> None:
         self.cfg = cfg
-        playback_cfg = getattr(cfg, "playbackconfig", None)
-        default_volume = int(getattr(playback_cfg, "default_volume_percent", 100) or 100)
-        default_volume = max(0, min(100, default_volume))
-        self.vol_slider.blockSignals(True)
-        self.vol_slider.setValue(default_volume)
-        self.vol_slider.blockSignals(False)
-        self._on_volume_slider_changed(default_volume)
+        current_volume = int(self.vol_slider.value())
+        current_volume = max(0, min(100, current_volume))
+        self._on_volume_slider_changed(current_volume)
 
     def _set_editor_panel_visible(self, visible: bool) -> None:
         show = bool(visible)

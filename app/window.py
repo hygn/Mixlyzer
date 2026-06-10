@@ -17,7 +17,7 @@ from core.external_sync import ExternalSyncController
 from core.rekordbox_sync import RekordboxXmlSync
 from .metronome import MetronomeController
 from utils.window_visibility import is_window_fully_hidden
-from utils.volume import slider_percent_to_linear
+from utils.volume import slider_percent_to_linear, trim_dbfs_to_linear
 
 from ui.pane import MainPane
 from ui.cfgwindow import SettingsDialog
@@ -63,6 +63,9 @@ class AppWindow(QtWidgets.QMainWindow):
             self.bus,
             model=self.model,
             default_volume_linear=self._default_volume_linear_from_cfg(self.cfg),
+            default_peak_meter_gain_linear=self._default_peak_meter_gain_linear_from_cfg(
+                self.cfg
+            ),
         )
         self.player.set_refresh_fps(self.cfg.viewconfig.fps)
         self.external_sync = ExternalSyncController(
@@ -529,6 +532,10 @@ class AppWindow(QtWidgets.QMainWindow):
         layout_changed = any(prev_vcfg.get(k) != new_vcfg.get(k) for k in _VIEW_LAYOUT_KEYS)
         viewconfig_changed = prev_vcfg != new_vcfg
         playbackconfig_changed = prev_pcfg != new_pcfg
+        peak_meter_config_changed = (
+            prev_vcfg.get("use_output_volume_as_peak_meter_input", True)
+            != new_vcfg.get("use_output_volume_as_peak_meter_input", True)
+        )
         if viewconfig_changed:
             self._apply_visibility_refresh_setting(force=True)
         if playbackconfig_changed:
@@ -542,6 +549,7 @@ class AppWindow(QtWidgets.QMainWindow):
                 QtCore.Qt.QueuedConnection,
                 QtCore.Q_ARG(str, _config.playbackconfig.metronome_wav_path),
             )
+        if playbackconfig_changed or peak_meter_config_changed:
             self.pane.apply_playback_config(_config)
         if layout_changed:
             self.bus.sig_reload_UI.emit(_config)
@@ -634,6 +642,20 @@ class AppWindow(QtWidgets.QMainWindow):
         trim_dbfs = float(getattr(playback_cfg, "volume_trim_dbfs", -6.0))
         default_percent = int(getattr(playback_cfg, "default_volume_percent", 100) or 100)
         return slider_percent_to_linear(default_percent, trim_dbfs)
+
+    def _default_peak_meter_gain_linear_from_cfg(self, cfg: config) -> float:
+        playback_cfg = getattr(cfg, "playbackconfig", None)
+        trim_dbfs = float(getattr(playback_cfg, "volume_trim_dbfs", -6.0))
+        use_output_volume = bool(
+            getattr(
+                getattr(cfg, "viewconfig", None),
+                "use_output_volume_as_peak_meter_input",
+                True,
+            )
+        )
+        if use_output_volume:
+            return self._default_volume_linear_from_cfg(cfg)
+        return trim_dbfs_to_linear(trim_dbfs)
 
     def _apply_external_sync_mode(self, sync_cfg) -> None:
         enabled = bool(sync_cfg.enabled)
