@@ -29,6 +29,7 @@ class viewconfig:
 class playbackconfig:
     enable_metronome: bool
     metronome_wav_path: str
+    metronome_offset_msec: float
     volume_trim_dbfs: float
     default_volume_percent: int
 
@@ -225,6 +226,7 @@ def default_cfg():
     pcfg = playbackconfig(
         enable_metronome=False,
         metronome_wav_path="assets/sound/click.wav",
+        metronome_offset_msec=0.0,
         volume_trim_dbfs=-6.0,
         default_volume_percent=100,
     )

@@ -32,7 +32,7 @@ def canonical_inizio(inz: float, start: float, bpm: float) -> float:
 def shift_grid_in_seg(beatgrid_sec: np.ndarray, segments, segment_index: int, offset: float):
     _beatgrid = np.asarray(beatgrid_sec, copy=True)
     _segments = np.asarray(segments, copy=True)
-    st, ed, bpm, inz = _segments[segment_index]
+    st, ed, bpm, inz = _segments[segment_index][:4]
     assert 60/bpm > abs(offset)
     # Indices delimiting [st, ed) in the current grid
     sti = int(np.searchsorted(_beatgrid, st, side="left"))

@@ -5,7 +5,6 @@ from pathlib import Path
 from typing import Callable
 
 from core.library_version import CURRENT_LIBRARY_VERSION, read_library_version, write_library_version
-from migration import lib_0_1_0_to_0_1_1
 from migration import lib_0_1_1_to_0_2_0
 
 
@@ -13,8 +12,9 @@ MigrationLogger = Callable[[str], None]
 MigrationProgress = Callable[[int], None]
 
 
+# Only 0.1.1 -> 0.2.0 is supported. Pre-format-change libraries (0.1.0) are not
+# migratable: such a version intentionally reports "No migration path".
 MIGRATIONS: dict[tuple[str, str], object] = {
-    (lib_0_1_0_to_0_1_1.SOURCE_VERSION, lib_0_1_0_to_0_1_1.TARGET_VERSION): lib_0_1_0_to_0_1_1,
     (lib_0_1_1_to_0_2_0.SOURCE_VERSION, lib_0_1_1_to_0_2_0.TARGET_VERSION): lib_0_1_1_to_0_2_0,
 }
 

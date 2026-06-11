@@ -351,15 +351,16 @@ def _build_track_element(
     }
     track_elem = ET.Element("TRACK", track_attrs)
 
-    time_signature = int(max(1, _safe_scalar(features.get("timesignature")) or 4))
+    fallback_ts = int(max(1, _safe_scalar(features.get("timesignature")) or 4))
     tempo_entries = _tempo_entries_for_xml(tempo_segments, average_bpm)
     for tempo in tempo_entries:
+        ts_num = int(tempo.get("time_sig", fallback_ts) or fallback_ts)
         ET.SubElement(
             track_elem,
             "TEMPO",
             Inizio=f"{tempo['start']:.3f}",
             Bpm=f"{tempo['bpm']:.2f}",
-            Metro=f"{time_signature}/4",
+            Metro=f"{ts_num}/4",
             Battito=str(int(tempo.get("battito", 1))),
         )
 

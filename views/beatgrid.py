@@ -3,6 +3,7 @@ import pyqtgraph as pg
 import numpy as np
 from .base import ViewPlugin, register_view
 from core.event_bus import EventBus
+from core.beat_geometry import build_downbeats_from_segments
 
 @register_view("BeatgridView")
 class BeatgridView(ViewPlugin):
@@ -57,7 +58,7 @@ class BeatgridView(ViewPlugin):
     def render_initial(self):
         f = self.model.features or {}
         self.beats_time = f.get("beats_time_sec")  # seconds from start
-        self.downbeats_time = self._build_downbeats_from_segments(f.get("tempo_segments"))
+        self.downbeats_time = build_downbeats_from_segments(f.get("tempo_segments"))
         self.duration = float(self.model.duration_sec or 0.0)
         self._refresh_lines(force=True)
 
@@ -133,7 +134,7 @@ class BeatgridView(ViewPlugin):
     def _on_beatgrid_updated(self, bg_seg=None):
         f = self.model.features or {}
         self.beats_time = f.get("beats_time_sec")
-        self.downbeats_time = self._build_downbeats_from_segments(f.get("tempo_segments"))
+        self.downbeats_time = build_downbeats_from_segments(f.get("tempo_segments"))
         self.duration = float(self.model.duration_sec or 0.0)
         self._cached_track_range = None
         self._refresh_lines(force=True)
@@ -189,36 +190,3 @@ class BeatgridView(ViewPlugin):
         top_path = cls._build_vertical_path(xs, float(top_seg[0]), float(top_seg[1]))
         bot_path = cls._build_vertical_path(xs, float(bottom_seg[0]), float(bottom_seg[1]))
         return top_path.united(bot_path)
-
-    @staticmethod
-    def _build_downbeats_from_segments(tempo_segments):
-        if tempo_segments is None:
-            return None
-        arr = np.asarray(tempo_segments, dtype=float)
-        if arr.size == 0:
-            return None
-        if arr.ndim == 1:
-            if arr.size % 3 != 0:
-                return None
-            arr = arr.reshape((-1, 3))
-        if arr.shape[1] < 3:
-            return None
-
-        downbeats = []
-        for seg in arr:
-            start, end, bpm, inizio = seg[:4]
-            if not np.isfinite(inizio) or not np.isfinite(end) or not np.isfinite(bpm):
-                continue
-            if bpm <= 0:
-                continue
-            t = max(0.0, float(inizio))
-            stop = max(float(end), t)
-            bar = 4.0 * 60.0 / float(bpm)
-            if bar <= 0:
-                continue
-            while t <= stop + 1e-6:
-                downbeats.append(t)
-                t += bar
-        if not downbeats:
-            return None
-        return np.asarray(sorted(set(downbeats)), dtype=float)

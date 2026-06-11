@@ -15,6 +15,7 @@ class MetronomeController(QtCore.QObject):
         self.latency_guard = 0.020
         self.seek_threshold = 0.200
         self.max_ticks_per_call = 4
+        self._offset_sec = 0.0
         self._prev_time = None
         self._in_cb = False
         self.last_tick_time = -1.0
@@ -50,6 +51,15 @@ class MetronomeController(QtCore.QObject):
         if self._click is not None:
             self._click.setVolume(self._base_volume)
 
+    @QtCore.Slot(float)
+    def set_offset(self, offset_msec: float):
+        """Shift click timing relative to the beat. Positive = clicks lead the beat."""
+        try:
+            self._offset_sec = float(offset_msec) / 1000.0
+        except (TypeError, ValueError):
+            self._offset_sec = 0.0
+        self._reset_pointer()
+
     @QtCore.Slot(object)
     def set_downbeat_cycle(self, n_beats: int | None):
         self.downbeat_cycle = int(n_beats) if n_beats and n_beats > 0 else None
@@ -84,7 +94,7 @@ class MetronomeController(QtCore.QObject):
             self._prev_time = None
             self.last_tick_time = -1.0
             return
-        t = float(self._current_time)
+        t = float(self._current_time) + self._offset_sec
         self.next_idx = int(np.searchsorted(self.beats_time, t, side="right"))
         self._prev_time = t
         self.last_tick_time = -1.0
@@ -100,7 +110,7 @@ class MetronomeController(QtCore.QObject):
                 self._prev_time = self._current_time
                 return
 
-            cur = self._current_time
+            cur = self._current_time + self._offset_sec
 
             # Seek detection: big jumps skip pending ticks and realign pointer
             if self._prev_time is None or abs(cur - self._prev_time) >= self.seek_threshold:

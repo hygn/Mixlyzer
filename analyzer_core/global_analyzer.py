@@ -422,6 +422,8 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
     features["tempo_global"] = synced_bpm["tempo_global"]
     features["beats_time_sec"] = synced_bpm["beats_time"]
     tempo_segments = synced_bpm["tempo_segments"]
+    # tempo_segments columns: [start, end, bpm, inizio, ts_num] (ts_num defaults to 4)
+    _DEFAULT_TS = 4.0
     seg_arr: np.ndarray
     if isinstance(tempo_segments, list):
         rows = []
@@ -430,21 +432,28 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
             inizio = float(seg.get("inizio", seg.get("segment_start", 0.0)))
             end = float(seg.get("end", seg.get("segment_end", start)))
             bpm = float(seg.get("bpm", 0.0))
-            rows.append((start, end, bpm, inizio))
-        seg_arr = np.asarray(rows, dtype=np.float32) if rows else np.empty((0, 3), dtype=np.float32)
+            ts_num = float(seg.get("time_signature", _DEFAULT_TS) or _DEFAULT_TS)
+            rows.append((start, end, bpm, inizio, ts_num))
+        seg_arr = np.asarray(rows, dtype=np.float32) if rows else np.empty((0, 5), dtype=np.float32)
     elif tempo_segments is not None:
         arr = np.asarray(tempo_segments, dtype=float)
         if arr.ndim == 1:
-            if arr.size and arr.size % 3 == 0:
-                arr = arr.reshape((-1, 3))
+            for width in (5, 4, 3):
+                if arr.size and arr.size % width == 0:
+                    arr = arr.reshape((-1, width))
+                    break
             else:
-                arr = arr.reshape((-1, arr.size)) if arr.size else np.empty((0, 3), dtype=float)
+                arr = np.empty((0, 3), dtype=float)
         if arr.ndim == 2 and arr.shape[1] >= 3:
-            seg_arr = arr[:, :3].astype(np.float32, copy=False)
+            n = arr.shape[0]
+            seg_arr = np.empty((n, 5), dtype=np.float32)
+            seg_arr[:, :3] = arr[:, :3]
+            seg_arr[:, 3] = arr[:, 3] if arr.shape[1] >= 4 else arr[:, 0]
+            seg_arr[:, 4] = arr[:, 4] if arr.shape[1] >= 5 else _DEFAULT_TS
         else:
-            seg_arr = np.empty((0, 3), dtype=np.float32)
+            seg_arr = np.empty((0, 5), dtype=np.float32)
     else:
-        seg_arr = np.empty((0, 3), dtype=np.float32)
+        seg_arr = np.empty((0, 5), dtype=np.float32)
     features["tempo_segments"] = seg_arr
     print("[Tempo] Analysis Finished")
 

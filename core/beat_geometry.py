@@ -1,0 +1,76 @@
+from __future__ import annotations
+
+import numpy as np
+
+
+DEFAULT_TIME_SIGNATURE = 4
+
+
+def _normalize_segments(tempo_segments) -> np.ndarray | None:
+    """Coerce tempo_segments into a 2-D array with at least [start, end, bpm, inizio].
+
+    Accepts N×3 (legacy, no inizio/ts), N×4 (start,end,bpm,inizio) and
+    N×5 (… , ts_num). Returns None when the input is empty or malformed.
+    """
+    if tempo_segments is None:
+        return None
+    try:
+        arr = np.asarray(tempo_segments, dtype=float)
+    except Exception:
+        return None
+    if arr.size == 0:
+        return None
+    if arr.ndim == 1:
+        for width in (5, 4, 3):
+            if arr.size % width == 0:
+                arr = arr.reshape((-1, width))
+                break
+        else:
+            return None
+    if arr.ndim != 2 or arr.shape[1] < 3:
+        return None
+    return arr
+
+
+def segment_time_signature(seg_row) -> int:
+    """Read the per-segment time-signature numerator (default 4) from a row.
+
+    Tolerates legacy rows that lack the 5th column.
+    """
+    row = np.asarray(seg_row, dtype=float).ravel()
+    if row.size >= 5 and np.isfinite(row[4]) and int(round(row[4])) >= 1:
+        return int(round(row[4]))
+    return DEFAULT_TIME_SIGNATURE
+
+
+def build_downbeats_from_segments(tempo_segments) -> np.ndarray | None:
+    """Compute downbeat (bar-start) times honoring each segment's time signature.
+
+    A downbeat is drawn every ``ts_num`` beats, where ``ts_num`` is the 5th
+    column of the segment when present (defaults to 4). Returns a sorted unique
+    array of seconds, or None when there is nothing to draw.
+    """
+    arr = _normalize_segments(tempo_segments)
+    if arr is None:
+        return None
+
+    downbeats: list[float] = []
+    for seg in arr:
+        start, end, bpm = seg[0], seg[1], seg[2]
+        inizio = seg[3] if seg.size >= 4 else start
+        if not (np.isfinite(inizio) and np.isfinite(end) and np.isfinite(bpm)):
+            continue
+        if bpm <= 0:
+            continue
+        beats_per_bar = segment_time_signature(seg)
+        t = max(0.0, float(inizio))
+        stop = max(float(end), t)
+        bar = beats_per_bar * 60.0 / float(bpm)
+        if bar <= 0:
+            continue
+        while t <= stop + 1e-6:
+            downbeats.append(t)
+            t += bar
+    if not downbeats:
+        return None
+    return np.asarray(sorted(set(downbeats)), dtype=float)

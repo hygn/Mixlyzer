@@ -170,7 +170,7 @@ class BeatgridEditPanel(QtWidgets.QWidget):
     def __init__(self, bus: EventBus, model: DataModel | None = None, parent=None):
         super().__init__(parent)
         self.setStyleSheet(BUTTON_STYLESHEET)
-        self._segments: np.ndarray = np.empty((0, 4), dtype=float)
+        self._segments: np.ndarray = np.empty((0, 5), dtype=float)
         self._beatgrid: np.ndarray = np.asarray([])
         self._cur_idx: int = -1
         self._current_time: float = 0.0
@@ -290,6 +290,17 @@ class BeatgridEditPanel(QtWidgets.QWidget):
         self.btn_zeroBPM.setText("ZERO")
         self.btn_zeroBPM.setToolTip("Clear Reference BPM and tap history")
 
+        # Per-segment time signature (numerator, /4 denominator).
+        self.cmb_time_sig = QtWidgets.QComboBox()
+        for _n in range(1, 17):
+            self.cmb_time_sig.addItem(f"{_n}/4", _n)
+        self.cmb_time_sig.setCurrentIndex(3)  # 4/4
+        self.cmb_time_sig.setToolTip("Select the time signature for the current segment")
+
+        self.btn_apply_time_sig = QtWidgets.QToolButton()
+        self.btn_apply_time_sig.setText("Set TS")
+        self.btn_apply_time_sig.setToolTip("Apply the selected time signature to the current segment")
+
         # Key Edit Panel
         self.key_label = QtWidgets.QLabel("Key: ")
         f = self.key_label.font()
@@ -405,6 +416,8 @@ class BeatgridEditPanel(QtWidgets.QWidget):
             self.inp_refBPM,
             self.btn_setBPM,
             self.btn_zeroBPM,
+            self.cmb_time_sig,
+            self.btn_apply_time_sig,
             self.btn_undo,
             self.btn_redo,
             self.btn_save,
@@ -449,27 +462,32 @@ class BeatgridEditPanel(QtWidgets.QWidget):
 
         grid.addWidget(self.beatgrid_status, 3, 0, 1, 7, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
 
-        grid.addWidget(self.key_label, 0, 6, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-        grid.addWidget(self.key_reanalyze, 0, 7, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-        grid.addWidget(self.key_sel_reanalyze, 0, 8, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-        grid.addWidget(self.key_assign_combo, 0, 9, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-        grid.addWidget(self.key_sel_start, 1, 7, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-        grid.addWidget(self.key_sel_end, 1, 8, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-        grid.addWidget(self.key_assign_button, 1, 9, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-        grid.addWidget(self.key_deselect, 2, 7, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-        grid.addWidget(self.key_sel_all, 2, 8, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-        grid.addWidget(self.key_rel_minor_button, 2, 9, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
+        # Time signature column, immediately right of the Beatgrid controls:
+        # selector on top, apply button below.
+        grid.addWidget(self.cmb_time_sig, 0, 6, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
+        grid.addWidget(self.btn_apply_time_sig, 1, 6, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
 
-        grid.addWidget(self.JumpCUE_label, 0, 10, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-        grid.addWidget(self.jc_reanalyze, 0, 11, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-        grid.addWidget(self.jc_selection_wrap, 1, 11, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-        grid.addWidget(self.jc_jumptest, 2, 11, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
+        grid.addWidget(self.key_label, 0, 7, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
+        grid.addWidget(self.key_reanalyze, 0, 8, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
+        grid.addWidget(self.key_sel_reanalyze, 0, 9, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
+        grid.addWidget(self.key_assign_combo, 0, 10, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
+        grid.addWidget(self.key_sel_start, 1, 8, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
+        grid.addWidget(self.key_sel_end, 1, 9, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
+        grid.addWidget(self.key_assign_button, 1, 10, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
+        grid.addWidget(self.key_deselect, 2, 8, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
+        grid.addWidget(self.key_sel_all, 2, 9, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
+        grid.addWidget(self.key_rel_minor_button, 2, 10, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
 
-        grid.addWidget(self.edits_label, 0, 14, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-        grid.addWidget(self.btn_undo, 0, 15, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-        grid.addWidget(self.btn_redo, 1, 15, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-        grid.addWidget(self.btn_save, 2, 15, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-        grid.setColumnStretch(15, 2)
+        grid.addWidget(self.JumpCUE_label, 0, 11, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
+        grid.addWidget(self.jc_reanalyze, 0, 12, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
+        grid.addWidget(self.jc_selection_wrap, 1, 12, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
+        grid.addWidget(self.jc_jumptest, 2, 12, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
+
+        grid.addWidget(self.edits_label, 0, 15, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
+        grid.addWidget(self.btn_undo, 0, 16, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
+        grid.addWidget(self.btn_redo, 1, 16, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
+        grid.addWidget(self.btn_save, 2, 16, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
+        grid.setColumnStretch(16, 2)
 
         # Wire buttons to handlers (still mostly placeholders)
         self.btn_shift_back.clicked.connect(self._shift_beatgrid_backward)
@@ -486,6 +504,7 @@ class BeatgridEditPanel(QtWidgets.QWidget):
         self.btn_tapBPM.clicked.connect(self._tapBPM_set)
         self.btn_zeroBPM.clicked.connect(self._zeroBPM)
         self.btn_setBPM.clicked.connect(self._setBPM_set)
+        self.btn_apply_time_sig.clicked.connect(self._apply_time_signature)
         self.key_reanalyze.clicked.connect(self._reanalyze_key_dynamic)
         self.key_sel_reanalyze.clicked.connect(self._reanalyze_key_selection)
 
@@ -512,10 +531,10 @@ class BeatgridEditPanel(QtWidgets.QWidget):
         self.duration = float(duration)
 
     def set_segments(self, beatgrid: np.ndarray, segments: Optional[np.ndarray]) -> None:
-        """Set tempo segments: (N, 4) [start, end, bpm, inizio]."""
+        """Set tempo segments: (N, 5) [start, end, bpm, inizio, ts_num]."""
         self._clear_selection()
         if segments is None:
-            self._segments = np.empty((0, 4), dtype=float)
+            self._segments = np.empty((0, 5), dtype=float)
             self._cur_idx = -1
             return
         if beatgrid is None:
@@ -524,17 +543,17 @@ class BeatgridEditPanel(QtWidgets.QWidget):
         self._beatgrid = beatgrid
         arr = np.asarray(segments, dtype=float)
         if arr.ndim != 2 or arr.shape[1] < 4:
-            self._segments = np.empty((0, 4), dtype=float)
+            self._segments = np.empty((0, 5), dtype=float)
             self._cur_idx = -1
             return
-        # Keep up to 4 columns [start, end, bpm, inizio]
-        arr = arr[:, :4].copy()
+        # Keep 5 columns [start, end, bpm, inizio, ts_num]; backfill ts=4 for legacy N×4.
+        arr = self._ensure_ts_column(arr)
         # Keep only valid rows: finite start/end and end > start
         starts = arr[:, 0]
         ends = arr[:, 1]
         valid = np.isfinite(starts) & np.isfinite(ends) & (ends > starts)
         if not np.any(valid):
-            self._segments = np.empty((0, 4), dtype=float)
+            self._segments = np.empty((0, 5), dtype=float)
             self._cur_idx = -1
             return
         arr = arr[valid]
@@ -613,7 +632,53 @@ class BeatgridEditPanel(QtWidgets.QWidget):
             self.beatgrid_status.setText("<b>Beatgrid Seg</b>: -- | Elapsed: 00:00.00 | Left: 00:00.00")
         else:
             self.beatgrid_status.setText(f"<b>Beatgrid Seg</b>: {idx+1} | Elapsed: {fmt(elapsed)} | Left: {fmt(left)}")
-    
+        self._refresh_time_sig_selector()
+
+    @staticmethod
+    def _ensure_ts_column(segments: np.ndarray) -> np.ndarray:
+        """Return an (N,5) copy of segments, backfilling ts_num=4 when absent."""
+        arr = np.asarray(segments, dtype=float)
+        if arr.ndim != 2 or arr.shape[0] == 0:
+            return np.empty((0, 5), dtype=float)
+        if arr.shape[1] >= 5:
+            return arr[:, :5].copy()
+        out = np.empty((arr.shape[0], 5), dtype=float)
+        out[:, :4] = arr[:, :4]
+        out[:, 4] = 4.0
+        return out
+
+    def _current_segment_time_sig(self) -> int:
+        if not self._has_active_segment() or self._segments.shape[1] < 5:
+            return 4
+        value = self._segments[self._cur_idx, 4]
+        return int(round(float(value))) if np.isfinite(value) and value >= 1 else 4
+
+    def _refresh_time_sig_selector(self) -> None:
+        """Show the active segment's time signature in the selector (no apply)."""
+        ts = self._current_segment_time_sig()
+        idx = self.cmb_time_sig.findData(int(ts))
+        if idx < 0:
+            idx = self.cmb_time_sig.findData(4)
+        if idx >= 0 and self.cmb_time_sig.currentIndex() != idx:
+            self.cmb_time_sig.setCurrentIndex(idx)
+
+    def _apply_time_signature(self) -> None:
+        """Apply the selected time signature to the current segment."""
+        if not self._has_active_segment():
+            return
+        try:
+            value = int(self.cmb_time_sig.currentData())
+        except (TypeError, ValueError):
+            return
+        if value < 1:
+            return
+        self._segments = self._ensure_ts_column(self._segments)
+        idx = self._cur_idx
+        if int(round(float(self._segments[idx, 4]))) == value:
+            return
+        self._segments[idx, 4] = float(value)
+        self._emit_edit_update()
+
     def _arm_next_jumpCUE_jump(self):
         if not self._jump_armed:
             payload = self._current_jumpcue_payload()
@@ -1082,9 +1147,10 @@ class BeatgridEditPanel(QtWidgets.QWidget):
         """Split the active segment at the playhead while keeping absolute downbeats."""
         if not self._has_active_segment():
             return
-        segs = self._segments
+        segs = self._ensure_ts_column(self._segments)
         cut_t = float(self._current_time)
-        st, ed, bpm, inz = segs[self._cur_idx]
+        st, ed, bpm, inz = segs[self._cur_idx][:4]
+        ts_num = float(segs[self._cur_idx, 4])
         if not (np.isfinite(st) and np.isfinite(ed) and ed > st):
             return
         eps = 1e-3
@@ -1097,7 +1163,8 @@ class BeatgridEditPanel(QtWidgets.QWidget):
         new_segments[idx, 3] = inz
 
         next_inz = self._next_downbeat_after(cut_t, inz, bpm, st)
-        next_seg = np.array([cut_t, ed, bpm, next_inz], dtype=float)
+        # New split half inherits the source segment's time signature.
+        next_seg = np.array([cut_t, ed, bpm, next_inz, ts_num], dtype=float)
         new_segments = np.insert(new_segments, idx + 1, next_seg, axis=0)
 
         self._segments = new_segments

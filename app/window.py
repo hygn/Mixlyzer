@@ -150,6 +150,7 @@ class AppWindow(QtWidgets.QMainWindow):
             click_wav_path=self.cfg.playbackconfig.metronome_wav_path,
         )
         self.metro.set_downbeat_cycle(1)
+        self.metro.set_offset(float(getattr(self.cfg.playbackconfig, "metronome_offset_msec", 0.0)))
         self.metro.moveToThread(self.player.audio_thread())
         self.player.connect_precise_audio_time(self.metro._on_time_changed)
         self._sig_metronome_set_beats.connect(self.metro.set_beats, QtCore.Qt.QueuedConnection)
@@ -548,6 +549,12 @@ class AppWindow(QtWidgets.QMainWindow):
                 "set_soundfile",
                 QtCore.Qt.QueuedConnection,
                 QtCore.Q_ARG(str, _config.playbackconfig.metronome_wav_path),
+            )
+            QtCore.QMetaObject.invokeMethod(
+                self.metro,
+                "set_offset",
+                QtCore.Qt.QueuedConnection,
+                QtCore.Q_ARG(float, float(_config.playbackconfig.metronome_offset_msec)),
             )
         if playbackconfig_changed or peak_meter_config_changed:
             self.pane.apply_playback_config(_config)

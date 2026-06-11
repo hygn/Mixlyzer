@@ -43,12 +43,13 @@ def harmonic_compatible_keys(anchor_key: int | None) -> set[int]:
 def build_bpm_segments(tempo_segments) -> list[dict[str, Any]]:
     arr = _normalize_tempo_segments(tempo_segments)
     rows: list[dict[str, Any]] = []
-    for start, end, bpm in arr:
+    for start, end, bpm, ts_num in arr:
         if not (np.isfinite(start) and np.isfinite(end) and np.isfinite(bpm)):
             continue
         duration = float(end - start)
         if duration <= 1e-6:
             continue
+        time_signature = int(round(float(ts_num))) if np.isfinite(ts_num) and ts_num >= 1 else 4
         row = {
             "seq_index": len(rows),
             "start_sec": float(start),
@@ -56,6 +57,7 @@ def build_bpm_segments(tempo_segments) -> list[dict[str, Any]]:
             "duration_sec": duration,
             "bpm": float(bpm),
             "bpm_rounded": int(round(float(bpm))),
+            "time_signature": time_signature,
         }
         if rows and _can_merge_bpm_rows(rows[-1], row):
             rows[-1]["end_sec"] = row["end_sec"]
@@ -98,12 +100,22 @@ def build_key_segments(key_segments) -> list[dict[str, Any]]:
 
 
 def _normalize_tempo_segments(tempo_segments) -> np.ndarray:
+    """Return (N,4) rows of [start, end, bpm, ts_num].
+
+    Source tempo_segments are [start, end, bpm, inizio, ts_num]; inizio is not
+    needed for DB segment rows. Legacy arrays without a ts_num column default
+    to 4.
+    """
     if tempo_segments is None:
-        return np.empty((0, 3), dtype=float)
+        return np.empty((0, 4), dtype=float)
     arr = np.asarray(tempo_segments, dtype=float)
     if arr.ndim != 2 or arr.shape[1] < 3:
-        return np.empty((0, 3), dtype=float)
-    return arr[:, :3].astype(float, copy=False)
+        return np.empty((0, 4), dtype=float)
+    n = arr.shape[0]
+    out = np.empty((n, 4), dtype=float)
+    out[:, :3] = arr[:, :3]
+    out[:, 3] = arr[:, 4] if arr.shape[1] >= 5 else 4.0
+    return out
 
 
 def _normalize_key_segments(key_segments) -> np.ndarray:
@@ -116,7 +128,10 @@ def _normalize_key_segments(key_segments) -> np.ndarray:
 
 
 def _can_merge_bpm_rows(left: dict[str, Any], right: dict[str, Any]) -> bool:
-    return abs(float(left["bpm"]) - float(right["bpm"])) < 1e-6
+    return (
+        abs(float(left["bpm"]) - float(right["bpm"])) < 1e-6
+        and int(left.get("time_signature", 4)) == int(right.get("time_signature", 4))
+    )
 
 
 def _can_merge_key_rows(left: dict[str, Any], right: dict[str, Any]) -> bool:

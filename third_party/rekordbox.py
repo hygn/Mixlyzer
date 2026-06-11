@@ -105,15 +105,16 @@ def build_rekordbox_xml(
     }
     track_elem = ET.SubElement(collection, "TRACK", track_attrs)
 
-    time_signature = int(max(1, _safe_scalar(features.get("timesignature")) or 4))
+    fallback_ts = int(max(1, _safe_scalar(features.get("timesignature")) or 4))
     tempo_entries = _tempo_entries_for_xml(tempo_segments, average_bpm)
     for tempo in tempo_entries:
+        ts_num = int(tempo.get("time_sig", fallback_ts) or fallback_ts)
         ET.SubElement(
             track_elem,
             "TEMPO",
             Inizio=f"{tempo['start']:.3f}",
             Bpm=f"{tempo['bpm']:.2f}",
-            Metro=f"{time_signature}/4",
+            Metro=f"{ts_num}/4",
             Battito=str(int(tempo.get("battito", 1))),
         )
 
@@ -152,24 +153,24 @@ def sanitize_filename(name: str) -> str:
 
 
 def _extract_tempo_segments(features: dict[str, np.ndarray]) -> np.ndarray:
-    """Return tempo segments as (N,3|4) array.
+    """Return tempo segments as (N,3|4|5) array.
 
     Format:
-      [start, end, bpm] or [start, end, bpm, inizio]
+      [start, end, bpm] | [start, end, bpm, inizio] | [start, end, bpm, inizio, ts_num]
     """
     raw = features.get("tempo_segments")
     if raw is None:
         return np.empty((0, 3), dtype=float)
     arr = np.asarray(raw, dtype=float)
     if arr.ndim == 1:
-        if arr.size % 4 == 0:
-            arr = arr.reshape((-1, 4))
-        elif arr.size % 3 == 0:
-            arr = arr.reshape((-1, 3))
+        for width in (5, 4, 3):
+            if arr.size % width == 0:
+                arr = arr.reshape((-1, width))
+                break
         else:
             return np.empty((0, 3), dtype=float)
     if arr.ndim == 2 and arr.shape[1] >= 3:
-        return arr[:, : min(arr.shape[1], 4)]
+        return arr[:, : min(arr.shape[1], 5)]
     return np.empty((0, 3), dtype=float)
 
 
@@ -231,6 +232,14 @@ def _tempo_entries_for_xml(
                         downbeat = val
                 except Exception:
                     downbeat = None
+            ts_num = 4
+            if len(seg) >= 5:
+                try:
+                    ts_val = int(round(float(seg[4])))
+                    if ts_val >= 1:
+                        ts_num = ts_val
+                except Exception:
+                    ts_num = 4
             period = (60.0 / bpm_val) if bpm_val > 0 else None
             first_beat = float(start)
             if period and np.isfinite(downbeat):
@@ -242,17 +251,18 @@ def _tempo_entries_for_xml(
             battito = 1
             if period and np.isfinite(downbeat) and np.isfinite(first_beat) and period > 0:
                 diff = (downbeat - first_beat) / period
-                diff_beats = int(round(diff)) % 4
-                battito = ((4 - diff_beats) % 4) + 1
+                diff_beats = int(round(diff)) % ts_num
+                battito = ((ts_num - diff_beats) % ts_num) + 1
             entries.append(
                 {
                     "start": first_beat,
                     "bpm": bpm_val,
                     "battito": int(battito),
+                    "time_sig": int(ts_num),
                 }
             )
     if not entries:
-        entries.append({"start": 0.0, "bpm": fallback_bpm if fallback_bpm > 0 else 0.0, "battito": 1})
+        entries.append({"start": 0.0, "bpm": fallback_bpm if fallback_bpm > 0 else 0.0, "battito": 1, "time_sig": 4})
     entries.sort(key=lambda e: e["start"])
     return entries
 

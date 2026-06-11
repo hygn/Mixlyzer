@@ -1,8 +1,8 @@
-from bisect import bisect_right
+from bisect import bisect_left, bisect_right
 from PySide6 import QtCore
-import numpy as np
 import pyqtgraph as pg
 from .base import ViewPlugin, register_view
+from core.beat_geometry import build_downbeats_from_segments
 
 @register_view("PlayHead")
 class PlayHead(ViewPlugin):
@@ -11,9 +11,8 @@ class PlayHead(ViewPlugin):
         self.playhead = pg.InfiniteLine(angle=90, pen=pg.mkPen((255,200,50), width=2))
         self.beat_label = pg.TextItem("", color=(50, 120, 255), anchor=(1.0, 0.0))
         self._beats_time = ()
-        self._timesignature = 4
-        self._last_count = None
-        self._beat_start_offset = 0
+        self._downbeats = ()
+        self._last_label = None
         self.plot = None
 
         self._set_beats(self.model.features)
@@ -63,25 +62,31 @@ class PlayHead(ViewPlugin):
     def _update_beat_label(self):
         if self.plot is None:
             return
-        raw_count = self._compute_beat_count() - self._beat_start_offset
-        if raw_count <= 0:
-            count = -1
-        else:
-            count = raw_count - 1
-        if self._last_count != count:
-            self._last_count = count
-            bar = int(count/self._timesignature+1)
-            bar = bar if bar >= 1 else bar -1
-            beats = abs(count%self._timesignature) + 1
-            bar_beats = str(f"{bar}.{beats}")
-            self.beat_label.setText(bar_beats)
+        label = self._compute_bar_beat_label()
+        if label != self._last_label:
+            self._last_label = label
+            self.beat_label.setText(label)
         self._update_label_position()
 
-    def _compute_beat_count(self) -> int:
+    def _compute_bar_beat_label(self) -> str:
         if not self._beats_time:
-            return 0
+            return ""
         current = float(getattr(self.tl, "current_time", 0.0))
-        return bisect_right(self._beats_time, current)
+        beats = self._beats_time
+        downbeats = self._downbeats
+        if not downbeats:
+            return ""
+        # Bar number = how many downbeats (bar starts) are at or before now.
+        bar_idx = bisect_right(downbeats, current)
+        if bar_idx <= 0:
+            # Before the first bar: count beats remaining until it starts.
+            remaining = bisect_left(beats, downbeats[0]) - bisect_right(beats, current)
+            return f"0.{max(0, remaining)}"
+        bar_start = downbeats[bar_idx - 1]
+        # Beat-in-bar = beats elapsed since this bar's downbeat (1-based).
+        beat_in_bar = bisect_right(beats, current) - bisect_left(beats, bar_start)
+        beat_in_bar = max(1, beat_in_bar)
+        return f"{bar_idx}.{beat_in_bar}"
 
     def _update_label_position(self):
         if self.plot is None:
@@ -103,45 +108,18 @@ class PlayHead(ViewPlugin):
 
     def _set_beats(self, features):
         beats = features.get("beats_time_sec") if features else None
-        ts = features.get("timesignature") if features else None
         if beats is None:
             self._beats_time = ()
-            self._beat_start_offset = 0
+            self._downbeats = ()
             return
         try:
             values = tuple(float(b) for b in beats)
         except TypeError:
             self._beats_time = ()
-            self._beat_start_offset = 0
+            self._downbeats = ()
             return
         self._beats_time = values if values else ()
-        self._timesignature = ts if ts else 4
-
-        self._beat_start_offset = 0
-        downbeat = self._extract_first_downbeat(features.get("tempo_segments") if features else None)
-        if downbeat is not None and self._beats_time:
-            beats_arr = np.asarray(self._beats_time, dtype=float)
-            if beats_arr.size:
-                idx = int(np.argmin(np.abs(beats_arr - float(downbeat))))
-                self._beat_start_offset = max(0, idx)
-
-    @staticmethod
-    def _extract_first_downbeat(tempo_segments):
-        if tempo_segments is None:
-            return None
-        try:
-            arr = np.asarray(tempo_segments, dtype=float)
-        except Exception:
-            return None
-        if arr.size == 0:
-            return None
-        if arr.ndim == 1:
-            if arr.size % 3 != 0:
-                return None
-            arr = arr.reshape((-1, 3))
-        if arr.ndim >= 2 and arr.shape[1] >= 1:
-            starts = arr[:, 3]
-            finite = starts[np.isfinite(starts)]
-            if finite.size:
-                return float(np.min(finite))
-        return None
+        downbeats = build_downbeats_from_segments(
+            features.get("tempo_segments") if features else None
+        )
+        self._downbeats = tuple(float(d) for d in downbeats) if downbeats is not None else ()

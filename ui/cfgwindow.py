@@ -118,6 +118,13 @@ class SettingsDialog(QDialog):
 
         self.cb_metronome = QCheckBox("Enable metronome")
         self.ed_metronome_wav_path = QLineEdit()
+        self.sp_metronome_offset_msec = QDoubleSpinBox()
+        self.sp_metronome_offset_msec.setRange(-500.0, 500.0)
+        self.sp_metronome_offset_msec.setDecimals(1)
+        self.sp_metronome_offset_msec.setSingleStep(1.0)
+        self.sp_metronome_offset_msec.setToolTip(
+            "Shift metronome clicks relative to the beat (positive = earlier)"
+        )
         self.sp_volume_trim_dbfs = QDoubleSpinBox()
         self.sp_volume_trim_dbfs.setRange(-60.0, 0.0)
         self.sp_volume_trim_dbfs.setDecimals(2)
@@ -128,6 +135,7 @@ class SettingsDialog(QDialog):
 
         f.addRow(self.cb_metronome)
         f.addRow("Metronome WAV path", self.ed_metronome_wav_path)
+        f.addRow("Metronome offset (ms)", self.sp_metronome_offset_msec)
         f.addRow("Trim", self.sp_volume_trim_dbfs)
         f.addRow("Default volume (%)", self.sp_default_volume_percent)
 
@@ -327,6 +335,7 @@ class SettingsDialog(QDialog):
         p = cfg.playbackconfig
         self.cb_metronome.setChecked(bool(p.enable_metronome))
         self.ed_metronome_wav_path.setText(p.metronome_wav_path)
+        self.sp_metronome_offset_msec.setValue(float(getattr(p, "metronome_offset_msec", 0.0)))
         self.sp_volume_trim_dbfs.setValue(float(p.volume_trim_dbfs))
         self.sp_default_volume_percent.setValue(int(p.default_volume_percent))
 
@@ -531,6 +540,7 @@ class SettingsDialog(QDialog):
             playbackconfig=playbackconfig(
                 enable_metronome=bool(self.cb_metronome.isChecked()),
                 metronome_wav_path=self.ed_metronome_wav_path.text().strip(),
+                metronome_offset_msec=float(self.sp_metronome_offset_msec.value()),
                 volume_trim_dbfs=float(self.sp_volume_trim_dbfs.value()),
                 default_volume_percent=int(self.sp_default_volume_percent.value()),
             ),

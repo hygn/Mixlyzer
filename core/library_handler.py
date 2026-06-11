@@ -143,6 +143,7 @@ class BpmSegmentRow:
     duration_sec: float
     bpm: Optional[float] = None
     bpm_rounded: Optional[int] = None
+    time_signature: int = 4
 
 
 @dataclass
@@ -217,6 +218,7 @@ class LibraryDB:
             duration_sec  REAL NOT NULL,
             bpm           REAL,
             bpm_rounded   INTEGER,
+            time_signature INTEGER DEFAULT 4,
             UNIQUE(track_uid, seq_index)
         );
         """)
@@ -233,6 +235,13 @@ class LibraryDB:
             UNIQUE(track_uid, seq_index)
         );
         """)
+        # Self-healing schema upgrade: add per-segment time signature (numerator)
+        # to libraries that were created before this column existed. Keeps the
+        # library version fixed at 0.2.0 without requiring a migration step.
+        if not self._column_exists("track_bpm_segments", "time_signature"):
+            self._conn.execute(
+                "ALTER TABLE track_bpm_segments ADD COLUMN time_signature INTEGER DEFAULT 4;"
+            )
         self._conn.execute("CREATE INDEX IF NOT EXISTS idx_tbs_track_uid ON track_bpm_segments(track_uid);")
         self._conn.execute("CREATE INDEX IF NOT EXISTS idx_tbs_bpm_duration ON track_bpm_segments(bpm_rounded, duration_sec);")
         self._conn.execute("CREATE INDEX IF NOT EXISTS idx_tks_track_uid ON track_key_segments(track_uid);")
@@ -387,6 +396,7 @@ class LibraryDB:
         for raw in segments:
             row = asdict(raw) if isinstance(raw, BpmSegmentRow) else dict(raw)
             bpm = row.get("bpm")
+            ts = row.get("time_signature", 4)
             rows.append(
                 (
                     uid,
@@ -396,6 +406,7 @@ class LibraryDB:
                     float(row.get("duration_sec", 0.0)),
                     None if bpm is None else float(bpm),
                     row.get("bpm_rounded", None if bpm is None else int(round(float(bpm)))),
+                    int(ts) if ts is not None else 4,
                 )
             )
         with self.tx():
@@ -404,8 +415,8 @@ class LibraryDB:
                 self.conn.executemany(
                     """
                     INSERT INTO track_bpm_segments(
-                        track_uid, seq_index, start_sec, end_sec, duration_sec, bpm, bpm_rounded
-                    ) VALUES(?, ?, ?, ?, ?, ?, ?);
+                        track_uid, seq_index, start_sec, end_sec, duration_sec, bpm, bpm_rounded, time_signature
+                    ) VALUES(?, ?, ?, ?, ?, ?, ?, ?);
                     """,
                     rows,
                 )
@@ -451,7 +462,8 @@ class LibraryDB:
         track_uid = _canonical_uuid4(track_uid)
         cur = self.conn.execute(
             """
-            SELECT track_uid, seq_index, start_sec, end_sec, duration_sec, bpm, bpm_rounded
+            SELECT track_uid, seq_index, start_sec, end_sec, duration_sec, bpm, bpm_rounded,
+                   COALESCE(time_signature, 4) AS time_signature
             FROM track_bpm_segments
             WHERE track_uid=?
             ORDER BY seq_index ASC;
