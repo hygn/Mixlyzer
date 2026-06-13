@@ -4,6 +4,7 @@ import pyqtgraph as pg
 from core.event_bus import EventBus
 from utils.jumpcue_colors import get_jumpcue_pair_color
 from utils.jump_cues import extract_jump_cue_pairs, extract_jump_cue_graph
+from utils.phrases import extract_phrase_segments, abbreviate_phrase_labels, build_phrase_strip_buffer
 
 
 class SeekOnlyViewBox(pg.ViewBox):
@@ -99,7 +100,25 @@ class OverviewWidget(QtWidgets.QWidget):
         self.img_key  = pg.ImageItem(); self.p.addItem(self.img_key)
         if hasattr(self.img_key, "setAutoDownsample"):
             self.img_key.setAutoDownsample(True)
-        
+
+        # Phrase overlay: translucent label band over the lower waveform.
+        self.img_phrase = pg.ImageItem(); self.p.addItem(self.img_phrase)
+        if hasattr(self.img_phrase, "setAutoDownsample"):
+            self.img_phrase.setAutoDownsample(True)
+        self.img_phrase.setOpts(interpolation="nearest")
+        self.img_phrase.setOpacity(0.5)
+        self.img_phrase.setZValue(6)
+        self.phrase_boundaries = QtWidgets.QGraphicsPathItem(); self.p.addItem(self.phrase_boundaries)
+        self.phrase_boundaries.setPen(pg.mkPen((255, 255, 255, 220), width=1, cosmetic=True))
+        self.phrase_boundaries.setZValue(7)
+        self.phrase_labels: list[pg.TextItem] = []
+        self._phrase_visible = True
+        self._phrase_band_h = 0.16
+        self._phrase_font = QtGui.QFont()
+        self._phrase_font.setPointSizeF(7.0)
+        self._phrase_font.setBold(True)
+
+
         self.line_now = pg.InfiniteLine(angle=90, pen=pg.mkPen((255,200,50), width=2)); self.p.addItem(self.line_now)
         self.line_now.setZValue(30)
 
@@ -139,6 +158,7 @@ class OverviewWidget(QtWidgets.QWidget):
         self.bus.sig_jump_arm.connect(self._on_jump_arm)
         self.bus.sig_jump_disarm.connect(self._on_jump_disarm)
         self.bus.sig_jumpcue_updated.connect(self._on_jumpcue_updated)
+        self.bus.sig_phrase_segments_updated.connect(self._on_phrases_updated)
 
     def set_data(self) -> None:
         """Initialize overview visuals from the shared model."""
@@ -190,6 +210,7 @@ class OverviewWidget(QtWidgets.QWidget):
         self._render_jump_cues(self._jump_cues)
         self._tempo_segments = features.get("tempo_segments")
         self._render_segments(self._tempo_segments)
+        self._render_phrases()
         self._apply_selection_graphics()
         self._clear_jump_arrow()
         self._update_played_overlay()
@@ -463,6 +484,67 @@ class OverviewWidget(QtWidgets.QWidget):
             region.setZValue(4)
             self.p.addItem(region)
             self.segment_regions.append(region)
+
+    def set_phrase_visible(self, visible: bool) -> None:
+        self._phrase_visible = bool(visible)
+        self._render_phrases()
+
+    def _on_phrases_updated(self) -> None:
+        self._render_phrases()
+
+    def _render_phrases(self) -> None:
+        feats = self.model.features or {}
+        phrases = extract_phrase_segments(feats) if self._phrase_visible else []
+        numbered = abbreviate_phrase_labels(phrases)
+        band_bottom = self.KEY_H
+        band_h = self._phrase_band_h
+        strip = (
+            build_phrase_strip_buffer(phrases, self.duration)
+            if (self._phrase_visible and self.duration > 0)
+            else None
+        )
+        if strip is None:
+            self.img_phrase.clear()
+        else:
+            self.img_phrase.setImage(strip, autoLevels=False, levels=(0, 255))
+            self.img_phrase.setRect(QtCore.QRectF(0.0, band_bottom, self.duration, band_h))
+
+        # Thin boundary lines at every segment edge, within the band only.
+        edges: list[float] = []
+        for seg in phrases:
+            edges.append(float(seg.get("start", 0.0)))
+            edges.append(float(seg.get("end", 0.0)))
+        self.phrase_boundaries.setPath(self._phrase_boundary_path(edges, band_bottom, band_bottom + band_h))
+
+        while len(self.phrase_labels) < len(phrases):
+            lbl = pg.TextItem("", color=(255, 255, 255), anchor=(0.5, 0.5))
+            lbl.setFont(self._phrase_font)
+            lbl.setZValue(17)
+            self.p.addItem(lbl)
+            self.phrase_labels.append(lbl)
+        label_y = band_bottom + band_h * 0.5
+        for idx, lbl in enumerate(self.phrase_labels):
+            if idx < len(phrases):
+                seg = phrases[idx]
+                center = (float(seg.get("start", 0.0)) + float(seg.get("end", 0.0))) * 0.5
+                lbl.setText(numbered[idx] if idx < len(numbered) else "")
+                lbl.setPos(center, label_y)
+                lbl.setVisible(True)
+            else:
+                lbl.setVisible(False)
+
+    @staticmethod
+    def _phrase_boundary_path(xs, y0: float, y1: float) -> QtGui.QPainterPath:
+        xs = np.asarray(sorted(set(float(x) for x in xs)), dtype=float)
+        if xs.size == 0:
+            return QtGui.QPainterPath()
+        x = np.repeat(xs, 3)
+        y = np.empty(xs.size * 3, dtype=float)
+        y[0::3] = y0
+        y[1::3] = y1
+        y[2::3] = np.nan
+        x[2::3] = np.nan
+        return pg.arrayToQPath(x, y, connect="finite")
 
     def _on_selection_changed(self, payload) -> None:
         start = end = None

@@ -60,6 +60,7 @@ class EventBus(QtCore.QObject):
     # Payload: None or (start_sec: float, end_sec: float)
     sig_key_selection_changed = QtCore.Signal(object)
     sig_key_segments_updated = QtCore.Signal()
+    sig_phrase_segments_updated = QtCore.Signal()
 
     sig_jumpcue_updated = QtCore.Signal()
 

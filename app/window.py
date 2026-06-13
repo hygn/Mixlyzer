@@ -529,7 +529,7 @@ class AppWindow(QtWidgets.QMainWindow):
         new_vcfg = _config.to_dict()["viewconfig"]
         prev_pcfg = prev_cfg.get("playbackconfig", {})
         new_pcfg = _config.to_dict()["playbackconfig"]
-        _VIEW_LAYOUT_KEYS = {"display_waveform", "display_beatgrid", "display_keystrip", "display_JumpCUE"}
+        _VIEW_LAYOUT_KEYS = {"display_waveform", "display_beatgrid", "display_keystrip", "display_JumpCUE", "display_phrase"}
         layout_changed = any(prev_vcfg.get(k) != new_vcfg.get(k) for k in _VIEW_LAYOUT_KEYS)
         viewconfig_changed = prev_vcfg != new_vcfg
         playbackconfig_changed = prev_pcfg != new_pcfg

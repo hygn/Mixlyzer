@@ -13,6 +13,7 @@ from ui.library import LibraryWidget
 from utils.labels import idx_to_labels
 from utils.semitone import speed_to_semitone
 from utils.jump_cues import extract_jump_cue_pairs
+from utils.phrases import extract_phrase_segments
 from core.event_bus import EventBus
 from core.config import config
 from ui.mainplotvbx import NoDragNoWheelViewBox
@@ -304,11 +305,32 @@ class MainPane(QtWidgets.QWidget):
         self.cb_show_editors.setChecked(False)
         self.cb_show_editors.setMinimumHeight(editor_toggle_h)
         self.cb_show_editors.setMaximumHeight(editor_toggle_h)
+
+        # Editor page toggle (moved here, next to "Show Editors"):
+        # Beat/Key | Phrase/JumpCUE -> switches the editor panel's stacked page.
+        self.btn_page_beatkey = QtWidgets.QToolButton()
+        self.btn_page_beatkey.setText("Beat/Key")
+        self.btn_page_beatkey.setCheckable(True)
+        self.btn_page_beatkey.setChecked(True)
+        self.btn_page_phrasejc = QtWidgets.QToolButton()
+        self.btn_page_phrasejc.setText("Phrase/JumpCUE")
+        self.btn_page_phrasejc.setCheckable(True)
+        for _b in (self.btn_page_beatkey, self.btn_page_phrasejc):
+            _b.setMinimumHeight(editor_toggle_h)
+            _b.setMaximumHeight(editor_toggle_h)
+        self._editor_page_group = QtWidgets.QButtonGroup(self)
+        self._editor_page_group.setExclusive(True)
+        self._editor_page_group.addButton(self.btn_page_beatkey, 0)
+        self._editor_page_group.addButton(self.btn_page_phrasejc, 1)
+        self._editor_page_group.idClicked.connect(self.track_edit.set_active_page)
+
         self.cb_show_transition_search = QtWidgets.QCheckBox("Show Transition Search")
         self.cb_show_transition_search.setChecked(False)
         self.cb_show_transition_search.setMinimumHeight(editor_toggle_h)
         self.cb_show_transition_search.setMaximumHeight(editor_toggle_h)
         toggle_row.addWidget(self.cb_show_editors, 0, QtCore.Qt.AlignLeft)
+        toggle_row.addWidget(self.btn_page_beatkey, 0, QtCore.Qt.AlignLeft)
+        toggle_row.addWidget(self.btn_page_phrasejc, 0, QtCore.Qt.AlignLeft)
         toggle_row.addWidget(self.cb_show_transition_search, 0, QtCore.Qt.AlignLeft)
         toggle_row.addStretch(1)
         header_v.addLayout(toggle_row)
@@ -339,6 +361,10 @@ class MainPane(QtWidgets.QWidget):
             self.add_view("KeyStripView")
         if view_cfg.display_JumpCUE:
             self.add_view("JumpCUEView")
+        if getattr(view_cfg, "display_phrase", True):
+            self.add_view("PhraseView")
+        if hasattr(self, "ov") and hasattr(self.ov, "set_phrase_visible"):
+            self.ov.set_phrase_visible(getattr(view_cfg, "display_phrase", True))
         self.add_view("PlayHead")
         self.add_view("SelectionOverlayView")
         self.p.setYRange(0, 1.0, padding=0.05)
@@ -462,6 +488,7 @@ class MainPane(QtWidgets.QWidget):
             self.track_edit.set_key_segments(f.get("key_segments"), initialize=True)
             self.track_edit.set_segments(f.get("beats_time_sec"), segments)
             self.track_edit.set_JumpCUE(extract_jump_cue_pairs(f))
+            self.track_edit.set_phrase_segments(extract_phrase_segments(f), initialize=True)
         self._set_tempo_segments(segments)
         key_segments = f.get("key_segments")
         if key_segments is not None:
@@ -607,6 +634,10 @@ class MainPane(QtWidgets.QWidget):
         show = bool(visible)
         if hasattr(self, "track_edit"):
             self.track_edit.setVisible(show)
+        for _attr in ("btn_page_beatkey", "btn_page_phrasejc"):
+            _btn = getattr(self, _attr, None)
+            if _btn is not None:
+                _btn.setEnabled(show)
         ov_height = self.ov.maximumHeight() if hasattr(self, "ov") else 0
         toggle_h = self.cb_show_editors.maximumHeight() if hasattr(self, "cb_show_editors") else 24
         header_h = TrackInfoPanel.HEADER_H + ov_height + toggle_h + (BeatgridEditPanel.ROW_H if show else 0)

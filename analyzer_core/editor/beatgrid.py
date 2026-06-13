@@ -206,6 +206,7 @@ def reanalyze_segment_from_file(
         bpm_hi=bpm_hi,
         prev_bpm=prev,
         use_only_prev_bpm=use_only_prev_bpm if prev is not None else False,
+        audio=y_perc,
     )
     bpm_est = float(bpm_est) if np.isfinite(bpm_est) else float(bpm)
     beatgrid_offset_sec = float(getattr(gcf, "beatgrid_offset_msec", 0.0) or 0.0) / 1000.0

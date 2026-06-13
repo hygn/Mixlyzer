@@ -19,6 +19,7 @@ class viewconfig:
     display_beatgrid: bool
     display_keystrip: bool
     display_JumpCUE: bool
+    display_phrase: bool
     use_output_volume_as_peak_meter_input: bool
     fps: int
     reduce_fps_when_occluded: bool
@@ -79,6 +80,7 @@ class analysisconfig:
     bpm_max: int
     bpm_dynamic: bool
     bpm_adaptive_window: bool
+    dynamic_downbeat: bool
     beatgrid_offset_msec: float
     env_frame_ms: int
     env_lo: Tuple[float, float]
@@ -199,6 +201,7 @@ def default_cfg():
         bpm_min=110,
         bpm_dynamic=True,
         bpm_adaptive_window=True,
+        dynamic_downbeat=False,
         beatgrid_offset_msec=0.0,
         env_frame_ms=4,
         env_lo=(20.0, 200.0),
@@ -218,6 +221,7 @@ def default_cfg():
         display_beatgrid=True,
         display_keystrip=True,
         display_JumpCUE=True,
+        display_phrase=True,
         use_output_volume_as_peak_meter_input=True,
         fps=60,
         reduce_fps_when_occluded=True,

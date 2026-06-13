@@ -19,6 +19,14 @@ from utils.keystrip import build_keystrip_buffer
 from utils.labels import KEY_DISPLAY_LABELS
 from utils.jump_cues import build_jump_cues_np, extract_jump_cue_pairs, build_jump_cue_graph
 from utils.jumpcue_colors import get_jumpcue_pair_color
+from utils.phrases import (
+    PHRASE_LABELS,
+    assign_phrase_to_selection,
+    build_phrase_segments_np,
+    clear_phrase_in_selection,
+    extract_phrase_segments,
+    number_phrase_labels,
+)
 
 MAX_LOG_HISTORY = 50
 BUTTON_STYLESHEET = """
@@ -47,6 +55,7 @@ class logElement:
     beats_time: np.ndarray
     key_segments: np.ndarray | None = None
     jump_cues: list[dict] | None = None
+    phrases: list[dict] | None = None
 
     def __post_init__(self) -> None:
         self.beat_segments = np.asarray(self.beat_segments, dtype=float).copy()
@@ -55,6 +64,8 @@ class logElement:
             self.key_segments = np.asarray(self.key_segments, dtype=float).copy()
         if self.jump_cues is not None:
             self.jump_cues = copy.deepcopy(self.jump_cues)
+        if self.phrases is not None:
+            self.phrases = copy.deepcopy(self.phrases)
 
     def clone(self) -> logElement:
         return logElement(
@@ -62,6 +73,7 @@ class logElement:
             beats_time=self.beats_time,
             key_segments=self.key_segments,
             jump_cues=self.jump_cues,
+            phrases=self.phrases,
         )
 
 
@@ -119,7 +131,7 @@ class logs:
 class SaveWorker(QtCore.QObject):
     finished = QtCore.Signal(object)
 
-    def save(self, store: FeatureNPZStore, libpath: str, uid, *, beatgrid=None, segments=None, key_segments=None, key_np=None, jump_cues_np=None, jump_cues_extracted=None):
+    def save(self, store: FeatureNPZStore, libpath: str, uid, *, beatgrid=None, segments=None, key_segments=None, key_np=None, jump_cues_np=None, jump_cues_extracted=None, phrase_segments_np=None):
         try:
             if uid is None:
                 return
@@ -139,6 +151,8 @@ class SaveWorker(QtCore.QObject):
                 prev_feat["jump_cues_np"] = jump_cues_np
             if jump_cues_extracted is not None:
                 prev_feat["jump_cues_extracted"] = jump_cues_extracted
+            if phrase_segments_np is not None:
+                prev_feat["phrase_segments_np"] = phrase_segments_np
             store.save(uid, prev_feat)
             db = LibraryDB(os.path.join(libpath, "library.db"))
             db.connect()
@@ -175,6 +189,7 @@ class BeatgridEditPanel(QtWidgets.QWidget):
         self._cur_idx: int = -1
         self._current_time: float = 0.0
         self._key_segments: np.ndarray = np.empty((0, 4), dtype=float)
+        self._phrase_segments: list[dict] = []
         self.uid = None
         self.bus = bus
         self.model = model
@@ -198,6 +213,7 @@ class BeatgridEditPanel(QtWidgets.QWidget):
                 beat_segments=self._segments,
                 key_segments=self._key_segments,
                 jump_cues=self._JumpCUE,
+                phrases=self._phrase_segments,
             )
         )
         self.bus.sig_segment_reanalyze_state.connect(self._set_edit_enabled)
@@ -210,15 +226,6 @@ class BeatgridEditPanel(QtWidgets.QWidget):
         self.setMinimumHeight(approx_h)
         self.setMaximumHeight(approx_h)
 
-        grid = QtWidgets.QGridLayout(self)
-        grid.setContentsMargins(12, 4, 12, 4)
-        grid.setHorizontalSpacing(8)
-        grid.setVerticalSpacing(8)
-        grid.setColumnMinimumWidth(0, 96)
-        grid.setRowMinimumHeight(0, self.BTN_HEIGHT)
-        grid.setRowMinimumHeight(1, self.BTN_HEIGHT)
-        grid.setRowMinimumHeight(2, self.BTN_HEIGHT)
-        
         # Beatgrid Edit Panel
         self.beatgrid_label = QtWidgets.QLabel("Beatgrid: ")
         f = self.beatgrid_label.font()
@@ -382,6 +389,45 @@ class BeatgridEditPanel(QtWidgets.QWidget):
         self.jc_jumptest.setText("ARM")
         self.jc_jumptest.setToolTip("Arm jump: transition from the selected source cue to the selected target cue")
 
+        # Phrase Edit Panel
+        self.phrase_label = QtWidgets.QLabel("Phrase: ")
+        f = self.phrase_label.font()
+        f.setBold(True)
+        self.phrase_label.setFont(f)
+
+        self.phrase_assign_combo = QtWidgets.QComboBox()
+        self.phrase_assign_combo.setEditable(True)
+        self.phrase_assign_combo.addItems(PHRASE_LABELS)
+        self.phrase_assign_combo.setToolTip("Phrase label to assign (type for a custom label)")
+        self.phrase_assign_combo.setSizeAdjustPolicy(QtWidgets.QComboBox.SizeAdjustPolicy.AdjustToContents)
+
+        self.phrase_sel_start = QtWidgets.QToolButton()
+        self.phrase_sel_start.setText("SelST")
+        self.phrase_sel_start.setToolTip("Set selection start to nearest beat at playhead")
+
+        self.phrase_sel_end = QtWidgets.QToolButton()
+        self.phrase_sel_end.setText("SelED")
+        self.phrase_sel_end.setToolTip("Set selection end to nearest beat at playhead")
+
+        self.phrase_deselect = QtWidgets.QToolButton()
+        self.phrase_deselect.setText("DeSel")
+        self.phrase_deselect.setToolTip("Clear selection")
+
+        self.phrase_sel_all = QtWidgets.QToolButton()
+        self.phrase_sel_all.setText("SelAL")
+        self.phrase_sel_all.setToolTip("Select entire track")
+
+        self.phrase_assign_button = QtWidgets.QToolButton()
+        self.phrase_assign_button.setText("Assign")
+        self.phrase_assign_button.setToolTip("Assign the chosen phrase label to the current selection")
+
+        self.phrase_clear_button = QtWidgets.QToolButton()
+        self.phrase_clear_button.setText("Clear")
+        self.phrase_clear_button.setToolTip("Remove phrase labels within the current selection")
+
+        self.phrase_status = QtWidgets.QLabel("<b>Phrase</b>: --")
+        self.phrase_status.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+
         # Edit Panel
         self.edits_label = QtWidgets.QLabel("Edits: ")
         f = self.edits_label.font()
@@ -431,8 +477,14 @@ class BeatgridEditPanel(QtWidgets.QWidget):
             self.key_rel_minor_button,
             self.key_assign_combo,
             self.jc_reanalyze,
-            self.jc_jumptest
-
+            self.jc_jumptest,
+            self.phrase_assign_combo,
+            self.phrase_sel_start,
+            self.phrase_sel_end,
+            self.phrase_deselect,
+            self.phrase_sel_all,
+            self.phrase_assign_button,
+            self.phrase_clear_button,
         ]
         for btn in self._edit_buttons:
             btn.setFixedSize(self.BTN_WIDTH, self.BTN_HEIGHT)
@@ -441,53 +493,96 @@ class BeatgridEditPanel(QtWidgets.QWidget):
         self.beatgrid_status = QtWidgets.QLabel("<b>Beatgrid Seg</b>: -- | Elapsed: 00:00.00 | Left: 00:00.00")
         self.beatgrid_status.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
 
-        grid.addWidget(self.beatgrid_label, 0, 0, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-        grid.addWidget(self.btn_shift_back, 0, 1, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-        grid.addWidget(self.btn_shift_fwd, 0, 2, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-        grid.addWidget(self.btn_phase_plus_180, 0, 3, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-        grid.addWidget(self.btn_phase_minus_180, 0, 4, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-        grid.addWidget(self.btn_cutseg, 1, 5, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
+        _AL = QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter
 
-        grid.addWidget(self.btn_merge_prev_keep_prev, 1, 1, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-        grid.addWidget(self.btn_merge_prev_keep_current, 1, 2, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-        grid.addWidget(self.btn_merge_next_keep_next, 1, 4, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-        grid.addWidget(self.btn_merge_next_keep_current, 1, 3, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-        grid.addWidget(self.btn_reanalyze_segment, 0, 5, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
+        # Top-level: [stacked pages] [shared Edits column]. The page toggle
+        # (Beat/Key | Phrase/JumpCUE) lives outside this panel, next to the
+        # "Show Editors" checkbox; see MainPane.
+        root = QtWidgets.QHBoxLayout(self)
+        root.setContentsMargins(12, 4, 12, 4)
+        root.setSpacing(8)
 
-        grid.addWidget(self.btn_tapBPM, 2, 1, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-        grid.addWidget(self.inp_refBPM, 2, 3, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-        grid.addWidget(self.btn_setBPM, 2, 4, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-        grid.addWidget(self.btn_zeroBPM, 2, 2, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-        grid.addWidget(self.btn_reanalyze_segment_ref, 2, 5, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
+        # Stacked pages
+        self.editor_stack = QtWidgets.QStackedWidget()
+        page_beatkey = QtWidgets.QWidget()
+        page_phrasejc = QtWidgets.QWidget()
+        self.editor_stack.addWidget(page_beatkey)
+        self.editor_stack.addWidget(page_phrasejc)
+        root.addWidget(self.editor_stack, 1)
 
-        grid.addWidget(self.beatgrid_status, 3, 0, 1, 7, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
+        gridA = QtWidgets.QGridLayout(page_beatkey)
+        gridA.setContentsMargins(0, 0, 0, 0)
+        gridA.setHorizontalSpacing(8)
+        gridA.setVerticalSpacing(8)
+        for _r in range(3):
+            gridA.setRowMinimumHeight(_r, self.BTN_HEIGHT)
 
-        # Time signature column, immediately right of the Beatgrid controls:
-        # selector on top, apply button below.
-        grid.addWidget(self.cmb_time_sig, 0, 6, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-        grid.addWidget(self.btn_apply_time_sig, 1, 6, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
+        gridB = QtWidgets.QGridLayout(page_phrasejc)
+        gridB.setContentsMargins(0, 0, 0, 0)
+        gridB.setHorizontalSpacing(8)
+        gridB.setVerticalSpacing(8)
+        for _r in range(3):
+            gridB.setRowMinimumHeight(_r, self.BTN_HEIGHT)
 
-        grid.addWidget(self.key_label, 0, 7, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-        grid.addWidget(self.key_reanalyze, 0, 8, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-        grid.addWidget(self.key_sel_reanalyze, 0, 9, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-        grid.addWidget(self.key_assign_combo, 0, 10, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-        grid.addWidget(self.key_sel_start, 1, 8, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-        grid.addWidget(self.key_sel_end, 1, 9, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-        grid.addWidget(self.key_assign_button, 1, 10, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-        grid.addWidget(self.key_deselect, 2, 8, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-        grid.addWidget(self.key_sel_all, 2, 9, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-        grid.addWidget(self.key_rel_minor_button, 2, 10, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
+        # ---- Page A: Beatgrid + Key ----
+        gridA.addWidget(self.beatgrid_label, 0, 0, _AL)
+        gridA.addWidget(self.btn_shift_back, 0, 1, _AL)
+        gridA.addWidget(self.btn_shift_fwd, 0, 2, _AL)
+        gridA.addWidget(self.btn_phase_plus_180, 0, 3, _AL)
+        gridA.addWidget(self.btn_phase_minus_180, 0, 4, _AL)
+        gridA.addWidget(self.btn_cutseg, 1, 5, _AL)
+        gridA.addWidget(self.btn_merge_prev_keep_prev, 1, 1, _AL)
+        gridA.addWidget(self.btn_merge_prev_keep_current, 1, 2, _AL)
+        gridA.addWidget(self.btn_merge_next_keep_next, 1, 4, _AL)
+        gridA.addWidget(self.btn_merge_next_keep_current, 1, 3, _AL)
+        gridA.addWidget(self.btn_reanalyze_segment, 0, 5, _AL)
+        gridA.addWidget(self.btn_tapBPM, 2, 1, _AL)
+        gridA.addWidget(self.inp_refBPM, 2, 3, _AL)
+        gridA.addWidget(self.btn_setBPM, 2, 4, _AL)
+        gridA.addWidget(self.btn_zeroBPM, 2, 2, _AL)
+        gridA.addWidget(self.btn_reanalyze_segment_ref, 2, 5, _AL)
+        gridA.addWidget(self.beatgrid_status, 3, 0, 1, 7, _AL)
+        gridA.addWidget(self.cmb_time_sig, 0, 6, _AL)
+        gridA.addWidget(self.btn_apply_time_sig, 1, 6, _AL)
+        gridA.addWidget(self.key_label, 0, 7, _AL)
+        gridA.addWidget(self.key_reanalyze, 0, 8, _AL)
+        gridA.addWidget(self.key_sel_reanalyze, 0, 9, _AL)
+        gridA.addWidget(self.key_assign_combo, 0, 10, _AL)
+        gridA.addWidget(self.key_sel_start, 1, 8, _AL)
+        gridA.addWidget(self.key_sel_end, 1, 9, _AL)
+        gridA.addWidget(self.key_assign_button, 1, 10, _AL)
+        gridA.addWidget(self.key_deselect, 2, 8, _AL)
+        gridA.addWidget(self.key_sel_all, 2, 9, _AL)
+        gridA.addWidget(self.key_rel_minor_button, 2, 10, _AL)
+        gridA.setColumnStretch(11, 1)
 
-        grid.addWidget(self.JumpCUE_label, 0, 11, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-        grid.addWidget(self.jc_reanalyze, 0, 12, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-        grid.addWidget(self.jc_selection_wrap, 1, 12, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-        grid.addWidget(self.jc_jumptest, 2, 12, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
+        # ---- Page B: Phrase + JumpCUE ----
+        gridB.addWidget(self.phrase_label, 0, 0, _AL)
+        gridB.addWidget(self.phrase_assign_combo, 0, 1, _AL)
+        gridB.addWidget(self.phrase_assign_button, 0, 2, _AL)
+        gridB.addWidget(self.phrase_clear_button, 0, 3, _AL)
+        gridB.addWidget(self.phrase_sel_start, 1, 1, _AL)
+        gridB.addWidget(self.phrase_sel_end, 1, 2, _AL)
+        gridB.addWidget(self.phrase_deselect, 2, 1, _AL)
+        gridB.addWidget(self.phrase_sel_all, 2, 2, _AL)
+        gridB.addWidget(self.phrase_status, 3, 0, 1, 4, _AL)
+        gridB.addWidget(self.JumpCUE_label, 0, 5, _AL)
+        gridB.addWidget(self.jc_reanalyze, 0, 6, _AL)
+        gridB.addWidget(self.jc_selection_wrap, 1, 6, _AL)
+        gridB.addWidget(self.jc_jumptest, 2, 6, _AL)
+        gridB.setColumnStretch(7, 1)
 
-        grid.addWidget(self.edits_label, 0, 15, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-        grid.addWidget(self.btn_undo, 0, 16, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-        grid.addWidget(self.btn_redo, 1, 16, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-        grid.addWidget(self.btn_save, 2, 16, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-        grid.setColumnStretch(16, 2)
+        # ---- Shared Edits column (right) ----
+        edits_grid = QtWidgets.QGridLayout()
+        edits_grid.setContentsMargins(0, 0, 0, 0)
+        edits_grid.setHorizontalSpacing(8)
+        edits_grid.setVerticalSpacing(8)
+        edits_grid.addWidget(self.edits_label, 0, 0, _AL)
+        edits_grid.addWidget(self.btn_undo, 0, 1, _AL)
+        edits_grid.addWidget(self.btn_redo, 1, 1, _AL)
+        edits_grid.addWidget(self.btn_save, 2, 1, _AL)
+        root.addLayout(edits_grid)
+
 
         # Wire buttons to handlers (still mostly placeholders)
         self.btn_shift_back.clicked.connect(self._shift_beatgrid_backward)
@@ -522,6 +617,18 @@ class BeatgridEditPanel(QtWidgets.QWidget):
         self.jc_reanalyze.clicked.connect(self._reanalyze_jumpCUE)
         self.jc_source_selection.currentIndexChanged.connect(self._jc_source_selection_changed)
         self.jc_target_selection.currentIndexChanged.connect(self._jc_target_selection_changed)
+
+        # Phrase page (selection is shared with the Key page handlers)
+        self.phrase_sel_start.clicked.connect(self._key_selection_set_start)
+        self.phrase_sel_end.clicked.connect(self._key_selection_set_end)
+        self.phrase_deselect.clicked.connect(self._key_selection_clear)
+        self.phrase_sel_all.clicked.connect(self._key_selection_select_all)
+        self.phrase_assign_button.clicked.connect(self._assign_phrase_selection)
+        self.phrase_clear_button.clicked.connect(self._clear_phrase_selection)
+    def set_active_page(self, index: int) -> None:
+        """Switch the editor page: 0 = Beat/Key, 1 = Phrase/JumpCUE."""
+        self.editor_stack.setCurrentIndex(int(index))
+
     def set_track_uid(self, uid):
         self.uid = uid
         self._zeroBPM()
@@ -566,6 +673,7 @@ class BeatgridEditPanel(QtWidgets.QWidget):
                 beats_time=self._beatgrid,
                 beat_segments=self._segments,
                 key_segments=self._key_segments,
+                phrases=self._phrase_segments,
             )
         )
         self._update_undo_redo_buttons()
@@ -585,6 +693,18 @@ class BeatgridEditPanel(QtWidgets.QWidget):
             return
         self._emit_key_update(key_image=key_image)
     
+    def set_phrase_segments(self, phrases, *, initialize: bool = True) -> None:
+        """Load phrase segments (list of {start, end, label}). Default does not re-broadcast."""
+        if phrases is None:
+            self._phrase_segments = []
+        elif isinstance(phrases, list):
+            self._phrase_segments = [dict(p) for p in phrases]
+        else:
+            self._phrase_segments = extract_phrase_segments({"phrase_segments_np": phrases})
+        self._update_phrase_status()
+        if not initialize:
+            self._broadcast_phrase()
+
     def set_JumpCUE(self, JumpCUE) -> None:
         if JumpCUE == None:
             JumpCUE = []
@@ -597,6 +717,7 @@ class BeatgridEditPanel(QtWidgets.QWidget):
         self._reset_jumpcue_arm_state()
 
     def update_time(self, t: float) -> None:
+        self._current_time = float(t)
         segs = self._segments
         if segs.size == 0:
             self._set_status(None, 0.0, 0.0)
@@ -633,6 +754,7 @@ class BeatgridEditPanel(QtWidgets.QWidget):
         else:
             self.beatgrid_status.setText(f"<b>Beatgrid Seg</b>: {idx+1} | Elapsed: {fmt(elapsed)} | Left: {fmt(left)}")
         self._refresh_time_sig_selector()
+        self._update_phrase_status()
 
     @staticmethod
     def _ensure_ts_column(segments: np.ndarray) -> np.ndarray:
@@ -915,6 +1037,7 @@ class BeatgridEditPanel(QtWidgets.QWidget):
                 beat_segments=self._segments,
                 key_segments=self._key_segments,
                 jump_cues=self._JumpCUE,
+                phrases=self._phrase_segments,
             )
         )
         if self.model is not None:
@@ -934,6 +1057,7 @@ class BeatgridEditPanel(QtWidgets.QWidget):
                 beat_segments=self._segments,
                 key_segments=self._key_segments,
                 jump_cues=self._JumpCUE,
+                phrases=self._phrase_segments,
             )
         )
         self.btn_save.setStyleSheet(WARNING_BUTTON_STYLESHEET)
@@ -947,6 +1071,7 @@ class BeatgridEditPanel(QtWidgets.QWidget):
                 beat_segments=self._segments,
                 key_segments=self._key_segments,
                 jump_cues=self._JumpCUE,
+                phrases=self._phrase_segments,
             )
         )
         self.btn_save.setStyleSheet(WARNING_BUTTON_STYLESHEET)
@@ -994,6 +1119,7 @@ class BeatgridEditPanel(QtWidgets.QWidget):
                     beats_time=self._beatgrid,
                     beat_segments=self._segments,
                     key_segments=self._key_segments,
+                    phrases=self._phrase_segments,
                 )
             )
             self.btn_save.setStyleSheet(WARNING_BUTTON_STYLESHEET)
@@ -1026,6 +1152,7 @@ class BeatgridEditPanel(QtWidgets.QWidget):
                     beat_segments=self._segments,
                     key_segments=self._key_segments,
                     jump_cues=cues_copy,
+                    phrases=self._phrase_segments,
                 )
             )
             self._update_undo_redo_buttons()
@@ -1054,6 +1181,9 @@ class BeatgridEditPanel(QtWidgets.QWidget):
             restored = copy.deepcopy(loge.jump_cues)
             self.set_JumpCUE(restored)
             self._broadcast_jumpcue()
+        if loge.phrases is not None:
+            self._phrase_segments = copy.deepcopy(loge.phrases)
+            self._broadcast_phrase()
         self.update_time(self._current_time)
 
     def _redo(self) -> None:
@@ -1077,6 +1207,9 @@ class BeatgridEditPanel(QtWidgets.QWidget):
             restored = copy.deepcopy(loge.jump_cues)
             self.set_JumpCUE(restored)
             self._broadcast_jumpcue()
+        if loge.phrases is not None:
+            self._phrase_segments = copy.deepcopy(loge.phrases)
+            self._broadcast_phrase()
         self.update_time(self._current_time)
     
     def _save(self) -> None:
@@ -1096,6 +1229,7 @@ class BeatgridEditPanel(QtWidgets.QWidget):
             QtWidgets.QMessageBox.warning(self, "Invalid JumpCUE Label", str(exc))
             return
         jump_cues_extracted = copy.deepcopy(self._JumpCUE)
+        phrase_segments_np = build_phrase_segments_np(self._phrase_segments)
         self._save_in_progress = True
         self.btn_save.setEnabled(False)
         thread.started.connect(
@@ -1108,6 +1242,7 @@ class BeatgridEditPanel(QtWidgets.QWidget):
                 key_segments=key_segments,
                 jump_cues_np=jump_cues_np,
                 jump_cues_extracted=jump_cues_extracted,
+                phrase_segments_np=phrase_segments_np,
             )
         )
         save_worker.finished.connect(thread.quit)
@@ -1404,14 +1539,129 @@ class BeatgridEditPanel(QtWidgets.QWidget):
         self.inp_refBPM.setText("")
         self.prev_tap_BPM = 0
 
+    # Phrase editing (selection -> assign label), mirrors the Key flow.
+    def _assign_phrase_selection(self) -> None:
+        bounds = self._selection_bounds()
+        if bounds is None:
+            return
+        start, end = bounds
+        label = self.phrase_assign_combo.currentText().strip()
+        if not label:
+            return
+        try:
+            self._phrase_segments = assign_phrase_to_selection(self._phrase_segments, start, end, label)
+        except ValueError:
+            return
+        self._broadcast_phrase(record=True)
+
+    def _clear_phrase_selection(self) -> None:
+        bounds = self._selection_bounds()
+        if bounds is None:
+            return
+        start, end = bounds
+        self._phrase_segments = clear_phrase_in_selection(self._phrase_segments, start, end)
+        self._broadcast_phrase(record=True)
+
+    def _broadcast_phrase(self, *, record: bool = False) -> None:
+        if record:
+            self.edit_log.push(
+                logElement(
+                    beats_time=self._beatgrid,
+                    beat_segments=self._segments,
+                    key_segments=self._key_segments,
+                    jump_cues=self._JumpCUE,
+                    phrases=self._phrase_segments,
+                )
+            )
+            self._update_undo_redo_buttons()
+            self.btn_save.setStyleSheet(WARNING_BUTTON_STYLESHEET)
+        if self.model is not None:
+            try:
+                self.model.features["phrase_segments_np"] = build_phrase_segments_np(self._phrase_segments)
+            except Exception:
+                pass
+        self._update_phrase_status()
+        self.bus.sig_phrase_segments_updated.emit()
+
+    def _update_phrase_status(self) -> None:
+        t = float(self._current_time)
+        label = self._phrase_label_at(t)
+        beats = self._phrase_beats_elapsed(t)
+        self.phrase_status.setText(f"<b>Phrase</b>: {label or '--'} | +{beats} beats")
+
+    def _phrase_beat_reference(self, t: float) -> float:
+        """Reference time the phrase beat counter is measured from.
+
+        - inside an assigned phrase: that phrase's start
+        - otherwise, if an earlier phrase exists: the previous phrase's start
+        - nothing assigned before t: the first beat (track start)
+        """
+        rows = sorted(self._phrase_segments, key=lambda r: float(r.get("start", 0.0)))
+        for row in rows:
+            if float(row.get("start", 0.0)) <= t < float(row.get("end", 0.0)):
+                return float(row.get("start", 0.0))
+        previous = [r for r in rows if float(r.get("start", 0.0)) <= t]
+        if previous:
+            return float(max(previous, key=lambda r: float(r.get("start", 0.0)))["start"])
+        beats = np.asarray(self._beatgrid, dtype=float)
+        return float(beats[0]) if beats.size else 0.0
+
+    def _phrase_beats_elapsed(self, t: float) -> int:
+        ref_t = self._phrase_beat_reference(t)
+        beats = np.asarray(self._beatgrid, dtype=float)
+        if beats.size == 0:
+            return 0
+        # Snap the reference to the nearest beat by INDEX. Stored phrase starts are
+        # float32 (and may be edited off-grid), so matching by time with a tiny
+        # tolerance can miss the start beat; nearest-index is robust.
+        ref_idx = int(np.argmin(np.abs(beats - ref_t)))
+        # Current beat = the most recent beat the playhead has reached.
+        cur_idx = int(np.searchsorted(beats, t + 1e-4, side="right")) - 1
+        cur_idx = min(max(cur_idx, ref_idx), beats.size - 1)
+        return cur_idx - ref_idx + 1
+
+    def _phrase_label_at(self, t: float) -> str:
+        rows = sorted(self._phrase_segments, key=lambda r: float(r.get("start", 0.0)))
+        numbered = number_phrase_labels(rows)
+        for row, disp in zip(rows, numbered):
+            if float(row.get("start", 0.0)) <= t < float(row.get("end", 0.0)):
+                return disp
+        return ""
+
     def _key_selection_set_start(self) -> None:
+        # Always reset the selection to just the start point.
         anchor = self._selection_anchor_time()
         self._selection_start = anchor
+        self._selection_end = None
         self._emit_selection_range()
 
     def _key_selection_set_end(self) -> None:
         anchor = self._selection_anchor_time()
-        self._selection_end = anchor
+        start = self._selection_start
+        end = self._selection_end
+        if start is None:
+            # No start point yet: nothing to anchor an end against.
+            return
+        if end is None:
+            # Only a start point exists -> set the end.
+            self._selection_end = anchor
+            self._emit_selection_range()
+            return
+        # A full range exists; reassign based on the playhead position.
+        range_start = min(float(start), float(end))
+        range_end = max(float(start), float(end))
+        if anchor > range_end:
+            # After the range end: old end becomes the new start, click is the end.
+            self._selection_start = range_end
+            self._selection_end = anchor
+        elif anchor < range_start:
+            # Before the range start: old start becomes the end, click is the start.
+            self._selection_start = anchor
+            self._selection_end = range_start
+        else:
+            # Inside the range: drop the old end, click becomes the new end.
+            self._selection_start = range_start
+            self._selection_end = anchor
         self._emit_selection_range()
 
     def _key_selection_clear(self) -> None:

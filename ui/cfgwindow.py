@@ -88,6 +88,7 @@ class SettingsDialog(QDialog):
         self.cb_beatgrid = QCheckBox("Display beatgrid")
         self.cb_keystrip = QCheckBox("Display keystrip")
         self.cb_JumpCUE = QCheckBox("Display JumpCUE")
+        self.cb_phrase = QCheckBox("Display phrase overlay")
         self.cb_use_output_volume_as_peak_meter_input = QCheckBox(
             "Use output volume as peak meter input"
         )
@@ -104,6 +105,7 @@ class SettingsDialog(QDialog):
         f.addRow(self.cb_beatgrid)
         f.addRow(self.cb_keystrip)
         f.addRow(self.cb_JumpCUE)
+        f.addRow(self.cb_phrase)
         f.addRow(self.cb_use_output_volume_as_peak_meter_input)
         f.addRow(self.cb_reduce_fps_when_occluded)
         f.addRow("FPS", self.sp_fps)
@@ -158,6 +160,11 @@ class SettingsDialog(QDialog):
         tab_beat = QWidget(); f_beat = QFormLayout(tab_beat)
         self.cb_bpm_dynamic = QCheckBox("Use Dynamic Analysis")
         self.cb_bpm_adaptive_win = QCheckBox("Use Adaptive Window for Dynamic Analysis")
+        self.cb_dynamic_downbeat = QCheckBox("Dynamic Downbeat Detection")
+        self.cb_dynamic_downbeat.setToolTip(
+            "Checked: detect per-section downbeat changes (Dynamic).\n"
+            "Unchecked: one global downbeat for the whole track (Global)."
+        )
         self.sp_bpm_hop = QSpinBox(); self.sp_bpm_hop.setRange(16, 512); self.sp_bpm_hop.setSingleStep(32)
         self.sp_bpm_win = QSpinBox(); self.sp_bpm_win.setRange(1000, 60000); self.sp_bpm_win.setSingleStep(64)
         self.sp_bpm_min = QSpinBox(); self.sp_bpm_min.setRange(60,  400)
@@ -165,6 +172,7 @@ class SettingsDialog(QDialog):
         self.sp_beatgrid_offset = QDoubleSpinBox(); self.sp_beatgrid_offset.setRange(-10000.0, 10000.0); self.sp_beatgrid_offset.setDecimals(3); self.sp_beatgrid_offset.setSingleStep(1.0)
         f_beat.addRow(self.cb_bpm_dynamic)
         f_beat.addRow(self.cb_bpm_adaptive_win)
+        f_beat.addRow(self.cb_dynamic_downbeat)
         f_beat.addRow("BPM hop length (samp)", self.sp_bpm_hop)
         f_beat.addRow("BPM Autocorrelation win_length (ms)", self.sp_bpm_win)
         f_beat.addRow("BPM min", self.sp_bpm_min)
@@ -325,6 +333,7 @@ class SettingsDialog(QDialog):
         self.cb_beatgrid.setChecked(bool(v.display_beatgrid))
         self.cb_keystrip.setChecked(bool(v.display_keystrip))
         self.cb_JumpCUE.setChecked(bool(v.display_JumpCUE))
+        self.cb_phrase.setChecked(bool(getattr(v, "display_phrase", True)))
         self.cb_use_output_volume_as_peak_meter_input.setChecked(
             bool(v.use_output_volume_as_peak_meter_input)
         )
@@ -353,6 +362,7 @@ class SettingsDialog(QDialog):
         self.sp_bpm_max.setValue(int(a.bpm_max))
         self.cb_bpm_dynamic.setChecked(bool(a.bpm_dynamic))
         self.cb_bpm_adaptive_win.setChecked(bool(a.bpm_adaptive_window))
+        self.cb_dynamic_downbeat.setChecked(bool(getattr(a, "dynamic_downbeat", False)))
         self.sp_beatgrid_offset.setValue(float(a.beatgrid_offset_msec))
         self.sp_env_frame_ms.setValue(int(a.env_frame_ms))
         self._set_band(self.sp_env_lo_lo,  self.sp_env_lo_hi,  a.env_lo)
@@ -504,6 +514,7 @@ class SettingsDialog(QDialog):
                 bpm_max=int(self.sp_bpm_max.value()),
                 bpm_dynamic=bool(self.cb_bpm_dynamic.isChecked()),
                 bpm_adaptive_window=bool(self.cb_bpm_adaptive_win.isChecked()),
+                dynamic_downbeat=bool(self.cb_dynamic_downbeat.isChecked()),
                 beatgrid_offset_msec=float(self.sp_beatgrid_offset.value()),
                 env_frame_ms=int(self.sp_env_frame_ms.value()),
                 env_lo=(float(self.sp_env_lo_lo.value()), float(self.sp_env_lo_hi.value())),
@@ -530,6 +541,7 @@ class SettingsDialog(QDialog):
                 display_beatgrid=bool(self.cb_beatgrid.isChecked()),
                 display_keystrip=bool(self.cb_keystrip.isChecked()),
                 display_JumpCUE=bool(self.cb_JumpCUE.isChecked()),
+                display_phrase=bool(self.cb_phrase.isChecked()),
                 use_output_volume_as_peak_meter_input=bool(
                     self.cb_use_output_volume_as_peak_meter_input.isChecked()
                 ),

@@ -457,6 +457,58 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
     features["tempo_segments"] = seg_arr
     print("[Tempo] Analysis Finished")
 
+    # Downbeat-offset realignment: assign the bar-start beat (downbeat) to each
+    # segment where the detected downbeat phase changes. Beat timings are kept.
+    yield {"status": "downbeat"}
+    print("[Downbeat] Analysis Initalized")
+    taskmgr.updatetask(taskid, "Downbeat Analyzing", 0.45)
+    try:
+        from analyzer_core.beat.downbeat_offset import (
+            detect_downbeat_offset_segments,
+            apply_downbeat_offset_segments,
+        )
+        beats_for_db = np.asarray(features.get("beats_time_sec"), dtype=float)
+        if seg_arr.shape[0] > 0 and beats_for_db.size >= 2:
+            downbeat_method = "dynamic" if bool(getattr(gcf, "dynamic_downbeat", False)) else "global"
+            db_segments = detect_downbeat_offset_segments(
+                samp, int(global_sr), beats_for_db, method=downbeat_method
+            )
+            print(f"[Downbeat] method={downbeat_method} beats={beats_for_db.size} detected offset segments={len(db_segments)}")
+            _head = np.round(beats_for_db[:6], 3).tolist()
+            print(f"[Downbeat] first beats_time_sec: {_head} (beat0={float(beats_for_db[0]):.3f}s)")
+            prev_phase = None
+            for i, ds in enumerate(db_segments):
+                db_time = ds.first_downbeat_time_sec
+                changed = "" if prev_phase is None else (" <PHASE CHANGE>" if int(ds.downbeat_phase) != int(prev_phase) else "")
+                db_text = "n/a" if db_time is None else f"{db_time:.3f}s"
+                print(
+                    f"[Downbeat]   seg{i}: {ds.start_sec:.3f}-{ds.end_sec:.3f}s "
+                    f"beats[{ds.start_beat_index}:{ds.end_beat_index}] "
+                    f"phase={ds.downbeat_phase} offset_beats={ds.downbeat_offset_beats} "
+                    f"first_downbeat=beat#{ds.first_downbeat_beat_index}@{db_text} "
+                    f"conf={ds.confidence:.3f}{changed}"
+                )
+                prev_phase = ds.downbeat_phase
+
+            before = int(seg_arr.shape[0])
+            seg_arr = apply_downbeat_offset_segments(seg_arr, db_segments, beats_for_db)
+            features["tempo_segments"] = seg_arr
+            after = int(seg_arr.shape[0])
+            print(f"[Downbeat] tempo segments: {before} -> {after} ({after - before} split(s) added)")
+            for i, row in enumerate(seg_arr):
+                start, end, bpm, inizio, ts = [float(x) for x in row[:5]]
+                print(
+                    f"[Downbeat]   tempo{i}: {start:.3f}-{end:.3f}s bpm={bpm:.2f} "
+                    f"inizio(downbeat)={inizio:.3f}s ts={int(ts)}/4"
+                )
+        else:
+            print("[Downbeat] skipped: no tempo segments or too few beats")
+        print("[Downbeat] Analysis Finished")
+    except Exception as exc:
+        import traceback
+        print(f"[Downbeat] offset detection skipped: {exc}")
+        traceback.print_exc()
+
     jump_result = None
     beats_time_arr = np.asarray(features.get("beats_time_sec"), dtype=float)
     taskmgr.updatetask(taskid, "JumpCUE Analyzing", 0.50)
