@@ -359,10 +359,7 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
     yield {"status": "tempo"}
     print("[Tempo] Analysis Initalized")
     taskmgr.updatetask(taskid, "Tempo Analyzing", 0.30)
-    b, a = _butter_bandpass(20, 200, global_sr, order=4)
-    lp_y = filtfilt(b, a, y_perc).astype(np.float32)
     odf_cached, hop_t_cached = _compute_odf(y_perc, global_sr, gcf.bpm_hop_length)
-    odf_lp_cached, _ = _compute_odf(lp_y, global_sr, gcf.bpm_hop_length)
     if gcf.bpm_dynamic:
         cur_score = 0
         synced_bpm_best = {}
@@ -374,12 +371,11 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
                     gcf.bpm_hop_length,
                     gcf.bpm_hop_length,
                     audio=y_perc,
-                    audio_lp=lp_y,
+                    audio_raw=samp,
                     win_s=gcf.bpm_win_length*win_multiplier/1000,
                     step_s=0.25,
                     bpm_bounds=(gcf.bpm_min,gcf.bpm_max),
                     odf_precomputed=odf_cached,
-                    odf_lp_precomputed=odf_lp_cached,
                     hop_t_precomputed=hop_t_cached,
                 )
             else:
@@ -388,12 +384,11 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
                     gcf.bpm_hop_length,
                     gcf.bpm_hop_length,
                     audio=y_perc,
-                    audio_lp=lp_y,
+                    audio_raw=samp,
                     win_s=gcf.bpm_win_length/1000,
                     step_s=0.1,
                     bpm_bounds=(gcf.bpm_min,gcf.bpm_max),
                     odf_precomputed=odf_cached,
-                    odf_lp_precomputed=odf_lp_cached,
                     hop_t_precomputed=hop_t_cached,
                 )
             if cur_score <= synced_bpm["score"]:
@@ -406,12 +401,11 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
             gcf.bpm_hop_length,
             gcf.bpm_hop_length,
             audio=y_perc,
-            audio_lp=lp_y,
+            audio_raw=samp,
             win_s=gcf.bpm_win_length/1000,
             step_s=0.1,
             bpm_bounds=(gcf.bpm_min,gcf.bpm_max),
             odf_precomputed=odf_cached,
-            odf_lp_precomputed=odf_lp_cached,
             hop_t_precomputed=hop_t_cached,
         )
     synced_bpm = _apply_beatgrid_offset(

@@ -1,8 +1,7 @@
-from bisect import bisect_left, bisect_right
 from PySide6 import QtCore
 import pyqtgraph as pg
 from .base import ViewPlugin, register_view
-from core.beat_geometry import build_downbeats_from_segments
+from core.beat_geometry import downbeat_beat_indices, bar_beat_label
 
 @register_view("PlayHead")
 class PlayHead(ViewPlugin):
@@ -69,24 +68,12 @@ class PlayHead(ViewPlugin):
         self._update_label_position()
 
     def _compute_bar_beat_label(self) -> str:
-        if not self._beats_time:
-            return ""
         current = float(getattr(self.tl, "current_time", 0.0))
-        beats = self._beats_time
-        downbeats = self._downbeats
-        if not downbeats:
-            return ""
-        # Bar number = how many downbeats (bar starts) are at or before now.
-        bar_idx = bisect_right(downbeats, current)
-        if bar_idx <= 0:
-            # Before the first bar: count beats remaining until it starts.
-            remaining = bisect_left(beats, downbeats[0]) - bisect_right(beats, current)
-            return f"0.{max(0, remaining)}"
-        bar_start = downbeats[bar_idx - 1]
-        # Beat-in-bar = beats elapsed since this bar's downbeat (1-based).
-        beat_in_bar = bisect_right(beats, current) - bisect_left(beats, bar_start)
-        beat_in_bar = max(1, beat_in_bar)
-        return f"{bar_idx}.{beat_in_bar}"
+        return bar_beat_label(
+            self._beats_time,
+            current,
+            downbeat_indices=self._downbeats,
+        )
 
     def _update_label_position(self):
         if self.plot is None:
@@ -119,7 +106,9 @@ class PlayHead(ViewPlugin):
             self._downbeats = ()
             return
         self._beats_time = values if values else ()
-        downbeats = build_downbeats_from_segments(
-            features.get("tempo_segments") if features else None
+        # Downbeat positions as beat indices (drift-free); cached for cheap
+        # per-frame bar.beat lookups.
+        self._downbeats = downbeat_beat_indices(
+            self._beats_time,
+            features.get("tempo_segments") if features else None,
         )
-        self._downbeats = tuple(float(d) for d in downbeats) if downbeats is not None else ()

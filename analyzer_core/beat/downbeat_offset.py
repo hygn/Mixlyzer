@@ -1,11 +1,17 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
+from functools import lru_cache
+from pathlib import Path
 from typing import Literal
 
 import librosa
 import numpy as np
 from scipy.ndimage import gaussian_filter1d
+from scipy.special import expit
+
+from core.resource_paths import resource_path
 
 
 @dataclass(frozen=True)
@@ -105,6 +111,69 @@ def _resample_patch(
     return patch
 
 
+# Per-beat features and their SSM metric, in a fixed order. "cos" -> cosine
+# SSM (tonal/normalized features), "rbf" -> RBF SSM (magnitude features). The
+# log-mel "timbre" feature was dropped: a library-wide ablation showed it hurt
+# downbeat-phase detection (lower F1 when included).
+_FEATURE_SPECS: tuple[tuple[str, str], ...] = (
+    ("harmonic", "cos"),      # CQT chroma -- chord changes on the downbeat
+    ("rhythm", "rbf"),        # onset bands + rms + band ratios
+    ("bass_chroma", "cos"),   # low-register chroma -- root/bass changes
+    ("contrast", "rbf"),      # spectral contrast
+    ("mfcc", "rbf"),          # MFCC timbral texture
+    ("tonnetz", "cos"),       # tonal centroid (complements chroma)
+)
+
+_DOWNBEAT_FEATURE_NAMES = tuple(
+    feature_name
+    for representation, _metric in _FEATURE_SPECS
+    for feature_name in (
+        f"{representation}_previous_change",
+        f"{representation}_symmetric_change",
+        f"{representation}_novelty_1beat",
+        f"{representation}_novelty_2beat",
+        f"{representation}_novelty_4beat",
+        f"{representation}_local_distinctiveness",
+        f"{representation}_four_beat_recurrence_advantage",
+    )
+) + (
+    "onset_strength",
+    "onset_local_accent_4beat",
+    "onset_local_accent_8beat",
+    "onset_attack",
+    "pre_downbeat_fill",
+    "onset_four_beat_recurrence",
+    "rhythm_patch_energy",
+    "rhythm_patch_local_accent",
+)
+_DEFAULT_WEIGHT_PATH = resource_path(
+    "assets/weights/downbeat_feature_weights.json"
+)
+
+
+def _beat_patch_rows(
+    frames: np.ndarray,
+    frame_times: np.ndarray,
+    beat_starts: np.ndarray,
+    beat_ends: np.ndarray,
+    phase_bins: int,
+    l2: bool,
+) -> np.ndarray:
+    """Per-beat flattened patches: each beat resampled to ``phase_bins`` and
+    either L2-normalized per phase column (cosine features) or mean-centered
+    (RBF features)."""
+    rows = np.empty((beat_starts.size, frames.shape[0] * phase_bins), dtype=np.float32)
+    for i, (start_sec, end_sec) in enumerate(zip(beat_starts, beat_ends, strict=True)):
+        patch = _resample_patch(frames, frame_times, float(start_sec), float(end_sec), phase_bins)
+        if l2:
+            patch = patch.T
+            patch /= np.maximum(np.linalg.norm(patch, axis=1, keepdims=True), 1e-8)
+            rows[i] = patch.reshape(-1)
+        else:
+            rows[i] = (patch - patch.mean()).reshape(-1)
+    return rows
+
+
 def _extract_beat_features(
     audio: np.ndarray,
     sample_rate: int,
@@ -114,81 +183,65 @@ def _extract_beat_features(
     n_mels: int,
     beat_phase_bins: int,
     harmonic_phase_bins: int,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, list[np.ndarray]]:
+    """Return ``(beat_starts, rows)`` where ``rows`` are the per-beat feature
+    matrices in :data:`_FEATURE_SPECS` order."""
     duration_sec = audio.size / float(sample_rate)
     beat_starts, beat_ends = _beat_ranges(beat_times_sec, duration_sec)
 
     stft = librosa.stft(
-        y=audio,
-        n_fft=n_fft,
-        hop_length=hop_length,
-        window="hann",
-        center=True,
-        pad_mode="reflect",
+        y=audio, n_fft=n_fft, hop_length=hop_length,
+        window="hann", center=True, pad_mode="reflect",
     )
     magnitude = np.abs(stft).astype(np.float32)
     power = np.square(magnitude, dtype=np.float32)
     frame_times = librosa.frames_to_time(
-        np.arange(magnitude.shape[1]),
-        sr=sample_rate,
-        hop_length=hop_length,
+        np.arange(magnitude.shape[1]), sr=sample_rate, hop_length=hop_length,
     ).astype(np.float32)
 
-    mel_power = librosa.feature.melspectrogram(
-        S=power,
-        sr=sample_rate,
-        n_mels=n_mels,
-        fmin=30.0,
-        fmax=sample_rate / 2.0,
-        norm="slaney",
-        power=2.0,
-    )
     log_mel = librosa.power_to_db(
-        mel_power,
-        ref=np.max,
-        top_db=100.0,
-    ).astype(np.float32)
-    timbre_frames = _robust_standardize(log_mel)
-
-    chroma = librosa.feature.chroma_stft(
-        S=power,
-        sr=sample_rate,
-        n_fft=n_fft,
-        hop_length=hop_length,
-        n_chroma=12,
-        norm=2,
-    ).astype(np.float32)
-    chroma = librosa.feature.chroma_cens(
-        C=chroma,
-        sr=sample_rate,
-        hop_length=hop_length,
-        n_chroma=12,
+        librosa.feature.melspectrogram(
+            S=power, sr=sample_rate, n_mels=n_mels,
+            fmin=30.0, fmax=sample_rate / 2.0, norm="slaney", power=2.0,
+        ),
+        ref=np.max, top_db=100.0,
     ).astype(np.float32)
 
-    aligned_frames = min(frame_times.size, chroma.shape[1])
-    frame_times = frame_times[:aligned_frames]
-    magnitude = magnitude[:, :aligned_frames]
-    power = power[:, :aligned_frames]
-    log_mel = log_mel[:, :aligned_frames]
-    timbre_frames = timbre_frames[:, :aligned_frames]
-    chroma = chroma[:, :aligned_frames]
+    # Sharp CQT chroma (not CENS, which over-smooths chord-change timing).
+    chroma = librosa.feature.chroma_cqt(
+        y=audio, sr=sample_rate, hop_length=hop_length, n_chroma=12,
+    ).astype(np.float32)
+    bass_chroma = librosa.feature.chroma_cqt(
+        y=audio, sr=sample_rate, hop_length=hop_length, n_chroma=12,
+        fmin=librosa.note_to_hz("C1"), n_octaves=3,
+    ).astype(np.float32)
+    contrast = librosa.feature.spectral_contrast(
+        S=magnitude, sr=sample_rate, n_fft=n_fft, hop_length=hop_length,
+    ).astype(np.float32)
+    mfcc = librosa.feature.mfcc(
+        S=librosa.power_to_db(
+            librosa.feature.melspectrogram(S=power, sr=sample_rate, n_mels=n_mels),
+            ref=np.max,
+        ),
+        n_mfcc=20,
+    ).astype(np.float32)
+    tonnetz = librosa.feature.tonnetz(chroma=chroma, sr=sample_rate).astype(np.float32)
 
-    mel_difference = np.maximum(
-        np.diff(log_mel, axis=1, prepend=log_mel[:, :1]),
-        0.0,
+    aligned = min(
+        frame_times.size, magnitude.shape[1], chroma.shape[1], bass_chroma.shape[1],
+        contrast.shape[1], mfcc.shape[1], tonnetz.shape[1],
     )
+    frame_times = frame_times[:aligned]
+    magnitude = magnitude[:, :aligned]
+    power = power[:, :aligned]
+    log_mel = log_mel[:, :aligned]
+
+    mel_difference = np.maximum(np.diff(log_mel, axis=1, prepend=log_mel[:, :1]), 0.0)
     band_edges = np.linspace(0, n_mels, 4, dtype=int)
     onset_bands = np.stack(
-        [
-            mel_difference[band_edges[index] : band_edges[index + 1]].mean(axis=0)
-            for index in range(3)
-        ]
+        [mel_difference[band_edges[i]:band_edges[i + 1]].mean(axis=0) for i in range(3)]
     )
-    rms = librosa.feature.rms(
-        S=magnitude,
-        frame_length=n_fft,
-        center=False,
-    )
+    rms = librosa.feature.rms(S=magnitude, frame_length=n_fft, center=False)
     rms_db = librosa.amplitude_to_db(rms, ref=np.max, top_db=100.0)
     frequencies = librosa.fft_frequencies(sr=sample_rate, n_fft=n_fft)
     total_power = np.maximum(power.sum(axis=0, keepdims=True), 1e-10)
@@ -196,58 +249,25 @@ def _extract_beat_features(
     mid_ratio = power[
         (frequencies >= 180.0) & (frequencies < 2500.0)
     ].sum(axis=0, keepdims=True) / total_power
-    high_ratio = (
-        power[frequencies >= 2500.0].sum(axis=0, keepdims=True) / total_power
-    )
+    high_ratio = power[frequencies >= 2500.0].sum(axis=0, keepdims=True) / total_power
     rhythm_frames = _robust_standardize(
-        np.concatenate(
-            [onset_bands, rms_db, low_ratio, mid_ratio, high_ratio],
-            axis=0,
-        ).astype(np.float32)
+        np.concatenate([onset_bands, rms_db, low_ratio, mid_ratio, high_ratio], axis=0).astype(np.float32)
     )
 
-    timbre_rows: list[np.ndarray] = []
-    harmonic_rows: list[np.ndarray] = []
-    rhythm_rows: list[np.ndarray] = []
-    for start_sec, end_sec in zip(beat_starts, beat_ends, strict=True):
-        timbre = _resample_patch(
-            timbre_frames,
-            frame_times,
-            float(start_sec),
-            float(end_sec),
-            beat_phase_bins,
-        )
-        timbre -= timbre.mean()
-        timbre_rows.append(timbre.reshape(-1))
-
-        harmonic = _resample_patch(
-            chroma,
-            frame_times,
-            float(start_sec),
-            float(end_sec),
-            harmonic_phase_bins,
-        ).T
-        harmonic /= np.maximum(
-            np.linalg.norm(harmonic, axis=1, keepdims=True),
-            1e-8,
-        )
-        harmonic_rows.append(harmonic.reshape(-1))
-
-        rhythm = _resample_patch(
-            rhythm_frames,
-            frame_times,
-            float(start_sec),
-            float(end_sec),
-            beat_phase_bins,
-        )
-        rhythm_rows.append(rhythm.reshape(-1))
-
-    return (
-        beat_starts,
-        np.asarray(timbre_rows, dtype=np.float32),
-        np.asarray(harmonic_rows, dtype=np.float32),
-        np.asarray(rhythm_rows, dtype=np.float32),
-    )
+    frame_sets = {
+        "harmonic": (chroma[:, :aligned], harmonic_phase_bins),
+        "rhythm": (rhythm_frames, beat_phase_bins),
+        "bass_chroma": (bass_chroma[:, :aligned], harmonic_phase_bins),
+        "contrast": (_robust_standardize(contrast[:, :aligned]), beat_phase_bins),
+        "mfcc": (_robust_standardize(mfcc[:, :aligned]), beat_phase_bins),
+        "tonnetz": (tonnetz[:, :aligned], harmonic_phase_bins),
+    }
+    rows = [
+        _beat_patch_rows(frame_sets[name][0], frame_times, beat_starts, beat_ends,
+                         frame_sets[name][1], l2=(metric == "cos"))
+        for name, metric in _FEATURE_SPECS
+    ]
+    return beat_starts, rows
 
 
 def _row_normalize(features: np.ndarray) -> np.ndarray:
@@ -337,6 +357,184 @@ def _multiscale_novelty(
     return np.mean(curves, axis=0, dtype=np.float64)
 
 
+def _robust_standardize_columns(features: np.ndarray) -> np.ndarray:
+    values = np.asarray(features, dtype=np.float64)
+    median = np.median(values, axis=0, keepdims=True)
+    mad = np.median(np.abs(values - median), axis=0, keepdims=True)
+    scale = 1.4826 * mad
+    std = np.std(values, axis=0, keepdims=True)
+    scale = np.where(scale > 1e-8, scale, np.where(std > 1e-8, std, 1.0))
+    return np.clip((values - median) / scale, -8.0, 8.0)
+
+
+def _neighbor_median(values: np.ndarray, radius: int) -> np.ndarray:
+    signal = np.asarray(values, dtype=np.float64)
+    output = np.zeros_like(signal)
+    for index in range(signal.size):
+        lo = max(0, index - radius)
+        hi = min(signal.size, index + radius + 1)
+        neighbors = np.concatenate(
+            [signal[lo:index], signal[index + 1 : hi]]
+        )
+        output[index] = (
+            float(np.median(neighbors)) if neighbors.size else signal[index]
+        )
+    return output
+
+
+def _ssm_downbeat_features(ssm: np.ndarray) -> list[np.ndarray]:
+    n_beats = ssm.shape[0]
+    previous_change = np.zeros(n_beats, dtype=np.float64)
+    following_change = np.zeros(n_beats, dtype=np.float64)
+    if n_beats > 1:
+        diagonal = np.diag(ssm, k=1)
+        previous_change[1:] = 1.0 - diagonal
+        following_change[:-1] = 1.0 - diagonal
+    symmetric_change = 0.5 * (previous_change + following_change)
+
+    local_distinctiveness = np.zeros(n_beats, dtype=np.float64)
+    recurrence_advantage = np.zeros(n_beats, dtype=np.float64)
+    for index in range(n_beats):
+        nearby = [
+            float(ssm[index, other])
+            for offset in (-3, -2, -1, 1, 2, 3)
+            if 0 <= (other := index + offset) < n_beats
+        ]
+        periodic = [
+            float(ssm[index, other])
+            for offset in (-8, -4, 4, 8)
+            if 0 <= (other := index + offset) < n_beats
+        ]
+        nearby_mean = float(np.mean(nearby)) if nearby else 1.0
+        periodic_mean = float(np.mean(periodic)) if periodic else nearby_mean
+        local_distinctiveness[index] = 1.0 - nearby_mean
+        recurrence_advantage[index] = periodic_mean - nearby_mean
+
+    return [
+        previous_change,
+        symmetric_change,
+        _multiscale_novelty(ssm, (1,), (0,)),
+        _multiscale_novelty(ssm, (2,), (0,)),
+        _multiscale_novelty(ssm, (4,), (0,)),
+        local_distinctiveness,
+        recurrence_advantage,
+    ]
+
+
+def _downbeat_feature_matrix(
+    waveform: np.ndarray,
+    sample_rate: int,
+    beat_times_sec: np.ndarray,
+    *,
+    hop_length: int,
+    n_fft: int,
+    n_mels: int,
+    beat_phase_bins: int,
+    harmonic_phase_bins: int,
+) -> tuple[np.ndarray, np.ndarray]:
+    beats, rows = _extract_beat_features(
+        waveform,
+        sample_rate,
+        beat_times_sec,
+        hop_length,
+        n_fft,
+        n_mels,
+        beat_phase_bins,
+        harmonic_phase_bins,
+    )
+    columns: list[np.ndarray] = []
+    for representation_rows, (_name, metric) in zip(
+        rows,
+        _FEATURE_SPECS,
+        strict=True,
+    ):
+        ssm = (
+            _cosine_ssm(representation_rows)
+            if metric == "cos"
+            else _rbf_ssm(representation_rows)
+        )
+        columns.extend(_ssm_downbeat_features(ssm))
+
+    onset = _onset_per_beat(waveform, sample_rate, beats, hop_length, 0.5)
+    onset_accent_4 = onset - _neighbor_median(onset, 2)
+    onset_accent_8 = onset - _neighbor_median(onset, 4)
+    onset_attack = np.diff(onset, prepend=onset[:1])
+    pre_fill = np.zeros_like(onset)
+    if onset.size > 1:
+        pre_fill[1:] = onset[:-1] - _neighbor_median(onset, 4)[:-1]
+    onset_recurrence = np.zeros_like(onset)
+    for index in range(onset.size):
+        periodic = [
+            onset[other]
+            for offset in (-8, -4, 4, 8)
+            if 0 <= (other := index + offset) < onset.size
+        ]
+        nearby = [
+            onset[other]
+            for offset in (-3, -2, -1, 1, 2, 3)
+            if 0 <= (other := index + offset) < onset.size
+        ]
+        if periodic and nearby:
+            onset_recurrence[index] = (
+                -abs(onset[index] - float(np.median(periodic)))
+                + abs(onset[index] - float(np.median(nearby)))
+            )
+
+    rhythm_index = next(
+        index
+        for index, (name, _metric) in enumerate(_FEATURE_SPECS)
+        if name == "rhythm"
+    )
+    rhythm_energy = np.linalg.norm(rows[rhythm_index], axis=1)
+    rhythm_accent = rhythm_energy - _neighbor_median(rhythm_energy, 2)
+    columns.extend(
+        [
+            onset,
+            onset_accent_4,
+            onset_accent_8,
+            onset_attack,
+            pre_fill,
+            onset_recurrence,
+            rhythm_energy,
+            rhythm_accent,
+        ]
+    )
+
+    features = np.stack(columns, axis=1)
+    if features.shape[1] != len(_DOWNBEAT_FEATURE_NAMES):
+        raise RuntimeError(
+            f"Downbeat feature count mismatch: {features.shape[1]}"
+        )
+    return beats.astype(np.float64), features.astype(np.float32)
+
+
+@lru_cache(maxsize=4)
+def _load_downbeat_weights(weight_path: str) -> np.ndarray:
+    path = Path(weight_path)
+    report = json.loads(path.read_text(encoding="utf-8"))
+    model = report.get("model", report)
+    feature_names = tuple(str(name) for name in model["feature_names"])
+    if feature_names != _DOWNBEAT_FEATURE_NAMES:
+        raise ValueError(
+            f"Downbeat weight feature schema mismatch: {path}"
+        )
+    weights = np.asarray(model["weights"], dtype=np.float64)
+    if weights.shape != (len(_DOWNBEAT_FEATURE_NAMES),):
+        raise ValueError(f"Invalid downbeat weight shape: {weights.shape}")
+    if not np.all(np.isfinite(weights)):
+        raise ValueError("Downbeat weights contain non-finite values")
+    return weights
+
+
+def _downbeat_probability(
+    features: np.ndarray,
+    weight_path: str | Path,
+) -> np.ndarray:
+    weights = _load_downbeat_weights(str(Path(weight_path).resolve()))
+    standardized = _robust_standardize_columns(features)
+    return expit(standardized @ weights)
+
+
 def _folded_sum(values: np.ndarray, period: int) -> np.ndarray:
     signal = np.nan_to_num(
         np.asarray(values, dtype=np.float64).reshape(-1),
@@ -354,17 +552,13 @@ def _normalize_curve(values: np.ndarray) -> np.ndarray:
     return values / total if total > 1e-12 else np.zeros_like(values)
 
 
-def _global_phase_scores(
-    novelty_curves: tuple[np.ndarray, np.ndarray, np.ndarray],
-    novelty_weights: tuple[float, float, float],
-    meter: int,
-) -> np.ndarray:
-    """Fold all novelty curves over the entire track without window tracking."""
-    scores = np.zeros(meter, dtype=np.float64)
-    for weight, curve in zip(novelty_weights, novelty_curves, strict=True):
-        scores += float(weight) * _folded_sum(_normalize_curve(curve), meter)
-    total = float(scores.sum())
-    return scores / total if total > 1e-12 else scores
+def _phase_confidence(scores: np.ndarray) -> float:
+    """Relative margin between the best and the second-best phase score."""
+    phase = int(np.argmax(scores))
+    alternatives = np.delete(scores, phase)
+    alternative_score = float(np.max(alternatives)) if alternatives.size else 0.0
+    selected_score = float(scores[phase])
+    return (selected_score - alternative_score) / max(abs(selected_score), 1e-12)
 
 
 def _window_starts(length: int, window_beats: int, hop_beats: int) -> np.ndarray:
@@ -382,31 +576,58 @@ def _phase_distance(left: int, right: int, meter: int) -> int:
     return min(distance, meter - distance)
 
 
+def _transition_cost_matrix(
+    meter: int,
+    adjacent_phase_penalty: float,
+    distant_phase_penalty: float,
+) -> np.ndarray:
+    """Per-(old, new) phase transition penalty for the Viterbi step.
+
+    The downbeat phase wraps around, so in 4/4 phases 0 and 3 are adjacent
+    (``_phase_distance`` returns 1). Moving to an adjacent phase (distance 1)
+    costs ``adjacent_phase_penalty`` while jumping two or more beats away (e.g.
+    a half-bar shift, the more common genuine correction) costs
+    ``distant_phase_penalty``. Staying put costs nothing.
+    """
+    costs = np.zeros((meter, meter), dtype=np.float64)
+    for old_phase in range(meter):
+        for phase in range(meter):
+            distance = _phase_distance(old_phase, phase, meter)
+            if distance == 0:
+                continue
+            costs[old_phase, phase] = (
+                adjacent_phase_penalty
+                if distance == 1
+                else distant_phase_penalty
+            )
+    return costs
+
+
 def _track_phases(
     scores: np.ndarray,
     meter: int,
-    transition_penalty: float,
+    adjacent_phase_penalty: float = 2.3,
+    distant_phase_penalty: float = 1.15,
 ) -> np.ndarray:
+    costs = _transition_cost_matrix(
+        meter,
+        adjacent_phase_penalty,
+        distant_phase_penalty,
+    )
     dynamic = np.full_like(scores, -np.inf, dtype=np.float64)
     previous = np.zeros_like(scores, dtype=np.int32)
     dynamic[0] = scores[0]
 
     for window_index in range(1, scores.shape[0]):
         for phase in range(meter):
-            candidates = np.asarray(
-                [
-                    dynamic[window_index - 1, old_phase]
-                    - transition_penalty
-                    * _phase_distance(old_phase, phase, meter)
-                    for old_phase in range(meter)
-                ]
-            )
+            # costs[:, phase] is the penalty of arriving at `phase` from each
+            # possible previous phase.
+            candidates = dynamic[window_index - 1] - costs[:, phase]
             old_phase = int(np.argmax(candidates))
             previous[window_index, phase] = old_phase
-            dynamic[window_index, phase] = candidates[old_phase] + scores[
-                window_index,
-                phase,
-            ]
+            dynamic[window_index, phase] = (
+                candidates[old_phase] + scores[window_index, phase]
+            )
 
     tracked = np.empty(scores.shape[0], dtype=np.int32)
     tracked[-1] = int(np.argmax(dynamic[-1]))
@@ -415,66 +636,208 @@ def _track_phases(
     return tracked
 
 
-def _build_segments(
+def _make_segment(
     beat_times: np.ndarray,
     duration_sec: float,
-    window_centers: np.ndarray,
-    tracked_phases: np.ndarray,
-    confidence: np.ndarray,
+    start_beat: int,
+    end_beat: int,
+    phase: int,
+    confidence: float,
     meter: int,
-) -> list[DownbeatOffsetSegment]:
-    run_starts = np.concatenate(
-        [
-            np.asarray([0], dtype=np.int32),
-            np.flatnonzero(tracked_phases[1:] != tracked_phases[:-1]) + 1,
-        ]
+) -> DownbeatOffsetSegment:
+    """Assemble one :class:`DownbeatOffsetSegment` from a beat range and phase."""
+    start_beat = int(start_beat)
+    end_beat = int(end_beat)
+    phase = int(phase)
+    offset_beats = int((phase - start_beat) % meter)
+    first_downbeat = start_beat + offset_beats
+    if first_downbeat < end_beat and first_downbeat < beat_times.size:
+        first_index: int | None = first_downbeat
+        first_time: float | None = float(beat_times[first_downbeat])
+    else:
+        first_index = None
+        first_time = None
+
+    start_sec = 0.0 if start_beat == 0 else float(beat_times[start_beat])
+    end_sec = (
+        duration_sec if end_beat >= beat_times.size else float(beat_times[end_beat])
     )
-    run_ends = np.concatenate(
-        [run_starts[1:], np.asarray([tracked_phases.size], dtype=np.int32)]
+    return DownbeatOffsetSegment(
+        start_sec=start_sec,
+        end_sec=end_sec,
+        start_beat_index=start_beat,
+        end_beat_index=end_beat,
+        downbeat_phase=phase,
+        downbeat_offset_beats=offset_beats,
+        first_downbeat_beat_index=first_index,
+        first_downbeat_time_sec=first_time,
+        downbeat_offset_sec=(None if first_time is None else first_time - start_sec),
+        confidence=float(confidence),
     )
 
-    transition_beats = [
-        int(round((window_centers[index - 1] + window_centers[index]) / 2.0))
-        for index in run_starts[1:]
-    ]
-    beat_boundaries = [0, *transition_beats, beat_times.size]
-    segments: list[DownbeatOffsetSegment] = []
 
-    for run_index, (window_start, window_end) in enumerate(
-        zip(run_starts, run_ends, strict=True)
-    ):
-        start_beat = int(beat_boundaries[run_index])
-        end_beat = int(beat_boundaries[run_index + 1])
-        phase = int(tracked_phases[window_start])
-        offset_beats = int((phase - start_beat) % meter)
-        first_downbeat = start_beat + offset_beats
-        if first_downbeat < end_beat and first_downbeat < beat_times.size:
-            first_index: int | None = first_downbeat
-            first_time: float | None = float(beat_times[first_downbeat])
-        else:
-            first_index = None
-            first_time = None
-
-        start_sec = 0.0 if start_beat == 0 else float(beat_times[start_beat])
-        end_sec = (
-            duration_sec
-            if end_beat >= beat_times.size
-            else float(beat_times[end_beat])
+def _phase_credit_cumsum(
+    combined_novelty: np.ndarray, phase_of_beat: np.ndarray, meter: int
+) -> np.ndarray:
+    """Prefix sums of novelty grouped by beat phase, shape ``(meter, n+1)``."""
+    cum = np.zeros((meter, combined_novelty.size + 1), dtype=np.float64)
+    for residue in range(meter):
+        cum[residue, 1:] = np.cumsum(
+            np.where(phase_of_beat == residue, combined_novelty, 0.0)
         )
+    return cum
+
+
+def _changepoint_beat(
+    cum: np.ndarray,
+    phase_left: int,
+    phase_right: int,
+    lo: int,
+    hi: int,
+    center: int,
+    radius: int,
+) -> int:
+    """Beat in ``(lo, hi)`` where switching ``phase_left -> phase_right`` best
+    partitions the novelty credit (a beat-resolution changepoint near
+    ``center``). This replaces the fixed lookback shift with a data-driven,
+    beat-accurate boundary."""
+    b_lo = max(lo + 1, center - radius)
+    b_hi = min(hi - 1, center + radius)
+    if b_hi < b_lo:
+        return int(min(max(center, lo + 1), hi - 1))
+    candidates = np.arange(b_lo, b_hi + 1)
+    left = cum[phase_left, candidates] - cum[phase_left, lo]
+    right = cum[phase_right, hi] - cum[phase_right, candidates]
+    return int(candidates[int(np.argmax(left + right))])
+
+
+def _merge_runs(runs: list[list[int]], min_segment_beats: int) -> list[list[int]]:
+    """Absorb runs shorter than ``min_segment_beats`` into their longer
+    neighbor, then coalesce adjacent equal-phase runs. Removes over-detection
+    (spurious one-off phase flips)."""
+    runs = [list(run) for run in runs]
+    while len(runs) > 1:
+        lengths = [end - start for start, end, _ in runs]
+        index = int(np.argmin(lengths))
+        if lengths[index] >= min_segment_beats:
+            break
+        if index == 0:
+            runs[1][0] = runs[0][0]
+            runs.pop(0)
+        elif index == len(runs) - 1:
+            runs[-2][1] = runs[-1][1]
+            runs.pop()
+        elif lengths[index - 1] >= lengths[index + 1]:
+            runs[index - 1][1] = runs[index][1]
+            runs.pop(index)
+        else:
+            runs[index + 1][0] = runs[index][0]
+            runs.pop(index)
+
+    merged = [runs[0]]
+    for run in runs[1:]:
+        if run[2] == merged[-1][2]:
+            merged[-1][1] = run[1]
+        else:
+            merged.append(run)
+    return merged
+
+
+def _gate_runs(
+    runs: list[list[int]], cum: np.ndarray, min_transition_gain: float
+) -> list[list[int]]:
+    """Drop boundaries whose two-phase split barely beats a single-phase fit.
+
+    For each interior boundary the gain is how much better explaining the two
+    sides with their own phases is than the best single phase over the merged
+    span (as a fraction of the span's novelty). Iteratively remove the weakest
+    sub-threshold boundary, re-labeling the merged run by its dominant phase.
+    This rejects spurious flips (no real transition) by evidence strength rather
+    than by raising the penalty, so genuine transitions survive."""
+    runs = [list(run) for run in runs]
+    while len(runs) > 1:
+        worst_index, worst_gain = -1, np.inf
+        for i in range(1, len(runs)):
+            lo, boundary, hi = runs[i - 1][0], runs[i][0], runs[i][1]
+            span = cum[:, hi] - cum[:, lo]
+            total = float(span.sum()) + 1e-12
+            two_phase = (
+                (cum[runs[i - 1][2], boundary] - cum[runs[i - 1][2], lo])
+                + (cum[runs[i][2], hi] - cum[runs[i][2], boundary])
+            )
+            gain = (two_phase - float(span.max())) / total
+            if gain < worst_gain:
+                worst_gain, worst_index = gain, i
+        if worst_gain >= min_transition_gain:
+            break
+        lo, hi = runs[worst_index - 1][0], runs[worst_index][1]
+        phase = int(np.argmax(cum[:, hi] - cum[:, lo]))
+        runs[worst_index - 1] = [lo, hi, phase]
+        runs.pop(worst_index)
+
+    coalesced = [runs[0]]
+    for run in runs[1:]:
+        if run[2] == coalesced[-1][2]:
+            coalesced[-1][1] = run[1]
+        else:
+            coalesced.append(run)
+    return coalesced
+
+
+def _build_segments_refined(
+    beat_times: np.ndarray,
+    duration_sec: float,
+    window_starts: np.ndarray,
+    run_window_starts: np.ndarray,
+    run_phases: list[int],
+    combined_novelty: np.ndarray,
+    meter: int,
+    lookback: int,
+    refine_radius: int,
+    min_segment_beats: int,
+    min_transition_gain: float,
+) -> list[DownbeatOffsetSegment]:
+    """Refine windowed phase-change boundaries to beat resolution, drop
+    over-detected short runs and weak (low-evidence) transitions, and assemble
+    segments."""
+    n_beats = int(beat_times.size)
+    phase_of_beat = np.arange(n_beats, dtype=np.int64) % meter
+    cum = _phase_credit_cumsum(combined_novelty, phase_of_beat, meter)
+
+    # Coarse boundary beat for each phase change (window start, minus the
+    # lookback prior), then refine each to the exact changepoint beat.
+    coarse = [int(window_starts[w]) - lookback for w in run_window_starts[1:]]
+    bounds = [0]
+    for index, center in enumerate(coarse):
+        lo = bounds[-1]
+        hi = coarse[index + 1] if index + 1 < len(coarse) else n_beats
+        beat = _changepoint_beat(
+            cum, run_phases[index], run_phases[index + 1], lo, hi, center, refine_radius
+        )
+        bounds.append(max(beat, lo + 1))
+    bounds.append(n_beats)
+
+    runs = [[bounds[i], bounds[i + 1], int(run_phases[i])] for i in range(len(run_phases))]
+    runs = _merge_runs(runs, min_segment_beats)
+    if min_transition_gain > 0.0:
+        runs = _gate_runs(runs, cum, min_transition_gain)
+
+    segments: list[DownbeatOffsetSegment] = []
+    for start_beat, end_beat, phase in runs:
+        run_scores = np.zeros(meter, dtype=np.float64)
+        np.add.at(run_scores, phase_of_beat[start_beat:end_beat], combined_novelty[start_beat:end_beat])
+        total = float(run_scores.sum())
+        if total > 1e-12:
+            run_scores = run_scores / total
         segments.append(
-            DownbeatOffsetSegment(
-                start_sec=start_sec,
-                end_sec=end_sec,
-                start_beat_index=start_beat,
-                end_beat_index=end_beat,
-                downbeat_phase=phase,
-                downbeat_offset_beats=offset_beats,
-                first_downbeat_beat_index=first_index,
-                first_downbeat_time_sec=first_time,
-                downbeat_offset_sec=(
-                    None if first_time is None else first_time - start_sec
-                ),
-                confidence=float(np.median(confidence[window_start:window_end])),
+            _make_segment(
+                beat_times,
+                duration_sec,
+                int(start_beat),
+                int(end_beat),
+                int(phase),
+                _phase_confidence(run_scores),
+                meter,
             )
         )
     return segments
@@ -624,137 +987,182 @@ def detect_downbeat_offset_segments(
     *,
     method: Literal["dynamic", "global"] = "dynamic",
     meter: int = 4,
-    window_beats: int = 32,
+    window_beats: int = 12,
     window_hop_beats: int = 1,
-    transition_penalty: float = 2.3,
-    novelty_scales: tuple[int, ...] = (8, 16, 32, 64),
-    novelty_context_gaps: tuple[int, ...] = (0,),
-    novelty_weights: tuple[float, float, float] = (0.45, 0.25, 0.30),
+    transition_lookback_beats: int = 0,
+    boundary_refine_radius_beats: int = 12,
+    min_segment_beats: int = 4,
+    min_transition_gain: float = 0.0,
+    adjacent_phase_penalty: float = 5.0,
+    distant_phase_penalty: float = 2.5,
+    probability_power: float = 1.0,
+    smooth_sigma_beats: float = 0.5,
     hop_length: int = 512,
     n_fft: int = 2048,
     n_mels: int = 64,
     beat_phase_bins: int = 8,
     harmonic_phase_bins: int = 8,
+    weight_path: str | Path = _DEFAULT_WEIGHT_PATH,
 ) -> list[DownbeatOffsetSegment]:
-    """Detect time segments with a stable downbeat offset.
+    """Detect stable downbeat-phase segments using the learned beat model.
 
-    Args:
-        audio: Mono or stereo floating-point PCM samples.
-        sample_rate: Audio sample rate in Hz.
-        beat_times_sec: Beat start times in seconds.
-        method: ``"dynamic"`` uses sliding windows and dynamic programming.
-            ``"global"`` uses one Folded Sum over the entire track.
-
-    Returns:
-        Contiguous downbeat-offset segments. ``downbeat_phase`` is the
-        zero-based global beat phase. ``downbeat_offset_beats`` is the number
-        of beats from the segment start beat to its first downbeat.
+    The model produces one learned downbeat probability per beat from 50
+    harmonic, rhythmic, bass, timbral, tonal, onset, and recurrence features.
+    ``dynamic`` folds those probabilities in sliding windows and tracks the
+    phase with Viterbi. ``global`` folds the same probabilities over the entire
+    input and returns one phase.
     """
     if sample_rate <= 0:
         raise ValueError("sample_rate must be positive")
     if method not in {"dynamic", "global"}:
         raise ValueError("method must be 'dynamic' or 'global'")
-    if meter < 2:
-        raise ValueError("meter must be at least 2")
+    if meter != 4:
+        raise ValueError("the learned downbeat model currently supports 4/4 only")
     if method == "dynamic" and window_beats < meter:
         raise ValueError("window_beats must be at least meter")
     if method == "dynamic" and window_hop_beats < 1:
         raise ValueError("window_hop_beats must be positive")
-    if method == "dynamic" and transition_penalty < 0.0:
-        raise ValueError("transition_penalty must be non-negative")
-    if any(scale < 1 for scale in novelty_scales):
-        raise ValueError("novelty_scales must contain positive integers")
-    if any(gap < 0 for gap in novelty_context_gaps):
-        raise ValueError("novelty_context_gaps must be non-negative")
-    if len(novelty_weights) != 3:
-        raise ValueError("novelty_weights must contain three values")
+    if method == "dynamic" and transition_lookback_beats < 0:
+        raise ValueError("transition_lookback_beats must be non-negative")
+    if method == "dynamic" and boundary_refine_radius_beats < 0:
+        raise ValueError("boundary_refine_radius_beats must be non-negative")
+    if method == "dynamic" and min_segment_beats < 1:
+        raise ValueError("min_segment_beats must be at least 1")
+    if method == "dynamic" and min_transition_gain < 0.0:
+        raise ValueError("min_transition_gain must be non-negative")
+    if method == "dynamic" and adjacent_phase_penalty < 0.0:
+        raise ValueError("adjacent_phase_penalty must be non-negative")
+    if method == "dynamic" and distant_phase_penalty < 0.0:
+        raise ValueError("distant_phase_penalty must be non-negative")
+    if probability_power <= 0.0:
+        raise ValueError("probability_power must be positive")
+    if smooth_sigma_beats < 0.0:
+        raise ValueError("smooth_sigma_beats must be non-negative")
 
     waveform = _mono_audio(audio)
     duration_sec = waveform.size / float(sample_rate)
-    beat_times, timbre, harmonic, rhythm = _extract_beat_features(
+    beat_times, feature_matrix = _downbeat_feature_matrix(
         waveform,
         sample_rate,
         beat_times_sec,
-        hop_length,
-        n_fft,
-        n_mels,
-        beat_phase_bins,
-        harmonic_phase_bins,
+        hop_length=hop_length,
+        n_fft=n_fft,
+        n_mels=n_mels,
+        beat_phase_bins=beat_phase_bins,
+        harmonic_phase_bins=harmonic_phase_bins,
     )
-
-    novelty_curves = (
-        _multiscale_novelty(
-            _rbf_ssm(timbre),
-            novelty_scales,
-            novelty_context_gaps,
-        ),
-        _multiscale_novelty(
-            _cosine_ssm(harmonic),
-            novelty_scales,
-            novelty_context_gaps,
-        ),
-        _multiscale_novelty(
-            _rbf_ssm(rhythm),
-            novelty_scales,
-            novelty_context_gaps,
-        ),
+    probability = _downbeat_probability(feature_matrix, weight_path)
+    if smooth_sigma_beats > 0.0:
+        probability = gaussian_filter1d(
+            probability,
+            sigma=smooth_sigma_beats,
+            mode="nearest",
+        )
+    evidence = np.power(
+        np.clip(probability, 0.0, 1.0),
+        probability_power,
     )
 
     if method == "global":
-        scores = _global_phase_scores(
-            novelty_curves,
-            novelty_weights,
-            meter,
-        )
+        scores = _normalize_curve(_folded_sum(evidence, meter))
         phase = int(np.argmax(scores))
-        alternatives = np.delete(scores, phase)
-        alternative_score = float(np.max(alternatives))
-        selected_score = float(scores[phase])
-        confidence = (
-            selected_score - alternative_score
-        ) / max(abs(selected_score), 1e-12)
-        return _build_segments(
-            beat_times,
-            duration_sec,
-            np.asarray([beat_times.size // 2], dtype=np.int32),
-            np.asarray([phase], dtype=np.int32),
-            np.asarray([confidence], dtype=np.float64),
-            meter,
-        )
+        return [
+            _make_segment(
+                beat_times,
+                duration_sec,
+                0,
+                beat_times.size,
+                phase,
+                _phase_confidence(scores),
+                meter,
+            )
+        ]
 
     starts = _window_starts(beat_times.size, window_beats, window_hop_beats)
     ends = np.minimum(starts + window_beats, beat_times.size).astype(np.int32)
-    centers = ((starts + ends - 1) // 2).astype(np.int32)
     scores = np.zeros((starts.size, meter), dtype=np.float64)
     for window_index, (start, end) in enumerate(zip(starts, ends, strict=True)):
-        for weight, curve in zip(novelty_weights, novelty_curves, strict=True):
-            local_profile = _folded_sum(
-                _normalize_curve(curve[start:end]),
-                meter,
-            )
-            scores[window_index] += float(weight) * np.roll(
-                local_profile,
-                int(start % meter),
-            )
+        phase_profile = _folded_sum(evidence[start:end], meter)
+        scores[window_index] = np.roll(
+            phase_profile,
+            int(start % meter),
+        )
 
     score_totals = scores.sum(axis=1, keepdims=True)
     scores = np.divide(
         scores,
         score_totals,
-        out=np.zeros_like(scores),
+        out=np.full_like(scores, 1.0 / meter),
         where=score_totals > 1e-12,
     )
-    tracked_phases = _track_phases(scores, meter, transition_penalty)
-    sorted_scores = np.sort(scores, axis=1)
-    confidence = np.divide(
-        sorted_scores[:, -1] - sorted_scores[:, -2],
-        np.maximum(np.abs(sorted_scores[:, -1]), 1e-12),
+    tracked_phases = _track_phases(
+        scores,
+        meter,
+        adjacent_phase_penalty,
+        distant_phase_penalty,
     )
-    return _build_segments(
+    # Viterbi runs (maximal constant-phase spans of windows) give the robust
+    # phase sequence; their window-start beats are only coarse boundaries.
+    run_starts = np.concatenate(
+        [
+            np.asarray([0], dtype=np.int64),
+            np.flatnonzero(tracked_phases[1:] != tracked_phases[:-1]) + 1,
+        ]
+    )
+    run_phases = [int(tracked_phases[w]) for w in run_starts]
+    return _build_segments_refined(
         beat_times,
         duration_sec,
-        centers,
-        tracked_phases,
-        confidence,
+        starts,
+        run_starts,
+        run_phases,
+        evidence,
         meter,
+        int(transition_lookback_beats),
+        int(boundary_refine_radius_beats),
+        int(min_segment_beats),
+        float(min_transition_gain),
     )
+
+
+def _onset_per_beat(
+    waveform: np.ndarray,
+    sample_rate: int,
+    beats: np.ndarray,
+    hop_length: int,
+    onset_window_beats: float,
+) -> np.ndarray:
+    """Onset-strength energy assigned to each beat (no cross-beat averaging).
+
+    The ODF is integrated inside ``+-onset_window_beats`` of every beat. With
+    0.5 the per-beat windows tile the timeline (every ODF frame counted once,
+    centred on its nearest beat), so all time information is preserved -- this
+    is the beat-grid-style cut the windowed Folded-Sum throws away.
+    """
+    onset_env = librosa.onset.onset_strength(
+        y=waveform, sr=sample_rate, hop_length=hop_length
+    )
+    if onset_env.size == 0 or beats.size == 0:
+        return np.zeros(beats.size, dtype=np.float64)
+    onset_times = librosa.times_like(
+        onset_env, sr=sample_rate, hop_length=hop_length
+    )
+    cumulative = np.concatenate([[0.0], np.cumsum(onset_env.astype(np.float64))])
+    last = cumulative.size - 1
+
+    periods = np.diff(beats)
+    beat_periods = np.empty(beats.size, dtype=np.float64)
+    if periods.size:
+        beat_periods[:-1] = periods
+        beat_periods[-1] = periods[-1]
+    else:
+        beat_periods[:] = 0.0
+    half_widths = float(onset_window_beats) * beat_periods
+
+    lo = np.clip(
+        np.searchsorted(onset_times, beats - half_widths, side="left"), 0, last
+    )
+    hi = np.clip(
+        np.searchsorted(onset_times, beats + half_widths, side="left"), 0, last
+    )
+    return cumulative[hi] - cumulative[lo]

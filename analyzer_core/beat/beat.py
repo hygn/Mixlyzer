@@ -59,12 +59,13 @@ def build_grid_from_period_phase(total_len_frames: int,
     else:
         return (idx * hop_t, np.array([]))
 
-def estimate_bpm_and_grid(odf: np.ndarray, odf_lp: np.ndarray, sr: int, hop: int,
+def estimate_bpm_and_grid(odf: np.ndarray, sr: int, hop: int,
                           bpm_lo: float, bpm_hi: float,
                           gamma_peak: float = 1.5,
                           prev_bpm: float = None,
                           use_only_prev_bpm:bool = False,
-                          audio: np.ndarray | None = None) -> tuple[float, np.ndarray, np.ndarray, np.ndarray]:
+                          audio_raw: np.ndarray | None = None,
+                          half_beat_min_confidence: float = 0.02) -> tuple[float, np.ndarray, np.ndarray, np.ndarray]:
     """Get BPM, phase and Beatgrid from given ODF"""
 
     hop_t = hop / float(sr)
@@ -249,20 +250,21 @@ def estimate_bpm_and_grid(odf: np.ndarray, odf_lp: np.ndarray, sr: int, hop: int
     # Half-beat phase correction: if the percussive energy concentrates in the
     # second half of each beat interval, the grid is shifted by half a beat.
     # Shift it back (a half-period shift lands on the same beats either way).
+    # Uses the raw (pre-HPSS) audio so the energy comparison sees the full mix.
     if (
-        audio is not None
+        audio_raw is not None
         and beats_sec.size >= 2
         and np.isfinite(period_final)
         and period_final > 0
     ):
         try:
             hbp = analyze_half_beat_phase(
-                np.asarray(audio, dtype=np.float32),
+                np.asarray(audio_raw, dtype=np.float32),
                 sample_rate=int(sr),
                 beat_times_sec=beats_sec,
             )
             print(f"[sweep] half-beat phase decision={hbp.decision} conf={hbp.confidence:.3f}")
-            if hbp.decision == 2:
+            if hbp.decision == 2 and hbp.confidence >= half_beat_min_confidence:
                 phi_final = phi_final + 0.5 * period_final
                 grid_main_sec, _ = build_grid_from_period_phase(
                     total_len_frames=T, hop_t=hop_t,
@@ -698,12 +700,11 @@ def _coarse_segment_track(
 def _estimate_tempo_segments(
     seg_frames: list[tuple[int, int]],
     odf: np.ndarray,
-    odf_lp: np.ndarray,
     sr: int,
     hop_for_odf: int,
     bpm_bounds: tuple[float, float],
     hop_t: float,
-    audio: np.ndarray | None = None,
+    audio_raw: np.ndarray | None = None,
 ) -> tuple[list[TempoSegment], list[float], list[tuple[float, float, float]], float]:
     beats_all: list[float] = []
     tempo_segments: list[TempoSegment] = []
@@ -712,7 +713,6 @@ def _estimate_tempo_segments(
 
     for s, e in seg_frames:
         local = odf[s:e]
-        local_lp = odf_lp[s:e]
         seg_len_s = (e - s) * hop_t
         print(f"[fine] segment frames=({s},{e}) dur={seg_len_s:.2f}s")
         start_sec = s * hop_t
@@ -723,19 +723,18 @@ def _estimate_tempo_segments(
             continue
 
         audio_seg = None
-        if audio is not None:
+        if audio_raw is not None:
             a0 = int(s) * int(hop_for_odf)
             a1 = int(e) * int(hop_for_odf)
-            audio_seg = np.asarray(audio)[a0:a1]
+            audio_seg = np.asarray(audio_raw)[a0:a1]
         bpm_est, beats_sec, downbeat_sec = estimate_bpm_and_grid(
             local,
-            local_lp,
             sr,
             hop_for_odf,
             bpm_lo=bpm_bounds[0],
             bpm_hi=bpm_bounds[1],
             prev_bpm=None,
-            audio=audio_seg,
+            audio_raw=audio_seg,
         )
         seg_meta.append((start_sec, end_sec, float(bpm_est) if np.isfinite(bpm_est) else np.nan))
 
@@ -798,10 +797,9 @@ def bpm_dynamic_phase_sync(
     save_hop: int,
     win_s, step_s,
     audio: np.ndarray,
-    audio_lp: np.ndarray,
+    audio_raw: np.ndarray | None = None,
     bpm_bounds: tuple[float, float] = (128.0, 260.0),
     odf_precomputed: np.ndarray | None = None,
-    odf_lp_precomputed: np.ndarray | None = None,
     hop_t_precomputed: float | None = None,
 ) -> dict:
     t_offset = 0.5 * hop_length / float(sr)
@@ -809,26 +807,23 @@ def bpm_dynamic_phase_sync(
         raise ValueError("audio must be 1-D np.ndarray (mono)")
 
     hop_for_odf = int(hop_length)
-    if odf_precomputed is None or odf_lp_precomputed is None or hop_t_precomputed is None:
+    if odf_precomputed is None or hop_t_precomputed is None:
         print(f"[seg] computing ODF via librosa.onset.onset_strength (hop={hop_for_odf})")
         odf, hop_t = _compute_odf(audio, sr, hop_for_odf)
-        odf_lp, _ = _compute_odf(audio_lp, sr, hop_for_odf)
     else:
         odf = np.asarray(odf_precomputed, dtype=np.float32)
-        odf_lp = np.asarray(odf_lp_precomputed, dtype=np.float32)
         hop_t = float(hop_t_precomputed)
-    
+
     seg_frames, boundaries = _coarse_segment_track(odf, sr, hop_for_odf, hop_t, win_s, step_s, seg_min_s = win_s/2)
 
     tempo_segments, beats_all, seg_meta, first_beat = _estimate_tempo_segments(
         seg_frames,
         odf,
-        odf_lp,
         sr,
         hop_for_odf,
         bpm_bounds,
         hop_t,
-        audio=audio,
+        audio_raw=audio_raw,
     )
 
     beats_time = np.asarray(sorted(beats_all), dtype=float)
@@ -899,10 +894,9 @@ def bpm_phase_sync(
     save_hop: int,
     win_s, step_s,
     audio: np.ndarray,
-    audio_lp: np.ndarray,
+    audio_raw: np.ndarray | None = None,
     bpm_bounds: tuple[float, float] = (128.0, 260.0),
     odf_precomputed: np.ndarray | None = None,
-    odf_lp_precomputed: np.ndarray | None = None,
     hop_t_precomputed: float | None = None,
 ) -> dict:
     if not isinstance(audio, np.ndarray) or audio.ndim != 1:
@@ -910,13 +904,11 @@ def bpm_phase_sync(
 
     t_offset = 0.5 * hop_length / float(sr)
     hop_for_odf = int(hop_length)
-    if odf_precomputed is None or odf_lp_precomputed is None or hop_t_precomputed is None:
+    if odf_precomputed is None or hop_t_precomputed is None:
         print(f"[seg] computing ODF via librosa.onset.onset_strength (hop={hop_for_odf})")
         odf, hop_t = _compute_odf(audio, sr, hop_for_odf)
-        odf_lp, _ = _compute_odf(audio_lp, sr, hop_for_odf)
     else:
         odf = np.asarray(odf_precomputed, dtype=np.float32)
-        odf_lp = np.asarray(odf_lp_precomputed, dtype=np.float32)
         hop_t = float(hop_t_precomputed)
 
     seg_frames = [(0, len(odf) - 1)]
@@ -925,12 +917,11 @@ def bpm_phase_sync(
     tempo_segments, beats_all, seg_meta, first_beat = _estimate_tempo_segments(
         seg_frames,
         odf,
-        odf_lp,
         sr,
         hop_for_odf,
         bpm_bounds,
         hop_t,
-        audio=audio,
+        audio_raw=audio_raw,
     )
 
     beats_time = np.asarray(sorted(beats_all), dtype=float)

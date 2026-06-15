@@ -14,6 +14,10 @@ a = Analysis(
     binaries=[],
     datas=[
         ('../config.json', '.'),
+        (
+            '../assets/weights/downbeat_feature_weights.json',
+            'assets/weights',
+        ),
     ],
     hiddenimports=[],
     hookspath=[],

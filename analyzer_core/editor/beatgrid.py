@@ -1,15 +1,15 @@
 from typing import Literal, Callable, Optional, Tuple
 import numpy as np
 import librosa
-from scipy.signal import filtfilt
 
-from analyzer_core.global_analyzer import fast_load, _butter_bandpass
+from analyzer_core.global_analyzer import fast_load
 from analyzer_core.utils import offset_beats_and_segments
 from analyzer_core.beat.beat import (
     build_grid_from_period_phase,
     _compute_odf,
     estimate_bpm_and_grid,
 )
+from analyzer_core.beat.downbeat_offset import detect_downbeat_offset_segments
 from core.config import config
 import math
 
@@ -171,15 +171,10 @@ def reanalyze_segment_from_file(
     else:
         y_perc = section
 
-    b, a = _butter_bandpass(20, 200, sr, order=4)
-    lp_y = filtfilt(b, a, y_perc).astype(np.float32)
-
     hop = int(gcf.bpm_hop_length)
     odf, hop_t = _compute_odf(y_perc, sr, hop)
-    odf_lp, _ = _compute_odf(lp_y, sr, hop)
 
     local = odf
-    local_lp = odf_lp
     if progress_cb:
         progress_cb("Estimating BPM", 0.70)
     bpm_lo = float(gcf.bpm_min) * 0.9
@@ -199,14 +194,13 @@ def reanalyze_segment_from_file(
                 bpm_hi = prev + window
     bpm_est, beats_local, downbeat = estimate_bpm_and_grid(
         local,
-        local_lp,
         sr,
         hop,
         bpm_lo=bpm_lo,
         bpm_hi=bpm_hi,
         prev_bpm=prev,
         use_only_prev_bpm=use_only_prev_bpm if prev is not None else False,
-        audio=y_perc,
+        audio_raw=section,
     )
     bpm_est = float(bpm_est) if np.isfinite(bpm_est) else float(bpm)
     beatgrid_offset_sec = float(getattr(gcf, "beatgrid_offset_msec", 0.0) or 0.0) / 1000.0
@@ -220,6 +214,26 @@ def reanalyze_segment_from_file(
     if not np.isfinite(downbeat):
         downbeat = beats_local[0] if beats_local.size else start
     new_inizio = float(start + float(downbeat))
+
+    # Global Downbeat Analysis for THIS segment only: place the bar-start
+    # (inizio) on the detected downbeat, snapped to an actual beat.
+    if beats_local.size >= 2:
+        try:
+            if progress_cb:
+                progress_cb("Downbeat analysis", 0.78)
+            db_segments = detect_downbeat_offset_segments(
+                np.asarray(y_perc, dtype=np.float32),
+                int(sr),
+                beats_local,
+                method="global",
+            )
+            db_time = db_segments[0].first_downbeat_time_sec if db_segments else None
+            if db_time is not None and np.isfinite(db_time):
+                snapped = float(beats_local[int(np.argmin(np.abs(beats_local - float(db_time))))])
+                new_inizio = float(start + snapped)
+                print(f"[SegRA] global downbeat (local) => {snapped:.3f}s")
+        except Exception as exc:
+            print(f"[SegRA] downbeat analysis skipped: {exc}")
 
     if progress_cb:
         progress_cb("Updating beat grid", 0.70)

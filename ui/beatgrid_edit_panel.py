@@ -15,6 +15,7 @@ from core.config import load_cfg
 from core.library_handler import LibraryDB
 from core.model import DataModel
 from core.linear_segments import build_bpm_segments, build_key_segments
+from core.beat_geometry import bar_beat_position, downbeat_beat_indices
 from utils.keystrip import build_keystrip_buffer
 from utils.labels import KEY_DISPLAY_LABELS
 from utils.jump_cues import build_jump_cues_np, extract_jump_cue_pairs, build_jump_cue_graph
@@ -206,6 +207,14 @@ class BeatgridEditPanel(QtWidgets.QWidget):
         self._JumpCUE = []
         self._jumpcue_graph_cues: list[dict] = []
         self._jump_armed = False
+        # BeatCounter: while the Count button is held, count beats crossed by
+        # the playhead relative to the beat index at press time.
+        self._beat_counting = False
+        self._beat_count = 0
+        self._beat_count_anchor_idx = 0
+        # Downbeats at/after the press time; the first one is bar 1 for the
+        # Bar.Beat display (counting starts once that bar begins).
+        self._bb_downbeats = None
         self._init_ui()
         self.edit_log = logs(
             default=logElement(
@@ -389,6 +398,31 @@ class BeatgridEditPanel(QtWidgets.QWidget):
         self.jc_jumptest.setText("ARM")
         self.jc_jumptest.setToolTip("Arm jump: transition from the selected source cue to the selected target cue")
 
+        # BeatCounter: hold the button to count beats passing under the playhead.
+        self.beatcounter_label = QtWidgets.QLabel("BeatCounter: ")
+        f = self.beatcounter_label.font()
+        f.setBold(True)
+        self.beatcounter_label.setFont(f)
+
+        self.beat_counter_button = QtWidgets.QToolButton()
+        self.beat_counter_button.setText("Count")
+        self.beat_counter_button.setToolTip("Hold to count beats passing under the playhead")
+        self.beat_counter_button.setAutoRepeat(False)
+
+        self.beat_counter_display = QtWidgets.QLineEdit("0")
+        self.beat_counter_display.setReadOnly(True)
+        self.beat_counter_display.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.beat_counter_display.setAlignment(QtCore.Qt.AlignCenter)
+        self.beat_counter_display.setToolTip("Beats counted while the Count button is held")
+        self.beat_counter_display.setFixedSize(self.BTN_WIDTH, self.BTN_HEIGHT)
+
+        self.beat_counter_barbeat_display = QtWidgets.QLineEdit("--")
+        self.beat_counter_barbeat_display.setReadOnly(True)
+        self.beat_counter_barbeat_display.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.beat_counter_barbeat_display.setAlignment(QtCore.Qt.AlignCenter)
+        self.beat_counter_barbeat_display.setToolTip("Bar.Beat of the current playhead position")
+        self.beat_counter_barbeat_display.setFixedSize(self.BTN_WIDTH, self.BTN_HEIGHT)
+
         # Phrase Edit Panel
         self.phrase_label = QtWidgets.QLabel("Phrase: ")
         f = self.phrase_label.font()
@@ -478,6 +512,7 @@ class BeatgridEditPanel(QtWidgets.QWidget):
             self.key_assign_combo,
             self.jc_reanalyze,
             self.jc_jumptest,
+            self.beat_counter_button,
             self.phrase_assign_combo,
             self.phrase_sel_start,
             self.phrase_sel_end,
@@ -570,7 +605,11 @@ class BeatgridEditPanel(QtWidgets.QWidget):
         gridB.addWidget(self.jc_reanalyze, 0, 6, _AL)
         gridB.addWidget(self.jc_selection_wrap, 1, 6, _AL)
         gridB.addWidget(self.jc_jumptest, 2, 6, _AL)
-        gridB.setColumnStretch(7, 1)
+        gridB.addWidget(self.beatcounter_label, 0, 7, _AL)
+        gridB.addWidget(self.beat_counter_button, 0, 8, _AL)
+        gridB.addWidget(self.beat_counter_display, 1, 8, _AL)
+        gridB.addWidget(self.beat_counter_barbeat_display, 2, 8, _AL)
+        gridB.setColumnStretch(9, 1)
 
         # ---- Shared Edits column (right) ----
         edits_grid = QtWidgets.QGridLayout()
@@ -615,6 +654,8 @@ class BeatgridEditPanel(QtWidgets.QWidget):
         
         self.jc_jumptest.clicked.connect(self._arm_next_jumpCUE_jump)
         self.jc_reanalyze.clicked.connect(self._reanalyze_jumpCUE)
+        self.beat_counter_button.pressed.connect(self._on_beat_counter_pressed)
+        self.beat_counter_button.released.connect(self._on_beat_counter_released)
         self.jc_source_selection.currentIndexChanged.connect(self._jc_source_selection_changed)
         self.jc_target_selection.currentIndexChanged.connect(self._jc_target_selection_changed)
 
@@ -718,6 +759,8 @@ class BeatgridEditPanel(QtWidgets.QWidget):
 
     def update_time(self, t: float) -> None:
         self._current_time = float(t)
+        self._update_beat_counter(float(t))
+        self._update_barbeat_display(float(t))
         segs = self._segments
         if segs.size == 0:
             self._set_status(None, 0.0, 0.0)
@@ -742,6 +785,53 @@ class BeatgridEditPanel(QtWidgets.QWidget):
         left = max(0.0, float(ends[idx]) - cur_t)
         self._cur_idx = idx
         self._set_status(idx, elapsed, left)
+
+    def _beats_before(self, t: float) -> int:
+        """Number of beatgrid beats at or before ``t``."""
+        beats = np.asarray(self._beatgrid, dtype=float)
+        if beats.size == 0:
+            return 0
+        return int(np.searchsorted(beats, float(t), side="right"))
+
+    def _on_beat_counter_pressed(self) -> None:
+        self._beat_counting = True
+        press_beat = self._beats_before(self._current_time)
+        self._beat_count_anchor_idx = press_beat
+        self._beat_count = 0
+        # Bar.Beat counts from the first bar that starts at/after the press
+        # point: keep only the downbeat indices from here on, so the first one
+        # becomes bar 1 (counting begins once that bar's downbeat is reached).
+        db_idx = downbeat_beat_indices(self._beatgrid, self._segments)
+        self._bb_downbeats = db_idx[db_idx >= press_beat]
+        self._refresh_beat_counter_display()
+        self._update_barbeat_display(self._current_time)
+
+    def _on_beat_counter_released(self) -> None:
+        self._beat_counting = False
+
+    def _update_beat_counter(self, t: float) -> None:
+        if not self._beat_counting:
+            return
+        count = max(0, self._beats_before(t) - self._beat_count_anchor_idx)
+        if count != self._beat_count:
+            self._beat_count = count
+            self._refresh_beat_counter_display()
+
+    def _refresh_beat_counter_display(self) -> None:
+        self.beat_counter_display.setText(str(self._beat_count))
+
+    def _update_barbeat_display(self, t: float) -> None:
+        # Edit-panel Bar.Beat only runs while the Count button is held, and
+        # starts counting once the first bar after the press begins.
+        if not self._beat_counting:
+            return
+        pos = bar_beat_position(
+            self._beatgrid, t, downbeat_indices=self._bb_downbeats
+        )
+        if pos is None or pos[0] <= 0:
+            self.beat_counter_barbeat_display.setText("--")
+        else:
+            self.beat_counter_barbeat_display.setText(f"{pos[0]}.{pos[1]}")
 
     def _set_status(self, idx: Optional[int], elapsed: float, left: float) -> None:
         def fmt(sec: float) -> str:
