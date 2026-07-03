@@ -26,6 +26,7 @@ class MetronomeController(QtCore.QObject):
         self._base_volume = 0.9
 
         self.downbeat_cycle = None
+        self.downbeat_indices: frozenset[int] | None = None
 
     @QtCore.Slot()
     def initialize_audio(self):
@@ -70,23 +71,30 @@ class MetronomeController(QtCore.QObject):
         if self._click is not None:
             self._click.setSource(QtCore.QUrl.fromLocalFile(click_wav_path))
 
-    @QtCore.Slot(object, float)
-    def set_beats(self, beats_time, current_time: float = 0.0):
+    @QtCore.Slot(object, object, float)
+    def set_beats(self, beats_time, downbeat_indices=None, current_time: float = 0.0):
         bt = beats_time
         if bt is None or len(bt) == 0:
             self.beats_time = None
+            self.downbeat_indices = None
             self.next_idx = 0
             self._current_time = float(current_time)
             self._prev_time = self._current_time
             self.last_tick_time = -1.0
             return
         self.beats_time = np.asarray(bt, dtype=float)
+        if downbeat_indices is None:
+            self.downbeat_indices = None
+        else:
+            self.downbeat_indices = frozenset(
+                int(idx) for idx in np.asarray(downbeat_indices, dtype=np.int64).ravel()
+            )
         self._current_time = float(current_time)
         self._reset_pointer()
 
     @QtCore.Slot()
     def clear_beats(self):
-        self.set_beats(None, self._current_time)
+        self.set_beats(None, None, self._current_time)
 
     def _reset_pointer(self):
         if self.beats_time is None or len(self.beats_time) == 0:
@@ -147,13 +155,14 @@ class MetronomeController(QtCore.QObject):
     def _tick(self, when_sec: float, idx: int, is_sub: bool = False):
         if self._click is None:
             return
-        # Downbeat accent
-        if self.downbeat_cycle:
+        if self.downbeat_indices is not None:
+            accent = idx in self.downbeat_indices and not is_sub
+        elif self.downbeat_cycle:
             accent = (idx % self.downbeat_cycle == 0) and not is_sub
         else:
             accent = (not is_sub)
 
-        vol = (1.0 if accent else 0.6) * self._base_volume
+        vol = (1.0 if accent else 0.4) * self._base_volume
         self._click.setVolume(max(0.0, min(1.0, vol)))
         self._click.play()
 

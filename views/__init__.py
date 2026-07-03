@@ -1,5 +1,6 @@
 # views/__init__.py
 from . import waveform
+from . import cue_points
 from . import keystrip
 from . import playhead
 from . import beatgrid

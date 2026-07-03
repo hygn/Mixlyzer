@@ -88,7 +88,8 @@ class MainPane(QtWidgets.QWidget):
 
         # Overview (timeline summary)
         self.ov = OverviewWidget(bus, tl=self.tl, model=self.model)
-        self.ov.setMaximumHeight(80)
+        self.ov.setMinimumHeight(103)
+        self.ov.setMaximumHeight(103)
 
         # Header (track info + transport + editors)
         self._init_header_ui()
@@ -135,6 +136,9 @@ class MainPane(QtWidgets.QWidget):
     def _init_header_ui(self) -> None:
         ov_height = self.ov.maximumHeight() if hasattr(self, "ov") else 0
         editor_toggle_h = 24
+        # Provisional height; the real height (accounting for actual child sizes
+        # and inter-widget spacing) is applied by _set_editor_panel_visible from
+        # the header layout's own sizeHint once all children exist.
         HEADER_H = TrackInfoPanel.HEADER_H + ov_height + editor_toggle_h + BeatgridEditPanel.ROW_H
         self.header = QtWidgets.QWidget()
         self.header.setMinimumHeight(HEADER_H)
@@ -363,6 +367,7 @@ class MainPane(QtWidgets.QWidget):
             self.add_view("JumpCUEView")
         if getattr(view_cfg, "display_phrase", True):
             self.add_view("PhraseView")
+        self.add_view("CUEPointView")
         if hasattr(self, "ov") and hasattr(self.ov, "set_phrase_visible"):
             self.ov.set_phrase_visible(getattr(view_cfg, "display_phrase", True))
         self.add_view("PlayHead")
@@ -638,11 +643,16 @@ class MainPane(QtWidgets.QWidget):
             _btn = getattr(self, _attr, None)
             if _btn is not None:
                 _btn.setEnabled(show)
-        ov_height = self.ov.maximumHeight() if hasattr(self, "ov") else 0
-        toggle_h = self.cb_show_editors.maximumHeight() if hasattr(self, "cb_show_editors") else 24
-        header_h = TrackInfoPanel.HEADER_H + ov_height + toggle_h + (BeatgridEditPanel.ROW_H if show else 0)
-        self.header.setMinimumHeight(header_h)
-        self.header.setMaximumHeight(header_h)
+        # Let the header layout report the exact height it needs. It accounts
+        # for the real top-row height, the inter-widget spacing, and whether the
+        # editor panel is currently shown. Manual sums under-counted these and
+        # clipped the editor panel's bottom status line.
+        lay = self.header.layout()
+        if lay is not None:
+            lay.activate()
+            header_h = lay.sizeHint().height()
+            self.header.setMinimumHeight(header_h)
+            self.header.setMaximumHeight(header_h)
 
     def _set_transition_search_visible(self, visible: bool) -> None:
         if hasattr(self, "lib") and hasattr(self.lib, "set_transition_search_visible"):

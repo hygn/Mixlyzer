@@ -30,9 +30,10 @@ from core.analysis_worker import AnalysisWorker
 from core.segment_reanalysis_manager import SegmentReanalysisManager
 from analyzer_core.global_analyzer import getAlbumArt, extract_tags
 from core.config import config, analysisconfig, keyconfig, libconfig, viewconfig, load_cfg
+from core.beat_geometry import downbeat_beat_indices
 
 class AppWindow(QtWidgets.QMainWindow):
-    _sig_metronome_set_beats = QtCore.Signal(object, float)
+    _sig_metronome_set_beats = QtCore.Signal(object, object, float)
     _WINDOW_VISIBILITY_POLL_MS = 33
     _HIDDEN_REFRESH_FPS = 1
     _HIDDEN_ENTER_POLLS = 5
@@ -447,9 +448,15 @@ class AppWindow(QtWidgets.QMainWindow):
 
     def _sync_metronome_beats(self):
         beats = None
+        downbeats = None
         if self.model.features:
             beats = self.model.features.get("beats_time_sec")
-        self._sig_metronome_set_beats.emit(beats, float(self.tl.current_time))
+            if beats is not None:
+                downbeats = downbeat_beat_indices(
+                    beats,
+                    self.model.features.get("tempo_segments"),
+                )
+        self._sig_metronome_set_beats.emit(beats, downbeats, float(self.tl.current_time))
 
     def _track_exists_in_library(self, path: str) -> bool:
         cfg = load_cfg()

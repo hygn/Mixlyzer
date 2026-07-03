@@ -180,7 +180,13 @@ class BeatgridEditPanel(QtWidgets.QWidget):
 
     BTN_WIDTH = 88
     BTN_HEIGHT = 28
-    ROW_H = BTN_HEIGHT * 3 + 24
+    ROW_VSPACING = 2   # tight gaps between button rows (packed look)
+    STATUS_H = 24      # reserved height for the bottom status label row
+                       # (label is ~20px at the app's 11pt global font)
+    # Panel height: root v-margins (4+4) + 3 button rows + 3 inter-row gaps +
+    # the reserved status-label row. Kept tight so button rows stay packed
+    # while the status line (Beatgrid Seg / Phrase) is never clipped.
+    ROW_H = 8 + BTN_HEIGHT * 3 + ROW_VSPACING * 3 + STATUS_H
 
     def __init__(self, bus: EventBus, model: DataModel | None = None, parent=None):
         super().__init__(parent)
@@ -462,6 +468,16 @@ class BeatgridEditPanel(QtWidgets.QWidget):
         self.phrase_status = QtWidgets.QLabel("<b>Phrase</b>: --")
         self.phrase_status.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
 
+        self.cuepoint_label = QtWidgets.QLabel("CUEPoint: ")
+        f = self.cuepoint_label.font()
+        f.setBold(True)
+        self.cuepoint_label.setFont(f)
+        self.cuepoint_placeholder = QtWidgets.QToolButton()
+        self.cuepoint_placeholder.setText("Coming Soon")
+        self.cuepoint_placeholder.setToolTip("CUEPoint editor placeholder")
+        self.cuepoint_placeholder.setEnabled(False)
+        self.cuepoint_placeholder.setFixedSize(self.BTN_WIDTH, self.BTN_HEIGHT)
+
         # Edit Panel
         self.edits_label = QtWidgets.QLabel("Edits: ")
         f = self.edits_label.font()
@@ -548,16 +564,20 @@ class BeatgridEditPanel(QtWidgets.QWidget):
         gridA = QtWidgets.QGridLayout(page_beatkey)
         gridA.setContentsMargins(0, 0, 0, 0)
         gridA.setHorizontalSpacing(8)
-        gridA.setVerticalSpacing(8)
+        gridA.setVerticalSpacing(self.ROW_VSPACING)
         for _r in range(3):
             gridA.setRowMinimumHeight(_r, self.BTN_HEIGHT)
+        # Reserve a fixed row for the status label so it is never squeezed /
+        # clipped, while the button rows above stay tightly packed.
+        gridA.setRowMinimumHeight(3, self.STATUS_H)
 
         gridB = QtWidgets.QGridLayout(page_phrasejc)
         gridB.setContentsMargins(0, 0, 0, 0)
         gridB.setHorizontalSpacing(8)
-        gridB.setVerticalSpacing(8)
+        gridB.setVerticalSpacing(self.ROW_VSPACING)
         for _r in range(3):
             gridB.setRowMinimumHeight(_r, self.BTN_HEIGHT)
+        gridB.setRowMinimumHeight(3, self.STATUS_H)
 
         # ---- Page A: Beatgrid + Key ----
         gridA.addWidget(self.beatgrid_label, 0, 0, _AL)
@@ -609,7 +629,9 @@ class BeatgridEditPanel(QtWidgets.QWidget):
         gridB.addWidget(self.beat_counter_button, 0, 8, _AL)
         gridB.addWidget(self.beat_counter_display, 1, 8, _AL)
         gridB.addWidget(self.beat_counter_barbeat_display, 2, 8, _AL)
-        gridB.setColumnStretch(9, 1)
+        gridB.addWidget(self.cuepoint_label, 0, 9, _AL)
+        gridB.addWidget(self.cuepoint_placeholder, 0, 10, _AL)
+        gridB.setColumnStretch(11, 1)
 
         # ---- Shared Edits column (right) ----
         edits_grid = QtWidgets.QGridLayout()

@@ -6,16 +6,19 @@ from typing import Any, Dict, List
 import numpy as np
 
 
-# Predefined phrase labels. Custom labels (free text) are also allowed.
+# Predefined phrase labels (always uppercase). Custom labels (free text) are
+# also allowed and are kept exactly as the user types them.
 PHRASE_LABELS: list[str] = [
     "INTRO",
     "VERSE",
     "CHORUS",
+    "BREAK_CHORUS",
     "BRIDGE",
     "OUTRO",
     "INTERLUDE",
     "SILENCE",
-    "FILL",
+    "FILL_IN",
+    "FILL_OUT",
 ]
 
 # Stable colors for the predefined labels; custom labels fall back to a hash.
@@ -23,11 +26,14 @@ _PHRASE_COLORS: dict[str, tuple[int, int, int]] = {
     "INTRO": (70, 130, 180),
     "VERSE": (46, 139, 87),
     "CHORUS": (220, 60, 90),
+    "BREAK_CHORUS": (235, 140, 120),
     "BRIDGE": (148, 0, 211),
     "OUTRO": (95, 95, 110),
     "INTERLUDE": (218, 165, 32),
     "SILENCE": (110, 110, 110),
-    "FILL": (0, 153, 204),
+    "FILL_IN": (0, 180, 200),
+    "FILL_OUT": (0, 120, 150),
+    "FILL": (0, 153, 204),  # legacy (pre-migration / model output); kept for color
 }
 
 _FALLBACK_PALETTE: list[tuple[int, int, int]] = [
@@ -38,6 +44,10 @@ _FALLBACK_PALETTE: list[tuple[int, int, int]] = [
     (200, 120, 160),
     (80, 120, 200),
 ]
+
+
+# Phrases shorter than this (seconds) are treated as zero-length and dropped.
+MIN_PHRASE_DUR = 1e-6
 
 
 def normalize_base_label(label: object) -> str:
@@ -63,8 +73,8 @@ def _sorted_phrases(phrases) -> list[dict[str, Any]]:
             end = float(p.get("end"))
         except Exception:
             continue
-        if not (math.isfinite(start) and math.isfinite(end)) or end <= start:
-            continue
+        if not (math.isfinite(start) and math.isfinite(end)) or end - start <= MIN_PHRASE_DUR:
+            continue  # drop zero-length (and degenerate sub-microsecond) phrases
         label = normalize_base_label(p.get("label"))
         rows.append({"start": start, "end": end, "label": label})
     rows.sort(key=lambda r: r["start"])
@@ -233,6 +243,97 @@ def extract_phrase_segments(features: Dict[str, Any]) -> List[dict[str, Any]]:
             "label": normalize_base_label(str(labels[i])),
         })
     return _sorted_phrases(rows)
+
+
+def _is_fill_label(label: object) -> bool:
+    return str(label or "").strip().upper() in {"FILL_IN", "FILL_OUT", "FILL"}
+
+
+def _find_neighbor_label(rows: list[dict[str, Any]], index: int, step: int) -> str:
+    pos = index + step
+    while 0 <= pos < len(rows):
+        label = rows[pos]["label"]
+        if not _is_fill_label(label):
+            return label
+        pos += step
+    return ""
+
+
+def merge_fill_phrases_for_display(phrases) -> List[dict[str, Any]]:
+    """Return display-only phrases with FILL_IN/OUT absorbed into neighbours.
+
+    FILL_IN is shown as part of the following non-fill phrase. FILL_OUT is shown
+    as part of the previous non-fill phrase. Orphan fills are omitted.
+    """
+    rows = _sorted_phrases(phrases)
+    if not rows:
+        return []
+
+    display: list[dict[str, Any]] = []
+    for index, seg in enumerate(rows):
+        label = str(seg["label"] or "").strip()
+        upper = label.upper()
+        from_fill = False
+        if upper == "FILL_IN":
+            label = _find_neighbor_label(rows, index, 1)
+            from_fill = True
+        elif upper in {"FILL_OUT", "FILL"}:
+            label = _find_neighbor_label(rows, index, -1)
+            from_fill = True
+        if not label:
+            continue
+        display.append(
+            {
+                "start": seg["start"],
+                "end": seg["end"],
+                "label": label,
+                "_from_fill": from_fill,
+            }
+        )
+
+    merged: list[dict[str, Any]] = []
+    for seg in display:
+        if (
+            merged
+            and merged[-1]["label"] == seg["label"]
+            and abs(float(merged[-1]["end"]) - float(seg["start"])) <= 1e-6
+            and (bool(merged[-1].get("_from_fill")) or bool(seg.get("_from_fill")))
+        ):
+            merged[-1]["end"] = seg["end"]
+            merged[-1]["_from_fill"] = bool(merged[-1].get("_from_fill")) or bool(
+                seg.get("_from_fill")
+            )
+        else:
+            merged.append(dict(seg))
+    return [
+        {"start": seg["start"], "end": seg["end"], "label": seg["label"]}
+        for seg in merged
+    ]
+
+
+def extract_fill_phrase_markers(phrases) -> List[dict[str, Any]]:
+    """Return display marker ranges for fill phrases.
+
+    direction is "in" for FILL_IN and "out" for FILL_OUT / legacy FILL.
+    """
+    rows = _sorted_phrases(phrases)
+    markers: list[dict[str, Any]] = []
+    for seg in rows:
+        label = str(seg.get("label", "") or "").strip().upper()
+        if label == "FILL_IN":
+            direction = "in"
+        elif label in {"FILL_OUT", "FILL"}:
+            direction = "out"
+        else:
+            continue
+        markers.append(
+            {
+                "start": float(seg["start"]),
+                "end": float(seg["end"]),
+                "direction": direction,
+            }
+        )
+    return markers
 
 
 def build_phrase_strip_buffer(phrases, duration_sec: float, *, width: int = 4096) -> np.ndarray | None:

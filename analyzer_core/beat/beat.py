@@ -65,7 +65,7 @@ def estimate_bpm_and_grid(odf: np.ndarray, sr: int, hop: int,
                           prev_bpm: float = None,
                           use_only_prev_bpm:bool = False,
                           audio_raw: np.ndarray | None = None,
-                          half_beat_min_confidence: float = 0.02) -> tuple[float, np.ndarray, np.ndarray, np.ndarray]:
+                          half_beat_min_confidence: float = 0.03) -> tuple[float, np.ndarray, np.ndarray, np.ndarray]:
     """Get BPM, phase and Beatgrid from given ODF"""
 
     hop_t = hop / float(sr)
@@ -579,6 +579,54 @@ def _segments_from_array(arr: np.ndarray) -> list[TempoSegment]:
         return []
     return [TempoSegment(*row[:4]) for row in arr]
 
+def collapse_short_sandwiched_tempo_segments(
+    tempo_segments: np.ndarray,
+    max_duration_sec: float,
+    *,
+    bpm_abs_tolerance: float = 0.05,
+) -> tuple[np.ndarray, int]:
+    """Remove short A-B-A tempo artifacts by merging the matching BPM neighbors.
+
+    ``tempo_segments`` rows are expected to be [start, end, bpm, inizio, ...].
+    When a middle segment lasts no longer than ``max_duration_sec`` and the
+    previous/next segments have effectively the same BPM, the three rows become
+    one row spanning from the previous start to the next end.
+    """
+    arr = np.asarray(tempo_segments, dtype=float)
+    if arr.ndim != 2 or arr.shape[0] < 3 or arr.shape[1] < 3:
+        return np.asarray(tempo_segments, dtype=np.float32), 0
+    if not np.isfinite(max_duration_sec) or max_duration_sec <= 0.0:
+        return arr.astype(np.float32, copy=True), 0
+
+    rows = arr.astype(float, copy=True)
+    removed = 0
+    index = 1
+    eps = 1e-6
+    while index < rows.shape[0] - 1:
+        left = rows[index - 1]
+        middle = rows[index]
+        right = rows[index + 1]
+        duration = float(middle[1] - middle[0])
+        left_bpm = float(left[2])
+        right_bpm = float(right[2])
+        if (
+            np.isfinite(duration)
+            and duration <= float(max_duration_sec) + eps
+            and np.isfinite(left_bpm)
+            and np.isfinite(right_bpm)
+            and abs(left_bpm - right_bpm) <= bpm_abs_tolerance
+        ):
+            merged = left.copy()
+            merged[1] = right[1]
+            rows[index - 1] = merged
+            rows = np.delete(rows, [index, index + 1], axis=0)
+            removed += 1
+            index = max(1, index - 1)
+            continue
+        index += 1
+
+    return rows.astype(np.float32, copy=False), removed
+
 def refine_segments_via_beatgrid(
     segments: list[TempoSegment],
     odf: np.ndarray,
@@ -885,6 +933,7 @@ def bpm_dynamic_phase_sync(
         "boundaries": boundaries,       # frame indices on ODF grid
         "odf": odf,
         "hop_t": hop_t,
+        "window_s": float(win_s),
         "score": score
     }
 
@@ -972,5 +1021,6 @@ def bpm_phase_sync(
         "boundaries": boundaries,
         "odf": odf,
         "hop_t": hop_t,
+        "window_s": float(win_s),
         "score": score
     }

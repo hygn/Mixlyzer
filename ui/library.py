@@ -64,18 +64,50 @@ def row_to_track(row: TrackRow) -> Track:
         rating=int(row.rating or 0), added=added_qt, path=row.path, comment=row.comment or "",
     )
 class FastDelegate(QtWidgets.QStyledItemDelegate):
+    """Cell delegate that caches rendered text as pixmaps.
+
+    On this platform a QTableView scroll cannot blit and repaints the whole
+    viewport each step (~19ms for a screenful of CJK text), which competes with
+    the 60fps playback rendering on the GUI thread and drops frames. Caching each
+    cell's rendered text as a pixmap turns the repaint into a bitblt (~7ms),
+    keeping it within the frame budget. Keyed by (text, width, height, selected).
+    """
+
+    _CACHE_LIMIT = 4000
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._cache: dict = {}
+
+    def clear_cache(self) -> None:
+        self._cache.clear()
+
     def paint(self, painter, option, index):
-        painter.save()
-        # Highlight when selected
-        if option.state & QtWidgets.QStyle.State_Selected:
-            painter.fillRect(option.rect, option.palette.highlight())
-            painter.setPen(option.palette.highlightedText().color())
-        else:
-            painter.setPen(QtGui.QColor("#ffffff"))
+        rect = option.rect
+        selected = bool(option.state & QtWidgets.QStyle.State_Selected)
+        if selected:
+            painter.fillRect(rect, option.palette.highlight())
         text = index.data(QtCore.Qt.DisplayRole)
-        if text:
-            painter.drawText(option.rect.adjusted(4, 0, -4, 0), QtCore.Qt.AlignVCenter | QtCore.Qt.TextSingleLine, str(text))
-        painter.restore()
+        if not text:
+            return
+        text = str(text)
+        key = (text, rect.width(), rect.height(), selected)
+        pm = self._cache.get(key)
+        if pm is None:
+            if len(self._cache) > self._CACHE_LIMIT:
+                self._cache.clear()
+            dpr = painter.device().devicePixelRatio() or 1.0
+            pm = QtGui.QPixmap(max(1, round(rect.width() * dpr)), max(1, round(rect.height() * dpr)))
+            pm.setDevicePixelRatio(dpr)
+            pm.fill(QtCore.Qt.transparent)
+            p = QtGui.QPainter(pm)
+            p.setFont(option.font)
+            p.setPen(option.palette.highlightedText().color() if selected else QtGui.QColor("#ffffff"))
+            tr = QtCore.QRect(0, 0, rect.width(), rect.height()).adjusted(4, 0, -4, 0)
+            p.drawText(tr, QtCore.Qt.AlignVCenter | QtCore.Qt.TextSingleLine, text)
+            p.end()
+            self._cache[key] = pm
+        painter.drawPixmap(rect.topLeft(), pm)
 # QTableWidget-based implementation
 class LibraryWidget(QtWidgets.QWidget):
     HEADERS = ["Title", "Artist", "Album", "BPM", "Key", "Duration", "Rating", "Added", "Path", "Comment"]
@@ -194,7 +226,6 @@ class LibraryWidget(QtWidgets.QWidget):
         self.table.horizontalHeader().setDefaultSectionSize(140)
         self.table.setItemDelegate(FastDelegate(self.table))
         self.table.doubleClicked.connect(self._on_activate)
-        self.table.verticalScrollBar().valueChanged.connect(self._on_scroll)
 
         # Toolbar
         self.btn_remove = QtWidgets.QToolButton(text="Remove")
@@ -546,14 +577,3 @@ class LibraryWidget(QtWidgets.QWidget):
             self._edit_dlg = EditSongDialog(bus=self.bus, libpath=self.cfg.libconfig.libpath)
         self._edit_dlg.set_track(row)
         self._edit_dlg.show()
-    def _on_scroll(self):
-        start = self.table.verticalScrollBar().value()
-        visible_rows = int(self.table.viewport().height() / self.table.rowHeight(0))
-        end = start + visible_rows + 5  # small buffer
-        for r in range(start, min(end, self.table.rowCount())):
-            if not self.table.item(r, 0):  # cells not yet created
-                t = self._all_tracks[r]
-                vals = [t.title, t.artist, t.album, t._disp_bpm, t._disp_key_camelot,
-                        t._disp_duration, t._disp_rating, t._disp_added, t.path, t.comment]
-                for c, v in enumerate(vals):
-                    self.table.setItem(r, c, QtWidgets.QTableWidgetItem(str(v)))

@@ -11,9 +11,16 @@ from PySide6 import QtGui
 from typing import Optional
 from analyzer_core.key.key import *
 from analyzer_core.beat.beat import *
-from analyzer_core.beat.beat import _compute_odf
+from analyzer_core.beat.beat import _compute_odf, collapse_short_sandwiched_tempo_segments
 from analyzer_core.self_correlation.JumpCUE import JumpCueEngine
+from analyzer_core.cue_and_phrase import detect_phrase_segments
 from utils.jump_cues import build_jump_cues_np
+from utils.cue_points import (
+    build_cue_points_np,
+    build_phrase_cue_points,
+    empty_cue_points_np,
+)
+from utils.phrases import build_phrase_segments_np
 from core.audio.decoder import decode_to_memmap, get_total_samples
 from core.library_handler import LibraryDB
 from core.analysis_lib_handler import FeatureNPZStore
@@ -24,22 +31,37 @@ from core.taskmanager import taskmanager
 from core.linear_segments import build_bpm_segments, build_key_segments
 from analyzer_core.utils import offset_beats_and_segments
 
-def fast_load(path: str, target_sr) -> np.ndarray:
+def fast_load(path: str, target_sr, stereo: bool = False) -> np.ndarray:
+    """Decode audio to float32. Mono ``(N,)`` by default, stereo ``(N, 2)`` when
+    ``stereo=True`` (channel-duplicated if the source is mono)."""
     path = Path(path)
     sr_req = int(target_sr) if target_sr else 44100
+    ch = 2 if stereo else 1
     try:
-        pcm = decode_to_memmap(path.as_posix(), sr_req, ch=1)
-        y = np.array(pcm, dtype=np.float32, copy=False).reshape(-1)
+        pcm = decode_to_memmap(path.as_posix(), sr_req, ch=ch)
+        arr = np.array(pcm, dtype=np.float32, copy=False)
+        y = arr.reshape(-1, 2) if stereo else arr.reshape(-1)
         sr = sr_req
     except Exception:
         try:
             y, sr = sf.read(path.as_posix(), dtype="float32", always_2d=False)
         except Exception:
-            y, sr = librosa.load(path.as_posix(), sr=target_sr, mono=True)
-        if y.ndim > 1:
+            y, sr = librosa.load(path.as_posix(), sr=target_sr, mono=not stereo)
+            if stereo and y.ndim == 2:  # librosa returns (ch, N)
+                y = y.T
+        if stereo:
+            if y.ndim == 1:
+                y = np.stack([y, y], axis=1)
+            elif y.shape[1] == 1:
+                y = np.repeat(y, 2, axis=1)
+            else:
+                y = y[:, :2]
+        elif y.ndim > 1:
             y = y.mean(axis=1).astype(np.float32)
     if target_sr and sr != target_sr:
-        y = librosa.resample(y, orig_sr=sr, target_sr=target_sr, res_type="kaiser_fast")
+        src = y.T if stereo else y  # resample along last axis
+        src = librosa.resample(np.ascontiguousarray(src), orig_sr=sr, target_sr=target_sr, res_type="kaiser_fast")
+        y = src.T if stereo else src
     return np.ascontiguousarray(y, dtype=np.float32)
 
 def resample_array(arr: np.ndarray, n: int) -> np.ndarray:
@@ -299,7 +321,9 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
     gcf = config.analysisconfig
     global_sr = gcf.analysis_samp_rate
     print("[Analyzer] Loading Track")
-    samp = fast_load(path, target_sr=global_sr)
+    # Decode once: stereo for the structure detector, mono derived for the rest.
+    samp_stereo = fast_load(path, target_sr=global_sr, stereo=True)
+    samp = np.ascontiguousarray(samp_stereo.mean(axis=1), dtype=np.float32)
     base_sig = normalize_y(samp, 0.99)
     taskmgr.updatetask(taskid, "Processing HPSS", 0.1)
 
@@ -413,6 +437,7 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
         float(gcf.beatgrid_offset_msec) / 1000.0,
         float(features.get("duration_sec", 0.0)),
     )
+    bpm_window_sec = float(synced_bpm.get("window_s", float(gcf.bpm_win_length) / 1000.0))
     features["tempo_global"] = synced_bpm["tempo_global"]
     features["beats_time_sec"] = synced_bpm["beats_time"]
     tempo_segments = synced_bpm["tempo_segments"]
@@ -456,6 +481,7 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
     yield {"status": "downbeat"}
     print("[Downbeat] Analysis Initalized")
     taskmgr.updatetask(taskid, "Downbeat Analyzing", 0.45)
+    db_segments: list = []
     try:
         from analyzer_core.beat.downbeat_offset import (
             detect_downbeat_offset_segments,
@@ -503,6 +529,26 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
         print(f"[Downbeat] offset detection skipped: {exc}")
         traceback.print_exc()
 
+    cleanup_max_sec = 0.5 * bpm_window_sec
+    cleanup_before = int(seg_arr.shape[0]) if getattr(seg_arr, "ndim", 0) == 2 else 0
+    seg_arr, removed_sandwiched = collapse_short_sandwiched_tempo_segments(
+        seg_arr,
+        max_duration_sec=cleanup_max_sec,
+    )
+    features["tempo_segments"] = seg_arr
+    if removed_sandwiched:
+        cleanup_after = int(seg_arr.shape[0])
+        print(
+            f"[Tempo] removed {removed_sandwiched} short sandwiched segment(s) "
+            f"<= {cleanup_max_sec:.3f}s: {cleanup_before} -> {cleanup_after}"
+        )
+        for i, row in enumerate(seg_arr):
+            start, end, bpm, inizio, ts = [float(x) for x in row[:5]]
+            print(
+                f"[Tempo]   tempo{i}: {start:.3f}-{end:.3f}s bpm={bpm:.2f} "
+                f"inizio(downbeat)={inizio:.3f}s ts={int(ts)}/4"
+            )
+
     jump_result = None
     beats_time_arr = np.asarray(features.get("beats_time_sec"), dtype=float)
     taskmgr.updatetask(taskid, "JumpCUE Analyzing", 0.50)
@@ -529,6 +575,39 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
             canonicalize_labels=True,
             merge_coincident=True,
         )
+    yield {"status": "phrase"}
+    print("[Phrase] Analysis Initalized")
+    taskmgr.updatetask(taskid, "Phrase Boundary Analyzing", 0.58)
+    if beats_time_arr.size >= 17 and seg_arr.shape[0] > 0:
+        try:
+            # Joint phrase boundary + functional-label detection -> Phrase data.
+            # Reuse the already-decoded stereo audio (no second decode).
+            phrase_segments = detect_phrase_segments(
+                samp_stereo,
+                int(global_sr),
+                beats_time_arr,
+                seg_arr,
+            )
+            features["phrase_segments_np"] = build_phrase_segments_np(phrase_segments)
+            phrase_cue_points = build_phrase_cue_points(phrase_segments)
+            features["cue_points_np"] = build_cue_points_np(phrase_cue_points)
+            labels_summary = ", ".join(str(s["label"]) for s in phrase_segments)
+            print(
+                f"[Phrase] segments={len(phrase_segments)} "
+                f"cue_points={len(phrase_cue_points)} labels=[{labels_summary}]"
+            )
+        except Exception as exc:
+            import traceback
+
+            print(f"[Phrase] joint detection skipped: {exc}")
+            traceback.print_exc()
+            features["phrase_segments_np"] = build_phrase_segments_np([])
+            features["cue_points_np"] = empty_cue_points_np()
+    else:
+        print("[Phrase] skipped: too few beats")
+        features["phrase_segments_np"] = build_phrase_segments_np([])
+        features["cue_points_np"] = empty_cue_points_np()
+    print("[Phrase] Analysis Finished")
 
     #best, scores= timesig_exp(jump_result.report.beat_ssm.peak_indices)
     features["timesignature"] = 4

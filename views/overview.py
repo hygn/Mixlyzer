@@ -4,7 +4,22 @@ import pyqtgraph as pg
 from core.event_bus import EventBus
 from utils.jumpcue_colors import get_jumpcue_pair_color
 from utils.jump_cues import extract_jump_cue_pairs, extract_jump_cue_graph
-from utils.phrases import extract_phrase_segments, abbreviate_phrase_labels, build_phrase_strip_buffer
+from utils.phrases import (
+    abbreviate_phrase_labels,
+    build_phrase_strip_buffer,
+    extract_phrase_segments,
+    merge_fill_phrases_for_display,
+)
+from utils.cue_points import extract_cue_points
+
+
+def _down_triangle_path() -> QtGui.QPainterPath:
+    path = QtGui.QPainterPath()
+    path.moveTo(-0.5, -0.6)
+    path.lineTo(0.5, -0.6)
+    path.lineTo(0.0, 0.6)
+    path.closeSubpath()
+    return path
 
 
 class SeekOnlyViewBox(pg.ViewBox):
@@ -14,6 +29,7 @@ class SeekOnlyViewBox(pg.ViewBox):
         self.bus = bus              # def seek_cb(t: float) -> None
         self._get_duration = get_duration    # def get_duration() -> float
         self.setMouseEnabled(x=False, y=False)
+        self.setDefaultPadding(0.0)
         if hasattr(self, 'setWheelEnabled'):
             self.setWheelEnabled(False)
 
@@ -58,6 +74,11 @@ class OverviewWidget(QtWidgets.QWidget):
         self.model = model
 
         self.canvas = pg.GraphicsLayoutWidget(show=True)
+        try:
+            self.canvas.ci.layout.setContentsMargins(8, 8, 8, 8)
+            self.canvas.ci.layout.setSpacing(0)
+        except Exception:
+            pass
         self.vb = SeekOnlyViewBox(
             bus= bus,
             get_duration=lambda: self.duration,
@@ -68,9 +89,14 @@ class OverviewWidget(QtWidgets.QWidget):
         self.p.hideButtons()
         self.p.hideAxis("left")
         self.p.hideAxis("bottom")
+        try:
+            self.p.layout.setContentsMargins(0, 0, 0, 0)
+            self.p.layout.setSpacing(0)
+        except Exception:
+            pass
 
         layout = QtWidgets.QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setContentsMargins(0, 6, 0, 6)
         layout.setSpacing(4)
         layout.addWidget(self.canvas, 1)
 
@@ -87,15 +113,18 @@ class OverviewWidget(QtWidgets.QWidget):
         self.played_overlay = QtWidgets.QGraphicsRectItem()
         self.played_overlay.setPen(pg.mkPen(None))
         self.played_overlay.setBrush(pg.mkBrush(0, 0, 0, 140))
-        self.played_overlay.setZValue(2)
+        self.played_overlay.setZValue(4)
         self.p.addItem(self.played_overlay)
-        self.segment_regions: list[pg.LinearRegionItem] = []
-        self.segment_colors = [
-            (70, 130, 180, 40),
-            (46, 139, 87, 40),
-            (255, 140, 0, 40),
-            (138, 43, 226, 40),
-        ]
+        self.bpm_strip_items: list[tuple[pg.TextItem, float, float, str]] = []
+        self.bpm_strip_bg = QtWidgets.QGraphicsRectItem()
+        self.bpm_strip_bg.setPen(pg.mkPen(None))
+        self.bpm_strip_bg.setBrush(pg.mkBrush(0, 0, 0, 235))
+        self.bpm_strip_bg.setZValue(3)
+        self.p.addItem(self.bpm_strip_bg)
+        self.bpm_strip_boundaries = QtWidgets.QGraphicsPathItem(); self.p.addItem(self.bpm_strip_boundaries)
+        line_pen = pg.mkPen((245, 245, 245, 230), width=1.2, cosmetic=True)
+        self.bpm_strip_boundaries.setPen(line_pen)
+        self.bpm_strip_boundaries.setZValue(8)
         self.jump_items: list[tuple[pg.BarGraphItem, pg.ScatterPlotItem, pg.TextItem]] = []
         self.img_key  = pg.ImageItem(); self.p.addItem(self.img_key)
         if hasattr(self.img_key, "setAutoDownsample"):
@@ -113,23 +142,41 @@ class OverviewWidget(QtWidgets.QWidget):
         self.phrase_boundaries.setZValue(7)
         self.phrase_labels: list[pg.TextItem] = []
         self._phrase_visible = True
-        self._phrase_band_h = 0.16
+        self._phrase_band_h = 0.208
         self._phrase_font = QtGui.QFont()
         self._phrase_font.setPointSizeF(7.0)
         self._phrase_font.setBold(True)
+        self._bpm_font = QtGui.QFont()
+        self._bpm_font.setPointSizeF(8.0)
+        self._bpm_font.setBold(True)
+        self.cue_point_markers = pg.ScatterPlotItem(
+            size=7,
+            pen=pg.mkPen((255, 40, 40), width=1.0),
+            brush=pg.mkBrush(255, 40, 40, 240),
+            pxMode=True,
+            symbol=_down_triangle_path(),
+        )
+        self.cue_point_markers.setZValue(25)
+        self.p.addItem(self.cue_point_markers)
 
 
         self.line_now = pg.InfiniteLine(angle=90, pen=pg.mkPen((255,200,50), width=2)); self.p.addItem(self.line_now)
         self.line_now.setZValue(30)
 
         self.duration = 0.0
+        self.SEGMENT_H = 0.10
+        self.BPM_H = 0.55
         self.KEY_H = 0.25
+        self.WAVE_H = 1.15
         self.CUE_H = 0.1
         self._wave_preview_source = None
         self._wave_preview_cache = None
         self._wave_levels = (0, 255)
-        self._wave_top = 1.0
+        self._wave_top = self.KEY_H + self.WAVE_H
         self._tempo_segments = None
+        self._segment_bottom = -(self.SEGMENT_H + self.BPM_H)
+        self._bpm_bottom = -self.BPM_H
+        self._key_bottom = 0.0
         self._cue_label_y = 0.95
         self._cue_block_bottom = 0.9
         self._cue_block_height = 0.1
@@ -165,15 +212,20 @@ class OverviewWidget(QtWidgets.QWidget):
         features = self.model.features
         self.duration = float(self.model.duration_sec or 0.0)
         self._current_time = 0.0
-        total_height = max(1.0, self.KEY_H + 1.0)
-        self.p.setYRange(0.0, total_height + 0.02, padding=0.0)
+        strip_height = self.SEGMENT_H + self.BPM_H
+        total_height = max(1.0, self.KEY_H + self.WAVE_H)
+        self.p.setYRange(-strip_height, total_height, padding=0.0)
         self.p.setXRange(0.0, max(0.1, self.duration), padding=0.0)
 
+        self._segment_bottom = -strip_height
+        self._bpm_bottom = -self.BPM_H
+        self._key_bottom = 0.0
+        self.bpm_strip_bg.setRect(QtCore.QRectF(0.0, self._segment_bottom, self.duration, strip_height))
         wave_bottom = self.KEY_H
-        wave_top = wave_bottom + 1.0
+        wave_top = wave_bottom + self.WAVE_H
         self._wave_bottom = wave_bottom
         self._wave_top = wave_top
-        self._selection_marker_y = wave_top + 0.012
+        self._selection_marker_y = wave_top - 0.012
         self._cue_block_height = 0.1
         self._cue_block_bottom = wave_top - self._cue_block_height
         self._cue_label_y = self._cue_block_bottom
@@ -203,17 +255,27 @@ class OverviewWidget(QtWidgets.QWidget):
                     key_arr = np.clip(key_arr, 0, 255).astype(np.uint8)
             key_img = np.ascontiguousarray(key_arr)
             self.img_key.setImage(key_img, autoLevels=False, levels=self._wave_levels)
-            self.img_key.setRect(QtCore.QRectF(0.0, 0.0, self.duration, self.KEY_H))
+            self.img_key.setRect(QtCore.QRectF(0.0, self._key_bottom, self.duration, self.KEY_H))
         jump_pairs = extract_jump_cue_pairs(features)
         self._jump_pairs = jump_pairs
         self._jump_cues, self._jump_links = extract_jump_cue_graph(features)
         self._render_jump_cues(self._jump_cues)
         self._tempo_segments = features.get("tempo_segments")
-        self._render_segments(self._tempo_segments)
+        self._render_tempo_strips(self._tempo_segments)
         self._render_phrases()
+        self._render_cue_points()
         self._apply_selection_graphics()
         self._clear_jump_arrow()
         self._update_played_overlay()
+
+    def _render_cue_points(self) -> None:
+        points = extract_cue_points(self.model.features)
+        if not points:
+            self.cue_point_markers.setData([], [])
+            return
+        times = [float(point["time_sec"]) for point in points]
+        y = self._wave_top - 0.05
+        self.cue_point_markers.setData(times, [y] * len(times))
     
     def _on_jumpcue_updated(self) -> None:
         feats = self.model.features
@@ -234,7 +296,7 @@ class OverviewWidget(QtWidgets.QWidget):
         if arr.dtype != np.uint8:
             arr = np.clip(arr, 0, 255).astype(np.uint8)
         self.img_key.setImage(arr, autoLevels=False, levels=self._wave_levels)
-        self.img_key.setRect(QtCore.QRectF(0.0, 0.0, self.duration, self.KEY_H))
+        self.img_key.setRect(QtCore.QRectF(0.0, self._key_bottom, self.duration, self.KEY_H))
 
     # events
     def _on_time(self, t: float):
@@ -245,6 +307,9 @@ class OverviewWidget(QtWidgets.QWidget):
     def _on_duration(self, d: float):
         self.duration = float(d)
         self.p.setXRange(0.0, max(0.1, self.duration), padding=0.0)
+        self.bpm_strip_bg.setRect(
+            QtCore.QRectF(0.0, self._segment_bottom, self.duration, self.SEGMENT_H + self.BPM_H)
+        )
         self._update_played_overlay()
 
     def _on_jump_arm(self, payload) -> None:
@@ -438,52 +503,156 @@ class OverviewWidget(QtWidgets.QWidget):
     def _on_beatgrid_updated(self) -> None:
         segments = self.model.features.get("tempo_segments")
         self._tempo_segments = segments
-        self._render_segments(self._tempo_segments)
+        self._render_tempo_strips(self._tempo_segments)
         self._apply_selection_graphics()
 
-    def _render_segments(self, tempo_segments) -> None:
-        for region in self.segment_regions:
-            try:
-                self.p.removeItem(region)
-            except Exception:
-                pass
-        self.segment_regions.clear()
-
-        if tempo_segments is None:
-            return
-        try:
-            arr = np.asarray(tempo_segments, dtype=float)
-        except Exception:
-            return
-        if arr.ndim == 1:
-            if arr.size % 3 != 0:
-                return
-            arr = arr.reshape((-1, 3))
-        if arr.ndim < 2 or arr.shape[1] < 2:
+    def _render_tempo_strips(self, tempo_segments) -> None:
+        self._clear_tempo_strip_items()
+        arr = self._normalize_tempo_segments(tempo_segments)
+        self.bpm_strip_bg.setRect(
+            QtCore.QRectF(0.0, self._segment_bottom, self.duration, self.SEGMENT_H + self.BPM_H)
+        )
+        if arr.size == 0:
             return
 
         total = max(self.duration, 0.0)
         if total <= 0.0:
             return
 
-        for idx, seg in enumerate(arr):
+        clipped = []
+        for seg in arr:
             start = float(seg[0])
             end = float(seg[1])
-            if not (np.isfinite(start) and np.isfinite(end)):
-                continue
-            if end <= start:
+            bpm = float(seg[2])
+            if not (np.isfinite(start) and np.isfinite(end) and np.isfinite(bpm)):
                 continue
             start = float(np.clip(start, 0.0, total))
             end = float(np.clip(end, 0.0, total))
             if end - start <= 1e-3:
                 continue
-            region = pg.LinearRegionItem(values=(start, end))
-            region.setMovable(False)
-            color = self.segment_colors[idx % len(self.segment_colors)]
-            region.setBrush(pg.mkBrush(*color))
-            region.setZValue(4)
-            self.p.addItem(region)
-            self.segment_regions.append(region)
+            clipped.append((start, end, bpm))
+        if not clipped:
+            return
+
+        self._render_combined_tempo_strip(
+            clipped,
+            self._merge_bpm_display_segments(clipped),
+        )
+
+    def _clear_tempo_strip_items(self) -> None:
+        for label, _start, _end, _text in self.bpm_strip_items:
+            try:
+                self.p.removeItem(label)
+            except Exception:
+                pass
+        self.bpm_strip_items.clear()
+        self.bpm_strip_boundaries.setPath(QtGui.QPainterPath())
+
+    @staticmethod
+    def _normalize_tempo_segments(tempo_segments) -> np.ndarray:
+        if tempo_segments is None:
+            return np.empty((0, 3), dtype=float)
+        try:
+            arr = np.asarray(tempo_segments, dtype=float)
+        except Exception:
+            return np.empty((0, 3), dtype=float)
+        if arr.ndim == 1:
+            cols = 5 if arr.size % 5 == 0 else 4 if arr.size % 4 == 0 else 3 if arr.size % 3 == 0 else 0
+            if cols == 0:
+                return np.empty((0, 3), dtype=float)
+            arr = arr.reshape((-1, cols))
+        if arr.ndim != 2 or arr.shape[1] < 3:
+            return np.empty((0, 3), dtype=float)
+        return arr[:, :3].astype(float, copy=False)
+
+    @staticmethod
+    def _format_bpm_label(bpm: float) -> str:
+        rounded = round(float(bpm))
+        if abs(float(bpm) - rounded) <= 0.05:
+            return str(int(rounded))
+        return f"{float(bpm):.1f}"
+
+    def _merge_bpm_display_segments(self, segments: list[tuple[float, float, float]]) -> list[tuple[float, float, str]]:
+        merged: list[tuple[float, float, str]] = []
+        for start, end, bpm in segments:
+            label = self._format_bpm_label(bpm)
+            if merged and merged[-1][2] == label and abs(start - merged[-1][1]) <= 1e-3:
+                prev_start, _prev_end, prev_label = merged[-1]
+                merged[-1] = (prev_start, end, prev_label)
+            else:
+                merged.append((start, end, label))
+        return merged
+
+    def _render_combined_tempo_strip(
+        self,
+        segments: list[tuple[float, float, float]],
+        bpm_segments: list[tuple[float, float, str]],
+    ) -> None:
+        strip_h = self.SEGMENT_H + self.BPM_H
+        line_y = self._segment_bottom + strip_h * 0.34
+        tick_top = self._segment_bottom + strip_h * 0.98
+        tick_bottom = self._segment_bottom + strip_h * 0.02
+        label_y = self._segment_bottom + strip_h * 0.73
+
+        self.bpm_strip_boundaries.setPath(
+            self._combined_tempo_line_path(segments, line_y, tick_top, tick_bottom)
+        )
+
+        label_pad = max(float(self.duration), 1.0) * 0.003
+        for start, end, label_text in bpm_segments:
+            label_x = min(end, start + label_pad)
+            label = pg.TextItem(label_text, color=(245, 245, 245), anchor=(0.0, 0.5))
+            label.setFont(self._bpm_font)
+            label.setZValue(10)
+            label.setPos(label_x, label_y)
+            label.setVisible(self._strip_label_fits(start, end, label_text))
+            self.p.addItem(label)
+            self.bpm_strip_items.append((label, start, end, label_text))
+
+    def _combined_tempo_line_path(
+        self,
+        segments: list[tuple[float, float, float]],
+        y: float,
+        tick_top: float,
+        tick_bottom: float,
+    ) -> QtGui.QPainterPath:
+        path = QtGui.QPainterPath()
+        if not segments:
+            return path
+
+        for start, end, _bpm in segments:
+            if end <= start:
+                continue
+            path.moveTo(float(start), float(y))
+            path.lineTo(float(end), float(y))
+
+        first_start = float(segments[0][0])
+        last_end = float(segments[-1][1])
+        self._add_tempo_tick(path, first_start, tick_top, tick_bottom)
+        for idx in range(1, len(segments)):
+            prev_start, prev_end, prev_bpm = segments[idx - 1]
+            start, end, bpm = segments[idx]
+            if abs(float(start) - float(prev_end)) > 1e-3:
+                self._add_tempo_tick(path, float(prev_end), tick_top, tick_bottom)
+                self._add_tempo_tick(path, float(start), tick_top, tick_bottom)
+                continue
+            if self._format_bpm_label(prev_bpm) == self._format_bpm_label(bpm):
+                self._add_tempo_tick(path, float(start), y, tick_bottom)
+            else:
+                self._add_tempo_tick(path, float(start), tick_top, tick_bottom)
+        self._add_tempo_tick(path, last_end, tick_top, tick_bottom)
+        return path
+
+    @staticmethod
+    def _add_tempo_tick(path: QtGui.QPainterPath, x: float, y0: float, y1: float) -> None:
+        path.moveTo(float(x), float(y0))
+        path.lineTo(float(x), float(y1))
+
+    def _strip_label_fits(self, start: float, end: float, label: str) -> bool:
+        duration = max(float(self.duration), 1e-6)
+        view_w = max(float(self.canvas.width()), 1.0)
+        px_w = (float(end) - float(start)) / duration * view_w
+        return px_w >= max(28.0, 8.0 * len(label))
 
     def set_phrase_visible(self, visible: bool) -> None:
         self._phrase_visible = bool(visible)
@@ -494,9 +663,10 @@ class OverviewWidget(QtWidgets.QWidget):
 
     def _render_phrases(self) -> None:
         feats = self.model.features or {}
-        phrases = extract_phrase_segments(feats) if self._phrase_visible else []
+        raw_phrases = extract_phrase_segments(feats) if self._phrase_visible else []
+        phrases = merge_fill_phrases_for_display(raw_phrases)
         numbered = abbreviate_phrase_labels(phrases)
-        band_bottom = self.KEY_H
+        band_bottom = self._wave_bottom
         band_h = self._phrase_band_h
         strip = (
             build_phrase_strip_buffer(phrases, self.duration)
@@ -660,9 +830,22 @@ class OverviewWidget(QtWidgets.QWidget):
         if self.played_overlay is None:
             return
         width = float(np.clip(self._current_time, 0.0, max(self.duration, 0.0)))
-        height = max(0.0, self._wave_top)
-        self.played_overlay.setRect(QtCore.QRectF(0.0, 0.0, width, height))
+        bottom = self._segment_bottom
+        top = max(bottom, self._wave_top)
+        height = top - bottom
+        self.played_overlay.setRect(QtCore.QRectF(0.0, bottom, width, height))
         self.played_overlay.setVisible(width > 0.0 and height > 0.0)
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        QtCore.QTimer.singleShot(0, self._refresh_bpm_label_visibility)
+
+    def _refresh_bpm_label_visibility(self) -> None:
+        for label, start, end, label_text in self.bpm_strip_items:
+            if not label_text:
+                label.setVisible(False)
+                continue
+            label.setVisible(self._strip_label_fits(start, end, label_text))
 
     # seeking by click/drag
     def _map_scene_pos_to_time(self, ev) -> float | None:

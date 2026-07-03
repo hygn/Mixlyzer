@@ -18,6 +18,10 @@ a = Analysis(
             '../assets/weights/downbeat_feature_weights.json',
             'assets/weights',
         ),
+        (
+            '../assets/weights/phrase_analyzer.npz',
+            'assets/weights',
+        ),
     ],
     hiddenimports=[],
     hookspath=[],
