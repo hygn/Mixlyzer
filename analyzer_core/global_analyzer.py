@@ -11,7 +11,9 @@ from PySide6 import QtGui
 from typing import Optional
 from analyzer_core.key.key import *
 from analyzer_core.beat.beat import *
-from analyzer_core.beat.beat import _compute_odf, collapse_short_sandwiched_tempo_segments
+from analyzer_core.beat.beat import collapse_short_sandwiched_tempo_segments
+from analyzer_core.beat.frame_features import extract_frame_features
+from analyzer_core.beat.learned_onset import compute_beat_odf
 from analyzer_core.self_correlation.JumpCUE import JumpCueEngine
 from analyzer_core.cue_and_phrase import detect_phrase_segments
 from utils.jump_cues import build_jump_cues_np
@@ -381,7 +383,17 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
     yield {"status": "tempo"}
     print("[Tempo] Analysis Initalized")
     taskmgr.updatetask(taskid, "Tempo Analyzing", 0.30)
-    odf_cached, hop_t_cached = _compute_odf(y_perc, global_sr, gcf.bpm_hop_length)
+    # Frame features are analyzed once: the learned onset (beat tracking) and the
+    # downbeat model (after pooling to beats) both use them.
+    frame_features = extract_frame_features(samp, int(global_sr), y_perc, y_harm)
+    odf_cached, hop_t_cached = compute_beat_odf(
+        str(gcf.onset_source),
+        frame_features,
+        y_perc,
+        int(global_sr),
+        gcf.bpm_hop_length,
+        str(gcf.onset_parameter_path).strip(),
+    )
     if gcf.bpm_dynamic:
         cur_score = 0
         synced_bpm_best = {}
@@ -393,7 +405,6 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
                     gcf.bpm_hop_length,
                     gcf.bpm_hop_length,
                     audio=y_perc,
-                    audio_raw=samp,
                     win_s=gcf.bpm_win_length*win_multiplier/1000,
                     step_s=0.25,
                     bpm_bounds=(gcf.bpm_min,gcf.bpm_max),
@@ -406,7 +417,6 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
                     gcf.bpm_hop_length,
                     gcf.bpm_hop_length,
                     audio=y_perc,
-                    audio_raw=samp,
                     win_s=gcf.bpm_win_length/1000,
                     step_s=0.1,
                     bpm_bounds=(gcf.bpm_min,gcf.bpm_max),
@@ -423,7 +433,6 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
             gcf.bpm_hop_length,
             gcf.bpm_hop_length,
             audio=y_perc,
-            audio_raw=samp,
             win_s=gcf.bpm_win_length/1000,
             step_s=0.1,
             bpm_bounds=(gcf.bpm_min,gcf.bpm_max),
@@ -474,6 +483,46 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
     features["tempo_segments"] = seg_arr
     print("[Tempo] Analysis Finished")
 
+    # Beat-phase correction: move the grid by 0, 1/4, 1/2 or 3/4 beat to the phase
+    # the learned 16th-cell model scores highest over the whole track.
+    if bool(getattr(gcf, "beat_phase_correction", True)) and seg_arr.shape[0] > 0:
+        yield {"status": "beat_phase"}
+        taskmgr.updatetask(taskid, "Beat Phase Analyzing", 0.42)
+        try:
+            from analyzer_core.beat.beat_phase import detect_beat_phase, shift_beat_grid
+
+            beats_now = np.asarray(features.get("beats_time_sec"), dtype=float)
+            if beats_now.size >= 16:
+                # getattr: a config object from an app started before this setting existed lacks it.
+                weight_path = str(
+                    getattr(gcf, "beat_phase_parameter_path", "") or "assets/weights/beat_phase_weights.json"
+                ).strip()
+                decision = detect_beat_phase(frame_features, beats_now, weight_path)
+                print(
+                    f"[BeatPhase] shift {decision.shift_beats:.2f} beat, logit sums "
+                    f"{np.round(decision.logit_sums, 1).tolist()}, margin/beat {decision.margin:.3f}"
+                )
+                if decision.shift_index:
+                    new_beats, seg_arr = shift_beat_grid(
+                        beats_now, seg_arr, decision.shift_beats, float(features["duration_sec"])
+                    )
+                    seg_arr = seg_arr.astype(np.float32)
+                    features["beats_time_sec"] = new_beats
+                    features["tempo_segments"] = seg_arr
+                    # Beat-synchronous chroma reads the beats as ODF frames (before the grid offset).
+                    odf_len = len(synced_bpm["odf"])
+                    synced_bpm["beats"] = np.clip(
+                        np.round(
+                            (new_beats - float(gcf.beatgrid_offset_msec) / 1000.0) / float(synced_bpm["hop_t"])
+                        ).astype(np.int32),
+                        0,
+                        max(0, odf_len - 1),
+                    )
+        except Exception as exc:
+            import traceback
+            print(f"[BeatPhase] correction skipped: {exc}")
+            traceback.print_exc()
+
     # Downbeat-offset realignment: assign the bar-start beat (downbeat) to each
     # segment where the detected downbeat phase changes. Beat timings are kept.
     yield {"status": "downbeat"}
@@ -495,6 +544,7 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
                 beats_for_db,
                 method=downbeat_method,
                 weight_path=downbeat_parameter_path,
+                frames=frame_features,
             )
             print(f"[Downbeat] method={downbeat_method} beats={beats_for_db.size} detected offset segments={len(db_segments)}")
             _head = np.round(beats_for_db[:6], 3).tolist()

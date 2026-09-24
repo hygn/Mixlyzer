@@ -31,8 +31,10 @@ from utils.atomic_io import atomic_output_path, atomic_write_json
 
 
 ProgressCallback = Callable[[int, str], None]
-DOWNBEAT_FEATURE_CACHE_FORMAT = "mixlyzer_downbeat_feature_cache_v1"
+DOWNBEAT_FEATURE_CACHE_FORMAT = "mixlyzer_downbeat_feature_cache_v4"
 L2_CANDIDATES = (0.0003, 0.001, 0.003, 0.01, 0.03, 0.1)
+# Used when cross-validation is skipped (cv_folds < 2): the L2 chosen by the last cross-validated fit.
+DEFAULT_L2_STRENGTH = 0.001
 
 
 @dataclass(frozen=True)
@@ -40,8 +42,13 @@ class DownbeatOptimizationRequest:
     library_dir: Path
     cache_dir: Path
     output_path: Path
+    use_hpss: bool = True
     rebuild_cache: bool = False
+    # < 2 skips cross-validation: one fit on all tracks with l2_strength.
     cv_folds: int = 5
+    # With cross-validation: True picks the L2 among L2_CANDIDATES, False evaluates l2_strength only.
+    l2_sweep: bool = True
+    l2_strength: float = DEFAULT_L2_STRENGTH
     max_cache_workers: int | None = None
 
 
@@ -54,6 +61,8 @@ class DownbeatOptimizationResult:
     cross_entropy: float
     top1_accuracy: float
     skipped_tracks: tuple[SkippedOptimizationTrack, ...] = ()
+    # False: the metrics are measured on the training tracks (cross-validation skipped).
+    cross_validated: bool = True
 
 
 def _list_4_4_tracks(
@@ -127,7 +136,7 @@ def _cache_path(cache_dir: Path, uid: str) -> Path:
 
 
 def _read_current_cache(
-    cache_path: Path, track: dict[str, object]
+    cache_path: Path, track: dict[str, object], use_hpss: bool
 ) -> tuple[np.ndarray, np.ndarray] | None:
     if not cache_path.is_file():
         return None
@@ -138,6 +147,7 @@ def _read_current_cache(
                 "beat_times_sec",
                 "feature_raw",
                 "feature_names",
+                "use_hpss",
                 "audio_mtime_ns",
                 "analysis_mtime_ns",
             }:
@@ -149,6 +159,7 @@ def _read_current_cache(
                 == DOWNBEAT_FEATURE_CACHE_FORMAT
                 and tuple(np.asarray(archive["feature_names"]).astype(str))
                 == DOWNBEAT_FEATURE_NAMES
+                and bool(np.asarray(archive["use_hpss"]).item()) == bool(use_hpss)
                 and beats.ndim == 1
                 and features.shape == (beats.size, len(DOWNBEAT_FEATURE_NAMES))
                 and features.dtype == np.dtype(np.float32)
@@ -167,8 +178,8 @@ def _read_current_cache(
     return None
 
 
-def _cache_is_current(cache_path: Path, track: dict[str, object]) -> bool:
-    return _read_current_cache(cache_path, track) is not None
+def _cache_is_current(cache_path: Path, track: dict[str, object], use_hpss: bool) -> bool:
+    return _read_current_cache(cache_path, track, use_hpss) is not None
 
 
 def _write_cache_atomic(
@@ -176,6 +187,7 @@ def _write_cache_atomic(
     track: dict[str, object],
     beats: np.ndarray,
     features: np.ndarray,
+    use_hpss: bool,
 ) -> None:
     with atomic_output_path(cache_path) as temporary:
         np.savez_compressed(
@@ -184,6 +196,7 @@ def _write_cache_atomic(
             beat_times_sec=np.asarray(beats, dtype=np.float64),
             feature_raw=np.asarray(features, dtype=np.float32),
             feature_names=np.asarray(DOWNBEAT_FEATURE_NAMES, dtype="U64"),
+            use_hpss=np.bool_(use_hpss),
             audio_mtime_ns=np.int64(Path(track["audio_path"]).stat().st_mtime_ns),
             analysis_mtime_ns=np.int64(
                 Path(track["analysis_path"]).stat().st_mtime_ns
@@ -192,7 +205,7 @@ def _write_cache_atomic(
 
 
 def _build_track_cache(
-    track: dict[str, object], cache_dir_text: str
+    track: dict[str, object], cache_dir_text: str, use_hpss: bool
 ) -> str:
     """Process-worker entry point for one downbeat feature cache."""
 
@@ -205,14 +218,22 @@ def _build_track_cache(
         threadpool_limits = None
 
     def build() -> None:
+        import librosa
+
         sample_rate = int(track["sample_rate"])
-        audio = decode_to_memmap(str(track["audio_path"]), sample_rate, 1).reshape(-1)
+        # Same input as the analyzer: stereo decode averaged to mono and its
+        # HPSS parts.
+        stereo = decode_to_memmap(str(track["audio_path"]), sample_rate, 2).reshape(-1, 2)
+        audio = np.ascontiguousarray(stereo.mean(axis=1), dtype=np.float32)
+        harmonic, percussive = librosa.effects.hpss(audio) if use_hpss else (audio, audio)
         beats, features = extract_downbeat_feature_matrix(
             audio,
             sample_rate,
             np.asarray(track["beats"], dtype=np.float64),
+            percussive=percussive,
+            harmonic=harmonic,
         )
-        _write_cache_atomic(cache_path, track, beats, features)
+        _write_cache_atomic(cache_path, track, beats, features, use_hpss)
 
     if threadpool_limits is None:
         build()
@@ -223,9 +244,9 @@ def _build_track_cache(
 
 
 def _load_current_cache(
-    cache_path: Path, track: dict[str, object]
+    cache_path: Path, track: dict[str, object], use_hpss: bool
 ) -> tuple[np.ndarray, np.ndarray]:
-    cached = _read_current_cache(cache_path, track)
+    cached = _read_current_cache(cache_path, track, use_hpss)
     if cached is None:
         raise ValueError(f"Downbeat feature cache is not current: {cache_path}")
     return cached
@@ -324,6 +345,7 @@ def _cross_validate(
     tracks: Sequence[dict[str, object]],
     folds: int,
     progress: ProgressCallback | None,
+    candidates: Sequence[float] = L2_CANDIDATES,
 ) -> tuple[float, dict[str, object]]:
     n_splits = min(int(folds), len(tracks))
     if n_splits < 2:
@@ -334,10 +356,10 @@ def _cross_validate(
             indices, np.zeros(len(tracks), dtype=np.int8), groups=indices
         )
     )
-    total_fits = len(L2_CANDIDATES) * len(splits)
+    total_fits = len(candidates) * len(splits)
     completed_fits = 0
     best: tuple[tuple[float, float], float, dict[str, object]] | None = None
-    for l2_strength in L2_CANDIDATES:
+    for l2_strength in candidates:
         fold_rows = []
         total_bars = 0
         weighted_loss = 0.0
@@ -414,7 +436,9 @@ def optimize_downbeat_parameters(
         track
         for track in tracks_src
         if request.rebuild_cache
-        or not _cache_is_current(_cache_path(cache_dir, str(track["uid"])), track)
+        or not _cache_is_current(
+            _cache_path(cache_dir, str(track["uid"])), track, bool(request.use_hpss)
+        )
     ]
     total = len(tracks_src)
     cached_count = total - len(cache_jobs)
@@ -437,6 +461,7 @@ def optimize_downbeat_parameters(
                     _build_track_cache,
                     track,
                     str(cache_dir),
+                    bool(request.use_hpss),
                 ): track
                 for track in cache_jobs
             }
@@ -469,7 +494,7 @@ def optimize_downbeat_parameters(
     for index, track in enumerate(tracks_src, start=1):
         try:
             beats, feature_raw = _load_current_cache(
-                _cache_path(cache_dir, str(track["uid"])), track
+                _cache_path(cache_dir, str(track["uid"])), track, bool(request.use_hpss)
             )
             bar_groups = _complete_bar_groups(
                 beats, np.asarray(track["segments"], dtype=np.float64)
@@ -496,16 +521,24 @@ def optimize_downbeat_parameters(
     if len(prepared) < 3:
         raise RuntimeError("At least 3 tracks with complete annotated 4/4 bars are required")
 
-    if optimize_progress is not None:
-        optimize_progress(0, "Selecting regularization by cross-validation")
-    l2_strength, cross_validation = _cross_validate(
-        prepared, request.cv_folds, optimize_progress
-    )
+    cross_validated = int(request.cv_folds) >= 2
+    if cross_validated:
+        if optimize_progress is not None:
+            optimize_progress(0, "Selecting regularization by cross-validation")
+        l2_strength, cross_validation = _cross_validate(
+            prepared,
+            request.cv_folds,
+            optimize_progress,
+            L2_CANDIDATES if request.l2_sweep else (float(request.l2_strength),),
+        )
+    else:
+        l2_strength, cross_validation = float(request.l2_strength), None
     all_groups = _training_groups(prepared, np.arange(len(prepared)))
     if optimize_progress is not None:
         optimize_progress(90, "Fitting final downbeat model")
     weights, optimizer_diagnostics = _fit_conditional_softmax(all_groups, l2_strength)
     training_metrics = _group_metrics(all_groups, weights)
+    metrics = cross_validation if cross_validated else training_metrics
     report = {
         "algorithm": "downbeat_conditional_softmax_features_v1",
         "profile": "downbeat-feature-probability",
@@ -537,7 +570,8 @@ def optimize_downbeat_parameters(
         track_count=len(prepared),
         bar_count=int(all_groups.shape[0]),
         selected_l2_strength=float(l2_strength),
-        cross_entropy=float(cross_validation["cross_entropy"]),
-        top1_accuracy=float(cross_validation["top1_accuracy"]),
+        cross_entropy=float(metrics["cross_entropy"]),
+        top1_accuracy=float(metrics["top1_accuracy"]),
         skipped_tracks=tuple(ignored),
+        cross_validated=cross_validated,
     )

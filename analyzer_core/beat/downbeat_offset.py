@@ -6,11 +6,17 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-import librosa
 import numpy as np
 from scipy.ndimage import gaussian_filter1d
 from scipy.special import expit
 
+from analyzer_core.beat.frame_features import FrameFeatures, extract_frame_features
+from analyzer_core.beat.periodicity import (
+    PERIODICITY_CURVE_NAMES,
+    local_periodicity,
+    periodicity_curves,
+    rotate,
+)
 from core.resource_paths import resource_path
 
 
@@ -114,15 +120,45 @@ def _resample_patch(
 # Per-beat features and their SSM metric, in a fixed order. "cos" -> cosine
 # SSM (tonal/normalized features), "rbf" -> RBF SSM (magnitude features). The
 # log-mel "timbre" feature was dropped: a library-wide ablation showed it hurt
-# downbeat-phase detection (lower F1 when included).
+# downbeat-phase detection (lower F1 when included). Spectral contrast was
+# dropped too (no effect on the downbeat or the learned onset).
 _FEATURE_SPECS: tuple[tuple[str, str], ...] = (
     ("harmonic", "cos"),      # CQT chroma -- chord changes on the downbeat
     ("rhythm", "rbf"),        # onset bands + rms + band ratios
     ("bass_chroma", "cos"),   # low-register chroma -- root/bass changes
-    ("contrast", "rbf"),      # spectral contrast
     ("mfcc", "rbf"),          # MFCC timbral texture
     ("tonnetz", "cos"),       # tonal centroid (complements chroma)
+    ("melody", "cos"),        # melody-register chroma -- melodic phrase repetition
 )
+# Onset curves pooled per beat: percussive onset, harmonic (note / chord)
+# onset, the kick band of the percussive flux and melody note starts.
+_ONSET_SOURCES: tuple[str, ...] = ("onset", "harmonic_onset", "kick_onset", "melody_onset")
+# Bar-level periodicity: every shared onset curve's local pulse at 4 and 2 beats
+# over +-8 beats, rotated so this beat is the cycle start (bar / backbeat
+# patterns of each instrument, like a learned drum-pattern template).
+_BAR_PERIODS_BEATS: tuple[float, ...] = (4.0, 2.0)
+_BAR_WINDOW_BEATS = 8.0
+
+
+def _onset_column_names(source: str) -> tuple[str, ...]:
+    if source == "onset":
+        return (
+            "onset_strength",
+            "onset_local_accent_4beat",
+            "onset_local_accent_8beat",
+            "onset_attack",
+            "pre_downbeat_fill",
+            "onset_four_beat_recurrence",
+        )
+    return (
+        f"{source}_strength",
+        f"{source}_local_accent_4beat",
+        f"{source}_local_accent_8beat",
+        f"{source}_attack",
+        f"{source}_pre_downbeat_fill",
+        f"{source}_four_beat_recurrence",
+    )
+
 
 _DOWNBEAT_FEATURE_NAMES = tuple(
     feature_name
@@ -136,15 +172,16 @@ _DOWNBEAT_FEATURE_NAMES = tuple(
         f"{representation}_local_distinctiveness",
         f"{representation}_four_beat_recurrence_advantage",
     )
-) + (
-    "onset_strength",
-    "onset_local_accent_4beat",
-    "onset_local_accent_8beat",
-    "onset_attack",
-    "pre_downbeat_fill",
-    "onset_four_beat_recurrence",
+) + _onset_column_names("onset") + (
     "rhythm_patch_energy",
     "rhythm_patch_local_accent",
+) + _onset_column_names("harmonic_onset") + _onset_column_names("kick_onset") + _onset_column_names(
+    "melody_onset"
+) + tuple(
+    f"bar_periodicity_{curve}_{period:g}beat_{part}"
+    for part in ("in_phase", "quadrature")
+    for curve in PERIODICITY_CURVE_NAMES
+    for period in _BAR_PERIODS_BEATS
 )
 _DEFAULT_WEIGHT_PATH = resource_path(
     "assets/weights/downbeat_feature_weights.json"
@@ -180,99 +217,38 @@ def _beat_patch_rows(
 
 
 def _extract_beat_features(
-    audio: np.ndarray,
-    sample_rate: int,
+    frames: FrameFeatures,
     beat_times_sec: np.ndarray,
-    hop_length: int,
-    n_fft: int,
-    n_mels: int,
     beat_phase_bins: int,
     harmonic_phase_bins: int,
-) -> tuple[np.ndarray, list[np.ndarray]]:
-    """Return ``(beat_starts, rows)`` where ``rows`` are the per-beat feature
-    matrices in :data:`_FEATURE_SPECS` order."""
-    duration_sec = audio.size / float(sample_rate)
-    beat_starts, beat_ends = _beat_ranges(beat_times_sec, duration_sec)
+) -> tuple[np.ndarray, np.ndarray, list[np.ndarray]]:
+    """Pool the shared frame features to beats.
 
-    stft = librosa.stft(
-        y=audio, n_fft=n_fft, hop_length=hop_length,
-        window="hann", center=True, pad_mode="reflect",
-    )
-    magnitude = np.abs(stft).astype(np.float32)
-    power = np.square(magnitude, dtype=np.float32)
-    frame_times = librosa.frames_to_time(
-        np.arange(magnitude.shape[1]), sr=sample_rate, hop_length=hop_length,
-    ).astype(np.float32)
-
-    log_mel = librosa.power_to_db(
-        librosa.feature.melspectrogram(
-            S=power, sr=sample_rate, n_mels=n_mels,
-            fmin=30.0, fmax=sample_rate / 2.0, norm="slaney", power=2.0,
-        ),
-        ref=np.max, top_db=100.0,
-    ).astype(np.float32)
-
-    # Sharp CQT chroma (not CENS, which over-smooths chord-change timing).
-    chroma = librosa.feature.chroma_cqt(
-        y=audio, sr=sample_rate, hop_length=hop_length, n_chroma=12,
-    ).astype(np.float32)
-    bass_chroma = librosa.feature.chroma_cqt(
-        y=audio, sr=sample_rate, hop_length=hop_length, n_chroma=12,
-        fmin=librosa.note_to_hz("C1"), n_octaves=3,
-    ).astype(np.float32)
-    contrast = librosa.feature.spectral_contrast(
-        S=magnitude, sr=sample_rate, n_fft=n_fft, hop_length=hop_length,
-    ).astype(np.float32)
-    mfcc = librosa.feature.mfcc(
-        S=librosa.power_to_db(
-            librosa.feature.melspectrogram(S=power, sr=sample_rate, n_mels=n_mels),
-            ref=np.max,
-        ),
-        n_mfcc=20,
-    ).astype(np.float32)
-    tonnetz = librosa.feature.tonnetz(chroma=chroma, sr=sample_rate).astype(np.float32)
-
-    aligned = min(
-        frame_times.size, magnitude.shape[1], chroma.shape[1], bass_chroma.shape[1],
-        contrast.shape[1], mfcc.shape[1], tonnetz.shape[1],
-    )
-    frame_times = frame_times[:aligned]
-    magnitude = magnitude[:, :aligned]
-    power = power[:, :aligned]
-    log_mel = log_mel[:, :aligned]
-
-    mel_difference = np.maximum(np.diff(log_mel, axis=1, prepend=log_mel[:, :1]), 0.0)
-    band_edges = np.linspace(0, n_mels, 4, dtype=int)
-    onset_bands = np.stack(
-        [mel_difference[band_edges[i]:band_edges[i + 1]].mean(axis=0) for i in range(3)]
-    )
-    rms = librosa.feature.rms(S=magnitude, frame_length=n_fft, center=False)
-    rms_db = librosa.amplitude_to_db(rms, ref=np.max, top_db=100.0)
-    frequencies = librosa.fft_frequencies(sr=sample_rate, n_fft=n_fft)
-    total_power = np.maximum(power.sum(axis=0, keepdims=True), 1e-10)
-    low_ratio = power[frequencies < 180.0].sum(axis=0, keepdims=True) / total_power
-    mid_ratio = power[
-        (frequencies >= 180.0) & (frequencies < 2500.0)
-    ].sum(axis=0, keepdims=True) / total_power
-    high_ratio = power[frequencies >= 2500.0].sum(axis=0, keepdims=True) / total_power
+    Returns ``(beat_starts, beat_ends, rows)`` where ``rows`` are the per-beat
+    feature matrices in :data:`_FEATURE_SPECS` order."""
+    beat_starts, beat_ends = _beat_ranges(beat_times_sec, frames.duration_sec)
+    frame_times = frames.frame_times.astype(np.float32)
     rhythm_frames = _robust_standardize(
-        np.concatenate([onset_bands, rms_db, low_ratio, mid_ratio, high_ratio], axis=0).astype(np.float32)
+        np.concatenate(
+            [frames.onset_bands, frames.rms_db[np.newaxis, :], frames.band_ratios],
+            axis=0,
+        ).astype(np.float32)
     )
 
     frame_sets = {
-        "harmonic": (chroma[:, :aligned], harmonic_phase_bins),
+        "harmonic": (frames.chroma, harmonic_phase_bins),
         "rhythm": (rhythm_frames, beat_phase_bins),
-        "bass_chroma": (bass_chroma[:, :aligned], harmonic_phase_bins),
-        "contrast": (_robust_standardize(contrast[:, :aligned]), beat_phase_bins),
-        "mfcc": (_robust_standardize(mfcc[:, :aligned]), beat_phase_bins),
-        "tonnetz": (tonnetz[:, :aligned], harmonic_phase_bins),
+        "bass_chroma": (frames.bass_chroma, harmonic_phase_bins),
+        "mfcc": (_robust_standardize(frames.mfcc), beat_phase_bins),
+        "tonnetz": (frames.tonnetz, harmonic_phase_bins),
+        "melody": (frames.melody_chroma, harmonic_phase_bins),
     }
     rows = [
         _beat_patch_rows(frame_sets[name][0], frame_times, beat_starts, beat_ends,
                          frame_sets[name][1], l2=(metric == "cos"))
         for name, metric in _FEATURE_SPECS
     ]
-    return beat_starts, rows
+    return beat_starts, beat_ends, rows
 
 
 def _row_normalize(features: np.ndarray) -> np.ndarray:
@@ -426,41 +402,14 @@ def _ssm_downbeat_features(ssm: np.ndarray) -> list[np.ndarray]:
     ]
 
 
-def _downbeat_feature_matrix(
-    waveform: np.ndarray,
-    sample_rate: int,
-    beat_times_sec: np.ndarray,
-    *,
-    hop_length: int,
-    n_fft: int,
-    n_mels: int,
-    beat_phase_bins: int,
-    harmonic_phase_bins: int,
-) -> tuple[np.ndarray, np.ndarray]:
-    beats, rows = _extract_beat_features(
-        waveform,
-        sample_rate,
-        beat_times_sec,
-        hop_length,
-        n_fft,
-        n_mels,
-        beat_phase_bins,
-        harmonic_phase_bins,
-    )
-    columns: list[np.ndarray] = []
-    for representation_rows, (_name, metric) in zip(
-        rows,
-        _FEATURE_SPECS,
-        strict=True,
-    ):
-        ssm = (
-            _cosine_ssm(representation_rows)
-            if metric == "cos"
-            else _rbf_ssm(representation_rows)
-        )
-        columns.extend(_ssm_downbeat_features(ssm))
-
-    onset = _onset_per_beat(waveform, sample_rate, beats, hop_length, 0.5)
+def _onset_columns(
+    curve: np.ndarray,
+    frames: FrameFeatures,
+    beats: np.ndarray,
+    beat_ends: np.ndarray,
+) -> list[np.ndarray]:
+    """Per-beat onset energy and its accent / attack / fill / recurrence columns."""
+    onset = _onset_per_beat(curve, frames.frame_times, beats, beat_ends, 0.5)
     onset_accent_4 = onset - _neighbor_median(onset, 2)
     onset_accent_8 = onset - _neighbor_median(onset, 4)
     onset_attack = np.diff(onset, prepend=onset[:1])
@@ -484,6 +433,34 @@ def _downbeat_feature_matrix(
                 -abs(onset[index] - float(np.median(periodic)))
                 + abs(onset[index] - float(np.median(nearby)))
             )
+    return [onset, onset_accent_4, onset_accent_8, onset_attack, pre_fill, onset_recurrence]
+
+
+def _downbeat_feature_matrix(
+    frames: FrameFeatures,
+    beat_times_sec: np.ndarray,
+    *,
+    beat_phase_bins: int,
+    harmonic_phase_bins: int,
+) -> tuple[np.ndarray, np.ndarray]:
+    beats, beat_ends, rows = _extract_beat_features(
+        frames,
+        beat_times_sec,
+        beat_phase_bins,
+        harmonic_phase_bins,
+    )
+    columns: list[np.ndarray] = []
+    for representation_rows, (_name, metric) in zip(
+        rows,
+        _FEATURE_SPECS,
+        strict=True,
+    ):
+        ssm = (
+            _cosine_ssm(representation_rows)
+            if metric == "cos"
+            else _rbf_ssm(representation_rows)
+        )
+        columns.extend(_ssm_downbeat_features(ssm))
 
     rhythm_index = next(
         index
@@ -492,18 +469,27 @@ def _downbeat_feature_matrix(
     )
     rhythm_energy = np.linalg.norm(rows[rhythm_index], axis=1)
     rhythm_accent = rhythm_energy - _neighbor_median(rhythm_energy, 2)
-    columns.extend(
-        [
-            onset,
-            onset_accent_4,
-            onset_accent_8,
-            onset_attack,
-            pre_fill,
-            onset_recurrence,
-            rhythm_energy,
-            rhythm_accent,
-        ]
+    curves = {
+        "onset": frames.librosa_onset,
+        "harmonic_onset": frames.harmonic_onset,
+        "kick_onset": frames.percussive_bands[0],
+        "melody_onset": frames.melody_onset,
+    }
+    columns.extend(_onset_columns(curves["onset"], frames, beats, beat_ends))
+    columns.extend([rhythm_energy, rhythm_accent])
+    for source in _ONSET_SOURCES[1:]:
+        columns.extend(_onset_columns(curves[source], frames, beats, beat_ends))
+
+    coefficients = local_periodicity(
+        frames.frame_times,
+        beats.astype(np.float64),
+        periodicity_curves(frames),
+        _BAR_PERIODS_BEATS,
+        _BAR_WINDOW_BEATS,
     )
+    aligned = rotate(coefficients, np.arange(beats.size, dtype=np.float64), _BAR_PERIODS_BEATS)
+    columns.extend(aligned.real.reshape(beats.size, -1).T)
+    columns.extend(aligned.imag.reshape(beats.size, -1).T)
 
     features = np.stack(columns, axis=1)
     if features.shape[1] != len(_DOWNBEAT_FEATURE_NAMES):
@@ -517,16 +503,22 @@ def extract_downbeat_feature_matrix(
     audio: np.ndarray,
     sample_rate: int,
     beat_times_sec: np.ndarray,
+    percussive: np.ndarray | None = None,
+    harmonic: np.ndarray | None = None,
+    frames: FrameFeatures | None = None,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Extract the exact feature matrix consumed by the current runtime model."""
+    """Extract the exact feature matrix consumed by the current runtime model.
 
+    ``frames`` reuses frame features already computed for the track (as the
+    analyzer does for beat tracking); otherwise they are computed here from
+    ``audio`` and its HPSS ``percussive`` / ``harmonic`` parts.
+    """
+
+    if frames is None:
+        frames = extract_frame_features(_mono_audio(audio), sample_rate, percussive, harmonic)
     return _downbeat_feature_matrix(
-        _mono_audio(audio),
-        sample_rate,
+        frames,
         beat_times_sec,
-        hop_length=512,
-        n_fft=2048,
-        n_mels=64,
         beat_phase_bins=8,
         harmonic_phase_bins=8,
     )
@@ -898,13 +890,16 @@ def _first_downbeat_on_beats(
     seg_start: float,
     seg_end: float,
     ts_num: float,
+    bpm: float = 0.0,
 ) -> float:
     """First actual-beat downbeat at/after ``seg_start``.
 
     A downbeat is every ``meter``-th beat from the reference downbeat beat, so
     the returned time is always one of the real beats (no drift across tempo
     changes). Falls back to the nearest beat to ``seg_start`` when the segment
-    is shorter than a bar.
+    is shorter than a bar. Beats at the segment start that still belong to the
+    previous segment's grid (closer to the next beat than 80% of this segment's
+    period) are skipped, so the downbeat lies on this segment's own grid.
     """
     eps = 1e-4
     meter = int(round(ts_num)) if ts_num >= 1 else 4
@@ -914,6 +909,10 @@ def _first_downbeat_on_beats(
     # First beat index inside the segment.
     lo = int(np.searchsorted(beats, seg_start - eps, side="left"))
     lo = min(max(lo, 0), beats.size - 1)
+    if bpm > 0:
+        min_interval = 0.8 * 60.0 / float(bpm)
+        while lo + 1 < beats.size and beats[lo + 1] < seg_end - eps and beats[lo + 1] - beats[lo] < min_interval:
+            lo += 1
     # Step forward to the first index congruent to ref_idx (mod meter).
     offset = (ref_idx - lo) % meter
     j = lo + offset
@@ -1010,7 +1009,7 @@ def apply_downbeat_offset_segments(
             r[3] = _wrap_downbeat(downbeat_time, seg_start, bpm, ts_num)
         else:
             r[3] = _first_downbeat_on_beats(
-                beats, downbeat_time, seg_start, seg_end, ts_num
+                beats, downbeat_time, seg_start, seg_end, ts_num, bpm
             )
 
     return np.asarray(rows, dtype=np.float32)
@@ -1033,20 +1032,25 @@ def detect_downbeat_offset_segments(
     distant_phase_penalty: float = 2.5,
     probability_power: float = 1.0,
     smooth_sigma_beats: float = 0.5,
-    hop_length: int = 512,
-    n_fft: int = 2048,
-    n_mels: int = 64,
     beat_phase_bins: int = 8,
     harmonic_phase_bins: int = 8,
     weight_path: str | Path = _DEFAULT_WEIGHT_PATH,
+    percussive: np.ndarray | None = None,
+    harmonic: np.ndarray | None = None,
+    frames: FrameFeatures | None = None,
 ) -> list[DownbeatOffsetSegment]:
     """Detect stable downbeat-phase segments using the learned beat model.
 
-    The model produces one learned downbeat probability per beat from 50
-    harmonic, rhythmic, bass, timbral, tonal, onset, and recurrence features.
+    The model produces one learned downbeat probability per beat from
+    harmonic, melodic, rhythmic, bass, timbral, tonal, onset, recurrence and
+    bar-periodicity features.
     ``dynamic`` folds those probabilities in sliding windows and tracks the
     phase with Viterbi. ``global`` folds the same probabilities over the entire
     input and returns one phase.
+
+    ``frames`` reuses the track's frame features (computed before beat
+    tracking); otherwise they are computed from ``audio`` and its HPSS
+    ``percussive`` / ``harmonic`` parts.
     """
     if sample_rate <= 0:
         raise ValueError("sample_rate must be positive")
@@ -1075,15 +1079,12 @@ def detect_downbeat_offset_segments(
     if smooth_sigma_beats < 0.0:
         raise ValueError("smooth_sigma_beats must be non-negative")
 
-    waveform = _mono_audio(audio)
-    duration_sec = waveform.size / float(sample_rate)
+    if frames is None:
+        frames = extract_frame_features(_mono_audio(audio), sample_rate, percussive, harmonic)
+    duration_sec = frames.duration_sec
     beat_times, feature_matrix = _downbeat_feature_matrix(
-        waveform,
-        sample_rate,
+        frames,
         beat_times_sec,
-        hop_length=hop_length,
-        n_fft=n_fft,
-        n_mels=n_mels,
         beat_phase_bins=beat_phase_bins,
         harmonic_phase_bins=harmonic_phase_bins,
     )
@@ -1162,38 +1163,28 @@ def detect_downbeat_offset_segments(
 
 
 def _onset_per_beat(
-    waveform: np.ndarray,
-    sample_rate: int,
+    curve: np.ndarray,
+    frame_times: np.ndarray,
     beats: np.ndarray,
-    hop_length: int,
+    beat_ends: np.ndarray,
     onset_window_beats: float,
 ) -> np.ndarray:
     """Onset-strength energy assigned to each beat (no cross-beat averaging).
 
-    The ODF is integrated inside ``+-onset_window_beats`` of every beat. With
-    0.5 the per-beat windows tile the timeline (every ODF frame counted once,
-    centred on its nearest beat), so all time information is preserved -- this
-    is the beat-grid-style cut the windowed Folded-Sum throws away.
+    The onset strength is integrated inside ``+-onset_window_beats`` of every
+    beat. With 0.5 the per-beat windows tile the timeline (every frame counted
+    once, centred on its nearest beat), so all time information is preserved --
+    this is the beat-grid-style cut the windowed Folded-Sum throws away.
     """
-    onset_env = librosa.onset.onset_strength(
-        y=waveform, sr=sample_rate, hop_length=hop_length
-    )
+    onset_env = np.asarray(curve, dtype=np.float64)
     if onset_env.size == 0 or beats.size == 0:
         return np.zeros(beats.size, dtype=np.float64)
-    onset_times = librosa.times_like(
-        onset_env, sr=sample_rate, hop_length=hop_length
-    )
-    cumulative = np.concatenate([[0.0], np.cumsum(onset_env.astype(np.float64))])
+    onset_times = np.asarray(frame_times, dtype=np.float64)
+    cumulative = np.concatenate([[0.0], np.cumsum(onset_env)])
     last = cumulative.size - 1
 
-    periods = np.diff(beats)
-    beat_periods = np.empty(beats.size, dtype=np.float64)
-    if periods.size:
-        beat_periods[:-1] = periods
-        beat_periods[-1] = periods[-1]
-    else:
-        beat_periods[:] = 0.0
-    half_widths = float(onset_window_beats) * beat_periods
+    beats = np.asarray(beats, dtype=np.float64)
+    half_widths = float(onset_window_beats) * (np.asarray(beat_ends, dtype=np.float64) - beats)
 
     lo = np.clip(
         np.searchsorted(onset_times, beats - half_widths, side="left"), 0, last

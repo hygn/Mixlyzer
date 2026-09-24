@@ -14,7 +14,7 @@ from PySide6 import QtCore, QtGui
 from PySide6.QtWidgets import (
     QDialog, QTabWidget, QWidget, QVBoxLayout, QFormLayout, QHBoxLayout,
     QLineEdit, QCheckBox, QComboBox, QSpinBox, QDoubleSpinBox, QLabel, QDialogButtonBox, QGroupBox, QPushButton,
-    QMessageBox, QProgressBar, QScrollArea)
+    QMessageBox, QProgressBar, QScrollArea, QGridLayout, QToolButton)
 from core.config import (
     config, libconfig, viewconfig, playbackconfig, analysisconfig, keyconfig, externalsyncconfig,
     memorydeckconfig, memoryvalueconfig,
@@ -37,7 +37,23 @@ class ParameterOptimizeWorker(QtCore.QObject):
     @QtCore.Slot()
     def run(self) -> None:
         try:
-            if self._optimizer_name == "downbeat":
+            if self._optimizer_name == "beat_phase":
+                from optimizer.beat_phase_parameter_optimizer import (
+                    BeatPhaseOptimizationRequest,
+                    optimize_beat_phase_parameters,
+                )
+
+                request = BeatPhaseOptimizationRequest(**self._request_values)
+                optimize = optimize_beat_phase_parameters
+            elif self._optimizer_name == "onset":
+                from optimizer.onset_parameter_optimizer import (
+                    OnsetOptimizationRequest,
+                    optimize_onset_parameters,
+                )
+
+                request = OnsetOptimizationRequest(**self._request_values)
+                optimize = optimize_onset_parameters
+            elif self._optimizer_name == "downbeat":
                 from optimizer.downbeat_parameter_optimizer import (
                     DownbeatOptimizationRequest,
                     optimize_downbeat_parameters,
@@ -114,19 +130,132 @@ class ParameterOptimizeProgressDialog(QDialog):
         self.bar_optimize.setValue(100)
         skipped_count = len(getattr(_result, "skipped_tracks", ()))
         skipped_suffix = f", {skipped_count} skipped" if skipped_count else ""
+        metric_kind = "CV" if getattr(_result, "cross_validated", True) else "Training"
         if hasattr(_result, "top1_accuracy"):
             self.lbl_optimize.setText(
-                f"Done — CV top-1 {_result.top1_accuracy:.1%}, "
+                f"Done — {metric_kind} top-1 {_result.top1_accuracy:.1%}, "
                 f"cross-entropy {_result.cross_entropy:.4f}{skipped_suffix}"
+            )
+        elif hasattr(_result, "track_top1_accuracy"):
+            self.lbl_optimize.setText(
+                f"Done — {metric_kind} track phase {_result.track_top1_accuracy:.1%}, "
+                f"beat top-1 {_result.beat_top1_accuracy:.1%}{skipped_suffix}"
+            )
+        elif hasattr(_result, "beat_average_precision"):
+            self.lbl_optimize.setText(
+                f"Done — {metric_kind} grid top-1 {_result.grid_top1_accuracy:.1%}, "
+                f"beat AP {_result.beat_average_precision:.1%}{skipped_suffix}"
             )
         elif hasattr(_result, "boundary_average_precision"):
             self.lbl_optimize.setText(
-                f"Done — boundary AP {_result.boundary_average_precision:.1%}, "
+                f"Done — {metric_kind} boundary AP {_result.boundary_average_precision:.1%}, "
                 f"label accuracy {_result.label_accuracy:.1%}{skipped_suffix}"
             )
         else:
             self.lbl_optimize.setText("Done")
         self.btn_close.setEnabled(True)
+
+
+class BeatParameterOptimizeDialog(QDialog):
+    """Pick the beat models to retrain; validation options are under the collapsed Advanced section."""
+
+    ITEMS = (("onset", "Onset"), ("beat_phase", "Beat Phase"), ("downbeat", "Downbeat"))
+
+    def __init__(self, default_l2: dict[str, float], parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Reoptimize Beat Parameters")
+        self._checks: dict[str, QCheckBox] = {}
+        self._folds: dict[str, QSpinBox] = {}
+        self._sweeps: dict[str, QCheckBox] = {}
+        self._l2: dict[str, QDoubleSpinBox] = {}
+
+        layout = QVBoxLayout(self)
+        layout.addWidget(QLabel("Models to retrain on the library's beat grids:"))
+        for key, name in self.ITEMS:
+            check = QCheckBox(name)
+            check.toggled.connect(self._update_enabled)
+            self._checks[key] = check
+            layout.addWidget(check)
+        self.cb_backup = QCheckBox("Back up existing parameter files")
+        self.cb_backup.setChecked(True)
+        layout.addWidget(self.cb_backup)
+
+        self.btn_advanced = QToolButton()
+        self.btn_advanced.setText("Advanced")
+        self.btn_advanced.setCheckable(True)
+        self.btn_advanced.setArrowType(Qt.RightArrow)
+        self.btn_advanced.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+        self.btn_advanced.setAutoRaise(True)
+        self.btn_advanced.toggled.connect(self._toggle_advanced)
+        layout.addWidget(self.btn_advanced)
+
+        self.advanced = QWidget()
+        grid = QGridLayout(self.advanced)
+        grid.setContentsMargins(16, 0, 0, 0)
+        for column, text in enumerate(("", "CV folds", "L2 sweep", "Fixed L2")):
+            grid.addWidget(QLabel(text), 0, column)
+        for row, (key, name) in enumerate(self.ITEMS, start=1):
+            folds = QSpinBox()
+            folds.setRange(1, 20)
+            folds.setSpecialValueText("Off")       # 1 = no cross-validation
+            folds.setToolTip("Cross-validation folds by track. Off: one fit on the whole library.")
+            sweep = QCheckBox()
+            sweep.setToolTip("Pick the L2 among the candidates by cross-validation (needs CV).")
+            l2 = QDoubleSpinBox()
+            l2.setDecimals(6)
+            l2.setRange(1e-6, 10.0)
+            l2.setSingleStep(0.0001)
+            l2.setValue(float(default_l2.get(key, 0.001)))
+            folds.valueChanged.connect(self._update_enabled)
+            sweep.toggled.connect(self._update_enabled)
+            self._folds[key], self._sweeps[key], self._l2[key] = folds, sweep, l2
+            grid.addWidget(QLabel(name), row, 0)
+            grid.addWidget(folds, row, 1)
+            grid.addWidget(sweep, row, 2, alignment=Qt.AlignCenter)
+            grid.addWidget(l2, row, 3)
+        self.advanced.setVisible(False)
+        layout.addWidget(self.advanced)
+
+        self.buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        self.buttons.accepted.connect(self.accept)
+        self.buttons.rejected.connect(self.reject)
+        layout.addWidget(self.buttons)
+        self._update_enabled()
+
+    def _toggle_advanced(self, shown: bool) -> None:
+        self.btn_advanced.setArrowType(Qt.DownArrow if shown else Qt.RightArrow)
+        self.advanced.setVisible(shown)
+        self.adjustSize()
+
+    def _update_enabled(self, *_args) -> None:
+        for key, _name in self.ITEMS:
+            selected = self._checks[key].isChecked()
+            cross_validated = self._folds[key].value() >= 2
+            if not cross_validated and self._sweeps[key].isChecked():
+                self._sweeps[key].setChecked(False)
+            self._folds[key].setEnabled(selected)
+            self._sweeps[key].setEnabled(selected and cross_validated)
+            self._l2[key].setEnabled(selected and not self._sweeps[key].isChecked())
+        self.buttons.button(QDialogButtonBox.Ok).setEnabled(
+            any(check.isChecked() for check in self._checks.values())
+        )
+
+    def jobs(self) -> list[tuple[str, str, dict]]:
+        """(key, name, options) of the selected models in run order."""
+        out = []
+        for key, name in self.ITEMS:
+            if not self._checks[key].isChecked():
+                continue
+            folds = self._folds[key].value()
+            out.append((key, name, {
+                "cv_folds": folds if folds >= 2 else 0,
+                "l2_sweep": bool(folds >= 2 and self._sweeps[key].isChecked()),
+                "l2_strength": float(self._l2[key].value()),
+            }))
+        return out
+
+    def backup_existing(self) -> bool:
+        return self.cb_backup.isChecked()
 
 
 class RekordboxSyncProgressDialog(QDialog):
@@ -332,6 +461,27 @@ class SettingsDialog(QDialog):
         tab_beat = QWidget(); f_beat = QFormLayout(tab_beat)
         self.cb_bpm_dynamic = QCheckBox("Use Dynamic Analysis")
         self.cb_bpm_adaptive_win = QCheckBox("Use Adaptive Window for Dynamic Analysis")
+        self.cmb_onset_source = QComboBox()
+        self.cmb_onset_source.addItem("librosa", "librosa")
+        self.cmb_onset_source.addItem("optimized", "optimized")
+        self.cmb_onset_source.setToolTip(
+            "Onset (ODF) used to detect BPM and the beat grid.\n"
+            "librosa: librosa onset strength.\n"
+            "optimized: learned linear model over librosa onset and the frame features\n"
+            "shared with downbeat analysis (trained on the library's beat grids)."
+        )
+        self.ed_onset_parameter_path = QLineEdit()
+        self.ed_onset_parameter_path.setPlaceholderText("relative or absolute .json path")
+        self.ed_onset_feature_cache_path = QLineEdit()
+        self.cb_beat_phase_correction = QCheckBox("Beat Phase Correction")
+        self.cb_beat_phase_correction.setToolTip(
+            "Shift the tracked beat grid by 0, 1/4, 1/2 or 3/4 beat to the phase a learned\n"
+            "model scores highest over the track, from how the local pulse of each onset\n"
+            "source (drums, harmony, melody) lines up with each candidate."
+        )
+        self.ed_beat_phase_parameter_path = QLineEdit()
+        self.ed_beat_phase_parameter_path.setPlaceholderText("relative or absolute .json path")
+        self.ed_beat_phase_feature_cache_path = QLineEdit()
         self.cb_dynamic_downbeat = QCheckBox("Dynamic Downbeat Detection")
         self.cb_dynamic_downbeat.setToolTip(
             "Checked: detect per-section downbeat changes (Dynamic).\n"
@@ -340,10 +490,11 @@ class SettingsDialog(QDialog):
         self.ed_downbeat_parameter_path = QLineEdit()
         self.ed_downbeat_parameter_path.setPlaceholderText("relative or absolute .json path")
         self.ed_downbeat_feature_cache_path = QLineEdit()
-        self.btn_reoptimize_downbeat_parameter = QPushButton("Reoptimize Downbeat Parameter")
-        self.btn_reoptimize_downbeat_parameter.clicked.connect(
-            self._on_reoptimize_downbeat_parameter
+        self.btn_reoptimize_beat_parameters = QPushButton("Reoptimize Beat Parameters")
+        self.btn_reoptimize_beat_parameters.setToolTip(
+            "Retrain the onset, beat phase and / or downbeat models on the library's beat grids."
         )
+        self.btn_reoptimize_beat_parameters.clicked.connect(self._on_reoptimize_beat_parameters)
         self.sp_bpm_hop = QSpinBox(); self.sp_bpm_hop.setRange(16, 512); self.sp_bpm_hop.setSingleStep(32)
         self.sp_bpm_win = QSpinBox(); self.sp_bpm_win.setRange(1000, 60000); self.sp_bpm_win.setSingleStep(64)
         self.sp_bpm_min = QSpinBox(); self.sp_bpm_min.setRange(60,  400)
@@ -351,10 +502,16 @@ class SettingsDialog(QDialog):
         self.sp_beatgrid_offset = QDoubleSpinBox(); self.sp_beatgrid_offset.setRange(-10000.0, 10000.0); self.sp_beatgrid_offset.setDecimals(3); self.sp_beatgrid_offset.setSingleStep(1.0)
         f_beat.addRow(self.cb_bpm_dynamic)
         f_beat.addRow(self.cb_bpm_adaptive_win)
+        f_beat.addRow("Onset Source", self.cmb_onset_source)
+        f_beat.addRow("Onset Parameter Path (json)", self.ed_onset_parameter_path)
+        f_beat.addRow("Onset Feature Cache Path (directory)", self.ed_onset_feature_cache_path)
+        f_beat.addRow(self.cb_beat_phase_correction)
+        f_beat.addRow("Beat Phase Parameter Path (json)", self.ed_beat_phase_parameter_path)
+        f_beat.addRow("Beat Phase Feature Cache Path (directory)", self.ed_beat_phase_feature_cache_path)
         f_beat.addRow(self.cb_dynamic_downbeat)
         f_beat.addRow("Downbeat Parameter Path (json)", self.ed_downbeat_parameter_path)
         f_beat.addRow("Downbeat Feature Cache Path (directory)", self.ed_downbeat_feature_cache_path)
-        f_beat.addRow(self.btn_reoptimize_downbeat_parameter)
+        f_beat.addRow(self.btn_reoptimize_beat_parameters)
         f_beat.addRow("BPM hop length (samp)", self.sp_bpm_hop)
         f_beat.addRow("BPM Autocorrelation win_length (ms)", self.sp_bpm_win)
         f_beat.addRow("BPM min", self.sp_bpm_min)
@@ -558,6 +715,17 @@ class SettingsDialog(QDialog):
         self.sp_bpm_max.setValue(int(a.bpm_max))
         self.cb_bpm_dynamic.setChecked(bool(a.bpm_dynamic))
         self.cb_bpm_adaptive_win.setChecked(bool(a.bpm_adaptive_window))
+        onset_index = self.cmb_onset_source.findData(str(getattr(a, "onset_source", "librosa")))
+        self.cmb_onset_source.setCurrentIndex(max(0, onset_index))
+        self.ed_onset_parameter_path.setText(str(getattr(a, "onset_parameter_path", "") or ""))
+        self.ed_onset_feature_cache_path.setText(
+            str(getattr(a, "onset_feature_cache_path", "") or "")
+        )
+        self.cb_beat_phase_correction.setChecked(bool(getattr(a, "beat_phase_correction", True)))
+        self.ed_beat_phase_parameter_path.setText(str(getattr(a, "beat_phase_parameter_path", "") or ""))
+        self.ed_beat_phase_feature_cache_path.setText(
+            str(getattr(a, "beat_phase_feature_cache_path", "") or "")
+        )
         self.cb_dynamic_downbeat.setChecked(bool(getattr(a, "dynamic_downbeat", False)))
         self.ed_downbeat_parameter_path.setText(
             str(getattr(a, "downbeat_parameter_path", "") or "")
@@ -732,6 +900,12 @@ class SettingsDialog(QDialog):
                 bpm_max=int(self.sp_bpm_max.value()),
                 bpm_dynamic=bool(self.cb_bpm_dynamic.isChecked()),
                 bpm_adaptive_window=bool(self.cb_bpm_adaptive_win.isChecked()),
+                onset_source=str(self.cmb_onset_source.currentData() or "librosa"),
+                onset_parameter_path=self.ed_onset_parameter_path.text().strip(),
+                onset_feature_cache_path=self.ed_onset_feature_cache_path.text().strip(),
+                beat_phase_correction=bool(self.cb_beat_phase_correction.isChecked()),
+                beat_phase_parameter_path=self.ed_beat_phase_parameter_path.text().strip(),
+                beat_phase_feature_cache_path=self.ed_beat_phase_feature_cache_path.text().strip(),
                 dynamic_downbeat=bool(self.cb_dynamic_downbeat.isChecked()),
                 downbeat_parameter_path=self.ed_downbeat_parameter_path.text().strip(),
                 downbeat_feature_cache_path=self.ed_downbeat_feature_cache_path.text().strip(),
@@ -990,11 +1164,11 @@ class SettingsDialog(QDialog):
     def _parameter_optimization_is_running(self) -> bool:
         return any(
             getattr(self, f"_{key}_optimize_thread", None) is not None
-            for key in ("downbeat", "phrase")
+            for key in ("beat", "phrase")
         )
 
     def _set_parameter_optimization_enabled(self, enabled: bool) -> None:
-        self.btn_reoptimize_downbeat_parameter.setEnabled(enabled)
+        self.btn_reoptimize_beat_parameters.setEnabled(enabled)
         self.btn_reoptimize_phrase_parameter.setEnabled(enabled)
 
     @staticmethod
@@ -1018,35 +1192,176 @@ class SettingsDialog(QDialog):
             message.setDetailedText("\n\n".join(details))
         message.exec()
 
-    def _on_reoptimize_downbeat_parameter(self) -> None:
+    def _beat_parameter_paths(self) -> dict[str, tuple[str, str]]:
+        return {
+            "onset": (self.ed_onset_parameter_path.text().strip(), self.ed_onset_feature_cache_path.text().strip()),
+            "beat_phase": (
+                self.ed_beat_phase_parameter_path.text().strip(),
+                self.ed_beat_phase_feature_cache_path.text().strip(),
+            ),
+            "downbeat": (
+                self.ed_downbeat_parameter_path.text().strip(),
+                self.ed_downbeat_feature_cache_path.text().strip(),
+            ),
+        }
+
+    def _on_reoptimize_beat_parameters(self) -> None:
         if self._parameter_optimization_is_running():
             return
-        title = "Reoptimize Downbeat Parameter"
-        parameter_text = self.ed_downbeat_parameter_path.text().strip()
-        cache_text = self.ed_downbeat_feature_cache_path.text().strip()
-        if not parameter_text:
-            QMessageBox.warning(self, title, "Downbeat Parameter Path (json) is empty.")
-            return
-        if not cache_text:
-            QMessageBox.warning(
-                self, title, "Downbeat Feature Cache Path (directory) is empty."
-            )
-            return
+        title = "Reoptimize Beat Parameters"
+        from optimizer import beat_phase_parameter_optimizer, downbeat_parameter_optimizer, onset_parameter_optimizer
 
-        parameter_path = self._project_path(parameter_text)
-        if not self._confirm_parameter_overwrite(parameter_path, title, "downbeat"):
+        dialog = BeatParameterOptimizeDialog(
+            {
+                "onset": onset_parameter_optimizer.DEFAULT_L2_STRENGTH,
+                "beat_phase": beat_phase_parameter_optimizer.DEFAULT_L2_STRENGTH,
+                "downbeat": downbeat_parameter_optimizer.DEFAULT_L2_STRENGTH,
+            },
+            self,
+        )
+        if dialog.exec() != QDialog.Accepted:
             return
-        self._start_parameter_optimization(
-            key="downbeat",
-            title=title,
-            request_values={
+        jobs = dialog.jobs()
+        paths = self._beat_parameter_paths()
+        queue = []
+        for key, name, options in jobs:
+            parameter_text, cache_text = paths[key]
+            if not parameter_text or not cache_text:
+                QMessageBox.warning(self, title, f"{name}: parameter path or feature cache path is empty.")
+                return
+            parameter_path = self._project_path(parameter_text)
+            request_values = {
                 "library_dir": self._project_path(self.ed_libpath.text().strip()),
                 "cache_dir": self._project_path(cache_text),
                 "output_path": parameter_path,
+                "use_hpss": bool(self.cb_use_hpss.isChecked()),
                 "rebuild_cache": False,
-            },
-            finished_slot=self._on_downbeat_optimize_finished,
-            failed_slot=self._on_downbeat_optimize_failed,
+                **options,
+            }
+            if key == "onset":
+                request_values["beatgrid_offset_msec"] = float(self.sp_beatgrid_offset.value())
+            queue.append((key, name, options, request_values))
+        if dialog.backup_existing():
+            for _key, name, _options, request_values in queue:
+                parameter_path = Path(request_values["output_path"])
+                if not parameter_path.exists():
+                    continue
+                try:
+                    self._backup_parameter(parameter_path)
+                except Exception as exc:
+                    QMessageBox.critical(self, title, f"Failed to back up the {name} parameter:\n{exc}")
+                    return
+        self._start_beat_optimization_queue(title, queue)
+
+    def _start_beat_optimization_queue(self, title: str, queue: list) -> None:
+        dialog = ParameterOptimizeProgressDialog(title, self)
+        self._beat_optimize_dialog = dialog
+        self._beat_queue_title = title
+        self._beat_queue = list(queue)
+        self._beat_queue_total = len(queue)
+        self._beat_queue_results = []
+        self._set_parameter_optimization_enabled(False)
+        dialog.show()
+        self._run_next_beat_optimization()
+
+    def _run_next_beat_optimization(self) -> None:
+        dialog = self._beat_optimize_dialog
+        if not self._beat_queue:
+            self._finish_beat_optimization_queue()
+            return
+        key, name, options, request_values = self._beat_queue.pop(0)
+        self._beat_queue_current = (key, name, options)
+        position = self._beat_queue_total - len(self._beat_queue)
+        dialog.setWindowTitle(f"{self._beat_queue_title} ({position}/{self._beat_queue_total}: {name})")
+        dialog.set_feature_progress(0, f"{name}: feature build pending")
+        dialog.set_optimize_progress(0, f"{name}: optimize pending")
+        dialog.btn_close.setEnabled(False)
+
+        thread = QtCore.QThread(self)
+        worker = ParameterOptimizeWorker(key, request_values)
+        worker.moveToThread(thread)
+        worker.featureProgress.connect(dialog.set_feature_progress)
+        worker.optimizeProgress.connect(dialog.set_optimize_progress)
+        worker.finished.connect(self._on_beat_optimization_finished)
+        worker.failed.connect(self._on_beat_optimization_failed)
+        worker.finished.connect(thread.quit)
+        worker.failed.connect(thread.quit)
+        worker.finished.connect(worker.deleteLater)
+        worker.failed.connect(worker.deleteLater)
+        thread.finished.connect(thread.deleteLater)
+        thread.finished.connect(lambda t=thread: self._clear_beat_optimize_thread(t))
+        thread.started.connect(worker.run)
+        self._beat_optimize_thread = thread
+        self._beat_optimize_worker = worker
+        thread.start()
+
+    def _clear_beat_optimize_thread(self, thread) -> None:
+        if getattr(self, "_beat_optimize_thread", None) is thread:
+            self._beat_optimize_thread = None
+            self._beat_optimize_worker = None
+
+    @QtCore.Slot(object)
+    def _on_beat_optimization_finished(self, result) -> None:
+        key, name, options = self._beat_queue_current
+        self._beat_queue_results.append((key, name, options, result))
+        self._run_next_beat_optimization()
+
+    @QtCore.Slot(str)
+    def _on_beat_optimization_failed(self, message: str) -> None:
+        _key, name, _options = self._beat_queue_current
+        remaining = [item[1] for item in self._beat_queue]
+        self._beat_queue = []
+        self._set_parameter_optimization_enabled(True)
+        dialog = self._beat_optimize_dialog
+        dialog.set_failed(message)
+        done = ", ".join(item[1] for item in self._beat_queue_results) or "none"
+        QMessageBox.critical(
+            dialog,
+            self._beat_queue_title,
+            f"{name} optimization failed:\n{message}\n\n"
+            f"Finished before the failure: {done}\n"
+            f"Not run: {', '.join(remaining) or 'none'}",
+        )
+
+    def _finish_beat_optimization_queue(self) -> None:
+        self._set_parameter_optimization_enabled(True)
+        dialog = self._beat_optimize_dialog
+        dialog.bar_feature.setValue(100)
+        dialog.bar_optimize.setValue(100)
+        dialog.lbl_optimize.setText("Done")
+        dialog.btn_close.setEnabled(True)
+        dialog.setWindowTitle(self._beat_queue_title)
+        blocks, skipped = [], []
+        for key, name, options, result in self._beat_queue_results:
+            blocks.append(self._beat_optimization_summary(key, name, options, result))
+            skipped.extend(result.skipped_tracks)
+        self._show_optimization_result(dialog, self._beat_queue_title, "\n\n".join(blocks), skipped)
+
+    @staticmethod
+    def _beat_optimization_summary(key: str, name: str, options: dict, result) -> str:
+        kind = "CV" if result.cross_validated else "Training"
+        if not result.cross_validated:
+            validation = "no cross-validation"
+        elif options.get("l2_sweep"):
+            validation = f"{options['cv_folds']}-fold CV, L2 swept"
+        else:
+            validation = f"{options['cv_folds']}-fold CV, L2 fixed"
+        head = f"{name} parameter updated:\n{result.output_path}\nL2 {result.selected_l2_strength:g} ({validation})\n"
+        if key == "onset":
+            return head + (
+                f"Tracks: {result.track_count}, frames: {result.frame_count}\n"
+                f"{kind} grid top-1: {result.grid_top1_accuracy:.1%}, "
+                f"beat AP: {result.beat_average_precision:.1%}, loss: {result.cross_entropy:.4f}"
+            )
+        if key == "beat_phase":
+            return head + (
+                f"Tracks: {result.track_count}, beats: {result.beat_count}\n"
+                f"{kind} track phase: {result.track_top1_accuracy:.1%}, "
+                f"beat top-1: {result.beat_top1_accuracy:.1%}, cross-entropy: {result.cross_entropy:.4f}"
+            )
+        return head + (
+            f"Tracks: {result.track_count}, bars: {result.bar_count}\n"
+            f"{kind} top-1: {result.top1_accuracy:.1%}, cross-entropy: {result.cross_entropy:.4f}"
         )
 
     def _on_reoptimize_phrase_parameter(self) -> None:
@@ -1087,55 +1402,34 @@ class SettingsDialog(QDialog):
                 "output_path": parameter_path,
                 "rebuild_cache": False,
                 "seed": 0,
+                "cv_folds": 0,
             },
             finished_slot=self._on_phrase_optimize_finished,
             failed_slot=self._on_phrase_optimize_failed,
         )
 
     @QtCore.Slot(object)
-    def _on_downbeat_optimize_finished(self, result) -> None:
-        self._set_parameter_optimization_enabled(True)
-        dialog = getattr(self, "_downbeat_optimize_dialog", self)
-        self._show_optimization_result(
-            dialog,
-            "Reoptimize Downbeat Parameter",
-            (
-                f"Downbeat parameter updated:\n{result.output_path}\n\n"
-                f"Tracks: {result.track_count}, bars: {result.bar_count}\n"
-                f"Selected L2: {result.selected_l2_strength:g}\n"
-                f"CV top-1: {result.top1_accuracy:.1%}, "
-                f"cross-entropy: {result.cross_entropy:.4f}"
-            ),
-            result.skipped_tracks,
-        )
-
-    @QtCore.Slot(str)
-    def _on_downbeat_optimize_failed(self, message: str) -> None:
-        self._set_parameter_optimization_enabled(True)
-        dialog = getattr(self, "_downbeat_optimize_dialog", self)
-        QMessageBox.critical(
-            dialog,
-            "Reoptimize Downbeat Parameter",
-            f"Downbeat parameter optimization failed:\n{message}",
-        )
-
-    @QtCore.Slot(object)
     def _on_phrase_optimize_finished(self, result) -> None:
         self._set_parameter_optimization_enabled(True)
         dialog = getattr(self, "_phrase_optimize_dialog", self)
+        kind = "CV" if result.cross_validated else "Training"
         self._show_optimization_result(
             dialog,
             "Reoptimize Phrase Parameter",
             (
                 f"Phrase parameter updated:\n{result.output_path}\n\n"
                 f"Tracks: {result.track_count}\n"
-                f"Training boundary AP: {result.boundary_average_precision:.1%}\n"
-                f"Training boundary F1 @ 0.70: {result.boundary_f1:.1%}\n"
-                f"Training label accuracy: {result.label_accuracy:.1%}\n"
-                f"Training label macro-F1: {result.label_macro_f1:.1%}\n\n"
-                "Interpretation: these in-sample scores only confirm how well "
-                "the model fits its training data. They do not estimate "
-                "performance on unseen tracks."
+                f"{kind} boundary AP: {result.boundary_average_precision:.1%}\n"
+                f"{kind} boundary F1 @ 0.70: {result.boundary_f1:.1%}\n"
+                f"{kind} label accuracy: {result.label_accuracy:.1%}\n"
+                f"{kind} label macro-F1: {result.label_macro_f1:.1%}"
+                + (
+                    ""
+                    if result.cross_validated
+                    else "\n\nInterpretation: these in-sample scores only confirm how well "
+                    "the model fits its training data. They do not estimate "
+                    "performance on unseen tracks."
+                )
             ),
             result.skipped_tracks,
         )

@@ -9,6 +9,7 @@ from typing import Callable
 
 import numpy as np
 from sklearn.metrics import accuracy_score, average_precision_score, f1_score
+from sklearn.model_selection import GroupKFold
 
 from optimizer import (
     SkippedOptimizationTrack,
@@ -71,6 +72,9 @@ class PhraseOptimizationRequest:
     output_path: Path
     rebuild_cache: bool = False
     seed: int = 0
+    # >= 2 adds a track-level cross-validation (models refit per fold) before the
+    # final fit on all tracks; < 2 fits once on all tracks.
+    cv_folds: int = 0
     max_cache_workers: int | None = None
 
 
@@ -85,6 +89,8 @@ class PhraseOptimizationResult:
     label_accuracy: float
     label_macro_f1: float
     skipped_tracks: tuple[SkippedOptimizationTrack, ...] = ()
+    # False: the metrics are measured on the training tracks (in-sample).
+    cross_validated: bool = False
 
 
 def _training_metrics(
@@ -148,6 +154,62 @@ def _training_metrics(
             )
         ),
     }
+
+
+def _fit_models(
+    prepared: list[dict[str, object]],
+    indices: np.ndarray,
+    targets: list[tuple[np.ndarray, list[str]]],
+    seed: int,
+):
+    boundary_clf = _phrase_backend._fit_boundary_gbm(
+        prepared,
+        indices,
+        targets,
+        positive_radius=POSITIVE_RADIUS_BEATS,
+        negative_guard=NEGATIVE_GUARD_BEATS,
+        seed=int(seed),
+        learning_rate=0.05,
+        max_iter=420,
+        max_leaf_nodes=31,
+        max_depth=3,
+        min_samples_leaf=10,
+        l2_regularization=2.0,
+    )
+    label_model = _phrase_backend._fit_label_model(
+        prepared,
+        indices,
+        targets,
+        seed=int(seed) + 100,
+        boundary_jitter_views=LABEL_BOUNDARY_JITTER_VIEWS,
+        boundary_jitter_beats=LABEL_BOUNDARY_JITTER_BEATS,
+    )
+    return boundary_clf, label_model
+
+
+def _cross_validate(
+    prepared: list[dict[str, object]],
+    targets: list[tuple[np.ndarray, list[str]]],
+    folds: int,
+    seed: int,
+    progress: ProgressCallback | None,
+) -> dict[str, float]:
+    """Track-level K-fold: refit both models per fold, score the held-out tracks (track-weighted mean)."""
+    indices = np.arange(len(prepared), dtype=np.int32)
+    n_splits = min(int(folds), len(prepared))
+    totals: dict[str, float] = {}
+    for fold, (train, test) in enumerate(
+        GroupKFold(n_splits=n_splits).split(indices, groups=indices), start=1
+    ):
+        if progress is not None:
+            progress(5 + int(round((fold - 1) * 45 / n_splits)), f"Cross-validation fold {fold}/{n_splits}")
+        boundary_clf, label_model = _fit_models(prepared, train, targets, seed)
+        fold_metrics = _training_metrics(
+            [prepared[i] for i in test], [targets[i] for i in test], boundary_clf, label_model
+        )
+        for key, value in fold_metrics.items():
+            totals[key] = totals.get(key, 0.0) + float(value) * len(test)
+    return {key: value / len(prepared) for key, value in totals.items()}
 
 
 def _structure_cache_path(cache_dir: Path, uid: str) -> Path:
@@ -457,33 +519,15 @@ def optimize_phrase_parameters(
     targets = [track["optimizer_target"] for track in prepared]
     idx = np.arange(len(prepared), dtype=np.int32)
 
-    if optimize_progress is not None:
-        optimize_progress(5, "Fitting boundary GBM")
-    boundary_clf = _phrase_backend._fit_boundary_gbm(
-        prepared,
-        idx,
-        targets,
-        positive_radius=POSITIVE_RADIUS_BEATS,
-        negative_guard=NEGATIVE_GUARD_BEATS,
-        seed=int(request.seed),
-        learning_rate=0.05,
-        max_iter=420,
-        max_leaf_nodes=31,
-        max_depth=3,
-        min_samples_leaf=10,
-        l2_regularization=2.0,
+    cross_validated = int(request.cv_folds) >= 2
+    cv_metrics = (
+        _cross_validate(prepared, targets, request.cv_folds, int(request.seed), optimize_progress)
+        if cross_validated
+        else None
     )
-
     if optimize_progress is not None:
-        optimize_progress(55, "Fitting label GBM")
-    label_model = _phrase_backend._fit_label_model(
-        prepared,
-        idx,
-        targets,
-        seed=int(request.seed) + 100,
-        boundary_jitter_views=LABEL_BOUNDARY_JITTER_VIEWS,
-        boundary_jitter_beats=LABEL_BOUNDARY_JITTER_BEATS,
-    )
+        optimize_progress(55 if cross_validated else 5, "Fitting boundary and label GBMs")
+    boundary_clf, label_model = _fit_models(prepared, idx, targets, int(request.seed))
 
     artifact = {
         "boundary_clf": boundary_clf,
@@ -522,7 +566,7 @@ def optimize_phrase_parameters(
 
     if optimize_progress is not None:
         optimize_progress(87, "Evaluating fitted Phrase models")
-    metrics = _training_metrics(prepared, targets, boundary_clf, label_model)
+    metrics = cv_metrics if cross_validated else _training_metrics(prepared, targets, boundary_clf, label_model)
     if optimize_progress is not None:
         optimize_progress(90, "Writing parameter artifact")
     export_two_stage_npz_artifact(artifact, output_path)
@@ -540,4 +584,5 @@ def optimize_phrase_parameters(
         label_accuracy=metrics["label_accuracy"],
         label_macro_f1=metrics["label_macro_f1"],
         skipped_tracks=tuple(ignored),
+        cross_validated=cross_validated,
     )

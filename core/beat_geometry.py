@@ -76,6 +76,20 @@ def build_downbeats_from_segments(tempo_segments) -> np.ndarray | None:
     return np.asarray(sorted(set(downbeats)), dtype=float)
 
 
+def downbeat_times(beat_times, tempo_segments) -> np.ndarray | None:
+    """Downbeat times taken from the beats themselves (``downbeat_beat_indices``).
+
+    Unlike ``build_downbeats_from_segments`` they always fall on a beat and match
+    the bar counting of the playhead, editor and metronome. Falls back to the
+    segment-derived times when there are no beats.
+    """
+    beats = _clean_beats(beat_times)
+    if beats.size == 0:
+        return build_downbeats_from_segments(tempo_segments)
+    indices = downbeat_beat_indices(beats, tempo_segments)
+    return beats[indices] if indices.size else None
+
+
 def _clean_beats(beat_times) -> np.ndarray:
     """Return a sorted array of finite beat times (possibly empty)."""
     if beat_times is None:

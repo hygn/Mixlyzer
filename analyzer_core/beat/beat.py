@@ -8,7 +8,6 @@ from scipy.sparse.linalg import eigsh
 from scipy.ndimage import gaussian_filter, gaussian_filter1d
 from scipy.signal import find_peaks
 from scipy.stats import mode
-from analyzer_core.beat.half_beat_phase import analyze_half_beat_phase
 
 
 @dataclass
@@ -63,9 +62,7 @@ def estimate_bpm_and_grid(odf: np.ndarray, sr: int, hop: int,
                           bpm_lo: float, bpm_hi: float,
                           gamma_peak: float = 1.5,
                           prev_bpm: float = None,
-                          use_only_prev_bpm:bool = False,
-                          audio_raw: np.ndarray | None = None,
-                          half_beat_min_confidence: float = 0.03) -> tuple[float, np.ndarray, np.ndarray, np.ndarray]:
+                          use_only_prev_bpm:bool = False) -> tuple[float, np.ndarray, np.ndarray, np.ndarray]:
     """Get BPM, phase and Beatgrid from given ODF"""
 
     hop_t = hop / float(sr)
@@ -107,20 +104,33 @@ def estimate_bpm_and_grid(odf: np.ndarray, sr: int, hop: int,
         if not np.any(valid):
             return float('nan'), np.array([]), np.array([]), np.array([])
     
-        # From peaks to initial candidates
-        peaks, _ = find_peaks(acf_flat[valid], prominence=0.01)
+        # From peaks to initial candidates. Peaks are found on the whole ACF, which
+        # extends 10% past the BPM range, at sub-lag precision (parabolic
+        # interpolation), and then limited to the range. At high BPM one lag step
+        # spans ~10 BPM, so a tempo at the range edge (e.g. 230 BPM with bpm_max
+        # 230) can peak on a lag just outside it; candidates within 3% of the
+        # range are clipped into it (the sweep below refines them in range).
+        peaks, _ = find_peaks(acf_flat, prominence=0.01)
+        peak_lags = lags[peaks].copy()
+        for i, p in enumerate(peaks):
+            y0, y1, y2 = float(acf_flat[p - 1]), float(acf_flat[p]), float(acf_flat[p + 1])
+            denom = y0 - 2.0 * y1 + y2
+            if abs(denom) > 1e-12:
+                peak_lags[i] += float(np.clip(0.5 * (y0 - y2) / denom, -0.5, 0.5))
+        peak_bpms = 60.0 / (peak_lags * hop_t)
+        keep = (peak_bpms >= bpm_lo / 1.03) & (peak_bpms <= bpm_hi * 1.03)
+        peaks, peak_bpms = peaks[keep], np.clip(peak_bpms[keep], bpm_lo, bpm_hi)
         if peaks.size == 0:
-            idx = np.argmax(acf_flat[valid])
-            peaks = np.array([idx], dtype=int)
-        
-        valid_idx = np.flatnonzero(valid)
-        peaks_lag_idx = valid_idx[peaks]
-        peaks_scores = acf_flat[peaks_lag_idx - min_lag]
-    
-        K = min(10, len(peaks_lag_idx))
+            valid_idx = np.flatnonzero(valid)
+            peaks = np.array([valid_idx[np.argmax(acf_flat[valid])]], dtype=int)
+            peak_bpms = bpms_all[peaks]
+
+        # peaks index acf_flat / lags (lag = min_lag + index).
+        peaks_scores = acf_flat[peaks]
+
+        K = min(10, len(peaks))
         order = np.argsort(peaks_scores)[::-1][:K]
-        lag_cands = lags[peaks_lag_idx[order]]
-        bpm_cands = 60.0 / (lag_cands * hop_t)
+        bpm_cands = peak_bpms[order]
         if prev_bpm:
             bpm_cands = np.unique(np.concatenate([bpm_cands, prev_bpm]))
     else:
@@ -246,35 +256,6 @@ def estimate_bpm_and_grid(odf: np.ndarray, sr: int, hop: int,
         subdiv=1
     )
     beats_sec = grid_main_sec
-
-    # Half-beat phase correction: if the percussive energy concentrates in the
-    # second half of each beat interval, the grid is shifted by half a beat.
-    # Shift it back (a half-period shift lands on the same beats either way).
-    # Uses the raw (pre-HPSS) audio so the energy comparison sees the full mix.
-    if (
-        audio_raw is not None
-        and beats_sec.size >= 2
-        and np.isfinite(period_final)
-        and period_final > 0
-    ):
-        try:
-            hbp = analyze_half_beat_phase(
-                np.asarray(audio_raw, dtype=np.float32),
-                sample_rate=int(sr),
-                beat_times_sec=beats_sec,
-            )
-            print(f"[sweep] half-beat phase decision={hbp.decision} conf={hbp.confidence:.3f}")
-            if hbp.decision == 2 and hbp.confidence >= half_beat_min_confidence:
-                phi_final = phi_final + 0.5 * period_final
-                grid_main_sec, _ = build_grid_from_period_phase(
-                    total_len_frames=T, hop_t=hop_t,
-                    period_frames=period_final, phase_frames=phi_final,
-                    subdiv=1,
-                )
-                beats_sec = grid_main_sec
-                print("[sweep] half-beat offset corrected (+0.5 beat)")
-        except Exception as exc:
-            print(f"[sweep] half-beat phase skipped: {exc}")
 
     # downbeat is no longer detected here; it is the first beat of the segment.
     downbeat_sec = float(beats_sec[0]) if beats_sec.size else 0.0
@@ -752,7 +733,6 @@ def _estimate_tempo_segments(
     hop_for_odf: int,
     bpm_bounds: tuple[float, float],
     hop_t: float,
-    audio_raw: np.ndarray | None = None,
 ) -> tuple[list[TempoSegment], list[float], list[tuple[float, float, float]], float]:
     beats_all: list[float] = []
     tempo_segments: list[TempoSegment] = []
@@ -770,11 +750,6 @@ def _estimate_tempo_segments(
             seg_meta.append((start_sec, end_sec, float("nan")))
             continue
 
-        audio_seg = None
-        if audio_raw is not None:
-            a0 = int(s) * int(hop_for_odf)
-            a1 = int(e) * int(hop_for_odf)
-            audio_seg = np.asarray(audio_raw)[a0:a1]
         bpm_est, beats_sec, downbeat_sec = estimate_bpm_and_grid(
             local,
             sr,
@@ -782,7 +757,6 @@ def _estimate_tempo_segments(
             bpm_lo=bpm_bounds[0],
             bpm_hi=bpm_bounds[1],
             prev_bpm=None,
-            audio_raw=audio_seg,
         )
         seg_meta.append((start_sec, end_sec, float(bpm_est) if np.isfinite(bpm_est) else np.nan))
 
@@ -845,7 +819,6 @@ def bpm_dynamic_phase_sync(
     save_hop: int,
     win_s, step_s,
     audio: np.ndarray,
-    audio_raw: np.ndarray | None = None,
     bpm_bounds: tuple[float, float] = (128.0, 260.0),
     odf_precomputed: np.ndarray | None = None,
     hop_t_precomputed: float | None = None,
@@ -871,7 +844,6 @@ def bpm_dynamic_phase_sync(
         hop_for_odf,
         bpm_bounds,
         hop_t,
-        audio_raw=audio_raw,
     )
 
     beats_time = np.asarray(sorted(beats_all), dtype=float)
@@ -943,7 +915,6 @@ def bpm_phase_sync(
     save_hop: int,
     win_s, step_s,
     audio: np.ndarray,
-    audio_raw: np.ndarray | None = None,
     bpm_bounds: tuple[float, float] = (128.0, 260.0),
     odf_precomputed: np.ndarray | None = None,
     hop_t_precomputed: float | None = None,
@@ -970,7 +941,6 @@ def bpm_phase_sync(
         hop_for_odf,
         bpm_bounds,
         hop_t,
-        audio_raw=audio_raw,
     )
 
     beats_time = np.asarray(sorted(beats_all), dtype=float)

@@ -3,7 +3,7 @@ import pyqtgraph as pg
 import numpy as np
 from .base import ViewPlugin, register_view
 from core.event_bus import EventBus
-from core.beat_geometry import build_downbeats_from_segments
+from core.beat_geometry import downbeat_times
 
 @register_view("BeatgridView")
 class BeatgridView(ViewPlugin):
@@ -58,7 +58,7 @@ class BeatgridView(ViewPlugin):
     def render_initial(self):
         f = self.model.features or {}
         self.beats_time = f.get("beats_time_sec")  # seconds from start
-        self.downbeats_time = build_downbeats_from_segments(f.get("tempo_segments"))
+        self.downbeats_time = downbeat_times(self.beats_time, f.get("tempo_segments"))
         self.duration = float(self.model.duration_sec or 0.0)
         self._refresh_lines(force=True)
 
@@ -134,7 +134,7 @@ class BeatgridView(ViewPlugin):
     def _on_beatgrid_updated(self, bg_seg=None):
         f = self.model.features or {}
         self.beats_time = f.get("beats_time_sec")
-        self.downbeats_time = build_downbeats_from_segments(f.get("tempo_segments"))
+        self.downbeats_time = downbeat_times(self.beats_time, f.get("tempo_segments"))
         self.duration = float(self.model.duration_sec or 0.0)
         self._cached_track_range = None
         self._refresh_lines(force=True)

@@ -82,6 +82,12 @@ class analysisconfig:
     bpm_max: int
     bpm_dynamic: bool
     bpm_adaptive_window: bool
+    onset_source: Literal["librosa", "optimized"]
+    onset_parameter_path: str
+    onset_feature_cache_path: str
+    beat_phase_correction: bool
+    beat_phase_parameter_path: str
+    beat_phase_feature_cache_path: str
     dynamic_downbeat: bool
     downbeat_parameter_path: str
     downbeat_feature_cache_path: str
@@ -208,6 +214,12 @@ def default_cfg():
         bpm_min=110,
         bpm_dynamic=True,
         bpm_adaptive_window=True,
+        onset_source="librosa",
+        onset_parameter_path="assets/weights/onset_feature_weights.json",
+        onset_feature_cache_path="featurecache/onset",
+        beat_phase_correction=True,
+        beat_phase_parameter_path="assets/weights/beat_phase_weights.json",
+        beat_phase_feature_cache_path="featurecache/beat_phase",
         dynamic_downbeat=False,
         downbeat_parameter_path="assets/weights/downbeat_feature_weights.json",
         downbeat_feature_cache_path="featurecache/downbeat",
@@ -295,6 +307,8 @@ def load_cfg() -> config:
 
     def _ensure_feature_cache_dirs(cfg: config) -> None:
         for path_text in (
+            cfg.analysisconfig.onset_feature_cache_path,
+            cfg.analysisconfig.beat_phase_feature_cache_path,
             cfg.analysisconfig.downbeat_feature_cache_path,
             cfg.analysisconfig.phrase_feature_cache_path,
         ):
