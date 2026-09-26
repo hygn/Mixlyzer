@@ -8,7 +8,7 @@ import numpy as np
 from PySide6 import QtCore, QtMultimedia
 
 from core.audio.clicks import ClickTrack
-from core.audio.dsp import SpeedResampler, fade_ramp
+from core.audio.dsp import SpeedResampler, fade_ramp, make_speed_renderer, soft_clip
 from core.audio.timeline import OutputTimeline
 
 
@@ -18,13 +18,16 @@ class PCMFeeder(QtCore.QObject):
 
     While playing, the sink is never reset: seeks, scrubbing, jumps and tempo changes are
     rendered into the running stream (reset()/start() cycles during scrubbing crash Qt
-    6.10's WASAPI stream thread). Once playback stops and the last audible frame (the
-    pause fade-out) has been heard, the feed timer and the sink are stopped, so an idle
-    player costs no CPU; play() starts them again. Every rendered block is recorded on an
+    6.10's WASAPI stream thread). Only pause() resets it once, to stop at the frame being
+    heard (mid-waveform) instead of after the queued audio. Once playback stops and the
+    last audible frame has been heard, the feed timer is stopped and the sink suspended, so an
+    idle player costs no CPU; play() resumes them. Every rendered block is recorded on an
     OutputTimeline, so the playhead is the input position actually being heard, even while
     audio rendered before a tempo change, seek or jump is still queued in the device.
 
-    Modes: "speed" (5-tap Lagrange varispeed) / "none" (pass-through, ignores factor).
+    Modes: "speed" (5-tap Lagrange varispeed, or the pitch-preserving time stretch after
+    set_timestretch(True); while scrubbing, the time stretch plays the original at unity)
+    / "none" (pass-through, ignores factor).
     Metronome clicks (`clicks`) are mixed into the same stream; music volume is applied here
     too, so the click level stays independent of it.
     """
@@ -32,6 +35,7 @@ class PCMFeeder(QtCore.QObject):
     finished = QtCore.Signal()  # the last frame of the track has been heard
 
     PEAK_FLOOR_DBFS = -24.0
+    SOFT_CLIP_KNEE = 0.8
 
     def __init__(self, audio: QtMultimedia.QAudioSink, rate: int, channels: int,
                  parent: Optional[QtCore.QObject] = None):
@@ -46,15 +50,28 @@ class PCMFeeder(QtCore.QObject):
         self._chunk_frames = 2048                          # max frames rendered per block
         self._idle_queue_frames = max(1, self.rate // 50)  # ~20 ms of silence while paused
         self._fade_frames = max(1, self.rate // 250)       # ~4 ms declick fades/crossfades
+        # Silence played after a pause before the sink is suspended, so the device's own
+        # buffer holds only silence when it resumes.
+        self._device_tail_frames = max(1, self.rate // 20)  # 50 ms
         self._restart_at = 0.0
-        # Idle stop: the sink is stopped once output frame `_audible_until` (the end of
+        # Idle stop: the sink is suspended once output frame `_audible_until` (the end of
         # the pause fade-out) has been heard while not playing.
         self._device_stopped = False
         self._audible_until = 0
+        # Buffer monitor, continuous in time while playing: the queued level is read just
+        # before and after every write; in between, the device drains it in real time
+        # (down to the next reading), so stalls in this thread are covered too. Time spent
+        # at each level is accumulated in 1 ms buckets (seconds per bucket).
+        self._obs_time: Optional[float] = None
+        self._obs_frames = 0
+        self._obs_hist: Optional[np.ndarray] = None
+        self._obs_level_ms_seconds = 0.0  # integral of level (ms) over time (s)
+        self._obs_seconds = 0.0
 
         self._timeline = OutputTimeline(self._bpf)
         self.clicks = ClickTrack(self.rate, self.ch)
-        self._resampler = SpeedResampler(self.ch)
+        self._resampler = make_speed_renderer(self.ch, self.rate)
+        self._unity_while_scrubbing = False
 
         # Track
         self._pcm: Optional[np.ndarray] = None   # [N, ch] float32
@@ -68,6 +85,7 @@ class PCMFeeder(QtCore.QObject):
         self._mode = "speed"
         self._factor = 1.0
         self._music_gain = 1.0
+        self._soft_clip = False
         self._jump_start: Optional[float] = None
         self._jump_dest: Optional[float] = None
 
@@ -77,7 +95,7 @@ class PCMFeeder(QtCore.QObject):
 
     # Lifecycle
     def open(self) -> None:
-        """Start the sink and the feed timer; they stop again as soon as the player is idle."""
+        """Start the sink and the feed timer; they pause again as soon as the player is idle."""
         if self._flush_timer is None:
             self._flush_timer = QtCore.QTimer(self)
             self._flush_timer.setTimerType(QtCore.Qt.PreciseTimer)
@@ -88,20 +106,31 @@ class PCMFeeder(QtCore.QObject):
         self._flush_timer.start()
 
     def _stop_device(self) -> None:
-        """Idle: stop the feed timer and the sink (restarted by play())."""
+        """Idle: stop the feed timer and suspend the sink (resumed by play()).
+
+        Suspend, not stop: with Qt 6.10's WASAPI backend each stop()/start() cycle leaves
+        an MMCSS registration behind, and from the 33rd start on the registration fails
+        ("AvSetMmThreadCharacteristics failed"), leaving the audio thread without its
+        real-time priority (reset()/start() did not leak in the same test). A suspended
+        sink keeps its stream (and the audio still queued in it) and costs no CPU.
+        """
         self._flush_timer.stop()
         try:
-            self.audio.stop()
+            self.audio.suspend()
         except Exception:
             pass
-        self.dev = None
         self._device_stopped = True
 
     def _resume_device(self) -> None:
         if not self._device_stopped:
             return
         self._device_stopped = False
-        self._start_sink()
+        try:
+            self.audio.resume()
+        except Exception:
+            pass
+        if self.dev is None or self.audio.state() == QtMultimedia.QtAudio.State.StoppedState:
+            self._start_sink()  # the sink died while suspended (e.g. device loss)
         self._flush_timer.start()
 
     def close(self) -> None:
@@ -113,6 +142,17 @@ class PCMFeeder(QtCore.QObject):
             self.audio.stop()
         except Exception:
             pass
+
+    def _reset_sink(self) -> None:
+        """Drop everything queued in the sink (and the device) and start it again, empty."""
+        try:
+            self.audio.reset()
+        except Exception:
+            pass
+        self._device_stopped = False
+        self._start_sink()
+        if self._flush_timer is not None and not self._flush_timer.isActive():
+            self._flush_timer.start()
 
     def _start_sink(self) -> None:
         self._timeline.reset()
@@ -159,12 +199,27 @@ class PCMFeeder(QtCore.QObject):
         m = (mode or "speed").lower()
         self._mode = m if m in ("none", "speed") else "speed"
 
+    def set_timestretch(self, enabled: bool) -> None:
+        """Pitch-preserving time stretch (True) or varispeed (False) for the "speed" mode."""
+        enabled = bool(enabled)
+        if enabled == (not isinstance(self._resampler, SpeedResampler)):
+            return
+        self._resampler = make_speed_renderer(self.ch, self.rate, timestretch=enabled)
+        # A time stretcher restarts (pre-roll, tens of ms) on every seek, so while
+        # scrubbing the original is played at unity instead (its direct read), and the
+        # stretch resumes as soon as scrubbing ends.
+        self._unity_while_scrubbing = enabled
+
     def set_factor(self, f: float) -> None:
         """Applies to audio rendered from now on; queued audio keeps the speed it was rendered at."""
         self._factor = float(max(0.25, min(4.0, f)))
 
     def set_music_gain(self, gain: float) -> None:
         self._music_gain = float(max(0.0, gain))
+
+    def set_soft_clip(self, enabled: bool) -> None:
+        """tanh soft clip of the mixed output (music + clicks) above SOFT_CLIP_KNEE."""
+        self._soft_clip = bool(enabled)
 
     def set_scrubbing(self, scrubbing: bool) -> None:
         """Clicks only sound during normal playback, so they are muted while scrubbing."""
@@ -173,7 +228,9 @@ class PCMFeeder(QtCore.QObject):
             self.clicks.clear_voices()
 
     def _step(self) -> float:
-        return self._factor if self._mode == "speed" else 1.0
+        if self._mode != "speed" or (self._scrubbing and self._unity_while_scrubbing):
+            return 1.0
+        return self._factor
 
     # Transport (positions in input frames)
     def is_playing(self) -> bool:
@@ -184,8 +241,12 @@ class PCMFeeder(QtCore.QObject):
             return True
         if self._pcm is None or self._pos >= self._len:
             return False
-        self._resume_device()
+        if self._device_stopped and (
+            self.dev is None or self.audio.state() == QtMultimedia.QtAudio.State.StoppedState
+        ):
+            self._resume_device()  # the sink died while suspended: restart it before rendering
         self._playing = True
+        self._obs_time = None
         self._seeked_while_paused = False
         self._sent_finished = False
         self._end_out_frame = None
@@ -193,20 +254,33 @@ class PCMFeeder(QtCore.QObject):
         head *= fade_ramp(head.shape[0], self._fade_frames, rising=True)
         self._append(head, self._pos, self._step())
         self._pos += self._step() * head.shape[0]
+        # Render a first block before the device runs again: a time stretcher restarts
+        # here (pre-roll, ~35 ms), and a device resumed first would play the fade-in and
+        # then run dry until that is done.
+        if self._pos < self._len:
+            self._render_block(self._chunk_frames)
+        self._resume_device()
         self._flush()  # start feeding now, not on the next timer tick
         return True
 
     def pause(self) -> None:
+        """Stop at the frame being heard now, mid-waveform (no fade-out).
+
+        Everything queued after it is dropped (sink reset), so the pause is heard at once;
+        playback resumes from that frame.
+        """
         if not self._playing:
             return
+        heard_pos = self.playhead_frame()
         self._playing = False
-        if self._pos < self._len:
-            tail = self._render(self._pos, self._fade_frames)
-            tail *= fade_ramp(tail.shape[0], self._fade_frames, rising=False)
-            self._append(tail, self._pos, self._step())
-            self._pos += self._step() * tail.shape[0]
-        # Keep feeding (silence) until everything rendered so far has been heard.
-        self._audible_until = self._timeline.rendered_frames
+        self._obs_time = None
+        self._reset_sink()
+        self.clicks.clear_voices()  # clicks were mixed into the dropped audio
+        self._pos = float(max(0.0, min(self._len, heard_pos)))
+        # Feed silence for a while before the idle suspend, so the device's own buffer
+        # (not counted in bytesFree) holds only silence when it resumes.
+        self._audible_until = self._timeline.rendered_frames + self._device_tail_frames
+        self._flush()
 
     def seek(self, frame: float) -> None:
         target = float(max(0, min(frame, self._len)))
@@ -237,6 +311,67 @@ class PCMFeeder(QtCore.QObject):
             return max(0, buf_sz - bytes_free)
         except Exception:
             return 0
+
+    def _capacity_frames(self) -> int:
+        try:
+            return max(1, int(self.audio.bufferSize()) // self._bpf)
+        except Exception:
+            return 1
+
+    def _observe_buffer(self) -> None:
+        """Buffer level reading while playing; accumulates the time since the last one."""
+        if not self._playing:
+            self._obs_time = None
+            return
+        now = time.perf_counter()
+        frames = self._queued_bytes() // self._bpf
+        if self._obs_time is not None:
+            self._accumulate_buffer(self._obs_frames, frames, now - self._obs_time)
+        self._obs_time = now
+        self._obs_frames = frames
+
+    def _accumulate_buffer(self, start_frames: int, end_frames: int, seconds: float) -> None:
+        """Level trajectory between two readings: drains at real time from the first
+        reading until it reaches the second one (a write in between is read separately)."""
+        if seconds <= 0.0:
+            return
+        if self._obs_hist is None:
+            self._obs_hist = np.zeros(self._capacity_frames() * 1000 // self.rate + 2, np.float64)
+        hist = self._obs_hist
+        top = len(hist) - 1
+        a = start_frames * 1000.0 / self.rate            # level in ms
+        b = max(end_frames * 1000.0 / self.rate, a - seconds * 1000.0)
+        drop = max(0.0, a - b)                           # ms drained == ms elapsed
+        flat = seconds - drop / 1000.0
+        if drop > 0.0:
+            # 1 ms of level passes per 1 ms of time: spread drop/1000 s over [b, a].
+            k = int(b)
+            while k <= int(a) and k <= top:
+                overlap = min(a, k + 1.0) - max(b, float(k))
+                if overlap > 0.0:
+                    hist[k] += overlap / 1000.0
+                k += 1
+        if flat > 0.0:
+            hist[min(top, int(b))] += flat
+        self._obs_level_ms_seconds += (a + b) * 0.5 * drop / 1000.0 + b * max(0.0, flat)
+        self._obs_seconds += seconds
+
+    def take_buffer_stats(self) -> tuple[int, Optional[dict], int]:
+        """(frames queued now, observations since the last call or None, buffer capacity in
+        frames); resets the observations. The observations are {"hist": seconds spent at
+        each 1 ms level, "seconds": time covered, "mean_ms": time-weighted mean level}."""
+        queued = 0 if self._device_stopped else self._queued_bytes() // self._bpf
+        stats = None
+        if self._obs_hist is not None and self._obs_seconds > 0.0:
+            stats = {
+                "hist": self._obs_hist,
+                "seconds": self._obs_seconds,
+                "mean_ms": self._obs_level_ms_seconds / self._obs_seconds,
+            }
+        self._obs_hist = None
+        self._obs_level_ms_seconds = 0.0
+        self._obs_seconds = 0.0
+        return queued, stats, self._capacity_frames()
 
     def _heard_out_frame(self) -> float:
         return self._timeline.heard_frame(self._queued_bytes())
@@ -280,6 +415,8 @@ class PCMFeeder(QtCore.QObject):
             if self._playing and not self._scrubbing:
                 self.clicks.queue(in_start, step, n)
         out = self.clicks.mix(out)
+        if self._soft_clip:
+            out = soft_clip(out, self.SOFT_CLIP_KNEE)
         self._timeline.append(out, in_start, step, peak_dbfs)
 
     def _append_silence(self, n: int) -> None:
@@ -326,7 +463,10 @@ class PCMFeeder(QtCore.QObject):
         if self._device_stopped or not self._sink_running():
             return
         for _ in range(4):
-            if not self._timeline.write_to(self.dev):
+            self._observe_buffer()
+            written = self._timeline.write_to(self.dev)
+            self._observe_buffer()
+            if not written:
                 break  # device full; retry next tick
 
             try:

@@ -462,7 +462,11 @@ class MainPane(QtWidgets.QWidget):
         
         active_key = self._key_from_segments(self._key_segments, t)
         if active_key is not None:
-            _, semitone_int, semitone_frac = speed_to_semitone(self.tempo_slider.value() / 100)
+            if self._timestretch_enabled():
+                # The time stretch keeps the pitch: the key does not follow the tempo.
+                semitone_int, semitone_frac = 0, 0.0
+            else:
+                _, semitone_int, semitone_frac = speed_to_semitone(self.tempo_slider.value() / 100)
             if active_key < 12:
                 ks_v = (active_key + semitone_int) % 12
             else:
@@ -634,6 +638,10 @@ class MainPane(QtWidgets.QWidget):
         current_volume = int(self.vol_slider.value())
         current_volume = max(0, min(100, current_volume))
         self._on_volume_slider_changed(current_volume)
+        self._on_time(self.current_time)  # key display depends on use_timestretch
+
+    def _timestretch_enabled(self) -> bool:
+        return bool(getattr(getattr(self.cfg, "playbackconfig", None), "use_timestretch", False))
 
     def _set_editor_panel_visible(self, visible: bool) -> None:
         show = bool(visible)

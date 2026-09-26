@@ -172,6 +172,82 @@ class VerticalPeakMeter(QtWidgets.QWidget):
         painter.end()
 
 
+class HorizontalBufferMeter(QtWidgets.QWidget):
+    """The peak meter's bar turned sideways, for how full the output buffer is.
+
+    Colours run the other way (empty = red, full = green), and the optional hold marker
+    keeps the lowest recent level instead of the highest.
+    """
+
+    def __init__(self, parent=None, hold_marker: bool = True):
+        super().__init__(parent)
+        self._hold_marker = bool(hold_marker)
+        self._ratio = 0.0
+        self._low_hold = 1.0
+        self._hold_ms = 1000
+        self._rise_per_sec = 0.5  # hold marker returns to the bar at half the scale per second
+        self._low_hold_deadline = QtCore.QDeadlineTimer(self._hold_ms)
+        self._anim = QtCore.QTimer(self)
+        self._anim.setInterval(16)
+        self._anim.timeout.connect(self._tick)
+        self.setFixedHeight(14)
+        self.setMinimumWidth(160)
+
+    def set_level(self, ratio: float, lowest_ratio: float | None = None) -> None:
+        """``ratio``: filled part now (0..1); ``lowest_ratio``: lowest since the last call."""
+        self._ratio = max(0.0, min(1.0, float(ratio)))
+        low = self._ratio if lowest_ratio is None else min(self._ratio, max(0.0, float(lowest_ratio)))
+        if low <= self._low_hold:
+            self._low_hold = low
+            self._low_hold_deadline = QtCore.QDeadlineTimer(self._hold_ms)
+        self.update()
+
+    def showEvent(self, event: QtGui.QShowEvent) -> None:
+        super().showEvent(event)
+        if self._hold_marker:
+            self._anim.start()
+
+    def hideEvent(self, event: QtGui.QHideEvent) -> None:
+        super().hideEvent(event)
+        self._anim.stop()
+
+    def _tick(self) -> None:
+        if self._low_hold_deadline.hasExpired() and self._low_hold < self._ratio:
+            dt = self._anim.interval() / 1000.0
+            self._low_hold = min(self._ratio, self._low_hold + self._rise_per_sec * dt)
+            self.update()
+
+    def paintEvent(self, event: QtGui.QPaintEvent) -> None:
+        super().paintEvent(event)
+        painter = QtGui.QPainter(self)
+        painter.setRenderHint(QtGui.QPainter.Antialiasing, True)
+        rect = self.rect().adjusted(2, 3, -2, -3)
+        painter.fillRect(rect, QtGui.QColor("#111"))
+        painter.setPen(QtGui.QPen(QtGui.QColor("#444"), 1))
+        painter.drawRect(rect)
+
+        fill_w = int(round(rect.width() * self._ratio))
+        if fill_w > 0:
+            fill_rect = QtCore.QRect(rect.left() + 1, rect.top() + 1, fill_w - 1, rect.height() - 1)
+            grad_rect = rect.adjusted(1, 1, -1, -1)
+            grad = QtGui.QLinearGradient(grad_rect.topLeft(), grad_rect.topRight())
+            grad.setColorAt(0.0, QtGui.QColor("#ff4d4d"))
+            grad.setColorAt(0.35, QtGui.QColor("#ffcf40"))
+            grad.setColorAt(1.0, QtGui.QColor("#34d399"))
+            painter.save()
+            painter.setClipRect(fill_rect)
+            painter.fillRect(grad_rect, grad)
+            painter.restore()
+
+        if not self._hold_marker:
+            painter.end()
+            return
+        low_x = rect.left() + int(round(rect.width() * self._low_hold))
+        painter.setPen(QtGui.QPen(QtGui.QColor("#f8fafc"), 2))
+        painter.drawLine(low_x, rect.top() + 1, low_x, rect.bottom() - 1)
+        painter.end()
+
+
 class TrackInfoPanel(QtWidgets.QWidget):
     """Header widget that displays central track information."""
 

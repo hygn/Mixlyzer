@@ -5,11 +5,15 @@ import csv
 from datetime import datetime
 import io
 import json
+import math
 import os
 from pathlib import Path
 import shutil
 import subprocess
+import time
 import traceback
+
+import numpy as np
 from PySide6.QtCore import Qt, Signal
 from PySide6 import QtCore, QtGui
 from PySide6.QtWidgets import (
@@ -22,6 +26,7 @@ from core.config import (
 )
 from core.event_bus import EventBus
 from core.resource_paths import process_denylist_path, project_root
+from ui.track_info_panel import HorizontalBufferMeter
 
 
 class ParameterOptimizeWorker(QtCore.QObject):
@@ -341,6 +346,7 @@ class SettingsDialog(QDialog):
         self._accept_next_library_sync = False
         if self._bus is not None:
             self._bus.sig_ui_draw_interval.connect(self._on_ui_draw_interval)
+            self._bus.sig_output_buffer.connect(self._on_output_buffer)
             self._bus.sig_rekordbox_sync_started.connect(
                 self._on_rekordbox_sync_started
             )
@@ -436,12 +442,57 @@ class SettingsDialog(QDialog):
         self.sp_default_volume_percent = QSpinBox()
         self.sp_default_volume_percent.setRange(0, 100)
         self.sp_default_volume_percent.setSingleStep(1)
+        self.cb_use_timestretch = QCheckBox("Use timestretch")
+        self.cb_use_timestretch.setToolTip(
+            "Tempo changes keep the pitch (time stretch) instead of varispeed"
+        )
 
         f.addRow(self.cb_metronome)
         f.addRow("Metronome WAV path", self.ed_metronome_wav_path)
         f.addRow("Metronome offset (ms)", self.sp_metronome_offset_msec)
         f.addRow("Trim", self.sp_volume_trim_dbfs)
         f.addRow("Default volume (%)", self.sp_default_volume_percent)
+        f.addRow(self.cb_use_timestretch)
+
+        # Metronome click levels: pitch is raised / lowered by playing the click faster / slower.
+        self.sp_click_down_volume = QSpinBox()
+        self.sp_click_down_volume.setRange(0, 100)
+        self.sp_click_down_pitch = QDoubleSpinBox()
+        self.sp_click_down_pitch.setRange(-24.0, 24.0)
+        self.sp_click_down_pitch.setSingleStep(1.0)
+        self.sp_click_down_pitch.setDecimals(1)
+        self.sp_click_beat_volume = QSpinBox()
+        self.sp_click_beat_volume.setRange(0, 100)
+        self.sp_click_beat_pitch = QDoubleSpinBox()
+        self.sp_click_beat_pitch.setRange(-24.0, 24.0)
+        self.sp_click_beat_pitch.setSingleStep(1.0)
+        self.sp_click_beat_pitch.setDecimals(1)
+        self.cb_metronome_ducking = QCheckBox("Duck music under metronome clicks")
+        self.cb_metronome_ducking.setToolTip("Lowers the music by up to 6 dB, following each click")
+        self.cb_soft_clip = QCheckBox("Soft clip output (tanh)")
+        self.cb_soft_clip.setToolTip("Output above -1.9 dBFS is rounded off by tanh up to 0 dBFS instead of hard clipping")
+        f.addRow("Downbeat click volume (%)", self.sp_click_down_volume)
+        f.addRow("Downbeat click pitch (semitones)", self.sp_click_down_pitch)
+        f.addRow("Beat click volume (%)", self.sp_click_beat_volume)
+        f.addRow("Beat click pitch (semitones)", self.sp_click_beat_pitch)
+        f.addRow(self.cb_metronome_ducking)
+        f.addRow(self.cb_soft_clip)
+
+        # Live output buffer, observed continuously while playing (see
+        # PCMFeeder.take_buffer_stats): time-weighted level smoothed by an EMA, and the
+        # 1 % low of the last BUFFER_WINDOW_SEC (level undercut 1 % of the time).
+        self.buffer_meter = HorizontalBufferMeter(hold_marker=False)
+        self.buffer_low_meter = HorizontalBufferMeter(hold_marker=False)
+        self.lbl_buffer = QLabel("Waiting for playback...")
+        self.lbl_buffer.setToolTip(
+            "Audio queued in the output device buffer while playing, 0 ms = dropout."
+        )
+        f.addRow("Output buffer", self.buffer_meter)
+        f.addRow(f"1% low ({self.BUFFER_WINDOW_SEC:.0f} s)", self.buffer_low_meter)
+        f.addRow("", self.lbl_buffer)
+        self._buffer_ema_ms: float | None = None
+        self._buffer_window: deque[tuple[float, np.ndarray]] = deque()  # (time, seconds per 1 ms level)
+        self._buffer_dropout_sec = 0.0
 
         self.tabs.addTab(self.tab_playback, "Playback")
 
@@ -701,6 +752,13 @@ class SettingsDialog(QDialog):
         self.sp_metronome_offset_msec.setValue(float(getattr(p, "metronome_offset_msec", 0.0)))
         self.sp_volume_trim_dbfs.setValue(float(p.volume_trim_dbfs))
         self.sp_default_volume_percent.setValue(int(p.default_volume_percent))
+        self.cb_use_timestretch.setChecked(bool(getattr(p, "use_timestretch", False)))
+        self.sp_click_down_volume.setValue(int(p.metronome_downbeat_volume_percent))
+        self.sp_click_down_pitch.setValue(float(p.metronome_downbeat_pitch_semitones))
+        self.sp_click_beat_volume.setValue(int(p.metronome_beat_volume_percent))
+        self.sp_click_beat_pitch.setValue(float(p.metronome_beat_pitch_semitones))
+        self.cb_metronome_ducking.setChecked(bool(p.metronome_ducking))
+        self.cb_soft_clip.setChecked(bool(p.soft_clip))
 
         # analysis
         a = cfg.analysisconfig
@@ -953,6 +1011,13 @@ class SettingsDialog(QDialog):
                 metronome_offset_msec=float(self.sp_metronome_offset_msec.value()),
                 volume_trim_dbfs=float(self.sp_volume_trim_dbfs.value()),
                 default_volume_percent=int(self.sp_default_volume_percent.value()),
+                use_timestretch=bool(self.cb_use_timestretch.isChecked()),
+                metronome_downbeat_volume_percent=int(self.sp_click_down_volume.value()),
+                metronome_downbeat_pitch_semitones=float(self.sp_click_down_pitch.value()),
+                metronome_beat_volume_percent=int(self.sp_click_beat_volume.value()),
+                metronome_beat_pitch_semitones=float(self.sp_click_beat_pitch.value()),
+                metronome_ducking=bool(self.cb_metronome_ducking.isChecked()),
+                soft_clip=bool(self.cb_soft_clip.isChecked()),
             ),
             externalsyncconfig=externalsyncconfig(
                 enabled=bool(self.cb_external_sync_enabled.isChecked()),
@@ -994,6 +1059,50 @@ class SettingsDialog(QDialog):
             avg_ms = sum(self._refresh_samples) / len(self._refresh_samples)
             fps = 1000.0 / avg_ms if avg_ms > 0 else 0.0
             self.lbl_fps.setText(f"{avg_ms:.1f} ms ({fps:.1f} FPS)")
+
+    BUFFER_WINDOW_SEC = 10.0
+    BUFFER_EMA_TAU_SEC = 0.3
+
+    def showEvent(self, event: QtGui.QShowEvent) -> None:
+        super().showEvent(event)
+        self._buffer_ema_ms = None
+        self._buffer_window.clear()
+        self._buffer_dropout_sec = 0.0
+
+    def _on_output_buffer(self, queued_ms: float, stats: object, capacity_ms: float) -> None:
+        if not self.isVisible() or capacity_ms <= 0.0 or not isinstance(stats, dict):
+            return
+        seconds = float(stats["seconds"])
+        hist = np.asarray(stats["hist"], dtype=np.float64)
+        now = time.monotonic()
+        # EMA over time of the time-weighted mean level.
+        mean_ms = float(stats["mean_ms"])
+        if self._buffer_ema_ms is None:
+            self._buffer_ema_ms = mean_ms
+        else:
+            alpha = 1.0 - math.exp(-seconds / self.BUFFER_EMA_TAU_SEC)
+            self._buffer_ema_ms += alpha * (mean_ms - self._buffer_ema_ms)
+        self._buffer_dropout_sec += float(hist[0])  # time below 1 ms
+        self._buffer_window.append((now, hist))
+        while self._buffer_window and now - self._buffer_window[0][0] > self.BUFFER_WINDOW_SEC:
+            self._buffer_window.popleft()
+
+        size = max(len(h) for _, h in self._buffer_window)
+        total = np.zeros(size, dtype=np.float64)
+        for _, h in self._buffer_window:
+            total[:len(h)] += h
+        cumulative = np.cumsum(total)
+        low_1pct_ms = float(np.searchsorted(cumulative, 0.01 * cumulative[-1]))
+        lowest_ms = float(np.flatnonzero(total)[0]) if cumulative[-1] > 0 else 0.0
+
+        self.buffer_meter.set_level(self._buffer_ema_ms / capacity_ms)
+        self.buffer_low_meter.set_level(low_1pct_ms / capacity_ms)
+        self.lbl_buffer.setText(
+            f"EMA {self._buffer_ema_ms:.0f} / {capacity_ms:.0f} ms   "
+            f"1% low {low_1pct_ms:.0f} ms   lowest {lowest_ms:.0f} ms "
+            f"({self.BUFFER_WINDOW_SEC:.0f} s)   "
+            f"dropout since opened {self._buffer_dropout_sec * 1000.0:.0f} ms"
+        )
 
     def _sync_rekordbox_now(self) -> None:
         if self._bus is None:

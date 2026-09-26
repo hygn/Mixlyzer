@@ -47,10 +47,16 @@ class MetronomeController(QtCore.QObject):
         self.enabled = False
         self._offset_sec = 0.0
         self._soundfile = click_wav_path
-        self._base_volume = 0.9
+        # Downbeat (accent) and other beats: volume 0..1, pitch in semitones.
+        self._downbeat_volume = 0.9
+        self._beat_volume = 0.36
+        self._downbeat_pitch = 7.0
+        self._beat_pitch = 0.0
 
         self.downbeat_cycle = None
         self.downbeat_indices: frozenset[int] | None = None
+
+        self._ducking = False
 
         self._mixer_provider: Optional[Callable[[], object]] = None
         self._initialized = False
@@ -70,6 +76,9 @@ class MetronomeController(QtCore.QObject):
         self._push_sample()
         self._push_beats()
         self._push_settings()
+        mixer = self._mixer()
+        if mixer is not None:
+            mixer.set_ducking(self._ducking)
 
     # Public API
     @QtCore.Slot()
@@ -82,10 +91,23 @@ class MetronomeController(QtCore.QObject):
         self.enabled = False
         self._push_settings()
 
-    @QtCore.Slot(float)
-    def set_volume(self, v: float):
-        self._base_volume = float(np.clip(v, 0.0, 1.0))
+    @QtCore.Slot(float, float, float, float)
+    def set_click_levels(self, downbeat_volume: float, downbeat_pitch: float,
+                         beat_volume: float, beat_pitch: float):
+        """Volumes 0..1; pitches in semitones (the click is played faster / slower)."""
+        self._downbeat_volume = float(np.clip(downbeat_volume, 0.0, 1.0))
+        self._beat_volume = float(np.clip(beat_volume, 0.0, 1.0))
+        self._downbeat_pitch = float(downbeat_pitch)
+        self._beat_pitch = float(beat_pitch)
+        self._push_sample_pitch()
         self._push_beats()
+
+    @QtCore.Slot(bool)
+    def set_ducking(self, enabled: bool):
+        self._ducking = bool(enabled)
+        mixer = self._mixer()
+        if mixer is not None:
+            mixer.set_ducking(self._ducking)
 
     @QtCore.Slot(float)
     def set_offset(self, offset_msec: float):
@@ -127,7 +149,8 @@ class MetronomeController(QtCore.QObject):
         self.set_beats(None, None)
 
     # Mixer sync
-    def _beat_gains(self) -> np.ndarray:
+    def _beat_accents(self) -> np.ndarray:
+        """Downbeats (all False when every beat would be one, i.e. no downbeat is known)."""
         n = len(self.beats_time)
         idx = np.arange(n)
         if self.downbeat_indices is not None:
@@ -135,13 +158,24 @@ class MetronomeController(QtCore.QObject):
         elif self.downbeat_cycle:
             accent = (idx % self.downbeat_cycle) == 0
         else:
-            accent = np.ones(n, dtype=bool)
-        return (np.where(accent, 1.0, 0.4) * self._base_volume).clip(0.0, 1.0).astype(np.float32)
+            accent = np.zeros(n, dtype=bool)
+        if accent.all():
+            accent[:] = False
+        return accent
+
+    def _beat_gains(self, accent: np.ndarray) -> np.ndarray:
+        return np.where(accent, self._downbeat_volume, self._beat_volume).astype(np.float32)
 
     def _push_sample(self):
         mixer = self._mixer()
         if mixer is not None:
+            mixer.set_pitches(self._beat_pitch, self._downbeat_pitch)
             mixer.set_sample(_load_click(self._soundfile, mixer.rate, mixer.ch))
+
+    def _push_sample_pitch(self):
+        mixer = self._mixer()
+        if mixer is not None:
+            mixer.set_pitches(self._beat_pitch, self._downbeat_pitch)
 
     def _push_beats(self):
         mixer = self._mixer()
@@ -150,7 +184,8 @@ class MetronomeController(QtCore.QObject):
         if self.beats_time is None:
             mixer.set_beats(None, None)
         else:
-            mixer.set_beats(self.beats_time, self._beat_gains())
+            accent = self._beat_accents()
+            mixer.set_beats(self.beats_time, self._beat_gains(accent), accent)
 
     def _push_settings(self):
         mixer = self._mixer()

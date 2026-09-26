@@ -156,6 +156,7 @@ class AppWindow(QtWidgets.QMainWindow):
         )
         self.metro.set_downbeat_cycle(1)
         self.metro.set_offset(float(getattr(self.cfg.playbackconfig, "metronome_offset_msec", 0.0)))
+        self._apply_click_settings(self.cfg.playbackconfig)
         self.metro.moveToThread(self.player.audio_thread())
         self.metro.bind_mixer(self.player.click_mixer)
         self._sig_metronome_set_beats.connect(self.metro.set_beats, QtCore.Qt.QueuedConnection)
@@ -165,6 +166,7 @@ class AppWindow(QtWidgets.QMainWindow):
         else:
             QtCore.QMetaObject.invokeMethod(self.metro, "stop", QtCore.Qt.QueuedConnection)
         self.bus.sig_beatgrid_edited.connect(self._sync_metronome_beats)
+        self._apply_timestretch(bool(self.cfg.playbackconfig.use_timestretch))
         self._apply_external_sync_mode(self.cfg.externalsyncconfig)
         self._apply_visibility_refresh_setting(force=True)
 
@@ -565,6 +567,8 @@ class AppWindow(QtWidgets.QMainWindow):
                 QtCore.Qt.QueuedConnection,
                 QtCore.Q_ARG(float, float(_config.playbackconfig.metronome_offset_msec)),
             )
+            self._apply_timestretch(bool(_config.playbackconfig.use_timestretch))
+            self._apply_click_settings(_config.playbackconfig)
         if playbackconfig_changed or peak_meter_config_changed:
             self.pane.apply_playback_config(_config)
         if layout_changed:
@@ -653,6 +657,30 @@ class AppWindow(QtWidgets.QMainWindow):
             target_fps = self._HIDDEN_REFRESH_FPS
         self._apply_effective_refresh_fps(target_fps, force=force)
 
+    def _apply_click_settings(self, pcfg) -> None:
+        """Metronome click volumes / pitches and ducking, and the output soft clip."""
+        QtCore.QMetaObject.invokeMethod(
+            self.metro,
+            "set_click_levels",
+            QtCore.Qt.QueuedConnection,
+            QtCore.Q_ARG(float, float(pcfg.metronome_downbeat_volume_percent) / 100.0),
+            QtCore.Q_ARG(float, float(pcfg.metronome_downbeat_pitch_semitones)),
+            QtCore.Q_ARG(float, float(pcfg.metronome_beat_volume_percent) / 100.0),
+            QtCore.Q_ARG(float, float(pcfg.metronome_beat_pitch_semitones)),
+        )
+        QtCore.QMetaObject.invokeMethod(
+            self.metro, "set_ducking", QtCore.Qt.QueuedConnection,
+            QtCore.Q_ARG(bool, bool(pcfg.metronome_ducking)),
+        )
+        self.player.set_soft_clip(bool(pcfg.soft_clip))
+
+    def _apply_timestretch(self, enabled: bool) -> None:
+        if enabled:
+            # Load the stretcher's numba kernels here, on the main thread, so the audio
+            # thread never blocks on loading/compiling them (~0.5 s from the disk cache).
+            from core.audio.timestretch import warm_timestretch_numba
+            warm_timestretch_numba()
+        self.player.set_timestretch(enabled)
     def _default_volume_linear_from_cfg(self, cfg: config) -> float:
         playback_cfg = getattr(cfg, "playbackconfig", None)
         trim_dbfs = float(getattr(playback_cfg, "volume_trim_dbfs", -6.0))

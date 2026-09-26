@@ -14,6 +14,9 @@ class EventBus(QtCore.QObject):
     sig_volume_changed = QtCore.Signal(float)
     sig_peak_meter_gain_changed = QtCore.Signal(float)
     sig_output_peak_dbfs = QtCore.Signal(float)
+    # Output buffer: queued ms now, time-continuous observations since the last report
+    # (PCMFeeder.take_buffer_stats: hist / seconds / mean_ms) or None, capacity ms
+    sig_output_buffer = QtCore.Signal(float, object, float)
     sig_tempo_factor_changed = QtCore.Signal(float)
     sig_tempo_mode_changed = QtCore.Signal(str)
     sig_stop_requested = QtCore.Signal(bool)

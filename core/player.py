@@ -28,6 +28,7 @@ class _AudioWorker(QtCore.QObject):
     transport_enabled = QtCore.Signal(bool)
     track_loaded = QtCore.Signal(object, int)  # pcm [N, ch] float32, sample rate
     output_peak_dbfs = QtCore.Signal(float)
+    output_buffer = QtCore.Signal(float, object, float)  # queued ms, observations (see PCMFeeder.take_buffer_stats) or None, capacity ms
     _decoded = QtCore.Signal(int, object, str)  # token, pcm or None, error message
 
     BUFFER_MS = 80
@@ -37,7 +38,7 @@ class _AudioWorker(QtCore.QObject):
         "load", "play", "pause", "stop", "seek",
         "scrub_begin", "scrub_update", "scrub_end", "arm_jump", "disarm_jump",
         "set_tempo_mode", "set_tempo_factor", "set_volume", "set_peak_meter_gain",
-        "set_refresh_fps",
+        "set_refresh_fps", "set_timestretch", "set_soft_clip",
     })
     _WAIT_FOR_TRACK = frozenset({
         "play", "pause", "stop", "seek",
@@ -87,7 +88,7 @@ class _AudioWorker(QtCore.QObject):
         self.feeder.finished.connect(self.pause)
         # While playing, every transport change (seek, scrub, jump) is rendered by the feeder
         # into the running sink: reset()/start() cycles during scrubbing crash Qt 6.10's WASAPI
-        # backend. The feeder stops the sink only when playback is idle.
+        # backend. The feeder suspends the sink only when playback is idle.
         self.feeder.open()
         self._frame.start()
 
@@ -240,6 +241,12 @@ class _AudioWorker(QtCore.QObject):
     def set_tempo_factor(self, factor: float) -> None:
         self.feeder.set_factor(float(factor))
 
+    def set_timestretch(self, enabled: bool) -> None:
+        self.feeder.set_timestretch(bool(enabled))
+
+    def set_soft_clip(self, enabled: bool) -> None:
+        self.feeder.set_soft_clip(bool(enabled))
+
     def set_volume(self, value: float) -> None:
         # Applied to the music inside the feeder so metronome clicks keep their own level.
         self._volume_linear = max(0.0, min(1.0, float(value)))
@@ -291,6 +298,9 @@ class _AudioWorker(QtCore.QObject):
             cur = self._duration_ms
         self._emit_time(cur)
         self._emit_peak()
+        queued, hist, capacity = self.feeder.take_buffer_stats()
+        ms = 1000.0 / max(1, self.rate)
+        self.output_buffer.emit(queued * ms, hist, capacity * ms)
 
 
 class PlayerController(QtCore.QObject):
@@ -330,6 +340,7 @@ class PlayerController(QtCore.QObject):
         w.playback_status.connect(bus.sig_playback_status)
         w.transport_enabled.connect(bus.sig_transport_enabled)
         w.output_peak_dbfs.connect(bus.sig_output_peak_dbfs)
+        w.output_buffer.connect(bus.sig_output_buffer)
         w.track_loaded.connect(self._on_track_loaded, QtCore.Qt.QueuedConnection)
 
         self._audio_thread.started.connect(w.initialize)
@@ -404,6 +415,14 @@ class PlayerController(QtCore.QObject):
 
     def set_tempo_factor(self, factor: float) -> None:
         self._send("set_tempo_factor", float(factor))
+
+    def set_timestretch(self, enabled: bool) -> None:
+        """Pitch-preserving time stretch instead of varispeed for tempo changes."""
+        self._send("set_timestretch", bool(enabled))
+
+    def set_soft_clip(self, enabled: bool) -> None:
+        """tanh soft clip of the output (music + metronome clicks)."""
+        self._send("set_soft_clip", bool(enabled))
 
     def set_refresh_fps(self, fps: int) -> None:
         self._send("set_refresh_fps", int(fps))

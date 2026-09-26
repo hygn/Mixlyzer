@@ -2,12 +2,42 @@ from __future__ import annotations
 import math
 import numpy as np
 
+# Imported here, not lazily: this module is imported on the main thread, and the time
+# stretcher's first scipy.fft import must not happen on the audio QThread (importing it
+# there first crashed the process later: heap corruption / access violation in
+# scipy.fft, 5 of 5 runs; importing scipy.fft on the main thread first: 0 of 5).
+from core.audio.timestretch import StreamingTimeStretcher
+
+
+def make_speed_renderer(channels: int, sample_rate: int, timestretch: bool = False):
+    """Renderer for the "speed" mode, with the SpeedResampler.render(pcm, pos, factor,
+    max_out_frames) contract: varispeed (pitch follows tempo), or with ``timestretch``
+    the pitch-preserving time stretch (core/audio/timestretch.py). The stretcher uses
+    its numba kernels once timestretch.warm_timestretch_numba() has loaded them, NumPy
+    until then."""
+    if timestretch:
+        return StreamingTimeStretcher(channels, sample_rate)
+    return SpeedResampler(channels)
+
 
 def fade_ramp(n: int, fade_frames: int, rising: bool) -> np.ndarray:
     """[n, 1] linear gain ramp over fade_frames (0->1 when rising), held after that."""
     r = (np.arange(n, dtype=np.float32) + 0.5) / float(max(1, fade_frames))
     r = np.clip(r, 0.0, 1.0)
     return (r if rising else 1.0 - r)[:, None]
+
+
+def soft_clip(x: np.ndarray, knee: float) -> np.ndarray:
+    """Linear up to |x| = knee, then a tanh curve to the ceiling 1.0 (continuous slope at
+    the knee). Returns x itself when nothing exceeds the knee."""
+    a = np.abs(x)
+    over = a > knee
+    if not over.any():
+        return x
+    y = np.array(x, dtype=np.float32)
+    span = np.float32(1.0 - knee)
+    y[over] = np.sign(x[over]) * (np.float32(knee) + span * np.tanh((a[over] - np.float32(knee)) / span))
+    return y
 
 
 class SpeedResampler:

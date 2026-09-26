@@ -35,6 +35,13 @@ class playbackconfig:
     metronome_offset_msec: float
     volume_trim_dbfs: float
     default_volume_percent: int
+    use_timestretch: bool  # tempo changes keep the pitch (time stretch) instead of varispeed
+    metronome_downbeat_volume_percent: int
+    metronome_downbeat_pitch_semitones: float  # the click is played faster (higher) / slower
+    metronome_beat_volume_percent: int
+    metronome_beat_pitch_semitones: float
+    metronome_ducking: bool  # lower the music under each click
+    soft_clip: bool  # tanh soft clip of the output above SOFT_CLIP_KNEE
 
 
 @dataclass
@@ -257,6 +264,13 @@ def default_cfg():
         metronome_offset_msec=0.0,
         volume_trim_dbfs=-6.0,
         default_volume_percent=100,
+        use_timestretch=False,
+        metronome_downbeat_volume_percent=90,
+        metronome_downbeat_pitch_semitones=7.0,
+        metronome_beat_volume_percent=36,
+        metronome_beat_pitch_semitones=0.0,
+        metronome_ducking=False,
+        soft_clip=False,
     )
     xcfg = externalsyncconfig(
         enabled=False,
