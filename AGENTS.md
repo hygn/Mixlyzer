@@ -14,13 +14,13 @@ Working notes for AI/automation agents editing the Mixlyzer codebase.
 ## Repo Map
 - `app/`: Qt entrypoint and top-level window wiring.
   - `main.py`: app bootstrap, dark palette, font loading, library-version migration flow.
-  - `window.py`: `AppWindow`, worker orchestration, EventBus wiring, External Sync, metronome, model updates.
+  - `window.py`: `AppWindow`, workflow wiring, EventBus wiring, External Sync, metronome, model updates.
 - `core/`: shared runtime/state/integration layer.
   - `config.py`: dataclass config schema, defaults, `load_cfg()`.
   - `model.py`: shared `DataModel` and `GlobalParams`.
   - `event_bus.py`: Qt signal hub.
-  - `analysis_worker.py`: subprocess wrapper for full-track analysis.
-  - `segment_reanalysis_manager.py` / `segment_reanalysis_worker.py`: subprocess-based partial reanalysis.
+  - `workers/`: analysis, segment reanalysis, optimizer, and Rekordbox worker implementations.
+  - `workflows/`: Qt-facing worker lifecycle and queue orchestration.
   - `library_handler.py`: SQLite metadata store plus BPM/key segment tables and transition search.
   - `analysis_lib_handler.py`: NPZ feature store keyed by track UID.
   - `external_sync.py`: memory-based external deck sync / transport lockout.
@@ -35,7 +35,7 @@ Working notes for AI/automation agents editing the Mixlyzer codebase.
 - `ui/`: Qt widgets/dialogs.
   - `pane.py`: `MainPane` composition.
   - `library.py`: library table, search, transition search, export/reanalyze/edit actions.
-  - `beatgrid_edit_panel.py`, `edit_song.py`, `export.py`, `cfgwindow.py`, `workers.py`: editing/export/settings/task dialogs.
+  - `beatgrid_edit_panel.py`, `edit_song.py`, `export.py`, `config/`, `workers.py`: editing/export/settings/task dialogs.
 - `views/`: pyqtgraph view plugins registered through `views.base.REGISTRY`.
 - `utils/`: labels, colors, fonts, JumpCUE extraction/render helpers, keystrip utilities, waveform helpers.
 - `third_party/`: export adapters such as Rekordbox XML generation.
@@ -118,7 +118,7 @@ Working notes for AI/automation agents editing the Mixlyzer codebase.
 - `core.external_sync.ExternalSyncController` can follow an external process via memory reads using `PyMemoryEditor`.
 - When enabled, local playback/load controls are intentionally restricted.
 - Process denylist lives in `process_denylist.json`.
-- If you touch External Sync config or behavior, keep `core/config.py`, `ui/cfgwindow.py`, and `app/window.py` aligned.
+- If you touch External Sync config or behavior, keep `core/config.py`, `ui/config/`, and `app/window.py` aligned.
 
 ## Change Guidelines
 - Keep heavy DSP, file IO, and long-running work off the GUI thread.
@@ -127,7 +127,7 @@ Working notes for AI/automation agents editing the Mixlyzer codebase.
   - update dataclasses in `core/config.py`,
   - update `default_cfg()`,
   - keep `config.json` compatibility in mind,
-  - update `ui/cfgwindow.py`,
+  - update `ui/config/`,
   - update any call sites assuming the old fields.
 - When changing persisted analysis outputs:
   - preserve compatibility with `normalize_gui_buffers`,

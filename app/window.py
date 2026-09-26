@@ -15,14 +15,14 @@ from core.analysis_lib_handler import FeatureNPZStore
 from core.workflows.analysis import AnalysisWorkflow
 from core.taskmanager import taskmanager
 from core.external_sync import ExternalSyncController
-from core.rekordbox_sync import RekordboxXmlSync
+from core.workflows.rekordbox_sync import RekordboxXmlSync
 from .metronome import MetronomeController
 from utils.window_visibility import is_window_fully_hidden
 from utils.volume import slider_percent_to_linear, trim_dbfs_to_linear
 from utils.atomic_io import atomic_write_json
 
 from ui.pane import MainPane
-from ui.cfgwindow import SettingsDialog
+from ui.config.window import SettingsDialog
 from ui.workers import WorkersDialog
 from ui.oss_support import SupportDialog
 from ui.about_dialog import AboutDialog
