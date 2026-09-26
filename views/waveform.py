@@ -3,28 +3,49 @@ from __future__ import annotations
 from dataclasses import dataclass
 from collections import deque
 
-import librosa
 import numpy as np
 import pyqtgraph as pg
 from PySide6 import QtCore, QtGui, QtWidgets
+from scipy.ndimage import gaussian_filter1d
 from scipy.signal import butter, sosfiltfilt
 
-from analyzer_core.global_analyzer import _band_envelope_rms, frame_minmax
 from core.config import load_cfg
-from utils.wave import build_wave_image
+from utils.wave import frame_minmax, wave_colors, wave_coverage_columns
 from .base import ViewPlugin, register_view
 
 
 RENDER_CHUNK_SEC = 1
 RENDER_LAUNCH_DELAY_MS = 30
 RENDER_HEIGHT = 96
-RENDER_WIDTH = 2048
-MIN_CANVAS_WIDTH = 2048
-MAX_CANVAS_WIDTH = 1048576
-CANVAS_PIXELS_PER_SEC = 256.0
 RENDER_BATCH_SIZE = 4
 RENDER_SPAWN_INTERVAL_MS = 30
 SCENE_CULL_BUFFER = 2  # extra chunks kept in scene on each side of viewport
+# Audio rendered on each side of a chunk and cropped away, so the band filters,
+# frame RMS and blur see the neighbouring audio: chunks join without seams.
+RENDER_CONTEXT_SEC = 0.2
+# Drawing frames per image column (bars averaged into one column).
+FRAMES_PER_COLUMN = 2
+
+
+@dataclass(frozen=True)
+class _WaveStyle:
+    """Waveform settings read once from the config (not per chunk)."""
+
+    bands: tuple[tuple[float, float], ...]  # low / mid / high band edges (Hz)
+    filter_order: int
+    frame_ms: float                         # drawing frame length
+
+    @classmethod
+    def from_config(cls) -> "_WaveStyle":
+        cfg = load_cfg().analysisconfig
+        return cls(
+            bands=tuple((float(low), float(high)) for low, high in (cfg.env_lo, cfg.env_mid, cfg.env_hi)),
+            filter_order=int(cfg.env_order),
+            frame_ms=float(getattr(cfg, "env_frame_ms", 20)) / 2,
+        )
+
+    def frame_hop(self, sample_rate: int) -> int:
+        return max(1, int(round(self.frame_ms * 1e-3 * float(sample_rate))))
 
 
 class _WaveRenderSignals(QtCore.QObject):
@@ -35,8 +56,8 @@ class _WaveRenderSignals(QtCore.QObject):
 class _WaveRenderResult:
     image: np.ndarray
     chunk_index: int
-    start_sec: float
-    span_sec: float
+    start_sec: float  # time span the image covers (column-aligned)
+    end_sec: float
 
 
 class _WaveRenderJob(QtCore.QRunnable):
@@ -45,156 +66,91 @@ class _WaveRenderJob(QtCore.QRunnable):
         request_id: int,
         pcm: np.ndarray,
         sample_rate: int,
-        start_sec: float,
-        span_sec: float,
         chunk_index: int,
-        duration_sec: float,
+        style: _WaveStyle,
         *,
-        canvas_width: int,
         height: int,
     ) -> None:
         super().__init__()
         self.request_id = int(request_id)
         self.pcm = pcm
         self.sample_rate = max(1, int(sample_rate))
-        self.start_sec = max(0.0, float(start_sec))
-        self.span_sec = max(0.001, float(span_sec))
         self.chunk_index = max(0, int(chunk_index))
-        self.duration_sec = max(self.span_sec, float(duration_sec))
-        self.canvas_width = max(64, int(canvas_width))
+        self.style = style
         self.height = max(16, int(height))
         self.signals = _WaveRenderSignals()
 
     def run(self) -> None:
-        x0, x1 = _time_span_to_canvas_columns(
-            self.start_sec,
-            self.span_sec,
-            duration_sec=self.duration_sec,
-            canvas_width=self.canvas_width,
+        image, start_sec, end_sec = _render_waveform_chunk(
+            self.pcm, self.sample_rate, self.chunk_index, self.style, height=self.height
         )
-        width = max(1, x1 - x0)
-        frame_start = int(round(self.start_sec * self.sample_rate))
-        frame_span = max(1, int(round(self.span_sec * self.sample_rate)))
-        frame_end = min(int(self.pcm.shape[0]), frame_start + frame_span)
-        segment = np.asarray(self.pcm[frame_start:frame_end], dtype=np.float32)
-        image = _render_waveform_segment(segment, self.sample_rate, width=width, height=self.height)
         self.signals.finished.emit(
             self.request_id,
-            _WaveRenderResult(
-                image=image,
-                chunk_index=self.chunk_index,
-                start_sec=self.start_sec,
-                span_sec=self.span_sec,
-            ),
+            _WaveRenderResult(image=image, chunk_index=self.chunk_index, start_sec=start_sec, end_sec=end_sec),
         )
 
 
-def _time_span_to_canvas_columns(
-    start_sec: float,
-    span_sec: float,
-    *,
-    duration_sec: float,
-    canvas_width: int,
-) -> tuple[int, int]:
-    duration_sec = max(0.001, float(duration_sec))
-    canvas_width = max(1, int(canvas_width))
-    start_ratio = np.clip(float(start_sec) / duration_sec, 0.0, 1.0)
-    end_ratio = np.clip((float(start_sec) + float(span_sec)) / duration_sec, 0.0, 1.0)
-    x0 = int(np.floor(start_ratio * canvas_width))
-    x1 = int(np.ceil(end_ratio * canvas_width))
-    x0 = int(np.clip(x0, 0, max(0, canvas_width - 1)))
-    x1 = int(np.clip(x1, x0 + 1, canvas_width))
-    return x0, x1
+def _chunk_columns(chunk_index: int, sample_rate: int, n_samples: int, column_hop: int) -> tuple[int, int]:
+    """Image columns ``[c0, c1)`` of a chunk on the track-wide column grid
+    (column ``c`` covers samples ``[c * column_hop, (c + 1) * column_hop)``).
+    Neighbouring chunks share their boundary column edge."""
+    total = -(-int(n_samples) // column_hop)
+    chunk_samples = int(round(RENDER_CHUNK_SEC * sample_rate))
+    c0 = min(total, chunk_index * chunk_samples // column_hop)
+    end = (chunk_index + 1) * chunk_samples
+    c1 = total if end >= n_samples else min(total, end // column_hop)
+    return c0, c1
 
 
-def _render_waveform_segment(segment: np.ndarray, sample_rate: int, *, width: int, height: int) -> np.ndarray:
-    if segment.size == 0:
-        return np.zeros((width, height, 3), dtype=np.uint8)
-    if segment.ndim == 1:
-        mono = segment.astype(np.float32, copy=False)
-    else:
-        mono = np.mean(segment.astype(np.float32, copy=False), axis=1)
-    if mono.size == 0:
-        return np.zeros((width, height, 3), dtype=np.uint8)
-    cfg = load_cfg().analysisconfig
-    lo_low, lo_high = cfg.env_lo
-    mid_low, mid_high = cfg.env_mid
-    hi_low, hi_high = cfg.env_hi
+def _render_waveform_chunk(
+    pcm: np.ndarray, sample_rate: int, chunk_index: int, style: _WaveStyle, *, height: int
+) -> tuple[np.ndarray, float, float]:
+    """Waveform image ``[columns, height, 3]`` of one chunk and the time span it covers.
+
+    Thin bars (min..max of each frame of ``style.frame_ms``) colored by the
+    low / mid / high band levels, averaged FRAMES_PER_COLUMN to a column and
+    blurred slightly along time. The chunk is computed with RENDER_CONTEXT_SEC
+    of audio on each side, on the track-wide frame grid, and cropped.
+    """
+    n_samples = int(pcm.shape[0])
+    frame_hop = style.frame_hop(sample_rate)
+    column_hop = FRAMES_PER_COLUMN * frame_hop
+    c0, c1 = _chunk_columns(chunk_index, sample_rate, n_samples, column_hop)
+    start_sec, end_sec = c0 * column_hop / sample_rate, c1 * column_hop / sample_rate
+    if c1 <= c0:
+        return np.zeros((1, height, 3), dtype=np.uint8), start_sec, max(end_sec, start_sec + 1e-3)
+    context = int(np.ceil(RENDER_CONTEXT_SEC * sample_rate / column_hop))
+    p0 = max(0, c0 - context)
+    p1 = c1 + context
+    segment = np.asarray(pcm[p0 * column_hop: min(n_samples, p1 * column_hop)], dtype=np.float32)
+    mono = segment if segment.ndim == 1 else segment.mean(axis=1, dtype=np.float32)
+
+    n_frames = -(-mono.size // frame_hop)
+    starts = np.arange(n_frames) * frame_hop
+    counts = np.diff(np.append(starts, mono.size)).astype(np.float64)
     nyq = 0.5 * float(sample_rate)
-    lo_high = min(float(lo_high), nyq * 0.98)
-    mid_high = min(float(mid_high), nyq * 0.98)
-    hi_high = min(float(hi_high), nyq * 0.98)
+    levels = []
+    for low, high in style.bands:
+        filtered = _band_filter(mono, sample_rate, low, min(high, nyq * 0.98), style.filter_order)
+        rms = np.sqrt(np.add.reduceat(np.square(filtered, dtype=np.float64), starts) / counts)
+        levels.append(np.sqrt(rms))
+    colors = wave_colors(*levels, white_threshold=0.0).astype(np.float64)
+    min_env, max_env = frame_minmax(mono, frame_hop)
 
-    frame_ms = float(getattr(cfg, "env_frame_ms", 20))/2
-    env_frame_len = max(1, int(round(frame_ms * 1e-3 * float(sample_rate))))
-    env_hop = env_frame_len
-
-    lo_env = _band_envelope_rms_safe(mono, sample_rate, lo_low, lo_high, env_frame_len, env_hop, cfg.env_order)
-    mid_env = _band_envelope_rms_safe(mono, sample_rate, mid_low, mid_high, env_frame_len, env_hop, cfg.env_order)
-    hi_env = _band_envelope_rms_safe(mono, sample_rate, hi_low, hi_high, env_frame_len, env_hop, cfg.env_order)
-    min_env, max_env = frame_minmax(mono, env_hop)
-    min_env = np.nan_to_num(min_env, nan=0.0, posinf=0.0, neginf=0.0)
-    max_env = np.nan_to_num(max_env, nan=0.0, posinf=0.0, neginf=0.0)
-
-    t_len = min(len(lo_env), len(mid_env), len(hi_env), len(min_env), len(max_env))
-    if t_len <= 0:
-        return np.zeros((width, height, 3), dtype=np.uint8)
-
-    lo_env = lo_env[:t_len]
-    mid_env = mid_env[:t_len]
-    hi_env = hi_env[:t_len]
-    min_env = min_env[:t_len]
-    max_env = max_env[:t_len]
-
-    ds_scale = 2
-    img = build_wave_image(
-        lo_env,
-        mid_env,
-        hi_env,
-        min_env,
-        max_env,
-        height_px=height,
-        downsample=ds_scale,
-        white_threshold=0.0,
-    )
-    return np.ascontiguousarray(img.swapaxes(0, 1), dtype=np.uint8)
+    image = wave_coverage_columns(min_env, max_env, colors, np.arange(n_frames) // FRAMES_PER_COLUMN, height)
+    image = gaussian_filter1d(image, sigma=0.8, axis=0)[c0 - p0: c1 - p0]
+    return np.ascontiguousarray(np.clip(image, 0.0, 255.0).astype(np.uint8)), start_sec, end_sec
 
 
-def _band_envelope_rms_safe(
-    y: np.ndarray,
-    sr: int,
-    low: float,
-    high: float,
-    frame_length: int,
-    hop_length: int,
-    order: int,
-) -> np.ndarray:
+def _band_filter(y: np.ndarray, sr: int, low: float, high: float, order: int) -> np.ndarray:
     nyq = 0.5 * float(sr)
     low_n = max(float(low) / nyq, 1e-6)
     high_n = min(float(high) / nyq, 0.999999)
     try:
         sos = butter(int(order), [low_n, high_n], btype="band", output="sos")
-        yb = sosfiltfilt(sos, y).astype(np.float32, copy=False)
+        return sosfiltfilt(sos, y)
     except Exception:
-        yb = y.astype(np.float32, copy=False)
-    fl = int(max(16, frame_length))
-    if fl % 2 == 0:
-        fl += 1
-    env = np.sqrt(
-        np.maximum(
-            0.0,
-            np.asarray(
-                librosa.feature.rms(
-                    y=yb,
-                    frame_length=fl,
-                    hop_length=int(max(1, hop_length)),
-                    center=True,
-                )[0],
-                dtype=np.float32,
-            ),
-        )
-    )
-    return np.nan_to_num(env, nan=0.0, posinf=0.0, neginf=0.0)
+        return y
 
 # Render worker
 
@@ -203,17 +159,14 @@ class _ChunkSpec:
     chunk_index: int
     pcm: np.ndarray
     sample_rate: int
-    start_sec: float
-    span_sec: float
-    duration_sec: float
-    canvas_width: int
+    style: _WaveStyle
     height: int
 
 
 class _WaveformRenderWorker(QtCore.QObject):
     """Manages render queue and QRunnable dispatch on a dedicated thread."""
 
-    chunk_ready = QtCore.Signal(int, object)  # chunk_index, np.ndarray image
+    chunk_ready = QtCore.Signal(int, object)  # chunk_index, _WaveRenderResult
 
     def __init__(self) -> None:
         super().__init__()
@@ -297,11 +250,8 @@ class _WaveformRenderWorker(QtCore.QObject):
                 self._request_seq,
                 spec.pcm,
                 spec.sample_rate,
-                spec.start_sec,
-                spec.span_sec,
                 spec.chunk_index,
-                spec.duration_sec,
-                canvas_width=spec.canvas_width,
+                spec.style,
                 height=spec.height,
             )
             job.signals.finished.connect(self._on_job_finished, QtCore.Qt.ConnectionType.QueuedConnection)
@@ -321,7 +271,7 @@ class _WaveformRenderWorker(QtCore.QObject):
         chunk_index = int(payload.chunk_index)
         self._inflight.discard(chunk_index)
         self._rendered.add(chunk_index)
-        self.chunk_ready.emit(chunk_index, payload.image)
+        self.chunk_ready.emit(chunk_index, payload)
         # only schedule next batch when spawn timer is also done
         # (if spawn timer is still running, _spawn_next will handle continuation)
         has_pending = bool(self._play_pending or self._scrub_pending)
@@ -344,9 +294,10 @@ class WaveformView(ViewPlugin):
         self._left_offset = 0.0
         self._last_pcm = None
         self._wave_levels = (0, 255)
-        self._canvas_width = 0
         self._chunk_count = 0
         self._chunk_items: list[pg.ImageItem | None] = []
+        self._chunk_spans: list[tuple[float, float] | None] = []  # time span of each rendered image
+        self._style: _WaveStyle | None = None
         self._preview_item: pg.ImageItem | None = None
         self._preview_source = None
         self._in_scene: set[int] = set()
@@ -427,6 +378,7 @@ class WaveformView(ViewPlugin):
             if item is not None and item.scene() is not None:
                 item.scene().removeItem(item)
         self._chunk_items = []
+        self._chunk_spans = []
         self._in_scene.clear()
 
     def _make_chunk_item(self) -> pg.ImageItem:
@@ -485,23 +437,23 @@ class WaveformView(ViewPlugin):
         )
 
     def _allocate_canvas(self, force: bool = False) -> int:
+        """(Re)allocate the chunk slots for the track; returns the chunk count."""
         duration = max(0.0, float(self.model.duration_sec or 0.0))
         if duration <= 0.0:
             self._remove_all_chunk_items()
-            self._canvas_width = 0
             self._chunk_count = 0
             self._sig_cancel.emit()
             return 0
-        canvas_width = int(np.clip(np.ceil(duration * CANVAS_PIXELS_PER_SEC), MIN_CANVAS_WIDTH, MAX_CANVAS_WIDTH))
         chunk_count = max(1, int(np.ceil(duration / RENDER_CHUNK_SEC)))
-        if force or canvas_width != self._canvas_width or chunk_count != self._chunk_count:
+        if force or chunk_count != self._chunk_count:
             self._remove_all_chunk_items()
-            self._canvas_width = canvas_width
             self._chunk_count = chunk_count
             self._chunk_items = [None] * chunk_count
+            self._chunk_spans = [None] * chunk_count
             self._submitted_chunks.clear()
+            self._style = _WaveStyle.from_config()
             self._sig_cancel.emit()
-        return self._canvas_width
+        return self._chunk_count
 
     def _on_seek_requested(self, _t: float) -> None:
         self._evaluate_render_targets()
@@ -551,17 +503,13 @@ class WaveformView(ViewPlugin):
                 continue  # already displayed
             if chunk_index in self._submitted_chunks:
                 continue  # already in worker queue
-            start_sec = chunk_index * RENDER_CHUNK_SEC
-            end_sec = min(duration, start_sec + RENDER_CHUNK_SEC)
-            span_sec = max(0.001, end_sec - start_sec)
+            if self._style is None:
+                self._style = _WaveStyle.from_config()
             specs.append(_ChunkSpec(
                 chunk_index=chunk_index,
                 pcm=pcm,
                 sample_rate=sample_rate,
-                start_sec=start_sec,
-                span_sec=span_sec,
-                duration_sec=duration,
-                canvas_width=self._canvas_width,
+                style=self._style,
                 height=RENDER_HEIGHT,
             ))
             self._submitted_chunks.add(chunk_index)
@@ -590,12 +538,13 @@ class WaveformView(ViewPlugin):
                     self._in_scene.discard(i)
 
     @QtCore.Slot(int, object)
-    def _on_chunk_ready(self, chunk_index: int, image: object) -> None:
-        if not isinstance(image, np.ndarray) or self.plot is None:
+    def _on_chunk_ready(self, chunk_index: int, payload: object) -> None:
+        if not isinstance(payload, _WaveRenderResult) or self.plot is None:
             return
         if chunk_index < 0 or chunk_index >= self._chunk_count:
             return
-        patch = np.ascontiguousarray(image, dtype=np.uint8)
+        self._chunk_spans[chunk_index] = (payload.start_sec, payload.end_sec)
+        patch = np.ascontiguousarray(payload.image, dtype=np.uint8)
         if patch.size == 0:
             return
         item = self._chunk_items[chunk_index]
@@ -616,8 +565,13 @@ class WaveformView(ViewPlugin):
                     self._in_scene.add(chunk_index)
 
     def _apply_chunk_rect(self, item: pg.ImageItem, chunk_index: int) -> None:
-        start_sec = chunk_index * RENDER_CHUNK_SEC
-        end_sec = min(self.duration, start_sec + RENDER_CHUNK_SEC)
+        # The image covers its column-aligned span; neighbouring spans share their edge.
+        span = self._chunk_spans[chunk_index] if chunk_index < len(self._chunk_spans) else None
+        if span is None:
+            start_sec = chunk_index * RENDER_CHUNK_SEC
+            end_sec = min(self.duration, start_sec + RENDER_CHUNK_SEC)
+        else:
+            start_sec, end_sec = span
         item.setRect(QtCore.QRectF(
             self._left_offset + start_sec, 0.14,
             end_sec - start_sec, 1.0 - 0.24,

@@ -1,82 +1,30 @@
+import librosa
 import numpy as np
 from scipy.ndimage import gaussian_filter1d
 
-try:
-    from numba import njit
-except Exception:  # pragma: no cover - optional acceleration
-    njit = None
+
+# Overview waveform size: ~WAVE_PREVIEW_WIDTH columns.
+WAVE_PREVIEW_WIDTH = 4096
+WAVE_PREVIEW_HEIGHT = 128
 
 
-def downsample_blur_stride(img: np.ndarray, factor: int, sigma: float = 0.8):
-    if factor <= 1:
-        return img
-    blurred = gaussian_filter1d(img.astype(float), sigma=sigma*factor, axis=1)
-    return blurred[:, ::factor, :].astype(np.uint8)
+def frame_minmax(y: np.ndarray, hop: int) -> tuple[np.ndarray, np.ndarray]:
+    """Min and max of each ``hop``-sample frame; the last frame may be shorter."""
+    n = len(y)
+    n_frames = int(np.ceil(n / hop))
+    n_full = n // hop
+    mins, maxs = np.empty(n_frames, np.float32), np.empty(n_frames, np.float32)
+    frames = np.asarray(y[: n_full * hop]).reshape(n_full, hop)
+    mins[:n_full] = frames.min(axis=1)
+    maxs[:n_full] = frames.max(axis=1)
+    if n_frames > n_full:
+        mins[n_full] = np.min(y[n_full * hop:])
+        maxs[n_full] = np.max(y[n_full * hop:])
+    return mins, maxs
 
 
-def _render_wave_columns_py(y_top, y_bot, rgb8, height_px: int):
-    t_len = int(rgb8.shape[0])
-    img = np.zeros((int(height_px), t_len, 3), dtype=np.uint8)
-    half = int(height_px) // 2
-    mid_row = min(max(0, half), int(height_px) - 1)
-    for idx in range(t_len):
-        top = int(y_top[idx])
-        bot = int(y_bot[idx])
-        if top < bot:
-            top, bot = bot, top
-        if top == bot:
-            top = mid_row
-            bot = mid_row
-        img[bot:top + 1, idx, :] = rgb8[idx]
-    return img
-
-
-if njit is not None:
-    @njit(cache=True)
-    def _render_wave_columns_numba(y_top, y_bot, rgb8, height_px: int):
-        t_len = rgb8.shape[0]
-        img = np.zeros((height_px, t_len, 3), dtype=np.uint8)
-        half = height_px // 2
-        mid_row = half
-        if mid_row < 0:
-            mid_row = 0
-        elif mid_row >= height_px:
-            mid_row = height_px - 1
-        for idx in range(t_len):
-            top = int(y_top[idx])
-            bot = int(y_bot[idx])
-            if top < bot:
-                tmp = top
-                top = bot
-                bot = tmp
-            if top == bot:
-                top = mid_row
-                bot = mid_row
-            r = rgb8[idx, 0]
-            g = rgb8[idx, 1]
-            b = rgb8[idx, 2]
-            for row in range(bot, top + 1):
-                img[row, idx, 0] = r
-                img[row, idx, 1] = g
-                img[row, idx, 2] = b
-        return img
-else:
-    _render_wave_columns_numba = None
-
-
-def build_wave_image(lo, mid, hi, min_env, max_env, height_px=110, downsample=2, white_threshold=0.05):
-
-    lo = np.nan_to_num(np.asarray(lo, dtype=float), nan=0.0)
-    mid = np.nan_to_num(np.asarray(mid, dtype=float), nan=0.0)
-    hi  = np.nan_to_num(np.asarray(hi,  dtype=float), nan=0.0)
-    min_env  = np.nan_to_num(np.asarray(min_env,  dtype=float), nan=0.0)
-    max_env  = np.nan_to_num(np.asarray(max_env,  dtype=float), nan=0.0)
-
-    T = min(lo.size, mid.size, hi.size, min_env.size, max_env.size)
-    lo, mid, hi, min_env, max_env = lo[:T], mid[:T], hi[:T], min_env[:T], max_env[:T]
-    H = int(height_px)
-    half = H // 2
-
+def wave_colors(lo, mid, hi, white_threshold=0.05) -> np.ndarray:
+    """Per-column RGB (uint8, ``[T, 3]``) from the normalized low / mid / high band levels."""
     rgb = np.stack([lo, mid, hi], axis=1)
     magnitudes = np.linalg.norm(rgb, axis=1)
     threshold = max(0.0, float(white_threshold))
@@ -98,22 +46,92 @@ def build_wave_image(lo, mid, hi, min_env, max_env, height_px=110, downsample=2,
             boosted = 1.0 - (1.0 - active_rgb[boost_idx]) * boost[:, None]
             active_rgb[boost_idx] = np.clip(boosted, 0.0, 1.0)
         rgb_norm[active_mask] = active_rgb
-    rgb8 = (np.clip(rgb_norm, 0.0, 1.0) * 255.0 + 0.5).astype(np.uint8)
+    return (np.clip(rgb_norm, 0.0, 1.0) * 255.0 + 0.5).astype(np.uint8)
 
-    img = np.zeros((H, T, 3), dtype=np.uint8)
-    y_top = half - (max_env * half).astype(int)
-    y_bot = half - (min_env * half).astype(int)
-    y_top = np.clip(y_top, 0, H - 1)
-    y_bot = np.clip(y_bot, 0, H - 1)
-    render_fn = _render_wave_columns_numba or _render_wave_columns_py
-    img = render_fn(y_top.astype(np.int32, copy=False), y_bot.astype(np.int32, copy=False), rgb8, H)
-    if downsample > 1:
-        img = downsample_blur_stride(img, downsample)
 
-    return img
+def build_wave_preview(
+    y: np.ndarray,
+    sample_rate: int,
+    bands: tuple[tuple[float, float], tuple[float, float], tuple[float, float]],
+    frame_hop: int,
+    magnitude: np.ndarray | None = None,
+    *,
+    n_fft: int = 2048,
+    hop_length: int = 512,
+    width: int = WAVE_PREVIEW_WIDTH,
+    height_px: int = WAVE_PREVIEW_HEIGHT,
+    white_threshold: float = 0.05,
+) -> np.ndarray:
+    """Overview waveform image ``[columns, height_px, 3]`` (uint8) of mono ``y``.
 
-def gen_img_mipmap(img_np, ds_scale = 8):
-    print("[Render] Generating Mipmap")
-    img = downsample_blur_stride(img_np, ds_scale) 
-    print("[Render] Generating Mipmap Finished")
-    return img
+    Short frames of ``frame_hop`` samples are drawn as vertical bars from the
+    frame's min to its max, colored by the RMS of the low / mid / high
+    ``bands`` (Hz, each scaled to its maximum over the track). Each of the
+    ~``width`` columns is the average of its frames' bars: a pixel's color is
+    the sum of the colors of the bars covering it over the number of frames
+    (area anti-aliasing), computed with cumulative sums instead of drawing the
+    full-resolution image. The band RMS comes from the magnitude STFT
+    ``magnitude`` (``n_fft`` / ``hop_length``, centered frames), computed here
+    when omitted.
+    """
+    y = np.asarray(y, dtype=np.float32).reshape(-1)
+    frame_hop = max(1, int(frame_hop))
+    min_env, max_env = frame_minmax(y, frame_hop)
+    n_frames = min_env.size
+    if n_frames == 0:
+        return np.zeros((0, height_px, 3), dtype=np.uint8)
+
+    if magnitude is None:
+        magnitude = np.abs(librosa.stft(y, n_fft=n_fft, hop_length=hop_length, center=True))
+    power = np.square(magnitude, dtype=np.float32)
+    frequencies = librosa.fft_frequencies(sr=sample_rate, n_fft=n_fft)
+    stft_centers = np.arange(power.shape[1]) * float(hop_length)
+    frame_centers = (np.arange(n_frames) + 0.5) * float(frame_hop)
+    levels = []
+    for low, high in bands:
+        rms = np.sqrt(power[(frequencies >= low) & (frequencies < high)].sum(axis=0))
+        rms = np.interp(frame_centers, stft_centers, rms)
+        peak = float(rms.max()) if rms.size else 0.0
+        levels.append(rms / peak if peak > 1e-12 else rms)
+    colors = wave_colors(*levels, white_threshold).astype(np.float64)
+
+    per_column = int(np.ceil(n_frames / max(1, int(width))))
+    image = wave_coverage_columns(min_env, max_env, colors, np.arange(n_frames) // per_column, height_px)
+    image = gaussian_filter1d(image, sigma=0.8, axis=0)
+    return np.clip(image, 0.0, 255.0).astype(np.uint8)
+
+
+def wave_coverage_columns(
+    min_env: np.ndarray,
+    max_env: np.ndarray,
+    colors: np.ndarray,
+    column: np.ndarray,
+    height_px: int,
+) -> np.ndarray:
+    """Average of thin per-frame bars in each column: float image ``[columns, height_px, 3]``.
+
+    Frame ``i`` is a bar from ``min_env[i]`` to ``max_env[i]`` (-1..1; row 0 is the top, a flat frame is one pixel on the centre row) colored ``colors[i]`` (RGB 0..255), and falls in ``column[i]``
+    (non-decreasing, from 0). A pixel is the sum of the colors of the bars
+    covering it over the column's frame count (area anti-aliasing).
+    """
+    H = int(height_px)
+    half = H // 2
+    top = np.clip(half - (np.nan_to_num(max_env) * half).astype(int), 0, H - 1)
+    bottom = np.clip(half - (np.nan_to_num(min_env) * half).astype(int), 0, H - 1)
+    first, last = np.minimum(top, bottom), np.maximum(top, bottom)
+    flat = top == bottom
+    first[flat] = last[flat] = min(max(0, half), H - 1)
+
+    # +color where a bar starts, -color after it ends, cumulative sum down the rows.
+    column = np.asarray(column, dtype=np.int64)
+    n_columns = int(column[-1]) + 1 if column.size else 0
+    start_index = column * (H + 1) + first
+    end_index = column * (H + 1) + last + 1
+    image = np.empty((n_columns, H, 3))
+    for channel in range(3):
+        edges = np.bincount(start_index, colors[:, channel], minlength=n_columns * (H + 1))
+        edges -= np.bincount(end_index, colors[:, channel], minlength=n_columns * (H + 1))
+        image[:, :, channel] = np.cumsum(edges.reshape(n_columns, H + 1), axis=1)[:, :H]
+    frames_per_column = np.maximum(np.bincount(column, minlength=n_columns), 1).astype(np.float64)
+    image /= frames_per_column[:, np.newaxis, np.newaxis]
+    return image

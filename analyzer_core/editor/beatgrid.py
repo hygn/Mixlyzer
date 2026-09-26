@@ -1,6 +1,5 @@
-from typing import Literal, Callable, Optional, Tuple
+from typing import Callable, Optional, Tuple
 import numpy as np
-import librosa
 
 from analyzer_core.global_analyzer import fast_load
 from analyzer_core.utils import offset_beats_and_segments
@@ -11,6 +10,7 @@ from analyzer_core.beat.beat import (
 from analyzer_core.beat.downbeat_offset import detect_downbeat_offset_segments
 from analyzer_core.beat.frame_features import extract_frame_features
 from analyzer_core.beat.learned_onset import compute_beat_odf
+from analyzer_core.hpss import hpss_audio
 from core.config import config
 import math
 
@@ -171,7 +171,7 @@ def reanalyze_segment_from_file(
     use_hpss = getattr(gcf, "use_hpss", False)
     if use_hpss:
         try:
-            y_harm, y_perc = librosa.effects.hpss(section)
+            y_harm, y_perc = hpss_audio(section)
         except Exception:
             y_harm = y_perc = section
     else:

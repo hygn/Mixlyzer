@@ -91,32 +91,6 @@ def _robust_standardize(features: np.ndarray) -> np.ndarray:
     return ((features - median) / scale).astype(np.float32)
 
 
-def _resample_patch(
-    features: np.ndarray,
-    frame_times: np.ndarray,
-    start_sec: float,
-    end_sec: float,
-    phase_bins: int,
-) -> np.ndarray:
-    targets = np.linspace(
-        start_sec,
-        end_sec,
-        phase_bins,
-        endpoint=False,
-        dtype=np.float32,
-    )
-    patch = np.empty((features.shape[0], phase_bins), dtype=np.float32)
-    for channel in range(features.shape[0]):
-        patch[channel] = np.interp(
-            targets,
-            frame_times,
-            features[channel],
-            left=float(features[channel, 0]),
-            right=float(features[channel, -1]),
-        )
-    return patch
-
-
 # Per-beat features and their SSM metric, in a fixed order. "cos" -> cosine
 # SSM (tonal/normalized features), "rbf" -> RBF SSM (magnitude features). The
 # log-mel "timbre" feature was dropped: a library-wide ablation showed it hurt
@@ -203,17 +177,27 @@ def _beat_patch_rows(
 ) -> np.ndarray:
     """Per-beat flattened patches: each beat resampled to ``phase_bins`` and
     either L2-normalized per phase column (cosine features) or mean-centered
-    (RBF features)."""
-    rows = np.empty((beat_starts.size, frames.shape[0] * phase_bins), dtype=np.float32)
-    for i, (start_sec, end_sec) in enumerate(zip(beat_starts, beat_ends, strict=True)):
-        patch = _resample_patch(frames, frame_times, float(start_sec), float(end_sec), phase_bins)
-        if l2:
-            patch = patch.T
-            patch /= np.maximum(np.linalg.norm(patch, axis=1, keepdims=True), 1e-8)
-            rows[i] = patch.reshape(-1)
-        else:
-            rows[i] = (patch - patch.mean()).reshape(-1)
-    return rows
+    (RBF features). Each beat is sampled at ``phase_bins`` evenly spaced times
+    from its start (linear interpolation, edges held)."""
+    starts = np.asarray(beat_starts, dtype=np.float64)
+    steps = (np.asarray(beat_ends, dtype=np.float64) - starts) / phase_bins
+    # np.linspace(start, end, phase_bins, endpoint=False, dtype=float32) per beat.
+    targets = (np.arange(phase_bins, dtype=np.float64)[np.newaxis, :] * steps[:, np.newaxis]
+               + starts[:, np.newaxis]).astype(np.float32).reshape(-1)
+    patches = np.empty((starts.size, frames.shape[0], phase_bins), dtype=np.float32)
+    for channel in range(frames.shape[0]):
+        patches[:, channel, :] = np.interp(
+            targets,
+            frame_times,
+            frames[channel],
+            left=float(frames[channel, 0]),
+            right=float(frames[channel, -1]),
+        ).reshape(starts.size, phase_bins)
+    if l2:
+        columns = patches.transpose(0, 2, 1)
+        columns /= np.maximum(np.linalg.norm(columns, axis=2, keepdims=True), 1e-8)
+        return np.ascontiguousarray(columns).reshape(starts.size, -1)
+    return (patches - patches.mean(axis=(1, 2), keepdims=True)).reshape(starts.size, -1)
 
 
 def _extract_beat_features(

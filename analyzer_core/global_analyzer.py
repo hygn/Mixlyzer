@@ -1,6 +1,7 @@
 import numpy as np
 import librosa
-from scipy.signal import butter, filtfilt
+from concurrent.futures import ThreadPoolExecutor
+from threadpoolctl import threadpool_limits
 import time
 import os
 import base64
@@ -14,6 +15,8 @@ from analyzer_core.beat.beat import *
 from analyzer_core.beat.beat import collapse_short_sandwiched_tempo_segments
 from analyzer_core.beat.frame_features import extract_frame_features
 from analyzer_core.beat.learned_onset import compute_beat_odf
+from analyzer_core.hpss import HPSS_HOP_LENGTH, HPSS_N_FFT, hpss_audio_with_spectra
+from utils.wave import build_wave_preview
 from analyzer_core.self_correlation.JumpCUE import JumpCueEngine
 from analyzer_core.cue_and_phrase import detect_phrase_segments
 from utils.jump_cues import build_jump_cues_np
@@ -28,10 +31,12 @@ from core.library_handler import LibraryDB
 from core.analysis_lib_handler import FeatureNPZStore
 from core.config import config
 from core.adapters import normalize_gui_buffers
-from core.model import GlobalParams
 from core.taskmanager import taskmanager
 from core.linear_segments import build_bpm_segments, build_key_segments
-from analyzer_core.utils import offset_beats_and_segments
+from analyzer_core.utils import offset_beats_and_segments, prime_physical_core_count
+
+# sklearn would otherwise launch powershell.exe to count cores in every analysis process.
+prime_physical_core_count()
 
 def fast_load(path: str, target_sr, stereo: bool = False) -> np.ndarray:
     """Decode audio to float32. Mono ``(N,)`` by default, stereo ``(N, 2)`` when
@@ -63,48 +68,6 @@ def fast_load(path: str, target_sr, stereo: bool = False) -> np.ndarray:
         src = librosa.resample(np.ascontiguousarray(src), orig_sr=sr, target_sr=target_sr, res_type="kaiser_fast")
         y = src.T if stereo else src
     return np.ascontiguousarray(y, dtype=np.float32)
-
-def resample_array(arr: np.ndarray, n: int) -> np.ndarray:
-    arr = np.asarray(arr, dtype=float)
-    if arr.ndim != 1:
-        raise ValueError
-
-    x_old = np.linspace(0, 1, len(arr))
-    x_new = np.linspace(0, 1, n)
-    y_new = np.interp(x_new, x_old, arr)
-    return y_new
-
-def _butter_bandpass(low, high, fs, order=4):
-    nyq = 0.5 * fs
-    low_n = max(low / nyq, 1e-6)
-    high_n = min(high / nyq, 0.999999)
-    b, a = butter(order, [low_n, high_n], btype="band")
-    return b, a
-
-def _band_envelope_rms(y, sr, low, high, frame_length, hop_length, order=4):
-    b, a = _butter_bandpass(low, high, sr, order=order)
-    yb = filtfilt(b, a, y).astype(np.float32)
-    fl = int(max(16, frame_length))
-    if fl % 2 == 0:
-        fl += 1
-    env = librosa.feature.rms(
-        y=yb, frame_length=fl, hop_length=int(max(1, hop_length)), center=True
-    )[0]
-    return env
-
-def frame_minmax(y: np.ndarray, hop: int) -> tuple[np.ndarray, np.ndarray]:
-    n = len(y)
-    n_frames = int(np.ceil(n / hop))
-    mins, maxs = np.empty(n_frames, np.float32), np.empty(n_frames, np.float32)
-
-    for i in range(n_frames):
-        start = i * hop
-        end = min(start + hop, n)
-        frame = y[start:end]
-        mins[i] = np.min(frame)
-        maxs[i] = np.max(frame)
-
-    return mins, maxs
 
 def _file_stats(path: str) -> tuple[int, float]:
     try:
@@ -236,31 +199,6 @@ def normalize_y(y: np.ndarray, peak:float=1) -> np.ndarray:
     nd = np.max(np.abs(y))
     return y*peak / nd
 
-def timesig_exp(lags):
-    n = np.abs(np.asarray(lags, int))
-    F = np.array([3, 2, 5, 7])
-    numer = np.array([3, 4, 5, 7])
-
-    V = np.zeros((4, n.size), int)
-    for k, f in enumerate(F):
-        x = n.copy()
-        while True:
-            m = (x % f == 0) & (x > 0)
-            if not m.any(): break
-            V[k] += m
-            x[m] //= f
-
-    score = V.sum(1).astype(float)
-    score[1] *= 0.5
-
-    print("valuation(V) per factor  [3,2,5,7]:\n", V)
-    print("sum(V) per factor:", V.sum(1))
-    print("final score:", score)
-
-    best = int(numer[score.argmax()])
-    return best, dict(zip(numer, score))
-
-
 def _apply_beatgrid_offset(synced_bpm: dict, offset_sec: float, track_duration: float) -> dict:
     out = dict(synced_bpm)
     beats, _ = offset_beats_and_segments(
@@ -330,55 +268,34 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
     yield {"status": "HPSS"}
     print("[Analyzer] Processing HPSS")
     # HPSS
+    # The spectra are reused by the phrase features (same mono mix, STFT and HPSS).
+    hpss_spectra = None
     if gcf.use_hpss:
-        y_harm, y_perc = librosa.effects.hpss(samp)
+        y_harm, y_perc, hpss_spectra = hpss_audio_with_spectra(samp, int(global_sr))
     else:
         y_harm = y_perc = samp.astype(np.float32)
     features = {}
 
-    yield {"status": "env_filter"}
-    print("[Analyzer] Filtering")
-    taskmgr.updatetask(taskid, "Filtering", 0.2)
-    lo_low, lo_high   = gcf.env_lo
-    mid_low, mid_high = gcf.env_mid
-    hi_low,  hi_high  = gcf.env_hi
-
+    yield {"status": "waveform"}
+    print("[Waveform] Analysis Initalized")
+    taskmgr.updatetask(taskid, "Processing Waveform", 0.2)
+    # Overview waveform, drawn directly at its display resolution. Band colors
+    # come from the HPSS STFT of the same mix when it is available.
     nyq = 0.5 * global_sr
-    lo_high  = min(lo_high,  nyq * 0.98)
-    mid_high = min(mid_high, nyq * 0.98)
-    hi_high  = min(hi_high,  nyq * 0.98)
-
-    frame_ms = float(getattr(gcf, "env_frame_ms", 20))
-    frame_ms = frame_ms/4
-    env_frame_len = int(round(frame_ms * 1e-3 * global_sr))
-    env_hop = max(1, env_frame_len)
-
-    yield {"status": "env_rms"}
-    print("[Env] Analysis Initalized")
-    taskmgr.updatetask(taskid, "Processing Envelope", 0.23)
-    lo_env  = _band_envelope_rms(base_sig, global_sr, lo_low,  lo_high,  env_frame_len, env_hop, gcf.env_order)
-    mid_env = _band_envelope_rms(base_sig, global_sr, mid_low, mid_high, env_frame_len, env_hop, gcf.env_order)
-    hi_env  = _band_envelope_rms(base_sig, global_sr, hi_low,  hi_high,  env_frame_len, env_hop, gcf.env_order)
-    min_env, max_env = frame_minmax(base_sig, env_hop)
-    features["min_env"] = min_env
-    features["max_env"] = max_env
-
-    def _norm(x):
-        m = float(np.max(x)) if x.size else 0.0
-        return (x / m) if m > 1e-12 else x
-
-    lo_env_n  = _norm(lo_env)
-    mid_env_n = _norm(mid_env)
-    hi_env_n  = _norm(hi_env)
-
-    env_times = librosa.times_like(lo_env_n, sr=global_sr, hop_length=env_hop)
-    features["lo_env"] = lo_env_n
-    features["mid_env"] = mid_env_n 
-    features["hi_env"]  = hi_env_n
-    features["env_times"] = env_times
-    features["env_hop_length"] = int(env_hop)
+    wave_bands = tuple((float(low), min(float(high), nyq * 0.98)) for low, high in (gcf.env_lo, gcf.env_mid, gcf.env_hi))
+    # Bars of env_frame_ms / 4 (the resolution of the former full-size image).
+    wave_frame_hop = max(1, int(round(float(getattr(gcf, "env_frame_ms", 20)) / 4 * 1e-3 * global_sr)))
+    features["wave_img_np_preview"] = build_wave_preview(
+        base_sig,
+        int(global_sr),
+        wave_bands,
+        wave_frame_hop,
+        hpss_spectra.magnitude if hpss_spectra is not None else None,
+        n_fft=hpss_spectra.n_fft if hpss_spectra is not None else HPSS_N_FFT,
+        hop_length=hpss_spectra.hop_length if hpss_spectra is not None else HPSS_HOP_LENGTH,
+    )
     features["duration_sec"] = librosa.get_duration(y=samp, sr=global_sr)
-    print("[Env] Analysis Finished")
+    print("[Waveform] Analysis Finished")
 
     yield {"status": "tempo"}
     print("[Tempo] Analysis Initalized")
@@ -395,24 +312,11 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
         str(gcf.onset_parameter_path).strip(),
     )
     if gcf.bpm_dynamic:
-        cur_score = 0
-        synced_bpm_best = {}
         w_mpls = [1, 2, 4, None] if gcf.bpm_adaptive_window else [1]
-        for win_multiplier in w_mpls:
-            if win_multiplier != None:
-                synced_bpm = bpm_dynamic_phase_sync(
-                    global_sr,
-                    gcf.bpm_hop_length,
-                    gcf.bpm_hop_length,
-                    audio=y_perc,
-                    win_s=gcf.bpm_win_length*win_multiplier/1000,
-                    step_s=0.25,
-                    bpm_bounds=(gcf.bpm_min,gcf.bpm_max),
-                    odf_precomputed=odf_cached,
-                    hop_t_precomputed=hop_t_cached,
-                )
-            else:
-                synced_bpm = bpm_phase_sync(
+
+        def track_window(win_multiplier):
+            if win_multiplier is None:
+                return bpm_phase_sync(
                     global_sr,
                     gcf.bpm_hop_length,
                     gcf.bpm_hop_length,
@@ -423,6 +327,28 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
                     odf_precomputed=odf_cached,
                     hop_t_precomputed=hop_t_cached,
                 )
+            return bpm_dynamic_phase_sync(
+                global_sr,
+                gcf.bpm_hop_length,
+                gcf.bpm_hop_length,
+                audio=y_perc,
+                win_s=gcf.bpm_win_length*win_multiplier/1000,
+                step_s=0.25,
+                bpm_bounds=(gcf.bpm_min,gcf.bpm_max),
+                odf_precomputed=odf_cached,
+                hop_t_precomputed=hop_t_cached,
+            )
+
+        # The window candidates are independent (numpy / scipy release the GIL).
+        # KMeans limits BLAS to one thread while it runs and then restores the
+        # previous count; concurrent calls would restore each other's limit and
+        # leave BLAS single-threaded for the rest of the process. Holding the
+        # limit here makes their restores no-ops, and this one restores it.
+        with threadpool_limits(limits=1, user_api="blas"), ThreadPoolExecutor(max_workers=len(w_mpls)) as pool:
+            candidates = list(pool.map(track_window, w_mpls))
+        cur_score = 0
+        synced_bpm_best = {}
+        for synced_bpm in candidates:
             if cur_score <= synced_bpm["score"]:
                 synced_bpm_best = synced_bpm
                 cur_score = synced_bpm["score"]
@@ -647,6 +573,7 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
                 beats_time_arr,
                 seg_arr,
                 model_path=phrase_parameter_path,
+                hpss=hpss_spectra,
             )
             features["phrase_segments_np"] = build_phrase_segments_np(phrase_segments)
             phrase_cue_points = build_phrase_cue_points(phrase_segments)
@@ -668,8 +595,8 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
         features["phrase_segments_np"] = build_phrase_segments_np([])
         features["cue_points_np"] = empty_cue_points_np()
     print("[Phrase] Analysis Finished")
+    hpss_spectra = None
 
-    #best, scores= timesig_exp(jump_result.report.beat_ssm.peak_indices)
     features["timesignature"] = 4
 
     yield {"status": "chroma"}
@@ -720,15 +647,10 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
     key_int = int(values[np.argmax(counts)])
 
     fsize, fmtime = _file_stats(path)
-    gp = GlobalParams(
-            analysis_samp_rate=int(gcf.analysis_samp_rate),
-            bpm_hop_length=int(gcf.bpm_hop_length),
-            chroma_hop_length=int(gcf.chroma_hop_length),
-        )
     taskmgr.updatetask(taskid, "Rendering/Normalizing", 0.88)
-    features = normalize_gui_buffers(features, gp)
+    features = normalize_gui_buffers(features)
 
-    features_denylist = ["key_12", "logB", "full_chroma", "lo_env", "mid_env", "hi_env", "min_env", "max_env", "env_times", "beatsync_chroma"]
+    features_denylist = ["key_12", "logB", "full_chroma", "beatsync_chroma"]
     for i in features_denylist:
         try:
             features.pop(i)

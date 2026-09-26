@@ -19,6 +19,7 @@ import numpy as np
 from scipy.ndimage import median_filter
 from scipy.sparse import csr_matrix
 from scipy.sparse.linalg import svds
+from sklearn.neighbors import NearestNeighbors
 
 
 EPS = 1e-9
@@ -66,6 +67,55 @@ def _delay_embed(rows: np.ndarray, delay: int = 1) -> np.ndarray:
     return embedded / np.maximum(norms, EPS)
 
 
+def _cosine_knn_affinity(rows: np.ndarray, *, k: int, width: int) -> np.ndarray:
+    """Dense ``librosa.segment.recurrence_matrix(rows.T, k=k, width=width,
+    metric="cosine", sym=True, mode="affinity", bandwidth="med_k_scalar",
+    self=True)``.
+
+    Same steps and arithmetic as librosa, on a dense matrix instead of its
+    per-row sparse (LIL) indexing, which dominated the phrase analysis time.
+    A zero entry means "no link", as in the sparse matrix.
+    """
+    t = rows.shape[0]
+    if width < 1 or width >= (t - 1) // 2:
+        raise librosa.util.exceptions.ParameterError(
+            f"width={width} must be at least 1 and at most (data.shape[-1] - 1) // 2={(t - 1) // 2}"
+        )
+    try:
+        knn = NearestNeighbors(n_neighbors=min(t - 1, k + 2 * width), metric="cosine", algorithm="auto")
+    except ValueError:
+        knn = NearestNeighbors(n_neighbors=min(t - 1, k + 2 * width), metric="cosine", algorithm="brute")
+    knn.fit(rows)
+    rec = knn.kneighbors_graph(mode="distance").toarray()
+
+    # Drop links within ``width`` of the diagonal, then keep each row's k nearest.
+    positions = np.arange(t)
+    rec[np.abs(positions[:, np.newaxis] - positions[np.newaxis, :]) < width] = 0.0
+    for i in range(t):
+        links = np.flatnonzero(rec[i])
+        order = links[np.argsort(rec[i, links][np.newaxis, :])][0]
+        rec[i, order[k:]] = 0.0
+    np.fill_diagonal(rec, -1.0)
+    rec = np.minimum(rec, rec.T)
+    rec[rec < 0] = 0.0
+
+    # "med_k_scalar": median over rows of the distance to the k-th nearest link.
+    dist_to_k = np.full(t, np.nan)
+    for i in range(t):
+        links = np.flatnonzero(rec[i])
+        if links.size:
+            dist_to_k[i] = np.sort(rec[i, links])[:k][-1]
+    if not np.any(np.isfinite(dist_to_k)):
+        raise librosa.util.exceptions.ParameterError("Cannot estimate bandwidth from an empty graph")
+    bandwidth = float(np.nanmedian(dist_to_k))
+
+    linked = rec != 0.0
+    np.fill_diagonal(linked, True)  # self links (stored as 0 after clipping) -> exp(0) = 1
+    affinity = np.zeros_like(rec)
+    affinity[linked] = np.exp(rec[linked] / (-1 * bandwidth))
+    return affinity.T
+
+
 def _recurrence_affinity(
     feature_z: np.ndarray,
     *,
@@ -78,17 +128,7 @@ def _recurrence_affinity(
     if n < 3:
         return np.eye(n, dtype=np.float64)
     k = int(np.clip(round(float(neighbor_fraction) * n), 2, max(2, n - 1)))
-    recurrence = librosa.segment.recurrence_matrix(
-        rows.T,
-        k=k,
-        width=max(1, int(exclusion_beats)),
-        metric="cosine",
-        sym=True,
-        mode="affinity",
-        bandwidth="med_k_scalar",
-        self=True,
-    )
-    result = np.asarray(recurrence, dtype=np.float64)
+    result = _cosine_knn_affinity(rows, k=k, width=max(1, int(exclusion_beats)))
     np.fill_diagonal(result, 1.0)
     return np.clip(result, 0.0, 1.0)
 

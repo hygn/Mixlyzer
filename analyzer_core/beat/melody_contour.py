@@ -57,8 +57,131 @@ def _frame_peaks(salience: np.ndarray) -> list[np.ndarray]:
     return peaks
 
 
-def _contours(salience: np.ndarray, frame_sec: float) -> list[tuple[list[int], list[float], int]]:
-    """Link salience peaks across frames: (bins, saliences, start frame) per contour."""
+def _contours(salience: np.ndarray, frame_sec: float) -> list[tuple[np.ndarray, np.ndarray, int]]:
+    """Link salience peaks across frames: (bins, saliences, start frame) per contour.
+
+    A contour takes, at each frame, the free peak nearest its last bin (within
+    LINK_BINS) and ends after GAP_SEC without one; unclaimed peaks start new
+    contours. Contours are returned in the order they end.
+    """
+    global _link_peaks_numba
+    if _link_peaks_numba is None:
+        return _contours_python(salience, frame_sec)
+    gap = int(round(GAP_SEC / frame_sec))
+    peaks = _frame_peaks(salience)
+    padded = np.full((len(peaks), PEAKS_PER_FRAME), -1, dtype=np.int64)
+    for t, frame_peaks in enumerate(peaks):
+        padded[t, : frame_peaks.size] = frame_peaks
+    try:
+        entry_contour, entry_bin, entry_salience, start, finish_order = _link_peaks_numba(
+            padded, np.ascontiguousarray(salience, dtype=np.float64), gap, LINK_BINS
+        )
+    except Exception:  # compilation failed: use the Python implementation from now on
+        _link_peaks_numba = None
+        return _contours_python(salience, frame_sec)
+    # Entries are chronological; group them per contour keeping that order.
+    order = np.argsort(entry_contour, kind="stable")
+    bounds = np.searchsorted(entry_contour[order], np.arange(start.size + 1))
+    min_len = int(round(MIN_CONTOUR_SEC / frame_sec))
+    contours = []
+    for contour in finish_order:
+        entries = order[bounds[contour]:bounds[contour + 1]]
+        if entries.size >= min_len:
+            contours.append((entry_bin[entries], entry_salience[entries], int(start[contour])))
+    return contours
+
+
+def _link_peaks(peaks: np.ndarray, salience: np.ndarray, gap: int, link_bins: float):
+    """Contour linking of :func:`_contours_python` on arrays.
+
+    ``peaks``: ``[T, PEAKS_PER_FRAME]`` peak bins per frame, strongest first,
+    padded with -1. Returns per linked peak (contour id, bin, salience), each
+    contour's start frame, and the contour ids in the order they end.
+    """
+    n_frames, n_slots = peaks.shape
+    capacity = max(1, int((peaks >= 0).sum()))
+    entry_contour = np.empty(capacity, np.int64)
+    entry_bin = np.empty(capacity, np.int64)
+    entry_salience = np.empty(capacity, np.float64)
+    last_bin = np.empty(capacity, np.int64)
+    last_frame = np.empty(capacity, np.int64)
+    start = np.empty(capacity, np.int64)
+    active = np.empty(capacity, np.int64)
+    kept = np.empty(capacity, np.int64)
+    finish_order = np.empty(capacity, np.int64)
+    used = np.zeros(n_slots, np.bool_)
+    n_entries = n_contours = n_active = n_finished = 0
+    for t in range(n_frames):
+        used[:] = False
+        for a in range(n_active):
+            contour = active[a]
+            if t - last_frame[contour] > gap:
+                continue
+            last = last_bin[contour]
+            best = -1
+            for j in range(n_slots):
+                p = peaks[t, j]
+                if p < 0 or used[j] or abs(p - last) > link_bins:
+                    continue
+                if best < 0 or abs(p - last) < abs(peaks[t, best] - last):
+                    best = j
+            if best >= 0:
+                used[best] = True
+                p = peaks[t, best]
+                entry_contour[n_entries] = contour
+                entry_bin[n_entries] = p
+                entry_salience[n_entries] = salience[p, t]
+                n_entries += 1
+                last_bin[contour] = p
+                last_frame[contour] = t
+        n_kept = 0
+        for a in range(n_active):
+            contour = active[a]
+            if t - last_frame[contour] > gap:
+                finish_order[n_finished] = contour
+                n_finished += 1
+            else:
+                kept[n_kept] = contour
+                n_kept += 1
+        active[:n_kept] = kept[:n_kept]
+        n_active = n_kept
+        for j in range(n_slots):
+            p = peaks[t, j]
+            if p < 0 or used[j]:
+                continue
+            contour = n_contours
+            n_contours += 1
+            start[contour] = t
+            last_bin[contour] = p
+            last_frame[contour] = t
+            entry_contour[n_entries] = contour
+            entry_bin[n_entries] = p
+            entry_salience[n_entries] = salience[p, t]
+            n_entries += 1
+            active[n_active] = contour
+            n_active += 1
+    for a in range(n_active):
+        finish_order[n_finished] = active[a]
+        n_finished += 1
+    return (
+        entry_contour[:n_entries],
+        entry_bin[:n_entries],
+        entry_salience[:n_entries],
+        start[:n_contours],
+        finish_order[:n_finished],
+    )
+
+
+try:
+    from numba import njit
+
+    _link_peaks_numba = njit(cache=True)(_link_peaks)
+except Exception:  # pragma: no cover - numba is optional
+    _link_peaks_numba = None
+
+
+def _contours_python(salience: np.ndarray, frame_sec: float) -> list[tuple[list[int], list[float], int]]:
+    """Reference implementation of :func:`_contours` (used when numba is unavailable)."""
     gap = int(round(GAP_SEC / frame_sec))
     active: list[list] = []                         # [bins, saliences, start, last_frame]
     finished: list[list] = []

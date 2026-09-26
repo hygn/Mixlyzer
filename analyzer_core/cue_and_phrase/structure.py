@@ -11,6 +11,7 @@ import librosa
 import numpy as np
 from scipy.special import expit
 
+from analyzer_core.hpss import HpssSpectra
 from core.audio.decoder import decode_to_memmap
 
 
@@ -438,10 +439,6 @@ def _aggregate_beats_to_bars(
     return result.astype(np.float32)
 
 
-def _safe_log_power(power: np.ndarray) -> np.ndarray:
-    return np.log(np.maximum(power, EPS)).astype(np.float32)
-
-
 def _band_energy(
     power: np.ndarray,
     frequencies: np.ndarray,
@@ -472,11 +469,14 @@ def extract_song_features(
     *,
     audio_array: np.ndarray | None = None,
     audio_sr: int | None = None,
+    hpss: HpssSpectra | None = None,
 ) -> AcousticFeatures:
     """Extract deterministic beat- and bar-synchronous music features.
 
     Pass ``audio_array`` (mono ``(N,)`` or stereo ``(N, 2)`` / ``(2, N)``) with
     ``audio_sr`` to feed already-loaded audio instead of reading ``audio_path``.
+    ``hpss`` is the HPSS of the same audio's mid channel, reused when it was
+    made with this config's sample rate, FFT size and hop.
     """
 
     mid, side, stereo, sr = _load_audio_stereo(
@@ -490,16 +490,24 @@ def extract_song_features(
             f"at {duration_sec:.3f}s.  Check that both files belong to one song."
         )
 
-    stft_mid = librosa.stft(
-        mid,
-        n_fft=config.n_fft,
-        hop_length=config.hop_length,
-        window="hann",
-        center=True,
+    reuse = (
+        hpss is not None
+        and (hpss.sample_rate, hpss.n_fft, hpss.hop_length) == (sr, config.n_fft, config.hop_length)
+        and hpss.magnitude.shape[1] == 1 + mid.size // config.hop_length
     )
-    magnitude = np.abs(stft_mid).astype(np.float32)
+    if reuse:
+        magnitude, harmonic_mag, percussive_mag = hpss.magnitude, hpss.harmonic, hpss.percussive
+    else:
+        stft_mid = librosa.stft(
+            mid,
+            n_fft=config.n_fft,
+            hop_length=config.hop_length,
+            window="hann",
+            center=True,
+        )
+        magnitude = np.abs(stft_mid).astype(np.float32)
+        harmonic_mag, percussive_mag = librosa.decompose.hpss(magnitude)
     power = np.square(magnitude, dtype=np.float32)
-    harmonic_mag, percussive_mag = librosa.decompose.hpss(magnitude)
     harmonic_power = np.square(harmonic_mag, dtype=np.float32)
     percussive_power = np.square(percussive_mag, dtype=np.float32)
 

@@ -17,6 +17,8 @@ import numpy as np
 
 from core.resource_paths import resource_path
 
+from analyzer_core.hpss import HpssSpectra
+
 from analyzer_core.cue_and_phrase.phrase_analyzer import (
     detect_two_stage_phrase_segments,
 )
@@ -32,8 +34,12 @@ def detect_phrase_segments(
     tempo_segments: np.ndarray,
     *,
     model_path: str | Path | None = None,
+    hpss: HpssSpectra | None = None,
 ) -> list[dict[str, object]]:
-    """Detect phrase segments with the current NPZ two-stage GBM pipeline."""
+    """Detect phrase segments with the current NPZ two-stage GBM pipeline.
+
+    ``hpss``: HPSS spectra of the mono mix, reused by the feature extraction.
+    """
 
     return detect_two_stage_phrase_segments(
         audio,
@@ -41,4 +47,5 @@ def detect_phrase_segments(
         beat_times_sec,
         tempo_segments,
         model_path=Path(model_path) if model_path is not None else _ASSET_MODEL,
+        hpss=hpss,
     )

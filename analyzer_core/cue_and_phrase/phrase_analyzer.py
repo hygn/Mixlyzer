@@ -10,6 +10,7 @@ from typing import Iterable
 
 import numpy as np
 
+from analyzer_core.hpss import HpssSpectra
 from analyzer_core.cue_and_phrase.structure import (
     FeatureConfig,
     build_predictor_grid,
@@ -131,17 +132,17 @@ class NumpyHistGradientBoostingClassifier:
         left = self.node_left[start:end]
         right = self.node_right[start:end]
         is_leaf = self.node_is_leaf[start:end]
-        for row in range(x.shape[0]):
-            node = 0
-            while not bool(is_leaf[node]):
-                data_val = x[row, int(feature_idx[node])]
-                if np.isnan(data_val):
-                    node = int(left[node] if missing_left[node] else right[node])
-                elif data_val <= threshold[node]:
-                    node = int(left[node])
-                else:
-                    node = int(right[node])
-            out[row] = value[node]
+        # All rows descend one level per step until every row sits on a leaf.
+        rows = np.arange(x.shape[0])
+        node = np.zeros(x.shape[0], dtype=np.int64)
+        active = ~is_leaf[node]
+        while np.any(active):
+            r, n = rows[active], node[active]
+            data_val = x[r, feature_idx[n]]
+            go_left = np.where(np.isnan(data_val), missing_left[n], data_val <= threshold[n])
+            node[active] = np.where(go_left, left[n], right[n])
+            active = ~is_leaf[node]
+        out[:] = value[node]
         return out
 
     def raw_predict(self, X: np.ndarray) -> np.ndarray:
@@ -479,6 +480,7 @@ def detect_two_stage_phrase_segments(
     tempo_segments: np.ndarray,
     *,
     model_path: str | Path,
+    hpss: HpssSpectra | None = None,
 ) -> list[dict[str, object]]:
     artifact = load_two_stage_model(str(Path(model_path).resolve()))
     settings = artifact["settings"]
@@ -492,6 +494,7 @@ def detect_two_stage_phrase_segments(
         _parse_feature_config(settings),
         audio_array=audio,
         audio_sr=int(sample_rate),
+        hpss=hpss,
     )
     feature_z = feature_z_from_acoustic(acoustic)
     boundary_feature_z = boundary_feature_matrix(

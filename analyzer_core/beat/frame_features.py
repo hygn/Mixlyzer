@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 
 import librosa
@@ -19,6 +20,9 @@ PERCUSSIVE_BAND_EDGES_HZ = ((0.0, 150.0), (150.0, 2500.0), (5000.0, np.inf))
 # Melody register of the harmonic part: C4 .. B6.
 MELODY_FMIN_NOTE = "C4"
 MELODY_OCTAVES = 3
+# librosa.feature.chroma_cqt default resolution.
+CHROMA_BINS_PER_OCTAVE = 36
+BASS_CHROMA_FMIN_HZ = float(librosa.note_to_hz("C1"))
 
 
 @dataclass(frozen=True)
@@ -105,20 +109,46 @@ def extract_frame_features(
         np.arange(n_frames), sr=sample_rate, hop_length=hop_length,
     ).astype(np.float64)
 
+    # The CQTs and the melody contour run on worker threads while the STFT
+    # features below are computed (FFTs and scipy filters release the GIL).
+    # The workers do no BLAS matrix products: concurrent BLAS calls would change
+    # the float rounding from run to run, so the chroma filterbanks run on this
+    # thread after the join.
+    def mix_cqt() -> tuple[np.ndarray, np.ndarray]:
+        # chroma_cqt estimates the tuning of ``audio`` on every call; estimate it once.
+        tuning = librosa.estimate_tuning(y=audio, sr=sample_rate, bins_per_octave=CHROMA_BINS_PER_OCTAVE)
+        # The CQTs librosa.feature.chroma_cqt computes: C1 + 7 octaves, and the bass register C1 + 3 octaves.
+        full = np.abs(librosa.cqt(
+            audio, sr=sample_rate, hop_length=hop_length, n_bins=7 * CHROMA_BINS_PER_OCTAVE,
+            bins_per_octave=CHROMA_BINS_PER_OCTAVE, tuning=tuning,
+        ))
+        bass = np.abs(librosa.cqt(
+            audio, sr=sample_rate, hop_length=hop_length, fmin=BASS_CHROMA_FMIN_HZ,
+            n_bins=3 * CHROMA_BINS_PER_OCTAVE, bins_per_octave=CHROMA_BINS_PER_OCTAVE, tuning=tuning,
+        ))
+        return full, bass
+
+    def melody() -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        melody_cqt = np.abs(librosa.cqt(
+            harmonic, sr=sample_rate, hop_length=hop_length,
+            fmin=librosa.note_to_hz(MELODY_FMIN_NOTE), n_bins=12 * MELODY_OCTAVES, bins_per_octave=12,
+        ))
+        melody_onset = _positive_flux(
+            librosa.amplitude_to_db(melody_cqt, ref=np.max, top_db=80.0)
+        ).mean(axis=0)
+        melody_pitch, melody_contour = extract_melody_contour(harmonic, sample_rate, hop_length, n_frames)
+        return melody_cqt, melody_onset, melody_pitch, melody_contour
+
+    pool = ThreadPoolExecutor(max_workers=2)
+    mix_cqt_job = pool.submit(mix_cqt)
+    melody_job = pool.submit(melody)
+
     mel_power = librosa.feature.melspectrogram(
         S=power, sr=sample_rate, n_mels=n_mels,
         fmin=30.0, fmax=sample_rate / 2.0, norm="slaney", power=2.0,
     )
     log_mel = librosa.power_to_db(mel_power, ref=np.max, top_db=100.0).astype(np.float32)
 
-    # Sharp CQT chroma (not CENS, which over-smooths chord-change timing).
-    chroma = librosa.feature.chroma_cqt(
-        y=audio, sr=sample_rate, hop_length=hop_length, n_chroma=12,
-    )
-    bass_chroma = librosa.feature.chroma_cqt(
-        y=audio, sr=sample_rate, hop_length=hop_length, n_chroma=12,
-        fmin=librosa.note_to_hz("C1"), n_octaves=3,
-    )
     mfcc = librosa.feature.mfcc(
         S=librosa.power_to_db(
             librosa.feature.melspectrogram(S=power, sr=sample_rate, n_mels=n_mels),
@@ -126,7 +156,6 @@ def extract_frame_features(
         ),
         n_mfcc=20,
     )
-    tonnetz = librosa.feature.tonnetz(chroma=chroma, sr=sample_rate)
 
     mel_difference = _positive_flux(log_mel)
     band_edges = np.linspace(0, n_mels, 4, dtype=int)
@@ -161,23 +190,26 @@ def extract_frame_features(
     percussive_total = percussive_power.sum(axis=0)
     percussive_share = percussive_total / np.maximum(percussive_total + harmonic_power.sum(axis=0), 1e-10)
 
-    melody_cqt = np.abs(librosa.cqt(
-        harmonic, sr=sample_rate, hop_length=hop_length,
-        fmin=librosa.note_to_hz(MELODY_FMIN_NOTE), n_bins=12 * MELODY_OCTAVES, bins_per_octave=12,
-    ))
+    # librosa onset strength (128-band log-mel flux) from the spectra above.
+    def onset_strength(signal_power: np.ndarray) -> np.ndarray:
+        return librosa.onset.onset_strength(
+            S=librosa.power_to_db(librosa.feature.melspectrogram(S=signal_power, sr=sample_rate)),
+            sr=sample_rate, hop_length=hop_length, n_fft=n_fft, center=True,
+        )
+
+    librosa_onset = onset_strength(percussive_power)
+    harmonic_onset = onset_strength(harmonic_power)
+
+    with pool:
+        full_cqt, bass_cqt = mix_cqt_job.result()
+        melody_cqt, melody_onset, melody_pitch, melody_contour = melody_job.result()
+    # Sharp CQT chroma (not CENS, which over-smooths chord-change timing).
+    chroma = librosa.feature.chroma_cqt(C=full_cqt, n_chroma=12, bins_per_octave=CHROMA_BINS_PER_OCTAVE)
+    bass_chroma = librosa.feature.chroma_cqt(
+        C=bass_cqt, n_chroma=12, fmin=BASS_CHROMA_FMIN_HZ, bins_per_octave=CHROMA_BINS_PER_OCTAVE,
+    )
+    tonnetz = librosa.feature.tonnetz(chroma=chroma, sr=sample_rate)
     melody_chroma = librosa.feature.chroma_cqt(C=melody_cqt, n_chroma=12)
-    melody_onset = _positive_flux(
-        librosa.amplitude_to_db(melody_cqt, ref=np.max, top_db=80.0)
-    ).mean(axis=0)
-
-    melody_pitch, melody_contour = extract_melody_contour(harmonic, sample_rate, hop_length, n_frames)
-
-    librosa_onset = librosa.onset.onset_strength(
-        y=percussive, sr=sample_rate, hop_length=hop_length, n_fft=n_fft, center=True,
-    )
-    harmonic_onset = librosa.onset.onset_strength(
-        y=harmonic, sr=sample_rate, hop_length=hop_length, n_fft=n_fft, center=True,
-    )
 
     return FrameFeatures(
         sample_rate=sample_rate,

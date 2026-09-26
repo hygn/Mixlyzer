@@ -1,12 +1,9 @@
 from __future__ import annotations
 import numpy as np
 import librosa
-from typing import Tuple, Sequence
 
 from sklearn.metrics.pairwise import cosine_similarity
-from sklearn.cluster import KMeans
-from scipy.sparse.linalg import eigsh
-from scipy.ndimage import gaussian_filter1d, gaussian_filter
+from scipy.ndimage import gaussian_filter1d
 from scipy.signal import find_peaks
 
 
@@ -316,21 +313,6 @@ def refine_offset_from_map(sim2d: np.ndarray, deltas: np.ndarray) -> tuple[float
     return r_ref, delta_ref
 
 
-def flatten_band(sim2d: np.ndarray, r_ref: float, hop_sec: float, avg_beat_sec: float, *, band_beats: float = 1.0) -> np.ndarray:
-    """Average rows within 짹band_beats (converted to frames) around r_ref to build 1D time series."""
-    if sim2d.size == 0:
-        return np.zeros(0, dtype=float)
-    Hm, Tm = sim2d.shape
-    beat_per_frame = hop_sec / max(1e-9, avg_beat_sec)
-    band_frames = int(round(float(band_beats) / max(1e-9, beat_per_frame)))
-    rr_c = int(np.clip(np.round(r_ref), 0, Hm - 1))
-    lo_b = int(max(0, rr_c - band_frames))
-    hi_b = int(min(Hm - 1, rr_c + band_frames))
-    if hi_b >= lo_b:
-        return np.nanmean(sim2d[lo_b:hi_b + 1, :], axis=0)
-    return sim2d[rr_c]
-
-
 def flatten_band_beats(sim2d: np.ndarray, r_ref: float, *, band_beats: float = 1.0) -> np.ndarray:
     """Average rows around r_ref using beat-indexed rows.
 
@@ -349,123 +331,6 @@ def flatten_band_beats(sim2d: np.ndarray, r_ref: float, *, band_beats: float = 1
         return np.nanmean(sim2d[lo_b:hi_b + 1, :], axis=0)
     return sim2d[rr_c]
  
-def link_similar_segments(
-    y: np.ndarray,
-    beats_time: np.ndarray,
-    sr: int,
-    *,
-    # SSM + peak params
-    n_beats_seg: int = 4,
-    n_mels: int = 128,
-    mel_fmin: float = 30.0,
-    mel_fmax: float | None = None,
-    smooth_sigma: float = 1.0,
-    diag_band: int = 2,
-    top_peaks: int = 5,
-    prominence: float = 0.09,
-    margin_beats: float = 16.0,
-    # Overlap map params
-    hop: int = 512,
-    tol_beats: float = 3.0,
-    anchor_restart: bool = True,
-    band_beats: float = 1.0,
-    # Spectral segment constraints
-    cluster_min_beats: int = 8,
-    cluster_merge_gap_beats: int = 2,
-) -> list[dict]:
-    """Find pairs of similar segments in a track.
-
-    Returns a list of dicts with fields:
-      - lag_beats, lag_sec, score
-      - a: (start_sec, end_sec)
-      - b: (start_sec, end_sec)
-    """
-    beats_time = np.asarray(beats_time, dtype=float)
-    if beats_time.size < 2:
-        return []
-
-    # 1) Beat-wise features -> SSM -> lag peaks
-    Xmat, step_beats, avg_beat_sec = mel_beat_matrix(
-        y, beats_time, sr,
-        n_mels=n_mels, mel_fmin=mel_fmin, mel_fmax=mel_fmax,
-        n_beats_seg=n_beats_seg,
-    )
-    S = ssm_from_features(Xmat, smooth_sigma=smooth_sigma, diag_band=diag_band)
-    lag_beats, resid_fold, peaks_idx = diag_profile_peaks(
-        S, step_beats=step_beats, margin_beats=margin_beats, prominence=prominence
-    )
-    if peaks_idx.size == 0:
-        return []
-
-    # select top peaks by folded residual height
-    order = np.argsort(resid_fold[peaks_idx])[::-1][:int(max(1, top_peaks))]
-    sel_idx = peaks_idx[order]
-
-    # 2) Frame-wise Mel features for overlap map
-    Feat, hop_sec = mel_frames(y, sr, hop=hop, n_mels=n_mels, mel_fmin=mel_fmin, mel_fmax=mel_fmax)
-    beat_frames = beat_centers_to_frames(beats_time, sr, hop)
-    # center times for mapping indices to seconds
-    centers = 0.5 * (beats_time[:-1] + beats_time[1:]) if beats_time.size >= 2 else np.asarray([], dtype=float)
-
-    links: list[dict] = []
-    for pk in sel_idx:
-        k_beats = float(lag_beats[int(pk)])
-        sim2d, deltas, valid_idx = overlap_map_from_frames(
-            Feat, beat_frames, k_beats, avg_beat_sec, hop_sec,
-            tol_beats=tol_beats, anchor_restart=anchor_restart, use_beat_index_mapping=True,
-        )
-        if sim2d.size == 0 or valid_idx.size == 0:
-            continue
-
-        # refine row and lag
-        r_ref, delta_ref = refine_offset_from_map(sim2d, deltas)
-        # deltas are in beats when use_beat_index_mapping=True
-        delta_beats_ref = float(delta_ref)
-        refined_lag_beats = (k_beats - delta_beats_ref) if anchor_restart else (k_beats + delta_beats_ref)
-        lag_sec = refined_lag_beats * avg_beat_sec
-
-        # Spectral segmentation on overlap map columns into similar time spans
-        try:
-            spec_segments, _spec_labels = spectral_segments_from_overlap(
-                sim2d,
-                k=2,
-                smooth_sigma=3,
-                band_window=0,
-                min_len=int(max(1, cluster_min_beats)),
-                merge_gap=int(max(0, cluster_merge_gap_beats)),
-            )
-        except Exception:
-            spec_segments = []
-        if not spec_segments:
-            continue
-
-        # Build 1D flattened line near optimal row for scoring only
-        sim_line = flatten_band_beats(sim2d, r_ref, band_beats=band_beats)
-
-        # map spectral segments to time pairs (a, b)
-        for s0, e0 in spec_segments:
-            jj0 = int(valid_idx[int(s0)])
-            jj1 = int(valid_idx[int(max(s0, e0 - 1))])
-            if jj0 >= centers.size or jj1 >= centers.size:
-                continue
-            a0 = float(centers[jj0]); a1 = float(centers[jj1])
-            if anchor_restart:
-                b0, b1 = a0 - lag_sec, a1 - lag_sec
-            else:
-                b0, b1 = a0 + lag_sec, a1 + lag_sec
-            mean_score = float(np.mean(sim_line[int(s0):int(e0)])) if (e0 - s0) > 0 else -1.0
-            links.append({
-                "lag_beats": float(refined_lag_beats),
-                "lag_sec": float(lag_sec),
-                "a": (max(0.0, a0), max(0.0, a1)),
-                "b": (max(0.0, b0), max(0.0, b1)),
-                "score": mean_score,
-            })
-
-    # sort by score descending
-    links.sort(key=lambda d: d.get("score", 0.0), reverse=True)
-    return links
-
 def spectral_segments_from_overlap(
     sim2d: np.ndarray,
     *,
@@ -513,10 +378,6 @@ def spectral_segments_from_overlap(
     P_offdiag = np.zeros((T + 1, T + 1), dtype=float)
     P_offdiag[1:, 1:] = W_offdiag
     P_offdiag = P_offdiag.cumsum(axis=0).cumsum(axis=1)
-    def _block_offdiag_sum(a: int, b: int) -> float:
-        if a >= b:
-            return 0.0
-        return float(P_offdiag[b, b] - P_offdiag[a, b] - P_offdiag[b, a] + P_offdiag[a, a])
     base_offdiag = float(np.median(W_offdiag)) if W_offdiag.size else 0.0
     min_len_i = int(max(1, min_len))
     segments: list[tuple[int, int]] = []
@@ -525,16 +386,21 @@ def spectral_segments_from_overlap(
     try:
         best_score = -1e18
         best_pair: tuple[int, int] | None = None
+        # Score of every block [a, b) with b - a >= min_len (a row per start a,
+        # the off-diagonal sum from the 2-D prefix sums); first maximum in (a, b) order.
+        diag = np.diagonal(P_offdiag)
+        ends = np.arange(T + 1)
         for a in range(0, max(0, T - min_len_i) + 1):
-            for b in range(a + min_len_i, T + 1):
-                L = b - a
-                s_in = _block_offdiag_sum(a, b)
-                denom = max(1.0, float(L * max(1, L - 1)))
-                mean_in = s_in / denom
-                score = (mean_in - base_offdiag) * np.sqrt(L)
-                if score > best_score:
-                    best_score = score
-                    best_pair = (a, b)
+            b = ends[a + min_len_i:]
+            L = b - a
+            s_in = diag[b] - P_offdiag[a, b] - P_offdiag[b, a] + P_offdiag[a, a]
+            denom = np.maximum(1.0, (L * np.maximum(1, L - 1)).astype(np.float64))
+            score = (s_in / denom - base_offdiag) * np.sqrt(L)
+            score[np.isnan(score)] = -np.inf
+            k = int(np.argmax(score))
+            if score[k] > best_score:
+                best_score = float(score[k])
+                best_pair = (a, int(b[k]))
         if best_pair is not None and best_score > 0.0:
             segments = [best_pair]
             labels = np.zeros(T, dtype=int)

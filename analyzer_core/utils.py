@@ -26,7 +26,6 @@ def fuse_key_mode_to_24_path(key_path12, mode_path01):
     out = np.where(m == 0, k, 12 + rel_minor_pc)
     return out
 
-import numpy as np
 
 def moving_average(x: np.ndarray, win: int) -> np.ndarray:
     x = np.asarray(x, dtype=float)
@@ -66,3 +65,46 @@ def offset_beats_and_segments(
         segments = shifted
 
     return beats, segments
+
+
+def prime_physical_core_count() -> None:
+    """Pre-fill joblib/loky's physical-core cache on Windows.
+
+    sklearn (KMeans) sizes its OpenMP pool from ``loky.cpu_count(only_physical_cores=True)``,
+    which on Windows launches ``powershell.exe`` once per process (~1.5-2 s, paid by
+    every analysis process). The same number is read here from
+    GetLogicalProcessorInformationEx; on any failure loky keeps its own lookup.
+    """
+    import sys
+
+    if sys.platform != "win32":
+        return
+    try:
+        import ctypes
+        from ctypes import wintypes
+
+        from joblib.externals.loky.backend import context
+
+        if context.physical_cores_cache is not None:
+            return
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        relation_processor_core = 0
+        size = wintypes.DWORD(0)
+        kernel32.GetLogicalProcessorInformationEx(relation_processor_core, None, ctypes.byref(size))
+        buffer = ctypes.create_string_buffer(size.value)
+        if not kernel32.GetLogicalProcessorInformationEx(relation_processor_core, buffer, ctypes.byref(size)):
+            return
+        # Variable-size records, each starting with (Relationship, Size).
+        cores, offset = 0, 0
+        while offset < size.value:
+            relationship, record_size = ctypes.cast(
+                ctypes.byref(buffer, offset), ctypes.POINTER(ctypes.c_uint32 * 2)
+            ).contents
+            if record_size == 0:
+                return
+            cores += relationship == relation_processor_core
+            offset += record_size
+        if cores >= 1:
+            context.physical_cores_cache = cores
+    except Exception:
+        pass

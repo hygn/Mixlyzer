@@ -3,6 +3,11 @@
 from dataclasses import dataclass
 from pathlib import Path
 
+from analyzer_core.utils import prime_physical_core_count
+
+# sklearn (KMeans, HistGradientBoosting) would otherwise launch powershell.exe to count cores.
+prime_physical_core_count()
+
 
 _DISPLAY_FIELD_MAX_LENGTH = 24
 _MIDDLE_ELLIPSIS = "..."
