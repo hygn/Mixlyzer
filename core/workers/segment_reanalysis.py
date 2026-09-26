@@ -1,8 +1,8 @@
+"""Segment reanalysis subprocess worker."""
+
 from __future__ import annotations
 
-import multiprocessing as mp
 import traceback
-from queue import Empty
 from typing import Any
 
 import numpy as np
@@ -17,12 +17,12 @@ from analyzer_core.editor.keystrip import (
     update_key_segments_with_selection,
 )
 from analyzer_core.editor.jumpcue import reanalyze_jumpCUE
-from core.analysis_worker import _install_parent_watchdog
 from core.config import config
+from core.concurrency.process_worker import SpawnProcessWorker, install_parent_watchdog
 from utils.keystrip import build_keystrip_buffer
 
 
-class SegmentReanalysisWorker(QtCore.QObject):
+class SegmentReanalysisWorker(SpawnProcessWorker):
     """Worker that recomputes tempo or key segments in a subprocess."""
 
     finished = QtCore.Signal(dict)
@@ -46,107 +46,46 @@ class SegmentReanalysisWorker(QtCore.QObject):
         analyze_type: str = "beat",
         parent: QtCore.QObject | None = None,
     ) -> None:
-        super().__init__(parent)
-        self._path = path
-        self._config = cfg
-        self._beats = beats
-        self._segments = segments
-        self._key_segments = key_segments
-        self._selection = selection
-        self._segment_index = int(segment_index)
-        self._taskid = taskid
-        self._prev_bpm = prev_bpm
-        self._use_only_prev_bpm = bool(use_only_prev_bpm)
-        self._analyze_type = analyze_type
-        self._ctx = mp.get_context("spawn")
-        self._queue: Any | None = None
-        self._process: mp.Process | None = None
-        self._timer = QtCore.QTimer(self)
-        self._timer.setInterval(50)
-        self._timer.timeout.connect(self._poll_queue)
-        self._result_emitted = False
-        self._error_emitted = False
-        self._duration = duration
-
-    def start(self) -> None:
-        if self._process is not None:
-            raise RuntimeError("Worker already started.")
-        self._queue = self._ctx.Queue()
-        self._process = self._ctx.Process(
+        super().__init__(
             target=_segment_reanalysis_entry,
             args=(
-                self._path,
-                self._config,
-                self._segment_index,
-                self._beats,
-                self._duration,
-                self._segments,
-                self._key_segments,
-                self._selection,
-                self._taskid,
-                self._queue,
-                self._prev_bpm,
-                self._use_only_prev_bpm,
-                self._analyze_type,
+                path,
+                cfg,
+                int(segment_index),
+                beats,
+                duration,
+                segments,
+                key_segments,
+                selection,
+                taskid,
+                prev_bpm,
+                bool(use_only_prev_bpm),
+                analyze_type,
             ),
+            daemon=True,
+            process_name=f"Mixlyzer-segment-analysis-{taskid}",
+            parent=parent,
         )
-        self._process.daemon = True
-        self._process.start()
-        self._timer.start()
+        self._result_emitted = False
+        self._error_emitted = False
 
-    def stop(self) -> None:
-        if self._process and self._process.is_alive():
-            self._process.terminate()
-            self._process.join(timeout=1)
-        self._cleanup()
+    def _handle_process_message(self, message: dict[str, Any]) -> None:
+        mtype = message.get("type")
+        if mtype == "progress":
+            self.progress.emit(message.get("status", ""), message.get("progress", 0.0))
+        elif mtype == "status":
+            self.status.emit(message.get("status", ""))
+        elif mtype == "result" and not self._result_emitted:
+            self._result_emitted = True
+            self.finished.emit(dict(message.get("payload", {}) or {}))
+        elif mtype == "error" and not self._error_emitted:
+            self._error_emitted = True
+            self.error.emit(message.get("message", "Unknown error"))
 
-    def _poll_queue(self) -> None:
-        if self._queue is None:
-            return
-        while True:
-            queue = self._queue
-            if queue is None:
-                return
-            try:
-                message = queue.get_nowait()
-            except Empty:
-                break
-            mtype = message.get("type")
-            if mtype == "progress":
-                self.progress.emit(message.get("status", ""), message.get("progress", 0.0))
-            elif mtype == "status":
-                self.status.emit(message.get("status", ""))
-            elif mtype == "result":
-                if not self._result_emitted:
-                    payload = dict(message.get("payload", {}) or {})
-                    self.finished.emit(payload)
-                    self._result_emitted = True
-            elif mtype == "error":
-                if not self._error_emitted:
-                    self.error.emit(message.get("message", "Unknown error"))
-                    self._error_emitted = True
-                break
-            elif mtype == "done":
-                self._timer.stop()
-                self._finalize_process()
-                break
-
-    def _finalize_process(self) -> None:
-        if self._process is not None:
-            self._process.join(timeout=1)
-        self._cleanup()
-
-    def _cleanup(self) -> None:
-        if self._queue is not None:
-            self._queue.close()
-            self._queue.join_thread()
-            self._queue = None
-        if self._process is not None:
-            self._process.close()
-            self._process = None
-
-    def __del__(self):
-        self.stop()
+    def _process_exited(self, *, graceful: bool, exitcode: int | None) -> None:
+        if not graceful and not self._error_emitted and not self._result_emitted:
+            self._error_emitted = True
+            self.error.emit(f"Segment analysis process exited unexpectedly ({exitcode}).")
 
 
 def _segment_reanalysis_entry(
@@ -159,12 +98,12 @@ def _segment_reanalysis_entry(
     key_segments,
     selection,
     taskid: int,
-    queue,
     prev_bpm=None,
     use_only_prev_bpm: bool = False,
     analyze_type: str = "beat",
+    queue=None,
 ) -> None:
-    _install_parent_watchdog()
+    install_parent_watchdog()
 
     beats_arr = np.asarray(beats, dtype=float)
     tempo_segments_arr = np.asarray(segments, dtype=float)

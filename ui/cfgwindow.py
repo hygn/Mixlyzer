@@ -11,7 +11,6 @@ from pathlib import Path
 import shutil
 import subprocess
 import time
-import traceback
 
 import numpy as np
 from PySide6.QtCore import Qt, Signal
@@ -25,66 +24,9 @@ from core.config import (
     memorydeckconfig, memoryvalueconfig,
 )
 from core.event_bus import EventBus
+from core.workers.optimizer import OptimizerWorker
 from core.resource_paths import process_denylist_path, project_root
 from ui.track_info_panel import HorizontalBufferMeter
-
-
-class ParameterOptimizeWorker(QtCore.QObject):
-    featureProgress = Signal(int, str)
-    optimizeProgress = Signal(int, str)
-    finished = Signal(object)
-    failed = Signal(str)
-
-    def __init__(self, optimizer_name: str, request_values: dict, parent=None):
-        super().__init__(parent)
-        self._optimizer_name = optimizer_name
-        self._request_values = request_values
-
-    @QtCore.Slot()
-    def run(self) -> None:
-        try:
-            if self._optimizer_name == "beat_phase":
-                from optimizer.beat_phase_parameter_optimizer import (
-                    BeatPhaseOptimizationRequest,
-                    optimize_beat_phase_parameters,
-                )
-
-                request = BeatPhaseOptimizationRequest(**self._request_values)
-                optimize = optimize_beat_phase_parameters
-            elif self._optimizer_name == "onset":
-                from optimizer.onset_parameter_optimizer import (
-                    OnsetOptimizationRequest,
-                    optimize_onset_parameters,
-                )
-
-                request = OnsetOptimizationRequest(**self._request_values)
-                optimize = optimize_onset_parameters
-            elif self._optimizer_name == "downbeat":
-                from optimizer.downbeat_parameter_optimizer import (
-                    DownbeatOptimizationRequest,
-                    optimize_downbeat_parameters,
-                )
-
-                request = DownbeatOptimizationRequest(**self._request_values)
-                optimize = optimize_downbeat_parameters
-            elif self._optimizer_name == "phrase":
-                from optimizer.phrase_parameter_optimizer import (
-                    PhraseOptimizationRequest,
-                    optimize_phrase_parameters,
-                )
-
-                request = PhraseOptimizationRequest(**self._request_values)
-                optimize = optimize_phrase_parameters
-            else:
-                raise ValueError(f"Unsupported parameter optimizer: {self._optimizer_name}")
-            result = optimize(
-                request,
-                feature_progress=self.featureProgress.emit,
-                optimize_progress=self.optimizeProgress.emit,
-            )
-            self.finished.emit(result)
-        except Exception:
-            self.failed.emit(traceback.format_exc())
 
 
 class ParameterOptimizeProgressDialog(QDialog):
@@ -1241,39 +1183,33 @@ class SettingsDialog(QDialog):
         failed_slot,
     ) -> None:
         dialog = ParameterOptimizeProgressDialog(title, self)
-        thread = QtCore.QThread(self)
-        worker = ParameterOptimizeWorker(key, request_values)
-        worker.moveToThread(thread)
-
+        worker = OptimizerWorker(
+            key,
+            [{"optimizer_name": key, "display_name": title, "request_values": request_values}],
+            parent=self,
+        )
         worker.featureProgress.connect(dialog.set_feature_progress)
         worker.optimizeProgress.connect(dialog.set_optimize_progress)
         worker.finished.connect(dialog.set_finished)
         worker.failed.connect(dialog.set_failed)
         worker.finished.connect(finished_slot)
         worker.failed.connect(failed_slot)
-        worker.finished.connect(thread.quit)
-        worker.failed.connect(thread.quit)
-        worker.finished.connect(worker.deleteLater)
-        worker.failed.connect(worker.deleteLater)
-        thread.finished.connect(thread.deleteLater)
-        thread.finished.connect(
-            lambda: setattr(self, f"_{key}_optimize_thread", None)
-        )
-        thread.finished.connect(
-            lambda: setattr(self, f"_{key}_optimize_worker", None)
-        )
-        thread.started.connect(worker.run)
-
-        setattr(self, f"_{key}_optimize_thread", thread)
         setattr(self, f"_{key}_optimize_worker", worker)
         setattr(self, f"_{key}_optimize_dialog", dialog)
+        worker.finished.connect(lambda _result, k=key, w=worker: self._clear_optimizer_worker(k, w))
+        worker.failed.connect(lambda _message, k=key, w=worker: self._clear_optimizer_worker(k, w))
         self._set_parameter_optimization_enabled(False)
         dialog.show()
-        thread.start()
+        worker.start()
+
+    def _clear_optimizer_worker(self, key: str, worker: OptimizerWorker) -> None:
+        if getattr(self, f"_{key}_optimize_worker", None) is worker:
+            setattr(self, f"_{key}_optimize_worker", None)
+        worker.deleteLater()
 
     def _parameter_optimization_is_running(self) -> bool:
         return any(
-            getattr(self, f"_{key}_optimize_thread", None) is not None
+            getattr(self, f"_{key}_optimize_worker", None) is not None
             for key in ("beat", "phrase")
         )
 
@@ -1367,64 +1303,63 @@ class SettingsDialog(QDialog):
         dialog = ParameterOptimizeProgressDialog(title, self)
         self._beat_optimize_dialog = dialog
         self._beat_queue_title = title
-        self._beat_queue = list(queue)
-        self._beat_queue_total = len(queue)
-        self._beat_queue_results = []
+        self._beat_jobs = list(queue)
+        self._beat_current_index = 0
+        worker = OptimizerWorker(
+            "beat",
+            [
+                {
+                    "optimizer_name": key,
+                    "display_name": name,
+                    "request_values": request_values,
+                }
+                for key, name, _options, request_values in self._beat_jobs
+            ],
+            parent=self,
+        )
+        worker.featureProgress.connect(dialog.set_feature_progress)
+        worker.optimizeProgress.connect(dialog.set_optimize_progress)
+        worker.stageStarted.connect(self._on_beat_optimization_stage_started)
+        worker.finished.connect(self._on_beat_optimization_finished)
+        worker.failed.connect(self._on_beat_optimization_failed)
+        worker.finished.connect(lambda _result, w=worker: self._clear_optimizer_worker("beat", w))
+        worker.failed.connect(lambda _message, w=worker: self._clear_optimizer_worker("beat", w))
+        self._beat_optimize_worker = worker
         self._set_parameter_optimization_enabled(False)
         dialog.show()
-        self._run_next_beat_optimization()
+        worker.start()
 
-    def _run_next_beat_optimization(self) -> None:
+    @QtCore.Slot(int, int, str, str)
+    def _on_beat_optimization_stage_started(
+        self, position: int, total: int, _key: str, name: str
+    ) -> None:
+        self._beat_current_index = position
         dialog = self._beat_optimize_dialog
-        if not self._beat_queue:
-            self._finish_beat_optimization_queue()
-            return
-        key, name, options, request_values = self._beat_queue.pop(0)
-        self._beat_queue_current = (key, name, options)
-        position = self._beat_queue_total - len(self._beat_queue)
-        dialog.setWindowTitle(f"{self._beat_queue_title} ({position}/{self._beat_queue_total}: {name})")
+        dialog.setWindowTitle(f"{self._beat_queue_title} ({position}/{total}: {name})")
         dialog.set_feature_progress(0, f"{name}: feature build pending")
         dialog.set_optimize_progress(0, f"{name}: optimize pending")
         dialog.btn_close.setEnabled(False)
 
-        thread = QtCore.QThread(self)
-        worker = ParameterOptimizeWorker(key, request_values)
-        worker.moveToThread(thread)
-        worker.featureProgress.connect(dialog.set_feature_progress)
-        worker.optimizeProgress.connect(dialog.set_optimize_progress)
-        worker.finished.connect(self._on_beat_optimization_finished)
-        worker.failed.connect(self._on_beat_optimization_failed)
-        worker.finished.connect(thread.quit)
-        worker.failed.connect(thread.quit)
-        worker.finished.connect(worker.deleteLater)
-        worker.failed.connect(worker.deleteLater)
-        thread.finished.connect(thread.deleteLater)
-        thread.finished.connect(lambda t=thread: self._clear_beat_optimize_thread(t))
-        thread.started.connect(worker.run)
-        self._beat_optimize_thread = thread
-        self._beat_optimize_worker = worker
-        thread.start()
-
-    def _clear_beat_optimize_thread(self, thread) -> None:
-        if getattr(self, "_beat_optimize_thread", None) is thread:
-            self._beat_optimize_thread = None
-            self._beat_optimize_worker = None
-
     @QtCore.Slot(object)
-    def _on_beat_optimization_finished(self, result) -> None:
-        key, name, options = self._beat_queue_current
-        self._beat_queue_results.append((key, name, options, result))
-        self._run_next_beat_optimization()
+    def _on_beat_optimization_finished(self, results) -> None:
+        result_items = results if isinstance(results, tuple) else (results,)
+        self._beat_queue_results = [
+            (key, name, options, result)
+            for (key, name, options, _request_values), result in zip(
+                self._beat_jobs, result_items, strict=True
+            )
+        ]
+        self._finish_beat_optimization_queue()
 
     @QtCore.Slot(str)
     def _on_beat_optimization_failed(self, message: str) -> None:
-        _key, name, _options = self._beat_queue_current
-        remaining = [item[1] for item in self._beat_queue]
-        self._beat_queue = []
+        current = max(1, self._beat_current_index)
+        name = self._beat_jobs[current - 1][1]
+        done = ", ".join(item[1] for item in self._beat_jobs[: current - 1]) or "none"
+        remaining = [item[1] for item in self._beat_jobs[current:]]
         self._set_parameter_optimization_enabled(True)
         dialog = self._beat_optimize_dialog
         dialog.set_failed(message)
-        done = ", ".join(item[1] for item in self._beat_queue_results) or "none"
         QMessageBox.critical(
             dialog,
             self._beat_queue_title,

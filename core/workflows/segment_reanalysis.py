@@ -8,7 +8,7 @@ from PySide6 import QtCore
 
 from analyzer_core.global_analyzer import getAlbumArt
 from core.config import load_cfg
-from core.segment_reanalysis_worker import SegmentReanalysisWorker
+from core.workers.segment_reanalysis import SegmentReanalysisWorker
 from core.event_bus import EventBus
 
 
@@ -17,7 +17,7 @@ PathGetter = Callable[[], Optional[str]]
 TrackEditGetter = Callable[[], Any]
 
 
-class SegmentReanalysisManager(QtCore.QObject):
+class SegmentReanalysisWorkflow(QtCore.QObject):
     """Orchestrates beat/key reanalysis requests outside of the main window."""
 
     def __init__(

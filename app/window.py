@@ -12,6 +12,7 @@ from core.timeline import TimelineCoordinator
 from core.player import PlayerController
 from core.library_handler import LibraryDB
 from core.analysis_lib_handler import FeatureNPZStore
+from core.workflows.analysis import AnalysisWorkflow
 from core.taskmanager import taskmanager
 from core.external_sync import ExternalSyncController
 from core.rekordbox_sync import RekordboxXmlSync
@@ -26,9 +27,7 @@ from ui.workers import WorkersDialog
 from ui.oss_support import SupportDialog
 from ui.about_dialog import AboutDialog
 
-from core.analysis_worker import AnalysisWorker
-from core.segment_reanalysis_manager import SegmentReanalysisManager
-from analyzer_core.global_analyzer import getAlbumArt, extract_tags
+from core.workflows.segment_reanalysis import SegmentReanalysisWorkflow
 from core.config import config, load_cfg
 from core.beat_geometry import downbeat_beat_indices
 
@@ -124,11 +123,8 @@ class AppWindow(QtWidgets.QMainWindow):
         self.resize(1280, 860)
 
         # status
-        self.current_path: str | None = None
         self._external_sync_pending_seek: float | None = None
         self._external_sync_applied_enabled: bool | None = None
-        self._analysis_workers: dict[int, AnalysisWorker] = {}
-        self._analysis_context: dict[int, dict] = {}
         self._effective_refresh_fps: int | None = None
         self._hidden_visibility_streak = 0
         self._visibility_refresh_enabled = False
@@ -141,12 +137,21 @@ class AppWindow(QtWidgets.QMainWindow):
         self.taskmanager = taskmanager(self.bus)
 
         status_bar = self.statusBar()
-        self.segment_manager = SegmentReanalysisManager(
+        self.segment_reanalysis_workflow = SegmentReanalysisWorkflow(
             bus=self.bus,
             model=self.model,
             taskmanager=self.taskmanager,
-            get_current_path=lambda: self.current_path,
+            get_current_path=lambda: self.analysis_workflow.current_path,
             track_edit_getter=lambda: getattr(self.pane, "track_edit", None),
+            status_callback=status_bar.showMessage,
+            parent=self,
+        )
+        self.analysis_workflow = AnalysisWorkflow(
+            taskmanager=self.taskmanager,
+            result_callback=self._on_features_ready,
+            reanalysis_result_callback=self._on_features_reanalyze,
+            album_art_callback=self._set_album_art,
+            cancel_reanalysis_callback=self.segment_reanalysis_workflow.cancel_all,
             status_callback=status_bar.showMessage,
             parent=self,
         )
@@ -208,124 +213,14 @@ class AppWindow(QtWidgets.QMainWindow):
         except (FileNotFoundError, ValueError):
             return None
 
-    def _handle_worker_error(self, taskid: int, message: str) -> None:
-        self.taskmanager.rmtask(taskid, message)
-        path = self._analysis_context.get(taskid, {}).get("path")
-        basename = os.path.basename(path) if path else ""
-        prefix = f"Error ({basename})" if basename else "Error"
-        self.statusBar().showMessage(f"{prefix}: {message}")
-        print(f"[AnalysisWorker] Error for task {taskid}: {message}")
-        self._finalize_analysis(taskid)
-
-    def _handle_worker_success(self, taskid: int, payload: dict, finished_slot) -> None:
-        try:
-            ctx = self._analysis_context.get(taskid, {})
-            payload = dict(payload)
-            payload.setdefault("auto_load", ctx.get("auto_load", True))
-            finished_slot(payload)
-        finally:
-            self._finalize_analysis(taskid)
-
-    def _on_worker_progress(self, taskid: int, status: str, progress: float) -> None:
-        if taskid not in self._analysis_workers:
-            return
-        self.taskmanager.updatetask(taskid, status, float(progress))
-
-    def _on_worker_status(self, taskid: int, status: str) -> None:
-        if not status:
-            return
-        path = self._analysis_context.get(taskid, {}).get("path")
-        basename = os.path.basename(path) if path else ""
-        message = f"{status}: {basename}" if basename else status
-        self.statusBar().showMessage(message)
-
-    def _finalize_analysis(self, taskid: int) -> None:
-        worker = self._analysis_workers.pop(taskid, None)
-        if worker is not None:
-            worker.stop()
-            worker.deleteLater()
-        self._analysis_context.pop(taskid, None)
-
     def analyze_file(self, path: str):
         if self._is_external_sync_active():
             self.statusBar().showMessage("External Sync is enabled. Local track loading is disabled.")
             return
-        self._start_analysis(path, force_analyze=False, finished_slot=self._on_features_ready)
+        self.analysis_workflow.analyze(path)
 
     def reanalyze_file(self, path: str):
-        self._start_analysis(path, force_analyze=True, finished_slot=self._on_features_reanalyze)
-
-    def _find_inflight_analysis_task(self, path: str) -> int | None:
-        norm_path = os.path.normcase(os.path.normpath(path))
-        for taskid, ctx in self._analysis_context.items():
-            ctx_path = str(ctx.get("path") or "").strip()
-            if not ctx_path:
-                continue
-            if os.path.normcase(os.path.normpath(ctx_path)) == norm_path:
-                return taskid
-        return None
-
-    def _start_analysis(self, path: str, *, force_analyze: bool, finished_slot):
-        inflight_taskid = self._find_inflight_analysis_task(path)
-        if inflight_taskid is not None:
-            basename = os.path.basename(path)
-            self.statusBar().showMessage(f"Analysis already in progress: {basename}")
-            return
-
-        self.segment_manager.cancel_all("Segment reanalysis canceled (track changed)")
-        self.statusBar().showMessage(f"Analyzing: {os.path.basename(path)}")
-
-        self.current_path = path
-
-        cfg = load_cfg()
-        thumb = getAlbumArt(path)
-        title, artist, album, _comment = extract_tags(path)
-        task_info = self.taskmanager.addtask(
-            songname=title,
-            thumbnail=thumb,
-            status="Loading Track",
-            progress=0.0,
-        )
-        taskid = task_info.taskid
-
-        l = LibraryDB(os.path.join(cfg.libconfig.libpath, f"library.db"))
-        l.connect()
-        track = l.get(path)
-        auto_load = track is not None
-        if (track != None) and track.uid and (not force_analyze):
-            try:
-                f = FeatureNPZStore(base_dir=cfg.libconfig.libpath, compressed=True)
-                feat = f.load(track.uid)
-                l.close()
-                metadata = track.to_meta()
-                # Cached library load: set album art immediately.
-                self._set_album_art(thumb)
-                features_properties = {
-                    "features": feat,
-                    "properties": metadata,
-                    "update_db": False,
-                    "taskid": taskid,
-                    "auto_load": True,
-                }
-                self._on_features_ready(features_properties)
-                return
-            except (FileNotFoundError, ValueError):
-                pass
-        l.close()
-
-        worker = AnalysisWorker(path, cfg, taskid, force_analyze=force_analyze, parent=self)
-        self._analysis_workers[taskid] = worker
-        self._analysis_context[taskid] = {
-            "path": path,
-            "force": force_analyze,
-            "auto_load": auto_load,
-        }
-
-        worker.progress.connect(lambda status, progress, tid=taskid: self._on_worker_progress(tid, status, progress))
-        worker.status.connect(lambda status, tid=taskid: self._on_worker_status(tid, status))
-        worker.error.connect(lambda msg, tid=taskid: self._handle_worker_error(tid, msg))
-        worker.finished.connect(lambda payload, tid=taskid: self._handle_worker_success(tid, payload, finished_slot))
-        worker.start()
+        self.analysis_workflow.reanalyze(path)
 
     @QtCore.Slot(dict)
     def _on_features_ready(self, feat: dict):
@@ -498,7 +393,7 @@ class AppWindow(QtWidgets.QMainWindow):
         action = "loading" if exists_in_library else "analyzing"
         self.statusBar().showMessage(f"External Sync {action}: {os.path.basename(path)}")
         self._external_sync_pending_seek = float(time_sec)
-        self._start_analysis(path, force_analyze=False, finished_slot=self._on_features_ready)
+        self.analysis_workflow.analyze(path)
 
     def _on_external_sync_failure(self, message: str) -> None:
         failed_cfg = self.cfg.to_dict()

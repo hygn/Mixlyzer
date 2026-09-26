@@ -752,6 +752,7 @@ class BeatgridEditPanel(QtWidgets.QWidget):
                 beats_time=self._beatgrid,
                 beat_segments=self._segments,
                 key_segments=self._key_segments,
+                jump_cues=self._JumpCUE,
                 phrases=self._phrase_segments,
             )
         )
@@ -1247,6 +1248,7 @@ class BeatgridEditPanel(QtWidgets.QWidget):
                     beats_time=self._beatgrid,
                     beat_segments=self._segments,
                     key_segments=self._key_segments,
+                    jump_cues=self._JumpCUE,
                     phrases=self._phrase_segments,
                 )
             )

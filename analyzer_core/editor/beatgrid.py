@@ -192,8 +192,8 @@ def reanalyze_segment_from_file(
     local = odf
     if progress_cb:
         progress_cb("Estimating BPM", 0.70)
-    bpm_lo = float(gcf.bpm_min) * 0.9
-    bpm_hi = float(gcf.bpm_max) * 1.1
+    bpm_lo = float(gcf.bpm_min)
+    bpm_hi = float(gcf.bpm_max)
     prev = None
     if prev_bpm is not None and np.isfinite(prev_bpm) and prev_bpm > 0:
         prev = float(prev_bpm)

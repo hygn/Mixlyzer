@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from concurrent.futures import ProcessPoolExecutor, as_completed
-import multiprocessing
+from concurrent.futures import as_completed
 import os
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -16,6 +15,7 @@ from optimizer import (
     optimizer_track_name,
     skipped_track,
 )
+from core.concurrency.process_pool import create_spawn_process_pool
 from optimizer import phrase_backend as _phrase_backend
 from analyzer_core.cue_and_phrase.phrase_analyzer import (
     export_two_stage_npz_artifact,
@@ -409,8 +409,7 @@ def optimize_phrase_parameters(
     if cache_jobs:
         # Explicit spawn is safe when this function runs inside the settings
         # dialog's QThread and matches Windows/PyInstaller behavior.
-        mp_context = multiprocessing.get_context("spawn")
-        with ProcessPoolExecutor(max_workers=workers, mp_context=mp_context) as executor:
+        with create_spawn_process_pool(workers) as executor:
             futures = {
                 executor.submit(
                     _build_track_caches,

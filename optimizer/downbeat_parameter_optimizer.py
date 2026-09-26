@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from concurrent.futures import ProcessPoolExecutor, as_completed
+from concurrent.futures import as_completed
 from dataclasses import asdict, dataclass
-import multiprocessing
 import os
 from pathlib import Path
 from typing import Callable, Sequence
@@ -27,6 +26,7 @@ from optimizer import (
     optimizer_track_name,
     skipped_track,
 )
+from core.concurrency.process_pool import create_spawn_process_pool
 from utils.atomic_io import atomic_output_path, atomic_write_json
 
 
@@ -454,8 +454,7 @@ def optimize_downbeat_parameters(
         )
 
     if cache_jobs:
-        mp_context = multiprocessing.get_context("spawn")
-        with ProcessPoolExecutor(max_workers=workers, mp_context=mp_context) as executor:
+        with create_spawn_process_pool(workers) as executor:
             futures = {
                 executor.submit(
                     _build_track_cache,

@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from concurrent.futures import ProcessPoolExecutor, as_completed
+from concurrent.futures import as_completed
 from dataclasses import asdict, dataclass
-import multiprocessing
 import os
 from pathlib import Path
 from typing import Callable, Sequence
@@ -24,6 +23,7 @@ from analyzer_core.beat.beat_phase import (
 from analyzer_core.beat.frame_features import extract_frame_features
 from core.audio.decoder import decode_to_memmap
 from optimizer import SkippedOptimizationTrack, optimizer_track_name, skipped_track
+from core.concurrency.process_pool import create_spawn_process_pool
 from optimizer.downbeat_parameter_optimizer import _fit_conditional_softmax, _group_metrics
 from optimizer.onset_parameter_optimizer import _list_beat_tracks
 from utils.atomic_io import atomic_output_path, atomic_write_json
@@ -299,8 +299,7 @@ def optimize_beat_phase_parameters(
         )
 
     if cache_jobs:
-        mp_context = multiprocessing.get_context("spawn")
-        with ProcessPoolExecutor(max_workers=workers, mp_context=mp_context) as executor:
+        with create_spawn_process_pool(workers) as executor:
             futures = {
                 executor.submit(_build_track_cache, track, str(cache_dir), use_hpss): track
                 for track in cache_jobs

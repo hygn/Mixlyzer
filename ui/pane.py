@@ -495,9 +495,11 @@ class MainPane(QtWidgets.QWidget):
         segments = f.get("tempo_segments")
         if hasattr(self, "track_edit"):
             self.track_edit.set_key_segments(f.get("key_segments"), initialize=True)
-            self.track_edit.set_segments(f.get("beats_time_sec"), segments)
             self.track_edit.set_JumpCUE(extract_jump_cue_pairs(f))
             self.track_edit.set_phrase_segments(extract_phrase_segments(f), initialize=True)
+            # Build the initial undo snapshot only after all editor-owned state
+            # has been loaded, so undo cannot restore stale Phrase/JumpCUE data.
+            self.track_edit.set_segments(f.get("beats_time_sec"), segments)
         self._set_tempo_segments(segments)
         key_segments = f.get("key_segments")
         if key_segments is not None:
