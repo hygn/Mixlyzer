@@ -12,8 +12,9 @@ a = Analysis(
     ['../app/main.py'],
     pathex=['.'],
     binaries=[],
+    # config.json is not bundled: the local one holds personal settings, and
+    # load_cfg() writes one from default_cfg() on first launch.
     datas=[
-        ('../config.json', '.'),
         (
             '../assets/weights/downbeat_feature_weights.json',
             'assets/weights',

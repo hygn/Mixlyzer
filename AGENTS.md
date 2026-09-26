@@ -142,7 +142,7 @@ Working notes for AI/automation agents editing the Mixlyzer codebase.
 
 ## Build / Packaging
 - PyInstaller spec is `build/mixlyzer.spec`.
-- Current spec definitely includes `config.json`.
+- The spec does not bundle `config.json` (it holds personal settings such as External Sync memory addresses); the app writes one from `default_cfg()` on first launch. Keep `default_cfg()` free of personal values.
 - Asset and `ffmpeg.exe` bundling are presently commented out in the spec, so do not assume packaging already includes them.
 - There is no active `installer/` directory in this repo snapshot; do not document or depend on one unless you add it.
 
