@@ -297,6 +297,7 @@ class WaveformView(ViewPlugin):
         self._chunk_count = 0
         self._chunk_items: list[pg.ImageItem | None] = []
         self._chunk_spans: list[tuple[float, float] | None] = []  # time span of each rendered image
+        self._group: pg.ItemGroup | None = None
         self._style: _WaveStyle | None = None
         self._preview_item: pg.ImageItem | None = None
         self._preview_source = None
@@ -326,6 +327,11 @@ class WaveformView(ViewPlugin):
 
     def attach(self, plot: pg.PlotItem):
         self.plot = plot
+        # Chunk images and the preview are laid out in track time under one group;
+        # playback only moves the group by the view offset.
+        self._group = pg.ItemGroup()
+        self._group.setZValue(-1)
+        plot.addItem(self._group)
         self._ensure_preview_item()
         scene = plot.scene()
         if scene:
@@ -335,6 +341,9 @@ class WaveformView(ViewPlugin):
     def detach(self):
         self._clear_preview_item()
         self._remove_all_chunk_items()
+        if self._group is not None and self.plot is not None:
+            self.plot.removeItem(self._group)
+        self._group = None
         if self._worker_thread.isRunning():
             QtCore.QMetaObject.invokeMethod(
                 self._worker, "cancel_all",
@@ -376,6 +385,7 @@ class WaveformView(ViewPlugin):
     def _remove_all_chunk_items(self) -> None:
         for item in self._chunk_items:
             if item is not None and item.scene() is not None:
+                item.setParentItem(None)
                 item.scene().removeItem(item)
         self._chunk_items = []
         self._chunk_spans = []
@@ -386,11 +396,12 @@ class WaveformView(ViewPlugin):
         if hasattr(item, "setAutoDownsample"):
             item.setAutoDownsample(True)
         item.setOpts(interpolation="bilinear")
-        item.setZValue(-1)
+        item.setZValue(0)
+        item.setParentItem(self._group)
         return item
 
     def _ensure_preview_item(self) -> None:
-        if self.plot is None or self._preview_item is not None:
+        if self.plot is None or self._group is None or self._preview_item is not None:
             return
         item = pg.ImageItem()
         if hasattr(item, "setAutoDownsample"):
@@ -398,12 +409,13 @@ class WaveformView(ViewPlugin):
         if hasattr(item, "setCacheMode"):
             item.setCacheMode(QtWidgets.QGraphicsItem.DeviceCoordinateCache)
         item.setOpts(interpolation="bilinear")
-        item.setZValue(-2)
-        self.plot.addItem(item)
+        item.setZValue(-1)
+        item.setParentItem(self._group)
         self._preview_item = item
 
     def _clear_preview_item(self) -> None:
         if self._preview_item is not None and self._preview_item.scene() is not None:
+            self._preview_item.setParentItem(None)
             self._preview_item.scene().removeItem(self._preview_item)
         self._preview_item = None
         self._preview_source = None
@@ -431,10 +443,24 @@ class WaveformView(ViewPlugin):
                 levels=self._wave_levels,
             )
             self._preview_source = wave_data
-        self._preview_item.setVisible(True)
-        self._preview_item.setRect(
-            QtCore.QRectF(self._left_offset, 0.14, max(self.duration, 1e-3), 1.0 - 0.24)
+        self._preview_item.setRect(QtCore.QRectF(0.0, 0.14, max(self.duration, 1e-3), 1.0 - 0.24))
+        self._update_preview_visibility()
+
+    def _update_preview_visibility(self) -> None:
+        """Show the preview only where the view is not yet covered by rendered chunks
+        (the opaque chunk images hide it; drawing it underneath costs a full scaled image)."""
+        if self._preview_item is None:
+            return
+        if self._preview_source is None:
+            self._preview_item.setVisible(False)
+            return
+        visible = self._visible_chunk_range()
+        covered = visible is not None and all(
+            0 <= i < len(self._chunk_items) and self._chunk_items[i] is not None
+            for i in range(visible[0], visible[1] + 1)
         )
+        if self._preview_item.isVisible() == covered:
+            self._preview_item.setVisible(not covered)
 
     def _allocate_canvas(self, force: bool = False) -> int:
         """(Re)allocate the chunk slots for the track; returns the chunk count."""
@@ -529,13 +555,13 @@ class WaveformView(ViewPlugin):
                 continue
             if keep_start <= i <= keep_end:
                 if i not in self._in_scene:
-                    self.plot.addItem(item)
-                    self._apply_chunk_rect(item, i)
+                    item.setVisible(True)
                     self._in_scene.add(i)
             else:
                 if i in self._in_scene:
-                    self.plot.removeItem(item)
+                    item.setVisible(False)
                     self._in_scene.discard(i)
+        self._update_preview_visibility()
 
     @QtCore.Slot(int, object)
     def _on_chunk_ready(self, chunk_index: int, payload: object) -> None:
@@ -553,16 +579,10 @@ class WaveformView(ViewPlugin):
             item = self._make_chunk_item()
             self._chunk_items[chunk_index] = item
         item.setImage(patch, autoLevels=False, levels=self._wave_levels)
+        self._apply_chunk_rect(item, chunk_index)
         if is_new:
-            visible = self._visible_chunk_range()
-            if visible is not None:
-                first_v, last_v = visible
-                keep_start = max(0, first_v - SCENE_CULL_BUFFER)
-                keep_end = min(self._chunk_count - 1, last_v + SCENE_CULL_BUFFER)
-                if keep_start <= chunk_index <= keep_end:
-                    self.plot.addItem(item)
-                    self._apply_chunk_rect(item, chunk_index)
-                    self._in_scene.add(chunk_index)
+            item.setVisible(False)
+            self._sync_scene_visibility()
 
     def _apply_chunk_rect(self, item: pg.ImageItem, chunk_index: int) -> None:
         # The image covers its column-aligned span; neighbouring spans share their edge.
@@ -572,10 +592,7 @@ class WaveformView(ViewPlugin):
             end_sec = min(self.duration, start_sec + RENDER_CHUNK_SEC)
         else:
             start_sec, end_sec = span
-        item.setRect(QtCore.QRectF(
-            self._left_offset + start_sec, 0.14,
-            end_sec - start_sec, 1.0 - 0.24,
-        ))
+        item.setRect(QtCore.QRectF(start_sec, 0.14, end_sec - start_sec, 1.0 - 0.24))
 
     def _set_rect(self, force: bool = False):
         if self.duration <= 0.0:
@@ -584,14 +601,8 @@ class WaveformView(ViewPlugin):
         if not force and abs(left - self._left_offset) < 1e-9:
             return
         self._left_offset = left
-        if self._preview_item is not None:
-            self._preview_item.setRect(
-                QtCore.QRectF(self._left_offset, 0.14, max(self.duration, 1e-3), 1.0 - 0.24)
-            )
-        for i in self._in_scene:
-            item = self._chunk_items[i]
-            if item is not None:
-                self._apply_chunk_rect(item, i)
+        if self._group is not None:
+            self._group.setPos(left, 0.0)
         self._sync_scene_visibility()
 
     def _visible_chunk_range(self) -> tuple[int, int] | None:

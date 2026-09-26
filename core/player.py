@@ -85,8 +85,9 @@ class _AudioWorker(QtCore.QObject):
         self.feeder = PCMFeeder(self.audio, self.rate, self.ch, self)
         self.feeder.set_music_gain(self._volume_linear)
         self.feeder.finished.connect(self.pause)
-        # The sink runs for the lifetime of the worker; reset()/start() cycles crash Qt 6.10's
-        # WASAPI backend, so every transport change is handled by the feeder instead.
+        # While playing, every transport change (seek, scrub, jump) is rendered by the feeder
+        # into the running sink: reset()/start() cycles during scrubbing crash Qt 6.10's WASAPI
+        # backend. The feeder stops the sink only when playback is idle.
         self.feeder.open()
         self._frame.start()
 

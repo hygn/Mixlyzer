@@ -12,7 +12,7 @@ def fade_ramp(n: int, fade_frames: int, rising: bool) -> np.ndarray:
 
 class SpeedResampler:
     """
-    5-tap Lagrange(4차) 다항식 sinc 근사 varispeed reader.
+    5-tap Lagrange(4차) polynomial sinc approx varispeed reader.
 
     Reads a fully decoded [N, ch] buffer at absolute (fractional) input positions, so
     consecutive render() calls are seamless: taps are taken from the real neighbouring

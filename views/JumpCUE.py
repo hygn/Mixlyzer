@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from typing import List, Tuple
+from typing import List
 
 import pyqtgraph as pg
-from PySide6 import QtCore, QtGui, QtWidgets
+from PySide6 import QtGui
 from pyqtgraph.graphicsItems.BarGraphItem import BarGraphItem
 from pyqtgraph.graphicsItems.ScatterPlotItem import ScatterPlotItem
 from pyqtgraph.graphicsItems.TextItem import TextItem
@@ -27,7 +27,10 @@ class JumpCUEView(ViewPlugin):
         self._duration = 0.0
         self._pairs: List[dict] = []
         self._cues: List[dict] = []
-        self._items: List[Tuple[BarGraphItem, ScatterPlotItem, TextItem]] = []
+        # One entry per labelled cue, built when the cues change:
+        # [start, end, point, bar, marker, text, shown]. The items are laid out in
+        # track time; playback only moves them by the view offset.
+        self._entries: List[list] = []
 
         self._font = QtGui.QFont()
         self._font.setPointSizeF(8.0)
@@ -55,14 +58,7 @@ class JumpCUEView(ViewPlugin):
                 vb.sigRangeChanged.disconnect(self._refresh)
         except Exception:
             pass
-        for bar, marker, text in self._items:
-            if bar.scene() is not None:
-                self.plot.removeItem(bar)
-            if marker.scene() is not None:
-                self.plot.removeItem(marker)
-            if text.scene() is not None:
-                self.plot.removeItem(text)
-        self._items.clear()
+        self._clear_items()
         self.plot = None
 
     def render_initial(self):
@@ -70,6 +66,7 @@ class JumpCUEView(ViewPlugin):
         self._pairs = extract_jump_cue_pairs(f)
         self._cues, _links = extract_jump_cue_graph(f)
         self._duration = float(self.model.duration_sec or 0.0)
+        self._build_items()
         self._refresh()
 
     def _on_features_loaded(self):
@@ -84,34 +81,23 @@ class JumpCUEView(ViewPlugin):
         self._pairs = extracted or []
         self._cues, _links = extract_jump_cue_graph(f)
         self._duration = float(self.model.duration_sec or 0.0)
+        self._build_items()
         self._refresh()
 
-    def _refresh(self, *args):
+    def _clear_items(self) -> None:
+        for _start, _end, _point, bar, marker, text, _shown in self._entries:
+            for item in (bar, marker, text):
+                if item.scene() is not None and self.plot is not None:
+                    self.plot.removeItem(item)
+        self._entries = []
+
+    def _build_items(self) -> None:
+        """Create the block, marker and label of every cue at its track time."""
+        self._clear_items()
         if self.plot is None:
             return
-
-        try:
-            (vxmin, vxmax), _ = self.plot.viewRange()
-        except Exception:
-            return
-
-        left = float(getattr(self.tl, "center_t", 0.0) - getattr(self.tl, "current_time", 0.0))
-        pad = max(0.0, (vxmax - vxmin) * 0.05)
-
-        for bar, marker, text in self._items:
-            bar.setVisible(False)
-            marker.setVisible(False)
-            text.setVisible(False)
-
-        if not self._cues:
-            return
-
-        try:
-            view_min, view_max = self.plot.viewRange()[0]
-        except Exception:
-            view_min, view_max = -float("inf"), float("inf")
-
-        visible_entries: list[tuple[float, float, float, Tuple[int, int, int], str]] = []
+        block_bottom = 1.0 - self.TOP_PADDING - self.BLOCK_HEIGHT
+        label_y = block_bottom
         for cue in self._cues:
             label = str(cue.get("label", "")).strip()
             if not label:
@@ -125,67 +111,54 @@ class JumpCUEView(ViewPlugin):
             point = float(cue.get("point", start))
             if end <= start:
                 end = start + max(0.01, (self._duration or 1.0) * 0.002)
+            width = max(0.01, end - start)
 
-            x_start = left + start
-            x_end = left + end
-            x_point = left + point
-            if x_end < view_min - 0.1 or x_start > view_max + 0.1:
-                continue
-            visible_entries.append((x_start, x_end, x_point, color, label))
-
-        if not visible_entries:
-            return
-
-        block_bottom = 1.0 - self.TOP_PADDING - self.BLOCK_HEIGHT
-        label_y = block_bottom
-
-        while len(self._items) < len(visible_entries):
             bar = BarGraphItem(
-                x=[0.0],
-                height=[0.0],
-                width=0.01,
-                y=block_bottom,
-                brush=pg.mkBrush(0, 0, 0, 0),
-                pen=pg.mkPen(None),
-            )
-            marker = ScatterPlotItem(symbol="s", size=0.0)
-            text = TextItem("", color="k", anchor=(0.5, 0.5))
-            text.setFont(self._font)
-            bar.setZValue(8)
-            marker.setZValue(9)
-            text.setZValue(10)
-            self.plot.addItem(bar)
-            self.plot.addItem(marker)
-            self.plot.addItem(text)
-            self._items.append((bar, marker, text))
-
-        for idx, (x_start, x_end, x_point, color, label) in enumerate(visible_entries):
-            bar, marker, text = self._items[idx]
-            width = max(0.01, x_end - x_start)
-            center = x_start + width * 0.5
-
-            bar.setOpts(
-                x=[center],
+                x=[start + width * 0.5],
                 y=block_bottom,
                 height=[self.BLOCK_HEIGHT],
                 width=width,
                 brush=pg.mkBrush(color[0], color[1], color[2], 30),
                 pen=pg.mkPen(color=(color[0], color[1], color[2], 30), width=0.4),
             )
-            marker.setData([x_point], [label_y])
-            marker.setSize(self.MARKER_SIZE)
-            marker.setBrush(pg.mkBrush(color[0], color[1], color[2], 255))
-            marker.setPen(pg.mkPen(color=(color[0], color[1], color[2], 100), width=0.6))
+            marker = ScatterPlotItem(
+                x=[point],
+                y=[label_y],
+                symbol="s",
+                size=self.MARKER_SIZE,
+                brush=pg.mkBrush(color[0], color[1], color[2], 255),
+                pen=pg.mkPen(color=(color[0], color[1], color[2], 100), width=0.6),
+            )
+            text = TextItem(label, color="k", anchor=(0.5, 0.5))
+            text.setFont(self._font)
+            bar.setZValue(8)
+            marker.setZValue(9)
+            text.setZValue(10)
+            for item in (bar, marker, text):
+                item.setVisible(False)
+                self.plot.addItem(item)
+            self._entries.append([start, end, point, bar, marker, text, False])
 
-            text.setText(label)
-            text.setPos(x_point, label_y)
+    def _refresh(self, *args):
+        """Place the cues near the view at the current offset; hide the rest."""
+        if self.plot is None or not self._entries:
+            return
+        try:
+            view_min, view_max = self.plot.viewRange()[0]
+        except Exception:
+            return
 
-            bar.setVisible(True)
-            marker.setVisible(True)
-            text.setVisible(True)
-
-        for idx in range(len(visible_entries), len(self._items)):
-            bar, marker, text = self._items[idx]
-            bar.setVisible(False)
-            marker.setVisible(False)
-            text.setVisible(False)
+        left = float(getattr(self.tl, "center_t", 0.0) - getattr(self.tl, "current_time", 0.0))
+        label_y = 1.0 - self.TOP_PADDING - self.BLOCK_HEIGHT
+        for entry in self._entries:
+            start, end, point, bar, marker, text, shown = entry
+            show = not (left + end < view_min - 0.1 or left + start > view_max + 0.1)
+            if show:
+                bar.setPos(left, 0.0)
+                marker.setPos(left, 0.0)
+                text.setPos(left + point, label_y)
+            if show != shown:
+                bar.setVisible(show)
+                marker.setVisible(show)
+                text.setVisible(show)
+                entry[6] = show

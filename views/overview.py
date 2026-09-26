@@ -101,6 +101,9 @@ class OverviewWidget(QtWidgets.QWidget):
         layout.addWidget(self.canvas, 1)
 
         self._current_time = 0.0
+        # Device-pixel column of the playhead last drawn; the overview is
+        # redrawn only when the playhead moves to another pixel column.
+        self._now_px: int | None = None
 
         self.img_wave = pg.ImageItem(); self.p.addItem(self.img_wave)
         if hasattr(self.img_wave, "setAutoDownsample"):
@@ -212,6 +215,7 @@ class OverviewWidget(QtWidgets.QWidget):
         features = self.model.features
         self.duration = float(self.model.duration_sec or 0.0)
         self._current_time = 0.0
+        self._now_px = None
         strip_height = self.SEGMENT_H + self.BPM_H
         total_height = max(1.0, self.KEY_H + self.WAVE_H)
         self.p.setYRange(-strip_height, total_height, padding=0.0)
@@ -301,11 +305,27 @@ class OverviewWidget(QtWidgets.QWidget):
     # events
     def _on_time(self, t: float):
         self._current_time = float(np.clip(t, 0.0, max(self.duration, 0.0)))
+        # The whole track spans the widget, so the playhead moves about one pixel
+        # per duration / width seconds; skip frames where it stays on its pixel.
+        now_px = self._time_to_device_px(self._current_time)
+        if now_px is not None and now_px == self._now_px:
+            return
+        self._now_px = now_px
         self.line_now.setPos(self._current_time)
         self._update_played_overlay()
 
+    def _time_to_device_px(self, t: float) -> int | None:
+        vb = self.p.getViewBox()
+        if vb is None or self.duration <= 0.0:
+            return None
+        point = vb.mapViewToDevice(QtCore.QPointF(t, 0.0))
+        if point is None:
+            return None
+        return int(round(point.x() * float(self.devicePixelRatioF())))
+
     def _on_duration(self, d: float):
         self.duration = float(d)
+        self._now_px = None
         self.p.setXRange(0.0, max(0.1, self.duration), padding=0.0)
         self.bpm_strip_bg.setRect(
             QtCore.QRectF(0.0, self._segment_bottom, self.duration, self.SEGMENT_H + self.BPM_H)
@@ -839,6 +859,7 @@ class OverviewWidget(QtWidgets.QWidget):
 
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
+        self._now_px = None
         QtCore.QTimer.singleShot(0, self._refresh_bpm_label_visibility)
 
     def _refresh_bpm_label_visibility(self) -> None:

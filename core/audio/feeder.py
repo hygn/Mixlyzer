@@ -14,12 +14,15 @@ from core.audio.timeline import OutputTimeline
 
 class PCMFeeder(QtCore.QObject):
     """
-    Renders a predecoded track into a QAudioSink that is started once and never reset.
+    Renders a predecoded track into a QAudioSink.
 
-    Paused/idle time is filled with silence instead of reset()/start() cycles, which crash
-    Qt 6.10's WASAPI stream thread. Every rendered block is recorded on an OutputTimeline,
-    so the playhead is the input position actually being heard, even while audio rendered
-    before a tempo change, seek or jump is still queued in the device.
+    While playing, the sink is never reset: seeks, scrubbing, jumps and tempo changes are
+    rendered into the running stream (reset()/start() cycles during scrubbing crash Qt
+    6.10's WASAPI stream thread). Once playback stops and the last audible frame (the
+    pause fade-out) has been heard, the feed timer and the sink are stopped, so an idle
+    player costs no CPU; play() starts them again. Every rendered block is recorded on an
+    OutputTimeline, so the playhead is the input position actually being heard, even while
+    audio rendered before a tempo change, seek or jump is still queued in the device.
 
     Modes: "speed" (5-tap Lagrange varispeed) / "none" (pass-through, ignores factor).
     Metronome clicks (`clicks`) are mixed into the same stream; music volume is applied here
@@ -44,6 +47,10 @@ class PCMFeeder(QtCore.QObject):
         self._idle_queue_frames = max(1, self.rate // 50)  # ~20 ms of silence while paused
         self._fade_frames = max(1, self.rate // 250)       # ~4 ms declick fades/crossfades
         self._restart_at = 0.0
+        # Idle stop: the sink is stopped once output frame `_audible_until` (the end of
+        # the pause fade-out) has been heard while not playing.
+        self._device_stopped = False
+        self._audible_until = 0
 
         self._timeline = OutputTimeline(self._bpf)
         self.clicks = ClickTrack(self.rate, self.ch)
@@ -70,12 +77,30 @@ class PCMFeeder(QtCore.QObject):
 
     # Lifecycle
     def open(self) -> None:
-        """Start the sink and the feed timer. Called once; the sink then runs until close()."""
+        """Start the sink and the feed timer; they stop again as soon as the player is idle."""
         if self._flush_timer is None:
             self._flush_timer = QtCore.QTimer(self)
             self._flush_timer.setTimerType(QtCore.Qt.PreciseTimer)
             self._flush_timer.setInterval(1)
             self._flush_timer.timeout.connect(self._flush)
+        self._start_sink()
+        self._device_stopped = False
+        self._flush_timer.start()
+
+    def _stop_device(self) -> None:
+        """Idle: stop the feed timer and the sink (restarted by play())."""
+        self._flush_timer.stop()
+        try:
+            self.audio.stop()
+        except Exception:
+            pass
+        self.dev = None
+        self._device_stopped = True
+
+    def _resume_device(self) -> None:
+        if not self._device_stopped:
+            return
+        self._device_stopped = False
         self._start_sink()
         self._flush_timer.start()
 
@@ -92,6 +117,7 @@ class PCMFeeder(QtCore.QObject):
     def _start_sink(self) -> None:
         self._timeline.reset()
         self._end_out_frame = None
+        self._audible_until = 0
         try:
             self.dev = self.audio.start()
         except Exception as exc:
@@ -158,6 +184,7 @@ class PCMFeeder(QtCore.QObject):
             return True
         if self._pcm is None or self._pos >= self._len:
             return False
+        self._resume_device()
         self._playing = True
         self._seeked_while_paused = False
         self._sent_finished = False
@@ -166,6 +193,7 @@ class PCMFeeder(QtCore.QObject):
         head *= fade_ramp(head.shape[0], self._fade_frames, rising=True)
         self._append(head, self._pos, self._step())
         self._pos += self._step() * head.shape[0]
+        self._flush()  # start feeding now, not on the next timer tick
         return True
 
     def pause(self) -> None:
@@ -177,6 +205,8 @@ class PCMFeeder(QtCore.QObject):
             tail *= fade_ramp(tail.shape[0], self._fade_frames, rising=False)
             self._append(tail, self._pos, self._step())
             self._pos += self._step() * tail.shape[0]
+        # Keep feeding (silence) until everything rendered so far has been heard.
+        self._audible_until = self._timeline.rendered_frames
 
     def seek(self, frame: float) -> None:
         target = float(max(0, min(frame, self._len)))
@@ -213,7 +243,7 @@ class PCMFeeder(QtCore.QObject):
 
     def playhead_frame(self) -> float:
         """Input frame currently being heard."""
-        if not self._playing and self._seeked_while_paused:
+        if self._device_stopped or (not self._playing and self._seeked_while_paused):
             return self._pos
         out_frame = self._heard_out_frame()
         seg = self._timeline.segment_at(out_frame)
@@ -226,6 +256,8 @@ class PCMFeeder(QtCore.QObject):
 
     def heard_peak_dbfs(self) -> float:
         """Pre-volume peak of the block being heard."""
+        if self._device_stopped:
+            return self.PEAK_FLOOR_DBFS
         seg = self._timeline.segment_at(self._heard_out_frame())
         return seg.peak_dbfs if seg is not None else self.PEAK_FLOOR_DBFS
 
@@ -291,7 +323,7 @@ class PCMFeeder(QtCore.QObject):
     # Feed loop
     @QtCore.Slot()
     def _flush(self) -> None:
-        if not self._sink_running():
+        if self._device_stopped or not self._sink_running():
             return
         for _ in range(4):
             if not self._timeline.write_to(self.dev):
@@ -314,6 +346,10 @@ class PCMFeeder(QtCore.QObject):
 
         heard = self._heard_out_frame()
         self._timeline.prune(heard)
+
+        if not self._playing and heard >= self._audible_until:
+            self._stop_device()
+            return
 
         if (
             self._playing
