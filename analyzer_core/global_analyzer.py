@@ -302,7 +302,9 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
     taskmgr.updatetask(taskid, "Tempo Analyzing", 0.30)
     # Frame features are analyzed once: the learned onset (beat tracking) and the
     # downbeat model (after pooling to beats) both use them.
-    frame_features = extract_frame_features(samp, int(global_sr), y_perc, y_harm)
+    frame_features = extract_frame_features(
+        samp, int(global_sr), y_perc, y_harm, hop_length=int(gcf.bpm_hop_length)
+    )
     odf_cached, hop_t_cached = compute_beat_odf(
         str(gcf.onset_source),
         frame_features,

@@ -179,7 +179,7 @@ def reanalyze_segment_from_file(
 
     hop = int(gcf.bpm_hop_length)
     # Analyzed once for this segment: learned onset and downbeat both use them.
-    frames = extract_frame_features(section, sr, y_perc, y_harm)
+    frames = extract_frame_features(section, sr, y_perc, y_harm, hop_length=hop)
     odf, hop_t = compute_beat_odf(
         str(getattr(gcf, "onset_source", "librosa")),
         frames,

@@ -11,7 +11,7 @@ from scipy.special import expit, log_expit, logsumexp, softmax
 from sklearn.metrics import average_precision_score
 from sklearn.model_selection import GroupKFold
 
-from analyzer_core.beat.frame_features import extract_frame_features
+from analyzer_core.beat.frame_features import FRAME_HOP_LENGTH, extract_frame_features
 from analyzer_core.beat.learned_onset import (
     ONSET_CHANNEL_NAMES,
     ONSET_CONTEXT_OFFSETS,
@@ -77,6 +77,8 @@ class OnsetOptimizationRequest:
     cache_dir: Path
     output_path: Path
     use_hpss: bool = True
+    # Frame grid of the features; the analyzer uses the BPM hop length.
+    frame_hop_length: int = FRAME_HOP_LENGTH
     # The analyzer adds this offset to the tracked grid, so the model is trained
     # on the stored beats shifted earlier by it (both onset sources share it).
     beatgrid_offset_msec: float = 0.0
@@ -162,7 +164,7 @@ def _cache_path(cache_dir: Path, uid: str) -> Path:
 
 
 def _read_current_cache(
-    cache_path: Path, track: dict[str, object], use_hpss: bool
+    cache_path: Path, track: dict[str, object], use_hpss: bool, hop_length: int
 ) -> tuple[np.ndarray, np.ndarray] | None:
     if not cache_path.is_file():
         return None
@@ -174,6 +176,7 @@ def _read_current_cache(
                 "channels",
                 "channel_names",
                 "use_hpss",
+                "frame_hop_length",
                 "sample_rate",
                 "audio_mtime_ns",
             }:
@@ -184,6 +187,7 @@ def _read_current_cache(
                 str(np.asarray(archive["cache_format"]).item()) == ONSET_FEATURE_CACHE_FORMAT
                 and tuple(np.asarray(archive["channel_names"]).astype(str)) == ONSET_CHANNEL_NAMES
                 and bool(np.asarray(archive["use_hpss"]).item()) == bool(use_hpss)
+                and int(np.asarray(archive["frame_hop_length"]).item()) == int(hop_length)
                 and int(np.asarray(archive["sample_rate"]).item()) == int(track["sample_rate"])
                 and frame_times.ndim == 1
                 and channels.shape == (frame_times.size, len(ONSET_CHANNEL_NAMES))
@@ -201,7 +205,7 @@ def _read_current_cache(
 
 
 def _build_track_cache(
-    track: dict[str, object], cache_dir_text: str, use_hpss: bool
+    track: dict[str, object], cache_dir_text: str, use_hpss: bool, hop_length: int
 ) -> str:
     """Process-worker entry point for one onset feature cache."""
 
@@ -221,7 +225,9 @@ def _build_track_cache(
         stereo = decode_to_memmap(str(track["audio_path"]), sample_rate, 2).reshape(-1, 2)
         audio = np.ascontiguousarray(stereo.mean(axis=1), dtype=np.float32)
         harmonic, percussive = librosa.effects.hpss(audio) if use_hpss else (audio, audio)
-        frames = extract_frame_features(audio, sample_rate, percussive, harmonic)
+        frames = extract_frame_features(
+            audio, sample_rate, percussive, harmonic, hop_length=int(hop_length)
+        )
         with atomic_output_path(cache_path) as temporary:
             np.savez_compressed(
                 temporary,
@@ -230,6 +236,7 @@ def _build_track_cache(
                 channels=onset_channels(frames),
                 channel_names=np.asarray(ONSET_CHANNEL_NAMES, dtype="U64"),
                 use_hpss=np.bool_(use_hpss),
+                frame_hop_length=np.int64(hop_length),
                 sample_rate=np.int64(sample_rate),
                 audio_mtime_ns=np.int64(Path(track["audio_path"]).stat().st_mtime_ns),
             )
@@ -555,6 +562,7 @@ def optimize_onset_parameters(
     output_path = Path(request.output_path).resolve()
     cache_dir.mkdir(parents=True, exist_ok=True)
     use_hpss = bool(request.use_hpss)
+    hop_length = int(request.frame_hop_length)
     beatgrid_offset_sec = float(request.beatgrid_offset_msec) / 1000.0
 
     ignored: list[SkippedOptimizationTrack] = []
@@ -566,7 +574,9 @@ def optimize_onset_parameters(
         track
         for track in tracks_src
         if request.rebuild_cache
-        or _read_current_cache(_cache_path(cache_dir, str(track["uid"])), track, use_hpss) is None
+        or _read_current_cache(
+            _cache_path(cache_dir, str(track["uid"])), track, use_hpss, hop_length
+        ) is None
     ]
     total = len(tracks_src)
     cached_count = total - len(cache_jobs)
@@ -584,7 +594,7 @@ def optimize_onset_parameters(
     if cache_jobs:
         with create_spawn_process_pool(workers) as executor:
             futures = {
-                executor.submit(_build_track_cache, track, str(cache_dir), use_hpss): track
+                executor.submit(_build_track_cache, track, str(cache_dir), use_hpss, hop_length): track
                 for track in cache_jobs
             }
             failed_uids: set[str] = set()
@@ -612,7 +622,7 @@ def optimize_onset_parameters(
     for index, track in enumerate(tracks_src, start=1):
         try:
             cached = _read_current_cache(
-                _cache_path(cache_dir, str(track["uid"])), track, use_hpss
+                _cache_path(cache_dir, str(track["uid"])), track, use_hpss, hop_length
             )
             if cached is None:
                 raise ValueError("onset feature cache is not current")
@@ -678,6 +688,7 @@ def optimize_onset_parameters(
         "skipped_tracks": [asdict(track) for track in ignored],
         "model": {
             "format": ONSET_MODEL_FORMAT,
+            "frame_hop_length": hop_length,
             "channel_names": list(ONSET_CHANNEL_NAMES),
             "context_offsets": list(ONSET_CONTEXT_OFFSETS),
             "context_dilations": list(ONSET_CONTEXT_DILATIONS),

@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 from scipy.special import expit
 
-from analyzer_core.beat.frame_features import FrameFeatures
+from analyzer_core.beat.frame_features import FrameFeatures, model_frame_hop_length
 from core.resource_paths import resource_path
 
 
@@ -40,7 +40,8 @@ ONSET_CHANNEL_NAMES: tuple[str, ...] = (
     "melody_chroma_flux",
 )
 # Frame offsets stacked around each frame so the linear model can sharpen and
-# time-align the sources (an FIR filter per channel).
+# time-align the sources (an FIR filter per channel). Offsets and dilations are
+# in frames, so a model only fits the frame hop it was trained on.
 ONSET_CONTEXT_OFFSETS: tuple[int, ...] = (-3, -2, -1, 0, 1, 2, 3)
 # Longer, dilated context: channel means over dyadic bands of frames on each
 # side, (d/2, d] frames before and after, for dilations d (256-hop frames: the
@@ -161,6 +162,12 @@ def _load_onset_model(weight_path: str) -> tuple[np.ndarray, float]:
     if weights.shape != (len(ONSET_FEATURE_NAMES),) or not np.all(np.isfinite(weights)):
         raise ValueError(f"Invalid onset weights: {path}")
     return weights, bias
+
+
+def onset_model_frame_hop_length(weight_path: str | Path) -> int:
+    """Frame hop the onset model at ``weight_path`` was optimized at."""
+    report = json.loads(Path(weight_path).read_text(encoding="utf-8"))
+    return model_frame_hop_length(report.get("model", report))
 
 
 def onset_activation(

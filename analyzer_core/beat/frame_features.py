@@ -11,7 +11,9 @@ from analyzer_core.beat.melody_contour import extract_melody_contour
 
 # Shared frame grid. Computed once per track before beat tracking: the learned
 # onset (beat tracking) and the downbeat model (after pooling to beats) both
-# read these frames, so the analysis is not repeated.
+# read these frames, so the analysis is not repeated. The analyzer uses the
+# configured BPM hop length; learned models that do not record the hop they
+# were optimized at were optimized at this one.
 FRAME_HOP_LENGTH = 256
 FRAME_N_FFT = 2048
 FRAME_N_MELS = 64
@@ -53,6 +55,11 @@ class FrameFeatures:
     @property
     def n_frames(self) -> int:
         return int(self.frame_times.size)
+
+
+def model_frame_hop_length(model: dict) -> int:
+    """Frame hop a learned model was trained on."""
+    return int(model.get("frame_hop_length", FRAME_HOP_LENGTH))
 
 
 def robust_standardize_rows(features: np.ndarray) -> np.ndarray:
