@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import ctypes
 import csv
 import io
 import json
@@ -10,10 +9,7 @@ import time
 from pathlib import Path
 from typing import Any, Callable, Optional
 
-import pymem
-import pymem.process
-import pymem.ressources.structure
-from pymem.ptypes import RemotePointer
+from PyMemoryEditor import AbstractProcess, OpenProcess
 from PySide6 import QtCore
 
 from core.config import externalsyncconfig, memorydeckconfig, memoryvalueconfig
@@ -64,8 +60,9 @@ class ExternalSyncController(QtCore.QObject):
         self._denylist_unavailable_logged: bool = False
         self._invalid_external_path_logged: str | None = None
         self._validated_external_paths: dict[str, str] = {}
-        self._pm: pymem.Pymem | None = None
+        self._pm: AbstractProcess | None = None
         self._pm_pid: int = 0
+        self._pm_base_address: int = 0
         self._process_list_cache: list[dict[str, int | str]] = []
         self._process_list_cache_ts: float = 0.0
 
@@ -375,7 +372,7 @@ class ExternalSyncController(QtCore.QObject):
         except Exception:
             return False
 
-    def _read_active_deck(self, pm: pymem.Pymem) -> dict[str, Any] | None:
+    def _read_active_deck(self, pm: AbstractProcess) -> dict[str, Any] | None:
         decks: list[tuple[int, memorydeckconfig, bool]] = []
         for deck_no, deck_cfg in (
             (1, self._cfg.memory_deck1),
@@ -399,7 +396,7 @@ class ExternalSyncController(QtCore.QObject):
         external["deck_no"] = deck_no
         return external
 
-    def _read_deck_state(self, pm: pymem.Pymem, deck_cfg: memorydeckconfig) -> tuple[bool, bool] | None:
+    def _read_deck_state(self, pm: AbstractProcess, deck_cfg: memorydeckconfig) -> tuple[bool, bool] | None:
         try:
             raw_loaded = self._read_memory_value(pm, deck_cfg.loaded)
             raw_active = self._read_memory_value(pm, deck_cfg.active)
@@ -408,7 +405,7 @@ class ExternalSyncController(QtCore.QObject):
             self._disable_due_to_failure(f"Memory Sync deck state read failed: {exc}")
             raise
 
-    def _read_deck_payload(self, pm: pymem.Pymem, deck_cfg: memorydeckconfig) -> dict[str, Any] | None:
+    def _read_deck_payload(self, pm: AbstractProcess, deck_cfg: memorydeckconfig) -> dict[str, Any] | None:
         try:
             raw_path = self._read_memory_value(pm, deck_cfg.path)
             path = str(raw_path or "").strip()
@@ -484,17 +481,14 @@ class ExternalSyncController(QtCore.QObject):
                 return 0.0
         return 0.0
 
-    def _read_memory_value(self, pm: pymem.Pymem, spec: memoryvalueconfig):
+    def _read_memory_value(self, pm: AbstractProcess, spec: memoryvalueconfig):
         address = self._resolve_pointer_chain(pm, spec.offsets)
         if address <= 0:
             raise ValueError("Invalid address")
         value_type = str(spec.value_type)
         if value_type == "str":
-            return pm.read_string(
-                address=address,
-                byte=max(1, int(spec.length)),
-                encoding=(spec.encoding or "utf-8"),
-            )
+            raw = pm.read_bytes(address, max(1, int(spec.length)))
+            return raw.decode(spec.encoding or "utf-8", errors="replace").split("\x00", 1)[0]
         if value_type == "float":
             return pm.read_float(address)
         if value_type == "int":
@@ -508,25 +502,19 @@ class ExternalSyncController(QtCore.QObject):
             return bool(byte_val)
         raise ValueError(f"Unsupported memory value type: {value_type}")
 
-    def _resolve_pointer_chain(self, pm: pymem.Pymem, offsets_text: str) -> int:
+    def _resolve_pointer_chain(self, pm: AbstractProcess, offsets_text: str) -> int:
         tokens = [token.strip() for token in str(offsets_text).split(",") if token.strip()]
         if not tokens:
             return 0
         is_global = self._is_global_address_token(tokens[0])
         offsets = [self._hex_to_int(token) for token in tokens]
-        base = int(offsets[0]) if is_global else (int(pm.base_address) + int(offsets[0]))
+        base = int(offsets[0]) if is_global else (self._pm_base_address + int(offsets[0]))
         if len(offsets) == 1:
             return base
-        remote_pointer = RemotePointer(pm.process_handle, base)
-        for idx, offset in enumerate(offsets[1:], start=1):
-            if idx < len(offsets) - 1:
-                remote_pointer = RemotePointer(pm.process_handle, remote_pointer.value + int(offset))
-            else:
-                return int(remote_pointer.value) + int(offset)
-        return base
+        return int(pm.resolve_pointer_chain(base, offsets[1:]))
 
-    def _read_bytes(self, pm: pymem.Pymem, address: int, size: int) -> bytes:
-        return bytes(pm.read_bytes(address, size))
+    def _read_bytes(self, pm: AbstractProcess, address: int, size: int) -> bytes:
+        return pm.read_bytes(address, size)
 
     def _hex_to_int(self, token: str) -> int:
         token = str(token or "").strip()
@@ -567,92 +555,95 @@ class ExternalSyncController(QtCore.QObject):
         if self._process_list_cache and (now - self._process_list_cache_ts) < 1.0:
             return self._process_list_cache
         try:
-            out = subprocess.check_output(
-                ["tasklist", "/FO", "CSV", "/NH"],
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
-            )
+            if os.name == "nt":
+                out = subprocess.check_output(
+                    ["tasklist", "/FO", "CSV", "/NH"],
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                    creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+                )
+            else:
+                out = subprocess.check_output(
+                    ["ps", "-A", "-o", "pid=,comm="],
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                )
         except Exception:
             return []
         rows: list[dict[str, int | str]] = []
-        for row in csv.reader(io.StringIO(out)):
-            if len(row) < 2:
-                continue
-            try:
-                pid = int(str(row[1]).strip())
-            except Exception:
-                continue
-            rows.append({"name": str(row[0]).strip(), "pid": pid})
+        if os.name == "nt":
+            for row in csv.reader(io.StringIO(out)):
+                if len(row) < 2:
+                    continue
+                try:
+                    pid = int(str(row[1]).strip())
+                except Exception:
+                    continue
+                rows.append({"name": str(row[0]).strip(), "pid": pid})
+        else:
+            for line in out.splitlines():
+                parts = line.strip().split(None, 1)
+                if len(parts) != 2:
+                    continue
+                try:
+                    pid = int(parts[0])
+                except Exception:
+                    continue
+                rows.append({"name": parts[1].strip(), "pid": pid})
         self._process_list_cache = rows
         self._process_list_cache_ts = now
         return rows
 
-    def _ensure_process_handle(self, pid: int) -> pymem.Pymem | None:
+    def _ensure_process_handle(self, pid: int) -> AbstractProcess | None:
         if self._pm is not None and self._pm_pid == int(pid):
             return self._pm
         self._close_process_handle()
         try:
-            process_access = (
-                pymem.ressources.structure.PROCESS.PROCESS_QUERY_INFORMATION.value
-                | pymem.ressources.structure.PROCESS.PROCESS_VM_READ.value
-            )
-            pm = pymem.Pymem()
-            pm.process_id = int(pid)
-            pm.process_handle = pymem.process.open(
-                int(pid),
-                debug=False,
-                process_access=process_access,
-            )
-            if not pm.process_handle:
-                return None
+            open_kwargs: dict[str, Any] = {"pid": int(pid)}
+            if os.name == "nt":
+                # PROCESS_QUERY_INFORMATION | PROCESS_VM_READ
+                open_kwargs["permission"] = 0x0400 | 0x0010
+            pm = OpenProcess(**open_kwargs)
             proc = self._process_info_for_pid(pid)
             process_name = str(proc.get("name") or self._cfg.memory_process_name or pid) if proc else str(
                 self._cfg.memory_process_name or pid
             )
-            image_path = self._query_process_image_path(pm.process_handle)
+            modules = list(pm.get_modules())
+            normalized_name = self._normalize_process_name(process_name)
+            main_module = next(
+                (
+                    module
+                    for module in modules
+                    if self._normalize_process_name(module.name) == normalized_name
+                ),
+                modules[0] if modules else None,
+            )
+            if main_module is None:
+                pm.close()
+                return None
+            image_path = str(main_module.path or "")
             if self._is_denied_process_name(process_name) or self._is_denied_process_image_path(image_path):
                 self._log_blocked_process(process_name or str(pid), image_path=image_path)
-                try:
-                    ctypes.windll.kernel32.CloseHandle(pm.process_handle)
-                except Exception:
-                    pass
+                pm.close()
                 return None
-            pm.check_wow64()
         except Exception:
             return None
         self._pm = pm
         self._pm_pid = int(pid)
+        self._pm_base_address = int(main_module.base_address)
         return pm
-
-    def _query_process_image_path(self, process_handle) -> str:
-        if os.name != "nt" or not process_handle:
-            return ""
-        buffer_len = 32768
-        buffer = ctypes.create_unicode_buffer(buffer_len)
-        size = ctypes.c_ulong(buffer_len)
-        try:
-            ok = ctypes.windll.kernel32.QueryFullProcessImageNameW(
-                process_handle,
-                0,
-                buffer,
-                ctypes.byref(size),
-            )
-        except Exception:
-            return ""
-        if not ok:
-            return ""
-        return str(buffer.value or "").strip()
 
     def _close_process_handle(self) -> None:
         pm = self._pm
         self._pm = None
         self._pm_pid = 0
+        self._pm_base_address = 0
         if pm is None:
             return
         try:
-            pm.close_process()
+            pm.close()
         except Exception:
             pass
 

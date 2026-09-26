@@ -5,6 +5,7 @@ import csv
 from datetime import datetime
 import io
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -1548,29 +1549,47 @@ class SettingsDialog(QDialog):
 
     def _list_running_processes(self) -> list[dict]:
         try:
-            out = subprocess.check_output(
-                ["tasklist", "/FO", "CSV", "/NH"],
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
-            )
+            if os.name == "nt":
+                out = subprocess.check_output(
+                    ["tasklist", "/FO", "CSV", "/NH"],
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                    creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+                )
+            else:
+                out = subprocess.check_output(
+                    ["ps", "-A", "-o", "pid=,comm="],
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                )
         except Exception:
             return []
         rows = []
-        reader = csv.reader(io.StringIO(out))
-        for row in reader:
-            if len(row) < 2:
-                continue
-            name = str(row[0]).strip()
-            pid_text = str(row[1]).strip()
-            try:
-                pid = int(pid_text)
-            except Exception:
-                continue
-            if not name:
-                continue
-            rows.append({"name": name, "pid": pid})
+        if os.name == "nt":
+            for row in csv.reader(io.StringIO(out)):
+                if len(row) < 2:
+                    continue
+                name = str(row[0]).strip()
+                pid_text = str(row[1]).strip()
+                try:
+                    pid = int(pid_text)
+                except Exception:
+                    continue
+                if name:
+                    rows.append({"name": name, "pid": pid})
+        else:
+            for line in out.splitlines():
+                parts = line.strip().split(None, 1)
+                if len(parts) != 2:
+                    continue
+                try:
+                    pid = int(parts[0])
+                except Exception:
+                    continue
+                if parts[1].strip():
+                    rows.append({"name": parts[1].strip(), "pid": pid})
         rows.sort(key=lambda item: (item["name"].lower(), item["pid"]))
         return rows
 

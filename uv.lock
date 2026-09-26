@@ -576,7 +576,7 @@ dependencies = [
     { name = "pip-licenses" },
     { name = "pyinstaller" },
     { name = "pymediainfo" },
-    { name = "pymem" },
+    { name = "pymemoryeditor" },
     { name = "pyqtgraph" },
     { name = "pyside6" },
     { name = "pyyaml" },
@@ -595,7 +595,7 @@ requires-dist = [
     { name = "pip-licenses", specifier = ">=5.5.0" },
     { name = "pyinstaller", specifier = ">=6.16.0" },
     { name = "pymediainfo", specifier = ">=7.0.1" },
-    { name = "pymem", specifier = ">=1.14.0" },
+    { name = "pymemoryeditor", specifier = ">=3.0.1" },
     { name = "pyqtgraph", specifier = ">=0.13.7" },
     { name = "pyside6", specifier = ">=6.10.0" },
     { name = "pyyaml", specifier = ">=6.0.3" },
@@ -943,12 +943,12 @@ wheels = [
 ]
 
 [[package]]
-name = "pymem"
-version = "1.14.0"
+name = "pymemoryeditor"
+version = "3.0.1"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/1f/fd/1906f383fd9697c0da599580c58f5cd5af48edb55429f6ef994c447fb94e/pymem-1.14.0.tar.gz", hash = "sha256:29f6c32bcad0032888afabadf97d1e4c7757f88873de4d79f7f4c1df9b9e7ef1", size = 24890, upload-time = "2024-10-27T18:59:50.369Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/8a/56/8c6c39a016c4af7bb6f8fa2a0cfe4dfb191d10ceb185e08b3f9828476ce3/pymemoryeditor-3.0.1.tar.gz", hash = "sha256:8c05fdf2ccab94aaa1fc025c6ab14c1a6fe44156008005618aa6bd1ee7b26ff2", size = 1730899, upload-time = "2026-09-12T06:04:58.055Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0d/a5/23907a4b55d67cd4c0e4b9a37e32f5f1ffaf7e286dcf172a2a1bb9e12444/pymem-1.14.0-py3-none-any.whl", hash = "sha256:2b9cc64b49d0685f73d616ab1f638611f87e8d649869e7a556f050f677c42a7e", size = 29833, upload-time = "2024-10-27T18:59:48.911Z" },
+    { url = "https://files.pythonhosted.org/packages/b1/f3/e997b5234c7606f905370d90e1bdeed9585a0c39d8b13bb15e1a56634e95/pymemoryeditor-3.0.1-py3-none-any.whl", hash = "sha256:6870baaf8fa99f0088708271855d9db99843b69f4beb57a2658719725a9a11db", size = 295473, upload-time = "2026-09-12T06:04:56.061Z" },
 ]
 
 [[package]]

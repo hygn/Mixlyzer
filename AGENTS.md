@@ -115,7 +115,7 @@ Working notes for AI/automation agents editing the Mixlyzer codebase.
 - `ui.export.ExportTrackDialog` prefers the in-memory `DataModel` for the currently loaded track and falls back to NPZ when needed.
 
 ## External Sync
-- `core.external_sync.ExternalSyncController` can follow an external process via memory reads using `pymem`.
+- `core.external_sync.ExternalSyncController` can follow an external process via memory reads using `PyMemoryEditor`.
 - When enabled, local playback/load controls are intentionally restricted.
 - Process denylist lives in `process_denylist.json`.
 - If you touch External Sync config or behavior, keep `core/config.py`, `ui/cfgwindow.py`, and `app/window.py` aligned.
