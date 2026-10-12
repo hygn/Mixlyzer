@@ -6,13 +6,13 @@ from analyzer_core.utils import offset_beats_and_segments
 from analyzer_core.beat.beat import (
     build_grid_from_period_phase,
     estimate_bpm_and_grid,
+    rebuild_grid_from_segments,
 )
 from analyzer_core.beat.downbeat_offset import detect_downbeat_offset_segments
 from analyzer_core.beat.frame_features import extract_frame_features
 from analyzer_core.beat.learned_onset import compute_beat_odf
 from analyzer_core.hpss import hpss_audio
 from core.config import config
-import math
 
 def canonical_inizio(inz: float, start: float, bpm: float) -> float:
         """Wrap inizio within one bar of the provided start."""
@@ -73,58 +73,6 @@ def shift_grid_in_seg(beatgrid_sec: np.ndarray, segments, segment_index: int, of
     _beatgrid = np.concatenate([_beatgrid[:sti], new_beats, _beatgrid[edi:]]).astype(float)
     _beatgrid = np.sort(_beatgrid)
     return _beatgrid, _segments
-
-
-def rebuild_grid_from_segments(segments) -> np.ndarray:
-    """Rebuild an absolute beatgrid from tempo segments [start, end, bpm, inizio]."""
-    try:
-        arr = np.asarray(segments, dtype=float)
-    except Exception:
-        return np.asarray([], dtype=float)
-    if arr.ndim != 2 or arr.shape[1] < 4:
-        return np.asarray([], dtype=float)
-    beats = []
-    valid_ends = arr[:, 1][np.isfinite(arr[:, 1])]
-    track_end = float(np.max(valid_ends)) if valid_ends.size else float("inf")
-    for start, end, bpm, inizio in arr[:, :4]:
-        if not (np.isfinite(start) and np.isfinite(end) and end > start):
-            continue
-        if not (np.isfinite(bpm) and bpm > 0):
-            continue
-        period = 60.0 / bpm
-        if not np.isfinite(period) or period <= 0:
-            continue
-        phase = float(inizio) if np.isfinite(inizio) else float(start)
-        beat = float(phase)
-        # move beat near start
-        if beat < start:
-            delta = start - beat
-            shift = math.ceil(delta / period)
-            beat += shift * period
-        else:
-            while beat - period >= start:
-                beat -= period
-            while beat < start:
-                beat += period
-        # Interior segments overshoot slightly so a beat on the boundary is not lost (the
-        # duplicate is pruned below); the last segment ends at the audio end, so beats past
-        # it would be inaudible and unannotatable.
-        end_limit = float(end) + 1e-1 if float(end) < track_end else float(end) + 1e-6
-        while beat < end_limit:
-            beats.append(beat)
-            beat += period
-    if not beats:
-        return np.asarray([], dtype=float)
-    beat_arr = np.sort(np.asarray(beats, dtype=float))
-    if beat_arr.size <= 1:
-        return beat_arr
-    min_gap = 0.05  # seconds
-    pruned: list[float] = []
-    for beat in beat_arr:
-        if pruned and (beat - pruned[-1]) < min_gap:
-            continue
-        pruned.append(float(beat))
-    return np.asarray(pruned, dtype=float)
 
 
 def reanalyze_segment_from_file(

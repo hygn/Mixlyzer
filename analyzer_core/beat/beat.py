@@ -560,6 +560,58 @@ def _segments_from_array(arr: np.ndarray) -> list[TempoSegment]:
         return []
     return [TempoSegment(*row[:4]) for row in arr]
 
+def rebuild_grid_from_segments(segments) -> np.ndarray:
+    """Rebuild beat times from ``[start, end, bpm, inizio, ...]`` rows.
+
+    ``inizio`` is a downbeat reference, and therefore also a valid beat-phase
+    reference.  Keeping this helper beside the tempo-segment cleanup makes it
+    possible to update the grid whenever that cleanup changes the segments.
+    """
+    try:
+        arr = np.asarray(segments, dtype=float)
+    except Exception:
+        return np.asarray([], dtype=float)
+    if arr.ndim != 2 or arr.shape[1] < 4:
+        return np.asarray([], dtype=float)
+
+    beats: list[float] = []
+    valid_ends = arr[:, 1][np.isfinite(arr[:, 1])]
+    track_end = float(np.max(valid_ends)) if valid_ends.size else float("inf")
+    for start, end, bpm, inizio in arr[:, :4]:
+        if not (np.isfinite(start) and np.isfinite(end) and end > start):
+            continue
+        if not (np.isfinite(bpm) and bpm > 0):
+            continue
+        period = 60.0 / float(bpm)
+        if not np.isfinite(period) or period <= 0:
+            continue
+        phase = float(inizio) if np.isfinite(inizio) else float(start)
+        beat = phase
+        if beat < start:
+            beat += np.ceil((start - beat) / period) * period
+        else:
+            beat -= np.floor((beat - start) / period) * period
+
+        # Preserve a beat on a shared segment boundary, then prune its duplicate.
+        # The final segment must not produce inaudible beats beyond the track end.
+        end_limit = float(end) + (1e-1 if float(end) < track_end else 1e-6)
+        while beat < end_limit:
+            beats.append(float(beat))
+            beat += period
+
+    if not beats:
+        return np.asarray([], dtype=float)
+    beat_arr = np.sort(np.asarray(beats, dtype=float))
+    if beat_arr.size <= 1:
+        return beat_arr
+
+    pruned: list[float] = []
+    for beat in beat_arr:
+        if pruned and (beat - pruned[-1]) < 0.05:
+            continue
+        pruned.append(float(beat))
+    return np.asarray(pruned, dtype=float)
+
 def collapse_short_sandwiched_tempo_segments(
     tempo_segments: np.ndarray,
     max_duration_sec: float,
@@ -622,7 +674,7 @@ def refine_segments_via_beatgrid(
     if hop_t <= 0 or win_s <= 0 or step_s <= 0:
         return segments, np.asarray([], dtype=float)
 
-    from analyzer_core.editor.beatgrid import rebuild_grid_from_segments, canonical_inizio
+    from analyzer_core.editor.beatgrid import canonical_inizio
 
     seg_arr = seg_arr.copy()
     beats = rebuild_grid_from_segments(seg_arr)

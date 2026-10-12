@@ -12,7 +12,7 @@ from PySide6 import QtGui
 from typing import Optional
 from analyzer_core.key.key import *
 from analyzer_core.beat.beat import *
-from analyzer_core.beat.beat import collapse_short_sandwiched_tempo_segments
+from analyzer_core.beat.beat import collapse_short_sandwiched_tempo_segments, rebuild_grid_from_segments
 from analyzer_core.beat.frame_features import extract_frame_features
 from analyzer_core.beat.learned_onset import compute_beat_odf
 from analyzer_core.hpss import HPSS_HOP_LENGTH, HPSS_N_FFT, hpss_audio_with_spectra
@@ -411,6 +411,42 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
         seg_arr = np.empty((0, 5), dtype=np.float32)
     features["tempo_segments"] = seg_arr
 
+    # Remove short A-B-A tempo artifacts before beat-phase and downbeat analysis.
+    # The tempo tracker produced the old beatgrid from the uncollapsed segments,
+    # so both public beat times and the internal ODF-frame indices must be rebuilt
+    # whenever the segment topology changes.
+    cleanup_max_sec = 0.5 * bpm_window_sec
+    cleanup_before = int(seg_arr.shape[0]) if getattr(seg_arr, "ndim", 0) == 2 else 0
+    seg_arr, removed_sandwiched = collapse_short_sandwiched_tempo_segments(
+        seg_arr,
+        max_duration_sec=cleanup_max_sec,
+    )
+    features["tempo_segments"] = seg_arr
+    if removed_sandwiched:
+        rebuilt_beats = rebuild_grid_from_segments(seg_arr)
+        features["beats_time_sec"] = rebuilt_beats
+        synced_bpm["beats_time"] = rebuilt_beats
+        odf_len = len(synced_bpm["odf"])
+        synced_bpm["beats"] = np.clip(
+            np.round(
+                (rebuilt_beats - float(gcf.beatgrid_offset_msec) / 1000.0)
+                / float(synced_bpm["hop_t"])
+            ).astype(np.int32),
+            0,
+            max(0, odf_len - 1),
+        )
+        cleanup_after = int(seg_arr.shape[0])
+        print(
+            f"[Tempo] removed {removed_sandwiched} short sandwiched segment(s) "
+            f"<= {cleanup_max_sec:.3f}s: {cleanup_before} -> {cleanup_after}; "
+            f"rebuilt beatgrid with {rebuilt_beats.size} beats"
+        )
+        for i, row in enumerate(seg_arr):
+            start, end, bpm, inizio, ts = [float(x) for x in row[:5]]
+            print(
+                f"[Tempo]   tempo{i}: {start:.3f}-{end:.3f}s bpm={bpm:.2f} "
+                f"inizio(downbeat)={inizio:.3f}s ts={int(ts)}/4"
+            )
     print("[Tempo] Analysis Finished")
 
     # Beat-phase correction: move the grid by 0, 1/4, 1/2 or 3/4 beat to the phase
@@ -511,26 +547,6 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
         import traceback
         print(f"[Downbeat] offset detection skipped: {exc}")
         traceback.print_exc()
-
-    cleanup_max_sec = 0.5 * bpm_window_sec
-    cleanup_before = int(seg_arr.shape[0]) if getattr(seg_arr, "ndim", 0) == 2 else 0
-    seg_arr, removed_sandwiched = collapse_short_sandwiched_tempo_segments(
-        seg_arr,
-        max_duration_sec=cleanup_max_sec,
-    )
-    features["tempo_segments"] = seg_arr
-    if removed_sandwiched:
-        cleanup_after = int(seg_arr.shape[0])
-        print(
-            f"[Tempo] removed {removed_sandwiched} short sandwiched segment(s) "
-            f"<= {cleanup_max_sec:.3f}s: {cleanup_before} -> {cleanup_after}"
-        )
-        for i, row in enumerate(seg_arr):
-            start, end, bpm, inizio, ts = [float(x) for x in row[:5]]
-            print(
-                f"[Tempo]   tempo{i}: {start:.3f}-{end:.3f}s bpm={bpm:.2f} "
-                f"inizio(downbeat)={inizio:.3f}s ts={int(ts)}/4"
-            )
 
     beats_time_arr = np.asarray(features.get("beats_time_sec"), dtype=float)
     yield {"status": "phrase"}
