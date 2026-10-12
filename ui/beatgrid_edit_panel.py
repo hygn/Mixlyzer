@@ -134,7 +134,7 @@ class logs:
 class SaveWorker(QtCore.QObject):
     finished = QtCore.Signal(object)
 
-    def save(self, store: FeatureNPZStore, libpath: str, uid, *, beatgrid=None, segments=None, key_segments=None, key_np=None, jump_cues_np=None, jump_cues_extracted=None, phrase_segments_np=None):
+    def save(self, store: FeatureNPZStore, libpath: str, uid, *, beatgrid=None, segments=None, key_segments=None, key_np=None, jump_cues_np=None, jump_cues_extracted=None, jump_cues_auto_np=None, phrase_segments_np=None):
         try:
             if uid is None:
                 return
@@ -154,6 +154,11 @@ class SaveWorker(QtCore.QObject):
                 prev_feat["jump_cues_np"] = jump_cues_np
             if jump_cues_extracted is not None:
                 prev_feat["jump_cues_extracted"] = jump_cues_extracted
+            if jump_cues_auto_np is not None:
+                # A JumpCUE reanalysis replaces the stored automatic result.
+                for key in [k for k in prev_feat if k.startswith("jump_cues_auto_np.")]:
+                    del prev_feat[key]
+                prev_feat["jump_cues_auto_np"] = jump_cues_auto_np
             if phrase_segments_np is not None:
                 prev_feat["phrase_segments_np"] = phrase_segments_np
                 phrase_rows = extract_phrase_segments(
@@ -412,6 +417,31 @@ class BeatgridEditPanel(QtWidgets.QWidget):
         self.jc_jumptest.setText("ARM")
         self.jc_jumptest.setToolTip("Arm jump: transition from the selected source cue to the selected target cue")
 
+        # Group edits act on the group of the selected source cue.
+        self.jc_group_back = QtWidgets.QToolButton()
+        self.jc_group_back.setText("Grp-1")
+        self.jc_group_back.setToolTip("Move every cue of the source cue's group one beat earlier")
+
+        self.jc_group_fwd = QtWidgets.QToolButton()
+        self.jc_group_fwd.setText("Grp+1")
+        self.jc_group_fwd.setToolTip("Move every cue of the source cue's group one beat later")
+
+        self.jc_group_delete = QtWidgets.QToolButton()
+        self.jc_group_delete.setText("GrpDel")
+        self.jc_group_delete.setToolTip("Delete the source cue's group")
+
+        self.jc_member_add = QtWidgets.QToolButton()
+        self.jc_member_add.setText("Add")
+        self.jc_member_add.setToolTip("Add a cue at the beat nearest the playhead to the source cue's group")
+
+        self.jc_member_remove = QtWidgets.QToolButton()
+        self.jc_member_remove.setText("Remove")
+        self.jc_member_remove.setToolTip("Remove the source cue from its group")
+
+        self.jc_group_new = QtWidgets.QToolButton()
+        self.jc_group_new.setText("NewGrp")
+        self.jc_group_new.setToolTip("Create a new group with one cue at the beat nearest the playhead")
+
         # BeatCounter: hold the button to count beats passing under the playhead.
         self.beatcounter_label = QtWidgets.QLabel("BeatCounter: ")
         f = self.beatcounter_label.font()
@@ -536,6 +566,12 @@ class BeatgridEditPanel(QtWidgets.QWidget):
             self.key_assign_combo,
             self.jc_reanalyze,
             self.jc_jumptest,
+            self.jc_group_back,
+            self.jc_group_fwd,
+            self.jc_group_delete,
+            self.jc_member_add,
+            self.jc_member_remove,
+            self.jc_group_new,
             self.beat_counter_button,
             self.phrase_assign_combo,
             self.phrase_sel_start,
@@ -633,13 +669,19 @@ class BeatgridEditPanel(QtWidgets.QWidget):
         gridB.addWidget(self.jc_reanalyze, 0, 6, _AL)
         gridB.addWidget(self.jc_selection_wrap, 1, 6, _AL)
         gridB.addWidget(self.jc_jumptest, 2, 6, _AL)
-        gridB.addWidget(self.beatcounter_label, 0, 7, _AL)
-        gridB.addWidget(self.beat_counter_button, 0, 8, _AL)
-        gridB.addWidget(self.beat_counter_display, 1, 8, _AL)
-        gridB.addWidget(self.beat_counter_barbeat_display, 2, 8, _AL)
-        gridB.addWidget(self.cuepoint_label, 0, 9, _AL)
-        gridB.addWidget(self.cuepoint_placeholder, 0, 10, _AL)
-        gridB.setColumnStretch(11, 1)
+        gridB.addWidget(self.jc_group_back, 0, 7, _AL)
+        gridB.addWidget(self.jc_group_fwd, 1, 7, _AL)
+        gridB.addWidget(self.jc_group_delete, 2, 7, _AL)
+        gridB.addWidget(self.jc_member_add, 0, 8, _AL)
+        gridB.addWidget(self.jc_member_remove, 1, 8, _AL)
+        gridB.addWidget(self.jc_group_new, 2, 8, _AL)
+        gridB.addWidget(self.beatcounter_label, 0, 9, _AL)
+        gridB.addWidget(self.beat_counter_button, 0, 10, _AL)
+        gridB.addWidget(self.beat_counter_display, 1, 10, _AL)
+        gridB.addWidget(self.beat_counter_barbeat_display, 2, 10, _AL)
+        gridB.addWidget(self.cuepoint_label, 0, 11, _AL)
+        gridB.addWidget(self.cuepoint_placeholder, 0, 12, _AL)
+        gridB.setColumnStretch(13, 1)
 
         # ---- Shared Edits column (right) ----
         edits_grid = QtWidgets.QGridLayout()
@@ -684,6 +726,12 @@ class BeatgridEditPanel(QtWidgets.QWidget):
         
         self.jc_jumptest.clicked.connect(self._arm_next_jumpCUE_jump)
         self.jc_reanalyze.clicked.connect(self._reanalyze_jumpCUE)
+        self.jc_group_back.clicked.connect(lambda: self._shift_jumpcue_group(-1))
+        self.jc_group_fwd.clicked.connect(lambda: self._shift_jumpcue_group(1))
+        self.jc_group_delete.clicked.connect(self._delete_jumpcue_group)
+        self.jc_member_add.clicked.connect(self._add_jumpcue_member)
+        self.jc_member_remove.clicked.connect(self._remove_jumpcue_member)
+        self.jc_group_new.clicked.connect(self._new_jumpcue_group)
         self.beat_counter_button.pressed.connect(self._on_beat_counter_pressed)
         self.beat_counter_button.released.connect(self._on_beat_counter_released)
         self.jc_source_selection.currentIndexChanged.connect(self._jc_source_selection_changed)
@@ -1133,6 +1181,152 @@ class BeatgridEditPanel(QtWidgets.QWidget):
         self._jump_armed = False
 
 
+    # ---- JumpCUE group edits ----
+    # Edits rebuild the pair list from groups of cues: every pair of members of
+    # a group (a one-cue group as a pair of the cue with itself), labels A-Z by
+    # point (the graph the combos show).
+
+    def _jumpcue_groups(self) -> dict[int, list[dict]]:
+        """Cues of the current JumpCUEs by graph index (the combos' graph_idx)."""
+        cues, _links = build_jump_cue_graph(self._JumpCUE)
+        groups: dict[int, list[dict]] = {}
+        for cue in cues:
+            groups.setdefault(int(cue.get("graph_idx", 0) or 0), []).append(
+                {
+                    "label": str(cue.get("label", "") or ""),
+                    "comment": str(cue.get("comment", "") or ""),
+                    "start": float(cue.get("start", 0.0) or 0.0),
+                    "end": float(cue.get("end", 0.0) or 0.0),
+                    "point": float(cue.get("point", 0.0) or 0.0),
+                }
+            )
+        return groups
+
+    def _source_jumpcue_group(self) -> tuple[dict | None, dict[int, list[dict]], int | None]:
+        """The selected source cue, all groups, and the source cue's graph index."""
+        source = self._current_jumpcue_cue(self.jc_source_selection)
+        if not isinstance(source, dict):
+            return None, {}, None
+        return source, self._jumpcue_groups(), int(source.get("graph_idx", 0) or 0)
+
+    def _nearest_beat_index(self, t: float) -> int:
+        return int(np.argmin(np.abs(np.asarray(self._beatgrid, dtype=float) - float(t))))
+
+    def _beat_at(self, idx: int) -> float:
+        beats = np.asarray(self._beatgrid, dtype=float)
+        return float(beats[int(np.clip(idx, 0, beats.size - 1))])
+
+    def _set_jumpcue_groups(self, groups, *, select_point: float | None = None) -> bool:
+        """Replace the JumpCUEs with ``groups`` (lists of cues; empty groups are
+        dropped) and record the edit. False (nothing changed) when two cues
+        share a point or there are more cues than labels A-Z."""
+        groups = [sorted(g, key=lambda c: c["point"]) for g in groups if g]
+        cues = sorted((c for g in groups for c in g), key=lambda c: c["point"])
+        points = np.asarray([c["point"] for c in cues], dtype=float)
+        if points.size > 1 and np.min(np.diff(points)) < 1e-3:
+            QtWidgets.QMessageBox.warning(self, "JumpCUE", "Two JumpCUEs cannot share a point.")
+            return False
+        if len(cues) > 26:
+            QtWidgets.QMessageBox.warning(self, "JumpCUE", "JumpCUEs are limited to 26 cues (A-Z).")
+            return False
+        for idx, cue in enumerate(cues):
+            label = chr(ord("A") + idx)
+            if cue["comment"] in ("", cue["label"]):
+                cue["comment"] = label
+            cue["label"] = label
+        pairs = []
+        for group in groups:
+            if len(group) == 1:
+                pairs.append({"forward": dict(group[0]), "backward": dict(group[0]), "lag_beats": 0.0,
+                              "lag_sec": 0.0, "score": 1.0, "confidence": 1.0})
+            for i in range(len(group)):
+                for j in range(i + 1, len(group)):
+                    a, b = dict(group[i]), dict(group[j])
+                    pairs.append(
+                        {
+                            "forward": a,
+                            "backward": b,
+                            "lag_beats": 0.0,
+                            "lag_sec": abs(b["point"] - a["point"]),
+                            "score": 1.0,
+                            "confidence": 1.0,
+                        }
+                    )
+        self.set_JumpCUE(pairs)
+        if select_point is not None:
+            combo = self.jc_source_selection
+            for idx in range(combo.count()):
+                payload = combo.itemData(idx)
+                if isinstance(payload, dict) and abs(float(payload.get("point", -1.0)) - select_point) < 1e-3:
+                    combo.setCurrentIndex(idx)
+                    break
+        self._emit_jumpcue_update()
+        return True
+
+    def _shift_jumpcue_group(self, beats: int) -> None:
+        """Move the source cue's group (points and passages) by ``beats`` beats."""
+        source, groups, gidx = self._source_jumpcue_group()
+        if source is None or gidx not in groups or len(self._beatgrid) == 0:
+            return
+        n = len(self._beatgrid)
+        moved = []
+        for cue in groups[gidx]:
+            k = self._nearest_beat_index(cue["point"]) + int(beats)
+            if not 0 <= k < n:
+                return
+            moved.append(
+                dict(
+                    cue,
+                    start=self._beat_at(self._nearest_beat_index(cue["start"]) + int(beats)),
+                    end=self._beat_at(self._nearest_beat_index(cue["end"]) + int(beats)),
+                    point=self._beat_at(k),
+                )
+            )
+        groups[gidx] = moved
+        select = self._beat_at(self._nearest_beat_index(float(source.get("point", 0.0))) + int(beats))
+        self._set_jumpcue_groups(groups.values(), select_point=select)
+
+    def _add_jumpcue_member(self) -> None:
+        """Add a cue at the beat nearest the playhead to the source cue's group,
+        its passage placed like the source cue's (same beats before and after)."""
+        source, groups, gidx = self._source_jumpcue_group()
+        if source is None or gidx not in groups or len(self._beatgrid) == 0:
+            return
+        k = self._nearest_beat_index(self._current_time)
+        d = k - self._nearest_beat_index(float(source.get("point", 0.0)))
+        cue = {
+            "label": "",
+            "comment": "",
+            "start": self._beat_at(self._nearest_beat_index(float(source.get("start", 0.0))) + d),
+            "end": self._beat_at(self._nearest_beat_index(float(source.get("end", 0.0))) + d),
+            "point": self._beat_at(k),
+        }
+        groups[gidx] = groups[gidx] + [cue]
+        self._set_jumpcue_groups(groups.values(), select_point=cue["point"])
+
+    def _remove_jumpcue_member(self) -> None:
+        source, groups, gidx = self._source_jumpcue_group()
+        if source is None or gidx not in groups:
+            return
+        point = float(source.get("point", 0.0))
+        groups[gidx] = [c for c in groups[gidx] if abs(c["point"] - point) >= 1e-3]
+        self._set_jumpcue_groups(groups.values())
+
+    def _delete_jumpcue_group(self) -> None:
+        source, groups, gidx = self._source_jumpcue_group()
+        if source is None or gidx not in groups:
+            return
+        del groups[gidx]
+        self._set_jumpcue_groups(groups.values())
+
+    def _new_jumpcue_group(self) -> None:
+        """New group of one cue at the beat nearest the playhead."""
+        if len(self._beatgrid) == 0:
+            return
+        p = self._beat_at(self._nearest_beat_index(self._current_time))
+        new = [{"label": "", "comment": "", "start": p, "end": p, "point": p}]
+        self._set_jumpcue_groups(list(self._jumpcue_groups().values()) + [new], select_point=p)
+
     def _has_active_segment(self) -> bool:
         """Return True when a valid editing target exists."""
         return self._segments.size > 0 and 0 <= self._cur_idx < len(self._segments)
@@ -1359,6 +1553,8 @@ class BeatgridEditPanel(QtWidgets.QWidget):
             QtWidgets.QMessageBox.warning(self, "Invalid JumpCUE Label", str(exc))
             return
         jump_cues_extracted = copy.deepcopy(self._JumpCUE)
+        auto_block = self.model.features.get("jump_cues_auto_np") if self.model is not None else None
+        jump_cues_auto_np = auto_block if isinstance(auto_block, dict) else None
         self._phrase_segments = normalize_phrase_segments(
             self._phrase_segments,
             min_time=0.0,
@@ -1377,6 +1573,7 @@ class BeatgridEditPanel(QtWidgets.QWidget):
                 key_segments=key_segments,
                 jump_cues_np=jump_cues_np,
                 jump_cues_extracted=jump_cues_extracted,
+                jump_cues_auto_np=jump_cues_auto_np,
                 phrase_segments_np=phrase_segments_np,
             )
         )
@@ -1511,6 +1708,8 @@ class BeatgridEditPanel(QtWidgets.QWidget):
             "path": self._current_track_path(),
             "beats_time_sec": np.asarray(self._beatgrid, dtype=float).copy(),
         }
+        if self._segments is not None:
+            payload["segments"] = np.asarray(self._segments, dtype=float).copy()
         payload["analyze_type"] = "jumpcue"
         self.bus.sig_segment_reanalyze_requested.emit(payload)
 

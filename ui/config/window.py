@@ -231,6 +231,8 @@ class SettingsDialog(
         self.ed_phrase_feature_cache_path.setText(
             str(getattr(a, "phrase_feature_cache_path", "") or "")
         )
+        self.ed_jumpcue_parameter_path.setText(str(getattr(a, "jumpcue_parameter_path", "") or ""))
+        self.ed_jumpcue_feature_cache_path.setText(str(getattr(a, "jumpcue_feature_cache_path", "") or ""))
 
         # key
         k = cfg.keyconfig
@@ -327,6 +329,8 @@ class SettingsDialog(
                 phrase_analysis_enabled=bool(self.cb_phrase_analysis_enabled.isChecked()),
                 phrase_parameter_path=self.ed_phrase_parameter_path.text().strip(),
                 phrase_feature_cache_path=self.ed_phrase_feature_cache_path.text().strip(),
+                jumpcue_parameter_path=self.ed_jumpcue_parameter_path.text().strip(),
+                jumpcue_feature_cache_path=self.ed_jumpcue_feature_cache_path.text().strip(),
             ),
             keyconfig=keyconfig(
                 min_offset=float(self.sp_min_offset.value()),

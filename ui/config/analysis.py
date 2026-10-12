@@ -283,11 +283,33 @@ def build_analysis_tab(dialog) -> None:
     f_phrase.addRow(grp_phrase_general)
     f_phrase.addRow(grp_phrase_advanced)
 
+    # JumpCUE
+    tab_jumpcue = QWidget(); f_jumpcue = QFormLayout(tab_jumpcue)
+    dialog.ed_jumpcue_parameter_path = QLineEdit()
+    dialog.ed_jumpcue_parameter_path.setPlaceholderText("relative or absolute .json path")
+    dialog.ed_jumpcue_feature_cache_path = QLineEdit()
+    dialog.btn_reoptimize_jumpcue_parameter = QPushButton("Reoptimize JumpCUE Parameter")
+    dialog.btn_reoptimize_jumpcue_parameter.clicked.connect(dialog._on_reoptimize_jumpcue_parameter)
+    dialog.ed_jumpcue_parameter_path.setToolTip("Learned JumpCUE jump point model (.json).")
+    dialog.ed_jumpcue_feature_cache_path.setToolTip(cache_tip)
+    dialog.btn_reoptimize_jumpcue_parameter.setToolTip(
+        "Retrain the jump point model on the JumpCUEs stored in the library. Where a "
+        "track's JumpCUEs differ from its automatic analysis, the automatic choice is "
+        "learned as the one to avoid."
+    )
+    grp_jumpcue_advanced = QGroupBox("Advanced")
+    f_jumpcue_advanced = QFormLayout(grp_jumpcue_advanced)
+    f_jumpcue_advanced.addRow("Parameters (JSON)", dialog.ed_jumpcue_parameter_path)
+    f_jumpcue_advanced.addRow("Feature cache", dialog.ed_jumpcue_feature_cache_path)
+    f_jumpcue_advanced.addRow("", dialog.btn_reoptimize_jumpcue_parameter)
+    f_jumpcue.addRow(grp_jumpcue_advanced)
+
     # Assemble
     analysis_tabs.addTab(tab_global, "Global")
     analysis_tabs.addTab(tab_beat, "Beat")
     analysis_tabs.addTab(tab_key, "Key")
     analysis_tabs.addTab(tab_phrase, "Phrase")
+    analysis_tabs.addTab(tab_jumpcue, "JumpCUE")
     analysis_tabs.addTab(tab_wave, "Waveform")
 
     root.addWidget(analysis_tabs)
@@ -395,12 +417,13 @@ class AnalysisSettingsMixin:
     def _parameter_optimization_is_running(self) -> bool:
         return any(
             getattr(self, f"_{key}_optimize_worker", None) is not None
-            for key in ("beat", "phrase")
+            for key in ("beat", "phrase", "jumpcue")
         )
 
     def _set_parameter_optimization_enabled(self, enabled: bool) -> None:
         self.btn_reoptimize_beat_parameters.setEnabled(enabled)
         self.btn_reoptimize_phrase_parameter.setEnabled(enabled)
+        self.btn_reoptimize_jumpcue_parameter.setEnabled(enabled)
 
     @staticmethod
     def _show_optimization_result(
@@ -674,4 +697,64 @@ class AnalysisSettingsMixin:
             dialog,
             "Reoptimize Phrase Parameter",
             f"Phrase parameter optimization failed:\n{message}",
+        )
+
+    def _on_reoptimize_jumpcue_parameter(self) -> None:
+        if self._parameter_optimization_is_running():
+            return
+        title = "Reoptimize JumpCUE Parameter"
+        parameter_text = self.ed_jumpcue_parameter_path.text().strip()
+        cache_text = self.ed_jumpcue_feature_cache_path.text().strip()
+        if not parameter_text or not cache_text:
+            QMessageBox.warning(self, title, "JumpCUE parameter path and feature cache path are required.")
+            return
+        parameter_path = self._project_path(parameter_text)
+        if not self._confirm_parameter_overwrite(parameter_path, title, "JumpCUE"):
+            return
+        self._start_parameter_optimization(
+            key="jumpcue",
+            title=title,
+            request_values={
+                "library_dir": self._project_path(self.ed_libpath.text().strip()),
+                "cache_dir": self._project_path(cache_text),
+                "output_path": parameter_path,
+                "phrase_parameter_path": self._project_path(self.ed_phrase_parameter_path.text().strip()),
+            },
+            finished_slot=self._on_jumpcue_optimize_finished,
+            failed_slot=self._on_jumpcue_optimize_failed,
+        )
+
+    @QtCore.Slot(object)
+    def _on_jumpcue_optimize_finished(self, result) -> None:
+        self._set_parameter_optimization_enabled(True)
+        dialog = getattr(self, "_jumpcue_optimize_dialog", self)
+        kind = "CV" if result.cross_validated else "Training"
+        corrections = (
+            f"{kind} saved choice above the automatic one: {result.user_above_automatic:.1%} "
+            f"({result.preference_pairs} corrected groups)"
+            if result.preference_pairs else
+            "No corrected groups yet: the library's JumpCUEs all match their automatic "
+            "analysis, or were analyzed before it was kept."
+        )
+        self._show_optimization_result(
+            dialog,
+            "Reoptimize JumpCUE Parameter",
+            (
+                f"JumpCUE parameter updated:\n{result.output_path}\n\n"
+                f"Tracks: {result.track_count}, groups: {result.group_count}\n"
+                f"{kind} rank of the saved point among the candidates (AUC): {result.label_auc:.3f}\n"
+                f"{kind} chosen points on a downbeat: {result.pick_downbeat:.1%}\n"
+                f"{corrections}"
+            ),
+            result.skipped_tracks,
+        )
+
+    @QtCore.Slot(str)
+    def _on_jumpcue_optimize_failed(self, message: str) -> None:
+        self._set_parameter_optimization_enabled(True)
+        dialog = getattr(self, "_jumpcue_optimize_dialog", self)
+        QMessageBox.critical(
+            dialog,
+            "Reoptimize JumpCUE Parameter",
+            f"JumpCUE parameter optimization failed:\n{message}",
         )

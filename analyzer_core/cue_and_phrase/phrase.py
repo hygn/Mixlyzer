@@ -35,10 +35,15 @@ def detect_phrase_segments(
     *,
     model_path: str | Path | None = None,
     hpss: HpssSpectra | None = None,
-) -> list[dict[str, object]]:
+    return_boundary_probability: bool = False,
+    return_feature_z: bool = False,
+):
     """Detect phrase segments with the current NPZ two-stage GBM pipeline.
 
     ``hpss``: HPSS spectra of the mono mix, reused by the feature extraction.
+    ``return_boundary_probability``: also return the per-beat boundary
+    probability. ``return_feature_z`` additionally returns the beat-synchronous
+    audio feature matrix so later analyzers can reuse it.
     """
 
     return detect_two_stage_phrase_segments(
@@ -48,4 +53,6 @@ def detect_phrase_segments(
         tempo_segments,
         model_path=Path(model_path) if model_path is not None else _ASSET_MODEL,
         hpss=hpss,
+        return_boundary_probability=return_boundary_probability,
+        return_feature_z=return_feature_z,
     )

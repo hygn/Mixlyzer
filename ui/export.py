@@ -225,7 +225,11 @@ class ExportTrackDialog(QtWidgets.QDialog):
         if not features:
             self.cmb_jump_pair.setEnabled(False)
             return
-        pairs = extract_jump_cue_pairs(features)
+        # One-cue groups are pairs of a cue with itself; there is no jump in them.
+        pairs = [
+            pair for pair in extract_jump_cue_pairs(features)
+            if pair.get("forward", {}).get("point") != pair.get("backward", {}).get("point")
+        ]
         self._jump_pairs = pairs
         for idx, pair in enumerate(pairs):
             fwd = str(pair.get("forward", {}).get("label", "")).strip()

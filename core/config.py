@@ -107,6 +107,8 @@ class analysisconfig:
     phrase_analysis_enabled: bool
     phrase_parameter_path: str
     phrase_feature_cache_path: str
+    jumpcue_parameter_path: str
+    jumpcue_feature_cache_path: str
 
 
 @dataclass
@@ -239,6 +241,8 @@ def default_cfg():
         phrase_analysis_enabled=True,
         phrase_parameter_path="assets/weights/phrase_analyzer.npz",
         phrase_feature_cache_path="featurecache/phrase",
+        jumpcue_parameter_path="assets/weights/jumpcue_jump_point.json",
+        jumpcue_feature_cache_path="featurecache/jumpcue/train",
     )
     kcfg = keyconfig(
         min_offset=0.2,
@@ -325,6 +329,7 @@ def load_cfg() -> config:
             cfg.analysisconfig.beat_phase_feature_cache_path,
             cfg.analysisconfig.downbeat_feature_cache_path,
             cfg.analysisconfig.phrase_feature_cache_path,
+            cfg.analysisconfig.jumpcue_feature_cache_path,
         ):
             text = str(path_text or "").strip()
             if text:

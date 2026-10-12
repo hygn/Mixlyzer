@@ -17,7 +17,8 @@ from analyzer_core.beat.frame_features import extract_frame_features
 from analyzer_core.beat.learned_onset import compute_beat_odf
 from analyzer_core.hpss import HPSS_HOP_LENGTH, HPSS_N_FFT, hpss_audio_with_spectra
 from utils.wave import build_wave_preview
-from analyzer_core.self_correlation.JumpCUE import JumpCueEngine
+from analyzer_core.self_correlation.JumpCUE import JumpCueConfig, JumpCueEngine
+from analyzer_core.self_correlation.jump_point_model import jump_point_beat_features
 from analyzer_core.cue_and_phrase import detect_phrase_segments
 from utils.jump_cues import build_jump_cues_np
 from utils.cue_points import (
@@ -409,6 +410,7 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
     else:
         seg_arr = np.empty((0, 5), dtype=np.float32)
     features["tempo_segments"] = seg_arr
+
     print("[Tempo] Analysis Finished")
 
     # Beat-phase correction: move the grid by 0, 1/4, 1/2 or 3/4 beat to the phase
@@ -530,37 +532,15 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
                 f"inizio(downbeat)={inizio:.3f}s ts={int(ts)}/4"
             )
 
-    jump_result = None
     beats_time_arr = np.asarray(features.get("beats_time_sec"), dtype=float)
-    taskmgr.updatetask(taskid, "JumpCUE Analyzing", 0.50)
-    if beats_time_arr.size >= 2:
-        jump_engine = JumpCueEngine()
-        jump_result = jump_engine.run(
-            y_harm=y_harm,
-            sr=global_sr,
-            beats_time=beats_time_arr,
-        )
-        jump_pairs = [pair.as_dict() for pair in jump_result.pairs]
-        if jump_pairs:
-            print("[JumpCUE] pairs", jump_pairs)
-        else:
-            print("[JumpCUE] no jump-compatible pairs detected")
-        features["jump_cues_np"] = build_jump_cues_np(
-            jump_pairs,
-            canonicalize_labels=True,
-            merge_coincident=True,
-        )
-    else:
-        features["jump_cues_np"] = build_jump_cues_np(
-            [],
-            canonicalize_labels=True,
-            merge_coincident=True,
-        )
     yield {"status": "phrase"}
     print("[Phrase] Analysis Initalized")
     taskmgr.updatetask(taskid, "Phrase Boundary Analyzing", 0.58)
     phrase_enabled = bool(getattr(gcf, "phrase_analysis_enabled", True))
     phrase_parameter_path = str(gcf.phrase_parameter_path).strip()
+    # The phrase boundary probability is a JumpCUE feature (below).
+    phrase_boundary_prob = None
+    phrase_feature_z = None
     if not phrase_enabled:
         print("[Phrase] skipped: disabled in analysis settings")
         features["phrase_segments_np"] = build_phrase_segments_np([])
@@ -569,13 +549,15 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
         try:
             # Joint phrase boundary + functional-label detection -> Phrase data.
             # Reuse the already-decoded stereo audio (no second decode).
-            phrase_segments = detect_phrase_segments(
+            phrase_segments, phrase_boundary_prob, phrase_feature_z = detect_phrase_segments(
                 samp_stereo,
                 int(global_sr),
                 beats_time_arr,
                 seg_arr,
                 model_path=phrase_parameter_path,
                 hpss=hpss_spectra,
+                return_boundary_probability=True,
+                return_feature_z=True,
             )
             features["phrase_segments_np"] = build_phrase_segments_np(phrase_segments)
             phrase_cue_points = build_phrase_cue_points(phrase_segments)
@@ -597,6 +579,49 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
         features["phrase_segments_np"] = build_phrase_segments_np([])
         features["cue_points_np"] = empty_cue_points_np()
     print("[Phrase] Analysis Finished")
+
+    # JumpCUE needs the phrase analysis (its boundary probability is a feature
+    # of the learned jump point); with phrases off there are no JumpCUEs.
+    yield {"status": "jumpcue"}
+    taskmgr.updatetask(taskid, "JumpCUE Analyzing", 0.62)
+    jump_pairs = []
+    if not phrase_enabled:
+        print("[JumpCUE] skipped: needs the phrase analysis (disabled in analysis settings)")
+    elif phrase_boundary_prob is None:
+        print("[JumpCUE] skipped: no phrase boundary probability")
+    elif beats_time_arr.size >= 2:
+        jump_engine = JumpCueEngine(JumpCueConfig(jump_point_model_path=str(gcf.jumpcue_parameter_path)))
+        jump_result = jump_engine.run(
+            y_harm=y_harm,
+            sr=global_sr,
+            beats_time=beats_time_arr,
+            y_mix=samp,
+            tempo_segments=seg_arr,
+            mix_magnitude=(
+                hpss_spectra.magnitude
+                if hpss_spectra is not None
+                and (hpss_spectra.n_fft, hpss_spectra.hop_length)
+                == (jump_engine.config.vocal.n_fft, jump_engine.config.vocal.hop)
+                else None
+            ),
+            jump_point_features=jump_point_beat_features(
+                frame_features, beats_time_arr, seg_arr, phrase_boundary_prob,
+                audio=samp_stereo, phrase_feature_z=phrase_feature_z,
+            ),
+        )
+        jump_pairs = [pair.as_dict() for pair in jump_result.pairs]
+        if jump_pairs:
+            print("[JumpCUE] pairs", jump_pairs)
+        else:
+            print("[JumpCUE] no jump-compatible pairs detected")
+    features["jump_cues_np"] = build_jump_cues_np(
+        jump_pairs,
+        canonicalize_labels=True,
+        merge_coincident=True,
+    )
+    # The automatic result is kept beside the user's JumpCUEs (which edits
+    # replace): the JumpCUE optimizer learns from where the two differ.
+    features["jump_cues_auto_np"] = {k: np.array(v, copy=True) for k, v in features["jump_cues_np"].items()}
     hpss_spectra = None
 
     features["timesignature"] = 4

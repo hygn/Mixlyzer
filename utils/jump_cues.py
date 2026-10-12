@@ -158,18 +158,50 @@ def _merge_coincident_cues(
     return list(point_to_cue.values()), raw_pairs, identity_to_point
 
 
-def _extract_jump_cue_block(features: Dict[str, Any]) -> dict[str, Any]:
+def _extract_jump_cue_block(features: Dict[str, Any], key: str = "jump_cues_np") -> dict[str, Any]:
     if not isinstance(features, dict):
         return {}
-    block = features.get("jump_cues_np")
+    block = features.get(key)
     if isinstance(block, dict) and block:
         return block
-    prefix = "jump_cues_np."
+    prefix = f"{key}."
     return {
-        key[len(prefix) :]: value
-        for key, value in features.items()
-        if isinstance(key, str) and key.startswith(prefix)
+        name[len(prefix) :]: value
+        for name, value in features.items()
+        if isinstance(name, str) and name.startswith(prefix)
     }
+
+
+def jump_cue_point_groups(features: Dict[str, Any], key: str = "jump_cues_np") -> List[List[float]]:
+    """Cue points (seconds, ascending) of each JumpCUE group in the graph block
+    ``key`` ('jump_cues_np' = the user's JumpCUEs, 'jump_cues_auto_np' = the
+    automatic analysis result); groups of fewer than two cues are left out."""
+    block = _extract_jump_cue_block(features, key)
+    if not all(name in block for name in ("cue_id", "cue_point", "graph_cue_id", "graph_idx")):
+        return []
+    graph_of = dict(zip(np.asarray(block["graph_cue_id"], dtype=int).tolist(),
+                        np.asarray(block["graph_idx"], dtype=int).tolist()))
+    groups: dict[int, list[float]] = {}
+    for cue_id, point in zip(np.asarray(block["cue_id"], dtype=int).tolist(),
+                             np.asarray(block["cue_point"], dtype=float).tolist()):
+        groups.setdefault(graph_of.get(cue_id, 0), []).append(float(point))
+    return [sorted(points) for _, points in sorted(groups.items()) if len(points) >= 2]
+
+
+def build_jump_cues_np_from_point_groups(groups: List[List[float]]) -> Dict[str, np.ndarray]:
+    """Graph block of JumpCUE groups given only their cue points (seconds)."""
+    pairs: list[dict] = []
+    index = 0
+    for points in groups:
+        cues = []
+        for point in sorted(float(p) for p in points):
+            cues.append({"label": _label_from_index(index), "start": point, "end": point, "point": point})
+            index += 1
+        for i in range(len(cues)):
+            for j in range(i + 1, len(cues)):
+                pairs.append({"forward": cues[j], "backward": cues[i], "lag_beats": 0.0,
+                              "lag_sec": cues[j]["point"] - cues[i]["point"], "score": 1.0, "confidence": 1.0})
+    return build_jump_cues_np(pairs, canonicalize_labels=True, merge_coincident=True)
 
 
 def _empty_jump_cues_np() -> Dict[str, np.ndarray]:
@@ -377,6 +409,11 @@ def _extract_pairs_from_new_graph_block(block: Dict[str, Any]) -> List[dict]:
             set(members_by_graph[graph_idx]),
             key=lambda cue_id: float(cue_lookup.get(cue_id, {}).get("point", 0.0)),
         )
+        # A one-cue group is kept as a pair of the cue with itself.
+        if len(member_ids) == 1 and member_ids[0] in cue_lookup:
+            cue = cue_lookup[member_ids[0]]
+            pairs.append({"forward": dict(cue), "backward": dict(cue), "lag_beats": 0.0,
+                          "lag_sec": 0.0, "score": 1.0, "confidence": 1.0})
         for i in range(len(member_ids)):
             for j in range(i + 1, len(member_ids)):
                 a = cue_lookup.get(member_ids[i])

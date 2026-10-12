@@ -481,12 +481,17 @@ def detect_two_stage_phrase_segments(
     *,
     model_path: str | Path,
     hpss: HpssSpectra | None = None,
-) -> list[dict[str, object]]:
+    return_boundary_probability: bool = False,
+    return_feature_z: bool = False,
+):
+    """Phrase segments and optional reusable per-beat analysis outputs."""
     artifact = load_two_stage_model(str(Path(model_path).resolve()))
     settings = artifact["settings"]
     grid = build_predictor_grid(beat_times_sec, tempo_segments)
     if grid.n_beats < 17:
-        return []
+        if return_boundary_probability and return_feature_z:
+            return [], None, None
+        return ([], None) if return_boundary_probability else []
 
     acoustic = extract_song_features(
         None,
@@ -557,4 +562,8 @@ def detect_two_stage_phrase_segments(
         if end - start <= 1e-6:
             continue
         segments.append({"start": start, "end": end, "label": str(label)})
+    if return_boundary_probability and return_feature_z:
+        return segments, probability, feature_z
+    if return_boundary_probability:
+        return segments, probability
     return segments

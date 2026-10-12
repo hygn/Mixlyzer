@@ -76,7 +76,8 @@ class SegmentReanalysisWorkflow(QtCore.QObject):
         analyze_type = str(payload.get("analyze_type") or "beat")
         beats = np.asarray(payload.get("beats_time_sec"), dtype=float)
         if analyze_type == "jumpcue":
-            segments_input = np.empty((0, 4), dtype=float)
+            # Tempo segments only place the jump points on downbeats.
+            segments_input = np.asarray(payload.get("segments", np.empty((0, 4))), dtype=float)
             seg_index = 0
         else:
             segments_input = np.asarray(payload.get("segments"), dtype=float)
@@ -235,6 +236,10 @@ class SegmentReanalysisWorkflow(QtCore.QObject):
         jc_block = payload.get("jump_cues_np")
         if isinstance(jc_block, dict):
             self.model.features["jump_cues_np"] = jc_block
+        auto_block = payload.get("jump_cues_auto_np")
+        if isinstance(auto_block, dict):
+            # Saved with the editor's next save (the reanalysis is the new automatic result).
+            self.model.features["jump_cues_auto_np"] = auto_block
         extracted_jc = payload.get("jump_cues_extracted")
         if extracted_jc is not None:
             self.model.features["jump_cues_extracted"] = extracted_jc

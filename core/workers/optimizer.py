@@ -41,12 +41,18 @@ def _load_phrase_optimizer() -> _OptimizerDefinition:
     return _OptimizerDefinition(PhraseOptimizationRequest, optimize_phrase_parameters)
 
 
+def _load_jumpcue_optimizer() -> _OptimizerDefinition:
+    from optimizer.jumpcue_parameter_optimizer import JumpCueOptimizationRequest, optimize_jumpcue_parameters
+    return _OptimizerDefinition(JumpCueOptimizationRequest, optimize_jumpcue_parameters)
+
+
 # New optimizers only need a loader here and a UI job using the corresponding key.
 _OPTIMIZER_LOADERS: dict[str, Callable[[], _OptimizerDefinition]] = {
     "onset": _load_onset_optimizer,
     "beat_phase": _load_beat_phase_optimizer,
     "downbeat": _load_downbeat_optimizer,
     "phrase": _load_phrase_optimizer,
+    "jumpcue": _load_jumpcue_optimizer,
 }
 
 

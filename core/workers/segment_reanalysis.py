@@ -218,7 +218,9 @@ def _segment_reanalysis_entry(
         elif analyze_type == "jumpcue":
             if beats_arr.size == 0:
                 raise ValueError("beats_time_sec is required for JumpCUE reanalysis")
-            jc_dict = reanalyze_jumpCUE(path, cfg, beats_arr, progress_cb=_progress)
+            jc_dict = reanalyze_jumpCUE(
+                path, cfg, beats_arr, tempo_segments=tempo_segments_arr, progress_cb=_progress
+            )
             queue.put(
                 {
                     "type": "result",
