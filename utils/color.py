@@ -34,3 +34,18 @@ def key_cmap_color(idx: int):
     idx = int(idx) % 24
     r, g, b = hex_to_rgb(_CMAP_BY_IDX[idx])
     return int(r * 255), int(g * 255), int(b * 255)
+
+
+# Label text colour on each key colour (index 0..23, same order as the cmap):
+# black or white, whichever has the higher WCAG contrast ratio on it. Computed
+# once from _CMAP_BY_IDX; recompute if the key colours change.
+_K, _W = (0, 0, 0), (255, 255, 255)
+KEY_LABEL_TEXT_COLORS = [
+    _K, _K, _W, _K, _K, _K, _K, _W, _K, _K, _K, _K,   # majors: C..B
+    _K, _W, _K, _K, _W, _K, _W, _K, _W, _W, _K, _W,   # minors: Cm..Bm
+]
+
+
+def key_label_text_color(idx: int) -> tuple[int, int, int]:
+    """Black or white text for a label on key ``idx``'s colour."""
+    return KEY_LABEL_TEXT_COLORS[int(idx) % 24]

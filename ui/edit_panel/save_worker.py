@@ -8,14 +8,13 @@ from core.analysis_lib_handler import FeatureNPZStore
 from core.library_handler import LibraryDB
 from core.linear_segments import build_bpm_segments, build_key_segments
 from utils.cue_points import build_cue_points_np, build_phrase_cue_points
-from utils.keystrip import build_keystrip_buffer
 from utils.phrases import extract_phrase_segments
 
 
 class SaveWorker(QtCore.QObject):
     finished = QtCore.Signal(object)
 
-    def save(self, store: FeatureNPZStore, libpath: str, uid, *, beatgrid=None, segments=None, key_segments=None, key_np=None, jump_cues_np=None, jump_cues_extracted=None, jump_cues_auto_np=None, phrase_segments_np=None):
+    def save(self, store: FeatureNPZStore, libpath: str, uid, *, beatgrid=None, segments=None, key_segments=None, jump_cues_np=None, jump_cues_extracted=None, jump_cues_auto_np=None, phrase_segments_np=None):
         try:
             if uid is None:
                 return
@@ -26,11 +25,6 @@ class SaveWorker(QtCore.QObject):
                 prev_feat["tempo_segments"] = segments
             if key_segments is not None:
                 prev_feat["key_segments"] = key_segments
-                if key_np is None:
-                    duration = prev_feat.get("duration_sec", 0.0)
-                    key_np = build_keystrip_buffer(key_segments, duration)
-            if key_np is not None:
-                prev_feat["key_np"] = key_np
             if jump_cues_np is not None:
                 prev_feat["jump_cues_np"] = jump_cues_np
             if jump_cues_extracted is not None:

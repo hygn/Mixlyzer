@@ -19,7 +19,6 @@ from analyzer_core.editor.keystrip import (
 from analyzer_core.editor.jumpcue import reanalyze_jumpCUE
 from core.config import config
 from core.concurrency.process_worker import SpawnProcessWorker, install_parent_watchdog
-from utils.keystrip import build_keystrip_buffer
 
 
 class SegmentReanalysisWorker(SpawnProcessWorker):
@@ -180,15 +179,12 @@ def _segment_reanalysis_entry(
                 selection_tuple,
                 beat_times=beats_arr,
             )
-            total_duration = float(np.max(updated_segments[:, 3])) if updated_segments.size else 0.0
-            key_img = build_keystrip_buffer(updated_segments, total_duration)
             queue.put(
                 {
                     "type": "result",
                     "taskid": taskid,
                     "payload": {
                         "key_segments": updated_segments.tolist(),
-                        "key_image": key_img.tolist() if key_img is not None else None,
                         "key_selection": list(selection_tuple),
                     },
                 }
@@ -203,15 +199,12 @@ def _segment_reanalysis_entry(
                 progress_cb=_progress,
             )
             updated_segments = np.asarray(updated_segments, dtype=float)
-            total_duration = float(np.max(updated_segments[:, 3])) if updated_segments.size else 0.0
-            key_img = build_keystrip_buffer(updated_segments, total_duration)
             queue.put(
                 {
                     "type": "result",
                     "taskid": taskid,
                     "payload": {
                         "key_segments": updated_segments.tolist(),
-                        "key_image": key_img.tolist() if key_img is not None else None,
                     },
                 }
             )

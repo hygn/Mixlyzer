@@ -94,6 +94,7 @@ Working notes for AI/automation agents editing the Mixlyzer codebase.
   - `track_key_segments`
 - Numeric feature arrays live in `{libpath}/{uid}.npz` through `FeatureNPZStore`.
 - Track identity across DB and NPZ is the `uid` field stored in SQLite.
+- The key strip is rendered just in time from `key_segments` (`utils.keystrip.render_keystrip`). The `key_np` image older NPZs still hold is deprecated: never read, no longer written.
 - JumpCUEs are kept in two states in the NPZ: `jump_cues_np` (the user's, replaced by edits) and `jump_cues_auto_np` (the automatic result, replaced only by full analysis or JumpCUE reanalysis). The JumpCUE optimizer (settings → Analysis → JumpCUE) learns from where they differ; do not write edits into `jump_cues_auto_np`.
 - `DataModel` holds the live in-memory track state:
   - `features`

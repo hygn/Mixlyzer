@@ -9,7 +9,8 @@ def build_keystrip_buffer(
     *,
     width: int = 4096,
 ) -> np.ndarray | None:
-    """Return (key_image, time_grid, key_series) for the key strip."""
+    """Key strip image (width x 1 x RGB) of ``key_segments`` rows
+    [pitch, mode, start, end] over ``duration_sec``; None without segments."""
     duration = float(duration_sec or 0.0)
     if duration <= 0:
         return None
@@ -55,3 +56,39 @@ def build_keystrip_buffer(
         key_img[:, start_px:end_px, :] = color
 
     return key_img.swapaxes(0, 1)
+
+
+def render_keystrip(features: dict, duration_sec: float | None = None) -> np.ndarray | None:
+    """The key strip, rendered just in time from the stored key segments.
+
+    The stored ``key_np`` image is deprecated and never read: it could go stale
+    against the segments (edits, reanalysis over a different length)."""
+    if not isinstance(features, dict):
+        return None
+    duration = duration_sec if duration_sec else features.get("duration_sec")
+    return build_keystrip_buffer(features.get("key_segments"), float(duration or 0.0))
+
+
+def key_segment_rows(key_segments) -> list[tuple[int, float, float]]:
+    """(key index 0..23, start, end) of the valid rows of [pitch, mode, start, end], by start."""
+    try:
+        arr = np.asarray(key_segments, dtype=float)
+    except Exception:
+        return []
+    if arr.ndim != 2 or arr.shape[1] < 4:
+        return []
+    rows = []
+    for pitch, mode, start, end in arr[:, :4]:
+        if not (math.isfinite(pitch) and math.isfinite(start) and math.isfinite(end)) or end <= start:
+            continue
+        idx = int(pitch) % 12 + (12 if math.isfinite(mode) and int(mode) == 1 else 0)
+        rows.append((idx, float(start), float(end)))
+    rows.sort(key=lambda r: r[1])
+    return rows
+
+
+def key_segment_label(idx: int) -> str:
+    """Key strip label: Camelot / classical, as in the track info ("3B / C#")."""
+    from utils.labels import idx_to_labels
+    cam, cls = idx_to_labels(idx)
+    return f"{cam}\u2009/\u2009{cls}"

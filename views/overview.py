@@ -11,6 +11,8 @@ from utils.phrases import (
     merge_fill_phrases_for_display,
 )
 from utils.cue_points import extract_cue_points
+from utils.color import key_label_text_color
+from utils.keystrip import key_segment_label, key_segment_rows, render_keystrip
 
 
 def _down_triangle_path() -> QtGui.QPainterPath:
@@ -132,6 +134,13 @@ class OverviewWidget(QtWidgets.QWidget):
         self.img_key  = pg.ImageItem(); self.p.addItem(self.img_key)
         if hasattr(self.img_key, "setAutoDownsample"):
             self.img_key.setAutoDownsample(True)
+        self.img_key.setOpts(interpolation="nearest")
+        # key segment boundaries and labels (labels only where the segment is wide enough)
+        self.key_boundaries = QtWidgets.QGraphicsPathItem(); self.p.addItem(self.key_boundaries)
+        self.key_boundaries.setPen(pg.mkPen((255, 255, 255, 220), width=1, cosmetic=True))
+        self.key_boundaries.setZValue(7)
+        self.key_labels: list[pg.TextItem] = []
+        self._key_rows: list[tuple[int, float, float]] = []
 
         # Phrase overlay: translucent label band over the lower waveform.
         self.img_phrase = pg.ImageItem(); self.p.addItem(self.img_phrase)
@@ -251,15 +260,7 @@ class OverviewWidget(QtWidgets.QWidget):
             self._wave_preview_source = None
             self._wave_preview_cache = None
 
-        key_np = features.get("overview_key_np") or features.get("key_np")
-        if key_np is not None:
-            key_arr = key_np if isinstance(key_np, np.ndarray) else np.asarray(key_np)
-            if key_arr.size:
-                if key_arr.dtype != np.uint8:
-                    key_arr = np.clip(key_arr, 0, 255).astype(np.uint8)
-            key_img = np.ascontiguousarray(key_arr)
-            self.img_key.setImage(key_img, autoLevels=False, levels=self._wave_levels)
-            self.img_key.setRect(QtCore.QRectF(0.0, self._key_bottom, self.duration, self.KEY_H))
+        self.update_key_strip()
         jump_pairs = extract_jump_cue_pairs(features)
         self._jump_pairs = jump_pairs
         self._jump_cues, self._jump_links = extract_jump_cue_graph(features)
@@ -291,16 +292,48 @@ class OverviewWidget(QtWidgets.QWidget):
         self._jump_cues, self._jump_links = extract_jump_cue_graph(feats)
         self._render_jump_cues(self._jump_cues)
 
-    def update_key_image(self, key_img) -> None:
-        if key_img is None:
-            return
-        arr = np.asarray(key_img)
-        if arr.size == 0:
-            return
-        if arr.dtype != np.uint8:
-            arr = np.clip(arr, 0, 255).astype(np.uint8)
-        self.img_key.setImage(arr, autoLevels=False, levels=self._wave_levels)
-        self.img_key.setRect(QtCore.QRectF(0.0, self._key_bottom, self.duration, self.KEY_H))
+    def update_key_strip(self) -> None:
+        """Draw the key strip from the current key segments (rendered just in time)."""
+        key_img = render_keystrip(self.model.features, self.duration)
+        if key_img is None or self.duration <= 0:
+            self.img_key.clear()
+            self._key_rows = []
+        else:
+            self.img_key.setImage(np.ascontiguousarray(key_img), autoLevels=False, levels=self._wave_levels)
+            self.img_key.setRect(QtCore.QRectF(0.0, self._key_bottom, self.duration, self.KEY_H))
+            self._key_rows = key_segment_rows((self.model.features or {}).get("key_segments"))
+        edges = [t for _idx, start, end in self._key_rows for t in (start, end)]
+        self.key_boundaries.setPath(
+            self._phrase_boundary_path(edges, self._key_bottom, self._key_bottom + self.KEY_H)
+        )
+        while len(self.key_labels) < len(self._key_rows):
+            lbl = pg.TextItem("", anchor=(0.5, 0.5))
+            lbl.setFont(self._phrase_font)
+            lbl.setZValue(17)
+            self.p.addItem(lbl)
+            self.key_labels.append(lbl)
+        label_y = self._key_bottom + self.KEY_H * 0.5
+        for i, lbl in enumerate(self.key_labels):
+            if i < len(self._key_rows):
+                idx, start, end = self._key_rows[i]
+                lbl.setText(key_segment_label(idx))
+                lbl.setColor(key_label_text_color(idx))
+                lbl.setPos((start + end) * 0.5, label_y)
+            else:
+                lbl.setText("")
+        self._refresh_key_label_visibility()
+
+    def _refresh_key_label_visibility(self) -> None:
+        """Overview only: a key label shows when its segment is wider than the label."""
+        duration = max(float(self.duration), 1e-6)
+        view_w = max(float(self.canvas.width()), 1.0)
+        for i, lbl in enumerate(self.key_labels):
+            if i >= len(self._key_rows):
+                lbl.setVisible(False)
+                continue
+            _idx, start, end = self._key_rows[i]
+            seg_px = (end - start) / duration * view_w
+            lbl.setVisible(seg_px >= lbl.boundingRect().width() + 8.0)
 
     # events
     def _on_time(self, t: float):
@@ -861,6 +894,7 @@ class OverviewWidget(QtWidgets.QWidget):
         super().resizeEvent(event)
         self._now_px = None
         QtCore.QTimer.singleShot(0, self._refresh_bpm_label_visibility)
+        QtCore.QTimer.singleShot(0, self._refresh_key_label_visibility)
 
     def _refresh_bpm_label_visibility(self) -> None:
         for label, start, end, label_text in self.bpm_strip_items:

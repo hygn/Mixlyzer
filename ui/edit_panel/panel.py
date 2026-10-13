@@ -323,7 +323,7 @@ class EditPanel(
         self._update_undo_redo_buttons()
         self.btn_save.setStyleSheet(WARNING_BUTTON_STYLESHEET)
 
-    def apply_update_from_external(self, *, beatgrid=None, segments=None, key_segments=None, key_image=None) -> None:
+    def apply_update_from_external(self, *, beatgrid=None, segments=None, key_segments=None) -> None:
         updated = False
         if beatgrid is not None and segments is not None:
             self._beatgrid = beatgrid
@@ -347,10 +347,8 @@ class EditPanel(
             self.bus.sig_beatgrid_edited.emit()
             updated = True
         if key_segments is not None:
-            self.set_key_segments(key_segments, key_image=key_image)
-        elif key_image is not None and self._key_segments is not None:
-            self._broadcast_key_segments(key_image=key_image)
-        if key_segments is not None or key_image is not None:
+            self.set_key_segments(key_segments)
+        if key_segments is not None:
             self.bus.sig_key_selection_changed.emit(None)
         if updated:
             self._update_undo_redo_buttons()

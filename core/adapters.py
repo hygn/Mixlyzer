@@ -1,14 +1,8 @@
-from utils.keystrip import build_keystrip_buffer
-
 def normalize_gui_buffers(features: dict) -> dict:
-    """GUI buffers derived from the analysis features (the key strip image)."""
-    out = dict(features)
+    """GUI buffers derived from the analysis features.
 
-    key_np = build_keystrip_buffer(
-        out.get("key_segments"),
-        out.get("duration_sec"),
-    )
-    if key_np is not None:
-        out["key_np"] = key_np
-
-    return out
+    None at the moment: the key strip is rendered just in time from
+    ``key_segments`` (utils.keystrip.render_keystrip); the ``key_np`` image that
+    older libraries still hold in their NPZs is deprecated and never read.
+    """
+    return dict(features)

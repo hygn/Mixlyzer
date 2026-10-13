@@ -256,16 +256,9 @@ class SegmentReanalysisWorkflow(QtCore.QObject):
         key_segments = np.asarray(payload.get("key_segments", ()), dtype=float)
         if key_segments.ndim == 2 and key_segments.size:
             self.model.features["key_segments"] = key_segments
-            raw_img = payload.get("key_image")
-            key_np = self._safe_np_image(raw_img)
-            if key_np is not None:
-                self.model.features["key_np"] = key_np
             track_edit = self._track_edit_getter()
             if track_edit is not None:
-                track_edit.apply_update_from_external(
-                    key_segments=key_segments,
-                    key_image=key_np,
-                )
+                track_edit.apply_update_from_external(key_segments=key_segments)
         self.taskmanager.updatetask(taskid, "Key reanalysis finished", 1.0)
         self.taskmanager.rmtask(taskid)
 
@@ -293,14 +286,6 @@ class SegmentReanalysisWorkflow(QtCore.QObject):
         self._show_status(f"Segment reanalysis failed: {message}")
         if not self._workers:
             self.bus.sig_segment_reanalyze_state.emit(True)
-
-    def _safe_np_image(self, raw_img):
-        if raw_img is None:
-            return None
-        try:
-            return np.asarray(raw_img, dtype=np.uint8)
-        except Exception:
-            return None
 
     def _show_status(self, message: str) -> None:
         try:

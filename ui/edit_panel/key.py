@@ -6,7 +6,6 @@ from PySide6 import QtCore, QtWidgets
 from analyzer_core.editor.keystrip import update_key_segments_with_selection
 from ui.edit_panel.history import logElement
 from ui.edit_panel.styles import WARNING_BUTTON_STYLESHEET
-from utils.keystrip import build_keystrip_buffer
 from utils.labels import KEY_DISPLAY_LABELS
 
 class KeyEditMixin:
@@ -88,7 +87,7 @@ class KeyEditMixin:
             self.key_assign_combo,
         ]
 
-    def set_key_segments(self, key_segments, *, initialize: bool = False, key_image=None) -> None:
+    def set_key_segments(self, key_segments, *, initialize: bool = False) -> None:
         if key_segments is None:
             self._key_segments = np.empty((0, 4), dtype=float)
         else:
@@ -101,9 +100,9 @@ class KeyEditMixin:
                 self._key_segments = arr[:, :4].copy()
         if initialize:
             return
-        self._emit_key_update(key_image=key_image)
+        self._emit_key_update()
 
-    def _emit_key_update(self, key_image=None) -> None:
+    def _emit_key_update(self) -> None:
         self.edit_log.push(
             logElement(
                 beats_time=self._beatgrid,
@@ -114,19 +113,14 @@ class KeyEditMixin:
             )
         )
         self.btn_save.setStyleSheet(WARNING_BUTTON_STYLESHEET)
-        self._broadcast_key_segments(key_image=key_image)
+        self._broadcast_key_segments()
         self._update_undo_redo_buttons()
 
-    def _broadcast_key_segments(self, key_image=None) -> None:
-        segments_arr = np.asarray(self._key_segments, dtype=float)
+    def _broadcast_key_segments(self) -> None:
+        """Publish the key segments; views render the key strip from them."""
         if self.model is not None:
             try:
-                self.model.features["key_segments"] = segments_arr
-                if key_image is None and segments_arr.size:
-                    duration = float(self._track_time_bounds()[1])
-                    key_image = build_keystrip_buffer(segments_arr, duration)
-                if key_image is not None:
-                    self.model.features["key_np"] = np.asarray(key_image, dtype=np.uint8)
+                self.model.features["key_segments"] = np.asarray(self._key_segments, dtype=float)
             except Exception:
                 pass
         self.bus.sig_key_segments_updated.emit()

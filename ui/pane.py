@@ -730,13 +730,12 @@ class MainPane(QtWidgets.QWidget):
 
     def _on_key_segments_updated(self) -> None:
         key_segments = self.model.features.get("key_segments")
-        key_image = self.model.features.get("key_np")
         try:
             self._key_segments = np.asarray(key_segments, dtype=float)
         except Exception:
             self._key_segments = None
-        if key_image is not None and hasattr(self.ov, "update_key_image"):
-            self.ov.update_key_image(key_image)
+        if hasattr(self.ov, "update_key_strip"):
+            self.ov.update_key_strip()
 
     def _on_jumpcue_updated(self) -> None:
         jc_block = self.model.features.get("jump_cues_np")
