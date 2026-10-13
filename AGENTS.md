@@ -36,6 +36,7 @@ Working notes for AI/automation agents editing the Mixlyzer codebase.
   - `pane.py`: `MainPane` composition.
   - `library.py`: library table, search, transition search, export/reanalyze/edit actions.
   - `beatgrid_edit_panel.py`, `edit_song.py`, `export.py`, `config/`, `workers.py`: editing/export/settings/task dialogs.
+  - `theme/`: app look on every platform: Fusion + palette + app-wide QSS built from design tokens (`tokens.py`); colours for new UI come from `current_theme()`.
 - `views/`: pyqtgraph view plugins registered through `views.base.REGISTRY`.
 - `utils/`: labels, colors, fonts, JumpCUE extraction/render helpers, keystrip utilities, waveform helpers.
 - `third_party/`: export adapters such as Rekordbox XML generation.

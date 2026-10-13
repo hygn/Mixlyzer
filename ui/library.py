@@ -102,7 +102,7 @@ class FastDelegate(QtWidgets.QStyledItemDelegate):
             pm.fill(QtCore.Qt.transparent)
             p = QtGui.QPainter(pm)
             p.setFont(option.font)
-            p.setPen(option.palette.highlightedText().color() if selected else QtGui.QColor("#ffffff"))
+            p.setPen(option.palette.highlightedText().color() if selected else option.palette.text().color())
             tr = QtCore.QRect(0, 0, rect.width(), rect.height()).adjusted(4, 0, -4, 0)
             p.drawText(tr, QtCore.Qt.AlignVCenter | QtCore.Qt.TextSingleLine, text)
             p.end()
@@ -224,6 +224,11 @@ class LibraryWidget(QtWidgets.QWidget):
         self.table.setSortingEnabled(True)
         self.table.horizontalHeader().setStretchLastSection(True)
         self.table.horizontalHeader().setDefaultSectionSize(140)
+        # compact rows without grid lines; the header stays plain when a row is selected
+        self.table.setShowGrid(False)
+        self.table.horizontalHeader().setHighlightSections(False)
+        self.table.horizontalHeader().setDefaultAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
+        self.table.verticalHeader().setDefaultSectionSize(self.table.fontMetrics().height() + 8)
         self.table.setItemDelegate(FastDelegate(self.table))
         self.table.doubleClicked.connect(self._on_activate)
 

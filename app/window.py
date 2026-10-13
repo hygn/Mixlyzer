@@ -102,6 +102,7 @@ class AppWindow(QtWidgets.QMainWindow):
 
         # Toolbar
         tb = self.addToolBar("Transport")
+        tb.setMovable(False)
         a_cfg = QtGui.QAction("Settings", self);  a_cfg.triggered.connect(self.open_cfg)
         a_workers = QtGui.QAction("Workers", self); a_workers.triggered.connect(self.open_workers)
         a_support_tb = QtGui.QAction("Open Source", self); a_support_tb.triggered.connect(self._open_support)
