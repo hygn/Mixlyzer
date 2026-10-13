@@ -6,6 +6,7 @@ from analyzer_core.utils import offset_beats_and_segments
 from analyzer_core.beat.beat import (
     build_grid_from_period_phase,
     estimate_bpm_and_grid,
+    prune_close_beats,
     rebuild_grid_from_segments,
 )
 from analyzer_core.beat.downbeat_offset import detect_downbeat_offset_segments
@@ -14,8 +15,12 @@ from analyzer_core.beat.learned_onset import compute_beat_odf
 from analyzer_core.hpss import hpss_audio
 from core.config import config
 
-def canonical_inizio(inz: float, start: float, bpm: float) -> float:
-        """Wrap inizio within one bar of the provided start."""
+def canonical_inizio(inz: float, start: float, bpm: float, beats_per_bar: float = 4.0) -> float:
+        """Wrap inizio within one bar (``beats_per_bar`` beats) of the provided start.
+
+        Downbeats fall every ``ts_num`` beats from inizio, so the bar must be the
+        segment's own; wrapping a 3/4 segment by 4 beats would move its downbeat.
+        """
         if not np.isfinite(inz):
             return float(start)
         if not (np.isfinite(bpm) and bpm > 0):
@@ -23,7 +28,8 @@ def canonical_inizio(inz: float, start: float, bpm: float) -> float:
         period = 60.0 / float(bpm)
         if not np.isfinite(period) or period <= 0:
             return float(inz)
-        bar = 4.0 * period
+        meter = float(beats_per_bar) if np.isfinite(beats_per_bar) and beats_per_bar >= 1 else 4.0
+        bar = round(meter) * period
         if bar <= 0:
             return float(inz)
         rel = (inz - start) % bar
@@ -35,9 +41,15 @@ def shift_grid_in_seg(beatgrid_sec: np.ndarray, segments, segment_index: int, of
     _segments = np.asarray(segments, copy=True)
     st, ed, bpm, inz = _segments[segment_index][:4]
     assert 60/bpm > abs(offset)
-    # Indices delimiting [st, ed) in the current grid
-    sti = int(np.searchsorted(_beatgrid, st, side="left"))
-    edi = int(np.searchsorted(_beatgrid, ed, side="left"))
+    # Same span rebuild_grid_from_segments gives a segment: [st, ed) plus a hair
+    # (the last segment keeps a beat sitting exactly on the track end).
+    valid_ends = _segments[:, 1][np.isfinite(_segments[:, 1])]
+    track_end = float(np.max(valid_ends)) if valid_ends.size else float("inf")
+    end_limit = float(ed) + (1e-3 if float(ed) < track_end else 1e-6)
+    # Indices delimiting that span in the current grid; a beat within the hair
+    # past the previous segment's end is that segment's (as in the rebuild)
+    sti = int(np.searchsorted(_beatgrid, st + (1e-3 if segment_index > 0 else 0.0), side="left"))
+    edi = int(np.searchsorted(_beatgrid, end_limit, side="left"))
     sti = max(0, min(sti, len(_beatgrid)))
     edi = max(0, min(edi, len(_beatgrid)))
 
@@ -46,7 +58,8 @@ def shift_grid_in_seg(beatgrid_sec: np.ndarray, segments, segment_index: int, of
     cur_inz = _segments[segment_index, 3]
     if not np.isfinite(cur_inz):
         cur_inz = float(st)
-    new_inz = canonical_inizio(float(cur_inz) + float(offset), st, bpm)
+    ts_num = float(_segments[segment_index, 4]) if _segments.shape[1] >= 5 else 4.0
+    new_inz = canonical_inizio(float(cur_inz) + float(offset), st, bpm, ts_num)
     _segments[segment_index, 3] = new_inz
 
     # Rebuild beats inside [st, ed) using build_grid_from_period_phase
@@ -54,7 +67,7 @@ def shift_grid_in_seg(beatgrid_sec: np.ndarray, segments, segment_index: int, of
         return _beatgrid, _segments
 
     hop_t = 1e-3  # 1 ms resolution
-    total_len_frames = int(np.ceil(ed / hop_t))
+    total_len_frames = int(np.ceil(end_limit / hop_t))
     period_frames = T / hop_t
     phase_frames = new_inz / hop_t
     grid_main_sec, _ = build_grid_from_period_phase(
@@ -65,13 +78,12 @@ def shift_grid_in_seg(beatgrid_sec: np.ndarray, segments, segment_index: int, of
         subdiv=1,
     )
     if grid_main_sec.size:
-        mask = (grid_main_sec >= st) & (grid_main_sec < ed)
+        mask = (grid_main_sec >= st) & (grid_main_sec < end_limit)
         new_beats = grid_main_sec[mask]
     else:
         new_beats = np.array([], dtype=float)
 
-    _beatgrid = np.concatenate([_beatgrid[:sti], new_beats, _beatgrid[edi:]]).astype(float)
-    _beatgrid = np.sort(_beatgrid)
+    _beatgrid = prune_close_beats(np.concatenate([_beatgrid[:sti], new_beats, _beatgrid[edi:]]))
     return _beatgrid, _segments
 
 

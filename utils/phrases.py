@@ -50,6 +50,9 @@ _FALLBACK_PALETTE: list[tuple[int, int, int]] = [
 # resolution is around 10-30 microseconds, so sub-0.1 ms fragments can collapse
 # to zero on save and become impossible to select in the editor.
 MIN_PHRASE_DUR = 1e-4
+# Shorter than any real phrase (a beat at 300 BPM is 0.2 s): leftovers of a
+# boundary placed on an older beatgrid. Dropped, and gaps this small closed.
+PHRASE_SLIVER_SEC = 0.05
 
 
 def normalize_base_label(label: object) -> str:
@@ -113,7 +116,10 @@ def normalize_phrase_segments(
             previous_end = float(normalized[-1]["end"])
             if float(current["start"]) < previous_end + MIN_PHRASE_DUR:
                 current["start"] = previous_end
-        if float(current["end"]) - float(current["start"]) <= MIN_PHRASE_DUR:
+            elif float(current["start"]) - previous_end < PHRASE_SLIVER_SEC:
+                # a hairline gap left by a boundary from an older beatgrid
+                normalized[-1]["end"] = float(current["start"])
+        if float(current["end"]) - float(current["start"]) < PHRASE_SLIVER_SEC:
             continue
         normalized.append(current)
     return normalized

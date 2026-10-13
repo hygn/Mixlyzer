@@ -592,22 +592,31 @@ def rebuild_grid_from_segments(segments) -> np.ndarray:
         else:
             beat -= np.floor((beat - start) / period) * period
 
-        # Preserve a beat on a shared segment boundary, then prune its duplicate.
+        # Keep a beat that lands on a shared segment boundary despite float error
+        # (its duplicate from the next segment is pruned below). Only a hair past
+        # the end: a wider overshoot adds a phantom beat whenever the next
+        # segment's first beat comes later than that (e.g. after nudging it).
         # The final segment must not produce inaudible beats beyond the track end.
-        end_limit = float(end) + (1e-1 if float(end) < track_end else 1e-6)
+        end_limit = float(end) + (1e-3 if float(end) < track_end else 1e-6)
         while beat < end_limit:
             beats.append(float(beat))
             beat += period
 
-    if not beats:
-        return np.asarray([], dtype=float)
-    beat_arr = np.sort(np.asarray(beats, dtype=float))
+    return prune_close_beats(np.asarray(beats, dtype=float))
+
+
+MIN_BEAT_GAP_SEC = 0.05
+
+
+def prune_close_beats(beats, min_gap: float = MIN_BEAT_GAP_SEC) -> np.ndarray:
+    """Sort beats and drop any beat closer than ``min_gap`` to the one kept before it
+    (two segments' beats meeting at a shared boundary)."""
+    beat_arr = np.sort(np.asarray(beats, dtype=float).ravel())
     if beat_arr.size <= 1:
         return beat_arr
-
     pruned: list[float] = []
     for beat in beat_arr:
-        if pruned and (beat - pruned[-1]) < 0.05:
+        if pruned and (beat - pruned[-1]) < min_gap:
             continue
         pruned.append(float(beat))
     return np.asarray(pruned, dtype=float)
@@ -712,7 +721,8 @@ def refine_segments_via_beatgrid(
             score = _score_beats_against_odf(beats_candidate, odf, hop_t)
             if score > best_local_score + 1e-9:
                 old_inizio = candidate[idx + 1, 3]
-                new_inizio = canonical_inizio(old_inizio, candidate[idx + 1, 0], candidate[idx + 1, 2])
+                new_inizio = canonical_inizio(old_inizio, candidate[idx + 1, 0], candidate[idx + 1, 2],
+                                              candidate[idx + 1, 4] if candidate.shape[1] >= 5 else 4.0)
                 candidate[idx + 1, 3] = new_inizio
                 best_local_score = score
                 best_local_boundary = new_boundary
@@ -732,7 +742,7 @@ def refine_segments_via_beatgrid(
         cand = cand[1:]
         cand[0, 0] = 0.0
         old_inizio = cand[0, 3]
-        new_inizio = canonical_inizio(old_inizio, cand[0, 0], cand[0, 2])
+        new_inizio = canonical_inizio(old_inizio, cand[0, 0], cand[0, 2], cand[0, 4] if cand.shape[1] >= 5 else 4.0)
         cand[0, 3] = new_inizio
         beats = rebuild_grid_from_segments(cand)
         seg_arr = cand

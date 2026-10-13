@@ -1629,7 +1629,7 @@ class BeatgridEditPanel(QtWidgets.QWidget):
         new_segments[idx, 1] = cut_t
         new_segments[idx, 3] = inz
 
-        next_inz = self._next_downbeat_after(cut_t, inz, bpm, st)
+        next_inz = self._next_downbeat_after(cut_t, inz, bpm, st, ts_num)
         # New split half inherits the source segment's time signature.
         next_seg = np.array([cut_t, ed, bpm, next_inz, ts_num], dtype=float)
         new_segments = np.insert(new_segments, idx + 1, next_seg, axis=0)
@@ -1690,7 +1690,8 @@ class BeatgridEditPanel(QtWidgets.QWidget):
         updated[target_idx, 0] = seg_start
         updated[target_idx, 1] = seg_end
         updated[target_idx, 2] = bpm
-        updated[target_idx, 3] = canonical_inizio(inz, seg_start, bpm)
+        ts_num = float(updated[target_idx, 4]) if updated.shape[1] >= 5 else 4.0
+        updated[target_idx, 3] = canonical_inizio(inz, seg_start, bpm, ts_num)
 
         updated = np.delete(updated, donor_idx, axis=0)
         if donor_idx < target_idx:
@@ -2127,15 +2128,17 @@ class BeatgridEditPanel(QtWidgets.QWidget):
         self._emit_key_update()
 
     @staticmethod
-    def _next_downbeat_after(t: float, inizio: float, bpm: float, fallback_start: float) -> float:
-        """Return the absolute time of the first downbeat >= t."""
+    def _next_downbeat_after(t: float, inizio: float, bpm: float, fallback_start: float,
+                             beats_per_bar: float = 4.0) -> float:
+        """Return the absolute time of the first downbeat >= t (bars of ``beats_per_bar`` beats)."""
         target = float(t)
         ref = float(inizio) if np.isfinite(inizio) else float(fallback_start)
         if target <= ref + 1e-9:
             return ref
         if not (np.isfinite(bpm) and bpm > 0):
             return target
-        bar = 4.0 * (60.0 / float(bpm))
+        meter = round(float(beats_per_bar)) if np.isfinite(beats_per_bar) and beats_per_bar >= 1 else 4
+        bar = meter * (60.0 / float(bpm))
         if not np.isfinite(bar) or bar <= 0:
             return target
         steps = math.ceil((target - ref) / bar)
