@@ -1,14 +1,54 @@
-from PySide6 import QtCore
+from PySide6 import QtCore, QtGui, QtWidgets
 import pyqtgraph as pg
 from .base import ViewPlugin, register_view
 from core.beat_geometry import downbeat_beat_indices, bar_beat_label
+
+
+class _OutlinedText(QtWidgets.QGraphicsTextItem):
+    """Plain text drawn with a black outline (stroke under the fill), so the bar
+    label stays readable over the waveform."""
+
+    OUTLINE = QtGui.QColor(0, 0, 0)
+    OUTLINE_W = 3.0
+
+    def paint(self, painter, option, widget=None):
+        text = self.toPlainText()
+        if not text:
+            return
+        font = self.font()
+        margin = self.document().documentMargin()
+        path = QtGui.QPainterPath()
+        path.addText(margin, margin + QtGui.QFontMetricsF(font).ascent(), font, text)
+        painter.setRenderHint(QtGui.QPainter.Antialiasing, True)
+        pen = QtGui.QPen(self.OUTLINE, self.OUTLINE_W)
+        pen.setJoinStyle(QtCore.Qt.RoundJoin)
+        painter.strokePath(path, pen)
+        painter.fillPath(path, self.defaultTextColor())
+
+
+def _outlined_text_item(color) -> pg.TextItem:
+    """pg.TextItem whose text is drawn outlined and slightly bold."""
+    item = pg.TextItem("", color=color, anchor=(1.0, 0.0))
+    plain = item.textItem
+    outlined = _OutlinedText(item)
+    font = QtGui.QFont(plain.font())
+    font.setWeight(QtGui.QFont.Weight.DemiBold)
+    outlined.setFont(font)
+    outlined.setDefaultTextColor(plain.defaultTextColor())
+    plain.setParentItem(None)
+    item.textItem = outlined
+    item.updateTextPos()
+    return item
 
 @register_view("PlayHead")
 class PlayHead(ViewPlugin):
     def __init__(self, bus, model, tl):
         super().__init__(bus, model, tl)
         self.playhead = pg.InfiniteLine(angle=90, pen=pg.mkPen((255,200,50), width=2))
-        self.beat_label = pg.TextItem("", color=(50, 120, 255), anchor=(1.0, 0.0))
+        self.beat_label = _outlined_text_item((50, 120, 255))
+        # above every other main-plot item (cue markers 110, selection 120)
+        self.playhead.setZValue(1000)
+        self.beat_label.setZValue(1001)
         self._beats_time = ()
         self._downbeats = ()
         self._last_label = None
@@ -69,11 +109,12 @@ class PlayHead(ViewPlugin):
 
     def _compute_bar_beat_label(self) -> str:
         current = float(getattr(self.tl, "current_time", 0.0))
-        return bar_beat_label(
+        label = bar_beat_label(
             self._beats_time,
             current,
             downbeat_indices=self._downbeats,
         )
+        return f"{label} Bars" if label else ""
 
     def _update_label_position(self):
         if self.plot is None:

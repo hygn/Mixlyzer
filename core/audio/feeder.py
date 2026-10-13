@@ -84,6 +84,10 @@ class PCMFeeder(QtCore.QObject):
         self._seeked_while_paused = False
         self._mode = "speed"
         self._factor = 1.0
+        # Tempo 0 halts the deck: silence at a held position, the renderers are not
+        # called (factor 0 is invalid for them). Entering / leaving the halt fades.
+        self._halted = False
+        self._last_step = 1.0
         self._music_gain = 1.0
         self._soft_clip = False
         self._jump_start: Optional[float] = None
@@ -212,7 +216,8 @@ class PCMFeeder(QtCore.QObject):
 
     def set_factor(self, f: float) -> None:
         """Applies to audio rendered from now on; queued audio keeps the speed it was rendered at."""
-        self._factor = float(max(0.25, min(4.0, f)))
+        f = float(f)
+        self._factor = float(max(0.0, min(4.0, f))) if math.isfinite(f) else 1.0
 
     def set_music_gain(self, gain: float) -> None:
         self._music_gain = float(max(0.0, gain))
@@ -247,6 +252,8 @@ class PCMFeeder(QtCore.QObject):
             self._resume_device()  # the sink died while suspended: restart it before rendering
         self._playing = True
         self._obs_time = None
+        # Started at tempo 0: already halted (no fade-out blip of the last speed).
+        self._halted = self._step() <= 0.0
         self._seeked_while_paused = False
         self._sent_finished = False
         self._end_out_frame = None
@@ -400,7 +407,10 @@ class PCMFeeder(QtCore.QObject):
     def _render(self, pos: float, n_out: int) -> np.ndarray:
         if self._pcm is None:
             return np.zeros((0, self.ch), np.float32)
-        return self._resampler.render(self._pcm, pos, self._step(), n_out)
+        step = self._step()
+        if step <= 0.0:  # halted deck: silence, position held by the caller (pos += 0)
+            return np.zeros((max(0, int(n_out)), self.ch), np.float32)
+        return self._resampler.render(self._pcm, pos, step, n_out)
 
     def _append(self, out: np.ndarray, in_start: float, step: float) -> None:
         n = int(out.shape[0])
@@ -439,6 +449,31 @@ class PCMFeeder(QtCore.QObject):
 
     def _render_block(self, n_out: int) -> None:
         step = self._step()
+        if step <= 0.0:
+            if not self._halted:
+                # Tempo pulled to 0: fade out at the last speed instead of cutting off.
+                self._halted = True
+                if self._last_step > 0.0:
+                    tail = self._resampler.render(self._pcm, self._pos, self._last_step, self._fade_frames)
+                    tail = tail * fade_ramp(tail.shape[0], self._fade_frames, rising=False)
+                    self._append(tail, self._pos, self._last_step)
+                    self._pos += self._last_step * tail.shape[0]
+                    n_out -= tail.shape[0]
+                    self._mark_end_if_done()
+            if n_out > 0:
+                self._append_silence(n_out)
+            return
+        if self._halted:
+            # Moving again: fade in from the held position.
+            self._halted = False
+            head = self._render(self._pos, self._fade_frames)
+            head = head * fade_ramp(head.shape[0], self._fade_frames, rising=True)
+            self._append(head, self._pos, step)
+            self._pos += step * head.shape[0]
+            n_out -= head.shape[0]
+            if self._mark_end_if_done() or n_out <= 0:
+                return
+        self._last_step = step
         js, jd = self._jump_start, self._jump_dest
         if js is not None and jd is not None and self._pos < js <= self._pos + step * n_out:
             # Cut exactly at the jump point and keep the sub-frame phase at the destination.
@@ -453,9 +488,16 @@ class PCMFeeder(QtCore.QObject):
         out = self._render(self._pos, n_out)
         self._append(out, self._pos, step)
         self._pos += step * out.shape[0]
-        if self._pos >= self._len and self._end_out_frame is None:
+        self._mark_end_if_done()
+
+    def _mark_end_if_done(self) -> bool:
+        """Record the output frame where the track ran out (once); True at the end."""
+        if self._pos < self._len:
+            return False
+        if self._end_out_frame is None:
             self._pos = float(self._len)
             self._end_out_frame = self._timeline.rendered_frames
+        return True
 
     # Feed loop
     @QtCore.Slot()

@@ -5,6 +5,7 @@ import numpy as np
 from PySide6 import QtWidgets, QtCore, QtGui
 from analyzer_core.editor.beatgrid import shift_grid_in_seg, rebuild_grid_from_segments, canonical_inizio
 from analyzer_core.editor.keystrip import update_key_segments_with_selection
+from core.beat_geometry import MAX_BEATS_PER_BAR
 from core.event_bus import EventBus
 import time
 from dataclasses import dataclass, field
@@ -327,7 +328,7 @@ class BeatgridEditPanel(QtWidgets.QWidget):
 
         # Per-segment time signature (numerator, /4 denominator).
         self.cmb_time_sig = QtWidgets.QComboBox()
-        for _n in range(1, 17):
+        for _n in range(1, MAX_BEATS_PER_BAR + 1):
             self.cmb_time_sig.addItem(f"{_n}/4", _n)
         self.cmb_time_sig.setCurrentIndex(3)  # 4/4
         self.cmb_time_sig.setToolTip("Select the time signature for the current segment")
@@ -1847,6 +1848,8 @@ class BeatgridEditPanel(QtWidgets.QWidget):
         else:
             filtered = self.prev_tap_BPM + alpha * (inst_bpm - self.prev_tap_BPM)
         self.prev_tap_BPM = filtered
+        if self.tempo_multiplier <= 0:
+            return  # tempo 0 (deck halted): no tempo to scale the tap back by
         self.inp_refBPM.setText(f"{filtered/self.tempo_multiplier:.2f}")
     
     def _setBPM_set(self):

@@ -3,6 +3,7 @@
 from PySide6 import QtCore, QtGui, QtWidgets
 import ctypes
 import atexit
+import copy
 import json
 
 from app.print_hook import install_print_hook, log_environment_info
@@ -109,6 +110,7 @@ class AppWindow(QtWidgets.QMainWindow):
         self.bus.sig_stop_requested.connect(self.player.stop)
         self.bus.sig_pause_requested.connect(self.player.pause)
         self.bus.sig_play_requested.connect(self.player.play)
+        self.bus.sig_timestretch_toggle_requested.connect(self._on_timestretch_toggle)
         tb.addActions([a_cfg, a_workers, a_support_tb, a_about])
 
 
@@ -568,6 +570,14 @@ class AppWindow(QtWidgets.QMainWindow):
             QtCore.Q_ARG(bool, bool(pcfg.metronome_ducking)),
         )
         self.player.set_soft_clip(bool(pcfg.soft_clip))
+
+    def _on_timestretch_toggle(self, enabled: bool) -> None:
+        """Deck MT button: same as switching "Use timestretch" in the settings and saving."""
+        if bool(self.cfg.playbackconfig.use_timestretch) == bool(enabled):
+            return
+        new_cfg = copy.deepcopy(self.cfg)
+        new_cfg.playbackconfig.use_timestretch = bool(enabled)
+        self._on_settings_save(new_cfg)
 
     def _apply_timestretch(self, enabled: bool) -> None:
         if enabled:

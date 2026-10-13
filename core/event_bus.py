@@ -69,6 +69,9 @@ class EventBus(QtCore.QObject):
 
     sig_jumpcue_updated = QtCore.Signal()
 
+    # Deck MT button: playback.use_timestretch on/off (saved like the settings dialog)
+    sig_timestretch_toggle_requested = QtCore.Signal(bool)
+
     sig_jump_arm = QtCore.Signal(object)
     sig_jump_disarm = QtCore.Signal()
 

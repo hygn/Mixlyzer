@@ -1,17 +1,18 @@
 from PySide6 import QtCore
 import numpy as np
 import pyqtgraph as pg
-from .base import ViewPlugin, register_view
+from .base import KEY_LANE, ViewPlugin, register_view
 
 @register_view("KeyStripView")
 class KeyStripView(ViewPlugin):
-    """Thin key color strip at the bottom of the main plot (y ∈ [-h, 0])."""
-    def __init__(self, bus, model, tl, height=0.14):
+    """Thin key colour strip in the main plot's key lane (at the bottom, under the phrase band)."""
+    def __init__(self, bus, model, tl):
         super().__init__(bus, model, tl)
         self.img = pg.ImageItem()
         self.key_np = None
         self.duration = 0.0
-        self.h = float(height)
+        self.y0 = float(KEY_LANE[0])
+        self.h = float(KEY_LANE[1] - KEY_LANE[0])
 
         self.bus.sig_time_changed.connect(self.update_time)
         self.bus.sig_window_changed.connect(self.update_window)
@@ -65,4 +66,4 @@ class KeyStripView(ViewPlugin):
             return
         total_w = max(self.duration, self.tl.window_sec)
         left = self.tl.center_t - self.tl.current_time
-        self.img.setRect(QtCore.QRectF(left, 0, total_w, self.h))
+        self.img.setRect(QtCore.QRectF(left, self.y0, total_w, self.h))

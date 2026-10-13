@@ -11,7 +11,10 @@ from scipy.signal import butter, sosfiltfilt
 
 from core.config import load_cfg
 from utils.wave import frame_minmax, wave_colors, wave_coverage_columns
-from .base import ViewPlugin, register_view
+from .base import WAVEFORM_LANE, ViewPlugin, register_view
+
+_WAVE_Y = float(WAVEFORM_LANE[0])
+_WAVE_H = float(WAVEFORM_LANE[1] - WAVEFORM_LANE[0])
 
 
 RENDER_CHUNK_SEC = 1
@@ -443,7 +446,7 @@ class WaveformView(ViewPlugin):
                 levels=self._wave_levels,
             )
             self._preview_source = wave_data
-        self._preview_item.setRect(QtCore.QRectF(0.0, 0.14, max(self.duration, 1e-3), 1.0 - 0.24))
+        self._preview_item.setRect(QtCore.QRectF(0.0, _WAVE_Y, max(self.duration, 1e-3), _WAVE_H))
         self._update_preview_visibility()
 
     def _update_preview_visibility(self) -> None:
@@ -592,7 +595,7 @@ class WaveformView(ViewPlugin):
             end_sec = min(self.duration, start_sec + RENDER_CHUNK_SEC)
         else:
             start_sec, end_sec = span
-        item.setRect(QtCore.QRectF(start_sec, 0.14, end_sec - start_sec, 1.0 - 0.24))
+        item.setRect(QtCore.QRectF(start_sec, _WAVE_Y, end_sec - start_sec, _WAVE_H))
 
     def _set_rect(self, force: bool = False):
         if self.duration <= 0.0:

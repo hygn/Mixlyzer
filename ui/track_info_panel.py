@@ -1,11 +1,59 @@
 from __future__ import annotations
 
+import html
 import math
 from typing import Optional
 
 from PySide6 import QtWidgets, QtGui, QtCore
 
 from core.config import config
+from utils.labels import CAMELOT_LABELS, CLASSICAL_LABELS
+
+
+_VALUE = "#f0f3f6"   # current values, title
+_ARTIST = "#aab3bc"
+_DIM = "#8b949e"     # original values, meter, total time
+_UP = "#5fd38d"
+_DOWN = "#ff7b72"
+_BEAT_ON = "#3d8bf0"
+_BEAT_IN_BAR = "#e6e6e6"
+_BEAT_OFF = "#4a4a4a"
+_GAP = " "  # en space between the change and the meter
+_THIN = " "  # thin space around the "/" of a key: narrower key column
+KEY_LABEL_SAMPLES = [f"{cam}{_THIN}/{_THIN}{cls}" for cam, cls in zip(CAMELOT_LABELS, CLASSICAL_LABELS)]
+
+
+def _span(text: str, color: str) -> str:
+    return f'<span style="color:{color}">{html.escape(text)}</span>'
+
+
+def _bpm_text(bpm: float) -> str:
+    """Six characters at most: 999.99 below 1000 BPM, then one decimal up to 9999.9."""
+    bpm = min(max(float(bpm), 0.0), 9999.9)
+    return f"{bpm:.2f}" if bpm < 999.995 else f"{bpm:.1f}"
+
+
+def _signed(value: float, fmt: str) -> str:
+    """Signed, zero-padded number whose width never changes: "-" becomes the
+    minus sign U+2212, as wide as "+" and the digits (a hyphen is narrower)."""
+    return format(float(value), fmt).replace("-", "−")
+
+
+def _pp_text(pp: float) -> str:
+    """+002.00pp, −050.00pp"""
+    return _signed(max(-999.99, min(999.99, float(pp))), "+07.2f") + "pp"
+
+
+def _signed_color(value: float) -> str:
+    return _UP if value > 0 else _DOWN if value < 0 else _DIM
+
+
+def _clock(sec: float) -> str:
+    sec = max(0.0, float(sec))
+    m = int(sec // 60)
+    s = int(sec - 60 * m)
+    cs = int((sec - 60 * m - s) * 100)
+    return f"{m:02d}:{s:02d}.{cs:02d}"
 
 
 class MarqueeLabel(QtWidgets.QLabel):
@@ -248,10 +296,54 @@ class HorizontalBufferMeter(QtWidgets.QWidget):
         painter.end()
 
 
+class BeatDots(QtWidgets.QWidget):
+    """2 x 4 short bars under the record: the bar's beats (white up to the meter,
+    grey after it) with the current beat lit blue."""
+
+    COLS, ROWS = 4, 2
+    BAR_W, BAR_H, GAP_X, GAP_Y = 12, 2, 5, 3
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._meter = 4
+        self._current: Optional[int] = None
+        self.setFixedSize(self.COLS * self.BAR_W + (self.COLS - 1) * self.GAP_X,
+                          self.ROWS * self.BAR_H + (self.ROWS - 1) * self.GAP_Y)
+
+    def set_beat(self, beat_in_bar: Optional[int], meter: int = 4) -> None:
+        """``beat_in_bar`` 0-based (None: no beat); repaints only when it changes."""
+        meter = max(1, int(meter))
+        if beat_in_bar is not None:
+            beat_in_bar = int(beat_in_bar) % (self.COLS * self.ROWS)
+        if (beat_in_bar, meter) == (self._current, self._meter):
+            return
+        self._current, self._meter = beat_in_bar, meter
+        self.update()
+
+    def paintEvent(self, event: QtGui.QPaintEvent) -> None:
+        p = QtGui.QPainter(self)
+        p.setRenderHint(QtGui.QPainter.Antialiasing, True)
+        p.setPen(QtCore.Qt.NoPen)
+        for k in range(self.COLS * self.ROWS):
+            if k == self._current:
+                color = _BEAT_ON
+            elif k < self._meter:
+                color = _BEAT_IN_BAR
+            else:
+                color = _BEAT_OFF
+            p.setBrush(QtGui.QColor(color))
+            x = (k % self.COLS) * (self.BAR_W + self.GAP_X)
+            y = (k // self.COLS) * (self.BAR_H + self.GAP_Y)
+            p.drawRoundedRect(QtCore.QRectF(x, y, self.BAR_W, self.BAR_H), 1.0, 1.0)
+        p.end()
+
+
 class TrackInfoPanel(QtWidgets.QWidget):
     """Header widget that displays central track information."""
 
-    HEADER_H = 96
+    HEADER_H = 120
+    # record diameter: the header minus the MT / RST row above and the beat bars below
+    RECORD_D = 83
 
     def __init__(self, cfg: Optional[config] = None, parent=None):
         super().__init__(parent)
@@ -271,78 +363,151 @@ class TrackInfoPanel(QtWidgets.QWidget):
     def _init_ui(self):
         layout = QtWidgets.QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(8)
+        layout.setSpacing(14)
         layout.setAlignment(QtCore.Qt.AlignVCenter)
 
         self.cover_label = QtWidgets.QLabel()
         self.cover_label.setFixedSize(self.HEADER_H, self.HEADER_H)
         self.cover_label.setAlignment(QtCore.Qt.AlignCenter)
         self.cover_label.setScaledContents(False)
-        self.cover_label.setStyleSheet("background:#222; border:1px solid #444; padding:2px 2px 4px 2px;")
+        self.cover_label.setStyleSheet("background:#1c1c1c; border:1px solid #333; border-radius:6px; padding:3px;")
         layout.addWidget(self.cover_label, 0, QtCore.Qt.AlignVCenter)
 
         center = QtWidgets.QWidget()
         center.setMinimumHeight(self.HEADER_H)
         center.setMaximumHeight(self.HEADER_H)
-        grid = QtWidgets.QGridLayout(center)
-        grid.setContentsMargins(0, 0, 0, 0)
-        grid.setHorizontalSpacing(12)
-        grid.setVerticalSpacing(2)
-        grid.setAlignment(QtCore.Qt.AlignVCenter)
+        rows = QtWidgets.QVBoxLayout(center)
+        rows.setContentsMargins(0, 0, 0, 0)
+        rows.setSpacing(0)
+        rows.setAlignment(QtCore.Qt.AlignVCenter)
 
-        def _fix_label_h(lbl: QtWidgets.QLabel, *, ignore_width: bool = False):
+        def _style(lbl: QtWidgets.QLabel, size: int, bold: bool, color: str, *,
+                   ignore_width: bool = False) -> None:
+            f = lbl.font()
+            f.setPointSize(size)
+            f.setBold(bold)
+            lbl.setFont(f)
             lbl.setWordWrap(False)
-            h_policy = (
-                QtWidgets.QSizePolicy.Ignored
-                if ignore_width
-                else QtWidgets.QSizePolicy.Preferred
-            )
+            lbl.setStyleSheet(f"color: {color};")
+            h_policy = QtWidgets.QSizePolicy.Ignored if ignore_width else QtWidgets.QSizePolicy.Preferred
             lbl.setSizePolicy(h_policy, QtWidgets.QSizePolicy.Fixed)
 
         self.title_label = MarqueeLabel()
         self.artist_label = MarqueeLabel()
-        self.l_key = QtWidgets.QLabel("KEY: --")
-        self.l_cent = QtWidgets.QLabel("Cent: +000")
-        for w in (self.l_key,):
-            f = w.font()
-            f.setPointSize(18)
-            f.setBold(True)
-            w.setFont(f)
-            _fix_label_h(w)
-        for w in (self.title_label,):
-            f = w.font()
-            f.setPointSize(18)
-            f.setBold(True)
-            w.setFont(f)
-            _fix_label_h(w, ignore_width=True)
-        for w in (self.artist_label,):
-            f = w.font()
-            f.setPointSize(13)
-            f.setBold(False)
-            w.setFont(f)
-            _fix_label_h(w, ignore_width=True)
+        _style(self.title_label, 15, True, _VALUE, ignore_width=True)
+        _style(self.artist_label, 12, False, _ARTIST, ignore_width=True)
+        # BPM / KEY / time: every element has its own fixed-width cell, sized for
+        # the widest value it can take, so no value change moves anything. No
+        # brackets: groups are set apart by a gap and by colour (label, current
+        # value, original value, change).
+        info_font = QtGui.QFont(self.title_label.font())
+        info_font.setPointSize(12)
+        info_font.setBold(False)
+        fm = QtGui.QFontMetrics(info_font)
+        GROUP_GAP = 4
 
-        self.l_bpm = QtWidgets.QLabel("BPM: --")
-        self.l_time = QtWidgets.QLabel("00:00.00 / 00:00.00")
-        for w in (self.l_bpm, self.l_time, self.l_cent):
-            f = w.font()
-            f.setPointSize(12)
-            f.setBold(False)
-            w.setFont(f)
-            _fix_label_h(w)
+        def _cell(samples: list[str], color: str, *, right: bool = False, lead: int = 0) -> QtWidgets.QLabel:
+            lbl = QtWidgets.QLabel()
+            lbl.setFont(info_font)
+            lbl.setTextFormat(QtCore.Qt.RichText)
+            lbl.setStyleSheet(f"color: {color};")
+            lbl.setAlignment((QtCore.Qt.AlignRight if right else QtCore.Qt.AlignLeft) | QtCore.Qt.AlignVCenter)
+            lbl.setContentsMargins(lead, 0, 0, 0)
+            lbl.setFixedWidth(max(fm.horizontalAdvance(t) for t in samples) + 2 + lead)
+            lbl.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
+            return lbl
 
-        grid.addWidget(self.title_label, 0, 0, 1, 3, QtCore.Qt.AlignVCenter)
-        grid.addWidget(self.artist_label, 1, 0, 1, 3, QtCore.Qt.AlignVCenter)
-        grid.addWidget(self.l_bpm, 2, 0, 1, 1, QtCore.Qt.AlignVCenter)
-        grid.addWidget(self.l_time, 2, 4, 1, 1, QtCore.Qt.AlignVCenter)
-        grid.addWidget(self.l_key, 0, 4, 1, 1, QtCore.Qt.AlignVCenter)
-        grid.addWidget(self.l_cent, 1, 4, 1, 1, QtCore.Qt.AlignVCenter)
-        layout.addWidget(center, 1, QtCore.Qt.AlignVCenter)
+        # BPM and KEY share the columns label | current | original | change |
+        # meter, each column as wide as its widest value in either row (BPM is
+        # always six characters, see _bpm_text), all left-aligned so the rows
+        # line up like a table.
+        widest_key = max(KEY_LABEL_SAMPLES, key=fm.horizontalAdvance)
+        # The original value, its change and the meter run on in one last cell
+        # ("205.00 +00pp  4/4"): no gaps inside the group, and the cell's fixed
+        # width still keeps everything else in place.
+        columns = [
+            (["BPM", "KEY"], _VALUE, 0),
+            (["9999.9", "999.99", widest_key, "--"], _VALUE, 0),
+            ([f"9999.9 {_pp_text(-100)}{_GAP}8/4", f"{widest_key} {_signed(-12, '+06.2f')}"], _DIM, GROUP_GAP),
+        ]
+        self._bpm_cells = [_cell(w, color, lead=lead) for w, color, lead in columns]
+        self._key_cells = [_cell(w, color, lead=lead) for w, color, lead in columns]
+        self._time_cells = [_cell(["88:88.88"], _VALUE), _cell(["/ 88:88.88"], _DIM)]
+        # current phrase, last on the time row (its width never moves anything):
+        # a squircle in the phrase colour, then the label in white
+        self._phrase_swatch = QtWidgets.QLabel()
+        self._phrase_swatch.setFixedSize(11, 11)
+        policy = self._phrase_swatch.sizePolicy()
+        policy.setRetainSizeWhenHidden(True)  # keeps its slot: counted in the width cap, label never shifts
+        self._phrase_swatch.setSizePolicy(policy)
+        self._phrase_swatch.hide()
+        self._phrase_swatch_color: Optional[tuple[int, int, int]] = None
+        self._phrase_label = QtWidgets.QLabel()
+        self._phrase_label.setFont(info_font)
+        self._phrase_label.setStyleSheet(f"color: {_VALUE};")
+        self._phrase_label.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
+        # as wide as the longest standard label; longer custom labels are elided
+        self._phrase_label.setFixedWidth(fm.horizontalAdvance("BREAK_CHORUS10") + 2)
+        self._bpm_cells[0].setText("BPM")
+        self._key_cells[0].setText("KEY")
 
+        def _row(cells: list[QtWidgets.QLabel]) -> QtWidgets.QHBoxLayout:
+            row = QtWidgets.QHBoxLayout()
+            row.setContentsMargins(0, 0, 0, 0)
+            row.setSpacing(6)
+            for cell in cells:
+                row.addWidget(cell, 0, QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
+            row.addStretch(1)
+            return row
+
+        self.set_bpm(None)
+        self.set_key(None)
+        self.set_time(0.0, 0.0)
+
+        rows.addWidget(self.title_label, 0, QtCore.Qt.AlignVCenter)
+        rows.addWidget(self.artist_label, 0, QtCore.Qt.AlignVCenter)
+        rows.addLayout(_row(self._bpm_cells))
+        rows.addLayout(_row(self._key_cells))
+        time_row = _row(self._time_cells)
+        time_row.insertSpacing(time_row.count() - 1, GROUP_GAP + 6)
+        time_row.insertWidget(time_row.count() - 1, self._phrase_swatch, 0, QtCore.Qt.AlignVCenter)
+        time_row.insertWidget(time_row.count() - 1, self._phrase_label, 0, QtCore.Qt.AlignVCenter)
+        rows.addLayout(time_row)
+        # The info area is never wider than its widest fixed row (BPM / KEY /
+        # time + phrase); title and artist scroll inside that width. The space
+        # between it and the playback controls (record, meter) is left free.
+        info_rows = (rows.itemAt(i).layout() for i in range(rows.count()))
+        self._info_width = max(r.sizeHint().width() for r in info_rows if r is not None)
+        center.setMaximumWidth(self._info_width)
+        center.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed)
+        layout.addWidget(center, 0, QtCore.Qt.AlignVCenter)
+        layout.addStretch(1)
+
+        # round stop / play in a column left of the record, filled in by the
+        # main pane
+        self.transport_slot = QtWidgets.QVBoxLayout()
+        self.transport_slot.setContentsMargins(0, 0, 0, 0)
+        self.transport_slot.setSpacing(4)
+        self.transport_slot.setAlignment(QtCore.Qt.AlignBottom)
+        layout.addLayout(self.transport_slot)
+
+        # record with a row of deck buttons (MT / RST, filled in by the main
+        # pane) above it
+        record_col = QtWidgets.QVBoxLayout()
+        record_col.setContentsMargins(0, 0, 0, 0)
+        record_col.setSpacing(4)
+        self.record_buttons_slot = QtWidgets.QHBoxLayout()
+        self.record_buttons_slot.setContentsMargins(0, 0, 0, 0)
+        self.record_buttons_slot.setSpacing(6)
+        self.record_buttons_slot.setAlignment(QtCore.Qt.AlignHCenter)
+        record_col.addLayout(self.record_buttons_slot)
         self.record_label = QtWidgets.QLabel()
-        self.record_label.setFixedSize(self.HEADER_H-4, self.HEADER_H-4)
+        self.record_label.setFixedSize(self.RECORD_D, self.RECORD_D)
         self.record_label.setAlignment(QtCore.Qt.AlignCenter)
-        layout.addWidget(self.record_label, 0, QtCore.Qt.AlignVCenter)
+        record_col.addWidget(self.record_label, 0, QtCore.Qt.AlignHCenter)
+        self.beat_dots = BeatDots()
+        record_col.addWidget(self.beat_dots, 0, QtCore.Qt.AlignHCenter)
+        layout.addLayout(record_col)
 
         self.peak_meter = VerticalPeakMeter()
         layout.addWidget(self.peak_meter, 0, QtCore.Qt.AlignVCenter)
@@ -354,17 +519,53 @@ class TrackInfoPanel(QtWidgets.QWidget):
     def set_artist(self, text: str):
         self.artist_label.set_marquee_text((text or "").strip())
 
-    def set_bpm_text(self, text: str):
-        self.l_bpm.setText(text)
+    def set_bpm(self, current: Optional[float], original: float = 0.0, pp: float = 0.0, meter: int = 4):
+        """BPM  current  original +NNpp  meter; ``current`` None shows ``--``."""
+        _, value, rest = self._bpm_cells
+        if current is None:
+            value.setText("--")
+            rest.setText("")
+            return
+        value.setText(_bpm_text(current))
+        rest.setText(f"{_bpm_text(original)} {_span(_pp_text(pp), _signed_color(round(pp, 2)))}{_GAP}{int(meter)}/4")
 
-    def set_time_text(self, text: str):
-        self.l_time.setText(text)
+    def set_key(self, current: Optional[tuple[str, str]], original: tuple[str, str] = ("", ""),
+                semitones: float = 0.0):
+        """KEY  current  original +N.NN; keys as (Camelot, classical); None shows ``--``."""
+        _, value, rest = self._key_cells
+        if current is None:
+            value.setText("--")
+            rest.setText("")
+            return
+        shift = round(float(semitones), 2)
+        value.setText(html.escape(f"{current[0]}{_THIN}/{_THIN}{current[1]}"))
+        rest.setText(f"{html.escape(f'{original[0]}{_THIN}/{_THIN}{original[1]}')} "
+                     f"{_span(_signed(shift, '+06.2f'), _signed_color(shift))}")
 
-    def set_key_text(self, text: str):
-        self.l_key.setText(text)
+    def set_phrase(self, label: Optional[str], color: tuple[int, int, int] = (110, 110, 110)):
+        """Current phrase next to the time: a squircle in its colour and the
+        numbered label; None clears both."""
+        text = label or ""
+        width = self._phrase_label.width()
+        self._phrase_label.setText(
+            QtGui.QFontMetrics(self._phrase_label.font()).elidedText(text, QtCore.Qt.ElideRight, width) if text else ""
+        )
+        color = tuple(color) if label else None
+        if color == self._phrase_swatch_color:
+            return
+        self._phrase_swatch_color = color
+        if color is None:
+            self._phrase_swatch.hide()
+            return
+        self._phrase_swatch.setStyleSheet(f"background: rgb({color[0]},{color[1]},{color[2]}); border-radius: 3px;")
+        self._phrase_swatch.show()
 
-    def set_cent_text(self, text: str):
-        self.l_cent.setText(text)
+    def set_beat(self, beat_in_bar: Optional[int], meter: int = 4):
+        self.beat_dots.set_beat(beat_in_bar, meter)
+
+    def set_time(self, current_sec: float, duration_sec: float):
+        self._time_cells[0].setText(_clock(current_sec))
+        self._time_cells[1].setText("/ " + _clock(duration_sec))
 
     def update_album_art(self, album_art: Optional[QtGui.QImage]):
         self._last_album_art = album_art
@@ -444,7 +645,7 @@ class TrackInfoPanel(QtWidgets.QWidget):
         size: int | None = None,
         vinyl_path: Optional[str] = None,
     ):
-        size = size or self.HEADER_H - 4
+        size = size or self.RECORD_D
         dpr = self.record_label.devicePixelRatioF() if hasattr(self, "record_label") else 1.0
         pixel_size = max(1, int(round(size * dpr)))
         base = QtGui.QPixmap(pixel_size, pixel_size)
@@ -516,9 +717,17 @@ class TrackInfoPanel(QtWidgets.QWidget):
                 for r in range(8, (size // 2) - 8, 3):
                     painter.drawEllipse(QtCore.QRectF(size / 2 - r, size / 2 - r, 2 * r, 2 * r))
 
-        painter.setBrush(QtGui.QColor("#999"))
-        painter.setPen(QtGui.QPen(QtGui.QColor("#ddd"), 1))
-        painter.drawEllipse(QtCore.QRectF(size / 2 - 2, size / 2 - 2, 4, 4))
+        # Rim: one even white ring (balanced, so the spinning record never looks
+        # off-centre), with the upright marker as a red stretch of the same ring
+        # at 12 o'clock, turning with the record.
+        painter.setBrush(QtCore.Qt.NoBrush)
+        painter.setPen(QtGui.QPen(QtGui.QColor("#e6e6e6"), 2.5))
+        painter.drawEllipse(outer_rect)
+        marker_pen = QtGui.QPen(QtGui.QColor("#e5484d"), 2.5)
+        marker_pen.setCapStyle(QtCore.Qt.FlatCap)
+        painter.setPen(marker_pen)
+        painter.drawArc(outer_rect, (90 - 10) * 16, 20 * 16)
+
         painter.end()
 
         self._record_base_pix = base

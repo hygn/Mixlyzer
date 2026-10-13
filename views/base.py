@@ -3,6 +3,12 @@ import pyqtgraph as pg
 
 REGISTRY = {}
 
+# Main plot lanes (y in plot units, bottom to top): key strip, phrase band of the
+# same height, waveform, and a top margin for the JumpCUE blocks / cue markers.
+KEY_LANE = (0.0, 0.10)
+PHRASE_LANE = (0.10, 0.20)
+WAVEFORM_LANE = (0.20, 0.94)
+
 def register_view(name: str):
     def deco(cls):
         REGISTRY[name] = cls

@@ -1,7 +1,7 @@
 from PySide6 import QtCore, QtGui, QtWidgets
 import numpy as np
 import pyqtgraph as pg
-from .base import ViewPlugin, register_view
+from .base import PHRASE_LANE, ViewPlugin, register_view
 from utils.phrases import (
     extract_phrase_segments,
     extract_fill_phrase_markers,
@@ -40,10 +40,11 @@ def _sticky_label_left(
 
 @register_view("PhraseView")
 class PhraseView(ViewPlugin):
-    """Phrase (song-section) overlay: a translucent label band near the top."""
+    """Phrase (song-section) overlay: a translucent label band above the key strip."""
 
-    BAND_BOTTOM = 0.9
-    BAND_TOP = 1.0
+    BAND_BOTTOM, BAND_TOP = PHRASE_LANE
+    # fill arrows: just above the band, at the waveform's lower edge
+    FILL_ARROW_Y = PHRASE_LANE[1] + 0.04
 
     def __init__(self, bus, model, tl):
         super().__init__(bus, model, tl)
@@ -227,7 +228,7 @@ class PhraseView(ViewPlugin):
         visible_end: float,
     ) -> None:
         self._ensure_fill_arrow_items(len(self._fill_markers))
-        y = self.BAND_BOTTOM - 0.04
+        y = self.FILL_ARROW_Y
         pen = self._fill_arrow_pen()
         active_count = 0
         for marker in self._fill_markers:

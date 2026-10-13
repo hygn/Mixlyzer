@@ -4,6 +4,8 @@ import numpy as np
 
 
 DEFAULT_TIME_SIGNATURE = 4
+# Largest time signature the editor offers (n/4) and the beat dots can show.
+MAX_BEATS_PER_BAR = 8
 
 
 def _normalize_segments(tempo_segments) -> np.ndarray | None:
