@@ -79,9 +79,9 @@ class ParameterOptimizeProgressDialog(QDialog):
                 f"Done — {metric_kind} grid top-1 {result.grid_top1_accuracy:.1%}, "
                 f"beat AP {result.beat_average_precision:.1%}{skipped_suffix}"
             )
-        elif hasattr(result, "boundary_average_precision"):
+        elif hasattr(result, "label_change_f1"):
             text = (
-                f"Done — {metric_kind} boundary AP {result.boundary_average_precision:.1%}, "
+                f"Done — {metric_kind} key-section change F1 {result.key_change_f1:.1%}, "
                 f"label accuracy {result.label_accuracy:.1%}{skipped_suffix}"
             )
         else:

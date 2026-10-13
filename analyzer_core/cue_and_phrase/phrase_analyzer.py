@@ -28,11 +28,19 @@ from analyzer_core.cue_and_phrase.structural_features import (
     STRUCTURE_FEATURE_VERSION,
     multi_view_structure_features,
 )
+from analyzer_core.cue_and_phrase import refinement as _refine
+from analyzer_core.cue_and_phrase.refinement import REFINEMENT_VERSION
 from utils.atomic_io import atomic_output_path
 
 
 EPS = 1e-9
 NPZ_FORMAT = "mixlyzer_phrase_weight_v1"
+# Optional second-pass models: pass-2 boundary GBM, pass-2 label GBM and the
+# bar-pair same-label GBM. Artifacts without them run pass 1 only.
+REFINEMENT_MODELS = ("boundary2", "label2", "pair")
+# Later additions on top of pass 2: the label-change GBM (pairwise term of the
+# label Viterbi) and the bar-shift GBM for changes between key labels.
+OPTIONAL_REFINEMENT_MODELS = ("change", "shift")
 _REQUIRED_SETTINGS = frozenset(
     {
         "sr",
@@ -215,6 +223,9 @@ def export_two_stage_npz_artifact(artifact: dict[str, object], output_path: str 
     }
     _hgb_to_npz_payload("boundary", artifact["boundary_clf"], payload)
     _hgb_to_npz_payload("label", artifact["label_clf"], payload)
+    if artifact.get("refinement") is not None:
+        for prefix, clf in artifact["refinement"].items():
+            _hgb_to_npz_payload(prefix, clf, payload)
     out = Path(output_path)
     if out.suffix.lower() != ".npz":
         raise ValueError(f"Phrase artifact output must end with .npz: {out}")
@@ -265,7 +276,20 @@ def load_two_stage_model(path: str) -> dict[str, object]:
             raise ValueError(f"Unsupported Phrase boundary classes: {path}")
         if label_classes != label_labels:
             raise ValueError(f"Phrase label class order does not match the current format: {path}")
+        refinement = None
+        if "boundary2_baseline" in archive.files:
+            if int(settings.get("refinement_version", -1)) != REFINEMENT_VERSION:
+                raise ValueError(f"Unsupported Phrase refinement version: {path}")
+            if np.asarray(archive["label2_classes"]).astype(str).tolist() != label_labels:
+                raise ValueError(f"Phrase refinement label classes do not match: {path}")
+            refinement = {prefix: _load_numpy_hgb(archive, prefix) for prefix in REFINEMENT_MODELS}
+            for prefix in OPTIONAL_REFINEMENT_MODELS:
+                if f"{prefix}_baseline" in archive.files:
+                    refinement[prefix] = _load_numpy_hgb(archive, prefix)
+            if "shift" in refinement and not {"shift_offsets_beats", "shift_labels"} <= set(settings):
+                raise ValueError(f"Phrase shift model is missing its settings: {path}")
         return {
+            "refinement": refinement,
             "settings": settings,
             "boundary_clf": _load_numpy_hgb(archive, "boundary"),
             "label_clf": _load_numpy_hgb(archive, "label"),
@@ -444,7 +468,12 @@ def _decode_labels(
     label_weight: float,
     transition_weight: float,
     length_weight: float,
+    change_probability: np.ndarray | None = None,
+    change_weight: float = 0.0,
 ) -> list[str]:
+    """Label Viterbi over fixed segments. ``change_probability[i - 1]``: the
+    probability that the label changes between segments i - 1 and i, added as
+    ``change_weight * log p`` (different labels) or ``log (1 - p)`` (same)."""
     m, n_labels = logp.shape
     if m == 0:
         return []
@@ -456,11 +485,15 @@ def _decode_labels(
         emit = emit + float(length_weight) * np.vstack(
             [_length_ll(length_mu, length_sigma, int(length)) for length in lengths]
         )
+    same = np.eye(n_labels, dtype=bool)
     dp = np.full((m, n_labels), -1e18, dtype=np.float64)
     back = np.full((m, n_labels), -1, dtype=np.int32)
     dp[0] = emit[0] + float(transition_weight) * trans[start_state, :n_labels]
     for i in range(1, m):
         scores = dp[i - 1][:, np.newaxis] + float(transition_weight) * trans[:n_labels, :n_labels]
+        if change_probability is not None and change_weight:
+            pc = float(np.clip(change_probability[i - 1], 1e-4, 1.0 - 1e-4))
+            scores = scores + float(change_weight) * np.where(same, math.log(1.0 - pc), math.log(pc))
         back[i] = np.argmax(scores, axis=0)
         dp[i] = emit[i] + scores[back[i], np.arange(n_labels)]
     final = dp[-1] + float(transition_weight) * trans[:n_labels, end_state]
@@ -471,6 +504,170 @@ def _decode_labels(
         out.append(label)
     out.reverse()
     return [str(labels[i]) for i in out]
+
+
+def decode_phrase_boundaries(
+    probability: np.ndarray,
+    valid: np.ndarray,
+    downbeat: np.ndarray,
+    settings: dict[str, object],
+) -> np.ndarray:
+    """Peak picking plus DP drift correction; returns bounds including 0 and n."""
+    bounds = _pick_boundaries_probability(
+        probability,
+        threshold=float(settings["threshold"]),
+        min_distance_beats=int(settings["min_distance_beats"]),
+        max_boundaries=settings["max_boundaries"],
+    )
+    return _refine_boundaries(
+        bounds,
+        probability,
+        valid,
+        downbeat,
+        window_beats=int(settings["boundary_refine_window_beats"]),
+        target_lengths_beats=settings["boundary_lengths_beats"],
+        length_weight=float(settings["boundary_length_weight"]),
+        shift_penalty=float(settings["boundary_shift_penalty"]),
+        downbeat_bonus=float(settings["boundary_downbeat_bonus"]),
+    )
+
+
+def decode_phrase_labels(
+    artifact: dict[str, object],
+    logp: np.ndarray,
+    bounds: np.ndarray,
+    change_probability: np.ndarray | None = None,
+) -> list[str]:
+    """Label Viterbi over fixed segments with the artifact's transition / length model."""
+    settings = artifact["settings"]
+    return _decode_labels(
+        list(artifact["label_labels"]),
+        np.asarray(artifact["label_transition"], dtype=np.float64),
+        np.asarray(artifact["label_length_mu"], dtype=np.float64),
+        np.asarray(artifact["label_length_sigma"], dtype=np.float64),
+        logp,
+        bounds,
+        label_weight=float(settings["label_weight"]),
+        transition_weight=float(settings["transition_weight"]),
+        length_weight=float(settings["length_weight"]),
+        change_probability=change_probability,
+        change_weight=float(settings.get("label_change_weight", 0.0)),
+    )
+
+
+def repeat_inputs(feature_z: np.ndarray, downbeat: np.ndarray) -> dict[str, np.ndarray]:
+    """Label-independent repetition inputs of the refinement pass (cacheable per track)."""
+    n = int(np.asarray(feature_z).shape[0])
+    mats = _refine.repetition_matrices(feature_z)
+    bars = _refine.bar_beats(downbeat, n)
+    pair_X, pair_a, pair_b = _refine.pair_features(feature_z, mats, bars)
+    partner_idx, partner_w = _refine.repeat_partners(mats)
+    return {
+        "repetition": _refine.repetition_features(mats),
+        "partner_idx": partner_idx,
+        "partner_w": partner_w,
+        "bars": bars.astype(np.int32),
+        "pair_X": pair_X,
+        "pair_a": pair_a,
+        "pair_b": pair_b,
+    }
+
+
+def similarity_from_inputs(pair_clf, inputs: dict[str, np.ndarray]) -> np.ndarray:
+    return _refine.similarity_matrix(
+        pair_clf, inputs["pair_X"], inputs["pair_a"], inputs["pair_b"], int(inputs["bars"].size)
+    )
+
+
+def pass_one_context(
+    label_clf,
+    feature_z: np.ndarray,
+    bounds: np.ndarray,
+    valid: np.ndarray,
+    downbeat: np.ndarray,
+    label_context_beats,
+) -> dict[str, np.ndarray]:
+    """Pass-1 label posteriors the refinement pass reads (per beat and per left/right window)."""
+    n = int(np.asarray(feature_z).shape[0])
+    post = label_clf.predict_proba(
+        segment_feature_matrix(np.asarray(feature_z, dtype=np.float64), bounds, label_context_beats)
+    )
+    left, right = _refine.window_label_posteriors(label_clf, feature_z, valid, downbeat, label_context_beats)
+    return {"beat_post": _refine.beat_posterior(post, bounds, n), "left": left, "right": right}
+
+
+def refinement_boundary_matrix(
+    boundary_feature_z: np.ndarray,
+    probability: np.ndarray,
+    bounds: np.ndarray,
+    context: dict[str, np.ndarray],
+    inputs: dict[str, np.ndarray],
+    S: np.ndarray,
+) -> np.ndarray:
+    n = int(np.asarray(probability).size)
+    return _refine.boundary_refinement_features(
+        boundary_feature_z, probability, bounds, context["beat_post"], context["left"], context["right"],
+        inputs["repetition"], (inputs["partner_idx"], inputs["partner_w"]),
+        _refine.similarity_boundary_features(S, inputs["bars"], n),
+    )
+
+
+def refinement_label_matrix(
+    feature_z: np.ndarray,
+    bounds: np.ndarray,
+    label_context_beats,
+    beat_post: np.ndarray,
+    inputs: dict[str, np.ndarray],
+    S: np.ndarray,
+) -> np.ndarray:
+    return _refine.label_refinement_features(
+        feature_z, bounds, label_context_beats, beat_post, inputs["repetition"],
+        (inputs["partner_idx"], inputs["partner_w"]), S, inputs["bars"],
+    )
+
+
+def refine_phrase_segments(
+    artifact: dict[str, object],
+    feature_z: np.ndarray,
+    boundary_feature_z: np.ndarray,
+    valid: np.ndarray,
+    downbeat: np.ndarray,
+    probability: np.ndarray,
+    bounds: np.ndarray,
+    inputs: dict[str, np.ndarray],
+) -> tuple[np.ndarray, list[str]]:
+    """Pass 2: re-predict boundaries from pass-1 outputs, then re-label the segments."""
+    settings = artifact["settings"]
+    models = artifact["refinement"]
+    ctx = settings["label_context_beats"]
+    n = int(np.asarray(feature_z).shape[0])
+    S = similarity_from_inputs(models["pair"], inputs)
+    context = pass_one_context(artifact["label_clf"], feature_z, bounds, valid, downbeat, ctx)
+    X2 = refinement_boundary_matrix(boundary_feature_z, probability, bounds, context, inputs, S)
+    pass_one_bounds = bounds
+    bounds = decode_phrase_boundaries(
+        _predict_boundary_probability(models["boundary2"], X2, valid), valid, downbeat, settings
+    )
+    post = artifact["label_clf"].predict_proba(
+        segment_feature_matrix(np.asarray(feature_z, dtype=np.float64), bounds, ctx)
+    )
+    beat_post = _refine.beat_posterior(post, bounds, n)
+    X3 = refinement_label_matrix(feature_z, bounds, ctx, beat_post, inputs, S)
+    logp = np.log(np.clip(models["label2"].predict_proba(X3), 1e-7, 1.0))
+    change = None
+    if "change" in models and bounds.size > 2:
+        change = models["change"].predict_proba(
+            _refine.label_change_features(feature_z, bounds, ctx, beat_post, S, inputs["bars"])
+        )[:, 1]
+    labels = decode_phrase_labels(artifact, logp, bounds, change)
+    if "shift" in models:
+        if settings.get("shift_phrase_grid", False):
+            X2 = np.hstack([X2, _refine.phrase_grid_features(pass_one_bounds, n)])
+        bounds = _refine.shift_key_changes(
+            bounds, labels, models["shift"], X2,
+            settings["shift_offsets_beats"], settings["shift_labels"],
+        )
+    return bounds, labels
 
 
 def detect_two_stage_phrase_segments(
@@ -511,42 +708,22 @@ def detect_two_stage_phrase_segments(
     structural = multi_view_structure_features(feature_z)
     boundary_feature_z = np.hstack([boundary_feature_z, structural])
     valid = valid_boundary_mask(feature_z.shape[0], int(settings["edge_beats"]))
-    boundary_clf = artifact["boundary_clf"]
-    probability = _predict_boundary_probability(boundary_clf, boundary_feature_z, valid)
-    bounds = _pick_boundaries_probability(
-        probability,
-        threshold=float(settings["threshold"]),
-        min_distance_beats=int(settings["min_distance_beats"]),
-        max_boundaries=settings["max_boundaries"],
-    )
-    bounds = _refine_boundaries(
-        bounds,
-        probability,
-        valid,
-        np.asarray(grid.downbeat_mask, dtype=bool),
-        window_beats=int(settings["boundary_refine_window_beats"]),
-        target_lengths_beats=settings["boundary_lengths_beats"],
-        length_weight=float(settings["boundary_length_weight"]),
-        shift_penalty=float(settings["boundary_shift_penalty"]),
-        downbeat_bonus=float(settings["boundary_downbeat_bonus"]),
-    )
-
-    labels = _decode_labels(
-        list(artifact["label_labels"]),
-        np.asarray(artifact["label_transition"], dtype=np.float64),
-        np.asarray(artifact["label_length_mu"], dtype=np.float64),
-        np.asarray(artifact["label_length_sigma"], dtype=np.float64),
-        _label_logp(
-            artifact["label_clf"],
-            feature_z,
+    downbeat = np.asarray(grid.downbeat_mask, dtype=bool)
+    # The returned per-beat probability stays the pass-1 one: downstream
+    # analyzers (JumpCUE) are trained on it.
+    probability = _predict_boundary_probability(artifact["boundary_clf"], boundary_feature_z, valid)
+    bounds = decode_phrase_boundaries(probability, valid, downbeat, settings)
+    if artifact.get("refinement") is not None:
+        bounds, labels = refine_phrase_segments(
+            artifact, feature_z, boundary_feature_z, valid, downbeat, probability, bounds,
+            repeat_inputs(feature_z, downbeat),
+        )
+    else:
+        labels = decode_phrase_labels(
+            artifact,
+            _label_logp(artifact["label_clf"], feature_z, bounds, settings["label_context_beats"]),
             bounds,
-            settings["label_context_beats"],
-        ),
-        bounds,
-        label_weight=float(settings["label_weight"]),
-        transition_weight=float(settings["transition_weight"]),
-        length_weight=float(settings["length_weight"]),
-    )
+        )
 
     beat_times = np.asarray(grid.beat_times_sec, dtype=np.float64)
     duration = float(acoustic.audio_duration_sec)

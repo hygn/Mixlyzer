@@ -674,10 +674,10 @@ class AnalysisSettingsMixin:
             (
                 f"Phrase parameter updated:\n{result.output_path}\n\n"
                 f"Tracks: {result.track_count}\n"
-                f"{kind} boundary AP: {result.boundary_average_precision:.1%}\n"
-                f"{kind} boundary F1 @ 0.70: {result.boundary_f1:.1%}\n"
-                f"{kind} label accuracy: {result.label_accuracy:.1%}\n"
-                f"{kind} label macro-F1: {result.label_macro_f1:.1%}"
+                f"{kind} boundary F1 (exact beat): {result.boundary_f1:.1%}\n"
+                f"{kind} key-section change F1: {result.key_change_f1:.1%}\n"
+                f"{kind} label-change boundary F1: {result.label_change_f1:.1%}\n"
+                f"{kind} beat label accuracy: {result.label_accuracy:.1%}"
                 + (
                     ""
                     if result.cross_validated

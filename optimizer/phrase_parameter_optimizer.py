@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import Callable
 
 import numpy as np
-from sklearn.metrics import accuracy_score, average_precision_score, f1_score
 from sklearn.model_selection import GroupKFold
 
 from optimizer import (
@@ -20,7 +19,10 @@ from optimizer import phrase_backend as _phrase_backend
 from analyzer_core.cue_and_phrase.phrase_analyzer import (
     export_two_stage_npz_artifact,
     load_two_stage_model,
+    repeat_inputs,
 )
+from analyzer_core.cue_and_phrase.refinement import REFINEMENT_VERSION
+from optimizer import phrase_refinement as _refinement
 from analyzer_core.cue_and_phrase.context_features import (
     CONTEXT_FEATURE_VERSION,
     DEFAULT_BOUNDARY_REGIONAL_CONTEXT_BEATS,
@@ -29,7 +31,6 @@ from analyzer_core.cue_and_phrase.context_features import (
 from analyzer_core.cue_and_phrase.model_features import (
     boundary_feature_matrix,
     grid_context_feature_matrix,
-    segment_feature_matrix,
     valid_boundary_mask,
 )
 from analyzer_core.cue_and_phrase.structural_features import (
@@ -84,76 +85,57 @@ class PhraseOptimizationResult:
     track_count: int
     feature_dim: int
     boundary_dim: int
-    boundary_average_precision: float
+    # Decoded pipeline (pass 1 + pass 2) at the exact beat: all boundaries,
+    # boundaries between two different labels, and beat label accuracy.
     boundary_f1: float
+    label_change_f1: float
     label_accuracy: float
-    label_macro_f1: float
+    # Changes between two different key labels (INTRO / VERSE / CHORUS /
+    # BREAK_CHORUS / INTERLUDE / OUTRO), the ones that matter for DJ use.
+    key_change_f1: float = 0.0
     skipped_tracks: tuple[SkippedOptimizationTrack, ...] = ()
     # False: the metrics are measured on the training tracks (in-sample).
     cross_validated: bool = False
 
 
-def _training_metrics(
-    prepared: list[dict[str, object]],
-    targets: list[tuple[np.ndarray, list[str]]],
-    boundary_clf,
-    label_model,
-) -> dict[str, float]:
-    boundary_truth: list[np.ndarray] = []
-    boundary_score: list[np.ndarray] = []
-    label_truth: list[np.ndarray] = []
-    label_predicted: list[np.ndarray] = []
-
-    for track, (bounds, labels) in zip(prepared, targets, strict=True):
-        features = np.asarray(track["boundary_feature_z"], dtype=np.float64)
-        valid = np.asarray(track["valid_mask"], dtype=bool)
-        truth = np.zeros(features.shape[0], dtype=bool)
-        interior = np.asarray(bounds, dtype=np.int32)[1:-1]
-        interior = interior[(interior >= 0) & (interior < truth.size)]
-        truth[interior] = True
-        probability = np.asarray(
-            boundary_clf.predict_proba(features), dtype=np.float64
-        )[:, 1]
-        boundary_truth.append(truth[valid])
-        boundary_score.append(probability[valid])
-
-        label_features = segment_feature_matrix(
-            np.asarray(track["feature_z"], dtype=np.float64),
-            np.asarray(bounds, dtype=np.int32),
-            track["label_context_beats"],
-        )
-        label_truth.append(np.asarray(labels, dtype=str))
-        label_predicted.append(
-            np.asarray(label_model.clf.predict(label_features), dtype=str)
-        )
-
-    all_boundary_truth = np.concatenate(boundary_truth)
-    all_boundary_score = np.concatenate(boundary_score)
-    all_label_truth = np.concatenate(label_truth)
-    all_label_predicted = np.concatenate(label_predicted)
+def _model_settings(config) -> dict[str, object]:
     return {
-        "boundary_average_precision": float(
-            average_precision_score(all_boundary_truth, all_boundary_score)
-        ),
-        "boundary_f1": float(
-            f1_score(
-                all_boundary_truth,
-                all_boundary_score >= BOUNDARY_THRESHOLD,
-                zero_division=0,
-            )
-        ),
-        "label_accuracy": float(
-            accuracy_score(all_label_truth, all_label_predicted)
-        ),
-        "label_macro_f1": float(
-            f1_score(
-                all_label_truth,
-                all_label_predicted,
-                average="macro",
-                zero_division=0,
-            )
-        ),
+        "context_feature_version": CONTEXT_FEATURE_VERSION,
+        "boundary_mode": BOUNDARY_MODE,
+        "threshold": BOUNDARY_THRESHOLD,
+        "boundary_context_beats": list(BOUNDARY_CONTEXT_BEATS),
+        "boundary_regional_context_beats": list(BOUNDARY_REGIONAL_CONTEXT_BEATS),
+        "multi_view_structural_features": True,
+        "structure_feature_version": STRUCTURE_FEATURE_VERSION,
+        "refinement_version": REFINEMENT_VERSION,
+        "label_change_weight": _refinement.LABEL_CHANGE_WEIGHT,
+        "shift_offsets_beats": list(_refinement.SHIFT_OFFSETS_BEATS),
+        "shift_labels": list(_refinement.KEY_LABELS),
+        "shift_phrase_grid": True,
+        "label_context_beats": list(LABEL_CONTEXT_BEATS),
+        "min_distance_beats": MIN_DISTANCE_BEATS,
+        "max_boundaries": MAX_BOUNDARIES,
+        "boundary_refine_window_beats": BOUNDARY_REFINE_WINDOW_BEATS,
+        "boundary_lengths_beats": list(BOUNDARY_LENGTHS_BEATS),
+        "boundary_length_weight": BOUNDARY_LENGTH_WEIGHT,
+        "boundary_shift_penalty": BOUNDARY_SHIFT_PENALTY,
+        "boundary_downbeat_bonus": BOUNDARY_DOWNBEAT_BONUS,
+        "label_weight": LABEL_WEIGHT,
+        "transition_weight": TRANSITION_WEIGHT,
+        "length_weight": LENGTH_WEIGHT,
+        "edge_beats": EDGE_BEATS,
+        "sr": config.sample_rate,
+        "n_fft": config.n_fft,
+        "hop_length": config.hop_length,
+        "n_mels": config.n_mels,
+        "n_mfcc": config.n_mfcc,
     }
+
+
+def _scaled(progress: ProgressCallback | None, lo: int, hi: int, prefix: str = "") -> ProgressCallback | None:
+    if progress is None:
+        return None
+    return lambda pct, msg: progress(lo + int(round(pct * (hi - lo) / 100)), f"{prefix}{msg}")
 
 
 def _fit_models(
@@ -187,29 +169,43 @@ def _fit_models(
     return boundary_clf, label_model
 
 
+def _fit_pipeline(
+    prepared: list[dict[str, object]],
+    indices: np.ndarray,
+    targets: list[tuple[np.ndarray, list[str]]],
+    settings: dict[str, object],
+    seed: int,
+    progress: ProgressCallback | None,
+) -> dict[str, object]:
+    return _refinement.fit_two_pass(
+        prepared, indices, targets, settings, _fit_models, int(seed), progress
+    )
+
+
 def _cross_validate(
     prepared: list[dict[str, object]],
     targets: list[tuple[np.ndarray, list[str]]],
+    settings: dict[str, object],
     folds: int,
     seed: int,
     progress: ProgressCallback | None,
 ) -> dict[str, float]:
-    """Track-level K-fold: refit both models per fold, score the held-out tracks (track-weighted mean)."""
+    """Track-level K-fold: refit the whole pipeline per fold and decode the held-out tracks."""
     indices = np.arange(len(prepared), dtype=np.int32)
     n_splits = min(int(folds), len(prepared))
-    totals: dict[str, float] = {}
+    predictions: list = [None] * len(prepared)
     for fold, (train, test) in enumerate(
         GroupKFold(n_splits=n_splits).split(indices, groups=indices), start=1
     ):
-        if progress is not None:
-            progress(5 + int(round((fold - 1) * 45 / n_splits)), f"Cross-validation fold {fold}/{n_splits}")
-        boundary_clf, label_model = _fit_models(prepared, train, targets, seed)
-        fold_metrics = _training_metrics(
-            [prepared[i] for i in test], [targets[i] for i in test], boundary_clf, label_model
+        lo = 5 + int(round((fold - 1) * 60 / n_splits))
+        hi = 5 + int(round(fold * 60 / n_splits))
+        artifact = _fit_pipeline(
+            prepared, train, targets, settings, seed,
+            _scaled(progress, lo, hi, f"Cross-validation fold {fold}/{n_splits}: "),
         )
-        for key, value in fold_metrics.items():
-            totals[key] = totals.get(key, 0.0) + float(value) * len(test)
-    return {key: value / len(prepared) for key, value in totals.items()}
+        for i in test:
+            predictions[int(i)] = _refinement.predict_track(prepared[int(i)], artifact)
+    return _refinement.pipeline_metrics(prepared, targets, predictions)
 
 
 def _structure_cache_path(cache_dir: Path, uid: str) -> Path:
@@ -258,6 +254,32 @@ def _load_current_structure_cache(
     return np.asarray(cached, dtype=np.float64)
 
 
+_REPEAT_KEYS = ("repetition", "partner_idx", "partner_w", "bars", "pair_X", "pair_a", "pair_b")
+
+
+def _repeat_cache_path(cache_dir: Path, uid: str) -> Path:
+    return Path(cache_dir) / f"{uid}.repeat_v{REFINEMENT_VERSION}.npz"
+
+
+def _load_repeat_cache(path: Path, beat_cache_path: Path, n_beats: int) -> dict[str, np.ndarray]:
+    """Cached refinement repetition inputs; raises when missing, stale or malformed."""
+    if path.stat().st_mtime_ns < beat_cache_path.stat().st_mtime_ns:
+        raise ValueError(f"Repetition cache predates beat cache: {path}")
+    with np.load(path, allow_pickle=False) as archive:
+        values = {key: np.asarray(archive[key]) for key in _REPEAT_KEYS}
+    if values["repetition"].shape[0] != int(n_beats) or values["partner_idx"].shape[0] != int(n_beats):
+        raise ValueError(f"Repetition cache does not match {n_beats} beats: {path}")
+    return values
+
+
+def _repeat_cache_is_current(path: Path, beat_cache_path: Path, n_beats: int) -> bool:
+    try:
+        _load_repeat_cache(path, beat_cache_path, n_beats)
+        return True
+    except Exception:
+        return False
+
+
 def _write_npy_atomic(path: Path, values: np.ndarray) -> None:
     with atomic_output_path(path) as temporary:
         np.save(temporary, values, allow_pickle=False)
@@ -299,6 +321,12 @@ def _build_track_caches(
                 f"expected {expected}"
             )
         _write_npy_atomic(structure_path, structural.astype(np.float32))
+        repeats = repeat_inputs(
+            np.asarray(feat["feature_z"], dtype=np.float64),
+            np.asarray(feat["grid"].downbeat_mask, dtype=bool),
+        )
+        with atomic_output_path(_repeat_cache_path(cache_dir, uid)) as temporary:
+            np.savez(temporary, **repeats)
         return uid, beat_was_current
 
     if threadpool_limits is None:
@@ -380,6 +408,8 @@ def optimize_phrase_parameters(
             n_beats = int(track["predictor_grid"].n_beats)
             structure_current = _structure_cache_is_current(
                 _structure_cache_path(cache_dir, uid), beat_cache_path, n_beats
+            ) and _repeat_cache_is_current(
+                _repeat_cache_path(cache_dir, uid), beat_cache_path, n_beats
             )
         if not beat_current or not structure_current:
             cache_jobs.append(
@@ -481,7 +511,8 @@ def optimize_phrase_parameters(
             )
             full_boundary_features = np.hstack(
                 [full_boundary_features, structural_features]
-            )
+            ).astype(np.float32)
+            repeats = _load_repeat_cache(_repeat_cache_path(cache_dir, uid), beat_cache, n)
             prepared.append(
                 {
                     "uid": uid,
@@ -495,6 +526,8 @@ def optimize_phrase_parameters(
                     "boundary_feature_z": full_boundary_features,
                     "label_context_beats": LABEL_CONTEXT_BEATS,
                     "valid_mask": valid,
+                    "downbeat": np.asarray(feat["grid"].downbeat_mask, dtype=bool),
+                    "repeat_inputs": repeats,
                     "optimizer_target": track["optimizer_target"],
                 }
             )
@@ -518,56 +551,29 @@ def optimize_phrase_parameters(
     targets = [track["optimizer_target"] for track in prepared]
     idx = np.arange(len(prepared), dtype=np.int32)
 
+    settings = _model_settings(config)
     cross_validated = int(request.cv_folds) >= 2
     cv_metrics = (
-        _cross_validate(prepared, targets, request.cv_folds, int(request.seed), optimize_progress)
+        _cross_validate(prepared, targets, settings, request.cv_folds, int(request.seed), optimize_progress)
         if cross_validated
         else None
     )
-    if optimize_progress is not None:
-        optimize_progress(55 if cross_validated else 5, "Fitting boundary and label GBMs")
-    boundary_clf, label_model = _fit_models(prepared, idx, targets, int(request.seed))
+    fit_lo = 65 if cross_validated else 5
+    artifact = _fit_pipeline(
+        prepared, idx, targets, settings, int(request.seed),
+        _scaled(optimize_progress, fit_lo, 88),
+    )
 
-    artifact = {
-        "boundary_clf": boundary_clf,
-        "label_clf": label_model.clf,
-        "label_labels": label_model.labels,
-        "label_transition": label_model.transition,
-        "label_length_mu": label_model.length_mu,
-        "label_length_sigma": label_model.length_sigma,
-        "settings": {
-            "context_feature_version": CONTEXT_FEATURE_VERSION,
-            "boundary_mode": BOUNDARY_MODE,
-            "threshold": BOUNDARY_THRESHOLD,
-            "boundary_context_beats": list(BOUNDARY_CONTEXT_BEATS),
-            "boundary_regional_context_beats": list(BOUNDARY_REGIONAL_CONTEXT_BEATS),
-            "multi_view_structural_features": True,
-            "structure_feature_version": STRUCTURE_FEATURE_VERSION,
-            "label_context_beats": list(LABEL_CONTEXT_BEATS),
-            "min_distance_beats": MIN_DISTANCE_BEATS,
-            "max_boundaries": MAX_BOUNDARIES,
-            "boundary_refine_window_beats": BOUNDARY_REFINE_WINDOW_BEATS,
-            "boundary_lengths_beats": list(BOUNDARY_LENGTHS_BEATS),
-            "boundary_length_weight": BOUNDARY_LENGTH_WEIGHT,
-            "boundary_shift_penalty": BOUNDARY_SHIFT_PENALTY,
-            "boundary_downbeat_bonus": BOUNDARY_DOWNBEAT_BONUS,
-            "label_weight": LABEL_WEIGHT,
-            "transition_weight": TRANSITION_WEIGHT,
-            "length_weight": LENGTH_WEIGHT,
-            "edge_beats": EDGE_BEATS,
-            "sr": config.sample_rate,
-            "n_fft": config.n_fft,
-            "hop_length": config.hop_length,
-            "n_mels": config.n_mels,
-            "n_mfcc": config.n_mfcc,
-        },
-    }
-
+    if cross_validated:
+        metrics = cv_metrics
+    else:
+        if optimize_progress is not None:
+            optimize_progress(88, "Evaluating fitted Phrase models")
+        metrics = _refinement.pipeline_metrics(
+            prepared, targets, [_refinement.predict_track(track, artifact) for track in prepared]
+        )
     if optimize_progress is not None:
-        optimize_progress(87, "Evaluating fitted Phrase models")
-    metrics = cv_metrics if cross_validated else _training_metrics(prepared, targets, boundary_clf, label_model)
-    if optimize_progress is not None:
-        optimize_progress(90, "Writing parameter artifact")
+        optimize_progress(95, "Writing parameter artifact")
     export_two_stage_npz_artifact(artifact, output_path)
     load_two_stage_model.cache_clear()
     if optimize_progress is not None:
@@ -578,10 +584,10 @@ def optimize_phrase_parameters(
         track_count=len(prepared),
         feature_dim=feature_dim,
         boundary_dim=boundary_dim,
-        boundary_average_precision=metrics["boundary_average_precision"],
         boundary_f1=metrics["boundary_f1"],
+        label_change_f1=metrics["label_change_f1"],
         label_accuracy=metrics["label_accuracy"],
-        label_macro_f1=metrics["label_macro_f1"],
+        key_change_f1=metrics["key_change_f1"],
         skipped_tracks=tuple(ignored),
         cross_validated=cross_validated,
     )
