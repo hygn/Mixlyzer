@@ -6,6 +6,7 @@ from typing import Optional
 
 from PySide6 import QtWidgets, QtGui, QtCore
 
+from ui.theme import current_theme
 from core.config import config
 from utils.labels import CAMELOT_LABELS, CLASSICAL_LABELS
 
@@ -338,6 +339,25 @@ class BeatDots(QtWidgets.QWidget):
         p.end()
 
 
+def _vrule() -> QtWidgets.QFrame:
+    """Thin vertical rule between header groups."""
+    rule = QtWidgets.QFrame()
+    rule.setFixedSize(1, TrackInfoPanel.HEADER_H - 24)
+    rule.setStyleSheet(f"background: {current_theme().separator};")
+    return rule
+
+
+def _gap() -> QtWidgets.QWidget:
+    """Empty space that grows with the header up to GAP_MAX."""
+    gap = QtWidgets.QWidget()
+    gap.setMaximumWidth(GAP_MAX)
+    gap.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+    return gap
+
+
+GAP_MAX = 32
+
+
 class TrackInfoPanel(QtWidgets.QWidget):
     """Header widget that displays central track information."""
 
@@ -363,7 +383,7 @@ class TrackInfoPanel(QtWidgets.QWidget):
     def _init_ui(self):
         layout = QtWidgets.QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(14)
+        layout.setSpacing(12)
         layout.setAlignment(QtCore.Qt.AlignVCenter)
 
         self.cover_label = QtWidgets.QLabel()
@@ -473,15 +493,28 @@ class TrackInfoPanel(QtWidgets.QWidget):
         time_row.insertWidget(time_row.count() - 1, self._phrase_swatch, 0, QtCore.Qt.AlignVCenter)
         time_row.insertWidget(time_row.count() - 1, self._phrase_label, 0, QtCore.Qt.AlignVCenter)
         rows.addLayout(time_row)
-        # The info area is never wider than its widest fixed row (BPM / KEY /
-        # time + phrase); title and artist scroll inside that width. The space
-        # between it and the playback controls (record, meter) is left free.
+        # The info area takes all the width the window gives the header, never
+        # less than its widest fixed row (BPM / KEY / time + phrase); title and
+        # artist scroll inside it.
         info_rows = (rows.itemAt(i).layout() for i in range(rows.count()))
         self._info_width = max(r.sizeHint().width() for r in info_rows if r is not None)
-        center.setMaximumWidth(self._info_width)
-        center.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed)
-        layout.addWidget(center, 0, QtCore.Qt.AlignVCenter)
-        layout.addStretch(1)
+        center.setMinimumWidth(self._info_width)
+        center.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+        layout.addWidget(center, 1, QtCore.Qt.AlignVCenter)
+
+        # the edit panel (filled in by the main pane) between the track info and
+        # the deck, set off by thin rules
+        self.editor_slot = QtWidgets.QHBoxLayout()
+        self.editor_slot.setContentsMargins(0, 0, 0, 0)
+        # gaps either side of each rule grow with the window, evenly and only up
+        # to GAP_MAX; the info area takes the rest
+        for item in (_gap(), _vrule(), _gap(), self.editor_slot, _gap(), _vrule(), _gap()):
+            if isinstance(item, QtWidgets.QLayout):
+                layout.addLayout(item)
+            elif isinstance(item, QtWidgets.QFrame):
+                layout.addWidget(item, 0, QtCore.Qt.AlignVCenter)
+            else:
+                layout.addWidget(item, 1)
 
         # round stop / play in a column left of the record, filled in by the
         # main pane

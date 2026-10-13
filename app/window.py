@@ -123,7 +123,7 @@ class AppWindow(QtWidgets.QMainWindow):
         self.bus.sig_rekordbox_sync_track_requested.connect(self.rekordbox_sync.sync_track_requested)
         self.bus.sig_reanalyze_requested.connect(self.reanalyze_file)
 
-        self.resize(1280, 860)
+        self.resize(1600, 900)  # minimum target: FHD
 
         # status
         self._external_sync_pending_seek: float | None = None

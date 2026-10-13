@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from typing import List, Optional, Type
 import time
@@ -18,7 +18,7 @@ from core.event_bus import EventBus
 from core.config import config
 from ui.mainplotvbx import NoDragNoWheelViewBox
 from ui.track_info_panel import TrackInfoPanel
-from ui.beatgrid_edit_panel import BeatgridEditPanel
+from ui.edit_panel import EditPanel
 from utils.volume import slider_percent_to_linear, trim_dbfs_to_linear
 from core.resource_paths import resource_path
 from core.beat_geometry import downbeat_beat_indices, segment_time_signature
@@ -157,20 +157,22 @@ class MainPane(QtWidgets.QWidget):
         ov_height = self.ov.maximumHeight() if hasattr(self, "ov") else 0
         editor_toggle_h = 24
         # Provisional height; the real height (accounting for actual child sizes
-        # and inter-widget spacing) is applied by _set_editor_panel_visible from
-        # the header layout's own sizeHint once all children exist.
-        HEADER_H = TrackInfoPanel.HEADER_H + ov_height + editor_toggle_h + BeatgridEditPanel.ROW_H
+        # and inter-widget spacing) is applied by _fit_header_height from the
+        # header layout's own sizeHint once all children exist.
+        HEADER_H = TrackInfoPanel.HEADER_H + ov_height + editor_toggle_h
         self.header = QtWidgets.QWidget()
         self.header.setMinimumHeight(HEADER_H)
         self.header.setMaximumHeight(HEADER_H)
 
         header_v = QtWidgets.QVBoxLayout(self.header)
         header_v.setContentsMargins(0, 0, 0, 0)
-        header_v.setSpacing(4)
+        header_v.setSpacing(6)
 
+        # breathing room around the deck row: off the waveforms above / below
+        # and off the window edges
         top_row = QtWidgets.QHBoxLayout()
-        top_row.setContentsMargins(0, 0, 0, 0)
-        top_row.setSpacing(8)
+        top_row.setContentsMargins(8, 8, 14, 8)
+        top_row.setSpacing(12)
         top_row.setAlignment(QtCore.Qt.AlignVCenter)
         header_v.addLayout(top_row, stretch=0)
 
@@ -178,7 +180,9 @@ class MainPane(QtWidgets.QWidget):
         self.track_info.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
         top_row.addWidget(self.track_info, 1, QtCore.Qt.AlignVCenter)
 
-        self.track_edit = BeatgridEditPanel(bus=self.bus, model=self.model)
+        # the edit panel sits in the track info header, between the info and the deck
+        self.track_edit = EditPanel(bus=self.bus, model=self.model)
+        self.track_info.editor_slot.addWidget(self.track_edit, 0, QtCore.Qt.AlignVCenter)
 
         def _match_track_info_height(widget: QtWidgets.QWidget) -> None:
             widget.setMinimumHeight(TrackInfoPanel.HEADER_H)
@@ -331,49 +335,21 @@ class MainPane(QtWidgets.QWidget):
         toggle_row = QtWidgets.QHBoxLayout()
         toggle_row.setContentsMargins(0, 0, 0, 0)
         toggle_row.setSpacing(12)
-        self.cb_show_editors = QtWidgets.QCheckBox("Show Editors")
-        self.cb_show_editors.setChecked(False)
-        self.cb_show_editors.setMinimumHeight(editor_toggle_h)
-        self.cb_show_editors.setMaximumHeight(editor_toggle_h)
-
-        # Editor page toggle (moved here, next to "Show Editors"):
-        # Beat/Key | Phrase/JumpCUE -> switches the editor panel's stacked page.
-        self.btn_page_beatkey = QtWidgets.QToolButton()
-        self.btn_page_beatkey.setText("Beat/Key")
-        self.btn_page_beatkey.setCheckable(True)
-        self.btn_page_beatkey.setChecked(True)
-        self.btn_page_phrasejc = QtWidgets.QToolButton()
-        self.btn_page_phrasejc.setText("Phrase/JumpCUE")
-        self.btn_page_phrasejc.setCheckable(True)
-        for _b in (self.btn_page_beatkey, self.btn_page_phrasejc):
-            _b.setMinimumHeight(editor_toggle_h)
-            _b.setMaximumHeight(editor_toggle_h)
-        self._editor_page_group = QtWidgets.QButtonGroup(self)
-        self._editor_page_group.setExclusive(True)
-        self._editor_page_group.addButton(self.btn_page_beatkey, 0)
-        self._editor_page_group.addButton(self.btn_page_phrasejc, 1)
-        self._editor_page_group.idClicked.connect(self.track_edit.set_active_page)
-
         self.cb_show_transition_search = QtWidgets.QCheckBox("Show Transition Search")
         self.cb_show_transition_search.setChecked(False)
         self.cb_show_transition_search.setMinimumHeight(editor_toggle_h)
         self.cb_show_transition_search.setMaximumHeight(editor_toggle_h)
-        toggle_row.addWidget(self.cb_show_editors, 0, QtCore.Qt.AlignLeft)
-        toggle_row.addWidget(self.btn_page_beatkey, 0, QtCore.Qt.AlignLeft)
-        toggle_row.addWidget(self.btn_page_phrasejc, 0, QtCore.Qt.AlignLeft)
         toggle_row.addWidget(self.cb_show_transition_search, 0, QtCore.Qt.AlignLeft)
         toggle_row.addStretch(1)
         header_v.addLayout(toggle_row)
-        header_v.addWidget(self.track_edit, 0, QtCore.Qt.AlignTop)
 
         # Wire transport buttons
         self.btn_tempo_reset.clicked.connect(self._on_click_tempo_reset)
         self.btn_mt.toggled.connect(self.bus.sig_timestretch_toggle_requested.emit)
         self.btn_stop.clicked.connect(self._on_click_stop)
         self.btn_play.clicked.connect(self._on_click_play)
-        self.cb_show_editors.toggled.connect(self._set_editor_panel_visible)
         self.cb_show_transition_search.toggled.connect(self._set_transition_search_visible)
-        self._set_editor_panel_visible(False)
+        self._fit_header_height()
         self._set_transition_search_visible(True)
 
     # View management
@@ -736,14 +712,7 @@ class MainPane(QtWidgets.QWidget):
     def _timestretch_enabled(self) -> bool:
         return bool(getattr(getattr(self.cfg, "playbackconfig", None), "use_timestretch", False))
 
-    def _set_editor_panel_visible(self, visible: bool) -> None:
-        show = bool(visible)
-        if hasattr(self, "track_edit"):
-            self.track_edit.setVisible(show)
-        for _attr in ("btn_page_beatkey", "btn_page_phrasejc"):
-            _btn = getattr(self, _attr, None)
-            if _btn is not None:
-                _btn.setEnabled(show)
+    def _fit_header_height(self) -> None:
         # Let the header layout report the exact height it needs. It accounts
         # for the real top-row height, the inter-widget spacing, and whether the
         # editor panel is currently shown. Manual sums under-counted these and
