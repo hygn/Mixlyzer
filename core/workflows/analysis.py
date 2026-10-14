@@ -69,6 +69,19 @@ class AnalysisWorkflow(QtCore.QObject):
             self._contexts.pop(taskid, None)
 
     def _start(self, path: str, *, force_analyze: bool) -> None:
+        cfg = self._cfg_loader()
+        database = LibraryDB(os.path.join(cfg.libconfig.libpath, "library.db"))
+        database.connect()
+        try:
+            # a file in the library goes by the path it is stored under, however
+            # ``path`` spells it (a drop's separators, another case, a link)
+            track = database.find_file(path)
+        finally:
+            database.close()
+        if track is not None:
+            path = track.path
+        auto_load = track is not None
+
         if self._find_inflight_task(path) is not None:
             self._show_status(f"Analysis already in progress: {os.path.basename(path)}")
             return
@@ -79,7 +92,6 @@ class AnalysisWorkflow(QtCore.QObject):
         self._show_status(f"Analyzing: {os.path.basename(path)}")
         self.current_path = path
 
-        cfg = self._cfg_loader()
         thumbnail = self._albumart_provider(path)
         title, _artist, _album, _comment = self._tag_extractor(path)
         task_info = self.taskmanager.addtask(
@@ -89,14 +101,6 @@ class AnalysisWorkflow(QtCore.QObject):
             progress=0.0,
         )
         taskid = task_info.taskid
-
-        database = LibraryDB(os.path.join(cfg.libconfig.libpath, "library.db"))
-        database.connect()
-        try:
-            track = database.get(path)
-        finally:
-            database.close()
-        auto_load = track is not None
 
         if track is not None and track.uid and not force_analyze:
             try:

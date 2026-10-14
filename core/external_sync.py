@@ -32,6 +32,7 @@ class ExternalSyncController(QtCore.QObject):
         load_track_callback: Callable[[str, float], None] | None = None,
         seek_callback: Callable[[float], None] | None = None,
         track_exists_callback: Callable[[str], bool] | None = None,
+        library_path_callback: Callable[[str], str | None] | None = None,
         track_duration_callback: Callable[[str], float | None] | None = None,
         track_total_samples_callback: Callable[[str], int | None] | None = None,
         failure_callback: Callable[[str], None] | None = None,
@@ -46,6 +47,7 @@ class ExternalSyncController(QtCore.QObject):
         self._load_track_callback = load_track_callback
         self._seek_callback = seek_callback
         self._track_exists_callback = track_exists_callback
+        self._library_path_callback = library_path_callback
         self._track_duration_callback = track_duration_callback
         self._track_total_samples_callback = track_total_samples_callback
         self._failure_callback = failure_callback
@@ -179,6 +181,8 @@ class ExternalSyncController(QtCore.QObject):
 
     @QtCore.Slot(object)
     def _on_library_updated(self, _data) -> None:
+        # a file may now be in the library under its own path: look it up again
+        self._validated_external_paths.clear()
         if (
             self._analysis_request_inflight
             and self._analysis_request_raw_path
@@ -301,18 +305,16 @@ class ExternalSyncController(QtCore.QObject):
         self._request_track_analysis(pending_raw_path, self._pending_external_time_sec)
 
     def _request_track_analysis(self, path: str, time_sec: float) -> None:
-        norm_path = self._normalize_path(path)
-        if self._analysis_request_inflight == norm_path or self._load_track_callback is None:
+        if self._analysis_request_inflight == path or self._load_track_callback is None:
             return
-        self._analysis_request_inflight = norm_path
+        self._analysis_request_inflight = path
         self._analysis_request_raw_path = path
         self._load_track_callback(path, time_sec)
 
     def _request_track_load(self, path: str, time_sec: float) -> None:
-        norm_path = self._normalize_path(path)
-        if self._load_request_inflight == norm_path or self._load_track_callback is None:
+        if self._load_request_inflight == path or self._load_track_callback is None:
             return
-        self._load_request_inflight = norm_path
+        self._load_request_inflight = path
         self._load_track_callback(path, time_sec)
 
     def _clear_pending_external(self) -> None:
@@ -322,15 +324,13 @@ class ExternalSyncController(QtCore.QObject):
 
     def _loaded_track_path(self) -> str:
         props = self.model.properties if isinstance(self.model.properties, dict) else {}
-        return self._normalize_path(props.get("path"))
-
-    def _normalize_path(self, path: str | None) -> str:
-        raw = str(path or "").strip()
-        if not raw:
-            return ""
-        return os.path.normcase(os.path.normpath(raw))
+        return str(props.get("path") or "").strip()
 
     def _validate_external_track_path(self, path: str | None) -> str:
+        """The track the deck's ``path`` points to, as the app names it: the path the
+        library stores that file under (the deck may spell it in another case, with
+        other separators or through a link), else the file's resolved path. Empty
+        for a path that is not a local file."""
         raw = str(path or "").strip()
         if not raw:
             return ""
@@ -360,9 +360,17 @@ class ExternalSyncController(QtCore.QObject):
         except OSError:
             self._validated_external_paths[raw] = ""
             return ""
-        normalized = self._normalize_path(str(candidate))
-        self._validated_external_paths[raw] = normalized
-        return normalized
+        resolved = self._library_path(str(candidate)) or str(candidate)
+        self._validated_external_paths[raw] = resolved
+        return resolved
+
+    def _library_path(self, path: str) -> str:
+        if self._library_path_callback is None:
+            return ""
+        try:
+            return str(self._library_path_callback(path) or "")
+        except Exception:
+            return ""
 
     def _track_exists_in_library(self, path: str) -> bool:
         if self._track_exists_callback is None:
@@ -439,7 +447,7 @@ class ExternalSyncController(QtCore.QObject):
         return (clamped_index / total_samples) * duration_sec
 
     def _resolve_track_duration(self, path: str) -> float:
-        target = self._normalize_path(path)
+        target = str(path or "").strip()
         if not target:
             return 0.0
         loaded_path = self._loaded_track_path()
@@ -464,7 +472,7 @@ class ExternalSyncController(QtCore.QObject):
                 return 0.0
             return max(0.0, float(int(round(duration_sec * reference_sample_rate))))
 
-        target = self._normalize_path(path)
+        target = str(path or "").strip()
         if not target:
             return 0.0
         props = self.model.properties if isinstance(self.model.properties, dict) else {}

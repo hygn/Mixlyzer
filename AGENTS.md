@@ -93,6 +93,7 @@ Working notes for AI/automation agents editing the Mixlyzer codebase.
   - `track_key_segments`
 - Numeric feature arrays live in `{libpath}/{uid}.npz` through `FeatureNPZStore`. Only what is read is stored: beats, tempo/key segments, the overview waveform levels (`wave_overview_np` / `wave_overview_ref`), duration, sr, tempo_global, and the JumpCUE / CUE point / phrase blocks. Saving replaces a block as a whole (`save_worker._replace_block`).
 - Track identity across DB and NPZ is the `uid` field stored in SQLite.
+- `tracks.path` is stored as given, never normalized (case / separators can name different files on other file systems). A path that may spell a library file differently (a drop, External Sync's deck path) is looked up by the file it opens (`LibraryDB.find_file`) and then used as stored.
 - Album art thumbnails (downsampled, JPEG) live in `{libpath}/thumbs/{uid}.jpg` (`core.thumbnails`): written by the full analysis, removed with the track; the library table shows the top of each as its first column.
 - The key strip is rendered just in time from `key_segments` (`utils.keystrip.render_keystrip`); no image is stored.
 - The overview waveform is rendered just in time from its stored levels (`utils.wave.render_wave_overview`) in the style of `viewconfig.waveform_style` (RGB, or rekordbox-style 3Band); no image is stored. The detail waveform is rendered from the playback PCM.

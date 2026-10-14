@@ -80,6 +80,7 @@ class AppWindow(QtWidgets.QMainWindow):
             load_track_callback=self._load_track_from_external_sync,
             seek_callback=self.player.seek,
             track_exists_callback=self._track_exists_in_library,
+            library_path_callback=self._library_path_of_file,
             track_duration_callback=self._track_duration_in_library,
             track_total_samples_callback=self._track_total_samples_in_library,
             failure_callback=self._on_external_sync_failure,
@@ -381,6 +382,17 @@ class AppWindow(QtWidgets.QMainWindow):
         db.connect()
         try:
             return db.get(path) is not None
+        finally:
+            db.close()
+
+    def _library_path_of_file(self, path: str) -> str | None:
+        """The path the library stores the file ``path`` points to under, if it is in it."""
+        cfg = load_cfg()
+        db = LibraryDB(os.path.join(cfg.libconfig.libpath, "library.db"))
+        db.connect()
+        try:
+            row = db.find_file(path)
+            return row.path if row else None
         finally:
             db.close()
 

@@ -407,7 +407,7 @@ class LibraryWidget(QtWidgets.QWidget):
     @staticmethod
     def _path_key(path: object) -> Optional[str]:
         text = str(path or "").strip()
-        return os.path.normcase(os.path.normpath(text)) if text else None
+        return text or None
 
     def _on_properties_loaded(self) -> None:
         properties = self.model.properties if self.model is not None else {}

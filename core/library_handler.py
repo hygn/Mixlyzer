@@ -9,13 +9,6 @@ from core.linear_segments import harmonic_compatible_keys
 from utils.labels import idx_to_labels
 
 
-def normalize_track_path(path: object) -> str:
-    raw = str(path or "").strip()
-    if not raw:
-        return ""
-    return os.path.normcase(os.path.normpath(raw))
-
-
 # Columns that may appear in an ORDER BY clause. Used to validate the
 # `order_by` argument, which is interpolated into SQL and must never carry
 # untrusted text.
@@ -94,9 +87,8 @@ class TrackRow:
             uid = TrackRow._stable_uid_from_meta()
         uid = _canonical_uuid4(uid)
         added_ts = meta.get("added_ts") or int(time.time())
-        normalized_path = normalize_track_path(meta.get("path") or meta.get("track_id"))
         return TrackRow(
-            path=normalized_path,
+            path=str(meta.get("path") or meta.get("track_id")),
             uid=uid,
             title=meta.get("title",""),
             artist=meta.get("artist",""),
@@ -272,12 +264,6 @@ class LibraryDB:
 
     # UPSERT / CRUD
     def upsert(self, row: TrackRow):
-        row.path = normalize_track_path(row.path)
-        existing = self.get(row.path)
-        if existing and existing.path != row.path:
-            if not row.uid and existing.uid:
-                row.uid = existing.uid
-            self.conn.execute("DELETE FROM tracks WHERE path=?;", (existing.path,))
         q = """
         INSERT INTO tracks(path, uid, title, artist, album, bpm, key, duration, total_samples, rating, added_ts, comment, file_mtime, file_size)
         VALUES(:path, :uid, :title, :artist, :album, :bpm, :key, :duration, :total_samples, :rating, :added_ts, :comment, :file_mtime, :file_size)
@@ -316,33 +302,41 @@ class LibraryDB:
                 row = self.get(path)
                 if row and row.uid:
                     uid_rows.append((row.uid,))
-            delete_rows = []
-            for path in paths:
-                row = self.get(path)
-                delete_rows.append((row.path if row else normalize_track_path(path),))
-            self.conn.executemany("DELETE FROM tracks WHERE path = ?;", delete_rows)
+            self.conn.executemany("DELETE FROM tracks WHERE path = ?;", ((p,) for p in paths))
             if uid_rows:
                 self.conn.executemany("DELETE FROM track_bpm_segments WHERE track_uid = ?;", uid_rows)
                 self.conn.executemany("DELETE FROM track_key_segments WHERE track_uid = ?;", uid_rows)
 
     def get(self, path: str) -> Optional[TrackRow]:
-        normalized_path = normalize_track_path(path)
-        cur = self.conn.execute("SELECT * FROM tracks WHERE path=?;", (normalized_path,))
-        row = cur.fetchone()
-        if row:
-            return _track_row_from_db_row(row)
-        raw_path = str(path or "").strip()
-        if raw_path and raw_path != normalized_path:
-            cur = self.conn.execute("SELECT * FROM tracks WHERE path=?;", (raw_path,))
-            row = cur.fetchone()
-            if row:
-                return _track_row_from_db_row(row)
-        cur = self.conn.execute(
-            "SELECT * FROM tracks WHERE REPLACE(LOWER(path), '/', '\\')=? LIMIT 1;",
-            (normalized_path,),
-        )
+        """The row stored under exactly ``path`` (paths are kept as given, never
+        normalized: case and separators mean different files on some file systems)."""
+        cur = self.conn.execute("SELECT * FROM tracks WHERE path=?;", (path,))
         row = cur.fetchone()
         return _track_row_from_db_row(row) if row else None
+
+    def find_file(self, path: str) -> Optional[TrackRow]:
+        """The row of the file ``path`` points to, however it is spelled: stored
+        under ``path`` itself, else the stored path that opens the same file
+        (another case, separators, a link, a mapped drive). None if the file is
+        not in the library or does not exist."""
+        row = self.get(path)
+        if row is not None:
+            return row
+        try:
+            st = os.stat(path)
+        except (OSError, ValueError):
+            return None
+        cur = self.conn.execute(
+            "SELECT * FROM tracks WHERE file_size=? OR file_size IS NULL;", (st.st_size,)
+        )
+        for db_row in cur.fetchall():
+            try:
+                other = os.stat(db_row["path"])
+            except (OSError, ValueError):
+                continue
+            if os.path.samestat(st, other):
+                return _track_row_from_db_row(db_row)
+        return None
 
     def get_by_uid(self, uid: str) -> Optional[TrackRow]:
         try:
@@ -356,9 +350,7 @@ class LibraryDB:
     def update_uid(self, path: str, uid: Optional[str]):
         """Set/update UID for the given path (allows None)."""
         uid = _canonical_uuid4_or_none(uid)
-        row = self.get(path)
-        target_path = row.path if row else normalize_track_path(path)
-        self.conn.execute("UPDATE tracks SET uid=? WHERE path=?;", (uid, target_path))
+        self.conn.execute("UPDATE tracks SET uid=? WHERE path=?;", (uid, path))
         self.conn.commit()
 
     def rekey_path(self, old_path: str, new_path: str):
@@ -370,12 +362,11 @@ class LibraryDB:
             row = self.get(old_path)
             if not row:
                 return
-            old_stored_path = row.path
             # Insert with new path (overwrite on conflict)
-            row.path = normalize_track_path(new_path)
+            row.path = new_path
             self.upsert(row)
             # Delete old row
-            self.conn.execute("DELETE FROM tracks WHERE path=?;", (old_stored_path,))
+            self.conn.execute("DELETE FROM tracks WHERE path=?;", (old_path,))
 
     def replace_bpm_segments(self, track_uid: str, segments: Iterable[BpmSegmentRow | Dict[str, Any]]):
         uid = _canonical_uuid4_or_none(track_uid)
@@ -620,11 +611,9 @@ class LibraryDB:
         """Refresh file mtime/size (for change detection)."""
         try:
             st = os.stat(path)
-            row = self.get(path)
-            target_path = row.path if row else normalize_track_path(path)
             self.conn.execute(
                 "UPDATE tracks SET file_mtime=?, file_size=? WHERE path=?;",
-                (st.st_mtime, st.st_size, target_path)
+                (st.st_mtime, st.st_size, path)
             )
             self.conn.commit()
         except FileNotFoundError:
