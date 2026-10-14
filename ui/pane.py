@@ -192,6 +192,8 @@ class MainPane(QtWidgets.QWidget):
         self.track_edit = EditPanel(bus=self.bus, model=self.model)
         self.track_info.editor_slot.addWidget(self.track_edit, 0, QtCore.Qt.AlignVCenter)
         self.track_edit.set_metronome_checked(self._metronome_enabled())
+        # more edit pages side by side when the header has room for them
+        self.track_info.installEventFilter(self)
 
         def _match_track_info_height(widget: QtWidgets.QWidget) -> None:
             widget.setMinimumHeight(TrackInfoPanel.HEADER_H)
@@ -697,6 +699,31 @@ class MainPane(QtWidgets.QWidget):
     def _on_external_sync_enabled(self, enabled: bool) -> None:
         self._external_sync_enabled = bool(enabled)
         self._refresh_transport_buttons()
+
+    # Spare width (px) the track info keeps beyond its widest row before the edit
+    # panel shows more pages side by side.
+    EDIT_COLUMN_SLACK = 80
+
+    def eventFilter(self, obj, event):
+        if obj is self.track_info and event.type() == QtCore.QEvent.Resize:
+            QtCore.QTimer.singleShot(0, self._fit_edit_columns)  # after the layout has run
+        return super().eventFilter(obj, event)
+
+    def _fit_edit_columns(self) -> None:
+        """Show the edit pages 1, 2 or 4 at a time: more while the track info has
+        room to spare for them, fewer once the header is too narrow."""
+        info, edit = self.track_info, self.track_edit
+        count = edit.column_count()
+        squeezed = edit.width() < edit.sizeHint().width()
+        spare = info.info_area.width() - info.info_area.minimumWidth() - self.EDIT_COLUMN_SLACK
+        if squeezed and count > 1:
+            new = 2 if count == 4 else 1
+        elif count < 4 and spare >= ((4 if count == 2 else 2) - count) * edit.column_step():
+            new = 4 if count == 2 else 2
+        else:
+            return
+        edit.set_column_count(new)
+        QtCore.QTimer.singleShot(0, self._fit_edit_columns)  # one step at a time
 
     def _can_use_transport(self) -> bool:
         return self._transport_enabled and not self._external_sync_enabled

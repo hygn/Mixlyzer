@@ -41,7 +41,7 @@ class _AudioWorker(QtCore.QObject):
         "scratch_begin", "scratch_update", "scratch_end",
         "set_tempo_mode", "set_tempo_factor", "set_volume", "set_peak_meter_gain",
         "set_refresh_fps", "set_timestretch", "set_soft_clip",
-        "tone_hold", "tone_sequence",
+        "tone_hold",
     })
     _WAIT_FOR_TRACK = frozenset({
         "play", "pause", "stop", "seek",
@@ -288,11 +288,6 @@ class _AudioWorker(QtCore.QObject):
         if notes:
             self.feeder.wake()
 
-    def tone_sequence(self, steps: list) -> None:
-        self.feeder.tones.play_sequence(steps)
-        if steps:
-            self.feeder.wake()
-
     def set_volume(self, value: float) -> None:
         # Applied to the music inside the feeder so metronome clicks keep their own level.
         self._volume_linear = max(0.0, min(1.0, float(value)))
@@ -411,7 +406,6 @@ class PlayerController(QtCore.QObject):
         bus.sig_jump_arm.connect(lambda payload: self._send("arm_jump", payload))
         bus.sig_jump_disarm.connect(lambda: self._send("disarm_jump"))
         bus.sig_tone_hold.connect(lambda notes: self._send("tone_hold", tuple(notes or ())))
-        bus.sig_tone_sequence.connect(lambda steps: self._send("tone_sequence", list(steps or ())))
         bus.sig_tempo_mode_changed.connect(self.set_tempo_mode)
         bus.sig_tempo_factor_changed.connect(self.set_tempo_factor)
         bus.sig_external_sync_enabled.connect(self._on_external_sync_enabled)

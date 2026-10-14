@@ -8,7 +8,6 @@ from PySide6 import QtCore, QtGui, QtWidgets
 from ui.edit_panel.cue_slots import SLOTS_PER_PAGE, CuePageWidget, color_swatch_icon
 from ui.edit_panel.icons import icon
 from ui.edit_panel.jumpcue import format_cue_time
-from ui.edit_panel.styles import WARNING_BUTTON_STYLESHEET
 from utils.cue_points import build_cue_points_np
 from utils.jumpcue_colors import CUE_POINT_COLORS, get_cue_point_color
 
@@ -136,7 +135,7 @@ class CuePointEditMixin:
 
     def _emit_cue_points_update(self) -> None:
         self.edit_log.push(self._log_element())
-        self.btn_save.setStyleSheet(WARNING_BUTTON_STYLESHEET)
+        self._mark_unsaved(True)
         self._broadcast_cue_points()
         self._update_undo_redo_buttons()
 

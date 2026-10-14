@@ -7,7 +7,6 @@ from core.beat_geometry import downbeat_beat_indices
 from ui.edit_panel.history import logElement
 from ui.edit_panel.icons import icon
 from ui.edit_panel.key_picker import CAMELOT_INDEX, KeyPickerPopup
-from ui.edit_panel.styles import WARNING_BUTTON_STYLESHEET
 from ui.theme import current_theme
 from utils.color import key_cmap_color, key_label_text_color
 from utils.keystrip import key_segment_label
@@ -73,9 +72,15 @@ class KeyEditMixin:
 
         # listening aids: reference tones in the current key, mixed into the player
         # (also while paused). Held tones follow the key under the playhead and every edit.
+        self.key_root = _btn(
+            "key_root",
+            "Root: hold the current key's root (and its octave) under the music.\n"
+            "The plainest check of the tonic: it should feel like the note the music rests on.",
+            checkable=True,
+        )
         self.key_drone = _btn(
             "key_drone",
-            "Tonic drone: hold the current key's root and fifth under the music.\n"
+            "Root and fifth: hold the current key's root and fifth under the music.\n"
             "In the right key it sounds at home all the way through; a lasting clash\n"
             "means a wrong tonic (try semitone / fifth steps) or a key change.",
             checkable=True,
@@ -87,17 +92,6 @@ class KeyEditMixin:
             "on the same root; if the melody keeps resolving elsewhere, try the relative key.",
             checkable=True,
         )
-        self.key_cadence = _btn(
-            "key_cadence",
-            "Cadence: play I - IV - V7 - I (minor: i - iv - V7 - i) in the current key at the\n"
-            "track's tempo. The last chord should feel like arriving home in the music.",
-            checkable=True,
-            wide=True,
-        )
-        # lit (checked) while the cadence sounds; a click while lit plays it again
-        self._key_cadence_timer = QtCore.QTimer(self)
-        self._key_cadence_timer.setSingleShot(True)
-        self._key_cadence_timer.timeout.connect(lambda: self.key_cadence.setChecked(False))
 
         self.key_status = QtWidgets.QLabel("-- | Seg -- | Elapsed: 00:00.00 | Left: 00:00.00")
         self.key_status.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
@@ -129,9 +123,9 @@ class KeyEditMixin:
         rule_lay.setContentsMargins(4, 2, 4, 2)
         rule_lay.addWidget(aid_rule)
         grid.addWidget(aid_rule_cell, 0, 7, 3, 1)
-        grid.addWidget(self.key_drone, 0, 8, _AL)
-        grid.addWidget(self.key_chord, 1, 8, _AL)
-        grid.addWidget(self.key_cadence, 2, 8, _AL)
+        grid.addWidget(self.key_root, 0, 8, _AL)
+        grid.addWidget(self.key_drone, 1, 8, _AL)
+        grid.addWidget(self.key_chord, 2, 8, _AL)
         grid.addWidget(self.key_status, 3, 0, 1, 9, _AL)
 
         self.key_start_back.clicked.connect(lambda: self._nudge_key_boundary("start", -1))
@@ -150,9 +144,8 @@ class KeyEditMixin:
         self.key_fifth_down.clicked.connect(lambda: self._change_keys(lambda k: _camelot_step(k, -1)))
         self.key_fifth_up.clicked.connect(lambda: self._change_keys(lambda k: _camelot_step(k, 1)))
         self.key_relative.clicked.connect(lambda: self._change_keys(_relative_key))
-        self.key_drone.toggled.connect(lambda on: self._toggle_key_hold(self.key_drone, on))
-        self.key_chord.toggled.connect(lambda on: self._toggle_key_hold(self.key_chord, on))
-        self.key_cadence.clicked.connect(self._play_key_cadence)
+        for aid in (self.key_root, self.key_drone, self.key_chord):
+            aid.toggled.connect(lambda on, aid=aid: self._toggle_key_hold(aid, on))
 
         self._key_cur = -1
         return list(cells.values()) + [self.key_pick]
@@ -188,7 +181,7 @@ class KeyEditMixin:
                 cue_points=self._cue_points,
             )
         )
-        self.btn_save.setStyleSheet(WARNING_BUTTON_STYLESHEET)
+        self._mark_unsaved(True)
         self._broadcast_key_segments()
         self._update_undo_redo_buttons()
 
@@ -274,12 +267,13 @@ class KeyEditMixin:
     # ---- listening aids ----
 
     def _toggle_key_hold(self, btn: QtWidgets.QToolButton, on: bool) -> None:
-        """Drone and chord are one at a time (or neither)."""
+        """Root, root and fifth, and chord are one at a time (or none)."""
         if on:
-            other = self.key_chord if btn is self.key_drone else self.key_drone
-            other.blockSignals(True)
-            other.setChecked(False)
-            other.blockSignals(False)
+            for other in (self.key_root, self.key_drone, self.key_chord):
+                if other is not btn:
+                    other.blockSignals(True)
+                    other.setChecked(False)
+                    other.blockSignals(False)
         idx = self._current_key_row()
         self._send_key_hold(self._key_of(idx) if idx is not None else None)
 
@@ -287,41 +281,15 @@ class KeyEditMixin:
         if not hasattr(self, "key_drone"):
             return
         notes: tuple[int, ...] = ()
-        if key is not None and self.key_drone.isChecked():
+        if key is not None and self.key_root.isChecked():
+            notes = _root_notes(key)
+        elif key is not None and self.key_drone.isChecked():
             notes = _drone_notes(key)
         elif key is not None and self.key_chord.isChecked():
             notes = _tonic_chord_notes(key)
         if notes != getattr(self, "_key_hold_sent", ()):
             self._key_hold_sent = notes
             self.bus.sig_tone_hold.emit(notes)
-
-    def _play_key_cadence(self) -> None:
-        idx = self._current_key_row()
-        if idx is None:
-            self.key_cadence.setChecked(False)
-            return
-        beat = self._beat_length_at(float(self._current_time))
-        steps = _cadence_steps(self._key_of(idx), beat)
-        self.bus.sig_tone_sequence.emit(steps)
-        self.key_cadence.setChecked(True)
-        self._key_cadence_timer.start(int(1000 * sum(sec for _notes, sec in steps)))
-
-    def _beat_length_at(self, t: float) -> float:
-        """Local beat length (s) from the beatgrid, kept between 0.35 and 0.75 s
-        (half / double time) so the cadence is neither rushed nor dragging."""
-        beats = np.asarray(self._beatgrid, dtype=float)
-        beat = 0.5
-        if beats.size >= 2:
-            i = int(np.clip(np.searchsorted(beats, t), 1, beats.size - 1))
-            d = np.diff(beats[max(0, i - 4):i + 4])
-            d = d[d > 0]
-            if d.size:
-                beat = float(np.median(d))
-        while beat < 0.35:
-            beat *= 2.0
-        while beat > 0.75:
-            beat *= 0.5
-        return beat
 
     # ---- edits ----
 
@@ -507,6 +475,12 @@ def _root_midi(key: int) -> int:
     return 48 + key % 12
 
 
+def _root_notes(key: int) -> tuple[int, ...]:
+    """The root and the root an octave up."""
+    r = _root_midi(key)
+    return (r, r + 12)
+
+
 def _drone_notes(key: int) -> tuple[int, ...]:
     """Root, fifth and the root an octave up: no third, so it does not take a mode."""
     r = _root_midi(key)
@@ -521,22 +495,6 @@ def _tonic_chord_notes(key: int) -> tuple[int, ...]:
     """Root in the bass and the triad an octave up."""
     r = _root_midi(key)
     return (r,) + _triad(r + 12, key >= 12)
-
-
-def _cadence_steps(key: int, beat: float) -> list[tuple[tuple[int, ...], float]]:
-    """I - IV - V7 - I (minor: i - iv - V7 - i, the harmonic minor's dominant), two beats
-    each and the tonic held for four; upper voices kept close to the tonic triad."""
-    minor = key >= 12
-    r = _root_midi(key)
-    tonic = _triad(r + 12, minor)
-    sub = (r + 12, r + 17, r + (20 if minor else 21))                # IV / iv: 1, 4, b6 / 6
-    dom = (r + 11, r + 14, r + 17, r + 19)                           # V7: 7, 2, 4, 5
-    return [
-        ((r,) + tonic, 2 * beat),
-        ((r + 5,) + sub, 2 * beat),
-        ((r + 7 - 12,) + dom, 2 * beat),
-        ((r,) + tonic, 4 * beat),
-    ]
 
 
 def _relative_key(key: int) -> int:

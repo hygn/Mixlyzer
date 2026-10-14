@@ -5,7 +5,6 @@ from PySide6 import QtCore, QtGui, QtWidgets
 
 from ui.edit_panel.history import logElement
 from ui.edit_panel.icons import icon
-from ui.edit_panel.styles import WARNING_BUTTON_STYLESHEET
 from ui.theme import current_theme
 from utils.phrases import (
     PHRASE_LABELS,
@@ -151,7 +150,7 @@ class PhraseEditMixin:
                 )
             )
             self._update_undo_redo_buttons()
-            self.btn_save.setStyleSheet(WARNING_BUTTON_STYLESHEET)
+            self._mark_unsaved(True)
         if self.model is not None:
             try:
                 self.model.features["phrase_segments_np"] = build_phrase_segments_np(self._phrase_segments)

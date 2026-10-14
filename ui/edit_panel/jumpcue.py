@@ -8,7 +8,6 @@ from PySide6 import QtCore, QtWidgets
 from ui.edit_panel.cue_slots import CuePageWidget, color_swatch_icon, slot_letter
 from ui.edit_panel.history import logElement
 from ui.edit_panel.icons import icon
-from ui.edit_panel.styles import WARNING_BUTTON_STYLESHEET
 from utils.jump_cues import build_jump_cue_graph, build_jump_cues_np
 from utils.jumpcue_colors import JUMPCUE_PAIR_COLORS
 
@@ -378,7 +377,7 @@ class JumpCUEEditMixin:
 
     def _emit_jumpcue_update(self) -> None:
         self.edit_log.push(self._log_element(jump_cues=self._JumpCUE))
-        self.btn_save.setStyleSheet(WARNING_BUTTON_STYLESHEET)
+        self._mark_unsaved(True)
         self._broadcast_jumpcue()
         self._update_undo_redo_buttons()
 
@@ -406,7 +405,7 @@ class JumpCUEEditMixin:
         if record:
             self.edit_log.push(self._log_element(jump_cues=cues_copy))
             self._update_undo_redo_buttons()
-            self.btn_save.setStyleSheet(WARNING_BUTTON_STYLESHEET)
+            self._mark_unsaved(True)
         if broadcast:
             self._broadcast_jumpcue()
 

@@ -96,6 +96,8 @@ def build_playback_tab(dialog) -> None:
     dialog.lbl_buffer.setToolTip(
         "Audio queued in the output device buffer while playing, 0 ms = dropout."
     )
+    # two short lines that wrap further if need be: the readout never widens the page
+    dialog.lbl_buffer.setWordWrap(True)
     dialog._buffer_ema_ms = None
     dialog._buffer_window = deque()
     dialog._buffer_dropout_sec = 0.0
@@ -205,7 +207,6 @@ class PlaybackSettingsMixin:
         self.buffer_low_meter.set_level(low_1pct_ms / capacity_ms)
         self.lbl_buffer.setText(
             f"EMA {self._buffer_ema_ms:.0f} / {capacity_ms:.0f} ms   "
-            f"1% low {low_1pct_ms:.0f} ms   lowest {lowest_ms:.0f} ms "
-            f"({self.BUFFER_WINDOW_SEC:.0f} s)   "
-            f"dropout since opened {self._buffer_dropout_sec * 1000.0:.0f} ms"
+            f"1% low {low_1pct_ms:.0f} ms   lowest {lowest_ms:.0f} ms ({self.BUFFER_WINDOW_SEC:.0f} s)\n"
+            f"Dropout since opened {self._buffer_dropout_sec * 1000.0:.0f} ms"
         )

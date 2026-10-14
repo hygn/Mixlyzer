@@ -69,7 +69,6 @@ class EventBus(QtCore.QObject):
     sig_beatgrid_edited = QtCore.Signal()
     sig_key_segments_updated = QtCore.Signal()
     sig_tone_hold = QtCore.Signal(object)      # MIDI notes held under the music (empty: off)
-    sig_tone_sequence = QtCore.Signal(object)  # [(MIDI notes, seconds), ...] played once
     sig_phrase_segments_updated = QtCore.Signal()
     sig_cue_points_updated = QtCore.Signal()      # notification only; read from shared model
 

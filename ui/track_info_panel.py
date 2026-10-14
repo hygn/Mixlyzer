@@ -546,6 +546,7 @@ class TrackInfoPanel(QtWidgets.QWidget):
         info_rows = (rows.itemAt(i).layout() for i in range(rows.count()))
         self._info_width = max(r.sizeHint().width() for r in info_rows if r is not None)
         center.setMinimumWidth(self._info_width)
+        self.info_area = center  # the main pane fits the edit panel's columns to its spare width
         center.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
         layout.addWidget(center, 1, QtCore.Qt.AlignVCenter)
 
