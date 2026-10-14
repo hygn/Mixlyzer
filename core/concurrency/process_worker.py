@@ -51,6 +51,12 @@ class SpawnProcessWorker(QtCore.QObject):
         self._ctx = mp.get_context("spawn")
         self._queue: Any | None = None
         self._process: mp.Process | None = None
+        # Process.start() runs on a starter thread (see start); the lock guards the
+        # hand-over between it and stop()
+        self._start_lock = threading.Lock()
+        self._started = False
+        self._start_failed = False
+        self._abandoned = False
         self._timer = QtCore.QTimer(self)
         self._timer.setInterval(50)
         self._timer.timeout.connect(self._poll_queue)
@@ -69,11 +75,41 @@ class SpawnProcessWorker(QtCore.QObject):
             name=self._process_name,
         )
         self._process.daemon = self._daemon
-        self._process.start()
+        # On Windows Process.start() returns only once the child has read all it is
+        # sent, and the child reads its arguments after re-importing the app's main
+        # module: seconds of a frozen UI. Started off the GUI thread instead; the
+        # queue is polled once it has started.
+        threading.Thread(
+            target=self._start_process,
+            args=(self._process, self._queue),
+            name=f"{self._process_name}-start",
+            daemon=True,
+        ).start()
         self._timer.start()
+
+    def _start_process(self, process: mp.Process, queue: Any) -> None:
+        """Starter thread: start the process; when stop() came first, end it here."""
+        failed = False
+        try:
+            process.start()
+        except Exception:
+            failed = True
+        with self._start_lock:
+            self._started = True
+            self._start_failed = failed
+            abandoned = self._abandoned
+        if abandoned:
+            _end_process(process, queue, started=not failed)
 
     def stop(self) -> None:
         self._timer.stop()
+        with self._start_lock:
+            if self._process is not None and not self._started:
+                # still starting: the starter thread ends the process once it is up
+                self._abandoned = True
+                self._process = None
+                self._queue = None
+                return
         if self._process is not None and self._process.is_alive():
             self._process.terminate()
             self._process.join(timeout=1.0)
@@ -81,6 +117,13 @@ class SpawnProcessWorker(QtCore.QObject):
 
     def _poll_queue(self) -> None:
         if self._queue is None:
+            return
+        with self._start_lock:
+            started, failed = self._started, self._start_failed
+        if not started:
+            return
+        if failed:
+            self._finalize_process(graceful=False)
             return
         while self._queue is not None:
             try:
@@ -100,7 +143,7 @@ class SpawnProcessWorker(QtCore.QObject):
         self._timer.stop()
         process = self._process
         exitcode = None
-        if process is not None:
+        if process is not None and not self._start_failed:
             process.join(timeout=1.0)
             exitcode = process.exitcode
         self._cleanup()
@@ -127,3 +170,17 @@ class SpawnProcessWorker(QtCore.QObject):
         except RuntimeError:
             # Qt may destroy the owned QTimer before Python finalizes this wrapper.
             pass
+
+
+def _end_process(process: mp.Process, queue: Any, *, started: bool) -> None:
+    """Terminate and release a process stop() gave up while it was starting."""
+    if started:
+        if process.is_alive():
+            process.terminate()
+        process.join(timeout=1.0)
+    try:
+        process.close()
+    except ValueError:
+        pass  # still running after terminate: left to the OS
+    queue.close()
+    queue.join_thread()

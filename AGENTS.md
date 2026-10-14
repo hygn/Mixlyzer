@@ -83,7 +83,8 @@ Working notes for AI/automation agents editing the Mixlyzer codebase.
   - beat segment reanalysis,
   - static key selection reanalysis,
   - dynamic full key reanalysis,
-  - JumpCUE reanalysis.
+  - JumpCUE reanalysis (with AutoCUE on JumpCUEs, the AutoCUE JumpCUE goes where the editor's current phrases' lead-in ends; with AutoCUE on CUE points, the Phrase page's CUE button places it),
+  - phrase reanalysis (the whole track on the current beatgrid; the CUE points stay).
 - Results are pushed back into the in-memory `DataModel` and editor widgets; they are not a separate analysis system.
 
 ## Data & Persistence
@@ -99,7 +100,7 @@ Working notes for AI/automation agents editing the Mixlyzer codebase.
 - The overview waveform is rendered just in time from its stored levels (`utils.wave.render_wave_overview`) in the style of `viewconfig.waveform_style` (RGB, or rekordbox-style 3Band); no image is stored. The detail waveform is rendered from the playback PCM.
 - JumpCUEs are kept in two states in the NPZ: `jump_cues_np` (the user's, replaced by edits) and `jump_cues_auto_np` (the automatic result, replaced only by full analysis or JumpCUE reanalysis). The JumpCUE optimizer (settings → Analysis → CUE) learns from where they differ; do not write edits into `jump_cues_auto_np`.
 - A JumpCUE group's colour is a preset index (`graph_color_idx`, presets in `utils/jumpcue_colors.py`), independent of its group number (`graph_id`); no RGB is stored. Edits carry it on each cue as `color_idx`.
-- CUE points (`cue_points_np`, with a colour preset `cue_color_idx`) are the user's: the full analysis makes them from the phrases by the per-label rules in `config.cuepointconfig` (Settings > Analysis > CUE; LEAD_IN has no rule), after that only the CUE page edits them (phrase edits do not regenerate them).
+- CUE points (`cue_points_np`, with a colour preset `cue_color_idx`) are the user's: the full analysis makes them from the phrases by the per-label rules in `config.cuepointconfig` (Settings > Analysis > CUE; LEAD_IN has no rule), after that only the CUE page edits them (phrase edits do not regenerate them), or the Phrase page's CUE button replaces them with what the same rules give the current phrases.
 - Phrases cover the track when read: stretches without a stored phrase (all of a track analyzed without phrases) are `UNASSIGNED` (`utils.phrases.fill_unassigned`). It is shown and edited like a label but never stored (`assigned_phrases` on save), so it never reaches training data.
 - Phrase labels are the fixed `utils.phrases.PHRASE_LABELS` (no custom labels). How each is shown is a setting (Settings > View > Phrase labels: an alias and an overview abbreviation, empty = the label / its first letter), applied through `utils.phrases.set_phrase_label_names`; stored data always keeps the label itself.
 - JumpCUE letters are slots (rekordbox hot cue letters A-Z): the analysis letters them by point; edits keep each cue in the slot the user gave it (no relettering by time). A JumpCUE's user name is its `cue_comment` (equal to its letter = no name). CUE points are rekordbox memory cues: always in time order, no letters; a CUE point's name is its `cue_label`.

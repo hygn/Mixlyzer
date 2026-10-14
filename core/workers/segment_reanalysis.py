@@ -17,6 +17,7 @@ from analyzer_core.editor.keystrip import (
     update_key_segments_with_selection,
 )
 from analyzer_core.editor.jumpcue import reanalyze_jumpCUE
+from analyzer_core.editor.phrase import reanalyze_phrases
 from core.config import config
 from core.concurrency.process_worker import SpawnProcessWorker, install_parent_watchdog
 
@@ -43,6 +44,7 @@ class SegmentReanalysisWorker(SpawnProcessWorker):
         prev_bpm=None,
         use_only_prev_bpm: bool = False,
         analyze_type: str = "beat",
+        phrases=None,
         parent: QtCore.QObject | None = None,
     ) -> None:
         super().__init__(
@@ -60,6 +62,7 @@ class SegmentReanalysisWorker(SpawnProcessWorker):
                 prev_bpm,
                 bool(use_only_prev_bpm),
                 analyze_type,
+                phrases,
             ),
             daemon=True,
             process_name=f"Mixlyzer-segment-analysis-{taskid}",
@@ -100,6 +103,7 @@ def _segment_reanalysis_entry(
     prev_bpm=None,
     use_only_prev_bpm: bool = False,
     analyze_type: str = "beat",
+    phrases=None,
     queue=None,
 ) -> None:
     install_parent_watchdog()
@@ -212,13 +216,25 @@ def _segment_reanalysis_entry(
             if beats_arr.size == 0:
                 raise ValueError("beats_time_sec is required for JumpCUE reanalysis")
             jc_dict = reanalyze_jumpCUE(
-                path, cfg, beats_arr, tempo_segments=tempo_segments_arr, progress_cb=_progress
+                path, cfg, beats_arr, tempo_segments=tempo_segments_arr, phrases=phrases,
+                progress_cb=_progress,
             )
             queue.put(
                 {
                     "type": "result",
                     "taskid": taskid,
                     "payload": jc_dict,
+                }
+            )
+        elif analyze_type == "phrase":
+            phrases = reanalyze_phrases(
+                path, cfg, beats_arr, tempo_segments=tempo_segments_arr, progress_cb=_progress
+            )
+            queue.put(
+                {
+                    "type": "result",
+                    "taskid": taskid,
+                    "payload": {"phrases": phrases},
                 }
             )
         else:

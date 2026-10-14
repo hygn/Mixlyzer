@@ -3,12 +3,21 @@ from __future__ import annotations
 import numpy as np
 from PySide6 import QtCore, QtGui, QtWidgets
 
+from core.config import load_cfg
 from ui.edit_panel.history import logElement
 from ui.edit_panel.icons import icon
 from ui.theme import current_theme
+from utils.cue_points import (
+    add_lead_in_cue_point,
+    build_cue_points_np,
+    build_phrase_cue_points,
+    extract_cue_points,
+    lead_in_end_sec,
+)
 from utils.phrases import (
     PHRASE_LABELS,
     UNASSIGNED,
+    assigned_phrases,
     build_phrase_segments_np,
     fill_unassigned,
     normalize_phrase_segments,
@@ -57,6 +66,15 @@ class PhraseEditMixin:
         self.phrase_merge_next = _btn("beatgrid_merge_next", "Merge the next phrase into the current one (keeps the current label)")
         self.phrase_unassign = _btn("phrase_clear", "Unassign the current phrase (UNASSIGNED)", wide=True)
 
+        # the whole track
+        self.phrase_reanalyze = _btn("beatgrid_reanalyze", "Reanalyze the phrases with the current beatgrid")
+        self.phrase_cue_assign = _btn(
+            "phrase_cue_assign",
+            "Replace the CUE points with the ones the CUE rules give the current phrases\n"
+            "(Settings > Analysis > CUE, as the full analysis makes them)",
+            wide=True,
+        )
+
         # labels: applied to the current phrase on click; its own is filled in its colour
         label_font = QtGui.QFont(self.font())
         label_font.setPointSize(8)
@@ -81,6 +99,7 @@ class PhraseEditMixin:
             (1, 0): self.phrase_split, (1, 1): self.phrase_merge_prev, (1, 2): self.phrase_merge_next,
             (1, 4): self.phrase_step_bar,
             (1, 3): self.phrase_unassign,
+            (2, 3): self.phrase_reanalyze, (2, 4): self.phrase_cue_assign,
         }
         for (r, c), w in cells.items():
             grid.addWidget(w, r, c, _AL)
@@ -105,6 +124,8 @@ class PhraseEditMixin:
         self.phrase_merge_prev.clicked.connect(lambda: self._merge_phrase(-1))
         self.phrase_merge_next.clicked.connect(lambda: self._merge_phrase(1))
         self.phrase_unassign.clicked.connect(lambda: self._assign_phrase_label(UNASSIGNED))
+        self.phrase_reanalyze.clicked.connect(self._reanalyze_phrases)
+        self.phrase_cue_assign.clicked.connect(self._assign_cue_points_from_phrases)
 
         self._phrase_cur = -1
         self._phrase_lit: str | None = ""
@@ -159,6 +180,38 @@ class PhraseEditMixin:
         self._phrase_cur = -1
         self._update_phrase_status()
         self.bus.sig_phrase_segments_updated.emit()
+
+    def apply_phrase_update_from_external(self, phrases) -> None:
+        """Phrases from a reanalysis replace the current ones, as an edit (undoable,
+        saved with the next save). The CUE points stay; reassign them from the
+        phrases with the CUE button."""
+        self._set_phrases_edited(normalize_phrase_segments(phrases or []))
+
+    def _reanalyze_phrases(self) -> None:
+        if self._beatgrid is None or len(self._beatgrid) == 0:
+            return
+        payload = {
+            "path": self._current_track_path(),
+            "beats_time_sec": np.asarray(self._beatgrid, dtype=float).copy(),
+            "analyze_type": "phrase",
+        }
+        if self._segments is not None:
+            payload["segments"] = np.asarray(self._segments, dtype=float).copy()
+        self.bus.sig_segment_reanalyze_requested.emit(payload)
+
+    def _assign_cue_points_from_phrases(self) -> None:
+        """The CUE points the full analysis would make from the current phrases (the
+        per-label rules and, with AutoCUE on CUE points, the lead-in end) replace
+        the current ones, as one edit."""
+        cfg = load_cfg()
+        phrases = assigned_phrases(self._phrase_segments)
+        points = build_phrase_cue_points(phrases, cfg.cuepointconfig.by_label())
+        lead_in_end = lead_in_end_sec(phrases)
+        if cfg.analysisconfig.autocue == "cue_point" and lead_in_end is not None:
+            points = add_lead_in_cue_point(points, lead_in_end)
+        # through the stored form, so they read back as loaded ones do
+        self.set_cue_points(extract_cue_points({"cue_points_np": build_cue_points_np(points)}))
+        self._emit_cue_points_update()
 
     def _set_phrases_edited(self, rows: list[dict]) -> None:
         self._phrase_segments = self._phrase_rows(rows)

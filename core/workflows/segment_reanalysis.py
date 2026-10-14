@@ -76,8 +76,8 @@ class SegmentReanalysisWorkflow(QtCore.QObject):
 
         analyze_type = str(payload.get("analyze_type") or "beat")
         beats = np.asarray(payload.get("beats_time_sec"), dtype=float)
-        if analyze_type == "jumpcue":
-            # Tempo segments only place the jump points on downbeats.
+        if analyze_type in ("jumpcue", "phrase"):
+            # The whole track on the current grid; the tempo segments are an input.
             segments_input = np.asarray(payload.get("segments", np.empty((0, 4))), dtype=float)
             seg_index = 0
         else:
@@ -120,6 +120,9 @@ class SegmentReanalysisWorkflow(QtCore.QObject):
         if analyze_type == "jumpcue":
             task_song = f"{songname} (JumpCUE)"
             task_status = "JumpCUE reanalyze"
+        elif analyze_type == "phrase":
+            task_song = f"{songname} (Phrase)"
+            task_status = "Phrase reanalyze"
         elif analyze_type.startswith("key"):
             task_song = f"{songname} (Key)"
             task_status = "Key reanalyze"
@@ -147,6 +150,7 @@ class SegmentReanalysisWorkflow(QtCore.QObject):
             use_only_prev_bpm=use_prev_only,
             parent=self,
             analyze_type=analyze_type,
+            phrases=payload.get("phrases"),
         )
         worker.finished.connect(lambda result, tid=task.taskid: self._on_worker_finished(tid, result))
         worker.error.connect(lambda message, tid=task.taskid: self._on_worker_error(tid, message))
@@ -175,6 +179,14 @@ class SegmentReanalysisWorkflow(QtCore.QObject):
         if analyze_type == "jumpcue":
             if beats.size == 0:
                 self._show_status("No beatgrid available for JumpCUE reanalysis")
+                return False, seg_out
+            return True, max(seg_out, 0)
+        if analyze_type == "phrase":
+            if beats.size == 0:
+                self._show_status("No beatgrid available for phrase reanalysis")
+                return False, seg_out
+            if segments_input.ndim != 2 or segments_input.shape[0] == 0:
+                self._show_status("No tempo segments available for phrase reanalysis")
                 return False, seg_out
             return True, max(seg_out, 0)
         if analyze_type == "key_dynamic":
@@ -227,6 +239,9 @@ class SegmentReanalysisWorkflow(QtCore.QObject):
         elif analyze_type == "jumpcue":
             self._handle_jumpCUE_result(taskid, payload)
             self._show_status("JumpCUE reanalysis completed")
+        elif analyze_type == "phrase":
+            self._handle_phrase_result(taskid, payload)
+            self._show_status("Phrase reanalysis completed")
         else:
             self._handle_segment_result(taskid, payload)
             self._show_status("Segment reanalysis completed")
@@ -250,6 +265,15 @@ class SegmentReanalysisWorkflow(QtCore.QObject):
             except Exception:
                 pass
         self.taskmanager.updatetask(taskid, "JumpCUE reanalysis finished", 1.0)
+        self.taskmanager.rmtask(taskid)
+
+    def _handle_phrase_result(self, taskid: int, payload: dict) -> None:
+        phrases = payload.get("phrases")
+        track_edit = self._track_edit_getter()
+        if track_edit is not None and isinstance(phrases, list):
+            # an edit like any other: undoable, saved with the editor's next save
+            track_edit.apply_phrase_update_from_external(phrases)
+        self.taskmanager.updatetask(taskid, "Phrase reanalysis finished", 1.0)
         self.taskmanager.rmtask(taskid)
 
     def _handle_key_result(self, taskid: int, payload: dict) -> None:

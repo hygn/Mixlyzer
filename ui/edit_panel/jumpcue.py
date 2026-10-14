@@ -10,6 +10,7 @@ from ui.edit_panel.history import logElement
 from ui.edit_panel.icons import icon
 from utils.jump_cues import build_jump_cue_graph, build_jump_cues_np
 from utils.jumpcue_colors import JUMPCUE_PAIR_COLORS
+from utils.phrases import assigned_phrases
 
 # JumpCUE slots are the letters A-Z (rekordbox hot cue letters).
 JUMPCUE_SLOTS = 26
@@ -418,6 +419,8 @@ class JumpCUEEditMixin:
         }
         if self._segments is not None:
             payload["segments"] = np.asarray(self._segments, dtype=float).copy()
+        # the AutoCUE JumpCUE goes where the current phrases' lead-in ends
+        payload["phrases"] = [dict(row) for row in assigned_phrases(self._phrase_segments)]
         payload["analyze_type"] = "jumpcue"
         self.bus.sig_segment_reanalyze_requested.emit(payload)
 
