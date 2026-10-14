@@ -2,7 +2,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import List, Optional
 from PySide6 import QtCore, QtGui, QtWidgets
-import os, csv
+import os
 from utils.labels import idx_to_labels
 from core.library_handler import TrackRow, LibraryDB
 from core.analysis_lib_handler import FeatureNPZStore
@@ -11,6 +11,7 @@ from core.config import config
 from core.model import DataModel
 from ui.edit_song import EditSongDialog
 from ui.export import ExportTrackDialog
+from ui.theme import current_theme
 
 
 # Data schema
@@ -91,7 +92,9 @@ class FastDelegate(QtWidgets.QStyledItemDelegate):
         if not text:
             return
         text = str(text)
-        key = (text, rect.width(), rect.height(), selected)
+        foreground = index.data(QtCore.Qt.ForegroundRole)
+        color = foreground.color() if isinstance(foreground, QtGui.QBrush) else None
+        key = (text, rect.width(), rect.height(), selected, color.rgba() if color is not None else None)
         pm = self._cache.get(key)
         if pm is None:
             if len(self._cache) > self._CACHE_LIMIT:
@@ -102,13 +105,40 @@ class FastDelegate(QtWidgets.QStyledItemDelegate):
             pm.fill(QtCore.Qt.transparent)
             p = QtGui.QPainter(pm)
             p.setFont(option.font)
-            p.setPen(option.palette.highlightedText().color() if selected else option.palette.text().color())
+            if color is not None:
+                p.setPen(color)
+            else:
+                p.setPen(option.palette.highlightedText().color() if selected else option.palette.text().color())
             tr = QtCore.QRect(0, 0, rect.width(), rect.height()).adjusted(4, 0, -4, 0)
             p.drawText(tr, QtCore.Qt.AlignVCenter | QtCore.Qt.TextSingleLine, text)
             p.end()
             self._cache[key] = pm
         painter.drawPixmap(rect.topLeft(), pm)
 # QTableWidget-based implementation
+class _TrackTable(QtWidgets.QTableWidget):
+    """Library table whose rows drag out as their audio files (dropped on the
+    deck, the window loads the track)."""
+
+    def __init__(self, path_column: int, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._path_column = int(path_column)
+        self.setDragEnabled(True)
+        self.setDragDropMode(QtWidgets.QAbstractItemView.DragOnly)
+
+    def mimeTypes(self):
+        return ["text/uri-list"]
+
+    def mimeData(self, items):
+        rows = sorted({item.row() for item in items})
+        current = self.currentRow()
+        row = current if current in rows else (rows[0] if rows else -1)
+        item = self.item(row, self._path_column) if row >= 0 else None
+        data = QtCore.QMimeData()
+        if item is not None and item.text():
+            data.setUrls([QtCore.QUrl.fromLocalFile(item.text())])
+        return data
+
+
 class LibraryWidget(QtWidgets.QWidget):
     HEADERS = ["Title", "Artist", "Album", "BPM", "Key", "Duration", "Rating", "Added", "Path", "Comment"]
     SEARCH_MODES = ["All"] + HEADERS
@@ -214,7 +244,7 @@ class LibraryWidget(QtWidgets.QWidget):
         self.transition_box.setVisible(False)
 
         # Table
-        self.table = QtWidgets.QTableWidget()
+        self.table = _TrackTable(self.HEADERS.index("Path"))
         self.table.setColumnCount(len(self.HEADERS))
         self.table.setHorizontalHeaderLabels(self.HEADERS)
         self.table.setAlternatingRowColors(True)
@@ -232,22 +262,13 @@ class LibraryWidget(QtWidgets.QWidget):
         self.table.setItemDelegate(FastDelegate(self.table))
         self.table.doubleClicked.connect(self._on_activate)
 
-        # Toolbar
-        self.btn_remove = QtWidgets.QToolButton(text="Remove")
-        self.btn_export = QtWidgets.QToolButton(text="Export CSV")
-
         # Layout
         top = QtWidgets.QHBoxLayout()
         top.addWidget(self.e_search, 1)
         top.addWidget(self.cb_column)
-        tools = QtWidgets.QHBoxLayout()
-        tools.addWidget(self.btn_remove)
-        tools.addStretch(1)
-        tools.addWidget(self.btn_export)
         lay = QtWidgets.QVBoxLayout(self)
         lay.addLayout(top)
         lay.addWidget(self.transition_box)
-        lay.addLayout(tools)
         lay.addWidget(self.table, 1)
 
         # Signals
@@ -265,10 +286,12 @@ class LibraryWidget(QtWidgets.QWidget):
         self.cmb_to_key.currentIndexChanged.connect(self._on_search_changed)
         self.sp_transition_min_duration.valueChanged.connect(self._on_search_changed)
         self.cb_key_first_segment.toggled.connect(self._on_search_changed)
-        self.btn_remove.clicked.connect(self._on_remove_selected)
-        self.btn_export.clicked.connect(self._on_export_csv)
         self.table.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.table.customContextMenuRequested.connect(self._on_context_menu)
+
+        # The loaded track is shown in green.
+        self._loaded_path_key: Optional[str] = None
+        self.bus.sig_properties_loaded.connect(self._on_properties_loaded)
 
         # Initial load
         self.bus.sig_lib_updated.connect(self.reload)
@@ -335,6 +358,34 @@ class LibraryWidget(QtWidgets.QWidget):
         if sorting_enabled:
             self.table.setSortingEnabled(True)
             self.table.sortItems(sort_section, sort_order)
+        self._mark_loaded_track()
+
+    @staticmethod
+    def _path_key(path: object) -> Optional[str]:
+        text = str(path or "").strip()
+        return os.path.normcase(os.path.normpath(text)) if text else None
+
+    def _on_properties_loaded(self) -> None:
+        properties = self.model.properties if self.model is not None else {}
+        self._loaded_path_key = self._path_key(properties.get("path") if isinstance(properties, dict) else None)
+        self._mark_loaded_track()
+
+    def _mark_loaded_track(self) -> None:
+        """Green text on the loaded track's row, the default on the others."""
+        path_col = self.HEADERS.index("Path")
+        green = QtGui.QBrush(QtGui.QColor(current_theme().success))
+        for r in range(self.table.rowCount()):
+            item = self.table.item(r, path_col)
+            loaded = item is not None and self._loaded_path_key is not None \
+                and self._path_key(item.text()) == self._loaded_path_key
+            for c in range(self.table.columnCount()):
+                cell = self.table.item(r, c)
+                if cell is None:
+                    continue
+                if loaded:
+                    cell.setForeground(green)
+                elif cell.data(QtCore.Qt.ForegroundRole) is not None:
+                    cell.setData(QtCore.Qt.ForegroundRole, None)
 
     # Filter
     def _on_search_changed(self):
@@ -500,18 +551,6 @@ class LibraryWidget(QtWidgets.QWidget):
             track_uid = str(uid or "").strip()
             if track_uid:
                 self.bus.sig_rekordbox_sync_track_requested.emit(track_uid)
-
-    # CSV
-    def _on_export_csv(self):
-        path, _ = QtWidgets.QFileDialog.getSaveFileName(self, "Export CSV", "", "CSV Files (*.csv)")
-        if not path:
-            return
-        with open(path, "w", newline="", encoding="utf-8") as f:
-            w = csv.writer(f)
-            w.writerow(self.HEADERS)
-            for r in range(self.table.rowCount()):
-                row = [self.table.item(r, c).text() if self.table.item(r, c) else "" for c in range(len(self.HEADERS))]
-                w.writerow(row)
 
     # Explorer
     def _reveal_selected(self):

@@ -36,7 +36,7 @@ class _AudioWorker(QtCore.QObject):
     PEAK_FLOOR_DBFS = -24.0
 
     _COMMANDS = frozenset({
-        "load", "play", "pause", "stop", "seek",
+        "load", "unload", "play", "pause", "stop", "seek",
         "scrub_begin", "scrub_update", "scrub_end", "arm_jump", "disarm_jump",
         "scratch_begin", "scratch_update", "scratch_end",
         "set_tempo_mode", "set_tempo_factor", "set_volume", "set_peak_meter_gain",
@@ -136,6 +136,23 @@ class _AudioWorker(QtCore.QObject):
                 pass  # worker already destroyed (app shutting down)
 
         threading.Thread(target=decode, name="PlayerDecode", daemon=True).start()
+
+    def unload(self) -> None:
+        """No track: silent, nothing to play."""
+        self.pause()
+        self.feeder.set_track(None)
+        self._path = None
+        self._track_ready = False
+        self._decode_token += 1  # drop a decode still running
+        self._decoding = False
+        self._duration_ms = 0
+        self._last_emit_ms = -1
+        self._deferred.clear()
+        self.playback_status.emit(False)
+        self.duration_changed.emit(0.0)
+        self.time_changed.emit(0.0)
+        self.output_peak_dbfs.emit(self.PEAK_FLOOR_DBFS)
+        self.transport_enabled.emit(False)
 
     @QtCore.Slot(int, object, str)
     def _on_decoded(self, token: int, pcm: object, error: str) -> None:
@@ -414,6 +431,10 @@ class PlayerController(QtCore.QObject):
 
     def get_source(self) -> Optional[str]:
         return self._path
+
+    def unload(self) -> None:
+        self._path = None
+        self._send("unload")
 
     def audio_thread(self) -> QtCore.QThread:
         return self._audio_thread

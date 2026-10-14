@@ -358,6 +358,49 @@ def _gap() -> QtWidgets.QWidget:
 GAP_MAX = 32
 
 
+class _UnloadButton(QtWidgets.QAbstractButton):
+    """Small square over the middle of the album art: invisible until hovered,
+    then an eject icon on a dark tile; clicked, the track is unloaded."""
+
+    SIZE = 40
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setFixedSize(self.SIZE, self.SIZE)
+        self.setCursor(QtCore.Qt.PointingHandCursor)
+        self.setToolTip("Unload track")
+        self.setAttribute(QtCore.Qt.WA_Hover, True)
+
+    def enterEvent(self, event) -> None:
+        super().enterEvent(event)
+        self.update()
+
+    def leaveEvent(self, event) -> None:
+        super().leaveEvent(event)
+        self.update()
+
+    def paintEvent(self, event: QtGui.QPaintEvent) -> None:
+        if not self.underMouse():
+            return
+        p = QtGui.QPainter(self)
+        p.setRenderHint(QtGui.QPainter.Antialiasing, True)
+        r = QtCore.QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
+        p.setPen(QtGui.QPen(QtGui.QColor(255, 255, 255, 90), 1))
+        p.setBrush(QtGui.QColor(0, 0, 0, 230 if self.isDown() else 170))
+        p.drawRoundedRect(r, 6, 6)
+        # eject: a triangle over a bar
+        s = float(self.SIZE)
+        p.setPen(QtCore.Qt.NoPen)
+        p.setBrush(QtGui.QColor("#f0f3f6"))
+        p.drawPolygon(QtGui.QPolygonF([
+            QtCore.QPointF(s * 0.5, s * 0.24),
+            QtCore.QPointF(s * 0.76, s * 0.54),
+            QtCore.QPointF(s * 0.24, s * 0.54),
+        ]))
+        p.drawRect(QtCore.QRectF(s * 0.24, s * 0.62, s * 0.52, s * 0.12))
+        p.end()
+
+
 class TrackInfoPanel(QtWidgets.QWidget):
     """Header widget that displays central track information."""
 
@@ -392,6 +435,10 @@ class TrackInfoPanel(QtWidgets.QWidget):
         self.cover_label.setScaledContents(False)
         self.cover_label.setStyleSheet("background:#1c1c1c; border:1px solid #333; border-radius:6px; padding:3px;")
         layout.addWidget(self.cover_label, 0, QtCore.Qt.AlignVCenter)
+        # unload: hovering the middle of the album art shows an eject button
+        self.unload_button = _UnloadButton(self.cover_label)
+        self.unload_button.move((self.HEADER_H - _UnloadButton.SIZE) // 2, (self.HEADER_H - _UnloadButton.SIZE) // 2)
+        self.unload_button.setVisible(False)
 
         center = QtWidgets.QWidget()
         center.setMinimumHeight(self.HEADER_H)
@@ -615,6 +662,10 @@ class TrackInfoPanel(QtWidgets.QWidget):
         else:
             self._set_placeholder_cover()
         self._load_record_pixmap(album_art)
+
+    def set_track_loaded(self, loaded: bool) -> None:
+        """The unload button is there only while a track is loaded."""
+        self.unload_button.setVisible(bool(loaded))
 
     def update_record_pix(self, time_sec: float):
         self._current_time = time_sec

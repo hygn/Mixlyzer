@@ -3,6 +3,7 @@ from collections import deque
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
+    QDoubleSpinBox,
     QFormLayout,
     QGridLayout,
     QGroupBox,
@@ -13,6 +14,8 @@ from PySide6.QtWidgets import (
 )
 
 from core.config import phraselabelname, phraselabelnames
+from core.timeline import SHORT_WINDOW_MAX_SEC
+from ui.config.scroll import scroll_page
 
 
 def build_view_tab(dialog) -> None:
@@ -30,6 +33,21 @@ def build_view_tab(dialog) -> None:
     dialog.cmb_waveform_style.setToolTip(
         "RGB: the waveform colored by its low / mid / high mix.\n"
         "3Band: the low (blue), mid (amber) and high (white) bands drawn as layers."
+    )
+    dialog.sp_mainview_wave_frame_ms_short = QDoubleSpinBox()
+    dialog.sp_mainview_wave_frame_ms_long = QDoubleSpinBox()
+    for spin, views, minimum in ((dialog.sp_mainview_wave_frame_ms_short, f"up to {SHORT_WINDOW_MAX_SEC:g} s", 0.3),
+                                 (dialog.sp_mainview_wave_frame_ms_long, f"wider than {SHORT_WINDOW_MAX_SEC:g} s", 1.0)):
+        spin.setRange(minimum, 10.0)
+        spin.setDecimals(1)
+        spin.setSingleStep(0.1)
+        spin.setToolTip(
+            f"Time resolution of the main view waveform bars when the view is {views} wide.\n"
+            "Smaller is more detailed."
+        )
+    dialog.sp_mainview_wave_filter_order = QSpinBox(); dialog.sp_mainview_wave_filter_order.setRange(1, 12)
+    dialog.sp_mainview_wave_filter_order.setToolTip(
+        "Order of the main view waveform's band filters. Higher separates the bands more sharply."
     )
     dialog.cb_use_output_volume_as_peak_meter_input = QCheckBox(
         "Use output volume as peak meter input"
@@ -72,6 +90,12 @@ def build_view_tab(dialog) -> None:
     f_display.addRow("Waveform style", dialog.cmb_waveform_style)
     f_display.addRow(dialog.cb_use_output_volume_as_peak_meter_input)
 
+    grp_mainview_wave = QGroupBox("Main view waveform")
+    f_mainview_wave = QFormLayout(grp_mainview_wave)
+    f_mainview_wave.addRow("Frame, short view (ms)", dialog.sp_mainview_wave_frame_ms_short)
+    f_mainview_wave.addRow("Frame, long view (ms)", dialog.sp_mainview_wave_frame_ms_long)
+    f_mainview_wave.addRow("Filter order", dialog.sp_mainview_wave_filter_order)
+
     grp_performance = QGroupBox("Performance")
     f_performance = QFormLayout(grp_performance)
     f_performance.addRow(dialog.cb_reduce_fps_when_occluded)
@@ -83,10 +107,11 @@ def build_view_tab(dialog) -> None:
     f_advanced.addRow("Record image path", dialog.ed_record_img_path)
 
     form.addRow(grp_display)
+    form.addRow(grp_mainview_wave)
     form.addRow(_build_phrase_label_names(dialog))
     form.addRow(grp_performance)
     form.addRow(grp_advanced)
-    dialog.tabs.addTab(dialog.tab_view, "View")
+    dialog.tabs.addTab(scroll_page(dialog.tab_view), "View")
 
 
 def _build_phrase_label_names(dialog) -> QGroupBox:

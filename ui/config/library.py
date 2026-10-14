@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
 )
 
 from ui.config.dialogs import RekordboxSyncProgressDialog
+from ui.config.scroll import scroll_page
 
 
 def build_library_tab(dialog) -> None:
@@ -64,7 +65,7 @@ def build_library_tab(dialog) -> None:
     form.addRow(grp_advanced)
 
     dialog.btn_rekordbox_sync_now.clicked.connect(dialog._sync_rekordbox_now)
-    dialog.tabs.addTab(dialog.tab_lib, "Library")
+    dialog.tabs.addTab(scroll_page(dialog.tab_lib), "Library")
 
 
 class LibrarySettingsMixin:

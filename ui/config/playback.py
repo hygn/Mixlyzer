@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
 )
 
 from ui.track_info_panel import HorizontalBufferMeter
+from ui.config.scroll import scroll_page
 
 
 def build_playback_tab(dialog) -> None:
@@ -151,7 +152,7 @@ def build_playback_tab(dialog) -> None:
     form.addRow(grp_general)
     form.addRow(grp_timestretch)
     form.addRow(grp_metronome)
-    dialog.tabs.addTab(dialog.tab_playback, "Playback")
+    dialog.tabs.addTab(scroll_page(dialog.tab_playback), "Playback")
 
 
 class PlaybackSettingsMixin:

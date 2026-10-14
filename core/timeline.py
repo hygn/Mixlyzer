@@ -1,11 +1,25 @@
 from PySide6 import QtCore
 
+# Main view widths (s) the wheel steps through over the main view.
+WINDOW_STEPS_SEC = (3.0, 6.0, 9.0, 12.0, 24.0)
+DEFAULT_WINDOW_SEC = 12.0
+# Views up to this wide are "short" (the main view waveform's short-view frame).
+SHORT_WINDOW_MAX_SEC = 6.0
+
+
+def step_window(window_sec: float, steps: int) -> float:
+    """The main view width ``steps`` WINDOW_STEPS_SEC narrower (< 0) or wider (> 0)
+    than ``window_sec``, held at the ends."""
+    current = min(range(len(WINDOW_STEPS_SEC)), key=lambda i: abs(WINDOW_STEPS_SEC[i] - float(window_sec)))
+    return WINDOW_STEPS_SEC[max(0, min(len(WINDOW_STEPS_SEC) - 1, current + int(steps)))]
+
+
 class TimelineCoordinator(QtCore.QObject):
     """윈도우/센터/현재시간을 관리하고, left-edge(이미지 Rect 평행이동)를 계산."""
     def __init__(self, bus):
         super().__init__()
         self.bus = bus
-        self.window_sec: float = 12.0
+        self.window_sec: float = DEFAULT_WINDOW_SEC
         self.center_t: float = self.window_sec / 2.0
         self.current_time: float = 0.0
 

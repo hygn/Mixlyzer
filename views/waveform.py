@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from collections import deque
 
 import numpy as np
@@ -10,6 +10,7 @@ from scipy.ndimage import gaussian_filter1d, uniform_filter1d
 from scipy.signal import butter, sosfiltfilt
 
 from core.config import load_cfg
+from core.timeline import SHORT_WINDOW_MAX_SEC
 from utils.wave import (
     RGB_DETAIL_COLOR_SMOOTH_SEC,
     RGB_DETAIL_SAT_FLOOR,
@@ -54,16 +55,22 @@ class _WaveStyle:
     # common scale of the three-band layers.
     band_ref: float | None
 
+    @staticmethod
+    def frame_ms_for(view, window_sec: float) -> float:
+        """Drawing frame (ms) of a main view ``window_sec`` wide."""
+        short = float(window_sec) <= SHORT_WINDOW_MAX_SEC
+        return float(view.mainview_wave_frame_ms_short if short else view.mainview_wave_frame_ms_long)
+
     @classmethod
-    def from_config(cls, features) -> "_WaveStyle":
+    def from_config(cls, features, window_sec: float) -> "_WaveStyle":
         cfg = load_cfg()
-        a = cfg.analysisconfig
+        a, v = cfg.analysisconfig, cfg.viewconfig
         ref = features.get("wave_overview_ref") if isinstance(features, dict) else None
         return cls(
             bands=tuple((float(low), float(high)) for low, high in (a.env_lo, a.env_mid, a.env_hi)),
-            filter_order=int(a.env_order),
-            frame_ms=float(getattr(a, "env_frame_ms", 20)) / 2,
-            waveform_style=cfg.viewconfig.waveform_style,
+            filter_order=int(v.mainview_wave_filter_order),
+            frame_ms=cls.frame_ms_for(v, window_sec),
+            waveform_style=v.waveform_style,
             band_ref=None if ref is None else float(np.max(np.asarray(ref)[WAVE_LOW:WAVE_HIGH + 1])),
         )
 
@@ -81,6 +88,7 @@ class _WaveRenderResult:
     chunk_index: int
     start_sec: float  # time span the image covers (column-aligned)
     end_sec: float
+    style: _WaveStyle  # the layer it belongs to
 
 
 class _WaveRenderJob(QtCore.QRunnable):
@@ -109,7 +117,8 @@ class _WaveRenderJob(QtCore.QRunnable):
         )
         self.signals.finished.emit(
             self.request_id,
-            _WaveRenderResult(image=image, chunk_index=self.chunk_index, start_sec=start_sec, end_sec=end_sec),
+            _WaveRenderResult(image=image, chunk_index=self.chunk_index, start_sec=start_sec, end_sec=end_sec,
+                              style=self.style),
         )
 
 
@@ -203,7 +212,8 @@ class _ChunkSpec:
 
 
 class _WaveformRenderWorker(QtCore.QObject):
-    """Manages render queue and QRunnable dispatch on a dedicated thread."""
+    """Manages render queue and QRunnable dispatch on a dedicated thread.
+    Chunks are tracked per (style, chunk index): each style is its own layer."""
 
     chunk_ready = QtCore.Signal(int, object)  # chunk_index, _WaveRenderResult
 
@@ -214,8 +224,8 @@ class _WaveformRenderWorker(QtCore.QObject):
         self._play_pending: deque[_ChunkSpec] = deque()
         self._scrub_pending: deque[_ChunkSpec] = deque()
         self._spawn_queue: deque[_ChunkSpec] = deque()
-        self._inflight: set[int] = set()
-        self._rendered: set[int] = set()
+        self._inflight: set[tuple[_WaveStyle, int]] = set()
+        self._rendered: set[tuple[_WaveStyle, int]] = set()
         self._request_seq = 0
         self._launch_timer = QtCore.QTimer(self)
         self._launch_timer.setSingleShot(True)
@@ -231,7 +241,7 @@ class _WaveformRenderWorker(QtCore.QObject):
         for spec in specs:
             if not isinstance(spec, _ChunkSpec):
                 continue
-            if spec.chunk_index in self._rendered or spec.chunk_index in self._inflight:
+            if self._known(spec):
                 continue
             self._play_pending.append(spec)
         if not self._launch_timer.isActive():
@@ -242,11 +252,25 @@ class _WaveformRenderWorker(QtCore.QObject):
         for spec in specs:
             if not isinstance(spec, _ChunkSpec):
                 continue
-            if spec.chunk_index in self._rendered or spec.chunk_index in self._inflight:
+            if self._known(spec):
                 continue
             self._scrub_pending.append(spec)
         if not self._launch_timer.isActive():
             self._launch_timer.start()
+
+    def _known(self, spec: _ChunkSpec) -> bool:
+        key = (spec.style, spec.chunk_index)
+        return key in self._rendered or key in self._inflight
+
+    @QtCore.Slot()
+    def drop_pending(self) -> None:
+        """Forget the requests not started yet (the view switched layers);
+        jobs running finish and are kept."""
+        self._launch_timer.stop()
+        self._spawn_timer.stop()
+        self._play_pending.clear()
+        self._scrub_pending.clear()
+        self._spawn_queue.clear()
 
     @QtCore.Slot()
     def cancel_all(self) -> None:
@@ -268,7 +292,7 @@ class _WaveformRenderWorker(QtCore.QObject):
         slots = RENDER_BATCH_SIZE
         while slots > 0 and source:
             spec = source.popleft()
-            if spec.chunk_index in self._rendered or spec.chunk_index in self._inflight:
+            if self._known(spec):
                 continue
             self._spawn_queue.append(spec)
             slots -= 1
@@ -281,10 +305,10 @@ class _WaveformRenderWorker(QtCore.QObject):
     def _spawn_next(self) -> None:
         while self._spawn_queue:
             spec = self._spawn_queue.popleft()
-            if spec.chunk_index in self._rendered or spec.chunk_index in self._inflight:
+            if self._known(spec):
                 continue
             self._request_seq += 1
-            self._inflight.add(spec.chunk_index)
+            self._inflight.add((spec.style, spec.chunk_index))
             job = _WaveRenderJob(
                 self._request_seq,
                 spec.pcm,
@@ -308,8 +332,8 @@ class _WaveformRenderWorker(QtCore.QObject):
         if not isinstance(payload, _WaveRenderResult):
             return
         chunk_index = int(payload.chunk_index)
-        self._inflight.discard(chunk_index)
-        self._rendered.add(chunk_index)
+        self._inflight.discard((payload.style, chunk_index))
+        self._rendered.add((payload.style, chunk_index))
         self.chunk_ready.emit(chunk_index, payload)
         # only schedule next batch when spawn timer is also done
         # (if spawn timer is still running, _spawn_next will handle continuation)
@@ -320,11 +344,24 @@ class _WaveformRenderWorker(QtCore.QObject):
 
 # View
 
+@dataclass
+class _ChunkLayer:
+    """The chunk images of one style (e.g. the short or the long views' frame),
+    kept while another layer is shown."""
+
+    style: _WaveStyle
+    items: list  # pg.ImageItem | None per chunk
+    spans: list  # time span of each rendered image, or None
+    submitted: set = field(default_factory=set)  # chunks requested from the worker
+    in_scene: set = field(default_factory=set)   # chunks shown
+
+
 @register_view("WaveformView")
 class WaveformView(ViewPlugin):
     _sig_enqueue_play = QtCore.Signal(list)
     _sig_enqueue_scrub = QtCore.Signal(list)
     _sig_cancel = QtCore.Signal()
+    _sig_drop_pending = QtCore.Signal()
 
     def __init__(self, bus, model, tl):
         super().__init__(bus, model, tl)
@@ -334,14 +371,13 @@ class WaveformView(ViewPlugin):
         self._last_pcm = None
         self._wave_levels = (0, 255)
         self._chunk_count = 0
-        self._chunk_items: list[pg.ImageItem | None] = []
-        self._chunk_spans: list[tuple[float, float] | None] = []  # time span of each rendered image
+        # One layer of chunk images per style (the short and the long views draw
+        # at different frames); switching shows the other layer, keeping both.
+        self._layers: dict[_WaveStyle, _ChunkLayer] = {}
+        self._layer: _ChunkLayer | None = None
         self._group: pg.ItemGroup | None = None
-        self._style: _WaveStyle | None = None
         self._preview_item: pg.ImageItem | None = None
         self._preview_source = None
-        self._in_scene: set[int] = set()
-        self._submitted_chunks: set[int] = set()
         self._scrubbing = False
 
         # Dedicated render worker thread
@@ -354,6 +390,7 @@ class WaveformView(ViewPlugin):
         self._sig_enqueue_play.connect(self._worker.enqueue_play, QtCore.Qt.ConnectionType.QueuedConnection)
         self._sig_enqueue_scrub.connect(self._worker.enqueue_scrub, QtCore.Qt.ConnectionType.QueuedConnection)
         self._sig_cancel.connect(self._worker.cancel_all, QtCore.Qt.ConnectionType.QueuedConnection)
+        self._sig_drop_pending.connect(self._worker.drop_pending, QtCore.Qt.ConnectionType.QueuedConnection)
 
         self.bus.sig_time_changed.connect(self.update_time)
         self.bus.sig_seek_requested.connect(self._on_seek_requested)
@@ -363,6 +400,48 @@ class WaveformView(ViewPlugin):
         self.bus.sig_window_changed.connect(self.update_window)
         self.bus.sig_features_loaded.connect(self.update_features)
         self.model.sig_updated.connect(self._on_model_updated)
+
+    # The shown layer
+    @property
+    def _style(self) -> _WaveStyle | None:
+        return self._layer.style if self._layer is not None else None
+
+    @property
+    def _chunk_items(self) -> list:
+        return self._layer.items if self._layer is not None else []
+
+    @property
+    def _chunk_spans(self) -> list:
+        return self._layer.spans if self._layer is not None else []
+
+    @property
+    def _submitted_chunks(self) -> set:
+        return self._layer.submitted if self._layer is not None else set()
+
+    @property
+    def _in_scene(self) -> set:
+        return self._layer.in_scene if self._layer is not None else set()
+
+    def _show_layer(self, style: _WaveStyle) -> None:
+        """Show the layer of ``style`` (made empty the first time); the shown one
+        is hidden and kept."""
+        layer = self._layers.get(style)
+        if layer is None:
+            layer = _ChunkLayer(style=style, items=[None] * self._chunk_count, spans=[None] * self._chunk_count)
+            self._layers[style] = layer
+        old = self._layer
+        if old is layer:
+            return
+        if old is not None:
+            for i in old.in_scene:
+                if old.items[i] is not None:
+                    old.items[i].setVisible(False)
+            old.in_scene.clear()
+            # its requests not started yet are dropped below: requested again
+            # when it is shown again (running ones still land in it)
+            old.submitted = {i for i, item in enumerate(old.items) if item is not None}
+            self._sig_drop_pending.emit()
+        self._layer = layer
 
     def attach(self, plot: pg.PlotItem):
         self.plot = plot
@@ -404,7 +483,11 @@ class WaveformView(ViewPlugin):
         self._evaluate_render_targets()
 
     def update_window(self, _w: float):
+        if self._layer is not None:
+            # crossing between the short and long views shows the other frame's layer
+            self._show_layer(_WaveStyle.from_config(self.model.features, self.tl.window_sec))
         self._set_rect(force=True)
+        self._evaluate_render_targets()  # a wider view shows chunks not rendered yet
 
     def update_features(self):
         self.render_initial()
@@ -422,13 +505,13 @@ class WaveformView(ViewPlugin):
         self._set_rect(force=True)
 
     def _remove_all_chunk_items(self) -> None:
-        for item in self._chunk_items:
-            if item is not None and item.scene() is not None:
-                item.setParentItem(None)
-                item.scene().removeItem(item)
-        self._chunk_items = []
-        self._chunk_spans = []
-        self._in_scene.clear()
+        for layer in self._layers.values():
+            for item in layer.items:
+                if item is not None and item.scene() is not None:
+                    item.setParentItem(None)
+                    item.scene().removeItem(item)
+        self._layers = {}
+        self._layer = None
 
     def _make_chunk_item(self) -> pg.ImageItem:
         item = pg.ImageItem()
@@ -507,14 +590,11 @@ class WaveformView(ViewPlugin):
             self._sig_cancel.emit()
             return 0
         chunk_count = max(1, int(np.ceil(duration / RENDER_CHUNK_SEC)))
-        if force or chunk_count != self._chunk_count:
+        if force or chunk_count != self._chunk_count or self._layer is None:
             self._remove_all_chunk_items()
             self._chunk_count = chunk_count
-            self._chunk_items = [None] * chunk_count
-            self._chunk_spans = [None] * chunk_count
-            self._submitted_chunks.clear()
-            self._style = _WaveStyle.from_config(self.model.features)
             self._sig_cancel.emit()
+            self._show_layer(_WaveStyle.from_config(self.model.features, self.tl.window_sec))
         return self._chunk_count
 
     def _on_seek_requested(self, _t: float) -> None:
@@ -565,8 +645,6 @@ class WaveformView(ViewPlugin):
                 continue  # already displayed
             if chunk_index in self._submitted_chunks:
                 continue  # already in worker queue
-            if self._style is None:
-                self._style = _WaveStyle.from_config(self.model.features)
             specs.append(_ChunkSpec(
                 chunk_index=chunk_index,
                 pcm=pcm,
@@ -603,26 +681,27 @@ class WaveformView(ViewPlugin):
     def _on_chunk_ready(self, chunk_index: int, payload: object) -> None:
         if not isinstance(payload, _WaveRenderResult) or self.plot is None:
             return
-        if chunk_index < 0 or chunk_index >= self._chunk_count:
-            return
-        self._chunk_spans[chunk_index] = (payload.start_sec, payload.end_sec)
+        layer = self._layers.get(payload.style)
+        if layer is None or chunk_index < 0 or chunk_index >= len(layer.items):
+            return  # a layer dropped meanwhile (new track or settings)
+        layer.spans[chunk_index] = (payload.start_sec, payload.end_sec)
         patch = np.ascontiguousarray(payload.image, dtype=np.uint8)
         if patch.size == 0:
             return
-        item = self._chunk_items[chunk_index]
+        item = layer.items[chunk_index]
         is_new = item is None
         if is_new:
             item = self._make_chunk_item()
-            self._chunk_items[chunk_index] = item
+            layer.items[chunk_index] = item
         item.setImage(patch, autoLevels=False, levels=self._wave_levels)
-        self._apply_chunk_rect(item, chunk_index)
+        self._apply_chunk_rect(item, layer.spans[chunk_index], chunk_index)
         if is_new:
             item.setVisible(False)
-            self._sync_scene_visibility()
+            if layer is self._layer:
+                self._sync_scene_visibility()
 
-    def _apply_chunk_rect(self, item: pg.ImageItem, chunk_index: int) -> None:
+    def _apply_chunk_rect(self, item: pg.ImageItem, span, chunk_index: int) -> None:
         # The image covers its column-aligned span; neighbouring spans share their edge.
-        span = self._chunk_spans[chunk_index] if chunk_index < len(self._chunk_spans) else None
         if span is None:
             start_sec = chunk_index * RENDER_CHUNK_SEC
             end_sec = min(self.duration, start_sec + RENDER_CHUNK_SEC)

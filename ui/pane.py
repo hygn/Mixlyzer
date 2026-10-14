@@ -105,6 +105,7 @@ class MainPane(QtWidgets.QWidget):
             get_time=lambda: self.current_time,
             get_duration=lambda: float(self.model.duration_sec or 0.0),
             can_scratch=self._can_use_transport,
+            get_window=lambda: self.tl.window_sec,
         ))
         self.p.hideAxis("left")
         self.p.hideAxis("bottom")
@@ -139,6 +140,7 @@ class MainPane(QtWidgets.QWidget):
 
         # Signals
         self.bus.sig_time_changed.connect(self._on_time)
+        self.bus.sig_window_changed.connect(self._on_window)
         self.bus.sig_output_peak_dbfs.connect(self._on_output_peak_dbfs)
         self.bus.sig_features_loaded.connect(self._on_features)
         self.bus.sig_properties_loaded.connect(self._on_properties)
@@ -183,6 +185,7 @@ class MainPane(QtWidgets.QWidget):
 
         self.track_info = TrackInfoPanel(self.cfg)
         self.track_info.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+        self.track_info.unload_button.clicked.connect(self.bus.sig_unload_track_requested.emit)
         top_row.addWidget(self.track_info, 1, QtCore.Qt.AlignVCenter)
 
         # the edit panel sits in the track info header, between the info and the deck
@@ -459,6 +462,9 @@ class MainPane(QtWidgets.QWidget):
         self.bus.sig_peak_meter_gain_changed.emit(float(peak_meter_gain))
 
     # Signals
+    def _on_window(self, _window_sec: float) -> None:
+        self.p.setXRange(0.0, self.tl.window_sec, padding=0)
+
     def _on_time(self, t: float):
         self.current_time = t
         self.track_info.update_record_pix(t)
@@ -572,11 +578,14 @@ class MainPane(QtWidgets.QWidget):
             self.track_edit.set_segments(f.get("beats_time_sec"), segments)
         self._set_tempo_segments(segments)
         key_segments = f.get("key_segments")
+        self._key_segments = None
         if key_segments is not None:
             try:
                 self._key_segments = np.asarray(key_segments, dtype=float)
             except Exception:
                 self._key_segments = None
+        if self._key_segments is None:
+            self.track_info.set_key(None)  # e.g. unloaded
 
     def _on_beatgrid_edited(self):
         if not isinstance(self.model.features, dict):
@@ -660,6 +669,7 @@ class MainPane(QtWidgets.QWidget):
         self.track_info.set_artist(artist_text.strip())
         self.track_edit.set_track_uid(p.get("uid"))
         self.track_edit.set_track_duration(p.get("duration_sec"))
+        self.track_info.set_track_loaded(float(self.model.duration_sec or 0.0) > 0.0)
 
     def _on_albumart(self):
         self.track_info.update_album_art(getattr(self.model, "album_art", None))

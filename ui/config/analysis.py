@@ -29,6 +29,7 @@ from ui.config.dialogs import (
     BeatParameterOptimizeDialog,
     ParameterOptimizeProgressDialog,
 )
+from ui.config.scroll import scroll_page
 
 
 def build_analysis_tab(dialog) -> None:
@@ -224,7 +225,7 @@ def build_analysis_tab(dialog) -> None:
     f_adv.addRow("Pitch: others", dialog.sp_pitch_others)
     f_key.addRow(grp_adv)
 
-    # Waveform (Envelope bands)
+    # Waveform bands (stored overview levels; the main view waveform uses them too)
     tab_wave = QWidget(); f_wave = QFormLayout(tab_wave)
     def make_band_row(parent_form, label: str):
         box = QWidget(); h = QHBoxLayout(box); h.setContentsMargins(0, 0, 0, 0); h.setSpacing(6)
@@ -238,24 +239,15 @@ def build_analysis_tab(dialog) -> None:
         h.addWidget(QLabel("hi")); h.addWidget(hi)
         parent_form.addRow(label, box)
         return lo, hi
-    dialog.sp_env_frame_ms = QSpinBox(); dialog.sp_env_frame_ms.setRange(1, 10)
-    dialog.sp_env_order = QSpinBox(); dialog.sp_env_order.setRange(1, 12)
-    dialog.sp_env_frame_ms.setToolTip(
-        "Time resolution of the waveform bars. Smaller is more detailed."
+    grp_wave_bands = QGroupBox("Bands")
+    grp_wave_bands.setToolTip(
+        "Low / mid / high bands of the waveform. The overview's band levels are\n"
+        "stored by the analysis: a change applies to tracks analyzed after it."
     )
-    dialog.sp_env_order.setToolTip(
-        "Order of the band filters. Higher separates the bands more sharply."
-    )
-    grp_wave_general = QGroupBox("General")
-    f_wave_general = QFormLayout(grp_wave_general)
-    f_wave_general.addRow("Frame (ms)", dialog.sp_env_frame_ms)
-    f_wave_general.addRow("Filter order", dialog.sp_env_order)
-    grp_wave_bands = QGroupBox("Envelope Bands")
     f_wave_bands = QFormLayout(grp_wave_bands)
     dialog.sp_env_lo_lo,  dialog.sp_env_lo_hi  = make_band_row(f_wave_bands, "Low")
     dialog.sp_env_mid_lo, dialog.sp_env_mid_hi = make_band_row(f_wave_bands, "Mid")
     dialog.sp_env_hi_lo,  dialog.sp_env_hi_hi  = make_band_row(f_wave_bands, "High")
-    f_wave.addRow(grp_wave_general)
     f_wave.addRow(grp_wave_bands)
 
     # Phrase
@@ -322,12 +314,12 @@ def build_analysis_tab(dialog) -> None:
     f_cue.addRow(grp_jumpcue_advanced)
 
     # Assemble
-    analysis_tabs.addTab(tab_global, "Global")
-    analysis_tabs.addTab(tab_beat, "Beat")
-    analysis_tabs.addTab(tab_key, "Key")
-    analysis_tabs.addTab(tab_phrase, "Phrase")
-    analysis_tabs.addTab(tab_cue, "CUE")
-    analysis_tabs.addTab(tab_wave, "Waveform")
+    analysis_tabs.addTab(scroll_page(tab_global), "Global")
+    analysis_tabs.addTab(scroll_page(tab_beat), "Beat")
+    analysis_tabs.addTab(scroll_page(tab_key), "Key")
+    analysis_tabs.addTab(scroll_page(tab_phrase), "Phrase")
+    analysis_tabs.addTab(scroll_page(tab_cue), "CUE")
+    analysis_tabs.addTab(scroll_page(tab_wave), "Waveform")
 
     root.addWidget(analysis_tabs)
     dialog.tabs.addTab(dialog.tab_analysis, "Analysis")

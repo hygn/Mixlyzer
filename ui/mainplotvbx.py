@@ -5,6 +5,8 @@ import numpy as np
 import pyqtgraph as pg
 from PySide6 import QtCore
 
+from core.timeline import step_window
+
 
 class NoDragNoWheelViewBox(pg.ViewBox):
     def __init__(self, *args, **kwargs):
@@ -25,16 +27,31 @@ class NoDragNoWheelViewBox(pg.ViewBox):
 
 class ScratchViewBox(NoDragNoWheelViewBox):
     """Main view box: holding the waveform with the left button holds the deck
-    (scratch), dragging moves the track under the pointer, as on rekordbox."""
+    (scratch), dragging moves the track under the pointer, as on rekordbox. The
+    wheel zooms the view through core.timeline.WINDOW_STEPS_SEC (up: narrower)."""
 
     def __init__(self, bus, get_time: Callable[[], float], get_duration: Callable[[], float],
-                 can_scratch: Callable[[], bool], *args, **kwargs):
+                 can_scratch: Callable[[], bool], get_window: Callable[[], float], *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.bus = bus
+        self._get_window = get_window
+        self._wheel_delta = 0
         self._get_time = get_time
         self._get_duration = get_duration
         self._can_scratch = can_scratch
         self._grab: tuple[float, float] | None = None  # (pointer x, track time) at the press
+
+    def wheelEvent(self, ev, axis=None):
+        # one step per notch (120); high-resolution wheels add up to a notch
+        self._wheel_delta += int(ev.delta())
+        steps = int(self._wheel_delta / 120)
+        if steps:
+            self._wheel_delta -= steps * 120
+            window = float(self._get_window())
+            new_window = step_window(window, -steps)
+            if new_window != window:
+                self.bus.sig_window_changed.emit(new_window)
+        ev.accept()
 
     def mousePressEvent(self, ev):
         if ev.button() != QtCore.Qt.LeftButton or not self._can_scratch() or self._get_duration() <= 0.0:

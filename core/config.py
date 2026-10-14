@@ -47,6 +47,11 @@ class viewconfig:
     display_JumpCUE: bool
     display_phrase: bool
     waveform_style: Literal["rgb", "3band"]  # RGB: colored by the band mix; 3band: rekordbox-style layers
+    # main view waveform: drawing frame (bar) length (ms) of the short views (up to
+    # core.timeline.SHORT_WINDOW_MAX_SEC wide) and of the longer ones
+    mainview_wave_frame_ms_short: float
+    mainview_wave_frame_ms_long: float
+    mainview_wave_filter_order: int  # main view waveform: band filter order
     use_output_volume_as_peak_meter_input: bool
     fps: int
     reduce_fps_when_occluded: bool
@@ -125,11 +130,11 @@ class analysisconfig:
     downbeat_parameter_path: str
     downbeat_feature_cache_path: str
     beatgrid_offset_msec: float
-    env_frame_ms: int
+    # low / mid / high bands (Hz) of the stored overview levels; the main view
+    # waveform uses them too
     env_lo: Tuple[float, float]
     env_mid: Tuple[float, float]
     env_hi: Tuple[float, float]
-    env_order: int
     phrase_analysis_enabled: bool
     phrase_parameter_path: str
     phrase_feature_cache_path: str
@@ -289,11 +294,9 @@ def default_cfg():
         downbeat_parameter_path="assets/weights/downbeat_feature_weights.json",
         downbeat_feature_cache_path="featurecache/downbeat",
         beatgrid_offset_msec=10.0,
-        env_frame_ms=4,
         env_lo=(20.0, 200.0),
         env_mid=(250.0, 1500.0),
         env_hi=(1600.0, 11025.0),
-        env_order=4,
         phrase_analysis_enabled=True,
         phrase_parameter_path="assets/weights/phrase_analyzer.npz",
         phrase_feature_cache_path="featurecache/phrase",
@@ -315,6 +318,9 @@ def default_cfg():
         display_JumpCUE=True,
         display_phrase=True,
         waveform_style="rgb",
+        mainview_wave_frame_ms_short=1.0,
+        mainview_wave_frame_ms_long=2.0,
+        mainview_wave_filter_order=4,
         use_output_volume_as_peak_meter_input=False,
         fps=60,
         reduce_fps_when_occluded=True,

@@ -38,6 +38,7 @@ class EventBus(QtCore.QObject):
     # Library
     sig_lib_updated = QtCore.Signal(object)
     sig_request_load_track = QtCore.Signal(str)
+    sig_unload_track_requested = QtCore.Signal()
     sig_reanalyze_requested = QtCore.Signal(str)
     sig_segment_reanalyze_requested = QtCore.Signal(object)
     sig_segment_reanalyze_state = QtCore.Signal(bool)

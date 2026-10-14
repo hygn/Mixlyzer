@@ -164,6 +164,9 @@ class SettingsDialog(
         self.ed_record_img_path.setText(v.record_img_path)
         self._set_phrase_label_names(v.phrase_labels)
         self.cmb_waveform_style.setCurrentIndex(self.cmb_waveform_style.findData(v.waveform_style))
+        self.sp_mainview_wave_frame_ms_short.setValue(float(v.mainview_wave_frame_ms_short))
+        self.sp_mainview_wave_frame_ms_long.setValue(float(v.mainview_wave_frame_ms_long))
+        self.sp_mainview_wave_filter_order.setValue(int(v.mainview_wave_filter_order))
 
         p = cfg.playbackconfig
         self.cb_metronome.setChecked(bool(p.enable_metronome))
@@ -212,11 +215,9 @@ class SettingsDialog(
             str(getattr(a, "downbeat_feature_cache_path", "") or "")
         )
         self.sp_beatgrid_offset.setValue(float(a.beatgrid_offset_msec))
-        self.sp_env_frame_ms.setValue(int(a.env_frame_ms))
         self._set_band(self.sp_env_lo_lo,  self.sp_env_lo_hi,  a.env_lo)
         self._set_band(self.sp_env_mid_lo, self.sp_env_mid_hi, a.env_mid)
         self._set_band(self.sp_env_hi_lo,  self.sp_env_hi_hi,  a.env_hi)
-        self.sp_env_order.setValue(int(a.env_order))
         self.cb_phrase_analysis_enabled.setChecked(
             bool(getattr(a, "phrase_analysis_enabled", True))
         )
@@ -325,11 +326,9 @@ class SettingsDialog(
                 downbeat_parameter_path=self.ed_downbeat_parameter_path.text().strip(),
                 downbeat_feature_cache_path=self.ed_downbeat_feature_cache_path.text().strip(),
                 beatgrid_offset_msec=float(self.sp_beatgrid_offset.value()),
-                env_frame_ms=int(self.sp_env_frame_ms.value()),
                 env_lo=(float(self.sp_env_lo_lo.value()), float(self.sp_env_lo_hi.value())),
                 env_mid=(float(self.sp_env_mid_lo.value()), float(self.sp_env_mid_hi.value())),
                 env_hi=(float(self.sp_env_hi_lo.value()), float(self.sp_env_hi_hi.value())),
-                env_order=int(self.sp_env_order.value()),
                 phrase_analysis_enabled=bool(self.cb_phrase_analysis_enabled.isChecked()),
                 phrase_parameter_path=self.ed_phrase_parameter_path.text().strip(),
                 phrase_feature_cache_path=self.ed_phrase_feature_cache_path.text().strip(),
@@ -358,6 +357,9 @@ class SettingsDialog(
                 display_JumpCUE=bool(self.cb_JumpCUE.isChecked()),
                 display_phrase=bool(self.cb_phrase.isChecked()),
                 waveform_style=str(self.cmb_waveform_style.currentData()),
+                mainview_wave_frame_ms_short=round(float(self.sp_mainview_wave_frame_ms_short.value()), 1),
+                mainview_wave_frame_ms_long=round(float(self.sp_mainview_wave_frame_ms_long.value()), 1),
+                mainview_wave_filter_order=int(self.sp_mainview_wave_filter_order.value()),
                 use_output_volume_as_peak_meter_input=bool(
                     self.cb_use_output_volume_as_peak_meter_input.isChecked()
                 ),

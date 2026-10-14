@@ -25,6 +25,7 @@ from PySide6.QtWidgets import (
 
 from core.config import externalsyncconfig, memorydeckconfig, memoryvalueconfig
 from core.resource_paths import process_denylist_path
+from ui.config.scroll import scroll_page
 
 
 def make_memory_value_group(
@@ -256,7 +257,7 @@ def build_external_sync_tab(dialog) -> None:
     )
     dialog._refresh_memory_processes()
     dialog._sync_external_sync_mode_ui()
-    dialog.tabs.addTab(dialog.tab_external_sync, "External Sync")
+    dialog.tabs.addTab(scroll_page(dialog.tab_external_sync), "External Sync")
 
 
 class ExternalSyncSettingsMixin:

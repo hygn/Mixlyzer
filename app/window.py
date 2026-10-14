@@ -121,6 +121,7 @@ class AppWindow(QtWidgets.QMainWindow):
         # events
         self.bus.sig_features_loaded.connect(self._on_features_loaded)
         self.bus.sig_request_load_track.connect(self.analyze_file)
+        self.bus.sig_unload_track_requested.connect(self.unload_track)
         self.bus.sig_setting_saveJsonRequested.connect(self._on_settings_save)
         self.bus.sig_rekordbox_sync_requested.connect(self.rekordbox_sync.sync_requested)
         self.bus.sig_rekordbox_sync_track_requested.connect(self.rekordbox_sync.sync_track_requested)
@@ -185,6 +186,16 @@ class AppWindow(QtWidgets.QMainWindow):
     def dragEnterEvent(self, e: QtGui.QDragEnterEvent):
         if e.mimeData().hasUrls(): e.acceptProposedAction()
 
+    def dragMoveEvent(self, e: QtGui.QDragMoveEvent):
+        # A track dragged from the library loads when dropped on the deck, not
+        # back on the library.
+        over = self.childAt(e.position().toPoint())
+        lib = getattr(self.pane, "lib", None)
+        if lib is not None and over is not None and (over is lib or lib.isAncestorOf(over)):
+            e.ignore()
+        elif e.mimeData().hasUrls():
+            e.acceptProposedAction()
+
     def dropEvent(self, e: QtGui.QDropEvent):
         if self._is_external_sync_active():
             self.statusBar().showMessage("External Sync is enabled. Local track loading is disabled.")
@@ -224,6 +235,19 @@ class AppWindow(QtWidgets.QMainWindow):
             self.statusBar().showMessage("External Sync is enabled. Local track loading is disabled.")
             return
         self.analysis_workflow.analyze(path)
+
+    def unload_track(self) -> None:
+        """Empty the deck: no track in the player or the views."""
+        if self._is_external_sync_active():
+            self.statusBar().showMessage("External Sync is enabled. Local track loading is disabled.")
+            return
+        self.player.unload()
+        self.analysis_workflow.current_path = None
+        self.model.load({}, {}, 0.0)
+        self.bus.sig_features_loaded.emit()
+        self.bus.sig_properties_loaded.emit()
+        self.bus.sig_albumart_loaded.emit()
+        self.statusBar().showMessage("Track unloaded.")
 
     def reanalyze_file(self, path: str):
         self.analysis_workflow.reanalyze(path)
@@ -437,7 +461,9 @@ class AppWindow(QtWidgets.QMainWindow):
         )
         if viewconfig_changed:
             self._apply_visibility_refresh_setting(force=True)
-        if prev_vcfg.get("waveform_style") != new_vcfg["waveform_style"]:
+        _WAVE_STYLE_KEYS = ("waveform_style", "mainview_wave_frame_ms_short", "mainview_wave_frame_ms_long",
+                            "mainview_wave_filter_order")
+        if any(prev_vcfg.get(k) != new_vcfg[k] for k in _WAVE_STYLE_KEYS):
             self.pane.ov.refresh_waveform()
             if not layout_changed:
                 self.bus.sig_reload_UI.emit(_config)  # the waveform view takes the style when installed
