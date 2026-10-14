@@ -12,9 +12,7 @@ Feature policy:
     ``analyzer_core.cue_and_phrase.structure.extract_song_features`` at beat
     resolution (``family_beat``).
 
-Fill policy:
-    FILL_IN is merged into the following non-fill segment and FILL_OUT into the
-    previous non-fill segment.  Long segments are not split into 8-bar chunks.
+Long segments are not split into 8-bar chunks.
 """
 
 from __future__ import annotations
@@ -38,7 +36,7 @@ from analyzer_core.cue_and_phrase.model_features import (
 )
 from core.library_handler import LibraryDB
 from utils.atomic_io import atomic_output_path
-from utils.phrases import MIN_PHRASE_DUR, merge_fill_phrases
+from utils.phrases import MIN_PHRASE_DUR
 
 
 EPS = 1e-9
@@ -401,38 +399,7 @@ def _gt_segments_beats(track: dict[str, object]) -> tuple[np.ndarray, list[str]]
 
 
 def _eval_target(track: dict[str, object]) -> tuple[np.ndarray, list[str]]:
-    bounds, labels = _gt_segments_beats(track)
-    segments = [
-        {"start": int(s), "end": int(e), "label": str(label)}
-        for (s, e), label in zip(zip(bounds[:-1], bounds[1:]), labels)
-        if int(e) > int(s)
-    ]
-    if not segments:
-        return bounds, labels
-
-    kept = merge_fill_phrases(
-        segments,
-        orphan_fallback=True,
-    )
-    if not kept:
-        return bounds, labels
-
-    out_bounds = [int(kept[0]["start"])]
-    out_labels: list[str] = []
-    for seg in kept:
-        start = int(seg["start"])
-        end = int(seg["end"])
-        if start > out_bounds[-1]:
-            # Preserve a gap defensively by extending the previous segment.  This
-            # should only happen for orphan fills at track edges.
-            out_bounds[-1] = start
-        if end <= start:
-            continue
-        if start != out_bounds[-1]:
-            out_bounds.append(start)
-        out_bounds.append(end)
-        out_labels.append(str(seg["label"]))
-    return np.asarray(out_bounds, dtype=np.int32), out_labels
+    return _gt_segments_beats(track)
 
 
 def _fit_boundary_gbm(

@@ -9,6 +9,7 @@ import numpy as np
 # Predefined phrase labels (always uppercase). Custom labels (free text) are
 # also allowed and are kept exactly as the user types them.
 PHRASE_LABELS: list[str] = [
+    "PICKUP",
     "INTRO",
     "VERSE",
     "CHORUS",
@@ -17,12 +18,11 @@ PHRASE_LABELS: list[str] = [
     "OUTRO",
     "INTERLUDE",
     "SILENCE",
-    "FILL_IN",
-    "FILL_OUT",
 ]
 
 # Stable colors for the predefined labels; custom labels fall back to a hash.
 _PHRASE_COLORS: dict[str, tuple[int, int, int]] = {
+    "PICKUP": (0, 180, 200),
     "INTRO": (70, 130, 180),
     "VERSE": (46, 139, 87),
     "CHORUS": (220, 60, 90),
@@ -31,8 +31,6 @@ _PHRASE_COLORS: dict[str, tuple[int, int, int]] = {
     "OUTRO": (95, 95, 110),
     "INTERLUDE": (218, 165, 32),
     "SILENCE": (110, 110, 110),
-    "FILL_IN": (0, 180, 200),
-    "FILL_OUT": (0, 120, 150),
 }
 
 _FALLBACK_PALETTE: list[tuple[int, int, int]] = [
@@ -299,98 +297,6 @@ def extract_phrase_segments(features: Dict[str, Any]) -> List[dict[str, Any]]:
             "label": normalize_base_label(str(labels[i])),
         })
     return _sorted_phrases(rows)
-
-
-def merge_fill_phrases(
-    phrases,
-    *,
-    orphan_fallback: bool = False,
-) -> List[dict[str, Any]]:
-    """Absorb fill ranges into their adjacent non-fill phrase.
-
-    FILL_IN belongs to the following phrase and FILL_OUT belongs to the
-    preceding phrase. ``orphan_fallback`` permits training data at a track edge
-    to use the opposite neighbour.
-    """
-
-    rows = _sorted_phrases(phrases)
-    if not rows:
-        return []
-    fill_labels = {"FILL_IN", "FILL_OUT"}
-
-    def nearest_nonfill(index: int, step: int) -> int | None:
-        position = index + step
-        while 0 <= position < len(rows):
-            if str(rows[position]["label"]).strip().upper() not in fill_labels:
-                return position
-            position += step
-        return None
-
-    labeled: list[tuple[dict[str, Any], bool]] = []
-    for index, row in enumerate(rows):
-        label = str(row["label"]).strip().upper()
-        if label in fill_labels:
-            preferred_step = 1 if label == "FILL_IN" else -1
-            target = nearest_nonfill(index, preferred_step)
-            if target is None and orphan_fallback:
-                target = nearest_nonfill(index, -preferred_step)
-            if target is None:
-                continue
-            current = {**row, "label": rows[target]["label"]}
-            labeled.append((current, True))
-        else:
-            labeled.append((dict(row), False))
-
-    merged: list[dict[str, Any]] = []
-    merged_absorbed: list[bool] = []
-    for current, from_fill in labeled:
-        if (
-            merged
-            and merged[-1]["label"] == current["label"]
-            and abs(float(merged[-1]["end"]) - float(current["start"]))
-            <= MIN_PHRASE_DUR
-            and (merged_absorbed[-1] or from_fill)
-        ):
-            merged[-1]["end"] = max(merged[-1]["end"], current["end"])
-            merged_absorbed[-1] = merged_absorbed[-1] or from_fill
-        else:
-            merged.append(current)
-            merged_absorbed.append(from_fill)
-    return normalize_phrase_segments(merged)
-
-
-def merge_fill_phrases_for_display(phrases) -> List[dict[str, Any]]:
-    """Return display-only phrases with FILL_IN/OUT absorbed into neighbours.
-
-    FILL_IN is shown as part of the following non-fill phrase. FILL_OUT is shown
-    as part of the previous non-fill phrase. Orphan fills are omitted.
-    """
-    return merge_fill_phrases(phrases, orphan_fallback=False)
-
-
-def extract_fill_phrase_markers(phrases) -> List[dict[str, Any]]:
-    """Return display marker ranges for fill phrases.
-
-    direction is "in" for FILL_IN and "out" for FILL_OUT.
-    """
-    rows = _sorted_phrases(phrases)
-    markers: list[dict[str, Any]] = []
-    for seg in rows:
-        label = str(seg.get("label", "") or "").strip().upper()
-        if label == "FILL_IN":
-            direction = "in"
-        elif label == "FILL_OUT":
-            direction = "out"
-        else:
-            continue
-        markers.append(
-            {
-                "start": float(seg["start"]),
-                "end": float(seg["end"]),
-                "direction": direction,
-            }
-        )
-    return markers
 
 
 def build_phrase_strip_buffer(phrases, duration_sec: float, *, width: int = 4096) -> np.ndarray | None:

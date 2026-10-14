@@ -4,8 +4,6 @@ import pyqtgraph as pg
 from .base import PHRASE_LANE, ViewPlugin, register_view
 from utils.phrases import (
     extract_phrase_segments,
-    extract_fill_phrase_markers,
-    merge_fill_phrases_for_display,
     number_phrase_labels,
     build_phrase_strip_buffer,
 )
@@ -43,8 +41,6 @@ class PhraseView(ViewPlugin):
     """Phrase (song-section) overlay: a translucent label band above the key strip."""
 
     BAND_BOTTOM, BAND_TOP = PHRASE_LANE
-    # fill arrows: just above the band, at the waveform's lower edge
-    FILL_ARROW_Y = PHRASE_LANE[1] + 0.04
 
     def __init__(self, bus, model, tl):
         super().__init__(bus, model, tl)
@@ -56,10 +52,8 @@ class PhraseView(ViewPlugin):
         self.boundaries = QtWidgets.QGraphicsPathItem()
         self.boundaries.setPen(pg.mkPen((255, 255, 255, 220), width=1, cosmetic=True))
         self.boundaries.setZValue(15)
-        self._fill_arrow_items: list[tuple[pg.PlotDataItem, pg.ArrowItem]] = []
         self._labels: list[pg.TextItem] = []
         self._phrases: list[dict] = []
-        self._fill_markers: list[dict] = []
         self._numbered: list[str] = []
         self.duration = 0.0
         self._font = QtGui.QFont()
@@ -84,12 +78,6 @@ class PhraseView(ViewPlugin):
             self.plot.removeItem(self.img)
         if self.boundaries.scene() is not None:
             self.plot.removeItem(self.boundaries)
-        for line, head in self._fill_arrow_items:
-            if line.scene() is not None:
-                self.plot.removeItem(line)
-            if head.scene() is not None:
-                self.plot.removeItem(head)
-        self._fill_arrow_items.clear()
         for label in self._labels:
             if label.scene() is not None:
                 self.plot.removeItem(label)
@@ -114,9 +102,7 @@ class PhraseView(ViewPlugin):
     def _load_phrases(self):
         features = self.model.features or {}
         self.duration = float(self.model.duration_sec or features.get("duration_sec") or 0.0)
-        raw_phrases = extract_phrase_segments(features)
-        self._phrases = merge_fill_phrases_for_display(raw_phrases)
-        self._fill_markers = extract_fill_phrase_markers(raw_phrases)
+        self._phrases = extract_phrase_segments(features)
         self._numbered = number_phrase_labels(self._phrases)
 
     def _rebuild(self):
@@ -198,80 +184,3 @@ class PhraseView(ViewPlugin):
             )
             label.setPos(label_left, label_y)
             label.setVisible(True)
-        self._position_fill_arrows(left, visible_start, visible_end)
-
-    def _fill_arrow_pen(self) -> QtGui.QPen:
-        pen = QtGui.QPen(QtGui.QColor(255, 255, 255, 235))
-        pen.setWidthF(1.4)
-        pen.setCosmetic(True)
-        pen.setStyle(QtCore.Qt.PenStyle.DashLine)
-        return pen
-
-    def _ensure_fill_arrow_items(self, count: int) -> None:
-        if self.plot is None:
-            return
-        while len(self._fill_arrow_items) < count:
-            line = pg.PlotDataItem()
-            line.setZValue(17)
-            line.setVisible(False)
-            head = pg.ArrowItem(angle=0)
-            head.setZValue(18)
-            head.setVisible(False)
-            self.plot.addItem(line)
-            self.plot.addItem(head)
-            self._fill_arrow_items.append((line, head))
-
-    def _position_fill_arrows(
-        self,
-        left: float,
-        visible_start: float,
-        visible_end: float,
-    ) -> None:
-        self._ensure_fill_arrow_items(len(self._fill_markers))
-        y = self.FILL_ARROW_Y
-        pen = self._fill_arrow_pen()
-        active_count = 0
-        for marker in self._fill_markers:
-            try:
-                start = float(marker.get("start", 0.0))
-                end = float(marker.get("end", start))
-            except Exception:
-                continue
-            if not (np.isfinite(start) and np.isfinite(end)) or end <= start:
-                continue
-            if end < visible_start or start > visible_end:
-                continue
-            width = end - start
-            inset = min(width * 0.08, width * 0.4)
-            x0 = start + inset
-            x1 = end - inset
-            if x1 <= x0:
-                x0, x1 = start, end
-            direction = str(marker.get("direction", "")).strip().lower()
-            line, head = self._fill_arrow_items[active_count]
-            if direction == "in":
-                tip = left + x0
-                angle = 0
-            else:
-                tip = left + x1
-                angle = 180
-            line.setData([left + x0, left + x1], [y, y], pen=pen)
-            line.setVisible(True)
-            head.setStyle(
-                angle=angle,
-                brush=pg.mkBrush(255, 255, 255, 235),
-                pen=pen,
-                headLen=9,
-                tipAngle=35,
-                tailLen=None,
-                tailWidth=5,
-            )
-            head.setPos(tip, y)
-            head.setVisible(True)
-            active_count += 1
-
-        for idx in range(active_count, len(self._fill_arrow_items)):
-            line, head = self._fill_arrow_items[idx]
-            line.setData([], [])
-            line.setVisible(False)
-            head.setVisible(False)

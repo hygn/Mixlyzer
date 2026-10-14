@@ -8,7 +8,6 @@ from utils.phrases import (
     abbreviate_phrase_labels,
     build_phrase_strip_buffer,
     extract_phrase_segments,
-    merge_fill_phrases_for_display,
 )
 from utils.cue_points import extract_cue_points
 from utils.color import key_label_text_color
@@ -601,8 +600,7 @@ class OverviewWidget(QtWidgets.QWidget):
 
     def _render_phrases(self) -> None:
         feats = self.model.features or {}
-        raw_phrases = extract_phrase_segments(feats) if self._phrase_visible else []
-        phrases = merge_fill_phrases_for_display(raw_phrases)
+        phrases = extract_phrase_segments(feats) if self._phrase_visible else []
         numbered = abbreviate_phrase_labels(phrases)
         band_bottom = self._wave_bottom
         band_h = self._phrase_band_h

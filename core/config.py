@@ -131,6 +131,7 @@ class cuepointrule:
 class cuepointconfig:
     """CUE points the analysis sets from the phrases, by phrase label (the
     predefined labels, utils.phrases.PHRASE_LABELS, lowercased)."""
+    pickup: cuepointrule
     intro: cuepointrule
     verse: cuepointrule
     chorus: cuepointrule
@@ -139,8 +140,6 @@ class cuepointconfig:
     outro: cuepointrule
     interlude: cuepointrule
     silence: cuepointrule
-    fill_in: cuepointrule
-    fill_out: cuepointrule
 
     def by_label(self) -> dict[str, cuepointrule]:
         """Rules keyed by phrase label (uppercase)."""

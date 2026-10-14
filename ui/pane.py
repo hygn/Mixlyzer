@@ -14,7 +14,7 @@ from utils.cue_points import extract_cue_points
 from utils.labels import idx_to_labels
 from utils.semitone import speed_to_semitone
 from utils.jump_cues import extract_jump_cue_pairs
-from utils.phrases import extract_phrase_segments, merge_fill_phrases_for_display, number_phrase_labels, phrase_color
+from utils.phrases import extract_phrase_segments, number_phrase_labels, phrase_color
 from core.event_bus import EventBus
 from core.config import config
 from ui.mainplotvbx import NoDragNoWheelViewBox
@@ -532,9 +532,9 @@ class MainPane(QtWidgets.QWidget):
         self.track_info.set_beat(int(self._beat_in_bar[i]), int(self._beat_meter[i]))
 
     def _on_phrases_updated(self) -> None:
-        """Cache the displayed phrases (fills merged, numbered like the phrase view)."""
+        """Cache the displayed phrases (numbered like the phrase view)."""
         f = self.model.features if isinstance(self.model.features, dict) else {}
-        rows = merge_fill_phrases_for_display(extract_phrase_segments(f))
+        rows = extract_phrase_segments(f)
         self._phrase_starts = np.asarray([float(r["start"]) for r in rows], dtype=float)
         self._phrase_ends = np.asarray([float(r["end"]) for r in rows], dtype=float)
         self._phrase_names = number_phrase_labels(rows)
