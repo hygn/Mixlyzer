@@ -154,7 +154,14 @@ class OverviewWidget(QtWidgets.QWidget):
         self.key_labels: list[pg.TextItem] = []
         self._key_rows: list[tuple[int, float, float]] = []
 
-        # Phrase overlay: translucent label band over the lower waveform.
+        # Phrase overlay: translucent label band over the lower waveform, on a
+        # dark backing so the band reads over the waveform.
+        self.phrase_bg = QtWidgets.QGraphicsRectItem()
+        self.phrase_bg.setPen(pg.mkPen(None))
+        self.phrase_bg.setBrush(pg.mkBrush(0, 0, 0, 140))
+        self.phrase_bg.setZValue(5)
+        self.phrase_bg.setVisible(False)
+        self.p.addItem(self.phrase_bg)
         self.img_phrase = pg.ImageItem(); self.p.addItem(self.img_phrase)
         if hasattr(self.img_phrase, "setAutoDownsample"):
             self.img_phrase.setAutoDownsample(True)
@@ -609,9 +616,12 @@ class OverviewWidget(QtWidgets.QWidget):
         )
         if strip is None:
             self.img_phrase.clear()
+            self.phrase_bg.setVisible(False)
         else:
             self.img_phrase.setImage(strip, autoLevels=False, levels=(0, 255))
             self.img_phrase.setRect(QtCore.QRectF(0.0, band_bottom, self.duration, band_h))
+            self.phrase_bg.setRect(QtCore.QRectF(0.0, band_bottom, self.duration, band_h))
+            self.phrase_bg.setVisible(True)
 
         # Thin boundary lines at every segment edge, within the band only.
         edges: list[float] = []

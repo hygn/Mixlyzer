@@ -11,6 +11,8 @@ from scipy.signal import butter, sosfiltfilt
 
 from core.config import load_cfg
 from utils.wave import (
+    RGB_DETAIL_COLOR_SMOOTH_SEC,
+    RGB_DETAIL_SAT_FLOOR,
     THREE_BAND_DETAIL_RMS_SEC,
     WAVE_HIGH,
     WAVE_LOW,
@@ -129,7 +131,8 @@ def _render_waveform_chunk(
     """Waveform image ``[columns, height, 3]`` of one chunk and the time span it covers.
 
     RGB: thin bars (min..max of each frame of ``style.frame_ms``) colored by the
-    low / mid / high band levels, averaged FRAMES_PER_COLUMN to a column.
+    low / mid / high band levels (smoothed over RGB_DETAIL_COLOR_SMOOTH_SEC),
+    averaged FRAMES_PER_COLUMN to a column.
     3band: the band RMS (over THREE_BAND_DETAIL_RMS_SEC) of each column on the
     bands' common scale, drawn as mirrored layers (utils.wave.three_band_detail_layers). Blurred slightly along time.
     The chunk is computed with RENDER_CONTEXT_SEC of audio on each side, on the
@@ -169,7 +172,9 @@ def _render_waveform_chunk(
         levels = [np.clip(np.bincount(column, rms) / per_column / style.band_ref, 0.0, 1.0) for rms in band_rms]
         image = paint_layers(three_band_detail_layers(*levels), height, mirrored=True).astype(np.float64)
     else:
-        colors = wave_colors(*(np.sqrt(rms) for rms in band_rms), white_threshold=0.0).astype(np.float64)
+        sigma = RGB_DETAIL_COLOR_SMOOTH_SEC * sample_rate / frame_hop
+        levels = (np.sqrt(np.sqrt(gaussian_filter1d(np.square(rms), sigma))) for rms in band_rms)
+        colors = wave_colors(*levels, white_threshold=0.0, sat_floor=RGB_DETAIL_SAT_FLOOR).astype(np.float64)
         min_env, max_env = frame_minmax(mono, frame_hop)
         image = wave_coverage_columns(min_env, max_env, colors, column, height)
     image = gaussian_filter1d(image, sigma=0.8, axis=0)[c0 - p0: c1 - p0]

@@ -38,6 +38,10 @@ THREE_BAND_DETAIL_WEIGHTS = (0.4, 0.3, 0.06)
 # RMS window of the scrolling three-band waveform: a CDJ frame (1/75 s), long
 # enough for the low band's periods.
 THREE_BAND_DETAIL_RMS_SEC = 1.0 / 75.0
+# RGB detail waveform colors: the band levels smoothed over this time (so the
+# color changes gradually), and a lower saturation floor than the overview's.
+RGB_DETAIL_COLOR_SMOOTH_SEC = 0.05
+RGB_DETAIL_SAT_FLOOR = 0.6
 
 
 def frame_minmax(y: np.ndarray, hop: int) -> tuple[np.ndarray, np.ndarray]:
@@ -55,7 +59,7 @@ def frame_minmax(y: np.ndarray, hop: int) -> tuple[np.ndarray, np.ndarray]:
     return mins, maxs
 
 
-def wave_colors(lo, mid, hi, white_threshold=0.05) -> np.ndarray:
+def wave_colors(lo, mid, hi, white_threshold=0.05, sat_floor=0.7) -> np.ndarray:
     """Per-column RGB (uint8, ``[T, 3]``) from the normalized low / mid / high band levels."""
     rgb = np.stack([lo, mid, hi], axis=1)
     magnitudes = np.linalg.norm(rgb, axis=1)
@@ -69,7 +73,6 @@ def wave_colors(lo, mid, hi, white_threshold=0.05) -> np.ndarray:
     if np.any(active_mask):
         active_rgb = rgb_norm[active_mask]
         sat = 1.0 - np.min(active_rgb, axis=1)
-        sat_floor = 0.7
         boost_mask = sat < sat_floor
         if np.any(boost_mask):
             boost_idx = np.where(boost_mask)[0]
@@ -252,7 +255,8 @@ def render_wave_detail_preview(
         amplitude = values * np.asarray(ref, dtype=np.float64)
         peak = np.clip(amplitude[:, WAVE_PEAK], 0.0, 1.0)
         body = np.minimum(amplitude[:, WAVE_BODY], peak)
-        colors = wave_colors(values[:, WAVE_LOW], values[:, WAVE_MID], values[:, WAVE_HIGH], white_threshold=0.0)
+        colors = wave_colors(values[:, WAVE_LOW], values[:, WAVE_MID], values[:, WAVE_HIGH],
+                             white_threshold=0.0, sat_floor=RGB_DETAIL_SAT_FLOOR)
         return _faded_bars(peak, body, colors, height, columns, mirrored=True)
     values = overview_values(levels, columns)
     band_ref = np.asarray(ref, dtype=np.float64)[WAVE_LOW:WAVE_HIGH + 1]
