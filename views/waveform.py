@@ -36,6 +36,9 @@ RENDER_HEIGHT = 96
 RENDER_BATCH_SIZE = 4
 RENDER_SPAWN_INTERVAL_MS = 30
 SCENE_CULL_BUFFER = 2  # extra chunks kept in scene on each side of viewport
+# Rendered chunks farther than this from the playhead are dropped (every layer),
+# to bound memory; they are rendered again when the view comes back to them.
+RENDER_KEEP_SEC = 60.0
 # Audio rendered on each side of a chunk and cropped away, so the band filters,
 # frame RMS and blur see the neighbouring audio: chunks join without seams.
 RENDER_CONTEXT_SEC = 0.2
@@ -262,6 +265,12 @@ class _WaveformRenderWorker(QtCore.QObject):
         key = (spec.style, spec.chunk_index)
         return key in self._rendered or key in self._inflight
 
+    @QtCore.Slot(list)
+    def forget(self, keys: list) -> None:
+        """The view dropped these (style, chunk) images: render them again when asked."""
+        for key in keys:
+            self._rendered.discard(key)
+
     @QtCore.Slot()
     def drop_pending(self) -> None:
         """Forget the requests not started yet (the view switched layers);
@@ -362,6 +371,7 @@ class WaveformView(ViewPlugin):
     _sig_enqueue_scrub = QtCore.Signal(list)
     _sig_cancel = QtCore.Signal()
     _sig_drop_pending = QtCore.Signal()
+    _sig_forget = QtCore.Signal(list)
 
     def __init__(self, bus, model, tl):
         super().__init__(bus, model, tl)
@@ -379,6 +389,7 @@ class WaveformView(ViewPlugin):
         self._preview_item: pg.ImageItem | None = None
         self._preview_source = None
         self._scrubbing = False
+        self._evict_center: int | None = None  # playhead chunk of the last eviction pass
 
         # Dedicated render worker thread
         self._worker = _WaveformRenderWorker()
@@ -391,6 +402,7 @@ class WaveformView(ViewPlugin):
         self._sig_enqueue_scrub.connect(self._worker.enqueue_scrub, QtCore.Qt.ConnectionType.QueuedConnection)
         self._sig_cancel.connect(self._worker.cancel_all, QtCore.Qt.ConnectionType.QueuedConnection)
         self._sig_drop_pending.connect(self._worker.drop_pending, QtCore.Qt.ConnectionType.QueuedConnection)
+        self._sig_forget.connect(self._worker.forget, QtCore.Qt.ConnectionType.QueuedConnection)
 
         self.bus.sig_time_changed.connect(self.update_time)
         self.bus.sig_seek_requested.connect(self._on_seek_requested)
@@ -480,7 +492,34 @@ class WaveformView(ViewPlugin):
 
     def update_time(self, _t: float):
         self._set_rect()
+        self._evict_far_chunks()
         self._evaluate_render_targets()
+
+    def _evict_far_chunks(self) -> None:
+        """Drop the rendered chunks of every layer more than RENDER_KEEP_SEC from the
+        playhead (checked when the playhead enters another chunk)."""
+        if not self._layers:
+            return
+        center = int(np.floor(max(0.0, float(self.tl.current_time)) / RENDER_CHUNK_SEC))
+        if center == self._evict_center:
+            return
+        self._evict_center = center
+        keep = int(np.ceil(RENDER_KEEP_SEC / RENDER_CHUNK_SEC))
+        forgotten = []
+        for style, layer in self._layers.items():
+            for i, item in enumerate(layer.items):
+                if item is None or abs(i - center) <= keep:
+                    continue
+                if item.scene() is not None:
+                    item.setParentItem(None)
+                    item.scene().removeItem(item)
+                layer.items[i] = None
+                layer.spans[i] = None
+                layer.submitted.discard(i)
+                layer.in_scene.discard(i)
+                forgotten.append((style, i))
+        if forgotten:
+            self._sig_forget.emit(forgotten)
 
     def update_window(self, _w: float):
         if self._layer is not None:
@@ -512,6 +551,7 @@ class WaveformView(ViewPlugin):
                     item.scene().removeItem(item)
         self._layers = {}
         self._layer = None
+        self._evict_center = None
 
     def _make_chunk_item(self) -> pg.ImageItem:
         item = pg.ImageItem()
