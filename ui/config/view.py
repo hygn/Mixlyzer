@@ -2,6 +2,7 @@ from collections import deque
 
 from PySide6.QtWidgets import (
     QCheckBox,
+    QComboBox,
     QFormLayout,
     QGridLayout,
     QGroupBox,
@@ -23,6 +24,13 @@ def build_view_tab(dialog) -> None:
     dialog.cb_keystrip = QCheckBox("Display keystrip")
     dialog.cb_JumpCUE = QCheckBox("Display JumpCUE")
     dialog.cb_phrase = QCheckBox("Display phrase overlay")
+    dialog.cmb_waveform_style = QComboBox()
+    dialog.cmb_waveform_style.addItem("RGB", "rgb")
+    dialog.cmb_waveform_style.addItem("3Band", "3band")
+    dialog.cmb_waveform_style.setToolTip(
+        "RGB: the waveform colored by its low / mid / high mix.\n"
+        "3Band: the low (blue), mid (amber) and high (white) bands drawn as layers."
+    )
     dialog.cb_use_output_volume_as_peak_meter_input = QCheckBox(
         "Use output volume as peak meter input"
     )
@@ -61,6 +69,7 @@ def build_view_tab(dialog) -> None:
     f_display.addRow(dialog.cb_keystrip)
     f_display.addRow(dialog.cb_JumpCUE)
     f_display.addRow(dialog.cb_phrase)
+    f_display.addRow("Waveform style", dialog.cmb_waveform_style)
     f_display.addRow(dialog.cb_use_output_volume_as_peak_meter_input)
 
     grp_performance = QGroupBox("Performance")

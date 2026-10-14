@@ -437,6 +437,10 @@ class AppWindow(QtWidgets.QMainWindow):
         )
         if viewconfig_changed:
             self._apply_visibility_refresh_setting(force=True)
+        if prev_vcfg.get("waveform_style") != new_vcfg["waveform_style"]:
+            self.pane.ov.refresh_waveform()
+            if not layout_changed:
+                self.bus.sig_reload_UI.emit(_config)  # the waveform view takes the style when installed
         if prev_vcfg.get("phrase_labels") != new_vcfg["phrase_labels"]:
             set_phrase_label_names(_config.viewconfig.phrase_labels.by_label())
             track_edit = getattr(self.pane, "track_edit", None)

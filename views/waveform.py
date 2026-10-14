@@ -6,11 +6,21 @@ from collections import deque
 import numpy as np
 import pyqtgraph as pg
 from PySide6 import QtCore, QtGui, QtWidgets
-from scipy.ndimage import gaussian_filter1d
+from scipy.ndimage import gaussian_filter1d, uniform_filter1d
 from scipy.signal import butter, sosfiltfilt
 
 from core.config import load_cfg
-from utils.wave import frame_minmax, wave_colors, wave_coverage_columns
+from utils.wave import (
+    THREE_BAND_DETAIL_RMS_SEC,
+    WAVE_HIGH,
+    WAVE_LOW,
+    frame_minmax,
+    paint_layers,
+    render_wave_overview,
+    three_band_detail_layers,
+    wave_colors,
+    wave_coverage_columns,
+)
 from .base import WAVEFORM_LANE, ViewPlugin, register_view
 
 _WAVE_Y = float(WAVEFORM_LANE[0])
@@ -37,14 +47,22 @@ class _WaveStyle:
     bands: tuple[tuple[float, float], ...]  # low / mid / high band edges (Hz)
     filter_order: int
     frame_ms: float                         # drawing frame length
+    waveform_style: str                     # "rgb" / "3band" (viewconfig.waveform_style)
+    # The loudest band's track maximum RMS (from the stored overview): the
+    # common scale of the three-band layers.
+    band_ref: float | None
 
     @classmethod
-    def from_config(cls) -> "_WaveStyle":
-        cfg = load_cfg().analysisconfig
+    def from_config(cls, features) -> "_WaveStyle":
+        cfg = load_cfg()
+        a = cfg.analysisconfig
+        ref = features.get("wave_overview_ref") if isinstance(features, dict) else None
         return cls(
-            bands=tuple((float(low), float(high)) for low, high in (cfg.env_lo, cfg.env_mid, cfg.env_hi)),
-            filter_order=int(cfg.env_order),
-            frame_ms=float(getattr(cfg, "env_frame_ms", 20)) / 2,
+            bands=tuple((float(low), float(high)) for low, high in (a.env_lo, a.env_mid, a.env_hi)),
+            filter_order=int(a.env_order),
+            frame_ms=float(getattr(a, "env_frame_ms", 20)) / 2,
+            waveform_style=cfg.viewconfig.waveform_style,
+            band_ref=None if ref is None else float(np.max(np.asarray(ref)[WAVE_LOW:WAVE_HIGH + 1])),
         )
 
     def frame_hop(self, sample_rate: int) -> int:
@@ -110,10 +128,12 @@ def _render_waveform_chunk(
 ) -> tuple[np.ndarray, float, float]:
     """Waveform image ``[columns, height, 3]`` of one chunk and the time span it covers.
 
-    Thin bars (min..max of each frame of ``style.frame_ms``) colored by the
-    low / mid / high band levels, averaged FRAMES_PER_COLUMN to a column and
-    blurred slightly along time. The chunk is computed with RENDER_CONTEXT_SEC
-    of audio on each side, on the track-wide frame grid, and cropped.
+    RGB: thin bars (min..max of each frame of ``style.frame_ms``) colored by the
+    low / mid / high band levels, averaged FRAMES_PER_COLUMN to a column.
+    3band: the band RMS (over THREE_BAND_DETAIL_RMS_SEC) of each column on the
+    bands' common scale, drawn as mirrored layers (utils.wave.three_band_detail_layers). Blurred slightly along time.
+    The chunk is computed with RENDER_CONTEXT_SEC of audio on each side, on the
+    track-wide frame grid, and cropped.
     """
     n_samples = int(pcm.shape[0])
     frame_hop = style.frame_hop(sample_rate)
@@ -132,15 +152,26 @@ def _render_waveform_chunk(
     starts = np.arange(n_frames) * frame_hop
     counts = np.diff(np.append(starts, mono.size)).astype(np.float64)
     nyq = 0.5 * float(sample_rate)
-    levels = []
+    three_band = style.waveform_style == "3band" and bool(style.band_ref)
+    window = max(1, int(round(THREE_BAND_DETAIL_RMS_SEC * sample_rate)))
+    centers = np.minimum(starts + frame_hop // 2, mono.size - 1)
+    band_rms = []
     for low, high in style.bands:
         filtered = _band_filter(mono, sample_rate, low, min(high, nyq * 0.98), style.filter_order)
-        rms = np.sqrt(np.add.reduceat(np.square(filtered, dtype=np.float64), starts) / counts)
-        levels.append(np.sqrt(rms))
-    colors = wave_colors(*levels, white_threshold=0.0).astype(np.float64)
-    min_env, max_env = frame_minmax(mono, frame_hop)
-
-    image = wave_coverage_columns(min_env, max_env, colors, np.arange(n_frames) // FRAMES_PER_COLUMN, height)
+        square = np.square(filtered, dtype=np.float64)
+        if three_band:
+            band_rms.append(np.sqrt(np.maximum(uniform_filter1d(square, size=window)[centers], 0.0)))
+        else:
+            band_rms.append(np.sqrt(np.add.reduceat(square, starts) / counts))
+    column = np.arange(n_frames) // FRAMES_PER_COLUMN
+    if three_band:
+        per_column = np.maximum(np.bincount(column), 1)
+        levels = [np.clip(np.bincount(column, rms) / per_column / style.band_ref, 0.0, 1.0) for rms in band_rms]
+        image = paint_layers(three_band_detail_layers(*levels), height, mirrored=True).astype(np.float64)
+    else:
+        colors = wave_colors(*(np.sqrt(rms) for rms in band_rms), white_threshold=0.0).astype(np.float64)
+        min_env, max_env = frame_minmax(mono, frame_hop)
+        image = wave_coverage_columns(min_env, max_env, colors, column, height)
     image = gaussian_filter1d(image, sigma=0.8, axis=0)[c0 - p0: c1 - p0]
     return np.ascontiguousarray(np.clip(image, 0.0, 255.0).astype(np.uint8)), start_sec, end_sec
 
@@ -429,23 +460,20 @@ class WaveformView(ViewPlugin):
         self._ensure_preview_item()
         if self._preview_item is None:
             return
-        wave_data = self.model.features.get("wave_img_np_preview") if isinstance(self.model.features, dict) else None
-        if wave_data is None:
+        levels = self.model.features.get("wave_overview_np") if isinstance(self.model.features, dict) else None
+        if levels is None:
             self._preview_item.setVisible(False)
             self._preview_source = None
             return
-        wave_arr = wave_data if isinstance(wave_data, np.ndarray) else np.asarray(wave_data)
-        if wave_arr.ndim != 3 or wave_arr.size == 0:
-            self._preview_item.setVisible(False)
-            self._preview_source = None
-            return
-        if self._preview_source is not wave_data:
+        if self._preview_source is not levels:
+            # Until chunks are rendered, the stored overview stands in (mirrored, in the same style).
             self._preview_item.setImage(
-                np.ascontiguousarray(wave_arr, dtype=np.uint8),
+                render_wave_overview(np.asarray(levels), np.asarray(self.model.features["wave_overview_ref"]),
+                                     load_cfg().viewconfig.waveform_style, RENDER_HEIGHT, mirrored=True),
                 autoLevels=False,
                 levels=self._wave_levels,
             )
-            self._preview_source = wave_data
+            self._preview_source = levels
         self._preview_item.setRect(QtCore.QRectF(0.0, _WAVE_Y, max(self.duration, 1e-3), _WAVE_H))
         self._update_preview_visibility()
 
@@ -480,7 +508,7 @@ class WaveformView(ViewPlugin):
             self._chunk_items = [None] * chunk_count
             self._chunk_spans = [None] * chunk_count
             self._submitted_chunks.clear()
-            self._style = _WaveStyle.from_config()
+            self._style = _WaveStyle.from_config(self.model.features)
             self._sig_cancel.emit()
         return self._chunk_count
 
@@ -533,7 +561,7 @@ class WaveformView(ViewPlugin):
             if chunk_index in self._submitted_chunks:
                 continue  # already in worker queue
             if self._style is None:
-                self._style = _WaveStyle.from_config()
+                self._style = _WaveStyle.from_config(self.model.features)
             specs.append(_ChunkSpec(
                 chunk_index=chunk_index,
                 pcm=pcm,

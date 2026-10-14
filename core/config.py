@@ -46,6 +46,7 @@ class viewconfig:
     display_keystrip: bool
     display_JumpCUE: bool
     display_phrase: bool
+    waveform_style: Literal["rgb", "3band"]  # RGB: colored by the band mix; 3band: rekordbox-style layers
     use_output_volume_as_peak_meter_input: bool
     fps: int
     reduce_fps_when_occluded: bool
@@ -313,6 +314,7 @@ def default_cfg():
         display_keystrip=True,
         display_JumpCUE=True,
         display_phrase=True,
+        waveform_style="rgb",
         use_output_volume_as_peak_meter_input=False,
         fps=60,
         reduce_fps_when_occluded=True,

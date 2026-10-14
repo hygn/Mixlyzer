@@ -12,6 +12,12 @@ from utils.phrases import (
 from utils.cue_points import extract_cue_points
 from utils.color import key_label_text_color
 from utils.keystrip import key_segment_label, key_segment_rows, render_keystrip
+from utils.wave import render_wave_overview
+from core.config import load_cfg
+
+
+# Pixel rows of the overview waveform image.
+OVERVIEW_WAVE_HEIGHT = 64
 
 
 def _down_triangle_path() -> QtGui.QPainterPath:
@@ -180,8 +186,6 @@ class OverviewWidget(QtWidgets.QWidget):
         self.KEY_H = 0.25
         self.WAVE_H = 1.15
         self.CUE_H = 0.1
-        self._wave_preview_source = None
-        self._wave_preview_cache = None
         self._wave_levels = (0, 255)
         self._wave_top = self.KEY_H + self.WAVE_H
         self._tempo_segments = None
@@ -229,22 +233,7 @@ class OverviewWidget(QtWidgets.QWidget):
         self._cue_block_bottom = wave_top - self._cue_block_height
         self._cue_label_y = self._cue_block_bottom
 
-        wave_data = features.get("wave_img_np_preview")
-
-        if wave_data is not None:
-            wave_arr = wave_data if isinstance(wave_data, np.ndarray) else np.asarray(wave_data)
-            if wave_arr.size:
-                if self._wave_preview_source is not wave_data:
-                    slice_start = int(wave_arr.shape[1] / 2) if wave_arr.ndim == 3 else 0
-                    trimmed = wave_arr[:, slice_start:, :] if wave_arr.ndim == 3 else wave_arr
-                    self._wave_preview_cache = np.ascontiguousarray(trimmed)
-                    self._wave_preview_source = wave_data
-                if self._wave_preview_cache is not None:
-                    self.img_wave.setImage(self._wave_preview_cache, autoLevels=False, levels=self._wave_levels)
-                    self.img_wave.setRect(QtCore.QRectF(0.0, wave_bottom, self.duration, wave_top - wave_bottom))
-        else:
-            self._wave_preview_source = None
-            self._wave_preview_cache = None
+        self.refresh_waveform()
 
         self.update_key_strip()
         self._jump_cues, self._jump_links = extract_jump_cue_graph(features)
@@ -254,6 +243,17 @@ class OverviewWidget(QtWidgets.QWidget):
         self._render_phrases()
         self._render_cue_points()
         self._update_played_overlay()
+
+    def refresh_waveform(self) -> None:
+        """Draw the overview waveform from the stored band levels in the configured style."""
+        levels = (self.model.features or {}).get("wave_overview_np")
+        if levels is None or self.duration <= 0:
+            self.img_wave.clear()
+            return
+        image = render_wave_overview(np.asarray(levels), np.asarray(self.model.features["wave_overview_ref"]),
+                                     load_cfg().viewconfig.waveform_style, OVERVIEW_WAVE_HEIGHT)
+        self.img_wave.setImage(image, autoLevels=False, levels=self._wave_levels)
+        self.img_wave.setRect(QtCore.QRectF(0.0, self._wave_bottom, self.duration, self._wave_top - self._wave_bottom))
 
     def _render_cue_points(self) -> None:
         points = extract_cue_points(self.model.features)

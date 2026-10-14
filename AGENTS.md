@@ -66,7 +66,7 @@ Working notes for AI/automation agents editing the Mixlyzer codebase.
 - Current pipeline in `global_analyzer.py`:
   - decode/load audio,
   - optional HPSS split,
-  - low/mid/high envelope extraction plus waveform min/max buffers,
+  - overview waveform levels (per-column peak and low/mid/high band RMS),
   - BPM / beatgrid analysis,
   - beatgrid offset application,
   - JumpCUE detection,
@@ -91,9 +91,10 @@ Working notes for AI/automation agents editing the Mixlyzer codebase.
 - BPM and key transitions are also persisted in:
   - `track_bpm_segments`
   - `track_key_segments`
-- Numeric feature arrays live in `{libpath}/{uid}.npz` through `FeatureNPZStore`. Only what is read is stored: beats, tempo/key segments, waveform preview, duration, sr, tempo_global, and the JumpCUE / CUE point / phrase blocks. Saving replaces a block as a whole (`save_worker._replace_block`).
+- Numeric feature arrays live in `{libpath}/{uid}.npz` through `FeatureNPZStore`. Only what is read is stored: beats, tempo/key segments, the overview waveform levels (`wave_overview_np` / `wave_overview_ref`), duration, sr, tempo_global, and the JumpCUE / CUE point / phrase blocks. Saving replaces a block as a whole (`save_worker._replace_block`).
 - Track identity across DB and NPZ is the `uid` field stored in SQLite.
 - The key strip is rendered just in time from `key_segments` (`utils.keystrip.render_keystrip`); no image is stored.
+- The overview waveform is rendered just in time from its stored levels (`utils.wave.render_wave_overview`) in the style of `viewconfig.waveform_style` (RGB, or rekordbox-style 3Band); no image is stored. The detail waveform is rendered from the playback PCM.
 - JumpCUEs are kept in two states in the NPZ: `jump_cues_np` (the user's, replaced by edits) and `jump_cues_auto_np` (the automatic result, replaced only by full analysis or JumpCUE reanalysis). The JumpCUE optimizer (settings → Analysis → CUE) learns from where they differ; do not write edits into `jump_cues_auto_np`.
 - A JumpCUE group's colour is a preset index (`graph_color_idx`, presets in `utils/jumpcue_colors.py`), independent of its group number (`graph_id`); no RGB is stored. Edits carry it on each cue as `color_idx`.
 - CUE points (`cue_points_np`, with a colour preset `cue_color_idx`) are the user's: the full analysis makes them from the phrases by the per-label rules in `config.cuepointconfig` (Settings > Analysis > CUE; LEAD_IN has no rule), after that only the CUE page edits them (phrase edits do not regenerate them).

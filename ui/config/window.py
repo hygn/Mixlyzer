@@ -163,6 +163,7 @@ class SettingsDialog(
         self.sp_fps.setValue(int(v.fps))
         self.ed_record_img_path.setText(v.record_img_path)
         self._set_phrase_label_names(v.phrase_labels)
+        self.cmb_waveform_style.setCurrentIndex(self.cmb_waveform_style.findData(v.waveform_style))
 
         p = cfg.playbackconfig
         self.cb_metronome.setChecked(bool(p.enable_metronome))
@@ -356,6 +357,7 @@ class SettingsDialog(
                 display_keystrip=bool(self.cb_keystrip.isChecked()),
                 display_JumpCUE=bool(self.cb_JumpCUE.isChecked()),
                 display_phrase=bool(self.cb_phrase.isChecked()),
+                waveform_style=str(self.cmb_waveform_style.currentData()),
                 use_output_volume_as_peak_meter_input=bool(
                     self.cb_use_output_volume_as_peak_meter_input.isChecked()
                 ),
