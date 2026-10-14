@@ -2,10 +2,11 @@ from PySide6 import QtCore, QtGui, QtWidgets
 import numpy as np
 import pyqtgraph as pg
 from .base import PHRASE_LANE, ViewPlugin, register_view
+from .segment_strip import SegmentStrip
 from utils.phrases import (
     extract_phrase_segments,
     number_phrase_labels,
-    build_phrase_strip_buffer,
+    phrase_strip_segments,
 )
 
 
@@ -45,8 +46,7 @@ class PhraseView(ViewPlugin):
     def __init__(self, bus, model, tl):
         super().__init__(bus, model, tl)
         self.plot = None
-        self.img = pg.ImageItem()
-        self.img.setOpts(interpolation="nearest")
+        self.img = SegmentStrip()
         self.img.setOpacity(0.45)
         self.img.setZValue(14)
         self.boundaries = QtWidgets.QGraphicsPathItem()
@@ -108,11 +108,8 @@ class PhraseView(ViewPlugin):
     def _rebuild(self):
         if self.plot is None:
             return
-        strip = build_phrase_strip_buffer(self._phrases, self.duration)
-        if strip is None:
-            self.img.clear()
-        else:
-            self.img.setImage(strip, autoLevels=False, levels=(0, 255))
+        segments = phrase_strip_segments(self._phrases) if self.duration > 0 else []
+        self.img.set_segments(segments, self.BAND_BOTTOM, self.BAND_TOP - self.BAND_BOTTOM)
 
         # Thin boundary lines at every segment edge (kept even between same labels).
         edges: list[float] = []
@@ -144,9 +141,7 @@ class PhraseView(ViewPlugin):
         left = float(self.tl.center_t - self.tl.current_time)
         band_bottom = self.BAND_BOTTOM
         band_h = self.BAND_TOP - self.BAND_BOTTOM
-        total_w = max(self.duration, float(self.tl.window_sec))
-        if self.img.image is not None and self.duration > 0:
-            self.img.setRect(QtCore.QRectF(left, band_bottom, total_w, band_h))
+        self.img.setPos(left, 0.0)
         self.boundaries.setPos(left, 0.0)
         label_y = (self.BAND_BOTTOM + self.BAND_TOP) * 0.5
         viewport_center = float(self.tl.center_t)

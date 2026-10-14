@@ -259,21 +259,6 @@ def assigned_phrases(phrases) -> List[dict[str, Any]]:
     return [row for row in _sorted_phrases(phrases) if row["label"] != UNASSIGNED]
 
 
-def build_phrase_strip_buffer(phrases, duration_sec: float, *, width: int = 4096) -> np.ndarray | None:
-    """Return a (width, 1, 3) uint8 color band for the phrase overlay strip."""
-    duration = float(duration_sec or 0.0)
-    if duration <= 0:
-        return None
-    rows = _sorted_phrases(phrases)
-    if not rows:
-        return None
-    strip = np.zeros((1, width, 3), dtype=np.uint8)
-    for seg in rows:
-        start = seg["start"]
-        end = seg["end"]
-        start_px = int(np.clip(np.floor(start / duration * width), 0, width - 1))
-        end_px = int(np.clip(math.ceil(end / duration * width), 0, width))
-        if end_px <= start_px:
-            end_px = min(width, start_px + 1)
-        strip[:, start_px:end_px, :] = phrase_color(seg["label"])
-    return strip.swapaxes(0, 1)
+def phrase_strip_segments(phrases) -> list[tuple[float, float, tuple[int, int, int]]]:
+    """(start, end, colour) of each phrase, for a SegmentStrip."""
+    return [(seg["start"], seg["end"], phrase_color(seg["label"])) for seg in _sorted_phrases(phrases)]

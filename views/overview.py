@@ -6,13 +6,14 @@ from utils.jumpcue_colors import get_cue_point_color
 from utils.jump_cues import extract_jump_cue_graph
 from utils.phrases import (
     abbreviate_phrase_labels,
-    build_phrase_strip_buffer,
     extract_phrase_segments,
+    phrase_strip_segments,
 )
 from utils.cue_points import extract_cue_points
 from utils.color import key_label_text_color
-from utils.keystrip import key_segment_label, key_segment_rows, render_keystrip
+from utils.keystrip import key_segment_label, key_segment_rows, key_strip_segments
 from utils.wave import render_wave_overview
+from views.segment_strip import SegmentStrip
 from core.config import load_cfg
 
 
@@ -143,10 +144,7 @@ class OverviewWidget(QtWidgets.QWidget):
         self.bpm_strip_boundaries.setPen(line_pen)
         self.bpm_strip_boundaries.setZValue(8)
         self.jump_items: list[tuple[pg.BarGraphItem, pg.ScatterPlotItem, pg.TextItem]] = []
-        self.img_key  = pg.ImageItem(); self.p.addItem(self.img_key)
-        if hasattr(self.img_key, "setAutoDownsample"):
-            self.img_key.setAutoDownsample(True)
-        self.img_key.setOpts(interpolation="nearest")
+        self.img_key = SegmentStrip(); self.p.addItem(self.img_key)
         # key segment boundaries and labels (labels only where the segment is wide enough)
         self.key_boundaries = QtWidgets.QGraphicsPathItem(); self.p.addItem(self.key_boundaries)
         self.key_boundaries.setPen(pg.mkPen((255, 255, 255, 220), width=1, cosmetic=True))
@@ -162,10 +160,7 @@ class OverviewWidget(QtWidgets.QWidget):
         self.phrase_bg.setZValue(5)
         self.phrase_bg.setVisible(False)
         self.p.addItem(self.phrase_bg)
-        self.img_phrase = pg.ImageItem(); self.p.addItem(self.img_phrase)
-        if hasattr(self.img_phrase, "setAutoDownsample"):
-            self.img_phrase.setAutoDownsample(True)
-        self.img_phrase.setOpts(interpolation="nearest")
+        self.img_phrase = SegmentStrip(); self.p.addItem(self.img_phrase)
         self.img_phrase.setOpacity(0.5)
         self.img_phrase.setZValue(6)
         self.phrase_boundaries = QtWidgets.QGraphicsPathItem(); self.p.addItem(self.phrase_boundaries)
@@ -291,14 +286,9 @@ class OverviewWidget(QtWidgets.QWidget):
 
     def update_key_strip(self) -> None:
         """Draw the key strip from the current key segments (rendered just in time)."""
-        key_img = render_keystrip(self.model.features, self.duration)
-        if key_img is None or self.duration <= 0:
-            self.img_key.clear()
-            self._key_rows = []
-        else:
-            self.img_key.setImage(np.ascontiguousarray(key_img), autoLevels=False, levels=self._wave_levels)
-            self.img_key.setRect(QtCore.QRectF(0.0, self._key_bottom, self.duration, self.KEY_H))
-            self._key_rows = key_segment_rows((self.model.features or {}).get("key_segments"))
+        key_segments = (self.model.features or {}).get("key_segments") if self.duration > 0 else None
+        self.img_key.set_segments(key_strip_segments(key_segments), self._key_bottom, self.KEY_H)
+        self._key_rows = key_segment_rows(key_segments)
         edges = [t for _idx, start, end in self._key_rows for t in (start, end)]
         self.key_boundaries.setPath(
             self._phrase_boundary_path(edges, self._key_bottom, self._key_bottom + self.KEY_H)
@@ -609,17 +599,11 @@ class OverviewWidget(QtWidgets.QWidget):
         numbered = abbreviate_phrase_labels(phrases)
         band_bottom = self._wave_bottom
         band_h = self._phrase_band_h
-        strip = (
-            build_phrase_strip_buffer(phrases, self.duration)
-            if (self._phrase_visible and self.duration > 0)
-            else None
-        )
-        if strip is None:
-            self.img_phrase.clear()
+        segments = phrase_strip_segments(phrases) if (self._phrase_visible and self.duration > 0) else []
+        self.img_phrase.set_segments(segments, band_bottom, band_h)
+        if not segments:
             self.phrase_bg.setVisible(False)
         else:
-            self.img_phrase.setImage(strip, autoLevels=False, levels=(0, 255))
-            self.img_phrase.setRect(QtCore.QRectF(0.0, band_bottom, self.duration, band_h))
             self.phrase_bg.setRect(QtCore.QRectF(0.0, band_bottom, self.duration, band_h))
             self.phrase_bg.setVisible(True)
 

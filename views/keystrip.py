@@ -1,9 +1,10 @@
 from PySide6 import QtCore, QtGui, QtWidgets
 import pyqtgraph as pg
 from utils.color import key_label_text_color
-from utils.keystrip import key_segment_label, key_segment_rows, render_keystrip
+from utils.keystrip import key_segment_label, key_segment_rows, key_strip_segments
 from .base import KEY_LANE, ViewPlugin, register_view
 from .phrase import _sticky_label_left, _vertical_lines_path
+from .segment_strip import SegmentStrip
 
 
 @register_view("KeyStripView")
@@ -13,8 +14,7 @@ class KeyStripView(ViewPlugin):
     def __init__(self, bus, model, tl):
         super().__init__(bus, model, tl)
         self.plot = None
-        self.img = pg.ImageItem()
-        self.img.setOpts(interpolation="nearest")
+        self.img = SegmentStrip()
         self.boundaries = QtWidgets.QGraphicsPathItem()
         self.boundaries.setPen(pg.mkPen((255, 255, 255, 220), width=1, cosmetic=True))
         self.boundaries.setZValue(15)
@@ -71,13 +71,10 @@ class KeyStripView(ViewPlugin):
         """Draw the strip, boundaries and labels from the current key segments
         (rendered just in time)."""
         features = self.model.features if isinstance(self.model.features, dict) else {}
-        img = render_keystrip(features, self.duration)
-        self._strip = img
-        self._rows = key_segment_rows(features.get("key_segments")) if img is not None else []
-        if img is None or self.duration <= 0:
-            self.img.clear()
-        else:
-            self.img.setImage(img, autoLevels=False, levels=(0, 255))
+        segments = key_strip_segments(features.get("key_segments")) if self.duration > 0 else []
+        self._strip = segments or None
+        self._rows = key_segment_rows(features.get("key_segments")) if segments else []
+        self.img.set_segments(segments, self.y0, self.h)
 
         edges = [t for _idx, start, end in self._rows for t in (start, end)]
         self.boundaries.setPath(_vertical_lines_path(edges, self.y0, self.y0 + self.h))
@@ -104,9 +101,8 @@ class KeyStripView(ViewPlugin):
             for label in self._labels:
                 label.setVisible(False)
             return
-        total_w = max(self.duration, self.tl.window_sec)
         left = self.tl.center_t - self.tl.current_time
-        self.img.setRect(QtCore.QRectF(left, self.y0, total_w, self.h))
+        self.img.setPos(left, 0.0)
         self.boundaries.setPos(left, 0.0)
         self._position_labels(left)
 
