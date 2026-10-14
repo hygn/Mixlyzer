@@ -17,7 +17,7 @@ from analyzer_core.beat.frame_features import extract_frame_features
 from analyzer_core.beat.learned_onset import compute_beat_odf
 from analyzer_core.hpss import HPSS_HOP_LENGTH, HPSS_N_FFT, hpss_audio_with_spectra
 from analyzer_core.dsp.resample import resample_audio
-from utils.wave import build_wave_overview
+from utils.wave import WAVE_OVERVIEW_SAMPLE_RATE, build_wave_overview
 from analyzer_core.self_correlation.JumpCUE import JumpCueConfig, JumpCueEngine
 from analyzer_core.self_correlation.jump_point_model import jump_point_beat_features
 from analyzer_core.cue_and_phrase import detect_phrase_segments
@@ -284,17 +284,15 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
     print("[Waveform] Analysis Initalized")
     taskmgr.updatetask(taskid, "Processing Waveform", 0.2)
     # Overview waveform: the peak and band levels of each column (drawn when
-    # shown). The band levels come from the HPSS STFT of the same mix when it is
-    # available.
-    nyq = 0.5 * global_sr
-    wave_bands = tuple((float(low), min(float(high), nyq * 0.98)) for low, high in (gcf.env_lo, gcf.env_mid, gcf.env_hi))
+    # shown), from a mono decode at WAVE_OVERVIEW_SAMPLE_RATE, not the analysis
+    # rate, so the bands are not cut at the analysis Nyquist.
+    wave_bands = tuple((float(low), float(high)) for low, high in (gcf.env_lo, gcf.env_mid, gcf.env_hi))
     features["wave_overview_np"], features["wave_overview_ref"] = build_wave_overview(
-        samp,
-        int(global_sr),
+        fast_load(path, WAVE_OVERVIEW_SAMPLE_RATE),
+        WAVE_OVERVIEW_SAMPLE_RATE,
         wave_bands,
-        hpss_spectra.magnitude if hpss_spectra is not None else None,
-        n_fft=hpss_spectra.n_fft if hpss_spectra is not None else HPSS_N_FFT,
-        hop_length=hpss_spectra.hop_length if hpss_spectra is not None else HPSS_HOP_LENGTH,
+        n_fft=HPSS_N_FFT,
+        hop_length=HPSS_HOP_LENGTH,
     )
     features["duration_sec"] = samp.size / float(global_sr)
     print("[Waveform] Analysis Finished")

@@ -11,6 +11,9 @@ from analyzer_core.dsp.spectral import stft
 # WAVE_OVERVIEW_RENDER_COLUMNS columns.
 WAVE_OVERVIEW_COLUMNS = 16384
 WAVE_OVERVIEW_RENDER_COLUMNS = 4096
+# The overview is measured from its own decode at this rate, whatever the
+# analysis rate: band levels reach up to 24 kHz.
+WAVE_OVERVIEW_SAMPLE_RATE = 48000
 # Channels of the stored overview. The body is the mean peak of the column's
 # WAVE_BODY_FRAME_SEC frames: an RGB bar is solid up to it and fades out to the peak.
 WAVE_PEAK, WAVE_BODY, WAVE_LOW, WAVE_MID, WAVE_HIGH = range(5)
@@ -42,6 +45,23 @@ THREE_BAND_DETAIL_RMS_SEC = 1.0 / 75.0
 # color changes gradually), and a lower saturation floor than the overview's.
 RGB_DETAIL_COLOR_SMOOTH_SEC = 0.05
 RGB_DETAIL_SAT_FLOOR = 0.6
+# The detail waveform's centre line: where the waveform leaves the centre row
+# dark (quiet audio), it is drawn in this colour, fading out as the waveform's
+# own pixel there brightens up to WAVE_CENTER_LINE_FADE (its brightest channel).
+WAVE_CENTER_LINE_RGB = (255, 255, 255)
+WAVE_CENTER_LINE_FADE = 64.0
+
+
+def add_center_line(image: np.ndarray) -> np.ndarray:
+    """``image`` ``[columns, height, 3]`` (a mirrored waveform) with the centre
+    line on its centre row (the row a flat frame is drawn on); a float copy."""
+    out = np.array(image, dtype=np.float64)
+    if out.ndim != 3 or out.shape[1] == 0:
+        return out
+    row = out[:, out.shape[1] // 2, :]
+    alpha = np.clip(1.0 - row.max(axis=1) / WAVE_CENTER_LINE_FADE, 0.0, 1.0)[:, np.newaxis]
+    row += alpha * (np.asarray(WAVE_CENTER_LINE_RGB, dtype=np.float64) - row)
+    return out
 
 
 def frame_minmax(y: np.ndarray, hop: int) -> tuple[np.ndarray, np.ndarray]:
@@ -247,15 +267,17 @@ def render_wave_detail_preview(
 ) -> np.ndarray:
     """Stand-in for the main view's detail waveform until its chunks are
     rendered, drawn like them from the stored levels (mirrored, in sample units):
-    RGB bars colored by the band levels (each over its track maximum: closer to
-    the chunks' colors, averaged from short frames, than the column RMS), 3band
-    the layers of the scrolling waveform (bands on one scale)."""
+    RGB bars colored as the chunks are (the square roots of the band RMS in
+    sample units), 3band the layers of the scrolling waveform (bands on one scale)."""
     if style != "3band":
         values = np.square(np.asarray(levels, dtype=np.float64) / 255.0)
         amplitude = values * np.asarray(ref, dtype=np.float64)
         peak = np.clip(amplitude[:, WAVE_PEAK], 0.0, 1.0)
         body = np.minimum(amplitude[:, WAVE_BODY], peak)
-        colors = wave_colors(values[:, WAVE_LOW], values[:, WAVE_MID], values[:, WAVE_HIGH],
+        # coloured like the chunks: by the square root of each band's RMS in
+        # sample units (not over its track maximum)
+        band_amp = np.sqrt(amplitude[:, WAVE_LOW:WAVE_HIGH + 1])
+        colors = wave_colors(band_amp[:, 0], band_amp[:, 1], band_amp[:, 2],
                              white_threshold=0.0, sat_floor=RGB_DETAIL_SAT_FLOOR)
         return _faded_bars(peak, body, colors, height, columns, mirrored=True)
     values = overview_values(levels, columns)
@@ -271,6 +293,7 @@ def wave_coverage_columns(
     colors: np.ndarray,
     column: np.ndarray,
     height_px: int,
+    flat_color: tuple[float, float, float] | None = None,
 ) -> np.ndarray:
     """Average of thin per-frame bars in each column: float image ``[columns, height_px, 3]``.
 
@@ -285,6 +308,10 @@ def wave_coverage_columns(
     first, last = np.minimum(top, bottom), np.maximum(top, bottom)
     flat = top == bottom
     first[flat] = last[flat] = min(max(0, half), H - 1)
+    if flat_color is not None:
+        # a frame too quiet to span a pixel is drawn in ``flat_color``, not its band colour
+        colors = np.array(colors, dtype=np.float64)
+        colors[flat] = flat_color
 
     # +color where a bar starts, -color after it ends, cumulative sum down the rows.
     column = np.asarray(column, dtype=np.int64)

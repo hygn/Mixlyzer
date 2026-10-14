@@ -15,8 +15,10 @@ from utils.wave import (
     RGB_DETAIL_COLOR_SMOOTH_SEC,
     RGB_DETAIL_SAT_FLOOR,
     THREE_BAND_DETAIL_RMS_SEC,
+    WAVE_CENTER_LINE_RGB,
     WAVE_HIGH,
     WAVE_LOW,
+    add_center_line,
     frame_minmax,
     paint_layers,
     render_wave_detail_preview,
@@ -188,8 +190,8 @@ def _render_waveform_chunk(
         levels = (np.sqrt(np.sqrt(gaussian_filter1d(np.square(rms), sigma))) for rms in band_rms)
         colors = wave_colors(*levels, white_threshold=0.0, sat_floor=RGB_DETAIL_SAT_FLOOR).astype(np.float64)
         min_env, max_env = frame_minmax(mono, frame_hop)
-        image = wave_coverage_columns(min_env, max_env, colors, column, height)
-    image = gaussian_filter1d(image, sigma=0.8, axis=0)[c0 - p0: c1 - p0]
+        image = wave_coverage_columns(min_env, max_env, colors, column, height, flat_color=WAVE_CENTER_LINE_RGB)
+    image = add_center_line(gaussian_filter1d(image, sigma=0.8, axis=0)[c0 - p0: c1 - p0])
     return np.ascontiguousarray(np.clip(image, 0.0, 255.0).astype(np.uint8)), start_sec, end_sec
 
 
@@ -596,8 +598,11 @@ class WaveformView(ViewPlugin):
         if self._preview_source is not levels:
             # Until chunks are rendered, the stored levels stand in, drawn like them.
             self._preview_item.setImage(
-                render_wave_detail_preview(np.asarray(levels), np.asarray(self.model.features["wave_overview_ref"]),
-                                           load_cfg().viewconfig.waveform_style, RENDER_HEIGHT),
+                # with the chunks' centre line, so the two join without a seam
+                np.clip(add_center_line(render_wave_detail_preview(
+                    np.asarray(levels), np.asarray(self.model.features["wave_overview_ref"]),
+                    load_cfg().viewconfig.waveform_style, RENDER_HEIGHT,
+                )) + 0.5, 0.0, 255.0).astype(np.uint8),
                 autoLevels=False,
                 levels=self._wave_levels,
             )
