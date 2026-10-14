@@ -23,6 +23,10 @@ a = Analysis(
             '../assets/weights/phrase_analyzer.npz',
             'assets/weights',
         ),
+        (
+            '../assets/styles/app.qss',
+            'assets/styles',
+        ),
     ],
     hiddenimports=[],
     hookspath=[],

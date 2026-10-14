@@ -36,7 +36,7 @@ Working notes for AI/automation agents editing the Mixlyzer codebase.
   - `pane.py`: `MainPane` composition.
   - `library.py`: library table, search, transition search, export/reanalyze/edit actions.
   - `edit_panel/`: track editor panel (`panel.py` + per-section mixins: beatgrid, key, phrase, jumpcue, CUE points, beat counter, edit history, save worker; key and phrase are edited by the segment under the playhead; `cue_slots.py` is the CUE page's 4 x 2 slot list).
-  - `theme/`: app look on every platform: Fusion + palette + app-wide QSS built from design tokens (`tokens.py`); colours for new UI come from `current_theme()`.
+  - `theme/`: app look on every platform: Fusion + palette + the app-wide style sheet `assets/styles/app.qss` with the design tokens (`tokens.py`) filled in (`qss.py`); colours for new UI come from `current_theme()`.
   - `edit_song.py`, `export.py`, `config/`, `workers.py`: editing/export/settings/task dialogs.
 - `views/`: pyqtgraph view plugins registered through `views.base.REGISTRY`.
 - `utils/`: labels, colors, fonts, JumpCUE extraction/render helpers, keystrip utilities, waveform helpers.
