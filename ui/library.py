@@ -12,6 +12,7 @@ from core.model import DataModel
 from ui.edit_song import EditSongDialog
 from ui.export import ExportTrackDialog
 from ui.theme import current_theme
+from core.thumbnails import delete_thumbnail, load_thumbnail
 
 
 # Data schema
@@ -28,6 +29,7 @@ class Track:
     added: Optional[QtCore.QDateTime] = None
     path: str = ""
     comment: str = ""
+    uid: str = ""
 
     _disp_bpm: str = field(init=False, default="--")
     _disp_key_camelot: str = field(init=False, default="--")
@@ -63,6 +65,7 @@ def row_to_track(row: TrackRow) -> Track:
         track_id=row.path, title=row.title or "", artist=row.artist or "",
         album=row.album or "", bpm=row.bpm, key=row.key, duration_sec=row.duration,
         rating=int(row.rating or 0), added=added_qt, path=row.path, comment=row.comment or "",
+        uid=row.uid or "",
     )
 class FastDelegate(QtWidgets.QStyledItemDelegate):
     """Cell delegate that caches rendered text as pixmaps.
@@ -76,18 +79,47 @@ class FastDelegate(QtWidgets.QStyledItemDelegate):
 
     _CACHE_LIMIT = 4000
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, *, art_column: int = -1, libpath: str = ""):
         super().__init__(parent)
         self._cache: dict = {}
+        self._art_column = int(art_column)
+        self._libpath = libpath
+        self._art: dict = {}  # (uid, width, dpr) -> QPixmap or None (no thumbnail)
 
     def clear_cache(self) -> None:
         self._cache.clear()
+        self._art.clear()
+
+    def _art_pixmap(self, uid: str, width: int, dpr: float):
+        """The track's thumbnail scaled to ``width`` (logical px), or None."""
+        key = (uid, width, dpr)
+        if key not in self._art:
+            if len(self._art) > self._CACHE_LIMIT:
+                self._art.clear()
+            image = load_thumbnail(self._libpath, uid) if uid else None
+            pm = None
+            if image is not None:
+                pm = QtGui.QPixmap.fromImage(image.scaledToWidth(
+                    max(1, round(width * dpr)), QtCore.Qt.SmoothTransformation))
+                pm.setDevicePixelRatio(dpr)
+            self._art[key] = pm
+        return self._art[key]
 
     def paint(self, painter, option, index):
         rect = option.rect
         selected = bool(option.state & QtWidgets.QStyle.State_Selected)
         if selected:
             painter.fillRect(rect, option.palette.highlight())
+        if index.column() == self._art_column:
+            # the top of the art, fitted to the column's width
+            dpr = painter.device().devicePixelRatio() or 1.0
+            pm = self._art_pixmap(str(index.data(QtCore.Qt.UserRole) or ""), rect.width(), dpr)
+            if pm is not None:
+                painter.save()
+                painter.setClipRect(rect)
+                painter.drawPixmap(rect.topLeft(), pm)
+                painter.restore()
+            return
         text = index.data(QtCore.Qt.DisplayRole)
         if not text:
             return
@@ -140,8 +172,10 @@ class _TrackTable(QtWidgets.QTableWidget):
 
 
 class LibraryWidget(QtWidgets.QWidget):
-    HEADERS = ["Title", "Artist", "Album", "BPM", "Key", "Duration", "Rating", "Added", "Path", "Comment"]
-    SEARCH_MODES = ["All"] + HEADERS
+    ART_HEADER = ""  # the album art column (the top of the art)
+    ART_WIDTH = 56
+    HEADERS = [ART_HEADER, "Title", "Artist", "Album", "BPM", "Key", "Duration", "Rating", "Added", "Path", "Comment"]
+    SEARCH_MODES = ["All"] + HEADERS[1:]
 
     def __init__(self, bus: EventBus, cfg: config, model: DataModel | None = None, parent=None):
         super().__init__(parent)
@@ -259,7 +293,11 @@ class LibraryWidget(QtWidgets.QWidget):
         self.table.horizontalHeader().setHighlightSections(False)
         self.table.horizontalHeader().setDefaultAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
         self.table.verticalHeader().setDefaultSectionSize(self.table.fontMetrics().height() + 8)
-        self.table.setItemDelegate(FastDelegate(self.table))
+        self.table.setItemDelegate(FastDelegate(
+            self.table, art_column=self.HEADERS.index(self.ART_HEADER), libpath=self.cfg.libconfig.libpath))
+        art_column = self.HEADERS.index(self.ART_HEADER)
+        self.table.horizontalHeader().setSectionResizeMode(art_column, QtWidgets.QHeaderView.Fixed)
+        self.table.setColumnWidth(art_column, self.ART_WIDTH)
         self.table.doubleClicked.connect(self._on_activate)
 
         # Layout
@@ -314,6 +352,9 @@ class LibraryWidget(QtWidgets.QWidget):
 
     def reload(self, data):
         """Hard reload with full reset."""
+        delegate = self.table.itemDelegate()
+        if isinstance(delegate, FastDelegate):
+            delegate.clear_cache()  # thumbnails may have been replaced
         # Lock UI
         self.table.setSortingEnabled(False)
         self.table.setUpdatesEnabled(False)
@@ -345,15 +386,18 @@ class LibraryWidget(QtWidgets.QWidget):
             self.table.setSortingEnabled(False)
 
         self.table.setRowCount(len(tracks))
+        bpm_col, art_col = self.HEADERS.index("BPM"), self.HEADERS.index(self.ART_HEADER)
         for r, t in enumerate(tracks):
             values = [
-                t.title, t.artist, t.album, t._disp_bpm, t._disp_key_camelot,
+                "", t.title, t.artist, t.album, t._disp_bpm, t._disp_key_camelot,
                 t._disp_duration, t._disp_rating, t._disp_added, t.path, t.comment
             ]
             for c, v in enumerate(values):
                 item = QtWidgets.QTableWidgetItem(str(v))
-                if c == 3:  # for BPM sorting
+                if c == bpm_col:  # for BPM sorting
                     item.setData(QtCore.Qt.UserRole, float(t.bpm or -1))
+                elif c == art_col:  # the thumbnail's track
+                    item.setData(QtCore.Qt.UserRole, t.uid)
                 self.table.setItem(r, c, item)
         if sorting_enabled:
             self.table.setSortingEnabled(True)
@@ -546,6 +590,7 @@ class LibraryWidget(QtWidgets.QWidget):
         n = FeatureNPZStore(base_dir=self.cfg.libconfig.libpath, compressed=True)
         for uid in uids:
             n.delete(uid)
+            delete_thumbnail(self.cfg.libconfig.libpath, uid)
         self.bus.sig_lib_updated.emit(lib_full)
         for uid in uids:
             track_uid = str(uid or "").strip()

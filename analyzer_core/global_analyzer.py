@@ -33,6 +33,7 @@ from utils.phrases import build_phrase_segments_np
 from core.audio.decoder import decode_to_memmap, get_total_samples
 from core.library_handler import LibraryDB
 from core.analysis_lib_handler import FeatureNPZStore
+from core.thumbnails import save_thumbnail
 from core.config import config
 from core.taskmanager import taskmanager
 from core.linear_segments import build_bpm_segments, build_key_segments
@@ -167,6 +168,7 @@ def _persist_analysis_result(
         library.replace_key_segments(uid, key_segments)
         library.conn.commit()
     store.save(uid, dict(features))
+    save_thumbnail(store.base_dir, uid, getAlbumArt(properties.get("path")))
     return library.list_all()
 
 def getAlbumArt(path) -> Optional[QtGui.QImage]:
