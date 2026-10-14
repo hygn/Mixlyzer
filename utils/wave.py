@@ -1,5 +1,7 @@
-import librosa
 import numpy as np
+
+from analyzer_core.dsp.conversion import fft_frequencies
+from analyzer_core.dsp.spectral import stft
 from scipy.ndimage import gaussian_filter1d
 
 
@@ -61,6 +63,7 @@ def build_wave_preview(
     width: int = WAVE_PREVIEW_WIDTH,
     height_px: int = WAVE_PREVIEW_HEIGHT,
     white_threshold: float = 0.05,
+    normalize_peak: float | None = None,
 ) -> np.ndarray:
     """Overview waveform image ``[columns, height_px, 3]`` (uint8) of mono ``y``.
 
@@ -77,14 +80,20 @@ def build_wave_preview(
     y = np.asarray(y, dtype=np.float32).reshape(-1)
     frame_hop = max(1, int(frame_hop))
     min_env, max_env = frame_minmax(y, frame_hop)
+    if normalize_peak is not None and min_env.size:
+        source_peak = float(max(np.max(np.abs(min_env)), np.max(np.abs(max_env))))
+        if source_peak > 0.0:
+            scale = float(normalize_peak) / source_peak
+            min_env *= scale
+            max_env *= scale
     n_frames = min_env.size
     if n_frames == 0:
         return np.zeros((0, height_px, 3), dtype=np.uint8)
 
     if magnitude is None:
-        magnitude = np.abs(librosa.stft(y, n_fft=n_fft, hop_length=hop_length, center=True))
+        magnitude = np.abs(stft(y, n_fft=n_fft, hop_length=hop_length, center=True))
     power = np.square(magnitude, dtype=np.float32)
-    frequencies = librosa.fft_frequencies(sr=sample_rate, n_fft=n_fft)
+    frequencies = fft_frequencies(sr=sample_rate, n_fft=n_fft)
     stft_centers = np.arange(power.shape[1]) * float(hop_length)
     frame_centers = (np.arange(n_frames) + 0.5) * float(frame_hop)
     levels = []

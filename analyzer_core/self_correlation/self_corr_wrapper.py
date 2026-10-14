@@ -4,7 +4,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterable, Optional, Sequence, Tuple
 
-import librosa
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 

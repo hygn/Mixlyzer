@@ -21,6 +21,7 @@ from analyzer_core.beat.beat_phase import (
     standardize_beat_phase_groups,
 )
 from analyzer_core.beat.frame_features import extract_frame_features
+from analyzer_core.hpss import hpss_audio
 from core.audio.decoder import decode_to_memmap
 from optimizer import SkippedOptimizationTrack, optimizer_track_name, skipped_track
 from core.concurrency.process_pool import create_spawn_process_pool
@@ -121,14 +122,12 @@ def _build_track_cache(track: dict[str, object], cache_dir_text: str, use_hpss: 
         threadpool_limits = None
 
     def build() -> None:
-        import librosa
-
         sample_rate = int(track["sample_rate"])
         # Same input as the analyzer: stereo decode averaged to mono and its
         # HPSS parts.
         stereo = decode_to_memmap(str(track["audio_path"]), sample_rate, 2).reshape(-1, 2)
         audio = np.ascontiguousarray(stereo.mean(axis=1), dtype=np.float32)
-        harmonic, percussive = librosa.effects.hpss(audio) if use_hpss else (audio, audio)
+        harmonic, percussive = hpss_audio(audio) if use_hpss else (audio, audio)
         frames = extract_frame_features(audio, sample_rate, percussive, harmonic)
         beats = np.asarray(track["beats"], dtype=np.float64)
         features = beat_phase_track_features(frames, beats)

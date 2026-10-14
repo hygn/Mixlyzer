@@ -2,6 +2,9 @@ from __future__ import annotations
 import numpy as np
 import librosa
 
+from analyzer_core.dsp.conversion import time_to_frames
+from analyzer_core.dsp.spectral import stft
+
 from sklearn.metrics.pairwise import cosine_similarity
 from scipy.ndimage import gaussian_filter1d
 from scipy.signal import find_peaks
@@ -41,8 +44,10 @@ def mel_beat_matrix(
     target_n_fft = int(np.clip(median_len // 2, 512, 4096))
     n_fft = 1 << int(np.ceil(np.log2(max(32, target_n_fft))))
     hop_length = int(max(128, min(1024, n_fft // 4)))
+    waveform = np.asarray(y, dtype=float)
+    magnitude = np.abs(stft(waveform, n_fft=int(n_fft), hop_length=int(hop_length), center=True))
     mel_full = librosa.feature.melspectrogram(
-        y=np.asarray(y, dtype=float),
+        S=np.square(magnitude),
         sr=sr,
         n_fft=int(n_fft),
         hop_length=int(hop_length),
@@ -54,7 +59,7 @@ def mel_beat_matrix(
     ).astype(float)
     M, T = mel_full.shape
     beat_mel = np.zeros((M, B), dtype=float)
-    beat_frames = librosa.time_to_frames(beats_time, sr=sr, hop_length=int(hop_length))
+    beat_frames = time_to_frames(beats_time, sr=sr, hop_length=int(hop_length))
     beat_frames = np.asarray(beat_frames, dtype=int)
     beat_frames = np.clip(beat_frames, 0, max(0, T))
     for i in range(B):
@@ -193,8 +198,11 @@ def mel_frames(
 ) -> tuple[np.ndarray, float]:
     """Frame-wise Mel features (F x T) with optional whitening and L2 per frame.
     Returns (Feat, hop_sec)."""
+    fft_size = int(max(256, n_fft))
+    hop_size = int(max(1, hop))
+    magnitude = np.abs(stft(y.astype(float), n_fft=fft_size, hop_length=hop_size, center=True))
     Mel = librosa.feature.melspectrogram(
-        y=y.astype(float), sr=sr, n_fft=int(max(256, n_fft)), hop_length=int(max(1, hop)),
+        S=np.square(magnitude), sr=sr, n_fft=fft_size, hop_length=hop_size,
         n_mels=int(max(8, n_mels)), fmin=float(mel_fmin), fmax=float(mel_fmax) if mel_fmax else None,
         power=2.0, center=True
     ).astype(float)
@@ -215,7 +223,7 @@ def beat_centers_to_frames(beats_time: np.ndarray, sr: int, hop: int) -> np.ndar
         centers = 0.5 * (beats_time[:-1] + beats_time[1:])
     else:
         centers = np.asarray([], dtype=float)
-    return librosa.time_to_frames(centers, sr=sr, hop_length=int(max(1, hop))) if centers.size else np.asarray([], dtype=int)
+    return time_to_frames(centers, sr=sr, hop_length=int(max(1, hop))) if centers.size else np.asarray([], dtype=int)
 
 
 def overlap_map_from_frames(

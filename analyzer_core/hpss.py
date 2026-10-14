@@ -4,9 +4,10 @@ import os
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 
-import librosa
 import numpy as np
 from scipy.ndimage import median_filter
+
+from analyzer_core.dsp.spectral import istft, softmask, stft
 
 # Same defaults as librosa.effects.hpss / librosa.decompose.hpss.
 HPSS_KERNEL_SIZE = 31
@@ -20,8 +21,8 @@ HPSS_MAX_WORKERS = 8
 class HpssSpectra:
     """Magnitude STFT of the analysed signal and its harmonic / percussive parts.
 
-    ``librosa.stft(y, n_fft, hop_length, center=True, pad_mode="constant")``;
-    the parts equal ``librosa.decompose.hpss(magnitude)``.
+    Mixlyzer STFT with ``center=True, pad_mode="constant"``; the parts use the
+    same median filters and soft masks as the former librosa HPSS path.
     """
 
     sample_rate: int
@@ -51,8 +52,8 @@ def _median_filter_chunked(
 def hpss_masks(magnitude: np.ndarray, kernel_size: int = HPSS_KERNEL_SIZE) -> tuple[np.ndarray, np.ndarray]:
     """Harmonic / percussive soft masks of a magnitude spectrogram ``[F, T]``.
 
-    Equal to ``librosa.decompose.hpss(magnitude, mask=True)``. scipy's median
-    filter and numpy's ufuncs release the GIL: the time filter runs on
+    Equivalent to the former librosa HPSS masks. scipy's median filter and
+    numpy's ufuncs release the GIL: the time filter runs on
     frequency bands and the frequency filter on time spans, in parallel, and
     the masks on frequency bands.
     """
@@ -68,8 +69,8 @@ def hpss_masks(magnitude: np.ndarray, kernel_size: int = HPSS_KERNEL_SIZE) -> tu
         bands = [slice(start, stop) for start, stop in zip(bounds[:-1], bounds[1:]) if stop > start]
         mask_parts = [
             (
-                pool.submit(librosa.util.softmask, harmonic[band], percussive[band], power=2.0, split_zeros=True),
-                pool.submit(librosa.util.softmask, percussive[band], harmonic[band], power=2.0, split_zeros=True),
+                pool.submit(softmask, harmonic[band], percussive[band], power=2.0, split_zeros=True),
+                pool.submit(softmask, percussive[band], harmonic[band], power=2.0, split_zeros=True),
             )
             for band in bands
         ]
@@ -81,26 +82,33 @@ def hpss_masks(magnitude: np.ndarray, kernel_size: int = HPSS_KERNEL_SIZE) -> tu
 def hpss_audio_with_spectra(
     y: np.ndarray, sample_rate: int, n_fft: int = HPSS_N_FFT
 ) -> tuple[np.ndarray, np.ndarray, HpssSpectra]:
-    """Harmonic and percussive signals of mono ``y`` (equal to ``librosa.effects.hpss(y)``)
-    and the spectra they are made from."""
+    """Harmonic and percussive signals of mono ``y`` and their spectra."""
     hop_length = n_fft // 4
-    stft = librosa.stft(y, n_fft=n_fft, hop_length=hop_length, center=True, pad_mode="constant")
-    magnitude, phase = librosa.magphase(stft)
+    spectrum = stft(y, n_fft=n_fft, hop_length=hop_length, center=True, pad_mode="constant")
+    magnitude = np.abs(spectrum)
     mask_harmonic, mask_percussive = hpss_masks(magnitude)
     harmonic = magnitude * mask_harmonic
     percussive = magnitude * mask_percussive
 
-    def inverse(part: np.ndarray) -> np.ndarray:
-        return librosa.istft(part * phase, dtype=y.dtype, n_fft=n_fft, hop_length=hop_length, length=y.shape[-1])
+    def inverse(mask: np.ndarray) -> np.ndarray:
+        # Applying masks to the original complex spectrum avoids retaining a
+        # second full-size complex phase matrix.
+        return istft(
+            spectrum * mask,
+            dtype=y.dtype,
+            n_fft=n_fft,
+            hop_length=hop_length,
+            length=y.shape[-1],
+        )
 
     with ThreadPoolExecutor(max_workers=2) as pool:
-        y_harmonic = pool.submit(inverse, harmonic)
-        y_percussive = pool.submit(inverse, percussive)
+        y_harmonic = pool.submit(inverse, mask_harmonic)
+        y_percussive = pool.submit(inverse, mask_percussive)
         spectra = HpssSpectra(int(sample_rate), int(n_fft), int(hop_length), magnitude, harmonic, percussive)
         return y_harmonic.result(), y_percussive.result(), spectra
 
 
 def hpss_audio(y: np.ndarray, n_fft: int = HPSS_N_FFT) -> tuple[np.ndarray, np.ndarray]:
-    """Harmonic and percussive signals of mono ``y``; equal to ``librosa.effects.hpss(y)``."""
+    """Harmonic and percussive signals of mono ``y``."""
     y_harmonic, y_percussive, _ = hpss_audio_with_spectra(y, 0, n_fft)
     return y_harmonic, y_percussive

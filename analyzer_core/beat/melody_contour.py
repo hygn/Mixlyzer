@@ -4,6 +4,8 @@ import librosa
 import numpy as np
 from scipy.ndimage import uniform_filter1d
 
+from analyzer_core.dsp.conversion import amplitude_to_db, cqt_frequencies, note_to_hz
+
 
 # Predominant melody without source separation, after MELODIA (Salamon & Gomez
 # 2012), kept light: harmonic-summation pitch salience on a whitened CQT of the
@@ -28,17 +30,17 @@ VOICING_NU = 0.2                  # keep contours with mean salience >= mean - n
 
 def _salience(harmonic: np.ndarray, sample_rate: int, hop_length: int) -> tuple[np.ndarray, np.ndarray]:
     n_bins = CQT_BINS_PER_OCTAVE * CQT_OCTAVES
-    fmin = librosa.note_to_hz(CQT_FMIN_NOTE)
+    fmin = note_to_hz(CQT_FMIN_NOTE)
     magnitude = np.abs(librosa.cqt(
         harmonic, sr=sample_rate, hop_length=hop_length, fmin=fmin,
         n_bins=n_bins, bins_per_octave=CQT_BINS_PER_OCTAVE,
     ))
-    level = librosa.amplitude_to_db(magnitude, ref=np.max, top_db=80.0)
+    level = amplitude_to_db(magnitude, ref=np.max, top_db=80.0)
     envelope = uniform_filter1d(level, size=CQT_BINS_PER_OCTAVE, axis=0, mode="nearest")
     whitened = np.maximum(level - envelope, 0.0)
-    frequencies = librosa.cqt_frequencies(n_bins, fmin=fmin, bins_per_octave=CQT_BINS_PER_OCTAVE)
+    frequencies = cqt_frequencies(n_bins, fmin=fmin, bins_per_octave=CQT_BINS_PER_OCTAVE)
     candidates = np.flatnonzero(
-        (frequencies >= librosa.note_to_hz(F0_MIN_NOTE)) & (frequencies <= librosa.note_to_hz(F0_MAX_NOTE))
+        (frequencies >= note_to_hz(F0_MIN_NOTE)) & (frequencies <= note_to_hz(F0_MAX_NOTE))
     )
     salience = np.zeros((candidates.size, whitened.shape[1]))
     for harmonic_number in range(1, N_HARMONICS + 1):

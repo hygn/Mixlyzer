@@ -1,5 +1,4 @@
 import numpy as np
-import librosa
 from concurrent.futures import ThreadPoolExecutor
 from threadpoolctl import threadpool_limits
 import time
@@ -17,6 +16,7 @@ from analyzer_core.beat.beat import collapse_short_sandwiched_tempo_segments, re
 from analyzer_core.beat.frame_features import extract_frame_features
 from analyzer_core.beat.learned_onset import compute_beat_odf
 from analyzer_core.hpss import HPSS_HOP_LENGTH, HPSS_N_FFT, hpss_audio_with_spectra
+from analyzer_core.dsp.resample import resample_audio
 from utils.wave import build_wave_preview
 from analyzer_core.self_correlation.JumpCUE import JumpCueConfig, JumpCueEngine
 from analyzer_core.self_correlation.jump_point_model import jump_point_beat_features
@@ -67,9 +67,13 @@ def fast_load(path: str, target_sr, stereo: bool = False) -> np.ndarray:
         elif y.ndim > 1:
             y = y.mean(axis=1).astype(np.float32)
     if target_sr and sr != target_sr:
-        src = y.T if stereo else y  # resample along last axis
-        src = librosa.resample(np.ascontiguousarray(src), orig_sr=sr, target_sr=target_sr, res_type="kaiser_fast")
-        y = src.T if stereo else src
+        y = resample_audio(
+            y,
+            sr,
+            target_sr,
+            axis=0 if stereo else -1,
+            quality="HQ",
+        )
     return np.ascontiguousarray(y, dtype=np.float32)
 
 def _file_stats(path: str) -> tuple[int, float]:
@@ -198,10 +202,6 @@ def getAlbumArt(path) -> Optional[QtGui.QImage]:
         pass
     return None
 
-def normalize_y(y: np.ndarray, peak:float=1) -> np.ndarray:
-    nd = np.max(np.abs(y))
-    return y*peak / nd
-
 def _apply_beatgrid_offset(synced_bpm: dict, offset_sec: float, track_duration: float) -> dict:
     out = dict(synced_bpm)
     beats, _ = offset_beats_and_segments(
@@ -265,7 +265,6 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
     # Decode once: stereo for the structure detector, mono derived for the rest.
     samp_stereo = fast_load(path, target_sr=global_sr, stereo=True)
     samp = np.ascontiguousarray(samp_stereo.mean(axis=1), dtype=np.float32)
-    base_sig = normalize_y(samp, 0.99)
     taskmgr.updatetask(taskid, "Processing HPSS", 0.1)
 
     yield {"status": "HPSS"}
@@ -289,15 +288,16 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
     # Bars of env_frame_ms / 4 (the resolution of the former full-size image).
     wave_frame_hop = max(1, int(round(float(getattr(gcf, "env_frame_ms", 20)) / 4 * 1e-3 * global_sr)))
     features["wave_img_np_preview"] = build_wave_preview(
-        base_sig,
+        samp,
         int(global_sr),
         wave_bands,
         wave_frame_hop,
         hpss_spectra.magnitude if hpss_spectra is not None else None,
         n_fft=hpss_spectra.n_fft if hpss_spectra is not None else HPSS_N_FFT,
         hop_length=hpss_spectra.hop_length if hpss_spectra is not None else HPSS_HOP_LENGTH,
+        normalize_peak=0.99,
     )
-    features["duration_sec"] = librosa.get_duration(y=samp, sr=global_sr)
+    features["duration_sec"] = samp.size / float(global_sr)
     print("[Waveform] Analysis Finished")
 
     yield {"status": "tempo"}
@@ -318,6 +318,7 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
     )
     if gcf.bpm_dynamic:
         w_mpls = [1, 2, 4, None] if gcf.bpm_adaptive_window else [1]
+        validrange_cached = get_track_validrange(y_perc, int(global_sr), 1, 0.02)
 
         def track_window(win_multiplier):
             if win_multiplier is None:
@@ -342,6 +343,7 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
                 bpm_bounds=(gcf.bpm_min,gcf.bpm_max),
                 odf_precomputed=odf_cached,
                 hop_t_precomputed=hop_t_cached,
+                validrange_precomputed=validrange_cached,
             )
 
         # The window candidates are independent (numpy / scipy release the GIL).

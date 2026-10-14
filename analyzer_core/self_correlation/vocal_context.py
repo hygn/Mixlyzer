@@ -34,6 +34,9 @@ from scipy.fft import dct
 from scipy.ndimage import uniform_filter1d
 from threadpoolctl import threadpool_limits
 
+from analyzer_core.dsp.conversion import mel_frequencies
+from analyzer_core.dsp.spectral import stft
+
 
 @dataclass
 class VocalContextConfig:
@@ -119,12 +122,12 @@ class JumpPointScore:
 
 def _power_mel(y: Optional[np.ndarray], sr: int, cfg: VocalContextConfig, magnitude: Optional[np.ndarray]) -> np.ndarray:
     if magnitude is None:
-        magnitude = np.abs(librosa.stft(np.asarray(y, dtype=np.float32), n_fft=cfg.n_fft, hop_length=cfg.hop))
+        magnitude = np.abs(stft(np.asarray(y, dtype=np.float32), n_fft=cfg.n_fft, hop_length=cfg.hop))
     fb = librosa.filters.mel(sr=sr, n_fft=cfg.n_fft, n_mels=cfg.n_mels, fmin=cfg.fmin, fmax=cfg.fmax)
     return (fb.astype(np.float32) @ (np.asarray(magnitude, dtype=np.float32) ** 2)).astype(np.float32)
 
 
-def _repet_background(M: np.ndarray, feat: np.ndarray, k: int, min_gap: int, chunk: int = 512) -> np.ndarray:
+def _repet_background(M: np.ndarray, feat: np.ndarray, k: int, min_gap: int, chunk: int = 128) -> np.ndarray:
     """REPET-SIM background of ``M`` [F, T]: per frame, the median of ``M`` over
     its top-``k`` cosine neighbours on ``feat`` [D, T], at least ``min_gap``
     frames away. Frame chunks run on threads (numpy releases the GIL), with the
@@ -133,17 +136,24 @@ def _repet_background(M: np.ndarray, feat: np.ndarray, k: int, min_gap: int, chu
     X = (feat / (np.linalg.norm(feat, axis=0, keepdims=True) + 1e-9)).astype(np.float32)
     Xt = np.ascontiguousarray(X.T)
     k = int(max(1, min(k, T - 2 * min_gap - 1)))
-    cols = np.arange(T)
     bg = np.empty_like(M)
 
     def run(s: int) -> None:
         e = min(T, s + chunk)
         sim = Xt[s:e] @ X  # [c, T]
-        sim[np.abs(cols[None, :] - np.arange(s, e)[:, None]) < min_gap] = -np.inf
-        nn = np.argpartition(-sim, k - 1, axis=1)[:, :k]
+        # Slice the exclusion band row by row.  Building the former broadcast
+        # distance matrix required a second int64 [chunk, T] allocation in
+        # every worker, which became hundreds of MB on long tracks.
+        for row, center in enumerate(range(s, e)):
+            lo = max(0, center - min_gap + 1)
+            hi = min(T, center + min_gap)
+            sim[row, lo:hi] = -np.inf
+        nn = np.argpartition(sim, -k, axis=1)[:, -k:]
         bg[:, s:e] = np.median(M[:, nn], axis=2)
 
-    workers = max(1, min(8, os.cpu_count() or 1))
+    # Four smaller chunks bound the all-pairs working set while retaining
+    # parallel BLAS work.  Results are identical because chunks are disjoint.
+    workers = max(1, min(4, os.cpu_count() or 1))
     with threadpool_limits(limits=1, user_api="blas"), ThreadPoolExecutor(max_workers=workers) as pool:
         list(pool.map(run, range(0, T, chunk)))
     return bg
@@ -226,7 +236,7 @@ def compute_vocal_context(
     hop_sec = cfg.hop / float(sr)
     frame_times = np.arange(T) * hop_sec
 
-    mel_f = librosa.mel_frequencies(n_mels=cfg.n_mels, fmin=cfg.fmin, fmax=cfg.fmax)
+    mel_f = mel_frequencies(n_mels=cfg.n_mels, fmin=cfg.fmin, fmax=cfg.fmax)
     band = (mel_f >= cfg.voice_fmin) & (mel_f <= cfg.voice_fmax)
     logM = np.log(M + 1e-6 * float(M.max()) + 1e-12)
 

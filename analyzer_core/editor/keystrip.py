@@ -1,8 +1,8 @@
 from __future__ import annotations
 from typing import Callable, Optional
 import numpy as np
-import librosa
 from analyzer_core.global_analyzer import fast_load
+from analyzer_core.hpss import hpss_audio
 from analyzer_core.key.key import _parse_cqt_key_name, keyanalyzer, chroma_to_subdiv_grid
 from analyzer_core.key.key_cqt import keydetect as KeyCQTDetector
 from core.config import config
@@ -25,7 +25,7 @@ def reanalyze_full(
     use_hpss = getattr(gcf, "use_hpss", False)
     if use_hpss:
         try:
-            y_harm, _ = librosa.effects.hpss(audio_full)
+            y_harm, _ = hpss_audio(audio_full)
         except Exception:
             y_harm = audio_full
     else:
@@ -98,7 +98,7 @@ def reanalyze_segment_from_file(
     use_hpss = getattr(gcf, "use_hpss", False)
     if use_hpss:
         try:
-            y_harm, _ = librosa.effects.hpss(segment)
+            y_harm, _ = hpss_audio(segment)
         except Exception:
             y_harm = segment
     else:

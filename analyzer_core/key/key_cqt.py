@@ -1,6 +1,8 @@
 import numpy as np
 import librosa
 
+from analyzer_core.dsp.conversion import cqt_frequencies, hz_to_midi, note_to_hz, time_to_frames
+
 
 class keydetect:
     """
@@ -86,7 +88,7 @@ class keydetect:
         `note_tolerance_cents` of the nearest equal-tempered semitone.
         """
         if fmin is None:
-            fmin = float(librosa.note_to_hz('C1'))
+            fmin = note_to_hz('C1')
         if n_octaves is None:
             n_octaves = 7
         n_bins = int(n_octaves * bins_per_octave)
@@ -99,8 +101,8 @@ class keydetect:
             return np.zeros((12, 0), dtype=np.float32)
         T = A.shape[1]
 
-        freqs = librosa.cqt_frequencies(n_bins, fmin=fmin, bins_per_octave=bins_per_octave)
-        midi = librosa.hz_to_midi(freqs)
+        freqs = cqt_frequencies(n_bins, fmin=fmin, bins_per_octave=bins_per_octave)
+        midi = hz_to_midi(freqs)
         nearest = np.rint(midi)
         cents = 100.0 * np.abs(midi - nearest)
         pc = (nearest.astype(int) % 12)
@@ -223,7 +225,7 @@ class keydetect:
             hop_length=hop_length,
             bins_per_octave=bins_per_octave,
             n_octaves=n_octaves,
-            fmin=float(librosa.note_to_hz(fmin_note)),
+            fmin=note_to_hz(fmin_note),
             note_tolerance_cents=note_tolerance_cents,
             allowed_pitch_classes=allowed_pitch_classes,
         )
@@ -235,7 +237,7 @@ class keydetect:
             seg_end_sec = seg_start_sec + seg_duration
             mask = (bt >= seg_start_sec) & (bt <= seg_end_sec)
             beat_local = bt[mask] - seg_start_sec
-            beat_frames = librosa.time_to_frames(beat_local, sr=sr, hop_length=hop_length)
+            beat_frames = time_to_frames(beat_local, sr=sr, hop_length=hop_length)
             beat_frames = np.unique(beat_frames[(beat_frames >= 0) & (beat_frames < chroma.shape[1])])
             if beat_frames.size > 0:
                 chroma = librosa.util.sync(chroma, beat_frames, aggregate=agg_func)

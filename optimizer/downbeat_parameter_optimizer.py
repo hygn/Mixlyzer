@@ -26,6 +26,7 @@ from optimizer import (
     optimizer_track_name,
     skipped_track,
 )
+from analyzer_core.hpss import hpss_audio
 from core.concurrency.process_pool import create_spawn_process_pool
 from utils.atomic_io import atomic_output_path, atomic_write_json
 
@@ -218,14 +219,12 @@ def _build_track_cache(
         threadpool_limits = None
 
     def build() -> None:
-        import librosa
-
         sample_rate = int(track["sample_rate"])
         # Same input as the analyzer: stereo decode averaged to mono and its
         # HPSS parts.
         stereo = decode_to_memmap(str(track["audio_path"]), sample_rate, 2).reshape(-1, 2)
         audio = np.ascontiguousarray(stereo.mean(axis=1), dtype=np.float32)
-        harmonic, percussive = librosa.effects.hpss(audio) if use_hpss else (audio, audio)
+        harmonic, percussive = hpss_audio(audio) if use_hpss else (audio, audio)
         beats, features = extract_downbeat_feature_matrix(
             audio,
             sample_rate,

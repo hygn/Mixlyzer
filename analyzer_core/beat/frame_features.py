@@ -7,6 +7,15 @@ import librosa
 import numpy as np
 
 from analyzer_core.beat.melody_contour import extract_melody_contour
+from analyzer_core.dsp.conversion import (
+    amplitude_to_db,
+    fft_frequencies,
+    frames_to_time,
+    mel_frequencies,
+    note_to_hz,
+    power_to_db,
+)
+from analyzer_core.dsp.spectral import stft
 
 
 # Shared frame grid. Computed once per track before beat tracking: the learned
@@ -24,7 +33,7 @@ MELODY_FMIN_NOTE = "C4"
 MELODY_OCTAVES = 3
 # librosa.feature.chroma_cqt default resolution.
 CHROMA_BINS_PER_OCTAVE = 36
-BASS_CHROMA_FMIN_HZ = float(librosa.note_to_hz("C1"))
+BASS_CHROMA_FMIN_HZ = note_to_hz("C1")
 
 
 @dataclass(frozen=True)
@@ -104,7 +113,7 @@ def extract_frame_features(
     harmonic = audio if harmonic is None else np.asarray(harmonic, dtype=np.float32).reshape(-1)
 
     def spectrum(signal: np.ndarray) -> np.ndarray:
-        return np.abs(librosa.stft(
+        return np.abs(stft(
             y=signal, n_fft=n_fft, hop_length=hop_length,
             window="hann", center=True, pad_mode="reflect",
         )).astype(np.float32)
@@ -112,7 +121,7 @@ def extract_frame_features(
     magnitude = spectrum(audio)
     power = np.square(magnitude, dtype=np.float32)
     n_frames = magnitude.shape[1]
-    frame_times = librosa.frames_to_time(
+    frame_times = frames_to_time(
         np.arange(n_frames), sr=sample_rate, hop_length=hop_length,
     ).astype(np.float64)
 
@@ -129,19 +138,21 @@ def extract_frame_features(
             audio, sr=sample_rate, hop_length=hop_length, n_bins=7 * CHROMA_BINS_PER_OCTAVE,
             bins_per_octave=CHROMA_BINS_PER_OCTAVE, tuning=tuning,
         ))
-        bass = np.abs(librosa.cqt(
-            audio, sr=sample_rate, hop_length=hop_length, fmin=BASS_CHROMA_FMIN_HZ,
-            n_bins=3 * CHROMA_BINS_PER_OCTAVE, bins_per_octave=CHROMA_BINS_PER_OCTAVE, tuning=tuning,
-        ))
+        # The bass CQT uses the first three octaves of the same C1-rooted
+        # seven-octave transform.  Reusing the view removes one complete CQT
+        # per track while preserving its frequencies and frame grid.  Librosa's
+        # multirate implementation can introduce tiny rounding differences
+        # compared with requesting those three octaves separately.
+        bass = full[: 3 * CHROMA_BINS_PER_OCTAVE]
         return full, bass
 
     def melody() -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         melody_cqt = np.abs(librosa.cqt(
             harmonic, sr=sample_rate, hop_length=hop_length,
-            fmin=librosa.note_to_hz(MELODY_FMIN_NOTE), n_bins=12 * MELODY_OCTAVES, bins_per_octave=12,
+            fmin=note_to_hz(MELODY_FMIN_NOTE), n_bins=12 * MELODY_OCTAVES, bins_per_octave=12,
         ))
         melody_onset = _positive_flux(
-            librosa.amplitude_to_db(melody_cqt, ref=np.max, top_db=80.0)
+            amplitude_to_db(melody_cqt, ref=np.max, top_db=80.0)
         ).mean(axis=0)
         melody_pitch, melody_contour = extract_melody_contour(harmonic, sample_rate, hop_length, n_frames)
         return melody_cqt, melody_onset, melody_pitch, melody_contour
@@ -154,10 +165,10 @@ def extract_frame_features(
         S=power, sr=sample_rate, n_mels=n_mels,
         fmin=30.0, fmax=sample_rate / 2.0, norm="slaney", power=2.0,
     )
-    log_mel = librosa.power_to_db(mel_power, ref=np.max, top_db=100.0).astype(np.float32)
+    log_mel = power_to_db(mel_power, ref=np.max, top_db=100.0).astype(np.float32)
 
     mfcc = librosa.feature.mfcc(
-        S=librosa.power_to_db(
+        S=power_to_db(
             librosa.feature.melspectrogram(S=power, sr=sample_rate, n_mels=n_mels),
             ref=np.max,
         ),
@@ -170,8 +181,8 @@ def extract_frame_features(
         [mel_difference[band_edges[i]:band_edges[i + 1]].mean(axis=0) for i in range(3)]
     )
     rms = librosa.feature.rms(S=magnitude, frame_length=n_fft, center=False)
-    rms_db = librosa.amplitude_to_db(rms, ref=np.max, top_db=100.0)[0]
-    frequencies = librosa.fft_frequencies(sr=sample_rate, n_fft=n_fft)
+    rms_db = amplitude_to_db(rms, ref=np.max, top_db=100.0)[0]
+    frequencies = fft_frequencies(sr=sample_rate, n_fft=n_fft)
     total_power = np.maximum(power.sum(axis=0), 1e-10)
     band_ratios = np.stack(
         [
@@ -185,12 +196,12 @@ def extract_frame_features(
     # HPSS parts: drum flux per band, harmonic (note / chord) onsets, drum share.
     percussive_power = np.square(spectrum(percussive), dtype=np.float32)
     harmonic_power = np.square(spectrum(harmonic), dtype=np.float32)
-    percussive_mel = librosa.power_to_db(
+    percussive_mel = power_to_db(
         librosa.feature.melspectrogram(S=percussive_power, sr=sample_rate, n_mels=n_mels, fmin=30.0),
         ref=np.max, top_db=100.0,
     )
     percussive_flux = _positive_flux(percussive_mel)
-    mel_hz = librosa.mel_frequencies(n_mels=n_mels, fmin=30.0, fmax=sample_rate / 2.0)
+    mel_hz = mel_frequencies(n_mels=n_mels, fmin=30.0, fmax=sample_rate / 2.0)
     percussive_bands = np.stack(
         [percussive_flux[(mel_hz >= lo) & (mel_hz < hi)].mean(axis=0) for lo, hi in PERCUSSIVE_BAND_EDGES_HZ]
     )
@@ -200,7 +211,7 @@ def extract_frame_features(
     # librosa onset strength (128-band log-mel flux) from the spectra above.
     def onset_strength(signal_power: np.ndarray) -> np.ndarray:
         return librosa.onset.onset_strength(
-            S=librosa.power_to_db(librosa.feature.melspectrogram(S=signal_power, sr=sample_rate)),
+            S=power_to_db(librosa.feature.melspectrogram(S=signal_power, sr=sample_rate)),
             sr=sample_rate, hop_length=hop_length, n_fft=n_fft, center=True,
         )
 

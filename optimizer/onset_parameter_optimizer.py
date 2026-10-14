@@ -12,6 +12,7 @@ from sklearn.metrics import average_precision_score
 from sklearn.model_selection import GroupKFold
 
 from analyzer_core.beat.frame_features import FRAME_HOP_LENGTH, extract_frame_features
+from analyzer_core.hpss import hpss_audio
 from analyzer_core.beat.learned_onset import (
     ONSET_CHANNEL_NAMES,
     ONSET_CONTEXT_OFFSETS,
@@ -217,14 +218,12 @@ def _build_track_cache(
         threadpool_limits = None
 
     def build() -> None:
-        import librosa
-
         sample_rate = int(track["sample_rate"])
         # Same input as the analyzer: stereo decode averaged to mono and its
         # HPSS parts.
         stereo = decode_to_memmap(str(track["audio_path"]), sample_rate, 2).reshape(-1, 2)
         audio = np.ascontiguousarray(stereo.mean(axis=1), dtype=np.float32)
-        harmonic, percussive = librosa.effects.hpss(audio) if use_hpss else (audio, audio)
+        harmonic, percussive = hpss_audio(audio) if use_hpss else (audio, audio)
         frames = extract_frame_features(
             audio, sample_rate, percussive, harmonic, hop_length=int(hop_length)
         )

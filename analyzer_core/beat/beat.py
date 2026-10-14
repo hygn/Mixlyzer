@@ -9,6 +9,9 @@ from scipy.ndimage import gaussian_filter, gaussian_filter1d
 from scipy.signal import find_peaks
 from scipy.stats import mode
 
+from analyzer_core.dsp.conversion import power_to_db
+from analyzer_core.dsp.spectral import stft
+
 
 @dataclass
 class TempoSegment:
@@ -33,7 +36,16 @@ class TempoSegment:
 def _compute_odf(y: np.ndarray, sr: int, hop: int = 256) -> tuple[np.ndarray, float]:
     """Compute ODF from audio. \\
     Currenly using only librosa ODF but there is room for improvements"""
-    odf1 = librosa.onset.onset_strength(y=y, sr=sr, hop_length=hop, center=False).astype(np.float32)
+    n_fft = 2048
+    # onset_strength(center=False) disables its output compensation, but its
+    # default mel front-end is still a centered spectrogram.
+    magnitude = np.abs(stft(np.asarray(y), n_fft=n_fft, hop_length=hop, center=True))
+    mel = librosa.feature.melspectrogram(
+        S=np.square(magnitude), sr=sr, n_fft=n_fft, hop_length=hop,
+    )
+    odf1 = librosa.onset.onset_strength(
+        S=power_to_db(mel), sr=sr, hop_length=hop, center=False,
+    ).astype(np.float32)
     hop_t = hop / float(sr)
     return odf1, hop_t
 
@@ -851,17 +863,16 @@ def get_track_validrange(audio: np.ndarray, sr: int, window_s: float = 1, thresh
     m = float(np.max(np.abs(audio))) if len(audio) else 0.0
     if m <= 0:
         return 0.0, 0.0
-    y = (audio / m).astype(np.float32)
     frame_length = max(1, int(round(window_s * sr)))
     hop_length = frame_length
 
     rms = librosa.feature.rms(
-        y=y,
+        y=np.asarray(audio, dtype=np.float32),
         frame_length=frame_length,
         hop_length=hop_length,
         center=True)[0]
 
-    sound = (rms >= thresh).astype(np.float32)
+    sound = (rms >= thresh * m).astype(np.float32)
     cs = np.cumsum(sound)
     lo = float(np.percentile(cs, 0.1))
     hi = float(np.percentile(cs, 99.9))
@@ -884,6 +895,7 @@ def bpm_dynamic_phase_sync(
     bpm_bounds: tuple[float, float] = (128.0, 260.0),
     odf_precomputed: np.ndarray | None = None,
     hop_t_precomputed: float | None = None,
+    validrange_precomputed: tuple[float, float] | None = None,
 ) -> dict:
     t_offset = 0.5 * hop_length / float(sr)
     if not isinstance(audio, np.ndarray) or audio.ndim != 1:
@@ -914,7 +926,11 @@ def bpm_dynamic_phase_sync(
     if tempo_segments:
         tempo_segments[-1].end = float(track_dur)
     
-    validrange = get_track_validrange(audio, sr, 1, 0.02)
+    validrange = (
+        get_track_validrange(audio, sr, 1, 0.02)
+        if validrange_precomputed is None
+        else tuple(validrange_precomputed)
+    )
     print(f"[fine] Valid track range = {validrange}")
 
     refined_segments, refined_beats = refine_segments_via_beatgrid(
@@ -956,7 +972,7 @@ def bpm_dynamic_phase_sync(
     score = _score_beats_against_odf(beats_time, odf, hop_t)
 
     return {
-        "onset_env": odf.astype(float, copy=True),
+        "onset_env": odf,
         "beats": beats_frames,
         "beats_time": beats_time,
         "downbeats_sec": first_beat,
@@ -1042,7 +1058,7 @@ def bpm_phase_sync(
     score = _score_beats_against_odf(beats_time, odf, hop_t)
 
     return {
-        "onset_env": odf.astype(float, copy=True),
+        "onset_env": odf,
         "beats": beats_frames,
         "beats_time": beats_time,
         "downbeats_sec": first_beat,

@@ -9,6 +9,8 @@ from core.config import config
 from scipy.special import logsumexp
 from collections import Counter
 from utils.labels import KEY_DISPLAY_LABELS
+from analyzer_core.dsp.conversion import frames_to_time, time_to_frames
+from analyzer_core.dsp.spectral import stft
 
 circle_of_fifths = [0, 7, 2, 9, 4, 11, 6, 1, 8, 3, 10, 5]
 circle_pos = {k: i for i, k in enumerate(circle_of_fifths)}
@@ -268,16 +270,17 @@ def chroma_to_subdiv_grid(y_harm, beat_frames, sr=22050, hop_length=512, bins_pe
             n_octaves=n_octaves,
             tuning=None)
     elif mode == "hcpc":
+        magnitude = np.abs(stft(y_harm, n_fft=n_fft, hop_length=hop_length, center=True))
         chroma = librosa.feature.chroma_stft(
-            y=y_harm, sr=sr,
+            S=np.square(magnitude), sr=sr,
             hop_length=hop_length,
             n_fft=n_fft,
             tuning=None)
 
-    t_frames = librosa.frames_to_time(np.arange(chroma.shape[1]),
-                                      sr=sr, hop_length=hop_length)
+    t_frames = frames_to_time(np.arange(chroma.shape[1]),
+                              sr=sr, hop_length=hop_length)
 
-    beat_times = librosa.frames_to_time(beat_frames, sr=sr, hop_length=hop_length)
+    beat_times = frames_to_time(beat_frames, sr=sr, hop_length=hop_length)
 
     subdiv_times = []
     for i in range(len(beat_times) - 1):
@@ -291,10 +294,10 @@ def chroma_to_subdiv_grid(y_harm, beat_frames, sr=22050, hop_length=512, bins_pe
     subdiv_times = np.unique(np.clip(subdiv_times, t_frames[0], t_frames[-1]))
 
     chroma_subdiv = np.empty((12, len(subdiv_times)), dtype=np.float32)
-    subdiv_frames = librosa.time_to_frames(subdiv_times, sr=sr, hop_length=hop_length)
+    subdiv_frames = time_to_frames(subdiv_times, sr=sr, hop_length=hop_length)
     chroma_subdiv = librosa.util.sync(chroma, subdiv_frames, aggregate=np.median, pad=False)
 
-    t_edges   = librosa.frames_to_time(subdiv_frames, sr=sr, hop_length=hop_length)
+    t_edges   = frames_to_time(subdiv_frames, sr=sr, hop_length=hop_length)
     t_centers = 0.5*(t_edges[:-1] + t_edges[1:])
 
     return {

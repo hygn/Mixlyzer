@@ -11,7 +11,10 @@ import librosa
 import numpy as np
 from scipy.special import expit
 
-from analyzer_core.hpss import HpssSpectra
+from analyzer_core.dsp.conversion import fft_frequencies, frames_to_time, power_to_db
+from analyzer_core.dsp.resample import resample_audio
+from analyzer_core.dsp.spectral import stft
+from analyzer_core.hpss import HpssSpectra, hpss_masks
 from core.audio.decoder import decode_to_memmap
 
 
@@ -299,9 +302,10 @@ def _load_audio_stereo(
             waveform = arr            # (N,)
         sr = int(audio_sr or config.sample_rate)
         if sr != config.sample_rate:
-            waveform = librosa.resample(
-                np.ascontiguousarray(waveform), orig_sr=sr,
-                target_sr=config.sample_rate, res_type=config.res_type,
+            quality = str(config.res_type).removeprefix("soxr_").upper()
+            waveform = resample_audio(
+                np.ascontiguousarray(waveform), sr,
+                config.sample_rate, axis=-1, quality=quality,
             )
             sr = config.sample_rate
     else:
@@ -498,7 +502,7 @@ def extract_song_features(
     if reuse:
         magnitude, harmonic_mag, percussive_mag = hpss.magnitude, hpss.harmonic, hpss.percussive
     else:
-        stft_mid = librosa.stft(
+        stft_mid = stft(
             mid,
             n_fft=config.n_fft,
             hop_length=config.hop_length,
@@ -506,15 +510,17 @@ def extract_song_features(
             center=True,
         )
         magnitude = np.abs(stft_mid).astype(np.float32)
-        harmonic_mag, percussive_mag = librosa.decompose.hpss(magnitude)
+        mask_harmonic, mask_percussive = hpss_masks(magnitude)
+        harmonic_mag = magnitude * mask_harmonic
+        percussive_mag = magnitude * mask_percussive
     power = np.square(magnitude, dtype=np.float32)
     harmonic_power = np.square(harmonic_mag, dtype=np.float32)
     percussive_power = np.square(percussive_mag, dtype=np.float32)
 
-    frame_times = librosa.frames_to_time(
+    frame_times = frames_to_time(
         np.arange(magnitude.shape[1]), sr=sr, hop_length=config.hop_length
     )
-    frequencies = librosa.fft_frequencies(sr=sr, n_fft=config.n_fft)
+    frequencies = fft_frequencies(sr=sr, n_fft=config.n_fft)
 
     mel_power = librosa.feature.melspectrogram(
         S=power,
@@ -523,7 +529,7 @@ def extract_song_features(
         fmin=config.fmin,
         fmax=config.fmax,
     )
-    mel_db = librosa.power_to_db(mel_power, ref=np.max)
+    mel_db = power_to_db(mel_power, ref=np.max)
     mfcc = librosa.feature.mfcc(S=mel_db, n_mfcc=config.n_mfcc)
     chroma = librosa.feature.chroma_stft(
         S=harmonic_power,
@@ -585,7 +591,7 @@ def extract_song_features(
         fmax=config.fmax,
     )
     onset_percussive = librosa.onset.onset_strength(
-        S=librosa.power_to_db(percussive_mel, ref=np.max),
+        S=power_to_db(percussive_mel, ref=np.max),
         sr=sr,
         hop_length=config.hop_length,
     )

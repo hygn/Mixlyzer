@@ -46,4 +46,4 @@ annotator/
 benchmark/
 
 # Local DSP prototypes (not production source)
-experiments/inhouse_cqt/
+experiments
