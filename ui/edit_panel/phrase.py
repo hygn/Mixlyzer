@@ -5,7 +5,6 @@ from PySide6 import QtCore, QtWidgets
 
 from ui.edit_panel.history import logElement
 from ui.edit_panel.styles import WARNING_BUTTON_STYLESHEET
-from utils.cue_points import build_cue_points_np, build_phrase_cue_points
 from utils.phrases import (
     PHRASE_LABELS,
     assign_phrase_to_selection,
@@ -126,6 +125,7 @@ class PhraseEditMixin:
                     key_segments=self._key_segments,
                     jump_cues=self._JumpCUE,
                     phrases=self._phrase_segments,
+                    cue_points=self._cue_points,
                 )
             )
             self._update_undo_redo_buttons()
@@ -134,9 +134,6 @@ class PhraseEditMixin:
             try:
                 phrase_segments_np = build_phrase_segments_np(self._phrase_segments)
                 self.model.features["phrase_segments_np"] = phrase_segments_np
-                self.model.features["cue_points_np"] = build_cue_points_np(
-                    build_phrase_cue_points(self._phrase_segments)
-                )
             except Exception:
                 pass
         self._update_phrase_status()

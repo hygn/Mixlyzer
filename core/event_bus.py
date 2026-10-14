@@ -68,6 +68,7 @@ class EventBus(QtCore.QObject):
     sig_tone_hold = QtCore.Signal(object)      # MIDI notes held under the music (empty: off)
     sig_tone_sequence = QtCore.Signal(object)  # [(MIDI notes, seconds), ...] played once
     sig_phrase_segments_updated = QtCore.Signal()
+    sig_cue_points_updated = QtCore.Signal()      # notification only; read from shared model
 
     sig_jumpcue_updated = QtCore.Signal()
 
@@ -77,6 +78,7 @@ class EventBus(QtCore.QObject):
 
     sig_jump_arm = QtCore.Signal(object)
     sig_jump_disarm = QtCore.Signal()
+    sig_jump_fired = QtCore.Signal()  # an armed jump was played
 
     # UI timing
     sig_ui_draw_interval = QtCore.Signal(float)

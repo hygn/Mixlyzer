@@ -3,6 +3,7 @@ import pyqtgraph as pg
 
 from .base import ViewPlugin, register_view
 from utils.cue_points import extract_cue_points
+from utils.jumpcue_colors import get_cue_point_color
 
 
 def _down_triangle_path() -> QtGui.QPainterPath:
@@ -22,6 +23,8 @@ class CUEPointView(ViewPlugin):
         super().__init__(bus, model, tl)
         self.plot: pg.PlotItem | None = None
         self._times: list[float] = []
+        self._brushes: list = []
+        self._pens: list = []
         self._markers = pg.ScatterPlotItem(
             size=14,
             pen=pg.mkPen((255, 40, 40), width=1.2),
@@ -31,7 +34,7 @@ class CUEPointView(ViewPlugin):
         )
         self._markers.setZValue(110)
         self.bus.sig_features_loaded.connect(self._on_features_loaded)
-        self.bus.sig_phrase_segments_updated.connect(self._on_features_loaded)
+        self.bus.sig_cue_points_updated.connect(self._on_features_loaded)
         self.bus.sig_time_changed.connect(self._reposition)
         self.bus.sig_window_changed.connect(self._reposition)
         self.bus.sig_center_changed.connect(self._reposition)
@@ -54,10 +57,11 @@ class CUEPointView(ViewPlugin):
         self._reposition()
 
     def _load_points(self) -> None:
-        self._times = [
-            float(point["time_sec"])
-            for point in extract_cue_points(self.model.features)
-        ]
+        points = extract_cue_points(self.model.features)
+        self._times = [float(point["time_sec"]) for point in points]
+        colors = [get_cue_point_color(int(point.get("color_idx", 0) or 0)) for point in points]
+        self._brushes = [pg.mkBrush(*c, 240) for c in colors]
+        self._pens = [pg.mkPen(c, width=1.2) for c in colors]
 
     def _reposition(self, *_args) -> None:
         if self.plot is None or not self._times:
@@ -72,9 +76,10 @@ class CUEPointView(ViewPlugin):
         visible_start -= pad
         visible_end += pad
         y = 0.985
-        xs = [
-            left + time_sec
-            for time_sec in self._times
-            if visible_start <= time_sec <= visible_end
-        ]
-        self._markers.setData(xs, [y] * len(xs))
+        shown = [i for i, time_sec in enumerate(self._times) if visible_start <= time_sec <= visible_end]
+        xs = [left + self._times[i] for i in shown]
+        self._markers.setData(
+            xs, [y] * len(xs),
+            brush=[self._brushes[i] for i in shown],
+            pen=[self._pens[i] for i in shown],
+        )

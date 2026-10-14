@@ -36,6 +36,12 @@ class PCMFeeder(QtCore.QObject):
     """
 
     finished = QtCore.Signal()  # the last frame of the track has been heard
+    jumped = QtCore.Signal()    # an armed jump was rendered
+
+    # A candidate jump point the render head passed by less than this is still
+    # taken, that much late, landing as much after the destination: the grid
+    # stays in phase, only offset by the delay.
+    LATE_JUMP_SEC = 0.15
 
     PEAK_FLOOR_DBFS = -24.0
     SOFT_CLIP_KNEE = 0.8
@@ -96,6 +102,9 @@ class PCMFeeder(QtCore.QObject):
         self._soft_clip = False
         self._jump_start: Optional[float] = None
         self._jump_dest: Optional[float] = None
+        self._jump_once = False
+        self._jump_starts: Optional[np.ndarray] = None  # candidate jump points (input frames)
+        self._jump_dest_base: Optional[float] = None
 
         # End of track
         self._end_out_frame: Optional[int] = None  # output frame where the track ran out
@@ -303,16 +312,30 @@ class PCMFeeder(QtCore.QObject):
             self._pos = target
             self._seeked_while_paused = True
 
-    def arm_jump(self, start_sec, dest_sec) -> None:
-        if start_sec is None or dest_sec is None:
+    def arm_jump(self, start_sec, dest_sec, once: bool = False, starts_sec=None) -> None:
+        """Jump from ``start_sec`` to ``dest_sec`` whenever playback reaches it, or
+        only the next time (``once``). With ``starts_sec`` (candidate points, e.g. the
+        next beats) the jump is made at the first of them the render head has not
+        passed yet: the render head runs ahead of what is heard (device buffer, time
+        stretch), so a point picked from the heard position may already be rendered.
+        One passed by less than LATE_JUMP_SEC is taken that much late instead."""
+        if dest_sec is None or (start_sec is None and not starts_sec):
             self.disarm_jump()
             return
-        self._jump_start = float(start_sec) * self.rate
+        if starts_sec:
+            self._jump_starts = np.sort(np.asarray(starts_sec, dtype=np.float64)) * self.rate
+            self._jump_start = float(self._jump_starts[0])
+        else:
+            self._jump_starts = None
+            self._jump_start = float(start_sec) * self.rate
         self._jump_dest = float(dest_sec) * self.rate
+        self._jump_dest_base = self._jump_dest
+        self._jump_once = bool(once)
 
     def disarm_jump(self) -> None:
         self._jump_start = None
         self._jump_dest = None
+        self._jump_starts = None
 
     # What is being heard
     def _queued_bytes(self) -> int:
@@ -491,6 +514,19 @@ class PCMFeeder(QtCore.QObject):
             if self._mark_end_if_done() or n_out <= 0:
                 return
         self._last_step = step
+        if self._jump_starts is not None:
+            # the candidate just passed (by less than LATE_JUMP_SEC), taken late with
+            # the destination as late; else the first one still ahead
+            late = self.LATE_JUMP_SEC * self.rate
+            k = int(np.searchsorted(self._jump_starts, self._pos, side="right"))
+            if k > 0 and self._pos < self._jump_starts[k - 1] + late:
+                self._jump_start = float(self._jump_starts[k - 1] + late)
+                self._jump_dest = float(self._jump_dest_base + late)
+            elif k < self._jump_starts.size:
+                self._jump_start = float(self._jump_starts[k])
+                self._jump_dest = float(self._jump_dest_base)
+            else:
+                self.disarm_jump()
         js, jd = self._jump_start, self._jump_dest
         if js is not None and jd is not None and self._pos < js <= self._pos + step * n_out:
             # Cut exactly at the jump point and keep the sub-frame phase at the destination.
@@ -500,6 +536,9 @@ class PCMFeeder(QtCore.QObject):
                 self._append(out, self._pos, step)
                 self._pos += step * out.shape[0]
             self._crossfade_to(jd + (self._pos - js))
+            if self._jump_once:
+                self.disarm_jump()
+            self.jumped.emit()
             return
 
         out = self._render(self._pos, n_out)

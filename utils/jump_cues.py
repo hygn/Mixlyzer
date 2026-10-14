@@ -4,7 +4,7 @@ from typing import Any, Dict, List
 
 import numpy as np
 
-from utils.jumpcue_colors import get_jumpcue_pair_color
+from utils.jumpcue_colors import JUMPCUE_PAIR_COLORS, get_jumpcue_pair_color, jumpcue_color_index_of
 
 
 _VALID_JUMPCUE_LABELS = set("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
@@ -77,13 +77,26 @@ def _normalized_cue(cue: dict | None) -> dict[str, float | str]:
     cue = cue or {}
     start = float(cue.get("start", 0.0) or 0.0)
     label = str(cue.get("label", "") or "")
-    return {
+    out = {
         "label": label,
         "comment": str(cue.get("comment", label) or label),
         "start": start,
         "end": float(cue.get("end", start) or start),
         "point": float(cue.get("point", start) or start),
     }
+    color_idx = _cue_color_idx(cue)
+    if color_idx is not None:
+        out["color_idx"] = color_idx
+    return out
+
+
+def _cue_color_idx(cue: dict) -> int | None:
+    """The group colour preset a cue carries (None: not assigned)."""
+    try:
+        value = cue.get("color_idx")
+        return None if value is None or int(value) < 0 else int(value)
+    except (TypeError, ValueError):
+        return None
 
 
 def _label_from_index(idx: int) -> str:
@@ -143,6 +156,8 @@ def _merge_coincident_cues(
             identity_to_point[identity] = point
             prev = point_to_cue.get(point)
             if prev is None or _cue_merge_priority(cue) < _cue_merge_priority(prev):
+                if prev is not None and "color_idx" not in cue and "color_idx" in prev:
+                    cue = dict(cue, color_idx=prev["color_idx"])
                 point_to_cue[point] = cue
         raw_pairs.append(
             {
@@ -253,6 +268,7 @@ def _build_cues_and_groups_from_pairs(
                     "start": float(cue.get("start", point) or point),
                     "end": float(cue.get("end", cue.get("start", point)) or point),
                     "point": float(point),
+                    **({"color_idx": cue["color_idx"]} if "color_idx" in cue else {}),
                 }
             )
 
@@ -299,6 +315,7 @@ def _build_cues_and_groups_from_pairs(
                 "start": float(cue.get("start", 0.0)),
                 "end": float(cue.get("end", 0.0)),
                 "point": float(cue.get("point", 0.0)),
+                **({"color_idx": cue["color_idx"]} if "color_idx" in cue else {}),
             }
         )
 
@@ -356,7 +373,16 @@ def build_jump_cues_np(
 
     graph_rows = sorted(group_by_id.items(), key=lambda item: (int(item[1]), int(item[0])))
     graph_ids = sorted(set(int(group_idx) for group_idx in group_by_id.values()))
-    graph_colors = {graph_id: get_jumpcue_pair_color(graph_id) for graph_id in graph_ids}
+    # A group's colour is the preset its cues carry (the earliest cue's), not its
+    # number; groups without one take preset number % N.
+    color_idx_by_graph: dict[int, int] = {}
+    for cue in sorted(cues, key=lambda c: float(c["point"])):
+        graph_id = int(group_by_id.get(int(cue["id"]), 0))
+        if graph_id not in color_idx_by_graph and "color_idx" in cue:
+            color_idx_by_graph[graph_id] = int(cue["color_idx"])
+    for graph_id in graph_ids:
+        color_idx_by_graph.setdefault(graph_id, graph_id % len(JUMPCUE_PAIR_COLORS))
+    graph_colors = {graph_id: get_jumpcue_pair_color(color_idx_by_graph[graph_id]) for graph_id in graph_ids}
 
     return {
         "cue_id": np.asarray([int(cue["id"]) for cue in cues], dtype=np.int32),
@@ -371,7 +397,26 @@ def build_jump_cues_np(
         "graph_color_r": np.asarray([graph_colors[idx][0] for idx in graph_ids], dtype=np.uint8),
         "graph_color_g": np.asarray([graph_colors[idx][1] for idx in graph_ids], dtype=np.uint8),
         "graph_color_b": np.asarray([graph_colors[idx][2] for idx in graph_ids], dtype=np.uint8),
+        "graph_color_idx": np.asarray([color_idx_by_graph[idx] for idx in graph_ids], dtype=np.int32),
     }
+
+
+def _graph_color_indices(block: Dict[str, Any]) -> dict[int, int]:
+    """Colour preset index of each group: graph_color_idx, or (older blocks) the
+    preset matching its stored RGB, else its number."""
+    graph_ids = [int(g) for g in np.asarray(block.get("graph_id", []), dtype=int).tolist()]
+    if "graph_color_idx" in block:
+        stored = np.asarray(block["graph_color_idx"], dtype=int).tolist()
+        if len(stored) >= len(graph_ids):
+            return {g: int(stored[i]) for i, g in enumerate(graph_ids)}
+    out: dict[int, int] = {}
+    for i, g in enumerate(graph_ids):
+        try:
+            rgb = (block["graph_color_r"][i], block["graph_color_g"][i], block["graph_color_b"][i])
+        except (KeyError, IndexError):
+            rgb = None
+        out[g] = jumpcue_color_index_of(rgb, g) if rgb is not None else g % len(JUMPCUE_PAIR_COLORS)
+    return out
 
 
 def _extract_pairs_from_new_graph_block(block: Dict[str, Any]) -> List[dict]:
@@ -387,14 +432,19 @@ def _extract_pairs_from_new_graph_block(block: Dict[str, Any]) -> List[dict]:
         )
     )
     map_length = min(len(block[key]) for key in ("graph_cue_id", "graph_idx"))
+    color_of_graph = _graph_color_indices(block)
+    graph_of_cue = {int(block["graph_cue_id"][i]): int(block["graph_idx"][i]) for i in range(map_length)}
     cue_lookup: dict[int, dict[str, float | str]] = {}
     for idx in range(cue_length):
-        cue_lookup[int(block["cue_id"][idx])] = {
+        cue_id = int(block["cue_id"][idx])
+        graph_idx = graph_of_cue.get(cue_id, 0)
+        cue_lookup[cue_id] = {
             "label": str(block["cue_label"][idx]),
             "comment": str(block["cue_comment"][idx]),
             "start": float(block["cue_start"][idx]),
             "end": float(block["cue_end"][idx]),
             "point": float(block["cue_point"][idx]),
+            "color_idx": int(color_of_graph.get(graph_idx, graph_idx)),
         }
 
     members_by_graph: dict[int, list[int]] = {}
@@ -520,6 +570,7 @@ def extract_jump_cue_graph(features: Dict[str, Any]) -> tuple[List[dict[str, flo
             int(block["graph_color_g"][idx]),
             int(block["graph_color_b"][idx]),
         )
+    color_idx_by_graph = _graph_color_indices(block)
 
     graph_by_cue_id: dict[int, int] = {}
     for idx in range(map_length):
@@ -530,7 +581,11 @@ def extract_jump_cue_graph(features: Dict[str, Any]) -> tuple[List[dict[str, flo
     for idx in range(cue_length):
         cue_id = int(block["cue_id"][idx])
         graph_idx = int(graph_by_cue_id.get(cue_id, 0))
-        color = color_by_graph.get(graph_idx, get_jumpcue_pair_color(graph_idx))
+        color_idx = int(color_idx_by_graph.get(graph_idx, graph_idx))
+        if "graph_color_idx" in block:
+            color = get_jumpcue_pair_color(color_idx)
+        else:
+            color = color_by_graph.get(graph_idx, get_jumpcue_pair_color(color_idx))
         cue = {
             "id": cue_id,
             "label": str(block["cue_label"][idx]),
@@ -540,7 +595,8 @@ def extract_jump_cue_graph(features: Dict[str, Any]) -> tuple[List[dict[str, flo
             "point": float(block["cue_point"][idx]),
             "component_index": graph_idx,
             "graph_idx": graph_idx,
-            "color_index": graph_idx,
+            "color_index": color_idx,
+            "color_idx": color_idx,
             "color": color,
         }
         cues.append(cue)
@@ -578,7 +634,7 @@ def extract_jump_cue_graph(features: Dict[str, Any]) -> tuple[List[dict[str, flo
                             "target_point": float(dst["point"]),
                             "component_index": graph_idx,
                             "graph_idx": graph_idx,
-                            "color_index": graph_idx,
+                            "color_index": src["color_idx"],
                             "color": src["color"],
                             "lag_beats": 0.0,
                             "lag_sec": lag_sec,
@@ -597,7 +653,18 @@ def sort_jump_cue_pairs_for_display(pairs: List[dict] | None) -> List[dict]:
     return sorted((dict(pair) for pair in pairs), key=_pair_display_sort_key)
 
 
-def build_jump_cue_graph(pairs: List[dict] | None) -> tuple[List[dict[str, float | str | int]], List[dict[str, Any]]]:
+def build_jump_cue_graph(
+    pairs: List[dict] | None, *, keep_labels: bool = False
+) -> tuple[List[dict[str, float | str | int]], List[dict[str, Any]]]:
+    """Graph of the pairs' cues, lettered A-Z by point, or with their own letters
+    (``keep_labels``: the editor's slots; falls back to lettering by point when
+    they are not unique single letters)."""
+    if keep_labels:
+        try:
+            block = build_jump_cues_np(pairs, canonicalize_labels=False, merge_coincident=True)
+            return extract_jump_cue_graph({"jump_cues_np": block})
+        except ValueError:
+            pass
     block = build_jump_cues_np(pairs, canonicalize_labels=True, merge_coincident=True)
     return extract_jump_cue_graph({"jump_cues_np": block})
 

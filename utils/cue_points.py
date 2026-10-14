@@ -13,6 +13,8 @@ CUE_POINT_KEYS = (
     "cue_label",
     "cue_comment",
 )
+# optional: older blocks have no colours (preset 0, the default red)
+CUE_COLOR_KEY = "cue_color_idx"
 _DEDUP_TIME_EPSILON_SEC = 1e-3
 
 
@@ -22,6 +24,7 @@ def empty_cue_points_np() -> dict[str, np.ndarray]:
         "cue_time_sec": np.asarray([], dtype=np.float32),
         "cue_label": np.asarray([], dtype="U1"),
         "cue_comment": np.asarray([], dtype="U1"),
+        CUE_COLOR_KEY: np.asarray([], dtype=np.int32),
     }
 
 
@@ -55,6 +58,7 @@ def _dedupe_cue_points(points: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 "time_sec": time_sec,
                 "_labels": labels,
                 "_comments": comments,
+                "color_idx": int(point.get("color_idx", 0) or 0),
             }
         )
     return [
@@ -63,6 +67,7 @@ def _dedupe_cue_points(points: list[dict[str, Any]]) -> list[dict[str, Any]]:
             "time_sec": float(point["time_sec"]),
             "label": "/".join(point["_labels"]),
             "comment": " / ".join(point["_comments"]),
+            "color_idx": int(point["color_idx"]),
         }
         for index, point in enumerate(merged)
     ]
@@ -83,6 +88,7 @@ def build_cue_points_np(points: list[dict[str, Any]] | None) -> dict[str, np.nda
                 "time_sec": time_sec,
                 "label": str(point.get("label", "") or ""),
                 "comment": str(point.get("comment", "") or ""),
+                "color_idx": int(point.get("color_idx", 0) or 0),
             }
         )
     rows = _dedupe_cue_points(rows)
@@ -105,6 +111,7 @@ def build_cue_points_np(points: list[dict[str, Any]] | None) -> dict[str, np.nda
             [point["comment"] for point in rows],
             dtype=f"U{comment_width}",
         ),
+        CUE_COLOR_KEY: np.asarray([point["color_idx"] for point in rows], dtype=np.int32),
     }
 
 
@@ -190,6 +197,11 @@ def extract_cue_points(features: dict[str, Any] | None) -> list[dict[str, Any]]:
             }
         except KeyError:
             return []
+        if f"{CUE_POINT_PREFIX}{CUE_COLOR_KEY}" in features:
+            arrays[CUE_COLOR_KEY] = np.asarray(features[f"{CUE_POINT_PREFIX}{CUE_COLOR_KEY}"])
+    if isinstance(block, dict) and CUE_COLOR_KEY in block:
+        arrays[CUE_COLOR_KEY] = np.asarray(block[CUE_COLOR_KEY])
+    colors = arrays.pop(CUE_COLOR_KEY, None)
     count = min(array.size for array in arrays.values())
     points: list[dict[str, Any]] = []
     for index in range(count):
@@ -202,6 +214,7 @@ def extract_cue_points(features: dict[str, Any] | None) -> list[dict[str, Any]]:
                 "time_sec": time_sec,
                 "label": str(arrays["cue_label"][index]),
                 "comment": str(arrays["cue_comment"][index]),
+                "color_idx": int(colors[index]) if colors is not None and index < colors.size else 0,
             }
         )
     points.sort(key=lambda point: (float(point["time_sec"]), int(point["id"])))

@@ -7,14 +7,12 @@ from PySide6 import QtCore
 from core.analysis_lib_handler import FeatureNPZStore
 from core.library_handler import LibraryDB
 from core.linear_segments import build_bpm_segments, build_key_segments
-from utils.cue_points import build_cue_points_np, build_phrase_cue_points
-from utils.phrases import extract_phrase_segments
 
 
 class SaveWorker(QtCore.QObject):
     finished = QtCore.Signal(object)
 
-    def save(self, store: FeatureNPZStore, libpath: str, uid, *, beatgrid=None, segments=None, key_segments=None, jump_cues_np=None, jump_cues_extracted=None, jump_cues_auto_np=None, phrase_segments_np=None):
+    def save(self, store: FeatureNPZStore, libpath: str, uid, *, beatgrid=None, segments=None, key_segments=None, jump_cues_np=None, jump_cues_extracted=None, jump_cues_auto_np=None, phrase_segments_np=None, cue_points_np=None):
         try:
             if uid is None:
                 return
@@ -36,12 +34,11 @@ class SaveWorker(QtCore.QObject):
                 prev_feat["jump_cues_auto_np"] = jump_cues_auto_np
             if phrase_segments_np is not None:
                 prev_feat["phrase_segments_np"] = phrase_segments_np
-                phrase_rows = extract_phrase_segments(
-                    {"phrase_segments_np": phrase_segments_np}
-                )
-                prev_feat["cue_points_np"] = build_cue_points_np(
-                    build_phrase_cue_points(phrase_rows)
-                )
+            if cue_points_np is not None:
+                # the CUE points are the user's (edited on the CUE page); replace the block
+                for key in [k for k in prev_feat if k.startswith("cue_points_np.")]:
+                    del prev_feat[key]
+                prev_feat["cue_points_np"] = cue_points_np
             store.save(uid, prev_feat)
             db = LibraryDB(os.path.join(libpath, "library.db"))
             db.connect()

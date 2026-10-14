@@ -10,6 +10,7 @@ import numpy as np
 from views.base import REGISTRY, ViewPlugin
 from views.overview import OverviewWidget
 from ui.library import LibraryWidget
+from utils.cue_points import extract_cue_points
 from utils.labels import idx_to_labels
 from utils.semitone import speed_to_semitone
 from utils.jump_cues import extract_jump_cue_pairs
@@ -561,6 +562,7 @@ class MainPane(QtWidgets.QWidget):
         if hasattr(self, "track_edit"):
             self.track_edit.set_key_segments(f.get("key_segments"), initialize=True)
             self.track_edit.set_JumpCUE(extract_jump_cue_pairs(f))
+            self.track_edit.set_cue_points(extract_cue_points(f))
             self.track_edit.set_phrase_segments(extract_phrase_segments(f), initialize=True)
             # Build the initial undo snapshot only after all editor-owned state
             # has been loaded, so undo cannot restore stale Phrase/JumpCUE data.

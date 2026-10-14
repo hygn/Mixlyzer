@@ -16,6 +16,7 @@ class logElement:
     key_segments: np.ndarray | None = None
     jump_cues: list[dict] | None = None
     phrases: list[dict] | None = None
+    cue_points: list[dict] | None = None
 
     def __post_init__(self) -> None:
         self.beat_segments = np.asarray(self.beat_segments, dtype=float).copy()
@@ -26,6 +27,8 @@ class logElement:
             self.jump_cues = copy.deepcopy(self.jump_cues)
         if self.phrases is not None:
             self.phrases = copy.deepcopy(self.phrases)
+        if self.cue_points is not None:
+            self.cue_points = copy.deepcopy(self.cue_points)
 
     def clone(self) -> logElement:
         return logElement(
@@ -34,6 +37,7 @@ class logElement:
             key_segments=self.key_segments,
             jump_cues=self.jump_cues,
             phrases=self.phrases,
+            cue_points=self.cue_points,
         )
 
 

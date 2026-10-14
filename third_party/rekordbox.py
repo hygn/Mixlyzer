@@ -328,9 +328,10 @@ def _extract_jump_marks(features: dict[str, np.ndarray]) -> list[dict[str, objec
             color_index = int(cue.get("color_index", cue.get("component_index", 0)) or 0)
             color = get_jumpcue_pair_color(color_index)
         slot = _slot_index(label)
+        comment = str(cue.get("comment", "") or "").strip()
         marks.append(
             {
-                "name": label or "",
+                "name": comment or label or "",
                 "start": point_val,
                 "color": color,
                 "slot": slot,

@@ -2,7 +2,7 @@ from PySide6 import QtCore, QtWidgets, QtGui
 import numpy as np
 import pyqtgraph as pg
 from core.event_bus import EventBus
-from utils.jumpcue_colors import get_jumpcue_pair_color
+from utils.jumpcue_colors import get_cue_point_color, get_jumpcue_pair_color
 from utils.jump_cues import extract_jump_cue_pairs, extract_jump_cue_graph
 from utils.phrases import (
     abbreviate_phrase_labels,
@@ -202,9 +202,6 @@ class OverviewWidget(QtWidgets.QWidget):
         self._selection_marker_y = 1.05
         self._selection_start: float | None = None
         self._selection_end: float | None = None
-        self._jump_arrow_line: pg.PlotDataItem | None = None
-        self._jump_arrow_head: pg.ArrowItem | None = None
-        self._armed_jump: tuple[float, float] | None = None
         self._jump_pairs: list[dict] = []
         self._jump_cues: list[dict] = []
         self._jump_links: list[dict] = []
@@ -214,10 +211,9 @@ class OverviewWidget(QtWidgets.QWidget):
         self.bus.sig_duration_changed.connect(self._on_duration)
         self.bus.sig_beatgrid_edited.connect(self._on_beatgrid_updated)
         self.bus.sig_key_selection_changed.connect(self._on_selection_changed)
-        self.bus.sig_jump_arm.connect(self._on_jump_arm)
-        self.bus.sig_jump_disarm.connect(self._on_jump_disarm)
         self.bus.sig_jumpcue_updated.connect(self._on_jumpcue_updated)
         self.bus.sig_phrase_segments_updated.connect(self._on_phrases_updated)
+        self.bus.sig_cue_points_updated.connect(self._render_cue_points)
 
     def set_data(self) -> None:
         """Initialize overview visuals from the shared model."""
@@ -270,7 +266,6 @@ class OverviewWidget(QtWidgets.QWidget):
         self._render_phrases()
         self._render_cue_points()
         self._apply_selection_graphics()
-        self._clear_jump_arrow()
         self._update_played_overlay()
 
     def _render_cue_points(self) -> None:
@@ -279,8 +274,13 @@ class OverviewWidget(QtWidgets.QWidget):
             self.cue_point_markers.setData([], [])
             return
         times = [float(point["time_sec"]) for point in points]
+        colors = [get_cue_point_color(int(point.get("color_idx", 0) or 0)) for point in points]
         y = self._wave_top - 0.05
-        self.cue_point_markers.setData(times, [y] * len(times))
+        self.cue_point_markers.setData(
+            times, [y] * len(times),
+            brush=[pg.mkBrush(*c, 240) for c in colors],
+            pen=[pg.mkPen(c, width=1.0) for c in colors],
+        )
     
     def _on_jumpcue_updated(self) -> None:
         feats = self.model.features
@@ -364,111 +364,6 @@ class OverviewWidget(QtWidgets.QWidget):
             QtCore.QRectF(0.0, self._segment_bottom, self.duration, self.SEGMENT_H + self.BPM_H)
         )
         self._update_played_overlay()
-
-    def _on_jump_arm(self, payload) -> None:
-        start, dest = self._resolve_jump_points(payload)
-        if start is None or dest is None:
-            self._clear_jump_arrow()
-            return
-        self._armed_jump = (start, dest)
-        self._render_jump_arrow()
-
-    def _on_jump_disarm(self) -> None:
-        self._clear_jump_arrow()
-
-    def _resolve_jump_points(self, payload) -> tuple[float | None, float | None]:
-        if not isinstance(payload, dict):
-            return (None, None)
-        source = payload.get("source")
-        target = payload.get("target")
-        if not isinstance(source, dict) or not isinstance(target, dict):
-            return (None, None)
-
-        def _pick_point(block):
-            if not isinstance(block, dict):
-                return None
-            try:
-                val = block.get("point", block.get("start"))
-                return float(val) if val is not None else None
-            except Exception:
-                return None
-
-        start = _pick_point(source)
-        dest = _pick_point(target)
-
-        if start is None or dest is None:
-            return (None, None)
-        if not (np.isfinite(start) and np.isfinite(dest)):
-            return (None, None)
-        dur = max(self.duration, 0.0)
-        start = float(np.clip(start, 0.0, dur))
-        dest = float(np.clip(dest, 0.0, dur))
-        return (start, dest)
-
-    def _render_jump_arrow(self) -> None:
-        self._ensure_jump_arrow_items()
-        if self._jump_arrow_line is None or self._jump_arrow_head is None:
-            return
-        if self._armed_jump is None:
-            self._clear_jump_arrow_graphics()
-            return
-
-        start, dest = self._armed_jump
-        if not (np.isfinite(start) and np.isfinite(dest)):
-            self._clear_jump_arrow_graphics()
-            return
-
-        try:
-            y_min, y_max = self.p.viewRange()[1]
-        except Exception:
-            y_min, y_max = 0.0, max(self._wave_top, 1.0)
-
-        base_y = (y_min + y_max) * 0.5
-        pad = 0.02
-        base_y = float(np.clip(base_y, y_min + pad, y_max - pad))
-
-        pen = pg.mkPen((220, 20, 20), width=2)
-        self._jump_arrow_line.setData([start, dest], [base_y, base_y], pen=pen)
-        self._jump_arrow_line.setVisible(True)
-
-        angle = 180 if dest >= start else 0
-        self._jump_arrow_head.setStyle(
-            angle=angle,
-            brush=pg.mkBrush(220, 20, 20),
-            pen=pen,
-            headLen=14,
-            tipAngle=30,
-            tailLen=None,
-            tailWidth=6,
-        )
-        self._jump_arrow_head.setPos(dest, base_y)
-        self._jump_arrow_head.setVisible(True)
-
-    def _clear_jump_arrow(self) -> None:
-        self._armed_jump = None
-        self._clear_jump_arrow_graphics()
-
-    def _clear_jump_arrow_graphics(self) -> None:
-        self._ensure_jump_arrow_items()
-        if self._jump_arrow_line is not None:
-            self._jump_arrow_line.setData([], [])
-            self._jump_arrow_line.setVisible(False)
-        if self._jump_arrow_head is not None:
-            self._jump_arrow_head.setVisible(False)
-
-    def _ensure_jump_arrow_items(self) -> None:
-        if self._jump_arrow_line is None:
-            line = pg.PlotDataItem()
-            line.setZValue(28)
-            line.setVisible(False)
-            self.p.addItem(line)
-            self._jump_arrow_line = line
-        if self._jump_arrow_head is None:
-            head = pg.ArrowItem(angle=0)
-            head.setZValue(29)
-            head.setVisible(False)
-            self.p.addItem(head)
-            self._jump_arrow_head = head
 
     def _render_jump_cues(self, cues: list[dict]):
         # Cull to cues intersecting current view

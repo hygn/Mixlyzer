@@ -3,329 +3,216 @@ from __future__ import annotations
 import copy
 
 import numpy as np
-from PySide6 import QtCore, QtGui, QtWidgets
+from PySide6 import QtCore, QtWidgets
 
+from ui.edit_panel.cue_slots import CuePageWidget, color_swatch_icon, slot_letter
 from ui.edit_panel.history import logElement
+from ui.edit_panel.icons import icon
 from ui.edit_panel.styles import WARNING_BUTTON_STYLESHEET
 from utils.jump_cues import build_jump_cue_graph, build_jump_cues_np
-from utils.jumpcue_colors import get_jumpcue_pair_color
+from utils.jumpcue_colors import JUMPCUE_PAIR_COLORS, get_jumpcue_pair_color
+
+# JumpCUE slots are the letters A-Z (rekordbox hot cue letters).
+JUMPCUE_SLOTS = 26
+
+# A jump is offered the next beats; the player jumps on the first one its render
+# head (ahead of what is heard) has not passed yet.
+JUMP_CANDIDATE_BEATS = 8
+
+
+def _jumpcue_name(cue: dict) -> str:
+    """A JumpCUE's user name: its comment, unless that is just its letter."""
+    comment = str(cue.get("comment", "") or "").strip()
+    return "" if comment == str(cue.get("label", "") or "").strip() else comment
+
+
+def format_cue_time(sec: float) -> str:
+    sec = max(0.0, float(sec))
+    m = int(sec // 60)
+    return f"{m:02d}:{sec - 60 * m:06.3f}"
+
 
 class JumpCUEEditMixin:
-    """JumpCUE section: jump arm test, group edits, JumpCUE reanalysis."""
+    """JumpCUE list on the CUE page: 4 x 2 slots per page (A-D, E-H, then I-P ...),
+    each colour | letter | name (double-click to rename) | SET / DEL | JUMP. A colour is a group (the cues of one
+    colour jump between each other): the squircle picks the cue's colour, which
+    assigns its group, and shifts that colour's cues by a beat."""
 
-    def _build_jumpcue_ui(self, grid: QtWidgets.QGridLayout) -> list[QtWidgets.QWidget]:
-        """JumpCUE widgets on the Phrase/JumpCUE page; returns the edit buttons."""
-
+    def _build_jumpcue_ui(self, page: CuePageWidget) -> list[QtWidgets.QWidget]:
+        """JumpCUE slots of the CUE page; returns the buttons locked while editing is."""
+        self.cue_page = page
         self.jc_reanalyze = QtWidgets.QToolButton()
-        self.jc_reanalyze.setText("RA")
-        self.jc_reanalyze.setToolTip("Recompute JumpCUE pairs using current beatgrid")
-
-        self.jc_source_selection = QtWidgets.QComboBox()
-        self.jc_source_selection.setToolTip("Select source JumpCUE")
-        self.jc_source_selection.setFixedSize(self.BTN_WIDTH // 2, self.BTN_HEIGHT)
-        self.jc_source_selection.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
-        self.jc_source_selection.setSizeAdjustPolicy(QtWidgets.QComboBox.SizeAdjustPolicy.AdjustToContents)
-
-        self.jc_target_selection = QtWidgets.QComboBox()
-        self.jc_target_selection.setToolTip("Select target JumpCUE")
-        self.jc_target_selection.setFixedSize(self.BTN_WIDTH // 2, self.BTN_HEIGHT)
-        self.jc_target_selection.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
-        self.jc_target_selection.setSizeAdjustPolicy(QtWidgets.QComboBox.SizeAdjustPolicy.AdjustToContents)
-
-        self.jc_selection_wrap = QtWidgets.QWidget()
-        self.jc_selection_wrap.setFixedSize(self.BTN_WIDTH, self.BTN_HEIGHT)
-        jc_layout = QtWidgets.QHBoxLayout(self.jc_selection_wrap)
-        jc_layout.setContentsMargins(0, 0, 0, 0)
-        jc_layout.setSpacing(0)
-        jc_layout.addWidget(self.jc_source_selection)
-        jc_layout.addWidget(self.jc_target_selection)
-
-        self.jc_jumptest = QtWidgets.QToolButton()
-        self.jc_jumptest.setText("ARM")
-        self.jc_jumptest.setToolTip("Arm jump: transition from the selected source cue to the selected target cue")
-
-        # Group edits act on the group of the selected source cue.
-        self.jc_group_back = QtWidgets.QToolButton()
-        self.jc_group_back.setText("Grp-1")
-        self.jc_group_back.setToolTip("Move every cue of the source cue's group one beat earlier")
-
-        self.jc_group_fwd = QtWidgets.QToolButton()
-        self.jc_group_fwd.setText("Grp+1")
-        self.jc_group_fwd.setToolTip("Move every cue of the source cue's group one beat later")
-
-        self.jc_group_delete = QtWidgets.QToolButton()
-        self.jc_group_delete.setText("GrpDel")
-        self.jc_group_delete.setToolTip("Delete the source cue's group")
-
-        self.jc_member_add = QtWidgets.QToolButton()
-        self.jc_member_add.setText("Add")
-        self.jc_member_add.setToolTip("Add a cue at the beat nearest the playhead to the source cue's group")
-
-        self.jc_member_remove = QtWidgets.QToolButton()
-        self.jc_member_remove.setText("Remove")
-        self.jc_member_remove.setToolTip("Remove the source cue from its group")
-
-        self.jc_group_new = QtWidgets.QToolButton()
-        self.jc_group_new.setText("NewGrp")
-        self.jc_group_new.setToolTip("Create a new group with one cue at the beat nearest the playhead")
-
-        _AL = QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter
-        grid.addWidget(self.jc_reanalyze, 0, 0, _AL)
-        grid.addWidget(self.jc_selection_wrap, 1, 0, _AL)
-        grid.addWidget(self.jc_jumptest, 2, 0, _AL)
-        grid.addWidget(self.jc_group_back, 0, 1, _AL)
-        grid.addWidget(self.jc_group_fwd, 1, 1, _AL)
-        grid.addWidget(self.jc_group_delete, 2, 1, _AL)
-        grid.addWidget(self.jc_member_add, 0, 2, _AL)
-        grid.addWidget(self.jc_member_remove, 1, 2, _AL)
-        grid.addWidget(self.jc_group_new, 2, 2, _AL)
-
-        self.jc_jumptest.clicked.connect(self._arm_next_jumpCUE_jump)
+        self.jc_reanalyze.setIcon(icon("beatgrid_reanalyze"))
+        self.jc_reanalyze.setIconSize(QtCore.QSize(14, 14))
+        self.jc_reanalyze.setToolTip("Reanalyze the JumpCUEs with the current beatgrid")
+        page.tool_slot.addWidget(self.jc_reanalyze)
         self.jc_reanalyze.clicked.connect(self._reanalyze_jumpCUE)
-        self.jc_group_back.clicked.connect(lambda: self._shift_jumpcue_group(-1))
-        self.jc_group_fwd.clicked.connect(lambda: self._shift_jumpcue_group(1))
-        self.jc_group_delete.clicked.connect(self._delete_jumpcue_group)
-        self.jc_member_add.clicked.connect(self._add_jumpcue_member)
-        self.jc_member_remove.clicked.connect(self._remove_jumpcue_member)
-        self.jc_group_new.clicked.connect(self._new_jumpcue_group)
-        self.jc_source_selection.currentIndexChanged.connect(self._jc_source_selection_changed)
-        self.jc_target_selection.currentIndexChanged.connect(self._jc_target_selection_changed)
 
-        return [
-            self.jc_reanalyze,
-            self.jc_jumptest,
-            self.jc_group_back,
-            self.jc_group_fwd,
-            self.jc_group_delete,
-            self.jc_member_add,
-            self.jc_member_remove,
-            self.jc_group_new,
-        ]
+        self.jc_slots = page.slots[0]
+        for i, slot in enumerate(self.jc_slots):
+            slot.btn_action.setToolTip("Jump here on the next beat (when stopped: move the playhead here)")
+            slot.squircle.setToolTip("Colour (its group); move this colour's cues by a beat")
+            slot.squircle_clicked.connect(lambda i=i: self._jc_group_menu(i))
+            slot.set_del_clicked.connect(lambda i=i: self._jc_set_del(i))
+            slot.action_clicked.connect(lambda i=i: self._jc_jump(i))
+            slot.renamed.connect(lambda name, i=i: self._rename_jumpcue(i, name))
+        page.page_changed.connect(self._refresh_jumpcue_slots)
+        self.bus.sig_jump_fired.connect(self._on_jump_fired)
+        self._jc_armed: dict | None = None
+        return [self.jc_reanalyze, *(s.btn_set for s in self.jc_slots)]
 
     def set_JumpCUE(self, JumpCUE) -> None:
-        if JumpCUE == None:
+        if JumpCUE is None:
             JumpCUE = []
         self._JumpCUE = JumpCUE
-        self._jumpcue_graph_cues, _links = build_jump_cue_graph(self._JumpCUE)
-        prev_source_id = self._current_jumpcue_source_id()
-        prev_target_id = self._current_jumpcue_target_id()
-        self._populate_jumpcue_combo(self.jc_source_selection, self._jumpcue_graph_cues, preferred_cue_id=prev_source_id)
-        self._refresh_jumpcue_target_combo(preferred_target_id=prev_target_id)
-        self._reset_jumpcue_arm_state()
+        # cues keep their letters (slots): lettered by point only by the analysis
+        self._jumpcue_graph_cues, _links = build_jump_cue_graph(self._JumpCUE, keep_labels=True)
+        self._disarm_jumpcue()
+        self._refresh_jumpcue_slots()
 
-    def _arm_next_jumpCUE_jump(self):
-        if not self._jump_armed:
-            payload = self._current_jumpcue_payload()
-            if isinstance(payload, dict):
-                self.bus.sig_jump_arm.emit(payload)
-                self.jc_jumptest.setText("DISARM")
-                self._jump_armed = True
-        else:
-            self._reset_jumpcue_arm_state()
+    # ---- slots ----
 
-    def _jc_source_selection_changed(self):
-        self._refresh_jumpcue_target_combo(preferred_target_id=self._current_jumpcue_target_id())
-        self._apply_jumpcue_combo_style()
-        self._reset_jumpcue_arm_state()
+    def _jc_slot_letter(self, slot: int) -> str | None:
+        i = self.cue_page.page_start(0) + int(slot)
+        return slot_letter(i) if 0 <= i < JUMPCUE_SLOTS else None
 
-    def _jc_target_selection_changed(self):
-        self._apply_jumpcue_combo_style()
-        self._reset_jumpcue_arm_state()
+    def _jc_cue_at(self, slot: int) -> dict | None:
+        """The cue in a slot: the one with the slot's letter."""
+        letter = self._jc_slot_letter(slot)
+        return next((c for c in self._jumpcue_graph_cues if str(c.get("label", "")) == letter), None)
 
-    @staticmethod
-    def _jumpcue_color_for_component(color_or_index) -> tuple[int, int, int]:
-        if isinstance(color_or_index, tuple) and len(color_or_index) == 3:
-            try:
-                return (int(color_or_index[0]), int(color_or_index[1]), int(color_or_index[2]))
-            except Exception:
-                pass
-        return get_jumpcue_pair_color(int(color_or_index or 0))
-
-    @classmethod
-    def _jumpcue_item_brushes(cls, color) -> tuple[QtGui.QBrush, QtGui.QBrush]:
-        sr, sg, sb = cls._jumpcue_color_for_component(color)
-        bg = QtGui.QBrush(QtGui.QColor(sr, sg, sb, 96))
-        luminance = (0.299 * sr) + (0.587 * sg) + (0.114 * sb)
-        fg = QtGui.QBrush(QtGui.QColor(0, 0, 0) if luminance >= 140 else QtGui.QColor(255, 255, 255))
-        return bg, fg
-
-    def _apply_jumpcue_combo_style(self) -> None:
-        self._apply_jumpcue_combo_style_for(self.jc_source_selection)
-        self._apply_jumpcue_combo_style_for(self.jc_target_selection)
-
-    def _apply_jumpcue_combo_style_for(self, combo: QtWidgets.QComboBox) -> None:
-        payload = self._current_jumpcue_cue(combo)
-        if not isinstance(payload, dict):
-            self._reset_jumpcue_combo_palette(combo)
+    def _refresh_jumpcue_slots(self) -> None:
+        if not hasattr(self, "cue_page"):
             return
-        color = payload.get("color", payload.get("color_index", payload.get("component_index", 0)))
-        sr, sg, sb = self._jumpcue_color_for_component(color)
-        luminance = (0.299 * sr) + (0.587 * sg) + (0.114 * sb)
-        text_color = "#000000" if luminance >= 140 else "#FFFFFF"
-        base_color = QtGui.QColor(sr, sg, sb, 96)
-        solid_color = QtGui.QColor(sr, sg, sb)
-        fg_qcolor = QtGui.QColor(text_color)
-        palette = combo.palette()
-        palette.setColor(QtGui.QPalette.ColorRole.Base, base_color)
-        palette.setColor(QtGui.QPalette.ColorRole.Button, base_color)
-        palette.setColor(QtGui.QPalette.ColorRole.Text, fg_qcolor)
-        palette.setColor(QtGui.QPalette.ColorRole.ButtonText, fg_qcolor)
-        palette.setColor(QtGui.QPalette.ColorRole.Highlight, solid_color.darker(110))
-        palette.setColor(QtGui.QPalette.ColorRole.HighlightedText, fg_qcolor)
-        combo.setPalette(palette)
-        combo.setStyleSheet("")
-        view = combo.view()
-        if view is not None:
-            view_palette = view.palette()
-            view_palette.setColor(QtGui.QPalette.ColorRole.Base, base_color)
-            view_palette.setColor(QtGui.QPalette.ColorRole.Text, fg_qcolor)
-            view_palette.setColor(QtGui.QPalette.ColorRole.Highlight, solid_color.darker(110))
-            view_palette.setColor(QtGui.QPalette.ColorRole.HighlightedText, fg_qcolor)
-            view.setPalette(view_palette)
-            view.setStyleSheet("")
+        used = [ord(str(c.get("label", "A"))[:1]) - ord("A") for c in self._jumpcue_graph_cues]
+        self.cue_page.update_pager(0, max(used, default=-1) + 1, max_items=JUMPCUE_SLOTS)
+        armed_point = self._jc_armed["dest"] if self._jc_armed else None
+        for i, slot in enumerate(self.jc_slots):
+            cue = self._jc_cue_at(i)
+            if cue is None:
+                slot.show_cue(None)
+                slot.setEnabled(self._jc_slot_letter(i) is not None)
+                slot.btn_set.setToolTip("Set a JumpCUE in this slot at the beat nearest the playhead")
+                slot.set_action_lit(False)
+                continue
+            slot.setEnabled(True)
+            point = float(cue.get("point", 0.0))
+            slot.show_cue(tuple(cue.get("color", get_jumpcue_pair_color(0))), str(cue.get("label", "")),
+                          _jumpcue_name(cue), format_cue_time(point))
+            slot.name.setToolTip(f"{format_cue_time(point)} - double-click to rename")
+            slot.btn_set.setToolTip("Delete this JumpCUE")
+            slot.set_action_lit(armed_point is not None and abs(point - armed_point) < 1e-3)
 
-    def _reset_jumpcue_combo_palette(self, combo: QtWidgets.QComboBox) -> None:
-        standard_palette = self.style().standardPalette()
-        combo.setPalette(standard_palette)
-        combo.setStyleSheet("")
-        view = combo.view()
-        if view is not None:
-            view.setPalette(standard_palette)
-            view.setStyleSheet("")
+    def _rename_jumpcue(self, slot: int, name: str) -> None:
+        """The name is the cue's comment; no name keeps the comment at its letter."""
+        cue = self._jc_cue_at(slot)
+        if cue is None:
+            return
+        point = float(cue.get("point", 0.0))
+        groups = self._jumpcue_groups()
+        for g in groups.values():
+            for c in g:
+                if abs(c["point"] - point) < 1e-3:
+                    c["comment"] = name or c["label"]
+        self._set_jumpcue_groups(groups.values())
 
-    @staticmethod
-    def _find_jumpcue_combo_index(combo: QtWidgets.QComboBox, cue_id: int | None) -> int:
-        if cue_id is None:
-            return -1
-        for idx in range(combo.count()):
-            payload = combo.itemData(idx)
-            if isinstance(payload, dict) and int(payload.get("id", -1)) == int(cue_id):
-                return idx
-        return -1
+    def _jc_set_del(self, slot: int) -> None:
+        cue = self._jc_cue_at(slot)
+        if cue is None:
+            letter = self._jc_slot_letter(slot)
+            if letter is not None:
+                self._new_jumpcue_group(letter)
+        else:
+            self._remove_jumpcue_member(float(cue.get("point", 0.0)))
 
-    def _populate_jumpcue_combo(
-        self,
-        combo: QtWidgets.QComboBox,
-        cues: list[dict],
-        *,
-        preferred_cue_id: int | None = None,
-        disabled_cue_id: int | None = None,
-    ) -> None:
-        with QtCore.QSignalBlocker(combo):
-            combo.clear()
-            for cue in cues:
-                label = str(cue.get("label", "") or "").strip()
-                if not label:
-                    continue
-                combo.addItem(label, cue)
-                idx = combo.count() - 1
-                color = cue.get("color", cue.get("color_index", cue.get("component_index", 0)))
-                bg_brush, fg_brush = self._jumpcue_item_brushes(color)
-                combo.setItemData(idx, bg_brush, QtCore.Qt.BackgroundRole)
-                combo.setItemData(idx, fg_brush, QtCore.Qt.ForegroundRole)
-                if disabled_cue_id is not None and int(cue.get("id", -1)) == int(disabled_cue_id):
-                    model = combo.model()
-                    item = model.item(idx) if hasattr(model, "item") else None
-                    if item is not None:
-                        item.setEnabled(False)
-            if combo.count() > 0:
-                cue_idx = self._find_jumpcue_combo_index(combo, preferred_cue_id)
-                if cue_idx < 0 or not self._is_jumpcue_combo_index_enabled(combo, cue_idx):
-                    cue_idx = self._first_enabled_jumpcue_combo_index(combo)
-                combo.setCurrentIndex(cue_idx if cue_idx >= 0 else 0)
+    # ---- jump ----
 
-    @staticmethod
-    def _is_jumpcue_combo_index_enabled(combo: QtWidgets.QComboBox, idx: int) -> bool:
-        if idx < 0 or idx >= combo.count():
-            return False
-        model = combo.model()
-        item = model.item(idx) if hasattr(model, "item") else None
-        if item is None:
-            return True
-        return bool(item.isEnabled())
+    def _jc_jump(self, slot: int) -> None:
+        """Playing: jump to the cue on the next beat (again: cancel). Stopped: move
+        the playhead to it."""
+        cue = self._jc_cue_at(slot)
+        if cue is None:
+            return
+        dest = float(cue.get("point", 0.0))
+        if not getattr(self, "_playing", False):
+            self.bus.sig_seek_requested.emit(dest)
+            return
+        if self._jc_armed is not None and abs(self._jc_armed["dest"] - dest) < 1e-3:
+            self._disarm_jumpcue()
+            self._refresh_jumpcue_slots()
+            return
+        beats = np.asarray(self._beatgrid, dtype=float)
+        now = float(self._current_time)
+        ahead = beats[beats > now][:JUMP_CANDIDATE_BEATS]
+        if ahead.size == 0:
+            return
+        self.bus.sig_jump_arm.emit({"source": {"point": float(ahead[0])}, "target": {"point": dest},
+                                    "starts": ahead.tolist(), "once": True})
+        self._jc_armed = {"src": float(ahead[-1]), "dest": dest, "from": now}
+        self._refresh_jumpcue_slots()
 
-    @classmethod
-    def _first_enabled_jumpcue_combo_index(cls, combo: QtWidgets.QComboBox) -> int:
-        for idx in range(combo.count()):
-            if cls._is_jumpcue_combo_index_enabled(combo, idx):
-                return idx
-        return -1
+    def _on_jump_fired(self) -> None:
+        if getattr(self, "_jc_armed", None) is not None:
+            self._jc_armed = None
+            self._refresh_jumpcue_slots()
 
-    def _refresh_jumpcue_target_combo(self, *, preferred_target_id: int | None = None) -> None:
-        self._populate_jumpcue_combo(
-            self.jc_target_selection,
-            self._jumpcue_graph_cues,
-            preferred_cue_id=preferred_target_id,
-            disabled_cue_id=self._current_jumpcue_source_id(),
-        )
-        self._apply_jumpcue_combo_style()
+    def _disarm_jumpcue(self) -> None:
+        if getattr(self, "_jc_armed", None) is not None:
+            self._jc_armed = None
+            self.bus.sig_jump_disarm.emit()
 
-    def _current_jumpcue_source_id(self) -> int | None:
-        return self._current_jumpcue_cue_id(self.jc_source_selection)
+    def _follow_jumpcue_arm(self, t: float) -> None:
+        """The armed jump is moot once the playhead leaves the stretch between arming
+        and the last candidate beat without jumping: it was moved elsewhere."""
+        armed = getattr(self, "_jc_armed", None)
+        if armed is None:
+            return
+        if armed["from"] - 0.1 <= t <= armed["src"] + 0.02:
+            return
+        self._disarm_jumpcue()
+        self._refresh_jumpcue_slots()
 
-    def _current_jumpcue_target_id(self) -> int | None:
-        return self._current_jumpcue_cue_id(self.jc_target_selection)
+    # ---- group menu ----
 
-    @staticmethod
-    def _current_jumpcue_cue(combo: QtWidgets.QComboBox) -> dict | None:
-        payload = combo.currentData()
-        if isinstance(payload, dict):
-            return payload
-        return None
-
-    def _current_jumpcue_cue_id(self, combo: QtWidgets.QComboBox) -> int | None:
-        payload = self._current_jumpcue_cue(combo)
-        if isinstance(payload, dict):
-            return int(payload.get("id", -1))
-        return None
-
-    def _current_jumpcue_payload(self) -> dict | None:
-        source = self._current_jumpcue_cue(self.jc_source_selection)
-        target = self._current_jumpcue_cue(self.jc_target_selection)
-        if not isinstance(source, dict) or not isinstance(target, dict):
-            return None
-        source_id = int(source.get("id", -1))
-        target_id = int(target.get("id", -1))
-        if source_id < 0 or target_id < 0:
-            return None
-        source_graph_idx = int(source.get("graph_idx", source.get("component_index", 0)) or 0)
-        color = source.get("color", source.get("color_index", source.get("component_index", 0)))
-        return {
-            "kind": "F",
-            "source_id": source_id,
-            "target_id": target_id,
-            "source_label": str(source.get("label", "") or ""),
-            "target_label": str(target.get("label", "") or ""),
-            "source": dict(source),
-            "target": dict(target),
-            "source_point": float(source.get("point", source.get("start", 0.0)) or 0.0),
-            "target_point": float(target.get("point", target.get("start", 0.0)) or 0.0),
-            "component_index": source_graph_idx,
-            "graph_idx": source_graph_idx,
-            "color_index": source_graph_idx,
-            "color": color,
-            "lag_beats": 0.0,
-            "lag_sec": abs(float(target.get("point", 0.0) or 0.0) - float(source.get("point", 0.0) or 0.0)),
-            "score": 1.0,
-            "confidence": 1.0,
-        }
-
-    def _reset_jumpcue_arm_state(self) -> None:
-        self.jc_jumptest.setText("ARM")
-        self.bus.sig_jump_disarm.emit()
-        self._jump_armed = False
-
+    def _jc_group_menu(self, slot: int) -> None:
+        cue = self._jc_cue_at(slot)
+        if cue is None:
+            return
+        gidx = int(cue.get("graph_idx", 0) or 0)
+        point = float(cue.get("point", 0.0))
+        current = int(cue.get("color_idx", 0) or 0)
+        menu = QtWidgets.QMenu(self)
+        menu.addSection("Colour (cues of one colour jump between each other)")
+        for ci, rgb in enumerate(JUMPCUE_PAIR_COLORS):
+            members = [c["label"] for c in self._jumpcue_graph_cues if int(c.get("color_idx", -1)) == ci]
+            act = menu.addAction(color_swatch_icon(rgb), " ".join(members) if members else "(unused)")
+            act.setCheckable(True)
+            act.setChecked(current == ci)
+            act.triggered.connect(lambda _=False, ci=ci: self._set_jumpcue_color(point, ci))
+        menu.addSection("This colour")
+        menu.addAction("One beat earlier", lambda: self._shift_jumpcue_group(gidx, -1))
+        menu.addAction("One beat later", lambda: self._shift_jumpcue_group(gidx, 1))
+        menu.addSection("Slots")
+        letter = str(cue.get("label", ""))
+        act = menu.addAction(f"Insert a slot at {letter} (this and later cues move one slot on)",
+                             lambda: self._insert_jumpcue_slot(letter))
+        act.setEnabled(self._can_insert_jumpcue_slot(letter))
+        prev = chr(ord(letter) - 1) if letter > "A" else letter
+        act = menu.addAction(f"Move into the empty slot {prev} (this and later cues move one slot back)",
+                             lambda: self._shift_jumpcue_slots(letter, -1))
+        act.setEnabled(self._can_close_jumpcue_slot(letter))
+        menu.exec(self.jc_slots[slot].squircle.mapToGlobal(QtCore.QPoint(0, self.jc_slots[slot].squircle.height())))
 
     # ---- JumpCUE group edits ----
     # Edits rebuild the pair list from groups of cues: every pair of members of
     # a group (a one-cue group as a pair of the cue with itself), labels A-Z by
-    # point (the graph the combos show).
+    # point. A group's colour is a preset carried by its cues (color_idx); the
+    # squircle keeps one group per colour.
 
     def _jumpcue_groups(self) -> dict[int, list[dict]]:
-        """Cues of the current JumpCUEs by graph index (the combos' graph_idx)."""
-        cues, _links = build_jump_cue_graph(self._JumpCUE)
+        """Cues of the current JumpCUEs by graph index."""
         groups: dict[int, list[dict]] = {}
-        for cue in cues:
+        for cue in self._jumpcue_graph_cues:
             groups.setdefault(int(cue.get("graph_idx", 0) or 0), []).append(
                 {
                     "label": str(cue.get("label", "") or ""),
@@ -333,16 +220,14 @@ class JumpCUEEditMixin:
                     "start": float(cue.get("start", 0.0) or 0.0),
                     "end": float(cue.get("end", 0.0) or 0.0),
                     "point": float(cue.get("point", 0.0) or 0.0),
+                    "color_idx": int(cue.get("color_idx", 0) or 0),
                 }
             )
         return groups
 
-    def _source_jumpcue_group(self) -> tuple[dict | None, dict[int, list[dict]], int | None]:
-        """The selected source cue, all groups, and the source cue's graph index."""
-        source = self._current_jumpcue_cue(self.jc_source_selection)
-        if not isinstance(source, dict):
-            return None, {}, None
-        return source, self._jumpcue_groups(), int(source.get("graph_idx", 0) or 0)
+    def _unused_jumpcue_color(self, groups) -> int | None:
+        used = {int(g[0].get("color_idx", 0)) for g in groups if g}
+        return next((ci for ci in range(len(JUMPCUE_PAIR_COLORS)) if ci not in used), None)
 
     def _nearest_beat_index(self, t: float) -> int:
         return int(np.argmin(np.abs(np.asarray(self._beatgrid, dtype=float) - float(t))))
@@ -351,24 +236,24 @@ class JumpCUEEditMixin:
         beats = np.asarray(self._beatgrid, dtype=float)
         return float(beats[int(np.clip(idx, 0, beats.size - 1))])
 
-    def _set_jumpcue_groups(self, groups, *, select_point: float | None = None) -> bool:
+    def _set_jumpcue_groups(self, groups) -> bool:
         """Replace the JumpCUEs with ``groups`` (lists of cues; empty groups are
-        dropped) and record the edit. False (nothing changed) when two cues
-        share a point or there are more cues than labels A-Z."""
+        dropped) and record the edit; cues keep their letters (slots). False
+        (nothing changed) when two cues share a point."""
         groups = [sorted(g, key=lambda c: c["point"]) for g in groups if g]
         cues = sorted((c for g in groups for c in g), key=lambda c: c["point"])
         points = np.asarray([c["point"] for c in cues], dtype=float)
         if points.size > 1 and np.min(np.diff(points)) < 1e-3:
             QtWidgets.QMessageBox.warning(self, "JumpCUE", "Two JumpCUEs cannot share a point.")
             return False
-        if len(cues) > 26:
-            QtWidgets.QMessageBox.warning(self, "JumpCUE", "JumpCUEs are limited to 26 cues (A-Z).")
-            return False
-        for idx, cue in enumerate(cues):
-            label = chr(ord("A") + idx)
-            if cue["comment"] in ("", cue["label"]):
-                cue["comment"] = label
-            cue["label"] = label
+        for group in groups:
+            # one colour per group: its first cue's
+            color = next((c["color_idx"] for c in group if c.get("color_idx") is not None), 0)
+            for c in group:
+                c["color_idx"] = int(color)
+        for cue in cues:
+            if not cue["comment"]:
+                cue["comment"] = cue["label"]  # no name
         pairs = []
         for group in groups:
             if len(group) == 1:
@@ -388,20 +273,33 @@ class JumpCUEEditMixin:
                         }
                     )
         self.set_JumpCUE(pairs)
-        if select_point is not None:
-            combo = self.jc_source_selection
-            for idx in range(combo.count()):
-                payload = combo.itemData(idx)
-                if isinstance(payload, dict) and abs(float(payload.get("point", -1.0)) - select_point) < 1e-3:
-                    combo.setCurrentIndex(idx)
-                    break
         self._emit_jumpcue_update()
         return True
 
-    def _shift_jumpcue_group(self, beats: int) -> None:
-        """Move the source cue's group (points and passages) by ``beats`` beats."""
-        source, groups, gidx = self._source_jumpcue_group()
-        if source is None or gidx not in groups or len(self._beatgrid) == 0:
+    def _set_jumpcue_color(self, point: float, color_idx: int, *, groups=None) -> None:
+        """Give the cue at ``point`` a colour; the colour is its group: it joins the
+        group of that colour, or becomes one of its own."""
+        groups = self._jumpcue_groups() if groups is None else groups
+        cue = None
+        for g in groups.values():
+            for c in g:
+                if abs(c["point"] - point) < 1e-3:
+                    cue = c
+            g[:] = [c for c in g if abs(c["point"] - point) >= 1e-3]
+        if cue is None:
+            return
+        cue["color_idx"] = int(color_idx)
+        target = next((k for k, g in groups.items() if g and int(g[0]["color_idx"]) == int(color_idx)), None)
+        if target is None:
+            groups[max(groups, default=-1) + 1] = [cue]
+        else:
+            groups[target].append(cue)
+        self._set_jumpcue_groups(groups.values())
+
+    def _shift_jumpcue_group(self, gidx: int, beats: int) -> None:
+        """Move a group (points and passages) by ``beats`` beats."""
+        groups = self._jumpcue_groups()
+        if gidx not in groups or len(self._beatgrid) == 0:
             return
         n = len(self._beatgrid)
         moved = []
@@ -418,60 +316,68 @@ class JumpCUEEditMixin:
                 )
             )
         groups[gidx] = moved
-        select = self._beat_at(self._nearest_beat_index(float(source.get("point", 0.0))) + int(beats))
-        self._set_jumpcue_groups(groups.values(), select_point=select)
-
-    def _add_jumpcue_member(self) -> None:
-        """Add a cue at the beat nearest the playhead to the source cue's group,
-        its passage placed like the source cue's (same beats before and after)."""
-        source, groups, gidx = self._source_jumpcue_group()
-        if source is None or gidx not in groups or len(self._beatgrid) == 0:
-            return
-        k = self._nearest_beat_index(self._current_time)
-        d = k - self._nearest_beat_index(float(source.get("point", 0.0)))
-        cue = {
-            "label": "",
-            "comment": "",
-            "start": self._beat_at(self._nearest_beat_index(float(source.get("start", 0.0))) + d),
-            "end": self._beat_at(self._nearest_beat_index(float(source.get("end", 0.0))) + d),
-            "point": self._beat_at(k),
-        }
-        groups[gidx] = groups[gidx] + [cue]
-        self._set_jumpcue_groups(groups.values(), select_point=cue["point"])
-
-    def _remove_jumpcue_member(self) -> None:
-        source, groups, gidx = self._source_jumpcue_group()
-        if source is None or gidx not in groups:
-            return
-        point = float(source.get("point", 0.0))
-        groups[gidx] = [c for c in groups[gidx] if abs(c["point"] - point) >= 1e-3]
         self._set_jumpcue_groups(groups.values())
 
-    def _delete_jumpcue_group(self) -> None:
-        source, groups, gidx = self._source_jumpcue_group()
-        if source is None or gidx not in groups:
+    def _can_insert_jumpcue_slot(self, letter: str) -> bool:
+        """The cues from ``letter`` on can move one slot on: the last slot (Z) is free
+        or before ``letter``."""
+        last = slot_letter(JUMPCUE_SLOTS - 1)
+        return letter < last and not any(str(c.get("label", "")) == last for c in self._jumpcue_graph_cues)
+
+    def _can_close_jumpcue_slot(self, letter: str) -> bool:
+        """The slot before ``letter`` exists and is empty."""
+        if letter <= "A":
+            return False
+        prev = chr(ord(letter) - 1)
+        return not any(str(c.get("label", "")) == prev for c in self._jumpcue_graph_cues)
+
+    def _insert_jumpcue_slot(self, letter: str) -> None:
+        self._shift_jumpcue_slots(letter, 1)
+
+    def _shift_jumpcue_slots(self, letter: str, step: int) -> None:
+        """Move the cue in slot ``letter`` and every cue in a later slot one slot on
+        (``step`` 1, leaving ``letter`` empty) or back into the empty slot before it
+        (``step`` -1). Names that are just the letter follow it."""
+        ok = self._can_insert_jumpcue_slot(letter) if step > 0 else self._can_close_jumpcue_slot(letter)
+        if not ok:
             return
-        del groups[gidx]
+        groups = self._jumpcue_groups()
+        for g in groups.values():
+            for c in g:
+                if c["label"] >= letter:
+                    nxt = chr(ord(c["label"]) + (1 if step > 0 else -1))
+                    if c["comment"] == c["label"]:
+                        c["comment"] = nxt
+                    c["label"] = nxt
         self._set_jumpcue_groups(groups.values())
 
-    def _new_jumpcue_group(self) -> None:
-        """New group of one cue at the beat nearest the playhead."""
+    def _remove_jumpcue_member(self, point: float) -> None:
+        groups = self._jumpcue_groups()
+        for g in groups.values():
+            g[:] = [c for c in g if abs(c["point"] - point) >= 1e-3]
+        self._set_jumpcue_groups(groups.values())
+
+    def _new_jumpcue_group(self, letter: str) -> None:
+        """A cue in slot ``letter`` at the beat nearest the playhead, in an unused
+        colour (a group of its own); with every colour in use, in the preceding
+        cue's colour (its group)."""
         if len(self._beatgrid) == 0:
             return
         p = self._beat_at(self._nearest_beat_index(self._current_time))
-        new = [{"label": "", "comment": "", "start": p, "end": p, "point": p}]
-        self._set_jumpcue_groups(list(self._jumpcue_groups().values()) + [new], select_point=p)
+        color = self._unused_jumpcue_color(list(self._jumpcue_groups().values()))
+        if color is None:
+            before = [c for c in self._jumpcue_graph_cues if float(c.get("point", 0.0)) < p]
+            color = int((before[-1] if before else self._jumpcue_graph_cues[0]).get("color_idx", 0))
+        self._insert_jumpcue(p, color, letter)
+
+    def _insert_jumpcue(self, point: float, color_idx: int, letter: str) -> None:
+        groups = self._jumpcue_groups()
+        groups[max(groups, default=-1) + 1] = [{"label": letter, "comment": letter, "start": point, "end": point,
+                                                "point": point, "color_idx": int(color_idx)}]
+        self._set_jumpcue_color(point, color_idx, groups=groups)
 
     def _emit_jumpcue_update(self) -> None:
-        self.edit_log.push(
-            logElement(
-                beats_time=self._beatgrid,
-                beat_segments=self._segments,
-                key_segments=self._key_segments,
-                jump_cues=self._JumpCUE,
-                phrases=self._phrase_segments,
-            )
-        )
+        self.edit_log.push(self._log_element(jump_cues=self._JumpCUE))
         self.btn_save.setStyleSheet(WARNING_BUTTON_STYLESHEET)
         self._broadcast_jumpcue()
         self._update_undo_redo_buttons()
@@ -499,15 +405,7 @@ class JumpCUEEditMixin:
         cues_copy = copy.deepcopy(jump_cues)
         self.set_JumpCUE(cues_copy)
         if record:
-            self.edit_log.push(
-                logElement(
-                    beats_time=self._beatgrid,
-                    beat_segments=self._segments,
-                    key_segments=self._key_segments,
-                    jump_cues=cues_copy,
-                    phrases=self._phrase_segments,
-                )
-            )
+            self.edit_log.push(self._log_element(jump_cues=cues_copy))
             self._update_undo_redo_buttons()
             self.btn_save.setStyleSheet(WARNING_BUTTON_STYLESHEET)
         if broadcast:
@@ -524,3 +422,16 @@ class JumpCUEEditMixin:
             payload["segments"] = np.asarray(self._segments, dtype=float).copy()
         payload["analyze_type"] = "jumpcue"
         self.bus.sig_segment_reanalyze_requested.emit(payload)
+
+    def _log_element(self, **override) -> logElement:
+        """Snapshot of every edited state for the undo log (``override`` replaces fields)."""
+        fields = dict(
+            beats_time=self._beatgrid,
+            beat_segments=self._segments,
+            key_segments=self._key_segments,
+            jump_cues=self._JumpCUE,
+            phrases=self._phrase_segments,
+            cue_points=self._cue_points,
+        )
+        fields.update(override)
+        return logElement(**fields)

@@ -185,6 +185,7 @@ class KeyEditMixin:
                 key_segments=self._key_segments,
                 jump_cues=self._JumpCUE,
                 phrases=self._phrase_segments,
+                cue_points=self._cue_points,
             )
         )
         self.btn_save.setStyleSheet(WARNING_BUTTON_STYLESHEET)

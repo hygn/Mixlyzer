@@ -12,6 +12,8 @@ from core.event_bus import EventBus
 from core.model import DataModel
 from ui.edit_panel.beat_counter import BeatCounterMixin
 from ui.edit_panel.beatgrid import BeatgridEditMixin
+from ui.edit_panel.cue_slots import CuePageWidget
+from ui.edit_panel.cuepoint import CuePointEditMixin
 from ui.edit_panel.history import logElement, logs
 from ui.edit_panel.jumpcue import JumpCUEEditMixin
 from ui.edit_panel.key import KeyEditMixin
@@ -19,6 +21,7 @@ from ui.edit_panel.phrase import PhraseEditMixin
 from ui.edit_panel.save_worker import SaveWorker
 from ui.edit_panel.selection import SelectionMixin
 from ui.edit_panel.styles import BUTTON_STYLESHEET, WARNING_BUTTON_STYLESHEET
+from utils.cue_points import build_cue_points_np
 from utils.phrases import build_phrase_segments_np, normalize_phrase_segments
 
 
@@ -27,6 +30,7 @@ class EditPanel(
     KeyEditMixin,
     PhraseEditMixin,
     JumpCUEEditMixin,
+    CuePointEditMixin,
     BeatCounterMixin,
     SelectionMixin,
     QtWidgets.QWidget,
@@ -70,7 +74,8 @@ class EditPanel(
         self.duration = 1e-3
         self._JumpCUE = []
         self._jumpcue_graph_cues: list[dict] = []
-        self._jump_armed = False
+        self._cue_points: list[dict] = []
+        self._playing = False
         # BeatCounter: while the Count button is held, count beats crossed by
         # the playhead relative to the beat index at press time.
         self._beat_counting = False
@@ -87,21 +92,25 @@ class EditPanel(
                 key_segments=self._key_segments,
                 jump_cues=self._JumpCUE,
                 phrases=self._phrase_segments,
+                cue_points=self._cue_points,
             )
         )
         self.bus.sig_segment_reanalyze_state.connect(self._set_edit_enabled)
         self.bus.sig_tempo_factor_changed.connect(self._on_playback_tempo_changed)
+        self.bus.sig_playback_status.connect(self._on_playback_status)
         self._set_edit_enabled(True)
+
+    def _on_playback_status(self, playing: bool) -> None:
+        """CALL works only while stopped; an armed jump ends with playback."""
+        self._playing = bool(playing)
+        if not self._playing:
+            self._disarm_jumpcue()
+        self._refresh_jumpcue_slots()
+        self._refresh_cue_point_slots()
 
     def _init_ui(self) -> None:
         self.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
         self.setFixedHeight(self.ROW_H)
-
-        self.cuepoint_placeholder = QtWidgets.QToolButton()
-        self.cuepoint_placeholder.setText("Coming Soon")
-        self.cuepoint_placeholder.setToolTip("CUEPoint editor placeholder")
-        self.cuepoint_placeholder.setEnabled(False)
-        self.cuepoint_placeholder.setFixedSize(self.BTN_WIDTH, self.BTN_HEIGHT)
 
         self.btn_undo = QtWidgets.QToolButton()
         self.btn_undo.setText("↩")
@@ -139,7 +148,7 @@ class EditPanel(
             btn.setFixedHeight(self.PAGE_BTN_H)
             btn.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
             btn.setStyleSheet("QToolButton { padding: 0 6px; }")
-            btn.setToolTip("Edit the CUEs (JumpCUE)" if name == "CUE" else f"Edit the {name.lower()}")
+            btn.setToolTip("Edit the JumpCUEs and CUE points" if name == "CUE" else f"Edit the {name.lower()}")
             self._page_group.addButton(btn, i)
             self.page_buttons.append(btn)
             selector.addWidget(btn)
@@ -171,9 +180,13 @@ class EditPanel(
         body.addWidget(self.editor_stack)
 
         beatgrid_buttons = self._build_beatgrid_ui(grid_beat)
+        # the CUE page: the JumpCUE and CUE point lists (its own slot sizes) over
+        # the button rows and the status line
+        cue_page = CuePageWidget(self.BTN_HEIGHT * 3 + self.STATUS_H + self.ROW_VSPACING * 3)
+        grid_cue.addWidget(cue_page, 0, 0, 4, 1)
+        cue_buttons = [*self._build_jumpcue_ui(cue_page), *self._build_cuepoint_ui(cue_page)]
         text_buttons = [
             *self._build_key_ui(grid_key),
-            *self._build_jumpcue_ui(grid_cue),
             *self._build_phrase_ui(grid_phrase),
             *self._build_beat_counter_ui(grid_phrase),
             self.btn_undo,
@@ -191,9 +204,7 @@ class EditPanel(
             btn.setFixedSize(self.BTN_WIDTH, self.BTN_HEIGHT)
         for btn in self._edit_buttons:
             btn.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
-
-        _AL = QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter
-        grid_cue.addWidget(self.cuepoint_placeholder, 0, 3, _AL)
+        self._edit_buttons += cue_buttons
         status_font = QtGui.QFont(self.font())
         status_font.setPointSize(9)
         for lbl in (self.beatgrid_status, self.key_status, self.phrase_status):
@@ -203,7 +214,8 @@ class EditPanel(
             # spread the spare page width over the columns it spans)
             lbl.setSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Fixed)
         for g in grids:
-            g.setColumnStretch(g.columnCount(), 1)
+            if g is not grid_cue:
+                g.setColumnStretch(g.columnCount(), 1)
 
         edits = QtWidgets.QVBoxLayout()
         edits.setContentsMargins(0, 0, 0, 0)
@@ -278,12 +290,14 @@ class EditPanel(
                 key_segments=self._key_segments,
                 jump_cues=self._JumpCUE,
                 phrases=self._phrase_segments,
+                cue_points=self._cue_points,
             )
         )
         self._update_undo_redo_buttons()
 
     def update_time(self, t: float) -> None:
         self._current_time = float(t)
+        self._follow_jumpcue_arm(float(t))
         self._update_key_current()
         self._update_beat_counter(float(t))
         self._update_barbeat_display(float(t))
@@ -321,6 +335,7 @@ class EditPanel(
                 key_segments=self._key_segments,
                 jump_cues=self._JumpCUE,
                 phrases=self._phrase_segments,
+                cue_points=self._cue_points,
             )
         )
         if self.model is not None:
@@ -345,6 +360,7 @@ class EditPanel(
                     key_segments=self._key_segments,
                     jump_cues=self._JumpCUE,
                     phrases=self._phrase_segments,
+                    cue_points=self._cue_points,
                 )
             )
             self.btn_save.setStyleSheet(WARNING_BUTTON_STYLESHEET)
@@ -387,6 +403,9 @@ class EditPanel(
         if loge.phrases is not None:
             self._phrase_segments = copy.deepcopy(loge.phrases)
             self._broadcast_phrase()
+        if loge.cue_points is not None:
+            self.set_cue_points(copy.deepcopy(loge.cue_points))
+            self._broadcast_cue_points()
         self.update_time(self._current_time)
 
     def _redo(self) -> None:
@@ -413,6 +432,9 @@ class EditPanel(
         if loge.phrases is not None:
             self._phrase_segments = copy.deepcopy(loge.phrases)
             self._broadcast_phrase()
+        if loge.cue_points is not None:
+            self.set_cue_points(copy.deepcopy(loge.cue_points))
+            self._broadcast_cue_points()
         self.update_time(self._current_time)
     
     def _save(self) -> None:
@@ -440,6 +462,7 @@ class EditPanel(
             max_time=self.duration if self.duration > 0.0 else None,
         )
         phrase_segments_np = build_phrase_segments_np(self._phrase_segments)
+        cue_points_np = build_cue_points_np(copy.deepcopy(self._cue_points))
         self._save_in_progress = True
         self.btn_save.setEnabled(False)
         thread.started.connect(
@@ -454,6 +477,7 @@ class EditPanel(
                 jump_cues_extracted=jump_cues_extracted,
                 jump_cues_auto_np=jump_cues_auto_np,
                 phrase_segments_np=phrase_segments_np,
+                cue_points_np=cue_points_np,
             )
         )
         save_worker.finished.connect(thread.quit)

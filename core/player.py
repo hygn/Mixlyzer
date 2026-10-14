@@ -28,6 +28,7 @@ class _AudioWorker(QtCore.QObject):
     transport_enabled = QtCore.Signal(bool)
     track_loaded = QtCore.Signal(object, int)  # pcm [N, ch] float32, sample rate
     output_peak_dbfs = QtCore.Signal(float)
+    jumped = QtCore.Signal()
     output_buffer = QtCore.Signal(float, object, float)  # queued ms, observations (see PCMFeeder.take_buffer_stats) or None, capacity ms
     _decoded = QtCore.Signal(int, object, str)  # token, pcm or None, error message
 
@@ -87,6 +88,7 @@ class _AudioWorker(QtCore.QObject):
         self.feeder = PCMFeeder(self.audio, self.rate, self.ch, self)
         self.feeder.set_music_gain(self._volume_linear)
         self.feeder.finished.connect(self.pause)
+        self.feeder.jumped.connect(self.jumped)
         # While playing, every transport change (seek, scrub, jump) is rendered by the feeder
         # into the running sink: reset()/start() cycles during scrubbing crash Qt 6.10's WASAPI
         # backend. The feeder suspends the sink only when playback is idle.
@@ -230,7 +232,8 @@ class _AudioWorker(QtCore.QObject):
             elif cue["backward"]["label"] == label:
                 jump_start = cue["backward"]["point"]
                 jump_dest = cue["forward"]["point"]
-        self.feeder.arm_jump(jump_start, jump_dest)
+        self.feeder.arm_jump(jump_start, jump_dest, once=bool(payload.get("once", False)),
+                             starts_sec=payload.get("starts"))
 
     def disarm_jump(self) -> None:
         self.feeder.disarm_jump()
@@ -352,6 +355,7 @@ class PlayerController(QtCore.QObject):
         w.transport_enabled.connect(bus.sig_transport_enabled)
         w.output_peak_dbfs.connect(bus.sig_output_peak_dbfs)
         w.output_buffer.connect(bus.sig_output_buffer)
+        w.jumped.connect(bus.sig_jump_fired)
         w.track_loaded.connect(self._on_track_loaded, QtCore.Qt.QueuedConnection)
 
         self._audio_thread.started.connect(w.initialize)
