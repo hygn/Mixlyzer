@@ -1,5 +1,4 @@
 import numpy as np
-from scipy.ndimage import gaussian_filter1d
 from scipy.signal import get_window
 
 from analyzer_core.dsp.conversion import fft_frequencies
@@ -21,6 +20,9 @@ WAVE_BODY_FRAME_SEC = 0.001
 WAVEFORM_STYLES = ("rgb", "3band")
 # RGB overview bars reach this fraction of the lane at the track's peak.
 RGB_OVERVIEW_PEAK = 0.99
+# RGB bars fade from their body to their peak as (1 - t) ** RGB_FADE_GAMMA:
+# below 1 keeps the tops visible.
+RGB_FADE_GAMMA = 0.5
 # Three-band colors and band weights of rekordbox / CDJ-3000 (after Deep
 # Symmetry's beat-link): the preview stacks the bands from the bottom (low,
 # low + mid, low + mid + high); the scrolling waveform draws them mirrored, each
@@ -178,6 +180,24 @@ def three_band_detail_layers(low, mid, high) -> list:
     ]
 
 
+def _faded_bars(peak, body, colors, height: int, columns: int, *, mirrored: bool) -> np.ndarray:
+    """A bar of each stored column (heights 0..1 of the lane), solid up to
+    ``body`` and fading out to ``peak``, colored ``colors``; area-averaged into
+    ``columns`` image columns (drawn at the display's pixels, so not blurred)."""
+    n = peak.size
+    H = int(height)
+    rows = np.arange(H) + 0.5
+    position = np.abs(rows - 0.5 * H) / (0.5 * H) if mirrored else rows / H
+    cover = np.clip((peak[:, np.newaxis] - position) / np.maximum(peak - body, 1e-6)[:, np.newaxis], 0.0, 1.0)
+    cover **= RGB_FADE_GAMMA
+    n_columns = max(1, min(int(columns), n))
+    starts = (np.arange(n_columns, dtype=np.int64) * n) // n_columns
+    counts = np.diff(np.append(starts, n)).astype(np.float32)[:, np.newaxis, np.newaxis]
+    image = np.add.reduceat(cover.astype(np.float32)[:, :, np.newaxis] * colors.astype(np.float32)[:, np.newaxis, :],
+                            starts, axis=0)
+    return np.clip(image / counts + 0.5, 0.0, 255.0).astype(np.uint8)
+
+
 def render_wave_overview(
     levels: np.ndarray,
     ref: np.ndarray,
@@ -185,31 +205,18 @@ def render_wave_overview(
     height: int,
     *,
     columns: int = WAVE_OVERVIEW_RENDER_COLUMNS,
-    mirrored: bool = False,
 ) -> np.ndarray:
-    """Overview image ``[columns, height, 3]`` of the stored levels / ``ref`` in
-    ``style`` ('rgb': bars of the peak colored by the band levels; '3band': the
-    bands stacked on one scale)."""
+    """Overview image ``[columns, height, 3]`` of the stored levels / ``ref``,
+    bars rising from the first row, in ``style`` ('rgb': bars of the peak
+    colored by the band levels, each over its track maximum; '3band': the bands
+    stacked on one scale)."""
     if style != "3band":
-        # A bar of each stored column, colored by its band levels, solid up to
-        # the body and fading out to the peak; area-averaged into the image
-        # columns and blurred slightly along time.
         values = np.square(np.asarray(levels, dtype=np.float64) / 255.0)
         ref = np.asarray(ref, dtype=np.float64)
-        n = values.shape[0]
         peak = values[:, WAVE_PEAK] * RGB_OVERVIEW_PEAK
         body = np.minimum(values[:, WAVE_BODY] * ref[WAVE_BODY] / (ref[WAVE_PEAK] or 1.0) * RGB_OVERVIEW_PEAK, peak)
-        colors = wave_colors(values[:, WAVE_LOW], values[:, WAVE_MID], values[:, WAVE_HIGH]).astype(np.float32)
-        H = int(height)
-        rows = np.arange(H) + 0.5
-        position = np.abs(rows - 0.5 * H) / (0.5 * H) if mirrored else rows / H
-        cover = np.clip((peak[:, np.newaxis] - position) / np.maximum(peak - body, 1e-6)[:, np.newaxis], 0.0, 1.0)
-        n_columns = max(1, min(int(columns), n))
-        starts = (np.arange(n_columns, dtype=np.int64) * n) // n_columns
-        counts = np.diff(np.append(starts, n)).astype(np.float32)[:, np.newaxis, np.newaxis]
-        image = np.add.reduceat(cover.astype(np.float32)[:, :, np.newaxis] * colors[:, np.newaxis, :], starts, axis=0)
-        image = gaussian_filter1d(image / counts, sigma=0.8, axis=0)
-        return np.clip(image + 0.5, 0.0, 255.0).astype(np.uint8)
+        colors = wave_colors(values[:, WAVE_LOW], values[:, WAVE_MID], values[:, WAVE_HIGH])
+        return _faded_bars(peak, body, colors, height, columns, mirrored=False)
     values = overview_values(levels, columns)
     low, mid, high = values[:, WAVE_LOW], values[:, WAVE_MID], values[:, WAVE_HIGH]
     band_ref = np.asarray(ref, dtype=np.float64)[WAVE_LOW:WAVE_HIGH + 1]
@@ -224,7 +231,34 @@ def render_wave_overview(
         (stack_mid / scale, THREE_BAND_MID),
         (stack_low / scale, THREE_BAND_LOW),
     ]
-    return paint_layers(layers, height, mirrored=mirrored)
+    return paint_layers(layers, height)
+
+
+def render_wave_detail_preview(
+    levels: np.ndarray,
+    ref: np.ndarray,
+    style: str,
+    height: int,
+    *,
+    columns: int = WAVE_OVERVIEW_RENDER_COLUMNS,
+) -> np.ndarray:
+    """Stand-in for the main view's detail waveform until its chunks are
+    rendered, drawn like them from the stored levels (mirrored, in sample units):
+    RGB bars colored by the band levels (each over its track maximum: closer to
+    the chunks' colors, averaged from short frames, than the column RMS), 3band
+    the layers of the scrolling waveform (bands on one scale)."""
+    if style != "3band":
+        values = np.square(np.asarray(levels, dtype=np.float64) / 255.0)
+        amplitude = values * np.asarray(ref, dtype=np.float64)
+        peak = np.clip(amplitude[:, WAVE_PEAK], 0.0, 1.0)
+        body = np.minimum(amplitude[:, WAVE_BODY], peak)
+        colors = wave_colors(values[:, WAVE_LOW], values[:, WAVE_MID], values[:, WAVE_HIGH], white_threshold=0.0)
+        return _faded_bars(peak, body, colors, height, columns, mirrored=True)
+    values = overview_values(levels, columns)
+    band_ref = np.asarray(ref, dtype=np.float64)[WAVE_LOW:WAVE_HIGH + 1]
+    scale = float(band_ref.max()) or 1.0
+    low, mid, high = (values[:, channel] * r / scale for channel, r in zip((WAVE_LOW, WAVE_MID, WAVE_HIGH), band_ref))
+    return paint_layers(three_band_detail_layers(low, mid, high), height, mirrored=True)
 
 
 def wave_coverage_columns(

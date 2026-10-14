@@ -20,6 +20,13 @@ from core.config import load_cfg
 OVERVIEW_WAVE_HEIGHT = 64
 
 
+def _screen_pixel_width() -> int:
+    """Device pixels across the widest screen: the overview image is drawn at
+    this many columns (one per pixel when the overview spans that screen)."""
+    screens = QtGui.QGuiApplication.screens()
+    return max((int(round(screen.geometry().width() * screen.devicePixelRatio())) for screen in screens), default=4096)
+
+
 def _down_triangle_path() -> QtGui.QPainterPath:
     path = QtGui.QPainterPath()
     path.moveTo(-0.5, -0.6)
@@ -251,7 +258,8 @@ class OverviewWidget(QtWidgets.QWidget):
             self.img_wave.clear()
             return
         image = render_wave_overview(np.asarray(levels), np.asarray(self.model.features["wave_overview_ref"]),
-                                     load_cfg().viewconfig.waveform_style, OVERVIEW_WAVE_HEIGHT)
+                                     load_cfg().viewconfig.waveform_style, OVERVIEW_WAVE_HEIGHT,
+                                     columns=_screen_pixel_width())
         self.img_wave.setImage(image, autoLevels=False, levels=self._wave_levels)
         self.img_wave.setRect(QtCore.QRectF(0.0, self._wave_bottom, self.duration, self._wave_top - self._wave_bottom))
 

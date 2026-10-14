@@ -16,7 +16,7 @@ from utils.wave import (
     WAVE_LOW,
     frame_minmax,
     paint_layers,
-    render_wave_overview,
+    render_wave_detail_preview,
     three_band_detail_layers,
     wave_colors,
     wave_coverage_columns,
@@ -466,10 +466,10 @@ class WaveformView(ViewPlugin):
             self._preview_source = None
             return
         if self._preview_source is not levels:
-            # Until chunks are rendered, the stored overview stands in (mirrored, in the same style).
+            # Until chunks are rendered, the stored levels stand in, drawn like them.
             self._preview_item.setImage(
-                render_wave_overview(np.asarray(levels), np.asarray(self.model.features["wave_overview_ref"]),
-                                     load_cfg().viewconfig.waveform_style, RENDER_HEIGHT, mirrored=True),
+                render_wave_detail_preview(np.asarray(levels), np.asarray(self.model.features["wave_overview_ref"]),
+                                           load_cfg().viewconfig.waveform_style, RENDER_HEIGHT),
                 autoLevels=False,
                 levels=self._wave_levels,
             )
