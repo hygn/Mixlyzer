@@ -91,6 +91,9 @@ class PCMFeeder(QtCore.QObject):
         self._pos: float = 0.0
         self._playing = False
         self._scrubbing = False
+        # Scratching: the deck is held (silent, like tempo 0) at the position the
+        # hand moves it to; released, it plays on from there.
+        self._scratching = False
         self._seeked_while_paused = False
         self._mode = "speed"
         self._factor = 1.0
@@ -245,7 +248,29 @@ class PCMFeeder(QtCore.QObject):
         if self._scrubbing:
             self.clicks.clear_voices()
 
+    def set_scratching(self, scratching: bool) -> None:
+        scratching = bool(scratching)
+        if scratching and not self._scratching and self._playing:
+            # Held at the frame being heard; the audio queued after it is dropped
+            # (as pause()), so the deck goes silent at once.
+            heard_pos = self.playhead_frame()
+            self._reset_sink()
+            self._pos = float(max(0.0, min(self._len, heard_pos)))
+        self._scratching = scratching
+        if scratching:
+            self.clicks.clear_voices()
+
+    def scratch_to(self, frame: float) -> None:
+        """Move the held deck to ``frame`` (while scratching)."""
+        self._pos = float(max(0.0, min(frame, self._len - 1))) if self._len else 0.0
+        self._end_out_frame = None
+        self._sent_finished = False
+        if not self._playing:
+            self._seeked_while_paused = True
+
     def _step(self) -> float:
+        if self._scratching:
+            return 0.0
         if self._mode != "speed" or (self._scrubbing and self._unity_while_scrubbing):
             return 1.0
         return self._factor
@@ -412,6 +437,8 @@ class PCMFeeder(QtCore.QObject):
 
     def playhead_frame(self) -> float:
         """Input frame currently being heard."""
+        if self._scratching:
+            return self._pos
         if self._device_stopped or (not self._playing and self._seeked_while_paused):
             return self._pos
         out_frame = self._heard_out_frame()

@@ -17,7 +17,7 @@ from utils.jump_cues import extract_jump_cue_pairs
 from utils.phrases import extract_phrase_segments, number_phrase_labels, phrase_color
 from core.event_bus import EventBus
 from core.config import config
-from ui.mainplotvbx import NoDragNoWheelViewBox
+from ui.mainplotvbx import ScratchViewBox
 from ui.track_info_panel import TrackInfoPanel
 from ui.edit_panel import EditPanel
 from utils.volume import slider_percent_to_linear, trim_dbfs_to_linear
@@ -100,7 +100,12 @@ class MainPane(QtWidgets.QWidget):
 
         # Plot container
         self.gl = _TrackedGraphicsLayoutWidget(self.bus, show=True)
-        self.p = self.gl.addPlot(row=0, col=0, viewBox=NoDragNoWheelViewBox())
+        self.p = self.gl.addPlot(row=0, col=0, viewBox=ScratchViewBox(
+            self.bus,
+            get_time=lambda: self.current_time,
+            get_duration=lambda: float(self.model.duration_sec or 0.0),
+            can_scratch=self._can_use_transport,
+        ))
         self.p.hideAxis("left")
         self.p.hideAxis("bottom")
         self.p.hideButtons()
@@ -683,8 +688,11 @@ class MainPane(QtWidgets.QWidget):
         self._external_sync_enabled = bool(enabled)
         self._refresh_transport_buttons()
 
+    def _can_use_transport(self) -> bool:
+        return self._transport_enabled and not self._external_sync_enabled
+
     def _refresh_transport_buttons(self) -> None:
-        can_use_transport = self._transport_enabled and not self._external_sync_enabled
+        can_use_transport = self._can_use_transport()
         for btn_name in ("btn_play", "btn_stop"):
             btn = getattr(self, btn_name, None)
             if btn is not None:

@@ -38,6 +38,7 @@ class _AudioWorker(QtCore.QObject):
     _COMMANDS = frozenset({
         "load", "play", "pause", "stop", "seek",
         "scrub_begin", "scrub_update", "scrub_end", "arm_jump", "disarm_jump",
+        "scratch_begin", "scratch_update", "scratch_end",
         "set_tempo_mode", "set_tempo_factor", "set_volume", "set_peak_meter_gain",
         "set_refresh_fps", "set_timestretch", "set_soft_clip",
         "tone_hold", "tone_sequence",
@@ -45,6 +46,7 @@ class _AudioWorker(QtCore.QObject):
     _WAIT_FOR_TRACK = frozenset({
         "play", "pause", "stop", "seek",
         "scrub_begin", "scrub_update", "scrub_end", "arm_jump", "disarm_jump",
+        "scratch_begin", "scratch_update", "scratch_end",
     })
 
     def __init__(self, *, volume_linear: float = 1.0, peak_meter_gain_linear: float = 1.0) -> None:
@@ -213,6 +215,19 @@ class _AudioWorker(QtCore.QObject):
     def scrub_end(self, _sec: float) -> None:
         self.feeder.set_scrubbing(False)
 
+    # Scratch: no scratch sound yet, the deck is silent while held
+    def scratch_begin(self) -> None:
+        self.feeder.set_scratching(True)
+
+    def scratch_update(self, sec: float) -> None:
+        if not self._track_ready:
+            return
+        self.feeder.scratch_to(sec * self.rate)
+        self._emit_time(self._track_now_ms())
+
+    def scratch_end(self, _sec: float) -> None:
+        self.feeder.set_scratching(False)
+
     def arm_jump(self, payload: object) -> None:
         if not isinstance(payload, dict):
             return
@@ -371,6 +386,9 @@ class PlayerController(QtCore.QObject):
         bus.sig_scrub_begin.connect(lambda: self._send("scrub_begin"))
         bus.sig_scrub_update.connect(lambda sec: self._send("scrub_update", float(sec)))
         bus.sig_scrub_end.connect(lambda sec: self._send("scrub_end", float(sec)))
+        bus.sig_scratch_begin.connect(lambda: self._send_local("scratch_begin"))
+        bus.sig_scratch_update.connect(lambda sec: self._send_local("scratch_update", float(sec)))
+        bus.sig_scratch_end.connect(lambda sec: self._send_local("scratch_end", float(sec)))
         bus.sig_volume_changed.connect(lambda v: self._send("set_volume", float(v)))
         bus.sig_peak_meter_gain_changed.connect(lambda v: self._send("set_peak_meter_gain", float(v)))
         bus.sig_jump_arm.connect(lambda payload: self._send("arm_jump", payload))
@@ -383,6 +401,11 @@ class PlayerController(QtCore.QObject):
 
     def _send(self, name: str, *args) -> None:
         self._command.emit(name, args)
+
+    def _send_local(self, name: str, *args) -> None:
+        """A local deck command; external sync follows the external deck instead."""
+        if not self._external_sync_enabled:
+            self._send(name, *args)
 
     # Public API
     def set_source(self, path: str) -> None:
