@@ -575,7 +575,7 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
                 return_feature_z=True,
             )
             features["phrase_segments_np"] = build_phrase_segments_np(phrase_segments)
-            phrase_cue_points = build_phrase_cue_points(phrase_segments)
+            phrase_cue_points = build_phrase_cue_points(phrase_segments, config.cuepointconfig.by_label())
             features["cue_points_np"] = build_cue_points_np(phrase_cue_points)
             labels_summary = ", ".join(str(s["label"]) for s in phrase_segments)
             print(

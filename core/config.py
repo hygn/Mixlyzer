@@ -121,6 +121,33 @@ class keyconfig:
 
 
 @dataclass
+class cuepointrule:
+    at_start: bool               # a CUE point where a phrase of the label starts
+    at_end: bool                 # ... and where it ends
+    same_label_boundaries: bool  # also between two phrases of the label (else only next to another label)
+
+
+@dataclass
+class cuepointconfig:
+    """CUE points the analysis sets from the phrases, by phrase label (the
+    predefined labels, utils.phrases.PHRASE_LABELS, lowercased)."""
+    intro: cuepointrule
+    verse: cuepointrule
+    chorus: cuepointrule
+    break_chorus: cuepointrule
+    bridge: cuepointrule
+    outro: cuepointrule
+    interlude: cuepointrule
+    silence: cuepointrule
+    fill_in: cuepointrule
+    fill_out: cuepointrule
+
+    def by_label(self) -> dict[str, cuepointrule]:
+        """Rules keyed by phrase label (uppercase)."""
+        return {f.name.upper(): getattr(self, f.name) for f in fields(self)}
+
+
+@dataclass
 class config:
     analysisconfig: analysisconfig
     keyconfig: keyconfig
@@ -128,6 +155,7 @@ class config:
     viewconfig: viewconfig
     playbackconfig: playbackconfig
     externalsyncconfig: externalsyncconfig
+    cuepointconfig: cuepointconfig
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -298,6 +326,12 @@ def default_cfg():
             loaded=_default_memory_value(offsets="0", value_type="bool", bit_pos=0),
         ),
     )
+    # CUE points at the start of an interlude and of the outro (not between two
+    # of them)
+    cue_rules = {
+        f.name: cuepointrule(at_start=f.name in ("interlude", "outro"), at_end=False, same_label_boundaries=False)
+        for f in fields(cuepointconfig)
+    }
     return config(
         libconfig=lcfg,
         analysisconfig=acfg,
@@ -305,6 +339,7 @@ def default_cfg():
         viewconfig=vcfg,
         playbackconfig=pcfg,
         externalsyncconfig=xcfg,
+        cuepointconfig=cuepointconfig(**cue_rules),
     )
 
 

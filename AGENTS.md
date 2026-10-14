@@ -96,7 +96,7 @@ Working notes for AI/automation agents editing the Mixlyzer codebase.
 - The key strip is rendered just in time from `key_segments` (`utils.keystrip.render_keystrip`); no image is stored.
 - JumpCUEs are kept in two states in the NPZ: `jump_cues_np` (the user's, replaced by edits) and `jump_cues_auto_np` (the automatic result, replaced only by full analysis or JumpCUE reanalysis). The JumpCUE optimizer (settings → Analysis → JumpCUE) learns from where they differ; do not write edits into `jump_cues_auto_np`.
 - A JumpCUE group's colour is a preset index (`graph_color_idx`, presets in `utils/jumpcue_colors.py`), independent of its group number (`graph_id`); no RGB is stored. Edits carry it on each cue as `color_idx`.
-- CUE points (`cue_points_np`, with a colour preset `cue_color_idx`) are the user's: the full analysis makes them from the phrases, after that only the CUE page edits them (phrase edits do not regenerate them).
+- CUE points (`cue_points_np`, with a colour preset `cue_color_idx`) are the user's: the full analysis makes them from the phrases by the per-label rules in `config.cuepointconfig` (Settings > Analysis > Phrase), after that only the CUE page edits them (phrase edits do not regenerate them).
 - JumpCUE letters are slots (rekordbox hot cue letters A-Z): the analysis letters them by point; edits keep each cue in the slot the user gave it (no relettering by time). A JumpCUE's user name is its `cue_comment` (equal to its letter = no name). CUE points are rekordbox memory cues: always in time order, no letters; a CUE point's name is its `cue_label`.
 - `DataModel` holds the live in-memory track state:
   - `features`

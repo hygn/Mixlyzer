@@ -233,6 +233,7 @@ class SettingsDialog(
         )
         self.ed_jumpcue_parameter_path.setText(str(getattr(a, "jumpcue_parameter_path", "") or ""))
         self.ed_jumpcue_feature_cache_path.setText(str(getattr(a, "jumpcue_feature_cache_path", "") or ""))
+        self._set_cue_point_rules(cfg.cuepointconfig)
 
         # key
         k = cfg.keyconfig
@@ -387,6 +388,7 @@ class SettingsDialog(
                 memory_deck1=self._get_memory_deck(self.deck1_specs),
                 memory_deck2=self._get_memory_deck(self.deck2_specs),
             ),
+            cuepointconfig=self._get_cue_point_rules(),
         )
 
     def get_dict(self) -> dict:

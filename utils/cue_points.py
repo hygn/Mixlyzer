@@ -114,7 +114,12 @@ def build_cue_points_np(points: list[dict[str, Any]] | None) -> dict[str, np.nda
     }
 
 
-def build_phrase_cue_points(phrases: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
+def build_phrase_cue_points(phrases: list[dict[str, Any]] | None, rules: dict[str, Any]) -> list[dict[str, Any]]:
+    """CUE points at phrase starts / ends by the rule of each phrase's label
+    (``rules``: uppercase label -> object with ``at_start``, ``at_end`` and
+    ``same_label_boundaries``, see core.config.cuepointconfig). A start or end
+    next to a phrase of the same label gets one only with ``same_label_boundaries``.
+    Named after the label (the end: ``<LABEL>_OUT``)."""
     rows: list[dict[str, Any]] = []
     for phrase in phrases or []:
         try:
@@ -124,58 +129,23 @@ def build_phrase_cue_points(phrases: list[dict[str, Any]] | None) -> list[dict[s
             continue
         if not (math.isfinite(start) and math.isfinite(end)) or end <= start:
             continue
-        rows.append(
-            {
-                "start": start,
-                "end": end,
-                "label": str(phrase.get("label", "") or "").strip(),
-            }
-        )
+        rows.append({"start": start, "end": end, "label": str(phrase.get("label", "") or "").strip().upper()})
     rows.sort(key=lambda phrase: phrase["start"])
 
     points: list[dict[str, Any]] = []
-
-    def add(time_sec: float, label: str, comment: str) -> None:
-        points.append(
-            {
-                "id": len(points),
-                "time_sec": float(time_sec),
-                "label": label,
-                "comment": comment,
-            }
-        )
-
-    def normalized_label(index: int) -> str:
-        return str(rows[index].get("label", "") or "").strip().upper()
-
-    index = 0
-    while index < len(rows):
-        label = normalized_label(index)
-        phrase = rows[index]
-        start = float(phrase["start"])
-        if label == "INTERLUDE":
-            add(start, "INTERLUDE", "Interlude start")
-        elif label == "OUTRO":
-            add(start, "OUTRO", "Outro start")
-
-        if label != "CHORUS":
-            index += 1
+    for i, phrase in enumerate(rows):
+        label = phrase["label"]
+        rule = rules.get(label)
+        if rule is None:
             continue
-
-        group_start = index
-        group_end = index + 1
-        while group_end < len(rows) and normalized_label(group_end) == "CHORUS":
-            group_end += 1
-
-        chorus_group = rows[group_start:group_end]
-        add(float(chorus_group[0]["start"]), "CHORUS_IN", "Chorus start")
-        if len(chorus_group) >= 2:
-            add(float(chorus_group[1]["start"]), "CHORUS_NEXT", "Chorus internal boundary")
-            add(float(chorus_group[-1]["start"]), "CHORUS_PRE_OUT", "Chorus pre-exit boundary")
-        if group_end < len(rows):
-            add(float(chorus_group[-1]["end"]), "CHORUS_OUT", "Chorus exit")
-        index = group_end
-
+        prev_same = i > 0 and rows[i - 1]["label"] == label
+        next_same = i + 1 < len(rows) and rows[i + 1]["label"] == label
+        if rule.at_start and (rule.same_label_boundaries or not prev_same):
+            points.append({"id": len(points), "time_sec": phrase["start"], "label": label,
+                           "comment": f"{label.title()} start"})
+        if rule.at_end and (rule.same_label_boundaries or not next_same):
+            points.append({"id": len(points), "time_sec": phrase["end"], "label": f"{label}_OUT",
+                           "comment": f"{label.title()} end"})
     return _dedupe_cue_points(points)
 
 

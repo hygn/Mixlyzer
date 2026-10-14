@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (
     QDoubleSpinBox,
     QDialog,
     QFormLayout,
+    QGridLayout,
     QGroupBox,
     QHBoxLayout,
     QLabel,
@@ -21,6 +22,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from core.config import cuepointconfig, cuepointrule
 from core.resource_paths import project_root
 from core.workflows.optimizer import OptimizerWorkflow
 from ui.config.dialogs import (
@@ -281,6 +283,7 @@ def build_analysis_tab(dialog) -> None:
     f_phrase_advanced.addRow("Feature cache", dialog.ed_phrase_feature_cache_path)
     f_phrase_advanced.addRow("", dialog.btn_reoptimize_phrase_parameter)
     f_phrase.addRow(grp_phrase_general)
+    f_phrase.addRow(_build_cue_point_rules(dialog))
     f_phrase.addRow(grp_phrase_advanced)
 
     # JumpCUE
@@ -316,7 +319,58 @@ def build_analysis_tab(dialog) -> None:
     dialog.tabs.addTab(dialog.tab_analysis, "Analysis")
 
 
+def _build_cue_point_rules(dialog) -> QGroupBox:
+    """Per phrase label: a CUE point at its start / end, and whether also between
+    two phrases of that label (else only next to another label)."""
+    grp = QGroupBox("CUE points (set by the analysis from the phrases)")
+    grid = QGridLayout(grp)
+    grid.setHorizontalSpacing(16)
+    dialog.cue_rule_boxes = {}
+    for row, name in enumerate(f.name for f in cuepointconfig.__dataclass_fields__.values()):
+        start = QCheckBox("At start")
+        end = QCheckBox("At end")
+        same = QCheckBox("Also between two of them")
+        label = name.upper()
+        start.setToolTip(f"A CUE point where a {label} phrase starts")
+        end.setToolTip(f"A CUE point where a {label} phrase ends")
+        same.setToolTip(
+            f"Also where two {label} phrases meet; otherwise only where a {label} phrase "
+            "meets a phrase of another label"
+        )
+
+        def _sync(_=None, start=start, end=end, same=same):
+            same.setEnabled(start.isChecked() or end.isChecked())
+
+        start.toggled.connect(_sync)
+        end.toggled.connect(_sync)
+        grid.addWidget(QLabel(label), row, 0)
+        grid.addWidget(start, row, 1)
+        grid.addWidget(end, row, 2)
+        grid.addWidget(same, row, 3)
+        dialog.cue_rule_boxes[name] = (start, end, same)
+    grid.setColumnStretch(4, 1)
+    note = QLabel("Applies to tracks analyzed (or reanalyzed) from now on.")
+    note.setEnabled(False)
+    grid.addWidget(note, len(dialog.cue_rule_boxes), 0, 1, 5)
+    return grp
+
+
 class AnalysisSettingsMixin:
+    def _set_cue_point_rules(self, rules: cuepointconfig) -> None:
+        for name, (start, end, same) in self.cue_rule_boxes.items():
+            rule = getattr(rules, name)
+            start.setChecked(bool(rule.at_start))
+            end.setChecked(bool(rule.at_end))
+            same.setChecked(bool(rule.same_label_boundaries))
+            same.setEnabled(start.isChecked() or end.isChecked())
+
+    def _get_cue_point_rules(self) -> cuepointconfig:
+        return cuepointconfig(**{
+            name: cuepointrule(at_start=start.isChecked(), at_end=end.isChecked(),
+                               same_label_boundaries=same.isChecked())
+            for name, (start, end, same) in self.cue_rule_boxes.items()
+        })
+
     def _project_path(self, text: str) -> Path:
         path = Path(str(text or "").strip())
         if not path.is_absolute():
