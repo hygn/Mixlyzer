@@ -195,12 +195,6 @@ class OverviewWidget(QtWidgets.QWidget):
         self._cue_font = QtGui.QFont()
         self._cue_font.setPointSizeF(8.0)
         self._cue_font.setBold(True)
-        self._selection_region: pg.LinearRegionItem | None = None
-        self._selection_start_marker: pg.ScatterPlotItem | None = None
-        self._selection_end_marker: pg.ScatterPlotItem | None = None
-        self._selection_marker_y = 1.05
-        self._selection_start: float | None = None
-        self._selection_end: float | None = None
         self._jump_cues: list[dict] = []
         self._jump_links: list[dict] = []
         self._wave_bottom = self.KEY_H
@@ -208,7 +202,6 @@ class OverviewWidget(QtWidgets.QWidget):
         self.bus.sig_time_changed.connect(self._on_time)
         self.bus.sig_duration_changed.connect(self._on_duration)
         self.bus.sig_beatgrid_edited.connect(self._on_beatgrid_updated)
-        self.bus.sig_key_selection_changed.connect(self._on_selection_changed)
         self.bus.sig_jumpcue_updated.connect(self._on_jumpcue_updated)
         self.bus.sig_phrase_segments_updated.connect(self._on_phrases_updated)
         self.bus.sig_cue_points_updated.connect(self._render_cue_points)
@@ -232,7 +225,6 @@ class OverviewWidget(QtWidgets.QWidget):
         wave_top = wave_bottom + self.WAVE_H
         self._wave_bottom = wave_bottom
         self._wave_top = wave_top
-        self._selection_marker_y = wave_top - 0.012
         self._cue_block_height = 0.1
         self._cue_block_bottom = wave_top - self._cue_block_height
         self._cue_label_y = self._cue_block_bottom
@@ -261,7 +253,6 @@ class OverviewWidget(QtWidgets.QWidget):
         self._render_tempo_strips(self._tempo_segments)
         self._render_phrases()
         self._render_cue_points()
-        self._apply_selection_graphics()
         self._update_played_overlay()
 
     def _render_cue_points(self) -> None:
@@ -440,7 +431,6 @@ class OverviewWidget(QtWidgets.QWidget):
         segments = self.model.features.get("tempo_segments")
         self._tempo_segments = segments
         self._render_tempo_strips(self._tempo_segments)
-        self._apply_selection_graphics()
 
     def _render_tempo_strips(self, tempo_segments) -> None:
         self._clear_tempo_strip_items()
@@ -600,7 +590,7 @@ class OverviewWidget(QtWidgets.QWidget):
 
     def _render_phrases(self) -> None:
         feats = self.model.features or {}
-        phrases = extract_phrase_segments(feats) if self._phrase_visible else []
+        phrases = extract_phrase_segments(feats, self.duration) if self._phrase_visible else []
         numbered = abbreviate_phrase_labels(phrases)
         band_bottom = self._wave_bottom
         band_h = self._phrase_band_h
@@ -651,116 +641,6 @@ class OverviewWidget(QtWidgets.QWidget):
         y[2::3] = np.nan
         x[2::3] = np.nan
         return pg.arrayToQPath(x, y, connect="finite")
-
-    def _on_selection_changed(self, payload) -> None:
-        start = end = None
-        if payload is not None:
-            try:
-                start, end = payload
-            except Exception:
-                start = end = None
-        self._selection_start = self._normalize_selection_value(start)
-        self._selection_end = self._normalize_selection_value(end)
-        self._apply_selection_graphics()
-
-    def _apply_selection_graphics(self) -> None:
-        self._ensure_selection_items()
-        start = self._selection_start
-        end = self._selection_end
-        has_range = start is not None and end is not None
-        if self._selection_region is not None:
-            if has_range:
-                self._selection_region.setRegion((start, end))
-                self._selection_region.setVisible(True)
-            else:
-                self._selection_region.setVisible(False)
-        y = self._selection_marker_y
-        self._update_marker_item(self._selection_start_marker, start, y)
-        self._update_marker_item(self._selection_end_marker, end, y)
-
-    def _hide_selection_graphics(self) -> None:
-        if self._selection_region is not None:
-            self._selection_region.setVisible(False)
-        if self._selection_start_marker is not None:
-            self._selection_start_marker.setVisible(False)
-        if self._selection_end_marker is not None:
-            self._selection_end_marker.setVisible(False)
-        self._selection_start = None
-        self._selection_end = None
-
-    def _ensure_selection_items(self) -> None:
-        if self._selection_region is None:
-            region = pg.LinearRegionItem(values=(0.0, 0.0))
-            region.setMovable(False)
-            region.setBrush(pg.mkBrush(255, 215, 0, 40))
-            pen = pg.mkPen(color=(255, 215, 0), width=1.4)
-            for line in getattr(region, "lines", []):
-                try:
-                    line.setPen(pen)
-                except Exception:
-                    pass
-            region.setZValue(24)
-            region.setVisible(False)
-            self.p.addItem(region)
-            self._selection_region = region
-        if self._selection_start_marker is None:
-            start_marker = pg.ScatterPlotItem(
-                size=14,
-                pen=pg.mkPen(color=(0, 200, 255), width=1.2),
-                brush=pg.mkBrush(0, 200, 255, 200),
-                pxMode=True,
-                symbol=self._make_triangle_symbol(point_down=True),
-            )
-            start_marker.setZValue(26)
-            start_marker.setVisible(False)
-            self.p.addItem(start_marker)
-            self._selection_start_marker = start_marker
-        if self._selection_end_marker is None:
-            end_marker = pg.ScatterPlotItem(
-                size=14,
-                pen=pg.mkPen(color=(255, 140, 0), width=1.2),
-                brush=pg.mkBrush(255, 140, 0, 200),
-                pxMode=True,
-                symbol=self._make_triangle_symbol(point_down=False),
-            )
-            end_marker.setZValue(26)
-            end_marker.setVisible(False)
-            self.p.addItem(end_marker)
-            self._selection_end_marker = end_marker
-
-    @staticmethod
-    def _make_triangle_symbol(*, point_down: bool) -> QtGui.QPainterPath:
-        path = QtGui.QPainterPath()
-        if point_down:
-            path.moveTo(0.0, -0.6)
-            path.lineTo(-0.5, 0.6)
-            path.lineTo(0.5, 0.6)
-        else:
-            path.moveTo(0.0, 0.6)
-            path.lineTo(-0.5, -0.6)
-            path.lineTo(0.5, -0.6)
-        path.closeSubpath()
-        return path
-
-    def _normalize_selection_value(self, value):
-        if value is None:
-            return None
-        try:
-            val = float(value)
-        except Exception:
-            return None
-        if not np.isfinite(val):
-            return None
-        return val
-
-    def _update_marker_item(self, marker: pg.ScatterPlotItem | None, value: float | None, y: float) -> None:
-        if marker is None:
-            return
-        if value is None:
-            marker.setVisible(False)
-            return
-        marker.setData([value], [y])
-        marker.setVisible(True)
 
     def _update_played_overlay(self) -> None:
         if self.played_overlay is None:

@@ -4,15 +4,17 @@ import numpy as np
 from PySide6 import QtCore, QtWidgets
 
 from core.beat_geometry import bar_beat_position, downbeat_beat_indices
+from ui.edit_panel.icons import icon
 
 class BeatCounterMixin:
     """BeatCounter section: hold Count to count beats passing under the playhead."""
 
     def _build_beat_counter_ui(self, grid: QtWidgets.QGridLayout) -> list[QtWidgets.QWidget]:
-        """BeatCounter widgets on the Phrase/JumpCUE page; returns the edit buttons."""
+        """BeatCounter widgets in the Phrase page's last row; returns the edit buttons."""
 
         self.beat_counter_button = QtWidgets.QToolButton()
-        self.beat_counter_button.setText("Count")
+        self.beat_counter_button.setIcon(icon("phrase_count"))
+        self.beat_counter_button.setIconSize(QtCore.QSize(36, 18))
         self.beat_counter_button.setToolTip("Hold to count beats passing under the playhead")
         self.beat_counter_button.setAutoRepeat(False)
 
@@ -31,9 +33,9 @@ class BeatCounterMixin:
         self.beat_counter_barbeat_display.setFixedSize(self.BTN_WIDTH, self.BTN_HEIGHT)
 
         _AL = QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter
-        grid.addWidget(self.beat_counter_button, 0, 3, _AL)
-        grid.addWidget(self.beat_counter_display, 1, 3, _AL)
-        grid.addWidget(self.beat_counter_barbeat_display, 2, 3, _AL)
+        grid.addWidget(self.beat_counter_button, 2, 0, _AL)
+        grid.addWidget(self.beat_counter_display, 2, 1, _AL)
+        grid.addWidget(self.beat_counter_barbeat_display, 2, 2, _AL)
 
         self.beat_counter_button.pressed.connect(self._on_beat_counter_pressed)
         self.beat_counter_button.released.connect(self._on_beat_counter_released)

@@ -3,6 +3,7 @@ from collections import deque
 from PySide6.QtWidgets import (
     QCheckBox,
     QFormLayout,
+    QGridLayout,
     QGroupBox,
     QLabel,
     QLineEdit,
@@ -10,6 +11,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from core.config import phraselabelname, phraselabelnames
 
 
 def build_view_tab(dialog) -> None:
@@ -72,12 +74,53 @@ def build_view_tab(dialog) -> None:
     f_advanced.addRow("Record image path", dialog.ed_record_img_path)
 
     form.addRow(grp_display)
+    form.addRow(_build_phrase_label_names(dialog))
     form.addRow(grp_performance)
     form.addRow(grp_advanced)
     dialog.tabs.addTab(dialog.tab_view, "View")
 
 
+def _build_phrase_label_names(dialog) -> QGroupBox:
+    """Per phrase label: an alias shown in its place, and its overview abbreviation
+    (empty: the label, and the first letter of its name)."""
+    grp = QGroupBox("Phrase labels")
+    grid = QGridLayout(grp)
+    grid.setHorizontalSpacing(12)
+    grid.addWidget(QLabel("Alias"), 0, 1)
+    grid.addWidget(QLabel("Overview"), 0, 2)
+    dialog.phrase_name_edits = {}
+    for row, name in enumerate((f for f in phraselabelnames.__dataclass_fields__), start=1):
+        label = name.upper()
+        alias = QLineEdit()
+        alias.setPlaceholderText(label)
+        alias.setToolTip(f"Shown in place of {label} (empty: {label})")
+        abbrev = QLineEdit()
+        abbrev.setMaxLength(4)
+        abbrev.setPlaceholderText(label[:1])
+        abbrev.setFixedWidth(64)
+        abbrev.setToolTip(f"{label} in the overview, numbered when it occurs more than once\n"
+                          "(empty: the first letter of its name)")
+        grid.addWidget(QLabel(label), row, 0)
+        grid.addWidget(alias, row, 1)
+        grid.addWidget(abbrev, row, 2)
+        dialog.phrase_name_edits[name] = (alias, abbrev)
+    grid.setColumnStretch(1, 1)
+    return grp
+
+
 class ViewSettingsMixin:
+    def _set_phrase_label_names(self, names: phraselabelnames) -> None:
+        for name, (alias, abbrev) in self.phrase_name_edits.items():
+            value = getattr(names, name)
+            alias.setText(value.alias)
+            abbrev.setText(value.abbrev)
+
+    def _get_phrase_label_names(self) -> phraselabelnames:
+        return phraselabelnames(**{
+            name: phraselabelname(alias=alias.text().strip(), abbrev=abbrev.text().strip())
+            for name, (alias, abbrev) in self.phrase_name_edits.items()
+        })
+
     def _initialize_view_settings(self, bus) -> None:
         self._refresh_samples = deque(maxlen=32)
         if bus is not None:

@@ -16,6 +16,30 @@ class libconfig:
 
 
 @dataclass
+class phraselabelname:
+    alias: str   # shown in place of the label ("" = the label)
+    abbrev: str  # the overview's short form ("" = the first letter)
+
+
+@dataclass
+class phraselabelnames:
+    """How each phrase label is shown (utils.phrases.PHRASE_LABELS, lowercased)."""
+    lead_in: phraselabelname
+    intro: phraselabelname
+    verse: phraselabelname
+    chorus: phraselabelname
+    break_chorus: phraselabelname
+    bridge: phraselabelname
+    outro: phraselabelname
+    interlude: phraselabelname
+    silence: phraselabelname
+
+    def by_label(self) -> dict[str, phraselabelname]:
+        """Names keyed by phrase label (uppercase)."""
+        return {f.name.upper(): getattr(self, f.name) for f in fields(self)}
+
+
+@dataclass
 class viewconfig:
     display_waveform: bool
     display_beatgrid: bool
@@ -26,6 +50,7 @@ class viewconfig:
     fps: int
     reduce_fps_when_occluded: bool
     record_img_path: str
+    phrase_labels: phraselabelnames
 
 
 @dataclass
@@ -131,7 +156,7 @@ class cuepointrule:
 class cuepointconfig:
     """CUE points the analysis sets from the phrases, by phrase label (the
     predefined labels, utils.phrases.PHRASE_LABELS, lowercased)."""
-    pickup: cuepointrule
+    lead_in: cuepointrule
     intro: cuepointrule
     verse: cuepointrule
     chorus: cuepointrule
@@ -288,6 +313,9 @@ def default_cfg():
         fps=60,
         reduce_fps_when_occluded=True,
         record_img_path="assets/images/vinyl.png",
+        phrase_labels=phraselabelnames(**{
+            f.name: phraselabelname(alias="", abbrev="") for f in fields(phraselabelnames)
+        }),
     )
     pcfg = playbackconfig(
         enable_metronome=False,

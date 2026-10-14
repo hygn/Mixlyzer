@@ -162,6 +162,7 @@ class SettingsDialog(
         self.cb_reduce_fps_when_occluded.setChecked(bool(v.reduce_fps_when_occluded))
         self.sp_fps.setValue(int(v.fps))
         self.ed_record_img_path.setText(v.record_img_path)
+        self._set_phrase_label_names(v.phrase_labels)
 
         p = cfg.playbackconfig
         self.cb_metronome.setChecked(bool(p.enable_metronome))
@@ -359,6 +360,7 @@ class SettingsDialog(
                 fps=int(self.sp_fps.value()),
                 reduce_fps_when_occluded=bool(self.cb_reduce_fps_when_occluded.isChecked()),
                 record_img_path=self.ed_record_img_path.text().strip(),
+                phrase_labels=self._get_phrase_label_names(),
             ),
             playbackconfig=playbackconfig(
                 enable_metronome=bool(self.cb_metronome.isChecked()),

@@ -379,19 +379,20 @@ class KeyEditMixin:
             return
         self._set_key_segments_edited(np.vstack(out))
 
-    def _key_grid_times(self) -> np.ndarray:
+    def _boundary_grid(self, by_bar: bool) -> np.ndarray:
         """Where boundaries may go: every beat, or every downbeat in bar steps."""
         beats = np.asarray(self._beatgrid, dtype=float)
-        if beats.size == 0 or not self.key_step_bar.isChecked():
+        if beats.size == 0 or not by_bar:
             return beats
         db = downbeat_beat_indices(self._beatgrid, self._segments)
         return beats[db] if len(db) else beats
 
-    def _key_step_from(self, t: float, direction: int) -> float | None:
-        """The grid point one step from boundary ``t``. A boundary within a quarter
-        step of a grid point counts as on it (stored boundaries sit a little off
-        the grid), otherwise the step goes to the next grid point that way."""
-        grid = self._key_grid_times()
+    def _step_on_grid(self, t: float, direction: int, by_bar: bool) -> float | None:
+        """The grid point one step from boundary ``t`` (key and phrase boundaries).
+        A boundary within a quarter step of a grid point counts as on it (stored
+        boundaries sit a little off the grid), otherwise the step goes to the next
+        grid point that way."""
+        grid = self._boundary_grid(by_bar)
         if grid.size == 0:
             return None
         k = int(np.argmin(np.abs(grid - t)))
@@ -410,7 +411,7 @@ class KeyEditMixin:
         if which == "start":
             if idx == 0:
                 return  # the track start does not move
-            new = self._key_step_from(float(segs[idx, 2]), direction)
+            new = self._step_on_grid(float(segs[idx, 2]), direction, self.key_step_bar.isChecked())
             if new is None or not (segs[idx - 1, 2] < new < segs[idx, 3]):
                 return
             segs[idx - 1, 3] = new
@@ -418,7 +419,7 @@ class KeyEditMixin:
         else:
             if idx == len(segs) - 1:
                 return  # the track end does not move
-            new = self._key_step_from(float(segs[idx, 3]), direction)
+            new = self._step_on_grid(float(segs[idx, 3]), direction, self.key_step_bar.isChecked())
             if new is None or not (segs[idx, 2] < new < segs[idx + 1, 3]):
                 return
             segs[idx, 3] = new

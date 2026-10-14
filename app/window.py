@@ -21,6 +21,7 @@ from .metronome import MetronomeController
 from utils.window_visibility import is_window_fully_hidden
 from utils.volume import slider_percent_to_linear, trim_dbfs_to_linear
 from utils.atomic_io import atomic_write_json
+from utils.phrases import set_phrase_label_names
 
 from ui.pane import MainPane
 from ui.config.window import SettingsDialog
@@ -52,6 +53,7 @@ class AppWindow(QtWidgets.QMainWindow):
         self.setWindowIcon(QtGui.QIcon("assets/images/mixlyzer.png"))
 
         self.cfg = load_cfg()
+        set_phrase_label_names(self.cfg.viewconfig.phrase_labels.by_label())
         if self.cfg.libconfig.write_log:
             install_print_hook(log_path=self.cfg.libconfig.logpath)
             log_environment_info(log_path=self.cfg.libconfig.logpath)
@@ -435,6 +437,12 @@ class AppWindow(QtWidgets.QMainWindow):
         )
         if viewconfig_changed:
             self._apply_visibility_refresh_setting(force=True)
+        if prev_vcfg.get("phrase_labels") != new_vcfg["phrase_labels"]:
+            set_phrase_label_names(_config.viewconfig.phrase_labels.by_label())
+            track_edit = getattr(self.pane, "track_edit", None)
+            if track_edit is not None:
+                track_edit.refresh_phrase_label_names()
+            self.bus.sig_phrase_segments_updated.emit()
         if playbackconfig_changed:
             if _config.playbackconfig.enable_metronome:
                 QtCore.QMetaObject.invokeMethod(self.metro, "start", QtCore.Qt.QueuedConnection)

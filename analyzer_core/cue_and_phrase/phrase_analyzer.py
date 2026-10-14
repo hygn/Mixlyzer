@@ -739,6 +739,9 @@ def detect_two_stage_phrase_segments(
         if end - start <= 1e-6:
             continue
         segments.append({"start": start, "end": end, "label": str(label)})
+    if segments:
+        # the first phrase takes the lead-in before the first beat
+        segments[0]["start"] = 0.0
     if return_boundary_probability and return_feature_z:
         return segments, probability, feature_z
     if return_boundary_probability:

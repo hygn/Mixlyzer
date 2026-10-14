@@ -46,7 +46,7 @@ class PlayHead(ViewPlugin):
         super().__init__(bus, model, tl)
         self.playhead = pg.InfiniteLine(angle=90, pen=pg.mkPen((255,200,50), width=2))
         self.beat_label = _outlined_text_item((50, 120, 255))
-        # above every other main-plot item (cue markers 110, selection 120)
+        # above every other main-plot item (cue markers 110)
         self.playhead.setZValue(1000)
         self.beat_label.setZValue(1001)
         self._beats_time = ()

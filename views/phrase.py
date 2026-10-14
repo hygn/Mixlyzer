@@ -102,7 +102,7 @@ class PhraseView(ViewPlugin):
     def _load_phrases(self):
         features = self.model.features or {}
         self.duration = float(self.model.duration_sec or features.get("duration_sec") or 0.0)
-        self._phrases = extract_phrase_segments(features)
+        self._phrases = extract_phrase_segments(features, self.duration)
         self._numbered = number_phrase_labels(self._phrases)
 
     def _rebuild(self):

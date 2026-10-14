@@ -6,10 +6,9 @@ from typing import Any, Dict, List
 import numpy as np
 
 
-# Predefined phrase labels (always uppercase). Custom labels (free text) are
-# also allowed and are kept exactly as the user types them.
+# The phrase labels (uppercase); no others.
 PHRASE_LABELS: list[str] = [
-    "PICKUP",
+    "LEAD_IN",
     "INTRO",
     "VERSE",
     "CHORUS",
@@ -20,9 +19,12 @@ PHRASE_LABELS: list[str] = [
     "SILENCE",
 ]
 
-# Stable colors for the predefined labels; custom labels fall back to a hash.
+# Where no phrase is assigned (gaps, or a track without phrase analysis). Shown
+# and edited like a label, never stored: stored phrases leave it as a gap.
+UNASSIGNED = "UNASSIGNED"
+
 _PHRASE_COLORS: dict[str, tuple[int, int, int]] = {
-    "PICKUP": (0, 180, 200),
+    "LEAD_IN": (0, 180, 200),
     "INTRO": (70, 130, 180),
     "VERSE": (46, 139, 87),
     "CHORUS": (220, 60, 90),
@@ -31,16 +33,31 @@ _PHRASE_COLORS: dict[str, tuple[int, int, int]] = {
     "OUTRO": (95, 95, 110),
     "INTERLUDE": (218, 165, 32),
     "SILENCE": (110, 110, 110),
+    UNASSIGNED: (52, 52, 58),
 }
 
-_FALLBACK_PALETTE: list[tuple[int, int, int]] = [
-    (200, 80, 40),
-    (40, 160, 160),
-    (160, 100, 200),
-    (120, 160, 40),
-    (200, 120, 160),
-    (80, 120, 200),
-]
+
+# How labels are shown (config viewconfig.phrase_labels, set by the app): label ->
+# (alias, overview abbreviation), "" for the defaults.
+_NAMES: dict[str, tuple[str, str]] = {}
+
+
+def set_phrase_label_names(names: dict[str, Any]) -> None:
+    """Set the labels' aliases / overview abbreviations (label -> object with
+    ``alias`` and ``abbrev``, see core.config.phraselabelnames)."""
+    _NAMES.clear()
+    for label, name in names.items():
+        _NAMES[str(label)] = (str(name.alias or "").strip(), str(name.abbrev or "").strip())
+
+
+def phrase_display_name(label: str) -> str:
+    """The label as shown: its alias, else itself."""
+    return _NAMES.get(label, ("", ""))[0] or label
+
+
+def phrase_abbrev(label: str) -> str:
+    """The label in the overview: its abbreviation, else the first letter of its name."""
+    return _NAMES.get(label, ("", ""))[1] or phrase_display_name(label)[:1]
 
 
 # Phrase boundaries are persisted as float32.  At track-scale timestamps its
@@ -52,19 +69,8 @@ MIN_PHRASE_DUR = 1e-4
 PHRASE_SLIVER_SEC = 0.05
 
 
-def normalize_base_label(label: object) -> str:
-    """Normalize a user-entered label to its base form (no trailing digits)."""
-    text = str(label or "").strip()
-    return text
-
-
-def phrase_color(base_label: str) -> tuple[int, int, int]:
-    key = str(base_label or "").strip().upper()
-    if key in _PHRASE_COLORS:
-        return _PHRASE_COLORS[key]
-    if not key:
-        return (110, 110, 110)
-    return _FALLBACK_PALETTE[hash(key) % len(_FALLBACK_PALETTE)]
+def phrase_color(label: str) -> tuple[int, int, int]:
+    return _PHRASE_COLORS.get(str(label), _PHRASE_COLORS[UNASSIGNED])
 
 
 def normalize_phrase_segments(
@@ -102,7 +108,7 @@ def normalize_phrase_segments(
             end = min(end, upper)
         if end - start <= MIN_PHRASE_DUR:
             continue
-        label = normalize_base_label(p.get("label"))
+        label = str(p.get("label") or "").strip()
         rows.append({"start": start, "end": end, "label": label})
     rows.sort(key=lambda r: r["start"])
 
@@ -126,12 +132,9 @@ def _sorted_phrases(phrases) -> list[dict[str, Any]]:
     return normalize_phrase_segments(phrases)
 
 
-def number_phrase_labels(phrases) -> list[str]:
-    """Return display labels: when a base label occurs >=2x, number all from 1.
-
-    Order is by start time. Single-occurrence labels are returned unchanged.
-    """
-    rows = _sorted_phrases(phrases)
+def _phrase_numbers(rows) -> list[str]:
+    """Each phrase's number among those of its label ("" for a label that occurs
+    once, and for UNASSIGNED)."""
     counts: dict[str, int] = {}
     for r in rows:
         counts[r["label"]] = counts.get(r["label"], 0) + 1
@@ -139,97 +142,25 @@ def number_phrase_labels(phrases) -> list[str]:
     out: list[str] = []
     for r in rows:
         base = r["label"]
-        if counts.get(base, 0) >= 2:
+        if counts[base] >= 2 and base != UNASSIGNED:
             running[base] = running.get(base, 0) + 1
-            out.append(f"{base}{running[base]}")
+            out.append(str(running[base]))
         else:
-            out.append(base)
+            out.append("")
     return out
+
+
+def number_phrase_labels(phrases) -> list[str]:
+    """Display names in time order: the label's name, numbered from 1 when the
+    label occurs more than once (e.g. CHORUS1, CHORUS2)."""
+    rows = _sorted_phrases(phrases)
+    return [phrase_display_name(r["label"]) + n for r, n in zip(rows, _phrase_numbers(rows))]
 
 
 def abbreviate_phrase_labels(phrases) -> list[str]:
-    """Overview labels: predefined phrases shown as first-letter + number (e.g.
-    CHORUS2 -> "C2", VERSE -> "V"); custom labels keep their full numbered form.
-    """
+    """Overview labels: the abbreviation + number (e.g. CHORUS2 -> "C2", VERSE -> "V")."""
     rows = _sorted_phrases(phrases)
-    numbered = number_phrase_labels(rows)
-    predefined = {label.upper() for label in PHRASE_LABELS}
-    out: list[str] = []
-    for row, disp in zip(rows, numbered):
-        base = row["label"]
-        if base and base.upper() in predefined:
-            suffix = disp[len(base):]  # trailing number, or "" for a lone occurrence
-            out.append(base[0].upper() + suffix)
-        else:
-            out.append(disp)
-    return out
-
-
-def assign_phrase_to_selection(phrases, start: float, end: float, base_label: str) -> list[dict[str, Any]]:
-    """Overwrite [start, end) with base_label, then merge adjacent same-label spans."""
-    start = float(start)
-    end = float(end)
-    if end <= start:
-        raise ValueError("selection end must be greater than start")
-    base = normalize_base_label(base_label)
-    if not base:
-        raise ValueError("phrase label must not be empty")
-
-    new_seg = {"start": start, "end": end, "label": base}
-    result: list[dict[str, Any]] = []
-    inserted = False
-    for seg in _sorted_phrases(phrases):
-        s, e = seg["start"], seg["end"]
-        if e <= start:
-            result.append(dict(seg))
-            continue
-        if s >= end:
-            if not inserted:
-                result.append(dict(new_seg))
-                inserted = True
-            result.append(dict(seg))
-            continue
-        # overlaps the new span
-        if s < start:
-            left = dict(seg)
-            left["end"] = start
-            result.append(left)
-        if not inserted:
-            result.append(dict(new_seg))
-            inserted = True
-        if e > end:
-            right = dict(seg)
-            right["start"] = end
-            result.append(right)
-    if not inserted:
-        result.append(dict(new_seg))
-
-    # Adjacent segments that share a label are kept separate (not merged), so
-    # repeated sections stay individually numbered (e.g. VERSE1, VERSE2).
-    return normalize_phrase_segments(result)
-
-
-def clear_phrase_in_selection(phrases, start: float, end: float) -> list[dict[str, Any]]:
-    """Remove any phrase coverage within [start, end), splitting overlaps."""
-    start = float(start)
-    end = float(end)
-    if end <= start:
-        return _sorted_phrases(phrases)
-    result: list[dict[str, Any]] = []
-    for seg in _sorted_phrases(phrases):
-        s, e = seg["start"], seg["end"]
-        if e <= start or s >= end:
-            result.append(dict(seg))
-            continue
-        if s < start:
-            left = dict(seg)
-            left["end"] = start
-            result.append(left)
-        if e > end:
-            right = dict(seg)
-            right["start"] = end
-            result.append(right)
-    return normalize_phrase_segments(result)
+    return [phrase_abbrev(r["label"]) + n for r, n in zip(rows, _phrase_numbers(rows))]
 
 
 def build_phrase_segments_np(phrases) -> Dict[str, np.ndarray]:
@@ -277,26 +208,55 @@ def _extract_phrase_block(features: Dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def extract_phrase_segments(features: Dict[str, Any]) -> List[dict[str, Any]]:
-    """Read phrases (base labels) from a features dict; returns sorted list."""
+def extract_phrase_segments(features: Dict[str, Any], duration_sec: float | None = None) -> List[dict[str, Any]]:
+    """Read phrases (base labels) from a features dict; returns a sorted list
+    covering the whole track (``duration_sec``, else the features' own), the
+    stretches without a phrase as UNASSIGNED."""
     block = _extract_phrase_block(features)
-    if not block:
-        return []
+    rows: list[dict[str, Any]] = []
     try:
         starts = np.asarray(block["start"], dtype=float).ravel()
         ends = np.asarray(block["end"], dtype=float).ravel()
         labels = np.asarray(block["label"]).ravel()
     except Exception:
-        return []
-    n = min(len(starts), len(ends), len(labels))
-    rows: list[dict[str, Any]] = []
-    for i in range(n):
+        starts = ends = labels = np.asarray([])
+    for i in range(min(len(starts), len(ends), len(labels))):
         rows.append({
             "start": float(starts[i]),
             "end": float(ends[i]),
-            "label": normalize_base_label(str(labels[i])),
+            "label": str(labels[i]).strip(),
         })
-    return _sorted_phrases(rows)
+    if not duration_sec and isinstance(features, dict):
+        duration_sec = features.get("duration_sec")
+    return fill_unassigned(rows, duration_sec)
+
+
+def fill_unassigned(phrases, duration_sec) -> List[dict[str, Any]]:
+    """The phrases with every stretch of [0, duration] they leave uncovered as an
+    UNASSIGNED phrase (the whole track when there are none); phrases past the
+    end are cut there."""
+    try:
+        duration = float(np.asarray(duration_sec, dtype=float).ravel()[0])
+    except Exception:
+        duration = 0.0
+    if not (math.isfinite(duration) and duration > 0.0):
+        return _sorted_phrases(phrases)
+    rows = normalize_phrase_segments(phrases, min_time=0.0, max_time=duration)
+    out: list[dict[str, Any]] = []
+    cursor = 0.0
+    for row in rows:
+        if row["start"] - cursor >= PHRASE_SLIVER_SEC:
+            out.append({"start": cursor, "end": row["start"], "label": UNASSIGNED})
+        out.append(row)
+        cursor = max(cursor, row["end"])
+    if duration - cursor >= PHRASE_SLIVER_SEC:
+        out.append({"start": cursor, "end": duration, "label": UNASSIGNED})
+    return out
+
+
+def assigned_phrases(phrases) -> List[dict[str, Any]]:
+    """The phrases to store: UNASSIGNED ones left out (gaps)."""
+    return [row for row in _sorted_phrases(phrases) if row["label"] != UNASSIGNED]
 
 
 def build_phrase_strip_buffer(phrases, duration_sec: float, *, width: int = 4096) -> np.ndarray | None:

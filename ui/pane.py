@@ -374,7 +374,6 @@ class MainPane(QtWidgets.QWidget):
         self.add_view("CUEPointView")
         if hasattr(self, "ov") and hasattr(self.ov, "set_phrase_visible"):
             self.ov.set_phrase_visible(getattr(view_cfg, "display_phrase", True))
-        self.add_view("SelectionOverlayView")
         # last, so the playhead is drawn over everything (it also has the top z value)
         self.add_view("PlayHead")
         self.p.setYRange(0, 1.0, padding=0.05)
@@ -534,7 +533,7 @@ class MainPane(QtWidgets.QWidget):
     def _on_phrases_updated(self) -> None:
         """Cache the displayed phrases (numbered like the phrase view)."""
         f = self.model.features if isinstance(self.model.features, dict) else {}
-        rows = extract_phrase_segments(f)
+        rows = extract_phrase_segments(f, self.model.duration_sec)
         self._phrase_starts = np.asarray([float(r["start"]) for r in rows], dtype=float)
         self._phrase_ends = np.asarray([float(r["end"]) for r in rows], dtype=float)
         self._phrase_names = number_phrase_labels(rows)
@@ -562,7 +561,7 @@ class MainPane(QtWidgets.QWidget):
             self.track_edit.set_key_segments(f.get("key_segments"), initialize=True)
             self.track_edit.set_JumpCUE(extract_jump_cue_pairs(f))
             self.track_edit.set_cue_points(extract_cue_points(f))
-            self.track_edit.set_phrase_segments(extract_phrase_segments(f), initialize=True)
+            self.track_edit.set_phrase_segments(extract_phrase_segments(f, self.model.duration_sec), initialize=True)
             # Build the initial undo snapshot only after all editor-owned state
             # has been loaded, so undo cannot restore stale Phrase/JumpCUE data.
             self.track_edit.set_segments(f.get("beats_time_sec"), segments)

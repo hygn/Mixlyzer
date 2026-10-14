@@ -19,10 +19,9 @@ from ui.edit_panel.jumpcue import JumpCUEEditMixin
 from ui.edit_panel.key import KeyEditMixin
 from ui.edit_panel.phrase import PhraseEditMixin
 from ui.edit_panel.save_worker import SaveWorker
-from ui.edit_panel.selection import SelectionMixin
 from ui.edit_panel.styles import BUTTON_STYLESHEET, WARNING_BUTTON_STYLESHEET
 from utils.cue_points import build_cue_points_np
-from utils.phrases import build_phrase_segments_np, normalize_phrase_segments
+from utils.phrases import assigned_phrases, build_phrase_segments_np
 
 
 class EditPanel(
@@ -32,7 +31,6 @@ class EditPanel(
     JumpCUEEditMixin,
     CuePointEditMixin,
     BeatCounterMixin,
-    SelectionMixin,
     QtWidgets.QWidget,
 ):
     """Track editor panel: Beat/Key and Phrase/JumpCUE pages plus the shared Edits column
@@ -64,8 +62,6 @@ class EditPanel(
         self.model = model
         self.prev_tap_time = None
         self.prev_tap_BPM = 0
-        self._selection_start: float | None = None
-        self._selection_end: float | None = None
         self._save_thread = None
         self._save_worker = None
         self._edit_enabled = True
@@ -244,17 +240,14 @@ class EditPanel(
     def set_track_duration(self, duration):
         value = float(duration or 0.0)
         self.duration = value if np.isfinite(value) and value > 0.0 else 0.0
-        if self.duration > 0.0 and self._phrase_segments:
-            self._phrase_segments = normalize_phrase_segments(
-                self._phrase_segments,
-                min_time=0.0,
-                max_time=self.duration,
-            )
-            self._broadcast_phrase()
+        if self.duration > 0.0:
+            # the editor's own rows only: the model's phrases are not edited by this
+            self._phrase_segments = self._phrase_rows(self._phrase_segments)
+            self._phrase_cur = -1
+            self._update_phrase_status()
 
     def set_segments(self, beatgrid: np.ndarray, segments: Optional[np.ndarray]) -> None:
         """Set tempo segments: (N, 5) [start, end, bpm, inizio, ts_num]."""
-        self._clear_selection()
         if segments is None:
             self._segments = np.empty((0, 5), dtype=float)
             self._cur_idx = -1
@@ -374,8 +367,6 @@ class EditPanel(
             updated = True
         if key_segments is not None:
             self.set_key_segments(key_segments)
-        if key_segments is not None:
-            self.bus.sig_key_selection_changed.emit(None)
         if updated:
             self._update_undo_redo_buttons()
 
@@ -455,12 +446,8 @@ class EditPanel(
             return
         auto_block = self.model.features.get("jump_cues_auto_np") if self.model is not None else None
         jump_cues_auto_np = auto_block if isinstance(auto_block, dict) else None
-        self._phrase_segments = normalize_phrase_segments(
-            self._phrase_segments,
-            min_time=0.0,
-            max_time=self.duration if self.duration > 0.0 else None,
-        )
-        phrase_segments_np = build_phrase_segments_np(self._phrase_segments)
+        # UNASSIGNED is not stored: it is where no phrase is
+        phrase_segments_np = build_phrase_segments_np(assigned_phrases(self._phrase_segments))
         cue_points_np = build_cue_points_np(copy.deepcopy(self._cue_points))
         self._save_in_progress = True
         self.btn_save.setEnabled(False)
