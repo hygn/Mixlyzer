@@ -149,6 +149,29 @@ def build_phrase_cue_points(phrases: list[dict[str, Any]] | None, rules: dict[st
     return _dedupe_cue_points(points)
 
 
+def lead_in_end_sec(phrases: list[dict[str, Any]] | None) -> float | None:
+    """Where the song's LEAD_IN (its first phrase, when labelled so) ends."""
+    rows = []
+    for phrase in phrases or []:
+        try:
+            rows.append((float(phrase.get("start")), float(phrase.get("end")),
+                         str(phrase.get("label", "") or "").strip().upper()))
+        except (AttributeError, TypeError, ValueError):
+            continue
+    if not rows:
+        return None
+    start, end, label = min(rows)
+    if label != "LEAD_IN" or not (math.isfinite(end) and end > start):
+        return None
+    return end
+
+
+def add_lead_in_cue_point(points: list[dict[str, Any]], end_sec: float) -> list[dict[str, Any]]:
+    """AutoCUE: a CUE point where the lead-in ends (kept once if one is already there)."""
+    point = {"id": len(points), "time_sec": float(end_sec), "label": "LEAD_IN_OUT", "comment": "Lead-in end"}
+    return _dedupe_cue_points([*points, point])
+
+
 def extract_cue_points(features: dict[str, Any] | None) -> list[dict[str, Any]]:
     if not features:
         return []

@@ -217,6 +217,14 @@ def build_jump_cues_np_from_point_groups(groups: List[List[float]]) -> Dict[str,
     return build_jump_cues_np(pairs, canonicalize_labels=True, merge_coincident=True)
 
 
+def lead_in_jump_pair(end_sec: float) -> dict:
+    """AutoCUE: a JumpCUE of its own where the lead-in ends (a one-cue group, the
+    pair of the cue with itself), lettered by point with the analysis' JumpCUEs."""
+    cue = {"label": "", "start": float(end_sec), "end": float(end_sec), "point": float(end_sec)}
+    return {"forward": dict(cue), "backward": dict(cue), "lag_beats": 0.0, "lag_sec": 0.0,
+            "score": 1.0, "confidence": 1.0}
+
+
 def _empty_jump_cues_np() -> Dict[str, np.ndarray]:
     return {
         "cue_id": np.asarray([], dtype=np.int32),

@@ -7,6 +7,7 @@ import os
 import base64
 from pymediainfo import MediaInfo
 import soundfile as sf
+from dataclasses import replace
 from pathlib import Path
 from PySide6 import QtGui
 from typing import Optional
@@ -20,10 +21,12 @@ from utils.wave import build_wave_preview
 from analyzer_core.self_correlation.JumpCUE import JumpCueConfig, JumpCueEngine
 from analyzer_core.self_correlation.jump_point_model import jump_point_beat_features
 from analyzer_core.cue_and_phrase import detect_phrase_segments
-from utils.jump_cues import build_jump_cues_np
+from utils.jump_cues import build_jump_cues_np, lead_in_jump_pair
 from utils.cue_points import (
     build_cue_points_np,
+    add_lead_in_cue_point,
     build_phrase_cue_points,
+    lead_in_end_sec,
     empty_cue_points_np,
 )
 from utils.phrases import build_phrase_segments_np
@@ -556,6 +559,9 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
     # The phrase boundary probability is a JumpCUE feature (below).
     phrase_boundary_prob = None
     phrase_feature_z = None
+    # AutoCUE (Settings > Analysis > CUE): a CUE point or a JumpCUE where the lead-in ends.
+    autocue = gcf.autocue
+    lead_in_end = None
     if not phrase_enabled:
         print("[Phrase] skipped: disabled in analysis settings")
         features["phrase_segments_np"] = build_phrase_segments_np([])
@@ -576,6 +582,9 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
             )
             features["phrase_segments_np"] = build_phrase_segments_np(phrase_segments)
             phrase_cue_points = build_phrase_cue_points(phrase_segments, config.cuepointconfig.by_label())
+            lead_in_end = lead_in_end_sec(phrase_segments)
+            if autocue == "cue_point" and lead_in_end is not None:
+                phrase_cue_points = add_lead_in_cue_point(phrase_cue_points, lead_in_end)
             features["cue_points_np"] = build_cue_points_np(phrase_cue_points)
             labels_summary = ", ".join(str(s["label"]) for s in phrase_segments)
             print(
@@ -605,7 +614,11 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
     elif phrase_boundary_prob is None:
         print("[JumpCUE] skipped: no phrase boundary probability")
     elif beats_time_arr.size >= 2:
-        jump_engine = JumpCueEngine(JumpCueConfig(jump_point_model_path=str(gcf.jumpcue_parameter_path)))
+        jump_config = JumpCueConfig(jump_point_model_path=str(gcf.jumpcue_parameter_path))
+        if autocue == "jumpcue" and lead_in_end is not None:
+            # one hot cue slot stays free for the AutoCUE JumpCUE (below)
+            jump_config = replace(jump_config, hot_cue_slots=jump_config.hot_cue_slots - 1)
+        jump_engine = JumpCueEngine(jump_config)
         jump_result = jump_engine.run(
             y_harm=y_harm,
             sr=global_sr,
@@ -629,6 +642,8 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
             print("[JumpCUE] pairs", jump_pairs)
         else:
             print("[JumpCUE] no jump-compatible pairs detected")
+    if autocue == "jumpcue" and lead_in_end is not None:
+        jump_pairs = [*jump_pairs, lead_in_jump_pair(lead_in_end)]
     features["jump_cues_np"] = build_jump_cues_np(
         jump_pairs,
         canonicalize_labels=True,

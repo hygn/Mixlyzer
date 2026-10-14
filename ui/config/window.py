@@ -235,6 +235,7 @@ class SettingsDialog(
         self.ed_jumpcue_parameter_path.setText(str(getattr(a, "jumpcue_parameter_path", "") or ""))
         self.ed_jumpcue_feature_cache_path.setText(str(getattr(a, "jumpcue_feature_cache_path", "") or ""))
         self._set_cue_point_rules(cfg.cuepointconfig)
+        self._set_autocue(a.autocue)
 
         # key
         k = cfg.keyconfig
@@ -333,6 +334,7 @@ class SettingsDialog(
                 phrase_feature_cache_path=self.ed_phrase_feature_cache_path.text().strip(),
                 jumpcue_parameter_path=self.ed_jumpcue_parameter_path.text().strip(),
                 jumpcue_feature_cache_path=self.ed_jumpcue_feature_cache_path.text().strip(),
+                autocue=self._get_autocue(),
             ),
             keyconfig=keyconfig(
                 min_offset=float(self.sp_min_offset.value()),

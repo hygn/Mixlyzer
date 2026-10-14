@@ -23,19 +23,20 @@ from analyzer_core.cue_and_phrase.model_features import segment_feature_matrix
 from analyzer_core.cue_and_phrase.phrase_analyzer import (
     _predict_boundary_probability,
     decode_phrase_boundaries,
-    decode_phrase_labels,
+    finish_phrase_segments,
     pass_one_context,
-    refine_phrase_segments,
     refinement_boundary_matrix,
     refinement_label_matrix,
     similarity_from_inputs,
 )
+from analyzer_core.cue_and_phrase.lead_in import LEAD_IN_VERSION
 from analyzer_core.cue_and_phrase.refinement import (
     beat_posterior,
     label_change_features,
     phrase_grid_features,
     shift_candidates,
 )
+from optimizer import phrase_lead_in as _lead_in
 
 ProgressCallback = Callable[[int, str], None]
 
@@ -204,7 +205,8 @@ def pass_one_outputs(track: dict, artifact: dict, pair_clf, true_bounds=None) ->
     bounds = decode_phrase_boundaries(p, valid, downbeat, settings)
     out = {"probability": p, "bounds": bounds,
            "context": pass_one_context(artifact["label_clf"], track["feature_z"], bounds, valid, downbeat, ctx),
-           "S": similarity_from_inputs(pair_clf, track["repeat_inputs"])}
+           "S": similarity_from_inputs(pair_clf, track["repeat_inputs"]),
+           "lead_in": _lead_in.lead_in_features(track, artifact["boundary_clf"], bounds, settings["n_mels"])}
     if true_bounds is not None:
         tb = np.asarray(true_bounds, np.int32)
         post = artifact["label_clf"].predict_proba(
@@ -261,26 +263,27 @@ def fit_two_pass(
     say(94, "Fitting label-change and bar-shift GBMs")
     change = fit_change_model(prepared, indices, targets, oof, seed + 500)
     shift = fit_shift_model(prepared, indices, targets, extra, oof, seed + 600)
+    say(97, "Fitting lead-in GBMs")
+    lead_in, threshold = _lead_in.fit_lead_in({i: oof[i]["lead_in"] for i in oof}, indices, targets, seed + 700)
+    if lead_in is not None:
+        settings = {**settings, "lead_in_version": LEAD_IN_VERSION, "lead_in_threshold": threshold}
     artifact = _pass_one_artifact(boundary_clf, label_model, settings)
     artifact["refinement"] = {"boundary2": boundary2, "label2": label2, "pair": pair_clf,
                               "change": change, "shift": shift}
+    artifact["lead_in"] = lead_in
     return artifact
 
 
 def predict_track(track: dict, artifact: dict) -> tuple[np.ndarray, list[str]]:
-    """Full pipeline (pass 1 + pass 2) on a prepared track, as the analyzer runs it."""
+    """Full pipeline (pass 1, lead-in, pass 2) on a prepared track, as the analyzer runs it."""
     settings = artifact["settings"]
     valid = np.asarray(track["valid_mask"], dtype=bool)
     downbeat = np.asarray(track["downbeat"], dtype=bool)
     p = _predict_boundary_probability(artifact["boundary_clf"], track["boundary_feature_z"], valid)
     bounds = decode_phrase_boundaries(p, valid, downbeat, settings)
-    if artifact.get("refinement") is None:
-        post = artifact["label_clf"].predict_proba(segment_feature_matrix(
-            np.asarray(track["feature_z"], dtype=np.float64), bounds, track["label_context_beats"]))
-        return bounds, decode_phrase_labels(artifact, np.log(np.clip(post, 1e-7, 1.0)), bounds)
     # Pass 2 adds its columns to the pass-1 boundary features itself.
-    return refine_phrase_segments(artifact, track["feature_z"], track["boundary_feature_z"], valid, downbeat,
-                                  p, bounds, track["repeat_inputs"])
+    return finish_phrase_segments(artifact, track["feature_z"], track["boundary_feature_z"], valid, downbeat,
+                                  track["beat_times_sec"], p, bounds, track["repeat_inputs"])
 
 
 def _matches(pred: np.ndarray, truth: np.ndarray) -> int:
@@ -289,7 +292,7 @@ def _matches(pred: np.ndarray, truth: np.ndarray) -> int:
 
 def pipeline_metrics(prepared: list[dict], targets: list, predictions: list) -> dict[str, float]:
     """Decoded-pipeline metrics, exact beat: all-boundary F1, F1 of the boundaries
-    between two different labels, and beat label accuracy."""
+    between two different labels, beat label accuracy and exactly right lead-ins."""
     keys = set(KEY_LABELS)
     hit = n_pred = n_true = 0
     c_hit = c_pred = c_true = 0
@@ -331,4 +334,5 @@ def pipeline_metrics(prepared: list[dict], targets: list, predictions: list) -> 
         "label_change_f1": 2.0 * c_hit / max(c_pred + c_true, 1),
         "key_change_f1": 2.0 * k_hit / max(k_pred + k_true, 1),
         "label_accuracy": beats_ok / max(beats, 1),
+        "lead_in_accuracy": _lead_in.lead_in_accuracy(targets, predictions),
     }

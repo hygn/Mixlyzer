@@ -93,6 +93,8 @@ class PhraseOptimizationResult:
     # Changes between two different key labels (INTRO / VERSE / CHORUS /
     # BREAK_CHORUS / INTERLUDE / OUTRO), the ones that matter for DJ use.
     key_change_f1: float = 0.0
+    # Tracks whose LEAD_IN is exactly right (none in both, or the same end beat).
+    lead_in_accuracy: float = 0.0
     skipped_tracks: tuple[SkippedOptimizationTrack, ...] = ()
     # False: the metrics are measured on the training tracks (in-sample).
     cross_validated: bool = False
@@ -588,6 +590,7 @@ def optimize_phrase_parameters(
         label_change_f1=metrics["label_change_f1"],
         label_accuracy=metrics["label_accuracy"],
         key_change_f1=metrics["key_change_f1"],
+        lead_in_accuracy=metrics["lead_in_accuracy"],
         skipped_tracks=tuple(ignored),
         cross_validated=cross_validated,
     )

@@ -283,11 +283,23 @@ def build_analysis_tab(dialog) -> None:
     f_phrase_advanced.addRow("Feature cache", dialog.ed_phrase_feature_cache_path)
     f_phrase_advanced.addRow("", dialog.btn_reoptimize_phrase_parameter)
     f_phrase.addRow(grp_phrase_general)
-    f_phrase.addRow(_build_cue_point_rules(dialog))
     f_phrase.addRow(grp_phrase_advanced)
 
-    # JumpCUE
-    tab_jumpcue = QWidget(); f_jumpcue = QFormLayout(tab_jumpcue)
+    # CUE: AutoCUE, the CUE point rules and the JumpCUE model
+    tab_cue = QWidget(); f_cue = QFormLayout(tab_cue)
+    dialog.cmb_autocue = QComboBox()
+    dialog.cmb_autocue.addItem("CUE point", "cue_point")
+    dialog.cmb_autocue.addItem("JumpCUE", "jumpcue")
+    dialog.cmb_autocue.addItem("Off", "off")
+    dialog.cmb_autocue.setToolTip(
+        "What the analysis puts where the lead-in ends (the first phrase after it):\n"
+        "CUE point: a CUE point (memory cue).\n"
+        "JumpCUE: a JumpCUE (hot cue) of its own.\n"
+        "Off: nothing."
+    )
+    grp_autocue = QGroupBox("AutoCUE")
+    f_autocue = QFormLayout(grp_autocue)
+    f_autocue.addRow("After the lead-in", dialog.cmb_autocue)
     dialog.ed_jumpcue_parameter_path = QLineEdit()
     dialog.ed_jumpcue_parameter_path.setPlaceholderText("relative or absolute .json path")
     dialog.ed_jumpcue_feature_cache_path = QLineEdit()
@@ -300,19 +312,21 @@ def build_analysis_tab(dialog) -> None:
         "track's JumpCUEs differ from its automatic analysis, the automatic choice is "
         "learned as the one to avoid."
     )
-    grp_jumpcue_advanced = QGroupBox("Advanced")
+    grp_jumpcue_advanced = QGroupBox("JumpCUE Advanced")
     f_jumpcue_advanced = QFormLayout(grp_jumpcue_advanced)
     f_jumpcue_advanced.addRow("Parameters (JSON)", dialog.ed_jumpcue_parameter_path)
     f_jumpcue_advanced.addRow("Feature cache", dialog.ed_jumpcue_feature_cache_path)
     f_jumpcue_advanced.addRow("", dialog.btn_reoptimize_jumpcue_parameter)
-    f_jumpcue.addRow(grp_jumpcue_advanced)
+    f_cue.addRow(grp_autocue)
+    f_cue.addRow(_build_cue_point_rules(dialog))
+    f_cue.addRow(grp_jumpcue_advanced)
 
     # Assemble
     analysis_tabs.addTab(tab_global, "Global")
     analysis_tabs.addTab(tab_beat, "Beat")
     analysis_tabs.addTab(tab_key, "Key")
     analysis_tabs.addTab(tab_phrase, "Phrase")
-    analysis_tabs.addTab(tab_jumpcue, "JumpCUE")
+    analysis_tabs.addTab(tab_cue, "CUE")
     analysis_tabs.addTab(tab_wave, "Waveform")
 
     root.addWidget(analysis_tabs)
@@ -356,6 +370,12 @@ def _build_cue_point_rules(dialog) -> QGroupBox:
 
 
 class AnalysisSettingsMixin:
+    def _set_autocue(self, mode: str) -> None:
+        self.cmb_autocue.setCurrentIndex(self.cmb_autocue.findData(mode))
+
+    def _get_autocue(self) -> str:
+        return str(self.cmb_autocue.currentData())
+
     def _set_cue_point_rules(self, rules: cuepointconfig) -> None:
         for name, (start, end, same) in self.cue_rule_boxes.items():
             rule = getattr(rules, name)
@@ -731,7 +751,8 @@ class AnalysisSettingsMixin:
                 f"{kind} boundary F1 (exact beat): {result.boundary_f1:.1%}\n"
                 f"{kind} key-section change F1: {result.key_change_f1:.1%}\n"
                 f"{kind} label-change boundary F1: {result.label_change_f1:.1%}\n"
-                f"{kind} beat label accuracy: {result.label_accuracy:.1%}"
+                f"{kind} beat label accuracy: {result.label_accuracy:.1%}\n"
+                f"{kind} lead-in accuracy: {result.lead_in_accuracy:.1%}"
                 + (
                     ""
                     if result.cross_validated

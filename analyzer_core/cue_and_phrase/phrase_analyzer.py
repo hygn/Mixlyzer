@@ -28,6 +28,7 @@ from analyzer_core.cue_and_phrase.structural_features import (
     STRUCTURE_FEATURE_VERSION,
     multi_view_structure_features,
 )
+from analyzer_core.cue_and_phrase import lead_in as _lead_in
 from analyzer_core.cue_and_phrase import refinement as _refine
 from analyzer_core.cue_and_phrase.refinement import REFINEMENT_VERSION
 from utils.atomic_io import atomic_output_path
@@ -41,6 +42,9 @@ REFINEMENT_MODELS = ("boundary2", "label2", "pair")
 # Later additions on top of pass 2: the label-change GBM (pairwise term of the
 # label Viterbi) and the bar-shift GBM for changes between key labels.
 OPTIONAL_REFINEMENT_MODELS = ("change", "shift")
+# Optional LEAD_IN models (analyzer_core/cue_and_phrase/lead_in.py), stored as
+# lead_in_<name>. Artifacts without them never place a lead-in.
+LEAD_IN_MODELS = ("presence", "location")
 _REQUIRED_SETTINGS = frozenset(
     {
         "sr",
@@ -226,6 +230,9 @@ def export_two_stage_npz_artifact(artifact: dict[str, object], output_path: str 
     if artifact.get("refinement") is not None:
         for prefix, clf in artifact["refinement"].items():
             _hgb_to_npz_payload(prefix, clf, payload)
+    if artifact.get("lead_in"):
+        for name, clf in artifact["lead_in"].items():
+            _hgb_to_npz_payload(f"lead_in_{name}", clf, payload)
     out = Path(output_path)
     if out.suffix.lower() != ".npz":
         raise ValueError(f"Phrase artifact output must end with .npz: {out}")
@@ -288,8 +295,16 @@ def load_two_stage_model(path: str) -> dict[str, object]:
                     refinement[prefix] = _load_numpy_hgb(archive, prefix)
             if "shift" in refinement and not {"shift_offsets_beats", "shift_labels"} <= set(settings):
                 raise ValueError(f"Phrase shift model is missing its settings: {path}")
+        lead_in = None
+        if "lead_in_presence_baseline" in archive.files:
+            if int(settings.get("lead_in_version", -1)) != _lead_in.LEAD_IN_VERSION:
+                raise ValueError(f"Unsupported Phrase lead-in version: {path}")
+            if "lead_in_threshold" not in settings:
+                raise ValueError(f"Phrase lead-in models are missing their threshold: {path}")
+            lead_in = {name: _load_numpy_hgb(archive, f"lead_in_{name}") for name in LEAD_IN_MODELS}
         return {
             "refinement": refinement,
+            "lead_in": lead_in,
             "settings": settings,
             "boundary_clf": _load_numpy_hgb(archive, "boundary"),
             "label_clf": _load_numpy_hgb(archive, "label"),
@@ -470,10 +485,12 @@ def _decode_labels(
     length_weight: float,
     change_probability: np.ndarray | None = None,
     change_weight: float = 0.0,
+    allowed: np.ndarray | None = None,
 ) -> list[str]:
     """Label Viterbi over fixed segments. ``change_probability[i - 1]``: the
     probability that the label changes between segments i - 1 and i, added as
-    ``change_weight * log p`` (different labels) or ``log (1 - p)`` (same)."""
+    ``change_weight * log p`` (different labels) or ``log (1 - p)`` (same).
+    ``allowed[i, j]`` False keeps label j off segment i."""
     m, n_labels = logp.shape
     if m == 0:
         return []
@@ -485,6 +502,8 @@ def _decode_labels(
         emit = emit + float(length_weight) * np.vstack(
             [_length_ll(length_mu, length_sigma, int(length)) for length in lengths]
         )
+    if allowed is not None:
+        emit = np.where(allowed, emit, -1e12)
     same = np.eye(n_labels, dtype=bool)
     dp = np.full((m, n_labels), -1e18, dtype=np.float64)
     back = np.full((m, n_labels), -1, dtype=np.int32)
@@ -537,9 +556,14 @@ def decode_phrase_labels(
     logp: np.ndarray,
     bounds: np.ndarray,
     change_probability: np.ndarray | None = None,
+    lead_in: int | None = None,
 ) -> list[str]:
-    """Label Viterbi over fixed segments with the artifact's transition / length model."""
+    """Label Viterbi over fixed segments with the artifact's transition / length model.
+    With lead-in models, LEAD_IN goes on the first segment exactly when ``lead_in`` is set."""
     settings = artifact["settings"]
+    allowed = None
+    if artifact.get("lead_in"):
+        allowed = _lead_in.label_mask(list(artifact["label_labels"]), int(logp.shape[0]), lead_in is not None)
     return _decode_labels(
         list(artifact["label_labels"]),
         np.asarray(artifact["label_transition"], dtype=np.float64),
@@ -552,6 +576,7 @@ def decode_phrase_labels(
         length_weight=float(settings["length_weight"]),
         change_probability=change_probability,
         change_weight=float(settings.get("label_change_weight", 0.0)),
+        allowed=allowed,
     )
 
 
@@ -635,8 +660,10 @@ def refine_phrase_segments(
     probability: np.ndarray,
     bounds: np.ndarray,
     inputs: dict[str, np.ndarray],
+    lead_in: int | None = None,
 ) -> tuple[np.ndarray, list[str]]:
-    """Pass 2: re-predict boundaries from pass-1 outputs, then re-label the segments."""
+    """Pass 2: re-predict boundaries from pass-1 outputs, then re-label the segments.
+    ``lead_in``: end beat of the lead-in (``predict_lead_in``), placed before labelling."""
     settings = artifact["settings"]
     models = artifact["refinement"]
     ctx = settings["label_context_beats"]
@@ -648,6 +675,7 @@ def refine_phrase_segments(
     bounds = decode_phrase_boundaries(
         _predict_boundary_probability(models["boundary2"], X2, valid), valid, downbeat, settings
     )
+    bounds = _lead_in.insert_lead_in(bounds, lead_in)
     post = artifact["label_clf"].predict_proba(
         segment_feature_matrix(np.asarray(feature_z, dtype=np.float64), bounds, ctx)
     )
@@ -659,7 +687,7 @@ def refine_phrase_segments(
         change = models["change"].predict_proba(
             _refine.label_change_features(feature_z, bounds, ctx, beat_post, S, inputs["bars"])
         )[:, 1]
-    labels = decode_phrase_labels(artifact, logp, bounds, change)
+    labels = decode_phrase_labels(artifact, logp, bounds, change, lead_in)
     if "shift" in models:
         if settings.get("shift_phrase_grid", False):
             X2 = np.hstack([X2, _refine.phrase_grid_features(pass_one_bounds, n)])
@@ -667,6 +695,35 @@ def refine_phrase_segments(
             bounds, labels, models["shift"], X2,
             settings["shift_offsets_beats"], settings["shift_labels"],
         )
+    return bounds, labels
+
+
+def finish_phrase_segments(
+    artifact: dict[str, object],
+    feature_z: np.ndarray,
+    boundary_feature_z: np.ndarray,
+    valid: np.ndarray,
+    downbeat: np.ndarray,
+    beat_times_sec: np.ndarray,
+    probability: np.ndarray,
+    bounds: np.ndarray,
+    inputs,
+) -> tuple[np.ndarray, list[str]]:
+    """From the pass-1 boundaries: the lead-in, pass 2 (when the artifact has it) and the labels.
+    ``inputs``: the track's ``repeat_inputs``, or a callable returning them."""
+    lead_in = _lead_in.predict_lead_in(artifact, feature_z, boundary_feature_z, downbeat, beat_times_sec, bounds)
+    if artifact.get("refinement") is not None:
+        return refine_phrase_segments(
+            artifact, feature_z, boundary_feature_z, valid, downbeat, probability, bounds,
+            inputs() if callable(inputs) else inputs, lead_in,
+        )
+    bounds = _lead_in.insert_lead_in(bounds, lead_in)
+    labels = decode_phrase_labels(
+        artifact,
+        _label_logp(artifact["label_clf"], feature_z, bounds, artifact["settings"]["label_context_beats"]),
+        bounds,
+        lead_in=lead_in,
+    )
     return bounds, labels
 
 
@@ -713,19 +770,12 @@ def detect_two_stage_phrase_segments(
     # analyzers (JumpCUE) are trained on it.
     probability = _predict_boundary_probability(artifact["boundary_clf"], boundary_feature_z, valid)
     bounds = decode_phrase_boundaries(probability, valid, downbeat, settings)
-    if artifact.get("refinement") is not None:
-        bounds, labels = refine_phrase_segments(
-            artifact, feature_z, boundary_feature_z, valid, downbeat, probability, bounds,
-            repeat_inputs(feature_z, downbeat),
-        )
-    else:
-        labels = decode_phrase_labels(
-            artifact,
-            _label_logp(artifact["label_clf"], feature_z, bounds, settings["label_context_beats"]),
-            bounds,
-        )
-
     beat_times = np.asarray(grid.beat_times_sec, dtype=np.float64)
+    bounds, labels = finish_phrase_segments(
+        artifact, feature_z, boundary_feature_z, valid, downbeat, beat_times, probability, bounds,
+        lambda: repeat_inputs(feature_z, downbeat),
+    )
+
     duration = float(acoustic.audio_duration_sec)
     if beat_times.size >= 2:
         beat_tail = float(beat_times[-1] + np.median(np.diff(beat_times)))

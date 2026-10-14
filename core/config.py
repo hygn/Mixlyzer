@@ -134,6 +134,9 @@ class analysisconfig:
     phrase_feature_cache_path: str
     jumpcue_parameter_path: str
     jumpcue_feature_cache_path: str
+    # AutoCUE: what the analysis puts where the LEAD_IN ends (the first phrase
+    # after it): a CUE point, a JumpCUE of its own, or nothing.
+    autocue: Literal["off", "cue_point", "jumpcue"]
 
 
 @dataclass
@@ -155,8 +158,8 @@ class cuepointrule:
 @dataclass
 class cuepointconfig:
     """CUE points the analysis sets from the phrases, by phrase label (the
-    predefined labels, utils.phrases.PHRASE_LABELS, lowercased)."""
-    lead_in: cuepointrule
+    predefined labels, utils.phrases.PHRASE_LABELS, lowercased). LEAD_IN has no
+    rule: where it ends is analysisconfig.autocue."""
     intro: cuepointrule
     verse: cuepointrule
     chorus: cuepointrule
@@ -295,6 +298,7 @@ def default_cfg():
         phrase_feature_cache_path="featurecache/phrase",
         jumpcue_parameter_path="assets/weights/jumpcue_jump_point.json",
         jumpcue_feature_cache_path="featurecache/jumpcue/train",
+        autocue="cue_point",
     )
     kcfg = keyconfig(
         min_offset=0.2,
