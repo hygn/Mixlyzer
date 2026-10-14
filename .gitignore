@@ -44,3 +44,6 @@ tests/
 # dataset file (will be splitted into separate repo.)
 annotator/
 benchmark/
+
+# Local DSP prototypes (not production source)
+experiments/inhouse_cqt/
