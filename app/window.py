@@ -112,6 +112,7 @@ class AppWindow(QtWidgets.QMainWindow):
         self.bus.sig_pause_requested.connect(self.player.pause)
         self.bus.sig_play_requested.connect(self.player.play)
         self.bus.sig_timestretch_toggle_requested.connect(self._on_timestretch_toggle)
+        self.bus.sig_metronome_toggle_requested.connect(self._on_metronome_toggle)
         tb.addActions([a_cfg, a_workers, a_support_tb, a_about])
 
 
@@ -578,6 +579,14 @@ class AppWindow(QtWidgets.QMainWindow):
             return
         new_cfg = copy.deepcopy(self.cfg)
         new_cfg.playbackconfig.use_timestretch = bool(enabled)
+        self._on_settings_save(new_cfg)
+
+    def _on_metronome_toggle(self, enabled: bool) -> None:
+        """Editor metronome button: same as switching "Enable metronome" in the settings and saving."""
+        if bool(self.cfg.playbackconfig.enable_metronome) == bool(enabled):
+            return
+        new_cfg = copy.deepcopy(self.cfg)
+        new_cfg.playbackconfig.enable_metronome = bool(enabled)
         self._on_settings_save(new_cfg)
 
     def _apply_timestretch(self, enabled: bool) -> None:

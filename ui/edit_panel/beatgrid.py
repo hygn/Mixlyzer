@@ -88,25 +88,27 @@ class BeatgridEditMixin:
         self._beatgrid_scope_group.addButton(self.btn_scope_segment)
         self.btn_set_downbeat = _btn("downbeat", "Make the beat nearest the playhead the current segment's downbeat")
 
-        # Per-segment time signature (n/4): presets, Custom (1-8 from a menu) and
-        # Assign. The pick to assign is filled blue; the segment's current one is outlined.
+        # Per-segment time signature (n/4): presets and Custom (1-8 from a menu), applied
+        # to the current segment on click; the segment's own is filled blue.
         self.ts_buttons: dict[int, QtWidgets.QToolButton] = {}
         for n in TS_PRESETS:
-            b = _btn(f"ts_{n}", f"Select {n}/4 (Assign applies it to the current segment)")
+            b = _btn(f"ts_{n}", f"Set the current segment to {n}/4")
             b.setIconSize(QtCore.QSize(36, 18))
-            b.clicked.connect(lambda _=False, n=n: self._select_time_signature(n))
+            b.clicked.connect(lambda _=False, n=n: self._apply_time_signature(n))
             self.ts_buttons[n] = b
-        self.btn_ts_custom = _btn("ts_custom", "Select another time signature (1/4 - 8/4)")
+        self.btn_ts_custom = _btn("ts_custom", "Set the current segment to another time signature (1/4 - 8/4)")
         self.btn_ts_custom.setIconSize(QtCore.QSize(36, 18))
         custom_menu = QtWidgets.QMenu(self.btn_ts_custom)
         for n in range(1, MAX_BEATS_PER_BAR + 1):
-            custom_menu.addAction(f"{n}/4", lambda n=n: self._select_time_signature(n))
+            custom_menu.addAction(f"{n}/4", lambda n=n: self._apply_time_signature(n))
         self.btn_ts_custom.clicked.connect(
             lambda: custom_menu.exec(self.btn_ts_custom.mapToGlobal(QtCore.QPoint(0, self.btn_ts_custom.height())))
         )
-        self.btn_apply_time_sig = _btn("ts_apply", "Apply the selected time signature to the current segment")
         self._ts_current = 4
-        self._ts_selected = 4
+        # metronome on / off, the same setting as in the settings (saved); stays usable
+        # while editing is locked
+        self.btn_metronome = _btn("metronome", "Metronome on / off", checkable=True)
+        self.btn_metronome.toggled.connect(self.bus.sig_metronome_toggle_requested.emit)
 
         self.beatgrid_status = QtWidgets.QLabel("Seg -- | Elapsed: 00:00.00 | Left: 00:00.00")
         self.beatgrid_status.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
@@ -126,7 +128,7 @@ class BeatgridEditMixin:
         ts_cells = [
             [self.ts_buttons[3], self.ts_buttons[4]],
             [self.ts_buttons[5], self.ts_buttons[7]],
-            [self.btn_apply_time_sig, self.btn_ts_custom],
+            [self.btn_metronome, self.btn_ts_custom],
         ]
         # one rule between the beatgrid block and the time signatures
         ts_rule = QtWidgets.QFrame()
@@ -158,12 +160,17 @@ class BeatgridEditMixin:
         self.btn_merge_next.clicked.connect(lambda: self._merge_segments(direction="next", keep="current"))
         self.btn_cutseg.clicked.connect(self._cut_current_segment)
         self.btn_set_downbeat.clicked.connect(self._set_downbeat_at_playhead)
-        self.btn_apply_time_sig.clicked.connect(self._apply_time_signature)
         self.inp_refBPM.textChanged.connect(self._refresh_reanalyze_button)
         self._refresh_reanalyze_button()
 
         self._refresh_time_sig_buttons()
-        return [w for row in rows + ts_cells for w in row]
+        return [w for row in rows + ts_cells for w in row if w is not self.btn_metronome]
+
+    def set_metronome_checked(self, on: bool) -> None:
+        """Show the metronome setting (changed elsewhere, e.g. in the settings)."""
+        self.btn_metronome.blockSignals(True)
+        self.btn_metronome.setChecked(bool(on))
+        self.btn_metronome.blockSignals(False)
 
     def _reference_bpm(self) -> float | None:
         try:
@@ -229,46 +236,29 @@ class BeatgridEditMixin:
         return int(round(float(value))) if np.isfinite(value) and value >= 1 else 4
 
     def _refresh_time_sig_selector(self) -> None:
-        """Follow the active segment: outline its time signature; moving to another
-        segment (or its time signature changing) resets the pick to it."""
+        """Follow the active segment: its time signature is the one lit."""
         ts = self._current_segment_time_sig()
         if ts == self._ts_current:
             return
         self._ts_current = ts
-        self._ts_selected = ts
-        self._refresh_time_sig_buttons()
-
-    def _select_time_signature(self, n: int) -> None:
-        self._ts_selected = int(n)
         self._refresh_time_sig_buttons()
 
     def _refresh_time_sig_buttons(self) -> None:
         theme = current_theme()
-        custom_n = next((n for n in (self._ts_selected, self._ts_current) if n not in TS_PRESETS), None)
-        self.btn_ts_custom.setIcon(icon(f"beatgrid_ts_{custom_n}" if custom_n else "beatgrid_ts_custom"))
-        cells = {**self.ts_buttons}
-        for n in (self._ts_selected, self._ts_current):
-            if n not in TS_PRESETS:
-                cells[n] = self.btn_ts_custom
-        for btn in {*self.ts_buttons.values(), self.btn_ts_custom}:
-            selected = cells.get(self._ts_selected) is btn
-            current = cells.get(self._ts_current) is btn
-            if selected:
-                # to be assigned: filled
-                style = (f"QToolButton {{ background-color: {theme.accent}; border: 1px solid {theme.accent}; }}"
-                         + (f"QToolButton {{ border: 2px solid {theme.on_accent}; }}" if current else ""))
-            elif current:
-                # the segment's own: outlined
-                style = f"QToolButton {{ border: 2px solid {theme.accent}; }}"
-            else:
-                style = ""
-            btn.setStyleSheet(style)
+        custom = self._ts_current not in TS_PRESETS
+        self.btn_ts_custom.setIcon(icon(f"beatgrid_ts_{self._ts_current}" if custom else "beatgrid_ts_custom"))
+        lit = self.btn_ts_custom if custom else self.ts_buttons[self._ts_current]
+        for btn in (*self.ts_buttons.values(), self.btn_ts_custom):
+            btn.setStyleSheet(
+                f"QToolButton {{ background-color: {theme.accent}; border: 1px solid {theme.accent}; }}"
+                if btn is lit else ""
+            )
 
-    def _apply_time_signature(self) -> None:
-        """Apply the selected time signature to the current segment."""
+    def _apply_time_signature(self, value: int) -> None:
+        """Set the current segment's time signature."""
         if not self._has_active_segment():
             return
-        value = int(self._ts_selected)
+        value = int(value)
         if value < 1:
             return
         self._segments = self._ensure_ts_column(self._segments)

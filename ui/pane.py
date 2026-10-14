@@ -183,6 +183,7 @@ class MainPane(QtWidgets.QWidget):
         # the edit panel sits in the track info header, between the info and the deck
         self.track_edit = EditPanel(bus=self.bus, model=self.model)
         self.track_info.editor_slot.addWidget(self.track_edit, 0, QtCore.Qt.AlignVCenter)
+        self.track_edit.set_metronome_checked(self._metronome_enabled())
 
         def _match_track_info_height(widget: QtWidgets.QWidget) -> None:
             widget.setMinimumHeight(TrackInfoPanel.HEADER_H)
@@ -708,6 +709,10 @@ class MainPane(QtWidgets.QWidget):
         self.btn_mt.blockSignals(True)
         self.btn_mt.setChecked(self._timestretch_enabled())
         self.btn_mt.blockSignals(False)
+        self.track_edit.set_metronome_checked(self._metronome_enabled())
+
+    def _metronome_enabled(self) -> bool:
+        return bool(getattr(getattr(self.cfg, "playbackconfig", None), "enable_metronome", False))
 
     def _timestretch_enabled(self) -> bool:
         return bool(getattr(getattr(self.cfg, "playbackconfig", None), "use_timestretch", False))

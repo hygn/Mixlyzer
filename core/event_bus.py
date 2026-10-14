@@ -65,12 +65,15 @@ class EventBus(QtCore.QObject):
     # Payload: None or (start_sec: float, end_sec: float)
     sig_key_selection_changed = QtCore.Signal(object)
     sig_key_segments_updated = QtCore.Signal()
+    sig_tone_hold = QtCore.Signal(object)      # MIDI notes held under the music (empty: off)
+    sig_tone_sequence = QtCore.Signal(object)  # [(MIDI notes, seconds), ...] played once
     sig_phrase_segments_updated = QtCore.Signal()
 
     sig_jumpcue_updated = QtCore.Signal()
 
     # Deck MT button: playback.use_timestretch on/off (saved like the settings dialog)
     sig_timestretch_toggle_requested = QtCore.Signal(bool)
+    sig_metronome_toggle_requested = QtCore.Signal(bool)
 
     sig_jump_arm = QtCore.Signal(object)
     sig_jump_disarm = QtCore.Signal()

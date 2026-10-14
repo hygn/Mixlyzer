@@ -8,6 +8,7 @@ import numpy as np
 from PySide6 import QtCore, QtMultimedia
 
 from core.audio.clicks import ClickTrack
+from core.audio.tones import ToneTrack
 from core.audio.dsp import SpeedResampler, fade_ramp, make_speed_renderer, soft_clip
 from core.audio.timeline import OutputTimeline
 
@@ -29,7 +30,9 @@ class PCMFeeder(QtCore.QObject):
     set_timestretch(True); while scrubbing, the time stretch plays the original at unity)
     / "none" (pass-through, ignores factor).
     Metronome clicks (`clicks`) are mixed into the same stream; music volume is applied here
-    too, so the click level stays independent of it.
+    too, so the click level stays independent of it. Reference tones for checking a key
+    by ear (`tones`) are mixed in as well, also while paused: the device stays awake while
+    they sound.
     """
 
     finished = QtCore.Signal()  # the last frame of the track has been heard
@@ -70,6 +73,7 @@ class PCMFeeder(QtCore.QObject):
 
         self._timeline = OutputTimeline(self._bpf)
         self.clicks = ClickTrack(self.rate, self.ch)
+        self.tones = ToneTrack(self.rate, self.ch)
         self._resampler = make_speed_renderer(self.ch, self.rate)
         self._unity_while_scrubbing = False
 
@@ -425,9 +429,22 @@ class PCMFeeder(QtCore.QObject):
             if self._playing and not self._scrubbing:
                 self.clicks.queue(in_start, step, n)
         out = self.clicks.mix(out)
+        out = self.tones.mix(out, self._tone_pitch_ratio())
         if self._soft_clip:
             out = soft_clip(out, self.SOFT_CLIP_KNEE)
         self._timeline.append(out, in_start, step, peak_dbfs)
+
+    def _tone_pitch_ratio(self) -> float:
+        """Varispeed shifts the music's pitch by the tempo factor; the tones follow it."""
+        if self._mode == "speed" and isinstance(self._resampler, SpeedResampler) and self._factor > 0.0:
+            return self._factor
+        return 1.0
+
+    def wake(self) -> None:
+        """Resume an idle (suspended) device, so tones started while paused are heard."""
+        if self._device_stopped:
+            self._resume_device()
+            self._flush()
 
     def _append_silence(self, n: int) -> None:
         hold = self._pos if self._pos < self._len else float(self._len)
@@ -529,6 +546,8 @@ class PCMFeeder(QtCore.QObject):
         heard = self._heard_out_frame()
         self._timeline.prune(heard)
 
+        if self.tones.active:
+            self._audible_until = self._timeline.rendered_frames + self._device_tail_frames
         if not self._playing and heard >= self._audible_until:
             self._stop_device()
             return

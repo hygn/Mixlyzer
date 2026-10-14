@@ -37,11 +37,12 @@ def key_cmap_color(idx: int):
 
 
 # Label text colour on each key colour (index 0..23, same order as the cmap):
-# black or white, whichever has the higher WCAG contrast ratio on it. Computed
-# once from _CMAP_BY_IDX; recompute if the key colours change.
+# black or white, whichever has the higher WCAG contrast ratio on it, computed
+# once from _CMAP_BY_IDX (recompute if the key colours change); then set by eye
+# to white on the saturated mid-tones where white reads better: 8B, 11B, 12B, 1B.
 _K, _W = (0, 0, 0), (255, 255, 255)
 KEY_LABEL_TEXT_COLORS = [
-    _K, _K, _W, _K, _K, _K, _K, _W, _K, _K, _K, _K,   # majors: C..B
+    _W, _K, _W, _K, _W, _K, _K, _W, _K, _W, _K, _W,   # majors: C..B
     _K, _W, _K, _K, _W, _K, _W, _K, _W, _W, _K, _W,   # minors: Cm..Bm
 ]
 

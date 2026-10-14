@@ -183,6 +183,12 @@ class EditPanel(
         self._edit_buttons = beatgrid_buttons + text_buttons
         for btn in beatgrid_buttons + text_buttons:
             btn.setFixedSize(self.BTN_WIDTH, self.BTN_HEIGHT)
+        # the key button spans two button cells
+        self.key_pick.setFixedSize(self.BTN_WIDTH * 2 + grid_key.horizontalSpacing(), self.BTN_HEIGHT)
+        # the listening aids and the metronome stay enabled while editing is locked,
+        # but are sized like the rest
+        for btn in (self.key_drone, self.key_chord, self.key_cadence, self.btn_metronome):
+            btn.setFixedSize(self.BTN_WIDTH, self.BTN_HEIGHT)
         for btn in self._edit_buttons:
             btn.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
 
@@ -190,9 +196,12 @@ class EditPanel(
         grid_cue.addWidget(self.cuepoint_placeholder, 0, 3, _AL)
         status_font = QtGui.QFont(self.font())
         status_font.setPointSize(9)
-        for lbl in (self.beatgrid_status, self.phrase_status):
+        for lbl in (self.beatgrid_status, self.key_status, self.phrase_status):
             lbl.setFont(status_font)
             lbl.setFixedHeight(self.STATUS_H)
+            # spans the button columns without widening them (an Expanding label
+            # spread the spare page width over the columns it spans)
+            lbl.setSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Fixed)
         for g in grids:
             g.setColumnStretch(g.columnCount(), 1)
 
@@ -275,6 +284,7 @@ class EditPanel(
 
     def update_time(self, t: float) -> None:
         self._current_time = float(t)
+        self._update_key_current()
         self._update_beat_counter(float(t))
         self._update_barbeat_display(float(t))
         segs = self._segments
