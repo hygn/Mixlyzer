@@ -219,10 +219,10 @@ class _AudioWorker(QtCore.QObject):
     def scratch_begin(self) -> None:
         self.feeder.set_scratching(True)
 
-    def scratch_update(self, sec: float) -> None:
+    def scratch_update(self, sec: float, at: float) -> None:
         if not self._track_ready:
             return
-        self.feeder.scratch_to(sec * self.rate)
+        self.feeder.scratch_to(sec * self.rate, at)
         self._emit_time(self._track_now_ms())
 
     def scratch_end(self, _sec: float) -> None:
@@ -387,7 +387,7 @@ class PlayerController(QtCore.QObject):
         bus.sig_scrub_update.connect(lambda sec: self._send("scrub_update", float(sec)))
         bus.sig_scrub_end.connect(lambda sec: self._send("scrub_end", float(sec)))
         bus.sig_scratch_begin.connect(lambda: self._send_local("scratch_begin"))
-        bus.sig_scratch_update.connect(lambda sec: self._send_local("scratch_update", float(sec)))
+        bus.sig_scratch_update.connect(lambda sec, at: self._send_local("scratch_update", float(sec), float(at)))
         bus.sig_scratch_end.connect(lambda sec: self._send_local("scratch_end", float(sec)))
         bus.sig_volume_changed.connect(lambda v: self._send("set_volume", float(v)))
         bus.sig_peak_meter_gain_changed.connect(lambda v: self._send("set_peak_meter_gain", float(v)))

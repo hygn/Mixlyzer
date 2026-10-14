@@ -9,7 +9,7 @@ from PySide6 import QtCore, QtMultimedia
 
 from core.audio.clicks import ClickTrack
 from core.audio.tones import ToneTrack
-from core.audio.dsp import SpeedResampler, fade_ramp, make_speed_renderer, soft_clip
+from core.audio.dsp import ScratchPlatter, SpeedResampler, fade_ramp, make_speed_renderer, read_at, soft_clip
 from core.audio.timeline import OutputTimeline
 
 
@@ -29,6 +29,10 @@ class PCMFeeder(QtCore.QObject):
     Modes: "speed" (5-tap Lagrange varispeed, or the pitch-preserving time stretch after
     set_timestretch(True); while scrubbing, the time stretch plays the original at unity)
     / "none" (pass-through, ignores factor).
+    Scratching (set_scratching) plays the record under the hand instead, playing or
+    paused: the original read where the platter is (ScratchPlatter, cubic Hermite;
+    never time-stretched: the pitch follows the hand), with a short output queue.
+    Grabbing and releasing cut over at once, without declick fades.
     Metronome clicks (`clicks`) are mixed into the same stream; music volume is applied here
     too, so the click level stays independent of it. Reference tones for checking a key
     by ear (`tones`) are mixed in as well, also while paused: the device stays awake while
@@ -91,9 +95,12 @@ class PCMFeeder(QtCore.QObject):
         self._pos: float = 0.0
         self._playing = False
         self._scrubbing = False
-        # Scratching: the deck is held (silent, like tempo 0) at the position the
-        # hand moves it to; released, it plays on from there.
+        # Scratching: the record follows the hand (self._platter); released, it plays
+        # on (or stays paused) from where the platter is.
         self._scratching = False
+        self._scratch_target = 0.0
+        self._platter = ScratchPlatter(self.rate)
+        self._scratch_queue_frames = max(1, int(self.rate * 0.03))  # ~30 ms: low latency
         self._seeked_while_paused = False
         self._mode = "speed"
         self._factor = 1.0
@@ -211,6 +218,7 @@ class PCMFeeder(QtCore.QObject):
         self._end_out_frame = None
         self._sent_finished = False
         self._seeked_while_paused = True
+        self._scratching = False
         self._jump_start = None
         self._jump_dest = None
         self.clicks.clear_voices()
@@ -250,27 +258,51 @@ class PCMFeeder(QtCore.QObject):
 
     def set_scratching(self, scratching: bool) -> None:
         scratching = bool(scratching)
-        if scratching and not self._scratching and self._playing:
-            # Held at the frame being heard; the audio queued after it is dropped
-            # (as pause()), so the deck goes silent at once.
-            heard_pos = self.playhead_frame()
-            self._reset_sink()
-            self._pos = float(max(0.0, min(self._len, heard_pos)))
-        self._scratching = scratching
+        if scratching == self._scratching:
+            return
         if scratching:
+            if self._playing:
+                # Grabbed at the frame being heard; the audio queued after it is
+                # dropped (as pause()), so the hand takes over at once.
+                heard_pos = self.playhead_frame()
+                self._reset_sink()
+                self._pos = float(max(0.0, min(self._len, heard_pos)))
+            self._scratching = True
+            self._scratch_target = self._pos
+            self._platter.reset(self._pos, time.perf_counter())
+            self._end_out_frame = None
+            self._sent_finished = False
             self.clicks.clear_voices()
-
-    def scratch_to(self, frame: float) -> None:
-        """Move the held deck to ``frame`` (while scratching)."""
-        self._pos = float(max(0.0, min(frame, self._len - 1))) if self._len else 0.0
-        self._end_out_frame = None
-        self._sent_finished = False
+            self._resume_device()
+            self._flush()
+            return
+        # Released: play on from where the hand left the record (the platter lags
+        # it by its delay), or stay paused there.
+        self._scratching = False
+        self._pos = self._scratch_target
         if not self._playing:
             self._seeked_while_paused = True
+            self._audible_until = self._timeline.rendered_frames + self._device_tail_frames
+
+    def scratch_to(self, frame: float, at: float) -> None:
+        """The hand had moved the record to ``frame`` at time ``at``
+        (time.perf_counter(), s) (while scratching)."""
+        if not self._scratching:
+            return
+        self._scratch_target = float(max(0.0, min(frame, self._len - 1))) if self._len else 0.0
+        self._platter.set_target(self._scratch_target, at)
+
+    def _render_scratch(self, n: int) -> None:
+        start = self._platter.position
+        heard_at = time.perf_counter() + self._queued_bytes() / self._bpf / self.rate
+        positions = self._platter.positions(n, heard_at)
+        if self._pcm is None:
+            out = np.zeros((positions.size, self.ch), np.float32)
+        else:
+            out = read_at(self._pcm, positions, previous=start)
+        self._append(out, start, (self._platter.position - start) / max(1, out.shape[0]), music=True)
 
     def _step(self) -> float:
-        if self._scratching:
-            return 0.0
         if self._mode != "speed" or (self._scrubbing and self._unity_while_scrubbing):
             return 1.0
         return self._factor
@@ -281,6 +313,9 @@ class PCMFeeder(QtCore.QObject):
 
     def play(self) -> bool:
         if self._playing:
+            return True
+        if self._scratching:
+            self._playing = True  # plays on from the platter when released
             return True
         if self._pcm is None or self._pos >= self._len:
             return False
@@ -315,6 +350,9 @@ class PCMFeeder(QtCore.QObject):
         playback resumes from that frame.
         """
         if not self._playing:
+            return
+        if self._scratching:
+            self._playing = False  # stays paused at the platter when released
             return
         heard_pos = self.playhead_frame()
         self._playing = False
@@ -436,9 +474,9 @@ class PCMFeeder(QtCore.QObject):
         return self._timeline.heard_frame(self._queued_bytes())
 
     def playhead_frame(self) -> float:
-        """Input frame currently being heard."""
+        """Input frame currently being heard (while scratching: where the hand is)."""
         if self._scratching:
-            return self._pos
+            return self._scratch_target
         if self._device_stopped or (not self._playing and self._seeked_while_paused):
             return self._pos
         out_frame = self._heard_out_frame()
@@ -466,17 +504,22 @@ class PCMFeeder(QtCore.QObject):
             return np.zeros((max(0, int(n_out)), self.ch), np.float32)
         return self._resampler.render(self._pcm, pos, step, n_out)
 
-    def _append(self, out: np.ndarray, in_start: float, step: float) -> None:
+    def _append(self, out: np.ndarray, in_start: float, step: float, music: bool | None = None) -> None:
+        """Queue ``out``: the music (``music``, by default when the record moves
+        forward: ``step`` > 0) from input frame ``in_start`` on, ``step`` frames per
+        output frame."""
         n = int(out.shape[0])
         if n <= 0:
             return
-        peak = float(np.max(np.abs(out))) if step > 0.0 else 0.0
+        if music is None:
+            music = step > 0.0
+        peak = float(np.max(np.abs(out))) if music else 0.0
         peak_dbfs = 20.0 * math.log10(min(max(peak, 1e-12), 1.0))
         peak_dbfs = max(self.PEAK_FLOOR_DBFS, min(0.0, peak_dbfs))
-        if step > 0.0:
+        if music:
             if self._music_gain != 1.0:
                 out = out * np.float32(self._music_gain)
-            if self._playing and not self._scrubbing:
+            if self._playing and not self._scrubbing and not self._scratching and step > 0.0:
                 self.clicks.queue(in_start, step, n)
         out = self.clicks.mix(out)
         out = self.tones.mix(out, self._tone_pitch_ratio())
@@ -598,13 +641,18 @@ class PCMFeeder(QtCore.QObject):
                 frames_free = max(0, int(self.audio.bytesFree())) // self._bpf
             except Exception:
                 frames_free = 0
-            if not self._playing:
+            if self._scratching:
+                # A short queue, so the record answers the hand promptly.
+                frames_free = min(frames_free, self._scratch_queue_frames - self._queued_bytes() // self._bpf)
+            elif not self._playing:
                 # Keep only a short silence queue so play() is heard promptly.
                 frames_free = min(frames_free, self._idle_queue_frames - self._queued_bytes() // self._bpf)
             n = min(frames_free, self._chunk_frames)
             if n <= 0:
                 break
-            if self._playing and self._pos < self._len:
+            if self._scratching:
+                self._render_scratch(n)
+            elif self._playing and self._pos < self._len:
                 self._render_block(n)
             else:
                 self._append_silence(n)
@@ -612,7 +660,7 @@ class PCMFeeder(QtCore.QObject):
         heard = self._heard_out_frame()
         self._timeline.prune(heard)
 
-        if self.tones.active:
+        if self.tones.active or self._scratching:
             self._audible_until = self._timeline.rendered_frames + self._device_tail_frames
         if not self._playing and heard >= self._audible_until:
             self._stop_device()

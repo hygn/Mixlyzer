@@ -1,3 +1,4 @@
+import time
 from typing import Callable
 
 import numpy as np
@@ -53,7 +54,7 @@ class ScratchViewBox(NoDragNoWheelViewBox):
             return
         t = self._time_at(ev.scenePos())
         if t is not None:
-            self.bus.sig_scratch_update.emit(t)
+            self.bus.sig_scratch_update.emit(t, time.perf_counter())
         ev.accept()
 
     def mouseReleaseEvent(self, ev):
@@ -62,7 +63,7 @@ class ScratchViewBox(NoDragNoWheelViewBox):
             return
         t = self._time_at(ev.scenePos())
         if t is not None:
-            self.bus.sig_scratch_update.emit(t)
+            self.bus.sig_scratch_update.emit(t, time.perf_counter())
         self._grab = None
         self.bus.sig_scratch_end.emit(t if t is not None else float(self._get_time()))
         ev.accept()
