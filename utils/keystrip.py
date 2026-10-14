@@ -59,10 +59,7 @@ def build_keystrip_buffer(
 
 
 def render_keystrip(features: dict, duration_sec: float | None = None) -> np.ndarray | None:
-    """The key strip, rendered just in time from the stored key segments.
-
-    The stored ``key_np`` image is deprecated and never read: it could go stale
-    against the segments (edits, reanalysis over a different length)."""
+    """The key strip, rendered just in time from the stored key segments."""
     if not isinstance(features, dict):
         return None
     duration = duration_sec if duration_sec else features.get("duration_sec")

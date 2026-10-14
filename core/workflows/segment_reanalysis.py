@@ -10,6 +10,7 @@ from analyzer_core.global_analyzer import getAlbumArt
 from core.config import load_cfg
 from core.workers.segment_reanalysis import SegmentReanalysisWorker
 from core.event_bus import EventBus
+from utils.jump_cues import extract_jump_cue_pairs
 
 
 StatusCallback = Callable[[str], None]
@@ -240,13 +241,12 @@ class SegmentReanalysisWorkflow(QtCore.QObject):
         if isinstance(auto_block, dict):
             # Saved with the editor's next save (the reanalysis is the new automatic result).
             self.model.features["jump_cues_auto_np"] = auto_block
-        extracted_jc = payload.get("jump_cues_extracted")
-        if extracted_jc is not None:
-            self.model.features["jump_cues_extracted"] = extracted_jc
         track_edit = self._track_edit_getter()
-        if track_edit is not None:
+        if track_edit is not None and isinstance(jc_block, dict):
             try:
-                track_edit.apply_jc_update_from_external(jump_cues=extracted_jc, record=True, broadcast=True)
+                track_edit.apply_jc_update_from_external(
+                    jump_cues=extract_jump_cue_pairs({"jump_cues_np": jc_block}), record=True, broadcast=True
+                )
             except Exception:
                 pass
         self.taskmanager.updatetask(taskid, "JumpCUE reanalysis finished", 1.0)

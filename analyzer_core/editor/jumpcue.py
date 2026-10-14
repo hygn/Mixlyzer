@@ -7,7 +7,7 @@ from analyzer_core.cue_and_phrase import detect_phrase_segments
 from analyzer_core.global_analyzer import fast_load
 from analyzer_core.hpss import hpss_audio_with_spectra
 from core.config import config
-from utils.jump_cues import build_jump_cues_np, extract_jump_cue_pairs
+from utils.jump_cues import build_jump_cues_np
 
 def reanalyze_jumpCUE(path:str, cfg:config, beats_time_arr:np.ndarray, *,
     tempo_segments: Optional[np.ndarray] = None,
@@ -82,11 +82,9 @@ def reanalyze_jumpCUE(path:str, cfg:config, beats_time_arr:np.ndarray, *,
         merge_coincident=True,
     )
 
-    jump_cues_extracted = extract_jump_cue_pairs({"jump_cues_np":jump_cues_np})
     if progress_cb:
         progress_cb("JumpCUE Updated", 0.9)
     return {
         "jump_cues_np": jump_cues_np,
         "jump_cues_auto_np": jump_cues_np,
-        "jump_cues_extracted": jump_cues_extracted,
     }

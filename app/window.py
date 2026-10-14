@@ -8,7 +8,7 @@ import json
 
 from app.print_hook import install_print_hook, log_environment_info
 from core.event_bus import EventBus
-from core.model import DataModel, GlobalParams
+from core.model import DataModel
 from core.timeline import TimelineCoordinator
 from core.player import PlayerController
 from core.library_handler import LibraryDB
@@ -237,11 +237,6 @@ class AppWindow(QtWidgets.QMainWindow):
         if feat_std is None:
             feat_std = raw_features
         lib_rows = feat.get("library")
-        gp = GlobalParams(
-            analysis_samp_rate=int(feat_std.get("sr")),
-            bpm_hop_length=int(feat_std.get("bpm_hop")),
-            chroma_hop_length=int(feat_std.get("chroma_hop")),
-        )
         duration_sec = float(feat_std.get("duration_sec"))
         if update_db:
             self._emit_library_update(cfg, lib_rows)
@@ -251,7 +246,6 @@ class AppWindow(QtWidgets.QMainWindow):
             self._apply_model_update(
                 feat_std,
                 properties,
-                gp,
                 duration_sec,
                 stop_playback=True,
                 refresh_source=True,
@@ -277,11 +271,6 @@ class AppWindow(QtWidgets.QMainWindow):
         if feat_std is None:
             feat_std = raw_features
         lib_rows = feat.get("library")
-        gp = GlobalParams(
-            analysis_samp_rate=int(feat_std.get("sr")),
-            bpm_hop_length=int(feat_std.get("bpm_hop")),
-            chroma_hop_length=int(feat_std.get("chroma_hop")),
-        )
         duration_sec = float(feat_std.get("duration_sec"))
         if update_db:
             self._emit_library_update(cfg, lib_rows)
@@ -290,7 +279,6 @@ class AppWindow(QtWidgets.QMainWindow):
                 self._apply_model_update(
                     feat_std,
                     properties,
-                    gp,
                     duration_sec,
                     stop_playback=False,
                     refresh_source=False,
@@ -300,7 +288,6 @@ class AppWindow(QtWidgets.QMainWindow):
                 self._apply_model_update(
                     feat_std,
                     properties,
-                    gp,
                     duration_sec,
                     stop_playback=False,
                     refresh_source=False,
@@ -312,14 +299,13 @@ class AppWindow(QtWidgets.QMainWindow):
         self,
         features: dict,
         properties: dict,
-        gp: GlobalParams,
         duration_sec: float,
         *,
         stop_playback: bool,
         refresh_source: bool,
     ) -> None:
         """Update the shared DataModel and notify listeners."""
-        self.model.load(features, properties, gp, duration_sec)
+        self.model.load(features, properties, duration_sec)
         if stop_playback:
             self.player.stop()
         if refresh_source:

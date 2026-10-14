@@ -13,7 +13,6 @@ from xml.etree import ElementTree as ET
 import numpy as np
 
 from core.library_handler import TrackRow
-from utils.jumpcue_colors import get_jumpcue_pair_color
 from utils.labels import idx_to_labels
 from utils.jump_cues import extract_jump_cue_graph
 
@@ -132,10 +131,9 @@ def build_rekordbox_track_element(
         track_attrs.update({str(key): str(value) for key, value in extra_attributes.items()})
     track_elem = ET.Element("TRACK", track_attrs)
 
-    fallback_ts = int(max(1, _safe_scalar(features.get("timesignature")) or 4))
     tempo_entries = _tempo_entries_for_xml(tempo_segments, average_bpm)
     for tempo in tempo_entries:
-        ts_num = int(tempo.get("time_sig", fallback_ts) or fallback_ts)
+        ts_num = int(tempo["time_sig"])
         ET.SubElement(
             track_elem,
             "TEMPO",
@@ -323,10 +321,7 @@ def _extract_jump_marks(features: dict[str, np.ndarray]) -> list[dict[str, objec
         point_val = float(point)
         if not np.isfinite(point_val):
             continue
-        color = cue.get("color")
-        if not isinstance(color, tuple) or len(color) != 3:
-            color_index = int(cue.get("color_index", cue.get("component_index", 0)) or 0)
-            color = get_jumpcue_pair_color(color_index)
+        color = cue["color"]
         slot = _slot_index(label)
         comment = str(cue.get("comment", "") or "").strip()
         marks.append(

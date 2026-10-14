@@ -142,7 +142,6 @@ class MainPane(QtWidgets.QWidget):
         self.bus.sig_reload_UI.connect(self._on_reload_requested)
         self.bus.sig_beatgrid_edited.connect(self._on_beatgrid_edited)
         self.bus.sig_key_segments_updated.connect(self._on_key_segments_updated)
-        self.bus.sig_jumpcue_updated.connect(self._on_jumpcue_updated)
         self.bus.sig_phrase_segments_updated.connect(self._on_phrases_updated)
         try:
             self.bus.sig_transport_enabled.connect(self._on_transport_enabled)
@@ -744,8 +743,3 @@ class MainPane(QtWidgets.QWidget):
         if hasattr(self.ov, "update_key_strip"):
             self.ov.update_key_strip()
 
-    def _on_jumpcue_updated(self) -> None:
-        jc_block = self.model.features.get("jump_cues_np")
-        extracted = self.model.features.get("jump_cues_extracted")
-        if extracted is None and jc_block is not None:
-            extracted = extract_jump_cue_pairs({"jump_cues_np": jc_block})

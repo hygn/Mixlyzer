@@ -31,7 +31,6 @@ from core.audio.decoder import decode_to_memmap, get_total_samples
 from core.library_handler import LibraryDB
 from core.analysis_lib_handler import FeatureNPZStore
 from core.config import config
-from core.adapters import normalize_gui_buffers
 from core.taskmanager import taskmanager
 from core.linear_segments import build_bpm_segments, build_key_segments
 from analyzer_core.utils import offset_beats_and_segments, prime_physical_core_count
@@ -640,8 +639,6 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
     features["jump_cues_auto_np"] = {k: np.array(v, copy=True) for k, v in features["jump_cues_np"].items()}
     hpss_spectra = None
 
-    features["timesignature"] = 4
-
     yield {"status": "chroma"}
     print("[Chroma] Analysis Initalized")
     taskmgr.updatetask(taskid, "Processing Chromagram", 0.65)
@@ -653,23 +650,16 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
         mode=gcf.chroma_method,
         subdiv=1
     )
-    bs = np.asarray(chroma["chroma_subdiv"])  # (12, T)
-
-    features["beatsync_chroma"] = bs.astype(np.float32)
-
-    features["chroma_beatsync_center"] = chroma["t_subdiv"]
-    features["chroma_beatsync_grid"] = chroma["t_beatgrid"]
-    features["full_chroma"] = chroma["chroma_full"]
-    features["chroma_grid"] = chroma["t_full"]
-    features["chroma_hop"] = gcf.chroma_hop_length
+    # used by the key analysis only, not stored
+    beatsync_chroma = np.asarray(chroma["chroma_subdiv"]).astype(np.float32)  # (12, T)
     print("[Chroma] Analysis Finished")
 
     yield {"status": "key"}
     print("[Key] Analysis Initalized")
     taskmgr.updatetask(taskid, "Analyzing Keys", 0.75)
     key, key_12, logB, _, logPi, logA, key_segments = keyanalyzer(
-        features["beatsync_chroma"],
-        features["chroma_beatsync_center"],
+        beatsync_chroma,
+        chroma["t_subdiv"],
         config=config,
         y_harm=y_harm,
         sample_rate=global_sr,
@@ -677,7 +667,6 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
     )
     print("[Key] Analysis Finished")
     features["key_segments"] = key_segments
-    features["bpm_hop"] = gcf.bpm_hop_length
     features["sr"] = global_sr
 
     # DB Features
@@ -691,14 +680,6 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
 
     fsize, fmtime = _file_stats(path)
     taskmgr.updatetask(taskid, "Rendering/Normalizing", 0.88)
-    features = normalize_gui_buffers(features)
-
-    features_denylist = ["key_12", "logB", "full_chroma", "beatsync_chroma"]
-    for i in features_denylist:
-        try:
-            features.pop(i)
-        except:
-            pass
 
     properties = {
         "path": path,

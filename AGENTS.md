@@ -70,9 +70,8 @@ Working notes for AI/automation agents editing the Mixlyzer codebase.
   - BPM / beatgrid analysis,
   - beatgrid offset application,
   - JumpCUE detection,
-  - beat-synchronous chroma extraction,
+  - beat-synchronous chroma extraction (used by the key analysis, not stored),
   - key analysis,
-  - GUI-buffer normalization via `core.adapters.normalize_gui_buffers`,
   - persistence to SQLite (`LibraryDB`) and NPZ (`FeatureNPZStore`).
 - Cached-track loads can skip analysis and load metadata/features directly from `library.db` + NPZ.
 - Reanalyze-track requests (`sig_reanalyze_requested`) force a fresh full analysis and overwrite stored results.
@@ -92,11 +91,11 @@ Working notes for AI/automation agents editing the Mixlyzer codebase.
 - BPM and key transitions are also persisted in:
   - `track_bpm_segments`
   - `track_key_segments`
-- Numeric feature arrays live in `{libpath}/{uid}.npz` through `FeatureNPZStore`.
+- Numeric feature arrays live in `{libpath}/{uid}.npz` through `FeatureNPZStore`. Only what is read is stored: beats, tempo/key segments, waveform preview, duration, sr, tempo_global, and the JumpCUE / CUE point / phrase blocks. Saving replaces a block as a whole (`save_worker._replace_block`).
 - Track identity across DB and NPZ is the `uid` field stored in SQLite.
-- The key strip is rendered just in time from `key_segments` (`utils.keystrip.render_keystrip`). The `key_np` image older NPZs still hold is deprecated: never read, no longer written.
+- The key strip is rendered just in time from `key_segments` (`utils.keystrip.render_keystrip`); no image is stored.
 - JumpCUEs are kept in two states in the NPZ: `jump_cues_np` (the user's, replaced by edits) and `jump_cues_auto_np` (the automatic result, replaced only by full analysis or JumpCUE reanalysis). The JumpCUE optimizer (settings → Analysis → JumpCUE) learns from where they differ; do not write edits into `jump_cues_auto_np`.
-- A JumpCUE group's colour is a preset index (`graph_color_idx`, presets in `utils/jumpcue_colors.py`), independent of its group number (`graph_id`); blocks without it fall back to the preset matching the stored RGB. Edits carry it on each cue as `color_idx`.
+- A JumpCUE group's colour is a preset index (`graph_color_idx`, presets in `utils/jumpcue_colors.py`), independent of its group number (`graph_id`); no RGB is stored. Edits carry it on each cue as `color_idx`.
 - CUE points (`cue_points_np`, with a colour preset `cue_color_idx`) are the user's: the full analysis makes them from the phrases, after that only the CUE page edits them (phrase edits do not regenerate them).
 - JumpCUE letters are slots (rekordbox hot cue letters A-Z): the analysis letters them by point; edits keep each cue in the slot the user gave it (no relettering by time). A JumpCUE's user name is its `cue_comment` (equal to its letter = no name). CUE points are rekordbox memory cues: always in time order, no letters; a CUE point's name is its `cue_label`.
 - `DataModel` holds the live in-memory track state:
@@ -137,7 +136,6 @@ Working notes for AI/automation agents editing the Mixlyzer codebase.
   - update `ui/config/`,
   - update any call sites assuming the old fields.
 - When changing persisted analysis outputs:
-  - preserve compatibility with `normalize_gui_buffers`,
   - update readers in `DataModel`/UI/views,
   - update DB segment adapters in `core.linear_segments` if segment schema changes,
   - consider migration needs for existing libraries.

@@ -33,7 +33,6 @@ _PHRASE_COLORS: dict[str, tuple[int, int, int]] = {
     "SILENCE": (110, 110, 110),
     "FILL_IN": (0, 180, 200),
     "FILL_OUT": (0, 120, 150),
-    "FILL": (0, 153, 204),  # legacy (pre-migration / model output); kept for color
 }
 
 _FALLBACK_PALETTE: list[tuple[int, int, int]] = [
@@ -305,23 +304,19 @@ def extract_phrase_segments(features: Dict[str, Any]) -> List[dict[str, Any]]:
 def merge_fill_phrases(
     phrases,
     *,
-    include_legacy_fill: bool = True,
     orphan_fallback: bool = False,
 ) -> List[dict[str, Any]]:
     """Absorb fill ranges into their adjacent non-fill phrase.
 
     FILL_IN belongs to the following phrase and FILL_OUT belongs to the
     preceding phrase. ``orphan_fallback`` permits training data at a track edge
-    to use the opposite neighbour. Legacy ``FILL`` handling can be disabled by
-    current-format consumers.
+    to use the opposite neighbour.
     """
 
     rows = _sorted_phrases(phrases)
     if not rows:
         return []
     fill_labels = {"FILL_IN", "FILL_OUT"}
-    if include_legacy_fill:
-        fill_labels.add("FILL")
 
     def nearest_nonfill(index: int, step: int) -> int | None:
         position = index + step
@@ -370,17 +365,13 @@ def merge_fill_phrases_for_display(phrases) -> List[dict[str, Any]]:
     FILL_IN is shown as part of the following non-fill phrase. FILL_OUT is shown
     as part of the previous non-fill phrase. Orphan fills are omitted.
     """
-    return merge_fill_phrases(
-        phrases,
-        include_legacy_fill=True,
-        orphan_fallback=False,
-    )
+    return merge_fill_phrases(phrases, orphan_fallback=False)
 
 
 def extract_fill_phrase_markers(phrases) -> List[dict[str, Any]]:
     """Return display marker ranges for fill phrases.
 
-    direction is "in" for FILL_IN and "out" for FILL_OUT / legacy FILL.
+    direction is "in" for FILL_IN and "out" for FILL_OUT.
     """
     rows = _sorted_phrases(phrases)
     markers: list[dict[str, Any]] = []
@@ -388,7 +379,7 @@ def extract_fill_phrase_markers(phrases) -> List[dict[str, Any]]:
         label = str(seg.get("label", "") or "").strip().upper()
         if label == "FILL_IN":
             direction = "in"
-        elif label in {"FILL_OUT", "FILL"}:
+        elif label == "FILL_OUT":
             direction = "out"
         else:
             continue

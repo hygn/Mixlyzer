@@ -453,7 +453,6 @@ class EditPanel(
         except ValueError as exc:
             QtWidgets.QMessageBox.warning(self, "Invalid JumpCUE Label", str(exc))
             return
-        jump_cues_extracted = copy.deepcopy(self._JumpCUE)
         auto_block = self.model.features.get("jump_cues_auto_np") if self.model is not None else None
         jump_cues_auto_np = auto_block if isinstance(auto_block, dict) else None
         self._phrase_segments = normalize_phrase_segments(
@@ -474,7 +473,6 @@ class EditPanel(
                 segments=segments,
                 key_segments=key_segments,
                 jump_cues_np=jump_cues_np,
-                jump_cues_extracted=jump_cues_extracted,
                 jump_cues_auto_np=jump_cues_auto_np,
                 phrase_segments_np=phrase_segments_np,
                 cue_points_np=cue_points_np,

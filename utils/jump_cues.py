@@ -4,7 +4,7 @@ from typing import Any, Dict, List
 
 import numpy as np
 
-from utils.jumpcue_colors import JUMPCUE_PAIR_COLORS, get_jumpcue_pair_color, jumpcue_color_index_of
+from utils.jumpcue_colors import JUMPCUE_PAIR_COLORS, get_jumpcue_pair_color
 
 
 _VALID_JUMPCUE_LABELS = set("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
@@ -19,9 +19,7 @@ _GRAPH_BLOCK_REQUIRED = [
     "graph_cue_id",
     "graph_idx",
     "graph_id",
-    "graph_color_r",
-    "graph_color_g",
-    "graph_color_b",
+    "graph_color_idx",
 ]
 
 
@@ -230,9 +228,7 @@ def _empty_jump_cues_np() -> Dict[str, np.ndarray]:
         "graph_cue_id": np.asarray([], dtype=np.int32),
         "graph_idx": np.asarray([], dtype=np.int32),
         "graph_id": np.asarray([], dtype=np.int32),
-        "graph_color_r": np.asarray([], dtype=np.uint8),
-        "graph_color_g": np.asarray([], dtype=np.uint8),
-        "graph_color_b": np.asarray([], dtype=np.uint8),
+        "graph_color_idx": np.asarray([], dtype=np.int32),
     }
 
 
@@ -382,7 +378,6 @@ def build_jump_cues_np(
             color_idx_by_graph[graph_id] = int(cue["color_idx"])
     for graph_id in graph_ids:
         color_idx_by_graph.setdefault(graph_id, graph_id % len(JUMPCUE_PAIR_COLORS))
-    graph_colors = {graph_id: get_jumpcue_pair_color(color_idx_by_graph[graph_id]) for graph_id in graph_ids}
 
     return {
         "cue_id": np.asarray([int(cue["id"]) for cue in cues], dtype=np.int32),
@@ -394,29 +389,15 @@ def build_jump_cues_np(
         "graph_cue_id": np.asarray([int(cue_id) for cue_id, _graph_idx in graph_rows], dtype=np.int32),
         "graph_idx": np.asarray([int(graph_idx) for _cue_id, graph_idx in graph_rows], dtype=np.int32),
         "graph_id": np.asarray(graph_ids, dtype=np.int32),
-        "graph_color_r": np.asarray([graph_colors[idx][0] for idx in graph_ids], dtype=np.uint8),
-        "graph_color_g": np.asarray([graph_colors[idx][1] for idx in graph_ids], dtype=np.uint8),
-        "graph_color_b": np.asarray([graph_colors[idx][2] for idx in graph_ids], dtype=np.uint8),
         "graph_color_idx": np.asarray([color_idx_by_graph[idx] for idx in graph_ids], dtype=np.int32),
     }
 
 
 def _graph_color_indices(block: Dict[str, Any]) -> dict[int, int]:
-    """Colour preset index of each group: graph_color_idx, or (older blocks) the
-    preset matching its stored RGB, else its number."""
-    graph_ids = [int(g) for g in np.asarray(block.get("graph_id", []), dtype=int).tolist()]
-    if "graph_color_idx" in block:
-        stored = np.asarray(block["graph_color_idx"], dtype=int).tolist()
-        if len(stored) >= len(graph_ids):
-            return {g: int(stored[i]) for i, g in enumerate(graph_ids)}
-    out: dict[int, int] = {}
-    for i, g in enumerate(graph_ids):
-        try:
-            rgb = (block["graph_color_r"][i], block["graph_color_g"][i], block["graph_color_b"][i])
-        except (KeyError, IndexError):
-            rgb = None
-        out[g] = jumpcue_color_index_of(rgb, g) if rgb is not None else g % len(JUMPCUE_PAIR_COLORS)
-    return out
+    """Colour preset index of each group."""
+    graph_ids = np.asarray(block["graph_id"], dtype=int).tolist()
+    colors = np.asarray(block["graph_color_idx"], dtype=int).tolist()
+    return {int(g): int(c) for g, c in zip(graph_ids, colors)}
 
 
 def _extract_pairs_from_new_graph_block(block: Dict[str, Any]) -> List[dict]:
@@ -484,60 +465,11 @@ def _extract_pairs_from_new_graph_block(block: Dict[str, Any]) -> List[dict]:
 
 
 def extract_jump_cue_pairs(features: Dict[str, Any]) -> List[dict]:
-    """
-    New format: cue rows + graph membership rows.
-    Legacy fallback: 0.1.1 flattened forward/backward arrays only.
-    """
+    """Pairs of cues of each group of the graph block (the editor's form)."""
     block = _extract_jump_cue_block(features)
-    if not block:
+    if not block or not all(key in block for key in _GRAPH_BLOCK_REQUIRED):
         return []
-
-    if all(key in block for key in _GRAPH_BLOCK_REQUIRED):
-        return _extract_pairs_from_new_graph_block(block)
-
-    required = [
-        "forward_label",
-        "forward_start",
-        "forward_end",
-        "forward_point",
-        "backward_label",
-        "backward_start",
-        "backward_end",
-        "backward_point",
-        "lag_beats",
-        "lag_sec",
-        "score",
-        "confidence",
-    ]
-    if any(key not in block for key in required):
-        return []
-
-    length = min(len(block[key]) for key in required)
-    pairs: list[dict] = []
-    for idx in range(length):
-        pairs.append(
-            {
-                "forward": {
-                    "label": str(block["forward_label"][idx]),
-                    "comment": str(block["forward_label"][idx]),
-                    "start": float(block["forward_start"][idx]),
-                    "end": float(block["forward_end"][idx]),
-                    "point": float(block["forward_point"][idx]),
-                },
-                "backward": {
-                    "label": str(block["backward_label"][idx]),
-                    "comment": str(block["backward_label"][idx]),
-                    "start": float(block["backward_start"][idx]),
-                    "end": float(block["backward_end"][idx]),
-                    "point": float(block["backward_point"][idx]),
-                },
-                "lag_beats": float(block["lag_beats"][idx]),
-                "lag_sec": float(block["lag_sec"][idx]),
-                "score": float(block["score"][idx]),
-                "confidence": float(block["confidence"][idx]),
-            }
-        )
-    return pairs
+    return _extract_pairs_from_new_graph_block(block)
 
 
 def extract_jump_cue_graph(features: Dict[str, Any]) -> tuple[List[dict[str, float | str | int]], List[dict[str, Any]]]:
@@ -546,7 +478,7 @@ def extract_jump_cue_graph(features: Dict[str, Any]) -> tuple[List[dict[str, flo
         return [], []
 
     if not all(key in block for key in _GRAPH_BLOCK_REQUIRED):
-        return build_jump_cue_graph(extract_jump_cue_pairs(features))
+        return [], []
 
     cue_length = min(
         len(block[key])
@@ -560,16 +492,6 @@ def extract_jump_cue_graph(features: Dict[str, Any]) -> tuple[List[dict[str, flo
         )
     )
     map_length = min(len(block[key]) for key in ("graph_cue_id", "graph_idx"))
-    graph_length = min(len(block[key]) for key in ("graph_id", "graph_color_r", "graph_color_g", "graph_color_b"))
-
-    color_by_graph: dict[int, tuple[int, int, int]] = {}
-    for idx in range(graph_length):
-        graph_id = int(block["graph_id"][idx])
-        color_by_graph[graph_id] = (
-            int(block["graph_color_r"][idx]),
-            int(block["graph_color_g"][idx]),
-            int(block["graph_color_b"][idx]),
-        )
     color_idx_by_graph = _graph_color_indices(block)
 
     graph_by_cue_id: dict[int, int] = {}
@@ -582,10 +504,7 @@ def extract_jump_cue_graph(features: Dict[str, Any]) -> tuple[List[dict[str, flo
         cue_id = int(block["cue_id"][idx])
         graph_idx = int(graph_by_cue_id.get(cue_id, 0))
         color_idx = int(color_idx_by_graph.get(graph_idx, graph_idx))
-        if "graph_color_idx" in block:
-            color = get_jumpcue_pair_color(color_idx)
-        else:
-            color = color_by_graph.get(graph_idx, get_jumpcue_pair_color(color_idx))
+        color = get_jumpcue_pair_color(color_idx)
         cue = {
             "id": cue_id,
             "label": str(block["cue_label"][idx]),
@@ -593,9 +512,7 @@ def extract_jump_cue_graph(features: Dict[str, Any]) -> tuple[List[dict[str, flo
             "start": float(block["cue_start"][idx]),
             "end": float(block["cue_end"][idx]),
             "point": float(block["cue_point"][idx]),
-            "component_index": graph_idx,
             "graph_idx": graph_idx,
-            "color_index": color_idx,
             "color_idx": color_idx,
             "color": color,
         }
@@ -632,9 +549,8 @@ def extract_jump_cue_graph(features: Dict[str, Any]) -> tuple[List[dict[str, flo
                             "target": dict(dst),
                             "source_point": float(src["point"]),
                             "target_point": float(dst["point"]),
-                            "component_index": graph_idx,
                             "graph_idx": graph_idx,
-                            "color_index": src["color_idx"],
+                            "color_idx": src["color_idx"],
                             "color": src["color"],
                             "lag_beats": 0.0,
                             "lag_sec": lag_sec,

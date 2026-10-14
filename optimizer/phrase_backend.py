@@ -412,7 +412,6 @@ def _eval_target(track: dict[str, object]) -> tuple[np.ndarray, list[str]]:
 
     kept = merge_fill_phrases(
         segments,
-        include_legacy_fill=False,
         orphan_fallback=True,
     )
     if not kept:

@@ -10,7 +10,7 @@ from ui.edit_panel.history import logElement
 from ui.edit_panel.icons import icon
 from ui.edit_panel.styles import WARNING_BUTTON_STYLESHEET
 from utils.jump_cues import build_jump_cue_graph, build_jump_cues_np
-from utils.jumpcue_colors import JUMPCUE_PAIR_COLORS, get_jumpcue_pair_color
+from utils.jumpcue_colors import JUMPCUE_PAIR_COLORS
 
 # JumpCUE slots are the letters A-Z (rekordbox hot cue letters).
 JUMPCUE_SLOTS = 26
@@ -97,7 +97,7 @@ class JumpCUEEditMixin:
                 continue
             slot.setEnabled(True)
             point = float(cue.get("point", 0.0))
-            slot.show_cue(tuple(cue.get("color", get_jumpcue_pair_color(0))), str(cue.get("label", "")),
+            slot.show_cue(tuple(cue["color"]), str(cue.get("label", "")),
                           _jumpcue_name(cue), format_cue_time(point))
             slot.name.setToolTip(f"{format_cue_time(point)} - double-click to rename")
             slot.btn_set.setToolTip("Delete this JumpCUE")
@@ -385,7 +385,6 @@ class JumpCUEEditMixin:
     def _broadcast_jumpcue(self) -> None:
         if self.model is not None:
             try:
-                self.model.features["jump_cues_extracted"] = copy.deepcopy(self._JumpCUE)
                 self.model.features["jump_cues_np"] = self._jumpcues_to_np(self._JumpCUE)
             except ValueError as exc:
                 QtWidgets.QMessageBox.warning(self, "Invalid JumpCUE Label", str(exc))

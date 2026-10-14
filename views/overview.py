@@ -2,8 +2,8 @@ from PySide6 import QtCore, QtWidgets, QtGui
 import numpy as np
 import pyqtgraph as pg
 from core.event_bus import EventBus
-from utils.jumpcue_colors import get_cue_point_color, get_jumpcue_pair_color
-from utils.jump_cues import extract_jump_cue_pairs, extract_jump_cue_graph
+from utils.jumpcue_colors import get_cue_point_color
+from utils.jump_cues import extract_jump_cue_graph
 from utils.phrases import (
     abbreviate_phrase_labels,
     build_phrase_strip_buffer,
@@ -202,7 +202,6 @@ class OverviewWidget(QtWidgets.QWidget):
         self._selection_marker_y = 1.05
         self._selection_start: float | None = None
         self._selection_end: float | None = None
-        self._jump_pairs: list[dict] = []
         self._jump_cues: list[dict] = []
         self._jump_links: list[dict] = []
         self._wave_bottom = self.KEY_H
@@ -257,8 +256,6 @@ class OverviewWidget(QtWidgets.QWidget):
             self._wave_preview_cache = None
 
         self.update_key_strip()
-        jump_pairs = extract_jump_cue_pairs(features)
-        self._jump_pairs = jump_pairs
         self._jump_cues, self._jump_links = extract_jump_cue_graph(features)
         self._render_jump_cues(self._jump_cues)
         self._tempo_segments = features.get("tempo_segments")
@@ -284,11 +281,6 @@ class OverviewWidget(QtWidgets.QWidget):
     
     def _on_jumpcue_updated(self) -> None:
         feats = self.model.features
-        jc_block = feats.get("jump_cues_np")
-        extracted = feats.get("jump_cues_extracted")
-        if extracted is None and jc_block is not None:
-            extracted = extract_jump_cue_pairs({"jump_cues_np": jc_block})
-        self._jump_pairs = extracted or []
         self._jump_cues, self._jump_links = extract_jump_cue_graph(feats)
         self._render_jump_cues(self._jump_cues)
 
@@ -377,10 +369,7 @@ class OverviewWidget(QtWidgets.QWidget):
             label = str(cue.get("label", "")).strip()
             if not label:
                 continue
-            color = cue.get("color")
-            if not isinstance(color, tuple) or len(color) != 3:
-                color_idx = int(cue.get("color_index", cue.get("component_index", 0)) or 0)
-                color = get_jumpcue_pair_color(color_idx)
+            color = cue["color"]
             start = float(cue.get("start", 0.0))
             end = float(cue.get("end", start))
             j_pnt = float(cue.get("point", start))

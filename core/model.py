@@ -1,14 +1,7 @@
-from dataclasses import dataclass
 from typing import Optional, Callable, Any
 import numpy as np
 from PySide6 import QtCore
 from PySide6.QtGui import QImage
-
-@dataclass
-class GlobalParams:
-    analysis_samp_rate: int
-    bpm_hop_length: int
-    chroma_hop_length: int
 
 
 class _ObservableDict(dict):
@@ -76,7 +69,6 @@ class DataModel(QtCore.QObject):
         self.features: dict = self._wrap_observable({}, name="features")
         self.properties: dict = self._wrap_observable({}, name="properties")
         self.duration_sec: float = 0.0
-        self.gp: Optional[GlobalParams] = None
         self.album_art: Optional[QImage] = None
         self.predecoded_pcm: Any = None
         self.predecoded_rate: int = 0
@@ -90,10 +82,9 @@ class DataModel(QtCore.QObject):
         self.sig_updated.emit()
         print(f"[DataModel] {desc}")
 
-    def load(self, features: dict, properties: dict, gp: GlobalParams, duration_sec: float, album_art: Optional[QImage] = None):
+    def load(self, features: dict, properties: dict, duration_sec: float, album_art: Optional[QImage] = None):
         self.features = self._wrap_observable(features, name="features")
         self.properties = self._wrap_observable(properties, name="properties")
-        self.gp = gp
         self.duration_sec = duration_sec
         self.album_art = album_art
         self.predecoded_pcm = None
@@ -120,7 +111,6 @@ class DataModel(QtCore.QObject):
         return (
             f"DataModel(features={len(feat_keys)} keys: {feat_keys[:40]}, "
             f"duration={self.duration_sec:.3f}s, "
-            f"gp={self.gp}, "
             f"title={props.get('title')}, "
             f"artist={props.get('artist')}, "
             f"album_art={'set' if self.album_art else 'none'})"

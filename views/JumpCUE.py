@@ -9,8 +9,7 @@ from pyqtgraph.graphicsItems.ScatterPlotItem import ScatterPlotItem
 from pyqtgraph.graphicsItems.TextItem import TextItem
 
 from .base import ViewPlugin, register_view
-from utils.jumpcue_colors import get_jumpcue_pair_color
-from utils.jump_cues import extract_jump_cue_pairs, extract_jump_cue_graph
+from utils.jump_cues import extract_jump_cue_graph
 
 
 @register_view("JumpCUEView")
@@ -25,7 +24,6 @@ class JumpCUEView(ViewPlugin):
         super().__init__(bus, model, tl)
         self.plot: pg.PlotItem | None = None
         self._duration = 0.0
-        self._pairs: List[dict] = []
         self._cues: List[dict] = []
         # One entry per labelled cue, built when the cues change:
         # [start, end, point, bar, marker, text, shown]. The items are laid out in
@@ -63,7 +61,6 @@ class JumpCUEView(ViewPlugin):
 
     def render_initial(self):
         f = self.model.features or {}
-        self._pairs = extract_jump_cue_pairs(f)
         self._cues, _links = extract_jump_cue_graph(f)
         self._duration = float(self.model.duration_sec or 0.0)
         self._build_items()
@@ -74,11 +71,6 @@ class JumpCUEView(ViewPlugin):
     
     def _on_jumpcue_updated(self, payload: dict | None = None) -> None:
         f = self.model.features or {}
-        jc_block = f.get("jump_cues_np")
-        extracted = f.get("jump_cues_extracted")
-        if extracted is None and jc_block is not None:
-            extracted = extract_jump_cue_pairs({"jump_cues_np": jc_block})
-        self._pairs = extracted or []
         self._cues, _links = extract_jump_cue_graph(f)
         self._duration = float(self.model.duration_sec or 0.0)
         self._build_items()
@@ -102,10 +94,7 @@ class JumpCUEView(ViewPlugin):
             label = str(cue.get("label", "")).strip()
             if not label:
                 continue
-            color = cue.get("color")
-            if not isinstance(color, tuple) or len(color) != 3:
-                color_idx = int(cue.get("color_index", cue.get("component_index", 0)) or 0)
-                color = get_jumpcue_pair_color(color_idx)
+            color = cue["color"]
             start = float(cue.get("start", 0.0))
             end = float(cue.get("end", start))
             point = float(cue.get("point", start))

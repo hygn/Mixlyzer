@@ -340,18 +340,6 @@ def load_cfg() -> config:
         with open("config.json", "r", encoding="utf-8") as f:
             loaded = json.load(f)
             merged = _merge_defaults(cfg.to_dict(), loaded if isinstance(loaded, dict) else {})
-            if isinstance(loaded, dict) and not isinstance(loaded.get("playbackconfig"), dict):
-                legacy_view = loaded.get("viewconfig", {})
-                if isinstance(legacy_view, dict):
-                    merged["playbackconfig"]["enable_metronome"] = bool(
-                        legacy_view.get(
-                            "enable_metronome",
-                            merged["playbackconfig"]["enable_metronome"],
-                        )
-                    )
-                    legacy_wav = legacy_view.get("metronome_wav_path")
-                    if legacy_wav is not None:
-                        merged["playbackconfig"]["metronome_wav_path"] = str(legacy_wav)
             cfg = config.from_dict(merged)
     except (TypeError, FileNotFoundError, json.JSONDecodeError):
         atomic_write_json("config.json", cfg.to_dict(), ensure_ascii=True, indent=None)

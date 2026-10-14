@@ -12,9 +12,8 @@ CUE_POINT_KEYS = (
     "cue_time_sec",
     "cue_label",
     "cue_comment",
+    "cue_color_idx",  # colour preset (utils.jumpcue_colors.CUE_POINT_COLORS)
 )
-# optional: older blocks have no colours (preset 0, the default red)
-CUE_COLOR_KEY = "cue_color_idx"
 _DEDUP_TIME_EPSILON_SEC = 1e-3
 
 
@@ -24,7 +23,7 @@ def empty_cue_points_np() -> dict[str, np.ndarray]:
         "cue_time_sec": np.asarray([], dtype=np.float32),
         "cue_label": np.asarray([], dtype="U1"),
         "cue_comment": np.asarray([], dtype="U1"),
-        CUE_COLOR_KEY: np.asarray([], dtype=np.int32),
+        "cue_color_idx": np.asarray([], dtype=np.int32),
     }
 
 
@@ -111,7 +110,7 @@ def build_cue_points_np(points: list[dict[str, Any]] | None) -> dict[str, np.nda
             [point["comment"] for point in rows],
             dtype=f"U{comment_width}",
         ),
-        CUE_COLOR_KEY: np.asarray([point["color_idx"] for point in rows], dtype=np.int32),
+        "cue_color_idx": np.asarray([point["color_idx"] for point in rows], dtype=np.int32),
     }
 
 
@@ -197,11 +196,6 @@ def extract_cue_points(features: dict[str, Any] | None) -> list[dict[str, Any]]:
             }
         except KeyError:
             return []
-        if f"{CUE_POINT_PREFIX}{CUE_COLOR_KEY}" in features:
-            arrays[CUE_COLOR_KEY] = np.asarray(features[f"{CUE_POINT_PREFIX}{CUE_COLOR_KEY}"])
-    if isinstance(block, dict) and CUE_COLOR_KEY in block:
-        arrays[CUE_COLOR_KEY] = np.asarray(block[CUE_COLOR_KEY])
-    colors = arrays.pop(CUE_COLOR_KEY, None)
     count = min(array.size for array in arrays.values())
     points: list[dict[str, Any]] = []
     for index in range(count):
@@ -214,7 +208,7 @@ def extract_cue_points(features: dict[str, Any] | None) -> list[dict[str, Any]]:
                 "time_sec": time_sec,
                 "label": str(arrays["cue_label"][index]),
                 "comment": str(arrays["cue_comment"][index]),
-                "color_idx": int(colors[index]) if colors is not None and index < colors.size else 0,
+                "color_idx": int(arrays["cue_color_idx"][index]),
             }
         )
     points.sort(key=lambda point: (float(point["time_sec"]), int(point["id"])))
