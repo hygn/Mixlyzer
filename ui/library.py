@@ -185,6 +185,7 @@ class _TrackTable(QtWidgets.QTableWidget):
         self._path_column = int(path_column)
         self._index_column = int(index_column)
         self._playlist_reorder_enabled = False
+        self._drop_line_y: Optional[int] = None
         self.setDragEnabled(True)
         self.setAcceptDrops(True)
         self.setDragDropMode(QtWidgets.QAbstractItemView.DragDrop)
@@ -201,14 +202,19 @@ class _TrackTable(QtWidgets.QTableWidget):
         rows = sorted({item.row() for item in items})
         data = QtCore.QMimeData()
         urls = []
+        paths = []
         for row in rows:
             item = self.item(row, self._path_column)
             if item is not None and item.text():
-                urls.append(QtCore.QUrl.fromLocalFile(item.text()))
+                path = item.text()
+                paths.append(path)
+                urls.append(QtCore.QUrl.fromLocalFile(path))
         if urls:
             data.setUrls(urls)
-        if self._playlist_reorder_enabled and urls:
-            paths = [url.toLocalFile() for url in urls]
+        if self._playlist_reorder_enabled and paths:
+            # QUrl normalizes Windows separators (``C:\\...`` -> ``C:/...``).
+            # Track paths are intentional string primary keys, so internal
+            # reordering must preserve the exact text stored in the database.
             data.setData(
                 _PLAYLIST_TRACKS_MIME,
                 QtCore.QByteArray(json.dumps(paths).encode("utf-8")),
@@ -221,7 +227,45 @@ class _TrackTable(QtWidgets.QTableWidget):
                 self._index_column, QtCore.Qt.AscendingOrder
             )
             self.sortItems(self._index_column, QtCore.Qt.AscendingOrder)
-        super().startDrag(supported_actions)
+        data = self.mimeData(self.selectedItems())
+        if not data.hasUrls():
+            return
+        # Do not use QAbstractItemView.startDrag here. When an internal drop is
+        # accepted as a move, its default cleanup removes the source rows even
+        # though the DB-backed table has already been rebuilt by our handler.
+        drag = QtGui.QDrag(self)
+        drag.setMimeData(data)
+        drag.exec(
+            QtCore.Qt.CopyAction | QtCore.Qt.MoveAction,
+            QtCore.Qt.CopyAction,
+        )
+
+    def _drop_boundary(self, pos: QtCore.QPoint) -> tuple[int, int]:
+        index = self.indexAt(pos)
+        if index.isValid():
+            rect = self.visualRect(index)
+            after = pos.y() >= rect.center().y()
+            return index.row() + int(after), rect.bottom() + 1 if after else rect.top()
+        if pos.y() <= 0 or self.rowCount() == 0:
+            return 0, 0
+        last = self.model().index(self.rowCount() - 1, 0)
+        return self.rowCount(), self.visualRect(last).bottom() + 1
+
+    def _set_drop_line(self, y: Optional[int]) -> None:
+        if self._drop_line_y != y:
+            self._drop_line_y = y
+            self.viewport().update()
+
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        if self._drop_line_y is None:
+            return
+        painter = QtGui.QPainter(self.viewport())
+        pen = QtGui.QPen(self.palette().highlight().color(), 3)
+        pen.setCapStyle(QtCore.Qt.RoundCap)
+        painter.setPen(pen)
+        y = max(1, min(self.viewport().height() - 2, self._drop_line_y))
+        painter.drawLine(4, y, self.viewport().width() - 5, y)
 
     def dragEnterEvent(self, event):
         if (
@@ -229,10 +273,16 @@ class _TrackTable(QtWidgets.QTableWidget):
             and event.source() is self
             and event.mimeData().hasFormat(_PLAYLIST_TRACKS_MIME)
         ):
+            self._set_drop_line(self._drop_boundary(event.position().toPoint())[1])
             event.setDropAction(QtCore.Qt.MoveAction)
             event.accept()
             return
+        self._set_drop_line(None)
         event.ignore()
+
+    def dragLeaveEvent(self, event):
+        self._set_drop_line(None)
+        event.accept()
 
     def dragMoveEvent(self, event):
         if (
@@ -240,9 +290,11 @@ class _TrackTable(QtWidgets.QTableWidget):
             and event.source() is self
             and event.mimeData().hasFormat(_PLAYLIST_TRACKS_MIME)
         ):
+            self._set_drop_line(self._drop_boundary(event.position().toPoint())[1])
             event.setDropAction(QtCore.Qt.MoveAction)
             event.accept()
             return
+        self._set_drop_line(None)
         event.ignore()
 
     def dropEvent(self, event):
@@ -251,6 +303,7 @@ class _TrackTable(QtWidgets.QTableWidget):
             and event.source() is self
             and event.mimeData().hasFormat(_PLAYLIST_TRACKS_MIME)
         ):
+            self._set_drop_line(None)
             event.ignore()
             return
         try:
@@ -258,16 +311,12 @@ class _TrackTable(QtWidgets.QTableWidget):
                 bytes(event.mimeData().data(_PLAYLIST_TRACKS_MIME)).decode("utf-8")
             )
         except (UnicodeDecodeError, json.JSONDecodeError):
+            self._set_drop_line(None)
             event.ignore()
             return
         moved_set = {str(path) for path in moved_paths}
         pos = event.position().toPoint()
-        index = self.indexAt(pos)
-        if index.isValid():
-            rect = self.visualRect(index)
-            boundary = index.row() + (1 if pos.y() >= rect.center().y() else 0)
-        else:
-            boundary = 0 if pos.y() <= 0 else self.rowCount()
+        boundary, _line_y = self._drop_boundary(pos)
         before_path = None
         for row in range(boundary, self.rowCount()):
             item = self.item(row, self._path_column)
@@ -275,6 +324,7 @@ class _TrackTable(QtWidgets.QTableWidget):
             if path and path not in moved_set:
                 before_path = path
                 break
+        self._set_drop_line(None)
         self.playlistRowsDropped.emit(list(moved_paths), before_path)
         event.setDropAction(QtCore.Qt.MoveAction)
         event.accept()
@@ -294,6 +344,8 @@ class _LibrarySourceTree(QtWidgets.QTreeWidget):
         self.setDropIndicatorShown(True)
         self.setMinimumWidth(190)
         self.setMaximumWidth(360)
+        self._drop_line_y: Optional[int] = None
+        self._drop_target_rect: Optional[QtCore.QRect] = None
 
     def mimeTypes(self):
         return ["text/uri-list", _PLAYLIST_MIME]
@@ -306,8 +358,80 @@ class _LibrarySourceTree(QtWidgets.QTreeWidget):
         ]
         if len(playlists) == 1:
             playlist_id = int(playlists[0].data(0, _SOURCE_VALUE_ROLE))
-            data.setData(_PLAYLIST_MIME, str(playlist_id).encode("ascii"))
+            data.setData(
+                _PLAYLIST_MIME,
+                QtCore.QByteArray(str(playlist_id).encode("ascii")),
+            )
         return data
+
+    def startDrag(self, supported_actions):
+        data = self.mimeData(self.selectedItems())
+        if not data.hasFormat(_PLAYLIST_MIME):
+            return
+        # Custom move: the database owns the order, so Qt must not remove the
+        # source QTreeWidgetItem after the drop completes.
+        drag = QtGui.QDrag(self)
+        drag.setMimeData(data)
+        drag.exec(QtCore.Qt.MoveAction, QtCore.Qt.MoveAction)
+
+    def _playlist_insertion_at(
+        self, pos: QtCore.QPoint
+    ) -> tuple[bool, Optional[int], Optional[int]]:
+        item = self.itemAt(pos)
+        kind = item.data(0, _SOURCE_KIND_ROLE) if item is not None else ""
+        if kind == "playlist":
+            rect = self.visualItemRect(item)
+            if pos.y() < rect.center().y():
+                return True, int(item.data(0, _SOURCE_VALUE_ROLE)), rect.top()
+            parent = item.parent()
+            next_index = parent.indexOfChild(item) + 1 if parent is not None else -1
+            next_item = (
+                parent.child(next_index)
+                if parent is not None and next_index < parent.childCount()
+                else None
+            )
+            before_id = (
+                int(next_item.data(0, _SOURCE_VALUE_ROLE))
+                if next_item is not None else None
+            )
+            return True, before_id, rect.bottom() + 1
+        if kind == "playlists":
+            if item.childCount():
+                y = self.visualItemRect(item.child(item.childCount() - 1)).bottom() + 1
+            else:
+                y = self.visualItemRect(item).bottom() + 1
+            return True, None, y
+        return False, None, None
+
+    def _set_drop_visual(
+        self,
+        *,
+        line_y: Optional[int] = None,
+        target_rect: Optional[QtCore.QRect] = None,
+    ) -> None:
+        if self._drop_line_y != line_y or self._drop_target_rect != target_rect:
+            self._drop_line_y = line_y
+            self._drop_target_rect = target_rect
+            self.viewport().update()
+
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        if self._drop_line_y is None and self._drop_target_rect is None:
+            return
+        painter = QtGui.QPainter(self.viewport())
+        color = self.palette().highlight().color()
+        if self._drop_target_rect is not None:
+            painter.setPen(QtGui.QPen(color, 2))
+            fill = QtGui.QColor(color)
+            fill.setAlpha(35)
+            painter.fillRect(self._drop_target_rect, fill)
+            painter.drawRect(self._drop_target_rect.adjusted(1, 1, -2, -2))
+        if self._drop_line_y is not None:
+            pen = QtGui.QPen(color, 3)
+            pen.setCapStyle(QtCore.Qt.RoundCap)
+            painter.setPen(pen)
+            y = max(1, min(self.viewport().height() - 2, self._drop_line_y))
+            painter.drawLine(8, y, self.viewport().width() - 5, y)
 
     def _playlist_at(self, pos) -> Optional[int]:
         item = self.itemAt(pos)
@@ -329,17 +453,27 @@ class _LibrarySourceTree(QtWidgets.QTreeWidget):
 
     def dragMoveEvent(self, event):
         if event.source() is self and event.mimeData().hasFormat(_PLAYLIST_MIME):
-            item = self.itemAt(event.position().toPoint())
-            kind = item.data(0, _SOURCE_KIND_ROLE) if item is not None else ""
-            if kind in ("playlists", "playlist"):
+            valid, _before_id, line_y = self._playlist_insertion_at(
+                event.position().toPoint()
+            )
+            if valid:
+                self._set_drop_visual(line_y=line_y)
                 event.setDropAction(QtCore.Qt.MoveAction)
                 event.accept()
             else:
+                self._set_drop_visual()
                 event.ignore()
         elif event.mimeData().hasUrls() and self._playlist_at(event.position().toPoint()) is not None:
+            item = self.itemAt(event.position().toPoint())
+            self._set_drop_visual(target_rect=self.visualItemRect(item))
             event.acceptProposedAction()
         else:
+            self._set_drop_visual()
             event.ignore()
+
+    def dragLeaveEvent(self, event):
+        self._set_drop_visual()
+        event.accept()
 
     def dropEvent(self, event):
         if event.source() is self and event.mimeData().hasFormat(_PLAYLIST_MIME):
@@ -348,26 +482,14 @@ class _LibrarySourceTree(QtWidgets.QTreeWidget):
             except (UnicodeDecodeError, ValueError):
                 event.ignore()
                 return
-            pos = event.position().toPoint()
-            item = self.itemAt(pos)
-            before_id = None
-            if item is not None and item.data(0, _SOURCE_KIND_ROLE) == "playlist":
-                rect = self.visualItemRect(item)
-                if pos.y() < rect.center().y():
-                    before_id = int(item.data(0, _SOURCE_VALUE_ROLE))
-                else:
-                    parent = item.parent()
-                    next_index = parent.indexOfChild(item) + 1 if parent is not None else -1
-                    next_item = (
-                        parent.child(next_index)
-                        if parent is not None and next_index < parent.childCount()
-                        else None
-                    )
-                    if next_item is not None:
-                        before_id = int(next_item.data(0, _SOURCE_VALUE_ROLE))
-            elif item is None or item.data(0, _SOURCE_KIND_ROLE) != "playlists":
+            valid, before_id, _line_y = self._playlist_insertion_at(
+                event.position().toPoint()
+            )
+            if not valid:
+                self._set_drop_visual()
                 event.ignore()
                 return
+            self._set_drop_visual()
             self.playlistOrderDropped.emit(moved_id, before_id)
             event.setDropAction(QtCore.Qt.MoveAction)
             event.accept()
@@ -375,8 +497,10 @@ class _LibrarySourceTree(QtWidgets.QTreeWidget):
         playlist_id = self._playlist_at(event.position().toPoint())
         paths = [url.toLocalFile() for url in event.mimeData().urls() if url.isLocalFile()]
         if playlist_id is None or not paths:
+            self._set_drop_visual()
             event.ignore()
             return
+        self._set_drop_visual()
         self.playlistFilesDropped.emit(playlist_id, paths)
         event.acceptProposedAction()
 
@@ -1465,8 +1589,13 @@ class LibraryWidget(QtWidgets.QWidget):
         finally:
             db.close()
         if changed:
-            self._rebuild_source_tree()
-            self._select_source("playlist", playlist_id)
+            QtCore.QTimer.singleShot(
+                0, lambda playlist_id=playlist_id: self._finish_playlist_drop(playlist_id)
+            )
+
+    def _finish_playlist_drop(self, playlist_id: int) -> None:
+        self._rebuild_source_tree()
+        self._select_source("playlist", playlist_id)
 
     def _drop_playlist_tracks(self, paths, before_path) -> None:
         if self._source_kind != "playlist":
@@ -1479,7 +1608,9 @@ class LibraryWidget(QtWidgets.QWidget):
         finally:
             db.close()
         if changed:
-            self._refresh_current_source(reset_sort=True)
+            QtCore.QTimer.singleShot(
+                0, lambda: self._refresh_current_source(reset_sort=True)
+            )
 
     def _selected_paths(self) -> list[str]:
         path_column = self.HEADERS.index("Path")
