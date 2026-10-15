@@ -1,8 +1,8 @@
 """Stable boundary for future library migration support.
 
-This module intentionally performs no migration.  The application can inspect
-library compatibility through this adapter without coupling startup to a
-particular migration implementation.
+The application performs no automatic migration.  It can inspect library
+compatibility through this adapter without coupling startup to one-off
+development migration utilities.
 """
 
 from __future__ import annotations
@@ -25,7 +25,7 @@ class LibraryMigrationStatus:
 
 
 class LibraryMigrationAdapter:
-    """Read-only adapter retained for a future migration implementation."""
+    """Read-only startup adapter; development migrations remain explicit."""
 
     def inspect(
         self,

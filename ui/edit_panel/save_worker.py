@@ -6,7 +6,8 @@ from PySide6 import QtCore
 
 from core.analysis_lib_handler import FeatureNPZStore
 from core.library_handler import LibraryDB
-from core.linear_segments import build_bpm_segments, build_key_segments
+from core.linear_segments import build_bpm_segments, build_key_segments, build_phrase_index_rows
+from utils.phrases import assigned_phrases, extract_phrase_segments
 
 
 def _replace_block(features: dict, name: str, block: dict) -> None:
@@ -44,8 +45,15 @@ class SaveWorker(QtCore.QObject):
             db = LibraryDB(os.path.join(libpath, "library.db"))
             db.connect()
             try:
-                db.replace_bpm_segments(uid, build_bpm_segments(prev_feat.get("tempo_segments")))
-                db.replace_key_segments(uid, build_key_segments(prev_feat.get("key_segments")))
+                bpm_rows = build_bpm_segments(prev_feat.get("tempo_segments"))
+                key_rows = build_key_segments(prev_feat.get("key_segments"))
+                phrase_rows = assigned_phrases(extract_phrase_segments(prev_feat))
+                db.replace_bpm_segments(uid, bpm_rows)
+                db.replace_key_segments(uid, key_rows)
+                db.replace_phrase_index(
+                    uid,
+                    build_phrase_index_rows(phrase_rows, bpm_rows, key_rows),
+                )
             finally:
                 db.close()
         except Exception:

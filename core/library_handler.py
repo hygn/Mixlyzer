@@ -150,6 +150,27 @@ class KeySegmentRow:
 
 
 @dataclass
+class PhraseIndexRow:
+    track_uid: str
+    phrase_seq_index: int
+    section_index: int
+    phrase_label: str
+    phrase_start_sec: float
+    phrase_end_sec: float
+    phrase_duration_sec: float
+    start_sec: float
+    end_sec: float
+    duration_sec: float
+    bpm_seq_index: Optional[int] = None
+    bpm: Optional[float] = None
+    bpm_rounded: Optional[int] = None
+    time_signature: Optional[int] = None
+    key_seq_index: Optional[int] = None
+    key_value: Optional[int] = None
+    key_label: str = ""
+
+
+@dataclass
 class LinearTransitionRow:
     track_uid: str
     path: str
@@ -227,10 +248,36 @@ class LibraryDB:
             UNIQUE(track_uid, seq_index)
         );
         """)
+        self._conn.execute("""
+        CREATE TABLE IF NOT EXISTS track_phrase_sections (
+            id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+            track_uid           TEXT NOT NULL,
+            phrase_seq_index    INTEGER NOT NULL,
+            section_index       INTEGER NOT NULL,
+            phrase_label        TEXT NOT NULL,
+            phrase_start_sec    REAL NOT NULL,
+            phrase_end_sec      REAL NOT NULL,
+            phrase_duration_sec REAL NOT NULL,
+            start_sec           REAL NOT NULL,
+            end_sec             REAL NOT NULL,
+            duration_sec        REAL NOT NULL,
+            bpm_seq_index       INTEGER,
+            bpm                 REAL,
+            bpm_rounded         INTEGER,
+            time_signature      INTEGER,
+            key_seq_index       INTEGER,
+            key_value           INTEGER,
+            key_label           TEXT DEFAULT '',
+            UNIQUE(track_uid, phrase_seq_index, section_index)
+        );
+        """)
         self._conn.execute("CREATE INDEX IF NOT EXISTS idx_tbs_track_uid ON track_bpm_segments(track_uid);")
         self._conn.execute("CREATE INDEX IF NOT EXISTS idx_tbs_bpm_duration ON track_bpm_segments(bpm_rounded, duration_sec);")
         self._conn.execute("CREATE INDEX IF NOT EXISTS idx_tks_track_uid ON track_key_segments(track_uid);")
         self._conn.execute("CREATE INDEX IF NOT EXISTS idx_tks_key_duration ON track_key_segments(key_value, duration_sec);")
+        self._conn.execute("CREATE INDEX IF NOT EXISTS idx_tps_track_phrase ON track_phrase_sections(track_uid, phrase_seq_index, section_index);")
+        self._conn.execute("CREATE INDEX IF NOT EXISTS idx_tps_label_bpm ON track_phrase_sections(phrase_label, bpm_rounded, phrase_duration_sec);")
+        self._conn.execute("CREATE INDEX IF NOT EXISTS idx_tps_label_key ON track_phrase_sections(phrase_label, key_value, phrase_duration_sec);")
         self._conn.commit()
 
     def close(self):
@@ -306,6 +353,7 @@ class LibraryDB:
             if uid_rows:
                 self.conn.executemany("DELETE FROM track_bpm_segments WHERE track_uid = ?;", uid_rows)
                 self.conn.executemany("DELETE FROM track_key_segments WHERE track_uid = ?;", uid_rows)
+                self.conn.executemany("DELETE FROM track_phrase_sections WHERE track_uid = ?;", uid_rows)
 
     def get(self, path: str) -> Optional[TrackRow]:
         """The row stored under exactly ``path`` (paths are kept as given, never
@@ -434,6 +482,55 @@ class LibraryDB:
                     INSERT INTO track_key_segments(
                         track_uid, seq_index, start_sec, end_sec, duration_sec, key_value, key_label
                     ) VALUES(?, ?, ?, ?, ?, ?, ?);
+                    """,
+                    rows,
+                )
+
+    def replace_phrase_index(
+        self,
+        track_uid: str,
+        sections: Iterable[PhraseIndexRow | Dict[str, Any]],
+    ):
+        """Replace the phrase/BPM/key search materialization for one track."""
+        uid = _canonical_uuid4_or_none(track_uid)
+        if not uid:
+            return
+        rows = []
+        for raw in sections:
+            row = asdict(raw) if isinstance(raw, PhraseIndexRow) else dict(raw)
+            rows.append(
+                (
+                    uid,
+                    int(row.get("phrase_seq_index", 0)),
+                    int(row.get("section_index", 0)),
+                    str(row.get("phrase_label") or "").strip().upper(),
+                    float(row.get("phrase_start_sec", 0.0)),
+                    float(row.get("phrase_end_sec", 0.0)),
+                    float(row.get("phrase_duration_sec", 0.0)),
+                    float(row.get("start_sec", 0.0)),
+                    float(row.get("end_sec", 0.0)),
+                    float(row.get("duration_sec", 0.0)),
+                    None if row.get("bpm_seq_index") is None else int(row["bpm_seq_index"]),
+                    None if row.get("bpm") is None else float(row["bpm"]),
+                    None if row.get("bpm_rounded") is None else int(row["bpm_rounded"]),
+                    None if row.get("time_signature") is None else int(row["time_signature"]),
+                    None if row.get("key_seq_index") is None else int(row["key_seq_index"]),
+                    None if row.get("key_value") is None else int(row["key_value"]),
+                    str(row.get("key_label") or ""),
+                )
+            )
+        with self.tx():
+            self.conn.execute("DELETE FROM track_phrase_sections WHERE track_uid=?;", (uid,))
+            if rows:
+                self.conn.executemany(
+                    """
+                    INSERT INTO track_phrase_sections(
+                        track_uid, phrase_seq_index, section_index, phrase_label,
+                        phrase_start_sec, phrase_end_sec, phrase_duration_sec,
+                        start_sec, end_sec, duration_sec,
+                        bpm_seq_index, bpm, bpm_rounded, time_signature,
+                        key_seq_index, key_value, key_label
+                    ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
                     """,
                     rows,
                 )

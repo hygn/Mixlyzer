@@ -5,6 +5,7 @@ from typing import Any
 import numpy as np
 
 from utils.labels import idx_to_labels
+from utils.phrases import assigned_phrases
 
 
 def key_value_to_label(key_value: int | None) -> str:
@@ -97,6 +98,93 @@ def build_key_segments(key_segments) -> list[dict[str, Any]]:
     for idx, row in enumerate(rows):
         row["seq_index"] = idx
     return rows
+
+
+def build_phrase_index_rows(
+    phrases,
+    bpm_segments: list[dict[str, Any]],
+    key_segments: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Map every stored phrase to its BPM/key timeline without losing changes.
+
+    A phrase becomes one or more sections, split only where an overlapping BPM
+    or key segment changes.  ``phrase_seq_index`` identifies the phrase and
+    ``section_index`` orders its constant BPM/key portions.  Missing BPM or key
+    coverage is retained as ``None`` so the phrase itself remains indexable.
+    """
+    phrase_rows = assigned_phrases(phrases)
+    bpm_rows = _valid_index_segments(bpm_segments)
+    key_rows = _valid_index_segments(key_segments)
+    out: list[dict[str, Any]] = []
+
+    for phrase_seq, phrase in enumerate(phrase_rows):
+        phrase_start = float(phrase["start"])
+        phrase_end = float(phrase["end"])
+        phrase_duration = phrase_end - phrase_start
+        boundaries = {phrase_start, phrase_end}
+        for segment in (*bpm_rows, *key_rows):
+            start = float(segment["start_sec"])
+            end = float(segment["end_sec"])
+            if phrase_start < start < phrase_end:
+                boundaries.add(start)
+            if phrase_start < end < phrase_end:
+                boundaries.add(end)
+        ordered = sorted(boundaries)
+
+        for section_index, (start, end) in enumerate(zip(ordered, ordered[1:])):
+            if end - start <= 1e-6:
+                continue
+            midpoint = 0.5 * (start + end)
+            bpm_row = _segment_at(bpm_rows, midpoint)
+            key_row = _segment_at(key_rows, midpoint)
+            bpm = bpm_row.get("bpm") if bpm_row else None
+            key_value = key_row.get("key_value") if key_row else None
+            out.append(
+                {
+                    "phrase_seq_index": phrase_seq,
+                    "section_index": section_index,
+                    "phrase_label": str(phrase.get("label") or "").strip().upper(),
+                    "phrase_start_sec": phrase_start,
+                    "phrase_end_sec": phrase_end,
+                    "phrase_duration_sec": phrase_duration,
+                    "start_sec": start,
+                    "end_sec": end,
+                    "duration_sec": end - start,
+                    "bpm_seq_index": None if bpm_row is None else int(bpm_row["seq_index"]),
+                    "bpm": None if bpm is None else float(bpm),
+                    "bpm_rounded": None if bpm is None else int(bpm_row.get("bpm_rounded", round(float(bpm)))),
+                    "time_signature": None if bpm_row is None else int(bpm_row.get("time_signature", 4)),
+                    "key_seq_index": None if key_row is None else int(key_row["seq_index"]),
+                    "key_value": None if key_value is None else int(key_value),
+                    "key_label": "" if key_row is None else str(key_row.get("key_label") or ""),
+                }
+            )
+    return out
+
+
+def _valid_index_segments(segments) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for raw in segments or []:
+        try:
+            row = dict(raw)
+            start = float(row["start_sec"])
+            end = float(row["end_sec"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if not (np.isfinite(start) and np.isfinite(end)) or end - start <= 1e-6:
+            continue
+        row["start_sec"] = start
+        row["end_sec"] = end
+        row["seq_index"] = int(row.get("seq_index", len(rows)))
+        rows.append(row)
+    return sorted(rows, key=lambda row: (float(row["start_sec"]), int(row["seq_index"])))
+
+
+def _segment_at(rows: list[dict[str, Any]], time_sec: float) -> dict[str, Any] | None:
+    for row in rows:
+        if float(row["start_sec"]) <= time_sec < float(row["end_sec"]):
+            return row
+    return None
 
 
 def _normalize_tempo_segments(tempo_segments) -> np.ndarray:

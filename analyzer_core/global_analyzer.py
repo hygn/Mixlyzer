@@ -36,7 +36,7 @@ from core.analysis_lib_handler import FeatureNPZStore
 from core.thumbnails import save_thumbnail
 from core.config import config
 from core.taskmanager import taskmanager
-from core.linear_segments import build_bpm_segments, build_key_segments
+from core.linear_segments import build_bpm_segments, build_key_segments, build_phrase_index_rows
 from analyzer_core.utils import offset_beats_and_segments, prime_physical_core_count
 
 # sklearn would otherwise launch powershell.exe to count cores in every analysis process.
@@ -157,6 +157,7 @@ def _persist_analysis_result(
     *,
     bpm_segments=None,
     key_segments=None,
+    phrase_sections=None,
 ):
     uid = library.upsert_meta(properties)
     library.conn.commit()
@@ -166,6 +167,9 @@ def _persist_analysis_result(
         library.conn.commit()
     if key_segments is not None:
         library.replace_key_segments(uid, key_segments)
+        library.conn.commit()
+    if phrase_sections is not None:
+        library.replace_phrase_index(uid, phrase_sections)
         library.conn.commit()
     store.save(uid, dict(features))
     save_thumbnail(store.base_dir, uid, getAlbumArt(properties.get("path")))
@@ -718,6 +722,7 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
         properties["uid"] = track.uid
     bpm_segments = build_bpm_segments(features.get("tempo_segments"))
     key_segments_db = build_key_segments(features.get("key_segments"))
+    phrase_sections = build_phrase_index_rows(phrase_segments, bpm_segments, key_segments_db)
     features_properties = {"features": features, "properties": properties, "update_db": True, "taskid":taskid}
     yield {"status": "Saving"}
     print("[Analyzer] Saving Results")
@@ -730,6 +735,7 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
             properties,
             bpm_segments=bpm_segments,
             key_segments=key_segments_db,
+            phrase_sections=phrase_sections,
         )
     finally:
         l.close()
