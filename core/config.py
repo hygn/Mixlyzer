@@ -9,7 +9,8 @@ from utils.atomic_io import atomic_write_json
 @dataclass
 class libconfig:
     libpath: str
-    local_music_directory: str
+    # An empty list means the operating system's default Music location.
+    local_music_directories: list[str]
     write_log: bool
     logpath: str
     rekordbox_sync_enabled: bool
@@ -196,7 +197,24 @@ class config:
 
     @classmethod
     def from_dict(cls, payload: dict):
-        return _coerce_dataclass(cls, payload)
+        return _coerce_dataclass(cls, _normalize_config_payload(payload))
+
+
+def _normalize_config_payload(payload: dict) -> dict:
+    """Translate configuration keys from older Mixlyzer releases."""
+    normalized = dict(payload) if isinstance(payload, dict) else {}
+    raw_lib = normalized.get("libconfig")
+    if not isinstance(raw_lib, dict):
+        return normalized
+    lib = dict(raw_lib)
+    if "local_music_directories" not in lib and "local_music_directory" in lib:
+        legacy = str(lib.get("local_music_directory") or "").strip()
+        # ~/Music was the old hard-coded default. An empty list now asks the
+        # OS for its Music location, including a redirected Windows folder.
+        lib["local_music_directories"] = [] if legacy in ("", "~/Music") else [legacy]
+    lib.pop("local_music_directory", None)
+    normalized["libconfig"] = lib
+    return normalized
 
 
 def _coerce_dataclass(cls, payload: dict):
@@ -224,6 +242,10 @@ def _coerce_value(type_hint, value):
             raw = raw_values[idx] if idx < len(raw_values) else None
             coerced.append(_coerce_scalar(arg, raw))
         return tuple(coerced)
+    if origin is list:
+        (item_type,) = get_args(type_hint) or (object,)
+        raw_values = value if isinstance(value, (list, tuple)) else []
+        return [_coerce_scalar(item_type, item) for item in raw_values]
     return _coerce_scalar(type_hint, value)
 
 
@@ -267,7 +289,7 @@ def _default_memory_value(
 def default_cfg():
     lcfg = libconfig(
         libpath="library",
-        local_music_directory="~/Music",
+        local_music_directories=[],
         logpath="mixlyzer.log",
         write_log=False,
         rekordbox_sync_enabled=True,
@@ -415,7 +437,8 @@ def load_cfg() -> config:
     try:
         with open("config.json", "r", encoding="utf-8") as f:
             loaded = json.load(f)
-            merged = _merge_defaults(cfg.to_dict(), loaded if isinstance(loaded, dict) else {})
+            loaded = _normalize_config_payload(loaded)
+            merged = _merge_defaults(cfg.to_dict(), loaded)
             cfg = config.from_dict(merged)
     except (TypeError, FileNotFoundError, json.JSONDecodeError):
         atomic_write_json("config.json", cfg.to_dict(), ensure_ascii=True, indent=None)

@@ -4,6 +4,7 @@ from threadpoolctl import threadpool_limits
 import time
 import os
 import base64
+import struct
 from pymediainfo import MediaInfo
 import soundfile as sf
 from dataclasses import replace
@@ -84,12 +85,77 @@ def _file_stats(path: str) -> tuple[int, float]:
     except FileNotFoundError:
         return 0, 0.0
 
+
+_RIFF_INFO_FIELDS = {
+    b"INAM": "title",
+    b"IART": "artist",
+    b"IPRD": "album",
+    b"ICMT": "comment",
+}
+
+
+def _utf8_wav_info(path: str) -> dict[str, str]:
+    """Read UTF-8 RIFF INFO tags without applying the Windows ANSI code page.
+
+    MediaInfo interprets RIFF INFO text using the active Windows code page.
+    Recordings written by rekordbox/PioneerDJ contain UTF-8 here, which turns
+    Japanese text into mojibake on a Korean Windows installation.
+    """
+    if Path(path).suffix.lower() not in (".wav", ".wave"):
+        return {}
+    result: dict[str, str] = {}
+    try:
+        with open(path, "rb") as stream:
+            header = stream.read(12)
+            if len(header) != 12 or header[:4] != b"RIFF" or header[8:] != b"WAVE":
+                return result
+            riff_end = min(
+                os.fstat(stream.fileno()).st_size,
+                8 + struct.unpack("<I", header[4:8])[0],
+            )
+            while stream.tell() + 8 <= riff_end:
+                chunk_id = stream.read(4)
+                size_data = stream.read(4)
+                if len(size_data) != 4:
+                    break
+                chunk_size = struct.unpack("<I", size_data)[0]
+                chunk_start = stream.tell()
+                chunk_end = chunk_start + chunk_size
+                if chunk_end > riff_end:
+                    break
+                if chunk_id == b"LIST" and chunk_size >= 4 and stream.read(4) == b"INFO":
+                    while stream.tell() + 8 <= chunk_end:
+                        info_id = stream.read(4)
+                        info_size_data = stream.read(4)
+                        if len(info_size_data) != 4:
+                            break
+                        info_size = struct.unpack("<I", info_size_data)[0]
+                        info_end = stream.tell() + info_size
+                        if info_end > chunk_end:
+                            break
+                        raw = stream.read(info_size).rstrip(b"\x00")
+                        field = _RIFF_INFO_FIELDS.get(info_id)
+                        if field and raw:
+                            try:
+                                value = raw.decode("utf-8-sig").strip()
+                            except UnicodeDecodeError:
+                                value = ""
+                            if value:
+                                result[field] = value
+                        stream.seek(info_end + (info_size & 1))
+                stream.seek(chunk_end + (chunk_size & 1))
+    except (OSError, struct.error):
+        return {}
+    return result
+
+
 def extract_tags(path: str) -> tuple[str, str, str, str]:
     title = os.path.splitext(os.path.basename(path))[0]
     artist = ""
     album = ""
     comment = ""
     try:
+        wav_info = _utf8_wav_info(path)
         mi = MediaInfo.parse(path, cover_data=False)
         tracks = mi.tracks if mi else []
         audio_track = next((t for t in tracks if t.track_type == "Audio"), None)
@@ -114,24 +180,28 @@ def extract_tags(path: str) -> tuple[str, str, str, str]:
             return ""
 
         t = (
-            _pick_from_track(general_track, "title", "track_name")
+            wav_info.get("title")
+            or _pick_from_track(general_track, "title", "track_name")
             or _pick_from_track(audio_track, "title", "track_name")
             or title
         )
         ar = (
-            _pick_from_track(general_track, "artist", "performer")
+            wav_info.get("artist")
+            or _pick_from_track(general_track, "artist", "performer")
             or _pick_from_track(audio_track, "artist", "performer")
             or _pick_from_track(general_track, "album_artist", "album_performer", "album_composer")
             or _pick_from_track(audio_track, "album_artist", "album_performer", "album_composer")
             or ""
         )
         al = (
-            _pick_from_track(general_track, "album")
+            wav_info.get("album")
+            or _pick_from_track(general_track, "album")
             or _pick_from_track(audio_track, "album")
             or ""
         )
         cm = (
-            _pick_from_track(general_track, "comment", "description")
+            wav_info.get("comment")
+            or _pick_from_track(general_track, "comment", "description")
             or _pick_from_track(audio_track, "comment", "description")
             or ""
         )

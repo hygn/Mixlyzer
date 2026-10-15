@@ -452,7 +452,7 @@ class AppWindow(QtWidgets.QMainWindow):
         new_lcfg = _config.to_dict().get("libconfig", {})
         if any(
             prev_lcfg.get(key) != new_lcfg.get(key)
-            for key in ("libpath", "local_music_directory")
+            for key in ("libpath", "local_music_directories")
         ):
             self.pane.lib.set_config(_config)
         rekordbox_cfg_changed = any(

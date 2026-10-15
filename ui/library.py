@@ -1034,6 +1034,30 @@ class LibraryWidget(QtWidgets.QWidget):
         db.connect()
         return db
 
+    def _local_music_roots(self) -> list[str]:
+        configured = [
+            str(path).strip()
+            for path in self.cfg.libconfig.local_music_directories
+            if str(path).strip()
+        ]
+        if not configured:
+            os_music = QtCore.QStandardPaths.writableLocation(
+                QtCore.QStandardPaths.MusicLocation
+            )
+            configured = [os_music or os.path.join(os.path.expanduser("~"), "Music")]
+        roots = []
+        identities = set()
+        for configured_path in configured:
+            root_path = os.path.abspath(
+                os.path.expandvars(os.path.expanduser(configured_path))
+            )
+            identity = self._file_identity(root_path)
+            if identity in identities:
+                continue
+            identities.add(identity)
+            roots.append(root_path)
+        return roots
+
     def _rebuild_source_tree(self) -> None:
         previous = (self._source_kind, self._source_value)
         tree = self.source_tree
@@ -1062,17 +1086,16 @@ class LibraryWidget(QtWidgets.QWidget):
         local_item = QtWidgets.QTreeWidgetItem(["Local Folders"])
         local_item.setData(0, _SOURCE_KIND_ROLE, "local_folders")
         tree.addTopLevelItem(local_item)
-        configured = self.cfg.libconfig.local_music_directory or "~/Music"
-        root_path = os.path.abspath(os.path.expandvars(os.path.expanduser(configured)))
-        root_label = Path(root_path).name or root_path
-        root_item = QtWidgets.QTreeWidgetItem([root_label])
-        root_item.setToolTip(0, root_path)
-        root_item.setData(0, _SOURCE_KIND_ROLE, "directory")
-        root_item.setData(0, _SOURCE_VALUE_ROLE, root_path)
-        local_item.addChild(root_item)
-        self._populate_directory_children(root_item)
+        for root_path in self._local_music_roots():
+            root_label = Path(root_path).name or root_path
+            root_item = QtWidgets.QTreeWidgetItem([root_label])
+            root_item.setToolTip(0, root_path)
+            root_item.setData(0, _SOURCE_KIND_ROLE, "directory")
+            root_item.setData(0, _SOURCE_VALUE_ROLE, root_path)
+            local_item.addChild(root_item)
+            self._populate_directory_children(root_item)
+            root_item.setExpanded(False)
         local_item.setExpanded(True)
-        root_item.setExpanded(True)
 
         selected = library_item
         iterator = QtWidgets.QTreeWidgetItemIterator(tree)
@@ -1220,13 +1243,13 @@ class LibraryWidget(QtWidgets.QWidget):
 
     def set_config(self, cfg: config) -> None:
         old_library = self.cfg.libconfig.libpath
-        old_local = self.cfg.libconfig.local_music_directory
+        old_local = list(self.cfg.libconfig.local_music_directories)
         self.cfg = cfg
         delegate = self.table.itemDelegate()
         if isinstance(delegate, FastDelegate):
             delegate._libpath = cfg.libconfig.libpath
             delegate.clear_cache()
-        if old_local != cfg.libconfig.local_music_directory:
+        if old_local != list(cfg.libconfig.local_music_directories):
             self._source_kind, self._source_value = "library", None
         if old_library != cfg.libconfig.libpath:
             self._pending_playlist_paths.clear()

@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QFileDialog,
+    QListWidget,
     QMessageBox,
     QPushButton,
     QWidget,
@@ -20,9 +21,18 @@ from ui.config.scroll import scroll_page
 def build_library_tab(dialog) -> None:
     dialog.tab_lib = QWidget()
     form = QFormLayout(dialog.tab_lib)
-    dialog.ed_libpath = QLineEdit()
-    dialog.ed_local_music_directory = QLineEdit()
-    dialog.btn_local_music_directory = QPushButton("Browse…")
+    dialog.ed_libpath = QtWidgets.QLineEdit()
+    dialog.list_local_music_directories = QListWidget()
+    dialog.list_local_music_directories.setSelectionMode(
+        QtWidgets.QAbstractItemView.ExtendedSelection
+    )
+    dialog.list_local_music_directories.setMinimumHeight(100)
+    dialog.btn_add_local_music_directory = QPushButton("Add Folder…")
+    dialog.btn_remove_local_music_directory = QPushButton("Remove")
+    dialog.lbl_local_music_directory_note = QLabel(
+        "When this list is empty, the operating system's default Music folder is used."
+    )
+    dialog.lbl_local_music_directory_note.setWordWrap(True)
     dialog.cb_write_log = QCheckBox("Write log to file")
     dialog.ed_logpath = QLineEdit()
     dialog.cb_rekordbox_sync = QCheckBox("Sync with Rekordbox XML")
@@ -36,11 +46,11 @@ def build_library_tab(dialog) -> None:
         "Folder holding library.db and the per-track feature files (.npz).\n"
         "Relative paths are resolved from the app folder."
     )
-    dialog.ed_local_music_directory.setToolTip(
-        "Root folder shown under Local Folders in the library browser.\n"
-        "Use ~ for the current user's home directory."
+    dialog.list_local_music_directories.setToolTip(
+        "Root folders shown under Local Folders in the library browser."
     )
-    dialog.btn_local_music_directory.setToolTip("Choose the local music root folder.")
+    dialog.btn_add_local_music_directory.setToolTip("Add a local music root folder.")
+    dialog.btn_remove_local_music_directory.setToolTip("Remove the selected root folders.")
     dialog.cb_write_log.setToolTip("Write console output to a log file.")
     dialog.ed_logpath.setToolTip("Log file written when 'Write log to file' is on.")
     dialog.cb_rekordbox_sync.setToolTip(
@@ -56,12 +66,17 @@ def build_library_tab(dialog) -> None:
     grp_library = QGroupBox("Library")
     f_library = QFormLayout(grp_library)
     f_library.addRow("Library Path", dialog.ed_libpath)
-    local_row = QWidget()
-    local_layout = QtWidgets.QHBoxLayout(local_row)
+    local_box = QWidget()
+    local_layout = QtWidgets.QVBoxLayout(local_box)
     local_layout.setContentsMargins(0, 0, 0, 0)
-    local_layout.addWidget(dialog.ed_local_music_directory, 1)
-    local_layout.addWidget(dialog.btn_local_music_directory)
-    f_library.addRow("Local Music Directory", local_row)
+    local_layout.addWidget(dialog.list_local_music_directories)
+    local_buttons = QtWidgets.QHBoxLayout()
+    local_buttons.addWidget(dialog.btn_add_local_music_directory)
+    local_buttons.addWidget(dialog.btn_remove_local_music_directory)
+    local_buttons.addStretch(1)
+    local_layout.addLayout(local_buttons)
+    local_layout.addWidget(dialog.lbl_local_music_directory_note)
+    f_library.addRow("Local Music Folders", local_box)
 
     grp_rekordbox = QGroupBox("Rekordbox XML")
     f_rekordbox = QFormLayout(grp_rekordbox)
@@ -81,16 +96,60 @@ def build_library_tab(dialog) -> None:
     form.addRow(grp_advanced)
 
     dialog.btn_rekordbox_sync_now.clicked.connect(dialog._sync_rekordbox_now)
-    dialog.btn_local_music_directory.clicked.connect(dialog._browse_local_music_directory)
+    dialog.btn_add_local_music_directory.clicked.connect(dialog._browse_local_music_directory)
+    dialog.btn_remove_local_music_directory.clicked.connect(
+        dialog._remove_local_music_directories
+    )
     dialog.tabs.addTab(scroll_page(dialog.tab_lib), "Library")
 
 
 class LibrarySettingsMixin:
     def _browse_local_music_directory(self) -> None:
-        initial = os.path.expanduser(self.ed_local_music_directory.text().strip() or "~/Music")
-        directory = QFileDialog.getExistingDirectory(self, "Choose Local Music Directory", initial)
+        current = self.list_local_music_directories.currentItem()
+        if current is not None:
+            initial = current.text()
+        else:
+            initial = QtCore.QStandardPaths.writableLocation(
+                QtCore.QStandardPaths.MusicLocation
+            ) or str(os.path.join(os.path.expanduser("~"), "Music"))
+        directory = QFileDialog.getExistingDirectory(
+            self, "Add Local Music Folder", os.path.expanduser(initial)
+        )
         if directory:
-            self.ed_local_music_directory.setText(directory)
+            identity = os.path.normcase(os.path.realpath(os.path.abspath(directory)))
+            existing = {
+                os.path.normcase(os.path.realpath(os.path.abspath(
+                    self.list_local_music_directories.item(row).text()
+                )))
+                for row in range(self.list_local_music_directories.count())
+            }
+            if identity not in existing:
+                item = QtWidgets.QListWidgetItem(directory)
+                item.setToolTip(directory)
+                self.list_local_music_directories.addItem(item)
+
+    def _remove_local_music_directories(self) -> None:
+        for item in self.list_local_music_directories.selectedItems():
+            self.list_local_music_directories.takeItem(
+                self.list_local_music_directories.row(item)
+            )
+
+    def _set_local_music_directories(self, directories) -> None:
+        self.list_local_music_directories.clear()
+        for directory in directories or []:
+            text = str(directory).strip()
+            if not text:
+                continue
+            item = QtWidgets.QListWidgetItem(text)
+            item.setToolTip(text)
+            self.list_local_music_directories.addItem(item)
+
+    def _get_local_music_directories(self) -> list[str]:
+        return [
+            self.list_local_music_directories.item(row).text().strip()
+            for row in range(self.list_local_music_directories.count())
+            if self.list_local_music_directories.item(row).text().strip()
+        ]
 
     def _initialize_library_settings(self, bus) -> None:
         self._rekordbox_sync_dialog: RekordboxSyncProgressDialog | None = None
