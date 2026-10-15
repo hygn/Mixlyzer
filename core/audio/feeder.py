@@ -282,6 +282,7 @@ class PCMFeeder(QtCore.QObject):
         self._pos = self._scratch_target
         if not self._playing:
             self._seeked_while_paused = True
+            self._timeline.hold_silence_at(self._pos)
             self._audible_until = self._timeline.rendered_frames + self._device_tail_frames
 
     def scratch_to(self, frame: float, at: float) -> None:
@@ -374,6 +375,9 @@ class PCMFeeder(QtCore.QObject):
         else:
             self._pos = target
             self._seeked_while_paused = True
+            # the silence already queued is heard first when play starts: at the new
+            # position, or the playhead would show the old one until it has played out
+            self._timeline.hold_silence_at(target)
 
     def arm_jump(self, start_sec, dest_sec, once: bool = False, starts_sec=None) -> None:
         """Jump from ``start_sec`` to ``dest_sec`` whenever playback reaches it, or

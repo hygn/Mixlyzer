@@ -67,6 +67,14 @@ class OutputTimeline:
                 return seg
         return None
 
+    def hold_silence_at(self, in_start: float) -> None:
+        """The silence queued while paused holds ``in_start``: the paused position
+        moved, and what is heard until new audio follows that silence is the new
+        position, not the one it was rendered at."""
+        for seg in self.segments:
+            if seg.step == 0.0:
+                seg.in_start = float(in_start)
+
     def first_segment(self) -> Optional[Segment]:
         return self.segments[0] if self.segments else None
 
