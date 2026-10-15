@@ -21,13 +21,13 @@ from utils.wave import WAVE_OVERVIEW_SAMPLE_RATE, build_wave_overview
 from analyzer_core.self_correlation.JumpCUE import JumpCueConfig, JumpCueEngine
 from analyzer_core.self_correlation.jump_point_model import jump_point_beat_features
 from analyzer_core.cue_and_phrase import detect_phrase_segments
-from utils.jump_cues import build_jump_cues_np, lead_in_jump_pair
+from utils.jump_cues import autocue_jump_pair, build_jump_cues_np
 from utils.cue_points import (
+    add_autocue_cue_point,
+    autocue_time_sec,
     build_cue_points_np,
-    add_lead_in_cue_point,
     build_phrase_cue_points,
     lead_in_end_sec,
-    empty_cue_points_np,
 )
 from utils.phrases import build_phrase_segments_np
 from core.audio.decoder import decode_to_memmap, get_total_samples
@@ -558,13 +558,13 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
     # The phrase boundary probability is a JumpCUE feature (below).
     phrase_boundary_prob = None
     phrase_feature_z = None
-    # AutoCUE (Settings > Analysis > CUE): a CUE point or a JumpCUE where the lead-in ends.
+    # AutoCUE (Settings > Analysis > CUE): lead-in end, an early first
+    # downbeat, or 0:00 when the track begins before a usable downbeat.
     autocue = gcf.autocue
-    lead_in_end = None
+    phrase_segments = []
+    phrase_cue_points = []
     if not phrase_enabled:
         print("[Phrase] skipped: disabled in analysis settings")
-        features["phrase_segments_np"] = build_phrase_segments_np([])
-        features["cue_points_np"] = empty_cue_points_np()
     elif beats_time_arr.size >= 17 and seg_arr.shape[0] > 0:
         try:
             # Joint phrase boundary + functional-label detection -> Phrase data.
@@ -579,42 +579,45 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
                 return_boundary_probability=True,
                 return_feature_z=True,
             )
-            features["phrase_segments_np"] = build_phrase_segments_np(phrase_segments)
             phrase_cue_points = build_phrase_cue_points(phrase_segments, config.cuepointconfig.by_label())
-            lead_in_end = lead_in_end_sec(phrase_segments)
-            if autocue == "cue_point" and lead_in_end is not None:
-                phrase_cue_points = add_lead_in_cue_point(phrase_cue_points, lead_in_end)
-            features["cue_points_np"] = build_cue_points_np(phrase_cue_points)
-            labels_summary = ", ".join(str(s["label"]) for s in phrase_segments)
-            print(
-                f"[Phrase] segments={len(phrase_segments)} "
-                f"cue_points={len(phrase_cue_points)} labels=[{labels_summary}]"
-            )
         except Exception as exc:
             import traceback
 
             print(f"[Phrase] joint detection skipped: {exc}")
             traceback.print_exc()
-            features["phrase_segments_np"] = build_phrase_segments_np([])
-            features["cue_points_np"] = empty_cue_points_np()
+            phrase_segments = []
+            phrase_cue_points = []
     else:
         print("[Phrase] skipped: too few beats")
-        features["phrase_segments_np"] = build_phrase_segments_np([])
-        features["cue_points_np"] = empty_cue_points_np()
+    features["phrase_segments_np"] = build_phrase_segments_np(phrase_segments)
+    lead_in_end = lead_in_end_sec(phrase_segments)
+    autocue_target = autocue_time_sec(phrase_segments, beats_time_arr, seg_arr)
+    if autocue == "cue_point":
+        phrase_cue_points = add_autocue_cue_point(
+            phrase_cue_points,
+            autocue_target,
+            lead_in_end=lead_in_end is not None,
+        )
+    features["cue_points_np"] = build_cue_points_np(phrase_cue_points)
+    labels_summary = ", ".join(str(s["label"]) for s in phrase_segments)
+    print(
+        f"[Phrase] segments={len(phrase_segments)} "
+        f"cue_points={len(phrase_cue_points)} labels=[{labels_summary}]"
+    )
     print("[Phrase] Analysis Finished")
 
-    # JumpCUE needs the phrase analysis (its boundary probability is a feature
-    # of the learned jump point); with phrases off there are no JumpCUEs.
+    # Learned JumpCUE detection needs phrase-boundary probability.  The simple
+    # AutoCUE JumpCUE does not and is still added below when detection is skipped.
     yield {"status": "jumpcue"}
     taskmgr.updatetask(taskid, "JumpCUE Analyzing", 0.62)
     jump_pairs = []
     if not phrase_enabled:
-        print("[JumpCUE] skipped: needs the phrase analysis (disabled in analysis settings)")
+        print("[JumpCUE] learned pairs skipped: phrase analysis is disabled")
     elif phrase_boundary_prob is None:
-        print("[JumpCUE] skipped: no phrase boundary probability")
+        print("[JumpCUE] learned pairs skipped: no phrase boundary probability")
     elif beats_time_arr.size >= 2:
         jump_config = JumpCueConfig(jump_point_model_path=str(gcf.jumpcue_parameter_path))
-        if autocue == "jumpcue" and lead_in_end is not None:
+        if autocue == "jumpcue":
             # one hot cue slot stays free for the AutoCUE JumpCUE (below)
             jump_config = replace(jump_config, hot_cue_slots=jump_config.hot_cue_slots - 1)
         jump_engine = JumpCueEngine(jump_config)
@@ -641,8 +644,8 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
             print("[JumpCUE] pairs", jump_pairs)
         else:
             print("[JumpCUE] no jump-compatible pairs detected")
-    if autocue == "jumpcue" and lead_in_end is not None:
-        jump_pairs = [*jump_pairs, lead_in_jump_pair(lead_in_end)]
+    if autocue == "jumpcue":
+        jump_pairs = [*jump_pairs, autocue_jump_pair(autocue_target)]
     features["jump_cues_np"] = build_jump_cues_np(
         jump_pairs,
         canonicalize_labels=True,

@@ -284,14 +284,15 @@ def build_analysis_tab(dialog) -> None:
     dialog.cmb_autocue.addItem("JumpCUE", "jumpcue")
     dialog.cmb_autocue.addItem("Off", "off")
     dialog.cmb_autocue.setToolTip(
-        "What the analysis puts where the lead-in ends (the first phrase after it):\n"
+        "What the analysis puts at the automatic start position:\n"
+        "the lead-in end, an early first downbeat, or 0:00.\n"
         "CUE point: a CUE point (memory cue).\n"
         "JumpCUE: a JumpCUE (hot cue) of its own.\n"
         "Off: nothing."
     )
     grp_autocue = QGroupBox("AutoCUE")
     f_autocue = QFormLayout(grp_autocue)
-    f_autocue.addRow("After the lead-in", dialog.cmb_autocue)
+    f_autocue.addRow("Automatic start", dialog.cmb_autocue)
     dialog.ed_jumpcue_parameter_path = QLineEdit()
     dialog.ed_jumpcue_parameter_path.setPlaceholderText("relative or absolute .json path")
     dialog.ed_jumpcue_feature_cache_path = QLineEdit()

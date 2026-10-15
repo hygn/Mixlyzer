@@ -8,6 +8,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 from ui.edit_panel.cue_slots import SLOTS_PER_PAGE, CuePageWidget, color_swatch_icon
 from ui.edit_panel.icons import icon
 from ui.edit_panel.jumpcue import format_cue_time
+from ui.edit_panel.quantize import quantize_to_beat_or_edge
 from utils.cue_points import build_cue_points_np
 from utils.jumpcue_colors import CUE_POINT_COLORS, get_cue_point_color
 
@@ -23,7 +24,7 @@ class CuePointEditMixin:
         self.cp_memory = QtWidgets.QToolButton()
         self.cp_memory.setIcon(icon("cue_memory"))
         self.cp_memory.setIconSize(QtCore.QSize(14, 14))
-        self.cp_memory.setToolTip("MEMORY: set a CUE point at the playhead (on the nearest beat)")
+        self.cp_memory.setToolTip("MEMORY: set a CUE point at the nearest beat or track edge")
         self.cp_memory.clicked.connect(self._add_memory_cue)
         page.tool_slot.addWidget(self.cp_memory)
 
@@ -75,12 +76,12 @@ class CuePointEditMixin:
             slot.btn_action.setEnabled(not playing)
 
     def _add_memory_cue(self) -> None:
-        """MEMORY: a CUE point at the beat nearest the playhead (at the playhead
-        without a beatgrid); the list shows the page it lands on."""
+        """MEMORY: a CUE point at the nearest beat or track edge (at the
+        playhead without a beatgrid); the list shows the page it lands on."""
         t = float(self._current_time)
         beats = np.asarray(self._beatgrid, dtype=float)
         if beats.size:
-            t = float(beats[int(np.argmin(np.abs(beats - t)))])
+            t = quantize_to_beat_or_edge(t, beats, self.duration)
         if any(abs(float(p["time_sec"]) - t) < 1e-3 for p in self._cue_points):
             return
         points = [dict(p) for p in self._cue_points]

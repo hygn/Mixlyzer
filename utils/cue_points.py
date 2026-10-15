@@ -5,6 +5,8 @@ from typing import Any
 
 import numpy as np
 
+from core.beat_geometry import downbeat_times
+
 
 CUE_POINT_PREFIX = "cue_points_np."
 CUE_POINT_KEYS = (
@@ -166,10 +168,83 @@ def lead_in_end_sec(phrases: list[dict[str, Any]] | None) -> float | None:
     return end
 
 
+def autocue_time_sec(
+    phrases: list[dict[str, Any]] | None,
+    beat_times: Any = None,
+    tempo_segments: Any = None,
+) -> float:
+    """Choose the automatic start cue, even when there is no ``LEAD_IN``.
+
+    A detected lead-in still wins.  Without one, a downbeat less than one beat
+    from the start is treated as a short pre-roll and used as the cue.  If the
+    first available downbeat is later (or cannot be found), the track has
+    effectively started before the grid's first bar and 0:00 is the safest cue.
+    """
+    lead_in_end = lead_in_end_sec(phrases)
+    if lead_in_end is not None:
+        return float(lead_in_end)
+
+    try:
+        beats = np.asarray(beat_times, dtype=float).reshape(-1)
+    except (TypeError, ValueError):
+        beats = np.empty(0, dtype=float)
+    beats = np.sort(beats[np.isfinite(beats) & (beats >= 0.0)])
+
+    downbeats = downbeat_times(beats, tempo_segments)
+    if downbeats is None:
+        return 0.0
+    downbeats = np.asarray(downbeats, dtype=float).reshape(-1)
+    downbeats = np.sort(downbeats[np.isfinite(downbeats) & (downbeats >= 0.0)])
+    if downbeats.size == 0:
+        return 0.0
+    first_downbeat = float(downbeats[0])
+    if first_downbeat <= _DEDUP_TIME_EPSILON_SEC:
+        return first_downbeat
+
+    # The early grid is the most faithful measure for a possible start pre-roll.
+    # Fall back to the tempo segment when too few beat marks are available.
+    positive_diffs = np.diff(beats[:9])
+    positive_diffs = positive_diffs[np.isfinite(positive_diffs) & (positive_diffs > 0.0)]
+    beat_duration = float(np.median(positive_diffs)) if positive_diffs.size else math.nan
+    if not math.isfinite(beat_duration):
+        try:
+            segments = np.asarray(tempo_segments, dtype=float)
+            if segments.ndim == 1:
+                segments = segments.reshape(1, -1)
+            candidates = [
+                row for row in segments
+                if row.size >= 3 and row[0] <= first_downbeat < row[1]
+                and math.isfinite(float(row[2])) and float(row[2]) > 0.0
+            ]
+            if candidates:
+                beat_duration = 60.0 / float(candidates[0][2])
+        except (TypeError, ValueError):
+            pass
+
+    if math.isfinite(beat_duration) and first_downbeat < beat_duration:
+        return first_downbeat
+    return 0.0
+
+
+def add_autocue_cue_point(
+    points: list[dict[str, Any]],
+    time_sec: float,
+    *,
+    lead_in_end: bool = False,
+) -> list[dict[str, Any]]:
+    """Add the selected AutoCUE position, merging a coincident phrase cue."""
+    point = {
+        "id": len(points),
+        "time_sec": float(time_sec),
+        "label": "LEAD_IN_OUT" if lead_in_end else "AUTOCUE",
+        "comment": "Lead-in end" if lead_in_end else "AutoCUE",
+    }
+    return _dedupe_cue_points([*points, point])
+
+
 def add_lead_in_cue_point(points: list[dict[str, Any]], end_sec: float) -> list[dict[str, Any]]:
     """AutoCUE: a CUE point where the lead-in ends (kept once if one is already there)."""
-    point = {"id": len(points), "time_sec": float(end_sec), "label": "LEAD_IN_OUT", "comment": "Lead-in end"}
-    return _dedupe_cue_points([*points, point])
+    return add_autocue_cue_point(points, end_sec, lead_in_end=True)
 
 
 def extract_cue_points(features: dict[str, Any] | None) -> list[dict[str, Any]]:
@@ -211,6 +286,8 @@ def extract_cue_points(features: dict[str, Any] | None) -> list[dict[str, Any]]:
 __all__ = [
     "CUE_POINT_KEYS",
     "CUE_POINT_PREFIX",
+    "add_autocue_cue_point",
+    "autocue_time_sec",
     "build_phrase_cue_points",
     "build_cue_points_np",
     "empty_cue_points_np",

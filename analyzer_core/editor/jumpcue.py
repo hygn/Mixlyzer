@@ -9,8 +9,8 @@ from analyzer_core.cue_and_phrase import detect_phrase_segments
 from analyzer_core.global_analyzer import fast_load
 from analyzer_core.hpss import hpss_audio_with_spectra
 from core.config import config
-from utils.cue_points import lead_in_end_sec
-from utils.jump_cues import build_jump_cues_np, lead_in_jump_pair
+from utils.cue_points import autocue_time_sec
+from utils.jump_cues import autocue_jump_pair, build_jump_cues_np
 
 def reanalyze_jumpCUE(path:str, cfg:config, beats_time_arr:np.ndarray, *,
     tempo_segments: Optional[np.ndarray] = None,
@@ -20,9 +20,9 @@ def reanalyze_jumpCUE(path:str, cfg:config, beats_time_arr:np.ndarray, *,
     parts it needs (HPSS, frame features, phrase boundary probability) are
     analyzed first. Needs the phrase analysis enabled.
 
-    ``phrases``: the editor's current phrases. With AutoCUE on JumpCUEs, the
-    AutoCUE JumpCUE goes where their lead-in ends (one hot cue slot kept for it),
-    so it follows phrase edits and reanalyses."""
+    ``phrases``: the editor's current phrases. With AutoCUE on JumpCUEs, its
+    position follows the current lead-in and beat grid (one hot cue slot is kept
+    for it), so it follows phrase and beat-grid edits and reanalyses."""
     gcf = cfg.analysisconfig
     if not bool(getattr(gcf, "phrase_analysis_enabled", True)):
         raise ValueError("JumpCUE needs the phrase analysis; enable it in the analysis settings")
@@ -60,9 +60,13 @@ def reanalyze_jumpCUE(path:str, cfg:config, beats_time_arr:np.ndarray, *,
         raise ValueError("too few beats for the phrase analysis JumpCUE needs")
     if progress_cb:
         progress_cb("Analyzing JumpCUE", 0.55)
-    lead_in_end = lead_in_end_sec(phrases) if gcf.autocue == "jumpcue" else None
+    autocue_target = (
+        autocue_time_sec(phrases, beats_time_arr, tempo_segments)
+        if gcf.autocue == "jumpcue"
+        else None
+    )
     jump_config = JumpCueConfig(jump_point_model_path=str(gcf.jumpcue_parameter_path))
-    if lead_in_end is not None:
+    if autocue_target is not None:
         # one hot cue slot stays free for the AutoCUE JumpCUE (below)
         jump_config = replace(jump_config, hot_cue_slots=jump_config.hot_cue_slots - 1)
     jump_engine = JumpCueEngine(jump_config)
@@ -89,8 +93,8 @@ def reanalyze_jumpCUE(path:str, cfg:config, beats_time_arr:np.ndarray, *,
         print("[JumpCUE] pairs", jump_pairs)
     else:
         print("[JumpCUE] no jump-compatible pairs detected")
-    if lead_in_end is not None:
-        jump_pairs = [*jump_pairs, lead_in_jump_pair(lead_in_end)]
+    if autocue_target is not None:
+        jump_pairs = [*jump_pairs, autocue_jump_pair(autocue_target)]
     jump_cues_np = build_jump_cues_np(
         jump_pairs,
         canonicalize_labels=True,

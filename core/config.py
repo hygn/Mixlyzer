@@ -140,8 +140,8 @@ class analysisconfig:
     phrase_feature_cache_path: str
     jumpcue_parameter_path: str
     jumpcue_feature_cache_path: str
-    # AutoCUE: what the analysis puts where the LEAD_IN ends (the first phrase
-    # after it): a CUE point, a JumpCUE of its own, or nothing.
+    # AutoCUE: what the analysis puts at the LEAD_IN end, an early first
+    # downbeat, or 0:00: a CUE point, a JumpCUE of its own, or nothing.
     autocue: Literal["off", "cue_point", "jumpcue"]
 
 

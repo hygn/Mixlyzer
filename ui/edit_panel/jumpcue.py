@@ -8,6 +8,7 @@ from PySide6 import QtCore, QtWidgets
 from ui.edit_panel.cue_slots import CuePageWidget, color_swatch_icon, slot_letter
 from ui.edit_panel.history import logElement
 from ui.edit_panel.icons import icon
+from ui.edit_panel.quantize import beat_quantize_grid
 from utils.jump_cues import build_jump_cue_graph, build_jump_cues_np
 from utils.jumpcue_colors import JUMPCUE_PAIR_COLORS
 from utils.phrases import assigned_phrases
@@ -92,7 +93,7 @@ class JumpCUEEditMixin:
             if cue is None:
                 slot.show_cue(None)
                 slot.setEnabled(self._jc_slot_letter(i) is not None)
-                slot.btn_set.setToolTip("Set a JumpCUE in this slot at the beat nearest the playhead")
+                slot.btn_set.setToolTip("Set a JumpCUE in this slot at the nearest beat or track edge")
                 slot.set_action_lit(False)
                 continue
             slot.setEnabled(True)
@@ -230,11 +231,12 @@ class JumpCUEEditMixin:
         return next((ci for ci in range(len(JUMPCUE_PAIR_COLORS)) if ci not in used), None)
 
     def _nearest_beat_index(self, t: float) -> int:
-        return int(np.argmin(np.abs(np.asarray(self._beatgrid, dtype=float) - float(t))))
+        grid = beat_quantize_grid(self._beatgrid, self.duration)
+        return int(np.argmin(np.abs(grid - float(t))))
 
     def _beat_at(self, idx: int) -> float:
-        beats = np.asarray(self._beatgrid, dtype=float)
-        return float(beats[int(np.clip(idx, 0, beats.size - 1))])
+        grid = beat_quantize_grid(self._beatgrid, self.duration)
+        return float(grid[int(np.clip(idx, 0, grid.size - 1))])
 
     def _set_jumpcue_groups(self, groups) -> bool:
         """Replace the JumpCUEs with ``groups`` (lists of cues; empty groups are
@@ -301,7 +303,7 @@ class JumpCUEEditMixin:
         groups = self._jumpcue_groups()
         if gidx not in groups or len(self._beatgrid) == 0:
             return
-        n = len(self._beatgrid)
+        n = beat_quantize_grid(self._beatgrid, self.duration).size
         moved = []
         for cue in groups[gidx]:
             k = self._nearest_beat_index(cue["point"]) + int(beats)
@@ -358,9 +360,9 @@ class JumpCUEEditMixin:
         self._set_jumpcue_groups(groups.values())
 
     def _new_jumpcue_group(self, letter: str) -> None:
-        """A cue in slot ``letter`` at the beat nearest the playhead, in an unused
-        colour (a group of its own); with every colour in use, in the preceding
-        cue's colour (its group)."""
+        """A cue in slot ``letter`` at the nearest beat or track edge, in an
+        unused colour (a group of its own); with every colour in use, in the
+        preceding cue's colour (its group)."""
         if len(self._beatgrid) == 0:
             return
         p = self._beat_at(self._nearest_beat_index(self._current_time))
@@ -419,7 +421,7 @@ class JumpCUEEditMixin:
         }
         if self._segments is not None:
             payload["segments"] = np.asarray(self._segments, dtype=float).copy()
-        # the AutoCUE JumpCUE goes where the current phrases' lead-in ends
+        # AutoCUE follows the current phrases and beat grid.
         payload["phrases"] = [dict(row) for row in assigned_phrases(self._phrase_segments)]
         payload["analyze_type"] = "jumpcue"
         self.bus.sig_segment_reanalyze_requested.emit(payload)

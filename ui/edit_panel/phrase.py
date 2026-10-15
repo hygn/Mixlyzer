@@ -8,7 +8,8 @@ from ui.edit_panel.history import logElement
 from ui.edit_panel.icons import icon
 from ui.theme import current_theme
 from utils.cue_points import (
-    add_lead_in_cue_point,
+    add_autocue_cue_point,
+    autocue_time_sec,
     build_cue_points_np,
     build_phrase_cue_points,
     extract_cue_points,
@@ -201,14 +202,15 @@ class PhraseEditMixin:
 
     def _assign_cue_points_from_phrases(self) -> None:
         """The CUE points the full analysis would make from the current phrases (the
-        per-label rules and, with AutoCUE on CUE points, the lead-in end) replace
+        per-label rules and, with AutoCUE on CUE points, its selected start) replace
         the current ones, as one edit."""
         cfg = load_cfg()
         phrases = assigned_phrases(self._phrase_segments)
         points = build_phrase_cue_points(phrases, cfg.cuepointconfig.by_label())
         lead_in_end = lead_in_end_sec(phrases)
-        if cfg.analysisconfig.autocue == "cue_point" and lead_in_end is not None:
-            points = add_lead_in_cue_point(points, lead_in_end)
+        if cfg.analysisconfig.autocue == "cue_point":
+            target = autocue_time_sec(phrases, self._beatgrid, self._segments)
+            points = add_autocue_cue_point(points, target, lead_in_end=lead_in_end is not None)
         # through the stored form, so they read back as loaded ones do
         self.set_cue_points(extract_cue_points({"cue_points_np": build_cue_points_np(points)}))
         self._emit_cue_points_update()
