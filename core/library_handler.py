@@ -277,6 +277,7 @@ class LibraryDB:
         self._conn.execute("CREATE INDEX IF NOT EXISTS idx_tks_key_duration ON track_key_segments(key_value, duration_sec);")
         self._conn.execute("CREATE INDEX IF NOT EXISTS idx_tps_track_phrase ON track_phrase_sections(track_uid, phrase_seq_index, section_index);")
         self._conn.execute("CREATE INDEX IF NOT EXISTS idx_tps_label_bpm ON track_phrase_sections(phrase_label, bpm_rounded, phrase_duration_sec);")
+        self._conn.execute("CREATE INDEX IF NOT EXISTS idx_tps_label_bpm_value ON track_phrase_sections(phrase_label, bpm, phrase_duration_sec);")
         self._conn.execute("CREATE INDEX IF NOT EXISTS idx_tps_label_key ON track_phrase_sections(phrase_label, key_value, phrase_duration_sec);")
         self._conn.commit()
 
@@ -562,6 +563,49 @@ class LibraryDB:
         )
         return [KeySegmentRow(**dict(row)) for row in cur.fetchall()]
 
+    def search_phrase_sections(
+        self,
+        phrase_label: str,
+        *,
+        bpm_min: float | None = None,
+        bpm_max: float | None = None,
+        key_value: int | None = None,
+        compatible_keys: bool = False,
+        match_all: bool = True,
+    ) -> List[TrackRow]:
+        """Tracks with a labelled phrase section matching optional BPM/key.
+
+        With both BPM and key active, ``match_all`` requires both on the same
+        constant phrase section; otherwise either value may match.
+        ``compatible_keys`` also accepts the harmonically compatible keys.
+        """
+        value_clauses: list[str] = []
+        params: list[Any] = [str(phrase_label or "").strip().upper()]
+        if bpm_min is not None and bpm_max is not None:
+            lo, hi = sorted((float(bpm_min), float(bpm_max)))
+            value_clauses.append("p.bpm BETWEEN ? AND ?")
+            params.extend((lo, hi))
+        if key_value is not None:
+            keys = (sorted(harmonic_compatible_keys(key_value)) if compatible_keys
+                    else [int(key_value)])
+            value_clauses.append(f"p.key_value IN ({','.join('?' for _ in keys)})")
+            params.extend(keys)
+        values_sql = ""
+        if value_clauses:
+            operator = " AND " if match_all else " OR "
+            values_sql = f" AND ({operator.join(value_clauses)})"
+        cur = self.conn.execute(
+            f"""
+            SELECT DISTINCT t.*
+            FROM track_phrase_sections p
+            JOIN tracks t ON t.uid = p.track_uid
+            WHERE p.phrase_label = ?{values_sql}
+            ORDER BY t.added_ts DESC, t.title COLLATE NOCASE ASC;
+            """,
+            tuple(params),
+        )
+        return [_track_row_from_db_row(row) for row in cur.fetchall()]
+
     def search_bpm_transitions(
         self,
         from_bpm_min: float,
@@ -627,9 +671,16 @@ class LibraryDB:
         *,
         min_duration_sec: float = 4.0,
         require_first_segment: bool = False,
+        compatible: bool = True,
     ) -> List[LinearTransitionRow]:
-        from_keys = sorted(harmonic_compatible_keys(from_anchor_key))
-        to_keys = sorted(harmonic_compatible_keys(to_anchor_key))
+        """Key changes from one key to another; ``compatible`` widens both ends
+        to their harmonically compatible keys, otherwise the keys are exact."""
+        if compatible:
+            from_keys = sorted(harmonic_compatible_keys(from_anchor_key))
+            to_keys = sorted(harmonic_compatible_keys(to_anchor_key))
+        else:
+            from_keys = [int(from_anchor_key) % 24]
+            to_keys = [int(to_anchor_key) % 24]
         if not from_keys or not to_keys:
             return []
         from_placeholders = ",".join("?" for _ in from_keys)

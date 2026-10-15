@@ -65,3 +65,45 @@ class KeyPickerPopup(QtWidgets.QFrame):
     def _pick(self, idx: int) -> None:
         self.hide()
         self.picked.emit(int(idx))
+
+
+class KeyPickButton(QtWidgets.QToolButton):
+    """A key value shown in its key colour; a click opens the KeyPickerPopup."""
+
+    keyChanged = QtCore.Signal(int)
+
+    def __init__(self, key: int = 0, parent=None):
+        super().__init__(parent)
+        self._key = int(key) % 24
+        self._popup = KeyPickerPopup(self)
+        self._popup.picked.connect(self.setKey)
+        self.clicked.connect(lambda: self._popup.show_for(self, self._key))
+        self.setToolTip("Pick the key (Camelot wheel)")
+        self._restyle()
+
+    def key(self) -> int:
+        return self._key
+
+    def setKey(self, key: int) -> None:
+        key = int(key) % 24
+        if key == self._key:
+            return
+        self._key = key
+        self._restyle()
+        self.keyChanged.emit(key)
+
+    def _restyle(self) -> None:
+        from ui.theme import current_theme
+        theme = current_theme()
+        self.setText(key_segment_label(self._key))
+        # Dressed like the text inputs beside it; the key colour is only a strip
+        # on the left so a row of inputs keeps one visual weight.
+        swatch = "rgb({}, {}, {})".format(*key_cmap_color(self._key))
+        self.setStyleSheet(
+            f"QToolButton {{ background-color: {theme.base}; color: {theme.text};"
+            f" border: 1px solid {theme.border}; border-left: 4px solid {swatch};"
+            f" border-radius: {theme.radius_small}px; padding: 0 6px; }}"
+            f"QToolButton:hover {{ border-color: {theme.border_strong}; border-left-color: {swatch}; }}"
+            f"QToolButton:disabled {{ background-color: {theme.window}; color: {theme.text_disabled};"
+            f" border-color: {theme.separator}; border-left-color: {theme.separator}; }}"
+        )

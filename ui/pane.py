@@ -162,11 +162,10 @@ class MainPane(QtWidgets.QWidget):
     # UI layout
     def _init_header_ui(self) -> None:
         ov_height = self.ov.maximumHeight() if hasattr(self, "ov") else 0
-        editor_toggle_h = 24
         # Provisional height; the real height (accounting for actual child sizes
         # and inter-widget spacing) is applied by _fit_header_height from the
         # header layout's own sizeHint once all children exist.
-        HEADER_H = TrackInfoPanel.HEADER_H + ov_height + editor_toggle_h
+        HEADER_H = TrackInfoPanel.HEADER_H + ov_height
         self.header = QtWidgets.QWidget()
         self.header.setMinimumHeight(HEADER_H)
         self.header.setMaximumHeight(HEADER_H)
@@ -343,25 +342,13 @@ class MainPane(QtWidgets.QWidget):
             self.track_info.transport_slot.addWidget(btn, 0, QtCore.Qt.AlignHCenter)
 
         header_v.addWidget(self.ov, 0, QtCore.Qt.AlignTop)
-        toggle_row = QtWidgets.QHBoxLayout()
-        toggle_row.setContentsMargins(0, 0, 0, 0)
-        toggle_row.setSpacing(12)
-        self.cb_show_transition_search = QtWidgets.QCheckBox("Show Transition Search")
-        self.cb_show_transition_search.setChecked(False)
-        self.cb_show_transition_search.setMinimumHeight(editor_toggle_h)
-        self.cb_show_transition_search.setMaximumHeight(editor_toggle_h)
-        toggle_row.addWidget(self.cb_show_transition_search, 0, QtCore.Qt.AlignLeft)
-        toggle_row.addStretch(1)
-        header_v.addLayout(toggle_row)
 
         # Wire transport buttons
         self.btn_tempo_reset.clicked.connect(self._on_click_tempo_reset)
         self.btn_mt.toggled.connect(self.bus.sig_timestretch_toggle_requested.emit)
         self.btn_stop.clicked.connect(self._on_click_stop)
         self.btn_play.clicked.connect(self._on_click_play)
-        self.cb_show_transition_search.toggled.connect(self._set_transition_search_visible)
         self._fit_header_height()
-        self._set_transition_search_visible(True)
 
     # View management
     def install_default(self) -> None:
@@ -773,10 +760,6 @@ class MainPane(QtWidgets.QWidget):
             header_h = lay.sizeHint().height()
             self.header.setMinimumHeight(header_h)
             self.header.setMaximumHeight(header_h)
-
-    def _set_transition_search_visible(self, visible: bool) -> None:
-        if hasattr(self, "lib") and hasattr(self.lib, "set_transition_search_visible"):
-            self.lib.set_transition_search_visible(bool(visible))
 
     def _on_key_segments_updated(self) -> None:
         key_segments = self.model.features.get("key_segments")
