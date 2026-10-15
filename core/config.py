@@ -9,6 +9,7 @@ from utils.atomic_io import atomic_write_json
 @dataclass
 class libconfig:
     libpath: str
+    local_music_directory: str
     write_log: bool
     logpath: str
     rekordbox_sync_enabled: bool
@@ -266,6 +267,7 @@ def _default_memory_value(
 def default_cfg():
     lcfg = libconfig(
         libpath="library",
+        local_music_directory="~/Music",
         logpath="mixlyzer.log",
         write_log=False,
         rekordbox_sync_enabled=True,

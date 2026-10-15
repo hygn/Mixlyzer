@@ -1,10 +1,13 @@
-from PySide6 import QtCore
+import os
+
+from PySide6 import QtCore, QtWidgets
 from PySide6.QtWidgets import (
     QCheckBox,
     QFormLayout,
     QGroupBox,
     QLabel,
     QLineEdit,
+    QFileDialog,
     QMessageBox,
     QPushButton,
     QWidget,
@@ -18,6 +21,8 @@ def build_library_tab(dialog) -> None:
     dialog.tab_lib = QWidget()
     form = QFormLayout(dialog.tab_lib)
     dialog.ed_libpath = QLineEdit()
+    dialog.ed_local_music_directory = QLineEdit()
+    dialog.btn_local_music_directory = QPushButton("Browse…")
     dialog.cb_write_log = QCheckBox("Write log to file")
     dialog.ed_logpath = QLineEdit()
     dialog.cb_rekordbox_sync = QCheckBox("Sync with Rekordbox XML")
@@ -31,6 +36,11 @@ def build_library_tab(dialog) -> None:
         "Folder holding library.db and the per-track feature files (.npz).\n"
         "Relative paths are resolved from the app folder."
     )
+    dialog.ed_local_music_directory.setToolTip(
+        "Root folder shown under Local Folders in the library browser.\n"
+        "Use ~ for the current user's home directory."
+    )
+    dialog.btn_local_music_directory.setToolTip("Choose the local music root folder.")
     dialog.cb_write_log.setToolTip("Write console output to a log file.")
     dialog.ed_logpath.setToolTip("Log file written when 'Write log to file' is on.")
     dialog.cb_rekordbox_sync.setToolTip(
@@ -46,6 +56,12 @@ def build_library_tab(dialog) -> None:
     grp_library = QGroupBox("Library")
     f_library = QFormLayout(grp_library)
     f_library.addRow("Library Path", dialog.ed_libpath)
+    local_row = QWidget()
+    local_layout = QtWidgets.QHBoxLayout(local_row)
+    local_layout.setContentsMargins(0, 0, 0, 0)
+    local_layout.addWidget(dialog.ed_local_music_directory, 1)
+    local_layout.addWidget(dialog.btn_local_music_directory)
+    f_library.addRow("Local Music Directory", local_row)
 
     grp_rekordbox = QGroupBox("Rekordbox XML")
     f_rekordbox = QFormLayout(grp_rekordbox)
@@ -65,10 +81,17 @@ def build_library_tab(dialog) -> None:
     form.addRow(grp_advanced)
 
     dialog.btn_rekordbox_sync_now.clicked.connect(dialog._sync_rekordbox_now)
+    dialog.btn_local_music_directory.clicked.connect(dialog._browse_local_music_directory)
     dialog.tabs.addTab(scroll_page(dialog.tab_lib), "Library")
 
 
 class LibrarySettingsMixin:
+    def _browse_local_music_directory(self) -> None:
+        initial = os.path.expanduser(self.ed_local_music_directory.text().strip() or "~/Music")
+        directory = QFileDialog.getExistingDirectory(self, "Choose Local Music Directory", initial)
+        if directory:
+            self.ed_local_music_directory.setText(directory)
+
     def _initialize_library_settings(self, bus) -> None:
         self._rekordbox_sync_dialog: RekordboxSyncProgressDialog | None = None
         self._rekordbox_progress_request = None

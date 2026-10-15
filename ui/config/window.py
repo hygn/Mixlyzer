@@ -144,6 +144,7 @@ class SettingsDialog(
 
         # lib
         self.ed_libpath.setText(cfg.libconfig.libpath)
+        self.ed_local_music_directory.setText(cfg.libconfig.local_music_directory)
         self.cb_write_log.setChecked(bool(cfg.libconfig.write_log))
         self.ed_logpath.setText(cfg.libconfig.logpath)
         self.cb_rekordbox_sync.setChecked(bool(cfg.libconfig.rekordbox_sync_enabled))
@@ -345,6 +346,7 @@ class SettingsDialog(
             ),
             libconfig=libconfig(
                 libpath=self.ed_libpath.text().strip(),
+                local_music_directory=self.ed_local_music_directory.text().strip() or "~/Music",
                 write_log=bool(self.cb_write_log.isChecked()),
                 logpath=self.ed_logpath.text().strip(),
                 rekordbox_sync_enabled=bool(self.cb_rekordbox_sync.isChecked()),

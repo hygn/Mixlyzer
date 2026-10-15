@@ -1,5 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
+import json
+from pathlib import Path
 from typing import List, Optional
 from PySide6 import QtCore, QtGui, QtWidgets
 import os
@@ -32,6 +34,9 @@ class Track:
     path: str = ""
     comment: str = ""
     uid: str = ""
+    playlist_index: Optional[int] = None
+    analyzed: bool = True
+    _disp_playlist_index: str = field(init=False, default="")
 
     _disp_bpm: str = field(init=False, default="--")
     _disp_key_camelot: str = field(init=False, default="--")
@@ -60,6 +65,8 @@ class Track:
         # Added
         if self.added:
             self._disp_added = self.added.toString("yyyy-MM-dd HH:mm")
+        if self.playlist_index is not None:
+            self._disp_playlist_index = str(self.playlist_index + 1)
 
 def row_to_track(row: TrackRow) -> Track:
     added_qt = QtCore.QDateTime.fromSecsSinceEpoch(int(row.added_ts)) if row.added_ts else None
@@ -69,6 +76,24 @@ def row_to_track(row: TrackRow) -> Track:
         rating=int(row.rating or 0), added=added_qt, path=row.path, comment=row.comment or "",
         uid=row.uid or "",
     )
+
+
+_SOURCE_KIND_ROLE = QtCore.Qt.UserRole
+_SOURCE_VALUE_ROLE = QtCore.Qt.UserRole + 1
+_DIRECTORY_LOADED_ROLE = QtCore.Qt.UserRole + 2
+_SORT_ROLE = QtCore.Qt.UserRole + 10
+_ANALYZED_ROLE = QtCore.Qt.UserRole + 11
+_PLAYLIST_MIME = "application/x-mixlyzer-playlist"
+_PLAYLIST_TRACKS_MIME = "application/x-mixlyzer-playlist-tracks"
+
+
+class _SortItem(QtWidgets.QTableWidgetItem):
+    def __lt__(self, other):
+        left = self.data(_SORT_ROLE)
+        right = other.data(_SORT_ROLE)
+        if left is not None and right is not None:
+            return left < right
+        return self.text().casefold() < other.text().casefold()
 class FastDelegate(QtWidgets.QStyledItemDelegate):
     """Cell delegate that caches rendered text as pixmaps.
 
@@ -153,24 +178,207 @@ class _TrackTable(QtWidgets.QTableWidget):
     """Library table whose rows drag out as their audio files (dropped on the
     deck, the window loads the track)."""
 
-    def __init__(self, path_column: int, *args, **kwargs):
+    playlistRowsDropped = QtCore.Signal(object, object)
+
+    def __init__(self, path_column: int, index_column: int, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._path_column = int(path_column)
+        self._index_column = int(index_column)
+        self._playlist_reorder_enabled = False
         self.setDragEnabled(True)
-        self.setDragDropMode(QtWidgets.QAbstractItemView.DragOnly)
+        self.setAcceptDrops(True)
+        self.setDragDropMode(QtWidgets.QAbstractItemView.DragDrop)
+        self.setDefaultDropAction(QtCore.Qt.MoveAction)
+        self.setDropIndicatorShown(True)
+
+    def setPlaylistReorderEnabled(self, enabled: bool) -> None:
+        self._playlist_reorder_enabled = bool(enabled)
 
     def mimeTypes(self):
-        return ["text/uri-list"]
+        return ["text/uri-list", _PLAYLIST_TRACKS_MIME]
 
     def mimeData(self, items):
         rows = sorted({item.row() for item in items})
-        current = self.currentRow()
-        row = current if current in rows else (rows[0] if rows else -1)
-        item = self.item(row, self._path_column) if row >= 0 else None
         data = QtCore.QMimeData()
-        if item is not None and item.text():
-            data.setUrls([QtCore.QUrl.fromLocalFile(item.text())])
+        urls = []
+        for row in rows:
+            item = self.item(row, self._path_column)
+            if item is not None and item.text():
+                urls.append(QtCore.QUrl.fromLocalFile(item.text()))
+        if urls:
+            data.setUrls(urls)
+        if self._playlist_reorder_enabled and urls:
+            paths = [url.toLocalFile() for url in urls]
+            data.setData(
+                _PLAYLIST_TRACKS_MIME,
+                QtCore.QByteArray(json.dumps(paths).encode("utf-8")),
+            )
         return data
+
+    def startDrag(self, supported_actions):
+        if self._playlist_reorder_enabled:
+            self.horizontalHeader().setSortIndicator(
+                self._index_column, QtCore.Qt.AscendingOrder
+            )
+            self.sortItems(self._index_column, QtCore.Qt.AscendingOrder)
+        super().startDrag(supported_actions)
+
+    def dragEnterEvent(self, event):
+        if (
+            self._playlist_reorder_enabled
+            and event.source() is self
+            and event.mimeData().hasFormat(_PLAYLIST_TRACKS_MIME)
+        ):
+            event.setDropAction(QtCore.Qt.MoveAction)
+            event.accept()
+            return
+        event.ignore()
+
+    def dragMoveEvent(self, event):
+        if (
+            self._playlist_reorder_enabled
+            and event.source() is self
+            and event.mimeData().hasFormat(_PLAYLIST_TRACKS_MIME)
+        ):
+            event.setDropAction(QtCore.Qt.MoveAction)
+            event.accept()
+            return
+        event.ignore()
+
+    def dropEvent(self, event):
+        if not (
+            self._playlist_reorder_enabled
+            and event.source() is self
+            and event.mimeData().hasFormat(_PLAYLIST_TRACKS_MIME)
+        ):
+            event.ignore()
+            return
+        try:
+            moved_paths = json.loads(
+                bytes(event.mimeData().data(_PLAYLIST_TRACKS_MIME)).decode("utf-8")
+            )
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            event.ignore()
+            return
+        moved_set = {str(path) for path in moved_paths}
+        pos = event.position().toPoint()
+        index = self.indexAt(pos)
+        if index.isValid():
+            rect = self.visualRect(index)
+            boundary = index.row() + (1 if pos.y() >= rect.center().y() else 0)
+        else:
+            boundary = 0 if pos.y() <= 0 else self.rowCount()
+        before_path = None
+        for row in range(boundary, self.rowCount()):
+            item = self.item(row, self._path_column)
+            path = item.text() if item is not None else ""
+            if path and path not in moved_set:
+                before_path = path
+                break
+        self.playlistRowsDropped.emit(list(moved_paths), before_path)
+        event.setDropAction(QtCore.Qt.MoveAction)
+        event.accept()
+
+
+class _LibrarySourceTree(QtWidgets.QTreeWidget):
+    playlistFilesDropped = QtCore.Signal(int, object)
+    playlistOrderDropped = QtCore.Signal(int, object)
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setHeaderHidden(True)
+        self.setAcceptDrops(True)
+        self.setDragEnabled(True)
+        self.setDragDropMode(QtWidgets.QAbstractItemView.DragDrop)
+        self.setDefaultDropAction(QtCore.Qt.MoveAction)
+        self.setDropIndicatorShown(True)
+        self.setMinimumWidth(190)
+        self.setMaximumWidth(360)
+
+    def mimeTypes(self):
+        return ["text/uri-list", _PLAYLIST_MIME]
+
+    def mimeData(self, items):
+        data = QtCore.QMimeData()
+        playlists = [
+            item for item in items
+            if item.data(0, _SOURCE_KIND_ROLE) == "playlist"
+        ]
+        if len(playlists) == 1:
+            playlist_id = int(playlists[0].data(0, _SOURCE_VALUE_ROLE))
+            data.setData(_PLAYLIST_MIME, str(playlist_id).encode("ascii"))
+        return data
+
+    def _playlist_at(self, pos) -> Optional[int]:
+        item = self.itemAt(pos)
+        if item is None or item.data(0, _SOURCE_KIND_ROLE) != "playlist":
+            return None
+        try:
+            return int(item.data(0, _SOURCE_VALUE_ROLE))
+        except (TypeError, ValueError):
+            return None
+
+    def dragEnterEvent(self, event):
+        if event.source() is self and event.mimeData().hasFormat(_PLAYLIST_MIME):
+            event.setDropAction(QtCore.Qt.MoveAction)
+            event.accept()
+        elif event.mimeData().hasUrls():
+            event.acceptProposedAction()
+        else:
+            event.ignore()
+
+    def dragMoveEvent(self, event):
+        if event.source() is self and event.mimeData().hasFormat(_PLAYLIST_MIME):
+            item = self.itemAt(event.position().toPoint())
+            kind = item.data(0, _SOURCE_KIND_ROLE) if item is not None else ""
+            if kind in ("playlists", "playlist"):
+                event.setDropAction(QtCore.Qt.MoveAction)
+                event.accept()
+            else:
+                event.ignore()
+        elif event.mimeData().hasUrls() and self._playlist_at(event.position().toPoint()) is not None:
+            event.acceptProposedAction()
+        else:
+            event.ignore()
+
+    def dropEvent(self, event):
+        if event.source() is self and event.mimeData().hasFormat(_PLAYLIST_MIME):
+            try:
+                moved_id = int(bytes(event.mimeData().data(_PLAYLIST_MIME)).decode("ascii"))
+            except (UnicodeDecodeError, ValueError):
+                event.ignore()
+                return
+            pos = event.position().toPoint()
+            item = self.itemAt(pos)
+            before_id = None
+            if item is not None and item.data(0, _SOURCE_KIND_ROLE) == "playlist":
+                rect = self.visualItemRect(item)
+                if pos.y() < rect.center().y():
+                    before_id = int(item.data(0, _SOURCE_VALUE_ROLE))
+                else:
+                    parent = item.parent()
+                    next_index = parent.indexOfChild(item) + 1 if parent is not None else -1
+                    next_item = (
+                        parent.child(next_index)
+                        if parent is not None and next_index < parent.childCount()
+                        else None
+                    )
+                    if next_item is not None:
+                        before_id = int(next_item.data(0, _SOURCE_VALUE_ROLE))
+            elif item is None or item.data(0, _SOURCE_KIND_ROLE) != "playlists":
+                event.ignore()
+                return
+            self.playlistOrderDropped.emit(moved_id, before_id)
+            event.setDropAction(QtCore.Qt.MoveAction)
+            event.accept()
+            return
+        playlist_id = self._playlist_at(event.position().toPoint())
+        paths = [url.toLocalFile() for url in event.mimeData().urls() if url.isLocalFile()]
+        if playlist_id is None or not paths:
+            event.ignore()
+            return
+        self.playlistFilesDropped.emit(playlist_id, paths)
+        event.acceptProposedAction()
 
 
 class _FillRowsLayout(QtWidgets.QLayout):
@@ -366,8 +574,12 @@ class _MatchToggle(QtWidgets.QAbstractButton):
 class LibraryWidget(QtWidgets.QWidget):
     ART_HEADER = ""  # the album art column (the top of the art)
     ART_WIDTH = 56
-    HEADERS = [ART_HEADER, "Title", "Artist", "Album", "BPM", "Key", "Duration", "Rating", "Added", "Path", "Comment"]
+    HEADERS = [ART_HEADER, "#", "Title", "Artist", "Album", "BPM", "Key", "Duration", "Rating", "Added", "Path", "Comment"]
     SEARCH_MODES = ["All"] + HEADERS[1:]
+    AUDIO_EXTENSIONS = frozenset({
+        ".aac", ".aif", ".aiff", ".alac", ".flac", ".m4a", ".mp3",
+        ".mp4", ".ogg", ".opus", ".wav", ".wma",
+    })
 
     def _chip(self, text: str, tooltip: str, *, small: bool = False) -> QtWidgets.QToolButton:
         """A checkable toggle chip: the filter toggles."""
@@ -417,8 +629,15 @@ class LibraryWidget(QtWidgets.QWidget):
         self.model = model
         self._external_sync_enabled = bool(getattr(cfg, "externalsyncconfig", None) and cfg.externalsyncconfig.enabled)
         self._all_tracks: List[Track] = []
+        self._library_tracks: List[Track] = []
+        self._source_kind = "library"
+        self._source_value = None
+        self._pending_playlist_paths: dict[str, set[int]] = {}
         self._edit_dlg: EditSongDialog | None = None
         self._export_dlg: ExportTrackDialog | None = None
+
+        self.source_tree = _LibrarySourceTree()
+        self.source_tree.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
 
         # Search UI. Row 1: text search, one toggle chip per structured
         # filter and AND / OR. Row 2 holds only the enabled filters' editors,
@@ -535,7 +754,9 @@ class LibraryWidget(QtWidgets.QWidget):
         self.card_min_sec.setToolTip("Minimum duration of both sides of each enabled transition")
 
         # Table
-        self.table = _TrackTable(self.HEADERS.index("Path"))
+        self.table = _TrackTable(
+            self.HEADERS.index("Path"), self.HEADERS.index("#")
+        )
         self.table.setColumnCount(len(self.HEADERS))
         self.table.setHorizontalHeaderLabels(self.HEADERS)
         self.table.setAlternatingRowColors(True)
@@ -592,11 +813,24 @@ class LibraryWidget(QtWidgets.QWidget):
         for card in (self.card_phrase, self.card_bpm, self.card_key, self.card_min_sec):
             filters.addWidget(card)
 
+        content = QtWidgets.QWidget()
+        content_lay = QtWidgets.QVBoxLayout(content)
+        content_lay.setContentsMargins(0, 0, 0, 0)
+        content_lay.setSpacing(6)
+        content_lay.addLayout(primary)
+        content_lay.addWidget(self.filter_bar)
+        content_lay.addWidget(self.table, 1)
+
+        splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
+        splitter.addWidget(self.source_tree)
+        splitter.addWidget(content)
+        splitter.setStretchFactor(0, 0)
+        splitter.setStretchFactor(1, 1)
+        splitter.setSizes([230, 1200])
+
         lay = QtWidgets.QVBoxLayout(self)
-        lay.setSpacing(6)
-        lay.addLayout(primary)
-        lay.addWidget(self.filter_bar)
-        lay.addWidget(self.table, 1)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.addWidget(splitter)
 
         # Signals
         self.e_search.textChanged.connect(self._on_search_changed)
@@ -630,14 +864,21 @@ class LibraryWidget(QtWidgets.QWidget):
         self.btn_clear_filters.clicked.connect(self._clear_filters)
         self.table.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.table.customContextMenuRequested.connect(self._on_context_menu)
+        self.source_tree.currentItemChanged.connect(self._on_source_changed)
+        self.source_tree.itemExpanded.connect(self._on_source_expanded)
+        self.source_tree.customContextMenuRequested.connect(self._on_source_context_menu)
+        self.source_tree.playlistFilesDropped.connect(self._add_paths_to_playlist)
+        self.source_tree.playlistOrderDropped.connect(self._drop_playlist_order)
+        self.table.playlistRowsDropped.connect(self._drop_playlist_tracks)
 
         # The loaded track is shown in green.
         self._loaded_path_key: Optional[str] = None
         self.bus.sig_properties_loaded.connect(self._on_properties_loaded)
 
         # Initial load
-        self.bus.sig_lib_updated.connect(self.reload)
+        self.bus.sig_lib_updated.connect(self._on_library_updated)
         self.bus.sig_external_sync_enabled.connect(self._on_external_sync_enabled)
+        self._rebuild_source_tree()
         self.reload_from_db()
         self._sync_filter_ui()
 
@@ -650,28 +891,223 @@ class LibraryWidget(QtWidgets.QWidget):
         self.reload(lib_full)
 
     def reload(self, data):
-        """Hard reload with full reset."""
+        """Refresh analyzed library data, then redraw the selected source."""
         delegate = self.table.itemDelegate()
         if isinstance(delegate, FastDelegate):
             delegate.clear_cache()  # thumbnails may have been replaced
-        # Lock UI
-        self.table.setSortingEnabled(False)
-        self.table.setUpdatesEnabled(False)
+        self._library_tracks = [
+            row_to_track(row) if isinstance(row, TrackRow) else row for row in data
+        ]
+        self._refresh_current_source()
 
-        # Full reset
+    @staticmethod
+    def _file_identity(path: object) -> str:
+        text = os.path.expanduser(os.path.expandvars(str(path or "")))
+        return os.path.normcase(os.path.realpath(os.path.abspath(text)))
+
+    def _db(self) -> LibraryDB:
+        db = LibraryDB(os.path.join(self.cfg.libconfig.libpath, "library.db"))
+        db.connect()
+        return db
+
+    def _rebuild_source_tree(self) -> None:
+        previous = (self._source_kind, self._source_value)
+        tree = self.source_tree
+        tree.blockSignals(True)
+        tree.clear()
+
+        library_item = QtWidgets.QTreeWidgetItem(["Library (All)"])
+        library_item.setData(0, _SOURCE_KIND_ROLE, "library")
+        tree.addTopLevelItem(library_item)
+
+        playlists_item = QtWidgets.QTreeWidgetItem(["Playlists"])
+        playlists_item.setData(0, _SOURCE_KIND_ROLE, "playlists")
+        tree.addTopLevelItem(playlists_item)
+        db = self._db()
+        try:
+            playlists = db.list_playlists()
+        finally:
+            db.close()
+        for playlist in playlists:
+            item = QtWidgets.QTreeWidgetItem([playlist.name])
+            item.setData(0, _SOURCE_KIND_ROLE, "playlist")
+            item.setData(0, _SOURCE_VALUE_ROLE, playlist.id)
+            playlists_item.addChild(item)
+        playlists_item.setExpanded(True)
+
+        local_item = QtWidgets.QTreeWidgetItem(["Local Folders"])
+        local_item.setData(0, _SOURCE_KIND_ROLE, "local_folders")
+        tree.addTopLevelItem(local_item)
+        configured = self.cfg.libconfig.local_music_directory or "~/Music"
+        root_path = os.path.abspath(os.path.expandvars(os.path.expanduser(configured)))
+        root_label = Path(root_path).name or root_path
+        root_item = QtWidgets.QTreeWidgetItem([root_label])
+        root_item.setToolTip(0, root_path)
+        root_item.setData(0, _SOURCE_KIND_ROLE, "directory")
+        root_item.setData(0, _SOURCE_VALUE_ROLE, root_path)
+        local_item.addChild(root_item)
+        self._populate_directory_children(root_item)
+        local_item.setExpanded(True)
+        root_item.setExpanded(True)
+
+        selected = library_item
+        iterator = QtWidgets.QTreeWidgetItemIterator(tree)
+        while iterator.value():
+            candidate = iterator.value()
+            if (
+                candidate.data(0, _SOURCE_KIND_ROLE),
+                candidate.data(0, _SOURCE_VALUE_ROLE),
+            ) == previous:
+                selected = candidate
+                break
+            iterator += 1
+        tree.blockSignals(False)
+        tree.setCurrentItem(selected)
+        self._source_kind = str(selected.data(0, _SOURCE_KIND_ROLE) or "library")
+        self._source_value = selected.data(0, _SOURCE_VALUE_ROLE)
+
+    def _populate_directory_children(self, item: QtWidgets.QTreeWidgetItem) -> None:
+        if item.data(0, _SOURCE_KIND_ROLE) != "directory":
+            return
+        if item.data(0, _DIRECTORY_LOADED_ROLE):
+            return
+        item.takeChildren()
+        path = str(item.data(0, _SOURCE_VALUE_ROLE) or "")
+        directories = []
+        try:
+            with os.scandir(path) as entries:
+                directories = sorted(
+                    (entry for entry in entries if entry.is_dir(follow_symlinks=False)),
+                    key=lambda entry: entry.name.casefold(),
+                )
+        except OSError:
+            directories = []
+        for entry in directories:
+            child = QtWidgets.QTreeWidgetItem([entry.name])
+            child.setToolTip(0, entry.path)
+            child.setData(0, _SOURCE_KIND_ROLE, "directory")
+            child.setData(0, _SOURCE_VALUE_ROLE, entry.path)
+            child.setChildIndicatorPolicy(QtWidgets.QTreeWidgetItem.ShowIndicator)
+            item.addChild(child)
+        item.setData(0, _DIRECTORY_LOADED_ROLE, True)
+
+    def _on_source_expanded(self, item: QtWidgets.QTreeWidgetItem) -> None:
+        self._populate_directory_children(item)
+
+    def _on_source_changed(self, current, _previous=None) -> None:
+        if current is None:
+            return
+        self._source_kind = str(current.data(0, _SOURCE_KIND_ROLE) or "")
+        self._source_value = current.data(0, _SOURCE_VALUE_ROLE)
+        self._refresh_current_source(reset_sort=True)
+
+    def _refresh_current_source(self, *, reset_sort: bool = False) -> None:
+        self.table.setPlaylistReorderEnabled(self._source_kind == "playlist")
+        if self._source_kind == "library":
+            tracks = list(self._library_tracks)
+            default_column = "Added"
+            default_order = QtCore.Qt.SortOrder.DescendingOrder
+        elif self._source_kind == "playlist":
+            db = self._db()
+            try:
+                rows = db.list_playlist_tracks(int(self._source_value))
+            finally:
+                db.close()
+            tracks = []
+            for position, row in rows:
+                track = row_to_track(row)
+                track.playlist_index = position
+                track._disp_playlist_index = str(position + 1)
+                tracks.append(track)
+            default_column = "#"
+            default_order = QtCore.Qt.SortOrder.AscendingOrder
+        elif self._source_kind == "directory":
+            tracks = self._scan_directory(str(self._source_value or ""))
+            default_column = "Title"
+            default_order = QtCore.Qt.SortOrder.AscendingOrder
+        else:
+            tracks = []
+            default_column = "Title"
+            default_order = QtCore.Qt.SortOrder.AscendingOrder
+
+        self.table.setUpdatesEnabled(False)
         self.table.clearContents()
         self.table.setRowCount(0)
-        # Prepare new data
-        tracks = [row_to_track(r) if isinstance(r, TrackRow) else r for r in data]
         self._all_tracks = tracks
-        # Re-render through the current search and filters
+        if reset_sort:
+            self.table.horizontalHeader().setSortIndicator(
+                self.HEADERS.index(default_column), default_order
+            )
         self._on_search_changed()
-        # Default sort (e.g., Added desc)
-        col_idx = self.HEADERS.index("Added")
-        self.table.sortItems(col_idx, QtCore.Qt.SortOrder.DescendingOrder)
-        # Unlock UI
-        self.table.setSortingEnabled(True)
+        if reset_sort:
+            self.table.sortItems(self.HEADERS.index(default_column), default_order)
         self.table.setUpdatesEnabled(True)
+
+    def _scan_directory(self, directory: str) -> List[Track]:
+        analyzed = {self._file_identity(track.path): track for track in self._library_tracks}
+        paths = []
+        try:
+            with os.scandir(directory) as entries:
+                paths = sorted(
+                    (
+                        entry.path for entry in entries
+                        if entry.is_file(follow_symlinks=False)
+                        and Path(entry.name).suffix.lower() in self.AUDIO_EXTENSIONS
+                    ),
+                    key=lambda path: Path(path).name.casefold(),
+                )
+        except OSError:
+            return []
+        result = []
+        for path in paths:
+            known = analyzed.get(self._file_identity(path))
+            if known is not None:
+                result.append(known)
+            else:
+                result.append(Track(
+                    track_id=path,
+                    title=Path(path).stem,
+                    artist="",
+                    path=path,
+                    analyzed=False,
+                ))
+        return result
+
+    def _on_library_updated(self, data) -> None:
+        rows = list(data or [])
+        self._library_tracks = [
+            row_to_track(row) if isinstance(row, TrackRow) else row for row in rows
+        ]
+        resolved: dict[int, list[str]] = {}
+        for track in self._library_tracks:
+            playlist_ids = self._pending_playlist_paths.pop(
+                self._file_identity(track.path), set()
+            )
+            for playlist_id in playlist_ids:
+                resolved.setdefault(playlist_id, []).append(track.path)
+        if resolved:
+            db = self._db()
+            try:
+                for playlist_id, paths in resolved.items():
+                    db.add_playlist_tracks(playlist_id, paths)
+            finally:
+                db.close()
+        self._refresh_current_source()
+
+    def set_config(self, cfg: config) -> None:
+        old_library = self.cfg.libconfig.libpath
+        old_local = self.cfg.libconfig.local_music_directory
+        self.cfg = cfg
+        delegate = self.table.itemDelegate()
+        if isinstance(delegate, FastDelegate):
+            delegate._libpath = cfg.libconfig.libpath
+            delegate.clear_cache()
+        if old_local != cfg.libconfig.local_music_directory:
+            self._source_kind, self._source_value = "library", None
+        if old_library != cfg.libconfig.libpath:
+            self._pending_playlist_paths.clear()
+        self._rebuild_source_tree()
+        self.reload_from_db()
 
     def _populate_table(self, tracks: List[Track]):
         header = self.table.horizontalHeader()
@@ -685,18 +1121,24 @@ class LibraryWidget(QtWidgets.QWidget):
             self.table.setSortingEnabled(False)
 
         self.table.setRowCount(len(tracks))
-        bpm_col, art_col = self.HEADERS.index("BPM"), self.HEADERS.index(self.ART_HEADER)
+        bpm_col = self.HEADERS.index("BPM")
+        art_col = self.HEADERS.index(self.ART_HEADER)
+        index_col = self.HEADERS.index("#")
         for r, t in enumerate(tracks):
             values = [
-                "", t.title, t.artist, t.album, t._disp_bpm, t._disp_key_camelot,
+                "", t._disp_playlist_index,
+                t.title, t.artist, t.album, t._disp_bpm, t._disp_key_camelot,
                 t._disp_duration, t._disp_rating, t._disp_added, t.path, t.comment
             ]
             for c, v in enumerate(values):
-                item = QtWidgets.QTableWidgetItem(str(v))
+                item = _SortItem(str(v))
                 if c == bpm_col:  # for BPM sorting
-                    item.setData(QtCore.Qt.UserRole, float(t.bpm or -1))
+                    item.setData(_SORT_ROLE, float(t.bpm or -1))
                 elif c == art_col:  # the thumbnail's track
                     item.setData(QtCore.Qt.UserRole, t.uid)
+                elif c == index_col:
+                    item.setData(_SORT_ROLE, int(t.playlist_index or 0))
+                item.setData(_ANALYZED_ROLE, bool(t.analyzed))
                 self.table.setItem(r, c, item)
         if sorting_enabled:
             self.table.setSortingEnabled(True)
@@ -717,6 +1159,7 @@ class LibraryWidget(QtWidgets.QWidget):
         """Green text on the loaded track's row, the default on the others."""
         path_col = self.HEADERS.index("Path")
         green = QtGui.QBrush(QtGui.QColor(current_theme().success))
+        dim = QtGui.QBrush(QtGui.QColor(current_theme().text_dim))
         for r in range(self.table.rowCount()):
             item = self.table.item(r, path_col)
             loaded = item is not None and self._loaded_path_key is not None \
@@ -727,6 +1170,8 @@ class LibraryWidget(QtWidgets.QWidget):
                     continue
                 if loaded:
                     cell.setForeground(green)
+                elif not bool(cell.data(_ANALYZED_ROLE)):
+                    cell.setForeground(dim)
                 elif cell.data(QtCore.Qt.ForegroundRole) is not None:
                     cell.setData(QtCore.Qt.ForegroundRole, None)
 
@@ -735,6 +1180,7 @@ class LibraryWidget(QtWidgets.QWidget):
         text = self.e_search.text().strip().lower()
         col = self.cb_column.currentText()
         field_map = {
+            "#": "_disp_playlist_index",
             "Title": "title",
             "Artist": "artist",
             "Album": "album",
@@ -904,13 +1350,203 @@ class LibraryWidget(QtWidgets.QWidget):
     def _on_external_sync_enabled(self, enabled: bool) -> None:
         self._external_sync_enabled = bool(enabled)
 
+    def _select_source(self, kind: str, value=None) -> None:
+        iterator = QtWidgets.QTreeWidgetItemIterator(self.source_tree)
+        while iterator.value():
+            item = iterator.value()
+            if (
+                item.data(0, _SOURCE_KIND_ROLE) == kind
+                and item.data(0, _SOURCE_VALUE_ROLE) == value
+            ):
+                self.source_tree.setCurrentItem(item)
+                return
+            iterator += 1
+
+    def _on_source_context_menu(self, pos) -> None:
+        item = self.source_tree.itemAt(pos)
+        kind = item.data(0, _SOURCE_KIND_ROLE) if item is not None else ""
+        menu = QtWidgets.QMenu(self)
+        actions = {}
+        if kind in ("playlists", "playlist"):
+            actions["new"] = menu.addAction("New Playlist")
+        if kind == "playlist":
+            menu.addSeparator()
+            actions["rename"] = menu.addAction("Rename")
+            actions["up"] = menu.addAction("Move Up")
+            actions["down"] = menu.addAction("Move Down")
+            actions["delete"] = menu.addAction("Delete Playlist")
+        elif kind in ("directory", "local_folders"):
+            actions["refresh"] = menu.addAction("Refresh Folders")
+        if menu.isEmpty():
+            return
+        chosen = menu.exec_(self.source_tree.viewport().mapToGlobal(pos))
+        if chosen is None:
+            return
+        if chosen == actions.get("new"):
+            self._create_playlist()
+        elif chosen == actions.get("rename"):
+            self._rename_playlist(item)
+        elif chosen == actions.get("delete"):
+            self._delete_playlist(item)
+        elif chosen == actions.get("up"):
+            self._move_playlist(item, -1)
+        elif chosen == actions.get("down"):
+            self._move_playlist(item, 1)
+        elif chosen == actions.get("refresh"):
+            self._rebuild_source_tree()
+            self._refresh_current_source()
+
+    def _create_playlist(self) -> None:
+        name, accepted = QtWidgets.QInputDialog.getText(self, "New Playlist", "Name")
+        if not accepted or not name.strip():
+            return
+        db = self._db()
+        try:
+            playlist = db.create_playlist(name)
+        except Exception as exc:
+            QtWidgets.QMessageBox.warning(self, "New Playlist", str(exc))
+            return
+        finally:
+            db.close()
+        self._source_kind, self._source_value = "playlist", playlist.id
+        self._rebuild_source_tree()
+        self._select_source("playlist", playlist.id)
+
+    def _rename_playlist(self, item: QtWidgets.QTreeWidgetItem) -> None:
+        playlist_id = int(item.data(0, _SOURCE_VALUE_ROLE))
+        name, accepted = QtWidgets.QInputDialog.getText(
+            self, "Rename Playlist", "Name", text=item.text(0)
+        )
+        if not accepted or not name.strip():
+            return
+        db = self._db()
+        try:
+            db.rename_playlist(playlist_id, name)
+        except Exception as exc:
+            QtWidgets.QMessageBox.warning(self, "Rename Playlist", str(exc))
+            return
+        finally:
+            db.close()
+        self._rebuild_source_tree()
+        self._select_source("playlist", playlist_id)
+
+    def _delete_playlist(self, item: QtWidgets.QTreeWidgetItem) -> None:
+        answer = QtWidgets.QMessageBox.question(
+            self,
+            "Delete Playlist",
+            f'Delete playlist "{item.text(0)}"?\nTracks remain in the Library.',
+        )
+        if answer != QtWidgets.QMessageBox.Yes:
+            return
+        playlist_id = int(item.data(0, _SOURCE_VALUE_ROLE))
+        db = self._db()
+        try:
+            db.delete_playlist(playlist_id)
+        finally:
+            db.close()
+        self._source_kind, self._source_value = "library", None
+        self._rebuild_source_tree()
+        self._select_source("library", None)
+
+    def _move_playlist(self, item: QtWidgets.QTreeWidgetItem, offset: int) -> None:
+        playlist_id = int(item.data(0, _SOURCE_VALUE_ROLE))
+        db = self._db()
+        try:
+            db.move_playlist(playlist_id, offset)
+        finally:
+            db.close()
+        self._rebuild_source_tree()
+        self._select_source("playlist", playlist_id)
+
+    def _drop_playlist_order(self, playlist_id: int, before_playlist_id) -> None:
+        db = self._db()
+        try:
+            changed = db.move_playlist_before(playlist_id, before_playlist_id)
+        finally:
+            db.close()
+        if changed:
+            self._rebuild_source_tree()
+            self._select_source("playlist", playlist_id)
+
+    def _drop_playlist_tracks(self, paths, before_path) -> None:
+        if self._source_kind != "playlist":
+            return
+        db = self._db()
+        try:
+            changed = db.move_playlist_tracks_before(
+                int(self._source_value), paths, before_path
+            )
+        finally:
+            db.close()
+        if changed:
+            self._refresh_current_source(reset_sort=True)
+
+    def _selected_paths(self) -> list[str]:
+        path_column = self.HEADERS.index("Path")
+        result = []
+        for index in self.table.selectionModel().selectedRows():
+            item = self.table.item(index.row(), path_column)
+            if item is not None and item.text():
+                result.append(item.text())
+        return result
+
+    def _add_paths_to_playlist(self, playlist_id: int, paths) -> None:
+        requested = [str(path) for path in paths if str(path)]
+        if not requested:
+            return
+        analyzed_paths = []
+        pending_paths = []
+        db = self._db()
+        try:
+            for path in requested:
+                row = db.find_file(path)
+                if row is not None:
+                    analyzed_paths.append(row.path)
+                elif os.path.isfile(path):
+                    pending_paths.append(path)
+            if analyzed_paths:
+                db.add_playlist_tracks(int(playlist_id), analyzed_paths)
+        finally:
+            db.close()
+        for path in pending_paths:
+            self._pending_playlist_paths.setdefault(
+                self._file_identity(path), set()
+            ).add(int(playlist_id))
+            self.bus.sig_request_load_track.emit(path)
+        if self._source_kind == "playlist" and int(self._source_value) == int(playlist_id):
+            self._refresh_current_source()
+
     def _on_context_menu(self, pos):
         menu = QtWidgets.QMenu(self)
+        selected_paths = self._selected_paths()
+        analyzed_by_path = {track.path: track.analyzed for track in self._all_tracks}
+        all_analyzed = bool(selected_paths) and all(
+            analyzed_by_path.get(path, False) for path in selected_paths
+        )
         act_reveal = menu.addAction("Reveal in Explorer/Finder")
         act_remove = menu.addAction("Remove from Library")
         act_edit = menu.addAction("Edit Track")
-        act_reanalyze = menu.addAction("Reanalyze Track")
+        act_reanalyze = menu.addAction(
+            "Reanalyze Track" if all_analyzed else "Analyze Track"
+        )
         act_export = menu.addAction("Export Track")
+        act_remove_playlist = None
+        if self._source_kind == "playlist":
+            act_remove_playlist = menu.addAction("Remove from Playlist")
+        add_menu = menu.addMenu("Add to Playlist")
+        playlist_actions = {}
+        db = self._db()
+        try:
+            playlists = db.list_playlists()
+        finally:
+            db.close()
+        for playlist in playlists:
+            playlist_actions[add_menu.addAction(playlist.name)] = playlist.id
+        if not playlists:
+            add_menu.setEnabled(False)
+        act_remove.setEnabled(all_analyzed)
+        act_edit.setEnabled(all_analyzed)
+        act_export.setEnabled(all_analyzed)
         act = menu.exec_(self.table.viewport().mapToGlobal(pos))
         if act == act_remove:
             self._on_remove_selected()
@@ -922,6 +1558,23 @@ class LibraryWidget(QtWidgets.QWidget):
             self._edit_selected()
         elif act == act_export:
             self._export_selected()
+        elif act == act_remove_playlist:
+            self._remove_selected_from_playlist()
+        elif act in playlist_actions:
+            self._add_paths_to_playlist(playlist_actions[act], selected_paths)
+
+    def _remove_selected_from_playlist(self) -> None:
+        if self._source_kind != "playlist":
+            return
+        paths = self._selected_paths()
+        if not paths:
+            return
+        db = self._db()
+        try:
+            db.remove_playlist_tracks(int(self._source_value), paths)
+        finally:
+            db.close()
+        self._refresh_current_source(reset_sort=True)
 
     def _on_remove_selected(self):
         sel = self.table.selectionModel().selectedRows()
@@ -993,10 +1646,14 @@ class LibraryWidget(QtWidgets.QWidget):
     # Reanalyze
     def _reanalyze_selected(self):
         sel = self.table.selectionModel().selectedRows()
+        analyzed_by_path = {track.path: track.analyzed for track in self._all_tracks}
         for ix in sel:
             path = self.table.item(ix.row(), self.HEADERS.index("Path")).text()
             if path:
-                self.bus.sig_reanalyze_requested.emit(path)
+                if analyzed_by_path.get(path, False):
+                    self.bus.sig_reanalyze_requested.emit(path)
+                else:
+                    self.bus.sig_request_load_track.emit(path)
 
     # Edit
     def _edit_selected(self):

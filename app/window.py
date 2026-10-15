@@ -442,6 +442,7 @@ class AppWindow(QtWidgets.QMainWindow):
         with open("config.json", "r") as f:
             prev_cfg = json.load(f)
         atomic_write_json("config.json", _config.to_dict(), ensure_ascii=True, indent=None)
+        os.makedirs(_config.libconfig.libpath or ".", exist_ok=True)
         self.cfg = _config
         self.cfgwin.set_config(_config)
         self.external_sync.set_config(_config.externalsyncconfig)
@@ -449,6 +450,11 @@ class AppWindow(QtWidgets.QMainWindow):
         self._apply_external_sync_mode(_config.externalsyncconfig)
         prev_lcfg = prev_cfg.get("libconfig", {})
         new_lcfg = _config.to_dict().get("libconfig", {})
+        if any(
+            prev_lcfg.get(key) != new_lcfg.get(key)
+            for key in ("libpath", "local_music_directory")
+        ):
+            self.pane.lib.set_config(_config)
         rekordbox_cfg_changed = any(
             prev_lcfg.get(k) != new_lcfg.get(k)
             for k in ("rekordbox_sync_enabled", "rekordbox_xml_path")
