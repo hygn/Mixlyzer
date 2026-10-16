@@ -1,5 +1,6 @@
 """CUE page widgets, laid out like rekordbox's cue list: a side strip (list tabs,
-pages) and 4 x 2 cue slots, each a colour squircle | name | SET / DEL | action."""
+pages) and 4 x 2 cue slots, each a colour squircle | name | SET / DEL | action
+(JumpCUEs: SET / JUMP in one button)."""
 from __future__ import annotations
 
 from PySide6 import QtCore, QtGui, QtWidgets
@@ -44,15 +45,19 @@ class _NameLabel(QtWidgets.QLabel):
 
 class CueSlot(QtWidgets.QFrame):
     """One cue slot: colour squircle | letter | name | SET / DEL | action (JUMP / CALL).
-    Double-clicking the name edits it (Enter keeps it, Esc cancels): ``renamed(str)``."""
+    With ``set_in_action`` there is no SET / DEL button: the action button reads SET
+    on an empty slot (``action_clicked`` either way). Double-clicking the name edits
+    it (Enter keeps it, Esc cancels): ``renamed(str)``."""
 
     squircle_clicked = QtCore.Signal()
     set_del_clicked = QtCore.Signal()
     action_clicked = QtCore.Signal()
     renamed = QtCore.Signal(str)
 
-    def __init__(self, action_text: str, height: int, parent=None):
+    def __init__(self, action_text: str, height: int, parent=None, set_in_action: bool = False):
         super().__init__(parent)
+        self._action_text = action_text
+        self._set_in_action = bool(set_in_action)
         self.setObjectName("cueSlot")
         self.setFixedHeight(height)
         lay = QtWidgets.QHBoxLayout(self)
@@ -87,7 +92,8 @@ class CueSlot(QtWidgets.QFrame):
         self.btn_set = QtWidgets.QToolButton()
         self.btn_action = QtWidgets.QToolButton()
         self.btn_action.setText(action_text)
-        for b, w in ((self.btn_set, 34), (self.btn_action, 40)):
+        action_w = 34 + 4 + 40 if self._set_in_action else 40  # also takes the SET / DEL place
+        for b, w in ((self.btn_set, 34), (self.btn_action, action_w)):
             b.setFixedSize(w, height - 4)
             f = b.font()
             f.setPointSize(8)
@@ -99,6 +105,7 @@ class CueSlot(QtWidgets.QFrame):
         lay.addWidget(self.name_stack, 1)
         lay.addWidget(self.btn_set)
         lay.addWidget(self.btn_action)
+        self.btn_set.setVisible(not self._set_in_action)
         self.squircle.clicked.connect(self.squircle_clicked)
         self.btn_set.clicked.connect(self.set_del_clicked)
         self.btn_action.clicked.connect(self.action_clicked)
@@ -137,7 +144,10 @@ class CueSlot(QtWidgets.QFrame):
             self.name.setStyleSheet(f"color: {theme.text_dim};")
         self.name.setToolTip("Double-click to rename" if filled else "")
         self.btn_set.setText("DEL" if filled else "SET")
-        self.btn_action.setEnabled(filled)
+        if self._set_in_action:
+            self.btn_action.setText(self._action_text if filled else "SET")
+        else:
+            self.btn_action.setEnabled(filled)
         self._filled = filled
 
     # ---- renaming ----
@@ -243,7 +253,8 @@ class CuePageWidget(QtWidgets.QWidget):
             grid.setVerticalSpacing(gap)
             slots = []
             for i in range(SLOTS_PER_PAGE):
-                slot = CueSlot(action, row_h)
+                # JumpCUEs: SET in the JUMP button, deleted from the squircle's menu
+                slot = CueSlot(action, row_h, set_in_action=(action == "JUMP"))
                 grid.addWidget(slot, i % SLOT_ROWS, i // SLOT_ROWS)  # A-D left, E-H right
                 slots.append(slot)
             self.lists.addWidget(page)

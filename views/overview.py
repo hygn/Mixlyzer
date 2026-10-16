@@ -143,7 +143,7 @@ class OverviewWidget(QtWidgets.QWidget):
         line_pen = pg.mkPen((245, 245, 245, 230), width=1.2, cosmetic=True)
         self.bpm_strip_boundaries.setPen(line_pen)
         self.bpm_strip_boundaries.setZValue(8)
-        self.jump_items: list[tuple[pg.BarGraphItem, pg.ScatterPlotItem, pg.TextItem]] = []
+        self.jump_items: list[tuple[pg.ScatterPlotItem, pg.TextItem]] = []
         self.img_key = SegmentStrip(); self.p.addItem(self.img_key)
         # key segment boundaries and labels (labels only where the segment is wide enough)
         self.key_boundaries = QtWidgets.QGraphicsPathItem(); self.p.addItem(self.key_boundaries)
@@ -359,60 +359,36 @@ class OverviewWidget(QtWidgets.QWidget):
         except Exception:
             view_min, view_max = -float("inf"), float("inf")
 
-        data: list[tuple[float, float, float, tuple[int, int, int], str]] = []
+        # the jump point only (the start/end range is not shown)
+        data: list[tuple[float, tuple[int, int, int], str]] = []
         for cue in cues:
             label = str(cue.get("label", "")).strip()
             if not label:
                 continue
             color = cue["color"]
-            start = float(cue.get("start", 0.0))
-            end = float(cue.get("end", start))
-            j_pnt = float(cue.get("point", start))
-            if end <= start:
-                end = start + max(0.01, self.duration * 0.002)
-            if end < view_min - 0.1 or start > view_max + 0.1:
+            j_pnt = float(cue.get("point", cue.get("start", 0.0)))
+            if j_pnt < view_min - 0.1 or j_pnt > view_max + 0.1:
                 continue
-            data.append((start, end, j_pnt, color, label))
+            data.append((j_pnt, color, label))
 
         if not data:
-            for bar, marker, text in self.jump_items:
-                bar.setVisible(False)
+            for marker, text in self.jump_items:
                 marker.setVisible(False)
                 text.setVisible(False)
             return
 
         while len(self.jump_items) < len(data):
-            bar = pg.BarGraphItem(
-                x=[0.0],
-                height=[0.0],
-                width=0.01,
-                y=self._cue_block_bottom,
-                brush=pg.mkBrush(0, 0, 0, 0),
-                pen=pg.mkPen(None),
-            )
             marker = pg.ScatterPlotItem(symbol="s", size=0.0)
             text = pg.TextItem("", color="k", anchor=(0.5, 0.5))
             text.setFont(self._cue_font)
-            bar.setZValue(18)
             marker.setZValue(19)
             text.setZValue(20)
-            self.p.addItem(bar)
             self.p.addItem(marker)
             self.p.addItem(text)
-            self.jump_items.append((bar, marker, text))
+            self.jump_items.append((marker, text))
 
-        for idx, (x_start, x_end, x_point, color, label) in enumerate(data):
-            bar, marker, text = self.jump_items[idx]
-            width = max(0.01, x_end - x_start)
-            center = x_start + width * 0.5
-            bar.setOpts(
-                x=[center],
-                y=self._cue_block_bottom,
-                height=[self._cue_block_height],
-                width=width,
-                brush=pg.mkBrush(color[0], color[1], color[2], 30),
-                pen=pg.mkPen(color=(color[0], color[1], color[2], 30), width=0.4),
-            )
+        for idx, (x_point, color, label) in enumerate(data):
+            marker, text = self.jump_items[idx]
             marker.setData([x_point], [self._cue_label_y])
             marker.setBrush(pg.mkBrush(color[0], color[1], color[2], 255))
             marker.setPen(pg.mkPen(color=(color[0], color[1], color[2], 100), width=0.6))
@@ -422,13 +398,11 @@ class OverviewWidget(QtWidgets.QWidget):
             text.setPos(x_point, self._cue_label_y)
             text.setFont(self._cue_font)
 
-            bar.setVisible(True)
             marker.setVisible(True)
             text.setVisible(True)
 
         for idx in range(len(data), len(self.jump_items)):
-            bar, marker, text = self.jump_items[idx]
-            bar.setVisible(False)
+            marker, text = self.jump_items[idx]
             marker.setVisible(False)
             text.setVisible(False)
 

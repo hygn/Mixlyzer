@@ -606,6 +606,7 @@ class EditPanel(
                 btn.setEnabled(False)
             else:
                 btn.setEnabled(state)
+        self._refresh_jumpcue_slots()  # an empty slot's SET follows the lock
         self._update_undo_redo_buttons()
 
     def _mark_unsaved(self, unsaved: bool) -> None:

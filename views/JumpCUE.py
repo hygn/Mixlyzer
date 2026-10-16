@@ -3,22 +3,54 @@ from __future__ import annotations
 from typing import List
 
 import pyqtgraph as pg
-from PySide6 import QtGui
-from pyqtgraph.graphicsItems.BarGraphItem import BarGraphItem
-from pyqtgraph.graphicsItems.ScatterPlotItem import ScatterPlotItem
-from pyqtgraph.graphicsItems.TextItem import TextItem
+from PySide6 import QtCore, QtGui, QtWidgets
 
 from .base import ViewPlugin, register_view
 from utils.jump_cues import extract_jump_cue_graph
 
 
+class JumpCueMarker(QtWidgets.QGraphicsItem):
+    """A JumpCUE's squircle in its colour with its letter centred (black), a thin
+    dark outline and a soft shadow; drawn in screen pixels, centred on its pos."""
+
+    SIDE = 16.0         # px
+    RADIUS = 0.3        # of SIDE, as the editor's squircles
+    PAD = 4.0           # px each side of a letter wider than the square (AA ...)
+
+    def __init__(self, label: str, rgb, font: QtGui.QFont):
+        super().__init__()
+        self.setFlag(QtWidgets.QGraphicsItem.ItemIgnoresTransformations, True)
+        self._label = label
+        self._fill = QtGui.QColor(*rgb)
+        self._font = font
+        width = max(self.SIDE, QtGui.QFontMetricsF(font).horizontalAdvance(label) + 2 * self.PAD)
+        self._rect = QtCore.QRectF(-width / 2.0, -self.SIDE / 2.0, width, self.SIDE)
+
+    def boundingRect(self) -> QtCore.QRectF:
+        return self._rect.adjusted(-1.0, -1.0, 2.0, 2.5)  # outline and shadow
+
+    def paint(self, painter: QtGui.QPainter, _option, _widget=None) -> None:
+        painter.setRenderHint(QtGui.QPainter.Antialiasing, True)
+        painter.setRenderHint(QtGui.QPainter.TextAntialiasing, True)
+        radius = self.SIDE * self.RADIUS
+        painter.setPen(QtCore.Qt.NoPen)
+        painter.setBrush(QtGui.QColor(0, 0, 0, 120))
+        painter.drawRoundedRect(self._rect.translated(0.8, 1.4), radius, radius)
+        painter.setBrush(self._fill)
+        painter.setPen(QtGui.QPen(QtGui.QColor(0, 0, 0, 170), 1.0))
+        painter.drawRoundedRect(self._rect, radius, radius)
+        painter.setFont(self._font)
+        painter.setPen(QtGui.QColor(0, 0, 0))
+        painter.drawText(self._rect, QtCore.Qt.AlignCenter, self._label)
+
+
 @register_view("JumpCUEView")
 class JumpCUEView(ViewPlugin):
-    """Display Jump CUE segments as translucent blocks with square markers."""
+    """Display Jump CUEs as squircles with their letter at the jump point (the
+    start/end range is not shown)."""
 
     TOP_PADDING = 0.0
     BLOCK_HEIGHT = 0.06
-    MARKER_SIZE = 10
 
     def __init__(self, bus, model, tl):
         super().__init__(bus, model, tl)
@@ -26,12 +58,11 @@ class JumpCUEView(ViewPlugin):
         self._duration = 0.0
         self._cues: List[dict] = []
         # One entry per labelled cue, built when the cues change:
-        # [start, end, point, bar, marker, text, shown]. The items are laid out in
-        # track time; playback only moves them by the view offset.
+        # [point, marker, shown]. Playback only moves the markers by the view offset.
         self._entries: List[list] = []
 
         self._font = QtGui.QFont()
-        self._font.setPointSizeF(8.0)
+        self._font.setPointSizeF(9.0)
         self._font.setBold(True)
 
         self.bus.sig_time_changed.connect(self._refresh)
@@ -68,7 +99,7 @@ class JumpCUEView(ViewPlugin):
 
     def _on_features_loaded(self):
         self.render_initial()
-    
+
     def _on_jumpcue_updated(self, payload: dict | None = None) -> None:
         f = self.model.features or {}
         self._cues, _links = extract_jump_cue_graph(f)
@@ -77,56 +108,28 @@ class JumpCUEView(ViewPlugin):
         self._refresh()
 
     def _clear_items(self) -> None:
-        for _start, _end, _point, bar, marker, text, _shown in self._entries:
-            for item in (bar, marker, text):
-                if item.scene() is not None and self.plot is not None:
-                    self.plot.removeItem(item)
+        for _point, marker, _shown in self._entries:
+            if marker.scene() is not None and self.plot is not None:
+                self.plot.removeItem(marker)
         self._entries = []
 
     def _build_items(self) -> None:
-        """Create the block, marker and label of every cue at its track time."""
+        """Create the marker of every cue."""
         self._clear_items()
         if self.plot is None:
             return
-        block_bottom = 1.0 - self.TOP_PADDING - self.BLOCK_HEIGHT
-        label_y = block_bottom
         for cue in self._cues:
             label = str(cue.get("label", "")).strip()
             if not label:
                 continue
-            color = cue["color"]
-            start = float(cue.get("start", 0.0))
-            end = float(cue.get("end", start))
-            point = float(cue.get("point", start))
-            if end <= start:
-                end = start + max(0.01, (self._duration or 1.0) * 0.002)
-            width = max(0.01, end - start)
-
-            bar = BarGraphItem(
-                x=[start + width * 0.5],
-                y=block_bottom,
-                height=[self.BLOCK_HEIGHT],
-                width=width,
-                brush=pg.mkBrush(color[0], color[1], color[2], 30),
-                pen=pg.mkPen(color=(color[0], color[1], color[2], 30), width=0.4),
-            )
-            marker = ScatterPlotItem(
-                x=[point],
-                y=[label_y],
-                symbol="s",
-                size=self.MARKER_SIZE,
-                brush=pg.mkBrush(color[0], color[1], color[2], 255),
-                pen=pg.mkPen(color=(color[0], color[1], color[2], 100), width=0.6),
-            )
-            text = TextItem(label, color="k", anchor=(0.5, 0.5))
-            text.setFont(self._font)
-            bar.setZValue(8)
-            marker.setZValue(9)
-            text.setZValue(10)
-            for item in (bar, marker, text):
-                item.setVisible(False)
-                self.plot.addItem(item)
-            self._entries.append([start, end, point, bar, marker, text, False])
+            point = float(cue.get("point", cue.get("start", 0.0)))
+            marker = JumpCueMarker(label, cue["color"], self._font)
+            # over the beatgrid lines (10, 11) and lane boundaries (15), which used to
+            # cross the square and darken it; under the CUE point markers (110)
+            marker.setZValue(105)
+            marker.setVisible(False)
+            self.plot.addItem(marker)
+            self._entries.append([point, marker, False])
 
     def _refresh(self, *args):
         """Place the cues near the view at the current offset; hide the rest."""
@@ -140,14 +143,10 @@ class JumpCUEView(ViewPlugin):
         left = self.tl.left_edge()
         label_y = 1.0 - self.TOP_PADDING - self.BLOCK_HEIGHT
         for entry in self._entries:
-            start, end, point, bar, marker, text, shown = entry
-            show = not (left + end < view_min - 0.1 or left + start > view_max + 0.1)
+            point, marker, shown = entry
+            show = view_min - 0.1 <= left + point <= view_max + 0.1
             if show:
-                bar.setPos(left, 0.0)
-                marker.setPos(left, 0.0)
-                text.setPos(left + point, label_y)
+                marker.setPos(left + point, label_y)
             if show != shown:
-                bar.setVisible(show)
                 marker.setVisible(show)
-                text.setVisible(show)
-                entry[6] = show
+                entry[2] = show
