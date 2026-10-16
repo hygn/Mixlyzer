@@ -92,7 +92,7 @@ class BeatgridView(ViewPlugin):
         except Exception:
             return
 
-        left = float(self.tl.center_t - self.tl.current_time)
+        left = self.tl.left_edge()
         pad = max(0.0, (vxmax - vxmin) * 0.02)
         track_min = float(vxmin - left - pad)
         track_max = float(vxmax - left + pad)
@@ -146,7 +146,7 @@ class BeatgridView(ViewPlugin):
             (vxmin, vxmax), _ = self.plot.viewRange()
         except Exception:
             return
-        left = float(self.tl.center_t - self.tl.current_time)
+        left = self.tl.left_edge()
         pad = max(0.0, (vxmax - vxmin) * 0.02)
         track_min = float(vxmin - left - pad)
         track_max = float(vxmax - left + pad)
@@ -155,7 +155,7 @@ class BeatgridView(ViewPlugin):
             self._refresh_lines(force=True)
 
     def _update_item_offset(self) -> None:
-        left = float(self.tl.center_t - self.tl.current_time)
+        left = self.tl.left_edge()
         for item in (self._beat_lines_item, self._downbeat_lines_item):
             if item is not None:
                 item.setPos(left, 0.0)

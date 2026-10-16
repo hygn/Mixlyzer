@@ -334,7 +334,7 @@ class _AudioWorker(QtCore.QObject):
 
     @QtCore.Slot()
     def _tick(self) -> None:
-        cur = self._track_now_ms()
+        cur = (self.feeder.display_frame() * 1000.0) / max(1, self.rate)
         if self._duration_ms and cur >= self._duration_ms:
             cur = self._duration_ms
         self._emit_time(cur)

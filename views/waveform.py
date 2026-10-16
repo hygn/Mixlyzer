@@ -673,7 +673,7 @@ class WaveformView(ViewPlugin):
                 self._sig_enqueue_play.emit(specs)
 
     def _build_chunk_specs(self, pcm: np.ndarray, sample_rate: int, duration: float) -> list:
-        visible_start = max(0.0, float(self.tl.current_time) - float(self.tl.center_t))
+        visible_start = max(0.0, -self.tl.left_edge())
         visible_end = min(duration, visible_start + max(0.1, float(self.tl.window_sec)))
         first_chunk = int(np.floor(visible_start / RENDER_CHUNK_SEC))
         last_chunk = int(np.floor(max(0.0, visible_end - 1e-6) / RENDER_CHUNK_SEC))
@@ -757,7 +757,7 @@ class WaveformView(ViewPlugin):
     def _set_rect(self, force: bool = False):
         if self.duration <= 0.0:
             return
-        left = float(self.tl.center_t) - float(self.tl.current_time)
+        left = self.tl.left_edge()
         if not force and abs(left - self._left_offset) < 1e-9:
             return
         self._left_offset = left
@@ -769,7 +769,7 @@ class WaveformView(ViewPlugin):
         duration = float(self.model.duration_sec or 0.0)
         if duration <= 0.0 or self._chunk_count <= 0:
             return None
-        visible_start = max(0.0, float(self.tl.current_time) - float(self.tl.center_t))
+        visible_start = max(0.0, -self.tl.left_edge())
         visible_end = min(duration, visible_start + max(0.1, float(self.tl.window_sec)))
         first_visible_chunk = int(np.floor(visible_start / RENDER_CHUNK_SEC))
         last_visible_chunk = int(np.floor(max(0.0, visible_end - 1e-6) / RENDER_CHUNK_SEC))

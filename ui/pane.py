@@ -141,6 +141,8 @@ class MainPane(QtWidgets.QWidget):
         # Signals
         self.bus.sig_time_changed.connect(self._on_time)
         self.bus.sig_window_changed.connect(self._on_window)
+        self.p.getViewBox().sigResized.connect(self._update_pixel_sec)
+        self._update_pixel_sec()
         self.bus.sig_output_peak_dbfs.connect(self._on_output_peak_dbfs)
         self.bus.sig_features_loaded.connect(self._on_features)
         self.bus.sig_properties_loaded.connect(self._on_properties)
@@ -453,6 +455,13 @@ class MainPane(QtWidgets.QWidget):
     # Signals
     def _on_window(self, _window_sec: float) -> None:
         self.p.setXRange(0.0, self.tl.window_sec, padding=0)
+        self._update_pixel_sec()
+
+    def _update_pixel_sec(self, *_args) -> None:
+        """The main view's track seconds per device pixel, for the timeline's
+        whole-pixel offset (TimelineCoordinator.left_edge)."""
+        width = float(self.p.getViewBox().width()) * float(self.gl.devicePixelRatioF())
+        self.tl.set_pixel_sec(self.tl.window_sec / width if width > 0.0 else 0.0)
 
     def _on_time(self, t: float):
         self.current_time = t

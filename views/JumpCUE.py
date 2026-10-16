@@ -137,7 +137,7 @@ class JumpCUEView(ViewPlugin):
         except Exception:
             return
 
-        left = float(getattr(self.tl, "center_t", 0.0) - getattr(self.tl, "current_time", 0.0))
+        left = self.tl.left_edge()
         label_y = 1.0 - self.TOP_PADDING - self.BLOCK_HEIGHT
         for entry in self._entries:
             start, end, point, bar, marker, text, shown = entry

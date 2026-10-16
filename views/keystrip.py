@@ -101,7 +101,7 @@ class KeyStripView(ViewPlugin):
             for label in self._labels:
                 label.setVisible(False)
             return
-        left = self.tl.center_t - self.tl.current_time
+        left = self.tl.left_edge()
         self.img.setPos(left, 0.0)
         self.boundaries.setPos(left, 0.0)
         self._position_labels(left)
@@ -112,7 +112,7 @@ class KeyStripView(ViewPlugin):
         if self.plot is None or not self._labels:
             return
         window = max(0.1, float(self.tl.window_sec))
-        visible_start = float(self.tl.current_time) - float(self.tl.center_t)
+        visible_start = -self.tl.left_edge()
         visible_end = visible_start + window
         try:
             x_per_pixel = abs(float(self.plot.getViewBox().viewPixelSize()[0]))

@@ -53,6 +53,12 @@ class PCMFeeder(QtCore.QObject):
     PEAK_FLOOR_DBFS = -24.0
     SOFT_CLIP_KNEE = 0.8
 
+    # Displayed playhead (display_frame): nudged toward the heard position by this
+    # fraction of the difference per reading; taken as is when they differ by more
+    # than DISPLAY_RESYNC_SEC (a seek, jump or stall).
+    DISPLAY_GAIN = 0.1
+    DISPLAY_RESYNC_SEC = 0.04
+
     def __init__(self, audio: QtMultimedia.QAudioSink, rate: int, channels: int,
                  parent: Optional[QtCore.QObject] = None):
         super().__init__(parent)
@@ -113,6 +119,7 @@ class PCMFeeder(QtCore.QObject):
         self._poll_anchor: Optional[float] = None
         self._grab_frame = 0.0
         self._seeked_while_paused = False
+        self._display: Optional[tuple[float, float]] = None  # (frame, time.perf_counter()) last shown
         self._mode = "speed"
         self._factor = 1.0
         # Tempo 0 halts the deck: silence at a held position, the renderers are not
@@ -534,6 +541,30 @@ class PCMFeeder(QtCore.QObject):
         if seg.step == 0.0:
             return self._pos if not self._playing else seg.in_start
         return seg.in_start + min(out_frame - seg.out_start, seg.frames) * seg.step
+
+    def display_frame(self) -> float:
+        """playhead_frame() for drawing. The heard position is read from the
+        device's queue, which drains in whole device periods (10 ms on WASAPI), so
+        read every display frame it advances unevenly (10 or 20 ms per 16 ms frame).
+        While the deck plays steadily it runs on its own clock instead, at the speed
+        being heard, nudged toward the reading (DISPLAY_GAIN)."""
+        raw = self.playhead_frame()
+        now = time.perf_counter()
+        seg = None
+        if self._playing and not (self._scratching or self._scrubbing or self._device_stopped):
+            seg = self._timeline.segment_at(self._heard_out_frame())
+        if seg is None or seg.step <= 0.0 or self._display is None:
+            self._display = (raw, now) if seg is not None and seg.step > 0.0 else None
+            return raw
+        frame, at = self._display
+        frame += (now - at) * seg.step * self.rate
+        error = raw - frame
+        if abs(error) > self.DISPLAY_RESYNC_SEC * self.rate * max(1.0, seg.step):
+            frame = raw
+        else:
+            frame += self.DISPLAY_GAIN * error
+        self._display = (frame, now)
+        return frame
 
     def heard_peak_dbfs(self) -> float:
         """Pre-volume peak of the block being heard."""

@@ -138,7 +138,7 @@ class PhraseView(ViewPlugin):
     def _reposition(self):
         if self.plot is None:
             return
-        left = float(self.tl.center_t - self.tl.current_time)
+        left = self.tl.left_edge()
         band_bottom = self.BAND_BOTTOM
         band_h = self.BAND_TOP - self.BAND_BOTTOM
         self.img.setPos(left, 0.0)
@@ -147,7 +147,7 @@ class PhraseView(ViewPlugin):
         viewport_center = float(self.tl.center_t)
         # Visible window in track-time, with a small pad to avoid edge popping.
         window = max(0.1, float(self.tl.window_sec))
-        visible_start = float(self.tl.current_time) - float(self.tl.center_t)
+        visible_start = -self.tl.left_edge()
         visible_end = visible_start + window
         pad = window * 0.05
         visible_start -= pad
