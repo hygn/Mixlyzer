@@ -7,6 +7,7 @@ from typing import Optional
 import numpy as np
 from PySide6 import QtCore, QtMultimedia
 
+from core.audio import cursor_poller
 from core.audio.clicks import ClickTrack
 from core.audio.tones import ToneTrack
 from core.audio.dsp import ScratchPlatter, SpeedResampler, fade_ramp, make_speed_renderer, read_at, soft_clip
@@ -30,8 +31,10 @@ class PCMFeeder(QtCore.QObject):
     set_timestretch(True); while scrubbing, the time stretch plays the original at unity)
     / "none" (pass-through, ignores factor).
     Scratching (set_scratching) plays the record under the hand instead, playing or
-    paused: the original read where the platter is (ScratchPlatter, cubic Hermite;
-    never time-stretched: the pitch follows the hand), with a short output queue.
+    paused: the original read where the platter is (ScratchPlatter, read_at's
+    windowed sinc, anti-aliased by the speed; never time-stretched: the pitch
+    follows the hand), with a short output queue. The hand is the cursor polled at
+    ~1 kHz (cursor_poller) where available, else the GUI's mouse events.
     Grabbing and releasing cut over at once, without declick fades.
     Metronome clicks (`clicks`) are mixed into the same stream; music volume is applied here
     too, so the click level stays independent of it. Reference tones for checking a key
@@ -101,6 +104,14 @@ class PCMFeeder(QtCore.QObject):
         self._scratch_target = 0.0
         self._platter = ScratchPlatter(self.rate)
         self._scratch_queue_frames = max(1, int(self.rate * 0.03))  # ~30 ms: low latency
+        # The hand from the polled cursor (cursor_poller) when available: the record
+        # moves _poll_frames_per_px input frames per cursor pixel, against the drag
+        # from where it was grabbed. Else from scratch_to (the GUI's mouse events).
+        self._poller: Optional[cursor_poller.CursorPoller] = None
+        self._polling = False
+        self._poll_frames_per_px = 0.0
+        self._poll_anchor: Optional[float] = None
+        self._grab_frame = 0.0
         self._seeked_while_paused = False
         self._mode = "speed"
         self._factor = 1.0
@@ -163,6 +174,7 @@ class PCMFeeder(QtCore.QObject):
     def close(self) -> None:
         if self._flush_timer is not None:
             self._flush_timer.stop()
+        self._stop_polling()
         self._playing = False
         self.dev = None
         try:
@@ -219,6 +231,7 @@ class PCMFeeder(QtCore.QObject):
         self._sent_finished = False
         self._seeked_while_paused = True
         self._scratching = False
+        self._stop_polling()
         self._jump_start = None
         self._jump_dest = None
         self.clicks.clear_voices()
@@ -256,7 +269,10 @@ class PCMFeeder(QtCore.QObject):
         if self._scrubbing:
             self.clicks.clear_voices()
 
-    def set_scratching(self, scratching: bool) -> None:
+    def set_scratching(self, scratching: bool, frames_per_px: float = 0.0) -> None:
+        """Grab (True) or release the record. ``frames_per_px``: input frames the
+        record moves per screen pixel of the drag (0: unknown, the GUI's mouse
+        events are followed, see scratch_to)."""
         scratching = bool(scratching)
         if scratching == self._scratching:
             return
@@ -269,7 +285,15 @@ class PCMFeeder(QtCore.QObject):
                 self._pos = float(max(0.0, min(self._len, heard_pos)))
             self._scratching = True
             self._scratch_target = self._pos
-            self._platter.reset(self._pos, time.perf_counter())
+            self._grab_frame = self._pos
+            self._polling = False
+            if frames_per_px > 0.0 and cursor_poller.available():
+                if self._poller is None:
+                    self._poller = cursor_poller.CursorPoller()
+                self._polling = self._poller.start()
+            self._poll_frames_per_px = float(frames_per_px) if self._polling else 0.0
+            self._poll_anchor = None
+            self._platter.reset(self._pos, time.perf_counter(), pixel=self._poll_frames_per_px)
             self._end_out_frame = None
             self._sent_finished = False
             self.clicks.clear_voices()
@@ -278,6 +302,8 @@ class PCMFeeder(QtCore.QObject):
             return
         # Released: play on from where the hand left the record (the platter lags
         # it by its delay), or stay paused there.
+        self._drain_poller()
+        self._stop_polling()
         self._scratching = False
         self._pos = self._scratch_target
         if not self._playing:
@@ -288,12 +314,29 @@ class PCMFeeder(QtCore.QObject):
     def scratch_to(self, frame: float, at: float) -> None:
         """The hand had moved the record to ``frame`` at time ``at``
         (time.perf_counter(), s) (while scratching)."""
-        if not self._scratching:
+        if not self._scratching or self._polling:
             return
         self._scratch_target = float(max(0.0, min(frame, self._len - 1))) if self._len else 0.0
         self._platter.set_target(self._scratch_target, at)
 
+    def _drain_poller(self) -> None:
+        """The polled cursor's new events into the platter (while polling)."""
+        if not self._polling:
+            return
+        for at, x, rest in self._poller.drain():
+            if self._poll_anchor is None:
+                self._poll_anchor = x  # the first event: where the cursor was at the grab
+            frame = self._grab_frame - (x - self._poll_anchor) * self._poll_frames_per_px
+            self._scratch_target = float(max(0.0, min(frame, self._len - 1))) if self._len else 0.0
+            self._platter.set_target(self._scratch_target, at, rest=bool(rest))
+
+    def _stop_polling(self) -> None:
+        if self._polling:
+            self._poller.stop()
+            self._polling = False
+
     def _render_scratch(self, n: int) -> None:
+        self._drain_poller()
         start = self._platter.position
         heard_at = time.perf_counter() + self._queued_bytes() / self._bpf / self.rate
         positions = self._platter.positions(n, heard_at)

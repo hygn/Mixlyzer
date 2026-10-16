@@ -104,14 +104,17 @@ class ScratchPlatter:
     """The record under the hand while scratching: per output frame, the input
     position it is at.
 
-    The pointer's positions arrive unevenly (bunched or late on a busy GUI
-    thread), each stamped with the time it was taken. The platter follows that
-    path DELAY_SEC late, interpolated linearly between the samples (a jitter
-    buffer: the next sample is normally there already, so the speed carries on
-    between events instead of stopping and starting); past the last sample (an
-    event later than the delay) it carries on at the last speed for up to
-    EXTRAPOLATE_SEC, then holds. Smoothed by two one-pole lowpasses (critically
-    damped, SMOOTH_SEC).
+    The hand's positions arrive unevenly (bunched or late on a busy GUI thread),
+    each stamped with the time it was taken. The platter follows that path
+    DELAY_SEC late, interpolated linearly between the samples (a jitter buffer:
+    the next sample is normally there already, so the speed carries on between
+    events instead of stopping and starting). Past the last sample (an event later
+    than the delay) it carries on at the speed of the last RATE_SEC of samples for
+    up to EXTRAPOLATE_SEC, then holds; it holds at once after a rest sample (the
+    hand stopped there). With ``pixel`` (input frames per pointer pixel, samples
+    being pixel-boundary crossings: core/audio/cursor_poller.py) it never carries
+    on past the next boundary, which the hand has not crossed yet. Smoothed by two
+    one-pole lowpasses (critically damped, SMOOTH_SEC).
 
     Output frames are timed on a clock running at the sample rate, kept on the
     time they are heard (now + the queued audio) by a gentle correction.
@@ -119,6 +122,7 @@ class ScratchPlatter:
 
     DELAY_SEC = 0.06
     EXTRAPOLATE_SEC = 0.02
+    RATE_SEC = 0.012
     SMOOTH_SEC = 0.008
     HISTORY_SEC = 1.0
     CLOCK_GAIN = 0.02     # per block
@@ -129,25 +133,29 @@ class ScratchPlatter:
         self._pole = math.exp(-1.0 / (self.SMOOTH_SEC * self.rate))
         self.reset(0.0, 0.0)
 
-    def reset(self, pos: float, now: float) -> None:
-        """Held still at ``pos`` from time ``now`` (s)."""
+    def reset(self, pos: float, now: float, pixel: float = 0.0) -> None:
+        """Held still at ``pos`` from time ``now`` (s); ``pixel``: see the class."""
         pos = float(pos)
         self._times = [float(now)]
         self._path = [pos]
+        self._rest = [True]
+        self._pixel = abs(float(pixel))
         self._clock = float(now)
         self._zi = [np.array([self._pole * pos]), np.array([self._pole * pos])]
         self.position = pos
 
-    def set_target(self, pos: float, at: float) -> None:
-        """The hand was at ``pos`` (input frames) at time ``at`` (s)."""
+    def set_target(self, pos: float, at: float, rest: bool = False) -> None:
+        """The hand was at ``pos`` (input frames) at time ``at`` (s); ``rest``: and
+        stopped there."""
         at = max(float(at), self._times[-1])
         self._times.append(at)
         self._path.append(float(pos))
+        self._rest.append(bool(rest))
         cut = 0
         while cut < len(self._times) - 2 and self._times[cut] < at - self.HISTORY_SEC:
             cut += 1
         if cut:
-            del self._times[:cut], self._path[:cut]
+            del self._times[:cut], self._path[:cut], self._rest[:cut]
 
     def positions(self, n: int, heard_at: float) -> np.ndarray:
         """Input positions of the next ``n`` output frames, the first heard at
@@ -162,11 +170,19 @@ class ScratchPlatter:
         lookup = times - self.DELAY_SEC
         hand = np.interp(lookup, self._times, self._path)
         late = lookup > self._times[-1]
-        if len(self._times) >= 2 and late.any():
-            span = self._times[-1] - self._times[-2]
+        if len(self._times) >= 2 and not self._rest[-1] and late.any():
+            # from the newest sample at least RATE_SEC before the last one (or the one before it)
+            t_last = self._times[-1]
+            j = len(self._times) - 2
+            while j > 0 and self._times[j] > t_last - self.RATE_SEC:
+                j -= 1
+            span = t_last - self._times[j]
             if span > 1e-4:
-                speed = (self._path[-1] - self._path[-2]) / span
-                hand[late] += speed * np.minimum(lookup[late] - self._times[-1], self.EXTRAPOLATE_SEC)
+                speed = (self._path[-1] - self._path[j]) / span
+                ahead = speed * np.minimum(lookup[late] - t_last, self.EXTRAPOLATE_SEC)
+                if self._pixel:
+                    ahead = np.clip(ahead, -self._pixel, self._pixel)
+                hand[late] += ahead
         b, a = [1.0 - self._pole], [1.0, -self._pole]
         x, self._zi[0] = lfilter(b, a, hand, zi=self._zi[0])
         x, self._zi[1] = lfilter(b, a, x, zi=self._zi[1])
@@ -175,42 +191,110 @@ class ScratchPlatter:
         return x
 
 
+# Scratch reader (read_at): Kaiser-windowed sinc, cutoff READ_CUTOFF of the Nyquist
+# divided by the speed r (input frames per output frame, at least 1). READ_HALF zero
+# crossings each side, but at most READ_REACH input frames each side: from r = 2 on
+# fewer crossings (8 at r = READ_STRIDE_STRETCH). Faster, the 8-crossing kernel's
+# taps are r / READ_STRIDE_STRETCH frames apart, each the input triangle-filtered over
+# its neighbours' span. At most 2 * READ_REACH taps per output frame at any speed.
+READ_HALF = 16
+READ_REACH = 32
+READ_STRIDE_STRETCH = 4
+READ_BETA = 8.0
+READ_CUTOFF = 0.9
+_READ_SINC_RES = 512  # table points per unit (a zero crossing at the full cutoff)
+_READ_WIN_RES = 4096  # table points over the window's half
+_READ_SINC = READ_CUTOFF * np.sinc(READ_CUTOFF * np.arange(READ_HALF * _READ_SINC_RES + 2) / _READ_SINC_RES)
+_read_x = np.arange(_READ_WIN_RES + 2) / _READ_WIN_RES
+_READ_WIN = np.i0(READ_BETA * np.sqrt(np.clip(1.0 - _read_x ** 2, 0.0, None))) / np.i0(READ_BETA)
+_READ_WIN[_read_x >= 1.0] = 0.0
+# Up to r = 2 the kernel is one function of u = t / r (t: input frames from the
+# position): sinc(u) * window(u / READ_HALF), tabulated like _READ_SINC.
+_read_u = np.arange(READ_HALF * _READ_SINC_RES + 2) / _READ_SINC_RES
+_READ_UNIT = (_READ_SINC * np.i0(READ_BETA * np.sqrt(np.clip(1.0 - (_read_u / READ_HALF) ** 2, 0.0, None)))
+              / np.i0(READ_BETA))
+_READ_UNIT[_read_u >= READ_HALF] = 0.0
+_read_m = np.arange(1 - READ_REACH, READ_REACH)
+_READ_STRIDE_W = (READ_CUTOFF * np.sinc(READ_CUTOFF * _read_m / READ_STRIDE_STRETCH)
+                  * np.i0(READ_BETA * np.sqrt(1.0 - (_read_m / READ_REACH) ** 2)) / np.i0(READ_BETA))
+_READ_STRIDE_W /= _READ_STRIDE_W.sum()
+del _read_x, _read_u, _read_m
+
+
+# The compiled read_at kernel (core/audio/_scratch_numba.py) once warm_scratch_numba()
+# has loaded it, False if that failed; read_at uses NumPy until then (several times
+# slower: fast scratches may not keep up in real time).
+_SCRATCH_NUMBA = None
+
+
+def warm_scratch_numba() -> bool:
+    """Load (disk cache) or compile read_at's numba kernel. Call it outside the audio
+    thread, which never waits for it. Failure leaves the NumPy path."""
+    global _SCRATCH_NUMBA
+    if _SCRATCH_NUMBA is None:
+        try:
+            from core.audio import _scratch_numba as kernels
+            kernels.warm()
+            _SCRATCH_NUMBA = kernels
+        except Exception as exc:  # pragma: no cover - environment dependent
+            print(f"[Scratch] numba kernel unavailable, using NumPy: {exc}")
+            _SCRATCH_NUMBA = False
+    return bool(_SCRATCH_NUMBA)
+
+
+def _lerp(table: np.ndarray, a: np.ndarray) -> np.ndarray:
+    """table read at fractional indices a >= 0 (past its end: its last value, 0)."""
+    i = np.minimum(a.astype(np.int64), table.size - 2)
+    return table[i] + np.minimum(a - i, 1.0) * (table[i + 1] - table[i])
+
+
 def read_at(pcm: np.ndarray, positions: np.ndarray, previous: float | None = None) -> np.ndarray:
     """[M, ch] float32: ``pcm`` read at fractional input ``positions`` (any order,
-    either direction) by 4-point cubic Hermite (Catmull-Rom) interpolation; edges held.
-
-    Simple anti-aliasing: where the read moves faster than 1 input frame per
-    output frame, each output frame is (blended, fully from speed 2 on, into) the
-    mean of the input it passed over since the previous one (a box filter as wide
-    as the speed); ``previous`` is the position before ``positions[0]``."""
+    either direction) by windowed-sinc interpolation, anti-aliased by the speed
+    (see READ_HALF); edges held. The speed of each output frame is its distance from
+    the previous position (``previous`` is the one before ``positions[0]``). Each
+    output frame is normalised by its kernel's sum (no ripple at DC)."""
     n = int(pcm.shape[0])
+    ch = pcm.shape[1] if pcm.ndim == 2 else 1
     if n == 0 or positions.size == 0:
-        return np.zeros((positions.size, pcm.shape[1] if pcm.ndim == 2 else 1), np.float32)
-    p = np.clip(positions, 0.0, n - 1)
-    i0 = np.floor(p).astype(np.int64)
-    mu = (p - i0)[:, np.newaxis]
-    before = np.concatenate(([p[0] if previous is None else min(max(float(previous), 0.0), n - 1)], p[:-1]))
-    lo = int(min(i0.min(), np.floor(before.min()))) - 1
-    hi = int(max(i0.max(), np.floor(before.max()))) + 3
-    win = np.asarray(pcm[max(lo, 0):min(hi, n)], dtype=np.float64)
-    if lo < 0 or hi > n:
-        win = np.pad(win, ((max(0, -lo), max(0, hi - n)), (0, 0)), mode="edge")
-    rel = i0 - lo
-    xm1, x0, x1, x2 = win[rel - 1], win[rel], win[rel + 1], win[rel + 2]
-    out = x0 + 0.5 * mu * (x1 - xm1 + mu * (2.0 * xm1 - 5.0 * x0 + 4.0 * x1 - x2 + mu * (3.0 * (x0 - x1) + x2 - xm1)))
-    speed = np.abs(p - before)
-    fast = speed > 1.0
-    if np.any(fast):
-        # running integral of the (sample-and-hold) input over the window
-        integral = np.concatenate((np.zeros((1, win.shape[1])), np.cumsum(win, axis=0)))
+        return np.zeros((positions.size, ch), np.float32)
+    kernels = _SCRATCH_NUMBA or None
+    if kernels is not None and pcm.ndim == 2 and pcm.dtype == np.float32 and pcm.flags.c_contiguous:
+        out = np.empty((positions.size, ch), np.float32)
+        kernels.read(pcm, np.asarray(positions, dtype=np.float64), np.nan if previous is None else float(previous),
+                     _READ_UNIT, _READ_SINC, _READ_WIN, _READ_STRIDE_W, out)
+        return out
+    p = np.clip(np.asarray(positions, dtype=np.float64), 0.0, n - 1)
+    prev = p[0] if previous is None else min(max(float(previous), 0.0), n - 1)
+    r = np.abs(np.diff(p, prepend=prev))
+    np.maximum(r, 1.0, out=r)
 
-        def integral_at(x):
-            r = x - lo
-            k = np.floor(r).astype(np.int64)
-            return integral[k] + (r - k)[:, np.newaxis] * win[k]
-
-        a, b = before[fast], p[fast]
-        box = (integral_at(b) - integral_at(a)) / (b - a)[:, np.newaxis]
-        w = np.clip(speed[fast] - 1.0, 0.0, 1.0)[:, np.newaxis]
-        out[fast] = (1.0 - w) * out[fast] + w * box
+    out = np.empty((p.size, ch))
+    slow = r <= READ_STRIDE_STRETCH
+    if slow.any():
+        ps, rs = p[slow], r[slow]
+        reach = np.minimum(READ_HALF * rs, READ_REACH)[:, None]
+        j = np.floor(ps).astype(np.int64)[:, None] + np.arange(1 - READ_REACH, READ_REACH + 1)
+        t = np.abs(j - ps[:, None])
+        u = t / rs[:, None] * _READ_SINC_RES
+        w = np.where(rs[:, None] <= 2.0, _lerp(_READ_UNIT, u),
+                     _lerp(_READ_SINC, u) * _lerp(_READ_WIN, t / reach * _READ_WIN_RES))
+        x = pcm[np.clip(j, 0, n - 1)]
+        out[slow] = np.einsum("mk,mkc->mc", w, x) / w.sum(axis=1)[:, None]
+    if not slow.all():
+        fast = ~slow
+        pf, d = p[fast], r[fast] / READ_STRIDE_STRETCH  # tap spacing, > 1
+        span = READ_REACH * float(d.max()) + 2.0
+        lo = int(np.floor(pf.min() - span))
+        win = np.asarray(pcm[np.clip(np.arange(lo, int(np.ceil(pf.max() + span)) + 2), 0, n - 1)], dtype=np.float64)
+        # first and second running integrals of the input, frame i held over [i - 0.5, i + 0.5)
+        c1 = np.concatenate((np.zeros((1, ch)), np.cumsum(win, axis=0)))
+        c2 = np.concatenate((np.zeros((1, ch)), np.cumsum(c1[:-1] + 0.5 * win, axis=0)))
+        q = pf[:, None] + np.arange(-READ_REACH, READ_REACH + 1) * d[:, None] - lo + 0.5
+        k = np.floor(q).astype(np.int64)
+        f = (q - k)[..., None]
+        g = c2[k] + f * (c1[k] + 0.5 * f * win[k])
+        # tap = triangle (span 2 d) mean: second difference of the second integral
+        taps = (g[:, 2:] - 2.0 * g[:, 1:-1] + g[:, :-2]) / (d * d)[:, None, None]
+        out[fast] = np.einsum("k,mkc->mc", _READ_STRIDE_W, taps)
     return out.astype(np.float32)

@@ -26,7 +26,7 @@ class EventBus(QtCore.QObject):
     sig_scrub_update = QtCore.Signal(float)  # sec
     sig_scrub_end    = QtCore.Signal(float)  # sec
     # Scratch: the main view's waveform held and dragged (the deck is silent while held)
-    sig_scratch_begin  = QtCore.Signal()
+    sig_scratch_begin  = QtCore.Signal(float)  # track seconds per physical screen pixel of the drag (0: unknown)
     sig_scratch_update = QtCore.Signal(float, float)  # sec, time.perf_counter() of the pointer event
     sig_scratch_end    = QtCore.Signal(float)  # sec
 

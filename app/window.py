@@ -180,6 +180,12 @@ class AppWindow(QtWidgets.QMainWindow):
             QtCore.QMetaObject.invokeMethod(self.metro, "stop", QtCore.Qt.QueuedConnection)
         self.bus.sig_beatgrid_edited.connect(self._sync_metronome_beats)
         self._apply_timestretch(bool(self.cfg.playbackconfig.use_timestretch))
+        # The scratch reader's and cursor poller's numba code, loaded here on the main
+        # thread once the window is up (~1 s from the disk cache), so the audio thread
+        # never waits for it.
+        from core.audio.cursor_poller import warm_cursor_poller
+        from core.audio.dsp import warm_scratch_numba
+        QtCore.QTimer.singleShot(0, lambda: (warm_scratch_numba(), warm_cursor_poller()))
         self._apply_external_sync_mode(self.cfg.externalsyncconfig)
         self._apply_visibility_refresh_setting(force=True)
 

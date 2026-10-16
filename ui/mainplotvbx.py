@@ -62,7 +62,7 @@ class ScratchViewBox(NoDragNoWheelViewBox):
             ev.ignore()
             return
         self._grab = (x, float(self._get_time()))
-        self.bus.sig_scratch_begin.emit()
+        self.bus.sig_scratch_begin.emit(self._sec_per_device_px(ev.scenePos()))
         ev.accept()
 
     def mouseMoveEvent(self, ev):
@@ -88,6 +88,17 @@ class ScratchViewBox(NoDragNoWheelViewBox):
     def _view_x(self, scene_pos) -> float | None:
         x = self.mapSceneToView(scene_pos).x()
         return float(x) if np.isfinite(x) else None
+
+    def _sec_per_device_px(self, scene_pos) -> float:
+        """Track seconds per physical screen pixel of a drag (the poller reads the
+        cursor in physical pixels; scene pixels are device-independent), 0 if unknown."""
+        x0 = self._view_x(scene_pos)
+        x1 = self._view_x(scene_pos + QtCore.QPointF(100.0, 0.0))
+        views = self.scene().views() if self.scene() is not None else []
+        if x0 is None or x1 is None or not views:
+            return 0.0
+        dpr = float(views[0].devicePixelRatioF()) or 1.0
+        return abs(x1 - x0) / 100.0 / dpr
 
     def _time_at(self, scene_pos) -> float | None:
         """Track time under the pointer: the grabbed time moved against the drag

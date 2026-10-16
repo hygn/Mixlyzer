@@ -233,8 +233,8 @@ class _AudioWorker(QtCore.QObject):
         self.feeder.set_scrubbing(False)
 
     # Scratch: no scratch sound yet, the deck is silent while held
-    def scratch_begin(self) -> None:
-        self.feeder.set_scratching(True)
+    def scratch_begin(self, sec_per_px: float = 0.0) -> None:
+        self.feeder.set_scratching(True, sec_per_px * self.rate)
 
     def scratch_update(self, sec: float, at: float) -> None:
         if not self._track_ready:
@@ -398,7 +398,7 @@ class PlayerController(QtCore.QObject):
         bus.sig_scrub_begin.connect(lambda: self._send("scrub_begin"))
         bus.sig_scrub_update.connect(lambda sec: self._send("scrub_update", float(sec)))
         bus.sig_scrub_end.connect(lambda sec: self._send("scrub_end", float(sec)))
-        bus.sig_scratch_begin.connect(lambda: self._send_local("scratch_begin"))
+        bus.sig_scratch_begin.connect(lambda sec_per_px: self._send_local("scratch_begin", float(sec_per_px)))
         bus.sig_scratch_update.connect(lambda sec, at: self._send_local("scratch_update", float(sec), float(at)))
         bus.sig_scratch_end.connect(lambda sec: self._send_local("scratch_end", float(sec)))
         bus.sig_volume_changed.connect(lambda v: self._send("set_volume", float(v)))
