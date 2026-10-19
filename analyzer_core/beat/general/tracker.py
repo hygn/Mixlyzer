@@ -58,12 +58,12 @@ class Knobs:
 
 
 KNOBS_FORMAT = 'mixlyzer.beat_decoder.v1'
+KNOBS_PATH = 'assets/weights/beat_decoder.json'    # the user's; missing: the shipped default_beat_decoder.json
 
 
 def load_knobs(path: str | None) -> Knobs:
-    """The costs in a decoder settings file (JSON); no path: the defaults."""
-    if not path:
-        return Knobs()
+    """The costs in a decoder settings file (JSON); no path: the shipped costs."""
+    path = path or KNOBS_PATH
     from core.model_files import resolve_model
     with open(resolve_model(path), encoding='utf-8') as f:
         data = json.load(f)
@@ -84,7 +84,7 @@ class Models:
     """The trained parts, loaded once: TCN seeds, critic folds, the contextual downbeat GBM, the decoder's
     costs."""
 
-    def __init__(self, tcn_path=T.WEIGHT_PATH, critic_path=C.WEIGHT_PATH, ctx_path=B.CTX_PATH, knobs_path=None):
+    def __init__(self, tcn_path=T.WEIGHT_PATH, critic_path=C.WEIGHT_PATH, ctx_path=B.CTX_PATH, knobs_path=KNOBS_PATH):
         self.tcn = T.load_weights(tcn_path)
         self.critic = C.load_weights(critic_path)
         self.ctx = B.load_ctx_model(ctx_path)
@@ -98,9 +98,9 @@ def load_models(ctx_path: str | None = None, tcn_path: str | None = None, critic
                 knobs_path: str | None = None) -> Models:
     """The models (the shipped ones, or retrained ones at the given paths), loaded once per process and
     paths."""
-    key = (ctx_path or B.CTX_PATH, tcn_path or T.WEIGHT_PATH, critic_path or C.WEIGHT_PATH, knobs_path or '')
+    key = (ctx_path or B.CTX_PATH, tcn_path or T.WEIGHT_PATH, critic_path or C.WEIGHT_PATH, knobs_path or KNOBS_PATH)
     if key not in _MODELS:
-        _MODELS[key] = Models(ctx_path=key[0], tcn_path=key[1], critic_path=key[2], knobs_path=key[3] or None)
+        _MODELS[key] = Models(ctx_path=key[0], tcn_path=key[1], critic_path=key[2], knobs_path=key[3])
     return _MODELS[key]
 
 
