@@ -61,6 +61,11 @@ def _load_beat_critic_optimizer() -> _OptimizerDefinition:
     return _OptimizerDefinition(BeatCriticOptimizationRequest, optimize_beat_critic)
 
 
+def _load_beat_decoder_optimizer() -> _OptimizerDefinition:
+    from optimizer.beat_decoder_optimizer import BeatDecoderOptimizationRequest, optimize_beat_decoder
+    return _OptimizerDefinition(BeatDecoderOptimizationRequest, optimize_beat_decoder)
+
+
 def _load_downbeat_ctx_optimizer() -> _OptimizerDefinition:
     from optimizer.downbeat_ctx_optimizer import DownbeatCtxOptimizationRequest, optimize_downbeat_ctx
     return _OptimizerDefinition(DownbeatCtxOptimizationRequest, optimize_downbeat_ctx)
@@ -92,6 +97,7 @@ _OPTIMIZER_LOADERS: dict[str, Callable[[], _OptimizerDefinition]] = {
     "downbeat_ctx": _load_downbeat_ctx_optimizer,
     "beat_tcn": _load_beat_tcn_optimizer,
     "beat_critic": _load_beat_critic_optimizer,
+    "beat_decoder": _load_beat_decoder_optimizer,
     "phrase": _load_phrase_optimizer,
     "jumpcue": _load_jumpcue_optimizer,
 }

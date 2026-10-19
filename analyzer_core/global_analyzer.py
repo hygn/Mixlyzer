@@ -379,6 +379,7 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
             str(getattr(gcf, "downbeat_ctx_parameter_path", "") or "").strip() or None,
             str(getattr(gcf, "beat_tcn_parameter_path", "") or "").strip() or None,
             str(getattr(gcf, "beat_critic_parameter_path", "") or "").strip() or None,
+            str(getattr(gcf, "beat_decoder_parameter_path", "") or "").strip() or None,
         ),
         refine_onset,
         dynamic=dynamic, dynamic_downbeat=dynamic or bool(getattr(gcf, "dynamic_downbeat", True)),

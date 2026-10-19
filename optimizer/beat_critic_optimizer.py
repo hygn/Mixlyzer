@@ -5,8 +5,9 @@ the grid is right. Training windows come from the user's grids (right) and from 
 half / quarter beat shifts, 3:2 / 2:3 / 4:3 / 3:4 tempo readings, slow drifts (+-0.5 %, +-1 %), a stretch of
 8 - 32 beats read wrongly and cut back in, and the decoder's own readings with the current beat model (its
 real mistakes). A window is right when all its beats are within 50 ms of the user's beats, wrong when four
-or more are farther than 70 ms (others are left out). Each fold model is fine-tuned from the current one
-(binary cross-entropy, Adam); with cross-validation, one group of songs is held out first and the current
+or more are farther than 70 ms (others are left out). Each fold model starts from the shipped critic, from the
+critic in use, or from scratch (optimizer/model_start.py; from scratch: 6000 steps, the rate warmed up over the
+first tenth) and is trained with binary cross-entropy and Adam; with cross-validation, one group of songs is held out first and the current
 and fine-tuned critics are compared on it -- how often the right grid sounds better than each wrong one, and
 the grids the whole tracker gives with each (optimizer/beat_grid_check.py) -- and only when the grids are
 not worse is the critic fine-tuned on every song and written.
@@ -31,11 +32,15 @@ from analyzer_core.beat.general import critic as C
 from core.concurrency.process_pool import create_spawn_process_pool
 from optimizer import SkippedOptimizationTrack, optimizer_track_name, skipped_track
 from optimizer.beat_frames import cache_path, ensure_frames, list_grid_tracks, read_frames
-from optimizer.beat_grid_check import GridCheck, grid_check
+from optimizer.beat_grid_check import GridCheck, ModelSet, grid_check
+from optimizer import model_start as MS
+from optimizer.beat_tcn_optimizer import _rate
+from core.model_files import resolve_model
 from optimizer.refine_onset_optimizer import _group_key
 
 ProgressCallback = Callable[[int, str], None]
-MIN_TRACKS = 8
+SCRATCH_STEPS = 6000
+SCRATCH_RATE = 2e-3
 BATCH = 32
 PAIRWISE_SONGS = 40           # songs the pairwise score is reported on (the grid check decides what is saved)
 LOCAL_EDIT_SHARE = 0.35
@@ -48,12 +53,13 @@ class BeatCriticOptimizationRequest:
     library_dir: Path
     cache_dir: Path
     output_path: Path
-    base_path: Path                  # the critic the fold models start from (the current one)
-    tcn_path: Path                   # the beat model whose decoder readings are the critic's hard examples
+    start: str = MS.CURRENT          # shipped | current | scratch
+    base_path: Path | None = None    # overrides where the fold models start (tests)
+    tcn_path: Path | None = None                   # the beat model whose decoder readings are the critic's hard examples
     bpm_min: float = 100.0           # the octave the decoder reads tempos in
-    downbeat_ctx_path: Path | None = None   # the tracker's downbeat model, for the grid check
-    steps: int = 1500
-    learning_rate: float = 5e-4
+    current_models: dict | None = None      # the analysis's model files in use (ModelSet fields)
+    steps: int = 0                   # 0: 1500 (improving a critic) or 6000 (from scratch)
+    learning_rate: float = 0.0       # 0: 5e-4 or 2e-3
     cv_folds: int = 0
     keep_if_worse: bool = False
     rebuild_cache: bool = False
@@ -274,7 +280,7 @@ def _write_training_data(tracks, cache_dir: Path, work: Path, ignored) -> tuple[
 
 def _train_one(args) -> dict:
     """Process-worker entry point: one fold model fine-tuned on the given songs."""
-    P, work, meta, refs, decs, songs, steps, lr, seed, progress = args
+    P, work, meta, refs, decs, songs, steps, lr, seed, progress, warmup = args
     from threadpoolctl import threadpool_limits
     x_all = np.load(Path(work) / "x.npy", mmap_mode="r")
     P = {k: np.asarray(v, np.float32).copy() for k, v in P.items()}
@@ -320,7 +326,7 @@ def _train_one(args) -> dict:
             logit, saved = _forward(P, x)
             p = 1.0 / (1.0 + np.exp(-logit))
             G = _backward(P, saved, ((p - y) / y.size).astype(np.float32))
-            rate = lr * 0.5 * (1.0 + math.cos(math.pi * (step - 1) / steps))
+            rate = _rate(lr, step, steps, warmup)
             for k in P:
                 m[k] = b1 * m[k] + (1 - b1) * G[k]
                 v2[k] = b2 * v2[k] + (1 - b2) * G[k] * G[k]
@@ -330,7 +336,19 @@ def _train_one(args) -> dict:
     return P
 
 
-def _train_all(nets, work, meta, refs, decs, songs, steps, lr, max_workers, progress, span, label_text):
+def _init_critic(like: dict, seed: int) -> dict:
+    """A new fold model (from scratch): weights and biases uniform in +-1 / sqrt(fan-in)."""
+    rng = np.random.default_rng(20_000 + seed)
+    out = {}
+    for k, v in like.items():
+        w = like[k.replace('.bias', '.weight')]
+        fan_in = int(np.prod(w.shape[1:]))
+        b = 1.0 / math.sqrt(fan_in)
+        out[k] = rng.uniform(-b, b, v.shape).astype(np.float32)
+    return out
+
+
+def _train_all(nets, work, meta, refs, decs, songs, steps, lr, max_workers, progress, span, label_text, warmup=0.0):
     lo, hi = span
     manager = multiprocessing.get_context("spawn").Manager()
     q = manager.Queue()
@@ -339,7 +357,7 @@ def _train_all(nets, work, meta, refs, decs, songs, steps, lr, max_workers, prog
     workers = max(1, min(len(nets), int(max_workers or len(nets))))
     try:
         with create_spawn_process_pool(workers) as executor:
-            futures = {executor.submit(_train_one, (P, str(work), meta, refs, decs, np.asarray(songs), steps, lr, i, q)): i
+            futures = {executor.submit(_train_one, (P, str(work), meta, refs, decs, np.asarray(songs), steps, lr, i, q, warmup)): i
                        for i, P in enumerate(nets)}
             pending = set(futures)
             while pending:
@@ -411,23 +429,29 @@ def optimize_beat_critic(
     output_path = Path(request.output_path).resolve()
     if output_path.suffix.lower() != ".npz":
         raise ValueError("Critic model path must end with .npz")
-    base = C.load_weights(str(request.base_path))
+    MS.check_output(output_path)
+    scratch = request.start == MS.SCRATCH and request.base_path is None
+    from analyzer_core.beat.general import tcn as TCN
+    tcn_text = str(request.tcn_path) if request.tcn_path else TCN.WEIGHT_PATH
+    base_path = request.base_path or MS.base_model(output_path, request.start)
+    # the critic in use: what the new one is compared with
+    reference_path = resolve_model(output_path)
+    reference = C.load_weights(str(reference_path))
+    base = [_init_critic(reference[0], i) for i in range(len(reference))] if scratch else C.load_weights(str(base_path))
     ignored: list[SkippedOptimizationTrack] = []
     tracks = list_grid_tracks(library_dir, ignored)
-    if len(tracks) < MIN_TRACKS:
-        raise RuntimeError(f"At least {MIN_TRACKS} tracks with beat grids are required")
+    MS.require_tracks(len(tracks), MS.kind_of(request.start))
     tracks = ensure_frames(tracks, cache_dir, ignored, rebuild=bool(request.rebuild_cache),
                            max_workers=request.max_cache_workers, progress=feature_progress, progress_span=(0, 60))
     work = cache_dir / "_critic_training"
     try:
         tracks, meta = _write_training_data(tracks, cache_dir, work, ignored)
-        if len(tracks) < MIN_TRACKS:
-            raise RuntimeError("Insufficient tracks with current frame features")
+        MS.require_tracks(len(tracks), MS.kind_of(request.start))
         refs = [np.sort(np.asarray(t["beats"], np.float64)) for t in tracks]
         decs: dict[str, list] = {}
         workers = max(1, min(len(tracks), int(request.max_cache_workers or 4)))
         with create_spawn_process_pool(workers) as executor:
-            futures = {executor.submit(_decoder_grids, (t, str(cache_dir), str(request.tcn_path), float(request.bpm_min))): t for t in tracks}
+            futures = {executor.submit(_decoder_grids, (t, str(cache_dir), tcn_text, float(request.bpm_min))): t for t in tracks}
             for done, f in enumerate(as_completed(futures), start=1):
                 uid, grids = f.result()
                 decs[uid] = grids
@@ -435,7 +459,9 @@ def optimize_beat_critic(
                     feature_progress(60 + int(round(40 * done / len(tracks))),
                                      f"Decoder readings {done}/{len(tracks)}\n{optimizer_track_name(futures[f])}")
         decs_list = [decs.get(str(t["uid"]), []) for t in tracks]
-        steps, lr = int(request.steps), float(request.learning_rate)
+        steps = int(request.steps) or (SCRATCH_STEPS if scratch else 1500)
+        lr = float(request.learning_rate) or (SCRATCH_RATE if scratch else 5e-4)
+        warmup = 0.1 if scratch else 0.0
         everything = np.arange(len(tracks))
         cross_validated = int(request.cv_folds) >= 2
         before = after = float("nan")
@@ -445,14 +471,14 @@ def optimize_beat_critic(
             k = min(int(request.cv_folds), np.unique(groups).size)
             train, held = next(GroupKFold(n_splits=k).split(everything, groups=groups))
             tuned = _train_all(base, work, meta, refs, decs_list, train, steps, lr, request.max_train_workers,
-                               optimize_progress, (0, 35), "Held-out check")
-            before = _pairwise(base, work, meta, refs, decs_list, held[:PAIRWISE_SONGS], request.max_cache_workers)
+                               optimize_progress, (0, 35), "Held-out check", warmup)
+            before = _pairwise(reference, work, meta, refs, decs_list, held[:PAIRWISE_SONGS], request.max_cache_workers)
             after = _pairwise(tuned, work, meta, refs, decs_list, held[:PAIRWISE_SONGS], request.max_cache_workers)
             trial = work / "held_out_critic.npz"
             _save(trial, tuned)
-            ctx = str(request.downbeat_ctx_path or "") or None
+            current = ModelSet(**(request.current_models or {})).replace(tcn=tcn_text, critic=reference_path)
             grid = grid_check([tracks[i] for i in held], cache_dir, request.bpm_min,
-                              (ctx, str(request.tcn_path), str(request.base_path)), (ctx, str(request.tcn_path), str(trial)),
+                              current, current.replace(critic=trial),
                               request.max_cache_workers, optimize_progress, (35, 50))
             if not grid.not_worse and not request.keep_if_worse:
                 if optimize_progress:
@@ -465,10 +491,10 @@ def optimize_beat_critic(
         else:
             span = (0, 98)
         nets = _train_all(base, work, meta, refs, decs_list, everything, steps, lr, request.max_train_workers,
-                          optimize_progress, span, "Fine-tuning")
+                          optimize_progress, span, "Training" if scratch else "Fine-tuning", warmup)
         if not cross_validated:
             sample = everything[: min(PAIRWISE_SONGS, everything.size)]
-            before = _pairwise(base, work, meta, refs, decs_list, sample, request.max_cache_workers)
+            before = _pairwise(reference, work, meta, refs, decs_list, sample, request.max_cache_workers)
             after = _pairwise(nets, work, meta, refs, decs_list, sample, request.max_cache_workers)
         _save(output_path, nets)
     finally:

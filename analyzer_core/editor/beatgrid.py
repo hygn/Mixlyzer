@@ -154,6 +154,7 @@ def reanalyze_segment_from_file(
         str(getattr(gcf, "downbeat_ctx_parameter_path", "") or "").strip() or None,
         str(getattr(gcf, "beat_tcn_parameter_path", "") or "").strip() or None,
         str(getattr(gcf, "beat_critic_parameter_path", "") or "").strip() or None,
+        str(getattr(gcf, "beat_decoder_parameter_path", "") or "").strip() or None,
     )
     x = T.frame_inputs(frames)
     acts = [T.activations(P, x) for P in models.tcn]

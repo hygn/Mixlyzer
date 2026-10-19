@@ -1,6 +1,8 @@
 """Retrain the beat tracker's contextual downbeat model (a gradient-boosted classifier on the beat-level
 downbeat features and their differences to the neighbouring beats) on the library's grids: the user's beats
-and downbeats are the training data."""
+and downbeats are the training data. With cross-validation, a group of songs is held out first: the model
+trained on the others is checked end to end on them (optimizer/beat_grid_check.py) and the model is retrained
+on every song and written only when those songs' grids are not worse."""
 
 from __future__ import annotations
 
@@ -20,9 +22,10 @@ from core.beat_geometry import downbeat_beat_indices
 from optimizer import SkippedOptimizationTrack, skipped_track
 from optimizer.beat_frames import cache_path, ensure_frames, list_grid_tracks, read_frames
 from optimizer.refine_onset_optimizer import _group_key
+from optimizer import model_start as MS
+from optimizer.beat_grid_check import GridCheck, ModelSet, grid_check
 
 ProgressCallback = Callable[[int, str], None]
-MIN_TRACKS = 8
 PARAMS = dict(max_iter=300, learning_rate=0.06, max_leaf_nodes=31, min_samples_leaf=80, l2_regularization=1.0)
 
 
@@ -34,6 +37,8 @@ class DownbeatCtxOptimizationRequest:
     rebuild_cache: bool = False
     cv_folds: int = 0
     max_cache_workers: int | None = None
+    current_models: dict | None = None      # the analysis's model files in use (ModelSet fields)
+    bpm_min: float = 100.0
 
 
 @dataclass(frozen=True)
@@ -44,6 +49,8 @@ class DownbeatCtxOptimizationResult:
     downbeat_average_precision: float
     skipped_tracks: tuple[SkippedOptimizationTrack, ...] = ()
     cross_validated: bool = False
+    grid: GridCheck | None = None
+    saved: bool = True
 
 
 def _model(seed: int) -> HistGradientBoostingClassifier:
@@ -73,8 +80,8 @@ def optimize_downbeat_ctx(
         raise ValueError("Downbeat model path must end with .npz")
     ignored: list[SkippedOptimizationTrack] = []
     tracks = list_grid_tracks(library_dir, ignored)
-    if len(tracks) < MIN_TRACKS:
-        raise RuntimeError(f"At least {MIN_TRACKS} tracks with beat grids are required")
+    MS.check_output(output_path)
+    MS.require_tracks(len(tracks), "gbm")
     tracks = ensure_frames(tracks, cache_dir, ignored, rebuild=bool(request.rebuild_cache),
                            max_workers=request.max_cache_workers, progress=feature_progress, progress_span=(0, 85))
 
@@ -91,29 +98,38 @@ def optimize_downbeat_ctx(
         data.append((track, x, y))
         if feature_progress:
             feature_progress(85 + int(round(15 * index / len(tracks))), f"Samples {index}/{len(tracks)}")
-    if len(data) < MIN_TRACKS:
-        raise RuntimeError("Insufficient tracks with current frame features")
+    MS.require_tracks(len(data), "gbm")
 
     cross_validated = int(request.cv_folds) >= 2
-    ap_values: list[float] = []
+    grid = None
     if cross_validated:
         groups = np.asarray([_group_key(track) for track, *_ in data])
         n_splits = min(int(request.cv_folds), np.unique(groups).size)
-        for fold, (train, test) in enumerate(GroupKFold(n_splits=n_splits).split(data, groups=groups), start=1):
-            model = _model(fold).fit(np.concatenate([data[i][1] for i in train]),
-                                     np.concatenate([data[i][2] for i in train]))
-            for i in test:
-                ap_values.append(float(average_precision_score(data[i][2], model.predict_proba(data[i][1])[:, 1])))
+        train, held = next(GroupKFold(n_splits=n_splits).split(data, groups=groups))
+        if optimize_progress:
+            optimize_progress(10, "Training on the other songs")
+        trial_model = _model(1).fit(np.concatenate([data[i][1] for i in train]), np.concatenate([data[i][2] for i in train]))
+        trial = cache_dir / "_downbeat_ctx_held_out.npz"
+        export_ctx_model(trial_model, trial, {})
+        try:
+            current = ModelSet(**(request.current_models or {}))
+            grid = grid_check([data[i][0] for i in held], cache_dir, request.bpm_min, current,
+                              current.replace(downbeat_ctx=trial), request.max_cache_workers, optimize_progress, (15, 70))
+        finally:
+            trial.unlink(missing_ok=True)
+        if not grid.not_worse:
             if optimize_progress:
-                optimize_progress(int(round(70 * fold / n_splits)), f"Cross-validation fold {fold}/{n_splits}")
+                optimize_progress(100, "Not saved: the held-out songs' grids got worse")
+            return DownbeatCtxOptimizationResult(
+                output_path=output_path, track_count=len(data), sample_count=0, downbeat_average_precision=float("nan"),
+                skipped_tracks=tuple(ignored), cross_validated=True, grid=grid, saved=False,
+            )
 
     if optimize_progress:
         optimize_progress(75, "Fitting all tracks")
     x = np.concatenate([item[1] for item in data])
     y = np.concatenate([item[2] for item in data])
     model = _model(0).fit(x, y)
-    if not cross_validated:
-        ap_values = [float(average_precision_score(yy, model.predict_proba(xx)[:, 1])) for _t, xx, yy in data[:40]]
     export_ctx_model(model, output_path, {
         "context_shifts": [-4, -3, -2, -1, 1, 2, 3, 4], "params": PARAMS, "date": date.today().isoformat(),
         "tracks": len(data), "samples": int(x.shape[0]), "cross_validated": cross_validated,
@@ -125,7 +141,8 @@ def optimize_downbeat_ctx(
         output_path=output_path,
         track_count=len(data),
         sample_count=int(x.shape[0]),
-        downbeat_average_precision=float(np.mean(ap_values)) if ap_values else float("nan"),
+        downbeat_average_precision=float("nan"),
         skipped_tracks=tuple(ignored),
         cross_validated=cross_validated,
+        grid=grid,
     )

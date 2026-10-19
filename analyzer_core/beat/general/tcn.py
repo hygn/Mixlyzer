@@ -7,14 +7,14 @@ Musical: a beat is heard from many cues at once (bass, harmony changes, drums, m
 several bars of context. Engineering: the same frames the rest of the analyzer uses, no torch.
 
 Weights: one npz with the equally good trainings (seeds) the tracker's consensus runs, each the torch state
-dict's arrays plus the input statistics (``mu``, ``sd``) under ``s<i>.``, see ``assets/weights/beat_tcn.npz``
+dict's arrays plus the input statistics (``mu``, ``sd``) under ``s<i>.``, see ``assets/weights/default_beat_tcn.npz`` (shipped; a retrained one is ``beat_tcn.npz``)
 (Reoptimize fine-tunes them on the library, optimizer/beat_tcn_optimizer.py).
 """
 from __future__ import annotations
 
 import numpy as np
 
-from core.resource_paths import resource_path
+from core.model_files import resolve_model
 
 DILATIONS = (1, 2, 4, 8, 16, 32, 64, 128, 256)
 K = 5
@@ -34,7 +34,7 @@ def elu(x):
 
 def load_weights(path: str = WEIGHT_PATH) -> list[dict]:
     """The trainings in an ensemble file, each a dict of float32 arrays."""
-    with np.load(resource_path(path), allow_pickle=False) as z:
+    with np.load(resolve_model(path), allow_pickle=False) as z:
         if str(np.asarray(z['format']).item()) != ENSEMBLE_FORMAT:
             raise ValueError(f'Beat TCN model format mismatch: {path}')
         nets = []

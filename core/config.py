@@ -130,6 +130,8 @@ class analysisconfig:
     # retrains them) and the frame-feature cache the beat tracker's optimizers share.
     beat_tcn_parameter_path: str
     beat_critic_parameter_path: str
+    # the decoder's costs (JSON), refitted with the beat model they belong to
+    beat_decoder_parameter_path: str
     downbeat_ctx_parameter_path: str
     beat_feature_cache_path: str
     # low / mid / high bands (Hz) of the stored overview levels; the main view
@@ -309,6 +311,7 @@ def default_cfg():
         onset_feature_cache_path="featurecache/onset",
         beat_tcn_parameter_path="assets/weights/beat_tcn.npz",
         beat_critic_parameter_path="assets/weights/beat_critic.npz",
+        beat_decoder_parameter_path="assets/weights/beat_decoder.json",
         downbeat_ctx_parameter_path="assets/weights/downbeat_ctx_hgb.npz",
         beat_feature_cache_path="featurecache/beat",
         env_lo=(20.0, 200.0),

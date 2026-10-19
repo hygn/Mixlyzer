@@ -32,7 +32,7 @@ a = Analysis(
             'assets/weights',
         ),
         (
-            '../assets/weights/refine_onset_hgb.npz',
+            '../assets/weights/default_refine_onset_hgb.npz',
             'assets/weights',
         ),
         (
@@ -40,15 +40,19 @@ a = Analysis(
             'assets/weights',
         ),
         (
-            '../assets/weights/beat_tcn.npz',
+            '../assets/weights/default_beat_tcn.npz',
             'assets/weights',
         ),
         (
-            '../assets/weights/beat_critic.npz',
+            '../assets/weights/default_beat_critic.npz',
             'assets/weights',
         ),
         (
-            '../assets/weights/downbeat_ctx_hgb.npz',
+            '../assets/weights/default_beat_decoder.json',
+            'assets/weights',
+        ),
+        (
+            '../assets/weights/default_downbeat_ctx_hgb.npz',
             'assets/weights',
         ),
         (

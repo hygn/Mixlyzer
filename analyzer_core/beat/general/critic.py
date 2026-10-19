@@ -13,13 +13,13 @@ the slower reading; 3 against 4: every third), so when the activation fires on t
 right reading keeps just the evidence of its shared beats: it is heard when it keeps at least that share
 of the decoded grid's evidence (SHARED). Half-beat readings are not used: different trainings of the
 critic disagree on them, while their ratio judgements agree.
-Weights: five fold models whose logits are averaged (assets/weights/beat_critic.npz).
+Weights: five fold models whose logits are averaged (assets/weights/default_beat_critic.npz shipped; a retrained one is beat_critic.npz).
 """
 from __future__ import annotations
 
 import numpy as np
 
-from core.resource_paths import resource_path
+from core.model_files import resolve_model
 
 from .decode import is_ramp
 from .tcn import frame_inputs
@@ -36,7 +36,7 @@ WEIGHT_PATH = 'assets/weights/beat_critic.npz'
 
 def load_weights(path: str = WEIGHT_PATH) -> list[dict]:
     """The fold models, each a dict of the torch state dict's arrays (npz keys 'f<k>/<name>')."""
-    with np.load(resource_path(path)) as z:
+    with np.load(resolve_model(path)) as z:
         folds = sorted({k.split('/', 1)[0] for k in z.files})
         return [{k.split('/', 1)[1]: np.asarray(z[k], np.float32) for k in z.files if k.startswith(f + '/')} for f in folds]
 

@@ -11,11 +11,11 @@ __pycache__/
 !assets/weights/phrase_analyzer.npz
 !assets/weights/beat_candidate_selector.npz
 !assets/weights/meter_section_classifier.npz
-!assets/weights/refine_onset_hgb.npz
+!assets/weights/default_refine_onset_hgb.npz
 !assets/weights/downbeat_hgb.npz
-!assets/weights/beat_tcn.npz
-!assets/weights/beat_critic.npz
-!assets/weights/downbeat_ctx_hgb.npz
+!assets/weights/default_beat_tcn.npz
+!assets/weights/default_beat_critic.npz
+!assets/weights/default_downbeat_ctx_hgb.npz
 *.zip
 
 # Virtual envs

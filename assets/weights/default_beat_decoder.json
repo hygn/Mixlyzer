@@ -1,0 +1,11 @@
+{
+  "format": "mixlyzer.beat_decoder.v1",
+  "knobs": {
+    "section": 12.0,
+    "half_reset": 192.0,
+    "odd_bar": 160.0
+  },
+  "training": {
+    "source": "the shipped costs, fitted with the shipped models on the library's grids"
+  }
+}

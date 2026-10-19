@@ -108,6 +108,11 @@ def build_analysis_tab(dialog) -> None:
     dialog.ed_beat_critic_parameter_path.setToolTip(
         "The metronome critic (.npz, its fold models) that judges 3:2 / 4:3 readings."
     )
+    dialog.ed_beat_decoder_parameter_path = QLineEdit()
+    dialog.ed_beat_decoder_parameter_path.setPlaceholderText("relative or absolute .json path")
+    dialog.ed_beat_decoder_parameter_path.setToolTip(
+        "The decoder's costs (.json): a new section, a same-tempo half-beat reset, an odd bar."
+    )
     dialog.ed_downbeat_ctx_parameter_path = QLineEdit()
     dialog.ed_downbeat_ctx_parameter_path.setPlaceholderText("relative or absolute .npz path")
     dialog.ed_downbeat_ctx_parameter_path.setToolTip(
@@ -117,9 +122,10 @@ def build_analysis_tab(dialog) -> None:
     dialog.ed_beat_feature_cache_path.setToolTip(
         "Folder for the frame features the beat models are retrained on (the tracker's own frames)."
     )
-    dialog.btn_reoptimize_beat_parameters = QPushButton("Reoptimize Beat Models")
+    dialog.btn_reoptimize_beat_parameters = QPushButton("Reoptimize Beat Models...")
     dialog.btn_reoptimize_beat_parameters.setToolTip(
-        "Retrain the beat tracker's models on the library's beat grids."
+        "Retrain the beat analysis's models (activation network, metronome critic, decoder costs, downbeat and "
+        "tempo-change onset models) on the beat grids in your library."
     )
     dialog.btn_reoptimize_beat_parameters.clicked.connect(dialog._on_reoptimize_beat_parameters)
 
@@ -137,6 +143,7 @@ def build_analysis_tab(dialog) -> None:
     f_beat_advanced.addRow("Beat TCN (NPZ)", dialog.ed_beat_tcn_parameter_path)
     f_beat_advanced.addRow("Metronome critic (NPZ)", dialog.ed_beat_critic_parameter_path)
     f_beat_advanced.addRow("Downbeat model (NPZ)", dialog.ed_downbeat_ctx_parameter_path)
+    f_beat_advanced.addRow("Decoder costs (JSON)", dialog.ed_beat_decoder_parameter_path)
     f_beat_advanced.addRow("Beat feature cache", dialog.ed_beat_feature_cache_path)
     f_beat_advanced.addRow("", dialog.btn_reoptimize_beat_parameters)
 
@@ -476,15 +483,24 @@ class AnalysisSettingsMixin:
         title = "Reoptimize Beat Models"
         from analyzer_core.beat.frame_features import FRAME_HOP_LENGTH
 
-        dialog = BeatParameterOptimizeDialog({}, self)
-        if dialog.exec() != QDialog.Accepted:
-            return
         paths = {
             "refine_onset": (self.ed_refine_onset_parameter_path, self.ed_onset_feature_cache_path),
             "downbeat_ctx": (self.ed_downbeat_ctx_parameter_path, self.ed_beat_feature_cache_path),
             "beat_tcn": (self.ed_beat_tcn_parameter_path, self.ed_beat_feature_cache_path),
             "beat_critic": (self.ed_beat_critic_parameter_path, self.ed_beat_feature_cache_path),
+            "beat_decoder": (self.ed_beat_decoder_parameter_path, self.ed_beat_feature_cache_path),
         }
+        library = Path(self._project_path(self.ed_libpath.text().strip()))
+        try:
+            track_count = sum(1 for _ in library.glob("*.npz"))
+        except OSError:
+            track_count = None
+        dialog = BeatParameterOptimizeDialog(
+            {}, self, track_count=track_count,
+            model_paths={key: self._project_path(field.text().strip()) for key, (field, _cache) in paths.items()},
+        )
+        if dialog.exec() != QDialog.Accepted:
+            return
         queue = []
         for key, name, options in dialog.jobs():
             parameter_text = paths[key][0].text().strip()
@@ -499,19 +515,27 @@ class AnalysisSettingsMixin:
                 "rebuild_cache": False,
                 **options,
             }
+            # the analysis's model files in use: the end-to-end check runs the whole analysis with them, the
+            # retrained model swapped in
+            request_values["bpm_min"] = float(self.sp_bpm_min.value())
+            request_values["current_models"] = {
+                "downbeat_ctx": self._project_path(self.ed_downbeat_ctx_parameter_path.text().strip()),
+                "tcn": self._project_path(self.ed_beat_tcn_parameter_path.text().strip()),
+                "critic": self._project_path(self.ed_beat_critic_parameter_path.text().strip()),
+                "decoder": self._project_path(self.ed_beat_decoder_parameter_path.text().strip()),
+                "refine_onset": self._project_path(self.ed_refine_onset_parameter_path.text().strip()),
+            }
             if key == "refine_onset":
-                request_values.update(use_hpss=bool(self.cb_use_hpss.isChecked()), frame_hop_length=int(FRAME_HOP_LENGTH))
-            if key in ("beat_tcn", "beat_critic"):
-                # fine-tuned from the current model, written where it is (backed up first when asked);
-                # the grid check runs the whole tracker with the current other models
-                request_values["base_path"] = request_values["output_path"]
-                request_values["bpm_min"] = float(self.sp_bpm_min.value())
-                request_values["downbeat_ctx_path"] = self._project_path(self.ed_downbeat_ctx_parameter_path.text().strip())
-            if key == "beat_tcn":
-                request_values["critic_path"] = self._project_path(self.ed_beat_critic_parameter_path.text().strip())
+                request_values.update(use_hpss=bool(self.cb_use_hpss.isChecked()), frame_hop_length=int(FRAME_HOP_LENGTH),
+                                      frames_cache_dir=self._project_path(self.ed_beat_feature_cache_path.text().strip()))
+            if key == "beat_decoder":
+                # the costs are fitted for the models in use (after any of them is retrained)
+                models = request_values.pop("current_models")
+                request_values.update(tcn_path=models["tcn"], critic_path=models["critic"],
+                                      downbeat_ctx_path=models["downbeat_ctx"], refine_onset_path=models["refine_onset"])
             if key == "beat_critic":
                 # its hard examples are the decoder's readings with the beat model in use
-                request_values["tcn_path"] = self._project_path(self.ed_beat_tcn_parameter_path.text().strip())
+                request_values["tcn_path"] = request_values["current_models"]["tcn"]
             queue.append((key, name, options, request_values))
         if dialog.backup_existing():
             for _key, name, _options, request_values in queue:
@@ -610,42 +634,38 @@ class AnalysisSettingsMixin:
 
     @staticmethod
     def _beat_optimization_summary(key: str, name: str, options: dict, result) -> str:
-        kind = "CV" if result.cross_validated else "Training"
-        validation = (
-            f"{options['cv_folds']}-fold grouped CV" if result.cross_validated else "no cross-validation"
-        )
-        grid = ""
-        if getattr(result, "grid", None) is not None:
-            g = result.grid
-            grid = (chr(10) + f"Grids on {g.songs} held-out songs: unusable beats {g.unusable_before_sec:.1f} -> "
-                    + f"{g.unusable_after_sec:.1f} s, downbeat F {g.downbeat_f_before:.3f} -> {g.downbeat_f_after:.3f} "
-                    + f"({g.better_songs} songs better, {g.worse_songs} worse)")
-        head = f"{name} updated:" if getattr(result, "saved", True) else f"{name} NOT saved (the grids got worse):"
-        if key == "beat_tcn":
-            held = "held-out songs" if result.cross_validated else "songs it was trained on"
-            return (
-                head + chr(10) + f"{result.output_path}" + chr(10)
-                + f"Tracks: {result.track_count}, steps: {result.steps}" + chr(10)
-                + f"Frame AP on {held}: beat {result.beat_ap_before:.3f} -> {result.beat_ap_after:.3f}, "
-                + f"downbeat {result.downbeat_ap_before:.3f} -> {result.downbeat_ap_after:.3f}" + grid
-            )
-        if key == "beat_critic":
-            held = "held-out songs" if result.cross_validated else "songs it was trained on"
-            return (
-                head + chr(10) + f"{result.output_path}" + chr(10)
-                + f"Tracks: {result.track_count}, steps: {result.steps}" + chr(10)
-                + f"Right grid heard above a wrong one on {held}: "
-                + f"{100 * result.pairwise_before:.1f}% -> {100 * result.pairwise_after:.1f}%" + grid
-            )
-        if key == "downbeat_ctx":
-            score = f"{kind} downbeat AP at the beats: {result.downbeat_average_precision:.3f} ({validation})"
+        """The end-to-end report: the whole analysis on songs the model was not trained on, against the grids."""
+        lines = []
+        saved = getattr(result, "saved", True)
+        grid = getattr(result, "grid", None)
+        if saved:
+            lines.append(f"{name}: saved to {result.output_path}")
         else:
-            score = f"{kind} frame beat AP: {result.beat_average_precision:.3f} ({validation})"
-        return (
-            f"{name} parameter updated:\n{result.output_path}\n"
-            f"Tracks: {result.track_count}, samples: {result.sample_count}\n"
-            f"{score}"
-        )
+            lines.append(f"{name}: NOT saved -- the end-to-end check found the grids worse; the model in use is kept.")
+        if key == "beat_decoder":
+            a, b = result.knobs_before, result.knobs_after
+            lines.append(f"Costs: section {a['section']:g} -> {b['section']:g}, half-beat reset {a['half_reset']:g} -> "
+                         f"{b['half_reset']:g}, odd bar {a['odd_bar']:g} -> {b['odd_bar']:g}")
+        if grid is None:
+            lines.append("No end-to-end check (cross-validation is off): saved without a comparison.")
+            return chr(10).join(lines)
+        where = "held-out songs" if result.cross_validated else "songs"
+        lines.append(f"End-to-end check on {grid.songs} {where} (the whole analysis, current vs new):")
+        lines.append(f"  beats off by more than 25 ms: {grid.beats_before_sec / 60:.2f} -> {grid.beats_after_sec / 60:.2f} min")
+        lines.append(f"  bars whose downbeat is off by more than 70 ms: {grid.bars_before_sec / 60:.2f} -> "
+                     f"{grid.bars_after_sec / 60:.2f} min")
+
+        def listed(label, items):
+            if not items:
+                return
+            shown = ", ".join(f"{c.title} ({c.change:+.1f} s)" for c in items[:10])
+            more = f" and {len(items) - 10} more" if len(items) > 10 else ""
+            lines.append(f"  {label} ({len(items)}): {shown}{more}")
+        listed("better", grid.better)
+        listed("worse", grid.worse)
+        if not grid.better and not grid.worse:
+            lines.append("  no song changed by more than a second")
+        return chr(10).join(lines)
 
     def _on_reoptimize_phrase_parameter(self) -> None:
         if self._parameter_optimization_is_running():

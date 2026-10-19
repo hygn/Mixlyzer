@@ -1,4 +1,7 @@
-"""Retrain the gradient-boosted onset used by the beat-grid refinement."""
+"""Retrain the gradient-boosted onset used by the beat-grid refinement (where a tempo change starts). With
+cross-validation, a group of songs is held out first: the model trained on the others is checked end to end on
+them (optimizer/beat_grid_check.py) and the model is retrained on every song and written only when those songs'
+grids are not worse."""
 
 from __future__ import annotations
 
@@ -17,6 +20,8 @@ from sklearn.model_selection import GroupKFold
 from analyzer_core.beat.learned_onset import export_refine_onset_model, stack_context
 from core.concurrency.process_pool import create_spawn_process_pool
 from optimizer import SkippedOptimizationTrack, optimizer_track_name, skipped_track
+from optimizer import model_start as MS
+from optimizer.beat_grid_check import GridCheck, ModelSet, grid_check
 from optimizer.onset_parameter_optimizer import (
     _auto_cache_workers,
     _build_track_cache,
@@ -28,7 +33,6 @@ from optimizer.onset_parameter_optimizer import (
 )
 
 ProgressCallback = Callable[[int, str], None]
-MIN_TRACKS = 8
 # Share of each sample kind kept for training (near a beat / beat subdivision / other),
 # reweighted so the kept frames stand for all of them.
 SAMPLE_SHARE = (0.3, 0.15, 0.1)
@@ -44,6 +48,9 @@ class RefineOnsetOptimizationRequest:
     rebuild_cache: bool = False
     cv_folds: int = 0
     max_cache_workers: int | None = None
+    frames_cache_dir: Path | None = None    # the beat models' frame cache, for the end-to-end check
+    current_models: dict | None = None      # the analysis's model files in use (ModelSet fields)
+    bpm_min: float = 100.0
 
 
 @dataclass(frozen=True)
@@ -54,6 +61,8 @@ class RefineOnsetOptimizationResult:
     beat_average_precision: float
     skipped_tracks: tuple[SkippedOptimizationTrack, ...] = ()
     cross_validated: bool = False
+    grid: GridCheck | None = None
+    saved: bool = True
 
 
 def _model(seed: int) -> HistGradientBoostingClassifier:
@@ -99,8 +108,8 @@ def optimize_refine_onset(
     hop = int(request.frame_hop_length)
     ignored: list[SkippedOptimizationTrack] = []
     tracks = _list_beat_tracks(library_dir, ignored)
-    if len(tracks) < MIN_TRACKS:
-        raise RuntimeError(f"At least {MIN_TRACKS} annotated tracks are required")
+    MS.check_output(output_path)
+    MS.require_tracks(len(tracks), "gbm")
 
     jobs = [
         track for track in tracks
@@ -137,28 +146,43 @@ def optimize_refine_onset(
         data.append((track, x, y, w))
         if feature_progress:
             feature_progress(80 + int(round(20 * index / len(tracks))), f"Samples {index}/{len(tracks)}")
-    if len(data) < MIN_TRACKS:
-        raise RuntimeError("Insufficient tracks with current feature caches")
+    MS.require_tracks(len(data), "gbm")
 
     cross_validated = int(request.cv_folds) >= 2
     ap_values: list[float] = []
+    grid = None
     if cross_validated:
+        from optimizer.beat_frames import ensure_frames, list_grid_tracks
         groups = np.asarray([_group_key(track) for track, *_ in data])
         n_splits = min(int(request.cv_folds), np.unique(groups).size)
-        for fold, (train, test) in enumerate(GroupKFold(n_splits=n_splits).split(data, groups=groups), start=1):
-            model = _model(fold).fit(
-                np.concatenate([data[i][1] for i in train]).astype(np.float32),
-                np.concatenate([data[i][2] for i in train]),
-                sample_weight=np.concatenate([data[i][3] for i in train]),
-            )
-            for i in test:
-                track = data[i][0]
-                frame_times, channels = _read_current_cache(
-                    _cache_path(cache_dir, str(track["uid"])), track, bool(request.use_hpss), hop
-                )
-                ap_values.append(_beat_ap(model, frame_times, channels, np.asarray(track["beats"])))
+        train, held = next(GroupKFold(n_splits=n_splits).split(data, groups=groups))
+        if optimize_progress:
+            optimize_progress(10, "Training on the other songs")
+        trial_model = _model(1).fit(
+            np.concatenate([data[i][1] for i in train]).astype(np.float32),
+            np.concatenate([data[i][2] for i in train]),
+            sample_weight=np.concatenate([data[i][3] for i in train]),
+        )
+        frames_dir = Path(request.frames_cache_dir or cache_dir).resolve()
+        trial = frames_dir / "_refine_onset_held_out.npz"
+        export_refine_onset_model(trial_model, trial, hop, {})
+        try:
+            held_uids = {str(data[i][0]["uid"]) for i in held}
+            held_tracks = [t for t in list_grid_tracks(library_dir, []) if str(t["uid"]) in held_uids]
+            held_tracks = ensure_frames(held_tracks, frames_dir, ignored, max_workers=request.max_cache_workers,
+                                        progress=optimize_progress, progress_span=(12, 30))
+            current = ModelSet(**(request.current_models or {}))
+            grid = grid_check(held_tracks, frames_dir, request.bpm_min, current, current.replace(refine_onset=trial),
+                              request.max_cache_workers, optimize_progress, (30, 70))
+        finally:
+            trial.unlink(missing_ok=True)
+        if not grid.not_worse:
             if optimize_progress:
-                optimize_progress(int(round(70 * fold / n_splits)), f"Cross-validation fold {fold}/{n_splits}")
+                optimize_progress(100, "Not saved: the held-out songs' grids got worse")
+            return RefineOnsetOptimizationResult(
+                output_path=output_path, track_count=len(data), sample_count=0, beat_average_precision=float("nan"),
+                skipped_tracks=tuple(ignored), cross_validated=True, grid=grid, saved=False,
+            )
 
     if optimize_progress:
         optimize_progress(75, "Fitting all tracks")
@@ -186,4 +210,5 @@ def optimize_refine_onset(
         beat_average_precision=float(np.mean(ap_values)) if ap_values else float("nan"),
         skipped_tracks=tuple(ignored),
         cross_validated=cross_validated,
+        grid=grid,
     )

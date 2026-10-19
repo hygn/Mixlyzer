@@ -128,8 +128,8 @@ CTX_PATH = 'assets/weights/downbeat_ctx_hgb.npz'
 def load_ctx_model(path: str = CTX_PATH):
     """The contextual downbeat GBM (beat-level downbeat features and their neighbour differences)."""
     from analyzer_core.cue_and_phrase.phrase_analyzer import _load_numpy_hgb
-    from core.resource_paths import resource_path
-    with np.load(resource_path(path), allow_pickle=False) as z:
+    from core.model_files import resolve_model
+    with np.load(resolve_model(path), allow_pickle=False) as z:
         if str(np.asarray(z['format']).item()) != CTX_FORMAT:
             raise ValueError(f'Contextual downbeat model format mismatch: {path}')
         return _load_numpy_hgb(z, 'downbeat_ctx')
@@ -175,9 +175,9 @@ def bars_viterbi(pd, cost=CB, cheap=None, cost_at_start=0.0):
     return np.array([states[x][1] == 0 for x in st])
 
 
-def downbeats(beats, rows, down, t0, hop, frames, ctx_model, restarts=True):
-    """Downbeat times among the beats: the bars Viterbi on the fused observers (without ``restarts``,
-    one bar length and phase for the whole track: static bars)."""
+def downbeat_probability(beats, down, t0, hop, frames, ctx_model):
+    """Per beat, the fused downbeat probability of the two observers (the TCN's downbeat activation and the
+    contextual GBM)."""
     from analyzer_core.beat.downbeat_offset import _downbeat_feature_matrix, _robust_standardize_columns
     b = np.sort(np.asarray(beats, float))
     p = _at(down, t0, hop, b)
@@ -188,9 +188,18 @@ def downbeats(beats, rows, down, t0, hop, frames, ctx_model, restarts=True):
         n = min(b.size, pg.size)
         pgb[:n] = pg[:n]
         p = 1.0 / (1.0 + np.exp(-0.5 * (_logit(p) + _logit(pgb))))
+    return p
+
+
+def downbeats(beats, rows, down, t0, hop, frames, ctx_model, restarts=True, cost=CB, p=None):
+    """Downbeat times among the beats: the bars Viterbi on the fused observers (without ``restarts``,
+    one bar length and phase for the whole track: static bars). ``p``: the probabilities when known."""
+    b = np.sort(np.asarray(beats, float))
+    if p is None:
+        p = downbeat_probability(b, down, t0, hop, frames, ctx_model)
     if not restarts:
         return b[bars_viterbi(p, np.inf)]
-    return b[bars_viterbi(p, CB, section_starts(b, rows), 0.0)]
+    return b[bars_viterbi(p, cost, section_starts(b, rows), 0.0)]
 
 
 def _neighbour_beat(row, beat_time, k):

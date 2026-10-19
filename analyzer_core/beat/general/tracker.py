@@ -10,14 +10,16 @@ Then the consensus: of the three seeds' grids per track, the one that agrees mos
 pipeline's discrete choices flip with small changes of the activation; the medoid keeps what most
 trainings agree on). Finally the production rows: inizio = a downbeat, ts = the bar length.
 
-Knobs: J (section cost) and CB (odd-bar cost) -- both fixed here; the BPM octave comes from the user's
-BPM range setting (bpm_min .. 2 bpm_min). Static analysis (a setting): the one steady grid with the most
+Knobs: the decoder's costs (``Knobs``: a new section, a same-tempo half-beat reset, an odd bar), in evidence
+units of the activation -- so they belong to the beat model and are refitted with it (optimizer/
+beat_decoder_optimizer.py); the BPM octave comes from the user's BPM range setting (bpm_min .. 2 bpm_min). Static analysis (a setting): the one steady grid with the most
 evidence over the whole track instead of the section decoding, none of the tempo-change stages; its bars
 are static too (one bar length and phase, no restarts) unless dynamic downbeats are asked for.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
+import json
 
 import numpy as np
 
@@ -46,24 +48,59 @@ class TrackerResult:
     seeds: list
 
 
-class Models:
-    """The trained parts, loaded once: TCN seeds, critic folds, the contextual downbeat GBM."""
+@dataclass(frozen=True)
+class Knobs:
+    """The decoder's costs in evidence units (the activation's beat contrast summed over beats): what a new
+    section, a same-tempo half-beat reset (on top of a section) and an odd bar must explain to be made."""
+    section: float = D.J
+    half_reset: float = D.HALF_RESET
+    odd_bar: float = B.CB
 
-    def __init__(self, tcn_path=T.WEIGHT_PATH, critic_path=C.WEIGHT_PATH, ctx_path=B.CTX_PATH):
+
+KNOBS_FORMAT = 'mixlyzer.beat_decoder.v1'
+
+
+def load_knobs(path: str | None) -> Knobs:
+    """The costs in a decoder settings file (JSON); no path: the defaults."""
+    if not path:
+        return Knobs()
+    from core.model_files import resolve_model
+    with open(resolve_model(path), encoding='utf-8') as f:
+        data = json.load(f)
+    if data.get('format') != KNOBS_FORMAT:
+        raise ValueError(f'Beat decoder settings format mismatch: {path}')
+    return Knobs(**{k: float(v) for k, v in data['knobs'].items() if k in Knobs.__dataclass_fields__})
+
+
+def save_knobs(path, knobs: Knobs, training: dict | None = None) -> None:
+    from pathlib import Path
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+    with open(path, 'w', encoding='utf-8') as f:
+        json.dump({'format': KNOBS_FORMAT, 'knobs': asdict(knobs), 'training': training or {}}, f, indent=2,
+                  ensure_ascii=False)
+
+
+class Models:
+    """The trained parts, loaded once: TCN seeds, critic folds, the contextual downbeat GBM, the decoder's
+    costs."""
+
+    def __init__(self, tcn_path=T.WEIGHT_PATH, critic_path=C.WEIGHT_PATH, ctx_path=B.CTX_PATH, knobs_path=None):
         self.tcn = T.load_weights(tcn_path)
         self.critic = C.load_weights(critic_path)
         self.ctx = B.load_ctx_model(ctx_path)
+        self.knobs = load_knobs(knobs_path)
 
 
 _MODELS: dict = {}
 
 
-def load_models(ctx_path: str | None = None, tcn_path: str | None = None, critic_path: str | None = None) -> Models:
+def load_models(ctx_path: str | None = None, tcn_path: str | None = None, critic_path: str | None = None,
+                knobs_path: str | None = None) -> Models:
     """The models (the shipped ones, or retrained ones at the given paths), loaded once per process and
     paths."""
-    key = (ctx_path or B.CTX_PATH, tcn_path or T.WEIGHT_PATH, critic_path or C.WEIGHT_PATH)
+    key = (ctx_path or B.CTX_PATH, tcn_path or T.WEIGHT_PATH, critic_path or C.WEIGHT_PATH, knobs_path or '')
     if key not in _MODELS:
-        _MODELS[key] = Models(ctx_path=key[0], tcn_path=key[1], critic_path=key[2])
+        _MODELS[key] = Models(ctx_path=key[0], tcn_path=key[1], critic_path=key[2], knobs_path=key[3] or None)
     return _MODELS[key]
 
 
@@ -89,15 +126,33 @@ def decode_seed(beat, down, t0, hop, dur, frames, octave, models, critic_track, 
                 dynamic=True, dynamic_downbeat=True):
     """One seed's activations -> rows, beats, downbeats. Static analysis (``dynamic`` off) keeps one steady
     grid for the whole track; static bars (``dynamic_downbeat`` off) keep one bar length and phase."""
+    k = models.knobs
+    val, _ = D.readers(beat, hop, t0)
+    rows = sections(beat, hop, t0, dur, octave, k.section) if dynamic else None
+    rows, beats = seed_grid(rows, beat, down, t0, hop, dur, octave, models, critic_track, refine_onset, k, dynamic)
+    dbs = B.downbeats(beats, rows, down, t0, hop, frames, models.ctx, restarts=dynamic or dynamic_downbeat,
+                      cost=k.odd_bar)
+    return SeedResult(np.asarray(rows, float), beats, dbs)
+
+
+def sections(beat, hop, t0, dur, octave, section_cost):
+    """The section decoding (the expensive step; depends only on the section cost)."""
     off = t0 - 0.5 * hop
-    val, fine = D.readers(beat, hop, t0)
     base = D.coarse_tempos(beat, hop, octave)
+    rows = D.partition(beat, hop, off, dur, D.with_ratios(base, octave), section_cost)
+    return D.partition(beat, hop, off, dur, D.with_ratios(np.r_[D.refit_tempos(rows, beat, hop, off), base], octave),
+                       section_cost)
+
+
+def seed_grid(rows, beat, down, t0, hop, dur, octave, models, critic_track, refine_onset, knobs: Knobs,
+              dynamic=True):
+    """From the decoded sections (``rows``; None for static analysis) to the seed's grid: rows and beats."""
+    val, fine = D.readers(beat, hop, t0)
     if dynamic:
-        rows = D.partition(beat, hop, off, dur, D.with_ratios(base, octave))
-        rows = D.partition(beat, hop, off, dur, D.with_ratios(np.r_[D.refit_tempos(rows, beat, hop, off), base], octave))
-        rows = D.phase_merge(rows, val)
+        rows = D.phase_merge(rows, val, knobs.half_reset)
     else:
-        rows = D.single_grid(beat, hop, off, dur, D.with_ratios(base, octave))
+        off = t0 - 0.5 * hop
+        rows = D.single_grid(beat, hop, off, dur, D.with_ratios(D.coarse_tempos(beat, hop, octave), octave))
     rows = D.final_refit(rows, val)
     rows = D.final_refit(rows, fine)
     if dynamic:
@@ -111,13 +166,11 @@ def decode_seed(beat, down, t0, hop, dur, frames, octave, models, critic_track, 
         if refine_onset is not None:
             rows, _ = refine_boundaries(rows, refine_onset[0], refine_onset[1], dur, refine_onset[2])
         rows, _ = hold_slow_tail(rows, float(np.asarray(rows, float)[-1, 1]))
-        rows, _ = G.drift_merge(rows, fine)
+        rows, _ = G.drift_merge(rows, fine, J=knobs.section)
         rows = JN.merge_resyncs(rows)
         rows = JN.fix(rows, val)
     beats = rebuild_grid_from_segments(rows)
-    beats = beats[(beats >= 0) & (beats <= dur)]
-    dbs = B.downbeats(beats, rows, down, t0, hop, frames, models.ctx, restarts=dynamic or dynamic_downbeat)
-    return SeedResult(np.asarray(rows, float), beats, dbs)
+    return rows, beats[(beats >= 0) & (beats <= dur)]
 
 
 def _f1(ref, est, tol=0.070):
