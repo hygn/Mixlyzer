@@ -25,10 +25,13 @@ Working notes for AI/automation agents editing the Mixlyzer codebase.
   - `analysis_lib_handler.py`: NPZ feature store keyed by track UID.
   - `external_sync.py`: memory-based external deck sync / transport lockout.
   - `player.py`, `timeline.py`, `taskmanager.py`: playback, viewport timeline, worker/task UI state.
+  - `tempo_rows.py`: tempo-segment rows and the beats they give (NumPy only; `rebuild_grid_from_segments`, ramp helpers), shared by the analyzer, editor, views and exporters.
   - `audio/`: decode + low-level audio helpers.
 - `analyzer_core/`: DSP and editor-side reanalysis algorithms.
   - `global_analyzer.py`: full analysis pipeline and persistence handoff.
   - `beat/`: BPM / beatgrid analysis.
+    - `general/`: the full analysis's beat tracker (NumPy only; weights `assets/weights/beat_tcn_s7..s9.npz`, `beat_critic.npz`, `downbeat_ctx_hgb.npz`): `tcn.py` frame TCN, `decode.py` section decoding, `gradual.py` ramps and drifting sections, `critic.py` metronome critic, `junctions.py` junction rules, `bars.py` bar check / bars / production rows, `tracker.py` the pipeline and the consensus of the three trainings.
+    - The rule-based modules (`beat.py` tracker, candidate selector, beat phase, `grid_refine.py`, downbeat offsets, `meter_sections.py`) remain for the editor's segment reanalysis and the beat optimizers; the full analysis uses only `refine_boundaries` / `hold_slow_tail` from `grid_refine.py` and the refine onset from `learned_onset.py`. The settings only they read (adaptive window, onset source, beat phase correction, grid refinement, dynamic downbeat, meter sections, their model paths) no longer change the full analysis; their removal is pending.
   - `key/`: chroma/key analysis.
   - `self_correlation/`: JumpCUE detection.
   - `editor/`: beatgrid, key, JumpCUE reanalysis helpers used by worker subprocesses.
@@ -41,7 +44,7 @@ Working notes for AI/automation agents editing the Mixlyzer codebase.
 - `views/`: pyqtgraph view plugins registered through `views.base.REGISTRY`.
 - `utils/`: labels, colors, fonts, JumpCUE extraction/render helpers, keystrip utilities, waveform helpers.
 - `third_party/`: export adapters such as Rekordbox XML generation.
-- `migration/`: read-only library-version compatibility adapter; no migration implementation is currently provided.
+- `migration/`: read-only library-version compatibility adapter, plus one-off development migrations run by hand (`phrase_index_v040.py`, `tempo_ramps_v050.py`); the app never migrates by itself.
 - `build/`: PyInstaller spec.
 - `docs/`: localized docs (`README.ko.md`, `README.ja.md`).
 - `assets/`: icons, fonts, sounds.
@@ -67,8 +70,8 @@ Working notes for AI/automation agents editing the Mixlyzer codebase.
   - decode/load audio,
   - optional HPSS split,
   - overview waveform levels (per-column peak and low/mid/high band RMS),
-  - BPM / beatgrid analysis,
-  - beatgrid offset application,
+  - beat tracking (`analyzer_core.beat.general.track` on the frame features; the models were trained on 22050 Hz / hop 256 frames, other analysis settings give the tracker frames of its own): per training seed, tempo candidates from the activation's periodicity -> section decoding into steady (tempo, phase) grids with one section cost -> exact tempo / phase fit -> sudden vs gradual tempo changes (linear ramps) -> bar-supported half-beat phase (bars of 2, 3 or 4 beats) -> metronome critic (3:2 / 4:3 misreads) -> tempo-change boundaries on the refine onset -> slow tail held -> drifting sections -> tiny re-syncs merged -> junction rules (no too-close / too-far beats at grid changes) -> bars (a Viterbi over 3- and 4-beat bars on two downbeat observers; an odd bar costs, a new section starts free); then the seed whose grid agrees most with the other two. Every tempo is read in the octave from BPM min. The rows have `inizio` on a downbeat and `ts` the bar length (`bars.to_rows` splits a row where the bar length changes), so the segments always rebuild the beats and downbeats,
+  - beatgrid offset (a constant shift of rows and beats; default 0: the tracker is aligned to the annotations),
   - JumpCUE detection,
   - beat-synchronous chroma extraction (used by the key analysis, not stored),
   - key analysis,
@@ -92,6 +95,7 @@ Working notes for AI/automation agents editing the Mixlyzer codebase.
 - BPM and key transitions are also persisted in:
   - `track_bpm_segments`
   - `track_key_segments`
+- Tempo segments are rows `[start, end, bpm, inizio, ts_num, bpm_end]` (`core.tempo_rows`). A `bpm_end` that differs from `bpm` is a linear tempo ramp (tempo linear in time from `start` to `end`; its beats come from the closed-form phase); rows without it (5 columns, older data) or with it equal are steady. `inizio` is a downbeat on the row's own grid. `track_bpm_segments.bpm_end` mirrors it (NULL = steady): transition search reads a ramp as a change from its start to its end tempo, and a phrase section inside a ramp gets the tempo at its midpoint. The editor keeps ramp rows (cut / merge / shift follow the tempo line; a typed BPM makes the row steady), and the Rekordbox export writes one TEMPO entry per beat of a ramp.
 - Numeric feature arrays live in `{libpath}/{uid}.npz` through `FeatureNPZStore`. Only what is read is stored: beats, tempo/key segments, the overview waveform levels (`wave_overview_np` / `wave_overview_ref`), duration, sr, tempo_global, and the JumpCUE / CUE point / phrase blocks. Saving replaces a block as a whole (`save_worker._replace_block`).
 - Track identity across DB and NPZ is the `uid` field stored in SQLite.
 - `tracks.path` is stored as given, never normalized (case / separators can name different files on other file systems). A path that may spell a library file differently (a drop, External Sync's deck path) is looked up by the file it opens (`LibraryDB.find_file`) and then used as stored.

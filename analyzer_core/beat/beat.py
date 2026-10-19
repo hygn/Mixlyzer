@@ -11,14 +11,30 @@ from scipy.stats import mode
 
 from analyzer_core.dsp.conversion import power_to_db
 from analyzer_core.dsp.spectral import stft
+# Re-exported: callers import the tempo-row helpers from here too.
+from core.tempo_rows import (  # noqa: F401
+    END_BPM_COLUMN,
+    MIN_BEAT_GAP_SEC,
+    bpm_at,
+    is_ramp_row,
+    prune_close_beats,
+    ramp_beat_times,
+    ramp_rows,
+    rebuild_grid_from_segments,
+    segment_end_bpm,
+    shift_row_beats,
+    split_row,
+    with_end_bpm,
+)
 
 
 @dataclass
 class TempoSegment:
     start: float # Start time of Segment
     end: float # End time of Segment
-    bpm: float # BPM of Segment
+    bpm: float # BPM of Segment (at its start)
     inizio: float # First downbeat time of segment
+    bpm_end: float | None = None # BPM at its end for a linear tempo ramp (None: steady)
 
     def as_tuple(self) -> tuple[float, float, float, float]:
         """Return self as tuple"""
@@ -26,12 +42,15 @@ class TempoSegment:
 
     def to_dict(self) -> dict[str, float]:
         """Return self as dictionary"""
-        return {
+        out = {
             "segment_start": float(self.start),
             "end": float(self.end),
             "bpm": float(self.bpm),
             "inizio": float(self.inizio),
         }
+        if self.bpm_end is not None:
+            out["bpm_end"] = float(self.bpm_end)
+        return out
 
 def _compute_odf(y: np.ndarray, sr: int, hop: int = 256) -> tuple[np.ndarray, float]:
     """Compute ODF from audio. \\
@@ -205,7 +224,8 @@ def estimate_bpm_and_grid(odf: np.ndarray, sr: int, hop: int,
         if not np.isfinite(val_b):
             return phi_b, -1e18
         if abs(bpm - int(bpm)) > 0.1:
-            val_b *= 0.5 # prefer integer BPM
+            # Prefer integer BPM, but not so hard that a .5 tempo loses to a 4:3 one.
+            val_b *= 0.85
         return phi_b, float(val_b)
 
     def refine_bpm_phase(bpm0: float) -> tuple[float, float, float]:
@@ -451,6 +471,56 @@ def detect_boundaries_from_ssm(
     print(f"[SSM] label preview: {_preview_label_segments(label_segments)}")
     return boundaries, labels, label_segments
 
+def detect_boundaries_kcp(
+    S: np.ndarray,
+    hop_t: float,
+    min_gap_s: float = 5.0,
+    penalty: float = 16.0,
+) -> tuple[np.ndarray, np.ndarray, list[tuple[int, int, int]]]:
+    """Contiguous tempo segments of the same SSM by kernel change-point detection.
+
+    Exact dynamic programming over segmentations: each segment costs its within-segment
+    scatter (sum of self-similarities minus the mean similarity times its length) plus
+    ``penalty``, so the number of segments follows from the matrix (one for a steady song)
+    and every segment is contiguous by construction. Same outputs as
+    :func:`detect_boundaries_from_ssm`.
+    """
+    N = S.shape[0]
+    K = np.nan_to_num((S + S.T) / 2.0, nan=0.0, posinf=0.0, neginf=0.0).astype(np.float64)
+    C = np.zeros((N + 1, N + 1))
+    C[1:, 1:] = K.cumsum(0).cumsum(1)
+    diag = np.concatenate([[0.0], np.cumsum(np.diag(K))])
+    min_len = max(int(round(min_gap_s / hop_t)), 1)
+    best = np.full(N + 1, np.inf)
+    best[0] = 0.0
+    back = np.zeros(N + 1, dtype=np.int64)
+    for j in range(min_len, N + 1):
+        i = np.arange(0, j - min_len + 1)
+        i = i[np.isfinite(best[i])]
+        if i.size == 0:
+            continue
+        L = (j - i).astype(np.float64)
+        within = C[j, j] - C[i, j] - C[j, i] + C[i, i]
+        cost = best[i] + (diag[j] - diag[i]) - within / L + penalty
+        k = int(np.argmin(cost))
+        best[j] = cost[k]
+        back[j] = i[k]
+    cuts = []
+    j = N
+    while j > 0:
+        i = int(back[j])
+        cuts.append((i, j))
+        j = i
+    cuts = cuts[::-1]
+    labels = np.empty(N, dtype=int)
+    for lbl, (i, j) in enumerate(cuts):
+        labels[i:j] = lbl
+    label_segments = [(int(i), int(j), lbl) for lbl, (i, j) in enumerate(cuts)]
+    boundaries = np.array([j for _, j, _ in label_segments], dtype=int)
+    print(f"[SSM] change points: {len(label_segments)} segment(s) {_preview_label_segments(label_segments)}")
+    return boundaries, labels, label_segments
+
+
 def get_seg_frames_from_boundaries(
     odf: np.ndarray,
     boundaries: np.ndarray,
@@ -572,66 +642,6 @@ def _segments_from_array(arr: np.ndarray) -> list[TempoSegment]:
         return []
     return [TempoSegment(*row[:4]) for row in arr]
 
-def rebuild_grid_from_segments(segments) -> np.ndarray:
-    """Rebuild beat times from ``[start, end, bpm, inizio, ...]`` rows.
-
-    ``inizio`` is a downbeat reference, and therefore also a valid beat-phase
-    reference.  Keeping this helper beside the tempo-segment cleanup makes it
-    possible to update the grid whenever that cleanup changes the segments.
-    """
-    try:
-        arr = np.asarray(segments, dtype=float)
-    except Exception:
-        return np.asarray([], dtype=float)
-    if arr.ndim != 2 or arr.shape[1] < 4:
-        return np.asarray([], dtype=float)
-
-    beats: list[float] = []
-    valid_ends = arr[:, 1][np.isfinite(arr[:, 1])]
-    track_end = float(np.max(valid_ends)) if valid_ends.size else float("inf")
-    for start, end, bpm, inizio in arr[:, :4]:
-        if not (np.isfinite(start) and np.isfinite(end) and end > start):
-            continue
-        if not (np.isfinite(bpm) and bpm > 0):
-            continue
-        period = 60.0 / float(bpm)
-        if not np.isfinite(period) or period <= 0:
-            continue
-        phase = float(inizio) if np.isfinite(inizio) else float(start)
-        beat = phase
-        if beat < start:
-            beat += np.ceil((start - beat) / period) * period
-        else:
-            beat -= np.floor((beat - start) / period) * period
-
-        # Keep a beat that lands on a shared segment boundary despite float error
-        # (its duplicate from the next segment is pruned below). Only a hair past
-        # the end: a wider overshoot adds a phantom beat whenever the next
-        # segment's first beat comes later than that (e.g. after nudging it).
-        # The final segment must not produce inaudible beats beyond the track end.
-        end_limit = float(end) + (1e-3 if float(end) < track_end else 1e-6)
-        while beat < end_limit:
-            beats.append(float(beat))
-            beat += period
-
-    return prune_close_beats(np.asarray(beats, dtype=float))
-
-
-MIN_BEAT_GAP_SEC = 0.05
-
-
-def prune_close_beats(beats, min_gap: float = MIN_BEAT_GAP_SEC) -> np.ndarray:
-    """Sort beats and drop any beat closer than ``min_gap`` to the one kept before it
-    (two segments' beats meeting at a shared boundary)."""
-    beat_arr = np.sort(np.asarray(beats, dtype=float).ravel())
-    if beat_arr.size <= 1:
-        return beat_arr
-    pruned: list[float] = []
-    for beat in beat_arr:
-        if pruned and (beat - pruned[-1]) < min_gap:
-            continue
-        pruned.append(float(beat))
-    return np.asarray(pruned, dtype=float)
 
 def collapse_short_sandwiched_tempo_segments(
     tempo_segments: np.ndarray,
@@ -663,6 +673,9 @@ def collapse_short_sandwiched_tempo_segments(
         duration = float(middle[1] - middle[0])
         left_bpm = float(left[2])
         right_bpm = float(right[2])
+        if is_ramp_row(left) or is_ramp_row(middle) or is_ramp_row(right):
+            index += 1
+            continue
         if (
             np.isfinite(duration)
             and duration <= float(max_duration_sec) + eps
@@ -780,6 +793,8 @@ def _coarse_segment_track(
     win_s: float,
     step_s: float,
     seg_min_s: float = 5,
+    segmentation: str = "kcp",
+    kcp_penalty: float = 16.0,
 ) -> tuple[list[tuple[int, int]], np.ndarray]:
     print(f"[coarse] win={win_s} s step={step_s} s")
     centers, hop_t_ds, q, acf_stack = coarse_bpm_acf(
@@ -787,9 +802,14 @@ def _coarse_segment_track(
     )
     print(f"[coarse] centers={len(centers)} hop_t_ds={hop_t_ds:.6f}s decim={q}")
     S = compute_ssm_from_acf(acf_stack, blur_sigma=0)
-    boundaries, labels, label_segments = detect_boundaries_from_ssm(
-        S, hop_t=step_s, smooth_sigma=0.1, min_gap_s=seg_min_s
-    )
+    if segmentation == "kcp":
+        boundaries, labels, label_segments = detect_boundaries_kcp(
+            S, hop_t=step_s, min_gap_s=seg_min_s, penalty=kcp_penalty
+        )
+    else:
+        boundaries, labels, label_segments = detect_boundaries_from_ssm(
+            S, hop_t=step_s, smooth_sigma=0.1, min_gap_s=seg_min_s
+        )
     boundaries = np.multiply(np.array(boundaries, dtype=np.float32), len(odf) / (S.shape[0] - 1))
     boundaries = boundaries.astype(np.int32)
     boundaries = np.clip(boundaries, 0, len(odf) - 1)
@@ -886,6 +906,68 @@ def get_track_validrange(audio: np.ndarray, sr: int, window_s: float = 1, thresh
 
     return float(s0 / sr), float(s1 / sr)
 
+def _local_tempo_track(odf: np.ndarray, hop_t: float, t0: float, t1: float, period: float,
+                       win_s: float = 5.0, step_s: float = 0.5) -> tuple[np.ndarray, np.ndarray]:
+    """Local tempo inside [t0, t1): per window, the autocorrelation peak nearest ``period``
+    (parabolic interpolation). Returns (window centers, BPM)."""
+    win = int(round(win_s / hop_t))
+    lag0 = period / hop_t
+    lo, hi = int(np.floor(lag0 * 0.85)), int(np.ceil(lag0 * 1.15)) + 1
+    times, bpms = [], []
+    c = t0 + 0.5 * win_s
+    while c <= t1 - 0.5 * win_s + 1e-9:
+        a = int(round((c - 0.5 * win_s) / hop_t))
+        x = np.asarray(odf[a:a + win], dtype=np.float64)
+        if x.size == win and hi < win:
+            x = x - x.mean()
+            r = np.fft.irfft(np.abs(np.fft.rfft(x, 2 * win)) ** 2)[:win]
+            seg = r[lo:hi]
+            k = int(np.argmax(seg))
+            if 0 < k < seg.size - 1:
+                y0, y1, y2 = seg[k - 1], seg[k], seg[k + 1]
+                den = y0 - 2 * y1 + y2
+                d = 0.5 * (y0 - y2) / den if abs(den) > 1e-12 else 0.0
+                times.append(c)
+                bpms.append(60.0 / ((lo + k + d) * hop_t))
+        c += step_s
+    return np.asarray(times), np.asarray(bpms)
+
+
+def _ramp_pieces(times: np.ndarray, bpms: np.ndarray, rel_sigma: float = 0.003,
+                 seg_pen: float = 12.0, ramp_pen: float = 12.0, min_change: float = 0.012):
+    """Optimal split of a local tempo track into constant / linear pieces; returns the linear
+    pieces whose tempo changes by at least ``min_change`` as (t_start, t_end, bpm_start, bpm_end)."""
+    n = times.size
+    if n < 6:
+        return []
+    sig = rel_sigma * float(np.median(bpms))
+    best = np.full(n + 1, np.inf); best[0] = 0.0
+    back = [None] * (n + 1)
+    for i in range(n):
+        for j in range(i + 3, n + 1):
+            t, b = times[i:j], bpms[i:j]
+            rss_c = float(np.sum((b - b.mean()) ** 2))
+            A = np.vstack([np.ones_like(t), t - t[0]]).T
+            coef, *_ = np.linalg.lstsq(A, b, rcond=None)
+            rss_r = float(np.sum((b - A @ coef) ** 2))
+            cost_c = rss_c / sig ** 2 + seg_pen
+            cost_r = rss_r / sig ** 2 + seg_pen + ramp_pen
+            c, kind = (cost_r, ('r', coef)) if cost_r < cost_c else (cost_c, ('c', None))
+            if best[i] + c < best[j]:
+                best[j] = best[i] + c
+                back[j] = (i, kind)
+    pieces = []
+    j = n
+    while j > 0 and back[j] is not None:
+        i, (kind, coef) = back[j]
+        if kind == 'r':
+            b0 = coef[0]; b1 = coef[0] + coef[1] * (times[j - 1] - times[i])
+            if abs(b1 - b0) / max(b0, 1e-9) >= min_change:
+                pieces.append((float(times[i]), float(times[j - 1]), float(b0), float(b1)))
+        j = i
+    return pieces[::-1]
+
+
 def bpm_dynamic_phase_sync(
     sr: int,
     hop_length: int,
@@ -896,6 +978,9 @@ def bpm_dynamic_phase_sync(
     odf_precomputed: np.ndarray | None = None,
     hop_t_precomputed: float | None = None,
     validrange_precomputed: tuple[float, float] | None = None,
+    segmentation: str = "kcp",
+    kcp_penalty: float = 16.0,
+    ramp_model: bool = True,
 ) -> dict:
     t_offset = 0.5 * hop_length / float(sr)
     if not isinstance(audio, np.ndarray) or audio.ndim != 1:
@@ -909,7 +994,10 @@ def bpm_dynamic_phase_sync(
         odf = np.asarray(odf_precomputed, dtype=np.float32)
         hop_t = float(hop_t_precomputed)
 
-    seg_frames, boundaries = _coarse_segment_track(odf, sr, hop_for_odf, hop_t, win_s, step_s, seg_min_s = win_s/2)
+    seg_frames, boundaries = _coarse_segment_track(
+        odf, sr, hop_for_odf, hop_t, win_s, step_s, seg_min_s=win_s / 2,
+        segmentation=segmentation, kcp_penalty=kcp_penalty,
+    )
 
     tempo_segments, beats_all, seg_meta, first_beat = _estimate_tempo_segments(
         seg_frames,
@@ -943,6 +1031,70 @@ def bpm_dynamic_phase_sync(
             tempo_segments[-1].end = float(track_dur)
     if refined_beats.size:
         beats_time = refined_beats.astype(float)
+
+    # Tempo ramps: a run of segments stepping the tempo the same way by small amounts
+    # becomes native ramp rows (a continuous piecewise-linear tempo) when that fits the
+    # onsets about as well as the steps.
+    if ramp_model and tempo_segments:
+        from analyzer_core.beat.grid_refine import fit_ramp_run, ramp_segments
+
+        rows = with_end_bpm(np.column_stack([_segments_to_array(tempo_segments), np.full(len(tempo_segments), 4.0)]))
+        # (a) Ramps the segmentation did not cut into steps: a linear stretch of the local
+        # tempo inside a segment is proposed as steps; a run of such segments between two
+        # steady ones is fitted and tested as one ramp, and restored when the test fails.
+        def proposal(row):
+            start, end, bpm, inizio, ts = (float(x) for x in row[:5])
+            if is_ramp_row(row) or end - start <= 12.0:
+                return None
+            pieces = _ramp_pieces(*_local_tempo_track(odf, hop_t, start, end, 60.0 / bpm))
+            out, cursor, bpm_now = [], start, bpm
+            for ta, tb, b0, b1 in pieces:
+                if ta - cursor < 1.0 or end - tb < 1.0:
+                    continue
+                out.append([cursor, ta, b0, inizio, ts, b0])
+                edges = np.linspace(ta, tb, 4)
+                out.extend([edges[k], edges[k + 1], b0 + (b1 - b0) * (k + 0.5) / 3.0, inizio, ts,
+                            b0 + (b1 - b0) * (k + 0.5) / 3.0] for k in range(3))
+                cursor, bpm_now = tb, b1
+            if not out:
+                return None
+            out.append([cursor, end, bpm_now, inizio, ts, bpm_now])
+            return np.asarray(out)
+
+        props = [proposal(row) for row in rows]
+        signal_ramps = 0
+        merged: list[np.ndarray] = []
+        i = 0
+        while i < len(rows):
+            if props[i] is None or not merged or i + 1 >= len(rows):
+                merged.append(rows[i])
+                i += 1
+                continue
+            j = i
+            while j + 1 < len(rows) - 1 and props[j + 1] is not None:
+                j += 1
+            trial = np.vstack([merged[-1][None, :], *props[i:j + 1], rows[j + 1][None, :]])
+            span = np.vstack([merged[-1][None, :], rows[i:j + 2]])
+            fitted = fit_ramp_run(trial, odf, hop_t, -0.5 * hop_t, rebuild_grid_from_segments(span))
+            if fitted is not None:
+                signal_ramps += 1
+                merged[-1] = fitted[0]
+                merged.extend(fitted[1:-1])
+                rows[j + 1] = fitted[-1]
+            else:
+                merged.extend(rows[i:j + 1])
+            i = j + 1
+        rows = np.asarray(merged, dtype=np.float64)
+        # (b) Ramps the segmentation already cut into small steps.
+        ramped, n_ramps = ramp_segments(rows, odf, hop_t, float(track_dur), -0.5 * hop_t)
+        if n_ramps or signal_ramps:
+            tempo_segments = [
+                TempoSegment(*row[:4], bpm_end=float(row[5]) if is_ramp_row(row) else None) for row in ramped
+            ]
+            seg_meta = [(seg.start, seg.end, seg.bpm) for seg in tempo_segments]
+            beats_time = rebuild_grid_from_segments(ramped)
+            beats_time = beats_time[(beats_time >= 0.0) & (beats_time <= float(track_dur))]
+            print(f"[fine] tempo ramps: {signal_ramps} from the local tempo, {n_ramps} from steps -> {len(tempo_segments)} segments")
 
     # Tempo stats
     dur_sec = len(audio) / float(sr)

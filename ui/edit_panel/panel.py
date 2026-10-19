@@ -61,7 +61,7 @@ class EditPanel(
     def __init__(self, bus: EventBus, model: DataModel | None = None, parent=None):
         super().__init__(parent)
         self.setStyleSheet(BUTTON_STYLESHEET)
-        self._segments: np.ndarray = np.empty((0, 5), dtype=float)
+        self._segments: np.ndarray = np.empty((0, 6), dtype=float)
         self._beatgrid: np.ndarray = np.asarray([])
         self._cur_idx: int = -1
         self._current_time: float = 0.0
@@ -350,9 +350,9 @@ class EditPanel(
             self._update_phrase_status()
 
     def set_segments(self, beatgrid: np.ndarray, segments: Optional[np.ndarray]) -> None:
-        """Set tempo segments: (N, 5) [start, end, bpm, inizio, ts_num]."""
+        """Set tempo segments: (N, 6) [start, end, bpm, inizio, ts_num, bpm_end]."""
         if segments is None:
-            self._segments = np.empty((0, 5), dtype=float)
+            self._segments = np.empty((0, 6), dtype=float)
             self._cur_idx = -1
             return
         if beatgrid is None:
@@ -361,17 +361,17 @@ class EditPanel(
         self._beatgrid = beatgrid
         arr = np.asarray(segments, dtype=float)
         if arr.ndim != 2 or arr.shape[1] < 4:
-            self._segments = np.empty((0, 5), dtype=float)
+            self._segments = np.empty((0, 6), dtype=float)
             self._cur_idx = -1
             return
-        # Keep 5 columns [start, end, bpm, inizio, ts_num]; backfill ts=4 for legacy N×4.
+        # Keep 6 columns [start, end, bpm, inizio, ts_num, bpm_end]; backfill ts=4 / steady.
         arr = self._ensure_ts_column(arr)
         # Keep only valid rows: finite start/end and end > start
         starts = arr[:, 0]
         ends = arr[:, 1]
         valid = np.isfinite(starts) & np.isfinite(ends) & (ends > starts)
         if not np.any(valid):
-            self._segments = np.empty((0, 5), dtype=float)
+            self._segments = np.empty((0, 6), dtype=float)
             self._cur_idx = -1
             return
         arr = arr[valid]

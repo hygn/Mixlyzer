@@ -143,6 +143,7 @@ class BpmSegmentRow:
     bpm: Optional[float] = None
     bpm_rounded: Optional[int] = None
     time_signature: int = 4
+    bpm_end: Optional[float] = None   # tempo at end_sec for a linear tempo ramp (None: steady)
 
 
 @dataclass
@@ -256,6 +257,7 @@ class LibraryDB:
             bpm           REAL,
             bpm_rounded   INTEGER,
             time_signature INTEGER DEFAULT 4,
+            bpm_end       REAL,
             UNIQUE(track_uid, seq_index)
         );
         """)
@@ -640,6 +642,7 @@ class LibraryDB:
             row = asdict(raw) if isinstance(raw, BpmSegmentRow) else dict(raw)
             bpm = row.get("bpm")
             ts = row.get("time_signature", 4)
+            bpm_end = row.get("bpm_end")
             rows.append(
                 (
                     uid,
@@ -650,6 +653,7 @@ class LibraryDB:
                     None if bpm is None else float(bpm),
                     row.get("bpm_rounded", None if bpm is None else int(round(float(bpm)))),
                     int(ts) if ts is not None else 4,
+                    None if bpm_end is None else float(bpm_end),
                 )
             )
         with self.tx():
@@ -658,8 +662,8 @@ class LibraryDB:
                 self.conn.executemany(
                     """
                     INSERT INTO track_bpm_segments(
-                        track_uid, seq_index, start_sec, end_sec, duration_sec, bpm, bpm_rounded, time_signature
-                    ) VALUES(?, ?, ?, ?, ?, ?, ?, ?);
+                        track_uid, seq_index, start_sec, end_sec, duration_sec, bpm, bpm_rounded, time_signature, bpm_end
+                    ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?);
                     """,
                     rows,
                 )
@@ -755,7 +759,7 @@ class LibraryDB:
         cur = self.conn.execute(
             """
             SELECT track_uid, seq_index, start_sec, end_sec, duration_sec, bpm, bpm_rounded,
-                   COALESCE(time_signature, 4) AS time_signature
+                   COALESCE(time_signature, 4) AS time_signature, bpm_end
             FROM track_bpm_segments
             WHERE track_uid=?
             ORDER BY seq_index ASC;
@@ -831,6 +835,7 @@ class LibraryDB:
         require_first_segment: bool = False,
     ) -> List[LinearTransitionRow]:
         first_clause = "AND a.seq_index = 0" if require_first_segment else ""
+        ramp_first_clause = "AND r.seq_index = 0" if require_first_segment else ""
         cur = self.conn.execute(
             f"""
             SELECT
@@ -843,7 +848,7 @@ class LibraryDB:
                 a.start_sec AS from_start_sec,
                 a.end_sec AS from_end_sec,
                 a.duration_sec AS from_duration_sec,
-                a.bpm AS from_bpm,
+                COALESCE(a.bpm_end, a.bpm) AS from_bpm,
                 NULL AS from_key_value,
                 '' AS from_key_label,
                 b.start_sec AS to_start_sec,
@@ -851,7 +856,9 @@ class LibraryDB:
                 b.duration_sec AS to_duration_sec,
                 b.bpm AS to_bpm,
                 NULL AS to_key_value,
-                '' AS to_key_label
+                '' AS to_key_label,
+                t.added_ts AS sort_added,
+                a.seq_index AS sort_seq
             FROM track_bpm_segments a
             JOIN track_bpm_segments b
               ON b.track_uid = a.track_uid
@@ -862,10 +869,27 @@ class LibraryDB:
               AND b.duration_sec >= ?
               AND a.bpm IS NOT NULL
               AND b.bpm IS NOT NULL
-              AND a.bpm BETWEEN ? AND ?
+              AND COALESCE(a.bpm_end, a.bpm) BETWEEN ? AND ?
               AND b.bpm BETWEEN ? AND ?
               {first_clause}
-            ORDER BY t.added_ts DESC, t.title COLLATE NOCASE ASC, a.seq_index ASC;
+            UNION ALL
+            -- A tempo ramp is itself a change from its start tempo to its end tempo.
+            SELECT
+                t.uid, t.path, t.title, t.artist,
+                r.seq_index, r.seq_index,
+                r.start_sec, r.end_sec, r.duration_sec, r.bpm, NULL, '',
+                r.start_sec, r.end_sec, r.duration_sec, r.bpm_end, NULL, '',
+                t.added_ts, r.seq_index
+            FROM track_bpm_segments r
+            JOIN tracks t
+              ON t.uid = r.track_uid
+            WHERE r.bpm_end IS NOT NULL
+              AND r.bpm IS NOT NULL
+              AND r.duration_sec >= ?
+              AND r.bpm BETWEEN ? AND ?
+              AND r.bpm_end BETWEEN ? AND ?
+              {ramp_first_clause}
+            ORDER BY sort_added DESC, title COLLATE NOCASE ASC, sort_seq ASC;
             """,
             (
                 float(min_duration_sec),
@@ -874,9 +898,20 @@ class LibraryDB:
                 float(from_bpm_max),
                 float(to_bpm_min),
                 float(to_bpm_max),
+                float(min_duration_sec),
+                float(from_bpm_min),
+                float(from_bpm_max),
+                float(to_bpm_min),
+                float(to_bpm_max),
             ),
         )
-        return [LinearTransitionRow(**dict(row)) for row in cur.fetchall()]
+        rows = []
+        for row in cur.fetchall():
+            values = dict(row)
+            values.pop("sort_added", None)
+            values.pop("sort_seq", None)
+            rows.append(LinearTransitionRow(**values))
+        return rows
 
     def search_harmonic_key_transitions(
         self,

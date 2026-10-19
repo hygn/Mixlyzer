@@ -166,6 +166,13 @@ _DEFAULT_WEIGHT_PATH = resource_path(
 # list that can silently drift from inference.
 DOWNBEAT_FEATURE_NAMES = _DOWNBEAT_FEATURE_NAMES
 
+# Gradient-boosted downbeat probability on the same standardized features. When
+# its artifact is available it replaces the linear weights; its probabilities are
+# much sharper, so the tracker folds their square root.
+DOWNBEAT_BOOST_FORMAT = "mixlyzer_downbeat_hgb_v1"
+DOWNBEAT_BOOST_PATH = resource_path("assets/weights/downbeat_hgb.npz")
+DOWNBEAT_BOOST_PROBABILITY_POWER = 0.5
+
 
 def _beat_patch_rows(
     frames: np.ndarray,
@@ -538,12 +545,63 @@ def _load_downbeat_weights(weight_path: str) -> np.ndarray:
     return weights
 
 
+@lru_cache(maxsize=4)
+def load_downbeat_boost_model(path: str):
+    from analyzer_core.cue_and_phrase.phrase_analyzer import _load_numpy_hgb
+
+    with np.load(Path(path), allow_pickle=False) as archive:
+        if str(np.asarray(archive["format"]).item()) != DOWNBEAT_BOOST_FORMAT:
+            raise ValueError(f"Downbeat model format mismatch: {path}")
+        if tuple(np.asarray(archive["feature_names"]).astype(str)) != _DOWNBEAT_FEATURE_NAMES:
+            raise ValueError(f"Downbeat model feature schema mismatch: {path}")
+        return _load_numpy_hgb(archive, "downbeat")
+
+
+def export_downbeat_boost_model(classifier, output_path: str | Path, training: dict | None = None) -> None:
+    """Write a fitted HistGradientBoostingClassifier as the runtime's NumPy artifact."""
+    from analyzer_core.cue_and_phrase.phrase_analyzer import _hgb_to_npz_payload
+    from utils.atomic_io import atomic_output_path
+
+    payload: dict[str, np.ndarray] = {
+        "format": np.asarray(DOWNBEAT_BOOST_FORMAT),
+        "feature_names": np.asarray(_DOWNBEAT_FEATURE_NAMES),
+        "training_json": np.asarray(json.dumps(training or {}, ensure_ascii=False, sort_keys=True)),
+    }
+    _hgb_to_npz_payload("downbeat", classifier, payload)
+    out = Path(output_path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        with atomic_output_path(out) as temporary:
+            np.savez_compressed(temporary, **payload)
+            load_downbeat_boost_model.cache_clear()
+            load_downbeat_boost_model(str(temporary))
+    finally:
+        load_downbeat_boost_model.cache_clear()
+
+
+def usable_boost_path(path_text: str | Path | None) -> str | None:
+    """``path_text`` when the boosted model there loads, else None (the linear weights are used)."""
+    text = str(path_text or "").strip()
+    if not text:
+        return None
+    try:
+        load_downbeat_boost_model(str(Path(text).resolve()))
+    except Exception as exc:
+        print(f"[Downbeat] boosted model unavailable ({exc}); using the linear weights")
+        return None
+    return text
+
+
 def _downbeat_probability(
     features: np.ndarray,
     weight_path: str | Path,
+    boost_path: str | Path | None = None,
 ) -> np.ndarray:
-    weights = _load_downbeat_weights(str(Path(weight_path).resolve()))
     standardized = _robust_standardize_columns(features)
+    if boost_path:
+        model = load_downbeat_boost_model(str(Path(boost_path).resolve()))
+        return model.predict_proba(np.asarray(standardized, dtype=np.float64))[:, 1]
+    weights = _load_downbeat_weights(str(Path(weight_path).resolve()))
     return expit(standardized @ weights)
 
 
@@ -620,7 +678,10 @@ def _track_phases(
     meter: int,
     adjacent_phase_penalty: float = 2.3,
     distant_phase_penalty: float = 1.15,
+    transition_scale: np.ndarray | None = None,
 ) -> np.ndarray:
+    """Viterbi over windows x phases. ``transition_scale[w]`` (optional) scales the
+    cost of changing phase when entering window ``w``."""
     costs = _transition_cost_matrix(
         meter,
         adjacent_phase_penalty,
@@ -634,7 +695,8 @@ def _track_phases(
         for phase in range(meter):
             # costs[:, phase] is the penalty of arriving at `phase` from each
             # possible previous phase.
-            candidates = dynamic[window_index - 1] - costs[:, phase]
+            scale = 1.0 if transition_scale is None else float(transition_scale[window_index])
+            candidates = dynamic[window_index - 1] - scale * costs[:, phase]
             old_phase = int(np.argmax(candidates))
             previous[window_index, phase] = old_phase
             dynamic[window_index, phase] = (
@@ -879,9 +941,9 @@ def _first_downbeat_on_beats(
     """First actual-beat downbeat at/after ``seg_start``.
 
     A downbeat is every ``meter``-th beat from the reference downbeat beat, so
-    the returned time is always one of the real beats (no drift across tempo
-    changes). Falls back to the nearest beat to ``seg_start`` when the segment
-    is shorter than a bar. Beats at the segment start that still belong to the
+    the returned time is one of the real beats (no drift across tempo changes).
+    A segment shorter than a bar that holds no downbeat gets the would-be
+    downbeat on its own grid instead (outside the segment). Beats at the segment start that still belong to the
     previous segment's grid (closer to the next beat than 80% of this segment's
     period) are skipped, so the downbeat lies on this segment's own grid.
     """
@@ -901,12 +963,20 @@ def _first_downbeat_on_beats(
     offset = (ref_idx - lo) % meter
     j = lo + offset
     hi = int(np.searchsorted(beats, seg_end + eps, side="right"))
-    if j >= beats.size:
-        j = beats.size - 1
-    elif j >= hi:
-        # No downbeat lands inside this (sub-bar) segment; keep the phase anyway.
-        j = min(j, beats.size - 1)
-    return float(beats[j])
+    if j < min(hi, beats.size):
+        return float(beats[j])
+    # No downbeat lands inside this (sub-bar) segment. Its inizio must stay on its
+    # own grid (the segments rebuild the beats), so take the would-be downbeat on
+    # that grid a bar before or after, where the nearest real beat is that downbeat.
+    if bpm > 0:
+        period = 60.0 / float(bpm)
+        for index in (j - meter, j):
+            if 0 <= index < beats.size:
+                candidate = float(beats[lo] + (index - lo) * period)
+                if int(np.argmin(np.abs(beats - candidate))) == index:
+                    return candidate
+        return float(beats[lo] + (j - lo) * period)
+    return float(beats[min(j, beats.size - 1)])
 
 
 def apply_downbeat_offset_segments(
@@ -931,7 +1001,9 @@ def apply_downbeat_offset_segments(
     seg = np.asarray(tempo_segments, dtype=float)
     if seg.ndim != 2 or seg.shape[1] < 5 or seg.shape[0] == 0:
         return np.asarray(tempo_segments, dtype=np.float32)
-    rows: list[list[float]] = [list(map(float, r[:5])) for r in seg]
+    from analyzer_core.beat.beat import split_row, with_end_bpm
+
+    rows: list[list[float]] = [list(map(float, r)) for r in with_end_bpm(seg)]
 
     # Downbeat reference timeline: (region_start_time, downbeat_time) at the first
     # detected segment and at every phase change. Phase-change starts are also the
@@ -961,13 +1033,14 @@ def apply_downbeat_offset_segments(
         starts = [r[0] for r in rows]
         idx = int(np.searchsorted(starts, region_start + eps, side="right")) - 1
         idx = max(0, min(idx, len(rows) - 1))
-        start, end, bpm, inizio, ts_num = rows[idx]
+        start, end, bpm, inizio, ts_num, _bpm_end = rows[idx]
         beat_period = 60.0 / bpm if bpm > 0 else 0.0
         cut_t = region_start - 0.5 * beat_period
         if cut_t <= start + eps or cut_t >= end - eps:
             continue
-        rows[idx][1] = cut_t
-        rows.insert(idx + 1, [cut_t, end, bpm, inizio, ts_num])
+        left, right = split_row(rows[idx], cut_t)
+        rows[idx] = left
+        rows.insert(idx + 1, right)
 
     # 2) Propagate the downbeat phase to EVERY segment (not just the first / the
     #    change points). A downbeat is every ``meter``-th BEAT counted from the
@@ -984,7 +1057,7 @@ def apply_downbeat_offset_segments(
 
     ref_starts = [r[0] for r in references]
     for r in rows:
-        seg_start, seg_end, bpm, _inizio, ts_num = r
+        seg_start, seg_end, bpm, _inizio, ts_num = r[:5]
         half_beat = 0.5 * (60.0 / bpm) if bpm > 0 else 0.0
         k = int(np.searchsorted(ref_starts, seg_start + half_beat + eps, side="right")) - 1
         k = max(0, k)
@@ -1012,9 +1085,11 @@ def detect_downbeat_offset_segments(
     boundary_refine_radius_beats: int = 12,
     min_segment_beats: int = 4,
     min_transition_gain: float = 0.0,
-    adjacent_phase_penalty: float = 5.0,
-    distant_phase_penalty: float = 2.5,
-    probability_power: float = 1.0,
+    # A cheap half-bar jump let intros/outros flip the downbeat by two beats in
+    # steady songs; equal, higher costs keep one phase unless a change persists.
+    adjacent_phase_penalty: float = 10.0,
+    distant_phase_penalty: float = 10.0,
+    probability_power: float | None = None,
     smooth_sigma_beats: float = 0.5,
     beat_phase_bins: int = 8,
     harmonic_phase_bins: int = 8,
@@ -1022,6 +1097,9 @@ def detect_downbeat_offset_segments(
     percussive: np.ndarray | None = None,
     harmonic: np.ndarray | None = None,
     frames: FrameFeatures | None = None,
+    phase_change_times: np.ndarray | None = None,
+    phase_change_cost_scale: float = 0.1,
+    boost_path: str | Path | None = None,
 ) -> list[DownbeatOffsetSegment]:
     """Detect stable downbeat-phase segments using the learned beat model.
 
@@ -1035,7 +1113,17 @@ def detect_downbeat_offset_segments(
     ``frames`` reuses the track's frame features (computed before beat
     tracking); otherwise they are computed from ``audio`` and its HPSS
     ``percussive`` / ``harmonic`` parts.
+
+    ``phase_change_times`` (e.g. tempo-change boundaries): changing the downbeat
+    phase where the tracked windows cross one of these times costs only
+    ``phase_change_cost_scale`` times the usual penalty.
+
+    ``boost_path`` names a gradient-boosted model used instead of the linear
+    ``weight_path`` weights; ``probability_power`` defaults to the power that
+    model's probabilities are folded with (1 for the linear weights).
     """
+    if probability_power is None:
+        probability_power = DOWNBEAT_BOOST_PROBABILITY_POWER if boost_path else 1.0
     if sample_rate <= 0:
         raise ValueError("sample_rate must be positive")
     if method not in {"dynamic", "global"}:
@@ -1072,7 +1160,7 @@ def detect_downbeat_offset_segments(
         beat_phase_bins=beat_phase_bins,
         harmonic_phase_bins=harmonic_phase_bins,
     )
-    probability = _downbeat_probability(feature_matrix, weight_path)
+    probability = _downbeat_probability(feature_matrix, weight_path, boost_path)
     if smooth_sigma_beats > 0.0:
         probability = gaussian_filter1d(
             probability,
@@ -1116,11 +1204,19 @@ def detect_downbeat_offset_segments(
         out=np.full_like(scores, 1.0 / meter),
         where=score_totals > 1e-12,
     )
+    transition_scale = None
+    if phase_change_times is not None and len(phase_change_times):
+        centers = beat_times[np.minimum(starts + window_beats // 2, beat_times.size - 1)]
+        transition_scale = np.ones(starts.size)
+        for change in np.asarray(phase_change_times, dtype=np.float64):
+            entering = np.flatnonzero((centers[:-1] < change) & (centers[1:] >= change)) + 1
+            transition_scale[entering] = float(phase_change_cost_scale)
     tracked_phases = _track_phases(
         scores,
         meter,
         adjacent_phase_penalty,
         distant_phase_penalty,
+        transition_scale,
     )
     # Viterbi runs (maximal constant-phase spans of windows) give the robust
     # phase sequence; their window-start beats are only coarse boundaries.
@@ -1131,7 +1227,7 @@ def detect_downbeat_offset_segments(
         ]
     )
     run_phases = [int(tracked_phases[w]) for w in run_starts]
-    return _build_segments_refined(
+    segments = _build_segments_refined(
         beat_times,
         duration_sec,
         starts,
@@ -1144,6 +1240,19 @@ def detect_downbeat_offset_segments(
         int(min_segment_beats),
         float(min_transition_gain),
     )
+    # A path that never changes phase should be the whole-track fold optimum; the
+    # per-window normalization can leave it on another phase, so take the global one.
+    if len({int(s.downbeat_phase) for s in segments}) == 1:
+        global_scores = _normalize_curve(_folded_sum(evidence, meter))
+        global_phase = int(np.argmax(global_scores))
+        if global_phase != int(segments[0].downbeat_phase):
+            return [
+                _make_segment(
+                    beat_times, duration_sec, 0, beat_times.size, global_phase,
+                    _phase_confidence(global_scores), meter,
+                )
+            ]
+    return segments
 
 
 def _onset_per_beat(

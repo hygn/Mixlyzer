@@ -15,6 +15,7 @@ from utils.keystrip import key_segment_label, key_segment_rows, key_strip_segmen
 from utils.wave import render_wave_overview
 from views.segment_strip import SegmentStrip
 from core.config import load_cfg
+from core.tempo_rows import segment_end_bpm
 
 
 # Pixel rows of the overview waveform image.
@@ -435,7 +436,7 @@ class OverviewWidget(QtWidgets.QWidget):
             end = float(np.clip(end, 0.0, total))
             if end - start <= 1e-3:
                 continue
-            clipped.append((start, end, bpm))
+            clipped.append((start, end, self._segment_label(bpm, float(seg[3]))))
         if not clipped:
             return
 
@@ -455,20 +456,24 @@ class OverviewWidget(QtWidgets.QWidget):
 
     @staticmethod
     def _normalize_tempo_segments(tempo_segments) -> np.ndarray:
+        """(N, 4) rows [start, end, bpm, bpm_end] (bpm_end = bpm for a steady segment)."""
         if tempo_segments is None:
-            return np.empty((0, 3), dtype=float)
+            return np.empty((0, 4), dtype=float)
         try:
             arr = np.asarray(tempo_segments, dtype=float)
         except Exception:
-            return np.empty((0, 3), dtype=float)
+            return np.empty((0, 4), dtype=float)
         if arr.ndim == 1:
-            cols = 5 if arr.size % 5 == 0 else 4 if arr.size % 4 == 0 else 3 if arr.size % 3 == 0 else 0
+            cols = 6 if arr.size % 6 == 0 else 5 if arr.size % 5 == 0 else 4 if arr.size % 4 == 0 else 3 if arr.size % 3 == 0 else 0
             if cols == 0:
-                return np.empty((0, 3), dtype=float)
+                return np.empty((0, 4), dtype=float)
             arr = arr.reshape((-1, cols))
         if arr.ndim != 2 or arr.shape[1] < 3:
-            return np.empty((0, 3), dtype=float)
-        return arr[:, :3].astype(float, copy=False)
+            return np.empty((0, 4), dtype=float)
+        out = np.empty((arr.shape[0], 4), dtype=float)
+        out[:, :3] = arr[:, :3]
+        out[:, 3] = [segment_end_bpm(row) for row in arr] if arr.shape[1] > 5 else arr[:, 2]
+        return out
 
     @staticmethod
     def _format_bpm_label(bpm: float) -> str:
@@ -477,10 +482,18 @@ class OverviewWidget(QtWidgets.QWidget):
             return str(int(rounded))
         return f"{float(bpm):.1f}"
 
-    def _merge_bpm_display_segments(self, segments: list[tuple[float, float, float]]) -> list[tuple[float, float, str]]:
+    @classmethod
+    def _segment_label(cls, bpm: float, end_bpm: float) -> str:
+        """The BPM, or ``start→end`` for a tempo ramp."""
+        start_text = cls._format_bpm_label(bpm)
+        if not np.isfinite(end_bpm) or abs(float(end_bpm) - float(bpm)) <= 1e-6:
+            return start_text
+        end_text = cls._format_bpm_label(end_bpm)
+        return start_text if end_text == start_text else f"{start_text}\u2192{end_text}"
+
+    def _merge_bpm_display_segments(self, segments: list[tuple[float, float, str]]) -> list[tuple[float, float, str]]:
         merged: list[tuple[float, float, str]] = []
-        for start, end, bpm in segments:
-            label = self._format_bpm_label(bpm)
+        for start, end, label in segments:
             if merged and merged[-1][2] == label and abs(start - merged[-1][1]) <= 1e-3:
                 prev_start, _prev_end, prev_label = merged[-1]
                 merged[-1] = (prev_start, end, prev_label)
@@ -490,7 +503,7 @@ class OverviewWidget(QtWidgets.QWidget):
 
     def _render_combined_tempo_strip(
         self,
-        segments: list[tuple[float, float, float]],
+        segments: list[tuple[float, float, str]],
         bpm_segments: list[tuple[float, float, str]],
     ) -> None:
         strip_h = self.SEGMENT_H + self.BPM_H
@@ -516,7 +529,7 @@ class OverviewWidget(QtWidgets.QWidget):
 
     def _combined_tempo_line_path(
         self,
-        segments: list[tuple[float, float, float]],
+        segments: list[tuple[float, float, str]],
         y: float,
         tick_top: float,
         tick_bottom: float,
@@ -525,7 +538,7 @@ class OverviewWidget(QtWidgets.QWidget):
         if not segments:
             return path
 
-        for start, end, _bpm in segments:
+        for start, end, _label in segments:
             if end <= start:
                 continue
             path.moveTo(float(start), float(y))
@@ -535,13 +548,13 @@ class OverviewWidget(QtWidgets.QWidget):
         last_end = float(segments[-1][1])
         self._add_tempo_tick(path, first_start, tick_top, tick_bottom)
         for idx in range(1, len(segments)):
-            prev_start, prev_end, prev_bpm = segments[idx - 1]
-            start, end, bpm = segments[idx]
+            prev_start, prev_end, prev_label = segments[idx - 1]
+            start, end, label = segments[idx]
             if abs(float(start) - float(prev_end)) > 1e-3:
                 self._add_tempo_tick(path, float(prev_end), tick_top, tick_bottom)
                 self._add_tempo_tick(path, float(start), tick_top, tick_bottom)
                 continue
-            if self._format_bpm_label(prev_bpm) == self._format_bpm_label(bpm):
+            if prev_label == label:
                 self._add_tempo_tick(path, float(start), y, tick_bottom)
             else:
                 self._add_tempo_tick(path, float(start), tick_top, tick_bottom)

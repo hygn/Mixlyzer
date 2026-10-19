@@ -9,7 +9,8 @@ from analyzer_core.beat.beat import (
     prune_close_beats,
     rebuild_grid_from_segments,
 )
-from analyzer_core.beat.downbeat_offset import detect_downbeat_offset_segments
+from analyzer_core.beat.downbeat_offset import detect_downbeat_offset_segments, usable_boost_path
+from core.tempo_rows import bpm_at, is_ramp_row, ramp_beat_times, segment_end_bpm, shift_row_beats
 from analyzer_core.beat.frame_features import extract_frame_features
 from analyzer_core.beat.learned_onset import compute_beat_odf
 from analyzer_core.hpss import hpss_audio
@@ -37,8 +38,12 @@ def canonical_inizio(inz: float, start: float, bpm: float, beats_per_bar: float 
 
 
 def shift_grid_in_seg(beatgrid_sec: np.ndarray, segments, segment_index: int, offset: float):
+    """Move one segment's beats by ``offset`` seconds (less than a beat). A tempo ramp moves
+    along its own tempo line by the beats ``offset`` is at the tempo of its downbeat."""
     _beatgrid = np.asarray(beatgrid_sec, copy=True)
     _segments = np.asarray(segments, copy=True)
+    if _segments.ndim == 2 and _segments.shape[1] > 5 and is_ramp_row(_segments[segment_index]):
+        return _shift_ramp_in_seg(_beatgrid, _segments, segment_index, offset)
     st, ed, bpm, inz = _segments[segment_index][:4]
     assert 60/bpm > abs(offset)
     # Same span rebuild_grid_from_segments gives a segment: [st, ed) plus a hair
@@ -85,6 +90,23 @@ def shift_grid_in_seg(beatgrid_sec: np.ndarray, segments, segment_index: int, of
 
     _beatgrid = prune_close_beats(np.concatenate([_beatgrid[:sti], new_beats, _beatgrid[edi:]]))
     return _beatgrid, _segments
+
+
+def _shift_ramp_in_seg(beatgrid: np.ndarray, segments: np.ndarray, segment_index: int, offset: float):
+    row = segments[segment_index]
+    st, ed, inz = float(row[0]), float(row[1]), float(row[3])
+    if not np.isfinite(inz):
+        inz = st
+    beats = float(offset) * bpm_at(row, inz) / 60.0
+    segments[segment_index, 3] = shift_row_beats(row, beats)
+    valid_ends = segments[:, 1][np.isfinite(segments[:, 1])]
+    track_end = float(np.max(valid_ends)) if valid_ends.size else float("inf")
+    end_limit = ed + (1e-3 if ed < track_end else 1e-6)
+    sti = int(np.searchsorted(beatgrid, st + (1e-3 if segment_index > 0 else 0.0), side="left"))
+    edi = int(np.searchsorted(beatgrid, end_limit, side="left"))
+    row = segments[segment_index]
+    new_beats = ramp_beat_times(st, ed, float(row[2]), segment_end_bpm(row), float(row[3]), end_limit)
+    return prune_close_beats(np.concatenate([beatgrid[:sti], new_beats, beatgrid[edi:]])), segments
 
 
 def reanalyze_segment_from_file(
@@ -202,6 +224,7 @@ def reanalyze_segment_from_file(
                 method="global",
                 weight_path=str(gcf.downbeat_parameter_path).strip(),
                 frames=frames,
+                boost_path=usable_boost_path(getattr(gcf, "downbeat_boost_parameter_path", "")),
             )
             db_time = db_segments[0].first_downbeat_time_sec if db_segments else None
             if db_time is not None and np.isfinite(db_time):
@@ -223,6 +246,8 @@ def reanalyze_segment_from_file(
     seg_updated[segment_index, 1] = end
     seg_updated[segment_index, 2] = bpm_est
     seg_updated[segment_index, 3] = new_inizio
+    if seg_updated.shape[1] > 5:
+        seg_updated[segment_index, 5] = bpm_est   # reanalysis gives a steady tempo
     if abs(beatgrid_offset_sec) > 1e-12:
         beats_updated, seg_updated = offset_beats_and_segments(
             beats_updated,

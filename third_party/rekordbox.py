@@ -15,6 +15,7 @@ import numpy as np
 from core.library_handler import TrackRow
 from utils.labels import idx_to_labels
 from utils.jump_cues import extract_jump_cue_graph
+from core.tempo_rows import is_ramp_row, ramp_beat_times, segment_end_bpm
 
 ResolvePath = Callable[[str | None], Optional[Path]]
 
@@ -284,24 +285,25 @@ def sanitize_filename(name: str) -> str:
 
 
 def _extract_tempo_segments(features: dict[str, np.ndarray]) -> np.ndarray:
-    """Return tempo segments as (N,3|4|5) array.
+    """Return tempo segments as (N,3|4|5|6) array.
 
     Format:
       [start, end, bpm] | [start, end, bpm, inizio] | [start, end, bpm, inizio, ts_num]
+      | [start, end, bpm, inizio, ts_num, bpm_end] (bpm_end != bpm: linear tempo ramp)
     """
     raw = features.get("tempo_segments")
     if raw is None:
         return np.empty((0, 3), dtype=float)
     arr = np.asarray(raw, dtype=float)
     if arr.ndim == 1:
-        for width in (5, 4, 3):
+        for width in (6, 5, 4, 3):
             if arr.size % width == 0:
                 arr = arr.reshape((-1, width))
                 break
         else:
             return np.empty((0, 3), dtype=float)
     if arr.ndim == 2 and arr.shape[1] >= 3:
-        return arr[:, : min(arr.shape[1], 5)]
+        return arr[:, : min(arr.shape[1], 6)]
     return np.empty((0, 3), dtype=float)
 
 
@@ -351,6 +353,9 @@ def _tempo_entries_for_xml(
         for seg in tempo_segments:
             start, _end, bpm = seg[:3]
             if not np.isfinite(start) or start < 0:
+                continue
+            if len(seg) >= 6 and is_ramp_row(seg) and np.isfinite(seg[3]):
+                entries.extend(_ramp_tempo_entries(seg))
                 continue
             bpm_val = (
                 float(bpm)
@@ -407,6 +412,38 @@ def _tempo_entries_for_xml(
     return entries
 
 
+def _ramp_tempo_entries(seg) -> list[dict[str, float]]:
+    """One TEMPO entry per beat of a tempo ramp: each holds the BPM that reaches the next
+    beat exactly, and its Battito counts the bar from the ramp's downbeat (``inizio``)."""
+    start, end, bpm, inizio = (float(v) for v in seg[:4])
+    ts_num = int(round(float(seg[4]))) if np.isfinite(seg[4]) and seg[4] >= 1 else 4
+    end_bpm = segment_end_bpm(seg)
+    # The beats of the ramp plus the first one after it (its tempo line runs on past ``end``).
+    reach = end + 2.0 * 60.0 / max(min(bpm, end_bpm), 1e-6)
+    line_end = end_bpm + (end_bpm - bpm) * (reach - end) / (end - start) if end > start else end_bpm
+    if line_end <= 0:
+        line_end = end_bpm
+    beats = ramp_beat_times(start, reach, bpm, line_end, inizio, reach)
+    inside = beats[beats < end]
+    if inside.size == 0 or beats.size <= inside.size:
+        return []
+    ref = int(np.argmin(np.abs(beats - inizio)))
+    out = []
+    for k, beat in enumerate(inside):
+        period = float(beats[k + 1] - beat)
+        if period <= 0:
+            continue
+        out.append(
+            {
+                "start": float(beat),
+                "bpm": 60.0 / period,
+                "battito": int((k - ref) % ts_num) + 1,
+                "time_sig": ts_num,
+            }
+        )
+    return out
+
+
 def _compute_average_bpm(
     track: Optional[TrackRow],
     tempo_segments: np.ndarray,
@@ -418,6 +455,9 @@ def _compute_average_bpm(
         starts = tempo_segments[:, 0]
         ends = tempo_segments[:, 1]
         bpms = tempo_segments[:, 2]
+        if tempo_segments.shape[1] >= 6:
+            # A ramp's mean tempo over its span.
+            bpms = 0.5 * (bpms + np.asarray([segment_end_bpm(row) for row in tempo_segments]))
         durations = np.maximum(ends - starts, 1e-3)
         try:
             return float(np.average(bpms, weights=durations))

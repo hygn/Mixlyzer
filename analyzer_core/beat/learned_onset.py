@@ -231,3 +231,57 @@ def compute_beat_odf(
         except Exception as exc:
             print(f"[Onset] learned onset unavailable, using librosa: {exc}")
     return _compute_odf(onset_audio, sample_rate, hop_length)
+
+
+# Gradient-boosted onset over the same inputs. Its beat activation is much sharper
+# (frame beat AP about twice the linear model's out of fold), but it also fires on
+# triplet subdivisions, which pulls the tempo fold to 3:2 / 4:3. The tracker therefore
+# keeps the linear onset for tempo; this one only drives the grid refinement
+# (segment verification, phase re-lock, ramps).
+REFINE_ONSET_FORMAT = "mixlyzer_refine_onset_hgb_v1"
+REFINE_ONSET_PATH = resource_path("assets/weights/refine_onset_hgb.npz")
+
+
+@lru_cache(maxsize=2)
+def load_refine_onset_model(path: str = str(REFINE_ONSET_PATH)):
+    from analyzer_core.cue_and_phrase.phrase_analyzer import _load_numpy_hgb
+
+    with np.load(Path(path), allow_pickle=False) as archive:
+        if str(np.asarray(archive["format"]).item()) != REFINE_ONSET_FORMAT:
+            raise ValueError(f"Refinement onset model format mismatch: {path}")
+        if tuple(np.asarray(archive["feature_names"]).astype(str)) != ONSET_FEATURE_NAMES:
+            raise ValueError(f"Refinement onset model feature schema mismatch: {path}")
+        model = _load_numpy_hgb(archive, "onset")
+        hop = int(np.asarray(archive["frame_hop_length"]).item())
+    return model, hop
+
+
+def refine_onset_activation(frames: FrameFeatures, path: str | Path = REFINE_ONSET_PATH) -> np.ndarray:
+    """Gradient-boosted beat activation on the frame grid [T]."""
+    model, hop = load_refine_onset_model(str(Path(path).resolve()))
+    if hop != int(frames.hop_length):
+        raise ValueError(f"Refinement onset model expects hop {hop}, frames use {frames.hop_length}")
+    inputs = stack_context(onset_channels(frames)).astype(np.float64)
+    return model.predict_proba(inputs)[:, 1].astype(np.float32)
+
+
+def export_refine_onset_model(classifier, output_path: str | Path, frame_hop_length: int, training: dict | None = None) -> None:
+    from analyzer_core.cue_and_phrase.phrase_analyzer import _hgb_to_npz_payload
+    from utils.atomic_io import atomic_output_path
+
+    payload: dict[str, np.ndarray] = {
+        "format": np.asarray(REFINE_ONSET_FORMAT),
+        "feature_names": np.asarray(ONSET_FEATURE_NAMES),
+        "frame_hop_length": np.int64(frame_hop_length),
+        "training_json": np.asarray(json.dumps(training or {}, ensure_ascii=False, sort_keys=True)),
+    }
+    _hgb_to_npz_payload("onset", classifier, payload)
+    out = Path(output_path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        with atomic_output_path(out) as temporary:
+            np.savez_compressed(temporary, **payload)
+            load_refine_onset_model.cache_clear()
+            load_refine_onset_model(str(temporary))
+    finally:
+        load_refine_onset_model.cache_clear()

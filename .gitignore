@@ -9,6 +9,15 @@ __pycache__/
 *.log
 *.npz
 !assets/weights/phrase_analyzer.npz
+!assets/weights/beat_candidate_selector.npz
+!assets/weights/meter_section_classifier.npz
+!assets/weights/refine_onset_hgb.npz
+!assets/weights/downbeat_hgb.npz
+!assets/weights/beat_tcn_s7.npz
+!assets/weights/beat_tcn_s8.npz
+!assets/weights/beat_tcn_s9.npz
+!assets/weights/beat_critic.npz
+!assets/weights/downbeat_ctx_hgb.npz
 *.zip
 
 # Virtual envs
@@ -47,3 +56,6 @@ benchmark/
 
 # Local DSP prototypes (not production source)
 experiments
+
+# DJ software interchange research (local only)
+interchange/

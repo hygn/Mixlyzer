@@ -24,6 +24,42 @@ a = Analysis(
             'assets/weights',
         ),
         (
+            '../assets/weights/beat_candidate_selector.npz',
+            'assets/weights',
+        ),
+        (
+            '../assets/weights/meter_section_classifier.npz',
+            'assets/weights',
+        ),
+        (
+            '../assets/weights/refine_onset_hgb.npz',
+            'assets/weights',
+        ),
+        (
+            '../assets/weights/downbeat_hgb.npz',
+            'assets/weights',
+        ),
+        (
+            '../assets/weights/beat_tcn_s7.npz',
+            'assets/weights',
+        ),
+        (
+            '../assets/weights/beat_tcn_s8.npz',
+            'assets/weights',
+        ),
+        (
+            '../assets/weights/beat_tcn_s9.npz',
+            'assets/weights',
+        ),
+        (
+            '../assets/weights/beat_critic.npz',
+            'assets/weights',
+        ),
+        (
+            '../assets/weights/downbeat_ctx_hgb.npz',
+            'assets/weights',
+        ),
+        (
             '../assets/styles/app.qss',
             'assets/styles',
         ),

@@ -8,6 +8,7 @@ import numpy as np
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from analyzer_core.editor.beatgrid import canonical_inizio, rebuild_grid_from_segments, shift_grid_in_seg
+from core.tempo_rows import bpm_at, is_ramp_row, split_row, with_end_bpm
 from core.beat_geometry import MAX_BEATS_PER_BAR
 from ui.edit_panel.icons import icon
 from ui.theme import current_theme
@@ -218,16 +219,9 @@ class BeatgridEditMixin:
 
     @staticmethod
     def _ensure_ts_column(segments: np.ndarray) -> np.ndarray:
-        """Return an (N,5) copy of segments, backfilling ts_num=4 when absent."""
-        arr = np.asarray(segments, dtype=float)
-        if arr.ndim != 2 or arr.shape[0] == 0:
-            return np.empty((0, 5), dtype=float)
-        if arr.shape[1] >= 5:
-            return arr[:, :5].copy()
-        out = np.empty((arr.shape[0], 5), dtype=float)
-        out[:, :4] = arr[:, :4]
-        out[:, 4] = 4.0
-        return out
+        """Return an (N,6) copy ``[start, end, bpm, inizio, ts_num, bpm_end]`` (ts_num 4 and a
+        steady bpm_end backfilled when absent)."""
+        return with_end_bpm(segments)
 
     def _current_segment_time_sig(self) -> int:
         if not self._has_active_segment() or self._segments.shape[1] < 5:
@@ -294,7 +288,8 @@ class BeatgridEditMixin:
             return
         beatgrid, segments = self._beatgrid, self._segments
         for idx in targets:
-            bpm = float(segments[idx][2])
+            # A beat of the segment at its downbeat (a ramp's tempo there).
+            bpm = bpm_at(segments[idx], float(segments[idx][3]))
             if not (np.isfinite(bpm) and bpm > 0):
                 continue
             beatgrid, segments = shift_grid_in_seg(beatgrid, segments, idx, beats * 60.0 / bpm)
@@ -313,8 +308,11 @@ class BeatgridEditMixin:
             new_bpm = bpm * factor
             if not (np.isfinite(new_bpm) and new_bpm > 0):
                 continue
+            ramp = is_ramp_row(segments[idx])
             segments[idx, 2] = new_bpm
-            segments[idx, 3] = canonical_inizio(inz, st, new_bpm, ts_num)
+            segments[idx, 5] *= factor
+            if not ramp:
+                segments[idx, 3] = canonical_inizio(inz, st, new_bpm, ts_num)
             changed = True
         if not changed:
             return
@@ -334,7 +332,11 @@ class BeatgridEditMixin:
         if inside.size == 0:
             return
         beat = float(inside[np.argmin(np.abs(inside - float(self._current_time)))])
-        segments[self._cur_idx, 3] = canonical_inizio(beat, st, bpm, ts_num)
+        # A ramp's bars have no single length: its downbeat stays on the chosen beat.
+        if is_ramp_row(segments[self._cur_idx]):
+            segments[self._cur_idx, 3] = beat
+        else:
+            segments[self._cur_idx, 3] = canonical_inizio(beat, st, bpm, ts_num)
         self._segments = segments
         self._beatgrid = rebuild_grid_from_segments(self._segments)
         self._emit_edit_update()
@@ -356,13 +358,18 @@ class BeatgridEditMixin:
 
         new_segments = np.asarray(segs, dtype=float).copy()
         idx = self._cur_idx
-        new_segments[idx, 1] = cut_t
-        new_segments[idx, 3] = inz
-
-        next_inz = self._next_downbeat_after(cut_t, inz, bpm, st, ts_num)
-        # New split half inherits the source segment's time signature.
-        next_seg = np.array([cut_t, ed, bpm, next_inz, ts_num], dtype=float)
-        new_segments = np.insert(new_segments, idx + 1, next_seg, axis=0)
+        if is_ramp_row(new_segments[idx]):
+            # Both parts keep the tempo line and the downbeat reference: the beats stay.
+            left, right = split_row(new_segments[idx], cut_t)
+            new_segments[idx] = left
+            new_segments = np.insert(new_segments, idx + 1, np.asarray(right, dtype=float), axis=0)
+        else:
+            new_segments[idx, 1] = cut_t
+            new_segments[idx, 3] = inz
+            next_inz = self._next_downbeat_after(cut_t, inz, bpm, st, ts_num)
+            # New split half inherits the source segment's time signature.
+            next_seg = np.array([cut_t, ed, bpm, next_inz, ts_num, bpm], dtype=float)
+            new_segments = np.insert(new_segments, idx + 1, next_seg, axis=0)
 
         self._segments = new_segments
         self._beatgrid = rebuild_grid_from_segments(self._segments)
@@ -373,7 +380,7 @@ class BeatgridEditMixin:
         """Merge the active segment with its neighbor, preserving downbeat alignment."""
         if not self._has_active_segment():
             return
-        segments = np.asarray(self._segments, dtype=float)
+        segments = self._ensure_ts_column(self._segments)
         count = len(segments)
         idx = self._cur_idx
 
@@ -403,13 +410,23 @@ class BeatgridEditMixin:
             return
 
         updated = segments.copy()
-        bpm = float(updated[target_idx][2])
-        inz = float(updated[target_idx][3])
+        target = updated[target_idx].copy()
+        bpm = float(target[2])
+        inz = float(target[3])
+        ts_num = float(target[4])
         updated[target_idx, 0] = seg_start
         updated[target_idx, 1] = seg_end
-        updated[target_idx, 2] = bpm
-        ts_num = float(updated[target_idx, 4]) if updated.shape[1] >= 5 else 4.0
-        updated[target_idx, 3] = canonical_inizio(inz, seg_start, bpm, ts_num)
+        if is_ramp_row(target):
+            # The ramp's tempo line runs on over the merged span (steady where it would turn
+            # non-positive).
+            b0, b1 = bpm_at(target, seg_start), bpm_at(target, seg_end)
+            if b0 > 0 and b1 > 0:
+                updated[target_idx, 2], updated[target_idx, 5] = b0, b1
+            else:
+                updated[target_idx, 2] = updated[target_idx, 5] = bpm_at(target, inz)
+        else:
+            updated[target_idx, 2] = updated[target_idx, 5] = bpm
+            updated[target_idx, 3] = canonical_inizio(inz, seg_start, bpm, ts_num)
 
         updated = np.delete(updated, donor_idx, axis=0)
         if donor_idx < target_idx:
@@ -499,10 +516,10 @@ class BeatgridEditMixin:
             return
         if not (np.isfinite(bpm) and bpm > 0):
             return
-        segments = np.asarray(self._segments, dtype=float).copy()
+        segments = self._ensure_ts_column(self._segments)
         idx = self._cur_idx
         seg_start = float(segments[idx, 0])
-        segments[idx, 2] = bpm
+        segments[idx, 2] = segments[idx, 5] = bpm   # a typed BPM makes the segment steady
         segments[idx, 3] = float(seg_start)
         self._segments = segments
         self._beatgrid = rebuild_grid_from_segments(self._segments)

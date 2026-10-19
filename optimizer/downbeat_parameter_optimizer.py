@@ -69,6 +69,7 @@ class DownbeatOptimizationResult:
 def _list_4_4_tracks(
     library_dir: Path,
     ignored: list[SkippedOptimizationTrack] | None = None,
+    four_four_only: bool = True,
 ) -> list[dict[str, object]]:
     database_path = library_dir / "library.db"
     if not database_path.is_file():
@@ -120,7 +121,7 @@ def _list_4_4_tracks(
             if ignored is not None:
                 ignored.append(skipped_track(track, "invalid or empty tempo segments"))
             continue
-        if {int(round(float(value))) for value in segments[:, 4]} != {4}:
+        if four_four_only and {int(round(float(value))) for value in segments[:, 4]} != {4}:
             continue
         track.update(
             duration_sec=float(row.duration or np.max(segments[:, 1])),

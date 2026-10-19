@@ -4,6 +4,7 @@ from typing import Any
 
 import numpy as np
 
+from core.tempo_rows import END_BPM_COLUMN, segment_end_bpm
 from utils.labels import idx_to_labels
 from utils.phrases import assigned_phrases
 
@@ -44,7 +45,7 @@ def harmonic_compatible_keys(anchor_key: int | None) -> set[int]:
 def build_bpm_segments(tempo_segments) -> list[dict[str, Any]]:
     arr = _normalize_tempo_segments(tempo_segments)
     rows: list[dict[str, Any]] = []
-    for start, end, bpm, ts_num in arr:
+    for start, end, bpm, ts_num, bpm_end in arr:
         if not (np.isfinite(start) and np.isfinite(end) and np.isfinite(bpm)):
             continue
         duration = float(end - start)
@@ -57,6 +58,7 @@ def build_bpm_segments(tempo_segments) -> list[dict[str, Any]]:
             "end_sec": float(end),
             "duration_sec": duration,
             "bpm": float(bpm),
+            "bpm_end": float(bpm_end) if abs(float(bpm_end) - float(bpm)) > 1e-6 else None,
             "bpm_rounded": int(round(float(bpm))),
             "time_signature": time_signature,
         }
@@ -137,7 +139,7 @@ def build_phrase_index_rows(
             midpoint = 0.5 * (start + end)
             bpm_row = _segment_at(bpm_rows, midpoint)
             key_row = _segment_at(key_rows, midpoint)
-            bpm = bpm_row.get("bpm") if bpm_row else None
+            bpm = _bpm_at(bpm_row, midpoint) if bpm_row else None
             key_value = key_row.get("key_value") if key_row else None
             out.append(
                 {
@@ -152,7 +154,7 @@ def build_phrase_index_rows(
                     "duration_sec": end - start,
                     "bpm_seq_index": None if bpm_row is None else int(bpm_row["seq_index"]),
                     "bpm": None if bpm is None else float(bpm),
-                    "bpm_rounded": None if bpm is None else int(bpm_row.get("bpm_rounded", round(float(bpm)))),
+                    "bpm_rounded": None if bpm is None else int(round(float(bpm))),
                     "time_signature": None if bpm_row is None else int(bpm_row.get("time_signature", 4)),
                     "key_seq_index": None if key_row is None else int(key_row["seq_index"]),
                     "key_value": None if key_value is None else int(key_value),
@@ -188,22 +190,35 @@ def _segment_at(rows: list[dict[str, Any]], time_sec: float) -> dict[str, Any] |
 
 
 def _normalize_tempo_segments(tempo_segments) -> np.ndarray:
-    """Return (N,4) rows of [start, end, bpm, ts_num].
+    """Return (N,5) rows of [start, end, bpm, ts_num, bpm_end].
 
-    Source tempo_segments are [start, end, bpm, inizio, ts_num]; inizio is not
+    Source tempo_segments are [start, end, bpm, inizio, ts_num, bpm_end]; inizio is not
     needed for DB segment rows. Legacy arrays without a ts_num column default
-    to 4.
+    to 4; without a bpm_end column (or with bpm_end == bpm) the row is steady.
     """
     if tempo_segments is None:
-        return np.empty((0, 4), dtype=float)
+        return np.empty((0, 5), dtype=float)
     arr = np.asarray(tempo_segments, dtype=float)
     if arr.ndim != 2 or arr.shape[1] < 3:
-        return np.empty((0, 4), dtype=float)
+        return np.empty((0, 5), dtype=float)
     n = arr.shape[0]
-    out = np.empty((n, 4), dtype=float)
+    out = np.empty((n, 5), dtype=float)
     out[:, :3] = arr[:, :3]
     out[:, 3] = arr[:, 4] if arr.shape[1] >= 5 else 4.0
+    out[:, 4] = [segment_end_bpm(row) for row in arr] if arr.shape[1] > END_BPM_COLUMN else arr[:, 2]
     return out
+
+
+def _bpm_at(row: dict[str, Any], time_sec: float) -> float | None:
+    """Tempo of a BPM segment row at ``time_sec`` (linear across a ramp row)."""
+    bpm = row.get("bpm")
+    if bpm is None:
+        return None
+    end_bpm = row.get("bpm_end")
+    start, end = float(row["start_sec"]), float(row["end_sec"])
+    if end_bpm is None or end <= start:
+        return float(bpm)
+    return float(bpm) + (float(end_bpm) - float(bpm)) * (float(time_sec) - start) / (end - start)
 
 
 def _normalize_key_segments(key_segments) -> np.ndarray:
@@ -217,7 +232,9 @@ def _normalize_key_segments(key_segments) -> np.ndarray:
 
 def _can_merge_bpm_rows(left: dict[str, Any], right: dict[str, Any]) -> bool:
     return (
-        abs(float(left["bpm"]) - float(right["bpm"])) < 1e-6
+        left.get("bpm_end") is None
+        and right.get("bpm_end") is None
+        and abs(float(left["bpm"]) - float(right["bpm"])) < 1e-6
         and int(left.get("time_signature", 4)) == int(right.get("time_signature", 4))
     )
 

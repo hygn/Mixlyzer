@@ -368,7 +368,9 @@ def shift_beat_grid(
     shifted = np.where(position > n - 1, beats[-1] + (position - (n - 1)) * last_interval, shifted)
     shifted = shifted[(shifted >= 0.0) & (shifted <= float(duration_sec))]
     if segments.ndim == 2 and segments.shape[1] >= 4 and segments.size:
+        from analyzer_core.beat.beat import shift_row_beats
+
         for row in segments:
             if row[2] > 0:
-                row[3] = row[3] + float(shift_beats) * 60.0 / row[2]
+                row[3] = shift_row_beats(row, float(shift_beats))
     return shifted, segments

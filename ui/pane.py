@@ -23,6 +23,7 @@ from ui.edit_panel import EditPanel
 from utils.volume import slider_percent_to_linear, trim_dbfs_to_linear
 from core.resource_paths import resource_path
 from core.beat_geometry import downbeat_beat_indices, segment_time_signature
+from core.tempo_rows import segment_end_bpm
 
 def _tempo_text(percent: int) -> str:
     """Tempo fader reading as DJ gear shows it: change from 100 %, +000% / −050% / +100%
@@ -95,7 +96,7 @@ class MainPane(QtWidgets.QWidget):
         self.tl = tl
         self.cfg = cfg
         self.current_time = 0.0
-        self._tempo_segments = np.empty((0, 4), dtype=float)
+        self._tempo_segments = np.empty((0, 5), dtype=float)
         self._key_segments = None
 
         # Plot container
@@ -595,15 +596,17 @@ class MainPane(QtWidgets.QWidget):
         self._update_beat_display(self.current_time)
 
     def _set_tempo_segments(self, segments) -> None:
-        """Keep [start, end, bpm, ts_num] rows (ts_num 4 when absent) for the BPM line."""
-        self._tempo_segments = np.empty((0, 4), dtype=float)
+        """Keep [start, end, bpm, ts_num, bpm_end] rows (ts_num 4 / steady when absent) for
+        the BPM line; a ramp's BPM is read at the playhead."""
+        self._tempo_segments = np.empty((0, 5), dtype=float)
         if segments is not None:
             arr = np.asarray(segments, dtype=float)
             if arr.ndim == 2 and arr.shape[1] >= 3:
-                rows = np.full((arr.shape[0], 4), 4.0)
+                rows = np.full((arr.shape[0], 5), 4.0)
                 rows[:, :3] = arr[:, :3]
                 if arr.shape[1] >= 5:
                     rows[:, 3] = arr[:, 4]
+                rows[:, 4] = [segment_end_bpm(row) for row in arr] if arr.shape[1] > 5 else arr[:, 2]
                 self._tempo_segments = rows
         self._update_bpm_display()
 
@@ -645,6 +648,11 @@ class MainPane(QtWidgets.QWidget):
             idx = int(np.searchsorted(starts, t, side="left"))
             idx = min(idx, len(starts) - 1)
         bpm = float(segs[idx, 2])
+        start, end, end_bpm = float(segs[idx, 0]), float(segs[idx, 1]), float(segs[idx, 4])
+        if abs(end_bpm - bpm) > 1e-6 and end > start:
+            # Tempo ramp: the tempo at the playhead, held at the ramp's ends outside it.
+            frac = min(max((float(t) - start) / (end - start), 0.0), 1.0)
+            bpm = bpm + (end_bpm - bpm) * frac
         meter = int(round(segs[idx, 3])) if np.isfinite(segs[idx, 3]) and segs[idx, 3] >= 1 else 4
         return (bpm if np.isfinite(bpm) and bpm > 0 else float("nan")), meter
 

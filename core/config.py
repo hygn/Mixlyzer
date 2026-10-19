@@ -122,6 +122,7 @@ class analysisconfig:
     bpm_max: int
     bpm_dynamic: bool
     bpm_adaptive_window: bool
+    beat_candidate_selector_parameter_path: str
     onset_source: Literal["librosa", "optimized"]
     onset_parameter_path: str
     onset_feature_cache_path: str
@@ -129,7 +130,16 @@ class analysisconfig:
     beat_phase_parameter_path: str
     beat_phase_feature_cache_path: str
     dynamic_downbeat: bool
+    # Phase re-lock after untracked sections and piecewise-linear tempo ramps.
+    beat_grid_refine: bool
+    refine_onset_parameter_path: str
+    # Sustained 3/4 sections get their own time-signature segments.
+    meter_sections: bool
+    meter_section_parameter_path: str
     downbeat_parameter_path: str
+    # Gradient-boosted downbeat model used instead of the linear weights above
+    # (empty: the linear weights).
+    downbeat_boost_parameter_path: str
     downbeat_feature_cache_path: str
     beatgrid_offset_msec: float
     # low / mid / high bands (Hz) of the stored overview levels; the main view
@@ -308,6 +318,7 @@ def default_cfg():
         bpm_min=100,
         bpm_dynamic=True,
         bpm_adaptive_window=True,
+        beat_candidate_selector_parameter_path="assets/weights/beat_candidate_selector.npz",
         onset_source="optimized",
         onset_parameter_path="assets/weights/onset_feature_weights.json",
         onset_feature_cache_path="featurecache/onset",
@@ -315,9 +326,14 @@ def default_cfg():
         beat_phase_parameter_path="assets/weights/beat_phase_weights.json",
         beat_phase_feature_cache_path="featurecache/beat_phase",
         dynamic_downbeat=True,
+        beat_grid_refine=True,
+        refine_onset_parameter_path="assets/weights/refine_onset_hgb.npz",
+        meter_sections=True,
+        meter_section_parameter_path="assets/weights/meter_section_classifier.npz",
         downbeat_parameter_path="assets/weights/downbeat_feature_weights.json",
+        downbeat_boost_parameter_path="assets/weights/downbeat_hgb.npz",
         downbeat_feature_cache_path="featurecache/downbeat",
-        beatgrid_offset_msec=10.0,
+        beatgrid_offset_msec=0.0,
         env_lo=(20.0, 200.0),
         env_mid=(250.0, 1500.0),
         env_hi=(1600.0, 11025.0),

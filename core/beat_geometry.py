@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import numpy as np
 
+from core.tempo_rows import is_ramp_row, ramp_beat_times, segment_end_bpm
+
 
 DEFAULT_TIME_SIGNATURE = 4
 # Largest time signature the editor offers (n/4) and the beat dots can show.
@@ -11,8 +13,9 @@ MAX_BEATS_PER_BAR = 8
 def _normalize_segments(tempo_segments) -> np.ndarray | None:
     """Coerce tempo_segments into a 2-D array with at least [start, end, bpm, inizio].
 
-    Accepts N×3 (legacy, no inizio/ts), N×4 (start,end,bpm,inizio) and
-    N×5 (… , ts_num). Returns None when the input is empty or malformed.
+    Accepts N×3 (legacy, no inizio/ts), N×4 (start,end,bpm,inizio), N×5 (… , ts_num)
+    and N×6 (… , bpm_end: a linear tempo ramp when it differs from bpm). Returns None
+    when the input is empty or malformed.
     """
     if tempo_segments is None:
         return None
@@ -23,7 +26,7 @@ def _normalize_segments(tempo_segments) -> np.ndarray | None:
     if arr.size == 0:
         return None
     if arr.ndim == 1:
-        for width in (5, 4, 3):
+        for width in (6, 5, 4, 3):
             if arr.size % width == 0:
                 arr = arr.reshape((-1, width))
                 break
@@ -65,6 +68,13 @@ def build_downbeats_from_segments(tempo_segments) -> np.ndarray | None:
         if bpm <= 0:
             continue
         beats_per_bar = segment_time_signature(seg)
+        if is_ramp_row(seg):
+            # A ramp's bars shorten or lengthen with its tempo: every beats_per_bar-th of
+            # its own beats from the downbeat on.
+            row_beats = ramp_beat_times(float(start), float(end), float(bpm), segment_end_bpm(seg),
+                                        float(inizio), float(end) + 1e-6)
+            downbeats.extend(row_beats[row_beats >= float(inizio) - 1e-6][::beats_per_bar].tolist())
+            continue
         t = max(0.0, float(inizio))
         stop = max(float(end), t)
         bar = beats_per_bar * 60.0 / float(bpm)

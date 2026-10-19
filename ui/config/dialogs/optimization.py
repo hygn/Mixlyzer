@@ -91,7 +91,14 @@ class ParameterOptimizeProgressDialog(QDialog):
 
 
 class BeatParameterOptimizeDialog(QDialog):
-    ITEMS = (("onset", "Onset"), ("beat_phase", "Beat Phase"), ("downbeat", "Downbeat"))
+    ITEMS = (
+        ("onset", "Onset"),
+        ("candidate_selector", "Adaptive Window Selector"),
+        ("refine_onset", "Grid Refinement Onset"),
+        ("beat_phase", "Beat Phase"),
+        ("downbeat", "Downbeat"),
+        ("downbeat_boost", "Downbeat (Boosted)"),
+    )
 
     def __init__(self, default_l2: dict[str, float], parent=None):
         super().__init__(parent)
@@ -133,6 +140,8 @@ class BeatParameterOptimizeDialog(QDialog):
             folds.setToolTip(
                 "Cross-validation folds by track. Off: one fit on the whole library."
             )
+            if key == "candidate_selector":
+                folds.setValue(5)
             sweep = QCheckBox()
             sweep.setToolTip(
                 "Pick the L2 among the candidates by cross-validation (needs CV)."
@@ -149,6 +158,9 @@ class BeatParameterOptimizeDialog(QDialog):
             grid.addWidget(folds, row, 1)
             grid.addWidget(sweep, row, 2, alignment=Qt.AlignCenter)
             grid.addWidget(l2, row, 3)
+            if key in ("candidate_selector", "refine_onset", "downbeat_boost"):
+                sweep.setVisible(False)
+                l2.setVisible(False)
         self.advanced.setVisible(False)
         layout.addWidget(self.advanced)
 
@@ -174,7 +186,9 @@ class BeatParameterOptimizeDialog(QDialog):
             self._folds[key].setEnabled(selected)
             self._sweeps[key].setEnabled(selected and cross_validated)
             self._l2[key].setEnabled(
-                selected and not self._sweeps[key].isChecked()
+                selected
+                and key not in ("candidate_selector", "refine_onset", "downbeat_boost")
+                and not self._sweeps[key].isChecked()
             )
         self.buttons.button(QDialogButtonBox.Ok).setEnabled(
             any(check.isChecked() for check in self._checks.values())
@@ -186,6 +200,11 @@ class BeatParameterOptimizeDialog(QDialog):
             if not self._checks[key].isChecked():
                 continue
             folds = self._folds[key].value()
+            if key in ("candidate_selector", "refine_onset", "downbeat_boost"):
+                jobs.append(
+                    (key, name, {"cv_folds": folds if folds >= 2 else 0})
+                )
+                continue
             jobs.append(
                 (
                     key,

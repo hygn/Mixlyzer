@@ -1,6 +1,4 @@
 import numpy as np
-from concurrent.futures import ThreadPoolExecutor
-from threadpoolctl import threadpool_limits
 import time
 import os
 import base64
@@ -13,9 +11,7 @@ from PySide6 import QtGui
 from typing import Optional
 from analyzer_core.key.key import *
 from analyzer_core.beat.beat import *
-from analyzer_core.beat.beat import collapse_short_sandwiched_tempo_segments, rebuild_grid_from_segments
 from analyzer_core.beat.frame_features import extract_frame_features
-from analyzer_core.beat.learned_onset import compute_beat_odf
 from analyzer_core.hpss import HPSS_HOP_LENGTH, HPSS_N_FFT, hpss_audio_with_spectra
 from analyzer_core.dsp.resample import resample_audio
 from utils.wave import WAVE_OVERVIEW_SAMPLE_RATE, build_wave_overview
@@ -38,7 +34,7 @@ from core.thumbnails import save_thumbnail
 from core.config import config
 from core.taskmanager import taskmanager
 from core.linear_segments import build_bpm_segments, build_key_segments, build_phrase_index_rows
-from analyzer_core.utils import offset_beats_and_segments, prime_physical_core_count
+from analyzer_core.utils import prime_physical_core_count
 
 # sklearn would otherwise launch powershell.exe to count cores in every analysis process.
 prime_physical_core_count()
@@ -278,44 +274,6 @@ def getAlbumArt(path) -> Optional[QtGui.QImage]:
         pass
     return None
 
-def _apply_beatgrid_offset(synced_bpm: dict, offset_sec: float, track_duration: float) -> dict:
-    out = dict(synced_bpm)
-    beats, _ = offset_beats_and_segments(
-        out.get("beats_time", ()),
-        (),
-        offset_sec,
-        track_duration,
-    )
-    out["beats_time"] = beats
-
-    shifted_segments = []
-    for seg in out.get("tempo_segments") or ():
-        if not isinstance(seg, dict):
-            continue
-        row = np.asarray(
-            [[
-                float(seg.get("segment_start", seg.get("start", 0.0))),
-                float(seg.get("segment_end", seg.get("end", 0.0))),
-                float(seg.get("bpm", 0.0)),
-                float(seg.get("inizio", seg.get("segment_start", seg.get("start", 0.0)))),
-            ]],
-            dtype=float,
-        )
-        _, shifted = offset_beats_and_segments((), row, offset_sec, track_duration)
-        seg_shifted = dict(seg)
-        if shifted.size:
-            seg_shifted["segment_start"] = float(shifted[0, 0])
-            seg_shifted["segment_end"] = float(shifted[0, 1])
-            if "start" in seg_shifted:
-                seg_shifted["start"] = float(shifted[0, 0])
-            if "end" in seg_shifted:
-                seg_shifted["end"] = float(shifted[0, 1])
-            seg_shifted["inizio"] = float(shifted[0, 3])
-        shifted_segments.append(seg_shifted)
-    out["tempo_segments"] = shifted_segments
-    return out
-
-
 def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:int, force_analyze: bool = False):
     l = LibraryDB(os.path.join(config.libconfig.libpath, "library.db"))
     l.connect()
@@ -374,254 +332,83 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
     yield {"status": "tempo"}
     print("[Tempo] Analysis Initalized")
     taskmgr.updatetask(taskid, "Tempo Analyzing", 0.30)
-    # Frame features are analyzed once: the learned onset (beat tracking) and the
-    # downbeat model (after pooling to beats) both use them.
+    # Frame features on the analysis grid (Settings > Analysis): the phrase features read them below.
     frame_features = extract_frame_features(
         samp, int(global_sr), y_perc, y_harm, hop_length=int(gcf.bpm_hop_length)
     )
-    odf_cached, hop_t_cached = compute_beat_odf(
-        str(gcf.onset_source),
-        frame_features,
-        y_perc,
-        int(global_sr),
-        gcf.bpm_hop_length,
-        str(gcf.onset_parameter_path).strip(),
+    # The generalized tracker (analyzer_core.beat.general): a frame TCN (three trainings) ->
+    # section decoding with one section cost -> ramps -> bar-supported phase -> metronome critic ->
+    # tempo-change boundaries on the local onset -> drifting sections -> junction rules -> bars from
+    # two downbeat observers -> the consensus of the three; rows with inizio on a downbeat.
+    from analyzer_core.beat.general import (
+        FRAME_HOP_LENGTH, SAMPLE_RATE, dominant_tempo, load_models, track as track_beats,
     )
-    if gcf.bpm_dynamic:
-        w_mpls = [1, 2, 4, None] if gcf.bpm_adaptive_window else [1]
-        validrange_cached = get_track_validrange(y_perc, int(global_sr), 1, 0.02)
+    from analyzer_core.beat.learned_onset import REFINE_ONSET_PATH, refine_onset_activation
 
-        def track_window(win_multiplier):
-            if win_multiplier is None:
-                return bpm_phase_sync(
-                    global_sr,
-                    gcf.bpm_hop_length,
-                    gcf.bpm_hop_length,
-                    audio=y_perc,
-                    win_s=gcf.bpm_win_length/1000,
-                    step_s=0.1,
-                    bpm_bounds=(gcf.bpm_min,gcf.bpm_max),
-                    odf_precomputed=odf_cached,
-                    hop_t_precomputed=hop_t_cached,
-                )
-            return bpm_dynamic_phase_sync(
-                global_sr,
-                gcf.bpm_hop_length,
-                gcf.bpm_hop_length,
-                audio=y_perc,
-                win_s=gcf.bpm_win_length*win_multiplier/1000,
-                step_s=0.25,
-                bpm_bounds=(gcf.bpm_min,gcf.bpm_max),
-                odf_precomputed=odf_cached,
-                hop_t_precomputed=hop_t_cached,
-                validrange_precomputed=validrange_cached,
-            )
-
-        # The window candidates are independent (numpy / scipy release the GIL).
-        # KMeans limits BLAS to one thread while it runs and then restores the
-        # previous count; concurrent calls would restore each other's limit and
-        # leave BLAS single-threaded for the rest of the process. Holding the
-        # limit here makes their restores no-ops, and this one restores it.
-        with threadpool_limits(limits=1, user_api="blas"), ThreadPoolExecutor(max_workers=len(w_mpls)) as pool:
-            candidates = list(pool.map(track_window, w_mpls))
-        cur_score = 0
-        synced_bpm_best = {}
-        for synced_bpm in candidates:
-            if cur_score <= synced_bpm["score"]:
-                synced_bpm_best = synced_bpm
-                cur_score = synced_bpm["score"]
-        synced_bpm = synced_bpm_best
+    # Its models were trained on frames of the HPSS parts on one frame grid; other analysis settings give it
+    # frames of its own.
+    if (int(global_sr), int(gcf.bpm_hop_length), bool(gcf.use_hpss)) == (SAMPLE_RATE, FRAME_HOP_LENGTH, True):
+        tracker_frames = frame_features
     else:
-        synced_bpm = bpm_phase_sync(
-            global_sr,
-            gcf.bpm_hop_length,
-            gcf.bpm_hop_length,
-            audio=y_perc,
-            win_s=gcf.bpm_win_length/1000,
-            step_s=0.1,
-            bpm_bounds=(gcf.bpm_min,gcf.bpm_max),
-            odf_precomputed=odf_cached,
-            hop_t_precomputed=hop_t_cached,
-        )
-    synced_bpm = _apply_beatgrid_offset(
-        synced_bpm,
-        float(gcf.beatgrid_offset_msec) / 1000.0,
-        float(features.get("duration_sec", 0.0)),
-    )
-    bpm_window_sec = float(synced_bpm.get("window_s", float(gcf.bpm_win_length) / 1000.0))
-    features["tempo_global"] = synced_bpm["tempo_global"]
-    features["beats_time_sec"] = synced_bpm["beats_time"]
-    tempo_segments = synced_bpm["tempo_segments"]
-    # tempo_segments columns: [start, end, bpm, inizio, ts_num] (ts_num defaults to 4)
-    _DEFAULT_TS = 4.0
-    seg_arr: np.ndarray
-    if isinstance(tempo_segments, list):
-        rows = []
-        for seg in tempo_segments:
-            start = float(seg.get("segment_start", 0.0))
-            inizio = float(seg.get("inizio", seg.get("segment_start", 0.0)))
-            end = float(seg.get("end", seg.get("segment_end", start)))
-            bpm = float(seg.get("bpm", 0.0))
-            ts_num = float(seg.get("time_signature", _DEFAULT_TS) or _DEFAULT_TS)
-            rows.append((start, end, bpm, inizio, ts_num))
-        seg_arr = np.asarray(rows, dtype=np.float32) if rows else np.empty((0, 5), dtype=np.float32)
-    elif tempo_segments is not None:
-        arr = np.asarray(tempo_segments, dtype=float)
-        if arr.ndim == 1:
-            for width in (5, 4, 3):
-                if arr.size and arr.size % width == 0:
-                    arr = arr.reshape((-1, width))
-                    break
-            else:
-                arr = np.empty((0, 3), dtype=float)
-        if arr.ndim == 2 and arr.shape[1] >= 3:
-            n = arr.shape[0]
-            seg_arr = np.empty((n, 5), dtype=np.float32)
-            seg_arr[:, :3] = arr[:, :3]
-            seg_arr[:, 3] = arr[:, 3] if arr.shape[1] >= 4 else arr[:, 0]
-            seg_arr[:, 4] = arr[:, 4] if arr.shape[1] >= 5 else _DEFAULT_TS
+        def at_tracker_rate(y):
+            return resample_audio(np.asarray(y, dtype=np.float32), int(global_sr), SAMPLE_RATE)
+        tracker_mix = at_tracker_rate(samp)
+        if gcf.use_hpss:
+            tracker_harm, tracker_perc = at_tracker_rate(y_harm), at_tracker_rate(y_perc)
         else:
-            seg_arr = np.empty((0, 5), dtype=np.float32)
-    else:
-        seg_arr = np.empty((0, 5), dtype=np.float32)
-    features["tempo_segments"] = seg_arr
-
-    # Remove short A-B-A tempo artifacts before beat-phase and downbeat analysis.
-    # The tempo tracker produced the old beatgrid from the uncollapsed segments,
-    # so both public beat times and the internal ODF-frame indices must be rebuilt
-    # whenever the segment topology changes.
-    cleanup_max_sec = 0.5 * bpm_window_sec
-    cleanup_before = int(seg_arr.shape[0]) if getattr(seg_arr, "ndim", 0) == 2 else 0
-    seg_arr, removed_sandwiched = collapse_short_sandwiched_tempo_segments(
-        seg_arr,
-        max_duration_sec=cleanup_max_sec,
-    )
-    features["tempo_segments"] = seg_arr
-    if removed_sandwiched:
-        rebuilt_beats = rebuild_grid_from_segments(seg_arr)
-        features["beats_time_sec"] = rebuilt_beats
-        synced_bpm["beats_time"] = rebuilt_beats
-        odf_len = len(synced_bpm["odf"])
-        synced_bpm["beats"] = np.clip(
-            np.round(
-                (rebuilt_beats - float(gcf.beatgrid_offset_msec) / 1000.0)
-                / float(synced_bpm["hop_t"])
-            ).astype(np.int32),
-            0,
-            max(0, odf_len - 1),
+            tracker_harm, tracker_perc, _ = hpss_audio_with_spectra(tracker_mix, SAMPLE_RATE)
+        tracker_frames = extract_frame_features(
+            tracker_mix, SAMPLE_RATE, tracker_perc, tracker_harm, hop_length=FRAME_HOP_LENGTH,
         )
-        cleanup_after = int(seg_arr.shape[0])
-        print(
-            f"[Tempo] removed {removed_sandwiched} short sandwiched segment(s) "
-            f"<= {cleanup_max_sec:.3f}s: {cleanup_before} -> {cleanup_after}; "
-            f"rebuilt beatgrid with {rebuilt_beats.size} beats"
-        )
-        for i, row in enumerate(seg_arr):
-            start, end, bpm, inizio, ts = [float(x) for x in row[:5]]
-            print(
-                f"[Tempo]   tempo{i}: {start:.3f}-{end:.3f}s bpm={bpm:.2f} "
-                f"inizio(downbeat)={inizio:.3f}s ts={int(ts)}/4"
-            )
-    print("[Tempo] Analysis Finished")
-
-    # Beat-phase correction: move the grid by 0, 1/4, 1/2 or 3/4 beat to the phase
-    # the learned 16th-cell model scores highest over the whole track.
-    if bool(getattr(gcf, "beat_phase_correction", True)) and seg_arr.shape[0] > 0:
-        yield {"status": "beat_phase"}
-        taskmgr.updatetask(taskid, "Beat Phase Analyzing", 0.42)
-        try:
-            from analyzer_core.beat.beat_phase import detect_beat_phase, shift_beat_grid
-
-            beats_now = np.asarray(features.get("beats_time_sec"), dtype=float)
-            if beats_now.size >= 16:
-                # getattr: a config object from an app started before this setting existed lacks it.
-                weight_path = str(
-                    getattr(gcf, "beat_phase_parameter_path", "") or "assets/weights/beat_phase_weights.json"
-                ).strip()
-                decision = detect_beat_phase(frame_features, beats_now, weight_path)
-                print(
-                    f"[BeatPhase] shift {decision.shift_beats:.2f} beat, logit sums "
-                    f"{np.round(decision.logit_sums, 1).tolist()}, margin/beat {decision.margin:.3f}"
-                )
-                if decision.shift_index:
-                    new_beats, seg_arr = shift_beat_grid(
-                        beats_now, seg_arr, decision.shift_beats, float(features["duration_sec"])
-                    )
-                    seg_arr = seg_arr.astype(np.float32)
-                    features["beats_time_sec"] = new_beats
-                    features["tempo_segments"] = seg_arr
-                    # Beat-synchronous chroma reads the beats as ODF frames (before the grid offset).
-                    odf_len = len(synced_bpm["odf"])
-                    synced_bpm["beats"] = np.clip(
-                        np.round(
-                            (new_beats - float(gcf.beatgrid_offset_msec) / 1000.0) / float(synced_bpm["hop_t"])
-                        ).astype(np.int32),
-                        0,
-                        max(0, odf_len - 1),
-                    )
-        except Exception as exc:
-            import traceback
-            print(f"[BeatPhase] correction skipped: {exc}")
-            traceback.print_exc()
-
-    # Downbeat-offset realignment: assign the bar-start beat (downbeat) to each
-    # segment where the detected downbeat phase changes. Beat timings are kept.
-    yield {"status": "downbeat"}
-    print("[Downbeat] Analysis Initalized")
-    taskmgr.updatetask(taskid, "Downbeat Analyzing", 0.45)
-    db_segments: list = []
+    frame_times = np.asarray(tracker_frames.frame_times, dtype=float)
+    refine_onset = None
     try:
-        from analyzer_core.beat.downbeat_offset import (
-            detect_downbeat_offset_segments,
-            apply_downbeat_offset_segments,
+        refine_path = str(getattr(gcf, "refine_onset_parameter_path", "") or REFINE_ONSET_PATH).strip()
+        refine_onset = (
+            refine_onset_activation(tracker_frames, refine_path).astype(np.float64),
+            float(np.median(np.diff(frame_times))) if frame_times.size > 1 else FRAME_HOP_LENGTH / SAMPLE_RATE,
+            float(frame_times[0]),
         )
-        beats_for_db = np.asarray(features.get("beats_time_sec"), dtype=float)
-        if seg_arr.shape[0] > 0 and beats_for_db.size >= 2:
-            downbeat_method = "dynamic" if bool(getattr(gcf, "dynamic_downbeat", False)) else "global"
-            downbeat_parameter_path = str(gcf.downbeat_parameter_path).strip()
-            db_segments = detect_downbeat_offset_segments(
-                samp,
-                int(global_sr),
-                beats_for_db,
-                method=downbeat_method,
-                weight_path=downbeat_parameter_path,
-                frames=frame_features,
-            )
-            print(f"[Downbeat] method={downbeat_method} beats={beats_for_db.size} detected offset segments={len(db_segments)}")
-            _head = np.round(beats_for_db[:6], 3).tolist()
-            print(f"[Downbeat] first beats_time_sec: {_head} (beat0={float(beats_for_db[0]):.3f}s)")
-            prev_phase = None
-            for i, ds in enumerate(db_segments):
-                db_time = ds.first_downbeat_time_sec
-                changed = "" if prev_phase is None else (" <PHASE CHANGE>" if int(ds.downbeat_phase) != int(prev_phase) else "")
-                db_text = "n/a" if db_time is None else f"{db_time:.3f}s"
-                print(
-                    f"[Downbeat]   seg{i}: {ds.start_sec:.3f}-{ds.end_sec:.3f}s "
-                    f"beats[{ds.start_beat_index}:{ds.end_beat_index}] "
-                    f"phase={ds.downbeat_phase} offset_beats={ds.downbeat_offset_beats} "
-                    f"first_downbeat=beat#{ds.first_downbeat_beat_index}@{db_text} "
-                    f"conf={ds.confidence:.3f}{changed}"
-                )
-                prev_phase = ds.downbeat_phase
-
-            before = int(seg_arr.shape[0])
-            seg_arr = apply_downbeat_offset_segments(seg_arr, db_segments, beats_for_db)
-            features["tempo_segments"] = seg_arr
-            after = int(seg_arr.shape[0])
-            print(f"[Downbeat] tempo segments: {before} -> {after} ({after - before} split(s) added)")
-            for i, row in enumerate(seg_arr):
-                start, end, bpm, inizio, ts = [float(x) for x in row[:5]]
-                print(
-                    f"[Downbeat]   tempo{i}: {start:.3f}-{end:.3f}s bpm={bpm:.2f} "
-                    f"inizio(downbeat)={inizio:.3f}s ts={int(ts)}/4"
-                )
-        else:
-            print("[Downbeat] skipped: no tempo segments or too few beats")
-        print("[Downbeat] Analysis Finished")
     except Exception as exc:
-        import traceback
-        print(f"[Downbeat] offset detection skipped: {exc}")
-        traceback.print_exc()
+        print(f"[Tempo] boundary onset unavailable ({exc}); tempo changes stay where the decoder put them")
+    tracked = track_beats(tracker_frames, float(gcf.bpm_min), load_models(), refine_onset)
+    duration_sec = float(features["duration_sec"])
+    # Settings > Analysis: a static shift of the whole grid (calibration); rows and beats move together.
+    offset_sec = float(gcf.beatgrid_offset_msec) / 1000.0
+    seg_arr = np.asarray(tracked.segments, dtype=np.float64).copy()
+    if seg_arr.size:
+        seg_arr[:, 0] = np.clip(seg_arr[:, 0] + offset_sec, 0.0, duration_sec)
+        seg_arr[:, 1] = np.clip(seg_arr[:, 1] + offset_sec, 0.0, duration_sec)
+        seg_arr[:, 3] = seg_arr[:, 3] + offset_sec
+        seg_arr[0, 0] = 0.0
+        seg_arr[-1, 1] = max(float(seg_arr[-1, 1]), duration_sec)
+    seg_arr = seg_arr.astype(np.float32)
+    # The stored rows are the grid (the editor and the views rebuild it from them): the saved beats are theirs.
+    from core.tempo_rows import rebuild_grid_from_segments
+    beats_out = rebuild_grid_from_segments(seg_arr)
+    beats_out = beats_out[(beats_out >= 0.0) & (beats_out <= duration_sec)]
+    features["tempo_segments"] = seg_arr
+    features["beats_time_sec"] = beats_out
+    features["tempo_global"] = dominant_tempo(seg_arr)
+    # beat frames on the analysis grid for the beat-synchronous chroma below
+    analysis_hop = float(gcf.bpm_hop_length) / float(global_sr)
+    synced_bpm = {
+        "beats": np.clip(
+            np.round((beats_out - offset_sec) / analysis_hop).astype(np.int32),
+            0,
+            max(0, frame_features.n_frames - 1),
+        )
+    }
+    print(
+        f"[Tempo] consensus kept seed {tracked.seed}; {seg_arr.shape[0]} tempo rows, "
+        f"{beats_out.size} beats, main tempo {features['tempo_global']:.2f}"
+    )
+    for i, row in enumerate(seg_arr):
+        start, end, bpm, inizio, ts = [float(x) for x in row[:5]]
+        bpm_end = float(row[5]) if row.size > 5 else bpm
+        ramp = f"->{bpm_end:.2f}" if abs(bpm_end - bpm) > 1e-6 else ""
+        print(f"[Tempo]   tempo{i}: {start:.3f}-{end:.3f}s bpm={bpm:.2f}{ramp} inizio(downbeat)={inizio:.3f}s ts={int(ts)}/4")
+    print("[Tempo] Analysis Finished")
 
     beats_time_arr = np.asarray(features.get("beats_time_sec"), dtype=float)
     yield {"status": "phrase"}

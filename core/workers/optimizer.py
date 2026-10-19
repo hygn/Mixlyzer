@@ -36,6 +36,26 @@ def _load_downbeat_optimizer() -> _OptimizerDefinition:
     return _OptimizerDefinition(DownbeatOptimizationRequest, optimize_downbeat_parameters)
 
 
+def _load_beat_candidate_selector_optimizer() -> _OptimizerDefinition:
+    from optimizer.beat_candidate_selector_optimizer import (
+        BeatCandidateSelectorOptimizationRequest,
+        optimize_beat_candidate_selector,
+    )
+    return _OptimizerDefinition(
+        BeatCandidateSelectorOptimizationRequest, optimize_beat_candidate_selector
+    )
+
+
+def _load_refine_onset_optimizer() -> _OptimizerDefinition:
+    from optimizer.refine_onset_optimizer import RefineOnsetOptimizationRequest, optimize_refine_onset
+    return _OptimizerDefinition(RefineOnsetOptimizationRequest, optimize_refine_onset)
+
+
+def _load_downbeat_boost_optimizer() -> _OptimizerDefinition:
+    from optimizer.downbeat_boost_optimizer import DownbeatBoostOptimizationRequest, optimize_downbeat_boost
+    return _OptimizerDefinition(DownbeatBoostOptimizationRequest, optimize_downbeat_boost)
+
+
 def _load_phrase_optimizer() -> _OptimizerDefinition:
     from optimizer.phrase_parameter_optimizer import PhraseOptimizationRequest, optimize_phrase_parameters
     return _OptimizerDefinition(PhraseOptimizationRequest, optimize_phrase_parameters)
@@ -51,6 +71,9 @@ _OPTIMIZER_LOADERS: dict[str, Callable[[], _OptimizerDefinition]] = {
     "onset": _load_onset_optimizer,
     "beat_phase": _load_beat_phase_optimizer,
     "downbeat": _load_downbeat_optimizer,
+    "candidate_selector": _load_beat_candidate_selector_optimizer,
+    "refine_onset": _load_refine_onset_optimizer,
+    "downbeat_boost": _load_downbeat_boost_optimizer,
     "phrase": _load_phrase_optimizer,
     "jumpcue": _load_jumpcue_optimizer,
 }
