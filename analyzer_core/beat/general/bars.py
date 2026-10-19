@@ -64,6 +64,36 @@ def bar_check(rows, down, t0, hop):
     return rows
 
 
+def fold_into_octave(rows, lo, down, t0, hop, val):
+    """Steady rows read outside the BPM octave [lo, 2 lo) -- a tempo-ratio reading (3:2, 4:3) can take a section
+    there -- are read in it again (the octave is the user's setting). Above it, every other beat on the phase
+    whose beats carry the bar structure (the downbeat activation, bars of 2, 3 or 4 beats; the beat evidence when
+    the row is too short for bars); below it, the beats in between are added."""
+    rows = np.asarray(rows, float).copy()
+    for r in rows:
+        if is_ramp(r):
+            continue
+        while r[2] >= 2.0 * lo:
+            P = 60.0 / r[2]
+            k = np.arange(np.ceil((r[0] - r[3]) / P - 1e-9), np.floor((r[1] - r[3]) / P - 1e-9) + 1)
+            g = r[3] + P * k
+            a, b = g[0::2], g[1::2]
+
+            def score(x):
+                bars = bar_support(_at(down, t0, hop, x)) if x.size >= 8 else -np.inf
+                return bars, float(val(x).sum())
+
+            pick = b if b.size and score(b) > score(a) else a
+            r[2] /= 2.0
+            if pick.size:
+                r[3] = float(pick[0])
+        while r[2] < lo:
+            r[2] *= 2.0                        # inizio is a beat of the doubled grid too
+        if r.size > 5:
+            r[5] = r[2]
+    return rows
+
+
 def _logit(p):
     p = np.clip(p, 1e-4, 1 - 1e-4)
     return np.log(p / (1 - p))

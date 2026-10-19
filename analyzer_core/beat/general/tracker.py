@@ -95,6 +95,7 @@ def decode_seed(beat, down, t0, hop, dur, frames, octave, models, critic_track, 
     rows, _ = G.ramp_fix(rows, fine)
     rows = B.bar_check(rows, down, t0, hop)
     rows, _ = C.apply(rows, models.critic, critic_track, val, dur)
+    rows = B.fold_into_octave(rows, octave.lo, down, t0, hop, val)
     # post-process
     from analyzer_core.beat.grid_refine import hold_slow_tail, refine_boundaries
     if refine_onset is not None:
