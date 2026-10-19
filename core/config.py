@@ -118,6 +118,11 @@ class analysisconfig:
     chroma_cqt_octaves: int
     # The beat tracker reads every tempo in the octave from here (bpm_min .. 2 x bpm_min).
     bpm_min: int
+    # Dynamic analysis: tempo changes within a track (off: one steady grid for the whole track).
+    bpm_dynamic: bool
+    # Dynamic downbeats of the static analysis: odd bars and meter changes (off: one bar length and
+    # phase for the whole track); the dynamic analysis always has them.
+    dynamic_downbeat: bool
     # The onset model that places tempo changes (retrained by Reoptimize) and its feature cache.
     refine_onset_parameter_path: str
     onset_feature_cache_path: str
@@ -292,6 +297,8 @@ def default_cfg():
         chroma_cqt_octaves=4,
         use_hpss=True,
         bpm_min=100,
+        bpm_dynamic=True,
+        dynamic_downbeat=True,
         refine_onset_parameter_path="assets/weights/refine_onset_hgb.npz",
         onset_feature_cache_path="featurecache/onset",
         env_lo=(20.0, 200.0),

@@ -182,7 +182,8 @@ def partition(act, hop, off, dur, tempos, J=J):
     return np.asarray(rows_all)
 
 
-def _partition(act, hop, off, dur, tempos, J=J):
+def _tables(act, hop, off, dur, tempos):
+    """(positions, evidence table): the evidence of each (tempo, phase) grid's beats before each position."""
     con = pooled_contrast(act, hop)
     last = con.size - 1
 
@@ -190,7 +191,6 @@ def _partition(act, hop, off, dur, tempos, J=J):
         return con[np.clip(np.round((t - off) / hop - 0.5).astype(np.int64), 0, last)]
 
     pos = np.r_[np.arange(0.0, dur, POS_SEC), dur]
-    n = pos.size
     tables = []
     for bpm in tempos:
         P = 60.0 / bpm
@@ -201,7 +201,21 @@ def _partition(act, hop, off, dur, tempos, J=J):
         pref = np.concatenate([np.zeros((PHASES, 1)), np.cumsum(vals, axis=1)], axis=1)
         kpos = np.clip(np.ceil((pos[None, :] - ph[:, None]) / P).astype(int), 0, k.size)
         tables.append(np.take_along_axis(pref, kpos, axis=1))
-    tab = np.stack(tables)
+    return pos, np.stack(tables)
+
+
+def single_grid(act, hop, off, dur, tempos):
+    """The one steady grid with the most evidence over the whole track (static analysis): a row
+    [0, dur, bpm, phase anchor, 4, bpm]."""
+    _, tab = _tables(act, hop, off, dur, tempos)
+    ti, m = divmod(int(np.argmax(tab[:, :, -1] - tab[:, :, 0])), PHASES)
+    bpm = tempos[ti]
+    return np.array([[0.0, dur, bpm, (m / PHASES) * 60.0 / bpm, 4.0, bpm]])
+
+
+def _partition(act, hop, off, dur, tempos, J=J):
+    pos, tab = _tables(act, hop, off, dur, tempos)
+    n = pos.size
     best = np.full(n, -np.inf)
     best[0] = 0.0
     back = np.zeros((n, 3), int)

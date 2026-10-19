@@ -11,7 +11,9 @@ pipeline's discrete choices flip with small changes of the activation; the medoi
 trainings agree on). Finally the production rows: inizio = a downbeat, ts = the bar length.
 
 Knobs: J (section cost) and CB (odd-bar cost) -- both fixed here; the BPM octave comes from the user's
-BPM range setting (bpm_min .. 2 bpm_min).
+BPM range setting (bpm_min .. 2 bpm_min). Static analysis (a setting): the one steady grid with the most
+evidence over the whole track instead of the section decoding, none of the tempo-change stages; its bars
+are static too (one bar length and phase, no restarts) unless dynamic downbeats are asked for.
 """
 from __future__ import annotations
 
@@ -82,31 +84,38 @@ def dominant_tempo(segments) -> float:
     return float(np.average(t, weights=np.asarray(w) + 1e-9))
 
 
-def decode_seed(beat, down, t0, hop, dur, frames, octave, models, critic_track, refine_onset):
-    """One seed's activations -> rows, beats, downbeats."""
+def decode_seed(beat, down, t0, hop, dur, frames, octave, models, critic_track, refine_onset,
+                dynamic=True, dynamic_downbeat=True):
+    """One seed's activations -> rows, beats, downbeats. Static analysis (``dynamic`` off) keeps one steady
+    grid for the whole track; static bars (``dynamic_downbeat`` off) keep one bar length and phase."""
     off = t0 - 0.5 * hop
     val, fine = D.readers(beat, hop, t0)
     base = D.coarse_tempos(beat, hop, octave)
-    rows = D.partition(beat, hop, off, dur, D.with_ratios(base, octave))
-    rows = D.partition(beat, hop, off, dur, D.with_ratios(np.r_[D.refit_tempos(rows, beat, hop, off), base], octave))
-    rows = D.phase_merge(rows, val)
+    if dynamic:
+        rows = D.partition(beat, hop, off, dur, D.with_ratios(base, octave))
+        rows = D.partition(beat, hop, off, dur, D.with_ratios(np.r_[D.refit_tempos(rows, beat, hop, off), base], octave))
+        rows = D.phase_merge(rows, val)
+    else:
+        rows = D.single_grid(beat, hop, off, dur, D.with_ratios(base, octave))
     rows = D.final_refit(rows, val)
     rows = D.final_refit(rows, fine)
-    rows, _ = G.ramp_fix(rows, fine)
+    if dynamic:
+        rows, _ = G.ramp_fix(rows, fine)
     rows = B.bar_check(rows, down, t0, hop)
     rows, _ = C.apply(rows, models.critic, critic_track, val, dur)
     rows = B.fold_into_octave(rows, octave.lo, down, t0, hop, val)
-    # post-process
-    from analyzer_core.beat.grid_refine import hold_slow_tail, refine_boundaries
-    if refine_onset is not None:
-        rows, _ = refine_boundaries(rows, refine_onset[0], refine_onset[1], dur, refine_onset[2])
-    rows, _ = hold_slow_tail(rows, float(np.asarray(rows, float)[-1, 1]))
-    rows, _ = G.drift_merge(rows, fine)
-    rows = JN.merge_resyncs(rows)
-    rows = JN.fix(rows, val)
+    if dynamic:
+        # post-process
+        from analyzer_core.beat.grid_refine import hold_slow_tail, refine_boundaries
+        if refine_onset is not None:
+            rows, _ = refine_boundaries(rows, refine_onset[0], refine_onset[1], dur, refine_onset[2])
+        rows, _ = hold_slow_tail(rows, float(np.asarray(rows, float)[-1, 1]))
+        rows, _ = G.drift_merge(rows, fine)
+        rows = JN.merge_resyncs(rows)
+        rows = JN.fix(rows, val)
     beats = rebuild_grid_from_segments(rows)
     beats = beats[(beats >= 0) & (beats <= dur)]
-    dbs = B.downbeats(beats, rows, down, t0, hop, frames, models.ctx)
+    dbs = B.downbeats(beats, rows, down, t0, hop, frames, models.ctx, restarts=dynamic or dynamic_downbeat)
     return SeedResult(np.asarray(rows, float), beats, dbs)
 
 
@@ -139,9 +148,12 @@ def medoid(results: list) -> int:
     return int(np.argmax(scores))
 
 
-def track(frames, bpm_min: float, models: Models, refine_onset=None, parallel: bool = True) -> TrackerResult:
+def track(frames, bpm_min: float, models: Models, refine_onset=None, parallel: bool = True,
+          dynamic: bool = True, dynamic_downbeat: bool = True) -> TrackerResult:
     """frames: production FrameFeatures on the models' grid (T.SAMPLE_RATE, T.FRAME_HOP_LENGTH);
-    refine_onset: (activation, hop, t0) of the local onset model."""
+    refine_onset: (activation, hop, t0) of the local onset model. ``dynamic`` off: one steady grid for
+    the whole track; its bars are dynamic (odd bars, meter changes) only with ``dynamic_downbeat`` (a
+    dynamic grid always has dynamic bars)."""
     if (int(frames.sample_rate), int(frames.hop_length)) != (T.SAMPLE_RATE, T.FRAME_HOP_LENGTH):
         raise ValueError(f"the beat tracker reads {T.SAMPLE_RATE} Hz / hop {T.FRAME_HOP_LENGTH} frames, "
                          f"got {frames.sample_rate} Hz / hop {frames.hop_length}")
@@ -153,7 +165,8 @@ def track(frames, bpm_min: float, models: Models, refine_onset=None, parallel: b
     def one(P):
         beat, down = T.activations(P, x)
         dur = t0 + hop * (beat.size - 1)
-        return decode_seed(beat, down, t0, hop, dur, frames, octave, models, critic_track, refine_onset)
+        return decode_seed(beat, down, t0, hop, dur, frames, octave, models, critic_track, refine_onset,
+                           dynamic, dynamic_downbeat)
 
     if parallel and len(models.tcn) > 1:
         # the seeds are independent; NumPy releases the GIL in its array work

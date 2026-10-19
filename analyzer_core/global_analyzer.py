@@ -372,7 +372,11 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
         )
     except Exception as exc:
         print(f"[Tempo] boundary onset unavailable ({exc}); tempo changes stay where the decoder put them")
-    tracked = track_beats(tracker_frames, float(gcf.bpm_min), load_models(), refine_onset)
+    dynamic = bool(getattr(gcf, "bpm_dynamic", True))
+    tracked = track_beats(
+        tracker_frames, float(gcf.bpm_min), load_models(), refine_onset,
+        dynamic=dynamic, dynamic_downbeat=dynamic or bool(getattr(gcf, "dynamic_downbeat", True)),
+    )
     duration_sec = float(features["duration_sec"])
     seg_arr = np.asarray(tracked.segments, dtype=np.float64).copy()
     if seg_arr.size:

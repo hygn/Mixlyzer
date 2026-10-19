@@ -193,6 +193,12 @@ class SettingsDialog(
         self.cb_use_hpss.setChecked(bool(a.use_hpss))
         self.sp_bpm_min.setValue(int(a.bpm_min))
         self.lbl_bpm_range.setText(f"Reads {int(a.bpm_min)} - {2 * int(a.bpm_min)} BPM")
+        dynamic = bool(getattr(a, "bpm_dynamic", True))
+        self.cb_bpm_dynamic.setChecked(dynamic)
+        # the static analysis's own choice, kept while the box shows the dynamic analysis's (always on)
+        self._static_dynamic_downbeat = bool(getattr(a, "dynamic_downbeat", True))
+        self.cb_dynamic_downbeat.setChecked(dynamic or self._static_dynamic_downbeat)
+        self.cb_dynamic_downbeat.setEnabled(not dynamic)
         self.ed_refine_onset_parameter_path.setText(str(getattr(a, "refine_onset_parameter_path", "") or ""))
         self.ed_onset_feature_cache_path.setText(
             str(getattr(a, "onset_feature_cache_path", "") or "")
@@ -293,6 +299,11 @@ class SettingsDialog(
                 chroma_cqt_octaves=int(self.sp_cqt_octaves.value()),
                 use_hpss=bool(self.cb_use_hpss.isChecked()),
                 bpm_min=int(self.sp_bpm_min.value()),
+                bpm_dynamic=bool(self.cb_bpm_dynamic.isChecked()),
+                dynamic_downbeat=bool(
+                    self.cb_dynamic_downbeat.isChecked() if not self.cb_bpm_dynamic.isChecked()
+                    else getattr(self, "_static_dynamic_downbeat", True)
+                ),
                 refine_onset_parameter_path=self.ed_refine_onset_parameter_path.text().strip(),
                 onset_feature_cache_path=self.ed_onset_feature_cache_path.text().strip(),
                 env_lo=(float(self.sp_env_lo_lo.value()), float(self.sp_env_lo_hi.value())),

@@ -77,6 +77,27 @@ def shift_row_beats(row, beats: float) -> float:
     return start + (-bpm + np.sqrt(max(disc, 0.0))) / slope
 
 
+def beats_elapsed(row, t: float) -> float:
+    """Beats of the row's tempo line from its start to ``t`` (fractional)."""
+    start, end, bpm = float(row[0]), float(row[1]), float(row[2])
+    x = float(t) - start
+    if not is_ramp_row(row) or end <= start:
+        return bpm * x / 60.0
+    slope = (segment_end_bpm(row) - bpm) / (end - start)
+    return (bpm * x + 0.5 * slope * x * x) / 60.0
+
+
+def retempo_row(row, bpm_start: float, bpm_end: float, keep: float) -> np.ndarray:
+    """``row`` with the tempo line ``bpm_start`` -> ``bpm_end`` (equal: steady). The beat at ``keep``
+    stays where it is and the downbeat stays the same number of beats from it."""
+    out = with_end_bpm(np.asarray(row, dtype=np.float64)[None, :])[0]
+    k = round(beats_elapsed(out, out[3]) - beats_elapsed(out, keep))
+    out[2], out[END_BPM_COLUMN] = float(bpm_start), float(bpm_end)
+    out[3] = float(keep)
+    out[3] = shift_row_beats(out, k)
+    return out
+
+
 def ramp_beat_times(start: float, end: float, bpm_start: float, bpm_end: float,
                     anchor: float, limit: float | None = None) -> np.ndarray:
     """Beats of a tempo ramp: the tempo goes linearly in time from ``bpm_start`` at ``start``

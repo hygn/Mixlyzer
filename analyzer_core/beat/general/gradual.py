@@ -176,6 +176,31 @@ def _fit(start, end, T0, T1, anchor, val, steady=False):
     return best
 
 
+def ramp_or_steady(row, guesses, val, cost=1.0):
+    """One stretch read as a steady grid or a linear ramp (the editor's segment reanalysis): ``row`` is its
+    steady fit; each (bpm_start, bpm_end) guess is fitted as a ramp (phase over the first beat, then the
+    coordinate search). A ramp is kept when it explains the onsets better by one beat of evidence (its one
+    more parameter) and moves some beat audibly from the steady grid, as a drift does."""
+    row = np.asarray(row, float)
+    row = np.r_[row, row[2]] if row.size == 5 else row.copy()
+    start, end = float(row[0]), float(row[1])
+    steady = row_beats(row)
+    if steady.size < 4:
+        return row
+    best = (float(val(steady).sum()) + cost, row)
+    for b0, b1 in guesses:
+        if not (b0 > 0 and b1 > 0) or abs(b1 / b0 - 1.0) < 0.02:
+            continue
+        P = 60.0 / b0
+        anchors = start + P * np.arange(16) / 16
+        evs = [float(val(ramp_beat_times(start, end, b0, b1, a, end)).sum()) for a in anchors]
+        e, T0, T1, c = _fit(start, end, b0, b1, float(anchors[int(np.argmax(evs))]), val)
+        cand = np.array([start, end, T0, c, row[4], T1])
+        if e > best[0] and _max_dev(steady, row_beats(cand)) >= AUDIBLE:
+            best = (e, cand)
+    return best[1]
+
+
 def _max_dev(gs, gd):
     j = np.clip(np.searchsorted(gs, gd), 1, max(1, gs.size - 1))
     return float(np.minimum(np.abs(gs[j - 1] - gd), np.abs(gs[np.minimum(j, gs.size - 1)] - gd)).max())

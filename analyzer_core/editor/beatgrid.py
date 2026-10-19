@@ -4,14 +4,11 @@ import numpy as np
 from analyzer_core.global_analyzer import fast_load
 from analyzer_core.beat.beat import (
     build_grid_from_period_phase,
-    estimate_bpm_and_grid,
     prune_close_beats,
     rebuild_grid_from_segments,
 )
-from analyzer_core.beat.downbeat_offset import DOWNBEAT_BOOST_PATH, detect_downbeat_offset_segments, usable_boost_path
-from core.tempo_rows import bpm_at, is_ramp_row, ramp_beat_times, segment_end_bpm, shift_row_beats
-from analyzer_core.beat.frame_features import FRAME_HOP_LENGTH, extract_frame_features
-from analyzer_core.beat.learned_onset import compute_beat_odf
+from core.tempo_rows import bpm_at, is_ramp_row, ramp_beat_times, segment_end_bpm, shift_row_beats, with_end_bpm
+from analyzer_core.beat.frame_features import extract_frame_features
 from analyzer_core.hpss import hpss_audio
 from core.config import config
 
@@ -108,6 +105,9 @@ def _shift_ramp_in_seg(beatgrid: np.ndarray, segments: np.ndarray, segment_index
     return prune_close_beats(np.concatenate([beatgrid[:sti], new_beats, beatgrid[edi:]])), segments
 
 
+PAD_SEC = 4.0      # music on both sides of the segment the frame TCN hears (its context)
+
+
 def reanalyze_segment_from_file(
     path: str,
     cfg: config,
@@ -118,128 +118,111 @@ def reanalyze_segment_from_file(
     use_only_prev_bpm: bool = False,
     progress_cb: Optional[Callable[[str, float], None]] = None,
 ) -> Tuple[np.ndarray, np.ndarray]:
-    """Recompute beats/tempo info for a single segment."""
+    """One segment read again with the full analysis's models (the three frame-TCN trainings, averaged):
+    the steady grid with the most evidence in its BPM octave (with a reference BPM: within 20 % of it),
+    or a linear tempo ramp when that explains the onsets better (guesses: the neighbours' tempos, the
+    tempos of the segment's two halves); then its bars (one bar length and phase) for the downbeat."""
+    from analyzer_core.beat.general import bars as B, decode as D, gradual as G, load_models, tcn as T
+
     if progress_cb:
         progress_cb("Loading audio", 0.0)
-    gcf = cfg.analysisconfig
-    sr = int(gcf.analysis_samp_rate)
+    sr = T.SAMPLE_RATE
     audio = fast_load(path, sr)
-    if progress_cb:
-        progress_cb("Preparing audio", 0.10)
-
-    beats_source = beats_time_sec if beats_time_sec is not None else ()
-    beats_arr = np.asarray(beats_source, dtype=float)
-    seg_arr = np.asarray(segments, dtype=float)
-    if seg_arr.ndim != 2 or seg_arr.shape[1] < 4:
-        raise ValueError("segments must be (N,4) array")
+    seg_arr = with_end_bpm(segments)
+    if seg_arr.shape[0] == 0:
+        raise ValueError("no tempo segments")
     if not (0 <= segment_index < len(seg_arr)):
         raise IndexError("segment index out of range")
+    total = len(audio) / float(sr) if len(audio) else 0.0
+    start = float(seg_arr[segment_index, 0])
+    end = min(float(seg_arr[segment_index, 1]), total)
+    if end - start < 2.0:
+        raise ValueError("segment too short for reanalysis")
 
-    start, end, bpm, inz = seg_arr[segment_index, :4]
-    total_duration = len(audio) / float(sr) if len(audio) else 0.0
-    end = min(end, total_duration)
-    start = float(start)
-    end = float(end)
-    if end - start <= 1e-6:
-        raise ValueError("segment duration too small")
+    a = max(0.0, start - PAD_SEC)
+    b = min(total, end + PAD_SEC)
+    section = np.ascontiguousarray(audio[int(a * sr):int(b * sr)], dtype=np.float32)
+    if progress_cb:
+        progress_cb("Preparing audio", 0.10)
+    # the models were trained on frames of the HPSS parts
+    y_harm, y_perc = hpss_audio(section)
+    frames = extract_frame_features(section, sr, y_perc, y_harm, hop_length=T.FRAME_HOP_LENGTH)
+    if progress_cb:
+        progress_cb("Beat activations", 0.40)
+    models = load_models()
+    x = T.frame_inputs(frames)
+    acts = [T.activations(P, x) for P in models.tcn]
+    beat = np.mean([act for act, _ in acts], axis=0)
+    down = np.mean([d for _, d in acts], axis=0)
+    ft = np.asarray(frames.frame_times, dtype=float)
+    hop = float(np.median(np.diff(ft))) if ft.size > 1 else T.FRAME_HOP_LENGTH / sr
+    t0 = a + float(ft[0])
+    val, fine = D.readers(beat, hop, t0)
 
-    start_sample = int(max(0.0, start) * sr)
-    end_sample = int(min(end, total_duration) * sr)
-    section = audio[start_sample:end_sample].astype(np.float32, copy=False)
-    if section.size < sr * 0.5:
-        raise ValueError("segment audio too short for reanalysis")
-
-    use_hpss = getattr(gcf, "use_hpss", False)
-    if use_hpss:
-        try:
-            y_harm, y_perc = hpss_audio(section)
-        except Exception:
-            y_harm = y_perc = section
-    else:
-        y_harm = y_perc = section
-
-    hop = FRAME_HOP_LENGTH
-    # Analyzed once for this segment: the shipped learned onset and downbeat models both use them.
-    frames = extract_frame_features(section, sr, y_perc, y_harm, hop_length=hop)
-    odf, hop_t = compute_beat_odf("optimized", frames, y_perc, sr, hop)
-
-    local = odf
     if progress_cb:
         progress_cb("Estimating BPM", 0.70)
-    # the octave the beat tracker reads tempos in
-    bpm_lo = float(gcf.bpm_min)
-    bpm_hi = 2.0 * bpm_lo
-    prev = None
+    # the segment's own frames for its tempo candidates and the steady grid over it
+    i0 = max(0, int(np.ceil((start - t0) / hop)))
+    i1 = min(beat.size, int(np.floor((end - t0) / hop)) + 1)
+    act_seg = beat[i0:i1]
+    off = (t0 + i0 * hop - start) - 0.5 * hop
     if prev_bpm is not None and np.isfinite(prev_bpm) and prev_bpm > 0:
-        prev = float(prev_bpm)
-        if use_only_prev_bpm:
-            bpm_lo = max(prev * 0.8, 0.1)
-            bpm_hi = prev * 1.2
-        else:
-            window = max(0.5, prev * 0.05)
-            bpm_lo = max(prev - window, min(bpm_lo, prev))
-            bpm_hi = min(prev + window, max(bpm_hi, prev))
-            if bpm_hi <= bpm_lo:
-                bpm_lo = max(prev - window, 0.1)
-                bpm_hi = prev + window
-    bpm_est, beats_local, downbeat = estimate_bpm_and_grid(
-        local,
-        sr,
-        hop,
-        bpm_lo=bpm_lo,
-        bpm_hi=bpm_hi,
-        prev_bpm=prev,
-        use_only_prev_bpm=use_only_prev_bpm if prev is not None else False,
-    )
-    bpm_est = float(bpm_est) if np.isfinite(bpm_est) else float(bpm)
-
-    beats_local = np.asarray(beats_local, dtype=float)
-    if beats_local.size:
-        beats_abs = beats_local + start
+        ref = float(prev_bpm)
+        near = D.Octave(ref / np.sqrt(2.0))
+        found = D.coarse_tempos(act_seg, hop, near)
+        tempos = np.unique(np.r_[ref, found[(found >= 0.8 * ref) & (found <= 1.2 * ref)]])
     else:
-        beats_abs = np.array([start], dtype=float)
+        ref = None
+        octave = D.Octave(float(cfg.analysisconfig.bpm_min))
+        tempos = D.with_ratios(D.coarse_tempos(act_seg, hop, octave), octave)
+    row = D.single_grid(act_seg, hop, off, end - start, tempos)[0]
+    row[0], row[1], row[3] = start, end, row[3] + start
+    row[4] = seg_arr[segment_index, 4]
+    row = D.final_refit(D.final_refit(row[None, :], val), fine)[0]
 
-    if not np.isfinite(downbeat):
-        downbeat = beats_local[0] if beats_local.size else start
-    new_inizio = float(start + float(downbeat))
-
-    # Global Downbeat Analysis for THIS segment only: place the bar-start
-    # (inizio) on the detected downbeat, snapped to an actual beat.
-    if beats_local.size >= 2:
-        try:
-            if progress_cb:
-                progress_cb("Downbeat analysis", 0.78)
-            db_segments = detect_downbeat_offset_segments(
-                np.asarray(section, dtype=np.float32),
-                int(sr),
-                beats_local,
-                method="global",
-                frames=frames,
-                boost_path=usable_boost_path(DOWNBEAT_BOOST_PATH),
-            )
-            db_time = db_segments[0].first_downbeat_time_sec if db_segments else None
-            if db_time is not None and np.isfinite(db_time):
-                snapped = float(beats_local[int(np.argmin(np.abs(beats_local - float(db_time))))])
-                new_inizio = float(start + snapped)
-                print(f"[SegRA] global downbeat (local) => {snapped:.3f}s")
-        except Exception as exc:
-            print(f"[SegRA] downbeat analysis skipped: {exc}")
+    if ref is None:
+        # a ramp? from the neighbours' tempos, and from the tempos of the segment's halves
+        guesses = []
+        if segment_index > 0 and segment_index + 1 < len(seg_arr):
+            guesses.append((segment_end_bpm(seg_arr[segment_index - 1]), float(seg_arr[segment_index + 1, 2])))
+        mid = 0.5 * (start + end)
+        if mid - start >= 2.0:
+            halves = []
+            for lo, hi in ((start, mid), (mid, end)):
+                j0 = max(0, int(np.ceil((lo - t0) / hop)))
+                j1 = min(beat.size, int(np.floor((hi - t0) / hop)) + 1)
+                own = D.with_ratios(D.coarse_tempos(beat[j0:j1], hop, octave), octave)
+                part = D.single_grid(beat[j0:j1], hop, (t0 + j0 * hop - lo) - 0.5 * hop, hi - lo,
+                                     np.unique(np.r_[own, tempos, row[2]]))[0]
+                halves.append(float(part[2]))
+            # a linear ramp has its halves' tempos at a quarter and three quarters of the way
+            h0, h1 = halves
+            guesses.append((h0 - 0.5 * (h1 - h0), h1 + 0.5 * (h1 - h0)))
+        row = G.ramp_or_steady(row, guesses, fine)
 
     if progress_cb:
-        progress_cb("Updating beat grid", 0.70)
+        progress_cb("Downbeat analysis", 0.80)
+    seg_beats = G.row_beats(row)
+    seg_beats = seg_beats[(seg_beats >= start - 1e-9) & (seg_beats < end)]
+    if seg_beats.size >= 2:
+        # the bars on the excerpt's own clock (its frames start at a)
+        dbs = B.downbeats(seg_beats - a, row[None, :], down, t0 - a, hop, frames, models.ctx, restarts=False) + a
+        if dbs.size:
+            if dbs.size >= 2:
+                per_bar = np.diff(np.searchsorted(seg_beats, dbs - 1e-6))
+                row[4] = float(np.median(per_bar))
+            row[3] = float(dbs[0])
 
+    if progress_cb:
+        progress_cb("Updating beat grid", 0.90)
+    beats_arr = np.asarray(beats_time_sec if beats_time_sec is not None else (), dtype=float)
     keep_mask = (beats_arr < start - 1e-9) | (beats_arr >= end - 1e-9)
-    beats_updated = np.concatenate([beats_arr[keep_mask], beats_abs])
-    beats_updated = np.sort(beats_updated.astype(float, copy=False))
-
+    beats_updated = np.sort(np.concatenate([beats_arr[keep_mask], seg_beats]))
     seg_updated = seg_arr.copy()
-    seg_updated[segment_index, 0] = start
-    seg_updated[segment_index, 1] = end
-    seg_updated[segment_index, 2] = bpm_est
-    seg_updated[segment_index, 3] = new_inizio
-    if seg_updated.shape[1] > 5:
-        seg_updated[segment_index, 5] = bpm_est   # reanalysis gives a steady tempo
+    seg_updated[segment_index] = row
+    print(f"[SegRA] {start:.3f}-{end:.3f}s bpm={row[2]:.2f}"
+          + (f"->{row[5]:.2f}" if abs(row[5] - row[2]) > 1e-6 else "")
+          + f" inizio={row[3]:.3f}s ts={int(row[4])}/4")
     if progress_cb:
-        progress_cb("Segment updated", 0.9)
-
+        progress_cb("Segment updated", 0.95)
     return beats_updated, seg_updated

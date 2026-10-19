@@ -67,6 +67,27 @@ def build_analysis_tab(dialog) -> None:
     dialog.sp_bpm_min.valueChanged.connect(
         lambda value: dialog.lbl_bpm_range.setText(f"Reads {int(value)} - {2 * int(value)} BPM")
     )
+    dialog.cb_bpm_dynamic = QCheckBox("Dynamic Analysis")
+    dialog.cb_bpm_dynamic.setToolTip(
+        "Checked: tempo changes within a track (sections, ramps).\n"
+        "Unchecked: one steady BPM for the whole track."
+    )
+    dialog.cb_dynamic_downbeat = QCheckBox("Dynamic Downbeat")
+    dialog.cb_dynamic_downbeat.setToolTip(
+        "Checked: odd bars and meter changes within a track.\n"
+        "Unchecked: one bar length and downbeat phase for the whole track.\n"
+        "Always on with Dynamic Analysis."
+    )
+
+    def _follow_dynamic(on):
+        # a dynamic grid always has dynamic bars; static analysis may have either
+        if on:
+            dialog._static_dynamic_downbeat = dialog.cb_dynamic_downbeat.isChecked()
+            dialog.cb_dynamic_downbeat.setChecked(True)
+        else:
+            dialog.cb_dynamic_downbeat.setChecked(getattr(dialog, "_static_dynamic_downbeat", True))
+        dialog.cb_dynamic_downbeat.setEnabled(not on)
+    dialog.cb_bpm_dynamic.toggled.connect(_follow_dynamic)
     dialog.ed_refine_onset_parameter_path = QLineEdit()
     dialog.ed_refine_onset_parameter_path.setPlaceholderText("relative or absolute .npz path")
     dialog.ed_refine_onset_parameter_path.setToolTip(
@@ -87,6 +108,8 @@ def build_analysis_tab(dialog) -> None:
     f_bpm = QFormLayout(grp_bpm)
     f_bpm.addRow("BPM min", dialog.sp_bpm_min)
     f_bpm.addRow("", dialog.lbl_bpm_range)
+    f_bpm.addRow(dialog.cb_bpm_dynamic)
+    f_bpm.addRow(dialog.cb_dynamic_downbeat)
 
     grp_beat_advanced = QGroupBox("Advanced")
     f_beat_advanced = QFormLayout(grp_beat_advanced)

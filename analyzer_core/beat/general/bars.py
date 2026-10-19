@@ -175,8 +175,9 @@ def bars_viterbi(pd, cost=CB, cheap=None, cost_at_start=0.0):
     return np.array([states[x][1] == 0 for x in st])
 
 
-def downbeats(beats, rows, down, t0, hop, frames, ctx_model):
-    """Downbeat times among the beats: the bars Viterbi on the fused observers."""
+def downbeats(beats, rows, down, t0, hop, frames, ctx_model, restarts=True):
+    """Downbeat times among the beats: the bars Viterbi on the fused observers (without ``restarts``,
+    one bar length and phase for the whole track: static bars)."""
     from analyzer_core.beat.downbeat_offset import _downbeat_feature_matrix, _robust_standardize_columns
     b = np.sort(np.asarray(beats, float))
     p = _at(down, t0, hop, b)
@@ -187,6 +188,8 @@ def downbeats(beats, rows, down, t0, hop, frames, ctx_model):
         n = min(b.size, pg.size)
         pgb[:n] = pg[:n]
         p = 1.0 / (1.0 + np.exp(-0.5 * (_logit(p) + _logit(pgb))))
+    if not restarts:
+        return b[bars_viterbi(p, np.inf)]
     return b[bars_viterbi(p, CB, section_starts(b, rows), 0.0)]
 
 

@@ -8,7 +8,7 @@ import numpy as np
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from analyzer_core.editor.beatgrid import canonical_inizio, rebuild_grid_from_segments, shift_grid_in_seg
-from core.tempo_rows import bpm_at, is_ramp_row, split_row, with_end_bpm
+from core.tempo_rows import bpm_at, is_ramp_row, retempo_row, segment_end_bpm, split_row, with_end_bpm
 from core.beat_geometry import MAX_BEATS_PER_BAR
 from ui.edit_panel.icons import icon
 from ui.theme import current_theme
@@ -72,6 +72,8 @@ class BeatgridEditMixin:
         self.inp_refBPM.setStyleSheet("QLineEdit { padding: 0 2px; }")
         self.inp_refBPM.setToolTip("Reference BPM (tapped or typed)")
         self.btn_setBPM = _btn("assign", "Assign the reference BPM to the current segment (downbeat at its start)")
+        self.btn_ramp_start = _btn("ramp_start", "Make the reference BPM the current segment's starting tempo (a ramp to its end tempo; its first beat stays)")
+        self.btn_ramp_end = _btn("ramp_end", "Make the reference BPM the current segment's ending tempo (a ramp from its start tempo; its first beat stays)")
         self.btn_reanalyze_segment = _btn("reanalyze", "")
         self.btn_bpm_half = _btn("bpm_half", "Halve the BPM")
         self.btn_bpm_double = _btn("bpm_double", "Double the BPM")
@@ -117,7 +119,7 @@ class BeatgridEditMixin:
         rows = [
             [self.btn_shift_half_back, self.btn_shift_coarse_back, self.btn_shift_fine_back,
              self.btn_shift_fine_fwd, self.btn_shift_coarse_fwd, self.btn_shift_half_fwd],
-            [self.zero_tap_cell, self.inp_refBPM, self.btn_setBPM,
+            [self.zero_tap_cell, self.inp_refBPM, self.btn_setBPM, self.btn_ramp_start, self.btn_ramp_end,
              self.btn_reanalyze_segment, self.btn_bpm_half, self.btn_bpm_double],
             [self.btn_merge_prev, self.btn_merge_next, self.btn_cutseg,
              self.btn_scope_all, self.btn_scope_segment, self.btn_set_downbeat],
@@ -139,11 +141,12 @@ class BeatgridEditMixin:
         rule_lay = QtWidgets.QHBoxLayout(ts_rule_cell)
         rule_lay.setContentsMargins(4, 2, 4, 2)
         rule_lay.addWidget(ts_rule)
-        grid.addWidget(ts_rule_cell, 0, 6, 3, 1)
+        n_cols = max(len(row) for row in rows)
+        grid.addWidget(ts_rule_cell, 0, n_cols, 3, 1)
         for r, row in enumerate(ts_cells):
             for c, w in enumerate(row):
-                grid.addWidget(w, r, 7 + c, _AL)
-        grid.addWidget(self.beatgrid_status, 3, 0, 1, 9, _AL)
+                grid.addWidget(w, r, n_cols + 1 + c, _AL)
+        grid.addWidget(self.beatgrid_status, 3, 0, 1, n_cols + 3, _AL)
 
         self.btn_shift_half_back.clicked.connect(lambda: self._shift_beatgrid_by_beats(-0.5))
         self.btn_shift_coarse_back.clicked.connect(lambda: self._shift_beatgrid_by(-0.010))
@@ -154,6 +157,8 @@ class BeatgridEditMixin:
         self.btn_zeroBPM.clicked.connect(self._zeroBPM)
         self.btn_tapBPM.clicked.connect(self._tapBPM_set)
         self.btn_setBPM.clicked.connect(self._setBPM_set)
+        self.btn_ramp_start.clicked.connect(lambda: self._set_ramp_bpm(at_end=False))
+        self.btn_ramp_end.clicked.connect(lambda: self._set_ramp_bpm(at_end=True))
         self.btn_reanalyze_segment.clicked.connect(self._reanalyze_segment_auto)
         self.btn_bpm_half.clicked.connect(lambda: self._scale_bpm(0.5))
         self.btn_bpm_double.clicked.connect(lambda: self._scale_bpm(2.0))
@@ -521,6 +526,32 @@ class BeatgridEditMixin:
         seg_start = float(segments[idx, 0])
         segments[idx, 2] = segments[idx, 5] = bpm   # a typed BPM makes the segment steady
         segments[idx, 3] = float(seg_start)
+        self._segments = segments
+        self._beatgrid = rebuild_grid_from_segments(self._segments)
+        self._emit_edit_update()
+        self.update_time(self._current_time)
+
+    def _set_ramp_bpm(self, *, at_end: bool) -> None:
+        """The reference BPM becomes the current segment's tempo at its start (or end); the other end
+        keeps its tempo, so the segment becomes a linear ramp. Its first beat stays where it is."""
+        if not self._has_active_segment():
+            return
+        bpm = self._reference_bpm()
+        if bpm is None:
+            return
+        segments = self._ensure_ts_column(self._segments)
+        idx = self._cur_idx
+        row = segments[idx]
+        st, ed = float(row[0]), float(row[1])
+        b0, b1 = float(row[2]), segment_end_bpm(row)
+        if at_end:
+            b1 = bpm
+        else:
+            b0 = bpm
+        beats = np.asarray(self._beatgrid, dtype=float)
+        inside = beats[(beats >= st - 1e-3) & (beats < ed)]
+        keep = float(inside[0]) if inside.size else float(row[3])
+        segments[idx] = retempo_row(row, b0, b1, keep)
         self._segments = segments
         self._beatgrid = rebuild_grid_from_segments(self._segments)
         self._emit_edit_update()
