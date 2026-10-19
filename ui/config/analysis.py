@@ -98,9 +98,28 @@ def build_analysis_tab(dialog) -> None:
     )
     dialog.ed_onset_feature_cache_path = QLineEdit()
     dialog.ed_onset_feature_cache_path.setToolTip(cache_tip)
-    dialog.btn_reoptimize_beat_parameters = QPushButton("Reoptimize Tempo-Change Onset")
+    dialog.ed_beat_tcn_parameter_path = QLineEdit()
+    dialog.ed_beat_tcn_parameter_path.setPlaceholderText("relative or absolute .npz path")
+    dialog.ed_beat_tcn_parameter_path.setToolTip(
+        "The frame TCN (.npz, its trainings) that hears the beats and downbeats."
+    )
+    dialog.ed_beat_critic_parameter_path = QLineEdit()
+    dialog.ed_beat_critic_parameter_path.setPlaceholderText("relative or absolute .npz path")
+    dialog.ed_beat_critic_parameter_path.setToolTip(
+        "The metronome critic (.npz, its fold models) that judges 3:2 / 4:3 readings."
+    )
+    dialog.ed_downbeat_ctx_parameter_path = QLineEdit()
+    dialog.ed_downbeat_ctx_parameter_path.setPlaceholderText("relative or absolute .npz path")
+    dialog.ed_downbeat_ctx_parameter_path.setToolTip(
+        "Gradient-boosted downbeat model (.npz) the tracker's bars read."
+    )
+    dialog.ed_beat_feature_cache_path = QLineEdit()
+    dialog.ed_beat_feature_cache_path.setToolTip(
+        "Folder for the frame features the beat models are retrained on (the tracker's own frames)."
+    )
+    dialog.btn_reoptimize_beat_parameters = QPushButton("Reoptimize Beat Models")
     dialog.btn_reoptimize_beat_parameters.setToolTip(
-        "Retrain the tempo-change onset model on the library's beat grids."
+        "Retrain the beat tracker's models on the library's beat grids."
     )
     dialog.btn_reoptimize_beat_parameters.clicked.connect(dialog._on_reoptimize_beat_parameters)
 
@@ -115,6 +134,10 @@ def build_analysis_tab(dialog) -> None:
     f_beat_advanced = QFormLayout(grp_beat_advanced)
     f_beat_advanced.addRow("Tempo-change onset (NPZ)", dialog.ed_refine_onset_parameter_path)
     f_beat_advanced.addRow("Onset feature cache", dialog.ed_onset_feature_cache_path)
+    f_beat_advanced.addRow("Beat TCN (NPZ)", dialog.ed_beat_tcn_parameter_path)
+    f_beat_advanced.addRow("Metronome critic (NPZ)", dialog.ed_beat_critic_parameter_path)
+    f_beat_advanced.addRow("Downbeat model (NPZ)", dialog.ed_downbeat_ctx_parameter_path)
+    f_beat_advanced.addRow("Beat feature cache", dialog.ed_beat_feature_cache_path)
     f_beat_advanced.addRow("", dialog.btn_reoptimize_beat_parameters)
 
     f_beat.addRow(grp_bpm)
@@ -450,16 +473,22 @@ class AnalysisSettingsMixin:
     def _on_reoptimize_beat_parameters(self) -> None:
         if self._parameter_optimization_is_running():
             return
-        title = "Reoptimize Tempo-Change Onset"
+        title = "Reoptimize Beat Models"
         from analyzer_core.beat.frame_features import FRAME_HOP_LENGTH
 
         dialog = BeatParameterOptimizeDialog({}, self)
         if dialog.exec() != QDialog.Accepted:
             return
-        parameter_text = self.ed_refine_onset_parameter_path.text().strip()
-        cache_text = self.ed_onset_feature_cache_path.text().strip()
+        paths = {
+            "refine_onset": (self.ed_refine_onset_parameter_path, self.ed_onset_feature_cache_path),
+            "downbeat_ctx": (self.ed_downbeat_ctx_parameter_path, self.ed_beat_feature_cache_path),
+            "beat_tcn": (self.ed_beat_tcn_parameter_path, self.ed_beat_feature_cache_path),
+            "beat_critic": (self.ed_beat_critic_parameter_path, self.ed_beat_feature_cache_path),
+        }
         queue = []
         for key, name, options in dialog.jobs():
+            parameter_text = paths[key][0].text().strip()
+            cache_text = paths[key][1].text().strip()
             if not parameter_text or not cache_text:
                 QMessageBox.warning(self, title, f"{name}: parameter path or feature cache path is empty.")
                 return
@@ -467,11 +496,22 @@ class AnalysisSettingsMixin:
                 "library_dir": self._project_path(self.ed_libpath.text().strip()),
                 "cache_dir": self._project_path(cache_text),
                 "output_path": self._project_path(parameter_text),
-                "use_hpss": bool(self.cb_use_hpss.isChecked()),
                 "rebuild_cache": False,
-                "frame_hop_length": int(FRAME_HOP_LENGTH),
                 **options,
             }
+            if key == "refine_onset":
+                request_values.update(use_hpss=bool(self.cb_use_hpss.isChecked()), frame_hop_length=int(FRAME_HOP_LENGTH))
+            if key in ("beat_tcn", "beat_critic"):
+                # fine-tuned from the current model, written where it is (backed up first when asked);
+                # the grid check runs the whole tracker with the current other models
+                request_values["base_path"] = request_values["output_path"]
+                request_values["bpm_min"] = float(self.sp_bpm_min.value())
+                request_values["downbeat_ctx_path"] = self._project_path(self.ed_downbeat_ctx_parameter_path.text().strip())
+            if key == "beat_tcn":
+                request_values["critic_path"] = self._project_path(self.ed_beat_critic_parameter_path.text().strip())
+            if key == "beat_critic":
+                # its hard examples are the decoder's readings with the beat model in use
+                request_values["tcn_path"] = self._project_path(self.ed_beat_tcn_parameter_path.text().strip())
             queue.append((key, name, options, request_values))
         if dialog.backup_existing():
             for _key, name, _options, request_values in queue:
@@ -574,10 +614,37 @@ class AnalysisSettingsMixin:
         validation = (
             f"{options['cv_folds']}-fold grouped CV" if result.cross_validated else "no cross-validation"
         )
+        grid = ""
+        if getattr(result, "grid", None) is not None:
+            g = result.grid
+            grid = (chr(10) + f"Grids on {g.songs} held-out songs: unusable beats {g.unusable_before_sec:.1f} -> "
+                    + f"{g.unusable_after_sec:.1f} s, downbeat F {g.downbeat_f_before:.3f} -> {g.downbeat_f_after:.3f} "
+                    + f"({g.better_songs} songs better, {g.worse_songs} worse)")
+        head = f"{name} updated:" if getattr(result, "saved", True) else f"{name} NOT saved (the grids got worse):"
+        if key == "beat_tcn":
+            held = "held-out songs" if result.cross_validated else "songs it was trained on"
+            return (
+                head + chr(10) + f"{result.output_path}" + chr(10)
+                + f"Tracks: {result.track_count}, steps: {result.steps}" + chr(10)
+                + f"Frame AP on {held}: beat {result.beat_ap_before:.3f} -> {result.beat_ap_after:.3f}, "
+                + f"downbeat {result.downbeat_ap_before:.3f} -> {result.downbeat_ap_after:.3f}" + grid
+            )
+        if key == "beat_critic":
+            held = "held-out songs" if result.cross_validated else "songs it was trained on"
+            return (
+                head + chr(10) + f"{result.output_path}" + chr(10)
+                + f"Tracks: {result.track_count}, steps: {result.steps}" + chr(10)
+                + f"Right grid heard above a wrong one on {held}: "
+                + f"{100 * result.pairwise_before:.1f}% -> {100 * result.pairwise_after:.1f}%" + grid
+            )
+        if key == "downbeat_ctx":
+            score = f"{kind} downbeat AP at the beats: {result.downbeat_average_precision:.3f} ({validation})"
+        else:
+            score = f"{kind} frame beat AP: {result.beat_average_precision:.3f} ({validation})"
         return (
             f"{name} parameter updated:\n{result.output_path}\n"
             f"Tracks: {result.track_count}, samples: {result.sample_count}\n"
-            f"{kind} frame beat AP: {result.beat_average_precision:.3f} ({validation})"
+            f"{score}"
         )
 
     def _on_reoptimize_phrase_parameter(self) -> None:

@@ -203,6 +203,10 @@ class SettingsDialog(
         self.ed_onset_feature_cache_path.setText(
             str(getattr(a, "onset_feature_cache_path", "") or "")
         )
+        self.ed_beat_tcn_parameter_path.setText(str(getattr(a, "beat_tcn_parameter_path", "") or ""))
+        self.ed_beat_critic_parameter_path.setText(str(getattr(a, "beat_critic_parameter_path", "") or ""))
+        self.ed_downbeat_ctx_parameter_path.setText(str(getattr(a, "downbeat_ctx_parameter_path", "") or ""))
+        self.ed_beat_feature_cache_path.setText(str(getattr(a, "beat_feature_cache_path", "") or ""))
         self._set_band(self.sp_env_lo_lo,  self.sp_env_lo_hi,  a.env_lo)
         self._set_band(self.sp_env_mid_lo, self.sp_env_mid_hi, a.env_mid)
         self._set_band(self.sp_env_hi_lo,  self.sp_env_hi_hi,  a.env_hi)
@@ -306,6 +310,10 @@ class SettingsDialog(
                 ),
                 refine_onset_parameter_path=self.ed_refine_onset_parameter_path.text().strip(),
                 onset_feature_cache_path=self.ed_onset_feature_cache_path.text().strip(),
+                beat_tcn_parameter_path=self.ed_beat_tcn_parameter_path.text().strip(),
+                beat_critic_parameter_path=self.ed_beat_critic_parameter_path.text().strip(),
+                downbeat_ctx_parameter_path=self.ed_downbeat_ctx_parameter_path.text().strip(),
+                beat_feature_cache_path=self.ed_beat_feature_cache_path.text().strip(),
                 env_lo=(float(self.sp_env_lo_lo.value()), float(self.sp_env_lo_hi.value())),
                 env_mid=(float(self.sp_env_mid_lo.value()), float(self.sp_env_mid_hi.value())),
                 env_hi=(float(self.sp_env_hi_lo.value()), float(self.sp_env_hi_hi.value())),

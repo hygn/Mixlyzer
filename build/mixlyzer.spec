@@ -40,15 +40,7 @@ a = Analysis(
             'assets/weights',
         ),
         (
-            '../assets/weights/beat_tcn_s7.npz',
-            'assets/weights',
-        ),
-        (
-            '../assets/weights/beat_tcn_s8.npz',
-            'assets/weights',
-        ),
-        (
-            '../assets/weights/beat_tcn_s9.npz',
+            '../assets/weights/beat_tcn.npz',
             'assets/weights',
         ),
         (

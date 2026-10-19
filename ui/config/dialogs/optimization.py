@@ -91,14 +91,19 @@ class ParameterOptimizeProgressDialog(QDialog):
 
 
 class BeatParameterOptimizeDialog(QDialog):
-    # The beat tracker's own models are fixed; the onset that places its tempo changes is retrainable.
+    # The beat tracker's retrainable models.
     ITEMS = (
+        ("beat_tcn", "Beat / Downbeat Activation (TCN, slow)"),
+        ("beat_critic", "Metronome Critic (slow)"),
         ("refine_onset", "Tempo-Change Onset"),
+        ("downbeat_ctx", "Downbeat (Bars)"),
     )
+    # models without an L2 setting
+    NO_L2 = ("candidate_selector", "refine_onset", "downbeat_boost", "downbeat_ctx", "beat_tcn", "beat_critic")
 
     def __init__(self, default_l2: dict[str, float], parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Reoptimize Tempo-Change Onset")
+        self.setWindowTitle("Reoptimize Beat Models")
         self._checks: dict[str, QCheckBox] = {}
         self._folds: dict[str, QSpinBox] = {}
         self._sweeps: dict[str, QCheckBox] = {}
@@ -136,7 +141,8 @@ class BeatParameterOptimizeDialog(QDialog):
             folds.setToolTip(
                 "Cross-validation folds by track. Off: one fit on the whole library."
             )
-            if key == "candidate_selector":
+            if key in ("candidate_selector", "beat_tcn", "beat_critic"):
+                # the slow beat models: a held-out grid check before anything is written
                 folds.setValue(5)
             sweep = QCheckBox()
             sweep.setToolTip(
@@ -154,7 +160,7 @@ class BeatParameterOptimizeDialog(QDialog):
             grid.addWidget(folds, row, 1)
             grid.addWidget(sweep, row, 2, alignment=Qt.AlignCenter)
             grid.addWidget(l2, row, 3)
-            if key in ("candidate_selector", "refine_onset", "downbeat_boost"):
+            if key in self.NO_L2:
                 sweep.setVisible(False)
                 l2.setVisible(False)
         self.advanced.setVisible(False)
@@ -183,7 +189,7 @@ class BeatParameterOptimizeDialog(QDialog):
             self._sweeps[key].setEnabled(selected and cross_validated)
             self._l2[key].setEnabled(
                 selected
-                and key not in ("candidate_selector", "refine_onset", "downbeat_boost")
+                and key not in self.NO_L2
                 and not self._sweeps[key].isChecked()
             )
         self.buttons.button(QDialogButtonBox.Ok).setEnabled(
@@ -196,7 +202,7 @@ class BeatParameterOptimizeDialog(QDialog):
             if not self._checks[key].isChecked():
                 continue
             folds = self._folds[key].value()
-            if key in ("candidate_selector", "refine_onset", "downbeat_boost"):
+            if key in self.NO_L2:
                 jobs.append(
                     (key, name, {"cv_folds": folds if folds >= 2 else 0})
                 )

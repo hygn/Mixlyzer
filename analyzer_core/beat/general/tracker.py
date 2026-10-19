@@ -49,21 +49,22 @@ class TrackerResult:
 class Models:
     """The trained parts, loaded once: TCN seeds, critic folds, the contextual downbeat GBM."""
 
-    def __init__(self, tcn_paths=T.WEIGHT_PATHS, critic_path=C.WEIGHT_PATH, ctx_path=B.CTX_PATH):
-        self.tcn = [T.load_weights(p) for p in tcn_paths]
+    def __init__(self, tcn_path=T.WEIGHT_PATH, critic_path=C.WEIGHT_PATH, ctx_path=B.CTX_PATH):
+        self.tcn = T.load_weights(tcn_path)
         self.critic = C.load_weights(critic_path)
         self.ctx = B.load_ctx_model(ctx_path)
 
 
-_MODELS = None
+_MODELS: dict = {}
 
 
-def load_models() -> Models:
-    """The shipped models, loaded once per process."""
-    global _MODELS
-    if _MODELS is None:
-        _MODELS = Models()
-    return _MODELS
+def load_models(ctx_path: str | None = None, tcn_path: str | None = None, critic_path: str | None = None) -> Models:
+    """The models (the shipped ones, or retrained ones at the given paths), loaded once per process and
+    paths."""
+    key = (ctx_path or B.CTX_PATH, tcn_path or T.WEIGHT_PATH, critic_path or C.WEIGHT_PATH)
+    if key not in _MODELS:
+        _MODELS[key] = Models(ctx_path=key[0], tcn_path=key[1], critic_path=key[2])
+    return _MODELS[key]
 
 
 def dominant_tempo(segments) -> float:

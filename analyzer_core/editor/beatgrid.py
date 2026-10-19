@@ -149,7 +149,12 @@ def reanalyze_segment_from_file(
     frames = extract_frame_features(section, sr, y_perc, y_harm, hop_length=T.FRAME_HOP_LENGTH)
     if progress_cb:
         progress_cb("Beat activations", 0.40)
-    models = load_models()
+    gcf = cfg.analysisconfig
+    models = load_models(
+        str(getattr(gcf, "downbeat_ctx_parameter_path", "") or "").strip() or None,
+        str(getattr(gcf, "beat_tcn_parameter_path", "") or "").strip() or None,
+        str(getattr(gcf, "beat_critic_parameter_path", "") or "").strip() or None,
+    )
     x = T.frame_inputs(frames)
     acts = [T.activations(P, x) for P in models.tcn]
     beat = np.mean([act for act, _ in acts], axis=0)

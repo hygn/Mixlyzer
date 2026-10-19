@@ -374,7 +374,13 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
         print(f"[Tempo] boundary onset unavailable ({exc}); tempo changes stay where the decoder put them")
     dynamic = bool(getattr(gcf, "bpm_dynamic", True))
     tracked = track_beats(
-        tracker_frames, float(gcf.bpm_min), load_models(), refine_onset,
+        tracker_frames, float(gcf.bpm_min),
+        load_models(
+            str(getattr(gcf, "downbeat_ctx_parameter_path", "") or "").strip() or None,
+            str(getattr(gcf, "beat_tcn_parameter_path", "") or "").strip() or None,
+            str(getattr(gcf, "beat_critic_parameter_path", "") or "").strip() or None,
+        ),
+        refine_onset,
         dynamic=dynamic, dynamic_downbeat=dynamic or bool(getattr(gcf, "dynamic_downbeat", True)),
     )
     duration_sec = float(features["duration_sec"])

@@ -51,6 +51,21 @@ def _load_refine_onset_optimizer() -> _OptimizerDefinition:
     return _OptimizerDefinition(RefineOnsetOptimizationRequest, optimize_refine_onset)
 
 
+def _load_beat_tcn_optimizer() -> _OptimizerDefinition:
+    from optimizer.beat_tcn_optimizer import BeatTcnOptimizationRequest, optimize_beat_tcn
+    return _OptimizerDefinition(BeatTcnOptimizationRequest, optimize_beat_tcn)
+
+
+def _load_beat_critic_optimizer() -> _OptimizerDefinition:
+    from optimizer.beat_critic_optimizer import BeatCriticOptimizationRequest, optimize_beat_critic
+    return _OptimizerDefinition(BeatCriticOptimizationRequest, optimize_beat_critic)
+
+
+def _load_downbeat_ctx_optimizer() -> _OptimizerDefinition:
+    from optimizer.downbeat_ctx_optimizer import DownbeatCtxOptimizationRequest, optimize_downbeat_ctx
+    return _OptimizerDefinition(DownbeatCtxOptimizationRequest, optimize_downbeat_ctx)
+
+
 def _load_downbeat_boost_optimizer() -> _OptimizerDefinition:
     from optimizer.downbeat_boost_optimizer import DownbeatBoostOptimizationRequest, optimize_downbeat_boost
     return _OptimizerDefinition(DownbeatBoostOptimizationRequest, optimize_downbeat_boost)
@@ -74,6 +89,9 @@ _OPTIMIZER_LOADERS: dict[str, Callable[[], _OptimizerDefinition]] = {
     "candidate_selector": _load_beat_candidate_selector_optimizer,
     "refine_onset": _load_refine_onset_optimizer,
     "downbeat_boost": _load_downbeat_boost_optimizer,
+    "downbeat_ctx": _load_downbeat_ctx_optimizer,
+    "beat_tcn": _load_beat_tcn_optimizer,
+    "beat_critic": _load_beat_critic_optimizer,
     "phrase": _load_phrase_optimizer,
     "jumpcue": _load_jumpcue_optimizer,
 }

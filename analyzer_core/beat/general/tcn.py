@@ -6,8 +6,9 @@ width 5 with dilations 1 .. 256 frames, ELU, 1x1 mix), ELU, a 1x1 output to two 
 Musical: a beat is heard from many cues at once (bass, harmony changes, drums, melody onsets) over
 several bars of context. Engineering: the same frames the rest of the analyzer uses, no torch.
 
-Weights: a npz per training seed with the torch state dict's arrays plus the input statistics
-(``mu``, ``sd``), see ``assets/weights/beat_tcn_s*.npz``.
+Weights: one npz with the equally good trainings (seeds) the tracker's consensus runs, each the torch state
+dict's arrays plus the input statistics (``mu``, ``sd``) under ``s<i>.``, see ``assets/weights/beat_tcn.npz``
+(Reoptimize fine-tunes them on the library, optimizer/beat_tcn_optimizer.py).
 """
 from __future__ import annotations
 
@@ -19,7 +20,8 @@ DILATIONS = (1, 2, 4, 8, 16, 32, 64, 128, 256)
 K = 5
 CHANNELS = ('chroma', 'bass_chroma', 'mfcc', 'tonnetz', 'onset_bands', 'rms_db', 'band_ratios', 'flatness',
             'librosa_onset', 'harmonic_onset', 'percussive_bands', 'percussive_share', 'melody_chroma', 'melody_onset')
-WEIGHT_PATHS = ('assets/weights/beat_tcn_s7.npz', 'assets/weights/beat_tcn_s8.npz', 'assets/weights/beat_tcn_s9.npz')
+WEIGHT_PATH = 'assets/weights/beat_tcn.npz'
+ENSEMBLE_FORMAT = 'mixlyzer.beat_tcn.v1'
 # The frame grid every shipped model of the tracker was trained on (11.6 ms frames): the dilations count
 # frames and the spectral features depend on the rate, so the tracker reads frames on this grid only.
 SAMPLE_RATE = 22050
@@ -30,9 +32,28 @@ def elu(x):
     return np.where(x > 0, x, np.expm1(np.minimum(x, 0)))
 
 
-def load_weights(path: str) -> dict:
-    with np.load(resource_path(path)) as z:
-        return {k: np.asarray(z[k], dtype=np.float32) for k in z.files}
+def load_weights(path: str = WEIGHT_PATH) -> list[dict]:
+    """The trainings in an ensemble file, each a dict of float32 arrays."""
+    with np.load(resource_path(path), allow_pickle=False) as z:
+        if str(np.asarray(z['format']).item()) != ENSEMBLE_FORMAT:
+            raise ValueError(f'Beat TCN model format mismatch: {path}')
+        nets = []
+        for i in range(int(np.asarray(z['trainings']).item())):
+            prefix = f's{i}.'
+            nets.append({k[len(prefix):]: np.asarray(z[k], dtype=np.float32) for k in z.files if k.startswith(prefix)})
+        return nets
+
+
+def save_weights(path, nets: list[dict], training: dict | None = None) -> None:
+    """Write trainings as an ensemble file (the format ``load_weights`` reads)."""
+    import json
+    from pathlib import Path
+    payload = {'format': np.asarray(ENSEMBLE_FORMAT), 'trainings': np.asarray(len(nets)),
+               'training_json': np.asarray(json.dumps(training or {}, ensure_ascii=False, sort_keys=True))}
+    for i, P in enumerate(nets):
+        payload.update({f's{i}.{k}': np.asarray(v, dtype=np.float32) for k, v in P.items()})
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+    np.savez_compressed(path, **payload)
 
 
 def frame_inputs(frames) -> np.ndarray:

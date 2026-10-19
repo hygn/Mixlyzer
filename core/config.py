@@ -126,6 +126,12 @@ class analysisconfig:
     # The onset model that places tempo changes (retrained by Reoptimize) and its feature cache.
     refine_onset_parameter_path: str
     onset_feature_cache_path: str
+    # The beat tracker's frame TCN, metronome critic and contextual downbeat model (Reoptimize
+    # retrains them) and the frame-feature cache the beat tracker's optimizers share.
+    beat_tcn_parameter_path: str
+    beat_critic_parameter_path: str
+    downbeat_ctx_parameter_path: str
+    beat_feature_cache_path: str
     # low / mid / high bands (Hz) of the stored overview levels; the main view
     # waveform uses them too
     env_lo: Tuple[float, float]
@@ -301,6 +307,10 @@ def default_cfg():
         dynamic_downbeat=True,
         refine_onset_parameter_path="assets/weights/refine_onset_hgb.npz",
         onset_feature_cache_path="featurecache/onset",
+        beat_tcn_parameter_path="assets/weights/beat_tcn.npz",
+        beat_critic_parameter_path="assets/weights/beat_critic.npz",
+        downbeat_ctx_parameter_path="assets/weights/downbeat_ctx_hgb.npz",
+        beat_feature_cache_path="featurecache/beat",
         env_lo=(20.0, 200.0),
         env_mid=(250.0, 1500.0),
         env_hi=(1600.0, 11025.0),
@@ -407,6 +417,7 @@ def load_cfg() -> config:
     def _ensure_feature_cache_dirs(cfg: config) -> None:
         for path_text in (
             cfg.analysisconfig.onset_feature_cache_path,
+            cfg.analysisconfig.beat_feature_cache_path,
             cfg.analysisconfig.phrase_feature_cache_path,
             cfg.analysisconfig.jumpcue_feature_cache_path,
         ):
