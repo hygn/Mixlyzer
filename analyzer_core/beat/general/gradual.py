@@ -1,12 +1,15 @@
 """Gradual tempo: ramps (accelerando / ritardando) and drifting sections.
 
-Ramps. A decoded tempo change (2 - 30 %) is either sudden or gradual -- one change event either way.
-Musical: in a gradual change the tempo moves without a jump: the ramp starts on a beat of the old grid
-at the old tempo, ends at the new tempo, and the new section continues from the ramp's last beat.
-Engineering: with both end tempos tied to the sections and the new section's phase following the ramp,
-a ramp has one free parameter (its length) besides where it starts; it is scored over the whole new
-section and kept only when it explains the onsets better (by one beat of evidence) than the step at its
-best place (the decoder's junction is on a 0.5 s grid; the boundary refinement comes later).
+Ramps. A decoded tempo change of 2 % or more (any change in the BPM octave) is either sudden or gradual.
+Musical: in a gradual change the tempo moves along a straight line in time, starting on a beat of the old
+grid; the new section continues from the ramp's last beat. The ramp either joins both tempos (continuous), or
+one of its ends jumps: an accelerando that starts with a jump on a beat (a fill, a new phrase) and then keeps
+speeding up to the new tempo, or a ritardando that ends with a jump into the new tempo.
+Engineering: a continuous ramp has one free parameter (its length) besides where it starts; a jump adds one
+(the tempo at the jumping end, a fraction of the change). Every candidate is scored over the whole new
+section and kept only when it explains the onsets better than the step at its best place (the decoder's
+junction is on a 0.5 s grid; the boundary refinement comes later) by one beat of evidence per added
+parameter.
 
 Drift. A live band without a click drifts: sections whose tempo moves linearly in time instead of a
 staircase of steady sections with re-syncs. Same objective as the decoder (evidence minus J per section)
@@ -25,16 +28,20 @@ from .decode import J as SECTION_COST, is_ramp, steady_beats
 MAX_N = 32                 # a ramp is at most 32 beats long
 MAX_CHANGE = 0.03          # neighbours further apart in tempo are a tempo change, not a drift
 AUDIBLE = 0.025            # a slope must move some beat this far from the steady fit
+JUMP_FRACS = np.linspace(0.1, 0.9, 9)   # a ramp's jumping end: its tempo at these fractions of the change
+PHASE_STEP = 0.0005        # s: the new grid's evidence is tabulated per phase of its beat at this step
 
 
 def ramp_fix(rows, val, cost=1.0):
     rows = [np.asarray(r, float).copy() for r in rows]
     out = [rows[0]]
     n_ramps = 0
+    Ns = np.arange(2, MAX_N + 1, dtype=np.float64)              # ramp lengths in beats
+    kk = np.arange(1, MAX_N, dtype=np.float64)                  # a ramp's inner beats 1 .. N-1
     for B in rows[1:]:
         A = out[-1]
         TA, TB = A[2], B[2]
-        if is_ramp(A) or is_ramp(B) or not (0.02 <= abs(TB / TA - 1.0) <= 0.30):
+        if is_ramp(A) or is_ramp(B) or abs(TB / TA - 1.0) < 0.02:
             out.append(B)
             continue
         PA, PB = 60.0 / TA, 60.0 / TB
@@ -56,39 +63,68 @@ def ramp_fix(rows, val, cost=1.0):
             ib = np.searchsorted(b_ext, cuts - 1e-6)
             step = max(step, float(np.max(ca[ia] + (cb[-1] - cb[ib]))))
         va = np.cumsum(np.r_[0.0, val(a_all)])
+
+        # the new grid's evidence from a ramp end e to the section end: per phase of B's beat, the
+        # cumulative evidence of that comb, so after(e) = the comb's total - its beats before e
+        ph = np.arange(0.0, PB, PHASE_STEP)
+        nb = int((B[1] - Jt) / PB) + 2
+        comb = Jt + ph[:, None] + PB * np.arange(nb)[None, :]
+        cc = np.concatenate([np.zeros((ph.size, 1)), np.cumsum(np.where(comb < B[1], val(comb), 0.0), 1)], 1)
+
+        def after(e):
+            d = e - Jt
+            j0 = np.floor(d / PB)
+            ip = np.round((d - j0 * PB) / PHASE_STEP).astype(np.int64)
+            j0 = j0.astype(np.int64) + (ip >= ph.size)
+            ip = ip % ph.size
+            return cc[ip, -1] - cc[ip, np.minimum(j0, nb)]
+
+        # every (start beat, length) per shape: the ramp's beats under its tempo line T0 -> T1
+        ias = np.arange(max(0, a_all.size - MAX_N), a_all.size)
+        ias = ias[a_all[ias] > A[0] + PA]
+        S = a_all[ias][:, None]
+        before = (va[ias] + val(a_all[ias]))[:, None]           # A up to the ramp start, which is a ramp beat
+        shapes = [('c', TA, TB)]
+        shapes += [('s', TA + f * (TB - TA), TB) for f in JUMP_FRACS]
+        shapes += [('e', TA, TA + f * (TB - TA)) for f in JUMP_FRACS]
         cands = []
-        for ia in range(max(0, a_all.size - MAX_N), a_all.size):
-            s = a_all[ia]
-            if s <= A[0] + PA:
+        for kind, T0, T1 in shapes:
+            e = S + 120.0 * Ns[None, :] / (T0 + T1)             # N beats under the line T0 -> T1
+            ok = (e > Jt) & (e < B[1] - PB)
+            if not ok.any():
                 continue
-            for N in range(2, MAX_N + 1):
-                e = s + 120.0 * N / (TA + TB)                   # N beats under the linear tempo line TA -> TB
-                if e <= Jt or e >= B[1] - PB:
-                    continue
-                inner = ramp_beat_times(s, e, TA, TB, s, e)
-                after = e + PB * np.arange(int((B[1] - e) / PB) + 1)
-                ev = float(va[ia] + val(inner).sum() + val(after[after < B[1]]).sum())
-                cands.append((ev, ia, N))
-        if not cands:
-            out.append(B)
-            continue
-        cands.sort(reverse=True)
+            slope = (T1 - T0) / (e - S)                         # BPM per second
+            flat = np.abs(slope[..., None]) < 1e-12
+            x = np.where(flat, 60.0 * kk / T0, (-T0 + np.sqrt(np.maximum(T0 * T0 + 120.0 * slope[..., None] * kk, 0.0)))
+                         / np.where(flat, 1.0, slope[..., None]))
+            inner = np.where(kk < Ns[None, :, None], val(S[..., None] + x), 0.0).sum(-1)
+            ev = np.where(ok, before + inner + after(np.where(ok, e, Jt + PB)), -np.inf)
+            ev -= 0.0 if kind == 'c' else cost                    # a jump: one more parameter
+            for t in np.argsort(ev, axis=None)[::-1][:3]:
+                i, n = np.unravel_index(t, ev.shape)
+                if np.isfinite(ev[i, n]):
+                    cands.append((float(ev[i, n]), kind, int(ias[i]), int(Ns[n]), T0, T1))
         best = None
-        for _, ia, N in cands[:8]:                              # the new tempo refitted, anchored at the ramp end
-            s = a_all[ia]
-            for T2 in TB * (1.0 + np.linspace(-0.004, 0.004, 81)):
-                e = s + 120.0 * N / (TA + T2)
-                if e <= Jt or e >= B[1] - PB:
-                    continue
-                P2 = 60.0 / T2
-                after = e + P2 * np.arange(int((B[1] - e) / P2) + 1)
-                ev = float(va[ia] + val(ramp_beat_times(s, e, TA, T2, s, e)).sum() + val(after[after < B[1]]).sum())
-                if best is None or ev > best[0]:
-                    best = (ev, s, e, T2)
+        # the new tempo refitted, anchored at the ramp end, for the 3 best candidates of each shape
+        for kind in 'cse':
+            for _, _, ia, N, T0, T1 in sorted((c for c in cands if c[1] == kind), reverse=True)[:3]:
+                s = a_all[ia]
+                for T2 in TB * (1.0 + np.linspace(-0.004, 0.004, 81)):
+                    t0 = T0 * T2 / TB if kind == 's' else T0    # a jump tempo keeps its fraction of the change
+                    t1 = T1 if kind == 'e' else T2
+                    e = s + 120.0 * N / (t0 + t1)
+                    if e <= Jt or e >= B[1] - PB:
+                        continue
+                    P2 = 60.0 / T2
+                    nxt = e + P2 * np.arange(int((B[1] - e) / P2) + 1)
+                    ev = float(va[ia] + val(ramp_beat_times(s, e, t0, t1, s, e)).sum() + val(nxt[nxt < B[1]]).sum())
+                    ev -= 0.0 if kind == 'c' else cost
+                    if best is None or ev > best[0]:
+                        best = (ev, s, e, t0, t1, T2)
         if best is not None and best[0] - step > cost:
-            _, s, e, T2 = best
+            _, s, e, t0, t1, T2 = best
             A[1] = s
-            out.append(np.array([s, e, TA, s, A[4] if A.size > 4 else 4.0, T2]))
+            out.append(np.array([s, e, t0, s, A[4] if A.size > 4 else 4.0, t1]))
             B[0] = e - 1e-3
             B[2] = T2
             B[3] = e
