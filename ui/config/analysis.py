@@ -58,162 +58,44 @@ def build_analysis_tab(dialog) -> None:
 
     # Beat
     tab_beat = QWidget(); f_beat = QFormLayout(tab_beat)
-    dialog.cb_bpm_dynamic = QCheckBox("Use Dynamic Analysis")
-    dialog.cb_bpm_adaptive_win = QCheckBox("Use Adaptive Window for Dynamic Analysis")
-    dialog.ed_beat_candidate_selector_parameter_path = QLineEdit()
-    dialog.ed_beat_candidate_selector_parameter_path.setPlaceholderText("relative or absolute .npz path")
-    dialog.cmb_onset_source = QComboBox()
-    dialog.cmb_onset_source.addItem("librosa", "librosa")
-    dialog.cmb_onset_source.addItem("optimized", "optimized")
-    dialog.cmb_onset_source.setToolTip(
-        "Onset (ODF) used to detect BPM and the beat grid.\n"
-        "librosa: librosa onset strength.\n"
-        "optimized: learned linear model over librosa onset and the frame features\n"
-        "shared with downbeat analysis (trained on the library's beat grids)."
+    dialog.sp_bpm_min = QSpinBox(); dialog.sp_bpm_min.setRange(60,  400)
+    dialog.sp_bpm_min.setToolTip(
+        "The beat tracker reads every tempo in the octave from here (BPM min .. 2 x BPM min);\n"
+        "a song outside it is read at half or double tempo."
     )
-    dialog.ed_onset_parameter_path = QLineEdit()
-    dialog.ed_onset_parameter_path.setPlaceholderText("relative or absolute .json path")
-    dialog.ed_onset_feature_cache_path = QLineEdit()
-    dialog.cb_beat_phase_correction = QCheckBox("Beat Phase Correction")
-    dialog.cb_beat_phase_correction.setToolTip(
-        "Shift the tracked beat grid by 0, 1/4, 1/2 or 3/4 beat to the phase a learned\n"
-        "model scores highest over the track, from how the local pulse of each onset\n"
-        "source (drums, harmony, melody) lines up with each candidate."
-    )
-    dialog.ed_beat_phase_parameter_path = QLineEdit()
-    dialog.ed_beat_phase_parameter_path.setPlaceholderText("relative or absolute .json path")
-    dialog.ed_beat_phase_feature_cache_path = QLineEdit()
-    dialog.cb_dynamic_downbeat = QCheckBox("Dynamic Downbeat Detection")
-    dialog.cb_dynamic_downbeat.setToolTip(
-        "Checked: detect per-section downbeat changes (Dynamic).\n"
-        "Unchecked: one global downbeat for the whole track (Global)."
-    )
-    dialog.cb_beat_grid_refine = QCheckBox("Grid Refinement")
-    dialog.cb_beat_grid_refine.setToolTip(
-        "Refine the tracked grid on the grid-refinement onset: take a short intro tempo,\n"
-        "merge a section whose own grid is not clearly better than its neighbour's (an\n"
-        "unclear or rubato section keeps the better neighbouring tempo), re-lock the\n"
-        "grid's phase where it settles at a new offset, move tempo changes to where the\n"
-        "two grids fit, and check the whole grid for a half-beat offset.\n"
-        "Tempo ramps come from the tempo tracker itself; steady sections stay static."
-    )
-    dialog.cb_meter_sections = QCheckBox("Sustained 3/4 Sections")
-    dialog.cb_meter_sections.setToolTip(
-        "Give sections that stay in 3/4 for several bars their own 3/4 segment.\n"
-        "A single odd bar stays a downbeat shift."
+    dialog.lbl_bpm_range = QLabel()
+    dialog.sp_bpm_min.valueChanged.connect(
+        lambda value: dialog.lbl_bpm_range.setText(f"Reads {int(value)} - {2 * int(value)} BPM")
     )
     dialog.ed_refine_onset_parameter_path = QLineEdit()
     dialog.ed_refine_onset_parameter_path.setPlaceholderText("relative or absolute .npz path")
     dialog.ed_refine_onset_parameter_path.setToolTip(
-        "Gradient-boosted onset model (.npz) used by Phase Re-lock & Tempo Ramps.\n"
-        "The tempo itself still comes from the onset parameters above."
+        "Gradient-boosted onset model (.npz) that places the tracker's tempo changes."
     )
-    dialog.ed_meter_section_parameter_path = QLineEdit()
-    dialog.ed_meter_section_parameter_path.setPlaceholderText("relative or absolute .npz path")
-    dialog.ed_meter_section_parameter_path.setToolTip("NumPy 3/4 section classifier (.npz).")
-    dialog.ed_downbeat_parameter_path = QLineEdit()
-    dialog.ed_downbeat_parameter_path.setPlaceholderText("relative or absolute .json path")
-    dialog.ed_downbeat_boost_parameter_path = QLineEdit()
-    dialog.ed_downbeat_boost_parameter_path.setPlaceholderText("relative or absolute .npz path (empty: JSON weights)")
-    dialog.ed_downbeat_boost_parameter_path.setToolTip(
-        "Gradient-boosted downbeat model (.npz), used instead of the downbeat parameters\n"
-        "(JSON) above. Empty, or a file that does not load: the JSON weights are used."
-    )
-    dialog.ed_downbeat_feature_cache_path = QLineEdit()
-    dialog.btn_reoptimize_beat_parameters = QPushButton("Reoptimize Beat Parameters")
-    dialog.btn_reoptimize_beat_parameters.setToolTip(
-        "Retrain the onset, adaptive-window selector, beat phase and / or downbeat models on the library's beat grids."
-    )
-    dialog.btn_reoptimize_beat_parameters.clicked.connect(dialog._on_reoptimize_beat_parameters)
-    dialog.sp_bpm_hop = QSpinBox(); dialog.sp_bpm_hop.setRange(16, 512); dialog.sp_bpm_hop.setSingleStep(32)
-    dialog.sp_bpm_win = QSpinBox(); dialog.sp_bpm_win.setRange(1000, 60000); dialog.sp_bpm_win.setSingleStep(64)
-    dialog.sp_bpm_min = QSpinBox(); dialog.sp_bpm_min.setRange(60,  400)
-    dialog.sp_bpm_max = QSpinBox(); dialog.sp_bpm_max.setRange(100, 800)
-    dialog.sp_beatgrid_offset = QDoubleSpinBox(); dialog.sp_beatgrid_offset.setRange(-10000.0, 10000.0); dialog.sp_beatgrid_offset.setDecimals(3); dialog.sp_beatgrid_offset.setSingleStep(1.0)
-    dialog.cb_bpm_dynamic.setToolTip(
-        "Detect tempo changes within a track instead of one BPM for the whole track."
-    )
-    dialog.cb_bpm_adaptive_win.setToolTip(
-        "Also try 2x, 4x and whole-track analysis windows for dynamic analysis\n"
-        "and keep the best fit."
-    )
-    onset_path_tip = "Learned onset model (.json) used when Onset source is 'optimized'."
-    selector_path_tip = "NumPy adaptive-window selector model (.npz)."
-    beat_phase_path_tip = "Learned beat phase model (.json) used by Beat Phase Correction."
-    downbeat_path_tip = "Learned downbeat model (.json)."
     cache_tip = (
         "Folder for features cached while reoptimizing, so later runs are faster."
     )
-    dialog.ed_onset_parameter_path.setToolTip(onset_path_tip)
+    dialog.ed_onset_feature_cache_path = QLineEdit()
     dialog.ed_onset_feature_cache_path.setToolTip(cache_tip)
-    dialog.ed_beat_candidate_selector_parameter_path.setToolTip(selector_path_tip)
-    dialog.ed_beat_phase_parameter_path.setToolTip(beat_phase_path_tip)
-    dialog.ed_beat_phase_feature_cache_path.setToolTip(cache_tip)
-    dialog.ed_downbeat_parameter_path.setToolTip(downbeat_path_tip)
-    dialog.ed_downbeat_feature_cache_path.setToolTip(cache_tip)
-    dialog.sp_bpm_hop.setToolTip(
-        "Step between onset frames in samples. Smaller is finer and slower.\n"
-        "Also the frame grid of the learned onset, beat phase and downbeat features."
+    dialog.btn_reoptimize_beat_parameters = QPushButton("Reoptimize Tempo-Change Onset")
+    dialog.btn_reoptimize_beat_parameters.setToolTip(
+        "Retrain the tempo-change onset model on the library's beat grids."
     )
-    dialog.lbl_bpm_hop_warning = QLabel()
-    dialog.lbl_bpm_hop_warning.setWordWrap(True)
-    dialog.lbl_bpm_hop_warning.setStyleSheet("color: #d8a441;")
-    dialog.lbl_bpm_hop_warning.setVisible(False)
-    dialog.sp_bpm_win.setToolTip(
-        "Length of the analysis window used to estimate tempo."
-    )
-    dialog.sp_bpm_min.setToolTip(
-        "Lowest BPM the tempo search considers. The beat tracker reads every tempo\n"
-        "in the octave from here (BPM min .. 2 x BPM min)."
-    )
-    dialog.sp_bpm_max.setToolTip(
-        "Highest BPM the editor's beat reanalysis considers.\n"
-        "The beat tracker reads tempos up to 2 x BPM min."
-    )
-    dialog.sp_beatgrid_offset.setToolTip(
-        "Constant shift applied to every detected beat (positive = later)."
-    )
-    grp_detection = QGroupBox("Detection")
-    f_detection = QFormLayout(grp_detection)
-    f_detection.addRow(dialog.cb_bpm_dynamic)
-    f_detection.addRow(dialog.cb_bpm_adaptive_win)
-    f_detection.addRow("Onset source", dialog.cmb_onset_source)
-    f_detection.addRow(dialog.cb_beat_phase_correction)
-    f_detection.addRow(dialog.cb_beat_grid_refine)
-    f_detection.addRow(dialog.cb_dynamic_downbeat)
-    f_detection.addRow(dialog.cb_meter_sections)
+    dialog.btn_reoptimize_beat_parameters.clicked.connect(dialog._on_reoptimize_beat_parameters)
 
-    grp_bpm = QGroupBox("BPM & Beatgrid")
+    grp_bpm = QGroupBox("BPM")
     f_bpm = QFormLayout(grp_bpm)
-    f_bpm.addRow("Hop length (samples)", dialog.sp_bpm_hop)
-    f_bpm.addRow("", dialog.lbl_bpm_hop_warning)
-    f_bpm.addRow("Window (ms)", dialog.sp_bpm_win)
     f_bpm.addRow("BPM min", dialog.sp_bpm_min)
-    f_bpm.addRow("BPM max", dialog.sp_bpm_max)
-    f_bpm.addRow("Beatgrid offset (ms)", dialog.sp_beatgrid_offset)
+    f_bpm.addRow("", dialog.lbl_bpm_range)
 
     grp_beat_advanced = QGroupBox("Advanced")
     f_beat_advanced = QFormLayout(grp_beat_advanced)
-    f_beat_advanced.addRow("Onset parameters (JSON)", dialog.ed_onset_parameter_path)
+    f_beat_advanced.addRow("Tempo-change onset (NPZ)", dialog.ed_refine_onset_parameter_path)
     f_beat_advanced.addRow("Onset feature cache", dialog.ed_onset_feature_cache_path)
-    f_beat_advanced.addRow(
-        "Adaptive window selector (NPZ)", dialog.ed_beat_candidate_selector_parameter_path
-    )
-    f_beat_advanced.addRow("Beat phase parameters (JSON)", dialog.ed_beat_phase_parameter_path)
-    f_beat_advanced.addRow("Beat phase feature cache", dialog.ed_beat_phase_feature_cache_path)
-    f_beat_advanced.addRow("Downbeat parameters (JSON)", dialog.ed_downbeat_parameter_path)
-    f_beat_advanced.addRow("Downbeat model (NPZ)", dialog.ed_downbeat_boost_parameter_path)
-    f_beat_advanced.addRow("Downbeat feature cache", dialog.ed_downbeat_feature_cache_path)
-    f_beat_advanced.addRow("Grid refinement onset (NPZ)", dialog.ed_refine_onset_parameter_path)
-    f_beat_advanced.addRow("3/4 section classifier (NPZ)", dialog.ed_meter_section_parameter_path)
     f_beat_advanced.addRow("", dialog.btn_reoptimize_beat_parameters)
 
-    f_beat.addRow(grp_detection)
     f_beat.addRow(grp_bpm)
     f_beat.addRow(grp_beat_advanced)
-    dialog.sp_bpm_hop.valueChanged.connect(dialog._update_bpm_hop_warning)
-    dialog.cmb_onset_source.currentIndexChanged.connect(dialog._update_bpm_hop_warning)
-    dialog.ed_onset_parameter_path.textChanged.connect(dialog._update_bpm_hop_warning)
 
     # Key (Chroma analysis)
     tab_key = QWidget(); f_key = QFormLayout(tab_key)
@@ -437,24 +319,6 @@ class AnalysisSettingsMixin:
             path = project_root() / path
         return path
 
-    def _update_bpm_hop_warning(self, *_args) -> None:
-        """Warn when the hop differs from the one the learned onset model was optimized at."""
-        from analyzer_core.beat.learned_onset import onset_model_frame_hop_length
-
-        text = ""
-        if self.cmb_onset_source.currentData() == "optimized":
-            hop = int(self.sp_bpm_hop.value())
-            try:
-                model_hop = onset_model_frame_hop_length(
-                    self._project_path(self.ed_onset_parameter_path.text())
-                )
-            except Exception:
-                model_hop = None
-            if model_hop is not None and model_hop != hop:
-                text = f"Does not match the learned onset model (optimized at hop {model_hop})."
-        self.lbl_bpm_hop_warning.setText(text)
-        self.lbl_bpm_hop_warning.setVisible(bool(text))
-
     def _backup_parameter(self, parameter_path: Path) -> Path:
         stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         backup_dir = project_root() / "backups"
@@ -560,82 +424,31 @@ class AnalysisSettingsMixin:
             message.setDetailedText("\n\n".join(details))
         message.exec()
 
-    def _beat_parameter_paths(self) -> dict[str, tuple[str, str]]:
-        return {
-            "onset": (self.ed_onset_parameter_path.text().strip(), self.ed_onset_feature_cache_path.text().strip()),
-            "candidate_selector": (
-                self.ed_beat_candidate_selector_parameter_path.text().strip(),
-                self.ed_onset_feature_cache_path.text().strip(),
-            ),
-            "refine_onset": (
-                self.ed_refine_onset_parameter_path.text().strip(),
-                self.ed_onset_feature_cache_path.text().strip(),
-            ),
-            "beat_phase": (
-                self.ed_beat_phase_parameter_path.text().strip(),
-                self.ed_beat_phase_feature_cache_path.text().strip(),
-            ),
-            "downbeat": (
-                self.ed_downbeat_parameter_path.text().strip(),
-                self.ed_downbeat_feature_cache_path.text().strip(),
-            ),
-            "downbeat_boost": (
-                self.ed_downbeat_boost_parameter_path.text().strip(),
-                self.ed_downbeat_feature_cache_path.text().strip(),
-            ),
-        }
-
     def _on_reoptimize_beat_parameters(self) -> None:
         if self._parameter_optimization_is_running():
             return
-        title = "Reoptimize Beat Parameters"
-        from optimizer import beat_phase_parameter_optimizer, downbeat_parameter_optimizer, onset_parameter_optimizer
+        title = "Reoptimize Tempo-Change Onset"
+        from analyzer_core.beat.frame_features import FRAME_HOP_LENGTH
 
-        dialog = BeatParameterOptimizeDialog(
-            {
-                "onset": onset_parameter_optimizer.DEFAULT_L2_STRENGTH,
-                "beat_phase": beat_phase_parameter_optimizer.DEFAULT_L2_STRENGTH,
-                "downbeat": downbeat_parameter_optimizer.DEFAULT_L2_STRENGTH,
-            },
-            self,
-        )
+        dialog = BeatParameterOptimizeDialog({}, self)
         if dialog.exec() != QDialog.Accepted:
             return
-        jobs = dialog.jobs()
-        paths = self._beat_parameter_paths()
+        parameter_text = self.ed_refine_onset_parameter_path.text().strip()
+        cache_text = self.ed_onset_feature_cache_path.text().strip()
         queue = []
-        for key, name, options in jobs:
-            parameter_text, cache_text = paths[key]
+        for key, name, options in dialog.jobs():
             if not parameter_text or not cache_text:
                 QMessageBox.warning(self, title, f"{name}: parameter path or feature cache path is empty.")
                 return
-            parameter_path = self._project_path(parameter_text)
             request_values = {
                 "library_dir": self._project_path(self.ed_libpath.text().strip()),
                 "cache_dir": self._project_path(cache_text),
-                "output_path": parameter_path,
+                "output_path": self._project_path(parameter_text),
                 "use_hpss": bool(self.cb_use_hpss.isChecked()),
                 "rebuild_cache": False,
+                "frame_hop_length": int(FRAME_HOP_LENGTH),
                 **options,
             }
-            if key == "onset":
-                request_values["beatgrid_offset_msec"] = float(self.sp_beatgrid_offset.value())
-                request_values["frame_hop_length"] = int(self.sp_bpm_hop.value())
-            elif key == "refine_onset":
-                request_values["frame_hop_length"] = int(self.sp_bpm_hop.value())
-            elif key == "candidate_selector":
-                request_values.update(
-                    {
-                        "onset_parameter_path": self._project_path(
-                            self.ed_onset_parameter_path.text().strip()
-                        ),
-                        "frame_hop_length": int(self.sp_bpm_hop.value()),
-                        "bpm_window_ms": int(self.sp_bpm_win.value()),
-                        "bpm_min": float(self.sp_bpm_min.value()),
-                        "bpm_max": float(self.sp_bpm_max.value()),
-                        "beatgrid_offset_msec": float(self.sp_beatgrid_offset.value()),
-                    }
-                )
             queue.append((key, name, options, request_values))
         if dialog.backup_existing():
             for _key, name, _options, request_values in queue:
@@ -720,7 +533,6 @@ class AnalysisSettingsMixin:
 
     def _finish_beat_optimization_queue(self) -> None:
         self._set_parameter_optimization_enabled(True)
-        self._update_bpm_hop_warning()
         dialog = self._beat_optimize_dialog
         dialog.bar_feature.setValue(100)
         dialog.bar_optimize.setValue(100)
@@ -736,61 +548,13 @@ class AnalysisSettingsMixin:
     @staticmethod
     def _beat_optimization_summary(key: str, name: str, options: dict, result) -> str:
         kind = "CV" if result.cross_validated else "Training"
-        if key == "candidate_selector":
-            validation = (
-                f"{options['cv_folds']}-fold grouped CV"
-                if result.cross_validated
-                else "no cross-validation"
-            )
-            return (
-                f"{name} parameter updated:\n{result.output_path}\n"
-                f"Threshold {result.change_threshold:g} ({validation})\n"
-                f"Tracks: {result.track_count} ({result.dynamic_track_count} dynamic, "
-                f"{result.static_track_count} static)\n"
-                f"{kind} F1: {result.macro_f1:.2%}, dynamic {result.dynamic_f1:.2%}, "
-                f"static {result.static_f1:.2%}\n"
-                f"Static false multisegment: {result.static_false_multisegment}"
-            )
-        if key == "downbeat_boost":
-            validation = (
-                f"{options['cv_folds']}-fold grouped CV" if result.cross_validated else "no cross-validation"
-            )
-            return (
-                f"{name} parameter updated:\n{result.output_path}\n"
-                f"Tracks: {result.track_count}, beats: {result.beat_count}\n"
-                f"{kind} downbeat AP: {result.average_precision:.3f} ({validation})"
-            )
-        if key == "refine_onset":
-            validation = (
-                f"{options['cv_folds']}-fold grouped CV" if result.cross_validated else "no cross-validation"
-            )
-            return (
-                f"{name} parameter updated:\n{result.output_path}\n"
-                f"Tracks: {result.track_count}, samples: {result.sample_count}\n"
-                f"{kind} frame beat AP: {result.beat_average_precision:.3f} ({validation})"
-            )
-        if not result.cross_validated:
-            validation = "no cross-validation"
-        elif options.get("l2_sweep"):
-            validation = f"{options['cv_folds']}-fold CV, L2 swept"
-        else:
-            validation = f"{options['cv_folds']}-fold CV, L2 fixed"
-        head = f"{name} parameter updated:\n{result.output_path}\nL2 {result.selected_l2_strength:g} ({validation})\n"
-        if key == "onset":
-            return head + (
-                f"Tracks: {result.track_count}, frames: {result.frame_count}\n"
-                f"{kind} grid top-1: {result.grid_top1_accuracy:.1%}, "
-                f"beat AP: {result.beat_average_precision:.1%}, loss: {result.cross_entropy:.4f}"
-            )
-        if key == "beat_phase":
-            return head + (
-                f"Tracks: {result.track_count}, beats: {result.beat_count}\n"
-                f"{kind} track phase: {result.track_top1_accuracy:.1%}, "
-                f"beat top-1: {result.beat_top1_accuracy:.1%}, cross-entropy: {result.cross_entropy:.4f}"
-            )
-        return head + (
-            f"Tracks: {result.track_count}, bars: {result.bar_count}\n"
-            f"{kind} top-1: {result.top1_accuracy:.1%}, cross-entropy: {result.cross_entropy:.4f}"
+        validation = (
+            f"{options['cv_folds']}-fold grouped CV" if result.cross_validated else "no cross-validation"
+        )
+        return (
+            f"{name} parameter updated:\n{result.output_path}\n"
+            f"Tracks: {result.track_count}, samples: {result.sample_count}\n"
+            f"{kind} frame beat AP: {result.beat_average_precision:.3f} ({validation})"
         )
 
     def _on_reoptimize_phrase_parameter(self) -> None:

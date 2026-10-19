@@ -2,16 +2,15 @@ from typing import Callable, Optional, Tuple
 import numpy as np
 
 from analyzer_core.global_analyzer import fast_load
-from analyzer_core.utils import offset_beats_and_segments
 from analyzer_core.beat.beat import (
     build_grid_from_period_phase,
     estimate_bpm_and_grid,
     prune_close_beats,
     rebuild_grid_from_segments,
 )
-from analyzer_core.beat.downbeat_offset import detect_downbeat_offset_segments, usable_boost_path
+from analyzer_core.beat.downbeat_offset import DOWNBEAT_BOOST_PATH, detect_downbeat_offset_segments, usable_boost_path
 from core.tempo_rows import bpm_at, is_ramp_row, ramp_beat_times, segment_end_bpm, shift_row_beats
-from analyzer_core.beat.frame_features import extract_frame_features
+from analyzer_core.beat.frame_features import FRAME_HOP_LENGTH, extract_frame_features
 from analyzer_core.beat.learned_onset import compute_beat_odf
 from analyzer_core.hpss import hpss_audio
 from core.config import config
@@ -159,23 +158,17 @@ def reanalyze_segment_from_file(
     else:
         y_harm = y_perc = section
 
-    hop = int(gcf.bpm_hop_length)
-    # Analyzed once for this segment: learned onset and downbeat both use them.
+    hop = FRAME_HOP_LENGTH
+    # Analyzed once for this segment: the shipped learned onset and downbeat models both use them.
     frames = extract_frame_features(section, sr, y_perc, y_harm, hop_length=hop)
-    odf, hop_t = compute_beat_odf(
-        str(getattr(gcf, "onset_source", "librosa")),
-        frames,
-        y_perc,
-        sr,
-        hop,
-        str(getattr(gcf, "onset_parameter_path", "") or "").strip(),
-    )
+    odf, hop_t = compute_beat_odf("optimized", frames, y_perc, sr, hop)
 
     local = odf
     if progress_cb:
         progress_cb("Estimating BPM", 0.70)
+    # the octave the beat tracker reads tempos in
     bpm_lo = float(gcf.bpm_min)
-    bpm_hi = float(gcf.bpm_max)
+    bpm_hi = 2.0 * bpm_lo
     prev = None
     if prev_bpm is not None and np.isfinite(prev_bpm) and prev_bpm > 0:
         prev = float(prev_bpm)
@@ -199,7 +192,6 @@ def reanalyze_segment_from_file(
         use_only_prev_bpm=use_only_prev_bpm if prev is not None else False,
     )
     bpm_est = float(bpm_est) if np.isfinite(bpm_est) else float(bpm)
-    beatgrid_offset_sec = float(getattr(gcf, "beatgrid_offset_msec", 0.0) or 0.0) / 1000.0
 
     beats_local = np.asarray(beats_local, dtype=float)
     if beats_local.size:
@@ -222,9 +214,8 @@ def reanalyze_segment_from_file(
                 int(sr),
                 beats_local,
                 method="global",
-                weight_path=str(gcf.downbeat_parameter_path).strip(),
                 frames=frames,
-                boost_path=usable_boost_path(getattr(gcf, "downbeat_boost_parameter_path", "")),
+                boost_path=usable_boost_path(DOWNBEAT_BOOST_PATH),
             )
             db_time = db_segments[0].first_downbeat_time_sec if db_segments else None
             if db_time is not None and np.isfinite(db_time):
@@ -248,14 +239,6 @@ def reanalyze_segment_from_file(
     seg_updated[segment_index, 3] = new_inizio
     if seg_updated.shape[1] > 5:
         seg_updated[segment_index, 5] = bpm_est   # reanalysis gives a steady tempo
-    if abs(beatgrid_offset_sec) > 1e-12:
-        beats_updated, seg_updated = offset_beats_and_segments(
-            beats_updated,
-            seg_updated,
-            beatgrid_offset_sec,
-            total_duration,
-        )
-
     if progress_cb:
         progress_cb("Segment updated", 0.9)
 

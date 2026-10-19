@@ -191,41 +191,12 @@ class SettingsDialog(
         self.sp_cqt_bins_per_oct.setValue(int(a.chroma_cqt_bins_per_octave))
         self.sp_cqt_octaves.setValue(int(a.chroma_cqt_octaves))
         self.cb_use_hpss.setChecked(bool(a.use_hpss))
-        self.sp_bpm_hop.setValue(int(a.bpm_hop_length))
-        self.sp_bpm_win.setValue(int(a.bpm_win_length))
         self.sp_bpm_min.setValue(int(a.bpm_min))
-        self.sp_bpm_max.setValue(int(a.bpm_max))
-        self.cb_bpm_dynamic.setChecked(bool(a.bpm_dynamic))
-        self.cb_bpm_adaptive_win.setChecked(bool(a.bpm_adaptive_window))
-        self.ed_beat_candidate_selector_parameter_path.setText(
-            str(getattr(a, "beat_candidate_selector_parameter_path", "") or "")
-        )
-        onset_index = self.cmb_onset_source.findData(str(getattr(a, "onset_source", "librosa")))
-        self.cmb_onset_source.setCurrentIndex(max(0, onset_index))
-        self.ed_onset_parameter_path.setText(str(getattr(a, "onset_parameter_path", "") or ""))
+        self.lbl_bpm_range.setText(f"Reads {int(a.bpm_min)} - {2 * int(a.bpm_min)} BPM")
+        self.ed_refine_onset_parameter_path.setText(str(getattr(a, "refine_onset_parameter_path", "") or ""))
         self.ed_onset_feature_cache_path.setText(
             str(getattr(a, "onset_feature_cache_path", "") or "")
         )
-        self.cb_beat_phase_correction.setChecked(bool(getattr(a, "beat_phase_correction", True)))
-        self.ed_beat_phase_parameter_path.setText(str(getattr(a, "beat_phase_parameter_path", "") or ""))
-        self.ed_beat_phase_feature_cache_path.setText(
-            str(getattr(a, "beat_phase_feature_cache_path", "") or "")
-        )
-        self.cb_dynamic_downbeat.setChecked(bool(getattr(a, "dynamic_downbeat", False)))
-        self.cb_beat_grid_refine.setChecked(bool(getattr(a, "beat_grid_refine", True)))
-        self.ed_refine_onset_parameter_path.setText(str(getattr(a, "refine_onset_parameter_path", "") or ""))
-        self.ed_downbeat_boost_parameter_path.setText(str(getattr(a, "downbeat_boost_parameter_path", "") or ""))
-        self.cb_meter_sections.setChecked(bool(getattr(a, "meter_sections", True)))
-        self.ed_meter_section_parameter_path.setText(
-            str(getattr(a, "meter_section_parameter_path", "") or "")
-        )
-        self.ed_downbeat_parameter_path.setText(
-            str(getattr(a, "downbeat_parameter_path", "") or "")
-        )
-        self.ed_downbeat_feature_cache_path.setText(
-            str(getattr(a, "downbeat_feature_cache_path", "") or "")
-        )
-        self.sp_beatgrid_offset.setValue(float(a.beatgrid_offset_msec))
         self._set_band(self.sp_env_lo_lo,  self.sp_env_lo_hi,  a.env_lo)
         self._set_band(self.sp_env_mid_lo, self.sp_env_mid_hi, a.env_mid)
         self._set_band(self.sp_env_hi_lo,  self.sp_env_hi_hi,  a.env_hi)
@@ -321,30 +292,9 @@ class SettingsDialog(
                 chroma_cqt_bins_per_octave=int(self.sp_cqt_bins_per_oct.value()),
                 chroma_cqt_octaves=int(self.sp_cqt_octaves.value()),
                 use_hpss=bool(self.cb_use_hpss.isChecked()),
-                bpm_hop_length=int(self.sp_bpm_hop.value()),
-                bpm_win_length=int(self.sp_bpm_win.value()),
                 bpm_min=int(self.sp_bpm_min.value()),
-                bpm_max=int(self.sp_bpm_max.value()),
-                bpm_dynamic=bool(self.cb_bpm_dynamic.isChecked()),
-                bpm_adaptive_window=bool(self.cb_bpm_adaptive_win.isChecked()),
-                beat_candidate_selector_parameter_path=(
-                    self.ed_beat_candidate_selector_parameter_path.text().strip()
-                ),
-                onset_source=str(self.cmb_onset_source.currentData() or "librosa"),
-                onset_parameter_path=self.ed_onset_parameter_path.text().strip(),
-                onset_feature_cache_path=self.ed_onset_feature_cache_path.text().strip(),
-                beat_phase_correction=bool(self.cb_beat_phase_correction.isChecked()),
-                beat_phase_parameter_path=self.ed_beat_phase_parameter_path.text().strip(),
-                beat_phase_feature_cache_path=self.ed_beat_phase_feature_cache_path.text().strip(),
-                dynamic_downbeat=bool(self.cb_dynamic_downbeat.isChecked()),
-                beat_grid_refine=bool(self.cb_beat_grid_refine.isChecked()),
                 refine_onset_parameter_path=self.ed_refine_onset_parameter_path.text().strip(),
-                meter_sections=bool(self.cb_meter_sections.isChecked()),
-                meter_section_parameter_path=self.ed_meter_section_parameter_path.text().strip(),
-                downbeat_parameter_path=self.ed_downbeat_parameter_path.text().strip(),
-                downbeat_boost_parameter_path=self.ed_downbeat_boost_parameter_path.text().strip(),
-                downbeat_feature_cache_path=self.ed_downbeat_feature_cache_path.text().strip(),
-                beatgrid_offset_msec=float(self.sp_beatgrid_offset.value()),
+                onset_feature_cache_path=self.ed_onset_feature_cache_path.text().strip(),
                 env_lo=(float(self.sp_env_lo_lo.value()), float(self.sp_env_lo_hi.value())),
                 env_mid=(float(self.sp_env_mid_lo.value()), float(self.sp_env_mid_hi.value())),
                 env_hi=(float(self.sp_env_hi_lo.value()), float(self.sp_env_hi_hi.value())),

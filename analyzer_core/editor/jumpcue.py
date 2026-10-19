@@ -4,7 +4,7 @@ from analyzer_core.self_correlation.JumpCUE import JumpCueConfig, JumpCueEngine
 from analyzer_core.self_correlation.jump_point_model import jump_point_beat_features
 from typing import Callable, Optional
 import numpy as np
-from analyzer_core.beat.frame_features import extract_frame_features
+from analyzer_core.beat.frame_features import FRAME_HOP_LENGTH, extract_frame_features
 from analyzer_core.cue_and_phrase import detect_phrase_segments
 from analyzer_core.global_analyzer import fast_load
 from analyzer_core.hpss import hpss_audio_with_spectra
@@ -43,7 +43,7 @@ def reanalyze_jumpCUE(path:str, cfg:config, beats_time_arr:np.ndarray, *,
         y_harm = y_perc = audio_full
     if progress_cb:
         progress_cb("Frame features", 0.25)
-    frames = extract_frame_features(audio_full, sr, y_perc, y_harm, hop_length=int(gcf.bpm_hop_length))
+    frames = extract_frame_features(audio_full, sr, y_perc, y_harm, hop_length=FRAME_HOP_LENGTH)
     if progress_cb:
         progress_cb("Phrase boundaries", 0.4)
     _segments, boundary_prob, phrase_feature_z = detect_phrase_segments(

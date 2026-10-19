@@ -116,32 +116,11 @@ class analysisconfig:
     chroma_hop_length: int
     chroma_cqt_bins_per_octave: int
     chroma_cqt_octaves: int
-    bpm_hop_length: int
-    bpm_win_length: int
+    # The beat tracker reads every tempo in the octave from here (bpm_min .. 2 x bpm_min).
     bpm_min: int
-    bpm_max: int
-    bpm_dynamic: bool
-    bpm_adaptive_window: bool
-    beat_candidate_selector_parameter_path: str
-    onset_source: Literal["librosa", "optimized"]
-    onset_parameter_path: str
-    onset_feature_cache_path: str
-    beat_phase_correction: bool
-    beat_phase_parameter_path: str
-    beat_phase_feature_cache_path: str
-    dynamic_downbeat: bool
-    # Phase re-lock after untracked sections and piecewise-linear tempo ramps.
-    beat_grid_refine: bool
+    # The onset model that places tempo changes (retrained by Reoptimize) and its feature cache.
     refine_onset_parameter_path: str
-    # Sustained 3/4 sections get their own time-signature segments.
-    meter_sections: bool
-    meter_section_parameter_path: str
-    downbeat_parameter_path: str
-    # Gradient-boosted downbeat model used instead of the linear weights above
-    # (empty: the linear weights).
-    downbeat_boost_parameter_path: str
-    downbeat_feature_cache_path: str
-    beatgrid_offset_msec: float
+    onset_feature_cache_path: str
     # low / mid / high bands (Hz) of the stored overview levels; the main view
     # waveform uses them too
     env_lo: Tuple[float, float]
@@ -312,28 +291,9 @@ def default_cfg():
         chroma_cqt_bins_per_octave=36,
         chroma_cqt_octaves=4,
         use_hpss=True,
-        bpm_hop_length=256,
-        bpm_win_length=5000,
-        bpm_max=200,
         bpm_min=100,
-        bpm_dynamic=True,
-        bpm_adaptive_window=True,
-        beat_candidate_selector_parameter_path="assets/weights/beat_candidate_selector.npz",
-        onset_source="optimized",
-        onset_parameter_path="assets/weights/onset_feature_weights.json",
-        onset_feature_cache_path="featurecache/onset",
-        beat_phase_correction=True,
-        beat_phase_parameter_path="assets/weights/beat_phase_weights.json",
-        beat_phase_feature_cache_path="featurecache/beat_phase",
-        dynamic_downbeat=True,
-        beat_grid_refine=True,
         refine_onset_parameter_path="assets/weights/refine_onset_hgb.npz",
-        meter_sections=True,
-        meter_section_parameter_path="assets/weights/meter_section_classifier.npz",
-        downbeat_parameter_path="assets/weights/downbeat_feature_weights.json",
-        downbeat_boost_parameter_path="assets/weights/downbeat_hgb.npz",
-        downbeat_feature_cache_path="featurecache/downbeat",
-        beatgrid_offset_msec=0.0,
+        onset_feature_cache_path="featurecache/onset",
         env_lo=(20.0, 200.0),
         env_mid=(250.0, 1500.0),
         env_hi=(1600.0, 11025.0),
@@ -440,8 +400,6 @@ def load_cfg() -> config:
     def _ensure_feature_cache_dirs(cfg: config) -> None:
         for path_text in (
             cfg.analysisconfig.onset_feature_cache_path,
-            cfg.analysisconfig.beat_phase_feature_cache_path,
-            cfg.analysisconfig.downbeat_feature_cache_path,
             cfg.analysisconfig.phrase_feature_cache_path,
             cfg.analysisconfig.jumpcue_feature_cache_path,
         ):

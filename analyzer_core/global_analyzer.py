@@ -11,7 +11,7 @@ from PySide6 import QtGui
 from typing import Optional
 from analyzer_core.key.key import *
 from analyzer_core.beat.beat import *
-from analyzer_core.beat.frame_features import extract_frame_features
+from analyzer_core.beat.frame_features import FRAME_HOP_LENGTH, extract_frame_features
 from analyzer_core.hpss import HPSS_HOP_LENGTH, HPSS_N_FFT, hpss_audio_with_spectra
 from analyzer_core.dsp.resample import resample_audio
 from utils.wave import WAVE_OVERVIEW_SAMPLE_RATE, build_wave_overview
@@ -332,33 +332,34 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
     yield {"status": "tempo"}
     print("[Tempo] Analysis Initalized")
     taskmgr.updatetask(taskid, "Tempo Analyzing", 0.30)
-    # Frame features on the analysis grid (Settings > Analysis): the phrase features read them below.
+    # Frame features on the shared frame grid: the phrase features read them below.
     frame_features = extract_frame_features(
-        samp, int(global_sr), y_perc, y_harm, hop_length=int(gcf.bpm_hop_length)
+        samp, int(global_sr), y_perc, y_harm, hop_length=FRAME_HOP_LENGTH
     )
     # The generalized tracker (analyzer_core.beat.general): a frame TCN (three trainings) ->
     # section decoding with one section cost -> ramps -> bar-supported phase -> metronome critic ->
     # tempo-change boundaries on the local onset -> drifting sections -> junction rules -> bars from
     # two downbeat observers -> the consensus of the three; rows with inizio on a downbeat.
     from analyzer_core.beat.general import (
-        FRAME_HOP_LENGTH, SAMPLE_RATE, dominant_tempo, load_models, track as track_beats,
+        FRAME_HOP_LENGTH as TRACKER_HOP, SAMPLE_RATE as TRACKER_SR, dominant_tempo, load_models,
+        track as track_beats,
     )
     from analyzer_core.beat.learned_onset import REFINE_ONSET_PATH, refine_onset_activation
 
-    # Its models were trained on frames of the HPSS parts on one frame grid; other analysis settings give it
-    # frames of its own.
-    if (int(global_sr), int(gcf.bpm_hop_length), bool(gcf.use_hpss)) == (SAMPLE_RATE, FRAME_HOP_LENGTH, True):
+    # Its models were trained on frames of the HPSS parts at one sample rate; other analysis settings give
+    # it frames of its own.
+    if (int(global_sr), FRAME_HOP_LENGTH, bool(gcf.use_hpss)) == (TRACKER_SR, TRACKER_HOP, True):
         tracker_frames = frame_features
     else:
         def at_tracker_rate(y):
-            return resample_audio(np.asarray(y, dtype=np.float32), int(global_sr), SAMPLE_RATE)
+            return resample_audio(np.asarray(y, dtype=np.float32), int(global_sr), TRACKER_SR)
         tracker_mix = at_tracker_rate(samp)
         if gcf.use_hpss:
             tracker_harm, tracker_perc = at_tracker_rate(y_harm), at_tracker_rate(y_perc)
         else:
-            tracker_harm, tracker_perc, _ = hpss_audio_with_spectra(tracker_mix, SAMPLE_RATE)
+            tracker_harm, tracker_perc, _ = hpss_audio_with_spectra(tracker_mix, TRACKER_SR)
         tracker_frames = extract_frame_features(
-            tracker_mix, SAMPLE_RATE, tracker_perc, tracker_harm, hop_length=FRAME_HOP_LENGTH,
+            tracker_mix, TRACKER_SR, tracker_perc, tracker_harm, hop_length=TRACKER_HOP,
         )
     frame_times = np.asarray(tracker_frames.frame_times, dtype=float)
     refine_onset = None
@@ -366,20 +367,15 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
         refine_path = str(getattr(gcf, "refine_onset_parameter_path", "") or REFINE_ONSET_PATH).strip()
         refine_onset = (
             refine_onset_activation(tracker_frames, refine_path).astype(np.float64),
-            float(np.median(np.diff(frame_times))) if frame_times.size > 1 else FRAME_HOP_LENGTH / SAMPLE_RATE,
+            float(np.median(np.diff(frame_times))) if frame_times.size > 1 else TRACKER_HOP / TRACKER_SR,
             float(frame_times[0]),
         )
     except Exception as exc:
         print(f"[Tempo] boundary onset unavailable ({exc}); tempo changes stay where the decoder put them")
     tracked = track_beats(tracker_frames, float(gcf.bpm_min), load_models(), refine_onset)
     duration_sec = float(features["duration_sec"])
-    # Settings > Analysis: a static shift of the whole grid (calibration); rows and beats move together.
-    offset_sec = float(gcf.beatgrid_offset_msec) / 1000.0
     seg_arr = np.asarray(tracked.segments, dtype=np.float64).copy()
     if seg_arr.size:
-        seg_arr[:, 0] = np.clip(seg_arr[:, 0] + offset_sec, 0.0, duration_sec)
-        seg_arr[:, 1] = np.clip(seg_arr[:, 1] + offset_sec, 0.0, duration_sec)
-        seg_arr[:, 3] = seg_arr[:, 3] + offset_sec
         seg_arr[0, 0] = 0.0
         seg_arr[-1, 1] = max(float(seg_arr[-1, 1]), duration_sec)
     seg_arr = seg_arr.astype(np.float32)
@@ -391,10 +387,10 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
     features["beats_time_sec"] = beats_out
     features["tempo_global"] = dominant_tempo(seg_arr)
     # beat frames on the analysis grid for the beat-synchronous chroma below
-    analysis_hop = float(gcf.bpm_hop_length) / float(global_sr)
+    analysis_hop = float(FRAME_HOP_LENGTH) / float(global_sr)
     synced_bpm = {
         "beats": np.clip(
-            np.round((beats_out - offset_sec) / analysis_hop).astype(np.int32),
+            np.round(beats_out / analysis_hop).astype(np.int32),
             0,
             max(0, frame_features.n_frames - 1),
         )
@@ -521,7 +517,7 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
     print("[Chroma] Analysis Initalized")
     taskmgr.updatetask(taskid, "Processing Chromagram", 0.65)
     chroma = chroma_to_subdiv_grid(
-        y_harm, np.divide(synced_bpm["beats"], gcf.chroma_hop_length/gcf.bpm_hop_length).astype(int), sr=global_sr,
+        y_harm, np.divide(synced_bpm["beats"], gcf.chroma_hop_length/FRAME_HOP_LENGTH).astype(int), sr=global_sr,
         hop_length=gcf.chroma_hop_length,
         bins_per_octave=gcf.chroma_cqt_bins_per_octave,
         n_octaves=gcf.chroma_cqt_octaves,

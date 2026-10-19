@@ -91,18 +91,14 @@ class ParameterOptimizeProgressDialog(QDialog):
 
 
 class BeatParameterOptimizeDialog(QDialog):
+    # The beat tracker's own models are fixed; the onset that places its tempo changes is retrainable.
     ITEMS = (
-        ("onset", "Onset"),
-        ("candidate_selector", "Adaptive Window Selector"),
-        ("refine_onset", "Grid Refinement Onset"),
-        ("beat_phase", "Beat Phase"),
-        ("downbeat", "Downbeat"),
-        ("downbeat_boost", "Downbeat (Boosted)"),
+        ("refine_onset", "Tempo-Change Onset"),
     )
 
     def __init__(self, default_l2: dict[str, float], parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Reoptimize Beat Parameters")
+        self.setWindowTitle("Reoptimize Tempo-Change Onset")
         self._checks: dict[str, QCheckBox] = {}
         self._folds: dict[str, QSpinBox] = {}
         self._sweeps: dict[str, QCheckBox] = {}
