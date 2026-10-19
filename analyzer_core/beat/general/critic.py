@@ -7,9 +7,12 @@ convolutions dilated along the slots) judges windows of 8 bars; trained to tell 
 half-beat, quarter-beat, 3:2 / 2:3 / 4:3 / 3:4 and drifting readings and from decoders' real mistakes.
 
 Applied per steady section to the tempo-ratio readings only (3:2, 2:3, 4:3, 3:4): the reading that sounds
-best wins, but only readings the onset evidence supports at least RHO as well as the decoded grid are
-heard (a critic must not pull a grid onto nothing). Half-beat readings are not used: different trainings
-of the critic disagree on them, while their ratio judgements agree.
+best wins, but only readings the onset evidence supports are heard (a critic must not pull a grid onto
+nothing). A reading shares only part of its beats with the decoded grid (2 against 3: every other beat of
+the slower reading; 3 against 4: every third), so when the activation fires on the decoded, wrong level a
+right reading keeps just the evidence of its shared beats: it is heard when it keeps at least that share
+of the decoded grid's evidence (SHARED). Half-beat readings are not used: different trainings of the
+critic disagree on them, while their ratio judgements agree.
 Weights: five fold models whose logits are averaged (assets/weights/beat_critic.npz).
 """
 from __future__ import annotations
@@ -24,7 +27,8 @@ from .tcn import frame_inputs
 SLOTS, BAR, HOPB = 12, 48, 8
 WIN = 32                       # grid beats per window (8 bars of 4/4)
 DIL = (1, 3, 6, 12)
-RHO = 0.5
+# the share of a reading's beats that fall on the decoded grid's beats (its evidence gate)
+SHARED = {'r32': 1.0 / 2.0, 'r23': 1.0 / 3.0, 'r43': 1.0 / 3.0, 'r34': 1.0 / 4.0}
 READINGS = (('r32', 2.0 / 3.0, (0.0, 1.0 / 3.0, 2.0 / 3.0)), ('r23', 1.5, (0.0, 0.5, 1.0)),
             ('r43', 0.75, (0.0, 0.25, 0.5)), ('r34', 4.0 / 3.0, (0.0, 1.0 / 3.0, 2.0 / 3.0, 1.0)))
 WEIGHT_PATH = 'assets/weights/beat_critic.npz'
@@ -141,10 +145,10 @@ def apply(rows, nets, tr, val, dur):
         base = float(wb.mean())
         ev0 = float(val(g).sum())
         best = (base, None)
-        for _, step, offsets in READINGS:
+        for name, step, offsets in READINGS:
             for off in offsets:
                 alt = _warp(g, step, off)
-                if ev0 > 0 and float(val(alt).sum()) < RHO * ev0:
+                if ev0 > 0 and float(val(alt).sum()) < SHARED[name] * ev0:
                     continue
                 w = window_logits(nets, tr, alt)
                 if w is None:
