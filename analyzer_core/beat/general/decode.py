@@ -19,7 +19,7 @@ POS_SEC = 0.5                 # section boundaries are decided on this grid (ref
 PHASES = 32                   # phases per beat in the decoder
 RATIOS = (1.0, 1.5, 2.0 / 3.0, 4.0 / 3.0, 0.75)
 J = 12.0                      # the cost of a new section (evidence units)
-HALF_RESET = 192.0            # extra cost of a same-tempo half-beat reset (16 J)
+HALF_RESET = 96.0             # extra cost of a same-tempo half-beat reset (8 J)
 
 
 class Octave:

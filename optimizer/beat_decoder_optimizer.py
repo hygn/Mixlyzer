@@ -34,8 +34,8 @@ from optimizer import model_start as MS
 ProgressCallback = Callable[[int, str], None]
 # candidates: steps of sqrt(2) around the shipped costs
 SECTION_COSTS = (8.5, 12.0, 17.0)
-HALF_RESET_COSTS = (48.0, 68.0, 96.0, 136.0, 192.0, 272.0, 384.0)
-ODD_BAR_COSTS = (40.0, 57.0, 80.0, 113.0, 160.0, 226.0, 320.0)
+HALF_RESET_COSTS = (34.0, 48.0, 68.0, 96.0, 136.0, 192.0, 272.0)
+ODD_BAR_COSTS = (14.0, 20.0, 28.0, 40.0, 57.0, 80.0, 113.0)
 
 
 @dataclass(frozen=True)
@@ -193,11 +193,11 @@ def optimize_beat_decoder(
             names += [titles[i] for i in held]
             b_rows.append(full[held][:, now[0], now[1], now[2]])
             a_rows.append(full[held][:, c[0], c[1], c[2]])
-        grid = from_scores(names, np.concatenate(b_rows), np.concatenate(a_rows))
+        check = from_scores(names, np.concatenate(b_rows), np.concatenate(a_rows))
     chosen = choose(np.arange(len(kept)))
     if not cross_validated:
-        grid = from_scores(titles, full[:, now[0], now[1], now[2]], full[:, chosen[0], chosen[1], chosen[2]])
-    before, after = grid.wrong_before_sec, grid.wrong_after_sec
+        check = from_scores(titles, full[:, now[0], now[1], now[2]], full[:, chosen[0], chosen[1], chosen[2]])
+    before, after = check.wrong_before_sec, check.wrong_after_sec
     knobs = TR.Knobs(section=grid[0][chosen[0]], half_reset=grid[1][chosen[1]], odd_bar=grid[2][chosen[2]])
     saved = after <= before + 1e-6
     if saved:
@@ -214,5 +214,5 @@ def optimize_beat_decoder(
     return BeatDecoderOptimizationResult(
         output_path=output_path, track_count=len(kept), knobs_before=asdict(current), knobs_after=asdict(knobs),
         wrong_before_sec=before, wrong_after_sec=after, skipped_tracks=tuple(ignored),
-        cross_validated=cross_validated, saved=saved, grid=grid,
+        cross_validated=cross_validated, saved=saved, grid=check,
     )

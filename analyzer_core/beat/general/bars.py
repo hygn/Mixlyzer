@@ -29,7 +29,7 @@ from .decode import is_ramp
 MIN_BEATS = 32
 START_MARGIN = 1e-3                 # a row starts this long before its first beat (float32 storage)
 MIN_SUPPORT = 0.33
-CB = 160.0
+CB = 40.0
 
 
 def bar_support(p):
