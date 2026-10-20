@@ -50,17 +50,12 @@ def _canonical_uuid4_or_none(value: object) -> Optional[str]:
 
 
 def _track_row_from_db_row(row: sqlite3.Row) -> "TrackRow":
-    data = dict(row)
-    try:
-        data["uid"] = _canonical_uuid4_or_none(data.get("uid"))
-    except ValueError:
-        data["uid"] = None
-    return TrackRow(**data)
+    return TrackRow(**dict(row))
 
 @dataclass
 class TrackRow:
-    path: str                  # PRIMARY KEY
-    uid: Optional[str] = None  # UID for NPZ/JSON linkage (unique string)
+    uid: str                   # PRIMARY KEY (canonical UUIDv4): NPZ, thumbnail and playlist linkage
+    path: str                  # the audio file (UNIQUE, editable: a moved file is given its new path)
     title: str = ""
     artist: str = ""
     album: str = ""
@@ -129,7 +124,7 @@ class TrackRow:
 
 @dataclass
 class PlaylistRow:
-    id: int
+    uid: str
     name: str
     sort_index: int
 
@@ -213,8 +208,8 @@ class LibraryDB:
         # Create tracks table if missing
         self._conn.execute("""
         CREATE TABLE IF NOT EXISTS tracks (
-            path        TEXT PRIMARY KEY,
-            uid         TEXT,
+            uid         TEXT PRIMARY KEY,
+            path        TEXT NOT NULL UNIQUE,
             title       TEXT NOT NULL DEFAULT '',
             artist      TEXT DEFAULT '',
             album       TEXT DEFAULT '',
@@ -231,19 +226,20 @@ class LibraryDB:
         """)
         self._conn.execute("""
         CREATE TABLE IF NOT EXISTS playlists (
-            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            uid        TEXT PRIMARY KEY,
             name       TEXT NOT NULL COLLATE NOCASE UNIQUE,
             sort_index INTEGER NOT NULL DEFAULT 0
         );
         """)
+        # one row per entry: a track may be in a playlist more than once
         self._conn.execute("""
         CREATE TABLE IF NOT EXISTS playlist_tracks (
-            playlist_id INTEGER NOT NULL,
-            track_path  TEXT NOT NULL,
-            position    INTEGER NOT NULL,
-            PRIMARY KEY (playlist_id, track_path),
-            FOREIGN KEY (playlist_id) REFERENCES playlists(id) ON DELETE CASCADE,
-            FOREIGN KEY (track_path) REFERENCES tracks(path) ON DELETE CASCADE
+            playlist_uid TEXT NOT NULL,
+            position     INTEGER NOT NULL,
+            track_uid    TEXT NOT NULL,
+            PRIMARY KEY (playlist_uid, position),
+            FOREIGN KEY (playlist_uid) REFERENCES playlists(uid) ON DELETE CASCADE,
+            FOREIGN KEY (track_uid) REFERENCES tracks(uid) ON DELETE CASCADE
         );
         """)
         self._conn.execute("""
@@ -305,11 +301,8 @@ class LibraryDB:
         self._conn.execute("CREATE INDEX IF NOT EXISTS idx_tps_label_bpm ON track_phrase_sections(phrase_label, bpm_rounded, phrase_duration_sec);")
         self._conn.execute("CREATE INDEX IF NOT EXISTS idx_tps_label_bpm_value ON track_phrase_sections(phrase_label, bpm, phrase_duration_sec);")
         self._conn.execute("CREATE INDEX IF NOT EXISTS idx_tps_label_key ON track_phrase_sections(phrase_label, key_value, phrase_duration_sec);")
-        self._conn.execute("CREATE INDEX IF NOT EXISTS idx_playlists_sort ON playlists(sort_index, id);")
-        self._conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_playlist_tracks_position "
-            "ON playlist_tracks(playlist_id, position);"
-        )
+        self._conn.execute("CREATE INDEX IF NOT EXISTS idx_playlists_sort ON playlists(sort_index);")
+        self._conn.execute("CREATE INDEX IF NOT EXISTS idx_playlist_tracks_track ON playlist_tracks(track_uid);")
         self._conn.commit()
 
     def close(self):
@@ -343,11 +336,13 @@ class LibraryDB:
 
     # UPSERT / CRUD
     def upsert(self, row: TrackRow):
+        """Insert the track, or update the one with its uid (its path too: a file another
+        track has raises sqlite3.IntegrityError)."""
         q = """
-        INSERT INTO tracks(path, uid, title, artist, album, bpm, key, duration, total_samples, rating, added_ts, comment, file_mtime, file_size)
-        VALUES(:path, :uid, :title, :artist, :album, :bpm, :key, :duration, :total_samples, :rating, :added_ts, :comment, :file_mtime, :file_size)
-        ON CONFLICT(path) DO UPDATE SET
-            uid           = COALESCE(excluded.uid, tracks.uid),
+        INSERT INTO tracks(uid, path, title, artist, album, bpm, key, duration, total_samples, rating, added_ts, comment, file_mtime, file_size)
+        VALUES(:uid, :path, :title, :artist, :album, :bpm, :key, :duration, :total_samples, :rating, :added_ts, :comment, :file_mtime, :file_size)
+        ON CONFLICT(uid) DO UPDATE SET
+            path          = excluded.path,
             title         = COALESCE(excluded.title, tracks.title),
             artist        = COALESCE(excluded.artist, tracks.artist),
             album         = COALESCE(excluded.album, tracks.album),
@@ -362,7 +357,9 @@ class LibraryDB:
             file_size     = COALESCE(excluded.file_size, tracks.file_size)
         ;
         """
-        self.conn.execute(q, asdict(row))
+        values = asdict(row)
+        values["uid"] = _canonical_uuid4(row.uid)
+        self.conn.execute(q, values)
 
     def upsert_meta(self, meta: Dict[str, Any]):
         tr = TrackRow.from_meta(meta)
@@ -374,18 +371,21 @@ class LibraryDB:
             for row in rows:
                 self.upsert(row)
 
-    def delete_paths(self, paths: Iterable[str]):
+    def delete_tracks(self, uids: Iterable[str]):
+        """Remove the tracks with their segment rows and playlist entries (the playlists close up)."""
+        keys = [(uid,) for uid in dict.fromkeys(_canonical_uuid4(uid) for uid in uids)]
         with self.tx():
-            uid_rows = []
-            for path in paths:
-                row = self.get(path)
-                if row and row.uid:
-                    uid_rows.append((row.uid,))
-            self.conn.executemany("DELETE FROM tracks WHERE path = ?;", ((p,) for p in paths))
-            if uid_rows:
-                self.conn.executemany("DELETE FROM track_bpm_segments WHERE track_uid = ?;", uid_rows)
-                self.conn.executemany("DELETE FROM track_key_segments WHERE track_uid = ?;", uid_rows)
-                self.conn.executemany("DELETE FROM track_phrase_sections WHERE track_uid = ?;", uid_rows)
+            playlists = set()
+            for key in keys:
+                playlists.update(row[0] for row in self.conn.execute(
+                    "SELECT DISTINCT playlist_uid FROM playlist_tracks WHERE track_uid=?;", key))
+            self.conn.executemany("DELETE FROM tracks WHERE uid=?;", keys)  # playlist entries cascade
+            self.conn.executemany("DELETE FROM track_bpm_segments WHERE track_uid=?;", keys)
+            self.conn.executemany("DELETE FROM track_key_segments WHERE track_uid=?;", keys)
+            self.conn.executemany("DELETE FROM track_phrase_sections WHERE track_uid=?;", keys)
+            for playlist_uid in playlists:
+                self._write_playlist_entries(
+                    playlist_uid, [uid for _position, uid in self._playlist_entries(playlist_uid)])
 
     def get(self, path: str) -> Optional[TrackRow]:
         """The row stored under exactly ``path`` (paths are kept as given, never
@@ -427,211 +427,190 @@ class LibraryDB:
         row = cur.fetchone()
         return _track_row_from_db_row(row) if row else None
 
-    def update_uid(self, path: str, uid: Optional[str]):
-        """Set/update UID for the given path (allows None)."""
-        uid = _canonical_uuid4_or_none(uid)
-        self.conn.execute("UPDATE tracks SET uid=? WHERE path=?;", (uid, path))
-        self.conn.commit()
-
-    def rekey_path(self, old_path: str, new_path: str):
-        """
-        When path (PK) changes (e.g., file move), swap only the PK on the same row.
-        uid stays the same so NPZ/JSON linkage is preserved.
-        """
+    def set_path(self, uid: str, path: str) -> None:
+        """Give the track ``uid`` the file ``path`` (a moved or renamed file); the file's
+        size and mtime follow. ValueError if another track already has that file."""
+        uid = _canonical_uuid4(uid)
+        path = str(path or "").strip()
+        if not path:
+            raise ValueError("The path cannot be empty.")
+        other = self.find_file(path)
+        if other is not None and other.uid != uid:
+            raise ValueError(f'This file is already in the library as "{other.title or other.path}".')
+        try:
+            st = os.stat(path)
+            stats = (st.st_mtime, st.st_size)
+        except (OSError, ValueError):
+            stats = (None, None)
         with self.tx():
-            row = self.get(old_path)
-            if not row:
-                return
-            # Insert with new path (overwrite on conflict)
-            row.path = new_path
-            self.upsert(row)
             self.conn.execute(
-                "UPDATE OR IGNORE playlist_tracks SET track_path=? WHERE track_path=?;",
-                (new_path, old_path),
+                "UPDATE tracks SET path=?, file_mtime=COALESCE(?, file_mtime), "
+                "file_size=COALESCE(?, file_size) WHERE uid=?;",
+                (path, *stats, uid),
             )
-            # Delete old row
-            self.conn.execute("DELETE FROM tracks WHERE path=?;", (old_path,))
 
-    # Playlists. Both playlists and their members carry explicit indexes so the
-    # user's order is stable and independent of the library table's sorting.
+    # Playlists. Both playlists and their entries carry explicit indexes so the
+    # user's order is stable and independent of the library table's sorting. An
+    # entry is addressed by its position: a track may be in a playlist more than once.
     def create_playlist(self, name: str) -> PlaylistRow:
         name = str(name or "").strip()
         if not name:
             raise ValueError("Playlist name cannot be empty")
+        playlist_uid = str(uuid4())
         with self.tx():
             next_index = int(self.conn.execute(
                 "SELECT COALESCE(MAX(sort_index), -1) + 1 FROM playlists;"
             ).fetchone()[0])
-            cur = self.conn.execute(
-                "INSERT INTO playlists(name, sort_index) VALUES(?, ?);",
-                (name, next_index),
+            self.conn.execute(
+                "INSERT INTO playlists(uid, name, sort_index) VALUES(?, ?, ?);",
+                (playlist_uid, name, next_index),
             )
-            playlist_id = int(cur.lastrowid)
-        return PlaylistRow(playlist_id, name, next_index)
+        return PlaylistRow(playlist_uid, name, next_index)
 
     def list_playlists(self) -> List[PlaylistRow]:
         cur = self.conn.execute(
-            "SELECT id, name, sort_index FROM playlists ORDER BY sort_index, id;"
+            "SELECT uid, name, sort_index FROM playlists ORDER BY sort_index, name COLLATE NOCASE;"
         )
         return [PlaylistRow(**dict(row)) for row in cur.fetchall()]
 
-    def rename_playlist(self, playlist_id: int, name: str) -> None:
+    def rename_playlist(self, playlist_uid: str, name: str) -> None:
         name = str(name or "").strip()
         if not name:
             raise ValueError("Playlist name cannot be empty")
         with self.tx():
             self.conn.execute(
-                "UPDATE playlists SET name=? WHERE id=?;", (name, int(playlist_id))
+                "UPDATE playlists SET name=? WHERE uid=?;", (name, _canonical_uuid4(playlist_uid))
             )
 
-    def delete_playlist(self, playlist_id: int) -> None:
+    def delete_playlist(self, playlist_uid: str) -> None:
         with self.tx():
-            self.conn.execute("DELETE FROM playlists WHERE id=?;", (int(playlist_id),))
+            self.conn.execute("DELETE FROM playlists WHERE uid=?;", (_canonical_uuid4(playlist_uid),))
             self._compact_playlist_indexes()
 
-    def move_playlist(self, playlist_id: int, offset: int) -> None:
-        rows = self.list_playlists()
-        ids = [row.id for row in rows]
+    def move_playlist(self, playlist_uid: str, offset: int) -> None:
+        uids = [row.uid for row in self.list_playlists()]
         try:
-            old_index = ids.index(int(playlist_id))
+            old_index = uids.index(_canonical_uuid4(playlist_uid))
         except ValueError:
             return
-        new_index = max(0, min(len(ids) - 1, old_index + int(offset)))
+        new_index = max(0, min(len(uids) - 1, old_index + int(offset)))
         if new_index == old_index:
             return
-        moved = ids.pop(old_index)
-        ids.insert(new_index, moved)
+        moved = uids.pop(old_index)
+        uids.insert(new_index, moved)
         with self.tx():
-            for sort_index, row_id in enumerate(ids):
-                self.conn.execute(
-                    "UPDATE playlists SET sort_index=? WHERE id=?;",
-                    (sort_index, row_id),
-                )
+            self._write_playlist_order(uids)
 
     def move_playlist_before(
-        self, playlist_id: int, before_playlist_id: Optional[int]
+        self, playlist_uid: str, before_playlist_uid: Optional[str]
     ) -> bool:
         """Move a playlist before another playlist, or to the end for ``None``."""
-        playlist_id = int(playlist_id)
-        before_id = None if before_playlist_id is None else int(before_playlist_id)
-        ids = [row.id for row in self.list_playlists()]
-        if playlist_id not in ids or before_id == playlist_id:
+        playlist_uid = _canonical_uuid4(playlist_uid)
+        before_uid = None if before_playlist_uid is None else _canonical_uuid4(before_playlist_uid)
+        uids = [row.uid for row in self.list_playlists()]
+        if playlist_uid not in uids or before_uid == playlist_uid:
             return False
-        old_ids = list(ids)
-        ids.remove(playlist_id)
-        insert_at = ids.index(before_id) if before_id in ids else len(ids)
-        ids.insert(insert_at, playlist_id)
-        if ids == old_ids:
+        old_uids = list(uids)
+        uids.remove(playlist_uid)
+        insert_at = uids.index(before_uid) if before_uid in uids else len(uids)
+        uids.insert(insert_at, playlist_uid)
+        if uids == old_uids:
             return False
         with self.tx():
-            for sort_index, row_id in enumerate(ids):
-                self.conn.execute(
-                    "UPDATE playlists SET sort_index=? WHERE id=?;",
-                    (sort_index, row_id),
-                )
+            self._write_playlist_order(uids)
         return True
 
-    def _compact_playlist_indexes(self) -> None:
-        ids = [int(row[0]) for row in self.conn.execute(
-            "SELECT id FROM playlists ORDER BY sort_index, id;"
-        ).fetchall()]
-        for sort_index, row_id in enumerate(ids):
+    def _write_playlist_order(self, uids: List[str]) -> None:
+        for sort_index, playlist_uid in enumerate(uids):
             self.conn.execute(
-                "UPDATE playlists SET sort_index=? WHERE id=?;", (sort_index, row_id)
+                "UPDATE playlists SET sort_index=? WHERE uid=?;", (sort_index, playlist_uid)
             )
 
-    def add_playlist_tracks(self, playlist_id: int, paths: Iterable[str]) -> int:
-        playlist_id = int(playlist_id)
-        next_position = int(self.conn.execute(
-            "SELECT COALESCE(MAX(position), -1) + 1 FROM playlist_tracks WHERE playlist_id=?;",
-            (playlist_id,),
-        ).fetchone()[0])
-        inserted = 0
-        with self.tx():
-            for path in paths:
-                cur = self.conn.execute(
-                    "INSERT OR IGNORE INTO playlist_tracks(playlist_id, track_path, position) "
-                    "VALUES(?, ?, ?);",
-                    (playlist_id, str(path), next_position),
-                )
-                if cur.rowcount:
-                    inserted += 1
-                    next_position += 1
-        return inserted
+    def _compact_playlist_indexes(self) -> None:
+        self._write_playlist_order([row.uid for row in self.list_playlists()])
 
-    def list_playlist_tracks(self, playlist_id: int) -> List[Tuple[int, TrackRow]]:
+    def _playlist_entries(self, playlist_uid: str) -> List[Tuple[int, str]]:
+        """(position, track uid) of each entry, in order."""
+        rows = self.conn.execute(
+            "SELECT position, track_uid FROM playlist_tracks WHERE playlist_uid=? ORDER BY position;",
+            (playlist_uid,),
+        ).fetchall()
+        return [(int(row[0]), str(row[1])) for row in rows]
+
+    def _write_playlist_entries(self, playlist_uid: str, track_uids: List[str]) -> None:
+        """Replace the playlist's entries by ``track_uids`` at positions 0, 1, ..."""
+        self.conn.execute("DELETE FROM playlist_tracks WHERE playlist_uid=?;", (playlist_uid,))
+        self.conn.executemany(
+            "INSERT INTO playlist_tracks(playlist_uid, position, track_uid) VALUES(?, ?, ?);",
+            ((playlist_uid, position, uid) for position, uid in enumerate(track_uids)),
+        )
+
+    def add_playlist_tracks(self, playlist_uid: str, track_uids: Iterable[str]) -> int:
+        """Append the tracks in order; a track already in the playlist is added again."""
+        playlist_uid = _canonical_uuid4(playlist_uid)
+        uids = [_canonical_uuid4(uid) for uid in track_uids]
+        with self.tx():
+            next_position = int(self.conn.execute(
+                "SELECT COALESCE(MAX(position), -1) + 1 FROM playlist_tracks WHERE playlist_uid=?;",
+                (playlist_uid,),
+            ).fetchone()[0])
+            self.conn.executemany(
+                "INSERT INTO playlist_tracks(playlist_uid, position, track_uid) VALUES(?, ?, ?);",
+                ((playlist_uid, next_position + i, uid) for i, uid in enumerate(uids)),
+            )
+        return len(uids)
+
+    def list_playlist_tracks(self, playlist_uid: str) -> List[Tuple[int, TrackRow]]:
+        """(position, track) of each entry, in order."""
         cur = self.conn.execute(
             """
             SELECT pt.position AS playlist_position, t.*
             FROM playlist_tracks pt
-            JOIN tracks t ON t.path = pt.track_path
-            WHERE pt.playlist_id=?
-            ORDER BY pt.position, t.path;
+            JOIN tracks t ON t.uid = pt.track_uid
+            WHERE pt.playlist_uid=?
+            ORDER BY pt.position;
             """,
-            (int(playlist_id),),
+            (_canonical_uuid4(playlist_uid),),
         )
         result: List[Tuple[int, TrackRow]] = []
         for row in cur.fetchall():
             data = dict(row)
             position = int(data.pop("playlist_position"))
-            try:
-                data["uid"] = _canonical_uuid4_or_none(data.get("uid"))
-            except ValueError:
-                data["uid"] = None
             result.append((position, TrackRow(**data)))
         return result
 
     def move_playlist_tracks_before(
         self,
-        playlist_id: int,
-        paths: Iterable[str],
-        before_path: Optional[str],
+        playlist_uid: str,
+        positions: Iterable[int],
+        before_position: Optional[int],
     ) -> bool:
-        """Move playlist members as one block before ``before_path`` or to the end."""
-        playlist_id = int(playlist_id)
-        requested = {str(path) for path in paths}
-        rows = self.conn.execute(
-            "SELECT track_path FROM playlist_tracks WHERE playlist_id=? "
-            "ORDER BY position, track_path;",
-            (playlist_id,),
-        ).fetchall()
-        current = [str(row[0]) for row in rows]
-        moving = [path for path in current if path in requested]
-        if not moving or (before_path is not None and str(before_path) in moving):
+        """Move the entries at ``positions`` as one block before the entry at
+        ``before_position``, or to the end for ``None``."""
+        playlist_uid = _canonical_uuid4(playlist_uid)
+        requested = {int(position) for position in positions}
+        entries = self._playlist_entries(playlist_uid)
+        moving = [entry for entry in entries if entry[0] in requested]
+        if not moving or (before_position is not None and int(before_position) in requested):
             return False
-        remaining = [path for path in current if path not in requested]
-        anchor = None if before_path is None else str(before_path)
-        insert_at = remaining.index(anchor) if anchor in remaining else len(remaining)
+        remaining = [entry for entry in entries if entry[0] not in requested]
+        anchors = [position for position, _uid in remaining]
+        anchor = None if before_position is None else int(before_position)
+        insert_at = anchors.index(anchor) if anchor in anchors else len(remaining)
         reordered = remaining[:insert_at] + moving + remaining[insert_at:]
-        if reordered == current:
+        if reordered == entries:
             return False
         with self.tx():
-            for position, path in enumerate(reordered):
-                self.conn.execute(
-                    "UPDATE playlist_tracks SET position=? "
-                    "WHERE playlist_id=? AND track_path=?;",
-                    (position, playlist_id, path),
-                )
+            self._write_playlist_entries(playlist_uid, [uid for _position, uid in reordered])
         return True
 
-    def remove_playlist_tracks(self, playlist_id: int, paths: Iterable[str]) -> None:
-        playlist_id = int(playlist_id)
+    def remove_playlist_tracks(self, playlist_uid: str, positions: Iterable[int]) -> None:
+        """Remove the entries at ``positions``; the rest close up."""
+        playlist_uid = _canonical_uuid4(playlist_uid)
+        removed = {int(position) for position in positions}
+        kept = [uid for position, uid in self._playlist_entries(playlist_uid) if position not in removed]
         with self.tx():
-            self.conn.executemany(
-                "DELETE FROM playlist_tracks WHERE playlist_id=? AND track_path=?;",
-                ((playlist_id, str(path)) for path in paths),
-            )
-            rows = self.conn.execute(
-                "SELECT track_path FROM playlist_tracks WHERE playlist_id=? "
-                "ORDER BY position, track_path;",
-                (playlist_id,),
-            ).fetchall()
-            for position, row in enumerate(rows):
-                self.conn.execute(
-                    "UPDATE playlist_tracks SET position=? "
-                    "WHERE playlist_id=? AND track_path=?;",
-                    (position, playlist_id, row[0]),
-                )
+            self._write_playlist_entries(playlist_uid, kept)
 
     def replace_bpm_segments(self, track_uid: str, segments: Iterable[BpmSegmentRow | Dict[str, Any]]):
         uid = _canonical_uuid4_or_none(track_uid)

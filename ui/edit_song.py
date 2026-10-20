@@ -1,12 +1,13 @@
 from __future__ import annotations
+import os
 from typing import Optional
-from dataclasses import asdict
+from dataclasses import asdict, replace
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QDialog, QWidget, QVBoxLayout, QHBoxLayout, QFormLayout,
     QLineEdit, QSpinBox, QDoubleSpinBox, QLabel, QDialogButtonBox,
-    QGroupBox, QComboBox
+    QGroupBox, QComboBox, QPushButton, QFileDialog, QMessageBox
 )
 
 from core.event_bus import EventBus
@@ -19,8 +20,9 @@ class EditSongDialog(QDialog):
     """Dialog to edit TrackRow metadata.
 
     - Non-modal; intended to be reused like SettingsDialog/WorkersDialog.
-    - Only mutable metadata is editable (title, artist, album, bpm, key, rating, comment).
-    - Immutable fields (added_ts, file_mtime, file_size, path, uid, duration) are shown read-only.
+    - Only mutable metadata is editable (title, artist, album, bpm, key, rating, comment)
+      and the file path (a moved or renamed file; the uid keeps the track's analysis).
+    - Immutable fields (added_ts, file_mtime, file_size, uid, duration) are shown read-only.
 
     Usage:
         dlg = EditSongDialog(bus, libpath)
@@ -56,7 +58,15 @@ class EditSongDialog(QDialog):
         self.cmb_key = QComboBox(); self._populate_key_combo()
         self.sp_rating = QSpinBox(); self.sp_rating.setRange(0, 5)
         self.ed_comment = QLineEdit()
+        self.ed_path = QLineEdit()
+        self.ed_path.setToolTip("The track's audio file. Set it when the file was moved or renamed;\n"
+                                "the analysis, playlists and CUEs stay with the track.")
+        btn_browse = QPushButton("Browse...")
+        btn_browse.clicked.connect(self._browse_path)
+        path_row = QWidget(); path_lay = QHBoxLayout(path_row); path_lay.setContentsMargins(0, 0, 0, 0)
+        path_lay.addWidget(self.ed_path, 1); path_lay.addWidget(btn_browse)
 
+        form_edit.addRow("Path", path_row)
         form_edit.addRow("Title", self.ed_title)
         form_edit.addRow("Artist", self.ed_artist)
         form_edit.addRow("Album", self.ed_album)
@@ -68,14 +78,12 @@ class EditSongDialog(QDialog):
         # Read-only fields
         grp_ro = QGroupBox("Read-only Fields")
         form_ro = QFormLayout(grp_ro)
-        self.ro_path = QLineEdit(); self._make_ro(self.ro_path)
         self.ro_uid = QLineEdit(); self._make_ro(self.ro_uid)
         self.ro_duration = QLineEdit(); self._make_ro(self.ro_duration)
         self.ro_added = QLineEdit(); self._make_ro(self.ro_added)
         self.ro_mtime = QLineEdit(); self._make_ro(self.ro_mtime)
         self.ro_size = QLineEdit(); self._make_ro(self.ro_size)
 
-        form_ro.addRow("Path", self.ro_path)
         form_ro.addRow("UID", self.ro_uid)
         form_ro.addRow("Duration (sec)", self.ro_duration)
         form_ro.addRow("Added (epoch)", self.ro_added)
@@ -110,9 +118,9 @@ class EditSongDialog(QDialog):
             self.cmb_key.setCurrentIndex(0)  # Unknown
         self.sp_rating.setValue(int(row.rating or 0))
         self.ed_comment.setText(row.comment or "")
+        self.ed_path.setText(row.path or "")
 
         # read-only
-        self.ro_path.setText(row.path or "")
         self.ro_uid.setText(row.uid or "")
         self.ro_duration.setText("" if row.duration is None else f"{float(row.duration):.3f}")
         self.ro_added.setText(str(int(row.added_ts or 0)))
@@ -134,6 +142,7 @@ class EditSongDialog(QDialog):
         row.key = int(kd) if kd is not None else None
         row.rating = int(self.sp_rating.value())
         row.comment = self.ed_comment.text().strip()
+        row.path = self.ed_path.text().strip()
         return row
 
     # Internal
@@ -141,27 +150,48 @@ class EditSongDialog(QDialog):
         w.setReadOnly(True)
         w.setStyleSheet("QLineEdit[readOnly=\"true\"] { background: #2a2a2a; color: #bbb; }")
 
-    def _persist_if_configured(self, updated: TrackRow) -> None:
+    def _browse_path(self) -> None:
+        current = self.ed_path.text().strip()
+        folder = os.path.dirname(current)
+        start = current if os.path.isfile(current) else (folder if os.path.isdir(folder) else "")
+        path, _ = QFileDialog.getOpenFileName(self, "Track File", start)
+        if path:
+            self.ed_path.setText(os.path.normpath(path))
+
+    def _persist_if_configured(self, updated: TrackRow) -> bool:
+        """Save the row; False (with a message) when the new path cannot be used."""
+        path_changed = self._row is not None and updated.path != self._row.path
+        if path_changed and not os.path.isfile(updated.path):
+            QMessageBox.warning(self, "Edit Track", f"The file does not exist:\n{updated.path}")
+            return False
         if not self._libpath:
             # No persistence configured; emit signal for external handling
             self.sig_track_saved.emit(updated)
-            return
+            return True
+        db = LibraryDB(os.path.join(self._libpath, "library.db"))
+        db.connect()
         try:
-            import os
-            db = LibraryDB(os.path.join(self._libpath, "library.db"))
-            db.connect()
-            db.upsert(updated)
+            # the metadata under the stored path, then the path (checked: one file, one track)
+            db.upsert(replace(updated, path=self._row.path))
+            if path_changed:
+                db.set_path(updated.uid, updated.path)
             db.conn.commit()
+            saved = db.get_by_uid(updated.uid)
             lib_full = db.list_all()
+        except ValueError as exc:
+            db.conn.rollback()
+            QMessageBox.warning(self, "Edit Track", str(exc))
+            return False
+        finally:
             db.close()
-            if self._bus is not None:
-                self._bus.sig_lib_updated.emit(lib_full)
-                track_uid = str(updated.uid or "").strip()
-                if track_uid:
-                    self._bus.sig_rekordbox_sync_track_requested.emit(track_uid)
-        except Exception as e:
-            # For now, surface the error by re-raising; caller can catch via Qt
-            raise
+        if saved is not None:
+            self.set_track(saved)
+        if self._bus is not None:
+            self._bus.sig_lib_updated.emit(lib_full)
+            track_uid = str(updated.uid or "").strip()
+            if track_uid:
+                self._bus.sig_rekordbox_sync_track_requested.emit(track_uid)
+        return True
 
     def _on_apply(self):
         updated = self.get_updated_row()
@@ -174,8 +204,8 @@ class EditSongDialog(QDialog):
         if updated is None:
             self.reject()
             return
-        self._persist_if_configured(updated)
-        self.accept()
+        if self._persist_if_configured(updated):
+            self.accept()
 
     # Key helpers
     def _populate_key_combo(self) -> None:

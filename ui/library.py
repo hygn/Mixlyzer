@@ -198,26 +198,29 @@ class _TrackTable(QtWidgets.QTableWidget):
     def mimeTypes(self):
         return ["text/uri-list", _PLAYLIST_TRACKS_MIME]
 
+    def _entry_position(self, row: int) -> Optional[int]:
+        """The playlist position of the table row (a playlist entry's identity)."""
+        item = self.item(row, self._index_column)
+        value = item.data(_SORT_ROLE) if item is not None else None
+        return int(value) if value is not None else None
+
     def mimeData(self, items):
         rows = sorted({item.row() for item in items})
         data = QtCore.QMimeData()
         urls = []
-        paths = []
+        positions = []
         for row in rows:
             item = self.item(row, self._path_column)
             if item is not None and item.text():
-                path = item.text()
-                paths.append(path)
-                urls.append(QtCore.QUrl.fromLocalFile(path))
+                urls.append(QtCore.QUrl.fromLocalFile(item.text()))
+                positions.append(self._entry_position(row))
         if urls:
             data.setUrls(urls)
-        if self._playlist_reorder_enabled and paths:
-            # QUrl normalizes Windows separators (``C:\\...`` -> ``C:/...``).
-            # Track paths are intentional string primary keys, so internal
-            # reordering must preserve the exact text stored in the database.
+        if self._playlist_reorder_enabled and positions:
+            # the entries by position: a track may be in the playlist more than once
             data.setData(
                 _PLAYLIST_TRACKS_MIME,
-                QtCore.QByteArray(json.dumps(paths).encode("utf-8")),
+                QtCore.QByteArray(json.dumps(positions).encode("utf-8")),
             )
         return data
 
@@ -307,32 +310,30 @@ class _TrackTable(QtWidgets.QTableWidget):
             event.ignore()
             return
         try:
-            moved_paths = json.loads(
+            moved = [int(position) for position in json.loads(
                 bytes(event.mimeData().data(_PLAYLIST_TRACKS_MIME)).decode("utf-8")
-            )
-        except (UnicodeDecodeError, json.JSONDecodeError):
+            )]
+        except (UnicodeDecodeError, json.JSONDecodeError, TypeError, ValueError):
             self._set_drop_line(None)
             event.ignore()
             return
-        moved_set = {str(path) for path in moved_paths}
         pos = event.position().toPoint()
         boundary, _line_y = self._drop_boundary(pos)
-        before_path = None
+        before_position = None
         for row in range(boundary, self.rowCount()):
-            item = self.item(row, self._path_column)
-            path = item.text() if item is not None else ""
-            if path and path not in moved_set:
-                before_path = path
+            position = self._entry_position(row)
+            if position is not None and position not in moved:
+                before_position = position
                 break
         self._set_drop_line(None)
-        self.playlistRowsDropped.emit(list(moved_paths), before_path)
+        self.playlistRowsDropped.emit(moved, before_position)
         event.setDropAction(QtCore.Qt.MoveAction)
         event.accept()
 
 
 class _LibrarySourceTree(QtWidgets.QTreeWidget):
-    playlistFilesDropped = QtCore.Signal(int, object)
-    playlistOrderDropped = QtCore.Signal(int, object)
+    playlistFilesDropped = QtCore.Signal(str, object)
+    playlistOrderDropped = QtCore.Signal(str, object)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -357,10 +358,10 @@ class _LibrarySourceTree(QtWidgets.QTreeWidget):
             if item.data(0, _SOURCE_KIND_ROLE) == "playlist"
         ]
         if len(playlists) == 1:
-            playlist_id = int(playlists[0].data(0, _SOURCE_VALUE_ROLE))
+            playlist_uid = str(playlists[0].data(0, _SOURCE_VALUE_ROLE))
             data.setData(
                 _PLAYLIST_MIME,
-                QtCore.QByteArray(str(playlist_id).encode("ascii")),
+                QtCore.QByteArray(playlist_uid.encode("ascii")),
             )
         return data
 
@@ -376,13 +377,13 @@ class _LibrarySourceTree(QtWidgets.QTreeWidget):
 
     def _playlist_insertion_at(
         self, pos: QtCore.QPoint
-    ) -> tuple[bool, Optional[int], Optional[int]]:
+    ) -> tuple[bool, Optional[str], Optional[int]]:
         item = self.itemAt(pos)
         kind = item.data(0, _SOURCE_KIND_ROLE) if item is not None else ""
         if kind == "playlist":
             rect = self.visualItemRect(item)
             if pos.y() < rect.center().y():
-                return True, int(item.data(0, _SOURCE_VALUE_ROLE)), rect.top()
+                return True, str(item.data(0, _SOURCE_VALUE_ROLE)), rect.top()
             parent = item.parent()
             next_index = parent.indexOfChild(item) + 1 if parent is not None else -1
             next_item = (
@@ -390,11 +391,11 @@ class _LibrarySourceTree(QtWidgets.QTreeWidget):
                 if parent is not None and next_index < parent.childCount()
                 else None
             )
-            before_id = (
-                int(next_item.data(0, _SOURCE_VALUE_ROLE))
+            before_uid = (
+                str(next_item.data(0, _SOURCE_VALUE_ROLE))
                 if next_item is not None else None
             )
-            return True, before_id, rect.bottom() + 1
+            return True, before_uid, rect.bottom() + 1
         if kind == "playlists":
             if item.childCount():
                 y = self.visualItemRect(item.child(item.childCount() - 1)).bottom() + 1
@@ -433,14 +434,11 @@ class _LibrarySourceTree(QtWidgets.QTreeWidget):
             y = max(1, min(self.viewport().height() - 2, self._drop_line_y))
             painter.drawLine(8, y, self.viewport().width() - 5, y)
 
-    def _playlist_at(self, pos) -> Optional[int]:
+    def _playlist_at(self, pos) -> Optional[str]:
         item = self.itemAt(pos)
         if item is None or item.data(0, _SOURCE_KIND_ROLE) != "playlist":
             return None
-        try:
-            return int(item.data(0, _SOURCE_VALUE_ROLE))
-        except (TypeError, ValueError):
-            return None
+        return str(item.data(0, _SOURCE_VALUE_ROLE) or "") or None
 
     def dragEnterEvent(self, event):
         if event.source() is self and event.mimeData().hasFormat(_PLAYLIST_MIME):
@@ -453,7 +451,7 @@ class _LibrarySourceTree(QtWidgets.QTreeWidget):
 
     def dragMoveEvent(self, event):
         if event.source() is self and event.mimeData().hasFormat(_PLAYLIST_MIME):
-            valid, _before_id, line_y = self._playlist_insertion_at(
+            valid, _before_uid, line_y = self._playlist_insertion_at(
                 event.position().toPoint()
             )
             if valid:
@@ -478,11 +476,11 @@ class _LibrarySourceTree(QtWidgets.QTreeWidget):
     def dropEvent(self, event):
         if event.source() is self and event.mimeData().hasFormat(_PLAYLIST_MIME):
             try:
-                moved_id = int(bytes(event.mimeData().data(_PLAYLIST_MIME)).decode("ascii"))
-            except (UnicodeDecodeError, ValueError):
+                moved_uid = bytes(event.mimeData().data(_PLAYLIST_MIME)).decode("ascii")
+            except UnicodeDecodeError:
                 event.ignore()
                 return
-            valid, before_id, _line_y = self._playlist_insertion_at(
+            valid, before_uid, _line_y = self._playlist_insertion_at(
                 event.position().toPoint()
             )
             if not valid:
@@ -490,18 +488,18 @@ class _LibrarySourceTree(QtWidgets.QTreeWidget):
                 event.ignore()
                 return
             self._set_drop_visual()
-            self.playlistOrderDropped.emit(moved_id, before_id)
+            self.playlistOrderDropped.emit(moved_uid, before_uid)
             event.setDropAction(QtCore.Qt.MoveAction)
             event.accept()
             return
-        playlist_id = self._playlist_at(event.position().toPoint())
+        playlist_uid = self._playlist_at(event.position().toPoint())
         paths = [url.toLocalFile() for url in event.mimeData().urls() if url.isLocalFile()]
-        if playlist_id is None or not paths:
+        if playlist_uid is None or not paths:
             self._set_drop_visual()
             event.ignore()
             return
         self._set_drop_visual()
-        self.playlistFilesDropped.emit(playlist_id, paths)
+        self.playlistFilesDropped.emit(playlist_uid, paths)
         event.acceptProposedAction()
 
 
@@ -756,7 +754,8 @@ class LibraryWidget(QtWidgets.QWidget):
         self._library_tracks: List[Track] = []
         self._source_kind = "library"
         self._source_value = None
-        self._pending_playlist_paths: dict[str, set[int]] = {}
+        # file identity -> the playlists (uids) it goes into once analyzed, once per drop
+        self._pending_playlist_paths: dict[str, list[str]] = {}
         self._edit_dlg: EditSongDialog | None = None
         self._export_dlg: ExportTrackDialog | None = None
 
@@ -996,7 +995,7 @@ class LibraryWidget(QtWidgets.QWidget):
         self.table.playlistRowsDropped.connect(self._drop_playlist_tracks)
 
         # The loaded track is shown in green.
-        self._loaded_path_key: Optional[str] = None
+        self._loaded_uid: Optional[str] = None
         self.bus.sig_properties_loaded.connect(self._on_properties_loaded)
 
         # Initial load
@@ -1079,7 +1078,7 @@ class LibraryWidget(QtWidgets.QWidget):
         for playlist in playlists:
             item = QtWidgets.QTreeWidgetItem([playlist.name])
             item.setData(0, _SOURCE_KIND_ROLE, "playlist")
-            item.setData(0, _SOURCE_VALUE_ROLE, playlist.id)
+            item.setData(0, _SOURCE_VALUE_ROLE, playlist.uid)
             playlists_item.addChild(item)
         playlists_item.setExpanded(True)
 
@@ -1157,7 +1156,7 @@ class LibraryWidget(QtWidgets.QWidget):
         elif self._source_kind == "playlist":
             db = self._db()
             try:
-                rows = db.list_playlist_tracks(int(self._source_value))
+                rows = db.list_playlist_tracks(str(self._source_value))
             finally:
                 db.close()
             tracks = []
@@ -1225,18 +1224,18 @@ class LibraryWidget(QtWidgets.QWidget):
         self._library_tracks = [
             row_to_track(row) if isinstance(row, TrackRow) else row for row in rows
         ]
-        resolved: dict[int, list[str]] = {}
+        resolved: dict[str, list[str]] = {}
         for track in self._library_tracks:
-            playlist_ids = self._pending_playlist_paths.pop(
-                self._file_identity(track.path), set()
+            playlist_uids = self._pending_playlist_paths.pop(
+                self._file_identity(track.path), []
             )
-            for playlist_id in playlist_ids:
-                resolved.setdefault(playlist_id, []).append(track.path)
+            for playlist_uid in playlist_uids:
+                resolved.setdefault(playlist_uid, []).append(track.uid)
         if resolved:
             db = self._db()
             try:
-                for playlist_id, paths in resolved.items():
-                    db.add_playlist_tracks(playlist_id, paths)
+                for playlist_uid, uids in resolved.items():
+                    db.add_playlist_tracks(playlist_uid, uids)
             finally:
                 db.close()
         self._refresh_current_source()
@@ -1292,25 +1291,23 @@ class LibraryWidget(QtWidgets.QWidget):
             self.table.sortItems(sort_section, sort_order)
         self._mark_loaded_track()
 
-    @staticmethod
-    def _path_key(path: object) -> Optional[str]:
-        text = str(path or "").strip()
-        return text or None
+    def _row_uid(self, row: int) -> str:
+        """The track uid of a table row ("" for a file not analyzed)."""
+        item = self.table.item(row, self.HEADERS.index(self.ART_HEADER))
+        return str(item.data(QtCore.Qt.UserRole) or "") if item is not None else ""
 
     def _on_properties_loaded(self) -> None:
         properties = self.model.properties if self.model is not None else {}
-        self._loaded_path_key = self._path_key(properties.get("path") if isinstance(properties, dict) else None)
+        uid = properties.get("uid") if isinstance(properties, dict) else None
+        self._loaded_uid = str(uid or "").strip() or None
         self._mark_loaded_track()
 
     def _mark_loaded_track(self) -> None:
-        """Green text on the loaded track's row, the default on the others."""
-        path_col = self.HEADERS.index("Path")
+        """Green text on the loaded track's rows, the default on the others."""
         green = QtGui.QBrush(QtGui.QColor(current_theme().success))
         dim = QtGui.QBrush(QtGui.QColor(current_theme().text_dim))
         for r in range(self.table.rowCount()):
-            item = self.table.item(r, path_col)
-            loaded = item is not None and self._loaded_path_key is not None \
-                and self._path_key(item.text()) == self._loaded_path_key
+            loaded = self._loaded_uid is not None and self._row_uid(r) == self._loaded_uid
             for c in range(self.table.columnCount()):
                 cell = self.table.item(r, c)
                 if cell is None:
@@ -1555,12 +1552,12 @@ class LibraryWidget(QtWidgets.QWidget):
             return
         finally:
             db.close()
-        self._source_kind, self._source_value = "playlist", playlist.id
+        self._source_kind, self._source_value = "playlist", playlist.uid
         self._rebuild_source_tree()
-        self._select_source("playlist", playlist.id)
+        self._select_source("playlist", playlist.uid)
 
     def _rename_playlist(self, item: QtWidgets.QTreeWidgetItem) -> None:
-        playlist_id = int(item.data(0, _SOURCE_VALUE_ROLE))
+        playlist_uid = str(item.data(0, _SOURCE_VALUE_ROLE))
         name, accepted = QtWidgets.QInputDialog.getText(
             self, "Rename Playlist", "Name", text=item.text(0)
         )
@@ -1568,14 +1565,14 @@ class LibraryWidget(QtWidgets.QWidget):
             return
         db = self._db()
         try:
-            db.rename_playlist(playlist_id, name)
+            db.rename_playlist(playlist_uid, name)
         except Exception as exc:
             QtWidgets.QMessageBox.warning(self, "Rename Playlist", str(exc))
             return
         finally:
             db.close()
         self._rebuild_source_tree()
-        self._select_source("playlist", playlist_id)
+        self._select_source("playlist", playlist_uid)
 
     def _delete_playlist(self, item: QtWidgets.QTreeWidgetItem) -> None:
         answer = QtWidgets.QMessageBox.question(
@@ -1585,10 +1582,10 @@ class LibraryWidget(QtWidgets.QWidget):
         )
         if answer != QtWidgets.QMessageBox.Yes:
             return
-        playlist_id = int(item.data(0, _SOURCE_VALUE_ROLE))
+        playlist_uid = str(item.data(0, _SOURCE_VALUE_ROLE))
         db = self._db()
         try:
-            db.delete_playlist(playlist_id)
+            db.delete_playlist(playlist_uid)
         finally:
             db.close()
         self._source_kind, self._source_value = "library", None
@@ -1596,37 +1593,37 @@ class LibraryWidget(QtWidgets.QWidget):
         self._select_source("library", None)
 
     def _move_playlist(self, item: QtWidgets.QTreeWidgetItem, offset: int) -> None:
-        playlist_id = int(item.data(0, _SOURCE_VALUE_ROLE))
+        playlist_uid = str(item.data(0, _SOURCE_VALUE_ROLE))
         db = self._db()
         try:
-            db.move_playlist(playlist_id, offset)
+            db.move_playlist(playlist_uid, offset)
         finally:
             db.close()
         self._rebuild_source_tree()
-        self._select_source("playlist", playlist_id)
+        self._select_source("playlist", playlist_uid)
 
-    def _drop_playlist_order(self, playlist_id: int, before_playlist_id) -> None:
+    def _drop_playlist_order(self, playlist_uid: str, before_playlist_uid) -> None:
         db = self._db()
         try:
-            changed = db.move_playlist_before(playlist_id, before_playlist_id)
+            changed = db.move_playlist_before(playlist_uid, before_playlist_uid)
         finally:
             db.close()
         if changed:
             QtCore.QTimer.singleShot(
-                0, lambda playlist_id=playlist_id: self._finish_playlist_drop(playlist_id)
+                0, lambda playlist_uid=playlist_uid: self._finish_playlist_drop(playlist_uid)
             )
 
-    def _finish_playlist_drop(self, playlist_id: int) -> None:
+    def _finish_playlist_drop(self, playlist_uid: str) -> None:
         self._rebuild_source_tree()
-        self._select_source("playlist", playlist_id)
+        self._select_source("playlist", playlist_uid)
 
-    def _drop_playlist_tracks(self, paths, before_path) -> None:
+    def _drop_playlist_tracks(self, positions, before_position) -> None:
         if self._source_kind != "playlist":
             return
         db = self._db()
         try:
             changed = db.move_playlist_tracks_before(
-                int(self._source_value), paths, before_path
+                str(self._source_value), positions, before_position
             )
         finally:
             db.close()
@@ -1635,39 +1632,46 @@ class LibraryWidget(QtWidgets.QWidget):
                 0, lambda: self._refresh_current_source(reset_sort=True)
             )
 
+    def _selected_rows(self) -> list[int]:
+        return sorted(index.row() for index in self.table.selectionModel().selectedRows())
+
     def _selected_paths(self) -> list[str]:
         path_column = self.HEADERS.index("Path")
         result = []
-        for index in self.table.selectionModel().selectedRows():
-            item = self.table.item(index.row(), path_column)
+        for row in self._selected_rows():
+            item = self.table.item(row, path_column)
             if item is not None and item.text():
                 result.append(item.text())
         return result
 
-    def _add_paths_to_playlist(self, playlist_id: int, paths) -> None:
+    def _selected_uids(self) -> list[str]:
+        """The analyzed tracks selected, each once."""
+        return list(dict.fromkeys(uid for uid in map(self._row_uid, self._selected_rows()) if uid))
+
+    def _add_paths_to_playlist(self, playlist_uid: str, paths) -> None:
         requested = [str(path) for path in paths if str(path)]
         if not requested:
             return
-        analyzed_paths = []
+        analyzed_uids = []
         pending_paths = []
         db = self._db()
         try:
             for path in requested:
                 row = db.find_file(path)
                 if row is not None:
-                    analyzed_paths.append(row.path)
+                    analyzed_uids.append(row.uid)
                 elif os.path.isfile(path):
                     pending_paths.append(path)
-            if analyzed_paths:
-                db.add_playlist_tracks(int(playlist_id), analyzed_paths)
+            if analyzed_uids:
+                db.add_playlist_tracks(playlist_uid, analyzed_uids)
         finally:
             db.close()
         for path in pending_paths:
             self._pending_playlist_paths.setdefault(
-                self._file_identity(path), set()
-            ).add(int(playlist_id))
+                self._file_identity(path), []
+            ).append(playlist_uid)
             self.bus.sig_request_load_track.emit(path)
-        if self._source_kind == "playlist" and int(self._source_value) == int(playlist_id):
+        if self._source_kind == "playlist" and str(self._source_value) == playlist_uid:
             self._refresh_current_source()
 
     def _on_context_menu(self, pos):
@@ -1695,7 +1699,7 @@ class LibraryWidget(QtWidgets.QWidget):
         finally:
             db.close()
         for playlist in playlists:
-            playlist_actions[add_menu.addAction(playlist.name)] = playlist.id
+            playlist_actions[add_menu.addAction(playlist.name)] = playlist.uid
         if not playlists:
             add_menu.setEnabled(False)
         act_remove.setEnabled(all_analyzed)
@@ -1720,30 +1724,24 @@ class LibraryWidget(QtWidgets.QWidget):
     def _remove_selected_from_playlist(self) -> None:
         if self._source_kind != "playlist":
             return
-        paths = self._selected_paths()
-        if not paths:
+        positions = [self.table._entry_position(row) for row in self._selected_rows()]
+        positions = [position for position in positions if position is not None]
+        if not positions:
             return
         db = self._db()
         try:
-            db.remove_playlist_tracks(int(self._source_value), paths)
+            db.remove_playlist_tracks(str(self._source_value), positions)
         finally:
             db.close()
         self._refresh_current_source(reset_sort=True)
 
     def _on_remove_selected(self):
-        sel = self.table.selectionModel().selectedRows()
-        if not sel:
+        uids = self._selected_uids()
+        if not uids:
             return
-        rows = [ix.row() for ix in sel]
-        paths = [self.table.item(r, self.HEADERS.index("Path")).text() for r in rows]
         l = LibraryDB(os.path.join(self.cfg.libconfig.libpath, "library.db"))
         l.connect()
-        uids = []
-        for p in paths:
-            rec = l.get(p)
-            if rec:
-                uids.append(rec.uid)
-        l.delete_paths(paths)
+        l.delete_tracks(uids)
         lib_full = l.list_all()
         l.close()
         n = FeatureNPZStore(base_dir=self.cfg.libconfig.libpath, compressed=True)
@@ -1773,18 +1771,13 @@ class LibraryWidget(QtWidgets.QWidget):
                 subprocess.Popen(["xdg-open", folder])
 
     def _export_selected(self):
-        sel = self.table.selectionModel().selectedRows()
-        if not sel:
-            return
-        row_idx = sel[0].row()
-        path_item = self.table.item(row_idx, self.HEADERS.index("Path"))
-        path = path_item.text() if path_item else ""
-        if not path:
+        uids = self._selected_uids()
+        if not uids:
             return
 
         db = LibraryDB(os.path.join(self.cfg.libconfig.libpath, "library.db"))
         db.connect()
-        track_row = db.get(path)
+        track_row = db.get_by_uid(uids[0])
         db.close()
         if track_row is None:
             QtWidgets.QMessageBox.warning(self, "Export Track", "Track metadata could not be found in the library.")
@@ -1811,17 +1804,13 @@ class LibraryWidget(QtWidgets.QWidget):
 
     # Edit
     def _edit_selected(self):
-        sel = self.table.selectionModel().selectedRows()
-        if not sel:
+        uids = self._selected_uids()
+        if not uids:
             return
-        # First selected row
-        ix = sel[0]
-        path = self.table.item(ix.row(), self.HEADERS.index("Path")).text()
-        if not path:
-            return
+        # First selected track
         l = LibraryDB(os.path.join(self.cfg.libconfig.libpath, "library.db"))
         l.connect()
-        row = l.get(path)
+        row = l.get_by_uid(uids[0])
         l.close()
         if not row:
             return

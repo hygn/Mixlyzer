@@ -18,6 +18,7 @@ ResultCallback = Callable[[dict], None]
 StatusCallback = Callable[[str], None]
 AlbumArtCallback = Callable[[object], None]
 CancelReanalysisCallback = Callable[[str], None]
+MissingFileCallback = Callable[[object, bool], None]
 
 
 class AnalysisWorkflow(QtCore.QObject):
@@ -32,6 +33,7 @@ class AnalysisWorkflow(QtCore.QObject):
         album_art_callback: AlbumArtCallback,
         cancel_reanalysis_callback: CancelReanalysisCallback,
         status_callback: StatusCallback,
+        missing_file_callback: MissingFileCallback | None = None,
         parent: QtCore.QObject | None = None,
         cfg_loader=load_cfg,
         albumart_provider=getAlbumArt,
@@ -44,6 +46,7 @@ class AnalysisWorkflow(QtCore.QObject):
         self._album_art_callback = album_art_callback
         self._cancel_reanalysis_callback = cancel_reanalysis_callback
         self._status_callback = status_callback
+        self._missing_file_callback = missing_file_callback
         self._cfg_loader = cfg_loader
         self._albumart_provider = albumart_provider
         self._tag_extractor = tag_extractor
@@ -80,6 +83,12 @@ class AnalysisWorkflow(QtCore.QObject):
             database.close()
         if track is not None:
             path = track.path
+            if not os.path.isfile(path):
+                # the track's file is gone: no guessing, the user sets its new path
+                self._show_status(f"File not found: {path}")
+                if self._missing_file_callback is not None:
+                    self._missing_file_callback(track, force_analyze)
+                return
         auto_load = track is not None
 
         if self._find_inflight_task(path) is not None:

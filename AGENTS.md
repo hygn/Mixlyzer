@@ -44,7 +44,7 @@ Working notes for AI/automation agents editing the Mixlyzer codebase.
 - `views/`: pyqtgraph view plugins registered through `views.base.REGISTRY`.
 - `utils/`: labels, colors, fonts, JumpCUE extraction/render helpers, keystrip utilities, waveform helpers.
 - `third_party/`: export adapters such as Rekordbox XML generation.
-- `migration/`: read-only library-version compatibility adapter, plus one-off development migrations run by hand (`phrase_index_v040.py`, `tempo_ramps_v050.py`, `wave_overview_bands.py`); the app never migrates by itself.
+- `migration/`: read-only library-version compatibility adapter, plus one-off development migrations run by hand (`phrase_index_v040.py`, `tempo_ramps_v050.py`, `wave_overview_bands.py`, `uid_keys_v060.py`); the app never migrates by itself.
 - `build/`: PyInstaller spec.
 - `docs/`: localized docs (`README.ko.md`, `README.ja.md`).
 - `assets/`: icons, fonts, sounds.
@@ -89,14 +89,16 @@ Working notes for AI/automation agents editing the Mixlyzer codebase.
 - Results are pushed back into the in-memory `DataModel` and editor widgets; they are not a separate analysis system.
 
 ## Data & Persistence
-- Track metadata lives in `library/library.db` in the `tracks` table.
+- Track metadata lives in `library/library.db` in the `tracks` table, keyed by `uid` (PRIMARY KEY, canonical UUIDv4).
+- Playlists (`playlists`, keyed by their own UUIDv4 `uid`) hold one `playlist_tracks` row per entry, (`playlist_uid`, `position`) -> `track_uid`: a track may be in a playlist more than once, so the UI addresses an entry by its position (reorder / remove), never by the track. Removing a track removes its entries and closes the playlists up.
 - BPM and key transitions are also persisted in:
   - `track_bpm_segments`
   - `track_key_segments`
 - Tempo segments are rows `[start, end, bpm, inizio, ts_num, bpm_end]` (`core.tempo_rows`). A `bpm_end` that differs from `bpm` is a linear tempo ramp (tempo linear in time from `start` to `end`; its beats come from the closed-form phase); rows without it (5 columns, older data) or with it equal are steady. `inizio` is a downbeat on the row's own grid. `track_bpm_segments.bpm_end` mirrors it (NULL = steady): transition search reads a ramp as a change from its start to its end tempo, and a phrase section inside a ramp gets the tempo at its midpoint. The editor keeps ramp rows (cut / merge / shift follow the tempo line; Assign makes the row steady at the reference BPM; the ramp start / end buttons make the reference BPM the row's start or end tempo, its first beat kept), and the Rekordbox export writes one TEMPO entry per beat of a ramp.
 - Numeric feature arrays live in `{libpath}/{uid}.npz` through `FeatureNPZStore`. Only what is read is stored: beats, tempo/key segments, the overview waveform (`wave_minmax_np` / `wave_minmax_ref`, `wave_bands_np` / `wave_bands_ref`, `wave_detail_band_ref`), duration, sr, tempo_global, and the JumpCUE / CUE point / phrase blocks. Saving replaces a block as a whole (`save_worker._replace_block`).
-- Track identity across DB and NPZ is the `uid` field stored in SQLite.
+- Track identity across DB, NPZ, thumbnails and playlists is the `uid`; the file path is an editable attribute (`LibraryDB.set_path`; the Edit Track dialog). `tracks.path` stays UNIQUE (one file, one track).
 - `tracks.path` is stored as given, never normalized (case / separators can name different files on other file systems). A path that may spell a library file differently (a drop, External Sync's deck path) is looked up by the file it opens (`LibraryDB.find_file`) and then used as stored.
+- A library track whose file is missing is not loaded: the app says so and asks the user for the file's new location (no guessing by name or content).
 - Album art thumbnails (downsampled, JPEG) live in `{libpath}/thumbs/{uid}.jpg` (`core.thumbnails`): written by the full analysis, removed with the track; the library table shows the top of each as its first column.
 - The key strip is rendered just in time from `key_segments` (`utils.keystrip.render_keystrip`); no image is stored.
 - The overview waveform and the main view's preview (its stand-in until the detail chunks are drawn) are rendered just in time from the stored overview (`utils.wave.render_wave_overview` / `render_wave_detail_preview`) in the style of `viewconfig.waveform_style` (RGB, or rekordbox-style 3Band): low / mid / high are summed from the 12 stored bands with the ranges of Settings > View > Waveform bands (`viewconfig.env_*`, weighted by log-frequency overlap), so a change of the ranges redraws them at once without re-analysis; no image is stored. The detail waveform is rendered from the playback PCM (its three-band scale is the stored `wave_detail_band_ref`). Libraries analyzed before this format are converted by hand with `migration/wave_overview_bands.py`.

@@ -6,7 +6,7 @@ from utils.atomic_io import atomic_write_text
 
 
 DEFAULT_LIBRARY_VERSION = "0.1.0"
-CURRENT_LIBRARY_VERSION = "0.5.0"
+CURRENT_LIBRARY_VERSION = "0.6.0"
 VERSION_FILENAME = "VERSION"
 
 

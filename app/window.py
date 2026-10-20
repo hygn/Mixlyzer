@@ -161,6 +161,7 @@ class AppWindow(QtWidgets.QMainWindow):
             album_art_callback=self._set_album_art,
             cancel_reanalysis_callback=self.segment_reanalysis_workflow.cancel_all,
             status_callback=status_bar.showMessage,
+            missing_file_callback=self._on_track_file_missing,
             parent=self,
         )
 
@@ -258,6 +259,40 @@ class AppWindow(QtWidgets.QMainWindow):
 
     def reanalyze_file(self, path: str):
         self.analysis_workflow.reanalyze(path)
+
+    def _on_track_file_missing(self, track, force_analyze: bool) -> None:
+        """A library track whose file is gone: say so and let the user set its new path."""
+        title = "Track File Not Found"
+        name = track.title or os.path.basename(track.path)
+        answer = QtWidgets.QMessageBox.question(
+            self, title,
+            f'Cannot load "{name}": its file is missing.\n{track.path}\n\nSet the file\'s new location?',
+        )
+        if answer != QtWidgets.QMessageBox.Yes:
+            return
+        folder = os.path.dirname(track.path)
+        new_path, _ = QtWidgets.QFileDialog.getOpenFileName(
+            self, f"Locate {name}", folder if os.path.isdir(folder) else "")
+        if not new_path:
+            return
+        new_path = os.path.normpath(new_path)
+        cfg = load_cfg()
+        db = LibraryDB(os.path.join(cfg.libconfig.libpath, "library.db"))
+        db.connect()
+        try:
+            db.set_path(track.uid, new_path)
+            lib_rows = db.list_all()
+        except ValueError as exc:
+            QtWidgets.QMessageBox.warning(self, title, str(exc))
+            return
+        finally:
+            db.close()
+        self._emit_library_update(cfg, lib_rows)
+        self._sync_rekordbox_track(track.uid)
+        if force_analyze:
+            self.reanalyze_file(new_path)
+        else:
+            self.analyze_file(new_path)
 
     @QtCore.Slot(dict)
     def _on_features_ready(self, feat: dict):
