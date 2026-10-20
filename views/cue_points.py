@@ -1,7 +1,7 @@
 from PySide6 import QtGui
 import pyqtgraph as pg
 
-from .base import ViewPlugin, register_view
+from .base import ViewPlugin, emphasis_opacity, emphasis_size, register_view
 from utils.cue_points import extract_cue_points
 from utils.jumpcue_colors import get_cue_point_color
 
@@ -19,6 +19,9 @@ def _down_triangle_path() -> QtGui.QPainterPath:
 class CUEPointView(ViewPlugin):
     """Display standalone CUEPoints above the main waveform."""
 
+    EDIT_PAGE = "cue"
+    SIZE = 14
+
     def __init__(self, bus, model, tl):
         super().__init__(bus, model, tl)
         self.plot: pg.PlotItem | None = None
@@ -26,7 +29,7 @@ class CUEPointView(ViewPlugin):
         self._brushes: list = []
         self._pens: list = []
         self._markers = pg.ScatterPlotItem(
-            size=14,
+            size=self.SIZE,
             pen=pg.mkPen((255, 40, 40), width=1.2),
             brush=pg.mkBrush(255, 40, 40, 240),
             pxMode=True,
@@ -42,6 +45,10 @@ class CUEPointView(ViewPlugin):
     def attach(self, plot: pg.PlotItem):
         self.plot = plot
         plot.addItem(self._markers)
+
+    def _apply_emphasis(self) -> None:
+        self._markers.setSize(emphasis_size(self.emphasis, self.SIZE))
+        self._markers.setOpacity(emphasis_opacity(self.emphasis))
 
     def detach(self):
         if self.plot is not None and self._markers.scene() is not None:

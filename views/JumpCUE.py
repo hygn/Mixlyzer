@@ -5,7 +5,7 @@ from typing import List
 import pyqtgraph as pg
 from PySide6 import QtCore, QtGui, QtWidgets
 
-from .base import ViewPlugin, register_view
+from .base import ViewPlugin, emphasis_opacity, emphasis_size, register_view
 from utils.jump_cues import extract_jump_cue_graph
 
 
@@ -51,6 +51,7 @@ class JumpCUEView(ViewPlugin):
 
     TOP_PADDING = 0.0
     BLOCK_HEIGHT = 0.06
+    EDIT_PAGE = "cue"
 
     def __init__(self, bus, model, tl):
         super().__init__(bus, model, tl)
@@ -130,6 +131,12 @@ class JumpCUEView(ViewPlugin):
             marker.setVisible(False)
             self.plot.addItem(marker)
             self._entries.append([point, marker, False])
+        self._apply_emphasis()
+
+    def _apply_emphasis(self) -> None:
+        for _point, marker, _shown in self._entries:
+            marker.setScale(emphasis_size(self.emphasis, 1.0))
+            marker.setOpacity(emphasis_opacity(self.emphasis))
 
     def _refresh(self, *args):
         """Place the cues near the view at the current offset; hide the rest."""

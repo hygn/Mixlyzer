@@ -73,6 +73,9 @@ class EventBus(QtCore.QObject):
     sig_cue_points_updated = QtCore.Signal()      # notification only; read from shared model
 
     sig_jumpcue_updated = QtCore.Signal()
+    # The edit pages shown while editing is unlocked (frozenset of views.base.EDIT_PAGES; empty:
+    # locked): the views emphasize those pages' visualizations and dim the others'.
+    sig_edit_focus_changed = QtCore.Signal(object)
 
     # Deck MT button: playback.use_timestretch on/off (saved like the settings dialog)
     sig_timestretch_toggle_requested = QtCore.Signal(bool)

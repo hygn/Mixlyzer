@@ -112,7 +112,7 @@ class JumpCUEEditMixin:
     def _rename_jumpcue(self, slot: int, name: str) -> None:
         """The name is the cue's comment; no name keeps the comment at its letter."""
         cue = self._jc_cue_at(slot)
-        if cue is None:
+        if cue is None or not getattr(self, "_edit_enabled", True):
             return
         point = float(cue.get("point", 0.0))
         groups = self._jumpcue_groups()

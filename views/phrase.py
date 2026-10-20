@@ -1,7 +1,7 @@
 from PySide6 import QtCore, QtGui, QtWidgets
 import numpy as np
 import pyqtgraph as pg
-from .base import PHRASE_LANE, ViewPlugin, register_view
+from .base import PHRASE_LANE, ViewPlugin, emphasis_opacity, emphasis_width, register_view
 from .segment_strip import SegmentStrip
 from utils.phrases import (
     extract_phrase_segments,
@@ -42,12 +42,14 @@ class PhraseView(ViewPlugin):
     """Phrase (song-section) overlay: a translucent label band above the key strip."""
 
     BAND_BOTTOM, BAND_TOP = PHRASE_LANE
+    EDIT_PAGE = "phrase"
+    STRIP_OPACITY = 0.45
 
     def __init__(self, bus, model, tl):
         super().__init__(bus, model, tl)
         self.plot = None
         self.img = SegmentStrip()
-        self.img.setOpacity(0.45)
+        self.img.setOpacity(self.STRIP_OPACITY)
         self.img.setZValue(14)
         self.boundaries = QtWidgets.QGraphicsPathItem()
         self.boundaries.setPen(pg.mkPen((255, 255, 255, 220), width=1, cosmetic=True))
@@ -70,6 +72,14 @@ class PhraseView(ViewPlugin):
         self.plot = plot
         plot.addItem(self.img)
         plot.addItem(self.boundaries)
+        self._apply_emphasis()
+
+    def _apply_emphasis(self) -> None:
+        opacity = emphasis_opacity(self.emphasis)
+        self.img.setOpacity(self.STRIP_OPACITY * opacity)
+        self.boundaries.setPen(pg.mkPen((255, 255, 255, 220), width=emphasis_width(self.emphasis, 1.0), cosmetic=True))
+        for item in (self.boundaries, *self._labels):
+            item.setOpacity(opacity)
 
     def detach(self):
         if self.plot is None:
@@ -133,6 +143,7 @@ class PhraseView(ViewPlugin):
             else:
                 label.setText("")
                 label.setVisible(False)
+        self._apply_emphasis()
         self._reposition()
 
     def _reposition(self):

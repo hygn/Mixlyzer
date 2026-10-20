@@ -2,7 +2,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 import pyqtgraph as pg
 from utils.color import key_label_text_color
 from utils.keystrip import key_segment_label, key_segment_rows, key_strip_segments
-from .base import KEY_LANE, ViewPlugin, register_view
+from .base import KEY_LANE, ViewPlugin, emphasis_opacity, emphasis_width, register_view
 from .phrase import _sticky_label_left, _vertical_lines_path
 from .segment_strip import SegmentStrip
 
@@ -11,6 +11,8 @@ from .segment_strip import SegmentStrip
 class KeyStripView(ViewPlugin):
     """Key colour strip in the main plot's key lane (at the bottom, under the phrase
     band), with boundary lines and a key label per segment like the phrase band."""
+    EDIT_PAGE = "key"
+
     def __init__(self, bus, model, tl):
         super().__init__(bus, model, tl)
         self.plot = None
@@ -38,6 +40,13 @@ class KeyStripView(ViewPlugin):
         self.plot = plot
         plot.addItem(self.img)
         plot.addItem(self.boundaries)
+        self._apply_emphasis()
+
+    def _apply_emphasis(self) -> None:
+        opacity = emphasis_opacity(self.emphasis)
+        self.boundaries.setPen(pg.mkPen((255, 255, 255, 220), width=emphasis_width(self.emphasis, 1.0), cosmetic=True))
+        for item in (self.img, self.boundaries, *self._labels):
+            item.setOpacity(opacity)
 
     def detach(self):
         if self.plot is None:
@@ -94,6 +103,7 @@ class KeyStripView(ViewPlugin):
             else:
                 label.setText("")
                 label.setVisible(False)
+        self._apply_emphasis()
         self._set_rect()
 
     def _set_rect(self):

@@ -41,18 +41,19 @@ class EditPanel(
 
     The pages are shown 1, 2 or 4 side by side (set_column_count, as the header
     has room): one at a time picked by its button, in pairs (Beatgrid + Key,
-    CUE + Phrase) picked by the pair's button, or all four."""
+    Phrase + CUE) picked by the pair's button, or all four."""
 
     BTN_WIDTH = 56
     BTN_HEIGHT = 25
     ROW_VSPACING = 2   # tight gaps between button rows (packed look)
     STATUS_H = 16      # the status line under a page (segment / phrase)
     PAGE_BTN_H = 20    # page selector row on top
+    LOCK_W = 28        # the edit lock, first in the selector row
     # Panel height: page selector + 3 button rows + the status line and their
     # gaps; it sits in the track info header (TrackInfoPanel.HEADER_H = 120)
     # between the info and the deck.
     ROW_H = PAGE_BTN_H + BTN_HEIGHT * 3 + STATUS_H + ROW_VSPACING * 4
-    PAGES = ("Beatgrid", "Key", "CUE", "Phrase")
+    PAGES = ("Beatgrid", "Key", "Phrase", "CUE")
     # pages side by side: this much space either side of a thin rule between them
     COLUMN_GAP = 18
     # the pages shown together for each column count
@@ -75,6 +76,11 @@ class EditPanel(
         self._save_thread = None
         self._save_worker = None
         self._edit_enabled = True
+        # editing needs the lock open (it is on at every start) and no segment reanalysis running
+        self._locked = True
+        self._reanalysis_idle = True
+        # the pages whose visualizations the views emphasize (sig_edit_focus_changed)
+        self._edit_focus: frozenset = frozenset()
         self._save_in_progress = False
         self.tempo_multiplier = 1
         self.duration = 1e-3
@@ -104,7 +110,7 @@ class EditPanel(
         self.bus.sig_segment_reanalyze_state.connect(self._set_edit_enabled)
         self.bus.sig_tempo_factor_changed.connect(self._on_playback_tempo_changed)
         self.bus.sig_playback_status.connect(self._on_playback_status)
-        self._set_edit_enabled(True)
+        self._set_locked(self.btn_lock.isChecked())
 
     def _on_playback_status(self, playing: bool) -> None:
         """CALL works only while stopped; an armed jump ends with playback."""
@@ -117,6 +123,8 @@ class EditPanel(
     def _init_ui(self) -> None:
         self.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
         self.setFixedHeight(self.ROW_H)
+        # the edit modes' button pairs (top, bottom), each filling a column three rows high
+        self._mode_pairs: list[tuple[QtWidgets.QAbstractButton, QtWidgets.QAbstractButton]] = []
 
         self.btn_undo = QtWidgets.QToolButton()
         self.btn_undo.setIcon(icon("edit_undo"))
@@ -132,15 +140,30 @@ class EditPanel(
         for btn in (self.btn_undo, self.btn_redo, self.btn_save):
             btn.setIconSize(QtCore.QSize(19, 19))
 
-        # [page selector                          ]
+        # the edit lock: on at every start; locked, the pages still switch but nothing is
+        # edited or saved
+        self.btn_lock = QtWidgets.QToolButton()
+        self.btn_lock.setCheckable(True)
+        self.btn_lock.setChecked(True)
+        self.btn_lock.setFixedSize(self.LOCK_W, self.PAGE_BTN_H)
+        self.btn_lock.setIconSize(QtCore.QSize(15, 15))
+        self.btn_lock.setStyleSheet("QToolButton { padding: 0; }")
+        self.btn_lock.toggled.connect(self._set_locked)
+
+        # [lock] [page selector                   ]
         # [page] [page] ...  [undo / redo / save]
         root = QtWidgets.QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(self.ROW_VSPACING)
+        top = QtWidgets.QHBoxLayout()
+        top.setContentsMargins(0, 0, 0, 0)
+        top.setSpacing(4)
+        top.addWidget(self.btn_lock)
         self._selector = QtWidgets.QHBoxLayout()
         self._selector.setContentsMargins(0, 0, 0, 0)
         self._selector.setSpacing(4)
-        root.addLayout(self._selector)
+        top.addLayout(self._selector, 1)
+        root.addLayout(top)
         self._page_group = QtWidgets.QButtonGroup(self)
         self._page_group.setExclusive(True)
         self._page_group.idClicked.connect(self._show_group)
@@ -170,7 +193,7 @@ class EditPanel(
             g.setRowStretch(4, 1)
             self._pages.append(page)
             grids.append(g)
-        grid_beat, grid_key, grid_cue, grid_phrase = grids
+        grid_beat, grid_key, grid_phrase, grid_cue = grids
 
         beatgrid_buttons = self._build_beatgrid_ui(grid_beat)
         # the CUE page: the JumpCUE and CUE point lists (its own slot sizes) over
@@ -189,14 +212,25 @@ class EditPanel(
         self._edit_buttons = beatgrid_buttons + text_buttons
         for btn in beatgrid_buttons + text_buttons:
             btn.setFixedSize(self.BTN_WIDTH, self.BTN_HEIGHT)
-        # the key button spans two button cells
-        self.key_pick.setFixedSize(self.BTN_WIDTH * 2 + grid_key.horizontalSpacing(), self.BTN_HEIGHT)
+        # the key picker and the buttons with a wide icon span two button cells
+        for btn in (self.key_pick, self.key_relative, self.phrase_unassign, self.phrase_cue_assign):
+            btn.setFixedSize(self.BTN_WIDTH * 2 + grid_key.horizontalSpacing(), self.BTN_HEIGHT)
+        # an edit mode's two buttons fill their column, three button rows high
+        block_h = self.BTN_HEIGHT * 3 + self.ROW_VSPACING * 2
+        mode_h = (block_h - self.ROW_VSPACING) // 2
+        for top, bottom in self._mode_pairs:
+            top.setFixedSize(self.BTN_WIDTH, mode_h)
+            bottom.setFixedSize(self.BTN_WIDTH, block_h - self.ROW_VSPACING - mode_h)
         # the listening aids and the metronome stay enabled while editing is locked,
         # but are sized like the rest
         for btn in (self.key_root, self.key_drone, self.key_chord, self.btn_metronome):
             btn.setFixedSize(self.BTN_WIDTH, self.BTN_HEIGHT)
         for btn in self._edit_buttons:
             btn.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
+        # what never changes the track stays usable while editing is locked, as the listening
+        # aids and the metronome: the reference BPM (tap / type / clear) and the beat counter
+        never_locked = (self.zero_tap_cell, self.inp_refBPM, self.beat_counter_button)
+        self._edit_buttons = [b for b in self._edit_buttons if b not in never_locked]
         self._edit_buttons += cue_buttons
         status_font = QtGui.QFont(self.font())
         status_font.setPointSize(9)
@@ -230,6 +264,7 @@ class EditPanel(
         # never asks the header for more than one column: wider (more columns) only
         # while it has the room, squeezed (fewer columns) when it has not
         self.setSizePolicy(QtWidgets.QSizePolicy.Maximum, QtWidgets.QSizePolicy.Fixed)
+        self.layout().activate()   # with the undo / redo / save column
         self.setMinimumWidth(self.sizeHint().width())
 
     def _selector_button(self, text: str, tooltip: str) -> QtWidgets.QToolButton:
@@ -270,9 +305,12 @@ class EditPanel(
         while self._columns_row.count():
             item = self._columns_row.takeAt(0)
             if item.widget() is not None and item.widget() not in self._hosts:
-                item.widget().deleteLater()  # a rule
+                item.widget().hide()  # a rule; gone now, deleted later
+                item.widget().deleteLater()
         while len(self._hosts) > count:
-            self._hosts.pop().deleteLater()
+            host = self._hosts.pop()
+            host.hide()
+            host.deleteLater()
         while len(self._hosts) < count:
             host = QtWidgets.QWidget(self)
             host.setFixedWidth(self._page_w)
@@ -292,6 +330,7 @@ class EditPanel(
         while self._selector.count():
             item = self._selector.takeAt(0)
             if item.widget() is not None:
+                item.widget().hide()  # gone now, deleted later
                 item.widget().deleteLater()
         groups = self.PAGE_GROUPS[count]
         if count == 4:
@@ -302,7 +341,8 @@ class EditPanel(
                 btn.setCheckable(True)
                 btn.setChecked(True)
                 btn.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents, True)
-                btn.setFixedWidth(self._page_w)
+                # over its column: the first one shares its width with the lock
+                btn.setFixedWidth(self._page_w - (0 if k else self.LOCK_W + self._selector.spacing()))
                 self._selector.addWidget(btn)
             self._selector.addStretch(1)
         else:
@@ -315,6 +355,9 @@ class EditPanel(
                 self._page_group.addButton(btn, gi)
                 self._selector.addWidget(btn)
         self._show_group(next(gi for gi, group in enumerate(groups) if first in group))
+        # the new width at once in sizeHint(), not after the next layout pass (the selector
+        # sits in a nested row beside the lock)
+        self.layout().activate()
 
     def _release_pages(self) -> None:
         for i in self._shown:
@@ -334,6 +377,15 @@ class EditPanel(
         btn = self._page_group.button(int(group_index))
         if btn is not None and not btn.isChecked():
             btn.setChecked(True)
+        self._emit_edit_focus()
+
+    def _emit_edit_focus(self) -> None:
+        """Unlocked, the views emphasize the visualizations of the pages shown (beatgrid, key,
+        phrase, CUE) and dim the others'; locked, nothing is emphasized."""
+        focus = frozenset() if self._locked else frozenset(self.PAGES[i].lower() for i in self._shown)
+        if focus != self._edit_focus:
+            self._edit_focus = focus
+            self.bus.sig_edit_focus_changed.emit(focus)
 
     def set_track_uid(self, uid):
         self.uid = uid
@@ -532,7 +584,7 @@ class EditPanel(
         self.update_time(self._current_time)
     
     def _save(self) -> None:
-        if self.uid is None or self._save_in_progress:
+        if self.uid is None or self._save_in_progress or not self._edit_enabled:
             return
         cfg = load_cfg()
         store = FeatureNPZStore(base_dir=cfg.libconfig.libpath, compressed=True)
@@ -602,7 +654,24 @@ class EditPanel(
             return None
 
     def _set_edit_enabled(self, enabled: bool) -> None:
-        state = bool(enabled)
+        """A segment reanalysis has finished (True) or is running (False)."""
+        self._reanalysis_idle = bool(enabled)
+        self._apply_edit_enabled()
+
+    def _set_locked(self, locked: bool) -> None:
+        """The edit lock (its button): locked, the pages still switch but nothing is edited or saved."""
+        self._locked = bool(locked)
+        self.btn_lock.setIcon(icon("edit_lock" if self._locked else "edit_unlock"))
+        self.btn_lock.setToolTip(
+            "<p>Editing is locked: pages switch, but nothing is edited or saved. Click to unlock.</p>"
+            if self._locked else
+            "<p>Editing is unlocked: the shown pages' graphics are emphasized. Click to lock: no edits, "
+            "no saving (on at every start).</p>")
+        self._apply_edit_enabled()
+        self._emit_edit_focus()
+
+    def _apply_edit_enabled(self) -> None:
+        state = self._reanalysis_idle and not self._locked
         self._edit_enabled = state
         for btn in self._edit_buttons:
             if btn is self.btn_save and getattr(self, "_save_in_progress", False):
@@ -610,6 +679,8 @@ class EditPanel(
             else:
                 btn.setEnabled(state)
         self._refresh_jumpcue_slots()  # an empty slot's SET follows the lock
+        for slot in (*self.jc_slots, *self.cp_slots):
+            slot.set_renamable(state)   # a cue's name is an edit too
         self._update_undo_redo_buttons()
 
     def _mark_unsaved(self, unsaved: bool) -> None:

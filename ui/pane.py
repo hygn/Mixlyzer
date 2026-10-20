@@ -96,6 +96,9 @@ class MainPane(QtWidgets.QWidget):
         self.tl = tl
         self.cfg = cfg
         self.current_time = 0.0
+        # the edit pages emphasized (EditPanel, while unlocked), for the views created later
+        self._edit_focus: frozenset = frozenset()
+        bus.sig_edit_focus_changed.connect(self._on_edit_focus)
         self._tempo_segments = np.empty((0, 5), dtype=float)
         self._key_segments = None
 
@@ -400,8 +403,12 @@ class MainPane(QtWidgets.QWidget):
         except Exception:
             # Not all plugins implement render_initial
             pass
+        plugin.apply_edit_focus(self._edit_focus)
         self.plugins.append(plugin)
         return plugin
+
+    def _on_edit_focus(self, focus) -> None:
+        self._edit_focus = frozenset(focus or ())
 
     # Transport handlers
     def _on_click_tempo_reset(self):

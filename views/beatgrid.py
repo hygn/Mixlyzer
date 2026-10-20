@@ -1,20 +1,24 @@
 from PySide6 import QtCore, QtGui, QtWidgets
 import pyqtgraph as pg
 import numpy as np
-from .base import ViewPlugin, register_view
+from .base import ViewPlugin, emphasis_opacity, emphasis_width, register_view
 from core.event_bus import EventBus
 from core.beat_geometry import downbeat_times
 
 @register_view("BeatgridView")
 class BeatgridView(ViewPlugin):
+    EDIT_PAGE = "beatgrid"
+    BEAT_PEN = ((200, 200, 200), 1.0)       # colour, width
+    DOWNBEAT_PEN = ((255, 60, 60), 2.0)
+
     def __init__(self, bus: EventBus, model, tl):
         super().__init__(bus, model, tl)
         self.plot = None
         self.beats_time = None   # np.ndarray of seconds [0..duration]
         self.downbeats_time = None
         self.duration = 0.0
-        self.pen = pg.mkPen((200, 200, 200), width=1, cosmetic=True)
-        self.downbeat_pen = pg.mkPen((255, 60, 60), width=2, cosmetic=True)
+        self.pen = pg.mkPen(self.BEAT_PEN[0], width=self.BEAT_PEN[1], cosmetic=True)
+        self.downbeat_pen = pg.mkPen(self.DOWNBEAT_PEN[0], width=self.DOWNBEAT_PEN[1], cosmetic=True)
         self._beat_lines_item: QtWidgets.QGraphicsPathItem | None = None
         self._downbeat_lines_item: QtWidgets.QGraphicsPathItem | None = None
         self._cached_track_range = None
@@ -39,6 +43,14 @@ class BeatgridView(ViewPlugin):
         vb = plot.getViewBox()
         if hasattr(vb, "sigRangeChanged"):
             vb.sigRangeChanged.connect(self._refresh_lines)
+        self._apply_emphasis()
+
+    def _apply_emphasis(self) -> None:
+        for item, (color, width) in ((self._beat_lines_item, self.BEAT_PEN),
+                                     (self._downbeat_lines_item, self.DOWNBEAT_PEN)):
+            if item is not None:
+                item.setPen(pg.mkPen(color, width=emphasis_width(self.emphasis, width), cosmetic=True))
+                item.setOpacity(emphasis_opacity(self.emphasis))
 
     def detach(self):
         if self.plot is None:

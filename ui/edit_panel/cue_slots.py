@@ -89,6 +89,7 @@ class CueSlot(QtWidgets.QFrame):
         self.name_edit.editingFinished.connect(self._finish_rename)
         self.name_edit.installEventFilter(self)
         self._raw_name = ""
+        self._renamable = True
         self.btn_set = QtWidgets.QToolButton()
         self.btn_action = QtWidgets.QToolButton()
         self.btn_action.setText(action_text)
@@ -152,8 +153,15 @@ class CueSlot(QtWidgets.QFrame):
 
     # ---- renaming ----
 
+    def set_renamable(self, on: bool) -> None:
+        """Whether double-clicking the name edits it (off: the edit lock); a rename under
+        way is cancelled."""
+        self._renamable = bool(on)
+        if not self._renamable:
+            self._cancel_rename()
+
     def _start_rename(self) -> None:
-        if not getattr(self, "_filled", False):
+        if not getattr(self, "_filled", False) or not self._renamable:
             return
         self.name_edit.setText(self._raw_name)
         self.name_stack.setCurrentWidget(self.name_edit)
@@ -253,8 +261,9 @@ class CuePageWidget(QtWidgets.QWidget):
             grid.setVerticalSpacing(gap)
             slots = []
             for i in range(SLOTS_PER_PAGE):
-                # JumpCUEs: SET in the JUMP button, deleted from the squircle's menu
-                slot = CueSlot(action, row_h, set_in_action=(action == "JUMP"))
+                # no SET / DEL button: a cue is deleted from its squircle's menu (JumpCUEs:
+                # SET in the JUMP button; CUE points: set with MEMORY)
+                slot = CueSlot(action, row_h, set_in_action=True)
                 grid.addWidget(slot, i % SLOT_ROWS, i // SLOT_ROWS)  # A-D left, E-H right
                 slots.append(slot)
             self.lists.addWidget(page)

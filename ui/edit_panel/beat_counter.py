@@ -10,7 +10,7 @@ class BeatCounterMixin:
     """BeatCounter section: hold Count to count beats passing under the playhead."""
 
     def _build_beat_counter_ui(self, grid: QtWidgets.QGridLayout) -> list[QtWidgets.QWidget]:
-        """BeatCounter widgets in the Phrase page's last row; returns the edit buttons."""
+        """BeatCounter widgets in the Phrase page's middle row; returns the edit buttons."""
 
         self.beat_counter_button = QtWidgets.QToolButton()
         self.beat_counter_button.setIcon(icon("phrase_count"))
@@ -33,9 +33,10 @@ class BeatCounterMixin:
         self.beat_counter_barbeat_display.setFixedSize(self.BTN_WIDTH, self.BTN_HEIGHT)
 
         _AL = QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter
-        grid.addWidget(self.beat_counter_button, 2, 0, _AL)
-        grid.addWidget(self.beat_counter_display, 2, 1, _AL)
-        grid.addWidget(self.beat_counter_barbeat_display, 2, 2, _AL)
+        # the first cells of the Phrase page's middle tool row (after its mode column and rule)
+        grid.addWidget(self.beat_counter_button, 1, 2, _AL)
+        grid.addWidget(self.beat_counter_display, 1, 3, _AL)
+        grid.addWidget(self.beat_counter_barbeat_display, 1, 4, _AL)
 
         self.beat_counter_button.pressed.connect(self._on_beat_counter_pressed)
         self.beat_counter_button.released.connect(self._on_beat_counter_released)

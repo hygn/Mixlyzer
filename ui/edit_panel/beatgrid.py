@@ -11,12 +11,27 @@ from analyzer_core.editor.beatgrid import canonical_inizio, shift_grid_in_seg
 from core.tempo_rows import (bpm_at, is_ramp_row, rebuild_grid_from_segments, retempo_row, segment_end_bpm, split_row,
                              with_end_bpm)
 from core.beat_geometry import MAX_BEATS_PER_BAR
-from ui.edit_panel.icons import icon
+from ui.edit_panel.blocks import mode_column, rule_cell
+from ui.edit_panel.icons import badged_icon, icon
 from ui.theme import current_theme
 from ui.edit_panel.styles import BUTTON_STYLESHEET, WARNING_BUTTON_STYLESHEET
 
 # time signatures with their own button; the rest are under Custom
 TS_PRESETS = (3, 4, 5, 7)
+
+# the tools whose target follows the edit scope (whole grid / current segment): icon name ->
+# tooltip, "{target}" filled with the scope's
+SCOPED_TOOLS = {
+    "shift_half_back": "Shift {target} half a beat earlier",
+    "shift_coarse_back": "Shift {target} 10 ms earlier",
+    "shift_fine_back": "Shift {target} 1 ms earlier",
+    "shift_fine_fwd": "Shift {target} 1 ms later",
+    "shift_coarse_fwd": "Shift {target} 10 ms later",
+    "shift_half_fwd": "Shift {target} half a beat later",
+    "bpm_half": "Halve the BPM of {target}; the downbeats stay",
+    "bpm_double": "Double the BPM of {target}; the downbeats stay",
+}
+SCOPE_TARGETS = {True: "the whole beatgrid (every segment)", False: "the current segment"}
 
 # the TAP icon is a word: no padding, so it is not squeezed in its narrow button
 _TAP_STYLE = "QToolButton { padding: 0; }"
@@ -27,8 +42,9 @@ class BeatgridEditMixin:
     downbeat, edit scope (whole grid or current segment), time signature."""
 
     def _build_beatgrid_ui(self, grid: QtWidgets.QGridLayout) -> list[QtWidgets.QWidget]:
-        """Beatgrid widgets on the Beat/Key page (a 6x3 block of buttons plus the
-        time signature); returns the edit buttons."""
+        """Beatgrid widgets on the Beatgrid page, three button rows high: the edit scope
+        (whole grid / current segment), the edit tools (6x3) and the time signature (2x3),
+        a rule between them; returns the edit buttons."""
 
         def _btn(icon_name: str, tip: str, *, checkable: bool = False) -> QtWidgets.QToolButton:
             btn = QtWidgets.QToolButton()
@@ -38,13 +54,13 @@ class BeatgridEditMixin:
             btn.setCheckable(checkable)
             return btn
 
-        # Row 1: shift (scope: whole grid or current segment)
-        self.btn_shift_half_back = _btn("shift_half_back", "Shift the beatgrid half a beat earlier")
-        self.btn_shift_coarse_back = _btn("shift_coarse_back", "Shift the beatgrid 10 ms earlier")
-        self.btn_shift_fine_back = _btn("shift_fine_back", "Shift the beatgrid 1 ms earlier")
-        self.btn_shift_fine_fwd = _btn("shift_fine_fwd", "Shift the beatgrid 1 ms later")
-        self.btn_shift_coarse_fwd = _btn("shift_coarse_fwd", "Shift the beatgrid 10 ms later")
-        self.btn_shift_half_fwd = _btn("shift_half_fwd", "Shift the beatgrid half a beat later")
+        # Row 1: shift (icons and tooltips follow the edit scope: _refresh_scoped_tools)
+        self.btn_shift_half_back = _btn("shift_half_back", "")
+        self.btn_shift_coarse_back = _btn("shift_coarse_back", "")
+        self.btn_shift_fine_back = _btn("shift_fine_back", "")
+        self.btn_shift_fine_fwd = _btn("shift_fine_fwd", "")
+        self.btn_shift_coarse_fwd = _btn("shift_coarse_fwd", "")
+        self.btn_shift_half_fwd = _btn("shift_half_fwd", "")
 
         # Row 2: reference BPM and tempo
         self.btn_zeroBPM = _btn("zero", "Clear the reference BPM and the tap history")
@@ -76,13 +92,16 @@ class BeatgridEditMixin:
         self.btn_ramp_start = _btn("ramp_start", "Make the reference BPM the current segment's starting tempo (a ramp to its end tempo; its first beat stays)")
         self.btn_ramp_end = _btn("ramp_end", "Make the reference BPM the current segment's ending tempo (a ramp from its start tempo; its first beat stays)")
         self.btn_reanalyze_segment = _btn("reanalyze", "")
-        self.btn_bpm_half = _btn("bpm_half", "Halve the BPM")
-        self.btn_bpm_double = _btn("bpm_double", "Double the BPM")
 
-        # Row 3: segments, edit scope, downbeat
+        # Row 3: split / merge, downbeat, BPM x1/2 / x2 (these two follow the edit scope)
         self.btn_merge_prev = _btn("merge_prev", "Merge the previous segment into the current one (keeps the current tempo / phase)")
         self.btn_merge_next = _btn("merge_next", "Merge the next segment into the current one (keeps the current tempo / phase)")
         self.btn_cutseg = _btn("split", "Split the current segment at the playhead")
+        self.btn_set_downbeat = _btn("downbeat", "Make the beat nearest the playhead the current segment's downbeat")
+        self.btn_bpm_half = _btn("bpm_half", "")
+        self.btn_bpm_double = _btn("bpm_double", "")
+
+        # The edit scope, apart from the tools: what shift and BPM x2 / x1/2 apply to
         self.btn_scope_all = _btn("scope_all", "Edit the whole beatgrid: shift and BPM x2 / x1/2 apply to every segment", checkable=True)
         self.btn_scope_segment = _btn("scope_segment", "Edit the current segment: shift and BPM x2 / x1/2 apply to it only", checkable=True)
         self.btn_scope_segment.setChecked(True)
@@ -90,7 +109,12 @@ class BeatgridEditMixin:
         self._beatgrid_scope_group.setExclusive(True)
         self._beatgrid_scope_group.addButton(self.btn_scope_all)
         self._beatgrid_scope_group.addButton(self.btn_scope_segment)
-        self.btn_set_downbeat = _btn("downbeat", "Make the beat nearest the playhead the current segment's downbeat")
+        self._scoped_tools = {
+            "shift_half_back": self.btn_shift_half_back, "shift_coarse_back": self.btn_shift_coarse_back,
+            "shift_fine_back": self.btn_shift_fine_back, "shift_fine_fwd": self.btn_shift_fine_fwd,
+            "shift_coarse_fwd": self.btn_shift_coarse_fwd, "shift_half_fwd": self.btn_shift_half_fwd,
+            "bpm_half": self.btn_bpm_half, "bpm_double": self.btn_bpm_double,
+        }
 
         # Per-segment time signature (n/4): presets and Custom (1-8 from a menu), applied
         # to the current segment on click; the segment's own is filled blue.
@@ -121,33 +145,37 @@ class BeatgridEditMixin:
             [self.btn_shift_half_back, self.btn_shift_coarse_back, self.btn_shift_fine_back,
              self.btn_shift_fine_fwd, self.btn_shift_coarse_fwd, self.btn_shift_half_fwd],
             [self.zero_tap_cell, self.inp_refBPM, self.btn_setBPM, self.btn_ramp_start, self.btn_ramp_end,
-             self.btn_reanalyze_segment, self.btn_bpm_half, self.btn_bpm_double],
-            [self.btn_merge_prev, self.btn_merge_next, self.btn_cutseg,
-             self.btn_scope_all, self.btn_scope_segment, self.btn_set_downbeat],
+             self.btn_reanalyze_segment],
+            [self.btn_cutseg, self.btn_merge_prev, self.btn_merge_next, self.btn_set_downbeat,
+             self.btn_bpm_half, self.btn_bpm_double],
         ]
-        _AL = QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter
-        for r, row in enumerate(rows):
-            for c, w in enumerate(row):
-                grid.addWidget(w, r, c, _AL)
         ts_cells = [
             [self.ts_buttons[3], self.ts_buttons[4]],
             [self.ts_buttons[5], self.ts_buttons[7]],
             [self.btn_metronome, self.btn_ts_custom],
         ]
-        # one rule between the beatgrid block and the time signatures
-        ts_rule = QtWidgets.QFrame()
-        ts_rule.setFixedWidth(1)
-        ts_rule.setStyleSheet(f"background: {current_theme().border};")
-        ts_rule_cell = QtWidgets.QWidget()
-        rule_lay = QtWidgets.QHBoxLayout(ts_rule_cell)
-        rule_lay.setContentsMargins(4, 2, 4, 2)
-        rule_lay.addWidget(ts_rule)
-        n_cols = max(len(row) for row in rows)
-        grid.addWidget(ts_rule_cell, 0, n_cols, 3, 1)
+
+        # [scope] | [tools 6x3] | [time signature 2x3]: each block three button rows high. The
+        # tools as on every page (blocks.py): moves in time on top, values in the middle, split /
+        # merge first in the last row
+        for btn in (self.btn_scope_all, self.btn_scope_segment):
+            btn.setIconSize(QtCore.QSize(26, 26))
+        self._mode_pairs.append((self.btn_scope_all, self.btn_scope_segment))
+        _AL = QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter
+        grid.addWidget(mode_column(self.btn_scope_all, self.btn_scope_segment), 0, 0, 3, 1)
+        grid.addWidget(rule_cell(), 0, 1, 3, 1)
+        tools_col = 2
+        for r, row in enumerate(rows):
+            for c, w in enumerate(row):
+                grid.addWidget(w, r, tools_col + c, _AL)
+        ts_col = tools_col + max(len(row) for row in rows)
+        grid.addWidget(rule_cell(), 0, ts_col, 3, 1)
         for r, row in enumerate(ts_cells):
             for c, w in enumerate(row):
-                grid.addWidget(w, r, n_cols + 1 + c, _AL)
-        grid.addWidget(self.beatgrid_status, 3, 0, 1, n_cols + 3, _AL)
+                grid.addWidget(w, r, ts_col + 1 + c, _AL)
+        grid.addWidget(self.beatgrid_status, 3, 0, 1, ts_col + 3, _AL)
+        self._beatgrid_scope_group.buttonToggled.connect(self._refresh_scoped_tools)
+        self._refresh_scoped_tools()
 
         self.btn_shift_half_back.clicked.connect(lambda: self._shift_beatgrid_by_beats(-0.5))
         self.btn_shift_coarse_back.clicked.connect(lambda: self._shift_beatgrid_by(-0.010))
@@ -171,7 +199,17 @@ class BeatgridEditMixin:
         self._refresh_reanalyze_button()
 
         self._refresh_time_sig_buttons()
-        return [w for row in rows + ts_cells for w in row if w is not self.btn_metronome]
+        return [w for row in rows + ts_cells for w in row if w is not self.btn_metronome] + [
+            self.btn_scope_all, self.btn_scope_segment]
+
+    def _refresh_scoped_tools(self, *_args) -> None:
+        """Shift and BPM x2 / x1/2 show what they apply to: the icon's strip and the tooltip follow
+        the edit scope."""
+        whole = self._edit_whole_grid()
+        target = SCOPE_TARGETS[whole]
+        for name, btn in self._scoped_tools.items():
+            btn.setIcon(badged_icon(f"beatgrid_{name}", "scope_all" if whole else "scope_segment"))
+            btn.setToolTip(SCOPED_TOOLS[name].format(target=target))
 
     def set_metronome_checked(self, on: bool) -> None:
         """Show the metronome setting (changed elsewhere, e.g. in the settings)."""

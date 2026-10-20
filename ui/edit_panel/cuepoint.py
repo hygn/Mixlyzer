@@ -16,9 +16,9 @@ from utils.jumpcue_colors import CUE_POINT_COLORS, get_cue_point_color
 class CuePointEditMixin:
     """CUE point (memory cue) list on the CUE page, as rekordbox's memory cues: kept
     in time order, set with MEMORY at the playhead (on the nearest beat), each row
-    colour | time | name (double-click to rename) | DEL | CALL. CALL moves the
-    playhead to the cue while stopped (not while playing). CUE points are the
-    user's: made by the full analysis from the phrases, then only edited here."""
+    colour (its menu: the colour, delete) | time | name (double-click to rename) | CALL.
+    CALL moves the playhead to the cue while stopped (not while playing). CUE points
+    are the user's: made by the full analysis from the phrases, then only edited here."""
 
     def _build_cuepoint_ui(self, page: CuePageWidget) -> list[QtWidgets.QWidget]:
         self.cp_memory = QtWidgets.QToolButton()
@@ -32,19 +32,16 @@ class CuePointEditMixin:
         time_w = QtGui.QFontMetrics(self.cp_slots[0].letter.font()).horizontalAdvance("00:00.000") + 2
         for i, slot in enumerate(self.cp_slots):
             slot.letter.setFixedWidth(time_w)  # the time where the JumpCUE list has its letter
-            for b in (slot.btn_set, slot.btn_action):
-                policy = b.sizePolicy()
-                policy.setRetainSizeWhenHidden(True)
-                b.setSizePolicy(policy)
-            slot.btn_set.setToolTip("Delete this CUE")
+            policy = slot.btn_action.sizePolicy()
+            policy.setRetainSizeWhenHidden(True)
+            slot.btn_action.setSizePolicy(policy)
             slot.btn_action.setToolTip("Move the playhead to this CUE (not while playing)")
-            slot.squircle.setToolTip("CUE colour")
+            slot.squircle.setToolTip("CUE colour / delete")
             slot.squircle_clicked.connect(lambda i=i: self._cp_color_menu(i))
-            slot.set_del_clicked.connect(lambda i=i: self._delete_memory_cue(i))
             slot.action_clicked.connect(lambda i=i: self._cp_call(i))
             slot.renamed.connect(lambda name, i=i: self._rename_cue_point(i, name))
         page.page_changed.connect(self._refresh_cue_point_slots)
-        return [self.cp_memory, *(s.btn_set for s in self.cp_slots)]
+        return [self.cp_memory]
 
     def set_cue_points(self, points) -> None:
         self._cue_points = sorted(
@@ -65,7 +62,6 @@ class CuePointEditMixin:
         playing = bool(getattr(self, "_playing", False))
         for i, slot in enumerate(self.cp_slots):
             cue = self._cp_at(i)
-            slot.btn_set.setVisible(cue is not None)
             slot.btn_action.setVisible(cue is not None)
             if cue is None:
                 slot.show_cue(None)
@@ -102,7 +98,7 @@ class CuePointEditMixin:
 
     def _rename_cue_point(self, slot: int, name: str) -> None:
         cue = self._cp_at(slot)
-        if cue is None:
+        if cue is None or not getattr(self, "_edit_enabled", True):
             return
         self._update_cue_point(cue, label=name)
 
@@ -123,6 +119,13 @@ class CuePointEditMixin:
             act.setCheckable(True)
             act.setChecked(int(cue.get("color_idx", 0) or 0) == ci)
             act.triggered.connect(lambda _=False, ci=ci: self._update_cue_point(cue, color_idx=ci))
+        menu.addSeparator()
+        menu.addAction(f"Delete CUE point {format_cue_time(float(cue.get('time_sec', 0.0)))}",
+                       lambda: self._delete_memory_cue(slot))
+        if not getattr(self, "_edit_enabled", True):
+            # every edit in this menu follows the edit lock, as the JumpCUE menu
+            for a in menu.actions():
+                a.setEnabled(False)
         btn = self.cp_slots[slot].squircle
         menu.exec(btn.mapToGlobal(QtCore.QPoint(0, btn.height())))
 

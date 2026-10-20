@@ -4,9 +4,10 @@ import numpy as np
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from core.config import load_cfg
+from ui.edit_panel.blocks import mode_column, rule_cell
 from ui.edit_panel.history import logElement
-from ui.edit_panel.icons import icon
-from ui.theme import current_theme
+from ui.edit_panel.icons import badged_icon, icon
+from ui.edit_panel.key import STEP_TEXT
 from utils.cue_points import (
     add_autocue_cue_point,
     autocue_time_sec,
@@ -48,13 +49,13 @@ class PhraseEditMixin:
             btn.setCheckable(checkable)
             return btn
 
-        # boundaries, by a beat or a bar
-        self.phrase_start_back = _btn("key_start_back", "Move the current phrase's start earlier")
-        self.phrase_start_fwd = _btn("key_start_fwd", "Move the current phrase's start later")
-        self.phrase_end_back = _btn("key_end_back", "Move the current phrase's end earlier")
-        self.phrase_end_fwd = _btn("key_end_fwd", "Move the current phrase's end later")
-        self.phrase_step_beat = _btn("key_step_beat", "Boundaries move by one beat", checkable=True, wide=True)
-        self.phrase_step_bar = _btn("key_step_bar", "Boundaries move by one bar (to the neighbouring downbeat)", checkable=True, wide=True)
+        # boundaries, by a beat or a bar (icons and tooltips follow the step: _refresh_phrase_step_tools)
+        self.phrase_start_back = _btn("key_start_back", "")
+        self.phrase_start_fwd = _btn("key_start_fwd", "")
+        self.phrase_end_back = _btn("key_end_back", "")
+        self.phrase_end_fwd = _btn("key_end_fwd", "")
+        self.phrase_step_beat = _btn("key_step_beat", "Boundaries move by one beat", checkable=True)
+        self.phrase_step_bar = _btn("key_step_bar", "Boundaries move by one bar (to the neighbouring downbeat)", checkable=True)
         self.phrase_step_beat.setChecked(True)
         self._phrase_step_group = QtWidgets.QButtonGroup(self)
         self._phrase_step_group.setExclusive(True)
@@ -68,7 +69,8 @@ class PhraseEditMixin:
         self.phrase_unassign = _btn("phrase_clear", "Unassign the current phrase (UNASSIGNED)", wide=True)
 
         # the whole track
-        self.phrase_reanalyze = _btn("beatgrid_reanalyze", "Reanalyze the phrases with the current beatgrid")
+        # the whole track, so the whole-track reanalysis icon (as the key page's)
+        self.phrase_reanalyze = _btn("key_reanalyze_all", "Reanalyze the phrases of the whole track with the current beatgrid")
         self.phrase_cue_assign = _btn(
             "phrase_cue_assign",
             "Replace the CUE points with the ones the CUE rules give the current phrases\n"
@@ -91,31 +93,34 @@ class PhraseEditMixin:
         self.phrase_status.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
 
         _AL = QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter
-        # Boundaries on top (start pair, end pair, step), the segment structure
-        # under them, the beat counter in the last row; the labels stand on their
-        # own after a rule, as the time signatures on the beatgrid page.
+        # [step] | [tools 5x3] | [labels 3x3]: each block three button rows high. The tools as on
+        # every page (blocks.py): the boundaries and the reanalysis on top, the beat counter
+        # (_build_beat_counter_ui, columns 2-4, as TAP on the beatgrid page) and the CUE points in
+        # the middle, split / merge first in the last row; the wide icons (CUE, unassign) take two
+        # cells, the panel sizes them.
+        for btn in (self.phrase_step_beat, self.phrase_step_bar):
+            btn.setIconSize(QtCore.QSize(46, 23))
+        self.phrase_step_beat.setIcon(badged_icon("key_step_beat", "step_beat"))
+        self.phrase_step_bar.setIcon(badged_icon("key_step_bar", "step_bar"))
+        self._mode_pairs.append((self.phrase_step_beat, self.phrase_step_bar))
+        grid.addWidget(mode_column(self.phrase_step_beat, self.phrase_step_bar), 0, 0, 3, 1)
+        grid.addWidget(rule_cell(), 0, 1, 3, 1)
         cells = {
-            (0, 0): self.phrase_start_back, (0, 1): self.phrase_start_fwd, (0, 2): self.phrase_end_back,
-            (0, 3): self.phrase_end_fwd, (0, 4): self.phrase_step_beat,
-            (1, 0): self.phrase_split, (1, 1): self.phrase_merge_prev, (1, 2): self.phrase_merge_next,
-            (1, 4): self.phrase_step_bar,
-            (1, 3): self.phrase_unassign,
-            (2, 3): self.phrase_reanalyze, (2, 4): self.phrase_cue_assign,
+            (0, 2): self.phrase_start_back, (0, 3): self.phrase_start_fwd, (0, 4): self.phrase_end_back,
+            (0, 5): self.phrase_end_fwd, (0, 6): self.phrase_reanalyze,
+            (2, 2): self.phrase_split, (2, 3): self.phrase_merge_prev, (2, 4): self.phrase_merge_next,
         }
         for (r, c), w in cells.items():
             grid.addWidget(w, r, c, _AL)
-        label_rule = QtWidgets.QFrame()
-        label_rule.setFixedWidth(1)
-        label_rule.setStyleSheet(f"background: {current_theme().border};")
-        label_rule_cell = QtWidgets.QWidget()
-        rule_lay = QtWidgets.QHBoxLayout(label_rule_cell)
-        rule_lay.setContentsMargins(4, 2, 4, 2)
-        rule_lay.addWidget(label_rule)
-        grid.addWidget(label_rule_cell, 0, 5, 3, 1)
+        grid.addWidget(self.phrase_cue_assign, 1, 5, 1, 2, _AL)
+        grid.addWidget(self.phrase_unassign, 2, 5, 1, 2, _AL)
+        grid.addWidget(rule_cell(), 0, 7, 3, 1)
         label_cells = list(self.phrase_label_buttons.values())
         for i, w in enumerate(label_cells):
-            grid.addWidget(w, i // 3, 6 + i % 3, _AL)
-        grid.addWidget(self.phrase_status, 3, 0, 1, 9, _AL)
+            grid.addWidget(w, i // 3, 8 + i % 3, _AL)
+        grid.addWidget(self.phrase_status, 3, 0, 1, 11, _AL)
+        self._phrase_step_group.buttonToggled.connect(self._refresh_phrase_step_tools)
+        self._refresh_phrase_step_tools()
 
         self.phrase_start_back.clicked.connect(lambda: self._nudge_phrase_boundary("start", -1))
         self.phrase_start_fwd.clicked.connect(lambda: self._nudge_phrase_boundary("start", 1))
@@ -131,7 +136,21 @@ class PhraseEditMixin:
         self._phrase_cur = -1
         self._phrase_lit: str | None = ""
         self.refresh_phrase_label_names()
-        return list(cells.values()) + label_cells
+        return list(cells.values()) + [self.phrase_unassign, self.phrase_cue_assign, self.phrase_step_beat,
+                                       self.phrase_step_bar] + label_cells
+
+    def _refresh_phrase_step_tools(self, *_args) -> None:
+        """The boundary nudges show how far they move (the step): in the icon's badge and the tooltip."""
+        by_bar = self.phrase_step_bar.isChecked()
+        step = STEP_TEXT[by_bar]
+        for btn, name, text in (
+            (self.phrase_start_back, "key_start_back", "Move the current phrase's start {step} earlier"),
+            (self.phrase_start_fwd, "key_start_fwd", "Move the current phrase's start {step} later"),
+            (self.phrase_end_back, "key_end_back", "Move the current phrase's end {step} earlier"),
+            (self.phrase_end_fwd, "key_end_fwd", "Move the current phrase's end {step} later"),
+        ):
+            btn.setIcon(badged_icon(name, "step_bar" if by_bar else "step_beat"))
+            btn.setToolTip(text.format(step=step))
 
     def refresh_phrase_label_names(self) -> None:
         """Show the labels by their current names (aliases, set in the settings)."""

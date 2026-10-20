@@ -13,6 +13,7 @@ from utils.cue_points import extract_cue_points
 from utils.color import key_label_text_color
 from utils.keystrip import key_segment_label, key_segment_rows, key_strip_segments
 from utils.wave import band_ranges, has_wave_overview, render_wave_overview
+from views.base import EDIT_PAGES, edit_emphasis, emphasis_opacity, emphasis_size, emphasis_width
 from views.segment_strip import SegmentStrip
 from core.config import load_cfg
 from core.tempo_rows import segment_end_bpm
@@ -20,6 +21,10 @@ from core.tempo_rows import segment_end_bpm
 
 # Pixel rows of the overview waveform image.
 OVERVIEW_WAVE_HEIGHT = 64
+PHRASE_OPACITY = 0.5        # the phrase band over the waveform
+CUE_POINT_SIZE = 7          # px
+BPM_LINE = ((245, 245, 245, 230), 1.2)    # the BPM strip's line: colour, width
+BOUNDARY = ((255, 255, 255, 220), 1.0)    # key / phrase segment boundaries
 
 
 def _screen_pixel_width() -> int:
@@ -141,14 +146,13 @@ class OverviewWidget(QtWidgets.QWidget):
         self.bpm_strip_bg.setZValue(3)
         self.p.addItem(self.bpm_strip_bg)
         self.bpm_strip_boundaries = QtWidgets.QGraphicsPathItem(); self.p.addItem(self.bpm_strip_boundaries)
-        line_pen = pg.mkPen((245, 245, 245, 230), width=1.2, cosmetic=True)
-        self.bpm_strip_boundaries.setPen(line_pen)
+        self.bpm_strip_boundaries.setPen(pg.mkPen(BPM_LINE[0], width=BPM_LINE[1], cosmetic=True))
         self.bpm_strip_boundaries.setZValue(8)
         self.jump_items: list[tuple[pg.ScatterPlotItem, pg.TextItem]] = []
         self.img_key = SegmentStrip(); self.p.addItem(self.img_key)
         # key segment boundaries and labels (labels only where the segment is wide enough)
         self.key_boundaries = QtWidgets.QGraphicsPathItem(); self.p.addItem(self.key_boundaries)
-        self.key_boundaries.setPen(pg.mkPen((255, 255, 255, 220), width=1, cosmetic=True))
+        self.key_boundaries.setPen(pg.mkPen(BOUNDARY[0], width=BOUNDARY[1], cosmetic=True))
         self.key_boundaries.setZValue(7)
         self.key_labels: list[pg.TextItem] = []
         self._key_rows: list[tuple[int, float, float]] = []
@@ -162,10 +166,10 @@ class OverviewWidget(QtWidgets.QWidget):
         self.phrase_bg.setVisible(False)
         self.p.addItem(self.phrase_bg)
         self.img_phrase = SegmentStrip(); self.p.addItem(self.img_phrase)
-        self.img_phrase.setOpacity(0.5)
+        self.img_phrase.setOpacity(PHRASE_OPACITY)
         self.img_phrase.setZValue(6)
         self.phrase_boundaries = QtWidgets.QGraphicsPathItem(); self.p.addItem(self.phrase_boundaries)
-        self.phrase_boundaries.setPen(pg.mkPen((255, 255, 255, 220), width=1, cosmetic=True))
+        self.phrase_boundaries.setPen(pg.mkPen(BOUNDARY[0], width=BOUNDARY[1], cosmetic=True))
         self.phrase_boundaries.setZValue(7)
         self.phrase_labels: list[pg.TextItem] = []
         self._phrase_visible = True
@@ -177,7 +181,7 @@ class OverviewWidget(QtWidgets.QWidget):
         self._bpm_font.setPointSizeF(8.0)
         self._bpm_font.setBold(True)
         self.cue_point_markers = pg.ScatterPlotItem(
-            size=7,
+            size=CUE_POINT_SIZE,
             pen=pg.mkPen((255, 40, 40), width=1.0),
             brush=pg.mkBrush(255, 40, 40, 240),
             pxMode=True,
@@ -219,6 +223,38 @@ class OverviewWidget(QtWidgets.QWidget):
         self.bus.sig_jumpcue_updated.connect(self._on_jumpcue_updated)
         self.bus.sig_phrase_segments_updated.connect(self._on_phrases_updated)
         self.bus.sig_cue_points_updated.connect(self._render_cue_points)
+        # the edit pages' emphasis (views.base: edit focus)
+        self._emphasis = {page: "normal" for page in EDIT_PAGES}
+        self.bus.sig_edit_focus_changed.connect(self.apply_edit_focus)
+
+    def apply_edit_focus(self, focus) -> None:
+        states = {page: edit_emphasis(page, focus) for page in EDIT_PAGES}
+        if states != self._emphasis:
+            self._emphasis = states
+            self._apply_emphasis()
+
+    def _apply_emphasis(self) -> None:
+        """Each page's visualization as its emphasis says: the BPM strip (beatgrid; not its dark
+        backing), the key strip, the phrase band (not its backing), the JumpCUEs and CUE points."""
+        e = self._emphasis
+        self.bpm_strip_boundaries.setPen(
+            pg.mkPen(BPM_LINE[0], width=emphasis_width(e["beatgrid"], BPM_LINE[1]), cosmetic=True))
+        for item in (self.bpm_strip_boundaries, *(label for label, *_rest in self.bpm_strip_items)):
+            item.setOpacity(emphasis_opacity(e["beatgrid"]))
+        self.key_boundaries.setPen(pg.mkPen(BOUNDARY[0], width=emphasis_width(e["key"], BOUNDARY[1]), cosmetic=True))
+        for item in (self.img_key, self.key_boundaries, *self.key_labels):
+            item.setOpacity(emphasis_opacity(e["key"]))
+        self.img_phrase.setOpacity(emphasis_opacity(e["phrase"], PHRASE_OPACITY))
+        self.phrase_boundaries.setPen(
+            pg.mkPen(BOUNDARY[0], width=emphasis_width(e["phrase"], BOUNDARY[1]), cosmetic=True))
+        for item in (self.phrase_boundaries, *self.phrase_labels):
+            item.setOpacity(emphasis_opacity(e["phrase"]))
+        self.cue_point_markers.setSize(emphasis_size(e["cue"], CUE_POINT_SIZE))
+        self.cue_point_markers.setOpacity(emphasis_opacity(e["cue"]))
+        for marker, text in self.jump_items:
+            marker.setSize(emphasis_size(e["cue"], self._cue_marker_size))
+            for item in (marker, text):
+                item.setOpacity(emphasis_opacity(e["cue"]))
 
     def set_data(self) -> None:
         """Initialize overview visuals from the shared model."""
@@ -279,6 +315,7 @@ class OverviewWidget(QtWidgets.QWidget):
             times, [y] * len(times),
             brush=[pg.mkBrush(*c, 240) for c in colors],
             pen=[pg.mkPen(c, width=1.0) for c in colors],
+            size=emphasis_size(self._emphasis["cue"], CUE_POINT_SIZE),
         )
     
     def _on_jumpcue_updated(self) -> None:
@@ -311,6 +348,7 @@ class OverviewWidget(QtWidgets.QWidget):
             else:
                 lbl.setText("")
         self._refresh_key_label_visibility()
+        self._apply_emphasis()
 
     def _refresh_key_label_visibility(self) -> None:
         """Overview only: a key label shows when its segment is wider than the label."""
@@ -407,6 +445,7 @@ class OverviewWidget(QtWidgets.QWidget):
             marker, text = self.jump_items[idx]
             marker.setVisible(False)
             text.setVisible(False)
+        self._apply_emphasis()
 
     def _on_beatgrid_updated(self) -> None:
         segments = self.model.features.get("tempo_segments")
@@ -527,6 +566,7 @@ class OverviewWidget(QtWidgets.QWidget):
             label.setVisible(self._strip_label_fits(start, end, label_text))
             self.p.addItem(label)
             self.bpm_strip_items.append((label, start, end, label_text))
+        self._apply_emphasis()
 
     def _combined_tempo_line_path(
         self,
@@ -618,6 +658,7 @@ class OverviewWidget(QtWidgets.QWidget):
                 lbl.setVisible(True)
             else:
                 lbl.setVisible(False)
+        self._apply_emphasis()
 
     @staticmethod
     def _phrase_boundary_path(xs, y0: float, y1: float) -> QtGui.QPainterPath:

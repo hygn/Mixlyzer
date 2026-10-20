@@ -4,14 +4,29 @@ import numpy as np
 from PySide6 import QtCore, QtWidgets
 
 from core.beat_geometry import downbeat_beat_indices
+from ui.edit_panel.blocks import mode_column, rule_cell
 from ui.edit_panel.history import logElement
-from ui.edit_panel.icons import icon
+from ui.edit_panel.icons import badged_icon, badged_icon_beside, icon
 from ui.edit_panel.key_picker import CAMELOT_INDEX, KeyPickerPopup
-from ui.theme import current_theme
 from utils.color import key_cmap_color, key_label_text_color
 from utils.keystrip import key_segment_label
 from utils.labels import CAMELOT_LABELS
 from utils.phrases import assigned_phrases
+
+
+# the tools that follow the key scope (whole track / current segment): icon -> tooltip
+KEY_SCOPED_TOOLS = {
+    "key_flat": "A semitone down: {target}",
+    "key_sharp": "A semitone up: {target}",
+    "key_fifth_down": "One step down the circle of fifths (Camelot -1): {target}",
+    "key_fifth_up": "One step up the circle of fifths (Camelot +1): {target}",
+    "key_relative": "Relative major / minor (C <-> Am): {target}",
+}
+KEY_SCOPE_TARGETS = {True: "every segment's key", False: "the current segment's key"}
+# these glyphs fill their icon's height: the badge goes beside them (a wide icon), so they keep their size
+KEY_BADGE_BESIDE = ("key_flat", "key_sharp", "key_fifth_down", "key_fifth_up")
+# boundary nudges (key and phrase pages) follow the step: one beat or one bar
+STEP_TEXT = {False: "one beat", True: "one bar (to the neighbouring downbeat)"}
 
 
 class KeyEditMixin:
@@ -29,13 +44,13 @@ class KeyEditMixin:
             btn.setCheckable(checkable)
             return btn
 
-        # boundaries, by a beat or a bar
-        self.key_start_back = _btn("key_start_back", "Move the current key segment's start earlier")
-        self.key_start_fwd = _btn("key_start_fwd", "Move the current key segment's start later")
-        self.key_end_back = _btn("key_end_back", "Move the current key segment's end earlier")
-        self.key_end_fwd = _btn("key_end_fwd", "Move the current key segment's end later")
-        self.key_step_beat = _btn("key_step_beat", "Boundaries move by one beat", checkable=True, wide=True)
-        self.key_step_bar = _btn("key_step_bar", "Boundaries move by one bar (to the neighbouring downbeat)", checkable=True, wide=True)
+        # boundaries, by a beat or a bar (icons and tooltips follow the step: _refresh_key_mode_tools)
+        self.key_start_back = _btn("key_start_back", "")
+        self.key_start_fwd = _btn("key_start_fwd", "")
+        self.key_end_back = _btn("key_end_back", "")
+        self.key_end_fwd = _btn("key_end_fwd", "")
+        self.key_step_beat = _btn("key_step_beat", "Boundaries move by one beat", checkable=True)
+        self.key_step_bar = _btn("key_step_bar", "Boundaries move by one bar (to the neighbouring downbeat)", checkable=True)
         self.key_step_beat.setChecked(True)
         self._key_step_group = QtWidgets.QButtonGroup(self)
         self._key_step_group.setExclusive(True)
@@ -65,11 +80,12 @@ class KeyEditMixin:
         self.key_pick.setText("--")
         self._key_picker = KeyPickerPopup(self)
         self._key_picker.picked.connect(self._write_key_scoped)
-        self.key_flat = _btn("key_flat", "A semitone down")
-        self.key_sharp = _btn("key_sharp", "A semitone up")
-        self.key_fifth_down = _btn("key_fifth_down", "One step down the circle of fifths (Camelot -1)")
-        self.key_fifth_up = _btn("key_fifth_up", "One step up the circle of fifths (Camelot +1)")
-        self.key_relative = _btn("key_relative", "Relative major / minor (C <-> Am)", wide=True)
+        # key changes (icons and tooltips follow the scope: _refresh_key_mode_tools)
+        self.key_flat = _btn("key_flat", "")
+        self.key_sharp = _btn("key_sharp", "")
+        self.key_fifth_down = _btn("key_fifth_down", "")
+        self.key_fifth_up = _btn("key_fifth_up", "")
+        self.key_relative = _btn("key_relative", "", wide=True)
 
         # listening aids: reference tones in the current key, mixed into the player
         # (also while paused). Held tones follow the key under the playhead and every edit.
@@ -98,36 +114,48 @@ class KeyEditMixin:
         self.key_status.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
 
         _AL = QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter
-        # Rows by how often they are needed: the current key first (picker, then
-        # semitone / fifth / relative nudges), its boundaries (start pair, end
-        # pair, step), then the segment structure and reanalysis. The scope pair
-        # (whole track / current segment) stands on its own in the last column.
+        # [scope][step] | [tools 6x3] | [listening aids]: each block three button rows high; the
+        # modifiers of the tools' actions all on the left, the listening aids on the right. The
+        # tools as on every page (blocks.py): the boundaries and the reanalysis (whole track, then
+        # current segment) on top, the key in the middle (picker, semitone / fifth steps), split /
+        # merge first in the last row, the relative key at its end as BPM x1/2 / x2 on the
+        # beatgrid page. The picker and the relative key (a wide icon) take two cells; the panel
+        # sizes them.
+        for btn in (self.key_scope_all, self.key_scope_segment):
+            btn.setIconSize(QtCore.QSize(26, 26))
+        for btn in (self.key_flat, self.key_sharp, self.key_fifth_down, self.key_fifth_up):
+            btn.setIconSize(QtCore.QSize(38, 19))
+        for btn in (self.key_step_beat, self.key_step_bar):
+            btn.setIconSize(QtCore.QSize(46, 23))
+        self.key_step_beat.setIcon(badged_icon("key_step_beat", "step_beat"))
+        self.key_step_bar.setIcon(badged_icon("key_step_bar", "step_bar"))
+        self._mode_pairs += [(self.key_scope_all, self.key_scope_segment), (self.key_step_beat, self.key_step_bar)]
+        grid.addWidget(mode_column(self.key_scope_all, self.key_scope_segment), 0, 0, 3, 1)
+        grid.addWidget(mode_column(self.key_step_beat, self.key_step_bar), 0, 1, 3, 1)
+        grid.addWidget(rule_cell(), 0, 2, 3, 1)
         cells = {
-            (0, 2): self.key_flat, (0, 3): self.key_sharp, (0, 4): self.key_fifth_down,
-            (0, 5): self.key_fifth_up, (0, 6): self.key_relative,
-            (1, 0): self.key_start_back, (1, 1): self.key_start_fwd, (1, 2): self.key_end_back,
-            (1, 3): self.key_end_fwd, (1, 4): self.key_step_beat, (1, 5): self.key_step_bar,
-            (1, 6): self.key_scope_all,
-            (2, 0): self.key_split, (2, 1): self.key_merge_prev, (2, 2): self.key_merge_next,
-            (2, 3): self.key_merge_same, (2, 4): self.key_sel_reanalyze, (2, 5): self.key_reanalyze,
-            (2, 6): self.key_scope_segment,
+            (0, 3): self.key_start_back, (0, 4): self.key_start_fwd, (0, 5): self.key_end_back,
+            (0, 6): self.key_end_fwd, (0, 7): self.key_reanalyze, (0, 8): self.key_sel_reanalyze,
+            (1, 5): self.key_flat, (1, 6): self.key_sharp, (1, 7): self.key_fifth_down, (1, 8): self.key_fifth_up,
+            (2, 3): self.key_split, (2, 4): self.key_merge_prev, (2, 5): self.key_merge_next,
+            (2, 6): self.key_merge_same,
         }
         for (r, c), w in cells.items():
             grid.addWidget(w, r, c, _AL)
-        grid.addWidget(self.key_pick, 0, 0, 1, 2, _AL)  # two cells; the panel sizes it
-        # one rule between the edit block and the listening aids, as on the beatgrid page
-        aid_rule = QtWidgets.QFrame()
-        aid_rule.setFixedWidth(1)
-        aid_rule.setStyleSheet(f"background: {current_theme().border};")
-        aid_rule_cell = QtWidgets.QWidget()
-        rule_lay = QtWidgets.QHBoxLayout(aid_rule_cell)
-        rule_lay.setContentsMargins(4, 2, 4, 2)
-        rule_lay.addWidget(aid_rule)
-        grid.addWidget(aid_rule_cell, 0, 7, 3, 1)
-        grid.addWidget(self.key_root, 0, 8, _AL)
-        grid.addWidget(self.key_drone, 1, 8, _AL)
-        grid.addWidget(self.key_chord, 2, 8, _AL)
-        grid.addWidget(self.key_status, 3, 0, 1, 9, _AL)
+        grid.addWidget(self.key_pick, 1, 3, 1, 2, _AL)
+        grid.addWidget(self.key_relative, 2, 7, 1, 2, _AL)
+        grid.addWidget(rule_cell(), 0, 9, 3, 1)
+        grid.addWidget(self.key_root, 0, 10, _AL)
+        grid.addWidget(self.key_drone, 1, 10, _AL)
+        grid.addWidget(self.key_chord, 2, 10, _AL)
+        grid.addWidget(self.key_status, 3, 0, 1, 11, _AL)
+        self._key_scoped_tools = {
+            "key_flat": self.key_flat, "key_sharp": self.key_sharp, "key_fifth_down": self.key_fifth_down,
+            "key_fifth_up": self.key_fifth_up, "key_relative": self.key_relative,
+        }
+        self._key_scope_group.buttonToggled.connect(self._refresh_key_mode_tools)
+        self._key_step_group.buttonToggled.connect(self._refresh_key_mode_tools)
+        self._refresh_key_mode_tools()
 
         self.key_start_back.clicked.connect(lambda: self._nudge_key_boundary("start", -1))
         self.key_start_fwd.clicked.connect(lambda: self._nudge_key_boundary("start", 1))
@@ -149,7 +177,31 @@ class KeyEditMixin:
             aid.toggled.connect(lambda on, aid=aid: self._toggle_key_hold(aid, on))
 
         self._key_cur = -1
-        return list(cells.values()) + [self.key_pick]
+        return list(cells.values()) + [self.key_pick, self.key_relative, self.key_scope_all,
+                                       self.key_scope_segment, self.key_step_beat, self.key_step_bar]
+
+    def _refresh_key_mode_tools(self, *_args) -> None:
+        """The key changes show what they apply to (the scope), the boundary nudges how far
+        they move (the step): in the icon's badge and the tooltip."""
+        whole = self.key_scope_all.isChecked()
+        target = KEY_SCOPE_TARGETS[whole]
+        for name, btn in self._key_scoped_tools.items():
+            make = badged_icon_beside if name in KEY_BADGE_BESIDE else badged_icon
+            btn.setIcon(make(name, "scope_all" if whole else "scope_segment"))
+            btn.setToolTip(KEY_SCOPED_TOOLS[name].format(target=target))
+        self.key_pick.setToolTip(
+            "Pick one key for the whole track: it becomes one segment in that key (Camelot wheel)" if whole
+            else "Pick the current segment's key (Camelot wheel)")
+        by_bar = self.key_step_bar.isChecked()
+        step = STEP_TEXT[by_bar]
+        for btn, name, text in (
+            (self.key_start_back, "key_start_back", "Move the current key segment's start {step} earlier"),
+            (self.key_start_fwd, "key_start_fwd", "Move the current key segment's start {step} later"),
+            (self.key_end_back, "key_end_back", "Move the current key segment's end {step} earlier"),
+            (self.key_end_fwd, "key_end_fwd", "Move the current key segment's end {step} later"),
+        ):
+            btn.setIcon(badged_icon(name, "step_bar" if by_bar else "step_beat"))
+            btn.setToolTip(text.format(step=step))
 
     # ---- data in / out ----
 
