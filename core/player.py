@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 import threading
+import time
 from typing import Optional
 
 import numpy as np
@@ -13,27 +14,56 @@ from core.audio.feeder import PCMFeeder
 from core.event_bus import EventBus
 
 
+class _Latest:
+    """A frequent report from the audio thread to the GUI (the playhead time, the output peak):
+    the newest value and one queued notification at a time. The GUI reads the newest when it
+    gets to it, so reports never pile up in its queue while it is busy (the stale ones are
+    skipped, as frames are)."""
+
+    def __init__(self, notify) -> None:
+        self._notify = notify
+        self._value = None
+        self._pending = False
+
+    def publish(self, value) -> None:
+        """Audio thread."""
+        self._value = value
+        if not self._pending:
+            self._pending = True
+            self._notify.emit()
+
+    def take(self):
+        """GUI thread: the newest value. Cleared before it is read, so a value published from
+        then on notifies again (none is lost)."""
+        self._pending = False
+        return self._value
+
+
 class _AudioWorker(QtCore.QObject):
     """
     Owns the audio sink and feeder; lives in the player's audio thread.
 
     Every command from PlayerController arrives through run_command(). Decoding runs on a
     separate thread so the sink keeps being fed while a track loads; transport commands
-    that arrive meanwhile are replayed, in order, once the track is ready.
+    that arrive meanwhile are replayed, in order, once the track is ready. The playhead time
+    and the output peak reach the GUI through _Latest (newest only, never piling up).
     """
 
-    time_changed = QtCore.Signal(float)
+    time_ready = QtCore.Signal()   # latest_time has a new value
     duration_changed = QtCore.Signal(float)
     playback_status = QtCore.Signal(bool)
     transport_enabled = QtCore.Signal(bool)
     track_loaded = QtCore.Signal(object, int)  # pcm [N, ch] float32, sample rate
-    output_peak_dbfs = QtCore.Signal(float)
+    peak_ready = QtCore.Signal()   # latest_peak has a new value (dBFS)
     jumped = QtCore.Signal()
     output_buffer = QtCore.Signal(float, object, float)  # queued ms, observations (see PCMFeeder.take_buffer_stats) or None, capacity ms
     _decoded = QtCore.Signal(int, object, str)  # token, pcm or None, error message
 
     BUFFER_MS = 80
     PEAK_FLOOR_DBFS = -24.0
+    # the output buffer's observations reported this often (they add up in between): a
+    # monitor, not worth a report every frame
+    BUFFER_REPORT_SEC = 0.25
 
     _COMMANDS = frozenset({
         "load", "unload", "play", "pause", "stop", "seek",
@@ -61,6 +91,10 @@ class _AudioWorker(QtCore.QObject):
         self._is_playing = False
         self._duration_ms = 0
         self._last_emit_ms: float = -1
+        self._last_peak: Optional[float] = None
+        self._buffer_reported = 0.0
+        self.latest_time = _Latest(self.time_ready)
+        self.latest_peak = _Latest(self.peak_ready)
 
         self._decode_token = 0
         self._decoding = False
@@ -117,8 +151,8 @@ class _AudioWorker(QtCore.QObject):
         self._deferred.clear()
         self.playback_status.emit(False)
         self.duration_changed.emit(0.0)
-        self.time_changed.emit(0.0)
-        self.output_peak_dbfs.emit(self.PEAK_FLOOR_DBFS)
+        self._emit_time(0.0, force=True)
+        self._publish_peak(self.PEAK_FLOOR_DBFS)
         self.transport_enabled.emit(False)
 
         self._decode_token += 1
@@ -150,8 +184,8 @@ class _AudioWorker(QtCore.QObject):
         self._deferred.clear()
         self.playback_status.emit(False)
         self.duration_changed.emit(0.0)
-        self.time_changed.emit(0.0)
-        self.output_peak_dbfs.emit(self.PEAK_FLOOR_DBFS)
+        self._emit_time(0.0, force=True)
+        self._publish_peak(self.PEAK_FLOOR_DBFS)
         self.transport_enabled.emit(False)
 
     @QtCore.Slot(int, object, str)
@@ -168,7 +202,7 @@ class _AudioWorker(QtCore.QObject):
             print(f"[Player] Decode error: {exc}")
             self._deferred.clear()
             self.playback_status.emit(False)
-            self.output_peak_dbfs.emit(self.PEAK_FLOOR_DBFS)
+            self._publish_peak(self.PEAK_FLOOR_DBFS)
             self.transport_enabled.emit(True)
             return
 
@@ -176,10 +210,10 @@ class _AudioWorker(QtCore.QObject):
         self._duration_ms = int(round((pcm_array.shape[0] * 1000.0) / max(1, self.rate)))
         self.track_loaded.emit(pcm_array, self.rate)
         self.duration_changed.emit(self._duration_ms / 1000.0)
-        self.time_changed.emit(0.0)
+        self._emit_time(0.0, force=True)
         self.playback_status.emit(False)
         self.transport_enabled.emit(True)
-        self.output_peak_dbfs.emit(self.PEAK_FLOOR_DBFS)
+        self._publish_peak(self.PEAK_FLOOR_DBFS)
 
         deferred, self._deferred = self._deferred, []
         for name, args in deferred:
@@ -217,7 +251,7 @@ class _AudioWorker(QtCore.QObject):
             return
         self.feeder.seek(int(round(max(0.0, sec) * self.rate)))
         if not self._is_playing:
-            self.time_changed.emit(sec)
+            self._emit_time(sec * 1000.0, force=True)
 
     def scrub_begin(self) -> None:
         self.feeder.set_scrubbing(True)
@@ -227,7 +261,7 @@ class _AudioWorker(QtCore.QObject):
             return
         self.feeder.seek(int(round(sec * self.rate)))
         if not self._is_playing:
-            self.time_changed.emit(sec)
+            self._emit_time(sec * 1000.0, force=True)
 
     def scrub_end(self, _sec: float) -> None:
         self.feeder.set_scrubbing(False)
@@ -311,7 +345,7 @@ class _AudioWorker(QtCore.QObject):
             return
         self.stop()
         self._track_ready = False
-        self.output_peak_dbfs.emit(self.PEAK_FLOOR_DBFS)
+        self._publish_peak(self.PEAK_FLOOR_DBFS)
         self.transport_enabled.emit(False)
         self._frame.stop()
         self.feeder.close()
@@ -320,17 +354,24 @@ class _AudioWorker(QtCore.QObject):
     def _track_now_ms(self) -> float:
         return (self.feeder.playhead_frame() * 1000.0) / max(1, self.rate)
 
-    def _emit_time(self, ms: float) -> None:
-        if ms != self._last_emit_ms:
+    def _emit_time(self, ms: float, force: bool = False) -> None:
+        """The playhead time for the GUI, when it moved (``force``: also when not)."""
+        if force or ms != self._last_emit_ms:
             self._last_emit_ms = ms
-            self.time_changed.emit(ms / 1000.0)
+            self.latest_time.publish(ms / 1000.0)
+
+    def _publish_peak(self, dbfs: float) -> None:
+        """The output peak for the meter, when it changed (silence: reported once)."""
+        if dbfs != self._last_peak:
+            self._last_peak = dbfs
+            self.latest_peak.publish(dbfs)
 
     def _emit_peak(self) -> None:
         if self._peak_meter_gain_linear <= 1e-9:
-            self.output_peak_dbfs.emit(self.PEAK_FLOOR_DBFS)
+            self._publish_peak(self.PEAK_FLOOR_DBFS)
             return
         adjusted = self.feeder.heard_peak_dbfs() + 20.0 * math.log10(self._peak_meter_gain_linear)
-        self.output_peak_dbfs.emit(max(self.PEAK_FLOOR_DBFS, min(0.0, adjusted)))
+        self._publish_peak(max(self.PEAK_FLOOR_DBFS, min(0.0, adjusted)))
 
     @QtCore.Slot()
     def _tick(self) -> None:
@@ -339,9 +380,12 @@ class _AudioWorker(QtCore.QObject):
             cur = self._duration_ms
         self._emit_time(cur)
         self._emit_peak()
-        queued, hist, capacity = self.feeder.take_buffer_stats()
-        ms = 1000.0 / max(1, self.rate)
-        self.output_buffer.emit(queued * ms, hist, capacity * ms)
+        now = time.monotonic()
+        if now - self._buffer_reported >= self.BUFFER_REPORT_SEC:
+            self._buffer_reported = now
+            queued, hist, capacity = self.feeder.take_buffer_stats()
+            ms = 1000.0 / max(1, self.rate)
+            self.output_buffer.emit(queued * ms, hist, capacity * ms)
 
 
 class PlayerController(QtCore.QObject):
@@ -376,11 +420,11 @@ class PlayerController(QtCore.QObject):
         self._command.connect(self._audio_worker.run_command, QtCore.Qt.QueuedConnection)
 
         w = self._audio_worker
-        w.time_changed.connect(bus.sig_time_changed)
+        w.time_ready.connect(self._relay_time, QtCore.Qt.QueuedConnection)
         w.duration_changed.connect(bus.sig_duration_changed)
         w.playback_status.connect(bus.sig_playback_status)
         w.transport_enabled.connect(bus.sig_transport_enabled)
-        w.output_peak_dbfs.connect(bus.sig_output_peak_dbfs)
+        w.peak_ready.connect(self._relay_peak, QtCore.Qt.QueuedConnection)
         w.output_buffer.connect(bus.sig_output_buffer)
         w.jumped.connect(bus.sig_jump_fired)
         w.track_loaded.connect(self._on_track_loaded, QtCore.Qt.QueuedConnection)
@@ -408,6 +452,18 @@ class PlayerController(QtCore.QObject):
         bus.sig_tempo_mode_changed.connect(self.set_tempo_mode)
         bus.sig_tempo_factor_changed.connect(self.set_tempo_factor)
         bus.sig_external_sync_enabled.connect(self._on_external_sync_enabled)
+
+    @QtCore.Slot()
+    def _relay_time(self) -> None:
+        sec = self._audio_worker.latest_time.take()
+        if sec is not None:
+            self.bus.sig_time_changed.emit(float(sec))
+
+    @QtCore.Slot()
+    def _relay_peak(self) -> None:
+        dbfs = self._audio_worker.latest_peak.take()
+        if dbfs is not None:
+            self.bus.sig_output_peak_dbfs.emit(float(dbfs))
 
     def _send(self, name: str, *args) -> None:
         self._command.emit(name, args)

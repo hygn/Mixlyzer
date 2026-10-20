@@ -131,6 +131,7 @@ Working notes for AI/automation agents editing the Mixlyzer codebase.
   - keystrip
   - JumpCUE
 - `ui.library.LibraryWidget` is not just a browser:
+  - its table rows are made when the source changes; a library update (`sig_lib_updated`, several in a row applied once after `LIBRARY_UPDATE_DELAY_MS`) changes only the rows of the tracks added / changed / removed (up to `INCREMENTAL_ROWS_MAX`, else the table is rebuilt), and the search and filters hide rows (applied once they pause, `SEARCH_DEBOUNCE_MS`); actions use `_selected_rows()`, which leaves hidden rows out (Ctrl+A selects them too),
   - it performs text search,
   - transition search using DB segment tables,
   - remove/reanalyze/edit/export actions.
@@ -159,6 +160,7 @@ Working notes for AI/automation agents editing the Mixlyzer codebase.
 - Preserve `uid` linkage between SQLite and NPZ when editing library code.
 - Prefer contiguous NumPy arrays where practical; several rendering and DSP paths assume NumPy-friendly numeric buffers.
 - Keep Qt signal semantics stable. Many slots expect notification-only signals and then read shared model state.
+- A frequent report from another thread to the GUI is the newest value with one queued notification at a time (`core.player._Latest`: the playhead time, the output peak), never a queued signal per value: queued signals are not merged, so they pile up while the GUI is busy and replay stale values after. Progress from a loop is reported when its percent changes. The output buffer stats go every 0.25 s.
 - If you change view registration or naming, update `views.base.REGISTRY` consumers accordingly.
 
 ## Build / Packaging

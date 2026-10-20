@@ -65,6 +65,15 @@ class _RekordboxSyncEngine:
         self.request = request
         self.progress = progress
         self.store = FeatureNPZStore(base_dir=str(request.library_dir), compressed=True)
+        self._track_percent: Optional[int] = None
+
+    def _track_progress(self, index: int, total: int, text: str) -> None:
+        """A track's progress, reported when its percent changes: a report is a queued event
+        for the GUI, and a library has thousands of tracks."""
+        percent = 5 + int(round(index * 85 / max(total, 1)))
+        if percent != self._track_percent or index == total:
+            self._track_percent = percent
+            self.progress(percent, text)
 
     def run(self) -> RekordboxSyncResult:
         self.request.xml_path.parent.mkdir(parents=True, exist_ok=True)
@@ -100,10 +109,7 @@ class _RekordboxSyncEngine:
             else:
                 node = self._build_track(row, track_hash)
             nodes.append(node)
-            self.progress(
-                5 + int(round(index * 85 / max(total, 1))),
-                f"Syncing tracks {index}/{total}",
-            )
+            self._track_progress(index, total, f"Syncing tracks {index}/{total}")
         document.replace_tracks(nodes)
         self._write(document)
         return RekordboxSyncResult(
@@ -119,10 +125,7 @@ class _RekordboxSyncEngine:
         for index, row in enumerate(rows, start=1):
             document.remove_track(rekordbox_track_key_for_row(row))
             document.append_track(self._build_track(row, self._track_hash(row)))
-            self.progress(
-                5 + int(round(index * 85 / max(total, 1))),
-                f"Syncing changed tracks {index}/{total}",
-            )
+            self._track_progress(index, total, f"Syncing changed tracks {index}/{total}")
         entry_count = document.entry_count
         self._write(document)
         return RekordboxSyncResult(self.request.xml_path, total, 0, entry_count)

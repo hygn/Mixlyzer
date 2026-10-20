@@ -95,6 +95,13 @@ _SORT_ROLE = QtCore.Qt.UserRole + 10
 _ANALYZED_ROLE = QtCore.Qt.UserRole + 11
 _PLAYLIST_MIME = "application/x-mixlyzer-playlist"
 _PLAYLIST_TRACKS_MIME = "application/x-mixlyzer-playlist-tracks"
+# The filters hide the rows they leave out (rows are made only when the source or the library
+# changes: about 60 ms a thousand rows); a typed query is applied once typing pauses.
+SEARCH_DEBOUNCE_MS = 120
+# Library updates in a row (an analysis finished, Edit Track saved, a re-read) are applied once.
+LIBRARY_UPDATE_DELAY_MS = 100
+# A library update changing up to this many tracks changes their rows; more rebuild the table.
+INCREMENTAL_ROWS_MAX = 300
 
 
 class _SortItem(QtWidgets.QTableWidgetItem):
@@ -215,7 +222,7 @@ class _TrackTable(QtWidgets.QTableWidget):
         return int(value) if value is not None else None
 
     def mimeData(self, items):
-        rows = sorted({item.row() for item in items})
+        rows = sorted({item.row() for item in items if not self.isRowHidden(item.row())})
         data = QtCore.QMimeData()
         urls = []
         positions = []
@@ -259,9 +266,10 @@ class _TrackTable(QtWidgets.QTableWidget):
             rect = self.visualRect(index)
             after = pos.y() >= rect.center().y()
             return index.row() + int(after), rect.bottom() + 1 if after else rect.top()
-        if pos.y() <= 0 or self.rowCount() == 0:
+        shown = [row for row in range(self.rowCount()) if not self.isRowHidden(row)]
+        if pos.y() <= 0 or not shown:
             return 0, 0
-        last = self.model().index(self.rowCount() - 1, 0)
+        last = self.model().index(shown[-1], 0)
         return self.rowCount(), self.visualRect(last).bottom() + 1
 
     def _set_drop_line(self, y: Optional[int]) -> None:
@@ -332,7 +340,7 @@ class _TrackTable(QtWidgets.QTableWidget):
         before_position = None
         for row in range(boundary, self.rowCount()):
             position = self._entry_position(row)
-            if position is not None and position not in moved:
+            if position is not None and position not in moved and not self.isRowHidden(row):
                 before_position = position
                 break
         self._set_drop_line(None)
@@ -973,7 +981,11 @@ class LibraryWidget(QtWidgets.QWidget):
         lay.setContentsMargins(0, 0, 0, 0)
         lay.addWidget(splitter)
 
-        # Signals
+        # Signals: a filter change is applied once they pause (SEARCH_DEBOUNCE_MS)
+        self._search_timer = QtCore.QTimer(self)
+        self._search_timer.setSingleShot(True)
+        self._search_timer.setInterval(SEARCH_DEBOUNCE_MS)
+        self._search_timer.timeout.connect(self._apply_filter)
         self.e_search.textChanged.connect(self._on_search_changed)
         self.e_search.textChanged.connect(self._sync_filter_ui)
         self.cb_column.currentIndexChanged.connect(self._on_search_changed)
@@ -1015,7 +1027,16 @@ class LibraryWidget(QtWidgets.QWidget):
 
         # The loaded track is shown in green.
         self._loaded_uid: Optional[str] = None
+        self._marked_uid: Optional[str] = None   # the uid whose rows are green
         self.bus.sig_properties_loaded.connect(self._on_properties_loaded)
+
+        # the table's rows are this source's tracks (a library update changes them in place)
+        self._table_source: Optional[tuple] = None
+        self._pending_library_rows = None
+        self._library_timer = QtCore.QTimer(self)
+        self._library_timer.setSingleShot(True)
+        self._library_timer.setInterval(LIBRARY_UPDATE_DELAY_MS)
+        self._library_timer.timeout.connect(self._apply_library_update)
 
         # Initial load
         self.bus.sig_lib_updated.connect(self._on_library_updated)
@@ -1039,6 +1060,7 @@ class LibraryWidget(QtWidgets.QWidget):
             delegate.clear_cache()  # thumbnails may have been replaced
         self._library_tracks = self._tracks(data)
         self._refresh_current_source()
+        self.table.viewport().update()
 
     def _tracks(self, rows) -> List[Track]:
         """Library rows as Tracks, with their readings for the search."""
@@ -1203,6 +1225,11 @@ class LibraryWidget(QtWidgets.QWidget):
             default_column = "Title"
             default_order = QtCore.Qt.SortOrder.AscendingOrder
 
+        source = (self._source_kind, self._source_value)
+        if (self._source_kind == "library" and not reset_sort and self._table_source == source
+                and self._update_library_rows(tracks)):
+            self._apply_filter()
+            return
         self.table.setUpdatesEnabled(False)
         self.table.clearContents()
         self.table.setRowCount(0)
@@ -1211,10 +1238,46 @@ class LibraryWidget(QtWidgets.QWidget):
             self.table.horizontalHeader().setSortIndicator(
                 self.HEADERS.index(default_column), default_order
             )
-        self._on_search_changed()
-        if reset_sort:
-            self.table.sortItems(self.HEADERS.index(default_column), default_order)
+        self._populate_table(tracks)   # sorted by the sort indicator
+        self._table_source = source
+        self._apply_filter()
         self.table.setUpdatesEnabled(True)
+
+    def _update_library_rows(self, tracks: List[Track]) -> bool:
+        """The library shown, a few of its tracks added, changed or removed: their rows changed in
+        place (each moved to its sorted place as it is set); False (nothing done) for more than
+        INCREMENTAL_ROWS_MAX of them."""
+        old = {t.uid: t for t in self._all_tracks}
+        new = {t.uid: t for t in tracks}
+        if "" in old or "" in new or len(old) != len(self._all_tracks) or len(new) != len(tracks):
+            return False
+        removed = old.keys() - new.keys()
+        changed = [t for t in tracks if t.uid not in old or t != old[t.uid]]
+        if len(removed) + len(changed) > INCREMENTAL_ROWS_MAX:
+            return False
+        if not removed and not changed:
+            self._all_tracks = tracks
+            return True
+        # a row's art item moves with it (sorting): its row() is where the track is now
+        art = self.HEADERS.index(self.ART_HEADER)
+        items = {}
+        for r in range(self.table.rowCount()):
+            item = self.table.item(r, art)
+            if item is not None:
+                items[str(item.data(QtCore.Qt.UserRole) or "")] = item
+        if any(uid not in items for uid in removed) or any(t.uid in old and t.uid not in items for t in changed):
+            return False
+        self._all_tracks = tracks
+        for r in sorted((items[uid].row() for uid in removed), reverse=True):
+            self.table.removeRow(r)
+        for track in changed:
+            if track.uid in old:
+                self._fill_row(items[track.uid].row(), track)
+            else:
+                r = self.table.rowCount()
+                self.table.insertRow(r)
+                self._fill_row(r, track)
+        return True
 
     def _scan_directory(self, directory: str) -> List[Track]:
         analyzed = {self._file_identity(track.path): track for track in self._library_tracks}
@@ -1250,7 +1313,15 @@ class LibraryWidget(QtWidgets.QWidget):
         return result
 
     def _on_library_updated(self, data) -> None:
-        self._library_tracks = self._tracks(list(data or []))
+        """Library updates in a row are applied once, the last (LIBRARY_UPDATE_DELAY_MS)."""
+        self._pending_library_rows = list(data or [])
+        self._library_timer.start()
+
+    def _apply_library_update(self) -> None:
+        data, self._pending_library_rows = self._pending_library_rows, None
+        if data is None:
+            return
+        self._library_tracks = self._tracks(data)
         resolved: dict[str, list[str]] = {}
         for track in self._library_tracks:
             playlist_uids = self._pending_playlist_paths.pop(
@@ -1285,7 +1356,7 @@ class LibraryWidget(QtWidgets.QWidget):
     def set_search_config(self, cfg: config) -> None:
         """The search settings changed: the query is read again (stored readings change with a re-read)."""
         self.cfg = cfg
-        self._on_search_changed()
+        self._apply_filter()
 
     def _populate_table(self, tracks: List[Track]):
         header = self.table.horizontalHeader()
@@ -1299,29 +1370,42 @@ class LibraryWidget(QtWidgets.QWidget):
             self.table.setSortingEnabled(False)
 
         self.table.setRowCount(len(tracks))
-        bpm_col = self.HEADERS.index("BPM")
-        art_col = self.HEADERS.index(self.ART_HEADER)
-        index_col = self.HEADERS.index("#")
         for r, t in enumerate(tracks):
-            values = [
-                "", t._disp_playlist_index,
-                t.title, t.artist, t.album, t._disp_bpm, t._disp_key_camelot,
-                t._disp_duration, t._disp_rating, t._disp_added, t.path, t.comment
-            ]
-            for c, v in enumerate(values):
-                item = _SortItem(str(v))
-                if c == bpm_col:  # for BPM sorting
-                    item.setData(_SORT_ROLE, float(t.bpm or -1))
-                elif c == art_col:  # the thumbnail's track
-                    item.setData(QtCore.Qt.UserRole, t.uid)
-                elif c == index_col:
-                    item.setData(_SORT_ROLE, int(t.playlist_index or 0))
-                item.setData(_ANALYZED_ROLE, bool(t.analyzed))
-                self.table.setItem(r, c, item)
+            self._fill_row(r, t)
         if sorting_enabled:
             self.table.setSortingEnabled(True)
             self.table.sortItems(sort_section, sort_order)
-        self._mark_loaded_track()
+        self._marked_uid = self._loaded_uid
+
+    def _fill_row(self, r: int, t: Track) -> None:
+        """Row ``r`` made for track ``t``, coloured (green loaded, dim not analyzed). The sort
+        column is set last: with sorting on, the row then moves to its place once."""
+        values = [
+            "", t._disp_playlist_index,
+            t.title, t.artist, t.album, t._disp_bpm, t._disp_key_camelot,
+            t._disp_duration, t._disp_rating, t._disp_added, t.path, t.comment
+        ]
+        bpm_col = self.HEADERS.index("BPM")
+        art_col = self.HEADERS.index(self.ART_HEADER)
+        index_col = self.HEADERS.index("#")
+        sort_col = self.table.horizontalHeader().sortIndicatorSection() if self.table.isSortingEnabled() else -1
+        brush = None
+        if self._loaded_uid is not None and t.uid == self._loaded_uid:
+            brush = QtGui.QBrush(QtGui.QColor(current_theme().success))
+        elif not t.analyzed:
+            brush = QtGui.QBrush(QtGui.QColor(current_theme().text_dim))
+        for c in sorted(range(len(values)), key=lambda c: c == sort_col):
+            item = _SortItem(str(values[c]))
+            if c == bpm_col:  # for BPM sorting
+                item.setData(_SORT_ROLE, float(t.bpm or -1))
+            elif c == art_col:  # the thumbnail's track
+                item.setData(QtCore.Qt.UserRole, t.uid)
+            elif c == index_col:
+                item.setData(_SORT_ROLE, int(t.playlist_index or 0))
+            item.setData(_ANALYZED_ROLE, bool(t.analyzed))
+            if brush is not None:
+                item.setForeground(brush)
+            self.table.setItem(r, c, item)
 
     def _row_uid(self, row: int) -> str:
         """The track uid of a table row ("" for a file not analyzed)."""
@@ -1335,11 +1419,19 @@ class LibraryWidget(QtWidgets.QWidget):
         self._mark_loaded_track()
 
     def _mark_loaded_track(self) -> None:
-        """Green text on the loaded track's rows, the default on the others."""
+        """Green text on the loaded track's rows, the default again on the ones green before (the
+        rows are coloured when made)."""
+        if self._marked_uid == self._loaded_uid:
+            return
         green = QtGui.QBrush(QtGui.QColor(current_theme().success))
         dim = QtGui.QBrush(QtGui.QColor(current_theme().text_dim))
+        art = self.HEADERS.index(self.ART_HEADER)
+        uids = {uid for uid in (self._marked_uid, self._loaded_uid) if uid}
         for r in range(self.table.rowCount()):
-            loaded = self._loaded_uid is not None and self._row_uid(r) == self._loaded_uid
+            item = self.table.item(r, art)
+            if item is None or item.data(QtCore.Qt.UserRole) not in uids:
+                continue
+            loaded = item.data(QtCore.Qt.UserRole) == self._loaded_uid
             for c in range(self.table.columnCount()):
                 cell = self.table.item(r, c)
                 if cell is None:
@@ -1348,11 +1440,18 @@ class LibraryWidget(QtWidgets.QWidget):
                     cell.setForeground(green)
                 elif not bool(cell.data(_ANALYZED_ROLE)):
                     cell.setForeground(dim)
-                elif cell.data(QtCore.Qt.ForegroundRole) is not None:
+                else:
                     cell.setData(QtCore.Qt.ForegroundRole, None)
+        self._marked_uid = self._loaded_uid
 
     # Filter
-    def _on_search_changed(self):
+    def _on_search_changed(self, *_args):
+        """A filter changed: applied once the changes pause (typing, a held spin box arrow)."""
+        self._search_timer.start()
+
+    def _apply_filter(self) -> None:
+        """Hide the rows the search and the filters leave out (the rows stay made)."""
+        self._search_timer.stop()
         text = self.e_search.text().strip().lower()
         col = self.cb_column.currentText()
         field_map = {
@@ -1397,14 +1496,22 @@ class LibraryWidget(QtWidgets.QWidget):
 
         conditions.extend(self._search_structured_paths())
         if not conditions:
-            results = list(self._all_tracks)
+            allowed = None
         elif self.match_toggle.match_all():
             allowed = set.intersection(*conditions)
-            results = [track for track in self._all_tracks if track.path in allowed]
         else:
             allowed = set.union(*conditions)
-            results = [track for track in self._all_tracks if track.path in allowed]
-        self._populate_table(results)
+        path_col = self.HEADERS.index("Path")
+        for r in range(self.table.rowCount()):
+            item = self.table.item(r, path_col)
+            hidden = allowed is not None and (item is None or item.text() not in allowed)
+            if self.table.isRowHidden(r) != hidden:
+                self.table.setRowHidden(r, hidden)
+        # a hidden row is not acted on: out of the selection
+        selection = self.table.selectionModel()
+        for index in selection.selectedRows():
+            if self.table.isRowHidden(index.row()):
+                selection.select(index, QtCore.QItemSelectionModel.Deselect | QtCore.QItemSelectionModel.Rows)
 
     def _sync_filter_ui(self):
         is_phrase = self.cb_phrase_filter.isChecked()
@@ -1443,7 +1550,7 @@ class LibraryWidget(QtWidgets.QWidget):
         for widget in widgets:
             widget.blockSignals(False)
         self._sync_filter_ui()
-        self._on_search_changed()
+        self._apply_filter()
 
     def _search_structured_paths(self) -> list[set[str]]:
         """Return one path set per enabled phrase/transition condition."""
@@ -1677,7 +1784,9 @@ class LibraryWidget(QtWidgets.QWidget):
             )
 
     def _selected_rows(self) -> list[int]:
-        return sorted(index.row() for index in self.table.selectionModel().selectedRows())
+        """The rows selected and shown (Ctrl+A selects hidden rows too: never acted on)."""
+        return sorted(index.row() for index in self.table.selectionModel().selectedRows()
+                      if not self.table.isRowHidden(index.row()))
 
     def _selected_paths(self) -> list[str]:
         path_column = self.HEADERS.index("Path")
@@ -1801,9 +1910,8 @@ class LibraryWidget(QtWidgets.QWidget):
     # Explorer
     def _reveal_selected(self):
         import subprocess, platform
-        sel = self.table.selectionModel().selectedRows()
-        for ix in sel:
-            path = self.table.item(ix.row(), self.HEADERS.index("Path")).text()
+        for row in self._selected_rows():
+            path = self.table.item(row, self.HEADERS.index("Path")).text()
             if not path:
                 continue
             if platform.system() == "Windows":
@@ -1836,10 +1944,9 @@ class LibraryWidget(QtWidgets.QWidget):
 
     # Reanalyze
     def _reanalyze_selected(self):
-        sel = self.table.selectionModel().selectedRows()
         analyzed_by_path = {track.path: track.analyzed for track in self._all_tracks}
-        for ix in sel:
-            path = self.table.item(ix.row(), self.HEADERS.index("Path")).text()
+        for row in self._selected_rows():
+            path = self.table.item(row, self.HEADERS.index("Path")).text()
             if path:
                 if analyzed_by_path.get(path, False):
                     self.bus.sig_reanalyze_requested.emit(path)

@@ -463,6 +463,7 @@ class MainPane(QtWidgets.QWidget):
     # Signals
     def _on_window(self, _window_sec: float) -> None:
         self.p.setXRange(0.0, self.tl.window_sec, padding=0)
+        self._x_range_window = self.tl.window_sec
         self._update_pixel_sec()
 
     def _update_pixel_sec(self, *_args) -> None:
@@ -477,7 +478,10 @@ class MainPane(QtWidgets.QWidget):
         f = self.model.features
         if hasattr(self, "track_edit"):
             self.track_edit.update_time(t)
-        self.p.setXRange(0.0, self.tl.window_sec, padding=0)
+        # the main view's range is set when the window changes (auto-range is off): here only
+        # before the first window change
+        if getattr(self, "_x_range_window", None) != self.tl.window_sec:
+            self._on_window(self.tl.window_sec)
 
         self._update_bpm_display(t)
         
