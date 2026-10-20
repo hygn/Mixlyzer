@@ -42,7 +42,9 @@ def build_analysis_tab(dialog) -> None:
     grp_global = QGroupBox("General")
     f_global_general = QFormLayout(grp_global)
     # the analyses, their order and what each needs; a click opens the analysis's settings tab
+    dialog.lbl_pipeline_title = QLabel("Analysis order and dependencies")
     dialog.pipeline_map = PipelineMap()
+    f_global_general.addRow(dialog.lbl_pipeline_title)
     f_global_general.addRow(dialog.pipeline_map)
     f_global.addRow(grp_global)
     
