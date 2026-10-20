@@ -21,7 +21,7 @@ def _replace_block(features: dict, name: str, block: dict) -> None:
 class SaveWorker(QtCore.QObject):
     finished = QtCore.Signal(object)
 
-    def save(self, store: FeatureNPZStore, libpath: str, uid, *, beatgrid=None, segments=None, key_segments=None, jump_cues_np=None, jump_cues_auto_np=None, phrase_segments_np=None, cue_points_np=None):
+    def save(self, store: FeatureNPZStore, libpath: str, uid, *, beatgrid=None, segments=None, key_segments=None, key_segments_auto=None, jump_cues_np=None, jump_cues_auto_np=None, phrase_segments_np=None, cue_points_np=None):
         try:
             if uid is None:
                 return
@@ -32,6 +32,10 @@ class SaveWorker(QtCore.QObject):
                 prev_feat["tempo_segments"] = segments
             if key_segments is not None:
                 prev_feat["key_segments"] = key_segments
+            if key_segments_auto is not None:
+                # the automatic key result (full analysis / whole-track reanalysis); the key optimizer learns
+                # from the tracks whose keys differ from it
+                prev_feat["key_segments_auto"] = key_segments_auto
             if jump_cues_np is not None:
                 _replace_block(prev_feat, "jump_cues_np", jump_cues_np)
             if jump_cues_auto_np is not None:

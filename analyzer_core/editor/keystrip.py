@@ -1,60 +1,55 @@
+"""The editor's key reanalysis: the whole track or a selected span, with the full analysis's chord-aware key model
+(analyzer_core/key/chord_key.py) on the editor's current beatgrid, bars and phrases."""
 from __future__ import annotations
 from typing import Callable, Optional
 import numpy as np
 from analyzer_core.global_analyzer import fast_load
-from analyzer_core.hpss import hpss_audio
-from analyzer_core.key.key import _parse_cqt_key_name, keyanalyzer, chroma_to_subdiv_grid
-from analyzer_core.key.key_cqt import keydetect as KeyCQTDetector
+from analyzer_core.hpss import hpss_audio_with_spectra
+from analyzer_core.key import chord_key as CK
+from core.beat_geometry import downbeat_times
 from core.config import config
+
+
+def _track_evidence(path: str, cfg: config, beats, tempo_segments, phrases, progress_cb):
+    """(model, beat grid, per-beat key evidence, duration) of the whole track."""
+    if progress_cb:
+        progress_cb("Loading audio", 0.0)
+    gcf = cfg.analysisconfig
+    sr = int(getattr(gcf, "analysis_samp_rate", 22050))
+    samp = np.ascontiguousarray(fast_load(path, target_sr=sr, stereo=True).mean(axis=1), dtype=np.float32)
+    duration = samp.size / float(sr)
+    if progress_cb:
+        progress_cb("Separating harmonics", 0.15)
+    y_harm = hpss_audio_with_spectra(samp, sr)[0] if getattr(gcf, "use_hpss", True) else samp
+    if progress_cb:
+        progress_cb("Analyzing key", 0.5)
+    beats = np.asarray(beats, dtype=float).ravel()
+    segs = np.asarray(tempo_segments, dtype=float) if tempo_segments is not None else np.zeros((0, 5))
+    downbeats = downbeat_times(beats, segs) if segs.ndim == 2 and segs.shape[0] else None
+    starts = [float(p["start"]) for p in (phrases or []) if "start" in p]
+    model, grid, L = CK.key_evidence(y_harm, sr, beats, downbeats, starts, duration,
+                                     getattr(gcf, "key_parameter_path", None) or None)
+    return model, grid, L, duration
+
 
 def reanalyze_full(
     path: str,
     cfg: config,
     beats_time_sec,
     *,
+    tempo_segments=None,
+    phrases=None,
     progress_cb: Optional[Callable[[str, float], None]] = None,
-) -> tuple[float, float, float, float]:
-    """Recompute the key for an arbitrary beat range."""
-    if progress_cb:
-        progress_cb("Loading audio", 0.0)
-    gcf = cfg.analysisconfig
-    sr = int(getattr(gcf, "analysis_samp_rate", 44100))
-    audio_full = fast_load(path, sr)
-    if progress_cb:
-        progress_cb("Preparing detector", 0.1)
-    use_hpss = getattr(gcf, "use_hpss", False)
-    if use_hpss:
-        try:
-            y_harm, _ = hpss_audio(audio_full)
-        except Exception:
-            y_harm = audio_full
-    else:
-        y_harm = audio_full
-    
-    if progress_cb:
-        progress_cb("Analyzing key", 0.6)
-    
-    chroma = chroma_to_subdiv_grid(
-        y_harm, np.divide(beats_time_sec*sr, gcf.chroma_hop_length).astype(int), sr=sr,
-        hop_length=gcf.chroma_hop_length,
-        bins_per_octave=gcf.chroma_cqt_bins_per_octave,
-        n_octaves=gcf.chroma_cqt_octaves,
-        mode=gcf.chroma_method,
-        subdiv=1
-    )
-
-    key, key_12, logB, _, logPi, logA, key_segments = keyanalyzer(
-        np.asarray(chroma["chroma_subdiv"]),
-        chroma["t_subdiv"],
-        config=cfg,
-        y_harm=y_harm,
-        sample_rate=sr,
-        beat_times=beats_time_sec
-    )
-    
+) -> np.ndarray:
+    """Key segments [n, 4] (pitch class, mode, start, end) of the whole track (Settings > Analysis > Key > Dynamic
+    Analysis off: one key, the dynamic analysis's key in the intro / outro / interludes)."""
+    model, grid, L, duration = _track_evidence(path, cfg, beats_time_sec, tempo_segments, phrases, progress_cb)
+    _, key_segments = CK.track_keys(model, grid, L, duration, bool(getattr(cfg.analysisconfig, "key_dynamic", True)),
+                                    phrases)
     if progress_cb:
         progress_cb("Key segment updated", 0.9)
     return key_segments
+
 
 def reanalyze_segment_from_file(
     path: str,
@@ -63,65 +58,27 @@ def reanalyze_segment_from_file(
     beat_start_index: int,
     beat_end_index: int,
     *,
+    grid_beats=None,
+    tempo_segments=None,
+    phrases=None,
     progress_cb: Optional[Callable[[str, float], None]] = None,
 ) -> tuple[float, float, float, float]:
-    """Recompute the key for an arbitrary beat range."""
-    if progress_cb:
-        progress_cb("Loading audio", 0.0)
-    gcf = cfg.analysisconfig
-    sr = int(getattr(gcf, "analysis_samp_rate", 44100))
-    audio_full = fast_load(path, sr)
-    duration = len(audio_full) / float(sr) if len(audio_full) else 0.0
-    if progress_cb:
-        progress_cb("Preparing detector", 0.1)
-
+    """One key for a beat range (``beats_time_sec`` indices; ``grid_beats``: the track's beat grid, when
+    ``beats_time_sec`` carries extra bounds): the key with the most evidence over the range's beats, the evidence
+    read on the whole track (its bars and phrases). -> (pitch class, mode, start, end)"""
     beats = np.asarray(beats_time_sec, dtype=float).ravel()
     if beats.size == 0:
         raise ValueError("beats_time_sec must contain beat times")
     if not (0 <= beat_start_index < beat_end_index <= beats.size):
         raise IndexError("beat indices out of range")
+    model, grid, L, duration = _track_evidence(
+        path, cfg, beats if grid_beats is None else grid_beats, tempo_segments, phrases, progress_cb)
     start = float(beats[beat_start_index])
-    if beat_end_index < beats.size:
-        end = float(beats[beat_end_index])
-    else:
-        end = float(duration if duration > 0 else beats[-1])
-    end = max(end, start)
+    end = float(beats[beat_end_index]) if beat_end_index < beats.size else float(duration)
+    end = min(max(end, start), duration)
     if end - start <= 1e-6:
         raise ValueError("selection duration too small")
-
-    start_sample = int(max(0.0, start) * sr)
-    end_sample = int(min(end, duration) * sr)
-    segment = audio_full[start_sample:end_sample].astype(np.float32, copy=False)
-    if segment.size < sr * 0.5:
-        raise ValueError("selection audio too short for key analysis")
-
-    use_hpss = getattr(gcf, "use_hpss", False)
-    if use_hpss:
-        try:
-            y_harm, _ = hpss_audio(segment)
-        except Exception:
-            y_harm = segment
-    else:
-        y_harm = segment
-
-    segment_duration = len(y_harm) / float(sr)
-    beat_times_local = beats[(beats >= start) & (beats <= end)] - start
-    detector = KeyCQTDetector(y_harm, sr)
-    if progress_cb:
-        progress_cb("Analyzing key segment", 0.6)
-    local_range = (0.0, segment_duration) if segment_duration > 0 else None
-    cqt_out = detector.keydetect(songrange=local_range, beat_times=beat_times_local)
-    top_candidate = None
-    for cand in cqt_out.get("keys", []):
-        parsed = _parse_cqt_key_name(cand.get("key"))
-        if parsed is not None:
-            top_candidate = parsed
-            break
-    if top_candidate is None:
-        raise ValueError("CQT key detection failed for selected beats")
-
-    pitch_class, mode_flag = top_candidate
-
+    pitch_class, mode_flag = CK.selection_key(grid, L, start, end)
     if progress_cb:
         progress_cb("Key segment updated", 0.9)
     return float(pitch_class), float(mode_flag), float(start), float(end)

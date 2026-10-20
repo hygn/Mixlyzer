@@ -549,6 +549,8 @@ class EditPanel(
             return
         auto_block = self.model.features.get("jump_cues_auto_np") if self.model is not None else None
         jump_cues_auto_np = auto_block if isinstance(auto_block, dict) else None
+        key_auto = self.model.features.get("key_segments_auto") if self.model is not None else None
+        key_segments_auto = np.asarray(key_auto, dtype=float).copy() if key_auto is not None else None
         # UNASSIGNED is not stored: it is where no phrase is
         phrase_segments_np = build_phrase_segments_np(assigned_phrases(self._phrase_segments))
         cue_points_np = build_cue_points_np(copy.deepcopy(self._cue_points))
@@ -562,6 +564,7 @@ class EditPanel(
                 beatgrid=beatgrid,
                 segments=segments,
                 key_segments=key_segments,
+                key_segments_auto=key_segments_auto,
                 jump_cues_np=jump_cues_np,
                 jump_cues_auto_np=jump_cues_auto_np,
                 phrase_segments_np=phrase_segments_np,

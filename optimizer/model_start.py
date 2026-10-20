@@ -17,6 +17,8 @@ SHIPPED, CURRENT, SCRATCH = "shipped", "current", "scratch"
 SHIPPED_TRAINING_TRACKS = 340
 # (blocked below, warned below) songs with beat grids
 MIN_TRACKS = {"fine_tune": (20, 60), "scratch": (200, SHIPPED_TRAINING_TRACKS), "gbm": (50, 150), "search": (20, 60)}
+BEAT_SONGS = "songs with beat grids"
+KEY_SONGS = "songs with checked key annotations"
 
 
 def kind_of(start: str) -> str:
@@ -35,21 +37,22 @@ def check_output(output_path: str | Path) -> None:
         raise ValueError(f"A shipped model is never overwritten; choose another path than {Path(output_path).name}")
 
 
-def require_tracks(count: int, kind: str) -> None:
+def require_tracks(count: int, kind: str, songs: str = BEAT_SONGS) -> None:
     blocked, _ = MIN_TRACKS[kind]
     if count < blocked:
         what = {"scratch": "Training from scratch", "fine_tune": "Retraining", "gbm": "Retraining",
                 "search": "Refitting"}[kind]
-        raise RuntimeError(f"{what} needs at least {blocked} songs with beat grids (the library has {count})")
+        raise RuntimeError(f"{what} needs at least {blocked} {songs} (the library has {count})")
 
 
-def warnings(count: int, kind: str, start: str | None, output_path: str | Path | None) -> tuple[list[str], bool]:
+def warnings(count: int, kind: str, start: str | None, output_path: str | Path | None,
+             songs: str = BEAT_SONGS) -> tuple[list[str], bool]:
     """(messages, blocked) for a planned training on ``count`` songs."""
     blocked_below, warn_below = MIN_TRACKS[kind]
     out = []
     if count < blocked_below:
         what = "Training from scratch" if kind == "scratch" else "This"
-        return [f"{what} needs at least {blocked_below} songs with beat grids; the library has {count}."], True
+        return [f"{what} needs at least {blocked_below} {songs}; the library has {count}."], True
     if count < warn_below:
         if kind == "scratch":
             out.append(f"{count} songs: fewer than the shipped model was trained on (about {SHIPPED_TRAINING_TRACKS}); "

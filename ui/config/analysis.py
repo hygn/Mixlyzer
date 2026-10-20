@@ -27,6 +27,7 @@ from core.resource_paths import project_root
 from core.workflows.optimizer import OptimizerWorkflow
 from ui.config.dialogs import (
     BeatParameterOptimizeDialog,
+    KeyModelOptimizeDialog,
     ParameterOptimizeProgressDialog,
 )
 from ui.config.scroll import scroll_page
@@ -147,62 +148,35 @@ def build_analysis_tab(dialog) -> None:
     f_beat.addRow(grp_bpm)
     f_beat.addRow(grp_beat_advanced)
 
-    # Key (Chroma analysis)
+    # Key: the chord-aware key model
     tab_key = QWidget(); f_key = QFormLayout(tab_key)
-    dialog.cmb_chroma_method = QComboBox(); dialog.cmb_chroma_method.addItems(["cqt", "cens"])
-    dialog.sp_chroma_hop_length = QSpinBox(); dialog.sp_chroma_hop_length.setRange(32, 8192); dialog.sp_chroma_hop_length.setSingleStep(32)
-    dialog.sp_cqt_bins_per_oct = QSpinBox(); dialog.sp_cqt_bins_per_oct.setRange(1, 96)
-    dialog.sp_cqt_octaves = QSpinBox(); dialog.sp_cqt_octaves.setRange(1, 10)
-    dialog.cmb_chroma_method.setToolTip(
-        "cqt: constant-Q chroma.\n"
-        "cens: smoothed, energy-normalized chroma (more robust to dynamics and timbre)."
+    dialog.cb_key_dynamic = QCheckBox("Dynamic Analysis")
+    dialog.cb_key_dynamic.setToolTip(
+        "Key changes within a track. Off: one key for the whole track -- the key the dynamic analysis finds in "
+        "the intro, outro and interludes (where tracks are mixed), or the key it finds most when a track has none. "
+        "Applies to the analysis and the editor's whole-track key reanalysis."
     )
-    dialog.sp_chroma_hop_length.setToolTip("Step between chroma frames in samples.")
-    dialog.sp_cqt_bins_per_oct.setToolTip(
-        "Frequency bins per octave of the constant-Q transform (multiple of 12)."
+    grp_key_general = QGroupBox("General")
+    f_key_general = QFormLayout(grp_key_general)
+    f_key_general.addRow(dialog.cb_key_dynamic)
+    f_key.addRow(grp_key_general)
+    dialog.ed_key_parameter_path = QLineEdit()
+    dialog.ed_key_parameter_path.setPlaceholderText("relative or absolute .npz path")
+    dialog.ed_key_parameter_path.setToolTip(
+        "The key model (.npz): the chord network that reads every beat, the chords each key uses by phrase "
+        "position, and the key-change costs. A missing file means the shipped model."
     )
-    dialog.sp_cqt_octaves.setToolTip("Number of octaves the constant-Q transform covers.")
-    grp_chroma = QGroupBox("Chroma")
-    f_chroma = QFormLayout(grp_chroma)
-    f_chroma.addRow("Method", dialog.cmb_chroma_method)
-    f_chroma.addRow("Hop length (samples)", dialog.sp_chroma_hop_length)
-    f_chroma.addRow("CQT bins per octave", dialog.sp_cqt_bins_per_oct)
-    f_chroma.addRow("CQT octaves", dialog.sp_cqt_octaves)
-    f_key.addRow(grp_chroma)
-
-    # Advanced (Viterbi transition probabilities)
-    grp_adv = QGroupBox("Advanced")
-    f_adv = QFormLayout(grp_adv)
-    dialog.sp_min_offset = QDoubleSpinBox(); dialog.sp_min_offset.setDecimals(3); dialog.sp_min_offset.setRange(0.0, 1e6)
-    dialog.sp_min_offset.setSingleStep(0.0001)
-    dialog.sp_pitch_self = QDoubleSpinBox(); dialog.sp_pitch_self.setRange(-1e9, 1e9); dialog.sp_pitch_self.setDecimals(6); dialog.sp_pitch_self.setSingleStep(0.0001)
-    dialog.sp_pitch_semitone = QDoubleSpinBox(); dialog.sp_pitch_semitone.setRange(-1e9, 1e9); dialog.sp_pitch_semitone.setDecimals(6); dialog.sp_pitch_semitone.setSingleStep(0.0001)
-    dialog.sp_pitch_fifth = QDoubleSpinBox(); dialog.sp_pitch_fifth.setRange(-1e9, 1e9); dialog.sp_pitch_fifth.setDecimals(6); dialog.sp_pitch_fifth.setSingleStep(0.0001)
-    dialog.sp_pitch_others = QDoubleSpinBox(); dialog.sp_pitch_others.setRange(-1e9, 1e9); dialog.sp_pitch_others.setDecimals(6); dialog.sp_pitch_others.setSingleStep(0.0001)
-    dialog.sp_min_offset.setToolTip(
-        "Weight added to out-of-scale notes in the key templates.\n"
-        "Higher makes key matching less strict."
-    )
-    pitch_tip = (
-        "Relative probability of the key moving by this interval between beats\n"
-        "(Viterbi transition). The four values are normalized together."
-    )
-    dialog.sp_pitch_self.setToolTip(
-        "Relative probability of the key staying the same between beats.\n"
-        "Higher gives fewer key changes. The four values are normalized together."
-    )
-    dialog.sp_pitch_semitone.setToolTip(pitch_tip)
-    dialog.sp_pitch_fifth.setToolTip(pitch_tip)
-    dialog.sp_pitch_others.setToolTip(
-        "Relative probability of the key moving to any other key between beats.\n"
-        "The four values are normalized together."
-    )
-    f_adv.addRow("Min offset", dialog.sp_min_offset)
-    f_adv.addRow("Pitch: self", dialog.sp_pitch_self)
-    f_adv.addRow("Pitch: semitone", dialog.sp_pitch_semitone)
-    f_adv.addRow("Pitch: fifth", dialog.sp_pitch_fifth)
-    f_adv.addRow("Pitch: others", dialog.sp_pitch_others)
-    f_key.addRow(grp_adv)
+    dialog.ed_key_feature_cache_path = QLineEdit()
+    dialog.ed_key_feature_cache_path.setToolTip(cache_tip)
+    dialog.btn_reoptimize_key_model = QPushButton("Reoptimize Key Model...")
+    dialog.btn_reoptimize_key_model.setToolTip("Retrain the key model on the keys you checked in your library.")
+    dialog.btn_reoptimize_key_model.clicked.connect(dialog._on_reoptimize_key_model)
+    grp_key_advanced = QGroupBox("Advanced")
+    f_key_advanced = QFormLayout(grp_key_advanced)
+    f_key_advanced.addRow("Key model (NPZ)", dialog.ed_key_parameter_path)
+    f_key_advanced.addRow("Key feature cache", dialog.ed_key_feature_cache_path)
+    f_key_advanced.addRow("", dialog.btn_reoptimize_key_model)
+    f_key.addRow(grp_key_advanced)
 
     # Waveform bands (stored overview levels; the main view waveform uses them too)
     tab_wave = QWidget(); f_wave = QFormLayout(tab_wave)
@@ -445,13 +419,14 @@ class AnalysisSettingsMixin:
     def _parameter_optimization_is_running(self) -> bool:
         return any(
             getattr(self, f"_{key}_optimize_worker", None) is not None
-            for key in ("beat", "phrase", "jumpcue")
+            for key in ("beat", "phrase", "jumpcue", "key_model")
         )
 
     def _set_parameter_optimization_enabled(self, enabled: bool) -> None:
         self.btn_reoptimize_beat_parameters.setEnabled(enabled)
         self.btn_reoptimize_phrase_parameter.setEnabled(enabled)
         self.btn_reoptimize_jumpcue_parameter.setEnabled(enabled)
+        self.btn_reoptimize_key_model.setEnabled(enabled)
 
     @staticmethod
     def _show_optimization_result(
@@ -804,3 +779,65 @@ class AnalysisSettingsMixin:
             "Reoptimize JumpCUE Parameter",
             f"JumpCUE parameter optimization failed:\n{message}",
         )
+
+    def _on_reoptimize_key_model(self) -> None:
+        if self._parameter_optimization_is_running():
+            return
+        title = "Reoptimize Key Model"
+        parameter_text = self.ed_key_parameter_path.text().strip()
+        cache_text = self.ed_key_feature_cache_path.text().strip()
+        if not parameter_text or not cache_text:
+            QMessageBox.warning(self, title, "Key model path and feature cache path are required.")
+            return
+        parameter_path = self._project_path(parameter_text)
+        library = Path(self._project_path(self.ed_libpath.text().strip()))
+        try:
+            track_count = sum(1 for _ in library.glob("*.npz"))
+        except OSError:
+            track_count = None
+        dialog = KeyModelOptimizeDialog(self, track_count=track_count, model_path=str(parameter_path))
+        if dialog.exec() != QDialog.Accepted:
+            return
+        if dialog.backup_existing() and parameter_path.exists():
+            try:
+                self._backup_parameter(parameter_path)
+            except Exception as exc:
+                QMessageBox.critical(self, title, f"Failed to back up the key model:\n{exc}")
+                return
+        self._start_parameter_optimization(
+            key="key_model",
+            title=title,
+            request_values={
+                "library_dir": str(library),
+                "cache_dir": str(self._project_path(cache_text)),
+                "output_path": str(parameter_path),
+                **dialog.options(),
+            },
+            finished_slot=self._on_key_model_optimize_finished,
+            failed_slot=self._on_key_model_optimize_failed,
+        )
+
+    @QtCore.Slot(object)
+    def _on_key_model_optimize_finished(self, result) -> None:
+        self._set_parameter_optimization_enabled(True)
+        dialog = getattr(self, "_key_model_optimize_dialog", self)
+        where = f"{result.eval_songs} held-out songs" if result.cross_validated else f"the {result.eval_songs} training songs"
+        lines = [
+            f"Key model saved to {result.output_path}" if result.saved else
+            "Key model NOT saved: the held-out songs' keys got worse; the model in use is kept.",
+            "",
+            f"Training songs: {result.track_count} ({result.edited_count} with keys changed from the automatic result, "
+            f"{result.legacy_count} analyzed before it was kept)",
+            f"Key analysis on {where}, current -> new:",
+            f"  beats in the right key (Camelot number): {result.accuracy_before:.1%} -> {result.accuracy_after:.1%}",
+            f"  beats off by a fifth (Camelot neighbour): {result.fifth_before:.1%} -> {result.fifth_after:.1%}",
+        ]
+        if not result.cross_validated:
+            lines.append("Without cross-validation these are the training songs: they show the fit, not unseen songs.")
+        self._show_optimization_result(dialog, "Reoptimize Key Model", "\n".join(lines), result.skipped_tracks)
+
+    @QtCore.Slot(str)
+    def _on_key_model_optimize_failed(self, message: str) -> None:
+        self._set_parameter_optimization_enabled(True)
+        dialog = getattr(self, "_key_model_optimize_dialog", self)
+        QMessageBox.critical(dialog, "Reoptimize Key Model", f"Key model optimization failed:\n{message}")

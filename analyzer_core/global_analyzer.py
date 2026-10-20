@@ -9,7 +9,8 @@ from dataclasses import replace
 from pathlib import Path
 from PySide6 import QtGui
 from typing import Optional
-from analyzer_core.key.key import *
+from analyzer_core.key.chord_key import analyze_keys as analyze_chord_keys
+from core.beat_geometry import downbeat_times
 from analyzer_core.beat.frame_features import FRAME_HOP_LENGTH, extract_frame_features
 from analyzer_core.hpss import HPSS_HOP_LENGTH, HPSS_N_FFT, hpss_audio_with_spectra
 from analyzer_core.dsp.resample import resample_audio
@@ -396,15 +397,6 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
     features["tempo_segments"] = seg_arr
     features["beats_time_sec"] = beats_out
     features["tempo_global"] = dominant_tempo(seg_arr)
-    # beat frames on the analysis grid for the beat-synchronous chroma below
-    analysis_hop = float(FRAME_HOP_LENGTH) / float(global_sr)
-    synced_bpm = {
-        "beats": np.clip(
-            np.round(beats_out / analysis_hop).astype(np.int32),
-            0,
-            max(0, frame_features.n_frames - 1),
-        )
-    }
     print(
         f"[Tempo] consensus kept seed {tracked.seed}; {seg_arr.shape[0]} tempo rows, "
         f"{beats_out.size} beats, main tempo {features['tempo_global']:.2f}"
@@ -523,34 +515,33 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
     features["jump_cues_auto_np"] = {k: np.array(v, copy=True) for k, v in features["jump_cues_np"].items()}
     hpss_spectra = None
 
-    yield {"status": "chroma"}
-    print("[Chroma] Analysis Initalized")
-    taskmgr.updatetask(taskid, "Processing Chromagram", 0.65)
-    chroma = chroma_to_subdiv_grid(
-        y_harm, np.divide(synced_bpm["beats"], gcf.chroma_hop_length/FRAME_HOP_LENGTH).astype(int), sr=global_sr,
-        hop_length=gcf.chroma_hop_length,
-        bins_per_octave=gcf.chroma_cqt_bins_per_octave,
-        n_octaves=gcf.chroma_cqt_octaves,
-        mode=gcf.chroma_method,
-        subdiv=1
-    )
-    # used by the key analysis only, not stored
-    beatsync_chroma = np.asarray(chroma["chroma_subdiv"]).astype(np.float32)  # (12, T)
-    print("[Chroma] Analysis Finished")
-
     yield {"status": "key"}
     print("[Key] Analysis Initalized")
-    taskmgr.updatetask(taskid, "Analyzing Keys", 0.75)
-    key, key_12, logB, _, logPi, logA, key_segments = keyanalyzer(
-        beatsync_chroma,
-        chroma["t_subdiv"],
-        config=config,
-        y_harm=y_harm,
-        sample_rate=global_sr,
-        beat_times=features.get("beats_time_sec")
-    )
+    taskmgr.updatetask(taskid, "Analyzing Keys", 0.7)
+    try:
+        # chord-aware keys on the bars and phrases (analyzer_core/key/chord_key.py)
+        key, key_segments = analyze_chord_keys(
+            y_harm,
+            int(global_sr),
+            beats_time_arr,
+            downbeat_times(beats_time_arr, seg_arr),
+            [float(s["start"]) for s in phrase_segments],
+            float(features.get("duration_sec", 0.0)),
+            str(getattr(gcf, "key_parameter_path", "") or "").strip() or None,
+            dynamic=bool(getattr(gcf, "key_dynamic", True)),
+            phrases=phrase_segments,
+        )
+    except Exception as exc:
+        import traceback
+
+        print(f"[Key] analysis skipped: {exc}")
+        traceback.print_exc()
+        key, key_segments = np.zeros(0, int), np.zeros((0, 4), float)
     print("[Key] Analysis Finished")
     features["key_segments"] = key_segments
+    # the automatic result kept beside the user's keys (which edits replace): the key optimizer learns from
+    # the tracks whose keys differ from it
+    features["key_segments_auto"] = np.array(key_segments, dtype=float, copy=True)
     features["sr"] = global_sr
 
     # DB Features
@@ -560,7 +551,7 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
     bpm_out = features.get("tempo_global", 0.0)
 
     values, counts = np.unique(key, return_counts=True)
-    key_int = int(values[np.argmax(counts)])
+    key_int = int(values[np.argmax(counts)]) if values.size else None
 
     fsize, fmtime = _file_stats(path)
     taskmgr.updatetask(taskid, "Rendering/Normalizing", 0.88)

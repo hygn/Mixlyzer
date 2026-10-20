@@ -56,6 +56,11 @@ def _load_jumpcue_optimizer() -> _OptimizerDefinition:
     return _OptimizerDefinition(JumpCueOptimizationRequest, optimize_jumpcue_parameters)
 
 
+def _load_key_model_optimizer() -> _OptimizerDefinition:
+    from optimizer.key_model_optimizer import KeyModelOptimizationRequest, optimize_key_model
+    return _OptimizerDefinition(KeyModelOptimizationRequest, optimize_key_model)
+
+
 # New optimizers only need a loader here and a UI job using the corresponding key.
 _OPTIMIZER_LOADERS: dict[str, Callable[[], _OptimizerDefinition]] = {
     "refine_onset": _load_refine_onset_optimizer,
@@ -65,6 +70,7 @@ _OPTIMIZER_LOADERS: dict[str, Callable[[], _OptimizerDefinition]] = {
     "beat_decoder": _load_beat_decoder_optimizer,
     "phrase": _load_phrase_optimizer,
     "jumpcue": _load_jumpcue_optimizer,
+    "key_model": _load_key_model_optimizer,
 }
 
 

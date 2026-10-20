@@ -278,6 +278,10 @@ class SegmentReanalysisWorkflow(QtCore.QObject):
 
     def _handle_key_result(self, taskid: int, payload: dict) -> None:
         key_segments = np.asarray(payload.get("key_segments", ()), dtype=float)
+        auto = np.asarray(payload.get("key_segments_auto", ()), dtype=float)
+        if auto.ndim == 2 and auto.size:
+            # Saved with the editor's next save (a whole-track reanalysis is the new automatic result).
+            self.model.features["key_segments_auto"] = auto
         if key_segments.ndim == 2 and key_segments.size:
             self.model.features["key_segments"] = key_segments
             track_edit = self._track_edit_getter()

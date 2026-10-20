@@ -112,10 +112,6 @@ class externalsyncconfig:
 class analysisconfig:
     use_hpss: bool
     analysis_samp_rate: int
-    chroma_method: Literal["cqt", "cens"]
-    chroma_hop_length: int
-    chroma_cqt_bins_per_octave: int
-    chroma_cqt_octaves: int
     # The beat tracker reads every tempo in the octave from here (bpm_min .. 2 x bpm_min).
     bpm_min: int
     # Dynamic analysis: tempo changes within a track (off: one steady grid for the whole track).
@@ -144,18 +140,15 @@ class analysisconfig:
     phrase_feature_cache_path: str
     jumpcue_parameter_path: str
     jumpcue_feature_cache_path: str
+    # Dynamic key analysis: key changes within a track (off: one key for the whole track, the dynamic
+    # analysis's key in the intro / outro / interludes).
+    key_dynamic: bool
+    # The chord-aware key model (retrained by Reoptimize) and the frame chroma cache it is retrained on.
+    key_parameter_path: str
+    key_feature_cache_path: str
     # AutoCUE: what the analysis puts at the LEAD_IN end, an early first
     # downbeat, or 0:00: a CUE point, a JumpCUE of its own, or nothing.
     autocue: Literal["off", "cue_point", "jumpcue"]
-
-
-@dataclass
-class keyconfig:
-    min_offset: float
-    pitch_self: float
-    pitch_semitone: float
-    pitch_fifth: float
-    pitch_others: float
 
 
 @dataclass
@@ -187,7 +180,6 @@ class cuepointconfig:
 @dataclass
 class config:
     analysisconfig: analysisconfig
-    keyconfig: keyconfig
     libconfig: libconfig
     viewconfig: viewconfig
     playbackconfig: playbackconfig
@@ -299,10 +291,6 @@ def default_cfg():
     )
     acfg = analysisconfig(
         analysis_samp_rate=22050,
-        chroma_method="cens",
-        chroma_hop_length=512,
-        chroma_cqt_bins_per_octave=36,
-        chroma_cqt_octaves=4,
         use_hpss=True,
         bpm_min=100,
         bpm_dynamic=True,
@@ -322,14 +310,10 @@ def default_cfg():
         phrase_feature_cache_path="featurecache/phrase",
         jumpcue_parameter_path="assets/weights/jumpcue_jump_point.json",
         jumpcue_feature_cache_path="featurecache/jumpcue/train",
+        key_dynamic=True,
+        key_parameter_path="assets/weights/key_chord_cnn.npz",
+        key_feature_cache_path="featurecache/key",
         autocue="cue_point",
-    )
-    kcfg = keyconfig(
-        min_offset=0.2,
-        pitch_self=0.9,
-        pitch_semitone=0.02,
-        pitch_fifth=0.0,
-        pitch_others=0.01,
     )
     vcfg = viewconfig(
         display_waveform=True,
@@ -394,7 +378,6 @@ def default_cfg():
     return config(
         libconfig=lcfg,
         analysisconfig=acfg,
-        keyconfig=kcfg,
         viewconfig=vcfg,
         playbackconfig=pcfg,
         externalsyncconfig=xcfg,
@@ -423,6 +406,7 @@ def load_cfg() -> config:
             cfg.analysisconfig.beat_feature_cache_path,
             cfg.analysisconfig.phrase_feature_cache_path,
             cfg.analysisconfig.jumpcue_feature_cache_path,
+            cfg.analysisconfig.key_feature_cache_path,
         ):
             text = str(path_text or "").strip()
             if text:

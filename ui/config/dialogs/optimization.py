@@ -87,6 +87,11 @@ class ParameterOptimizeProgressDialog(QDialog):
                 f"Done — {metric_kind} grid top-1 {result.grid_top1_accuracy:.1%}, "
                 f"beat AP {result.beat_average_precision:.1%}{skipped_suffix}"
             )
+        elif hasattr(result, "accuracy_after"):
+            text = (
+                f"Done — {metric_kind} key accuracy {result.accuracy_before:.1%} -> {result.accuracy_after:.1%}"
+                + ("" if getattr(result, "saved", True) else " (not saved)") + skipped_suffix
+            )
         elif hasattr(result, "label_change_f1"):
             text = (
                 f"Done — {metric_kind} key-section change F1 {result.key_change_f1:.1%}, "
@@ -301,6 +306,101 @@ class BeatParameterOptimizeDialog(QDialog):
                 options["quick"] = bool(self.cb_decoder_quick.isChecked())
             jobs.append((key, name, options))
         return jobs
+
+    def backup_existing(self) -> bool:
+        return self.cb_backup.isChecked()
+
+
+class KeyModelOptimizeDialog(QDialog):
+    """Options of a key model retraining: where it starts, the held-out check, a backup."""
+    STARTS = (("current", "Fine-tune the current model"), ("shipped", "Fine-tune the shipped model"),
+              ("scratch", "Train from scratch"))
+    INTRO = (
+        "Retrains the key model on the keys you checked in your library: tracks whose keys you changed from the "
+        "automatic result, and tracks analyzed before the automatic result was kept whose keys are not the old "
+        "analyzer's raw output. Only keys train it, no chord labels. The shipped model is kept (default_* file). "
+        "With cross-validation the retrained model is saved only when the held-out songs' keys are not worse. "
+        "Features take a few seconds per song the first time; the training a few minutes."
+    )
+
+    def __init__(self, parent=None, track_count: int | None = None, model_path: str | None = None):
+        super().__init__(parent)
+        self.setWindowTitle("Reoptimize Key Model")
+        self._track_count = track_count
+        self._model_path = model_path
+        layout = QVBoxLayout(self)
+        intro = QLabel(self.INTRO + ("" if track_count is None else f" Analyzed songs: {track_count}."))
+        intro.setWordWrap(True)
+        layout.addWidget(intro)
+        grid = QGridLayout()
+        self.cmb_start = QComboBox()
+        for value, label in self.STARTS:
+            self.cmb_start.addItem(label, value)
+        self.cmb_start.setToolTip(wrapped_tooltip(
+            "Current: continue from the model in use (earlier retraining builds up).\n"
+            "Shipped: continue from the model that came with Mixlyzer.\n"
+            "From scratch: learn from your keys alone; needs many songs."
+        ))
+        self.cmb_start.currentIndexChanged.connect(self._update_enabled)
+        self.sp_folds = QSpinBox()
+        self.sp_folds.setRange(1, 20)
+        self.sp_folds.setSpecialValueText("Off")
+        self.sp_folds.setValue(5)
+        self.sp_folds.setToolTip(wrapped_tooltip(
+            "Cross-validation folds: one group of songs is held out, and the new model is saved only if the whole "
+            "key analysis gets their keys at least as right as the current one. Off: always saved."
+        ))
+        grid.addWidget(QLabel("Start"), 0, 0)
+        grid.addWidget(self.cmb_start, 0, 1)
+        grid.addWidget(QLabel("CV folds"), 1, 0)
+        grid.addWidget(self.sp_folds, 1, 1)
+        layout.addLayout(grid)
+        self.lbl_warnings = QLabel()
+        self.lbl_warnings.setWordWrap(True)
+        self.lbl_warnings.setStyleSheet("QLabel { color: #e0a030; }")
+        self.lbl_warnings.setVisible(False)
+        layout.addWidget(self.lbl_warnings)
+        self.cb_backup = QCheckBox("Back up the file being replaced")
+        self.cb_backup.setToolTip(wrapped_tooltip("Copies the key model file before it is overwritten."))
+        self.cb_backup.setChecked(True)
+        layout.addWidget(self.cb_backup)
+        self.buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        self.buttons.accepted.connect(self._confirm)
+        self.buttons.rejected.connect(self.reject)
+        layout.addWidget(self.buttons)
+        self._update_enabled()
+
+    def _warnings(self) -> tuple[list[str], bool]:
+        from optimizer import model_start as MS
+        if self._track_count is None:
+            return [], False
+        start = str(self.cmb_start.currentData())
+        messages, blocked = MS.warnings(self._track_count, MS.kind_of(start), start, self._model_path, MS.KEY_SONGS)
+        # a key model trains in minutes, not hours
+        messages = ["Training from scratch discards what the shipped model learned." if "one to two hours" in m else m
+                    for m in messages]
+        return messages, blocked
+
+    def _confirm(self) -> None:
+        messages, blocked = self._warnings()
+        if blocked:
+            return
+        if messages:
+            answer = QMessageBox.warning(self, "Reoptimize Key Model", "\n\n".join(messages) + "\n\nContinue?",
+                                         QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+            if answer != QMessageBox.Yes:
+                return
+        self.accept()
+
+    def _update_enabled(self, *_args) -> None:
+        messages, blocked = self._warnings()
+        self.lbl_warnings.setText("\n".join(messages))
+        self.lbl_warnings.setVisible(bool(messages))
+        self.buttons.button(QDialogButtonBox.Ok).setEnabled(not blocked)
+
+    def options(self) -> dict:
+        folds = self.sp_folds.value()
+        return {"start": str(self.cmb_start.currentData()), "cv_folds": folds if folds >= 2 else 0}
 
     def backup_existing(self) -> bool:
         return self.cb_backup.isChecked()

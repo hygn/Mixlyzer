@@ -21,7 +21,6 @@ from core.config import (
     analysisconfig,
     config,
     externalsyncconfig,
-    keyconfig,
     libconfig,
     memorydeckconfig,
     memoryvalueconfig,
@@ -186,10 +185,6 @@ class SettingsDialog(
         # analysis
         a = cfg.analysisconfig
         self.sp_analysis_samp_rate.setValue(int(a.analysis_samp_rate))
-        self.cmb_chroma_method.setCurrentIndex(0 if a.chroma_method == "cqt" else 1)
-        self.sp_chroma_hop_length.setValue(int(a.chroma_hop_length))
-        self.sp_cqt_bins_per_oct.setValue(int(a.chroma_cqt_bins_per_octave))
-        self.sp_cqt_octaves.setValue(int(a.chroma_cqt_octaves))
         self.cb_use_hpss.setChecked(bool(a.use_hpss))
         self.sp_bpm_min.setValue(int(a.bpm_min))
         self.lbl_bpm_range.setText(f"Reads {int(a.bpm_min)} - {2 * int(a.bpm_min)} BPM")
@@ -233,12 +228,9 @@ class SettingsDialog(
         self._set_autocue(a.autocue)
 
         # key
-        k = cfg.keyconfig
-        self.sp_min_offset.setValue(float(k.min_offset))
-        self.sp_pitch_self.setValue(float(k.pitch_self))
-        self.sp_pitch_semitone.setValue(float(k.pitch_semitone))
-        self.sp_pitch_fifth.setValue(float(k.pitch_fifth))
-        self.sp_pitch_others.setValue(float(k.pitch_others))
+        self.cb_key_dynamic.setChecked(bool(getattr(a, "key_dynamic", True)))
+        self.ed_key_parameter_path.setText(str(getattr(a, "key_parameter_path", "") or ""))
+        self.ed_key_feature_cache_path.setText(str(getattr(a, "key_feature_cache_path", "") or ""))
 
         # external sync
         x = cfg.externalsyncconfig
@@ -298,10 +290,6 @@ class SettingsDialog(
         return config(
             analysisconfig=analysisconfig(
                 analysis_samp_rate=int(self.sp_analysis_samp_rate.value()),
-                chroma_method=("cqt" if self.cmb_chroma_method.currentIndex() == 0 else "cens"),
-                chroma_hop_length=int(self.sp_chroma_hop_length.value()),
-                chroma_cqt_bins_per_octave=int(self.sp_cqt_bins_per_oct.value()),
-                chroma_cqt_octaves=int(self.sp_cqt_octaves.value()),
                 use_hpss=bool(self.cb_use_hpss.isChecked()),
                 bpm_min=int(self.sp_bpm_min.value()),
                 bpm_dynamic=bool(self.cb_bpm_dynamic.isChecked()),
@@ -324,14 +312,10 @@ class SettingsDialog(
                 phrase_feature_cache_path=self.ed_phrase_feature_cache_path.text().strip(),
                 jumpcue_parameter_path=self.ed_jumpcue_parameter_path.text().strip(),
                 jumpcue_feature_cache_path=self.ed_jumpcue_feature_cache_path.text().strip(),
+                key_dynamic=bool(self.cb_key_dynamic.isChecked()),
+                key_parameter_path=self.ed_key_parameter_path.text().strip(),
+                key_feature_cache_path=self.ed_key_feature_cache_path.text().strip(),
                 autocue=self._get_autocue(),
-            ),
-            keyconfig=keyconfig(
-                min_offset=float(self.sp_min_offset.value()),
-                pitch_self=float(self.sp_pitch_self.value()),
-                pitch_semitone=float(self.sp_pitch_semitone.value()),
-                pitch_fifth=float(self.sp_pitch_fifth.value()),
-                pitch_others=float(self.sp_pitch_others.value()),
             ),
             libconfig=libconfig(
                 libpath=self.ed_libpath.text().strip(),

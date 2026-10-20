@@ -162,6 +162,7 @@ def _segment_reanalysis_entry(
             sel_start, sel_end = map(float, selection)
             if sel_end <= sel_start:
                 raise ValueError("selection end must be greater than start")
+            grid_beats = beats_arr.copy()
             beats_arr = np.concatenate(([0.], beats_arr, [duration]))
             beat_start_index = int(np.searchsorted(beats_arr, sel_start, side="left"))
             beat_end_index = int(np.searchsorted(beats_arr, sel_end, side="right"))-1
@@ -176,6 +177,9 @@ def _segment_reanalysis_entry(
                 beats_arr,
                 beat_start_index,
                 beat_end_index,
+                grid_beats=grid_beats,
+                tempo_segments=tempo_segments_arr,
+                phrases=phrases,
                 progress_cb=_progress,
             )
             updated_segments = update_key_segments_with_selection(
@@ -200,6 +204,8 @@ def _segment_reanalysis_entry(
                 path,
                 cfg,
                 beats_arr,
+                tempo_segments=tempo_segments_arr,
+                phrases=phrases,
                 progress_cb=_progress,
             )
             updated_segments = np.asarray(updated_segments, dtype=float)
@@ -209,6 +215,8 @@ def _segment_reanalysis_entry(
                     "taskid": taskid,
                     "payload": {
                         "key_segments": updated_segments.tolist(),
+                        # the new automatic result (the key optimizer learns from where the user's keys differ)
+                        "key_segments_auto": updated_segments.tolist(),
                     },
                 }
             )
