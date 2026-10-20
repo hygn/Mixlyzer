@@ -12,6 +12,7 @@ Where the Windows API is used, the other systems have a fallback:
 - the window's occlusion (utils.window_visibility): user32 + DWM / whether Qt has the window exposed
 - the scratch cursor poller (core.audio.cursor_poller): Win32 cursor + waitable timer / the GUI's mouse events
 - the physical core count for sklearn (analyzer_core.utils): GetLogicalProcessorInformationEx / loky's own
+- a key another program holds as a global hotkey (Settings > Shortcuts): RegisterHotKey refused / not checked
 External Sync's memory reads (PyMemoryEditor) are Windows and Linux only: on macOS (MEMORY_SYNC False) the library
 is not imported, the settings tab is not shown and the setting is always off.
 """
@@ -127,6 +128,49 @@ def list_processes() -> list[dict[str, int | str]]:
             if name:
                 rows.append({"name": name, "pid": pid})
     return rows
+
+
+# Windows virtual keys of the named keys in Qt's portable key text (characters are looked up in the layout)
+_VK = {"Left": 0x25, "Up": 0x26, "Right": 0x27, "Down": 0x28, "Space": 0x20, "Esc": 0x1B, "Tab": 0x09,
+       "Backspace": 0x08, "Return": 0x0D, "Enter": 0x0D, "Ins": 0x2D, "Del": 0x2E, "Home": 0x24, "End": 0x23,
+       "PgUp": 0x21, "PgDown": 0x22, **{f"F{n}": 0x6F + n for n in range(1, 25)}}
+_HOTKEY_MODS = {"Alt": 0x1, "Ctrl": 0x2, "Shift": 0x4, "Meta": 0x8}
+_HOTKEY_PROBE_ID = 0xB7A1
+
+
+def hotkey_taken(key: str) -> bool:
+    """Whether another program holds ``key`` (one combination in Qt's portable text, "Ctrl+Alt+R") as a global
+    hotkey, so its presses never reach the app (a graphics card overlay holds Alt+R, for one): Windows, where the key
+    is registered and released at once and refused when held. False elsewhere (no such check) and for a key not
+    understood."""
+    if not IS_WINDOWS or not key:
+        return False
+    parts = key.split("+")
+    name = parts[-1] or "+"   # "Ctrl++": the plus key
+    mods = 0
+    for part in parts[:-1] if parts[-1] else parts[:-2]:
+        if part not in _HOTKEY_MODS:
+            return False
+        mods |= _HOTKEY_MODS[part]
+    import ctypes
+    from ctypes import wintypes
+    user32 = ctypes.WinDLL("user32", use_last_error=True)
+    vk = _VK.get(name)
+    if vk is None:
+        if len(name) != 1:
+            return False
+        user32.VkKeyScanW.argtypes = [ctypes.c_wchar]
+        user32.VkKeyScanW.restype = ctypes.c_short
+        scan = user32.VkKeyScanW(name)
+        if scan == -1:
+            return False
+        vk = scan & 0xFF
+    user32.RegisterHotKey.argtypes = [wintypes.HWND, ctypes.c_int, wintypes.UINT, wintypes.UINT]
+    user32.UnregisterHotKey.argtypes = [wintypes.HWND, ctypes.c_int]
+    if user32.RegisterHotKey(None, _HOTKEY_PROBE_ID, mods | 0x4000, vk):   # MOD_NOREPEAT
+        user32.UnregisterHotKey(None, _HOTKEY_PROBE_ID)
+        return False
+    return ctypes.get_last_error() == 1409   # ERROR_HOTKEY_ALREADY_REGISTERED
 
 
 def reveal_file(path: str) -> None:

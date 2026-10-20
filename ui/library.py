@@ -353,6 +353,7 @@ class _TrackTable(QtWidgets.QTableWidget):
 class _LibrarySourceTree(QtWidgets.QTreeWidget):
     playlistFilesDropped = QtCore.Signal(str, object)
     playlistOrderDropped = QtCore.Signal(str, object)
+    focusLeft = QtCore.Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -366,6 +367,19 @@ class _LibrarySourceTree(QtWidgets.QTreeWidget):
         self.setMaximumWidth(360)
         self._drop_line_y: Optional[int] = None
         self._drop_target_rect: Optional[QtCore.QRect] = None
+        # moving with the keys only highlights a source; the library shows it once picked (the load key)
+        self.keyboard_move = False
+
+    def keyPressEvent(self, event):
+        self.keyboard_move = True
+        try:
+            super().keyPressEvent(event)
+        finally:
+            self.keyboard_move = False
+
+    def focusOutEvent(self, event):
+        super().focusOutEvent(event)
+        self.focusLeft.emit()
 
     def mimeTypes(self):
         return ["text/uri-list", _PLAYLIST_MIME]
@@ -1032,6 +1046,7 @@ class LibraryWidget(QtWidgets.QWidget):
         self.source_tree.currentItemChanged.connect(self._on_source_changed)
         self.source_tree.itemExpanded.connect(self._on_source_expanded)
         self.source_tree.customContextMenuRequested.connect(self._on_source_context_menu)
+        self.source_tree.focusLeft.connect(self._mark_shown_source)
         self.source_tree.playlistFilesDropped.connect(self._add_paths_to_playlist)
         self.source_tree.playlistOrderDropped.connect(self._drop_playlist_order)
         self.table.playlistRowsDropped.connect(self._drop_playlist_tracks)
@@ -1200,7 +1215,7 @@ class LibraryWidget(QtWidgets.QWidget):
         self._populate_directory_children(item)
 
     def _on_source_changed(self, current, _previous=None) -> None:
-        if current is None:
+        if current is None or self.source_tree.keyboard_move:
             return
         self._source_kind = str(current.data(0, _SOURCE_KIND_ROLE) or "")
         self._source_value = current.data(0, _SOURCE_VALUE_ROLE)
@@ -1655,6 +1670,95 @@ class LibraryWidget(QtWidgets.QWidget):
 
     def _on_external_sync_enabled(self, enabled: bool) -> None:
         self._external_sync_enabled = bool(enabled)
+
+    # Keyboard shortcuts (ui.shortcuts): on the table's selection, wherever the focus is
+    def shortcut_handlers(self) -> dict:
+        return {
+            "library.previous": lambda: self._step_selection(-1),
+            "library.next": lambda: self._step_selection(1),
+            "library.load": self._load_selected,
+            "library.browse_sources": self._toggle_sources,
+            "library.search": self._focus_search,
+            "library.locate_loaded": self._select_loaded_track,
+            "library.edit_track": self._edit_selected,
+            "library.export_track": self._export_selected,
+            "library.reveal": self._reveal_selected,
+            "library.new_playlist": self._create_playlist,
+            "library.reanalyze": self._reanalyze_selected,
+            "library.remove_from_library": self._on_remove_selected,
+            "library.remove_from_playlist": self._remove_selected_from_playlist,
+        }
+
+    def _select_row(self, row: int) -> None:
+        self.table.setCurrentCell(row, max(self.table.currentColumn(), 0))
+        self.table.scrollToItem(self.table.item(row, 0))
+
+    def _step_selection(self, step: int) -> None:
+        """Select the shown row before (``step`` -1) / after the current one; without one, the last / first."""
+        n = self.table.rowCount()
+        current = self.table.currentRow()
+        if current < 0 or self.table.isRowHidden(current):
+            rows = range(n) if step > 0 else range(n - 1, -1, -1)
+        else:
+            rows = range(current + 1, n) if step > 0 else range(current - 1, -1, -1)
+        row = next((r for r in rows if not self.table.isRowHidden(r)), None)
+        if row is not None:
+            self._select_row(row)
+
+    def _load_selected(self) -> None:
+        """Load the current row when it is selected, else the first selected. In the sources panel, the
+        highlighted source instead: shown in the library, the focus on its tracks."""
+        if self.source_tree.hasFocus():
+            self._on_source_changed(self.source_tree.currentItem())
+            self.focus_tracks()
+            return
+        rows = self._selected_rows()
+        if rows:
+            row = self.table.currentRow() if self.table.currentRow() in rows else rows[0]
+            self._on_activate(self.table.model().index(row, 0))
+
+    def _toggle_sources(self) -> None:
+        """The focus to the sources panel (playlists, local folders: Up / Down to browse), or back to the tracks."""
+        if self.source_tree.hasFocus():
+            self.focus_tracks()
+        else:
+            self._mark_shown_source()
+            self.source_tree.setFocus(QtCore.Qt.ShortcutFocusReason)
+
+    def focus_tracks(self) -> None:
+        self.table.setFocus(QtCore.Qt.ShortcutFocusReason)
+
+    def _mark_shown_source(self) -> None:
+        """The sources panel's highlight back on the source the library shows (keys moved it elsewhere)."""
+        tree = self.source_tree
+        current = tree.currentItem()
+        if current is not None and (current.data(0, _SOURCE_KIND_ROLE), current.data(0, _SOURCE_VALUE_ROLE)) == (
+                self._source_kind, self._source_value):
+            return
+        iterator = QtWidgets.QTreeWidgetItemIterator(tree)
+        while iterator.value():
+            item = iterator.value()
+            if (item.data(0, _SOURCE_KIND_ROLE), item.data(0, _SOURCE_VALUE_ROLE)) == (
+                    self._source_kind, self._source_value):
+                tree.blockSignals(True)
+                tree.setCurrentItem(item)
+                tree.blockSignals(False)
+                return
+            iterator += 1
+
+    def _focus_search(self) -> None:
+        self.e_search.setFocus(QtCore.Qt.ShortcutFocusReason)
+        self.e_search.selectAll()
+
+    def _select_loaded_track(self) -> str | None:
+        if not self._loaded_uid:
+            return None
+        row = next((r for r in range(self.table.rowCount())
+                    if not self.table.isRowHidden(r) and self._row_uid(r) == self._loaded_uid), None)
+        if row is None:
+            return tr("The loaded track is not in the list shown.")
+        self._select_row(row)
+        return None
 
     def _select_source(self, kind: str, value=None) -> None:
         iterator = QtWidgets.QTreeWidgetItemIterator(self.source_tree)

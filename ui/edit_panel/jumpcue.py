@@ -5,7 +5,7 @@ import copy
 import numpy as np
 from PySide6 import QtCore, QtWidgets
 
-from ui.edit_panel.cue_slots import CuePageWidget, color_swatch_icon, slot_letter
+from ui.edit_panel.cue_slots import SLOTS_PER_PAGE, CuePageWidget, color_swatch_icon, slot_letter
 from ui.edit_panel.history import logElement
 from ui.edit_panel.icons import icon
 from ui.edit_panel.quantize import beat_quantize_grid
@@ -82,8 +82,14 @@ class JumpCUEEditMixin:
 
     def _jc_cue_at(self, slot: int) -> dict | None:
         """The cue in a slot: the one with the slot's letter."""
-        letter = self._jc_slot_letter(slot)
+        return self._jc_cue_by_letter(self._jc_slot_letter(slot))
+
+    def _jc_cue_by_letter(self, letter: str | None) -> dict | None:
         return next((c for c in self._jumpcue_graph_cues if str(c.get("label", "")) == letter), None)
+
+    def _show_jumpcue_slot(self, letter: str) -> None:
+        """The JumpCUE list at the page holding ``letter``'s slot."""
+        self.cue_page.show_list(0, (ord(letter) - ord("A")) // SLOTS_PER_PAGE)
 
     def _refresh_jumpcue_slots(self) -> None:
         if not hasattr(self, "cue_page"):
@@ -135,11 +141,13 @@ class JumpCUEEditMixin:
     # ---- jump ----
 
     def _jc_jump(self, slot: int) -> None:
+        cue = self._jc_cue_at(slot)
+        if cue is not None:
+            self._jc_jump_cue(cue)
+
+    def _jc_jump_cue(self, cue: dict) -> None:
         """Playing: jump to the cue on the next beat (again: cancel). Stopped: move
         the playhead to it."""
-        cue = self._jc_cue_at(slot)
-        if cue is None:
-            return
         dest = float(cue.get("point", 0.0))
         if not getattr(self, "_playing", False):
             self.bus.sig_seek_requested.emit(dest)

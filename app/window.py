@@ -5,7 +5,7 @@ import copy
 import json
 
 from app.print_hook import install_print_hook, log_environment_info
-from core import os_support
+from core import os_support, shortcuts
 from core.event_bus import EventBus
 from core.model import DataModel
 from core.timeline import TimelineCoordinator
@@ -28,6 +28,7 @@ from ui.config.window import SettingsDialog
 from ui.workers import WorkersDialog
 from ui.oss_support import SupportDialog
 from ui.about_dialog import AboutDialog
+from ui.shortcuts import ShortcutManager
 
 from core.workflows.segment_reanalysis import SegmentReanalysisWorkflow
 from core.config import config, load_cfg, search_settings
@@ -125,6 +126,11 @@ class AppWindow(QtWidgets.QMainWindow):
         self.bus.sig_timestretch_toggle_requested.connect(self._on_timestretch_toggle)
         self.bus.sig_metronome_toggle_requested.connect(self._on_metronome_toggle)
         tb.addActions([a_cfg, a_workers, a_support_tb, a_about])
+
+        # keyboard shortcuts (assets/shortcuts; Settings > Shortcuts)
+        self.shortcuts = ShortcutManager(self, self.pane.shortcut_handlers(), self.statusBar().showMessage)
+        self.shortcuts.apply(shortcuts.keymap())
+        self.bus.sig_shortcuts_changed.connect(self.shortcuts.apply)
 
 
         # events

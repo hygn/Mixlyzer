@@ -60,6 +60,8 @@ class EventBus(QtCore.QObject):
 
     # reload configs
     sig_reload_UI = QtCore.Signal(object)
+    # the keyboard shortcuts saved in the settings (core.shortcuts keymap: action -> key sequences)
+    sig_shortcuts_changed = QtCore.Signal(object)
 
     # Analysis Tasks
     # WorkersDialog expects these signals to exist and connects unconditionally.

@@ -13,6 +13,9 @@ from utils.cue_points import build_cue_points_np
 from utils.jumpcue_colors import CUE_POINT_COLORS, get_cue_point_color
 from core.i18n import tr
 
+# the playhead is on a CUE point this close to it (CALL puts it exactly there)
+CUE_AT_PLAYHEAD_SEC = 0.05
+
 
 class CuePointEditMixin:
     """CUE point (memory cue) list on the CUE page, as rekordbox's memory cues: kept
@@ -91,8 +94,29 @@ class CuePointEditMixin:
 
     def _delete_memory_cue(self, slot: int) -> None:
         cue = self._cp_at(slot)
-        if cue is None:
-            return
+        if cue is not None:
+            self._delete_cue_point(cue)
+
+    def _cue_point_at_playhead(self) -> dict | None:
+        """The CUE point the playhead is on (within CUE_AT_PLAYHEAD_SEC), as after CALL."""
+        t = float(self._current_time)
+        near = [p for p in self._cue_points if abs(float(p["time_sec"]) - t) <= CUE_AT_PLAYHEAD_SEC]
+        return min(near, key=lambda p: abs(float(p["time_sec"]) - t), default=None)
+
+    def _cp_call_target(self, step: int) -> dict | None:
+        """The CUE point before (``step`` < 0) / after the playhead."""
+        t = float(self._current_time)
+        if step > 0:
+            return next((p for p in self._cue_points if float(p["time_sec"]) > t + 1e-3), None)
+        return next((p for p in reversed(self._cue_points) if float(p["time_sec"]) < t - 1e-3), None)
+
+    def _show_cue_point_slot(self, cue: dict):
+        """The CUE point list at the page holding ``cue``; its slot."""
+        index = next(i for i, p in enumerate(self._cue_points) if p is cue)
+        self.cue_page.show_list(1, index // SLOTS_PER_PAGE)
+        return self.cp_slots[index % SLOTS_PER_PAGE]
+
+    def _delete_cue_point(self, cue: dict) -> None:
         t = float(cue["time_sec"])
         self.set_cue_points([p for p in self._cue_points if abs(float(p["time_sec"]) - t) >= 1e-3])
         self._emit_cue_points_update()

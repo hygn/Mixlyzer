@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import html
 from typing import Optional
 
 import numpy as np
@@ -12,8 +13,9 @@ from core.event_bus import EventBus
 from core.model import DataModel
 from ui.edit_panel.beat_counter import BeatCounterMixin
 from ui.edit_panel.beatgrid import BeatgridEditMixin
-from ui.edit_panel.cue_slots import CuePageWidget
+from ui.edit_panel.cue_slots import SLOTS_PER_PAGE, CuePageWidget
 from ui.edit_panel.cuepoint import CuePointEditMixin
+from ui.edit_panel.flash import flash
 from ui.edit_panel.history import logElement, logs
 from ui.edit_panel.icons import icon
 from ui.edit_panel.jumpcue import JumpCUEEditMixin
@@ -101,6 +103,11 @@ class EditPanel(
         # Downbeats at/after the press time; the first one is bar 1 for the
         # Bar.Beat display (counting starts once that bar begins).
         self._bb_downbeats = None
+        # the current page (index in PAGES): the one the editor's page-wide shortcuts work on; with pages side
+        # by side, the selector marks it
+        self._context = 0
+        self._page_titles: dict[int, QtWidgets.QToolButton] = {}   # 4 pages shown: the title over each
+        self._pair_labels: dict[int, QtWidgets.QLabel] = {}         # 2 shown: the names on each pair's button
         self._init_ui()
         self.edit_log = logs(
             default=logElement(
@@ -250,6 +257,11 @@ class EditPanel(
                 g.setColumnStretch(g.columnCount(), 1)
         # every column is as wide as the widest page
         self._page_w = max(page.sizeHint().width() for page in self._pages)
+        # a click anywhere on a page makes it the current page
+        self._page_of = {w: i for i, page in enumerate(self._pages)
+                         for w in (page, *page.findChildren(QtWidgets.QWidget))}
+        for w in self._page_of:
+            w.installEventFilter(self)
         self._hosts: list[QtWidgets.QWidget] = []  # one per column, holding its page
         self._shown: tuple[int, ...] = ()
         self._column_count = 0
@@ -303,11 +315,11 @@ class EditPanel(
 
     def set_column_count(self, count: int) -> None:
         """Show the pages 1, 2 or 4 at a time (``count`` is rounded down to one of
-        them); the group shown is the one holding the page shown first."""
+        them); the group shown is the one holding the current page."""
         count = 4 if count >= 4 else 2 if count >= 2 else 1
         if count == self._column_count:
             return
-        first = self._shown[0] if self._shown else 0
+        first = self._context
         self._release_pages()  # out of the hosts before any is deleted
         self._column_count = count
         # the columns, a thin rule between neighbours
@@ -342,25 +354,37 @@ class EditPanel(
                 item.widget().hide()  # gone now, deleted later
                 item.widget().deleteLater()
         groups = self.PAGE_GROUPS[count]
+        self._page_titles = {}
+        self._pair_labels = {}
         if count == 4:
             for k, i in enumerate(groups[0]):
                 if k:
                     self._selector.addSpacing(2 * self.COLUMN_GAP + 1 - self._selector.spacing() * 2)
                 btn = self._selector_button(self._page_title(i), self._page_tooltip(i))
                 btn.setCheckable(True)
-                btn.setChecked(True)
-                btn.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents, True)
+                # lit: the current page; clicked, it becomes the current page
+                btn.clicked.connect(lambda _=False, i=i: self._set_context(i))
                 # over its column: the first one shares its width with the lock
                 btn.setFixedWidth(self._page_w - (0 if k else self.LOCK_W + self._selector.spacing()))
                 self._selector.addWidget(btn)
+                self._page_titles[i] = btn
             self._selector.addStretch(1)
         else:
             for gi, group in enumerate(groups):
-                btn = self._selector_button(
-                    " · ".join(self._page_title(i) for i in group),
-                    "\n".join(self._page_tooltip(i) for i in group),
-                )
+                names = " · ".join(self._page_title(i) for i in group)
+                btn = self._selector_button(names, "\n".join(self._page_tooltip(i) for i in group))
                 btn.setCheckable(True)
+                if count == 2:
+                    # the names in a label: the current page's lit, the other's dimmed (_mark_context)
+                    label = QtWidgets.QLabel(names, btn)
+                    label.setFont(btn.font())
+                    label.setAlignment(QtCore.Qt.AlignCenter)
+                    label.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents)
+                    QtWidgets.QHBoxLayout(btn).setContentsMargins(0, 0, 0, 0)
+                    btn.layout().addWidget(label)
+                    btn.setText("")
+                    btn.setMinimumWidth(label.sizeHint().width() + 12)
+                    self._pair_labels[gi] = label
                 self._page_group.addButton(btn, gi)
                 self._selector.addWidget(btn)
         self._show_group(next(gi for gi, group in enumerate(groups) if first in group))
@@ -386,7 +410,41 @@ class EditPanel(
         btn = self._page_group.button(int(group_index))
         if btn is not None and not btn.isChecked():
             btn.setChecked(True)
+        self._set_context(self._context if self._context in group else group[0])
         self._emit_edit_focus()
+
+    def _set_context(self, index: int) -> None:
+        """Make page ``index`` (shown) the current page."""
+        self._context = int(index)
+        self._mark_context()
+
+    def _mark_context(self) -> None:
+        """The current page in the selector while pages are side by side: its title lit over its column (4
+        shown), or its name lit on its pair's button and the other's dimmed (2 shown)."""
+        for i, btn in self._page_titles.items():
+            btn.setChecked(i == self._context)
+        theme = current_theme()
+        dim = QtGui.QColor(theme.on_accent)
+        dim.setAlphaF(0.45)
+        for gi, label in self._pair_labels.items():
+            group = self.PAGE_GROUPS[2][gi]
+            shown = tuple(group) == self._shown
+            names = []
+            for i in group:
+                name = html.escape(self._page_title(i))
+                if shown and i != self._context:
+                    name = f"<span style='color: {dim.name(QtGui.QColor.HexArgb)}'>{name}</span>"
+                names.append(name)
+            label.setText(" · ".join(names))
+            label.setStyleSheet(f"color: {theme.on_accent if shown else theme.text};")
+
+    def eventFilter(self, obj, event) -> bool:
+        kind = event.type()
+        if kind == QtCore.QEvent.MouseButtonPress:
+            page = self._page_of.get(obj)
+            if page is not None and page in self._shown and page != self._context:
+                self._set_context(page)
+        return super().eventFilter(obj, event)
 
     def _emit_edit_focus(self) -> None:
         """Unlocked, the views emphasize the visualizations of the pages shown (beatgrid, key,
@@ -697,6 +755,185 @@ class EditPanel(
         there are edits not saved."""
         self.btn_save.setStyleSheet(WARNING_BUTTON_STYLESHEET if unsaved else BUTTON_STYLESHEET)
         self.btn_save.setIcon(icon("edit_save", inverted=bool(unsaved)))
+
+    # ---- keyboard shortcuts (ui.shortcuts) ----
+
+    def shortcut_handlers(self) -> dict:
+        """Action id -> handler of the editor's shortcuts. A shortcut works a button as the mouse does: clicked
+        and flashing. A page-wide one ("editor." moves, split / merge, reanalysis, ...) works the button of the
+        current page (the same operation on each page having it); one of a page's own tools shows its page first (and the CUE list page holding its slot),
+        which becomes the current page. An edit while editing is locked does nothing; the status bar says why."""
+        B, K, P, C = range(len(self.PAGES))
+        # the page-wide shortcuts (an operation the same on each page having it): the button each page has for it
+        context_tools = {
+            "editor.start_earlier": {K: self.key_start_back, P: self.phrase_start_back},
+            "editor.start_later": {K: self.key_start_fwd, P: self.phrase_start_fwd},
+            "editor.end_earlier": {K: self.key_end_back, P: self.phrase_end_back},
+            "editor.end_later": {K: self.key_end_fwd, P: self.phrase_end_fwd},
+            "editor.split": {B: self.btn_cutseg, K: self.key_split, P: self.phrase_split},
+            "editor.merge_previous": {B: self.btn_merge_prev, K: self.key_merge_prev, P: self.phrase_merge_prev},
+            "editor.merge_next": {B: self.btn_merge_next, K: self.key_merge_next, P: self.phrase_merge_next},
+            "editor.reanalyze_segment": {B: self.btn_reanalyze_segment, K: self.key_sel_reanalyze},
+            "editor.reanalyze_all": {K: self.key_reanalyze, P: self.phrase_reanalyze, C: self.jc_reanalyze},
+            "editor.scope_all": {B: self.btn_scope_all, K: self.key_scope_all},
+            "editor.scope_segment": {B: self.btn_scope_segment, K: self.key_scope_segment},
+            "editor.step_beat": {K: self.key_step_beat, P: self.phrase_step_beat},
+            "editor.step_bar": {K: self.key_step_bar, P: self.phrase_step_bar},
+        }
+        # a page's own tools
+        tools = {
+            "beatgrid.shift_half_back": (self.btn_shift_half_back, B),
+            "beatgrid.shift_coarse_back": (self.btn_shift_coarse_back, B),
+            "beatgrid.shift_fine_back": (self.btn_shift_fine_back, B),
+            "beatgrid.shift_fine_forward": (self.btn_shift_fine_fwd, B),
+            "beatgrid.shift_coarse_forward": (self.btn_shift_coarse_fwd, B),
+            "beatgrid.shift_half_forward": (self.btn_shift_half_fwd, B),
+            "beatgrid.zero": (self.btn_zeroBPM, B), "beatgrid.tap": (self.btn_tapBPM, B),
+            "beatgrid.assign": (self.btn_setBPM, B),
+            "beatgrid.ramp_start": (self.btn_ramp_start, B), "beatgrid.ramp_end": (self.btn_ramp_end, B),
+            "beatgrid.downbeat": (self.btn_set_downbeat, B),
+            "beatgrid.bpm_half": (self.btn_bpm_half, B), "beatgrid.bpm_double": (self.btn_bpm_double, B),
+            **{f"beatgrid.time_signature_{n}": (btn, B) for n, btn in self.ts_buttons.items()},
+            "key.pick": (self.key_pick, K), "key.flat": (self.key_flat, K), "key.sharp": (self.key_sharp, K),
+            "key.fifth_down": (self.key_fifth_down, K), "key.fifth_up": (self.key_fifth_up, K),
+            "key.relative": (self.key_relative, K), "key.merge_same": (self.key_merge_same, K),
+            "key.root": (self.key_root, K), "key.drone": (self.key_drone, K), "key.chord": (self.key_chord, K),
+            "phrase.cue_points": (self.phrase_cue_assign, P), "phrase.unassign": (self.phrase_unassign, P),
+            **{f"phrase.label.{label}": (btn, P) for label, btn in self.phrase_label_buttons.items()},
+            "editor.undo": (self.btn_undo, None), "editor.redo": (self.btn_redo, None),
+            "editor.save": (self.btn_save, None),
+        }
+        handlers = {action: (lambda buttons=buttons: self._shortcut_context(buttons))
+                    for action, buttons in context_tools.items()}
+        handlers.update({action: (lambda btn=btn, page=page: self._shortcut_click(btn, page))
+                         for action, (btn, page) in tools.items()})
+        handlers.update({
+            "editor.lock": lambda: self._shortcut_toggle(self.btn_lock),
+            # the deck's metronome (also a setting): its button flashes only when shown
+            "playback.metronome": lambda: self._shortcut_toggle(self.btn_metronome),
+            **{f"editor.page_{name.lower()}": (lambda i=i: self._show_shortcut_page(i))
+               for i, name in enumerate(self.PAGES)},
+            "cue.call_previous": lambda: self._shortcut_call(-1),
+            "cue.call_next": lambda: self._shortcut_call(1),
+            "cue.memory": self._shortcut_memory,
+            "cue.memory_delete": self._shortcut_memory_delete,
+        })
+        for letter in "ABCDEFGH":
+            for op in ("jump", "set", "delete"):
+                handlers[f"cue.{op}.{letter}"] = lambda letter=letter, op=op: self._shortcut_jumpcue(letter, op)
+        return handlers
+
+    def show_page(self, index: int) -> None:
+        """Show page ``index`` (in its group)."""
+        groups = self.PAGE_GROUPS[self._column_count]
+        self._show_group(next(gi for gi, group in enumerate(groups) if index in group))
+
+    def _show_shortcut_page(self, index: int) -> None:
+        """The page a shortcut works on, shown when it is not, as the current page."""
+        if index not in self._shown:
+            self.show_page(index)
+        self._set_context(index)
+
+    def _page_name(self, index: int) -> str:
+        name = self.PAGES[index]
+        return tr(self.PAGE_TITLES[name]) if name in self.PAGE_TITLES else name
+
+    def _shortcut_context(self, buttons: dict) -> str | None:
+        """A page-wide shortcut: the current page's button for it (``buttons``: page -> button)."""
+        page = self._context
+        button = buttons.get(page)
+        if button is None:
+            return tr("This shortcut does nothing on the {page} page.").format(page=self._page_name(page))
+        if button is self.jc_reanalyze:
+            self.cue_page.show_list(0)  # beside the JumpCUE list
+        return self._shortcut_click(button, page)
+
+    def _edit_blocked(self) -> str | None:
+        """Why editing is off: the lock or a segment reanalysis (None: editing is on)."""
+        if self._locked:
+            return tr("Editing is locked.")
+        if not self._reanalysis_idle:
+            return tr("Editing waits for the segment reanalysis to finish.")
+        return None
+
+    def _shortcut_click(self, button: QtWidgets.QAbstractButton, page: int | None) -> str | None:
+        """A tool's shortcut: its page shown, its button clicked as by the mouse, flashing."""
+        if page is not None:
+            self._show_shortcut_page(page)
+        if not button.isEnabled():
+            return self._edit_blocked()
+        button.click()
+        flash(button)
+        return None
+
+    def _shortcut_toggle(self, button: QtWidgets.QAbstractButton) -> None:
+        """A switch that works locked too (the lock, the metronome), flashing while shown."""
+        button.toggle()
+        if button.isVisible():
+            flash(button)
+
+    def _show_cue_list(self, list_idx: int, page: int | None = None) -> None:
+        """The CUE page at list ``list_idx`` (0 = JumpCUE, 1 = CUE points), at ``page`` when given."""
+        self._show_shortcut_page(self.PAGES.index("CUE"))
+        self.cue_page.show_list(list_idx, page)
+
+    def _shortcut_jumpcue(self, letter: str, op: str) -> str | None:
+        """JumpCUE ``letter``'s slot by its shortcut, shown in the JumpCUE list: "jump" (JUMP), "set" (SET on its
+        empty slot) or "delete" (its colour menu's)."""
+        index = ord(letter) - ord("A")
+        self._show_cue_list(0, index // SLOTS_PER_PAGE)
+        slot = self.jc_slots[index % SLOTS_PER_PAGE]
+        cue = self._jc_cue_by_letter(letter)
+        if op == "jump":
+            if cue is None:
+                return tr("JumpCUE {letter} is not set.").format(letter=letter)
+            self._jc_jump_cue(cue)
+            flash(slot.btn_action)
+            return None
+        refusal = self._edit_blocked()
+        if refusal is not None:
+            return refusal
+        if op == "set":
+            if cue is not None:
+                return tr("JumpCUE {letter} is already set.").format(letter=letter)
+            self._new_jumpcue_group(letter)
+            flash(slot.btn_action)
+        elif cue is None:
+            return tr("JumpCUE {letter} is not set.").format(letter=letter)
+        else:
+            flash(slot.squircle)
+            self._remove_jumpcue_member(float(cue.get("point", 0.0)))
+        return None
+
+    def _shortcut_memory(self) -> str | None:
+        """MEMORY: a CUE point at the nearest beat (the list turns to it)."""
+        self._show_cue_list(1)
+        return self._shortcut_click(self.cp_memory, None)
+
+    def _shortcut_call(self, step: int) -> str | None:
+        """CALL the previous (``step`` < 0) / next CUE point, shown in the CUE point list."""
+        self._show_cue_list(1)
+        if getattr(self, "_playing", False):
+            return tr("CALL works while stopped.")
+        cue = self._cp_call_target(step)
+        if cue is not None:
+            slot = self._show_cue_point_slot(cue)
+            self.bus.sig_seek_requested.emit(float(cue["time_sec"]))
+            flash(slot.btn_action)
+        return None
+
+    def _shortcut_memory_delete(self) -> str | None:
+        """Delete the CUE point the playhead is on (as after CALL)."""
+        self._show_cue_list(1)
+        refusal = self._edit_blocked()
+        if refusal is not None:
+            return refusal
+        cue = self._cue_point_at_playhead()
+        if cue is None:
+            return tr("No CUE point at the playhead.")
+        flash(self._show_cue_point_slot(cue).squircle)
+        self._delete_cue_point(cue)
+        return None
 
     def _update_undo_redo_buttons(self) -> None:
         if not hasattr(self, "btn_undo") or not hasattr(self, "btn_redo"):

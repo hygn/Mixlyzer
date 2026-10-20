@@ -1,0 +1,351 @@
+{
+  "playback.play_pause": [
+    "Z",
+    "Space"
+  ],
+  "playback.stop": [
+    "Shift+A"
+  ],
+  "playback.beat_back": [
+    "Left"
+  ],
+  "playback.beat_forward": [
+    "Right"
+  ],
+  "playback.bar_back": [
+    "Alt+Left"
+  ],
+  "playback.bar_forward": [
+    "Alt+Right"
+  ],
+  "playback.tempo_down": [
+    "Shift+W"
+  ],
+  "playback.tempo_up": [
+    "Shift+E"
+  ],
+  "playback.tempo_reset": [
+    "Shift+R"
+  ],
+  "playback.master_tempo": [
+    "Shift+5"
+  ],
+  "playback.metronome": [
+    "M"
+  ],
+  "playback.zoom_in": [
+    "="
+  ],
+  "playback.zoom_out": [
+    "-"
+  ],
+  "playback.unload": [
+    "Shift+U"
+  ],
+  "cue.jump.A": [
+    "1"
+  ],
+  "cue.jump.B": [
+    "2"
+  ],
+  "cue.jump.C": [
+    "3"
+  ],
+  "cue.jump.D": [
+    "4"
+  ],
+  "cue.jump.E": [
+    "5"
+  ],
+  "cue.jump.F": [
+    "6"
+  ],
+  "cue.jump.G": [
+    "7"
+  ],
+  "cue.jump.H": [
+    "8"
+  ],
+  "cue.call_previous": [
+    "R"
+  ],
+  "cue.call_next": [
+    "T"
+  ],
+  "cue.set.A": [
+    "Ctrl+1"
+  ],
+  "cue.set.B": [
+    "Ctrl+2"
+  ],
+  "cue.set.C": [
+    "Ctrl+3"
+  ],
+  "cue.set.D": [
+    "Ctrl+4"
+  ],
+  "cue.set.E": [
+    "Ctrl+5"
+  ],
+  "cue.set.F": [
+    "Ctrl+6"
+  ],
+  "cue.set.G": [
+    "Ctrl+7"
+  ],
+  "cue.set.H": [
+    "Ctrl+8"
+  ],
+  "cue.memory": [
+    "Ctrl+T"
+  ],
+  "cue.delete.A": [
+    "Ctrl+Shift+1"
+  ],
+  "cue.delete.B": [
+    "Ctrl+Shift+2"
+  ],
+  "cue.delete.C": [
+    "Ctrl+Shift+3"
+  ],
+  "cue.delete.D": [
+    "Ctrl+Shift+4"
+  ],
+  "cue.delete.E": [
+    "Ctrl+Shift+5"
+  ],
+  "cue.delete.F": [
+    "Ctrl+Shift+6"
+  ],
+  "cue.delete.G": [
+    "Ctrl+Shift+7"
+  ],
+  "cue.delete.H": [
+    "Ctrl+Shift+8"
+  ],
+  "cue.memory_delete": [
+    "Ctrl+Shift+R"
+  ],
+  "library.previous": [
+    "Up"
+  ],
+  "library.next": [
+    "Down"
+  ],
+  "library.load": [
+    "Shift+Left"
+  ],
+  "library.browse_sources": [
+    "Alt+S"
+  ],
+  "library.search": [
+    "Alt+F"
+  ],
+  "library.leave_search": [
+    "Esc"
+  ],
+  "library.locate_loaded": [
+    "Shift+L"
+  ],
+  "library.edit_track": [
+    "I"
+  ],
+  "library.export_track": [
+    "X"
+  ],
+  "library.reveal": [
+    "Alt+E"
+  ],
+  "library.new_playlist": [
+    "Ctrl+N"
+  ],
+  "library.reanalyze": [
+    "Ctrl+Shift+A"
+  ],
+  "library.remove_from_library": [
+    "Ctrl+Shift+Del"
+  ],
+  "library.remove_from_playlist": [
+    "Ctrl+Shift+Backspace"
+  ],
+  "editor.lock": [
+    "L"
+  ],
+  "editor.page_beatgrid": [
+    "F1"
+  ],
+  "editor.page_key": [
+    "F2"
+  ],
+  "editor.page_phrase": [
+    "F3"
+  ],
+  "editor.page_cue": [
+    "F4"
+  ],
+  "editor.undo": [
+    "Ctrl+Z"
+  ],
+  "editor.redo": [
+    "Ctrl+Y"
+  ],
+  "editor.save": [
+    "Ctrl+S"
+  ],
+  "editor.start_earlier": [
+    "Ctrl+U"
+  ],
+  "editor.start_later": [
+    "Ctrl+I"
+  ],
+  "editor.end_earlier": [
+    "Ctrl+O"
+  ],
+  "editor.end_later": [
+    "Ctrl+P"
+  ],
+  "editor.split": [
+    "Ctrl+E"
+  ],
+  "editor.merge_previous": [
+    "Ctrl+Backspace"
+  ],
+  "editor.merge_next": [
+    "Ctrl+Del"
+  ],
+  "editor.reanalyze_segment": [
+    "Ctrl+R"
+  ],
+  "editor.reanalyze_all": [
+    "Ctrl+Alt+A"
+  ],
+  "editor.scope_all": [
+    "F5"
+  ],
+  "editor.scope_segment": [
+    "F6"
+  ],
+  "editor.step_beat": [
+    "F7"
+  ],
+  "editor.step_bar": [
+    "F8"
+  ],
+  "beatgrid.shift_half_back": [
+    "Ctrl+["
+  ],
+  "beatgrid.shift_coarse_back": [
+    "Ctrl+,"
+  ],
+  "beatgrid.shift_fine_back": [
+    "Ctrl+Left"
+  ],
+  "beatgrid.shift_fine_forward": [
+    "Ctrl+Right"
+  ],
+  "beatgrid.shift_coarse_forward": [
+    "Ctrl+."
+  ],
+  "beatgrid.shift_half_forward": [
+    "Ctrl+]"
+  ],
+  "beatgrid.zero": [
+    "Shift+B"
+  ],
+  "beatgrid.tap": [
+    "B"
+  ],
+  "beatgrid.assign": [
+    "Ctrl+B"
+  ],
+  "beatgrid.ramp_start": [
+    "Ctrl+Home"
+  ],
+  "beatgrid.ramp_end": [
+    "Ctrl+End"
+  ],
+  "beatgrid.downbeat": [
+    "Ctrl+D"
+  ],
+  "beatgrid.bpm_half": [
+    "Ctrl+Down"
+  ],
+  "beatgrid.bpm_double": [
+    "Ctrl+Up"
+  ],
+  "beatgrid.time_signature_3": [
+    "Ctrl+F9"
+  ],
+  "beatgrid.time_signature_4": [
+    "Ctrl+F10"
+  ],
+  "beatgrid.time_signature_5": [
+    "Ctrl+F11"
+  ],
+  "beatgrid.time_signature_7": [
+    "Ctrl+F12"
+  ],
+  "key.pick": [
+    "K"
+  ],
+  "key.flat": [
+    "Ctrl+-"
+  ],
+  "key.sharp": [
+    "Ctrl+="
+  ],
+  "key.fifth_down": [
+    "Ctrl+9"
+  ],
+  "key.fifth_up": [
+    "Ctrl+0"
+  ],
+  "key.relative": [
+    "Ctrl+M"
+  ],
+  "key.merge_same": [
+    "Ctrl+;"
+  ],
+  "key.root": [
+    "Alt+1"
+  ],
+  "key.drone": [
+    "Alt+2"
+  ],
+  "key.chord": [
+    "Alt+3"
+  ],
+  "phrase.cue_points": [
+    "Ctrl+Alt+C"
+  ],
+  "phrase.unassign": [
+    "Ctrl+Alt+0"
+  ],
+  "phrase.label.LEAD_IN": [
+    "Ctrl+Alt+1"
+  ],
+  "phrase.label.INTRO": [
+    "Ctrl+Alt+2"
+  ],
+  "phrase.label.VERSE": [
+    "Ctrl+Alt+3"
+  ],
+  "phrase.label.CHORUS": [
+    "Ctrl+Alt+4"
+  ],
+  "phrase.label.BREAK_CHORUS": [
+    "Ctrl+Alt+5"
+  ],
+  "phrase.label.BRIDGE": [
+    "Ctrl+Alt+6"
+  ],
+  "phrase.label.OUTRO": [
+    "Ctrl+Alt+7"
+  ],
+  "phrase.label.INTERLUDE": [
+    "Ctrl+Alt+8"
+  ],
+  "phrase.label.SILENCE": [
+    "Ctrl+Alt+9"
+  ]
+}

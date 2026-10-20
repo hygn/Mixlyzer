@@ -44,6 +44,7 @@ backups/
 debug/
 ffmpeg.exe
 config.json
+assets/shortcuts/shortcuts.json
 *.xml
 tests/
 

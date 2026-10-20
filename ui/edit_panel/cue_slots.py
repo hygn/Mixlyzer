@@ -181,6 +181,10 @@ class CueSlot(QtWidgets.QFrame):
         self.name_stack.setCurrentWidget(self.name)
 
     def eventFilter(self, obj, event) -> bool:
+        if obj is self.name_edit and event.type() == QtCore.QEvent.ShortcutOverride \
+                and event.key() == QtCore.Qt.Key_Escape:
+            event.accept()  # Esc cancels the rename, not the window's shortcut
+            return True
         if obj is self.name_edit and event.type() == QtCore.QEvent.KeyPress and event.key() == QtCore.Qt.Key_Escape:
             self._cancel_rename()
             return True
@@ -285,6 +289,16 @@ class CuePageWidget(QtWidgets.QWidget):
             self.tool_slot.setCurrentIndex(idx)
         self.list_changed.emit(idx)
         self.page_changed.emit()
+
+    def show_list(self, idx: int, page: int | None = None) -> None:
+        """Show list ``idx`` (0 = JumpCUE, 1 = CUE), at ``page`` when given."""
+        (self.tab_jump if idx == 0 else self.tab_cue).setChecked(True)
+        if page is not None:
+            self.pages[idx] = max(0, int(page))
+        if idx != self.current_list:
+            self._on_tab(idx)
+        else:
+            self.page_changed.emit()
 
     def _step_page(self, step: int) -> None:
         i = self.current_list

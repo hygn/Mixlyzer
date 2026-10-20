@@ -38,6 +38,7 @@ from ui.config.external_sync import (
 from ui.config.library import LibrarySettingsMixin, build_library_tab
 from ui.config.playback import PlaybackSettingsMixin, build_playback_tab
 from ui.config.search import SearchSettingsMixin, build_search_tab
+from ui.config.shortcuts import ShortcutSettingsMixin, build_shortcuts_tab
 from ui.config.view import ViewSettingsMixin, build_view_tab
 
 
@@ -48,6 +49,7 @@ class SettingsDialog(
     PlaybackSettingsMixin,
     AnalysisSettingsMixin,
     ExternalSyncSettingsMixin,
+    ShortcutSettingsMixin,
     QDialog,
 ):
     DIALOG_WIDTH = 780
@@ -68,6 +70,7 @@ class SettingsDialog(
         build_playback_tab(self)
         build_analysis_tab(self)
         build_external_sync_tab(self)
+        build_shortcuts_tab(self)
         self._stabilize_layout_widths()
 
         self.btn_box = QDialogButtonBox(
@@ -98,6 +101,7 @@ class SettingsDialog(
         self._initialize_search_settings(bus)
         self._initialize_view_settings(bus)
         self._initialize_playback_settings(bus)
+        self._initialize_shortcut_settings()
 
     def _stabilize_layout_widths(self) -> None:
         """Give every settings form the same label/field geometry."""
@@ -388,11 +392,13 @@ class SettingsDialog(
     # Buttons
     def _on_apply(self):
         cfg = self.get_config()
+        self._save_shortcut_settings()
         # Save and Reload Requenst
         self.saveJsonRequested.emit(cfg)
 
     def _on_ok(self):
         cfg = self.get_config()
+        self._save_shortcut_settings()
         # Save and Reload Requenst
         self.saveJsonRequested.emit(cfg)
         self.accept()
@@ -403,3 +409,4 @@ class SettingsDialog(
     def showEvent(self, event: QtGui.QShowEvent) -> None:
         super().showEvent(event)
         self._reset_playback_monitor()
+        self._load_shortcut_settings()  # the edits not kept are dropped

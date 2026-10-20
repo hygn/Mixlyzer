@@ -24,6 +24,7 @@ from utils.volume import slider_percent_to_linear, trim_dbfs_to_linear
 from core.resource_paths import resource_path
 from core.beat_geometry import downbeat_beat_indices, segment_time_signature
 from core.tempo_rows import segment_end_bpm
+from core.timeline import step_window
 from core.i18n import tr
 
 def _tempo_text(percent: int) -> str:
@@ -437,6 +438,74 @@ class MainPane(QtWidgets.QWidget):
             self.bus.sig_play_requested.emit(True)
         else:
             self.bus.sig_pause_requested.emit(True)
+
+    # Keyboard shortcuts (ui.shortcuts)
+    def shortcut_handlers(self) -> dict:
+        """Action id -> handler of every shortcut: the deck's here, the editor's and the library's from them."""
+        return {
+            "playback.play_pause": lambda: self._on_click_play() if self.btn_play.isEnabled() else None,
+            "playback.stop": lambda: self._on_click_stop() if self.btn_stop.isEnabled() else None,
+            "playback.beat_back": lambda: self._step_beats(-1),
+            "playback.beat_forward": lambda: self._step_beats(1),
+            "playback.bar_back": lambda: self._step_beats(-1, bars=True),
+            "playback.bar_forward": lambda: self._step_beats(1, bars=True),
+            "playback.tempo_down": lambda: self.tempo_slider.setValue(self.tempo_slider.value() - 1),
+            "playback.tempo_up": lambda: self.tempo_slider.setValue(self.tempo_slider.value() + 1),
+            "playback.tempo_reset": self._on_click_tempo_reset,
+            "playback.master_tempo": self.btn_mt.toggle,
+            "playback.zoom_in": lambda: self._zoom(-1),
+            "playback.zoom_out": lambda: self._zoom(1),
+            "playback.unload": lambda: (self.bus.sig_unload_track_requested.emit()
+                                        if float(self.model.duration_sec or 0.0) > 0.0 else None),
+            "library.leave_search": self._leave_text_field,
+            **self.track_edit.shortcut_handlers(),
+            **self.lib.shortcut_handlers(),
+        }
+
+    def _leave_text_field(self) -> None:
+        """Out of the search field or the sources panel (to the library's tracks), or out of another text /
+        value field here; a text is kept: the keys work the shortcuts again."""
+        focus = QtWidgets.QApplication.focusWidget()
+        if focus is None or not self.isAncestorOf(focus):
+            return
+        if focus is self.lib.e_search or focus is self.lib.source_tree:
+            self.lib.focus_tracks()
+        elif isinstance(focus, (QtWidgets.QLineEdit, QtWidgets.QAbstractSpinBox)):
+            self.setFocus(QtCore.Qt.ShortcutFocusReason)
+
+    def _step_beats(self, step: int, bars: bool = False) -> None:
+        """The playhead ``step`` beats (``bars``: bars) on. Playing, by as many beats from where it is, its
+        place in the beat kept (a beat jump); stopped, to the beat (downbeat) itself."""
+        beats = getattr(self, "_beat_times", None)
+        if not self._can_use_transport() or beats is None or beats.size == 0:
+            return
+        marks = beats[self._beat_in_bar == 0] if bars else beats
+        if marks.size == 0:
+            return
+        t = float(self.current_time)
+        i = int(np.searchsorted(marks, t, side="right")) - 1   # the mark at or before the playhead
+        if self._is_playing and i >= 0:
+            j = int(np.clip(i + step, 0, marks.size - 1))
+            target = t + float(marks[j] - marks[i])
+        elif step > 0:
+            ahead = marks[marks > t + 1e-3]
+            if ahead.size == 0:
+                return
+            target = float(ahead[min(step, ahead.size) - 1])
+        else:
+            behind = marks[marks < t - 1e-3]
+            if behind.size == 0:
+                return
+            target = float(behind[max(behind.size + step, 0)])
+        duration = float(self.model.duration_sec or 0.0)
+        self.bus.sig_seek_requested.emit(min(max(target, 0.0), duration))
+
+    def _zoom(self, steps: int) -> None:
+        """The main view ``steps`` widths narrower (< 0) or wider, as the wheel."""
+        window = float(self.tl.window_sec)
+        new_window = step_window(window, steps)
+        if new_window != window:
+            self.bus.sig_window_changed.emit(new_window)
 
     def _on_volume_slider_changed(self, value: int) -> None:
         self.v_volume.setText(f"{value}%")
