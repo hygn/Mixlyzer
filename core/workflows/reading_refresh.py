@@ -39,6 +39,7 @@ class LibraryReadingRefresh(QtCore.QObject):
         request = ReadingRefreshRequest(
             db_path=os.path.join(str(cfg.libconfig.libpath), "library.db"),
             languages=tuple(cfg.searchconfig.db_languages),
+            han_run=cfg.searchconfig.han_run(),
         )
         worker = ReadingRefreshWorker(request, parent=self)
         worker.progress.connect(self._relay_progress)

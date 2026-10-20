@@ -31,7 +31,7 @@ from ui.oss_support import SupportDialog
 from ui.about_dialog import AboutDialog
 
 from core.workflows.segment_reanalysis import SegmentReanalysisWorkflow
-from core.config import config, default_cfg, load_cfg
+from core.config import config, load_cfg, search_settings
 from core.beat_geometry import downbeat_beat_indices
 
 class AppWindow(QtWidgets.QMainWindow):
@@ -522,12 +522,12 @@ class AppWindow(QtWidgets.QMainWindow):
             and _config.libconfig.rekordbox_xml_path.strip()
         ):
             self.bus.sig_rekordbox_sync_requested.emit(True)
-        # search: the query's languages at once; other stored languages: the library read again
-        prev_scfg = prev_cfg.get("searchconfig") or default_cfg().to_dict()["searchconfig"]
-        new_scfg = _config.to_dict()["searchconfig"]
-        if prev_scfg != new_scfg:
+        # search: the query's settings at once; the stored readings' (languages, Japanese text's Han
+        # runs): the library read again
+        prev_search = search_settings(prev_cfg.get("searchconfig"))
+        if prev_search != _config.searchconfig:
             self.pane.lib.set_search_config(_config)
-        if prev_scfg.get("db_languages") != new_scfg["db_languages"]:
+        if prev_search.stored_readings() != _config.searchconfig.stored_readings():
             self.bus.sig_reading_refresh_requested.emit(None)
         prev_vcfg = prev_cfg.get("viewconfig", {})
         new_vcfg = _config.to_dict()["viewconfig"]

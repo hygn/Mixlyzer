@@ -276,7 +276,7 @@ def getAlbumArt(path) -> Optional[QtGui.QImage]:
 
 def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:int, force_analyze: bool = False):
     l = LibraryDB(os.path.join(config.libconfig.libpath, "library.db"),
-                  reading_languages=config.searchconfig.db_languages)
+                  reading_languages=config.searchconfig.db_languages, han_run=config.searchconfig.han_run())
     l.connect()
     track = l.get(path)
     feature_store = FeatureNPZStore(base_dir=config.libconfig.libpath, compressed=True)

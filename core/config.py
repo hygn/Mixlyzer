@@ -185,10 +185,26 @@ class searchconfig:
     # the languages Han characters (without kana) are read in for the library's stored readings
     # (core.reading.HAN_LANGUAGES); a change reads the library again
     db_languages: list[str]
+    # Han mixed with other characters found by its Korean Hanja reading too (when Korean Hanja is a
+    # language): beside Latin letters / Hangul all of it (the per-language readings), beside kana its
+    # runs of han_run_min (2 or more) Han characters, the rest in Japanese (Re:ゼロから始める異世界生活
+    # ... isegyesaenghwal); for the stored readings (a change reads the library again) and the query
+    han_runs: bool
+    han_run_min: int
     # the languages a query's Han characters are read in
     query_languages: list[str]
     query_hangul_korean: bool    # a query's Hangul read as Korean (사회 sahoe: Korean titles, Korean Hanja readings)
     query_hangul_foreign: bool   # ... as Korean spells a foreign word (도쿄 tokyo: Japanese / English titles)
+    # a query typed on the 2-set keyboard without the 한/영 key also read as what was meant (tkghl 사회, 무ㅐㅜㄷ anone)
+    query_keyboard_layout: bool
+
+    def han_run(self) -> int:
+        """core.reading's ``han_run``: the Han run length read in Korean Hanja beside kana, 0: off."""
+        return max(2, int(self.han_run_min)) if self.han_runs else 0
+
+    def stored_readings(self) -> tuple:
+        """What the library's stored readings depend on: a change reads the library again."""
+        return tuple(self.db_languages), self.han_run()
 
 
 @dataclass
@@ -207,6 +223,11 @@ class config:
     @classmethod
     def from_dict(cls, payload: dict):
         return _coerce_dataclass(cls, _normalize_config_payload(payload))
+
+
+def search_settings(payload: dict | None) -> searchconfig:
+    """The search settings of a config.json dict, the defaults filling what it lacks."""
+    return _coerce_dataclass(searchconfig, {**asdict(default_cfg().searchconfig), **(payload or {})})
 
 
 def _normalize_config_payload(payload: dict) -> dict:
@@ -400,9 +421,12 @@ def default_cfg():
     han_languages = ["ja", "zh", "yue", "ko-hanja", "vi", "zh-tw"]
     scfg = searchconfig(
         db_languages=list(han_languages),
+        han_runs=True,
+        han_run_min=3,
         query_languages=list(han_languages),
         query_hangul_korean=True,
         query_hangul_foreign=True,
+        query_keyboard_layout=True,
     )
     return config(
         libconfig=lcfg,

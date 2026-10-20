@@ -1,6 +1,6 @@
 from __future__ import annotations
 import os
-from typing import Callable, List, Optional
+from typing import Callable, Optional
 from dataclasses import asdict, replace
 
 from PySide6.QtCore import QEvent, Qt, Signal
@@ -16,7 +16,7 @@ from core import reading
 from core.event_bus import EventBus
 from core.library_handler import READING_FIELDS, USER_SOURCE, TrackRow, LibraryDB, field_readings
 from ui.theme import current_theme
-from core.config import config
+from core.config import config, default_cfg, searchconfig
 from utils.labels import CAMELOT_LABELS, CLASSICAL_LABELS
 
 
@@ -41,15 +41,16 @@ class EditSongDialog(QDialog):
     sig_track_saved = Signal(object)  # TrackRow
 
     def __init__(self, bus: Optional[EventBus] = None, libpath: Optional[str] = None,
-                 reading_languages: Optional[Callable[[], List[str]]] = None):
-        """``reading_languages``: the search settings' stored languages (read when needed; all when None)."""
+                 search_settings: Optional[Callable[[], searchconfig]] = None):
+        """``search_settings``: the search settings (read when needed: the stored readings'
+        languages; the defaults when None)."""
         super().__init__()
         self.setWindowTitle("Edit Track Metadata")
         self.setModal(False)
         self.resize(500, 300)
         self._bus = bus
         self._libpath = libpath
-        self._reading_languages = reading_languages or (lambda: None)
+        self._search_settings = search_settings or (lambda: default_cfg().searchconfig)
         self._row: Optional[TrackRow] = None
 
         root = QVBoxLayout(self)
@@ -223,7 +224,8 @@ class EditSongDialog(QDialog):
         self.tbl_readings.blockSignals(False)
 
     def _automatic_readings(self, field: str) -> list:
-        return reading.readings(self._sources[field].text(), self._reading_languages())
+        s = self._search_settings()
+        return reading.readings(self._sources[field].text(), s.db_languages, han_run=s.han_run())
 
     def _refresh_auto_readings(self, field: str) -> None:
         """The user's readings, then the ones read from the text (following it as it is typed) but
@@ -297,7 +299,9 @@ class EditSongDialog(QDialog):
             # No persistence configured; emit signal for external handling
             self.sig_track_saved.emit(updated)
             return True
-        db = LibraryDB(os.path.join(self._libpath, "library.db"), reading_languages=self._reading_languages())
+        s = self._search_settings()
+        db = LibraryDB(os.path.join(self._libpath, "library.db"), reading_languages=s.db_languages,
+                       han_run=s.han_run())
         db.connect()
         try:
             # the path first (checked: one file, one track; the file's size and mtime follow it),

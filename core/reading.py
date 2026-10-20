@@ -217,6 +217,100 @@ def korean_to_roman(text: str, *, foreign_spelling: bool = False) -> str:
     return out
 
 
+# ---- the 2-set (Dubeolsik) Korean keyboard: a query typed without the 한/영 key ----
+
+_DUBEOLSIK = {"q": "ㅂ", "w": "ㅈ", "e": "ㄷ", "r": "ㄱ", "t": "ㅅ", "y": "ㅛ", "u": "ㅕ", "i": "ㅑ", "o": "ㅐ", "p": "ㅔ",
+              "a": "ㅁ", "s": "ㄴ", "d": "ㅇ", "f": "ㄹ", "g": "ㅎ", "h": "ㅗ", "j": "ㅓ", "k": "ㅏ", "l": "ㅣ",
+              "z": "ㅋ", "x": "ㅌ", "c": "ㅊ", "v": "ㅍ", "b": "ㅠ", "n": "ㅜ", "m": "ㅡ",
+              "Q": "ㅃ", "W": "ㅉ", "E": "ㄸ", "R": "ㄲ", "T": "ㅆ", "O": "ㅒ", "P": "ㅖ"}   # with Shift
+_DUBEOLSIK_KEYS = {jamo: key for key, jamo in _DUBEOLSIK.items()}
+_MEDIAL_JAMO = "ㅏㅐㅑㅒㅓㅔㅕㅖㅗㅘㅙㅚㅛㅜㅝㅞㅟㅠㅡㅢㅣ"
+_VOWEL_PAIRS = {("ㅗ", "ㅏ"): "ㅘ", ("ㅗ", "ㅐ"): "ㅙ", ("ㅗ", "ㅣ"): "ㅚ", ("ㅜ", "ㅓ"): "ㅝ", ("ㅜ", "ㅔ"): "ㅞ",
+                ("ㅜ", "ㅣ"): "ㅟ", ("ㅡ", "ㅣ"): "ㅢ"}
+_FINAL_PAIRS = {parts: final for final, parts in _SPLIT.items()}
+_JAMO_PARTS = {**{v: k for k, v in _VOWEL_PAIRS.items()}, **_SPLIT}   # compound jamo -> the keys' jamo
+LAYOUT_MIN_SYLLABLES = 2   # fewer: short English words (go 해, dog 앻) would be read as Hangul
+
+
+def _compose_jamo(jamo: str) -> tuple[str, int, int]:
+    """Jamo as the 2-set input method composes them: (text, syllables, loose jamo left over)."""
+    out: list[str] = []
+    syllables = loose = 0
+    ini = med = fin = ""
+
+    def flush() -> None:
+        nonlocal ini, med, fin, syllables, loose
+        if ini and med:
+            out.append(chr(0xAC00 + (_INITIALS.index(ini) * 21 + _MEDIAL_JAMO.index(med)) * 28 + _FINALS.index(fin)))
+            syllables += 1
+        elif ini or med:
+            out.append(ini or med)
+            loose += 1
+        ini = med = fin = ""
+
+    for j in jamo:
+        if j in _MEDIAL_JAMO:
+            if ini and med and fin:              # the final starts the next syllable (the second of a pair)
+                keep, moved = _SPLIT.get(fin, ("", fin))
+                fin = keep
+                flush()
+                ini, med = moved, j
+            elif med and not fin and (med, j) in _VOWEL_PAIRS:
+                med = _VOWEL_PAIRS[(med, j)]
+            elif ini and not med:
+                med = j
+            else:
+                flush()
+                med = j
+        elif j in _INITIALS:
+            if ini and med and not fin and j in _FINALS and j not in "ㄸㅃㅉ":
+                fin = j
+            elif ini and med and fin and (fin, j) in _FINAL_PAIRS:
+                fin = _FINAL_PAIRS[(fin, j)]
+            else:
+                flush()
+                ini = j
+        else:
+            flush()
+            out.append(j)
+    flush()
+    return "".join(out), syllables, loose
+
+
+def keys_to_hangul(text: str) -> str | None:
+    """Letters typed on the 2-set keyboard in English mode as the Hangul meant (tkghl 사회), word by
+    word: a word is read so when it composes into LAYOUT_MIN_SYLLABLES or more whole syllables
+    with no jamo left over (English and romaji mostly do not; dbfndbfl OVA 유루유리 OVA); None when
+    no word is. A word in capitals is read as Caps Lock (no Shift)."""
+    out, meant = [], False
+    for word in re.split(r"(\s+)", str(text or "")):
+        if not any(c.isascii() and c.isalpha() for c in word):
+            out.append(word)
+            continue
+        keys = word.lower() if word.upper() == word else word
+        hangul, syllables, loose = _compose_jamo("".join(
+            _DUBEOLSIK.get(c, _DUBEOLSIK.get(c.lower(), c)) if c.isascii() else c for c in keys))
+        ok = syllables >= LAYOUT_MIN_SYLLABLES and not loose
+        out.append(hangul if ok else word)
+        meant = meant or ok
+    return "".join(out) if meant else None
+
+
+def hangul_to_keys(text: str) -> str | None:
+    """Hangul typed on the 2-set keyboard in Korean mode as the letters meant (무ㅐㅜㄷ anone): None
+    unless it has loose jamo (a Korean word typed as meant has none)."""
+    text = str(text or "")
+    if not any(0x3131 <= ord(c) <= 0x318E for c in text):
+        return None
+    jamo = []
+    for c in text:
+        code = ord(c) - 0xAC00
+        parts = [_INITIALS[code // 588], _MEDIAL_JAMO[(code % 588) // 28], _FINALS[code % 28]] if 0 <= code < 11172 else [c]
+        for part in parts:
+            jamo.extend(_JAMO_PARTS.get(part, (part,)))
+    return "".join(_DUBEOLSIK_KEYS.get(j, j) for j in jamo if j)
+
+
 # ---- Japanese (Sudachi) ----
 
 _tokenizer = None
@@ -383,6 +477,34 @@ def _read_korean_hanja(text: str) -> str:
     return " ".join(x for x in out if x.strip())
 
 
+# Han mixed with other characters is found by its Korean Hanja reading too: beside Latin letters or
+# Hangul all of it (Han without kana is read in every language), beside kana -- read in Japanese
+# with it -- a run of several Han characters, mostly a Sino-Japanese word (異世界生活, 社会不適合者);
+# a shorter one there is mostly a native word read with its kana (君, 夜, 始める), left in Japanese.
+# How many (Settings > Search; 0: none so read):
+HAN_RUN_MIN = 3
+HAN_RUN_LEAST = 2
+
+
+@lru_cache(maxsize=16)
+def _han_run(least: int) -> re.Pattern:
+    return re.compile(r"[㐀-䶿一-鿿豈-﫿]{%d,}" % max(HAN_RUN_LEAST, least))
+
+
+def _read_japanese_korean_hanja(run: str, han_run: int) -> str:
+    """Japanese text with its runs of ``han_run`` or more Han characters in Korean Hanja, the
+    rest in Japanese (Re:ゼロから始める異世界生活 zero kara hajimeru isegyesaenghwal)."""
+    out, pos = [], 0
+    for m in _han_run(han_run).finditer(run):
+        if m.start() > pos:
+            out.append(_read_japanese(run[pos:m.start()]))
+        out.append(_read_korean_hanja(m.group(0)))
+        pos = m.end()
+    if pos < len(run):
+        out.append(_read_japanese(run[pos:]))
+    return " ".join(x for x in out if x.strip())
+
+
 def _read_vietnamese(text: str) -> str:
     table = _unihan_table("unihan_vietnamese")
     return " ".join(anyascii(table[ch]).lower() if ch in table else _read_mandarin(ch, taiwan=False)
@@ -406,10 +528,12 @@ def warm_up(progress: Callable[[float, str], None] | None = None) -> None:
         done += share
 
 
-def _romanize(text: str, *, han: str, foreign_spelling: bool) -> str:
+def _romanize(text: str, *, han: str, foreign_spelling: bool, han_run: int = 0) -> str:
     """``text`` in romaji, its Han characters read in ``han`` (one of HAN_LANGUAGES): kana with them
-    reads them in Japanese."""
+    reads them in Japanese -- in Korean Hanja, a text with kana has its runs of ``han_run`` or
+    more Han characters read so and the rest in Japanese."""
     text = unicodedata.normalize("NFKC", str(text or ""))
+    japanese = any(_is_kana(c) for c in text)
     runs: list[list[str]] = []
     for ch in text:
         script = _script(ch)
@@ -419,7 +543,9 @@ def _romanize(text: str, *, han: str, foreign_spelling: bool) -> str:
             runs.append([script, ch])
     parts = []
     for script, run in runs:
-        if script == "ja" and (han == "ja" or any(_is_kana(c) for c in run)):
+        if script == "ja" and han == "ko-hanja" and japanese and han_run:
+            parts.append(_read_japanese_korean_hanja(run, han_run))
+        elif script == "ja" and (han == "ja" or any(_is_kana(c) for c in run)):
             parts.append(_read_japanese(run))
         elif script == "ja" and han == "yue":
             parts.append(_read_cantonese(run))
@@ -449,24 +575,29 @@ def han_languages(selection: Iterable[str] | None = None) -> list[str]:
     return [lang for lang in HAN_LANGUAGES if lang in chosen] or list(HAN_LANGUAGES)
 
 
-def _languages(text: str, han: Iterable[str] | None = None) -> list[str]:
-    """The readings a text gets: one per language ``han`` (han_languages) for Han without kana,
-    else one."""
+def _languages(text: str, han: Iterable[str] | None = None, han_run: int = 0) -> list[str]:
+    """The readings a text gets: one per language ``han`` (han_languages) for Han without kana;
+    Japanese for kana, and Korean Hanja too (when in ``han``) for its runs of ``han_run`` (0:
+    none) or more Han characters; else one."""
     text = unicodedata.normalize("NFKC", str(text or ""))
     if any(_is_kanji(c) for c in text) and not any(_is_kana(c) for c in text):
         return han_languages(han)
     if any(_is_kana(c) for c in text):
-        return ["ja"]
+        korean = han_run and "ko-hanja" in han_languages(han) and _han_run(han_run).search(text)
+        return ["ja"] + (["ko-hanja"] if korean else [])
     return ["ko"] if any(_is_hangul(c) for c in text) else ["text"]
 
 
-def readings(text: str, languages: Iterable[str] | None = None) -> list[tuple[str, str]]:
+def readings(text: str, languages: Iterable[str] | None = None, *,
+             han_run: int = HAN_RUN_MIN) -> list[tuple[str, str]]:
     """Layer 1: the readings of ``text`` as (reading, source) -- source a SOURCES key -- each once,
     at most READING_SLOTS; none for an empty text. Han without kana is read in ``languages``
-    (the stored languages of the search settings; all by default)."""
+    (the stored languages of the search settings; all by default); beside kana, its runs of
+    ``han_run`` or more Han characters in Korean Hanja too (0: not)."""
     out: list[tuple[str, str]] = []
-    for lang in _languages(text, languages):
-        reading = _romanize(text, han=lang if lang in HAN_LANGUAGES else "ja", foreign_spelling=False)
+    for lang in _languages(text, languages, han_run):
+        reading = _romanize(text, han=lang if lang in HAN_LANGUAGES else "ja", foreign_spelling=False,
+                            han_run=han_run)
         if reading and reading not in [r for r, _src in out]:
             out.append((reading, lang))
     return out[:READING_SLOTS]
@@ -512,22 +643,31 @@ def keys(reading: str) -> tuple[str, str]:
 
 
 def query_keys(query: str, languages: Iterable[str] | None = None, *, hangul_korean: bool = True,
-               hangul_foreign: bool = True) -> list[tuple[str, str]]:
+               hangul_foreign: bool = True, keyboard: bool = True,
+               han_run: int = HAN_RUN_MIN) -> list[tuple[str, str]]:
     """(fine, normalized) keys of a search query, one pair per reading, read like a title (its Han
-    in ``languages``, all by default); its Hangul, for the normalized key, as Korean
-    (``hangul_korean``: a Korean title, a Sino-Korean reading) and with Korean's spelling of
-    foreign words (``hangul_foreign``: a Japanese title)."""
+    in ``languages``, all by default; ``han_run`` as for ``readings``); its Hangul, for the
+    normalized key, as Korean (``hangul_korean``: a Korean title, a Sino-Korean reading) and with
+    Korean's spelling of foreign words (``hangul_foreign``: a Japanese title). With ``keyboard``, a
+    query typed on the 2-set keyboard without the 한/영 key is also read as what was meant
+    (``keys_to_hangul``, ``hangul_to_keys``)."""
     spellings: tuple[bool, ...] = (False,)
     if any(_is_hangul(c) for c in str(query or "")):
         spellings = tuple(f for f, on in ((False, hangul_korean), (True, hangul_foreign)) if on) or (False,)
     out = []
-    for lang in _languages(query, languages):
+    for lang in _languages(query, languages, han_run):
         han = lang if lang in HAN_LANGUAGES else "ja"
-        fine = fine_key(_romanize(query, han=han, foreign_spelling=False))
+        fine = fine_key(_romanize(query, han=han, foreign_spelling=False, han_run=han_run))
         for foreign in spellings:
-            pair = (fine, normalize(_romanize(query, han=han, foreign_spelling=foreign)))
+            pair = (fine, normalize(_romanize(query, han=han, foreign_spelling=foreign, han_run=han_run)))
             if pair not in out:
                 out.append(pair)
+    if keyboard:
+        for meant in (keys_to_hangul(query), hangul_to_keys(query)):
+            if meant:
+                out += [pair for pair in query_keys(meant, languages, hangul_korean=hangul_korean,
+                                                    hangul_foreign=hangul_foreign, keyboard=False,
+                                                    han_run=han_run) if pair not in out]
     return out
 
 

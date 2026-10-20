@@ -213,11 +213,14 @@ class LinearTransitionRow:
 
 # DB Helper
 class LibraryDB:
-    def __init__(self, db_path: str, reading_languages: Optional[List[str]] = None):
+    def __init__(self, db_path: str, reading_languages: Optional[List[str]] = None,
+                 han_run: int = reading.HAN_RUN_MIN):
         """``reading_languages``: the languages Han is read in for the stored readings (the
-        search settings' db_languages; all by default)."""
+        search settings' db_languages; all by default); ``han_run``: the Han runs beside kana read
+        in Korean Hanja too (searchconfig.han_run(); 0: none)."""
         self.db_path = db_path
         self.reading_languages = list(reading_languages) if reading_languages is not None else None
+        self.han_run = int(han_run)
         self._conn: Optional[sqlite3.Connection] = None
 
     def connect(self):
@@ -419,7 +422,7 @@ class LibraryDB:
             user = [text for (text,) in self.conn.execute(
                 "SELECT reading FROM track_readings WHERE track_uid=? AND field=? AND source=? ORDER BY slot;",
                 (uid, field, USER_SOURCE))]
-            automatic = reading.readings(row[field] or "", self.reading_languages)
+            automatic = reading.readings(row[field] or "", self.reading_languages, han_run=self.han_run)
             self._write_readings(uid, field, field_readings(user, automatic, removed[field]))
 
     def _write_readings(self, uid: str, field: str, readings: list) -> None:

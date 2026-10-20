@@ -20,6 +20,7 @@ BATCH_TRACKS = 50
 class ReadingRefreshRequest:
     db_path: str
     languages: tuple[str, ...]   # the search settings' db_languages
+    han_run: int               # its han_run()
 
 
 @dataclass(frozen=True)
@@ -28,14 +29,16 @@ class ReadingRefreshResult:
     changed_fields: int   # title / artist / album fields whose readings changed
 
 
-def refresh_library_readings(db_path: str, languages: tuple[str, ...], progress=None) -> ReadingRefreshResult:
-    """Read every track's title / artist / album again in ``languages`` (the user's readings kept);
-    ``progress(done, total)`` after each batch."""
+def refresh_library_readings(db_path: str, languages: tuple[str, ...], progress=None, *,
+                             han_run: int | None = None) -> ReadingRefreshResult:
+    """Read every track's title / artist / album again in ``languages`` and ``han_run``
+    (LibraryDB's; the user's readings kept); ``progress(done, total)`` after each batch."""
     from core import reading
     from core.library_handler import READING_FIELDS, LibraryDB
 
     reading.warm_up()
-    db = LibraryDB(db_path, reading_languages=list(languages))
+    db = LibraryDB(db_path, reading_languages=list(languages),
+                   han_run=reading.HAN_RUN_MIN if han_run is None else han_run)
     db.connect()
     try:
         uids = [uid for (uid,) in db.conn.execute("SELECT uid FROM tracks ORDER BY added_ts, uid;")]
@@ -56,11 +59,12 @@ def refresh_library_readings(db_path: str, languages: tuple[str, ...], progress=
         db.close()
 
 
-def _reading_refresh_process_entry(db_path: str, languages: tuple[str, ...], queue: Any) -> None:
+def _reading_refresh_process_entry(db_path: str, languages: tuple[str, ...], han_run: int, queue: Any) -> None:
     install_parent_watchdog()
     try:
         result = refresh_library_readings(
-            db_path, languages, lambda done, total: queue.put({"type": "progress", "done": done, "total": total}))
+            db_path, languages, lambda done, total: queue.put({"type": "progress", "done": done, "total": total}),
+            han_run=han_run)
         queue.put({"type": "result", "payload": result})
     except Exception:
         queue.put({"type": "error", "traceback": traceback.format_exc()})
@@ -80,7 +84,7 @@ class ReadingRefreshWorker(SpawnProcessWorker):
         self._error_emitted = False
         super().__init__(
             target=_reading_refresh_process_entry,
-            args=(str(request.db_path), tuple(request.languages)),
+            args=(str(request.db_path), tuple(request.languages), int(request.han_run)),
             daemon=True,
             process_name="Mixlyzer-reading-refresh",
             parent=parent,

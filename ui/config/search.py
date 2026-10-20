@@ -4,8 +4,10 @@ from PySide6.QtWidgets import (
     QFormLayout,
     QGridLayout,
     QGroupBox,
+    QHBoxLayout,
     QLabel,
     QPushButton,
+    QSpinBox,
     QWidget,
 )
 
@@ -60,6 +62,31 @@ def build_search_tab(dialog) -> None:
         "<p>The languages a title, artist or album of Han characters without kana is read in and "
         "stored for the search, one reading each. A change reads the library again when saved.</p>")
     f_db.addRow("Han Characters", db_box)
+    # Han mixed with other characters: its runs in Korean Hanja too
+    mixed = QWidget()
+    row = QHBoxLayout(mixed)
+    row.setContentsMargins(0, 0, 0, 0)
+    dialog.cb_han_runs = QCheckBox("Han runs in Korean Hanja, from")
+    dialog.sp_han_run_min = QSpinBox()
+    dialog.sp_han_run_min.setRange(reading.HAN_RUN_LEAST, 10)
+    dialog.sp_han_run_min.setSuffix(" characters")
+    mixed.setToolTip(
+        "<p>Han characters mixed with other characters are found by their Korean Hanja reading too. "
+        "Beside Latin letters or Hangul all of them are read so; beside kana (read in Japanese with it) "
+        "the runs of this many or more, the rest staying Japanese (Re:ゼロから始める異世界生活: zero kara "
+        "hajimeru isegyesaenghwal; shorter runs there are mostly words read with the kana: 君, 始める). "
+        "Needs Korean Hanja checked.</p>")
+    row.addWidget(dialog.cb_han_runs)
+    row.addWidget(dialog.sp_han_run_min)
+    row.addStretch(1)
+    f_db.addRow("Mixed Text", mixed)
+
+    def sync_han_runs(_checked: bool = False) -> None:
+        mixed.setEnabled(dialog.db_language_boxes["ko-hanja"].isChecked())
+        dialog.sp_han_run_min.setEnabled(dialog.cb_han_runs.isChecked())
+    dialog.db_language_boxes["ko-hanja"].toggled.connect(sync_han_runs)
+    dialog.cb_han_runs.toggled.connect(sync_han_runs)
+    dialog._sync_han_runs = sync_han_runs
     dialog.lbl_db_languages_note = QLabel(
         "Kana is read in Japanese, Hangul in Korean, other scripts as written. "
         "Readings set in Edit Track are kept.")
@@ -90,9 +117,13 @@ def build_search_tab(dialog) -> None:
     dialog.cb_query_hangul_foreign.setToolTip(
         "<p>Hangul read as Korean spells a foreign word (ㅓ o, ㅡ u, ㅐ e): 도쿄 finds 東京, 아노네 "
         "finds あのね.</p>")
+    dialog.cb_query_keyboard_layout = QCheckBox("Typed without 한/영")
+    dialog.cb_query_keyboard_layout.setToolTip(
+        "<p>A query typed on the 2-set (Dubeolsik) keyboard in the wrong input mode is also read as "
+        "meant: tkghl as 사회 (whole syllables, two or more), 무ㅐㅜㄷ as anone.</p>")
     hangul_grid.addWidget(dialog.cb_query_hangul_korean, 0, 0)
     hangul_grid.addWidget(dialog.cb_query_hangul_foreign, 0, 1)
-    hangul_grid.addWidget(QWidget(), 0, 2)
+    hangul_grid.addWidget(dialog.cb_query_keyboard_layout, 0, 2)
     _keep_one_checked([dialog.cb_query_hangul_korean, dialog.cb_query_hangul_foreign])
     f_query.addRow("Hangul", hangul_box)
 
@@ -114,13 +145,20 @@ class SearchSettingsMixin:
         for cb, on in sorted(((self.cb_query_hangul_korean, korean), (self.cb_query_hangul_foreign, foreign)),
                              key=lambda pair: not pair[1]):
             cb.setChecked(on)
+        self.cb_query_keyboard_layout.setChecked(bool(s.query_keyboard_layout))
+        self.cb_han_runs.setChecked(bool(s.han_runs))
+        self.sp_han_run_min.setValue(max(reading.HAN_RUN_LEAST, int(s.han_run_min)))
+        self._sync_han_runs()
 
     def _get_search_config(self) -> searchconfig:
         return searchconfig(
             db_languages=[lang for lang, cb in self.db_language_boxes.items() if cb.isChecked()],
+            han_runs=bool(self.cb_han_runs.isChecked()),
+            han_run_min=int(self.sp_han_run_min.value()),
             query_languages=[lang for lang, cb in self.query_language_boxes.items() if cb.isChecked()],
             query_hangul_korean=bool(self.cb_query_hangul_korean.isChecked()),
             query_hangul_foreign=bool(self.cb_query_hangul_foreign.isChecked()),
+            query_keyboard_layout=bool(self.cb_query_keyboard_layout.isChecked()),
         )
 
     def _initialize_search_settings(self, bus) -> None:
@@ -137,10 +175,11 @@ class SearchSettingsMixin:
             return
         cfg = self.get_config()
         previous = getattr(self._current_cfg, "searchconfig", None)
-        # changed languages: saving them starts the re-read (app.window); else it is asked here
-        languages_changed = previous is None or list(previous.db_languages) != cfg.searchconfig.db_languages
+        # what the stored readings depend on changed: saving it starts the re-read (app.window); else
+        # it is asked here
+        changed = previous is None or previous.stored_readings() != cfg.searchconfig.stored_readings()
         self.saveJsonRequested.emit(cfg)
-        if not languages_changed:
+        if not changed:
             self._bus.sig_reading_refresh_requested.emit(None)
 
     @QtCore.Slot(object)

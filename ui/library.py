@@ -1244,7 +1244,8 @@ class LibraryWidget(QtWidgets.QWidget):
                     path=path,
                     analyzed=False,
                     reading_keys={"title": [reading.keys(r) for r, _src in reading.readings(
-                        Path(path).stem, self.cfg.searchconfig.db_languages)]},
+                        Path(path).stem, self.cfg.searchconfig.db_languages,
+                        han_run=self.cfg.searchconfig.han_run())]},
                 ))
         return result
 
@@ -1373,8 +1374,10 @@ class LibraryWidget(QtWidgets.QWidget):
             cols = self.HEADERS if col == "All" else [col]
             read_fields = [READ_COLUMNS[name] for name in cols if name in READ_COLUMNS]
             s = self.cfg.searchconfig
-            query = reading.query_keys(text, s.query_languages, hangul_korean=s.query_hangul_korean,
-                                       hangul_foreign=s.query_hangul_foreign) if read_fields else []
+            # as typed (not lower-cased): Shift picks the 2-set keyboard's double consonants
+            query = reading.query_keys(self.e_search.text().strip(), s.query_languages,
+                                       hangul_korean=s.query_hangul_korean, hangul_foreign=s.query_hangul_foreign,
+                                       keyboard=s.query_keyboard_layout, han_run=s.han_run()) if read_fields else []
             for t in self._all_tracks:
                 for name in cols:
                     attr = field_map.get(name)
@@ -1857,6 +1860,6 @@ class LibraryWidget(QtWidgets.QWidget):
             return
         if self._edit_dlg is None:
             self._edit_dlg = EditSongDialog(bus=self.bus, libpath=self.cfg.libconfig.libpath,
-                                            reading_languages=lambda: self.cfg.searchconfig.db_languages)
+                                            search_settings=lambda: self.cfg.searchconfig)
         self._edit_dlg.set_track(row)
         self._edit_dlg.show()
