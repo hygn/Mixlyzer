@@ -1,3 +1,5 @@
+import html
+
 from PySide6 import QtCore
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
@@ -15,6 +17,11 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+
+
+def wrapped_tooltip(text: str) -> str:
+    """The tooltip as rich text, so Qt word-wraps it (a plain-text tooltip shows each paragraph on one line)."""
+    return "<qt>" + html.escape(text, quote=False).replace("\n", "<br>") + "</qt>"
 
 
 class ParameterOptimizeProgressDialog(QDialog):
@@ -102,46 +109,23 @@ class BeatParameterOptimizeDialog(QDialog):
     )
     TIPS = {
         "beat_decoder": (
-            "The three costs the decoder charges, in units of beat evidence (the network's activation summed over "
-            "the beats), before it accepts a structural change in the grid:\n"
-            "- section cost: a new tempo section (a tempo change);\n"
-            "- half-beat reset cost: a jump of half a beat while the tempo stays the same;\n"
-            "- odd-bar cost: a bar of a different length (e.g. a 2-beat bar in 4/4).\n"
-            "Higher costs give steadier grids that miss real changes; lower costs follow real changes but also make "
-            "false ones. Refitting tracks every song with combinations of candidate costs and keeps the combination "
-            "with the least time where your grid and the analysis disagree (beats off by more than 25 ms, half or "
-            "double tempo allowed; downbeats off by more than 70 ms).\n"
-            "The costs belong to the activation network: refit them after retraining it. No training data is needed "
-            "beyond your grids; about 40 minutes for 400 songs (Quick: about 10)."
+            "How much evidence the decoder needs before it adds a new tempo section, a half-beat reset or an odd "
+            "bar. Refit them after retraining the TCN. About 40 minutes (Quick: about 10)."
         ),
         "downbeat_ctx": (
-            "A gradient-boosted classifier that estimates, for each beat, the probability that a bar starts there, "
-            "from the frame features around the beat (bass, harmony, drums) and their differences to the "
-            "neighbouring beats. The bar decoding combines it with the network's downbeat activation.\n"
-            "Retraining fits it anew on the beats and downbeats of your grids (a few minutes; needs at least 50 songs)."
+            "Gradient-boosted classifier: the probability that a bar starts on each beat, from harmony, bass and "
+            "drum changes. A few minutes; at least 50 songs."
         ),
         "refine_onset": (
-            "A gradient-boosted onset model used to place each tempo change exactly: where a new tempo section starts "
-            "is moved to the onset evidence of this model.\n"
-            "Retraining fits it anew on the beats of your grids (a few minutes; needs at least 50 songs)."
+            "Gradient-boosted onset model that places each tempo change exactly. A few minutes; at least 50 songs."
         ),
         "beat_tcn": (
-            "The temporal convolutional network (three independently trained copies) that turns the frame features "
-            "into a beat and a downbeat activation per frame, hearing about 12 s of context on each side. Every later "
-            "stage reads its activation.\n"
-            "Fine-tuning continues its training on your grids (about 20 minutes); training from scratch starts from "
-            "random weights (one to two hours, at least 200 songs). With cross-validation, a group of songs is held "
-            "out and the whole analysis is run with the old and the new network; the new one is saved only if those "
-            "songs' grids are not worse."
+            "The network that hears beats and downbeats; every later stage reads it. Fine-tuning about 20 minutes, "
+            "from scratch 1-2 hours (at least 200 songs)."
         ),
         "beat_critic": (
-            "A small convolutional network (five copies) that lays the music out in the time of a candidate grid, bar "
-            "by bar, and judges whether the grid sounds right. It decides between a decoded tempo and its 3:2, 2:3, "
-            "4:3 and 3:4 readings.\n"
-            "Training examples are windows of your grids (right) and of deliberately wrong grids made from them "
-            "(half/quarter-beat shifts, ratio readings, drifts) plus the decoder's own mistakes. Fine-tuning takes "
-            "about 45 minutes; from scratch longer and needs at least 200 songs. Saved only if the held-out songs' "
-            "grids are not worse."
+            "Judges whether a grid sounds right and corrects 3:2 / 4:3 tempo misreads. Fine-tuning about 45 "
+            "minutes; from scratch at least 200 songs."
         ),
     }
     # where a training starts: (value, label) per model; the others are always learned anew in minutes
@@ -153,12 +137,9 @@ class BeatParameterOptimizeDialog(QDialog):
         "beat_decoder": (("current", "Refit around the current costs"), ("shipped", "Refit around the shipped costs")),
     }
     START_TIP = (
-        "Fine-tune the current model: continue from the model in use; if it was already retrained, the changes "
-        "build on each other.\n"
-        "Fine-tune the shipped model: continue from the model that came with Mixlyzer (kept as default_*, never "
-        "overwritten); an earlier retrained model is replaced.\n"
-        "Train from scratch: random initial weights, learned from your grids alone. The shipped models were "
-        "trained on about 340 songs; with fewer songs a new model is usually worse."
+        "Current: continue from the model in use (earlier retraining builds up).\n"
+        "Shipped: continue from the model that came with Mixlyzer.\n"
+        "From scratch: learn from your grids alone; needs many songs."
     )
     INTRO = (
         "Retrains the beat analysis's models on the beat grids in your library (the grids you checked and "
@@ -183,7 +164,7 @@ class BeatParameterOptimizeDialog(QDialog):
         rows = QGridLayout()
         for row, (key, name) in enumerate(self.ITEMS):
             check = QCheckBox(name)
-            check.setToolTip(self.TIPS[key])
+            check.setToolTip(wrapped_tooltip(self.TIPS[key]))
             check.toggled.connect(self._update_enabled)
             self._checks[key] = check
             rows.addWidget(check, 2 * row, 0, 1, 2)
@@ -191,19 +172,16 @@ class BeatParameterOptimizeDialog(QDialog):
                 combo = QComboBox()
                 for value, label in self.STARTS[key]:
                     combo.addItem(label, value)
-                combo.setToolTip(self.START_TIP if key != "beat_decoder" else (
-                    "The candidate costs are centred on, and ties keep, the current costs or the shipped ones "
-                    "(default_beat_decoder.json)."))
+                combo.setToolTip(wrapped_tooltip(self.START_TIP if key != "beat_decoder" else (
+                    "The candidates are centred on the current or the shipped costs.")))
                 combo.currentIndexChanged.connect(self._update_enabled)
                 self._starts[key] = combo
                 rows.addWidget(combo, 2 * row + 1, 1)
             if key == "beat_decoder":
                 self.cb_decoder_quick = QCheckBox("Quick: half-beat reset and odd-bar costs only")
-                self.cb_decoder_quick.setToolTip(
-                    "Keeps the section cost and refits the half-beat reset and odd-bar costs. The section cost is the "
-                    "expensive one (every value needs the section decoding and everything after it again); the other "
-                    "two reuse it, so this takes about a quarter of the time."
-                )
+                self.cb_decoder_quick.setToolTip(wrapped_tooltip(
+                    "Keeps the section cost (the slow one to refit) and refits the other two."
+                ))
                 self.cb_decoder_quick.setChecked(True)
                 self.cb_decoder_quick.toggled.connect(self._update_enabled)
                 rows.addWidget(self.cb_decoder_quick, 2 * row + 1, 0)
@@ -217,7 +195,7 @@ class BeatParameterOptimizeDialog(QDialog):
         layout.addWidget(self.lbl_warnings)
 
         self.cb_backup = QCheckBox("Back up the files being replaced")
-        self.cb_backup.setToolTip("Copies each model file that a retraining overwrites before it is written.")
+        self.cb_backup.setToolTip(wrapped_tooltip("Copies each model file before it is overwritten."))
         self.cb_backup.setChecked(True)
         layout.addWidget(self.cb_backup)
 
@@ -239,11 +217,10 @@ class BeatParameterOptimizeDialog(QDialog):
             folds = QSpinBox()
             folds.setRange(1, 20)
             folds.setSpecialValueText("Off")
-            folds.setToolTip(
-                "Cross-validation: the songs are split into this many groups by artist and title. For the networks "
-                "and the decoder costs, held-out songs are tracked with the old and the new model and the new one is "
-                "saved only if their grids are not worse. Off: no check, the result is always saved."
-            )
+            folds.setToolTip(wrapped_tooltip(
+                "Cross-validation folds: the new model is saved only if held-out songs' grids are not worse. "
+                "Off: always saved."
+            ))
             if key in ("beat_tcn", "beat_critic", "beat_decoder"):
                 folds.setValue(5)
             self._folds[key] = folds

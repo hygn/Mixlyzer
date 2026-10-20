@@ -123,10 +123,7 @@ def build_analysis_tab(dialog) -> None:
         "Folder for the frame features the beat models are retrained on (the tracker's own frames)."
     )
     dialog.btn_reoptimize_beat_parameters = QPushButton("Reoptimize Beat Models...")
-    dialog.btn_reoptimize_beat_parameters.setToolTip(
-        "Retrain the beat analysis's models (activation network, metronome critic, decoder costs, downbeat and "
-        "tempo-change onset models) on the beat grids in your library."
-    )
+    dialog.btn_reoptimize_beat_parameters.setToolTip("Retrain the beat analysis's models on your library's beat grids.")
     dialog.btn_reoptimize_beat_parameters.clicked.connect(dialog._on_reoptimize_beat_parameters)
 
     grp_bpm = QGroupBox("BPM")
