@@ -5,20 +5,25 @@ from analyzer_core.dsp.conversion import fft_frequencies
 from analyzer_core.dsp.spectral import stft
 
 
-# Overview waveform: stored at WAVE_OVERVIEW_COLUMNS columns over the track, as
-# the peak, the body and the low / mid / high band levels of each column (just
-# the levels, so the overview is drawn in any style when shown), and drawn at
-# WAVE_OVERVIEW_RENDER_COLUMNS columns.
-WAVE_OVERVIEW_COLUMNS = 16384
+# Overview waveform, stored by the analysis from its own decode at WAVE_OVERVIEW_SAMPLE_RATE:
+# - wave_minmax_np: the min and max sample of WAVE_MINMAX_COLUMNS columns over the track (int8, signed square
+#   root of the sample over wave_minmax_ref, the track's peak |sample|);
+# - wave_bands_np: the mean-square power of WAVE_BAND_COUNT log-spaced bands (WAVE_BAND_EDGES, Hz) in
+#   WAVE_BAND_COLUMNS columns (uint8, the 4th root of the power over wave_bands_ref, each band's track maximum).
+# The low / mid / high levels are summed from the bands when drawn (the configured ranges, each band weighted by
+# its log-frequency overlap with a range), so a change of the ranges redraws at once, without re-analysis.
+# Drawn at WAVE_OVERVIEW_RENDER_COLUMNS columns.
+WAVE_MINMAX_COLUMNS = 32768
+WAVE_BAND_COLUMNS = 8192
+WAVE_BAND_COUNT = 12
+WAVE_BAND_EDGES = np.geomspace(20.0, 20000.0, WAVE_BAND_COUNT + 1)
 WAVE_OVERVIEW_RENDER_COLUMNS = 4096
-# The overview is measured from its own decode at this rate, whatever the
-# analysis rate: band levels reach up to 24 kHz.
+# The overview is measured from its own decode at this rate, whatever the analysis rate: bands reach 20 kHz.
 WAVE_OVERVIEW_SAMPLE_RATE = 48000
-# Channels of the stored overview. The body is the mean peak of the column's
-# WAVE_BODY_FRAME_SEC frames: an RGB bar is solid up to it and fades out to the peak.
-WAVE_PEAK, WAVE_BODY, WAVE_LOW, WAVE_MID, WAVE_HIGH = range(5)
-WAVE_CHANNELS = 5
-WAVE_BODY_FRAME_SEC = 0.001
+WAVE_OVERVIEW_KEYS = ("wave_minmax_np", "wave_minmax_ref", "wave_bands_np", "wave_bands_ref")
+# The detail (scrolling) waveform is drawn from the audio; it reads one stored number: the three-band layers'
+# common scale (wave_detail_band_ref: the low / mid / high RMS track maxima of the ranges set at analysis, each the
+# maximum of the range's RMS at 16384 column centres).
 
 WAVEFORM_STYLES = ("rgb", "3band")
 # RGB overview bars reach this fraction of the lane at the track's peak.
@@ -112,28 +117,23 @@ def build_wave_overview(
     *,
     n_fft: int = 2048,
     hop_length: int = 512,
-    columns: int = WAVE_OVERVIEW_COLUMNS,
-) -> tuple[np.ndarray, np.ndarray]:
-    """Stored overview of mono ``y``: ``(levels uint8 [C, 5], ref float32 [5])``.
-
-    Per column: the peak |y|, the mean |y| peak of its WAVE_BODY_FRAME_SEC frames
-    and the RMS of the low / mid / high ``bands`` (Hz),
-    from the magnitude STFT ``magnitude`` (``n_fft`` / ``hop_length``, centered
-    frames; computed here when omitted). ``ref`` is each channel's maximum over
-    the track (sample units); a level is sqrt(value / ref) * 255.
-    """
+) -> dict[str, np.ndarray]:
+    """Stored overview of mono ``y`` (the WAVE_OVERVIEW_KEYS arrays): the min / max of WAVE_MINMAX_COLUMNS
+    columns and the WAVE_BAND_COUNT bands' mean-square power in WAVE_BAND_COLUMNS columns, from the magnitude
+    STFT ``magnitude`` (``n_fft`` / ``hop_length``, centered frames; computed here when omitted); and the detail
+    waveform's three-band scale for the low / mid / high ``bands`` (Hz)."""
     y = np.asarray(y, dtype=np.float32).reshape(-1)
-    n_columns = max(1, min(int(columns), y.size))
     if y.size == 0:
-        return np.zeros((0, WAVE_CHANNELS), np.uint8), np.zeros(WAVE_CHANNELS, np.float32)
-    starts = (np.arange(n_columns, dtype=np.int64) * y.size) // n_columns
-    values = np.empty((n_columns, WAVE_CHANNELS), np.float64)
-    values[:, WAVE_PEAK] = np.maximum.reduceat(np.abs(y), starts)
-    frame = max(1, int(round(WAVE_BODY_FRAME_SEC * sample_rate)))
-    frame_min, frame_max = frame_minmax(y, frame)
-    frame_column = np.searchsorted(starts, np.arange(frame_min.size) * frame, side="right") - 1
-    values[:, WAVE_BODY] = (np.bincount(frame_column, np.maximum(-frame_min, frame_max), minlength=n_columns)
-                            / np.maximum(np.bincount(frame_column, minlength=n_columns), 1))
+        return {"wave_minmax_np": np.zeros((0, 2), np.int8), "wave_minmax_ref": np.zeros(1, np.float32),
+                "wave_bands_np": np.zeros((0, WAVE_BAND_COUNT), np.uint8),
+                "wave_bands_ref": np.zeros(WAVE_BAND_COUNT, np.float32),
+                "wave_detail_band_ref": np.zeros(3, np.float32)}
+    n = max(1, min(WAVE_MINMAX_COLUMNS, y.size))
+    starts = (np.arange(n, dtype=np.int64) * y.size) // n
+    minmax = np.stack([np.minimum.reduceat(y, starts), np.maximum.reduceat(y, starts)], axis=1).astype(np.float64)
+    peak = float(np.abs(minmax).max()) or 1.0
+    companded = np.sign(minmax) * np.sqrt(np.abs(minmax) / peak) * 127.0
+    out = {"wave_minmax_np": np.rint(companded).astype(np.int8), "wave_minmax_ref": np.asarray([peak], np.float32)}
 
     if magnitude is None:
         magnitude = np.abs(stft(y, n_fft=n_fft, hop_length=hop_length, center=True))
@@ -141,29 +141,104 @@ def build_wave_overview(
     frequencies = fft_frequencies(sr=sample_rate, n_fft=n_fft)
     # One-sided Parseval with the Hann window: mean square of the band in the frame.
     to_mean_square = 2.0 / (n_fft * float(np.sum(np.square(get_window("hann", n_fft, fftbins=True)))))
+    band_of_bin = np.searchsorted(WAVE_BAND_EDGES, frequencies, side="right") - 1
+    frame_power = np.zeros((WAVE_BAND_COUNT, power.shape[1]), np.float64)
+    for band in range(WAVE_BAND_COUNT):
+        frame_power[band] = power[band_of_bin == band].sum(axis=0) * to_mean_square
+    # each column: the mean of the frames centred in it (interpolated where a column holds no frame)
+    m = max(1, min(WAVE_BAND_COLUMNS, y.size))
     frame_centers = np.arange(power.shape[1]) * float(hop_length)
-    column_centers = starts + 0.5 * np.diff(np.append(starts, y.size))
-    for channel, (low, high) in zip((WAVE_LOW, WAVE_MID, WAVE_HIGH), bands):
+    frame_column = np.clip((frame_centers * m / y.size).astype(np.int64), 0, m - 1)
+    counts = np.bincount(frame_column, minlength=m)
+    columns = np.zeros((m, WAVE_BAND_COUNT), np.float64)
+    for band in range(WAVE_BAND_COUNT):
+        columns[:, band] = np.bincount(frame_column, frame_power[band], minlength=m)
+    columns /= np.maximum(counts, 1)[:, np.newaxis]
+    empty = counts == 0
+    if empty.any() and power.shape[1]:
+        centers = (np.arange(m) + 0.5) * y.size / m
+        for band in range(WAVE_BAND_COUNT):
+            columns[empty, band] = np.interp(centers[empty], frame_centers, frame_power[band])
+    ref = columns.max(axis=0)
+    levels = np.power(np.clip(columns / np.where(ref > 0.0, ref, 1.0), 0.0, 1.0), 0.25) * 255.0
+    out["wave_bands_np"] = np.rint(levels).astype(np.uint8)
+    out["wave_bands_ref"] = ref.astype(np.float32)
+    # the detail waveform's scale, measured as before: each range's RMS at 16384 column centres, its maximum
+    n_old = max(1, min(16384, y.size))
+    old_starts = (np.arange(n_old, dtype=np.int64) * y.size) // n_old
+    old_centers = old_starts + 0.5 * np.diff(np.append(old_starts, y.size))
+    detail_ref = []
+    for low, high in bands:
         mean_square = power[(frequencies >= low) & (frequencies < high)].sum(axis=0) * to_mean_square
-        values[:, channel] = np.sqrt(np.interp(column_centers, frame_centers, mean_square))
-
-    ref = values.max(axis=0)
-    normalized = values / np.where(ref > 0.0, ref, 1.0)
-    levels = np.rint(np.sqrt(np.clip(normalized, 0.0, 1.0)) * 255.0).astype(np.uint8)
-    return levels, ref.astype(np.float32)
-
-
-def overview_values(levels: np.ndarray, columns: int = WAVE_OVERVIEW_RENDER_COLUMNS) -> np.ndarray:
-    """Stored levels -> ``[columns, 4]`` values 0..1 (each channel over its track
-    maximum): the peak is the column's maximum, the bands its mean."""
-    values = np.square(np.asarray(levels, dtype=np.float64) / 255.0)
-    n = values.shape[0]
-    n_columns = max(1, min(int(columns), n))
-    starts = (np.arange(n_columns, dtype=np.int64) * n) // n_columns
-    counts = np.diff(np.append(starts, n)).astype(np.float64)
-    out = np.add.reduceat(values, starts, axis=0) / counts[:, np.newaxis]
-    out[:, WAVE_PEAK] = np.maximum.reduceat(values[:, WAVE_PEAK], starts)
+        detail_ref.append(float(np.sqrt(np.interp(old_centers, frame_centers, mean_square)).max()))
+    out["wave_detail_band_ref"] = np.asarray(detail_ref, np.float32)
     return out
+
+
+def band_ranges(viewconfig) -> tuple[tuple[float, float], ...]:
+    """The configured low / mid / high ranges (Hz)."""
+    return tuple((float(low), float(high)) for low, high in (viewconfig.env_lo, viewconfig.env_mid, viewconfig.env_hi))
+
+
+def band_weights(ranges) -> np.ndarray:
+    """``[3, WAVE_BAND_COUNT]``: the share of each stored band inside each range, by log-frequency overlap."""
+    log_edges = np.log(WAVE_BAND_EDGES)
+    weights = np.zeros((len(ranges), WAVE_BAND_COUNT))
+    for r, (low, high) in enumerate(ranges):
+        if high <= low or high <= 0.0:
+            continue
+        lo, hi = np.log(max(float(low), 1e-3)), np.log(float(high))
+        overlap = np.clip(np.minimum(hi, log_edges[1:]) - np.maximum(lo, log_edges[:-1]), 0.0, None)
+        weights[r] = overlap / np.diff(log_edges)
+    return weights
+
+
+def has_wave_overview(features) -> bool:
+    return isinstance(features, dict) and all(k in features for k in WAVE_OVERVIEW_KEYS)
+
+
+def wave_overview_source(features):
+    """The stored array the overview is drawn from (its identity tells a cached drawing is current)."""
+    return features.get("wave_minmax_np") if isinstance(features, dict) else None
+
+
+def _stored_minmax(features) -> np.ndarray:
+    """``[N, 2]`` min / max per column in sample units."""
+    q = np.asarray(features["wave_minmax_np"], dtype=np.float64) / 127.0
+    return np.sign(q) * np.square(q) * float(np.asarray(features["wave_minmax_ref"]).reshape(-1)[0])
+
+
+def _stored_band_rms(features, ranges) -> np.ndarray:
+    """``[M, 3]`` low / mid / high RMS per band column in sample units, summed from the stored bands."""
+    power = np.power(np.asarray(features["wave_bands_np"], dtype=np.float64) / 255.0, 4.0)
+    power *= np.asarray(features["wave_bands_ref"], dtype=np.float64)[np.newaxis, :]
+    return np.sqrt(power @ band_weights(ranges).T)
+
+
+def _peak_body(minmax: np.ndarray, groups: int) -> tuple[np.ndarray, np.ndarray]:
+    """Per group of min / max columns: the peak |sample| and the body (the mean half-range)."""
+    n = minmax.shape[0]
+    g = max(1, min(int(groups), n))
+    starts = (np.arange(g, dtype=np.int64) * n) // g
+    counts = np.diff(np.append(starts, n)).astype(np.float64)
+    peak = np.maximum.reduceat(np.abs(minmax).max(axis=1), starts)
+    body = np.add.reduceat(0.5 * (minmax[:, 1] - minmax[:, 0]), starts) / counts
+    return peak, np.minimum(body, peak)
+
+
+def _column_means(values: np.ndarray, columns: int) -> np.ndarray:
+    n = values.shape[0]
+    c = max(1, min(int(columns), n))
+    starts = (np.arange(c, dtype=np.int64) * n) // c
+    return np.add.reduceat(values, starts, axis=0) / np.diff(np.append(starts, n)).astype(np.float64)[:, np.newaxis]
+
+
+def wave_detail_band_ref(features) -> float | None:
+    """The detail waveform's three-band scale: the loudest band's track maximum RMS (sample units, the ranges set
+    at analysis)."""
+    if not isinstance(features, dict) or "wave_detail_band_ref" not in features:
+        return None
+    return float(np.max(np.asarray(features["wave_detail_band_ref"])))
 
 
 def paint_layers(layers, height: int, *, mirrored: bool = False) -> np.ndarray:
@@ -222,69 +297,60 @@ def _faded_bars(peak, body, colors, height: int, columns: int, *, mirrored: bool
 
 
 def render_wave_overview(
-    levels: np.ndarray,
-    ref: np.ndarray,
+    features: dict,
+    ranges,
     style: str,
     height: int,
     *,
     columns: int = WAVE_OVERVIEW_RENDER_COLUMNS,
 ) -> np.ndarray:
-    """Overview image ``[columns, height, 3]`` of the stored levels / ``ref``,
-    bars rising from the first row, in ``style`` ('rgb': bars of the peak
-    colored by the band levels, each over its track maximum; '3band': the bands
-    stacked on one scale)."""
+    """Overview image ``[columns, height, 3]`` of a track's stored overview, bars rising from the first row, in
+    ``style`` ('rgb': bars of the peak, solid to the body, colored by the low / mid / high ``ranges`` each over its
+    track maximum; '3band': the three bands stacked on one scale)."""
+    rms = _stored_band_rms(features, ranges)
     if style != "3band":
-        values = np.square(np.asarray(levels, dtype=np.float64) / 255.0)
-        ref = np.asarray(ref, dtype=np.float64)
-        peak = values[:, WAVE_PEAK] * RGB_OVERVIEW_PEAK
-        body = np.minimum(values[:, WAVE_BODY] * ref[WAVE_BODY] / (ref[WAVE_PEAK] or 1.0) * RGB_OVERVIEW_PEAK, peak)
-        colors = wave_colors(values[:, WAVE_LOW], values[:, WAVE_MID], values[:, WAVE_HIGH])
+        peak, body = _peak_body(_stored_minmax(features), rms.shape[0])
+        top = float(peak.max()) or 1.0
+        peak, body = peak / top * RGB_OVERVIEW_PEAK, body / top * RGB_OVERVIEW_PEAK
+        band_max = rms.max(axis=0)
+        normalized = rms / np.where(band_max > 0.0, band_max, 1.0)
+        colors = wave_colors(normalized[:, 0], normalized[:, 1], normalized[:, 2])
         return _faded_bars(peak, body, colors, height, columns, mirrored=False)
-    values = overview_values(levels, columns)
-    low, mid, high = values[:, WAVE_LOW], values[:, WAVE_MID], values[:, WAVE_HIGH]
-    band_ref = np.asarray(ref, dtype=np.float64)[WAVE_LOW:WAVE_HIGH + 1]
-    low, mid, high = (v * r / (band_ref.max() or 1.0) for v, r in zip((low, mid, high), band_ref))
+    values = _column_means(rms, columns) / (float(rms.max()) or 1.0)
     w_low, w_mid, w_high = THREE_BAND_PREVIEW_WEIGHTS
-    stack_low = w_low * low
-    stack_mid = stack_low + w_mid * mid
-    stack_high = stack_mid + w_high * high
+    stack_low = w_low * values[:, 0]
+    stack_mid = stack_low + w_mid * values[:, 1]
+    stack_high = stack_mid + w_high * values[:, 2]
     scale = float(stack_high.max()) or 1.0
-    layers = [
-        (stack_high / scale, THREE_BAND_HIGH),
-        (stack_mid / scale, THREE_BAND_MID),
-        (stack_low / scale, THREE_BAND_LOW),
-    ]
-    return paint_layers(layers, height)
+    return paint_layers([(stack_high / scale, THREE_BAND_HIGH), (stack_mid / scale, THREE_BAND_MID),
+                         (stack_low / scale, THREE_BAND_LOW)], height)
 
 
 def render_wave_detail_preview(
-    levels: np.ndarray,
-    ref: np.ndarray,
+    features: dict,
+    ranges,
     style: str,
     height: int,
     *,
     columns: int = WAVE_OVERVIEW_RENDER_COLUMNS,
 ) -> np.ndarray:
-    """Stand-in for the main view's detail waveform until its chunks are
-    rendered, drawn like them from the stored levels (mirrored, in sample units):
-    RGB bars colored as the chunks are (the square roots of the band RMS in
-    sample units), 3band the layers of the scrolling waveform (bands on one scale)."""
+    """Stand-in for the main view's detail waveform until its chunks are rendered, drawn like them from the
+    stored overview (mirrored, sample units): RGB the min / max bars colored as the chunks are (the square roots
+    of the band RMS), 3band the layers of the scrolling waveform (bands on one scale)."""
+    rms = _stored_band_rms(features, ranges)
     if style != "3band":
-        values = np.square(np.asarray(levels, dtype=np.float64) / 255.0)
-        amplitude = values * np.asarray(ref, dtype=np.float64)
-        peak = np.clip(amplitude[:, WAVE_PEAK], 0.0, 1.0)
-        body = np.minimum(amplitude[:, WAVE_BODY], peak)
-        # coloured like the chunks: by the square root of each band's RMS in
-        # sample units (not over its track maximum)
-        band_amp = np.sqrt(amplitude[:, WAVE_LOW:WAVE_HIGH + 1])
-        colors = wave_colors(band_amp[:, 0], band_amp[:, 1], band_amp[:, 2],
-                             white_threshold=0.0, sat_floor=RGB_DETAIL_SAT_FLOOR)
-        return _faded_bars(peak, body, colors, height, columns, mirrored=True)
-    values = overview_values(levels, columns)
-    band_ref = np.asarray(ref, dtype=np.float64)[WAVE_LOW:WAVE_HIGH + 1]
-    scale = float(band_ref.max()) or 1.0
-    low, mid, high = (values[:, channel] * r / scale for channel, r in zip((WAVE_LOW, WAVE_MID, WAVE_HIGH), band_ref))
-    return paint_layers(three_band_detail_layers(low, mid, high), height, mirrored=True)
+        minmax = np.clip(_stored_minmax(features), -1.0, 1.0)
+        n = minmax.shape[0]
+        band_col = np.minimum((np.arange(n, dtype=np.int64) * rms.shape[0]) // max(n, 1), rms.shape[0] - 1)
+        amp = np.sqrt(rms[band_col])
+        colors = wave_colors(amp[:, 0], amp[:, 1], amp[:, 2], white_threshold=0.0,
+                             sat_floor=RGB_DETAIL_SAT_FLOOR).astype(np.float64)
+        column = (np.arange(n, dtype=np.int64) * max(1, min(int(columns), n))) // n
+        image = wave_coverage_columns(minmax[:, 0], minmax[:, 1], colors, column, height,
+                                      flat_color=WAVE_CENTER_LINE_RGB)
+        return np.clip(image + 0.5, 0.0, 255.0).astype(np.uint8)
+    values = _column_means(rms, columns) / (float(rms.max()) or 1.0)
+    return paint_layers(three_band_detail_layers(values[:, 0], values[:, 1], values[:, 2]), height, mirrored=True)
 
 
 def wave_coverage_columns(

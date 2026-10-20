@@ -8,7 +8,7 @@ from analyzer_core.beat.frame_features import FRAME_HOP_LENGTH, extract_frame_fe
 from analyzer_core.cue_and_phrase import detect_phrase_segments
 from analyzer_core.global_analyzer import fast_load
 from analyzer_core.hpss import hpss_audio_with_spectra
-from core.config import config
+from core.config import ANALYSIS_SAMPLE_RATE, config
 from utils.cue_points import autocue_time_sec
 from utils.jump_cues import autocue_jump_pair, build_jump_cues_np
 
@@ -31,16 +31,12 @@ def reanalyze_jumpCUE(path:str, cfg:config, beats_time_arr:np.ndarray, *,
     tempo_segments = np.asarray(tempo_segments, dtype=float)
     if progress_cb:
         progress_cb("Loading audio", 0.0)
-    sr = int(getattr(gcf, "analysis_samp_rate", 44100))
+    sr = ANALYSIS_SAMPLE_RATE
     audio_stereo = fast_load(path, sr, stereo=True)
     audio_full = np.ascontiguousarray(audio_stereo.mean(axis=1), dtype=np.float32)
     if progress_cb:
         progress_cb("Processing HPSS", 0.1)
-    hpss_spectra = None
-    if getattr(gcf, "use_hpss", False):
-        y_harm, y_perc, hpss_spectra = hpss_audio_with_spectra(audio_full, sr)
-    else:
-        y_harm = y_perc = audio_full
+    y_harm, y_perc, hpss_spectra = hpss_audio_with_spectra(audio_full, sr)
     if progress_cb:
         progress_cb("Frame features", 0.25)
     frames = extract_frame_features(audio_full, sr, y_perc, y_harm, hop_length=FRAME_HOP_LENGTH)

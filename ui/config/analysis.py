@@ -6,12 +6,10 @@ from PySide6 import QtCore
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
-    QDoubleSpinBox,
     QDialog,
     QFormLayout,
     QGridLayout,
     QGroupBox,
-    QHBoxLayout,
     QLabel,
     QLineEdit,
     QMessageBox,
@@ -30,6 +28,7 @@ from ui.config.dialogs import (
     KeyModelOptimizeDialog,
     ParameterOptimizeProgressDialog,
 )
+from ui.config.pipeline_map import PipelineMap
 from ui.config.scroll import scroll_page
 
 
@@ -40,20 +39,11 @@ def build_analysis_tab(dialog) -> None:
 
     # Global
     tab_global = QWidget(); f_global = QFormLayout(tab_global)
-    dialog.sp_analysis_samp_rate = QSpinBox(); dialog.sp_analysis_samp_rate.setRange(8000, 384000); dialog.sp_analysis_samp_rate.setSingleStep(1000)
-    dialog.cb_use_hpss = QCheckBox("Use HPSS")
-    dialog.sp_analysis_samp_rate.setToolTip(
-        "Audio is resampled to this rate before analysis.\n"
-        "Higher is slower and rarely more accurate."
-    )
-    dialog.cb_use_hpss.setToolTip(
-        "Split the audio into harmonic and percussive parts (HPSS) so beat analysis\n"
-        "uses the percussive part and key analysis the harmonic part. Slower."
-    )
     grp_global = QGroupBox("General")
     f_global_general = QFormLayout(grp_global)
-    f_global_general.addRow("Sample rate (SPS)", dialog.sp_analysis_samp_rate)
-    f_global_general.addRow(dialog.cb_use_hpss)
+    # the analyses, their order and what each needs; a click opens the analysis's settings tab
+    dialog.pipeline_map = PipelineMap()
+    f_global_general.addRow(dialog.pipeline_map)
     f_global.addRow(grp_global)
     
 
@@ -178,31 +168,6 @@ def build_analysis_tab(dialog) -> None:
     f_key_advanced.addRow("", dialog.btn_reoptimize_key_model)
     f_key.addRow(grp_key_advanced)
 
-    # Waveform bands (stored overview levels; the main view waveform uses them too)
-    tab_wave = QWidget(); f_wave = QFormLayout(tab_wave)
-    def make_band_row(parent_form, label: str):
-        box = QWidget(); h = QHBoxLayout(box); h.setContentsMargins(0, 0, 0, 0); h.setSpacing(6)
-        lo = QDoubleSpinBox(); hi = QDoubleSpinBox()
-        box.setToolTip(f"Frequency range (Hz) drawn as the {label.lower()} band of the waveform.")
-        lo.setToolTip(f"Lower edge of the {label.lower()} band (Hz).")
-        hi.setToolTip(f"Upper edge of the {label.lower()} band (Hz).")
-        for sp in (lo, hi):
-            sp.setDecimals(3); sp.setRange(0.0, 1e6); sp.setSingleStep(1.0); sp.setMinimumWidth(100)
-        h.addWidget(QLabel("lo")); h.addWidget(lo)
-        h.addWidget(QLabel("hi")); h.addWidget(hi)
-        parent_form.addRow(label, box)
-        return lo, hi
-    grp_wave_bands = QGroupBox("Bands")
-    grp_wave_bands.setToolTip(
-        "Low / mid / high bands of the waveform. The overview's band levels are\n"
-        "stored by the analysis: a change applies to tracks analyzed after it."
-    )
-    f_wave_bands = QFormLayout(grp_wave_bands)
-    dialog.sp_env_lo_lo,  dialog.sp_env_lo_hi  = make_band_row(f_wave_bands, "Low")
-    dialog.sp_env_mid_lo, dialog.sp_env_mid_hi = make_band_row(f_wave_bands, "Mid")
-    dialog.sp_env_hi_lo,  dialog.sp_env_hi_hi  = make_band_row(f_wave_bands, "High")
-    f_wave.addRow(grp_wave_bands)
-
     # Phrase
     tab_phrase = QWidget(); f_phrase = QFormLayout(tab_phrase)
     dialog.cb_phrase_analysis_enabled = QCheckBox("Use Phrase Analysis")
@@ -273,8 +238,16 @@ def build_analysis_tab(dialog) -> None:
     analysis_tabs.addTab(scroll_page(tab_key), "Key")
     analysis_tabs.addTab(scroll_page(tab_phrase), "Phrase")
     analysis_tabs.addTab(scroll_page(tab_cue), "CUE")
-    analysis_tabs.addTab(scroll_page(tab_wave), "Waveform")
 
+    def open_tab(name: str) -> None:
+        """An Analysis tab, or a top-level settings tab (the waveform's bands are in View)."""
+        for tabs in (analysis_tabs, dialog.tabs):
+            for index in range(tabs.count()):
+                if tabs.tabText(index) == name:
+                    tabs.setCurrentIndex(index)
+                    return
+
+    dialog.pipeline_map.tabRequested.connect(open_tab)
     root.addWidget(analysis_tabs)
     dialog.tabs.addTab(dialog.tab_analysis, "Analysis")
 
@@ -498,7 +471,7 @@ class AnalysisSettingsMixin:
                 "refine_onset": self._project_path(self.ed_refine_onset_parameter_path.text().strip()),
             }
             if key == "refine_onset":
-                request_values.update(use_hpss=bool(self.cb_use_hpss.isChecked()), frame_hop_length=int(FRAME_HOP_LENGTH),
+                request_values.update(frame_hop_length=int(FRAME_HOP_LENGTH),
                                       frames_cache_dir=self._project_path(self.ed_beat_feature_cache_path.text().strip()))
             if key == "beat_decoder":
                 # the costs are fitted for the models in use (after any of them is retrained)

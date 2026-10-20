@@ -49,6 +49,11 @@ class viewconfig:
     display_JumpCUE: bool
     display_phrase: bool
     waveform_style: Literal["rgb", "3band"]  # RGB: colored by the band mix; 3band: rekordbox-style layers
+    # low / mid / high ranges (Hz) of the waveforms' colours: the overview and the preview sum them from the stored
+    # bands when drawn, the main view waveform filters its audio with them
+    env_lo: Tuple[float, float]
+    env_mid: Tuple[float, float]
+    env_hi: Tuple[float, float]
     # main view waveform: drawing frame (bar) length (ms) of the short views (up to
     # core.timeline.SHORT_WINDOW_MAX_SEC wide) and of the longer ones
     mainview_wave_frame_ms_short: float
@@ -108,10 +113,12 @@ class externalsyncconfig:
     memory_deck2: memorydeckconfig
 
 
+# Every analysis runs at this sample rate (the learned models -- beat, phrase, JumpCUE, key -- were trained on it).
+ANALYSIS_SAMPLE_RATE = 22050
+
+
 @dataclass
 class analysisconfig:
-    use_hpss: bool
-    analysis_samp_rate: int
     # The beat tracker reads every tempo in the octave from here (bpm_min .. 2 x bpm_min).
     bpm_min: int
     # Dynamic analysis: tempo changes within a track (off: one steady grid for the whole track).
@@ -130,11 +137,6 @@ class analysisconfig:
     beat_decoder_parameter_path: str
     downbeat_ctx_parameter_path: str
     beat_feature_cache_path: str
-    # low / mid / high bands (Hz) of the stored overview levels; the main view
-    # waveform uses them too
-    env_lo: Tuple[float, float]
-    env_mid: Tuple[float, float]
-    env_hi: Tuple[float, float]
     phrase_analysis_enabled: bool
     phrase_parameter_path: str
     phrase_feature_cache_path: str
@@ -208,6 +210,14 @@ def _normalize_config_payload(payload: dict) -> dict:
         lib["local_music_directories"] = [] if legacy in ("", "~/Music") else [legacy]
     lib.pop("local_music_directory", None)
     normalized["libconfig"] = lib
+    # the waveform band ranges moved from the analysis settings to the view settings
+    analysis, view = normalized.get("analysisconfig"), normalized.get("viewconfig")
+    if isinstance(analysis, dict) and isinstance(view, dict):
+        analysis, view = dict(analysis), dict(view)
+        for key in ("env_lo", "env_mid", "env_hi"):
+            if key in analysis:
+                view.setdefault(key, analysis.pop(key))
+        normalized["analysisconfig"], normalized["viewconfig"] = analysis, view
     return normalized
 
 
@@ -290,8 +300,6 @@ def default_cfg():
         rekordbox_xml_path="./rekordbox.xml",
     )
     acfg = analysisconfig(
-        analysis_samp_rate=22050,
-        use_hpss=True,
         bpm_min=100,
         bpm_dynamic=True,
         dynamic_downbeat=True,
@@ -302,9 +310,6 @@ def default_cfg():
         beat_decoder_parameter_path="assets/weights/beat_decoder.json",
         downbeat_ctx_parameter_path="assets/weights/downbeat_ctx_hgb.npz",
         beat_feature_cache_path="featurecache/beat",
-        env_lo=(20.0, 200.0),
-        env_mid=(250.0, 1500.0),
-        env_hi=(1600.0, 11025.0),
         phrase_analysis_enabled=True,
         phrase_parameter_path="assets/weights/phrase_analyzer.npz",
         phrase_feature_cache_path="featurecache/phrase",
@@ -322,6 +327,9 @@ def default_cfg():
         display_JumpCUE=True,
         display_phrase=True,
         waveform_style="rgb",
+        env_lo=(20.0, 200.0),
+        env_mid=(250.0, 1500.0),
+        env_hi=(1600.0, 11025.0),
         mainview_wave_frame_ms_short=1.0,
         mainview_wave_frame_ms_long=2.0,
         mainview_wave_filter_order=4,

@@ -487,7 +487,12 @@ class AppWindow(QtWidgets.QMainWindow):
             self._apply_visibility_refresh_setting(force=True)
         _WAVE_STYLE_KEYS = ("waveform_style", "mainview_wave_frame_ms_short", "mainview_wave_frame_ms_long",
                             "mainview_wave_filter_order")
-        if any(prev_vcfg.get(k) != new_vcfg[k] for k in _WAVE_STYLE_KEYS):
+        # the waveform's low / mid / high ranges: the overview and the preview sum them from the stored bands
+        bands_changed = any(
+            [float(x) for x in (prev_vcfg.get(k) or ())] != [float(x) for x in new_vcfg[k]]
+            for k in ("env_lo", "env_mid", "env_hi")
+        )
+        if bands_changed or any(prev_vcfg.get(k) != new_vcfg[k] for k in _WAVE_STYLE_KEYS):
             self.pane.ov.refresh_waveform()
             if not layout_changed:
                 self.bus.sig_reload_UI.emit(_config)  # the waveform view takes the style when installed

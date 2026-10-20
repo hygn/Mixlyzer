@@ -164,6 +164,9 @@ class SettingsDialog(
         self.ed_record_img_path.setText(v.record_img_path)
         self._set_phrase_label_names(v.phrase_labels)
         self.cmb_waveform_style.setCurrentIndex(self.cmb_waveform_style.findData(v.waveform_style))
+        self._set_band(self.sp_env_lo_lo,  self.sp_env_lo_hi,  v.env_lo)
+        self._set_band(self.sp_env_mid_lo, self.sp_env_mid_hi, v.env_mid)
+        self._set_band(self.sp_env_hi_lo,  self.sp_env_hi_hi,  v.env_hi)
         self.sp_mainview_wave_frame_ms_short.setValue(float(v.mainview_wave_frame_ms_short))
         self.sp_mainview_wave_frame_ms_long.setValue(float(v.mainview_wave_frame_ms_long))
         self.sp_mainview_wave_filter_order.setValue(int(v.mainview_wave_filter_order))
@@ -184,8 +187,6 @@ class SettingsDialog(
 
         # analysis
         a = cfg.analysisconfig
-        self.sp_analysis_samp_rate.setValue(int(a.analysis_samp_rate))
-        self.cb_use_hpss.setChecked(bool(a.use_hpss))
         self.sp_bpm_min.setValue(int(a.bpm_min))
         self.lbl_bpm_range.setText(f"Reads {int(a.bpm_min)} - {2 * int(a.bpm_min)} BPM")
         dynamic = bool(getattr(a, "bpm_dynamic", True))
@@ -203,9 +204,6 @@ class SettingsDialog(
         self.ed_beat_decoder_parameter_path.setText(str(getattr(a, "beat_decoder_parameter_path", "") or ""))
         self.ed_downbeat_ctx_parameter_path.setText(str(getattr(a, "downbeat_ctx_parameter_path", "") or ""))
         self.ed_beat_feature_cache_path.setText(str(getattr(a, "beat_feature_cache_path", "") or ""))
-        self._set_band(self.sp_env_lo_lo,  self.sp_env_lo_hi,  a.env_lo)
-        self._set_band(self.sp_env_mid_lo, self.sp_env_mid_hi, a.env_mid)
-        self._set_band(self.sp_env_hi_lo,  self.sp_env_hi_hi,  a.env_hi)
         self.cb_phrase_analysis_enabled.setChecked(
             bool(getattr(a, "phrase_analysis_enabled", True))
         )
@@ -289,8 +287,6 @@ class SettingsDialog(
     def get_config(self):
         return config(
             analysisconfig=analysisconfig(
-                analysis_samp_rate=int(self.sp_analysis_samp_rate.value()),
-                use_hpss=bool(self.cb_use_hpss.isChecked()),
                 bpm_min=int(self.sp_bpm_min.value()),
                 bpm_dynamic=bool(self.cb_bpm_dynamic.isChecked()),
                 dynamic_downbeat=bool(
@@ -304,9 +300,6 @@ class SettingsDialog(
                 beat_decoder_parameter_path=self.ed_beat_decoder_parameter_path.text().strip(),
                 downbeat_ctx_parameter_path=self.ed_downbeat_ctx_parameter_path.text().strip(),
                 beat_feature_cache_path=self.ed_beat_feature_cache_path.text().strip(),
-                env_lo=(float(self.sp_env_lo_lo.value()), float(self.sp_env_lo_hi.value())),
-                env_mid=(float(self.sp_env_mid_lo.value()), float(self.sp_env_mid_hi.value())),
-                env_hi=(float(self.sp_env_hi_lo.value()), float(self.sp_env_hi_hi.value())),
                 phrase_analysis_enabled=bool(self.cb_phrase_analysis_enabled.isChecked()),
                 phrase_parameter_path=self.ed_phrase_parameter_path.text().strip(),
                 phrase_feature_cache_path=self.ed_phrase_feature_cache_path.text().strip(),
@@ -332,6 +325,9 @@ class SettingsDialog(
                 display_JumpCUE=bool(self.cb_JumpCUE.isChecked()),
                 display_phrase=bool(self.cb_phrase.isChecked()),
                 waveform_style=str(self.cmb_waveform_style.currentData()),
+                env_lo=(float(self.sp_env_lo_lo.value()), float(self.sp_env_lo_hi.value())),
+                env_mid=(float(self.sp_env_mid_lo.value()), float(self.sp_env_mid_hi.value())),
+                env_hi=(float(self.sp_env_hi_lo.value()), float(self.sp_env_hi_hi.value())),
                 mainview_wave_frame_ms_short=round(float(self.sp_mainview_wave_frame_ms_short.value()), 1),
                 mainview_wave_frame_ms_long=round(float(self.sp_mainview_wave_frame_ms_long.value()), 1),
                 mainview_wave_filter_order=int(self.sp_mainview_wave_filter_order.value()),

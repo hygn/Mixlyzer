@@ -31,7 +31,7 @@ from core.audio.decoder import decode_to_memmap, get_total_samples
 from core.library_handler import LibraryDB
 from core.analysis_lib_handler import FeatureNPZStore
 from core.thumbnails import save_thumbnail
-from core.config import config
+from core.config import ANALYSIS_SAMPLE_RATE, config
 from core.taskmanager import taskmanager
 from core.linear_segments import build_bpm_segments, build_key_segments, build_phrase_index_rows
 from analyzer_core.utils import prime_physical_core_count
@@ -294,7 +294,7 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
     yield {"status": "Loading"}
     print("[Analyzer] Analysis Initalized")
     gcf = config.analysisconfig
-    global_sr = gcf.analysis_samp_rate
+    global_sr = ANALYSIS_SAMPLE_RATE
     print("[Analyzer] Loading Track")
     # Decode once: stereo for the structure detector, mono derived for the rest.
     samp_stereo = fast_load(path, target_sr=global_sr, stereo=True)
@@ -305,27 +305,23 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
     print("[Analyzer] Processing HPSS")
     # HPSS
     # The spectra are reused by the phrase features (same mono mix, STFT and HPSS).
-    hpss_spectra = None
-    if gcf.use_hpss:
-        y_harm, y_perc, hpss_spectra = hpss_audio_with_spectra(samp, int(global_sr))
-    else:
-        y_harm = y_perc = samp.astype(np.float32)
+    y_harm, y_perc, hpss_spectra = hpss_audio_with_spectra(samp, int(global_sr))
     features = {}
 
     yield {"status": "waveform"}
     print("[Waveform] Analysis Initalized")
     taskmgr.updatetask(taskid, "Processing Waveform", 0.2)
-    # Overview waveform: the peak and band levels of each column (drawn when
-    # shown), from a mono decode at WAVE_OVERVIEW_SAMPLE_RATE, not the analysis
-    # rate, so the bands are not cut at the analysis Nyquist.
-    wave_bands = tuple((float(low), float(high)) for low, high in (gcf.env_lo, gcf.env_mid, gcf.env_hi))
-    features["wave_overview_np"], features["wave_overview_ref"] = build_wave_overview(
+    # Overview waveform: the min / max of each column and the power of 12 log-spaced bands (low / mid / high are
+    # summed from them when drawn), from a mono decode at WAVE_OVERVIEW_SAMPLE_RATE, not the analysis rate, so
+    # the bands are not cut at the analysis Nyquist; and the detail waveform's three-band scale (these ranges).
+    wave_bands = tuple((float(low), float(high)) for low, high in (config.viewconfig.env_lo, config.viewconfig.env_mid, config.viewconfig.env_hi))
+    features.update(build_wave_overview(
         fast_load(path, WAVE_OVERVIEW_SAMPLE_RATE),
         WAVE_OVERVIEW_SAMPLE_RATE,
         wave_bands,
         n_fft=HPSS_N_FFT,
         hop_length=HPSS_HOP_LENGTH,
-    )
+    ))
     features["duration_sec"] = samp.size / float(global_sr)
     print("[Waveform] Analysis Finished")
 
@@ -346,21 +342,9 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
     )
     from analyzer_core.beat.learned_onset import REFINE_ONSET_PATH, refine_onset_activation
 
-    # Its models were trained on frames of the HPSS parts at one sample rate; other analysis settings give
-    # it frames of its own.
-    if (int(global_sr), FRAME_HOP_LENGTH, bool(gcf.use_hpss)) == (TRACKER_SR, TRACKER_HOP, True):
-        tracker_frames = frame_features
-    else:
-        def at_tracker_rate(y):
-            return resample_audio(np.asarray(y, dtype=np.float32), int(global_sr), TRACKER_SR)
-        tracker_mix = at_tracker_rate(samp)
-        if gcf.use_hpss:
-            tracker_harm, tracker_perc = at_tracker_rate(y_harm), at_tracker_rate(y_perc)
-        else:
-            tracker_harm, tracker_perc, _ = hpss_audio_with_spectra(tracker_mix, TRACKER_SR)
-        tracker_frames = extract_frame_features(
-            tracker_mix, TRACKER_SR, tracker_perc, tracker_harm, hop_length=TRACKER_HOP,
-        )
+    # Its models were trained on these frames: the HPSS parts at the analysis rate, hop 256.
+    assert (int(global_sr), FRAME_HOP_LENGTH) == (TRACKER_SR, TRACKER_HOP)
+    tracker_frames = frame_features
     frame_times = np.asarray(tracker_frames.frame_times, dtype=float)
     refine_onset = None
     try:

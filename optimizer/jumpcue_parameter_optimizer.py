@@ -767,7 +767,7 @@ class JumpCueOptimizationResult:
 
 
 def _analysis_settings(phrase_parameter_path: Path) -> dict:
-    from core.config import default_cfg
+    from core.config import ANALYSIS_SAMPLE_RATE, default_cfg
     from core.resource_paths import project_root
 
     values = dict(default_cfg().to_dict()["analysisconfig"])
@@ -778,8 +778,8 @@ def _analysis_settings(phrase_parameter_path: Path) -> dict:
         pass
     phrase = Path(phrase_parameter_path)
     return {
-        "sr": int(values.get("analysis_samp_rate", 22050)),
-        "use_hpss": bool(values.get("use_hpss", True)),
+        "sr": ANALYSIS_SAMPLE_RATE,
+        "use_hpss": True,                  # always on (part of the cache key)
         "bpm_hop_length": int(values.get("bpm_hop_length", 256)),
         "phrase_parameter_path": str(phrase),
         "phrase_mtime": phrase.stat().st_mtime if phrase.exists() else 0.0,
@@ -829,11 +829,7 @@ def _record_candidates(audio_path: str, beats: np.ndarray, segments: np.ndarray,
     sr = settings["sr"]
     stereo = fast_load(audio_path, sr, stereo=True)
     mono = np.ascontiguousarray(stereo.mean(axis=1), dtype=np.float32)
-    spectra = None
-    if settings["use_hpss"]:
-        y_harm, y_perc, spectra = hpss_audio_with_spectra(mono, sr)
-    else:
-        y_harm = y_perc = mono
+    y_harm, y_perc, spectra = hpss_audio_with_spectra(mono, sr)
     frames = extract_frame_features(mono, sr, y_perc, y_harm, hop_length=settings["bpm_hop_length"])
     _segments, prob, feature_z = detect_phrase_segments(
         stereo, sr, beats, segments, model_path=settings["phrase_parameter_path"], hpss=spectra,

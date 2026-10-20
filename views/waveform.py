@@ -16,14 +16,16 @@ from utils.wave import (
     RGB_DETAIL_SAT_FLOOR,
     THREE_BAND_DETAIL_RMS_SEC,
     WAVE_CENTER_LINE_RGB,
-    WAVE_HIGH,
-    WAVE_LOW,
     add_center_line,
+    band_ranges,
     frame_minmax,
+    has_wave_overview,
     paint_layers,
     render_wave_detail_preview,
     three_band_detail_layers,
     wave_colors,
+    wave_detail_band_ref,
+    wave_overview_source,
     wave_coverage_columns,
 )
 from .base import WAVEFORM_LANE, ViewPlugin, register_view
@@ -69,14 +71,13 @@ class _WaveStyle:
     @classmethod
     def from_config(cls, features, window_sec: float) -> "_WaveStyle":
         cfg = load_cfg()
-        a, v = cfg.analysisconfig, cfg.viewconfig
-        ref = features.get("wave_overview_ref") if isinstance(features, dict) else None
+        v = cfg.viewconfig
         return cls(
-            bands=tuple((float(low), float(high)) for low, high in (a.env_lo, a.env_mid, a.env_hi)),
+            bands=tuple((float(low), float(high)) for low, high in (v.env_lo, v.env_mid, v.env_hi)),
             filter_order=int(v.mainview_wave_filter_order),
             frame_ms=cls.frame_ms_for(v, window_sec),
             waveform_style=v.waveform_style,
-            band_ref=None if ref is None else float(np.max(np.asarray(ref)[WAVE_LOW:WAVE_HIGH + 1])),
+            band_ref=wave_detail_band_ref(features),
         )
 
     def frame_hop(self, sample_rate: int) -> int:
@@ -590,23 +591,24 @@ class WaveformView(ViewPlugin):
         self._ensure_preview_item()
         if self._preview_item is None:
             return
-        levels = self.model.features.get("wave_overview_np") if isinstance(self.model.features, dict) else None
-        if levels is None:
+        features = self.model.features if isinstance(self.model.features, dict) else {}
+        if not has_wave_overview(features):
             self._preview_item.setVisible(False)
             self._preview_source = None
             return
-        if self._preview_source is not levels:
-            # Until chunks are rendered, the stored levels stand in, drawn like them.
+        cfg = load_cfg()
+        ranges, style = band_ranges(cfg.viewconfig), cfg.viewconfig.waveform_style
+        source = (id(wave_overview_source(features)), ranges, style)
+        if self._preview_source != source:
+            # Until chunks are rendered, the stored overview stands in, drawn like them.
             self._preview_item.setImage(
                 # with the chunks' centre line, so the two join without a seam
-                np.clip(add_center_line(render_wave_detail_preview(
-                    np.asarray(levels), np.asarray(self.model.features["wave_overview_ref"]),
-                    load_cfg().viewconfig.waveform_style, RENDER_HEIGHT,
-                )) + 0.5, 0.0, 255.0).astype(np.uint8),
+                np.clip(add_center_line(render_wave_detail_preview(features, ranges, style, RENDER_HEIGHT))
+                        + 0.5, 0.0, 255.0).astype(np.uint8),
                 autoLevels=False,
                 levels=self._wave_levels,
             )
-            self._preview_source = levels
+            self._preview_source = source
         self._preview_item.setRect(QtCore.QRectF(0.0, _WAVE_Y, max(self.duration, 1e-3), _WAVE_H))
         self._update_preview_visibility()
 

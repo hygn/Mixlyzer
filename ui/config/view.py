@@ -7,6 +7,7 @@ from PySide6.QtWidgets import (
     QFormLayout,
     QGridLayout,
     QGroupBox,
+    QHBoxLayout,
     QLabel,
     QLineEdit,
     QSpinBox,
@@ -90,6 +91,29 @@ def build_view_tab(dialog) -> None:
     f_display.addRow("Waveform style", dialog.cmb_waveform_style)
     f_display.addRow(dialog.cb_use_output_volume_as_peak_meter_input)
 
+    # the waveforms' low / mid / high ranges: the overview and the preview redraw from the stored bands at once
+    def make_band_row(parent_form, label: str):
+        box = QWidget(); h = QHBoxLayout(box); h.setContentsMargins(0, 0, 0, 0); h.setSpacing(6)
+        lo = QDoubleSpinBox(); hi = QDoubleSpinBox()
+        box.setToolTip(f"Frequency range (Hz) drawn as the {label.lower()} band of the waveform.")
+        lo.setToolTip(f"Lower edge of the {label.lower()} band (Hz).")
+        hi.setToolTip(f"Upper edge of the {label.lower()} band (Hz).")
+        for sp in (lo, hi):
+            sp.setDecimals(3); sp.setRange(0.0, 1e6); sp.setSingleStep(1.0); sp.setMinimumWidth(100)
+        h.addWidget(QLabel("lo")); h.addWidget(lo)
+        h.addWidget(QLabel("hi")); h.addWidget(hi)
+        parent_form.addRow(label, box)
+        return lo, hi
+    grp_wave_bands = QGroupBox("Waveform bands")
+    grp_wave_bands.setToolTip(
+        "Low / mid / high bands of the waveforms' colours. The overview and the preview sum them from the\n"
+        "12 stored bands, so a change redraws them at once (no re-analysis)."
+    )
+    f_wave_bands = QFormLayout(grp_wave_bands)
+    dialog.sp_env_lo_lo,  dialog.sp_env_lo_hi  = make_band_row(f_wave_bands, "Low")
+    dialog.sp_env_mid_lo, dialog.sp_env_mid_hi = make_band_row(f_wave_bands, "Mid")
+    dialog.sp_env_hi_lo,  dialog.sp_env_hi_hi  = make_band_row(f_wave_bands, "High")
+
     grp_mainview_wave = QGroupBox("Main view waveform")
     f_mainview_wave = QFormLayout(grp_mainview_wave)
     f_mainview_wave.addRow("Frame, short view (ms)", dialog.sp_mainview_wave_frame_ms_short)
@@ -107,6 +131,7 @@ def build_view_tab(dialog) -> None:
     f_advanced.addRow("Record image path", dialog.ed_record_img_path)
 
     form.addRow(grp_display)
+    form.addRow(grp_wave_bands)
     form.addRow(grp_mainview_wave)
     form.addRow(_build_phrase_label_names(dialog))
     form.addRow(grp_performance)

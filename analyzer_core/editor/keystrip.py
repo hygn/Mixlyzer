@@ -7,7 +7,7 @@ from analyzer_core.global_analyzer import fast_load
 from analyzer_core.hpss import hpss_audio_with_spectra
 from analyzer_core.key import chord_key as CK
 from core.beat_geometry import downbeat_times
-from core.config import config
+from core.config import ANALYSIS_SAMPLE_RATE, config
 
 
 def _track_evidence(path: str, cfg: config, beats, tempo_segments, phrases, progress_cb):
@@ -15,12 +15,12 @@ def _track_evidence(path: str, cfg: config, beats, tempo_segments, phrases, prog
     if progress_cb:
         progress_cb("Loading audio", 0.0)
     gcf = cfg.analysisconfig
-    sr = int(getattr(gcf, "analysis_samp_rate", 22050))
+    sr = ANALYSIS_SAMPLE_RATE
     samp = np.ascontiguousarray(fast_load(path, target_sr=sr, stereo=True).mean(axis=1), dtype=np.float32)
     duration = samp.size / float(sr)
     if progress_cb:
         progress_cb("Separating harmonics", 0.15)
-    y_harm = hpss_audio_with_spectra(samp, sr)[0] if getattr(gcf, "use_hpss", True) else samp
+    y_harm = hpss_audio_with_spectra(samp, sr)[0]
     if progress_cb:
         progress_cb("Analyzing key", 0.5)
     beats = np.asarray(beats, dtype=float).ravel()

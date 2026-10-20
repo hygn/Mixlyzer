@@ -12,7 +12,7 @@ from utils.phrases import (
 from utils.cue_points import extract_cue_points
 from utils.color import key_label_text_color
 from utils.keystrip import key_segment_label, key_segment_rows, key_strip_segments
-from utils.wave import render_wave_overview
+from utils.wave import band_ranges, has_wave_overview, render_wave_overview
 from views.segment_strip import SegmentStrip
 from core.config import load_cfg
 from core.tempo_rows import segment_end_bpm
@@ -255,14 +255,15 @@ class OverviewWidget(QtWidgets.QWidget):
         self._update_played_overlay()
 
     def refresh_waveform(self) -> None:
-        """Draw the overview waveform from the stored band levels in the configured style."""
-        levels = (self.model.features or {}).get("wave_overview_np")
-        if levels is None or self.duration <= 0:
+        """Draw the overview waveform from the stored overview in the configured style and band ranges (the
+        bands are summed from the stored ones: a change of the ranges redraws here, cheaply)."""
+        features = self.model.features or {}
+        if not has_wave_overview(features) or self.duration <= 0:
             self.img_wave.clear()
             return
-        image = render_wave_overview(np.asarray(levels), np.asarray(self.model.features["wave_overview_ref"]),
-                                     load_cfg().viewconfig.waveform_style, OVERVIEW_WAVE_HEIGHT,
-                                     columns=_screen_pixel_width())
+        cfg = load_cfg()
+        image = render_wave_overview(features, band_ranges(cfg.viewconfig), cfg.viewconfig.waveform_style,
+                                     OVERVIEW_WAVE_HEIGHT, columns=_screen_pixel_width())
         self.img_wave.setImage(image, autoLevels=False, levels=self._wave_levels)
         self.img_wave.setRect(QtCore.QRectF(0.0, self._wave_bottom, self.duration, self._wave_top - self._wave_bottom))
 
