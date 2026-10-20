@@ -1,12 +1,14 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
 import json
+import threading
 from pathlib import Path
 from typing import List, Optional
 from PySide6 import QtCore, QtGui, QtWidgets
 import os
 from utils.labels import idx_to_labels
 from utils.phrases import PHRASE_LABELS, phrase_display_name
+from core import reading
 from core.library_handler import TrackRow, LibraryDB
 from core.analysis_lib_handler import FeatureNPZStore
 from core.event_bus import EventBus
@@ -36,6 +38,8 @@ class Track:
     uid: str = ""
     playlist_index: Optional[int] = None
     analyzed: bool = True
+    # search keys of the title / artist / album readings (core.reading): field -> one per reading
+    reading_keys: dict = field(default_factory=dict)
     _disp_playlist_index: str = field(init=False, default="")
 
     _disp_bpm: str = field(init=False, default="--")
@@ -68,14 +72,21 @@ class Track:
         if self.playlist_index is not None:
             self._disp_playlist_index = str(self.playlist_index + 1)
 
-def row_to_track(row: TrackRow) -> Track:
+def row_to_track(row: TrackRow, readings: Optional[dict] = None) -> Track:
+    """``readings``: the track's readings by field (LibraryDB.all_readings), for the search."""
     added_qt = QtCore.QDateTime.fromSecsSinceEpoch(int(row.added_ts)) if row.added_ts else None
     return Track(
         track_id=row.path, title=row.title or "", artist=row.artist or "",
         album=row.album or "", bpm=row.bpm, key=row.key, duration_sec=row.duration,
         rating=int(row.rating or 0), added=added_qt, path=row.path, comment=row.comment or "",
         uid=row.uid or "",
+        reading_keys={f: [reading.keys(r) for r in (readings or {}).get(f, [])] for f in READ_FIELDS},
     )
+
+
+# the columns found by their reading too (core.reading): the text search's columns -> Track fields
+READ_FIELDS = ("title", "artist", "album")
+READ_COLUMNS = {"Title": "title", "Artist": "artist", "Album": "album"}
 
 
 _SOURCE_KIND_ROLE = QtCore.Qt.UserRole
@@ -766,11 +777,18 @@ class LibraryWidget(QtWidgets.QWidget):
         # filter and AND / OR. Row 2 holds only the enabled filters' editors,
         # so an idle search bar is a single line and a filter is one click.
         self.e_search = QtWidgets.QLineEdit(placeholderText="Search title, artist, key ...")
+        self.e_search.setToolTip(
+            "<p>Titles, artists and albums are also found by how they read, in any script: "
+            "あのね by anone, ano ne or 아노네 (the reading is set in Edit Track).</p>")
         self.e_search.setClearButtonEnabled(True)
         self.cb_column = QtWidgets.QComboBox()
         self.cb_column.addItems(self.SEARCH_MODES)
         self.cb_column.setToolTip("Column the text search looks in")
         self.cb_column.setSizeAdjustPolicy(QtWidgets.QComboBox.AdjustToContents)
+        self.cb_fuzzy = self._chip(
+            "Fuzzy", "<p>Also find a similar pronunciation (from six letters of the reading on: about one "
+            "sound in five off). Off: the reading must match, up to its spelling.</p>")
+        self.cb_fuzzy.setChecked(True)
 
         def grow(widget: QtWidgets.QWidget, width: int) -> None:
             """An input that grows with its card from ``width`` to a capped size,
@@ -909,7 +927,7 @@ class LibraryWidget(QtWidgets.QWidget):
             return line
 
         row_h = self.e_search.sizeHint().height()
-        for widget in (self.cb_column, self.cb_phrase_filter, self.cb_transition_bpm,
+        for widget in (self.cb_column, self.cb_fuzzy, self.cb_phrase_filter, self.cb_transition_bpm,
                        self.cb_transition_key, self.match_toggle,
                        self.btn_clear_filters):
             widget.setFixedHeight(row_h)
@@ -920,6 +938,7 @@ class LibraryWidget(QtWidgets.QWidget):
         self.e_search.setMinimumWidth(220)
         primary.addWidget(self.e_search, 1)
         primary.addWidget(self.cb_column)
+        primary.addWidget(self.cb_fuzzy)
         primary.addSpacing(4)
         primary.addWidget(separator())
         primary.addSpacing(4)
@@ -959,6 +978,7 @@ class LibraryWidget(QtWidgets.QWidget):
         self.e_search.textChanged.connect(self._on_search_changed)
         self.e_search.textChanged.connect(self._sync_filter_ui)
         self.cb_column.currentIndexChanged.connect(self._on_search_changed)
+        self.cb_fuzzy.toggled.connect(self._on_search_changed)
         self.cb_phrase_filter.toggled.connect(self._sync_filter_ui)
         self.cb_phrase_filter.toggled.connect(self._on_search_changed)
         self.cmb_phrase_label.currentIndexChanged.connect(self._on_search_changed)
@@ -1004,6 +1024,8 @@ class LibraryWidget(QtWidgets.QWidget):
         self._rebuild_source_tree()
         self.reload_from_db()
         self._sync_filter_ui()
+        # the readers loaded in the background (about 2 s), so the first search does not wait
+        threading.Thread(target=reading.warm_up, name="reading-warm-up", daemon=True).start()
 
     # Data loading
     def reload_from_db(self):
@@ -1018,10 +1040,17 @@ class LibraryWidget(QtWidgets.QWidget):
         delegate = self.table.itemDelegate()
         if isinstance(delegate, FastDelegate):
             delegate.clear_cache()  # thumbnails may have been replaced
-        self._library_tracks = [
-            row_to_track(row) if isinstance(row, TrackRow) else row for row in data
-        ]
+        self._library_tracks = self._tracks(data)
         self._refresh_current_source()
+
+    def _tracks(self, rows) -> List[Track]:
+        """Library rows as Tracks, with their readings for the search."""
+        db = self._db()
+        try:
+            readings = db.all_readings()
+        finally:
+            db.close()
+        return [row_to_track(row, readings.get(row.uid)) if isinstance(row, TrackRow) else row for row in rows]
 
     @staticmethod
     def _file_identity(path: object) -> str:
@@ -1157,11 +1186,12 @@ class LibraryWidget(QtWidgets.QWidget):
             db = self._db()
             try:
                 rows = db.list_playlist_tracks(str(self._source_value))
+                readings = db.all_readings()
             finally:
                 db.close()
             tracks = []
             for position, row in rows:
-                track = row_to_track(row)
+                track = row_to_track(row, readings.get(row.uid))
                 track.playlist_index = position
                 track._disp_playlist_index = str(position + 1)
                 tracks.append(track)
@@ -1216,14 +1246,13 @@ class LibraryWidget(QtWidgets.QWidget):
                     artist="",
                     path=path,
                     analyzed=False,
+                    reading_keys={"title": [reading.keys(r) for r, _src in reading.readings(
+                        Path(path).stem, self.cfg.searchconfig.db_languages)]},
                 ))
         return result
 
     def _on_library_updated(self, data) -> None:
-        rows = list(data or [])
-        self._library_tracks = [
-            row_to_track(row) if isinstance(row, TrackRow) else row for row in rows
-        ]
+        self._library_tracks = self._tracks(list(data or []))
         resolved: dict[str, list[str]] = {}
         for track in self._library_tracks:
             playlist_uids = self._pending_playlist_paths.pop(
@@ -1254,6 +1283,11 @@ class LibraryWidget(QtWidgets.QWidget):
             self._pending_playlist_paths.clear()
         self._rebuild_source_tree()
         self.reload_from_db()
+
+    def set_search_config(self, cfg: config) -> None:
+        """The search settings changed: the query is read again (stored readings change with a re-read)."""
+        self.cfg = cfg
+        self._on_search_changed()
 
     def _populate_table(self, tracks: List[Track]):
         header = self.table.horizontalHeader()
@@ -1339,8 +1373,12 @@ class LibraryWidget(QtWidgets.QWidget):
         conditions: list[set[str]] = []
         if text:
             text_paths: set[str] = set()
+            cols = self.HEADERS if col == "All" else [col]
+            read_fields = [READ_COLUMNS[name] for name in cols if name in READ_COLUMNS]
+            s = self.cfg.searchconfig
+            query = reading.query_keys(text, s.query_languages, hangul_korean=s.query_hangul_korean,
+                                       hangul_foreign=s.query_hangul_foreign) if read_fields else []
             for t in self._all_tracks:
-                cols = self.HEADERS if col == "All" else [col]
                 for name in cols:
                     attr = field_map.get(name)
                     if not attr:
@@ -1349,6 +1387,12 @@ class LibraryWidget(QtWidgets.QWidget):
                     if val and text in str(val).lower():
                         text_paths.add(t.path)
                         break
+            if read_fields:
+                # by sound: the query read like the readings, normalized, exactly or nearly
+                entries = [(t.path, k) for t in self._all_tracks for f in read_fields
+                           for k in t.reading_keys.get(f, [])]
+                text_paths.update(entries[i][0] for i in reading.find(
+                    query, [k for _path, k in entries], similar=self.cb_fuzzy.isChecked()))
             conditions.append(text_paths)
 
         conditions.extend(self._search_structured_paths())
@@ -1815,6 +1859,7 @@ class LibraryWidget(QtWidgets.QWidget):
         if not row:
             return
         if self._edit_dlg is None:
-            self._edit_dlg = EditSongDialog(bus=self.bus, libpath=self.cfg.libconfig.libpath)
+            self._edit_dlg = EditSongDialog(bus=self.bus, libpath=self.cfg.libconfig.libpath,
+                                            reading_languages=lambda: self.cfg.searchconfig.db_languages)
         self._edit_dlg.set_track(row)
         self._edit_dlg.show()

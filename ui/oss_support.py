@@ -116,6 +116,16 @@ class SupportDialog(QtWidgets.QDialog):
             ("PyMemoryEditor", "https://github.com/JeanExtreme002/PyMemoryEditor"),
             ("tqdm", "https://github.com/tqdm/tqdm"),
             ("colorama", "https://github.com/tartley/colorama"),
+            ("SudachiPy", "https://github.com/WorksApplications/sudachi.rs"),
+            # the dictionary includes UniDic (NINJAL; GPL / LGPL / BSD, used under BSD) and part of NEologd
+            ("SudachiDict (UniDic, NEologd)", "https://github.com/WorksApplications/SudachiDict"),
+            ("anyascii", "https://github.com/anyascii/anyascii"),
+            ("pypinyin", "https://github.com/mozillazg/python-pinyin"),
+            # its Jyutping data: rime-cantonese and HKCanCor, both CC BY 4.0
+            ("PyCantonese (rime-cantonese, HKCanCor)", "https://pycantonese.org"),
+            ("RapidFuzz", "https://github.com/rapidfuzz/RapidFuzz"),
+            # assets/readings/unihan_taiwan_mandarin.tsv: Unicode License V3
+            ("Unicode Unihan Database", "https://www.unicode.org/charts/unihan.html"),
             ("FFmpeg", "https://ffmpeg.org/donations.html"),
             ("SQLite", "https://sqlite.org/consortium.html"),
         ]
@@ -169,6 +179,12 @@ class SupportDialog(QtWidgets.QDialog):
             "PyMemoryEditor": "PyMemoryEditor",
             "tqdm": "tqdm",
             "colorama": "colorama",
+            "SudachiPy": "sudachipy",
+            "SudachiDict (UniDic, NEologd)": "sudachidict_core",
+            "anyascii": "anyascii",
+            "pypinyin": "pypinyin",
+            "PyCantonese (rime-cantonese, HKCanCor)": "pycantonese",
+            "RapidFuzz": "rapidfuzz",
         }
         for name, url in candidates:
             mod = detect.get(name)

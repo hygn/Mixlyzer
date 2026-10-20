@@ -1,6 +1,6 @@
 # -*- mode: python ; coding: utf-8 -*-
 import os
-from PyInstaller.utils.hooks import collect_submodules
+from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 
 app_name = 'Mixlyzer'
 
@@ -43,8 +43,35 @@ a = Analysis(
             '../assets/styles/app.qss',
             'assets/styles',
         ),
-    ],
-    hiddenimports=[],
+        (
+            '../assets/readings/unihan_taiwan_mandarin.tsv',
+            'assets/readings',
+        ),
+        (
+            '../assets/readings/unihan_korean.tsv',
+            'assets/readings',
+        ),
+        (
+            '../assets/readings/unihan_vietnamese.tsv',
+            'assets/readings',
+        ),
+        (
+            '../assets/readings/unihan_cantonese_variants.tsv',
+            'assets/readings',
+        ),
+        (
+            '../assets/readings/UNICODE-LICENSE.txt',
+            'assets/readings',
+        ),
+    ]
+    # the title readings (core.reading): the readers' dictionaries and tables
+    + collect_data_files('sudachipy')
+    + collect_data_files('sudachidict_core')
+    + collect_data_files('anyascii')
+    + collect_data_files('pypinyin')
+    + collect_data_files('pycantonese'),
+    # Sudachi imports its dictionary package by name (dict="core")
+    hiddenimports=['sudachidict_core'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

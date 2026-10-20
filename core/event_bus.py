@@ -51,6 +51,12 @@ class EventBus(QtCore.QObject):
     sig_rekordbox_sync_progress = QtCore.Signal(object, int, str)
     sig_rekordbox_sync_finished = QtCore.Signal(object, object)
     sig_rekordbox_sync_failed = QtCore.Signal(object, str)
+    # the library's readings read again (Settings > Search)
+    sig_reading_refresh_requested = QtCore.Signal(object)
+    sig_reading_refresh_started = QtCore.Signal(object)
+    sig_reading_refresh_progress = QtCore.Signal(object, int, str)
+    sig_reading_refresh_finished = QtCore.Signal(object, object)
+    sig_reading_refresh_failed = QtCore.Signal(object, str)
 
     # reload configs
     sig_reload_UI = QtCore.Signal(object)

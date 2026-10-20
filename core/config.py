@@ -180,6 +180,18 @@ class cuepointconfig:
 
 
 @dataclass
+class searchconfig:
+    """The library search by how titles / artists / albums read (core.reading)."""
+    # the languages Han characters (without kana) are read in for the library's stored readings
+    # (core.reading.HAN_LANGUAGES); a change reads the library again
+    db_languages: list[str]
+    # the languages a query's Han characters are read in
+    query_languages: list[str]
+    query_hangul_korean: bool    # a query's Hangul read as Korean (사회 sahoe: Korean titles, Korean Hanja readings)
+    query_hangul_foreign: bool   # ... as Korean spells a foreign word (도쿄 tokyo: Japanese / English titles)
+
+
+@dataclass
 class config:
     analysisconfig: analysisconfig
     libconfig: libconfig
@@ -187,6 +199,7 @@ class config:
     playbackconfig: playbackconfig
     externalsyncconfig: externalsyncconfig
     cuepointconfig: cuepointconfig
+    searchconfig: searchconfig
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -383,6 +396,14 @@ def default_cfg():
         f.name: cuepointrule(at_start=f.name in ("interlude", "outro"), at_end=False, same_label_boundaries=False)
         for f in fields(cuepointconfig)
     }
+    # every language the readers have (core.reading.HAN_LANGUAGES)
+    han_languages = ["ja", "zh", "yue", "ko-hanja", "vi", "zh-tw"]
+    scfg = searchconfig(
+        db_languages=list(han_languages),
+        query_languages=list(han_languages),
+        query_hangul_korean=True,
+        query_hangul_foreign=True,
+    )
     return config(
         libconfig=lcfg,
         analysisconfig=acfg,
@@ -390,6 +411,7 @@ def default_cfg():
         playbackconfig=pcfg,
         externalsyncconfig=xcfg,
         cuepointconfig=cuepointconfig(**cue_rules),
+        searchconfig=scfg,
     )
 
 

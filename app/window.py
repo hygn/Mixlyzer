@@ -17,6 +17,7 @@ from core.workflows.analysis import AnalysisWorkflow
 from core.taskmanager import taskmanager
 from core.external_sync import ExternalSyncController
 from core.workflows.rekordbox_sync import RekordboxXmlSync
+from core.workflows.reading_refresh import LibraryReadingRefresh
 from .metronome import MetronomeController
 from utils.window_visibility import is_window_fully_hidden
 from utils.volume import slider_percent_to_linear, trim_dbfs_to_linear
@@ -30,7 +31,7 @@ from ui.oss_support import SupportDialog
 from ui.about_dialog import AboutDialog
 
 from core.workflows.segment_reanalysis import SegmentReanalysisWorkflow
-from core.config import config, load_cfg
+from core.config import config, default_cfg, load_cfg
 from core.beat_geometry import downbeat_beat_indices
 
 class AppWindow(QtWidgets.QMainWindow):
@@ -90,6 +91,13 @@ class AppWindow(QtWidgets.QMainWindow):
         self.rekordbox_sync.progress.connect(self.bus.sig_rekordbox_sync_progress)
         self.rekordbox_sync.finished.connect(self.bus.sig_rekordbox_sync_finished)
         self.rekordbox_sync.failed.connect(self.bus.sig_rekordbox_sync_failed)
+        self.reading_refresh = LibraryReadingRefresh(cfg_getter=lambda: self.cfg, parent=self)
+        self.reading_refresh.started.connect(self.bus.sig_reading_refresh_started)
+        self.reading_refresh.progress.connect(self.bus.sig_reading_refresh_progress)
+        self.reading_refresh.finished.connect(self.bus.sig_reading_refresh_finished)
+        self.reading_refresh.failed.connect(self.bus.sig_reading_refresh_failed)
+        # the library's search takes the new readings
+        self.reading_refresh.finished.connect(lambda _request, _result: self._emit_library_update(self.cfg, None))
 
         # Main UI pane
         self.pane = MainPane(self.bus, self.model, self.tl, self.cfg)
@@ -126,6 +134,7 @@ class AppWindow(QtWidgets.QMainWindow):
         self.bus.sig_setting_saveJsonRequested.connect(self._on_settings_save)
         self.bus.sig_rekordbox_sync_requested.connect(self.rekordbox_sync.sync_requested)
         self.bus.sig_rekordbox_sync_track_requested.connect(self.rekordbox_sync.sync_track_requested)
+        self.bus.sig_reading_refresh_requested.connect(self.reading_refresh.refresh_requested)
         self.bus.sig_reanalyze_requested.connect(self.reanalyze_file)
 
         self.resize(1600, 900)  # minimum target: FHD
@@ -506,6 +515,13 @@ class AppWindow(QtWidgets.QMainWindow):
             and _config.libconfig.rekordbox_xml_path.strip()
         ):
             self.bus.sig_rekordbox_sync_requested.emit(True)
+        # search: the query's languages at once; other stored languages: the library read again
+        prev_scfg = prev_cfg.get("searchconfig") or default_cfg().to_dict()["searchconfig"]
+        new_scfg = _config.to_dict()["searchconfig"]
+        if prev_scfg != new_scfg:
+            self.pane.lib.set_search_config(_config)
+        if prev_scfg.get("db_languages") != new_scfg["db_languages"]:
+            self.bus.sig_reading_refresh_requested.emit(None)
         prev_vcfg = prev_cfg.get("viewconfig", {})
         new_vcfg = _config.to_dict()["viewconfig"]
         prev_pcfg = prev_cfg.get("playbackconfig", {})

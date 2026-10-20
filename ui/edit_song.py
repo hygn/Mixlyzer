@@ -1,17 +1,21 @@
 from __future__ import annotations
 import os
-from typing import Optional
+from typing import Callable, List, Optional
 from dataclasses import asdict, replace
 
 from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QBrush, QColor
 from PySide6.QtWidgets import (
     QDialog, QWidget, QVBoxLayout, QHBoxLayout, QFormLayout,
     QLineEdit, QSpinBox, QDoubleSpinBox, QLabel, QDialogButtonBox,
-    QGroupBox, QComboBox, QPushButton, QFileDialog, QMessageBox
+    QGroupBox, QComboBox, QPushButton, QFileDialog, QMessageBox,
+    QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView
 )
 
+from core import reading
 from core.event_bus import EventBus
-from core.library_handler import TrackRow, LibraryDB
+from core.library_handler import READING_FIELDS, USER_SOURCE, TrackRow, LibraryDB
+from ui.theme import current_theme
 from core.config import config
 from utils.labels import CAMELOT_LABELS, CLASSICAL_LABELS
 
@@ -36,13 +40,16 @@ class EditSongDialog(QDialog):
 
     sig_track_saved = Signal(object)  # TrackRow
 
-    def __init__(self, bus: Optional[EventBus] = None, libpath: Optional[str] = None):
+    def __init__(self, bus: Optional[EventBus] = None, libpath: Optional[str] = None,
+                 reading_languages: Optional[Callable[[], List[str]]] = None):
+        """``reading_languages``: the search settings' stored languages (read when needed; all when None)."""
         super().__init__()
         self.setWindowTitle("Edit Track Metadata")
         self.setModal(False)
         self.resize(500, 300)
         self._bus = bus
         self._libpath = libpath
+        self._reading_languages = reading_languages or (lambda: None)
         self._row: Optional[TrackRow] = None
 
         root = QVBoxLayout(self)
@@ -66,10 +73,35 @@ class EditSongDialog(QDialog):
         path_row = QWidget(); path_lay = QHBoxLayout(path_row); path_lay.setContentsMargins(0, 0, 0, 0)
         path_lay.addWidget(self.ed_path, 1); path_lay.addWidget(btn_browse)
 
+        # The readings (core.reading): how title / artist / album read in Latin letters, up to
+        # READING_SLOTS each (Han: one per language) -- what the search compares. Read from the text
+        # (dim) unless set here: editing a field's readings makes them the user's, emptying them reads again.
+        # a column per field, a row per slot
+        self.tbl_readings = QTableWidget(reading.READING_SLOTS, len(READING_FIELDS))
+        self.tbl_readings.setHorizontalHeaderLabels([f.capitalize() for f in READING_FIELDS])
+        self.tbl_readings.setVerticalHeaderLabels([str(i + 1) for i in range(reading.READING_SLOTS)])
+        self.tbl_readings.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.tbl_readings.verticalHeader().setSectionResizeMode(QHeaderView.Fixed)
+        self.tbl_readings.setEditTriggers(QAbstractItemView.AllEditTriggers)
+        self.tbl_readings.setToolTip(
+            "<p>How the title, artist and album read in Latin letters: the search finds the track by them "
+            "in any script (あのね by anone or 아노네). Dim: read from the text (Han in each language); "
+            "edit a column to set its readings, empty it to read again.</p>")
+        self.tbl_readings.setFixedHeight(
+            self.tbl_readings.horizontalHeader().sizeHint().height()
+            + self.tbl_readings.verticalHeader().defaultSectionSize() * reading.READING_SLOTS + 4)
+        self.tbl_readings.itemChanged.connect(self._on_reading_changed)
+        self._reading_user = {f: False for f in READING_FIELDS}      # the field's readings are the user's
+        self._reading_touched = {f: False for f in READING_FIELDS}   # changed here (saved on apply)
+        self._sources = {"title": self.ed_title, "artist": self.ed_artist, "album": self.ed_album}
+        for f, edit in self._sources.items():
+            edit.textChanged.connect(lambda _text, f=f: self._refresh_auto_readings(f))
+
         form_edit.addRow("Path", path_row)
         form_edit.addRow("Title", self.ed_title)
         form_edit.addRow("Artist", self.ed_artist)
         form_edit.addRow("Album", self.ed_album)
+        form_edit.addRow("Readings", self.tbl_readings)
         form_edit.addRow("BPM", self.sp_bpm)
         form_edit.addRow("Key", self.cmb_key)
         form_edit.addRow("Rating (0-5)", self.sp_rating)
@@ -119,6 +151,18 @@ class EditSongDialog(QDialog):
         self.sp_rating.setValue(int(row.rating or 0))
         self.ed_comment.setText(row.comment or "")
         self.ed_path.setText(row.path or "")
+        stored = {f: [] for f in READING_FIELDS}
+        if self._libpath:
+            db = LibraryDB(os.path.join(self._libpath, "library.db"))
+            db.connect()
+            try:
+                stored = db.readings(row.uid)
+            finally:
+                db.close()
+        for f in READING_FIELDS:
+            self._reading_touched[f] = False
+            self._reading_user[f] = any(src == USER_SOURCE for _text, src in stored.get(f, []))
+            self._fill_readings(f, stored.get(f, []))
 
         # read-only
         self.ro_uid.setText(row.uid or "")
@@ -145,6 +189,49 @@ class EditSongDialog(QDialog):
         row.path = self.ed_path.text().strip()
         return row
 
+    def user_readings(self) -> dict:
+        """The rows changed here: field -> the user's readings, or None to read the text again."""
+        out = {}
+        for c, f in enumerate(READING_FIELDS):
+            if self._reading_touched[f]:
+                texts = [self.tbl_readings.item(r, c).text().strip() if self.tbl_readings.item(r, c) else ""
+                         for r in range(reading.READING_SLOTS)]
+                out[f] = [t for t in texts if t] if self._reading_user[f] else None
+        return out
+
+    # Readings
+    def _fill_readings(self, field: str, readings: list) -> None:
+        """Show (reading, source) pairs in the field's column: dim when read from the text."""
+        c = READING_FIELDS.index(field)
+        dim = QBrush(QColor(current_theme().text_dim))
+        self.tbl_readings.blockSignals(True)
+        for r in range(reading.READING_SLOTS):
+            text, source = readings[r] if r < len(readings) else ("", "")
+            item = QTableWidgetItem(text)
+            item.setToolTip(f"{text}  ({reading.SOURCES.get(source, source)})" if text else "")
+            if source != USER_SOURCE:
+                item.setForeground(dim)
+            self.tbl_readings.setItem(r, c, item)
+        self.tbl_readings.blockSignals(False)
+
+    def _refresh_auto_readings(self, field: str) -> None:
+        """Readings read from the text follow it as it is typed."""
+        if self._row is None or self._reading_user[field]:
+            return
+        self._fill_readings(field, reading.readings(self._sources[field].text(), self._reading_languages()))
+
+    def _on_reading_changed(self, item: QTableWidgetItem) -> None:
+        field = READING_FIELDS[item.column()]
+        self._reading_touched[field] = True
+        texts = [self.tbl_readings.item(r, item.column()).text().strip() if self.tbl_readings.item(r, item.column()) else ""
+                 for r in range(reading.READING_SLOTS)]
+        if any(texts):   # the column is the user's now
+            self._reading_user[field] = True
+            self._fill_readings(field, [(t, USER_SOURCE) for t in texts])
+        else:            # emptied: read from the text again
+            self._reading_user[field] = False
+            self._refresh_auto_readings(field)
+
     # Internal
     def _make_ro(self, w: QLineEdit) -> None:
         w.setReadOnly(True)
@@ -168,13 +255,16 @@ class EditSongDialog(QDialog):
             # No persistence configured; emit signal for external handling
             self.sig_track_saved.emit(updated)
             return True
-        db = LibraryDB(os.path.join(self._libpath, "library.db"))
+        db = LibraryDB(os.path.join(self._libpath, "library.db"), reading_languages=self._reading_languages())
         db.connect()
         try:
-            # the metadata under the stored path, then the path (checked: one file, one track)
-            db.upsert(replace(updated, path=self._row.path))
+            # the path first (checked: one file, one track; the file's size and mtime follow it),
+            # then the metadata and the readings set here
             if path_changed:
                 db.set_path(updated.uid, updated.path)
+            db.upsert(replace(updated, file_mtime=None, file_size=None))
+            for field, texts in self.user_readings().items():
+                db.set_user_readings(updated.uid, field, texts)
             db.conn.commit()
             saved = db.get_by_uid(updated.uid)
             lib_full = db.list_all()

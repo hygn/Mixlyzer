@@ -5,6 +5,7 @@ from dataclasses import dataclass, asdict
 from typing import Iterable, List, Optional, Dict, Any, Tuple
 from uuid import UUID, uuid4
 
+from core import reading
 from core.linear_segments import harmonic_compatible_keys
 from utils.labels import idx_to_labels
 
@@ -122,6 +123,11 @@ class TrackRow:
         }
 
 
+# the fields with readings (track_readings)
+READING_FIELDS = ("title", "artist", "album")
+USER_SOURCE = "user"   # track_readings.source of the readings the user set
+
+
 @dataclass
 class PlaylistRow:
     uid: str
@@ -196,8 +202,11 @@ class LinearTransitionRow:
 
 # DB Helper
 class LibraryDB:
-    def __init__(self, db_path: str):
+    def __init__(self, db_path: str, reading_languages: Optional[List[str]] = None):
+        """``reading_languages``: the languages Han is read in for the stored readings (the
+        search settings' db_languages; all by default)."""
         self.db_path = db_path
+        self.reading_languages = list(reading_languages) if reading_languages is not None else None
         self._conn: Optional[sqlite3.Connection] = None
 
     def connect(self):
@@ -239,6 +248,21 @@ class LibraryDB:
             track_uid    TEXT NOT NULL,
             PRIMARY KEY (playlist_uid, position),
             FOREIGN KEY (playlist_uid) REFERENCES playlists(uid) ON DELETE CASCADE,
+            FOREIGN KEY (track_uid) REFERENCES tracks(uid) ON DELETE CASCADE
+        );
+        """)
+        # The romanized readings (core.reading) of each track's title / artist / album: the
+        # search's intermediate representation, up to READING_SLOTS a field. A field whose readings
+        # the user set (source "user") keeps them; the others are read again whenever the track
+        # is written.
+        self._conn.execute("""
+        CREATE TABLE IF NOT EXISTS track_readings (
+            track_uid TEXT NOT NULL,
+            field     TEXT NOT NULL,
+            slot      INTEGER NOT NULL,
+            reading   TEXT NOT NULL,
+            source    TEXT NOT NULL,
+            PRIMARY KEY (track_uid, field, slot),
             FOREIGN KEY (track_uid) REFERENCES tracks(uid) ON DELETE CASCADE
         );
         """)
@@ -360,6 +384,56 @@ class LibraryDB:
         values = asdict(row)
         values["uid"] = _canonical_uuid4(row.uid)
         self.conn.execute(q, values)
+        self.refresh_readings(values["uid"])
+
+    # Readings (core.reading)
+    def refresh_readings(self, uid: str) -> None:
+        """Read the track's title / artist / album again, except the fields whose readings the user set."""
+        uid = _canonical_uuid4(uid)
+        row = self.conn.execute("SELECT title, artist, album FROM tracks WHERE uid=?;", (uid,)).fetchone()
+        if row is None:
+            return
+        user = {f for (f,) in self.conn.execute(
+            "SELECT DISTINCT field FROM track_readings WHERE track_uid=? AND source=?;", (uid, USER_SOURCE))}
+        for field in READING_FIELDS:
+            if field not in user:
+                self._write_readings(uid, field, reading.readings(row[field] or "", self.reading_languages))
+
+    def _write_readings(self, uid: str, field: str, readings: list) -> None:
+        self.conn.execute("DELETE FROM track_readings WHERE track_uid=? AND field=?;", (uid, field))
+        self.conn.executemany(
+            "INSERT INTO track_readings(track_uid, field, slot, reading, source) VALUES(?, ?, ?, ?, ?);",
+            ((uid, field, slot, text, source) for slot, (text, source) in enumerate(readings[:reading.READING_SLOTS])),
+        )
+
+    def readings(self, uid: str) -> Dict[str, List[Tuple[str, str]]]:
+        """The track's readings by field: (reading, source) in slot order."""
+        out: Dict[str, List[Tuple[str, str]]] = {f: [] for f in READING_FIELDS}
+        for field, text, source in self.conn.execute(
+                "SELECT field, reading, source FROM track_readings WHERE track_uid=? ORDER BY field, slot;",
+                (_canonical_uuid4(uid),)):
+            out.setdefault(field, []).append((text, source))
+        return out
+
+    def all_readings(self) -> Dict[str, Dict[str, List[str]]]:
+        """Every track's readings: uid -> field -> readings in slot order (for the library's search)."""
+        out: Dict[str, Dict[str, List[str]]] = {}
+        for uid, field, text in self.conn.execute(
+                "SELECT track_uid, field, reading FROM track_readings ORDER BY track_uid, field, slot;"):
+            out.setdefault(uid, {}).setdefault(field, []).append(text)
+        return out
+
+    def set_user_readings(self, uid: str, field: str, readings: Optional[List[str]]) -> None:
+        """The user's readings of a field (up to READING_SLOTS, kept from then on); None or empty:
+        read from the text again."""
+        uid = _canonical_uuid4(uid)
+        texts = [t.strip() for t in (readings or []) if t and t.strip()]
+        with self.tx():
+            if texts:
+                self._write_readings(uid, field, [(t, USER_SOURCE) for t in dict.fromkeys(texts)])
+            else:
+                self.conn.execute("DELETE FROM track_readings WHERE track_uid=? AND field=?;", (uid, field))
+                self.refresh_readings(uid)
 
     def upsert_meta(self, meta: Dict[str, Any]):
         tr = TrackRow.from_meta(meta)
@@ -379,7 +453,7 @@ class LibraryDB:
             for key in keys:
                 playlists.update(row[0] for row in self.conn.execute(
                     "SELECT DISTINCT playlist_uid FROM playlist_tracks WHERE track_uid=?;", key))
-            self.conn.executemany("DELETE FROM tracks WHERE uid=?;", keys)  # playlist entries cascade
+            self.conn.executemany("DELETE FROM tracks WHERE uid=?;", keys)  # playlist entries and readings cascade
             self.conn.executemany("DELETE FROM track_bpm_segments WHERE track_uid=?;", keys)
             self.conn.executemany("DELETE FROM track_key_segments WHERE track_uid=?;", keys)
             self.conn.executemany("DELETE FROM track_phrase_sections WHERE track_uid=?;", keys)

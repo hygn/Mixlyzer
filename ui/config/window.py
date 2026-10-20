@@ -35,11 +35,13 @@ from ui.config.external_sync import (
 )
 from ui.config.library import LibrarySettingsMixin, build_library_tab
 from ui.config.playback import PlaybackSettingsMixin, build_playback_tab
+from ui.config.search import SearchSettingsMixin, build_search_tab
 from ui.config.view import ViewSettingsMixin, build_view_tab
 
 
 class SettingsDialog(
     LibrarySettingsMixin,
+    SearchSettingsMixin,
     ViewSettingsMixin,
     PlaybackSettingsMixin,
     AnalysisSettingsMixin,
@@ -59,6 +61,7 @@ class SettingsDialog(
 
         self.tabs = QTabWidget(self)
         build_library_tab(self)
+        build_search_tab(self)
         build_view_tab(self)
         build_playback_tab(self)
         build_analysis_tab(self)
@@ -90,6 +93,7 @@ class SettingsDialog(
 
         self._current_cfg = None
         self._initialize_library_settings(bus)
+        self._initialize_search_settings(bus)
         self._initialize_view_settings(bus)
         self._initialize_playback_settings(bus)
 
@@ -148,6 +152,9 @@ class SettingsDialog(
         self.ed_logpath.setText(cfg.libconfig.logpath)
         self.cb_rekordbox_sync.setChecked(bool(cfg.libconfig.rekordbox_sync_enabled))
         self.ed_rekordbox_xml_path.setText(cfg.libconfig.rekordbox_xml_path)
+
+        # search
+        self._set_search_config(cfg.searchconfig)
 
         # view
         v = cfg.viewconfig
@@ -368,6 +375,7 @@ class SettingsDialog(
                 memory_deck2=self._get_memory_deck(self.deck2_specs),
             ),
             cuepointconfig=self._get_cue_point_rules(),
+            searchconfig=self._get_search_config(),
         )
 
     def get_dict(self) -> dict:

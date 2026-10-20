@@ -20,4 +20,10 @@ dependencies = [
     "tqdm>=4.67.1",
     "pip-licenses>=5.5.0",
     "pymemoryeditor>=3.0.1",
+    "sudachipy>=0.7.0",
+    "sudachidict-core>=20261015",
+    "anyascii>=0.3.3",
+    "rapidfuzz>=3.14.6",
+    "pypinyin>=0.55.0",
+    "pycantonese>=5.0.0",
 ]
