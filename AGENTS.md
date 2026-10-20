@@ -13,7 +13,8 @@ Working notes for AI/automation agents editing the Mixlyzer codebase.
 
 ## Repo Map
 - `app/`: Qt entrypoint and top-level window wiring.
-  - `main.py`: app bootstrap, dark palette, font loading, library-version migration flow.
+  - `main.py`: app bootstrap, dark palette, font loading, library-version migration flow. Kept light: a spawned worker process imports the main module again, so `app.window` is imported by the startup, not at the top.
+  - `startup.py`: the startup splash (the task, what it is doing, a Task and an Overall progress bar) and the slow work done before the window opens, in order: the heavy imports, the playback's numba kernels (JIT, from numba's disk cache), FFmpeg's first run, the search readers (`reading.warm_up`), every stored reading's search keys (`reading.keys`' LRU cache), then `AppWindow(progress=)`. Each task's weight is its measured time; events are taken between updates except while the window is built (only the splash repainted there, so no timer reaches a half-built window).
   - `window.py`: `AppWindow`, workflow wiring, EventBus wiring, External Sync, metronome, model updates.
 - `core/`: shared runtime/state/integration layer.
   - `config.py`: dataclass config schema, defaults, `load_cfg()`.
@@ -26,7 +27,7 @@ Working notes for AI/automation agents editing the Mixlyzer codebase.
   - `external_sync.py`: memory-based external deck sync / transport lockout.
   - `player.py`, `timeline.py`, `taskmanager.py`: playback, viewport timeline, worker/task UI state.
   - `tempo_rows.py`: tempo-segment rows and the beats they give (NumPy only; `rebuild_grid_from_segments`, ramp helpers), shared by the analyzer, editor, views and exporters.
-  - `reading.py`: readings for search, in three layers. (1) `readings(text)`: romaji by script -- Japanese by Sudachi (SudachiDict core) + a kana table, Hangul by Revised Romanization with its sound changes (own code), Latin kept, other scripts by anyascii; Han without kana once per language (`HAN_LANGUAGES`): Japanese, Mandarin (pypinyin), Cantonese (pycantonese Jyutping; a form it lacks, 会 学, read as its Unihan variant: `unihan_cantonese_variants.tsv`), Korean Hanja (Unihan kHangul: `assets/readings/unihan_korean.tsv`, spelled as a word -- the initial sound law, 렬/률 as 열/율 after a vowel or ㄴ, 不 as 부 before ㄷ/ㅈ -- then as Hangul), Sino-Vietnamese (Unihan kVietnamese, which mixes in Nom readings: `unihan_vietnamese.tsv`), Taiwan Mandarin (only where Unihan kMandarin's Taiwan value differs: `unihan_taiwan_mandarin.tsv`); the Unihan tables are Unicode License, a character missing from them is read in Mandarin; at most `READING_SLOTS` (7). The languages are Settings > Search (`config.searchconfig`): `db_languages` for the stored readings (`LibraryDB(..., reading_languages=)`: the analysis, Edit Track), `query_languages` and Hangul as Korean / as a foreign word for the query (`query_keys`). (2) `normalize`: the search form where spellings of one sound agree (shi/si, tsu/츠, long vowels and doubled letters, voicing, l/r; a query's Hangul read as Korean and with Korean's spelling of foreign words). (3) `find`: contained, or nearly (RapidFuzz partial ratio of the query within a reading not much shorter than it, from `SIMILAR_MIN` letters; the library's Fuzzy toggle). `warm_up()` loads the readers (about 2 s; the library does it in a thread). Libraries were chosen for LGPL-compatible licences (GPL / CC BY-SA ones -- pykakasi, unidecode, korean-romanizer, ko-pron (a Wiktionary port), taibun's data -- are not used).
+  - `reading.py`: readings for search, in three layers. (1) `readings(text)`: romaji by script -- Japanese by Sudachi (SudachiDict core) + a kana table, Hangul by Revised Romanization with its sound changes (own code), Latin kept, other scripts by anyascii; Han without kana once per language (`HAN_LANGUAGES`): Japanese, Mandarin (pypinyin), Cantonese (pycantonese Jyutping; a form it lacks, 会 学, read as its Unihan variant: `unihan_cantonese_variants.tsv`), Korean Hanja (Unihan kHangul: `assets/readings/unihan_korean.tsv`, spelled as a word -- the initial sound law, 렬/률 as 열/율 after a vowel or ㄴ, 不 as 부 before ㄷ/ㅈ -- then as Hangul), Sino-Vietnamese (Unihan kVietnamese, which mixes in Nom readings: `unihan_vietnamese.tsv`), Taiwan Mandarin (only where Unihan kMandarin's Taiwan value differs: `unihan_taiwan_mandarin.tsv`); the Unihan tables are Unicode License, a character missing from them is read in Mandarin; at most `READING_SLOTS` (7). The languages are Settings > Search (`config.searchconfig`): `db_languages` for the stored readings (`LibraryDB(..., reading_languages=)`: the analysis, Edit Track), `query_languages` and Hangul as Korean / as a foreign word for the query (`query_keys`). (2) `normalize`: the search form where spellings of one sound agree (shi/si, tsu/츠, long vowels and doubled letters, voicing, l/r; a query's Hangul read as Korean and with Korean's spelling of foreign words). (3) `find`: contained, or nearly (RapidFuzz partial ratio of the query within a reading not much shorter than it, from `SIMILAR_MIN` letters; the library's Fuzzy toggle). `warm_up()` loads the readers (about 2 s; `app.startup` does it before the window opens). Libraries were chosen for LGPL-compatible licences (GPL / CC BY-SA ones -- pykakasi, unidecode, korean-romanizer, ko-pron (a Wiktionary port), taibun's data -- are not used).
   - `audio/`: decode + low-level audio helpers.
 - `analyzer_core/`: DSP and editor-side reanalysis algorithms.
   - `global_analyzer.py`: full analysis pipeline and persistence handoff.
@@ -55,11 +56,12 @@ Working notes for AI/automation agents editing the Mixlyzer codebase.
 ## App Flow
 - Entry is `app.main:main()`.
 - On startup the app:
+  - shows the startup splash (`app.startup`),
   - loads `config.json`,
   - ensures the library directory exists,
   - checks `library/VERSION`,
   - checks the on-disk library version through the migration adapter and stops on a mismatch,
-  - creates and shows `AppWindow`.
+  - runs the startup tasks (imports, JIT, FFmpeg, search readers and keys) and builds `AppWindow`, then shows it and closes the splash.
 - `AppWindow` creates the shared `EventBus`, `DataModel`, `TimelineCoordinator`, `PlayerController`, `ExternalSyncController`, `SegmentReanalysisManager`, and `MainPane`.
 - UI state is mostly signal-driven. Feature/property/album-art signals are notifications only; listeners read current values from the shared `DataModel`.
 

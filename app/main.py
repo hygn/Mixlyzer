@@ -7,7 +7,7 @@ from core.library_version import (
     version_file_path,
 )
 from migration import library_migration
-from app.window import AppWindow
+from app.startup import StartupSplash, run_startup, startup_tasks
 from ui.theme import apply_theme
 from utils.fonts import load_fonts_and_set_global
 
@@ -33,6 +33,9 @@ def main():
             "Close it and launch again as a normal user.",
         )
         sys.exit(1)
+    splash = StartupSplash()
+    splash.show()
+    app.processEvents()
     cfg = load_cfg()
     lib_path = Path(cfg.libconfig.libpath)
     version_path = version_file_path(lib_path)
@@ -41,6 +44,7 @@ def main():
         ensure_current_version_file(lib_path)
     migration_status = library_migration.inspect(lib_path)
     if not migration_status.is_current:
+        splash.close()
         QtWidgets.QMessageBox.critical(
             None,
             "Incompatible Library Version",
@@ -50,8 +54,10 @@ def main():
             "Automatic library migration is not available.",
         )
         sys.exit(1)
-    w = AppWindow()
+    # the slow work first (imports, JIT, FFmpeg, search readers and keys), then the window
+    w = run_startup(splash, startup_tasks(cfg))[-1]
     w.show()
+    splash.close()
     sys.exit(app.exec())
 
 if __name__ == "__main__":

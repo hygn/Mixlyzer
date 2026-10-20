@@ -1,7 +1,6 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
 import json
-import threading
 from pathlib import Path
 from typing import List, Optional
 from PySide6 import QtCore, QtGui, QtWidgets
@@ -1024,8 +1023,6 @@ class LibraryWidget(QtWidgets.QWidget):
         self._rebuild_source_tree()
         self.reload_from_db()
         self._sync_filter_ui()
-        # the readers loaded in the background (about 2 s), so the first search does not wait
-        threading.Thread(target=reading.warm_up, name="reading-warm-up", daemon=True).start()
 
     # Data loading
     def reload_from_db(self):

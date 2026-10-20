@@ -8,7 +8,7 @@ import numpy as np
 from PySide6 import QtCore, QtMultimedia
 
 from core.audio.clicks import ClickTrack
-from core.audio.decoder import decode_to_memmap, warm_ffmpeg_decoder
+from core.audio.decoder import decode_to_memmap
 from core.audio.feeder import PCMFeeder
 from core.event_bus import EventBus
 
@@ -388,7 +388,6 @@ class PlayerController(QtCore.QObject):
         self._audio_thread.started.connect(w.initialize)
         self._audio_thread.finished.connect(w.deleteLater)
         self._audio_thread.start()
-        threading.Thread(target=warm_ffmpeg_decoder, name="FFmpegWarmup", daemon=True).start()
 
         app = QtCore.QCoreApplication.instance()
         if app is not None:

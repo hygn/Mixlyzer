@@ -46,7 +46,7 @@ import re
 import threading
 import unicodedata
 from functools import lru_cache
-from typing import Iterable
+from typing import Callable, Iterable
 
 from anyascii import anyascii
 from rapidfuzz import fuzz, process
@@ -389,14 +389,21 @@ def _read_vietnamese(text: str) -> str:
                     for ch in text if ch.strip())
 
 
-def warm_up() -> None:
-    """Load the readers (Sudachi, pypinyin, pycantonese: about 2 s), e.g. in a background thread, so
-    the first reading or search does not wait."""
-    _japanese_tokenizer()
-    _read_mandarin("中", taiwan=True)
-    _read_cantonese("中")
-    _unihan_table("unihan_korean")
-    _unihan_table("unihan_vietnamese")
+def warm_up(progress: Callable[[float, str], None] | None = None) -> None:
+    """Load the readers (Sudachi, pypinyin, pycantonese, the Unihan tables: about 2 s; the app does
+    it while starting), so the first reading or search does not wait; ``progress(fraction done,
+    reader)`` before each (by its usual share of the time)."""
+    steps = [("Japanese (SudachiDict)", 0.04, _japanese_tokenizer),
+             ("Mandarin (pypinyin)", 0.1, lambda: _read_mandarin("中", taiwan=True)),
+             ("Cantonese (pycantonese)", 0.82, lambda: _read_cantonese("中")),
+             ("Korean Hanja (Unihan)", 0.02, lambda: _unihan_table("unihan_korean")),
+             ("Sino-Vietnamese (Unihan)", 0.02, lambda: _unihan_table("unihan_vietnamese"))]
+    done = 0.0
+    for name, share, load in steps:
+        if progress is not None:
+            progress(done, name)
+        load()
+        done += share
 
 
 def _romanize(text: str, *, han: str, foreign_spelling: bool) -> str:

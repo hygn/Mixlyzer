@@ -40,8 +40,11 @@ class AppWindow(QtWidgets.QMainWindow):
     _HIDDEN_REFRESH_FPS = 1
     _HIDDEN_ENTER_POLLS = 5
 
-    def __init__(self):
+    def __init__(self, progress=None):
+        """``progress(fraction, part)``: how far the window is built (the startup splash)."""
         super().__init__()
+        step = progress or (lambda _fraction, _part: None)
+        step(0.0, "Core objects and playback")
         appid = "org.hygn.mixylzer"
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(appid)
         try:
@@ -100,12 +103,15 @@ class AppWindow(QtWidgets.QMainWindow):
         self.reading_refresh.finished.connect(lambda _request, _result: self._emit_library_update(self.cfg, None))
 
         # Main UI pane
+        step(0.03, "Main view, editor and library")
         self.pane = MainPane(self.bus, self.model, self.tl, self.cfg)
         self.setCentralWidget(self.pane)
         self.pane.install_default()
 
+        step(0.3, "Settings")
         self.cfgwin = SettingsDialog(bus=self.bus)
         self.cfgwin.set_config(self.cfg)
+        step(0.6, "Dialogs, workflows and metronome")
         self.workers = WorkersDialog()
         self.workers.set_bus(self.bus)
         self.support_dlg = SupportDialog(self)
@@ -192,12 +198,13 @@ class AppWindow(QtWidgets.QMainWindow):
         self._apply_timestretch(bool(self.cfg.playbackconfig.use_timestretch))
         # The scratch reader's and cursor poller's numba code, loaded here on the main
         # thread once the window is up (~1 s from the disk cache), so the audio thread
-        # never waits for it.
+        # never waits for it (already loaded when the app started with app.startup).
         from core.audio.cursor_poller import warm_cursor_poller
         from core.audio.dsp import warm_scratch_numba
         QtCore.QTimer.singleShot(0, lambda: (warm_scratch_numba(), warm_cursor_poller()))
         self._apply_external_sync_mode(self.cfg.externalsyncconfig)
         self._apply_visibility_refresh_setting(force=True)
+        step(1.0, "")
 
     # DnD
     def dragEnterEvent(self, e: QtGui.QDragEnterEvent):
