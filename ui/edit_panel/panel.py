@@ -24,6 +24,7 @@ from ui.edit_panel.styles import BUTTON_STYLESHEET, WARNING_BUTTON_STYLESHEET
 from ui.theme import current_theme
 from utils.cue_points import build_cue_points_np
 from utils.phrases import assigned_phrases, build_phrase_segments_np
+from core.i18n import tr, tr_mark
 
 
 class EditPanel(
@@ -54,6 +55,10 @@ class EditPanel(
     # between the info and the deck.
     ROW_H = PAGE_BTN_H + BTN_HEIGHT * 3 + STATUS_H + ROW_VSPACING * 4
     PAGES = ("Beatgrid", "Key", "Phrase", "CUE")
+    # the pages' names shown (translated; Key and CUE as they are) and their tooltips
+    PAGE_TITLES = {"Beatgrid": tr_mark("Beatgrid"), "Phrase": tr_mark("Phrase")}
+    PAGE_TIPS = {"Beatgrid": tr_mark("Edit the beatgrid"), "Key": tr_mark("Edit the key"),
+                 "Phrase": tr_mark("Edit the phrase"), "CUE": tr_mark("Edit the JumpCUEs and CUE points")}
     # pages side by side: this much space either side of a thin rule between them
     COLUMN_GAP = 18
     # the pages shown together for each column count
@@ -128,15 +133,15 @@ class EditPanel(
 
         self.btn_undo = QtWidgets.QToolButton()
         self.btn_undo.setIcon(icon("edit_undo"))
-        self.btn_undo.setToolTip("Undo Changes")
+        self.btn_undo.setToolTip(tr("Undo Changes"))
 
         self.btn_redo = QtWidgets.QToolButton()
         self.btn_redo.setIcon(icon("edit_redo"))
-        self.btn_redo.setToolTip("Redo Changes")
+        self.btn_redo.setToolTip(tr("Redo Changes"))
 
         self.btn_save = QtWidgets.QToolButton()
         self.btn_save.setIcon(icon("edit_save"))
-        self.btn_save.setToolTip("Save Edits")
+        self.btn_save.setToolTip(tr("Save Edits"))
         for btn in (self.btn_undo, self.btn_redo, self.btn_save):
             btn.setIconSize(QtCore.QSize(19, 19))
 
@@ -282,8 +287,12 @@ class EditPanel(
 
     @classmethod
     def _page_tooltip(cls, index: int) -> str:
+        return tr(cls.PAGE_TIPS[cls.PAGES[index]])
+
+    @classmethod
+    def _page_title(cls, index: int) -> str:
         name = cls.PAGES[index]
-        return "Edit the JumpCUEs and CUE points" if name == "CUE" else f"Edit the {name.lower()}"
+        return tr(cls.PAGE_TITLES[name]).upper() if name in cls.PAGE_TITLES else name.upper()
 
     def column_count(self) -> int:
         return self._column_count
@@ -337,7 +346,7 @@ class EditPanel(
             for k, i in enumerate(groups[0]):
                 if k:
                     self._selector.addSpacing(2 * self.COLUMN_GAP + 1 - self._selector.spacing() * 2)
-                btn = self._selector_button(self.PAGES[i].upper(), self._page_tooltip(i))
+                btn = self._selector_button(self._page_title(i), self._page_tooltip(i))
                 btn.setCheckable(True)
                 btn.setChecked(True)
                 btn.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents, True)
@@ -348,7 +357,7 @@ class EditPanel(
         else:
             for gi, group in enumerate(groups):
                 btn = self._selector_button(
-                    " · ".join(self.PAGES[i].upper() for i in group),
+                    " · ".join(self._page_title(i) for i in group),
                     "\n".join(self._page_tooltip(i) for i in group),
                 )
                 btn.setCheckable(True)
@@ -597,7 +606,7 @@ class EditPanel(
         try:
             jump_cues_np = self._jumpcues_to_np(self._JumpCUE)
         except ValueError as exc:
-            QtWidgets.QMessageBox.warning(self, "Invalid JumpCUE Label", str(exc))
+            QtWidgets.QMessageBox.warning(self, tr("Invalid JumpCUE Label"), str(exc))
             return
         auto_block = self.model.features.get("jump_cues_auto_np") if self.model is not None else None
         jump_cues_auto_np = auto_block if isinstance(auto_block, dict) else None
@@ -663,10 +672,10 @@ class EditPanel(
         self._locked = bool(locked)
         self.btn_lock.setIcon(icon("edit_lock" if self._locked else "edit_unlock"))
         self.btn_lock.setToolTip(
-            "<p>Editing is locked: pages switch, but nothing is edited or saved. Click to unlock.</p>"
+            tr("<p>Editing is locked: pages switch, but nothing is edited or saved. Click to unlock.</p>")
             if self._locked else
-            "<p>Editing is unlocked: the shown pages' graphics are emphasized. Click to lock: no edits, "
-            "no saving (on at every start).</p>")
+            tr("<p>Editing is unlocked: the shown pages' graphics are emphasized. Click to lock: no edits, "
+               "no saving (on at every start).</p>"))
         self._apply_edit_enabled()
         self._emit_edit_focus()
 

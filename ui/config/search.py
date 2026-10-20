@@ -15,14 +15,15 @@ from core import reading
 from core.config import searchconfig
 from ui.config.dialogs import ReadingRefreshProgressDialog
 from ui.config.scroll import scroll_page
+from core.i18n import tr, tr_mark
 
 _LANGUAGE_TIPS = {
-    "ja": "Japanese, by word (SudachiDict): 東京 toukyou.",
-    "zh": "Mandarin pinyin, tones dropped: 東京 dong jing.",
-    "yue": "Cantonese Jyutping, tones dropped: 東京 dung ging.",
-    "ko-hanja": "Korean Hanja reading (Unihan), spelled as a word: 東京 donggyeong.",
-    "vi": "Sino-Vietnamese reading (Unihan), diacritics dropped: 東京 dong kinh.",
-    "zh-tw": "Taiwan's Mandarin, kept only where it differs from Mandarin: 乾杯 gan bei.",
+    "ja": tr_mark("Japanese, by word (SudachiDict): 東京 toukyou."),
+    "zh": tr_mark("Mandarin pinyin, tones dropped: 東京 dong jing."),
+    "yue": tr_mark("Cantonese Jyutping, tones dropped: 東京 dung ging."),
+    "ko-hanja": tr_mark("Korean Hanja reading (Unihan), spelled as a word: 東京 donggyeong."),
+    "vi": tr_mark("Sino-Vietnamese reading (Unihan), diacritics dropped: 東京 dong kinh."),
+    "zh-tw": tr_mark("Taiwan's Mandarin, kept only where it differs from Mandarin: 乾杯 gan bei."),
 }
 
 
@@ -33,8 +34,8 @@ def _language_boxes(dialog, prefix: str) -> tuple[QWidget, dict[str, QCheckBox]]
     grid.setContentsMargins(0, 0, 0, 0)
     boxes: dict[str, QCheckBox] = {}
     for i, lang in enumerate(reading.HAN_LANGUAGES):
-        cb = QCheckBox(reading.SOURCES[lang])
-        cb.setToolTip(f"<p>{_LANGUAGE_TIPS[lang]}</p>")
+        cb = QCheckBox(tr(reading.SOURCES[lang]))
+        cb.setToolTip(f"<p>{tr(_LANGUAGE_TIPS[lang])}</p>")
         grid.addWidget(cb, i // 3, i % 3)
         boxes[lang] = cb
         setattr(dialog, f"cb_{prefix}_{lang.replace('-', '_')}", cb)
@@ -55,31 +56,31 @@ def build_search_tab(dialog) -> None:
     form = QFormLayout(dialog.tab_search)
 
     # the library's stored readings
-    grp_db = QGroupBox("Library Readings")
+    grp_db = QGroupBox(tr("Library Readings"))
     f_db = QFormLayout(grp_db)
     db_box, dialog.db_language_boxes = _language_boxes(dialog, "db")
     db_box.setToolTip(
-        "<p>The languages a title, artist or album of Han characters without kana is read in and "
-        "stored for the search, one reading each. A change reads the library again when saved.</p>")
-    f_db.addRow("Han Characters", db_box)
+        tr("<p>The languages a title, artist or album of Han characters without kana is read in and "
+           "stored for the search, one reading each. A change reads the library again when saved.</p>"))
+    f_db.addRow(tr("Han Characters"), db_box)
     # Han mixed with other characters: its runs in Korean Hanja too
     mixed = QWidget()
     row = QHBoxLayout(mixed)
     row.setContentsMargins(0, 0, 0, 0)
-    dialog.cb_han_runs = QCheckBox("Han runs in Korean Hanja, from")
+    dialog.cb_han_runs = QCheckBox(tr("Han runs in Korean Hanja, from"))
     dialog.sp_han_run_min = QSpinBox()
     dialog.sp_han_run_min.setRange(reading.HAN_RUN_LEAST, 10)
-    dialog.sp_han_run_min.setSuffix(" characters")
+    dialog.sp_han_run_min.setSuffix(tr(" characters"))
     mixed.setToolTip(
-        "<p>Han characters mixed with other characters are found by their Korean Hanja reading too. "
-        "Beside Latin letters or Hangul all of them are read so; beside kana (read in Japanese with it) "
-        "the runs of this many or more, the rest staying Japanese (Re:ゼロから始める異世界生活: zero kara "
-        "hajimeru isegyesaenghwal; shorter runs there are mostly words read with the kana: 君, 始める). "
-        "Needs Korean Hanja checked.</p>")
+        tr("<p>Han characters mixed with other characters are found by their Korean Hanja reading too. "
+           "Beside Latin letters or Hangul all of them are read so; beside kana (read in Japanese with it) "
+           "the runs of this many or more, the rest staying Japanese (Re:ゼロから始める異世界生活: zero kara "
+           "hajimeru isegyesaenghwal; shorter runs there are mostly words read with the kana: 君, 始める). "
+           "Needs Korean Hanja checked.</p>"))
     row.addWidget(dialog.cb_han_runs)
     row.addWidget(dialog.sp_han_run_min)
     row.addStretch(1)
-    f_db.addRow("Mixed Text", mixed)
+    f_db.addRow(tr("Mixed Text"), mixed)
 
     def sync_han_runs(_checked: bool = False) -> None:
         mixed.setEnabled(dialog.db_language_boxes["ko-hanja"].isChecked())
@@ -88,49 +89,49 @@ def build_search_tab(dialog) -> None:
     dialog.cb_han_runs.toggled.connect(sync_han_runs)
     dialog._sync_han_runs = sync_han_runs
     dialog.lbl_db_languages_note = QLabel(
-        "Kana is read in Japanese, Hangul in Korean, other scripts as written. "
-        "Readings set in Edit Track are kept.")
+        tr("Kana is read in Japanese, Hangul in Korean, other scripts as written. "
+           "Readings set in Edit Track are kept."))
     dialog.lbl_db_languages_note.setWordWrap(True)
     f_db.addRow(dialog.lbl_db_languages_note)
-    dialog.btn_reread_library = QPushButton("Re-read Library")
+    dialog.btn_reread_library = QPushButton(tr("Re-read Library"))
     dialog.btn_reread_library.setToolTip(
-        "<p>Save these settings and read every track's title, artist and album again, in the "
-        "background. Readings set in Edit Track are kept.</p>")
+        tr("<p>Save these settings and read every track's title, artist and album again, in the "
+           "background. Readings set in Edit Track are kept.</p>"))
     f_db.addRow("", dialog.btn_reread_library)
 
     # the query
-    grp_query = QGroupBox("Search Query")
+    grp_query = QGroupBox(tr("Search Query"))
     f_query = QFormLayout(grp_query)
     query_box, dialog.query_language_boxes = _language_boxes(dialog, "query")
     query_box.setToolTip(
-        "<p>The languages Han characters in a query are read in: a track is found when any of them "
-        "matches any of its readings.</p>")
-    f_query.addRow("Han Characters", query_box)
+        tr("<p>The languages Han characters in a query are read in: a track is found when any of them "
+           "matches any of its readings.</p>"))
+    f_query.addRow(tr("Han Characters"), query_box)
     hangul_box = QWidget()
     hangul_grid = QGridLayout(hangul_box)
     hangul_grid.setContentsMargins(0, 0, 0, 0)
-    dialog.cb_query_hangul_korean = QCheckBox("As Korean")
+    dialog.cb_query_hangul_korean = QCheckBox(tr("As Korean"))
     dialog.cb_query_hangul_korean.setToolTip(
-        "<p>Hangul read in Revised Romanization: 사회 finds a Korean title and 社会 by its Korean "
-        "Hanja reading.</p>")
-    dialog.cb_query_hangul_foreign = QCheckBox("As a foreign word")
+        tr("<p>Hangul read in Revised Romanization: 사회 finds a Korean title and 社会 by its Korean "
+           "Hanja reading.</p>"))
+    dialog.cb_query_hangul_foreign = QCheckBox(tr("As a foreign word"))
     dialog.cb_query_hangul_foreign.setToolTip(
-        "<p>Hangul read as Korean spells a foreign word (ㅓ o, ㅡ u, ㅐ e): 도쿄 finds 東京, 아노네 "
-        "finds あのね.</p>")
-    dialog.cb_query_keyboard_layout = QCheckBox("Typed without 한/영")
+        tr("<p>Hangul read as Korean spells a foreign word (ㅓ o, ㅡ u, ㅐ e): 도쿄 finds 東京, 아노네 "
+           "finds あのね.</p>"))
+    dialog.cb_query_keyboard_layout = QCheckBox(tr("Typed without 한/영"))
     dialog.cb_query_keyboard_layout.setToolTip(
-        "<p>A query typed on the 2-set (Dubeolsik) keyboard in the wrong input mode is also read as "
-        "meant: tkghl as 사회 (whole syllables, two or more), 무ㅐㅜㄷ as anone.</p>")
+        tr("<p>A query typed on the 2-set (Dubeolsik) keyboard in the wrong input mode is also read as "
+           "meant: tkghl as 사회 (whole syllables, two or more), 무ㅐㅜㄷ as anone.</p>"))
     hangul_grid.addWidget(dialog.cb_query_hangul_korean, 0, 0)
     hangul_grid.addWidget(dialog.cb_query_hangul_foreign, 0, 1)
     hangul_grid.addWidget(dialog.cb_query_keyboard_layout, 0, 2)
     _keep_one_checked([dialog.cb_query_hangul_korean, dialog.cb_query_hangul_foreign])
-    f_query.addRow("Hangul", hangul_box)
+    f_query.addRow(tr("Hangul"), hangul_box)
 
     form.addRow(grp_db)
     form.addRow(grp_query)
     dialog.btn_reread_library.clicked.connect(dialog._reread_library_now)
-    dialog.tabs.addTab(scroll_page(dialog.tab_search), "Search")
+    dialog.tabs.addTab(scroll_page(dialog.tab_search), tr("Search"))
 
 
 class SearchSettingsMixin:

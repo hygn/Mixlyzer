@@ -15,6 +15,7 @@ from core.concurrency.process_pool import create_spawn_process_pool
 from optimizer import SkippedOptimizationTrack, optimizer_track_name, skipped_track
 from optimizer.onset_training import _auto_cache_workers, _list_beat_tracks
 from utils.atomic_io import atomic_output_path
+from core.i18n import tr
 
 ProgressCallback = Callable[[int, str], None]
 BEAT_FRAME_CACHE_FORMAT = "mixlyzer_beat_frame_cache_v1"
@@ -30,10 +31,10 @@ def list_grid_tracks(library_dir: Path, ignored: list[SkippedOptimizationTrack])
             with np.load(track["analysis_path"], allow_pickle=False) as archive:
                 rows = np.asarray(archive["tempo_segments"], dtype=np.float64)
         except (KeyError, OSError, ValueError) as exc:
-            ignored.append(skipped_track(track, f"invalid tempo rows: {exc}"))
+            ignored.append(skipped_track(track, tr("invalid tempo rows: {error}").format(error=exc)))
             continue
         if rows.ndim != 2 or rows.shape[0] == 0 or rows.shape[1] < 4:
-            ignored.append(skipped_track(track, "no tempo rows"))
+            ignored.append(skipped_track(track, tr("no tempo rows")))
             continue
         track["segments"] = rows
         tracks.append(track)
@@ -124,8 +125,9 @@ def ensure_frames(
                     future.result()
                 except Exception as exc:
                     failed.add(str(track["uid"]))
-                    ignored.append(skipped_track(track, f"frame feature cache build failed: {exc}"))
+                    ignored.append(skipped_track(track, tr("frame feature cache build failed: {error}").format(error=exc)))
                 if progress:
                     progress(lo + int(round((hi - lo) * done / len(jobs))),
-                             f"Frame features {done}/{len(jobs)}\n{optimizer_track_name(track)}")
+                             tr("Frame features {done}/{total}").format(done=done, total=len(jobs))
+                             + "\n" + optimizer_track_name(track))
     return [t for t in tracks if str(t["uid"]) not in failed]

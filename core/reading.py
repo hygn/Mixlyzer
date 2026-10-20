@@ -51,10 +51,13 @@ from typing import Callable, Iterable
 from anyascii import anyascii
 from rapidfuzz import fuzz, process
 
+from core.i18n import tr, tr_mark
+
 READING_SLOTS = 7  # readings stored per text (language readings and the user's own)
-SOURCES = {"ja": "Japanese", "zh": "Mandarin", "zh-tw": "Taiwan Mandarin", "yue": "Cantonese",
-           "ko-hanja": "Korean Hanja", "vi": "Sino-Vietnamese", "ko": "Korean", "text": "as written",
-           "user": "set by the user"}
+# a reading's source -> its name (translated where shown)
+SOURCES = {"ja": tr_mark("Japanese"), "zh": tr_mark("Mandarin"), "zh-tw": tr_mark("Taiwan Mandarin"),
+           "yue": tr_mark("Cantonese"), "ko-hanja": tr_mark("Korean Hanja"), "vi": tr_mark("Sino-Vietnamese"),
+           "ko": tr_mark("Korean"), "text": tr_mark("as written"), "user": tr_mark("set by the user")}
 # the readings of Han without kana, in slot order (Taiwan Mandarin only where it differs from Mandarin)
 HAN_LANGUAGES = ("ja", "zh", "yue", "ko-hanja", "vi", "zh-tw")
 EXACT_MIN = 3     # a shorter normalized query would match nearly every track
@@ -515,11 +518,11 @@ def warm_up(progress: Callable[[float, str], None] | None = None) -> None:
     """Load the readers (Sudachi, pypinyin, pycantonese, the Unihan tables: about 2 s; the app does
     it while starting), so the first reading or search does not wait; ``progress(fraction done,
     reader)`` before each (by its usual share of the time)."""
-    steps = [("Japanese (SudachiDict)", 0.04, _japanese_tokenizer),
-             ("Mandarin (pypinyin)", 0.1, lambda: _read_mandarin("中", taiwan=True)),
-             ("Cantonese (pycantonese)", 0.82, lambda: _read_cantonese("中")),
-             ("Korean Hanja (Unihan)", 0.02, lambda: _unihan_table("unihan_korean")),
-             ("Sino-Vietnamese (Unihan)", 0.02, lambda: _unihan_table("unihan_vietnamese"))]
+    steps = [(tr("Japanese (SudachiDict)"), 0.04, _japanese_tokenizer),
+             (tr("Mandarin (pypinyin)"), 0.1, lambda: _read_mandarin("中", taiwan=True)),
+             (tr("Cantonese (pycantonese)"), 0.82, lambda: _read_cantonese("中")),
+             (tr("Korean Hanja (Unihan)"), 0.02, lambda: _unihan_table("unihan_korean")),
+             (tr("Sino-Vietnamese (Unihan)"), 0.02, lambda: _unihan_table("unihan_vietnamese"))]
     done = 0.0
     for name, share, load in steps:
         if progress is not None:

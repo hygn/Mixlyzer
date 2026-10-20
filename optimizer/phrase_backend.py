@@ -37,6 +37,7 @@ from analyzer_core.cue_and_phrase.model_features import (
 from core.library_handler import LibraryDB
 from utils.atomic_io import atomic_output_path
 from utils.phrases import MIN_PHRASE_DUR
+from core.i18n import tr
 
 
 EPS = 1e-9
@@ -164,24 +165,24 @@ def _list_annotated_tracks(
         }
         if not analysis_path.exists():
             if ignored is not None:
-                ignored.append(skipped_track(track, "analysis NPZ is missing"))
+                ignored.append(skipped_track(track, tr("analysis NPZ is missing")))
             continue
         if not audio_path.is_file():
             if ignored is not None:
-                ignored.append(skipped_track(track, "audio file is missing"))
+                ignored.append(skipped_track(track, tr("audio file is missing")))
             continue
         try:
             starts, ends, labels = _load_phrase_annotation(analysis_path)
         except Exception as exc:
             if ignored is not None:
                 ignored.append(
-                    skipped_track(track, f"invalid Phrase annotation: {exc}")
+                    skipped_track(track, tr("invalid Phrase annotation: {error}").format(error=exc))
                 )
             continue
         if starts.size < 2:
             if starts.size and ignored is not None:
                 ignored.append(
-                    skipped_track(track, "fewer than two usable Phrase segments")
+                    skipped_track(track, tr("fewer than two usable Phrase segments"))
                 )
             continue
         track.update(

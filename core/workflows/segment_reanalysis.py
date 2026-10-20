@@ -11,6 +11,7 @@ from core.config import load_cfg
 from core.workers.segment_reanalysis import SegmentReanalysisWorker
 from core.event_bus import EventBus
 from utils.jump_cues import extract_jump_cue_pairs
+from core.i18n import tr
 
 
 StatusCallback = Callable[[str], None]
@@ -48,9 +49,10 @@ class SegmentReanalysisWorkflow(QtCore.QObject):
 
         self.bus.sig_segment_reanalyze_requested.connect(self._on_request)
 
-    def cancel_all(self, reason: str = "Segment reanalysis canceled") -> None:
+    def cancel_all(self, reason: str | None = None) -> None:
         if not self._workers:
             return
+        reason = reason or tr("Segment reanalysis canceled")
         for taskid, worker in list(self._workers.items()):
             if worker is not None:
                 worker.stop()
@@ -71,7 +73,7 @@ class SegmentReanalysisWorkflow(QtCore.QObject):
         payload_path = payload.get("path")
         path = str(payload_path) if payload_path else self._get_current_path()
         if not path:
-            self._show_status("Load a track before segment reanalysis")
+            self._show_status(tr("Load a track before segment reanalysis"))
             return
 
         analyze_type = str(payload.get("analyze_type") or "beat")
@@ -119,16 +121,16 @@ class SegmentReanalysisWorkflow(QtCore.QObject):
         songname = props.get("title") or os.path.basename(path)
         if analyze_type == "jumpcue":
             task_song = f"{songname} (JumpCUE)"
-            task_status = "JumpCUE reanalyze"
+            task_status = tr("JumpCUE reanalyze")
         elif analyze_type == "phrase":
-            task_song = f"{songname} (Phrase)"
-            task_status = "Phrase reanalyze"
+            task_song = tr("{song} (Phrase)").format(song=songname)
+            task_status = tr("Phrase reanalyze")
         elif analyze_type.startswith("key"):
-            task_song = f"{songname} (Key)"
-            task_status = "Key reanalyze"
+            task_song = tr("{song} (Key)").format(song=songname)
+            task_status = tr("Key reanalyze")
         else:
-            task_song = f"{songname} (Seg {seg_index + 1})"
-            task_status = "Segment reanalyze"
+            task_song = tr("{song} (Seg {index})").format(song=songname, index=seg_index + 1)
+            task_status = tr("Segment reanalyze")
         task = self.taskmanager.addtask(
             songname=task_song,
             thumbnail=thumb,
@@ -178,27 +180,27 @@ class SegmentReanalysisWorkflow(QtCore.QObject):
         seg_out = seg_index
         if analyze_type == "jumpcue":
             if beats.size == 0:
-                self._show_status("No beatgrid available for JumpCUE reanalysis")
+                self._show_status(tr("No beatgrid available for JumpCUE reanalysis"))
                 return False, seg_out
             return True, max(seg_out, 0)
         if analyze_type == "phrase":
             if beats.size == 0:
-                self._show_status("No beatgrid available for phrase reanalysis")
+                self._show_status(tr("No beatgrid available for phrase reanalysis"))
                 return False, seg_out
             if segments_input.ndim != 2 or segments_input.shape[0] == 0:
-                self._show_status("No tempo segments available for phrase reanalysis")
+                self._show_status(tr("No tempo segments available for phrase reanalysis"))
                 return False, seg_out
             return True, max(seg_out, 0)
         if analyze_type == "key_dynamic":
             if segments_input.ndim != 2 or segments_input.shape[0] == 0:
-                self._show_status("No tempo segments available for key reanalysis")
+                self._show_status(tr("No tempo segments available for key reanalysis"))
                 return False, seg_out
             if key_segments is None or key_segments.size == 0:
-                self._show_status("No key segments available for reanalysis")
+                self._show_status(tr("No key segments available for reanalysis"))
                 return False, seg_out
         elif analyze_type.startswith("key"):
             if key_segments is None or key_segments.ndim != 2 or key_segments.shape[0] == 0:
-                self._show_status("No key segments available for reanalysis")
+                self._show_status(tr("No key segments available for reanalysis"))
                 return False, seg_out
             if selection is None:
                 self._show_status("Select a key range to reanalyze")
@@ -206,7 +208,7 @@ class SegmentReanalysisWorkflow(QtCore.QObject):
             try:
                 sel_start = float(selection[0])
             except Exception:
-                self._show_status("Invalid key selection")
+                self._show_status(tr("Invalid key selection"))
                 return False, seg_out
             idx = int(np.searchsorted(key_segments[:, 2], sel_start, side="right") - 1)
             seg_out = int(np.clip(idx, 0, len(key_segments) - 1))
@@ -235,16 +237,16 @@ class SegmentReanalysisWorkflow(QtCore.QObject):
         analyze_type = ctx.get("analyze_type", "beat")
         if analyze_type.startswith("key"):
             self._handle_key_result(taskid, payload)
-            self._show_status("Key reanalysis completed")
+            self._show_status(tr("Key reanalysis completed"))
         elif analyze_type == "jumpcue":
             self._handle_jumpCUE_result(taskid, payload)
-            self._show_status("JumpCUE reanalysis completed")
+            self._show_status(tr("JumpCUE reanalysis completed"))
         elif analyze_type == "phrase":
             self._handle_phrase_result(taskid, payload)
-            self._show_status("Phrase reanalysis completed")
+            self._show_status(tr("Phrase reanalysis completed"))
         else:
             self._handle_segment_result(taskid, payload)
-            self._show_status("Segment reanalysis completed")
+            self._show_status(tr("Segment reanalysis completed"))
         if not self._workers:
             self.bus.sig_segment_reanalyze_state.emit(True)
     
@@ -264,7 +266,7 @@ class SegmentReanalysisWorkflow(QtCore.QObject):
                 )
             except Exception:
                 pass
-        self.taskmanager.updatetask(taskid, "JumpCUE reanalysis finished", 1.0)
+        self.taskmanager.updatetask(taskid, tr("JumpCUE reanalysis finished"), 1.0)
         self.taskmanager.rmtask(taskid)
 
     def _handle_phrase_result(self, taskid: int, payload: dict) -> None:
@@ -273,7 +275,7 @@ class SegmentReanalysisWorkflow(QtCore.QObject):
         if track_edit is not None and isinstance(phrases, list):
             # an edit like any other: undoable, saved with the editor's next save
             track_edit.apply_phrase_update_from_external(phrases)
-        self.taskmanager.updatetask(taskid, "Phrase reanalysis finished", 1.0)
+        self.taskmanager.updatetask(taskid, tr("Phrase reanalysis finished"), 1.0)
         self.taskmanager.rmtask(taskid)
 
     def _handle_key_result(self, taskid: int, payload: dict) -> None:
@@ -287,7 +289,7 @@ class SegmentReanalysisWorkflow(QtCore.QObject):
             track_edit = self._track_edit_getter()
             if track_edit is not None:
                 track_edit.apply_update_from_external(key_segments=key_segments)
-        self.taskmanager.updatetask(taskid, "Key reanalysis finished", 1.0)
+        self.taskmanager.updatetask(taskid, tr("Key reanalysis finished"), 1.0)
         self.taskmanager.rmtask(taskid)
 
     def _handle_segment_result(self, taskid: int, payload: dict) -> None:
@@ -301,7 +303,7 @@ class SegmentReanalysisWorkflow(QtCore.QObject):
                 self.model.features["beats_time_sec"] = beats
             if segments.ndim == 2 and segments.size:
                 self.model.features["tempo_segments"] = segments
-        self.taskmanager.updatetask(taskid, "Segment reanalysis finished", 1.0)
+        self.taskmanager.updatetask(taskid, tr("Segment reanalysis finished"), 1.0)
         self.taskmanager.rmtask(taskid)
 
     def _on_worker_error(self, taskid: int, message: str) -> None:
@@ -311,7 +313,7 @@ class SegmentReanalysisWorkflow(QtCore.QObject):
             worker.deleteLater()
         self._contexts.pop(taskid, None)
         self.taskmanager.rmtask(taskid, message)
-        self._show_status(f"Segment reanalysis failed: {message}")
+        self._show_status(tr("Segment reanalysis failed: {error}").format(error=message))
         if not self._workers:
             self.bus.sig_segment_reanalyze_state.emit(True)
 

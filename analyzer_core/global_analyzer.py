@@ -32,6 +32,7 @@ from core.library_handler import LibraryDB
 from core.analysis_lib_handler import FeatureNPZStore
 from core.thumbnails import save_thumbnail
 from core.config import ANALYSIS_SAMPLE_RATE, config
+from core.i18n import tr
 from core.taskmanager import taskmanager
 from core.linear_segments import build_bpm_segments, build_key_segments, build_phrase_index_rows
 from analyzer_core.utils import prime_physical_core_count
@@ -54,7 +55,7 @@ def fast_load(path: str, target_sr, stereo: bool = False) -> np.ndarray:
         try:
             y, sr = sf.read(path.as_posix(), dtype="float32", always_2d=False)
         except Exception as exc:
-            raise RuntimeError(f"Audio decode failed via FFmpeg and SoundFile: {path}") from exc
+            raise RuntimeError(tr("Audio decode failed via FFmpeg and SoundFile: {path}").format(path=path)) from exc
         if stereo:
             if y.ndim == 1:
                 y = np.stack([y, y], axis=1)
@@ -249,8 +250,8 @@ def getAlbumArt(path) -> Optional[QtGui.QImage]:
         if not mi:
             return None
         data: Optional[bytes] = None
-        for tr in mi.tracks:
-            blob = getattr(tr, "cover_data", None)
+        for media_track in mi.tracks:
+            blob = getattr(media_track, "cover_data", None)
             if not blob:
                 continue
             if isinstance(blob, (bytes, bytearray)):
@@ -292,7 +293,7 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
             pass
     
     title, artist, album, comment = extract_tags(path)
-    yield {"status": "Loading"}
+    yield {"status": tr("Loading")}
     print("[Analyzer] Analysis Initalized")
     gcf = config.analysisconfig
     global_sr = ANALYSIS_SAMPLE_RATE
@@ -300,7 +301,7 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
     # Decode once: stereo for the structure detector, mono derived for the rest.
     samp_stereo = fast_load(path, target_sr=global_sr, stereo=True)
     samp = np.ascontiguousarray(samp_stereo.mean(axis=1), dtype=np.float32)
-    taskmgr.updatetask(taskid, "Processing HPSS", 0.1)
+    taskmgr.updatetask(taskid, tr("Processing HPSS"), 0.1)
 
     yield {"status": "HPSS"}
     print("[Analyzer] Processing HPSS")
@@ -309,9 +310,9 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
     y_harm, y_perc, hpss_spectra = hpss_audio_with_spectra(samp, int(global_sr))
     features = {}
 
-    yield {"status": "waveform"}
+    yield {"status": tr("Waveform")}
     print("[Waveform] Analysis Initalized")
-    taskmgr.updatetask(taskid, "Processing Waveform", 0.2)
+    taskmgr.updatetask(taskid, tr("Processing Waveform"), 0.2)
     # Overview waveform: the min / max of each column and the power of 12 log-spaced bands (low / mid / high are
     # summed from them when drawn), from a mono decode at WAVE_OVERVIEW_SAMPLE_RATE, not the analysis rate, so
     # the bands are not cut at the analysis Nyquist; and the detail waveform's three-band scale (these ranges).
@@ -326,9 +327,9 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
     features["duration_sec"] = samp.size / float(global_sr)
     print("[Waveform] Analysis Finished")
 
-    yield {"status": "tempo"}
+    yield {"status": tr("Tempo")}
     print("[Tempo] Analysis Initalized")
-    taskmgr.updatetask(taskid, "Tempo Analyzing", 0.30)
+    taskmgr.updatetask(taskid, tr("Tempo Analyzing"), 0.30)
     # Frame features on the shared frame grid: the phrase features read them below.
     frame_features = extract_frame_features(
         samp, int(global_sr), y_perc, y_harm, hop_length=FRAME_HOP_LENGTH
@@ -394,9 +395,9 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
     print("[Tempo] Analysis Finished")
 
     beats_time_arr = np.asarray(features.get("beats_time_sec"), dtype=float)
-    yield {"status": "phrase"}
+    yield {"status": tr("Phrase")}
     print("[Phrase] Analysis Initalized")
-    taskmgr.updatetask(taskid, "Phrase Boundary Analyzing", 0.58)
+    taskmgr.updatetask(taskid, tr("Phrase Boundary Analyzing"), 0.58)
     phrase_enabled = bool(getattr(gcf, "phrase_analysis_enabled", True))
     phrase_parameter_path = str(gcf.phrase_parameter_path).strip()
     # The phrase boundary probability is a JumpCUE feature (below).
@@ -452,8 +453,8 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
 
     # Learned JumpCUE detection needs phrase-boundary probability.  The simple
     # AutoCUE JumpCUE does not and is still added below when detection is skipped.
-    yield {"status": "jumpcue"}
-    taskmgr.updatetask(taskid, "JumpCUE Analyzing", 0.62)
+    yield {"status": "JumpCUE"}
+    taskmgr.updatetask(taskid, tr("JumpCUE Analyzing"), 0.62)
     jump_pairs = []
     if not phrase_enabled:
         print("[JumpCUE] learned pairs skipped: phrase analysis is disabled")
@@ -500,9 +501,9 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
     features["jump_cues_auto_np"] = {k: np.array(v, copy=True) for k, v in features["jump_cues_np"].items()}
     hpss_spectra = None
 
-    yield {"status": "key"}
+    yield {"status": tr("Key")}
     print("[Key] Analysis Initalized")
-    taskmgr.updatetask(taskid, "Analyzing Keys", 0.7)
+    taskmgr.updatetask(taskid, tr("Analyzing Keys"), 0.7)
     try:
         # chord-aware keys on the bars and phrases (analyzer_core/key/chord_key.py)
         key, key_segments = analyze_chord_keys(
@@ -530,7 +531,7 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
     features["sr"] = global_sr
 
     # DB Features
-    taskmgr.updatetask(taskid, "Processing Metadata", 0.85)
+    taskmgr.updatetask(taskid, tr("Processing Metadata"), 0.85)
     duration_out = float(features.get("duration_sec", 0.0))
 
     bpm_out = features.get("tempo_global", 0.0)
@@ -539,7 +540,7 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
     key_int = int(values[np.argmax(counts)]) if values.size else None
 
     fsize, fmtime = _file_stats(path)
-    taskmgr.updatetask(taskid, "Rendering/Normalizing", 0.88)
+    taskmgr.updatetask(taskid, tr("Rendering/Normalizing"), 0.88)
 
     properties = {
         "path": path,
@@ -563,9 +564,9 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
     key_segments_db = build_key_segments(features.get("key_segments"))
     phrase_sections = build_phrase_index_rows(phrase_segments, bpm_segments, key_segments_db)
     features_properties = {"features": features, "properties": properties, "update_db": True, "taskid":taskid}
-    yield {"status": "Saving"}
+    yield {"status": tr("Saving")}
     print("[Analyzer] Saving Results")
-    taskmgr.updatetask(taskid, "Saving Result", 0.92)
+    taskmgr.updatetask(taskid, tr("Saving Result"), 0.92)
     try:
         lib_full = _persist_analysis_result(
             l,
@@ -580,6 +581,6 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
         l.close()
     features_properties["library"] = lib_full
     print("[Analyzer] Analysis Finished")
-    taskmgr.updatetask(taskid, "Finished", 1)
+    taskmgr.updatetask(taskid, tr("Finished"), 1)
 
     yield features_properties

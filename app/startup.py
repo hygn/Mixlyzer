@@ -17,6 +17,7 @@ from typing import Any, Callable
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from ui.theme import current_theme
+from core.i18n import tr
 
 # fraction of the task done, what it is doing ("" keeps the last)
 Progress = Callable[[float, str], None]
@@ -61,7 +62,7 @@ class StartupSplash(QtWidgets.QWidget):
         header.addWidget(name)
         header.addStretch(1)
 
-        self.lbl_task = QtWidgets.QLabel("Starting")
+        self.lbl_task = QtWidgets.QLabel(tr("Starting"))
         self.lbl_detail = QtWidgets.QLabel("")
         self.lbl_detail.setStyleSheet(f"color: {theme.text_dim};")
         # the task's progress above the overall progress
@@ -164,8 +165,8 @@ def _compile_audio_kernels(progress: Progress) -> None:
     from core.audio.cursor_poller import warm_cursor_poller
     from core.audio.dsp import warm_scratch_numba
     from core.audio.timestretch import warm_timestretch_numba
-    kernels = (("Scratch reader", 0.7, warm_scratch_numba), ("Cursor poller", 0.05, warm_cursor_poller),
-               ("Time stretch", 0.25, warm_timestretch_numba))
+    kernels = ((tr("Scratch reader"), 0.7, warm_scratch_numba), (tr("Cursor poller"), 0.05, warm_cursor_poller),
+               (tr("Time stretch"), 0.25, warm_timestretch_numba))
     done = 0.0
     for name, weight, warm in kernels:
         progress(done, name)
@@ -175,7 +176,7 @@ def _compile_audio_kernels(progress: Progress) -> None:
 
 def _warm_ffmpeg(progress: Progress) -> None:
     from core.audio.decoder import warm_ffmpeg_decoder
-    progress(0.0, "ffmpeg: a short silent decode")
+    progress(0.0, tr("ffmpeg: a short silent decode"))
     warm_ffmpeg_decoder()
 
 
@@ -190,7 +191,7 @@ def _search_keys(libpath: str) -> Callable[[Progress], None]:
         searches without building them."""
         from core import reading
         from core.library_handler import LibraryDB
-        progress(0.0, "library.db: readings")
+        progress(0.0, tr("library.db: readings"))
         db = LibraryDB(os.path.join(libpath, "library.db"))
         db.connect()
         try:
@@ -200,7 +201,8 @@ def _search_keys(libpath: str) -> Callable[[Progress], None]:
         texts = [text for fields in stored.values() for texts in fields.values() for text in texts]
         for i, text in enumerate(texts):
             if i % 256 == 0:
-                progress(0.1 + 0.9 * i / len(texts), f"Search keys: {len(stored):,} tracks, {i:,} / {len(texts):,} readings")
+                progress(0.1 + 0.9 * i / len(texts), tr("Search keys: {tracks} tracks, {done} / {total} readings").format(
+                    tracks=f"{len(stored):,}", done=f"{i:,}", total=f"{len(texts):,}"))
             reading.keys(text)
     return run
 
@@ -214,10 +216,10 @@ def startup_tasks(cfg) -> list[StartupTask]:
     """What the app does before its window opens, in order; the last gives the window."""
     # weights: the measured times (s) of a start with the files in the OS cache
     return [
-        StartupTask("Loading libraries", 3.0, _import_libraries),
-        StartupTask("Compiling audio kernels (JIT)", 0.4, _compile_audio_kernels),
-        StartupTask("Starting FFmpeg", 0.1, _warm_ffmpeg),
-        StartupTask("Loading search readers", 2.1, _load_readers),
-        StartupTask("Loading the library", 0.1, _search_keys(cfg.libconfig.libpath)),
-        StartupTask("Building the window", 2.3, _build_window, pump_events=False),
+        StartupTask(tr("Loading libraries"), 3.0, _import_libraries),
+        StartupTask(tr("Compiling audio kernels (JIT)"), 0.4, _compile_audio_kernels),
+        StartupTask(tr("Starting FFmpeg"), 0.1, _warm_ffmpeg),
+        StartupTask(tr("Loading search readers"), 2.1, _load_readers),
+        StartupTask(tr("Loading the library"), 0.1, _search_keys(cfg.libconfig.libpath)),
+        StartupTask(tr("Building the window"), 2.3, _build_window, pump_events=False),
     ]

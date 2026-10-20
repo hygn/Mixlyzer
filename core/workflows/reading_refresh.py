@@ -5,6 +5,7 @@ from typing import Callable
 
 from PySide6 import QtCore
 
+from core.i18n import tr
 from core.workers.reading_refresh import ReadingRefreshRequest, ReadingRefreshResult, ReadingRefreshWorker
 
 
@@ -54,7 +55,7 @@ class LibraryReadingRefresh(QtCore.QObject):
     def _relay_progress(self, done: int, total: int) -> None:
         if self._active is not None:
             value = 100 * done // total if total else 100
-            self.progress.emit(self._active, value, f"Reading the library: {done} / {total} tracks")
+            self.progress.emit(self._active, value, tr("Reading the library: {done} / {total} tracks").format(done=done, total=total))
 
     @QtCore.Slot(object)
     def _job_finished(self, result: ReadingRefreshResult) -> None:

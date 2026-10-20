@@ -36,6 +36,7 @@ from optimizer import model_start as MS
 from optimizer.beat_tcn_optimizer import _rate
 from core.model_files import resolve_model
 from optimizer.refine_onset_optimizer import _group_key
+from core.i18n import tr
 
 ProgressCallback = Callable[[int, str], None]
 SCRATCH_STEPS = 6000
@@ -259,16 +260,16 @@ def _write_training_data(tracks, cache_dir: Path, work: Path, ignored) -> tuple[
     for track, size in zip(tracks, sizes):
         frames = read_frames(cache_path(cache_dir, str(track["uid"])), track) if size else None
         if frames is None:
-            ignored.append(skipped_track(track, "frame feature cache is not current"))
+            ignored.append(skipped_track(track, tr("frame feature cache is not current")))
             continue
-        tr = C.track_features(frames)
-        feats = np.diff(tr['cs'], axis=0)              # the per-frame rows the prefix sums were made of
+        track_feats = C.track_features(frames)
+        feats = np.diff(track_feats['cs'], axis=0)     # the per-frame rows the prefix sums were made of
         if out is None:
             channels = feats.shape[1]
             out = np.lib.format.open_memmap(work / "x.npy", mode="w+", dtype=np.float16, shape=(int(sum(sizes)), channels))
         n = feats.shape[0]
         out[offset:offset + n] = feats
-        meta.append((offset, n, tr['t0'], tr['hop']))
+        meta.append((offset, n, track_feats['t0'], track_feats['hop']))
         offset += n
         kept.append(track)
     if out is not None:
@@ -371,7 +372,7 @@ def _train_all(nets, work, meta, refs, decs, songs, steps, lr, max_workers, prog
                     done_steps[i] = max(done_steps[i], s)
                 if progress:
                     frac = sum(done_steps.values()) / (steps * len(nets))
-                    progress(lo + int(round((hi - lo) * frac)), f"{label_text}: step {min(done_steps.values())}/{steps} of each fold model")
+                    progress(lo + int(round((hi - lo) * frac)), tr("{stage}: step {done}/{steps} of each fold model").format(stage=label_text, done=min(done_steps.values()), steps=steps))
     finally:
         manager.shutdown()
     return out
@@ -383,15 +384,15 @@ def _pairwise_song(job) -> tuple[int, int]:
     from threadpoolctl import threadpool_limits
     a, n, t0, hop = song_meta
     feats = np.asarray(np.load(Path(work) / "x.npy", mmap_mode="r")[a:a + n], np.float32)
-    tr = dict(cs=np.vstack([np.zeros((1, feats.shape[1]), np.float32), np.cumsum(feats, 0, dtype=np.float64).astype(np.float32)]),
-              n=n, t0=t0, hop=hop)
+    track_feats = dict(cs=np.vstack([np.zeros((1, feats.shape[1]), np.float32),
+                                     np.cumsum(feats, 0, dtype=np.float64).astype(np.float32)]), n=n, t0=t0, hop=hop)
 
     def scored(g):
         if g.size < C.WIN + 2:
             return None
         starts = np.arange(0, g.size - C.WIN - 1, C.HOPB)
         labs = np.array([label(ref, g[s:s + C.WIN]) for s in starts])
-        return C.window_logits(nets, tr, g), labs
+        return C.window_logits(nets, track_feats, g), labs
     win = tot = 0
     with threadpool_limits(limits=1):
         right = scored(ref)
@@ -456,7 +457,8 @@ def optimize_beat_critic(
                 decs[uid] = grids
                 if feature_progress:
                     feature_progress(60 + int(round(40 * done / len(tracks))),
-                                     f"Decoder readings {done}/{len(tracks)}\n{optimizer_track_name(futures[f])}")
+                                     tr("Decoder readings {done}/{total}").format(done=done, total=len(tracks))
+                                     + "\n" + optimizer_track_name(futures[f]))
         decs_list = [decs.get(str(t["uid"]), []) for t in tracks]
         steps = int(request.steps) or (SCRATCH_STEPS if scratch else 1500)
         lr = float(request.learning_rate) or (SCRATCH_RATE if scratch else 5e-4)
@@ -470,7 +472,7 @@ def optimize_beat_critic(
             k = min(int(request.cv_folds), np.unique(groups).size)
             train, held = next(GroupKFold(n_splits=k).split(everything, groups=groups))
             tuned = _train_all(base, work, meta, refs, decs_list, train, steps, lr, request.max_train_workers,
-                               optimize_progress, (0, 35), "Held-out check", warmup)
+                               optimize_progress, (0, 35), tr("Held-out check"), warmup)
             before = _pairwise(reference, work, meta, refs, decs_list, held[:PAIRWISE_SONGS], request.max_cache_workers)
             after = _pairwise(tuned, work, meta, refs, decs_list, held[:PAIRWISE_SONGS], request.max_cache_workers)
             trial = work / "held_out_critic.npz"
@@ -481,7 +483,7 @@ def optimize_beat_critic(
                               request.max_cache_workers, optimize_progress, (35, 50))
             if not grid.not_worse and not request.keep_if_worse:
                 if optimize_progress:
-                    optimize_progress(100, "Not saved: the grids got worse on the held-out songs")
+                    optimize_progress(100, tr("Not saved: the grids got worse on the held-out songs"))
                 return BeatCriticOptimizationResult(
                     output_path=output_path, track_count=len(tracks), steps=steps, pairwise_before=before,
                     pairwise_after=after, skipped_tracks=tuple(ignored), cross_validated=True, grid=grid, saved=False,
@@ -490,7 +492,7 @@ def optimize_beat_critic(
         else:
             span = (0, 98)
         nets = _train_all(base, work, meta, refs, decs_list, everything, steps, lr, request.max_train_workers,
-                          optimize_progress, span, "Training" if scratch else "Fine-tuning", warmup)
+                          optimize_progress, span, tr("Training") if scratch else tr("Fine-tuning"), warmup)
         if not cross_validated:
             sample = everything[: min(PAIRWISE_SONGS, everything.size)]
             before = _pairwise(reference, work, meta, refs, decs_list, sample, request.max_cache_workers)
@@ -499,7 +501,7 @@ def optimize_beat_critic(
     finally:
         shutil.rmtree(work, ignore_errors=True)
     if optimize_progress:
-        optimize_progress(100, "Done")
+        optimize_progress(100, tr("Done"))
     return BeatCriticOptimizationResult(
         output_path=output_path, track_count=len(tracks), steps=steps, pairwise_before=before,
         pairwise_after=after, skipped_tracks=tuple(ignored), cross_validated=cross_validated, grid=grid,

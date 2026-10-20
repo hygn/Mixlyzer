@@ -37,6 +37,7 @@ from analyzer_core.cue_and_phrase.refinement import (
     shift_candidates,
 )
 from optimizer import phrase_lead_in as _lead_in
+from core.i18n import tr
 
 ProgressCallback = Callable[[int, str], None]
 
@@ -240,30 +241,32 @@ def fit_two_pass(
     say = progress or (lambda _pct, _msg: None)
     oof: dict[int, dict] = {}
     n_inner = min(INNER_FOLDS, indices.size)
-    for fold, (tr, te) in enumerate(GroupKFold(n_splits=n_inner).split(indices, groups=indices), start=1):
-        say(int(round((fold - 1) * 60 / n_inner)), f"Pass-1 outputs out of fold {fold}/{n_inner}")
-        train = indices[tr]
+    for fold, (train_idx, test_idx) in enumerate(GroupKFold(n_splits=n_inner).split(indices, groups=indices),
+                                                 start=1):
+        say(int(round((fold - 1) * 60 / n_inner)),
+            tr("Pass-1 outputs out of fold {fold}/{folds}").format(fold=fold, folds=n_inner))
+        train = indices[train_idx]
         boundary_clf, label_model = fit_pass_one(prepared, train, targets, seed)
         pair_clf = fit_pair_model(prepared, train, targets, seed + 400)
         artifact = _pass_one_artifact(boundary_clf, label_model, settings)
-        for i in indices[te]:
+        for i in indices[test_idx]:
             oof[int(i)] = pass_one_outputs(prepared[int(i)], artifact, pair_clf, targets[int(i)][0])
 
-    say(60, "Fitting pass-1 boundary and label GBMs")
+    say(60, tr("Fitting pass-1 boundary and label GBMs"))
     boundary_clf, label_model = fit_pass_one(prepared, indices, targets, seed)
-    say(70, "Fitting bar-pair similarity GBM")
+    say(70, tr("Fitting bar-pair similarity GBM"))
     pair_clf = fit_pair_model(prepared, indices, targets, seed + 400)
-    say(78, "Fitting pass-2 boundary GBM")
+    say(78, tr("Fitting pass-2 boundary GBM"))
     extra = {int(i): refinement_columns(prepared[int(i)], oof[int(i)]) for i in indices}
     boundary2 = fit_boundary2(prepared, indices, targets, extra, seed + 200)
-    say(88, "Fitting pass-2 label GBM")
+    say(88, tr("Fitting pass-2 label GBM"))
     label2 = fit_label2(prepared, indices, targets, oof, seed + 300)
     if [str(c) for c in label2.classes_] != [str(c) for c in label_model.labels]:
         raise RuntimeError("Pass-2 label classes differ from pass-1 label classes")
-    say(94, "Fitting label-change and bar-shift GBMs")
+    say(94, tr("Fitting label-change and bar-shift GBMs"))
     change = fit_change_model(prepared, indices, targets, oof, seed + 500)
     shift = fit_shift_model(prepared, indices, targets, extra, oof, seed + 600)
-    say(97, "Fitting lead-in GBMs")
+    say(97, tr("Fitting lead-in GBMs"))
     lead_in, threshold = _lead_in.fit_lead_in({i: oof[i]["lead_in"] for i in oof}, indices, targets, seed + 700)
     if lead_in is not None:
         settings = {**settings, "lead_in_version": LEAD_IN_VERSION, "lead_in_threshold": threshold}

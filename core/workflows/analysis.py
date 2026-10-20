@@ -12,6 +12,7 @@ from core.analysis_lib_handler import FeatureNPZStore
 from core.config import load_cfg
 from core.library_handler import LibraryDB
 from core.workers.analysis import AnalysisWorker
+from core.i18n import tr
 
 
 ResultCallback = Callable[[dict], None]
@@ -60,7 +61,8 @@ class AnalysisWorkflow(QtCore.QObject):
     def reanalyze(self, path: str) -> None:
         self._start(path, force_analyze=True)
 
-    def cancel_all(self, reason: str = "Analysis canceled") -> None:
+    def cancel_all(self, reason: str | None = None) -> None:
+        reason = reason or tr("Analysis canceled")
         for taskid, worker in list(self._workers.items()):
             worker.stop()
             worker.deleteLater()
@@ -85,20 +87,20 @@ class AnalysisWorkflow(QtCore.QObject):
             path = track.path
             if not os.path.isfile(path):
                 # the track's file is gone: no guessing, the user sets its new path
-                self._show_status(f"File not found: {path}")
+                self._show_status(tr("File not found: {path}").format(path=path))
                 if self._missing_file_callback is not None:
                     self._missing_file_callback(track, force_analyze)
                 return
         auto_load = track is not None
 
         if self._find_inflight_task(path) is not None:
-            self._show_status(f"Analysis already in progress: {os.path.basename(path)}")
+            self._show_status(tr("Analysis already in progress: {file}").format(file=os.path.basename(path)))
             return
 
         self._cancel_reanalysis_callback(
-            "Segment reanalysis canceled (track changed)"
+            tr("Segment reanalysis canceled (track changed)")
         )
-        self._show_status(f"Analyzing: {os.path.basename(path)}")
+        self._show_status(tr("Analyzing: {file}").format(file=os.path.basename(path)))
         self.current_path = path
 
         thumbnail = self._albumart_provider(path)
@@ -106,7 +108,7 @@ class AnalysisWorkflow(QtCore.QObject):
         task_info = self.taskmanager.addtask(
             songname=title,
             thumbnail=thumbnail,
-            status="Loading Track",
+            status=tr("Loading Track"),
             progress=0.0,
         )
         taskid = task_info.taskid
@@ -185,7 +187,7 @@ class AnalysisWorkflow(QtCore.QObject):
         self.taskmanager.rmtask(taskid, message)
         path = self._contexts.get(taskid, {}).get("path")
         basename = os.path.basename(path) if path else ""
-        prefix = f"Error ({basename})" if basename else "Error"
+        prefix = tr("Error ({file})").format(file=basename) if basename else tr("Error")
         self._show_status(f"{prefix}: {message}")
         print(f"[AnalysisWorker] Error for task {taskid}: {message}")
         self._finalize(taskid)

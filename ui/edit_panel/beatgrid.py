@@ -15,23 +15,31 @@ from ui.edit_panel.blocks import mode_column, rule_cell
 from ui.edit_panel.icons import badged_icon, icon
 from ui.theme import current_theme
 from ui.edit_panel.styles import BUTTON_STYLESHEET, WARNING_BUTTON_STYLESHEET
+from core.i18n import tr, tr_mark
 
 # time signatures with their own button; the rest are under Custom
 TS_PRESETS = (3, 4, 5, 7)
 
-# the tools whose target follows the edit scope (whole grid / current segment): icon name ->
-# tooltip, "{target}" filled with the scope's
+# the tools whose target follows the edit scope: icon name -> (tooltip with the whole grid, with the current
+# segment), translated where shown
 SCOPED_TOOLS = {
-    "shift_half_back": "Shift {target} half a beat earlier",
-    "shift_coarse_back": "Shift {target} 10 ms earlier",
-    "shift_fine_back": "Shift {target} 1 ms earlier",
-    "shift_fine_fwd": "Shift {target} 1 ms later",
-    "shift_coarse_fwd": "Shift {target} 10 ms later",
-    "shift_half_fwd": "Shift {target} half a beat later",
-    "bpm_half": "Halve the BPM of {target}; the downbeats stay",
-    "bpm_double": "Double the BPM of {target}; the downbeats stay",
+    "shift_half_back": (tr_mark("Shift the whole beatgrid (every segment) half a beat earlier"),
+                        tr_mark("Shift the current segment half a beat earlier")),
+    "shift_coarse_back": (tr_mark("Shift the whole beatgrid (every segment) 10 ms earlier"),
+                          tr_mark("Shift the current segment 10 ms earlier")),
+    "shift_fine_back": (tr_mark("Shift the whole beatgrid (every segment) 1 ms earlier"),
+                        tr_mark("Shift the current segment 1 ms earlier")),
+    "shift_fine_fwd": (tr_mark("Shift the whole beatgrid (every segment) 1 ms later"),
+                       tr_mark("Shift the current segment 1 ms later")),
+    "shift_coarse_fwd": (tr_mark("Shift the whole beatgrid (every segment) 10 ms later"),
+                         tr_mark("Shift the current segment 10 ms later")),
+    "shift_half_fwd": (tr_mark("Shift the whole beatgrid (every segment) half a beat later"),
+                       tr_mark("Shift the current segment half a beat later")),
+    "bpm_half": (tr_mark("Halve the BPM of the whole beatgrid (every segment); the downbeats stay"),
+                 tr_mark("Halve the BPM of the current segment; the downbeats stay")),
+    "bpm_double": (tr_mark("Double the BPM of the whole beatgrid (every segment); the downbeats stay"),
+                   tr_mark("Double the BPM of the current segment; the downbeats stay")),
 }
-SCOPE_TARGETS = {True: "the whole beatgrid (every segment)", False: "the current segment"}
 
 # the TAP icon is a word: no padding, so it is not squeezed in its narrow button
 _TAP_STYLE = "QToolButton { padding: 0; }"
@@ -63,13 +71,13 @@ class BeatgridEditMixin:
         self.btn_shift_half_fwd = _btn("shift_half_fwd", "")
 
         # Row 2: reference BPM and tempo
-        self.btn_zeroBPM = _btn("zero", "Clear the reference BPM and the tap history")
+        self.btn_zeroBPM = _btn("zero", tr("Clear the reference BPM and the tap history"))
         # ZERO and TAP share one cell; the reference BPM (tapped or typed) has its own
         self.btn_tapBPM = QtWidgets.QToolButton()
         self.btn_tapBPM.setIcon(icon("beatgrid_tap"))
         self.btn_tapBPM.setIconSize(QtCore.QSize(24, 12))
         self.btn_tapBPM.setStyleSheet(_TAP_STYLE)
-        self.btn_tapBPM.setToolTip("Tap the beat to set the reference BPM")
+        self.btn_tapBPM.setToolTip(tr("Tap the beat to set the reference BPM"))
         self.zero_tap_cell = QtWidgets.QWidget()
         zt_lay = QtWidgets.QHBoxLayout(self.zero_tap_cell)
         zt_lay.setContentsMargins(0, 0, 0, 0)
@@ -84,26 +92,26 @@ class BeatgridEditMixin:
             ref_bpm_regex, self.inp_refBPM
         )
         self.inp_refBPM.setValidator(self._ref_bpm_validator)
-        self.inp_refBPM.setPlaceholderText("Ref")
+        self.inp_refBPM.setPlaceholderText(tr("Ref"))
         self.inp_refBPM.setAlignment(QtCore.Qt.AlignCenter)
         self.inp_refBPM.setStyleSheet("QLineEdit { padding: 0 2px; }")
-        self.inp_refBPM.setToolTip("Reference BPM (tapped or typed)")
-        self.btn_setBPM = _btn("assign", "Assign the reference BPM to the current segment (downbeat at its start)")
-        self.btn_ramp_start = _btn("ramp_start", "Make the reference BPM the current segment's starting tempo (a ramp to its end tempo; its first beat stays)")
-        self.btn_ramp_end = _btn("ramp_end", "Make the reference BPM the current segment's ending tempo (a ramp from its start tempo; its first beat stays)")
+        self.inp_refBPM.setToolTip(tr("Reference BPM (tapped or typed)"))
+        self.btn_setBPM = _btn("assign", tr("Assign the reference BPM to the current segment (downbeat at its start)"))
+        self.btn_ramp_start = _btn("ramp_start", tr("Make the reference BPM the current segment's starting tempo (a ramp to its end tempo; its first beat stays)"))
+        self.btn_ramp_end = _btn("ramp_end", tr("Make the reference BPM the current segment's ending tempo (a ramp from its start tempo; its first beat stays)"))
         self.btn_reanalyze_segment = _btn("reanalyze", "")
 
         # Row 3: split / merge, downbeat, BPM x1/2 / x2 (these two follow the edit scope)
-        self.btn_merge_prev = _btn("merge_prev", "Merge the previous segment into the current one (keeps the current tempo / phase)")
-        self.btn_merge_next = _btn("merge_next", "Merge the next segment into the current one (keeps the current tempo / phase)")
-        self.btn_cutseg = _btn("split", "Split the current segment at the playhead")
-        self.btn_set_downbeat = _btn("downbeat", "Make the beat nearest the playhead the current segment's downbeat")
+        self.btn_merge_prev = _btn("merge_prev", tr("Merge the previous segment into the current one (keeps the current tempo / phase)"))
+        self.btn_merge_next = _btn("merge_next", tr("Merge the next segment into the current one (keeps the current tempo / phase)"))
+        self.btn_cutseg = _btn("split", tr("Split the current segment at the playhead"))
+        self.btn_set_downbeat = _btn("downbeat", tr("Make the beat nearest the playhead the current segment's downbeat"))
         self.btn_bpm_half = _btn("bpm_half", "")
         self.btn_bpm_double = _btn("bpm_double", "")
 
         # The edit scope, apart from the tools: what shift and BPM x2 / x1/2 apply to
-        self.btn_scope_all = _btn("scope_all", "Edit the whole beatgrid: shift and BPM x2 / x1/2 apply to every segment", checkable=True)
-        self.btn_scope_segment = _btn("scope_segment", "Edit the current segment: shift and BPM x2 / x1/2 apply to it only", checkable=True)
+        self.btn_scope_all = _btn("scope_all", tr("Edit the whole beatgrid: shift and BPM x2 / x1/2 apply to every segment"), checkable=True)
+        self.btn_scope_segment = _btn("scope_segment", tr("Edit the current segment: shift and BPM x2 / x1/2 apply to it only"), checkable=True)
         self.btn_scope_segment.setChecked(True)
         self._beatgrid_scope_group = QtWidgets.QButtonGroup(self)
         self._beatgrid_scope_group.setExclusive(True)
@@ -120,11 +128,11 @@ class BeatgridEditMixin:
         # to the current segment on click; the segment's own is filled blue.
         self.ts_buttons: dict[int, QtWidgets.QToolButton] = {}
         for n in TS_PRESETS:
-            b = _btn(f"ts_{n}", f"Set the current segment to {n}/4")
+            b = _btn(f"ts_{n}", tr("Set the current segment to {meter}").format(meter=f"{n}/4"))
             b.setIconSize(QtCore.QSize(36, 18))
             b.clicked.connect(lambda _=False, n=n: self._apply_time_signature(n))
             self.ts_buttons[n] = b
-        self.btn_ts_custom = _btn("ts_custom", "Set the current segment to another time signature (1/4 - 8/4)")
+        self.btn_ts_custom = _btn("ts_custom", tr("Set the current segment to another time signature (1/4 - 8/4)"))
         self.btn_ts_custom.setIconSize(QtCore.QSize(36, 18))
         custom_menu = QtWidgets.QMenu(self.btn_ts_custom)
         for n in range(1, MAX_BEATS_PER_BAR + 1):
@@ -135,10 +143,10 @@ class BeatgridEditMixin:
         self._ts_current = 4
         # metronome on / off, the same setting as in the settings (saved); stays usable
         # while editing is locked
-        self.btn_metronome = _btn("metronome", "Metronome on / off", checkable=True)
+        self.btn_metronome = _btn("metronome", tr("Metronome on / off"), checkable=True)
         self.btn_metronome.toggled.connect(self.bus.sig_metronome_toggle_requested.emit)
 
-        self.beatgrid_status = QtWidgets.QLabel("Seg -- | Elapsed: 00:00.00 | Left: 00:00.00")
+        self.beatgrid_status = QtWidgets.QLabel(tr("Seg -- | Elapsed: 00:00.00 | Left: 00:00.00"))
         self.beatgrid_status.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
 
         rows = [
@@ -206,10 +214,9 @@ class BeatgridEditMixin:
         """Shift and BPM x2 / x1/2 show what they apply to: the icon's strip and the tooltip follow
         the edit scope."""
         whole = self._edit_whole_grid()
-        target = SCOPE_TARGETS[whole]
         for name, btn in self._scoped_tools.items():
             btn.setIcon(badged_icon(f"beatgrid_{name}", "scope_all" if whole else "scope_segment"))
-            btn.setToolTip(SCOPED_TOOLS[name].format(target=target))
+            btn.setToolTip(tr(SCOPED_TOOLS[name][0 if whole else 1]))
 
     def set_metronome_checked(self, on: bool) -> None:
         """Show the metronome setting (changed elsewhere, e.g. in the settings)."""
@@ -228,10 +235,10 @@ class BeatgridEditMixin:
         """Segment reanalysis follows the reference BPM when there is one."""
         if self._reference_bpm() is None:
             self.btn_reanalyze_segment.setIcon(icon("beatgrid_reanalyze"))
-            self.btn_reanalyze_segment.setToolTip("Reanalyze the current segment's beatgrid from the audio")
+            self.btn_reanalyze_segment.setToolTip(tr("Reanalyze the current segment's beatgrid from the audio"))
         else:
             self.btn_reanalyze_segment.setIcon(icon("beatgrid_reanalyze_ref"))
-            self.btn_reanalyze_segment.setToolTip("Reanalyze the current segment's beatgrid at the reference BPM")
+            self.btn_reanalyze_segment.setToolTip(tr("Reanalyze the current segment's beatgrid at the reference BPM"))
 
     def _reanalyze_segment_auto(self) -> None:
         if self._reference_bpm() is None:
@@ -255,9 +262,10 @@ class BeatgridEditMixin:
             cs = int((sec - 60 * m - s) * 100)
             return f"{m:02d}:{s:02d}.{cs:02d}"
         if idx is None:
-            self.beatgrid_status.setText("Seg -- | Elapsed: 00:00.00 | Left: 00:00.00")
+            self.beatgrid_status.setText(tr("Seg -- | Elapsed: 00:00.00 | Left: 00:00.00"))
         else:
-            self.beatgrid_status.setText(f"Seg {idx+1} | Elapsed: {fmt(elapsed)} | Left: {fmt(left)}")
+            self.beatgrid_status.setText(tr("Seg {index} | Elapsed: {elapsed} | Left: {left}").format(
+                index=idx + 1, elapsed=fmt(elapsed), left=fmt(left)))
         self._refresh_time_sig_selector()
         self._update_phrase_status()
 
@@ -514,13 +522,13 @@ class BeatgridEditMixin:
 
     def _on_playback_tempo_changed(self, tempofactor):
         if abs(tempofactor - 1) > 0.0001:
-            self.btn_tapBPM.setToolTip("Tap to set reference BPM (WARNING! Tempo factor is not 1. RefBPM Will be scaled accordingly)")
-            self.inp_refBPM.setToolTip("Reference BPM for Analysis and BPM Assigning (WARNING! Tempo factor is not 1. RefBPM Will be scaled accordingly)")
+            self.btn_tapBPM.setToolTip(tr("Tap to set reference BPM (WARNING! Tempo factor is not 1. RefBPM Will be scaled accordingly)"))
+            self.inp_refBPM.setToolTip(tr("Reference BPM for Analysis and BPM Assigning (WARNING! Tempo factor is not 1. RefBPM Will be scaled accordingly)"))
             self.btn_tapBPM.setStyleSheet(WARNING_BUTTON_STYLESHEET + _TAP_STYLE)
             self.btn_tapBPM.setIcon(icon("beatgrid_tap", inverted=True))  # dark on yellow
         else:
-            self.btn_tapBPM.setToolTip("Tap to set reference BPM")
-            self.inp_refBPM.setToolTip("Reference BPM for Analysis and BPM Assigning")
+            self.btn_tapBPM.setToolTip(tr("Tap to set reference BPM"))
+            self.inp_refBPM.setToolTip(tr("Reference BPM for Analysis and BPM Assigning"))
             self.btn_tapBPM.setStyleSheet(BUTTON_STYLESHEET + _TAP_STYLE)
             self.btn_tapBPM.setIcon(icon("beatgrid_tap"))
         self.tempo_multiplier = tempofactor

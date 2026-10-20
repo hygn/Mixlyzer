@@ -5,6 +5,7 @@ from typing import Any, Dict, List
 import numpy as np
 
 from utils.jumpcue_colors import JUMPCUE_PAIR_COLORS, get_jumpcue_pair_color
+from core.i18n import tr
 
 
 _VALID_JUMPCUE_LABELS = set("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
@@ -101,7 +102,7 @@ def _label_from_index(idx: int) -> str:
     alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     if 0 <= idx < len(alphabet):
         return alphabet[idx]
-    raise ValueError("JumpCUE labels are limited to unique A-Z.")
+    raise ValueError(tr("JumpCUE labels are limited to unique A-Z."))
 
 
 def _cue_identity_key(cue: dict[str, float | str]) -> tuple[str, float, float, float]:
@@ -128,10 +129,10 @@ def _validate_edit_labels(sorted_cues: list[dict[str, float | str]]) -> None:
     for cue in sorted_cues:
         label = str(cue.get("label", "") or "").strip().upper()
         if label not in _VALID_JUMPCUE_LABELS:
-            raise ValueError("JumpCUE labels must be unique single letters A-Z.")
+            raise ValueError(tr("JumpCUE labels must be unique single letters A-Z."))
         labels.append(label)
     if len(labels) != len(set(labels)):
-        raise ValueError("JumpCUE labels must be unique single letters A-Z.")
+        raise ValueError(tr("JumpCUE labels must be unique single letters A-Z."))
 
 
 def _merge_coincident_cues(
@@ -311,7 +312,7 @@ def _build_cues_and_groups_from_pairs(
         if not label:
             label = _label_from_index(idx)
         if label in cue_labels:
-            raise ValueError("JumpCUE labels must be unique single letters A-Z.")
+            raise ValueError(tr("JumpCUE labels must be unique single letters A-Z."))
         cue_labels.add(label)
         identity = _cue_identity_key(cue)
         identity_to_id[identity] = idx

@@ -1,4 +1,5 @@
 from PySide6 import QtCore, QtGui, QtWidgets
+from core.i18n import tr
 
 
 class SupportDialog(QtWidgets.QDialog):
@@ -6,7 +7,7 @@ class SupportDialog(QtWidgets.QDialog):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Support Python & Open Source")
+        self.setWindowTitle(tr("Support Python & Open Source"))
         self.setModal(False)
         self.resize(560, 520)
 
@@ -14,16 +15,16 @@ class SupportDialog(QtWidgets.QDialog):
         root.setContentsMargins(12, 12, 12, 12)
         root.setSpacing(8)
         intro = QtWidgets.QLabel(
-            "This app is built on the shoulders of open-source projects.\nIf you'd like to support the ecosystem, here are some ways."
+            tr("This app is built on the shoulders of open-source projects.\nIf you'd like to support the ecosystem, here are some ways.")
         )
         intro.setWordWrap(True)
         root.addWidget(intro)
 
         # Quick actions
         quick = QtWidgets.QHBoxLayout()
-        btn_psf = QtWidgets.QPushButton("Donate to Python (PSF)")
+        btn_psf = QtWidgets.QPushButton(tr("Donate to Python (PSF)"))
         btn_psf.clicked.connect(lambda: self._open_url("https://www.python.org/psf/donations/"))
-        btn_numfocus = QtWidgets.QPushButton("Donate to Scientific Python (NumFOCUS)")
+        btn_numfocus = QtWidgets.QPushButton(tr("Donate to Scientific Python (NumFOCUS)"))
         btn_numfocus.clicked.connect(lambda: self._open_url("https://numfocus.org/donate"))
         quick.addWidget(btn_psf)
         quick.addWidget(btn_numfocus)
@@ -45,7 +46,7 @@ class SupportDialog(QtWidgets.QDialog):
             hl.setContentsMargins(0, 0, 0, 0)
             hl.setSpacing(6)
             lbl = QtWidgets.QLabel(name)
-            btn = QtWidgets.QPushButton("Open Link")
+            btn = QtWidgets.QPushButton(tr("Open Link"))
             btn.clicked.connect(lambda _=False, u=url: self._open_url(u))
             hl.addWidget(lbl)
             hl.addStretch(1)

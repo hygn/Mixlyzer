@@ -37,6 +37,7 @@ from optimizer.beat_tcn_optimizer import _rate
 from optimizer.onset_training import _auto_cache_workers, _list_beat_tracks
 from optimizer.refine_onset_optimizer import _group_key
 from utils.atomic_io import atomic_output_path
+from core.i18n import tr
 
 ProgressCallback = Callable[[int, str], None]
 KEY_FRAME_CACHE_FORMAT = "mixlyzer_key_frame_cache_v1"
@@ -73,7 +74,7 @@ class KeyModelOptimizationResult:
     epochs: int
     accuracy_before: float = float("nan")   # share of the songs' beats whose key (signature) is right
     accuracy_after: float = float("nan")
-    fifth_before: float = float("nan")      # share of beats off by a fifth (a Camelot neighbour)
+    fifth_before: float = float("nan")      # share of beats off by a fifth (a Alphanumeric neighbour)
     fifth_after: float = float("nan")
     eval_songs: int = 0
     skipped_tracks: tuple[SkippedOptimizationTrack, ...] = ()
@@ -118,10 +119,10 @@ def list_key_tracks(library_dir: Path, ignored: list[SkippedOptimizationTrack]) 
                 starts = np.asarray(z["phrase_segments_np.start"], float) if "phrase_segments_np.start" in z.files else np.zeros(0)
                 duration = float(np.asarray(z["duration_sec"]).item())
         except Exception as exc:
-            ignored.append(skipped_track(track, f"unreadable analysis: {exc}"))
+            ignored.append(skipped_track(track, tr("unreadable analysis: {error}").format(error=exc)))
             continue
         if ks.shape[0] == 0:
-            ignored.append(skipped_track(track, "no key annotation"))
+            ignored.append(skipped_track(track, tr("no key annotation")))
             continue
         if auto is not None:
             if _same_keys(ks, auto):
@@ -191,10 +192,11 @@ def ensure_key_frames(tracks, cache_dir: Path, ignored, *, rebuild=False, max_wo
                     future.result()
                 except Exception as exc:
                     failed.add(str(track["uid"]))
-                    ignored.append(skipped_track(track, f"key feature cache build failed: {exc}"))
+                    ignored.append(skipped_track(track, tr("key feature cache build failed: {error}").format(error=exc)))
                 if progress:
                     progress(lo + int(round((hi - lo) * done / len(jobs))),
-                             f"Key features {done}/{len(jobs)}\n{optimizer_track_name(track)}")
+                             tr("Key features {done}/{total}").format(done=done, total=len(jobs))
+                             + "\n" + optimizer_track_name(track))
     return [t for t in tracks if str(t["uid"]) not in failed]
 
 
@@ -436,7 +438,8 @@ def train(arrays: dict, songs: list[Song], idx, epochs: int, lr: float, distill:
                 v2[k] = b2 * v2[k] + (1 - b2) * g * g
                 P[k] = (P[k] - rate * (m[k] / (1 - b1 ** step)) / (np.sqrt(v2[k] / (1 - b2 ** step)) + eps)).astype(np.float32)
         if progress:
-            progress(lo + int(round((hi - lo) * (ep + 1) / epochs)), f"{label}: epoch {ep + 1}/{epochs}, loss {total / per_epoch:.3f}")
+            progress(lo + int(round((hi - lo) * (ep + 1) / epochs)), tr("{stage}: epoch {epoch}/{epochs}, loss {loss}").format(
+                stage=label, epoch=ep + 1, epochs=epochs, loss=f"{total / per_epoch:.3f}"))
     out = {k: np.asarray(v) for k, v in arrays.items()}
     out.update(P)
     return out
@@ -494,11 +497,12 @@ def optimize_key_model(
         frames = read_key_frames(cache_path(cache_dir, str(t["uid"])), t)
         s = song_of(t, frames) if frames is not None else None
         if s is None:
-            ignored.append(skipped_track(t, "too few beats or no key features"))
+            ignored.append(skipped_track(t, tr("too few beats or no key features")))
             continue
         songs.append(s); kept.append(t)
         if feature_progress and done % 10 == 0:
-            feature_progress(90 + int(round(10 * done / len(tracks))), f"Beat inputs {done}/{len(tracks)}")
+            feature_progress(90 + int(round(10 * done / len(tracks))),
+                             tr("Beat inputs {done}/{total}").format(done=done, total=len(tracks)))
     if feature_progress:
         feature_progress(100, f"{len(songs)} songs")
     MS.require_tracks(len(songs), MS.kind_of(request.start), MS.KEY_SONGS)
@@ -513,12 +517,12 @@ def optimize_key_model(
         k = min(int(request.cv_folds), np.unique(groups).size)
         train_idx, held = next(GroupKFold(n_splits=k).split(everything, groups=groups))
         trial = train(base, songs, train_idx, epochs, lr, request.distill, request.seed, scratch, optimize_progress,
-                      (0, 45), "Held-out check")
+                      (0, 45), tr("Held-out check"))
         before, f_before = evaluate(reference, songs, held)
         after, f_after = evaluate(trial, songs, held)
         if after < before and not request.keep_if_worse:
             if optimize_progress:
-                optimize_progress(100, "Not saved: the held-out songs' keys got worse")
+                optimize_progress(100, tr("Not saved: the held-out songs' keys got worse"))
             return KeyModelOptimizationResult(
                 output_path=output_path, track_count=len(songs), accuracy_before=before, accuracy_after=after,
                 fifth_before=f_before, fifth_after=f_after, eval_songs=int(held.size), cross_validated=True,
@@ -527,14 +531,14 @@ def optimize_key_model(
     else:
         span = (0, 95)
     final = train(base, songs, everything, epochs, lr, request.distill, request.seed, scratch, optimize_progress, span,
-                  "Training" if scratch else "Fine-tuning")
+                  tr("Training") if scratch else tr("Fine-tuning"))
     if not cross_validated:
         before, f_before = evaluate(reference, songs, everything)
         after, f_after = evaluate(final, songs, everything)
         held = everything
     _save(output_path, final)
     if optimize_progress:
-        optimize_progress(100, "Done")
+        optimize_progress(100, tr("Done"))
     return KeyModelOptimizationResult(
         output_path=output_path, track_count=len(songs), accuracy_before=before, accuracy_after=after,
         fifth_before=f_before, fifth_after=f_after, eval_songs=int(np.size(held)), cross_validated=cross_validated,

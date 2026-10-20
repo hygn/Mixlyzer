@@ -8,7 +8,8 @@ from PySide6 import QtWidgets, QtGui, QtCore
 
 from ui.theme import current_theme
 from core.config import config
-from utils.labels import CAMELOT_LABELS, CLASSICAL_LABELS
+from utils.labels import ALPHANUMERIC_LABELS, CLASSICAL_LABELS
+from core.i18n import tr
 
 
 _VALUE = "#f0f3f6"   # current values, title
@@ -21,7 +22,7 @@ _BEAT_IN_BAR = "#e6e6e6"
 _BEAT_OFF = "#4a4a4a"
 _GAP = " "  # en space between the change and the meter
 _THIN = " "  # thin space around the "/" of a key: narrower key column
-KEY_LABEL_SAMPLES = [f"{cam}{_THIN}/{_THIN}{cls}" for cam, cls in zip(CAMELOT_LABELS, CLASSICAL_LABELS)]
+KEY_LABEL_SAMPLES = [f"{num}{_THIN}/{_THIN}{cls}" for num, cls in zip(ALPHANUMERIC_LABELS, CLASSICAL_LABELS)]
 
 
 def _span(text: str, color: str) -> str:
@@ -368,7 +369,7 @@ class _UnloadButton(QtWidgets.QAbstractButton):
         super().__init__(parent)
         self.setFixedSize(self.SIZE, self.SIZE)
         self.setCursor(QtCore.Qt.PointingHandCursor)
-        self.setToolTip("Unload track")
+        self.setToolTip(tr("Unload track"))
         self.setAttribute(QtCore.Qt.WA_Hover, True)
 
     def enterEvent(self, event) -> None:
@@ -612,7 +613,7 @@ class TrackInfoPanel(QtWidgets.QWidget):
 
     def set_key(self, current: Optional[tuple[str, str]], original: tuple[str, str] = ("", ""),
                 semitones: float = 0.0):
-        """KEY  current  original +N.NN; keys as (Camelot, classical); None shows ``--``."""
+        """KEY  current  original +N.NN; keys as (Alphanumeric, classical); None shows ``--``."""
         _, value, rest = self._key_cells
         if current is None:
             value.setText("--")
@@ -720,7 +721,7 @@ class TrackInfoPanel(QtWidgets.QWidget):
         painter.setPen(QtGui.QPen(QtGui.QColor("#666")))
         painter.drawRect(0, 0, self.HEADER_H - 5, self.HEADER_H - 5)
         painter.setPen(QtGui.QPen(QtGui.QColor("#aaa")))
-        painter.drawText(pix.rect(), QtCore.Qt.AlignCenter, "No Art")
+        painter.drawText(pix.rect(), QtCore.Qt.AlignCenter, tr("No Art"))
         painter.end()
         self.cover_label.setPixmap(pix)
 

@@ -17,7 +17,8 @@ from core.event_bus import EventBus
 from core.library_handler import READING_FIELDS, USER_SOURCE, TrackRow, LibraryDB, field_readings
 from ui.theme import current_theme
 from core.config import config, default_cfg, searchconfig
-from utils.labels import CAMELOT_LABELS, CLASSICAL_LABELS
+from utils.labels import ALPHANUMERIC_LABELS, CLASSICAL_LABELS
+from core.i18n import tr
 
 
 class EditSongDialog(QDialog):
@@ -45,7 +46,7 @@ class EditSongDialog(QDialog):
         """``search_settings``: the search settings (read when needed: the stored readings'
         languages; the defaults when None)."""
         super().__init__()
-        self.setWindowTitle("Edit Track Metadata")
+        self.setWindowTitle(tr("Edit Track Metadata"))
         self.setModal(False)
         self.resize(500, 300)
         self._bus = bus
@@ -56,20 +57,20 @@ class EditSongDialog(QDialog):
         root = QVBoxLayout(self)
 
         # Editable fields
-        grp_edit = QGroupBox("Editable Fields")
+        grp_edit = QGroupBox(tr("Editable Fields"))
         form_edit = QFormLayout(grp_edit)
         self.ed_title = QLineEdit()
         self.ed_artist = QLineEdit()
         self.ed_album = QLineEdit()
         self.sp_bpm = QDoubleSpinBox(); self.sp_bpm.setRange(0.0, 1000.0); self.sp_bpm.setDecimals(3); self.sp_bpm.setSingleStep(0.1)
-        # Human-readable key: show both Camelot and Classical labels
+        # Human-readable key: show both Alphanumeric and Classical labels
         self.cmb_key = QComboBox(); self._populate_key_combo()
         self.sp_rating = QSpinBox(); self.sp_rating.setRange(0, 5)
         self.ed_comment = QLineEdit()
         self.ed_path = QLineEdit()
-        self.ed_path.setToolTip("The track's audio file. Set it when the file was moved or renamed;\n"
-                                "the analysis, playlists and CUEs stay with the track.")
-        btn_browse = QPushButton("Browse...")
+        self.ed_path.setToolTip(tr("The track's audio file. Set it when the file was moved or renamed;\n"
+                                   "the analysis, playlists and CUEs stay with the track."))
+        btn_browse = QPushButton(tr("Browse..."))
         btn_browse.clicked.connect(self._browse_path)
         path_row = QWidget(); path_lay = QHBoxLayout(path_row); path_lay.setContentsMargins(0, 0, 0, 0)
         path_lay.addWidget(self.ed_path, 1); path_lay.addWidget(btn_browse)
@@ -80,16 +81,17 @@ class EditSongDialog(QDialog):
         # after them, but those emptied or typed over here (removed, kept so). A column per field,
         # a row per slot.
         self.tbl_readings = QTableWidget(reading.READING_SLOTS, len(READING_FIELDS))
-        self.tbl_readings.setHorizontalHeaderLabels([f.capitalize() for f in READING_FIELDS])
+        names = {"title": tr("Title"), "artist": tr("Artist"), "album": tr("Album")}
+        self.tbl_readings.setHorizontalHeaderLabels([names.get(f, f.capitalize()) for f in READING_FIELDS])
         self.tbl_readings.setVerticalHeaderLabels([str(i + 1) for i in range(reading.READING_SLOTS)])
         self.tbl_readings.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.tbl_readings.verticalHeader().setSectionResizeMode(QHeaderView.Fixed)
         self.tbl_readings.setEditTriggers(QAbstractItemView.AllEditTriggers)
         self.tbl_readings.setToolTip(
-            "<p>How the title, artist and album read in Latin letters: the search finds the track by them "
-            "in any script (あのね by anone or 아노네). Dim: read from the text in Settings > Search's "
-            "languages. Type in a cell to add a reading of yours; empty a cell (Delete) or type over it to "
-            "remove its reading for good, and type it again to bring it back.</p>")
+            tr("<p>How the title, artist and album read in Latin letters: the search finds the track by them "
+               "in any script (あのね by anone or 아노네). Dim: read from the text in Settings > Search's "
+               "languages. Type in a cell to add a reading of yours; empty a cell (Delete) or type over it to "
+               "remove its reading for good, and type it again to bring it back.</p>"))
         self.tbl_readings.setFixedHeight(
             self.tbl_readings.horizontalHeader().sizeHint().height()
             + self.tbl_readings.verticalHeader().defaultSectionSize() * reading.READING_SLOTS + 4)
@@ -102,18 +104,18 @@ class EditSongDialog(QDialog):
         for f, edit in self._sources.items():
             edit.textChanged.connect(lambda _text, f=f: self._refresh_auto_readings(f))
 
-        form_edit.addRow("Path", path_row)
-        form_edit.addRow("Title", self.ed_title)
-        form_edit.addRow("Artist", self.ed_artist)
-        form_edit.addRow("Album", self.ed_album)
-        form_edit.addRow("Readings", self.tbl_readings)
+        form_edit.addRow(tr("Path"), path_row)
+        form_edit.addRow(tr("Title"), self.ed_title)
+        form_edit.addRow(tr("Artist"), self.ed_artist)
+        form_edit.addRow(tr("Album"), self.ed_album)
+        form_edit.addRow(tr("Readings"), self.tbl_readings)
         form_edit.addRow("BPM", self.sp_bpm)
-        form_edit.addRow("Key", self.cmb_key)
-        form_edit.addRow("Rating (0-5)", self.sp_rating)
-        form_edit.addRow("Comment", self.ed_comment)
+        form_edit.addRow(tr("Key"), self.cmb_key)
+        form_edit.addRow(tr("Rating (0-5)"), self.sp_rating)
+        form_edit.addRow(tr("Comment"), self.ed_comment)
 
         # Read-only fields
-        grp_ro = QGroupBox("Read-only Fields")
+        grp_ro = QGroupBox(tr("Read-only Fields"))
         form_ro = QFormLayout(grp_ro)
         self.ro_uid = QLineEdit(); self._make_ro(self.ro_uid)
         self.ro_duration = QLineEdit(); self._make_ro(self.ro_duration)
@@ -122,10 +124,10 @@ class EditSongDialog(QDialog):
         self.ro_size = QLineEdit(); self._make_ro(self.ro_size)
 
         form_ro.addRow("UID", self.ro_uid)
-        form_ro.addRow("Duration (sec)", self.ro_duration)
-        form_ro.addRow("Added (epoch)", self.ro_added)
-        form_ro.addRow("File mtime", self.ro_mtime)
-        form_ro.addRow("File size (bytes)", self.ro_size)
+        form_ro.addRow(tr("Duration (sec)"), self.ro_duration)
+        form_ro.addRow(tr("Added (epoch)"), self.ro_added)
+        form_ro.addRow(tr("File mtime"), self.ro_mtime)
+        form_ro.addRow(tr("File size (bytes)"), self.ro_size)
 
         # Buttons
         btn_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel | QDialogButtonBox.Apply)
@@ -217,7 +219,7 @@ class EditSongDialog(QDialog):
             item = QTableWidgetItem(text)
             item.setData(self._SOURCE_ROLE, source)
             item.setData(self._SHOWN_ROLE, text)
-            item.setToolTip(f"{text}  ({reading.SOURCES.get(source, source)})" if text else "")
+            item.setToolTip(f"{text}  ({tr(reading.SOURCES.get(source, source))})" if text else "")
             if source != USER_SOURCE:
                 item.setForeground(dim)
             self.tbl_readings.setItem(r, c, item)
@@ -285,7 +287,7 @@ class EditSongDialog(QDialog):
         current = self.ed_path.text().strip()
         folder = os.path.dirname(current)
         start = current if os.path.isfile(current) else (folder if os.path.isdir(folder) else "")
-        path, _ = QFileDialog.getOpenFileName(self, "Track File", start)
+        path, _ = QFileDialog.getOpenFileName(self, tr("Track File"), start)
         if path:
             self.ed_path.setText(os.path.normpath(path))
 
@@ -293,7 +295,7 @@ class EditSongDialog(QDialog):
         """Save the row; False (with a message) when the new path cannot be used."""
         path_changed = self._row is not None and updated.path != self._row.path
         if path_changed and not os.path.isfile(updated.path):
-            QMessageBox.warning(self, "Edit Track", f"The file does not exist:\n{updated.path}")
+            QMessageBox.warning(self, tr("Edit Track"), tr("The file does not exist:\n{path}").format(path=updated.path))
             return False
         if not self._libpath:
             # No persistence configured; emit signal for external handling
@@ -316,7 +318,7 @@ class EditSongDialog(QDialog):
             lib_full = db.list_all()
         except ValueError as exc:
             db.conn.rollback()
-            QMessageBox.warning(self, "Edit Track", str(exc))
+            QMessageBox.warning(self, tr("Edit Track"), str(exc))
             return False
         finally:
             db.close()
@@ -348,9 +350,9 @@ class EditSongDialog(QDialog):
         # First item: Unknown/None
         self.cmb_key.addItem("--", None)
         for i in range(24):
-            camel = CAMELOT_LABELS[i]
+            alphanumeric = ALPHANUMERIC_LABELS[i]
             classical = CLASSICAL_LABELS[i]
-            text = f"{camel} / {classical}"
+            text = f"{alphanumeric} / {classical}"
             self.cmb_key.addItem(text, i)
 
     def _set_key_index(self, idx: int) -> None:

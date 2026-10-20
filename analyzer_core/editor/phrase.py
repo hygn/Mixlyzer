@@ -6,6 +6,7 @@ from analyzer_core.cue_and_phrase import detect_phrase_segments
 from analyzer_core.global_analyzer import fast_load
 from analyzer_core.hpss import hpss_audio_with_spectra
 from core.config import ANALYSIS_SAMPLE_RATE, config
+from core.i18n import tr
 
 # the full analysis's floor: fewer beats are too short for the phrase model
 MIN_BEATS = 17
@@ -19,20 +20,20 @@ def reanalyze_phrases(path: str, cfg: config, beats_time_arr: np.ndarray, *,
     gcf = cfg.analysisconfig
     beats_time_arr = np.asarray(beats_time_arr, dtype=float)
     if beats_time_arr.size < MIN_BEATS:
-        raise ValueError(f"the phrase analysis needs at least {MIN_BEATS} beats")
+        raise ValueError(tr("the phrase analysis needs at least {count} beats").format(count=MIN_BEATS))
     if tempo_segments is None or np.asarray(tempo_segments).size == 0:
-        raise ValueError("tempo segments are required for phrase reanalysis")
+        raise ValueError(tr("tempo segments are required for phrase reanalysis"))
     tempo_segments = np.asarray(tempo_segments, dtype=float)
     if progress_cb:
-        progress_cb("Loading audio", 0.0)
+        progress_cb(tr("Loading audio"), 0.0)
     sr = ANALYSIS_SAMPLE_RATE
     audio_stereo = fast_load(path, sr, stereo=True)
     if progress_cb:
-        progress_cb("Processing HPSS", 0.2)
+        progress_cb(tr("Processing HPSS"), 0.2)
     audio_full = np.ascontiguousarray(audio_stereo.mean(axis=1), dtype=np.float32)
     _y_harm, _y_perc, hpss_spectra = hpss_audio_with_spectra(audio_full, sr)
     if progress_cb:
-        progress_cb("Analyzing phrases", 0.5)
+        progress_cb(tr("Analyzing phrases"), 0.5)
     segments = detect_phrase_segments(
         audio_stereo,
         sr,
@@ -47,5 +48,5 @@ def reanalyze_phrases(path: str, cfg: config, beats_time_arr: np.ndarray, *,
     ]
     print(f"[Phrase] reanalysis segments={len(rows)} labels=[{', '.join(r['label'] for r in rows)}]")
     if progress_cb:
-        progress_cb("Phrases Updated", 0.9)
+        progress_cb(tr("Phrases Updated"), 0.9)
     return rows

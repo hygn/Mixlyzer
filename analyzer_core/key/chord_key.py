@@ -4,7 +4,7 @@ A small root-equivariant chord CNN reads every beat (bass / treble CQT chroma an
 as P(chord | beat) over 24 triads; the key evidence of a beat is log sum_c P(c | beat) P(c | key, phrase position),
 the chords taken relative to each of the 24 keys (P(c | key, position): the diatonic functions of a phrase's first,
 last and other bars). The chord layer was trained through the key loss only (no chord labels), on keys in the DJ /
-DAW sense: the scale (key signature, Camelot number) with major / minor by the tonic chord.
+DAW sense: the scale (key signature, Alphanumeric number) with major / minor by the tonic chord.
 
 The keys follow the bars: a bar Viterbi over the 24 keys where a key change costs J at a phrase start and J + JX
 elsewhere (half of it between relative keys, which share the scale), plus an interval prior (a common modulation --

@@ -25,8 +25,8 @@ def harmonic_compatible_keys(anchor_key: int | None) -> set[int]:
         return set()
     key = int(anchor_key) % 24
     mode = "A" if key >= 12 else "B"
-    camelot, _ = idx_to_labels(key)
-    number = int(camelot[:-1])
+    alphanumeric, _ = idx_to_labels(key)
+    number = int(alphanumeric[:-1])
     other_mode = "B" if mode == "A" else "A"
     candidates = {
         f"{number}{mode}",

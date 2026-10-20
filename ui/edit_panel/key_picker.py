@@ -1,15 +1,16 @@
-"""Key picker popup: the 24 keys as Camelot rows (1A..12A over 1B..12B), each in its
-key colour and named both ways (Camelot over classical); one click picks."""
+"""Key picker popup: the 24 keys as Alphanumeric rows (1A..12A over 1B..12B), each in its
+key colour and named both ways (Alphanumeric over classical); one click picks."""
 from __future__ import annotations
 
 from PySide6 import QtCore, QtWidgets
 
 from utils.color import key_cmap_color, key_label_text_color
 from utils.keystrip import key_segment_label
-from utils.labels import CAMELOT_LABELS, idx_to_labels
+from utils.labels import ALPHANUMERIC_LABELS, idx_to_labels
+from core.i18n import tr
 
-# key index for each Camelot cell: CAMELOT_INDEX[(number, letter)]
-CAMELOT_INDEX = {(int(c[:-1]), c[-1]): i for i, c in enumerate(CAMELOT_LABELS)}
+# key index for each Alphanumeric cell: ALPHANUMERIC_INDEX[(number, letter)]
+ALPHANUMERIC_INDEX = {(int(c[:-1]), c[-1]): i for i, c in enumerate(ALPHANUMERIC_LABELS)}
 
 
 class KeyPickerPopup(QtWidgets.QFrame):
@@ -26,7 +27,7 @@ class KeyPickerPopup(QtWidgets.QFrame):
         self._cells: dict[int, QtWidgets.QToolButton] = {}
         for row, letter in enumerate(("A", "B")):
             for n in range(1, 13):
-                idx = CAMELOT_INDEX[(n, letter)]
+                idx = ALPHANUMERIC_INDEX[(n, letter)]
                 cell = QtWidgets.QToolButton()
                 cell.setText("\n".join(idx_to_labels(idx)))
                 cell.setToolTip(key_segment_label(idx))
@@ -78,7 +79,7 @@ class KeyPickButton(QtWidgets.QToolButton):
         self._popup = KeyPickerPopup(self)
         self._popup.picked.connect(self.setKey)
         self.clicked.connect(lambda: self._popup.show_for(self, self._key))
-        self.setToolTip("Pick the key (Camelot wheel)")
+        self.setToolTip(tr("Pick the key (Alphanumeric wheel)"))
         self._restyle()
 
     def key(self) -> int:

@@ -20,6 +20,7 @@ from analyzer_core.editor.jumpcue import reanalyze_jumpCUE
 from analyzer_core.editor.phrase import reanalyze_phrases
 from core.config import config
 from core.concurrency.process_worker import SpawnProcessWorker, install_parent_watchdog
+from core.i18n import tr
 
 
 class SegmentReanalysisWorker(SpawnProcessWorker):
@@ -87,7 +88,7 @@ class SegmentReanalysisWorker(SpawnProcessWorker):
     def _process_exited(self, *, graceful: bool, exitcode: int | None) -> None:
         if not graceful and not self._error_emitted and not self._result_emitted:
             self._error_emitted = True
-            self.error.emit(f"Segment analysis process exited unexpectedly ({exitcode}).")
+            self.error.emit(tr("Segment analysis process exited unexpectedly ({code}).").format(code=exitcode))
 
 
 def _segment_reanalysis_entry(

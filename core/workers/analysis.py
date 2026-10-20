@@ -7,6 +7,7 @@ from PySide6 import QtCore
 
 from analyzer_core.global_analyzer import precompute_features
 from core.config import config
+from core.i18n import tr
 from core.concurrency.process_worker import SpawnProcessWorker, install_parent_watchdog
 
 
@@ -115,4 +116,4 @@ class AnalysisWorker(SpawnProcessWorker):
     def _process_exited(self, *, graceful: bool, exitcode: int | None) -> None:
         if not graceful and not self._error_emitted and not self._result_emitted:
             self._error_emitted = True
-            self.error.emit(f"Analysis process exited unexpectedly ({exitcode}).")
+            self.error.emit(tr("Analysis process exited unexpectedly ({code}).").format(code=exitcode))

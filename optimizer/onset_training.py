@@ -16,6 +16,7 @@ from core.audio.decoder import decode_to_memmap
 from core.library_handler import LibraryDB
 from optimizer import SkippedOptimizationTrack, skipped_track
 from utils.atomic_io import atomic_output_path
+from core.i18n import tr
 
 
 ONSET_FEATURE_CACHE_FORMAT = "mixlyzer_onset_feature_cache_v4"
@@ -62,11 +63,11 @@ def _list_beat_tracks(
         }
         if not analysis_path.is_file():
             if ignored is not None:
-                ignored.append(skipped_track(track, "analysis NPZ is missing"))
+                ignored.append(skipped_track(track, tr("analysis NPZ is missing")))
             continue
         if not audio_path.is_file():
             if ignored is not None:
-                ignored.append(skipped_track(track, "audio file is missing"))
+                ignored.append(skipped_track(track, tr("audio file is missing")))
             continue
         try:
             with np.load(analysis_path, allow_pickle=False) as archive:
@@ -74,11 +75,11 @@ def _list_beat_tracks(
                 sample_rate = int(np.asarray(archive["sr"]).item())
         except (KeyError, OSError, ValueError) as exc:
             if ignored is not None:
-                ignored.append(skipped_track(track, f"invalid beat analysis: {exc}"))
+                ignored.append(skipped_track(track, tr("invalid beat analysis: {error}").format(error=exc)))
             continue
         if beats.ndim != 1 or beats.size < MIN_BEATS or not np.all(np.isfinite(beats)):
             if ignored is not None:
-                ignored.append(skipped_track(track, "invalid or insufficient beat grid"))
+                ignored.append(skipped_track(track, tr("invalid or insufficient beat grid")))
             continue
         track.update(beats=np.sort(beats), sample_rate=sample_rate)
         tracks.append(track)

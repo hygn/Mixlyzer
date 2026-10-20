@@ -19,6 +19,7 @@ from analyzer_core.self_correlation.jump_point_model import (
     semantic_pair_scores,
 )
 from utils.atomic_io import atomic_write_json, atomic_write_text
+from core.i18n import tr
 
 
 PAIR_FEATURES = ("long", "short", "pre", "masking")
@@ -972,15 +973,15 @@ def optimize_jumpcue_parameters(
             beats = np.asarray(feats["beats_time_sec"], dtype=float)
             segments = np.asarray(feats["tempo_segments"], dtype=float)
             if not info["audio_path"].exists():
-                skipped.append(skipped_track(info, "Audio file not found"))
+                skipped.append(skipped_track(info, tr("Audio file not found")))
                 continue
             tracks.append({**info, "beats": beats, "segments": segments, "saved": saved,
                            "auto": jump_cue_point_groups(feats, "jump_cues_auto_np"),
                            "cache_key": _cache_key(beats, segments, settings)})
         except Exception as exc:
-            skipped.append(skipped_track(info, f"Reading the analysis failed: {exc}"))
+            skipped.append(skipped_track(info, tr("Reading the analysis failed: {error}").format(error=exc)))
     if len(tracks) < 5:
-        raise RuntimeError(f"Need at least five tracks with saved JumpCUEs ({len(tracks)} found).")
+        raise RuntimeError(tr("Need at least five tracks with saved JumpCUEs ({count} found).").format(count=len(tracks)))
 
     def cached(track: dict) -> dict | None:
         path = cache_dir / f"{track['uid']}.pkl"
@@ -997,8 +998,9 @@ def optimize_jumpcue_parameters(
     jobs = [t for t in tracks if cached(t) is None]
     done = total - len(jobs)
     if feature_progress is not None:
-        feature_progress(int(done * 90 / total), f"Building {len(jobs)} JumpCUE candidate caches" if jobs
-                         else "JumpCUE candidate cache is current")
+        feature_progress(int(done * 90 / total),
+                         tr("Building {count} JumpCUE candidate caches").format(count=len(jobs)) if jobs
+                         else tr("JumpCUE candidate cache is current"))
     if jobs:
         workers = max(1, min(request.max_cache_workers or 2, len(jobs)))
         failed: set[str] = set()
@@ -1010,7 +1012,7 @@ def optimize_jumpcue_parameters(
                     future.result()
                 except Exception as exc:
                     failed.add(track["uid"])
-                    skipped.append(skipped_track(track, f"JumpCUE analysis failed: {exc}"))
+                    skipped.append(skipped_track(track, tr("JumpCUE analysis failed: {error}").format(error=exc)))
                 done += 1
                 if feature_progress is not None:
                     feature_progress(int(done * 90 / total), f"({done}/{total})\n{optimizer_track_name(track)}")
@@ -1028,12 +1030,12 @@ def optimize_jumpcue_parameters(
             continue
         labeled = _library_groups(track, data["records"])
         if not labeled:
-            skipped.append(skipped_track(track, "No saved JumpCUE group matches an automatically found group"))
+            skipped.append(skipped_track(track, tr("No saved JumpCUE group matches an automatically found group")))
             continue
         harmony = {track["uid"]: data["harmony"]} if data.get("harmony") is not None else {}
         groups.extend(_candidate_rows(g, names, threshold, harmony) for g in labeled)
     if feature_progress is not None:
-        feature_progress(100, f"{len(groups)} labeled groups")
+        feature_progress(100, tr("{count} labeled groups").format(count=len(groups)))
     uids = np.asarray([g.uid for g in groups])
     if np.unique(uids).size < 5:
         raise RuntimeError(f"Need labeled groups on at least five tracks ({np.unique(uids).size} found).")
@@ -1051,13 +1053,13 @@ def optimize_jumpcue_parameters(
         splits = list(GroupKFold(n_splits=folds).split(np.arange(len(groups)), groups=uids))
         for k, (train, valid) in enumerate(splits, start=1):
             if optimize_progress is not None:
-                optimize_progress(int((k - 1) * 80 / folds), f"Cross-validation fold {k}/{folds}")
+                optimize_progress(int((k - 1) * 80 / folds), tr("Cross-validation fold {fold}/{folds}").format(fold=k, folds=folds))
             w = fit([groups[i] for i in train])
             for key, values in _rank_values([groups[i] for i in valid], w, threshold, names).items():
                 pooled[key].extend(values)
         metrics = _mean_values(pooled)
     if optimize_progress is not None:
-        optimize_progress(85, "Fitting on all tracks")
+        optimize_progress(85, tr("Fitting on all tracks"))
     weights = fit(groups)
     if not cross_validated:
         metrics = _mean_values(_rank_values(groups, weights, threshold, names))
@@ -1084,7 +1086,7 @@ def optimize_jumpcue_parameters(
     output_path.parent.mkdir(parents=True, exist_ok=True)
     atomic_write_json(output_path, out)
     if optimize_progress is not None:
-        optimize_progress(100, "Done")
+        optimize_progress(100, tr("Done"))
     return JumpCueOptimizationResult(
         output_path=output_path, track_count=int(np.unique(uids).size), group_count=len(groups),
         preference_pairs=int(pairs), label_auc=metrics["auc"], pick_downbeat=metrics["pick_downbeat"],

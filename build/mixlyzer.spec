@@ -63,6 +63,19 @@ a = Analysis(
             '../assets/readings/UNICODE-LICENSE.txt',
             'assets/readings',
         ),
+        # the UI's languages (core.i18n): the list and each one's catalog
+        (
+            '../assets/i18n/languages.json',
+            'assets/i18n',
+        ),
+        (
+            '../assets/i18n/languages/ko-KR/mixlyzer.po',
+            'assets/i18n/languages/ko-KR',
+        ),
+        (
+            '../assets/i18n/languages/ja-JP/mixlyzer.po',
+            'assets/i18n/languages/ja-JP',
+        ),
     ]
     # the title readings (core.reading): the readers' dictionaries and tables
     + collect_data_files('sudachipy')

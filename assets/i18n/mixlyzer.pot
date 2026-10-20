@@ -1,0 +1,4006 @@
+# Translations template for Mixlyzer.
+# Copyright (C) 2026 Mixlyzer contributors
+# This file is distributed under the same license as the Mixlyzer project.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: Mixlyzer VERSION\n"
+"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
+"POT-Creation-Date: 2026-10-21 00:04+0900\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: analyzer_core/editor/beatgrid.py:155 analyzer_core/editor/jumpcue.py:34
+#: analyzer_core/editor/keystrip.py:17 analyzer_core/editor/phrase.py:28
+msgid "Loading audio"
+msgstr ""
+
+#: analyzer_core/editor/beatgrid.py:167
+msgid "segment too short for reanalysis"
+msgstr ""
+
+#: analyzer_core/editor/beatgrid.py:173
+msgid "Preparing audio"
+msgstr ""
+
+#: analyzer_core/editor/beatgrid.py:178
+msgid "Beat activations"
+msgstr ""
+
+#: analyzer_core/editor/beatgrid.py:196
+msgid "Estimating BPM"
+msgstr ""
+
+#: analyzer_core/editor/beatgrid.py:237
+msgid "Downbeat analysis"
+msgstr ""
+
+#: analyzer_core/editor/beatgrid.py:250
+msgid "Updating beat grid"
+msgstr ""
+
+#: analyzer_core/editor/beatgrid.py:260
+msgid "Segment updated"
+msgstr ""
+
+#: analyzer_core/editor/jumpcue.py:29
+msgid "JumpCUE needs the phrase analysis; enable it in the analysis settings"
+msgstr ""
+
+#: analyzer_core/editor/jumpcue.py:31
+msgid "tempo segments are required for JumpCUE reanalysis"
+msgstr ""
+
+#: analyzer_core/editor/jumpcue.py:42
+msgid "Frame features"
+msgstr ""
+
+#: analyzer_core/editor/jumpcue.py:45
+msgid "Phrase boundaries"
+msgstr ""
+
+#: analyzer_core/editor/jumpcue.py:57
+msgid "too few beats for the phrase analysis JumpCUE needs"
+msgstr ""
+
+#: analyzer_core/editor/jumpcue.py:59
+msgid "Analyzing JumpCUE"
+msgstr ""
+
+#: analyzer_core/editor/jumpcue.py:102
+msgid "JumpCUE Updated"
+msgstr ""
+
+#: analyzer_core/editor/keystrip.py:23
+msgid "Separating harmonics"
+msgstr ""
+
+#: analyzer_core/editor/keystrip.py:26
+msgid "Analyzing key"
+msgstr ""
+
+#: analyzer_core/editor/keystrip.py:51 analyzer_core/editor/keystrip.py:84
+msgid "Key segment updated"
+msgstr ""
+
+#: analyzer_core/editor/keystrip.py:81
+msgid "selection duration too small"
+msgstr ""
+
+#: analyzer_core/editor/phrase.py:23
+#, python-brace-format
+msgid "the phrase analysis needs at least {count} beats"
+msgstr ""
+
+#: analyzer_core/editor/phrase.py:25
+msgid "tempo segments are required for phrase reanalysis"
+msgstr ""
+
+#: analyzer_core/editor/phrase.py:36
+msgid "Analyzing phrases"
+msgstr ""
+
+#: analyzer_core/editor/phrase.py:51
+msgid "Phrases Updated"
+msgstr ""
+
+#: analyzer_core/global_analyzer.py:58
+#, python-brace-format
+msgid "Audio decode failed via FFmpeg and SoundFile: {path}"
+msgstr ""
+
+#: analyzer_core/global_analyzer.py:296
+msgid "Loading"
+msgstr ""
+
+#: analyzer_core/editor/jumpcue.py:39 analyzer_core/editor/phrase.py:32
+#: analyzer_core/global_analyzer.py:304
+msgid "Processing HPSS"
+msgstr ""
+
+#: analyzer_core/global_analyzer.py:315
+msgid "Processing Waveform"
+msgstr ""
+
+#: analyzer_core/global_analyzer.py:330
+msgid "Tempo"
+msgstr ""
+
+#: analyzer_core/global_analyzer.py:332
+msgid "Tempo Analyzing"
+msgstr ""
+
+#: analyzer_core/global_analyzer.py:400
+msgid "Phrase Boundary Analyzing"
+msgstr ""
+
+#: analyzer_core/global_analyzer.py:457
+msgid "JumpCUE Analyzing"
+msgstr ""
+
+#: analyzer_core/global_analyzer.py:506
+msgid "Analyzing Keys"
+msgstr ""
+
+#: analyzer_core/global_analyzer.py:534
+msgid "Processing Metadata"
+msgstr ""
+
+#: analyzer_core/global_analyzer.py:543
+msgid "Rendering/Normalizing"
+msgstr ""
+
+#: analyzer_core/global_analyzer.py:567
+msgid "Saving"
+msgstr ""
+
+#: analyzer_core/global_analyzer.py:569
+msgid "Saving Result"
+msgstr ""
+
+#: app/main.py:44
+msgid "Administrator Execution Blocked"
+msgstr ""
+
+#: app/main.py:45
+msgid ""
+"Mixlyzer cannot run with administrator privileges.\n"
+"Close it and launch again as a normal user."
+msgstr ""
+
+#: app/main.py:63
+msgid "Incompatible Library Version"
+msgstr ""
+
+#: app/main.py:64
+#, python-brace-format
+msgid ""
+"This library cannot be opened by the current app version.\n"
+"Library: {current}\n"
+"Required: {required}\n"
+"\n"
+"Automatic library migration is not available."
+msgstr ""
+
+#: app/startup.py:65
+msgid "Starting"
+msgstr ""
+
+#: app/startup.py:168
+msgid "Scratch reader"
+msgstr ""
+
+#: app/startup.py:168
+msgid "Cursor poller"
+msgstr ""
+
+#: app/startup.py:169
+msgid "Time stretch"
+msgstr ""
+
+#: app/startup.py:179
+msgid "ffmpeg: a short silent decode"
+msgstr ""
+
+#: app/startup.py:194
+msgid "library.db: readings"
+msgstr ""
+
+#: app/startup.py:204
+#, python-brace-format
+msgid "Search keys: {tracks} tracks, {done} / {total} readings"
+msgstr ""
+
+#: app/startup.py:219
+msgid "Loading libraries"
+msgstr ""
+
+#: app/startup.py:220
+msgid "Compiling audio kernels (JIT)"
+msgstr ""
+
+#: app/startup.py:221
+msgid "Starting FFmpeg"
+msgstr ""
+
+#: app/startup.py:222
+msgid "Loading search readers"
+msgstr ""
+
+#: app/startup.py:223
+msgid "Loading the library"
+msgstr ""
+
+#: app/startup.py:224
+msgid "Building the window"
+msgstr ""
+
+#: app/window.py:48
+msgid "Core objects and playback"
+msgstr ""
+
+#: app/window.py:107
+msgid "Main view, editor and library"
+msgstr ""
+
+#: app/window.py:112 app/window.py:124 ui/config/window.py:60
+msgid "Settings"
+msgstr ""
+
+#: app/window.py:115
+msgid "Dialogs, workflows and metronome"
+msgstr ""
+
+#: app/window.py:122
+msgid "Transport"
+msgstr ""
+
+#: app/window.py:125 ui/workers.py:23
+msgid "Workers"
+msgstr ""
+
+#: app/window.py:126
+msgid "Open Source"
+msgstr ""
+
+#: app/window.py:127
+msgid "About"
+msgstr ""
+
+#: app/window.py:226 app/window.py:260 app/window.py:267
+msgid "External Sync is enabled. Local track loading is disabled."
+msgstr ""
+
+#: app/window.py:236
+#, python-brace-format
+msgid "Drop error: {error}"
+msgstr ""
+
+#: app/window.py:275
+msgid "Track unloaded."
+msgstr ""
+
+#: app/window.py:282
+msgid "Track File Not Found"
+msgstr ""
+
+#: app/window.py:286
+#, python-brace-format
+msgid ""
+"Cannot load \"{name}\": its file is missing.\n"
+"{path}\n"
+"\n"
+"Set the file's new location?"
+msgstr ""
+
+#: app/window.py:293
+#, python-brace-format
+msgid "Locate {name}"
+msgstr ""
+
+#: analyzer_core/global_analyzer.py:584 app/window.py:343
+msgid "Finished"
+msgstr ""
+
+#: app/window.py:346 app/window.py:382
+msgid "Done. Press Play."
+msgstr ""
+
+#: app/window.py:348
+msgid "Analysis saved to library."
+msgstr ""
+
+#: app/window.py:480
+#, python-brace-format
+msgid "External Sync loading: {file}"
+msgstr ""
+
+#: app/window.py:480
+#, python-brace-format
+msgid "External Sync analyzing: {file}"
+msgstr ""
+
+#: app/window.py:496
+msgid "Memory Sync Disabled"
+msgstr ""
+
+#: app/window.py:741 ui/config/external_sync.py:130
+msgid "Time Sync"
+msgstr ""
+
+#: app/window.py:741 ui/config/external_sync.py:130
+msgid "Sample Index Sync"
+msgstr ""
+
+#: app/window.py:743
+msgid "manual"
+msgstr ""
+
+#: app/window.py:748
+#, python-brace-format
+msgid "External Sync enabled via {target}. Local play/load is locked."
+msgstr ""
+
+#: core/external_sync.py:224
+#, python-brace-format
+msgid ""
+"Failed to open process memory for '{process}'. Memory Sync has been "
+"disabled."
+msgstr ""
+
+#: core/external_sync.py:235
+msgid "Memory Sync read failed and has been disabled."
+msgstr ""
+
+#: core/external_sync.py:254
+#, python-brace-format
+msgid "External Sync ignored unsafe track path: {path}"
+msgstr ""
+
+#: core/external_sync.py:306
+#, python-brace-format
+msgid "External Sync analyzing external track before load: {path}"
+msgstr ""
+
+#: core/external_sync.py:415
+#, python-brace-format
+msgid "Memory Sync deck state read failed: {error}"
+msgstr ""
+
+#: core/external_sync.py:431
+#, python-brace-format
+msgid "Memory Sync deck payload read failed: {error}"
+msgstr ""
+
+#: core/external_sync.py:692
+#, python-brace-format
+msgid "External Sync blocked for denied process: {process} ({path})"
+msgstr ""
+
+#: core/external_sync.py:694
+#, python-brace-format
+msgid "External Sync blocked for denied process: {process}"
+msgstr ""
+
+#: core/external_sync.py:735
+#, python-brace-format
+msgid "Process denylist unavailable ({error}); blocking all processes."
+msgstr ""
+
+#: core/library_handler.py:549
+msgid "The path cannot be empty."
+msgstr ""
+
+#: core/library_handler.py:552
+#, python-brace-format
+msgid "This file is already in the library as \"{track}\"."
+msgstr ""
+
+#: core/library_handler.py:571 core/library_handler.py:592
+msgid "Playlist name cannot be empty"
+msgstr ""
+
+#: core/reading.py:58
+msgid "Japanese"
+msgstr ""
+
+#: core/reading.py:58
+msgid "Mandarin"
+msgstr ""
+
+#: core/reading.py:58
+msgid "Taiwan Mandarin"
+msgstr ""
+
+#: core/reading.py:59
+msgid "Cantonese"
+msgstr ""
+
+#: core/reading.py:59
+msgid "Korean Hanja"
+msgstr ""
+
+#: core/reading.py:59
+msgid "Sino-Vietnamese"
+msgstr ""
+
+#: core/reading.py:60
+msgid "Korean"
+msgstr ""
+
+#: core/reading.py:60
+msgid "as written"
+msgstr ""
+
+#: core/reading.py:60
+msgid "set by the user"
+msgstr ""
+
+#: core/reading.py:521
+msgid "Japanese (SudachiDict)"
+msgstr ""
+
+#: core/reading.py:522
+msgid "Mandarin (pypinyin)"
+msgstr ""
+
+#: core/reading.py:523
+msgid "Cantonese (pycantonese)"
+msgstr ""
+
+#: core/reading.py:524
+msgid "Korean Hanja (Unihan)"
+msgstr ""
+
+#: core/reading.py:525
+msgid "Sino-Vietnamese (Unihan)"
+msgstr ""
+
+#: core/workers/analysis.py:119
+#, python-brace-format
+msgid "Analysis process exited unexpectedly ({code})."
+msgstr ""
+
+#: core/workers/optimizer.py:177
+#, python-brace-format
+msgid "{name} optimizer process exited unexpectedly ({code})."
+msgstr ""
+
+#: core/workers/optimizer.py:183
+#, python-brace-format
+msgid "{name} optimizer returned {results} of {jobs} results."
+msgstr ""
+
+#: core/workers/reading_refresh.py:109
+#, python-brace-format
+msgid "The reading refresh process exited unexpectedly ({code})."
+msgstr ""
+
+#: core/workers/rekordbox_sync.py:82
+msgid "Loading Mixlyzer library"
+msgstr ""
+
+#: core/workers/rekordbox_sync.py:92 core/workers/rekordbox_sync.py:121
+#: core/workers/rekordbox_sync.py:135
+msgid "Loading Rekordbox XML"
+msgstr ""
+
+#: core/workers/rekordbox_sync.py:113
+#, python-brace-format
+msgid "Syncing tracks {done}/{total}"
+msgstr ""
+
+#: core/workers/rekordbox_sync.py:129
+#, python-brace-format
+msgid "Syncing changed tracks {done}/{total}"
+msgstr ""
+
+#: core/workers/rekordbox_sync.py:143
+msgid "Building Rekordbox track entry"
+msgstr ""
+
+#: core/workers/rekordbox_sync.py:159
+msgid "Formatting Rekordbox XML"
+msgstr ""
+
+#: core/workers/rekordbox_sync.py:161
+msgid "Writing Rekordbox XML"
+msgstr ""
+
+#: core/workers/rekordbox_sync.py:163
+msgid "Rekordbox XML sync complete"
+msgstr ""
+
+#: core/workers/segment_reanalysis.py:91
+#, python-brace-format
+msgid "Segment analysis process exited unexpectedly ({code})."
+msgstr ""
+
+#: core/workflows/analysis.py:65
+msgid "Analysis canceled"
+msgstr ""
+
+#: core/workflows/analysis.py:90
+#, python-brace-format
+msgid "File not found: {path}"
+msgstr ""
+
+#: core/workflows/analysis.py:97
+#, python-brace-format
+msgid "Analysis already in progress: {file}"
+msgstr ""
+
+#: core/workflows/analysis.py:101
+msgid "Segment reanalysis canceled (track changed)"
+msgstr ""
+
+#: core/workflows/analysis.py:103
+#, python-brace-format
+msgid "Analyzing: {file}"
+msgstr ""
+
+#: core/workflows/analysis.py:111
+msgid "Loading Track"
+msgstr ""
+
+#: core/workflows/analysis.py:190
+#, python-brace-format
+msgid "Error ({file})"
+msgstr ""
+
+#: core/workflows/analysis.py:190
+msgid "Error"
+msgstr ""
+
+#: core/workflows/reading_refresh.py:58
+#, python-brace-format
+msgid "Reading the library: {done} / {total} tracks"
+msgstr ""
+
+#: core/workflows/segment_reanalysis.py:55
+msgid "Segment reanalysis canceled"
+msgstr ""
+
+#: core/workflows/segment_reanalysis.py:76
+msgid "Load a track before segment reanalysis"
+msgstr ""
+
+#: core/workflows/segment_reanalysis.py:124
+msgid "JumpCUE reanalyze"
+msgstr ""
+
+#: core/workflows/segment_reanalysis.py:126
+#, python-brace-format
+msgid "{song} (Phrase)"
+msgstr ""
+
+#: core/workflows/segment_reanalysis.py:127
+msgid "Phrase reanalyze"
+msgstr ""
+
+#: core/workflows/segment_reanalysis.py:129
+#, python-brace-format
+msgid "{song} (Key)"
+msgstr ""
+
+#: core/workflows/segment_reanalysis.py:130
+msgid "Key reanalyze"
+msgstr ""
+
+#: core/workflows/segment_reanalysis.py:132
+#, python-brace-format
+msgid "{song} (Seg {index})"
+msgstr ""
+
+#: core/workflows/segment_reanalysis.py:133
+msgid "Segment reanalyze"
+msgstr ""
+
+#: core/workflows/segment_reanalysis.py:183
+msgid "No beatgrid available for JumpCUE reanalysis"
+msgstr ""
+
+#: core/workflows/segment_reanalysis.py:188
+msgid "No beatgrid available for phrase reanalysis"
+msgstr ""
+
+#: core/workflows/segment_reanalysis.py:191
+msgid "No tempo segments available for phrase reanalysis"
+msgstr ""
+
+#: core/workflows/segment_reanalysis.py:196
+msgid "No tempo segments available for key reanalysis"
+msgstr ""
+
+#: core/workflows/segment_reanalysis.py:199
+#: core/workflows/segment_reanalysis.py:203
+msgid "No key segments available for reanalysis"
+msgstr ""
+
+#: core/workflows/segment_reanalysis.py:211
+msgid "Invalid key selection"
+msgstr ""
+
+#: core/workflows/segment_reanalysis.py:240
+msgid "Key reanalysis completed"
+msgstr ""
+
+#: core/workflows/segment_reanalysis.py:243
+msgid "JumpCUE reanalysis completed"
+msgstr ""
+
+#: core/workflows/segment_reanalysis.py:246
+msgid "Phrase reanalysis completed"
+msgstr ""
+
+#: core/workflows/segment_reanalysis.py:249
+msgid "Segment reanalysis completed"
+msgstr ""
+
+#: core/workflows/segment_reanalysis.py:269
+msgid "JumpCUE reanalysis finished"
+msgstr ""
+
+#: core/workflows/segment_reanalysis.py:278
+msgid "Phrase reanalysis finished"
+msgstr ""
+
+#: core/workflows/segment_reanalysis.py:292
+msgid "Key reanalysis finished"
+msgstr ""
+
+#: core/workflows/segment_reanalysis.py:306
+msgid "Segment reanalysis finished"
+msgstr ""
+
+#: core/workflows/segment_reanalysis.py:316
+#, python-brace-format
+msgid "Segment reanalysis failed: {error}"
+msgstr ""
+
+#: optimizer/__init__.py:39 optimizer/__init__.py:49
+msgid "Untitled"
+msgstr ""
+
+#: optimizer/__init__.py:42 optimizer/__init__.py:53
+#, python-brace-format
+msgid ""
+"Title: {title}\n"
+"Artist: {artist}"
+msgstr ""
+
+#: optimizer/__init__.py:62
+msgid "Unknown validation error"
+msgstr ""
+
+#: optimizer/beat_critic_optimizer.py:263
+#: optimizer/beat_decoder_optimizer.py:164 optimizer/beat_tcn_optimizer.py:179
+#: optimizer/downbeat_ctx_optimizer.py:92
+msgid "frame feature cache is not current"
+msgstr ""
+
+#: optimizer/beat_critic_optimizer.py:375
+#, python-brace-format
+msgid "{stage}: step {done}/{steps} of each fold model"
+msgstr ""
+
+#: optimizer/beat_critic_optimizer.py:460
+#, python-brace-format
+msgid "Decoder readings {done}/{total}"
+msgstr ""
+
+#: optimizer/beat_critic_optimizer.py:475 optimizer/beat_tcn_optimizer.py:376
+#: optimizer/key_model_optimizer.py:520
+msgid "Held-out check"
+msgstr ""
+
+#: optimizer/beat_critic_optimizer.py:486 optimizer/beat_tcn_optimizer.py:386
+msgid "Not saved: the grids got worse on the held-out songs"
+msgstr ""
+
+#: optimizer/beat_critic_optimizer.py:495 optimizer/beat_tcn_optimizer.py:397
+#: optimizer/key_model_optimizer.py:534
+msgid "Fine-tuning"
+msgstr ""
+
+#: optimizer/beat_decoder_optimizer.py:169
+#, python-brace-format
+msgid "Tracking with every cost combination {done}/{total}"
+msgstr ""
+
+#: optimizer/beat_decoder_optimizer.py:214
+msgid "Not saved: the held-out songs got worse"
+msgstr ""
+
+#: optimizer/beat_frames.py:34
+#, python-brace-format
+msgid "invalid tempo rows: {error}"
+msgstr ""
+
+#: optimizer/beat_frames.py:37
+msgid "no tempo rows"
+msgstr ""
+
+#: optimizer/beat_frames.py:128
+#, python-brace-format
+msgid "frame feature cache build failed: {error}"
+msgstr ""
+
+#: optimizer/beat_frames.py:131
+#, python-brace-format
+msgid "Frame features {done}/{total}"
+msgstr ""
+
+#: optimizer/beat_grid_check.py:169
+#, python-brace-format
+msgid "End-to-end check {done}/{total}"
+msgstr ""
+
+#: optimizer/beat_tcn_optimizer.py:304
+#, python-brace-format
+msgid "{stage}: step {done}/{steps} of each training"
+msgstr ""
+
+#: optimizer/beat_tcn_optimizer.py:356
+msgid "Training frames"
+msgstr ""
+
+#: optimizer/beat_tcn_optimizer.py:360
+msgid "Training frames ready"
+msgstr ""
+
+#: optimizer/downbeat_ctx_optimizer.py:96
+msgid "fewer than two downbeats"
+msgstr ""
+
+#: optimizer/downbeat_ctx_optimizer.py:110
+#: optimizer/refine_onset_optimizer.py:163
+msgid "Training on the other songs"
+msgstr ""
+
+#: optimizer/downbeat_ctx_optimizer.py:122
+#: optimizer/refine_onset_optimizer.py:184
+msgid "Not saved: the held-out songs' grids got worse"
+msgstr ""
+
+#: optimizer/downbeat_ctx_optimizer.py:129
+#: optimizer/refine_onset_optimizer.py:191
+msgid "Fitting all tracks"
+msgstr ""
+
+#: optimizer/jumpcue_parameter_optimizer.py:976
+msgid "Audio file not found"
+msgstr ""
+
+#: optimizer/jumpcue_parameter_optimizer.py:982
+#, python-brace-format
+msgid "Reading the analysis failed: {error}"
+msgstr ""
+
+#: optimizer/jumpcue_parameter_optimizer.py:984
+#, python-brace-format
+msgid "Need at least five tracks with saved JumpCUEs ({count} found)."
+msgstr ""
+
+#: optimizer/jumpcue_parameter_optimizer.py:1002
+#, python-brace-format
+msgid "Building {count} JumpCUE candidate caches"
+msgstr ""
+
+#: optimizer/jumpcue_parameter_optimizer.py:1003
+msgid "JumpCUE candidate cache is current"
+msgstr ""
+
+#: optimizer/jumpcue_parameter_optimizer.py:1015
+#, python-brace-format
+msgid "JumpCUE analysis failed: {error}"
+msgstr ""
+
+#: optimizer/jumpcue_parameter_optimizer.py:1033
+msgid "No saved JumpCUE group matches an automatically found group"
+msgstr ""
+
+#: optimizer/jumpcue_parameter_optimizer.py:1038
+#, python-brace-format
+msgid "{count} labeled groups"
+msgstr ""
+
+#: optimizer/jumpcue_parameter_optimizer.py:1056
+#, python-brace-format
+msgid "Cross-validation fold {fold}/{folds}"
+msgstr ""
+
+#: optimizer/jumpcue_parameter_optimizer.py:1062
+msgid "Fitting on all tracks"
+msgstr ""
+
+#: optimizer/key_model_optimizer.py:122
+#, python-brace-format
+msgid "unreadable analysis: {error}"
+msgstr ""
+
+#: optimizer/key_model_optimizer.py:125
+msgid "no key annotation"
+msgstr ""
+
+#: optimizer/key_model_optimizer.py:195
+#, python-brace-format
+msgid "key feature cache build failed: {error}"
+msgstr ""
+
+#: optimizer/key_model_optimizer.py:198
+#, python-brace-format
+msgid "Key features {done}/{total}"
+msgstr ""
+
+#: optimizer/key_model_optimizer.py:441
+#, python-brace-format
+msgid "{stage}: epoch {epoch}/{epochs}, loss {loss}"
+msgstr ""
+
+#: optimizer/key_model_optimizer.py:500
+msgid "too few beats or no key features"
+msgstr ""
+
+#: optimizer/key_model_optimizer.py:505
+#, python-brace-format
+msgid "Beat inputs {done}/{total}"
+msgstr ""
+
+#: optimizer/key_model_optimizer.py:525
+msgid "Not saved: the held-out songs' keys got worse"
+msgstr ""
+
+#: optimizer/model_start.py:22
+msgid "songs with beat grids"
+msgstr ""
+
+#: optimizer/model_start.py:23
+msgid "songs with checked key annotations"
+msgstr ""
+
+#: optimizer/model_start.py:39
+#, python-brace-format
+msgid "A shipped model is never overwritten; choose another path than {name}"
+msgstr ""
+
+#: optimizer/model_start.py:46
+#, python-brace-format
+msgid ""
+"Training from scratch needs at least {needed} {songs} (the library has "
+"{count})"
+msgstr ""
+
+#: optimizer/model_start.py:47 optimizer/model_start.py:48
+#, python-brace-format
+msgid "Retraining needs at least {needed} {songs} (the library has {count})"
+msgstr ""
+
+#: optimizer/model_start.py:49
+#, python-brace-format
+msgid "Refitting needs at least {needed} {songs} (the library has {count})"
+msgstr ""
+
+#: optimizer/model_start.py:60
+#, python-brace-format
+msgid ""
+"Training from scratch needs at least {needed} {songs}; the library has "
+"{count}."
+msgstr ""
+
+#: optimizer/model_start.py:61
+#, python-brace-format
+msgid "This needs at least {needed} {songs}; the library has {count}."
+msgstr ""
+
+#: optimizer/model_start.py:65
+#, python-brace-format
+msgid ""
+"{count} songs: fewer than the shipped model was trained on (about "
+"{shipped}); a model trained from scratch on them is likely to be worse "
+"than the shipped one."
+msgstr ""
+
+#: optimizer/model_start.py:69
+#, python-brace-format
+msgid ""
+"{count} songs: risk of overfitting to them, and the cross-validation "
+"check rests on few songs."
+msgstr ""
+
+#: optimizer/model_start.py:72
+msgid ""
+"Training from scratch takes one to two hours and discards what the "
+"shipped model learned."
+msgstr ""
+
+#: optimizer/model_start.py:73
+msgid "Training from scratch discards what the shipped model learned."
+msgstr ""
+
+#: optimizer/model_start.py:75
+msgid ""
+"The current model is already retrained: fine-tuning it again accumulates "
+"changes. Fine-tune the shipped model to start over."
+msgstr ""
+
+#: optimizer/model_start.py:78
+msgid "Fine-tuning the shipped model replaces the earlier retrained model."
+msgstr ""
+
+#: optimizer/onset_training.py:66 optimizer/phrase_backend.py:168
+msgid "analysis NPZ is missing"
+msgstr ""
+
+#: optimizer/onset_training.py:70 optimizer/phrase_backend.py:172
+msgid "audio file is missing"
+msgstr ""
+
+#: optimizer/onset_training.py:78
+#, python-brace-format
+msgid "invalid beat analysis: {error}"
+msgstr ""
+
+#: optimizer/onset_training.py:82
+msgid "invalid or insufficient beat grid"
+msgstr ""
+
+#: optimizer/phrase_backend.py:179
+#, python-brace-format
+msgid "invalid Phrase annotation: {error}"
+msgstr ""
+
+#: optimizer/phrase_backend.py:185
+msgid "fewer than two usable Phrase segments"
+msgstr ""
+
+#: optimizer/phrase_parameter_optimizer.py:207
+#, python-brace-format
+msgid "Cross-validation fold {fold}/{folds}: "
+msgstr ""
+
+#: optimizer/phrase_parameter_optimizer.py:381
+#, python-brace-format
+msgid "Phrase annotation validation failed: {error}"
+msgstr ""
+
+#: optimizer/phrase_parameter_optimizer.py:385
+#, python-brace-format
+msgid ""
+"Need at least five valid annotated tracks to train a Phrase parameter "
+"artifact ({valid} valid, {ignored} ignored)."
+msgstr ""
+
+#: optimizer/phrase_parameter_optimizer.py:396
+#, python-brace-format
+msgid "Checking feature cache: {count} tracks"
+msgstr ""
+
+#: optimizer/phrase_parameter_optimizer.py:435
+#, python-brace-format
+msgid "Building {count} missing feature caches with {workers} workers"
+msgstr ""
+
+#: optimizer/phrase_parameter_optimizer.py:438
+msgid "Feature cache is current"
+msgstr ""
+
+#: optimizer/phrase_parameter_optimizer.py:465
+#, python-brace-format
+msgid "Phrase feature cache build failed: {error}"
+msgstr ""
+
+#: optimizer/phrase_parameter_optimizer.py:491
+#, python-brace-format
+msgid "Preparing optimizer features {done}/{total}"
+msgstr ""
+
+#: optimizer/phrase_parameter_optimizer.py:539
+#, python-brace-format
+msgid "Phrase feature preparation failed: {error}"
+msgstr ""
+
+#: optimizer/phrase_parameter_optimizer.py:544
+#, python-brace-format
+msgid "prepared ({done}/{total})"
+msgstr ""
+
+#: optimizer/phrase_parameter_optimizer.py:550
+#, python-brace-format
+msgid ""
+"Need at least five tracks after Phrase feature validation ({valid} valid,"
+" {ignored} ignored)."
+msgstr ""
+
+#: optimizer/phrase_parameter_optimizer.py:575
+msgid "Evaluating fitted Phrase models"
+msgstr ""
+
+#: optimizer/phrase_parameter_optimizer.py:580
+msgid "Writing parameter artifact"
+msgstr ""
+
+#: optimizer/phrase_refinement.py:247
+#, python-brace-format
+msgid "Pass-1 outputs out of fold {fold}/{folds}"
+msgstr ""
+
+#: optimizer/phrase_refinement.py:255
+msgid "Fitting pass-1 boundary and label GBMs"
+msgstr ""
+
+#: optimizer/phrase_refinement.py:257
+msgid "Fitting bar-pair similarity GBM"
+msgstr ""
+
+#: optimizer/phrase_refinement.py:259
+msgid "Fitting pass-2 boundary GBM"
+msgstr ""
+
+#: optimizer/phrase_refinement.py:262
+msgid "Fitting pass-2 label GBM"
+msgstr ""
+
+#: optimizer/phrase_refinement.py:266
+msgid "Fitting label-change and bar-shift GBMs"
+msgstr ""
+
+#: optimizer/phrase_refinement.py:269
+msgid "Fitting lead-in GBMs"
+msgstr ""
+
+#: optimizer/refine_onset_optimizer.py:134
+#, python-brace-format
+msgid "feature cache build failed: {error}"
+msgstr ""
+
+#: optimizer/refine_onset_optimizer.py:137
+#, python-brace-format
+msgid "Feature cache {done}/{total}"
+msgstr ""
+
+#: optimizer/refine_onset_optimizer.py:145
+msgid "feature cache is not current"
+msgstr ""
+
+#: ui/about_dialog.py:179
+msgid "About Mixlyzer"
+msgstr ""
+
+#: ui/about_dialog.py:184
+msgid ""
+"Mixlyzer\n"
+"\n"
+"Interactive beatgrid, key, and JumpCUE analysis and editing toolkit.\n"
+"Distributed under the GNU Lesser General Public License v3.0. See below "
+"for the full license text."
+msgstr ""
+
+#: ui/config/analysis.py:43 ui/config/analysis.py:154 ui/config/analysis.py:192
+#: ui/config/playback.py:106
+msgid "General"
+msgstr ""
+
+#: ui/config/analysis.py:46
+msgid "Analysis order and dependencies"
+msgstr ""
+
+#: ui/config/analysis.py:57
+msgid ""
+"The beat tracker reads every tempo in the octave from here (BPM min .. 2 "
+"x BPM min);\n"
+"a song outside it is read at half or double tempo."
+msgstr ""
+
+#: ui/config/analysis.py:62 ui/config/window.py:200
+#, python-brace-format
+msgid "Reads {low} - {high} BPM"
+msgstr ""
+
+#: ui/config/analysis.py:64 ui/config/analysis.py:148
+msgid "Dynamic Analysis"
+msgstr ""
+
+#: ui/config/analysis.py:66
+msgid ""
+"Checked: tempo changes within a track (sections, ramps).\n"
+"Unchecked: one steady BPM for the whole track."
+msgstr ""
+
+#: ui/config/analysis.py:69
+msgid "Dynamic Downbeat"
+msgstr ""
+
+#: ui/config/analysis.py:71
+msgid ""
+"Checked: odd bars and meter changes within a track.\n"
+"Unchecked: one bar length and downbeat phase for the whole track.\n"
+"Always on with Dynamic Analysis."
+msgstr ""
+
+#: ui/config/analysis.py:85
+msgid "relative or absolute .npz path"
+msgstr ""
+
+#: ui/config/analysis.py:86
+msgid "relative or absolute .json path"
+msgstr ""
+
+#: ui/config/analysis.py:90
+msgid ""
+"Gradient-boosted onset model (.npz) that places the tracker's tempo "
+"changes."
+msgstr ""
+
+#: ui/config/analysis.py:93
+msgid "Folder for features cached while reoptimizing, so later runs are faster."
+msgstr ""
+
+#: ui/config/analysis.py:100
+msgid "The frame TCN (.npz, its trainings) that hears the beats and downbeats."
+msgstr ""
+
+#: ui/config/analysis.py:105
+msgid ""
+"The metronome critic (.npz, its fold models) that judges 3:2 / 4:3 "
+"readings."
+msgstr ""
+
+#: ui/config/analysis.py:110
+msgid ""
+"The decoder's costs (.json): a new section, a same-tempo half-beat reset,"
+" an odd bar."
+msgstr ""
+
+#: ui/config/analysis.py:115
+msgid "Gradient-boosted downbeat model (.npz) the tracker's bars read."
+msgstr ""
+
+#: ui/config/analysis.py:119
+msgid ""
+"Folder for the frame features the beat models are retrained on (the "
+"tracker's own frames)."
+msgstr ""
+
+#: ui/config/analysis.py:121
+msgid "Reoptimize Beat Models..."
+msgstr ""
+
+#: ui/config/analysis.py:122
+msgid "Retrain the beat analysis's models on your library's beat grids."
+msgstr ""
+
+#: ui/config/analysis.py:127
+msgid "BPM min"
+msgstr ""
+
+#: ui/config/analysis.py:132 ui/config/analysis.py:169
+#: ui/config/analysis.py:195 ui/config/dialogs/optimization.py:204
+#: ui/config/library.py:89 ui/config/view.py:150
+msgid "Advanced"
+msgstr ""
+
+#: ui/config/analysis.py:134
+msgid "Tempo-change onset (NPZ)"
+msgstr ""
+
+#: ui/config/analysis.py:135
+msgid "Onset feature cache"
+msgstr ""
+
+#: ui/config/analysis.py:136
+msgid "Beat TCN (NPZ)"
+msgstr ""
+
+#: ui/config/analysis.py:137
+msgid "Metronome critic (NPZ)"
+msgstr ""
+
+#: ui/config/analysis.py:138
+msgid "Downbeat model (NPZ)"
+msgstr ""
+
+#: ui/config/analysis.py:139
+msgid "Decoder costs (JSON)"
+msgstr ""
+
+#: ui/config/analysis.py:140
+msgid "Beat feature cache"
+msgstr ""
+
+#: ui/config/analysis.py:150
+msgid ""
+"Key changes within a track. Off: one key for the whole track -- the key "
+"the dynamic analysis finds in the intro, outro and interludes (where "
+"tracks are mixed), or the key it finds most when a track has none. "
+"Applies to the analysis and the editor's whole-track key reanalysis."
+msgstr ""
+
+#: ui/config/analysis.py:161
+msgid ""
+"The key model (.npz): the chord network that reads every beat, the chords"
+" each key uses by phrase position, and the key-change costs. A missing "
+"file means the shipped model."
+msgstr ""
+
+#: ui/config/analysis.py:166
+msgid "Reoptimize Key Model..."
+msgstr ""
+
+#: ui/config/analysis.py:167
+msgid "Retrain the key model on the keys you checked in your library."
+msgstr ""
+
+#: ui/config/analysis.py:171
+msgid "Key model (NPZ)"
+msgstr ""
+
+#: ui/config/analysis.py:172
+msgid "Key feature cache"
+msgstr ""
+
+#: ui/config/analysis.py:178
+msgid "Use Phrase Analysis"
+msgstr ""
+
+#: ui/config/analysis.py:182 ui/config/analysis.py:637
+#: ui/config/analysis.py:698 ui/config/analysis.py:709
+msgid "Reoptimize Phrase Parameter"
+msgstr ""
+
+#: ui/config/analysis.py:185
+msgid "Detect phrase boundaries and labels during track analysis."
+msgstr ""
+
+#: ui/config/analysis.py:187
+msgid "Learned phrase model (.npz)."
+msgstr ""
+
+#: ui/config/analysis.py:190
+msgid "Retrain the phrase model on the phrases stored in the library."
+msgstr ""
+
+#: ui/config/analysis.py:197
+msgid "Parameters (NPZ)"
+msgstr ""
+
+#: ui/config/analysis.py:198 ui/config/analysis.py:234
+msgid "Feature cache"
+msgstr ""
+
+#: ui/config/analysis.py:206
+msgid "CUE point"
+msgstr ""
+
+#: ui/config/analysis.py:208 ui/config/dialogs/optimization.py:220
+#: ui/config/dialogs/optimization.py:344
+msgid "Off"
+msgstr ""
+
+#: ui/config/analysis.py:210
+msgid ""
+"What the analysis puts at the automatic start position:\n"
+"the lead-in end, an early first downbeat, or 0:00.\n"
+"CUE point: a CUE point (memory cue).\n"
+"JumpCUE: a JumpCUE (hot cue) of its own.\n"
+"Off: nothing."
+msgstr ""
+
+#: ui/config/analysis.py:218
+msgid "Automatic start"
+msgstr ""
+
+#: ui/config/analysis.py:222 ui/config/analysis.py:716
+#: ui/config/analysis.py:761 ui/config/analysis.py:772
+msgid "Reoptimize JumpCUE Parameter"
+msgstr ""
+
+#: ui/config/analysis.py:224
+msgid "Learned JumpCUE jump point model (.json)."
+msgstr ""
+
+#: ui/config/analysis.py:227
+msgid ""
+"Retrain the jump point model on the JumpCUEs stored in the library. Where"
+" a track's JumpCUEs differ from its automatic analysis, the automatic "
+"choice is learned as the one to avoid."
+msgstr ""
+
+#: ui/config/analysis.py:231
+msgid "JumpCUE Advanced"
+msgstr ""
+
+#: ui/config/analysis.py:233
+msgid "Parameters (JSON)"
+msgstr ""
+
+#: ui/config/analysis.py:241
+msgid "Global"
+msgstr ""
+
+#: ui/config/analysis.py:242 ui/config/pipeline_map.py:22
+msgid "Beat"
+msgstr ""
+
+#: ui/config/analysis.py:245 ui/config/pipeline_map.py:24
+#: ui/config/pipeline_map.py:25
+msgid "CUE"
+msgstr ""
+
+#: ui/config/analysis.py:258
+msgid "Analysis"
+msgstr ""
+
+#: ui/config/analysis.py:264
+msgid "CUE points (set by the analysis from the phrases)"
+msgstr ""
+
+#: ui/config/analysis.py:269
+msgid "At start"
+msgstr ""
+
+#: ui/config/analysis.py:270
+msgid "At end"
+msgstr ""
+
+#: ui/config/analysis.py:271
+msgid "Also between two of them"
+msgstr ""
+
+#: ui/config/analysis.py:273
+#, python-brace-format
+msgid "A CUE point where a {label} phrase starts"
+msgstr ""
+
+#: ui/config/analysis.py:274
+#, python-brace-format
+msgid "A CUE point where a {label} phrase ends"
+msgstr ""
+
+#: ui/config/analysis.py:276
+#, python-brace-format
+msgid ""
+"Also where two {label} phrases meet; otherwise only where a {label} "
+"phrase meets a phrase of another label"
+msgstr ""
+
+#: ui/config/analysis.py:291
+msgid "Applies to tracks analyzed (or reanalyzed) from now on."
+msgstr ""
+
+#: ui/config/analysis.py:344
+#, python-brace-format
+msgid ""
+"A new {name} parameter file will be created at the configured path.\n"
+"Back up the existing file before overwriting it?"
+msgstr ""
+
+#: ui/config/analysis.py:359
+#, python-brace-format
+msgid ""
+"Failed to back up {name} parameter:\n"
+"{error}"
+msgstr ""
+
+#: ui/config/analysis.py:418
+#, python-brace-format
+msgid ""
+"Optimization completed after ignoring {count} invalid track. Open Details"
+" to see the songs and reasons."
+msgid_plural ""
+"Optimization completed after ignoring {count} invalid tracks. Open "
+"Details to see the songs and reasons."
+msgstr[0] ""
+msgstr[1] ""
+
+#: ui/config/analysis.py:427
+#, python-brace-format
+msgid "Reason: {reason}"
+msgstr ""
+
+#: ui/config/analysis.py:435 ui/config/dialogs/optimization.py:153
+#: ui/config/dialogs/optimization.py:267
+msgid "Reoptimize Beat Models"
+msgstr ""
+
+#: ui/config/analysis.py:461
+#, python-brace-format
+msgid "{name}: parameter path or feature cache path is empty."
+msgstr ""
+
+#: ui/config/analysis.py:500
+#, python-brace-format
+msgid ""
+"Failed to back up the {name} parameter:\n"
+"{error}"
+msgstr ""
+
+#: ui/config/analysis.py:541
+#, python-brace-format
+msgid "{name}: feature build pending"
+msgstr ""
+
+#: ui/config/analysis.py:542
+#, python-brace-format
+msgid "{name}: optimize pending"
+msgstr ""
+
+#: ui/config/analysis.py:560 ui/config/analysis.py:571
+msgid "none"
+msgstr ""
+
+#: ui/config/analysis.py:568
+#, python-brace-format
+msgid ""
+"{name} optimization failed:\n"
+"{error}\n"
+"\n"
+"Finished before the failure: {done}\n"
+"Not run: {remaining}"
+msgstr ""
+
+#: optimizer/beat_critic_optimizer.py:504
+#: optimizer/beat_decoder_optimizer.py:214 optimizer/beat_tcn_optimizer.py:409
+#: optimizer/downbeat_ctx_optimizer.py:139
+#: optimizer/jumpcue_parameter_optimizer.py:1089
+#: optimizer/key_model_optimizer.py:541
+#: optimizer/phrase_parameter_optimizer.py:584
+#: optimizer/refine_onset_optimizer.py:208 ui/config/analysis.py:579
+#: ui/config/dialogs/optimization.py:95
+msgid "Done"
+msgstr ""
+
+#: ui/config/analysis.py:595
+#, python-brace-format
+msgid "{name}: saved to {path}"
+msgstr ""
+
+#: ui/config/analysis.py:597
+#, python-brace-format
+msgid ""
+"{name}: NOT saved -- the end-to-end check found the grids worse; the "
+"model in use is kept."
+msgstr ""
+
+#: ui/config/analysis.py:601
+#, python-brace-format
+msgid ""
+"Costs: section {section_before} -> {section_after}, half-beat reset "
+"{reset_before} -> {reset_after}, odd bar {odd_before} -> {odd_after}"
+msgstr ""
+
+#: ui/config/analysis.py:607
+msgid "No end-to-end check (cross-validation is off): saved without a comparison."
+msgstr ""
+
+#: ui/config/analysis.py:610
+#, python-brace-format
+msgid ""
+"End-to-end check on {count} held-out songs (the whole analysis, current "
+"vs new):"
+msgstr ""
+
+#: ui/config/analysis.py:613
+#, python-brace-format
+msgid "End-to-end check on {count} songs (the whole analysis, current vs new):"
+msgstr ""
+
+#: ui/config/analysis.py:615
+#, python-brace-format
+msgid "beats off by more than 25 ms: {before} -> {after} min"
+msgstr ""
+
+#: ui/config/analysis.py:617
+#, python-brace-format
+msgid "bars whose downbeat is off by more than 70 ms: {before} -> {after} min"
+msgstr ""
+
+#: ui/config/analysis.py:624
+#, python-brace-format
+msgid " and {count} more"
+msgstr ""
+
+#: ui/config/analysis.py:626
+msgid "better"
+msgstr ""
+
+#: ui/config/analysis.py:627
+msgid "worse"
+msgstr ""
+
+#: ui/config/analysis.py:629
+msgid "no song changed by more than a second"
+msgstr ""
+
+#: ui/config/analysis.py:642
+msgid "Phrase Parameter Path (npz) is empty."
+msgstr ""
+
+#: ui/config/analysis.py:649
+msgid "Phrase Feature Cache Path (directory) is empty."
+msgstr ""
+
+#: ui/config/analysis.py:658
+msgid "phrase"
+msgstr ""
+
+#: ui/config/analysis.py:681 ui/config/analysis.py:742
+#: ui/config/dialogs/optimization.py:75
+msgid "CV"
+msgstr ""
+
+#: optimizer/beat_critic_optimizer.py:495 optimizer/beat_tcn_optimizer.py:397
+#: optimizer/key_model_optimizer.py:534 ui/config/analysis.py:681
+#: ui/config/analysis.py:742 ui/config/dialogs/optimization.py:75
+msgid "Training"
+msgstr ""
+
+#: ui/config/analysis.py:683
+#, python-brace-format
+msgid ""
+"Phrase parameter updated:\n"
+"{path}"
+msgstr ""
+
+#: ui/config/analysis.py:685
+#, python-brace-format
+msgid "Tracks: {count}"
+msgstr ""
+
+#: ui/config/analysis.py:686
+#, python-brace-format
+msgid "{kind} boundary F1 (exact beat): {value}"
+msgstr ""
+
+#: ui/config/analysis.py:687
+#, python-brace-format
+msgid "{kind} key-section change F1: {value}"
+msgstr ""
+
+#: ui/config/analysis.py:688
+#, python-brace-format
+msgid "{kind} label-change boundary F1: {value}"
+msgstr ""
+
+#: ui/config/analysis.py:689
+#, python-brace-format
+msgid "{kind} beat label accuracy: {value}"
+msgstr ""
+
+#: ui/config/analysis.py:690
+#, python-brace-format
+msgid "{kind} lead-in accuracy: {value}"
+msgstr ""
+
+#: ui/config/analysis.py:693
+msgid ""
+"Interpretation: these in-sample scores only confirm how well the model "
+"fits its training data. They do not estimate performance on unseen "
+"tracks."
+msgstr ""
+
+#: ui/config/analysis.py:710
+#, python-brace-format
+msgid ""
+"Phrase parameter optimization failed:\n"
+"{error}"
+msgstr ""
+
+#: ui/config/analysis.py:720
+msgid "JumpCUE parameter path and feature cache path are required."
+msgstr ""
+
+#: ui/config/analysis.py:744
+#, python-brace-format
+msgid ""
+"{kind} saved choice above the automatic one: {value} ({count} corrected "
+"groups)"
+msgstr ""
+
+#: ui/config/analysis.py:747
+msgid ""
+"No corrected groups yet: the library's JumpCUEs all match their automatic"
+" analysis, or were analyzed before it was kept."
+msgstr ""
+
+#: ui/config/analysis.py:751
+#, python-brace-format
+msgid ""
+"JumpCUE parameter updated:\n"
+"{path}"
+msgstr ""
+
+#: ui/config/analysis.py:753
+#, python-brace-format
+msgid "Tracks: {tracks}, groups: {groups}"
+msgstr ""
+
+#: ui/config/analysis.py:754
+#, python-brace-format
+msgid "{kind} rank of the saved point among the candidates (AUC): {value}"
+msgstr ""
+
+#: ui/config/analysis.py:756
+#, python-brace-format
+msgid "{kind} chosen points on a downbeat: {value}"
+msgstr ""
+
+#: ui/config/analysis.py:773
+#, python-brace-format
+msgid ""
+"JumpCUE parameter optimization failed:\n"
+"{error}"
+msgstr ""
+
+#: ui/config/analysis.py:779 ui/config/analysis.py:835
+#: ui/config/analysis.py:841 ui/config/dialogs/optimization.py:324
+#: ui/config/dialogs/optimization.py:384
+msgid "Reoptimize Key Model"
+msgstr ""
+
+#: ui/config/analysis.py:783
+msgid "Key model path and feature cache path are required."
+msgstr ""
+
+#: ui/config/analysis.py:798
+#, python-brace-format
+msgid ""
+"Failed to back up the key model:\n"
+"{error}"
+msgstr ""
+
+#: ui/config/analysis.py:818
+#, python-brace-format
+msgid "Key model saved to {path}"
+msgstr ""
+
+#: ui/config/analysis.py:819
+msgid ""
+"Key model NOT saved: the held-out songs' keys got worse; the model in use"
+" is kept."
+msgstr ""
+
+#: ui/config/analysis.py:821
+#, python-brace-format
+msgid ""
+"Training songs: {count} ({edited} with keys changed from the automatic "
+"result, {legacy} analyzed before it was kept)"
+msgstr ""
+
+#: ui/config/analysis.py:824
+#, python-brace-format
+msgid "Key analysis on {count} held-out songs, current -> new:"
+msgstr ""
+
+#: ui/config/analysis.py:826
+#, python-brace-format
+msgid "Key analysis on the {count} training songs, current -> new:"
+msgstr ""
+
+#: ui/config/analysis.py:827
+#, python-brace-format
+msgid "beats in the right key (Alphanumeric number): {before} -> {after}"
+msgstr ""
+
+#: ui/config/analysis.py:829
+#, python-brace-format
+msgid "beats off by a fifth (Alphanumeric neighbor): {before} -> {after}"
+msgstr ""
+
+#: ui/config/analysis.py:833
+msgid ""
+"Without cross-validation these are the training songs: they show the fit,"
+" not unseen songs."
+msgstr ""
+
+#: ui/config/analysis.py:842
+#, python-brace-format
+msgid ""
+"Key model optimization failed:\n"
+"{error}"
+msgstr ""
+
+#: ui/config/dialogs/optimization.py:34
+msgid "Feature build pending"
+msgstr ""
+
+#: ui/config/dialogs/optimization.py:38
+msgid "Optimize pending"
+msgstr ""
+
+#: ui/config/dialogs/optimization.py:42 ui/config/dialogs/readings.py:24
+#: ui/config/dialogs/rekordbox.py:23
+msgid "Close"
+msgstr ""
+
+#: ui/config/dialogs/optimization.py:57
+msgid "Building features"
+msgstr ""
+
+#: ui/config/dialogs/optimization.py:62
+msgid "Optimizing"
+msgstr ""
+
+#: ui/config/dialogs/optimization.py:66
+msgid "Failed"
+msgstr ""
+
+#: ui/config/dialogs/optimization.py:74
+#, python-brace-format
+msgid ", {count} skipped"
+msgstr ""
+
+#: ui/config/dialogs/optimization.py:77
+#, python-brace-format
+msgid "Done — {kind} top-1 {top1}, cross-entropy {entropy}"
+msgstr ""
+
+#: ui/config/dialogs/optimization.py:80
+#, python-brace-format
+msgid "Done — {kind} track phase {phase}, beat top-1 {top1}"
+msgstr ""
+
+#: ui/config/dialogs/optimization.py:84
+#, python-brace-format
+msgid "Done — {kind} grid top-1 {top1}, beat AP {ap}"
+msgstr ""
+
+#: ui/config/dialogs/optimization.py:88
+#, python-brace-format
+msgid "Done — {kind} key accuracy {before} -> {after}"
+msgstr ""
+
+#: ui/config/dialogs/optimization.py:90
+msgid " (not saved)"
+msgstr ""
+
+#: ui/config/dialogs/optimization.py:92
+#, python-brace-format
+msgid "Done — {kind} key-section change F1 {f1}, label accuracy {accuracy}"
+msgstr ""
+
+#: ui/config/dialogs/optimization.py:103
+msgid "Decoder costs"
+msgstr ""
+
+#: ui/config/dialogs/optimization.py:104
+msgid "Contextual downbeat model"
+msgstr ""
+
+#: ui/config/dialogs/optimization.py:105
+msgid "Tempo-change onset model"
+msgstr ""
+
+#: ui/config/dialogs/optimization.py:106
+msgid "Beat activation network (TCN)"
+msgstr ""
+
+#: ui/config/dialogs/optimization.py:107
+msgid "Metronome critic"
+msgstr ""
+
+#: ui/config/dialogs/optimization.py:111
+msgid ""
+"How much evidence the decoder needs before it adds a new tempo section, a"
+" half-beat reset or an odd bar. Refit them after retraining the TCN. "
+"About 40 minutes (Quick: about 10)."
+msgstr ""
+
+#: ui/config/dialogs/optimization.py:115
+msgid ""
+"Gradient-boosted classifier: the probability that a bar starts on each "
+"beat, from harmony, bass and drum changes. A few minutes; at least 50 "
+"songs."
+msgstr ""
+
+#: ui/config/dialogs/optimization.py:119
+msgid ""
+"Gradient-boosted onset model that places each tempo change exactly. A few"
+" minutes; at least 50 songs."
+msgstr ""
+
+#: ui/config/dialogs/optimization.py:122
+msgid ""
+"The network that hears beats and downbeats; every later stage reads it. "
+"Fine-tuning about 20 minutes, from scratch 1-2 hours (at least 200 "
+"songs)."
+msgstr ""
+
+#: ui/config/dialogs/optimization.py:126
+msgid ""
+"Judges whether a grid sounds right and corrects 3:2 / 4:3 tempo misreads."
+" Fine-tuning about 45 minutes; from scratch at least 200 songs."
+msgstr ""
+
+#: ui/config/dialogs/optimization.py:132 ui/config/dialogs/optimization.py:134
+#: ui/config/dialogs/optimization.py:312
+msgid "Fine-tune the current model"
+msgstr ""
+
+#: ui/config/dialogs/optimization.py:133 ui/config/dialogs/optimization.py:135
+#: ui/config/dialogs/optimization.py:312
+msgid "Fine-tune the shipped model"
+msgstr ""
+
+#: ui/config/dialogs/optimization.py:133 ui/config/dialogs/optimization.py:135
+#: ui/config/dialogs/optimization.py:313
+msgid "Train from scratch"
+msgstr ""
+
+#: ui/config/dialogs/optimization.py:136
+msgid "Refit around the current costs"
+msgstr ""
+
+#: ui/config/dialogs/optimization.py:137
+msgid "Refit around the shipped costs"
+msgstr ""
+
+#: ui/config/dialogs/optimization.py:140
+msgid ""
+"Current: continue from the model in use (earlier retraining builds up).\n"
+"Shipped: continue from the model that came with Mixlyzer.\n"
+"From scratch: learn from your grids alone; needs many songs."
+msgstr ""
+
+#: ui/config/dialogs/optimization.py:145
+msgid ""
+"Retrains the beat analysis's models on the beat grids in your library "
+"(the grids you checked and corrected are the training data). The shipped "
+"models are kept (default_* files). With cross-validation a retrained "
+"model is saved only when the held-out songs' grids are not worse. Hover "
+"over an item for details."
+msgstr ""
+
+#: ui/config/dialogs/optimization.py:162
+#, python-brace-format
+msgid "Songs with beat grids: {count}."
+msgstr ""
+
+#: ui/config/dialogs/optimization.py:177
+msgid "The candidates are centered on the current or the shipped costs."
+msgstr ""
+
+#: ui/config/dialogs/optimization.py:182
+msgid "Quick: half-beat reset and odd-bar costs only"
+msgstr ""
+
+#: ui/config/dialogs/optimization.py:184
+msgid "Keeps the section cost (the slow one to refit) and refits the other two."
+msgstr ""
+
+#: ui/config/dialogs/optimization.py:198
+msgid "Back up the files being replaced"
+msgstr ""
+
+#: ui/config/dialogs/optimization.py:199
+msgid "Copies each model file before it is overwritten."
+msgstr ""
+
+#: ui/config/dialogs/optimization.py:215 ui/config/dialogs/optimization.py:352
+msgid "CV folds"
+msgstr ""
+
+#: ui/config/dialogs/optimization.py:222
+msgid ""
+"Cross-validation folds: the new model is saved only if held-out songs' "
+"grids are not worse. Off: always saved."
+msgstr ""
+
+#: ui/config/dialogs/optimization.py:267 ui/config/dialogs/optimization.py:385
+msgid "Continue?"
+msgstr ""
+
+#: ui/config/dialogs/optimization.py:315
+msgid ""
+"Retrains the key model on the keys you checked in your library: tracks "
+"whose keys you changed from the automatic result, and tracks analyzed "
+"before the automatic result was kept whose keys are not the old "
+"analyzer's raw output. Only keys train it, no chord labels. The shipped "
+"model is kept (default_* file). With cross-validation the retrained model"
+" is saved only when the held-out songs' keys are not worse. Features take"
+" a few seconds per song the first time; the training a few minutes."
+msgstr ""
+
+#: ui/config/dialogs/optimization.py:329
+#, python-brace-format
+msgid "Analyzed songs: {count}."
+msgstr ""
+
+#: ui/config/dialogs/optimization.py:337
+msgid ""
+"Current: continue from the model in use (earlier retraining builds up).\n"
+"Shipped: continue from the model that came with Mixlyzer.\n"
+"From scratch: learn from your keys alone; needs many songs."
+msgstr ""
+
+#: ui/config/dialogs/optimization.py:347
+msgid ""
+"Cross-validation folds: one group of songs is held out, and the new model"
+" is saved only if the whole key analysis gets their keys at least as "
+"right as the current one. Off: always saved."
+msgstr ""
+
+#: ui/config/dialogs/optimization.py:350
+msgid "Start"
+msgstr ""
+
+#: ui/config/dialogs/optimization.py:360
+msgid "Back up the file being replaced"
+msgstr ""
+
+#: ui/config/dialogs/optimization.py:361
+msgid "Copies the key model file before it is overwritten."
+msgstr ""
+
+#: ui/config/dialogs/readings.py:20 ui/config/dialogs/readings.py:36
+msgid "Starting the reading worker"
+msgstr ""
+
+#: ui/config/dialogs/readings.py:25
+msgid "Close this window; the re-read goes on in the background."
+msgstr ""
+
+#: ui/config/dialogs/readings.py:40
+msgid "Reading the library"
+msgstr ""
+
+#: ui/config/dialogs/readings.py:45
+#, python-brace-format
+msgid ""
+"Done: {tracks} tracks read, the readings of {changed} titles / artists / "
+"albums changed"
+msgstr ""
+
+#: ui/config/dialogs/readings.py:49
+#, python-brace-format
+msgid ""
+"Re-reading the library failed:\n"
+"{error}"
+msgstr ""
+
+#: ui/config/dialogs/rekordbox.py:19
+msgid "Waiting for Rekordbox XML worker"
+msgstr ""
+
+#: ui/config/dialogs/rekordbox.py:41
+msgid "Syncing Rekordbox XML"
+msgstr ""
+
+#: ui/config/dialogs/rekordbox.py:46
+#, python-brace-format
+msgid "Done — {count} XML entries"
+msgstr ""
+
+#: ui/config/dialogs/rekordbox.py:48
+#, python-brace-format
+msgid ", {count} unchanged entries reused"
+msgstr ""
+
+#: ui/config/dialogs/rekordbox.py:54
+#, python-brace-format
+msgid ""
+"Rekordbox XML sync failed:\n"
+"{error}"
+msgstr ""
+
+#: ui/config/external_sync.py:47
+msgid ""
+"Comma-separated hex pointer chain. The first value is an offset from the\n"
+"process's main module (prefix 'g' for an absolute address); each "
+"following\n"
+"value is dereferenced and added as an offset."
+msgstr ""
+
+#: ui/config/external_sync.py:51
+msgid "Data type stored at the resolved address."
+msgstr ""
+
+#: ui/config/external_sync.py:57
+msgid "Offset chain"
+msgstr ""
+
+#: ui/config/external_sync.py:58
+msgid "Type"
+msgstr ""
+
+#: ui/config/external_sync.py:62
+msgid "Bytes to read for the string; it is cut at the first NUL."
+msgstr ""
+
+#: ui/config/external_sync.py:64
+msgid "Length"
+msgstr ""
+
+#: ui/config/external_sync.py:67
+msgid "Text encoding of the string, e.g. utf-8 or utf-16-le."
+msgstr ""
+
+#: ui/config/external_sync.py:69
+msgid "Encoding"
+msgstr ""
+
+#: ui/config/external_sync.py:74
+msgid "Bit of the byte read as the flag (0-7). Values above 7 use the whole byte."
+msgstr ""
+
+#: ui/config/external_sync.py:77
+msgid "Bit position"
+msgstr ""
+
+#: ui/config/external_sync.py:84
+msgid "The value read is multiplied by this to get seconds (e.g. 0.001 for ms)."
+msgstr ""
+
+#: ui/config/external_sync.py:87
+msgid "Multiplier"
+msgstr ""
+
+#: ui/config/external_sync.py:94
+msgid "Time"
+msgstr ""
+
+#: ui/config/external_sync.py:95
+msgid "Current Sample Index"
+msgstr ""
+
+#: ui/config/external_sync.py:99
+msgid "Active"
+msgstr ""
+
+#: ui/config/external_sync.py:100
+msgid "Loaded"
+msgstr ""
+
+#: ui/config/external_sync.py:101
+msgid "Playback position of the deck (Time Sync mode)."
+msgstr ""
+
+#: ui/config/external_sync.py:103
+msgid "Playback position of the deck in samples (Sample Index Sync mode)."
+msgstr ""
+
+#: ui/config/external_sync.py:105
+msgid "File path of the track loaded on the deck."
+msgstr ""
+
+#: ui/config/external_sync.py:106
+msgid ""
+"Flag marking the deck as active. Only loaded and active decks are "
+"followed."
+msgstr ""
+
+#: ui/config/external_sync.py:107
+msgid "Flag that is true while a track is loaded on the deck."
+msgstr ""
+
+#: ui/config/external_sync.py:128
+msgid "Enable external sync"
+msgstr ""
+
+#: ui/config/external_sync.py:133
+msgid "from reference sample rate"
+msgstr ""
+
+#: ui/config/external_sync.py:133
+msgid "from file"
+msgstr ""
+
+#: ui/config/external_sync.py:149
+msgid "Refresh"
+msgstr ""
+
+#: ui/config/external_sync.py:151
+msgid ""
+"Follow the track and playback position of external software\n"
+"by reading its memory."
+msgstr ""
+
+#: ui/config/external_sync.py:155
+msgid ""
+"Time Sync: read the position as time (scaled by the multiplier).\n"
+"Sample Index Sync: read the position as a sample index."
+msgstr ""
+
+#: ui/config/external_sync.py:159
+msgid ""
+"How the track's total sample count is found to convert a sample index to "
+"time.\n"
+"from reference sample rate: duration x reference sample rate.\n"
+"from file: the decoded file's own sample count."
+msgstr ""
+
+#: ui/config/external_sync.py:164
+msgid "Sample rate the external software counts samples at."
+msgstr ""
+
+#: ui/config/external_sync.py:167
+msgid "Process to read memory from. Denylisted processes are blocked."
+msgstr ""
+
+#: ui/config/external_sync.py:169
+msgid "Reload the list of running processes."
+msgstr ""
+
+#: ui/config/external_sync.py:170
+msgid "Deck 1"
+msgstr ""
+
+#: ui/config/external_sync.py:171
+msgid "Deck 2"
+msgstr ""
+
+#: ui/config/external_sync.py:173
+msgid "Memory"
+msgstr ""
+
+#: ui/config/external_sync.py:182
+msgid "Process"
+msgstr ""
+
+#: ui/config/external_sync.py:184
+msgid ""
+"Warning: attaching memory sync to an unrelated process can trigger anti-"
+"cheat or antivirus false positives. Only target software you trust and "
+"explicitly intend to sync with."
+msgstr ""
+
+#: ui/config/external_sync.py:203
+msgid ""
+"When enabled, local track loading and transport playback are restricted "
+"so the external software remains the source of truth."
+msgstr ""
+
+#: ui/config/external_sync.py:209
+msgid "Mode"
+msgstr ""
+
+#: ui/config/external_sync.py:211
+msgid "Total Sample Count Source"
+msgstr ""
+
+#: ui/config/external_sync.py:213
+msgid "Reference Sample Rate"
+msgstr ""
+
+#: ui/config/external_sync.py:293
+#, python-brace-format
+msgid "[Blocked] {process}"
+msgstr ""
+
+#: ui/config/external_sync.py:310 ui/config/external_sync.py:335
+#: ui/config/external_sync.py:350
+#, python-brace-format
+msgid "Blocked by denylist: {process}"
+msgstr ""
+
+#: ui/config/library.py:31
+msgid "Add Folder…"
+msgstr ""
+
+#: ui/config/library.py:32
+msgid "Remove"
+msgstr ""
+
+#: ui/config/library.py:34
+msgid ""
+"When this list is empty, the operating system's default Music folder is "
+"used."
+msgstr ""
+
+#: ui/config/library.py:37
+msgid "Write log to file"
+msgstr ""
+
+#: ui/config/library.py:39
+msgid "Sync with Rekordbox XML"
+msgstr ""
+
+#: ui/config/library.py:41
+msgid "Sync Now"
+msgstr ""
+
+#: ui/config/library.py:42
+msgid "Logging settings apply on next app launch."
+msgstr ""
+
+#: ui/config/library.py:43
+msgid "Use Sync Now to rebuild the whole XML explicitly."
+msgstr ""
+
+#: ui/config/library.py:47
+msgid ""
+"Folder holding library.db and the per-track feature files (.npz).\n"
+"Relative paths are resolved from the app folder."
+msgstr ""
+
+#: ui/config/library.py:51
+msgid "Root folders shown under Local Folders in the library browser."
+msgstr ""
+
+#: ui/config/library.py:53
+msgid "Add a local music root folder."
+msgstr ""
+
+#: ui/config/library.py:54
+msgid "Remove the selected root folders."
+msgstr ""
+
+#: ui/config/library.py:55
+msgid "Write console output to a log file."
+msgstr ""
+
+#: ui/config/library.py:56
+msgid "Log file written when 'Write log to file' is on."
+msgstr ""
+
+#: ui/config/library.py:58
+msgid ""
+"Keep a Rekordbox XML file updated with the library's beat grids, keys and"
+" cues."
+msgstr ""
+
+#: ui/config/library.py:61
+msgid "Rekordbox XML file to write. Import it in Rekordbox to use the analysis."
+msgstr ""
+
+#: ui/config/library.py:64
+msgid "Save these settings and rebuild the whole XML from the library now."
+msgstr ""
+
+#: ui/config/library.py:67 ui/config/library.py:104
+msgid "Library"
+msgstr ""
+
+#: ui/config/library.py:69
+msgid "Library Path"
+msgstr ""
+
+#: ui/config/library.py:80
+msgid "Local Music Folders"
+msgstr ""
+
+#: ui/config/library.py:85
+msgid "XML Path"
+msgstr ""
+
+#: ui/config/library.py:92
+msgid "Log Path"
+msgstr ""
+
+#: ui/config/library.py:117
+msgid "Add Local Music Folder"
+msgstr ""
+
+#: ui/config/library.py:172
+msgid "Enable Sync with Rekordbox XML first."
+msgstr ""
+
+#: ui/config/dialogs/rekordbox.py:15 ui/config/library.py:172
+#: ui/config/library.py:177
+msgid "Sync Rekordbox XML"
+msgstr ""
+
+#: ui/config/library.py:177
+msgid "Rekordbox XML Path is empty."
+msgstr ""
+
+#: ui/config/library.py:214
+msgid "Rekordbox XML worker started"
+msgstr ""
+
+#: ui/config/pipeline_map.py:21 ui/config/view.py:161
+msgid "View"
+msgstr ""
+
+#: ui/config/pipeline_map.py:30
+msgid "file"
+msgstr ""
+
+#: ui/config/pipeline_map.py:30
+msgid "audio"
+msgstr ""
+
+#: ui/config/pipeline_map.py:30
+msgid "beat grid"
+msgstr ""
+
+#: ui/config/pipeline_map.py:30
+msgid "phrases"
+msgstr ""
+
+#: ui/config/pipeline_map.py:31
+msgid "Audio"
+msgstr ""
+
+#: ui/config/pipeline_map.py:31
+msgid "decoded, HPSS"
+msgstr ""
+
+#: ui/config/pipeline_map.py:31
+msgid "overview levels"
+msgstr ""
+
+#: analyzer_core/global_analyzer.py:313 ui/config/pipeline_map.py:31
+msgid "Waveform"
+msgstr ""
+
+#: ui/config/pipeline_map.py:32
+msgid "Beat grid"
+msgstr ""
+
+#: ui/config/pipeline_map.py:32
+msgid "beats, tempo, bars"
+msgstr ""
+
+#: ui/config/pipeline_map.py:32
+msgid "sections + labels"
+msgstr ""
+
+#: ui/config/pipeline_map.py:33
+msgid "by phrase label"
+msgstr ""
+
+#: ui/config/pipeline_map.py:33
+msgid "JumpCUE"
+msgstr ""
+
+#: ui/config/pipeline_map.py:33
+msgid "jump points"
+msgstr ""
+
+#: ui/config/pipeline_map.py:33 ui/edit_panel/cue_slots.py:229
+msgid "CUE points"
+msgstr ""
+
+#: ui/config/pipeline_map.py:34
+msgid "key sections"
+msgstr ""
+
+#: ui/config/pipeline_map.py:46
+msgid ""
+"Numbers: the order the analyses run in. A wire: the analysis at the arrow"
+" needs that result. Every analysis also reads the decoded audio (22050 "
+"Hz, HPSS). Click an analysis to open its settings."
+msgstr ""
+
+#: ui/config/pipeline_map.py:109
+#, python-brace-format
+msgid "{name}: open the {tab} settings"
+msgstr ""
+
+#: ui/config/playback.py:30
+msgid "Enable metronome"
+msgstr ""
+
+#: ui/config/playback.py:37
+msgid "Shift metronome clicks relative to the beat (positive = earlier)"
+msgstr ""
+
+#: ui/config/playback.py:46
+msgid "Use timestretch"
+msgstr ""
+
+#: ui/config/playback.py:48
+msgid "Tempo changes keep the pitch (time stretch) instead of varispeed"
+msgstr ""
+
+#: ui/config/playback.py:64
+msgid "Duck music under metronome clicks"
+msgstr ""
+
+#: ui/config/playback.py:67
+msgid "Lowers the music by up to 6 dB, following each click"
+msgstr ""
+
+#: ui/config/playback.py:69
+msgid "Soft clip output (tanh)"
+msgstr ""
+
+#: ui/config/playback.py:71
+msgid ""
+"Output above -1.9 dBFS is rounded off by tanh up to 0 dBFS instead of "
+"hard clipping"
+msgstr ""
+
+#: ui/config/playback.py:75
+msgid "Play a click on every beat of the beat grid."
+msgstr ""
+
+#: ui/config/playback.py:76
+msgid "WAV file used as the metronome click."
+msgstr ""
+
+#: ui/config/playback.py:78
+msgid "Fixed gain applied to the output before the volume slider (headroom)."
+msgstr ""
+
+#: ui/config/playback.py:80
+msgid "Volume slider position at startup."
+msgstr ""
+
+#: ui/config/playback.py:81
+msgid "Click volume on the first beat of each bar."
+msgstr ""
+
+#: ui/config/playback.py:83
+msgid "Pitch shift of the click on the first beat of each bar."
+msgstr ""
+
+#: ui/config/playback.py:85
+msgid "Click volume on the other beats."
+msgstr ""
+
+#: ui/config/playback.py:86
+msgid "Pitch shift of the click on the other beats."
+msgstr ""
+
+#: ui/config/playback.py:91
+msgid "Average audio queued in the output buffer (smoothed)."
+msgstr ""
+
+#: ui/config/playback.py:94
+#, python-format
+msgid "Buffer level the output stayed above 99% of the time in the recent window."
+msgstr ""
+
+#: ui/config/playback.py:96
+msgid "Waiting for playback..."
+msgstr ""
+
+#: ui/config/playback.py:98
+msgid "Audio queued in the output device buffer while playing, 0 ms = dropout."
+msgstr ""
+
+#: ui/config/playback.py:108
+msgid "Trim"
+msgstr ""
+
+#: ui/config/playback.py:109
+msgid "Default volume (%)"
+msgstr ""
+
+#: ui/config/playback.py:111
+msgid "Output buffer"
+msgstr ""
+
+#: ui/config/playback.py:113
+#, python-brace-format, python-format
+msgid "1% low ({seconds} s)"
+msgstr ""
+
+#: ui/config/playback.py:117
+msgid "Time Stretch"
+msgstr ""
+
+#: ui/config/playback.py:121
+msgid "Metronome"
+msgstr ""
+
+#: ui/config/playback.py:125
+msgid "Details"
+msgstr ""
+
+#: ui/config/playback.py:130
+msgid "Show or hide the metronome options."
+msgstr ""
+
+#: ui/config/playback.py:136
+msgid "WAV path"
+msgstr ""
+
+#: ui/config/playback.py:137
+msgid "Offset (ms)"
+msgstr ""
+
+#: ui/config/playback.py:139
+msgid "Downbeat volume (%)"
+msgstr ""
+
+#: ui/config/playback.py:142
+msgid "Downbeat pitch (semitones)"
+msgstr ""
+
+#: ui/config/playback.py:144
+msgid "Beat volume (%)"
+msgstr ""
+
+#: ui/config/playback.py:146
+msgid "Beat pitch (semitones)"
+msgstr ""
+
+#: ui/config/playback.py:158
+msgid "Playback"
+msgstr ""
+
+#: ui/config/playback.py:210
+#, python-brace-format, python-format
+msgid ""
+"EMA {ema} / {capacity} ms   1% low {low} ms   lowest {lowest} ms "
+"({seconds} s)\n"
+"Dropout since opened {dropout} ms"
+msgstr ""
+
+#: ui/config/search.py:21
+msgid "Japanese, by word (SudachiDict): 東京 toukyou."
+msgstr ""
+
+#: ui/config/search.py:22
+msgid "Mandarin pinyin, tones dropped: 東京 dong jing."
+msgstr ""
+
+#: ui/config/search.py:23
+msgid "Cantonese Jyutping, tones dropped: 東京 dung ging."
+msgstr ""
+
+#: ui/config/search.py:24
+msgid "Korean Hanja reading (Unihan), spelled as a word: 東京 donggyeong."
+msgstr ""
+
+#: ui/config/search.py:25
+msgid "Sino-Vietnamese reading (Unihan), diacritics dropped: 東京 dong kinh."
+msgstr ""
+
+#: ui/config/search.py:26
+msgid "Taiwan's Mandarin, kept only where it differs from Mandarin: 乾杯 gan bei."
+msgstr ""
+
+#: ui/config/search.py:59
+msgid "Library Readings"
+msgstr ""
+
+#: ui/config/search.py:63
+msgid ""
+"<p>The languages a title, artist or album of Han characters without kana "
+"is read in and stored for the search, one reading each. A change reads "
+"the library again when saved.</p>"
+msgstr ""
+
+#: ui/config/search.py:65 ui/config/search.py:109
+msgid "Han Characters"
+msgstr ""
+
+#: ui/config/search.py:70
+msgid "Han runs in Korean Hanja, from"
+msgstr ""
+
+#: ui/config/search.py:73
+msgid " characters"
+msgstr ""
+
+#: ui/config/search.py:75
+msgid ""
+"<p>Han characters mixed with other characters are found by their Korean "
+"Hanja reading too. Beside Latin letters or Hangul all of them are read "
+"so; beside kana (read in Japanese with it) the runs of this many or more,"
+" the rest staying Japanese (Re:ゼロから始める異世界生活: zero kara hajimeru "
+"isegyesaenghwal; shorter runs there are mostly words read with the kana: "
+"君, 始める). Needs Korean Hanja checked.</p>"
+msgstr ""
+
+#: ui/config/search.py:83
+msgid "Mixed Text"
+msgstr ""
+
+#: ui/config/search.py:92
+msgid ""
+"Kana is read in Japanese, Hangul in Korean, other scripts as written. "
+"Readings set in Edit Track are kept."
+msgstr ""
+
+#: ui/config/dialogs/readings.py:17 ui/config/search.py:96
+msgid "Re-read Library"
+msgstr ""
+
+#: ui/config/search.py:98
+msgid ""
+"<p>Save these settings and read every track's title, artist and album "
+"again, in the background. Readings set in Edit Track are kept.</p>"
+msgstr ""
+
+#: ui/config/search.py:103
+msgid "Search Query"
+msgstr ""
+
+#: ui/config/search.py:107
+msgid ""
+"<p>The languages Han characters in a query are read in: a track is found "
+"when any of them matches any of its readings.</p>"
+msgstr ""
+
+#: ui/config/search.py:113
+msgid "As Korean"
+msgstr ""
+
+#: ui/config/search.py:115
+msgid ""
+"<p>Hangul read in Revised Romanization: 사회 finds a Korean title and 社会 by"
+" its Korean Hanja reading.</p>"
+msgstr ""
+
+#: ui/config/search.py:117
+msgid "As a foreign word"
+msgstr ""
+
+#: ui/config/search.py:119
+msgid ""
+"<p>Hangul read as Korean spells a foreign word (ㅓ o, ㅡ u, ㅐ e): 도쿄 finds "
+"東京, 아노네 finds あのね.</p>"
+msgstr ""
+
+#: ui/config/search.py:121
+msgid "Typed without 한/영"
+msgstr ""
+
+#: ui/config/search.py:123
+msgid ""
+"<p>A query typed on the 2-set (Dubeolsik) keyboard in the wrong input "
+"mode is also read as meant: tkghl as 사회 (whole syllables, two or more), "
+"무ㅐㅜㄷ as anone.</p>"
+msgstr ""
+
+#: ui/config/search.py:129
+msgid "Hangul"
+msgstr ""
+
+#: ui/config/search.py:134
+msgid "Search"
+msgstr ""
+
+#: ui/config/view.py:29
+#, python-brace-format
+msgid "System ({language})"
+msgstr ""
+
+#: ui/config/view.py:32
+msgid "The language of the app's texts. Applied at the next start."
+msgstr ""
+
+#: ui/config/view.py:34
+msgid "Display waveform"
+msgstr ""
+
+#: ui/config/view.py:35
+msgid "Display beatgrid"
+msgstr ""
+
+#: ui/config/view.py:36
+msgid "Display keystrip"
+msgstr ""
+
+#: ui/config/view.py:37
+msgid "Display JumpCUE"
+msgstr ""
+
+#: ui/config/view.py:38
+msgid "Display phrase overlay"
+msgstr ""
+
+#: ui/config/view.py:43
+msgid ""
+"RGB: the waveform colored by its low / mid / high mix.\n"
+"3Band: the low (blue), mid (amber) and high (white) bands drawn as layers."
+msgstr ""
+
+#: ui/config/view.py:51
+#, python-brace-format
+msgid ""
+"Time resolution of the main view waveform bars when the view is up to "
+"{seconds} s wide.\n"
+"Smaller is more detailed."
+msgstr ""
+
+#: ui/config/view.py:54
+#, python-brace-format
+msgid ""
+"Time resolution of the main view waveform bars when the view is wider "
+"than {seconds} s.\n"
+"Smaller is more detailed."
+msgstr ""
+
+#: ui/config/view.py:62
+msgid ""
+"Order of the main view waveform's band filters. Higher separates the "
+"bands more sharply."
+msgstr ""
+
+#: ui/config/view.py:65
+msgid "Use output volume as peak meter input"
+msgstr ""
+
+#: ui/config/view.py:67
+msgid "Reduce FPS when occluded"
+msgstr ""
+
+#: ui/config/view.py:73
+msgid "Waiting for FPS..."
+msgstr ""
+
+#: ui/config/view.py:75
+msgid "Measured from actual pyqtgraph plot repaint intervals."
+msgstr ""
+
+#: ui/config/view.py:77
+msgid "Show the detailed waveform view."
+msgstr ""
+
+#: ui/config/view.py:78
+msgid "Show the beat grid view."
+msgstr ""
+
+#: ui/config/view.py:79
+msgid "Show the key strip (detected key over time)."
+msgstr ""
+
+#: ui/config/view.py:80
+msgid "Show the JumpCUE view (detected repeat jump points)."
+msgstr ""
+
+#: ui/config/view.py:81
+msgid "Overlay the detected phrases on the views."
+msgstr ""
+
+#: ui/config/view.py:83
+msgid ""
+"Checked: the peak meter follows the volume slider (what you hear).\n"
+"Unchecked: the peak meter shows the level after Trim only."
+msgstr ""
+
+#: ui/config/view.py:87
+msgid ""
+"Lower the redraw rate while the window is hidden behind other windows\n"
+"or minimized, to save CPU."
+msgstr ""
+
+#: ui/config/view.py:90
+msgid "Target redraw rate of the views."
+msgstr ""
+
+#: ui/config/view.py:92
+msgid "Image drawn as the spinning record when a track has no album art."
+msgstr ""
+
+#: ui/config/view.py:95 ui/config/view.py:97
+msgid "Language"
+msgstr ""
+
+#: ui/config/view.py:99
+msgid "Display"
+msgstr ""
+
+#: ui/config/view.py:106
+msgid "Waveform style"
+msgstr ""
+
+#: ui/config/view.py:118
+msgid "lo"
+msgstr ""
+
+#: ui/config/view.py:119
+msgid "hi"
+msgstr ""
+
+#: ui/config/view.py:122
+msgid "Waveform bands"
+msgstr ""
+
+#: ui/config/view.py:124
+msgid ""
+"Low / mid / high bands of the waveforms' colors. The overview and the "
+"preview sum them from the\n"
+"12 stored bands, so a change redraws them at once (no re-analysis)."
+msgstr ""
+
+#: ui/config/view.py:129
+msgid "Low"
+msgstr ""
+
+#: ui/config/view.py:129
+msgid "Frequency range (Hz) drawn as the low band of the waveform."
+msgstr ""
+
+#: ui/config/view.py:130
+msgid "Lower edge of the low band (Hz)."
+msgstr ""
+
+#: ui/config/view.py:130
+msgid "Upper edge of the low band (Hz)."
+msgstr ""
+
+#: ui/config/view.py:132
+msgid "Mid"
+msgstr ""
+
+#: ui/config/view.py:132
+msgid "Frequency range (Hz) drawn as the mid band of the waveform."
+msgstr ""
+
+#: ui/config/view.py:133
+msgid "Lower edge of the mid band (Hz)."
+msgstr ""
+
+#: ui/config/view.py:133
+msgid "Upper edge of the mid band (Hz)."
+msgstr ""
+
+#: ui/config/view.py:135
+msgid "High"
+msgstr ""
+
+#: ui/config/view.py:135
+msgid "Frequency range (Hz) drawn as the high band of the waveform."
+msgstr ""
+
+#: ui/config/view.py:136
+msgid "Lower edge of the high band (Hz)."
+msgstr ""
+
+#: ui/config/view.py:136
+msgid "Upper edge of the high band (Hz)."
+msgstr ""
+
+#: ui/config/view.py:138
+msgid "Main view waveform"
+msgstr ""
+
+#: ui/config/view.py:140
+msgid "Frame, short view (ms)"
+msgstr ""
+
+#: ui/config/view.py:141
+msgid "Frame, long view (ms)"
+msgstr ""
+
+#: ui/config/view.py:142
+msgid "Filter order"
+msgstr ""
+
+#: ui/config/view.py:144
+msgid "Performance"
+msgstr ""
+
+#: ui/config/view.py:148
+msgid "Actual FPS"
+msgstr ""
+
+#: ui/config/view.py:152
+msgid "Record image path"
+msgstr ""
+
+#: ui/config/view.py:167
+msgid "Phrase labels"
+msgstr ""
+
+#: ui/config/view.py:170
+msgid "Alias"
+msgstr ""
+
+#: ui/config/view.py:171
+msgid "Overview"
+msgstr ""
+
+#: ui/config/view.py:177
+#, python-brace-format
+msgid "Shown in place of {label} (empty: {label})"
+msgstr ""
+
+#: ui/config/view.py:182
+#, python-brace-format
+msgid ""
+"{label} in the overview, numbered when it occurs more than once\n"
+"(empty: the first letter of its name)"
+msgstr ""
+
+#: ui/config/window.py:78
+msgid "Save the settings and close."
+msgstr ""
+
+#: ui/config/window.py:80
+msgid "Close without saving unapplied changes."
+msgstr ""
+
+#: ui/config/window.py:83
+msgid "Save the settings and keep the window open."
+msgstr ""
+
+#: ui/edit_panel/beat_counter.py:19
+msgid "Hold to count beats passing under the playhead"
+msgstr ""
+
+#: ui/edit_panel/beat_counter.py:26
+msgid "Beats counted while the Count button is held"
+msgstr ""
+
+#: ui/edit_panel/beat_counter.py:33
+msgid "Bar.Beat of the current playhead position"
+msgstr ""
+
+#: ui/edit_panel/beatgrid.py:26
+msgid "Shift the whole beatgrid (every segment) half a beat earlier"
+msgstr ""
+
+#: ui/edit_panel/beatgrid.py:27
+msgid "Shift the current segment half a beat earlier"
+msgstr ""
+
+#: ui/edit_panel/beatgrid.py:28
+msgid "Shift the whole beatgrid (every segment) 10 ms earlier"
+msgstr ""
+
+#: ui/edit_panel/beatgrid.py:29
+msgid "Shift the current segment 10 ms earlier"
+msgstr ""
+
+#: ui/edit_panel/beatgrid.py:30
+msgid "Shift the whole beatgrid (every segment) 1 ms earlier"
+msgstr ""
+
+#: ui/edit_panel/beatgrid.py:31
+msgid "Shift the current segment 1 ms earlier"
+msgstr ""
+
+#: ui/edit_panel/beatgrid.py:32
+msgid "Shift the whole beatgrid (every segment) 1 ms later"
+msgstr ""
+
+#: ui/edit_panel/beatgrid.py:33
+msgid "Shift the current segment 1 ms later"
+msgstr ""
+
+#: ui/edit_panel/beatgrid.py:34
+msgid "Shift the whole beatgrid (every segment) 10 ms later"
+msgstr ""
+
+#: ui/edit_panel/beatgrid.py:35
+msgid "Shift the current segment 10 ms later"
+msgstr ""
+
+#: ui/edit_panel/beatgrid.py:36
+msgid "Shift the whole beatgrid (every segment) half a beat later"
+msgstr ""
+
+#: ui/edit_panel/beatgrid.py:37
+msgid "Shift the current segment half a beat later"
+msgstr ""
+
+#: ui/edit_panel/beatgrid.py:38
+msgid "Halve the BPM of the whole beatgrid (every segment); the downbeats stay"
+msgstr ""
+
+#: ui/edit_panel/beatgrid.py:39
+msgid "Halve the BPM of the current segment; the downbeats stay"
+msgstr ""
+
+#: ui/edit_panel/beatgrid.py:40
+msgid "Double the BPM of the whole beatgrid (every segment); the downbeats stay"
+msgstr ""
+
+#: ui/edit_panel/beatgrid.py:41
+msgid "Double the BPM of the current segment; the downbeats stay"
+msgstr ""
+
+#: ui/edit_panel/beatgrid.py:74
+msgid "Clear the reference BPM and the tap history"
+msgstr ""
+
+#: ui/edit_panel/beatgrid.py:80
+msgid "Tap the beat to set the reference BPM"
+msgstr ""
+
+#: ui/edit_panel/beatgrid.py:95
+msgid "Ref"
+msgstr ""
+
+#: ui/edit_panel/beatgrid.py:98
+msgid "Reference BPM (tapped or typed)"
+msgstr ""
+
+#: ui/edit_panel/beatgrid.py:99
+msgid "Assign the reference BPM to the current segment (downbeat at its start)"
+msgstr ""
+
+#: ui/edit_panel/beatgrid.py:100
+msgid ""
+"Make the reference BPM the current segment's starting tempo (a ramp to "
+"its end tempo; its first beat stays)"
+msgstr ""
+
+#: ui/edit_panel/beatgrid.py:101
+msgid ""
+"Make the reference BPM the current segment's ending tempo (a ramp from "
+"its start tempo; its first beat stays)"
+msgstr ""
+
+#: ui/edit_panel/beatgrid.py:105
+msgid ""
+"Merge the previous segment into the current one (keeps the current tempo "
+"/ phase)"
+msgstr ""
+
+#: ui/edit_panel/beatgrid.py:106
+msgid ""
+"Merge the next segment into the current one (keeps the current tempo / "
+"phase)"
+msgstr ""
+
+#: ui/edit_panel/beatgrid.py:107
+msgid "Split the current segment at the playhead"
+msgstr ""
+
+#: ui/edit_panel/beatgrid.py:108
+msgid "Make the beat nearest the playhead the current segment's downbeat"
+msgstr ""
+
+#: ui/edit_panel/beatgrid.py:113
+msgid "Edit the whole beatgrid: shift and BPM x2 / x1/2 apply to every segment"
+msgstr ""
+
+#: ui/edit_panel/beatgrid.py:114
+msgid "Edit the current segment: shift and BPM x2 / x1/2 apply to it only"
+msgstr ""
+
+#: ui/edit_panel/beatgrid.py:131
+#, python-brace-format
+msgid "Set the current segment to {meter}"
+msgstr ""
+
+#: ui/edit_panel/beatgrid.py:135
+msgid "Set the current segment to another time signature (1/4 - 8/4)"
+msgstr ""
+
+#: ui/edit_panel/beatgrid.py:146
+msgid "Metronome on / off"
+msgstr ""
+
+#: ui/edit_panel/beatgrid.py:149 ui/edit_panel/beatgrid.py:265
+msgid "Seg -- | Elapsed: 00:00.00 | Left: 00:00.00"
+msgstr ""
+
+#: ui/edit_panel/beatgrid.py:238
+msgid "Reanalyze the current segment's beatgrid from the audio"
+msgstr ""
+
+#: ui/edit_panel/beatgrid.py:241
+msgid "Reanalyze the current segment's beatgrid at the reference BPM"
+msgstr ""
+
+#: ui/edit_panel/beatgrid.py:267
+#, python-brace-format
+msgid "Seg {index} | Elapsed: {elapsed} | Left: {left}"
+msgstr ""
+
+#: ui/edit_panel/beatgrid.py:525
+msgid ""
+"Tap to set reference BPM (WARNING! Tempo factor is not 1. RefBPM Will be "
+"scaled accordingly)"
+msgstr ""
+
+#: ui/edit_panel/beatgrid.py:526
+msgid ""
+"Reference BPM for Analysis and BPM Assigning (WARNING! Tempo factor is "
+"not 1. RefBPM Will be scaled accordingly)"
+msgstr ""
+
+#: ui/edit_panel/beatgrid.py:530
+msgid "Tap to set reference BPM"
+msgstr ""
+
+#: ui/edit_panel/beatgrid.py:531
+msgid "Reference BPM for Analysis and BPM Assigning"
+msgstr ""
+
+#: ui/edit_panel/cue_slots.py:147
+msgid "Double-click to rename"
+msgstr ""
+
+#: ui/edit_panel/cue_slots.py:236
+msgid "Previous page"
+msgstr ""
+
+#: ui/edit_panel/cue_slots.py:237
+msgid "Next page"
+msgstr ""
+
+#: ui/edit_panel/cue_slots.py:244
+msgid "Page"
+msgstr ""
+
+#: ui/edit_panel/cue_slots.py:306
+#, python-brace-format
+msgid "Page {page} of {pages}"
+msgstr ""
+
+#: ui/edit_panel/cuepoint.py:28
+msgid "MEMORY: set a CUE point at the nearest beat or track edge"
+msgstr ""
+
+#: ui/edit_panel/cuepoint.py:39
+msgid "Move the playhead to this CUE (not while playing)"
+msgstr ""
+
+#: ui/edit_panel/cuepoint.py:40
+msgid "CUE color / delete"
+msgstr ""
+
+#: ui/edit_panel/cuepoint.py:72 ui/edit_panel/jumpcue.py:110
+#, python-brace-format
+msgid "{time} - double-click to rename"
+msgstr ""
+
+#: ui/edit_panel/cuepoint.py:117
+msgid "CUE color"
+msgstr ""
+
+#: ui/edit_panel/cuepoint.py:119
+#, python-brace-format
+msgid "Color {number}"
+msgstr ""
+
+#: ui/edit_panel/cuepoint.py:124
+#, python-brace-format
+msgid "Delete CUE point {time}"
+msgstr ""
+
+#: ui/edit_panel/jumpcue.py:51
+msgid "Reanalyze the JumpCUEs with the current beatgrid"
+msgstr ""
+
+#: ui/edit_panel/jumpcue.py:57
+msgid "Color (its group), beat moves, slots, delete"
+msgstr ""
+
+#: ui/edit_panel/jumpcue.py:101
+msgid "SET: a JumpCUE in this slot at the nearest beat or track edge"
+msgstr ""
+
+#: ui/edit_panel/jumpcue.py:106
+msgid "Jump here on the next beat (when stopped: move the playhead here)"
+msgstr ""
+
+#: ui/edit_panel/jumpcue.py:192
+msgid "Color (cues of one color jump between each other)"
+msgstr ""
+
+#: ui/edit_panel/jumpcue.py:195
+msgid "(unused)"
+msgstr ""
+
+#: ui/edit_panel/jumpcue.py:199
+msgid "This color"
+msgstr ""
+
+#: ui/edit_panel/jumpcue.py:200
+msgid "One beat earlier"
+msgstr ""
+
+#: ui/edit_panel/jumpcue.py:201
+msgid "One beat later"
+msgstr ""
+
+#: ui/edit_panel/jumpcue.py:202
+msgid "Slots"
+msgstr ""
+
+#: ui/edit_panel/jumpcue.py:204
+#, python-brace-format
+msgid "Insert a slot at {letter} (this and later cues move one slot on)"
+msgstr ""
+
+#: ui/edit_panel/jumpcue.py:208
+#, python-brace-format
+msgid "Move into the empty slot {letter} (this and later cues move one slot back)"
+msgstr ""
+
+#: ui/edit_panel/jumpcue.py:212
+#, python-brace-format
+msgid "Delete JumpCUE {letter}"
+msgstr ""
+
+#: ui/edit_panel/jumpcue.py:261
+msgid "Two JumpCUEs cannot share a point."
+msgstr ""
+
+#: ui/edit_panel/jumpcue.py:404 ui/edit_panel/panel.py:609
+msgid "Invalid JumpCUE Label"
+msgstr ""
+
+#: ui/edit_panel/key.py:21
+msgid "A semitone down: every segment's key"
+msgstr ""
+
+#: ui/edit_panel/key.py:22
+msgid "A semitone down: the current segment's key"
+msgstr ""
+
+#: ui/edit_panel/key.py:23
+msgid "A semitone up: every segment's key"
+msgstr ""
+
+#: ui/edit_panel/key.py:24
+msgid "A semitone up: the current segment's key"
+msgstr ""
+
+#: ui/edit_panel/key.py:25
+msgid "One step down the circle of fifths (Alphanumeric -1): every segment's key"
+msgstr ""
+
+#: ui/edit_panel/key.py:26
+msgid ""
+"One step down the circle of fifths (Alphanumeric -1): the current "
+"segment's key"
+msgstr ""
+
+#: ui/edit_panel/key.py:27
+msgid "One step up the circle of fifths (Alphanumeric +1): every segment's key"
+msgstr ""
+
+#: ui/edit_panel/key.py:28
+msgid ""
+"One step up the circle of fifths (Alphanumeric +1): the current segment's"
+" key"
+msgstr ""
+
+#: ui/edit_panel/key.py:29
+msgid "Relative major / minor (C <-> Am): every segment's key"
+msgstr ""
+
+#: ui/edit_panel/key.py:30
+msgid "Relative major / minor (C <-> Am): the current segment's key"
+msgstr ""
+
+#: ui/edit_panel/key.py:36
+msgid "Move the current key segment's start one beat earlier"
+msgstr ""
+
+#: ui/edit_panel/key.py:37
+msgid ""
+"Move the current key segment's start one bar (to the neighboring "
+"downbeat) earlier"
+msgstr ""
+
+#: ui/edit_panel/key.py:38
+msgid "Move the current key segment's start one beat later"
+msgstr ""
+
+#: ui/edit_panel/key.py:39
+msgid ""
+"Move the current key segment's start one bar (to the neighboring "
+"downbeat) later"
+msgstr ""
+
+#: ui/edit_panel/key.py:40
+msgid "Move the current key segment's end one beat earlier"
+msgstr ""
+
+#: ui/edit_panel/key.py:41
+msgid ""
+"Move the current key segment's end one bar (to the neighboring downbeat) "
+"earlier"
+msgstr ""
+
+#: ui/edit_panel/key.py:42
+msgid "Move the current key segment's end one beat later"
+msgstr ""
+
+#: ui/edit_panel/key.py:43
+msgid ""
+"Move the current key segment's end one bar (to the neighboring downbeat) "
+"later"
+msgstr ""
+
+#: ui/edit_panel/key.py:67 ui/edit_panel/phrase.py:69
+msgid "Boundaries move by one beat"
+msgstr ""
+
+#: ui/edit_panel/key.py:68 ui/edit_panel/phrase.py:70
+msgid "Boundaries move by one bar (to the neighboring downbeat)"
+msgstr ""
+
+#: ui/edit_panel/key.py:76
+msgid "Split the current key segment at the beat nearest the playhead"
+msgstr ""
+
+#: ui/edit_panel/key.py:77
+msgid ""
+"Merge the previous key segment into the current one (keeps the current "
+"key)"
+msgstr ""
+
+#: ui/edit_panel/key.py:78
+msgid "Merge the next key segment into the current one (keeps the current key)"
+msgstr ""
+
+#: ui/edit_panel/key.py:79
+msgid "Merge every run of neighboring segments with the same key"
+msgstr ""
+
+#: ui/edit_panel/key.py:80
+msgid "Reanalyze the current key segment's key from the audio"
+msgstr ""
+
+#: ui/edit_panel/key.py:81
+msgid "Reanalyze the keys of the whole track (dynamic)"
+msgstr ""
+
+#: ui/edit_panel/key.py:84
+msgid "Key changes (pick, semitone, fifth, relative) apply to the whole track"
+msgstr ""
+
+#: ui/edit_panel/key.py:85
+msgid "Key changes (pick, semitone, fifth, relative) apply to the current segment"
+msgstr ""
+
+#: ui/edit_panel/key.py:94 ui/edit_panel/key_picker.py:82
+msgid "Pick the key (Alphanumeric wheel)"
+msgstr ""
+
+#: ui/edit_panel/key.py:109
+msgid ""
+"Root: hold the current key's root (and its octave) under the music.\n"
+"The plainest check of the tonic: it should feel like the note the music "
+"rests on."
+msgstr ""
+
+#: ui/edit_panel/key.py:115
+msgid ""
+"Root and fifth: hold the current key's root and fifth under the music.\n"
+"In the right key it sounds at home all the way through; a lasting clash\n"
+"means a wrong tonic (try semitone / fifth steps) or a key change."
+msgstr ""
+
+#: ui/edit_panel/key.py:122
+msgid ""
+"Tonic chord: hold the current key's major / minor triad under the music.\n"
+"Tests the third: if the drone fits but the chord clashes, try the other "
+"mode\n"
+"on the same root; if the melody keeps resolving elsewhere, try the "
+"relative key."
+msgstr ""
+
+#: ui/edit_panel/key.py:128 ui/edit_panel/key.py:281
+msgid "-- | Seg -- | Elapsed: 00:00.00 | Left: 00:00.00"
+msgstr ""
+
+#: ui/edit_panel/key.py:207
+msgid ""
+"Pick one key for the whole track: it becomes one segment in that key "
+"(Alphanumeric wheel)"
+msgstr ""
+
+#: ui/edit_panel/key.py:208
+msgid "Pick the current segment's key (Alphanumeric wheel)"
+msgstr ""
+
+#: ui/edit_panel/key.py:294
+#, python-brace-format
+msgid "{key} | Seg {index} | Elapsed: {elapsed} | Left: {left}"
+msgstr ""
+
+#: ui/edit_panel/panel.py:59
+msgid "Beatgrid"
+msgstr ""
+
+#: ui/edit_panel/panel.py:60
+msgid "Edit the beatgrid"
+msgstr ""
+
+#: ui/edit_panel/panel.py:60
+msgid "Edit the key"
+msgstr ""
+
+#: ui/edit_panel/panel.py:61
+msgid "Edit the phrase"
+msgstr ""
+
+#: ui/edit_panel/panel.py:61
+msgid "Edit the JumpCUEs and CUE points"
+msgstr ""
+
+#: ui/edit_panel/panel.py:136
+msgid "Undo Changes"
+msgstr ""
+
+#: ui/edit_panel/panel.py:140
+msgid "Redo Changes"
+msgstr ""
+
+#: ui/edit_panel/panel.py:144
+msgid "Save Edits"
+msgstr ""
+
+#: ui/edit_panel/panel.py:675
+msgid ""
+"<p>Editing is locked: pages switch, but nothing is edited or saved. Click"
+" to unlock.</p>"
+msgstr ""
+
+#: ui/edit_panel/panel.py:677
+msgid ""
+"<p>Editing is unlocked: the shown pages' graphics are emphasized. Click "
+"to lock: no edits, no saving (on at every start).</p>"
+msgstr ""
+
+#: ui/edit_panel/phrase.py:33
+msgid "Move the current phrase's start one beat earlier"
+msgstr ""
+
+#: ui/edit_panel/phrase.py:34
+msgid ""
+"Move the current phrase's start one bar (to the neighboring downbeat) "
+"earlier"
+msgstr ""
+
+#: ui/edit_panel/phrase.py:35
+msgid "Move the current phrase's start one beat later"
+msgstr ""
+
+#: ui/edit_panel/phrase.py:36
+msgid ""
+"Move the current phrase's start one bar (to the neighboring downbeat) "
+"later"
+msgstr ""
+
+#: ui/edit_panel/phrase.py:37
+msgid "Move the current phrase's end one beat earlier"
+msgstr ""
+
+#: ui/edit_panel/phrase.py:38
+msgid ""
+"Move the current phrase's end one bar (to the neighboring downbeat) "
+"earlier"
+msgstr ""
+
+#: ui/edit_panel/phrase.py:39
+msgid "Move the current phrase's end one beat later"
+msgstr ""
+
+#: ui/edit_panel/phrase.py:40
+msgid "Move the current phrase's end one bar (to the neighboring downbeat) later"
+msgstr ""
+
+#: ui/edit_panel/phrase.py:78
+msgid "Split the current phrase at the beat nearest the playhead"
+msgstr ""
+
+#: ui/edit_panel/phrase.py:79
+msgid "Merge the previous phrase into the current one (keeps the current label)"
+msgstr ""
+
+#: ui/edit_panel/phrase.py:80
+msgid "Merge the next phrase into the current one (keeps the current label)"
+msgstr ""
+
+#: ui/edit_panel/phrase.py:81
+msgid "Unassign the current phrase (UNASSIGNED)"
+msgstr ""
+
+#: ui/edit_panel/phrase.py:85
+msgid "Reanalyze the phrases of the whole track with the current beatgrid"
+msgstr ""
+
+#: ui/edit_panel/phrase.py:88
+msgid ""
+"Replace the CUE points with the ones the CUE rules give the current "
+"phrases\n"
+"(Settings > Analysis > CUE, as the full analysis makes them)"
+msgstr ""
+
+#: ui/edit_panel/phrase.py:104 ui/edit_panel/phrase.py:271
+msgid "-- | Seg -- | +0 beats | Left: 00:00.00"
+msgstr ""
+
+#: ui/edit_panel/phrase.py:166
+#, python-brace-format
+msgid "Label the current phrase {label}"
+msgstr ""
+
+#: ui/edit_panel/phrase.py:278
+#, python-brace-format
+msgid "{label} | Seg {index} | +{beats} beats | Left: {left}"
+msgstr ""
+
+#: ui/edit_song.py:49
+msgid "Edit Track Metadata"
+msgstr ""
+
+#: ui/edit_song.py:60
+msgid "Editable Fields"
+msgstr ""
+
+#: ui/edit_song.py:71
+msgid ""
+"The track's audio file. Set it when the file was moved or renamed;\n"
+"the analysis, playlists and CUEs stay with the track."
+msgstr ""
+
+#: ui/edit_song.py:73 ui/export.py:42
+msgid "Browse..."
+msgstr ""
+
+#: ui/edit_song.py:84 ui/edit_song.py:108 ui/export.py:53 ui/library.py:720
+msgid "Title"
+msgstr ""
+
+#: ui/edit_song.py:84 ui/edit_song.py:109 ui/export.py:54 ui/library.py:720
+msgid "Artist"
+msgstr ""
+
+#: ui/edit_song.py:84 ui/edit_song.py:110 ui/export.py:55 ui/library.py:721
+msgid "Album"
+msgstr ""
+
+#: ui/edit_song.py:91
+msgid ""
+"<p>How the title, artist and album read in Latin letters: the search "
+"finds the track by them in any script (あのね by anone or 아노네). Dim: read "
+"from the text in Settings > Search's languages. Type in a cell to add a "
+"reading of yours; empty a cell (Delete) or type over it to remove its "
+"reading for good, and type it again to bring it back.</p>"
+msgstr ""
+
+#: ui/config/external_sync.py:97 ui/edit_song.py:107 ui/library.py:722
+msgid "Path"
+msgstr ""
+
+#: ui/edit_song.py:111
+msgid "Readings"
+msgstr ""
+
+#: analyzer_core/global_analyzer.py:504 ui/config/analysis.py:243
+#: ui/config/pipeline_map.py:26 ui/config/pipeline_map.py:34
+#: ui/edit_song.py:113
+msgid "Key"
+msgstr ""
+
+#: ui/edit_song.py:114
+msgid "Rating (0-5)"
+msgstr ""
+
+#: ui/edit_song.py:115 ui/library.py:722
+msgid "Comment"
+msgstr ""
+
+#: ui/edit_song.py:118
+msgid "Read-only Fields"
+msgstr ""
+
+#: ui/edit_song.py:127
+msgid "Duration (sec)"
+msgstr ""
+
+#: ui/edit_song.py:128
+msgid "Added (epoch)"
+msgstr ""
+
+#: ui/edit_song.py:129
+msgid "File mtime"
+msgstr ""
+
+#: ui/edit_song.py:130
+msgid "File size (bytes)"
+msgstr ""
+
+#: ui/edit_song.py:290
+msgid "Track File"
+msgstr ""
+
+#: ui/edit_song.py:298
+#, python-brace-format
+msgid ""
+"The file does not exist:\n"
+"{path}"
+msgstr ""
+
+#: ui/edit_song.py:298 ui/edit_song.py:321 ui/library.py:1850
+msgid "Edit Track"
+msgstr ""
+
+#: ui/export.py:24 ui/export.py:148 ui/export.py:156 ui/export.py:163
+#: ui/export.py:169 ui/export.py:191 ui/export.py:202 ui/export.py:273
+#: ui/export.py:282 ui/export.py:337 ui/export.py:348 ui/library.py:1854
+#: ui/library.py:1946
+msgid "Export Track"
+msgstr ""
+
+#: ui/export.py:56
+msgid "Source"
+msgstr ""
+
+#: ui/export.py:57
+msgid "Destination Folder"
+msgstr ""
+
+#: ui/config/library.py:82 ui/export.py:59
+msgid "Rekordbox XML"
+msgstr ""
+
+#: ui/export.py:60
+msgid "Prerender JumpCUE Audio"
+msgstr ""
+
+#: ui/export.py:61
+msgid "Write WAV files with JumpCUE skips baked in."
+msgstr ""
+
+#: ui/export.py:66
+msgid "No JumpCUE directions"
+msgstr ""
+
+#: ui/export.py:71
+msgid "Include"
+msgstr ""
+
+#: ui/export.py:74
+msgid "Export"
+msgstr ""
+
+#: ui/export.py:75
+msgid "Cancel"
+msgstr ""
+
+#: ui/export.py:111
+msgid "Source file not found at the specified path."
+msgstr ""
+
+#: ui/export.py:114
+msgid "Source path is invalid."
+msgstr ""
+
+#: ui/export.py:140
+msgid "Select Destination Folder"
+msgstr ""
+
+#: ui/export.py:148
+msgid "No track is selected."
+msgstr ""
+
+#: ui/export.py:157
+msgid ""
+"Select at least one export target (Rekordbox XML, Waveform Image, or "
+"JumpCUE audio)."
+msgstr ""
+
+#: ui/export.py:163
+msgid "Please select a destination folder."
+msgstr ""
+
+#: ui/export.py:169
+#, python-brace-format
+msgid ""
+"Cannot create destination folder:\n"
+"{error}"
+msgstr ""
+
+#: ui/export.py:192
+msgid "Select a JumpCUE direction to render."
+msgstr ""
+
+#: ui/export.py:202
+#, python-brace-format
+msgid ""
+"Export completed:\n"
+"{files}"
+msgstr ""
+
+#: ui/export.py:274 ui/export.py:338
+#, python-brace-format
+msgid ""
+"'{name}' already exists.\n"
+"Overwrite?"
+msgstr ""
+
+#: ui/export.py:282
+#, python-brace-format
+msgid ""
+"Failed to write XML file:\n"
+"{error}"
+msgstr ""
+
+#: ui/export.py:348
+#, python-brace-format
+msgid ""
+"Failed to write JumpCUE audio:\n"
+"{error}"
+msgstr ""
+
+#: ui/library.py:673
+msgid "AND: require every search condition (click to switch)"
+msgstr ""
+
+#: ui/library.py:674
+msgid "OR: accept any search condition (click to switch)"
+msgstr ""
+
+#: ui/library.py:720
+msgid "All"
+msgstr ""
+
+#: ui/library.py:721
+msgid "Duration"
+msgstr ""
+
+#: ui/library.py:721
+msgid "Rating"
+msgstr ""
+
+#: ui/library.py:722
+msgid "Added"
+msgstr ""
+
+#: ui/library.py:795
+msgid "Search title, artist, key ..."
+msgstr ""
+
+#: ui/library.py:797
+msgid ""
+"<p>Titles, artists and albums are also found by how they read, in any "
+"script: あのね by anone, ano ne or 아노네 (the reading is set in Edit "
+"Track).</p>"
+msgstr ""
+
+#: ui/library.py:803
+msgid "Column the text search looks in"
+msgstr ""
+
+#: ui/library.py:806
+msgid "Fuzzy"
+msgstr ""
+
+#: ui/library.py:806
+msgid ""
+"<p>Also find a similar pronunciation (from six letters of the reading on:"
+" about one sound in five off). Off: the reading must match, up to its "
+"spelling.</p>"
+msgstr ""
+
+#: ui/library.py:842
+msgid "Tracks with a phrase of this label (optionally at a BPM / key)"
+msgstr ""
+
+#: analyzer_core/global_analyzer.py:398 ui/config/analysis.py:244
+#: ui/config/pipeline_map.py:23 ui/config/pipeline_map.py:32
+#: ui/edit_panel/panel.py:59 ui/library.py:842 ui/library.py:902
+msgid "Phrase"
+msgstr ""
+
+#: ui/library.py:843
+msgid "Tracks whose BPM changes from one tempo to another"
+msgstr ""
+
+#: ui/library.py:844
+msgid "Tracks whose key changes from one key to another"
+msgstr ""
+
+#: ui/library.py:847
+msgid "Clear"
+msgstr ""
+
+#: ui/library.py:848
+msgid "Remove every search condition (text and filters)"
+msgstr ""
+
+#: ui/library.py:855
+msgid "Also require this BPM inside the phrase"
+msgstr ""
+
+#: ui/library.py:860
+msgid "Phrase BPM tolerance"
+msgstr ""
+
+#: ui/library.py:861
+msgid "Also require this key inside the phrase"
+msgstr ""
+
+#: ui/library.py:863
+msgid "Key inside the selected phrase (Alphanumeric wheel)"
+msgstr ""
+
+#: ui/library.py:865
+msgid ""
+"Also match harmonically compatible keys (±1 on the Alphanumeric wheel, "
+"relative key)"
+msgstr ""
+
+#: ui/library.py:865 ui/library.py:891
+msgid "Compat"
+msgstr ""
+
+#: ui/library.py:874
+msgid "BPM transition tolerance"
+msgstr ""
+
+#: ui/library.py:876
+msgid "Require the transition to start at the first BPM segment"
+msgstr ""
+
+#: ui/library.py:876 ui/library.py:889
+msgid "1st"
+msgstr ""
+
+#: ui/library.py:880
+msgid "Key before the change (Alphanumeric wheel)"
+msgstr ""
+
+#: ui/library.py:883
+msgid "Key after the change (Alphanumeric wheel)"
+msgstr ""
+
+#: ui/library.py:889
+msgid "Require the transition to start at the first key segment"
+msgstr ""
+
+#: ui/library.py:891
+msgid ""
+"Also match harmonically compatible keys at both ends (±1 on the "
+"Alphanumeric wheel, relative key)"
+msgstr ""
+
+#: ui/library.py:900 ui/library.py:913
+msgid "Minimum duration of both sides of each enabled transition"
+msgstr ""
+
+#: ui/library.py:912
+msgid "Min seg"
+msgstr ""
+
+#: ui/library.py:1125
+msgid "Library (All)"
+msgstr ""
+
+#: ui/library.py:1129
+msgid "Playlists"
+msgstr ""
+
+#: ui/library.py:1144
+msgid "Local Folders"
+msgstr ""
+
+#: ui/config/external_sync.py:261 ui/library.py:1641 ui/pane.py:431
+msgid "External Sync"
+msgstr ""
+
+#: ui/library.py:1642
+msgid "Track loading is disabled while External Sync is enabled."
+msgstr ""
+
+#: ui/library.py:1677 ui/library.py:1706 ui/library.py:1713
+msgid "New Playlist"
+msgstr ""
+
+#: ui/library.py:1680
+msgid "Rename"
+msgstr ""
+
+#: ui/library.py:1681
+msgid "Move Up"
+msgstr ""
+
+#: ui/library.py:1682
+msgid "Move Down"
+msgstr ""
+
+#: ui/library.py:1683 ui/library.py:1742
+msgid "Delete Playlist"
+msgstr ""
+
+#: ui/library.py:1685
+msgid "Refresh Folders"
+msgstr ""
+
+#: ui/library.py:1706 ui/library.py:1724
+msgid "Name"
+msgstr ""
+
+#: ui/library.py:1724 ui/library.py:1732
+msgid "Rename Playlist"
+msgstr ""
+
+#: ui/library.py:1743
+#, python-brace-format
+msgid ""
+"Delete playlist \"{name}\"?\n"
+"Tracks remain in the Library."
+msgstr ""
+
+#: ui/library.py:1848
+msgid "Reveal in Explorer/Finder"
+msgstr ""
+
+#: ui/library.py:1849
+msgid "Remove from Library"
+msgstr ""
+
+#: ui/library.py:1852
+msgid "Reanalyze Track"
+msgstr ""
+
+#: ui/library.py:1852
+msgid "Analyze Track"
+msgstr ""
+
+#: ui/library.py:1857
+msgid "Remove from Playlist"
+msgstr ""
+
+#: ui/library.py:1858
+msgid "Add to Playlist"
+msgstr ""
+
+#: ui/library.py:1946
+msgid "Track metadata could not be found in the library."
+msgstr ""
+
+#: ui/oss_support.py:10
+msgid "Support Python & Open Source"
+msgstr ""
+
+#: ui/oss_support.py:18
+msgid ""
+"This app is built on the shoulders of open-source projects.\n"
+"If you'd like to support the ecosystem, here are some ways."
+msgstr ""
+
+#: ui/oss_support.py:25
+msgid "Donate to Python (PSF)"
+msgstr ""
+
+#: ui/oss_support.py:27
+msgid "Donate to Scientific Python (NumFOCUS)"
+msgstr ""
+
+#: ui/oss_support.py:49
+msgid "Open Link"
+msgstr ""
+
+#: ui/pane.py:277
+#, python-format
+msgid "Tempo (0%-200%, 0 stops)"
+msgstr ""
+
+#: ui/pane.py:341
+msgid "Tempo reset (100%)"
+msgstr ""
+
+#: ui/pane.py:343
+msgid "Master tempo: time stretch keeps the pitch"
+msgstr ""
+
+#: ui/pane.py:432
+msgid "Playback is disabled while External Sync is enabled."
+msgstr ""
+
+#: ui/pane.py:684
+msgid "Not Loaded"
+msgstr ""
+
+#: ui/track_info_panel.py:372
+msgid "Unload track"
+msgstr ""
+
+#: ui/track_info_panel.py:724 ui/workers.py:194
+msgid "No Art"
+msgstr ""
+
+#: ui/workers.py:32
+msgid "Analysis Tasks"
+msgstr ""
+
+#: ui/workers.py:136
+#, python-brace-format
+msgid "Task {id}"
+msgstr ""
+
+#: utils/jump_cues.py:105
+msgid "JumpCUE labels are limited to unique A-Z."
+msgstr ""
+
+#: utils/jump_cues.py:132 utils/jump_cues.py:135 utils/jump_cues.py:315
+msgid "JumpCUE labels must be unique single letters A-Z."
+msgstr ""
+

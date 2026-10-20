@@ -8,21 +8,22 @@ from analyzer_core.hpss import hpss_audio_with_spectra
 from analyzer_core.key import chord_key as CK
 from core.beat_geometry import downbeat_times
 from core.config import ANALYSIS_SAMPLE_RATE, config
+from core.i18n import tr
 
 
 def _track_evidence(path: str, cfg: config, beats, tempo_segments, phrases, progress_cb):
     """(model, beat grid, per-beat key evidence, duration) of the whole track."""
     if progress_cb:
-        progress_cb("Loading audio", 0.0)
+        progress_cb(tr("Loading audio"), 0.0)
     gcf = cfg.analysisconfig
     sr = ANALYSIS_SAMPLE_RATE
     samp = np.ascontiguousarray(fast_load(path, target_sr=sr, stereo=True).mean(axis=1), dtype=np.float32)
     duration = samp.size / float(sr)
     if progress_cb:
-        progress_cb("Separating harmonics", 0.15)
+        progress_cb(tr("Separating harmonics"), 0.15)
     y_harm = hpss_audio_with_spectra(samp, sr)[0]
     if progress_cb:
-        progress_cb("Analyzing key", 0.5)
+        progress_cb(tr("Analyzing key"), 0.5)
     beats = np.asarray(beats, dtype=float).ravel()
     segs = np.asarray(tempo_segments, dtype=float) if tempo_segments is not None else np.zeros((0, 5))
     downbeats = downbeat_times(beats, segs) if segs.ndim == 2 and segs.shape[0] else None
@@ -47,7 +48,7 @@ def reanalyze_full(
     _, key_segments = CK.track_keys(model, grid, L, duration, bool(getattr(cfg.analysisconfig, "key_dynamic", True)),
                                     phrases)
     if progress_cb:
-        progress_cb("Key segment updated", 0.9)
+        progress_cb(tr("Key segment updated"), 0.9)
     return key_segments
 
 
@@ -77,10 +78,10 @@ def reanalyze_segment_from_file(
     end = float(beats[beat_end_index]) if beat_end_index < beats.size else float(duration)
     end = min(max(end, start), duration)
     if end - start <= 1e-6:
-        raise ValueError("selection duration too small")
+        raise ValueError(tr("selection duration too small"))
     pitch_class, mode_flag = CK.selection_key(grid, L, start, end)
     if progress_cb:
-        progress_cb("Key segment updated", 0.9)
+        progress_cb(tr("Key segment updated"), 0.9)
     return float(pitch_class), float(mode_flag), float(start), float(end)
 
 

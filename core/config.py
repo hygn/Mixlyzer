@@ -43,6 +43,7 @@ class phraselabelnames:
 
 @dataclass
 class viewconfig:
+    language: str  # the UI's (core.i18n.LANGUAGES; "" = the operating system's), applied at the next start
     display_waveform: bool
     display_beatgrid: bool
     display_keystrip: bool
@@ -355,6 +356,7 @@ def default_cfg():
         autocue="cue_point",
     )
     vcfg = viewconfig(
+        language="",
         display_waveform=True,
         display_beatgrid=True,
         display_keystrip=True,
@@ -437,6 +439,16 @@ def default_cfg():
         cuepointconfig=cuepointconfig(**cue_rules),
         searchconfig=scfg,
     )
+
+
+def ui_language() -> str:
+    """config.json's UI language (viewconfig.language), only read: set before anything else is done."""
+    try:
+        with open("config.json", "r", encoding="utf-8") as f:
+            value = json.load(f).get("viewconfig", {}).get("language", "")
+    except (OSError, ValueError, AttributeError):
+        return ""
+    return value if isinstance(value, str) else ""
 
 
 def load_cfg() -> config:

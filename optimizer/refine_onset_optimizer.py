@@ -31,6 +31,7 @@ from optimizer.onset_training import (
     beat_targets,
     samples_from_inputs,
 )
+from core.i18n import tr
 
 ProgressCallback = Callable[[int, str], None]
 # Share of each sample kind kept for training (near a beat / beat subdivision / other),
@@ -130,16 +131,18 @@ def optimize_refine_onset(
                     future.result()
                 except Exception as exc:
                     failed.add(str(track["uid"]))
-                    ignored.append(skipped_track(track, f"feature cache build failed: {exc}"))
+                    ignored.append(skipped_track(track, tr("feature cache build failed: {error}").format(error=exc)))
                 if feature_progress:
-                    feature_progress(int(round(80 * done / len(jobs))), f"Feature cache {done}/{len(jobs)}\n{optimizer_track_name(track)}")
+                    feature_progress(int(round(80 * done / len(jobs))),
+                                     tr("Feature cache {done}/{total}").format(done=done, total=len(jobs))
+                                     + "\n" + optimizer_track_name(track))
         tracks = [track for track in tracks if str(track["uid"]) not in failed]
 
     data = []
     for index, track in enumerate(tracks, start=1):
         cached = _read_current_cache(_cache_path(cache_dir, str(track["uid"])), track, bool(request.use_hpss), hop)
         if cached is None:
-            ignored.append(skipped_track(track, "feature cache is not current"))
+            ignored.append(skipped_track(track, tr("feature cache is not current")))
             continue
         frame_times, channels = cached
         x, y, w = _track_samples(frame_times, channels, np.asarray(track["beats"]), index)
@@ -157,7 +160,7 @@ def optimize_refine_onset(
         n_splits = min(int(request.cv_folds), np.unique(groups).size)
         train, held = next(GroupKFold(n_splits=n_splits).split(data, groups=groups))
         if optimize_progress:
-            optimize_progress(10, "Training on the other songs")
+            optimize_progress(10, tr("Training on the other songs"))
         trial_model = _model(1).fit(
             np.concatenate([data[i][1] for i in train]).astype(np.float32),
             np.concatenate([data[i][2] for i in train]),
@@ -178,14 +181,14 @@ def optimize_refine_onset(
             trial.unlink(missing_ok=True)
         if not grid.not_worse:
             if optimize_progress:
-                optimize_progress(100, "Not saved: the held-out songs' grids got worse")
+                optimize_progress(100, tr("Not saved: the held-out songs' grids got worse"))
             return RefineOnsetOptimizationResult(
                 output_path=output_path, track_count=len(data), sample_count=0, beat_average_precision=float("nan"),
                 skipped_tracks=tuple(ignored), cross_validated=True, grid=grid, saved=False,
             )
 
     if optimize_progress:
-        optimize_progress(75, "Fitting all tracks")
+        optimize_progress(75, tr("Fitting all tracks"))
     x = np.concatenate([item[1] for item in data]).astype(np.float32)
     y = np.concatenate([item[2] for item in data])
     w = np.concatenate([item[3] for item in data])
@@ -202,7 +205,7 @@ def optimize_refine_onset(
          "cross_validated": cross_validated},
     )
     if optimize_progress:
-        optimize_progress(100, "Done")
+        optimize_progress(100, tr("Done"))
     return RefineOnsetOptimizationResult(
         output_path=output_path,
         track_count=len(data),

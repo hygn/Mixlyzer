@@ -27,3 +27,8 @@ dependencies = [
     "pypinyin>=0.55.0",
     "pycantonese>=5.0.0",
 ]
+
+[dependency-groups]
+dev = [
+    "babel>=2.18.0",
+]

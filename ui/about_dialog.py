@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from PySide6 import QtCore, QtWidgets
+from core.i18n import tr
 
 
 LGPL3_TEXT = """
@@ -175,14 +176,14 @@ Library.
 class AboutDialog(QtWidgets.QDialog):
     def __init__(self, parent: QtWidgets.QWidget | None = None):
         super().__init__(parent)
-        self.setWindowTitle("About Mixlyzer")
+        self.setWindowTitle(tr("About Mixlyzer"))
         self.resize(720, 560)
         layout = QtWidgets.QVBoxLayout(self)
 
         about_label = QtWidgets.QLabel(
-            "Mixlyzer\n\nInteractive beatgrid, key, and JumpCUE analysis and editing toolkit.\n"
-            "Distributed under the GNU Lesser General Public License v3.0. "
-            "See below for the full license text."
+            tr("Mixlyzer\n\nInteractive beatgrid, key, and JumpCUE analysis and editing toolkit.\n"
+               "Distributed under the GNU Lesser General Public License v3.0. "
+               "See below for the full license text.")
         )
         about_label.setWordWrap(True)
         about_label.setAlignment(QtCore.Qt.AlignCenter)

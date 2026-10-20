@@ -8,6 +8,7 @@ from uuid import UUID, uuid4
 from core import reading
 from core.linear_segments import harmonic_compatible_keys
 from utils.labels import idx_to_labels
+from core.i18n import tr
 
 
 # Columns that may appear in an ORDER BY clause. Used to validate the
@@ -474,9 +475,9 @@ class LibraryDB:
             self.refresh_readings(uid)
 
     def upsert_meta(self, meta: Dict[str, Any]):
-        tr = TrackRow.from_meta(meta)
-        self.upsert(tr)
-        return tr.uid
+        row = TrackRow.from_meta(meta)
+        self.upsert(row)
+        return row.uid
 
     def upsert_many(self, rows: Iterable[TrackRow]):
         with self.tx():
@@ -545,10 +546,10 @@ class LibraryDB:
         uid = _canonical_uuid4(uid)
         path = str(path or "").strip()
         if not path:
-            raise ValueError("The path cannot be empty.")
+            raise ValueError(tr("The path cannot be empty."))
         other = self.find_file(path)
         if other is not None and other.uid != uid:
-            raise ValueError(f'This file is already in the library as "{other.title or other.path}".')
+            raise ValueError(tr('This file is already in the library as "{track}".').format(track=other.title or other.path))
         try:
             st = os.stat(path)
             stats = (st.st_mtime, st.st_size)
@@ -567,7 +568,7 @@ class LibraryDB:
     def create_playlist(self, name: str) -> PlaylistRow:
         name = str(name or "").strip()
         if not name:
-            raise ValueError("Playlist name cannot be empty")
+            raise ValueError(tr("Playlist name cannot be empty"))
         playlist_uid = str(uuid4())
         with self.tx():
             next_index = int(self.conn.execute(
@@ -588,7 +589,7 @@ class LibraryDB:
     def rename_playlist(self, playlist_uid: str, name: str) -> None:
         name = str(name or "").strip()
         if not name:
-            raise ValueError("Playlist name cannot be empty")
+            raise ValueError(tr("Playlist name cannot be empty"))
         with self.tx():
             self.conn.execute(
                 "UPDATE playlists SET name=? WHERE uid=?;", (name, _canonical_uuid4(playlist_uid))

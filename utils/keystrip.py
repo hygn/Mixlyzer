@@ -27,7 +27,7 @@ def key_segment_rows(key_segments) -> list[tuple[int, float, float]]:
 
 
 def key_segment_label(idx: int) -> str:
-    """Key strip label: Camelot / classical, as in the track info ("3B / C#")."""
+    """Key strip label: Alphanumeric / classical, as in the track info ("3B / C#")."""
     from utils.labels import idx_to_labels
-    cam, cls = idx_to_labels(idx)
-    return f"{cam}\u2009/\u2009{cls}"
+    num, cls = idx_to_labels(idx)
+    return f"{num}\u2009/\u2009{cls}"

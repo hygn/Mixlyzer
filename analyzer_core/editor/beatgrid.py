@@ -14,6 +14,7 @@ from core.tempo_rows import (
 from analyzer_core.beat.frame_features import extract_frame_features
 from analyzer_core.hpss import hpss_audio
 from core.config import config
+from core.i18n import tr
 
 
 def build_grid_from_period_phase(total_len_frames: int,
@@ -151,7 +152,7 @@ def reanalyze_segment_from_file(
     from analyzer_core.beat.general import bars as B, decode as D, gradual as G, load_models, tcn as T
 
     if progress_cb:
-        progress_cb("Loading audio", 0.0)
+        progress_cb(tr("Loading audio"), 0.0)
     sr = T.SAMPLE_RATE
     audio = fast_load(path, sr)
     seg_arr = with_end_bpm(segments)
@@ -163,18 +164,18 @@ def reanalyze_segment_from_file(
     start = float(seg_arr[segment_index, 0])
     end = min(float(seg_arr[segment_index, 1]), total)
     if end - start < 2.0:
-        raise ValueError("segment too short for reanalysis")
+        raise ValueError(tr("segment too short for reanalysis"))
 
     a = max(0.0, start - PAD_SEC)
     b = min(total, end + PAD_SEC)
     section = np.ascontiguousarray(audio[int(a * sr):int(b * sr)], dtype=np.float32)
     if progress_cb:
-        progress_cb("Preparing audio", 0.10)
+        progress_cb(tr("Preparing audio"), 0.10)
     # the models were trained on frames of the HPSS parts
     y_harm, y_perc = hpss_audio(section)
     frames = extract_frame_features(section, sr, y_perc, y_harm, hop_length=T.FRAME_HOP_LENGTH)
     if progress_cb:
-        progress_cb("Beat activations", 0.40)
+        progress_cb(tr("Beat activations"), 0.40)
     gcf = cfg.analysisconfig
     models = load_models(
         str(getattr(gcf, "downbeat_ctx_parameter_path", "") or "").strip() or None,
@@ -192,7 +193,7 @@ def reanalyze_segment_from_file(
     val, fine = D.readers(beat, hop, t0)
 
     if progress_cb:
-        progress_cb("Estimating BPM", 0.70)
+        progress_cb(tr("Estimating BPM"), 0.70)
     # the segment's own frames for its tempo candidates and the steady grid over it
     i0 = max(0, int(np.ceil((start - t0) / hop)))
     i1 = min(beat.size, int(np.floor((end - t0) / hop)) + 1)
@@ -233,7 +234,7 @@ def reanalyze_segment_from_file(
         row = G.ramp_or_steady(row, guesses, fine)
 
     if progress_cb:
-        progress_cb("Downbeat analysis", 0.80)
+        progress_cb(tr("Downbeat analysis"), 0.80)
     seg_beats = G.row_beats(row)
     seg_beats = seg_beats[(seg_beats >= start - 1e-9) & (seg_beats < end)]
     if seg_beats.size >= 2:
@@ -246,7 +247,7 @@ def reanalyze_segment_from_file(
             row[3] = float(dbs[0])
 
     if progress_cb:
-        progress_cb("Updating beat grid", 0.90)
+        progress_cb(tr("Updating beat grid"), 0.90)
     beats_arr = np.asarray(beats_time_sec if beats_time_sec is not None else (), dtype=float)
     keep_mask = (beats_arr < start - 1e-9) | (beats_arr >= end - 1e-9)
     beats_updated = np.sort(np.concatenate([beats_arr[keep_mask], seg_beats]))
@@ -256,5 +257,5 @@ def reanalyze_segment_from_file(
           + (f"->{row[5]:.2f}" if abs(row[5] - row[2]) > 1e-6 else "")
           + f" inizio={row[3]:.3f}s ts={int(row[4])}/4")
     if progress_cb:
-        progress_cb("Segment updated", 0.95)
+        progress_cb(tr("Segment updated"), 0.95)
     return beats_updated, seg_updated

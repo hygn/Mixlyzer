@@ -11,14 +11,16 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from core.i18n import tr, tr_mark
 from core.model_files import has_user_model, is_shipped, resolve_model, shipped_path
 
 SHIPPED, CURRENT, SCRATCH = "shipped", "current", "scratch"
 SHIPPED_TRAINING_TRACKS = 340
 # (blocked below, warned below) songs with beat grids
 MIN_TRACKS = {"fine_tune": (20, 60), "scratch": (200, SHIPPED_TRAINING_TRACKS), "gbm": (50, 150), "search": (20, 60)}
-BEAT_SONGS = "songs with beat grids"
-KEY_SONGS = "songs with checked key annotations"
+# what the songs counted are (translated where shown)
+BEAT_SONGS = tr_mark("songs with beat grids")
+KEY_SONGS = tr_mark("songs with checked key annotations")
 
 
 def kind_of(start: str) -> str:
@@ -34,36 +36,44 @@ def base_model(output_path: str | Path, start: str) -> Path | None:
 
 def check_output(output_path: str | Path) -> None:
     if is_shipped(output_path):
-        raise ValueError(f"A shipped model is never overwritten; choose another path than {Path(output_path).name}")
+        raise ValueError(tr("A shipped model is never overwritten; choose another path than {name}")
+                         .format(name=Path(output_path).name))
 
 
 def require_tracks(count: int, kind: str, songs: str = BEAT_SONGS) -> None:
     blocked, _ = MIN_TRACKS[kind]
     if count < blocked:
-        what = {"scratch": "Training from scratch", "fine_tune": "Retraining", "gbm": "Retraining",
-                "search": "Refitting"}[kind]
-        raise RuntimeError(f"{what} needs at least {blocked} {songs} (the library has {count})")
+        message = {"scratch": tr("Training from scratch needs at least {needed} {songs} (the library has {count})"),
+                   "fine_tune": tr("Retraining needs at least {needed} {songs} (the library has {count})"),
+                   "gbm": tr("Retraining needs at least {needed} {songs} (the library has {count})"),
+                   "search": tr("Refitting needs at least {needed} {songs} (the library has {count})")}[kind]
+        raise RuntimeError(message.format(needed=blocked, songs=tr(songs), count=count))
 
 
 def warnings(count: int, kind: str, start: str | None, output_path: str | Path | None,
-             songs: str = BEAT_SONGS) -> tuple[list[str], bool]:
-    """(messages, blocked) for a planned training on ``count`` songs."""
+             songs: str = BEAT_SONGS, scratch_takes_hours: bool = True) -> tuple[list[str], bool]:
+    """(messages, blocked) for a planned training on ``count`` songs (``scratch_takes_hours``: a training from
+    scratch takes one to two hours, said in its warning)."""
     blocked_below, warn_below = MIN_TRACKS[kind]
     out = []
     if count < blocked_below:
-        what = "Training from scratch" if kind == "scratch" else "This"
-        return [f"{what} needs at least {blocked_below} {songs}; the library has {count}."], True
+        message = (tr("Training from scratch needs at least {needed} {songs}; the library has {count}.")
+                   if kind == "scratch" else tr("This needs at least {needed} {songs}; the library has {count}."))
+        return [message.format(needed=blocked_below, songs=tr(songs), count=count)], True
     if count < warn_below:
         if kind == "scratch":
-            out.append(f"{count} songs: fewer than the shipped model was trained on (about {SHIPPED_TRAINING_TRACKS}); "
-                       "a model trained from scratch on them is likely to be worse than the shipped one.")
+            out.append(tr("{count} songs: fewer than the shipped model was trained on (about {shipped}); "
+                          "a model trained from scratch on them is likely to be worse than the shipped one.")
+                       .format(count=count, shipped=SHIPPED_TRAINING_TRACKS))
         else:
-            out.append(f"{count} songs: risk of overfitting to them, and the cross-validation check rests on few songs.")
+            out.append(tr("{count} songs: risk of overfitting to them, and the cross-validation check rests on few "
+                          "songs.").format(count=count))
     if start == SCRATCH:
-        out.append("Training from scratch takes one to two hours and discards what the shipped model learned.")
+        out.append(tr("Training from scratch takes one to two hours and discards what the shipped model learned.")
+                   if scratch_takes_hours else tr("Training from scratch discards what the shipped model learned."))
     elif start == CURRENT and output_path is not None and has_user_model(output_path):
-        out.append("The current model is already retrained: fine-tuning it again accumulates changes. "
-                   "Fine-tune the shipped model to start over.")
+        out.append(tr("The current model is already retrained: fine-tuning it again accumulates changes. "
+                      "Fine-tune the shipped model to start over."))
     elif start == SHIPPED and output_path is not None and has_user_model(output_path):
-        out.append("Fine-tuning the shipped model replaces the earlier retrained model.")
+        out.append(tr("Fine-tuning the shipped model replaces the earlier retrained model."))
     return out, False

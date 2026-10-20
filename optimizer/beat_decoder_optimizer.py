@@ -30,6 +30,7 @@ from optimizer.beat_frames import cache_path, ensure_frames, list_grid_tracks, r
 from optimizer.beat_grid_check import USABLE_SEC, GridCheck, from_scores, missed_bar_time, usable_error
 from optimizer.refine_onset_optimizer import _group_key
 from optimizer import model_start as MS
+from core.i18n import tr
 
 ProgressCallback = Callable[[int, str], None]
 # candidates: steps of sqrt(2) around the shipped costs
@@ -160,12 +161,13 @@ def optimize_beat_decoder(
         for done, f in enumerate(as_completed(futures), start=1):
             uid, table = f.result()
             if table is None:
-                ignored.append(skipped_track(futures[f], "frame feature cache is not current"))
+                ignored.append(skipped_track(futures[f], tr("frame feature cache is not current")))
             else:
                 tables[uid] = table
             if optimize_progress:
                 optimize_progress(int(round(90 * done / len(futures))),
-                                  f"Tracking with every cost combination {done}/{len(futures)}\n{optimizer_track_name(futures[f])}")
+                                  tr("Tracking with every cost combination {done}/{total}").format(
+                                      done=done, total=len(futures)) + "\n" + optimizer_track_name(futures[f]))
     kept = [t for t in tracks if str(t["uid"]) in tables]
     MS.require_tracks(len(kept), "search")
     full = np.stack([tables[str(t["uid"])] for t in kept])                  # [songs, S, H, O, beats/bars] seconds
@@ -209,7 +211,7 @@ def optimize_beat_decoder(
             "models": {"beat_tcn": paths[1], "critic": paths[2], "downbeat": paths[0]},
         })
     if optimize_progress:
-        optimize_progress(100, "Done" if saved else "Not saved: the held-out songs got worse")
+        optimize_progress(100, tr("Done") if saved else tr("Not saved: the held-out songs got worse"))
     from dataclasses import asdict
     return BeatDecoderOptimizationResult(
         output_path=output_path, track_count=len(kept), knobs_before=asdict(current), knobs_after=asdict(knobs),

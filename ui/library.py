@@ -18,6 +18,7 @@ from ui.export import ExportTrackDialog
 from ui.theme import current_theme
 from ui.edit_panel.key_picker import KeyPickButton
 from core.thumbnails import delete_thumbnail, load_thumbnail
+from core.i18n import tr, tr_mark
 
 
 # Data schema
@@ -42,7 +43,7 @@ class Track:
     _disp_playlist_index: str = field(init=False, default="")
 
     _disp_bpm: str = field(init=False, default="--")
-    _disp_key_camelot: str = field(init=False, default="--")
+    _disp_key_alphanumeric: str = field(init=False, default="--")
     _disp_duration: str = field(init=False, default="00:00")
     _disp_rating: str = field(init=False, default="☆☆☆☆☆")
     _disp_added: str = field(init=False, default="")
@@ -53,7 +54,7 @@ class Track:
         # Key
         try:
             if isinstance(self.key, int) and 0 <= self.key <= 23:
-                self._disp_key_camelot = idx_to_labels(self.key)[0]
+                self._disp_key_alphanumeric = idx_to_labels(self.key)[0]
         except Exception:
             pass
         # Duration
@@ -185,8 +186,8 @@ class FastDelegate(QtWidgets.QStyledItemDelegate):
                 p.setPen(color)
             else:
                 p.setPen(option.palette.highlightedText().color() if selected else option.palette.text().color())
-            tr = QtCore.QRect(0, 0, rect.width(), rect.height()).adjusted(4, 0, -4, 0)
-            p.drawText(tr, QtCore.Qt.AlignVCenter | QtCore.Qt.TextSingleLine, text)
+            text_rect = QtCore.QRect(0, 0, rect.width(), rect.height()).adjusted(4, 0, -4, 0)
+            p.drawText(text_rect, QtCore.Qt.AlignVCenter | QtCore.Qt.TextSingleLine, text)
             p.end()
             self._cache[key] = pm
         painter.drawPixmap(rect.topLeft(), pm)
@@ -669,9 +670,8 @@ class _MatchToggle(QtWidgets.QAbstractButton):
         return not self.isChecked()
 
     def _update_tooltip(self) -> None:
-        self.setToolTip(
-            ("AND: require every search condition" if self.match_all()
-             else "OR: accept any search condition") + " (click to switch)")
+        self.setToolTip(tr("AND: require every search condition (click to switch)") if self.match_all()
+                        else tr("OR: accept any search condition (click to switch)"))
 
     def sizeHint(self) -> QtCore.QSize:
         fm = QtGui.QFontMetrics(self.font())
@@ -714,12 +714,21 @@ class _MatchToggle(QtWidgets.QAbstractButton):
 class LibraryWidget(QtWidgets.QWidget):
     ART_HEADER = ""  # the album art column (the top of the art)
     ART_WIDTH = 56
+    # the columns by their English names (the code's keys); shown as HEADER_NAMES (BPM, Key: as they are)
     HEADERS = [ART_HEADER, "#", "Title", "Artist", "Album", "BPM", "Key", "Duration", "Rating", "Added", "Path", "Comment"]
     SEARCH_MODES = ["All"] + HEADERS[1:]
+    HEADER_NAMES = {"All": tr_mark("All"), "Title": tr_mark("Title"), "Artist": tr_mark("Artist"),
+                    "Album": tr_mark("Album"), "Duration": tr_mark("Duration"), "Rating": tr_mark("Rating"),
+                    "Added": tr_mark("Added"), "Path": tr_mark("Path"), "Comment": tr_mark("Comment")}
     AUDIO_EXTENSIONS = frozenset({
         ".aac", ".aif", ".aiff", ".alac", ".flac", ".m4a", ".mp3",
         ".mp4", ".ogg", ".opus", ".wav", ".wma",
     })
+
+    @classmethod
+    def _header_name(cls, header: str) -> str:
+        """A column's name as shown: translated, BPM and Key as they are."""
+        return tr(cls.HEADER_NAMES[header]) if header in cls.HEADER_NAMES else header
 
     def _chip(self, text: str, tooltip: str, *, small: bool = False) -> QtWidgets.QToolButton:
         """A checkable toggle chip: the filter toggles."""
@@ -783,18 +792,19 @@ class LibraryWidget(QtWidgets.QWidget):
         # Search UI. Row 1: text search, one toggle chip per structured
         # filter and AND / OR. Row 2 holds only the enabled filters' editors,
         # so an idle search bar is a single line and a filter is one click.
-        self.e_search = QtWidgets.QLineEdit(placeholderText="Search title, artist, key ...")
+        self.e_search = QtWidgets.QLineEdit(placeholderText=tr("Search title, artist, key ..."))
         self.e_search.setToolTip(
-            "<p>Titles, artists and albums are also found by how they read, in any script: "
-            "あのね by anone, ano ne or 아노네 (the reading is set in Edit Track).</p>")
+            tr("<p>Titles, artists and albums are also found by how they read, in any script: "
+               "あのね by anone, ano ne or 아노네 (the reading is set in Edit Track).</p>"))
         self.e_search.setClearButtonEnabled(True)
         self.cb_column = QtWidgets.QComboBox()
-        self.cb_column.addItems(self.SEARCH_MODES)
-        self.cb_column.setToolTip("Column the text search looks in")
+        for mode in self.SEARCH_MODES:
+            self.cb_column.addItem(self._header_name(mode), mode)
+        self.cb_column.setToolTip(tr("Column the text search looks in"))
         self.cb_column.setSizeAdjustPolicy(QtWidgets.QComboBox.AdjustToContents)
         self.cb_fuzzy = self._chip(
-            "Fuzzy", "<p>Also find a similar pronunciation (from six letters of the reading on: about one "
-            "sound in five off). Off: the reading must match, up to its spelling.</p>")
+            tr("Fuzzy"), tr("<p>Also find a similar pronunciation (from six letters of the reading on: about one "
+                            "sound in five off). Off: the reading must match, up to its spelling.</p>"))
         self.cb_fuzzy.setChecked(True)
 
         def grow(widget: QtWidgets.QWidget, width: int) -> None:
@@ -828,30 +838,31 @@ class LibraryWidget(QtWidgets.QWidget):
             return label
 
         # Filter toggles (row 1)
-        self.cb_phrase_filter = self._chip("Phrase", "Tracks with a phrase of this label (optionally at a BPM / key)")
-        self.cb_transition_bpm = self._chip("BPM \u2192", "Tracks whose BPM changes from one tempo to another")
-        self.cb_transition_key = self._chip("Key \u2192", "Tracks whose key changes from one key to another")
+        self.cb_phrase_filter = self._chip(
+            tr("Phrase"), tr("Tracks with a phrase of this label (optionally at a BPM / key)"))
+        self.cb_transition_bpm = self._chip("BPM \u2192", tr("Tracks whose BPM changes from one tempo to another"))
+        self.cb_transition_key = self._chip("Key \u2192", tr("Tracks whose key changes from one key to another"))
         self.match_toggle = _MatchToggle()
         self.btn_clear_filters = QtWidgets.QToolButton()
-        self.btn_clear_filters.setText("Clear")
-        self.btn_clear_filters.setToolTip("Remove every search condition (text and filters)")
+        self.btn_clear_filters.setText(tr("Clear"))
+        self.btn_clear_filters.setToolTip(tr("Remove every search condition (text and filters)"))
 
         # Phrase filter: the label always applies; BPM and key refine it.
         self.cmb_phrase_label = QtWidgets.QComboBox()
         for label in PHRASE_LABELS:
             self.cmb_phrase_label.addItem(phrase_display_name(label), label)
         compact_combo(self.cmb_phrase_label, 112)
-        self.cb_phrase_bpm = self._chip("BPM", "Also require this BPM inside the phrase", small=True)
+        self.cb_phrase_bpm = self._chip("BPM", tr("Also require this BPM inside the phrase"), small=True)
         self.sp_phrase_bpm = compact_spin(QtWidgets.QDoubleSpinBox(), 0.0, 400.0, 125.0)
         self.lbl_phrase_bpm_tol = dim_label("\u00b1")
         self.sp_phrase_bpm_tolerance = compact_spin(
             QtWidgets.QDoubleSpinBox(), 0.0, 100.0, 2.0, "%")
-        self.sp_phrase_bpm_tolerance.setToolTip("Phrase BPM tolerance")
-        self.cb_phrase_key = self._chip("Key", "Also require this key inside the phrase", small=True)
+        self.sp_phrase_bpm_tolerance.setToolTip(tr("Phrase BPM tolerance"))
+        self.cb_phrase_key = self._chip("Key", tr("Also require this key inside the phrase"), small=True)
         self.cmb_phrase_key = KeyPickButton()
-        self.cmb_phrase_key.setToolTip("Key inside the selected phrase (Camelot wheel)")
+        self.cmb_phrase_key.setToolTip(tr("Key inside the selected phrase (Alphanumeric wheel)"))
         self.cb_phrase_key_compatible = self._chip(
-            "Compat", "Also match harmonically compatible keys (\u00b11 on the Camelot wheel, relative key)",
+            tr("Compat"), tr("Also match harmonically compatible keys (\u00b11 on the Alphanumeric wheel, relative key)"),
             small=True)
 
         # BPM transition
@@ -860,25 +871,25 @@ class LibraryWidget(QtWidgets.QWidget):
         self.sp_to_bpm = compact_spin(QtWidgets.QDoubleSpinBox(), 0.0, 400.0, 129.0)
         self.lbl_bpm_tol = dim_label("\u00b1")
         self.sp_bpm_tolerance = compact_spin(QtWidgets.QDoubleSpinBox(), 0.0, 100.0, 2.0, "%")
-        self.sp_bpm_tolerance.setToolTip("BPM transition tolerance")
+        self.sp_bpm_tolerance.setToolTip(tr("BPM transition tolerance"))
         self.cb_bpm_first_segment = self._chip(
-            "1st", "Require the transition to start at the first BPM segment", small=True)
+            tr("1st"), tr("Require the transition to start at the first BPM segment"), small=True)
 
         # Key transition
         self.cmb_from_key = KeyPickButton()
-        self.cmb_from_key.setToolTip("Key before the change (Camelot wheel)")
+        self.cmb_from_key.setToolTip(tr("Key before the change (Alphanumeric wheel)"))
         self.lbl_arrow = dim_label("\u2192")
         self.cmb_to_key = KeyPickButton()
-        self.cmb_to_key.setToolTip("Key after the change (Camelot wheel)")
+        self.cmb_to_key.setToolTip(tr("Key after the change (Alphanumeric wheel)"))
         for picker in (self.cmb_phrase_key, self.cmb_from_key, self.cmb_to_key):
             grow(picker, 84)
             # as tall as the text inputs beside it
             picker.setFixedHeight(self.sp_from_bpm.sizeHint().height())
         self.cb_key_first_segment = self._chip(
-            "1st", "Require the transition to start at the first key segment", small=True)
+            tr("1st"), tr("Require the transition to start at the first key segment"), small=True)
         self.cb_key_compatible = self._chip(
-            "Compat", "Also match harmonically compatible keys at both ends "
-            "(\u00b11 on the Camelot wheel, relative key)", small=True)
+            tr("Compat"), tr("Also match harmonically compatible keys at both ends "
+                             "(\u00b11 on the Alphanumeric wheel, relative key)"), small=True)
         self.cb_key_compatible.setChecked(True)
 
         # Shared by both transitions
@@ -886,9 +897,9 @@ class LibraryWidget(QtWidgets.QWidget):
         self.sp_transition_min_duration = compact_spin(
             QtWidgets.QDoubleSpinBox(), 0.0, 600.0, 4.0, "s")
         self.sp_transition_min_duration.setToolTip(
-            "Minimum duration of both sides of each enabled transition")
+            tr("Minimum duration of both sides of each enabled transition"))
 
-        self.card_phrase = self._card("Phrase", (
+        self.card_phrase = self._card(tr("Phrase"), (
             self.cmb_phrase_label, self.cb_phrase_bpm, self.sp_phrase_bpm,
             self.lbl_phrase_bpm_tol, self.sp_phrase_bpm_tolerance,
             self.cb_phrase_key, self.cmb_phrase_key, self.cb_phrase_key_compatible))
@@ -898,15 +909,15 @@ class LibraryWidget(QtWidgets.QWidget):
         self.card_key = self._card("Key", (
             self.cmb_from_key, self.lbl_arrow, self.cmb_to_key,
             self.cb_key_compatible, self.cb_key_first_segment))
-        self.card_min_sec = self._card("Min seg", (self.lbl_min_sec, self.sp_transition_min_duration))
-        self.card_min_sec.setToolTip("Minimum duration of both sides of each enabled transition")
+        self.card_min_sec = self._card(tr("Min seg"), (self.lbl_min_sec, self.sp_transition_min_duration))
+        self.card_min_sec.setToolTip(tr("Minimum duration of both sides of each enabled transition"))
 
         # Table
         self.table = _TrackTable(
             self.HEADERS.index("Path"), self.HEADERS.index("#")
         )
         self.table.setColumnCount(len(self.HEADERS))
-        self.table.setHorizontalHeaderLabels(self.HEADERS)
+        self.table.setHorizontalHeaderLabels([self._header_name(h) for h in self.HEADERS])
         self.table.setAlternatingRowColors(True)
         self.table.verticalHeader().setVisible(False)
         self.table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
@@ -1111,11 +1122,11 @@ class LibraryWidget(QtWidgets.QWidget):
         tree.blockSignals(True)
         tree.clear()
 
-        library_item = QtWidgets.QTreeWidgetItem(["Library (All)"])
+        library_item = QtWidgets.QTreeWidgetItem([tr("Library (All)")])
         library_item.setData(0, _SOURCE_KIND_ROLE, "library")
         tree.addTopLevelItem(library_item)
 
-        playlists_item = QtWidgets.QTreeWidgetItem(["Playlists"])
+        playlists_item = QtWidgets.QTreeWidgetItem([tr("Playlists")])
         playlists_item.setData(0, _SOURCE_KIND_ROLE, "playlists")
         tree.addTopLevelItem(playlists_item)
         db = self._db()
@@ -1130,7 +1141,7 @@ class LibraryWidget(QtWidgets.QWidget):
             playlists_item.addChild(item)
         playlists_item.setExpanded(True)
 
-        local_item = QtWidgets.QTreeWidgetItem(["Local Folders"])
+        local_item = QtWidgets.QTreeWidgetItem([tr("Local Folders")])
         local_item.setData(0, _SOURCE_KIND_ROLE, "local_folders")
         tree.addTopLevelItem(local_item)
         for root_path in self._local_music_roots():
@@ -1382,7 +1393,7 @@ class LibraryWidget(QtWidgets.QWidget):
         column is set last: with sorting on, the row then moves to its place once."""
         values = [
             "", t._disp_playlist_index,
-            t.title, t.artist, t.album, t._disp_bpm, t._disp_key_camelot,
+            t.title, t.artist, t.album, t._disp_bpm, t._disp_key_alphanumeric,
             t._disp_duration, t._disp_rating, t._disp_added, t.path, t.comment
         ]
         bpm_col = self.HEADERS.index("BPM")
@@ -1453,14 +1464,14 @@ class LibraryWidget(QtWidgets.QWidget):
         """Hide the rows the search and the filters leave out (the rows stay made)."""
         self._search_timer.stop()
         text = self.e_search.text().strip().lower()
-        col = self.cb_column.currentText()
+        col = str(self.cb_column.currentData() or "All")
         field_map = {
             "#": "_disp_playlist_index",
             "Title": "title",
             "Artist": "artist",
             "Album": "album",
             "Comment": "comment",
-            "Key": "_disp_key_camelot",
+            "Key": "_disp_key_alphanumeric",
             "BPM": "_disp_bpm",
             "Duration": "_disp_duration",
             "Rating": "_disp_rating",
@@ -1627,8 +1638,8 @@ class LibraryWidget(QtWidgets.QWidget):
         if self._external_sync_enabled:
             QtWidgets.QMessageBox.information(
                 self,
-                "External Sync",
-                "Track loading is disabled while External Sync is enabled.",
+                tr("External Sync"),
+                tr("Track loading is disabled while External Sync is enabled."),
             )
             return
         r = idx.row()
@@ -1663,15 +1674,15 @@ class LibraryWidget(QtWidgets.QWidget):
         menu = QtWidgets.QMenu(self)
         actions = {}
         if kind in ("playlists", "playlist"):
-            actions["new"] = menu.addAction("New Playlist")
+            actions["new"] = menu.addAction(tr("New Playlist"))
         if kind == "playlist":
             menu.addSeparator()
-            actions["rename"] = menu.addAction("Rename")
-            actions["up"] = menu.addAction("Move Up")
-            actions["down"] = menu.addAction("Move Down")
-            actions["delete"] = menu.addAction("Delete Playlist")
+            actions["rename"] = menu.addAction(tr("Rename"))
+            actions["up"] = menu.addAction(tr("Move Up"))
+            actions["down"] = menu.addAction(tr("Move Down"))
+            actions["delete"] = menu.addAction(tr("Delete Playlist"))
         elif kind in ("directory", "local_folders"):
-            actions["refresh"] = menu.addAction("Refresh Folders")
+            actions["refresh"] = menu.addAction(tr("Refresh Folders"))
         if menu.isEmpty():
             return
         chosen = menu.exec_(self.source_tree.viewport().mapToGlobal(pos))
@@ -1692,14 +1703,14 @@ class LibraryWidget(QtWidgets.QWidget):
             self._refresh_current_source()
 
     def _create_playlist(self) -> None:
-        name, accepted = QtWidgets.QInputDialog.getText(self, "New Playlist", "Name")
+        name, accepted = QtWidgets.QInputDialog.getText(self, tr("New Playlist"), tr("Name"))
         if not accepted or not name.strip():
             return
         db = self._db()
         try:
             playlist = db.create_playlist(name)
         except Exception as exc:
-            QtWidgets.QMessageBox.warning(self, "New Playlist", str(exc))
+            QtWidgets.QMessageBox.warning(self, tr("New Playlist"), str(exc))
             return
         finally:
             db.close()
@@ -1710,7 +1721,7 @@ class LibraryWidget(QtWidgets.QWidget):
     def _rename_playlist(self, item: QtWidgets.QTreeWidgetItem) -> None:
         playlist_uid = str(item.data(0, _SOURCE_VALUE_ROLE))
         name, accepted = QtWidgets.QInputDialog.getText(
-            self, "Rename Playlist", "Name", text=item.text(0)
+            self, tr("Rename Playlist"), tr("Name"), text=item.text(0)
         )
         if not accepted or not name.strip():
             return
@@ -1718,7 +1729,7 @@ class LibraryWidget(QtWidgets.QWidget):
         try:
             db.rename_playlist(playlist_uid, name)
         except Exception as exc:
-            QtWidgets.QMessageBox.warning(self, "Rename Playlist", str(exc))
+            QtWidgets.QMessageBox.warning(self, tr("Rename Playlist"), str(exc))
             return
         finally:
             db.close()
@@ -1728,8 +1739,8 @@ class LibraryWidget(QtWidgets.QWidget):
     def _delete_playlist(self, item: QtWidgets.QTreeWidgetItem) -> None:
         answer = QtWidgets.QMessageBox.question(
             self,
-            "Delete Playlist",
-            f'Delete playlist "{item.text(0)}"?\nTracks remain in the Library.',
+            tr("Delete Playlist"),
+            tr('Delete playlist "{name}"?\nTracks remain in the Library.').format(name=item.text(0)),
         )
         if answer != QtWidgets.QMessageBox.Yes:
             return
@@ -1834,17 +1845,17 @@ class LibraryWidget(QtWidgets.QWidget):
         all_analyzed = bool(selected_paths) and all(
             analyzed_by_path.get(path, False) for path in selected_paths
         )
-        act_reveal = menu.addAction("Reveal in Explorer/Finder")
-        act_remove = menu.addAction("Remove from Library")
-        act_edit = menu.addAction("Edit Track")
+        act_reveal = menu.addAction(tr("Reveal in Explorer/Finder"))
+        act_remove = menu.addAction(tr("Remove from Library"))
+        act_edit = menu.addAction(tr("Edit Track"))
         act_reanalyze = menu.addAction(
-            "Reanalyze Track" if all_analyzed else "Analyze Track"
+            tr("Reanalyze Track") if all_analyzed else tr("Analyze Track")
         )
-        act_export = menu.addAction("Export Track")
+        act_export = menu.addAction(tr("Export Track"))
         act_remove_playlist = None
         if self._source_kind == "playlist":
-            act_remove_playlist = menu.addAction("Remove from Playlist")
-        add_menu = menu.addMenu("Add to Playlist")
+            act_remove_playlist = menu.addAction(tr("Remove from Playlist"))
+        add_menu = menu.addMenu(tr("Add to Playlist"))
         playlist_actions = {}
         db = self._db()
         try:
@@ -1932,7 +1943,7 @@ class LibraryWidget(QtWidgets.QWidget):
         track_row = db.get_by_uid(uids[0])
         db.close()
         if track_row is None:
-            QtWidgets.QMessageBox.warning(self, "Export Track", "Track metadata could not be found in the library.")
+            QtWidgets.QMessageBox.warning(self, tr("Export Track"), tr("Track metadata could not be found in the library."))
             return
 
         if self._export_dlg is None:

@@ -16,6 +16,7 @@ from core.config import externalsyncconfig, memorydeckconfig, memoryvalueconfig
 from core.event_bus import EventBus
 from core.model import DataModel
 from core.resource_paths import process_denylist_path
+from core.i18n import tr
 
 
 class ExternalSyncController(QtCore.QObject):
@@ -220,7 +221,8 @@ class ExternalSyncController(QtCore.QObject):
         pm = self._ensure_process_handle(pid)
         if pm is None:
             self._disable_due_to_failure(
-                f"Failed to open process memory for '{process_name or pid}'. Memory Sync has been disabled."
+                tr("Failed to open process memory for '{process}'. Memory Sync has been disabled.")
+                .format(process=process_name or pid)
             )
             return
         try:
@@ -230,7 +232,7 @@ class ExternalSyncController(QtCore.QObject):
             self._apply_external_deck(external)
         except Exception:
             self._close_process_handle()
-            self._disable_due_to_failure("Memory Sync read failed and has been disabled.")
+            self._disable_due_to_failure(tr("Memory Sync read failed and has been disabled."))
 
     def _apply_external_deck(self, external: dict[str, Any]) -> None:
         path = str(external.get("path") or "").strip()
@@ -249,7 +251,7 @@ class ExternalSyncController(QtCore.QObject):
         if not validated_path:
             if self._invalid_external_path_logged != path:
                 self._invalid_external_path_logged = path
-                self._log(f"External Sync ignored unsafe track path: {path}")
+                self._log(tr("External Sync ignored unsafe track path: {path}").format(path=path))
             self._clear_pending_external()
             self._analysis_request_inflight = None
             self._analysis_request_raw_path = None
@@ -301,7 +303,7 @@ class ExternalSyncController(QtCore.QObject):
 
         if self._missing_path_logged != pending_path:
             self._missing_path_logged = pending_path
-            self._log(f"External Sync analyzing external track before load: {pending_raw_path}")
+            self._log(tr("External Sync analyzing external track before load: {path}").format(path=pending_raw_path))
         self._request_track_analysis(pending_raw_path, self._pending_external_time_sec)
 
     def _request_track_analysis(self, path: str, time_sec: float) -> None:
@@ -410,7 +412,7 @@ class ExternalSyncController(QtCore.QObject):
             raw_active = self._read_memory_value(pm, deck_cfg.active)
             return bool(raw_loaded), bool(raw_active)
         except Exception as exc:
-            self._disable_due_to_failure(f"Memory Sync deck state read failed: {exc}")
+            self._disable_due_to_failure(tr("Memory Sync deck state read failed: {error}").format(error=exc))
             raise
 
     def _read_deck_payload(self, pm: AbstractProcess, deck_cfg: memorydeckconfig) -> dict[str, Any] | None:
@@ -426,7 +428,7 @@ class ExternalSyncController(QtCore.QObject):
                 sample_index = 0.0
                 time_sec = max(0.0, float(raw_time or 0.0) * float(deck_cfg.time.multiplier))
         except Exception as exc:
-            self._disable_due_to_failure(f"Memory Sync deck payload read failed: {exc}")
+            self._disable_due_to_failure(tr("Memory Sync deck payload read failed: {error}").format(error=exc))
             raise
         return {
             "loaded": True,
@@ -687,9 +689,9 @@ class ExternalSyncController(QtCore.QObject):
             return
         self._blocked_process_logged = cache_key
         if path_key:
-            self._log(f"External Sync blocked for denied process: {name} ({image_path})")
+            self._log(tr("External Sync blocked for denied process: {process} ({path})").format(process=name, path=image_path))
         else:
-            self._log(f"External Sync blocked for denied process: {name}")
+            self._log(tr("External Sync blocked for denied process: {process}").format(process=name))
 
     def _is_denied_process_name(self, name: str) -> bool:
         payload = self._load_process_denylist_payload()
@@ -730,7 +732,7 @@ class ExternalSyncController(QtCore.QObject):
             # to avoid flooding the poll loop.
             if not self._denylist_unavailable_logged:
                 self._denylist_unavailable_logged = True
-                self._log(f"Process denylist unavailable ({exc}); blocking all processes.")
+                self._log(tr("Process denylist unavailable ({error}); blocking all processes.").format(error=exc))
             return None
         if not isinstance(payload, dict):
             payload = {}

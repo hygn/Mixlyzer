@@ -28,6 +28,7 @@ from core.config import (
     viewconfig,
 )
 from core.event_bus import EventBus
+from core.i18n import tr
 from ui.config.analysis import AnalysisSettingsMixin, build_analysis_tab
 from ui.config.external_sync import (
     ExternalSyncSettingsMixin,
@@ -56,7 +57,7 @@ class SettingsDialog(
         super().__init__()
         self.saveJsonRequested = bus.sig_setting_saveJsonRequested
         self._bus = bus
-        self.setWindowTitle("Settings")
+        self.setWindowTitle(tr("Settings"))
         self.setModal(False)
 
         self.tabs = QTabWidget(self)
@@ -74,12 +75,12 @@ class SettingsDialog(
         self.btn_box.accepted.connect(self._on_ok)
         self.btn_box.rejected.connect(self._on_cancel)
         self.btn_box.button(QDialogButtonBox.Apply).clicked.connect(self._on_apply)
-        self.btn_box.button(QDialogButtonBox.Ok).setToolTip("Save the settings and close.")
+        self.btn_box.button(QDialogButtonBox.Ok).setToolTip(tr("Save the settings and close."))
         self.btn_box.button(QDialogButtonBox.Cancel).setToolTip(
-            "Close without saving unapplied changes."
+            tr("Close without saving unapplied changes.")
         )
         self.btn_box.button(QDialogButtonBox.Apply).setToolTip(
-            "Save the settings and keep the window open."
+            tr("Save the settings and keep the window open.")
         )
 
         root = QVBoxLayout(self)
@@ -158,6 +159,7 @@ class SettingsDialog(
 
         # view
         v = cfg.viewconfig
+        self._set_language(v.language)
         self.cb_waveform.setChecked(bool(v.display_waveform))
         self.cb_beatgrid.setChecked(bool(v.display_beatgrid))
         self.cb_keystrip.setChecked(bool(v.display_keystrip))
@@ -195,7 +197,7 @@ class SettingsDialog(
         # analysis
         a = cfg.analysisconfig
         self.sp_bpm_min.setValue(int(a.bpm_min))
-        self.lbl_bpm_range.setText(f"Reads {int(a.bpm_min)} - {2 * int(a.bpm_min)} BPM")
+        self.lbl_bpm_range.setText(tr("Reads {low} - {high} BPM").format(low=int(a.bpm_min), high=2 * int(a.bpm_min)))
         dynamic = bool(getattr(a, "bpm_dynamic", True))
         self.cb_bpm_dynamic.setChecked(dynamic)
         # the static analysis's own choice, kept while the box shows the dynamic analysis's (always on)
@@ -326,6 +328,7 @@ class SettingsDialog(
                 rekordbox_xml_path=self.ed_rekordbox_xml_path.text().strip(),
             ),
             viewconfig=viewconfig(
+                language=self._get_language(),
                 display_waveform=bool(self.cb_waveform.isChecked()),
                 display_beatgrid=bool(self.cb_beatgrid.isChecked()),
                 display_keystrip=bool(self.cb_keystrip.isChecked()),

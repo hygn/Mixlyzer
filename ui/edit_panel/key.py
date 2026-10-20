@@ -7,26 +7,41 @@ from core.beat_geometry import downbeat_beat_indices
 from ui.edit_panel.blocks import mode_column, rule_cell
 from ui.edit_panel.history import logElement
 from ui.edit_panel.icons import badged_icon, badged_icon_beside, icon
-from ui.edit_panel.key_picker import CAMELOT_INDEX, KeyPickerPopup
+from ui.edit_panel.key_picker import ALPHANUMERIC_INDEX, KeyPickerPopup
 from utils.color import key_cmap_color, key_label_text_color
 from utils.keystrip import key_segment_label
-from utils.labels import CAMELOT_LABELS
+from utils.labels import ALPHANUMERIC_LABELS
 from utils.phrases import assigned_phrases
+from core.i18n import tr, tr_mark
 
 
-# the tools that follow the key scope (whole track / current segment): icon -> tooltip
+# the tools that follow the key scope: icon -> (tooltip with the whole track, with the current segment),
+# translated where shown
 KEY_SCOPED_TOOLS = {
-    "key_flat": "A semitone down: {target}",
-    "key_sharp": "A semitone up: {target}",
-    "key_fifth_down": "One step down the circle of fifths (Camelot -1): {target}",
-    "key_fifth_up": "One step up the circle of fifths (Camelot +1): {target}",
-    "key_relative": "Relative major / minor (C <-> Am): {target}",
+    "key_flat": (tr_mark("A semitone down: every segment's key"),
+                 tr_mark("A semitone down: the current segment's key")),
+    "key_sharp": (tr_mark("A semitone up: every segment's key"),
+                  tr_mark("A semitone up: the current segment's key")),
+    "key_fifth_down": (tr_mark("One step down the circle of fifths (Alphanumeric -1): every segment's key"),
+                       tr_mark("One step down the circle of fifths (Alphanumeric -1): the current segment's key")),
+    "key_fifth_up": (tr_mark("One step up the circle of fifths (Alphanumeric +1): every segment's key"),
+                     tr_mark("One step up the circle of fifths (Alphanumeric +1): the current segment's key")),
+    "key_relative": (tr_mark("Relative major / minor (C <-> Am): every segment's key"),
+                     tr_mark("Relative major / minor (C <-> Am): the current segment's key")),
 }
-KEY_SCOPE_TARGETS = {True: "every segment's key", False: "the current segment's key"}
 # these glyphs fill their icon's height: the badge goes beside them (a wide icon), so they keep their size
 KEY_BADGE_BESIDE = ("key_flat", "key_sharp", "key_fifth_down", "key_fifth_up")
-# boundary nudges (key and phrase pages) follow the step: one beat or one bar
-STEP_TEXT = {False: "one beat", True: "one bar (to the neighbouring downbeat)"}
+# boundary nudges follow the step: icon -> (tooltip by one beat, by one bar), translated where shown
+KEY_STEP_TOOLS = {
+    "key_start_back": (tr_mark("Move the current key segment's start one beat earlier"),
+                       tr_mark("Move the current key segment's start one bar (to the neighboring downbeat) earlier")),
+    "key_start_fwd": (tr_mark("Move the current key segment's start one beat later"),
+                      tr_mark("Move the current key segment's start one bar (to the neighboring downbeat) later")),
+    "key_end_back": (tr_mark("Move the current key segment's end one beat earlier"),
+                     tr_mark("Move the current key segment's end one bar (to the neighboring downbeat) earlier")),
+    "key_end_fwd": (tr_mark("Move the current key segment's end one beat later"),
+                    tr_mark("Move the current key segment's end one bar (to the neighboring downbeat) later")),
+}
 
 
 class KeyEditMixin:
@@ -49,8 +64,8 @@ class KeyEditMixin:
         self.key_start_fwd = _btn("key_start_fwd", "")
         self.key_end_back = _btn("key_end_back", "")
         self.key_end_fwd = _btn("key_end_fwd", "")
-        self.key_step_beat = _btn("key_step_beat", "Boundaries move by one beat", checkable=True)
-        self.key_step_bar = _btn("key_step_bar", "Boundaries move by one bar (to the neighbouring downbeat)", checkable=True)
+        self.key_step_beat = _btn("key_step_beat", tr("Boundaries move by one beat"), checkable=True)
+        self.key_step_bar = _btn("key_step_bar", tr("Boundaries move by one bar (to the neighboring downbeat)"), checkable=True)
         self.key_step_beat.setChecked(True)
         self._key_step_group = QtWidgets.QButtonGroup(self)
         self._key_step_group.setExclusive(True)
@@ -58,16 +73,16 @@ class KeyEditMixin:
         self._key_step_group.addButton(self.key_step_bar)
 
         # segments and reanalysis
-        self.key_split = _btn("beatgrid_split", "Split the current key segment at the beat nearest the playhead")
-        self.key_merge_prev = _btn("beatgrid_merge_prev", "Merge the previous key segment into the current one (keeps the current key)")
-        self.key_merge_next = _btn("beatgrid_merge_next", "Merge the next key segment into the current one (keeps the current key)")
-        self.key_merge_same = _btn("key_merge_same", "Merge every run of neighbouring segments with the same key")
-        self.key_sel_reanalyze = _btn("beatgrid_reanalyze", "Reanalyze the current key segment's key from the audio")
-        self.key_reanalyze = _btn("key_reanalyze_all", "Reanalyze the keys of the whole track (dynamic)")
+        self.key_split = _btn("beatgrid_split", tr("Split the current key segment at the beat nearest the playhead"))
+        self.key_merge_prev = _btn("beatgrid_merge_prev", tr("Merge the previous key segment into the current one (keeps the current key)"))
+        self.key_merge_next = _btn("beatgrid_merge_next", tr("Merge the next key segment into the current one (keeps the current key)"))
+        self.key_merge_same = _btn("key_merge_same", tr("Merge every run of neighboring segments with the same key"))
+        self.key_sel_reanalyze = _btn("beatgrid_reanalyze", tr("Reanalyze the current key segment's key from the audio"))
+        self.key_reanalyze = _btn("key_reanalyze_all", tr("Reanalyze the keys of the whole track (dynamic)"))
 
         # what key changes apply to: the current segment or the whole track
-        self.key_scope_all = _btn("beatgrid_scope_all", "Key changes (pick, semitone, fifth, relative) apply to the whole track", checkable=True)
-        self.key_scope_segment = _btn("beatgrid_scope_segment", "Key changes (pick, semitone, fifth, relative) apply to the current segment", checkable=True)
+        self.key_scope_all = _btn("beatgrid_scope_all", tr("Key changes (pick, semitone, fifth, relative) apply to the whole track"), checkable=True)
+        self.key_scope_segment = _btn("beatgrid_scope_segment", tr("Key changes (pick, semitone, fifth, relative) apply to the current segment"), checkable=True)
         self.key_scope_segment.setChecked(True)
         self._key_scope_group = QtWidgets.QButtonGroup(self)
         self._key_scope_group.setExclusive(True)
@@ -76,7 +91,7 @@ class KeyEditMixin:
 
         # the key
         self.key_pick = QtWidgets.QToolButton()
-        self.key_pick.setToolTip("Pick the key (Camelot wheel)")
+        self.key_pick.setToolTip(tr("Pick the key (Alphanumeric wheel)"))
         self.key_pick.setText("--")
         self._key_picker = KeyPickerPopup(self)
         self._key_picker.picked.connect(self._write_key_scoped)
@@ -91,26 +106,26 @@ class KeyEditMixin:
         # (also while paused). Held tones follow the key under the playhead and every edit.
         self.key_root = _btn(
             "key_root",
-            "Root: hold the current key's root (and its octave) under the music.\n"
-            "The plainest check of the tonic: it should feel like the note the music rests on.",
+            tr("Root: hold the current key's root (and its octave) under the music.\n"
+               "The plainest check of the tonic: it should feel like the note the music rests on."),
             checkable=True,
         )
         self.key_drone = _btn(
             "key_drone",
-            "Root and fifth: hold the current key's root and fifth under the music.\n"
-            "In the right key it sounds at home all the way through; a lasting clash\n"
-            "means a wrong tonic (try semitone / fifth steps) or a key change.",
+            tr("Root and fifth: hold the current key's root and fifth under the music.\n"
+               "In the right key it sounds at home all the way through; a lasting clash\n"
+               "means a wrong tonic (try semitone / fifth steps) or a key change."),
             checkable=True,
         )
         self.key_chord = _btn(
             "key_chord",
-            "Tonic chord: hold the current key's major / minor triad under the music.\n"
-            "Tests the third: if the drone fits but the chord clashes, try the other mode\n"
-            "on the same root; if the melody keeps resolving elsewhere, try the relative key.",
+            tr("Tonic chord: hold the current key's major / minor triad under the music.\n"
+               "Tests the third: if the drone fits but the chord clashes, try the other mode\n"
+               "on the same root; if the melody keeps resolving elsewhere, try the relative key."),
             checkable=True,
         )
 
-        self.key_status = QtWidgets.QLabel("-- | Seg -- | Elapsed: 00:00.00 | Left: 00:00.00")
+        self.key_status = QtWidgets.QLabel(tr("-- | Seg -- | Elapsed: 00:00.00 | Left: 00:00.00"))
         self.key_status.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
 
         _AL = QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter
@@ -170,8 +185,8 @@ class KeyEditMixin:
         self.key_pick.clicked.connect(self._open_key_picker)
         self.key_flat.clicked.connect(lambda: self._change_keys(lambda k: (k % 12 - 1) % 12 + 12 * (k >= 12)))
         self.key_sharp.clicked.connect(lambda: self._change_keys(lambda k: (k % 12 + 1) % 12 + 12 * (k >= 12)))
-        self.key_fifth_down.clicked.connect(lambda: self._change_keys(lambda k: _camelot_step(k, -1)))
-        self.key_fifth_up.clicked.connect(lambda: self._change_keys(lambda k: _camelot_step(k, 1)))
+        self.key_fifth_down.clicked.connect(lambda: self._change_keys(lambda k: _alphanumeric_step(k, -1)))
+        self.key_fifth_up.clicked.connect(lambda: self._change_keys(lambda k: _alphanumeric_step(k, 1)))
         self.key_relative.clicked.connect(lambda: self._change_keys(_relative_key))
         for aid in (self.key_root, self.key_drone, self.key_chord):
             aid.toggled.connect(lambda on, aid=aid: self._toggle_key_hold(aid, on))
@@ -184,24 +199,18 @@ class KeyEditMixin:
         """The key changes show what they apply to (the scope), the boundary nudges how far
         they move (the step): in the icon's badge and the tooltip."""
         whole = self.key_scope_all.isChecked()
-        target = KEY_SCOPE_TARGETS[whole]
         for name, btn in self._key_scoped_tools.items():
             make = badged_icon_beside if name in KEY_BADGE_BESIDE else badged_icon
             btn.setIcon(make(name, "scope_all" if whole else "scope_segment"))
-            btn.setToolTip(KEY_SCOPED_TOOLS[name].format(target=target))
+            btn.setToolTip(tr(KEY_SCOPED_TOOLS[name][0 if whole else 1]))
         self.key_pick.setToolTip(
-            "Pick one key for the whole track: it becomes one segment in that key (Camelot wheel)" if whole
-            else "Pick the current segment's key (Camelot wheel)")
+            tr("Pick one key for the whole track: it becomes one segment in that key (Alphanumeric wheel)") if whole
+            else tr("Pick the current segment's key (Alphanumeric wheel)"))
         by_bar = self.key_step_bar.isChecked()
-        step = STEP_TEXT[by_bar]
-        for btn, name, text in (
-            (self.key_start_back, "key_start_back", "Move the current key segment's start {step} earlier"),
-            (self.key_start_fwd, "key_start_fwd", "Move the current key segment's start {step} later"),
-            (self.key_end_back, "key_end_back", "Move the current key segment's end {step} earlier"),
-            (self.key_end_fwd, "key_end_fwd", "Move the current key segment's end {step} later"),
-        ):
+        for btn, name in ((self.key_start_back, "key_start_back"), (self.key_start_fwd, "key_start_fwd"),
+                          (self.key_end_back, "key_end_back"), (self.key_end_fwd, "key_end_fwd")):
             btn.setIcon(badged_icon(name, "step_bar" if by_bar else "step_beat"))
-            btn.setToolTip(text.format(step=step))
+            btn.setToolTip(tr(KEY_STEP_TOOLS[name][1 if by_bar else 0]))
 
     # ---- data in / out ----
 
@@ -269,7 +278,7 @@ class KeyEditMixin:
         idx = self._key_index_at(t)
         if idx < 0:
             self._key_cur = -1
-            self.key_status.setText("-- | Seg -- | Elapsed: 00:00.00 | Left: 00:00.00")
+            self.key_status.setText(tr("-- | Seg -- | Elapsed: 00:00.00 | Left: 00:00.00"))
             self._show_picker_key(None)
             self._send_key_hold(None)
             return
@@ -282,9 +291,8 @@ class KeyEditMixin:
             return f"{m:02d}:{s:05.2f}"
 
         key = self._key_of(idx)
-        self.key_status.setText(
-            f"{key_segment_label(key)} | Seg {idx + 1} | Elapsed: {fmt(t - start)} | Left: {fmt(end - t)}"
-        )
+        self.key_status.setText(tr("{key} | Seg {index} | Elapsed: {elapsed} | Left: {left}").format(
+            key=key_segment_label(key), index=idx + 1, elapsed=fmt(t - start), left=fmt(end - t)))
         if idx != self._key_cur:
             self._key_cur = idx
             self._show_picker_key(key)
@@ -519,11 +527,11 @@ class KeyEditMixin:
         self.bus.sig_segment_reanalyze_requested.emit(payload)
 
 
-def _camelot_step(key: int, step: int) -> int:
-    """Neighbour on the Camelot wheel (circle of fifths), same letter (major / minor)."""
-    label = CAMELOT_LABELS[key]
+def _alphanumeric_step(key: int, step: int) -> int:
+    """Neighbour on the Alphanumeric wheel (circle of fifths), same letter (major / minor)."""
+    label = ALPHANUMERIC_LABELS[key]
     n = (int(label[:-1]) - 1 + step) % 12 + 1
-    return CAMELOT_INDEX[(n, label[-1])]
+    return ALPHANUMERIC_INDEX[(n, label[-1])]
 
 
 # Reference tones (MIDI notes) around the C3..B4 range: under most melodies, above the bass.
@@ -554,5 +562,5 @@ def _tonic_chord_notes(key: int) -> tuple[int, ...]:
 
 
 def _relative_key(key: int) -> int:
-    """Major <-> its relative minor (C <-> Am): same Camelot number, other letter."""
+    """Major <-> its relative minor (C <-> Am): same Alphanumeric number, other letter."""
     return (key + 9) % 12 + 12 if key < 12 else (key % 12 + 3) % 12

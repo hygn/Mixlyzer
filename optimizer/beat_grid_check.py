@@ -18,6 +18,7 @@ import numpy as np
 
 from core.concurrency.process_pool import create_spawn_process_pool
 from optimizer.beat_frames import cache_path, read_frames
+from core.i18n import tr
 
 ProgressCallback = Callable[[int, str], None]
 USABLE_SEC = 0.025
@@ -165,7 +166,7 @@ def grid_check(tracks, cache_dir: Path, bpm_min: float, before: ModelSet, after:
             if r is not None:
                 rows.append(r)
             if progress:
-                progress(lo + int(round((hi - lo) * done / len(futures))), f"End-to-end check {done}/{len(futures)}")
+                progress(lo + int(round((hi - lo) * done / len(futures))), tr("End-to-end check {done}/{total}").format(done=done, total=len(futures)))
     if not rows:
         return GridCheck(0, 0.0, 0.0, 0.0, 0.0)
     return from_scores([r[0] for r in rows], [r[1][0] for r in rows], [r[1][1] for r in rows])

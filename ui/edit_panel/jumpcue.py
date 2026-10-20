@@ -12,6 +12,7 @@ from ui.edit_panel.quantize import beat_quantize_grid
 from utils.jump_cues import build_jump_cue_graph, build_jump_cues_np
 from utils.jumpcue_colors import JUMPCUE_PAIR_COLORS
 from utils.phrases import assigned_phrases
+from core.i18n import tr
 
 # JumpCUE slots are the letters A-Z (rekordbox hot cue letters).
 JUMPCUE_SLOTS = 26
@@ -47,13 +48,13 @@ class JumpCUEEditMixin:
         self.jc_reanalyze = QtWidgets.QToolButton()
         self.jc_reanalyze.setIcon(icon("beatgrid_reanalyze"))
         self.jc_reanalyze.setIconSize(QtCore.QSize(14, 14))
-        self.jc_reanalyze.setToolTip("Reanalyze the JumpCUEs with the current beatgrid")
+        self.jc_reanalyze.setToolTip(tr("Reanalyze the JumpCUEs with the current beatgrid"))
         page.tool_slot.addWidget(self.jc_reanalyze)
         self.jc_reanalyze.clicked.connect(self._reanalyze_jumpCUE)
 
         self.jc_slots = page.slots[0]
         for i, slot in enumerate(self.jc_slots):
-            slot.squircle.setToolTip("Colour (its group), beat moves, slots, delete")
+            slot.squircle.setToolTip(tr("Color (its group), beat moves, slots, delete"))
             slot.squircle_clicked.connect(lambda i=i: self._jc_group_menu(i))
             slot.action_clicked.connect(lambda i=i: self._jc_set_or_jump(i))
             slot.renamed.connect(lambda name, i=i: self._rename_jumpcue(i, name))
@@ -97,16 +98,16 @@ class JumpCUEEditMixin:
                 slot.show_cue(None)
                 slot.setEnabled(self._jc_slot_letter(i) is not None)
                 slot.btn_action.setEnabled(editable)
-                slot.btn_action.setToolTip("SET: a JumpCUE in this slot at the nearest beat or track edge")
+                slot.btn_action.setToolTip(tr("SET: a JumpCUE in this slot at the nearest beat or track edge"))
                 slot.set_action_lit(False)
                 continue
             slot.setEnabled(True)
             slot.btn_action.setEnabled(True)
-            slot.btn_action.setToolTip("Jump here on the next beat (when stopped: move the playhead here)")
+            slot.btn_action.setToolTip(tr("Jump here on the next beat (when stopped: move the playhead here)"))
             point = float(cue.get("point", 0.0))
             slot.show_cue(tuple(cue["color"]), str(cue.get("label", "")),
                           _jumpcue_name(cue), format_cue_time(point))
-            slot.name.setToolTip(f"{format_cue_time(point)} - double-click to rename")
+            slot.name.setToolTip(tr("{time} - double-click to rename").format(time=format_cue_time(point)))
             slot.set_action_lit(armed_point is not None and abs(point - armed_point) < 1e-3)
 
     def _rename_jumpcue(self, slot: int, name: str) -> None:
@@ -188,27 +189,27 @@ class JumpCUEEditMixin:
         point = float(cue.get("point", 0.0))
         current = int(cue.get("color_idx", 0) or 0)
         menu = QtWidgets.QMenu(self)
-        menu.addSection("Colour (cues of one colour jump between each other)")
+        menu.addSection(tr("Color (cues of one color jump between each other)"))
         for ci, rgb in enumerate(JUMPCUE_PAIR_COLORS):
             members = [c["label"] for c in self._jumpcue_graph_cues if int(c.get("color_idx", -1)) == ci]
-            act = menu.addAction(color_swatch_icon(rgb), " ".join(members) if members else "(unused)")
+            act = menu.addAction(color_swatch_icon(rgb), " ".join(members) if members else tr("(unused)"))
             act.setCheckable(True)
             act.setChecked(current == ci)
             act.triggered.connect(lambda _=False, ci=ci: self._set_jumpcue_color(point, ci))
-        menu.addSection("This colour")
-        menu.addAction("One beat earlier", lambda: self._shift_jumpcue_group(gidx, -1))
-        menu.addAction("One beat later", lambda: self._shift_jumpcue_group(gidx, 1))
-        menu.addSection("Slots")
+        menu.addSection(tr("This color"))
+        menu.addAction(tr("One beat earlier"), lambda: self._shift_jumpcue_group(gidx, -1))
+        menu.addAction(tr("One beat later"), lambda: self._shift_jumpcue_group(gidx, 1))
+        menu.addSection(tr("Slots"))
         letter = str(cue.get("label", ""))
-        act = menu.addAction(f"Insert a slot at {letter} (this and later cues move one slot on)",
+        act = menu.addAction(tr("Insert a slot at {letter} (this and later cues move one slot on)").format(letter=letter),
                              lambda: self._insert_jumpcue_slot(letter))
         act.setEnabled(self._can_insert_jumpcue_slot(letter))
         prev = chr(ord(letter) - 1) if letter > "A" else letter
-        act = menu.addAction(f"Move into the empty slot {prev} (this and later cues move one slot back)",
+        act = menu.addAction(tr("Move into the empty slot {letter} (this and later cues move one slot back)").format(letter=prev),
                              lambda: self._shift_jumpcue_slots(letter, -1))
         act.setEnabled(self._can_close_jumpcue_slot(letter))
         menu.addSeparator()
-        menu.addAction(f"Delete JumpCUE {letter}", lambda: self._remove_jumpcue_member(point))
+        menu.addAction(tr("Delete JumpCUE {letter}").format(letter=letter), lambda: self._remove_jumpcue_member(point))
         if not getattr(self, "_edit_enabled", True):
             # every edit in this menu follows the edit lock
             for a in menu.actions():
@@ -257,7 +258,7 @@ class JumpCUEEditMixin:
         cues = sorted((c for g in groups for c in g), key=lambda c: c["point"])
         points = np.asarray([c["point"] for c in cues], dtype=float)
         if points.size > 1 and np.min(np.diff(points)) < 1e-3:
-            QtWidgets.QMessageBox.warning(self, "JumpCUE", "Two JumpCUEs cannot share a point.")
+            QtWidgets.QMessageBox.warning(self, "JumpCUE", tr("Two JumpCUEs cannot share a point."))
             return False
         for group in groups:
             # one colour per group: its first cue's
@@ -400,7 +401,7 @@ class JumpCUEEditMixin:
             try:
                 self.model.features["jump_cues_np"] = self._jumpcues_to_np(self._JumpCUE)
             except ValueError as exc:
-                QtWidgets.QMessageBox.warning(self, "Invalid JumpCUE Label", str(exc))
+                QtWidgets.QMessageBox.warning(self, tr("Invalid JumpCUE Label"), str(exc))
             except Exception:
                 pass
         self.bus.sig_jumpcue_updated.emit()

@@ -35,6 +35,7 @@ Thumbs.db
 dist/
 build/*
 !build/*.spec
+!build/translations.py
 
 # User data / caches
 library/

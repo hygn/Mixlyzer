@@ -7,6 +7,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 
 from ui.edit_panel.icons import icon
 from ui.theme import current_theme
+from core.i18n import tr
 
 SLOT_ROWS = 4
 SLOT_COLS = 2
@@ -143,7 +144,7 @@ class CueSlot(QtWidgets.QFrame):
         else:
             self.name.setText(detail)
             self.name.setStyleSheet(f"color: {theme.text_dim};")
-        self.name.setToolTip("Double-click to rename" if filled else "")
+        self.name.setToolTip(tr("Double-click to rename") if filled else "")
         self.btn_set.setText("DEL" if filled else "SET")
         if self._set_in_action:
             self.btn_action.setText(self._action_text if filled else "SET")
@@ -225,22 +226,22 @@ class CuePageWidget(QtWidgets.QWidget):
             return b
 
         self.tab_jump = _side_btn("cue_tab_jump", "JumpCUEs", half * 2 + 2, checkable=True)
-        self.tab_cue = _side_btn("cue_tab_memory", "CUE points", half * 2 + 2, checkable=True)
+        self.tab_cue = _side_btn("cue_tab_memory", tr("CUE points"), half * 2 + 2, checkable=True)
         self.tab_jump.setChecked(True)
         tabs = QtWidgets.QButtonGroup(self)
         tabs.setExclusive(True)
         tabs.addButton(self.tab_jump, 0)
         tabs.addButton(self.tab_cue, 1)
         tabs.idClicked.connect(self._on_tab)
-        self.btn_prev = _side_btn("cue_page_prev", "Previous page", half)
-        self.btn_next = _side_btn("cue_page_next", "Next page", half)
+        self.btn_prev = _side_btn("cue_page_prev", tr("Previous page"), half)
+        self.btn_next = _side_btn("cue_page_next", tr("Next page"), half)
         self.page_label = QtWidgets.QLabel("1")
         self.page_label.setAlignment(QtCore.Qt.AlignCenter)
         self.page_label.setFixedSize(half, row_h)
         f = self.page_label.font()
         f.setPointSize(9)
         self.page_label.setFont(f)
-        self.page_label.setToolTip("Page")
+        self.page_label.setToolTip(tr("Page"))
         self.tool_slot = QtWidgets.QStackedWidget()  # per-list tool (JumpCUE: reanalyze, CUE: MEMORY)
         self.tool_slot.setFixedSize(half, row_h)
         side.addWidget(self.tab_jump, 0, 0, 1, 2)
@@ -302,7 +303,7 @@ class CuePageWidget(QtWidgets.QWidget):
         if i != self.current_list:
             return
         self.page_label.setText(str(self.pages[i] + 1))
-        self.page_label.setToolTip(f"Page {self.pages[i] + 1} of {n_pages}")
+        self.page_label.setToolTip(tr("Page {page} of {pages}").format(page=self.pages[i] + 1, pages=n_pages))
         self.btn_prev.setEnabled(self.pages[i] > 0)
         self.btn_next.setEnabled(self.pages[i] < n_pages - 1)
 

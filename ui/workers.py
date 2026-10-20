@@ -7,6 +7,7 @@ from PySide6.QtWidgets import (
     QDialogButtonBox, QPushButton
 )
 from core.event_bus import EventBus
+from core.i18n import tr
 
 
 class WorkersDialog(QDialog):
@@ -19,7 +20,7 @@ class WorkersDialog(QDialog):
 
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Workers")
+        self.setWindowTitle(tr("Workers"))
         self.setModal(False)
         self.resize(500, 700)
 
@@ -28,7 +29,7 @@ class WorkersDialog(QDialog):
 
         # UI
         root = QVBoxLayout(self)
-        self.lbl_title = QLabel("Analysis Tasks")
+        self.lbl_title = QLabel(tr("Analysis Tasks"))
         self.list = QListWidget()
 
         # Button box
@@ -132,7 +133,7 @@ class WorkersDialog(QDialog):
         text_lay.setContentsMargins(0, 0, 0, 0)
         text_lay.setSpacing(2)
 
-        name = self._extract_name(metadata) or f"Task {task_id}"
+        name = self._extract_name(metadata) or tr("Task {id}").format(id=task_id)
         name_lbl = QLabel(name)
         # Initial status text (task.status)
         init_status = getattr(metadata, 'status', '')
@@ -190,7 +191,7 @@ class WorkersDialog(QDialog):
             painter.setPen(QtGui.QPen(QtGui.QColor("#666")))
             painter.drawRect(0, 0, w - 1, h - 1)
             painter.setPen(QtGui.QPen(QtGui.QColor("#aaa")))
-            painter.drawText(0, 0, w, h, Qt.AlignCenter, "No Art")
+            painter.drawText(0, 0, w, h, Qt.AlignCenter, tr("No Art"))
         finally:
             painter.end()
         return img

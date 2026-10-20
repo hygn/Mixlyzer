@@ -17,6 +17,7 @@ from third_party.rekordbox import (
     rekordbox_track_key_for_row,
 )
 from utils.atomic_io import atomic_write_text
+from core.i18n import tr
 
 
 @dataclass(frozen=True)
@@ -78,7 +79,7 @@ class _RekordboxSyncEngine:
     def run(self) -> RekordboxSyncResult:
         self.request.xml_path.parent.mkdir(parents=True, exist_ok=True)
         if self.request.mode == "library":
-            self.progress(1, "Loading Mixlyzer library")
+            self.progress(1, tr("Loading Mixlyzer library"))
             rows = self._load_library_rows()
             return self._sync_library(rows)
         if self.request.mode == "incremental":
@@ -88,7 +89,7 @@ class _RekordboxSyncEngine:
         raise ValueError(f"Unsupported Rekordbox sync mode: {self.request.mode}")
 
     def _sync_library(self, rows: list[TrackRow]) -> RekordboxSyncResult:
-        self.progress(4, "Loading Rekordbox XML")
+        self.progress(4, tr("Loading Rekordbox XML"))
         document = RekordboxXmlDocument.load(
             self.request.xml_path, force_new=self.request.full_rebuild
         )
@@ -109,7 +110,7 @@ class _RekordboxSyncEngine:
             else:
                 node = self._build_track(row, track_hash)
             nodes.append(node)
-            self._track_progress(index, total, f"Syncing tracks {index}/{total}")
+            self._track_progress(index, total, tr("Syncing tracks {done}/{total}").format(done=index, total=total))
         document.replace_tracks(nodes)
         self._write(document)
         return RekordboxSyncResult(
@@ -117,7 +118,7 @@ class _RekordboxSyncEngine:
         )
 
     def _sync_incremental(self, rows: list[TrackRow]) -> RekordboxSyncResult:
-        self.progress(4, "Loading Rekordbox XML")
+        self.progress(4, tr("Loading Rekordbox XML"))
         document = RekordboxXmlDocument.load(
             self.request.xml_path, force_new=False
         )
@@ -125,13 +126,13 @@ class _RekordboxSyncEngine:
         for index, row in enumerate(rows, start=1):
             document.remove_track(rekordbox_track_key_for_row(row))
             document.append_track(self._build_track(row, self._track_hash(row)))
-            self._track_progress(index, total, f"Syncing changed tracks {index}/{total}")
+            self._track_progress(index, total, tr("Syncing changed tracks {done}/{total}").format(done=index, total=total))
         entry_count = document.entry_count
         self._write(document)
         return RekordboxSyncResult(self.request.xml_path, total, 0, entry_count)
 
     def _sync_track(self, uid: str) -> RekordboxSyncResult:
-        self.progress(4, "Loading Rekordbox XML")
+        self.progress(4, tr("Loading Rekordbox XML"))
         document = RekordboxXmlDocument.load(
             self.request.xml_path, force_new=False
         )
@@ -139,7 +140,7 @@ class _RekordboxSyncEngine:
         document.remove_track(uid)
         processed = 0
         if row is not None:
-            self.progress(45, "Building Rekordbox track entry")
+            self.progress(45, tr("Building Rekordbox track entry"))
             document.append_track(self._build_track(row, self._track_hash(row)))
             processed = 1
         entry_count = document.entry_count
@@ -155,11 +156,11 @@ class _RekordboxSyncEngine:
         )
 
     def _write(self, document: RekordboxXmlDocument) -> None:
-        self.progress(92, "Formatting Rekordbox XML")
+        self.progress(92, tr("Formatting Rekordbox XML"))
         xml_text = document.to_xml()
-        self.progress(97, "Writing Rekordbox XML")
+        self.progress(97, tr("Writing Rekordbox XML"))
         atomic_write_text(self.request.xml_path, xml_text)
-        self.progress(100, "Rekordbox XML sync complete")
+        self.progress(100, tr("Rekordbox XML sync complete"))
 
     def _load_features(self, uid: Optional[str]) -> dict[str, np.ndarray]:
         if not uid:

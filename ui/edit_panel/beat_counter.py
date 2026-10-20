@@ -5,6 +5,7 @@ from PySide6 import QtCore, QtWidgets
 
 from core.beat_geometry import bar_beat_position, downbeat_beat_indices
 from ui.edit_panel.icons import icon
+from core.i18n import tr
 
 class BeatCounterMixin:
     """BeatCounter section: hold Count to count beats passing under the playhead."""
@@ -15,21 +16,21 @@ class BeatCounterMixin:
         self.beat_counter_button = QtWidgets.QToolButton()
         self.beat_counter_button.setIcon(icon("phrase_count"))
         self.beat_counter_button.setIconSize(QtCore.QSize(36, 18))
-        self.beat_counter_button.setToolTip("Hold to count beats passing under the playhead")
+        self.beat_counter_button.setToolTip(tr("Hold to count beats passing under the playhead"))
         self.beat_counter_button.setAutoRepeat(False)
 
         self.beat_counter_display = QtWidgets.QLineEdit("0")
         self.beat_counter_display.setReadOnly(True)
         self.beat_counter_display.setFocusPolicy(QtCore.Qt.NoFocus)
         self.beat_counter_display.setAlignment(QtCore.Qt.AlignCenter)
-        self.beat_counter_display.setToolTip("Beats counted while the Count button is held")
+        self.beat_counter_display.setToolTip(tr("Beats counted while the Count button is held"))
         self.beat_counter_display.setFixedSize(self.BTN_WIDTH, self.BTN_HEIGHT)
 
         self.beat_counter_barbeat_display = QtWidgets.QLineEdit("--")
         self.beat_counter_barbeat_display.setReadOnly(True)
         self.beat_counter_barbeat_display.setFocusPolicy(QtCore.Qt.NoFocus)
         self.beat_counter_barbeat_display.setAlignment(QtCore.Qt.AlignCenter)
-        self.beat_counter_barbeat_display.setToolTip("Bar.Beat of the current playhead position")
+        self.beat_counter_barbeat_display.setToolTip(tr("Bar.Beat of the current playhead position"))
         self.beat_counter_barbeat_display.setFixedSize(self.BTN_WIDTH, self.BTN_HEIGHT)
 
         _AL = QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter

@@ -15,12 +15,13 @@ from third_party.rekordbox import build_rekordbox_xml, sanitize_filename
 from utils.atomic_io import atomic_write_text
 from utils.jump_cues import extract_jump_cue_pairs
 from utils.jumprender import jump_renderer
+from core.i18n import tr
 
 
 class ExportTrackDialog(QtWidgets.QDialog):
     def __init__(self, lib_dir: str, parent: Optional[QtWidgets.QWidget] = None, *, model: Optional[DataModel] = None) -> None:
         super().__init__(parent)
-        self.setWindowTitle("Export Track")
+        self.setWindowTitle(tr("Export Track"))
         self.setModal(True)
         self.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose, False)
 
@@ -38,7 +39,7 @@ class ExportTrackDialog(QtWidgets.QDialog):
         self.lbl_source.setTextInteractionFlags(QtCore.Qt.TextInteractionFlag.TextSelectableByMouse)
 
         self.dest_edit = QtWidgets.QLineEdit()
-        self.dest_browse = QtWidgets.QPushButton("Browse...")
+        self.dest_browse = QtWidgets.QPushButton(tr("Browse..."))
         self.dest_browse.clicked.connect(self._on_browse)
 
         self.status_label = QtWidgets.QLabel("")
@@ -49,29 +50,29 @@ class ExportTrackDialog(QtWidgets.QDialog):
         dest_layout.addWidget(self.dest_browse)
 
         form = QtWidgets.QFormLayout()
-        form.addRow("Title", self.lbl_title)
-        form.addRow("Artist", self.lbl_artist)
-        form.addRow("Album", self.lbl_album)
-        form.addRow("Source", self.lbl_source)
-        form.addRow("Destination Folder", dest_layout)
+        form.addRow(tr("Title"), self.lbl_title)
+        form.addRow(tr("Artist"), self.lbl_artist)
+        form.addRow(tr("Album"), self.lbl_album)
+        form.addRow(tr("Source"), self.lbl_source)
+        form.addRow(tr("Destination Folder"), dest_layout)
 
-        self.chk_rekordbox = QtWidgets.QCheckBox("Rekordbox XML")
-        self.chk_rendered_jump = QtWidgets.QCheckBox("Prerender JumpCUE Audio")
-        self.chk_rendered_jump.setToolTip("Write WAV files with JumpCUE skips baked in.")
+        self.chk_rekordbox = QtWidgets.QCheckBox(tr("Rekordbox XML"))
+        self.chk_rendered_jump = QtWidgets.QCheckBox(tr("Prerender JumpCUE Audio"))
+        self.chk_rendered_jump.setToolTip(tr("Write WAV files with JumpCUE skips baked in."))
         self.chk_rekordbox.setChecked(True)
         self.chk_rendered_jump.setChecked(False)
         self.cmb_jump_pair = QtWidgets.QComboBox()
         self.cmb_jump_pair.setEnabled(False)
-        self.cmb_jump_pair.setPlaceholderText("No JumpCUE directions")
+        self.cmb_jump_pair.setPlaceholderText(tr("No JumpCUE directions"))
         export_opts = QtWidgets.QHBoxLayout()
         export_opts.addWidget(self.chk_rekordbox)
         export_opts.addWidget(self.chk_rendered_jump)
         export_opts.addStretch(1)
-        form.addRow("Include", export_opts)
+        form.addRow(tr("Include"), export_opts)
         form.addRow("JumpCUE", self.cmb_jump_pair)
 
-        self.btn_export = QtWidgets.QPushButton("Export")
-        self.btn_cancel = QtWidgets.QPushButton("Cancel")
+        self.btn_export = QtWidgets.QPushButton(tr("Export"))
+        self.btn_cancel = QtWidgets.QPushButton(tr("Cancel"))
         self.btn_export.clicked.connect(self._on_export)
         self.btn_cancel.clicked.connect(self.reject)
 
@@ -107,10 +108,10 @@ class ExportTrackDialog(QtWidgets.QDialog):
             self.dest_edit.setText(str(resolved.parent))
         elif resolved:
             self.dest_edit.setText(str(resolved.parent))
-            self.status_label.setText("Source file not found at the specified path.")
+            self.status_label.setText(tr("Source file not found at the specified path."))
         else:
             self.dest_edit.clear()
-            self.status_label.setText("Source path is invalid.")
+            self.status_label.setText(tr("Source path is invalid."))
         self._populate_jump_pairs()
 
     def _resolve_path(self, raw: str | None) -> Optional[Path]:
@@ -136,7 +137,7 @@ class ExportTrackDialog(QtWidgets.QDialog):
         current = self.dest_edit.text().strip()
         directory = QtWidgets.QFileDialog.getExistingDirectory(
             self,
-            "Select Destination Folder",
+            tr("Select Destination Folder"),
             current or (str(self._source.parent) if self._source else os.getcwd()),
         )
         if directory:
@@ -144,7 +145,7 @@ class ExportTrackDialog(QtWidgets.QDialog):
 
     def _on_export(self) -> None:
         if self._track is None:
-            QtWidgets.QMessageBox.warning(self, "Export Track", "No track is selected.")
+            QtWidgets.QMessageBox.warning(self, tr("Export Track"), tr("No track is selected."))
             return
 
         export_xml = self.chk_rekordbox.isChecked()
@@ -152,20 +153,20 @@ class ExportTrackDialog(QtWidgets.QDialog):
         if not (export_xml or export_jump):
             QtWidgets.QMessageBox.warning(
                 self,
-                "Export Track",
-                "Select at least one export target (Rekordbox XML, Waveform Image, or JumpCUE audio).",
+                tr("Export Track"),
+                tr("Select at least one export target (Rekordbox XML, Waveform Image, or JumpCUE audio)."),
             )
             return
 
         dest_text = self.dest_edit.text().strip()
         if not dest_text:
-            QtWidgets.QMessageBox.warning(self, "Export Track", "Please select a destination folder.")
+            QtWidgets.QMessageBox.warning(self, tr("Export Track"), tr("Please select a destination folder."))
             return
         dest_dir = Path(dest_text).expanduser()
         try:
             dest_dir.mkdir(parents=True, exist_ok=True)
         except OSError as exc:
-            QtWidgets.QMessageBox.critical(self, "Export Track", f"Cannot create destination folder:\n{exc}")
+            QtWidgets.QMessageBox.critical(self, tr("Export Track"), tr("Cannot create destination folder:\n{error}").format(error=exc))
             return
 
         features = self._load_features()
@@ -187,8 +188,8 @@ class ExportTrackDialog(QtWidgets.QDialog):
             if selection is None:
                 QtWidgets.QMessageBox.warning(
                     self,
-                    "Export Track",
-                    "Select a JumpCUE direction to render.",
+                    tr("Export Track"),
+                    tr("Select a JumpCUE direction to render."),
                 )
                 return
             pair, directions = selection
@@ -198,7 +199,7 @@ class ExportTrackDialog(QtWidgets.QDialog):
             exported.extend(jump_exports)
 
         lines = "\n".join(f"{label}: {path}" for label, path in exported)
-        QtWidgets.QMessageBox.information(self, "Export Track", f"Export completed:\n{lines}")
+        QtWidgets.QMessageBox.information(self, tr("Export Track"), tr("Export completed:\n{files}").format(files=lines))
         self.accept()
 
     def _load_features(self) -> Optional[dict[str, np.ndarray]]:
@@ -269,8 +270,8 @@ class ExportTrackDialog(QtWidgets.QDialog):
         if xml_path.exists():
             reply = QtWidgets.QMessageBox.question(
                 self,
-                "Export Track",
-                f"'{xml_path.name}' already exists.\nOverwrite?",
+                tr("Export Track"),
+                tr("'{name}' already exists.\nOverwrite?").format(name=xml_path.name),
                 QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,
             )
             if reply != QtWidgets.QMessageBox.StandardButton.Yes:
@@ -278,7 +279,7 @@ class ExportTrackDialog(QtWidgets.QDialog):
         try:
             atomic_write_text(xml_path, xml_text)
         except OSError as exc:
-            QtWidgets.QMessageBox.critical(self, "Export Track", f"Failed to write XML file:\n{exc}")
+            QtWidgets.QMessageBox.critical(self, tr("Export Track"), tr("Failed to write XML file:\n{error}").format(error=exc))
             return None
         return xml_path
 
@@ -333,8 +334,8 @@ class ExportTrackDialog(QtWidgets.QDialog):
             if out_path.exists():
                 reply = QtWidgets.QMessageBox.question(
                     self,
-                    "Export Track",
-                    f"'{out_path.name}' already exists.\nOverwrite?",
+                    tr("Export Track"),
+                    tr("'{name}' already exists.\nOverwrite?").format(name=out_path.name),
                     QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,
                 )
                 if reply != QtWidgets.QMessageBox.StandardButton.Yes:
@@ -344,7 +345,7 @@ class ExportTrackDialog(QtWidgets.QDialog):
                 sf.write(out_path, rendered_pcm, sr)
             except OSError as exc:
                 QtWidgets.QMessageBox.critical(
-                    self, "Export Track", f"Failed to write JumpCUE audio:\n{exc}"
+                    self, tr("Export Track"), tr("Failed to write JumpCUE audio:\n{error}").format(error=exc)
                 )
                 return None
 

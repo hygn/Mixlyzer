@@ -7,7 +7,6 @@ from core.config import load_cfg
 from ui.edit_panel.blocks import mode_column, rule_cell
 from ui.edit_panel.history import logElement
 from ui.edit_panel.icons import badged_icon, icon
-from ui.edit_panel.key import STEP_TEXT
 from utils.cue_points import (
     add_autocue_cue_point,
     autocue_time_sec,
@@ -27,6 +26,19 @@ from utils.phrases import (
     phrase_color,
     phrase_display_name,
 )
+from core.i18n import tr, tr_mark
+
+# boundary nudges follow the step: icon -> (tooltip by one beat, by one bar), translated where shown
+PHRASE_STEP_TOOLS = {
+    "key_start_back": (tr_mark("Move the current phrase's start one beat earlier"),
+                       tr_mark("Move the current phrase's start one bar (to the neighboring downbeat) earlier")),
+    "key_start_fwd": (tr_mark("Move the current phrase's start one beat later"),
+                      tr_mark("Move the current phrase's start one bar (to the neighboring downbeat) later")),
+    "key_end_back": (tr_mark("Move the current phrase's end one beat earlier"),
+                     tr_mark("Move the current phrase's end one bar (to the neighboring downbeat) earlier")),
+    "key_end_fwd": (tr_mark("Move the current phrase's end one beat later"),
+                    tr_mark("Move the current phrase's end one bar (to the neighboring downbeat) later")),
+}
 
 # Label buttons (every label), applied to the current phrase on click like the
 # time signatures.
@@ -54,8 +66,8 @@ class PhraseEditMixin:
         self.phrase_start_fwd = _btn("key_start_fwd", "")
         self.phrase_end_back = _btn("key_end_back", "")
         self.phrase_end_fwd = _btn("key_end_fwd", "")
-        self.phrase_step_beat = _btn("key_step_beat", "Boundaries move by one beat", checkable=True)
-        self.phrase_step_bar = _btn("key_step_bar", "Boundaries move by one bar (to the neighbouring downbeat)", checkable=True)
+        self.phrase_step_beat = _btn("key_step_beat", tr("Boundaries move by one beat"), checkable=True)
+        self.phrase_step_bar = _btn("key_step_bar", tr("Boundaries move by one bar (to the neighboring downbeat)"), checkable=True)
         self.phrase_step_beat.setChecked(True)
         self._phrase_step_group = QtWidgets.QButtonGroup(self)
         self._phrase_step_group.setExclusive(True)
@@ -63,18 +75,18 @@ class PhraseEditMixin:
         self._phrase_step_group.addButton(self.phrase_step_bar)
 
         # segments
-        self.phrase_split = _btn("beatgrid_split", "Split the current phrase at the beat nearest the playhead")
-        self.phrase_merge_prev = _btn("beatgrid_merge_prev", "Merge the previous phrase into the current one (keeps the current label)")
-        self.phrase_merge_next = _btn("beatgrid_merge_next", "Merge the next phrase into the current one (keeps the current label)")
-        self.phrase_unassign = _btn("phrase_clear", "Unassign the current phrase (UNASSIGNED)", wide=True)
+        self.phrase_split = _btn("beatgrid_split", tr("Split the current phrase at the beat nearest the playhead"))
+        self.phrase_merge_prev = _btn("beatgrid_merge_prev", tr("Merge the previous phrase into the current one (keeps the current label)"))
+        self.phrase_merge_next = _btn("beatgrid_merge_next", tr("Merge the next phrase into the current one (keeps the current label)"))
+        self.phrase_unassign = _btn("phrase_clear", tr("Unassign the current phrase (UNASSIGNED)"), wide=True)
 
         # the whole track
         # the whole track, so the whole-track reanalysis icon (as the key page's)
-        self.phrase_reanalyze = _btn("key_reanalyze_all", "Reanalyze the phrases of the whole track with the current beatgrid")
+        self.phrase_reanalyze = _btn("key_reanalyze_all", tr("Reanalyze the phrases of the whole track with the current beatgrid"))
         self.phrase_cue_assign = _btn(
             "phrase_cue_assign",
-            "Replace the CUE points with the ones the CUE rules give the current phrases\n"
-            "(Settings > Analysis > CUE, as the full analysis makes them)",
+            tr("Replace the CUE points with the ones the CUE rules give the current phrases\n"
+               "(Settings > Analysis > CUE, as the full analysis makes them)"),
             wide=True,
         )
 
@@ -89,7 +101,7 @@ class PhraseEditMixin:
             b.clicked.connect(lambda _=False, label=label: self._assign_phrase_label(label))
             self.phrase_label_buttons[label] = b
 
-        self.phrase_status = QtWidgets.QLabel("-- | Seg -- | +0 beats | Left: 00:00.00")
+        self.phrase_status = QtWidgets.QLabel(tr("-- | Seg -- | +0 beats | Left: 00:00.00"))
         self.phrase_status.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
 
         _AL = QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter
@@ -142,21 +154,16 @@ class PhraseEditMixin:
     def _refresh_phrase_step_tools(self, *_args) -> None:
         """The boundary nudges show how far they move (the step): in the icon's badge and the tooltip."""
         by_bar = self.phrase_step_bar.isChecked()
-        step = STEP_TEXT[by_bar]
-        for btn, name, text in (
-            (self.phrase_start_back, "key_start_back", "Move the current phrase's start {step} earlier"),
-            (self.phrase_start_fwd, "key_start_fwd", "Move the current phrase's start {step} later"),
-            (self.phrase_end_back, "key_end_back", "Move the current phrase's end {step} earlier"),
-            (self.phrase_end_fwd, "key_end_fwd", "Move the current phrase's end {step} later"),
-        ):
+        for btn, name in ((self.phrase_start_back, "key_start_back"), (self.phrase_start_fwd, "key_start_fwd"),
+                          (self.phrase_end_back, "key_end_back"), (self.phrase_end_fwd, "key_end_fwd")):
             btn.setIcon(badged_icon(name, "step_bar" if by_bar else "step_beat"))
-            btn.setToolTip(text.format(step=step))
+            btn.setToolTip(tr(PHRASE_STEP_TOOLS[name][1 if by_bar else 0]))
 
     def refresh_phrase_label_names(self) -> None:
         """Show the labels by their current names (aliases, set in the settings)."""
         for label, btn in self.phrase_label_buttons.items():
             btn.setText(_button_text(label))
-            btn.setToolTip(f"Label the current phrase {phrase_display_name(label)}")
+            btn.setToolTip(tr("Label the current phrase {label}").format(label=phrase_display_name(label)))
         lit = self._phrase_lit
         self._phrase_lit = ""
         self._refresh_phrase_label_buttons(lit)
@@ -261,17 +268,16 @@ class PhraseEditMixin:
         idx = self._phrase_index_at(t)
         if idx < 0:
             self._phrase_cur = -1
-            self.phrase_status.setText("-- | Seg -- | +0 beats | Left: 00:00.00")
+            self.phrase_status.setText(tr("-- | Seg -- | +0 beats | Left: 00:00.00"))
             self._refresh_phrase_label_buttons(None)
             return
         row = self._phrase_segments[idx]
         left = max(0.0, float(row["end"]) - t)
         m = int(left // 60)
         name = number_phrase_labels(self._phrase_segments)[idx]
-        self.phrase_status.setText(
-            f"{name} | Seg {idx + 1} | +{self._phrase_beats_elapsed(t, float(row['start']))} beats"
-            f" | Left: {m:02d}:{left - 60 * m:05.2f}"
-        )
+        self.phrase_status.setText(tr("{label} | Seg {index} | +{beats} beats | Left: {left}").format(
+            label=name, index=idx + 1, beats=self._phrase_beats_elapsed(t, float(row["start"])),
+            left=f"{m:02d}:{left - 60 * m:05.2f}"))
         if idx != self._phrase_cur:
             self._phrase_cur = idx
             self._refresh_phrase_label_buttons(row["label"])

@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from analyzer_core.utils import prime_physical_core_count
+from core.i18n import tr
 
 # sklearn (KMeans, HistGradientBoosting) would otherwise launch powershell.exe to count cores.
 prime_physical_core_count()
@@ -35,21 +36,21 @@ class SkippedOptimizationTrack:
     def display_name(self) -> str:
         title = self.title.strip()
         if not title:
-            title = Path(self.path).stem or "Untitled"
+            title = Path(self.path).stem or tr("Untitled")
         title = _compact_display_field(title)
         artist = _compact_display_field(self.artist) or "-"
-        return f"Title: {title}\nArtist: {artist}"
+        return tr("Title: {title}\nArtist: {artist}").format(title=title, artist=artist)
 
 
 def optimizer_track_name(track: dict[str, object]) -> str:
     title = str(track.get("title", "") or "").strip()
     if not title:
         audio_path = track.get("audio_path")
-        title = getattr(audio_path, "stem", "") or "Untitled"
+        title = getattr(audio_path, "stem", "") or tr("Untitled")
     title = _compact_display_field(title)
     artist = _compact_display_field(track.get("artist", ""))
     uid = str(track.get("uid", "") or "").strip()
-    return f"Title: {title}\nArtist: {artist or '-'}\nUUID: {uid or '-'}"
+    return tr("Title: {title}\nArtist: {artist}").format(title=title, artist=artist or "-") + f"\nUUID: {uid or '-'}"
 
 
 def skipped_track(track: dict[str, object], reason: str) -> SkippedOptimizationTrack:
@@ -58,5 +59,5 @@ def skipped_track(track: dict[str, object], reason: str) -> SkippedOptimizationT
         title=str(track.get("title", "") or ""),
         artist=str(track.get("artist", "") or ""),
         path=str(track.get("audio_path", "") or ""),
-        reason=str(reason or "Unknown validation error"),
+        reason=str(reason or tr("Unknown validation error")),
     )

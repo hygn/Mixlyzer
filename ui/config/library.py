@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
 
 from ui.config.dialogs import RekordboxSyncProgressDialog
 from ui.config.scroll import scroll_page
+from core.i18n import tr
 
 
 def build_library_tab(dialog) -> None:
@@ -27,45 +28,45 @@ def build_library_tab(dialog) -> None:
         QtWidgets.QAbstractItemView.ExtendedSelection
     )
     dialog.list_local_music_directories.setMinimumHeight(100)
-    dialog.btn_add_local_music_directory = QPushButton("Add Folder…")
-    dialog.btn_remove_local_music_directory = QPushButton("Remove")
+    dialog.btn_add_local_music_directory = QPushButton(tr("Add Folder…"))
+    dialog.btn_remove_local_music_directory = QPushButton(tr("Remove"))
     dialog.lbl_local_music_directory_note = QLabel(
-        "When this list is empty, the operating system's default Music folder is used."
+        tr("When this list is empty, the operating system's default Music folder is used.")
     )
     dialog.lbl_local_music_directory_note.setWordWrap(True)
-    dialog.cb_write_log = QCheckBox("Write log to file")
+    dialog.cb_write_log = QCheckBox(tr("Write log to file"))
     dialog.ed_logpath = QLineEdit()
-    dialog.cb_rekordbox_sync = QCheckBox("Sync with Rekordbox XML")
+    dialog.cb_rekordbox_sync = QCheckBox(tr("Sync with Rekordbox XML"))
     dialog.ed_rekordbox_xml_path = QLineEdit()
-    dialog.btn_rekordbox_sync_now = QPushButton("Sync Now")
-    dialog.lbl_log_note = QLabel("Logging settings apply on next app launch.")
-    dialog.lbl_rekordbox_note = QLabel("Use Sync Now to rebuild the whole XML explicitly.")
+    dialog.btn_rekordbox_sync_now = QPushButton(tr("Sync Now"))
+    dialog.lbl_log_note = QLabel(tr("Logging settings apply on next app launch."))
+    dialog.lbl_rekordbox_note = QLabel(tr("Use Sync Now to rebuild the whole XML explicitly."))
     dialog.lbl_log_note.setWordWrap(True)
     dialog.lbl_rekordbox_note.setWordWrap(True)
     dialog.ed_libpath.setToolTip(
-        "Folder holding library.db and the per-track feature files (.npz).\n"
-        "Relative paths are resolved from the app folder."
+        tr("Folder holding library.db and the per-track feature files (.npz).\n"
+           "Relative paths are resolved from the app folder.")
     )
     dialog.list_local_music_directories.setToolTip(
-        "Root folders shown under Local Folders in the library browser."
+        tr("Root folders shown under Local Folders in the library browser.")
     )
-    dialog.btn_add_local_music_directory.setToolTip("Add a local music root folder.")
-    dialog.btn_remove_local_music_directory.setToolTip("Remove the selected root folders.")
-    dialog.cb_write_log.setToolTip("Write console output to a log file.")
-    dialog.ed_logpath.setToolTip("Log file written when 'Write log to file' is on.")
+    dialog.btn_add_local_music_directory.setToolTip(tr("Add a local music root folder."))
+    dialog.btn_remove_local_music_directory.setToolTip(tr("Remove the selected root folders."))
+    dialog.cb_write_log.setToolTip(tr("Write console output to a log file."))
+    dialog.ed_logpath.setToolTip(tr("Log file written when 'Write log to file' is on."))
     dialog.cb_rekordbox_sync.setToolTip(
-        "Keep a Rekordbox XML file updated with the library's beat grids, keys and cues."
+        tr("Keep a Rekordbox XML file updated with the library's beat grids, keys and cues.")
     )
     dialog.ed_rekordbox_xml_path.setToolTip(
-        "Rekordbox XML file to write. Import it in Rekordbox to use the analysis."
+        tr("Rekordbox XML file to write. Import it in Rekordbox to use the analysis.")
     )
     dialog.btn_rekordbox_sync_now.setToolTip(
-        "Save these settings and rebuild the whole XML from the library now."
+        tr("Save these settings and rebuild the whole XML from the library now.")
     )
 
-    grp_library = QGroupBox("Library")
+    grp_library = QGroupBox(tr("Library"))
     f_library = QFormLayout(grp_library)
-    f_library.addRow("Library Path", dialog.ed_libpath)
+    f_library.addRow(tr("Library Path"), dialog.ed_libpath)
     local_box = QWidget()
     local_layout = QtWidgets.QVBoxLayout(local_box)
     local_layout.setContentsMargins(0, 0, 0, 0)
@@ -76,19 +77,19 @@ def build_library_tab(dialog) -> None:
     local_buttons.addStretch(1)
     local_layout.addLayout(local_buttons)
     local_layout.addWidget(dialog.lbl_local_music_directory_note)
-    f_library.addRow("Local Music Folders", local_box)
+    f_library.addRow(tr("Local Music Folders"), local_box)
 
-    grp_rekordbox = QGroupBox("Rekordbox XML")
+    grp_rekordbox = QGroupBox(tr("Rekordbox XML"))
     f_rekordbox = QFormLayout(grp_rekordbox)
     f_rekordbox.addRow(dialog.cb_rekordbox_sync)
-    f_rekordbox.addRow("XML Path", dialog.ed_rekordbox_xml_path)
+    f_rekordbox.addRow(tr("XML Path"), dialog.ed_rekordbox_xml_path)
     f_rekordbox.addRow("", dialog.btn_rekordbox_sync_now)
     f_rekordbox.addRow(dialog.lbl_rekordbox_note)
 
-    grp_advanced = QGroupBox("Advanced")
+    grp_advanced = QGroupBox(tr("Advanced"))
     f_advanced = QFormLayout(grp_advanced)
     f_advanced.addRow(dialog.cb_write_log)
-    f_advanced.addRow("Log Path", dialog.ed_logpath)
+    f_advanced.addRow(tr("Log Path"), dialog.ed_logpath)
     f_advanced.addRow(dialog.lbl_log_note)
 
     form.addRow(grp_library)
@@ -100,7 +101,7 @@ def build_library_tab(dialog) -> None:
     dialog.btn_remove_local_music_directory.clicked.connect(
         dialog._remove_local_music_directories
     )
-    dialog.tabs.addTab(scroll_page(dialog.tab_lib), "Library")
+    dialog.tabs.addTab(scroll_page(dialog.tab_lib), tr("Library"))
 
 
 class LibrarySettingsMixin:
@@ -113,7 +114,7 @@ class LibrarySettingsMixin:
                 QtCore.QStandardPaths.MusicLocation
             ) or str(os.path.join(os.path.expanduser("~"), "Music"))
         directory = QFileDialog.getExistingDirectory(
-            self, "Add Local Music Folder", os.path.expanduser(initial)
+            self, tr("Add Local Music Folder"), os.path.expanduser(initial)
         )
         if directory:
             identity = os.path.normcase(os.path.realpath(os.path.abspath(directory)))
@@ -168,12 +169,12 @@ class LibrarySettingsMixin:
         cfg = self.get_config()
         if not cfg.libconfig.rekordbox_sync_enabled:
             QMessageBox.warning(
-                self, "Sync Rekordbox XML", "Enable Sync with Rekordbox XML first."
+                self, tr("Sync Rekordbox XML"), tr("Enable Sync with Rekordbox XML first.")
             )
             return
         if not cfg.libconfig.rekordbox_xml_path.strip():
             QMessageBox.warning(
-                self, "Sync Rekordbox XML", "Rekordbox XML Path is empty."
+                self, tr("Sync Rekordbox XML"), tr("Rekordbox XML Path is empty.")
             )
             return
         previous_libcfg = getattr(self._current_cfg, "libconfig", None)
@@ -210,7 +211,7 @@ class LibrarySettingsMixin:
         self._rekordbox_progress_request = request
         dialog = self._rekordbox_sync_dialog
         if dialog is not None:
-            dialog.set_progress(0, "Rekordbox XML worker started")
+            dialog.set_progress(0, tr("Rekordbox XML worker started"))
             dialog.show()
             dialog.raise_()
 

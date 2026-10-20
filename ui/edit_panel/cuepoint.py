@@ -11,6 +11,7 @@ from ui.edit_panel.jumpcue import format_cue_time
 from ui.edit_panel.quantize import quantize_to_beat_or_edge
 from utils.cue_points import build_cue_points_np
 from utils.jumpcue_colors import CUE_POINT_COLORS, get_cue_point_color
+from core.i18n import tr
 
 
 class CuePointEditMixin:
@@ -24,7 +25,7 @@ class CuePointEditMixin:
         self.cp_memory = QtWidgets.QToolButton()
         self.cp_memory.setIcon(icon("cue_memory"))
         self.cp_memory.setIconSize(QtCore.QSize(14, 14))
-        self.cp_memory.setToolTip("MEMORY: set a CUE point at the nearest beat or track edge")
+        self.cp_memory.setToolTip(tr("MEMORY: set a CUE point at the nearest beat or track edge"))
         self.cp_memory.clicked.connect(self._add_memory_cue)
         page.tool_slot.addWidget(self.cp_memory)
 
@@ -35,8 +36,8 @@ class CuePointEditMixin:
             policy = slot.btn_action.sizePolicy()
             policy.setRetainSizeWhenHidden(True)
             slot.btn_action.setSizePolicy(policy)
-            slot.btn_action.setToolTip("Move the playhead to this CUE (not while playing)")
-            slot.squircle.setToolTip("CUE colour / delete")
+            slot.btn_action.setToolTip(tr("Move the playhead to this CUE (not while playing)"))
+            slot.squircle.setToolTip(tr("CUE color / delete"))
             slot.squircle_clicked.connect(lambda i=i: self._cp_color_menu(i))
             slot.action_clicked.connect(lambda i=i: self._cp_call(i))
             slot.renamed.connect(lambda name, i=i: self._rename_cue_point(i, name))
@@ -68,7 +69,7 @@ class CuePointEditMixin:
                 continue
             t = format_cue_time(float(cue.get("time_sec", 0.0)))
             slot.show_cue(get_cue_point_color(int(cue.get("color_idx", 0) or 0)), t, str(cue.get("label", "") or ""))
-            slot.name.setToolTip(f"{t} - double-click to rename")
+            slot.name.setToolTip(tr("{time} - double-click to rename").format(time=t))
             slot.btn_action.setEnabled(not playing)
 
     def _add_memory_cue(self) -> None:
@@ -113,14 +114,14 @@ class CuePointEditMixin:
         if cue is None:
             return
         menu = QtWidgets.QMenu(self)
-        menu.addSection("CUE colour")
+        menu.addSection(tr("CUE color"))
         for ci, rgb in enumerate(CUE_POINT_COLORS):
-            act = menu.addAction(color_swatch_icon(rgb), f"Colour {ci + 1}")
+            act = menu.addAction(color_swatch_icon(rgb), tr("Color {number}").format(number=ci + 1))
             act.setCheckable(True)
             act.setChecked(int(cue.get("color_idx", 0) or 0) == ci)
             act.triggered.connect(lambda _=False, ci=ci: self._update_cue_point(cue, color_idx=ci))
         menu.addSeparator()
-        menu.addAction(f"Delete CUE point {format_cue_time(float(cue.get('time_sec', 0.0)))}",
+        menu.addAction(tr("Delete CUE point {time}").format(time=format_cue_time(float(cue.get("time_sec", 0.0)))),
                        lambda: self._delete_memory_cue(slot))
         if not getattr(self, "_edit_enabled", True):
             # every edit in this menu follows the edit lock, as the JumpCUE menu

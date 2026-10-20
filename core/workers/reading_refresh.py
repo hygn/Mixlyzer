@@ -10,6 +10,7 @@ from typing import Any
 from PySide6 import QtCore
 
 from core.concurrency.process_worker import SpawnProcessWorker, install_parent_watchdog
+from core.i18n import tr
 
 # tracks per transaction: the app's own writes (an analysis, Edit Track) wait at most about this many
 # tracks' reading (a few ms each)
@@ -105,6 +106,6 @@ class ReadingRefreshWorker(SpawnProcessWorker):
             return
         if not graceful or self._result is None:
             self._error_emitted = True
-            self.failed.emit(f"The reading refresh process exited unexpectedly ({exitcode}).")
+            self.failed.emit(tr("The reading refresh process exited unexpectedly ({code}).").format(code=exitcode))
             return
         self.finished.emit(self._result)

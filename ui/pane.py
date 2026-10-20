@@ -24,6 +24,7 @@ from utils.volume import slider_percent_to_linear, trim_dbfs_to_linear
 from core.resource_paths import resource_path
 from core.beat_geometry import downbeat_beat_indices, segment_time_signature
 from core.tempo_rows import segment_end_bpm
+from core.i18n import tr
 
 def _tempo_text(percent: int) -> str:
     """Tempo fader reading as DJ gear shows it: change from 100 %, +000% / −050% / +100%
@@ -273,7 +274,7 @@ class MainPane(QtWidgets.QWidget):
         self.tempo_slider = _OneStepWheelSlider(QtCore.Qt.Vertical)
         self.tempo_slider.setRange(0, 200)  # 0 halts the deck
         self.tempo_slider.setValue(100)
-        self.tempo_slider.setToolTip("Tempo (0%-200%, 0 stops)")
+        self.tempo_slider.setToolTip(tr("Tempo (0%-200%, 0 stops)"))
 
         tempo_v.addWidget(self.l_tempo, 0, QtCore.Qt.AlignHCenter)
         tempo_v.addWidget(self.tempo_slider, 0, QtCore.Qt.AlignHCenter)
@@ -337,9 +338,9 @@ class MainPane(QtWidgets.QWidget):
         self.btn_play.setCheckable(True)
 
         self.btn_tempo_reset = _mk_square_btn("RST")
-        self.btn_tempo_reset.setToolTip("Tempo reset (100%)")
+        self.btn_tempo_reset.setToolTip(tr("Tempo reset (100%)"))
         self.btn_mt = _mk_square_btn("MT", checkable=True)
-        self.btn_mt.setToolTip("Master tempo: time stretch keeps the pitch")
+        self.btn_mt.setToolTip(tr("Master tempo: time stretch keeps the pitch"))
         self.btn_mt.setChecked(self._timestretch_enabled())
 
         for btn in (self.btn_mt, self.btn_tempo_reset):
@@ -427,8 +428,8 @@ class MainPane(QtWidgets.QWidget):
         if self._external_sync_enabled:
             QtWidgets.QMessageBox.information(
                 self,
-                "External Sync",
-                "Playback is disabled while External Sync is enabled.",
+                tr("External Sync"),
+                tr("Playback is disabled while External Sync is enabled."),
             )
             return
         want_play = not bool(getattr(self, "_is_playing", False))
@@ -680,7 +681,7 @@ class MainPane(QtWidgets.QWidget):
 
     def _on_properties(self):
         p = self.model.properties
-        title_text = p.get("title") or "Not Loaded" if isinstance(p, dict) else "Not Loaded"
+        title_text = p.get("title") or tr("Not Loaded") if isinstance(p, dict) else tr("Not Loaded")
         artist_text = p.get("artist") or "" if isinstance(p, dict) else ""
         self.track_info.set_title(title_text.strip())
         self.track_info.set_artist(artist_text.strip())

@@ -1,0 +1,4207 @@
+# Japanese (Japan) translations for Mixlyzer.
+# Copyright (C) 2026 Mixlyzer contributors
+# This file is distributed under the same license as the Mixlyzer project.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Mixlyzer VERSION\n"
+"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
+"POT-Creation-Date: 2026-10-21 00:04+0900\n"
+"PO-Revision-Date: 2026-10-20 23:51+0900\n"
+"Last-Translator: Mixlyzer\n"
+"Language: ja_JP\n"
+"Language-Team: Japanese\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: analyzer_core/editor/beatgrid.py:155 analyzer_core/editor/jumpcue.py:34
+#: analyzer_core/editor/keystrip.py:17 analyzer_core/editor/phrase.py:28
+msgid "Loading audio"
+msgstr "オーディオを読み込み中"
+
+#: analyzer_core/editor/beatgrid.py:167
+msgid "segment too short for reanalysis"
+msgstr "再解析するには区間が短すぎます"
+
+#: analyzer_core/editor/beatgrid.py:173
+msgid "Preparing audio"
+msgstr "オーディオを準備中"
+
+#: analyzer_core/editor/beatgrid.py:178
+msgid "Beat activations"
+msgstr "ビートアクティベーション"
+
+#: analyzer_core/editor/beatgrid.py:196
+msgid "Estimating BPM"
+msgstr "BPM を推定中"
+
+#: analyzer_core/editor/beatgrid.py:237
+msgid "Downbeat analysis"
+msgstr "ダウンビート解析"
+
+#: analyzer_core/editor/beatgrid.py:250
+msgid "Updating beat grid"
+msgstr "ビートグリッドを更新中"
+
+#: analyzer_core/editor/beatgrid.py:260
+msgid "Segment updated"
+msgstr "区間を更新しました"
+
+#: analyzer_core/editor/jumpcue.py:29
+msgid "JumpCUE needs the phrase analysis; enable it in the analysis settings"
+msgstr "JumpCUE にはフレーズ解析が必要です。解析の設定で有効にしてください"
+
+#: analyzer_core/editor/jumpcue.py:31
+msgid "tempo segments are required for JumpCUE reanalysis"
+msgstr "JumpCUE の再解析にはテンポ区間が必要です"
+
+#: analyzer_core/editor/jumpcue.py:42
+msgid "Frame features"
+msgstr "フレーム特徴量"
+
+#: analyzer_core/editor/jumpcue.py:45
+msgid "Phrase boundaries"
+msgstr "フレーズ境界"
+
+#: analyzer_core/editor/jumpcue.py:57
+msgid "too few beats for the phrase analysis JumpCUE needs"
+msgstr "JumpCUE に必要なフレーズ解析を行うには拍が少なすぎます"
+
+#: analyzer_core/editor/jumpcue.py:59
+msgid "Analyzing JumpCUE"
+msgstr "JumpCUE を解析中"
+
+#: analyzer_core/editor/jumpcue.py:102
+msgid "JumpCUE Updated"
+msgstr "JumpCUE を更新しました"
+
+#: analyzer_core/editor/keystrip.py:23
+msgid "Separating harmonics"
+msgstr "和声成分を分離中"
+
+#: analyzer_core/editor/keystrip.py:26
+msgid "Analyzing key"
+msgstr "キーを解析中"
+
+#: analyzer_core/editor/keystrip.py:51 analyzer_core/editor/keystrip.py:84
+msgid "Key segment updated"
+msgstr "キー区間を更新しました"
+
+#: analyzer_core/editor/keystrip.py:81
+msgid "selection duration too small"
+msgstr "選択範囲が短すぎます"
+
+#: analyzer_core/editor/phrase.py:23
+#, python-brace-format
+msgid "the phrase analysis needs at least {count} beats"
+msgstr "フレーズ解析には少なくとも {count} 拍が必要です"
+
+#: analyzer_core/editor/phrase.py:25
+msgid "tempo segments are required for phrase reanalysis"
+msgstr "フレーズの再解析にはテンポ区間が必要です"
+
+#: analyzer_core/editor/phrase.py:36
+msgid "Analyzing phrases"
+msgstr "フレーズを解析中"
+
+#: analyzer_core/editor/phrase.py:51
+msgid "Phrases Updated"
+msgstr "フレーズを更新しました"
+
+#: analyzer_core/global_analyzer.py:58
+#, python-brace-format
+msgid "Audio decode failed via FFmpeg and SoundFile: {path}"
+msgstr "FFmpeg と SoundFile のどちらでもオーディオをデコードできませんでした: {path}"
+
+#: analyzer_core/global_analyzer.py:296
+msgid "Loading"
+msgstr "読み込み中"
+
+#: analyzer_core/editor/jumpcue.py:39 analyzer_core/editor/phrase.py:32
+#: analyzer_core/global_analyzer.py:304
+msgid "Processing HPSS"
+msgstr "HPSS を処理中"
+
+#: analyzer_core/global_analyzer.py:315
+msgid "Processing Waveform"
+msgstr "波形を処理中"
+
+#: analyzer_core/global_analyzer.py:330
+msgid "Tempo"
+msgstr "テンポ"
+
+#: analyzer_core/global_analyzer.py:332
+msgid "Tempo Analyzing"
+msgstr "テンポを解析中"
+
+#: analyzer_core/global_analyzer.py:400
+msgid "Phrase Boundary Analyzing"
+msgstr "フレーズ境界を解析中"
+
+#: analyzer_core/global_analyzer.py:457
+msgid "JumpCUE Analyzing"
+msgstr "JumpCUE を解析中"
+
+#: analyzer_core/global_analyzer.py:506
+msgid "Analyzing Keys"
+msgstr "キーを解析中"
+
+#: analyzer_core/global_analyzer.py:534
+msgid "Processing Metadata"
+msgstr "メタデータを処理中"
+
+#: analyzer_core/global_analyzer.py:543
+msgid "Rendering/Normalizing"
+msgstr "レンダリング/ノーマライズ中"
+
+#: analyzer_core/global_analyzer.py:567
+msgid "Saving"
+msgstr "保存中"
+
+#: analyzer_core/global_analyzer.py:569
+msgid "Saving Result"
+msgstr "結果を保存中"
+
+#: app/main.py:44
+msgid "Administrator Execution Blocked"
+msgstr "管理者としての実行はブロックされています"
+
+#: app/main.py:45
+msgid ""
+"Mixlyzer cannot run with administrator privileges.\n"
+"Close it and launch again as a normal user."
+msgstr ""
+"Mixlyzer は管理者権限では実行できません。\n"
+"終了してから一般ユーザーとして起動し直してください。"
+
+#: app/main.py:63
+msgid "Incompatible Library Version"
+msgstr "互換性のないライブラリバージョン"
+
+#: app/main.py:64
+#, python-brace-format
+msgid ""
+"This library cannot be opened by the current app version.\n"
+"Library: {current}\n"
+"Required: {required}\n"
+"\n"
+"Automatic library migration is not available."
+msgstr ""
+"このライブラリは現在のバージョンのアプリでは開けません。\n"
+"ライブラリ: {current}\n"
+"必要なバージョン: {required}\n"
+"\n"
+"ライブラリの自動移行には対応していません。"
+
+#: app/startup.py:65
+msgid "Starting"
+msgstr "起動中"
+
+#: app/startup.py:168
+msgid "Scratch reader"
+msgstr "スクラッチリーダー"
+
+#: app/startup.py:168
+msgid "Cursor poller"
+msgstr "カーソルポーラー"
+
+#: app/startup.py:169
+msgid "Time stretch"
+msgstr "タイムストレッチ"
+
+#: app/startup.py:179
+msgid "ffmpeg: a short silent decode"
+msgstr "ffmpeg: 短い無音のデコード"
+
+#: app/startup.py:194
+msgid "library.db: readings"
+msgstr "library.db: 読み"
+
+#: app/startup.py:204
+#, python-brace-format
+msgid "Search keys: {tracks} tracks, {done} / {total} readings"
+msgstr "検索キー: トラック {tracks} 件、読み {done} / {total}"
+
+#: app/startup.py:219
+msgid "Loading libraries"
+msgstr "ライブラリモジュールを読み込み中"
+
+#: app/startup.py:220
+msgid "Compiling audio kernels (JIT)"
+msgstr "オーディオカーネルをコンパイル中 (JIT)"
+
+#: app/startup.py:221
+msgid "Starting FFmpeg"
+msgstr "FFmpeg を起動中"
+
+#: app/startup.py:222
+msgid "Loading search readers"
+msgstr "検索用の読み変換を読み込み中"
+
+#: app/startup.py:223
+msgid "Loading the library"
+msgstr "ライブラリを読み込み中"
+
+#: app/startup.py:224
+msgid "Building the window"
+msgstr "ウィンドウを作成中"
+
+#: app/window.py:48
+msgid "Core objects and playback"
+msgstr "コアオブジェクトと再生"
+
+#: app/window.py:107
+msgid "Main view, editor and library"
+msgstr "メインビュー、エディター、ライブラリ"
+
+#: app/window.py:112 app/window.py:124 ui/config/window.py:60
+msgid "Settings"
+msgstr "環境設定"
+
+#: app/window.py:115
+msgid "Dialogs, workflows and metronome"
+msgstr "ダイアログ、ワークフロー、メトロノーム"
+
+#: app/window.py:122
+msgid "Transport"
+msgstr "トランスポート"
+
+#: app/window.py:125 ui/workers.py:23
+msgid "Workers"
+msgstr "タスク"
+
+#: app/window.py:126
+msgid "Open Source"
+msgstr "オープンソース"
+
+#: app/window.py:127
+msgid "About"
+msgstr "情報"
+
+#: app/window.py:226 app/window.py:260 app/window.py:267
+msgid "External Sync is enabled. Local track loading is disabled."
+msgstr "外部同期が有効です。ローカルでのトラックの読み込みは無効になります。"
+
+#: app/window.py:236
+#, python-brace-format
+msgid "Drop error: {error}"
+msgstr "ドロップのエラー: {error}"
+
+#: app/window.py:275
+msgid "Track unloaded."
+msgstr "トラックをアンロードしました。"
+
+#: app/window.py:282
+msgid "Track File Not Found"
+msgstr "トラックファイルが見つかりません"
+
+#: app/window.py:286
+#, python-brace-format
+msgid ""
+"Cannot load \"{name}\": its file is missing.\n"
+"{path}\n"
+"\n"
+"Set the file's new location?"
+msgstr ""
+"「{name}」を読み込めません: ファイルがありません。\n"
+"{path}\n"
+"\n"
+"ファイルの新しい場所を指定しますか?"
+
+#: app/window.py:293
+#, python-brace-format
+msgid "Locate {name}"
+msgstr "{name} の場所を指定"
+
+#: analyzer_core/global_analyzer.py:584 app/window.py:343
+msgid "Finished"
+msgstr "完了"
+
+#: app/window.py:346 app/window.py:382
+msgid "Done. Press Play."
+msgstr "完了しました。再生してください。"
+
+#: app/window.py:348
+msgid "Analysis saved to library."
+msgstr "解析をライブラリに保存しました。"
+
+#: app/window.py:480
+#, python-brace-format
+msgid "External Sync loading: {file}"
+msgstr "外部同期で読み込み中: {file}"
+
+#: app/window.py:480
+#, python-brace-format
+msgid "External Sync analyzing: {file}"
+msgstr "外部同期で解析中: {file}"
+
+#: app/window.py:496
+msgid "Memory Sync Disabled"
+msgstr "メモリ同期を無効にしました"
+
+#: app/window.py:741 ui/config/external_sync.py:130
+msgid "Time Sync"
+msgstr "時間同期"
+
+#: app/window.py:741 ui/config/external_sync.py:130
+msgid "Sample Index Sync"
+msgstr "サンプルインデックス同期"
+
+#: app/window.py:743
+msgid "manual"
+msgstr "手動"
+
+#: app/window.py:748
+#, python-brace-format
+msgid "External Sync enabled via {target}. Local play/load is locked."
+msgstr "外部同期が有効です: {target}。ローカルでの再生/読み込みはロックされます。"
+
+#: core/external_sync.py:224
+#, python-brace-format
+msgid ""
+"Failed to open process memory for '{process}'. Memory Sync has been "
+"disabled."
+msgstr "「{process}」のプロセスメモリを開けませんでした。メモリ同期を無効にしました。"
+
+#: core/external_sync.py:235
+msgid "Memory Sync read failed and has been disabled."
+msgstr "メモリ同期の読み取りに失敗したため無効にしました。"
+
+#: core/external_sync.py:254
+#, python-brace-format
+msgid "External Sync ignored unsafe track path: {path}"
+msgstr "外部同期は安全でないトラックパスを無視しました: {path}"
+
+#: core/external_sync.py:306
+#, python-brace-format
+msgid "External Sync analyzing external track before load: {path}"
+msgstr "外部同期: 読み込む前に外部トラックを解析中: {path}"
+
+#: core/external_sync.py:415
+#, python-brace-format
+msgid "Memory Sync deck state read failed: {error}"
+msgstr "メモリ同期: デッキ状態の読み取りに失敗しました: {error}"
+
+#: core/external_sync.py:431
+#, python-brace-format
+msgid "Memory Sync deck payload read failed: {error}"
+msgstr "メモリ同期: デッキデータの読み取りに失敗しました: {error}"
+
+#: core/external_sync.py:692
+#, python-brace-format
+msgid "External Sync blocked for denied process: {process} ({path})"
+msgstr "拒否されたプロセスのため外部同期をブロックしました: {process} ({path})"
+
+#: core/external_sync.py:694
+#, python-brace-format
+msgid "External Sync blocked for denied process: {process}"
+msgstr "拒否されたプロセスのため外部同期をブロックしました: {process}"
+
+#: core/external_sync.py:735
+#, python-brace-format
+msgid "Process denylist unavailable ({error}); blocking all processes."
+msgstr "プロセス拒否リストを使用できないため ({error})、すべてのプロセスをブロックします。"
+
+#: core/library_handler.py:549
+msgid "The path cannot be empty."
+msgstr "パスを空にすることはできません。"
+
+#: core/library_handler.py:552
+#, python-brace-format
+msgid "This file is already in the library as \"{track}\"."
+msgstr "このファイルはすでにライブラリに「{track}」として登録されています。"
+
+#: core/library_handler.py:571 core/library_handler.py:592
+msgid "Playlist name cannot be empty"
+msgstr "プレイリスト名を空にすることはできません"
+
+#: core/reading.py:58
+msgid "Japanese"
+msgstr "日本語"
+
+#: core/reading.py:58
+msgid "Mandarin"
+msgstr "標準中国語"
+
+#: core/reading.py:58
+msgid "Taiwan Mandarin"
+msgstr "台湾華語"
+
+#: core/reading.py:59
+msgid "Cantonese"
+msgstr "広東語"
+
+#: core/reading.py:59
+msgid "Korean Hanja"
+msgstr "韓国漢字音"
+
+#: core/reading.py:59
+msgid "Sino-Vietnamese"
+msgstr "ベトナム漢字音"
+
+#: core/reading.py:60
+msgid "Korean"
+msgstr "韓国語"
+
+#: core/reading.py:60
+msgid "as written"
+msgstr "表記どおり"
+
+#: core/reading.py:60
+msgid "set by the user"
+msgstr "ユーザー指定"
+
+#: core/reading.py:521
+msgid "Japanese (SudachiDict)"
+msgstr "日本語 (SudachiDict)"
+
+#: core/reading.py:522
+msgid "Mandarin (pypinyin)"
+msgstr "標準中国語 (pypinyin)"
+
+#: core/reading.py:523
+msgid "Cantonese (pycantonese)"
+msgstr "広東語 (pycantonese)"
+
+#: core/reading.py:524
+msgid "Korean Hanja (Unihan)"
+msgstr "韓国漢字音 (Unihan)"
+
+#: core/reading.py:525
+msgid "Sino-Vietnamese (Unihan)"
+msgstr "ベトナム漢字音 (Unihan)"
+
+#: core/workers/analysis.py:119
+#, python-brace-format
+msgid "Analysis process exited unexpectedly ({code})."
+msgstr "解析プロセスが予期せず終了しました ({code})。"
+
+#: core/workers/optimizer.py:177
+#, python-brace-format
+msgid "{name} optimizer process exited unexpectedly ({code})."
+msgstr "{name} の最適化プロセスが予期せず終了しました ({code})。"
+
+#: core/workers/optimizer.py:183
+#, python-brace-format
+msgid "{name} optimizer returned {results} of {jobs} results."
+msgstr "{name} の最適化は {jobs} 件中 {results} 件の結果しか返しませんでした。"
+
+#: core/workers/reading_refresh.py:109
+#, python-brace-format
+msgid "The reading refresh process exited unexpectedly ({code})."
+msgstr "読みの更新プロセスが予期せず終了しました ({code})。"
+
+#: core/workers/rekordbox_sync.py:82
+msgid "Loading Mixlyzer library"
+msgstr "Mixlyzer のライブラリを読み込み中"
+
+#: core/workers/rekordbox_sync.py:92 core/workers/rekordbox_sync.py:121
+#: core/workers/rekordbox_sync.py:135
+msgid "Loading Rekordbox XML"
+msgstr "Rekordbox XML を読み込み中"
+
+#: core/workers/rekordbox_sync.py:113
+#, python-brace-format
+msgid "Syncing tracks {done}/{total}"
+msgstr "トラックを同期中 {done}/{total}"
+
+#: core/workers/rekordbox_sync.py:129
+#, python-brace-format
+msgid "Syncing changed tracks {done}/{total}"
+msgstr "変更されたトラックを同期中 {done}/{total}"
+
+#: core/workers/rekordbox_sync.py:143
+msgid "Building Rekordbox track entry"
+msgstr "Rekordbox のトラック項目を作成中"
+
+#: core/workers/rekordbox_sync.py:159
+msgid "Formatting Rekordbox XML"
+msgstr "Rekordbox XML を整形中"
+
+#: core/workers/rekordbox_sync.py:161
+msgid "Writing Rekordbox XML"
+msgstr "Rekordbox XML を書き込み中"
+
+#: core/workers/rekordbox_sync.py:163
+msgid "Rekordbox XML sync complete"
+msgstr "Rekordbox XML の同期が完了しました"
+
+#: core/workers/segment_reanalysis.py:91
+#, python-brace-format
+msgid "Segment analysis process exited unexpectedly ({code})."
+msgstr "区間解析プロセスが予期せず終了しました ({code})。"
+
+#: core/workflows/analysis.py:65
+msgid "Analysis canceled"
+msgstr "解析をキャンセルしました"
+
+#: core/workflows/analysis.py:90
+#, python-brace-format
+msgid "File not found: {path}"
+msgstr "ファイルが見つかりません: {path}"
+
+#: core/workflows/analysis.py:97
+#, python-brace-format
+msgid "Analysis already in progress: {file}"
+msgstr "すでに解析中です: {file}"
+
+#: core/workflows/analysis.py:101
+msgid "Segment reanalysis canceled (track changed)"
+msgstr "区間の再解析をキャンセルしました (トラックが変わりました)"
+
+#: core/workflows/analysis.py:103
+#, python-brace-format
+msgid "Analyzing: {file}"
+msgstr "解析中: {file}"
+
+#: core/workflows/analysis.py:111
+msgid "Loading Track"
+msgstr "トラックを読み込み中"
+
+#: core/workflows/analysis.py:190
+#, python-brace-format
+msgid "Error ({file})"
+msgstr "エラー ({file})"
+
+#: core/workflows/analysis.py:190
+msgid "Error"
+msgstr "エラー"
+
+#: core/workflows/reading_refresh.py:58
+#, python-brace-format
+msgid "Reading the library: {done} / {total} tracks"
+msgstr "ライブラリを読み込み中: トラック {done} / {total}"
+
+#: core/workflows/segment_reanalysis.py:55
+msgid "Segment reanalysis canceled"
+msgstr "区間の再解析をキャンセルしました"
+
+#: core/workflows/segment_reanalysis.py:76
+msgid "Load a track before segment reanalysis"
+msgstr "区間を再解析する前にトラックを読み込んでください"
+
+#: core/workflows/segment_reanalysis.py:124
+msgid "JumpCUE reanalyze"
+msgstr "JumpCUE の再解析"
+
+#: core/workflows/segment_reanalysis.py:126
+#, python-brace-format
+msgid "{song} (Phrase)"
+msgstr "{song} (フレーズ)"
+
+#: core/workflows/segment_reanalysis.py:127
+msgid "Phrase reanalyze"
+msgstr "フレーズの再解析"
+
+#: core/workflows/segment_reanalysis.py:129
+#, python-brace-format
+msgid "{song} (Key)"
+msgstr "{song} (キー)"
+
+#: core/workflows/segment_reanalysis.py:130
+msgid "Key reanalyze"
+msgstr "キーの再解析"
+
+#: core/workflows/segment_reanalysis.py:132
+#, python-brace-format
+msgid "{song} (Seg {index})"
+msgstr "{song} (区間 {index})"
+
+#: core/workflows/segment_reanalysis.py:133
+msgid "Segment reanalyze"
+msgstr "区間の再解析"
+
+#: core/workflows/segment_reanalysis.py:183
+msgid "No beatgrid available for JumpCUE reanalysis"
+msgstr "JumpCUE を再解析するためのビートグリッドがありません"
+
+#: core/workflows/segment_reanalysis.py:188
+msgid "No beatgrid available for phrase reanalysis"
+msgstr "フレーズを再解析するためのビートグリッドがありません"
+
+#: core/workflows/segment_reanalysis.py:191
+msgid "No tempo segments available for phrase reanalysis"
+msgstr "フレーズを再解析するためのテンポ区間がありません"
+
+#: core/workflows/segment_reanalysis.py:196
+msgid "No tempo segments available for key reanalysis"
+msgstr "キーを再解析するためのテンポ区間がありません"
+
+#: core/workflows/segment_reanalysis.py:199
+#: core/workflows/segment_reanalysis.py:203
+msgid "No key segments available for reanalysis"
+msgstr "再解析するキー区間がありません"
+
+#: core/workflows/segment_reanalysis.py:211
+msgid "Invalid key selection"
+msgstr "無効なキーの選択"
+
+#: core/workflows/segment_reanalysis.py:240
+msgid "Key reanalysis completed"
+msgstr "キーの再解析が完了しました"
+
+#: core/workflows/segment_reanalysis.py:243
+msgid "JumpCUE reanalysis completed"
+msgstr "JumpCUE の再解析が完了しました"
+
+#: core/workflows/segment_reanalysis.py:246
+msgid "Phrase reanalysis completed"
+msgstr "フレーズの再解析が完了しました"
+
+#: core/workflows/segment_reanalysis.py:249
+msgid "Segment reanalysis completed"
+msgstr "区間の再解析が完了しました"
+
+#: core/workflows/segment_reanalysis.py:269
+msgid "JumpCUE reanalysis finished"
+msgstr "JumpCUE の再解析が終了しました"
+
+#: core/workflows/segment_reanalysis.py:278
+msgid "Phrase reanalysis finished"
+msgstr "フレーズの再解析が終了しました"
+
+#: core/workflows/segment_reanalysis.py:292
+msgid "Key reanalysis finished"
+msgstr "キーの再解析が終了しました"
+
+#: core/workflows/segment_reanalysis.py:306
+msgid "Segment reanalysis finished"
+msgstr "区間の再解析が終了しました"
+
+#: core/workflows/segment_reanalysis.py:316
+#, python-brace-format
+msgid "Segment reanalysis failed: {error}"
+msgstr "区間の再解析に失敗しました: {error}"
+
+#: optimizer/__init__.py:39 optimizer/__init__.py:49
+msgid "Untitled"
+msgstr "タイトルなし"
+
+#: optimizer/__init__.py:42 optimizer/__init__.py:53
+#, python-brace-format
+msgid ""
+"Title: {title}\n"
+"Artist: {artist}"
+msgstr ""
+"タイトル: {title}\n"
+"アーティスト: {artist}"
+
+#: optimizer/__init__.py:62
+msgid "Unknown validation error"
+msgstr "不明な検証エラー"
+
+#: optimizer/beat_critic_optimizer.py:263
+#: optimizer/beat_decoder_optimizer.py:164 optimizer/beat_tcn_optimizer.py:179
+#: optimizer/downbeat_ctx_optimizer.py:92
+msgid "frame feature cache is not current"
+msgstr "フレーム特徴量のキャッシュが最新ではありません"
+
+#: optimizer/beat_critic_optimizer.py:375
+#, python-brace-format
+msgid "{stage}: step {done}/{steps} of each fold model"
+msgstr "{stage}: 各フォールドモデル {steps} ステップ中 {done} ステップ"
+
+#: optimizer/beat_critic_optimizer.py:460
+#, python-brace-format
+msgid "Decoder readings {done}/{total}"
+msgstr "デコーダーの読み取り {done}/{total}"
+
+#: optimizer/beat_critic_optimizer.py:475 optimizer/beat_tcn_optimizer.py:376
+#: optimizer/key_model_optimizer.py:520
+msgid "Held-out check"
+msgstr "検証用の曲で確認"
+
+#: optimizer/beat_critic_optimizer.py:486 optimizer/beat_tcn_optimizer.py:386
+msgid "Not saved: the grids got worse on the held-out songs"
+msgstr "保存しませんでした: 検証用の曲でグリッドが悪化しました"
+
+#: optimizer/beat_critic_optimizer.py:495 optimizer/beat_tcn_optimizer.py:397
+#: optimizer/key_model_optimizer.py:534
+msgid "Fine-tuning"
+msgstr "ファインチューニング"
+
+#: optimizer/beat_decoder_optimizer.py:169
+#, python-brace-format
+msgid "Tracking with every cost combination {done}/{total}"
+msgstr "すべてのコストの組み合わせでトラッキング {done}/{total}"
+
+#: optimizer/beat_decoder_optimizer.py:214
+msgid "Not saved: the held-out songs got worse"
+msgstr "保存しませんでした: 検証用の曲で悪化しました"
+
+#: optimizer/beat_frames.py:34
+#, python-brace-format
+msgid "invalid tempo rows: {error}"
+msgstr "無効なテンポ行: {error}"
+
+#: optimizer/beat_frames.py:37
+msgid "no tempo rows"
+msgstr "テンポ行がありません"
+
+#: optimizer/beat_frames.py:128
+#, python-brace-format
+msgid "frame feature cache build failed: {error}"
+msgstr "フレーム特徴量キャッシュの作成に失敗しました: {error}"
+
+#: optimizer/beat_frames.py:131
+#, python-brace-format
+msgid "Frame features {done}/{total}"
+msgstr "フレーム特徴量 {done}/{total}"
+
+#: optimizer/beat_grid_check.py:169
+#, python-brace-format
+msgid "End-to-end check {done}/{total}"
+msgstr "エンドツーエンドの確認 {done}/{total}"
+
+#: optimizer/beat_tcn_optimizer.py:304
+#, python-brace-format
+msgid "{stage}: step {done}/{steps} of each training"
+msgstr "{stage}: 各トレーニング {steps} ステップ中 {done} ステップ"
+
+#: optimizer/beat_tcn_optimizer.py:356
+msgid "Training frames"
+msgstr "学習用フレーム"
+
+#: optimizer/beat_tcn_optimizer.py:360
+msgid "Training frames ready"
+msgstr "学習用フレームの準備完了"
+
+#: optimizer/downbeat_ctx_optimizer.py:96
+msgid "fewer than two downbeats"
+msgstr "ダウンビートが 2 つ未満"
+
+#: optimizer/downbeat_ctx_optimizer.py:110
+#: optimizer/refine_onset_optimizer.py:163
+msgid "Training on the other songs"
+msgstr "残りの曲で学習中"
+
+#: optimizer/downbeat_ctx_optimizer.py:122
+#: optimizer/refine_onset_optimizer.py:184
+msgid "Not saved: the held-out songs' grids got worse"
+msgstr "保存しませんでした: 検証用の曲のグリッドが悪化しました"
+
+#: optimizer/downbeat_ctx_optimizer.py:129
+#: optimizer/refine_onset_optimizer.py:191
+msgid "Fitting all tracks"
+msgstr "全トラックで学習中"
+
+#: optimizer/jumpcue_parameter_optimizer.py:976
+msgid "Audio file not found"
+msgstr "オーディオファイルが見つかりません"
+
+#: optimizer/jumpcue_parameter_optimizer.py:982
+#, python-brace-format
+msgid "Reading the analysis failed: {error}"
+msgstr "解析の読み込みに失敗しました: {error}"
+
+#: optimizer/jumpcue_parameter_optimizer.py:984
+#, python-brace-format
+msgid "Need at least five tracks with saved JumpCUEs ({count} found)."
+msgstr "JumpCUE が保存されたトラックが少なくとも 5 件必要です ({count} 件)。"
+
+#: optimizer/jumpcue_parameter_optimizer.py:1002
+#, python-brace-format
+msgid "Building {count} JumpCUE candidate caches"
+msgstr "JumpCUE 候補キャッシュを {count} 件作成中"
+
+#: optimizer/jumpcue_parameter_optimizer.py:1003
+msgid "JumpCUE candidate cache is current"
+msgstr "JumpCUE 候補キャッシュは最新です"
+
+#: optimizer/jumpcue_parameter_optimizer.py:1015
+#, python-brace-format
+msgid "JumpCUE analysis failed: {error}"
+msgstr "JumpCUE の解析に失敗しました: {error}"
+
+#: optimizer/jumpcue_parameter_optimizer.py:1033
+msgid "No saved JumpCUE group matches an automatically found group"
+msgstr "保存された JumpCUE グループのうち、自動で見つかったグループに一致するものがありません"
+
+#: optimizer/jumpcue_parameter_optimizer.py:1038
+#, python-brace-format
+msgid "{count} labeled groups"
+msgstr "ラベル付きグループ {count} 件"
+
+#: optimizer/jumpcue_parameter_optimizer.py:1056
+#, python-brace-format
+msgid "Cross-validation fold {fold}/{folds}"
+msgstr "交差検証フォールド {fold}/{folds}"
+
+#: optimizer/jumpcue_parameter_optimizer.py:1062
+msgid "Fitting on all tracks"
+msgstr "全トラックで学習中"
+
+#: optimizer/key_model_optimizer.py:122
+#, python-brace-format
+msgid "unreadable analysis: {error}"
+msgstr "解析を読み込めません: {error}"
+
+#: optimizer/key_model_optimizer.py:125
+msgid "no key annotation"
+msgstr "キーのアノテーションがありません"
+
+#: optimizer/key_model_optimizer.py:195
+#, python-brace-format
+msgid "key feature cache build failed: {error}"
+msgstr "キー特徴量キャッシュの作成に失敗しました: {error}"
+
+#: optimizer/key_model_optimizer.py:198
+#, python-brace-format
+msgid "Key features {done}/{total}"
+msgstr "キー特徴量 {done}/{total}"
+
+#: optimizer/key_model_optimizer.py:441
+#, python-brace-format
+msgid "{stage}: epoch {epoch}/{epochs}, loss {loss}"
+msgstr "{stage}: エポック {epoch}/{epochs}、損失 {loss}"
+
+#: optimizer/key_model_optimizer.py:500
+msgid "too few beats or no key features"
+msgstr "拍が少なすぎるか、キー特徴量がありません"
+
+#: optimizer/key_model_optimizer.py:505
+#, python-brace-format
+msgid "Beat inputs {done}/{total}"
+msgstr "拍の入力 {done}/{total}"
+
+#: optimizer/key_model_optimizer.py:525
+msgid "Not saved: the held-out songs' keys got worse"
+msgstr "保存しませんでした: 検証用の曲のキーが悪化しました"
+
+#: optimizer/model_start.py:22
+msgid "songs with beat grids"
+msgstr "ビートグリッドのある曲"
+
+#: optimizer/model_start.py:23
+msgid "songs with checked key annotations"
+msgstr "キーを確認済みの曲"
+
+#: optimizer/model_start.py:39
+#, python-brace-format
+msgid "A shipped model is never overwritten; choose another path than {name}"
+msgstr "同梱のモデルは上書きしません。{name} 以外のパスを選んでください"
+
+#: optimizer/model_start.py:46
+#, python-brace-format
+msgid ""
+"Training from scratch needs at least {needed} {songs} (the library has "
+"{count})"
+msgstr "ゼロから学習するには{songs}が少なくとも {needed} 曲必要です (ライブラリには {count} 曲)"
+
+#: optimizer/model_start.py:47 optimizer/model_start.py:48
+#, python-brace-format
+msgid "Retraining needs at least {needed} {songs} (the library has {count})"
+msgstr "再学習するには{songs}が少なくとも {needed} 曲必要です (ライブラリには {count} 曲)"
+
+#: optimizer/model_start.py:49
+#, python-brace-format
+msgid "Refitting needs at least {needed} {songs} (the library has {count})"
+msgstr "再調整するには{songs}が少なくとも {needed} 曲必要です (ライブラリには {count} 曲)"
+
+#: optimizer/model_start.py:60
+#, python-brace-format
+msgid ""
+"Training from scratch needs at least {needed} {songs}; the library has "
+"{count}."
+msgstr "ゼロから学習するには{songs}が少なくとも {needed} 曲必要です。ライブラリには {count} 曲あります。"
+
+#: optimizer/model_start.py:61
+#, python-brace-format
+msgid "This needs at least {needed} {songs}; the library has {count}."
+msgstr "{songs}が少なくとも {needed} 曲必要です。ライブラリには {count} 曲あります。"
+
+#: optimizer/model_start.py:65
+#, python-brace-format
+msgid ""
+"{count} songs: fewer than the shipped model was trained on (about "
+"{shipped}); a model trained from scratch on them is likely to be worse "
+"than the shipped one."
+msgstr ""
+"{count} 曲: 同梱モデルの学習に使った曲数 (約 {shipped} 曲) "
+"より少ないです。これらの曲でゼロから学習したモデルは、同梱モデルより悪くなる可能性が高いです。"
+
+#: optimizer/model_start.py:69
+#, python-brace-format
+msgid ""
+"{count} songs: risk of overfitting to them, and the cross-validation "
+"check rests on few songs."
+msgstr "{count} 曲: これらの曲に過学習するおそれがあり、交差検証も少ない曲に頼ることになります。"
+
+#: optimizer/model_start.py:72
+msgid ""
+"Training from scratch takes one to two hours and discards what the "
+"shipped model learned."
+msgstr "ゼロから学習すると 1～2 時間かかり、同梱モデルが学習した内容は失われます。"
+
+#: optimizer/model_start.py:73
+msgid "Training from scratch discards what the shipped model learned."
+msgstr "ゼロから学習すると、同梱モデルが学習した内容は失われます。"
+
+#: optimizer/model_start.py:75
+msgid ""
+"The current model is already retrained: fine-tuning it again accumulates "
+"changes. Fine-tune the shipped model to start over."
+msgstr "現在のモデルはすでに再学習されています。もう一度ファインチューニングすると変更が積み重なります。やり直すには同梱モデルをファインチューニングしてください。"
+
+#: optimizer/model_start.py:78
+msgid "Fine-tuning the shipped model replaces the earlier retrained model."
+msgstr "同梱モデルをファインチューニングすると、以前に再学習したモデルは置き換えられます。"
+
+#: optimizer/onset_training.py:66 optimizer/phrase_backend.py:168
+msgid "analysis NPZ is missing"
+msgstr "解析 NPZ がありません"
+
+#: optimizer/onset_training.py:70 optimizer/phrase_backend.py:172
+msgid "audio file is missing"
+msgstr "オーディオファイルがありません"
+
+#: optimizer/onset_training.py:78
+#, python-brace-format
+msgid "invalid beat analysis: {error}"
+msgstr "無効なビート解析: {error}"
+
+#: optimizer/onset_training.py:82
+msgid "invalid or insufficient beat grid"
+msgstr "ビートグリッドが無効または不十分です"
+
+#: optimizer/phrase_backend.py:179
+#, python-brace-format
+msgid "invalid Phrase annotation: {error}"
+msgstr "無効なフレーズのアノテーション: {error}"
+
+#: optimizer/phrase_backend.py:185
+msgid "fewer than two usable Phrase segments"
+msgstr "使用できるフレーズ区間が 2 つ未満"
+
+#: optimizer/phrase_parameter_optimizer.py:207
+#, python-brace-format
+msgid "Cross-validation fold {fold}/{folds}: "
+msgstr "交差検証フォールド {fold}/{folds}: "
+
+#: optimizer/phrase_parameter_optimizer.py:381
+#, python-brace-format
+msgid "Phrase annotation validation failed: {error}"
+msgstr "フレーズのアノテーションの検証に失敗しました: {error}"
+
+#: optimizer/phrase_parameter_optimizer.py:385
+#, python-brace-format
+msgid ""
+"Need at least five valid annotated tracks to train a Phrase parameter "
+"artifact ({valid} valid, {ignored} ignored)."
+msgstr ""
+"フレーズパラメーターを学習するには、有効なアノテーション付きトラックが少なくとも 5 件必要です (有効 {valid} 件、除外 "
+"{ignored} 件)。"
+
+#: optimizer/phrase_parameter_optimizer.py:396
+#, python-brace-format
+msgid "Checking feature cache: {count} tracks"
+msgstr "特徴量キャッシュを確認中: トラック {count} 件"
+
+#: optimizer/phrase_parameter_optimizer.py:435
+#, python-brace-format
+msgid "Building {count} missing feature caches with {workers} workers"
+msgstr "不足している特徴量キャッシュ {count} 件をワーカー {workers} 個で作成中"
+
+#: optimizer/phrase_parameter_optimizer.py:438
+msgid "Feature cache is current"
+msgstr "特徴量キャッシュは最新です"
+
+#: optimizer/phrase_parameter_optimizer.py:465
+#, python-brace-format
+msgid "Phrase feature cache build failed: {error}"
+msgstr "フレーズ特徴量キャッシュの作成に失敗しました: {error}"
+
+#: optimizer/phrase_parameter_optimizer.py:491
+#, python-brace-format
+msgid "Preparing optimizer features {done}/{total}"
+msgstr "最適化用の特徴量を準備中 {done}/{total}"
+
+#: optimizer/phrase_parameter_optimizer.py:539
+#, python-brace-format
+msgid "Phrase feature preparation failed: {error}"
+msgstr "フレーズ特徴量の準備に失敗しました: {error}"
+
+#: optimizer/phrase_parameter_optimizer.py:544
+#, python-brace-format
+msgid "prepared ({done}/{total})"
+msgstr "準備完了 ({done}/{total})"
+
+#: optimizer/phrase_parameter_optimizer.py:550
+#, python-brace-format
+msgid ""
+"Need at least five tracks after Phrase feature validation ({valid} valid,"
+" {ignored} ignored)."
+msgstr "フレーズ特徴量の検証後、トラックが少なくとも 5 件必要です (有効 {valid} 件、除外 {ignored} 件)。"
+
+#: optimizer/phrase_parameter_optimizer.py:575
+msgid "Evaluating fitted Phrase models"
+msgstr "学習したフレーズモデルを評価中"
+
+#: optimizer/phrase_parameter_optimizer.py:580
+msgid "Writing parameter artifact"
+msgstr "パラメーターファイルを書き込み中"
+
+#: optimizer/phrase_refinement.py:247
+#, python-brace-format
+msgid "Pass-1 outputs out of fold {fold}/{folds}"
+msgstr "フォールド外のパス 1 出力 {fold}/{folds}"
+
+#: optimizer/phrase_refinement.py:255
+msgid "Fitting pass-1 boundary and label GBMs"
+msgstr "パス 1 の境界・ラベル GBM を学習中"
+
+#: optimizer/phrase_refinement.py:257
+msgid "Fitting bar-pair similarity GBM"
+msgstr "小節ペア類似度 GBM を学習中"
+
+#: optimizer/phrase_refinement.py:259
+msgid "Fitting pass-2 boundary GBM"
+msgstr "パス 2 の境界 GBM を学習中"
+
+#: optimizer/phrase_refinement.py:262
+msgid "Fitting pass-2 label GBM"
+msgstr "パス 2 のラベル GBM を学習中"
+
+#: optimizer/phrase_refinement.py:266
+msgid "Fitting label-change and bar-shift GBMs"
+msgstr "ラベル変化・小節シフト GBM を学習中"
+
+#: optimizer/phrase_refinement.py:269
+msgid "Fitting lead-in GBMs"
+msgstr "リードイン GBM を学習中"
+
+#: optimizer/refine_onset_optimizer.py:134
+#, python-brace-format
+msgid "feature cache build failed: {error}"
+msgstr "特徴量キャッシュの作成に失敗しました: {error}"
+
+#: optimizer/refine_onset_optimizer.py:137
+#, python-brace-format
+msgid "Feature cache {done}/{total}"
+msgstr "特徴量キャッシュ {done}/{total}"
+
+#: optimizer/refine_onset_optimizer.py:145
+msgid "feature cache is not current"
+msgstr "特徴量キャッシュが最新ではありません"
+
+#: ui/about_dialog.py:179
+msgid "About Mixlyzer"
+msgstr "Mixlyzer について"
+
+#: ui/about_dialog.py:184
+msgid ""
+"Mixlyzer\n"
+"\n"
+"Interactive beatgrid, key, and JumpCUE analysis and editing toolkit.\n"
+"Distributed under the GNU Lesser General Public License v3.0. See below "
+"for the full license text."
+msgstr ""
+"Mixlyzer\n"
+"\n"
+"ビートグリッド、キー、JumpCUE を解析・編集するインタラクティブなツールです。\n"
+"GNU Lesser General Public License v3.0 で配布されています。ライセンスの全文は以下をご覧ください。"
+
+#: ui/config/analysis.py:43 ui/config/analysis.py:154 ui/config/analysis.py:192
+#: ui/config/playback.py:106
+msgid "General"
+msgstr "一般"
+
+#: ui/config/analysis.py:46
+msgid "Analysis order and dependencies"
+msgstr "解析の順序と依存関係"
+
+#: ui/config/analysis.py:57
+msgid ""
+"The beat tracker reads every tempo in the octave from here (BPM min .. 2 "
+"x BPM min);\n"
+"a song outside it is read at half or double tempo."
+msgstr ""
+"ビートトラッカーはすべてのテンポをここから 1 オクターブの範囲 (最小 BPM .. 2 x 最小 BPM) で読み取ります。\n"
+"範囲外の曲は半分または 2 倍のテンポで読み取られます。"
+
+#: ui/config/analysis.py:62 ui/config/window.py:200
+#, python-brace-format
+msgid "Reads {low} - {high} BPM"
+msgstr "{low} - {high} BPM で読み取り"
+
+#: ui/config/analysis.py:64 ui/config/analysis.py:148
+msgid "Dynamic Analysis"
+msgstr "ダイナミック解析"
+
+#: ui/config/analysis.py:66
+msgid ""
+"Checked: tempo changes within a track (sections, ramps).\n"
+"Unchecked: one steady BPM for the whole track."
+msgstr ""
+"オン: トラック内のテンポ変化 (区間、ランプ) を検出します。\n"
+"オフ: トラック全体を一定の BPM 1 つとして扱います。"
+
+#: ui/config/analysis.py:69
+msgid "Dynamic Downbeat"
+msgstr "ダイナミックダウンビート"
+
+#: ui/config/analysis.py:71
+msgid ""
+"Checked: odd bars and meter changes within a track.\n"
+"Unchecked: one bar length and downbeat phase for the whole track.\n"
+"Always on with Dynamic Analysis."
+msgstr ""
+"オン: トラック内の端数小節や拍子の変化を検出します。\n"
+"オフ: トラック全体で小節の長さとダウンビートの位相を 1 つに固定します。\n"
+"ダイナミック解析では常にオンです。"
+
+#: ui/config/analysis.py:85
+msgid "relative or absolute .npz path"
+msgstr "相対または絶対の .npz パス"
+
+#: ui/config/analysis.py:86
+msgid "relative or absolute .json path"
+msgstr "相対または絶対の .json パス"
+
+#: ui/config/analysis.py:90
+msgid ""
+"Gradient-boosted onset model (.npz) that places the tracker's tempo "
+"changes."
+msgstr "トラッカーのテンポ変化の位置を決める勾配ブースティングのオンセットモデル (.npz)。"
+
+#: ui/config/analysis.py:93
+msgid "Folder for features cached while reoptimizing, so later runs are faster."
+msgstr "再最適化中に特徴量をキャッシュするフォルダー。次回以降の実行が速くなります。"
+
+#: ui/config/analysis.py:100
+msgid "The frame TCN (.npz, its trainings) that hears the beats and downbeats."
+msgstr "拍とダウンビートを聞き取るフレーム TCN (.npz、各トレーニング)。"
+
+#: ui/config/analysis.py:105
+msgid ""
+"The metronome critic (.npz, its fold models) that judges 3:2 / 4:3 "
+"readings."
+msgstr "3:2 / 4:3 の読み取りを判定するメトロノームクリティック (.npz、各フォールドモデル)。"
+
+#: ui/config/analysis.py:110
+msgid ""
+"The decoder's costs (.json): a new section, a same-tempo half-beat reset,"
+" an odd bar."
+msgstr "デコーダーのコスト (.json): 新しい区間、同じテンポでの半拍リセット、端数小節。"
+
+#: ui/config/analysis.py:115
+msgid "Gradient-boosted downbeat model (.npz) the tracker's bars read."
+msgstr "トラッカーの小節が読み取る勾配ブースティングのダウンビートモデル (.npz)。"
+
+#: ui/config/analysis.py:119
+msgid ""
+"Folder for the frame features the beat models are retrained on (the "
+"tracker's own frames)."
+msgstr "ビートモデルの再学習に使うフレーム特徴量のフォルダー (トラッカー自身のフレーム)。"
+
+#: ui/config/analysis.py:121
+msgid "Reoptimize Beat Models..."
+msgstr "ビートモデルを再最適化..."
+
+#: ui/config/analysis.py:122
+msgid "Retrain the beat analysis's models on your library's beat grids."
+msgstr "ライブラリのビートグリッドでビート解析のモデルを再学習します。"
+
+#: ui/config/analysis.py:127
+msgid "BPM min"
+msgstr "最小 BPM"
+
+#: ui/config/analysis.py:132 ui/config/analysis.py:169
+#: ui/config/analysis.py:195 ui/config/dialogs/optimization.py:204
+#: ui/config/library.py:89 ui/config/view.py:150
+msgid "Advanced"
+msgstr "詳細設定"
+
+#: ui/config/analysis.py:134
+msgid "Tempo-change onset (NPZ)"
+msgstr "テンポ変化オンセット (NPZ)"
+
+#: ui/config/analysis.py:135
+msgid "Onset feature cache"
+msgstr "オンセット特徴量キャッシュ"
+
+#: ui/config/analysis.py:136
+msgid "Beat TCN (NPZ)"
+msgstr "ビート TCN (NPZ)"
+
+#: ui/config/analysis.py:137
+msgid "Metronome critic (NPZ)"
+msgstr "メトロノームクリティック (NPZ)"
+
+#: ui/config/analysis.py:138
+msgid "Downbeat model (NPZ)"
+msgstr "ダウンビートモデル (NPZ)"
+
+#: ui/config/analysis.py:139
+msgid "Decoder costs (JSON)"
+msgstr "デコーダーコスト (JSON)"
+
+#: ui/config/analysis.py:140
+msgid "Beat feature cache"
+msgstr "ビート特徴量キャッシュ"
+
+#: ui/config/analysis.py:150
+msgid ""
+"Key changes within a track. Off: one key for the whole track -- the key "
+"the dynamic analysis finds in the intro, outro and interludes (where "
+"tracks are mixed), or the key it finds most when a track has none. "
+"Applies to the analysis and the editor's whole-track key reanalysis."
+msgstr ""
+"トラック内のキーの変化を検出します。オフ: トラック全体でキーを 1 つにします。ダイナミック解析がイントロ、アウトロ、インタールード "
+"(ミックスする箇所) で見つけたキー、それらがない場合は最も多く見つけたキーです。解析と、エディターでのトラック全体のキー再解析に適用されます。"
+
+#: ui/config/analysis.py:161
+msgid ""
+"The key model (.npz): the chord network that reads every beat, the chords"
+" each key uses by phrase position, and the key-change costs. A missing "
+"file means the shipped model."
+msgstr ""
+"キーモデル (.npz): "
+"すべての拍を読み取るコードネットワーク、フレーズ内の位置ごとに各キーが使うコード、キー変化のコスト。ファイルがない場合は同梱モデルを使います。"
+
+#: ui/config/analysis.py:166
+msgid "Reoptimize Key Model..."
+msgstr "キーモデルを再最適化..."
+
+#: ui/config/analysis.py:167
+msgid "Retrain the key model on the keys you checked in your library."
+msgstr "ライブラリで確認したキーでキーモデルを再学習します。"
+
+#: ui/config/analysis.py:171
+msgid "Key model (NPZ)"
+msgstr "キーモデル (NPZ)"
+
+#: ui/config/analysis.py:172
+msgid "Key feature cache"
+msgstr "キー特徴量キャッシュ"
+
+#: ui/config/analysis.py:178
+msgid "Use Phrase Analysis"
+msgstr "フレーズ解析を使用"
+
+#: ui/config/analysis.py:182 ui/config/analysis.py:637
+#: ui/config/analysis.py:698 ui/config/analysis.py:709
+msgid "Reoptimize Phrase Parameter"
+msgstr "フレーズパラメーターを再最適化"
+
+#: ui/config/analysis.py:185
+msgid "Detect phrase boundaries and labels during track analysis."
+msgstr "楽曲解析の際にフレーズの境界とラベルを検出します。"
+
+#: ui/config/analysis.py:187
+msgid "Learned phrase model (.npz)."
+msgstr "学習済みのフレーズモデル (.npz)。"
+
+#: ui/config/analysis.py:190
+msgid "Retrain the phrase model on the phrases stored in the library."
+msgstr "ライブラリに保存されたフレーズでフレーズモデルを再学習します。"
+
+#: ui/config/analysis.py:197
+msgid "Parameters (NPZ)"
+msgstr "パラメーター (NPZ)"
+
+#: ui/config/analysis.py:198 ui/config/analysis.py:234
+msgid "Feature cache"
+msgstr "特徴量キャッシュ"
+
+#: ui/config/analysis.py:206
+msgid "CUE point"
+msgstr "CUEポイント"
+
+#: ui/config/analysis.py:208 ui/config/dialogs/optimization.py:220
+#: ui/config/dialogs/optimization.py:344
+msgid "Off"
+msgstr "オフ"
+
+#: ui/config/analysis.py:210
+msgid ""
+"What the analysis puts at the automatic start position:\n"
+"the lead-in end, an early first downbeat, or 0:00.\n"
+"CUE point: a CUE point (memory cue).\n"
+"JumpCUE: a JumpCUE (hot cue) of its own.\n"
+"Off: nothing."
+msgstr ""
+"解析が自動開始位置に置くものを選びます:\n"
+"リードインの終わり、早い最初のダウンビート、または 0:00。\n"
+"CUEポイント: CUEポイント (メモリーキュー)。\n"
+"JumpCUE: 専用の JumpCUE (ホットキュー)。\n"
+"オフ: 何も置きません。"
+
+#: ui/config/analysis.py:218
+msgid "Automatic start"
+msgstr "自動開始"
+
+#: ui/config/analysis.py:222 ui/config/analysis.py:716
+#: ui/config/analysis.py:761 ui/config/analysis.py:772
+msgid "Reoptimize JumpCUE Parameter"
+msgstr "JumpCUE パラメーターを再最適化"
+
+#: ui/config/analysis.py:224
+msgid "Learned JumpCUE jump point model (.json)."
+msgstr "学習済みの JumpCUE ジャンプポイントモデル (.json)。"
+
+#: ui/config/analysis.py:227
+msgid ""
+"Retrain the jump point model on the JumpCUEs stored in the library. Where"
+" a track's JumpCUEs differ from its automatic analysis, the automatic "
+"choice is learned as the one to avoid."
+msgstr ""
+"ライブラリに保存された JumpCUE でジャンプポイントモデルを再学習します。トラックの JumpCUE "
+"が自動解析と異なる場合、自動で選ばれたほうを避けるべきものとして学習します。"
+
+#: ui/config/analysis.py:231
+msgid "JumpCUE Advanced"
+msgstr "JumpCUE 詳細設定"
+
+#: ui/config/analysis.py:233
+msgid "Parameters (JSON)"
+msgstr "パラメーター (JSON)"
+
+#: ui/config/analysis.py:241
+msgid "Global"
+msgstr "全体"
+
+#: ui/config/analysis.py:242 ui/config/pipeline_map.py:22
+msgid "Beat"
+msgstr "ビート"
+
+#: ui/config/analysis.py:245 ui/config/pipeline_map.py:24
+#: ui/config/pipeline_map.py:25
+msgid "CUE"
+msgstr "CUE"
+
+#: ui/config/analysis.py:258
+msgid "Analysis"
+msgstr "解析"
+
+#: ui/config/analysis.py:264
+msgid "CUE points (set by the analysis from the phrases)"
+msgstr "CUEポイント (解析がフレーズから設定)"
+
+#: ui/config/analysis.py:269
+msgid "At start"
+msgstr "開始位置"
+
+#: ui/config/analysis.py:270
+msgid "At end"
+msgstr "終了位置"
+
+#: ui/config/analysis.py:271
+msgid "Also between two of them"
+msgstr "同じラベルの間にも"
+
+#: ui/config/analysis.py:273
+#, python-brace-format
+msgid "A CUE point where a {label} phrase starts"
+msgstr "{label} フレーズが始まる位置に CUEポイント"
+
+#: ui/config/analysis.py:274
+#, python-brace-format
+msgid "A CUE point where a {label} phrase ends"
+msgstr "{label} フレーズが終わる位置に CUEポイント"
+
+#: ui/config/analysis.py:276
+#, python-brace-format
+msgid ""
+"Also where two {label} phrases meet; otherwise only where a {label} "
+"phrase meets a phrase of another label"
+msgstr "{label} フレーズ同士が接する位置にも置きます。オフの場合は {label} フレーズが別のラベルのフレーズと接する位置にだけ置きます"
+
+#: ui/config/analysis.py:291
+msgid "Applies to tracks analyzed (or reanalyzed) from now on."
+msgstr "今後解析 (または再解析) するトラックに適用されます。"
+
+#: ui/config/analysis.py:344
+#, python-brace-format
+msgid ""
+"A new {name} parameter file will be created at the configured path.\n"
+"Back up the existing file before overwriting it?"
+msgstr ""
+"設定したパスに新しい {name} パラメーターファイルを作成します。\n"
+"上書きする前に既存のファイルをバックアップしますか?"
+
+#: ui/config/analysis.py:359
+#, python-brace-format
+msgid ""
+"Failed to back up {name} parameter:\n"
+"{error}"
+msgstr ""
+"{name} パラメーターをバックアップできませんでした:\n"
+"{error}"
+
+#: ui/config/analysis.py:418
+#, python-brace-format
+msgid ""
+"Optimization completed after ignoring {count} invalid track. Open Details"
+" to see the songs and reasons."
+msgid_plural ""
+"Optimization completed after ignoring {count} invalid tracks. Open "
+"Details to see the songs and reasons."
+msgstr[0] "無効なトラック {count} 件を除外して最適化を完了しました。「詳細を表示」で曲と理由を確認できます。"
+
+#: ui/config/analysis.py:427
+#, python-brace-format
+msgid "Reason: {reason}"
+msgstr "理由: {reason}"
+
+#: ui/config/analysis.py:435 ui/config/dialogs/optimization.py:153
+#: ui/config/dialogs/optimization.py:267
+msgid "Reoptimize Beat Models"
+msgstr "ビートモデルの再最適化"
+
+#: ui/config/analysis.py:461
+#, python-brace-format
+msgid "{name}: parameter path or feature cache path is empty."
+msgstr "{name}: パラメーターのパスまたは特徴量キャッシュのパスが空です。"
+
+#: ui/config/analysis.py:500
+#, python-brace-format
+msgid ""
+"Failed to back up the {name} parameter:\n"
+"{error}"
+msgstr ""
+"{name} パラメーターをバックアップできませんでした:\n"
+"{error}"
+
+#: ui/config/analysis.py:541
+#, python-brace-format
+msgid "{name}: feature build pending"
+msgstr "{name}: 特徴量の作成待ち"
+
+#: ui/config/analysis.py:542
+#, python-brace-format
+msgid "{name}: optimize pending"
+msgstr "{name}: 最適化待ち"
+
+#: ui/config/analysis.py:560 ui/config/analysis.py:571
+msgid "none"
+msgstr "なし"
+
+#: ui/config/analysis.py:568
+#, python-brace-format
+msgid ""
+"{name} optimization failed:\n"
+"{error}\n"
+"\n"
+"Finished before the failure: {done}\n"
+"Not run: {remaining}"
+msgstr ""
+"{name} の最適化に失敗しました:\n"
+"{error}\n"
+"\n"
+"失敗前に完了したもの: {done}\n"
+"実行されなかったもの: {remaining}"
+
+#: optimizer/beat_critic_optimizer.py:504
+#: optimizer/beat_decoder_optimizer.py:214 optimizer/beat_tcn_optimizer.py:409
+#: optimizer/downbeat_ctx_optimizer.py:139
+#: optimizer/jumpcue_parameter_optimizer.py:1089
+#: optimizer/key_model_optimizer.py:541
+#: optimizer/phrase_parameter_optimizer.py:584
+#: optimizer/refine_onset_optimizer.py:208 ui/config/analysis.py:579
+#: ui/config/dialogs/optimization.py:95
+msgid "Done"
+msgstr "完了"
+
+#: ui/config/analysis.py:595
+#, python-brace-format
+msgid "{name}: saved to {path}"
+msgstr "{name}: {path} に保存しました"
+
+#: ui/config/analysis.py:597
+#, python-brace-format
+msgid ""
+"{name}: NOT saved -- the end-to-end check found the grids worse; the "
+"model in use is kept."
+msgstr "{name}: 保存しませんでした -- エンドツーエンドの確認でグリッドが悪化しました。使用中のモデルを維持します。"
+
+#: ui/config/analysis.py:601
+#, python-brace-format
+msgid ""
+"Costs: section {section_before} -> {section_after}, half-beat reset "
+"{reset_before} -> {reset_after}, odd bar {odd_before} -> {odd_after}"
+msgstr ""
+"コスト: 区間 {section_before} -> {section_after}、半拍リセット {reset_before} -> "
+"{reset_after}、端数小節 {odd_before} -> {odd_after}"
+
+#: ui/config/analysis.py:607
+msgid "No end-to-end check (cross-validation is off): saved without a comparison."
+msgstr "エンドツーエンドの確認なし (交差検証がオフ): 比較せずに保存しました。"
+
+#: ui/config/analysis.py:610
+#, python-brace-format
+msgid ""
+"End-to-end check on {count} held-out songs (the whole analysis, current "
+"vs new):"
+msgstr "検証用の {count} 曲でエンドツーエンドの確認 (解析全体、現在と新しいモデル):"
+
+#: ui/config/analysis.py:613
+#, python-brace-format
+msgid "End-to-end check on {count} songs (the whole analysis, current vs new):"
+msgstr "{count} 曲でエンドツーエンドの確認 (解析全体、現在と新しいモデル):"
+
+#: ui/config/analysis.py:615
+#, python-brace-format
+msgid "beats off by more than 25 ms: {before} -> {after} min"
+msgstr "25 ms 以上ずれた拍: {before} -> {after} 分"
+
+#: ui/config/analysis.py:617
+#, python-brace-format
+msgid "bars whose downbeat is off by more than 70 ms: {before} -> {after} min"
+msgstr "ダウンビートが 70 ms 以上ずれた小節: {before} -> {after} 分"
+
+#: ui/config/analysis.py:624
+#, python-brace-format
+msgid " and {count} more"
+msgstr " ほか {count} 曲"
+
+#: ui/config/analysis.py:626
+msgid "better"
+msgstr "改善"
+
+#: ui/config/analysis.py:627
+msgid "worse"
+msgstr "悪化"
+
+#: ui/config/analysis.py:629
+msgid "no song changed by more than a second"
+msgstr "1 秒以上変わった曲はありません"
+
+#: ui/config/analysis.py:642
+msgid "Phrase Parameter Path (npz) is empty."
+msgstr "フレーズパラメーターのパス (npz) が空です。"
+
+#: ui/config/analysis.py:649
+msgid "Phrase Feature Cache Path (directory) is empty."
+msgstr "フレーズ特徴量キャッシュのパス (フォルダー) が空です。"
+
+#: ui/config/analysis.py:658
+msgid "phrase"
+msgstr "フレーズ"
+
+#: ui/config/analysis.py:681 ui/config/analysis.py:742
+#: ui/config/dialogs/optimization.py:75
+msgid "CV"
+msgstr "CV"
+
+#: optimizer/beat_critic_optimizer.py:495 optimizer/beat_tcn_optimizer.py:397
+#: optimizer/key_model_optimizer.py:534 ui/config/analysis.py:681
+#: ui/config/analysis.py:742 ui/config/dialogs/optimization.py:75
+msgid "Training"
+msgstr "学習"
+
+#: ui/config/analysis.py:683
+#, python-brace-format
+msgid ""
+"Phrase parameter updated:\n"
+"{path}"
+msgstr ""
+"フレーズパラメーターを更新しました:\n"
+"{path}"
+
+#: ui/config/analysis.py:685
+#, python-brace-format
+msgid "Tracks: {count}"
+msgstr "トラック: {count}"
+
+#: ui/config/analysis.py:686
+#, python-brace-format
+msgid "{kind} boundary F1 (exact beat): {value}"
+msgstr "{kind} 境界 F1 (拍単位で一致): {value}"
+
+#: ui/config/analysis.py:687
+#, python-brace-format
+msgid "{kind} key-section change F1: {value}"
+msgstr "{kind} キー区間変化 F1: {value}"
+
+#: ui/config/analysis.py:688
+#, python-brace-format
+msgid "{kind} label-change boundary F1: {value}"
+msgstr "{kind} ラベル変化境界 F1: {value}"
+
+#: ui/config/analysis.py:689
+#, python-brace-format
+msgid "{kind} beat label accuracy: {value}"
+msgstr "{kind} 拍単位のラベル正解率: {value}"
+
+#: ui/config/analysis.py:690
+#, python-brace-format
+msgid "{kind} lead-in accuracy: {value}"
+msgstr "{kind} リードイン正解率: {value}"
+
+#: ui/config/analysis.py:693
+msgid ""
+"Interpretation: these in-sample scores only confirm how well the model "
+"fits its training data. They do not estimate performance on unseen "
+"tracks."
+msgstr "解釈: これらの学習データ内のスコアは、モデルが学習データにどれだけ合っているかを示すだけです。未知のトラックでの性能を推定するものではありません。"
+
+#: ui/config/analysis.py:710
+#, python-brace-format
+msgid ""
+"Phrase parameter optimization failed:\n"
+"{error}"
+msgstr ""
+"フレーズパラメーターの最適化に失敗しました:\n"
+"{error}"
+
+#: ui/config/analysis.py:720
+msgid "JumpCUE parameter path and feature cache path are required."
+msgstr "JumpCUE パラメーターのパスと特徴量キャッシュのパスが必要です。"
+
+#: ui/config/analysis.py:744
+#, python-brace-format
+msgid ""
+"{kind} saved choice above the automatic one: {value} ({count} corrected "
+"groups)"
+msgstr "{kind} 保存された選択が自動の選択より上位: {value} (修正されたグループ {count} 件)"
+
+#: ui/config/analysis.py:747
+msgid ""
+"No corrected groups yet: the library's JumpCUEs all match their automatic"
+" analysis, or were analyzed before it was kept."
+msgstr ""
+"修正されたグループはまだありません: ライブラリの JumpCUE "
+"がすべて自動解析と一致しているか、自動解析を保存するようになる前に解析されています。"
+
+#: ui/config/analysis.py:751
+#, python-brace-format
+msgid ""
+"JumpCUE parameter updated:\n"
+"{path}"
+msgstr ""
+"JumpCUE パラメーターを更新しました:\n"
+"{path}"
+
+#: ui/config/analysis.py:753
+#, python-brace-format
+msgid "Tracks: {tracks}, groups: {groups}"
+msgstr "トラック: {tracks}、グループ: {groups}"
+
+#: ui/config/analysis.py:754
+#, python-brace-format
+msgid "{kind} rank of the saved point among the candidates (AUC): {value}"
+msgstr "{kind} 候補内での保存されたポイントの順位 (AUC): {value}"
+
+#: ui/config/analysis.py:756
+#, python-brace-format
+msgid "{kind} chosen points on a downbeat: {value}"
+msgstr "{kind} ダウンビート上にある選択ポイント: {value}"
+
+#: ui/config/analysis.py:773
+#, python-brace-format
+msgid ""
+"JumpCUE parameter optimization failed:\n"
+"{error}"
+msgstr ""
+"JumpCUE パラメーターの最適化に失敗しました:\n"
+"{error}"
+
+#: ui/config/analysis.py:779 ui/config/analysis.py:835
+#: ui/config/analysis.py:841 ui/config/dialogs/optimization.py:324
+#: ui/config/dialogs/optimization.py:384
+msgid "Reoptimize Key Model"
+msgstr "キーモデルの再最適化"
+
+#: ui/config/analysis.py:783
+msgid "Key model path and feature cache path are required."
+msgstr "キーモデルのパスと特徴量キャッシュのパスが必要です。"
+
+#: ui/config/analysis.py:798
+#, python-brace-format
+msgid ""
+"Failed to back up the key model:\n"
+"{error}"
+msgstr ""
+"キーモデルをバックアップできませんでした:\n"
+"{error}"
+
+#: ui/config/analysis.py:818
+#, python-brace-format
+msgid "Key model saved to {path}"
+msgstr "キーモデルを {path} に保存しました"
+
+#: ui/config/analysis.py:819
+msgid ""
+"Key model NOT saved: the held-out songs' keys got worse; the model in use"
+" is kept."
+msgstr "キーモデルを保存しませんでした: 検証用の曲のキーが悪化しました。使用中のモデルを維持します。"
+
+#: ui/config/analysis.py:821
+#, python-brace-format
+msgid ""
+"Training songs: {count} ({edited} with keys changed from the automatic "
+"result, {legacy} analyzed before it was kept)"
+msgstr ""
+"学習に使った曲: {count} 曲 (自動の結果からキーを変更した曲 {edited} 曲、自動の結果を保存するようになる前に解析した曲 "
+"{legacy} 曲)"
+
+#: ui/config/analysis.py:824
+#, python-brace-format
+msgid "Key analysis on {count} held-out songs, current -> new:"
+msgstr "検証用の {count} 曲でのキー解析、現在 -> 新しいモデル:"
+
+#: ui/config/analysis.py:826
+#, python-brace-format
+msgid "Key analysis on the {count} training songs, current -> new:"
+msgstr "学習に使った {count} 曲でのキー解析、現在 -> 新しいモデル:"
+
+# | msgid "beats in the right key (Camelot number): {before} -> {after}"
+#: ui/config/analysis.py:827
+#, python-brace-format
+msgid "beats in the right key (Alphanumeric number): {before} -> {after}"
+msgstr "キーが合っている拍 (Alphanumeric 番号): {before} -> {after}"
+
+# | msgid "beats off by a fifth (Camelot neighbor): {before} -> {after}"
+#: ui/config/analysis.py:829
+#, python-brace-format
+msgid "beats off by a fifth (Alphanumeric neighbor): {before} -> {after}"
+msgstr "5 度ずれた拍 (Alphanumeric の隣): {before} -> {after}"
+
+#: ui/config/analysis.py:833
+msgid ""
+"Without cross-validation these are the training songs: they show the fit,"
+" not unseen songs."
+msgstr "交差検証なしでの学習に使った曲の結果です: モデルの当てはまりを示すもので、未知の曲での性能ではありません。"
+
+#: ui/config/analysis.py:842
+#, python-brace-format
+msgid ""
+"Key model optimization failed:\n"
+"{error}"
+msgstr ""
+"キーモデルの最適化に失敗しました:\n"
+"{error}"
+
+#: ui/config/dialogs/optimization.py:34
+msgid "Feature build pending"
+msgstr "特徴量の作成待ち"
+
+#: ui/config/dialogs/optimization.py:38
+msgid "Optimize pending"
+msgstr "最適化待ち"
+
+#: ui/config/dialogs/optimization.py:42 ui/config/dialogs/readings.py:24
+#: ui/config/dialogs/rekordbox.py:23
+msgid "Close"
+msgstr "閉じる"
+
+#: ui/config/dialogs/optimization.py:57
+msgid "Building features"
+msgstr "特徴量を作成中"
+
+#: ui/config/dialogs/optimization.py:62
+msgid "Optimizing"
+msgstr "最適化中"
+
+#: ui/config/dialogs/optimization.py:66
+msgid "Failed"
+msgstr "失敗"
+
+#: ui/config/dialogs/optimization.py:74
+#, python-brace-format
+msgid ", {count} skipped"
+msgstr "、{count} 件スキップ"
+
+#: ui/config/dialogs/optimization.py:77
+#, python-brace-format
+msgid "Done — {kind} top-1 {top1}, cross-entropy {entropy}"
+msgstr "完了 — {kind} top-1 {top1}、交差エントロピー {entropy}"
+
+#: ui/config/dialogs/optimization.py:80
+#, python-brace-format
+msgid "Done — {kind} track phase {phase}, beat top-1 {top1}"
+msgstr "完了 — {kind} トラック位相 {phase}、拍 top-1 {top1}"
+
+#: ui/config/dialogs/optimization.py:84
+#, python-brace-format
+msgid "Done — {kind} grid top-1 {top1}, beat AP {ap}"
+msgstr "完了 — {kind} グリッド top-1 {top1}、拍 AP {ap}"
+
+#: ui/config/dialogs/optimization.py:88
+#, python-brace-format
+msgid "Done — {kind} key accuracy {before} -> {after}"
+msgstr "完了 — {kind} キー正解率 {before} -> {after}"
+
+#: ui/config/dialogs/optimization.py:90
+msgid " (not saved)"
+msgstr " (保存せず)"
+
+#: ui/config/dialogs/optimization.py:92
+#, python-brace-format
+msgid "Done — {kind} key-section change F1 {f1}, label accuracy {accuracy}"
+msgstr "完了 — {kind} キー区間変化 F1 {f1}、ラベル正解率 {accuracy}"
+
+#: ui/config/dialogs/optimization.py:103
+msgid "Decoder costs"
+msgstr "デコーダーコスト"
+
+#: ui/config/dialogs/optimization.py:104
+msgid "Contextual downbeat model"
+msgstr "文脈ダウンビートモデル"
+
+#: ui/config/dialogs/optimization.py:105
+msgid "Tempo-change onset model"
+msgstr "テンポ変化オンセットモデル"
+
+#: ui/config/dialogs/optimization.py:106
+msgid "Beat activation network (TCN)"
+msgstr "ビートアクティベーションネットワーク (TCN)"
+
+#: ui/config/dialogs/optimization.py:107
+msgid "Metronome critic"
+msgstr "メトロノームクリティック"
+
+#: ui/config/dialogs/optimization.py:111
+msgid ""
+"How much evidence the decoder needs before it adds a new tempo section, a"
+" half-beat reset or an odd bar. Refit them after retraining the TCN. "
+"About 40 minutes (Quick: about 10)."
+msgstr ""
+"デコーダーが新しいテンポ区間、半拍リセット、端数小節を加える前にどれだけの根拠を必要とするかを決めます。TCN "
+"を再学習した後に再調整してください。約 40 分 (クイック: 約 10 分)。"
+
+#: ui/config/dialogs/optimization.py:115
+msgid ""
+"Gradient-boosted classifier: the probability that a bar starts on each "
+"beat, from harmony, bass and drum changes. A few minutes; at least 50 "
+"songs."
+msgstr "勾配ブースティング分類器: ハーモニー、ベース、ドラムの変化から、各拍で小節が始まる確率を求めます。数分、少なくとも 50 曲。"
+
+#: ui/config/dialogs/optimization.py:119
+msgid ""
+"Gradient-boosted onset model that places each tempo change exactly. A few"
+" minutes; at least 50 songs."
+msgstr "各テンポ変化の位置を正確に決める勾配ブースティングのオンセットモデル。数分、少なくとも 50 曲。"
+
+#: ui/config/dialogs/optimization.py:122
+msgid ""
+"The network that hears beats and downbeats; every later stage reads it. "
+"Fine-tuning about 20 minutes, from scratch 1-2 hours (at least 200 "
+"songs)."
+msgstr ""
+"拍とダウンビートを聞き取るネットワークで、以降のすべての段階がこれを読み取ります。ファインチューニングは約 20 分、ゼロからの学習は 1～2 "
+"時間 (少なくとも 200 曲)。"
+
+#: ui/config/dialogs/optimization.py:126
+msgid ""
+"Judges whether a grid sounds right and corrects 3:2 / 4:3 tempo misreads."
+" Fine-tuning about 45 minutes; from scratch at least 200 songs."
+msgstr ""
+"グリッドが正しく聞こえるかを判定し、3:2 / 4:3 のテンポの読み違いを修正します。ファインチューニングは約 45 "
+"分、ゼロからの学習は少なくとも 200 曲。"
+
+#: ui/config/dialogs/optimization.py:132 ui/config/dialogs/optimization.py:134
+#: ui/config/dialogs/optimization.py:312
+msgid "Fine-tune the current model"
+msgstr "現在のモデルをファインチューニング"
+
+#: ui/config/dialogs/optimization.py:133 ui/config/dialogs/optimization.py:135
+#: ui/config/dialogs/optimization.py:312
+msgid "Fine-tune the shipped model"
+msgstr "同梱モデルをファインチューニング"
+
+#: ui/config/dialogs/optimization.py:133 ui/config/dialogs/optimization.py:135
+#: ui/config/dialogs/optimization.py:313
+msgid "Train from scratch"
+msgstr "ゼロから学習"
+
+#: ui/config/dialogs/optimization.py:136
+msgid "Refit around the current costs"
+msgstr "現在のコストを中心に再調整"
+
+#: ui/config/dialogs/optimization.py:137
+msgid "Refit around the shipped costs"
+msgstr "同梱のコストを中心に再調整"
+
+#: ui/config/dialogs/optimization.py:140
+msgid ""
+"Current: continue from the model in use (earlier retraining builds up).\n"
+"Shipped: continue from the model that came with Mixlyzer.\n"
+"From scratch: learn from your grids alone; needs many songs."
+msgstr ""
+"現在: 使用中のモデルから続けます (以前の再学習が積み重なります)。\n"
+"同梱: Mixlyzer に付属のモデルから続けます。\n"
+"ゼロから: 自分のグリッドだけで学習します。多くの曲が必要です。"
+
+#: ui/config/dialogs/optimization.py:145
+msgid ""
+"Retrains the beat analysis's models on the beat grids in your library "
+"(the grids you checked and corrected are the training data). The shipped "
+"models are kept (default_* files). With cross-validation a retrained "
+"model is saved only when the held-out songs' grids are not worse. Hover "
+"over an item for details."
+msgstr ""
+"ライブラリのビートグリッドでビート解析のモデルを再学習します (確認・修正したグリッドが学習データです)。同梱モデルは残ります "
+"(default_* "
+"ファイル)。交差検証を使うと、検証用の曲のグリッドが悪化しない場合にだけ再学習したモデルを保存します。各項目にポインターを合わせると詳細が表示されます。"
+
+#: ui/config/dialogs/optimization.py:162
+#, python-brace-format
+msgid "Songs with beat grids: {count}."
+msgstr "ビートグリッドのある曲: {count} 曲。"
+
+#: ui/config/dialogs/optimization.py:177
+msgid "The candidates are centered on the current or the shipped costs."
+msgstr "候補は現在のコストまたは同梱のコストを中心に設定されます。"
+
+#: ui/config/dialogs/optimization.py:182
+msgid "Quick: half-beat reset and odd-bar costs only"
+msgstr "クイック: 半拍リセットと端数小節のコストのみ"
+
+#: ui/config/dialogs/optimization.py:184
+msgid "Keeps the section cost (the slow one to refit) and refits the other two."
+msgstr "区間のコスト (再調整に時間のかかるもの) はそのままにし、残りの 2 つだけを再調整します。"
+
+#: ui/config/dialogs/optimization.py:198
+msgid "Back up the files being replaced"
+msgstr "置き換えるファイルをバックアップ"
+
+#: ui/config/dialogs/optimization.py:199
+msgid "Copies each model file before it is overwritten."
+msgstr "上書きする前に各モデルファイルをコピーします。"
+
+#: ui/config/dialogs/optimization.py:215 ui/config/dialogs/optimization.py:352
+msgid "CV folds"
+msgstr "CV フォールド"
+
+#: ui/config/dialogs/optimization.py:222
+msgid ""
+"Cross-validation folds: the new model is saved only if held-out songs' "
+"grids are not worse. Off: always saved."
+msgstr "交差検証のフォールド: 検証用の曲のグリッドが悪化しない場合にだけ新しいモデルを保存します。オフ: 常に保存します。"
+
+#: ui/config/dialogs/optimization.py:267 ui/config/dialogs/optimization.py:385
+msgid "Continue?"
+msgstr "続行しますか?"
+
+#: ui/config/dialogs/optimization.py:315
+msgid ""
+"Retrains the key model on the keys you checked in your library: tracks "
+"whose keys you changed from the automatic result, and tracks analyzed "
+"before the automatic result was kept whose keys are not the old "
+"analyzer's raw output. Only keys train it, no chord labels. The shipped "
+"model is kept (default_* file). With cross-validation the retrained model"
+" is saved only when the held-out songs' keys are not worse. Features take"
+" a few seconds per song the first time; the training a few minutes."
+msgstr ""
+"ライブラリで確認したキーでキーモデルを再学習します: "
+"自動の結果からキーを変更したトラックと、自動の結果を保存するようになる前に解析したトラックのうちキーが旧解析器の出力そのままではないものが対象です。学習にはキーだけを使い、コードのラベルは使いません。同梱モデルは残ります"
+" (default_* ファイル)。交差検証を使うと、検証用の曲のキーが悪化しない場合にだけ再学習したモデルを保存します。特徴量は初回に 1 "
+"曲あたり数秒、学習は数分かかります。"
+
+#: ui/config/dialogs/optimization.py:329
+#, python-brace-format
+msgid "Analyzed songs: {count}."
+msgstr "解析済みの曲: {count} 曲。"
+
+#: ui/config/dialogs/optimization.py:337
+msgid ""
+"Current: continue from the model in use (earlier retraining builds up).\n"
+"Shipped: continue from the model that came with Mixlyzer.\n"
+"From scratch: learn from your keys alone; needs many songs."
+msgstr ""
+"現在: 使用中のモデルから続けます (以前の再学習が積み重なります)。\n"
+"同梱: Mixlyzer に付属のモデルから続けます。\n"
+"ゼロから: 自分のキーだけで学習します。多くの曲が必要です。"
+
+#: ui/config/dialogs/optimization.py:347
+msgid ""
+"Cross-validation folds: one group of songs is held out, and the new model"
+" is saved only if the whole key analysis gets their keys at least as "
+"right as the current one. Off: always saved."
+msgstr ""
+"交差検証のフォールド: 曲の 1 "
+"グループを検証用に取り分け、キー解析全体がそれらの曲のキーを現在のモデルと同等以上に当てられる場合にだけ新しいモデルを保存します。オフ: "
+"常に保存します。"
+
+#: ui/config/dialogs/optimization.py:350
+msgid "Start"
+msgstr "開始点"
+
+#: ui/config/dialogs/optimization.py:360
+msgid "Back up the file being replaced"
+msgstr "置き換えるファイルをバックアップ"
+
+#: ui/config/dialogs/optimization.py:361
+msgid "Copies the key model file before it is overwritten."
+msgstr "上書きする前にキーモデルファイルをコピーします。"
+
+#: ui/config/dialogs/readings.py:20 ui/config/dialogs/readings.py:36
+msgid "Starting the reading worker"
+msgstr "読みのワーカーを起動中"
+
+#: ui/config/dialogs/readings.py:25
+msgid "Close this window; the re-read goes on in the background."
+msgstr "このウィンドウを閉じます。再読み込みはバックグラウンドで続きます。"
+
+#: ui/config/dialogs/readings.py:40
+msgid "Reading the library"
+msgstr "ライブラリを読み込み中"
+
+#: ui/config/dialogs/readings.py:45
+#, python-brace-format
+msgid ""
+"Done: {tracks} tracks read, the readings of {changed} titles / artists / "
+"albums changed"
+msgstr "完了: トラック {tracks} 件を読み込み、タイトル / アーティスト / アルバム {changed} 件の読みが変わりました"
+
+#: ui/config/dialogs/readings.py:49
+#, python-brace-format
+msgid ""
+"Re-reading the library failed:\n"
+"{error}"
+msgstr ""
+"ライブラリの再読み込みに失敗しました:\n"
+"{error}"
+
+#: ui/config/dialogs/rekordbox.py:19
+msgid "Waiting for Rekordbox XML worker"
+msgstr "Rekordbox XML ワーカーを待機中"
+
+#: ui/config/dialogs/rekordbox.py:41
+msgid "Syncing Rekordbox XML"
+msgstr "Rekordbox XML を同期中"
+
+#: ui/config/dialogs/rekordbox.py:46
+#, python-brace-format
+msgid "Done — {count} XML entries"
+msgstr "完了 — XML 項目 {count} 件"
+
+#: ui/config/dialogs/rekordbox.py:48
+#, python-brace-format
+msgid ", {count} unchanged entries reused"
+msgstr "、変更のない項目 {count} 件を再利用"
+
+#: ui/config/dialogs/rekordbox.py:54
+#, python-brace-format
+msgid ""
+"Rekordbox XML sync failed:\n"
+"{error}"
+msgstr ""
+"Rekordbox XML の同期に失敗しました:\n"
+"{error}"
+
+#: ui/config/external_sync.py:47
+msgid ""
+"Comma-separated hex pointer chain. The first value is an offset from the\n"
+"process's main module (prefix 'g' for an absolute address); each "
+"following\n"
+"value is dereferenced and added as an offset."
+msgstr ""
+"カンマ区切りの 16 進ポインターチェーン。最初の値はプロセスのメインモジュールからの\n"
+"オフセットです (絶対アドレスには先頭に 'g')。以降の各値は\n"
+"参照先を読み取ってからオフセットとして加算します。"
+
+#: ui/config/external_sync.py:51
+msgid "Data type stored at the resolved address."
+msgstr "解決したアドレスに格納されているデータ型。"
+
+#: ui/config/external_sync.py:57
+msgid "Offset chain"
+msgstr "オフセットチェーン"
+
+#: ui/config/external_sync.py:58
+msgid "Type"
+msgstr "型"
+
+#: ui/config/external_sync.py:62
+msgid "Bytes to read for the string; it is cut at the first NUL."
+msgstr "文字列として読み取るバイト数。最初の NUL で切り詰めます。"
+
+#: ui/config/external_sync.py:64
+msgid "Length"
+msgstr "長さ"
+
+#: ui/config/external_sync.py:67
+msgid "Text encoding of the string, e.g. utf-8 or utf-16-le."
+msgstr "文字列のテキストエンコーディング (例: utf-8、utf-16-le)。"
+
+#: ui/config/external_sync.py:69
+msgid "Encoding"
+msgstr "エンコーディング"
+
+#: ui/config/external_sync.py:74
+msgid "Bit of the byte read as the flag (0-7). Values above 7 use the whole byte."
+msgstr "フラグとして読み取るバイトのビット (0-7)。7 を超える値ではバイト全体を使います。"
+
+#: ui/config/external_sync.py:77
+msgid "Bit position"
+msgstr "ビット位置"
+
+#: ui/config/external_sync.py:84
+msgid "The value read is multiplied by this to get seconds (e.g. 0.001 for ms)."
+msgstr "読み取った値にこの値を掛けて秒にします (例: ms なら 0.001)。"
+
+#: ui/config/external_sync.py:87
+msgid "Multiplier"
+msgstr "倍率"
+
+#: ui/config/external_sync.py:94
+msgid "Time"
+msgstr "時間"
+
+#: ui/config/external_sync.py:95
+msgid "Current Sample Index"
+msgstr "現在のサンプルインデックス"
+
+#: ui/config/external_sync.py:99
+msgid "Active"
+msgstr "アクティブ"
+
+#: ui/config/external_sync.py:100
+msgid "Loaded"
+msgstr "ロード済み"
+
+#: ui/config/external_sync.py:101
+msgid "Playback position of the deck (Time Sync mode)."
+msgstr "デッキの再生位置 (時間同期モード)。"
+
+#: ui/config/external_sync.py:103
+msgid "Playback position of the deck in samples (Sample Index Sync mode)."
+msgstr "サンプル単位のデッキの再生位置 (サンプルインデックス同期モード)。"
+
+#: ui/config/external_sync.py:105
+msgid "File path of the track loaded on the deck."
+msgstr "デッキにロードされたトラックのファイルパス。"
+
+#: ui/config/external_sync.py:106
+msgid ""
+"Flag marking the deck as active. Only loaded and active decks are "
+"followed."
+msgstr "デッキがアクティブであることを示すフラグ。ロード済みかつアクティブなデッキだけに追従します。"
+
+#: ui/config/external_sync.py:107
+msgid "Flag that is true while a track is loaded on the deck."
+msgstr "デッキにトラックがロードされている間は真になるフラグ。"
+
+#: ui/config/external_sync.py:128
+msgid "Enable external sync"
+msgstr "外部同期を有効にする"
+
+#: ui/config/external_sync.py:133
+msgid "from reference sample rate"
+msgstr "基準サンプルレートから"
+
+#: ui/config/external_sync.py:133
+msgid "from file"
+msgstr "ファイルから"
+
+#: ui/config/external_sync.py:149
+msgid "Refresh"
+msgstr "更新"
+
+#: ui/config/external_sync.py:151
+msgid ""
+"Follow the track and playback position of external software\n"
+"by reading its memory."
+msgstr ""
+"外部ソフトウェアのメモリを読み取り、\n"
+"トラックと再生位置に追従します。"
+
+#: ui/config/external_sync.py:155
+msgid ""
+"Time Sync: read the position as time (scaled by the multiplier).\n"
+"Sample Index Sync: read the position as a sample index."
+msgstr ""
+"時間同期: 位置を時間として読み取ります (倍率を適用)。\n"
+"サンプルインデックス同期: 位置をサンプルインデックスとして読み取ります。"
+
+#: ui/config/external_sync.py:159
+msgid ""
+"How the track's total sample count is found to convert a sample index to "
+"time.\n"
+"from reference sample rate: duration x reference sample rate.\n"
+"from file: the decoded file's own sample count."
+msgstr ""
+"サンプルインデックスを時間に変換するためのトラックの総サンプル数の求め方。\n"
+"基準サンプルレートから: 長さ x 基準サンプルレート。\n"
+"ファイルから: デコードしたファイル自体のサンプル数。"
+
+#: ui/config/external_sync.py:164
+msgid "Sample rate the external software counts samples at."
+msgstr "外部ソフトウェアがサンプルを数えるサンプルレート。"
+
+#: ui/config/external_sync.py:167
+msgid "Process to read memory from. Denylisted processes are blocked."
+msgstr "メモリを読み取るプロセス。拒否リストのプロセスはブロックされます。"
+
+#: ui/config/external_sync.py:169
+msgid "Reload the list of running processes."
+msgstr "実行中のプロセスの一覧を読み込み直します。"
+
+#: ui/config/external_sync.py:170
+msgid "Deck 1"
+msgstr "デッキ 1"
+
+#: ui/config/external_sync.py:171
+msgid "Deck 2"
+msgstr "デッキ 2"
+
+#: ui/config/external_sync.py:173
+msgid "Memory"
+msgstr "メモリ"
+
+#: ui/config/external_sync.py:182
+msgid "Process"
+msgstr "プロセス"
+
+#: ui/config/external_sync.py:184
+msgid ""
+"Warning: attaching memory sync to an unrelated process can trigger anti-"
+"cheat or antivirus false positives. Only target software you trust and "
+"explicitly intend to sync with."
+msgstr ""
+"警告: "
+"関係のないプロセスにメモリ同期を接続すると、アンチチートやウイルス対策ソフトが誤検知することがあります。信頼でき、明確に同期したいソフトウェアだけを対象にしてください。"
+
+#: ui/config/external_sync.py:203
+msgid ""
+"When enabled, local track loading and transport playback are restricted "
+"so the external software remains the source of truth."
+msgstr "有効にすると、ローカルでのトラックの読み込みとトランスポートの再生を制限し、外部ソフトウェアを基準にします。"
+
+#: ui/config/external_sync.py:209
+msgid "Mode"
+msgstr "モード"
+
+#: ui/config/external_sync.py:211
+msgid "Total Sample Count Source"
+msgstr "総サンプル数の取得元"
+
+#: ui/config/external_sync.py:213
+msgid "Reference Sample Rate"
+msgstr "基準サンプルレート"
+
+#: ui/config/external_sync.py:293
+#, python-brace-format
+msgid "[Blocked] {process}"
+msgstr "[ブロック] {process}"
+
+#: ui/config/external_sync.py:310 ui/config/external_sync.py:335
+#: ui/config/external_sync.py:350
+#, python-brace-format
+msgid "Blocked by denylist: {process}"
+msgstr "拒否リストによりブロック: {process}"
+
+#: ui/config/library.py:31
+msgid "Add Folder…"
+msgstr "フォルダーを追加…"
+
+#: ui/config/library.py:32
+msgid "Remove"
+msgstr "削除"
+
+#: ui/config/library.py:34
+msgid ""
+"When this list is empty, the operating system's default Music folder is "
+"used."
+msgstr "この一覧が空の場合は、OS の標準のミュージックフォルダーを使います。"
+
+#: ui/config/library.py:37
+msgid "Write log to file"
+msgstr "ログをファイルに書き込む"
+
+#: ui/config/library.py:39
+msgid "Sync with Rekordbox XML"
+msgstr "Rekordbox XML と同期"
+
+#: ui/config/library.py:41
+msgid "Sync Now"
+msgstr "今すぐ同期"
+
+#: ui/config/library.py:42
+msgid "Logging settings apply on next app launch."
+msgstr "ログの設定は次回のアプリ起動時に適用されます。"
+
+#: ui/config/library.py:43
+msgid "Use Sync Now to rebuild the whole XML explicitly."
+msgstr "XML 全体を明示的に作り直すには「今すぐ同期」を使ってください。"
+
+#: ui/config/library.py:47
+msgid ""
+"Folder holding library.db and the per-track feature files (.npz).\n"
+"Relative paths are resolved from the app folder."
+msgstr ""
+"library.db とトラックごとの特徴量ファイル (.npz) を置くフォルダー。\n"
+"相対パスはアプリのフォルダーを基準にします。"
+
+#: ui/config/library.py:51
+msgid "Root folders shown under Local Folders in the library browser."
+msgstr "ライブラリブラウザーの「ローカルフォルダー」の下に表示されるルートフォルダー。"
+
+#: ui/config/library.py:53
+msgid "Add a local music root folder."
+msgstr "ローカルの音楽のルートフォルダーを追加します。"
+
+#: ui/config/library.py:54
+msgid "Remove the selected root folders."
+msgstr "選択したルートフォルダーを削除します。"
+
+#: ui/config/library.py:55
+msgid "Write console output to a log file."
+msgstr "コンソールの出力をログファイルに書き込みます。"
+
+#: ui/config/library.py:56
+msgid "Log file written when 'Write log to file' is on."
+msgstr "「ログをファイルに書き込む」がオンのときに書き込むログファイル。"
+
+#: ui/config/library.py:58
+msgid ""
+"Keep a Rekordbox XML file updated with the library's beat grids, keys and"
+" cues."
+msgstr "ライブラリのビートグリッド、キー、キューを Rekordbox XML ファイルに反映し続けます。"
+
+#: ui/config/library.py:61
+msgid "Rekordbox XML file to write. Import it in Rekordbox to use the analysis."
+msgstr "書き込む Rekordbox XML ファイル。Rekordbox でインポートすると解析を利用できます。"
+
+#: ui/config/library.py:64
+msgid "Save these settings and rebuild the whole XML from the library now."
+msgstr "この設定を保存し、ライブラリから XML 全体を今すぐ作り直します。"
+
+#: ui/config/library.py:67 ui/config/library.py:104
+msgid "Library"
+msgstr "ライブラリ"
+
+#: ui/config/library.py:69
+msgid "Library Path"
+msgstr "ライブラリのパス"
+
+#: ui/config/library.py:80
+msgid "Local Music Folders"
+msgstr "ローカルの音楽フォルダー"
+
+#: ui/config/library.py:85
+msgid "XML Path"
+msgstr "XML のパス"
+
+#: ui/config/library.py:92
+msgid "Log Path"
+msgstr "ログのパス"
+
+#: ui/config/library.py:117
+msgid "Add Local Music Folder"
+msgstr "ローカルの音楽フォルダーを追加"
+
+#: ui/config/library.py:172
+msgid "Enable Sync with Rekordbox XML first."
+msgstr "先に「Rekordbox XML と同期」を有効にしてください。"
+
+#: ui/config/dialogs/rekordbox.py:15 ui/config/library.py:172
+#: ui/config/library.py:177
+msgid "Sync Rekordbox XML"
+msgstr "Rekordbox XML の同期"
+
+#: ui/config/library.py:177
+msgid "Rekordbox XML Path is empty."
+msgstr "Rekordbox XML のパスが空です。"
+
+#: ui/config/library.py:214
+msgid "Rekordbox XML worker started"
+msgstr "Rekordbox XML ワーカーを開始しました"
+
+#: ui/config/pipeline_map.py:21 ui/config/view.py:161
+msgid "View"
+msgstr "表示"
+
+#: ui/config/pipeline_map.py:30
+msgid "file"
+msgstr "ファイル"
+
+#: ui/config/pipeline_map.py:30
+msgid "audio"
+msgstr "オーディオ"
+
+#: ui/config/pipeline_map.py:30
+msgid "beat grid"
+msgstr "ビートグリッド"
+
+#: ui/config/pipeline_map.py:30
+msgid "phrases"
+msgstr "フレーズ"
+
+#: ui/config/pipeline_map.py:31
+msgid "Audio"
+msgstr "オーディオ"
+
+#: ui/config/pipeline_map.py:31
+msgid "decoded, HPSS"
+msgstr "デコード、HPSS"
+
+#: ui/config/pipeline_map.py:31
+msgid "overview levels"
+msgstr "全体波形のレベル"
+
+#: analyzer_core/global_analyzer.py:313 ui/config/pipeline_map.py:31
+msgid "Waveform"
+msgstr "波形"
+
+#: ui/config/pipeline_map.py:32
+msgid "Beat grid"
+msgstr "ビートグリッド"
+
+#: ui/config/pipeline_map.py:32
+msgid "beats, tempo, bars"
+msgstr "拍、テンポ、小節"
+
+#: ui/config/pipeline_map.py:32
+msgid "sections + labels"
+msgstr "区間 + ラベル"
+
+#: ui/config/pipeline_map.py:33
+msgid "by phrase label"
+msgstr "フレーズラベルごと"
+
+#: ui/config/pipeline_map.py:33
+msgid "JumpCUE"
+msgstr "JumpCUE"
+
+#: ui/config/pipeline_map.py:33
+msgid "jump points"
+msgstr "ジャンプポイント"
+
+#: ui/config/pipeline_map.py:33 ui/edit_panel/cue_slots.py:229
+msgid "CUE points"
+msgstr "CUEポイント"
+
+#: ui/config/pipeline_map.py:34
+msgid "key sections"
+msgstr "キー区間"
+
+# | msgid "" "Numbers: the order the analyzes run in. A wire: the analysis at
+# | the arrow" " needs that result. Every analysis also reads the decoded
+# audio
+# | (22050 " "Hz, HPSS). Click an analysis to open its settings."
+#: ui/config/pipeline_map.py:46
+msgid ""
+"Numbers: the order the analyses run in. A wire: the analysis at the arrow"
+" needs that result. Every analysis also reads the decoded audio (22050 "
+"Hz, HPSS). Click an analysis to open its settings."
+msgstr ""
+"数字: 解析が実行される順序。線: 矢印の先の解析がその結果を必要とします。すべての解析はデコードしたオーディオ (22050 Hz、HPSS) "
+"も読み取ります。解析をクリックするとその設定が開きます。"
+
+#: ui/config/pipeline_map.py:109
+#, python-brace-format
+msgid "{name}: open the {tab} settings"
+msgstr "{name}: {tab} の設定を開く"
+
+#: ui/config/playback.py:30
+msgid "Enable metronome"
+msgstr "メトロノームを有効にする"
+
+#: ui/config/playback.py:37
+msgid "Shift metronome clicks relative to the beat (positive = earlier)"
+msgstr "メトロノームのクリックを拍に対してずらします (正 = 早く)"
+
+#: ui/config/playback.py:46
+msgid "Use timestretch"
+msgstr "タイムストレッチを使う"
+
+#: ui/config/playback.py:48
+msgid "Tempo changes keep the pitch (time stretch) instead of varispeed"
+msgstr "テンポを変えてもピッチを保ちます (タイムストレッチ)。オフではバリスピード"
+
+#: ui/config/playback.py:64
+msgid "Duck music under metronome clicks"
+msgstr "メトロノームのクリック中は音楽を下げる"
+
+#: ui/config/playback.py:67
+msgid "Lowers the music by up to 6 dB, following each click"
+msgstr "クリックのたびに音楽を最大 6 dB 下げます"
+
+#: ui/config/playback.py:69
+msgid "Soft clip output (tanh)"
+msgstr "出力のソフトクリップ (tanh)"
+
+#: ui/config/playback.py:71
+msgid ""
+"Output above -1.9 dBFS is rounded off by tanh up to 0 dBFS instead of "
+"hard clipping"
+msgstr "-1.9 dBFS を超える出力を、ハードクリップではなく tanh で 0 dBFS まで丸めます"
+
+#: ui/config/playback.py:75
+msgid "Play a click on every beat of the beat grid."
+msgstr "ビートグリッドのすべての拍でクリックを鳴らします。"
+
+#: ui/config/playback.py:76
+msgid "WAV file used as the metronome click."
+msgstr "メトロノームのクリックに使う WAV ファイル。"
+
+#: ui/config/playback.py:78
+msgid "Fixed gain applied to the output before the volume slider (headroom)."
+msgstr "音量スライダーの前で出力にかける固定ゲイン (ヘッドルーム)。"
+
+#: ui/config/playback.py:80
+msgid "Volume slider position at startup."
+msgstr "起動時の音量スライダーの位置。"
+
+#: ui/config/playback.py:81
+msgid "Click volume on the first beat of each bar."
+msgstr "各小節の 1 拍目のクリックの音量。"
+
+#: ui/config/playback.py:83
+msgid "Pitch shift of the click on the first beat of each bar."
+msgstr "各小節の 1 拍目のクリックのピッチシフト。"
+
+#: ui/config/playback.py:85
+msgid "Click volume on the other beats."
+msgstr "その他の拍のクリックの音量。"
+
+#: ui/config/playback.py:86
+msgid "Pitch shift of the click on the other beats."
+msgstr "その他の拍のクリックのピッチシフト。"
+
+#: ui/config/playback.py:91
+msgid "Average audio queued in the output buffer (smoothed)."
+msgstr "出力バッファーに溜まっているオーディオの平均 (平滑化)。"
+
+#: ui/config/playback.py:94
+#, python-format
+msgid "Buffer level the output stayed above 99% of the time in the recent window."
+msgstr "直近の期間で出力が 99% の時間保っていたバッファーのレベル。"
+
+#: ui/config/playback.py:96
+msgid "Waiting for playback..."
+msgstr "再生を待機中..."
+
+#: ui/config/playback.py:98
+msgid "Audio queued in the output device buffer while playing, 0 ms = dropout."
+msgstr "再生中に出力デバイスのバッファーに溜まっているオーディオ。0 ms = ドロップアウト。"
+
+#: ui/config/playback.py:108
+msgid "Trim"
+msgstr "トリム"
+
+#: ui/config/playback.py:109
+msgid "Default volume (%)"
+msgstr "既定の音量 (%)"
+
+#: ui/config/playback.py:111
+msgid "Output buffer"
+msgstr "出力バッファー"
+
+#: ui/config/playback.py:113
+#, python-brace-format, python-format
+msgid "1% low ({seconds} s)"
+msgstr "下位 1% ({seconds} 秒)"
+
+#: ui/config/playback.py:117
+msgid "Time Stretch"
+msgstr "タイムストレッチ"
+
+#: ui/config/playback.py:121
+msgid "Metronome"
+msgstr "メトロノーム"
+
+#: ui/config/playback.py:125
+msgid "Details"
+msgstr "詳細"
+
+#: ui/config/playback.py:130
+msgid "Show or hide the metronome options."
+msgstr "メトロノームのオプションを表示/非表示にします。"
+
+#: ui/config/playback.py:136
+msgid "WAV path"
+msgstr "WAV のパス"
+
+#: ui/config/playback.py:137
+msgid "Offset (ms)"
+msgstr "オフセット (ms)"
+
+#: ui/config/playback.py:139
+msgid "Downbeat volume (%)"
+msgstr "ダウンビートの音量 (%)"
+
+#: ui/config/playback.py:142
+msgid "Downbeat pitch (semitones)"
+msgstr "ダウンビートのピッチ (半音)"
+
+#: ui/config/playback.py:144
+msgid "Beat volume (%)"
+msgstr "拍の音量 (%)"
+
+#: ui/config/playback.py:146
+msgid "Beat pitch (semitones)"
+msgstr "拍のピッチ (半音)"
+
+#: ui/config/playback.py:158
+msgid "Playback"
+msgstr "再生"
+
+#: ui/config/playback.py:210
+#, python-brace-format, python-format
+msgid ""
+"EMA {ema} / {capacity} ms   1% low {low} ms   lowest {lowest} ms "
+"({seconds} s)\n"
+"Dropout since opened {dropout} ms"
+msgstr ""
+"EMA {ema} / {capacity} ms   下位 1% {low} ms   最低 {lowest} ms ({seconds} 秒)"
+"\n"
+"開いてからのドロップアウト {dropout} ms"
+
+#: ui/config/search.py:21
+msgid "Japanese, by word (SudachiDict): 東京 toukyou."
+msgstr "日本語、単語単位 (SudachiDict): 東京 toukyou。"
+
+#: ui/config/search.py:22
+msgid "Mandarin pinyin, tones dropped: 東京 dong jing."
+msgstr "標準中国語のピンイン、声調なし: 東京 dong jing。"
+
+#: ui/config/search.py:23
+msgid "Cantonese Jyutping, tones dropped: 東京 dung ging."
+msgstr "広東語の粤拼 (Jyutping)、声調なし: 東京 dung ging。"
+
+#: ui/config/search.py:24
+msgid "Korean Hanja reading (Unihan), spelled as a word: 東京 donggyeong."
+msgstr "韓国漢字音 (Unihan)、1 語として表記: 東京 donggyeong。"
+
+#: ui/config/search.py:25
+msgid "Sino-Vietnamese reading (Unihan), diacritics dropped: 東京 dong kinh."
+msgstr "ベトナム漢字音 (Unihan)、声調記号なし: 東京 dong kinh。"
+
+#: ui/config/search.py:26
+msgid "Taiwan's Mandarin, kept only where it differs from Mandarin: 乾杯 gan bei."
+msgstr "台湾華語。標準中国語と異なる場合のみ保存: 乾杯 gan bei。"
+
+#: ui/config/search.py:59
+msgid "Library Readings"
+msgstr "ライブラリの読み"
+
+#: ui/config/search.py:63
+msgid ""
+"<p>The languages a title, artist or album of Han characters without kana "
+"is read in and stored for the search, one reading each. A change reads "
+"the library again when saved.</p>"
+msgstr ""
+"<p>かなを含まない漢字のタイトル、アーティスト、アルバムを検索用に読み取って保存する言語です。言語ごとに読みを 1 "
+"つずつ保存します。変更すると保存時にライブラリを読み込み直します。</p>"
+
+#: ui/config/search.py:65 ui/config/search.py:109
+msgid "Han Characters"
+msgstr "漢字"
+
+#: ui/config/search.py:70
+msgid "Han runs in Korean Hanja, from"
+msgstr "漢字の連続を韓国漢字音で、最小"
+
+#: ui/config/search.py:73
+msgid " characters"
+msgstr " 文字"
+
+#: ui/config/search.py:75
+msgid ""
+"<p>Han characters mixed with other characters are found by their Korean "
+"Hanja reading too. Beside Latin letters or Hangul all of them are read "
+"so; beside kana (read in Japanese with it) the runs of this many or more,"
+" the rest staying Japanese (Re:ゼロから始める異世界生活: zero kara hajimeru "
+"isegyesaenghwal; shorter runs there are mostly words read with the kana: "
+"君, 始める). Needs Korean Hanja checked.</p>"
+msgstr ""
+"<p>他の文字と混ざった漢字も韓国漢字音で検索できるようにします。ラテン文字やハングルの隣では漢字すべてを、かなの隣 (かなと一緒に日本語で読む)"
+" ではこの文字数以上連続する漢字だけを韓国漢字音で読み、残りは日本語のままにします (Re:ゼロから始める異世界生活: zero kara "
+"hajimeru isegyesaenghwal。これより短い連続は多くがかなと一緒に読む語です: "
+"君、始める)。韓国漢字音にチェックが必要です。</p>"
+
+#: ui/config/search.py:83
+msgid "Mixed Text"
+msgstr "混在テキスト"
+
+#: ui/config/search.py:92
+msgid ""
+"Kana is read in Japanese, Hangul in Korean, other scripts as written. "
+"Readings set in Edit Track are kept."
+msgstr "かなは日本語、ハングルは韓国語、その他の文字は表記どおりに読みます。「トラックの編集」で設定した読みは保持されます。"
+
+#: ui/config/dialogs/readings.py:17 ui/config/search.py:96
+msgid "Re-read Library"
+msgstr "ライブラリを再読み込み"
+
+#: ui/config/search.py:98
+msgid ""
+"<p>Save these settings and read every track's title, artist and album "
+"again, in the background. Readings set in Edit Track are kept.</p>"
+msgstr "<p>この設定を保存し、すべてのトラックのタイトル、アーティスト、アルバムをバックグラウンドで読み込み直します。「トラックの編集」で設定した読みは保持されます。</p>"
+
+#: ui/config/search.py:103
+msgid "Search Query"
+msgstr "検索語"
+
+#: ui/config/search.py:107
+msgid ""
+"<p>The languages Han characters in a query are read in: a track is found "
+"when any of them matches any of its readings.</p>"
+msgstr "<p>検索語の漢字を読む言語です。いずれかがトラックの読みのいずれかに一致するとトラックが見つかります。</p>"
+
+#: ui/config/search.py:113
+msgid "As Korean"
+msgstr "韓国語として"
+
+#: ui/config/search.py:115
+msgid ""
+"<p>Hangul read in Revised Romanization: 사회 finds a Korean title and 社会 by"
+" its Korean Hanja reading.</p>"
+msgstr "<p>ハングルを韓国の国語ローマ字表記法で読みます: 사회 で韓国語のタイトルを、韓国漢字音で 社会 を見つけます。</p>"
+
+#: ui/config/search.py:117
+msgid "As a foreign word"
+msgstr "外来語の表記として"
+
+#: ui/config/search.py:119
+msgid ""
+"<p>Hangul read as Korean spells a foreign word (ㅓ o, ㅡ u, ㅐ e): 도쿄 finds "
+"東京, 아노네 finds あのね.</p>"
+msgstr ""
+"<p>ハングルを、韓国語が外来語を書き表すときの表記として読みます (ㅓ o、ㅡ u、ㅐ e): 도쿄 で 東京 を、아노네 で あのね "
+"を見つけます。</p>"
+
+#: ui/config/search.py:121
+msgid "Typed without 한/영"
+msgstr "한/영 キーなしの入力"
+
+#: ui/config/search.py:123
+msgid ""
+"<p>A query typed on the 2-set (Dubeolsik) keyboard in the wrong input "
+"mode is also read as meant: tkghl as 사회 (whole syllables, two or more), "
+"무ㅐㅜㄷ as anone.</p>"
+msgstr ""
+"<p>2 ボル式 (Dubeolsik) キーボードで入力モードを誤ったまま入力した検索語も、意図したとおりに読みます: tkghl を 사회 "
+"として (完全な音節 2 つ以上)、무ㅐㅜㄷ を anone として。</p>"
+
+#: ui/config/search.py:129
+msgid "Hangul"
+msgstr "ハングル"
+
+#: ui/config/search.py:134
+msgid "Search"
+msgstr "検索"
+
+#: ui/config/view.py:29
+#, python-brace-format
+msgid "System ({language})"
+msgstr "システム ({language})"
+
+#: ui/config/view.py:32
+msgid "The language of the app's texts. Applied at the next start."
+msgstr "アプリのテキストの言語。次回の起動時から適用されます。"
+
+#: ui/config/view.py:34
+msgid "Display waveform"
+msgstr "波形を表示"
+
+#: ui/config/view.py:35
+msgid "Display beatgrid"
+msgstr "ビートグリッドを表示"
+
+#: ui/config/view.py:36
+msgid "Display keystrip"
+msgstr "キーストリップを表示"
+
+#: ui/config/view.py:37
+msgid "Display JumpCUE"
+msgstr "JumpCUE を表示"
+
+#: ui/config/view.py:38
+msgid "Display phrase overlay"
+msgstr "フレーズのオーバーレイを表示"
+
+#: ui/config/view.py:43
+msgid ""
+"RGB: the waveform colored by its low / mid / high mix.\n"
+"3Band: the low (blue), mid (amber) and high (white) bands drawn as layers."
+msgstr ""
+"RGB: 低域 / 中域 / 高域の比率で波形に色を付けます。\n"
+"3Band: 低域 (青)、中域 (アンバー)、高域 (白) の帯域を重ねて描きます。"
+
+#: ui/config/view.py:51
+#, python-brace-format
+msgid ""
+"Time resolution of the main view waveform bars when the view is up to "
+"{seconds} s wide.\n"
+"Smaller is more detailed."
+msgstr ""
+"表示幅が {seconds} 秒以下のときのメインビュー波形のバーの時間分解能。\n"
+"小さいほど細かくなります。"
+
+#: ui/config/view.py:54
+#, python-brace-format
+msgid ""
+"Time resolution of the main view waveform bars when the view is wider "
+"than {seconds} s.\n"
+"Smaller is more detailed."
+msgstr ""
+"表示幅が {seconds} 秒を超えるときのメインビュー波形のバーの時間分解能。\n"
+"小さいほど細かくなります。"
+
+#: ui/config/view.py:62
+msgid ""
+"Order of the main view waveform's band filters. Higher separates the "
+"bands more sharply."
+msgstr "メインビュー波形の帯域フィルターの次数。高いほど帯域をはっきり分けます。"
+
+#: ui/config/view.py:65
+msgid "Use output volume as peak meter input"
+msgstr "出力音量をピークメーターの入力に使う"
+
+#: ui/config/view.py:67
+msgid "Reduce FPS when occluded"
+msgstr "隠れているときは FPS を下げる"
+
+#: ui/config/view.py:73
+msgid "Waiting for FPS..."
+msgstr "FPS を待機中..."
+
+#: ui/config/view.py:75
+msgid "Measured from actual pyqtgraph plot repaint intervals."
+msgstr "pyqtgraph のプロットが実際に再描画された間隔から測定します。"
+
+#: ui/config/view.py:77
+msgid "Show the detailed waveform view."
+msgstr "詳細な波形ビューを表示します。"
+
+#: ui/config/view.py:78
+msgid "Show the beat grid view."
+msgstr "ビートグリッドのビューを表示します。"
+
+#: ui/config/view.py:79
+msgid "Show the key strip (detected key over time)."
+msgstr "キーストリップ (時間ごとに検出されたキー) を表示します。"
+
+#: ui/config/view.py:80
+msgid "Show the JumpCUE view (detected repeat jump points)."
+msgstr "JumpCUE のビュー (検出された反復のジャンプポイント) を表示します。"
+
+#: ui/config/view.py:81
+msgid "Overlay the detected phrases on the views."
+msgstr "検出されたフレーズをビューに重ねて表示します。"
+
+#: ui/config/view.py:83
+msgid ""
+"Checked: the peak meter follows the volume slider (what you hear).\n"
+"Unchecked: the peak meter shows the level after Trim only."
+msgstr ""
+"オン: ピークメーターは音量スライダーに従います (聞こえる音)。\n"
+"オフ: ピークメーターはトリムだけを通したレベルを表示します。"
+
+#: ui/config/view.py:87
+msgid ""
+"Lower the redraw rate while the window is hidden behind other windows\n"
+"or minimized, to save CPU."
+msgstr ""
+"ウィンドウが他のウィンドウに隠れているか最小化されている間は、\n"
+"再描画の頻度を下げて CPU を節約します。"
+
+#: ui/config/view.py:90
+msgid "Target redraw rate of the views."
+msgstr "ビューの再描画の目標頻度。"
+
+#: ui/config/view.py:92
+msgid "Image drawn as the spinning record when a track has no album art."
+msgstr "トラックにアートワークがないときに回転するレコードとして描く画像。"
+
+#: ui/config/view.py:95 ui/config/view.py:97
+msgid "Language"
+msgstr "言語"
+
+#: ui/config/view.py:99
+msgid "Display"
+msgstr "表示"
+
+#: ui/config/view.py:106
+msgid "Waveform style"
+msgstr "波形のスタイル"
+
+#: ui/config/view.py:118
+msgid "lo"
+msgstr "下限"
+
+#: ui/config/view.py:119
+msgid "hi"
+msgstr "上限"
+
+#: ui/config/view.py:122
+msgid "Waveform bands"
+msgstr "波形の帯域"
+
+#: ui/config/view.py:124
+msgid ""
+"Low / mid / high bands of the waveforms' colors. The overview and the "
+"preview sum them from the\n"
+"12 stored bands, so a change redraws them at once (no re-analysis)."
+msgstr ""
+"波形の色の低域 / 中域 / 高域の帯域。全体波形とプレビューは保存された 12 の帯域から合成するため、\n"
+"変更するとすぐに再描画されます (再解析は不要)。"
+
+#: ui/config/view.py:129
+msgid "Low"
+msgstr "低域"
+
+#: ui/config/view.py:129
+msgid "Frequency range (Hz) drawn as the low band of the waveform."
+msgstr "波形の低域として描く周波数範囲 (Hz)。"
+
+#: ui/config/view.py:130
+msgid "Lower edge of the low band (Hz)."
+msgstr "低域の下限 (Hz)。"
+
+#: ui/config/view.py:130
+msgid "Upper edge of the low band (Hz)."
+msgstr "低域の上限 (Hz)。"
+
+#: ui/config/view.py:132
+msgid "Mid"
+msgstr "中域"
+
+#: ui/config/view.py:132
+msgid "Frequency range (Hz) drawn as the mid band of the waveform."
+msgstr "波形の中域として描く周波数範囲 (Hz)。"
+
+#: ui/config/view.py:133
+msgid "Lower edge of the mid band (Hz)."
+msgstr "中域の下限 (Hz)。"
+
+#: ui/config/view.py:133
+msgid "Upper edge of the mid band (Hz)."
+msgstr "中域の上限 (Hz)。"
+
+#: ui/config/view.py:135
+msgid "High"
+msgstr "高域"
+
+#: ui/config/view.py:135
+msgid "Frequency range (Hz) drawn as the high band of the waveform."
+msgstr "波形の高域として描く周波数範囲 (Hz)。"
+
+#: ui/config/view.py:136
+msgid "Lower edge of the high band (Hz)."
+msgstr "高域の下限 (Hz)。"
+
+#: ui/config/view.py:136
+msgid "Upper edge of the high band (Hz)."
+msgstr "高域の上限 (Hz)。"
+
+#: ui/config/view.py:138
+msgid "Main view waveform"
+msgstr "メインビューの波形"
+
+#: ui/config/view.py:140
+msgid "Frame, short view (ms)"
+msgstr "フレーム、短い表示 (ms)"
+
+#: ui/config/view.py:141
+msgid "Frame, long view (ms)"
+msgstr "フレーム、長い表示 (ms)"
+
+#: ui/config/view.py:142
+msgid "Filter order"
+msgstr "フィルターの次数"
+
+#: ui/config/view.py:144
+msgid "Performance"
+msgstr "パフォーマンス"
+
+#: ui/config/view.py:148
+msgid "Actual FPS"
+msgstr "実際の FPS"
+
+#: ui/config/view.py:152
+msgid "Record image path"
+msgstr "レコード画像のパス"
+
+#: ui/config/view.py:167
+msgid "Phrase labels"
+msgstr "フレーズラベル"
+
+#: ui/config/view.py:170
+msgid "Alias"
+msgstr "別名"
+
+#: ui/config/view.py:171
+msgid "Overview"
+msgstr "全体波形"
+
+#: ui/config/view.py:177
+#, python-brace-format
+msgid "Shown in place of {label} (empty: {label})"
+msgstr "{label} の代わりに表示 (空欄: {label})"
+
+#: ui/config/view.py:182
+#, python-brace-format
+msgid ""
+"{label} in the overview, numbered when it occurs more than once\n"
+"(empty: the first letter of its name)"
+msgstr ""
+"全体波形での {label}。複数回出てくる場合は番号を付けます\n"
+"(空欄: 名前の最初の文字)"
+
+#: ui/config/window.py:78
+msgid "Save the settings and close."
+msgstr "設定を保存して閉じます。"
+
+#: ui/config/window.py:80
+msgid "Close without saving unapplied changes."
+msgstr "適用していない変更は保存せずに閉じます。"
+
+#: ui/config/window.py:83
+msgid "Save the settings and keep the window open."
+msgstr "設定を保存し、ウィンドウは開いたままにします。"
+
+#: ui/edit_panel/beat_counter.py:19
+msgid "Hold to count beats passing under the playhead"
+msgstr "押している間、再生位置を通過する拍を数えます"
+
+#: ui/edit_panel/beat_counter.py:26
+msgid "Beats counted while the Count button is held"
+msgstr "カウントボタンを押している間に数えた拍"
+
+#: ui/edit_panel/beat_counter.py:33
+msgid "Bar.Beat of the current playhead position"
+msgstr "現在の再生位置の 小節.拍"
+
+#: ui/edit_panel/beatgrid.py:26
+msgid "Shift the whole beatgrid (every segment) half a beat earlier"
+msgstr "ビートグリッド全体 (すべての区間) を半拍早めます"
+
+#: ui/edit_panel/beatgrid.py:27
+msgid "Shift the current segment half a beat earlier"
+msgstr "現在の区間を半拍早めます"
+
+#: ui/edit_panel/beatgrid.py:28
+msgid "Shift the whole beatgrid (every segment) 10 ms earlier"
+msgstr "ビートグリッド全体 (すべての区間) を 10 ms 早めます"
+
+#: ui/edit_panel/beatgrid.py:29
+msgid "Shift the current segment 10 ms earlier"
+msgstr "現在の区間を 10 ms 早めます"
+
+#: ui/edit_panel/beatgrid.py:30
+msgid "Shift the whole beatgrid (every segment) 1 ms earlier"
+msgstr "ビートグリッド全体 (すべての区間) を 1 ms 早めます"
+
+#: ui/edit_panel/beatgrid.py:31
+msgid "Shift the current segment 1 ms earlier"
+msgstr "現在の区間を 1 ms 早めます"
+
+#: ui/edit_panel/beatgrid.py:32
+msgid "Shift the whole beatgrid (every segment) 1 ms later"
+msgstr "ビートグリッド全体 (すべての区間) を 1 ms 遅らせます"
+
+#: ui/edit_panel/beatgrid.py:33
+msgid "Shift the current segment 1 ms later"
+msgstr "現在の区間を 1 ms 遅らせます"
+
+#: ui/edit_panel/beatgrid.py:34
+msgid "Shift the whole beatgrid (every segment) 10 ms later"
+msgstr "ビートグリッド全体 (すべての区間) を 10 ms 遅らせます"
+
+#: ui/edit_panel/beatgrid.py:35
+msgid "Shift the current segment 10 ms later"
+msgstr "現在の区間を 10 ms 遅らせます"
+
+#: ui/edit_panel/beatgrid.py:36
+msgid "Shift the whole beatgrid (every segment) half a beat later"
+msgstr "ビートグリッド全体 (すべての区間) を半拍遅らせます"
+
+#: ui/edit_panel/beatgrid.py:37
+msgid "Shift the current segment half a beat later"
+msgstr "現在の区間を半拍遅らせます"
+
+#: ui/edit_panel/beatgrid.py:38
+msgid "Halve the BPM of the whole beatgrid (every segment); the downbeats stay"
+msgstr "ビートグリッド全体 (すべての区間) の BPM を半分にします。ダウンビートはそのままです"
+
+#: ui/edit_panel/beatgrid.py:39
+msgid "Halve the BPM of the current segment; the downbeats stay"
+msgstr "現在の区間の BPM を半分にします。ダウンビートはそのままです"
+
+#: ui/edit_panel/beatgrid.py:40
+msgid "Double the BPM of the whole beatgrid (every segment); the downbeats stay"
+msgstr "ビートグリッド全体 (すべての区間) の BPM を 2 倍にします。ダウンビートはそのままです"
+
+#: ui/edit_panel/beatgrid.py:41
+msgid "Double the BPM of the current segment; the downbeats stay"
+msgstr "現在の区間の BPM を 2 倍にします。ダウンビートはそのままです"
+
+#: ui/edit_panel/beatgrid.py:74
+msgid "Clear the reference BPM and the tap history"
+msgstr "基準 BPM とタップの履歴を消去します"
+
+#: ui/edit_panel/beatgrid.py:80
+msgid "Tap the beat to set the reference BPM"
+msgstr "拍に合わせてタップし、基準 BPM を設定します"
+
+#: ui/edit_panel/beatgrid.py:95
+msgid "Ref"
+msgstr "基準"
+
+#: ui/edit_panel/beatgrid.py:98
+msgid "Reference BPM (tapped or typed)"
+msgstr "基準 BPM (タップまたは入力)"
+
+#: ui/edit_panel/beatgrid.py:99
+msgid "Assign the reference BPM to the current segment (downbeat at its start)"
+msgstr "基準 BPM を現在の区間に割り当てます (ダウンビートは区間の先頭)"
+
+#: ui/edit_panel/beatgrid.py:100
+msgid ""
+"Make the reference BPM the current segment's starting tempo (a ramp to "
+"its end tempo; its first beat stays)"
+msgstr "基準 BPM を現在の区間の開始テンポにします (終了テンポへのランプ。最初の拍はそのまま)"
+
+#: ui/edit_panel/beatgrid.py:101
+msgid ""
+"Make the reference BPM the current segment's ending tempo (a ramp from "
+"its start tempo; its first beat stays)"
+msgstr "基準 BPM を現在の区間の終了テンポにします (開始テンポからのランプ。最初の拍はそのまま)"
+
+#: ui/edit_panel/beatgrid.py:105
+msgid ""
+"Merge the previous segment into the current one (keeps the current tempo "
+"/ phase)"
+msgstr "前の区間を現在の区間に結合します (現在のテンポ / 位相を維持)"
+
+#: ui/edit_panel/beatgrid.py:106
+msgid ""
+"Merge the next segment into the current one (keeps the current tempo / "
+"phase)"
+msgstr "次の区間を現在の区間に結合します (現在のテンポ / 位相を維持)"
+
+#: ui/edit_panel/beatgrid.py:107
+msgid "Split the current segment at the playhead"
+msgstr "現在の区間を再生位置で分割します"
+
+#: ui/edit_panel/beatgrid.py:108
+msgid "Make the beat nearest the playhead the current segment's downbeat"
+msgstr "再生位置に最も近い拍を現在の区間のダウンビートにします"
+
+#: ui/edit_panel/beatgrid.py:113
+msgid "Edit the whole beatgrid: shift and BPM x2 / x1/2 apply to every segment"
+msgstr "ビートグリッド全体を編集: 移動と BPM x2 / x1/2 をすべての区間に適用します"
+
+#: ui/edit_panel/beatgrid.py:114
+msgid "Edit the current segment: shift and BPM x2 / x1/2 apply to it only"
+msgstr "現在の区間を編集: 移動と BPM x2 / x1/2 をこの区間だけに適用します"
+
+#: ui/edit_panel/beatgrid.py:131
+#, python-brace-format
+msgid "Set the current segment to {meter}"
+msgstr "現在の区間を {meter} にします"
+
+#: ui/edit_panel/beatgrid.py:135
+msgid "Set the current segment to another time signature (1/4 - 8/4)"
+msgstr "現在の区間を別の拍子にします (1/4 - 8/4)"
+
+#: ui/edit_panel/beatgrid.py:146
+msgid "Metronome on / off"
+msgstr "メトロノームのオン / オフ"
+
+#: ui/edit_panel/beatgrid.py:149 ui/edit_panel/beatgrid.py:265
+msgid "Seg -- | Elapsed: 00:00.00 | Left: 00:00.00"
+msgstr "区間 -- | 経過: 00:00.00 | 残り: 00:00.00"
+
+#: ui/edit_panel/beatgrid.py:238
+msgid "Reanalyze the current segment's beatgrid from the audio"
+msgstr "現在の区間のビートグリッドをオーディオから再解析します"
+
+#: ui/edit_panel/beatgrid.py:241
+msgid "Reanalyze the current segment's beatgrid at the reference BPM"
+msgstr "現在の区間のビートグリッドを基準 BPM で再解析します"
+
+#: ui/edit_panel/beatgrid.py:267
+#, python-brace-format
+msgid "Seg {index} | Elapsed: {elapsed} | Left: {left}"
+msgstr "区間 {index} | 経過: {elapsed} | 残り: {left}"
+
+#: ui/edit_panel/beatgrid.py:525
+msgid ""
+"Tap to set reference BPM (WARNING! Tempo factor is not 1. RefBPM Will be "
+"scaled accordingly)"
+msgstr "タップして基準 BPM を設定 (注意: テンポ倍率が 1 ではありません。基準 BPM はそれに合わせて換算されます)"
+
+#: ui/edit_panel/beatgrid.py:526
+msgid ""
+"Reference BPM for Analysis and BPM Assigning (WARNING! Tempo factor is "
+"not 1. RefBPM Will be scaled accordingly)"
+msgstr "解析と BPM の割り当てに使う基準 BPM (注意: テンポ倍率が 1 ではありません。基準 BPM はそれに合わせて換算されます)"
+
+#: ui/edit_panel/beatgrid.py:530
+msgid "Tap to set reference BPM"
+msgstr "タップして基準 BPM を設定"
+
+#: ui/edit_panel/beatgrid.py:531
+msgid "Reference BPM for Analysis and BPM Assigning"
+msgstr "解析と BPM の割り当てに使う基準 BPM"
+
+#: ui/edit_panel/cue_slots.py:147
+msgid "Double-click to rename"
+msgstr "ダブルクリックで名前を変更"
+
+#: ui/edit_panel/cue_slots.py:236
+msgid "Previous page"
+msgstr "前のページ"
+
+#: ui/edit_panel/cue_slots.py:237
+msgid "Next page"
+msgstr "次のページ"
+
+#: ui/edit_panel/cue_slots.py:244
+msgid "Page"
+msgstr "ページ"
+
+#: ui/edit_panel/cue_slots.py:306
+#, python-brace-format
+msgid "Page {page} of {pages}"
+msgstr "{pages} ページ中 {page} ページ"
+
+#: ui/edit_panel/cuepoint.py:28
+msgid "MEMORY: set a CUE point at the nearest beat or track edge"
+msgstr "MEMORY: 最も近い拍またはトラックの端に CUEポイントを設定します"
+
+#: ui/edit_panel/cuepoint.py:39
+msgid "Move the playhead to this CUE (not while playing)"
+msgstr "再生位置をこの CUE に移動します (再生中は不可)"
+
+#: ui/edit_panel/cuepoint.py:40
+msgid "CUE color / delete"
+msgstr "CUE のカラー / 削除"
+
+#: ui/edit_panel/cuepoint.py:72 ui/edit_panel/jumpcue.py:110
+#, python-brace-format
+msgid "{time} - double-click to rename"
+msgstr "{time} - ダブルクリックで名前を変更"
+
+#: ui/edit_panel/cuepoint.py:117
+msgid "CUE color"
+msgstr "CUE のカラー"
+
+#: ui/edit_panel/cuepoint.py:119
+#, python-brace-format
+msgid "Color {number}"
+msgstr "カラー {number}"
+
+#: ui/edit_panel/cuepoint.py:124
+#, python-brace-format
+msgid "Delete CUE point {time}"
+msgstr "CUEポイント {time} を削除"
+
+#: ui/edit_panel/jumpcue.py:51
+msgid "Reanalyze the JumpCUEs with the current beatgrid"
+msgstr "現在のビートグリッドで JumpCUE を再解析します"
+
+#: ui/edit_panel/jumpcue.py:57
+msgid "Color (its group), beat moves, slots, delete"
+msgstr "カラー (グループ)、拍の移動、スロット、削除"
+
+#: ui/edit_panel/jumpcue.py:101
+msgid "SET: a JumpCUE in this slot at the nearest beat or track edge"
+msgstr "SET: 最も近い拍またはトラックの端に、このスロットの JumpCUE を置きます"
+
+#: ui/edit_panel/jumpcue.py:106
+msgid "Jump here on the next beat (when stopped: move the playhead here)"
+msgstr "次の拍でここへジャンプ (停止中: 再生位置をここへ移動)"
+
+#: ui/edit_panel/jumpcue.py:192
+msgid "Color (cues of one color jump between each other)"
+msgstr "カラー (同じカラーのキュー同士でジャンプします)"
+
+#: ui/edit_panel/jumpcue.py:195
+msgid "(unused)"
+msgstr "(未使用)"
+
+#: ui/edit_panel/jumpcue.py:199
+msgid "This color"
+msgstr "このカラー"
+
+#: ui/edit_panel/jumpcue.py:200
+msgid "One beat earlier"
+msgstr "1 拍早く"
+
+#: ui/edit_panel/jumpcue.py:201
+msgid "One beat later"
+msgstr "1 拍遅く"
+
+#: ui/edit_panel/jumpcue.py:202
+msgid "Slots"
+msgstr "スロット"
+
+#: ui/edit_panel/jumpcue.py:204
+#, python-brace-format
+msgid "Insert a slot at {letter} (this and later cues move one slot on)"
+msgstr "{letter} にスロットを挿入 (このキューと以降のキューが 1 スロットずつ後ろへずれます)"
+
+#: ui/edit_panel/jumpcue.py:208
+#, python-brace-format
+msgid "Move into the empty slot {letter} (this and later cues move one slot back)"
+msgstr "空いているスロット {letter} へ移動 (このキューと以降のキューが 1 スロットずつ前へずれます)"
+
+#: ui/edit_panel/jumpcue.py:212
+#, python-brace-format
+msgid "Delete JumpCUE {letter}"
+msgstr "JumpCUE {letter} を削除"
+
+#: ui/edit_panel/jumpcue.py:261
+msgid "Two JumpCUEs cannot share a point."
+msgstr "2 つの JumpCUE が同じポイントを共有することはできません。"
+
+#: ui/edit_panel/jumpcue.py:404 ui/edit_panel/panel.py:609
+msgid "Invalid JumpCUE Label"
+msgstr "無効な JumpCUE ラベル"
+
+#: ui/edit_panel/key.py:21
+msgid "A semitone down: every segment's key"
+msgstr "半音下げる: すべての区間のキー"
+
+#: ui/edit_panel/key.py:22
+msgid "A semitone down: the current segment's key"
+msgstr "半音下げる: 現在の区間のキー"
+
+#: ui/edit_panel/key.py:23
+msgid "A semitone up: every segment's key"
+msgstr "半音上げる: すべての区間のキー"
+
+#: ui/edit_panel/key.py:24
+msgid "A semitone up: the current segment's key"
+msgstr "半音上げる: 現在の区間のキー"
+
+# | msgid "One step down the circle of fifths (Camelot -1): every segment's
+# key"
+#: ui/edit_panel/key.py:25
+msgid "One step down the circle of fifths (Alphanumeric -1): every segment's key"
+msgstr "五度圏で 1 つ下げる (Alphanumeric -1): すべての区間のキー"
+
+# | msgid "One step down the circle of fifths (Camelot -1): the current
+# | segment's key"
+#: ui/edit_panel/key.py:26
+msgid ""
+"One step down the circle of fifths (Alphanumeric -1): the current "
+"segment's key"
+msgstr "五度圏で 1 つ下げる (Alphanumeric -1): 現在の区間のキー"
+
+# | msgid "One step up the circle of fifths (Camelot +1): every segment's key"
+#: ui/edit_panel/key.py:27
+msgid "One step up the circle of fifths (Alphanumeric +1): every segment's key"
+msgstr "五度圏で 1 つ上げる (Alphanumeric +1): すべての区間のキー"
+
+# | msgid "One step up the circle of fifths (Camelot +1): the current
+# segment's
+# | key"
+#: ui/edit_panel/key.py:28
+msgid ""
+"One step up the circle of fifths (Alphanumeric +1): the current segment's"
+" key"
+msgstr "五度圏で 1 つ上げる (Alphanumeric +1): 現在の区間のキー"
+
+#: ui/edit_panel/key.py:29
+msgid "Relative major / minor (C <-> Am): every segment's key"
+msgstr "平行調の長調 / 短調 (C <-> Am): すべての区間のキー"
+
+#: ui/edit_panel/key.py:30
+msgid "Relative major / minor (C <-> Am): the current segment's key"
+msgstr "平行調の長調 / 短調 (C <-> Am): 現在の区間のキー"
+
+#: ui/edit_panel/key.py:36
+msgid "Move the current key segment's start one beat earlier"
+msgstr "現在のキー区間の開始を 1 拍早めます"
+
+#: ui/edit_panel/key.py:37
+msgid ""
+"Move the current key segment's start one bar (to the neighboring "
+"downbeat) earlier"
+msgstr "現在のキー区間の開始を 1 小節 (隣のダウンビートまで) 早めます"
+
+#: ui/edit_panel/key.py:38
+msgid "Move the current key segment's start one beat later"
+msgstr "現在のキー区間の開始を 1 拍遅らせます"
+
+#: ui/edit_panel/key.py:39
+msgid ""
+"Move the current key segment's start one bar (to the neighboring "
+"downbeat) later"
+msgstr "現在のキー区間の開始を 1 小節 (隣のダウンビートまで) 遅らせます"
+
+#: ui/edit_panel/key.py:40
+msgid "Move the current key segment's end one beat earlier"
+msgstr "現在のキー区間の終了を 1 拍早めます"
+
+#: ui/edit_panel/key.py:41
+msgid ""
+"Move the current key segment's end one bar (to the neighboring downbeat) "
+"earlier"
+msgstr "現在のキー区間の終了を 1 小節 (隣のダウンビートまで) 早めます"
+
+#: ui/edit_panel/key.py:42
+msgid "Move the current key segment's end one beat later"
+msgstr "現在のキー区間の終了を 1 拍遅らせます"
+
+#: ui/edit_panel/key.py:43
+msgid ""
+"Move the current key segment's end one bar (to the neighboring downbeat) "
+"later"
+msgstr "現在のキー区間の終了を 1 小節 (隣のダウンビートまで) 遅らせます"
+
+#: ui/edit_panel/key.py:67 ui/edit_panel/phrase.py:69
+msgid "Boundaries move by one beat"
+msgstr "境界を 1 拍ずつ移動します"
+
+#: ui/edit_panel/key.py:68 ui/edit_panel/phrase.py:70
+msgid "Boundaries move by one bar (to the neighboring downbeat)"
+msgstr "境界を 1 小節ずつ (隣のダウンビートまで) 移動します"
+
+#: ui/edit_panel/key.py:76
+msgid "Split the current key segment at the beat nearest the playhead"
+msgstr "現在のキー区間を再生位置に最も近い拍で分割します"
+
+#: ui/edit_panel/key.py:77
+msgid ""
+"Merge the previous key segment into the current one (keeps the current "
+"key)"
+msgstr "前のキー区間を現在の区間に結合します (現在のキーを維持)"
+
+#: ui/edit_panel/key.py:78
+msgid "Merge the next key segment into the current one (keeps the current key)"
+msgstr "次のキー区間を現在の区間に結合します (現在のキーを維持)"
+
+#: ui/edit_panel/key.py:79
+msgid "Merge every run of neighboring segments with the same key"
+msgstr "キーが同じ隣り合う区間をすべて 1 つに結合します"
+
+#: ui/edit_panel/key.py:80
+msgid "Reanalyze the current key segment's key from the audio"
+msgstr "現在のキー区間のキーをオーディオから再解析します"
+
+#: ui/edit_panel/key.py:81
+msgid "Reanalyze the keys of the whole track (dynamic)"
+msgstr "トラック全体のキーを再解析します (ダイナミック)"
+
+#: ui/edit_panel/key.py:84
+msgid "Key changes (pick, semitone, fifth, relative) apply to the whole track"
+msgstr "キーの変更 (選択、半音、5 度、平行調) をトラック全体に適用します"
+
+#: ui/edit_panel/key.py:85
+msgid "Key changes (pick, semitone, fifth, relative) apply to the current segment"
+msgstr "キーの変更 (選択、半音、5 度、平行調) を現在の区間に適用します"
+
+# | msgid "Pick the key (Camelot wheel)"
+#: ui/edit_panel/key.py:94 ui/edit_panel/key_picker.py:82
+msgid "Pick the key (Alphanumeric wheel)"
+msgstr "キーを選択 (Alphanumeric ホイール)"
+
+#: ui/edit_panel/key.py:109
+msgid ""
+"Root: hold the current key's root (and its octave) under the music.\n"
+"The plainest check of the tonic: it should feel like the note the music "
+"rests on."
+msgstr ""
+"根音: 現在のキーの根音 (とそのオクターブ) を音楽の下で鳴らし続けます。\n"
+"主音を確かめる最も素朴な方法で、音楽が落ち着く音のように感じられるはずです。"
+
+#: ui/edit_panel/key.py:115
+msgid ""
+"Root and fifth: hold the current key's root and fifth under the music.\n"
+"In the right key it sounds at home all the way through; a lasting clash\n"
+"means a wrong tonic (try semitone / fifth steps) or a key change."
+msgstr ""
+"根音と 5 度: 現在のキーの根音と 5 度を音楽の下で鳴らし続けます。\n"
+"正しいキーなら最後まで自然に聞こえます。ぶつかり続ける場合は\n"
+"主音の誤り (半音 / 5 度の移動を試す) か、キーの変化です。"
+
+#: ui/edit_panel/key.py:122
+msgid ""
+"Tonic chord: hold the current key's major / minor triad under the music.\n"
+"Tests the third: if the drone fits but the chord clashes, try the other "
+"mode\n"
+"on the same root; if the melody keeps resolving elsewhere, try the "
+"relative key."
+msgstr ""
+"主和音: 現在のキーの長 / 短三和音を音楽の下で鳴らし続けます。\n"
+"第 3 音を確かめます: ドローンは合うのに和音がぶつかる場合は同じ根音の別の旋法を、\n"
+"メロディーが別の音へ解決し続ける場合は平行調を試してください。"
+
+#: ui/edit_panel/key.py:128 ui/edit_panel/key.py:281
+msgid "-- | Seg -- | Elapsed: 00:00.00 | Left: 00:00.00"
+msgstr "-- | 区間 -- | 経過: 00:00.00 | 残り: 00:00.00"
+
+# | msgid "" "Pick one key for the whole track: it becomes one segment in that
+# | key " "(Camelot wheel)"
+#: ui/edit_panel/key.py:207
+msgid ""
+"Pick one key for the whole track: it becomes one segment in that key "
+"(Alphanumeric wheel)"
+msgstr "トラック全体のキーを 1 つ選びます: そのキーの 1 区間になります (Alphanumeric ホイール)"
+
+# | msgid "Pick the current segment's key (Camelot wheel)"
+#: ui/edit_panel/key.py:208
+msgid "Pick the current segment's key (Alphanumeric wheel)"
+msgstr "現在の区間のキーを選択 (Alphanumeric ホイール)"
+
+#: ui/edit_panel/key.py:294
+#, python-brace-format
+msgid "{key} | Seg {index} | Elapsed: {elapsed} | Left: {left}"
+msgstr "{key} | 区間 {index} | 経過: {elapsed} | 残り: {left}"
+
+#: ui/edit_panel/panel.py:59
+msgid "Beatgrid"
+msgstr "ビートグリッド"
+
+#: ui/edit_panel/panel.py:60
+msgid "Edit the beatgrid"
+msgstr "ビートグリッドを編集"
+
+#: ui/edit_panel/panel.py:60
+msgid "Edit the key"
+msgstr "キーを編集"
+
+#: ui/edit_panel/panel.py:61
+msgid "Edit the phrase"
+msgstr "フレーズを編集"
+
+#: ui/edit_panel/panel.py:61
+msgid "Edit the JumpCUEs and CUE points"
+msgstr "JumpCUE と CUEポイントを編集"
+
+#: ui/edit_panel/panel.py:136
+msgid "Undo Changes"
+msgstr "変更を元に戻す"
+
+#: ui/edit_panel/panel.py:140
+msgid "Redo Changes"
+msgstr "変更をやり直す"
+
+#: ui/edit_panel/panel.py:144
+msgid "Save Edits"
+msgstr "編集を保存"
+
+#: ui/edit_panel/panel.py:675
+msgid ""
+"<p>Editing is locked: pages switch, but nothing is edited or saved. Click"
+" to unlock.</p>"
+msgstr "<p>編集はロックされています: ページは切り替わりますが、編集も保存もされません。クリックするとロックを解除します。</p>"
+
+#: ui/edit_panel/panel.py:677
+msgid ""
+"<p>Editing is unlocked: the shown pages' graphics are emphasized. Click "
+"to lock: no edits, no saving (on at every start).</p>"
+msgstr ""
+"<p>編集のロックは解除されています: 表示中のページのグラフィックが強調されます。クリックするとロックします: 編集も保存もできなくなります "
+"(起動のたびにロック)。</p>"
+
+#: ui/edit_panel/phrase.py:33
+msgid "Move the current phrase's start one beat earlier"
+msgstr "現在のフレーズの開始を 1 拍早めます"
+
+#: ui/edit_panel/phrase.py:34
+msgid ""
+"Move the current phrase's start one bar (to the neighboring downbeat) "
+"earlier"
+msgstr "現在のフレーズの開始を 1 小節 (隣のダウンビートまで) 早めます"
+
+#: ui/edit_panel/phrase.py:35
+msgid "Move the current phrase's start one beat later"
+msgstr "現在のフレーズの開始を 1 拍遅らせます"
+
+#: ui/edit_panel/phrase.py:36
+msgid ""
+"Move the current phrase's start one bar (to the neighboring downbeat) "
+"later"
+msgstr "現在のフレーズの開始を 1 小節 (隣のダウンビートまで) 遅らせます"
+
+#: ui/edit_panel/phrase.py:37
+msgid "Move the current phrase's end one beat earlier"
+msgstr "現在のフレーズの終了を 1 拍早めます"
+
+#: ui/edit_panel/phrase.py:38
+msgid ""
+"Move the current phrase's end one bar (to the neighboring downbeat) "
+"earlier"
+msgstr "現在のフレーズの終了を 1 小節 (隣のダウンビートまで) 早めます"
+
+#: ui/edit_panel/phrase.py:39
+msgid "Move the current phrase's end one beat later"
+msgstr "現在のフレーズの終了を 1 拍遅らせます"
+
+#: ui/edit_panel/phrase.py:40
+msgid "Move the current phrase's end one bar (to the neighboring downbeat) later"
+msgstr "現在のフレーズの終了を 1 小節 (隣のダウンビートまで) 遅らせます"
+
+#: ui/edit_panel/phrase.py:78
+msgid "Split the current phrase at the beat nearest the playhead"
+msgstr "現在のフレーズを再生位置に最も近い拍で分割します"
+
+#: ui/edit_panel/phrase.py:79
+msgid "Merge the previous phrase into the current one (keeps the current label)"
+msgstr "前のフレーズを現在のフレーズに結合します (現在のラベルを維持)"
+
+#: ui/edit_panel/phrase.py:80
+msgid "Merge the next phrase into the current one (keeps the current label)"
+msgstr "次のフレーズを現在のフレーズに結合します (現在のラベルを維持)"
+
+#: ui/edit_panel/phrase.py:81
+msgid "Unassign the current phrase (UNASSIGNED)"
+msgstr "現在のフレーズのラベルを解除します (UNASSIGNED)"
+
+#: ui/edit_panel/phrase.py:85
+msgid "Reanalyze the phrases of the whole track with the current beatgrid"
+msgstr "現在のビートグリッドでトラック全体のフレーズを再解析します"
+
+#: ui/edit_panel/phrase.py:88
+msgid ""
+"Replace the CUE points with the ones the CUE rules give the current "
+"phrases\n"
+"(Settings > Analysis > CUE, as the full analysis makes them)"
+msgstr ""
+"CUEポイントを、現在のフレーズに CUE のルールを適用した結果で置き換えます\n"
+"(環境設定 > 解析 > CUE。通常の解析と同じ方法)"
+
+#: ui/edit_panel/phrase.py:104 ui/edit_panel/phrase.py:271
+msgid "-- | Seg -- | +0 beats | Left: 00:00.00"
+msgstr "-- | 区間 -- | +0 拍 | 残り: 00:00.00"
+
+#: ui/edit_panel/phrase.py:166
+#, python-brace-format
+msgid "Label the current phrase {label}"
+msgstr "現在のフレーズを {label} にする"
+
+#: ui/edit_panel/phrase.py:278
+#, python-brace-format
+msgid "{label} | Seg {index} | +{beats} beats | Left: {left}"
+msgstr "{label} | 区間 {index} | +{beats} 拍 | 残り: {left}"
+
+#: ui/edit_song.py:49
+msgid "Edit Track Metadata"
+msgstr "トラックのメタデータを編集"
+
+#: ui/edit_song.py:60
+msgid "Editable Fields"
+msgstr "編集できる項目"
+
+#: ui/edit_song.py:71
+msgid ""
+"The track's audio file. Set it when the file was moved or renamed;\n"
+"the analysis, playlists and CUEs stay with the track."
+msgstr ""
+"トラックのオーディオファイル。ファイルを移動したり名前を変更したりしたときに指定してください。\n"
+"解析、プレイリスト、CUE はトラックに残ります。"
+
+#: ui/edit_song.py:73 ui/export.py:42
+msgid "Browse..."
+msgstr "参照..."
+
+#: ui/edit_song.py:84 ui/edit_song.py:108 ui/export.py:53 ui/library.py:720
+msgid "Title"
+msgstr "タイトル"
+
+#: ui/edit_song.py:84 ui/edit_song.py:109 ui/export.py:54 ui/library.py:720
+msgid "Artist"
+msgstr "アーティスト"
+
+#: ui/edit_song.py:84 ui/edit_song.py:110 ui/export.py:55 ui/library.py:721
+msgid "Album"
+msgstr "アルバム"
+
+#: ui/edit_song.py:91
+msgid ""
+"<p>How the title, artist and album read in Latin letters: the search "
+"finds the track by them in any script (あのね by anone or 아노네). Dim: read "
+"from the text in Settings > Search's languages. Type in a cell to add a "
+"reading of yours; empty a cell (Delete) or type over it to remove its "
+"reading for good, and type it again to bring it back.</p>"
+msgstr ""
+"<p>タイトル、アーティスト、アルバムをラテン文字で表した読みです。検索はどの文字で入力しても、これらの読みでトラックを見つけます (あのね を "
+"anone や 아노네 で)。薄い文字: 環境設定 > 検索 "
+"の言語でテキストから読み取ったもの。セルに入力すると自分の読みを追加し、セルを空にする (Delete) "
+"か上書きするとその読みを完全に削除します。もう一度入力すると元に戻ります。</p>"
+
+#: ui/config/external_sync.py:97 ui/edit_song.py:107 ui/library.py:722
+msgid "Path"
+msgstr "パス"
+
+#: ui/edit_song.py:111
+msgid "Readings"
+msgstr "読み"
+
+#: analyzer_core/global_analyzer.py:504 ui/config/analysis.py:243
+#: ui/config/pipeline_map.py:26 ui/config/pipeline_map.py:34
+#: ui/edit_song.py:113
+msgid "Key"
+msgstr "キー"
+
+#: ui/edit_song.py:114
+msgid "Rating (0-5)"
+msgstr "レーティング (0-5)"
+
+#: ui/edit_song.py:115 ui/library.py:722
+msgid "Comment"
+msgstr "コメント"
+
+#: ui/edit_song.py:118
+msgid "Read-only Fields"
+msgstr "読み取り専用の項目"
+
+#: ui/edit_song.py:127
+msgid "Duration (sec)"
+msgstr "時間 (秒)"
+
+#: ui/edit_song.py:128
+msgid "Added (epoch)"
+msgstr "追加日時 (epoch)"
+
+#: ui/edit_song.py:129
+msgid "File mtime"
+msgstr "ファイルの更新日時"
+
+#: ui/edit_song.py:130
+msgid "File size (bytes)"
+msgstr "ファイルサイズ (バイト)"
+
+#: ui/edit_song.py:290
+msgid "Track File"
+msgstr "トラックファイル"
+
+#: ui/edit_song.py:298
+#, python-brace-format
+msgid ""
+"The file does not exist:\n"
+"{path}"
+msgstr ""
+"ファイルがありません:\n"
+"{path}"
+
+#: ui/edit_song.py:298 ui/edit_song.py:321 ui/library.py:1850
+msgid "Edit Track"
+msgstr "トラックの編集"
+
+#: ui/export.py:24 ui/export.py:148 ui/export.py:156 ui/export.py:163
+#: ui/export.py:169 ui/export.py:191 ui/export.py:202 ui/export.py:273
+#: ui/export.py:282 ui/export.py:337 ui/export.py:348 ui/library.py:1854
+#: ui/library.py:1946
+msgid "Export Track"
+msgstr "トラックのエクスポート"
+
+#: ui/export.py:56
+msgid "Source"
+msgstr "ソース"
+
+#: ui/export.py:57
+msgid "Destination Folder"
+msgstr "保存先フォルダー"
+
+#: ui/config/library.py:82 ui/export.py:59
+msgid "Rekordbox XML"
+msgstr "Rekordbox XML"
+
+#: ui/export.py:60
+msgid "Prerender JumpCUE Audio"
+msgstr "JumpCUE のオーディオを事前レンダリング"
+
+#: ui/export.py:61
+msgid "Write WAV files with JumpCUE skips baked in."
+msgstr "JumpCUE のスキップを反映した WAV ファイルを書き出します。"
+
+#: ui/export.py:66
+msgid "No JumpCUE directions"
+msgstr "JumpCUE の方向がありません"
+
+#: ui/export.py:71
+msgid "Include"
+msgstr "含める項目"
+
+#: ui/export.py:74
+msgid "Export"
+msgstr "エクスポート"
+
+#: ui/export.py:75
+msgid "Cancel"
+msgstr "キャンセル"
+
+#: ui/export.py:111
+msgid "Source file not found at the specified path."
+msgstr "指定したパスにソースファイルがありません。"
+
+#: ui/export.py:114
+msgid "Source path is invalid."
+msgstr "ソースのパスが無効です。"
+
+#: ui/export.py:140
+msgid "Select Destination Folder"
+msgstr "保存先フォルダーを選択"
+
+#: ui/export.py:148
+msgid "No track is selected."
+msgstr "トラックが選択されていません。"
+
+#: ui/export.py:157
+msgid ""
+"Select at least one export target (Rekordbox XML, Waveform Image, or "
+"JumpCUE audio)."
+msgstr "エクスポートする対象を 1 つ以上選んでください (Rekordbox XML、波形画像、JumpCUE のオーディオ)。"
+
+#: ui/export.py:163
+msgid "Please select a destination folder."
+msgstr "保存先フォルダーを選択してください。"
+
+#: ui/export.py:169
+#, python-brace-format
+msgid ""
+"Cannot create destination folder:\n"
+"{error}"
+msgstr ""
+"保存先フォルダーを作成できません:\n"
+"{error}"
+
+#: ui/export.py:192
+msgid "Select a JumpCUE direction to render."
+msgstr "レンダリングする JumpCUE の方向を選んでください。"
+
+#: ui/export.py:202
+#, python-brace-format
+msgid ""
+"Export completed:\n"
+"{files}"
+msgstr ""
+"エクスポートが完了しました:\n"
+"{files}"
+
+#: ui/export.py:274 ui/export.py:338
+#, python-brace-format
+msgid ""
+"'{name}' already exists.\n"
+"Overwrite?"
+msgstr ""
+"「{name}」はすでに存在します。\n"
+"上書きしますか?"
+
+#: ui/export.py:282
+#, python-brace-format
+msgid ""
+"Failed to write XML file:\n"
+"{error}"
+msgstr ""
+"XML ファイルを書き込めませんでした:\n"
+"{error}"
+
+#: ui/export.py:348
+#, python-brace-format
+msgid ""
+"Failed to write JumpCUE audio:\n"
+"{error}"
+msgstr ""
+"JumpCUE のオーディオを書き込めませんでした:\n"
+"{error}"
+
+#: ui/library.py:673
+msgid "AND: require every search condition (click to switch)"
+msgstr "AND: すべての検索条件を満たす (クリックで切り替え)"
+
+#: ui/library.py:674
+msgid "OR: accept any search condition (click to switch)"
+msgstr "OR: いずれかの検索条件を満たす (クリックで切り替え)"
+
+#: ui/library.py:720
+msgid "All"
+msgstr "すべて"
+
+#: ui/library.py:721
+msgid "Duration"
+msgstr "時間"
+
+#: ui/library.py:721
+msgid "Rating"
+msgstr "レーティング"
+
+#: ui/library.py:722
+msgid "Added"
+msgstr "追加日"
+
+#: ui/library.py:795
+msgid "Search title, artist, key ..."
+msgstr "タイトル、アーティスト、キーを検索..."
+
+#: ui/library.py:797
+msgid ""
+"<p>Titles, artists and albums are also found by how they read, in any "
+"script: あのね by anone, ano ne or 아노네 (the reading is set in Edit "
+"Track).</p>"
+msgstr ""
+"<p>タイトル、アーティスト、アルバムは読みでも検索できます。どの文字でも: あのね を anone、ano ne、아노네 で "
+"(読みは「トラックの編集」で設定)。</p>"
+
+#: ui/library.py:803
+msgid "Column the text search looks in"
+msgstr "テキスト検索の対象の列"
+
+#: ui/library.py:806
+msgid "Fuzzy"
+msgstr "あいまい"
+
+#: ui/library.py:806
+msgid ""
+"<p>Also find a similar pronunciation (from six letters of the reading on:"
+" about one sound in five off). Off: the reading must match, up to its "
+"spelling.</p>"
+msgstr ""
+"<p>似た読みも見つけます (読みの 6 文字目から: 5 音に 1 音程度の違い)。オフ: "
+"綴りの違いを除いて読みが一致する必要があります。</p>"
+
+#: ui/library.py:842
+msgid "Tracks with a phrase of this label (optionally at a BPM / key)"
+msgstr "このラベルのフレーズがあるトラック (BPM / キーの条件も指定可能)"
+
+#: analyzer_core/global_analyzer.py:398 ui/config/analysis.py:244
+#: ui/config/pipeline_map.py:23 ui/config/pipeline_map.py:32
+#: ui/edit_panel/panel.py:59 ui/library.py:842 ui/library.py:902
+msgid "Phrase"
+msgstr "フレーズ"
+
+#: ui/library.py:843
+msgid "Tracks whose BPM changes from one tempo to another"
+msgstr "BPM があるテンポから別のテンポへ変わるトラック"
+
+#: ui/library.py:844
+msgid "Tracks whose key changes from one key to another"
+msgstr "キーがあるキーから別のキーへ変わるトラック"
+
+#: ui/library.py:847
+msgid "Clear"
+msgstr "クリア"
+
+#: ui/library.py:848
+msgid "Remove every search condition (text and filters)"
+msgstr "すべての検索条件 (テキストとフィルター) を消去します"
+
+#: ui/library.py:855
+msgid "Also require this BPM inside the phrase"
+msgstr "フレーズ内にこの BPM があることも条件にする"
+
+#: ui/library.py:860
+msgid "Phrase BPM tolerance"
+msgstr "フレーズの BPM の許容誤差"
+
+#: ui/library.py:861
+msgid "Also require this key inside the phrase"
+msgstr "フレーズ内にこのキーがあることも条件にする"
+
+# | msgid "Key inside the selected phrase (Camelot wheel)"
+#: ui/library.py:863
+msgid "Key inside the selected phrase (Alphanumeric wheel)"
+msgstr "選択したフレーズ内のキー (Alphanumeric ホイール)"
+
+# | msgid "" "Also match harmonically compatible keys (±1 on the Camelot
+# wheel,
+# | " "relative key)"
+#: ui/library.py:865
+msgid ""
+"Also match harmonically compatible keys (±1 on the Alphanumeric wheel, "
+"relative key)"
+msgstr "相性の良いキーも含める (Alphanumeric ホイール ±1、平行調)"
+
+#: ui/library.py:865 ui/library.py:891
+msgid "Compat"
+msgstr "相性"
+
+#: ui/library.py:874
+msgid "BPM transition tolerance"
+msgstr "BPM 変化の許容誤差"
+
+#: ui/library.py:876
+msgid "Require the transition to start at the first BPM segment"
+msgstr "変化が最初の BPM 区間から始まることを条件にする"
+
+#: ui/library.py:876 ui/library.py:889
+msgid "1st"
+msgstr "最初"
+
+# | msgid "Key before the change (Camelot wheel)"
+#: ui/library.py:880
+msgid "Key before the change (Alphanumeric wheel)"
+msgstr "変化前のキー (Alphanumeric ホイール)"
+
+# | msgid "Key after the change (Camelot wheel)"
+#: ui/library.py:883
+msgid "Key after the change (Alphanumeric wheel)"
+msgstr "変化後のキー (Alphanumeric ホイール)"
+
+#: ui/library.py:889
+msgid "Require the transition to start at the first key segment"
+msgstr "変化が最初のキー区間から始まることを条件にする"
+
+# | msgid "" "Also match harmonically compatible keys at both ends (±1 on the
+# | Camelot " "wheel, relative key)"
+#: ui/library.py:891
+msgid ""
+"Also match harmonically compatible keys at both ends (±1 on the "
+"Alphanumeric wheel, relative key)"
+msgstr "両端とも相性の良いキーも含める (Alphanumeric ホイール ±1、平行調)"
+
+#: ui/library.py:900 ui/library.py:913
+msgid "Minimum duration of both sides of each enabled transition"
+msgstr "有効な各変化の前後それぞれの最小の長さ"
+
+#: ui/library.py:912
+msgid "Min seg"
+msgstr "最小区間"
+
+#: ui/library.py:1125
+msgid "Library (All)"
+msgstr "ライブラリ (すべて)"
+
+#: ui/library.py:1129
+msgid "Playlists"
+msgstr "プレイリスト"
+
+#: ui/library.py:1144
+msgid "Local Folders"
+msgstr "ローカルフォルダー"
+
+#: ui/config/external_sync.py:261 ui/library.py:1641 ui/pane.py:431
+msgid "External Sync"
+msgstr "外部同期"
+
+#: ui/library.py:1642
+msgid "Track loading is disabled while External Sync is enabled."
+msgstr "外部同期が有効な間はトラックを読み込めません。"
+
+#: ui/library.py:1677 ui/library.py:1706 ui/library.py:1713
+msgid "New Playlist"
+msgstr "新規プレイリスト"
+
+#: ui/library.py:1680
+msgid "Rename"
+msgstr "名前を変更"
+
+#: ui/library.py:1681
+msgid "Move Up"
+msgstr "上へ移動"
+
+#: ui/library.py:1682
+msgid "Move Down"
+msgstr "下へ移動"
+
+#: ui/library.py:1683 ui/library.py:1742
+msgid "Delete Playlist"
+msgstr "プレイリストを削除"
+
+#: ui/library.py:1685
+msgid "Refresh Folders"
+msgstr "フォルダーを更新"
+
+#: ui/library.py:1706 ui/library.py:1724
+msgid "Name"
+msgstr "名前"
+
+#: ui/library.py:1724 ui/library.py:1732
+msgid "Rename Playlist"
+msgstr "プレイリスト名を変更"
+
+#: ui/library.py:1743
+#, python-brace-format
+msgid ""
+"Delete playlist \"{name}\"?\n"
+"Tracks remain in the Library."
+msgstr ""
+"プレイリスト「{name}」を削除しますか?\n"
+"トラックはライブラリに残ります。"
+
+#: ui/library.py:1848
+msgid "Reveal in Explorer/Finder"
+msgstr "エクスプローラー/Finder で表示"
+
+#: ui/library.py:1849
+msgid "Remove from Library"
+msgstr "ライブラリから削除"
+
+#: ui/library.py:1852
+msgid "Reanalyze Track"
+msgstr "トラックを再解析"
+
+#: ui/library.py:1852
+msgid "Analyze Track"
+msgstr "トラックを解析"
+
+#: ui/library.py:1857
+msgid "Remove from Playlist"
+msgstr "プレイリストから削除"
+
+#: ui/library.py:1858
+msgid "Add to Playlist"
+msgstr "プレイリストに追加"
+
+#: ui/library.py:1946
+msgid "Track metadata could not be found in the library."
+msgstr "ライブラリでトラックのメタデータが見つかりません。"
+
+#: ui/oss_support.py:10
+msgid "Support Python & Open Source"
+msgstr "Python とオープンソースを支援"
+
+#: ui/oss_support.py:18
+msgid ""
+"This app is built on the shoulders of open-source projects.\n"
+"If you'd like to support the ecosystem, here are some ways."
+msgstr ""
+"このアプリはオープンソースプロジェクトの成果の上に作られています。\n"
+"エコシステムを支援したい場合は、次の方法があります。"
+
+#: ui/oss_support.py:25
+msgid "Donate to Python (PSF)"
+msgstr "Python に寄付 (PSF)"
+
+#: ui/oss_support.py:27
+msgid "Donate to Scientific Python (NumFOCUS)"
+msgstr "科学計算 Python に寄付 (NumFOCUS)"
+
+#: ui/oss_support.py:49
+msgid "Open Link"
+msgstr "リンクを開く"
+
+#: ui/pane.py:277
+#, python-format
+msgid "Tempo (0%-200%, 0 stops)"
+msgstr "テンポ (0%-200%、0 で停止)"
+
+#: ui/pane.py:341
+msgid "Tempo reset (100%)"
+msgstr "テンポをリセット (100%)"
+
+#: ui/pane.py:343
+msgid "Master tempo: time stretch keeps the pitch"
+msgstr "マスターテンポ: タイムストレッチでピッチを保ちます"
+
+#: ui/pane.py:432
+msgid "Playback is disabled while External Sync is enabled."
+msgstr "外部同期が有効な間は再生できません。"
+
+#: ui/pane.py:684
+msgid "Not Loaded"
+msgstr "トラックが読み込まれていません"
+
+#: ui/track_info_panel.py:372
+msgid "Unload track"
+msgstr "トラックをアンロード"
+
+#: ui/track_info_panel.py:724 ui/workers.py:194
+msgid "No Art"
+msgstr "アートワークなし"
+
+#: ui/workers.py:32
+msgid "Analysis Tasks"
+msgstr "解析タスク"
+
+#: ui/workers.py:136
+#, python-brace-format
+msgid "Task {id}"
+msgstr "タスク {id}"
+
+#: utils/jump_cues.py:105
+msgid "JumpCUE labels are limited to unique A-Z."
+msgstr "JumpCUE のラベルには重複しない A-Z しか使えません。"
+
+#: utils/jump_cues.py:132 utils/jump_cues.py:135 utils/jump_cues.py:315
+msgid "JumpCUE labels must be unique single letters A-Z."
+msgstr "JumpCUE のラベルは重複しない 1 文字の A-Z である必要があります。"
+

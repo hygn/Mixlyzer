@@ -11,6 +11,7 @@ from analyzer_core.hpss import hpss_audio_with_spectra
 from core.config import ANALYSIS_SAMPLE_RATE, config
 from utils.cue_points import autocue_time_sec
 from utils.jump_cues import autocue_jump_pair, build_jump_cues_np
+from core.i18n import tr
 
 def reanalyze_jumpCUE(path:str, cfg:config, beats_time_arr:np.ndarray, *,
     tempo_segments: Optional[np.ndarray] = None,
@@ -25,23 +26,23 @@ def reanalyze_jumpCUE(path:str, cfg:config, beats_time_arr:np.ndarray, *,
     for it), so it follows phrase and beat-grid edits and reanalyses."""
     gcf = cfg.analysisconfig
     if not bool(getattr(gcf, "phrase_analysis_enabled", True)):
-        raise ValueError("JumpCUE needs the phrase analysis; enable it in the analysis settings")
+        raise ValueError(tr("JumpCUE needs the phrase analysis; enable it in the analysis settings"))
     if tempo_segments is None or np.asarray(tempo_segments).size == 0:
-        raise ValueError("tempo segments are required for JumpCUE reanalysis")
+        raise ValueError(tr("tempo segments are required for JumpCUE reanalysis"))
     tempo_segments = np.asarray(tempo_segments, dtype=float)
     if progress_cb:
-        progress_cb("Loading audio", 0.0)
+        progress_cb(tr("Loading audio"), 0.0)
     sr = ANALYSIS_SAMPLE_RATE
     audio_stereo = fast_load(path, sr, stereo=True)
     audio_full = np.ascontiguousarray(audio_stereo.mean(axis=1), dtype=np.float32)
     if progress_cb:
-        progress_cb("Processing HPSS", 0.1)
+        progress_cb(tr("Processing HPSS"), 0.1)
     y_harm, y_perc, hpss_spectra = hpss_audio_with_spectra(audio_full, sr)
     if progress_cb:
-        progress_cb("Frame features", 0.25)
+        progress_cb(tr("Frame features"), 0.25)
     frames = extract_frame_features(audio_full, sr, y_perc, y_harm, hop_length=FRAME_HOP_LENGTH)
     if progress_cb:
-        progress_cb("Phrase boundaries", 0.4)
+        progress_cb(tr("Phrase boundaries"), 0.4)
     _segments, boundary_prob, phrase_feature_z = detect_phrase_segments(
         audio_stereo,
         sr,
@@ -53,9 +54,9 @@ def reanalyze_jumpCUE(path:str, cfg:config, beats_time_arr:np.ndarray, *,
         return_feature_z=True,
     )
     if boundary_prob is None:
-        raise ValueError("too few beats for the phrase analysis JumpCUE needs")
+        raise ValueError(tr("too few beats for the phrase analysis JumpCUE needs"))
     if progress_cb:
-        progress_cb("Analyzing JumpCUE", 0.55)
+        progress_cb(tr("Analyzing JumpCUE"), 0.55)
     autocue_target = (
         autocue_time_sec(phrases, beats_time_arr, tempo_segments)
         if gcf.autocue == "jumpcue"
@@ -98,7 +99,7 @@ def reanalyze_jumpCUE(path:str, cfg:config, beats_time_arr:np.ndarray, *,
     )
 
     if progress_cb:
-        progress_cb("JumpCUE Updated", 0.9)
+        progress_cb(tr("JumpCUE Updated"), 0.9)
     return {
         "jump_cues_np": jump_cues_np,
         "jump_cues_auto_np": jump_cues_np,

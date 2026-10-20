@@ -39,6 +39,7 @@ from analyzer_core.cue_and_phrase.structural_features import (
     multi_view_structure_features,
 )
 from utils.atomic_io import atomic_output_path
+from core.i18n import tr
 
 
 ProgressCallback = Callable[[int, str], None]
@@ -203,7 +204,7 @@ def _cross_validate(
         hi = 5 + int(round(fold * 60 / n_splits))
         artifact = _fit_pipeline(
             prepared, train, targets, settings, seed,
-            _scaled(progress, lo, hi, f"Cross-validation fold {fold}/{n_splits}: "),
+            _scaled(progress, lo, hi, tr("Cross-validation fold {fold}/{folds}: ").format(fold=fold, folds=n_splits)),
         )
         for i in test:
             predictions[int(i)] = _refinement.predict_track(prepared[int(i)], artifact)
@@ -377,13 +378,13 @@ def optimize_phrase_parameters(
             tracks_src.append(validation_track)
         except Exception as exc:
             ignored.append(
-                skipped_track(track, f"Phrase annotation validation failed: {exc}")
+                skipped_track(track, tr("Phrase annotation validation failed: {error}").format(error=exc))
             )
     if len(tracks_src) < 5:
-        raise RuntimeError(
+        raise RuntimeError(tr(
             "Need at least five valid annotated tracks to train a Phrase parameter "
-            f"artifact ({len(tracks_src)} valid, {len(ignored)} ignored)."
-        )
+            "artifact ({valid} valid, {ignored} ignored)."
+        ).format(valid=len(tracks_src), ignored=len(ignored)))
 
     config_values: dict[str, object] = asdict(DEFAULT_FEATURE_CONFIG)
     config = _phrase_backend.FeatureConfig(**config_values)
@@ -392,7 +393,7 @@ def optimize_phrase_parameters(
     total = len(tracks_src)
     cache_jobs: list[dict[str, object]] = []
     if feature_progress is not None:
-        feature_progress(0, f"Checking feature cache: {total} tracks")
+        feature_progress(0, tr("Checking feature cache: {count} tracks").format(count=total))
     for track in tracks_src:
         uid = str(track["uid"])
         beat_cache_path = cache_dir / f"{uid}.npz"
@@ -431,10 +432,10 @@ def optimize_phrase_parameters(
         feature_progress(
             int(round(cached_count * 75 / total)),
             (
-                f"Building {len(cache_jobs)} missing feature caches "
-                f"with {workers} workers"
+                tr("Building {count} missing feature caches with {workers} workers").format(
+                    count=len(cache_jobs), workers=workers)
                 if cache_jobs
-                else "Feature cache is current"
+                else tr("Feature cache is current")
             ),
         )
 
@@ -461,7 +462,7 @@ def optimize_phrase_parameters(
                 except Exception as exc:
                     failed_uids.add(uid)
                     ignored.append(
-                        skipped_track(track, f"Phrase feature cache build failed: {exc}")
+                        skipped_track(track, tr("Phrase feature cache build failed: {error}").format(error=exc))
                     )
                     beat_hit = False
                 if feature_progress is not None:
@@ -487,8 +488,8 @@ def optimize_phrase_parameters(
         if feature_progress is not None:
             feature_progress(
                 75 + int(round((index - 1) * 25 / max(prepare_total, 1))),
-                f"Preparing optimizer features {index}/{prepare_total}\n"
-                f"{optimizer_track_name(track)}",
+                tr("Preparing optimizer features {done}/{total}").format(done=index, total=prepare_total)
+                + "\n" + optimizer_track_name(track),
             )
         try:
             feat = _phrase_backend._current_beat_features(
@@ -535,19 +536,20 @@ def optimize_phrase_parameters(
             )
         except Exception as exc:
             ignored.append(
-                skipped_track(track, f"Phrase feature preparation failed: {exc}")
+                skipped_track(track, tr("Phrase feature preparation failed: {error}").format(error=exc))
             )
         if feature_progress is not None:
             feature_progress(
                 75 + int(round(index * 25 / max(prepare_total, 1))),
-                f"prepared ({index}/{prepare_total})\n{optimizer_track_name(track)}",
+                tr("prepared ({done}/{total})").format(done=index, total=prepare_total)
+                + "\n" + optimizer_track_name(track),
             )
 
     if len(prepared) < 5:
-        raise RuntimeError(
+        raise RuntimeError(tr(
             "Need at least five tracks after Phrase feature validation "
-            f"({len(prepared)} valid, {len(ignored)} ignored)."
-        )
+            "({valid} valid, {ignored} ignored)."
+        ).format(valid=len(prepared), ignored=len(ignored)))
     feature_dim = int(np.asarray(prepared[0]["feature_z"]).shape[1])
     boundary_dim = int(np.asarray(prepared[0]["boundary_feature_z"]).shape[1])
     targets = [track["optimizer_target"] for track in prepared]
@@ -570,16 +572,16 @@ def optimize_phrase_parameters(
         metrics = cv_metrics
     else:
         if optimize_progress is not None:
-            optimize_progress(88, "Evaluating fitted Phrase models")
+            optimize_progress(88, tr("Evaluating fitted Phrase models"))
         metrics = _refinement.pipeline_metrics(
             prepared, targets, [_refinement.predict_track(track, artifact) for track in prepared]
         )
     if optimize_progress is not None:
-        optimize_progress(95, "Writing parameter artifact")
+        optimize_progress(95, tr("Writing parameter artifact"))
     export_two_stage_npz_artifact(artifact, output_path)
     load_two_stage_model.cache_clear()
     if optimize_progress is not None:
-        optimize_progress(100, "Done")
+        optimize_progress(100, tr("Done"))
 
     return PhraseOptimizationResult(
         output_path=output_path,

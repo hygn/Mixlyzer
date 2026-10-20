@@ -9,6 +9,7 @@ from typing import Any, Callable
 from PySide6 import QtCore
 
 from core.concurrency.process_worker import SpawnProcessWorker, install_parent_watchdog
+from core.i18n import tr
 
 
 ProgressCallback = Callable[[int, str], None]
@@ -173,16 +174,14 @@ class OptimizerWorker(SpawnProcessWorker):
     def _process_exited(self, *, graceful: bool, exitcode: int | None) -> None:
         if not graceful and not self._error_emitted:
             self._error_emitted = True
-            self.failed.emit(f"{self._process_group} optimizer process exited unexpectedly ({exitcode}).")
+            self.failed.emit(tr("{name} optimizer process exited unexpectedly ({code}).").format(name=self._process_group, code=exitcode))
             return
         if self._error_emitted:
             return
         if len(self._results) != len(self._jobs):
             self._error_emitted = True
-            self.failed.emit(
-                f"{self._process_group} optimizer returned "
-                f"{len(self._results)} of {len(self._jobs)} result(s)."
-            )
+            self.failed.emit(tr("{name} optimizer returned {results} of {jobs} results.").format(
+                name=self._process_group, results=len(self._results), jobs=len(self._jobs)))
             return
         payload: object = self._results[0] if len(self._results) == 1 else tuple(self._results)
         self.finished.emit(payload)

@@ -33,6 +33,7 @@ from ui.about_dialog import AboutDialog
 from core.workflows.segment_reanalysis import SegmentReanalysisWorkflow
 from core.config import config, load_cfg, search_settings
 from core.beat_geometry import downbeat_beat_indices
+from core.i18n import tr
 
 class AppWindow(QtWidgets.QMainWindow):
     _sig_metronome_set_beats = QtCore.Signal(object, object, float)
@@ -44,7 +45,7 @@ class AppWindow(QtWidgets.QMainWindow):
         """``progress(fraction, part)``: how far the window is built (the startup splash)."""
         super().__init__()
         step = progress or (lambda _fraction, _part: None)
-        step(0.0, "Core objects and playback")
+        step(0.0, tr("Core objects and playback"))
         appid = "org.hygn.mixylzer"
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(appid)
         try:
@@ -103,27 +104,27 @@ class AppWindow(QtWidgets.QMainWindow):
         self.reading_refresh.finished.connect(lambda _request, _result: self._emit_library_update(self.cfg, None))
 
         # Main UI pane
-        step(0.03, "Main view, editor and library")
+        step(0.03, tr("Main view, editor and library"))
         self.pane = MainPane(self.bus, self.model, self.tl, self.cfg)
         self.setCentralWidget(self.pane)
         self.pane.install_default()
 
-        step(0.3, "Settings")
+        step(0.3, tr("Settings"))
         self.cfgwin = SettingsDialog(bus=self.bus)
         self.cfgwin.set_config(self.cfg)
-        step(0.6, "Dialogs, workflows and metronome")
+        step(0.6, tr("Dialogs, workflows and metronome"))
         self.workers = WorkersDialog()
         self.workers.set_bus(self.bus)
         self.support_dlg = SupportDialog(self)
         self.about_dialog = AboutDialog(self)
 
         # Toolbar
-        tb = self.addToolBar("Transport")
+        tb = self.addToolBar(tr("Transport"))
         tb.setMovable(False)
-        a_cfg = QtGui.QAction("Settings", self);  a_cfg.triggered.connect(self.open_cfg)
-        a_workers = QtGui.QAction("Workers", self); a_workers.triggered.connect(self.open_workers)
-        a_support_tb = QtGui.QAction("Open Source", self); a_support_tb.triggered.connect(self._open_support)
-        a_about = QtGui.QAction("About", self); a_about.triggered.connect(self._open_about)
+        a_cfg = QtGui.QAction(tr("Settings"), self);  a_cfg.triggered.connect(self.open_cfg)
+        a_workers = QtGui.QAction(tr("Workers"), self); a_workers.triggered.connect(self.open_workers)
+        a_support_tb = QtGui.QAction(tr("Open Source"), self); a_support_tb.triggered.connect(self._open_support)
+        a_about = QtGui.QAction(tr("About"), self); a_about.triggered.connect(self._open_about)
 
         self.bus.sig_stop_requested.connect(self.player.stop)
         self.bus.sig_pause_requested.connect(self.player.pause)
@@ -222,7 +223,7 @@ class AppWindow(QtWidgets.QMainWindow):
 
     def dropEvent(self, e: QtGui.QDropEvent):
         if self._is_external_sync_active():
-            self.statusBar().showMessage("External Sync is enabled. Local track loading is disabled.")
+            self.statusBar().showMessage(tr("External Sync is enabled. Local track loading is disabled."))
             e.ignore()
             return
         try:
@@ -232,7 +233,7 @@ class AppWindow(QtWidgets.QMainWindow):
             if os.path.isfile(path):
                 self.analyze_file(path)
         except Exception as ex:
-            self.statusBar().showMessage(f"Drop error: {ex}")
+            self.statusBar().showMessage(tr("Drop error: {error}").format(error=ex))
 
     def open_cfg(self):
         self.cfgwin.show()
@@ -256,14 +257,14 @@ class AppWindow(QtWidgets.QMainWindow):
 
     def analyze_file(self, path: str):
         if self._is_external_sync_active():
-            self.statusBar().showMessage("External Sync is enabled. Local track loading is disabled.")
+            self.statusBar().showMessage(tr("External Sync is enabled. Local track loading is disabled."))
             return
         self.analysis_workflow.analyze(path)
 
     def unload_track(self) -> None:
         """Empty the deck: no track in the player or the views."""
         if self._is_external_sync_active():
-            self.statusBar().showMessage("External Sync is enabled. Local track loading is disabled.")
+            self.statusBar().showMessage(tr("External Sync is enabled. Local track loading is disabled."))
             return
         self.player.unload()
         self.analysis_workflow.current_path = None
@@ -271,24 +272,25 @@ class AppWindow(QtWidgets.QMainWindow):
         self.bus.sig_features_loaded.emit()
         self.bus.sig_properties_loaded.emit()
         self.bus.sig_albumart_loaded.emit()
-        self.statusBar().showMessage("Track unloaded.")
+        self.statusBar().showMessage(tr("Track unloaded."))
 
     def reanalyze_file(self, path: str):
         self.analysis_workflow.reanalyze(path)
 
     def _on_track_file_missing(self, track, force_analyze: bool) -> None:
         """A library track whose file is gone: say so and let the user set its new path."""
-        title = "Track File Not Found"
+        title = tr("Track File Not Found")
         name = track.title or os.path.basename(track.path)
         answer = QtWidgets.QMessageBox.question(
             self, title,
-            f'Cannot load "{name}": its file is missing.\n{track.path}\n\nSet the file\'s new location?',
+            tr('Cannot load "{name}": its file is missing.\n{path}\n\nSet the file\'s new location?').format(
+                name=name, path=track.path),
         )
         if answer != QtWidgets.QMessageBox.Yes:
             return
         folder = os.path.dirname(track.path)
         new_path, _ = QtWidgets.QFileDialog.getOpenFileName(
-            self, f"Locate {name}", folder if os.path.isdir(folder) else "")
+            self, tr("Locate {name}").format(name=name), folder if os.path.isdir(folder) else "")
         if not new_path:
             return
         new_path = os.path.normpath(new_path)
@@ -338,12 +340,12 @@ class AppWindow(QtWidgets.QMainWindow):
                 self.player.seek(float(self._external_sync_pending_seek))
                 self._external_sync_pending_seek = None
 
-        self.taskmanager.updatetask(feat["taskid"], "Finished", 1)
+        self.taskmanager.updatetask(feat["taskid"], tr("Finished"), 1)
         self.taskmanager.rmtask(feat["taskid"])
         if auto_load:
-            self.statusBar().showMessage("Done. Press Play.")
+            self.statusBar().showMessage(tr("Done. Press Play."))
         else:
-            self.statusBar().showMessage("Analysis saved to library.")
+            self.statusBar().showMessage(tr("Analysis saved to library."))
 
     def _on_features_reanalyze(self, feat:dict):
         raw_features = dict(feat["features"])
@@ -377,7 +379,7 @@ class AppWindow(QtWidgets.QMainWindow):
                     refresh_source=False,
                 )
         self.taskmanager.rmtask(feat["taskid"])
-        self.statusBar().showMessage("Done. Press Play.")
+        self.statusBar().showMessage(tr("Done. Press Play."))
 
     def _apply_model_update(
         self,
@@ -475,8 +477,8 @@ class AppWindow(QtWidgets.QMainWindow):
 
     def _load_track_from_external_sync(self, path: str, time_sec: float) -> None:
         exists_in_library = self._track_exists_in_library(path)
-        action = "loading" if exists_in_library else "analyzing"
-        self.statusBar().showMessage(f"External Sync {action}: {os.path.basename(path)}")
+        message = tr("External Sync loading: {file}") if exists_in_library else tr("External Sync analyzing: {file}")
+        self.statusBar().showMessage(message.format(file=os.path.basename(path)))
         self._external_sync_pending_seek = float(time_sec)
         self.analysis_workflow.analyze(path)
 
@@ -491,7 +493,7 @@ class AppWindow(QtWidgets.QMainWindow):
         self._apply_external_sync_mode(new_cfg.externalsyncconfig)
         QtWidgets.QMessageBox.warning(
             self,
-            "Memory Sync Disabled",
+            tr("Memory Sync Disabled"),
             message,
         )
 
@@ -736,13 +738,12 @@ class AppWindow(QtWidgets.QMainWindow):
         if enabled:
             if state_changed:
                 self.player.pause()
-            mode_desc = "Time Sync" if str(sync_cfg.mode) == "time" else "Sample Index Sync"
+            mode_desc = tr("Time Sync") if str(sync_cfg.mode) == "time" else tr("Sample Index Sync")
             target_desc = (
-                f"{mode_desc}, process={sync_cfg.memory_process_name or 'manual'}, "
+                f"{mode_desc}, process={sync_cfg.memory_process_name or tr('manual')}, "
                 f"deck1.path={sync_cfg.memory_deck1.path.offsets}, "
                 f"deck2.path={sync_cfg.memory_deck2.path.offsets}"
             )
             self.statusBar().showMessage(
-                f"External Sync enabled via {target_desc}. "
-                f"Local play/load is locked."
+                tr("External Sync enabled via {target}. Local play/load is locked.").format(target=target_desc)
             )
