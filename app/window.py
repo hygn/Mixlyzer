@@ -34,6 +34,7 @@ from core.workflows.segment_reanalysis import SegmentReanalysisWorkflow
 from core.config import config, load_cfg, search_settings
 from core.beat_geometry import downbeat_beat_indices
 from core.i18n import tr
+from core.resource_paths import resource_path
 
 class AppWindow(QtWidgets.QMainWindow):
     _sig_metronome_set_beats = QtCore.Signal(object, object, float)
@@ -49,7 +50,7 @@ class AppWindow(QtWidgets.QMainWindow):
         os_support.prepare_app_process("org.hygn.mixylzer")
         self.setWindowTitle("Mixlyzer")
         self.setAcceptDrops(True)
-        self.setWindowIcon(QtGui.QIcon("assets/images/mixlyzer.png"))
+        self.setWindowIcon(QtGui.QIcon(str(resource_path("assets/images/mixlyzer.png"))))
 
         self.cfg = load_cfg()
         set_phrase_label_names(self.cfg.viewconfig.phrase_labels.by_label())

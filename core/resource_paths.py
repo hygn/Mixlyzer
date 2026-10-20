@@ -12,8 +12,8 @@ from pathlib import Path
 # lookup stable regardless of CWD.
 #
 # This module lives at ``<project_root>/core/resource_paths.py`` so the project
-# root is ``parents[1]``. If a frozen (PyInstaller) build is added later, add
-# the ``sys._MEIPASS`` handling here so every caller benefits.
+# root is ``parents[1]``; in a PyInstaller 6 build that is the package's ``_internal`` folder, where the
+# bundled files are (the module's path is there), so no sys._MEIPASS handling is needed.
 _PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -25,6 +25,17 @@ def project_root() -> Path:
 def resource_path(name: str) -> Path:
     """Absolute path to a bundled resource by file name."""
     return _PROJECT_ROOT / name
+
+
+def setting_path(text: str) -> str:
+    """A file path from the settings: as written when it is absolute or found from the current folder, else the
+    bundled resource of that name (the shipped assets/sound/click.wav, assets/images/vinyl.png: in a PyInstaller
+    build they are with the app's resources, not in the folder it runs from)."""
+    text = str(text or "").strip()
+    if not text or Path(text).is_absolute() or Path(text).exists():
+        return text
+    bundled = resource_path(text)
+    return str(bundled) if bundled.exists() else text
 
 
 def process_denylist_path() -> Path:

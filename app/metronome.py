@@ -2,6 +2,7 @@ from typing import Callable, Optional
 
 from PySide6 import QtCore
 import numpy as np
+from core.resource_paths import setting_path
 
 try:
     import soundfile as sf
@@ -13,6 +14,7 @@ def _load_click(path: str, rate: int, channels: int) -> Optional[np.ndarray]:
     """Load the click sound as [L, channels] float32 at the output rate."""
     if sf is None or not path:
         return None
+    path = setting_path(path)
     try:
         data, sr = sf.read(path, dtype="float32", always_2d=True)
     except Exception as exc:

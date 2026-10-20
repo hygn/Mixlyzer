@@ -178,7 +178,8 @@ Working notes for AI/automation agents editing the Mixlyzer codebase.
 ## Build / Packaging
 - PyInstaller spec is `build/mixlyzer.spec`.
 - The spec does not bundle `config.json` (it holds personal settings such as External Sync memory addresses); the app writes one from `default_cfg()` on first launch. Keep `default_cfg()` free of personal values.
-- Asset and `ffmpeg.exe` bundling are presently commented out in the spec, so do not assume packaging already includes them.
+- The spec bundles the shipped assets (`shipped()`: the `default_` models with the phrase and JumpCUE models, icons, the images shown (not the design sources `mixlyzer.psd` / `mixlyzer_large.png`), fonts, sound, style, reading tables, the language catalogs, `default_shortcuts.json`, `process_denylist.json`), never a user's file beside them (a retrained model, `assets/shortcuts/shortcuts.json`). `ffmpeg.exe` is not bundled (its bundling stays commented out): a package's FFmpeg goes into `_internal` by hand, where the decoder looks. `MIXLYZER_CONSOLE=1` builds a console exe (its output and errors readable) for testing.
+- In a PyInstaller 6 build the bundled files are in `_internal`, which is `core.resource_paths`' root (its module path): every bundled file is read through `resource_path` (never a path from the current folder: fonts, icons, models, catalogs); a settings path (`assets/sound/click.wav`, the phrase model) through `setting_path` (as written when found from the current folder, else the bundled file). The current folder (the package folder when the exe is started) holds `config.json`, the library and the feature caches.
 - There is no active `installer/` directory in this repo snapshot; do not document or depend on one unless you add it.
 
 ## Safe Assumptions

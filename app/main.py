@@ -9,7 +9,7 @@ from core.library_version import (
     version_file_path,
 )
 from migration import library_migration
-from app.startup import StartupSplash, run_startup, startup_tasks
+from app.startup import StartupSplash, center_on_screen, run_startup, startup_tasks
 from ui.theme import apply_theme
 from utils.fonts import load_fonts_and_set_global
 
@@ -69,6 +69,7 @@ def main():
         sys.exit(1)
     # the slow work first (imports, JIT, FFmpeg, search readers and keys), then the window
     w = run_startup(splash, startup_tasks(cfg))[-1]
+    center_on_screen(w, splash.screen())   # on the screen the splash is on
     w.show()
     splash.close()
     sys.exit(app.exec())

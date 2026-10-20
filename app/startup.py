@@ -18,6 +18,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 
 from ui.theme import current_theme
 from core.i18n import tr
+from core.resource_paths import resource_path
 
 # fraction of the task done, what it is doing ("" keeps the last)
 Progress = Callable[[float, str], None]
@@ -33,6 +34,21 @@ class StartupTask:
     pump_events: bool = True
 
 
+def launch_screen() -> QtGui.QScreen | None:
+    """The screen the app starts on: the one under the mouse (where it was launched from), else the primary."""
+    return QtGui.QGuiApplication.screenAt(QtGui.QCursor.pos()) or QtGui.QGuiApplication.primaryScreen()
+
+
+def center_on_screen(widget: QtWidgets.QWidget, screen: QtGui.QScreen | None) -> None:
+    """``widget`` centred on ``screen``'s free area (its top-left corner kept in it when it is larger)."""
+    if screen is None:
+        return
+    area = screen.availableGeometry()
+    size = widget.frameGeometry().size()
+    widget.move(area.x() + max(0, (area.width() - size.width()) // 2),
+                area.y() + max(0, (area.height() - size.height()) // 2))
+
+
 class StartupSplash(QtWidgets.QWidget):
     """The task (title, what it is doing, its progress bar) and the overall progress bar below it."""
 
@@ -46,10 +62,10 @@ class StartupSplash(QtWidgets.QWidget):
         self.setStyleSheet(f"QWidget#startupSplash {{ background: {theme.window}; "
                            f"border: 1px solid {theme.border}; }}")
         self.setWindowTitle("Mixlyzer")
-        self.setWindowIcon(QtGui.QIcon("assets/images/mixlyzer.png"))
+        self.setWindowIcon(QtGui.QIcon(str(resource_path("assets/images/mixlyzer.png"))))
 
         icon = QtWidgets.QLabel()
-        icon.setPixmap(QtGui.QPixmap("assets/images/mixlyzer.png").scaled(
+        icon.setPixmap(QtGui.QPixmap(str(resource_path("assets/images/mixlyzer.png"))).scaled(
             48, 48, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation))
         name = QtWidgets.QLabel("Mixlyzer")
         font = name.font()
@@ -82,9 +98,7 @@ class StartupSplash(QtWidgets.QWidget):
         layout.addLayout(bars)
         self.setFixedWidth(520)
         self.adjustSize()
-        screen = QtGui.QGuiApplication.primaryScreen()
-        if screen is not None:
-            self.move(screen.availableGeometry().center() - self.rect().center())
+        center_on_screen(self, launch_screen())
         self.pump_events = True
         self._painted = 0.0
 

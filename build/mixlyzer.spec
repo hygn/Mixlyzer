@@ -7,76 +7,37 @@ app_name = 'Mixlyzer'
 block_cipher = None
 
 icon_path = os.path.abspath(os.path.join(os.path.dirname(vars().get('__file__', 'build/mixlyzer.spec')), '..', 'assets', 'images', 'mixlyzer.ico'))
+REPO = os.path.abspath(os.path.join(SPECPATH, '..'))
+
+
+def shipped(folder, keep=lambda name: True):
+    """(file, its folder in the app) for the files under ``folder`` (repo-relative) that ``keep`` accepts."""
+    out = []
+    for root, _dirs, files in os.walk(os.path.join(REPO, folder)):
+        for name in files:
+            if keep(name):
+                out.append((os.path.join(root, name), os.path.relpath(root, REPO)))
+    return out
+
 
 a = Analysis(
     ['../app/main.py'],
     pathex=['.'],
     binaries=[],
-    # config.json is not bundled: the local one holds personal settings, and
-    # load_cfg() writes one from default_cfg() on first launch.
-    datas=[
-        (
-            '../assets/weights/phrase_analyzer.npz',
-            'assets/weights',
-        ),
-        (
-            '../assets/weights/default_refine_onset_hgb.npz',
-            'assets/weights',
-        ),
-        (
-            '../assets/weights/default_beat_tcn.npz',
-            'assets/weights',
-        ),
-        (
-            '../assets/weights/default_beat_critic.npz',
-            'assets/weights',
-        ),
-        (
-            '../assets/weights/default_beat_decoder.json',
-            'assets/weights',
-        ),
-        (
-            '../assets/weights/default_downbeat_ctx_hgb.npz',
-            'assets/weights',
-        ),
-        (
-            '../assets/styles/app.qss',
-            'assets/styles',
-        ),
-        (
-            '../assets/readings/unihan_taiwan_mandarin.tsv',
-            'assets/readings',
-        ),
-        (
-            '../assets/readings/unihan_korean.tsv',
-            'assets/readings',
-        ),
-        (
-            '../assets/readings/unihan_vietnamese.tsv',
-            'assets/readings',
-        ),
-        (
-            '../assets/readings/unihan_cantonese_variants.tsv',
-            'assets/readings',
-        ),
-        (
-            '../assets/readings/UNICODE-LICENSE.txt',
-            'assets/readings',
-        ),
-        # the UI's languages (core.i18n): the list and each one's catalog
-        (
-            '../assets/i18n/languages.json',
-            'assets/i18n',
-        ),
-        (
-            '../assets/i18n/languages/ko-KR/mixlyzer.po',
-            'assets/i18n/languages/ko-KR',
-        ),
-        (
-            '../assets/i18n/languages/ja-JP/mixlyzer.po',
-            'assets/i18n/languages/ja-JP',
-        ),
-    ]
+    # The shipped assets, found through core.resource_paths: not the user's files beside them (a retrained model
+    # without default_, assets/shortcuts/shortcuts.json). config.json is not bundled: the local one holds personal
+    # settings, and load_cfg() writes one from default_cfg() on first launch.
+    datas=shipped('assets/weights', lambda name: name.startswith('default_')
+                  or name in ('phrase_analyzer.npz', 'jumpcue_jump_point.json'))
+    # the images the app shows (not the design sources: the Photoshop file, the large render)
+    + shipped('assets/icons') + shipped('assets/images', lambda name: not name.endswith('.psd')
+                                        and name != 'mixlyzer_large.png')
+    + shipped('assets/fonts') + shipped('assets/sound')
+    + shipped('assets/styles') + shipped('assets/readings')
+    # the UI's languages (core.i18n): the list and each one's catalog
+    + shipped('assets/i18n', lambda name: name in ('languages.json', 'mixlyzer.po'))
+    + shipped('assets/shortcuts', lambda name: name == 'default_shortcuts.json')
+    + [(os.path.join(REPO, 'process_denylist.json'), '.')]
     # the title readings (core.reading): the readers' dictionaries and tables
     + collect_data_files('sudachipy')
     + collect_data_files('sudachidict_core')
@@ -112,7 +73,8 @@ exe = EXE(
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    console=False,  # windowed app
+    # windowed app; MIXLYZER_CONSOLE=1 builds one with a console (its output and errors readable, for testing)
+    console=os.environ.get('MIXLYZER_CONSOLE') == '1',
     icon=icon_path,
 )
 

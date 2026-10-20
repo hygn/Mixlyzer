@@ -1,9 +1,10 @@
 from pathlib import Path
 from PySide6 import QtWidgets, QtGui
+from core.resource_paths import resource_path
 
 def load_fonts_and_set_global(app: QtWidgets.QApplication):
     # 1) Register bundled fonts (all font files under the given directory)
-    font_dir = Path("assets/fonts")   # keep original path
+    font_dir = resource_path("assets/fonts")   # with the app's resources (a PyInstaller build: _internal)
     exts = {".ttf", ".otf", ".ttc", ".otc"}
     families = []
     for p in font_dir.rglob("*"):

@@ -10,6 +10,7 @@ from ui.theme import current_theme
 from core.config import config
 from utils.labels import ALPHANUMERIC_LABELS, CLASSICAL_LABELS
 from core.i18n import tr
+from core.resource_paths import setting_path
 
 
 _VALUE = "#f0f3f6"   # current values, title
@@ -780,7 +781,7 @@ class TrackInfoPanel(QtWidgets.QWidget):
                 else None
             )
             path = vinyl_path if vinyl_path is not None else cfg_path or "assets/vinyl.png"
-            vinyl = QtGui.QPixmap(path) if path else QtGui.QPixmap()
+            vinyl = QtGui.QPixmap(setting_path(path)) if path else QtGui.QPixmap()
             if not vinyl.isNull():
                 vinyl = vinyl.scaled(
                     size - 6,
