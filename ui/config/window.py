@@ -64,13 +64,13 @@ class SettingsDialog(
         self.setModal(False)
 
         self.tabs = QTabWidget(self)
-        build_library_tab(self)
-        build_search_tab(self)
         build_view_tab(self)
         build_playback_tab(self)
+        build_search_tab(self)
+        build_library_tab(self)
         build_analysis_tab(self)
-        build_external_sync_tab(self)
         build_shortcuts_tab(self)
+        build_external_sync_tab(self)
         self._stabilize_layout_widths()
 
         self.btn_box = QDialogButtonBox(
@@ -218,9 +218,6 @@ class SettingsDialog(
         self.ed_beat_decoder_parameter_path.setText(str(getattr(a, "beat_decoder_parameter_path", "") or ""))
         self.ed_downbeat_ctx_parameter_path.setText(str(getattr(a, "downbeat_ctx_parameter_path", "") or ""))
         self.ed_beat_feature_cache_path.setText(str(getattr(a, "beat_feature_cache_path", "") or ""))
-        self.cb_phrase_analysis_enabled.setChecked(
-            bool(getattr(a, "phrase_analysis_enabled", True))
-        )
         self.ed_phrase_parameter_path.setText(
             str(
                 getattr(
@@ -314,7 +311,6 @@ class SettingsDialog(
                 beat_decoder_parameter_path=self.ed_beat_decoder_parameter_path.text().strip(),
                 downbeat_ctx_parameter_path=self.ed_downbeat_ctx_parameter_path.text().strip(),
                 beat_feature_cache_path=self.ed_beat_feature_cache_path.text().strip(),
-                phrase_analysis_enabled=bool(self.cb_phrase_analysis_enabled.isChecked()),
                 phrase_parameter_path=self.ed_phrase_parameter_path.text().strip(),
                 phrase_feature_cache_path=self.ed_phrase_feature_cache_path.text().strip(),
                 jumpcue_parameter_path=self.ed_jumpcue_parameter_path.text().strip(),

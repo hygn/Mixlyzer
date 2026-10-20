@@ -19,14 +19,12 @@ def reanalyze_jumpCUE(path:str, cfg:config, beats_time_arr:np.ndarray, *,
     progress_cb: Optional[Callable[[str, float], None]] = None,):
     """JumpCUE on the current beat grid, computed as in the full analysis: the
     parts it needs (HPSS, frame features, phrase boundary probability) are
-    analyzed first. Needs the phrase analysis enabled.
+    analyzed first.
 
     ``phrases``: the editor's current phrases. With AutoCUE on JumpCUEs, its
     position follows the current lead-in and beat grid (one hot cue slot is kept
     for it), so it follows phrase and beat-grid edits and reanalyses."""
     gcf = cfg.analysisconfig
-    if not bool(getattr(gcf, "phrase_analysis_enabled", True)):
-        raise ValueError(tr("JumpCUE needs the phrase analysis; enable it in the analysis settings"))
     if tempo_segments is None or np.asarray(tempo_segments).size == 0:
         raise ValueError(tr("tempo segments are required for JumpCUE reanalysis"))
     tempo_segments = np.asarray(tempo_segments, dtype=float)

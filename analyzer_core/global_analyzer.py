@@ -398,7 +398,6 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
     yield {"status": tr("Phrase")}
     print("[Phrase] Analysis Initalized")
     taskmgr.updatetask(taskid, tr("Phrase Boundary Analyzing"), 0.58)
-    phrase_enabled = bool(getattr(gcf, "phrase_analysis_enabled", True))
     phrase_parameter_path = str(gcf.phrase_parameter_path).strip()
     # The phrase boundary probability is a JumpCUE feature (below).
     phrase_boundary_prob = None
@@ -408,9 +407,7 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
     autocue = gcf.autocue
     phrase_segments = []
     phrase_cue_points = []
-    if not phrase_enabled:
-        print("[Phrase] skipped: disabled in analysis settings")
-    elif beats_time_arr.size >= 17 and seg_arr.shape[0] > 0:
+    if beats_time_arr.size >= 17 and seg_arr.shape[0] > 0:
         try:
             # Joint phrase boundary + functional-label detection -> Phrase data.
             # Reuse the already-decoded stereo audio (no second decode).
@@ -456,9 +453,7 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
     yield {"status": "JumpCUE"}
     taskmgr.updatetask(taskid, tr("JumpCUE Analyzing"), 0.62)
     jump_pairs = []
-    if not phrase_enabled:
-        print("[JumpCUE] learned pairs skipped: phrase analysis is disabled")
-    elif phrase_boundary_prob is None:
+    if phrase_boundary_prob is None:
         print("[JumpCUE] learned pairs skipped: no phrase boundary probability")
     elif beats_time_arr.size >= 2:
         jump_config = JumpCueConfig(jump_point_model_path=str(gcf.jumpcue_parameter_path))

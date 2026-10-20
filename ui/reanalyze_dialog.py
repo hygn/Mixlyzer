@@ -1,5 +1,5 @@
 """Reanalyze Track: the selected tracks' full reanalysis, with some analysis settings set for it only (the saved
-settings stay as they are): the BPM range, dynamic beat / downbeat / key analysis, phrase analysis, AutoCUE."""
+settings stay as they are): the BPM range, dynamic beat / downbeat / key analysis, AutoCUE."""
 
 from __future__ import annotations
 
@@ -53,8 +53,6 @@ class ReanalyzeDialog(QtWidgets.QDialog):
             "the intro, outro and interludes (where tracks are mixed), or the key it finds most when a track has none. "
             "Applies to the analysis and the editor's whole-track key reanalysis."
         ))
-        self.cb_phrase = QtWidgets.QCheckBox(tr("Use Phrase Analysis"))
-        self.cb_phrase.setToolTip(tr("Detect phrase boundaries and labels during track analysis."))
         self.cmb_autocue = QtWidgets.QComboBox()
         self.cmb_autocue.addItem(tr("CUE point"), "cue_point")
         self.cmb_autocue.addItem("JumpCUE", "jumpcue")
@@ -86,7 +84,6 @@ class ReanalyzeDialog(QtWidgets.QDialog):
         self.cb_bpm_dynamic.setChecked(bool(analysis.bpm_dynamic))
         self.cb_dynamic_downbeat.setEnabled(not analysis.bpm_dynamic)
         self.cb_key_dynamic.setChecked(bool(analysis.key_dynamic))
-        self.cb_phrase.setChecked(bool(analysis.phrase_analysis_enabled))
         self.cmb_autocue.setCurrentIndex(max(0, self.cmb_autocue.findData(analysis.autocue)))
 
         beat = QtWidgets.QGroupBox(tr("Beat"))
@@ -97,8 +94,6 @@ class ReanalyzeDialog(QtWidgets.QDialog):
         f_beat.addRow(self.cb_dynamic_downbeat)
         key = QtWidgets.QGroupBox("Key")
         QtWidgets.QFormLayout(key).addRow(self.cb_key_dynamic)
-        phrase = QtWidgets.QGroupBox(tr("Phrase"))
-        QtWidgets.QFormLayout(phrase).addRow(self.cb_phrase)
         autocue = QtWidgets.QGroupBox("AutoCUE")
         QtWidgets.QFormLayout(autocue).addRow(tr("Automatic start"), self.cmb_autocue)
 
@@ -112,7 +107,6 @@ class ReanalyzeDialog(QtWidgets.QDialog):
         root.addWidget(warning)
         root.addWidget(beat)
         root.addWidget(key)
-        root.addWidget(phrase)
         root.addWidget(autocue)
         root.addWidget(buttons)
         self.setMinimumWidth(360)
@@ -125,7 +119,6 @@ class ReanalyzeDialog(QtWidgets.QDialog):
             "bpm_dynamic": self.cb_bpm_dynamic.isChecked(),
             "dynamic_downbeat": self.cb_dynamic_downbeat.isChecked(),
             "key_dynamic": self.cb_key_dynamic.isChecked(),
-            "phrase_analysis_enabled": self.cb_phrase.isChecked(),
             "autocue": str(self.cmb_autocue.currentData()),
         }
 

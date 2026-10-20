@@ -175,29 +175,21 @@ def build_analysis_tab(dialog) -> None:
 
     # Phrase
     tab_phrase = QWidget(); f_phrase = QFormLayout(tab_phrase)
-    dialog.cb_phrase_analysis_enabled = QCheckBox(tr("Use Phrase Analysis"))
     dialog.ed_phrase_parameter_path = QLineEdit()
     dialog.ed_phrase_parameter_path.setPlaceholderText(npz_hint)
     dialog.ed_phrase_feature_cache_path = QLineEdit()
     dialog.btn_reoptimize_phrase_parameter = QPushButton(tr("Reoptimize Phrase Parameter"))
     dialog.btn_reoptimize_phrase_parameter.clicked.connect(dialog._on_reoptimize_phrase_parameter)
-    dialog.cb_phrase_analysis_enabled.setToolTip(tr(
-        "Detect phrase boundaries and labels during track analysis."
-    ))
     dialog.ed_phrase_parameter_path.setToolTip(tr("Learned phrase model (.npz)."))
     dialog.ed_phrase_feature_cache_path.setToolTip(cache_tip)
     dialog.btn_reoptimize_phrase_parameter.setToolTip(tr(
         "Retrain the phrase model on the phrases stored in the library."
     ))
-    grp_phrase_general = QGroupBox(tr("General"))
-    f_phrase_general = QFormLayout(grp_phrase_general)
-    f_phrase_general.addRow(dialog.cb_phrase_analysis_enabled)
     grp_phrase_advanced = QGroupBox(tr("Advanced"))
     f_phrase_advanced = QFormLayout(grp_phrase_advanced)
     f_phrase_advanced.addRow(tr("Parameters (NPZ)"), dialog.ed_phrase_parameter_path)
     f_phrase_advanced.addRow(tr("Feature cache"), dialog.ed_phrase_feature_cache_path)
     f_phrase_advanced.addRow("", dialog.btn_reoptimize_phrase_parameter)
-    f_phrase.addRow(grp_phrase_general)
     f_phrase.addRow(grp_phrase_advanced)
 
     # CUE: AutoCUE, the CUE point rules and the JumpCUE model

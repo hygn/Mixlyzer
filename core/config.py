@@ -139,7 +139,6 @@ class analysisconfig:
     beat_decoder_parameter_path: str
     downbeat_ctx_parameter_path: str
     beat_feature_cache_path: str
-    phrase_analysis_enabled: bool
     phrase_parameter_path: str
     phrase_feature_cache_path: str
     jumpcue_parameter_path: str
@@ -346,7 +345,6 @@ def default_cfg():
         beat_decoder_parameter_path="assets/weights/beat_decoder.json",
         downbeat_ctx_parameter_path="assets/weights/downbeat_ctx_hgb.npz",
         beat_feature_cache_path="featurecache/beat",
-        phrase_analysis_enabled=True,
         phrase_parameter_path="assets/weights/phrase_analyzer.npz",
         phrase_feature_cache_path="featurecache/phrase",
         jumpcue_parameter_path="assets/weights/jumpcue_jump_point.json",
