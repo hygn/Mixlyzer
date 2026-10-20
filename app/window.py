@@ -273,11 +273,13 @@ class AppWindow(QtWidgets.QMainWindow):
         self.bus.sig_albumart_loaded.emit()
         self.statusBar().showMessage(tr("Track unloaded."))
 
-    def reanalyze_file(self, path: str):
-        self.analysis_workflow.reanalyze(path)
+    def reanalyze_file(self, path: str, analysis: dict | None = None):
+        """``analysis``: analysis settings for this reanalysis only (the saved ones stay)."""
+        self.analysis_workflow.reanalyze(path, analysis)
 
-    def _on_track_file_missing(self, track, force_analyze: bool) -> None:
-        """A library track whose file is gone: say so and let the user set its new path."""
+    def _on_track_file_missing(self, track, force_analyze: bool, analysis: dict | None = None) -> None:
+        """A library track whose file is gone: say so and let the user set its new path (then the analysis
+        asked for, with its settings for this run)."""
         title = tr("Track File Not Found")
         name = track.title or os.path.basename(track.path)
         answer = QtWidgets.QMessageBox.question(
@@ -307,7 +309,7 @@ class AppWindow(QtWidgets.QMainWindow):
         self._emit_library_update(cfg, lib_rows)
         self._sync_rekordbox_track(track.uid)
         if force_analyze:
-            self.reanalyze_file(new_path)
+            self.reanalyze_file(new_path, analysis)
         else:
             self.analyze_file(new_path)
 

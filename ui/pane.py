@@ -463,12 +463,12 @@ class MainPane(QtWidgets.QWidget):
         }
 
     def _leave_text_field(self) -> None:
-        """Out of the search field or the sources panel (to the library's tracks), or out of another text /
-        value field here; a text is kept: the keys work the shortcuts again."""
+        """Out of the search field, the sources panel or the track panel (to the library's tracks), or out of
+        another text / value field here; a text is kept: the keys work the shortcuts again."""
         focus = QtWidgets.QApplication.focusWidget()
         if focus is None or not self.isAncestorOf(focus):
             return
-        if focus is self.lib.e_search or focus is self.lib.source_tree:
+        if focus is self.lib.e_search or focus is self.lib.source_tree or self.lib.track_panel_has_focus():
             self.lib.focus_tracks()
         elif isinstance(focus, (QtWidgets.QLineEdit, QtWidgets.QAbstractSpinBox)):
             self.setFocus(QtCore.Qt.ShortcutFocusReason)

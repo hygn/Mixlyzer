@@ -22,30 +22,9 @@ ResolvePath = Callable[[str | None], Optional[Path]]
 __all__ = [
     "RekordboxXmlDocument",
     "build_rekordbox_track_element",
-    "build_rekordbox_xml",
     "rekordbox_track_key_for_row",
     "sanitize_filename",
 ]
-
-
-def build_rekordbox_xml(
-    track: TrackRow,
-    features: dict[str, np.ndarray],
-    *,
-    resolve_path: ResolvePath,
-    audio_path: Optional[Path] = None,
-) -> tuple[str, str]:
-    resolved_audio = audio_path if audio_path and audio_path.exists() else None
-    track_element = build_rekordbox_track_element(
-        track,
-        features,
-        resolve_path=resolve_path,
-        audio_path=resolved_audio,
-    )
-    document = RekordboxXmlDocument.new()
-    document.append_track(track_element)
-    song_title = track_element.attrib.get("Name", "Untitled")
-    return document.to_xml(), f"{sanitize_filename(song_title)}_rekordbox.xml"
 
 
 def build_rekordbox_track_element(

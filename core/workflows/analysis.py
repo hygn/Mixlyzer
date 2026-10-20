@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import os
-from typing import Callable
+from typing import Callable, Optional
 
 from PySide6 import QtCore
 
 from analyzer_core.global_analyzer import extract_tags, getAlbumArt
 from core.analysis_lib_handler import FeatureNPZStore
+from dataclasses import replace
+
 from core.config import load_cfg
 from core.library_handler import LibraryDB
 from core.workers.analysis import AnalysisWorker
@@ -19,7 +21,8 @@ ResultCallback = Callable[[dict], None]
 StatusCallback = Callable[[str], None]
 AlbumArtCallback = Callable[[object], None]
 CancelReanalysisCallback = Callable[[str], None]
-MissingFileCallback = Callable[[object, bool], None]
+# (the track, a reanalysis, its analysis settings for the run or None)
+MissingFileCallback = Callable[[object, bool, Optional[dict]], None]
 
 
 class AnalysisWorkflow(QtCore.QObject):
@@ -58,8 +61,10 @@ class AnalysisWorkflow(QtCore.QObject):
     def analyze(self, path: str) -> None:
         self._start(path, force_analyze=False)
 
-    def reanalyze(self, path: str) -> None:
-        self._start(path, force_analyze=True)
+    def reanalyze(self, path: str, analysis: dict | None = None) -> None:
+        """A fresh full analysis; ``analysis``: analysis settings (analysisconfig fields) for this run only,
+        over the saved ones (which stay as they are)."""
+        self._start(path, force_analyze=True, analysis=analysis)
 
     def cancel_all(self, reason: str | None = None) -> None:
         reason = reason or tr("Analysis canceled")
@@ -73,8 +78,10 @@ class AnalysisWorkflow(QtCore.QObject):
             self._workers.pop(taskid, None)
             self._contexts.pop(taskid, None)
 
-    def _start(self, path: str, *, force_analyze: bool) -> None:
+    def _start(self, path: str, *, force_analyze: bool, analysis: dict | None = None) -> None:
         cfg = self._cfg_loader()
+        if analysis:
+            cfg = replace(cfg, analysisconfig=replace(cfg.analysisconfig, **analysis))
         database = LibraryDB(os.path.join(cfg.libconfig.libpath, "library.db"))
         database.connect()
         try:
@@ -89,7 +96,7 @@ class AnalysisWorkflow(QtCore.QObject):
                 # the track's file is gone: no guessing, the user sets its new path
                 self._show_status(tr("File not found: {path}").format(path=path))
                 if self._missing_file_callback is not None:
-                    self._missing_file_callback(track, force_analyze)
+                    self._missing_file_callback(track, force_analyze, analysis)
                 return
         auto_load = track is not None
 

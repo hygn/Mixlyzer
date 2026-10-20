@@ -39,7 +39,9 @@ class EventBus(QtCore.QObject):
     sig_lib_updated = QtCore.Signal(object)
     sig_request_load_track = QtCore.Signal(str)
     sig_unload_track_requested = QtCore.Signal()
-    sig_reanalyze_requested = QtCore.Signal(str)
+    # a track's full reanalysis: its path and analysis settings for this run only (analysisconfig fields; None:
+    # the saved settings)
+    sig_reanalyze_requested = QtCore.Signal(str, object)
     sig_segment_reanalyze_requested = QtCore.Signal(object)
     sig_segment_reanalyze_state = QtCore.Signal(bool)
 

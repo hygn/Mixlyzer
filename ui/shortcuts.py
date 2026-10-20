@@ -111,12 +111,14 @@ ACTIONS: tuple[Action, ...] = (
            tip=tr_mark("To the panel beside the library (playlists, local folders) and back. Up / Down browse, "
                        "Left / Right close / open a folder, the load key shows the highlighted one.")),
     Action("library.search", LIBRARY, tr_mark("Search")),
-    Action("library.leave_search", LIBRARY, tr_mark("Leave the search or the sources panel"),
-           tip=tr_mark("Back to the tracks from the search field (its text kept) or the sources panel; out of "
-                       "another text field: the keys work the shortcuts again.")),
+    Action("library.leave_search", LIBRARY, tr_mark("Back to the tracks"),
+           tip=tr_mark("To the track list from the search field (its text kept), the sources panel or the track "
+                       "panel; out of another text field: the keys work the shortcuts again.")),
     Action("library.locate_loaded", LIBRARY, tr_mark("Select the loaded track")),
-    Action("library.edit_track", LIBRARY, tr_mark("Edit Track")),
-    Action("library.export_track", LIBRARY, tr_mark("Export Track")),
+    Action("library.edit_track", LIBRARY, tr_mark("Edit Track"),
+           tip=tr_mark("The track panel's Edit tab with the selected track, its first field focused.")),
+    Action("library.export_track", LIBRARY, tr_mark("Export Track"),
+           tip=tr_mark("The track panel's Export tab with the selected track, focused.")),
     Action("library.reveal", LIBRARY, tr_mark("Show in Explorer") if os_support.IS_WINDOWS else
            tr_mark("Show in Finder") if os_support.IS_MACOS else tr_mark("Show in File Manager")),
     Action("library.new_playlist", LIBRARY, tr_mark("New Playlist")),
@@ -265,10 +267,19 @@ class ShortcutManager(QtCore.QObject):
 def _takes_navigation(widget, event) -> bool:
     """Lists, value fields (spin and combo boxes, also through their line edit) and multi-line text: not a
     plain line edit, where Up / Down do nothing (they go to the library's list). A tree also takes plain Left /
-    Right (closing / opening a folder)."""
+    Right (closing / opening a folder); a table edited by typing takes typed characters and F2 (editing a cell),
+    and the editor of a cell every plain key (Esc cancels it)."""
     if not isinstance(widget, QtWidgets.QWidget):
         return False
     key = event.key()
+    if _cell_editor(widget):
+        return True
+    if isinstance(widget, QtWidgets.QAbstractItemView):
+        triggers = widget.editTriggers()
+        if triggers & QtWidgets.QAbstractItemView.AnyKeyPressed and event.text().isprintable() and event.text():
+            return True
+        if triggers & QtWidgets.QAbstractItemView.EditKeyPressed and key == QtCore.Qt.Key_F2:
+            return True
     if isinstance(widget, QtWidgets.QTreeView) and key in (QtCore.Qt.Key_Left, QtCore.Qt.Key_Right):
         return event.modifiers() == QtCore.Qt.NoModifier
     parent = widget.parentWidget()
@@ -276,3 +287,10 @@ def _takes_navigation(widget, event) -> bool:
         isinstance(widget, (QtWidgets.QAbstractItemView, QtWidgets.QAbstractSpinBox, QtWidgets.QComboBox,
                             QtWidgets.QTextEdit, QtWidgets.QPlainTextEdit))
         or isinstance(parent, (QtWidgets.QAbstractSpinBox, QtWidgets.QComboBox)))
+
+
+def _cell_editor(widget: QtWidgets.QWidget) -> bool:
+    """A list's or table's cell being edited (its editor sits in the view's viewport)."""
+    parent = widget.parentWidget()
+    view = parent.parentWidget() if parent is not None else None
+    return isinstance(view, QtWidgets.QAbstractItemView) and parent is view.viewport()

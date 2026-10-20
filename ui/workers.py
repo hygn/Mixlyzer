@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (
 )
 from core.event_bus import EventBus
 from core.i18n import tr
+from ui.elided_label import ElidedLabel
 
 
 class WorkersDialog(QDialog):
@@ -134,10 +135,11 @@ class WorkersDialog(QDialog):
         text_lay.setSpacing(2)
 
         name = self._extract_name(metadata) or tr("Task {id}").format(id=task_id)
-        name_lbl = QLabel(name)
+        # a long title or message is cut to the row (ElidedLabel), never widening it
+        name_lbl = ElidedLabel(name)
         # Initial status text (task.status)
         init_status = getattr(metadata, 'status', '')
-        status_lbl = QLabel(str(init_status) if init_status is not None else '')
+        status_lbl = ElidedLabel(str(init_status) if init_status is not None else '')
         status_lbl.setStyleSheet("color: gray;")
         text_lay.addWidget(name_lbl)
         text_lay.addWidget(status_lbl)

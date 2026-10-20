@@ -6,7 +6,7 @@ from dataclasses import asdict, replace
 from PySide6.QtCore import QEvent, Qt, Signal
 from PySide6.QtGui import QBrush, QColor
 from PySide6.QtWidgets import (
-    QDialog, QWidget, QVBoxLayout, QHBoxLayout, QFormLayout,
+    QWidget, QVBoxLayout, QHBoxLayout, QFormLayout,
     QLineEdit, QSpinBox, QDoubleSpinBox, QLabel, QDialogButtonBox,
     QGroupBox, QComboBox, QPushButton, QFileDialog, QMessageBox,
     QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView
@@ -15,27 +15,23 @@ from PySide6.QtWidgets import (
 from core import reading
 from core.event_bus import EventBus
 from core.library_handler import READING_FIELDS, USER_SOURCE, TrackRow, LibraryDB, field_readings
+from ui.config.scroll import scroll_page
 from ui.theme import current_theme
 from core.config import config, default_cfg, searchconfig
 from utils.labels import ALPHANUMERIC_LABELS, CLASSICAL_LABELS
 from core.i18n import tr
 
 
-class EditSongDialog(QDialog):
-    """Dialog to edit TrackRow metadata.
+class EditTrackPanel(QWidget):
+    """The library panel's Edit tab: a track's metadata (TrackRow).
 
-    - Non-modal; intended to be reused like SettingsDialog/WorkersDialog.
     - Only mutable metadata is editable (title, artist, album, bpm, key, rating, comment)
       and the file path (a moved or renamed file; the uid keeps the track's analysis).
     - Immutable fields (added_ts, file_mtime, file_size, uid, duration) are shown read-only.
+    - The fields scroll; Apply (save) and Reset (the stored values again) stay under them.
 
-    Usage:
-        dlg = EditSongDialog(bus, libpath)
-        dlg.set_track(track_row)
-        dlg.show()
-
-    If `libpath` is provided, Apply/OK will persist to the library.db under that folder
-    and emit bus.sig_lib_updated with the refreshed list. Otherwise, it emits
+    If `libpath` is provided, Apply persists to the library.db under that folder
+    and emits bus.sig_lib_updated with the refreshed list. Otherwise, it emits
     `sig_track_saved(TrackRow)` for the caller to handle persistence.
     """
 
@@ -46,15 +42,13 @@ class EditSongDialog(QDialog):
         """``search_settings``: the search settings (read when needed: the stored readings'
         languages; the defaults when None)."""
         super().__init__()
-        self.setWindowTitle(tr("Edit Track Metadata"))
-        self.setModal(False)
-        self.resize(500, 300)
         self._bus = bus
         self._libpath = libpath
         self._search_settings = search_settings or (lambda: default_cfg().searchconfig)
         self._row: Optional[TrackRow] = None
 
-        root = QVBoxLayout(self)
+        body = QWidget()
+        content = QVBoxLayout(body)
 
         # Editable fields
         grp_edit = QGroupBox(tr("Editable Fields"))
@@ -129,17 +123,23 @@ class EditSongDialog(QDialog):
         form_ro.addRow(tr("File mtime"), self.ro_mtime)
         form_ro.addRow(tr("File size (bytes)"), self.ro_size)
 
-        # Buttons
-        btn_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel | QDialogButtonBox.Apply)
-        btn_box.accepted.connect(self._on_ok)
-        btn_box.rejected.connect(self.reject)
+        # Buttons: Apply saves, Reset shows the stored values again
+        btn_box = QDialogButtonBox(QDialogButtonBox.Apply | QDialogButtonBox.Reset)
         btn_box.button(QDialogButtonBox.Apply).clicked.connect(self._on_apply)
+        btn_box.button(QDialogButtonBox.Reset).clicked.connect(self._on_reset)
 
-        root.addWidget(grp_edit)
-        root.addWidget(grp_ro)
+        content.addWidget(grp_edit)
+        content.addWidget(grp_ro)
+        content.addStretch(1)
+        root = QVBoxLayout(self)
+        root.setContentsMargins(0, 0, 0, 0)
+        root.addWidget(scroll_page(body), 1)
         root.addWidget(btn_box)
 
     # Public API
+    def track_uid(self) -> Optional[str]:
+        return self._row.uid if self._row is not None else None
+
     def set_track(self, row: TrackRow) -> None:
         """Populate dialog with an existing TrackRow."""
         self._row = row
@@ -198,6 +198,30 @@ class EditSongDialog(QDialog):
         row.comment = self.ed_comment.text().strip()
         row.path = self.ed_path.text().strip()
         return row
+
+    def has_changes(self) -> bool:
+        """Whether the fields differ from the track's stored values (Apply not pressed yet)."""
+        if self._row is None:
+            return False
+        updated = self.get_updated_row()
+
+        def norm(name: str, value):
+            if name == "bpm":
+                return round(float(value), 3) if value else None
+            if name == "rating":
+                return int(value or 0)
+            if name == "key":
+                return value
+            return str(value or "").strip()
+
+        fields = ("title", "artist", "album", "bpm", "key", "rating", "comment", "path")
+        return (any(norm(f, getattr(updated, f)) != norm(f, getattr(self._row, f)) for f in fields)
+                or any(self._reading_touched.values()))
+
+    def apply(self) -> bool:
+        """Save the fields (as Apply); False when they cannot be (said in a message)."""
+        updated = self.get_updated_row()
+        return updated is None or self._persist_if_configured(updated)
 
     def user_readings(self) -> dict:
         """The fields whose readings were changed here: field -> (the readings the user added, the
@@ -337,13 +361,9 @@ class EditSongDialog(QDialog):
             return
         self._persist_if_configured(updated)
 
-    def _on_ok(self):
-        updated = self.get_updated_row()
-        if updated is None:
-            self.reject()
-            return
-        if self._persist_if_configured(updated):
-            self.accept()
+    def _on_reset(self):
+        if self._row is not None:
+            self.set_track(self._row)
 
     # Key helpers
     def _populate_key_combo(self) -> None:

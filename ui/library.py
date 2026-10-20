@@ -11,14 +11,15 @@ from core import os_support, reading
 from core.library_handler import TrackRow, LibraryDB
 from core.analysis_lib_handler import FeatureNPZStore
 from core.event_bus import EventBus
-from core.config import config
+from core.config import config, load_cfg
 from core.model import DataModel
-from ui.edit_song import EditSongDialog
-from ui.export import ExportTrackDialog
+from ui.edit_song import EditTrackPanel
+from ui.export import ExportTrackPanel
+from ui.reanalyze_dialog import ReanalyzeDialog
 from ui.theme import current_theme
 from ui.edit_panel.key_picker import KeyPickButton
 from core.thumbnails import delete_thumbnail, load_thumbnail
-from core.i18n import tr, tr_mark
+from core.i18n import tr, tr_mark, tr_n
 
 
 # Data schema
@@ -797,8 +798,6 @@ class LibraryWidget(QtWidgets.QWidget):
         self._source_value = None
         # file identity -> the playlists (uids) it goes into once analyzed, once per drop
         self._pending_playlist_paths: dict[str, list[str]] = {}
-        self._edit_dlg: EditSongDialog | None = None
-        self._export_dlg: ExportTrackDialog | None = None
 
         self.source_tree = _LibrarySourceTree()
         self.source_tree.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
@@ -993,7 +992,7 @@ class LibraryWidget(QtWidgets.QWidget):
         content_lay.setSpacing(6)
         content_lay.addLayout(primary)
         content_lay.addWidget(self.filter_bar)
-        content_lay.addWidget(self.table, 1)
+        content_lay.addLayout(self._build_track_panel(), 1)
 
         splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
         splitter.addWidget(self.source_tree)
@@ -1671,6 +1670,123 @@ class LibraryWidget(QtWidgets.QWidget):
     def _on_external_sync_enabled(self, enabled: bool) -> None:
         self._external_sync_enabled = bool(enabled)
 
+    # The track panel: Edit / Export tabs on a thin vertical tab bar right of the track list, under the search (as
+    # tall as the list). Clicking the open tab folds it to the tab bar; another tab unfolds it. Unfolded, it shows
+    # the selected track (the first analyzed one), following the selection once it rests for PANEL_FOLLOW_MS (keys
+    # held down do not load every track passed); the Edit tab's changes not applied are asked about first.
+    EDIT_TAB, EXPORT_TAB = 0, 1
+    TRACK_PANEL_WIDTH = 380
+    TRACK_PANEL_MIN_WIDTH = 300
+    PANEL_FOLLOW_MS = 120
+
+    def _build_track_panel(self) -> QtWidgets.QHBoxLayout:
+        self.edit_panel = EditTrackPanel(bus=self.bus, libpath=self.cfg.libconfig.libpath,
+                                         search_settings=lambda: self.cfg.searchconfig)
+        self.export_panel = ExportTrackPanel(self.cfg.libconfig.libpath, model=self.model)
+        self.panel_stack = QtWidgets.QStackedWidget()
+        self.panel_stack.addWidget(self.edit_panel)
+        self.panel_stack.addWidget(self.export_panel)
+        self.panel_stack.setMinimumWidth(self.TRACK_PANEL_MIN_WIDTH)
+        self.panel_stack.hide()
+        self.panel_tabs = QtWidgets.QTabBar()
+        self.panel_tabs.setShape(QtWidgets.QTabBar.RoundedEast)
+        self.panel_tabs.setDrawBase(False)
+        # thin: the app's tab padding (its sides) is this bar's thickness; the open tab marked on the panel's side
+        theme = current_theme()
+        tab_font = QtGui.QFont(self.panel_tabs.font())
+        tab_font.setPointSize(9)
+        self.panel_tabs.setFont(tab_font)
+        self.panel_tabs.setStyleSheet(
+            "QTabBar::tab { padding: 10px 2px; border: none; border-left: 2px solid transparent; }"
+            f"QTabBar::tab:selected {{ border-left-color: {theme.accent}; }}")
+        self.panel_tabs.addTab(tr("Edit Track"))
+        self.panel_tabs.addTab(tr("Export Track"))
+        for i in range(self.panel_tabs.count()):
+            self.panel_tabs.setTabToolTip(i, tr("The selected track; click the open tab to fold the panel"))
+        self.panel_tabs.tabBarClicked.connect(self._on_panel_tab_clicked)
+        self._panel_follow = QtCore.QTimer(self)
+        self._panel_follow.setSingleShot(True)
+        self._panel_follow.setInterval(self.PANEL_FOLLOW_MS)
+        self._panel_follow.timeout.connect(self._show_selection_in_panel)
+        self.table.itemSelectionChanged.connect(
+            lambda: self._panel_follow.start() if self.panel_stack.isVisible() else None)
+        self._panel_width = self.TRACK_PANEL_WIDTH
+        self.panel_split = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
+        self.panel_split.addWidget(self.table)
+        self.panel_split.addWidget(self.panel_stack)
+        self.panel_split.setCollapsible(0, False)
+        self.panel_split.setCollapsible(1, False)
+        self.panel_split.setStretchFactor(0, 1)
+        row = QtWidgets.QHBoxLayout()
+        row.setContentsMargins(0, 0, 0, 0)
+        row.setSpacing(0)
+        row.addWidget(self.panel_split, 1)
+        row.addWidget(self.panel_tabs, 0, QtCore.Qt.AlignTop)
+        return row
+
+    def _on_panel_tab_clicked(self, index: int) -> None:
+        if index < 0:
+            return
+        if self.panel_stack.isVisible() and index == self.panel_stack.currentIndex():
+            self._fold_track_panel()
+        else:
+            self.open_track_panel(index, focus=False)
+
+    def _fold_track_panel(self) -> None:
+        self._panel_width = self.panel_split.sizes()[1] or self._panel_width
+        if self.track_panel_has_focus():
+            self.focus_tracks()
+        self.panel_stack.hide()
+
+    def open_track_panel(self, index: int, *, focus: bool = True) -> None:
+        """Unfold the panel at tab ``index`` with the selected track (the first analyzed one) and, with
+        ``focus``, its first field focused (the context menu's Edit / Export, their shortcuts)."""
+        self.panel_tabs.setCurrentIndex(index)
+        self.panel_stack.setCurrentIndex(index)
+        if not self.panel_stack.isVisible():
+            self.panel_stack.show()
+            total = sum(self.panel_split.sizes())
+            width = min(self._panel_width, max(self.TRACK_PANEL_MIN_WIDTH, total // 2))
+            self.panel_split.setSizes([max(1, total - width), width])
+        self._show_selection_in_panel()
+        if focus:
+            target = self.edit_panel.ed_title if index == self.EDIT_TAB else self.export_panel.cmb_jump_pair
+            if not target.isEnabled():
+                target = self.export_panel.dest_edit
+            target.setFocus(QtCore.Qt.OtherFocusReason)
+            if isinstance(target, QtWidgets.QLineEdit):
+                target.selectAll()
+
+    def _show_selection_in_panel(self) -> None:
+        """The open tab shows the selected track (the first analyzed one), unless it shows it already; the Edit
+        tab's changes not applied are asked about first (applied, or dropped)."""
+        if not self.panel_stack.isVisible():
+            return
+        uids = self._selected_uids()
+        panel = self.panel_stack.currentWidget()
+        if not uids or uids[0] == panel.track_uid():
+            return
+        if panel is self.edit_panel and panel.has_changes():
+            title = QtGui.QFontMetrics(self.font()).elidedText(
+                panel.ed_title.text() or panel.track_uid() or "", QtCore.Qt.ElideMiddle, 420)
+            answer = QtWidgets.QMessageBox.question(
+                self, tr("Edit Track"),
+                tr('Apply the changes to "{title}"? (No: they are dropped)').format(title=title),
+                QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No, QtWidgets.QMessageBox.Yes)
+            if answer == QtWidgets.QMessageBox.Yes and not panel.apply():
+                return  # not saved (said why): the panel keeps them
+        db = self._db()
+        try:
+            row = db.get_by_uid(uids[0])
+        finally:
+            db.close()
+        if row is not None:
+            panel.set_track(row)
+
+    def track_panel_has_focus(self) -> bool:
+        focus = QtWidgets.QApplication.focusWidget()
+        return focus is not None and self.panel_stack.isAncestorOf(focus)
+
     # Keyboard shortcuts (ui.shortcuts): on the table's selection, wherever the focus is
     def shortcut_handlers(self) -> dict:
         return {
@@ -2006,7 +2122,7 @@ class LibraryWidget(QtWidgets.QWidget):
 
     def _on_remove_selected(self):
         uids = self._selected_uids()
-        if not uids:
+        if not uids or not self._confirm_remove(uids):
             return
         l = LibraryDB(os.path.join(self.cfg.libconfig.libpath, "library.db"))
         l.connect()
@@ -2023,6 +2139,24 @@ class LibraryWidget(QtWidgets.QWidget):
             if track_uid:
                 self.bus.sig_rekordbox_sync_track_requested.emit(track_uid)
 
+    def _confirm_remove(self, uids: list[str]) -> bool:
+        """Asked before tracks leave the library (their analysis and edits deleted; No by default)."""
+        if len(uids) == 1:
+            title = next((t.title for t in self._all_tracks if t.uid == uids[0]), "") or uids[0]
+            # a long title cut, so the message box keeps its width
+            title = QtGui.QFontMetrics(self.font()).elidedText(title, QtCore.Qt.ElideMiddle, 420)
+            text = tr('Remove "{title}" from the library?\nIts analysis and edits are deleted; the audio file '
+                      'stays.').format(title=title)
+        else:
+            text = tr_n("Remove {count} track from the library?\nIts analysis and edits are deleted; the audio "
+                        "file stays.",
+                        "Remove {count} tracks from the library?\nTheir analysis and edits are deleted; the audio "
+                        "files stay.", len(uids)).format(count=len(uids))
+        answer = QtWidgets.QMessageBox.question(
+            self, tr("Remove from Library"), text,
+            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No, QtWidgets.QMessageBox.No)
+        return answer == QtWidgets.QMessageBox.Yes
+
     # the system's file manager
     def _reveal_selected(self):
         for row in self._selected_rows():
@@ -2031,50 +2165,30 @@ class LibraryWidget(QtWidgets.QWidget):
                 os_support.reveal_file(path)
 
     def _export_selected(self):
-        uids = self._selected_uids()
-        if not uids:
-            return
-
-        db = LibraryDB(os.path.join(self.cfg.libconfig.libpath, "library.db"))
-        db.connect()
-        track_row = db.get_by_uid(uids[0])
-        db.close()
-        if track_row is None:
-            QtWidgets.QMessageBox.warning(self, tr("Export Track"), tr("Track metadata could not be found in the library."))
-            return
-
-        if self._export_dlg is None:
-            self._export_dlg = ExportTrackDialog(self.cfg.libconfig.libpath, self, model=self.model)
-        self._export_dlg.set_track(track_row)
-        self._export_dlg.show()
-        self._export_dlg.raise_()
-        self._export_dlg.activateWindow()
+        if self._selected_uids():
+            self.open_track_panel(self.EXPORT_TAB)
 
     # Reanalyze
     def _reanalyze_selected(self):
-        analyzed_by_path = {track.path: track.analyzed for track in self._all_tracks}
-        for row in self._selected_rows():
-            path = self.table.item(row, self.HEADERS.index("Path")).text()
-            if path:
-                if analyzed_by_path.get(path, False):
-                    self.bus.sig_reanalyze_requested.emit(path)
-                else:
-                    self.bus.sig_request_load_track.emit(path)
+        """The selected tracks analyzed again: the analyzed ones once the reanalysis dialog is accepted, with
+        the analysis settings set there for this run only (the saved ones stay); the others analyzed."""
+        by_path = {track.path: track for track in self._all_tracks}
+        paths = [p for p in (self.table.item(r, self.HEADERS.index("Path")).text() for r in self._selected_rows()) if p]
+        analyzed = [p for p in paths if by_path.get(p) is not None and by_path[p].analyzed]
+        analysis = None
+        if analyzed:
+            saved = load_cfg().analysisconfig
+            dlg = ReanalyzeDialog(saved, [by_path[p].title or os.path.basename(p) for p in analyzed], self)
+            if dlg.exec() != QtWidgets.QDialog.Accepted:
+                return
+            analysis = {k: v for k, v in dlg.analysis().items() if getattr(saved, k) != v} or None
+        for path in paths:
+            if path in analyzed:
+                self.bus.sig_reanalyze_requested.emit(path, analysis)
+            else:
+                self.bus.sig_request_load_track.emit(path)
 
     # Edit
     def _edit_selected(self):
-        uids = self._selected_uids()
-        if not uids:
-            return
-        # First selected track
-        l = LibraryDB(os.path.join(self.cfg.libconfig.libpath, "library.db"))
-        l.connect()
-        row = l.get_by_uid(uids[0])
-        l.close()
-        if not row:
-            return
-        if self._edit_dlg is None:
-            self._edit_dlg = EditSongDialog(bus=self.bus, libpath=self.cfg.libconfig.libpath,
-                                            search_settings=lambda: self.cfg.searchconfig)
-        self._edit_dlg.set_track(row)
-        self._edit_dlg.show()
+        if self._selected_uids():
+            self.open_track_panel(self.EDIT_TAB)

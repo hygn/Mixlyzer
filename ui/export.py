@@ -12,20 +12,19 @@ from core.analysis_lib_handler import FeatureNPZStore
 from core.library_handler import TrackRow
 from core.audio.decoder import decode_to_memmap, get_samplerate
 from core.model import DataModel
-from third_party.rekordbox import build_rekordbox_xml, sanitize_filename
-from utils.atomic_io import atomic_write_text
+from third_party.rekordbox import sanitize_filename
+from ui.elided_label import ElidedLabel
 from utils.jump_cues import extract_jump_cue_pairs
 from utils.jumprender import jump_renderer
 from core.i18n import tr
 
 
-class ExportTrackDialog(QtWidgets.QDialog):
+class ExportTrackPanel(QtWidgets.QWidget):
+    """The library panel's Export tab: a track's audio rendered with a JumpCUE jump baked in (WAV), one direction
+    of one JumpCUE pair. Prefers the in-memory DataModel for the loaded track, else the track's NPZ."""
+
     def __init__(self, lib_dir: str, parent: Optional[QtWidgets.QWidget] = None, *, model: Optional[DataModel] = None) -> None:
         super().__init__(parent)
-        self.setWindowTitle(tr("Export Track"))
-        self.setModal(True)
-        self.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose, False)
-
         self._lib_dir = lib_dir
         self._model: Optional[DataModel] = model
         self._track: Optional[TrackRow] = None
@@ -33,62 +32,56 @@ class ExportTrackDialog(QtWidgets.QDialog):
         self._features: Optional[dict[str, np.ndarray]] = None
         self._jump_pairs: list[dict] = []
 
-        self.lbl_title = QtWidgets.QLabel("-")
-        self.lbl_artist = QtWidgets.QLabel("-")
-        self.lbl_album = QtWidgets.QLabel("-")
-        self.lbl_source = QtWidgets.QLabel("-")
-        self.lbl_source.setTextInteractionFlags(QtCore.Qt.TextInteractionFlag.TextSelectableByMouse)
+        self.lbl_title = ElidedLabel("-")
+        self.lbl_artist = ElidedLabel("-")
+        self.lbl_source = ElidedLabel("-", mode=QtCore.Qt.ElideMiddle)
 
         self.dest_edit = QtWidgets.QLineEdit()
         self.dest_browse = QtWidgets.QPushButton(tr("Browse..."))
         self.dest_browse.clicked.connect(self._on_browse)
 
         self.status_label = QtWidgets.QLabel("")
+        self.status_label.setWordWrap(True)
         self.status_label.setStyleSheet("color: #ff8080;")
 
         dest_layout = QtWidgets.QHBoxLayout()
         dest_layout.addWidget(self.dest_edit, 1)
         dest_layout.addWidget(self.dest_browse)
 
-        form = QtWidgets.QFormLayout()
-        form.addRow(tr("Title"), self.lbl_title)
-        form.addRow(tr("Artist"), self.lbl_artist)
-        form.addRow(tr("Album"), self.lbl_album)
-        form.addRow(tr("Source"), self.lbl_source)
-        form.addRow(tr("Destination Folder"), dest_layout)
-
-        self.chk_rekordbox = QtWidgets.QCheckBox(tr("Rekordbox XML"))
-        self.chk_rendered_jump = QtWidgets.QCheckBox(tr("Prerender JumpCUE Audio"))
-        self.chk_rendered_jump.setToolTip(tr("Write WAV files with JumpCUE skips baked in."))
-        self.chk_rekordbox.setChecked(True)
-        self.chk_rendered_jump.setChecked(False)
         self.cmb_jump_pair = QtWidgets.QComboBox()
         self.cmb_jump_pair.setEnabled(False)
         self.cmb_jump_pair.setPlaceholderText(tr("No JumpCUE directions"))
-        export_opts = QtWidgets.QHBoxLayout()
-        export_opts.addWidget(self.chk_rekordbox)
-        export_opts.addWidget(self.chk_rendered_jump)
-        export_opts.addStretch(1)
-        form.addRow(tr("Include"), export_opts)
+        self.cmb_jump_pair.setSizeAdjustPolicy(QtWidgets.QComboBox.AdjustToMinimumContentsLengthWithIcon)
+        self.cmb_jump_pair.setMinimumContentsLength(8)
+
+        form = QtWidgets.QFormLayout()
+        form.addRow(tr("Title"), self.lbl_title)
+        form.addRow(tr("Artist"), self.lbl_artist)
+        form.addRow(tr("Source"), self.lbl_source)
+        form.addRow(tr("Destination Folder"), dest_layout)
         form.addRow("JumpCUE", self.cmb_jump_pair)
 
-        self.btn_export = QtWidgets.QPushButton(tr("Export"))
-        self.btn_cancel = QtWidgets.QPushButton(tr("Cancel"))
-        self.btn_export.clicked.connect(self._on_export)
-        self.btn_cancel.clicked.connect(self.reject)
+        heading = QtWidgets.QLabel(tr("Prerender JumpCUE Audio"))
+        font = heading.font()
+        font.setBold(True)
+        heading.setFont(font)
+        heading.setToolTip(tr("Write WAV files with JumpCUE skips baked in."))
 
+        self.btn_export = QtWidgets.QPushButton(tr("Export"))
+        self.btn_export.clicked.connect(self._on_export)
         btns = QtWidgets.QHBoxLayout()
         btns.addStretch(1)
         btns.addWidget(self.btn_export)
-        btns.addWidget(self.btn_cancel)
 
         layout = QtWidgets.QVBoxLayout(self)
+        layout.addWidget(heading)
         layout.addLayout(form)
         layout.addWidget(self.status_label)
         layout.addStretch(1)
         layout.addLayout(btns)
 
-        self.resize(440, 260)
+    def track_uid(self) -> Optional[str]:
+        return self._track.uid if self._track is not None else None
 
     def set_track(self, track: TrackRow) -> None:
         self._track = track
@@ -98,7 +91,6 @@ class ExportTrackDialog(QtWidgets.QDialog):
         self.cmb_jump_pair.setEnabled(False)
         self.lbl_title.setText(track.title or "-")
         self.lbl_artist.setText(track.artist or "-")
-        self.lbl_album.setText(track.album or "-")
 
         resolved = self._resolve_path(track.path) or self._resolve_path(getattr(self._model, "properties", {}).get("path") if self._model else None)
         self._source = resolved if resolved else None
@@ -149,16 +141,6 @@ class ExportTrackDialog(QtWidgets.QDialog):
             QtWidgets.QMessageBox.warning(self, tr("Export Track"), tr("No track is selected."))
             return
 
-        export_xml = self.chk_rekordbox.isChecked()
-        export_jump = self.chk_rendered_jump.isChecked()
-        if not (export_xml or export_jump):
-            QtWidgets.QMessageBox.warning(
-                self,
-                tr("Export Track"),
-                tr("Select at least one export target (Rekordbox XML, Waveform Image, or JumpCUE audio)."),
-            )
-            return
-
         dest_text = self.dest_edit.text().strip()
         if not dest_text:
             QtWidgets.QMessageBox.warning(self, tr("Export Track"), tr("Please select a destination folder."))
@@ -174,34 +156,23 @@ class ExportTrackDialog(QtWidgets.QDialog):
         if features is None:
             return
 
-        exported: list[tuple[str, Path]] = []
-        if export_xml:
-            audio_for_xml = self._source or self._resolve_path(self._track.path)
-            xml_path = self._write_xml(dest_dir, features, audio_for_xml)
-            if xml_path is None:
-                return
-            exported.append(("Rekordbox XML", xml_path))
-
-        if export_jump:
-            if not self._jump_pairs:
-                self._populate_jump_pairs()
-            selection = self._selected_jump_pair()
-            if selection is None:
-                QtWidgets.QMessageBox.warning(
-                    self,
-                    tr("Export Track"),
-                    tr("Select a JumpCUE direction to render."),
-                )
-                return
-            pair, directions = selection
-            jump_exports = self._write_jumpcue_audio(dest_dir, features, pair, [directions])
-            if jump_exports is None:
-                return
-            exported.extend(jump_exports)
+        if not self._jump_pairs:
+            self._populate_jump_pairs()
+        selection = self._selected_jump_pair()
+        if selection is None:
+            QtWidgets.QMessageBox.warning(
+                self,
+                tr("Export Track"),
+                tr("Select a JumpCUE direction to render."),
+            )
+            return
+        pair, directions = selection
+        exported = self._write_jumpcue_audio(dest_dir, features, pair, [directions])
+        if exported is None:
+            return
 
         lines = "\n".join(f"{label}: {path}" for label, path in exported)
         QtWidgets.QMessageBox.information(self, tr("Export Track"), tr("Export completed:\n{files}").format(files=lines))
-        self.accept()
 
     def _load_features(self) -> Optional[dict[str, np.ndarray]]:
         if self._features is not None:
@@ -217,7 +188,11 @@ class ExportTrackDialog(QtWidgets.QDialog):
                 if self._features:
                     return self._features
         store = FeatureNPZStore(base_dir=self._lib_dir, compressed=True)
-        self._features = store.load(self._track.uid)
+        try:
+            self._features = store.load(self._track.uid)
+        except (OSError, ValueError):
+            self.status_label.setText(tr("The track's analysis could not be read."))
+            return None
         return self._features
 
     def _populate_jump_pairs(self) -> None:
@@ -253,36 +228,6 @@ class ExportTrackDialog(QtWidgets.QDialog):
         if not isinstance(pair, dict) or not isinstance(direction, tuple) or len(direction) != 2:
             return None
         return pair, direction
-
-    def _write_xml(
-        self,
-        dest_dir: Path,
-        features: dict[str, np.ndarray],
-        audio_path: Optional[Path],
-    ) -> Optional[Path]:
-        assert self._track is not None
-        xml_text, file_name = build_rekordbox_xml(
-            self._track,
-            features,
-            audio_path=audio_path,
-            resolve_path=self._resolve_path,
-        )
-        xml_path = dest_dir / file_name
-        if xml_path.exists():
-            reply = QtWidgets.QMessageBox.question(
-                self,
-                tr("Export Track"),
-                tr("'{name}' already exists.\nOverwrite?").format(name=xml_path.name),
-                QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,
-            )
-            if reply != QtWidgets.QMessageBox.StandardButton.Yes:
-                return None
-        try:
-            atomic_write_text(xml_path, xml_text)
-        except OSError as exc:
-            QtWidgets.QMessageBox.critical(self, tr("Export Track"), tr("Failed to write XML file:\n{error}").format(error=exc))
-            return None
-        return xml_path
 
     def _write_jumpcue_audio(
         self,
