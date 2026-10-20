@@ -1,8 +1,4 @@
-import csv
-import io
 import json
-import os
-import subprocess
 
 from PySide6 import QtGui
 from PySide6.QtCore import Qt
@@ -24,6 +20,7 @@ from PySide6.QtWidgets import (
 )
 
 from core.config import externalsyncconfig, memorydeckconfig, memoryvalueconfig
+from core import os_support
 from core.resource_paths import process_denylist_path
 from ui.config.scroll import scroll_page
 from core.i18n import tr
@@ -256,8 +253,10 @@ def build_external_sync_tab(dialog) -> None:
     dialog.btn_memory_process_refresh.clicked.connect(
         dialog._refresh_memory_processes
     )
-    dialog._refresh_memory_processes()
     dialog._sync_external_sync_mode_ui()
+    if not os_support.MEMORY_SYNC:
+        return   # no memory reads on this system (macOS): the tab is never shown, the setting stays off
+    dialog._refresh_memory_processes()
     dialog.tabs.addTab(scroll_page(dialog.tab_external_sync), tr("External Sync"))
 
 
@@ -367,49 +366,8 @@ class ExternalSyncSettingsMixin:
         return 0
 
     def _list_running_processes(self) -> list[dict]:
-        try:
-            if os.name == "nt":
-                out = subprocess.check_output(
-                    ["tasklist", "/FO", "CSV", "/NH"],
-                    text=True,
-                    encoding="utf-8",
-                    errors="replace",
-                    creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
-                )
-            else:
-                out = subprocess.check_output(
-                    ["ps", "-A", "-o", "pid=,comm="],
-                    text=True,
-                    encoding="utf-8",
-                    errors="replace",
-                )
-        except Exception:
-            return []
-        rows = []
-        if os.name == "nt":
-            for row in csv.reader(io.StringIO(out)):
-                if len(row) < 2:
-                    continue
-                name = str(row[0]).strip()
-                pid_text = str(row[1]).strip()
-                try:
-                    pid = int(pid_text)
-                except Exception:
-                    continue
-                if name:
-                    rows.append({"name": name, "pid": pid})
-        else:
-            for line in out.splitlines():
-                parts = line.strip().split(None, 1)
-                if len(parts) != 2:
-                    continue
-                try:
-                    pid = int(parts[0])
-                except Exception:
-                    continue
-                if parts[1].strip():
-                    rows.append({"name": parts[1].strip(), "pid": pid})
-        rows.sort(key=lambda item: (item["name"].lower(), item["pid"]))
+        rows = os_support.list_processes()
+        rows.sort(key=lambda item: (str(item["name"]).lower(), int(item["pid"])))
         return rows
 
     def _is_denied_process_name(self, name: str) -> bool:

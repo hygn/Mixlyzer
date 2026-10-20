@@ -27,6 +27,7 @@ from core.config import (
     playbackconfig,
     viewconfig,
 )
+from core import os_support
 from core.event_bus import EventBus
 from core.i18n import tr
 from ui.config.analysis import AnalysisSettingsMixin, build_analysis_tab
@@ -364,7 +365,7 @@ class SettingsDialog(
                 soft_clip=bool(self.cb_soft_clip.isChecked()),
             ),
             externalsyncconfig=externalsyncconfig(
-                enabled=bool(self.cb_external_sync_enabled.isChecked()),
+                enabled=bool(self.cb_external_sync_enabled.isChecked()) and os_support.MEMORY_SYNC,
                 mode=("time" if self.cmb_external_sync_mode.currentIndex() == 0 else "sample_index"),
                 total_sample_count_source=(
                     "reference_sample_rate"

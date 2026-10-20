@@ -1,12 +1,11 @@
 ﻿import os
 
 from PySide6 import QtCore, QtGui, QtWidgets
-import ctypes
-import atexit
 import copy
 import json
 
 from app.print_hook import install_print_hook, log_environment_info
+from core import os_support
 from core.event_bus import EventBus
 from core.model import DataModel
 from core.timeline import TimelineCoordinator
@@ -46,13 +45,7 @@ class AppWindow(QtWidgets.QMainWindow):
         super().__init__()
         step = progress or (lambda _fraction, _part: None)
         step(0.0, tr("Core objects and playback"))
-        appid = "org.hygn.mixylzer"
-        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(appid)
-        try:
-            ctypes.windll.winmm.timeBeginPeriod(1)
-            atexit.register(lambda: ctypes.windll.winmm.timeEndPeriod(1))
-        except Exception:
-            pass
+        os_support.prepare_app_process("org.hygn.mixylzer")
         self.setWindowTitle("Mixlyzer")
         self.setAcceptDrops(True)
         self.setWindowIcon(QtGui.QIcon("assets/images/mixlyzer.png"))

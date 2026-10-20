@@ -1,16 +1,16 @@
 from __future__ import annotations
 
-import csv
-import io
 import json
-import os
-import subprocess
 import time
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import TYPE_CHECKING, Any, Callable, Optional
 
-from PyMemoryEditor import AbstractProcess, OpenProcess
 from PySide6 import QtCore
+
+from core import os_support
+
+if TYPE_CHECKING:   # imported where memory is read, and never where it is not (os_support.MEMORY_SYNC)
+    from PyMemoryEditor import AbstractProcess
 
 from core.config import externalsyncconfig, memorydeckconfig, memoryvalueconfig
 from core.event_bus import EventBus
@@ -199,7 +199,7 @@ class ExternalSyncController(QtCore.QObject):
         self.bus.sig_external_sync_state.emit(self.snapshot())
 
     def _apply_polling_state(self) -> None:
-        should_poll = bool(self._cfg.enabled)
+        should_poll = bool(self._cfg.enabled) and os_support.MEMORY_SYNC
         if should_poll and not self._poll.isActive():
             self._poll.start()
         if not should_poll and self._poll.isActive():
@@ -208,7 +208,7 @@ class ExternalSyncController(QtCore.QObject):
 
     @QtCore.Slot()
     def _poll_external_memory(self) -> None:
-        if not self._cfg.enabled:
+        if not self._cfg.enabled or not os_support.MEMORY_SYNC:
             return
         process_name = str(self._cfg.memory_process_name or "").strip()
         if self._is_denied_process_name(process_name):
@@ -564,44 +564,7 @@ class ExternalSyncController(QtCore.QObject):
         now = time.monotonic()
         if self._process_list_cache and (now - self._process_list_cache_ts) < 1.0:
             return self._process_list_cache
-        try:
-            if os.name == "nt":
-                out = subprocess.check_output(
-                    ["tasklist", "/FO", "CSV", "/NH"],
-                    text=True,
-                    encoding="utf-8",
-                    errors="replace",
-                    creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
-                )
-            else:
-                out = subprocess.check_output(
-                    ["ps", "-A", "-o", "pid=,comm="],
-                    text=True,
-                    encoding="utf-8",
-                    errors="replace",
-                )
-        except Exception:
-            return []
-        rows: list[dict[str, int | str]] = []
-        if os.name == "nt":
-            for row in csv.reader(io.StringIO(out)):
-                if len(row) < 2:
-                    continue
-                try:
-                    pid = int(str(row[1]).strip())
-                except Exception:
-                    continue
-                rows.append({"name": str(row[0]).strip(), "pid": pid})
-        else:
-            for line in out.splitlines():
-                parts = line.strip().split(None, 1)
-                if len(parts) != 2:
-                    continue
-                try:
-                    pid = int(parts[0])
-                except Exception:
-                    continue
-                rows.append({"name": parts[1].strip(), "pid": pid})
+        rows = os_support.list_processes()
         self._process_list_cache = rows
         self._process_list_cache_ts = now
         return rows
@@ -610,9 +573,13 @@ class ExternalSyncController(QtCore.QObject):
         if self._pm is not None and self._pm_pid == int(pid):
             return self._pm
         self._close_process_handle()
+        if not os_support.MEMORY_SYNC:
+            return None
         try:
+            from PyMemoryEditor import OpenProcess
+
             open_kwargs: dict[str, Any] = {"pid": int(pid)}
-            if os.name == "nt":
+            if os_support.IS_WINDOWS:
                 # PROCESS_QUERY_INFORMATION | PROCESS_VM_READ
                 open_kwargs["permission"] = 0x0400 | 0x0010
             pm = OpenProcess(**open_kwargs)

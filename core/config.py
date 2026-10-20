@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 from typing import Literal, Tuple, get_args, get_origin
 
+from core import os_support
 from utils.atomic_io import atomic_write_json
 
 
@@ -489,4 +490,6 @@ def load_cfg() -> config:
         atomic_write_json("config.json", cfg.to_dict(), ensure_ascii=True, indent=None)
     _ensure_library_dir(cfg)
     _ensure_feature_cache_dirs(cfg)
+    if not os_support.MEMORY_SYNC:
+        cfg.externalsyncconfig.enabled = False   # no memory reads on this system (macOS)
     return cfg

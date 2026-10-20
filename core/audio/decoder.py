@@ -8,6 +8,8 @@ from pathlib import Path
 
 import numpy as np
 
+from core import os_support
+
 try:
     import soundfile as sf  # lightweight header probe
 except Exception:  # pragma: no cover
@@ -17,27 +19,14 @@ except Exception:  # pragma: no cover
 _ffmpeg_warm_lock = threading.Lock()
 _ffmpeg_warmed = False
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
-_BUNDLED_FFMPEG = _PROJECT_ROOT / "ffmpeg.exe"
+# an FFmpeg next to the app (ffmpeg.exe on Windows), else the one on PATH
+_BUNDLED_FFMPEG = _PROJECT_ROOT / ("ffmpeg.exe" if os_support.IS_WINDOWS else "ffmpeg")
 
 
 def _ffmpeg_command() -> str:
-    if os.name == "nt" and _BUNDLED_FFMPEG.exists():
+    if _BUNDLED_FFMPEG.is_file() and (os_support.IS_WINDOWS or os.access(_BUNDLED_FFMPEG, os.X_OK)):
         return str(_BUNDLED_FFMPEG)
     return "ffmpeg"
-
-
-def _windows_subprocess_kwargs() -> dict:
-    creationflags = 0
-    startupinfo = None
-    if os.name == "nt":
-        creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
-        startupinfo = subprocess.STARTUPINFO()
-        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-        startupinfo.wShowWindow = getattr(subprocess, "SW_HIDE", 0)
-    return {
-        "creationflags": creationflags,
-        "startupinfo": startupinfo,
-    }
 
 
 def warm_ffmpeg_decoder() -> None:
@@ -73,7 +62,7 @@ def warm_ffmpeg_decoder() -> None:
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
                 check=False,
-                **_windows_subprocess_kwargs(),
+                **os_support.hidden_subprocess_kwargs(),
             )
             if proc.returncode == 0:
                 _ffmpeg_warmed = True
@@ -114,7 +103,7 @@ def decode_to_memmap(path: str, sr: int, ch: int) -> np.ndarray:
         "pipe:1",
     ]
 
-    popen_kwargs = _windows_subprocess_kwargs()
+    popen_kwargs = os_support.hidden_subprocess_kwargs()
 
     proc = subprocess.Popen(
         args,
@@ -184,7 +173,7 @@ def _probe_audio_stream(path: str) -> tuple[int, float]:
         "-i",
         path,
     ]
-    popen_kwargs = _windows_subprocess_kwargs()
+    popen_kwargs = os_support.hidden_subprocess_kwargs()
     try:
         proc = subprocess.run(
             args,

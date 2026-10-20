@@ -19,7 +19,7 @@ dependencies = [
     "soundfile>=0.13.1",
     "tqdm>=4.67.1",
     "pip-licenses>=5.5.0",
-    "pymemoryeditor>=3.0.1",
+    "pymemoryeditor>=3.0.1; sys_platform != 'darwin'",   # External Sync's memory reads: not on macOS
     "sudachipy>=0.7.0",
     "sudachidict-core>=20261015",
     "anyascii>=0.3.3",

@@ -8,8 +8,9 @@ Working notes for AI/automation agents editing the Mixlyzer codebase.
 - Install deps with `uv sync` (with the development group: Babel, for `build/translations.py`).
 - Launch the app with `uv run python -m app.main`.
 - Keep root-level `config.json` available. `load_cfg()` reads and rewrites it.
-- Keep root-level `ffmpeg.exe` available on Windows, or provide FFmpeg on `PATH` for `core/audio/decoder.py`.
-- Do not run the app as administrator on Windows; `app/main.py` explicitly blocks it.
+- Keep a root-level `ffmpeg.exe` (Windows) / executable `ffmpeg` (Linux, macOS), or provide FFmpeg on `PATH` for `core/audio/decoder.py`.
+- Do not run the app as administrator (Windows) or root (Linux, macOS); `app/main.py` explicitly blocks it.
+- Windows, Linux and macOS are supported (`core.os_support`); on any other system the app warns at the start and runs on the fallbacks.
 
 ## Repo Map
 - `app/`: Qt entrypoint and top-level window wiring.
@@ -18,6 +19,7 @@ Working notes for AI/automation agents editing the Mixlyzer codebase.
   - `window.py`: `AppWindow`, workflow wiring, EventBus wiring, External Sync, metronome, model updates.
 - `core/`: shared runtime/state/integration layer.
   - `config.py`: dataclass config schema, defaults, `load_cfg()`.
+  - `os_support.py`: the operating system, detected once per process (its first import: `app.main` at the start, each spawned worker) into flags (`OS`, `IS_WINDOWS` / `IS_LINUX` / `IS_MACOS`, `IS_SUPPORTED`, `MEMORY_SYNC`), and the operations that differ by it: elevation (IsUserAnAdmin / uid 0), the taskbar identity and 1 ms timer (Windows only), hidden console windows of child programs (Windows only), the running processes (tasklist / ps), revealing a file (Explorer / Finder / the folder via xdg-open). The other Windows API users branch on the flags with their fallbacks: the window occlusion check (`utils/window_visibility.py`: user32 + DWM / Qt's exposure), the scratch cursor poller (`core/audio/cursor_poller.py`: Win32 / the GUI's mouse events), the physical core count for sklearn (`analyzer_core/utils.py`: Win32 / loky's own).
   - `i18n.py`: the UI's language (Settings > View > Language, `viewconfig.language`, "" = the operating system's; applied at the next start). The languages are `assets/i18n/languages.json` (BCP 47 tags, language-REGION: `en-US`, `ko-KR`, `ja-JP` -> the language's name in itself), each one's gettext catalog `assets/i18n/languages/<tag>/mixlyzer.po`, read as it is (no compiled .mo; fuzzy entries left out). `tr()` / `tr_n()` / `tr_ctx()` translate, `tr_mark()` marks a table's texts (translated where shown); Qt's own texts (standard buttons, file dialogs) come from its `qtbase` catalogs (`install_qt`). Worker processes take the language from the environment (`MIXLYZER_LANGUAGE`). English (US) is the source.
   - `model.py`: shared `DataModel` and `GlobalParams`.
   - `event_bus.py`: Qt signal hub.
@@ -141,6 +143,7 @@ Working notes for AI/automation agents editing the Mixlyzer codebase.
 
 ## External Sync
 - `core.external_sync.ExternalSyncController` can follow an external process via memory reads using `PyMemoryEditor`.
+- Memory reads are Windows and Linux only (`os_support.MEMORY_SYNC`): on macOS PyMemoryEditor is neither installed (a dependency marker) nor imported (it is imported where a process is opened), the settings tab is not shown and `load_cfg()` keeps the setting off.
 - When enabled, local playback/load controls are intentionally restricted.
 - Process denylist lives in `process_denylist.json`.
 - If you touch External Sync config or behavior, keep `core/config.py`, `ui/config/`, and `app/window.py` aligned.
@@ -174,6 +177,6 @@ Working notes for AI/automation agents editing the Mixlyzer codebase.
 - There is no active `installer/` directory in this repo snapshot; do not document or depend on one unless you add it.
 
 ## Safe Assumptions
-- The codebase is Windows-first, but much of the Python code is portable.
+- Windows, Linux and macOS: code branches on `core.os_support`'s flags, never on `sys.platform` / `os.name` / `platform.system()` itself; a Windows API call has a fallback for the other systems.
 - The library format is versioned; old docs that ignore migration are outdated.
 - Root `README.md` exists, but localized docs currently live under `docs/`.

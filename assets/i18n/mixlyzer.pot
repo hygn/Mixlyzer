@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-21 00:04+0900\n"
+"POT-Creation-Date: 2026-10-21 00:16+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -165,21 +165,33 @@ msgstr ""
 msgid "Saving Result"
 msgstr ""
 
-#: app/main.py:44
+#: app/main.py:36
+msgid "Unsupported Operating System"
+msgstr ""
+
+#: app/main.py:37
+#, python-brace-format
+msgid ""
+"Mixlyzer supports Windows, Linux and macOS; this system ({system}) is not"
+" one of them.\n"
+"It may not work correctly."
+msgstr ""
+
+#: app/main.py:43
 msgid "Administrator Execution Blocked"
 msgstr ""
 
-#: app/main.py:45
+#: app/main.py:44
 msgid ""
 "Mixlyzer cannot run with administrator privileges.\n"
 "Close it and launch again as a normal user."
 msgstr ""
 
-#: app/main.py:63
+#: app/main.py:62
 msgid "Incompatible Library Version"
 msgstr ""
 
-#: app/main.py:64
+#: app/main.py:63
 #, python-brace-format
 msgid ""
 "This library cannot be opened by the current app version.\n"
@@ -242,56 +254,56 @@ msgstr ""
 msgid "Building the window"
 msgstr ""
 
-#: app/window.py:48
+#: app/window.py:47
 msgid "Core objects and playback"
 msgstr ""
 
-#: app/window.py:107
+#: app/window.py:100
 msgid "Main view, editor and library"
 msgstr ""
 
-#: app/window.py:112 app/window.py:124 ui/config/window.py:60
+#: app/window.py:105 app/window.py:117 ui/config/window.py:61
 msgid "Settings"
 msgstr ""
 
-#: app/window.py:115
+#: app/window.py:108
 msgid "Dialogs, workflows and metronome"
 msgstr ""
 
-#: app/window.py:122
+#: app/window.py:115
 msgid "Transport"
 msgstr ""
 
-#: app/window.py:125 ui/workers.py:23
+#: app/window.py:118 ui/workers.py:23
 msgid "Workers"
 msgstr ""
 
-#: app/window.py:126
+#: app/window.py:119
 msgid "Open Source"
 msgstr ""
 
-#: app/window.py:127
+#: app/window.py:120
 msgid "About"
 msgstr ""
 
-#: app/window.py:226 app/window.py:260 app/window.py:267
+#: app/window.py:219 app/window.py:253 app/window.py:260
 msgid "External Sync is enabled. Local track loading is disabled."
 msgstr ""
 
-#: app/window.py:236
+#: app/window.py:229
 #, python-brace-format
 msgid "Drop error: {error}"
 msgstr ""
 
-#: app/window.py:275
+#: app/window.py:268
 msgid "Track unloaded."
 msgstr ""
 
-#: app/window.py:282
+#: app/window.py:275
 msgid "Track File Not Found"
 msgstr ""
 
-#: app/window.py:286
+#: app/window.py:279
 #, python-brace-format
 msgid ""
 "Cannot load \"{name}\": its file is missing.\n"
@@ -300,50 +312,50 @@ msgid ""
 "Set the file's new location?"
 msgstr ""
 
-#: app/window.py:293
+#: app/window.py:286
 #, python-brace-format
 msgid "Locate {name}"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:584 app/window.py:343
+#: analyzer_core/global_analyzer.py:584 app/window.py:336
 msgid "Finished"
 msgstr ""
 
-#: app/window.py:346 app/window.py:382
+#: app/window.py:339 app/window.py:375
 msgid "Done. Press Play."
 msgstr ""
 
-#: app/window.py:348
+#: app/window.py:341
 msgid "Analysis saved to library."
 msgstr ""
 
-#: app/window.py:480
+#: app/window.py:473
 #, python-brace-format
 msgid "External Sync loading: {file}"
 msgstr ""
 
-#: app/window.py:480
+#: app/window.py:473
 #, python-brace-format
 msgid "External Sync analyzing: {file}"
 msgstr ""
 
-#: app/window.py:496
+#: app/window.py:489
 msgid "Memory Sync Disabled"
 msgstr ""
 
-#: app/window.py:741 ui/config/external_sync.py:130
+#: app/window.py:734 ui/config/external_sync.py:127
 msgid "Time Sync"
 msgstr ""
 
-#: app/window.py:741 ui/config/external_sync.py:130
+#: app/window.py:734 ui/config/external_sync.py:127
 msgid "Sample Index Sync"
 msgstr ""
 
-#: app/window.py:743
+#: app/window.py:736
 msgid "manual"
 msgstr ""
 
-#: app/window.py:748
+#: app/window.py:741
 #, python-brace-format
 msgid "External Sync enabled via {target}. Local play/load is locked."
 msgstr ""
@@ -379,17 +391,17 @@ msgstr ""
 msgid "Memory Sync deck payload read failed: {error}"
 msgstr ""
 
-#: core/external_sync.py:692
+#: core/external_sync.py:659
 #, python-brace-format
 msgid "External Sync blocked for denied process: {process} ({path})"
 msgstr ""
 
-#: core/external_sync.py:694
+#: core/external_sync.py:661
 #, python-brace-format
 msgid "External Sync blocked for denied process: {process}"
 msgstr ""
 
-#: core/external_sync.py:735
+#: core/external_sync.py:702
 #, python-brace-format
 msgid "Process denylist unavailable ({error}); blocking all processes."
 msgstr ""
@@ -1099,7 +1111,7 @@ msgid ""
 "a song outside it is read at half or double tempo."
 msgstr ""
 
-#: ui/config/analysis.py:62 ui/config/window.py:200
+#: ui/config/analysis.py:62 ui/config/window.py:201
 #, python-brace-format
 msgid "Reads {low} - {high} BPM"
 msgstr ""
@@ -1990,7 +2002,7 @@ msgid ""
 "{error}"
 msgstr ""
 
-#: ui/config/external_sync.py:47
+#: ui/config/external_sync.py:44
 msgid ""
 "Comma-separated hex pointer chain. The first value is an offset from the\n"
 "process's main module (prefix 'g' for an absolute address); each "
@@ -1998,117 +2010,117 @@ msgid ""
 "value is dereferenced and added as an offset."
 msgstr ""
 
-#: ui/config/external_sync.py:51
+#: ui/config/external_sync.py:48
 msgid "Data type stored at the resolved address."
 msgstr ""
 
-#: ui/config/external_sync.py:57
+#: ui/config/external_sync.py:54
 msgid "Offset chain"
 msgstr ""
 
-#: ui/config/external_sync.py:58
+#: ui/config/external_sync.py:55
 msgid "Type"
 msgstr ""
 
-#: ui/config/external_sync.py:62
+#: ui/config/external_sync.py:59
 msgid "Bytes to read for the string; it is cut at the first NUL."
 msgstr ""
 
-#: ui/config/external_sync.py:64
+#: ui/config/external_sync.py:61
 msgid "Length"
 msgstr ""
 
-#: ui/config/external_sync.py:67
+#: ui/config/external_sync.py:64
 msgid "Text encoding of the string, e.g. utf-8 or utf-16-le."
 msgstr ""
 
-#: ui/config/external_sync.py:69
+#: ui/config/external_sync.py:66
 msgid "Encoding"
 msgstr ""
 
-#: ui/config/external_sync.py:74
+#: ui/config/external_sync.py:71
 msgid "Bit of the byte read as the flag (0-7). Values above 7 use the whole byte."
 msgstr ""
 
-#: ui/config/external_sync.py:77
+#: ui/config/external_sync.py:74
 msgid "Bit position"
 msgstr ""
 
-#: ui/config/external_sync.py:84
+#: ui/config/external_sync.py:81
 msgid "The value read is multiplied by this to get seconds (e.g. 0.001 for ms)."
 msgstr ""
 
-#: ui/config/external_sync.py:87
+#: ui/config/external_sync.py:84
 msgid "Multiplier"
 msgstr ""
 
-#: ui/config/external_sync.py:94
+#: ui/config/external_sync.py:91
 msgid "Time"
 msgstr ""
 
-#: ui/config/external_sync.py:95
+#: ui/config/external_sync.py:92
 msgid "Current Sample Index"
 msgstr ""
 
-#: ui/config/external_sync.py:99
+#: ui/config/external_sync.py:96
 msgid "Active"
 msgstr ""
 
-#: ui/config/external_sync.py:100
+#: ui/config/external_sync.py:97
 msgid "Loaded"
 msgstr ""
 
-#: ui/config/external_sync.py:101
+#: ui/config/external_sync.py:98
 msgid "Playback position of the deck (Time Sync mode)."
 msgstr ""
 
-#: ui/config/external_sync.py:103
+#: ui/config/external_sync.py:100
 msgid "Playback position of the deck in samples (Sample Index Sync mode)."
 msgstr ""
 
-#: ui/config/external_sync.py:105
+#: ui/config/external_sync.py:102
 msgid "File path of the track loaded on the deck."
 msgstr ""
 
-#: ui/config/external_sync.py:106
+#: ui/config/external_sync.py:103
 msgid ""
 "Flag marking the deck as active. Only loaded and active decks are "
 "followed."
 msgstr ""
 
-#: ui/config/external_sync.py:107
+#: ui/config/external_sync.py:104
 msgid "Flag that is true while a track is loaded on the deck."
 msgstr ""
 
-#: ui/config/external_sync.py:128
+#: ui/config/external_sync.py:125
 msgid "Enable external sync"
 msgstr ""
 
-#: ui/config/external_sync.py:133
+#: ui/config/external_sync.py:130
 msgid "from reference sample rate"
 msgstr ""
 
-#: ui/config/external_sync.py:133
+#: ui/config/external_sync.py:130
 msgid "from file"
 msgstr ""
 
-#: ui/config/external_sync.py:149
+#: ui/config/external_sync.py:146
 msgid "Refresh"
 msgstr ""
 
-#: ui/config/external_sync.py:151
+#: ui/config/external_sync.py:148
 msgid ""
 "Follow the track and playback position of external software\n"
 "by reading its memory."
 msgstr ""
 
-#: ui/config/external_sync.py:155
+#: ui/config/external_sync.py:152
 msgid ""
 "Time Sync: read the position as time (scaled by the multiplier).\n"
 "Sample Index Sync: read the position as a sample index."
 msgstr ""
 
-#: ui/config/external_sync.py:159
+#: ui/config/external_sync.py:156
 msgid ""
 "How the track's total sample count is found to convert a sample index to "
 "time.\n"
@@ -2116,66 +2128,66 @@ msgid ""
 "from file: the decoded file's own sample count."
 msgstr ""
 
-#: ui/config/external_sync.py:164
+#: ui/config/external_sync.py:161
 msgid "Sample rate the external software counts samples at."
 msgstr ""
 
-#: ui/config/external_sync.py:167
+#: ui/config/external_sync.py:164
 msgid "Process to read memory from. Denylisted processes are blocked."
 msgstr ""
 
-#: ui/config/external_sync.py:169
+#: ui/config/external_sync.py:166
 msgid "Reload the list of running processes."
 msgstr ""
 
-#: ui/config/external_sync.py:170
+#: ui/config/external_sync.py:167
 msgid "Deck 1"
 msgstr ""
 
-#: ui/config/external_sync.py:171
+#: ui/config/external_sync.py:168
 msgid "Deck 2"
 msgstr ""
 
-#: ui/config/external_sync.py:173
+#: ui/config/external_sync.py:170
 msgid "Memory"
 msgstr ""
 
-#: ui/config/external_sync.py:182
+#: ui/config/external_sync.py:179
 msgid "Process"
 msgstr ""
 
-#: ui/config/external_sync.py:184
+#: ui/config/external_sync.py:181
 msgid ""
 "Warning: attaching memory sync to an unrelated process can trigger anti-"
 "cheat or antivirus false positives. Only target software you trust and "
 "explicitly intend to sync with."
 msgstr ""
 
-#: ui/config/external_sync.py:203
+#: ui/config/external_sync.py:200
 msgid ""
 "When enabled, local track loading and transport playback are restricted "
 "so the external software remains the source of truth."
 msgstr ""
 
-#: ui/config/external_sync.py:209
+#: ui/config/external_sync.py:206
 msgid "Mode"
 msgstr ""
 
-#: ui/config/external_sync.py:211
+#: ui/config/external_sync.py:208
 msgid "Total Sample Count Source"
 msgstr ""
 
-#: ui/config/external_sync.py:213
+#: ui/config/external_sync.py:210
 msgid "Reference Sample Rate"
 msgstr ""
 
-#: ui/config/external_sync.py:293
+#: ui/config/external_sync.py:292
 #, python-brace-format
 msgid "[Blocked] {process}"
 msgstr ""
 
-#: ui/config/external_sync.py:310 ui/config/external_sync.py:335
-#: ui/config/external_sync.py:350
+#: ui/config/external_sync.py:309 ui/config/external_sync.py:334
+#: ui/config/external_sync.py:349
 #, python-brace-format
 msgid "Blocked by denylist: {process}"
 msgstr ""
@@ -2897,15 +2909,15 @@ msgid ""
 "(empty: the first letter of its name)"
 msgstr ""
 
-#: ui/config/window.py:78
+#: ui/config/window.py:79
 msgid "Save the settings and close."
 msgstr ""
 
-#: ui/config/window.py:80
+#: ui/config/window.py:81
 msgid "Close without saving unapplied changes."
 msgstr ""
 
-#: ui/config/window.py:83
+#: ui/config/window.py:84
 msgid "Save the settings and keep the window open."
 msgstr ""
 
@@ -3519,19 +3531,19 @@ msgid ""
 "the analysis, playlists and CUEs stay with the track."
 msgstr ""
 
-#: ui/edit_song.py:73 ui/export.py:42
+#: ui/edit_song.py:73 ui/export.py:43
 msgid "Browse..."
 msgstr ""
 
-#: ui/edit_song.py:84 ui/edit_song.py:108 ui/export.py:53 ui/library.py:720
+#: ui/edit_song.py:84 ui/edit_song.py:108 ui/export.py:54 ui/library.py:720
 msgid "Title"
 msgstr ""
 
-#: ui/edit_song.py:84 ui/edit_song.py:109 ui/export.py:54 ui/library.py:720
+#: ui/edit_song.py:84 ui/edit_song.py:109 ui/export.py:55 ui/library.py:720
 msgid "Artist"
 msgstr ""
 
-#: ui/edit_song.py:84 ui/edit_song.py:110 ui/export.py:55 ui/library.py:721
+#: ui/edit_song.py:84 ui/edit_song.py:110 ui/export.py:56 ui/library.py:721
 msgid "Album"
 msgstr ""
 
@@ -3544,7 +3556,7 @@ msgid ""
 "reading for good, and type it again to bring it back.</p>"
 msgstr ""
 
-#: ui/config/external_sync.py:97 ui/edit_song.py:107 ui/library.py:722
+#: ui/config/external_sync.py:94 ui/edit_song.py:107 ui/library.py:722
 msgid "Path"
 msgstr ""
 
@@ -3597,112 +3609,112 @@ msgid ""
 "{path}"
 msgstr ""
 
-#: ui/edit_song.py:298 ui/edit_song.py:321 ui/library.py:1850
+#: ui/edit_song.py:298 ui/edit_song.py:321 ui/library.py:1851
 msgid "Edit Track"
 msgstr ""
 
-#: ui/export.py:24 ui/export.py:148 ui/export.py:156 ui/export.py:163
-#: ui/export.py:169 ui/export.py:191 ui/export.py:202 ui/export.py:273
-#: ui/export.py:282 ui/export.py:337 ui/export.py:348 ui/library.py:1854
-#: ui/library.py:1946
+#: ui/export.py:25 ui/export.py:149 ui/export.py:157 ui/export.py:164
+#: ui/export.py:170 ui/export.py:192 ui/export.py:203 ui/export.py:274
+#: ui/export.py:283 ui/export.py:338 ui/export.py:349 ui/library.py:1855
+#: ui/library.py:1939
 msgid "Export Track"
 msgstr ""
 
-#: ui/export.py:56
+#: ui/export.py:57
 msgid "Source"
 msgstr ""
 
-#: ui/export.py:57
+#: ui/export.py:58
 msgid "Destination Folder"
 msgstr ""
 
-#: ui/config/library.py:82 ui/export.py:59
+#: ui/config/library.py:82 ui/export.py:60
 msgid "Rekordbox XML"
 msgstr ""
 
-#: ui/export.py:60
+#: ui/export.py:61
 msgid "Prerender JumpCUE Audio"
 msgstr ""
 
-#: ui/export.py:61
+#: ui/export.py:62
 msgid "Write WAV files with JumpCUE skips baked in."
 msgstr ""
 
-#: ui/export.py:66
+#: ui/export.py:67
 msgid "No JumpCUE directions"
 msgstr ""
 
-#: ui/export.py:71
+#: ui/export.py:72
 msgid "Include"
 msgstr ""
 
-#: ui/export.py:74
+#: ui/export.py:75
 msgid "Export"
 msgstr ""
 
-#: ui/export.py:75
+#: ui/export.py:76
 msgid "Cancel"
 msgstr ""
 
-#: ui/export.py:111
+#: ui/export.py:112
 msgid "Source file not found at the specified path."
 msgstr ""
 
-#: ui/export.py:114
+#: ui/export.py:115
 msgid "Source path is invalid."
 msgstr ""
 
-#: ui/export.py:140
+#: ui/export.py:141
 msgid "Select Destination Folder"
 msgstr ""
 
-#: ui/export.py:148
+#: ui/export.py:149
 msgid "No track is selected."
 msgstr ""
 
-#: ui/export.py:157
+#: ui/export.py:158
 msgid ""
 "Select at least one export target (Rekordbox XML, Waveform Image, or "
 "JumpCUE audio)."
 msgstr ""
 
-#: ui/export.py:163
+#: ui/export.py:164
 msgid "Please select a destination folder."
 msgstr ""
 
-#: ui/export.py:169
+#: ui/export.py:170
 #, python-brace-format
 msgid ""
 "Cannot create destination folder:\n"
 "{error}"
 msgstr ""
 
-#: ui/export.py:192
+#: ui/export.py:193
 msgid "Select a JumpCUE direction to render."
 msgstr ""
 
-#: ui/export.py:202
+#: ui/export.py:203
 #, python-brace-format
 msgid ""
 "Export completed:\n"
 "{files}"
 msgstr ""
 
-#: ui/export.py:274 ui/export.py:338
+#: ui/export.py:275 ui/export.py:339
 #, python-brace-format
 msgid ""
 "'{name}' already exists.\n"
 "Overwrite?"
 msgstr ""
 
-#: ui/export.py:282
+#: ui/export.py:283
 #, python-brace-format
 msgid ""
 "Failed to write XML file:\n"
 "{error}"
 msgstr ""
 
-#: ui/export.py:348
+#: ui/export.py:349
 #, python-brace-format
 msgid ""
 "Failed to write JumpCUE audio:\n"
@@ -3861,7 +3873,7 @@ msgstr ""
 msgid "Local Folders"
 msgstr ""
 
-#: ui/config/external_sync.py:261 ui/library.py:1641 ui/pane.py:431
+#: ui/config/external_sync.py:260 ui/library.py:1641 ui/pane.py:431
 msgid "External Sync"
 msgstr ""
 
@@ -3909,52 +3921,60 @@ msgid ""
 msgstr ""
 
 #: ui/library.py:1848
-msgid "Reveal in Explorer/Finder"
+msgid "Show in Explorer"
 msgstr ""
 
 #: ui/library.py:1849
+msgid "Show in Finder"
+msgstr ""
+
+#: ui/library.py:1849
+msgid "Show in File Manager"
+msgstr ""
+
+#: ui/library.py:1850
 msgid "Remove from Library"
 msgstr ""
 
-#: ui/library.py:1852
+#: ui/library.py:1853
 msgid "Reanalyze Track"
 msgstr ""
 
-#: ui/library.py:1852
+#: ui/library.py:1853
 msgid "Analyze Track"
 msgstr ""
 
-#: ui/library.py:1857
+#: ui/library.py:1858
 msgid "Remove from Playlist"
 msgstr ""
 
-#: ui/library.py:1858
+#: ui/library.py:1859
 msgid "Add to Playlist"
 msgstr ""
 
-#: ui/library.py:1946
+#: ui/library.py:1939
 msgid "Track metadata could not be found in the library."
 msgstr ""
 
-#: ui/oss_support.py:10
+#: ui/oss_support.py:11
 msgid "Support Python & Open Source"
 msgstr ""
 
-#: ui/oss_support.py:18
+#: ui/oss_support.py:19
 msgid ""
 "This app is built on the shoulders of open-source projects.\n"
 "If you'd like to support the ecosystem, here are some ways."
 msgstr ""
 
-#: ui/oss_support.py:25
+#: ui/oss_support.py:26
 msgid "Donate to Python (PSF)"
 msgstr ""
 
-#: ui/oss_support.py:27
+#: ui/oss_support.py:28
 msgid "Donate to Scientific Python (NumFOCUS)"
 msgstr ""
 
-#: ui/oss_support.py:49
+#: ui/oss_support.py:50
 msgid "Open Link"
 msgstr ""
 

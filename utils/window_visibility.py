@@ -1,11 +1,16 @@
+"""Whether the app's window can be seen at all (the views redraw less while it cannot: Settings > View >
+Reduce FPS when occluded). Windows: hidden, minimized, cloaked or covered by other windows at every sampled point
+(user32 + DWM). Elsewhere (core.os_support): hidden, minimized or not exposed by the window system (Qt; macOS
+reports an occluded window so, X11 / Wayland mostly when it is not mapped)."""
+
 from __future__ import annotations
 
-import ctypes
-import os
-from ctypes import wintypes
+from core import os_support
 
+if os_support.IS_WINDOWS:
+    import ctypes
+    from ctypes import wintypes
 
-if os.name == "nt":
     user32 = ctypes.windll.user32
     try:
         dwmapi = ctypes.windll.dwmapi
@@ -52,6 +57,19 @@ if os.name == "nt":
         dwmapi.DwmGetWindowAttribute.restype = HRESULT
 
 
+def _hidden_by_qt(widget) -> bool:
+    """The fallback off Windows: hidden, minimized, or a window the window system does not expose."""
+    if not hasattr(widget, "isVisible"):
+        return False
+    try:
+        if not bool(widget.isVisible()) or bool(widget.isMinimized()):
+            return True
+        handle = widget.windowHandle()
+        return handle is not None and not bool(handle.isExposed())
+    except Exception:
+        return False
+
+
 def _safe_hwnd(value) -> int:
     try:
         if hasattr(value, "value"):
@@ -64,7 +82,7 @@ def _safe_hwnd(value) -> int:
 
 
 def _rect_from_dwm(hwnd: int):
-    if os.name != "nt" or dwmapi is None or hwnd == 0:
+    if not os_support.IS_WINDOWS or dwmapi is None or hwnd == 0:
         return None
     rect = RECT()
     hr = dwmapi.DwmGetWindowAttribute(
@@ -79,7 +97,7 @@ def _rect_from_dwm(hwnd: int):
 
 
 def _window_rect(hwnd: int):
-    if os.name != "nt" or hwnd == 0:
+    if not os_support.IS_WINDOWS or hwnd == 0:
         return None
     rect = _rect_from_dwm(hwnd)
     if rect is not None:
@@ -92,7 +110,7 @@ def _window_rect(hwnd: int):
 
 
 def _is_cloaked(hwnd: int) -> bool:
-    if os.name != "nt" or dwmapi is None or hwnd == 0:
+    if not os_support.IS_WINDOWS or dwmapi is None or hwnd == 0:
         return False
     cloaked = wintypes.DWORD(0)
     hr = dwmapi.DwmGetWindowAttribute(
@@ -156,15 +174,14 @@ def _sample_points(rect, *, cols: int = 6, rows: int = 6) -> list[POINT]:
 
 def is_window_fully_hidden(hwnd_or_widget) -> bool:
     """
-    Fast Windows-first heuristic for "the whole top-level window is not visible
-    to the user at all".
+    Fast heuristic for "the whole top-level window is not visible to the user at all".
 
-    Returns True when the window is hidden/minimized/cloaked or when sampled
+    Windows: True when the window is hidden/minimized/cloaked or when sampled
     points across the window rectangle are entirely covered by other windows.
-    Returns False on unsupported platforms.
+    Elsewhere: True when the widget is hidden/minimized or its window is not exposed.
     """
-    if os.name != "nt":
-        return False
+    if not os_support.IS_WINDOWS:
+        return _hidden_by_qt(hwnd_or_widget)
 
     hwnd = 0
     if hasattr(hwnd_or_widget, "winId"):

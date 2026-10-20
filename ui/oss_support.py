@@ -1,4 +1,5 @@
 from PySide6 import QtCore, QtGui, QtWidgets
+from core import os_support
 from core.i18n import tr
 
 
@@ -188,6 +189,8 @@ class SupportDialog(QtWidgets.QDialog):
             "RapidFuzz": "rapidfuzz",
         }
         for name, url in candidates:
+            if name == "PyMemoryEditor" and not os_support.MEMORY_SYNC:
+                continue   # not installed, never imported where no memory is read (macOS)
             mod = detect.get(name)
             try:
                 __import__(mod)

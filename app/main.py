@@ -1,7 +1,7 @@
-import sys, os
+import sys
 from pathlib import Path
 from PySide6 import QtWidgets
-from core import i18n
+from core import i18n, os_support
 from core.config import load_cfg, ui_language
 from core.i18n import tr
 from core.library_version import (
@@ -22,15 +22,6 @@ for _stream in (sys.stdout, sys.stderr):
         pass
 
 
-def _is_running_as_admin() -> bool:
-    if os.name != "nt":
-        return False
-    try:
-        return bool(__import__("ctypes").windll.shell32.IsUserAnAdmin())
-    except Exception:
-        return False
-
-
 def main():
     app = QtWidgets.QApplication(sys.argv)
     # the language before any UI is made (or imported: the startup imports the rest)
@@ -38,7 +29,15 @@ def main():
     i18n.install_qt(app)
     apply_theme(app)
     load_fonts_and_set_global(app)
-    if _is_running_as_admin():
+    print(f"[Startup] OS: {os_support.os_name()} ({os_support.OS})")
+    if not os_support.IS_SUPPORTED:
+        QtWidgets.QMessageBox.warning(
+            None,
+            tr("Unsupported Operating System"),
+            tr("Mixlyzer supports Windows, Linux and macOS; this system ({system}) is not one of them.\n"
+               "It may not work correctly.").format(system=os_support.os_name()),
+        )
+    if os_support.is_elevated():
         QtWidgets.QMessageBox.critical(
             None,
             tr("Administrator Execution Blocked"),

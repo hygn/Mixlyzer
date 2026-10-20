@@ -7,6 +7,7 @@ from urllib.parse import unquote, urlparse
 import numpy as np
 from PySide6 import QtCore, QtWidgets
 import soundfile as sf
+from core import os_support
 from core.analysis_lib_handler import FeatureNPZStore
 from core.library_handler import TrackRow
 from core.audio.decoder import decode_to_memmap, get_samplerate
@@ -123,7 +124,7 @@ class ExportTrackDialog(QtWidgets.QDialog):
             path_part = unquote(parsed.path or "")
             if parsed.netloc and parsed.netloc not in ("", "localhost"):
                 path_part = f"/{parsed.netloc}{path_part}"
-            if os.name == "nt" and path_part.startswith("/"):
+            if os_support.IS_WINDOWS and path_part.startswith("/"):
                 path_part = path_part.lstrip("/")
             candidate = path_part
         else:

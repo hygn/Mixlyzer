@@ -13,11 +13,12 @@ available() is False and scratching follows the GUI's mouse events.
 """
 from __future__ import annotations
 
-import sys
 import threading
 from typing import Optional
 
 import numpy as np
+
+from core import os_support
 
 _kernels = None    # core.audio._cursor_numba once loaded, False if that failed
 _timer_api = None  # (CreateWaitableTimerExW, CloseHandle, QPC frequency)
@@ -42,7 +43,7 @@ def warm_cursor_poller() -> bool:
     global _kernels, _timer_api
     if _kernels is None:
         _kernels = False
-        if sys.platform == "win32":
+        if os_support.IS_WINDOWS:
             try:
                 import ctypes
                 k32 = ctypes.WinDLL("kernel32")

@@ -7,7 +7,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 import os
 from utils.labels import idx_to_labels
 from utils.phrases import PHRASE_LABELS, phrase_display_name
-from core import reading
+from core import os_support, reading
 from core.library_handler import TrackRow, LibraryDB
 from core.analysis_lib_handler import FeatureNPZStore
 from core.event_bus import EventBus
@@ -1845,7 +1845,8 @@ class LibraryWidget(QtWidgets.QWidget):
         all_analyzed = bool(selected_paths) and all(
             analyzed_by_path.get(path, False) for path in selected_paths
         )
-        act_reveal = menu.addAction(tr("Reveal in Explorer/Finder"))
+        act_reveal = menu.addAction(tr("Show in Explorer") if os_support.IS_WINDOWS else
+                                    tr("Show in Finder") if os_support.IS_MACOS else tr("Show in File Manager"))
         act_remove = menu.addAction(tr("Remove from Library"))
         act_edit = menu.addAction(tr("Edit Track"))
         act_reanalyze = menu.addAction(
@@ -1918,20 +1919,12 @@ class LibraryWidget(QtWidgets.QWidget):
             if track_uid:
                 self.bus.sig_rekordbox_sync_track_requested.emit(track_uid)
 
-    # Explorer
+    # the system's file manager
     def _reveal_selected(self):
-        import subprocess, platform
         for row in self._selected_rows():
             path = self.table.item(row, self.HEADERS.index("Path")).text()
-            if not path:
-                continue
-            if platform.system() == "Windows":
-                subprocess.Popen(["explorer", "/select,", os.path.normpath(path)])
-            elif platform.system() == "Darwin":
-                subprocess.Popen(["open", "-R", path])
-            else:
-                folder = os.path.dirname(path)
-                subprocess.Popen(["xdg-open", folder])
+            if path:
+                os_support.reveal_file(path)
 
     def _export_selected(self):
         uids = self._selected_uids()
