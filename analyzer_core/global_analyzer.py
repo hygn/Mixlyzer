@@ -10,7 +10,6 @@ from pathlib import Path
 from PySide6 import QtGui
 from typing import Optional
 from analyzer_core.key.key import *
-from analyzer_core.beat.beat import *
 from analyzer_core.beat.frame_features import FRAME_HOP_LENGTH, extract_frame_features
 from analyzer_core.hpss import HPSS_HOP_LENGTH, HPSS_N_FFT, hpss_audio_with_spectra
 from analyzer_core.dsp.resample import resample_audio

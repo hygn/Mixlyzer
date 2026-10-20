@@ -21,31 +21,6 @@ class _OptimizerDefinition:
     optimize: OptimizerCallable
 
 
-def _load_onset_optimizer() -> _OptimizerDefinition:
-    from optimizer.onset_parameter_optimizer import OnsetOptimizationRequest, optimize_onset_parameters
-    return _OptimizerDefinition(OnsetOptimizationRequest, optimize_onset_parameters)
-
-
-def _load_beat_phase_optimizer() -> _OptimizerDefinition:
-    from optimizer.beat_phase_parameter_optimizer import BeatPhaseOptimizationRequest, optimize_beat_phase_parameters
-    return _OptimizerDefinition(BeatPhaseOptimizationRequest, optimize_beat_phase_parameters)
-
-
-def _load_downbeat_optimizer() -> _OptimizerDefinition:
-    from optimizer.downbeat_parameter_optimizer import DownbeatOptimizationRequest, optimize_downbeat_parameters
-    return _OptimizerDefinition(DownbeatOptimizationRequest, optimize_downbeat_parameters)
-
-
-def _load_beat_candidate_selector_optimizer() -> _OptimizerDefinition:
-    from optimizer.beat_candidate_selector_optimizer import (
-        BeatCandidateSelectorOptimizationRequest,
-        optimize_beat_candidate_selector,
-    )
-    return _OptimizerDefinition(
-        BeatCandidateSelectorOptimizationRequest, optimize_beat_candidate_selector
-    )
-
-
 def _load_refine_onset_optimizer() -> _OptimizerDefinition:
     from optimizer.refine_onset_optimizer import RefineOnsetOptimizationRequest, optimize_refine_onset
     return _OptimizerDefinition(RefineOnsetOptimizationRequest, optimize_refine_onset)
@@ -71,11 +46,6 @@ def _load_downbeat_ctx_optimizer() -> _OptimizerDefinition:
     return _OptimizerDefinition(DownbeatCtxOptimizationRequest, optimize_downbeat_ctx)
 
 
-def _load_downbeat_boost_optimizer() -> _OptimizerDefinition:
-    from optimizer.downbeat_boost_optimizer import DownbeatBoostOptimizationRequest, optimize_downbeat_boost
-    return _OptimizerDefinition(DownbeatBoostOptimizationRequest, optimize_downbeat_boost)
-
-
 def _load_phrase_optimizer() -> _OptimizerDefinition:
     from optimizer.phrase_parameter_optimizer import PhraseOptimizationRequest, optimize_phrase_parameters
     return _OptimizerDefinition(PhraseOptimizationRequest, optimize_phrase_parameters)
@@ -88,12 +58,7 @@ def _load_jumpcue_optimizer() -> _OptimizerDefinition:
 
 # New optimizers only need a loader here and a UI job using the corresponding key.
 _OPTIMIZER_LOADERS: dict[str, Callable[[], _OptimizerDefinition]] = {
-    "onset": _load_onset_optimizer,
-    "beat_phase": _load_beat_phase_optimizer,
-    "downbeat": _load_downbeat_optimizer,
-    "candidate_selector": _load_beat_candidate_selector_optimizer,
     "refine_onset": _load_refine_onset_optimizer,
-    "downbeat_boost": _load_downbeat_boost_optimizer,
     "downbeat_ctx": _load_downbeat_ctx_optimizer,
     "beat_tcn": _load_beat_tcn_optimizer,
     "beat_critic": _load_beat_critic_optimizer,

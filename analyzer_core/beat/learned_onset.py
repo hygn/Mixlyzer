@@ -1,3 +1,6 @@
+"""The tempo-change onset: a gradient-boosted beat activation on the frame grid, from per-frame onset
+sources with their context. The beat tracker moves each tempo change to it (``grid_refine.refine_boundaries``)."""
+
 from __future__ import annotations
 
 import json
@@ -5,9 +8,8 @@ from functools import lru_cache
 from pathlib import Path
 
 import numpy as np
-from scipy.special import expit
 
-from analyzer_core.beat.frame_features import FrameFeatures, model_frame_hop_length
+from analyzer_core.beat.frame_features import FrameFeatures
 from core.resource_paths import resource_path
 
 
@@ -39,7 +41,7 @@ ONSET_CHANNEL_NAMES: tuple[str, ...] = (
     "melody_chroma_change",
     "melody_chroma_flux",
 )
-# Frame offsets stacked around each frame so the linear model can sharpen and
+# Frame offsets stacked around each frame so the model can sharpen and
 # time-align the sources (an FIR filter per channel). Offsets and dilations are
 # in frames, so a model only fits the frame hop it was trained on.
 ONSET_CONTEXT_OFFSETS: tuple[int, ...] = (-3, -2, -1, 0, 1, 2, 3)
@@ -58,9 +60,6 @@ ONSET_FEATURE_NAMES: tuple[str, ...] = tuple(
     for side in ("pre", "post")
     for name in ONSET_CHANNEL_NAMES
 )
-ONSET_MODEL_FORMAT = "mixlyzer_learned_onset_v5"
-
-_DEFAULT_WEIGHT_PATH = resource_path("assets/weights/onset_feature_weights.json")
 
 
 def _rise(values: np.ndarray) -> np.ndarray:
@@ -143,101 +142,8 @@ def stack_context(channels: np.ndarray, frame_index: np.ndarray | None = None) -
     return np.concatenate(blocks, axis=1)
 
 
-def clear_onset_weight_cache() -> None:
-    """Make a newly written weight artifact visible in this process."""
-    _load_onset_model.cache_clear()
-
-
-@lru_cache(maxsize=4)
-def _load_onset_model(weight_path: str) -> tuple[np.ndarray, float]:
-    path = Path(weight_path)
-    report = json.loads(path.read_text(encoding="utf-8"))
-    model = report.get("model", report)
-    if str(model.get("format", "")) != ONSET_MODEL_FORMAT:
-        raise ValueError(f"Onset weight format mismatch: {path}")
-    if tuple(str(name) for name in model["feature_names"]) != ONSET_FEATURE_NAMES:
-        raise ValueError(f"Onset weight feature schema mismatch: {path}")
-    weights = np.asarray(model["weights"], dtype=np.float64)
-    bias = float(model["bias"])
-    if weights.shape != (len(ONSET_FEATURE_NAMES),) or not np.all(np.isfinite(weights)):
-        raise ValueError(f"Invalid onset weights: {path}")
-    return weights, bias
-
-
-def onset_model_frame_hop_length(weight_path: str | Path) -> int:
-    """Frame hop the onset model at ``weight_path`` was optimized at."""
-    report = json.loads(Path(weight_path).read_text(encoding="utf-8"))
-    return model_frame_hop_length(report.get("model", report))
-
-
-def onset_activation(
-    frames: FrameFeatures,
-    weight_path: str | Path = _DEFAULT_WEIGHT_PATH,
-) -> np.ndarray:
-    """Learned beat-onset probability on the frame grid [T]."""
-    weights, bias = _load_onset_model(str(Path(weight_path).resolve()))
-    inputs = stack_context(onset_channels(frames))
-    return expit(inputs.astype(np.float64) @ weights + bias).astype(np.float32)
-
-
-def resample_to_odf_grid(
-    values: np.ndarray,
-    frames: FrameFeatures,
-    hop_length: int,
-    n_samples: int,
-) -> tuple[np.ndarray, float]:
-    """Resample a frame-grid curve onto the beat tracker's ODF grid.
-
-    The tracker reads ODF frame ``k`` as a beat at ``(k + 0.5) * hop`` seconds,
-    so the curve is sampled there.
-    """
-    hop_t = int(hop_length) / float(frames.sample_rate)
-    n_odf = max(1, 1 + (int(n_samples) - 1) // int(hop_length))
-    times = (np.arange(n_odf, dtype=np.float64) + 0.5) * hop_t
-    odf = np.interp(times, frames.frame_times, np.asarray(values, dtype=np.float64))
-    return odf.astype(np.float32), hop_t
-
-
-def compute_learned_odf(
-    frames: FrameFeatures,
-    hop_length: int,
-    n_samples: int,
-    weight_path: str | Path = _DEFAULT_WEIGHT_PATH,
-) -> tuple[np.ndarray, float]:
-    """Beat tracker ODF from the learned onset model."""
-    return resample_to_odf_grid(onset_activation(frames, weight_path), frames, hop_length, n_samples)
-
-
-def compute_beat_odf(
-    onset_source: str,
-    frames: FrameFeatures | None,
-    onset_audio: np.ndarray,
-    sample_rate: int,
-    hop_length: int,
-    weight_path: str | Path = _DEFAULT_WEIGHT_PATH,
-) -> tuple[np.ndarray, float]:
-    """ODF for the beat tracker: librosa onset strength, or the learned onset.
-
-    ``"optimized"`` needs ``frames``; if its weights cannot be used the librosa
-    ODF is returned instead (and the reason printed) so analysis still finishes.
-    """
-    from analyzer_core.beat.beat import _compute_odf
-
-    if onset_source == "optimized" and frames is not None:
-        try:
-            odf, hop_t = compute_learned_odf(frames, hop_length, len(onset_audio), weight_path)
-            print(f"[Onset] learned onset ({weight_path})")
-            return odf, hop_t
-        except Exception as exc:
-            print(f"[Onset] learned onset unavailable, using librosa: {exc}")
-    return _compute_odf(onset_audio, sample_rate, hop_length)
-
-
-# Gradient-boosted onset over the same inputs. Its beat activation is much sharper
-# (frame beat AP about twice the linear model's out of fold), but it also fires on
-# triplet subdivisions, which pulls the tempo fold to 3:2 / 4:3. The tracker therefore
-# keeps the linear onset for tempo; this one only drives the grid refinement
-# (segment verification, phase re-lock, ramps).
+# Gradient-boosted onset over those inputs. It also fires on triplet subdivisions, so the
+# tracker reads tempo from its TCN; this one only places the tempo changes.
 REFINE_ONSET_FORMAT = "mixlyzer_refine_onset_hgb_v1"
 REFINE_ONSET_PATH = resource_path("assets/weights/refine_onset_hgb.npz")
 

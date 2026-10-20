@@ -7,8 +7,9 @@ from typing import Optional
 import numpy as np
 from PySide6 import QtCore, QtGui, QtWidgets
 
-from analyzer_core.editor.beatgrid import canonical_inizio, rebuild_grid_from_segments, shift_grid_in_seg
-from core.tempo_rows import bpm_at, is_ramp_row, retempo_row, segment_end_bpm, split_row, with_end_bpm
+from analyzer_core.editor.beatgrid import canonical_inizio, shift_grid_in_seg
+from core.tempo_rows import (bpm_at, is_ramp_row, rebuild_grid_from_segments, retempo_row, segment_end_bpm, split_row,
+                             with_end_bpm)
 from core.beat_geometry import MAX_BEATS_PER_BAR
 from ui.edit_panel.icons import icon
 from ui.theme import current_theme

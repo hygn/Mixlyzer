@@ -22,7 +22,7 @@ from core.concurrency.process_pool import create_spawn_process_pool
 from optimizer import SkippedOptimizationTrack, optimizer_track_name, skipped_track
 from optimizer import model_start as MS
 from optimizer.beat_grid_check import GridCheck, ModelSet, grid_check
-from optimizer.onset_parameter_optimizer import (
+from optimizer.onset_training import (
     _auto_cache_workers,
     _build_track_cache,
     _cache_path,

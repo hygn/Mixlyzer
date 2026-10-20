@@ -13,7 +13,7 @@ import numpy as np
 from analyzer_core.beat.frame_features import FrameFeatures
 from core.concurrency.process_pool import create_spawn_process_pool
 from optimizer import SkippedOptimizationTrack, optimizer_track_name, skipped_track
-from optimizer.onset_parameter_optimizer import _auto_cache_workers, _list_beat_tracks
+from optimizer.onset_training import _auto_cache_workers, _list_beat_tracks
 from utils.atomic_io import atomic_output_path
 
 ProgressCallback = Callable[[int, str], None]

@@ -125,36 +125,6 @@ def ramp_beat_times(start: float, end: float, bpm_start: float, bpm_end: float,
     return beats[(beats >= float(start) - 1e-9) & (beats < limit)]
 
 
-def ramp_rows(knots, tempos, first_beat: float, ts: float = 4.0) -> np.ndarray:
-    """Phase-continuous ramp rows ``[start, end, bpm, inizio, ts, bpm_end]`` for a piecewise-
-    linear tempo (``tempos`` at the ``knots`` times) whose first beat is ``first_beat``.
-    Each row's ``inizio`` is its first beat, where the previous row's beat count continues."""
-    knots = np.asarray(knots, dtype=np.float64)
-    tempos = np.asarray(tempos, dtype=np.float64)
-    rows = []
-    anchor = float(first_beat)
-    for i in range(knots.size - 1):
-        start, end = float(knots[i]), float(knots[i + 1])
-        b0, b1 = float(tempos[i]), float(tempos[i + 1])
-        rows.append([start, end, b0, anchor, float(ts), b1])
-        if i + 2 >= knots.size:
-            break
-        length = end - start
-        slope = (b1 - b0) / length if length > 0 else 0.0
-        phase = lambda x: (b0 * x + 0.5 * slope * x * x) / 60.0
-        elapsed = phase(length) - phase(anchor - start)       # beats from the anchor to the row's end
-        need = np.ceil(elapsed - 1e-9) - elapsed                # beats from the end to the next beat
-        n0, n1 = b1, float(tempos[i + 2])
-        next_len = float(knots[i + 2]) - end
-        next_slope = (n1 - n0) / next_len if next_len > 0 else 0.0
-        if abs(next_slope) < 1e-12:
-            x = 60.0 * need / n0
-        else:
-            x = (-n0 + np.sqrt(max(n0 * n0 + 2.0 * next_slope * 60.0 * need, 0.0))) / next_slope
-        anchor = end + float(x)
-    return np.asarray(rows, dtype=np.float64)
-
-
 def rebuild_grid_from_segments(segments) -> np.ndarray:
     """Rebuild beat times from ``[start, end, bpm, inizio, ...]`` rows.
 

@@ -178,12 +178,12 @@ def bars_viterbi(pd, cost=CB, cheap=None, cost_at_start=0.0):
 def downbeat_probability(beats, down, t0, hop, frames, ctx_model):
     """Per beat, the fused downbeat probability of the two observers (the TCN's downbeat activation and the
     contextual GBM)."""
-    from analyzer_core.beat.downbeat_offset import _downbeat_feature_matrix, _robust_standardize_columns
+    from analyzer_core.beat.downbeat_features import downbeat_feature_matrix, robust_standardize_columns
     b = np.sort(np.asarray(beats, float))
     p = _at(down, t0, hop, b)
     if b.size >= 8 and ctx_model is not None:
-        _, F = _downbeat_feature_matrix(frames, b, beat_phase_bins=8, harmonic_phase_bins=8)
-        pg = ctx_model.predict_proba(context(_robust_standardize_columns(F)))[:, 1]
+        _, F = downbeat_feature_matrix(frames, b, beat_phase_bins=8, harmonic_phase_bins=8)
+        pg = ctx_model.predict_proba(context(robust_standardize_columns(F)))[:, 1]
         pgb = np.full(b.size, 0.25)
         n = min(b.size, pg.size)
         pgb[:n] = pg[:n]

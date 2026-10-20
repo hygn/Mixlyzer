@@ -13,10 +13,9 @@ from typing import Callable
 
 import numpy as np
 from sklearn.ensemble import HistGradientBoostingClassifier
-from sklearn.metrics import average_precision_score
 from sklearn.model_selection import GroupKFold
 
-from analyzer_core.beat.downbeat_offset import _downbeat_feature_matrix, _robust_standardize_columns
+from analyzer_core.beat.downbeat_features import downbeat_feature_matrix, robust_standardize_columns
 from analyzer_core.beat.general.bars import context, export_ctx_model
 from core.beat_geometry import downbeat_beat_indices
 from optimizer import SkippedOptimizationTrack, skipped_track
@@ -59,8 +58,8 @@ def _model(seed: int) -> HistGradientBoostingClassifier:
 
 def track_samples(frames, beats: np.ndarray, segments: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """(features, labels) at the annotated beats: what the tracker's bars read at its own beats."""
-    beat_times, features = _downbeat_feature_matrix(frames, beats, beat_phase_bins=8, harmonic_phase_bins=8)
-    x = context(_robust_standardize_columns(features)).astype(np.float32)
+    beat_times, features = downbeat_feature_matrix(frames, beats, beat_phase_bins=8, harmonic_phase_bins=8)
+    x = context(robust_standardize_columns(features)).astype(np.float32)
     y = np.zeros(x.shape[0], dtype=np.int8)
     down = downbeat_beat_indices(beat_times, segments)
     y[down[down < y.size]] = 1

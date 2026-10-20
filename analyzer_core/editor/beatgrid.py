@@ -2,15 +2,41 @@ from typing import Callable, Optional, Tuple
 import numpy as np
 
 from analyzer_core.global_analyzer import fast_load
-from analyzer_core.beat.beat import (
-    build_grid_from_period_phase,
+from core.tempo_rows import (
+    bpm_at,
+    is_ramp_row,
     prune_close_beats,
-    rebuild_grid_from_segments,
+    ramp_beat_times,
+    segment_end_bpm,
+    shift_row_beats,
+    with_end_bpm,
 )
-from core.tempo_rows import bpm_at, is_ramp_row, ramp_beat_times, segment_end_bpm, shift_row_beats, with_end_bpm
 from analyzer_core.beat.frame_features import extract_frame_features
 from analyzer_core.hpss import hpss_audio
 from core.config import config
+
+
+def build_grid_from_period_phase(total_len_frames: int,
+                                 hop_t: float,
+                                 period_frames: float,
+                                 phase_frames: float,
+                                 subdiv: int = 1) -> tuple[np.ndarray, np.ndarray]:
+    """Make beatgrid in sec using period and phase."""
+    T = total_len_frames
+    step = period_frames / max(1, int(subdiv))
+    if not np.isfinite(step) or step <= 0:
+        return np.array([]), np.array([])
+    base = float(phase_frames) % step
+    idx = base + np.arange(0.0, T - base + step, step, dtype=float)
+    idx = idx[(idx >= 0) & (idx < T)]
+    if subdiv > 1:
+        main = float(phase_frames) % period_frames
+        main_idx = main + np.arange(0.0, T - main + period_frames, period_frames, dtype=float)
+        main_idx = main_idx[(main_idx >= 0) & (main_idx < T)]
+        return (main_idx * hop_t, idx * hop_t)
+    else:
+        return (idx * hop_t, np.array([]))
+
 
 def canonical_inizio(inz: float, start: float, bpm: float, beats_per_bar: float = 4.0) -> float:
         """Wrap inizio within one bar (``beats_per_bar`` beats) of the provided start.

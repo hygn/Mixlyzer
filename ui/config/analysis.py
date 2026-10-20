@@ -496,7 +496,7 @@ class AnalysisSettingsMixin:
         except OSError:
             track_count = None
         dialog = BeatParameterOptimizeDialog(
-            {}, self, track_count=track_count,
+            self, track_count=track_count,
             model_paths={key: self._project_path(field.text().strip()) for key, (field, _cache) in paths.items()},
         )
         if dialog.exec() != QDialog.Accepted:

@@ -16,27 +16,11 @@ a = Analysis(
     # load_cfg() writes one from default_cfg() on first launch.
     datas=[
         (
-            '../assets/weights/downbeat_feature_weights.json',
-            'assets/weights',
-        ),
-        (
             '../assets/weights/phrase_analyzer.npz',
             'assets/weights',
         ),
         (
-            '../assets/weights/beat_candidate_selector.npz',
-            'assets/weights',
-        ),
-        (
-            '../assets/weights/meter_section_classifier.npz',
-            'assets/weights',
-        ),
-        (
             '../assets/weights/default_refine_onset_hgb.npz',
-            'assets/weights',
-        ),
-        (
-            '../assets/weights/downbeat_hgb.npz',
             'assets/weights',
         ),
         (

@@ -5,7 +5,7 @@ import numpy as np
 from analyzer_core.beat.frame_features import FrameFeatures
 
 
-# Beat-grid local periodicity, shared by the beat-phase and downbeat models.
+# Beat-grid local periodicity, used by the downbeat features (downbeat_features.py).
 #
 # For every beat, a Hann window of +-window beats gives each onset curve's local
 # Fourier coefficient at a few periods measured in beats (a local pulse per
@@ -101,24 +101,3 @@ def rotate(coefficients: np.ndarray, positions: np.ndarray, periods_beats: tuple
     periods = np.asarray(periods_beats, dtype=np.float64)
     turn = np.exp(2j * np.pi * np.asarray(positions, dtype=np.float64)[:, np.newaxis] / periods[np.newaxis, :])
     return coefficients * turn[:, np.newaxis, :]
-
-
-def sixteenth_peaks(frame_times: np.ndarray, beat_times: np.ndarray, curves: np.ndarray) -> np.ndarray:
-    """Peak of each curve in every 16th cell centred on the grid, scaled to [0, 1] per curve.
-
-    Returns [4 * n_beats + 4, C]; cell ``4 * beat + k`` is ``k`` sixteenths after
-    ``beat`` (four trailing cells past the last beat). Peaks keep the raw accent
-    (loud vs soft hits), which the clipped standardized curves lose on dense drums.
-    """
-    beat_times = np.asarray(beat_times, dtype=np.float64)
-    n = beat_times.size
-    position = np.interp(frame_times, beat_times, np.arange(n, dtype=np.float64))
-    cell = np.rint(position * 4).astype(np.int64)
-    inside = (frame_times > beat_times[0]) & (frame_times < beat_times[-1])
-    peaks = np.zeros((4 * n + 4, curves.shape[1]))
-    for c in range(curves.shape[1]):
-        np.maximum.at(peaks[:, c], np.clip(cell[inside], 0, 4 * n + 3), curves[inside, c])
-    body = peaks[4 : 4 * n]
-    lo = np.percentile(body, 10, axis=0)
-    hi = np.percentile(body, 95, axis=0)
-    return np.clip((peaks - lo) / np.maximum(hi - lo, 1e-9), 0.0, 1.0)

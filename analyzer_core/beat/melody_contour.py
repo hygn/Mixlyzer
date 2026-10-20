@@ -242,33 +242,3 @@ def _fit(values: np.ndarray, length: int, fill: float) -> np.ndarray:
     if values.size >= length:
         return values[:length]
     return np.concatenate([values, np.full(length - values.size, fill)])
-
-
-def melody_note_starts(
-    frame_times: np.ndarray, pitch: np.ndarray, contour: np.ndarray
-) -> tuple[np.ndarray, np.ndarray]:
-    """Melody note starts (s) and held lengths (s).
-
-    A start is a frame where a contour takes the melody after silence or with a
-    pitch change >= 0.5 semitone, and keeps it for >= 100 ms; the note is held
-    until the contour changes or the pitch moves >= 1 semitone from its start.
-    """
-    frame_times = np.asarray(frame_times, dtype=np.float64)
-    T = min(frame_times.size, pitch.size, contour.size)
-    if T < 2:
-        return np.zeros(0), np.zeros(0)
-    frame_sec = float(np.median(np.diff(frame_times[:T])))
-    hold = int(round(0.1 / frame_sec))
-    voiced = contour[:T] >= 0
-    previous = np.concatenate([[-2], contour[: T - 1]])
-    starts, lengths = [], []
-    for i in np.flatnonzero(voiced & (previous != contour[:T])):
-        if i + hold > T or np.any(contour[i:i + hold] != contour[i]):
-            continue
-        if i > 0 and voiced[i - 1] and abs(pitch[i] - pitch[i - 1]) < 0.5:
-            continue
-        k = i
-        while k + 1 < T and contour[k + 1] == contour[i] and abs(pitch[k + 1] - pitch[i]) < 1.0:
-            k += 1
-        starts.append(frame_times[i]); lengths.append((k - i + 1) * frame_sec)
-    return np.asarray(starts), np.asarray(lengths)

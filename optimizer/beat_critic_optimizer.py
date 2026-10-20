@@ -17,7 +17,6 @@ from __future__ import annotations
 
 from concurrent.futures import FIRST_COMPLETED, as_completed, wait
 from dataclasses import dataclass
-from datetime import date
 import math
 import multiprocessing
 from pathlib import Path

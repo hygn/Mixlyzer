@@ -66,18 +66,6 @@ class FrameFeatures:
         return int(self.frame_times.size)
 
 
-def model_frame_hop_length(model: dict) -> int:
-    """Frame hop a learned model was trained on."""
-    return int(model.get("frame_hop_length", FRAME_HOP_LENGTH))
-
-
-def robust_standardize_rows(features: np.ndarray) -> np.ndarray:
-    median = np.median(features, axis=1, keepdims=True)
-    mad = np.median(np.abs(features - median), axis=1, keepdims=True)
-    scale = np.maximum(1.4826 * mad, 1e-5)
-    return ((features - median) / scale).astype(np.float32)
-
-
 def _fit_length(values: np.ndarray, length: int) -> np.ndarray:
     values = np.asarray(values, dtype=np.float32)
     if values.shape[-1] >= length:

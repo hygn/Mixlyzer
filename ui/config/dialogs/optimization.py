@@ -5,7 +5,6 @@ from PySide6.QtWidgets import (
     QComboBox,
     QDialog,
     QDialogButtonBox,
-    QDoubleSpinBox,
     QGridLayout,
     QLabel,
     QMessageBox,
@@ -145,9 +144,6 @@ class BeatParameterOptimizeDialog(QDialog):
             "grids are not worse."
         ),
     }
-    # models without an L2 setting
-    NO_L2 = ("candidate_selector", "refine_onset", "downbeat_boost", "downbeat_ctx", "beat_tcn", "beat_critic",
-             "beat_decoder")
     # where a training starts: (value, label) per model; the others are always learned anew in minutes
     STARTS = {
         "beat_tcn": (("current", "Fine-tune the current model"), ("shipped", "Fine-tune the shipped model"),
@@ -170,15 +166,13 @@ class BeatParameterOptimizeDialog(QDialog):
         "retrained model is saved only when the held-out songs' grids are not worse. Hover over an item for details."
     )
 
-    def __init__(self, default_l2: dict[str, float], parent=None, track_count: int | None = None,
+    def __init__(self, parent=None, track_count: int | None = None,
                  model_paths: dict[str, str] | None = None):
         super().__init__(parent)
         self.setWindowTitle("Reoptimize Beat Models")
         self._checks: dict[str, QCheckBox] = {}
         self._starts: dict[str, QComboBox] = {}
         self._folds: dict[str, QSpinBox] = {}
-        self._sweeps: dict[str, QCheckBox] = {}
-        self._l2: dict[str, QDoubleSpinBox] = {}
         self._track_count = track_count
         self._model_paths = dict(model_paths or {})
 
@@ -239,7 +233,7 @@ class BeatParameterOptimizeDialog(QDialog):
         self.advanced = QWidget()
         grid = QGridLayout(self.advanced)
         grid.setContentsMargins(16, 0, 0, 0)
-        for column, text in enumerate(("", "CV folds", "L2 sweep", "Fixed L2")):
+        for column, text in enumerate(("", "CV folds")):
             grid.addWidget(QLabel(text), 0, column)
         for row, (key, name) in enumerate(self.ITEMS, start=1):
             folds = QSpinBox()
@@ -250,27 +244,11 @@ class BeatParameterOptimizeDialog(QDialog):
                 "and the decoder costs, held-out songs are tracked with the old and the new model and the new one is "
                 "saved only if their grids are not worse. Off: no check, the result is always saved."
             )
-            if key in ("candidate_selector", "beat_tcn", "beat_critic", "beat_decoder"):
+            if key in ("beat_tcn", "beat_critic", "beat_decoder"):
                 folds.setValue(5)
-            sweep = QCheckBox()
-            sweep.setToolTip(
-                "Pick the L2 among the candidates by cross-validation (needs CV)."
-            )
-            l2 = QDoubleSpinBox()
-            l2.setDecimals(6)
-            l2.setRange(1e-6, 10.0)
-            l2.setSingleStep(0.0001)
-            l2.setValue(float(default_l2.get(key, 0.001)))
-            folds.valueChanged.connect(self._update_enabled)
-            sweep.toggled.connect(self._update_enabled)
-            self._folds[key], self._sweeps[key], self._l2[key] = folds, sweep, l2
+            self._folds[key] = folds
             grid.addWidget(QLabel(name), row, 0)
             grid.addWidget(folds, row, 1)
-            grid.addWidget(sweep, row, 2, alignment=Qt.AlignCenter)
-            grid.addWidget(l2, row, 3)
-            if key in self.NO_L2:
-                sweep.setVisible(False)
-                l2.setVisible(False)
         self.advanced.setVisible(False)
         layout.addWidget(self.advanced)
 
@@ -322,17 +300,7 @@ class BeatParameterOptimizeDialog(QDialog):
 
     def _update_enabled(self, *_args) -> None:
         for key, _name in self.ITEMS:
-            selected = self._checks[key].isChecked()
-            cross_validated = self._folds[key].value() >= 2
-            if not cross_validated and self._sweeps[key].isChecked():
-                self._sweeps[key].setChecked(False)
-            self._folds[key].setEnabled(selected)
-            self._sweeps[key].setEnabled(selected and cross_validated)
-            self._l2[key].setEnabled(
-                selected
-                and key not in self.NO_L2
-                and not self._sweeps[key].isChecked()
-            )
+            self._folds[key].setEnabled(self._checks[key].isChecked())
         self.cb_decoder_quick.setEnabled(self._checks["beat_decoder"].isChecked())
         for key, combo in self._starts.items():
             combo.setEnabled(self._checks[key].isChecked())
@@ -349,27 +317,12 @@ class BeatParameterOptimizeDialog(QDialog):
             if not self._checks[key].isChecked():
                 continue
             folds = self._folds[key].value()
-            if key in self.NO_L2:
-                options = {"cv_folds": folds if folds >= 2 else 0}
-                if key in self._starts:
-                    options["start"] = self._start(key)
-                if key == "beat_decoder":
-                    options["quick"] = bool(self.cb_decoder_quick.isChecked())
-                jobs.append((key, name, options))
-                continue
-            jobs.append(
-                (
-                    key,
-                    name,
-                    {
-                        "cv_folds": folds if folds >= 2 else 0,
-                        "l2_sweep": bool(
-                            folds >= 2 and self._sweeps[key].isChecked()
-                        ),
-                        "l2_strength": float(self._l2[key].value()),
-                    },
-                )
-            )
+            options = {"cv_folds": folds if folds >= 2 else 0}
+            if key in self._starts:
+                options["start"] = self._start(key)
+            if key == "beat_decoder":
+                options["quick"] = bool(self.cb_decoder_quick.isChecked())
+            jobs.append((key, name, options))
         return jobs
 
     def backup_existing(self) -> bool:
