@@ -125,7 +125,18 @@ class TrackRow:
 
 # the fields with readings (track_readings)
 READING_FIELDS = ("title", "artist", "album")
-USER_SOURCE = "user"   # track_readings.source of the readings the user set
+USER_SOURCE = "user"   # track_readings.source of the readings the user added
+
+
+def field_readings(user: List[str], automatic: List[Tuple[str, str]],
+                   removed: Iterable[str] = ()) -> List[Tuple[str, str]]:
+    """A field's readings as (reading, source) in slot order: the user's first (all kept), then the
+    automatic ones (``reading.readings``) not among them nor ``removed`` by the user,
+    READING_SLOTS in all."""
+    removed = set(removed)
+    out = [(text, USER_SOURCE) for text in user]
+    out += [(text, source) for text, source in automatic if text not in user and text not in removed]
+    return out[:max(reading.READING_SLOTS, len(user))]
 
 
 @dataclass
@@ -252,9 +263,9 @@ class LibraryDB:
         );
         """)
         # The romanized readings (core.reading) of each track's title / artist / album: the
-        # search's intermediate representation, up to READING_SLOTS a field. A field whose readings
-        # the user set (source "user") keeps them; the others are read again whenever the track
-        # is written.
+        # search's intermediate representation, up to READING_SLOTS a field. The ones the user
+        # added (source "user") are kept; the automatic ones are made anew whenever the track is
+        # written, except those the user removed (track_reading_removals).
         self._conn.execute("""
         CREATE TABLE IF NOT EXISTS track_readings (
             track_uid TEXT NOT NULL,
@@ -263,6 +274,15 @@ class LibraryDB:
             reading   TEXT NOT NULL,
             source    TEXT NOT NULL,
             PRIMARY KEY (track_uid, field, slot),
+            FOREIGN KEY (track_uid) REFERENCES tracks(uid) ON DELETE CASCADE
+        );
+        """)
+        self._conn.execute("""
+        CREATE TABLE IF NOT EXISTS track_reading_removals (
+            track_uid TEXT NOT NULL,
+            field     TEXT NOT NULL,
+            reading   TEXT NOT NULL,
+            PRIMARY KEY (track_uid, field, reading),
             FOREIGN KEY (track_uid) REFERENCES tracks(uid) ON DELETE CASCADE
         );
         """)
@@ -388,16 +408,19 @@ class LibraryDB:
 
     # Readings (core.reading)
     def refresh_readings(self, uid: str) -> None:
-        """Read the track's title / artist / album again, except the fields whose readings the user set."""
+        """Read the track's title / artist / album again: each field's automatic readings made anew
+        in the stored languages (but those the user removed), after the readings the user added."""
         uid = _canonical_uuid4(uid)
         row = self.conn.execute("SELECT title, artist, album FROM tracks WHERE uid=?;", (uid,)).fetchone()
         if row is None:
             return
-        user = {f for (f,) in self.conn.execute(
-            "SELECT DISTINCT field FROM track_readings WHERE track_uid=? AND source=?;", (uid, USER_SOURCE))}
+        removed = self.removed_readings(uid)
         for field in READING_FIELDS:
-            if field not in user:
-                self._write_readings(uid, field, reading.readings(row[field] or "", self.reading_languages))
+            user = [text for (text,) in self.conn.execute(
+                "SELECT reading FROM track_readings WHERE track_uid=? AND field=? AND source=? ORDER BY slot;",
+                (uid, field, USER_SOURCE))]
+            automatic = reading.readings(row[field] or "", self.reading_languages)
+            self._write_readings(uid, field, field_readings(user, automatic, removed[field]))
 
     def _write_readings(self, uid: str, field: str, readings: list) -> None:
         self.conn.execute("DELETE FROM track_readings WHERE track_uid=? AND field=?;", (uid, field))
@@ -423,17 +446,29 @@ class LibraryDB:
             out.setdefault(uid, {}).setdefault(field, []).append(text)
         return out
 
-    def set_user_readings(self, uid: str, field: str, readings: Optional[List[str]]) -> None:
-        """The user's readings of a field (up to READING_SLOTS, kept from then on); None or empty:
-        read from the text again."""
+    def removed_readings(self, uid: str) -> Dict[str, List[str]]:
+        """The automatic readings the user removed, by field."""
+        out: Dict[str, List[str]] = {f: [] for f in READING_FIELDS}
+        for field, text in self.conn.execute(
+                "SELECT field, reading FROM track_reading_removals WHERE track_uid=? ORDER BY field, reading;",
+                (_canonical_uuid4(uid),)):
+            out.setdefault(field, []).append(text)
+        return out
+
+    def set_user_readings(self, uid: str, field: str, readings: Optional[List[str]],
+                          removed: Iterable[str] = ()) -> None:
+        """A field's readings as the user edited them: the ones they added (up to READING_SLOTS,
+        kept from then on; None or empty: none) and the automatic ones they removed (left out
+        from then on, whatever the languages); the other automatic ones made anew after them."""
         uid = _canonical_uuid4(uid)
-        texts = [t.strip() for t in (readings or []) if t and t.strip()]
+        texts = list(dict.fromkeys(t.strip() for t in (readings or []) if t and t.strip()))
         with self.tx():
-            if texts:
-                self._write_readings(uid, field, [(t, USER_SOURCE) for t in dict.fromkeys(texts)])
-            else:
-                self.conn.execute("DELETE FROM track_readings WHERE track_uid=? AND field=?;", (uid, field))
-                self.refresh_readings(uid)
+            self._write_readings(uid, field, [(t, USER_SOURCE) for t in texts])
+            self.conn.execute("DELETE FROM track_reading_removals WHERE track_uid=? AND field=?;", (uid, field))
+            self.conn.executemany(
+                "INSERT OR IGNORE INTO track_reading_removals(track_uid, field, reading) VALUES(?, ?, ?);",
+                ((uid, field, t.strip()) for t in removed if t and t.strip() and t.strip() not in texts))
+            self.refresh_readings(uid)
 
     def upsert_meta(self, meta: Dict[str, Any]):
         tr = TrackRow.from_meta(meta)

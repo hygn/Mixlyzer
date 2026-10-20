@@ -3,7 +3,7 @@ import os
 from typing import Callable, List, Optional
 from dataclasses import asdict, replace
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import QEvent, Qt, Signal
 from PySide6.QtGui import QBrush, QColor
 from PySide6.QtWidgets import (
     QDialog, QWidget, QVBoxLayout, QHBoxLayout, QFormLayout,
@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
 
 from core import reading
 from core.event_bus import EventBus
-from core.library_handler import READING_FIELDS, USER_SOURCE, TrackRow, LibraryDB
+from core.library_handler import READING_FIELDS, USER_SOURCE, TrackRow, LibraryDB, field_readings
 from ui.theme import current_theme
 from core.config import config
 from utils.labels import CAMELOT_LABELS, CLASSICAL_LABELS
@@ -74,9 +74,10 @@ class EditSongDialog(QDialog):
         path_lay.addWidget(self.ed_path, 1); path_lay.addWidget(btn_browse)
 
         # The readings (core.reading): how title / artist / album read in Latin letters, up to
-        # READING_SLOTS each (Han: one per language) -- what the search compares. Read from the text
-        # (dim) unless set here: editing a field's readings makes them the user's, emptying them reads again.
-        # a column per field, a row per slot
+        # READING_SLOTS each (Han: one per language) -- what the search compares. The ones typed here
+        # are the user's (kept); the others (dim) are read from the text in the stored languages,
+        # after them, but those emptied or typed over here (removed, kept so). A column per field,
+        # a row per slot.
         self.tbl_readings = QTableWidget(reading.READING_SLOTS, len(READING_FIELDS))
         self.tbl_readings.setHorizontalHeaderLabels([f.capitalize() for f in READING_FIELDS])
         self.tbl_readings.setVerticalHeaderLabels([str(i + 1) for i in range(reading.READING_SLOTS)])
@@ -85,13 +86,16 @@ class EditSongDialog(QDialog):
         self.tbl_readings.setEditTriggers(QAbstractItemView.AllEditTriggers)
         self.tbl_readings.setToolTip(
             "<p>How the title, artist and album read in Latin letters: the search finds the track by them "
-            "in any script (あのね by anone or 아노네). Dim: read from the text (Han in each language); "
-            "edit a column to set its readings, empty it to read again.</p>")
+            "in any script (あのね by anone or 아노네). Dim: read from the text in Settings > Search's "
+            "languages. Type in a cell to add a reading of yours; empty a cell (Delete) or type over it to "
+            "remove its reading for good, and type it again to bring it back.</p>")
         self.tbl_readings.setFixedHeight(
             self.tbl_readings.horizontalHeader().sizeHint().height()
             + self.tbl_readings.verticalHeader().defaultSectionSize() * reading.READING_SLOTS + 4)
         self.tbl_readings.itemChanged.connect(self._on_reading_changed)
-        self._reading_user = {f: False for f in READING_FIELDS}      # the field's readings are the user's
+        self.tbl_readings.installEventFilter(self)                   # Delete / Backspace empty the selected cells
+        self._reading_user = {f: [] for f in READING_FIELDS}         # the readings the user added
+        self._reading_removed = {f: [] for f in READING_FIELDS}      # the automatic ones the user removed
         self._reading_touched = {f: False for f in READING_FIELDS}   # changed here (saved on apply)
         self._sources = {"title": self.ed_title, "artist": self.ed_artist, "album": self.ed_album}
         for f, edit in self._sources.items():
@@ -152,16 +156,19 @@ class EditSongDialog(QDialog):
         self.ed_comment.setText(row.comment or "")
         self.ed_path.setText(row.path or "")
         stored = {f: [] for f in READING_FIELDS}
+        removed = {f: [] for f in READING_FIELDS}
         if self._libpath:
             db = LibraryDB(os.path.join(self._libpath, "library.db"))
             db.connect()
             try:
                 stored = db.readings(row.uid)
+                removed = db.removed_readings(row.uid)
             finally:
                 db.close()
         for f in READING_FIELDS:
             self._reading_touched[f] = False
-            self._reading_user[f] = any(src == USER_SOURCE for _text, src in stored.get(f, []))
+            self._reading_user[f] = [text for text, src in stored.get(f, []) if src == USER_SOURCE]
+            self._reading_removed[f] = list(removed.get(f, []))
             self._fill_readings(f, stored.get(f, []))
 
         # read-only
@@ -190,16 +197,15 @@ class EditSongDialog(QDialog):
         return row
 
     def user_readings(self) -> dict:
-        """The rows changed here: field -> the user's readings, or None to read the text again."""
-        out = {}
-        for c, f in enumerate(READING_FIELDS):
-            if self._reading_touched[f]:
-                texts = [self.tbl_readings.item(r, c).text().strip() if self.tbl_readings.item(r, c) else ""
-                         for r in range(reading.READING_SLOTS)]
-                out[f] = [t for t in texts if t] if self._reading_user[f] else None
-        return out
+        """The fields whose readings were changed here: field -> (the readings the user added, the
+        automatic ones they removed)."""
+        return {f: (list(self._reading_user[f]), list(self._reading_removed[f]))
+                for f in READING_FIELDS if self._reading_touched[f]}
 
     # Readings
+    _SOURCE_ROLE = Qt.UserRole        # a cell's source (USER_SOURCE: the user's)
+    _SHOWN_ROLE = Qt.UserRole + 1     # its text as shown, before an edit
+
     def _fill_readings(self, field: str, readings: list) -> None:
         """Show (reading, source) pairs in the field's column: dim when read from the text."""
         c = READING_FIELDS.index(field)
@@ -208,29 +214,65 @@ class EditSongDialog(QDialog):
         for r in range(reading.READING_SLOTS):
             text, source = readings[r] if r < len(readings) else ("", "")
             item = QTableWidgetItem(text)
+            item.setData(self._SOURCE_ROLE, source)
+            item.setData(self._SHOWN_ROLE, text)
             item.setToolTip(f"{text}  ({reading.SOURCES.get(source, source)})" if text else "")
             if source != USER_SOURCE:
                 item.setForeground(dim)
             self.tbl_readings.setItem(r, c, item)
         self.tbl_readings.blockSignals(False)
 
+    def _automatic_readings(self, field: str) -> list:
+        return reading.readings(self._sources[field].text(), self._reading_languages())
+
     def _refresh_auto_readings(self, field: str) -> None:
-        """Readings read from the text follow it as it is typed."""
-        if self._row is None or self._reading_user[field]:
+        """The user's readings, then the ones read from the text (following it as it is typed) but
+        the removed ones."""
+        if self._row is None:
             return
-        self._fill_readings(field, reading.readings(self._sources[field].text(), self._reading_languages()))
+        self._fill_readings(field, field_readings(
+            self._reading_user[field], self._automatic_readings(field), self._reading_removed[field]))
+
+    def _edit_reading(self, field: str, shown: str, source: str, text: str) -> None:
+        """A cell's reading changed from ``shown`` (from ``source``) to ``text`` ("": emptied)."""
+        user, removed = list(self._reading_user[field]), list(self._reading_removed[field])
+        if source == USER_SOURCE and shown in user:
+            i = user.index(shown)
+            if text:
+                user[i] = text
+            else:
+                del user[i]
+            if shown in [r for r, _src in self._automatic_readings(field)]:
+                removed.append(shown)           # also read from the text: removed too
+        else:
+            if shown:
+                removed.append(shown)           # an automatic reading emptied or typed over
+            if text:
+                user.append(text)
+        self._reading_user[field] = list(dict.fromkeys(user))
+        self._reading_removed[field] = [r for r in dict.fromkeys(removed) if r not in self._reading_user[field]]
+        self._reading_touched[field] = True
 
     def _on_reading_changed(self, item: QTableWidgetItem) -> None:
         field = READING_FIELDS[item.column()]
-        self._reading_touched[field] = True
-        texts = [self.tbl_readings.item(r, item.column()).text().strip() if self.tbl_readings.item(r, item.column()) else ""
-                 for r in range(reading.READING_SLOTS)]
-        if any(texts):   # the column is the user's now
-            self._reading_user[field] = True
-            self._fill_readings(field, [(t, USER_SOURCE) for t in texts])
-        else:            # emptied: read from the text again
-            self._reading_user[field] = False
-            self._refresh_auto_readings(field)
+        shown = str(item.data(self._SHOWN_ROLE) or "")
+        text = item.text().strip()
+        if text != shown:
+            self._edit_reading(field, shown, str(item.data(self._SOURCE_ROLE) or ""), text)
+        self._refresh_auto_readings(field)
+
+    def eventFilter(self, obj, event) -> bool:
+        if (obj is self.tbl_readings and event.type() == QEvent.KeyPress
+                and event.key() in (Qt.Key_Delete, Qt.Key_Backspace)):
+            cells = [(READING_FIELDS[i.column()], str(i.data(self._SHOWN_ROLE) or ""), str(i.data(self._SOURCE_ROLE) or ""))
+                     for i in self.tbl_readings.selectedItems()]
+            for field, shown, source in cells:
+                if shown:
+                    self._edit_reading(field, shown, source, "")
+            for field in dict.fromkeys(field for field, _shown, _source in cells):
+                self._refresh_auto_readings(field)
+            return True
+        return super().eventFilter(obj, event)
 
     # Internal
     def _make_ro(self, w: QLineEdit) -> None:
@@ -263,8 +305,8 @@ class EditSongDialog(QDialog):
             if path_changed:
                 db.set_path(updated.uid, updated.path)
             db.upsert(replace(updated, file_mtime=None, file_size=None))
-            for field, texts in self.user_readings().items():
-                db.set_user_readings(updated.uid, field, texts)
+            for field, (added, removed) in self.user_readings().items():
+                db.set_user_readings(updated.uid, field, added, removed)
             db.conn.commit()
             saved = db.get_by_uid(updated.uid)
             lib_full = db.list_all()
