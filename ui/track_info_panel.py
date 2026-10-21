@@ -483,6 +483,9 @@ class TrackInfoPanel(QtWidgets.QWidget):
             lbl.setAlignment((QtCore.Qt.AlignRight if right else QtCore.Qt.AlignLeft) | QtCore.Qt.AlignVCenter)
             lbl.setContentsMargins(lead, 0, 0, 0)
             lbl.setFixedWidth(max(fm.horizontalAdvance(t) for t in samples) + 2 + lead)
+            # fixed in both directions: a new text (the time, every frame) asks for no layout (Qt skips
+            # the request only for a widget whose size cannot change)
+            lbl.setFixedHeight(lbl.sizeHint().height())
             lbl.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
             return lbl
 
@@ -502,6 +505,9 @@ class TrackInfoPanel(QtWidgets.QWidget):
         self._bpm_cells = [_cell(w, color, lead=lead) for w, color, lead in columns]
         self._key_cells = [_cell(w, color, lead=lead) for w, color, lead in columns]
         self._time_cells = [_cell(["88:88.88"], _VALUE), _cell(["/ 88:88.88"], _DIM)]
+        for cell in self._time_cells:
+            # plain text (drawn the same): a rich-text label builds a new text document per change, every frame here
+            cell.setTextFormat(QtCore.Qt.PlainText)
         # current phrase, last on the time row (its width never moves anything):
         # a squircle in the phrase colour, then the label in white
         self._phrase_swatch = QtWidgets.QLabel()

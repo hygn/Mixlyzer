@@ -27,6 +27,7 @@ from utils.phrases import (
     phrase_display_name,
 )
 from core.i18n import tr, tr_mark
+from ui.live_label import LiveLabel
 
 # boundary nudges follow the step: icon -> (tooltip by one beat, by one bar), translated where shown
 PHRASE_STEP_TOOLS = {
@@ -101,7 +102,7 @@ class PhraseEditMixin:
             b.clicked.connect(lambda _=False, label=label: self._assign_phrase_label(label))
             self.phrase_label_buttons[label] = b
 
-        self.phrase_status = QtWidgets.QLabel(tr("-- | Seg -- | +0 beats | Left: 00:00.00"))
+        self.phrase_status = LiveLabel(tr("-- | Seg -- | +0 beats | Left: 00:00.00"))
         self.phrase_status.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
 
         _AL = QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter

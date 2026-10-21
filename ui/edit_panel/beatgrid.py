@@ -16,6 +16,7 @@ from ui.edit_panel.icons import badged_icon, icon
 from ui.theme import current_theme
 from ui.edit_panel.styles import BUTTON_STYLESHEET, WARNING_BUTTON_STYLESHEET
 from core.i18n import tr, tr_mark
+from ui.live_label import LiveLabel
 
 # time signatures with their own button; the rest are under Custom
 TS_PRESETS = (3, 4, 5, 7)
@@ -146,7 +147,7 @@ class BeatgridEditMixin:
         self.btn_metronome = _btn("metronome", tr("Metronome on / off"), checkable=True)
         self.btn_metronome.toggled.connect(self.bus.sig_metronome_toggle_requested.emit)
 
-        self.beatgrid_status = QtWidgets.QLabel(tr("Seg -- | Elapsed: 00:00.00 | Left: 00:00.00"))
+        self.beatgrid_status = LiveLabel(tr("Seg -- | Elapsed: 00:00.00 | Left: 00:00.00"))
         self.beatgrid_status.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
 
         rows = [

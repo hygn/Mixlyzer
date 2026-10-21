@@ -13,6 +13,7 @@ from utils.keystrip import key_segment_label
 from utils.labels import ALPHANUMERIC_LABELS
 from utils.phrases import assigned_phrases
 from core.i18n import tr, tr_mark
+from ui.live_label import LiveLabel
 
 
 # the tools that follow the key scope: icon -> (tooltip with the whole track, with the current segment),
@@ -125,7 +126,7 @@ class KeyEditMixin:
             checkable=True,
         )
 
-        self.key_status = QtWidgets.QLabel(tr("-- | Seg -- | Elapsed: 00:00.00 | Left: 00:00.00"))
+        self.key_status = LiveLabel(tr("-- | Seg -- | Elapsed: 00:00.00 | Left: 00:00.00"))
         self.key_status.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
 
         _AL = QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter
