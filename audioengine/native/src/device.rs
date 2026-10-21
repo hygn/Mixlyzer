@@ -11,7 +11,7 @@
 
 use std::cell::UnsafeCell;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
 
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{FromSample, SizedSample};
@@ -35,8 +35,22 @@ pub struct Ring {
     cb_frames: AtomicU64,
     latency: AtomicU64, // f64 bits, s
     pub sound_due: AtomicBool, // underruns count only while sound is expected
+    pub max_frames: AtomicU64, // the most frames the device took at once since it was opened (its period or so)
     pub underruns: AtomicU64,
+    // the output thread woken late (WASAPI: more than 1.8 periods after the last wake-up: the device may have
+    // played a gap although the ring held audio), and the longest gap between wake-ups (µs)
+    pub late: AtomicU64,
+    pub max_gap_us: AtomicU64,
     pub failed: AtomicBool,
+    // the engine thread, woken after each read of the device (it tops the ring up at once, not at its next tick)
+    pub engine_thread: std::sync::OnceLock<std::thread::Thread>,
+    // the output thread's scheduling (sched.rs): its state where its backend set it (the engine's own WASAPI
+    // thread: MMCSS), else the engine's; Linux: its thread id (written by the callback) and the timer slack it
+    // should take (it can set only its own: ns + 1, 0 = not asked)
+    pub output_state: AtomicU32,
+    pub output_tid: AtomicU64,
+    #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+    pub output_slack: AtomicU64,
 }
 
 unsafe impl Sync for Ring {}
@@ -61,8 +75,15 @@ impl Ring {
             cb_frames: AtomicU64::new(0),
             latency: AtomicU64::new(0f64.to_bits()),
             sound_due: AtomicBool::new(false),
+            max_frames: AtomicU64::new(0),
             underruns: AtomicU64::new(0),
+            late: AtomicU64::new(0),
+            max_gap_us: AtomicU64::new(0),
             failed: AtomicBool::new(false),
+            engine_thread: std::sync::OnceLock::new(),
+            output_state: AtomicU32::new(0),
+            output_tid: AtomicU64::new(0),
+            output_slack: AtomicU64::new(0),
         }
     }
 
@@ -74,6 +95,11 @@ impl Ring {
 
     pub fn free(&self) -> u64 {
         self.cap - (self.write.load(Ordering::Relaxed) - self.read.load(Ordering::Acquire))
+    }
+
+    /// The next frame the callback takes.
+    pub fn read_index(&self) -> u64 {
+        self.read.load(Ordering::Acquire)
     }
 
     /// Frames written and not yet taken by the callback.
@@ -129,7 +155,9 @@ impl Ring {
     }
 
     // Callback side
-    fn fill<T: SizedSample + FromSample<f32>>(&self, out: &mut [T], state: &mut CallbackState, latency: f64) {
+    pub(crate) fn fill<T: SizedSample + FromSample<f32>>(&self, out: &mut [T], state: &mut CallbackState, latency: f64) {
+        #[cfg(target_os = "linux")]
+        crate::sched::output_thread(self);
         let ch_out = state.channels;
         let frames = out.len() / ch_out;
         let generation = self.flush_gen.load(Ordering::Acquire);
@@ -139,18 +167,11 @@ impl Ring {
             state.fade_left = self.fade;
         }
         let mut read = self.read.load(Ordering::Relaxed);
+        let start_read = read;
         let write = self.write.load(Ordering::Acquire);
-        // the report first: frame `read` is heard after the device's latency
         let now = clock::now();
-        let s = self.cb_seq.load(Ordering::Relaxed);
-        self.cb_seq.store(s + 1, Ordering::Relaxed);
-        std::sync::atomic::fence(Ordering::Release);
-        self.cb_read.store(read, Ordering::Relaxed);
-        self.cb_at.store((now + latency).to_bits(), Ordering::Relaxed);
-        self.cb_frames.store(frames as u64, Ordering::Relaxed);
-        self.latency.store(latency.to_bits(), Ordering::Relaxed);
-        self.cb_seq.store(s + 2, Ordering::Release);
-
+        let mut taken = 0u64; // frames of the ring played (the rest silence: no track frame is heard there)
+        self.max_frames.fetch_max(frames as u64, Ordering::Relaxed);
         let due = self.sound_due.load(Ordering::Relaxed);
         let mut missing = 0u64;
         for f in 0..frames {
@@ -175,6 +196,7 @@ impl Ring {
                     o[c] = T::from_sample(v * gain);
                 }
                 read += 1;
+                taken += 1;
             } else {
                 if state.fade_left > 0 {
                     state.fade_left = 0;
@@ -189,22 +211,132 @@ impl Ring {
             }
         }
         self.read.store(read, Ordering::Release);
+        if taken > 0 {
+            if let Some(t) = self.engine_thread.get() {
+                t.unpark();
+            }
+        }
         if missing > 0 {
             self.underruns.fetch_add(missing, Ordering::Relaxed);
         }
+        // the report: frame `start_read` is heard after the device's latency, and the frames after it up to those
+        // taken. A callback of silence alone (the ring empty) leaves the last report: the frames it took go on
+        // being heard after it, up to the last one (reported again, the frame heard would stay behind it)
+        if taken == 0 && f64::from_bits(self.cb_at.load(Ordering::Relaxed)) != 0.0 {
+            self.latency.store(latency.to_bits(), Ordering::Relaxed);
+            return;
+        }
+        let s = self.cb_seq.load(Ordering::Relaxed);
+        self.cb_seq.store(s + 1, Ordering::Relaxed);
+        std::sync::atomic::fence(Ordering::Release);
+        self.cb_read.store(start_read, Ordering::Relaxed);
+        self.cb_at.store((now + latency).to_bits(), Ordering::Relaxed);
+        self.cb_frames.store(taken, Ordering::Relaxed);
+        self.latency.store(latency.to_bits(), Ordering::Relaxed);
+        self.cb_seq.store(s + 2, Ordering::Release);
     }
 }
 
-struct CallbackState {
+pub(crate) struct CallbackState {
     channels: usize,
     flush_seen: u64,
     cut: u64,
     fade_left: u64,
 }
 
+impl CallbackState {
+    pub(crate) fn new(channels: usize) -> CallbackState {
+        CallbackState { channels, flush_seen: 0, cut: 0, fade_left: 0 }
+    }
+}
+
+/// The audio API the output goes through (Settings > Playback's Audio API, native engine).
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub enum Api {
+    /// Windows: the engine's own WASAPI output (wasapi.rs): the low-latency shared stream, or exclusive.
+    Wasapi,
+    /// cpal's output for the system: WASAPI's usual shared stream (Windows), ALSA (Linux), CoreAudio (macOS).
+    Cpal,
+    /// Linux: a JACK client (JACK's or PipeWire's server).
+    Jack,
+}
+
+/// How the output reaches the device: the API and, for WASAPI, whether the device is taken exclusively.
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub struct Mode {
+    pub api: Api,
+    pub exclusive: bool,
+}
+
+impl Mode {
+    /// From the codes the GUI sends (api: 0 WASAPI, 1 cpal, 2 JACK); an API this system has not is cpal's.
+    pub fn from_codes(api: u32, exclusive: u32) -> Mode {
+        let api = match api {
+            0 if cfg!(windows) => Api::Wasapi,
+            2 if cfg!(target_os = "linux") => Api::Jack,
+            _ => Api::Cpal,
+        };
+        Mode { api, exclusive: exclusive != 0 && api == Api::Wasapi }
+    }
+
+    /// The code published: the API's, and 0x100 when exclusive.
+    pub fn code(self) -> u32 {
+        let api = match self.api {
+            Api::Wasapi => 0,
+            Api::Cpal => 1,
+            Api::Jack => 2,
+        };
+        api | ((self.exclusive as u32) << 8)
+    }
+}
+
+enum Backend {
+    Cpal(cpal::Stream),
+    #[cfg(windows)]
+    Wasapi(crate::wasapi::WasapiOutput),
+}
+
 pub struct Output {
-    pub stream: cpal::Stream,
+    backend: Backend,
     pub running: bool,
+    pub mode: Mode,      // the one in use (one that could not be opened falls back to cpal's)
+    pub period_ms: f64,  // the device's period, 0 = not known
+}
+
+impl Output {
+    pub fn play(&mut self) {
+        match &self.backend {
+            Backend::Cpal(s) => {
+                let _ = s.play();
+            }
+            #[cfg(windows)]
+            Backend::Wasapi(w) => w.play(),
+        }
+        self.running = true;
+    }
+
+    pub fn pause(&mut self) {
+        match &self.backend {
+            Backend::Cpal(s) => {
+                let _ = s.pause();
+            }
+            #[cfg(windows)]
+            Backend::Wasapi(w) => w.pause(),
+        }
+        self.running = false;
+    }
+}
+
+/// cpal's host for ``mode`` (JACK's on Linux, else the system's).
+fn host(mode: Mode) -> cpal::Host {
+    #[cfg(target_os = "linux")]
+    if mode.api == Api::Jack {
+        if let Ok(h) = cpal::host_from_id(cpal::HostId::Jack) {
+            return h;
+        }
+    }
+    let _ = mode;
+    cpal::default_host()
 }
 
 /// A device's name as listed (its description's).
@@ -212,59 +344,83 @@ pub fn device_name(dev: &cpal::Device) -> String {
     dev.description().map(|d| d.name().to_string()).unwrap_or_default()
 }
 
-/// The output devices' names.
-pub fn list() -> Vec<String> {
-    let host = cpal::default_host();
-    match host.output_devices() {
+/// The output devices' names (of ``mode``'s host).
+pub fn list(mode: Mode) -> Vec<String> {
+    match host(mode).output_devices() {
         Ok(devices) => devices.map(|d| device_name(&d)).filter(|n| !n.is_empty()).collect(),
         Err(_) => Vec::new(),
     }
 }
 
-/// The output device named ``name`` (None or "": the system's default; one not found: the default too), and
-/// whether it is the one asked for.
-fn find(name: Option<&str>) -> Result<(cpal::Device, bool), String> {
-    let host = cpal::default_host();
+/// The output device named ``name`` (None or "": the default; one not found: the default too).
+fn find(name: Option<&str>, mode: Mode) -> Result<cpal::Device, String> {
+    let host = host(mode);
     if let Some(wanted) = name.filter(|n| !n.is_empty()) {
         if let Ok(mut devices) = host.output_devices() {
             if let Some(dev) = devices.find(|d| device_name(d) == wanted) {
-                return Ok((dev, true));
+                return Ok(dev);
             }
         }
-        let dev = host.default_output_device().ok_or("no output device")?;
-        return Ok((dev, false));
     }
-    let dev = host.default_output_device().ok_or("no output device")?;
-    Ok((dev, true))
+    host.default_output_device().ok_or_else(|| "no output device".to_string())
 }
 
 /// The preferred format of the device named ``name`` (see find): (sample rate, channels).
-pub fn default_format(name: Option<&str>) -> Result<(u32, usize), String> {
-    let (dev, _) = find(name)?;
+pub fn default_format(name: Option<&str>, mode: Mode) -> Result<(u32, usize), String> {
+    let dev = find(name, mode)?;
     let cfg = dev.default_output_config().map_err(|e| e.to_string())?;
     Ok((cfg.sample_rate(), cfg.channels() as usize))
 }
 
-/// Opens the device named ``name`` (see find) at ``rate`` / ``channels`` (the session's: the track was
-/// decoded for them; a device of another format converts, as WASAPI's shared mode does) and starts it reading
-/// ``ring``. Returns the stream and the name of the device opened.
-pub fn open(ring: Arc<Ring>, rate: u32, channels: usize, name: Option<&str>) -> Result<(Output, String), String> {
-    let (dev, _) = find(name)?;
+/// Opens the device named ``name`` (see find) in ``mode`` at ``rate`` / ``channels`` (the session's: the track
+/// was decoded for them) and starts it reading ``ring``; a mode that cannot be opened falls back to Shared.
+/// Returns the output and the name of the device opened.
+pub fn open(ring: Arc<Ring>, rate: u32, channels: usize, name: Option<&str>, mode: Mode)
+    -> Result<(Output, String), String> {
+    ring.max_frames.store(0, Ordering::Relaxed);
+    ring.output_state.store(0, Ordering::Relaxed);
+    ring.output_tid.store(0, Ordering::Relaxed);
+    #[cfg(windows)]
+    if mode.api == Api::Wasapi {
+        match crate::wasapi::WasapiOutput::open(ring.clone(), rate, channels, name, mode.exclusive) {
+            Ok((w, device, period_ms)) => {
+                return Ok((Output { backend: Backend::Wasapi(w), running: true, mode, period_ms }, device));
+            }
+            Err(e) => eprintln!("[AudioEngine] {mode:?} output not opened ({e}); cpal's WASAPI shared stream instead"),
+        }
+    }
+    let cpal_mode = Mode { api: if mode.api == Api::Jack { Api::Jack } else { Api::Cpal }, exclusive: false };
+    let dev = find(name, cpal_mode)?;
     let def = dev.default_output_config().map_err(|e| e.to_string())?;
-    let config = cpal::StreamConfig {
-        channels: channels as u16,
-        sample_rate: rate,
-        buffer_size: cpal::BufferSize::Default,
+    // a small device buffer where the system lets one be asked for (ALSA, CoreAudio: ~5 ms; WASAPI's shared
+    // stream takes its own)
+    let buffer_size = match def.buffer_size() {
+        cpal::SupportedBufferSize::Range { min, max } if !cfg!(windows) && cpal_mode.api != Api::Jack => {
+            cpal::BufferSize::Fixed((rate / 200).clamp(*min, *max))
+        }
+        _ => cpal::BufferSize::Default,
     };
-    let stream = match def.sample_format() {
-        cpal::SampleFormat::F32 => build::<f32>(&dev, &config, ring),
-        cpal::SampleFormat::I16 => build::<i16>(&dev, &config, ring),
-        cpal::SampleFormat::I32 => build::<i32>(&dev, &config, ring),
-        cpal::SampleFormat::U16 => build::<u16>(&dev, &config, ring),
-        other => return Err(format!("unsupported sample format {other:?}")),
-    }?;
+    let config = cpal::StreamConfig { channels: channels as u16, sample_rate: rate, buffer_size };
+    let build_any = |config: &cpal::StreamConfig| match def.sample_format() {
+        cpal::SampleFormat::F32 => build::<f32>(&dev, config, ring.clone()),
+        cpal::SampleFormat::I16 => build::<i16>(&dev, config, ring.clone()),
+        cpal::SampleFormat::I32 => build::<i32>(&dev, config, ring.clone()),
+        cpal::SampleFormat::U16 => build::<u16>(&dev, config, ring.clone()),
+        other => Err(format!("unsupported sample format {other:?}")),
+    };
+    let stream = match build_any(&config) {
+        Ok(s) => s,
+        Err(_) if config.buffer_size != cpal::BufferSize::Default => {
+            build_any(&cpal::StreamConfig { buffer_size: cpal::BufferSize::Default, ..config })?
+        }
+        Err(e) => return Err(e),
+    };
     stream.play().map_err(|e| e.to_string())?;
-    Ok((Output { stream, running: true }, device_name(&dev)))
+    let period_ms = match config.buffer_size {
+        cpal::BufferSize::Fixed(f) => f as f64 * 1000.0 / rate as f64,
+        cpal::BufferSize::Default => 0.0,
+    };
+    Ok((Output { backend: Backend::Cpal(stream), running: true, mode: cpal_mode, period_ms }, device_name(&dev)))
 }
 
 fn build<T: SizedSample + FromSample<f32> + 'static>(
@@ -272,7 +428,7 @@ fn build<T: SizedSample + FromSample<f32> + 'static>(
     config: &cpal::StreamConfig,
     ring: Arc<Ring>,
 ) -> Result<cpal::Stream, String> {
-    let mut state = CallbackState { channels: config.channels as usize, flush_seen: 0, cut: 0, fade_left: 0 };
+    let mut state = CallbackState::new(config.channels as usize);
     let err_ring = ring.clone();
     dev.build_output_stream(
         *config,

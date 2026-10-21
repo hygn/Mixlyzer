@@ -30,14 +30,14 @@ Mixlyzer is a track-analysis and editing companion built for DJs and producers w
 4. Launch Mixlyzer with `uv run python -m app.main`.
 
 #### Building the native audio engine (optional)
-Without it Mixlyzer plays on its Python engine. To build it into `audioengine/native/bin`:
+Without it Mixlyzer plays on its Python engine. The native engine is developed and tested on Windows; on Linux and macOS it is experimental (it builds there, but has not been tested on them yet). To build it into `audioengine/native/bin`:
 1. Install git and [Rust](https://rustup.rs), plus a C compiler:
    - **Windows**: [llvm-mingw](https://github.com/mstorsjo/llvm-mingw) (no Visual Studio needed; its `bin` folder on `PATH`, or the folder named by `LLVM_MINGW`) and the Rust toolchain `rustup toolchain install stable-x86_64-pc-windows-gnullvm`.
-   - **Linux**: gcc or clang, and ALSA's headers (`libasound2-dev` / `alsa-lib-devel`).
+   - **Linux**: gcc or clang, and the ALSA and JACK headers (`libasound2-dev libjack-jackd2-dev` / `alsa-lib-devel pipewire-jack-audio-connection-kit-devel`).
    - **macOS**: Xcode's command line tools.
 2. Run `uv sync --group native`, then `uv run --group native python build/audio_engine.py` (it builds VOLK from its source, then the engine). Close Mixlyzer first when rebuilding: a running app holds the engine.
 
-Settings > Playback picks the engine (**Native first**, which falls back to Python, or **Python**; applied at the next start), the output device, and each engine's buffer size.
+Settings > Playback picks the engine (**Native first**, which falls back to Python, or **Python**; applied at the next start), the output device, and each engine's buffer size. The native engine's audio API: **WASAPI** (Windows: a low-latency shared stream, or exclusive mode with a sample rate of its own, applied from the next track loaded), **WASAPI (cpal)**, **ALSA** / **JACK** (Linux) or **CoreAudio** (macOS). Under the buffer meter, the measured response (a command to its sound) and the device's latency. The native engine's priority (High by default; Windows: the process's priority class, Linux: its threads' real-time scheduling or nice, through rtkit where the user may not set them, macOS: a real-time thread) and power throttling (off by default; Windows: EcoQoS, Linux: timer slack and uclamp, macOS: App Nap and timer coalescing) can be set there too; what the engine got is shown under the meter.
 
 ### Option B: Using a released binary
 1. Download the latest Mixlyzer build from the Releases page.  

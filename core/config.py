@@ -92,6 +92,16 @@ class playbackconfig:
     native_buffer_ms: int
     python_buffer_ms: int
     output_device: str  # the output device's name as its engine lists it; "" = the system's default
+    # the native engine's audio API: "wasapi" its own (Windows), "cpal" cpal's for the system (WASAPI's usual
+    # shared stream, ALSA, CoreAudio), "jack" (Linux); one the system has not is cpal's
+    native_audio_api: Literal["wasapi", "cpal", "jack"]
+    native_exclusive: bool  # WASAPI's exclusive mode (the device to the app alone)
+    native_exclusive_rate: int  # the rate in exclusive mode (0: the device's), from the next track loaded on
+    # the native engine's priority (Windows its process's class; Linux its threads' real-time / nice; macOS its
+    # thread's time constraint / QoS) and whether the system may power-throttle it (Windows EcoQoS; Linux timer
+    # slack and uclamp; macOS App Nap and timer coalescing): audioengine/native/src/sched.rs
+    native_priority: Literal["normal", "above_normal", "high"]
+    native_power_throttling: bool
 
 
 @dataclass
@@ -404,6 +414,11 @@ def default_cfg():
         native_buffer_ms=20,
         python_buffer_ms=80,
         output_device="",
+        native_audio_api="wasapi",
+        native_exclusive=False,
+        native_exclusive_rate=0,
+        native_priority="high",
+        native_power_throttling=False,
     )
     xcfg = externalsyncconfig(
         enabled=False,

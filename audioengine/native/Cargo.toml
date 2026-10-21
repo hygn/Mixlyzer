@@ -17,10 +17,23 @@ num-complex = "0.4.6"
 crc32fast = "1.5.0"
 
 [target.'cfg(windows)'.dependencies]
+# the WASAPI output of its own (low-latency shared and exclusive modes, which cpal does not open)
+windows = { version = "0.62.2", features = ["Win32_Media", "Win32_Media_Audio", "Win32_Media_KernelStreaming", "Win32_Media_Multimedia", "Win32_Devices_Properties", "Win32_Foundation", "Win32_System_Com", "Win32_System_Com_StructuredStorage", "Win32_System_Threading", "Win32_System_Variant", "Win32_UI_Shell_PropertiesSystem"] }
 windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_Security", "Win32_System_Memory", "Win32_System_Performance", "Win32_System_Threading", "Win32_UI_WindowsAndMessaging", "Win32_Media"] }
+
+# Linux: JACK as an output (libjack, LGPL, loaded at run time) beside ALSA
+[target.'cfg(target_os = "linux")'.dependencies]
+cpal = { version = "0.18.2", features = ["jack"] }
+# rtkit (D-Bus) raises the engine's threads where the user may not (real-time or a lower nice)
+zbus = "5.19.0"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2.191"
+
+# macOS: App Nap and timer coalescing turned off (NSProcessInfo's activities) with power throttling off
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6.5"
+objc2-foundation = { version = "0.3.2", default-features = false, features = ["std", "NSProcessInfo", "NSString", "NSObject"] }
 
 [profile.release]
 opt-level = 3

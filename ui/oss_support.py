@@ -212,6 +212,13 @@ class SupportDialog(QtWidgets.QDialog):
         """What the native audio engine (audioengine/native) is built from: its library beside it (VOLK) and
         the crates compiled in (the whole list with licences: cargo metadata; LGPL volk-rs, the rest MIT /
         Apache-2.0 / Zlib / BSD / Unlicense), with the C runtime parts linked in."""
+        per_system = []
+        if os_support.IS_LINUX:
+            # rtkit's D-Bus calls (the threads' priority)
+            per_system.append(("zbus", "https://github.com/z-galaxy/zbus"))
+        if os_support.IS_MACOS:
+            # CoreAudio through cpal, the power activity (NSProcessInfo)
+            per_system.append(("objc2", "https://github.com/madsmtm/objc2"))
         return [
             ("Rust", "https://foundation.rust-lang.org/"),
             # beside the engine as libvolk (LGPL-3.0-or-later), with Google's cpu_features (Apache-2.0) inside
@@ -225,7 +232,7 @@ class SupportDialog(QtWidgets.QDialog):
             ("libc (Rust)", "https://github.com/rust-lang/libc"),
             # Windows: built with llvm-mingw, its libunwind linked in (Apache-2.0 with LLVM exceptions)
             ("LLVM (libunwind, llvm-mingw)", "https://github.com/mstorsjo/llvm-mingw"),
-        ]
+        ] + per_system
 
     def _detect_blas_backend(self):
         """Detect the BLAS backend via NumPy and return only open-source ones.

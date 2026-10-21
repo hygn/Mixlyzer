@@ -4,7 +4,8 @@
 //! (ipc.rs), each track's PCM through a block of its own. The engine exits when told to or when the GUI
 //! process is gone.
 //!
-//! mixlyzer-audio --shm NAME --size BYTES --parent PID [--device NAME]
+//! mixlyzer-audio --shm NAME --size BYTES --parent PID [--device NAME] [--api 0 WASAPI | 1 cpal | 2 JACK]
+//!     [--exclusive 0|1] [--rate HZ: exclusive only, else the device's]
 
 mod clock;
 mod cursor;
@@ -13,10 +14,13 @@ mod dsp;
 mod engine;
 mod ipc;
 mod mixers;
+mod sched;
 mod shm;
 mod stretch;
 mod timeline;
 mod vk;
+#[cfg(windows)]
+mod wasapi;
 
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
@@ -64,11 +68,16 @@ fn main() {
         }
     };
     let machine = vk::warm();
-    let realtime = set_realtime_priority();
-    eprintln!("[AudioEngine] VOLK {} ({machine}), real-time thread: {realtime}", volk::volk_version());
+    let mut sched = sched::Sched::start();
+    eprintln!("[AudioEngine] VOLK {} ({machine}), engine thread: {}", volk::volk_version(), sched.engine_state());
     // the output device asked for (None: the system's default); the session's format is its own
     let mut wanted_device: Option<String> = arg(&args, "--device").filter(|n| !n.is_empty());
-    let format = device::default_format(wanted_device.as_deref());
+    let code = |name: &str| arg(&args, name).and_then(|m| m.parse::<u32>().ok()).unwrap_or(0);
+    let mut wanted_mode = device::Mode::from_codes(code("--api"), code("--exclusive"));
+    // the session's format: the device's, at the rate asked for in exclusive mode (the GUI decodes for it)
+    let asked_rate = code("--rate");
+    let format = device::default_format(wanted_device.as_deref(), wanted_mode)
+        .map(|(r, c)| (if wanted_mode.exclusive && asked_rate > 0 { asked_rate } else { r }, c));
     let (rate, ch) = match format {
         Ok(f) => f,
         Err(e) => {
@@ -82,7 +91,7 @@ fn main() {
     // the ring holds the largest output buffer and what a flush leaves behind it
     let ring = Arc::new(device::Ring::new(rate as u64 * 5 / 2, ch, rate as f64));
     let mut current_device = String::new();
-    let mut output = match device::open(ring.clone(), rate, ch, wanted_device.as_deref()) {
+    let mut output = match device::open(ring.clone(), rate, ch, wanted_device.as_deref(), wanted_mode) {
         Ok((o, name)) => {
             current_device = name;
             Some(o)
@@ -104,16 +113,23 @@ fn main() {
     ctl.put_u32(st::READY, 1);
     ctl.state_end();
 
+    let _ = ring.engine_thread.set(std::thread::current());
+    let mut trace = Trace::new();
+    let mut last_op = (0u32, 0.0f64);
     loop {
+        let tick_start = clock::now();
+        let level_before = ring.level();
         let mut batch = Vec::new();
         while let Some(cmd) = ctl.next_command() {
             batch.push(cmd);
         }
         for (i, cmd) in batch.iter().enumerate() {
             cmd_done = cmd.seq;
+            engine.command_at = cmd.sent_at;
+            last_op = (cmd.op, clock::now());
             if cmd.op == op::SHUTDOWN {
                 engine.pause();
-                publish(&ctl, &mut engine, cmd_done, device_errors);
+                publish(&ctl, &mut engine, cmd_done, device_errors, output.as_ref(), &sched);
                 return;
             }
             // a seek another one in this batch overrides (a drag's positions come faster than the ticks): only
@@ -127,7 +143,17 @@ fn main() {
                     output = None;
                     reopen_at = 0.0;
                 }
-                op::LIST_DEVICES => ctl.put_devices(&current_device, &device::list()),
+                op::SET_OUTPUT_MODE => {
+                    let mut r = Reader::new(&cmd.payload);
+                    wanted_mode = device::Mode::from_codes(r.u32().unwrap_or(0), r.u32().unwrap_or(0));
+                    output = None;
+                    reopen_at = 0.0;
+                }
+                op::LIST_DEVICES => ctl.put_devices(&current_device, &device::list(wanted_mode)),
+                op::SET_PROCESS => {
+                    let mut r = Reader::new(&cmd.payload);
+                    sched.set(r.u32().unwrap_or(sched::PRIORITY_HIGH), r.u32().unwrap_or(0) != 0, &ring);
+                }
                 _ if !superseded => handle(&mut engine, cmd.op, &cmd.payload),
                 _ => {}
             }
@@ -139,7 +165,7 @@ fn main() {
                 reopen_at = now + 1.0;
                 output = None;
                 ring.failed.store(false, Ordering::Relaxed);
-                match device::open(ring.clone(), rate, ch, wanted_device.as_deref()) {
+                match device::open(ring.clone(), rate, ch, wanted_device.as_deref(), wanted_mode) {
                     Ok((o, name)) => {
                         output = Some(o);
                         if name != current_device {
@@ -158,21 +184,19 @@ fn main() {
             if engine.idle() {
                 let since = *idle_since.get_or_insert(now);
                 if out.running && now - since > 1.0 {
-                    use cpal::traits::StreamTrait;
-                    let _ = out.stream.pause();
-                    out.running = false;
+                    out.pause();
                 }
             } else {
                 idle_since = None;
                 if !out.running {
-                    use cpal::traits::StreamTrait;
-                    let _ = out.stream.play();
-                    out.running = true;
+                    out.play();
                 }
             }
         }
+        sched.follow_output(&ring);
         engine.tick();
-        publish(&ctl, &mut engine, cmd_done, device_errors);
+        publish(&ctl, &mut engine, cmd_done, device_errors, output.as_ref(), &sched);
+        trace.tick(&ring, tick_start, level_before, last_op, engine.playing, output.as_ref().map(|o| o.mode.code()));
         if now - parent_checked > 0.5 {
             parent_checked = now;
             if let Some(pid) = parent {
@@ -181,7 +205,9 @@ fn main() {
                 }
             }
         }
-        std::thread::sleep(Duration::from_micros(if engine.scratching { 1000 } else { 2000 }));
+        // woken by the device's read (the ring topped up at once), else every 2 ms (1 ms while scratching or with
+        // a buffer under 10 ms)
+        std::thread::park_timeout(Duration::from_micros(if engine.scratching || engine.small_buffer() { 1000 } else { 2000 }));
     }
 }
 
@@ -294,6 +320,66 @@ fn probe_device(frames: u32) {
     );
 }
 
+/// The last ticks of the engine loop, written to the temp folder's mixlyzer-audio-trace.log when the device
+/// played a gap (a dropout: the ring empty; or the output thread woken late): what the loop was doing before it.
+struct Trace {
+    ticks: std::collections::VecDeque<String>,
+    underruns: u64,
+    late: u64,
+    last_end: f64,
+    path: std::path::PathBuf,
+}
+
+impl Trace {
+    fn new() -> Trace {
+        Trace {
+            ticks: std::collections::VecDeque::with_capacity(64),
+            underruns: 0,
+            late: 0,
+            last_end: 0.0,
+            path: std::env::temp_dir().join("mixlyzer-audio-trace.log"),
+        }
+    }
+
+    fn tick(&mut self, ring: &device::Ring, start: f64, level_before: u64, last_op: (u32, f64), playing: bool, mode: Option<u32>) {
+        let end = clock::now();
+        let gap = if self.last_end > 0.0 { (start - self.last_end) * 1000.0 } else { 0.0 };
+        self.last_end = end;
+        if self.ticks.len() == 64 {
+            self.ticks.pop_front();
+        }
+        self.ticks.push_back(format!(
+            "{start:.4} work {:.2} ms, slept {gap:.2} ms, ring {level_before} -> {} frames, last op {} {:.0} ms ago",
+            (end - start) * 1000.0,
+            ring.level(),
+            last_op.0,
+            (end - last_op.1) * 1000.0
+        ));
+        let (u, l) = (ring.underruns.load(Ordering::Relaxed), ring.late.load(Ordering::Relaxed));
+        if (u > self.underruns || l > self.late) && playing {
+            use std::io::Write;
+            if std::fs::metadata(&self.path).map(|m| m.len() > 2 << 20).unwrap_or(false) {
+                let _ = std::fs::remove_file(&self.path);
+            }
+            if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(&self.path) {
+                let _ = writeln!(
+                    f,
+                    "== {end:.4}: {} frames played as silence (ring empty), {} late wake-ups, max gap {:.2} ms, output {:?}",
+                    u - self.underruns,
+                    l - self.late,
+                    ring.max_gap_us.load(Ordering::Relaxed) as f64 / 1000.0,
+                    mode
+                );
+                for t in &self.ticks {
+                    let _ = writeln!(f, "   {t}");
+                }
+            }
+        }
+        self.underruns = u;
+        self.late = l;
+    }
+}
+
 fn handle(e: &mut Engine, op_code: u32, payload: &[u8]) {
     let mut r = Reader::new(payload);
     match op_code {
@@ -385,7 +471,8 @@ fn handle(e: &mut Engine, op_code: u32, payload: &[u8]) {
     }
 }
 
-fn publish(ctl: &Control, e: &mut Engine, cmd_done: u64, device_errors: u32) {
+fn publish(ctl: &Control, e: &mut Engine, cmd_done: u64, device_errors: u32, out: Option<&device::Output>,
+           sched: &sched::Sched) {
     let now = clock::now();
     let (display, display_rate) = e.display_frame(now);
     let playhead = e.playhead_frame();
@@ -413,32 +500,20 @@ fn publish(ctl: &Control, e: &mut Engine, cmd_done: u64, device_errors: u32) {
     ctl.put_u32(st::DEVICE_ERRORS, device_errors);
     ctl.put_f64(st::STRETCH_MS, e.render_ms);
     ctl.put_f64(st::LATENCY_MS, ring.latency_frames() / e.rate * 1000.0);
+    ctl.put_u32(st::OUTPUT_MODE, out.map(|o| o.mode.code()).unwrap_or(0));
+    ctl.put_f64(st::PERIOD_MS, out.map(|o| o.period_ms).unwrap_or(0.0));
+    ctl.put_f64(st::RESPONSE_PLAY, e.responses[0]);
+    ctl.put_f64(st::RESPONSE_PAUSE, e.responses[1]);
+    ctl.put_f64(st::RESPONSE_SEEK, e.responses[2]);
+    ctl.put_f64(st::HIST_BUCKET_MS, e.hist_bucket_ms);
+    ctl.put_f64(st::LOWEST_MS, e.lowest_ms());
+    ctl.put_u32(st::OUTPUT_OPEN, out.is_some() as u32);
+    ctl.put_u64(st::DEVICE_LATE, ring.late.load(Ordering::Relaxed));
+    ctl.put_f64(st::MAX_GAP_MS, ring.max_gap_us.load(Ordering::Relaxed) as f64 / 1000.0);
+    ctl.put_u32(st::THREADS, sched.engine_state() | sched.output_state(ring) << 8);
+    ctl.put_u32(st::POWER, sched.power_state());
     ctl.put_hist(&e.hist);
     ctl.state_end();
-}
-
-#[cfg(windows)]
-fn set_realtime_priority() -> bool {
-    use windows_sys::Win32::System::Threading::{
-        AvSetMmThreadCharacteristicsW, GetCurrentThread, SetThreadPriority, THREAD_PRIORITY_TIME_CRITICAL,
-    };
-    let task: Vec<u16> = "Pro Audio".encode_utf16().chain(std::iter::once(0)).collect();
-    let mut index = 0u32;
-    let mmcss = unsafe { !AvSetMmThreadCharacteristicsW(task.as_ptr(), &mut index).is_null() };
-    let prio = unsafe { SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_TIME_CRITICAL) != 0 };
-    mmcss || prio
-}
-
-#[cfg(target_os = "macos")]
-fn set_realtime_priority() -> bool {
-    unsafe { libc::pthread_set_qos_class_self_np(libc::qos_class_t::QOS_CLASS_USER_INTERACTIVE, 0) == 0 }
-}
-
-#[cfg(all(unix, not(target_os = "macos")))]
-fn set_realtime_priority() -> bool {
-    // SCHED_FIFO needs rtprio (audio group / rtkit); without it the thread stays as it is
-    let param = libc::sched_param { sched_priority: 20 };
-    unsafe { libc::sched_setscheduler(0, libc::SCHED_FIFO, &param) == 0 }
 }
 
 #[cfg(windows)]

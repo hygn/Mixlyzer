@@ -73,6 +73,9 @@ class AppWindow(QtWidgets.QMainWindow):
             native_buffer_ms=float(self.cfg.playbackconfig.native_buffer_ms),
             python_buffer_ms=float(self.cfg.playbackconfig.python_buffer_ms),
             output_device=self.cfg.playbackconfig.output_device,
+            native_api=self.cfg.playbackconfig.native_audio_api,
+            native_exclusive=self.cfg.playbackconfig.native_exclusive,
+            native_exclusive_rate=self.cfg.playbackconfig.native_exclusive_rate,
         )
         self.player.set_refresh_fps(self.cfg.viewconfig.fps)
         self.external_sync = ExternalSyncController(
@@ -696,6 +699,9 @@ class AppWindow(QtWidgets.QMainWindow):
         self.player.set_soft_clip(bool(pcfg.soft_clip))
         self.player.set_buffer_ms(float(pcfg.native_buffer_ms), float(pcfg.python_buffer_ms))
         self.player.set_output_device(pcfg.output_device)
+        self.player.set_output_mode(pcfg.native_audio_api, bool(pcfg.native_exclusive))
+        self.player.set_exclusive_rate(int(pcfg.native_exclusive_rate))
+        self.player.set_process(pcfg.native_priority, bool(pcfg.native_power_throttling))
 
     def _on_timestretch_toggle(self, enabled: bool) -> None:
         """Deck MT button: same as switching "Use timestretch" in the settings and saving."""

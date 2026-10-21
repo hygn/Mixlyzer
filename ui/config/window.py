@@ -202,6 +202,11 @@ class SettingsDialog(
         self.cb_audio_engine.setCurrentIndex(max(0, self.cb_audio_engine.findData(p.audio_engine)))
         self.sp_native_buffer_ms.setValue(int(p.native_buffer_ms))
         self.sp_python_buffer_ms.setValue(int(p.python_buffer_ms))
+        self.cb_native_api.setCurrentIndex(max(0, self.cb_native_api.findData(p.native_audio_api)))
+        self.cb_native_output_mode.setCurrentIndex(1 if p.native_exclusive else 0)
+        self.cb_native_rate.setCurrentIndex(max(0, self.cb_native_rate.findData(int(p.native_exclusive_rate))))
+        self.cb_native_priority.setCurrentIndex(max(0, self.cb_native_priority.findData(p.native_priority)))
+        self.cb_native_power.setCurrentIndex(1 if p.native_power_throttling else 0)
         self._output_device = p.output_device
         self._load_output_devices(p.output_device)
 
@@ -374,6 +379,11 @@ class SettingsDialog(
                 native_buffer_ms=int(self.sp_native_buffer_ms.value()),
                 python_buffer_ms=int(self.sp_python_buffer_ms.value()),
                 output_device=str(self.cb_output_device.currentData() or ""),
+                native_audio_api=str(self.cb_native_api.currentData() or "cpal"),
+                native_exclusive=bool(self.cb_native_output_mode.currentData()),
+                native_exclusive_rate=int(self.cb_native_rate.currentData() or 0),
+                native_priority=str(self.cb_native_priority.currentData() or "high"),
+                native_power_throttling=bool(self.cb_native_power.currentData()),
             ),
             externalsyncconfig=externalsyncconfig(
                 enabled=bool(self.cb_external_sync_enabled.isChecked()) and os_support.MEMORY_SYNC,

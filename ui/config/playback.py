@@ -22,9 +22,22 @@ from PySide6.QtWidgets import (
 
 from audioengine.native.client import NativeFeeder
 from audioengine.python.feeder import PCMFeeder
+from ui.buffer_histogram import BufferHistogram
 from ui.track_info_panel import HorizontalBufferMeter
 from ui.config.scroll import scroll_page
-from core.i18n import tr
+from core import os_support
+from core.i18n import tr, tr_ctx, tr_mark
+
+# the native engine's threads as it got them (client.THREAD_STATES), shown under the meter
+THREAD_STATE_NAMES = {
+    "api": tr_mark("the audio API's own"),
+    "normal": tr_mark("normal"),
+    "raised": tr_mark("raised"),
+    "raised_rtkit": tr_mark("raised through rtkit"),
+    "realtime": tr_mark("real-time"),
+    "realtime_rtkit": tr_mark("real-time through rtkit"),
+    "refused": tr_mark("not permitted to raise"),
+}
 
 
 def build_playback_tab(dialog) -> None:
@@ -86,6 +99,79 @@ def build_playback_tab(dialog) -> None:
         "<p>The device the player plays on, as its audio engine names it. Changed while the app runs, the sound "
         "keeps the format (sample rate, channels) of the device it started with, converted by the system.</p>"
     ))
+    # the native engine's way to the device: the audio APIs this system has, WASAPI's mode and exclusive rate
+    dialog.cb_native_api = QComboBox()
+    if os_support.IS_WINDOWS:
+        dialog.cb_native_api.addItem("WASAPI", "wasapi")
+        dialog.cb_native_api.addItem("WASAPI (cpal)", "cpal")
+    elif os_support.IS_LINUX:
+        dialog.cb_native_api.addItem("ALSA", "cpal")
+        dialog.cb_native_api.addItem("JACK", "jack")
+    else:
+        dialog.cb_native_api.addItem("CoreAudio", "cpal")
+    dialog.cb_native_api.setToolTip(tr(
+        "<p>The audio API the native engine plays through. WASAPI: its own, with a low-latency shared stream "
+        "or exclusive mode. WASAPI (cpal): the usual shared stream (more latency), for a device the other one "
+        "cannot open. JACK (Linux): through the JACK or PipeWire server.</p>"
+    ))
+    dialog.cb_native_output_mode = QComboBox()
+    dialog.cb_native_output_mode.addItem(tr("Shared"), False)
+    dialog.cb_native_output_mode.addItem(tr("Exclusive"), True)
+    dialog.cb_native_output_mode.setToolTip(tr(
+        "<p>Shared: with other apps, at the smallest period the driver allows. Exclusive: the device to Mixlyzer "
+        "alone, the shortest latency; other apps cannot play on it meanwhile. A mode the device cannot open falls "
+        "back to the usual shared stream.</p>"
+    ))
+    dialog.cb_native_rate = QComboBox()
+    dialog.cb_native_rate.addItem(tr("The device's"), 0)
+    for rate in NativeFeeder.EXCLUSIVE_RATES:
+        dialog.cb_native_rate.addItem(f"{rate / 1000:g} kHz", rate)
+    dialog.cb_native_rate.setToolTip(tr(
+        "<p>The sample rate the device runs at in exclusive mode (the tracks are decoded for it). Applied from the "
+        "next track loaded; a rate the device does not take falls back to the usual shared stream.</p>"
+    ))
+    # the engine's own share of the computer: Windows its process's class, Linux / macOS its threads' (sched.rs)
+    dialog.cb_native_priority = QComboBox()
+    dialog.cb_native_priority.addItem(tr_ctx("process priority", "Normal"), "normal")
+    dialog.cb_native_priority.addItem(tr_ctx("process priority", "Above normal"), "above_normal")
+    dialog.cb_native_priority.addItem(tr_ctx("process priority", "High"), "high")
+    if os_support.IS_WINDOWS:
+        priority_tip = tr(
+            "<p>The priority class of the native engine's process. High: its threads run ahead of the analysis and "
+            "other apps, so it wakes on time when the computer is busy (fewer dropouts at small buffers). Applied at "
+            "once.</p>")
+    elif os_support.IS_LINUX:
+        priority_tip = tr(
+            "<p>The priority of the native engine's threads (its own and the ALSA output's; JACK's is the "
+            "server's). High: real-time, else nice -10; Above normal: nice -5. What the user may not set (without "
+            "the audio group's limits) is asked of rtkit. Applied at once; what was got is shown under the "
+            "meter.</p>")
+    else:
+        priority_tip = tr(
+            "<p>The priority of the native engine's thread. High: real-time (a time constraint, as CoreAudio's own "
+            "output thread); Above normal: QoS user-interactive; Normal: QoS default. Applied at once.</p>")
+    dialog.cb_native_priority.setToolTip(priority_tip)
+    dialog.cb_native_power = QComboBox()
+    dialog.cb_native_power.addItem(tr("Off"), False)
+    dialog.cb_native_power.addItem(tr("The system's choice"), True)
+    if os_support.IS_WINDOWS:
+        power_tip = tr(
+            "<p>Whether Windows may power-throttle the native engine's process (EcoQoS: efficiency cores, lower "
+            "clocks, coarser timers) to save power. Off: it runs at full speed with the 1 ms timer, so it wakes on "
+            "time. Applied at once.</p>")
+    elif os_support.IS_LINUX:
+        power_tip = tr(
+            "<p>Whether Linux may save power on the native engine's threads. Off: a 1 ns timer slack, and uclamp "
+            "keeping the CPU clock up while they run (Linux 5.3 and later, with the schedutil governor). Applied "
+            "at once.</p>")
+    else:
+        power_tip = tr(
+            "<p>Whether macOS may save power on the native engine (App Nap, timer coalescing). Off: a "
+            "latency-critical activity keeps both off (the computer may still sleep when idle). Applied at "
+            "once.</p>")
+    dialog.cb_native_power.setToolTip(power_tip)
+    for combo in (dialog.cb_native_api, dialog.cb_native_output_mode):
+        combo.currentIndexChanged.connect(dialog._follow_native_api)
     dialog.sp_native_buffer_ms = QSpinBox()
     dialog.sp_native_buffer_ms.setRange(*NativeFeeder.BUFFER_MS_RANGE)
     dialog.sp_native_buffer_ms.setToolTip(tr(
@@ -103,12 +189,26 @@ def build_playback_tab(dialog) -> None:
     for spin in (dialog.sp_native_buffer_ms, dialog.sp_python_buffer_ms):
         spin.setSingleStep(5)
         spin.setSuffix(" ms")
-    # where each buffer setting goes (set_audio_engine): with the rest, or under Advanced
+    # where each engine's settings go (set_audio_engine): with the rest, or under Advanced
     dialog.buffer_slot = QWidget()
     QHBoxLayout(dialog.buffer_slot).setContentsMargins(0, 0, 0, 0)
     dialog.other_buffer_slot = QWidget()
     QHBoxLayout(dialog.other_buffer_slot).setContentsMargins(0, 0, 0, 0)
     dialog.lbl_other_buffer = QLabel()
+    # the native engine's own rows: shown with the rest when it plays, else under Advanced
+    dialog._native_rows = []
+    for text, widget in ((tr("Audio API"), dialog.cb_native_api), (tr("Output mode"), dialog.cb_native_output_mode),
+                         (tr("Sample rate (exclusive)"), dialog.cb_native_rate),
+                         (tr("Process priority") if os_support.IS_WINDOWS else tr("Thread priority"),
+                          dialog.cb_native_priority),
+                         (tr("Power throttling"), dialog.cb_native_power)):
+        slots = []
+        for _place in range(2):
+            slot = QWidget()
+            QHBoxLayout(slot).setContentsMargins(0, 0, 0, 0)
+            slots.append((QLabel(text), slot))
+        dialog._native_rows.append((widget, slots[0], slots[1]))
+    dialog.lbl_native_advanced = QLabel(tr("Native engine"))
 
     dialog.cb_metronome.setToolTip(tr("Play a click on every beat of the beat grid."))
     dialog.ed_metronome_wav_path.setToolTip(tr("WAV file used as the metronome click."))
@@ -125,6 +225,11 @@ def build_playback_tab(dialog) -> None:
 
     dialog.buffer_meter = HorizontalBufferMeter(hold_marker=False)
     dialog.buffer_low_meter = HorizontalBufferMeter(hold_marker=False)
+    dialog.buffer_histogram = BufferHistogram()
+    dialog.buffer_histogram.setToolTip(tr(
+        "<p>The time the output buffer spent at each level over the last {seconds} s (log scale): the left end is "
+        "a dropout. Dashed: the buffer size; yellow: the 1% low.</p>"
+    ).format(seconds=f"{dialog.BUFFER_WINDOW_SEC:.0f}"))
     dialog.buffer_meter.setToolTip(
         tr("Average audio queued in the output buffer (smoothed).")
     )
@@ -145,6 +250,8 @@ def build_playback_tab(dialog) -> None:
     f_general = QFormLayout(grp_general)
     f_general.addRow(tr("Audio engine"), dialog.cb_audio_engine)
     f_general.addRow(tr("Output device"), dialog.cb_output_device)
+    for _widget, (label, slot), _other in dialog._native_rows:
+        f_general.addRow(label, slot)
     f_general.addRow(tr("Trim"), dialog.sp_volume_trim_dbfs)
     f_general.addRow(tr("Default volume (%)"), dialog.sp_default_volume_percent)
     f_general.addRow(dialog.cb_soft_clip)
@@ -153,6 +260,7 @@ def build_playback_tab(dialog) -> None:
     f_general.addRow(
         tr("1% low ({seconds} s)").format(seconds=f"{dialog.BUFFER_WINDOW_SEC:.0f}"), dialog.buffer_low_meter
     )
+    f_general.addRow(tr("Histogram"), dialog.buffer_histogram)
     f_general.addRow("", dialog.lbl_buffer)
     dialog.btn_playback_advanced = QToolButton()
     dialog.btn_playback_advanced.setText(tr("Advanced"))
@@ -166,6 +274,9 @@ def build_playback_tab(dialog) -> None:
     f_advanced = QFormLayout(dialog.playback_advanced)
     f_advanced.setContentsMargins(16, 0, 0, 0)
     f_advanced.addRow(dialog.lbl_other_buffer, dialog.other_buffer_slot)
+    f_advanced.addRow(dialog.lbl_native_advanced)
+    for _widget, _shown, (label, slot) in dialog._native_rows:
+        f_advanced.addRow(label, slot)
     dialog.playback_advanced.setVisible(False)
     f_general.addRow(dialog.playback_advanced)
     dialog.btn_playback_advanced.toggled.connect(dialog._toggle_playback_advanced)
@@ -235,14 +346,39 @@ class PlaybackSettingsMixin:
                 slot.layout().removeWidget(spin)
         self.buffer_slot.layout().addWidget(shown)
         self.other_buffer_slot.layout().addWidget(other)
+        # the native engine's own rows: with the rest when it plays, else under Advanced (with its buffer)
+        for widget, (label, slot), (other_label, other_slot) in self._native_rows:
+            for s in (slot, other_slot):
+                s.layout().removeWidget(widget)
+            (slot if native else other_slot).layout().addWidget(widget)
+            for w, shown in ((label, native), (slot, native), (other_label, not native), (other_slot, not native)):
+                w.setVisible(shown)
+        self.lbl_native_advanced.setVisible(not native)
+        self._follow_native_api()
         self.lbl_other_buffer.setText(tr("Buffer size, Python engine") if native
                                       else tr("Buffer size, native engine"))
         playing = tr("Native") if native else tr("Python")
-        self.cb_audio_engine.setToolTip(tr(
+        tip = tr(
             "<p>Native: the audio engine in a process of its own (no dropouts when the computer is busy, smaller "
             "buffers); the Python engine where it is not built or cannot start. Python: the Python engine only. "
             "Applied at the next start.</p><p>Playing now: {engine}.</p>"
-        ).format(engine=playing))
+        ).format(engine=playing)
+        if not os_support.IS_WINDOWS:
+            # developed and measured on Windows; on Linux and macOS it is built and checked, not yet measured
+            tip += tr("<p>The native engine on Linux and macOS is experimental.</p>")
+        self.cb_audio_engine.setToolTip(tip)
+
+    def _follow_native_api(self, *_args) -> None:
+        """WASAPI's own mode only with its API, the exclusive rate only in exclusive mode; both hidden where the
+        system has neither (only Windows has). The priority and power rows are every system's."""
+        wasapi = self.cb_native_api.currentData() == "wasapi"
+        exclusive = wasapi and bool(self.cb_native_output_mode.currentData())
+        self.cb_native_output_mode.setEnabled(wasapi)
+        self.cb_native_rate.setEnabled(exclusive)
+        for widget, (label, slot), (other_label, other_slot) in self._native_rows:
+            if widget in (self.cb_native_output_mode, self.cb_native_rate) and not os_support.IS_WINDOWS:
+                for w in (label, slot, other_label, other_slot):
+                    w.setVisible(False)
 
     def _toggle_playback_advanced(self, shown: bool) -> None:
         self.btn_playback_advanced.setArrowType(Qt.DownArrow if shown else Qt.RightArrow)
@@ -278,6 +414,11 @@ class PlaybackSettingsMixin:
     def _on_output_buffer(self, queued_ms: float, stats: object, capacity_ms: float) -> None:
         if not self.isVisible() or capacity_ms <= 0.0 or not isinstance(stats, dict):
             return
+        if stats.get("output_open") is False:
+            self.lbl_buffer.setText(tr(
+                "The output device could not be opened (another app may hold it in exclusive mode); it is tried "
+                "again every second."))
+            return
         seconds = float(stats["seconds"])
         hist = np.asarray(stats["hist"], dtype=np.float64)
         now = time.monotonic()
@@ -291,6 +432,12 @@ class PlaybackSettingsMixin:
         # the time the device played silence: told by the native engine (its buffer's lowest level is touched
         # without a gap: the device reads it in whole periods), else the time below 1 ms
         self._buffer_dropout_sec += float(stats.get("dropout_sec", hist[0]))
+        # the histogram's bucket (ms): 1 from the Python engine, 0.1 (wider for big buffers) from the native one;
+        # the window restarts where it changes
+        bucket = float(stats.get("bucket_ms", 1.0))
+        if bucket != getattr(self, "_buffer_bucket_ms", bucket):
+            self._buffer_window.clear()
+        self._buffer_bucket_ms = bucket
         self._buffer_window.append((now, hist))
         while self._buffer_window and now - self._buffer_window[0][0] > self.BUFFER_WINDOW_SEC:
             self._buffer_window.popleft()
@@ -300,19 +447,52 @@ class PlaybackSettingsMixin:
         for _, h in self._buffer_window:
             total[:len(h)] += h
         cumulative = np.cumsum(total)
-        low_1pct_ms = float(np.searchsorted(cumulative, 0.01 * cumulative[-1]))
-        lowest_ms = float(np.flatnonzero(total)[0]) if cumulative[-1] > 0 else 0.0
+        target = 0.01 * cumulative[-1]
+        k = int(np.searchsorted(cumulative, target))
+        if cumulative[-1] > 0 and k < total.size and total[k] > 0:
+            # within its bucket, by the share of the time there below the 1 %
+            below = cumulative[k - 1] if k > 0 else 0.0
+            low_1pct_ms = (k + (target - below) / total[k]) * bucket
+        else:
+            low_1pct_ms = k * bucket
+        lowest_ms = float(np.flatnonzero(total)[0]) * bucket if cumulative[-1] > 0 else 0.0
 
         self.buffer_meter.set_level(self._buffer_ema_ms / capacity_ms)
         self.buffer_low_meter.set_level(low_1pct_ms / capacity_ms)
+        self.buffer_histogram.set_data(total, bucket, capacity_ms, low_1pct_ms, micro="device_ms" in stats)
         values = dict(ema=f"{self._buffer_ema_ms:.0f}", capacity=f"{capacity_ms:.0f}", low=f"{low_1pct_ms:.0f}",
                       lowest=f"{lowest_ms:.0f}", seconds=f"{self.BUFFER_WINDOW_SEC:.0f}",
                       dropout=f"{self._buffer_dropout_sec * 1000.0:.0f}")
         if "device_ms" in stats:
-            self.lbl_buffer.setText(tr(
-                "EMA {ema} / {capacity} ms   1% low {low} ms   lowest {lowest} ms ({seconds} s)\n"
-                "Dropout since opened {dropout} ms   Device latency {device} ms (fixed)"
-            ).format(device=f"{float(stats['device_ms']):.0f}", **values))
+            # the native engine: its buffer in µs (its histogram is 0.1 ms fine; the lowest level is its own,
+            # exact, over the same 10 s)
+            exact_low = float(stats.get("lowest_ms", -1.0))
+            us = dict(ema=f"{self._buffer_ema_ms * 1000:,.0f}", capacity=f"{capacity_ms * 1000:,.0f}",
+                      low=f"{low_1pct_ms * 1000:,.0f}",
+                      lowest=f"{(exact_low if exact_low >= 0.0 else lowest_ms) * 1000:,.0f}",
+                      seconds=values["seconds"], dropout=values["dropout"])
+            text = tr(
+                "EMA {ema} / {capacity} µs   1% low {low} µs   lowest {lowest} µs ({seconds} s)\n"
+                "Dropout since opened {dropout} ms   Device latency {device} ms"
+            ).format(device=f"{float(stats['device_ms']):.1f}", **us)
+            # the output thread woken late (the device may have played a gap with audio in the ring)
+            if int(stats.get("late", 0)) > 0:
+                text += "\n" + tr("Late output wake-ups: {count} (longest gap {gap} ms)").format(
+                    count=int(stats["late"]), gap=f"{float(stats.get('max_gap_ms', 0.0)):.1f}")
+            # the threads' scheduling as the engine got it (Settings' priority), and power throttling not off
+            text += "\n" + tr("Engine thread: {engine}   Output thread: {output}").format(
+                engine=tr(THREAD_STATE_NAMES.get(stats.get("engine_thread"), THREAD_STATE_NAMES["api"])),
+                output=tr(THREAD_STATE_NAMES.get(stats.get("output_thread"), THREAD_STATE_NAMES["api"])))
+            if stats.get("power") == "partly":
+                text += "\n" + tr("Power throttling could be turned off only in part.")
+            elif stats.get("power") == "refused":
+                text += "\n" + tr("Power throttling could not be turned off.")
+            # the native engine's measured responses: a command sent -> its sound heard (the last of each)
+            response = stats.get("response_ms") or {}
+            if any(v > 0.0 for v in response.values()):
+                shown = {k: (f"{v:.0f}" if v > 0.0 else "-") for k, v in response.items()}
+                text += "\n" + tr("Response measured: play {play} ms   pause {pause} ms   seek {seek} ms").format(**shown)
+            self.lbl_buffer.setText(text)
         else:
             self.lbl_buffer.setText(tr(
                 "EMA {ema} / {capacity} ms   1% low {low} ms   lowest {lowest} ms ({seconds} s)\n"

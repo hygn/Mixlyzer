@@ -5,15 +5,15 @@
 //!   it is being written), read by the GUI at its own pace.
 //! [RING_OFFSET, end): the commands, a byte ring the GUI writes (one writer) and the engine reads: the
 //!   ring's write position (bytes ever written), its read position (bytes ever read, written by the engine),
-//!   then the records. A record is [size u32 (header included, 8-aligned), op u32, seq u64, checksum u32, payload length
-//!   u32] + payload (+ padding); a record never wraps (the GUI pads to the ring's end with a size-only record of op 0). The
+//!   then the records. A record is [size u32 (header included, 8-aligned), op u32, seq u64, checksum u32, payload
+//!   length u32, sent at f64 (the GUI's perf_counter: the response measurement)] + payload (+ padding); a record never wraps (the GUI pads to the ring's end with a size-only record of op 0). The
 //!   checksum (CRC-32 over op, seq and payload: Python's zlib.crc32) is checked before a record is taken: a weakly ordered CPU may
 //!   show the write position before the bytes it covers, which are then read again on the next tick.
 
 use std::sync::atomic::{AtomicU64, Ordering, fence};
 
 pub const MAGIC: u64 = u64::from_le_bytes(*b"MXAUDIC1");
-pub const VERSION: u32 = 1;
+pub const VERSION: u32 = 2;
 pub const STATE_OFFSET: usize = 64;
 pub const RING_OFFSET: usize = 65536;
 pub const RING_HEADER: usize = 64;
@@ -50,6 +50,20 @@ pub mod st {
     pub const DEVICE_ERRORS: usize = 148; // u32
     pub const STRETCH_MS: usize = 152; // f64 cumulative ms spent rendering (diagnostics)
     pub const LATENCY_MS: usize = 160; // f64 the device's own latency (fixed by its driver / mode)
+    pub const OUTPUT_MODE: usize = 168; // u32 the output in use: API (0 WASAPI, 1 cpal, 2 JACK) | 0x100 exclusive
+    pub const PERIOD_MS: usize = 176; // f64 the device's period (0: not known)
+    // the last measured response (ms) from the GUI's command to its sound being heard (0: none yet)
+    pub const RESPONSE_PLAY: usize = 184; // f64 play: its first frame heard
+    pub const RESPONSE_PAUSE: usize = 192; // f64 pause: its fade-out over
+    pub const RESPONSE_SEEK: usize = 200; // f64 seek: the new position's first frame heard
+    pub const HIST_BUCKET_MS: usize = 208; // f64 the histogram's bucket width (ms)
+    pub const LOWEST_MS: usize = 216; // f64 the buffer's lowest level over the last 10 s of playing (-1: none)
+    pub const OUTPUT_OPEN: usize = 224; // u32 1: the device is open; 0: it could not be (held: tried each second)
+    pub const DEVICE_LATE: usize = 232; // u64 the output thread's late wake-ups (the engine's own WASAPI output)
+    pub const MAX_GAP_MS: usize = 240; // f64 its longest gap between wake-ups since it opened
+    // the threads' scheduling (sched.rs): u32 the engine thread's state | the output thread's << 8; u32 power
+    pub const THREADS: usize = 248;
+    pub const POWER: usize = 252;
     pub const HIST: usize = 256; // f64[HIST_LEN] cumulative seconds per 1 ms level
 }
 
@@ -84,6 +98,9 @@ pub mod op {
     pub const WAKE: u32 = 27;
     pub const SET_DEVICE: u32 = 28; // name (u32 len + utf8; empty: the system's default)
     pub const LIST_DEVICES: u32 = 29;
+    pub const SET_OUTPUT_MODE: u32 = 30; // u32 API (0 WASAPI, 1 cpal, 2 JACK), u32 exclusive (WASAPI)
+    // u32 priority (0 normal, 1 above normal, 2 high), u32 power throttling allowed (sched.rs: per system)
+    pub const SET_PROCESS: u32 = 31;
 }
 
 pub struct Control {
@@ -96,13 +113,17 @@ unsafe impl Send for Control {}
 pub struct Command {
     pub op: u32,
     pub seq: u64,
+    pub sent_at: f64,
     pub payload: Vec<u8>,
 }
 
-fn checksum(op: u32, seq: u64, payload: &[u8]) -> u64 {
+const RECORD_HEADER: usize = 32;
+
+fn checksum(op: u32, seq: u64, sent_at: f64, payload: &[u8]) -> u64 {
     let mut h = crc32fast::Hasher::new();
     h.update(&op.to_le_bytes());
     h.update(&seq.to_le_bytes());
+    h.update(&sent_at.to_le_bytes());
     h.update(payload);
     h.finalize() as u64
 }
@@ -158,21 +179,22 @@ impl Control {
                 self.atomic(RING_OFFSET + 8).store(read + size, Ordering::Release);
                 continue;
             }
-            if size < 24 {
+            if (size as usize) < RECORD_HEADER {
                 return None;
             }
             let seq = unsafe { std::ptr::read_volatile(rec.add(8) as *const u64) };
             let sum = unsafe { std::ptr::read_volatile(rec.add(16) as *const u32) } as u64;
             let length = unsafe { std::ptr::read_volatile(rec.add(20) as *const u32) } as usize;
-            if length > size as usize - 24 {
+            let sent_at = unsafe { std::ptr::read_volatile(rec.add(24) as *const f64) };
+            if length > size as usize - RECORD_HEADER {
                 return None;
             }
-            let payload = unsafe { std::slice::from_raw_parts(rec.add(24), length) }.to_vec();
-            if checksum(op, seq, &payload) != sum {
+            let payload = unsafe { std::slice::from_raw_parts(rec.add(RECORD_HEADER), length) }.to_vec();
+            if checksum(op, seq, sent_at, &payload) != sum {
                 return None;
             }
             self.atomic(RING_OFFSET + 8).store(read + size, Ordering::Release);
-            return Some(Command { op, seq, payload });
+            return Some(Command { op, seq, sent_at, payload });
         }
     }
 

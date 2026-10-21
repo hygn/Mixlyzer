@@ -23,6 +23,7 @@ use crate::timeline::Timeline;
 enum Standby {
     Seek,
     Jump,
+    Resume, // a scrub let go: the tempo's stream from a point ahead (resume_at)
 }
 
 pub struct Engine {
@@ -43,6 +44,10 @@ pub struct Engine {
     standby: Option<Box<Stretcher>>,
     standby_for: Option<(Standby, f64)>,
     pending_seek: Option<f64>,
+    // a scrub let go with the time stretch off unity: the original plays on at unity up to this input frame, where
+    // the stream prepared for it (Standby::Resume) takes over
+    resume_at: Option<f64>,
+    prep_cost: f64, // one prepare_step's cost (s), smoothed: the standby's work stops before it would overrun
 
     pos: f64,
     pub playing: bool,
@@ -74,6 +79,12 @@ pub struct Engine {
     idle_queue_frames: usize,
     scratch_queue_frames: usize,
 
+    // the response measurement: when the command being handled was sent (the GUI's clock), and the frame whose
+    // hearing answers a play / pause / seek: (ring index, sent at, 0 play | 1 pause | 2 seek)
+    pub command_at: f64,
+    probe: Option<(u64, f64, usize)>,
+    pending_seek_at: f64,
+    pub responses: [f64; 3],
     pub jumped_count: u64,
     pub finished_count: u64,
     pub render_ms: f64,
@@ -82,6 +93,8 @@ pub struct Engine {
     obs_time: Option<f64>,
     obs_frames: f64,
     pub hist: Vec<f64>,
+    pub hist_bucket_ms: f64, // each histogram bucket's width: 0.1 ms, wider when the buffer needs more buckets
+    lows: std::collections::VecDeque<(i64, f64)>, // (second, lowest level in it, ms): the last LOW_WINDOW_SEC
     pub obs_seconds: f64,
     pub obs_level: f64,
     pub buffer_gen: u64,
@@ -91,10 +104,15 @@ impl Engine {
     pub const LATE_JUMP_SEC: f64 = 0.15;
     pub const PEAK_FLOOR_DBFS: f64 = -24.0;
     const SOFT_CLIP_KNEE: f32 = 0.8;
-    pub const BUFFER_MS_RANGE: (f64, f64) = (10.0, 500.0);
+    pub const BUFFER_MS_RANGE: (f64, f64) = (2.0, 500.0);
     const DISPLAY_GAIN: f64 = 0.1;
     const DISPLAY_RESYNC_SEC: f64 = 0.04;
     const STANDBY_BUDGET_SEC: f64 = 0.0015;
+    // the standby's work per tick: at most this share of the buffer (a small buffer keeps its ticks short)
+    const STANDBY_BUFFER_SHARE: f64 = 0.3;
+    // a scrub let go resumes the tempo this far ahead (input at unity): time for its stream to be prepared
+    const RESUME_LEAD_SEC: f64 = 0.08;
+    const LOW_WINDOW_SEC: i64 = 10;
 
     pub fn new(rate: u32, ch: usize, ring: Arc<Ring>) -> Engine {
         let r = rate as f64;
@@ -114,6 +132,8 @@ impl Engine {
             standby: None,
             standby_for: None,
             pending_seek: None,
+            resume_at: None,
+            prep_cost: 0.0005,
             pos: 0.0,
             playing: false,
             scrubbing: false,
@@ -142,12 +162,18 @@ impl Engine {
             chunk_frames: 2048,
             idle_queue_frames: (rate as usize / 50).max(1),
             scratch_queue_frames: ((r * 0.02) as usize).max(1), // in the ring; the device's buffer comes after
+            command_at: 0.0,
+            probe: None,
+            pending_seek_at: 0.0,
+            responses: [0.0; 3],
             jumped_count: 0,
             finished_count: 0,
             render_ms: 0.0,
             obs_time: None,
             obs_frames: 0.0,
             hist: vec![],
+            hist_bucket_ms: 0.1,
+            lows: std::collections::VecDeque::new(),
             obs_seconds: 0.0,
             obs_level: 0.0,
             buffer_gen: 0,
@@ -205,8 +231,18 @@ impl Engine {
         }
     }
 
+    /// The buffer is small enough to need a tick every 1 ms (main.rs).
+    pub fn small_buffer(&self) -> bool {
+        self.buffer_ms < 10.0
+    }
+
+    /// The buffer kept: what the device takes at once (its period) and the setting on top of it, so after each
+    /// of its reads the setting's worth is still queued: the engine may be that late to top it up (a buffer of
+    /// the setting alone left only setting - period, 2 ms of 5 ms beside a 3 ms period: a thread woken late under
+    /// load let the device read an empty ring).
     pub fn buffer_frames(&self) -> usize {
-        (self.rate * self.buffer_ms / 1000.0).round() as usize
+        let asked = (self.rate * self.buffer_ms / 1000.0).round() as usize;
+        asked + self.ring.max_frames.load(std::sync::atomic::Ordering::Relaxed) as usize
     }
 
     pub fn set_factor(&mut self, f: f64) {
@@ -223,20 +259,29 @@ impl Engine {
 
     /// Scrubbing (the overview dragged): the playhead follows the drag, each position a seek. The time stretch
     /// plays the original at unity meanwhile (a new stream per position, ~10 ms of work each, would not keep up
-    /// with the drag); released, its stream starts at the tempo at once, crossfaded from the original, instead of
-    /// warming up at unity and catching up with the tempo over a few hundred ms (a tempo change's gentle path).
+    /// with the drag). Released, the original plays on at unity for RESUME_LEAD_SEC while the tempo's stream is
+    /// prepared from there (a little each tick), and takes over at that very frame, crossfaded: the tempo comes
+    /// at once, without ~10 ms of work in one tick (a small buffer runs dry) or a warm-up at unity catching up
+    /// with the tempo over a few hundred ms (a tempo change's gentle path).
     pub fn set_scrubbing(&mut self, on: bool) {
         let released = self.scrubbing && !on;
         self.scrubbing = on;
+        self.resume_at = None;
         if on {
             self.clicks.clear_voices();
         }
-        let step = self.step();
+        let tempo = self.tempo();
         if released && self.stretch.is_some() && self.playing && !self.scratching && self.pcm.is_some()
-            && step > 0.0 && (step - 1.0).abs() > 1e-8 && self.pos < self.len as f64
+            && tempo > 0.0 && (tempo - 1.0).abs() > 1e-8 && self.pos < self.len as f64
         {
             self.cancel_standby();
-            self.crossfade_to(self.pos);
+            let target = self.pos + Self::RESUME_LEAD_SEC * self.rate;
+            if target < self.len as f64 {
+                self.resume_at = Some(target);
+                self.prepare_standby_at(Standby::Resume, target, tempo);
+            } else {
+                self.crossfade_to(self.pos);
+            }
         }
     }
 
@@ -303,10 +348,15 @@ impl Engine {
     }
 
     fn step(&self) -> f64 {
-        if !self.mode_speed || (self.scrubbing && self.stretch.is_some()) {
+        if !self.mode_speed || (self.stretch.is_some() && (self.scrubbing || self.resume_at.is_some())) {
             return 1.0;
         }
         self.factor
+    }
+
+    /// The deck's tempo (the speed it plays at, unity overrides aside).
+    fn tempo(&self) -> f64 {
+        if self.mode_speed { self.factor } else { 1.0 }
     }
 
     // Transport (input frames)
@@ -327,6 +377,7 @@ impl Engine {
         }
         self.playing = true;
         self.obs_time = None;
+        self.probe = Some((self.ring.written(), self.command_at, 0));
         self.halted = self.step() <= 0.0;
         self.sent_finished = false;
         self.end_out_frame = None;
@@ -353,6 +404,9 @@ impl Engine {
         self.playing = false;
         self.obs_time = None;
         self.cancel_standby();
+        // silent once the frame being read now and its fade have been heard (or what was queued, when less)
+        let silent_at = (self.ring.read_index() + self.fade_frames as u64).min(self.ring.written());
+        self.probe = Some((silent_at, self.command_at, 1));
         self.ring.flush();
         self.clicks.clear_voices();
         self.pos = heard.clamp(0.0, self.len as f64);
@@ -364,14 +418,19 @@ impl Engine {
     }
 
     pub fn seek(&mut self, frame: f64) {
+        if self.resume_at.is_some() {
+            self.cancel_standby();
+        }
         let target = frame.clamp(0.0, self.len as f64);
         self.end_out_frame = None;
         self.sent_finished = false;
         if self.playing && self.pcm.is_some() && self.can_defer() {
             self.prepare_standby(Standby::Seek, target);
             self.pending_seek = Some(target);
+            self.pending_seek_at = self.command_at;
         } else if self.playing && self.pcm.is_some() {
             self.cancel_standby();
+            self.probe = Some((self.ring.written(), self.command_at, 2));
             self.crossfade_to(target);
         } else {
             self.pos = target;
@@ -425,9 +484,13 @@ impl Engine {
     }
 
     fn prepare_standby(&mut self, kind: Standby, target: f64) {
+        let step = self.step();
+        self.prepare_standby_at(kind, target, step);
+    }
+
+    fn prepare_standby_at(&mut self, kind: Standby, target: f64, step: f64) {
         let target = target.clamp(0.0, self.len as f64);
         if self.standby_for != Some((kind, target)) {
-            let step = self.step();
             if let (Some(sb), Some(pcm)) = (self.standby.as_mut(), self.pcm.as_ref()) {
                 sb.prepare(pcm.data(), target, step);
             }
@@ -441,14 +504,22 @@ impl Engine {
         }
         // as much of its work as STANDBY_BUDGET_SEC allows each call (a tick): a seek is heard sooner than with a
         // step a tick, and the tick stays short next to the buffer
+        let budget = Self::STANDBY_BUDGET_SEC.min(self.buffer_ms / 1000.0 * Self::STANDBY_BUFFER_SHARE);
         let (Some(sb), Some(pcm)) = (self.standby.as_mut(), self.pcm.as_ref()) else { return false };
-        let until = clock::now() + Self::STANDBY_BUDGET_SEC;
+        let start = clock::now();
+        let mut done = 0;
         loop {
-            if sb.prepare_step(pcm.data(), self.fade_frames) {
-                return true;
-            }
-            if clock::now() >= until {
+            // a step a tick at least; more while the next one (as long as they take) fits the budget
+            let elapsed = clock::now() - start;
+            if done > 0 && elapsed + self.prep_cost > budget {
                 return false;
+            }
+            let t0 = clock::now();
+            let ready = sb.prepare_step(pcm.data(), self.fade_frames);
+            self.prep_cost += 0.2 * ((clock::now() - t0) - self.prep_cost);
+            done += 1;
+            if ready {
+                return true;
             }
         }
     }
@@ -456,9 +527,27 @@ impl Engine {
     fn cancel_standby(&mut self) {
         self.standby_for = None;
         self.pending_seek = None;
+        self.resume_at = None;
+    }
+
+    /// The scrub's resume point reached (render head at ``target``): the original's tail at unity crossfaded
+    /// into the stream prepared there at the tempo (the same frames: no jump).
+    fn resume_switch(&mut self, target: f64) {
+        let n = self.fade_frames;
+        let tail = self.render(self.pos, n, Some(1.0)).0;
+        std::mem::swap(&mut self.stretch, &mut self.standby);
+        self.standby_for = None;
+        self.resume_at = None;
+        let (head, step, after) = self.render(target, n, None);
+        let mix = self.crossfade(head, tail);
+        self.append(mix, target, step, None);
+        self.pos = after;
     }
 
     fn switch_to_standby(&mut self, target: f64) {
+        if self.pending_seek.is_some() {
+            self.probe = Some((self.ring.written(), self.pending_seek_at, 2));
+        }
         let n = self.fade_frames;
         let tail = if self.pos < self.len as f64 { self.render(self.pos, n, None).0 } else { vec![] };
         std::mem::swap(&mut self.stretch, &mut self.standby);
@@ -648,6 +737,28 @@ impl Engine {
             }
         }
         self.last_step = step;
+        if let Some(target) = self.resume_at {
+            // the scrub's resume point within this block: up to it at unity, then the stream at the tempo
+            if self.pos + n_out as f64 >= target {
+                let n1 = (target - self.pos).ceil().max(0.0) as usize;
+                if n1 > 0 {
+                    let (out, out_step, after) = self.render(self.pos, n1, None);
+                    self.append(out, self.pos, out_step, None);
+                    self.pos = after;
+                }
+                if matches!(self.standby_for, Some((Standby::Resume, _))) && self.standby_ready() {
+                    self.resume_switch(target); // the frame it was prepared for (the head at it, under a frame)
+                } else {
+                    // not prepared in time (a busy computer): a lead further on
+                    let tempo = self.tempo();
+                    let next = self.pos + Self::RESUME_LEAD_SEC * self.rate;
+                    self.standby_for = None;
+                    self.resume_at = Some(next);
+                    self.prepare_standby_at(Standby::Resume, next, tempo);
+                }
+                return;
+            }
+        }
         let deferring = self.can_defer();
         if let Some(starts) = &self.jump_starts {
             // the candidate just passed (by less than LATE_JUMP_SEC), taken late with the destination as late;
@@ -733,6 +844,12 @@ impl Engine {
         (self.queued(now) - self.ring.latency_frames()).max(0.0)
     }
 
+    /// The lowest level (ms) over the last LOW_WINDOW_SEC of playing (-1: none).
+    pub fn lowest_ms(&self) -> f64 {
+        let low = self.lows.iter().map(|(_, low)| *low).fold(f64::INFINITY, f64::min);
+        if low.is_finite() { low } else { -1.0 }
+    }
+
     pub fn capacity_frames(&self) -> f64 {
         self.buffer_frames() as f64
     }
@@ -756,10 +873,14 @@ impl Engine {
         if seconds <= 0.0 {
             return;
         }
-        let size = (self.capacity_frames() * 1000.0 / self.rate) as usize + 2;
-        let size = size.min(crate::ipc::HIST_MAX);
-        if self.hist.len() != size {
+        // buckets of 0.1 ms up to twice the capacity (a shared device's own buffer shows above it), wider when that
+        // would take more than HIST_MAX
+        let span_ms = 2.0 * self.capacity_frames() * 1000.0 / self.rate + 2.0;
+        let bucket = (0.1f64).max(span_ms / (crate::ipc::HIST_MAX - 2) as f64);
+        let size = ((span_ms / bucket) as usize + 2).min(crate::ipc::HIST_MAX);
+        if self.hist.len() != size || self.hist_bucket_ms != bucket {
             self.hist = vec![0.0; size];
+            self.hist_bucket_ms = bucket;
             self.obs_seconds = 0.0;
             self.obs_level = 0.0;
             self.buffer_gen += 1;
@@ -770,9 +891,10 @@ impl Engine {
         let drop = (a - b).max(0.0);
         let flat = seconds - drop / 1000.0;
         if drop > 0.0 {
-            let mut k = b as usize;
-            while k <= a as usize && k <= top {
-                let overlap = a.min(k as f64 + 1.0) - b.max(k as f64);
+            // a ms of level drains in a ms of time: each bucket the drop crosses holds its share
+            let mut k = (b / bucket) as usize;
+            while k <= (a / bucket) as usize && k <= top {
+                let overlap = a.min((k + 1) as f64 * bucket) - b.max(k as f64 * bucket);
                 if overlap > 0.0 {
                     self.hist[k] += overlap / 1000.0;
                 }
@@ -780,7 +902,16 @@ impl Engine {
             }
         }
         if flat > 0.0 {
-            self.hist[top.min(b as usize)] += flat;
+            self.hist[top.min((b / bucket) as usize)] += flat;
+        }
+        // the lowest level, per second, kept for the last LOW_WINDOW_SEC
+        let second = clock::now().floor() as i64;
+        match self.lows.back_mut() {
+            Some((s, low)) if *s == second => *low = low.min(b),
+            _ => self.lows.push_back((second, b)),
+        }
+        while self.lows.front().is_some_and(|(s, _)| *s <= second - Self::LOW_WINDOW_SEC) {
+            self.lows.pop_front();
         }
         self.obs_level += (a + b) * 0.5 * drop / 1000.0 + b * flat.max(0.0);
         self.obs_seconds += seconds;
@@ -788,15 +919,50 @@ impl Engine {
 
     // The feed: once a tick
     pub fn tick(&mut self) {
-        if self.standby_for.is_some() && !self.can_defer() {
+        let resuming = matches!(self.standby_for, Some((Standby::Resume, _)));
+        if self.standby_for.is_some() && !self.can_defer() && !(resuming && self.playing && !self.scrubbing) {
             self.cancel_standby(); // scrubbing, scratching, back at unity: no longer wanted
         }
-        // the standby stretcher's work goes on every tick (a jump's as a seek's), so it is ready when wanted
+        if self.resume_at.is_some() && (!self.playing || (self.tempo() - 1.0).abs() <= 1e-8) {
+            self.cancel_standby(); // paused, or the tempo back at unity: nothing to resume to
+        }
+        // the ring first (a small buffer cannot wait), then the standby stretcher's work (a jump's, a seek's, a
+        // scrub's resume: a little each tick, so it is ready when wanted), then the ring again
+        self.fill();
         if self.standby_for.is_some() && self.standby_ready() {
             if let Some(target) = self.pending_seek {
                 self.switch_to_standby(target);
             }
         }
+        self.fill();
+        let now = clock::now();
+        let heard = self.ring.heard(now);
+        self.timeline.prune(heard);
+        if let Some((frame, sent_at, kind)) = self.probe {
+            // play / seek: the new frame being played out (past it: a report made before it ends exactly there);
+            // pause: the last frame heard
+            let reached = if kind == 1 { heard >= frame as f64 } else { heard >= frame as f64 + 1.0 };
+            if reached && sent_at > 0.0 {
+                self.responses[kind] = (now - sent_at) * 1000.0;
+                self.probe = None;
+            }
+        }
+        self.ring.sound_due.store(
+            self.playing || self.scratching || self.tones.active(),
+            std::sync::atomic::Ordering::Relaxed,
+        );
+        if self.playing && !self.sent_finished {
+            if let Some(end) = self.end_out_frame {
+                if heard >= end as f64 {
+                    self.sent_finished = true;
+                    self.finished_count += 1;
+                }
+            }
+        }
+    }
+
+    /// Tops the ring up to the buffer (while scratching: a short queue; paused with tones: a short one).
+    fn fill(&mut self) {
         for _ in 0..4 {
             self.observe_buffer();
             let free = self.ring.free() as i64;
@@ -824,20 +990,6 @@ impl Engine {
                 self.append_silence(n);
             }
             self.observe_buffer();
-        }
-        let heard = self.ring.heard(clock::now());
-        self.timeline.prune(heard);
-        self.ring.sound_due.store(
-            self.playing || self.scratching || self.tones.active(),
-            std::sync::atomic::Ordering::Relaxed,
-        );
-        if self.playing && !self.sent_finished {
-            if let Some(end) = self.end_out_frame {
-                if heard >= end as f64 {
-                    self.sent_finished = true;
-                    self.finished_count += 1;
-                }
-            }
         }
     }
 

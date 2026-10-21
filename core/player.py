@@ -75,6 +75,7 @@ class _AudioWorker(QtCore.QObject):
         "scratch_begin", "scratch_update", "scratch_end",
         "set_tempo_mode", "set_tempo_factor", "set_volume", "set_peak_meter_gain",
         "set_refresh_fps", "set_timestretch", "set_soft_clip", "set_buffer_ms", "set_output_device",
+        "set_output_mode", "set_exclusive_rate", "set_process",
         "tone_hold",
     })
     _WAIT_FOR_TRACK = frozenset({
@@ -87,6 +88,7 @@ class _AudioWorker(QtCore.QObject):
                  buffer_ms: float = 80.0, engine: Optional[NativeEngine] = None, output_device: str = "") -> None:
         super().__init__()
         self._device_name = output_device   # the output device asked for ("": the system's default)
+        self._output_route = ("wasapi", False)   # the native engine's API and exclusive mode (as PlayerController started it)
         self._fmt: Optional[QtMultimedia.QAudioFormat] = None   # the Python engine's sink format (the session's)
         self._engine = engine   # the native engine, started by PlayerController (None: the Python engine)
         self.audio: Optional[QtMultimedia.QAudioSink] = None
@@ -124,6 +126,9 @@ class _AudioWorker(QtCore.QObject):
         if engine is not None:
             self.rate, self.ch = engine.rate, engine.channels
             self.feeder = NativeFeeder(engine, self)
+            route = getattr(self, "_native_route", None)
+            if route is not None:
+                self.feeder._device, self.feeder._api, self.feeder._exclusive, self.feeder._exclusive_rate = route
             self._init_feeder()
             return
         # the Python engine: this thread feeds the output device, served ahead of busy threads (an analysis
@@ -178,6 +183,10 @@ class _AudioWorker(QtCore.QObject):
 
         self._decode_token += 1
         self._decoding = True
+        # the native engine at the session format asked for (exclusive mode's rate: from the next track on)
+        apply = getattr(self.feeder, "apply_session_format", None)
+        if apply is not None and apply():
+            self.rate, self.ch = self.feeder.rate, self.feeder.ch
         token, rate, ch = self._decode_token, self.rate, self.ch
         adopt = getattr(self.feeder, "adopt", None)   # the native engine reads it from a shared block
 
@@ -345,6 +354,19 @@ class _AudioWorker(QtCore.QObject):
         self._buffer_ms = float(ms)
         self.feeder.set_buffer_ms(self._buffer_ms)
 
+    def set_output_mode(self, api: str, exclusive: bool) -> None:
+        if isinstance(self.feeder, NativeFeeder) and (api, exclusive) != self._output_route:
+            self._output_route = (api, exclusive)
+            self.feeder.set_output(api, exclusive)
+
+    def set_exclusive_rate(self, rate: int) -> None:
+        if isinstance(self.feeder, NativeFeeder):
+            self.feeder.set_exclusive_rate(rate)
+
+    def set_process(self, priority: str, power_throttling: bool) -> None:
+        if isinstance(self.feeder, NativeFeeder):
+            self.feeder.set_process(priority, power_throttling)
+
     def set_output_device(self, name: str) -> None:
         """Play on the output device ``name`` ("": the system's default) from now, at the session's format."""
         if name == self._device_name:
@@ -458,6 +480,9 @@ class PlayerController(QtCore.QObject):
         native_buffer_ms: float = 20.0,
         python_buffer_ms: float = 80.0,
         output_device: str = "",
+        native_api: str = "wasapi",
+        native_exclusive: bool = False,
+        native_exclusive_rate: int = 0,
     ):
         super().__init__()
         self.bus = bus
@@ -468,7 +493,9 @@ class PlayerController(QtCore.QObject):
         # the audio engine (Settings > Playback): the native one (audioengine/native), started here so the app
         # knows which plays, or where it is not built or does not start the Python one (audioengine/python);
         # "python": the Python one only
-        native_engine = NativeEngine.start(output_device) if engine == "native" else None
+        native_engine = (NativeEngine.start(output_device, native_api, native_exclusive,
+                                            native_exclusive_rate if native_exclusive else 0)
+                         if engine == "native" else None)
         self.native = native_engine is not None
         self._engine = native_engine
         self._audio_thread = QtCore.QThread(self)
@@ -480,6 +507,9 @@ class PlayerController(QtCore.QObject):
             engine=native_engine,
             output_device=output_device,
         )
+        self._audio_worker._output_route = (native_api, bool(native_exclusive))
+        feeder_route = (output_device, native_api, bool(native_exclusive), int(native_exclusive_rate))
+        self._audio_worker._native_route = feeder_route
         self._audio_worker.moveToThread(self._audio_thread)
         self._command.connect(self._audio_worker.run_command, QtCore.Qt.QueuedConnection)
 
@@ -648,11 +678,25 @@ class PlayerController(QtCore.QObject):
         """The output device by name ("": the system's default)."""
         self._send("set_output_device", str(name or ""))
 
+    def set_output_mode(self, api: str, exclusive: bool) -> None:
+        """The native engine's audio API and WASAPI's exclusive mode; the Python engine has neither."""
+        self._send("set_output_mode", str(api or "wasapi"), bool(exclusive))
+
+    def set_exclusive_rate(self, rate: int) -> None:
+        """The native engine's rate in exclusive mode (0: the device's), from the next track loaded on."""
+        self._send("set_exclusive_rate", int(rate))
+
+    def set_process(self, priority: str, power_throttling: bool) -> None:
+        """The native engine's priority and power throttling (sched.rs: per system); the Python engine plays in
+        the app's own process and has neither."""
+        self._send("set_process", str(priority or "high"), bool(power_throttling))
+
     def output_devices(self) -> tuple[str, list[str]]:
         """(the output device in use, the output devices) as the engine that plays names them (they differ by
         engine on some systems)."""
-        if self._engine is not None:
-            return self._engine.devices()
+        feeder = self._audio_worker.feeder
+        if isinstance(feeder, NativeFeeder):
+            return feeder.output_devices()   # the engine it holds now (started again for another rate)
         audio = self._audio_worker.audio
         current = audio.device().description() if audio is not None else ""
         return current, [d.description() for d in QtMultimedia.QMediaDevices.audioOutputs()]

@@ -31,7 +31,7 @@ from core import os_support
 from core.resource_paths import resource_path
 
 MAGIC = int.from_bytes(b"MXAUDIC1", "little")
-VERSION = 1
+VERSION = 2
 STATE_OFFSET = 64
 RING_OFFSET = 65536
 RING_HEADER = 64
@@ -42,8 +42,8 @@ START_TIMEOUT_SEC = 5.0
 SEND_TIMEOUT_SEC = 0.5
 
 # state fields (offsets inside the state area)
-# the state fields, SEQ .. LATENCY_MS (offsets 0 .. 168: ipc.rs st)
-_STATE = struct.Struct("<Q IIIIII Q ddddddd QQQ dd Q II d d")
+# the state fields, SEQ .. MAX_GAP_MS (offsets 0 .. 248: ipc.rs st)
+_STATE = struct.Struct("<Q IIIIII Q ddddddd QQQ dd Q II d d I 4x d ddd dd I 4x Q d II")
 _HIST = 256
 
 # commands (ipc.rs op)
@@ -53,7 +53,16 @@ OP_SET_MODE, OP_SET_FACTOR, OP_SET_TIMESTRETCH, OP_SET_SOFT_CLIP, OP_SET_BUFFER_
 OP_TONE_HOLD, OP_SET_MUSIC_GAIN = 17, 18
 OP_CLICK_SAMPLE, OP_CLICK_PITCHES, OP_CLICK_BEATS, OP_CLICK_ENABLED = 19, 20, 21, 22
 OP_CLICK_OFFSET, OP_CLICK_DUCKING, OP_CLICK_CLEAR, OP_SHUTDOWN, OP_WAKE = 23, 24, 25, 26, 27
-OP_SET_DEVICE, OP_LIST_DEVICES = 28, 29
+OP_SET_DEVICE, OP_LIST_DEVICES, OP_SET_OUTPUT_MODE, OP_SET_PROCESS = 28, 29, 30, 31
+# the engine's priority (ipc.rs op::SET_PROCESS; sched.rs: what each system makes of it)
+PRIORITY_CODES = {"normal": 0, "above_normal": 1, "high": 2}
+# a thread's scheduling as the engine got it (st::THREADS, sched.rs) and power throttling's (st::POWER)
+THREAD_STATES = {0: "api", 1: "normal", 2: "raised", 3: "raised_rtkit", 4: "realtime", 5: "realtime_rtkit",
+                 6: "refused"}
+POWER_STATES = {0: "left", 1: "off", 2: "partly", 3: "refused"}
+# the audio APIs (ipc.rs op::SET_OUTPUT_MODE, --api): "wasapi" the engine's own (Windows), "cpal" cpal's for the
+# system (WASAPI's usual shared stream, ALSA, CoreAudio), "jack" (Linux)
+API_CODES = {"wasapi": 0, "cpal": 1, "jack": 2}
 DEVICES_OFFSET = 40960   # ipc.rs: [generation u64, length u32, pad] + the names, the one in use first
 DEVICES_TIMEOUT_SEC = 1.0
 
@@ -76,19 +85,23 @@ class EngineState:
     __slots__ = ("ready", "rate", "channels", "playing", "track_gen", "at_end", "cmd_done", "playhead",
                  "display", "display_at", "display_rate", "peak", "queued", "capacity", "jumped", "finished",
                  "buffer_gen", "obs_seconds", "obs_level", "underruns", "hist_len", "device_errors", "render_ms",
-                 "latency_ms")
+                 "latency_ms", "output_mode", "period_ms", "response_play", "response_pause", "response_seek",
+                 "hist_bucket_ms", "lowest_ms", "output_open", "device_late", "max_gap_ms", "threads", "power")
 
     def __init__(self, values: tuple) -> None:
         (_seq, self.ready, self.rate, self.channels, self.playing, self.track_gen, self.at_end, self.cmd_done,
          self.playhead, self.display, self.display_at, self.display_rate, self.peak, self.queued, self.capacity,
          self.jumped, self.finished, self.buffer_gen, self.obs_seconds, self.obs_level, self.underruns,
-         self.hist_len, self.device_errors, self.render_ms, self.latency_ms) = values
+         self.hist_len, self.device_errors, self.render_ms, self.latency_ms, self.output_mode,
+         self.period_ms, self.response_play, self.response_pause, self.response_seek, self.hist_bucket_ms,
+         self.lowest_ms, self.output_open, self.device_late, self.max_gap_ms, self.threads, self.power) = values
 
 
 class NativeEngine:
     """The engine's process and its control block. Commands may be sent from any thread (one at a time)."""
 
-    def __init__(self, exe: Path, device: str = "") -> None:
+    def __init__(self, exe: Path, device: str = "", api: str = "wasapi", exclusive: bool = False,
+                 rate: int = 0) -> None:
         self._shm = shared_memory.SharedMemory(create=True, size=CONTROL_SIZE)
         self._buf = self._shm.buf
         struct.pack_into("<QI", self._buf, 0, MAGIC, VERSION)
@@ -97,6 +110,8 @@ class NativeEngine:
         args = [str(exe), "--shm", self._shm.name, "--size", str(CONTROL_SIZE), "--parent", str(os.getpid())]
         if device:
             args += ["--device", device]
+        args += ["--api", str(API_CODES.get(api, 1)), "--exclusive", str(int(bool(exclusive))), "--rate", str(int(rate))]
+        self.asked_rate = int(rate)   # the session's rate asked for (exclusive mode; 0: the device's)
         self._proc = subprocess.Popen(
             args,
             stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, cwd=str(exe.parent),
@@ -106,14 +121,16 @@ class NativeEngine:
         self.channels = 0
 
     @classmethod
-    def start(cls, device: str = "") -> Optional["NativeEngine"]:
-        """The engine running with the output device open (``device``: its name, "" the system's default; the
-        session's format is that device's), or None (no executable, or it failed)."""
+    def start(cls, device: str = "", api: str = "wasapi", exclusive: bool = False, rate: int = 0
+              ) -> Optional["NativeEngine"]:
+        """The engine running with the output device open (``device``: its name, "" the system's default; ``api``:
+        API_CODES; ``exclusive``: WASAPI's exclusive mode; the session's format is the device's, at ``rate`` in
+        exclusive mode when given), or None (no executable, or it failed)."""
         exe = executable()
         if exe is None:
             return None
         try:
-            engine = cls(exe, device)
+            engine = cls(exe, device, api, exclusive, rate)
         except Exception as exc:
             print(f"[AudioEngine] start failed: {exc}")
             return None
@@ -187,7 +204,7 @@ class NativeEngine:
         buf = self._buf
         if buf is None:
             return False
-        size = (24 + len(payload) + 7) & ~7
+        size = (32 + len(payload) + 7) & ~7
         with self._lock:
             cap = RING_BYTES
             data = RING_OFFSET + RING_HEADER
@@ -212,10 +229,11 @@ class NativeEngine:
                 struct.pack_into("<Q", buf, RING_OFFSET, write)
                 at = 0
             self._seq += 1
-            head = struct.pack("<IQ", op, self._seq)
+            sent_at = time.perf_counter()   # the engine's clock too (clock.rs): the response measurement
+            head = struct.pack("<IQd", op, self._seq, sent_at)
             checksum = zlib.crc32(payload, zlib.crc32(head))
-            struct.pack_into("<IIQII", buf, data + at, size, op, self._seq, checksum, len(payload))
-            buf[data + at + 24:data + at + 24 + len(payload)] = payload
+            struct.pack_into("<IIQIId", buf, data + at, size, op, self._seq, checksum, len(payload), sent_at)
+            buf[data + at + 32:data + at + 32 + len(payload)] = payload
             struct.pack_into("<Q", buf, RING_OFFSET, write + size)
             return True
 
@@ -287,12 +305,31 @@ class NativeClicks:
         self.ch = feeder.ch
 
     def set_sample(self, sample: Optional[np.ndarray]) -> None:
-        if sample is None:
+        """The click as [frames, channels] at ``rate`` (None disables)."""
+        self._sample = None if sample is None else np.ascontiguousarray(sample, dtype="<f4")
+        self._sample_rate = self.rate
+        self._send_sample()
+
+    def _send_sample(self) -> None:
+        s = getattr(self, "_sample", None)
+        if s is None:
             payload = struct.pack("<II", 0, 0)
         else:
-            s = np.ascontiguousarray(sample, dtype="<f4")
             payload = struct.pack("<II", s.shape[0], s.shape[1]) + s.tobytes()
         self._feeder.setting(OP_CLICK_SAMPLE, payload)
+
+    def follow_rate(self, rate: int) -> None:
+        """The engine plays at ``rate`` now: the click resampled for it (it was loaded at the old one)."""
+        self.rate = rate
+        s = getattr(self, "_sample", None)
+        if s is not None and self._sample_rate != rate and s.shape[0] > 1:
+            n = max(1, int(round(s.shape[0] * rate / self._sample_rate)))
+            t = np.arange(n) * (self._sample_rate / rate)
+            src = np.arange(s.shape[0])
+            self._sample = np.ascontiguousarray(
+                np.stack([np.interp(t, src, s[:, c]) for c in range(s.shape[1])], axis=1), dtype="<f4")
+        self._sample_rate = rate
+        self._send_sample()
 
     def set_pitches(self, beat_semitones: float, accent_semitones: float) -> None:
         self._feeder.setting(OP_CLICK_PITCHES, struct.pack("<dd", float(beat_semitones), float(accent_semitones)))
@@ -349,8 +386,9 @@ class NativeFeeder(QtCore.QObject):
     jumped = QtCore.Signal()
 
     PEAK_FLOOR_DBFS = -24.0
-    BUFFER_MS_RANGE = (10, 500)
+    BUFFER_MS_RANGE = (2, 500)   # the engine fills its buffer every 1 ms below 10 ms (engine.rs)
     RESTART_SEC = 2.0
+    EXCLUSIVE_RATES = (44100, 48000, 88200, 96000, 176400, 192000)
 
     def __init__(self, engine: NativeEngine, parent: Optional[QtCore.QObject] = None) -> None:
         super().__init__(parent)
@@ -369,6 +407,11 @@ class NativeFeeder(QtCore.QObject):
         self._underruns_prev: Optional[int] = None
         self._restart_at = 0.0
         self._unlink_gen = 0   # the load whose block's name is removed once the engine has it
+        # the output asked for: device, API, exclusive mode and its rate (the engine is started again with them)
+        self._device = ""
+        self._api = "wasapi"
+        self._exclusive = False
+        self._exclusive_rate = 0
 
     # Commands
     def send(self, op: int, payload: bytes = b"") -> None:
@@ -425,8 +468,53 @@ class NativeFeeder(QtCore.QObject):
 
     def set_output_device(self, name: str) -> None:
         """Play on the output device ``name`` ("" the system's default) from now (what is queued plays on)."""
+        self._device = name or ""
         data = (name or "").encode("utf-8")
         self.setting(OP_SET_DEVICE, struct.pack("<I", len(data)) + data)
+
+    def set_output(self, api: str, exclusive: bool) -> None:
+        """The audio API (API_CODES) and WASAPI's exclusive mode, opened again at once at the session's rate (one
+        the device cannot open falls back to cpal's shared output); a rate of its own waits for the next track."""
+        self._api, self._exclusive = api, bool(exclusive)
+        self.setting(OP_SET_OUTPUT_MODE, struct.pack("<II", API_CODES.get(api, 1), int(bool(exclusive))))
+
+    def set_exclusive_rate(self, rate: int) -> None:
+        """The session's rate in exclusive mode (0: the device's), from the next track loaded on."""
+        self._exclusive_rate = int(rate)
+
+    def set_process(self, priority: str, power_throttling: bool) -> None:
+        """The engine's priority (PRIORITY_CODES: Windows the process's class, Linux its threads' real-time / nice,
+        macOS its thread's time constraint / QoS) and whether the system may power-throttle it, at once."""
+        self.setting(OP_SET_PROCESS, struct.pack("<II", PRIORITY_CODES.get(priority, 2), int(bool(power_throttling))))
+
+    def apply_session_format(self) -> bool:
+        """Before a track is decoded: the engine started again where the rate asked for differs from its own
+        (exclusive mode's rate, or the device's again); True if the format (rate, channels) changed."""
+        wanted = self._exclusive_rate if self._exclusive else 0
+        if wanted == self._engine.asked_rate:
+            return False
+        # the old engine first let go of the device (an exclusive one holds it), then the new one; back to the old
+        # format if the new one does not start
+        previous = self._engine.asked_rate
+        self._engine.close()
+        engine = NativeEngine.start(self._device, self._api, self._exclusive, wanted)
+        if engine is None:
+            engine = NativeEngine.start(self._device, self._api, self._exclusive, previous)
+            if engine is None:
+                return False
+        self._engine = engine
+        changed = (engine.rate, engine.channels) != (self.rate, self.ch)
+        self.rate, self.ch = engine.rate, engine.channels
+        self._counts = (0, 0)
+        self._hist_prev = None
+        self._underruns_prev = None
+        self._pcm = None
+        for op, payload in self._settings.items():
+            if op not in (OP_LOAD, OP_UNLOAD):
+                engine.send(op, payload)
+        self.clicks.ch = self.ch
+        self.clicks.follow_rate(self.rate)
+        return changed
 
     def output_devices(self) -> tuple[str, list[str]]:
         return self._engine.devices()
@@ -499,7 +587,8 @@ class NativeFeeder(QtCore.QObject):
             return
         self._restart_at = now + self.RESTART_SEC
         print("[AudioEngine] the engine stopped; starting it again")
-        engine = NativeEngine.start()
+        wanted = self._exclusive_rate if self._exclusive else 0
+        engine = NativeEngine.start(self._device, self._api, self._exclusive, wanted)
         if engine is None:
             return
         if (engine.rate, engine.channels) != (self.rate, self.ch):
@@ -548,5 +637,19 @@ class NativeFeeder(QtCore.QObject):
             if seconds > 0.0:
                 stats = {"hist": cur[3] - prev[3], "seconds": seconds, "mean_ms": (cur[2] - prev[2]) / seconds,
                          "dropout_sec": max(0, underruns - (prev_underruns or underruns)) / max(1, self.rate),
-                         "device_ms": float(st.latency_ms) if st is not None else 0.0}
+                         "device_ms": float(st.latency_ms) if st is not None else 0.0,
+                         "output_api": {v: k for k, v in API_CODES.items()}.get(int(st.output_mode) & 0xFF, "cpal")
+                         if st is not None else "cpal",
+                         "exclusive": bool(int(st.output_mode) >> 8) if st is not None else False,
+                         "response_ms": {"play": st.response_play, "pause": st.response_pause,
+                                         "seek": st.response_seek} if st is not None else {},
+                         "bucket_ms": float(st.hist_bucket_ms) if st is not None else 1.0,
+                         "lowest_ms": float(st.lowest_ms) if st is not None else -1.0,
+                         "output_open": bool(st.output_open) if st is not None else True,
+                         "late": int(st.device_late) if st is not None else 0,
+                         "max_gap_ms": float(st.max_gap_ms) if st is not None else 0.0,
+                         "engine_thread": THREAD_STATES.get(int(st.threads) & 0xFF, "api") if st is not None else "api",
+                         "output_thread": THREAD_STATES.get(int(st.threads) >> 8 & 0xFF, "api")
+                         if st is not None else "api",
+                         "power": POWER_STATES.get(int(st.power), "left") if st is not None else "left"}
         return queued, stats, capacity

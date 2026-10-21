@@ -9,7 +9,8 @@ Also needed: git, Rust (rustup), and per system
   folder on PATH or named by LLVM_MINGW, and the Rust toolchain stable-x86_64-pc-windows-gnullvm
   (rustup toolchain install stable-x86_64-pc-windows-gnullvm). MinGW's GCC miscompiles AVX code (it does not
   align the stack for it), hence clang.
-- Linux: gcc or clang, and ALSA's headers for the audio output (libasound2-dev / alsa-lib-devel).
+- Linux: gcc or clang, and the ALSA and JACK headers for the audio output (libasound2-dev libjack-jackd2-dev /
+  alsa-lib-devel pipewire-jack-audio-connection-kit-devel).
 - macOS: Xcode's command line tools.
 The engine finds its VOLK beside it (bin/: Windows' DLL search, an rpath of $ORIGIN / @executable_path).
 """

@@ -30,14 +30,14 @@ Mixlyzer は DJ とプロデューサーのためのトラック解析・編集�
 4. `uv run python -m app.main` で Mixlyzer を起動します。
 
 #### ネイティブオーディオエンジンのビルド（任意）
-ビルドしない場合は Python エンジンで再生します。`audioengine/native/bin` にビルドするには:
+ビルドしない場合は Python エンジンで再生します。ネイティブエンジンは Windows で開発・テストしており、Linux と macOS のサポートは実験的です（ビルドはできますが、まだそれらのシステムでテストしていません）。`audioengine/native/bin` にビルドするには:
 1. git と [Rust](https://rustup.rs)、C コンパイラをインストールします。
    - **Windows**: [llvm-mingw](https://github.com/mstorsjo/llvm-mingw)（Visual Studio 不要。`bin` フォルダを `PATH` に入れるか、`LLVM_MINGW` でフォルダを指定）と Rust ツールチェーン `rustup toolchain install stable-x86_64-pc-windows-gnullvm`。
-   - **Linux**: gcc または clang、ALSA のヘッダー（`libasound2-dev` / `alsa-lib-devel`）。
+   - **Linux**: gcc または clang、ALSA と JACK のヘッダー（`libasound2-dev libjack-jackd2-dev` / `alsa-lib-devel pipewire-jack-audio-connection-kit-devel`）。
    - **macOS**: Xcode のコマンドラインツール。
 2. `uv sync --group native` の後、`uv run --group native python build/audio_engine.py` を実行します（VOLK をソースからビルドしてからエンジンをビルドします）。再ビルドするときは先に Mixlyzer を終了してください。実行中のアプリがエンジンのファイルを使用しています。
 
-設定 > 再生でエンジン（**Native 優先**: 使えないときは Python にフォールバック、または **Python**。次回の起動から適用）、出力デバイス、エンジンごとのバッファサイズを選べます。
+設定 > 再生でエンジン（**Native 優先**: 使えないときは Python にフォールバック、または **Python**。次回の起動から適用）、出力デバイス、エンジンごとのバッファサイズを選べます。Native エンジンのオーディオ API は **WASAPI**（Windows: 低レイテンシーの共有ストリームまたは排他モード。排他モードではサンプリングレートも指定でき、次に読み込む曲から適用）、**WASAPI (cpal)**、**ALSA** / **JACK**（Linux）、**CoreAudio**（macOS）から選べます。バッファメーターの下に実測の応答（操作から音まで）とデバイスのレイテンシーが表示されます。Native エンジンの優先度（既定: 高。Windows: プロセスの優先度クラス、Linux: スレッドのリアルタイムスケジューリングまたは nice、ユーザー権限でできなければ rtkit 経由、macOS: リアルタイムスレッド）と電力スロットリング（既定: オフ。Windows: EcoQoS、Linux: タイマースラックと uclamp、macOS: App Nap とタイマー合体）もここで設定でき、実際の状態はメーターの下に表示されます。
 
 ### 方法 B: 配布バイナリを使う
 1. Releases ページから最新ビルドを取得します。  
