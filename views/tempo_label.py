@@ -12,6 +12,10 @@ from .playhead import _outlined_text_item
 ACCEL, RIT = "accel.", "rit."
 TEXT_COLOR = (235, 235, 235)
 Z_VALUE = 12   # one above the beatgrid's lines (10, 11), under the CUE markers (105, 110)
+# A label the next tempo's label touches (pushing it out) is dimmed to this, so the eye goes to the tempo coming,
+# and stays so once passed (the next one held at the playhead); it fades over the last pixels before they touch.
+TOUCHED_OPACITY = 0.35
+TOUCH_FADE_PX = 12.0
 
 TempoRow = tuple[float, float, float, float]   # start, end, start BPM, end BPM (steady: the same)
 ShownRow = tuple[float, float, TempoRow]       # where its label comes in and is pushed out (beats), the tempo
@@ -88,10 +92,12 @@ def tempo_text(row: TempoRow, now: Optional[float] = None) -> str:
 @register_view("TempoLabelView")
 class TempoLabelView(ViewPlugin):
     """The beatgrid's tempos at the top of the main plot, a label each as the key and phrase labels: it comes in
-    at the beat nearest its tempo's start, is held right of the playhead while the tempo plays (the bar.beat label is left of it) and
-    is pushed along by the tempo's end; a ramp's shows its start and end tempo, and the tempo at the playhead
-    while it plays. Outlined as the bar.beat label; drawn just above the beatgrid's lines and under the CUE
-    markers, so it never hides a cue. Part of the beatgrid's display (its emphasis the beatgrid page's)."""
+    at the beat nearest its tempo's start, is held right of the playhead while the tempo plays (the bar.beat
+    label is left of it) and is pushed along by the tempo's end, dimmed once the next tempo's label touches it
+    and after;
+    a ramp's shows its start and end tempo, and the tempo at the playhead while it plays. Outlined as the
+    bar.beat label; drawn just above the beatgrid's lines and under the CUE markers, so it never hides a cue.
+    Part of the beatgrid's display (its emphasis the beatgrid page's)."""
     EDIT_PAGE = "beatgrid"
 
     def __init__(self, bus, model, tl):
@@ -99,6 +105,7 @@ class TempoLabelView(ViewPlugin):
         self.plot = None
         self._labels: list[pg.TextItem] = []
         self._rows: list[ShownRow] = []
+        self._touch: list[float] = []   # each label's opacity for the next one touching it (1: not touched)
 
         self.bus.sig_time_changed.connect(self._reposition)
         self.bus.sig_window_changed.connect(self._reposition)
@@ -124,8 +131,8 @@ class TempoLabelView(ViewPlugin):
 
     def _apply_emphasis(self) -> None:
         opacity = emphasis_opacity(self.emphasis)
-        for label in self._labels:
-            label.setOpacity(opacity)
+        for i, label in enumerate(self._labels):
+            label.setOpacity(opacity * (self._touch[i] if i < len(self._touch) else 1.0))
 
     def _rebuild(self, *_args) -> None:
         if self.plot is None:
@@ -162,17 +169,44 @@ class TempoLabelView(ViewPlugin):
         hold = float(self.tl.center_t) + x_pad   # right of the playhead, as the bar.beat label is left of it
         visible_start = float(xmin) - left
         visible_end = float(xmax) - left
+        spans: list[Optional[tuple[float, float]]] = []   # each shown label's left and right edge
         for i, label in enumerate(self._labels):
             if i >= len(self._rows):
                 label.setVisible(False)
+                spans.append(None)
                 continue
             start, end, row = self._rows[i]
             if end < visible_start or start > visible_end:
                 label.setVisible(False)
+                spans.append(None)
                 continue
             text = tempo_text(row, now if start <= now < end else None)
             if label.textItem.toPlainText() != text:
                 label.setText(text)
             width = float(label.boundingRect().width()) * x_per_pixel
-            label.setPos(_sticky_label_left(left + start, left + end, hold, width), label_y)
+            x = _sticky_label_left(left + start, left + end, hold, width)
+            label.setPos(x, label_y)
             label.setVisible(True)
+            spans.append((x, x + width))
+        touch = [touched_opacity(here, after, hold, x_per_pixel) for here, after in zip(spans, spans[1:] + [None])]
+        if touch != self._touch:
+            self._touch = touch
+            self._apply_emphasis()
+
+
+def touched_opacity(here: Optional[tuple[float, float]], after: Optional[tuple[float, float]], hold: float,
+                    x_per_pixel: float) -> float:
+    """A label's opacity for the next label (``after``, its left and right edge; None: not shown) coming up to it:
+    1 apart, TOUCHED_OPACITY touching and once passed (the next one at ``hold``, the place right of the playhead,
+    or pushed past it: its tempo come), faded over the last TOUCH_FADE_PX before they touch."""
+    if here is None or after is None:
+        return 1.0
+    if after[0] <= hold:
+        return TOUCHED_OPACITY
+    gap = after[0] - here[1]
+    if x_per_pixel > 0.0:
+        gap /= x_per_pixel
+    elif gap > 0.0:
+        return 1.0
+    closeness = float(np.clip(1.0 - gap / TOUCH_FADE_PX, 0.0, 1.0))
+    return 1.0 - closeness * (1.0 - TOUCHED_OPACITY)

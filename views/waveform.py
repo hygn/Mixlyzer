@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from collections import deque
 
 import numpy as np
 import pyqtgraph as pg
@@ -35,14 +34,16 @@ _WAVE_H = float(WAVEFORM_LANE[1] - WAVEFORM_LANE[0])
 
 
 RENDER_CHUNK_SEC = 1
-RENDER_LAUNCH_DELAY_MS = 30
 RENDER_HEIGHT = 96
-RENDER_BATCH_SIZE = 4
-RENDER_SPAWN_INTERVAL_MS = 30
+RENDER_BATCH_SIZE = 4           # chunks rendered at once
+RENDER_SPAWN_INTERVAL_MS = 30   # one more started per interval (playback keeps its CPU)
 SCENE_CULL_BUFFER = 2  # extra chunks kept in scene on each side of viewport
 # Rendered chunks farther than this from the playhead are dropped (every layer),
 # to bound memory; they are rendered again when the view comes back to them.
 RENDER_KEEP_SEC = 60.0
+# Except the ones shown most recently, up to this much track time over all layers: going back to a place left
+# a moment ago (a JumpCUE, a CUE point called) shows it at once. A chunk is 70-140 KB (the long / short frame).
+RENDER_RECENT_KEEP_SEC = 60.0
 # Audio rendered on each side of a chunk and cropped away, so the band filters,
 # frame RMS and blur see the neighbouring audio: chunks join without seams.
 RENDER_CONTEXT_SEC = 0.2
@@ -218,126 +219,114 @@ class _ChunkSpec:
 
 
 class _WaveformRenderWorker(QtCore.QObject):
-    """Manages render queue and QRunnable dispatch on a dedicated thread.
-    Chunks are tracked per (style, chunk index): each style is its own layer."""
+    """Renders the requested chunks on a pool, from a dedicated thread. Chunks are tracked per (style, chunk
+    index): each style is its own layer. The pending chunk nearest the playhead starts first (the one it is in,
+    then at one distance the one ahead, which playback reaches, before the one behind), whenever fewer than
+    RENDER_BATCH_SIZE run, one every RENDER_SPAWN_INTERVAL_MS (the first that long after a request, so a burst
+    of requests is ordered as a whole): a request at the playhead never waits behind older ones farther away."""
 
     chunk_ready = QtCore.Signal(int, object)  # chunk_index, _WaveRenderResult
 
     def __init__(self) -> None:
         super().__init__()
-        self._pool = QtCore.QThreadPool()
-        self._pool.setMaxThreadCount(RENDER_BATCH_SIZE)
-        self._play_pending: deque[_ChunkSpec] = deque()
-        self._scrub_pending: deque[_ChunkSpec] = deque()
-        self._spawn_queue: deque[_ChunkSpec] = deque()
+        self.pool = QtCore.QThreadPool()
+        self.pool.setMaxThreadCount(RENDER_BATCH_SIZE)
+        self.extra_pool = QtCore.QThreadPool()   # the chunk playback goes on from, when the slots are busy
+        self.extra_pool.setMaxThreadCount(1)
+        self._pending: dict[tuple[_WaveStyle, int], _ChunkSpec] = {}
         self._inflight: set[tuple[_WaveStyle, int]] = set()
         self._rendered: set[tuple[_WaveStyle, int]] = set()
+        self._playhead = 0  # the chunk the playhead is in
         self._request_seq = 0
-        self._launch_timer = QtCore.QTimer(self)
-        self._launch_timer.setSingleShot(True)
-        self._launch_timer.setInterval(RENDER_LAUNCH_DELAY_MS)
-        self._launch_timer.timeout.connect(self._process_queue)
         self._spawn_timer = QtCore.QTimer(self)
-        self._spawn_timer.setSingleShot(False)
         self._spawn_timer.setInterval(RENDER_SPAWN_INTERVAL_MS)
         self._spawn_timer.timeout.connect(self._spawn_next)
 
-    @QtCore.Slot(list)
-    def enqueue_play(self, specs: list) -> None:
+    @QtCore.Slot(list, int)
+    def enqueue(self, specs: list, playhead: int) -> None:
+        self._playhead = int(playhead)
         for spec in specs:
             if not isinstance(spec, _ChunkSpec):
                 continue
-            if self._known(spec):
-                continue
-            self._play_pending.append(spec)
-        if not self._launch_timer.isActive():
-            self._launch_timer.start()
+            key = (spec.style, spec.chunk_index)
+            if key not in self._rendered and key not in self._inflight:
+                self._pending[key] = spec
+        if self._pending and not self._spawn_timer.isActive():
+            self._spawn_timer.start()
 
-    @QtCore.Slot(list)
-    def enqueue_scrub(self, specs: list) -> None:
-        for spec in specs:
-            if not isinstance(spec, _ChunkSpec):
-                continue
-            if self._known(spec):
-                continue
-            self._scrub_pending.append(spec)
-        if not self._launch_timer.isActive():
-            self._launch_timer.start()
+    @QtCore.Slot(int)
+    def set_playhead(self, playhead: int) -> None:
+        self._playhead = int(playhead)
 
-    def _known(self, spec: _ChunkSpec) -> bool:
-        key = (spec.style, spec.chunk_index)
-        return key in self._rendered or key in self._inflight
+    @QtCore.Slot(list, int)
+    def resume(self, specs: list, playhead: int) -> None:
+        """Playback goes on from ``playhead`` (a scrub let go, a seek): the requests pending are dropped (made
+        on the way there), and the playhead's chunk starts at once, on a thread of its own when every slot is
+        busy; the rest of ``specs`` (the view there) after it, nearest first."""
+        self._pending.clear()
+        self.enqueue(specs, playhead)
+        key = next((k for k in self._pending if k[1] == self._playhead), None)
+        if key is not None:
+            self._start(self._pending.pop(key), urgent=True)
+        if not self._pending:
+            self._spawn_timer.stop()
+
+    def _urgency(self, key: tuple[_WaveStyle, int]) -> tuple[int, bool]:
+        offset = key[1] - self._playhead
+        return abs(offset), offset < 0
 
     @QtCore.Slot(list)
     def forget(self, keys: list) -> None:
-        """The view dropped these (style, chunk) images: render them again when asked."""
+        """The view dropped these (style, chunk) images or no longer needs them: render them again when asked."""
         for key in keys:
             self._rendered.discard(key)
+            self._pending.pop(key, None)
 
     @QtCore.Slot()
     def drop_pending(self) -> None:
         """Forget the requests not started yet (the view switched layers);
         jobs running finish and are kept."""
-        self._launch_timer.stop()
         self._spawn_timer.stop()
-        self._play_pending.clear()
-        self._scrub_pending.clear()
-        self._spawn_queue.clear()
+        self._pending.clear()
 
     @QtCore.Slot()
     def cancel_all(self) -> None:
-        self._launch_timer.stop()
         self._spawn_timer.stop()
-        self._play_pending.clear()
-        self._scrub_pending.clear()
-        self._spawn_queue.clear()
+        self._pending.clear()
         self._inflight.clear()
         self._rendered.clear()
-        self._pool.clear()
-
-    @QtCore.Slot()
-    def _process_queue(self) -> None:
-        if self._inflight or self._spawn_timer.isActive():
-            return
-        # play queue has priority; fall back to scrub only when play is empty
-        source = self._play_pending if self._play_pending else self._scrub_pending
-        slots = RENDER_BATCH_SIZE
-        while slots > 0 and source:
-            spec = source.popleft()
-            if self._known(spec):
-                continue
-            self._spawn_queue.append(spec)
-            slots -= 1
-        if self._spawn_queue:
-            self._spawn_next()
-            if self._spawn_queue:
-                self._spawn_timer.start()
+        self.pool.clear()
+        self.extra_pool.clear()
 
     @QtCore.Slot()
     def _spawn_next(self) -> None:
-        while self._spawn_queue:
-            spec = self._spawn_queue.popleft()
-            if self._known(spec):
-                continue
-            self._request_seq += 1
-            self._inflight.add((spec.style, spec.chunk_index))
-            job = _WaveRenderJob(
-                self._request_seq,
-                spec.pcm,
-                spec.sample_rate,
-                spec.chunk_index,
-                spec.style,
-                height=spec.height,
-            )
-            job.signals.finished.connect(self._on_job_finished, QtCore.Qt.ConnectionType.QueuedConnection)
-            self._pool.start(job)
-            return  # one job per tick
-        # spawn_queue exhausted — all jobs of this batch were already submitted
-        self._spawn_timer.stop()
-        # if all inflight jobs also finished while we were still spawning, kick next batch
-        has_pending = bool(self._play_pending or self._scrub_pending)
-        if has_pending and not self._inflight and not self._launch_timer.isActive():
-            self._launch_timer.start()
+        if len(self._inflight) >= RENDER_BATCH_SIZE:
+            return  # a slot frees when a job finishes
+        if not self._pending:
+            self._spawn_timer.stop()
+            return
+        self._start(self._pending.pop(min(self._pending, key=self._urgency)))
+        if not self._pending:
+            self._spawn_timer.stop()
+
+    def _start(self, spec: _ChunkSpec, *, urgent: bool = False) -> None:
+        self._request_seq += 1
+        job = _WaveRenderJob(
+            self._request_seq,
+            spec.pcm,
+            spec.sample_rate,
+            spec.chunk_index,
+            spec.style,
+            height=spec.height,
+        )
+        job.signals.finished.connect(self._on_job_finished, QtCore.Qt.ConnectionType.QueuedConnection)
+        (self.extra_pool if urgent and len(self._inflight) >= RENDER_BATCH_SIZE else self.pool).start(job)
+        self._inflight.add((spec.style, spec.chunk_index))
+
+    def wait_for_jobs(self) -> None:
+        """Block until the jobs running end (callable from any thread)."""
+        self.pool.waitForDone()
+        self.extra_pool.waitForDone()
 
     @QtCore.Slot(int, object)
     def _on_job_finished(self, _request_id: int, payload: object) -> None:
@@ -347,11 +336,6 @@ class _WaveformRenderWorker(QtCore.QObject):
         self._inflight.discard((payload.style, chunk_index))
         self._rendered.add((payload.style, chunk_index))
         self.chunk_ready.emit(chunk_index, payload)
-        # only schedule next batch when spawn timer is also done
-        # (if spawn timer is still running, _spawn_next will handle continuation)
-        has_pending = bool(self._play_pending or self._scrub_pending)
-        if has_pending and not self._inflight and not self._spawn_timer.isActive() and not self._launch_timer.isActive():
-            self._launch_timer.start()
 
 
 # View
@@ -364,14 +348,16 @@ class _ChunkLayer:
     style: _WaveStyle
     items: list  # pg.ImageItem | None per chunk
     spans: list  # time span of each rendered image, or None
+    shown: list  # when each chunk was last in the view (WaveformView._show_clock; 0 never)
     submitted: set = field(default_factory=set)  # chunks requested from the worker
     in_scene: set = field(default_factory=set)   # chunks shown
 
 
 @register_view("WaveformView")
 class WaveformView(ViewPlugin):
-    _sig_enqueue_play = QtCore.Signal(list)
-    _sig_enqueue_scrub = QtCore.Signal(list)
+    _sig_enqueue = QtCore.Signal(list, int)   # specs, the playhead's chunk
+    _sig_resume = QtCore.Signal(list, int)    # specs, the chunk playback goes on from
+    _sig_playhead = QtCore.Signal(int)
     _sig_cancel = QtCore.Signal()
     _sig_drop_pending = QtCore.Signal()
     _sig_forget = QtCore.Signal(list)
@@ -391,8 +377,8 @@ class WaveformView(ViewPlugin):
         self._group: pg.ItemGroup | None = None
         self._preview_item: pg.ImageItem | None = None
         self._preview_source = None
-        self._scrubbing = False
-        self._evict_center: int | None = None  # playhead chunk of the last eviction pass
+        self._playhead_chunk: int | None = None  # the chunk the playhead was last seen in
+        self._show_clock = 0  # counts the scene passes: the order chunks were last shown in
 
         # Dedicated render worker thread
         self._worker = _WaveformRenderWorker()
@@ -401,15 +387,20 @@ class WaveformView(ViewPlugin):
         self._worker.moveToThread(self._worker_thread)
         self._worker_thread.start()
         self._worker.chunk_ready.connect(self._on_chunk_ready, QtCore.Qt.ConnectionType.QueuedConnection)
-        self._sig_enqueue_play.connect(self._worker.enqueue_play, QtCore.Qt.ConnectionType.QueuedConnection)
-        self._sig_enqueue_scrub.connect(self._worker.enqueue_scrub, QtCore.Qt.ConnectionType.QueuedConnection)
+        self._sig_enqueue.connect(self._worker.enqueue, QtCore.Qt.ConnectionType.QueuedConnection)
+        self._sig_resume.connect(self._worker.resume, QtCore.Qt.ConnectionType.QueuedConnection)
+        self._sig_playhead.connect(self._worker.set_playhead, QtCore.Qt.ConnectionType.QueuedConnection)
         self._sig_cancel.connect(self._worker.cancel_all, QtCore.Qt.ConnectionType.QueuedConnection)
         self._sig_drop_pending.connect(self._worker.drop_pending, QtCore.Qt.ConnectionType.QueuedConnection)
         self._sig_forget.connect(self._worker.forget, QtCore.Qt.ConnectionType.QueuedConnection)
+        # The thread is the view's child: stopped before the view goes, also when the app quits without the
+        # views detached (else Qt destroys it running).
+        app = QtCore.QCoreApplication.instance()
+        if app is not None:
+            app.aboutToQuit.connect(self._stop_worker)
 
         self.bus.sig_time_changed.connect(self.update_time)
         self.bus.sig_seek_requested.connect(self._on_seek_requested)
-        self.bus.sig_scrub_begin.connect(self._on_scrub_begin)
         self.bus.sig_scrub_update.connect(self._on_scrub_update)
         self.bus.sig_scrub_end.connect(self._on_scrub_end)
         self.bus.sig_window_changed.connect(self.update_window)
@@ -442,7 +433,8 @@ class WaveformView(ViewPlugin):
         is hidden and kept."""
         layer = self._layers.get(style)
         if layer is None:
-            layer = _ChunkLayer(style=style, items=[None] * self._chunk_count, spans=[None] * self._chunk_count)
+            count = self._chunk_count
+            layer = _ChunkLayer(style=style, items=[None] * count, spans=[None] * count, shown=[0] * count)
             self._layers[style] = layer
         old = self._layer
         if old is layer:
@@ -477,14 +469,22 @@ class WaveformView(ViewPlugin):
         if self._group is not None and self.plot is not None:
             self.plot.removeItem(self._group)
         self._group = None
-        if self._worker_thread.isRunning():
-            QtCore.QMetaObject.invokeMethod(
-                self._worker, "cancel_all",
-                QtCore.Qt.ConnectionType.BlockingQueuedConnection,
-            )
-            self._worker_thread.quit()
-            self._worker_thread.wait(3000)
+        self._stop_worker()
         self.plot = None
+
+    @QtCore.Slot()
+    def _stop_worker(self) -> None:
+        """Stop the render thread: the requests dropped, the jobs running waited for (they hold the PCM), its
+        event loop ended."""
+        if not self._worker_thread.isRunning():
+            return
+        QtCore.QMetaObject.invokeMethod(
+            self._worker, "cancel_all",
+            QtCore.Qt.ConnectionType.BlockingQueuedConnection,
+        )
+        self._worker.wait_for_jobs()
+        self._worker_thread.quit()
+        self._worker_thread.wait()
 
     def render_initial(self):
         self.duration = float(self.model.duration_sec or 0.0)
@@ -495,32 +495,53 @@ class WaveformView(ViewPlugin):
 
     def update_time(self, _t: float):
         self._set_rect()
-        self._evict_far_chunks()
+        self._follow_playhead()
         self._evaluate_render_targets()
 
-    def _evict_far_chunks(self) -> None:
-        """Drop the rendered chunks of every layer more than RENDER_KEEP_SEC from the
-        playhead (checked when the playhead enters another chunk)."""
-        if not self._layers:
+    def _current_chunk(self) -> int:
+        duration = max(0.0, float(self.model.duration_sec or 0.0))
+        return int(np.floor(np.clip(float(self.tl.current_time), 0.0, duration) / RENDER_CHUNK_SEC))
+
+    def _follow_playhead(self) -> None:
+        """When the playhead enters another chunk: the worker renders nearest it first, and the far chunks
+        are dropped."""
+        center = self._current_chunk()
+        if center == self._playhead_chunk:
             return
-        center = int(np.floor(max(0.0, float(self.tl.current_time)) / RENDER_CHUNK_SEC))
-        if center == self._evict_center:
-            return
-        self._evict_center = center
+        self._playhead_chunk = center
+        self._sig_playhead.emit(center)
+        self._evict_far_chunks(center)
+
+    def _evict_far_chunks(self, center: int) -> None:
+        """Drop the rendered chunks of every layer more than RENDER_KEEP_SEC from the playhead but the ones
+        shown most recently (RENDER_RECENT_KEEP_SEC of them over all layers), and the requests that far."""
         keep = int(np.ceil(RENDER_KEEP_SEC / RENDER_CHUNK_SEC))
+        far = []   # (when last shown, style, chunk)
         forgotten = []
         for style, layer in self._layers.items():
             for i, item in enumerate(layer.items):
-                if item is None or abs(i - center) <= keep:
+                if abs(i - center) <= keep:
                     continue
-                if item.scene() is not None:
-                    item.setParentItem(None)
-                    item.scene().removeItem(item)
-                layer.items[i] = None
-                layer.spans[i] = None
-                layer.submitted.discard(i)
-                layer.in_scene.discard(i)
-                forgotten.append((style, i))
+                if item is not None:
+                    far.append((layer.shown[i], style, i))
+                elif i in layer.submitted:
+                    layer.submitted.discard(i)   # not rendered yet: not needed now
+                    forgotten.append((style, i))
+        far.sort(key=lambda entry: entry[0], reverse=True)
+        recent = int(RENDER_RECENT_KEEP_SEC / RENDER_CHUNK_SEC)
+        kept = sum(1 for shown, _, _ in far[:recent] if shown > 0)   # never shown: not recently used
+        for _, style, i in far[kept:]:
+            layer = self._layers[style]
+            item = layer.items[i]
+            if item.scene() is not None:
+                item.setParentItem(None)
+                item.scene().removeItem(item)
+            layer.items[i] = None
+            layer.spans[i] = None
+            layer.shown[i] = 0
+            layer.submitted.discard(i)
+            layer.in_scene.discard(i)
+            forgotten.append((style, i))
         if forgotten:
             self._sig_forget.emit(forgotten)
 
@@ -554,7 +575,7 @@ class WaveformView(ViewPlugin):
                     item.scene().removeItem(item)
         self._layers = {}
         self._layer = None
-        self._evict_center = None
+        self._playhead_chunk = None
 
     def _make_chunk_item(self) -> pg.ImageItem:
         item = pg.ImageItem()
@@ -644,20 +665,14 @@ class WaveformView(ViewPlugin):
             self._show_layer(_WaveStyle.from_config(self.model.features, self.tl.window_sec))
         return self._chunk_count
 
-    def _on_seek_requested(self, _t: float) -> None:
-        self._evaluate_render_targets()
-
-    def _on_scrub_begin(self) -> None:
-        self._scrubbing = True
+    def _on_seek_requested(self, t: float) -> None:
+        self._resume_at(t)
 
     def _on_scrub_update(self, _t: float) -> None:
-        if not self._scrubbing:
-            return
         self._evaluate_render_targets()
 
-    def _on_scrub_end(self, _t: float) -> None:
-        self._scrubbing = False
-        self._evaluate_render_targets()
+    def _on_scrub_end(self, t: float) -> None:
+        self._resume_at(t)
 
     def _evaluate_render_targets(self) -> None:
         pcm = getattr(self.model, "predecoded_pcm", None)
@@ -669,20 +684,34 @@ class WaveformView(ViewPlugin):
             return
         specs = self._build_chunk_specs(pcm, sample_rate, duration)
         if specs:
-            if self._scrubbing:
-                self._sig_enqueue_scrub.emit(specs)
-            else:
-                self._sig_enqueue_play.emit(specs)
+            self._sig_enqueue.emit(specs, self._current_chunk())   # the worker orders them by the playhead
 
-    def _build_chunk_specs(self, pcm: np.ndarray, sample_rate: int, duration: float) -> list:
-        visible_start = max(0.0, -self.tl.left_edge())
+    def _resume_at(self, t: float) -> None:
+        """Playback goes on from ``t`` (a scrub let go, a seek): its chunk is rendered first, whatever else was
+        asked for (the requests made on the way there are dropped), and the view there after it."""
+        pcm = getattr(self.model, "predecoded_pcm", None)
+        sample_rate = int(getattr(self.model, "predecoded_rate", 0) or 0)
+        duration = float(self.model.duration_sec or 0.0)
+        if pcm is None or sample_rate <= 0 or self._allocate_canvas() <= 0:
+            return
+        t = float(np.clip(float(t), 0.0, duration))
+        chunk = min(self._chunk_count - 1, int(np.floor(t / RENDER_CHUNK_SEC)))
+        if chunk != self._playhead_chunk:
+            self._playhead_chunk = chunk
+            self._evict_far_chunks(chunk)
+        # the worker forgets every request not started: asked again here (the view at t) and when shown
+        self._layer.submitted = {i for i, item in enumerate(self._layer.items) if item is not None}
+        self._sig_resume.emit(self._build_chunk_specs(pcm, sample_rate, duration, at=t), chunk)
+
+    def _build_chunk_specs(self, pcm: np.ndarray, sample_rate: int, duration: float, *,
+                           at: float | None = None) -> list:
+        """Specs of the chunks in the view (the playhead at ``at`` if given, else where it is) not requested."""
+        visible_start = max(0.0, -self.tl.left_edge() if at is None else at - self.tl.center_t)
         visible_end = min(duration, visible_start + max(0.1, float(self.tl.window_sec)))
         first_chunk = int(np.floor(visible_start / RENDER_CHUNK_SEC))
         last_chunk = int(np.floor(max(0.0, visible_end - 1e-6) / RENDER_CHUNK_SEC))
         # include one chunk past visible end as look-ahead
-        target_chunks = list(range(first_chunk, last_chunk + 2))
-        current_chunk = int(np.floor(np.clip(float(self.tl.current_time), 0.0, duration) / RENDER_CHUNK_SEC))
-        target_chunks.sort(key=lambda idx: (abs(int(idx) - current_chunk), int(idx)))
+        target_chunks = range(first_chunk, last_chunk + 2)
 
         specs: list[_ChunkSpec] = []
         for chunk_index in target_chunks:
@@ -711,10 +740,12 @@ class WaveformView(ViewPlugin):
         first_v, last_v = visible
         keep_start = max(0, first_v - SCENE_CULL_BUFFER)
         keep_end = min(self._chunk_count - 1, last_v + SCENE_CULL_BUFFER)
+        self._show_clock += 1
         for i, item in enumerate(self._chunk_items):
             if item is None:
                 continue
             if keep_start <= i <= keep_end:
+                self._layer.shown[i] = self._show_clock
                 if i not in self._in_scene:
                     item.setVisible(True)
                     self._in_scene.add(i)
