@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-21 04:26+0900\n"
+"POT-Creation-Date: 2026-10-21 12:22+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ko_KR\n"
@@ -380,7 +380,7 @@ msgstr "파일의 태그가 손상되었거나 여기서 쓰지 않는 종류입
 msgid "The written tags did not read back as written; the file is unchanged."
 msgstr "쓴 태그가 쓴 그대로 다시 읽히지 않았습니다. 파일은 바뀌지 않았습니다."
 
-#: core/audio/tag_writer.py:205 core/audio/tag_writer.py:270 ui/export.py:171
+#: core/audio/tag_writer.py:205 core/audio/tag_writer.py:270 ui/export.py:177
 msgid "Tags cannot be written to this file's format."
 msgstr "이 파일 형식에는 태그를 쓸 수 없습니다."
 
@@ -3687,11 +3687,17 @@ msgstr "-- | 구간 -- | +0박 | 남음: 00:00.00"
 msgid "{label} | Seg {index} | +{beats} beats | Left: {left}"
 msgstr "{label} | 구간 {index} | +{beats}박 | 남음: {left}"
 
-#: ui/edit_song.py:54
+#: ui/edit_song.py:46
+#, python-brace-format
+msgid "{count} star (click it again to clear the rating)"
+msgid_plural "{count} stars (click the last one again to clear the rating)"
+msgstr[0] "별 {count}개 (마지막 별을 다시 누르면 평점을 지웁니다)"
+
+#: ui/edit_song.py:104
 msgid "Editable Fields"
 msgstr "편집할 수 있는 항목"
 
-#: ui/edit_song.py:65
+#: ui/edit_song.py:118
 msgid ""
 "The track's audio file. Set it when the file was moved or renamed;\n"
 "the analysis, playlists and CUEs stay with the track."
@@ -3699,25 +3705,25 @@ msgstr ""
 "트랙의 오디오 파일. 파일을 옮기거나 이름을 바꿨을 때 지정하세요.\n"
 "분석, 플레이리스트, CUE는 트랙에 그대로 남습니다."
 
-#: ui/edit_song.py:67 ui/export.py:54
+#: ui/edit_song.py:120 ui/export.py:55
 msgid "Browse..."
 msgstr "찾아보기..."
 
-#: ui/edit_song.py:78 ui/edit_song.py:102 ui/export.py:72 ui/export.py:99
+#: ui/edit_song.py:131 ui/edit_song.py:155 ui/export.py:73 ui/export.py:100
 #: ui/library.py:736
 msgid "Title"
 msgstr "제목"
 
-#: ui/edit_song.py:78 ui/edit_song.py:103 ui/export.py:73 ui/export.py:100
+#: ui/edit_song.py:131 ui/edit_song.py:156 ui/export.py:74 ui/export.py:101
 #: ui/library.py:736
 msgid "Artist"
 msgstr "아티스트"
 
-#: ui/edit_song.py:78 ui/edit_song.py:104 ui/export.py:101 ui/library.py:737
+#: ui/edit_song.py:131 ui/edit_song.py:157 ui/export.py:102 ui/library.py:737
 msgid "Album"
 msgstr "앨범"
 
-#: ui/edit_song.py:85
+#: ui/edit_song.py:138
 msgid ""
 "<p>How the title, artist and album read in Latin letters: the search "
 "finds the track by them in any script (あのね by anone or 아노네). Dim: read "
@@ -3729,53 +3735,53 @@ msgstr ""
 "anone이나 아노네로). 흐린 글자: 설정 > 검색의 언어로 텍스트에서 읽은 것. 칸에 입력하면 내 발음을 추가하고, 칸을 "
 "비우거나(Delete) 덮어쓰면 그 발음을 영구히 지우며, 다시 입력하면 되살립니다.</p>"
 
-#: ui/config/external_sync.py:94 ui/edit_song.py:101 ui/library.py:738
+#: ui/config/external_sync.py:94 ui/edit_song.py:154 ui/library.py:738
 msgid "Path"
 msgstr "경로"
 
-#: ui/edit_song.py:105
+#: ui/edit_song.py:158
 msgid "Readings"
 msgstr "발음"
 
 #: analyzer_core/global_analyzer.py:513 ui/config/analysis.py:235
 #: ui/config/pipeline_map.py:26 ui/config/pipeline_map.py:34
-#: ui/edit_song.py:107
+#: ui/edit_song.py:160
 msgid "Key"
 msgstr "키"
 
-#: ui/edit_song.py:108
-msgid "Rating (0-5)"
-msgstr "평점 (0-5)"
+#: ui/edit_song.py:161 ui/library.py:737
+msgid "Rating"
+msgstr "평점"
 
-#: ui/edit_song.py:109 ui/export.py:102 ui/library.py:738
+#: ui/edit_song.py:162 ui/export.py:103 ui/library.py:738
 msgid "Comment"
 msgstr "코멘트"
 
-#: ui/edit_song.py:112
+#: ui/edit_song.py:165
 msgid "Read-only Fields"
 msgstr "읽기 전용 항목"
 
-#: ui/edit_song.py:121
+#: ui/edit_song.py:174
 msgid "Duration (sec)"
 msgstr "길이 (초)"
 
-#: ui/edit_song.py:122
+#: ui/edit_song.py:175
 msgid "Added (epoch)"
 msgstr "추가 시각 (epoch)"
 
-#: ui/edit_song.py:123
+#: ui/edit_song.py:176
 msgid "File mtime"
 msgstr "파일 수정 시각"
 
-#: ui/edit_song.py:124
+#: ui/edit_song.py:177
 msgid "File size (bytes)"
 msgstr "파일 크기 (바이트)"
 
-#: ui/edit_song.py:314
+#: ui/edit_song.py:367
 msgid "Track File"
 msgstr "트랙 파일"
 
-#: ui/edit_song.py:322
+#: ui/edit_song.py:375
 #, python-brace-format
 msgid ""
 "The file does not exist:\n"
@@ -3784,40 +3790,40 @@ msgstr ""
 "파일이 없습니다:\n"
 "{path}"
 
-#: ui/edit_song.py:322 ui/edit_song.py:345 ui/library.py:1705
+#: ui/edit_song.py:375 ui/edit_song.py:398 ui/library.py:1705
 #: ui/library.py:1776 ui/library.py:2075 ui/shortcuts.py:118
 msgid "Edit Track"
 msgstr "트랙 편집"
 
-#: ui/export.py:67
+#: ui/export.py:68
 msgid "No JumpCUE directions"
 msgstr "JumpCUE 방향 없음"
 
-#: ui/export.py:74
+#: ui/export.py:75
 msgid "Source"
 msgstr "원본"
 
-#: ui/export.py:76
+#: ui/export.py:77
 msgid "Prerender JumpCUE Audio"
 msgstr "JumpCUE 오디오 미리 렌더링"
 
-#: ui/export.py:77
+#: ui/export.py:78
 msgid "Write WAV files with JumpCUE skips baked in."
 msgstr "JumpCUE 건너뛰기를 반영한 WAV 파일을 씁니다."
 
-#: ui/export.py:79
+#: ui/export.py:80
 msgid "Destination Folder"
 msgstr "대상 폴더"
 
-#: ui/export.py:81
+#: ui/export.py:82
 msgid "Export"
 msgstr "내보내기"
 
-#: ui/export.py:90
+#: ui/export.py:91
 msgid "File Tags"
 msgstr "파일 태그"
 
-#: ui/export.py:92
+#: ui/export.py:93
 msgid ""
 "<p>Write the library's values into the audio file's own tags: only the "
 "fields checked change; the file's other tags, its artwork and its audio "
@@ -3826,35 +3832,35 @@ msgstr ""
 "<p>라이브러리의 값을 오디오 파일 자체의 태그에 씁니다. 체크한 항목만 바뀌고, 파일의 다른 태그와 아트워크, 오디오는 그대로 "
 "둡니다. FLAC, MP3, AAC, WAV, AIFF, MP4 / M4A 파일에 쓸 수 있습니다.</p>"
 
-#: ui/export.py:103
+#: ui/export.py:104
 msgid "MP4 / M4A files hold a whole BPM only."
 msgstr "MP4 / M4A 파일에는 정수 BPM만 들어갑니다."
 
-#: ui/export.py:104
+#: ui/export.py:105
 msgid "Written as a musical key (Am, F#)."
 msgstr "일반 조성 표기(Am, F#)로 씁니다."
 
-#: ui/export.py:114 ui/export.py:192 ui/export.py:254
+#: ui/export.py:115 ui/export.py:198 ui/export.py:260
 msgid "Write Tags"
 msgstr "태그 쓰기"
 
-#: ui/export.py:115
+#: ui/export.py:116
 msgid "Write the checked fields' stored values into the file's tags."
 msgstr "체크한 항목의 저장된 값을 파일 태그에 씁니다."
 
-#: ui/export.py:153
+#: ui/export.py:159
 msgid "Source file not found at the specified path."
 msgstr "지정한 경로에 원본 파일이 없습니다."
 
-#: ui/export.py:156
+#: ui/export.py:162
 msgid "Source path is invalid."
 msgstr "원본 경로가 잘못되었습니다."
 
-#: ui/export.py:187
+#: ui/export.py:193
 msgid "Check the fields to write."
 msgstr "쓸 항목을 체크하세요."
 
-#: ui/export.py:193
+#: ui/export.py:199
 msgid ""
 "The Edit tab has changes to this track that are not applied: the stored "
 "values are written.\n"
@@ -3863,42 +3869,42 @@ msgstr ""
 "편집 탭에 이 트랙의 적용하지 않은 변경이 있습니다. 저장된 값이 쓰입니다.\n"
 "그래도 태그를 쓸까요?"
 
-#: ui/export.py:205
+#: ui/export.py:211
 msgid "The track is no longer in the library."
 msgstr "이 트랙은 더 이상 라이브러리에 없습니다."
 
-#: ui/export.py:218
+#: ui/export.py:224
 msgid "Writing the tags..."
 msgstr "태그를 쓰는 중..."
 
-#: ui/export.py:246
+#: ui/export.py:252
 #, python-brace-format
 msgid "The file could not be written: {error}"
 msgstr "파일을 쓸 수 없습니다: {error}"
 
-#: ui/export.py:252
+#: ui/export.py:258
 msgid "The tags were written to the file."
 msgstr "파일에 태그를 썼습니다."
 
-#: ui/export.py:282
+#: ui/export.py:288
 msgid "Select Destination Folder"
 msgstr "대상 폴더 선택"
 
-#: ui/export.py:290
+#: ui/export.py:296
 msgid "No track is selected."
 msgstr "선택한 트랙이 없습니다."
 
-#: ui/export.py:290 ui/export.py:295 ui/export.py:301 ui/export.py:314
-#: ui/export.py:324 ui/export.py:432 ui/export.py:443 ui/library.py:1706
+#: ui/export.py:296 ui/export.py:301 ui/export.py:307 ui/export.py:320
+#: ui/export.py:330 ui/export.py:438 ui/export.py:449 ui/library.py:1706
 #: ui/library.py:2079 ui/shortcuts.py:120
 msgid "Export Track"
 msgstr "트랙 내보내기"
 
-#: ui/export.py:295
+#: ui/export.py:301
 msgid "Please select a destination folder."
 msgstr "대상 폴더를 선택하세요."
 
-#: ui/export.py:301
+#: ui/export.py:307
 #, python-brace-format
 msgid ""
 "Cannot create destination folder:\n"
@@ -3907,11 +3913,11 @@ msgstr ""
 "대상 폴더를 만들 수 없습니다:\n"
 "{error}"
 
-#: ui/export.py:315
+#: ui/export.py:321
 msgid "Select a JumpCUE direction to render."
 msgstr "렌더링할 JumpCUE 방향을 고르세요."
 
-#: ui/export.py:324
+#: ui/export.py:330
 #, python-brace-format
 msgid ""
 "Export completed:\n"
@@ -3921,11 +3927,11 @@ msgstr ""
 "{files}"
 
 # | msgid "Phrase reanalysis completed"
-#: ui/export.py:343
+#: ui/export.py:349
 msgid "The track's analysis could not be read."
 msgstr "트랙의 분석을 읽을 수 없습니다."
 
-#: ui/export.py:433
+#: ui/export.py:439
 #, python-brace-format
 msgid ""
 "'{name}' already exists.\n"
@@ -3934,7 +3940,7 @@ msgstr ""
 "'{name}'이(가) 이미 있습니다.\n"
 "덮어쓸까요?"
 
-#: ui/export.py:443
+#: ui/export.py:449
 #, python-brace-format
 msgid ""
 "Failed to write JumpCUE audio:\n"
@@ -3958,10 +3964,6 @@ msgstr "전체"
 #: ui/library.py:737
 msgid "Duration"
 msgstr "길이"
-
-#: ui/library.py:737
-msgid "Rating"
-msgstr "평점"
 
 #: ui/library.py:738
 msgid "Added"

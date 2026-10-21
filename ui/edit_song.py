@@ -4,12 +4,12 @@ from typing import Callable, Optional
 from dataclasses import asdict, replace
 
 from PySide6.QtCore import QEvent, Qt, Signal
-from PySide6.QtGui import QBrush, QColor
+from PySide6.QtGui import QBrush, QColor, QFontMetrics
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QFormLayout,
-    QLineEdit, QSpinBox, QDoubleSpinBox, QLabel, QDialogButtonBox,
+    QLineEdit, QDoubleSpinBox, QLabel, QDialogButtonBox,
     QGroupBox, QComboBox, QPushButton, QFileDialog, QMessageBox,
-    QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView
+    QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView, QPlainTextEdit, QToolButton
 )
 
 from core import reading
@@ -19,7 +19,57 @@ from ui.config.scroll import scroll_page
 from ui.theme import current_theme
 from core.config import config, default_cfg, searchconfig
 from utils.labels import ALPHANUMERIC_LABELS, CLASSICAL_LABELS
-from core.i18n import tr
+from core.i18n import tr, tr_n
+
+COMMENT_LINES = 6   # the comment field's height in lines
+
+
+class RatingStars(QWidget):
+    """Five star buttons: a click sets the rating to its star; the set star clicked again clears it (0)."""
+
+    valueChanged = Signal(int)
+
+    def __init__(self, parent: Optional[QWidget] = None):
+        super().__init__(parent)
+        self._value = 0
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+        self._stars: list[QToolButton] = []
+        for n in range(1, 6):
+            star = QToolButton()
+            star.setAutoRaise(True)
+            star.setCursor(Qt.PointingHandCursor)
+            font = star.font()
+            font.setPointSizeF(font.pointSizeF() * 1.4)
+            star.setFont(font)
+            star.setToolTip(tr_n("{count} star (click it again to clear the rating)",
+                                 "{count} stars (click the last one again to clear the rating)", n).format(count=n))
+            star.clicked.connect(lambda _checked=False, n=n: self._clicked(n))
+            layout.addWidget(star)
+            self._stars.append(star)
+        layout.addStretch(1)
+        self._refresh()
+
+    def value(self) -> int:
+        return self._value
+
+    def setValue(self, value: int) -> None:
+        value = max(0, min(5, int(value or 0)))
+        if value != self._value:
+            self._value = value
+            self._refresh()
+            self.valueChanged.emit(value)
+
+    def _clicked(self, n: int) -> None:
+        self.setValue(0 if n == self._value else n)
+
+    def _refresh(self) -> None:
+        theme = current_theme()
+        for n, star in enumerate(self._stars, start=1):
+            lit = n <= self._value
+            star.setText("★" if lit else "☆")
+            star.setStyleSheet(f"QToolButton {{ color: {theme.accent if lit else theme.text_dim}; padding: 0 1px; }}")
 
 
 class EditTrackPanel(QWidget):
@@ -59,8 +109,11 @@ class EditTrackPanel(QWidget):
         self.sp_bpm = QDoubleSpinBox(); self.sp_bpm.setRange(0.0, 1000.0); self.sp_bpm.setDecimals(3); self.sp_bpm.setSingleStep(0.1)
         # Human-readable key: show both Alphanumeric and Classical labels
         self.cmb_key = QComboBox(); self._populate_key_combo()
-        self.sp_rating = QSpinBox(); self.sp_rating.setRange(0, 5)
-        self.ed_comment = QLineEdit()
+        self.rating_stars = RatingStars()
+        self.ed_comment = QPlainTextEdit()
+        self.ed_comment.setTabChangesFocus(True)   # Tab goes on to the next field, as in the others
+        margins = 2 * (self.ed_comment.frameWidth() + int(self.ed_comment.document().documentMargin()))
+        self.ed_comment.setFixedHeight(QFontMetrics(self.ed_comment.font()).lineSpacing() * COMMENT_LINES + margins)
         self.ed_path = QLineEdit()
         self.ed_path.setToolTip(tr("The track's audio file. Set it when the file was moved or renamed;\n"
                                    "the analysis, playlists and CUEs stay with the track."))
@@ -105,7 +158,7 @@ class EditTrackPanel(QWidget):
         form_edit.addRow(tr("Readings"), self.tbl_readings)
         form_edit.addRow("BPM", self.sp_bpm)
         form_edit.addRow(tr("Key"), self.cmb_key)
-        form_edit.addRow(tr("Rating (0-5)"), self.sp_rating)
+        form_edit.addRow(tr("Rating"), self.rating_stars)
         form_edit.addRow(tr("Comment"), self.ed_comment)
 
         # Read-only fields
@@ -155,8 +208,8 @@ class EditTrackPanel(QWidget):
             self._set_key_index(int(row.key))
         else:
             self.cmb_key.setCurrentIndex(0)  # Unknown
-        self.sp_rating.setValue(int(row.rating or 0))
-        self.ed_comment.setText(row.comment or "")
+        self.rating_stars.setValue(int(row.rating or 0))
+        self.ed_comment.setPlainText(row.comment or "")
         self.ed_path.setText(row.path or "")
         stored = {f: [] for f in READING_FIELDS}
         removed = {f: [] for f in READING_FIELDS}
@@ -194,8 +247,8 @@ class EditTrackPanel(QWidget):
         row.bpm = None if bpm_val == 0.0 else bpm_val
         kd = self.cmb_key.currentData()
         row.key = int(kd) if kd is not None else None
-        row.rating = int(self.sp_rating.value())
-        row.comment = self.ed_comment.text().strip()
+        row.rating = int(self.rating_stars.value())
+        row.comment = self.ed_comment.toPlainText().strip()
         row.path = self.ed_path.text().strip()
         return row
 

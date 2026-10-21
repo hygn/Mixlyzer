@@ -15,6 +15,7 @@ from core.audio.decoder import decode_to_memmap, get_samplerate
 from core.audio.tag_writer import TEXT_FIELDS, TagWriteError, tag_format, write_tags
 from core.model import DataModel
 from third_party.rekordbox import sanitize_filename
+from ui.config.scroll import scroll_page
 from ui.elided_label import ElidedLabel
 from utils.jump_cues import extract_jump_cue_pairs
 from utils.jumprender import jump_renderer
@@ -122,12 +123,17 @@ class ExportTrackPanel(QtWidgets.QWidget):
         tags_layout.addWidget(self.tag_note)
         tags_layout.addLayout(tag_btns)
 
-        layout = QtWidgets.QVBoxLayout(self)
+        # the fields scroll (as the Edit tab's): the panel never holds the library taller than a small window
+        body = QtWidgets.QWidget()
+        layout = QtWidgets.QVBoxLayout(body)
         layout.addLayout(track_form)
         layout.addWidget(jump)
         layout.addWidget(tags)
         layout.addWidget(self.status_label)
         layout.addStretch(1)
+        root = QtWidgets.QVBoxLayout(self)
+        root.setContentsMargins(0, 0, 0, 0)
+        root.addWidget(scroll_page(body), 1)
 
     def track_uid(self) -> Optional[str]:
         return self._track.uid if self._track is not None else None

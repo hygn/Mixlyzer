@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-21 04:26+0900\n"
+"POT-Creation-Date: 2026-10-21 12:22+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ja_JP\n"
@@ -380,7 +380,7 @@ msgstr "ファイルのタグが壊れているか、ここでは書き込まな
 msgid "The written tags did not read back as written; the file is unchanged."
 msgstr "書き込んだタグが書いたとおりに読み戻せませんでした。ファイルは変更されていません。"
 
-#: core/audio/tag_writer.py:205 core/audio/tag_writer.py:270 ui/export.py:171
+#: core/audio/tag_writer.py:205 core/audio/tag_writer.py:270 ui/export.py:177
 msgid "Tags cannot be written to this file's format."
 msgstr "このファイル形式にはタグを書き込めません。"
 
@@ -3694,11 +3694,17 @@ msgstr "-- | 区間 -- | +0 拍 | 残り: 00:00.00"
 msgid "{label} | Seg {index} | +{beats} beats | Left: {left}"
 msgstr "{label} | 区間 {index} | +{beats} 拍 | 残り: {left}"
 
-#: ui/edit_song.py:54
+#: ui/edit_song.py:46
+#, python-brace-format
+msgid "{count} star (click it again to clear the rating)"
+msgid_plural "{count} stars (click the last one again to clear the rating)"
+msgstr[0] "星 {count} 個 (最後の星をもう一度クリックするとレーティングを消去します)"
+
+#: ui/edit_song.py:104
 msgid "Editable Fields"
 msgstr "編集できる項目"
 
-#: ui/edit_song.py:65
+#: ui/edit_song.py:118
 msgid ""
 "The track's audio file. Set it when the file was moved or renamed;\n"
 "the analysis, playlists and CUEs stay with the track."
@@ -3706,25 +3712,25 @@ msgstr ""
 "トラックのオーディオファイル。ファイルを移動したり名前を変更したりしたときに指定してください。\n"
 "解析、プレイリスト、CUE はトラックに残ります。"
 
-#: ui/edit_song.py:67 ui/export.py:54
+#: ui/edit_song.py:120 ui/export.py:55
 msgid "Browse..."
 msgstr "参照..."
 
-#: ui/edit_song.py:78 ui/edit_song.py:102 ui/export.py:72 ui/export.py:99
+#: ui/edit_song.py:131 ui/edit_song.py:155 ui/export.py:73 ui/export.py:100
 #: ui/library.py:736
 msgid "Title"
 msgstr "タイトル"
 
-#: ui/edit_song.py:78 ui/edit_song.py:103 ui/export.py:73 ui/export.py:100
+#: ui/edit_song.py:131 ui/edit_song.py:156 ui/export.py:74 ui/export.py:101
 #: ui/library.py:736
 msgid "Artist"
 msgstr "アーティスト"
 
-#: ui/edit_song.py:78 ui/edit_song.py:104 ui/export.py:101 ui/library.py:737
+#: ui/edit_song.py:131 ui/edit_song.py:157 ui/export.py:102 ui/library.py:737
 msgid "Album"
 msgstr "アルバム"
 
-#: ui/edit_song.py:85
+#: ui/edit_song.py:138
 msgid ""
 "<p>How the title, artist and album read in Latin letters: the search "
 "finds the track by them in any script (あのね by anone or 아노네). Dim: read "
@@ -3737,53 +3743,53 @@ msgstr ""
 "の言語でテキストから読み取ったもの。セルに入力すると自分の読みを追加し、セルを空にする (Delete) "
 "か上書きするとその読みを完全に削除します。もう一度入力すると元に戻ります。</p>"
 
-#: ui/config/external_sync.py:94 ui/edit_song.py:101 ui/library.py:738
+#: ui/config/external_sync.py:94 ui/edit_song.py:154 ui/library.py:738
 msgid "Path"
 msgstr "パス"
 
-#: ui/edit_song.py:105
+#: ui/edit_song.py:158
 msgid "Readings"
 msgstr "読み"
 
 #: analyzer_core/global_analyzer.py:513 ui/config/analysis.py:235
 #: ui/config/pipeline_map.py:26 ui/config/pipeline_map.py:34
-#: ui/edit_song.py:107
+#: ui/edit_song.py:160
 msgid "Key"
 msgstr "キー"
 
-#: ui/edit_song.py:108
-msgid "Rating (0-5)"
-msgstr "レーティング (0-5)"
+#: ui/edit_song.py:161 ui/library.py:737
+msgid "Rating"
+msgstr "レーティング"
 
-#: ui/edit_song.py:109 ui/export.py:102 ui/library.py:738
+#: ui/edit_song.py:162 ui/export.py:103 ui/library.py:738
 msgid "Comment"
 msgstr "コメント"
 
-#: ui/edit_song.py:112
+#: ui/edit_song.py:165
 msgid "Read-only Fields"
 msgstr "読み取り専用の項目"
 
-#: ui/edit_song.py:121
+#: ui/edit_song.py:174
 msgid "Duration (sec)"
 msgstr "時間 (秒)"
 
-#: ui/edit_song.py:122
+#: ui/edit_song.py:175
 msgid "Added (epoch)"
 msgstr "追加日時 (epoch)"
 
-#: ui/edit_song.py:123
+#: ui/edit_song.py:176
 msgid "File mtime"
 msgstr "ファイルの更新日時"
 
-#: ui/edit_song.py:124
+#: ui/edit_song.py:177
 msgid "File size (bytes)"
 msgstr "ファイルサイズ (バイト)"
 
-#: ui/edit_song.py:314
+#: ui/edit_song.py:367
 msgid "Track File"
 msgstr "トラックファイル"
 
-#: ui/edit_song.py:322
+#: ui/edit_song.py:375
 #, python-brace-format
 msgid ""
 "The file does not exist:\n"
@@ -3792,40 +3798,40 @@ msgstr ""
 "ファイルがありません:\n"
 "{path}"
 
-#: ui/edit_song.py:322 ui/edit_song.py:345 ui/library.py:1705
+#: ui/edit_song.py:375 ui/edit_song.py:398 ui/library.py:1705
 #: ui/library.py:1776 ui/library.py:2075 ui/shortcuts.py:118
 msgid "Edit Track"
 msgstr "トラックの編集"
 
-#: ui/export.py:67
+#: ui/export.py:68
 msgid "No JumpCUE directions"
 msgstr "JumpCUE の方向がありません"
 
-#: ui/export.py:74
+#: ui/export.py:75
 msgid "Source"
 msgstr "ソース"
 
-#: ui/export.py:76
+#: ui/export.py:77
 msgid "Prerender JumpCUE Audio"
 msgstr "JumpCUE のオーディオを事前レンダリング"
 
-#: ui/export.py:77
+#: ui/export.py:78
 msgid "Write WAV files with JumpCUE skips baked in."
 msgstr "JumpCUE のスキップを反映した WAV ファイルを書き出します。"
 
-#: ui/export.py:79
+#: ui/export.py:80
 msgid "Destination Folder"
 msgstr "保存先フォルダー"
 
-#: ui/export.py:81
+#: ui/export.py:82
 msgid "Export"
 msgstr "エクスポート"
 
-#: ui/export.py:90
+#: ui/export.py:91
 msgid "File Tags"
 msgstr "ファイルのタグ"
 
-#: ui/export.py:92
+#: ui/export.py:93
 msgid ""
 "<p>Write the library's values into the audio file's own tags: only the "
 "fields checked change; the file's other tags, its artwork and its audio "
@@ -3834,35 +3840,35 @@ msgstr ""
 "<p>ライブラリの値をオーディオファイル自体のタグに書き込みます。チェックした項目だけが変わり、ファイルのほかのタグ、アートワーク、オーディオはそのままです。FLAC、MP3、AAC、WAV、AIFF、MP4"
 " / M4A ファイルに書き込めます。</p>"
 
-#: ui/export.py:103
+#: ui/export.py:104
 msgid "MP4 / M4A files hold a whole BPM only."
 msgstr "MP4 / M4A ファイルには整数の BPM しか入りません。"
 
-#: ui/export.py:104
+#: ui/export.py:105
 msgid "Written as a musical key (Am, F#)."
 msgstr "一般的なキー表記 (Am、F#) で書き込みます。"
 
-#: ui/export.py:114 ui/export.py:192 ui/export.py:254
+#: ui/export.py:115 ui/export.py:198 ui/export.py:260
 msgid "Write Tags"
 msgstr "タグを書き込む"
 
-#: ui/export.py:115
+#: ui/export.py:116
 msgid "Write the checked fields' stored values into the file's tags."
 msgstr "チェックした項目の保存済みの値をファイルのタグに書き込みます。"
 
-#: ui/export.py:153
+#: ui/export.py:159
 msgid "Source file not found at the specified path."
 msgstr "指定したパスにソースファイルがありません。"
 
-#: ui/export.py:156
+#: ui/export.py:162
 msgid "Source path is invalid."
 msgstr "ソースのパスが無効です。"
 
-#: ui/export.py:187
+#: ui/export.py:193
 msgid "Check the fields to write."
 msgstr "書き込む項目をチェックしてください。"
 
-#: ui/export.py:193
+#: ui/export.py:199
 msgid ""
 "The Edit tab has changes to this track that are not applied: the stored "
 "values are written.\n"
@@ -3871,42 +3877,42 @@ msgstr ""
 "編集タブにこのトラックの未適用の変更があります。保存済みの値が書き込まれます。\n"
 "それでもタグを書き込みますか?"
 
-#: ui/export.py:205
+#: ui/export.py:211
 msgid "The track is no longer in the library."
 msgstr "このトラックはもうライブラリにありません。"
 
-#: ui/export.py:218
+#: ui/export.py:224
 msgid "Writing the tags..."
 msgstr "タグを書き込み中..."
 
-#: ui/export.py:246
+#: ui/export.py:252
 #, python-brace-format
 msgid "The file could not be written: {error}"
 msgstr "ファイルに書き込めません: {error}"
 
-#: ui/export.py:252
+#: ui/export.py:258
 msgid "The tags were written to the file."
 msgstr "ファイルにタグを書き込みました。"
 
-#: ui/export.py:282
+#: ui/export.py:288
 msgid "Select Destination Folder"
 msgstr "保存先フォルダーを選択"
 
-#: ui/export.py:290
+#: ui/export.py:296
 msgid "No track is selected."
 msgstr "トラックが選択されていません。"
 
-#: ui/export.py:290 ui/export.py:295 ui/export.py:301 ui/export.py:314
-#: ui/export.py:324 ui/export.py:432 ui/export.py:443 ui/library.py:1706
+#: ui/export.py:296 ui/export.py:301 ui/export.py:307 ui/export.py:320
+#: ui/export.py:330 ui/export.py:438 ui/export.py:449 ui/library.py:1706
 #: ui/library.py:2079 ui/shortcuts.py:120
 msgid "Export Track"
 msgstr "トラックのエクスポート"
 
-#: ui/export.py:295
+#: ui/export.py:301
 msgid "Please select a destination folder."
 msgstr "保存先フォルダーを選択してください。"
 
-#: ui/export.py:301
+#: ui/export.py:307
 #, python-brace-format
 msgid ""
 "Cannot create destination folder:\n"
@@ -3915,11 +3921,11 @@ msgstr ""
 "保存先フォルダーを作成できません:\n"
 "{error}"
 
-#: ui/export.py:315
+#: ui/export.py:321
 msgid "Select a JumpCUE direction to render."
 msgstr "レンダリングする JumpCUE の方向を選んでください。"
 
-#: ui/export.py:324
+#: ui/export.py:330
 #, python-brace-format
 msgid ""
 "Export completed:\n"
@@ -3929,11 +3935,11 @@ msgstr ""
 "{files}"
 
 # | msgid "Phrase reanalysis completed"
-#: ui/export.py:343
+#: ui/export.py:349
 msgid "The track's analysis could not be read."
 msgstr "トラックの解析を読み込めませんでした。"
 
-#: ui/export.py:433
+#: ui/export.py:439
 #, python-brace-format
 msgid ""
 "'{name}' already exists.\n"
@@ -3942,7 +3948,7 @@ msgstr ""
 "「{name}」はすでに存在します。\n"
 "上書きしますか?"
 
-#: ui/export.py:443
+#: ui/export.py:449
 #, python-brace-format
 msgid ""
 "Failed to write JumpCUE audio:\n"
@@ -3966,10 +3972,6 @@ msgstr "すべて"
 #: ui/library.py:737
 msgid "Duration"
 msgstr "時間"
-
-#: ui/library.py:737
-msgid "Rating"
-msgstr "レーティング"
 
 #: ui/library.py:738
 msgid "Added"
