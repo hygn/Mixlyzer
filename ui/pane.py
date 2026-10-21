@@ -370,6 +370,7 @@ class MainPane(QtWidgets.QWidget):
             self.add_view("WaveformView")
         if view_cfg.display_beatgrid:
             self.add_view("BeatgridView")
+            self.add_view("TempoLabelView")   # the tempo at the playhead, right of it (accel. / rit.)
         if view_cfg.display_keystrip:
             self.add_view("KeyStripView")
         if view_cfg.display_JumpCUE:

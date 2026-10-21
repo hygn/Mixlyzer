@@ -26,9 +26,9 @@ class _OutlinedText(QtWidgets.QGraphicsTextItem):
         painter.fillPath(path, self.defaultTextColor())
 
 
-def _outlined_text_item(color) -> pg.TextItem:
+def _outlined_text_item(color, anchor=(1.0, 0.0)) -> pg.TextItem:
     """pg.TextItem whose text is drawn outlined and slightly bold."""
-    item = pg.TextItem("", color=color, anchor=(1.0, 0.0))
+    item = pg.TextItem("", color=color, anchor=anchor)
     plain = item.textItem
     outlined = _OutlinedText(item)
     font = QtGui.QFont(plain.font())
