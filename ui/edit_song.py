@@ -155,11 +155,11 @@ class EditTrackPanel(QWidget):
         form_edit.addRow(tr("Title"), self.ed_title)
         form_edit.addRow(tr("Artist"), self.ed_artist)
         form_edit.addRow(tr("Album"), self.ed_album)
-        form_edit.addRow(tr("Readings"), self.tbl_readings)
         form_edit.addRow("BPM", self.sp_bpm)
         form_edit.addRow(tr("Key"), self.cmb_key)
         form_edit.addRow(tr("Rating"), self.rating_stars)
         form_edit.addRow(tr("Comment"), self.ed_comment)
+        form_edit.addRow(tr("Readings"), self.tbl_readings)   # last: the search's, read from the fields above
 
         # Read-only fields
         grp_ro = QGroupBox(tr("Read-only Fields"))
