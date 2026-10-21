@@ -3,6 +3,7 @@ from scipy.signal import get_window
 
 from analyzer_core.dsp.conversion import fft_frequencies
 from analyzer_core.dsp.spectral import stft
+from utils.color import oklab_to_srgb, srgb_to_oklab
 
 
 # Overview waveform, stored by the analysis from its own decode at WAVE_OVERVIEW_SAMPLE_RATE:
@@ -26,11 +27,31 @@ WAVE_OVERVIEW_KEYS = ("wave_minmax_np", "wave_minmax_ref", "wave_bands_np", "wav
 # maximum of the range's RMS at 16384 column centres).
 
 WAVEFORM_STYLES = ("rgb", "3band")
-# RGB overview bars reach this fraction of the lane at the track's peak.
-RGB_OVERVIEW_PEAK = 0.99
-# RGB bars fade from their body to their peak as (1 - t) ** RGB_FADE_GAMMA:
-# below 1 keeps the tops visible.
-RGB_FADE_GAMMA = 0.5
+# RGB overview colours (overview_colors), each column's own first: each band over the track's own usual level
+# (its median where the track is audible: the colour shows how a section differs from the track as a whole, so
+# its phrases come out in different colours), raised to the contrast power (the band clearly above its usual
+# level leads the colour, rather than a mix of all three), red / green / blue for low / mid / high over the
+# strongest (as Mixxx's and rekordbox's RGB waveforms), in OKLab (one lightness: no glaring yellows or white next
+# to dark blues), moved by the brightness: the spectral centroid of the 12 stored bands (log frequency, each band
+# over its usual level, smoothed over the colour time) against the track's usual one, its 5 / 95 % reach as 1 (at
+# most 1.5): a darker section (a closed filter, a bass intro) towards the low band's red, a brighter one (an open
+# filter, hats and leads) towards the high band's blue, by the shift per reach (the 12 bands tell a filter sweep
+# inside one range, which the three levels do not). Then smoothed in hue over this time (about a beat: the colour
+# follows the instrumentation, not each hit, so it does not flicker; the bars keep their own detail): the hue the
+# direction of the columns' mean colour, the chroma their mean chroma. Within a beat the kick and the hats take
+# turns leading; their levels averaged are the track's usual balance, grey, though no column is: the direction and
+# the strength averaged apart keep the leading hue and how strong the colours are. The chroma times the gain (the
+# saturation), at least the floor: the most chroma every hue holds in sRGB at the lightness (cyan's limit), so the
+# usual balance is never grey and a floor colour never clipped. Silence stays neutral.
+RGB_OVERVIEW_COLOR_SEC = 0.5
+RGB_OVERVIEW_AUDIBLE = 0.2          # a column audible: its bar at least this high
+RGB_OVERVIEW_CONTRAST = 3.0
+RGB_OVERVIEW_LIGHTNESS = 0.72
+RGB_OVERVIEW_CHROMA_GAIN = 0.85
+RGB_OVERVIEW_BRIGHTNESS_SHIFT = 0.08
+RGB_OVERVIEW_DARK_HUE = 30.0        # OKLab hue (degrees) of the low band's red
+RGB_OVERVIEW_BRIGHT_HUE = 265.0     # OKLab hue of the high band's blue
+RGB_OVERVIEW_CHROMA_FLOOR = 0.12    # as drawn (after the gain)
 # Three-band colors and band weights of rekordbox / CDJ-3000 (after Deep
 # Symmetry's beat-link): the preview stacks the bands from the bottom (low,
 # low + mid, low + mid + high); the scrolling waveform draws them mirrored, each
@@ -208,22 +229,15 @@ def _stored_minmax(features) -> np.ndarray:
     return np.sign(q) * np.square(q) * float(np.asarray(features["wave_minmax_ref"]).reshape(-1)[0])
 
 
+def _stored_band_power(features) -> np.ndarray:
+    """``[M, WAVE_BAND_COUNT]`` the stored bands' mean-square power per band column in sample units."""
+    power = np.power(np.asarray(features["wave_bands_np"], dtype=np.float64) / 255.0, 4.0)
+    return power * np.asarray(features["wave_bands_ref"], dtype=np.float64)[np.newaxis, :]
+
+
 def _stored_band_rms(features, ranges) -> np.ndarray:
     """``[M, 3]`` low / mid / high RMS per band column in sample units, summed from the stored bands."""
-    power = np.power(np.asarray(features["wave_bands_np"], dtype=np.float64) / 255.0, 4.0)
-    power *= np.asarray(features["wave_bands_ref"], dtype=np.float64)[np.newaxis, :]
-    return np.sqrt(power @ band_weights(ranges).T)
-
-
-def _peak_body(minmax: np.ndarray, groups: int) -> tuple[np.ndarray, np.ndarray]:
-    """Per group of min / max columns: the peak |sample| and the body (the mean half-range)."""
-    n = minmax.shape[0]
-    g = max(1, min(int(groups), n))
-    starts = (np.arange(g, dtype=np.int64) * n) // g
-    counts = np.diff(np.append(starts, n)).astype(np.float64)
-    peak = np.maximum.reduceat(np.abs(minmax).max(axis=1), starts)
-    body = np.add.reduceat(0.5 * (minmax[:, 1] - minmax[:, 0]), starts) / counts
-    return peak, np.minimum(body, peak)
+    return np.sqrt(_stored_band_power(features) @ band_weights(ranges).T)
 
 
 def _column_means(values: np.ndarray, columns: int) -> np.ndarray:
@@ -278,22 +292,56 @@ def three_band_detail_layers(low, mid, high) -> list:
     ]
 
 
-def _faded_bars(peak, body, colors, height: int, columns: int, *, mirrored: bool) -> np.ndarray:
-    """A bar of each stored column (heights 0..1 of the lane), solid up to
-    ``body`` and fading out to ``peak``, colored ``colors``; area-averaged into
-    ``columns`` image columns (drawn at the display's pixels, so not blurred)."""
-    n = peak.size
-    H = int(height)
-    rows = np.arange(H) + 0.5
-    position = np.abs(rows - 0.5 * H) / (0.5 * H) if mirrored else rows / H
-    cover = np.clip((peak[:, np.newaxis] - position) / np.maximum(peak - body, 1e-6)[:, np.newaxis], 0.0, 1.0)
-    cover **= RGB_FADE_GAMMA
-    n_columns = max(1, min(int(columns), n))
-    starts = (np.arange(n_columns, dtype=np.int64) * n) // n_columns
-    counts = np.diff(np.append(starts, n)).astype(np.float32)[:, np.newaxis, np.newaxis]
-    image = np.add.reduceat(cover.astype(np.float32)[:, :, np.newaxis] * colors.astype(np.float32)[:, np.newaxis, :],
-                            starts, axis=0)
-    return np.clip(image / counts + 0.5, 0.0, 255.0).astype(np.uint8)
+def _smoothed(values: np.ndarray, width: int) -> np.ndarray:
+    """Moving average of ``[C, K]`` over ``width`` columns (edges held)."""
+    if width <= 1:
+        return values
+    kernel = np.ones(width) / width
+    padded = np.pad(values, ((width // 2, width - 1 - width // 2), (0, 0)), mode="edge")
+    return np.stack([np.convolve(padded[:, i], kernel, mode="valid") for i in range(values.shape[1])], axis=1)
+
+
+def _brightness(bands: np.ndarray, audible: np.ndarray, width: int) -> np.ndarray:
+    """``[C]`` the columns' spectral centroid against the track's usual one: 0 usual, +-1 its 5 / 95 % reach
+    (at most 1.5; RGB_OVERVIEW_* above)."""
+    usual = np.median(bands[audible] if audible.sum() >= 8 else bands, axis=0)
+    weights = np.sqrt(bands / np.where(usual > 0.0, usual, 1.0))
+    centres = 0.5 * np.log2(WAVE_BAND_EDGES[:-1] * WAVE_BAND_EDGES[1:])
+    centroid = _smoothed(((weights @ centres) / np.maximum(weights.sum(axis=1), 1e-12))[:, np.newaxis], width)[:, 0]
+    low, mid, high = np.percentile(centroid[audible] if audible.sum() >= 8 else centroid, [5.0, 50.0, 95.0])
+    reach = np.where(centroid >= mid, max(high - mid, 1e-6), max(mid - low, 1e-6))
+    return np.clip((centroid - mid) / reach, -1.5, 1.5)
+
+
+def overview_colors(values: np.ndarray, bands: np.ndarray, heights: np.ndarray, duration: float) -> np.ndarray:
+    """``[C, 3]`` uint8 RGB overview colours of the columns' low / mid / high levels ``values`` (``[C, 3]``) and
+    stored band powers ``bands`` (``[C, WAVE_BAND_COUNT]``), their bars ``heights`` (0..1) over a track of
+    ``duration`` seconds (RGB_OVERVIEW_* above)."""
+    audible = heights >= RGB_OVERVIEW_AUDIBLE
+    usual = np.median(values[audible] if audible.sum() >= 8 else values, axis=0)
+    width = int(round(RGB_OVERVIEW_COLOR_SEC / duration * values.shape[0])) if duration > 0 else 1
+    levels = (values / np.where(usual > 0.0, usual, 1.0)) ** RGB_OVERVIEW_CONTRAST
+    top = levels.max(axis=1, keepdims=True)
+    silent = top[:, 0] <= 0.0
+    rgb = np.where(silent[:, np.newaxis], 1.0, levels / np.where(silent, 1.0, top[:, 0])[:, np.newaxis])
+    ab = srgb_to_oklab(rgb * 255.0)[:, 1:]
+    brightness = _brightness(np.asarray(bands, dtype=np.float64), audible, width)
+    hue = np.radians(np.where(brightness >= 0.0, RGB_OVERVIEW_BRIGHT_HUE, RGB_OVERVIEW_DARK_HUE))
+    side = np.stack([np.cos(hue), np.sin(hue)], axis=1)
+    ab += RGB_OVERVIEW_BRIGHTNESS_SHIFT * np.abs(brightness)[:, np.newaxis] * side
+    # in hue: the mean colour's direction and the mean chroma over the columns with sound
+    sound = np.where(silent, 0.0, 1.0)[:, np.newaxis]
+    share = _smoothed(sound, width)
+    mean = _smoothed(np.concatenate([ab, np.hypot(ab[:, :1], ab[:, 1:])], axis=1) * sound, width)
+    mean /= np.maximum(share, 1e-12)
+    length = np.hypot(mean[:, 0], mean[:, 1])
+    direction = np.where((length > 1e-6)[:, np.newaxis],
+                         mean[:, :2] / np.maximum(length, 1e-12)[:, np.newaxis], side)
+    chroma = np.maximum(mean[:, 2] * RGB_OVERVIEW_CHROMA_GAIN, RGB_OVERVIEW_CHROMA_FLOOR)
+    lab = np.empty((ab.shape[0], 3))
+    lab[:, 0] = RGB_OVERVIEW_LIGHTNESS
+    lab[:, 1:] = np.where((share[:, 0] > 0.0)[:, np.newaxis], direction * chroma[:, np.newaxis], 0.0)
+    return oklab_to_srgb(lab)
 
 
 def render_wave_overview(
@@ -304,24 +352,22 @@ def render_wave_overview(
     *,
     columns: int = WAVE_OVERVIEW_RENDER_COLUMNS,
 ) -> np.ndarray:
-    """Overview image ``[columns, height, 3]`` of a track's stored overview, bars rising from the first row, in
-    ``style`` ('rgb': bars of the peak, solid to the body, colored by the low / mid / high ``ranges`` each over its
-    track maximum; '3band': the three bands stacked on one scale)."""
+    """Overview image ``[columns, height, 3]`` of a track's stored overview, bars rising from the first row. In
+    both styles a bar's height is the bands' power: the low / mid / high ``ranges`` on one scale, stacked with
+    the preview weights. ``style``: 'rgb', one bar coloured by the three levels against the track's usual
+    balance (overview_colors); '3band', the three stacked in their colors."""
     rms = _stored_band_rms(features, ranges)
-    if style != "3band":
-        peak, body = _peak_body(_stored_minmax(features), rms.shape[0])
-        top = float(peak.max()) or 1.0
-        peak, body = peak / top * RGB_OVERVIEW_PEAK, body / top * RGB_OVERVIEW_PEAK
-        band_max = rms.max(axis=0)
-        normalized = rms / np.where(band_max > 0.0, band_max, 1.0)
-        colors = wave_colors(normalized[:, 0], normalized[:, 1], normalized[:, 2])
-        return _faded_bars(peak, body, colors, height, columns, mirrored=False)
     values = _column_means(rms, columns) / (float(rms.max()) or 1.0)
     w_low, w_mid, w_high = THREE_BAND_PREVIEW_WEIGHTS
     stack_low = w_low * values[:, 0]
     stack_mid = stack_low + w_mid * values[:, 1]
     stack_high = stack_mid + w_high * values[:, 2]
     scale = float(stack_high.max()) or 1.0
+    if style != "3band":
+        duration = float(np.asarray(features.get("duration_sec", 0.0), dtype=np.float64).reshape(-1)[0])
+        colors = overview_colors(values, _column_means(_stored_band_power(features), columns), stack_high / scale,
+                                 duration)
+        return paint_layers([(stack_high / scale, colors)], height)
     return paint_layers([(stack_high / scale, THREE_BAND_HIGH), (stack_mid / scale, THREE_BAND_MID),
                          (stack_low / scale, THREE_BAND_LOW)], height)
 

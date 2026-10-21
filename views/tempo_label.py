@@ -14,6 +14,7 @@ TEXT_COLOR = (235, 235, 235)
 Z_VALUE = 12   # one above the beatgrid's lines (10, 11), under the CUE markers (105, 110)
 
 TempoRow = tuple[float, float, float, float]   # start, end, start BPM, end BPM (steady: the same)
+ShownRow = tuple[float, float, TempoRow]       # where its label comes in and is pushed out (beats), the tempo
 
 
 def bpm_text(bpm: float) -> str:
@@ -50,6 +51,27 @@ def tempo_rows(tempo_segments) -> list[TempoRow]:
     return rows
 
 
+def snap_to_beats(rows: list[TempoRow], beats) -> list[ShownRow]:
+    """Where each tempo's label comes in and is pushed out: its start and end moved to their nearest beats (a
+    tempo changes at a beat; a row's edge can sit between, as the tracker's boundary); a tempo left without
+    length there dropped. No beats: the rows' own edges."""
+    try:
+        beats = np.asarray(beats if beats is not None else [], dtype=float).reshape(-1)
+    except (TypeError, ValueError):
+        beats = np.empty(0)
+    beats = beats[np.isfinite(beats)]
+    if beats.size == 0:
+        return [(row[0], row[1], row) for row in rows]
+
+    def nearest(t: float) -> float:
+        i = int(np.searchsorted(beats, t))
+        candidates = beats[max(0, i - 1):i + 1]
+        return float(candidates[np.argmin(np.abs(candidates - t))])
+
+    snapped = [(nearest(row[0]), nearest(row[1]), row) for row in rows]
+    return [shown for shown in snapped if shown[1] > shown[0]]
+
+
 def tempo_text(row: TempoRow, now: Optional[float] = None) -> str:
     """A tempo's label: "174 BPM"; a ramp's "rit. 180→160 BPM" / "accel. ...", and with ``now`` (the playhead in
     it) the tempo there: "rit. 172.4 BPM"."""
@@ -57,7 +79,8 @@ def tempo_text(row: TempoRow, now: Optional[float] = None) -> str:
     if end_bpm == bpm:
         return f"{bpm_text(bpm)} BPM"
     direction = ACCEL if end_bpm > bpm else RIT
-    if now is not None:
+    if now is not None:   # (its label comes in at a beat: the tempo held within the row)
+        now = min(max(float(now), start), end)
         return f"{direction} {bpm_at((start, end, bpm, start, 4, end_bpm), now):.1f} BPM"
     return f"{direction} {bpm_text(bpm)}→{bpm_text(end_bpm)} BPM"
 
@@ -65,7 +88,7 @@ def tempo_text(row: TempoRow, now: Optional[float] = None) -> str:
 @register_view("TempoLabelView")
 class TempoLabelView(ViewPlugin):
     """The beatgrid's tempos at the top of the main plot, a label each as the key and phrase labels: it comes in
-    with its tempo, is held right of the playhead while the tempo plays (the bar.beat label is left of it) and
+    at the beat nearest its tempo's start, is held right of the playhead while the tempo plays (the bar.beat label is left of it) and
     is pushed along by the tempo's end; a ramp's shows its start and end tempo, and the tempo at the playhead
     while it plays. Outlined as the bar.beat label; drawn just above the beatgrid's lines and under the CUE
     markers, so it never hides a cue. Part of the beatgrid's display (its emphasis the beatgrid page's)."""
@@ -75,7 +98,7 @@ class TempoLabelView(ViewPlugin):
         super().__init__(bus, model, tl)
         self.plot = None
         self._labels: list[pg.TextItem] = []
-        self._rows: list[TempoRow] = []
+        self._rows: list[ShownRow] = []
 
         self.bus.sig_time_changed.connect(self._reposition)
         self.bus.sig_window_changed.connect(self._reposition)
@@ -108,7 +131,7 @@ class TempoLabelView(ViewPlugin):
         if self.plot is None:
             return
         features = self.model.features if isinstance(self.model.features, dict) else {}
-        self._rows = tempo_rows(features.get("tempo_segments"))
+        self._rows = snap_to_beats(tempo_rows(features.get("tempo_segments")), features.get("beats_time_sec"))
         while len(self._labels) < len(self._rows):
             label = _outlined_text_item(TEXT_COLOR, anchor=(0.0, 0.0))
             label.setZValue(Z_VALUE)
@@ -121,7 +144,7 @@ class TempoLabelView(ViewPlugin):
         self._reposition()
 
     def _reposition(self, *_args) -> None:
-        """Each tempo's label at its start, held right of the playhead while it plays, pushed by its end."""
+        """Each tempo's label at its start beat, held right of the playhead while it plays, pushed by its end."""
         if self.plot is None:
             return
         try:
@@ -143,8 +166,7 @@ class TempoLabelView(ViewPlugin):
             if i >= len(self._rows):
                 label.setVisible(False)
                 continue
-            row = self._rows[i]
-            start, end = row[0], row[1]
+            start, end, row = self._rows[i]
             if end < visible_start or start > visible_end:
                 label.setVisible(False)
                 continue
