@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from functools import lru_cache
 
 import numpy as np
 import pyqtgraph as pg
@@ -197,13 +198,19 @@ def _render_waveform_chunk(
     return np.ascontiguousarray(np.clip(image, 0.0, 255.0).astype(np.uint8)), start_sec, end_sec
 
 
-def _band_filter(y: np.ndarray, sr: int, low: float, high: float, order: int) -> np.ndarray:
+@lru_cache(maxsize=32)
+def _band_sos(sr: int, low: float, high: float, order: int) -> np.ndarray:
+    """The band's Butterworth sections, designed once per band and rate (designed per chunk it took about 30 %
+    of a chunk's render, all of it Python holding the GIL the playback needs)."""
     nyq = 0.5 * float(sr)
     low_n = max(float(low) / nyq, 1e-6)
     high_n = min(float(high) / nyq, 0.999999)
+    return butter(int(order), [low_n, high_n], btype="band", output="sos")   # writable: scipy's filter needs it
+
+
+def _band_filter(y: np.ndarray, sr: int, low: float, high: float, order: int) -> np.ndarray:
     try:
-        sos = butter(int(order), [low_n, high_n], btype="band", output="sos")
-        return sosfiltfilt(sos, y)
+        return sosfiltfilt(_band_sos(int(sr), float(low), float(high), int(order)), y)
     except Exception:
         return y
 

@@ -53,6 +53,12 @@ class PCMFeeder(QtCore.QObject):
     PEAK_FLOOR_DBFS = -24.0
     SOFT_CLIP_KNEE = 0.8
 
+    # The sink is topped up every FLUSH_MS: it holds PlayerController.BUFFER_MS (80), which stays above 70 ms
+    # (a tick wakes this thread: every 1 ms took twice the CPU). While scratching the queue is short (30 ms)
+    # and follows the hand: every FLUSH_SCRATCH_MS.
+    FLUSH_MS = 4
+    FLUSH_SCRATCH_MS = 1
+
     # Displayed playhead (display_frame): nudged toward the heard position by this
     # fraction of the difference per reading; taken as is when they differ by more
     # than DISPLAY_RESYNC_SEC (a seek, jump or stall).
@@ -144,7 +150,7 @@ class PCMFeeder(QtCore.QObject):
         if self._flush_timer is None:
             self._flush_timer = QtCore.QTimer(self)
             self._flush_timer.setTimerType(QtCore.Qt.PreciseTimer)
-            self._flush_timer.setInterval(1)
+            self._flush_timer.setInterval(self.FLUSH_SCRATCH_MS if self._scratching else self.FLUSH_MS)
             self._flush_timer.timeout.connect(self._flush)
         self._start_sink()
         self._device_stopped = False
@@ -291,6 +297,7 @@ class PCMFeeder(QtCore.QObject):
                 self._reset_sink()
                 self._pos = float(max(0.0, min(self._len, heard_pos)))
             self._scratching = True
+            self._follow_flush_interval()
             self._scratch_target = self._pos
             self._grab_frame = self._pos
             self._polling = False
@@ -312,11 +319,16 @@ class PCMFeeder(QtCore.QObject):
         self._drain_poller()
         self._stop_polling()
         self._scratching = False
+        self._follow_flush_interval()
         self._pos = self._scratch_target
         if not self._playing:
             self._seeked_while_paused = True
             self._timeline.hold_silence_at(self._pos)
             self._audible_until = self._timeline.rendered_frames + self._device_tail_frames
+
+    def _follow_flush_interval(self) -> None:
+        if self._flush_timer is not None:
+            self._flush_timer.setInterval(self.FLUSH_SCRATCH_MS if self._scratching else self.FLUSH_MS)
 
     def scratch_to(self, frame: float, at: float) -> None:
         """The hand had moved the record to ``frame`` at time ``at``

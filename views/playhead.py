@@ -6,10 +6,18 @@ from core.beat_geometry import downbeat_beat_indices, bar_beat_label
 
 class _OutlinedText(QtWidgets.QGraphicsTextItem):
     """Plain text drawn with a black outline (stroke under the fill), so the bar
-    label stays readable over the waveform."""
+    label stays readable over the waveform. Drawn once into Qt's item cache and
+    copied while it only moves (the labels move every frame, their text changes
+    at most once a beat; outlining text is the main view's dearest drawing)."""
 
     OUTLINE = QtGui.QColor(0, 0, 0)
     OUTLINE_W = 3.0
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setCacheMode(QtWidgets.QGraphicsItem.CacheMode.DeviceCoordinateCache)
+        self._path_key = None
+        self._path = QtGui.QPainterPath()
 
     def paint(self, painter, option, widget=None):
         text = self.toPlainText()
@@ -17,8 +25,12 @@ class _OutlinedText(QtWidgets.QGraphicsTextItem):
             return
         font = self.font()
         margin = self.document().documentMargin()
-        path = QtGui.QPainterPath()
-        path.addText(margin, margin + QtGui.QFontMetricsF(font).ascent(), font, text)
+        key = (text, font.key(), margin)
+        if key != self._path_key:
+            self._path = QtGui.QPainterPath()
+            self._path.addText(margin, margin + QtGui.QFontMetricsF(font).ascent(), font, text)
+            self._path_key = key
+        path = self._path
         painter.setRenderHint(QtGui.QPainter.Antialiasing, True)
         pen = QtGui.QPen(self.OUTLINE, self.OUTLINE_W)
         pen.setJoinStyle(QtCore.Qt.RoundJoin)

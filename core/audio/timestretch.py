@@ -243,7 +243,8 @@ class _PercussionTrack:
         lo = max(0, left)
         hi = min(int(source.shape[0]), left + window)
         if hi > lo:
-            frame[lo - left:hi - left] = np.mean(source[lo:hi], axis=1)
+            # np.mean's own sum and division, without its per-call overhead (the same values)
+            frame[lo - left:hi - left] = np.add.reduce(source[lo:hi], axis=1) / source.shape[1]
         spectrum = np.asarray(rfft(frame * self._hann, n=self._n_fft) * self._ramp, dtype=np.complex64)
         kernels = _ready_numba_kernels() if self._config.numba_acceleration else None
         if kernels is not None:

@@ -2,8 +2,9 @@
 
 Imported only by the time stretcher's warm-up thread (compiling here keeps numba out
 of the audio thread). The phase kernel is ported from the SELEBI tuning prototype
-(v3.1): discrete-edge RTPGHI (phase vocoder done right) with a heap shared by all
-channels, identity phase locking around joint spectral peaks and a shared per-bin
+(v3.1): discrete-edge RTPGHI (phase vocoder done right), its integration order shared
+by all channels (the bins reached in time sorted once, those reached in frequency in a
+small heap), identity phase locking around joint spectral peaks and a shared per-bin
 stereo rotation. The other kernels fuse the per-frame polar/rectangular conversions
 and the percussive-ratio detector.
 """
@@ -21,46 +22,48 @@ def _wrap(value):
     return value - _TWO_PI * np.rint(value / _TWO_PI)
 
 
-# Min-heap of (key, item): key = -magnitude, item = 2 * bin + flag (flag 0: reached
-# in time, 1: reached in frequency). Ties sort by item, as the prototype's
-# (magnitude, flag, bin) tuples do for a given bin.
+# Min-heap of one int64 per entry: the bits of -magnitude's order (magnitudes are nonnegative float32, whose
+# bit patterns sort as their values: (0xFFFFFFFF - bits) sorts as -magnitude) shifted above an item = 2 * bin +
+# flag (flag 0: reached in time, 1: reached in frequency). Ties sort by item, as the prototype's (magnitude,
+# flag, bin) tuples do for a given bin; one integer comparison per step instead of a (key, item) pair.
+_ITEM_BITS = 15   # items up to 2 * bins + 1 < 2 ** 15 (bins <= 16384: an FFT up to 32768 points)
+
+
 @njit(cache=True, inline="always")
-def _sift_down(keys, items, start, size):
-    key = keys[start]
-    item = items[start]
+def _entry(magnitude_bits, item):
+    return ((np.int64(0xFFFFFFFF) - np.int64(magnitude_bits)) << _ITEM_BITS) | np.int64(item)
+
+
+@njit(cache=True, inline="always")
+def _sift_down(heap, start, size):
+    entry = heap[start]
     parent = start
     while True:
         child = 2 * parent + 1
         if child >= size:
             break
         right = child + 1
-        if right < size and (
-            keys[right] < keys[child] or (keys[right] == keys[child] and items[right] < items[child])
-        ):
+        if right < size and heap[right] < heap[child]:
             child = right
-        if keys[child] < key or (keys[child] == key and items[child] < item):
-            keys[parent] = keys[child]
-            items[parent] = items[child]
+        if heap[child] < entry:
+            heap[parent] = heap[child]
             parent = child
         else:
             break
-    keys[parent] = key
-    items[parent] = item
+    heap[parent] = entry
 
 
 @njit(cache=True, inline="always")
-def _push(keys, items, size, key, item):
+def _push(heap, size, entry):
     child = size
     while child > 0:
         parent = (child - 1) // 2
-        if key < keys[parent] or (key == keys[parent] and item < items[parent]):
-            keys[child] = keys[parent]
-            items[child] = items[parent]
+        if entry < heap[parent]:
+            heap[child] = heap[parent]
             child = parent
         else:
             break
-    keys[child] = key
-    items[child] = item
+    heap[child] = entry
     return size + 1
 
 
@@ -99,23 +102,30 @@ def rtpghi_frame(
         max_magnitude = max(max_magnitude, previous_joint[m], joint[m])
     floor = tolerance * max_magnitude
 
+    joint_bits = joint.view(np.uint32)
+    previous_bits = previous_joint.view(np.uint32)
+    item_mask = (np.int64(1) << _ITEM_BITS) - 1
     remaining = np.zeros(bins, dtype=np.bool_)
     remaining_count = 0
-    keys = np.empty(2 * bins + 4, dtype=np.float64)
-    items = np.empty(2 * bins + 4, dtype=np.int64)
-    size = 0
+    # The bins reached in time are known before the loop: sorted once and read in order. Only the entries
+    # reached in frequency, made as the loop goes, need a heap (a small one: a bin's neighbours come up
+    # soon). Each step takes the smaller head of the two; the keys are all distinct, so the order is that
+    # of one heap holding both.
+    seeds = np.empty(bins, dtype=np.int64)
+    seed_count = 0
     for m in range(bins):
         if joint[m] > floor:
             remaining[m] = True
             remaining_count += 1
-            keys[size] = -previous_joint[m]
-            items[size] = 2 * m
-            size += 1
-    for index in range(size // 2 - 1, -1, -1):
-        _sift_down(keys, items, index, size)
+            seeds[seed_count] = _entry(previous_bits[m], 2 * m)
+            seed_count += 1
+    seeds = np.sort(seeds[:seed_count])
+    next_seed = 0
+    heap = np.empty(2 * bins + 4, dtype=np.int64)
+    size = 0
 
     while remaining_count > 0:
-        if size == 0:
+        if size == 0 and next_seed >= seed_count:
             # Numerical safety only: every active bin was seeded above.
             m = 0
             while m < bins and not remaining[m]:
@@ -126,14 +136,17 @@ def rtpghi_frame(
                 out[c, m] = previous_synthesis[c, m] + omega * hs + local_stretch * residual
             remaining[m] = False
             remaining_count -= 1
-            size = _push(keys, items, size, -joint[m], 2 * m + 1)
+            size = _push(heap, size, _entry(joint_bits[m], 2 * m + 1))
 
-        item = items[0]
-        size -= 1
-        if size > 0:
-            keys[0] = keys[size]
-            items[0] = items[size]
-            _sift_down(keys, items, 0, size)
+        if size > 0 and (next_seed >= seed_count or heap[0] < seeds[next_seed]):
+            item = heap[0] & item_mask
+            size -= 1
+            if size > 0:
+                heap[0] = heap[size]
+                _sift_down(heap, 0, size)
+        else:
+            item = seeds[next_seed] & item_mask
+            next_seed += 1
         m = item >> 1
 
         if (item & 1) == 0:
@@ -144,7 +157,7 @@ def rtpghi_frame(
                     out[c, m] = previous_synthesis[c, m] + omega * hs + local_stretch * residual
                 remaining[m] = False
                 remaining_count -= 1
-                size = _push(keys, items, size, -joint[m], 2 * m + 1)
+                size = _push(heap, size, _entry(joint_bits[m], 2 * m + 1))
             continue
 
         up = m + 1
@@ -153,7 +166,7 @@ def rtpghi_frame(
                 out[c, up] = out[c, m] + local_stretch * _wrap(analysis[c, up] - analysis[c, m])
             remaining[up] = False
             remaining_count -= 1
-            size = _push(keys, items, size, -joint[up], 2 * up + 1)
+            size = _push(heap, size, _entry(joint_bits[up], 2 * up + 1))
 
         down = m - 1
         if down >= 0 and remaining[down]:
@@ -161,7 +174,7 @@ def rtpghi_frame(
                 out[c, down] = out[c, m] - local_stretch * _wrap(analysis[c, m] - analysis[c, down])
             remaining[down] = False
             remaining_count -= 1
-            size = _push(keys, items, size, -joint[down], 2 * down + 1)
+            size = _push(heap, size, _entry(joint_bits[down], 2 * down + 1))
 
     # Identity phase locking: bins follow the phase of their region's peak.
     if lock_strength > 0.0 and bins >= 3:
