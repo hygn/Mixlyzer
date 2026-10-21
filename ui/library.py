@@ -18,6 +18,7 @@ from ui.export import ExportTrackPanel
 from ui.reanalyze_dialog import ReanalyzeDialog
 from ui.theme import current_theme
 from ui.edit_panel.key_picker import KeyPickButton
+from ui.edit_panel.flash import flash
 from core.thumbnails import delete_thumbnail, load_thumbnail
 from core.i18n import tr, tr_mark, tr_n
 
@@ -1682,7 +1683,9 @@ class LibraryWidget(QtWidgets.QWidget):
     def _build_track_panel(self) -> QtWidgets.QHBoxLayout:
         self.edit_panel = EditTrackPanel(bus=self.bus, libpath=self.cfg.libconfig.libpath,
                                          search_settings=lambda: self.cfg.searchconfig)
-        self.export_panel = ExportTrackPanel(self.cfg.libconfig.libpath, model=self.model)
+        self.export_panel = ExportTrackPanel(
+            self.cfg.libconfig.libpath, model=self.model, bus=self.bus,
+            unapplied_edits=lambda uid: self.edit_panel.track_uid() == uid and self.edit_panel.has_changes())
         self.panel_stack = QtWidgets.QStackedWidget()
         self.panel_stack.addWidget(self.edit_panel)
         self.panel_stack.addWidget(self.export_panel)
@@ -1798,6 +1801,7 @@ class LibraryWidget(QtWidgets.QWidget):
             "library.locate_loaded": self._select_loaded_track,
             "library.edit_track": self._edit_selected,
             "library.export_track": self._export_selected,
+            "library.write_tags": self._write_tags_selected,
             "library.reveal": self._reveal_selected,
             "library.new_playlist": self._create_playlist,
             "library.reanalyze": self._reanalyze_selected,
@@ -2167,6 +2171,13 @@ class LibraryWidget(QtWidgets.QWidget):
     def _export_selected(self):
         if self._selected_uids():
             self.open_track_panel(self.EXPORT_TAB)
+
+    def _write_tags_selected(self):
+        """The Export tab with the selected track, its checked fields written into the file's tags."""
+        if self._selected_uids():
+            self.open_track_panel(self.EXPORT_TAB, focus=False)
+            flash(self.export_panel.btn_write_tags)
+            self.export_panel.write_tags()
 
     # Reanalyze
     def _reanalyze_selected(self):

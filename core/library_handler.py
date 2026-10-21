@@ -290,6 +290,20 @@ class LibraryDB:
             FOREIGN KEY (track_uid) REFERENCES tracks(uid) ON DELETE CASCADE
         );
         """)
+        # Where the track's file holds each of its title / artist / album / comment (the analysis's
+        # reading: core.audio.tag_writer's spellings, as "vorbis:PERFORMER" or "mp4:titl"; one row with
+        # source "" when none does: a title from the file name, a field read empty): the file's tags are
+        # written back there. BPM and key are not read from the tags.
+        self._conn.execute("""
+        CREATE TABLE IF NOT EXISTS track_tag_sources (
+            track_uid TEXT NOT NULL,
+            field     TEXT NOT NULL,
+            slot      INTEGER NOT NULL,
+            source    TEXT NOT NULL,
+            PRIMARY KEY (track_uid, field, slot),
+            FOREIGN KEY (track_uid) REFERENCES tracks(uid) ON DELETE CASCADE
+        );
+        """)
         self._conn.execute("""
         CREATE TABLE IF NOT EXISTS track_bpm_segments (
             id            INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -479,6 +493,28 @@ class LibraryDB:
         self.upsert(row)
         return row.uid
 
+    def set_tag_sources(self, uid: str, sources: Dict[str, List[str]]) -> None:
+        """Where the track's file holds each field given (``tag_writer.tag_sources``: field -> spellings, []
+        none); the fields not given as they are."""
+        uid = _canonical_uuid4(uid)
+        with self.tx():
+            for field, places in sources.items():
+                self.conn.execute("DELETE FROM track_tag_sources WHERE track_uid=? AND field=?;", (uid, field))
+                rows = [(uid, field, i, str(s)) for i, s in enumerate(places)] or [(uid, field, 0, "")]
+                self.conn.executemany(
+                    "INSERT INTO track_tag_sources(track_uid, field, slot, source) VALUES(?, ?, ?, ?);", rows)
+
+    def tag_sources(self, uid: str) -> Dict[str, List[str]]:
+        """field -> where the track's file holds it, for the fields recorded ([]: in none of its tags)."""
+        uid = _canonical_uuid4(uid)
+        out: Dict[str, List[str]] = {}
+        for field, source in self.conn.execute(
+                "SELECT field, source FROM track_tag_sources WHERE track_uid=? ORDER BY field, slot;", (uid,)):
+            out.setdefault(field, [])
+            if source:
+                out[field].append(source)
+        return out
+
     def upsert_many(self, rows: Iterable[TrackRow]):
         with self.tx():
             for row in rows:
@@ -561,6 +597,8 @@ class LibraryDB:
                 "file_size=COALESCE(?, file_size) WHERE uid=?;",
                 (path, *stats, uid),
             )
+            # another file: where it holds the fields is found again when its tags are written
+            self.conn.execute("DELETE FROM track_tag_sources WHERE track_uid=?;", (uid,))
 
     # Playlists. Both playlists and their entries carry explicit indexes so the
     # user's order is stable and independent of the library table's sorting. An

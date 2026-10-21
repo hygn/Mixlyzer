@@ -119,6 +119,9 @@ ACTIONS: tuple[Action, ...] = (
            tip=tr_mark("The track panel's Edit tab with the selected track, its first field focused.")),
     Action("library.export_track", LIBRARY, tr_mark("Export Track"),
            tip=tr_mark("The track panel's Export tab with the selected track, focused.")),
+    Action("library.write_tags", LIBRARY, tr_mark("Write Tags to File"),
+           tip=tr_mark("The selected track's stored values written into its audio file's tags: the fields checked "
+                       "in the track panel's Export tab.")),
     Action("library.reveal", LIBRARY, tr_mark("Show in Explorer") if os_support.IS_WINDOWS else
            tr_mark("Show in Finder") if os_support.IS_MACOS else tr_mark("Show in File Manager")),
     Action("library.new_playlist", LIBRARY, tr_mark("New Playlist")),

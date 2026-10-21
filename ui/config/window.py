@@ -158,6 +158,7 @@ class SettingsDialog(
         self.ed_logpath.setText(cfg.libconfig.logpath)
         self.cb_rekordbox_sync.setChecked(bool(cfg.libconfig.rekordbox_sync_enabled))
         self.ed_rekordbox_xml_path.setText(cfg.libconfig.rekordbox_xml_path)
+        self.sp_rekordbox_ramp_tolerance_ms.setValue(float(cfg.libconfig.rekordbox_ramp_tolerance_ms))
 
         # search
         self._set_search_config(cfg.searchconfig)
@@ -327,6 +328,7 @@ class SettingsDialog(
                 logpath=self.ed_logpath.text().strip(),
                 rekordbox_sync_enabled=bool(self.cb_rekordbox_sync.isChecked()),
                 rekordbox_xml_path=self.ed_rekordbox_xml_path.text().strip(),
+                rekordbox_ramp_tolerance_ms=float(self.sp_rekordbox_ramp_tolerance_ms.value()),
             ),
             viewconfig=viewconfig(
                 language=self._get_language(),

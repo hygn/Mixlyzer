@@ -16,6 +16,9 @@ class libconfig:
     logpath: str
     rekordbox_sync_enabled: bool
     rekordbox_xml_path: str
+    # How far (ms) the XML's steps of steady tempo standing in for a tempo ramp may put a beat from the
+    # ramp's (0: a step per beat).
+    rekordbox_ramp_tolerance_ms: float
 
 
 @dataclass
@@ -333,6 +336,7 @@ def default_cfg():
         write_log=False,
         rekordbox_sync_enabled=True,
         rekordbox_xml_path="./rekordbox.xml",
+        rekordbox_ramp_tolerance_ms=1.0,
     )
     acfg = analysisconfig(
         bpm_min=100,

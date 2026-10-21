@@ -518,7 +518,7 @@ class AppWindow(QtWidgets.QMainWindow):
             self.pane.lib.set_config(_config)
         rekordbox_cfg_changed = any(
             prev_lcfg.get(k) != new_lcfg.get(k)
-            for k in ("rekordbox_sync_enabled", "rekordbox_xml_path")
+            for k in ("rekordbox_sync_enabled", "rekordbox_xml_path", "rekordbox_ramp_tolerance_ms")
         )
         if (
             rekordbox_cfg_changed

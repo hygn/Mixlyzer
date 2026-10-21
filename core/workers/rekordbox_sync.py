@@ -25,6 +25,7 @@ class RekordboxSyncRequest:
     library_dir: Path
     xml_path: Path
     mode: str
+    ramp_tolerance_ms: float = 0.0
     full_rebuild: bool = False
     rows: tuple[TrackRow, ...] = ()
     uid: str = ""
@@ -153,6 +154,7 @@ class _RekordboxSyncEngine:
             self._load_features(row.uid),
             resolve_path=self._resolve_audio_path,
             extra_attributes={"MixlyzerUID": str(row.uid or ""), "MixlyzerHash": track_hash},
+            ramp_tolerance_sec=max(0.0, float(self.request.ramp_tolerance_ms)) / 1000.0,
         )
 
     def _write(self, document: RekordboxXmlDocument) -> None:
@@ -172,6 +174,7 @@ class _RekordboxSyncEngine:
 
     def _track_hash(self, row: TrackRow) -> str:
         parts = [str(v) for k, v in sorted(asdict(row).items())]
+        parts.append(f"ramp_tolerance_ms={float(self.request.ramp_tolerance_ms):g}")   # the TEMPO steps
         uid = str(row.uid or "").strip()
         npz_path = Path(self.store.path(uid)) if uid else None
         if npz_path is not None and npz_path.exists():

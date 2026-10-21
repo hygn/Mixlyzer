@@ -3,6 +3,7 @@ import os
 from PySide6 import QtCore, QtWidgets
 from PySide6.QtWidgets import (
     QCheckBox,
+    QDoubleSpinBox,
     QFormLayout,
     QGroupBox,
     QLabel,
@@ -38,6 +39,16 @@ def build_library_tab(dialog) -> None:
     dialog.ed_logpath = QLineEdit()
     dialog.cb_rekordbox_sync = QCheckBox(tr("Sync with Rekordbox XML"))
     dialog.ed_rekordbox_xml_path = QLineEdit()
+    dialog.sp_rekordbox_ramp_tolerance_ms = QDoubleSpinBox()
+    dialog.sp_rekordbox_ramp_tolerance_ms.setRange(0.0, 20.0)
+    dialog.sp_rekordbox_ramp_tolerance_ms.setDecimals(1)
+    dialog.sp_rekordbox_ramp_tolerance_ms.setSingleStep(0.5)
+    dialog.sp_rekordbox_ramp_tolerance_ms.setSuffix(" ms")
+    dialog.sp_rekordbox_ramp_tolerance_ms.setToolTip(tr(
+        "<p>Rekordbox has no tempo ramps: a ramp is written as steps of steady tempo. A step covers as many "
+        "beats as stay within this many milliseconds of Mixlyzer's beats, one beat at least (0: a step per "
+        "beat).</p>"
+    ))
     dialog.btn_rekordbox_sync_now = QPushButton(tr("Sync Now"))
     dialog.lbl_log_note = QLabel(tr("Logging settings apply on next app launch."))
     dialog.lbl_rekordbox_note = QLabel(tr("Use Sync Now to rebuild the whole XML explicitly."))
@@ -83,6 +94,7 @@ def build_library_tab(dialog) -> None:
     f_rekordbox = QFormLayout(grp_rekordbox)
     f_rekordbox.addRow(dialog.cb_rekordbox_sync)
     f_rekordbox.addRow(tr("XML Path"), dialog.ed_rekordbox_xml_path)
+    f_rekordbox.addRow(tr("Tempo ramp tolerance"), dialog.sp_rekordbox_ramp_tolerance_ms)
     f_rekordbox.addRow("", dialog.btn_rekordbox_sync_now)
     f_rekordbox.addRow(dialog.lbl_rekordbox_note)
 
@@ -184,6 +196,8 @@ class LibrarySettingsMixin:
             != bool(cfg.libconfig.rekordbox_sync_enabled)
             or str(previous_libcfg.rekordbox_xml_path).strip()
             != str(cfg.libconfig.rekordbox_xml_path).strip()
+            or float(previous_libcfg.rekordbox_ramp_tolerance_ms)
+            != float(cfg.libconfig.rekordbox_ramp_tolerance_ms)
         )
         if self._rekordbox_sync_dialog is not None:
             self._rekordbox_sync_dialog.deleteLater()

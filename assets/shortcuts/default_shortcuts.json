@@ -153,6 +153,9 @@
   "library.export_track": [
     "X"
   ],
+  "library.write_tags": [
+    "Ctrl+Shift+T"
+  ],
   "library.reveal": [
     "Alt+E"
   ],

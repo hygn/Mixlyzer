@@ -16,6 +16,8 @@ from core.library_handler import TrackRow
 from utils.labels import idx_to_labels
 from utils.jump_cues import extract_jump_cue_graph
 from core.tempo_rows import is_ramp_row, ramp_beat_times, segment_end_bpm
+from utils.cue_points import extract_cue_points
+from utils.jumpcue_colors import get_cue_point_color
 
 ResolvePath = Callable[[str | None], Optional[Path]]
 
@@ -34,13 +36,17 @@ def build_rekordbox_track_element(
     resolve_path: ResolvePath,
     audio_path: Optional[Path] = None,
     extra_attributes: dict[str, str] | None = None,
+    ramp_tolerance_sec: float = 0.0,
 ) -> ET.Element:
-    """Build the canonical Rekordbox ``TRACK`` element for every export path."""
+    """Build the canonical Rekordbox ``TRACK`` element for every export path: the JumpCUEs as hot cues,
+    the CUE points as memory cues. ``ramp_tolerance_sec``: how far a tempo ramp's steps may put a beat
+    from the ramp's (0: a step per beat; ``_ramp_tempo_entries``)."""
 
     tempo_segments = _extract_tempo_segments(features)
     duration = _get_duration(track, features)
     average_bpm = _compute_average_bpm(track, tempo_segments, features)
     position_marks = _extract_jump_marks(features)
+    memory_cues = _extract_memory_cues(features)
 
     if duration <= 0 and tempo_segments.size:
         duration = float(np.max(tempo_segments[:, 1]))
@@ -111,7 +117,7 @@ def build_rekordbox_track_element(
         track_attrs.update({str(key): str(value) for key, value in extra_attributes.items()})
     track_elem = ET.Element("TRACK", track_attrs)
 
-    tempo_entries = _tempo_entries_for_xml(tempo_segments, average_bpm)
+    tempo_entries = _tempo_entries_for_xml(tempo_segments, average_bpm, ramp_tolerance_sec)
     for tempo in tempo_entries:
         ts_num = int(tempo["time_sig"])
         ET.SubElement(
@@ -140,6 +146,21 @@ def build_rekordbox_track_element(
             Type="0",
             Start=f"{mark['start']:.3f}",
             Num=str(num_value),
+            Red=str(color[0]),
+            Green=str(color[1]),
+            Blue=str(color[2]),
+        )
+
+    # memory cues: no slot (Num -1), in time order
+    for cue in memory_cues:
+        color = cue["color"]
+        ET.SubElement(
+            track_elem,
+            "POSITION_MARK",
+            Name=cue["name"],
+            Type="0",
+            Start=f"{cue['start']:.3f}",
+            Num="-1",
             Red=str(color[0]),
             Green=str(color[1]),
             Blue=str(color[2]),
@@ -317,9 +338,22 @@ def _extract_jump_marks(features: dict[str, np.ndarray]) -> list[dict[str, objec
     return marks
 
 
+def _extract_memory_cues(features: dict[str, np.ndarray]) -> list[dict[str, object]]:
+    """The CUE points as memory cues: their names and colours, in time order."""
+    return [
+        {
+            "name": str(point["label"]).strip(),
+            "start": float(point["time_sec"]),
+            "color": get_cue_point_color(int(point["color_idx"])),
+        }
+        for point in extract_cue_points(features)
+    ]
+
+
 def _tempo_entries_for_xml(
     tempo_segments: np.ndarray,
     fallback_bpm: float,
+    ramp_tolerance_sec: float = 0.0,
 ) -> list[dict[str, float]]:
     """Build TEMPO entries describing beat start and bar alignment.
 
@@ -334,7 +368,7 @@ def _tempo_entries_for_xml(
             if not np.isfinite(start) or start < 0:
                 continue
             if len(seg) >= 6 and is_ramp_row(seg) and np.isfinite(seg[3]):
-                entries.extend(_ramp_tempo_entries(seg))
+                entries.extend(_ramp_tempo_entries(seg, ramp_tolerance_sec))
                 continue
             bpm_val = (
                 float(bpm)
@@ -391,9 +425,13 @@ def _tempo_entries_for_xml(
     return entries
 
 
-def _ramp_tempo_entries(seg) -> list[dict[str, float]]:
-    """One TEMPO entry per beat of a tempo ramp: each holds the BPM that reaches the next
-    beat exactly, and its Battito counts the bar from the ramp's downbeat (``inizio``)."""
+def _ramp_tempo_entries(seg, tolerance_sec: float = 0.0) -> list[dict[str, float]]:
+    """A tempo ramp as steps of steady tempo (Rekordbox has no ramps), one TEMPO entry each. A step
+    starts on a beat of the ramp and its BPM reaches the next step's first beat; it takes in the beats
+    after its first while every beat it gives stays within ``tolerance_sec`` of the ramp's, one beat at
+    least (0: a step per beat). Measured as the XML has them: Inizio in ms, the BPM rounded down to
+    0.01 (a step's last beat then never falls just before the next step's first). Battito counts the
+    bar from the ramp's downbeat (``inizio``)."""
     start, end, bpm, inizio = (float(v) for v in seg[:4])
     ts_num = int(round(float(seg[4]))) if np.isfinite(seg[4]) and seg[4] >= 1 else 4
     end_bpm = segment_end_bpm(seg)
@@ -403,24 +441,42 @@ def _ramp_tempo_entries(seg) -> list[dict[str, float]]:
     if line_end <= 0:
         line_end = end_bpm
     beats = ramp_beat_times(start, reach, bpm, line_end, inizio, reach)
-    inside = beats[beats < end]
-    if inside.size == 0 or beats.size <= inside.size:
+    count = int(np.count_nonzero(beats < end))
+    if count == 0 or beats.size <= count:
         return []
     ref = int(np.argmin(np.abs(beats - inizio)))
+    written = np.round(beats[: count + 1], 3)   # the steps' Inizio as written
     out = []
-    for k, beat in enumerate(inside):
-        period = float(beats[k + 1] - beat)
-        if period <= 0:
-            continue
-        out.append(
-            {
-                "start": float(beat),
-                "bpm": 60.0 / period,
-                "battito": int((k - ref) % ts_num) + 1,
-                "time_sig": ts_num,
-            }
-        )
+    i = 0
+    while i < count:
+        j = i + 1
+        step_bpm = _step_bpm(written, i, j)
+        while j < count:
+            longer = _step_bpm(written, i, j + 1)
+            if longer <= 0:
+                break
+            given = written[i] + np.arange(j + 1 - i) * (60.0 / longer)
+            if float(np.max(np.abs(given - beats[i : j + 1]))) > tolerance_sec:
+                break
+            j, step_bpm = j + 1, longer
+        if step_bpm > 0:
+            out.append(
+                {
+                    "start": float(written[i]),
+                    "bpm": step_bpm,
+                    "battito": int((i - ref) % ts_num) + 1,
+                    "time_sig": ts_num,
+                }
+            )
+        i = j
     return out
+
+
+def _step_bpm(written: np.ndarray, first: int, after: int) -> float:
+    """The BPM of a step from beat ``first`` reaching beat ``after`` (Inizio as written), rounded down
+    to 0.01 as the XML writes it."""
+    span = float(written[after] - written[first])
+    return math.floor(6000.0 * (after - first) / span) / 100.0 if span > 0 else 0.0
 
 
 def _compute_average_bpm(

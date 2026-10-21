@@ -81,6 +81,7 @@ class RekordboxXmlSync(QtCore.QObject):
             library_dir=Path(str(libcfg.libpath)).expanduser(),
             xml_path=Path(xml_path_text).expanduser(),
             mode=mode,
+            ramp_tolerance_ms=float(libcfg.rekordbox_ramp_tolerance_ms),
             **kwargs,
         )
 

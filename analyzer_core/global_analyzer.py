@@ -29,6 +29,7 @@ from utils.cue_points import (
 from utils.phrases import build_phrase_segments_np
 from core.audio.decoder import decode_to_memmap, get_total_samples
 from core.library_handler import LibraryDB
+from core.audio.tag_writer import TagWriteError, tag_format, tag_sources
 from core.analysis_lib_handler import FeatureNPZStore
 from core.thumbnails import save_thumbnail
 from core.config import ANALYSIS_SAMPLE_RATE, config
@@ -207,6 +208,16 @@ def extract_tags(path: str) -> tuple[str, str, str, str]:
         return title, artist, album, comment
 
 
+def read_tag_sources(path: str, title: str, artist: str, album: str, comment: str) -> dict:
+    """Where the file holds the values read (``extract_tags``): field -> tag_writer spellings ({}: a file whose
+    tags are not written)."""
+    read = {"title": title, "artist": artist, "album": album, "comment": comment}
+    try:
+        return tag_sources(path, read) if tag_format(path) is not None else {}
+    except TagWriteError:
+        return {}
+
+
 def _merge_track_properties(properties: dict, track, *, preserve_existing: bool) -> dict:
     if not (preserve_existing and track):
         return properties
@@ -229,6 +240,8 @@ def _persist_analysis_result(
     uid = library.upsert_meta(properties)
     library.conn.commit()
     properties["uid"] = uid
+    if properties.get("tag_sources"):
+        library.set_tag_sources(uid, properties["tag_sources"])
     if bpm_segments is not None:
         library.replace_bpm_segments(uid, bpm_segments)
         library.conn.commit()
@@ -293,6 +306,7 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
             pass
     
     title, artist, album, comment = extract_tags(path)
+    sources = read_tag_sources(path, title, artist, album, comment)
     yield {"status": tr("Loading")}
     print("[Analyzer] Analysis Initalized")
     gcf = config.analysisconfig
@@ -551,6 +565,7 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
         "comment": comment,
         "file_mtime": float(fmtime),
         "file_size": int(fsize),
+        "tag_sources": sources,
     }
     properties = _merge_track_properties(properties, track, preserve_existing=bool(force_analyze and track is not None))
     if track and track.uid:
