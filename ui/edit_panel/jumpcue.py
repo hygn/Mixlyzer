@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import time
 
 import numpy as np
 from PySide6 import QtCore, QtWidgets
@@ -20,6 +21,9 @@ JUMPCUE_SLOTS = 26
 # A jump is offered the next beats; the player jumps on the first one its render
 # head (ahead of what is heard) has not passed yet.
 JUMP_CANDIDATE_BEATS = 8
+# A jump is played (rendered) ahead of what is heard: for this long after one the playhead shown may still be
+# before it, so a jump armed then is also offered the beats after where the last one landed (tapped in a row).
+JUMP_LANDING_SEC = 0.5
 
 
 def _jumpcue_name(cue: dict) -> str:
@@ -146,28 +150,37 @@ class JumpCUEEditMixin:
             self._jc_jump_cue(cue)
 
     def _jc_jump_cue(self, cue: dict) -> None:
-        """Playing: jump to the cue on the next beat (again: cancel). Stopped: move
-        the playhead to it."""
+        """Playing: jump to the cue on the next beat; pressed again before it, the jump stays as it is (tapped
+        in a row, a jump a beat). Stopped: move the playhead to it."""
         dest = float(cue.get("point", 0.0))
         if not getattr(self, "_playing", False):
             self.bus.sig_seek_requested.emit(dest)
             return
         if self._jc_armed is not None and abs(self._jc_armed["dest"] - dest) < 1e-3:
-            self._disarm_jumpcue()
-            self._refresh_jumpcue_slots()
             return
         beats = np.asarray(self._beatgrid, dtype=float)
-        now = float(self._current_time)
-        ahead = beats[beats > now][:JUMP_CANDIDATE_BEATS]
-        if ahead.size == 0:
+        bases = [float(self._current_time)]
+        landing = getattr(self, "_jc_landing", None)   # (where the last jump landed, time.monotonic() then)
+        if landing is not None and time.monotonic() - landing[1] < JUMP_LANDING_SEC:
+            bases.append(landing[0])
+        ranges, starts = [], []
+        for base in bases:
+            ahead = beats[beats > base][:JUMP_CANDIDATE_BEATS]
+            if ahead.size:
+                ranges.append((base, float(ahead[-1])))
+                starts.extend(ahead.tolist())
+        if not starts:
             return
-        self.bus.sig_jump_arm.emit({"source": {"point": float(ahead[0])}, "target": {"point": dest},
-                                    "starts": ahead.tolist(), "once": True})
-        self._jc_armed = {"src": float(ahead[-1]), "dest": dest, "from": now}
+        # the player jumps on the first of them its render head has not passed
+        starts = sorted(set(starts))
+        self.bus.sig_jump_arm.emit({"source": {"point": starts[0]}, "target": {"point": dest},
+                                    "starts": starts, "once": True})
+        self._jc_armed = {"dest": dest, "ranges": ranges}
         self._refresh_jumpcue_slots()
 
     def _on_jump_fired(self) -> None:
         if getattr(self, "_jc_armed", None) is not None:
+            self._jc_landing = (self._jc_armed["dest"], time.monotonic())
             self._jc_armed = None
             self._refresh_jumpcue_slots()
 
@@ -177,12 +190,12 @@ class JumpCUEEditMixin:
             self.bus.sig_jump_disarm.emit()
 
     def _follow_jumpcue_arm(self, t: float) -> None:
-        """The armed jump is moot once the playhead leaves the stretch between arming
+        """The armed jump is moot once the playhead leaves the stretches between arming
         and the last candidate beat without jumping: it was moved elsewhere."""
         armed = getattr(self, "_jc_armed", None)
         if armed is None:
             return
-        if armed["from"] - 0.1 <= t <= armed["src"] + 0.02:
+        if any(lo - 0.1 <= t <= hi + 0.02 for lo, hi in armed["ranges"]):
             return
         self._disarm_jumpcue()
         self._refresh_jumpcue_slots()

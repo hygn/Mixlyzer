@@ -3,7 +3,7 @@
 The GUI thread's mouse events come at its own pace (~60 Hz while it repaints, stamped
 when handled) and in whole pixels: a slow drag reaches the platter as a stair of
 speed steps (pitch warble). The poller reads the cursor itself, every ~1 ms, in a
-numba loop that never holds the GIL (core/audio/_cursor_numba.py, its own thread at
+numba loop that never holds the GIL (audioengine/python/_cursor_numba.py, its own thread at
 high priority), and keeps what is exact about a whole-pixel cursor: the moment it
 crosses a pixel boundary, and the pixel it stops on. The events go to a ring buffer
 that the audio thread drains (no Qt events on the way).
@@ -20,7 +20,7 @@ import numpy as np
 
 from core import os_support
 
-_kernels = None    # core.audio._cursor_numba once loaded, False if that failed
+_kernels = None    # audioengine.python._cursor_numba once loaded, False if that failed
 _timer_api = None  # (CreateWaitableTimerExW, CloseHandle, QPC frequency)
 
 STOP_MIN_SEC = 0.015
@@ -59,7 +59,7 @@ def warm_cursor_poller() -> bool:
                 if not timer:
                     raise OSError("no high-resolution waitable timer")
                 try:
-                    from core.audio import _cursor_numba as kernels
+                    from audioengine.python import _cursor_numba as kernels
                     kernels.warm(timer, _timer_api[2])
                 finally:
                     close(timer)

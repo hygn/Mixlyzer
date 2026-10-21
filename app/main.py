@@ -1,3 +1,4 @@
+import gc
 import sys
 from pathlib import Path
 from PySide6 import QtWidgets
@@ -24,6 +25,9 @@ for _stream in (sys.stdout, sys.stderr):
 
 def main():
     one_blas_thread()   # before numpy loads (the startup imports it): none of the imports above does
+    # The audio thread waits for the GIL whenever this (GUI) thread holds it: handed over after 1 ms instead of
+    # Python's 5, so a small output buffer is fed in time (measured: a 20 ms buffer ran dry under GUI work).
+    sys.setswitchinterval(0.001)
     app = QtWidgets.QApplication(sys.argv)
     # the language before any UI is made (or imported: the startup imports the rest)
     i18n.install(ui_language())
@@ -70,6 +74,11 @@ def main():
         sys.exit(1)
     # the slow work first (imports, JIT, FFmpeg, search readers and keys), then the window
     w = run_startup(splash, startup_tasks(cfg))[-1]
+    # Everything the startup made (the library, the search readers' tables: ~470k objects) is kept for good: out
+    # of the garbage collector's scans, whose full pass over them took ~120 ms with every thread stopped (the
+    # audio feed too: a dropout with any buffer under that). Collected once first, so no garbage is kept.
+    gc.collect()
+    gc.freeze()
     center_on_screen(w, splash.screen())   # on the screen the splash is on
     w.show()
     splash.close()

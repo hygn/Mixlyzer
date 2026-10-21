@@ -7,11 +7,11 @@ from typing import Optional
 import numpy as np
 from PySide6 import QtCore, QtMultimedia
 
-from core.audio import cursor_poller
-from core.audio.clicks import ClickTrack
-from core.audio.tones import ToneTrack
-from core.audio.dsp import ScratchPlatter, SpeedResampler, fade_ramp, make_speed_renderer, read_at, soft_clip
-from core.audio.timeline import OutputTimeline
+from audioengine.python import cursor_poller
+from audioengine.python.clicks import ClickTrack
+from audioengine.python.tones import ToneTrack
+from audioengine.python.dsp import ScratchPlatter, SpeedResampler, fade_ramp, make_speed_renderer, read_at, soft_clip
+from audioengine.python.timeline import OutputTimeline
 
 
 class PCMFeeder(QtCore.QObject):
@@ -53,11 +53,14 @@ class PCMFeeder(QtCore.QObject):
     PEAK_FLOOR_DBFS = -24.0
     SOFT_CLIP_KNEE = 0.8
 
-    # The sink is topped up every FLUSH_MS: it holds PlayerController.BUFFER_MS (80), which stays above 70 ms
-    # (a tick wakes this thread: every 1 ms took twice the CPU). While scratching the queue is short (30 ms)
-    # and follows the hand: every FLUSH_SCRATCH_MS.
+    # The sink is topped up every FLUSH_MS: it holds the output buffer (set_buffer_ms; the time stretch wants
+    # 80 ms here), kept within a tick of full (a tick wakes this thread: every 1 ms took twice the CPU). While
+    # scratching the queue is short (30 ms) and follows the hand: every FLUSH_SCRATCH_MS.
     FLUSH_MS = 4
     FLUSH_SCRATCH_MS = 1
+    # The output buffer (ms), Settings > Playback, one size for every path: the sink is opened again at the new
+    # size where it changes.
+    BUFFER_MS_RANGE = (10, 500)
 
     # Displayed playhead (display_frame): nudged toward the heard position by this
     # fraction of the difference per reading; taken as is when they differ by more
@@ -105,6 +108,8 @@ class PCMFeeder(QtCore.QObject):
         # Track
         self._pcm: Optional[np.ndarray] = None   # [N, ch] float32
         self._len: int = 0
+
+        self._buffer_ms = 80.0                              # the output buffer, see set_buffer_ms
 
         # Render head (input frames)
         self._pos: float = 0.0
@@ -211,10 +216,31 @@ class PCMFeeder(QtCore.QObject):
         self._end_out_frame = None
         self._audible_until = 0
         try:
+            self.audio.setBufferSize(self._wanted_buffer_bytes())   # before start(): it takes effect there
             self.dev = self.audio.start()
         except Exception as exc:
             print(f"[Feeder] Audio sink start failed: {exc}")
             self.dev = None
+
+    def set_sink(self, audio: QtMultimedia.QAudioSink) -> None:
+        """Play on ``audio`` (another output device's sink, at the same format) from now: playing, from the
+        frame being heard (as a pause and play)."""
+        playing = self._playing
+        if playing:
+            self.pause()
+        try:
+            self.audio.stop()
+        except Exception:
+            pass
+        self.audio.deleteLater()
+        self.audio = audio
+        self.dev = None
+        self._device_stopped = False
+        self._start_sink()
+        if self._flush_timer is not None and not self._flush_timer.isActive():
+            self._flush_timer.start()
+        if playing:
+            self.play()
 
     def _sink_running(self) -> bool:
         """Restart the sink (at most once per second) only if it died on its own, e.g. device loss."""
@@ -263,6 +289,34 @@ class PCMFeeder(QtCore.QObject):
         # scrubbing the original is played at unity instead (its direct read), and the
         # stretch resumes as soon as scrubbing ends.
         self._unity_while_scrubbing = enabled
+
+    def set_buffer_ms(self, ms: float) -> None:
+        """The output buffer (ms, within BUFFER_MS_RANGE)."""
+        lo, hi = self.BUFFER_MS_RANGE
+        self._buffer_ms = float(min(hi, max(lo, ms)))
+        self._apply_buffer_size()
+
+    def _wanted_buffer_bytes(self) -> int:
+        return max(self._bpf, int(round(self.rate * self._buffer_ms / 1000.0)) * self._bpf)
+
+    def _apply_buffer_size(self) -> None:
+        """Open the sink again at the size wanted now, if it differs: playing, at the frame being heard (as a
+        pause and play); scratching, when released."""
+        if self.dev is None or self._scratching:
+            return
+        try:
+            if int(self.audio.bufferSize()) == self._wanted_buffer_bytes():
+                return
+        except Exception:
+            return
+        if self._playing:
+            self.pause()   # the sink opened again at the new size (_start_sink)
+            self.play()
+        else:
+            stopped = self._device_stopped
+            self._reset_sink()
+            if stopped:
+                self._audible_until = self._timeline.rendered_frames   # idle: suspended again on the next tick
 
     def set_factor(self, f: float) -> None:
         """Applies to audio rendered from now on; queued audio keeps the speed it was rendered at."""
@@ -325,6 +379,7 @@ class PCMFeeder(QtCore.QObject):
             self._seeked_while_paused = True
             self._timeline.hold_silence_at(self._pos)
             self._audible_until = self._timeline.rendered_frames + self._device_tail_frames
+        self._apply_buffer_size()   # changed while scratching
 
     def _follow_flush_interval(self) -> None:
         if self._flush_timer is not None:

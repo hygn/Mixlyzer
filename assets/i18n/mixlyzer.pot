@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-21 12:22+0900\n"
+"POT-Creation-Date: 2026-10-21 21:33+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -161,11 +161,11 @@ msgstr ""
 msgid "Saving Result"
 msgstr ""
 
-#: app/main.py:36
+#: app/main.py:41
 msgid "Unsupported Operating System"
 msgstr ""
 
-#: app/main.py:37
+#: app/main.py:42
 #, python-brace-format
 msgid ""
 "Mixlyzer supports Windows, Linux and macOS; this system ({system}) is not"
@@ -173,21 +173,21 @@ msgid ""
 "It may not work correctly."
 msgstr ""
 
-#: app/main.py:43
+#: app/main.py:48
 msgid "Administrator Execution Blocked"
 msgstr ""
 
-#: app/main.py:44
+#: app/main.py:49
 msgid ""
 "Mixlyzer cannot run with administrator privileges.\n"
 "Close it and launch again as a normal user."
 msgstr ""
 
-#: app/main.py:62
+#: app/main.py:67
 msgid "Incompatible Library Version"
 msgstr ""
 
-#: app/main.py:63
+#: app/main.py:68
 #, python-brace-format
 msgid ""
 "This library cannot be opened by the current app version.\n"
@@ -201,52 +201,52 @@ msgstr ""
 msgid "Starting"
 msgstr ""
 
-#: app/startup.py:182
+#: app/startup.py:207
 msgid "Scratch reader"
 msgstr ""
 
-#: app/startup.py:182
+#: app/startup.py:207
 msgid "Cursor poller"
 msgstr ""
 
-#: app/startup.py:183
+#: app/startup.py:208
 msgid "Time stretch"
 msgstr ""
 
-#: app/startup.py:193
+#: app/startup.py:218
 msgid "ffmpeg: a short silent decode"
 msgstr ""
 
-#: app/startup.py:208
+#: app/startup.py:233
 msgid "library.db: readings"
 msgstr ""
 
-#: app/startup.py:218
+#: app/startup.py:243
 #, python-brace-format
 msgid "Search keys: {tracks} tracks, {done} / {total} readings"
 msgstr ""
 
-#: app/startup.py:233
+#: app/startup.py:258
 msgid "Loading libraries"
 msgstr ""
 
-#: app/startup.py:234
+#: app/startup.py:259
 msgid "Compiling audio kernels (JIT)"
 msgstr ""
 
-#: app/startup.py:235
+#: app/startup.py:260
 msgid "Starting FFmpeg"
 msgstr ""
 
-#: app/startup.py:236
+#: app/startup.py:261
 msgid "Loading search readers"
 msgstr ""
 
-#: app/startup.py:237
+#: app/startup.py:262
 msgid "Loading the library"
 msgstr ""
 
-#: app/startup.py:238
+#: app/startup.py:263
 msgid "Building the window"
 msgstr ""
 
@@ -254,52 +254,52 @@ msgstr ""
 msgid "Core objects and playback"
 msgstr ""
 
-#: app/window.py:102
+#: app/window.py:106
 msgid "Main view, editor and library"
 msgstr ""
 
-#: app/window.py:107 app/window.py:119 ui/config/window.py:63
+#: app/window.py:111 app/window.py:125 ui/config/window.py:63
 msgid "Settings"
 msgstr ""
 
-#: app/window.py:110
+#: app/window.py:116
 msgid "Dialogs, workflows and metronome"
 msgstr ""
 
-#: app/window.py:117
+#: app/window.py:123
 msgid "Transport"
 msgstr ""
 
-#: app/window.py:120 ui/workers.py:24
+#: app/window.py:126 ui/workers.py:24
 msgid "Workers"
 msgstr ""
 
-#: app/window.py:121
+#: app/window.py:127
 msgid "Open Source"
 msgstr ""
 
-#: app/window.py:122
+#: app/window.py:128
 msgid "About"
 msgstr ""
 
-#: app/window.py:226 app/window.py:260 app/window.py:267
+#: app/window.py:233 app/window.py:267 app/window.py:274
 msgid "External Sync is enabled. Local track loading is disabled."
 msgstr ""
 
-#: app/window.py:236
+#: app/window.py:243
 #, python-brace-format
 msgid "Drop error: {error}"
 msgstr ""
 
-#: app/window.py:275
+#: app/window.py:282
 msgid "Track unloaded."
 msgstr ""
 
-#: app/window.py:284
+#: app/window.py:291
 msgid "Track File Not Found"
 msgstr ""
 
-#: app/window.py:288
+#: app/window.py:295
 #, python-brace-format
 msgid ""
 "Cannot load \"{name}\": its file is missing.\n"
@@ -308,50 +308,50 @@ msgid ""
 "Set the file's new location?"
 msgstr ""
 
-#: app/window.py:295
+#: app/window.py:302
 #, python-brace-format
 msgid "Locate {name}"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:594 app/window.py:345
+#: analyzer_core/global_analyzer.py:594 app/window.py:352
 msgid "Finished"
 msgstr ""
 
-#: app/window.py:348 app/window.py:384
+#: app/window.py:355 app/window.py:391
 msgid "Done. Press Play."
 msgstr ""
 
-#: app/window.py:350
+#: app/window.py:357
 msgid "Analysis saved to library."
 msgstr ""
 
-#: app/window.py:482
+#: app/window.py:489
 #, python-brace-format
 msgid "External Sync loading: {file}"
 msgstr ""
 
-#: app/window.py:482
+#: app/window.py:489
 #, python-brace-format
 msgid "External Sync analyzing: {file}"
 msgstr ""
 
-#: app/window.py:498
+#: app/window.py:505
 msgid "Memory Sync Disabled"
 msgstr ""
 
-#: app/window.py:743 ui/config/external_sync.py:127
+#: app/window.py:752 ui/config/external_sync.py:127
 msgid "Time Sync"
 msgstr ""
 
-#: app/window.py:743 ui/config/external_sync.py:127
+#: app/window.py:752 ui/config/external_sync.py:127
 msgid "Sample Index Sync"
 msgstr ""
 
-#: app/window.py:745
+#: app/window.py:754
 msgid "manual"
 msgstr ""
 
-#: app/window.py:750
+#: app/window.py:759
 #, python-brace-format
 msgid "External Sync enabled via {target}. Local play/load is locked."
 msgstr ""
@@ -449,63 +449,63 @@ msgstr ""
 msgid "Playlist name cannot be empty"
 msgstr ""
 
-#: core/reading.py:58
+#: core/reading.py:59
 msgid "Japanese"
 msgstr ""
 
-#: core/reading.py:58
+#: core/reading.py:59
 msgid "Mandarin"
 msgstr ""
 
-#: core/reading.py:58
+#: core/reading.py:59
 msgid "Taiwan Mandarin"
 msgstr ""
 
-#: core/reading.py:59
+#: core/reading.py:60
 msgid "Cantonese"
 msgstr ""
 
-#: core/reading.py:59
+#: core/reading.py:60
 msgid "Korean Hanja"
 msgstr ""
 
-#: core/reading.py:59
+#: core/reading.py:60
 msgid "Sino-Vietnamese"
 msgstr ""
 
-#: core/reading.py:60
+#: core/reading.py:61
 msgid "Korean"
 msgstr ""
 
-#: core/reading.py:60
+#: core/reading.py:61
 msgid "as written"
 msgstr ""
 
-#: core/reading.py:60
+#: core/reading.py:61
 msgid "set by the user"
 msgstr ""
 
-#: core/reading.py:521
+#: core/reading.py:546
 msgid "Japanese (SudachiDict)"
 msgstr ""
 
-#: core/reading.py:522
+#: core/reading.py:547
 msgid "Mandarin (pypinyin)"
 msgstr ""
 
-#: core/reading.py:523
+#: core/reading.py:548
 msgid "Cantonese (pycantonese)"
 msgstr ""
 
-#: core/reading.py:524
+#: core/reading.py:549
 msgid "Korean Hanja (Unihan)"
 msgstr ""
 
-#: core/reading.py:525
+#: core/reading.py:550
 msgid "Sino-Vietnamese (Unihan)"
 msgstr ""
 
-#: core/workers/analysis.py:119
+#: core/workers/analysis.py:124
 #, python-brace-format
 msgid "Analysis process exited unexpectedly ({code})."
 msgstr ""
@@ -1125,7 +1125,7 @@ msgid ""
 "for the full license text."
 msgstr ""
 
-#: ui/config/analysis.py:43 ui/config/analysis.py:154 ui/config/playback.py:106
+#: ui/config/analysis.py:43 ui/config/analysis.py:154 ui/config/playback.py:144
 msgid "General"
 msgstr ""
 
@@ -1187,7 +1187,7 @@ msgstr ""
 
 #: ui/config/analysis.py:132 ui/config/analysis.py:169
 #: ui/config/analysis.py:188 ui/config/dialogs/optimization.py:204
-#: ui/config/library.py:101 ui/config/view.py:150
+#: ui/config/library.py:101 ui/config/playback.py:158 ui/config/view.py:150
 msgid "Advanced"
 msgstr ""
 
@@ -2348,147 +2348,232 @@ msgstr ""
 msgid "{name}: open the {tab} settings"
 msgstr ""
 
-#: ui/config/playback.py:30
+#: ui/config/playback.py:34
 msgid "Enable metronome"
 msgstr ""
 
-#: ui/config/playback.py:37
+#: ui/config/playback.py:41
 msgid "Shift metronome clicks relative to the beat (positive = earlier)"
 msgstr ""
 
-#: ui/config/playback.py:46
+#: ui/config/playback.py:50
 msgid "Use timestretch"
 msgstr ""
 
-#: ui/config/playback.py:48
+#: ui/config/playback.py:52
 msgid "Tempo changes keep the pitch (time stretch) instead of varispeed"
 msgstr ""
 
-#: ui/config/playback.py:64
+#: ui/config/playback.py:68
 msgid "Duck music under metronome clicks"
 msgstr ""
 
-#: ui/config/playback.py:67
+#: ui/config/playback.py:71
 msgid "Lowers the music by up to 6 dB, following each click"
 msgstr ""
 
-#: ui/config/playback.py:69
+#: ui/config/playback.py:73
 msgid "Soft clip output (tanh)"
 msgstr ""
 
-#: ui/config/playback.py:71
+#: ui/config/playback.py:75
 msgid ""
 "Output above -1.9 dBFS is rounded off by tanh up to 0 dBFS instead of "
 "hard clipping"
 msgstr ""
 
-#: ui/config/playback.py:75
-msgid "Play a click on every beat of the beat grid."
+#: ui/config/playback.py:82
+msgid "Native first"
 msgstr ""
 
-#: ui/config/playback.py:76
-msgid "WAV file used as the metronome click."
-msgstr ""
-
-#: ui/config/playback.py:78
-msgid "Fixed gain applied to the output before the volume slider (headroom)."
-msgstr ""
-
-#: ui/config/playback.py:80
-msgid "Volume slider position at startup."
-msgstr ""
-
-#: ui/config/playback.py:81
-msgid "Click volume on the first beat of each bar."
-msgstr ""
-
-#: ui/config/playback.py:83
-msgid "Pitch shift of the click on the first beat of each bar."
-msgstr ""
-
-#: ui/config/playback.py:85
-msgid "Click volume on the other beats."
+#: ui/config/playback.py:83 ui/config/playback.py:240
+msgid "Python"
 msgstr ""
 
 #: ui/config/playback.py:86
+msgid ""
+"<p>The device the player plays on, as its audio engine names it. Changed "
+"while the app runs, the sound keeps the format (sample rate, channels) of"
+" the device it started with, converted by the system.</p>"
+msgstr ""
+
+#: ui/config/playback.py:92
+msgid ""
+"<p>The native engine's audio queued ahead of the output device. Smaller "
+"answers sooner (play, pause, seek, CUE calls, volume, tempo); too small "
+"drops out when the computer is busy. The device's own latency comes after"
+" it (shown under the meter).</p>"
+msgstr ""
+
+#: ui/config/playback.py:99
+msgid ""
+"<p>The Python engine's audio queued in the output device ahead of what is"
+" heard. Smaller answers sooner (play, pause, seek, CUE calls, volume, "
+"tempo); too small drops out when the computer is busy (with the time "
+"stretch, below about 80 ms).</p>"
+msgstr ""
+
+#: ui/config/playback.py:113
+msgid "Play a click on every beat of the beat grid."
+msgstr ""
+
+#: ui/config/playback.py:114
+msgid "WAV file used as the metronome click."
+msgstr ""
+
+#: ui/config/playback.py:116
+msgid "Fixed gain applied to the output before the volume slider (headroom)."
+msgstr ""
+
+#: ui/config/playback.py:118
+msgid "Volume slider position at startup."
+msgstr ""
+
+#: ui/config/playback.py:119
+msgid "Click volume on the first beat of each bar."
+msgstr ""
+
+#: ui/config/playback.py:121
+msgid "Pitch shift of the click on the first beat of each bar."
+msgstr ""
+
+#: ui/config/playback.py:123
+msgid "Click volume on the other beats."
+msgstr ""
+
+#: ui/config/playback.py:124
 msgid "Pitch shift of the click on the other beats."
 msgstr ""
 
-#: ui/config/playback.py:91
+#: ui/config/playback.py:129
 msgid "Average audio queued in the output buffer (smoothed)."
 msgstr ""
 
-#: ui/config/playback.py:94
+#: ui/config/playback.py:132
 #, python-format
 msgid "Buffer level the output stayed above 99% of the time in the recent window."
 msgstr ""
 
-#: ui/config/playback.py:96
+#: ui/config/playback.py:134
 msgid "Waiting for playback..."
 msgstr ""
 
-#: ui/config/playback.py:98
+#: ui/config/playback.py:136
 msgid "Audio queued in the output device buffer while playing, 0 ms = dropout."
 msgstr ""
 
-#: ui/config/playback.py:108
+#: ui/config/playback.py:146
+msgid "Audio engine"
+msgstr ""
+
+#: ui/config/playback.py:147
+msgid "Output device"
+msgstr ""
+
+#: ui/config/playback.py:148
 msgid "Trim"
 msgstr ""
 
-#: ui/config/playback.py:109
+#: ui/config/playback.py:149
 msgid "Default volume (%)"
 msgstr ""
 
-#: ui/config/playback.py:111
+#: ui/config/playback.py:151
+msgid "Buffer size"
+msgstr ""
+
+#: ui/config/playback.py:152
 msgid "Output buffer"
 msgstr ""
 
-#: ui/config/playback.py:113
+#: ui/config/playback.py:154
 #, python-brace-format, python-format
 msgid "1% low ({seconds} s)"
 msgstr ""
 
-#: ui/config/playback.py:117
+#: ui/config/playback.py:163
+msgid "Show or hide the settings of the audio engine not playing."
+msgstr ""
+
+#: ui/config/playback.py:174
 msgid "Time Stretch"
 msgstr ""
 
-#: ui/config/playback.py:121
+#: ui/config/playback.py:178
 msgid "Metronome"
 msgstr ""
 
-#: ui/config/playback.py:125
+#: ui/config/playback.py:182
 msgid "Details"
 msgstr ""
 
-#: ui/config/playback.py:130
+#: ui/config/playback.py:187
 msgid "Show or hide the metronome options."
 msgstr ""
 
-#: ui/config/playback.py:136
+#: ui/config/playback.py:193
 msgid "WAV path"
 msgstr ""
 
-#: ui/config/playback.py:137
+#: ui/config/playback.py:194
 msgid "Offset (ms)"
 msgstr ""
 
-#: ui/config/playback.py:139
+#: ui/config/playback.py:196
 msgid "Downbeat volume (%)"
 msgstr ""
 
-#: ui/config/playback.py:142
+#: ui/config/playback.py:199
 msgid "Downbeat pitch (semitones)"
 msgstr ""
 
-#: ui/config/playback.py:144
+#: ui/config/playback.py:201
 msgid "Beat volume (%)"
 msgstr ""
 
-#: ui/config/playback.py:146
+#: ui/config/playback.py:203
 msgid "Beat pitch (semitones)"
 msgstr ""
 
-#: ui/config/playback.py:210
+#: ui/config/playback.py:238
+msgid "Buffer size, Python engine"
+msgstr ""
+
+#: ui/config/playback.py:239
+msgid "Buffer size, native engine"
+msgstr ""
+
+#: ui/config/playback.py:240
+msgid "Native"
+msgstr ""
+
+#: ui/config/playback.py:242
+#, python-brace-format
+msgid ""
+"<p>Native: the audio engine in a process of its own (no dropouts when the"
+" computer is busy, smaller buffers); the Python engine where it is not "
+"built or cannot start. Python: the Python engine only. Applied at the "
+"next start.</p><p>Playing now: {engine}.</p>"
+msgstr ""
+
+#: ui/config/playback.py:257
+msgid "System default"
+msgstr ""
+
+#: ui/config/playback.py:263
+#, python-brace-format
+msgid "{name} (not connected)"
+msgstr ""
+
+#: ui/config/playback.py:313
+#, python-brace-format, python-format
+msgid ""
+"EMA {ema} / {capacity} ms   1% low {low} ms   lowest {lowest} ms "
+"({seconds} s)\n"
+"Dropout since opened {dropout} ms   Device latency {device} ms (fixed)"
+msgstr ""
+
+#: ui/config/playback.py:318
 #, python-brace-format, python-format
 msgid ""
 "EMA {ema} / {capacity} ms   1% low {low} ms   lowest {lowest} ms "
@@ -2979,145 +3064,145 @@ msgstr ""
 msgid "Bar.Beat of the current playhead position"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:26
+#: ui/edit_panel/beatgrid.py:27
 msgid "Shift the whole beatgrid (every segment) half a beat earlier"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:27
+#: ui/edit_panel/beatgrid.py:28
 msgid "Shift the current segment half a beat earlier"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:28
+#: ui/edit_panel/beatgrid.py:29
 msgid "Shift the whole beatgrid (every segment) 10 ms earlier"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:29
+#: ui/edit_panel/beatgrid.py:30
 msgid "Shift the current segment 10 ms earlier"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:30
+#: ui/edit_panel/beatgrid.py:31
 msgid "Shift the whole beatgrid (every segment) 1 ms earlier"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:31
+#: ui/edit_panel/beatgrid.py:32
 msgid "Shift the current segment 1 ms earlier"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:32
+#: ui/edit_panel/beatgrid.py:33
 msgid "Shift the whole beatgrid (every segment) 1 ms later"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:33
+#: ui/edit_panel/beatgrid.py:34
 msgid "Shift the current segment 1 ms later"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:34
+#: ui/edit_panel/beatgrid.py:35
 msgid "Shift the whole beatgrid (every segment) 10 ms later"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:35
+#: ui/edit_panel/beatgrid.py:36
 msgid "Shift the current segment 10 ms later"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:36
+#: ui/edit_panel/beatgrid.py:37
 msgid "Shift the whole beatgrid (every segment) half a beat later"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:37
+#: ui/edit_panel/beatgrid.py:38
 msgid "Shift the current segment half a beat later"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:38
+#: ui/edit_panel/beatgrid.py:39
 msgid "Halve the BPM of the whole beatgrid (every segment); the downbeats stay"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:39
+#: ui/edit_panel/beatgrid.py:40
 msgid "Halve the BPM of the current segment; the downbeats stay"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:40
+#: ui/edit_panel/beatgrid.py:41
 msgid "Double the BPM of the whole beatgrid (every segment); the downbeats stay"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:41
+#: ui/edit_panel/beatgrid.py:42
 msgid "Double the BPM of the current segment; the downbeats stay"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:95
+#: ui/edit_panel/beatgrid.py:96
 msgid "Ref"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:98
+#: ui/edit_panel/beatgrid.py:99
 msgid "Reference BPM (tapped or typed)"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:105
+#: ui/edit_panel/beatgrid.py:106
 msgid ""
 "Merge the previous segment into the current one (keeps the current tempo "
 "/ phase)"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:106
+#: ui/edit_panel/beatgrid.py:107
 msgid ""
 "Merge the next segment into the current one (keeps the current tempo / "
 "phase)"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:107
+#: ui/edit_panel/beatgrid.py:108
 msgid "Split the current segment at the playhead"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:113
+#: ui/edit_panel/beatgrid.py:114
 msgid "Edit the whole beatgrid: shift and BPM x2 / x1/2 apply to every segment"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:114
+#: ui/edit_panel/beatgrid.py:115
 msgid "Edit the current segment: shift and BPM x2 / x1/2 apply to it only"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:131
+#: ui/edit_panel/beatgrid.py:132
 #, python-brace-format
 msgid "Set the current segment to {meter}"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:135
+#: ui/edit_panel/beatgrid.py:136
 msgid "Set the current segment to another time signature (1/4 - 8/4)"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:149 ui/edit_panel/beatgrid.py:265
+#: ui/edit_panel/beatgrid.py:150 ui/edit_panel/beatgrid.py:266
 msgid "Seg -- | Elapsed: 00:00.00 | Left: 00:00.00"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:238
+#: ui/edit_panel/beatgrid.py:239
 msgid "Reanalyze the current segment's beatgrid from the audio"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:241
+#: ui/edit_panel/beatgrid.py:242
 msgid "Reanalyze the current segment's beatgrid at the reference BPM"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:267
+#: ui/edit_panel/beatgrid.py:268
 #, python-brace-format
 msgid "Seg {index} | Elapsed: {elapsed} | Left: {left}"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:525
+#: ui/edit_panel/beatgrid.py:526
 msgid ""
 "Tap to set reference BPM (WARNING! Tempo factor is not 1. RefBPM Will be "
 "scaled accordingly)"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:526
+#: ui/edit_panel/beatgrid.py:527
 msgid ""
 "Reference BPM for Analysis and BPM Assigning (WARNING! Tempo factor is "
 "not 1. RefBPM Will be scaled accordingly)"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:530
+#: ui/edit_panel/beatgrid.py:531
 msgid "Tap to set reference BPM"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:531
+#: ui/edit_panel/beatgrid.py:532
 msgid "Reference BPM for Analysis and BPM Assigning"
 msgstr ""
 
@@ -3150,7 +3235,7 @@ msgstr ""
 msgid "CUE color / delete"
 msgstr ""
 
-#: ui/edit_panel/cuepoint.py:75 ui/edit_panel/jumpcue.py:116
+#: ui/edit_panel/cuepoint.py:75 ui/edit_panel/jumpcue.py:120
 #, python-brace-format
 msgid "{time} - double-click to rename"
 msgstr ""
@@ -3169,201 +3254,201 @@ msgstr ""
 msgid "Delete CUE point {time}"
 msgstr ""
 
-#: ui/edit_panel/jumpcue.py:51
+#: ui/edit_panel/jumpcue.py:55
 msgid "Reanalyze the JumpCUEs with the current beatgrid"
 msgstr ""
 
-#: ui/edit_panel/jumpcue.py:57
+#: ui/edit_panel/jumpcue.py:61
 msgid "Color (its group), beat moves, slots, delete"
 msgstr ""
 
-#: ui/edit_panel/jumpcue.py:107
+#: ui/edit_panel/jumpcue.py:111
 msgid "SET: a JumpCUE in this slot at the nearest beat or track edge"
 msgstr ""
 
-#: ui/edit_panel/jumpcue.py:112
+#: ui/edit_panel/jumpcue.py:116
 msgid "Jump here on the next beat (when stopped: move the playhead here)"
 msgstr ""
 
-#: ui/edit_panel/jumpcue.py:200
+#: ui/edit_panel/jumpcue.py:213
 msgid "Color (cues of one color jump between each other)"
 msgstr ""
 
-#: ui/edit_panel/jumpcue.py:203
+#: ui/edit_panel/jumpcue.py:216
 msgid "(unused)"
 msgstr ""
 
-#: ui/edit_panel/jumpcue.py:207
+#: ui/edit_panel/jumpcue.py:220
 msgid "This color"
 msgstr ""
 
-#: ui/edit_panel/jumpcue.py:208
+#: ui/edit_panel/jumpcue.py:221
 msgid "One beat earlier"
 msgstr ""
 
-#: ui/edit_panel/jumpcue.py:209
+#: ui/edit_panel/jumpcue.py:222
 msgid "One beat later"
 msgstr ""
 
-#: ui/edit_panel/jumpcue.py:210
+#: ui/edit_panel/jumpcue.py:223
 msgid "Slots"
 msgstr ""
 
-#: ui/edit_panel/jumpcue.py:212
+#: ui/edit_panel/jumpcue.py:225
 #, python-brace-format
 msgid "Insert a slot at {letter} (this and later cues move one slot on)"
 msgstr ""
 
-#: ui/edit_panel/jumpcue.py:216
+#: ui/edit_panel/jumpcue.py:229
 #, python-brace-format
 msgid "Move into the empty slot {letter} (this and later cues move one slot back)"
 msgstr ""
 
-#: ui/edit_panel/jumpcue.py:269
+#: ui/edit_panel/jumpcue.py:282
 msgid "Two JumpCUEs cannot share a point."
 msgstr ""
 
-#: ui/edit_panel/jumpcue.py:412 ui/edit_panel/panel.py:667
+#: ui/edit_panel/jumpcue.py:425 ui/edit_panel/panel.py:667
 msgid "Invalid JumpCUE Label"
 msgstr ""
 
-#: ui/edit_panel/key.py:21
+#: ui/edit_panel/key.py:22
 msgid "A semitone down: every segment's key"
 msgstr ""
 
-#: ui/edit_panel/key.py:22
+#: ui/edit_panel/key.py:23
 msgid "A semitone down: the current segment's key"
 msgstr ""
 
-#: ui/edit_panel/key.py:23
+#: ui/edit_panel/key.py:24
 msgid "A semitone up: every segment's key"
 msgstr ""
 
-#: ui/edit_panel/key.py:24
+#: ui/edit_panel/key.py:25
 msgid "A semitone up: the current segment's key"
 msgstr ""
 
-#: ui/edit_panel/key.py:25
+#: ui/edit_panel/key.py:26
 msgid "One step down the circle of fifths (Alphanumeric -1): every segment's key"
 msgstr ""
 
-#: ui/edit_panel/key.py:26
+#: ui/edit_panel/key.py:27
 msgid ""
 "One step down the circle of fifths (Alphanumeric -1): the current "
 "segment's key"
 msgstr ""
 
-#: ui/edit_panel/key.py:27
+#: ui/edit_panel/key.py:28
 msgid "One step up the circle of fifths (Alphanumeric +1): every segment's key"
 msgstr ""
 
-#: ui/edit_panel/key.py:28
+#: ui/edit_panel/key.py:29
 msgid ""
 "One step up the circle of fifths (Alphanumeric +1): the current segment's"
 " key"
 msgstr ""
 
-#: ui/edit_panel/key.py:29
+#: ui/edit_panel/key.py:30
 msgid "Relative major / minor (C <-> Am): every segment's key"
 msgstr ""
 
-#: ui/edit_panel/key.py:30
+#: ui/edit_panel/key.py:31
 msgid "Relative major / minor (C <-> Am): the current segment's key"
 msgstr ""
 
-#: ui/edit_panel/key.py:36
+#: ui/edit_panel/key.py:37
 msgid "Move the current key segment's start one beat earlier"
 msgstr ""
 
-#: ui/edit_panel/key.py:37
+#: ui/edit_panel/key.py:38
 msgid ""
 "Move the current key segment's start one bar (to the neighboring "
 "downbeat) earlier"
 msgstr ""
 
-#: ui/edit_panel/key.py:38
+#: ui/edit_panel/key.py:39
 msgid "Move the current key segment's start one beat later"
 msgstr ""
 
-#: ui/edit_panel/key.py:39
+#: ui/edit_panel/key.py:40
 msgid ""
 "Move the current key segment's start one bar (to the neighboring "
 "downbeat) later"
 msgstr ""
 
-#: ui/edit_panel/key.py:40
+#: ui/edit_panel/key.py:41
 msgid "Move the current key segment's end one beat earlier"
 msgstr ""
 
-#: ui/edit_panel/key.py:41
+#: ui/edit_panel/key.py:42
 msgid ""
 "Move the current key segment's end one bar (to the neighboring downbeat) "
 "earlier"
 msgstr ""
 
-#: ui/edit_panel/key.py:42
+#: ui/edit_panel/key.py:43
 msgid "Move the current key segment's end one beat later"
 msgstr ""
 
-#: ui/edit_panel/key.py:43
+#: ui/edit_panel/key.py:44
 msgid ""
 "Move the current key segment's end one bar (to the neighboring downbeat) "
 "later"
 msgstr ""
 
-#: ui/edit_panel/key.py:67 ui/edit_panel/phrase.py:69
+#: ui/edit_panel/key.py:68 ui/edit_panel/phrase.py:70
 msgid "Boundaries move by one beat"
 msgstr ""
 
-#: ui/edit_panel/key.py:68 ui/edit_panel/phrase.py:70
+#: ui/edit_panel/key.py:69 ui/edit_panel/phrase.py:71
 msgid "Boundaries move by one bar (to the neighboring downbeat)"
 msgstr ""
 
-#: ui/edit_panel/key.py:76
+#: ui/edit_panel/key.py:77
 msgid "Split the current key segment at the beat nearest the playhead"
 msgstr ""
 
-#: ui/edit_panel/key.py:77
+#: ui/edit_panel/key.py:78
 msgid ""
 "Merge the previous key segment into the current one (keeps the current "
 "key)"
 msgstr ""
 
-#: ui/edit_panel/key.py:78
+#: ui/edit_panel/key.py:79
 msgid "Merge the next key segment into the current one (keeps the current key)"
 msgstr ""
 
-#: ui/edit_panel/key.py:80
+#: ui/edit_panel/key.py:81
 msgid "Reanalyze the current key segment's key from the audio"
 msgstr ""
 
-#: ui/edit_panel/key.py:81
+#: ui/edit_panel/key.py:82
 msgid "Reanalyze the keys of the whole track (dynamic)"
 msgstr ""
 
-#: ui/edit_panel/key.py:84
+#: ui/edit_panel/key.py:85
 msgid "Key changes (pick, semitone, fifth, relative) apply to the whole track"
 msgstr ""
 
-#: ui/edit_panel/key.py:85
+#: ui/edit_panel/key.py:86
 msgid "Key changes (pick, semitone, fifth, relative) apply to the current segment"
 msgstr ""
 
-#: ui/edit_panel/key.py:109
+#: ui/edit_panel/key.py:110
 msgid ""
 "Root: hold the current key's root (and its octave) under the music.\n"
 "The plainest check of the tonic: it should feel like the note the music "
 "rests on."
 msgstr ""
 
-#: ui/edit_panel/key.py:115
+#: ui/edit_panel/key.py:116
 msgid ""
 "Root and fifth: hold the current key's root and fifth under the music.\n"
 "In the right key it sounds at home all the way through; a lasting clash\n"
 "means a wrong tonic (try semitone / fifth steps) or a key change."
 msgstr ""
 
-#: ui/edit_panel/key.py:122
+#: ui/edit_panel/key.py:123
 msgid ""
 "Tonic chord: hold the current key's major / minor triad under the music.\n"
 "Tests the third: if the drone fits but the chord clashes, try the other "
@@ -3372,21 +3457,21 @@ msgid ""
 "relative key."
 msgstr ""
 
-#: ui/edit_panel/key.py:128 ui/edit_panel/key.py:281
+#: ui/edit_panel/key.py:129 ui/edit_panel/key.py:282
 msgid "-- | Seg -- | Elapsed: 00:00.00 | Left: 00:00.00"
 msgstr ""
 
-#: ui/edit_panel/key.py:207
+#: ui/edit_panel/key.py:208
 msgid ""
 "Pick one key for the whole track: it becomes one segment in that key "
 "(Alphanumeric wheel)"
 msgstr ""
 
-#: ui/edit_panel/key.py:208
+#: ui/edit_panel/key.py:209
 msgid "Pick the current segment's key (Alphanumeric wheel)"
 msgstr ""
 
-#: ui/edit_panel/key.py:294
+#: ui/edit_panel/key.py:295
 #, python-brace-format
 msgid "{key} | Seg {index} | Elapsed: {elapsed} | Left: {left}"
 msgstr ""
@@ -3450,72 +3535,72 @@ msgstr ""
 msgid "No CUE point at the playhead."
 msgstr ""
 
-#: ui/edit_panel/phrase.py:33
+#: ui/edit_panel/phrase.py:34
 msgid "Move the current phrase's start one beat earlier"
 msgstr ""
 
-#: ui/edit_panel/phrase.py:34
+#: ui/edit_panel/phrase.py:35
 msgid ""
 "Move the current phrase's start one bar (to the neighboring downbeat) "
 "earlier"
 msgstr ""
 
-#: ui/edit_panel/phrase.py:35
+#: ui/edit_panel/phrase.py:36
 msgid "Move the current phrase's start one beat later"
 msgstr ""
 
-#: ui/edit_panel/phrase.py:36
+#: ui/edit_panel/phrase.py:37
 msgid ""
 "Move the current phrase's start one bar (to the neighboring downbeat) "
 "later"
 msgstr ""
 
-#: ui/edit_panel/phrase.py:37
+#: ui/edit_panel/phrase.py:38
 msgid "Move the current phrase's end one beat earlier"
 msgstr ""
 
-#: ui/edit_panel/phrase.py:38
+#: ui/edit_panel/phrase.py:39
 msgid ""
 "Move the current phrase's end one bar (to the neighboring downbeat) "
 "earlier"
 msgstr ""
 
-#: ui/edit_panel/phrase.py:39
+#: ui/edit_panel/phrase.py:40
 msgid "Move the current phrase's end one beat later"
 msgstr ""
 
-#: ui/edit_panel/phrase.py:40
+#: ui/edit_panel/phrase.py:41
 msgid "Move the current phrase's end one bar (to the neighboring downbeat) later"
 msgstr ""
 
-#: ui/edit_panel/phrase.py:78
+#: ui/edit_panel/phrase.py:79
 msgid "Split the current phrase at the beat nearest the playhead"
 msgstr ""
 
-#: ui/edit_panel/phrase.py:79
+#: ui/edit_panel/phrase.py:80
 msgid "Merge the previous phrase into the current one (keeps the current label)"
 msgstr ""
 
-#: ui/edit_panel/phrase.py:80
+#: ui/edit_panel/phrase.py:81
 msgid "Merge the next phrase into the current one (keeps the current label)"
 msgstr ""
 
-#: ui/edit_panel/phrase.py:85
+#: ui/edit_panel/phrase.py:86
 msgid "Reanalyze the phrases of the whole track with the current beatgrid"
 msgstr ""
 
-#: ui/edit_panel/phrase.py:88
+#: ui/edit_panel/phrase.py:89
 msgid ""
 "Replace the CUE points with the ones the CUE rules give the current "
 "phrases\n"
 "(Settings > Analysis > CUE, as the full analysis makes them)"
 msgstr ""
 
-#: ui/edit_panel/phrase.py:104 ui/edit_panel/phrase.py:271
+#: ui/edit_panel/phrase.py:105 ui/edit_panel/phrase.py:272
 msgid "-- | Seg -- | +0 beats | Left: 00:00.00"
 msgstr ""
 
-#: ui/edit_panel/phrase.py:278
+#: ui/edit_panel/phrase.py:279
 #, python-brace-format
 msgid "{label} | Seg {index} | +{beats} beats | Left: {left}"
 msgstr ""
@@ -3568,22 +3653,22 @@ msgstr ""
 msgid "Path"
 msgstr ""
 
-#: ui/edit_song.py:158
-msgid "Readings"
-msgstr ""
-
 #: analyzer_core/global_analyzer.py:513 ui/config/analysis.py:235
 #: ui/config/pipeline_map.py:26 ui/config/pipeline_map.py:34
-#: ui/edit_song.py:160
+#: ui/edit_song.py:159
 msgid "Key"
 msgstr ""
 
-#: ui/edit_song.py:161 ui/library.py:737
+#: ui/edit_song.py:160 ui/library.py:737
 msgid "Rating"
 msgstr ""
 
-#: ui/edit_song.py:162 ui/export.py:103 ui/library.py:738
+#: ui/edit_song.py:161 ui/export.py:103 ui/library.py:738
 msgid "Comment"
+msgstr ""
+
+#: ui/edit_song.py:162
+msgid "Readings"
 msgstr ""
 
 #: ui/edit_song.py:165
@@ -3618,7 +3703,7 @@ msgid ""
 msgstr ""
 
 #: ui/edit_song.py:375 ui/edit_song.py:398 ui/library.py:1705
-#: ui/library.py:1776 ui/library.py:2075 ui/shortcuts.py:118
+#: ui/library.py:1776 ui/library.py:2075 ui/shortcuts.py:120
 msgid "Edit Track"
 msgstr ""
 
@@ -3719,7 +3804,7 @@ msgstr ""
 
 #: ui/export.py:296 ui/export.py:301 ui/export.py:307 ui/export.py:320
 #: ui/export.py:330 ui/export.py:438 ui/export.py:449 ui/library.py:1706
-#: ui/library.py:2079 ui/shortcuts.py:120
+#: ui/library.py:2079 ui/shortcuts.py:122
 msgid "Export Track"
 msgstr ""
 
@@ -3912,7 +3997,7 @@ msgstr ""
 msgid "Local Folders"
 msgstr ""
 
-#: ui/config/external_sync.py:260 ui/library.py:1656 ui/pane.py:432
+#: ui/config/external_sync.py:260 ui/library.py:1656 ui/pane.py:433
 msgid "External Sync"
 msgstr ""
 
@@ -3933,7 +4018,7 @@ msgstr ""
 msgid "The loaded track is not in the list shown."
 msgstr ""
 
-#: ui/library.py:1901 ui/library.py:1930 ui/library.py:1937 ui/shortcuts.py:127
+#: ui/library.py:1901 ui/library.py:1930 ui/library.py:1937 ui/shortcuts.py:129
 msgid "New Playlist"
 msgstr ""
 
@@ -3972,19 +4057,19 @@ msgid ""
 "Tracks remain in the Library."
 msgstr ""
 
-#: ui/library.py:2072 ui/shortcuts.py:125
+#: ui/library.py:2072 ui/shortcuts.py:127
 msgid "Show in Explorer"
 msgstr ""
 
-#: ui/library.py:2073 ui/shortcuts.py:126
+#: ui/library.py:2073 ui/shortcuts.py:128
 msgid "Show in Finder"
 msgstr ""
 
-#: ui/library.py:2073 ui/shortcuts.py:126
+#: ui/library.py:2073 ui/shortcuts.py:128
 msgid "Show in File Manager"
 msgstr ""
 
-#: ui/library.py:2074 ui/library.py:2160 ui/shortcuts.py:130
+#: ui/library.py:2074 ui/library.py:2160 ui/shortcuts.py:132
 msgid "Remove from Library"
 msgstr ""
 
@@ -3992,11 +4077,11 @@ msgstr ""
 msgid "Analyze Track"
 msgstr ""
 
-#: ui/library.py:2077 ui/reanalyze_dialog.py:16 ui/shortcuts.py:128
+#: ui/library.py:2077 ui/reanalyze_dialog.py:16 ui/shortcuts.py:130
 msgid "Reanalyze Track"
 msgstr ""
 
-#: ui/library.py:2082 ui/shortcuts.py:131
+#: ui/library.py:2082 ui/shortcuts.py:133
 msgid "Remove from Playlist"
 msgstr ""
 
@@ -4022,25 +4107,25 @@ msgid_plural ""
 msgstr[0] ""
 msgstr[1] ""
 
-#: ui/oss_support.py:11
+#: ui/oss_support.py:12
 msgid "Support Python & Open Source"
 msgstr ""
 
-#: ui/oss_support.py:19
+#: ui/oss_support.py:20
 msgid ""
 "This app is built on the shoulders of open-source projects.\n"
 "If you'd like to support the ecosystem, here are some ways."
 msgstr ""
 
-#: ui/oss_support.py:26
+#: ui/oss_support.py:27
 msgid "Donate to Python (PSF)"
 msgstr ""
 
-#: ui/oss_support.py:28
+#: ui/oss_support.py:29
 msgid "Donate to Scientific Python (NumFOCUS)"
 msgstr ""
 
-#: ui/oss_support.py:50
+#: ui/oss_support.py:51
 msgid "Open Link"
 msgstr ""
 
@@ -4049,7 +4134,7 @@ msgstr ""
 msgid "Tempo (0%-200%, 0 stops)"
 msgstr ""
 
-#: ui/pane.py:342 ui/shortcuts.py:83
+#: ui/pane.py:342 ui/shortcuts.py:85
 msgid "Tempo reset (100%)"
 msgstr ""
 
@@ -4057,11 +4142,11 @@ msgstr ""
 msgid "Master tempo: time stretch keeps the pitch"
 msgstr ""
 
-#: ui/pane.py:433
+#: ui/pane.py:434
 msgid "Playback is disabled while External Sync is enabled."
 msgstr ""
 
-#: ui/pane.py:753
+#: ui/pane.py:754
 msgid "Not Loaded"
 msgstr ""
 
@@ -4085,7 +4170,7 @@ msgid ""
 "a song outside it is read at half or double tempo."
 msgstr ""
 
-#: ui/config/analysis.py:62 ui/config/window.py:206 ui/reanalyze_dialog.py:38
+#: ui/config/analysis.py:62 ui/config/window.py:211 ui/reanalyze_dialog.py:38
 #: ui/reanalyze_dialog.py:81
 #, python-brace-format
 msgid "Reads {low} - {high} BPM"
@@ -4156,7 +4241,7 @@ msgstr ""
 msgid "Reanalyze"
 msgstr ""
 
-#: ui/config/playback.py:158 ui/shortcuts.py:29
+#: ui/config/playback.py:215 ui/shortcuts.py:29
 msgid "Playback"
 msgstr ""
 
@@ -4176,506 +4261,506 @@ msgstr ""
 msgid "Beatgrid"
 msgstr ""
 
-#: ui/shortcuts.py:69
+#: ui/shortcuts.py:71
 msgid "Play / pause"
 msgstr ""
 
-#: ui/shortcuts.py:70
+#: ui/shortcuts.py:72
 msgid "Stop"
 msgstr ""
 
-#: ui/shortcuts.py:70
+#: ui/shortcuts.py:72
 msgid "Stop and go back to the start of the track."
 msgstr ""
 
-#: ui/shortcuts.py:71
+#: ui/shortcuts.py:73
 msgid "One beat back"
 msgstr ""
 
-#: ui/shortcuts.py:72
+#: ui/shortcuts.py:74
 msgid ""
 "The playhead one beat back: while playing, as a beat jump (its place in "
 "the beat kept); stopped, to the beat itself."
 msgstr ""
 
-#: ui/shortcuts.py:74
+#: ui/shortcuts.py:76
 msgid "One beat forward"
 msgstr ""
 
-#: ui/shortcuts.py:75
+#: ui/shortcuts.py:77
 msgid ""
 "The playhead one beat forward: while playing, as a beat jump (its place "
 "in the beat kept); stopped, to the beat itself."
 msgstr ""
 
-#: ui/shortcuts.py:77
+#: ui/shortcuts.py:79
 msgid "One bar back"
 msgstr ""
 
-#: ui/shortcuts.py:78
+#: ui/shortcuts.py:80
 msgid "The playhead one bar back, as one beat back by downbeats."
 msgstr ""
 
-#: ui/shortcuts.py:79
+#: ui/shortcuts.py:81
 msgid "One bar forward"
 msgstr ""
 
-#: ui/shortcuts.py:80
+#: ui/shortcuts.py:82
 msgid "The playhead one bar forward, as one beat forward by downbeats."
 msgstr ""
 
-#: ui/shortcuts.py:81
+#: ui/shortcuts.py:83
 msgid "Tempo -1%"
 msgstr ""
 
-#: ui/shortcuts.py:82
+#: ui/shortcuts.py:84
 msgid "Tempo +1%"
 msgstr ""
 
-#: ui/shortcuts.py:84
+#: ui/shortcuts.py:86
 msgid "Master tempo on / off"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:146 ui/shortcuts.py:85
+#: ui/edit_panel/beatgrid.py:147 ui/shortcuts.py:87
 msgid "Metronome on / off"
 msgstr ""
 
-#: ui/shortcuts.py:86
+#: ui/shortcuts.py:88
 msgid "Zoom in"
 msgstr ""
 
-#: ui/shortcuts.py:87
+#: ui/shortcuts.py:89
 msgid "Zoom out"
 msgstr ""
 
-#: ui/shortcuts.py:88
+#: ui/shortcuts.py:90
 msgid "Unload the track"
 msgstr ""
 
-#: ui/shortcuts.py:90
+#: ui/shortcuts.py:92
 #, python-brace-format
 msgid "JUMP: JumpCUE {letter}"
 msgstr ""
 
-#: ui/shortcuts.py:91
+#: ui/shortcuts.py:93
 #, python-brace-format
 msgid ""
 "Jump to JumpCUE {letter} on the next beat (stopped: move the playhead "
 "there)."
 msgstr ""
 
-#: ui/shortcuts.py:93
+#: ui/shortcuts.py:95
 msgid "CALL: the previous CUE point"
 msgstr ""
 
-#: ui/shortcuts.py:94
+#: ui/shortcuts.py:96
 msgid "Move the playhead to the CUE point before it (while stopped)."
 msgstr ""
 
-#: ui/shortcuts.py:95
+#: ui/shortcuts.py:97
 msgid "CALL: the next CUE point"
 msgstr ""
 
-#: ui/shortcuts.py:96
+#: ui/shortcuts.py:98
 msgid "Move the playhead to the CUE point after it (while stopped)."
 msgstr ""
 
-#: ui/shortcuts.py:97
+#: ui/shortcuts.py:99
 #, python-brace-format
 msgid "SET: JumpCUE {letter}"
 msgstr ""
 
-#: ui/shortcuts.py:98
+#: ui/shortcuts.py:100
 #, python-brace-format
 msgid ""
 "JumpCUE {letter} at the nearest beat or track edge, when its slot is "
 "empty."
 msgstr ""
 
-#: ui/shortcuts.py:100
+#: ui/shortcuts.py:102
 msgid "MEMORY: a CUE point"
 msgstr ""
 
-#: ui/edit_panel/cuepoint.py:31 ui/shortcuts.py:101
+#: ui/edit_panel/cuepoint.py:31 ui/shortcuts.py:103
 msgid "MEMORY: set a CUE point at the nearest beat or track edge"
 msgstr ""
 
-#: ui/edit_panel/jumpcue.py:220 ui/shortcuts.py:102
+#: ui/edit_panel/jumpcue.py:233 ui/shortcuts.py:104
 #, python-brace-format
 msgid "Delete JumpCUE {letter}"
 msgstr ""
 
-#: ui/shortcuts.py:103
+#: ui/shortcuts.py:105
 msgid "Delete the CUE point at the playhead"
 msgstr ""
 
-#: ui/shortcuts.py:104
+#: ui/shortcuts.py:106
 msgid "The CUE point the playhead is on, as after CALL."
 msgstr ""
 
-#: ui/shortcuts.py:106
+#: ui/shortcuts.py:108
 msgid "Previous track"
 msgstr ""
 
-#: ui/shortcuts.py:107
+#: ui/shortcuts.py:109
 msgid "Next track"
 msgstr ""
 
-#: ui/shortcuts.py:108
+#: ui/shortcuts.py:110
 msgid "Load the selected track"
 msgstr ""
 
-#: ui/shortcuts.py:109
+#: ui/shortcuts.py:111
 msgid ""
 "In the sources panel: the highlighted playlist or folder shown in the "
 "library."
 msgstr ""
 
-#: ui/shortcuts.py:110
+#: ui/shortcuts.py:112
 msgid "Sources panel"
 msgstr ""
 
-#: ui/shortcuts.py:111
+#: ui/shortcuts.py:113
 msgid ""
 "To the panel beside the library (playlists, local folders) and back. Up /"
 " Down browse, Left / Right close / open a folder, the load key shows the "
 "highlighted one."
 msgstr ""
 
-#: ui/config/search.py:134 ui/shortcuts.py:113
+#: ui/config/search.py:134 ui/shortcuts.py:115
 msgid "Search"
 msgstr ""
 
-#: ui/shortcuts.py:114
+#: ui/shortcuts.py:116
 msgid "Back to the tracks"
 msgstr ""
 
-#: ui/shortcuts.py:115
+#: ui/shortcuts.py:117
 msgid ""
 "To the track list from the search field (its text kept), the sources "
 "panel or the track panel; out of another text field: the keys work the "
 "shortcuts again."
 msgstr ""
 
-#: ui/shortcuts.py:117
+#: ui/shortcuts.py:119
 msgid "Select the loaded track"
 msgstr ""
 
-#: ui/shortcuts.py:119
+#: ui/shortcuts.py:121
 msgid ""
 "The track panel's Edit tab with the selected track, its first field "
 "focused."
 msgstr ""
 
-#: ui/shortcuts.py:121
+#: ui/shortcuts.py:123
 msgid "The track panel's Export tab with the selected track, focused."
 msgstr ""
 
-#: ui/shortcuts.py:122
+#: ui/shortcuts.py:124
 msgid "Write Tags to File"
 msgstr ""
 
-#: ui/shortcuts.py:123
+#: ui/shortcuts.py:125
 msgid ""
 "The selected track's stored values written into its audio file's tags: "
 "the fields checked in the track panel's Export tab."
 msgstr ""
 
-#: ui/shortcuts.py:129
+#: ui/shortcuts.py:131
 msgid ""
 "A full analysis of the selected tracks: their stored analysis and edits "
 "are replaced."
 msgstr ""
 
-#: ui/shortcuts.py:133
+#: ui/shortcuts.py:135
 msgid "Edit lock on / off"
 msgstr ""
 
-#: ui/shortcuts.py:134
+#: ui/shortcuts.py:136
 #, python-brace-format
 msgid "Show the {page} page"
 msgstr ""
 
-#: ui/shortcuts.py:135
+#: ui/shortcuts.py:137
 msgid "It becomes the current page."
 msgstr ""
 
-#: ui/edit_panel/panel.py:143 ui/shortcuts.py:137
+#: ui/edit_panel/panel.py:143 ui/shortcuts.py:139
 msgid "Undo Changes"
 msgstr ""
 
-#: ui/edit_panel/panel.py:147 ui/shortcuts.py:138
+#: ui/edit_panel/panel.py:147 ui/shortcuts.py:140
 msgid "Redo Changes"
 msgstr ""
 
-#: ui/edit_panel/panel.py:151 ui/shortcuts.py:139
+#: ui/edit_panel/panel.py:151 ui/shortcuts.py:141
 msgid "Save Edits"
 msgstr ""
 
-#: ui/shortcuts.py:142
+#: ui/shortcuts.py:144
 msgid "Start earlier"
 msgstr ""
 
-#: ui/shortcuts.py:143 ui/shortcuts.py:145
+#: ui/shortcuts.py:145 ui/shortcuts.py:147
 msgid ""
 "Key, Phrase: the current segment's start, by a beat or a bar (the "
 "boundary step)."
 msgstr ""
 
-#: ui/shortcuts.py:144
+#: ui/shortcuts.py:146
 msgid "Start later"
 msgstr ""
 
-#: ui/shortcuts.py:146
+#: ui/shortcuts.py:148
 msgid "End earlier"
 msgstr ""
 
-#: ui/shortcuts.py:147 ui/shortcuts.py:149
+#: ui/shortcuts.py:149 ui/shortcuts.py:151
 msgid ""
 "Key, Phrase: the current segment's end, by a beat or a bar (the boundary "
 "step)."
 msgstr ""
 
-#: ui/shortcuts.py:148
+#: ui/shortcuts.py:150
 msgid "End later"
 msgstr ""
 
-#: ui/shortcuts.py:150
+#: ui/shortcuts.py:152
 msgid "Split at the playhead"
 msgstr ""
 
-#: ui/shortcuts.py:151
+#: ui/shortcuts.py:153
 msgid "Beatgrid, Key, Phrase: the current segment."
 msgstr ""
 
-#: ui/shortcuts.py:152
+#: ui/shortcuts.py:154
 msgid "Merge the previous segment"
 msgstr ""
 
-#: ui/shortcuts.py:153
+#: ui/shortcuts.py:155
 msgid "Beatgrid, Key, Phrase: the previous segment into the current one."
 msgstr ""
 
-#: ui/shortcuts.py:154
+#: ui/shortcuts.py:156
 msgid "Merge the next segment"
 msgstr ""
 
-#: ui/shortcuts.py:155
+#: ui/shortcuts.py:157
 msgid "Beatgrid, Key, Phrase: the next segment into the current one."
 msgstr ""
 
-#: ui/shortcuts.py:156
+#: ui/shortcuts.py:158
 msgid "Reanalyze the current segment"
 msgstr ""
 
-#: ui/shortcuts.py:157 ui/shortcuts.py:160 ui/shortcuts.py:162
+#: ui/shortcuts.py:159 ui/shortcuts.py:162 ui/shortcuts.py:164
 msgid "Beatgrid, Key."
 msgstr ""
 
-#: ui/shortcuts.py:158
+#: ui/shortcuts.py:160
 msgid "Reanalyze the whole track"
 msgstr ""
 
-#: ui/shortcuts.py:159
+#: ui/shortcuts.py:161
 msgid "Key, Phrase; on the CUE page, the JumpCUEs."
 msgstr ""
 
-#: ui/shortcuts.py:160
+#: ui/shortcuts.py:162
 msgid "Edit scope: the whole track"
 msgstr ""
 
-#: ui/shortcuts.py:161
+#: ui/shortcuts.py:163
 msgid "Edit scope: the current segment"
 msgstr ""
 
-#: ui/shortcuts.py:163
+#: ui/shortcuts.py:165
 msgid "Boundary step: one beat"
 msgstr ""
 
-#: ui/shortcuts.py:163 ui/shortcuts.py:164
+#: ui/shortcuts.py:165 ui/shortcuts.py:166
 msgid "Key, Phrase."
 msgstr ""
 
-#: ui/shortcuts.py:164
+#: ui/shortcuts.py:166
 msgid "Boundary step: one bar"
 msgstr ""
 
-#: ui/shortcuts.py:166
+#: ui/shortcuts.py:168
 msgid "Shift half a beat earlier"
 msgstr ""
 
-#: ui/shortcuts.py:167
+#: ui/shortcuts.py:169
 msgid "Shift 10 ms earlier"
 msgstr ""
 
-#: ui/shortcuts.py:168
+#: ui/shortcuts.py:170
 msgid "Shift 1 ms earlier"
 msgstr ""
 
-#: ui/shortcuts.py:169
+#: ui/shortcuts.py:171
 msgid "Shift 1 ms later"
 msgstr ""
 
-#: ui/shortcuts.py:170
+#: ui/shortcuts.py:172
 msgid "Shift 10 ms later"
 msgstr ""
 
-#: ui/shortcuts.py:171
+#: ui/shortcuts.py:173
 msgid "Shift half a beat later"
 msgstr ""
 
-#: ui/shortcuts.py:172
+#: ui/shortcuts.py:174
 msgid "ZERO"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:74 ui/shortcuts.py:172
+#: ui/edit_panel/beatgrid.py:75 ui/shortcuts.py:174
 msgid "Clear the reference BPM and the tap history"
 msgstr ""
 
-#: ui/shortcuts.py:173
+#: ui/shortcuts.py:175
 msgid "TAP"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:80 ui/shortcuts.py:173
+#: ui/edit_panel/beatgrid.py:81 ui/shortcuts.py:175
 msgid "Tap the beat to set the reference BPM"
 msgstr ""
 
-#: ui/shortcuts.py:174
+#: ui/shortcuts.py:176
 msgid "Assign the reference BPM"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:99 ui/shortcuts.py:175
+#: ui/edit_panel/beatgrid.py:100 ui/shortcuts.py:177
 msgid "Assign the reference BPM to the current segment (downbeat at its start)"
 msgstr ""
 
-#: ui/shortcuts.py:176
+#: ui/shortcuts.py:178
 msgid "Ramp: the starting tempo"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:100 ui/shortcuts.py:177
+#: ui/edit_panel/beatgrid.py:101 ui/shortcuts.py:179
 msgid ""
 "Make the reference BPM the current segment's starting tempo (a ramp to "
 "its end tempo; its first beat stays)"
 msgstr ""
 
-#: ui/shortcuts.py:179
+#: ui/shortcuts.py:181
 msgid "Ramp: the ending tempo"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:101 ui/shortcuts.py:180
+#: ui/edit_panel/beatgrid.py:102 ui/shortcuts.py:182
 msgid ""
 "Make the reference BPM the current segment's ending tempo (a ramp from "
 "its start tempo; its first beat stays)"
 msgstr ""
 
-#: ui/shortcuts.py:182
+#: ui/shortcuts.py:184
 msgid "Downbeat at the playhead"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:108 ui/shortcuts.py:183
+#: ui/edit_panel/beatgrid.py:109 ui/shortcuts.py:185
 msgid "Make the beat nearest the playhead the current segment's downbeat"
 msgstr ""
 
-#: ui/shortcuts.py:184
+#: ui/shortcuts.py:186
 msgid "BPM x1/2"
 msgstr ""
 
-#: ui/shortcuts.py:185
+#: ui/shortcuts.py:187
 msgid "BPM x2"
 msgstr ""
 
-#: ui/shortcuts.py:186
+#: ui/shortcuts.py:188
 #, python-brace-format
 msgid "Time signature {meter}"
 msgstr ""
 
-#: ui/shortcuts.py:189
+#: ui/shortcuts.py:191
 msgid "Pick the key"
 msgstr ""
 
-#: ui/edit_panel/key.py:94 ui/edit_panel/key_picker.py:82 ui/shortcuts.py:189
+#: ui/edit_panel/key.py:95 ui/edit_panel/key_picker.py:82 ui/shortcuts.py:191
 msgid "Pick the key (Alphanumeric wheel)"
 msgstr ""
 
-#: ui/shortcuts.py:190
+#: ui/shortcuts.py:192
 msgid "A semitone down"
 msgstr ""
 
-#: ui/shortcuts.py:191
+#: ui/shortcuts.py:193
 msgid "A semitone up"
 msgstr ""
 
-#: ui/shortcuts.py:192
+#: ui/shortcuts.py:194
 msgid "Circle of fifths -1"
 msgstr ""
 
-#: ui/shortcuts.py:193
+#: ui/shortcuts.py:195
 msgid "One step down the circle of fifths (Alphanumeric -1)"
 msgstr ""
 
-#: ui/shortcuts.py:194
+#: ui/shortcuts.py:196
 msgid "Circle of fifths +1"
 msgstr ""
 
-#: ui/shortcuts.py:195
+#: ui/shortcuts.py:197
 msgid "One step up the circle of fifths (Alphanumeric +1)"
 msgstr ""
 
-#: ui/shortcuts.py:196
+#: ui/shortcuts.py:198
 msgid "Relative major / minor"
 msgstr ""
 
-#: ui/shortcuts.py:196
+#: ui/shortcuts.py:198
 msgid "Relative major / minor (C <-> Am)"
 msgstr ""
 
-#: ui/shortcuts.py:197
+#: ui/shortcuts.py:199
 msgid "Merge the same keys"
 msgstr ""
 
-#: ui/edit_panel/key.py:79 ui/shortcuts.py:198
+#: ui/edit_panel/key.py:80 ui/shortcuts.py:200
 msgid "Merge every run of neighboring segments with the same key"
 msgstr ""
 
-#: ui/shortcuts.py:199
+#: ui/shortcuts.py:201
 msgid "Listening aid: root"
 msgstr ""
 
-#: ui/shortcuts.py:200
+#: ui/shortcuts.py:202
 msgid "Listening aid: root and fifth"
 msgstr ""
 
-#: ui/shortcuts.py:201
+#: ui/shortcuts.py:203
 msgid "Listening aid: tonic chord"
 msgstr ""
 
-#: ui/shortcuts.py:203
+#: ui/shortcuts.py:205
 msgid "CUE points from the phrases"
 msgstr ""
 
-#: ui/shortcuts.py:204
+#: ui/shortcuts.py:206
 msgid ""
 "Replace the CUE points with the ones the CUE rules give the current "
 "phrases"
 msgstr ""
 
-#: ui/edit_panel/phrase.py:81 ui/shortcuts.py:205
+#: ui/edit_panel/phrase.py:82 ui/shortcuts.py:207
 msgid "Unassign the current phrase (UNASSIGNED)"
 msgstr ""
 
-#: ui/edit_panel/phrase.py:166 ui/shortcuts.py:206
+#: ui/edit_panel/phrase.py:167 ui/shortcuts.py:208
 #, python-brace-format
 msgid "Label the current phrase {label}"
 msgstr ""
 
-#: ui/shortcuts.py:250
+#: ui/shortcuts.py:263
 #, python-brace-format
 msgid ""
 "Another program on this computer takes {keys}: these shortcuts do not "
 "work (Settings > Shortcuts)."
 msgstr ""
 
-#: ui/shortcuts.py:260
+#: ui/shortcuts.py:294
 #, python-brace-format
 msgid "{keys} is used by more than one action (Settings > Shortcuts)."
 msgstr ""
@@ -4684,7 +4769,7 @@ msgstr ""
 msgid "Unload track"
 msgstr ""
 
-#: ui/track_info_panel.py:725 ui/workers.py:196
+#: ui/track_info_panel.py:731 ui/workers.py:196
 msgid "No Art"
 msgstr ""
 

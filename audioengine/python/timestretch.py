@@ -1,6 +1,6 @@
 """Streaming, percussion-aware, pitch-preserving time scaling.
 
-It exposes the same pull contract as core.audio.dsp.SpeedResampler
+It exposes the same pull contract as audioengine.python.dsp.SpeedResampler
 
     render(pcm, input_position, speed_factor, maximum_output_frames)
 
@@ -62,7 +62,7 @@ def _ensure_numba_kernels():
         if _NUMBA_FAILED:
             return None
         try:
-            from core.audio import _timestretch_numba as kernels
+            from audioengine.python import _timestretch_numba as kernels
 
             kernels.warm()
             _NUMBA_KERNELS = kernels

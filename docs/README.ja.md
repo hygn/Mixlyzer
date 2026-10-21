@@ -29,6 +29,16 @@ Mixlyzer は DJ とプロデューサーのためのトラック解析・編集�
 3. `uv sync` で依存関係と仮想環境を準備します（Python 3.12+）。  
 4. `uv run python -m app.main` で Mixlyzer を起動します。
 
+#### ネイティブオーディオエンジンのビルド（任意）
+ビルドしない場合は Python エンジンで再生します。`audioengine/native/bin` にビルドするには:
+1. git と [Rust](https://rustup.rs)、C コンパイラをインストールします。
+   - **Windows**: [llvm-mingw](https://github.com/mstorsjo/llvm-mingw)（Visual Studio 不要。`bin` フォルダを `PATH` に入れるか、`LLVM_MINGW` でフォルダを指定）と Rust ツールチェーン `rustup toolchain install stable-x86_64-pc-windows-gnullvm`。
+   - **Linux**: gcc または clang、ALSA のヘッダー（`libasound2-dev` / `alsa-lib-devel`）。
+   - **macOS**: Xcode のコマンドラインツール。
+2. `uv sync --group native` の後、`uv run --group native python build/audio_engine.py` を実行します（VOLK をソースからビルドしてからエンジンをビルドします）。再ビルドするときは先に Mixlyzer を終了してください。実行中のアプリがエンジンのファイルを使用しています。
+
+設定 > 再生でエンジン（**Native 優先**: 使えないときは Python にフォールバック、または **Python**。次回の起動から適用）、出力デバイス、エンジンごとのバッファサイズを選べます。
+
 ### 方法 B: 配布バイナリを使う
 1. Releases ページから最新ビルドを取得します。  
 2. 任意の場所へ展開します。  

@@ -1,4 +1,4 @@
-"""Numba kernels for core.audio.timestretch.
+"""Numba kernels for audioengine.python.timestretch.
 
 Imported only by the time stretcher's warm-up thread (compiling here keeps numba out
 of the audio thread). The phase kernel is ported from the SELEBI tuning prototype

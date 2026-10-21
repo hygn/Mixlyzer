@@ -199,6 +199,11 @@ class SettingsDialog(
         self.sp_click_beat_pitch.setValue(float(p.metronome_beat_pitch_semitones))
         self.cb_metronome_ducking.setChecked(bool(p.metronome_ducking))
         self.cb_soft_clip.setChecked(bool(p.soft_clip))
+        self.cb_audio_engine.setCurrentIndex(max(0, self.cb_audio_engine.findData(p.audio_engine)))
+        self.sp_native_buffer_ms.setValue(int(p.native_buffer_ms))
+        self.sp_python_buffer_ms.setValue(int(p.python_buffer_ms))
+        self._output_device = p.output_device
+        self._load_output_devices(p.output_device)
 
         # analysis
         a = cfg.analysisconfig
@@ -365,6 +370,10 @@ class SettingsDialog(
                 metronome_beat_pitch_semitones=float(self.sp_click_beat_pitch.value()),
                 metronome_ducking=bool(self.cb_metronome_ducking.isChecked()),
                 soft_clip=bool(self.cb_soft_clip.isChecked()),
+                audio_engine=str(self.cb_audio_engine.currentData() or "native"),
+                native_buffer_ms=int(self.sp_native_buffer_ms.value()),
+                python_buffer_ms=int(self.sp_python_buffer_ms.value()),
+                output_device=str(self.cb_output_device.currentData() or ""),
             ),
             externalsyncconfig=externalsyncconfig(
                 enabled=bool(self.cb_external_sync_enabled.isChecked()) and os_support.MEMORY_SYNC,
@@ -407,4 +416,6 @@ class SettingsDialog(
     def showEvent(self, event: QtGui.QShowEvent) -> None:
         super().showEvent(event)
         self._reset_playback_monitor()
+        # the devices connected now (one plugged in since)
+        self._load_output_devices(str(self.cb_output_device.currentData() or getattr(self, "_output_device", "")))
         self._load_shortcut_settings()  # the edits not kept are dropped

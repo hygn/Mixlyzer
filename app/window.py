@@ -69,6 +69,10 @@ class AppWindow(QtWidgets.QMainWindow):
             default_peak_meter_gain_linear=self._default_peak_meter_gain_linear_from_cfg(
                 self.cfg
             ),
+            engine=self.cfg.playbackconfig.audio_engine,
+            native_buffer_ms=float(self.cfg.playbackconfig.native_buffer_ms),
+            python_buffer_ms=float(self.cfg.playbackconfig.python_buffer_ms),
+            output_device=self.cfg.playbackconfig.output_device,
         )
         self.player.set_refresh_fps(self.cfg.viewconfig.fps)
         self.external_sync = ExternalSyncController(
@@ -106,6 +110,8 @@ class AppWindow(QtWidgets.QMainWindow):
 
         step(0.3, tr("Settings"))
         self.cfgwin = SettingsDialog(bus=self.bus)
+        # the engine that plays (its buffer shown first) and its output devices
+        self.cfgwin.set_audio_engine(self.player.native, self.player.output_devices)
         self.cfgwin.set_config(self.cfg)
         step(0.6, tr("Dialogs, workflows and metronome"))
         self.workers = WorkersDialog()
@@ -200,9 +206,10 @@ class AppWindow(QtWidgets.QMainWindow):
         # The scratch reader's and cursor poller's numba code, loaded here on the main
         # thread once the window is up (~1 s from the disk cache), so the audio thread
         # never waits for it (already loaded when the app started with app.startup).
-        from core.audio.cursor_poller import warm_cursor_poller
-        from core.audio.dsp import warm_scratch_numba
-        QtCore.QTimer.singleShot(0, lambda: (warm_scratch_numba(), warm_cursor_poller()))
+        if not self.player.native:
+            from audioengine.python.cursor_poller import warm_cursor_poller
+            from audioengine.python.dsp import warm_scratch_numba
+            QtCore.QTimer.singleShot(0, lambda: (warm_scratch_numba(), warm_cursor_poller()))
         self._apply_external_sync_mode(self.cfg.externalsyncconfig)
         self._apply_visibility_refresh_setting(force=True)
         step(1.0, "")
@@ -687,6 +694,8 @@ class AppWindow(QtWidgets.QMainWindow):
             QtCore.Q_ARG(bool, bool(pcfg.metronome_ducking)),
         )
         self.player.set_soft_clip(bool(pcfg.soft_clip))
+        self.player.set_buffer_ms(float(pcfg.native_buffer_ms), float(pcfg.python_buffer_ms))
+        self.player.set_output_device(pcfg.output_device)
 
     def _on_timestretch_toggle(self, enabled: bool) -> None:
         """Deck MT button: same as switching "Use timestretch" in the settings and saving."""
@@ -705,10 +714,10 @@ class AppWindow(QtWidgets.QMainWindow):
         self._on_settings_save(new_cfg)
 
     def _apply_timestretch(self, enabled: bool) -> None:
-        if enabled:
+        if enabled and not self.player.native:
             # Load the stretcher's numba kernels here, on the main thread, so the audio
             # thread never blocks on loading/compiling them (~0.5 s from the disk cache).
-            from core.audio.timestretch import warm_timestretch_numba
+            from audioengine.python.timestretch import warm_timestretch_numba
             warm_timestretch_numba()
         self.player.set_timestretch(enabled)
     def _default_volume_linear_from_cfg(self, cfg: config) -> float:

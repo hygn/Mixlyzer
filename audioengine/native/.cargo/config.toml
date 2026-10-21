@@ -1,0 +1,16 @@
+# Windows: llvm-mingw's clang links (build/audio_engine.py puts it on PATH); libunwind linked in, so the engine
+# needs no llvm-mingw DLL beside it (only the system's UCRT and libvolk)
+[target.x86_64-pc-windows-gnullvm]
+linker = "x86_64-w64-mingw32-clang"
+rustflags = ["-C", "target-feature=+crt-static"]
+
+[target.aarch64-pc-windows-gnullvm]
+linker = "aarch64-w64-mingw32-clang"
+rustflags = ["-C", "target-feature=+crt-static"]
+
+# Linux / macOS: libvolk is found beside the executable
+[target.'cfg(target_os = "linux")']
+rustflags = ["-C", "link-arg=-Wl,-rpath,$ORIGIN"]
+
+[target.'cfg(target_os = "macos")']
+rustflags = ["-C", "link-arg=-Wl,-rpath,@executable_path"]

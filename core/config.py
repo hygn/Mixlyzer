@@ -85,6 +85,13 @@ class playbackconfig:
     metronome_beat_pitch_semitones: float
     metronome_ducking: bool  # lower the music under each click
     soft_clip: bool  # tanh soft clip of the output above SOFT_CLIP_KNEE
+    # the audio engine: "native" (audioengine/native; the Python one where it is not built or does not start)
+    # or "python" (audioengine/python only); applied at the next start
+    audio_engine: Literal["native", "python"]
+    # each engine's output buffer (ms): audio queued ahead of what is heard, with the time stretch on or off
+    native_buffer_ms: int
+    python_buffer_ms: int
+    output_device: str  # the output device's name as its engine lists it; "" = the system's default
 
 
 @dataclass
@@ -393,6 +400,10 @@ def default_cfg():
         metronome_beat_pitch_semitones=0.0,
         metronome_ducking=True,
         soft_clip=True,
+        audio_engine="native",
+        native_buffer_ms=20,
+        python_buffer_ms=80,
+        output_device="",
     )
     xcfg = externalsyncconfig(
         enabled=False,

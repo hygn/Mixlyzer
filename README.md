@@ -29,6 +29,16 @@ Mixlyzer is a track-analysis and editing companion built for DJs and producers w
 3. Run `uv sync` to install dependencies and set up the virtual environment (Python 3.12+).  
 4. Launch Mixlyzer with `uv run python -m app.main`.
 
+#### Building the native audio engine (optional)
+Without it Mixlyzer plays on its Python engine. To build it into `audioengine/native/bin`:
+1. Install git and [Rust](https://rustup.rs), plus a C compiler:
+   - **Windows**: [llvm-mingw](https://github.com/mstorsjo/llvm-mingw) (no Visual Studio needed; its `bin` folder on `PATH`, or the folder named by `LLVM_MINGW`) and the Rust toolchain `rustup toolchain install stable-x86_64-pc-windows-gnullvm`.
+   - **Linux**: gcc or clang, and ALSA's headers (`libasound2-dev` / `alsa-lib-devel`).
+   - **macOS**: Xcode's command line tools.
+2. Run `uv sync --group native`, then `uv run --group native python build/audio_engine.py` (it builds VOLK from its source, then the engine). Close Mixlyzer first when rebuilding: a running app holds the engine.
+
+Settings > Playback picks the engine (**Native first**, which falls back to Python, or **Python**; applied at the next start), the output device, and each engine's buffer size.
+
 ### Option B: Using a released binary
 1. Download the latest Mixlyzer build from the Releases page.  
 2. Extract it to your preferred location.  

@@ -8,9 +8,11 @@ from typing import Optional
 import numpy as np
 from PySide6 import QtCore, QtMultimedia
 
-from core.audio.clicks import ClickTrack
+from audioengine.native.client import NativeClicks, NativeEngine, NativeFeeder
+from audioengine.python.clicks import ClickTrack
+from audioengine.python.feeder import PCMFeeder
+from core import os_support
 from core.audio.decoder import decode_to_memmap
-from core.audio.feeder import PCMFeeder
 from core.event_bus import EventBus
 
 
@@ -41,7 +43,10 @@ class _Latest:
 
 class _AudioWorker(QtCore.QObject):
     """
-    Owns the audio sink and feeder; lives in the player's audio thread.
+    Owns the feeder; lives in the player's audio thread. The feeder is the native engine's
+    (audioengine/native: playback in a process of its own, this thread only relays commands and
+    reads its state) or, where that is not built or cannot start, the Python engine's PCMFeeder
+    on a QAudioSink (audioengine/python), fed from this thread.
 
     Every command from PlayerController arrives through run_command(). Decoding runs on a
     separate thread so the sink keeps being fed while a track loads; transport commands
@@ -59,7 +64,6 @@ class _AudioWorker(QtCore.QObject):
     output_buffer = QtCore.Signal(float, object, float)  # queued ms, observations (see PCMFeeder.take_buffer_stats) or None, capacity ms
     _decoded = QtCore.Signal(int, object, str)  # token, pcm or None, error message
 
-    BUFFER_MS = 80
     PEAK_FLOOR_DBFS = -24.0
     # the output buffer's observations reported this often (they add up in between): a
     # monitor, not worth a report every frame
@@ -70,7 +74,7 @@ class _AudioWorker(QtCore.QObject):
         "scrub_begin", "scrub_update", "scrub_end", "arm_jump", "disarm_jump",
         "scratch_begin", "scratch_update", "scratch_end",
         "set_tempo_mode", "set_tempo_factor", "set_volume", "set_peak_meter_gain",
-        "set_refresh_fps", "set_timestretch", "set_soft_clip",
+        "set_refresh_fps", "set_timestretch", "set_soft_clip", "set_buffer_ms", "set_output_device",
         "tone_hold",
     })
     _WAIT_FOR_TRACK = frozenset({
@@ -79,10 +83,14 @@ class _AudioWorker(QtCore.QObject):
         "scratch_begin", "scratch_update", "scratch_end",
     })
 
-    def __init__(self, *, volume_linear: float = 1.0, peak_meter_gain_linear: float = 1.0) -> None:
+    def __init__(self, *, volume_linear: float = 1.0, peak_meter_gain_linear: float = 1.0,
+                 buffer_ms: float = 80.0, engine: Optional[NativeEngine] = None, output_device: str = "") -> None:
         super().__init__()
+        self._device_name = output_device   # the output device asked for ("": the system's default)
+        self._fmt: Optional[QtMultimedia.QAudioFormat] = None   # the Python engine's sink format (the session's)
+        self._engine = engine   # the native engine, started by PlayerController (None: the Python engine)
         self.audio: Optional[QtMultimedia.QAudioSink] = None
-        self.feeder: Optional[PCMFeeder] = None
+        self.feeder: Optional[PCMFeeder | NativeFeeder] = None
         self.rate = 0
         self.ch = 0
 
@@ -102,6 +110,7 @@ class _AudioWorker(QtCore.QObject):
 
         self._volume_linear = max(0.0, min(1.0, float(volume_linear)))
         self._peak_meter_gain_linear = max(0.0, min(1.0, float(peak_meter_gain_linear)))
+        self._buffer_ms = float(buffer_ms)  # the output buffer
 
         self._frame = QtCore.QTimer(self)
         self._frame.setTimerType(QtCore.Qt.PreciseTimer)
@@ -111,17 +120,29 @@ class _AudioWorker(QtCore.QObject):
 
     @QtCore.Slot()
     def initialize(self) -> None:
-        out_dev = QtMultimedia.QMediaDevices.defaultAudioOutput()
+        engine = self._engine
+        if engine is not None:
+            self.rate, self.ch = engine.rate, engine.channels
+            self.feeder = NativeFeeder(engine, self)
+            self._init_feeder()
+            return
+        # the Python engine: this thread feeds the output device, served ahead of busy threads (an analysis
+        # on every core); where this is not available the thread's Qt priority (PlayerController) is all
+        os_support.register_audio_thread()
+        out_dev = qt_output_device(self._device_name)
         fmt = out_dev.preferredFormat()
         fmt.setSampleFormat(QtMultimedia.QAudioFormat.Float)
         self.rate = fmt.sampleRate()
         self.ch = fmt.channelCount()
+        self._fmt = fmt
 
         self.audio = QtMultimedia.QAudioSink(out_dev, fmt, self)
-        bpf = self.ch * 4
-        self.audio.setBufferSize(max(bpf, int(self.rate * (self.BUFFER_MS / 1000.0) * bpf)))
 
         self.feeder = PCMFeeder(self.audio, self.rate, self.ch, self)
+        self._init_feeder()
+
+    def _init_feeder(self) -> None:
+        self.feeder.set_buffer_ms(self._buffer_ms)   # the sink's size, set where the feeder opens it
         self.feeder.set_music_gain(self._volume_linear)
         self.feeder.finished.connect(self.pause)
         self.feeder.jumped.connect(self.jumped)
@@ -158,10 +179,13 @@ class _AudioWorker(QtCore.QObject):
         self._decode_token += 1
         self._decoding = True
         token, rate, ch = self._decode_token, self.rate, self.ch
+        adopt = getattr(self.feeder, "adopt", None)   # the native engine reads it from a shared block
 
         def decode() -> None:
             try:
                 pcm, error = decode_to_memmap(path, rate, ch), ""
+                if adopt is not None:
+                    pcm = adopt(pcm)
             except Exception as exc:
                 pcm, error = None, str(exc)
             try:
@@ -196,7 +220,7 @@ class _AudioWorker(QtCore.QObject):
         try:
             if pcm is None:
                 raise RuntimeError(error)
-            pcm_array = np.asarray(pcm, dtype=np.float32, order="C")
+            pcm_array = pcm if pcm.dtype == np.float32 and pcm.flags.c_contiguous else np.ascontiguousarray(pcm, np.float32)
             self.feeder.set_track(pcm_array)
         except Exception as exc:
             print(f"[Player] Decode error: {exc}")
@@ -317,6 +341,20 @@ class _AudioWorker(QtCore.QObject):
     def set_soft_clip(self, enabled: bool) -> None:
         self.feeder.set_soft_clip(bool(enabled))
 
+    def set_buffer_ms(self, ms: float) -> None:
+        self._buffer_ms = float(ms)
+        self.feeder.set_buffer_ms(self._buffer_ms)
+
+    def set_output_device(self, name: str) -> None:
+        """Play on the output device ``name`` ("": the system's default) from now, at the session's format."""
+        if name == self._device_name:
+            return
+        self._device_name = name
+        if isinstance(self.feeder, NativeFeeder):
+            self.feeder.set_output_device(name)
+            return
+        self.feeder.set_sink(QtMultimedia.QAudioSink(qt_output_device(name), self._fmt, self))
+
     def tone_hold(self, notes: tuple) -> None:
         self.feeder.tones.hold(notes)
         if notes:
@@ -375,6 +413,9 @@ class _AudioWorker(QtCore.QObject):
 
     @QtCore.Slot()
     def _tick(self) -> None:
+        poll = getattr(self.feeder, "poll", None)   # the native engine's state, read once a frame
+        if poll is not None:
+            poll()
         cur = (self.feeder.display_frame() * 1000.0) / max(1, self.rate)
         if self._duration_ms and cur >= self._duration_ms:
             cur = self._duration_ms
@@ -388,6 +429,15 @@ class _AudioWorker(QtCore.QObject):
             self.output_buffer.emit(queued * ms, hist, capacity * ms)
 
 
+def qt_output_device(name: str) -> QtMultimedia.QAudioDevice:
+    """Qt's output device described ``name`` ("" or one not found: the system's default)."""
+    if name:
+        for dev in QtMultimedia.QMediaDevices.audioOutputs():
+            if dev.description() == name:
+                return dev
+    return QtMultimedia.QMediaDevices.defaultAudioOutput()
+
+
 class PlayerController(QtCore.QObject):
     """
     Main-thread facade of the player: forwards commands to the audio-thread worker and
@@ -395,6 +445,7 @@ class PlayerController(QtCore.QObject):
     """
 
     _command = QtCore.Signal(str, object)  # worker method name, args tuple
+    SCRUB_INTERVAL_MS = 30
 
     def __init__(
         self,
@@ -403,6 +454,10 @@ class PlayerController(QtCore.QObject):
         *,
         default_volume_linear: float = 1.0,
         default_peak_meter_gain_linear: float = 1.0,
+        engine: str = "native",
+        native_buffer_ms: float = 20.0,
+        python_buffer_ms: float = 80.0,
+        output_device: str = "",
     ):
         super().__init__()
         self.bus = bus
@@ -410,11 +465,20 @@ class PlayerController(QtCore.QObject):
         self._path: Optional[str] = None
         self._external_sync_enabled = False
 
+        # the audio engine (Settings > Playback): the native one (audioengine/native), started here so the app
+        # knows which plays, or where it is not built or does not start the Python one (audioengine/python);
+        # "python": the Python one only
+        native_engine = NativeEngine.start(output_device) if engine == "native" else None
+        self.native = native_engine is not None
+        self._engine = native_engine
         self._audio_thread = QtCore.QThread(self)
         self._audio_thread.setObjectName("AudioThread")
         self._audio_worker = _AudioWorker(
             volume_linear=default_volume_linear,
             peak_meter_gain_linear=default_peak_meter_gain_linear,
+            buffer_ms=native_buffer_ms if self.native else python_buffer_ms,
+            engine=native_engine,
+            output_device=output_device,
         )
         self._audio_worker.moveToThread(self._audio_thread)
         self._command.connect(self._audio_worker.run_command, QtCore.Qt.QueuedConnection)
@@ -431,16 +495,26 @@ class PlayerController(QtCore.QObject):
 
         self._audio_thread.started.connect(w.initialize)
         self._audio_thread.finished.connect(w.deleteLater)
-        self._audio_thread.start()
+        # time-critical: the feed ticks must not wait behind busy threads (an analysis on every core), or a
+        # small output buffer runs dry
+        self._audio_thread.start(QtCore.QThread.Priority.TimeCriticalPriority)
 
         app = QtCore.QCoreApplication.instance()
         if app is not None:
             app.aboutToQuit.connect(self.shutdown)
 
         bus.sig_seek_requested.connect(self.seek)
-        bus.sig_scrub_begin.connect(lambda: self._send("scrub_begin"))
-        bus.sig_scrub_update.connect(lambda sec: self._send("scrub_update", float(sec)))
-        bus.sig_scrub_end.connect(lambda sec: self._send("scrub_end", float(sec)))
+        # a scrub's positions reach the audio at most every SCRUB_INTERVAL_MS (the newest; the views follow the
+        # drag itself): each one is a seek, crossfaded, which a mouse moving at its own rate turns into a rasp
+        self._scrub_pending: Optional[float] = None
+        self._scrub_sent: Optional[float] = None   # the position last sent
+        self._scrub_timer = QtCore.QTimer(self)
+        self._scrub_timer.setSingleShot(True)
+        self._scrub_timer.setInterval(self.SCRUB_INTERVAL_MS)
+        self._scrub_timer.timeout.connect(self._send_scrub)
+        bus.sig_scrub_begin.connect(self._on_scrub_begin)
+        bus.sig_scrub_update.connect(self._on_scrub_update)
+        bus.sig_scrub_end.connect(self._on_scrub_end)
         bus.sig_scratch_begin.connect(lambda sec_per_px: self._send_local("scratch_begin", float(sec_per_px)))
         bus.sig_scratch_update.connect(lambda sec, at: self._send_local("scratch_update", float(sec), float(at)))
         bus.sig_scratch_end.connect(lambda sec: self._send_local("scratch_end", float(sec)))
@@ -452,6 +526,35 @@ class PlayerController(QtCore.QObject):
         bus.sig_tempo_mode_changed.connect(self.set_tempo_mode)
         bus.sig_tempo_factor_changed.connect(self.set_tempo_factor)
         bus.sig_external_sync_enabled.connect(self._on_external_sync_enabled)
+
+    def _on_scrub_begin(self) -> None:
+        self._scrub_pending = None
+        self._scrub_sent = None
+        self._send("scrub_begin")
+
+    def _on_scrub_update(self, sec: float) -> None:
+        self._scrub_pending = float(sec)
+        if not self._scrub_timer.isActive():
+            self._send_scrub()
+
+    def _send_scrub(self) -> None:
+        """The newest scrub position (if any came since the last), then a pause of SCRUB_INTERVAL_MS."""
+        if self._scrub_pending is None:
+            return
+        self._send("scrub_update", self._scrub_pending)
+        self._scrub_sent = self._scrub_pending
+        self._scrub_pending = None
+        self._scrub_timer.start()
+
+    def _on_scrub_end(self, sec: float) -> None:
+        """Let go: where, unless that is the position last sent (held still there, it plays on from it: a seek
+        back to it would start it again)."""
+        self._scrub_timer.stop()
+        self._scrub_pending = None
+        last = self._scrub_sent
+        if last is None or abs(float(sec) - last) > 1e-6:
+            self._send("scrub_update", float(sec))
+        self._send("scrub_end", float(sec))
 
     @QtCore.Slot()
     def _relay_time(self) -> None:
@@ -488,7 +591,7 @@ class PlayerController(QtCore.QObject):
     def audio_thread(self) -> QtCore.QThread:
         return self._audio_thread
 
-    def click_mixer(self) -> Optional[ClickTrack]:
+    def click_mixer(self) -> Optional[ClickTrack | NativeClicks]:
         """The metronome click mixer. Only touch it from the audio thread."""
         feeder = self._audio_worker.feeder
         return feeder.clicks if feeder is not None else None
@@ -534,8 +637,25 @@ class PlayerController(QtCore.QObject):
         """tanh soft clip of the output (music + metronome clicks)."""
         self._send("set_soft_clip", bool(enabled))
 
+    def set_buffer_ms(self, native_ms: float, python_ms: float) -> None:
+        """The output buffer (ms) of each engine: the one that plays takes its own."""
+        self._send("set_buffer_ms", float(native_ms if self.native else python_ms))
+
     def set_refresh_fps(self, fps: int) -> None:
         self._send("set_refresh_fps", int(fps))
+
+    def set_output_device(self, name: str) -> None:
+        """The output device by name ("": the system's default)."""
+        self._send("set_output_device", str(name or ""))
+
+    def output_devices(self) -> tuple[str, list[str]]:
+        """(the output device in use, the output devices) as the engine that plays names them (they differ by
+        engine on some systems)."""
+        if self._engine is not None:
+            return self._engine.devices()
+        audio = self._audio_worker.audio
+        current = audio.device().description() if audio is not None else ""
+        return current, [d.description() for d in QtMultimedia.QMediaDevices.audioOutputs()]
 
     def shutdown(self) -> None:
         if self._audio_thread.isRunning():

@@ -1,4 +1,4 @@
-"""Numba loop of core.audio.cursor_poller (Windows only).
+"""Numba loop of audioengine.python.cursor_poller (Windows only).
 
 Runs without the GIL: Win32 is called directly from nopython code, so the loop
 keeps its ~1 kHz pace whatever Python threads do. Loaded by

@@ -29,6 +29,16 @@ Mixlyzer는 DJ와 프로듀서를 위한 트랙 분석·편집 도구입니다. 
 3. `uv sync`로 의존성과 가상환경을 준비합니다(Python 3.12+).  
 4. `uv run python -m app.main`으로 Mixlyzer를 실행합니다.
 
+#### 네이티브 오디오 엔진 빌드 (선택)
+빌드하지 않으면 Python 엔진으로 재생합니다. `audioengine/native/bin`에 빌드하려면:
+1. git과 [Rust](https://rustup.rs), 그리고 C 컴파일러를 설치합니다.
+   - **Windows**: [llvm-mingw](https://github.com/mstorsjo/llvm-mingw)(Visual Studio 불필요. `bin` 폴더를 `PATH`에 넣거나 `LLVM_MINGW`로 폴더를 지정)와 Rust 툴체인 `rustup toolchain install stable-x86_64-pc-windows-gnullvm`.
+   - **Linux**: gcc 또는 clang, ALSA 헤더(`libasound2-dev` / `alsa-lib-devel`).
+   - **macOS**: Xcode 명령줄 도구.
+2. `uv sync --group native` 후 `uv run --group native python build/audio_engine.py`를 실행합니다(VOLK를 소스에서 빌드한 뒤 엔진을 빌드합니다). 다시 빌드할 때는 Mixlyzer를 먼저 종료하세요. 실행 중인 앱이 엔진 파일을 잡고 있습니다.
+
+설정 > 재생에서 엔진(**Native 우선**: 안 되면 Python으로 폴백, 또는 **Python**. 다음 시작부터 적용), 출력 장치, 엔진별 버퍼 크기를 고릅니다.
+
 ### 방법 B: 배포 바이너리 사용
 1. Releases 페이지에서 최신 빌드를 받습니다.  
 2. 원하는 위치에 압축 해제합니다.  

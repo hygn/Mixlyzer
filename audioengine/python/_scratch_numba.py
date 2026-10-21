@@ -1,4 +1,4 @@
-"""Numba kernel for core.audio.dsp.read_at (the scratch reader).
+"""Numba kernel for audioengine.python.dsp.read_at (the scratch reader).
 
 Loaded by dsp.warm_scratch_numba() on the main thread, so the audio thread never
 compiles or loads it. read_at's NumPy path computes the same output (see there for

@@ -7,13 +7,13 @@ from scipy.signal import lfilter
 # stretcher's first scipy.fft import must not happen on the audio QThread (importing it
 # there first crashed the process later: heap corruption / access violation in
 # scipy.fft, 5 of 5 runs; importing scipy.fft on the main thread first: 0 of 5).
-from core.audio.timestretch import StreamingTimeStretcher
+from audioengine.python.timestretch import StreamingTimeStretcher
 
 
 def make_speed_renderer(channels: int, sample_rate: int, timestretch: bool = False):
     """Renderer for the "speed" mode, with the SpeedResampler.render(pcm, pos, factor,
     max_out_frames) contract: varispeed (pitch follows tempo), or with ``timestretch``
-    the pitch-preserving time stretch (core/audio/timestretch.py). The stretcher uses
+    the pitch-preserving time stretch (audioengine/python/timestretch.py). The stretcher uses
     its numba kernels once timestretch.warm_timestretch_numba() has loaded them, NumPy
     until then."""
     if timestretch:
@@ -112,7 +112,7 @@ class ScratchPlatter:
     than the delay) it carries on at the speed of the last RATE_SEC of samples for
     up to EXTRAPOLATE_SEC, then holds; it holds at once after a rest sample (the
     hand stopped there). With ``pixel`` (input frames per pointer pixel, samples
-    being pixel-boundary crossings: core/audio/cursor_poller.py) it never carries
+    being pixel-boundary crossings: audioengine/python/cursor_poller.py) it never carries
     on past the next boundary, which the hand has not crossed yet. Smoothed by two
     one-pole lowpasses (critically damped, SMOOTH_SEC).
 
@@ -221,7 +221,7 @@ _READ_STRIDE_W /= _READ_STRIDE_W.sum()
 del _read_x, _read_u, _read_m
 
 
-# The compiled read_at kernel (core/audio/_scratch_numba.py) once warm_scratch_numba()
+# The compiled read_at kernel (audioengine/python/_scratch_numba.py) once warm_scratch_numba()
 # has loaded it, False if that failed; read_at uses NumPy until then (several times
 # slower: fast scratches may not keep up in real time).
 _SCRATCH_NUMBA = None
@@ -233,7 +233,7 @@ def warm_scratch_numba() -> bool:
     global _SCRATCH_NUMBA
     if _SCRATCH_NUMBA is None:
         try:
-            from core.audio import _scratch_numba as kernels
+            from audioengine.python import _scratch_numba as kernels
             kernels.warm()
             _SCRATCH_NUMBA = kernels
         except Exception as exc:  # pragma: no cover - environment dependent

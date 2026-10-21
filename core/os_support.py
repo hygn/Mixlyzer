@@ -10,7 +10,7 @@ Where the Windows API is used, the other systems have a fallback:
 - the running processes: tasklist / ps
 - revealing a file: Explorer, the file selected / Finder, the file selected / the folder in the file manager
 - the window's occlusion (utils.window_visibility): user32 + DWM / whether Qt has the window exposed
-- the scratch cursor poller (core.audio.cursor_poller): Win32 cursor + waitable timer / the GUI's mouse events
+- the scratch cursor poller (audioengine.python.cursor_poller): Win32 cursor + waitable timer / the GUI's mouse events
 - the physical core count for sklearn (analyzer_core.utils): GetLogicalProcessorInformationEx / loky's own
 - a key another program holds as a global hotkey (Settings > Shortcuts): RegisterHotKey refused / not checked
 External Sync's memory reads (PyMemoryEditor) are Windows and Linux only: on macOS (MEMORY_SYNC False) the library
@@ -82,6 +82,24 @@ def prepare_app_process(app_id: str) -> None:
         atexit.register(lambda: ctypes.windll.winmm.timeEndPeriod(1))
     except Exception:
         pass
+
+
+def register_audio_thread() -> bool:
+    """The calling thread as a real-time audio thread: on Windows registered with MMCSS as "Pro Audio" (the
+    scheduler serves it ahead of busy threads, as the audio engine's own); True if done. Elsewhere nothing (the
+    thread's Qt priority applies; real-time scheduling would need privileges the app does not have)."""
+    if not IS_WINDOWS:
+        return False
+    try:
+        import ctypes
+        from ctypes import wintypes
+        avrt = ctypes.WinDLL("avrt")
+        avrt.AvSetMmThreadCharacteristicsW.restype = wintypes.HANDLE
+        avrt.AvSetMmThreadCharacteristicsW.argtypes = [wintypes.LPCWSTR, ctypes.POINTER(wintypes.DWORD)]
+        task_index = wintypes.DWORD(0)
+        return bool(avrt.AvSetMmThreadCharacteristicsW("Pro Audio", ctypes.byref(task_index)))
+    except Exception:
+        return False
 
 
 def hidden_subprocess_kwargs() -> dict:

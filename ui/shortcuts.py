@@ -44,7 +44,9 @@ class Action:
     id: str
     group: str
     text: str                 # its name, short; translated where shown, filled with ``args``
-    repeat: bool = False      # repeats while the key is held (nudges, steps)
+    repeat: bool = False      # repeats while the key is held (nudges, steps), at the system's key repeat
+    hold_rate: float = 0.0    # > 0: repeats while the key is held at this many a second, from the press on (the
+                              # playhead's steps: an even pace, not the system's delay and rate)
     args: dict = field(default_factory=dict)
     tip: str = ""             # the details, for its tooltip (translated where shown, filled with ``args``)
 
@@ -68,15 +70,15 @@ def _page(name: str) -> Callable[[], str]:
 ACTIONS: tuple[Action, ...] = (
     Action("playback.play_pause", PLAYBACK, tr_mark("Play / pause")),
     Action("playback.stop", PLAYBACK, tr_mark("Stop"), tip=tr_mark("Stop and go back to the start of the track.")),
-    Action("playback.beat_back", PLAYBACK, tr_mark("One beat back"), repeat=True,
+    Action("playback.beat_back", PLAYBACK, tr_mark("One beat back"), hold_rate=8.0,
            tip=tr_mark("The playhead one beat back: while playing, as a beat jump (its place in the beat kept); "
                        "stopped, to the beat itself.")),
-    Action("playback.beat_forward", PLAYBACK, tr_mark("One beat forward"), repeat=True,
+    Action("playback.beat_forward", PLAYBACK, tr_mark("One beat forward"), hold_rate=8.0,
            tip=tr_mark("The playhead one beat forward: while playing, as a beat jump (its place in the beat "
                        "kept); stopped, to the beat itself.")),
-    Action("playback.bar_back", PLAYBACK, tr_mark("One bar back"), repeat=True,
+    Action("playback.bar_back", PLAYBACK, tr_mark("One bar back"), hold_rate=4.0,
            tip=tr_mark("The playhead one bar back, as one beat back by downbeats.")),
-    Action("playback.bar_forward", PLAYBACK, tr_mark("One bar forward"), repeat=True,
+    Action("playback.bar_forward", PLAYBACK, tr_mark("One bar forward"), hold_rate=4.0,
            tip=tr_mark("The playhead one bar forward, as one beat forward by downbeats.")),
     Action("playback.tempo_down", PLAYBACK, tr_mark("Tempo -1%"), repeat=True),
     Action("playback.tempo_up", PLAYBACK, tr_mark("Tempo +1%"), repeat=True),
@@ -218,13 +220,18 @@ STATUS_MS = 3000
 
 class ShortcutManager(QtCore.QObject):
     """One QShortcut per action on ``window`` (keys set by ``apply``); ``handlers``: action id -> callable
-    returning None or a message for ``status(message, ms)``."""
+    returning None or a message for ``status(message, ms)``. An action with a hold rate is repeated by a timer
+    while its key is held (the key's release, or the app losing the focus, stops it)."""
 
     def __init__(self, window: QtWidgets.QWidget, handlers: dict[str, Callable[[], Optional[str]]],
                  status: Callable[[str, int], None]):
         super().__init__(window)
         self._status = status
         self._shortcuts: dict[str, QtGui.QShortcut] = {}
+        self._held: Optional[tuple[str, Callable[[], Optional[str]]]] = None   # (action id, handler) held
+        self._hold_timer = QtCore.QTimer(self)
+        self._hold_timer.setTimerType(QtCore.Qt.PreciseTimer)
+        self._hold_timer.timeout.connect(self._hold_step)
         for action in ACTIONS:
             handler = handlers.get(action.id)
             if handler is None:
@@ -232,11 +239,17 @@ class ShortcutManager(QtCore.QObject):
                 continue
             sc = QtGui.QShortcut(window)
             sc.setContext(QtCore.Qt.WindowShortcut)
-            sc.setAutoRepeat(action.repeat)
-            sc.activated.connect(lambda handler=handler: self._run(handler))
+            sc.setAutoRepeat(action.repeat and action.hold_rate <= 0.0)
+            if action.hold_rate > 0.0:
+                sc.activated.connect(lambda action=action, handler=handler: self._press(action, handler))
+            else:
+                sc.activated.connect(lambda handler=handler: self._run(handler))
             sc.activatedAmbiguously.connect(lambda action=action: self._ambiguous(action))
             self._shortcuts[action.id] = sc
-        QtWidgets.QApplication.instance().installEventFilter(self)
+        app = QtWidgets.QApplication.instance()
+        app.installEventFilter(self)
+        app.applicationStateChanged.connect(
+            lambda state: state == QtCore.Qt.ApplicationActive or self._release())
 
     def apply(self, keymap: dict[str, list[str]]) -> None:
         for action_id, sc in self._shortcuts.items():
@@ -255,16 +268,45 @@ class ShortcutManager(QtCore.QObject):
         if message:
             self._status(message, STATUS_MS)
 
+    def _press(self, action: Action, handler: Callable[[], Optional[str]]) -> None:
+        self._run(handler)
+        self._held = (action.id, handler)
+        self._hold_timer.start(max(1, round(1000.0 / action.hold_rate)))
+
+    def _hold_step(self) -> None:
+        if self._held is None:
+            self._hold_timer.stop()
+            return
+        self._run(self._held[1])
+
+    def _release(self) -> None:
+        self._held = None
+        self._hold_timer.stop()
+
+    def _held_keys(self) -> set[int]:
+        """The keys (without modifiers) of the held action's shortcuts."""
+        if self._held is None:
+            return set()
+        return {_key_value(seq[0].key()) for seq in self._shortcuts[self._held[0]].keys() if not seq.isEmpty()}
+
     def _ambiguous(self, action: Action) -> None:
         keys = ", ".join(k.toString(QtGui.QKeySequence.NativeText) for k in self._shortcuts[action.id].keys())
         self._status(tr("{keys} is used by more than one action (Settings > Shortcuts).").format(keys=keys), STATUS_MS)
 
     def eventFilter(self, obj, event) -> bool:
+        if (self._held is not None and event.type() == QtCore.QEvent.KeyRelease and not event.isAutoRepeat()
+                and _key_value(event.key()) in self._held_keys()):
+            self._release()
         # a plain navigation key moves in the focused list or steps the focused value instead of a shortcut
         if (event.type() == QtCore.QEvent.ShortcutOverride and not (event.modifiers() & _COMMAND_MODIFIERS)
                 and _takes_navigation(obj, event)):
             event.accept()
         return False
+
+
+def _key_value(key) -> int:
+    """A Qt key as an int (QKeyEvent.key() gives one, QKeyCombination.key() an enum)."""
+    return int(getattr(key, "value", key))
 
 
 def _takes_navigation(widget, event) -> bool:

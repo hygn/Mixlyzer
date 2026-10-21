@@ -32,3 +32,10 @@ dependencies = [
 dev = [
     "babel>=2.18.0",
 ]
+# build/audio_engine.py: VOLK's build (cmake, ninja; mako for its generated sources) and the engine's link to it
+native = [
+    "cmake>=4.4.4",
+    "ninja>=1.13.2",
+    "mako>=1.4.3",
+    "pkgconf>=3.0.7",
+]

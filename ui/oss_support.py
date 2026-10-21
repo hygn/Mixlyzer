@@ -1,4 +1,5 @@
 from PySide6 import QtCore, QtGui, QtWidgets
+from audioengine.native.client import available as native_engine_built
 from core import os_support
 from core.i18n import tr
 
@@ -202,7 +203,29 @@ class SupportDialog(QtWidgets.QDialog):
         blas = self._detect_blas_backend()
         if blas is not None:
             filtered.append(blas)
+        if native_engine_built():
+            filtered += self._native_engine_dependencies()
         return filtered
+
+    @staticmethod
+    def _native_engine_dependencies():
+        """What the native audio engine (audioengine/native) is built from: its library beside it (VOLK) and
+        the crates compiled in (the whole list with licences: cargo metadata; LGPL volk-rs, the rest MIT /
+        Apache-2.0 / Zlib / BSD / Unlicense), with the C runtime parts linked in."""
+        return [
+            ("Rust", "https://foundation.rust-lang.org/"),
+            # beside the engine as libvolk (LGPL-3.0-or-later), with Google's cpu_features (Apache-2.0) inside
+            ("VOLK (cpu_features)", "https://github.com/gnuradio/volk"),
+            ("volk-rs", "https://github.com/ThomasHabets/volk-rs"),
+            ("cpal", "https://github.com/RustAudio/cpal"),
+            ("RustFFT / RealFFT", "https://github.com/ejmahler/RustFFT"),
+            ("num-complex", "https://github.com/rust-num/num-complex"),
+            ("crc32fast", "https://github.com/srijs/rust-crc32fast"),
+            ("windows-rs", "https://github.com/microsoft/windows-rs"),
+            ("libc (Rust)", "https://github.com/rust-lang/libc"),
+            # Windows: built with llvm-mingw, its libunwind linked in (Apache-2.0 with LLVM exceptions)
+            ("LLVM (libunwind, llvm-mingw)", "https://github.com/mstorsjo/llvm-mingw"),
+        ]
 
     def _detect_blas_backend(self):
         """Detect the BLAS backend via NumPy and return only open-source ones.

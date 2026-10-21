@@ -38,6 +38,8 @@ a = Analysis(
     + shipped('assets/i18n', lambda name: name in ('languages.json', 'mixlyzer.po'))
     + shipped('assets/shortcuts', lambda name: name == 'default_shortcuts.json')
     + [(os.path.join(REPO, 'process_denylist.json'), '.')]
+    # the native audio engine and its VOLK (build/audio_engine.py), as built: copied, not analysed or packed
+    + shipped('audioengine/native/bin')
     # the title readings (core.reading): the readers' dictionaries and tables
     + collect_data_files('sudachipy')
     + collect_data_files('sudachidict_core')

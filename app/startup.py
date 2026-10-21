@@ -201,9 +201,9 @@ def _import_libraries(progress: Progress) -> None:
 def _compile_audio_kernels(progress: Progress) -> None:
     """The playback's numba kernels: from numba's disk cache, compiled when it has none (the first
     start after an install or a numba update takes longer)."""
-    from core.audio.cursor_poller import warm_cursor_poller
-    from core.audio.dsp import warm_scratch_numba
-    from core.audio.timestretch import warm_timestretch_numba
+    from audioengine.python.cursor_poller import warm_cursor_poller
+    from audioengine.python.dsp import warm_scratch_numba
+    from audioengine.python.timestretch import warm_timestretch_numba
     kernels = ((tr("Scratch reader"), 0.7, warm_scratch_numba), (tr("Cursor poller"), 0.05, warm_cursor_poller),
                (tr("Time stretch"), 0.25, warm_timestretch_numba))
     done = 0.0
@@ -254,7 +254,7 @@ def _build_window(progress: Progress):
 def startup_tasks(cfg) -> list[StartupTask]:
     """What the app does before its window opens, in order; the last gives the window."""
     # weights: the measured times (s) of a start with the files in the OS cache
-    return [
+    tasks = [
         StartupTask(tr("Loading libraries"), 3.0, _import_libraries),
         StartupTask(tr("Compiling audio kernels (JIT)"), 0.4, _compile_audio_kernels),
         StartupTask(tr("Starting FFmpeg"), 0.1, _warm_ffmpeg),
@@ -262,3 +262,8 @@ def startup_tasks(cfg) -> list[StartupTask]:
         StartupTask(tr("Loading the library"), 0.1, _search_keys(cfg.libconfig.libpath)),
         StartupTask(tr("Building the window"), 2.3, _build_window, pump_events=False),
     ]
+    from audioengine.native.client import available
+    if cfg.playbackconfig.audio_engine == "native" and available():
+        # the native engine plays: the Python engine's kernels are loaded only if it falls back (AppWindow)
+        tasks = [t for t in tasks if t.run is not _compile_audio_kernels]
+    return tasks

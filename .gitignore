@@ -36,6 +36,12 @@ dist/
 build/*
 !build/*.spec
 !build/translations.py
+!build/audio_engine.py
+
+# Native audio engine: its build (build/audio_engine.py) and the VOLK it builds
+audioengine/native/bin/
+audioengine/native/target/
+audioengine/native/third_party/
 
 # User data / caches
 library/
