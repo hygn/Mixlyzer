@@ -156,6 +156,30 @@ def run_startup(splash: StartupSplash, tasks: list[StartupTask]) -> list:
     return results
 
 
+# The GUI process does no heavy linear algebra (the analyses run in worker processes): numpy's and scipy's
+# OpenBLAS, each set aside buffers for every thread they may use when loaded (about 1 GB of memory committed on 16
+# threads), are given one. Set before they load (main(), this process only: a frozen app's workers run the entry
+# script too), taken back once they have, so the worker processes, spawned with this environment, keep theirs.
+_BLAS_THREADS = "OPENBLAS_NUM_THREADS"
+_blas_threads_set = False
+
+
+def one_blas_thread() -> None:
+    """Before numpy and scipy are imported: their OpenBLAS with one thread in this process (the user's own
+    setting kept)."""
+    global _blas_threads_set
+    if _BLAS_THREADS not in os.environ:
+        os.environ[_BLAS_THREADS] = "1"
+        _blas_threads_set = True
+
+
+def _release_blas_threads() -> None:
+    global _blas_threads_set
+    if _blas_threads_set:
+        os.environ.pop(_BLAS_THREADS, None)
+        _blas_threads_set = False
+
+
 # the app's heavy imports in dependency order, with their usual time (s, measured)
 _IMPORTS = (
     ("numpy", 0.17), ("scipy.signal", 1.17), ("numba", 0.36), ("sklearn.metrics", 0.31), ("pyqtgraph", 0.34),
@@ -171,6 +195,7 @@ def _import_libraries(progress: Progress) -> None:
         progress(done / total, module)
         importlib.import_module(module)
         done += weight
+    _release_blas_threads()   # numpy's and scipy's OpenBLAS loaded
 
 
 def _compile_audio_kernels(progress: Progress) -> None:
@@ -233,7 +258,7 @@ def startup_tasks(cfg) -> list[StartupTask]:
         StartupTask(tr("Loading libraries"), 3.0, _import_libraries),
         StartupTask(tr("Compiling audio kernels (JIT)"), 0.4, _compile_audio_kernels),
         StartupTask(tr("Starting FFmpeg"), 0.1, _warm_ffmpeg),
-        StartupTask(tr("Loading search readers"), 2.1, _load_readers),
+        StartupTask(tr("Loading search readers"), 1.5, _load_readers),
         StartupTask(tr("Loading the library"), 0.1, _search_keys(cfg.libconfig.libpath)),
         StartupTask(tr("Building the window"), 2.3, _build_window, pump_events=False),
     ]

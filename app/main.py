@@ -9,7 +9,7 @@ from core.library_version import (
     version_file_path,
 )
 from migration import library_migration
-from app.startup import StartupSplash, center_on_screen, run_startup, startup_tasks
+from app.startup import StartupSplash, center_on_screen, one_blas_thread, run_startup, startup_tasks
 from ui.theme import apply_theme
 from utils.fonts import load_fonts_and_set_global
 
@@ -23,6 +23,7 @@ for _stream in (sys.stdout, sys.stderr):
 
 
 def main():
+    one_blas_thread()   # before numpy loads (the startup imports it): none of the imports above does
     app = QtWidgets.QApplication(sys.argv)
     # the language before any UI is made (or imported: the startup imports the rest)
     i18n.install(ui_language())

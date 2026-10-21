@@ -13,9 +13,10 @@ Three layers:
      Mandarin          pypinyin (by word: 重庆 chong qing), tones dropped, ü as u.
      Taiwan Mandarin   the Mandarin reading with Taiwan's where Unihan's kMandarin differs
                        (assets/readings/unihan_taiwan_mandarin.tsv: 乾 gan, 万 mo).
-     Cantonese         pycantonese (rime-cantonese, HKCanCor) Jyutping, tones dropped; a form it
-                       lacks (会, 学: Japanese new / simplified) read as its Unihan variant
-                       (assets/readings/unihan_cantonese_variants.tsv: 會, 學).
+     Cantonese         pycantonese (rime-cantonese, HKCanCor) Jyutping by word, tones dropped; a form
+                       it lacks (会, 学: Japanese new / simplified) read as its Unihan variant
+                       (assets/readings/unihan_cantonese_variants.tsv: 會, 學); the words are the
+                       longest of its word table from the left (not its segmenter model: 160 MB).
      Korean Hanja      Unihan kHangul (assets/readings/unihan_korean.tsv; the standard reading),
                        spelled as a word: the initial sound law on its first syllable (李 이, 女 여,
                        樂 낙), 렬 / 률 as 열 / 율 after a vowel or ㄴ (比率 비율), 不 as 부 before
@@ -408,25 +409,49 @@ def _read_mandarin(text: str, *, taiwan: bool) -> str:
     return " ".join(x for x in out if x.strip())
 
 
+_cantonese_table: tuple[dict, int] | None = None
+
+
+def _cantonese_words() -> tuple[dict, int]:
+    """pycantonese's word table (the one its characters_to_jyutping reads: rime-cantonese and HKCanCor's words)
+    and its longest word. It is built from the HKCanCor corpus, which pycantonese keeps after (about 90 MB):
+    let go, nothing reads it again."""
+    global _cantonese_table
+    if _cantonese_table is None:
+        import pycantonese.corpus
+        from pycantonese.jyutping.characters import _get_words_characters_to_jyutping
+        words, _characters = _get_words_characters_to_jyutping()
+        pycantonese.corpus.hkcancor.cache_clear()
+        _cantonese_table = (words, max(map(len, words)))
+    return _cantonese_table
+
+
+def _cantonese_split(text: str) -> list[str]:
+    """``text`` cut into the longest words of pycantonese's word table from the left (a character alone where
+    none starts). Its segmenter model reads the same words in a text of Han only (the library's titles, artists
+    and albums alike) and takes 160 MB of memory."""
+    words, longest = _cantonese_words()
+    out, i = [], 0
+    while i < len(text):
+        n = next((n for n in range(min(longest, len(text) - i), 1, -1) if text[i:i + n] in words), 1)
+        out.append(text[i:i + n])
+        i += n
+    return out
+
+
 def _read_cantonese(text: str) -> str:
     import pycantonese
-
-    def jyutping(run: str) -> list:
-        with _chinese_lock:   # the first call builds its tables
-            return pycantonese.characters_to_jyutping(run)
 
     def spelled(chars: str, reading: str | None) -> str:
         return re.sub(r"\d", "", reading) if reading else " ".join(anyascii(c).lower() for c in chars)
 
+    # forms pycantonese lacks (会, 学: Japanese new / simplified) as their Unihan variants, before the words are
+    # cut, so a word written with them is found (学生 as 學生, hok saang)
     variants = _unihan_table("unihan_cantonese_variants")
-    out = []
-    for chars, reading in jyutping(text):
-        if not reading and any(c in variants for c in chars):
-            # forms pycantonese lacks (会, 学: Japanese new / simplified): read as their Unihan variants
-            out.extend(spelled(c, r) for c, r in jyutping("".join(variants.get(c, c) for c in chars)))
-        else:
-            out.append(spelled(chars, reading))
-    return " ".join(x for x in out if x.strip())
+    text = "".join(variants.get(c, c) for c in text)
+    with _chinese_lock:   # the first call builds the tables
+        pairs = pycantonese.characters_to_jyutping(_cantonese_split(text))
+    return " ".join(x for x in (spelled(chars, reading) for chars, reading in pairs) if x.strip())
 
 
 _tables: dict[str, dict[str, str]] = {}
@@ -515,7 +540,7 @@ def _read_vietnamese(text: str) -> str:
 
 
 def warm_up(progress: Callable[[float, str], None] | None = None) -> None:
-    """Load the readers (Sudachi, pypinyin, pycantonese, the Unihan tables: about 2 s; the app does
+    """Load the readers (Sudachi, pypinyin, pycantonese, the Unihan tables: about 1.5 s; the app does
     it while starting), so the first reading or search does not wait; ``progress(fraction done,
     reader)`` before each (by its usual share of the time)."""
     steps = [(tr("Japanese (SudachiDict)"), 0.04, _japanese_tokenizer),
