@@ -107,6 +107,40 @@ def _validate_current_settings(settings: object, path: str) -> dict[str, object]
     return settings
 
 
+def _raw_predict_trees(x, baseline, tree_classes, tree_offsets, value, feature_idx, threshold, missing_left, left,
+                       right, is_leaf):
+    """Every tree on every row, the leaf values summed per class in tree order (as raw_predict's NumPy path:
+    the same comparisons and the same order of additions, so the same floats)."""
+    rows = x.shape[0]
+    raw = np.empty((rows, baseline.shape[0]), dtype=np.float64)
+    for i in range(rows):
+        for c in range(baseline.shape[0]):
+            raw[i, c] = baseline[c]
+    for t in range(tree_classes.shape[0]):
+        start = tree_offsets[t]
+        cls = tree_classes[t]
+        for i in range(rows):
+            node = 0
+            while not is_leaf[start + node]:
+                k = start + node
+                v = x[i, feature_idx[k]]
+                if np.isnan(v):
+                    go_left = missing_left[k]
+                else:
+                    go_left = v <= threshold[k]
+                node = left[k] if go_left else right[k]
+            raw[i, cls] += value[start + node]
+    return raw
+
+
+try:
+    from numba import njit
+
+    _raw_predict_trees_numba = njit(cache=True, nogil=True)(_raw_predict_trees)
+except Exception:  # pragma: no cover - numba is optional
+    _raw_predict_trees_numba = None
+
+
 class NumpyHistGradientBoostingClassifier:
     """Small NumPy runtime for sklearn HistGradientBoostingClassifier exports."""
 
@@ -160,6 +194,13 @@ class NumpyHistGradientBoostingClassifier:
 
     def raw_predict(self, X: np.ndarray) -> np.ndarray:
         x = np.asarray(X, dtype=np.float64)
+        if _raw_predict_trees_numba is not None and x.ndim == 2:
+            # compiled: the per-tree NumPy loop below cost more in overhead than in work (thousands of trees)
+            return _raw_predict_trees_numba(
+                np.ascontiguousarray(x), self.baseline, self.tree_classes, self.tree_offsets, self.node_value,
+                self.node_feature_idx, self.node_num_threshold, self.node_missing_go_to_left, self.node_left,
+                self.node_right, self.node_is_leaf,
+            )
         raw = np.tile(self.baseline.reshape(1, -1), (x.shape[0], 1)).astype(np.float64)
         for tree_index, tree_class in enumerate(self.tree_classes):
             start = int(self.tree_offsets[tree_index])

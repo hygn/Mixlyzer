@@ -272,8 +272,72 @@ def robust_standardize_columns(features: np.ndarray) -> np.ndarray:
     return np.clip((values - median) / scale, -8.0, 8.0)
 
 
+def _median_small(values):
+    """np.median of a short float64 array: its middle value, or for an even count the mean of the middle two
+    ((a + b) / 2, as np.median takes it); NaN if any value is NaN."""
+    n = values.size
+    for v in values:
+        if np.isnan(v):
+            return np.nan
+    ordered = np.sort(values)
+    if n % 2 == 1:
+        return ordered[n // 2]
+    return (ordered[n // 2 - 1] + ordered[n // 2]) / 2.0
+
+
+def _neighbor_median_loop(signal, radius):
+    n = signal.size
+    output = np.zeros_like(signal)
+    buffer = np.empty(2 * radius, dtype=np.float64)
+    for index in range(n):
+        count = 0
+        for other in range(max(0, index - radius), min(n, index + radius + 1)):
+            if other != index:
+                buffer[count] = signal[other]
+                count += 1
+        output[index] = _median_small(buffer[:count]) if count else signal[index]
+    return output
+
+
+def _onset_recurrence_loop(onset):
+    n = onset.size
+    output = np.zeros_like(onset)
+    periodic = np.empty(4, dtype=np.float64)
+    nearby = np.empty(6, dtype=np.float64)
+    for index in range(n):
+        p = 0
+        for offset in (-8, -4, 4, 8):
+            other = index + offset
+            if 0 <= other < n:
+                periodic[p] = onset[other]
+                p += 1
+        q = 0
+        for offset in (-3, -2, -1, 1, 2, 3):
+            other = index + offset
+            if 0 <= other < n:
+                nearby[q] = onset[other]
+                q += 1
+        if p and q:
+            output[index] = (-abs(onset[index] - _median_small(periodic[:p]))
+                             + abs(onset[index] - _median_small(nearby[:q])))
+    return output
+
+
+try:
+    from numba import njit
+
+    _median_small = njit(cache=True, inline="always")(_median_small)
+    _neighbor_median_numba = njit(cache=True, nogil=True)(_neighbor_median_loop)
+    _onset_recurrence_numba = njit(cache=True, nogil=True)(_onset_recurrence_loop)
+except Exception:  # pragma: no cover - numba is optional
+    _neighbor_median_numba = _onset_recurrence_numba = None
+
+
 def _neighbor_median(values: np.ndarray, radius: int) -> np.ndarray:
     signal = np.asarray(values, dtype=np.float64)
+    if _neighbor_median_numba is not None and signal.ndim == 1:
+        # compiled: the same medians (np.median's own rule) without a call per beat
+        return _neighbor_median_numba(np.ascontiguousarray(signal), int(radius))
     output = np.zeros_like(signal)
     for index in range(signal.size):
         lo = max(0, index - radius)
@@ -335,11 +399,15 @@ def _onset_columns(
     """Per-beat onset energy and its accent / attack / fill / recurrence columns."""
     onset = _onset_per_beat(curve, frames.frame_times, beats, beat_ends, 0.5)
     onset_accent_4 = onset - _neighbor_median(onset, 2)
-    onset_accent_8 = onset - _neighbor_median(onset, 4)
+    median_8 = _neighbor_median(onset, 4)
+    onset_accent_8 = onset - median_8
     onset_attack = np.diff(onset, prepend=onset[:1])
     pre_fill = np.zeros_like(onset)
     if onset.size > 1:
-        pre_fill[1:] = onset[:-1] - _neighbor_median(onset, 4)[:-1]
+        pre_fill[1:] = onset[:-1] - median_8[:-1]
+    if _onset_recurrence_numba is not None and onset.dtype == np.float64 and onset.ndim == 1:
+        return [onset, onset_accent_4, onset_accent_8, onset_attack, pre_fill,
+                _onset_recurrence_numba(np.ascontiguousarray(onset))]
     onset_recurrence = np.zeros_like(onset)
     for index in range(onset.size):
         periodic = [

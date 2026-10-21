@@ -73,11 +73,11 @@ Working notes for AI/automation agents editing the Mixlyzer codebase.
 
 ## Analysis Flow
 - Track load requests enter through `EventBus.sig_request_load_track` and end up in `AppWindow.analyze_file()`.
-- Full-track analysis runs in a spawned subprocess via `core.analysis_worker.AnalysisWorker`.
+- Full-track analysis runs in a spawned subprocess via `core.analysis_worker.AnalysisWorker`. The process runs with one BLAS thread (`threadpool_limits` in `core/workers/analysis.py`): the analysis runs its own threads, and BLAS threads on top only competed (the outputs are the same; a track about 20 % faster, a third less CPU).
 - The worker calls `analyzer_core.global_analyzer.precompute_features(...)`.
 - Current pipeline in `global_analyzer.py`:
   - decode/load audio,
-  - HPSS split (always on, not a setting),
+  - HPSS split (always on, not a setting; its median filters are a sliding median kept sorted, `analyzer_core/dsp/running_median.py`, equal to scipy's `median_filter` and several times faster),
   - overview waveform (its own 48 kHz decode: min / max of 32768 columns, the power of 12 log-spaced bands in 8192 columns, and the detail waveform's three-band scale),
   - beat tracking (`analyzer_core.beat.general.track` on the frame features; frames on the fixed grid `frame_features.FRAME_HOP_LENGTH` (256); the models were trained on 22050 Hz HPSS frames; every analysis runs at 22050 Hz (`core.config.ANALYSIS_SAMPLE_RATE`, not a setting) with HPSS, so the tracker reads the analysis's own frames): per training seed, tempo candidates from the activation's periodicity -> section decoding into steady (tempo, phase) grids with one section cost -> exact tempo / phase fit -> sudden vs gradual tempo changes (linear ramps, continuous or with a jump at one end) -> bar-supported half-beat phase (bars of 2, 3 or 4 beats) -> metronome critic (3:2 / 4:3 misreads) -> tempo-change boundaries on the refine onset -> slow tail held -> drifting sections -> tiny re-syncs merged -> junction rules (no too-close / too-far beats at grid changes) -> bars (a Viterbi over 3- and 4-beat bars on two downbeat observers; an odd bar costs, a new section starts free); then the seed whose grid agrees most with the other two. Every tempo is read in the octave from BPM min. The rows have `inizio` on a downbeat and `ts` the bar length (`bars.to_rows` splits a row where the bar length changes), so the segments always rebuild the beats and downbeats,
   - JumpCUE detection,
@@ -170,6 +170,7 @@ Working notes for AI/automation agents editing the Mixlyzer codebase.
   - consider migration needs for existing libraries.
 - `library/` is user data. Do not delete, reset, or commit its contents.
 - Preserve `uid` linkage between SQLite and NPZ when editing library code.
+- Analyzer speed-ups keep every output bit-identical: compare each output array of a few library tracks before and after (in fresh processes, the user's config.json), and replace a loop by a compiled one (numba, with the Python path as fallback) only where it does the same float operations in the same order (the phrase GBM's trees, the downbeat features' small medians).
 - Prefer contiguous NumPy arrays where practical; several rendering and DSP paths assume NumPy-friendly numeric buffers.
 - Keep Qt signal semantics stable. Many slots expect notification-only signals and then read shared model state.
 - A frequent report from another thread to the GUI is the newest value with one queued notification at a time (`core.player._Latest`: the playhead time, the output peak), never a queued signal per value: queued signals are not merged, so they pile up while the GUI is busy and replay stale values after. Progress from a loop is reported when its percent changes. The output buffer stats go every 0.25 s.

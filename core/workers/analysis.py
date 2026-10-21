@@ -4,6 +4,7 @@ import traceback
 from typing import Any, Dict
 
 from PySide6 import QtCore
+from threadpoolctl import threadpool_limits
 
 from analyzer_core.global_analyzer import precompute_features
 from core.config import config
@@ -40,19 +41,23 @@ def _analysis_process_entry(
     proxy = _TaskManagerProxy(queue)
     payload: Dict[str, Any] | None = None
     try:
-        for item in precompute_features(
-            path, cfg, proxy, taskid, force_analyze=force_analyze
-        ):
-            if isinstance(item, dict) and "status" in item:
-                queue.put(
-                    {
-                        "type": "status",
-                        "taskid": taskid,
-                        "status": item["status"],
-                    }
-                )
-            else:
-                payload = dict(item)
+        # One BLAS thread: the analysis runs its own threads (HPSS, the CQTs, the tracker's seeds), and
+        # BLAS threads on top of them only competed and spun (measured: 30 -> 25 s a track, CPU 47 -> 36 s,
+        # every output bit-identical: no BLAS product here splits its sums across threads).
+        with threadpool_limits(limits=1, user_api="blas"):
+            for item in precompute_features(
+                path, cfg, proxy, taskid, force_analyze=force_analyze
+            ):
+                if isinstance(item, dict) and "status" in item:
+                    queue.put(
+                        {
+                            "type": "status",
+                            "taskid": taskid,
+                            "status": item["status"],
+                        }
+                    )
+                else:
+                    payload = dict(item)
         if payload is None:
             raise RuntimeError("No features produced.")
         queue.put(

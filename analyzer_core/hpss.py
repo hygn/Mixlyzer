@@ -5,8 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 
 import numpy as np
-from scipy.ndimage import median_filter
-
+from analyzer_core.dsp.running_median import median_filter_1d
 from analyzer_core.dsp.spectral import istft, softmask, stft
 
 # Same defaults as librosa.effects.hpss / librosa.decompose.hpss.
@@ -38,21 +37,24 @@ def _median_filter_chunked(
 ) -> list:
     """Futures of ``median_filter(magnitude, size, mode="reflect")`` on slices
     along ``axis``. The kernel spans one element along ``axis``, so every slice
-    filters independently and the joined result equals the whole-array filter."""
+    filters independently and the joined result equals the whole-array filter
+    (a sliding median, dsp.running_median: scipy's result, several times faster)."""
+    filter_axis = 1 - axis
+    length = size[filter_axis]
     bounds = np.linspace(0, magnitude.shape[axis], chunks + 1, dtype=int)
     index = [slice(None), slice(None)]
     futures = []
     for start, stop in zip(bounds[:-1], bounds[1:]):
         if stop > start:
             index[axis] = slice(start, stop)
-            futures.append(pool.submit(median_filter, magnitude[tuple(index)], size=size, mode="reflect"))
+            futures.append(pool.submit(median_filter_1d, magnitude[tuple(index)], length, filter_axis))
     return futures
 
 
 def hpss_masks(magnitude: np.ndarray, kernel_size: int = HPSS_KERNEL_SIZE) -> tuple[np.ndarray, np.ndarray]:
     """Harmonic / percussive soft masks of a magnitude spectrogram ``[F, T]``.
 
-    Equivalent to the former librosa HPSS masks. scipy's median filter and
+    Equivalent to the former librosa HPSS masks. The median kernel and
     numpy's ufuncs release the GIL: the time filter runs on
     frequency bands and the frequency filter on time spans, in parallel, and
     the masks on frequency bands.
