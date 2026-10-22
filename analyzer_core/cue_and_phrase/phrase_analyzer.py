@@ -32,7 +32,7 @@ from analyzer_core.cue_and_phrase import lead_in as _lead_in
 from analyzer_core.cue_and_phrase import refinement as _refine
 from analyzer_core.cue_and_phrase.refinement import REFINEMENT_VERSION
 from utils.atomic_io import atomic_output_path
-from core.resource_paths import setting_path
+from core.model_files import resolve_model
 
 
 EPS = 1e-9
@@ -168,6 +168,37 @@ class NumpyHistGradientBoostingClassifier:
         self.node_left = np.asarray(node_left, dtype=np.int32).reshape(-1)
         self.node_right = np.asarray(node_right, dtype=np.int32).reshape(-1)
         self.node_is_leaf = np.asarray(node_is_leaf, dtype=bool).reshape(-1)
+        self._max_feature = self._validate()
+
+    def _validate(self) -> int:
+        """Checks the trees can be walked within the arrays (the compiled walk has no bounds checks: a model file
+        is outside data) and returns the largest feature index read (-1: none). Each tree is its nodes in
+        sklearn's order (a parent before its children), so every child is after its parent inside its tree:
+        each walk ends on a leaf."""
+        nodes = self.node_value.size
+        offsets, classes = self.tree_offsets, self.tree_classes
+        if self.baseline.size == 0 or offsets.size != classes.size + 1 or offsets[0] != 0 or offsets[-1] != nodes:
+            raise ValueError("Gradient-boosting model: tree offsets do not match the nodes")
+        for name in ("node_feature_idx", "node_num_threshold", "node_missing_go_to_left", "node_left",
+                     "node_right", "node_is_leaf"):
+            if getattr(self, name).size != nodes:
+                raise ValueError(f"Gradient-boosting model: {name} does not match the nodes")
+        sizes = np.diff(offsets)
+        if np.any(sizes < 1):
+            raise ValueError("Gradient-boosting model: an empty tree")
+        if np.any(classes < 0) or np.any(classes >= self.baseline.size):
+            raise ValueError("Gradient-boosting model: a tree's class is out of range")
+        tree = np.repeat(np.arange(classes.size), sizes)
+        local = np.arange(nodes) - offsets[:-1][tree]
+        inner = ~self.node_is_leaf
+        size, at = sizes[tree][inner], local[inner]
+        for child in (self.node_left[inner], self.node_right[inner]):
+            if np.any(child <= at) or np.any(child >= size):
+                raise ValueError("Gradient-boosting model: a split's child is outside its tree")
+        features = self.node_feature_idx[inner]
+        if np.any(features < 0):
+            raise ValueError("Gradient-boosting model: a negative feature index")
+        return int(features.max()) if features.size else -1
 
     def _predict_tree(self, X: np.ndarray, start: int, end: int) -> np.ndarray:
         x = np.asarray(X, dtype=np.float64)
@@ -194,7 +225,10 @@ class NumpyHistGradientBoostingClassifier:
 
     def raw_predict(self, X: np.ndarray) -> np.ndarray:
         x = np.asarray(X, dtype=np.float64)
-        if _raw_predict_trees_numba is not None and x.ndim == 2:
+        if x.ndim != 2 or x.shape[1] <= self._max_feature:
+            raise ValueError(f"Gradient-boosting model reads feature {self._max_feature}; the rows have "
+                             f"{x.shape[-1] if x.ndim else 0}")
+        if _raw_predict_trees_numba is not None:
             # compiled: the per-tree NumPy loop below cost more in overhead than in work (thousands of trees)
             return _raw_predict_trees_numba(
                 np.ascontiguousarray(x), self.baseline, self.tree_classes, self.tree_offsets, self.node_value,
@@ -781,8 +815,8 @@ def detect_two_stage_phrase_segments(
     return_feature_z: bool = False,
 ):
     """Phrase segments and optional reusable per-beat analysis outputs."""
-    # the settings' path: from the current folder, else the bundled model (a PyInstaller build)
-    artifact = load_two_stage_model(str(Path(setting_path(str(model_path))).resolve()))
+    # the settings' path: the user's (retrained) file, else the shipped model (core.model_files)
+    artifact = load_two_stage_model(str(resolve_model(model_path).resolve()))
     settings = artifact["settings"]
     grid = build_predictor_grid(beat_times_sec, tempo_segments)
     if grid.n_beats < 17:

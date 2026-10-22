@@ -8,7 +8,6 @@ dependencies = [
     "librosa>=0.11.0",
     "matplotlib>=3.10.7",
     "pyinstaller>=6.16.0",
-    "pymediainfo>=7.0.1",
     "pyqtgraph>=0.13.7",
     "pyside6>=6.10.0",
     "pyyaml>=6.0.3",

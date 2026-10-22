@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import pickle
 import sqlite3
 from collections import Counter, defaultdict
 from dataclasses import dataclass
@@ -18,7 +17,8 @@ from analyzer_core.self_correlation.jump_point_model import (
     feature_vector,
     semantic_pair_scores,
 )
-from utils.atomic_io import atomic_write_json, atomic_write_text
+from optimizer import model_start as MS
+from utils.atomic_io import atomic_output_path, atomic_write_json, atomic_write_text
 from core.i18n import tr
 
 
@@ -538,8 +538,7 @@ def run(dataset: Path, model_path: Path, db_path: Path, output: Path, *,
         trial_feature_set: str = "base", trial_corrected_weight: float = 1.0,
         trial_preference_weight: float = 3.0,
         label_model_path: Path | None = None) -> dict:
-    with dataset.open("rb") as handle:
-        raw = pickle.load(handle)
+    raw = load_cache(dataset)
     raw_groups = list(raw["groups"] if isinstance(raw, dict) else raw)
     model = json.loads(model_path.read_text(encoding="utf-8"))
     # The reviewed cache predates the masking extension. Constant-zero masking
@@ -736,6 +735,50 @@ def run(dataset: Path, model_path: Path, db_path: Path, output: Path, *,
 
 _CACHE_VERSION = 1
 _SNAP_TOLERANCE_SEC = 0.1
+
+
+# The candidate caches as NPZ (never pickle: a cache folder may come from elsewhere): the arrays as their own
+# entries, the rest (dicts, with tuple keys too, lists, tuples, numbers, strings) as JSON with references to them.
+def _pack(obj, arrays: list):
+    if isinstance(obj, np.ndarray):
+        arrays.append(obj)
+        return {"__a": len(arrays) - 1}
+    if isinstance(obj, np.generic):
+        return obj.item()
+    if isinstance(obj, dict):
+        return {"__d": [[_pack(k, arrays), _pack(v, arrays)] for k, v in obj.items()]}
+    if isinstance(obj, tuple):
+        return {"__t": [_pack(v, arrays) for v in obj]}
+    if isinstance(obj, list):
+        return [_pack(v, arrays) for v in obj]
+    if obj is None or isinstance(obj, (bool, int, float, str)):
+        return obj
+    raise TypeError(f"not cached: {type(obj).__name__}")
+
+
+def _unpack(node, archive):
+    if isinstance(node, list):
+        return [_unpack(v, archive) for v in node]
+    if isinstance(node, dict):
+        if "__a" in node:
+            return np.asarray(archive[f"a{int(node['__a'])}"])
+        if "__t" in node:
+            return tuple(_unpack(v, archive) for v in node["__t"])
+        return {_unpack(k, archive): _unpack(v, archive) for k, v in node["__d"]}
+    return node
+
+
+def save_cache(path: Path, obj) -> None:
+    arrays: list = []
+    tree = json.dumps(_pack(obj, arrays))
+    with atomic_output_path(path) as temporary:
+        with temporary.open("wb") as fh:
+            np.savez(fh, tree=np.asarray(tree), **{f"a{i}": a for i, a in enumerate(arrays)})
+
+
+def load_cache(path: Path):
+    with np.load(path, allow_pickle=False) as archive:
+        return _unpack(json.loads(str(archive["tree"])), archive)
 _MEMBER_KEYS = ("boundary", "mfcc_change", "onset", "melody_onset", "break_depth", "downbeat")
 
 
@@ -852,11 +895,7 @@ def _record_candidates(audio_path: str, beats: np.ndarray, segments: np.ndarray,
 def _build_track_cache(track: dict, cache_dir: str, settings: dict) -> str:
     """Spawn-pool entry: (re)build one track's candidate cache."""
     data = _record_candidates(str(track["audio_path"]), track["beats"], track["segments"], settings)
-    path = Path(cache_dir) / f"{track['uid']}.pkl"
-    tmp = path.with_suffix(".tmp")
-    with tmp.open("wb") as fh:
-        pickle.dump({"key": track["cache_key"], **data}, fh)
-    tmp.replace(path)
+    save_cache(Path(cache_dir) / f"{track['uid']}.npz", {"key": track["cache_key"], **data})
     return str(track["uid"])
 
 
@@ -945,13 +984,13 @@ def optimize_jumpcue_parameters(
 
     from core.analysis_lib_handler import FeatureNPZStore
     from core.concurrency.process_pool import create_spawn_process_pool
-    from core.resource_paths import resource_path
     from optimizer import optimizer_track_name, skipped_track
     from utils.jump_cues import jump_cue_point_groups
 
     library_dir = Path(request.library_dir).resolve()
     cache_dir = Path(request.cache_dir)
     output_path = Path(request.output_path)
+    MS.check_output(output_path)
     cache_dir.mkdir(parents=True, exist_ok=True)
     settings = _analysis_settings(Path(request.phrase_parameter_path))
     store = FeatureNPZStore(str(library_dir))
@@ -984,15 +1023,14 @@ def optimize_jumpcue_parameters(
         raise RuntimeError(tr("Need at least five tracks with saved JumpCUEs ({count} found).").format(count=len(tracks)))
 
     def cached(track: dict) -> dict | None:
-        path = cache_dir / f"{track['uid']}.pkl"
+        path = cache_dir / f"{track['uid']}.npz"
         if request.rebuild_cache or not path.exists():
             return None
         try:
-            with path.open("rb") as fh:
-                data = pickle.load(fh)
+            data = load_cache(path)
         except Exception:
             return None
-        return data if data.get("key") == track["cache_key"] else None
+        return data if isinstance(data, dict) and data.get("key") == track["cache_key"] else None
 
     total = len(tracks)
     jobs = [t for t in tracks if cached(t) is None]
@@ -1018,7 +1056,7 @@ def optimize_jumpcue_parameters(
                     feature_progress(int(done * 90 / total), f"({done}/{total})\n{optimizer_track_name(track)}")
         tracks = [t for t in tracks if t["uid"] not in failed]
 
-    base_path = output_path if output_path.exists() else resource_path("assets/weights/jumpcue_jump_point.json")
+    base_path = MS.base_model(output_path, MS.CURRENT)   # the model in use: the user's, else the shipped one
     model = json.loads(Path(base_path).read_text(encoding="utf-8"))
     names = list(model["features"])
     threshold = float(model["short_threshold"])
@@ -1097,7 +1135,7 @@ def optimize_jumpcue_parameters(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Train and audit the JumpCUE point model")
-    parser.add_argument("--dataset", type=Path, default=Path("featurecache/jumpcue/dataset_v5.pkl"))
+    parser.add_argument("--dataset", type=Path, default=Path("featurecache/jumpcue/dataset_v5.npz"))
     parser.add_argument("--model", type=Path, default=Path("assets/weights/jumpcue_jump_point.json"))
     parser.add_argument("--label-model", type=Path)
     parser.add_argument("--db", type=Path, default=Path("library/library.db"))

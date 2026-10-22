@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 # Single source of truth for locating read-only resources that ship with the
@@ -20,6 +21,12 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[1]
 def project_root() -> Path:
     """Directory that bundles read-only application resources."""
     return _PROJECT_ROOT
+
+
+def app_folder() -> Path:
+    """The folder the app is in: the package folder (the exe's) in a PyInstaller build, else the project root.
+    It holds config.json, the library and the feature caches: the app runs with it as the current folder."""
+    return Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else _PROJECT_ROOT
 
 
 def resource_path(name: str) -> Path:

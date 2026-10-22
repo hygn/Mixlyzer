@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-22 13:39+0900\n"
+"POT-Creation-Date: 2026-10-22 18:35+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ko_KR\n"
@@ -108,65 +108,65 @@ msgstr "프레이즈 분석 중"
 msgid "Phrases Updated"
 msgstr "프레이즈 갱신됨"
 
-#: analyzer_core/global_analyzer.py:59
+#: analyzer_core/global_analyzer.py:57
 #, python-brace-format
 msgid "Audio decode failed via FFmpeg and SoundFile: {path}"
 msgstr "FFmpeg와 SoundFile 모두 오디오를 디코딩하지 못했습니다: {path}"
 
-#: analyzer_core/global_analyzer.py:310
+#: analyzer_core/global_analyzer.py:270
 msgid "Loading"
 msgstr "불러오는 중"
 
 #: analyzer_core/editor/jumpcue.py:37 analyzer_core/editor/phrase.py:32
-#: analyzer_core/global_analyzer.py:318
+#: analyzer_core/global_analyzer.py:278
 msgid "Processing HPSS"
 msgstr "HPSS 처리 중"
 
-#: analyzer_core/global_analyzer.py:329
+#: analyzer_core/global_analyzer.py:289
 msgid "Processing Waveform"
 msgstr "파형 처리 중"
 
-#: analyzer_core/global_analyzer.py:344
+#: analyzer_core/global_analyzer.py:304
 msgid "Tempo"
 msgstr "템포"
 
-#: analyzer_core/global_analyzer.py:346
+#: analyzer_core/global_analyzer.py:306
 msgid "Tempo Analyzing"
 msgstr "템포 분석 중"
 
-#: analyzer_core/global_analyzer.py:414
+#: analyzer_core/global_analyzer.py:374
 msgid "Phrase Boundary Analyzing"
 msgstr "프레이즈 경계 분석 중"
 
-#: analyzer_core/global_analyzer.py:468
+#: analyzer_core/global_analyzer.py:428
 msgid "JumpCUE Analyzing"
 msgstr "JumpCUE 분석 중"
 
-#: analyzer_core/global_analyzer.py:515
+#: analyzer_core/global_analyzer.py:475
 msgid "Analyzing Keys"
 msgstr "키 분석 중"
 
-#: analyzer_core/global_analyzer.py:543
+#: analyzer_core/global_analyzer.py:503
 msgid "Processing Metadata"
 msgstr "메타데이터 처리 중"
 
-#: analyzer_core/global_analyzer.py:552
+#: analyzer_core/global_analyzer.py:512
 msgid "Rendering/Normalizing"
 msgstr "렌더링/정규화 중"
 
-#: analyzer_core/global_analyzer.py:577
+#: analyzer_core/global_analyzer.py:537
 msgid "Saving"
 msgstr "저장 중"
 
-#: analyzer_core/global_analyzer.py:579
+#: analyzer_core/global_analyzer.py:539
 msgid "Saving Result"
 msgstr "결과 저장 중"
 
-#: app/main.py:41
+#: app/main.py:47
 msgid "Unsupported Operating System"
 msgstr "지원하지 않는 운영체제"
 
-#: app/main.py:42
+#: app/main.py:48
 #, python-brace-format
 msgid ""
 "Mixlyzer supports Windows, Linux and macOS; this system ({system}) is not"
@@ -176,11 +176,11 @@ msgstr ""
 "Mixlyzer는 Windows, Linux, macOS를 지원합니다. 이 시스템({system})은 그중 하나가 아닙니다.\n"
 "제대로 동작하지 않을 수 있습니다."
 
-#: app/main.py:48
+#: app/main.py:54
 msgid "Administrator Execution Blocked"
 msgstr "관리자 권한 실행 차단됨"
 
-#: app/main.py:49
+#: app/main.py:55
 msgid ""
 "Mixlyzer cannot run with administrator privileges.\n"
 "Close it and launch again as a normal user."
@@ -188,11 +188,32 @@ msgstr ""
 "Mixlyzer는 관리자 권한으로 실행할 수 없습니다.\n"
 "종료한 뒤 일반 사용자로 다시 실행하세요."
 
+#: app/main.py:66
+msgid "Settings Reset"
+msgstr "설정 초기화"
+
 #: app/main.py:67
+#, python-brace-format
+msgid ""
+"config.json could not be read, so every setting is back to its default.\n"
+"The unreadable file was kept as:\n"
+"{path}\n"
+"\n"
+"To get the settings back, fix that file and put it in place of "
+"config.json while Mixlyzer is closed."
+msgstr ""
+"config.json을 읽을 수 없어 모든 설정을 기본값으로 되돌렸습니다.\n"
+"읽을 수 없었던 파일은 다음 이름으로 보관했습니다:\n"
+"{path}\n"
+"\n"
+"설정을 되살리려면 Mixlyzer를 닫은 상태에서 그 파일을 고쳐 config.json 자리에 "
+"두세요."
+
+#: app/main.py:82
 msgid "Incompatible Library Version"
 msgstr "호환되지 않는 라이브러리 버전"
 
-#: app/main.py:68
+#: app/main.py:83
 #, python-brace-format
 msgid ""
 "This library cannot be opened by the current app version.\n"
@@ -327,7 +348,7 @@ msgstr ""
 msgid "Locate {name}"
 msgstr "{name} 찾기"
 
-#: analyzer_core/global_analyzer.py:594 app/window.py:393
+#: analyzer_core/global_analyzer.py:554 app/window.py:393
 msgid "Finished"
 msgstr "완료"
 
@@ -380,27 +401,28 @@ msgstr "파일의 태그가 손상되었거나 여기서 쓰지 않는 종류입
 msgid "The written tags did not read back as written; the file is unchanged."
 msgstr "쓴 태그가 쓴 그대로 다시 읽히지 않았습니다. 파일은 바뀌지 않았습니다."
 
-#: core/audio/tag_writer.py:205 core/audio/tag_writer.py:270 ui/export.py:177
+#: core/audio/tag_writer.py:205 core/audio/tag_writer.py:286
+#: core/audio/tag_writer.py:1371 ui/export.py:177
 msgid "Tags cannot be written to this file's format."
 msgstr "이 파일 형식에는 태그를 쓸 수 없습니다."
 
-#: core/audio/tag_writer.py:375
+#: core/audio/tag_writer.py:391
 msgid "The file changed while its tags were written; it is unchanged."
 msgstr "태그를 쓰는 동안 파일이 바뀌었습니다. 파일은 바뀌지 않았습니다."
 
-#: core/audio/tag_writer.py:470 core/audio/tag_writer.py:512
+#: core/audio/tag_writer.py:486 core/audio/tag_writer.py:528
 msgid "The tags are too long for the file."
 msgstr "이 파일에 담기에는 태그가 너무 깁니다."
 
-#: core/audio/tag_writer.py:1186
+#: core/audio/tag_writer.py:1211
 msgid "The file's chunk offsets cannot take the longer tags; it is unchanged."
 msgstr "파일의 청크 오프셋이 더 길어진 태그를 담을 수 없습니다. 파일은 바뀌지 않았습니다."
 
-#: core/audio/tag_writer.py:1213
+#: core/audio/tag_writer.py:1238
 msgid "Fragmented MP4 files are not written."
 msgstr "조각난(Fragmented) MP4 파일에는 쓰지 않습니다."
 
-#: core/audio/tag_writer.py:1232
+#: core/audio/tag_writer.py:1257
 msgid "MP4 files with QuickTime keys metadata are not written."
 msgstr "QuickTime keys 메타데이터가 있는 MP4 파일에는 쓰지 않습니다."
 
@@ -901,49 +923,49 @@ msgstr "저장 안 함: 검증용 곡의 그리드가 나빠졌습니다"
 msgid "Fitting all tracks"
 msgstr "전체 트랙으로 학습 중"
 
-#: optimizer/jumpcue_parameter_optimizer.py:976
+#: optimizer/jumpcue_parameter_optimizer.py:1015
 msgid "Audio file not found"
 msgstr "오디오 파일을 찾을 수 없음"
 
-#: optimizer/jumpcue_parameter_optimizer.py:982
+#: optimizer/jumpcue_parameter_optimizer.py:1021
 #, python-brace-format
 msgid "Reading the analysis failed: {error}"
 msgstr "분석 읽기 실패: {error}"
 
-#: optimizer/jumpcue_parameter_optimizer.py:984
+#: optimizer/jumpcue_parameter_optimizer.py:1023
 #, python-brace-format
 msgid "Need at least five tracks with saved JumpCUEs ({count} found)."
 msgstr "JumpCUE가 저장된 트랙이 최소 5개 필요합니다 ({count}개 찾음)."
 
-#: optimizer/jumpcue_parameter_optimizer.py:1002
+#: optimizer/jumpcue_parameter_optimizer.py:1040
 #, python-brace-format
 msgid "Building {count} JumpCUE candidate caches"
 msgstr "JumpCUE 후보 캐시 {count}개 만드는 중"
 
-#: optimizer/jumpcue_parameter_optimizer.py:1003
+#: optimizer/jumpcue_parameter_optimizer.py:1041
 msgid "JumpCUE candidate cache is current"
 msgstr "JumpCUE 후보 캐시가 최신입니다"
 
-#: optimizer/jumpcue_parameter_optimizer.py:1015
+#: optimizer/jumpcue_parameter_optimizer.py:1053
 #, python-brace-format
 msgid "JumpCUE analysis failed: {error}"
 msgstr "JumpCUE 분석 실패: {error}"
 
-#: optimizer/jumpcue_parameter_optimizer.py:1033
+#: optimizer/jumpcue_parameter_optimizer.py:1071
 msgid "No saved JumpCUE group matches an automatically found group"
 msgstr "저장된 JumpCUE 그룹 중 자동으로 찾은 그룹과 맞는 것이 없습니다"
 
-#: optimizer/jumpcue_parameter_optimizer.py:1038
+#: optimizer/jumpcue_parameter_optimizer.py:1076
 #, python-brace-format
 msgid "{count} labeled groups"
 msgstr "라벨이 있는 그룹 {count}개"
 
-#: optimizer/jumpcue_parameter_optimizer.py:1056
+#: optimizer/jumpcue_parameter_optimizer.py:1094
 #, python-brace-format
 msgid "Cross-validation fold {fold}/{folds}"
 msgstr "교차 검증 폴드 {fold}/{folds}"
 
-#: optimizer/jumpcue_parameter_optimizer.py:1062
+#: optimizer/jumpcue_parameter_optimizer.py:1100
 msgid "Fitting on all tracks"
 msgstr "전체 트랙으로 학습 중"
 
@@ -1091,69 +1113,69 @@ msgstr "잘못된 프레이즈 주석: {error}"
 msgid "fewer than two usable Phrase segments"
 msgstr "사용할 수 있는 프레이즈 구간이 두 개 미만"
 
-#: optimizer/phrase_parameter_optimizer.py:207
+#: optimizer/phrase_parameter_optimizer.py:208
 #, python-brace-format
 msgid "Cross-validation fold {fold}/{folds}: "
 msgstr "교차 검증 폴드 {fold}/{folds}: "
 
-#: optimizer/phrase_parameter_optimizer.py:381
+#: optimizer/phrase_parameter_optimizer.py:383
 #, python-brace-format
 msgid "Phrase annotation validation failed: {error}"
 msgstr "프레이즈 주석 검증 실패: {error}"
 
-#: optimizer/phrase_parameter_optimizer.py:385
+#: optimizer/phrase_parameter_optimizer.py:387
 #, python-brace-format
 msgid ""
 "Need at least five valid annotated tracks to train a Phrase parameter "
 "artifact ({valid} valid, {ignored} ignored)."
 msgstr "프레이즈 파라미터를 학습하려면 유효한 주석 트랙이 최소 5개 필요합니다 (유효 {valid}개, 제외 {ignored}개)."
 
-#: optimizer/phrase_parameter_optimizer.py:396
+#: optimizer/phrase_parameter_optimizer.py:398
 #, python-brace-format
 msgid "Checking feature cache: {count} tracks"
 msgstr "특징 캐시 확인 중: 트랙 {count}개"
 
-#: optimizer/phrase_parameter_optimizer.py:435
+#: optimizer/phrase_parameter_optimizer.py:437
 #, python-brace-format
 msgid "Building {count} missing feature caches with {workers} workers"
 msgstr "없는 특징 캐시 {count}개를 워커 {workers}개로 만드는 중"
 
-#: optimizer/phrase_parameter_optimizer.py:438
+#: optimizer/phrase_parameter_optimizer.py:440
 msgid "Feature cache is current"
 msgstr "특징 캐시가 최신입니다"
 
-#: optimizer/phrase_parameter_optimizer.py:465
+#: optimizer/phrase_parameter_optimizer.py:467
 #, python-brace-format
 msgid "Phrase feature cache build failed: {error}"
 msgstr "프레이즈 특징 캐시 생성 실패: {error}"
 
-#: optimizer/phrase_parameter_optimizer.py:491
+#: optimizer/phrase_parameter_optimizer.py:493
 #, python-brace-format
 msgid "Preparing optimizer features {done}/{total}"
 msgstr "최적화용 특징 준비 중 {done}/{total}"
 
-#: optimizer/phrase_parameter_optimizer.py:539
+#: optimizer/phrase_parameter_optimizer.py:541
 #, python-brace-format
 msgid "Phrase feature preparation failed: {error}"
 msgstr "프레이즈 특징 준비 실패: {error}"
 
-#: optimizer/phrase_parameter_optimizer.py:544
+#: optimizer/phrase_parameter_optimizer.py:546
 #, python-brace-format
 msgid "prepared ({done}/{total})"
 msgstr "준비 완료 ({done}/{total})"
 
-#: optimizer/phrase_parameter_optimizer.py:550
+#: optimizer/phrase_parameter_optimizer.py:552
 #, python-brace-format
 msgid ""
 "Need at least five tracks after Phrase feature validation ({valid} valid,"
 " {ignored} ignored)."
 msgstr "프레이즈 특징 검증 후 트랙이 최소 5개 필요합니다 (유효 {valid}개, 제외 {ignored}개)."
 
-#: optimizer/phrase_parameter_optimizer.py:575
+#: optimizer/phrase_parameter_optimizer.py:577
 msgid "Evaluating fitted Phrase models"
 msgstr "학습한 프레이즈 모델 평가 중"
 
-#: optimizer/phrase_parameter_optimizer.py:580
+#: optimizer/phrase_parameter_optimizer.py:582
 msgid "Writing parameter artifact"
 msgstr "파라미터 파일 쓰는 중"
 
@@ -1517,9 +1539,9 @@ msgstr ""
 #: optimizer/beat_critic_optimizer.py:504
 #: optimizer/beat_decoder_optimizer.py:214 optimizer/beat_tcn_optimizer.py:409
 #: optimizer/downbeat_ctx_optimizer.py:139
-#: optimizer/jumpcue_parameter_optimizer.py:1089
+#: optimizer/jumpcue_parameter_optimizer.py:1127
 #: optimizer/key_model_optimizer.py:541
-#: optimizer/phrase_parameter_optimizer.py:584
+#: optimizer/phrase_parameter_optimizer.py:586
 #: optimizer/refine_onset_optimizer.py:208 ui/config/analysis.py:571
 #: ui/config/dialogs/optimization.py:95
 msgid "Done"
@@ -2634,7 +2656,7 @@ msgstr "디코딩, HPSS"
 msgid "overview levels"
 msgstr "전체 파형 레벨"
 
-#: analyzer_core/global_analyzer.py:327 ui/config/pipeline_map.py:31
+#: analyzer_core/global_analyzer.py:287 ui/config/pipeline_map.py:31
 msgid "Waveform"
 msgstr "파형"
 
@@ -4350,7 +4372,7 @@ msgstr ""
 msgid "Path"
 msgstr "경로"
 
-#: analyzer_core/global_analyzer.py:513 ui/config/analysis.py:235
+#: analyzer_core/global_analyzer.py:473 ui/config/analysis.py:235
 #: ui/config/pipeline_map.py:26 ui/config/pipeline_map.py:34
 #: ui/edit_song.py:159
 msgid "Key"
@@ -4614,7 +4636,7 @@ msgstr ""
 msgid "Tracks with a phrase of this label (optionally at a BPM / key)"
 msgstr "이 라벨의 프레이즈가 있는 트랙 (BPM / 키 조건 선택 가능)"
 
-#: analyzer_core/global_analyzer.py:412 ui/config/analysis.py:236
+#: analyzer_core/global_analyzer.py:372 ui/config/analysis.py:236
 #: ui/config/pipeline_map.py:23 ui/config/pipeline_map.py:32
 #: ui/edit_panel/panel.py:63 ui/library.py:856 ui/library.py:916
 #: ui/shortcuts.py:36
@@ -4892,7 +4914,7 @@ msgstr "마스터 템포: 타임 스트레치로 피치를 유지합니다"
 msgid "Playback is disabled while External Sync is enabled."
 msgstr "외부 동기화가 켜져 있는 동안에는 재생할 수 없습니다."
 
-#: ui/pane.py:809
+#: ui/pane.py:811
 msgid "Not Loaded"
 msgstr "불러온 트랙 없음"
 

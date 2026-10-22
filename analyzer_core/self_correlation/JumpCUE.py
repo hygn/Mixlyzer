@@ -8,7 +8,7 @@ import numpy as np
 from scipy.signal import find_peaks
 
 from core.beat_geometry import downbeat_beat_indices
-from core.resource_paths import resource_path
+from core.model_files import resolve_model
 
 from .jump_point_model import JumpContextCache, JumpPointFeatures, JumpPointModel
 
@@ -176,7 +176,7 @@ class JumpCueEngine:
         self._score_cache: Optional[JumpContextCache] = None
         self._jump_features: Optional[JumpPointFeatures] = None
         self._jump_model: Optional[JumpPointModel] = JumpPointModel.load(
-            resource_path(self.config.jump_point_model_path)
+            resolve_model(self.config.jump_point_model_path)
         )
 
     def run(

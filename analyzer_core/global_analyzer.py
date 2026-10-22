@@ -1,9 +1,7 @@
 import numpy as np
 import time
 import os
-import base64
 import struct
-from pymediainfo import MediaInfo
 import soundfile as sf
 from dataclasses import replace
 from pathlib import Path
@@ -27,9 +25,9 @@ from utils.cue_points import (
     lead_in_end_sec,
 )
 from utils.phrases import build_phrase_segments_np
-from core.audio.decoder import decode_to_memmap, get_total_samples
+from core.audio.decoder import COVER_MAX_BYTES, decode_to_memmap, get_total_samples, read_cover, read_metadata
 from core.library_handler import LibraryDB
-from core.audio.tag_writer import TagWriteError, tag_format, tag_sources
+from core.audio.tag_writer import TagWriteError, read_fields, read_picture, tag_format, tag_sources
 from core.analysis_lib_handler import FeatureNPZStore
 from core.thumbnails import save_thumbnail
 from core.config import ANALYSIS_SAMPLE_RATE, config
@@ -95,7 +93,7 @@ _RIFF_INFO_FIELDS = {
 def _utf8_wav_info(path: str) -> dict[str, str]:
     """Read UTF-8 RIFF INFO tags without applying the Windows ANSI code page.
 
-    MediaInfo interprets RIFF INFO text using the active Windows code page.
+    Readers such as MediaInfo interpret RIFF INFO text using the active Windows code page.
     Recordings written by rekordbox/PioneerDJ contain UTF-8 here, which turns
     Japanese text into mojibake on a Korean Windows installation.
     """
@@ -147,65 +145,35 @@ def _utf8_wav_info(path: str) -> dict[str, str]:
     return result
 
 
+def _file_fields(path: str) -> dict[str, str]:
+    """Title / artist / album / comment as the file holds them: this app's own reader for the formats it knows
+    (core.audio.tag_writer, MediaInfo's order), else FFmpeg's (Ogg, Opus, WMA ...); no native tag library parses
+    the file (an outside file: a crafted tag cannot reach memory-unsafe code beyond FFmpeg, which decodes it
+    anyway)."""
+    if tag_format(path) is not None:
+        try:
+            return read_fields(path)
+        except TagWriteError:
+            pass   # damaged for this reader: as FFmpeg reads it
+    meta = read_metadata(path)
+
+    def pick(*keys: str) -> str:
+        return next((meta[k].strip() for k in keys if meta.get(k, "").strip()), "")
+
+    return {"title": pick("title"), "artist": pick("artist", "performer", "album_artist"),
+            "album": pick("album"), "comment": pick("comment", "description")}
+
+
 def extract_tags(path: str) -> tuple[str, str, str, str]:
+    """(title, artist, album, comment) of the file; the title its file name when it has none."""
     title = os.path.splitext(os.path.basename(path))[0]
-    artist = ""
-    album = ""
-    comment = ""
     try:
         wav_info = _utf8_wav_info(path)
-        mi = MediaInfo.parse(path, cover_data=False)
-        tracks = mi.tracks if mi else []
-        audio_track = next((t for t in tracks if t.track_type == "Audio"), None)
-        general_track = next((t for t in tracks if t.track_type == "General"), None)
-
-        def _pick_from_track(track, *names):
-            if not track:
-                return ""
-            track_data = track.to_data() if hasattr(track, "to_data") else None
-            for name in names:
-                v = getattr(track, name, None)
-                if v is None and isinstance(track_data, dict):
-                    v = track_data.get(name)
-                if isinstance(v, list):
-                    for item in v:
-                        if item and str(item).strip():
-                            return str(item).strip()
-                elif v:
-                    v_str = str(v).strip()
-                    if v_str:
-                        return v_str
-            return ""
-
-        t = (
-            wav_info.get("title")
-            or _pick_from_track(general_track, "title", "track_name")
-            or _pick_from_track(audio_track, "title", "track_name")
-            or title
-        )
-        ar = (
-            wav_info.get("artist")
-            or _pick_from_track(general_track, "artist", "performer")
-            or _pick_from_track(audio_track, "artist", "performer")
-            or _pick_from_track(general_track, "album_artist", "album_performer", "album_composer")
-            or _pick_from_track(audio_track, "album_artist", "album_performer", "album_composer")
-            or ""
-        )
-        al = (
-            wav_info.get("album")
-            or _pick_from_track(general_track, "album")
-            or _pick_from_track(audio_track, "album")
-            or ""
-        )
-        cm = (
-            wav_info.get("comment")
-            or _pick_from_track(general_track, "comment", "description")
-            or _pick_from_track(audio_track, "comment", "description")
-            or ""
-        )
-        return t, ar, al, cm
+        fields = _file_fields(path)
     except Exception:
-        return title, artist, album, comment
+        return title, "", "", ""
+    return tuple(wav_info.get(f) or fields.get(f) or (title if f == "title" else "")
+                 for f in ("title", "artist", "album", "comment"))
 
 
 def read_tag_sources(path: str, title: str, artist: str, album: str, comment: str) -> dict:
@@ -255,38 +223,30 @@ def _persist_analysis_result(
     save_thumbnail(store.base_dir, uid, getAlbumArt(properties.get("path")))
     return library.list_all()
 
+# the picture formats a cover is read in (by its first bytes): named to Qt, so no other image reader sees it
+_COVER_FORMATS = ((b"\xff\xd8\xff", "JPEG"), (b"\x89PNG\r\n\x1a\n", "PNG"), (b"GIF8", "GIF"), (b"BM", "BMP"))
+
+
 def getAlbumArt(path) -> Optional[QtGui.QImage]:
+    """The file's cover picture (JPEG, PNG, GIF, BMP or WebP), None when it has none: read as the tags are
+    (``_file_fields``), this app's reader first, else FFmpeg's."""
     if not path:
         return None
     try:
-        mi = MediaInfo.parse(path, cover_data=True)
-        if not mi:
-            return None
-        data: Optional[bytes] = None
-        for media_track in mi.tracks:
-            blob = getattr(media_track, "cover_data", None)
-            if not blob:
-                continue
-            if isinstance(blob, (bytes, bytearray)):
-                data = bytes(blob)
-            elif isinstance(blob, list):
-                try:
-                    data = bytes(blob)
-                except Exception:
-                    data = None
-            elif isinstance(blob, str):
-                try:
-                    data = base64.b64decode(blob, validate=False)
-                except Exception:
-                    data = None
-            if data:
-                break
-        if data:
-            img = QtGui.QImage.fromData(data)
-            return img if not img.isNull() else None
-    except Exception:
-        pass
-    return None
+        data = read_picture(path)
+    except TagWriteError:
+        data = read_cover(str(path))
+    except OSError:
+        return None
+    if not data or len(data) > COVER_MAX_BYTES:
+        return None
+    fmt = next((name for magic, name in _COVER_FORMATS if data.startswith(magic)), None)
+    if fmt is None and data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        fmt = "WEBP"
+    if fmt is None:
+        return None
+    img = QtGui.QImage.fromData(data, fmt)
+    return None if img.isNull() else img
 
 def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:int, force_analyze: bool = False):
     l = LibraryDB(os.path.join(config.libconfig.libpath, "library.db"),

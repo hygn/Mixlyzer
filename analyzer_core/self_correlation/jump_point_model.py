@@ -15,7 +15,7 @@ the members to keep:
   boundary probability, MFCC change, onset strength, melody onset, break
   depth and downbeat; the share of members kept; product / square terms;
 - score: the features standardized over the group's candidates, weighted
-  (assets/weights/jumpcue_jump_point.json, see
+  (assets/weights/default_jumpcue_jump_point.json shipped, see
   optimizer/jumpcue_parameter_optimizer.py).
 
 Sections: feature terms, harmonic context, splice masking, the track-local

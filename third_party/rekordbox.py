@@ -263,6 +263,7 @@ class RekordboxXmlDocument:
 
     def to_xml(self) -> str:
         _strip_whitespace_only_nodes(self.root)
+        _strip_invalid_characters(self.root)
         xml_bytes = ET.tostring(self.root, encoding="utf-8")
         pretty = minidom.parseString(xml_bytes).toprettyxml(indent="  ")
         if not pretty.startswith("<?xml"):
@@ -277,6 +278,23 @@ def _strip_whitespace_only_nodes(element: ET.Element) -> None:
         _strip_whitespace_only_nodes(child)
         if child.tail is not None and not child.tail.strip():
             child.tail = None
+
+
+# what XML 1.0 cannot hold (control characters but tab / line feed / carriage return, lone surrogates, U+FFFE /
+# U+FFFF): a tag holding one (a title, a comment) would make the whole document unreadable
+_XML_INVALID = re.compile("[\x00-\x08\x0b\x0c\x0e-\x1f\ud800-\udfff￾￿]")
+
+
+def _strip_invalid_characters(element: ET.Element) -> None:
+    for key, value in element.attrib.items():
+        if _XML_INVALID.search(value):
+            element.set(key, _XML_INVALID.sub("", value))
+    for name in ("text", "tail"):
+        value = getattr(element, name)
+        if value and _XML_INVALID.search(value):
+            setattr(element, name, _XML_INVALID.sub("", value))
+    for child in element:
+        _strip_invalid_characters(child)
 
 
 def sanitize_filename(name: str) -> str:

@@ -38,6 +38,7 @@ from analyzer_core.cue_and_phrase.structural_features import (
     STRUCTURE_FEATURE_VERSION,
     multi_view_structure_features,
 )
+from optimizer import model_start as MS
 from utils.atomic_io import atomic_output_path
 from core.i18n import tr
 
@@ -358,6 +359,7 @@ def optimize_phrase_parameters(
     library_dir = Path(request.library_dir).resolve()
     cache_dir = Path(request.cache_dir)
     output_path = Path(request.output_path)
+    MS.check_output(output_path)
     cache_dir.mkdir(parents=True, exist_ok=True)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 

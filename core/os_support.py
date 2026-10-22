@@ -112,9 +112,15 @@ def hidden_subprocess_kwargs() -> dict:
     return {"creationflags": getattr(subprocess, "CREATE_NO_WINDOW", 0), "startupinfo": startupinfo}
 
 
+def _windows_program(*parts: str) -> str:
+    """A Windows program by its full path under the Windows folder: a bare name is looked for in the current
+    folder first, where another program of that name could be."""
+    return os.path.join(os.environ.get("SystemRoot") or r"C:\Windows", *parts)
+
+
 def list_processes() -> list[dict[str, int | str]]:
     """The running processes as {"name", "pid"} (tasklist on Windows, ps elsewhere); [] when it cannot be read."""
-    command = ["tasklist", "/FO", "CSV", "/NH"] if IS_WINDOWS else ["ps", "-A", "-o", "pid=,comm="]
+    command = [_windows_program("System32", "tasklist.exe"), "/FO", "CSV", "/NH"] if IS_WINDOWS else ["ps", "-A", "-o", "pid=,comm="]
     try:
         out = subprocess.check_output(command, text=True, encoding="utf-8", errors="replace",
                                       **hidden_subprocess_kwargs())
@@ -194,7 +200,7 @@ def hotkey_taken(key: str) -> bool:
 def reveal_file(path: str) -> None:
     """Show the file in the system's file manager: selected in Explorer / Finder, its folder elsewhere."""
     if IS_WINDOWS:
-        subprocess.Popen(["explorer", "/select,", os.path.normpath(path)])
+        subprocess.Popen([_windows_program("explorer.exe"), "/select,", os.path.normpath(path)])
     elif IS_MACOS:
         subprocess.Popen(["open", "-R", path])
     else:

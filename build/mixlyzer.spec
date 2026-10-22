@@ -27,8 +27,7 @@ a = Analysis(
     # The shipped assets, found through core.resource_paths: not the user's files beside them (a retrained model
     # without default_, assets/shortcuts/shortcuts.json, assets/midi/midi.json). config.json is not bundled: the local one holds personal
     # settings, and load_cfg() writes one from default_cfg() on first launch.
-    datas=shipped('assets/weights', lambda name: name.startswith('default_')
-                  or name in ('phrase_analyzer.npz', 'jumpcue_jump_point.json'))
+    datas=shipped('assets/weights', lambda name: name.startswith('default_'))
     # the images the app shows (not the design sources: the Photoshop file, the large render)
     + shipped('assets/icons') + shipped('assets/images', lambda name: not name.endswith('.psd')
                                         and name != 'mixlyzer_large.png')

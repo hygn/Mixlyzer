@@ -494,7 +494,7 @@ impl Engine {
         }
         if !starts.is_empty() {
             let mut s = starts;
-            s.sort_by(|a, b| a.partial_cmp(b).unwrap());
+            s.sort_by(f64::total_cmp);
             self.jump_start = Some(s[0]);
             self.jump_starts = Some(s);
         } else {

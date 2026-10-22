@@ -1,5 +1,7 @@
 from dataclasses import asdict, dataclass, fields, is_dataclass
+from datetime import datetime
 import json
+import os
 from pathlib import Path
 from typing import Literal, Tuple, get_args, get_origin
 
@@ -490,6 +492,28 @@ def ui_language() -> str:
     return value if isinstance(value, str) else ""
 
 
+# where load_cfg() kept a config.json it could not read (the settings then reset to the defaults), None: none
+_unreadable_kept: Path | None = None
+
+
+def unreadable_config() -> Path | None:
+    """The config.json that could not be read and was kept aside (its settings reset), None when it was read."""
+    return _unreadable_kept
+
+
+def _keep_unreadable_config(error: Exception) -> None:
+    """The unreadable config.json moved aside (config.json.unreadable-<time>), so its settings are not lost."""
+    global _unreadable_kept
+    kept = Path(f"config.json.unreadable-{datetime.now():%Y%m%d-%H%M%S}")
+    try:
+        os.replace("config.json", kept)
+    except OSError as exc:
+        print(f"[Config] config.json could not be read ({error}) nor kept aside ({exc})")
+        return
+    _unreadable_kept = kept.resolve()
+    print(f"[Config] config.json could not be read ({error}): kept as {kept}, the settings reset to the defaults")
+
+
 def load_cfg() -> config:
     def _merge_defaults(default_dict: dict, loaded_dict: dict) -> dict:
         merged = dict(default_dict)
@@ -521,10 +545,16 @@ def load_cfg() -> config:
     try:
         with open("config.json", "r", encoding="utf-8") as f:
             loaded = json.load(f)
+            if not isinstance(loaded, dict):
+                raise TypeError("not a JSON object")
             loaded = _normalize_config_payload(loaded)
             merged = _merge_defaults(cfg.to_dict(), loaded)
             cfg = config.from_dict(merged)
-    except (TypeError, FileNotFoundError, json.JSONDecodeError):
+    except FileNotFoundError:
+        atomic_write_json("config.json", cfg.to_dict(), ensure_ascii=True, indent=None)
+    except (TypeError, ValueError, AttributeError, KeyError) as exc:   # not JSON or UTF-8, or not settings
+        _keep_unreadable_config(exc)
+        cfg = default_cfg()
         atomic_write_json("config.json", cfg.to_dict(), ensure_ascii=True, indent=None)
     _ensure_library_dir(cfg)
     _ensure_feature_cache_dirs(cfg)

@@ -26,6 +26,7 @@ impl Shm {
         if handle.is_null() {
             return Err(format!("OpenFileMapping({name}) failed: {}", std::io::Error::last_os_error()));
         }
+        // a view larger than the section is refused here (MapViewOfFile fails), so ``len`` bytes are there
         let view = unsafe { MapViewOfFile(handle, access, 0, 0, len) };
         if view.Value.is_null() {
             let err = std::io::Error::last_os_error();
@@ -42,6 +43,12 @@ impl Shm {
         let fd = unsafe { libc::shm_open(path.as_ptr(), flags, 0o600) };
         if fd < 0 {
             return Err(format!("shm_open({name}) failed: {}", std::io::Error::last_os_error()));
+        }
+        // the block holds the bytes asked for (a mapping past its end would fault when read: SIGBUS)
+        let mut stat: libc::stat = unsafe { std::mem::zeroed() };
+        if unsafe { libc::fstat(fd, &mut stat) } != 0 || (stat.st_size as u64) < len as u64 {
+            unsafe { libc::close(fd) };
+            return Err(format!("shm {name}: smaller than the {len} bytes asked for"));
         }
         let prot = if writable { libc::PROT_READ | libc::PROT_WRITE } else { libc::PROT_READ };
         let ptr = unsafe { libc::mmap(std::ptr::null_mut(), len.max(1), prot, libc::MAP_SHARED, fd, 0) };
@@ -86,7 +93,11 @@ pub struct Pcm {
 
 impl Pcm {
     pub fn open(name: &str, frames: usize, channels: usize) -> Result<Pcm, String> {
-        let shm = Shm::open(name, frames * channels * 4, false)?;
+        let bytes = frames
+            .checked_mul(channels)
+            .and_then(|n| n.checked_mul(4))
+            .ok_or_else(|| format!("PCM {name}: {frames} frames of {channels} channels do not fit in memory"))?;
+        let shm = Shm::open(name, bytes, false)?;
         Ok(Pcm { shm, frames, channels })
     }
 

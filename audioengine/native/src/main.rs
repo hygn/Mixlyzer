@@ -55,7 +55,7 @@ fn main() {
         eprintln!("usage: mixlyzer-audio --shm NAME --size BYTES [--parent PID]");
         std::process::exit(2);
     };
-    let parent = arg(&args, "--parent").and_then(|s| s.parse::<u32>().ok());
+    let parent = arg(&args, "--parent").and_then(|s| s.parse::<u32>().ok()).map(Parent::watch);
     let block = match shm::Shm::open(&name, size, true) {
         Ok(b) => b,
         Err(e) => {
@@ -212,10 +212,8 @@ fn main() {
         trace.tick(&ring, tick_start, level_before, last_op, engine.playing, output.as_ref().map(|o| o.mode.code()));
         if now - parent_checked > 0.5 {
             parent_checked = now;
-            if let Some(pid) = parent {
-                if !parent_alive(pid) {
-                    return;
-                }
+            if parent.as_ref().is_some_and(|p| !p.alive()) {
+                return;
             }
         }
         // woken by the device's read (the ring topped up at once) or a MIDI message, else every 2 ms (1 ms while
@@ -423,7 +421,11 @@ fn handle(e: &mut Engine, deck: &mut Deck, op_code: u32, payload: &[u8]) {
                 e.set_track(None, generation);
                 return;
             }
-            match shm::Pcm::open(&name, frames as usize, channels as usize) {
+            let Ok(frames) = usize::try_from(frames) else {
+                e.set_track(None, generation);
+                return;
+            };
+            match shm::Pcm::open(&name, frames, channels as usize) {
                 Ok(pcm) => e.set_track(Some(pcm), generation),
                 Err(err) => {
                     eprintln!("[AudioEngine] {err}");
@@ -458,7 +460,8 @@ fn handle(e: &mut Engine, deck: &mut Deck, op_code: u32, payload: &[u8]) {
         }
         op::ARM_JUMP => {
             let (Some(start), Some(dest), Some(once), Some(n)) = (r.f64(), r.f64(), r.u32(), r.u32()) else { return };
-            let starts: Vec<f64> = (0..n).filter_map(|_| r.f64()).collect();
+            let n = r.count(n as u64, 8);
+            let starts: Vec<f64> = (0..n).filter_map(|_| r.f64()).filter(|v| v.is_finite()).collect();
             e.arm_jump(if start.is_finite() { Some(start) } else { None }, dest, once != 0, starts);
         }
         op::DISARM_JUMP => e.disarm_jump(),
@@ -468,18 +471,21 @@ fn handle(e: &mut Engine, deck: &mut Deck, op_code: u32, payload: &[u8]) {
         op::SET_SOFT_CLIP => e.set_soft_clip(r.u32().unwrap_or(0) != 0),
         op::SET_BUFFER_MS => e.set_buffer_ms(r.f64().unwrap_or(40.0)),
         op::TONE_HOLD => {
-            let n = r.u32().unwrap_or(0);
+            let n = r.u32().unwrap_or(0) as u64;
+            let n = r.count(n, 4);
             let notes: Vec<i32> = (0..n).filter_map(|_| r.i32()).collect();
             e.tones.hold(notes);
         }
         op::SET_MUSIC_GAIN => e.set_music_gain(r.f64().unwrap_or(1.0)),
         op::CLICK_SAMPLE => {
-            let (frames, channels) = (r.u32().unwrap_or(0) as usize, r.u32().unwrap_or(0) as usize);
-            if frames == 0 || channels == 0 {
+            let (frames, channels) = (r.u32().unwrap_or(0) as u64, r.u32().unwrap_or(0) as u64);
+            let values = frames.saturating_mul(channels);
+            // a sample is all there or not taken (the payload holds every value)
+            if values == 0 || r.count(values, 4) as u64 != values {
                 e.clicks.set_sample(None);
             } else {
-                let data: Vec<f32> = (0..frames * channels).filter_map(|_| r.f32()).collect();
-                e.clicks.set_sample(Some((data, channels)));
+                let data: Vec<f32> = (0..values).filter_map(|_| r.f32()).collect();
+                e.clicks.set_sample(Some((data, channels as usize)));
             }
         }
         op::CLICK_PITCHES => {
@@ -487,7 +493,8 @@ fn handle(e: &mut Engine, deck: &mut Deck, op_code: u32, payload: &[u8]) {
             e.clicks.set_pitches(b, a);
         }
         op::CLICK_BEATS => {
-            let n = r.u32().unwrap_or(0) as usize;
+            let n = r.u32().unwrap_or(0) as u64;
+            let n = r.count(n, 8 + 4 + 1);
             let beats: Vec<f64> = (0..n).filter_map(|_| r.f64()).collect();
             let gains: Vec<f32> = (0..n).filter_map(|_| r.f32()).collect();
             let accents: Vec<bool> = (0..n).filter_map(|_| r.u8()).map(|v| v != 0).collect();
@@ -554,22 +561,36 @@ fn publish(ctl: &Control, e: &mut Engine, deck: &Deck, cmd_done: u64, device_err
     ctl.state_end();
 }
 
-#[cfg(windows)]
-fn parent_alive(pid: u32) -> bool {
-    use windows_sys::Win32::Foundation::{CloseHandle, WAIT_TIMEOUT};
-    use windows_sys::Win32::System::Threading::{OpenProcess, PROCESS_SYNCHRONIZE, WaitForSingleObject};
-    unsafe {
-        let h = OpenProcess(PROCESS_SYNCHRONIZE, 0, pid);
-        if h.is_null() {
-            return false;
-        }
-        let alive = WaitForSingleObject(h, 0) == WAIT_TIMEOUT;
-        CloseHandle(h);
-        alive
-    }
+/// The GUI process, watched: on Windows through a handle opened at the start (its PID opened again later could
+/// be another process's by then), on Unix as this process's parent.
+struct Parent {
+    #[cfg(windows)]
+    handle: windows_sys::Win32::Foundation::HANDLE,
+    #[cfg(unix)]
+    pid: u32,
 }
 
-#[cfg(unix)]
-fn parent_alive(pid: u32) -> bool {
-    unsafe { libc::getppid() as u32 == pid }
+impl Parent {
+    #[cfg(windows)]
+    fn watch(pid: u32) -> Parent {
+        use windows_sys::Win32::System::Threading::{OpenProcess, PROCESS_SYNCHRONIZE};
+        Parent { handle: unsafe { OpenProcess(PROCESS_SYNCHRONIZE, 0, pid) } }
+    }
+
+    #[cfg(windows)]
+    fn alive(&self) -> bool {
+        use windows_sys::Win32::Foundation::WAIT_TIMEOUT;
+        use windows_sys::Win32::System::Threading::WaitForSingleObject;
+        !self.handle.is_null() && unsafe { WaitForSingleObject(self.handle, 0) } == WAIT_TIMEOUT
+    }
+
+    #[cfg(unix)]
+    fn watch(pid: u32) -> Parent {
+        Parent { pid }
+    }
+
+    #[cfg(unix)]
+    fn alive(&self) -> bool {
+        unsafe { libc::getppid() as u32 == self.pid }
+    }
 }

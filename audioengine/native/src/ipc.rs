@@ -362,12 +362,19 @@ impl<'a> Reader<'a> {
     }
 
     fn take(&mut self, n: usize) -> Option<&'a [u8]> {
-        if self.at + n > self.data.len() {
+        if n > self.data.len() - self.at {
             return None;
         }
         let s = &self.data[self.at..self.at + n];
         self.at += n;
         Some(s)
+    }
+
+    /// How many of ``n`` items of ``each`` bytes the rest of the payload holds: a count read from a command is
+    /// never trusted for more (a loop over it ends with the payload).
+    pub fn count(&self, n: u64, each: usize) -> usize {
+        let room = (self.data.len() - self.at) / each.max(1);
+        usize::try_from(n).map_or(room, |n| n.min(room))
     }
 
     pub fn u8(&mut self) -> Option<u8> {

@@ -157,12 +157,14 @@ impl Deck {
 
     pub fn set_marks(&mut self, payload: &[u8]) {
         let mut r = Reader::new(payload);
-        let n = r.u32().unwrap_or(0) as usize;
+        let n = r.u32().unwrap_or(0) as u64;
+        let n = r.count(n, 8 + 1);
         let beats: Vec<f64> = (0..n).filter_map(|_| r.f64()).collect();
         let down: Vec<bool> = (0..n).filter_map(|_| r.u8()).map(|v| v != 0).collect();
-        let m = r.u32().unwrap_or(0) as usize;
+        let m = r.u32().unwrap_or(0) as u64;
+        let m = r.count(m, 8);
         let mut cues: Vec<f64> = (0..m).filter_map(|_| r.f64()).filter(|v| v.is_finite()).collect();
-        cues.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        cues.sort_by(f64::total_cmp);
         let mut jumpcues = [f64::NAN; 26];
         for slot in jumpcues.iter_mut() {
             *slot = r.f64().unwrap_or(f64::NAN);
@@ -390,7 +392,7 @@ impl Deck {
         if starts.is_empty() {
             return;
         }
-        starts.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        starts.sort_by(f64::total_cmp);
         starts.dedup();
         e.arm_jump(None, dest, true, starts);
         self.armed = Some((dest, ranges));
@@ -635,8 +637,8 @@ impl Deck {
                 continue;
             }
             let bit = if b.lamp <= 26 { b.lamp - 1 } else { b.lamp };
-            let lit = lights >> bit & 1 != 0;
-            if before.is_some_and(|was| (was >> bit & 1 != 0) == lit) {
+            let lit = lights.checked_shr(bit as u32).unwrap_or(0) & 1 != 0;
+            if before.is_some_and(|was| (was.checked_shr(bit as u32).unwrap_or(0) & 1 != 0) == lit) {
                 continue;
             }
             midi.send(&[b.status, b.data1, if lit { 0x7F } else { 0 }]);

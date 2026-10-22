@@ -4,6 +4,7 @@ import os
 import re
 import subprocess
 import threading
+from functools import lru_cache
 from pathlib import Path
 
 import numpy as np
@@ -23,10 +24,20 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 _BUNDLED_FFMPEG = _PROJECT_ROOT / ("ffmpeg.exe" if os_support.IS_WINDOWS else "ffmpeg")
 
 
+@lru_cache(maxsize=1)
 def _ffmpeg_command() -> str:
-    if _BUNDLED_FFMPEG.is_file() and (os_support.IS_WINDOWS or os.access(_BUNDLED_FFMPEG, os.X_OK)):
+    """FFmpeg by its full path: the app's, else the first on PATH (absolute entries only: a bare name or a
+    relative entry would take one from the current folder). The app's path when there is none (not found)."""
+    def runnable(p: Path) -> bool:
+        return p.is_file() and (os_support.IS_WINDOWS or os.access(p, os.X_OK))
+
+    if runnable(_BUNDLED_FFMPEG):
         return str(_BUNDLED_FFMPEG)
-    return "ffmpeg"
+    for folder in os.environ.get("PATH", "").split(os.pathsep):
+        folder = folder.strip().strip('"')
+        if folder and os.path.isabs(folder) and runnable(Path(folder) / _BUNDLED_FFMPEG.name):
+            return str(Path(folder) / _BUNDLED_FFMPEG.name)
+    return str(_BUNDLED_FFMPEG)
 
 
 def warm_ffmpeg_decoder() -> None:
@@ -126,6 +137,79 @@ def decode_to_memmap(path: str, sr: int, ch: int) -> np.ndarray:
 
     pcm = data.reshape(-1, ch)
     return np.ascontiguousarray(pcm, dtype=np.float32)
+
+
+COVER_MAX_BYTES = 32 << 20   # a cover larger than this is not read (no picture is that big)
+
+
+def _ffmetadata(text: str) -> dict[str, str]:
+    """The global section of FFmpeg's ffmetadata output: key (lower case) -> value; ``\\`` escapes ``=``, ``;``,
+    ``#``, ``\\`` and the line end."""
+    out: dict[str, str] = {}
+    if not text.startswith(";FFMETADATA"):
+        return out
+    body = text.split("\n", 1)[1] if "\n" in text else ""
+    key, buf, escaped, comment, at_start = None, [], False, False, True
+    for ch in body + "\n":
+        if comment:
+            comment = ch != "\n"
+            at_start = not comment
+            continue
+        if escaped:
+            buf.append(ch)
+            escaped = at_start = False
+        elif ch == "\\":
+            escaped = True
+        elif ch == "\n":
+            if key is not None:
+                out.setdefault(key.strip().lower(), "".join(buf))
+            key, buf, at_start = None, [], True
+        elif at_start and ch in ";#":
+            comment = True
+        elif at_start and ch == "[":   # a stream's or a chapter's section: the global one is over
+            break
+        elif ch == "=" and key is None:
+            key, buf = "".join(buf), []
+        else:
+            buf.append(ch)
+            at_start = False
+    return out
+
+
+def read_metadata(path: str) -> dict[str, str]:
+    """The file's tags as FFmpeg reads them (for the formats core.audio.tag_writer does not read): its global
+    metadata, else its first audio stream's (Ogg keeps the comments there); key (FFmpeg's, lower case) ->
+    value. {} when FFmpeg cannot read the file."""
+    out: dict[str, str] = {}
+    for source in ("0", "0:s:a:0"):
+        args = [_ffmpeg_command(), "-hide_banner", "-nostats", "-v", "error", "-i", path,
+                "-map_metadata", source, "-f", "ffmetadata", "pipe:1"]
+        try:
+            proc = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, check=False,
+                                  timeout=30, **os_support.hidden_subprocess_kwargs())
+        except (OSError, subprocess.TimeoutExpired):
+            return out
+        if proc.returncode != 0:
+            return out
+        for key, value in _ffmetadata(proc.stdout.decode("utf-8", "replace")).items():
+            out.setdefault(key, value)
+    return out
+
+
+def read_cover(path: str) -> bytes | None:
+    """The file's cover picture as stored (its first picture stream: ID3 APIC, FLAC PICTURE, MP4 covr, ...), as
+    FFmpeg reads it; None when it has none or it is over COVER_MAX_BYTES."""
+    args = [_ffmpeg_command(), "-hide_banner", "-nostats", "-v", "error", "-i", path,
+            "-map", "0:v:0", "-c", "copy", "-frames:v", "1", "-f", "image2pipe", "pipe:1"]
+    try:   # one packet copied: no more than the file holds
+        proc = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, check=False, timeout=30,
+                              **os_support.hidden_subprocess_kwargs())
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    data = proc.stdout
+    if proc.returncode != 0 or not data or len(data) > COVER_MAX_BYTES:
+        return None
+    return data
 
 
 def get_samplerate(path: str) -> int:

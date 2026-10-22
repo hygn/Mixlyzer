@@ -15,7 +15,7 @@ from pathlib import Path
 
 import numpy as np
 
-from core.resource_paths import resource_path
+from core.model_files import resolve_model
 
 from analyzer_core.hpss import HpssSpectra
 
@@ -24,7 +24,7 @@ from analyzer_core.cue_and_phrase.phrase_analyzer import (
 )
 
 
-_ASSET_MODEL = Path(resource_path("assets/weights/phrase_analyzer.npz"))
+_ASSET_MODEL = "assets/weights/phrase_analyzer.npz"   # the user's file, else the shipped default_ one
 
 
 def detect_phrase_segments(
@@ -51,7 +51,7 @@ def detect_phrase_segments(
         int(sample_rate),
         beat_times_sec,
         tempo_segments,
-        model_path=Path(model_path) if model_path is not None else _ASSET_MODEL,
+        model_path=model_path if model_path is not None else _ASSET_MODEL,
         hpss=hpss,
         return_boundary_probability=return_boundary_probability,
         return_feature_z=return_feature_z,

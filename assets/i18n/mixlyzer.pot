@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-22 13:39+0900\n"
+"POT-Creation-Date: 2026-10-22 18:35+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -107,65 +107,65 @@ msgstr ""
 msgid "Phrases Updated"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:59
+#: analyzer_core/global_analyzer.py:57
 #, python-brace-format
 msgid "Audio decode failed via FFmpeg and SoundFile: {path}"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:310
+#: analyzer_core/global_analyzer.py:270
 msgid "Loading"
 msgstr ""
 
 #: analyzer_core/editor/jumpcue.py:37 analyzer_core/editor/phrase.py:32
-#: analyzer_core/global_analyzer.py:318
+#: analyzer_core/global_analyzer.py:278
 msgid "Processing HPSS"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:329
+#: analyzer_core/global_analyzer.py:289
 msgid "Processing Waveform"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:344
+#: analyzer_core/global_analyzer.py:304
 msgid "Tempo"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:346
+#: analyzer_core/global_analyzer.py:306
 msgid "Tempo Analyzing"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:414
+#: analyzer_core/global_analyzer.py:374
 msgid "Phrase Boundary Analyzing"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:468
+#: analyzer_core/global_analyzer.py:428
 msgid "JumpCUE Analyzing"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:515
+#: analyzer_core/global_analyzer.py:475
 msgid "Analyzing Keys"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:543
+#: analyzer_core/global_analyzer.py:503
 msgid "Processing Metadata"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:552
+#: analyzer_core/global_analyzer.py:512
 msgid "Rendering/Normalizing"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:577
+#: analyzer_core/global_analyzer.py:537
 msgid "Saving"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:579
+#: analyzer_core/global_analyzer.py:539
 msgid "Saving Result"
 msgstr ""
 
-#: app/main.py:41
+#: app/main.py:47
 msgid "Unsupported Operating System"
 msgstr ""
 
-#: app/main.py:42
+#: app/main.py:48
 #, python-brace-format
 msgid ""
 "Mixlyzer supports Windows, Linux and macOS; this system ({system}) is not"
@@ -173,21 +173,36 @@ msgid ""
 "It may not work correctly."
 msgstr ""
 
-#: app/main.py:48
+#: app/main.py:54
 msgid "Administrator Execution Blocked"
 msgstr ""
 
-#: app/main.py:49
+#: app/main.py:55
 msgid ""
 "Mixlyzer cannot run with administrator privileges.\n"
 "Close it and launch again as a normal user."
 msgstr ""
 
+#: app/main.py:66
+msgid "Settings Reset"
+msgstr ""
+
 #: app/main.py:67
+#, python-brace-format
+msgid ""
+"config.json could not be read, so every setting is back to its default.\n"
+"The unreadable file was kept as:\n"
+"{path}\n"
+"\n"
+"To get the settings back, fix that file and put it in place of "
+"config.json while Mixlyzer is closed."
+msgstr ""
+
+#: app/main.py:82
 msgid "Incompatible Library Version"
 msgstr ""
 
-#: app/main.py:68
+#: app/main.py:83
 #, python-brace-format
 msgid ""
 "This library cannot be opened by the current app version.\n"
@@ -313,7 +328,7 @@ msgstr ""
 msgid "Locate {name}"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:594 app/window.py:393
+#: analyzer_core/global_analyzer.py:554 app/window.py:393
 msgid "Finished"
 msgstr ""
 
@@ -366,27 +381,28 @@ msgstr ""
 msgid "The written tags did not read back as written; the file is unchanged."
 msgstr ""
 
-#: core/audio/tag_writer.py:205 core/audio/tag_writer.py:270 ui/export.py:177
+#: core/audio/tag_writer.py:205 core/audio/tag_writer.py:286
+#: core/audio/tag_writer.py:1371 ui/export.py:177
 msgid "Tags cannot be written to this file's format."
 msgstr ""
 
-#: core/audio/tag_writer.py:375
+#: core/audio/tag_writer.py:391
 msgid "The file changed while its tags were written; it is unchanged."
 msgstr ""
 
-#: core/audio/tag_writer.py:470 core/audio/tag_writer.py:512
+#: core/audio/tag_writer.py:486 core/audio/tag_writer.py:528
 msgid "The tags are too long for the file."
 msgstr ""
 
-#: core/audio/tag_writer.py:1186
+#: core/audio/tag_writer.py:1211
 msgid "The file's chunk offsets cannot take the longer tags; it is unchanged."
 msgstr ""
 
-#: core/audio/tag_writer.py:1213
+#: core/audio/tag_writer.py:1238
 msgid "Fragmented MP4 files are not written."
 msgstr ""
 
-#: core/audio/tag_writer.py:1232
+#: core/audio/tag_writer.py:1257
 msgid "MP4 files with QuickTime keys metadata are not written."
 msgstr ""
 
@@ -882,49 +898,49 @@ msgstr ""
 msgid "Fitting all tracks"
 msgstr ""
 
-#: optimizer/jumpcue_parameter_optimizer.py:976
+#: optimizer/jumpcue_parameter_optimizer.py:1015
 msgid "Audio file not found"
 msgstr ""
 
-#: optimizer/jumpcue_parameter_optimizer.py:982
+#: optimizer/jumpcue_parameter_optimizer.py:1021
 #, python-brace-format
 msgid "Reading the analysis failed: {error}"
 msgstr ""
 
-#: optimizer/jumpcue_parameter_optimizer.py:984
+#: optimizer/jumpcue_parameter_optimizer.py:1023
 #, python-brace-format
 msgid "Need at least five tracks with saved JumpCUEs ({count} found)."
 msgstr ""
 
-#: optimizer/jumpcue_parameter_optimizer.py:1002
+#: optimizer/jumpcue_parameter_optimizer.py:1040
 #, python-brace-format
 msgid "Building {count} JumpCUE candidate caches"
 msgstr ""
 
-#: optimizer/jumpcue_parameter_optimizer.py:1003
+#: optimizer/jumpcue_parameter_optimizer.py:1041
 msgid "JumpCUE candidate cache is current"
 msgstr ""
 
-#: optimizer/jumpcue_parameter_optimizer.py:1015
+#: optimizer/jumpcue_parameter_optimizer.py:1053
 #, python-brace-format
 msgid "JumpCUE analysis failed: {error}"
 msgstr ""
 
-#: optimizer/jumpcue_parameter_optimizer.py:1033
+#: optimizer/jumpcue_parameter_optimizer.py:1071
 msgid "No saved JumpCUE group matches an automatically found group"
 msgstr ""
 
-#: optimizer/jumpcue_parameter_optimizer.py:1038
+#: optimizer/jumpcue_parameter_optimizer.py:1076
 #, python-brace-format
 msgid "{count} labeled groups"
 msgstr ""
 
-#: optimizer/jumpcue_parameter_optimizer.py:1056
+#: optimizer/jumpcue_parameter_optimizer.py:1094
 #, python-brace-format
 msgid "Cross-validation fold {fold}/{folds}"
 msgstr ""
 
-#: optimizer/jumpcue_parameter_optimizer.py:1062
+#: optimizer/jumpcue_parameter_optimizer.py:1100
 msgid "Fitting on all tracks"
 msgstr ""
 
@@ -1068,69 +1084,69 @@ msgstr ""
 msgid "fewer than two usable Phrase segments"
 msgstr ""
 
-#: optimizer/phrase_parameter_optimizer.py:207
+#: optimizer/phrase_parameter_optimizer.py:208
 #, python-brace-format
 msgid "Cross-validation fold {fold}/{folds}: "
 msgstr ""
 
-#: optimizer/phrase_parameter_optimizer.py:381
+#: optimizer/phrase_parameter_optimizer.py:383
 #, python-brace-format
 msgid "Phrase annotation validation failed: {error}"
 msgstr ""
 
-#: optimizer/phrase_parameter_optimizer.py:385
+#: optimizer/phrase_parameter_optimizer.py:387
 #, python-brace-format
 msgid ""
 "Need at least five valid annotated tracks to train a Phrase parameter "
 "artifact ({valid} valid, {ignored} ignored)."
 msgstr ""
 
-#: optimizer/phrase_parameter_optimizer.py:396
+#: optimizer/phrase_parameter_optimizer.py:398
 #, python-brace-format
 msgid "Checking feature cache: {count} tracks"
 msgstr ""
 
-#: optimizer/phrase_parameter_optimizer.py:435
+#: optimizer/phrase_parameter_optimizer.py:437
 #, python-brace-format
 msgid "Building {count} missing feature caches with {workers} workers"
 msgstr ""
 
-#: optimizer/phrase_parameter_optimizer.py:438
+#: optimizer/phrase_parameter_optimizer.py:440
 msgid "Feature cache is current"
 msgstr ""
 
-#: optimizer/phrase_parameter_optimizer.py:465
+#: optimizer/phrase_parameter_optimizer.py:467
 #, python-brace-format
 msgid "Phrase feature cache build failed: {error}"
 msgstr ""
 
-#: optimizer/phrase_parameter_optimizer.py:491
+#: optimizer/phrase_parameter_optimizer.py:493
 #, python-brace-format
 msgid "Preparing optimizer features {done}/{total}"
 msgstr ""
 
-#: optimizer/phrase_parameter_optimizer.py:539
+#: optimizer/phrase_parameter_optimizer.py:541
 #, python-brace-format
 msgid "Phrase feature preparation failed: {error}"
 msgstr ""
 
-#: optimizer/phrase_parameter_optimizer.py:544
+#: optimizer/phrase_parameter_optimizer.py:546
 #, python-brace-format
 msgid "prepared ({done}/{total})"
 msgstr ""
 
-#: optimizer/phrase_parameter_optimizer.py:550
+#: optimizer/phrase_parameter_optimizer.py:552
 #, python-brace-format
 msgid ""
 "Need at least five tracks after Phrase feature validation ({valid} valid,"
 " {ignored} ignored)."
 msgstr ""
 
-#: optimizer/phrase_parameter_optimizer.py:575
+#: optimizer/phrase_parameter_optimizer.py:577
 msgid "Evaluating fitted Phrase models"
 msgstr ""
 
-#: optimizer/phrase_parameter_optimizer.py:580
+#: optimizer/phrase_parameter_optimizer.py:582
 msgid "Writing parameter artifact"
 msgstr ""
 
@@ -1476,9 +1492,9 @@ msgstr ""
 #: optimizer/beat_critic_optimizer.py:504
 #: optimizer/beat_decoder_optimizer.py:214 optimizer/beat_tcn_optimizer.py:409
 #: optimizer/downbeat_ctx_optimizer.py:139
-#: optimizer/jumpcue_parameter_optimizer.py:1089
+#: optimizer/jumpcue_parameter_optimizer.py:1127
 #: optimizer/key_model_optimizer.py:541
-#: optimizer/phrase_parameter_optimizer.py:584
+#: optimizer/phrase_parameter_optimizer.py:586
 #: optimizer/refine_onset_optimizer.py:208 ui/config/analysis.py:571
 #: ui/config/dialogs/optimization.py:95
 msgid "Done"
@@ -2518,7 +2534,7 @@ msgstr ""
 msgid "overview levels"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:327 ui/config/pipeline_map.py:31
+#: analyzer_core/global_analyzer.py:287 ui/config/pipeline_map.py:31
 msgid "Waveform"
 msgstr ""
 
@@ -4041,7 +4057,7 @@ msgstr ""
 msgid "Path"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:513 ui/config/analysis.py:235
+#: analyzer_core/global_analyzer.py:473 ui/config/analysis.py:235
 #: ui/config/pipeline_map.py:26 ui/config/pipeline_map.py:34
 #: ui/edit_song.py:159
 msgid "Key"
@@ -4286,7 +4302,7 @@ msgstr ""
 msgid "Tracks with a phrase of this label (optionally at a BPM / key)"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:412 ui/config/analysis.py:236
+#: analyzer_core/global_analyzer.py:372 ui/config/analysis.py:236
 #: ui/config/pipeline_map.py:23 ui/config/pipeline_map.py:32
 #: ui/edit_panel/panel.py:63 ui/library.py:856 ui/library.py:916
 #: ui/shortcuts.py:36
@@ -4546,7 +4562,7 @@ msgstr ""
 msgid "Playback is disabled while External Sync is enabled."
 msgstr ""
 
-#: ui/pane.py:809
+#: ui/pane.py:811
 msgid "Not Loaded"
 msgstr ""
 

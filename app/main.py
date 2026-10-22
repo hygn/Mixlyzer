@@ -1,9 +1,11 @@
 import gc
+import os
 import sys
 from pathlib import Path
 from PySide6 import QtWidgets
 from core import i18n, os_support
-from core.config import load_cfg, ui_language
+from core.config import load_cfg, ui_language, unreadable_config
+from core.resource_paths import app_folder
 from core.i18n import tr
 from core.library_version import (
     ensure_current_version_file,
@@ -24,6 +26,10 @@ for _stream in (sys.stdout, sys.stderr):
 
 
 def main():
+    # config.json, the library and the caches are the app folder's, whatever folder the app was started from
+    # (a shortcut's "Start in", a terminal): another folder's config.json, or a program in it named as one the
+    # app runs, is never taken
+    os.chdir(app_folder())
     one_blas_thread()   # before numpy loads (the startup imports it): none of the imports above does
     # The audio thread waits for the GIL whenever this (GUI) thread holds it: handed over after 1 ms instead of
     # Python's 5, so a small output buffer is fed in time (measured: a 20 ms buffer ran dry under GUI work).
@@ -54,6 +60,15 @@ def main():
     splash.show()
     app.processEvents()
     cfg = load_cfg()
+    if unreadable_config() is not None:
+        QtWidgets.QMessageBox.warning(
+            None,
+            tr("Settings Reset"),
+            tr("config.json could not be read, so every setting is back to its default.\n"
+               "The unreadable file was kept as:\n{path}\n\n"
+               "To get the settings back, fix that file and put it in place of config.json while Mixlyzer is "
+               "closed.").format(path=unreadable_config()),
+        )
     lib_path = Path(cfg.libconfig.libpath)
     version_path = version_file_path(lib_path)
     db_path = lib_path / "library.db"

@@ -3,9 +3,9 @@ for ("" removes the tag). Everything else stays as it is: the audio bytes, the a
 (other programs' data, such as Serato's, included). Own code: the tag libraries for Python (mutagen and the
 like) are GPL. The format is told by the file's content, not its name.
 
-A field can be spelled in a few places of a format, and the analysis's reader (``extract_tags``: MediaInfo, the
-WAV INFO reader) takes it from the first of them holding a value (``LEVELS``; the places of a level joined: an
-M4A title in the iTunes list's (c)nam and the 3GPP titl). Most are the field's copies in the format's tag
+A field can be spelled in a few places of a format, and the analysis's reader (``extract_tags``: ``read_fields``
+here, the WAV INFO reader) takes it from the first of them holding a value (``LEVELS``, MediaInfo's order; the
+places of a level joined: an M4A title in the iTunes list's (c)nam and the 3GPP titl). Most are the field's copies in the format's tag
 systems (WAV INFO and its ID3 chunk, MP3's COMM and FFmpeg's TXXX "comment"); some are another field it falls
 back to for an empty one (``_FALLBACKS``: the album artist for the artist, a description for the comment).
 A value is written where the analysis read it from (its sources, ``tag_sources``, kept in the library: the place
@@ -220,6 +220,22 @@ def read_tags(path) -> dict[str, str]:
         value = next((found[s][0] for s in SPELLINGS[fmt][field] if found.get(s)), None)
         if value is not None:
             out[field] = value
+    return out
+
+
+def read_fields(path) -> dict[str, str]:
+    """The text fields as the analysis reads them (``LEVELS``, as MediaInfo did): the first level holding a
+    value, its different values joined with " / " (a field without one: not in the dict)."""
+    path = Path(path)
+    found = read_spellings(path)
+    fmt = tag_format(path)
+    out = {}
+    for field in TEXT_FIELDS:
+        for level in _levels(fmt, field, found):
+            values = [v.strip() for s in level for v in found.get(s, ()) if v.strip()]
+            if values:
+                out[field] = " / ".join(dict.fromkeys(values))
+                break
     return out
 
 
@@ -566,6 +582,15 @@ def _id3_parse_frames(body: bytes, pos: int, syncsafe: bool):
     return frames
 
 
+_INFLATED_MAX = 32 << 20   # a compressed frame unpacking to more than this is not read (a zip bomb in a tag)
+
+
+def _inflate(data: bytes) -> Optional[bytes]:
+    unpack = zlib.decompressobj()
+    out = unpack.decompress(data, _INFLATED_MAX)
+    return None if unpack.unconsumed_tail else out
+
+
 def _id3_frame_data(flags: bytes, data: bytes, major: int) -> Optional[bytes]:
     """A frame's content without its format flags' extras, decompressed (None: encrypted, or not readable)."""
     try:
@@ -578,7 +603,7 @@ def _id3_frame_data(flags: bytes, data: bytes, major: int) -> Optional[bytes]:
                 data = data[4:]
             if flags[1] & 0x02:
                 data = data.replace(b"\xff\x00", b"\xff")
-            return zlib.decompress(data) if flags[1] & 0x08 else data
+            return _inflate(data) if flags[1] & 0x08 else data
         if flags[1] & 0x40:
             return None
         compressed = bool(flags[1] & 0x80)
@@ -586,7 +611,7 @@ def _id3_frame_data(flags: bytes, data: bytes, major: int) -> Optional[bytes]:
             data = data[4:]
         if flags[1] & 0x20:   # group
             data = data[1:]
-        return zlib.decompress(data) if compressed else data
+        return _inflate(data) if compressed else data
     except zlib.error:
         return None
 
@@ -1281,6 +1306,81 @@ def _read_mp4(path: Path) -> Spellings:
             if name is not None:
                 out.setdefault("mp4:" + name, []).append(_gpp_split(udta[off:off + length])[1])
     return out
+
+
+# --- the cover picture (read only) --------------------------------------------------------------------------
+
+_FRONT_COVER = 3   # the picture type of a front cover (ID3 APIC, FLAC PICTURE)
+
+
+def _flac_picture(path: Path) -> Optional[bytes]:
+    """A FLAC PICTURE block's image: the front cover's, else the first's."""
+    pictures = []
+    with open(path, "rb") as f:
+        _start, blocks = _flac_layout(f, path.stat().st_size)
+        for kind, offset, length in blocks:
+            if kind != 6:
+                continue
+            f.seek(offset)
+            block = f.read(length)
+            ptype, mime_len = struct.unpack_from(">II", block, 0)
+            at = 8 + mime_len
+            desc_len = struct.unpack_from(">I", block, at)[0]
+            at += 4 + desc_len + 16   # the description, then width, height, depth and colours
+            data_len = struct.unpack_from(">I", block, at)[0]
+            data = block[at + 4:at + 4 + data_len]
+            if len(data) != data_len:
+                raise _damaged()
+            pictures.append((ptype, data))
+    return next((d for t, d in pictures if t == _FRONT_COVER), pictures[0][1] if pictures else None)
+
+
+def _id3_picture(tags: list[bytes]) -> Optional[bytes]:
+    """An APIC frame's image in ID3v2 tags: the front cover's, else the first's."""
+    pictures = []
+    for tag in tags:
+        major, frames = _id3_frames(tag)
+        for fid, flags, data in frames:
+            if fid != b"APIC":
+                continue
+            content = _id3_frame_data(flags, data, major)
+            if not content or content[0] > 3:
+                continue
+            mime_end = content.find(b"\x00", 1)
+            if mime_end < 0 or mime_end + 2 > len(content):
+                continue
+            ptype = content[mime_end + 1]
+            _desc, image = _id3_split(content[mime_end + 2:], content[0])
+            if image:
+                pictures.append((ptype, image))
+    return next((d for t, d in pictures if t == _FRONT_COVER), pictures[0][1] if pictures else None)
+
+
+def _mp4_picture(path: Path) -> Optional[bytes]:
+    ilst = _ilst(_read_moov(path))
+    item = _child(ilst, b"covr") if ilst is not None else None
+    return _item_data(item) if item is not None else None
+
+
+def read_picture(path) -> Optional[bytes]:
+    """The cover picture's bytes as the file holds them (FLAC PICTURE, ID3 APIC, MP4 covr; the front cover
+    first), None when it has none. TagWriteError when the format is not one this module reads, or damaged."""
+    path = Path(path)
+    fmt = tag_format(path)
+    if fmt is None:
+        raise TagWriteError(tr("Tags cannot be written to this file's format."))
+    try:
+        if fmt == "flac":
+            return _flac_picture(path)
+        if fmt == "mp4":
+            return _mp4_picture(path)
+        if fmt == "id3":
+            with open(path, "rb") as f:
+                return _id3_picture(_id3_tags(f))
+        id3 = _iff_parts(path, fmt == "aiff")[2]
+        return _id3_picture([id3[2][:_id3_size(id3[2][:10])]]) if id3 is not None else None
+    except (struct.error, IndexError, ValueError, OverflowError) as exc:
+        raise _damaged() from exc
 
 
 _READERS = {"flac": _read_flac, "id3": _read_id3_file, "wav": _read_wav, "aiff": _read_aiff, "mp4": _read_mp4}
