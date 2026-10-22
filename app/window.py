@@ -119,6 +119,7 @@ class AppWindow(QtWidgets.QMainWindow):
         self.cfgwin.set_audio_engine(self.player.native, self.player.output_devices)
         # a MIDI controller: the native engine's alone
         self.cfgwin.set_midi_access(self.player.native, self.player.midi_ports, self.player.set_midi_learn)
+        self.cfgwin.set_external_sync_status(self.external_sync.snapshot)
         self.cfgwin.set_config(self.cfg)
         step(0.6, tr("Dialogs, workflows and metronome"))
         self.workers = WorkersDialog()
@@ -543,7 +544,7 @@ class AppWindow(QtWidgets.QMainWindow):
         self._apply_external_sync_mode(new_cfg.externalsyncconfig)
         QtWidgets.QMessageBox.warning(
             self,
-            tr("Memory Sync Disabled"),
+            tr("External Sync Disabled"),
             message,
         )
 
@@ -796,12 +797,7 @@ class AppWindow(QtWidgets.QMainWindow):
         if enabled:
             if state_changed:
                 self.player.pause()
-            mode_desc = tr("Time Sync") if str(sync_cfg.mode) == "time" else tr("Sample Index Sync")
-            target_desc = (
-                f"{mode_desc}, process={sync_cfg.memory_process_name or tr('manual')}, "
-                f"deck1.path={sync_cfg.memory_deck1.path.offsets}, "
-                f"deck2.path={sync_cfg.memory_deck2.path.offsets}"
-            )
-            self.statusBar().showMessage(
-                tr("External Sync enabled via {target}. Local play/load is locked.").format(target=target_desc)
-            )
+            address = self.external_sync.listening_on()
+            if address:
+                self.statusBar().showMessage(
+                    tr("External Sync enabled: OSC on {address}. Local play/load is locked.").format(address=address))

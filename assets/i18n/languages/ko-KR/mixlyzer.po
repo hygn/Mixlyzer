@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-22 18:35+0900\n"
+"POT-Creation-Date: 2026-10-22 19:44+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ko_KR\n"
@@ -206,8 +206,7 @@ msgstr ""
 "읽을 수 없었던 파일은 다음 이름으로 보관했습니다:\n"
 "{path}\n"
 "\n"
-"설정을 되살리려면 Mixlyzer를 닫은 상태에서 그 파일을 고쳐 config.json 자리에 "
-"두세요."
+"설정을 되살리려면 Mixlyzer를 닫은 상태에서 그 파일을 고쳐 config.json 자리에 두세요."
 
 #: app/main.py:82
 msgid "Incompatible Library Version"
@@ -289,48 +288,48 @@ msgstr "핵심 객체와 재생"
 msgid "Main view, editor and library"
 msgstr "메인 뷰, 편집기, 라이브러리"
 
-#: app/window.py:116 app/window.py:132 ui/config/window.py:65
+#: app/window.py:116 app/window.py:133 ui/config/window.py:62
 msgid "Settings"
 msgstr "설정"
 
-#: app/window.py:123
+#: app/window.py:124
 msgid "Dialogs, workflows and metronome"
 msgstr "대화상자, 워크플로, 메트로놈"
 
-#: app/window.py:130
+#: app/window.py:131
 msgid "Transport"
 msgstr "트랜스포트"
 
-#: app/window.py:133 ui/workers.py:24
+#: app/window.py:134 ui/workers.py:24
 msgid "Workers"
 msgstr "작업"
 
-#: app/window.py:134
+#: app/window.py:135
 msgid "Open Source"
 msgstr "오픈 소스"
 
-#: app/window.py:135
+#: app/window.py:136
 msgid "About"
 msgstr "정보"
 
-#: app/window.py:249 app/window.py:308 app/window.py:315
+#: app/window.py:250 app/window.py:309 app/window.py:316
 msgid "External Sync is enabled. Local track loading is disabled."
 msgstr "외부 동기화가 켜져 있습니다. 로컬 트랙 불러오기가 비활성화됩니다."
 
-#: app/window.py:259
+#: app/window.py:260
 #, python-brace-format
 msgid "Drop error: {error}"
 msgstr "드롭 오류: {error}"
 
-#: app/window.py:323
+#: app/window.py:324
 msgid "Track unloaded."
 msgstr "트랙을 내렸습니다."
 
-#: app/window.py:332
+#: app/window.py:333
 msgid "Track File Not Found"
 msgstr "트랙 파일을 찾을 수 없음"
 
-#: app/window.py:336
+#: app/window.py:337
 #, python-brace-format
 msgid ""
 "Cannot load \"{name}\": its file is missing.\n"
@@ -343,53 +342,43 @@ msgstr ""
 "\n"
 "파일의 새 위치를 지정할까요?"
 
-#: app/window.py:343
+#: app/window.py:344
 #, python-brace-format
 msgid "Locate {name}"
 msgstr "{name} 찾기"
 
-#: analyzer_core/global_analyzer.py:554 app/window.py:393
+#: analyzer_core/global_analyzer.py:554 app/window.py:394
 msgid "Finished"
 msgstr "완료"
 
-#: app/window.py:396 app/window.py:432
+#: app/window.py:397 app/window.py:433
 msgid "Done. Press Play."
 msgstr "완료. 재생을 누르세요."
 
-#: app/window.py:398
+#: app/window.py:399
 msgid "Analysis saved to library."
 msgstr "분석을 라이브러리에 저장했습니다."
 
-#: app/window.py:530
+#: app/window.py:531
 #, python-brace-format
 msgid "External Sync loading: {file}"
 msgstr "외부 동기화 불러오는 중: {file}"
 
-#: app/window.py:530
+#: app/window.py:531
 #, python-brace-format
 msgid "External Sync analyzing: {file}"
 msgstr "외부 동기화 분석 중: {file}"
 
-#: app/window.py:546
-msgid "Memory Sync Disabled"
-msgstr "메모리 동기화 비활성화됨"
+# | msgid "Memory Sync Disabled"
+#: app/window.py:547
+msgid "External Sync Disabled"
+msgstr "외부 동기화 비활성화됨"
 
-#: app/window.py:799 ui/config/external_sync.py:127
-msgid "Time Sync"
-msgstr "시간 동기화"
-
-#: app/window.py:799 ui/config/external_sync.py:127
-msgid "Sample Index Sync"
-msgstr "샘플 인덱스 동기화"
-
-#: app/window.py:801
-msgid "manual"
-msgstr "수동"
-
-#: app/window.py:806
+# | msgid "External Sync enabled via {target}. Local play/load is locked."
+#: app/window.py:803
 #, python-brace-format
-msgid "External Sync enabled via {target}. Local play/load is locked."
-msgstr "외부 동기화 켜짐: {target}. 로컬 재생/불러오기가 잠깁니다."
+msgid "External Sync enabled: OSC on {address}. Local play/load is locked."
+msgstr "외부 동기화 사용: OSC {address}. 로컬 재생/불러오기가 잠깁니다."
 
 #: core/audio/tag_writer.py:97
 msgid ""
@@ -426,51 +415,36 @@ msgstr "조각난(Fragmented) MP4 파일에는 쓰지 않습니다."
 msgid "MP4 files with QuickTime keys metadata are not written."
 msgstr "QuickTime keys 메타데이터가 있는 MP4 파일에는 쓰지 않습니다."
 
-#: core/external_sync.py:224
+#: core/external_sync.py:349
 #, python-brace-format
 msgid ""
-"Failed to open process memory for '{process}'. Memory Sync has been "
-"disabled."
-msgstr "'{process}'의 프로세스 메모리를 열지 못했습니다. 메모리 동기화를 비활성화했습니다."
+"External Sync could not listen for OSC on {host}:{port} ({error}) and has"
+" been disabled."
+msgstr "외부 동기화가 {host}:{port}에서 OSC를 받을 수 없어({error}) 비활성화되었습니다."
 
-#: core/external_sync.py:235
-msgid "Memory Sync read failed and has been disabled."
-msgstr "메모리 동기화 읽기에 실패해 비활성화했습니다."
+# | msgid "External Sync blocked for denied process: {process}"
+#: core/external_sync.py:353
+#, python-brace-format
+msgid "External Sync listening for OSC on {address}."
+msgstr "외부 동기화가 {address}에서 OSC를 받고 있습니다."
 
-#: core/external_sync.py:254
+#: core/external_sync.py:399
 #, python-brace-format
 msgid "External Sync ignored unsafe track path: {path}"
 msgstr "외부 동기화가 안전하지 않은 트랙 경로를 무시했습니다: {path}"
 
-#: core/external_sync.py:306
+# | msgid "External Sync ignored unsafe track path: {path}"
+#: core/external_sync.py:452
+#, python-brace-format
+msgid ""
+"External Sync ignored a track not in the library (OSC from the network): "
+"{path}"
+msgstr "외부 동기화가 라이브러리에 없는 트랙을 무시했습니다(네트워크에서 온 OSC): {path}"
+
+#: core/external_sync.py:457
 #, python-brace-format
 msgid "External Sync analyzing external track before load: {path}"
 msgstr "외부 동기화: 불러오기 전에 외부 트랙을 분석하는 중: {path}"
-
-#: core/external_sync.py:415
-#, python-brace-format
-msgid "Memory Sync deck state read failed: {error}"
-msgstr "메모리 동기화 덱 상태 읽기 실패: {error}"
-
-#: core/external_sync.py:431
-#, python-brace-format
-msgid "Memory Sync deck payload read failed: {error}"
-msgstr "메모리 동기화 덱 데이터 읽기 실패: {error}"
-
-#: core/external_sync.py:659
-#, python-brace-format
-msgid "External Sync blocked for denied process: {process} ({path})"
-msgstr "차단된 프로세스라 외부 동기화를 막았습니다: {process} ({path})"
-
-#: core/external_sync.py:661
-#, python-brace-format
-msgid "External Sync blocked for denied process: {process}"
-msgstr "차단된 프로세스라 외부 동기화를 막았습니다: {process}"
-
-#: core/external_sync.py:702
-#, python-brace-format
-msgid "Process denylist unavailable ({error}); blocking all processes."
-msgstr "프로세스 차단 목록을 사용할 수 없어({error}) 모든 프로세스를 차단합니다."
 
 #: core/library_handler.py:585
 msgid "The path cannot be empty."
@@ -2119,207 +2093,106 @@ msgstr ""
 "Rekordbox XML 동기화 실패:\n"
 "{error}"
 
-#: ui/config/external_sync.py:44
-msgid ""
-"Comma-separated hex pointer chain. The first value is an offset from the\n"
-"process's main module (prefix 'g' for an absolute address); each "
-"following\n"
-"value is dereferenced and added as an offset."
-msgstr ""
-"쉼표로 구분한 16진수 포인터 체인. 첫 값은 프로세스 메인 모듈에서의\n"
-"오프셋입니다(절대 주소는 앞에 'g'). 다음 값들은 차례로 역참조한 뒤\n"
-"오프셋으로 더합니다."
-
-#: ui/config/external_sync.py:48
-msgid "Data type stored at the resolved address."
-msgstr "찾은 주소에 저장된 데이터 형식."
-
-#: ui/config/external_sync.py:54
-msgid "Offset chain"
-msgstr "오프셋 체인"
-
-#: ui/config/external_sync.py:55
-msgid "Type"
-msgstr "형식"
-
-#: ui/config/external_sync.py:59
-msgid "Bytes to read for the string; it is cut at the first NUL."
-msgstr "문자열로 읽을 바이트 수. 첫 NUL에서 자릅니다."
-
-#: ui/config/external_sync.py:61
-msgid "Length"
-msgstr "길이"
-
-#: ui/config/external_sync.py:64
-msgid "Text encoding of the string, e.g. utf-8 or utf-16-le."
-msgstr "문자열의 텍스트 인코딩 (예: utf-8, utf-16-le)."
-
-#: ui/config/external_sync.py:66
-msgid "Encoding"
-msgstr "인코딩"
-
-#: ui/config/external_sync.py:71
-msgid "Bit of the byte read as the flag (0-7). Values above 7 use the whole byte."
-msgstr "플래그로 읽을 바이트의 비트(0-7). 7보다 크면 바이트 전체를 씁니다."
-
-#: ui/config/external_sync.py:74
-msgid "Bit position"
-msgstr "비트 위치"
-
-#: ui/config/external_sync.py:81
-msgid "The value read is multiplied by this to get seconds (e.g. 0.001 for ms)."
-msgstr "읽은 값에 이 값을 곱해 초를 구합니다 (예: ms면 0.001)."
-
-#: ui/config/external_sync.py:84
-msgid "Multiplier"
-msgstr "배율"
-
-#: ui/config/external_sync.py:91
-msgid "Time"
-msgstr "시간"
-
-#: ui/config/external_sync.py:92
-msgid "Current Sample Index"
-msgstr "현재 샘플 인덱스"
-
-#: ui/config/external_sync.py:96
-msgid "Active"
-msgstr "활성"
-
-#: ui/config/external_sync.py:97
-msgid "Loaded"
-msgstr "로드됨"
-
-#: ui/config/external_sync.py:98
-msgid "Playback position of the deck (Time Sync mode)."
-msgstr "덱의 재생 위치 (시간 동기화 모드)."
-
-#: ui/config/external_sync.py:100
-msgid "Playback position of the deck in samples (Sample Index Sync mode)."
-msgstr "샘플 단위의 덱 재생 위치 (샘플 인덱스 동기화 모드)."
-
-#: ui/config/external_sync.py:102
-msgid "File path of the track loaded on the deck."
-msgstr "덱에 로드된 트랙의 파일 경로."
-
-#: ui/config/external_sync.py:103
-msgid ""
-"Flag marking the deck as active. Only loaded and active decks are "
-"followed."
-msgstr "덱이 활성임을 나타내는 플래그. 로드되고 활성인 덱만 따라갑니다."
-
-#: ui/config/external_sync.py:104
-msgid "Flag that is true while a track is loaded on the deck."
-msgstr "덱에 트랙이 로드되어 있는 동안 참인 플래그."
-
-#: ui/config/external_sync.py:125
-msgid "Enable external sync"
+# | msgid "Enable external sync"
+#: ui/config/external_sync.py:46
+msgid "Enable External Sync"
 msgstr "외부 동기화 사용"
 
-#: ui/config/external_sync.py:130
-msgid "from reference sample rate"
-msgstr "기준 샘플 레이트로"
-
-#: ui/config/external_sync.py:130
-msgid "from file"
-msgstr "파일에서"
-
-#: ui/config/external_sync.py:146 ui/config/midi.py:54
-msgid "Refresh"
-msgstr "새로 고침"
-
-#: ui/config/external_sync.py:148
+# | msgid "" "Follow the track and playback position of external software\n"
+# "by
+# | reading its memory."
+#: ui/config/external_sync.py:48
 msgid ""
-"Follow the track and playback position of external software\n"
-"by reading its memory."
-msgstr ""
-"외부 소프트웨어의 메모리를 읽어\n"
-"트랙과 재생 위치를 따라갑니다."
+"Follow the track and playback position of another program's deck, sent to"
+" Mixlyzer as OSC messages."
+msgstr "다른 프로그램의 덱이 OSC 메시지로 보내는 트랙과 재생 위치를 따라갑니다."
 
-#: ui/config/external_sync.py:152
+#: ui/config/external_sync.py:52
 msgid ""
-"Time Sync: read the position as time (scaled by the multiplier).\n"
-"Sample Index Sync: read the position as a sample index."
+"The address the messages are received on. 127.0.0.1 takes them from this "
+"computer only; the address of a network interface (or 0.0.0.0, all of "
+"them) takes them from that network too."
 msgstr ""
-"시간 동기화: 위치를 시간으로 읽습니다(배율 적용).\n"
-"샘플 인덱스 동기화: 위치를 샘플 인덱스로 읽습니다."
+"메시지를 받을 주소입니다. 127.0.0.1은 이 컴퓨터에서 온 메시지만 받고, 네트워크 인터페이스의 주소(또는 모든 인터페이스인 "
+"0.0.0.0)는 그 네트워크에서 온 메시지도 받습니다."
 
-#: ui/config/external_sync.py:156
+#: ui/config/external_sync.py:56
+msgid "The UDP port the messages are sent to."
+msgstr "메시지를 보내는 UDP 포트입니다."
+
+#: ui/config/external_sync.py:59
 msgid ""
-"How the track's total sample count is found to convert a sample index to "
-"time.\n"
-"from reference sample rate: duration x reference sample rate.\n"
-"from file: the decoded file's own sample count."
+"Messages are taken from the network: any device on it can drive the deck."
+" Only tracks already in the library are followed (none is analyzed for "
+"it)."
 msgstr ""
-"샘플 인덱스를 시간으로 바꿀 때 쓸 트랙 전체 샘플 수를 구하는 방법.\n"
-"기준 샘플 레이트로: 길이 x 기준 샘플 레이트.\n"
-"파일에서: 디코딩한 파일의 샘플 수."
+"네트워크에서 메시지를 받습니다: 그 네트워크의 어느 기기든 덱을 조종할 수 있습니다. 이미 라이브러리에 있는 트랙만 따라가며, 이를"
+" 위해 새로 분석하지 않습니다."
 
-#: ui/config/external_sync.py:161
-msgid "Sample rate the external software counts samples at."
-msgstr "외부 소프트웨어가 샘플을 세는 샘플 레이트."
-
-#: ui/config/external_sync.py:164
-msgid "Process to read memory from. Denylisted processes are blocked."
-msgstr "메모리를 읽을 프로세스. 차단 목록의 프로세스는 막습니다."
-
-#: ui/config/external_sync.py:166
-msgid "Reload the list of running processes."
-msgstr "실행 중인 프로세스 목록을 다시 불러옵니다."
-
-#: ui/config/external_sync.py:167
-msgid "Deck 1"
-msgstr "덱 1"
-
-#: ui/config/external_sync.py:168
-msgid "Deck 2"
-msgstr "덱 2"
-
-#: ui/config/external_sync.py:170
-msgid "Memory"
-msgstr "메모리"
-
-#: ui/config/external_sync.py:179
-msgid "Process"
-msgstr "프로세스"
-
-#: ui/config/external_sync.py:181
+#: ui/config/external_sync.py:74
 msgid ""
-"Warning: attaching memory sync to an unrelated process can trigger anti-"
-"cheat or antivirus false positives. Only target software you trust and "
-"explicitly intend to sync with."
+"One message per deck, as often as the sender reads its state. The deck "
+"followed is the lowest-numbered one that is loaded and active; a deck not"
+" heard from for a second is no longer followed. rate is the sample rate "
+"the samples are counted at (0: the file's own); a flag may also be sent "
+"as an integer 0 / 1. The path must be a file on this computer."
 msgstr ""
-"경고: 관련 없는 프로세스에 메모리 동기화를 연결하면 안티치트나 백신이 오탐할 수 있습니다. 신뢰하고 동기화하려는 소프트웨어만 "
-"대상으로 하세요."
+"덱마다 메시지 하나를, 보내는 쪽이 상태를 읽을 때마다 보냅니다. 따라가는 덱은 로드되어 있고 활성인 덱 중 번호가 가장 작은 "
+"덱이며, 1초 동안 메시지가 없는 덱은 더 이상 따라가지 않습니다. rate는 샘플을 세는 샘플레이트입니다(0: 파일 자체의 "
+"샘플레이트). 플래그는 정수 0 / 1로 보내도 됩니다. 경로는 이 컴퓨터에 있는 파일이어야 합니다."
 
-#: ui/config/external_sync.py:200
+#: ui/config/external_sync.py:82
 msgid ""
 "When enabled, local track loading and transport playback are restricted "
 "so the external software remains the source of truth."
 msgstr "켜면 로컬 트랙 불러오기와 트랜스포트 재생을 제한해 외부 소프트웨어를 기준으로 삼습니다."
 
-#: ui/config/external_sync.py:206
-msgid "Mode"
-msgstr "모드"
+# | msgid "Added"
+#: ui/config/external_sync.py:87
+msgid "Address"
+msgstr "주소"
 
-#: ui/config/external_sync.py:208
-msgid "Total Sample Count Source"
-msgstr "전체 샘플 수 출처"
+# | msgid "Export"
+#: ui/config/external_sync.py:88
+msgid "Port"
+msgstr "포트"
 
-#: ui/config/external_sync.py:210
-msgid "Reference Sample Rate"
-msgstr "기준 샘플 레이트"
+# | msgid "Start"
+#: ui/config/external_sync.py:90
+msgid "Status"
+msgstr "상태"
 
-#: ui/config/external_sync.py:292
+#: ui/config/external_sync.py:93
+msgid "Messages"
+msgstr "메시지"
+
+# | msgid "Off"
+#: ui/config/external_sync.py:132
+msgid "Off."
+msgstr "꺼짐."
+
+#: ui/config/external_sync.py:136
+msgid "Not listening."
+msgstr "받고 있지 않음."
+
+#: ui/config/external_sync.py:139
 #, python-brace-format
-msgid "[Blocked] {process}"
-msgstr "[차단됨] {process}"
+msgid "Listening on {address}; nothing received yet."
+msgstr "{address}에서 받는 중; 아직 받은 메시지가 없습니다."
 
-#: ui/config/external_sync.py:309 ui/config/external_sync.py:334
-#: ui/config/external_sync.py:349
+#: ui/config/external_sync.py:143
 #, python-brace-format
-msgid "Blocked by denylist: {process}"
-msgstr "차단 목록에 있어 막음: {process}"
+msgid ""
+"Listening on {address}; following deck {deck} (last message {age} s ago, "
+"from {sender})."
+msgstr "{address}에서 받는 중; 덱 {deck}을(를) 따라가는 중 (마지막 메시지 {age}초 전, {sender})."
+
+#: ui/config/external_sync.py:145
+#, python-brace-format
+msgid ""
+"Listening on {address}; no deck loaded and active (last message {age} s "
+"ago, from {sender})."
+msgstr "{address}에서 받는 중; 로드되어 있고 활성인 덱이 없음 (마지막 메시지 {age}초 전, {sender})."
 
 #: ui/config/library.py:32
 msgid "Add Folder…"
@@ -2461,6 +2334,10 @@ msgid ""
 "The controller's MIDI input; its output of the same name lights its PLAY "
 "and CUE lamps."
 msgstr "컨트롤러의 MIDI 입력. 같은 이름의 출력으로 PLAY와 CUE 램프를 켭니다."
+
+#: ui/config/midi.py:54
+msgid "Refresh"
+msgstr "새로 고침"
 
 #: ui/config/midi.py:55
 msgid "List the MIDI inputs connected now."
@@ -3729,15 +3606,15 @@ msgstr ""
 "전체 파형에서의 {label}. 여러 번 나오면 번호를 붙입니다\n"
 "(비우면: 이름의 첫 글자)"
 
-#: ui/config/window.py:85
+#: ui/config/window.py:82
 msgid "Save the settings and close."
 msgstr "설정을 저장하고 닫습니다."
 
-#: ui/config/window.py:87
+#: ui/config/window.py:84
 msgid "Close without saving unapplied changes."
 msgstr "적용하지 않은 변경은 저장하지 않고 닫습니다."
 
-#: ui/config/window.py:90
+#: ui/config/window.py:87
 msgid "Save the settings and keep the window open."
 msgstr "설정을 저장하고 창은 열어 둡니다."
 
@@ -4368,7 +4245,7 @@ msgstr ""
 "anone이나 아노네로). 흐린 글자: 설정 > 검색의 언어로 텍스트에서 읽은 것. 칸에 입력하면 내 발음을 추가하고, 칸을 "
 "비우거나(Delete) 덮어쓰면 그 발음을 영구히 지우며, 다시 입력하면 되살립니다.</p>"
 
-#: ui/config/external_sync.py:94 ui/edit_song.py:154 ui/library.py:738
+#: ui/edit_song.py:154 ui/library.py:738
 msgid "Path"
 msgstr "경로"
 
@@ -4743,7 +4620,7 @@ msgstr "플레이리스트"
 msgid "Local Folders"
 msgstr "로컬 폴더"
 
-#: ui/config/external_sync.py:260 ui/library.py:1656 ui/pane.py:471
+#: ui/config/external_sync.py:105 ui/library.py:1656 ui/pane.py:471
 msgid "External Sync"
 msgstr "외부 동기화"
 
@@ -4945,7 +4822,7 @@ msgstr ""
 "비트 트래커는 모든 템포를 여기서부터 한 옥타브 안(BPM 최소 .. 2 x BPM 최소)으로 읽습니다.\n"
 "이 범위 밖의 곡은 절반이나 두 배 템포로 읽힙니다."
 
-#: ui/config/analysis.py:62 ui/config/window.py:221 ui/reanalyze_dialog.py:38
+#: ui/config/analysis.py:62 ui/config/window.py:218 ui/reanalyze_dialog.py:38
 #: ui/reanalyze_dialog.py:81
 #, python-brace-format
 msgid "Reads {low} - {high} BPM"

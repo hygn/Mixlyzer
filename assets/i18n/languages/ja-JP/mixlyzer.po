@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-22 18:35+0900\n"
+"POT-Creation-Date: 2026-10-22 19:44+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ja_JP\n"
@@ -206,8 +206,7 @@ msgstr ""
 "読み込めなかったファイルは次の名前で保存してあります:\n"
 "{path}\n"
 "\n"
-"設定を元に戻すには、Mixlyzer を閉じた状態でそのファイルを修正し、config.json と"
-"置き換えてください。"
+"設定を元に戻すには、Mixlyzer を閉じた状態でそのファイルを修正し、config.json と置き換えてください。"
 
 #: app/main.py:82
 msgid "Incompatible Library Version"
@@ -289,48 +288,48 @@ msgstr "コアオブジェクトと再生"
 msgid "Main view, editor and library"
 msgstr "メインビュー、エディター、ライブラリ"
 
-#: app/window.py:116 app/window.py:132 ui/config/window.py:65
+#: app/window.py:116 app/window.py:133 ui/config/window.py:62
 msgid "Settings"
 msgstr "環境設定"
 
-#: app/window.py:123
+#: app/window.py:124
 msgid "Dialogs, workflows and metronome"
 msgstr "ダイアログ、ワークフロー、メトロノーム"
 
-#: app/window.py:130
+#: app/window.py:131
 msgid "Transport"
 msgstr "トランスポート"
 
-#: app/window.py:133 ui/workers.py:24
+#: app/window.py:134 ui/workers.py:24
 msgid "Workers"
 msgstr "タスク"
 
-#: app/window.py:134
+#: app/window.py:135
 msgid "Open Source"
 msgstr "オープンソース"
 
-#: app/window.py:135
+#: app/window.py:136
 msgid "About"
 msgstr "情報"
 
-#: app/window.py:249 app/window.py:308 app/window.py:315
+#: app/window.py:250 app/window.py:309 app/window.py:316
 msgid "External Sync is enabled. Local track loading is disabled."
 msgstr "外部同期が有効です。ローカルでのトラックの読み込みは無効になります。"
 
-#: app/window.py:259
+#: app/window.py:260
 #, python-brace-format
 msgid "Drop error: {error}"
 msgstr "ドロップのエラー: {error}"
 
-#: app/window.py:323
+#: app/window.py:324
 msgid "Track unloaded."
 msgstr "トラックをアンロードしました。"
 
-#: app/window.py:332
+#: app/window.py:333
 msgid "Track File Not Found"
 msgstr "トラックファイルが見つかりません"
 
-#: app/window.py:336
+#: app/window.py:337
 #, python-brace-format
 msgid ""
 "Cannot load \"{name}\": its file is missing.\n"
@@ -343,53 +342,43 @@ msgstr ""
 "\n"
 "ファイルの新しい場所を指定しますか?"
 
-#: app/window.py:343
+#: app/window.py:344
 #, python-brace-format
 msgid "Locate {name}"
 msgstr "{name} の場所を指定"
 
-#: analyzer_core/global_analyzer.py:554 app/window.py:393
+#: analyzer_core/global_analyzer.py:554 app/window.py:394
 msgid "Finished"
 msgstr "完了"
 
-#: app/window.py:396 app/window.py:432
+#: app/window.py:397 app/window.py:433
 msgid "Done. Press Play."
 msgstr "完了しました。再生してください。"
 
-#: app/window.py:398
+#: app/window.py:399
 msgid "Analysis saved to library."
 msgstr "解析をライブラリに保存しました。"
 
-#: app/window.py:530
+#: app/window.py:531
 #, python-brace-format
 msgid "External Sync loading: {file}"
 msgstr "外部同期で読み込み中: {file}"
 
-#: app/window.py:530
+#: app/window.py:531
 #, python-brace-format
 msgid "External Sync analyzing: {file}"
 msgstr "外部同期で解析中: {file}"
 
-#: app/window.py:546
-msgid "Memory Sync Disabled"
-msgstr "メモリ同期を無効にしました"
+# | msgid "Memory Sync Disabled"
+#: app/window.py:547
+msgid "External Sync Disabled"
+msgstr "外部同期を無効にしました"
 
-#: app/window.py:799 ui/config/external_sync.py:127
-msgid "Time Sync"
-msgstr "時間同期"
-
-#: app/window.py:799 ui/config/external_sync.py:127
-msgid "Sample Index Sync"
-msgstr "サンプルインデックス同期"
-
-#: app/window.py:801
-msgid "manual"
-msgstr "手動"
-
-#: app/window.py:806
+# | msgid "External Sync enabled via {target}. Local play/load is locked."
+#: app/window.py:803
 #, python-brace-format
-msgid "External Sync enabled via {target}. Local play/load is locked."
-msgstr "外部同期が有効です: {target}。ローカルでの再生/読み込みはロックされます。"
+msgid "External Sync enabled: OSC on {address}. Local play/load is locked."
+msgstr "外部同期が有効です: OSC {address}。ローカルでの再生/読み込みはロックされます。"
 
 #: core/audio/tag_writer.py:97
 msgid ""
@@ -426,51 +415,36 @@ msgstr "フラグメント化された MP4 ファイルには書き込みませ�
 msgid "MP4 files with QuickTime keys metadata are not written."
 msgstr "QuickTime keys メタデータを持つ MP4 ファイルには書き込みません。"
 
-#: core/external_sync.py:224
+#: core/external_sync.py:349
 #, python-brace-format
 msgid ""
-"Failed to open process memory for '{process}'. Memory Sync has been "
-"disabled."
-msgstr "「{process}」のプロセスメモリを開けませんでした。メモリ同期を無効にしました。"
+"External Sync could not listen for OSC on {host}:{port} ({error}) and has"
+" been disabled."
+msgstr "外部同期は {host}:{port} で OSC を受信できなかったため({error})、無効にしました。"
 
-#: core/external_sync.py:235
-msgid "Memory Sync read failed and has been disabled."
-msgstr "メモリ同期の読み取りに失敗したため無効にしました。"
+# | msgid "External Sync blocked for denied process: {process}"
+#: core/external_sync.py:353
+#, python-brace-format
+msgid "External Sync listening for OSC on {address}."
+msgstr "外部同期は {address} で OSC を受信しています。"
 
-#: core/external_sync.py:254
+#: core/external_sync.py:399
 #, python-brace-format
 msgid "External Sync ignored unsafe track path: {path}"
 msgstr "外部同期は安全でないトラックパスを無視しました: {path}"
 
-#: core/external_sync.py:306
+# | msgid "External Sync ignored unsafe track path: {path}"
+#: core/external_sync.py:452
+#, python-brace-format
+msgid ""
+"External Sync ignored a track not in the library (OSC from the network): "
+"{path}"
+msgstr "外部同期はライブラリにないトラックを無視しました(ネットワークからの OSC): {path}"
+
+#: core/external_sync.py:457
 #, python-brace-format
 msgid "External Sync analyzing external track before load: {path}"
 msgstr "外部同期: 読み込む前に外部トラックを解析中: {path}"
-
-#: core/external_sync.py:415
-#, python-brace-format
-msgid "Memory Sync deck state read failed: {error}"
-msgstr "メモリ同期: デッキ状態の読み取りに失敗しました: {error}"
-
-#: core/external_sync.py:431
-#, python-brace-format
-msgid "Memory Sync deck payload read failed: {error}"
-msgstr "メモリ同期: デッキデータの読み取りに失敗しました: {error}"
-
-#: core/external_sync.py:659
-#, python-brace-format
-msgid "External Sync blocked for denied process: {process} ({path})"
-msgstr "拒否されたプロセスのため外部同期をブロックしました: {process} ({path})"
-
-#: core/external_sync.py:661
-#, python-brace-format
-msgid "External Sync blocked for denied process: {process}"
-msgstr "拒否されたプロセスのため外部同期をブロックしました: {process}"
-
-#: core/external_sync.py:702
-#, python-brace-format
-msgid "Process denylist unavailable ({error}); blocking all processes."
-msgstr "プロセス拒否リストを使用できないため ({error})、すべてのプロセスをブロックします。"
 
 #: core/library_handler.py:585
 msgid "The path cannot be empty."
@@ -2126,207 +2100,108 @@ msgstr ""
 "Rekordbox XML の同期に失敗しました:\n"
 "{error}"
 
-#: ui/config/external_sync.py:44
-msgid ""
-"Comma-separated hex pointer chain. The first value is an offset from the\n"
-"process's main module (prefix 'g' for an absolute address); each "
-"following\n"
-"value is dereferenced and added as an offset."
-msgstr ""
-"カンマ区切りの 16 進ポインターチェーン。最初の値はプロセスのメインモジュールからの\n"
-"オフセットです (絶対アドレスには先頭に 'g')。以降の各値は\n"
-"参照先を読み取ってからオフセットとして加算します。"
-
-#: ui/config/external_sync.py:48
-msgid "Data type stored at the resolved address."
-msgstr "解決したアドレスに格納されているデータ型。"
-
-#: ui/config/external_sync.py:54
-msgid "Offset chain"
-msgstr "オフセットチェーン"
-
-#: ui/config/external_sync.py:55
-msgid "Type"
-msgstr "型"
-
-#: ui/config/external_sync.py:59
-msgid "Bytes to read for the string; it is cut at the first NUL."
-msgstr "文字列として読み取るバイト数。最初の NUL で切り詰めます。"
-
-#: ui/config/external_sync.py:61
-msgid "Length"
-msgstr "長さ"
-
-#: ui/config/external_sync.py:64
-msgid "Text encoding of the string, e.g. utf-8 or utf-16-le."
-msgstr "文字列のテキストエンコーディング (例: utf-8、utf-16-le)。"
-
-#: ui/config/external_sync.py:66
-msgid "Encoding"
-msgstr "エンコーディング"
-
-#: ui/config/external_sync.py:71
-msgid "Bit of the byte read as the flag (0-7). Values above 7 use the whole byte."
-msgstr "フラグとして読み取るバイトのビット (0-7)。7 を超える値ではバイト全体を使います。"
-
-#: ui/config/external_sync.py:74
-msgid "Bit position"
-msgstr "ビット位置"
-
-#: ui/config/external_sync.py:81
-msgid "The value read is multiplied by this to get seconds (e.g. 0.001 for ms)."
-msgstr "読み取った値にこの値を掛けて秒にします (例: ms なら 0.001)。"
-
-#: ui/config/external_sync.py:84
-msgid "Multiplier"
-msgstr "倍率"
-
-#: ui/config/external_sync.py:91
-msgid "Time"
-msgstr "時間"
-
-#: ui/config/external_sync.py:92
-msgid "Current Sample Index"
-msgstr "現在のサンプルインデックス"
-
-#: ui/config/external_sync.py:96
-msgid "Active"
-msgstr "アクティブ"
-
-#: ui/config/external_sync.py:97
-msgid "Loaded"
-msgstr "ロード済み"
-
-#: ui/config/external_sync.py:98
-msgid "Playback position of the deck (Time Sync mode)."
-msgstr "デッキの再生位置 (時間同期モード)。"
-
-#: ui/config/external_sync.py:100
-msgid "Playback position of the deck in samples (Sample Index Sync mode)."
-msgstr "サンプル単位のデッキの再生位置 (サンプルインデックス同期モード)。"
-
-#: ui/config/external_sync.py:102
-msgid "File path of the track loaded on the deck."
-msgstr "デッキにロードされたトラックのファイルパス。"
-
-#: ui/config/external_sync.py:103
-msgid ""
-"Flag marking the deck as active. Only loaded and active decks are "
-"followed."
-msgstr "デッキがアクティブであることを示すフラグ。ロード済みかつアクティブなデッキだけに追従します。"
-
-#: ui/config/external_sync.py:104
-msgid "Flag that is true while a track is loaded on the deck."
-msgstr "デッキにトラックがロードされている間は真になるフラグ。"
-
-#: ui/config/external_sync.py:125
-msgid "Enable external sync"
+# | msgid "Enable external sync"
+#: ui/config/external_sync.py:46
+msgid "Enable External Sync"
 msgstr "外部同期を有効にする"
 
-#: ui/config/external_sync.py:130
-msgid "from reference sample rate"
-msgstr "基準サンプルレートから"
-
-#: ui/config/external_sync.py:130
-msgid "from file"
-msgstr "ファイルから"
-
-#: ui/config/external_sync.py:146 ui/config/midi.py:54
-msgid "Refresh"
-msgstr "更新"
-
-#: ui/config/external_sync.py:148
+# | msgid "" "Follow the track and playback position of external software\n"
+# "by
+# | reading its memory."
+#: ui/config/external_sync.py:48
 msgid ""
-"Follow the track and playback position of external software\n"
-"by reading its memory."
-msgstr ""
-"外部ソフトウェアのメモリを読み取り、\n"
-"トラックと再生位置に追従します。"
+"Follow the track and playback position of another program's deck, sent to"
+" Mixlyzer as OSC messages."
+msgstr "別のプログラムのデッキが OSC メッセージで送るトラックと再生位置に追従します。"
 
-#: ui/config/external_sync.py:152
+#: ui/config/external_sync.py:52
 msgid ""
-"Time Sync: read the position as time (scaled by the multiplier).\n"
-"Sample Index Sync: read the position as a sample index."
+"The address the messages are received on. 127.0.0.1 takes them from this "
+"computer only; the address of a network interface (or 0.0.0.0, all of "
+"them) takes them from that network too."
 msgstr ""
-"時間同期: 位置を時間として読み取ります (倍率を適用)。\n"
-"サンプルインデックス同期: 位置をサンプルインデックスとして読み取ります。"
+"メッセージを受信するアドレスです。127.0.0.1 "
+"はこのコンピューターからのメッセージだけを受信し、ネットワークインターフェースのアドレス(またはすべてのインターフェースを表す "
+"0.0.0.0)はそのネットワークからのメッセージも受信します。"
 
-#: ui/config/external_sync.py:156
+#: ui/config/external_sync.py:56
+msgid "The UDP port the messages are sent to."
+msgstr "メッセージの送信先の UDP ポートです。"
+
+#: ui/config/external_sync.py:59
 msgid ""
-"How the track's total sample count is found to convert a sample index to "
-"time.\n"
-"from reference sample rate: duration x reference sample rate.\n"
-"from file: the decoded file's own sample count."
+"Messages are taken from the network: any device on it can drive the deck."
+" Only tracks already in the library are followed (none is analyzed for "
+"it)."
 msgstr ""
-"サンプルインデックスを時間に変換するためのトラックの総サンプル数の求め方。\n"
-"基準サンプルレートから: 長さ x 基準サンプルレート。\n"
-"ファイルから: デコードしたファイル自体のサンプル数。"
+"ネットワークからメッセージを受信します: "
+"そのネットワーク上のどの機器でもデッキを操作できます。ライブラリにあるトラックだけに追従し、そのための解析は行いません。"
 
-#: ui/config/external_sync.py:161
-msgid "Sample rate the external software counts samples at."
-msgstr "外部ソフトウェアがサンプルを数えるサンプルレート。"
-
-#: ui/config/external_sync.py:164
-msgid "Process to read memory from. Denylisted processes are blocked."
-msgstr "メモリを読み取るプロセス。拒否リストのプロセスはブロックされます。"
-
-#: ui/config/external_sync.py:166
-msgid "Reload the list of running processes."
-msgstr "実行中のプロセスの一覧を読み込み直します。"
-
-#: ui/config/external_sync.py:167
-msgid "Deck 1"
-msgstr "デッキ 1"
-
-#: ui/config/external_sync.py:168
-msgid "Deck 2"
-msgstr "デッキ 2"
-
-#: ui/config/external_sync.py:170
-msgid "Memory"
-msgstr "メモリ"
-
-#: ui/config/external_sync.py:179
-msgid "Process"
-msgstr "プロセス"
-
-#: ui/config/external_sync.py:181
+#: ui/config/external_sync.py:74
 msgid ""
-"Warning: attaching memory sync to an unrelated process can trigger anti-"
-"cheat or antivirus false positives. Only target software you trust and "
-"explicitly intend to sync with."
+"One message per deck, as often as the sender reads its state. The deck "
+"followed is the lowest-numbered one that is loaded and active; a deck not"
+" heard from for a second is no longer followed. rate is the sample rate "
+"the samples are counted at (0: the file's own); a flag may also be sent "
+"as an integer 0 / 1. The path must be a file on this computer."
 msgstr ""
-"警告: "
-"関係のないプロセスにメモリ同期を接続すると、アンチチートやウイルス対策ソフトが誤検知することがあります。信頼でき、明確に同期したいソフトウェアだけを対象にしてください。"
+"デッキごとに 1 "
+"つのメッセージを、送信側が状態を読み取るたびに送ります。追従するデッキは、ロードされていてアクティブなデッキのうち番号が最も小さいものです。1 "
+"秒間メッセージのないデッキには追従しません。rate はサンプルを数えるサンプルレートです(0: ファイル自身のもの)。フラグは整数 0 / 1 "
+"で送ってもかまいません。パスはこのコンピューター上のファイルでなければなりません。"
 
-#: ui/config/external_sync.py:200
+#: ui/config/external_sync.py:82
 msgid ""
 "When enabled, local track loading and transport playback are restricted "
 "so the external software remains the source of truth."
 msgstr "有効にすると、ローカルでのトラックの読み込みとトランスポートの再生を制限し、外部ソフトウェアを基準にします。"
 
-#: ui/config/external_sync.py:206
-msgid "Mode"
-msgstr "モード"
+# | msgid "Added"
+#: ui/config/external_sync.py:87
+msgid "Address"
+msgstr "アドレス"
 
-#: ui/config/external_sync.py:208
-msgid "Total Sample Count Source"
-msgstr "総サンプル数の取得元"
+# | msgid "Export"
+#: ui/config/external_sync.py:88
+msgid "Port"
+msgstr "ポート"
 
-#: ui/config/external_sync.py:210
-msgid "Reference Sample Rate"
-msgstr "基準サンプルレート"
+# | msgid "Start"
+#: ui/config/external_sync.py:90
+msgid "Status"
+msgstr "状態"
 
-#: ui/config/external_sync.py:292
+#: ui/config/external_sync.py:93
+msgid "Messages"
+msgstr "メッセージ"
+
+# | msgid "Off"
+#: ui/config/external_sync.py:132
+msgid "Off."
+msgstr "オフ。"
+
+#: ui/config/external_sync.py:136
+msgid "Not listening."
+msgstr "受信していません。"
+
+#: ui/config/external_sync.py:139
 #, python-brace-format
-msgid "[Blocked] {process}"
-msgstr "[ブロック] {process}"
+msgid "Listening on {address}; nothing received yet."
+msgstr "{address} で受信中。まだ何も受信していません。"
 
-#: ui/config/external_sync.py:309 ui/config/external_sync.py:334
-#: ui/config/external_sync.py:349
+#: ui/config/external_sync.py:143
 #, python-brace-format
-msgid "Blocked by denylist: {process}"
-msgstr "拒否リストによりブロック: {process}"
+msgid ""
+"Listening on {address}; following deck {deck} (last message {age} s ago, "
+"from {sender})."
+msgstr "{address} で受信中。デッキ {deck} に追従しています(最後のメッセージは {age} 秒前、{sender} から)。"
+
+#: ui/config/external_sync.py:145
+#, python-brace-format
+msgid ""
+"Listening on {address}; no deck loaded and active (last message {age} s "
+"ago, from {sender})."
+msgstr "{address} で受信中。ロードされていてアクティブなデッキはありません(最後のメッセージは {age} 秒前、{sender} から)。"
 
 #: ui/config/library.py:32
 msgid "Add Folder…"
@@ -2468,6 +2343,10 @@ msgid ""
 "The controller's MIDI input; its output of the same name lights its PLAY "
 "and CUE lamps."
 msgstr "コントローラーの MIDI 入力。同じ名前の出力で PLAY と CUE のランプを点灯します。"
+
+#: ui/config/midi.py:54
+msgid "Refresh"
+msgstr "更新"
 
 #: ui/config/midi.py:55
 msgid "List the MIDI inputs connected now."
@@ -3740,15 +3619,15 @@ msgstr ""
 "全体波形での {label}。複数回出てくる場合は番号を付けます\n"
 "(空欄: 名前の最初の文字)"
 
-#: ui/config/window.py:85
+#: ui/config/window.py:82
 msgid "Save the settings and close."
 msgstr "設定を保存して閉じます。"
 
-#: ui/config/window.py:87
+#: ui/config/window.py:84
 msgid "Close without saving unapplied changes."
 msgstr "適用していない変更は保存せずに閉じます。"
 
-#: ui/config/window.py:90
+#: ui/config/window.py:87
 msgid "Save the settings and keep the window open."
 msgstr "設定を保存し、ウィンドウは開いたままにします。"
 
@@ -4380,7 +4259,7 @@ msgstr ""
 "の言語でテキストから読み取ったもの。セルに入力すると自分の読みを追加し、セルを空にする (Delete) "
 "か上書きするとその読みを完全に削除します。もう一度入力すると元に戻ります。</p>"
 
-#: ui/config/external_sync.py:94 ui/edit_song.py:154 ui/library.py:738
+#: ui/edit_song.py:154 ui/library.py:738
 msgid "Path"
 msgstr "パス"
 
@@ -4755,7 +4634,7 @@ msgstr "プレイリスト"
 msgid "Local Folders"
 msgstr "ローカルフォルダー"
 
-#: ui/config/external_sync.py:260 ui/library.py:1656 ui/pane.py:471
+#: ui/config/external_sync.py:105 ui/library.py:1656 ui/pane.py:471
 msgid "External Sync"
 msgstr "外部同期"
 
@@ -4957,7 +4836,7 @@ msgstr ""
 "ビートトラッカーはすべてのテンポをここから 1 オクターブの範囲 (最小 BPM .. 2 x 最小 BPM) で読み取ります。\n"
 "範囲外の曲は半分または 2 倍のテンポで読み取られます。"
 
-#: ui/config/analysis.py:62 ui/config/window.py:221 ui/reanalyze_dialog.py:38
+#: ui/config/analysis.py:62 ui/config/window.py:218 ui/reanalyze_dialog.py:38
 #: ui/reanalyze_dialog.py:81
 #, python-brace-format
 msgid "Reads {low} - {high} BPM"

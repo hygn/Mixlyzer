@@ -746,7 +746,6 @@ dependencies = [
     { name = "pip-licenses" },
     { name = "pycantonese" },
     { name = "pyinstaller" },
-    { name = "pymemoryeditor", marker = "sys_platform != 'darwin'" },
     { name = "pypinyin" },
     { name = "pyqtgraph" },
     { name = "pyside6" },
@@ -781,7 +780,6 @@ requires-dist = [
     { name = "pip-licenses", specifier = ">=5.5.0" },
     { name = "pycantonese", specifier = ">=5.0.0" },
     { name = "pyinstaller", specifier = ">=6.16.0" },
-    { name = "pymemoryeditor", marker = "sys_platform != 'darwin'", specifier = ">=3.0.1" },
     { name = "pypinyin", specifier = ">=0.55.0" },
     { name = "pyqtgraph", specifier = ">=0.13.7" },
     { name = "pyside6", specifier = ">=6.10.0" },
@@ -1196,15 +1194,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/7d/83/be0f57c0b77b66c33c2283ebd4ea341022b5a743e97c5fb3bebab82b38b9/pyinstaller_hooks_contrib-2025.9.tar.gz", hash = "sha256:56e972bdaad4e9af767ed47d132362d162112260cbe488c9da7fee01f228a5a6", size = 165189, upload-time = "2025-09-24T11:21:35.113Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a2/26/23b4cfc77d7f808c69f59070e1e8293a579ec281a547c61562357160b346/pyinstaller_hooks_contrib-2025.9-py3-none-any.whl", hash = "sha256:ccbfaa49399ef6b18486a165810155e5a8d4c59b41f20dc5da81af7482aaf038", size = 444283, upload-time = "2025-09-24T11:21:33.67Z" },
-]
-
-[[package]]
-name = "pymemoryeditor"
-version = "3.0.1"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/8a/56/8c6c39a016c4af7bb6f8fa2a0cfe4dfb191d10ceb185e08b3f9828476ce3/pymemoryeditor-3.0.1.tar.gz", hash = "sha256:8c05fdf2ccab94aaa1fc025c6ab14c1a6fe44156008005618aa6bd1ee7b26ff2", size = 1730899, upload-time = "2026-09-12T06:04:58.055Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/b1/f3/e997b5234c7606f905370d90e1bdeed9585a0c39d8b13bb15e1a56634e95/pymemoryeditor-3.0.1-py3-none-any.whl", hash = "sha256:6870baaf8fa99f0088708271855d9db99843b69f4beb57a2658719725a9a11db", size = 295473, upload-time = "2026-09-12T06:04:56.061Z" },
 ]
 
 [[package]]

@@ -22,12 +22,9 @@ from core.config import (
     config,
     externalsyncconfig,
     libconfig,
-    memorydeckconfig,
-    memoryvalueconfig,
     playbackconfig,
     viewconfig,
 )
-from core import os_support
 from core.event_bus import EventBus
 from core.i18n import tr
 from ui.config.analysis import AnalysisSettingsMixin, build_analysis_tab
@@ -95,7 +92,7 @@ class SettingsDialog(
         root.addWidget(self.btn_box)
 
         # Keep page-specific size hints from changing the top-level window width.
-        # The height remains resizable for the External Sync memory editor.
+        # The height remains resizable (the pages scroll).
         self.setFixedWidth(self.DIALOG_WIDTH)
         self.resize(self.DIALOG_WIDTH, 640)
 
@@ -260,56 +257,12 @@ class SettingsDialog(
         # external sync
         x = cfg.externalsyncconfig
         self.cb_external_sync_enabled.setChecked(bool(x.enabled))
-        self.cmb_external_sync_mode.setCurrentIndex(0 if x.mode == "time" else 1)
-        self.cmb_total_sample_count_source.setCurrentIndex(
-            0 if x.total_sample_count_source == "reference_sample_rate" else 1
-        )
-        self.sp_reference_sample_rate.setValue(int(x.reference_sample_rate))
-        self._set_selected_memory_process(str(x.memory_process_name), int(x.memory_process_pid))
-        self._set_memory_deck(self.deck1_specs, x.memory_deck1)
-        self._set_memory_deck(self.deck2_specs, x.memory_deck2)
-        self._sync_external_sync_mode_ui()
+        self.ed_external_sync_host.setText(str(x.osc_host or ""))
+        self.sp_external_sync_port.setValue(int(x.osc_port))
+        self._sync_external_sync_address_ui()
 
     def _set_band(self, sp_lo: QDoubleSpinBox, sp_hi: QDoubleSpinBox, band: Tuple[float, float]):
         sp_lo.setValue(float(band[0])); sp_hi.setValue(float(band[1]))
-
-    def _set_memory_value(self, widgets: dict, spec: memoryvalueconfig) -> None:
-        widgets["offsets"].setText(str(spec.offsets))
-        widgets["value_type"].setCurrentText(str(spec.value_type))
-        if "length" in widgets:
-            widgets["length"].setValue(int(spec.length))
-        if "encoding" in widgets:
-            widgets["encoding"].setText(str(spec.encoding))
-        if "bit_pos" in widgets:
-            widgets["bit_pos"].setValue(int(spec.bit_pos))
-        if "multiplier" in widgets:
-            widgets["multiplier"].setValue(float(spec.multiplier))
-
-    def _get_memory_value(self, widgets: dict) -> memoryvalueconfig:
-        return memoryvalueconfig(
-            offsets=widgets["offsets"].text().strip(),
-            value_type=widgets["value_type"].currentText(),
-            length=int(widgets["length"].value()) if "length" in widgets else 0,
-            encoding=widgets["encoding"].text().strip() if "encoding" in widgets else "utf-8",
-            bit_pos=int(widgets["bit_pos"].value()) if "bit_pos" in widgets else 0,
-            multiplier=float(widgets["multiplier"].value()) if "multiplier" in widgets else 1.0,
-        )
-
-    def _set_memory_deck(self, widgets: dict, deck_cfg: memorydeckconfig) -> None:
-        self._set_memory_value(widgets["time"], deck_cfg.time)
-        self._set_memory_value(widgets["sample_index"], deck_cfg.sample_index)
-        self._set_memory_value(widgets["path"], deck_cfg.path)
-        self._set_memory_value(widgets["active"], deck_cfg.active)
-        self._set_memory_value(widgets["loaded"], deck_cfg.loaded)
-
-    def _get_memory_deck(self, widgets: dict) -> memorydeckconfig:
-        return memorydeckconfig(
-            time=self._get_memory_value(widgets["time"]),
-            sample_index=self._get_memory_value(widgets["sample_index"]),
-            path=self._get_memory_value(widgets["path"]),
-            active=self._get_memory_value(widgets["active"]),
-            loaded=self._get_memory_value(widgets["loaded"]),
-        )
 
     def get_config(self):
         return config(
@@ -395,18 +348,9 @@ class SettingsDialog(
                 midi_jog_ticks=int(self.sp_midi_jog_ticks.value()),
             ),
             externalsyncconfig=externalsyncconfig(
-                enabled=bool(self.cb_external_sync_enabled.isChecked()) and os_support.MEMORY_SYNC,
-                mode=("time" if self.cmb_external_sync_mode.currentIndex() == 0 else "sample_index"),
-                total_sample_count_source=(
-                    "reference_sample_rate"
-                    if self.cmb_total_sample_count_source.currentIndex() == 0
-                    else "file"
-                ),
-                reference_sample_rate=int(self.sp_reference_sample_rate.value()),
-                memory_process_name=self._memory_process_name(),
-                memory_process_pid=self._memory_process_pid(),
-                memory_deck1=self._get_memory_deck(self.deck1_specs),
-                memory_deck2=self._get_memory_deck(self.deck2_specs),
+                enabled=bool(self.cb_external_sync_enabled.isChecked()),
+                osc_host=self._external_sync_host(),
+                osc_port=int(self.sp_external_sync_port.value()),
             ),
             cuepointconfig=self._get_cue_point_rules(),
             searchconfig=self._get_search_config(),

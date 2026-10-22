@@ -1,26 +1,21 @@
 """The operating system, checked once per process (this module's first import: app.main at the start, and each
 spawned worker), and the operations that differ by it. Windows, Linux and macOS are supported; on any other system
 the app warns at the start and runs on the fallbacks. Code branches on the flags here (OS, IS_WINDOWS, IS_LINUX,
-IS_MACOS, MEMORY_SYNC), never on sys.platform / os.name / platform.system() itself.
+IS_MACOS), never on sys.platform / os.name / platform.system() itself.
 
 Where the Windows API is used, the other systems have a fallback:
 - elevated process (app.main refuses it): IsUserAnAdmin / effective uid 0 (root)
 - the app's taskbar identity and 1 ms timer resolution (app.window): Windows only; the others need neither
-- console windows of child programs (FFmpeg, tasklist) kept hidden: Windows only; the others open none
-- the running processes: tasklist / ps
+- console windows of child programs (FFmpeg, the audio engine) kept hidden: Windows only; the others open none
 - revealing a file: Explorer, the file selected / Finder, the file selected / the folder in the file manager
 - the window's occlusion (utils.window_visibility): user32 + DWM / whether Qt has the window exposed
 - the scratch cursor poller (audioengine.python.cursor_poller): Win32 cursor + waitable timer / the GUI's mouse events
 - the physical core count for sklearn (analyzer_core.utils): GetLogicalProcessorInformationEx / loky's own
 - a key another program holds as a global hotkey (Settings > Shortcuts): RegisterHotKey refused / not checked
-External Sync's memory reads (PyMemoryEditor) are Windows and Linux only: on macOS (MEMORY_SYNC False) the library
-is not imported, the settings tab is not shown and the setting is always off.
 """
 
 from __future__ import annotations
 
-import csv
-import io
 import os
 import subprocess
 import sys
@@ -45,8 +40,6 @@ IS_WINDOWS = OS == WINDOWS
 IS_LINUX = OS == LINUX
 IS_MACOS = OS == MACOS
 IS_SUPPORTED = OS in SUPPORTED
-# External Sync reads another program's memory (PyMemoryEditor): Windows and Linux
-MEMORY_SYNC = OS in (WINDOWS, LINUX)
 
 
 def os_name() -> str:
@@ -116,42 +109,6 @@ def _windows_program(*parts: str) -> str:
     """A Windows program by its full path under the Windows folder: a bare name is looked for in the current
     folder first, where another program of that name could be."""
     return os.path.join(os.environ.get("SystemRoot") or r"C:\Windows", *parts)
-
-
-def list_processes() -> list[dict[str, int | str]]:
-    """The running processes as {"name", "pid"} (tasklist on Windows, ps elsewhere); [] when it cannot be read."""
-    command = [_windows_program("System32", "tasklist.exe"), "/FO", "CSV", "/NH"] if IS_WINDOWS else ["ps", "-A", "-o", "pid=,comm="]
-    try:
-        out = subprocess.check_output(command, text=True, encoding="utf-8", errors="replace",
-                                      **hidden_subprocess_kwargs())
-    except Exception:
-        return []
-    rows: list[dict[str, int | str]] = []
-    if IS_WINDOWS:
-        for row in csv.reader(io.StringIO(out)):
-            if len(row) < 2:
-                continue
-            try:
-                pid = int(str(row[1]).strip())
-            except ValueError:
-                continue
-            name = str(row[0]).strip()
-            if name:
-                rows.append({"name": name, "pid": pid})
-    else:
-        for line in out.splitlines():
-            parts = line.strip().split(None, 1)
-            if len(parts) != 2:
-                continue
-            try:
-                pid = int(parts[0])
-            except ValueError:
-                continue
-            # ps gives the command's path on some systems: its file name is the process name
-            name = os.path.basename(parts[1].strip())
-            if name:
-                rows.append({"name": name, "pid": pid})
-    return rows
 
 
 # Windows virtual keys of the named keys in Qt's portable key text (characters are looked up in the layout)

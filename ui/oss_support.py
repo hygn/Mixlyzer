@@ -115,7 +115,6 @@ class SupportDialog(QtWidgets.QDialog):
             ("networkx", "https://networkx.org/"),
             ("scikit-image", "https://github.com/scikit-image/scikit-image"),
             ("pyqtgraph", "https://pyqtgraph.org/"),
-            ("PyMemoryEditor", "https://github.com/JeanExtreme002/PyMemoryEditor"),
             ("tqdm", "https://github.com/tqdm/tqdm"),
             ("colorama", "https://github.com/tartley/colorama"),
             ("SudachiPy", "https://github.com/WorksApplications/sudachi.rs"),
@@ -177,7 +176,6 @@ class SupportDialog(QtWidgets.QDialog):
             "networkx": "networkx",
             "scikit-image": "skimage",
             "pyqtgraph": "pyqtgraph",
-            "PyMemoryEditor": "PyMemoryEditor",
             "tqdm": "tqdm",
             "colorama": "colorama",
             "SudachiPy": "sudachipy",
@@ -188,8 +186,6 @@ class SupportDialog(QtWidgets.QDialog):
             "RapidFuzz": "rapidfuzz",
         }
         for name, url in candidates:
-            if name == "PyMemoryEditor" and not os_support.MEMORY_SYNC:
-                continue   # not installed, never imported where no memory is read (macOS)
             mod = detect.get(name)
             try:
                 __import__(mod)

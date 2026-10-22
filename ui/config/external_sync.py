@@ -1,120 +1,41 @@
-import json
+"""Settings > External Sync: the OSC messages another program's deck is followed by (core.external_sync), where
+they are received, and what has been received."""
 
-from PySide6 import QtGui
-from PySide6.QtCore import Qt
+import ipaddress
+
+from PySide6 import QtCore, QtGui
 from PySide6.QtWidgets import (
     QCheckBox,
-    QComboBox,
-    QDoubleSpinBox,
     QFormLayout,
-    QGroupBox,
-    QHBoxLayout,
     QLabel,
     QLineEdit,
-    QPushButton,
-    QScrollArea,
     QSizePolicy,
     QSpinBox,
     QVBoxLayout,
     QWidget,
 )
 
-from core.config import externalsyncconfig, memorydeckconfig, memoryvalueconfig
-from core import os_support
-from core.resource_paths import process_denylist_path
-from ui.config.scroll import scroll_page
+from core.external_sync import SAMPLES_ADDRESS, TIME_ADDRESS
 from core.i18n import tr
+from ui.config.scroll import scroll_page
+from ui.live_label import LiveLabel
+
+STATUS_INTERVAL_MS = 500
+
+# the messages as a sender writes them (protocol: not translated)
+MESSAGE_FORMAT = (f"{TIME_ADDRESS}     i deck  s path  T|F loaded  T|F active  d|f seconds\n"
+                  f"{SAMPLES_ADDRESS}  i deck  s path  T|F loaded  T|F active  h|i samples  i rate")
 
 
-def make_memory_value_group(
-    title: str,
-    *,
-    include_length: bool = False,
-    include_encoding: bool = False,
-    include_bit_pos: bool = False,
-    include_multiplier: bool = False,
-) -> dict:
-    group = QGroupBox(title)
-    form = QFormLayout(group)
-    ed_offsets = QLineEdit()
-    ed_offsets.setPlaceholderText("00000000,00,00,00")
-    cmb_type = QComboBox()
-    cmb_type.addItems(["float", "bool", "str", "int"])
-    ed_offsets.setToolTip(
-        tr("Comma-separated hex pointer chain. The first value is an offset from the\n"
-           "process's main module (prefix 'g' for an absolute address); each following\n"
-           "value is dereferenced and added as an offset.")
-    )
-    cmb_type.setToolTip(tr("Data type stored at the resolved address."))
-    widgets = {
-        "group": group,
-        "offsets": ed_offsets,
-        "value_type": cmb_type,
-    }
-    form.addRow(tr("Offset chain"), ed_offsets)
-    form.addRow(tr("Type"), cmb_type)
-    if include_length:
-        sp_length = QSpinBox()
-        sp_length.setRange(0, 1_000_000)
-        sp_length.setToolTip(tr("Bytes to read for the string; it is cut at the first NUL."))
-        widgets["length"] = sp_length
-        form.addRow(tr("Length"), sp_length)
-    if include_encoding:
-        ed_encoding = QLineEdit()
-        ed_encoding.setToolTip(tr("Text encoding of the string, e.g. utf-8 or utf-16-le."))
-        widgets["encoding"] = ed_encoding
-        form.addRow(tr("Encoding"), ed_encoding)
-    if include_bit_pos:
-        sp_bit_pos = QSpinBox()
-        sp_bit_pos.setRange(0, 63)
-        sp_bit_pos.setToolTip(
-            tr("Bit of the byte read as the flag (0-7). Values above 7 use the whole byte.")
-        )
-        widgets["bit_pos"] = sp_bit_pos
-        form.addRow(tr("Bit position"), sp_bit_pos)
-    if include_multiplier:
-        sp_multiplier = QDoubleSpinBox()
-        sp_multiplier.setDecimals(8)
-        sp_multiplier.setRange(-1_000_000.0, 1_000_000.0)
-        sp_multiplier.setSingleStep(0.01)
-        sp_multiplier.setToolTip(
-            tr("The value read is multiplied by this to get seconds (e.g. 0.001 for ms).")
-        )
-        widgets["multiplier"] = sp_multiplier
-        form.addRow(tr("Multiplier"), sp_multiplier)
-    return widgets
-
-
-def make_memory_deck_group(title: str) -> dict:
-    group = QGroupBox(title)
-    layout = QVBoxLayout(group)
-    time_spec = make_memory_value_group(tr("Time"), include_multiplier=True)
-    sample_index_spec = make_memory_value_group(tr("Current Sample Index"))
-    path_spec = make_memory_value_group(
-        tr("Path"), include_length=True, include_encoding=True
-    )
-    active_spec = make_memory_value_group(tr("Active"), include_bit_pos=True)
-    loaded_spec = make_memory_value_group(tr("Loaded"), include_bit_pos=True)
-    time_spec["group"].setToolTip(tr("Playback position of the deck (Time Sync mode)."))
-    sample_index_spec["group"].setToolTip(
-        tr("Playback position of the deck in samples (Sample Index Sync mode).")
-    )
-    path_spec["group"].setToolTip(tr("File path of the track loaded on the deck."))
-    active_spec["group"].setToolTip(tr("Flag marking the deck as active. Only loaded and active decks are followed."))
-    loaded_spec["group"].setToolTip(tr("Flag that is true while a track is loaded on the deck."))
-    layout.addWidget(time_spec["group"])
-    layout.addWidget(sample_index_spec["group"])
-    layout.addWidget(path_spec["group"])
-    layout.addWidget(active_spec["group"])
-    layout.addWidget(loaded_spec["group"])
-    return {
-        "group": group,
-        "time": time_spec,
-        "sample_index": sample_index_spec,
-        "path": path_spec,
-        "active": active_spec,
-        "loaded": loaded_spec,
-    }
+def _local_address(text: str) -> bool:
+    """Whether the address only takes messages from this computer (a literal loopback address, localhost)."""
+    text = text.strip()
+    if text in ("", "localhost"):
+        return True
+    try:
+        return ipaddress.ip_address(text).is_loopback
+    except ValueError:
+        return False
 
 
 def build_external_sync_tab(dialog) -> None:
@@ -122,285 +43,104 @@ def build_external_sync_tab(dialog) -> None:
     root = QVBoxLayout(dialog.tab_external_sync)
     form = QFormLayout()
 
-    dialog.cb_external_sync_enabled = QCheckBox(tr("Enable external sync"))
-    dialog.cmb_external_sync_mode = QComboBox()
-    dialog.cmb_external_sync_mode.addItems([tr("Time Sync"), tr("Sample Index Sync")])
-    dialog.cmb_total_sample_count_source = QComboBox()
-    dialog.cmb_total_sample_count_source.addItems(
-        [tr("from reference sample rate"), tr("from file")]
-    )
-    dialog.sp_reference_sample_rate = QSpinBox()
-    dialog.sp_reference_sample_rate.setRange(1, 384000)
-    dialog.sp_reference_sample_rate.setSingleStep(100)
-
-    dialog.cmb_memory_process = QComboBox()
-    dialog.cmb_memory_process.setEditable(True)
-    dialog.cmb_memory_process.setSizeAdjustPolicy(
-        QComboBox.AdjustToMinimumContentsLengthWithIcon
-    )
-    dialog.cmb_memory_process.setMinimumContentsLength(20)
-    dialog.cmb_memory_process.view().setTextElideMode(Qt.ElideRight)
-    dialog.cmb_memory_process.view().setHorizontalScrollBarPolicy(
-        Qt.ScrollBarAlwaysOff
-    )
-    dialog.btn_memory_process_refresh = QPushButton(tr("Refresh"))
+    dialog.cb_external_sync_enabled = QCheckBox(tr("Enable External Sync"))
     dialog.cb_external_sync_enabled.setToolTip(
-        tr("Follow the track and playback position of external software\n"
-           "by reading its memory.")
-    )
-    dialog.cmb_external_sync_mode.setToolTip(
-        tr("Time Sync: read the position as time (scaled by the multiplier).\n"
-           "Sample Index Sync: read the position as a sample index.")
-    )
-    dialog.cmb_total_sample_count_source.setToolTip(
-        tr("How the track's total sample count is found to convert a sample index to time.\n"
-           "from reference sample rate: duration x reference sample rate.\n"
-           "from file: the decoded file's own sample count.")
-    )
-    dialog.sp_reference_sample_rate.setToolTip(
-        tr("Sample rate the external software counts samples at.")
-    )
-    dialog.cmb_memory_process.setToolTip(
-        tr("Process to read memory from. Denylisted processes are blocked.")
-    )
-    dialog.btn_memory_process_refresh.setToolTip(tr("Reload the list of running processes."))
-    dialog.deck1_specs = make_memory_deck_group(tr("Deck 1"))
-    dialog.deck2_specs = make_memory_deck_group(tr("Deck 2"))
+        tr("Follow the track and playback position of another program's deck, sent to Mixlyzer as OSC messages."))
+    dialog.ed_external_sync_host = QLineEdit()
+    dialog.ed_external_sync_host.setPlaceholderText("127.0.0.1")
+    dialog.ed_external_sync_host.setToolTip(
+        tr("The address the messages are received on. 127.0.0.1 takes them from this computer only; the address "
+           "of a network interface (or 0.0.0.0, all of them) takes them from that network too."))
+    dialog.sp_external_sync_port = QSpinBox()
+    dialog.sp_external_sync_port.setRange(1, 65535)
+    dialog.sp_external_sync_port.setToolTip(tr("The UDP port the messages are sent to."))
 
-    dialog.grp_memory = QGroupBox(tr("Memory"))
-    f_memory = QFormLayout(dialog.grp_memory)
-    process_row = QWidget()
-    process_row.setToolTip(dialog.cmb_memory_process.toolTip())
-    process_row_layout = QHBoxLayout(process_row)
-    process_row_layout.setContentsMargins(0, 0, 0, 0)
-    process_row_layout.setSpacing(6)
-    process_row_layout.addWidget(dialog.cmb_memory_process, 1)
-    process_row_layout.addWidget(dialog.btn_memory_process_refresh, 0)
-    f_memory.addRow(tr("Process"), process_row)
-    dialog.lbl_memory_process_warning = QLabel(
-        tr("Warning: attaching memory sync to an unrelated process can trigger "
-           "anti-cheat or antivirus false positives. Only target software you trust "
-           "and explicitly intend to sync with.")
-    )
-    dialog.lbl_memory_process_warning.setWordWrap(True)
-    dialog.lbl_memory_process_warning.setSizePolicy(
-        QSizePolicy.Ignored, QSizePolicy.Preferred
-    )
-    dialog.lbl_memory_process_warning.setStyleSheet("color: #d8a441;")
-    f_memory.addRow(dialog.lbl_memory_process_warning)
-    dialog.lbl_memory_process_blocked = QLabel("")
-    dialog.lbl_memory_process_blocked.setWordWrap(True)
-    dialog.lbl_memory_process_blocked.setSizePolicy(
-        QSizePolicy.Ignored, QSizePolicy.Preferred
-    )
-    dialog.lbl_memory_process_blocked.setStyleSheet("color: #d86f41;")
-    f_memory.addRow(dialog.lbl_memory_process_blocked)
+    dialog.lbl_external_sync_network = QLabel(
+        tr("Messages are taken from the network: any device on it can drive the deck. Only tracks already in the "
+           "library are followed (none is analyzed for it)."))
+    dialog.lbl_external_sync_network.setWordWrap(True)
+    dialog.lbl_external_sync_network.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
+    dialog.lbl_external_sync_network.setStyleSheet("color: #d8a441;")
+
+    dialog.lbl_external_sync_status = LiveLabel("")
+    dialog.lbl_external_sync_status.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
+
+    dialog.lbl_external_sync_format = QLabel(MESSAGE_FORMAT)
+    font = QtGui.QFontDatabase.systemFont(QtGui.QFontDatabase.FixedFont)
+    dialog.lbl_external_sync_format.setFont(font)
+    dialog.lbl_external_sync_format.setTextFormat(QtCore.Qt.PlainText)
+    dialog.lbl_external_sync_format.setTextInteractionFlags(QtCore.Qt.TextSelectableByMouse)
+    dialog.lbl_external_sync_format_note = QLabel(
+        tr("One message per deck, as often as the sender reads its state. The deck followed is the lowest-numbered "
+           "one that is loaded and active; a deck not heard from for a second is no longer followed. rate is the "
+           "sample rate the samples are counted at (0: the file's own); a flag may also be sent as an integer "
+           "0 / 1. The path must be a file on this computer."))
+    dialog.lbl_external_sync_format_note.setWordWrap(True)
+    dialog.lbl_external_sync_format_note.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
 
     dialog.lbl_external_sync_note = QLabel(
         tr("When enabled, local track loading and transport playback are restricted "
-           "so the external software remains the source of truth.")
-    )
+           "so the external software remains the source of truth."))
     dialog.lbl_external_sync_note.setWordWrap(True)
 
     form.addRow(dialog.cb_external_sync_enabled)
-    form.addRow(tr("Mode"), dialog.cmb_external_sync_mode)
-    form.addRow(
-        tr("Total Sample Count Source"), dialog.cmb_total_sample_count_source
-    )
-    form.addRow(tr("Reference Sample Rate"), dialog.sp_reference_sample_rate)
+    form.addRow(tr("Address"), dialog.ed_external_sync_host)
+    form.addRow(tr("Port"), dialog.sp_external_sync_port)
+    form.addRow(dialog.lbl_external_sync_network)
+    form.addRow(tr("Status"), dialog.lbl_external_sync_status)
     form.addRow(dialog.lbl_external_sync_note)
     root.addLayout(form)
-
-    dialog.memory_scroll = QScrollArea()
-    dialog.memory_scroll.setObjectName("memorySettingsScroll")
-    dialog.memory_scroll.setWidgetResizable(True)
-    dialog.memory_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-    dialog.memory_scroll.setMinimumHeight(340)
-    dialog.memory_scroll.viewport().setObjectName("memorySettingsViewport")
-    dialog.memory_scroll.viewport().setBackgroundRole(QtGui.QPalette.Window)
-    dialog.memory_scroll.viewport().setAutoFillBackground(True)
-    dialog.memory_scroll_contents = QWidget()
-    dialog.memory_scroll_contents.setObjectName("memorySettingsContents")
-    dialog.memory_scroll_contents.setSizePolicy(
-        QSizePolicy.Expanding, QSizePolicy.Preferred
-    )
-    dialog.memory_scroll_contents.setBackgroundRole(QtGui.QPalette.Window)
-    dialog.memory_scroll_contents.setAutoFillBackground(True)
-    memory_scroll_layout = QVBoxLayout(dialog.memory_scroll_contents)
-    memory_scroll_layout.setContentsMargins(0, 0, 0, 0)
-    memory_scroll_layout.setSpacing(8)
-    memory_scroll_layout.addWidget(dialog.grp_memory)
-    memory_scroll_layout.addWidget(dialog.deck1_specs["group"])
-    memory_scroll_layout.addWidget(dialog.deck2_specs["group"])
-    memory_scroll_layout.addStretch(1)
-    dialog.memory_scroll.setWidget(dialog.memory_scroll_contents)
-    dialog.memory_scroll.setStyleSheet(
-        "QScrollArea#memorySettingsScroll, "
-        "QWidget#memorySettingsViewport, "
-        "QWidget#memorySettingsContents { "
-        "background-color: palette(window); "
-        "}"
-    )
-    root.addWidget(dialog.memory_scroll)
+    root.addWidget(QLabel(tr("Messages")))
+    root.addWidget(dialog.lbl_external_sync_format)
+    root.addWidget(dialog.lbl_external_sync_format_note)
     root.addStretch(1)
 
-    dialog.cmb_external_sync_mode.currentIndexChanged.connect(
-        dialog._sync_external_sync_mode_ui
-    )
-    dialog.cmb_total_sample_count_source.currentIndexChanged.connect(
-        dialog._sync_external_sync_mode_ui
-    )
-    dialog.btn_memory_process_refresh.clicked.connect(
-        dialog._refresh_memory_processes
-    )
-    dialog._sync_external_sync_mode_ui()
-    if not os_support.MEMORY_SYNC:
-        return   # no memory reads on this system (macOS): the tab is never shown, the setting stays off
-    dialog._refresh_memory_processes()
+    dialog.ed_external_sync_host.textChanged.connect(dialog._sync_external_sync_address_ui)
+    dialog._external_sync_status_timer = QtCore.QTimer(dialog)
+    dialog._external_sync_status_timer.setInterval(STATUS_INTERVAL_MS)
+    dialog._external_sync_status_timer.timeout.connect(dialog._refresh_external_sync_status)
+    dialog._external_sync_status_timer.start()
+    dialog._external_sync_status_provider = None
+    dialog._sync_external_sync_address_ui()
     dialog.tabs.addTab(scroll_page(dialog.tab_external_sync), tr("External Sync"))
 
 
 class ExternalSyncSettingsMixin:
-    def _sync_external_sync_mode_ui(self):
-        is_time_sync = self.cmb_external_sync_mode.currentIndex() == 0
-        use_reference_sample_rate = self.cmb_total_sample_count_source.currentIndex() == 0
-        self.memory_scroll.setVisible(True)
-        self.cmb_total_sample_count_source.setEnabled(not is_time_sync)
-        self.sp_reference_sample_rate.setEnabled((not is_time_sync) and use_reference_sample_rate)
-        for deck_widgets in (self.deck1_specs, self.deck2_specs):
-            deck_widgets["time"]["group"].setVisible(is_time_sync)
-            deck_widgets["sample_index"]["group"].setVisible(not is_time_sync)
+    def set_external_sync_status(self, provider) -> None:
+        """``provider()`` -> the controller's snapshot (ExternalSyncController.snapshot), shown as the status."""
+        self._external_sync_status_provider = provider
+        self._refresh_external_sync_status()
 
-    def _refresh_memory_processes(self):
-        current_name = self._memory_process_name()
-        current_pid = self._memory_process_pid()
-        self.cmb_memory_process.blockSignals(True)
-        self.cmb_memory_process.clear()
-        processes = self._list_running_processes()
-        processes.sort(
-            key=lambda proc: (
-                1 if self._is_denied_process_name(str(proc.get("name") or "")) else 0,
-                str(proc.get("name") or "").lower(),
-                int(proc.get("pid") or 0),
-            )
-        )
-        model = self.cmb_memory_process.model()
-        for proc in processes:
-            denied = self._is_denied_process_name(str(proc.get("name") or ""))
-            label = f'{proc["name"]} (PID {proc["pid"]})'
-            if denied:
-                label = tr("[Blocked] {process}").format(process=label)
-            self.cmb_memory_process.addItem(label, proc)
-            row = self.cmb_memory_process.count() - 1
-            self.cmb_memory_process.setItemData(row, label, Qt.ToolTipRole)
-            item = model.item(row) if hasattr(model, "item") else None
-            if item is not None and denied:
-                item.setFlags(item.flags() & ~Qt.ItemIsEnabled & ~Qt.ItemIsSelectable)
-                item.setForeground(QtGui.QColor("#888888"))
-        self.cmb_memory_process.blockSignals(False)
-        self._set_selected_memory_process(current_name, current_pid)
+    def _sync_external_sync_address_ui(self) -> None:
+        self.lbl_external_sync_network.setVisible(not _local_address(self.ed_external_sync_host.text()))
 
-    def _set_selected_memory_process(self, process_name: str, process_pid: int):
-        target_name = (process_name or "").strip().lower()
-        if self._is_denied_process_name(target_name):
-            self.cmb_memory_process.setCurrentIndex(-1)
-            self.cmb_memory_process.setEditText("")
-            self.lbl_memory_process_blocked.setText(
-                tr("Blocked by denylist: {process}").format(process=process_name.strip())
-            )
+    def _external_sync_host(self) -> str:
+        return self.ed_external_sync_host.text().strip() or "127.0.0.1"
+
+    def _refresh_external_sync_status(self) -> None:
+        if not self.tab_external_sync.isVisible() or self._external_sync_status_provider is None:
             return
-        target_pid = int(process_pid or 0)
-        for idx in range(self.cmb_memory_process.count()):
-            data = self.cmb_memory_process.itemData(idx)
-            if not isinstance(data, dict):
-                continue
-            item_name = str(data.get("name") or "").strip().lower()
-            item_pid = int(data.get("pid") or 0)
-            if target_pid and item_pid == target_pid:
-                self.cmb_memory_process.setCurrentIndex(idx)
-                self.lbl_memory_process_blocked.setText("")
-                return
-            if target_name and item_name == target_name:
-                self.cmb_memory_process.setCurrentIndex(idx)
-                self.lbl_memory_process_blocked.setText("")
-                return
-        text = process_name.strip() if process_name else ""
-        if target_pid:
-            text = f"{text} (PID {target_pid})".strip()
-        if self._is_denied_process_name(text):
-            self.cmb_memory_process.setCurrentIndex(-1)
-            self.cmb_memory_process.setEditText("")
-            self.lbl_memory_process_blocked.setText(
-                tr("Blocked by denylist: {process}").format(process=process_name.strip())
-            )
-            return
-        self.cmb_memory_process.setCurrentIndex(-1)
-        self.cmb_memory_process.setEditText(text)
-        self.lbl_memory_process_blocked.setText("")
-
-    def _memory_process_name(self) -> str:
-        data = self.cmb_memory_process.currentData()
-        if isinstance(data, dict):
-            name = str(data.get("name") or "").strip()
-            return "" if self._is_denied_process_name(name) else name
-        text = self.cmb_memory_process.currentText().strip()
-        name = text.split(" (PID ", 1)[0].strip()
-        if self._is_denied_process_name(name):
-            self.lbl_memory_process_blocked.setText(tr("Blocked by denylist: {process}").format(process=name))
-            return ""
-        return name
-
-    def _memory_process_pid(self) -> int:
-        data = self.cmb_memory_process.currentData()
-        if isinstance(data, dict):
-            try:
-                return int(data.get("pid") or 0)
-            except Exception:
-                return 0
-        text = self.cmb_memory_process.currentText().strip()
-        if " (PID " in text and text.endswith(")"):
-            try:
-                return int(text.rsplit(" (PID ", 1)[1][:-1])
-            except Exception:
-                return 0
-        return 0
-
-    def _list_running_processes(self) -> list[dict]:
-        rows = os_support.list_processes()
-        rows.sort(key=lambda item: (str(item["name"]).lower(), int(item["pid"])))
-        return rows
-
-    def _is_denied_process_name(self, name: str) -> bool:
-        deny = self._load_process_denylist()
-        if deny is None:
-            # Fail closed: if the denylist cannot be read, treat every process
-            # as denied so an unsafe target can never be picked.
-            return True
-        target = self._normalize_process_name(name)
-        if not target:
-            return False
-        return target in deny
-
-    def _load_process_denylist(self) -> set[str] | None:
-        cache = getattr(self, "_process_denylist_cache", None)
-        if isinstance(cache, set):
-            return cache
         try:
-            payload = json.loads(process_denylist_path().read_text(encoding="utf-8"))
+            state = self._external_sync_status_provider()
         except Exception:
-            # Not cached, so a transient error recovers on the next call.
-            return None
-        names: set[str] = set()
-        if isinstance(payload, dict):
-            for item in payload.get("blocked_process_names", []):
-                text = self._normalize_process_name(item)
-                if text:
-                    names.add(text)
-        self._process_denylist_cache = names
-        return names
+            return
+        self.lbl_external_sync_status.setText(_status_text(state))
 
-    def _normalize_process_name(self, name: str) -> str:
-        text = str(name or "").strip().lower()
-        if text.endswith(".exe"):
-            text = text[:-4]
-        return text
+
+def _status_text(state: dict) -> str:
+    if not state.get("enabled"):
+        return tr("Off.")
+    sync = state.get("osc") or {}
+    listening = str(sync.get("listening") or "")
+    if not listening:
+        return tr("Not listening.")
+    decks = sync.get("decks") or {}
+    if not decks:
+        return tr("Listening on {address}; nothing received yet.").format(address=listening)
+    newest = min(float(d.get("age_sec") or 0.0) for d in decks.values())
+    following = int(sync.get("following") or 0)
+    if following:
+        return tr("Listening on {address}; following deck {deck} (last message {age} s ago, from {sender}).").format(
+            address=listening, deck=following, age=f"{newest:.1f}", sender=sync.get("sender") or "?")
+    return tr("Listening on {address}; no deck loaded and active (last message {age} s ago, from {sender}).").format(
+        address=listening, age=f"{newest:.1f}", sender=sync.get("sender") or "?")

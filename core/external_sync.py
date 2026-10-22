@@ -1,26 +1,166 @@
+"""External Sync: Mixlyzer follows another program's deck (the track loaded, its position) and locks its own
+transport meanwhile. The deck's state comes as OSC messages (core.osc) over UDP, one per deck as often as the
+sender reads it:
+
+    /mixlyzer/deck/time     i deck  s path  T|F loaded  T|F active  d|f seconds
+    /mixlyzer/deck/samples  i deck  s path  T|F loaded  T|F active  h|i samples  i rate
+
+``rate`` is the rate the sender counts samples at, 0: the file's own (its total samples). A flag may also come as
+an i (0 / 1), for senders without T / F. The deck followed is the lowest-numbered one that is loaded and active;
+a deck not heard from for ``STALE_SEC`` is gone. Messages are received on their own thread, which keeps each
+deck's newest state; the GUI takes them at the view's frame rate (no queued signal per message).
+
+The receiver listens on this computer only (127.0.0.1) unless the settings name another address; then any
+device on that network can drive the deck, so only tracks already in the library are followed (none is
+analysed for it). A path must be a local file: network paths (UNC, //host) are refused, also when a link
+resolves to one, as opening one sends the user's credentials to that host."""
+
 from __future__ import annotations
 
-import json
+import ipaddress
+import socket
+import threading
 import time
-from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Optional
+from dataclasses import dataclass
+from pathlib import Path, PureWindowsPath
+from typing import Any, Callable, Optional
 
 from PySide6 import QtCore
 
-from core import os_support
-
-if TYPE_CHECKING:   # imported where memory is read, and never where it is not (os_support.MEMORY_SYNC)
-    from PyMemoryEditor import AbstractProcess
-
-from core.config import externalsyncconfig, memorydeckconfig, memoryvalueconfig
+from core import osc
+from core.config import externalsyncconfig
 from core.event_bus import EventBus
-from core.model import DataModel
-from core.resource_paths import process_denylist_path
 from core.i18n import tr
+from core.model import DataModel
+
+TIME_ADDRESS = "/mixlyzer/deck/time"
+SAMPLES_ADDRESS = "/mixlyzer/deck/samples"
+STALE_SEC = 1.0      # a deck not heard from for this long is no longer followed
+MAX_DECKS = 8
+MAX_PATH_CHARS = 4096
+
+
+@dataclass(frozen=True)
+class DeckReport:
+    deck: int
+    path: str
+    loaded: bool
+    active: bool
+    seconds: Optional[float]     # the position, when sent as time
+    samples: Optional[int]       # or as samples, counted at ``rate`` (0: the file's)
+    rate: int
+    received_at: float           # time.monotonic()
+
+
+def _flag(value) -> Optional[bool]:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, int) and value in (0, 1):
+        return bool(value)
+    return None
+
+
+def deck_report(address: str, args: list, now: float) -> Optional[DeckReport]:
+    """The deck state an OSC message carries, None for any other message (or a malformed one)."""
+    if address not in (TIME_ADDRESS, SAMPLES_ADDRESS) or len(args) < 5:
+        return None
+    deck, path, loaded, active = args[0], args[1], _flag(args[2]), _flag(args[3])
+    if isinstance(deck, bool) or not isinstance(deck, int) or not 1 <= deck <= MAX_DECKS:
+        return None
+    if not isinstance(path, str) or len(path) > MAX_PATH_CHARS or loaded is None or active is None:
+        return None
+    if address == TIME_ADDRESS:
+        seconds = args[4]
+        if len(args) != 5 or isinstance(seconds, bool) or not isinstance(seconds, (int, float)):
+            return None
+        if not 0.0 <= float(seconds) < 1e7:   # also refuses NaN
+            return None
+        return DeckReport(deck, path, loaded, active, float(seconds), None, 0, now)
+    if len(args) != 6:
+        return None
+    samples, rate = args[4], args[5]
+    if isinstance(samples, bool) or not isinstance(samples, int) or isinstance(rate, bool) or not isinstance(rate, int):
+        return None
+    if samples < 0 or not 0 <= rate <= 1_000_000:
+        return None
+    return DeckReport(deck, path, loaded, active, None, samples, rate, now)
+
+
+def is_loopback(host: str) -> bool:
+    try:
+        return all(ipaddress.ip_address(info[4][0]).is_loopback
+                   for info in socket.getaddrinfo(host, None, type=socket.SOCK_DGRAM))
+    except (OSError, ValueError):
+        return False
+
+
+def _network_path(text: str) -> bool:
+    """A path naming a file on another computer (Windows UNC in any spelling, //host)."""
+    if text.startswith(("\\\\", "//", "\\/", "/\\")):
+        return True
+    return PureWindowsPath(text).drive.startswith(("\\\\", "//"))
+
+
+class OscReceiver:
+    """A UDP socket on its own thread keeping each deck's newest report."""
+
+    def __init__(self, host: str, port: int) -> None:
+        family = socket.getaddrinfo(host, port, type=socket.SOCK_DGRAM)[0][0]
+        self._sock = socket.socket(family, socket.SOCK_DGRAM)
+        try:
+            self._sock.bind((host, port))
+        except OSError:
+            self._sock.close()
+            raise
+        self._sock.settimeout(0.2)
+        self.address = self._sock.getsockname()[:2]
+        self._lock = threading.Lock()
+        self._decks: dict[int, DeckReport] = {}
+        self._sender = ""
+        self._refused = 0
+        self._stop = threading.Event()
+        self._thread = threading.Thread(target=self._run, name="ExternalSyncOSC", daemon=True)
+        self._thread.start()
+
+    def _run(self) -> None:
+        while not self._stop.is_set():
+            try:
+                packet, sender = self._sock.recvfrom(osc.MAX_PACKET + 1)
+            except socket.timeout:
+                continue
+            except OSError:
+                if self._stop.is_set():
+                    return
+                continue
+            now = time.monotonic()
+            try:
+                reports = [r for r in (deck_report(a, args, now) for a, args in osc.parse(packet)) if r]
+            except osc.OscError:
+                reports = []
+            with self._lock:
+                if not reports:
+                    self._refused += 1
+                    continue
+                for report in reports:
+                    self._decks[report.deck] = report
+                self._sender = f"{sender[0]}:{sender[1]}"
+
+    def latest(self) -> tuple[dict[int, DeckReport], str, int]:
+        """(each deck's newest report, the last sender, packets refused)."""
+        with self._lock:
+            return dict(self._decks), self._sender, self._refused
+
+    def close(self) -> None:
+        self._stop.set()
+        try:
+            self._sock.close()
+        except OSError:
+            pass
+        self._thread.join(timeout=1.0)
 
 
 class ExternalSyncController(QtCore.QObject):
-    """Tracks app state and optionally follows an external memory source."""
+    """Tracks app state and optionally follows an external deck (OSC)."""
 
     def __init__(
         self,
@@ -59,29 +199,30 @@ class ExternalSyncController(QtCore.QObject):
         self._analysis_request_inflight: str | None = None
         self._analysis_request_raw_path: str | None = None
         self._load_request_inflight: str | None = None
-        self._blocked_process_logged: str | None = None
-        self._denylist_unavailable_logged: bool = False
         self._invalid_external_path_logged: str | None = None
+        self._not_in_library_logged: str | None = None
         self._validated_external_paths: dict[str, str] = {}
-        self._pm: AbstractProcess | None = None
-        self._pm_pid: int = 0
-        self._pm_base_address: int = 0
-        self._process_list_cache: list[dict[str, int | str]] = []
-        self._process_list_cache_ts: float = 0.0
+        self._receiver: OscReceiver | None = None
+        self._library_only = False
+        self._following: int = 0   # the deck followed (0: none)
 
         self._poll = QtCore.QTimer(self)
         self.set_poll_fps(int(poll_fps))
-        self._poll.timeout.connect(self._poll_external_memory)
+        self._poll.timeout.connect(self._poll_external)
 
         self.bus.sig_time_changed.connect(self._on_time_changed)
         self.bus.sig_playback_status.connect(self._on_playback_status_changed)
         self.bus.sig_features_loaded.connect(self._on_features_loaded)
         self.bus.sig_lib_updated.connect(self._on_library_updated)
         self.bus.sig_properties_loaded.connect(self.publish_state)
+        app = QtCore.QCoreApplication.instance()
+        if app is not None:
+            app.aboutToQuit.connect(self.close)   # the port let go with the app
 
         self._apply_polling_state()
 
     def set_config(self, cfg: externalsyncconfig) -> None:
+        listen_changed = (cfg.osc_host, cfg.osc_port) != (self._cfg.osc_host, self._cfg.osc_port)
         self._cfg = cfg
         self._missing_path_logged = None
         self._pending_external_path = None
@@ -90,13 +231,11 @@ class ExternalSyncController(QtCore.QObject):
         self._analysis_request_inflight = None
         self._analysis_request_raw_path = None
         self._load_request_inflight = None
-        self._blocked_process_logged = None
-        self._denylist_unavailable_logged = False
         self._invalid_external_path_logged = None
+        self._not_in_library_logged = None
         self._validated_external_paths = {}
-        self._process_list_cache = []
-        self._process_list_cache_ts = 0.0
-        self._close_process_handle()
+        if listen_changed:
+            self._close_receiver()
         self._apply_polling_state()
         self.publish_state()
 
@@ -108,6 +247,17 @@ class ExternalSyncController(QtCore.QObject):
         interval_ms = max(1, int(round(1000.0 / fps)))
         self._poll.setInterval(interval_ms)
 
+    def close(self) -> None:
+        self._poll.stop()
+        self._close_receiver()
+
+    def listening_on(self) -> str:
+        """host:port being listened on ("" when not)."""
+        if self._receiver is None:
+            return ""
+        host, port = self._receiver.address
+        return f"[{host}]:{port}" if ":" in str(host) else f"{host}:{port}"
+
     def snapshot(self) -> dict[str, Any]:
         props = self.model.properties if isinstance(self.model.properties, dict) else {}
         title = str(props.get("title") or "").strip()
@@ -115,14 +265,20 @@ class ExternalSyncController(QtCore.QObject):
         path = str(props.get("path") or "").strip()
         uid = str(props.get("uid") or "").strip()
         duration_sec = float(props.get("duration_sec") or self.model.duration_sec or 0.0)
+        decks, sender, refused = self._receiver.latest() if self._receiver is not None else ({}, "", 0)
+        now = time.monotonic()
         return {
             "enabled": bool(self._cfg.enabled),
-            "mode": str(self._cfg.mode),
-            "memory": {
-                "process_name": str(self._cfg.memory_process_name),
-                "process_pid": int(self._cfg.memory_process_pid),
-                "deck1": self._memory_deck_snapshot(self._cfg.memory_deck1),
-                "deck2": self._memory_deck_snapshot(self._cfg.memory_deck2),
+            "osc": {
+                "listening": self.listening_on(),
+                "library_only": bool(self._library_only),
+                "sender": sender,
+                "refused_packets": int(refused),
+                "following": int(self._following),
+                "decks": {
+                    n: {"loaded": r.loaded, "active": r.active, "age_sec": now - r.received_at}
+                    for n, r in sorted(decks.items())
+                },
             },
             "track": {
                 "loaded": bool(path),
@@ -136,25 +292,6 @@ class ExternalSyncController(QtCore.QObject):
                 "is_playing": bool(self._is_playing),
                 "position_sec": float(self._time_sec),
             },
-        }
-
-    def _memory_deck_snapshot(self, deck_cfg: memorydeckconfig) -> dict[str, Any]:
-        return {
-            "time": self._memory_value_snapshot(deck_cfg.time),
-            "sample_index": self._memory_value_snapshot(deck_cfg.sample_index),
-            "path": self._memory_value_snapshot(deck_cfg.path),
-            "active": self._memory_value_snapshot(deck_cfg.active),
-            "loaded": self._memory_value_snapshot(deck_cfg.loaded),
-        }
-
-    def _memory_value_snapshot(self, spec: memoryvalueconfig) -> dict[str, Any]:
-        return {
-            "offsets": str(spec.offsets),
-            "type": str(spec.value_type),
-            "length": int(spec.length),
-            "encoding": str(spec.encoding),
-            "bit_pos": int(spec.bit_pos),
-            "multiplier": float(spec.multiplier),
         }
 
     @QtCore.Slot(float)
@@ -199,40 +336,48 @@ class ExternalSyncController(QtCore.QObject):
         self.bus.sig_external_sync_state.emit(self.snapshot())
 
     def _apply_polling_state(self) -> None:
-        should_poll = bool(self._cfg.enabled) and os_support.MEMORY_SYNC
-        if should_poll and not self._poll.isActive():
-            self._poll.start()
-        if not should_poll and self._poll.isActive():
+        if not self._cfg.enabled:
             self._poll.stop()
-            self._close_process_handle()
+            self._close_receiver()
+            return
+        if self._receiver is None:
+            host, port = str(self._cfg.osc_host or "").strip() or "127.0.0.1", int(self._cfg.osc_port)
+            try:
+                self._receiver = OscReceiver(host, port)
+            except (OSError, ValueError, OverflowError) as exc:
+                self._disable_due_to_failure(
+                    tr("External Sync could not listen for OSC on {host}:{port} ({error}) and has been disabled.")
+                    .format(host=host, port=port, error=exc))
+                return
+            self._library_only = not is_loopback(host)
+            self._log(tr("External Sync listening for OSC on {address}.").format(address=self.listening_on()))
+        if not self._poll.isActive():
+            self._poll.start()
+
+    def _close_receiver(self) -> None:
+        receiver, self._receiver = self._receiver, None
+        self._following = 0
+        if receiver is not None:
+            receiver.close()
 
     @QtCore.Slot()
-    def _poll_external_memory(self) -> None:
-        if not self._cfg.enabled or not os_support.MEMORY_SYNC:
+    def _poll_external(self) -> None:
+        if not self._cfg.enabled or self._receiver is None:
             return
-        process_name = str(self._cfg.memory_process_name or "").strip()
-        if self._is_denied_process_name(process_name):
-            self._log_blocked_process(process_name or "configured process")
+        decks, _sender, _refused = self._receiver.latest()
+        now = time.monotonic()
+        followed = sorted(n for n, r in decks.items() if r.loaded and r.active and now - r.received_at < STALE_SEC)
+        if not followed:
+            self._following = 0
             return
-        pid = self._resolve_target_pid()
-        if pid <= 0:
-            self._close_process_handle()
-            return
-        pm = self._ensure_process_handle(pid)
-        if pm is None:
-            self._disable_due_to_failure(
-                tr("Failed to open process memory for '{process}'. Memory Sync has been disabled.")
-                .format(process=process_name or pid)
-            )
-            return
-        try:
-            external = self._read_active_deck(pm)
-            if not external:
-                return
-            self._apply_external_deck(external)
-        except Exception:
-            self._close_process_handle()
-            self._disable_due_to_failure(tr("Memory Sync read failed and has been disabled."))
+        report = decks[followed[0]]
+        self._following = report.deck
+        path = report.path.strip()
+        if report.seconds is not None:
+            time_sec = report.seconds
+        else:
+            time_sec = self._sample_index_to_time(path, float(report.samples), report.rate)
+        self._apply_external_deck({"path": path, "loaded": True, "time_sec": time_sec})
 
     def _apply_external_deck(self, external: dict[str, Any]) -> None:
         path = str(external.get("path") or "").strip()
@@ -301,6 +446,12 @@ class ExternalSyncController(QtCore.QObject):
             self._request_track_load(pending_raw_path, self._pending_external_time_sec)
             return
 
+        if self._library_only:   # a sender on the network: no analysis started for it
+            if self._not_in_library_logged != pending_path:
+                self._not_in_library_logged = pending_path
+                self._log(tr("External Sync ignored a track not in the library (OSC from the network): {path}")
+                          .format(path=pending_raw_path))
+            return
         if self._missing_path_logged != pending_path:
             self._missing_path_logged = pending_path
             self._log(tr("External Sync analyzing external track before load: {path}").format(path=pending_raw_path))
@@ -332,39 +483,34 @@ class ExternalSyncController(QtCore.QObject):
         """The track the deck's ``path`` points to, as the app names it: the path the
         library stores that file under (the deck may spell it in another case, with
         other separators or through a link), else the file's resolved path. Empty
-        for a path that is not a local file."""
+        for a path that is not a local file (checked before the file system is
+        touched, and again once a link is resolved)."""
         raw = str(path or "").strip()
         if not raw:
             return ""
         cached = self._validated_external_paths.get(raw)
         if cached is not None:
             return cached
-        if raw.startswith(("\\\\", "//")):
-            self._validated_external_paths[raw] = ""
+        resolved = self._local_file(raw)
+        if resolved:
+            resolved = self._library_path(resolved) or resolved
+        self._validated_external_paths[raw] = resolved
+        return resolved
+
+    @staticmethod
+    def _local_file(raw: str) -> str:
+        if _network_path(raw) or "\x00" in raw:
             return ""
         try:
             expanded = Path(raw).expanduser()
-        except Exception:
-            self._validated_external_paths[raw] = ""
-            return ""
-        if not expanded.is_absolute():
-            self._validated_external_paths[raw] = ""
-            return ""
-        try:
-            candidate = expanded.resolve(strict=False)
-        except Exception:
-            self._validated_external_paths[raw] = ""
-            return ""
-        try:
-            if not candidate.exists() or not candidate.is_file():
-                self._validated_external_paths[raw] = ""
+            if not expanded.is_absolute():
                 return ""
-        except OSError:
-            self._validated_external_paths[raw] = ""
+            candidate = expanded.resolve(strict=False)
+            if _network_path(str(candidate)) or not candidate.is_file():
+                return ""
+        except (OSError, RuntimeError, ValueError):
             return ""
-        resolved = self._library_path(str(candidate)) or str(candidate)
-        self._validated_external_paths[raw] = resolved
-        return resolved
+        return str(candidate)
 
     def _library_path(self, path: str) -> str:
         if self._library_path_callback is None:
@@ -382,67 +528,18 @@ class ExternalSyncController(QtCore.QObject):
         except Exception:
             return False
 
-    def _read_active_deck(self, pm: AbstractProcess) -> dict[str, Any] | None:
-        decks: list[tuple[int, memorydeckconfig, bool]] = []
-        for deck_no, deck_cfg in (
-            (1, self._cfg.memory_deck1),
-            (2, self._cfg.memory_deck2),
-        ):
-            deck_state = self._read_deck_state(pm, deck_cfg)
-            if deck_state is None:
-                continue
-            loaded, active = deck_state
-            decks.append((deck_no, deck_cfg, loaded and active))
-        if not decks:
-            return None
-        active_decks = [deck for deck in decks if deck[2]]
-        if not active_decks:
-            return None
-        active_decks.sort(key=lambda deck: int(deck[0]))
-        deck_no, deck_cfg, _ = active_decks[0]
-        external = self._read_deck_payload(pm, deck_cfg)
-        if not external:
-            return None
-        external["deck_no"] = deck_no
-        return external
-
-    def _read_deck_state(self, pm: AbstractProcess, deck_cfg: memorydeckconfig) -> tuple[bool, bool] | None:
-        try:
-            raw_loaded = self._read_memory_value(pm, deck_cfg.loaded)
-            raw_active = self._read_memory_value(pm, deck_cfg.active)
-            return bool(raw_loaded), bool(raw_active)
-        except Exception as exc:
-            self._disable_due_to_failure(tr("Memory Sync deck state read failed: {error}").format(error=exc))
-            raise
-
-    def _read_deck_payload(self, pm: AbstractProcess, deck_cfg: memorydeckconfig) -> dict[str, Any] | None:
-        try:
-            raw_path = self._read_memory_value(pm, deck_cfg.path)
-            path = str(raw_path or "").strip()
-            if str(self._cfg.mode) == "sample_index":
-                raw_sample_index = self._read_memory_value(pm, deck_cfg.sample_index)
-                sample_index = max(0.0, float(raw_sample_index or 0.0))
-                time_sec = self._sample_index_to_time(path, sample_index)
-            else:
-                raw_time = self._read_memory_value(pm, deck_cfg.time)
-                sample_index = 0.0
-                time_sec = max(0.0, float(raw_time or 0.0) * float(deck_cfg.time.multiplier))
-        except Exception as exc:
-            self._disable_due_to_failure(tr("Memory Sync deck payload read failed: {error}").format(error=exc))
-            raise
-        return {
-            "loaded": True,
-            "path": path,
-            "time_sec": time_sec,
-            "sample_index": sample_index,
-            "active": True,
-        }
-
-    def _sample_index_to_time(self, path: str, sample_index: float) -> float:
-        duration_sec = self._resolve_track_duration(path)
+    def _sample_index_to_time(self, path: str, sample_index: float, rate: int) -> float:
+        """A position in samples as seconds: counted at ``rate``, or (0) at the file's own rate, so the index
+        over its total samples is the share of its duration; clamped to the track."""
+        validated = self._validate_external_track_path(path)
+        if not validated:
+            return 0.0
+        duration_sec = self._resolve_track_duration(validated)
         if duration_sec <= 0.0:
             return 0.0
-        total_samples = self._resolve_track_total_samples(path)
+        if rate > 0:
+            return min(max(0.0, sample_index) / float(rate), duration_sec)
+        total_samples = self._resolve_track_total_samples(validated)
         if total_samples <= 0.0:
             return 0.0
         clamped_index = max(0.0, min(sample_index, total_samples))
@@ -466,14 +563,6 @@ class ExternalSyncController(QtCore.QObject):
         return 0.0
 
     def _resolve_track_total_samples(self, path: str) -> float:
-        sample_source = str(getattr(self._cfg, "total_sample_count_source", "reference_sample_rate"))
-        if sample_source == "reference_sample_rate":
-            duration_sec = self._resolve_track_duration(path)
-            reference_sample_rate = max(1.0, float(getattr(self._cfg, "reference_sample_rate", 44100) or 44100))
-            if duration_sec <= 0.0:
-                return 0.0
-            return max(0.0, float(int(round(duration_sec * reference_sample_rate))))
-
         target = str(path or "").strip()
         if not target:
             return 0.0
@@ -491,144 +580,11 @@ class ExternalSyncController(QtCore.QObject):
                 return 0.0
         return 0.0
 
-    def _read_memory_value(self, pm: AbstractProcess, spec: memoryvalueconfig):
-        address = self._resolve_pointer_chain(pm, spec.offsets)
-        if address <= 0:
-            raise ValueError("Invalid address")
-        value_type = str(spec.value_type)
-        if value_type == "str":
-            raw = pm.read_bytes(address, max(1, int(spec.length)))
-            return raw.decode(spec.encoding or "utf-8", errors="replace").split("\x00", 1)[0]
-        if value_type == "float":
-            return pm.read_float(address)
-        if value_type == "int":
-            return pm.read_int(address)
-        if value_type == "bool":
-            raw = self._read_bytes(pm, address, 1)
-            byte_val = raw[0]
-            bit_pos = int(spec.bit_pos)
-            if 0 <= bit_pos <= 7:
-                return bool((byte_val >> bit_pos) & 0x1)
-            return bool(byte_val)
-        raise ValueError(f"Unsupported memory value type: {value_type}")
-
-    def _resolve_pointer_chain(self, pm: AbstractProcess, offsets_text: str) -> int:
-        tokens = [token.strip() for token in str(offsets_text).split(",") if token.strip()]
-        if not tokens:
-            return 0
-        is_global = self._is_global_address_token(tokens[0])
-        offsets = [self._hex_to_int(token) for token in tokens]
-        base = int(offsets[0]) if is_global else (self._pm_base_address + int(offsets[0]))
-        if len(offsets) == 1:
-            return base
-        return int(pm.resolve_pointer_chain(base, offsets[1:]))
-
-    def _read_bytes(self, pm: AbstractProcess, address: int, size: int) -> bytes:
-        return pm.read_bytes(address, size)
-
-    def _hex_to_int(self, token: str) -> int:
-        token = str(token or "").strip()
-        if not token:
-            return 0
-        if token[:1].lower() == "g":
-            token = token[1:]
-        token = token.lower().replace("0x", "")
-        return int(token, 16)
-
-    def _is_global_address_token(self, token: str) -> bool:
-        text = str(token or "").strip()
-        return text[:1].lower() == "g"
-
-    def _resolve_target_pid(self) -> int:
-        if int(self._cfg.memory_process_pid) > 0:
-            target_pid = int(self._cfg.memory_process_pid)
-            return target_pid
-        target_name = str(self._cfg.memory_process_name or "").strip().lower()
-        if not target_name:
-            return 0
-        for proc in self._list_running_processes():
-            if str(proc.get("name") or "").strip().lower() == target_name:
-                if self._is_denied_process_name(str(proc.get("name") or "")):
-                    self._log_blocked_process(str(proc.get("name") or ""))
-                    return 0
-                return int(proc.get("pid") or 0)
-        return 0
-
-    def _process_info_for_pid(self, pid: int) -> dict[str, int | str] | None:
-        for proc in self._list_running_processes():
-            if int(proc.get("pid") or 0) == int(pid):
-                return proc
-        return None
-
-    def _list_running_processes(self) -> list[dict[str, int | str]]:
-        now = time.monotonic()
-        if self._process_list_cache and (now - self._process_list_cache_ts) < 1.0:
-            return self._process_list_cache
-        rows = os_support.list_processes()
-        self._process_list_cache = rows
-        self._process_list_cache_ts = now
-        return rows
-
-    def _ensure_process_handle(self, pid: int) -> AbstractProcess | None:
-        if self._pm is not None and self._pm_pid == int(pid):
-            return self._pm
-        self._close_process_handle()
-        if not os_support.MEMORY_SYNC:
-            return None
-        try:
-            from PyMemoryEditor import OpenProcess
-
-            open_kwargs: dict[str, Any] = {"pid": int(pid)}
-            if os_support.IS_WINDOWS:
-                # PROCESS_QUERY_INFORMATION | PROCESS_VM_READ
-                open_kwargs["permission"] = 0x0400 | 0x0010
-            pm = OpenProcess(**open_kwargs)
-            proc = self._process_info_for_pid(pid)
-            process_name = str(proc.get("name") or self._cfg.memory_process_name or pid) if proc else str(
-                self._cfg.memory_process_name or pid
-            )
-            modules = list(pm.get_modules())
-            normalized_name = self._normalize_process_name(process_name)
-            main_module = next(
-                (
-                    module
-                    for module in modules
-                    if self._normalize_process_name(module.name) == normalized_name
-                ),
-                modules[0] if modules else None,
-            )
-            if main_module is None:
-                pm.close()
-                return None
-            image_path = str(main_module.path or "")
-            if self._is_denied_process_name(process_name) or self._is_denied_process_image_path(image_path):
-                self._log_blocked_process(process_name or str(pid), image_path=image_path)
-                pm.close()
-                return None
-        except Exception:
-            return None
-        self._pm = pm
-        self._pm_pid = int(pid)
-        self._pm_base_address = int(main_module.base_address)
-        return pm
-
-    def _close_process_handle(self) -> None:
-        pm = self._pm
-        self._pm = None
-        self._pm_pid = 0
-        self._pm_base_address = 0
-        if pm is None:
-            return
-        try:
-            pm.close()
-        except Exception:
-            pass
-
     def _disable_due_to_failure(self, message: str) -> None:
         if not bool(self._cfg.enabled):
             return
         self._cfg.enabled = False
-        self._close_process_handle()
+        self._close_receiver()
         self._apply_polling_state()
         self.publish_state()
         self.bus.sig_external_sync_enabled.emit(False)
@@ -646,81 +602,3 @@ class ExternalSyncController(QtCore.QObject):
                 self._status_callback(message)
             except Exception:
                 pass
-
-    def _log_blocked_process(self, process_name: str, *, image_path: str = "") -> None:
-        name = str(process_name or "").strip()
-        normalized = self._normalize_process_name(name)
-        path_key = self._normalize_process_image_path(image_path)
-        cache_key = f"{normalized}|{path_key}"
-        if self._blocked_process_logged == cache_key:
-            return
-        self._blocked_process_logged = cache_key
-        if path_key:
-            self._log(tr("External Sync blocked for denied process: {process} ({path})").format(process=name, path=image_path))
-        else:
-            self._log(tr("External Sync blocked for denied process: {process}").format(process=name))
-
-    def _is_denied_process_name(self, name: str) -> bool:
-        payload = self._load_process_denylist_payload()
-        if payload is None:
-            # Fail closed: if the denylist cannot be read, deny every process
-            # rather than silently allowing attachment to protected targets.
-            return True
-        target = self._normalize_process_name(name)
-        if not target:
-            return False
-        return target in self._denied_process_names(payload)
-
-    def _denied_process_names(self, payload: dict[str, Any]) -> set[str]:
-        names: set[str] = set()
-        for item in payload.get("blocked_process_names", []):
-            text = self._normalize_process_name(item)
-            if text:
-                names.add(text)
-        return names
-
-    def _denied_path_keywords(self, payload: dict[str, Any]) -> tuple[str, ...]:
-        keywords: list[str] = []
-        for item in payload.get("blocked_path_keywords", []):
-            text = self._normalize_process_image_path(item)
-            if text:
-                keywords.append(text)
-        return tuple(keywords)
-
-    def _load_process_denylist_payload(self) -> dict[str, Any] | None:
-        cache = getattr(self, "_process_denylist_cache", None)
-        if isinstance(cache, dict):
-            return cache
-        try:
-            payload = json.loads(process_denylist_path().read_text(encoding="utf-8"))
-        except Exception as exc:
-            # Do NOT cache the failure so a transient error (e.g. file briefly
-            # locked) can recover on a later poll. Log once per failure streak
-            # to avoid flooding the poll loop.
-            if not self._denylist_unavailable_logged:
-                self._denylist_unavailable_logged = True
-                self._log(tr("Process denylist unavailable ({error}); blocking all processes.").format(error=exc))
-            return None
-        if not isinstance(payload, dict):
-            payload = {}
-        self._process_denylist_cache = payload
-        self._denylist_unavailable_logged = False
-        return payload
-
-    def _is_denied_process_image_path(self, image_path: str) -> bool:
-        payload = self._load_process_denylist_payload()
-        if payload is None:
-            return True  # Fail closed (see _is_denied_process_name).
-        normalized = self._normalize_process_image_path(image_path)
-        if not normalized:
-            return False
-        return any(keyword in normalized for keyword in self._denied_path_keywords(payload))
-
-    def _normalize_process_name(self, name: str) -> str:
-        text = str(name or "").strip().lower()
-        if text.endswith(".exe"):
-            text = text[:-4]
-        return text
-
-    def _normalize_process_image_path(self, image_path: str) -> str:
-        return str(image_path or "").strip().lower().replace("/", "\\")

@@ -5,7 +5,6 @@ import os
 from pathlib import Path
 from typing import Literal, Tuple, get_args, get_origin
 
-from core import os_support
 from utils.atomic_io import atomic_write_json
 
 
@@ -114,34 +113,12 @@ class playbackconfig:
 
 
 @dataclass
-class memoryvalueconfig:
-    offsets: str
-    value_type: Literal["float", "bool", "str", "int"]
-    length: int
-    encoding: str
-    bit_pos: int
-    multiplier: float
-
-
-@dataclass
-class memorydeckconfig:
-    time: memoryvalueconfig
-    sample_index: memoryvalueconfig
-    path: memoryvalueconfig
-    active: memoryvalueconfig
-    loaded: memoryvalueconfig
-
-
-@dataclass
 class externalsyncconfig:
     enabled: bool
-    mode: Literal["time", "sample_index"]
-    total_sample_count_source: Literal["reference_sample_rate", "file"]
-    reference_sample_rate: int
-    memory_process_name: str
-    memory_process_pid: int
-    memory_deck1: memorydeckconfig
-    memory_deck2: memorydeckconfig
+    # where the deck's OSC messages are received (core.external_sync): 127.0.0.1 this computer only; another
+    # address takes them from that network too (then only library tracks are followed)
+    osc_host: str
+    osc_port: int
 
 
 # Every analysis runs at this sample rate (the learned models -- beat, phrase, JumpCUE, key -- were trained on it).
@@ -335,24 +312,6 @@ def _coerce_scalar(type_hint, value):
     return value
 
 
-def _default_memory_value(
-    *,
-    offsets: str,
-    value_type: Literal["float", "bool", "str", "int"],
-    length: int = 0,
-    encoding: str = "utf-8",
-    bit_pos: int = 0,
-    multiplier: float = 1.0,
-) -> memoryvalueconfig:
-    return memoryvalueconfig(
-        offsets=offsets,
-        value_type=value_type,
-        length=length,
-        encoding=encoding,
-        bit_pos=bit_pos,
-        multiplier=multiplier,
-    )
-
 
 def default_cfg():
     lcfg = libconfig(
@@ -432,28 +391,7 @@ def default_cfg():
         midi_input="",
         midi_jog_ticks=720,
     )
-    xcfg = externalsyncconfig(
-        enabled=False,
-        mode="sample_index",
-        total_sample_count_source="reference_sample_rate",
-        reference_sample_rate=44100,
-        memory_process_name="",
-        memory_process_pid=0,
-        memory_deck1=memorydeckconfig(
-            time=_default_memory_value(offsets="0", value_type="float"),
-            sample_index=_default_memory_value(offsets="0", value_type="int"),
-            path=_default_memory_value(offsets="0", value_type="str", length=2048),
-            active=_default_memory_value(offsets="0", value_type="bool", bit_pos=0),
-            loaded=_default_memory_value(offsets="0", value_type="bool", bit_pos=0),
-        ),
-        memory_deck2=memorydeckconfig(
-            time=_default_memory_value(offsets="0", value_type="float"),
-            sample_index=_default_memory_value(offsets="0", value_type="int"),
-            path=_default_memory_value(offsets="0", value_type="str", length=2048),
-            active=_default_memory_value(offsets="0", value_type="bool", bit_pos=0),
-            loaded=_default_memory_value(offsets="0", value_type="bool", bit_pos=0),
-        ),
-    )
+    xcfg = externalsyncconfig(enabled=False, osc_host="127.0.0.1", osc_port=39321)
     # CUE points at the start of an interlude and of the outro (not between two
     # of them)
     cue_rules = {
@@ -558,6 +496,4 @@ def load_cfg() -> config:
         atomic_write_json("config.json", cfg.to_dict(), ensure_ascii=True, indent=None)
     _ensure_library_dir(cfg)
     _ensure_feature_cache_dirs(cfg)
-    if not os_support.MEMORY_SYNC:
-        cfg.externalsyncconfig.enabled = False   # no memory reads on this system (macOS)
     return cfg

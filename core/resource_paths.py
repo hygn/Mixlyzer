@@ -4,12 +4,11 @@ import sys
 from pathlib import Path
 
 # Single source of truth for locating read-only resources that ship with the
-# application (e.g. the External Sync process denylist).
+# application (the models, icons, catalogs).
 #
 # These files must NOT be resolved relative to the current working directory:
-# if the app is launched from another folder the CWD-relative lookup silently
-# fails, and security-critical files like ``process_denylist.json`` would then
-# load as empty and fail OPEN. Anchoring to this module's location keeps the
+# a CWD-relative lookup fails, or takes another folder's file, when the app is
+# launched from elsewhere. Anchoring to this module's location keeps the
 # lookup stable regardless of CWD.
 #
 # This module lives at ``<project_root>/core/resource_paths.py`` so the project
@@ -44,7 +43,3 @@ def setting_path(text: str) -> str:
     bundled = resource_path(text)
     return str(bundled) if bundled.exists() else text
 
-
-def process_denylist_path() -> Path:
-    """Absolute path to the External Sync process denylist."""
-    return resource_path("process_denylist.json")
