@@ -16,7 +16,7 @@
 
 use std::sync::atomic::Ordering;
 
-use crate::device::Ring;
+use crate::device::Port;
 
 // a thread's state (st::THREADS: the engine's in bits 0-7, the output's in bits 8-15)
 pub const API_OWN: u32 = 0; // the audio API's own thread (not the engine's to change) / not known yet
@@ -79,38 +79,38 @@ impl Sched {
     }
 
     /// The output thread's state: its backend's (Windows' own WASAPI thread) or the engine's doing (Linux).
-    pub fn output_state(&self, ring: &Ring) -> u32 {
-        let own = ring.output_state.load(Ordering::Relaxed);
+    pub fn output_state(&self, port: &Port) -> u32 {
+        let own = port.output_state.load(Ordering::Relaxed);
         if own != API_OWN { own } else { self.output }
     }
 
     /// The setting (op::SET_PROCESS), on the engine thread: applied to the process, this thread and the output
     /// thread known.
-    pub fn set(&mut self, priority: u32, throttling: bool, ring: &Ring) {
+    pub fn set(&mut self, priority: u32, throttling: bool, port: &Port) {
         self.priority = priority.min(PRIORITY_HIGH);
         self.throttling = throttling;
         self.asked = true;
-        self.apply(ring);
+        self.apply(port);
         eprintln!("[AudioEngine] priority {} power throttling {}: engine thread {}, output thread {}, power {}",
-            self.priority, self.throttling, self.engine, self.output_state(ring), self.power);
+            self.priority, self.throttling, self.engine, self.output_state(port), self.power);
     }
 
     /// Each tick: an output thread not seen before (the device opened again) gets the setting.
-    pub fn follow_output(&mut self, ring: &Ring) {
+    pub fn follow_output(&mut self, port: &Port) {
         #[cfg(target_os = "linux")]
         if self.asked {
-            let tid = ring.output_tid.load(Ordering::Relaxed);
+            let tid = port.output_tid.load(Ordering::Relaxed);
             if tid != 0 && tid != self.linux.output_tid {
-                self.output = self.linux.output(tid, self.priority, self.throttling, ring);
+                self.output = self.linux.output(tid, self.priority, self.throttling, port);
                 self.power = self.linux.power();
             }
         }
         #[cfg(not(target_os = "linux"))]
-        let _ = ring;
+        let _ = port;
     }
 
     #[cfg(windows)]
-    fn apply(&mut self, _ring: &Ring) {
+    fn apply(&mut self, _port: &Port) {
         use windows_sys::Win32::System::Threading::{
             ABOVE_NORMAL_PRIORITY_CLASS, GetCurrentProcess, HIGH_PRIORITY_CLASS, NORMAL_PRIORITY_CLASS,
             PROCESS_POWER_THROTTLING_CURRENT_VERSION, PROCESS_POWER_THROTTLING_EXECUTION_SPEED,
@@ -141,19 +141,19 @@ impl Sched {
     }
 
     #[cfg(target_os = "linux")]
-    fn apply(&mut self, ring: &Ring) {
+    fn apply(&mut self, port: &Port) {
         self.engine = self.linux.engine(self.priority, self.throttling);
         // the output thread takes its timer slack itself (only a thread's own can be set)
-        ring.output_slack.store(if self.throttling { 1 } else { 2 }, Ordering::Relaxed);
-        let tid = ring.output_tid.load(Ordering::Relaxed);
+        port.output_slack.store(if self.throttling { 1 } else { 2 }, Ordering::Relaxed);
+        let tid = port.output_tid.load(Ordering::Relaxed);
         if tid != 0 {
-            self.output = self.linux.output(tid, self.priority, self.throttling, ring);
+            self.output = self.linux.output(tid, self.priority, self.throttling, port);
         }
         self.power = self.linux.power();
     }
 
     #[cfg(target_os = "macos")]
-    fn apply(&mut self, _ring: &Ring) {
+    fn apply(&mut self, _port: &Port) {
         self.engine = mac::engine_thread(self.priority);
         if self.throttling {
             if let Some(activity) = self.activity.take() {
@@ -169,7 +169,7 @@ impl Sched {
     }
 
     #[cfg(not(any(windows, target_os = "linux", target_os = "macos")))]
-    fn apply(&mut self, _ring: &Ring) {}
+    fn apply(&mut self, _port: &Port) {}
 }
 
 #[cfg(windows)]
@@ -198,7 +198,7 @@ fn start_engine_thread() -> u32 {
 
 /// In the output callback (Linux): its thread id for the engine thread, and the timer slack it was asked for.
 #[cfg(target_os = "linux")]
-pub fn output_thread(ring: &Ring) {
+pub fn output_thread(port: &Port) {
     use std::cell::Cell;
     thread_local! {
         static TID: Cell<u64> = const { Cell::new(0) };
@@ -210,10 +210,10 @@ pub fn output_thread(ring: &Ring) {
         }
         t.get()
     });
-    if ring.output_tid.load(Ordering::Relaxed) != tid {
-        ring.output_tid.store(tid, Ordering::Relaxed);
+    if port.output_tid.load(Ordering::Relaxed) != tid {
+        port.output_tid.store(tid, Ordering::Relaxed);
     }
-    let wanted = ring.output_slack.load(Ordering::Relaxed);
+    let wanted = port.output_slack.load(Ordering::Relaxed);
     SLACK.with(|s| {
         if wanted != 0 && s.get() != wanted {
             s.set(wanted);
@@ -263,7 +263,7 @@ mod linux {
             state
         }
 
-        pub fn output(&mut self, tid: u64, priority: u32, throttling: bool, _ring: &Ring) -> u32 {
+        pub fn output(&mut self, tid: u64, priority: u32, throttling: bool, _port: &Port) -> u32 {
             if tid != self.output_tid {
                 // a new output thread: the audio API's own when it is already real-time (JACK's)
                 self.output_tid = tid;

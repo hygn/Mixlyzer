@@ -5,7 +5,7 @@
 //! playing. Exclusive: the device to this app alone, at the session's rate and channels in a format the device
 //! takes (float32, int32, int16), its smallest period, the engine's audio straight to the driver; other apps
 //! cannot play on it meanwhile. Both event driven, on a thread of their own registered with MMCSS as Pro Audio,
-//! reading the engine's ring (device.rs) as cpal's callback does.
+//! reading what the engine gives the device (device.rs Source: the main ring, or a bridge) as cpal's callback does.
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -34,7 +34,7 @@ use windows::Win32::System::Threading::{
 use windows::Win32::System::Variant::VT_LPWSTR;
 use windows::core::w;
 
-use crate::device::{CallbackState, Ring};
+use crate::device::{CallbackState, Source};
 
 const SPEAKER_STEREO: u32 = 0x3; // front left | front right
 
@@ -48,26 +48,24 @@ enum Sample {
 /// A running WASAPI output; dropped, its thread stops and the device is let go.
 pub struct WasapiOutput {
     stop: Arc<AtomicBool>,
-    run: Arc<AtomicBool>,
     thread: Option<JoinHandle<()>>,
 }
 
 impl WasapiOutput {
     /// Opens the device named ``name`` (None or "": the default; one not found: the default too), ``exclusive``
     /// or shared, at ``rate`` / ``channels``; returns it, the device's name and its period (ms).
-    pub fn open(ring: Arc<Ring>, rate: u32, channels: usize, name: Option<&str>, exclusive: bool)
+    pub fn open(source: Source, rate: u32, channels: usize, name: Option<&str>, exclusive: bool)
         -> Result<(WasapiOutput, String, f64), String> {
         let stop = Arc::new(AtomicBool::new(false));
-        let run = Arc::new(AtomicBool::new(true));
         let (tx, rx) = mpsc::channel();
         let wanted = name.map(str::to_string);
-        let (s, r) = (stop.clone(), run.clone());
+        let s = stop.clone();
         let thread = std::thread::Builder::new()
             .name("WasapiOutput".into())
-            .spawn(move || render_thread(ring, rate, channels, wanted, exclusive, s, r, tx))
+            .spawn(move || render_thread(source, rate, channels, wanted, exclusive, s, tx))
             .map_err(|e| e.to_string())?;
         match rx.recv() {
-            Ok(Ok((device, period_ms))) => Ok((WasapiOutput { stop, run, thread: Some(thread) }, device, period_ms)),
+            Ok(Ok((device, period_ms))) => Ok((WasapiOutput { stop, thread: Some(thread) }, device, period_ms)),
             Ok(Err(e)) => {
                 let _ = thread.join();
                 Err(e)
@@ -77,14 +75,6 @@ impl WasapiOutput {
                 Err("the output thread ended".into())
             }
         }
-    }
-
-    pub fn play(&self) {
-        self.run.store(true, Ordering::Relaxed);
-    }
-
-    pub fn pause(&self) {
-        self.run.store(false, Ordering::Relaxed);
     }
 }
 
@@ -234,7 +224,9 @@ unsafe fn open_shared(device: &IMMDevice, rate: u32, channels: usize) -> Result<
         let result = (|| {
             let (mix_rate, mix_channels) = ({ (*mix).nSamplesPerSec }, { (*mix).nChannels });
             if mix_rate != rate || mix_channels as usize != channels {
-                return Err(format!("the mix format ({mix_rate} Hz / {mix_channels} ch) is not the session's"));
+                return Err(format!(
+                    "the mix format ({mix_rate} Hz / {mix_channels} ch) is not the one asked for ({rate} Hz / {channels} ch)"
+                ));
             }
             let sample = sample_of(mix).ok_or("unsupported mix format")?;
             let (mut default, mut fundamental, mut min, mut max) = (0u32, 0u32, 0u32, 0u32);
@@ -264,20 +256,20 @@ unsafe fn finish(client: IAudioClient, sample: Sample, period_ms: f64) -> Result
 
 #[allow(clippy::too_many_arguments)]
 fn render_thread(
-    ring: Arc<Ring>,
+    source: Source,
     rate: u32,
     channels: usize,
     name: Option<String>,
     exclusive: bool,
     stop: Arc<AtomicBool>,
-    run: Arc<AtomicBool>,
     ready: mpsc::Sender<Result<(String, f64), String>>,
 ) {
     unsafe {
         let _ = CoInitializeEx(None, COINIT_MULTITHREADED);
         let mut task = 0u32;
         let mmcss = AvSetMmThreadCharacteristicsW(w!("Pro Audio"), &mut task).is_ok();
-        ring.output_state.store(if mmcss { crate::sched::REALTIME } else { crate::sched::NORMAL },
+        let port = source.port();
+        port.output_state.store(if mmcss { crate::sched::REALTIME } else { crate::sched::NORMAL },
             std::sync::atomic::Ordering::Relaxed);
         let opened = (|| {
             let enumerator: IMMDeviceEnumerator =
@@ -295,35 +287,31 @@ fn render_thread(
             }
         };
         let _ = ready.send(Ok((device_name, o.period_ms)));
-        let mut state = CallbackState::new(channels);
+        let mut state = CallbackState::new(channels, rate as f64);
         let latency_extra = o.client.GetStreamLatency().unwrap_or(0) as f64 / 1e7;
-        let mut running = false;
         let period_s = o.period_ms / 1000.0;
         let mut last_wake = 0.0f64;
-        while !stop.load(Ordering::Relaxed) {
-            let want = run.load(Ordering::Relaxed);
-            if want != running {
-                let r = if want { o.client.Start() } else { o.client.Stop() };
-                if r.is_err() {
-                    ring.failed.store(true, Ordering::Relaxed);
-                    break;
-                }
-                running = want;
+        // the buffer filled (with silence) before it starts: an exclusive stream's events may not come otherwise
+        // (a DJ controller's USB driver: one in 200 ms)
+        let free = if exclusive { Ok(o.buffer) } else { o.client.GetCurrentPadding().map(|p| o.buffer - p) };
+        if let Ok(frames) = free {
+            if frames > 0 && o.render.GetBuffer(frames).is_ok() {
+                let _ = o.render.ReleaseBuffer(frames, 2); // AUDCLNT_BUFFERFLAGS_SILENT
             }
-            if !running {
-                std::thread::sleep(std::time::Duration::from_millis(10));
-                last_wake = 0.0;
-                continue;
-            }
+        }
+        if o.client.Start().is_err() {
+            port.failed.store(true, Ordering::Relaxed);
+        }
+        while !stop.load(Ordering::Relaxed) && !port.failed.load(Ordering::Relaxed) {
             if WaitForSingleObject(o.event, 200) != WAIT_OBJECT_0 {
                 continue;
             }
             let woke = crate::clock::now();
-            if last_wake > 0.0 && ring.sound_due.load(Ordering::Relaxed) {
+            if last_wake > 0.0 && port.sound_due.load(Ordering::Relaxed) {
                 let gap = woke - last_wake;
-                ring.max_gap_us.fetch_max((gap * 1e6) as u64, Ordering::Relaxed);
+                port.max_gap_us.fetch_max((gap * 1e6) as u64, Ordering::Relaxed);
                 if gap > 1.8 * period_s {
-                    ring.late.fetch_add(1, Ordering::Relaxed);
+                    port.late.fetch_add(1, Ordering::Relaxed);
                 }
             }
             last_wake = woke;
@@ -334,7 +322,7 @@ fn render_thread(
                 match o.client.GetCurrentPadding() {
                     Ok(p) => (o.buffer - p, p),
                     Err(_) => {
-                        ring.failed.store(true, Ordering::Relaxed);
+                        port.failed.store(true, Ordering::Relaxed);
                         break;
                     }
                 }
@@ -343,18 +331,18 @@ fn render_thread(
                 continue;
             }
             let Ok(ptr) = o.render.GetBuffer(frames) else {
-                ring.failed.store(true, Ordering::Relaxed);
+                port.failed.store(true, Ordering::Relaxed);
                 break;
             };
             let n = frames as usize * channels;
             let latency = queued as f64 / rate as f64 + latency_extra;
             match o.sample {
-                Sample::F32 => ring.fill(std::slice::from_raw_parts_mut(ptr as *mut f32, n), &mut state, latency),
-                Sample::I32 => ring.fill(std::slice::from_raw_parts_mut(ptr as *mut i32, n), &mut state, latency),
-                Sample::I16 => ring.fill(std::slice::from_raw_parts_mut(ptr as *mut i16, n), &mut state, latency),
+                Sample::F32 => source.fill(std::slice::from_raw_parts_mut(ptr as *mut f32, n), &mut state, latency),
+                Sample::I32 => source.fill(std::slice::from_raw_parts_mut(ptr as *mut i32, n), &mut state, latency),
+                Sample::I16 => source.fill(std::slice::from_raw_parts_mut(ptr as *mut i16, n), &mut state, latency),
             }
             if o.render.ReleaseBuffer(frames, 0).is_err() {
-                ring.failed.store(true, Ordering::Relaxed);
+                port.failed.store(true, Ordering::Relaxed);
                 break;
             }
         }

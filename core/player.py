@@ -3,12 +3,15 @@ from __future__ import annotations
 import math
 import threading
 import time
+from dataclasses import asdict
 from typing import Optional
 
 import numpy as np
 from PySide6 import QtCore, QtMultimedia
 
-from audioengine.native.client import MIDI_EVENT_GUI, DeckReport, NativeClicks, NativeEngine, NativeFeeder
+from audioengine.native.client import (
+    MIDI_EVENT_GUI, MIDI_EVENT_HOTCUE_SET, NO_CHANNEL, DeckReport, NativeClicks, NativeEngine, NativeFeeder,
+)
 from audioengine.python.clicks import ClickTrack
 from audioengine.python.deck import PythonDeck
 from audioengine.python.feeder import PCMFeeder
@@ -85,7 +88,7 @@ class _AudioWorker(QtCore.QObject):
         "jump_to", "call_at", "set_peak_meter_gain",
         "set_refresh_fps", "set_timestretch", "set_soft_clip", "set_buffer_ms", "set_output_device",
         "set_output_mode", "set_exclusive_rate", "set_process",
-        "tone_hold", "midi_open", "midi_map", "midi_options", "set_midi_learn",
+        "tone_hold", "midi_open", "midi_map", "midi_options", "set_midi_learn", "set_routing", "set_headphones",
     })
     _WAIT_FOR_TRACK = frozenset({
         "play", "pause", "stop", "seek",
@@ -339,6 +342,29 @@ class _AudioWorker(QtCore.QObject):
         """Every message passed on (Settings > MIDI's learn), not only those bound to the GUI's actions."""
         self._midi_learn = bool(learning)
 
+    def set_routing(self, main: str, headphones: dict, booth: dict) -> None:
+        """The native engine's outputs: the master on the main device's channel pair ``main`` ("1-2"), the
+        headphones and the booth as outputconfig's fields say (off, channels of the main device, or a device of
+        their own); the Python engine plays deck 1 on its device's first two channels and has none of them."""
+        if not isinstance(self.feeder, NativeFeeder):
+            return
+        none = (NO_CHANNEL, NO_CHANNEL)
+        on_main = [channel_pair(o.get("channels", "")) or none if o.get("route") == "main_device" else none
+                   for o in (headphones, booth)]
+        self.feeder.set_routing(channel_pair(main) or (0, 1), on_main[0], on_main[1])
+        for k, o in enumerate((headphones, booth)):
+            if o.get("route") == "device":
+                self.feeder.set_aux_output(k, str(o.get("device") or ""), str(o.get("audio_api") or "wasapi"),
+                                           bool(o.get("exclusive")), float(o.get("buffer_ms") or 20),
+                                           channel_pair(o.get("channels", "")) or (0, 1), int(o.get("rate") or 0))
+            else:
+                self.feeder.set_aux_output(k, None)
+
+    def set_headphones(self, master: bool, mix: float) -> None:
+        """The native engine's headphones: the master mixed in (by ``mix``, 0 CUE .. 1 MASTER) or not."""
+        if isinstance(self.feeder, NativeFeeder):
+            self.feeder.set_headphones(master, mix)
+
     def scrub_begin(self) -> None:
         self.feeder.set_scrubbing(True)
 
@@ -484,9 +510,18 @@ class _AudioWorker(QtCore.QObject):
         if isinstance(self.feeder, NativeFeeder):
             events = self.feeder.midi_events()
             if not self._midi_learn:
-                events = [e for e in events if e[3] & MIDI_EVENT_GUI]
+                events = [e for e in events if e[3] & (MIDI_EVENT_GUI | MIDI_EVENT_HOTCUE_SET)]
             if events:
                 self.midi_events.emit(events)
+
+
+def channel_pair(text: str) -> tuple[int, int] | None:
+    """A setting's channel pair ("3-4", 1-based) as the engine's (2, 3); "" or malformed: None."""
+    try:
+        left, right = (int(v) - 1 for v in str(text or "").split("-"))
+    except ValueError:
+        return None
+    return (left, right) if 0 <= left < 64 and 0 <= right < 64 else None
 
 
 def qt_output_device(name: str) -> QtMultimedia.QAudioDevice:
@@ -768,15 +803,34 @@ class PlayerController(QtCore.QObject):
         the app's own process and has neither."""
         self._send("set_process", str(priority or "high"), bool(power_throttling))
 
-    def output_devices(self) -> tuple[str, list[str]]:
-        """(the output device in use, the output devices) as the engine that plays names them (they differ by
-        engine on some systems)."""
+    def set_routing(self, main: str, headphones, booth) -> None:
+        """The native engine's outputs: the master on the main device's channel pair ``main`` ("1-2"), the
+        headphones and the booth (config.outputconfig: off, channels of the main device, or a device of their
+        own)."""
+        self._send("set_routing", str(main or "1-2"), asdict(headphones), asdict(booth))
+
+    def set_headphones(self, master: bool, mix: float) -> None:
+        """The native engine's headphones: the CUE'd channels, and the master mixed in by ``mix`` (0 CUE .. 1
+        MASTER) with ``master`` (off for a device that mixes it in itself)."""
+        self._send("set_headphones", bool(master), float(mix))
+
+    def output_channels(self) -> int:
+        """The output device's channels (the native engine's; the Python engine: 2)."""
+        feeder = self._audio_worker.feeder
+        return feeder.output_channels() if isinstance(feeder, NativeFeeder) else 2
+
+    def output_devices(self, api: Optional[str] = None) -> tuple[str, list[str], dict[str, int]]:
+        """(the output device in use, the output devices, their channels by name ("": the system's default's)) as
+        the engine that plays names them (they differ by engine on some systems); the native engine's of ``api``
+        (None: its main output's)."""
         feeder = self._audio_worker.feeder
         if isinstance(feeder, NativeFeeder):
-            return feeder.output_devices()   # the engine it holds now (started again for another rate)
+            return feeder.output_devices(api)   # the engine it holds now (started again for another rate)
         # the Python engine: the device it was asked for (QAudioSink does not say which it opened)
         current = qt_output_device(self._audio_worker._device_name).description()
-        return current, [d.description() for d in QtMultimedia.QMediaDevices.audioOutputs()]
+        devices = QtMultimedia.QMediaDevices.audioOutputs()
+        channels = {d.description(): d.maximumChannelCount() for d in devices}
+        return current, [d.description() for d in devices], channels
 
     def shutdown(self) -> None:
         if self._audio_thread.isRunning():

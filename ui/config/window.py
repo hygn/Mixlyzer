@@ -210,6 +210,12 @@ class SettingsDialog(
         self.cb_native_power.setCurrentIndex(1 if p.native_power_throttling else 0)
         self._output_device = p.output_device
         self._load_output_devices(p.output_device)
+        self.grp_output_headphones.set_config(p.output_headphones)
+        self.grp_output_headphones.cb_master_mix.setChecked(bool(p.headphones_master_mix))
+        self.grp_output_headphones.sp_cue_mix.setValue(int(p.headphones_cue_mix))
+        self.grp_output_headphones.sp_cue_mix.setEnabled(bool(p.headphones_master_mix))
+        self.grp_output_booth.set_config(p.output_booth)
+        self._load_output_routes(p.output_main)
         self._set_midi_config(p)
 
         # analysis
@@ -346,6 +352,11 @@ class SettingsDialog(
                 tempo_range=int(getattr(getattr(self._current_cfg, "playbackconfig", None), "tempo_range", 100)),
                 midi_input=self._midi_input(),
                 midi_jog_ticks=int(self.sp_midi_jog_ticks.value()),
+                output_main=str(self.cb_output_main.currentData() or "1-2"),
+                output_headphones=self.grp_output_headphones.get_config(),
+                output_booth=self.grp_output_booth.get_config(),
+                headphones_master_mix=bool(self.grp_output_headphones.cb_master_mix.isChecked()),
+                headphones_cue_mix=int(self.grp_output_headphones.sp_cue_mix.value()),
             ),
             externalsyncconfig=externalsyncconfig(
                 enabled=bool(self.cb_external_sync_enabled.isChecked()),
@@ -384,5 +395,6 @@ class SettingsDialog(
         self._reset_playback_monitor()
         # the devices connected now (one plugged in since)
         self._load_output_devices(str(self.cb_output_device.currentData() or getattr(self, "_output_device", "")))
+        self._load_output_routes(str(self.cb_output_main.currentData() or "1-2"))
         self._load_shortcut_settings()  # the edits not kept are dropped
         self._load_midi_settings()

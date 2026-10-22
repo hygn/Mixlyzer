@@ -13,23 +13,25 @@
 //! is; after a jump, a new one is offered the beats after where it landed too (tapped in a row). The jump is
 //! dropped when playback stops or the playhead leaves the beats it was offered. Stopped: the playhead moves there.
 //!
-//! The MIDI controller's bindings (op::MIDI_MAP) are messages to actions: a button (a note or a CC, pressed
-//! above 0), a fader (a CC, 7 or 14 bits: MSB at data1, LSB at data1 + 32), a jog wheel (relative CC around 64)
-//! and its touch (a note). The GUI's own actions (library, editor ...) are passed on to it (ipc.rs MIDI_EVENTS).
+//! A MIDI controller's messages reach a deck through controller.rs (the bindings, the lamps, the meters); its
+//! mixer channel's knobs (trim, EQ) set the deck's channel strip (mixer.rs), rendered with it.
 //!
 //! The jog wheel as rekordbox's: touched, the record is held and follows the platter (both its rotation messages:
 //! a DDJ sends the scratch CC or, out of its vinyl mode and once the hand is off, the bend CC); let go while the
 //! platter still turns (a spin, a backspin), the record follows it on until it stops, then plays (or rests) as
 //! before. Not held, a rotation bends the tempo.
 //!
-//! The controller's lights (each binding's lamp): PLAY and CUE as above, a JumpCUE's pad lit while it is set
-//! (blinking while its jump is armed), as rekordbox's hot cue pads; the level meter (LEVEL_METER, a CC) as the
-//! GUI's peak meter: the heard peak times its gain, -24 - 0 dBFS as 0 - 127, falling 24 dB/s.
+//! Up to MAX_DECKS decks (Decks): deck 1 always, the others made when first used, each rendering its own lanes.
+
+use std::sync::Arc;
 
 use crate::clock;
 use crate::engine::Engine;
-use crate::ipc::{Control, MIDI_EVENT_GUI, Reader, act};
-use crate::midi::Midi;
+
+use crate::controller::{LAMP_CUE, LAMP_PLAY};
+use crate::device::Ring;
+use crate::ipc::{MAX_DECKS, Reader, act};
+use crate::mixer::{self, MixParams};
 
 const CUE_AT_SEC: f64 = 0.001; // the playhead is on the cue point this close to it
 const JUMP_CANDIDATE_BEATS: usize = 8;
@@ -48,25 +50,10 @@ const JOG_STOP_SEC: f64 = 0.05;
 const BEND_PER_TURN: f64 = 0.1;
 const BEND_TAU_SEC: f64 = 0.08;
 const BEND_MAX: f64 = 0.5;
+// a pitch bend button held: the tempo bent this much (a CDJ's PITCH BEND -/+)
+const BUTTON_BEND: f64 = 0.04;
 const SEARCH_SPEED: f64 = 16.0; // the jog's search: this many times the record's speed
 const VOLUME_CURVE_GAMMA: f64 = 0.4; // utils/volume.py
-// a binding's lamp (ipc.rs op::MIDI_MAP): 1 - 26 the JumpCUE A - Z
-pub const LAMP_PLAY: u8 = 32;
-pub const LAMP_CUE: u8 = 33;
-// the level meter: ui/track_info_panel.py VerticalPeakMeter's scale and fall; sent at most this often
-const METER_FLOOR_DBFS: f64 = -24.0;
-const METER_FALL_DB_PER_SEC: f64 = 24.0;
-const METER_INTERVAL_SEC: f64 = 0.02;
-
-struct Binding {
-    status: u8,
-    data1: u8,
-    hires: bool,
-    lamp: u8,
-    action: u32,
-    msb: u8,
-    lsb: u8,
-}
 
 pub struct Deck {
     rate: f64,
@@ -83,23 +70,19 @@ pub struct Deck {
     landing: Option<(f64, f64)>,
     jumped_seen: u64,
     pub tempo_range: u32,
-    jog_ticks: u32,
-    bindings: Vec<Binding>,
+    pub jog_ticks: u32,
+    // the mixer channel's knobs (0 - 1, the middle 0 dB): trim, EQ low / mid / high
+    trim_knob: f64,
+    eq_knobs: [f64; 3],
     jog_held: bool,     // the record held: the hand on the platter, or the platter let go of still turning
     jog_spinning: bool, // let go of while it turned: held until it stops
     jog_last: f64,
     jog_rested: bool,
     bend: f64,
+    button_bend: f64,
     bend_ticks: f64,
     search_ticks: f64,
     last_tick: f64,
-    midi: Option<Midi>,
-    pub midi_state: u32,
-    lamps_sent: Option<u64>,
-    meter_gain: f64,
-    meter_db: f64,
-    meter_sent: Option<u8>,
-    meter_at: f64,
 }
 
 impl Deck {
@@ -120,22 +103,17 @@ impl Deck {
             jumped_seen: 0,
             tempo_range: 100,
             jog_ticks: 720,
-            bindings: vec![],
+            trim_knob: 0.5,
+            eq_knobs: [0.5; 3],
             jog_held: false,
             jog_spinning: false,
             jog_last: 0.0,
             jog_rested: true,
             bend: 0.0,
+            button_bend: 0.0,
             bend_ticks: 0.0,
             search_ticks: 0.0,
             last_tick: clock::now(),
-            midi: None,
-            midi_state: 0,
-            lamps_sent: None,
-            meter_gain: 1.0,
-            meter_db: METER_FLOOR_DBFS,
-            meter_sent: None,
-            meter_at: 0.0,
         }
     }
 
@@ -191,7 +169,7 @@ impl Deck {
         let v = self.volume.powf(VOLUME_CURVE_GAMMA);
         let base = if v > 0.99 { 1.0 } else { -(1.0 - v).ln() / 100f64.ln() };
         let trim = 10f64.powf(self.trim_db / 20.0).clamp(0.0, 1.0);
-        e.set_music_gain((base * trim).clamp(0.0, 1.0));
+        e.strip.set_fader((base * trim).clamp(0.0, 1.0));
     }
 
     pub fn set_jog_ticks(&mut self, jog_ticks: u32) {
@@ -223,6 +201,12 @@ impl Deck {
             if pressed { self.cue_down(e) } else { self.cue_up(e) }
             return;
         }
+        if code == act::BEND_DOWN || code == act::BEND_UP {
+            // a pitch bend button: the tempo bent while it is held
+            let bend = if code == act::BEND_UP { BUTTON_BEND } else { -BUTTON_BEND };
+            self.button_bend = if pressed { bend } else { 0.0 };
+            return;
+        }
         if !pressed {
             return;
         }
@@ -240,6 +224,12 @@ impl Deck {
                 self.previewing = false;
                 e.pause();
                 e.seek(0.0);
+            }
+            act::TRACK_START => e.seek(0.0), // playing on, as rekordbox's SHIFT + CUE
+            c if (act::BEAT_JUMP..act::BEAT_JUMP + 2 * act::BEAT_JUMP_SIZES.len() as u32).contains(&c) => {
+                let k = (c - act::BEAT_JUMP) as usize;
+                let beats = act::BEAT_JUMP_SIZES[k / 2];
+                self.step_beats(e, if k % 2 == 1 { beats } else { -beats }, false);
             }
             act::BEAT_BACK => self.step_beats(e, -1, false),
             act::BEAT_FORWARD => self.step_beats(e, 1, false),
@@ -398,97 +388,11 @@ impl Deck {
         self.armed = Some((dest, ranges));
     }
 
-    // MIDI
-    pub fn open_midi(&mut self, name: &str, wake: Option<std::thread::Thread>) {
-        self.close_midi();
-        if name.is_empty() {
-            return;
-        }
-        match Midi::open(name, wake) {
-            Ok(m) => {
-                eprintln!("[AudioEngine] MIDI input: {}", m.name);
-                self.midi = Some(m);
-                self.midi_state = 1;
-            }
-            Err(err) => {
-                eprintln!("[AudioEngine] {err}");
-                self.midi_state = 2;
-            }
-        }
-    }
-
-    pub fn close_midi(&mut self) {
-        self.send_lamps(0, None); // the controller's lights out
-        self.send_meter(0);
-        self.midi = None;
-        self.midi_state = 0;
-        self.lamps_sent = None;
-    }
-
-    pub fn set_bindings(&mut self, payload: &[u8]) {
-        let mut r = Reader::new(payload);
-        let n = r.u32().unwrap_or(0);
-        self.bindings.clear();
-        for _ in 0..n {
-            let (Some(status), Some(data1), Some(flags), Some(lamp), Some(action)) =
-                (r.u8(), r.u8(), r.u8(), r.u8(), r.u32())
-            else {
-                break;
-            };
-            self.bindings.push(Binding { status, data1, hires: flags & 1 != 0, lamp, action, msb: 0, lsb: 0 });
-        }
-        self.lamps_sent = None;
-        self.meter_sent = None;
-    }
-
-    pub fn set_meter_gain(&mut self, gain: f64) {
-        self.meter_gain = if gain.is_finite() { gain.max(0.0) } else { 1.0 };
-    }
-
-    /// The messages come since the last call: each acted on, and into the GUI's ring.
-    pub fn read_midi(&mut self, e: &mut Engine, ctl: &Control) {
-        let Some(midi) = self.midi.as_ref() else { return };
-        for (at, msg) in midi.drain() {
-            let (flags, gui_action) = self.message(e, at, msg);
-            ctl.put_midi_event(msg, flags, gui_action);
-        }
-    }
-
-    /// One message acted on: (flags, the GUI's action) for the GUI's ring.
-    fn message(&mut self, e: &mut Engine, at: f64, msg: [u8; 3]) -> (u8, u32) {
-        let [status, d1, d2] = msg;
-        // the response measured (play / pause / seek heard) from this message's arrival, as a GUI command's from
-        // its sending
-        e.command_at = at;
-        let mut flags = 0u8;
-        let mut gui_action = 0u32;
-        for i in 0..self.bindings.len() {
-            let b = &mut self.bindings[i];
-            if b.status != status || b.action == act::LEVEL_METER {
-                continue; // an output
-            }
-            let value = if b.data1 == d1 {
-                b.msb = d2;
-                if b.hires { ((d2 as u32) << 7 | b.lsb as u32, 16383.0) } else { (d2 as u32, 127.0) }
-            } else if b.hires && d1 == b.data1.wrapping_add(32) && status & 0xF0 == 0xB0 {
-                b.lsb = d2;
-                ((b.msb as u32) << 7 | d2 as u32, 16383.0)
-            } else {
-                continue;
-            };
-            let action = b.action;
-            if action >= act::GUI {
-                flags |= MIDI_EVENT_GUI;
-                gui_action = action;
-                continue;
-            }
-            self.midi_value(e, action, value, d2, at);
-        }
-        (flags, gui_action)
-    }
-
-    fn midi_value(&mut self, e: &mut Engine, action: u32, (value, top): (u32, f64), d2: u8, at: f64) {
-        let ticks = d2 as f64 - 64.0; // a relative CC: 65 one step on, 63 one back
+    /// A bound message's value acted on: a fader's ``value`` of ``top``, a knob's relative ``steps``, a button
+    /// pressed (``d2`` above 0) or let go.
+    pub(crate) fn midi_value(&mut self, e: &mut Engine, action: u32, (value, top): (u32, f64), steps: i32, d2: u8,
+                             at: f64) {
+        let ticks = steps as f64;
         match action {
             act::TEMPO_FADER => {
                 let half = (top + 1.0) / 2.0; // the middle: 64 (8192 with 14 bits)
@@ -496,6 +400,14 @@ impl Deck {
                 self.set_tempo(e, 1.0 + norm * self.tempo_range as f64 / 100.0);
             }
             act::VOLUME_FADER => self.set_volume(e, value as f64 / top),
+            act::TRIM => {
+                self.trim_knob = value as f64 / top;
+                e.strip.set_trim(mixer::trim_knob_gain(self.trim_knob));
+            }
+            act::EQ_LOW | act::EQ_MID | act::EQ_HIGH => {
+                self.eq_knobs[(action - act::EQ_LOW) as usize] = value as f64 / top;
+                e.strip.set_eq(self.eq_knobs.map(mixer::eq_knob_gain));
+            }
             act::JOG_TOUCH if d2 > 0 => {
                 self.jog_spinning = false; // the hand back on a turning platter: held again
                 if !self.jog_held {
@@ -570,34 +482,25 @@ impl Deck {
         if self.bend.abs() < 1e-4 {
             self.bend = 0.0;
         }
-        e.set_bend(self.bend);
+        e.set_bend(self.bend + self.button_bend);
         if self.search_ticks != 0.0 && e.has_track() {
             let frames = self.search_ticks * JOG_TURN_SEC * self.rate / self.jog_ticks as f64 * SEARCH_SPEED;
-            e.seek((e.playhead_frame() + frames).clamp(0.0, e.len_frames() as f64));
-        }
-        self.search_ticks = 0.0;
-        let lights = self.lights(e, now);
-        if self.lamps_sent != Some(lights) {
-            let before = self.lamps_sent;
-            self.send_lamps(lights, before);
-            self.lamps_sent = Some(lights);
-        }
-        // the level meter: the GUI meter's reading
-        let peak = e.heard_peak_dbfs() + 20.0 * self.meter_gain.max(1e-9).log10();
-        self.meter_db = peak.max(self.meter_db - METER_FALL_DB_PER_SEC * dt).clamp(METER_FLOOR_DBFS, 0.0);
-        if now - self.meter_at >= METER_INTERVAL_SEC {
-            let value = meter_value(self.meter_db);
-            if self.meter_sent != Some(value) {
-                self.send_meter(value);
-                self.meter_sent = Some(value);
-                self.meter_at = now;
+            if self.jog_held {
+                // the record held: it is moved under the hand (a seek would play the record's sound under the scratch)
+                let target = (e.scratch_target() + frames).clamp(0.0, e.len_frames().saturating_sub(1) as f64);
+                e.scratch_to(target, now);
+                self.jog_last = now;
+                self.jog_rested = false;
+            } else {
+                e.seek((e.playhead_frame() + frames).clamp(0.0, e.len_frames() as f64));
             }
         }
+        self.search_ticks = 0.0;
     }
 
     /// Every light the bindings may show: bit k (0 - 25) the JumpCUE A + k lit (set; blinking while its jump is
     /// armed), bit LAMP_PLAY / LAMP_CUE those buttons' (lamps).
-    fn lights(&self, e: &Engine, now: f64) -> u64 {
+    pub fn lights(&self, e: &Engine, now: f64) -> u64 {
         let lamps = self.lamps(e, now) as u64;
         let mut out = (lamps & 1) << LAMP_PLAY | (lamps >> 1 & 1) << LAMP_CUE;
         if !e.has_track() {
@@ -629,29 +532,6 @@ impl Deck {
         play as u32 | (cue as u32) << 1
     }
 
-    /// The bindings' lights as ``lights`` (lights()), those that changed since ``before`` (None: all).
-    fn send_lamps(&mut self, lights: u64, before: Option<u64>) {
-        let Some(midi) = self.midi.as_mut() else { return };
-        for b in &self.bindings {
-            if b.lamp == 0 || !matches!(b.status & 0xF0, 0x90 | 0xB0) {
-                continue;
-            }
-            let bit = if b.lamp <= 26 { b.lamp - 1 } else { b.lamp };
-            let lit = lights.checked_shr(bit as u32).unwrap_or(0) & 1 != 0;
-            if before.is_some_and(|was| (was.checked_shr(bit as u32).unwrap_or(0) & 1 != 0) == lit) {
-                continue;
-            }
-            midi.send(&[b.status, b.data1, if lit { 0x7F } else { 0 }]);
-        }
-    }
-
-    fn send_meter(&mut self, value: u8) {
-        let Some(midi) = self.midi.as_mut() else { return };
-        for b in self.bindings.iter().filter(|b| b.action == act::LEVEL_METER && b.status & 0xF0 == 0xB0) {
-            midi.send(&[b.status, b.data1, value.min(127)]);
-        }
-    }
-
     // Reported
     pub fn cue_frame(&self, e: &Engine) -> f64 {
         if e.has_track() { self.cue } else { f64::NAN }
@@ -661,121 +541,104 @@ impl Deck {
         self.volume
     }
 
+    /// JumpCUE ``k`` (A + k) is set.
+    pub fn jumpcue_set(&self, k: usize) -> bool {
+        self.jumpcues.get(k).is_some_and(|p| p.is_finite())
+    }
+
     pub fn wants_fast_ticks(&self) -> bool {
         self.jog_held || self.bend != 0.0
     }
 }
 
-/// A level (dBFS, METER_FLOOR_DBFS - 0) as the meter's CC value.
-fn meter_value(db: f64) -> u8 {
-    (127.0 * ((db - METER_FLOOR_DBFS) / -METER_FLOOR_DBFS).clamp(0.0, 1.0)).round() as u8
+/// A deck: its renderer and its controls.
+pub struct Slot {
+    pub engine: Engine,
+    pub deck: Deck,
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::device::Ring;
-    use std::sync::Arc;
+/// What every deck takes alike (the GUI's settings, the controller's jog resolution): a deck made later takes it too.
+#[derive(Clone, Copy)]
+pub struct Shared {
+    pub timestretch: bool,
+    pub buffer_ms: f64,
+    pub trim_db: f64,
+    pub jog_ticks: u32,
+}
 
-    fn deck_with(bindings: &[(u8, u8, bool, u32)]) -> (Deck, Engine) {
-        let ring = Arc::new(Ring::new(48000, 2, 48000.0));
-        let e = Engine::new(48000, 2, ring);
-        let mut d = Deck::new(48000.0);
-        let mut payload = (bindings.len() as u32).to_le_bytes().to_vec();
-        for &(st, d1, hires, action) in bindings {
-            let lamp = if (act::JUMP_A..act::JUMP_A + 8).contains(&action) { (action - act::JUMP_A + 1) as u8 } else { 0 };
-            payload.extend([st, d1, hires as u8, lamp]);
-            payload.extend(action.to_le_bytes());
+/// The decks (up to MAX_DECKS): deck 1 always, on the device's ring; the others made when first used (a command
+/// or a controller's message for them), each on its lanes of the bus.
+pub struct Decks {
+    slots: Vec<Option<Slot>>,
+    rate: u32,
+    ch: usize,
+    lanes: Vec<Arc<Ring>>, // deck k's lane (k = 0: the main device's ring)
+    params: Arc<MixParams>, // its mixer channel's strip
+    pub shared: Shared,
+}
+
+impl Decks {
+    pub fn new(rate: u32, ch: usize, lanes: Vec<Arc<Ring>>, params: Arc<MixParams>) -> Decks {
+        let mut d = Decks {
+            slots: (0..MAX_DECKS).map(|_| None).collect(),
+            rate,
+            ch,
+            lanes,
+            params,
+            shared: Shared { timestretch: false, buffer_ms: 40.0, trim_db: 0.0, jog_ticks: 720 },
+        };
+        d.get(0);
+        d
+    }
+
+    /// Deck ``k`` (0: deck 1), made now if it was not.
+    pub fn get(&mut self, k: usize) -> &mut Slot {
+        let k = k.min(MAX_DECKS - 1);
+        if self.slots[k].is_none() {
+            let mut engine = Engine::new(self.rate, self.ch, self.lanes[k].clone(), self.params.strips[k].clone());
+            let mut deck = Deck::new(self.rate as f64);
+            let s = self.shared;
+            engine.set_timestretch(s.timestretch);
+            engine.set_buffer_ms(s.buffer_ms);
+            deck.set_volume_trim(&mut engine, s.trim_db);
+            deck.set_jog_ticks(s.jog_ticks);
+            self.slots[k] = Some(Slot { engine, deck });
         }
-        d.set_bindings(&payload);
-        (d, e)
+        self.slots[k].as_mut().unwrap()
     }
 
-    #[test]
-    fn tempo_fader_14_bits_over_the_range() {
-        let (mut d, mut e) = deck_with(&[(0xB0, 0x00, true, act::TEMPO_FADER)]);
-        d.tempo_range = 10;
-        d.message(&mut e, 0.0, [0xB0, 0x00, 0x40]); // MSB 64, LSB 0: the middle
-        d.message(&mut e, 0.0, [0xB0, 0x20, 0x00]);
-        assert!((e.factor() - 1.0).abs() < 1e-12, "{}", e.factor());
-        d.message(&mut e, 0.0, [0xB0, 0x00, 0x7F]);
-        d.message(&mut e, 0.0, [0xB0, 0x20, 0x7F]); // the top: +range
-        assert!((e.factor() - 1.1).abs() < 1e-3, "{}", e.factor());
-        d.message(&mut e, 0.0, [0xB0, 0x00, 0x00]);
-        d.message(&mut e, 0.0, [0xB0, 0x20, 0x00]); // the bottom: -range
-        assert!((e.factor() - 0.9).abs() < 1e-12, "{}", e.factor());
+    /// Deck ``k`` if it is there.
+    pub fn slot(&self, k: usize) -> Option<&Slot> {
+        self.slots.get(k).and_then(|s| s.as_ref())
     }
 
-    #[test]
-    fn gui_actions_flagged_and_note_off_read_as_release() {
-        let (mut d, mut e) = deck_with(&[(0x90, 0x46, false, act::GUI + 7)]);
-        assert_eq!(d.message(&mut e, 0.0, [0x90, 0x46, 0x7F]), (MIDI_EVENT_GUI, act::GUI + 7));
-        assert_eq!(d.message(&mut e, 0.0, [0x91, 0x46, 0x7F]), (0, 0)); // another channel: not bound
+    /// The decks there.
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut Slot> {
+        self.slots.iter_mut().flatten()
     }
 
-    #[test]
-    fn volume_fader_and_jog_bend() {
-        let (mut d, mut e) = deck_with(&[(0xB0, 0x13, false, act::VOLUME_FADER), (0xB0, 0x21, false, act::JOG_BEND)]);
-        d.message(&mut e, 0.0, [0xB0, 0x13, 127]);
-        assert_eq!(d.volume(), 1.0);
-        d.message(&mut e, 0.0, [0xB0, 0x13, 0]);
-        assert_eq!(d.volume(), 0.0);
-        for _ in 0..10 {
-            d.message(&mut e, 0.0, [0xB0, 0x21, 0x42]); // two steps on, ten times
-        }
-        assert_eq!(d.bend_ticks, 20.0);
-        d.tick(&mut e);
-        assert!(d.bend > 0.0);
+    pub fn first(&mut self) -> &mut Slot {
+        self.get(0)
     }
 
-    #[test]
-    fn jog_let_go_while_turning_is_held_until_it_stops() {
-        let (mut d, mut e) = deck_with(&[(0x90, 0x36, false, act::JOG_TOUCH), (0xB0, 0x22, false, act::JOG_SCRATCH),
-                                         (0xB0, 0x23, false, act::JOG_BEND)]);
-        d.message(&mut e, clock::now(), [0x90, 0x36, 0x7F]);
-        assert!(e.scratching);
-        d.message(&mut e, clock::now(), [0xB0, 0x22, 0x3C]); // turned back (a backspin)
-        d.message(&mut e, clock::now(), [0x90, 0x36, 0x00]); // let go while turning
-        assert!(e.scratching, "let go while turning: still held");
-        d.message(&mut e, clock::now(), [0xB0, 0x23, 0x3E]); // its rotation, now the bend CC: still the record
-        assert_eq!(d.bend_ticks, 0.0);
-        d.tick(&mut e);
-        assert!(e.scratching);
-        std::thread::sleep(std::time::Duration::from_millis(80)); // stopped: no message
-        d.tick(&mut e);
-        assert!(!e.scratching, "stopped: let go");
-        d.message(&mut e, clock::now(), [0xB0, 0x23, 0x42]); // not held: a bend
-        assert_eq!(d.bend_ticks, 2.0);
+    // the settings every deck takes
+    pub fn set_timestretch(&mut self, on: bool) {
+        self.shared.timestretch = on;
+        self.iter_mut().for_each(|s| s.engine.set_timestretch(on));
     }
 
-    #[test]
-    fn level_meter_scale() {
-        assert_eq!(meter_value(0.0), 127);
-        assert_eq!(meter_value(-24.0), 0);
-        assert_eq!(meter_value(-12.0), 64);
-        assert_eq!(meter_value(-40.0), 0);
+    pub fn set_buffer_ms(&mut self, ms: f64) {
+        self.shared.buffer_ms = ms;
+        self.iter_mut().for_each(|s| s.engine.set_buffer_ms(ms));
     }
 
-    #[test]
-    fn midi_actions_measured_from_their_arrival() {
-        let (mut d, mut e) = deck_with(&[(0x90, 0x0B, false, act::PLAY_PAUSE)]);
-        e.command_at = 1.0; // a GUI command long ago
-        d.message(&mut e, 123.5, [0x90, 0x0B, 0x7F]);
-        assert_eq!(e.command_at, 123.5);
+    pub fn set_volume_trim(&mut self, db: f64) {
+        self.shared.trim_db = db;
+        self.iter_mut().for_each(|s| s.deck.set_volume_trim(&mut s.engine, db));
     }
 
-    #[test]
-    fn meter_binding_is_an_output() {
-        let (mut d, mut e) = deck_with(&[(0xB0, 0x02, false, act::LEVEL_METER)]);
-        assert_eq!(d.message(&mut e, 0.0, [0xB0, 0x02, 0x40]), (0, 0));
-        assert_eq!(e.factor(), 1.0);
-    }
-
-    #[test]
-    fn jog_let_go_at_rest_is_let_go_at_once() {
-        let (mut d, mut e) = deck_with(&[(0x90, 0x36, false, act::JOG_TOUCH)]);
-        d.message(&mut e, clock::now(), [0x90, 0x36, 0x7F]);
-        d.message(&mut e, clock::now(), [0x90, 0x36, 0x00]);
-        assert!(!e.scratching);
+    pub fn set_jog_ticks(&mut self, ticks: u32) {
+        self.shared.jog_ticks = ticks.max(1);
+        self.iter_mut().for_each(|s| s.deck.set_jog_ticks(ticks));
     }
 }

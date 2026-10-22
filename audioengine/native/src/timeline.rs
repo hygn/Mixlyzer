@@ -9,7 +9,6 @@ pub struct Segment {
     pub frames: u64,
     pub in_start: f64, // input frame at out_start
     pub step: f64,     // input frames per output frame; 0 = silence holding in_start
-    pub peak_dbfs: f64,
 }
 
 #[derive(Default)]
@@ -18,9 +17,9 @@ pub struct Timeline {
 }
 
 impl Timeline {
-    pub fn append(&mut self, out_start: u64, frames: u64, in_start: f64, step: f64, peak_dbfs: f64) {
+    pub fn append(&mut self, out_start: u64, frames: u64, in_start: f64, step: f64) {
         if frames > 0 {
-            self.segments.push_back(Segment { out_start, frames, in_start, step, peak_dbfs });
+            self.segments.push_back(Segment { out_start, frames, in_start, step });
         }
     }
 

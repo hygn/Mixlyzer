@@ -167,8 +167,8 @@ impl Clicks {
         }
     }
 
-    /// Adds the sounding clicks to a block about to be written, ducking the music under them.
-    pub fn mix(&mut self, out: &mut [f32]) {
+    /// The sounding clicks of a block about to be written into ``aids``, ducking ``music`` under them.
+    pub fn mix(&mut self, music: &mut [f32], aids: &mut [f32]) {
         if self.voices.is_empty() {
             return;
         }
@@ -177,7 +177,7 @@ impl Clicks {
             return;
         };
         let ch = self.ch;
-        let n = (out.len() / ch) as i64;
+        let n = (music.len() / ch) as i64;
         if self.ducking {
             let mut duck = vec![0f32; n as usize];
             let mut any = false;
@@ -196,7 +196,7 @@ impl Clicks {
             }
             if any {
                 let depth = (1.0 - 10f64.powf(Self::DUCK_DB / 20.0)) as f32;
-                for (i, frame) in out.chunks_exact_mut(ch).enumerate() {
+                for (i, frame) in music.chunks_exact_mut(ch).enumerate() {
                     let g = 1.0 - depth * duck[i].min(1.0);
                     frame.iter_mut().for_each(|x| *x *= g);
                 }
@@ -209,7 +209,7 @@ impl Clicks {
             for i in a..b {
                 let s = ((v.p + i) as usize) * ch;
                 for c in 0..ch {
-                    out[i as usize * ch + c] += click.data[s + c] * v.gain;
+                    aids[i as usize * ch + c] += click.data[s + c] * v.gain;
                 }
             }
         }

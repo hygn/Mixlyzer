@@ -1,12 +1,14 @@
-//! The player's renderer (audioengine/python/feeder.py's PCMFeeder, its docs hold the design): a decoded track
-//! rendered into the device's ring ahead of what is heard, every block recorded on the timeline, so the
-//! playhead is the input position actually being heard.
+//! A deck's player (audioengine/python/feeder.py's PCMFeeder, its docs hold the design): a decoded track rendered
+//! into the deck's lane ahead of what is heard, every block recorded on the timeline, so the playhead is the input
+//! position actually being heard. The player renders the music alone; its mixer channel (mixer.rs: trim, EQ, the
+//! fader, CUE, the crossfader) is the main device's callback's.
 //!
 //! Modes: speed (varispeed, or the pitch-preserving time stretch; while scrubbing it plays the original at unity,
 //! released it takes the tempo at once) / none (pass-through). With the time stretch off unity a seek or a jump while playing
 //! goes through a second stretcher prepared ahead a little each tick while the current one plays on, then
-//! the two are crossfaded. Scratching plays the record under the hand instead (the platter, read_at). Clicks
-//! and reference tones are mixed in; the music volume is applied here, so the click level stays its own.
+//! the two are crossfaded. Scratching plays the record under the hand instead (the platter, read_at). The listening
+//! aids (the metronome's clicks, ducking the music under them, and reference tones) go beside the music in the lane:
+//! a lane frame is [music (ch), aids (ch)], the aids added after the channel fader (their level their own).
 
 use std::sync::Arc;
 
@@ -14,7 +16,9 @@ use crate::clock;
 use crate::cursor::CursorPoller;
 use crate::device::Ring;
 use crate::dsp::{self, Platter, ReadTables};
+use crate::mixer::StripParams;
 use crate::mixers::{Clicks, Tones};
+use crate::monitor::Monitor;
 use crate::shm::Pcm;
 use crate::stretch::Stretcher;
 use crate::timeline::Timeline;
@@ -30,6 +34,8 @@ pub struct Engine {
     pub rate: f64,
     pub ch: usize,
     ring: Arc<Ring>,
+    pub strip: Arc<StripParams>, // its mixer channel's settings (deck.rs sets them) and meter
+    peak: (f32, f64), // the meter's reading held (linear, since when): the strip's peaks taken each tick
     pub pcm: Option<Pcm>,
     pub track_gen: u32,
     len: usize,
@@ -64,8 +70,6 @@ pub struct Engine {
     bend: f64, // a jog wheel's pitch bend (deck.rs): the speed times 1 + bend
     halted: bool,
     last_step: f64,
-    music_gain: f32,
-    soft_clip: bool,
     jump_start: Option<f64>,
     jump_dest: Option<f64>,
     jump_once: bool,
@@ -90,21 +94,15 @@ pub struct Engine {
     pub finished_count: u64,
     pub render_ms: f64,
 
-    // the buffer monitor (feeder.py's _observe_buffer): time spent at each 1 ms level
-    obs_time: Option<f64>,
-    obs_frames: f64,
-    pub hist: Vec<f64>,
-    pub hist_bucket_ms: f64, // each histogram bucket's width: 0.1 ms, wider when the buffer needs more buckets
-    lows: std::collections::VecDeque<(i64, f64)>, // (second, lowest level in it, ms): the last LOW_WINDOW_SEC
-    pub obs_seconds: f64,
-    pub obs_level: f64,
-    pub buffer_gen: u64,
+    // the buffer monitor: time spent at each level of this engine's buffer while playing
+    pub monitor: Monitor,
 }
 
 impl Engine {
     pub const LATE_JUMP_SEC: f64 = 0.15;
     pub const PEAK_FLOOR_DBFS: f64 = -24.0;
-    const SOFT_CLIP_KNEE: f32 = 0.8;
+    // the meter holds a peak this long (the GUI's meter reads at its frame rate, the engine takes peaks each tick)
+    const PEAK_HOLD_SEC: f64 = 0.05;
     pub const BUFFER_MS_RANGE: (f64, f64) = (2.0, 500.0);
     const DISPLAY_GAIN: f64 = 0.1;
     const DISPLAY_RESYNC_SEC: f64 = 0.04;
@@ -113,14 +111,15 @@ impl Engine {
     const STANDBY_BUFFER_SHARE: f64 = 0.3;
     // a scrub let go resumes the tempo this far ahead (input at unity): time for its stream to be prepared
     const RESUME_LEAD_SEC: f64 = 0.08;
-    const LOW_WINDOW_SEC: i64 = 10;
 
-    pub fn new(rate: u32, ch: usize, ring: Arc<Ring>) -> Engine {
+    pub fn new(rate: u32, ch: usize, ring: Arc<Ring>, strip: Arc<StripParams>) -> Engine {
         let r = rate as f64;
         Engine {
             rate: r,
             ch,
             ring,
+            strip,
+            peak: (0.0, 0.0),
             pcm: None,
             track_gen: 0,
             len: 0,
@@ -150,8 +149,6 @@ impl Engine {
             bend: 0.0,
             halted: false,
             last_step: 1.0,
-            music_gain: 1.0,
-            soft_clip: false,
             jump_start: None,
             jump_dest: None,
             jump_once: false,
@@ -171,14 +168,7 @@ impl Engine {
             jumped_count: 0,
             finished_count: 0,
             render_ms: 0.0,
-            obs_time: None,
-            obs_frames: 0.0,
-            hist: vec![],
-            hist_bucket_ms: 0.1,
-            lows: std::collections::VecDeque::new(),
-            obs_seconds: 0.0,
-            obs_level: 0.0,
-            buffer_gen: 0,
+            monitor: Monitor::new(r),
         }
     }
 
@@ -244,7 +234,7 @@ impl Engine {
     /// load let the device read an empty ring).
     pub fn buffer_frames(&self) -> usize {
         let asked = (self.rate * self.buffer_ms / 1000.0).round() as usize;
-        asked + self.ring.max_frames.load(std::sync::atomic::Ordering::Relaxed) as usize
+        asked + self.ring.port.max_frames.load(std::sync::atomic::Ordering::Relaxed) as usize
     }
 
     pub fn set_factor(&mut self, f: f64) {
@@ -278,13 +268,6 @@ impl Engine {
         self.jump_dest.map(|_| self.jump_dest_base)
     }
 
-    pub fn set_music_gain(&mut self, g: f64) {
-        self.music_gain = g.max(0.0) as f32;
-    }
-
-    pub fn set_soft_clip(&mut self, on: bool) {
-        self.soft_clip = on;
-    }
 
     /// Scrubbing (the overview dragged): the playhead follows the drag, each position a seek. The time stretch
     /// plays the original at unity meanwhile (a new stream per position, ~10 ms of work each, would not keep up
@@ -423,7 +406,7 @@ impl Engine {
             return false;
         }
         self.playing = true;
-        self.obs_time = None;
+        self.monitor.observe(None, 0.0);
         self.probe = Some((self.ring.written(), self.command_at, 0));
         self.halted = self.step() <= 0.0;
         self.sent_finished = false;
@@ -449,7 +432,7 @@ impl Engine {
         }
         let heard = self.playhead_frame();
         self.playing = false;
-        self.obs_time = None;
+        self.monitor.observe(None, 0.0);
         self.cancel_standby();
         // silent once the frame being read now and its fade have been heard (or what was queued, when less)
         let silent_at = (self.ring.read_index() + self.fade_frames as u64).min(self.ring.written());
@@ -469,6 +452,14 @@ impl Engine {
             self.cancel_standby();
         }
         let target = frame.clamp(0.0, self.len as f64);
+        if self.scratching {
+            // the record under the hand put there (the platter starts from it; nothing rendered past the scratch)
+            self.scratch_target = if self.len > 0 { target.min((self.len - 1) as f64) } else { 0.0 };
+            self.grab_frame = self.scratch_target;
+            self.poll_anchor = None;
+            self.platter.reset(self.scratch_target, clock::now(), self.poll_frames_per_px);
+            return;
+        }
         self.end_out_frame = None;
         self.sent_finished = false;
         if self.playing && self.pcm.is_some() && self.can_defer() {
@@ -664,12 +655,19 @@ impl Engine {
         (frame, seg.step * self.rate)
     }
 
-    /// Pre-volume peak of the block being heard.
+    /// The channel's meter (before the fader, after trim and EQ: the mixer's) as dBFS, held PEAK_HOLD_SEC.
     pub fn heard_peak_dbfs(&self) -> f64 {
-        if !self.playing && !self.scratching {
-            return Self::PEAK_FLOOR_DBFS;
+        let p = self.peak.0 as f64;
+        if p > 0.0 { (20.0 * p.log10()).clamp(Self::PEAK_FLOOR_DBFS, 0.0) } else { Self::PEAK_FLOOR_DBFS }
+    }
+
+    /// Each tick: the strip's peaks since the last into the meter's reading.
+    pub fn take_peak(&mut self) {
+        let p = self.strip.take_peak();
+        let now = clock::now();
+        if p >= self.peak.0 || now - self.peak.1 > Self::PEAK_HOLD_SEC {
+            self.peak = (p, now);
         }
-        self.timeline.segment_at(self.ring.heard(clock::now())).map(|s| s.peak_dbfs).unwrap_or(Self::PEAK_FLOOR_DBFS)
     }
 
     // Rendering
@@ -705,30 +703,28 @@ impl Engine {
     }
 
     /// Queues ``out``: the music (by default when the record moves forward) from input frame ``in_start``
-    /// on, ``step`` frames per output frame.
+    /// on, ``step`` frames per output frame; the listening aids beside it (the lane: [music, aids] a frame).
     fn append(&mut self, mut out: Vec<f32>, in_start: f64, step: f64, music: Option<bool>) {
-        let n = out.len() / self.ch;
+        let ch = self.ch;
+        let n = out.len() / ch;
         if n == 0 {
             return;
         }
         let music = music.unwrap_or(step > 0.0);
-        let peak = if music { dsp::peak_dbfs(&out, Self::PEAK_FLOOR_DBFS) } else { Self::PEAK_FLOOR_DBFS };
-        if music {
-            if self.music_gain != 1.0 {
-                out.iter_mut().for_each(|v| *v *= self.music_gain);
-            }
-            if self.playing && !self.scrubbing && !self.scratching && step > 0.0 {
-                self.clicks.queue(in_start, step, n);
-            }
+        if music && self.playing && !self.scrubbing && !self.scratching && step > 0.0 {
+            self.clicks.queue(in_start, step, n);
         }
-        self.clicks.mix(&mut out);
+        let mut aids = vec![0f32; out.len()];
+        self.clicks.mix(&mut out, &mut aids);
         let ratio = self.tone_pitch_ratio();
-        self.tones.mix(&mut out, self.ch, ratio);
-        if self.soft_clip {
-            dsp::soft_clip(&mut out, Self::SOFT_CLIP_KNEE);
+        self.tones.mix(&mut aids, ch, ratio);
+        let mut lane = vec![0f32; 2 * out.len()];
+        for f in 0..n {
+            lane[2 * ch * f..2 * ch * f + ch].copy_from_slice(&out[ch * f..ch * (f + 1)]);
+            lane[2 * ch * f + ch..2 * ch * (f + 1)].copy_from_slice(&aids[ch * f..ch * (f + 1)]);
         }
-        self.timeline.append(self.ring.written(), n as u64, in_start, step, peak);
-        self.ring.push(&out);
+        self.timeline.append(self.ring.written(), n as u64, in_start, step);
+        self.ring.push(&lane);
     }
 
     fn tone_pitch_ratio(&self) -> f64 {
@@ -891,77 +887,14 @@ impl Engine {
         (self.queued(now) - self.ring.latency_frames()).max(0.0)
     }
 
-    /// The lowest level (ms) over the last LOW_WINDOW_SEC of playing (-1: none).
-    pub fn lowest_ms(&self) -> f64 {
-        let low = self.lows.iter().map(|(_, low)| *low).fold(f64::INFINITY, f64::min);
-        if low.is_finite() { low } else { -1.0 }
-    }
-
     pub fn capacity_frames(&self) -> f64 {
         self.buffer_frames() as f64
     }
 
     fn observe_buffer(&mut self) {
-        if !self.playing {
-            self.obs_time = None;
-            return;
-        }
-        let now = clock::now();
-        let frames = self.buffered(now);
-        if let Some(t) = self.obs_time {
-            self.accumulate(self.obs_frames, frames, now - t);
-        }
-        self.obs_time = Some(now);
-        self.obs_frames = frames;
-    }
-
-    /// The level between two readings: drains at real time from the first until it reaches the second.
-    fn accumulate(&mut self, start_frames: f64, end_frames: f64, seconds: f64) {
-        if seconds <= 0.0 {
-            return;
-        }
-        // buckets of 0.1 ms up to twice the capacity (a shared device's own buffer shows above it), wider when that
-        // would take more than HIST_MAX
-        let span_ms = 2.0 * self.capacity_frames() * 1000.0 / self.rate + 2.0;
-        let bucket = (0.1f64).max(span_ms / (crate::ipc::HIST_MAX - 2) as f64);
-        let size = ((span_ms / bucket) as usize + 2).min(crate::ipc::HIST_MAX);
-        if self.hist.len() != size || self.hist_bucket_ms != bucket {
-            self.hist = vec![0.0; size];
-            self.hist_bucket_ms = bucket;
-            self.obs_seconds = 0.0;
-            self.obs_level = 0.0;
-            self.buffer_gen += 1;
-        }
-        let top = self.hist.len() - 1;
-        let a = start_frames * 1000.0 / self.rate;
-        let b = (end_frames * 1000.0 / self.rate).max(a - seconds * 1000.0);
-        let drop = (a - b).max(0.0);
-        let flat = seconds - drop / 1000.0;
-        if drop > 0.0 {
-            // a ms of level drains in a ms of time: each bucket the drop crosses holds its share
-            let mut k = (b / bucket) as usize;
-            while k <= (a / bucket) as usize && k <= top {
-                let overlap = a.min((k + 1) as f64 * bucket) - b.max(k as f64 * bucket);
-                if overlap > 0.0 {
-                    self.hist[k] += overlap / 1000.0;
-                }
-                k += 1;
-            }
-        }
-        if flat > 0.0 {
-            self.hist[top.min((b / bucket) as usize)] += flat;
-        }
-        // the lowest level, per second, kept for the last LOW_WINDOW_SEC
-        let second = clock::now().floor() as i64;
-        match self.lows.back_mut() {
-            Some((s, low)) if *s == second => *low = low.min(b),
-            _ => self.lows.push_back((second, b)),
-        }
-        while self.lows.front().is_some_and(|(s, _)| *s <= second - Self::LOW_WINDOW_SEC) {
-            self.lows.pop_front();
-        }
-        self.obs_level += (a + b) * 0.5 * drop / 1000.0 + b * flat.max(0.0);
-        self.obs_seconds += seconds;
+        let level = if self.playing { Some(self.buffered(clock::now())) } else { None };
+        let capacity = self.capacity_frames();
+        self.monitor.observe(level, capacity);
     }
 
     // The feed: once a tick
@@ -996,10 +929,7 @@ impl Engine {
                 self.probe = None;
             }
         }
-        self.ring.sound_due.store(
-            self.playing || self.scratching || self.tones.active(),
-            std::sync::atomic::Ordering::Relaxed,
-        );
+        self.ring.sound_due.store(self.sound_due(), std::sync::atomic::Ordering::Relaxed);
         if self.playing && !self.sent_finished {
             if let Some(end) = self.end_out_frame {
                 if heard >= end as f64 {
@@ -1042,6 +972,11 @@ impl Engine {
             }
             self.observe_buffer();
         }
+    }
+
+    /// Sound is expected (a dropout counts): playing, scratching, or a tone held.
+    pub fn sound_due(&self) -> bool {
+        self.playing || self.scratching || self.tones.active()
     }
 
     /// Nothing to play and nothing queued: the device may be stopped.

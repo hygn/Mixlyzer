@@ -12,29 +12,58 @@
 //! [MIDI_PORTS_OFFSET, MIDI_EVENTS_OFFSET): the MIDI input ports, written when asked (op::MIDI_LIST), as the devices.
 //! [MIDI_EVENTS_OFFSET, DEVICES_OFFSET): the MIDI messages received, a ring the engine writes (deck.rs: the GUI's
 //!   own actions bound to them, and every message for the settings' MIDI learn).
+//! [DEVICES_OFFSET, OUTPUTS_OFFSET): the output devices, written when asked (op::LIST_DEVICES).
+//! [OUTPUTS_OFFSET, RING_OFFSET): the state of the buses on devices of their own (the headphones, the booth;
+//!   out::*), written with the state under its sequence lock.
 
 use std::sync::atomic::{AtomicU64, Ordering, fence};
 
 pub const MAGIC: u64 = u64::from_le_bytes(*b"MXAUDIC1");
-pub const VERSION: u32 = 3;
+pub const VERSION: u32 = 4;
 pub const STATE_OFFSET: usize = 64;
-pub const RING_OFFSET: usize = 65536;
+pub const RING_OFFSET: usize = 135168;
 pub const RING_HEADER: usize = 64;
 pub const HIST_MAX: usize = 4096;
-/// The output devices, written when asked (op::LIST_DEVICES): [generation u64, length u32, pad u32] + UTF-8 text,
-/// the device in use on its first line, then one listed device a line. The generation is written last.
+/// The decks the engine plays (a mixer channel each), the app showing deck 1; deck k's actions carry k - 1 from
+/// act::DECK_SHIFT up, its commands op::FOR_DECK.
+pub const MAX_DECKS: usize = 8;
+/// The output devices, written when asked (op::LIST_DEVICES): [generation u64, length u32, pad u32] + UTF-8 text:
+/// the main output's device in use on the first line, the system's default as "name<TAB>channels" on the second
+/// (empty: none), then one listed device a line, "name<TAB>channels". The generation is written last.
 pub const DEVICES_OFFSET: usize = 40960;
-pub const DEVICES_MAX: usize = RING_OFFSET - DEVICES_OFFSET - 16;
+pub const DEVICES_MAX: usize = OUTPUTS_OFFSET - DEVICES_OFFSET - 16;
+/// The buses that may play on a device of their own (device.rs BRIDGED_BUSES: 0 the headphones, 1 the booth), each
+/// a block of out::SIZE from here.
+pub const OUTPUTS_OFFSET: usize = 65536;
 /// The MIDI input ports (op::MIDI_LIST): [generation u64, length u32, pad u32] + UTF-8 text, one port a line.
 pub const MIDI_PORTS_OFFSET: usize = 34816;
 pub const MIDI_PORTS_MAX: usize = MIDI_EVENTS_OFFSET - MIDI_PORTS_OFFSET - 16;
 /// The MIDI messages received: [written u64 (messages ever), pad u64] + MIDI_EVENTS slots of 16 bytes, message k
 /// at k % MIDI_EVENTS: [seq u32 (k + 1, written last), status u8, data1 u8, data2 u8, flags u8 (MIDI_EVENT_*),
-/// action u32 (the binding's, 0: none), pad u32].
+/// action u32 (the binding's, 0: none), steps i32 (a CC read as a knob's turn: + clockwise)].
 pub const MIDI_EVENTS_OFFSET: usize = 36864;
 pub const MIDI_EVENTS: usize = 240;
 /// The message is bound to one of the GUI's actions (its action code: 0x1000 and up, the GUI's numbering).
 pub const MIDI_EVENT_GUI: u8 = 1;
+/// ... through a binding of one turning direction: the action done once per step.
+pub const MIDI_EVENT_RELATIVE: u8 = 2;
+/// A hot cue pad (act::JUMP_A + k) pressed on an empty slot: the GUI sets the JumpCUE (an edit).
+pub const MIDI_EVENT_HOTCUE_SET: u8 = 4;
+
+/// A binding's flags (op::MIDI_MAP).
+pub mod bind {
+    pub const HIRES: u8 = 1; // a 14-bit CC: its LSB at data1 + 32
+    pub const CLOCKWISE: u8 = 2; // a knob's turns clockwise only, a step an action
+    pub const COUNTERCLOCKWISE: u8 = 4;
+    pub const INVERT: u8 = 8; // a fader read the other way up, a knob's turns the other way round
+    pub const ENCODING: u8 = 0x30; // a relative CC's: ENC_* << ENCODING_SHIFT
+    pub const ENCODING_SHIFT: u8 = 4;
+    #[allow(dead_code)] // the default: what the other values are not
+    pub const ENC_AUTO: u8 = 0; // offset or two's complement, by the value's range (steps under 32)
+    pub const ENC_OFFSET: u8 = 1; // 64 + steps (Pioneer's jog wheels)
+    pub const ENC_TWOS: u8 = 2; // two's complement (Pioneer's BROWSE: 1 .. 30 / 127 .. 98)
+    pub const ENC_SIGN: u8 = 3; // sign and magnitude: bit 6 the sign (Native Instruments, Behringer)
+}
 
 // State fields (byte offsets inside the state area)
 pub mod st {
@@ -87,6 +116,47 @@ pub mod st {
     pub const LEDS: usize = DECK + 32; // u32 bit 0 PLAY lit, bit 1 CUE lit (blinking: as they are now)
     pub const TEMPO_RANGE: usize = DECK + 36; // u32 the tempo fader's range (+-%; 100: WIDE, 0 - 200 %)
     pub const MIDI_STATE: usize = DECK + 40; // u32 0 closed, 1 open, 2 the port did not open
+    pub const OUT_CHANNELS: usize = DECK + 44; // u32 the output device's channels (the decks play stereo)
+    // every deck's: DECKS_STATE + k * DECK_STATE_SIZE: [there u32, playing u32, track_gen u32, lamps u32, playhead f64,
+    // factor f64, volume f64, cue f64 (NaN: none), jump dest f64 (NaN: none), pad 8] (deck 1's also above)
+    pub const DECKS_STATE: usize = DECK + 48;
+    pub const DECK_STATE_SIZE: usize = 64;
+}
+
+/// A bus's output on a device of its own (OUTPUTS_OFFSET + k * SIZE), its fields as the main output's above.
+pub mod out {
+    pub const STATE: usize = 0; // u32 STATE_*
+    pub const STATE_OFF: u32 = 0;
+    pub const STATE_OPEN: u32 = 1;
+    pub const STATE_FAILED: u32 = 2; // not opened: tried again each second
+    pub const STATE_OPENING: u32 = 3;
+    pub const MODE: usize = 4; // u32 as st::OUTPUT_MODE
+    pub const PERIOD_MS: usize = 8; // f64 its device's period (0: not known)
+    pub const LATENCY_MS: usize = 16; // f64 its device's latency (with the interpolator's)
+    pub const QUEUED: usize = 24; // f64 frames in its bridge, ahead of its device's latency
+    pub const CAPACITY: usize = 32; // f64 frames: the buffer it keeps
+    pub const UNDERRUNS: usize = 40; // u64 frames played as silence while sound was due
+    pub const LATE: usize = 48; // u64 its output thread's late wake-ups
+    pub const MAX_GAP_MS: usize = 56; // f64
+    pub const THREAD: usize = 64; // u32 its output thread's state (sched.rs)
+    pub const CHANNELS: usize = 68; // u32 its device's channels
+    pub const DRIFT_PPM: usize = 72; // f64 its clock against the main device's (the ratio it reads at - 1)
+    pub const BUFFER_GEN: usize = 80; // u64 as st::BUFFER_GEN
+    pub const OBS_SECONDS: usize = 88; // f64
+    pub const OBS_LEVEL: usize = 96; // f64
+    pub const HIST_BUCKET_MS: usize = 104; // f64
+    pub const LOWEST_MS: usize = 112; // f64
+    pub const HIST_LEN: usize = 120; // u32
+    pub const ERRORS: usize = 124; // u32 its device's open failures
+    pub const NAME: usize = 128; // u32 length + UTF-8: the device opened
+    pub const NAME_MAX: usize = 240;
+    pub const RATE: usize = 376; // u32 its device's rate (the bus converted to it)
+    pub const HIST: usize = 384; // f64[HIST_LEN] cumulative seconds per bucket
+    pub const SIZE: usize = HIST + 8 * super::HIST_MAX;
+    /// Field ``f`` of bus ``k``'s block, as a state field (Control::put_*).
+    pub const fn at(k: usize, f: usize) -> usize {
+        super::OUTPUTS_OFFSET - super::STATE_OFFSET + k * SIZE + f
+    }
 }
 
 pub mod op {
@@ -108,7 +178,7 @@ pub mod op {
     pub const SET_SOFT_CLIP: u32 = 15; // u32
     pub const SET_BUFFER_MS: u32 = 16; // f64
     pub const TONE_HOLD: u32 = 17; // u32 n, i32[n]
-    pub const SET_MUSIC_GAIN: u32 = 18; // f64
+    // 18: none (the deck's volume is its mixer channel's fader: op::SET_VOLUME)
     pub const CLICK_SAMPLE: u32 = 19; // u32 frames, u32 channels, f32[frames * channels]
     pub const CLICK_PITCHES: u32 = 20; // f64 beat, f64 accent (semitones)
     pub const CLICK_BEATS: u32 = 21; // u32 n, f64[n] seconds, f32[n] gains, u8[n] accents
@@ -119,7 +189,7 @@ pub mod op {
     pub const SHUTDOWN: u32 = 26;
     pub const WAKE: u32 = 27;
     pub const SET_DEVICE: u32 = 28; // name (u32 len + utf8; empty: the system's default)
-    pub const LIST_DEVICES: u32 = 29;
+    pub const LIST_DEVICES: u32 = 29; // [u32 API: the devices of that one; none: the main output's]
     pub const SET_OUTPUT_MODE: u32 = 30; // u32 API (0 WASAPI, 1 cpal, 2 JACK), u32 exclusive (WASAPI)
     // u32 priority (0 normal, 1 above normal, 2 high), u32 power throttling allowed (sched.rs: per system)
     pub const SET_PROCESS: u32 = 31;
@@ -133,13 +203,29 @@ pub mod op {
     pub const JUMP_TO: u32 = 37; // f64 frame: a JumpCUE's JUMP
     pub const CALL_AT: u32 = 38; // f64 frame: a CUE point's CALL
     pub const MIDI_OPEN: u32 = 39; // name (u32 len + utf8; empty: closed)
-    // u32 n, n x [status u8, data1 u8, flags u8 (1: 14-bit, LSB at data1 + 32), lamp u8, action u32]; lamp: the
-    // controller's light at that message (deck.rs LAMP_*: 1 - 26 the JumpCUE A - Z set, PLAY, CUE; 0 none)
+    // u32 n, n x [status u8, data1 u8 (a pitch bend's: not read), flags u8 (bind::*), lamp u8, action u32]; lamp:
+    // the controller's light at that message (deck.rs LAMP_*: 1 - 26 the JumpCUE A - Z set, PLAY, CUE; 0 none)
     pub const MIDI_MAP: u32 = 40;
     pub const MIDI_LIST: u32 = 41;
     pub const MIDI_OPTIONS: u32 = 42; // u32 a jog wheel's messages (ticks) per turn
     pub const SET_TEMPO_RANGE: u32 = 43; // u32 the tempo fader's range (+-%: 6, 10, 16, 100 WIDE)
     pub const SET_METER_GAIN: u32 = 44; // f64 linear: the level meter's input, as the GUI's peak meter
+    // u32 deck (0: deck 1), u32 op, its payload: a deck's command (the ops above without one: deck 1's)
+    pub const FOR_DECK: u32 = 45;
+    pub const SET_CROSSFADER: u32 = 46; // f64 position (0 A .. 1 B), u32 curve (0 smooth, 1 sharp)
+    // u8 x 6 the device's channels: main L / R, headphones L / R, booth L / R (255: not routed); the headphones'
+    // CUE / MASTER mix and level are a controller's (act::HEADPHONES_MIX / LEVEL)
+    pub const SET_ROUTING: u32 = 47;
+    pub const SET_ASSIGN: u32 = 48; // u32 deck, u32 its crossfader side (0 A, 1 THRU, 2 B)
+    pub const SET_CHANNEL_CUE: u32 = 49; // u32 deck, u32 its headphones CUE on
+    // a bus on a device of its own: u32 bus (0 the headphones, 1 the booth), u32 on (0: not: SET_ROUTING's channels
+    // of the main device, if any), u32 API, u32 exclusive, f64 buffer ms, u8 left, u8 right (its device's channels),
+    // u16 pad, u32 its rate (0: the device's mix format's), the device's name (u32 len + utf8; empty: the system's
+    // default)
+    pub const SET_AUX_OUTPUT: u32 = 50;
+    // the headphones: u32 the master mixed in (0: a device mixing it in itself), f64 the CUE / MASTER mix (0 CUE ..
+    // 1 MASTER), f64 their level (linear); a controller's knobs (act::HEADPHONES_MIX / LEVEL) move them later
+    pub const SET_HEADPHONES: u32 = 51;
 }
 
 /// The deck's actions (deck.rs; client.py DECK_ACTIONS): the GUI's buttons and keys and the MIDI controller's.
@@ -157,7 +243,13 @@ pub mod act {
     pub const CALL_PREVIOUS: u32 = 11;
     pub const CALL_NEXT: u32 = 12;
     pub const TEMPO_RANGE: u32 = 13;
+    pub const TRACK_START: u32 = 14; // to the track's start, playing on (rekordbox's SHIFT + CUE)
     pub const JUMP_A: u32 = 16; // .. JUMP_A + 7: H
+    pub const BEND_DOWN: u32 = 24; // held: the tempo bent down (a pitch bend button)
+    pub const BEND_UP: u32 = 25;
+    /// Beat jumps: BEAT_JUMP + 2 k back, + 2 k + 1 forward, by BEAT_JUMP_SIZES[k] beats.
+    pub const BEAT_JUMP: u32 = 64;
+    pub const BEAT_JUMP_SIZES: [i64; 6] = [1, 2, 4, 8, 16, 32];
     // a MIDI controller's alone (values, not presses)
     pub const TEMPO_FADER: u32 = 32;
     pub const VOLUME_FADER: u32 = 33;
@@ -167,6 +259,19 @@ pub mod act {
     pub const JOG_SEARCH: u32 = 37;
     /// An output: the controller's level meter (a CC, 0 - 127 over the GUI meter's -24 - 0 dBFS).
     pub const LEVEL_METER: u32 = 38;
+    // the mixer (mixer.rs): a channel's trim and EQ bands (knobs: the middle 0 dB), the crossfader, a channel's
+    // headphones CUE (a press turns it on or off), the headphones' CUE / MASTER mix and level
+    pub const TRIM: u32 = 39;
+    pub const EQ_LOW: u32 = 40;
+    pub const EQ_MID: u32 = 41;
+    pub const EQ_HIGH: u32 = 42;
+    pub const CROSSFADER: u32 = 43;
+    pub const CHANNEL_CUE: u32 = 44;
+    pub const HEADPHONES_MIX: u32 = 45;
+    pub const HEADPHONES_LEVEL: u32 = 46;
+    /// An action's deck (its mixer channel), 0 for deck 1, from this bit up; the action below it.
+    pub const DECK_SHIFT: u32 = 24;
+    pub const CODE_MASK: u32 = (1 << DECK_SHIFT) - 1;
     /// The GUI's own actions (library, editor ...) from here: passed on to it (MIDI_EVENT_GUI).
     pub const GUI: u32 = 0x1000;
 }
@@ -291,12 +396,16 @@ impl Control {
         unsafe { std::ptr::write_volatile(self.base.add(STATE_OFFSET + field) as *mut f64, v) }
     }
 
-    /// The device in use and the devices listed (see DEVICES_OFFSET).
-    pub fn put_devices(&self, current: &str, listed: &[String]) {
+    /// The main output's device in use, the system's default and the devices listed, with their channels (see
+    /// DEVICES_OFFSET).
+    pub fn put_devices(&self, current: &str, default: Option<&(String, usize)>, listed: &[(String, usize)]) {
         let mut text = String::from(current);
-        for name in listed {
-            text.push('\n');
-            text.push_str(name);
+        text.push('\n');
+        if let Some((name, ch)) = default {
+            text.push_str(&format!("{name}\t{ch}"));
+        }
+        for (name, ch) in listed {
+            text.push_str(&format!("\n{name}\t{ch}"));
         }
         let mut bytes = text.into_bytes();
         bytes.truncate(DEVICES_MAX);
@@ -310,8 +419,7 @@ impl Control {
 
     /// The MIDI input ports (see MIDI_PORTS_OFFSET).
     pub fn put_midi_ports(&self, ports: &[String]) {
-        let mut bytes = ports.join("
-").into_bytes();
+        let mut bytes = ports.join("\n").into_bytes();
         bytes.truncate(MIDI_PORTS_MAX);
         unsafe {
             std::ptr::copy_nonoverlapping(bytes.as_ptr(), self.base.add(MIDI_PORTS_OFFSET + 16), bytes.len());
@@ -322,7 +430,7 @@ impl Control {
     }
 
     /// A MIDI message received, into the ring (see MIDI_EVENTS_OFFSET).
-    pub fn put_midi_event(&self, msg: [u8; 3], flags: u8, action: u32) {
+    pub fn put_midi_event(&self, msg: [u8; 3], flags: u8, action: u32, steps: i32) {
         let written = self.atomic(MIDI_EVENTS_OFFSET);
         let k = written.load(Ordering::Relaxed);
         let slot = MIDI_EVENTS_OFFSET + 16 + (k as usize % MIDI_EVENTS) * 16;
@@ -335,17 +443,35 @@ impl Control {
             std::ptr::write_volatile(p.add(6), msg[2]);
             std::ptr::write_volatile(p.add(7), flags);
             std::ptr::write_volatile(p.add(8) as *mut u32, action);
+            std::ptr::write_volatile(p.add(12) as *mut i32, steps);
             fence(Ordering::Release);
             std::ptr::write_volatile(p as *mut u32, (k + 1) as u32);
         }
         written.store(k + 1, Ordering::Release);
     }
 
-    pub fn put_hist(&self, hist: &[f64]) {
+    /// A histogram (st::HIST, or a bus's out::HIST) and its length.
+    pub fn put_hist_at(&self, len_field: usize, field: usize, hist: &[f64]) {
         let n = hist.len().min(HIST_MAX);
-        self.put_u32(st::HIST_LEN, n as u32);
+        self.put_u32(len_field, n as u32);
         unsafe {
-            std::ptr::copy_nonoverlapping(hist.as_ptr(), self.base.add(STATE_OFFSET + st::HIST) as *mut f64, n);
+            std::ptr::copy_nonoverlapping(hist.as_ptr(), self.base.add(STATE_OFFSET + field) as *mut f64, n);
+        }
+    }
+
+    pub fn put_hist(&self, hist: &[f64]) {
+        self.put_hist_at(st::HIST_LEN, st::HIST, hist);
+    }
+
+    /// A short text: [u32 length + UTF-8], at most ``max`` bytes (cut at a character's start).
+    pub fn put_str(&self, field: usize, text: &str, max: usize) {
+        let mut n = text.len().min(max);
+        while !text.is_char_boundary(n) {
+            n -= 1;
+        }
+        self.put_u32(field, n as u32);
+        unsafe {
+            std::ptr::copy_nonoverlapping(text.as_ptr(), self.base.add(STATE_OFFSET + field + 4), n);
         }
     }
 }
@@ -399,6 +525,11 @@ impl<'a> Reader<'a> {
 
     pub fn f64(&mut self) -> Option<f64> {
         self.take(8).map(|b| f64::from_le_bytes(b.try_into().unwrap()))
+    }
+
+    /// What is left of the payload.
+    pub fn rest(&self) -> &'a [u8] {
+        &self.data[self.at.min(self.data.len())..]
     }
 
     pub fn str(&mut self) -> Option<String> {

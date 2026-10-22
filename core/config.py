@@ -73,6 +73,19 @@ class viewconfig:
 
 
 @dataclass
+class outputconfig:
+    """A bus of the native engine's beyond the master (the headphones, the booth) and where it plays."""
+    # "off"; "main_device": channels of the main output's device; "device": a device of its own (its clock followed)
+    route: Literal["off", "main_device", "device"]
+    device: str  # route "device": its name as the native engine lists it ("" = the system's default)
+    channels: str  # its channel pair on its device ("3-4")
+    audio_api: Literal["wasapi", "cpal", "jack"]  # route "device": as native_audio_api
+    exclusive: bool  # route "device": WASAPI's exclusive mode
+    buffer_ms: int  # route "device": the audio kept ahead of its device
+    rate: int  # route "device": its device's rate (0 = its mix format's; the bus is converted to it)
+
+
+@dataclass
 class playbackconfig:
     enable_metronome: bool
     metronome_wav_path: str
@@ -110,6 +123,16 @@ class playbackconfig:
     # ("": none) and its jog wheel's messages per turn (33 1/3 rpm)
     midi_input: str
     midi_jog_ticks: int
+    # the native engine's outputs, as a DJ mixer's: the main device's channel pair of the master ("1-2"), the
+    # headphones (the CUE'd decks and the master) and the booth (the master again)
+    output_main: str
+    output_headphones: outputconfig
+    output_booth: outputconfig
+    # the headphones: the master mixed in with the CUE'd channels (by the CUE / MASTER mix, %: 0 CUE .. 100 MASTER;
+    # a controller's knob moves it), or not (a controller that mixes the master into its headphones itself, as the
+    # DDJ-400 does in analog)
+    headphones_master_mix: bool
+    headphones_cue_mix: int
 
 
 @dataclass
@@ -390,6 +413,13 @@ def default_cfg():
         tempo_range=100,
         midi_input="",
         midi_jog_ticks=720,
+        output_main="1-2",
+        output_headphones=outputconfig(route="off", device="", channels="3-4", audio_api="wasapi", exclusive=False,
+                                       buffer_ms=20, rate=0),
+        output_booth=outputconfig(route="off", device="", channels="1-2", audio_api="wasapi", exclusive=False,
+                                  buffer_ms=20, rate=0),
+        headphones_master_mix=True,
+        headphones_cue_mix=50,
     )
     xcfg = externalsyncconfig(enabled=False, osc_host="127.0.0.1", osc_port=39321)
     # CUE points at the start of an interlude and of the outro (not between two

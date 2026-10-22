@@ -7,3 +7,4 @@ from . import beatgrid
 from . import JumpCUE
 from . import phrase
 from . import tempo_label
+from . import deck_cue

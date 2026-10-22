@@ -8,6 +8,9 @@ PCMFeeder in the player's audio worker (the same methods), NativeClicks for its 
 mixer), NativeTones for its ToneTrack. Settings > Playback's Audio engine chooses it (the default); without
 its executable (not built), or if it cannot start, the player uses PCMFeeder (the Python engine).
 
+The headphones and the booth may play on devices of their own (src/bridge.rs: each fed from the main device's mix,
+followed at its own clock); each has its own buffer and buffer monitor (take_buffer_stats' "outputs").
+
 The deck (src/deck.rs) combines the requests of the GUI (its buttons, keys and faders: NativeFeeder's deck
 methods) and of a MIDI controller, which the engine reads itself (never through this process); what the GUI
 shows (playing, tempo, volume, the cue point, the lamps, the armed JumpCUE) is the deck's report (deck_report).
@@ -37,9 +40,9 @@ from core import os_support
 from core.resource_paths import resource_path
 
 MAGIC = int.from_bytes(b"MXAUDIC1", "little")
-VERSION = 3
+VERSION = 4
 STATE_OFFSET = 64
-RING_OFFSET = 65536
+RING_OFFSET = 135168
 RING_HEADER = 64
 RING_BYTES = 4 << 20
 CONTROL_SIZE = RING_OFFSET + RING_HEADER + RING_BYTES
@@ -53,14 +56,18 @@ _STATE = struct.Struct("<Q IIIIII Q ddddddd QQQ dd Q II d d I 4x d ddd dd I 4x Q
 _HIST = 256
 # the deck's state after the histogram (ipc.rs st::DECK): factor, volume, cue, jump dest, lamps, tempo range,
 # MIDI state
-_DECK = struct.Struct("<dddd III 4x")
+_DECK = struct.Struct("<dddd IIII")
 _DECK_AT = 256 + 8 * 4096
+# every deck's (ipc.rs st::DECKS_STATE): there, playing, track_gen, lamps, playhead, factor, volume, cue, jump dest
+_DECK_ROW = struct.Struct("<IIII ddddd 8x")
+_DECKS_AT = _DECK_AT + 48
+MAX_DECKS = 8   # the decks the engine plays (the app shows deck 1)
 
 # commands (ipc.rs op)
 OP_PAD, OP_LOAD, OP_UNLOAD, OP_PLAY, OP_PAUSE, OP_STOP, OP_SEEK = 0, 1, 2, 3, 4, 5, 6
 OP_SCRUB, OP_SCRATCH, OP_SCRATCH_TO, OP_ARM_JUMP, OP_DISARM_JUMP = 7, 8, 9, 10, 11
 OP_SET_MODE, OP_SET_FACTOR, OP_SET_TIMESTRETCH, OP_SET_SOFT_CLIP, OP_SET_BUFFER_MS = 12, 13, 14, 15, 16
-OP_TONE_HOLD, OP_SET_MUSIC_GAIN = 17, 18
+OP_TONE_HOLD = 17
 OP_CLICK_SAMPLE, OP_CLICK_PITCHES, OP_CLICK_BEATS, OP_CLICK_ENABLED = 19, 20, 21, 22
 OP_CLICK_OFFSET, OP_CLICK_DUCKING, OP_CLICK_CLEAR, OP_SHUTDOWN, OP_WAKE = 23, 24, 25, 26, 27
 OP_SET_DEVICE, OP_LIST_DEVICES, OP_SET_OUTPUT_MODE, OP_SET_PROCESS = 28, 29, 30, 31
@@ -68,15 +75,39 @@ OP_DECK_ACTION, OP_SET_TEMPO, OP_SET_VOLUME, OP_SET_VOLUME_TRIM, OP_DECK_MARKS =
 OP_JUMP_TO, OP_CALL_AT, OP_MIDI_OPEN, OP_MIDI_MAP, OP_MIDI_LIST, OP_MIDI_OPTIONS, OP_SET_TEMPO_RANGE = (
     37, 38, 39, 40, 41, 42, 43)
 OP_SET_METER_GAIN = 44
+# a deck's command (u32 deck, u32 op, its payload); the mix: the crossfader, the routing, a channel's assign and CUE
+OP_FOR_DECK, OP_SET_CROSSFADER, OP_SET_ROUTING, OP_SET_ASSIGN, OP_SET_CHANNEL_CUE = 45, 46, 47, 48, 49
+OP_SET_AUX_OUTPUT = 50   # a bus on a device of its own
+OP_SET_HEADPHONES = 51   # the master mixed into the headphones, the CUE / MASTER mix, their level
+NO_CHANNEL = 0xFF   # a bus not routed
+# the buses that may play on a device of their own (ipc.rs OUTPUTS_OFFSET: a state block each, out::*)
+AUX_BUSES = ("headphones", "booth")
+OUTPUTS_OFFSET = 65536
+_OUT = struct.Struct("<II dddd QQ d II d Q dd dd II I")
+_OUT_HIST = 384
+_OUT_SIZE = _OUT_HIST + 8 * 4096
+_OUT_NAME = 128
+_OUT_RATE = 376
+AUX_STATES = {0: "off", 1: "open", 2: "failed", 3: "opening"}
 # the deck's actions (ipc.rs act): the GUI's buttons and keys and the MIDI controller's
 ACT_PLAY_PAUSE, ACT_CUE, ACT_STOP, ACT_BEAT_BACK, ACT_BEAT_FORWARD, ACT_BAR_BACK, ACT_BAR_FORWARD = 1, 2, 3, 4, 5, 6, 7
 ACT_TEMPO_DOWN, ACT_TEMPO_UP, ACT_TEMPO_RESET, ACT_CALL_PREVIOUS, ACT_CALL_NEXT, ACT_TEMPO_RANGE = 8, 9, 10, 11, 12, 13
+ACT_TRACK_START = 14   # to the track's start, playing on (rekordbox's SHIFT + CUE)
 ACT_JUMP_A = 16   # .. + 7: H
+ACT_BEND_DOWN, ACT_BEND_UP = 24, 25   # held: the tempo bent (pitch bend buttons)
+ACT_BEAT_JUMP = 64   # + 2 k back, + 2 k + 1 forward, by BEAT_JUMP_SIZES[k] beats
+BEAT_JUMP_SIZES = (1, 2, 4, 8, 16, 32)
 # a MIDI controller's alone: a fader, a jog wheel
 ACT_TEMPO_FADER, ACT_VOLUME_FADER, ACT_JOG_TOUCH, ACT_JOG_SCRATCH, ACT_JOG_BEND, ACT_JOG_SEARCH = 32, 33, 34, 35, 36, 37
 ACT_LEVEL_METER = 38   # an output: the controller's level meter (a CC)
+# the mixer (src/mixer.rs): a channel's trim and EQ bands, the crossfader, a channel's headphones CUE
+ACT_TRIM, ACT_EQ_LOW, ACT_EQ_MID, ACT_EQ_HIGH, ACT_CROSSFADER, ACT_CHANNEL_CUE = 39, 40, 41, 42, 43, 44
+ACT_HEADPHONES_MIX, ACT_HEADPHONES_LEVEL = 45, 46   # the headphones' CUE / MASTER mix, their level
+# a deck's (a mixer channel's) actions carry its number - 1 from this bit up (0: deck 1)
+ACT_DECK_SHIFT = 24
 # a binding's lamp (src/deck.rs): the controller's light at its message; 1 - 26 the JumpCUE A - Z (lit while set)
 LAMP_PLAY, LAMP_CUE = 32, 33
+LAMP_CHANNEL_CUE = 34   # a mixer channel's headphones CUE: lit while it is on
 ACT_GUI = 0x1000   # the GUI's own actions from here (core.midi: their numbering), passed on to it
 # the tempo fader's ranges (+-%; 100: WIDE, 0 - 200 %)
 TEMPO_RANGES = (6, 10, 16, 100)
@@ -95,7 +126,13 @@ MIDI_PORTS_OFFSET = 34816   # ipc.rs: as the devices, one MIDI input port a line
 MIDI_EVENTS_OFFSET = 36864  # ipc.rs: [written u64, pad] + MIDI_EVENTS slots of 16 bytes
 MIDI_EVENTS = 240
 MIDI_EVENT_GUI = 1   # the message is bound to one of the GUI's actions
-_MIDI_EVENT = struct.Struct("<IBBBBI4x")
+MIDI_EVENT_RELATIVE = 2   # ... of one turning direction: done once per step (the event's steps)
+MIDI_EVENT_HOTCUE_SET = 4   # a JumpCUE pad (its action ACT_JUMP_A + k) pressed on an empty slot: the GUI sets it
+_MIDI_EVENT = struct.Struct("<IBBBBIi")
+# a binding's flags (ipc.rs bind): 14 bits, a knob's one direction, inverted, a knob's encoding (<< 4)
+BIND_HIRES, BIND_CLOCKWISE, BIND_COUNTERCLOCKWISE, BIND_INVERT = 1, 2, 4, 8
+BIND_ENCODING_SHIFT = 4
+BIND_ENC_AUTO, BIND_ENC_OFFSET, BIND_ENC_TWOS, BIND_ENC_SIGN = 0, 1, 2, 3
 
 
 class DeckReport:
@@ -136,7 +173,7 @@ class EngineState:
                  "buffer_gen", "obs_seconds", "obs_level", "underruns", "hist_len", "device_errors", "render_ms",
                  "latency_ms", "output_mode", "period_ms", "response_play", "response_pause", "response_seek",
                  "hist_bucket_ms", "lowest_ms", "output_open", "device_late", "max_gap_ms", "threads", "power",
-                 "factor", "volume", "cue", "jump_dest", "lamps", "tempo_range", "midi_state")
+                 "factor", "volume", "cue", "jump_dest", "lamps", "tempo_range", "midi_state", "out_channels")
 
     def __init__(self, values: tuple, deck: tuple) -> None:
         (_seq, self.ready, self.rate, self.channels, self.playing, self.track_gen, self.at_end, self.cmd_done,
@@ -145,7 +182,8 @@ class EngineState:
          self.hist_len, self.device_errors, self.render_ms, self.latency_ms, self.output_mode,
          self.period_ms, self.response_play, self.response_pause, self.response_seek, self.hist_bucket_ms,
          self.lowest_ms, self.output_open, self.device_late, self.max_gap_ms, self.threads, self.power) = values
-        (self.factor, self.volume, self.cue, self.jump_dest, self.lamps, self.tempo_range, self.midi_state) = deck
+        (self.factor, self.volume, self.cue, self.jump_dest, self.lamps, self.tempo_range, self.midi_state,
+         self.out_channels) = deck
 
 
 class NativeEngine:
@@ -224,6 +262,26 @@ class NativeEngine:
         """The sequence number of the last command sent (EngineState.cmd_done reaches it once all are taken)."""
         return self._seq
 
+    def deck_states(self) -> list[Optional[dict]]:
+        """Every deck's state (None: not made), frames at the engine's rate: playing, track_gen, lamps, playhead,
+        factor, volume, cue, jump_dest."""
+        buf = self._buf
+        if buf is None:
+            return []
+        for _ in range(1000):
+            s1 = struct.unpack_from("<Q", buf, STATE_OFFSET)[0]
+            if s1 & 1:
+                continue
+            rows = [_DECK_ROW.unpack_from(buf, STATE_OFFSET + _DECKS_AT + 64 * k) for k in range(MAX_DECKS)]
+            if struct.unpack_from("<Q", buf, STATE_OFFSET)[0] == s1:
+                keys = ("playing", "track_gen", "lamps", "playhead", "factor", "volume", "cue", "jump_dest")
+                return [dict(zip(keys, (bool(r[1]),) + r[2:])) if r[0] else None for r in rows]
+        return []
+
+    def send_to_deck(self, deck: int, op: int, payload: bytes = b"") -> bool:
+        """A command for deck ``deck`` (0: deck 1; the others are made when first used)."""
+        return self.send(OP_FOR_DECK, struct.pack("<II", int(deck), int(op)) + payload)
+
     def histogram(self) -> Optional[tuple[int, float, float, np.ndarray]]:
         """(buffer generation, cumulative seconds, cumulative level integral, cumulative seconds per 1 ms)."""
         buf = self._buf
@@ -238,24 +296,67 @@ class NativeEngine:
                 return int(values[17]), float(values[18]), float(values[19]), hist
         return None
 
-    def devices(self) -> tuple[str, list[str]]:
-        """(the output device in use, the devices listed), asked of the engine; ("", []) if it does not answer.
-        Any thread."""
+    def devices(self, api: Optional[str] = None) -> tuple[str, list[str], dict[str, int]]:
+        """(the main output's device in use, the devices of ``api`` listed (None: the main output's API), each
+        device's channels by name, "" the system's default's), asked of the engine; ("", [], {}) if it does not
+        answer. Any thread."""
         buf = self._buf
         if buf is None:
-            return "", []
+            return "", [], {}
         before = struct.unpack_from("<Q", buf, DEVICES_OFFSET)[0]
-        if not self.send(OP_LIST_DEVICES):
-            return "", []
+        payload = b"" if api is None else struct.pack("<I", API_CODES.get(api, 1))
+        if not self.send(OP_LIST_DEVICES, payload):
+            return "", [], {}
         deadline = time.monotonic() + DEVICES_TIMEOUT_SEC
         while struct.unpack_from("<Q", buf, DEVICES_OFFSET)[0] == before:
             if time.monotonic() > deadline or not self.alive():
-                return "", []
+                return "", [], {}
             time.sleep(0.002)
         length = struct.unpack_from("<I", buf, DEVICES_OFFSET + 8)[0]
         text = bytes(buf[DEVICES_OFFSET + 16:DEVICES_OFFSET + 16 + length]).decode("utf-8", "replace")
         lines = text.split("\n")
-        return lines[0], [n for n in lines[1:] if n]
+        names: list[str] = []
+        channels: dict[str, int] = {}
+        for k, line in enumerate(lines[1:]):
+            name, _, ch = line.rpartition("\t")
+            if not name:
+                continue
+            count = int(ch) if ch.isdigit() else 2
+            if k == 0:
+                channels[""] = count   # the system's default
+            else:
+                names.append(name)
+                channels[name] = count
+        return lines[0], names, channels
+
+    def aux_states(self) -> list[Optional[dict]]:
+        """Each bus's output on a device of its own (AUX_BUSES; None: it has none): its state (out::*), with its
+        histogram."""
+        buf = self._buf
+        if buf is None:
+            return [None] * len(AUX_BUSES)
+        keys = ("state", "mode", "period_ms", "latency_ms", "queued", "capacity", "underruns", "late", "max_gap_ms",
+                "thread", "channels", "drift_ppm", "buffer_gen", "obs_seconds", "obs_level", "hist_bucket_ms",
+                "lowest_ms", "hist_len", "errors", "name_len")
+        for _ in range(1000):
+            s1 = struct.unpack_from("<Q", buf, STATE_OFFSET)[0]
+            if s1 & 1:
+                continue
+            out = []
+            for k in range(len(AUX_BUSES)):
+                at = OUTPUTS_OFFSET + k * _OUT_SIZE
+                d = dict(zip(keys, _OUT.unpack_from(buf, at)))
+                if not d["state"]:
+                    out.append(None)
+                    continue
+                n = min(int(d["name_len"]), 240)
+                d["rate"] = struct.unpack_from("<I", buf, at + _OUT_RATE)[0]
+                d["name"] = bytes(buf[at + _OUT_NAME + 4:at + _OUT_NAME + 4 + n]).decode("utf-8", "replace")
+                d["hist"] = np.frombuffer(buf, np.float64, min(int(d["hist_len"]), HIST_MAX), at + _OUT_HIST).copy()
+                out.append(d)
+            if struct.unpack_from("<Q", buf, STATE_OFFSET)[0] == s1:
+                return out
+        return [None] * len(AUX_BUSES)
 
     def midi_ports(self) -> list[str]:
         """The MIDI input ports, asked of the engine; [] if it does not answer. Any thread."""
@@ -274,9 +375,9 @@ class NativeEngine:
         text = bytes(buf[MIDI_PORTS_OFFSET + 16:MIDI_PORTS_OFFSET + 16 + length]).decode("utf-8", "replace")
         return [n for n in text.split("\n") if n]
 
-    def midi_events(self) -> list[tuple[int, int, int, int, int]]:
-        """The MIDI messages received since the last call: (status, data1, data2, flags, action); the oldest
-        are lost past MIDI_EVENTS. One reader (the player's audio thread)."""
+    def midi_events(self) -> list[tuple[int, int, int, int, int, int]]:
+        """The MIDI messages received since the last call: (status, data1, data2, flags, action, steps: a knob's
+        turn, + clockwise); the oldest are lost past MIDI_EVENTS. One reader (the player's audio thread)."""
         buf = self._buf
         if buf is None:
             return []
@@ -284,11 +385,11 @@ class NativeEngine:
         k = max(self._midi_read, written - MIDI_EVENTS)
         out = []
         while k < written:
-            seq, status, d1, d2, flags, action = _MIDI_EVENT.unpack_from(
+            seq, status, d1, d2, flags, action, steps = _MIDI_EVENT.unpack_from(
                 buf, MIDI_EVENTS_OFFSET + 16 + (k % MIDI_EVENTS) * 16)
             if seq != (k + 1) & 0xFFFFFFFF:
                 break   # not all written yet: the next call
-            out.append((status, d1, d2, flags, action))
+            out.append((status, d1, d2, flags, action, steps))
             k += 1
         self._midi_read = k
         return out
@@ -491,7 +592,8 @@ class NativeFeeder(QtCore.QObject):
         self.ch = engine.channels
         self.clicks = NativeClicks(self)
         self.tones = NativeTones(self)
-        self._settings: dict[int, bytes] = {}   # the last of each setting, sent again to a restarted engine
+        # the last of each setting (by its op, and what it is for), sent again to a restarted engine
+        self._settings: dict[tuple, tuple[int, bytes]] = {}
         self._pcm: Optional[SharedPCM] = None
         self._gen = 0
         self._len = 0
@@ -499,6 +601,7 @@ class NativeFeeder(QtCore.QObject):
         self._counts = (0, 0)
         self._hist_prev: Optional[tuple[int, float, float, np.ndarray]] = None
         self._underruns_prev: Optional[int] = None
+        self._aux_prev: list[Optional[dict]] = [None] * len(AUX_BUSES)
         self._restart_at = 0.0
         self._unlink_gen = 0   # the load whose block's name is removed once the engine has it
         # the output asked for: device, API, exclusive mode and its rate (the engine is started again with them)
@@ -515,8 +618,8 @@ class NativeFeeder(QtCore.QObject):
     def send(self, op: int, payload: bytes = b"") -> None:
         self._engine.send(op, payload)
 
-    def setting(self, op: int, payload: bytes = b"") -> None:
-        self._settings[op] = payload
+    def setting(self, op: int, payload: bytes = b"", key=None) -> None:
+        self._settings[(op, key)] = (op, payload)
         self._engine.send(op, payload)
 
     # Lifecycle
@@ -596,6 +699,7 @@ class NativeFeeder(QtCore.QObject):
         self._counts = (0, 0)
         self._hist_prev = None
         self._underruns_prev = None
+        self._aux_prev = [None] * len(AUX_BUSES)
         self._pcm = None
         self._replay()
         self.clicks.ch = self.ch
@@ -604,7 +708,7 @@ class NativeFeeder(QtCore.QObject):
 
     def _replay(self) -> None:
         """A new engine: the settings, the deck as it was reported, its marks at this engine's rate."""
-        for op, payload in self._settings.items():
+        for op, payload in self._settings.values():
             self._engine.send(op, payload)
         r = self._report
         if r is not None:
@@ -613,8 +717,8 @@ class NativeFeeder(QtCore.QObject):
             self._engine.send(OP_SET_VOLUME, struct.pack("<d", r.volume))
         self._send_marks()
 
-    def output_devices(self) -> tuple[str, list[str]]:
-        return self._engine.devices()
+    def output_devices(self, api: Optional[str] = None) -> tuple[str, list[str], dict[str, int]]:
+        return self._engine.devices(api)
 
     # The deck (src/deck.rs): requests, combined there with the MIDI controller's; what it is: deck_report
     def deck_action(self, code: int, pressed: bool = True) -> None:
@@ -668,6 +772,11 @@ class NativeFeeder(QtCore.QObject):
     def deck_report(self) -> Optional[DeckReport]:
         return self._report
 
+    def output_channels(self) -> int:
+        """The output device's channels (the decks play stereo on two of them)."""
+        st = self._state
+        return int(st.out_channels) if st is not None and st.out_channels else 2
+
     # The MIDI controller (read by the engine)
     def midi_open(self, port: str) -> None:
         """Read the MIDI input ``port`` ("": none)."""
@@ -675,11 +784,40 @@ class NativeFeeder(QtCore.QObject):
         self.setting(OP_MIDI_OPEN, struct.pack("<I", len(data)) + data)
 
     def midi_map(self, bindings) -> None:
-        """``bindings``: (status, data1, 14-bit, lamp, action code) each."""
+        """``bindings``: (status, data1, flags (BIND_*), lamp, action code) each."""
         payload = struct.pack("<I", len(bindings)) + b"".join(
-            struct.pack("<BBBBI", int(st), int(d1), int(bool(hires)), int(lamp), int(code))
-            for st, d1, hires, lamp, code in bindings)
+            struct.pack("<BBBBI", int(st), int(d1), int(flags) & 0xFF, int(lamp), int(code))
+            for st, d1, flags, lamp, code in bindings)
         self.setting(OP_MIDI_MAP, payload)
+
+    def set_routing(self, main: tuple, cue: tuple, sub: tuple) -> None:
+        """Where each bus goes on the main device: (left, right) channels (0-based; NO_CHANNEL: not there) of the
+        master, the headphones (the CUE'd decks and the master, mixed as a controller's knobs set them) and the booth
+        (the master again)."""
+        chans = [int(c) & 0xFF for pair in (main, cue, sub) for c in pair]
+        self.setting(OP_SET_ROUTING, struct.pack("<6B", *chans))
+
+    def set_aux_output(self, bus: int, device: Optional[str], api: str = "wasapi", exclusive: bool = False,
+                       buffer_ms: float = 20.0, pair: tuple = (0, 1), rate: int = 0) -> None:
+        """Bus ``bus`` (AUX_BUSES' index) on a device of its own: ``device`` (its name, "" the system's default;
+        None: none, the bus plays where set_routing puts it, if anywhere), through ``api`` (exclusive mode with
+        WASAPI), ``buffer_ms`` kept ahead of it, on its channels ``pair`` (0-based), at ``rate`` (0: the device's
+        mix format's; the bus is converted to it)."""
+        on = device is not None
+        name = (device or "").encode("utf-8")
+        lo, hi = self.BUFFER_MS_RANGE
+        payload = (struct.pack("<IIIId", int(bus), int(on), API_CODES.get(api, 1), int(bool(exclusive)),
+                               float(min(hi, max(lo, buffer_ms))))
+                   + struct.pack("<BBHI", int(pair[0]) & 0xFF, int(pair[1]) & 0xFF, 0, max(0, int(rate)))
+                   + struct.pack("<I", len(name)) + name)
+        self.setting(OP_SET_AUX_OUTPUT, payload, key=int(bus))
+
+    def set_headphones(self, master: bool, mix: float = 0.5, level: float = 1.0) -> None:
+        """The headphones: the CUE'd channels before their faders, and the master mixed in by ``mix`` (0 CUE .. 1
+        MASTER) with ``master`` (off: a device that mixes the master into its headphones itself, as the DDJ-400 does
+        in analog), at ``level``; a controller's CUE / MASTER and level knobs move them later."""
+        self.setting(OP_SET_HEADPHONES, struct.pack("<Idd", int(bool(master)), min(1.0, max(0.0, float(mix))),
+                                                    max(0.0, float(level))))
 
     def set_meter_gain(self, gain: float) -> None:
         """The controller's level meter shows the heard peak times this (the GUI peak meter's gain)."""
@@ -691,7 +829,7 @@ class NativeFeeder(QtCore.QObject):
     def midi_ports(self) -> list[str]:
         return self._engine.midi_ports()
 
-    def midi_events(self) -> list[tuple[int, int, int, int, int]]:
+    def midi_events(self) -> list[tuple[int, int, int, int, int, int]]:
         return self._engine.midi_events()
 
     def set_scrubbing(self, scrubbing: bool) -> None:
@@ -757,6 +895,7 @@ class NativeFeeder(QtCore.QObject):
         self._engine = engine
         self._counts = (0, 0)
         self._hist_prev = None
+        self._aux_prev = [None] * len(AUX_BUSES)
         self._replay()
         if self._pcm is not None:
             pcm, self._pcm = self._pcm, None
@@ -810,4 +949,42 @@ class NativeFeeder(QtCore.QObject):
                          "output_thread": THREAD_STATES.get(int(st.threads) >> 8 & 0xFF, "api")
                          if st is not None else "api",
                          "power": POWER_STATES.get(int(st.power), "left") if st is not None else "left"}
+        outputs = self._aux_stats()
+        if stats is not None:
+            stats["outputs"] = outputs
+        elif any(o is not None for o in outputs.values()):
+            stats = {"outputs": outputs}   # the outputs' state without the main output's observations
         return queued, stats, capacity
+
+    def _aux_stats(self) -> dict:
+        """Each bus's own output (AUX_BUSES' names): None where it has none, else its state and, while it plays,
+        its buffer's observations since the last call (as the main output's: "hist", "seconds", "mean_ms",
+        "dropout_sec", ...)."""
+        out = {}
+        states = self._engine.aux_states()
+        rate = max(1, self.rate)
+        for k, (bus, cur) in enumerate(zip(AUX_BUSES, states)):
+            prev, self._aux_prev[k] = self._aux_prev[k], cur
+            if cur is None:
+                out[bus] = None
+                continue
+            ms = 1000.0 / rate
+            d = {"open": cur["state"] == 1, "state": AUX_STATES.get(int(cur["state"]), "failed"),
+                 "device": cur["name"], "errors": int(cur["errors"]), "rate": int(cur["rate"]),
+                 "output_api": {v: key for key, v in API_CODES.items()}.get(int(cur["mode"]) & 0xFF, "cpal"),
+                 "exclusive": bool(int(cur["mode"]) >> 8), "device_ms": float(cur["latency_ms"]),
+                 "period_ms": float(cur["period_ms"]), "queued_ms": float(cur["queued"]) * ms,
+                 "capacity_ms": float(cur["capacity"]) * ms, "channels": int(cur["channels"]),
+                 "drift_ppm": float(cur["drift_ppm"]), "late": int(cur["late"]),
+                 "max_gap_ms": float(cur["max_gap_ms"]), "bucket_ms": float(cur["hist_bucket_ms"]),
+                 "lowest_ms": float(cur["lowest_ms"]),
+                 "output_thread": THREAD_STATES.get(int(cur["thread"]) & 0xFF, "api"), "observed": None}
+            if (prev is not None and prev["buffer_gen"] == cur["buffer_gen"]
+                    and prev["hist"].size == cur["hist"].size):
+                seconds = float(cur["obs_seconds"] - prev["obs_seconds"])
+                if seconds > 0.0:
+                    d["observed"] = {"hist": cur["hist"] - prev["hist"], "seconds": seconds,
+                                     "mean_ms": float(cur["obs_level"] - prev["obs_level"]) / seconds,
+                                     "dropout_sec": max(0, int(cur["underruns"]) - int(prev["underruns"])) / rate}
+            out[bus] = d
+        return out

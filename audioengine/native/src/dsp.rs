@@ -23,12 +23,6 @@ pub fn soft_clip(out: &mut [f32], knee: f32) {
     }
 }
 
-/// Peak of interleaved frames as dBFS within [floor, 0].
-pub fn peak_dbfs(out: &[f32], floor: f64) -> f64 {
-    let peak = out.iter().fold(0f32, |m, v| m.max(v.abs())) as f64;
-    (20.0 * peak.clamp(1e-12, 1.0).log10()).clamp(floor, 0.0)
-}
-
 /// 5-tap Lagrange varispeed: output frame k is the input at ``pos + factor * k`` (taps i0-1 .. i0+3, the
 /// edges held), so consecutive calls are seamless.
 pub fn varispeed(pcm: &[f32], ch: usize, pos: f64, factor: f64, max_out: usize) -> Vec<f32> {

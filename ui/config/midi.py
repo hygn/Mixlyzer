@@ -1,8 +1,9 @@
 """Settings > MIDI: a MIDI controller for the deck, read by the native audio engine itself (never through the GUI's
-Python; none on the Python engine): its input port, its jog wheel's resolution, and every action's MIDI messages
-(``core.midi``: the keyboard shortcuts' actions and a controller's own faders and jog wheel). Learn takes the next
-control moved or pressed; Import reads a rekordbox MIDI mapping (CSV: deck 1 and mixer channel 1's fader). OK /
-Apply keep the mapping as the user's (``core.midi.save``)."""
+Python; none on the Python engine): its input port, its jog wheel's resolution, and the MIDI messages of deck 1's
+and mixer channel 1's actions shown (``core.midi.ACTIONS_SHOWN``: a DJ controller's; the other decks' and channels'
+are kept as they are in the mapping, not shown). Learn takes the next control moved or pressed: a fader's 14-bit CC
+or pitch bend, a knob's turn (a button bound to a knob: the direction turned), a button; Import reads a rekordbox
+MIDI mapping (CSV). OK / Apply keep the mapping as the user's (``core.midi.save``)."""
 
 from __future__ import annotations
 
@@ -25,13 +26,12 @@ from PySide6.QtWidgets import (
 )
 
 from core import midi
-from core.i18n import tr, tr_mark
-from ui.shortcuts import ACTIONS, GROUPS
+from core.i18n import tr
 
 _ACTION_ROLE = QtCore.Qt.UserRole
-CONTROLLER = tr_mark("Controller")
-# a fader's CC: its LSB (data 1 + 32) looked for this long after the first message (14 bits)
-LEARN_HIRES_MS = 300
+# Learn: a fader's CC waits this long for its LSB (data 1 + 32: 14 bits); a button's CC sending 127 for its 0 (let
+# go: a button; else a knob turned counterclockwise one step)
+LEARN_WAIT_MS = 300
 
 
 def _labels(texts: list[str]) -> str:
@@ -88,10 +88,12 @@ def build_midi_tab(dialog) -> None:
     bold = QtGui.QFont(dialog.tree_midi.font())
     bold.setBold(True)
     dialog._midi_items = {}   # action id -> its row
-    groups = [(CONTROLLER, [(c.id, tr(c.text), f"<p>{tr(c.tip)}</p>" if c.tip else "") for c in midi.CONTROLS])]
-    groups += [(group, [(a.id, a.label(), a.tooltip()) for a in ACTIONS if a.group == group]) for group in GROUPS]
+    groups = [(group, [(a.id, midi.action_label(a), f"<p>{tr(a.tip)}</p>" if a.tip else "")
+                       for a in midi.ACTIONS_SHOWN if a.group == group]) for group in midi.GROUPS]
     for group, rows in groups:
-        top = QTreeWidgetItem([tr(group) if group not in ("Key", "CUE") else group])
+        if not rows:
+            continue
+        top = QTreeWidgetItem([tr(group)])
         top.setFont(0, bold)
         top.setFlags(QtCore.Qt.ItemIsEnabled)
         dialog.tree_midi.addTopLevelItem(top)
@@ -115,8 +117,8 @@ def build_midi_tab(dialog) -> None:
     dialog.btn_midi_revert.setToolTip(tr("The selected action's shipped MIDI messages again."))
     dialog.btn_midi_import = QPushButton(tr("Import rekordbox CSV..."))
     dialog.btn_midi_import.setToolTip(tr(
-        "A MIDI mapping exported from rekordbox (CSV), for the DDJ-400 and the like: its deck 1 controls and mixer "
-        "channel 1's fader replace the mapping (kept with OK / Apply)."))
+        "A MIDI mapping exported from rekordbox (CSV), for the DDJ-400 and the like: its deck 1 controls, mixer "
+        "channel 1 and the browser replace the mapping (kept with OK / Apply)."))
     dialog.btn_midi_revert_all = QPushButton(tr("Revert All"))
     dialog.btn_midi_revert_all.setToolTip(tr("Every action's shipped MIDI messages again (kept with OK / Apply)."))
     dialog.lbl_midi_learn = QLabel()
@@ -142,12 +144,13 @@ class MidiSettingsMixin:
         self._midi_learn_setter = None
         self._midi_wanted_input = ""
         self._midi_learning: str | None = None   # the action learning
-        self._midi_pending: tuple[int, int] | None = None   # a fader's first CC (status, data1), waiting for its LSB
-        self._midi_hires_seen = False
+        # a CC waiting (LEARN_WAIT_MS): ("fader", status, data1) for its LSB, ("button", status, data1) for its 0
+        self._midi_pending: tuple[str, int, int] | None = None
+        self._midi_pending_seen = False
         self._midi_learn_timer = QtCore.QTimer(self)
         self._midi_learn_timer.setSingleShot(True)
-        self._midi_learn_timer.setInterval(LEARN_HIRES_MS)
-        self._midi_learn_timer.timeout.connect(self._finish_hires_learn)
+        self._midi_learn_timer.setInterval(LEARN_WAIT_MS)
+        self._midi_learn_timer.timeout.connect(self._finish_pending_learn)
         self.tree_midi.currentItemChanged.connect(lambda *_: self._show_selected_midi())
         self.ed_midi_filter.textChanged.connect(self._filter_midi)
         self.btn_midi_refresh.clicked.connect(lambda: self._load_midi_inputs(self._midi_input()))
@@ -170,7 +173,7 @@ class MidiSettingsMixin:
         self._midi_learn_setter = learn
         self.lbl_midi_note.setText(
             tr("The native audio engine reads the controller itself: its deck controls answer at once, whatever the "
-               "app is doing. Deck 1's controls and the volume fader are supported.") if available else
+               "app is doing. Deck 1's controls and mixer channel 1's fader and EQ are supported.") if available else
             tr("A MIDI controller needs the native audio engine (Settings > Playback > Audio engine); the Python "
                "engine (the compatibility mode) has no MIDI."))
         for w in (self.cb_midi_input, self.btn_midi_refresh, self.sp_midi_jog_ticks, self.ed_midi_filter,
@@ -208,7 +211,9 @@ class MidiSettingsMixin:
         self._stop_midi_learn()
         self._midi_defaults = midi.defaults()
         in_use = midi.mapping()
-        self._midi_map = {action_id: list(in_use.get(action_id, [])) for action_id in self._midi_items}
+        # every action's: the ones not shown (other decks, other channels) kept as they are
+        self._midi_map = {**{a: list(m) for a, m in in_use.items()},
+                          **{action_id: list(in_use.get(action_id, [])) for action_id in self._midi_items}}
         self._refresh_midi_items()
         self._show_selected_midi()
 
@@ -249,8 +254,8 @@ class MidiSettingsMixin:
         has = action_id is not None and self._midi_available
         for w in (self.btn_midi_learn, self.btn_midi_clear, self.btn_midi_revert):
             w.setEnabled(has)
-        control = next((c for c in midi.CONTROLS if c.id == action_id), None)
-        if control is not None and control.kind == midi.METER:
+        action = midi.BY_ID.get(action_id) if action_id else None
+        if action is not None and action.kind == midi.METER:
             self.btn_midi_learn.setEnabled(False)   # an output: nothing comes from it to learn
         if self._midi_learning is not None and self._midi_learning != action_id:
             self._stop_midi_learn()
@@ -263,7 +268,7 @@ class MidiSettingsMixin:
         taken = [(t, other) for t in new for other, other_texts in self._midi_map.items()
                  if other != action_id and t in other_texts]
         if taken:
-            names = "\n".join(f"{midi.Message.parse(t).label()}: {self._midi_items[o].text(0)}" for t, o in taken)
+            names = "\n".join(f"{midi.Message.parse(t).label()}: {self._action_name(o)}" for t, o in taken)
             answer = QMessageBox.question(
                 self, "MIDI",
                 tr("Already used:\n{uses}\n\nUse them here instead (taken from those actions)?").format(uses=names))
@@ -274,13 +279,17 @@ class MidiSettingsMixin:
         self._midi_map[action_id] = list(dict.fromkeys(texts))
         self._refresh_midi_items()
 
+    def _action_name(self, action_id: str) -> str:
+        action = midi.BY_ID.get(action_id)
+        return midi.action_label(action) if action is not None else action_id
+
     def _revert_selected_midi(self) -> None:
         action_id = self._selected_midi_action()
         if action_id is not None:
             self._assign_midi(action_id, list(self._midi_defaults.get(action_id, [])))
 
     def _revert_all_midi(self) -> None:
-        self._midi_map = {a: list(self._midi_defaults.get(a, [])) for a in self._midi_items}
+        self._midi_map = {**self._midi_map, **{a: list(self._midi_defaults.get(a, [])) for a in self._midi_items}}
         self._refresh_midi_items()
 
     def _import_rekordbox_midi(self) -> None:
@@ -295,7 +304,8 @@ class MidiSettingsMixin:
         if not imported:
             QMessageBox.information(self, "MIDI", tr("No deck 1 control in this file that Mixlyzer has."))
             return
-        self._midi_map = {a: list(imported.get(a, [])) for a in self._midi_items}
+        self._midi_map = {**{a: list(m) for a, m in imported.items()},
+                          **{a: list(imported.get(a, [])) for a in self._midi_items}}
         self._refresh_midi_items()
         n = sum(len(v) for v in imported.values())
         message = tr("{count} MIDI messages for {actions} actions imported (kept with OK / Apply).").format(
@@ -331,39 +341,67 @@ class MidiSettingsMixin:
             self._midi_learn_setter(False)
 
     def _learn_kind(self) -> str:
-        control = next((c for c in midi.CONTROLS if c.id == self._midi_learning), None)
-        return control.kind if control is not None else midi.BUTTON
+        action = midi.BY_ID.get(self._midi_learning or "")
+        return action.kind if action is not None else midi.BUTTON
 
     def _on_midi_events(self, events) -> None:
         if self._midi_learning is None:
             return
         kind = self._learn_kind()
-        for status, d1, d2, _flags, _action in events:
+        for status, d1, d2, _flags, _action, _steps in events:
             is_cc = status & 0xF0 == 0xB0
+            steps = midi.relative_steps(d2) if is_cc else 0   # as a knob's (not bound yet: told apart by the value)
+            is_note = status & 0xF0 == 0x90
             if self._midi_pending is not None:
-                # a fader's LSB (data 1 + 32 on its channel): 14 bits
-                if is_cc and status == self._midi_pending[0] and d1 == self._midi_pending[1] + 32:
-                    self._midi_hires_seen = True
+                mode, p_status, p_d1 = self._midi_pending
+                if mode == "fader" and is_cc and status == p_status and d1 == p_d1 + 32:
+                    self._midi_pending_seen = True   # its LSB: 14 bits
+                elif mode == "button" and is_cc and status == p_status and d1 == p_d1 and d2 == 0:
+                    self._midi_pending_seen = True   # let go: a button
                 continue
-            if kind in (midi.FADER, midi.JOG) and not is_cc:
+            if kind == midi.FADER:
+                if status & 0xF0 == 0xE0:   # a pitch bend: 14 bits of its own
+                    self._learned(midi.Message(status, 0))
+                    return
+                if is_cc:
+                    if d1 < 32:
+                        self._wait_learn("fader", status, d1)
+                    else:
+                        self._learned(midi.Message(status, d1))
+                    return
                 continue
-            if kind == midi.TOUCH and status & 0xF0 != 0x90:
+            if kind == midi.KNOB:
+                if is_cc:
+                    self._learned(midi.Message(status, d1))
+                    return
                 continue
-            if kind in (midi.BUTTON, midi.TOUCH) and d2 == 0:
+            if not (is_cc or is_note) or d2 == 0:
                 continue   # a key let go: the press is what is learned
-            if kind == midi.FADER and d1 < 32:
-                self._midi_pending = (status, d1)
-                self._midi_hires_seen = False
-                self._midi_learn_timer.start()
-                continue
-            self._learned(midi.Message(status if is_cc or status & 0xF0 != 0x80 else 0x90 | status & 0x0F, d1))
+            if kind == midi.BUTTON and is_cc and d2 == 127:
+                self._wait_learn("button", status, d1)   # a button, or a knob's step back (two's complement)
+                return
+            if kind == midi.BUTTON and is_cc and d2 != 127 and steps:
+                # a knob turned: this action on that direction only
+                self._learned(midi.Message(status, d1, direction=1 if steps > 0 else -1))
+                return
+            self._learned(midi.Message(status, d1))
             return
 
-    def _finish_hires_learn(self) -> None:
+    def _wait_learn(self, mode: str, status: int, d1: int) -> None:
+        self._midi_pending = (mode, status, d1)
+        self._midi_pending_seen = False
+        self._midi_learn_timer.start()
+
+    def _finish_pending_learn(self) -> None:
         if self._midi_pending is None:
             return
-        status, d1 = self._midi_pending
-        self._learned(midi.Message(status, d1, self._midi_hires_seen))
+        mode, status, d1 = self._midi_pending
+        if mode == "fader":
+            self._learned(midi.Message(status, d1, hires=self._midi_pending_seen))
+        elif self._midi_pending_seen:
+            self._learned(midi.Message(status, d1))   # 127 then 0: a button
+        else:
+            self._learned(midi.Message(status, d1, direction=-1))   # 127 alone: a knob's step back
 
     def _learned(self, message: midi.Message) -> None:
         action_id = self._midi_learning

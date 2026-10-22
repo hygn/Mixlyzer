@@ -5,6 +5,9 @@ import copy
 import json
 
 from app.print_hook import install_print_hook, log_environment_info
+from audioengine.native.client import (
+    ACT_DECK_SHIFT, ACT_JUMP_A, MIDI_EVENT_GUI, MIDI_EVENT_HOTCUE_SET, MIDI_EVENT_RELATIVE,
+)
 from core import midi, os_support, shortcuts
 from core.event_bus import EventBus
 from core.model import DataModel
@@ -28,7 +31,10 @@ from ui.config.window import SettingsDialog
 from ui.workers import WorkersDialog
 from ui.oss_support import SupportDialog
 from ui.about_dialog import AboutDialog
-from ui.shortcuts import ACTIONS as SHORTCUT_ACTIONS, ShortcutManager
+from ui.shortcuts import ShortcutManager
+
+# a knob's steps acted on from one message at most (a fast turn)
+MIDI_STEPS_MAX = 16
 
 from core.workflows.segment_reanalysis import SegmentReanalysisWorkflow
 from core.config import config, load_cfg, search_settings
@@ -116,7 +122,7 @@ class AppWindow(QtWidgets.QMainWindow):
         step(0.3, tr("Settings"))
         self.cfgwin = SettingsDialog(bus=self.bus)
         # the engine that plays (its buffer shown first) and its output devices
-        self.cfgwin.set_audio_engine(self.player.native, self.player.output_devices)
+        self.cfgwin.set_audio_engine(self.player.native, self.player.output_devices, self.player.output_channels)
         # a MIDI controller: the native engine's alone
         self.cfgwin.set_midi_access(self.player.native, self.player.midi_ports, self.player.set_midi_learn)
         self.cfgwin.set_external_sync_status(self.external_sync.snapshot)
@@ -147,10 +153,9 @@ class AppWindow(QtWidgets.QMainWindow):
         self.shortcuts = ShortcutManager(self, handlers, self.statusBar().showMessage)
         self.shortcuts.apply(shortcuts.keymap())
         self.bus.sig_shortcuts_changed.connect(self.shortcuts.apply)
-        # a MIDI controller (assets/midi; Settings > MIDI): the native engine does the deck's actions itself; the
-        # others it passes on (sig_midi_events) are run here as their shortcuts
+        # a MIDI controller (assets/midi; Settings > MIDI): the native engine does the deck's and the mixer's actions
+        # itself; the others it passes on (sig_midi_events) are run here as the shortcuts they name
         self._midi_handlers = handlers
-        self._midi_gui_ids = [a.id for a in SHORTCUT_ACTIONS if a.id not in midi.DECK_ACTIONS]
         self.bus.sig_midi_events.connect(self._on_midi_events)
         self.bus.sig_midi_changed.connect(self._apply_midi)
         self.bus.sig_deck_state.connect(self._keep_tempo_range)
@@ -262,20 +267,37 @@ class AppWindow(QtWidgets.QMainWindow):
     def _apply_midi(self) -> None:
         """The MIDI input, the mapping and the jog's resolution to the native engine."""
         pcfg = self.cfg.playbackconfig
-        self.player.midi_configure(pcfg.midi_input, midi.bindings(midi.mapping(), self._midi_gui_ids),
-                                   int(pcfg.midi_jog_ticks))
+        self.player.midi_configure(pcfg.midi_input, midi.bindings(midi.mapping()), int(pcfg.midi_jog_ticks))
 
     def _on_midi_events(self, events) -> None:
-        """The controller's messages bound to the GUI's actions: each press run as its shortcut."""
-        for _status, _d1, d2, flags, code in events:
-            if not flags & 1 or d2 == 0:   # MIDI_EVENT_GUI; a key let go
+        """The controller's messages passed on to the GUI: a JumpCUE pad on an empty slot (SET), a knob's turn
+        (its steps, each a shortcut run), a button pressed (its shortcut run once)."""
+        for _status, _d1, d2, flags, code, steps in events:
+            if flags & MIDI_EVENT_HOTCUE_SET:
+                letter = midi.JUMPCUE_PADS[(int(code) & 0xFFFFFF) - ACT_JUMP_A]
+                if int(code) >> ACT_DECK_SHIFT == 0:   # the app's deck: deck 1
+                    self._run_midi_handler(f"cue.set.{letter}")
                 continue
-            i = int(code) - 0x1000   # client.ACT_GUI
-            if 0 <= i < len(self._midi_gui_ids):
-                handler = self._midi_handlers.get(self._midi_gui_ids[i])
-                message = handler() if handler is not None else None
-                if message:
-                    self.statusBar().showMessage(message, 3000)
+            if not flags & MIDI_EVENT_GUI:
+                continue
+            action = midi.gui_action(code)
+            if action is None:
+                continue
+            if action.kind == midi.KNOB:   # clockwise: its first shortcut, counterclockwise: its second
+                handler_id = action.gui[0] if steps > 0 else action.gui[-1]
+                for _ in range(min(abs(int(steps)), MIDI_STEPS_MAX)):
+                    self._run_midi_handler(handler_id)
+            elif flags & MIDI_EVENT_RELATIVE:   # a button bound to a knob's one direction: a step a press
+                for _ in range(min(abs(int(steps)), MIDI_STEPS_MAX)):
+                    self._run_midi_handler(action.gui[0])
+            elif d2 > 0:   # pressed (let go: nothing)
+                self._run_midi_handler(action.gui[0])
+
+    def _run_midi_handler(self, handler_id: str) -> None:
+        handler = self._midi_handlers.get(handler_id)
+        message = handler() if handler is not None else None
+        if message:
+            self.statusBar().showMessage(message, 3000)
 
     def _keep_tempo_range(self, report) -> None:
         """The tempo range as the deck has it (its button, a key, a controller), kept for the next start."""
@@ -739,6 +761,8 @@ class AppWindow(QtWidgets.QMainWindow):
         )
         self.player.set_soft_clip(bool(pcfg.soft_clip))
         self.player.set_volume_trim(float(pcfg.volume_trim_dbfs))
+        self.player.set_routing(pcfg.output_main, pcfg.output_headphones, pcfg.output_booth)
+        self.player.set_headphones(bool(pcfg.headphones_master_mix), int(pcfg.headphones_cue_mix) / 100.0)
         self.player.set_buffer_ms(float(pcfg.native_buffer_ms), float(pcfg.python_buffer_ms))
         self.player.set_output_device(pcfg.output_device)
         self.player.set_output_mode(pcfg.native_audio_api, bool(pcfg.native_exclusive))

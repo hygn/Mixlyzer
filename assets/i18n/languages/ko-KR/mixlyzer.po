@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-22 19:44+0900\n"
+"POT-Creation-Date: 2026-10-22 22:26+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ko_KR\n"
@@ -125,10 +125,6 @@ msgstr "HPSS 처리 중"
 #: analyzer_core/global_analyzer.py:289
 msgid "Processing Waveform"
 msgstr "파형 처리 중"
-
-#: analyzer_core/global_analyzer.py:304
-msgid "Tempo"
-msgstr "템포"
 
 #: analyzer_core/global_analyzer.py:306
 msgid "Tempo Analyzing"
@@ -280,56 +276,56 @@ msgstr "라이브러리 불러오는 중"
 msgid "Building the window"
 msgstr "창 만드는 중"
 
-#: app/window.py:49
+#: app/window.py:55
 msgid "Core objects and playback"
 msgstr "핵심 객체와 재생"
 
-#: app/window.py:111
+#: app/window.py:117
 msgid "Main view, editor and library"
 msgstr "메인 뷰, 편집기, 라이브러리"
 
-#: app/window.py:116 app/window.py:133 ui/config/window.py:62
+#: app/window.py:122 app/window.py:139 ui/config/window.py:62
 msgid "Settings"
 msgstr "설정"
 
-#: app/window.py:124
+#: app/window.py:130
 msgid "Dialogs, workflows and metronome"
 msgstr "대화상자, 워크플로, 메트로놈"
 
-#: app/window.py:131
+#: app/window.py:137
 msgid "Transport"
 msgstr "트랜스포트"
 
-#: app/window.py:134 ui/workers.py:24
+#: app/window.py:140 ui/workers.py:24
 msgid "Workers"
 msgstr "작업"
 
-#: app/window.py:135
+#: app/window.py:141
 msgid "Open Source"
 msgstr "오픈 소스"
 
-#: app/window.py:136
+#: app/window.py:142
 msgid "About"
 msgstr "정보"
 
-#: app/window.py:250 app/window.py:309 app/window.py:316
+#: app/window.py:255 app/window.py:331 app/window.py:338
 msgid "External Sync is enabled. Local track loading is disabled."
 msgstr "외부 동기화가 켜져 있습니다. 로컬 트랙 불러오기가 비활성화됩니다."
 
-#: app/window.py:260
+#: app/window.py:265
 #, python-brace-format
 msgid "Drop error: {error}"
 msgstr "드롭 오류: {error}"
 
-#: app/window.py:324
+#: app/window.py:346
 msgid "Track unloaded."
 msgstr "트랙을 내렸습니다."
 
-#: app/window.py:333
+#: app/window.py:355
 msgid "Track File Not Found"
 msgstr "트랙 파일을 찾을 수 없음"
 
-#: app/window.py:337
+#: app/window.py:359
 #, python-brace-format
 msgid ""
 "Cannot load \"{name}\": its file is missing.\n"
@@ -342,40 +338,40 @@ msgstr ""
 "\n"
 "파일의 새 위치를 지정할까요?"
 
-#: app/window.py:344
+#: app/window.py:366
 #, python-brace-format
 msgid "Locate {name}"
 msgstr "{name} 찾기"
 
-#: analyzer_core/global_analyzer.py:554 app/window.py:394
+#: analyzer_core/global_analyzer.py:554 app/window.py:416
 msgid "Finished"
 msgstr "완료"
 
-#: app/window.py:397 app/window.py:433
+#: app/window.py:419 app/window.py:455
 msgid "Done. Press Play."
 msgstr "완료. 재생을 누르세요."
 
-#: app/window.py:399
+#: app/window.py:421
 msgid "Analysis saved to library."
 msgstr "분석을 라이브러리에 저장했습니다."
 
-#: app/window.py:531
+#: app/window.py:553
 #, python-brace-format
 msgid "External Sync loading: {file}"
 msgstr "외부 동기화 불러오는 중: {file}"
 
-#: app/window.py:531
+#: app/window.py:553
 #, python-brace-format
 msgid "External Sync analyzing: {file}"
 msgstr "외부 동기화 분석 중: {file}"
 
 # | msgid "Memory Sync Disabled"
-#: app/window.py:547
+#: app/window.py:569
 msgid "External Sync Disabled"
 msgstr "외부 동기화 비활성화됨"
 
 # | msgid "External Sync enabled via {target}. Local play/load is locked."
-#: app/window.py:803
+#: app/window.py:827
 #, python-brace-format
 msgid "External Sync enabled: OSC on {address}. Local play/load is locked."
 msgstr "외부 동기화 사용: OSC {address}. 로컬 재생/불러오기가 잠깁니다."
@@ -459,66 +455,320 @@ msgstr "이 파일은 이미 라이브러리에 \"{track}\"(으)로 있습니다
 msgid "Playlist name cannot be empty"
 msgstr "플레이리스트 이름은 비워 둘 수 없습니다"
 
-# | msgid "Tempo"
-#: core/midi.py:49
-msgid "Tempo fader"
-msgstr "템포 페이더"
-
-#: core/midi.py:50
-msgid "The tempo over the tempo range (Tempo range); its middle is 100%."
-msgstr "템포 범위(Tempo range) 안의 템포. 가운데가 100%입니다."
-
-#: core/midi.py:51
-msgid "Volume fader"
-msgstr "볼륨 페이더"
-
-#: core/midi.py:52
-msgid "The deck's volume (the mixer's channel fader)."
-msgstr "덱의 볼륨(믹서의 채널 페이더)."
-
 #: core/midi.py:53
-msgid "Jog wheel: touch"
-msgstr "조그 휠: 터치"
+msgid "Deck"
+msgstr "덱"
 
+# | msgid "JumpCUE Updated"
 #: core/midi.py:54
-msgid ""
-"The jog wheel's top touched: the record held (scratch); let go, it plays "
-"on."
-msgstr "조그 휠 윗면을 터치하면 레코드를 잡습니다(스크래치). 놓으면 계속 재생합니다."
+msgid "JumpCUE pads"
+msgstr "JumpCUE 패드"
 
-#: core/midi.py:55
-msgid "Jog wheel: scratch"
-msgstr "조그 휠: 스크래치"
+#: core/midi.py:55 ui/config/pipeline_map.py:33 ui/edit_panel/cue_slots.py:233
+msgid "CUE points"
+msgstr "CUE 포인트"
 
+# | msgid "Beat"
 #: core/midi.py:56
-msgid ""
-"The jog wheel's top turned: touched, the record moves with it (33 1/3 "
-"rpm); else a pitch bend."
-msgstr "조그 휠 윗면을 돌림: 터치 중이면 레코드가 함께 움직이고(33 1/3 rpm), 아니면 피치 벤드입니다."
+msgid "Beat jump"
+msgstr "비트 점프"
 
+#: analyzer_core/global_analyzer.py:304 core/midi.py:57
+msgid "Tempo"
+msgstr "템포"
+
+# | msgid "Jog wheel: touch"
 #: core/midi.py:58
-msgid "Jog wheel: pitch bend"
-msgstr "조그 휠: 피치 벤드"
+msgid "Jog wheel"
+msgstr "조그 휠"
 
+# | msgid "Browse..."
 #: core/midi.py:59
-msgid ""
-"The jog wheel turned: the tempo bent while it turns (a turn a second: "
-"+10%)."
-msgstr "조그 휠을 돌리는 동안 템포를 휘게 합니다(초당 한 바퀴: +10%)."
+msgid "Browser"
+msgstr "브라우저"
 
 #: core/midi.py:60
-msgid "Jog wheel: search"
-msgstr "조그 휠: 서치"
+msgid "Mixer"
+msgstr "믹서"
 
-#: core/midi.py:61
-msgid "The jog wheel turned: the playhead moved through the track fast."
-msgstr "조그 휠을 돌려 재생 위치를 곡 안에서 빠르게 옮깁니다."
+# | msgid "Play / pause"
+#: core/midi.py:87
+#, python-brace-format
+msgid "Deck {deck}: PLAY / PAUSE"
+msgstr "덱 {deck}: PLAY / PAUSE"
 
-#: core/midi.py:62
-msgid "Level meter (output)"
-msgstr "레벨 미터 (출력)"
+#: core/midi.py:89
+#, python-brace-format
+msgid "Deck {deck}: CUE"
+msgstr "덱 {deck}: CUE"
 
-#: core/midi.py:63
+# | msgid "" "As rekordbox's CUE: stopped, sets the cue point at the playhead
+# | (on the " "nearest beat); held on the cue point, plays until let go (PLAY
+# | while " "held: plays on); playing, back to the cue point and stop."
+#: core/midi.py:91
+msgid ""
+"As rekordbox's CUE: stopped, sets the cue point (on the nearest beat); "
+"held on it, plays until let go; playing, back to it and stop."
+msgstr ""
+"rekordbox의 CUE와 같음: 정지 중이면 큐 포인트를 설정(가장 가까운 비트), 큐 포인트에서 누르고 있으면 뗄 때까지 "
+"재생, 재생 중이면 큐 포인트로 돌아가 정지."
+
+# | msgid "Unload track"
+# | msgid "Unload the track"
+# | msgid "Back to the tracks"
+#: core/midi.py:93
+#, python-brace-format
+msgid "Deck {deck}: back to the track's start"
+msgstr "덱 {deck}: 곡 처음으로"
+
+#: core/midi.py:95
+msgid "As rekordbox's SHIFT + CUE: the track's start, playing on if it plays."
+msgstr "rekordbox의 SHIFT + CUE와 같음: 곡 처음으로 가고, 재생 중이면 계속 재생합니다."
+
+# | msgid "Load the selected track"
+#: core/midi.py:99
+#, python-brace-format
+msgid "Deck {deck}: LOAD (the selected track)"
+msgstr "덱 {deck}: LOAD (선택한 곡)"
+
+#: core/midi.py:101
+#, python-brace-format
+msgid "Deck {deck}: MASTER TEMPO"
+msgstr "덱 {deck}: MASTER TEMPO"
+
+# | msgid "Master tempo: time stretch keeps the pitch"
+#: core/midi.py:102
+msgid "Key lock: the time stretch keeps the pitch."
+msgstr "키 고정: 타임 스트레치로 음정을 유지합니다."
+
+#: core/midi.py:105
+#, python-brace-format
+msgid "Deck {deck}: TEMPO slider"
+msgstr "덱 {deck}: TEMPO 슬라이더"
+
+# | msgid "The tempo over the tempo range (Tempo range); its middle is 100%."
+#: core/midi.py:107
+msgid ""
+"The tempo over the tempo range; its middle is 100%. A pitch bend message "
+"or a CC."
+msgstr "템포 범위 안의 템포. 가운데가 100%입니다. 피치벤드 메시지나 CC."
+
+# | msgid "Tempo Analyzing"
+# | msgid "Tempo range"
+#: core/midi.py:108
+#, python-brace-format
+msgid "Deck {deck}: TEMPO RANGE"
+msgstr "덱 {deck}: TEMPO RANGE"
+
+# | msgid "The tempo fader's range: ±6% / ±10% / ±16% / WIDE (0%-200%), the
+# next
+# | one."
+#: core/midi.py:110
+msgid "±6% / ±10% / ±16% / WIDE, the next one."
+msgstr "±6% / ±10% / ±16% / WIDE 중 다음 범위."
+
+#: core/midi.py:111
+#, python-brace-format
+msgid "Deck {deck}: TEMPO RESET"
+msgstr "덱 {deck}: TEMPO RESET"
+
+# | msgid "Jog wheel: pitch bend"
+#: core/midi.py:113
+#, python-brace-format
+msgid "Deck {deck}: PITCH BEND −"
+msgstr "덱 {deck}: PITCH BEND −"
+
+#: core/midi.py:114
+msgid "Held: the tempo bent down 4%."
+msgstr "누르고 있는 동안 템포를 4% 내립니다."
+
+# | msgid "Jog wheel: pitch bend"
+#: core/midi.py:115
+#, python-brace-format
+msgid "Deck {deck}: PITCH BEND +"
+msgstr "덱 {deck}: PITCH BEND +"
+
+#: core/midi.py:116
+msgid "Held: the tempo bent up 4%."
+msgstr "누르고 있는 동안 템포를 4% 올립니다."
+
+# | msgid "Jog wheel: touch"
+#: core/midi.py:117
+#, python-brace-format
+msgid "Deck {deck}: jog wheel touch"
+msgstr "덱 {deck}: 조그 휠 터치"
+
+# | msgid "" "The jog wheel's top touched: the record held (scratch); let go,
+# it
+# | plays " "on."
+#: core/midi.py:119
+msgid ""
+"The top touched: the record held (vinyl mode); let go, it plays on (a "
+"spin: when it stops)."
+msgstr "윗면을 터치하면 레코드를 잡습니다(바이닐 모드). 놓으면 계속 재생합니다(돌리던 중이면 멈춘 뒤)."
+
+#: core/midi.py:121
+#, python-brace-format
+msgid "Deck {deck}: jog wheel top"
+msgstr "덱 {deck}: 조그 휠 윗면"
+
+# | msgid "" "The jog wheel's top turned: touched, the record moves with it
+# (33
+# | 1/3 " "rpm); else a pitch bend."
+#: core/midi.py:123
+msgid "Turned: touched, the record moves with it (33 1/3 rpm); else a pitch bend."
+msgstr "돌리면: 터치 중이면 레코드가 함께 움직이고(33 1/3 rpm), 아니면 피치 벤드."
+
+# | msgid "Jog wheel: pitch bend"
+#: core/midi.py:124
+#, python-brace-format
+msgid "Deck {deck}: jog wheel side (pitch bend)"
+msgstr "덱 {deck}: 조그 휠 옆면 (피치 벤드)"
+
+# | msgid "" "The jog wheel turned: the tempo bent while it turns (a turn a
+# | second: " "+10%)."
+#: core/midi.py:126
+msgid "Turned: the tempo bent while it turns (a turn a second: +10%)."
+msgstr "돌리는 동안 템포를 휘게 합니다(초당 한 바퀴: +10%)."
+
+#: core/midi.py:127
+#, python-brace-format
+msgid "Deck {deck}: jog wheel search (SHIFT)"
+msgstr "덱 {deck}: 조그 휠 서치 (SHIFT)"
+
+# | msgid "The jog wheel turned: the playhead moved through the track fast."
+#: core/midi.py:129
+msgid "Turned: the playhead moved through the track fast."
+msgstr "돌리면 재생 위치를 곡 안에서 빠르게 옮깁니다."
+
+#: core/midi.py:130
+#, python-brace-format
+msgid "Deck {deck}: CUE CALL ◁"
+msgstr "덱 {deck}: CUE CALL ◁"
+
+#: core/midi.py:132
+msgid "The CUE point before (stopped); the cue point moves there."
+msgstr "앞의 CUE 포인트로(정지 중). 큐 포인트도 그곳으로 옮깁니다."
+
+#: core/midi.py:133
+#, python-brace-format
+msgid "Deck {deck}: CUE CALL ▷"
+msgstr "덱 {deck}: CUE CALL ▷"
+
+#: core/midi.py:135
+msgid "The CUE point after (stopped); the cue point moves there."
+msgstr "다음 CUE 포인트로(정지 중). 큐 포인트도 그곳으로 옮깁니다."
+
+#: core/midi.py:139
+#, python-brace-format
+msgid "Deck {deck}: MEMORY"
+msgstr "덱 {deck}: MEMORY"
+
+# | msgid "MEMORY: set a CUE point at the nearest beat or track edge"
+#: core/midi.py:140
+msgid "A CUE point at the nearest beat (an edit)."
+msgstr "가장 가까운 비트에 CUE 포인트(편집)."
+
+# | msgid "Delete CUE point {time}"
+#: core/midi.py:141
+#, python-brace-format
+msgid "Deck {deck}: CUE point DELETE"
+msgstr "덱 {deck}: CUE 포인트 DELETE"
+
+# | msgid "Split the current segment at the playhead"
+# | msgid "No CUE point at the playhead."
+# | msgid "The CUE point the playhead is on, as after CALL."
+#: core/midi.py:142
+msgid "The CUE point the playhead is on (an edit)."
+msgstr "재생 위치에 있는 CUE 포인트(편집)."
+
+# | msgid "Delete JumpCUE {letter}"
+#: core/midi.py:146
+#, python-brace-format
+msgid "Deck {deck}: JumpCUE {letter}"
+msgstr "덱 {deck}: JumpCUE {letter}"
+
+# | msgid "Jump here on the next beat (when stopped: move the playhead here)"
+#: core/midi.py:148
+msgid ""
+"JUMP on the next beat (stopped: the playhead there); an empty slot: SET "
+"(an edit). Lit while set."
+msgstr "다음 비트에서 JUMP(정지 중이면 재생 위치를 그곳으로). 빈 슬롯이면 SET(편집). 설정돼 있으면 불이 켜집니다."
+
+# | msgid "Delete JumpCUE {letter}"
+#: core/midi.py:151
+#, python-brace-format
+msgid "Deck {deck}: JumpCUE {letter} delete"
+msgstr "덱 {deck}: JumpCUE {letter} 삭제"
+
+#: core/midi.py:153
+msgid "As SHIFT + a pad (an edit)."
+msgstr "SHIFT + 패드처럼(편집)."
+
+#: core/midi.py:156
+#, python-brace-format
+msgid "Deck {deck}: BEAT JUMP ◁ {beats}"
+msgstr "덱 {deck}: BEAT JUMP ◁ {beats}"
+
+#: core/midi.py:158
+#, python-brace-format
+msgid "Deck {deck}: BEAT JUMP ▷ {beats}"
+msgstr "덱 {deck}: BEAT JUMP ▷ {beats}"
+
+#: core/midi.py:168
+#, python-brace-format
+msgid "Channel {channel}: channel fader"
+msgstr "채널 {channel}: 채널 페이더"
+
+# | msgid "Output buffer"
+# | msgid "Output device"
+# | msgid "The device's"
+#: core/midi.py:169
+msgid "The deck's volume."
+msgstr "덱의 볼륨."
+
+#: core/midi.py:170
+#, python-brace-format
+msgid "Channel {channel}: EQ HI"
+msgstr "채널 {channel}: EQ HI"
+
+#: core/midi.py:172 core/midi.py:175 core/midi.py:178
+msgid "An isolator band: the bottom kills it, the middle 0 dB, the top +6 dB."
+msgstr "아이솔레이터 밴드: 맨 아래는 차단, 가운데 0 dB, 맨 위 +6 dB."
+
+#: core/midi.py:173
+#, python-brace-format
+msgid "Channel {channel}: EQ MID"
+msgstr "채널 {channel}: EQ MID"
+
+#: core/midi.py:176
+#, python-brace-format
+msgid "Channel {channel}: EQ LOW"
+msgstr "채널 {channel}: EQ LOW"
+
+#: core/midi.py:179
+#, python-brace-format
+msgid "Channel {channel}: TRIM"
+msgstr "채널 {channel}: TRIM"
+
+#: core/midi.py:181
+#, python-brace-format
+msgid "Channel {channel}: headphones CUE"
+msgstr "채널 {channel}: 헤드폰 CUE"
+
+#: core/midi.py:183
+msgid ""
+"A press turns it on or off: the channel's sound before its fader in the "
+"headphones. Lit while on."
+msgstr "누를 때마다 켜고 끕니다: 이 채널의 페이더 전 소리를 헤드폰으로 보냅니다. 켜져 있는 동안 불이 들어옵니다."
+
+# | msgid "Level meter (output)"
+#: core/midi.py:185
+#, python-brace-format
+msgid "Channel {channel}: level meter (output)"
+msgstr "채널 {channel}: 레벨 미터 (출력)"
+
+#: core/midi.py:187
 msgid ""
 "The controller's level meter shows the deck's peak meter (a CC sent, 0 - "
 "127 over -24 - 0 dBFS); taken from a rekordbox mapping (its "
@@ -526,6 +776,64 @@ msgid ""
 msgstr ""
 "컨트롤러의 레벨 미터에 덱의 피크 미터를 표시합니다(CC 송신, -24 ~ 0 dBFS를 0 ~ 127로). Learn이 아니라 "
 "rekordbox 매핑(ChannelLevel)에서 가져옵니다."
+
+#: core/midi.py:194
+msgid "Browser: BROWSE knob"
+msgstr "브라우저: BROWSE 노브"
+
+#: core/midi.py:195
+msgid "Turned: the next / previous track."
+msgstr "돌리면 다음 / 이전 곡."
+
+#: core/midi.py:196
+msgid "Browser: BROWSE pressed"
+msgstr "브라우저: BROWSE 누름"
+
+# | msgid "" "In the sources panel: the highlighted playlist or folder shown
+# in
+# | the " "library."
+#: core/midi.py:197
+msgid "To the sources panel (playlists, folders) and back."
+msgstr "소스 패널(플레이리스트, 폴더)로 갔다가 돌아옵니다."
+
+# | msgid "Playhead one bar back"
+# | msgid "One bar back"
+#: core/midi.py:198
+msgid "Browser: BACK"
+msgstr "브라우저: BACK"
+
+# | msgid "Unload track"
+# | msgid "Unload the track"
+# | msgid "Back to the tracks"
+#: core/midi.py:199
+msgid "Back to the tracks."
+msgstr "곡 목록으로 돌아갑니다."
+
+#: core/midi.py:200
+msgid "Browser: waveform zoom (SHIFT + BROWSE)"
+msgstr "브라우저: 파형 확대 (SHIFT + BROWSE)"
+
+#: core/midi.py:201
+msgid "Turned: the waveform zoomed in / out."
+msgstr "돌리면 파형을 확대 / 축소합니다."
+
+#: core/midi.py:203
+msgid "Crossfader"
+msgstr "크로스페이더"
+
+#: core/midi.py:204
+msgid "Headphones: CUE / MASTER"
+msgstr "헤드폰: CUE / MASTER"
+
+#: core/midi.py:205
+msgid ""
+"The CUE'd channels against the master in the headphones (with the master "
+"mixed in: Settings > Playback > Headphones output)."
+msgstr "헤드폰에서 CUE 채널과 마스터의 비율(마스터를 섞을 때: 설정 > 재생 > 헤드폰 출력)."
+
+#: core/midi.py:207
+msgid "Headphones: level"
+msgstr "헤드폰: 레벨"
 
 #: core/reading.py:59
 msgid "Japanese"
@@ -1213,7 +1521,7 @@ msgstr ""
 "비트그리드, 키, JumpCUE를 분석하고 편집하는 인터랙티브 도구입니다.\n"
 "GNU Lesser General Public License v3.0으로 배포됩니다. 라이선스 전문은 아래를 보세요."
 
-#: ui/config/analysis.py:43 ui/config/analysis.py:154 ui/config/playback.py:249
+#: ui/config/analysis.py:43 ui/config/analysis.py:154 ui/config/playback.py:197
 msgid "General"
 msgstr "일반"
 
@@ -1275,7 +1583,7 @@ msgstr "라이브러리의 비트그리드로 비트 분석 모델을 재학습�
 
 #: ui/config/analysis.py:132 ui/config/analysis.py:169
 #: ui/config/analysis.py:188 ui/config/dialogs/optimization.py:204
-#: ui/config/library.py:101 ui/config/playback.py:266 ui/config/view.py:150
+#: ui/config/library.py:101 ui/config/playback.py:221 ui/config/view.py:150
 msgid "Advanced"
 msgstr "고급"
 
@@ -2324,11 +2632,6 @@ msgstr "Rekordbox XML 경로가 비어 있습니다."
 msgid "Rekordbox XML worker started"
 msgstr "Rekordbox XML 작업 시작됨"
 
-# | msgid "Cursor poller"
-#: ui/config/midi.py:32
-msgid "Controller"
-msgstr "컨트롤러"
-
 #: ui/config/midi.py:52
 msgid ""
 "The controller's MIDI input; its output of the same name lights its PLAY "
@@ -2377,62 +2680,70 @@ msgid "Default"
 msgstr "기본값"
 
 # | msgid "Clear"
-#: ui/config/midi.py:108
+#: ui/config/midi.py:110
 msgid "Learn"
 msgstr "Learn"
 
-#: ui/config/midi.py:110
+#: ui/config/midi.py:112
 msgid ""
 "Then move or press a control on the controller: its message is added to "
 "the selected action."
 msgstr "그다음 컨트롤러의 조작부를 움직이거나 누르면, 그 메시지가 선택한 동작에 추가됩니다."
 
-#: ui/config/midi.py:113
+#: ui/config/midi.py:115
 msgid "The selected action's MIDI messages removed."
 msgstr "선택한 동작의 MIDI 메시지를 지웁니다."
 
 # | msgid "Remove"
-#: ui/config/midi.py:114 ui/config/shortcuts.py:97
+#: ui/config/midi.py:116 ui/config/shortcuts.py:97
 msgid "Revert"
 msgstr "되돌리기"
 
 # | msgid "The selected action's shipped shortcut again."
-#: ui/config/midi.py:115
+#: ui/config/midi.py:117
 msgid "The selected action's shipped MIDI messages again."
 msgstr "선택한 동작을 기본 MIDI 메시지로 되돌립니다."
 
-#: ui/config/midi.py:116 ui/config/midi.py:287
+#: ui/config/midi.py:118 ui/config/midi.py:296
 msgid "Import rekordbox CSV..."
 msgstr "rekordbox CSV 가져오기..."
 
-#: ui/config/midi.py:118
+# | msgid "" "A MIDI mapping exported from rekordbox (CSV), for the DDJ-400
+# and
+# | the " "like: its deck 1 controls and mixer channel 1's fader replace the
+# | mapping" " (kept with OK / Apply)."
+#: ui/config/midi.py:120
 msgid ""
 "A MIDI mapping exported from rekordbox (CSV), for the DDJ-400 and the "
-"like: its deck 1 controls and mixer channel 1's fader replace the mapping"
-" (kept with OK / Apply)."
+"like: its deck 1 controls, mixer channel 1 and the browser replace the "
+"mapping (kept with OK / Apply)."
 msgstr ""
-"rekordbox에서 내보낸 MIDI 매핑(CSV, DDJ-400 등): 1번 덱의 조작과 믹서 1번 채널의 페이더가 지금 매핑을 "
+"rekordbox에서 내보낸 MIDI 매핑(CSV, DDJ-400 등): 1번 덱 조작, 믹서 1번 채널, 브라우저가 지금 매핑을 "
 "대체합니다(확인 / 적용으로 저장)."
 
-#: ui/config/midi.py:120 ui/config/shortcuts.py:99
+#: ui/config/midi.py:122 ui/config/shortcuts.py:99
 msgid "Revert All"
 msgstr "모두 되돌리기"
 
 # | msgid "Every action's shipped shortcut again (kept with OK / Apply)."
-#: ui/config/midi.py:121
+#: ui/config/midi.py:123
 msgid "Every action's shipped MIDI messages again (kept with OK / Apply)."
 msgstr "모든 동작을 기본 MIDI 메시지로 되돌립니다(확인 / 적용으로 저장)."
 
-#: ui/config/midi.py:172
+# | msgid "" "The native audio engine reads the controller itself: its deck
+# | controls " "answer at once, whatever the app is doing. Deck 1's controls
+# and
+# | the " "volume fader are supported."
+#: ui/config/midi.py:175
 msgid ""
 "The native audio engine reads the controller itself: its deck controls "
-"answer at once, whatever the app is doing. Deck 1's controls and the "
-"volume fader are supported."
+"answer at once, whatever the app is doing. Deck 1's controls and mixer "
+"channel 1's fader and EQ are supported."
 msgstr ""
-"Native 오디오 엔진이 컨트롤러를 직접 읽으므로, 앱이 무엇을 하고 있든 덱 조작이 바로 반응합니다. 1번 덱의 조작과 볼륨 "
-"페이더를 지원합니다."
+"Native 오디오 엔진이 컨트롤러를 직접 읽으므로, 앱이 무엇을 하고 있든 덱 조작이 바로 반응합니다. 1번 덱의 조작과 믹서 "
+"1번 채널의 페이더와 EQ를 지원합니다."
 
-#: ui/config/midi.py:174
+#: ui/config/midi.py:177
 msgid ""
 "A MIDI controller needs the native audio engine (Settings > Playback > "
 "Audio engine); the Python engine (the compatibility mode) has no MIDI."
@@ -2441,24 +2752,24 @@ msgstr ""
 "MIDI가 없습니다."
 
 # | msgid "none"
-#: ui/config/midi.py:193
+#: ui/config/midi.py:196 ui/config/output_group.py:82
 msgid "None"
 msgstr "없음"
 
-#: ui/config/midi.py:198 ui/config/playback.py:399
+#: ui/config/midi.py:201 ui/config/output_group.py:99
 #, python-brace-format
 msgid "{name} (not connected)"
 msgstr "{name} (연결되지 않음)"
 
-#: ui/config/midi.py:204
+#: ui/config/midi.py:207
 msgid "Open."
 msgstr "열림."
 
-#: ui/config/midi.py:204
+#: ui/config/midi.py:207
 msgid "Could not be opened (in use by another program, or disconnected)."
 msgstr "열 수 없습니다(다른 프로그램이 사용 중이거나 연결이 끊김)."
 
-#: ui/config/midi.py:269 ui/config/shortcuts.py:225
+#: ui/config/midi.py:274 ui/config/shortcuts.py:225
 #, python-brace-format
 msgid ""
 "Already used:\n"
@@ -2471,35 +2782,405 @@ msgstr ""
 "\n"
 "그 동작에서 빼서 여기에 쓸까요?"
 
-#: ui/config/midi.py:287
+#: ui/config/midi.py:296
 msgid "rekordbox MIDI mapping (*.csv)"
 msgstr "rekordbox MIDI 매핑 (*.csv)"
 
 # | msgid "The file could not be written: {error}"
-#: ui/config/midi.py:293
+#: ui/config/midi.py:302
 #, python-brace-format
 msgid "The file could not be read: {error}"
 msgstr "파일을 읽을 수 없습니다: {error}"
 
-#: ui/config/midi.py:296
+#: ui/config/midi.py:305
 msgid "No deck 1 control in this file that Mixlyzer has."
 msgstr "이 파일에는 Mixlyzer가 지원하는 1번 덱 조작이 없습니다."
 
-#: ui/config/midi.py:301
+#: ui/config/midi.py:311
 #, python-brace-format
 msgid ""
 "{count} MIDI messages for {actions} actions imported (kept with OK / "
 "Apply)."
 msgstr "동작 {actions}개에 MIDI 메시지 {count}개를 가져왔습니다(확인 / 적용으로 저장)."
 
-#: ui/config/midi.py:304
+#: ui/config/midi.py:314
 #, python-brace-format
 msgid "Not taken (another deck, or a function Mixlyzer has not): {names}"
 msgstr "가져오지 않음(다른 덱이거나 Mixlyzer에 없는 기능): {names}"
 
-#: ui/config/midi.py:314
+#: ui/config/midi.py:324
 msgid "Move or press a control ..."
 msgstr "조작부를 움직이거나 누르세요..."
+
+# | msgid "Audio"
+# | msgid "Audio API"
+#: ui/config/output_group.py:21
+msgid "the audio API's own"
+msgstr "오디오 API 자체 스레드"
+
+# | msgid "General"
+# | msgid "Normal"
+#: ui/config/output_group.py:22
+msgid "normal"
+msgstr "보통"
+
+# | msgid "Phrase"
+#: ui/config/output_group.py:23
+msgid "raised"
+msgstr "높임"
+
+#: ui/config/output_group.py:24
+msgid "raised through rtkit"
+msgstr "높임 (rtkit)"
+
+# | msgid "Rename"
+#: ui/config/output_group.py:25
+msgid "real-time"
+msgstr "실시간"
+
+#: ui/config/output_group.py:26
+msgid "real-time through rtkit"
+msgstr "실시간 (rtkit)"
+
+#: ui/config/output_group.py:27
+msgid "not permitted to raise"
+msgstr "높일 권한 없음"
+
+#: ui/config/output_group.py:45
+msgid ""
+"<p>The audio API the native engine plays through. WASAPI: its own, with a"
+" low-latency shared stream or exclusive mode. WASAPI (cpal): the usual "
+"shared stream (more latency), for a device the other one cannot open. "
+"JACK (Linux): through the JACK or PipeWire server.</p>"
+msgstr ""
+"<p>Native 엔진이 소리를 내보내는 오디오 API입니다. WASAPI: 엔진이 직접 여는 경로로, 저지연 공유 스트림 또는 "
+"배타 모드를 씁니다. WASAPI (cpal): 일반 공유 스트림(지연이 더 큼)으로, 다른 쪽으로 열리지 않는 장치용입니다. "
+"JACK(Linux): JACK 또는 PipeWire 서버를 거칩니다.</p>"
+
+# | msgid "" "<p>How the native engine reaches the output device. Shared: with
+# | other " "apps (on Windows at the smallest period the driver allows).
+# | Exclusive " "(Windows): the device to Mixlyzer alone, the shortest
+# latency;
+# | other apps" " cannot play on it meanwhile. JACK (Linux): through the JACK
+# or
+# | PipeWire " "server. A mode the device cannot open falls back to
+# shared.</p>"
+#: ui/config/output_group.py:53
+msgid ""
+"<p>Shared: with other apps, at the smallest period the driver allows. "
+"Exclusive: the device to Mixlyzer alone, the shortest latency; other apps"
+" cannot play on it meanwhile. A mode the device cannot open falls back to"
+" the usual shared stream.</p>"
+msgstr ""
+"<p>공유: 다른 앱과 함께, 드라이버가 허용하는 가장 짧은 주기로 씁니다. 배타: 장치를 Mixlyzer만 쓰며 지연이 가장 "
+"짧습니다. 그동안 다른 앱은 그 장치로 소리를 낼 수 없습니다. 장치가 열 수 없는 방식은 일반 공유 스트림으로 돌아갑니다.</p>"
+
+#: ui/config/output_group.py:65 ui/config/output_group.py:239
+#: ui/config/playback.py:143
+msgid "Shared"
+msgstr "공유"
+
+#: ui/config/output_group.py:65 ui/config/output_group.py:240
+#: ui/config/playback.py:144
+msgid "Exclusive"
+msgstr "배타"
+
+#: ui/config/output_group.py:66
+#, python-brace-format
+msgid ""
+"Opened as {api}, {mode} (the output asked for could not be opened on this"
+" device)"
+msgstr "{api}, {mode}(으)로 열림 (요청한 방식은 이 장치에서 열 수 없음)"
+
+#: ui/config/output_group.py:84
+#, python-brace-format
+msgid "Channels {pair}"
+msgstr "채널 {pair}"
+
+#: ui/config/output_group.py:86
+#, python-brace-format
+msgid "Channels {pair} (not on this device)"
+msgstr "채널 {pair} (이 장치에 없음)"
+
+# | msgid "Default"
+#: ui/config/output_group.py:95
+msgid "System default"
+msgstr "시스템 기본값"
+
+#: ui/config/output_group.py:116
+#, python-brace-format, python-format
+msgid ""
+"<p>The time the output buffer spent at each level over the last {seconds}"
+" s (log scale): the left end is a dropout. Dashed: the buffer size; "
+"yellow: the 1% low.</p>"
+msgstr ""
+"<p>최근 {seconds}초 동안 출력 버퍼가 각 수준에 머문 시간입니다(로그 눈금). 왼쪽 끝이 드롭아웃입니다. 점선: 버퍼 "
+"크기, 노란 선: 하위 1%.</p>"
+
+#: ui/config/output_group.py:119
+msgid "Average audio queued in the output buffer (smoothed)."
+msgstr "출력 버퍼에 쌓인 오디오의 평균(평활화)."
+
+#: ui/config/output_group.py:120
+#, python-format
+msgid "Buffer level the output stayed above 99% of the time in the recent window."
+msgstr "최근 구간에서 출력이 99%의 시간 동안 유지한 버퍼 수준."
+
+#: ui/config/output_group.py:121 ui/config/output_group.py:396
+msgid "Waiting for playback..."
+msgstr "재생 대기 중..."
+
+#: ui/config/output_group.py:122
+msgid "Audio queued in the output device buffer while playing, 0 ms = dropout."
+msgstr "재생 중 출력 장치 버퍼에 쌓인 오디오. 0 ms = 드롭아웃."
+
+#: ui/config/output_group.py:129
+msgid "Output buffer"
+msgstr "출력 버퍼"
+
+#: ui/config/output_group.py:130
+#, python-brace-format, python-format
+msgid "1% low ({seconds} s)"
+msgstr "하위 1% ({seconds}초)"
+
+#: ui/config/output_group.py:131
+msgid "Histogram"
+msgstr "히스토그램"
+
+# | msgid "" "EMA {ema} / {capacity} ms   1% low {low} ms   lowest {lowest} ms
+# "
+# | "({seconds} s)\n" "Dropout since opened {dropout} ms"
+# | "({seconds} s)\n" "Dropout since opened {dropout} ms   Device latency
+# | {device} ms (fixed)"
+# | {device} ms"
+#: ui/config/output_group.py:204
+#, python-brace-format, python-format
+msgid ""
+"EMA {ema} / {capacity} µs   1% low {low} µs   lowest {lowest} µs "
+"({seconds} s)\n"
+"Dropout since opened {dropout} ms   Device latency {device} ms"
+msgstr ""
+"EMA {ema} / {capacity} µs   하위 1% {low} µs   최저 {lowest} µs ({seconds}초)\n"
+"연 뒤 드롭아웃 {dropout} ms   장치 지연 {device} ms"
+
+# | msgid "Channels {pair} (not on this device)"
+#: ui/config/output_group.py:227
+msgid "Channels of the main output's device"
+msgstr "메인 출력 장치의 채널"
+
+#: ui/config/output_group.py:228
+msgid "A device of its own"
+msgstr "별도 장치"
+
+#: ui/config/output_group.py:230
+msgid ""
+"<p>Channels of the main output's device: a controller's or an interface's"
+" other output, played with the master. A device of its own: another "
+"device (its clock followed, the master's sound kept: resampled by the "
+"clocks' drift, a few hundred ppm at most).</p>"
+msgstr ""
+"<p>메인 출력 장치의 채널: 컨트롤러나 인터페이스의 다른 출력으로, 마스터와 함께 재생됩니다. 별도 장치: 다른 장치로 "
+"내보냅니다(그 장치의 클록을 따라가며 마스터의 소리를 그대로 유지: 클록 드리프트만큼, 많아야 수백 ppm 리샘플).</p>"
+
+#: ui/config/output_group.py:234
+msgid "<p>The device this output plays on, as the native engine names it.</p>"
+msgstr "<p>이 출력이 재생되는 장치(Native 엔진이 부르는 이름).</p>"
+
+# | msgid "<p>The device's channels the master plays on.</p>"
+#: ui/config/output_group.py:243
+msgid "<p>The device's channels this output plays on.</p>"
+msgstr "<p>이 출력이 나가는 장치의 채널.</p>"
+
+# | msgid "Output buffer"
+# | msgid "Output device"
+#: ui/config/output_group.py:245 ui/config/playback.py:147
+msgid "The device's"
+msgstr "장치 기본값"
+
+#: ui/config/output_group.py:249
+msgid ""
+"<p>The rate this output's device runs at; the main output's sound is "
+"converted to it (a band-limited interpolator, with the clocks' drift). "
+"The device's: its own format (WASAPI's shared mix format), the lowest "
+"latency. Another rate: in exclusive mode the device runs at it; shared, "
+"the system converts it (WASAPI (cpal)'s usual stream, more latency).</p>"
+msgstr ""
+"<p>이 출력 장치가 동작하는 샘플레이트. 메인 출력의 소리를 이 레이트로 변환합니다(대역 제한 보간, 클록 드리프트 포함). 장치"
+" 기본값: 장치 자체 포맷(WASAPI 공유 믹스 포맷)으로 지연이 가장 작습니다. 다른 레이트: 배타 모드에서는 장치가 그 "
+"레이트로 동작하고, 공유 모드에서는 시스템이 변환합니다(WASAPI (cpal)의 일반 스트림, 지연 증가).</p>"
+
+# | msgid "" "<p>Audio queued in the output device ahead of what is heard,
+# with
+# | the " "time stretch off. Smaller answers sooner (play, pause, seek, CUE
+# | calls, " "volume); too small drops out when the computer is busy.</p>"
+# | msgid "" "<p>Audio queued in the output device ahead of what is heard.
+# | Smaller " "answers sooner (play, pause, seek, CUE calls, volume, tempo);
+# too
+# | small " "drops out when the computer is busy. With the time stretch, a
+# seek
+# | plays " "the original for its first tens of ms (the same pitch, at its own
+# "
+# | "tempo).</p>"
+# | small " "drops out when the computer is busy. With the time stretch on, a
+# | seek is " "heard tens of ms later (the position playing goes on
+# | meanwhile).</p>"
+# | the " "time stretch on or off. Smaller answers sooner (play, pause, seek,
+# | CUE " "calls, volume, tempo); too small drops out when the computer is
+# | busy.</p>"
+# | msgid "" "<p>The native engine's audio queued ahead of the output device,
+# | with the " "time stretch on or off. Smaller answers sooner (play, pause,
+# | seek, CUE " "calls, volume, tempo); too small drops out when the computer
+# is
+# | busy. The" " device's own latency comes after it (shown under the
+# | meter).</p>"
+# | msgid "" "<p>The native engine's audio queued ahead of the output device.
+# | small " "drops out when the computer is busy. The device's own latency
+# comes
+# | after" " it (shown under the meter).</p>"
+# | msgid "" "<p>The audio kept ahead of this output's device, from the main
+# | output's " "mix. Smaller is heard sooner; too small drops out when the
+# | computer is " "busy. Its device's own latency comes after it.</p>"
+#: ui/config/output_group.py:258
+msgid ""
+"<p>The audio kept ahead of this output's device, from the main output's "
+"mix: the least it holds whatever the two devices' periods (it holds up to"
+" one main device period more as they fall). Smaller is heard sooner; too "
+"small drops out when the computer is busy. Its device's own latency comes"
+" after it.</p>"
+msgstr ""
+"<p>메인 출력의 믹스에서 이 출력 장치 앞에 쌓아 두는 오디오: 두 장치의 주기가 어떻게 맞물려도 최소한 이만큼은 "
+"유지합니다(맞물림에 따라 메인 장치 한 주기만큼 더 쌓일 수 있음). 작을수록 더 빨리 들리고, 너무 작으면 컴퓨터가 바쁠 때 "
+"소리가 끊깁니다. 장치 자체의 지연은 그 뒤에 더해집니다.</p>"
+
+#: ui/config/output_group.py:265
+msgid ""
+"<p>This device's clock against the main output's: how much faster (+) or "
+"slower (-) it runs, in parts per million. The output is resampled by it "
+"(a band-limited interpolator), so it neither runs dry nor fills up, and "
+"nothing is repeated or dropped. A few tens to a few hundred ppm is usual "
+"between two devices.</p>"
+msgstr ""
+"<p>메인 출력 장치에 대한 이 장치 클록의 차이: 얼마나 빠르게(+) 또는 느리게(-) 도는지 ppm(백만분율)으로 나타냅니다. "
+"출력은 이만큼 리샘플되므로(대역 제한 보간) 버퍼가 비거나 넘치지 않고, 샘플을 반복하거나 버리지 않습니다. 두 장치 사이에는 "
+"수십~수백 ppm이 보통입니다.</p>"
+
+#: ui/config/output_group.py:270
+msgid "Mix the master in"
+msgstr "마스터 섞기"
+
+#: ui/config/output_group.py:272
+msgid ""
+"<p>The headphones carry the channels whose CUE is on (before their "
+"faders) and, with this on, the master, mixed by the CUE / MASTER mix (a "
+"controller's knob moves it). Off for a controller that mixes the master "
+"into its headphones itself (the DDJ-400's CUE / MASTER knob, in analog): "
+"the headphones output then carries the CUE alone, silent while no CUE is "
+"on.</p>"
+msgstr ""
+"<p>헤드폰에는 CUE를 켠 채널(페이더 전)이 나가고, 이 항목을 켜면 마스터도 CUE / MASTER 비율로 섞여 "
+"나갑니다(컨트롤러 노브로 조절). 컨트롤러가 헤드폰에 마스터를 직접 섞는 경우(DDJ-400의 CUE / MASTER 노브: "
+"아날로그)에는 끄세요: 그러면 헤드폰 출력에는 CUE만 나가고, CUE가 모두 꺼져 있으면 무음입니다.</p>"
+
+#: ui/config/output_group.py:280
+msgid ""
+"<p>The master's share in the headphones: 0 % the CUE alone, 100 % the "
+"master alone. A controller's CUE / MASTER knob moves it as it is "
+"turned.</p>"
+msgstr ""
+"<p>헤드폰에서 마스터의 비율: 0 %는 CUE만, 100 %는 마스터만. 컨트롤러의 CUE / MASTER 노브를 돌리면 따라 "
+"움직입니다.</p>"
+
+#: ui/config/output_group.py:284
+msgid "The native engine's: applied when it plays."
+msgstr "Native 엔진의 설정: Native 엔진이 재생할 때 적용됩니다."
+
+# | msgid "Output buffer"
+# | msgid "Output device"
+# | msgid "Output mode"
+#: ui/config/output_group.py:290
+msgid "Output"
+msgstr "출력"
+
+# | msgid "Output buffer"
+#: ui/config/output_group.py:291 ui/config/playback.py:209
+msgid "Output device"
+msgstr "출력 장치"
+
+# | msgid "Audio"
+#: ui/config/output_group.py:292 ui/config/playback.py:212
+msgid "Audio API"
+msgstr "오디오 API"
+
+# | msgid "Output buffer"
+# | msgid "Output device"
+#: ui/config/output_group.py:293 ui/config/playback.py:212
+msgid "Output mode"
+msgstr "출력 방식"
+
+# | msgid "Sample rate (exclusive)"
+#: ui/config/output_group.py:294
+msgid "Sample rate"
+msgstr "샘플레이트"
+
+# | msgid "Cantonese"
+#: ui/config/output_group.py:295 ui/config/playback.py:214
+msgid "Channels"
+msgstr "채널"
+
+#: ui/config/output_group.py:296 ui/config/playback.py:218
+msgid "Buffer size"
+msgstr "버퍼 크기"
+
+#: ui/config/output_group.py:298
+msgid "Master in the headphones"
+msgstr "헤드폰에 마스터"
+
+# | msgid "Headphones: CUE / MASTER"
+#: ui/config/output_group.py:299
+msgid "CUE / MASTER"
+msgstr "CUE / MASTER"
+
+#: ui/config/output_group.py:304
+msgid "Clock drift"
+msgstr "클록 드리프트"
+
+# | msgid "Output buffer"
+# | msgid "Output device"
+#: ui/config/output_group.py:400
+msgid "Opening the output device..."
+msgstr "출력 장치를 여는 중..."
+
+#: ui/config/output_group.py:404 ui/config/playback.py:412
+msgid ""
+"The output device could not be opened (another app may hold it in "
+"exclusive mode); it is tried again every second."
+msgstr "출력 장치를 열 수 없습니다(다른 앱이 배타 모드로 쓰고 있을 수 있습니다). 1초마다 다시 시도합니다."
+
+#: ui/config/output_group.py:408
+#, python-brace-format
+msgid "{ppm} ppm (resampled to follow it)"
+msgstr "{ppm} ppm (이만큼 리샘플해 따라감)"
+
+# | msgid "Engine thread: {engine}   Output thread: {output}"
+#: ui/config/output_group.py:417
+#, python-brace-format
+msgid "Output thread: {output}"
+msgstr "출력 스레드: {output}"
+
+#: ui/config/output_group.py:420 ui/config/playback.py:430
+#, python-brace-format
+msgid "Late output wake-ups: {count} (longest gap {gap} ms)"
+msgstr "출력 스레드 늦은 깨어남: {count}회 (최장 간격 {gap} ms)"
+
+# | msgid "Playing on {device}"
+#: ui/config/output_group.py:423
+#, python-brace-format
+msgid "Playing on {device} at {rate} kHz"
+msgstr "재생 장치: {device}, {rate} kHz"
+
+#: ui/config/output_group.py:433
+msgid "Its device's stream is shared with another output, at that output's rate."
+msgstr "이 장치의 스트림을 다른 출력과 함께 쓰므로 그 출력의 샘플레이트로 재생됩니다."
 
 #: ui/config/pipeline_map.py:21 ui/config/view.py:161
 msgid "View"
@@ -2561,10 +3242,6 @@ msgstr "JumpCUE"
 msgid "jump points"
 msgstr "점프 지점"
 
-#: ui/config/pipeline_map.py:33 ui/edit_panel/cue_slots.py:233
-msgid "CUE points"
-msgstr "CUE 포인트"
-
 #: ui/config/pipeline_map.py:34
 msgid "key sections"
 msgstr "키 구간"
@@ -2587,69 +3264,35 @@ msgstr ""
 msgid "{name}: open the {tab} settings"
 msgstr "{name}: {tab} 설정 열기"
 
-# | msgid "Audio"
-# | msgid "Audio API"
-#: ui/config/playback.py:33
-msgid "the audio API's own"
-msgstr "오디오 API 자체 스레드"
-
-# | msgid "General"
-# | msgid "Normal"
-#: ui/config/playback.py:34
-msgid "normal"
-msgstr "보통"
-
-# | msgid "Phrase"
-#: ui/config/playback.py:35
-msgid "raised"
-msgstr "높임"
-
-#: ui/config/playback.py:36
-msgid "raised through rtkit"
-msgstr "높임 (rtkit)"
-
-# | msgid "Rename"
-#: ui/config/playback.py:37
-msgid "real-time"
-msgstr "실시간"
-
-#: ui/config/playback.py:38
-msgid "real-time through rtkit"
-msgstr "실시간 (rtkit)"
-
-#: ui/config/playback.py:39
-msgid "not permitted to raise"
-msgstr "높일 권한 없음"
-
-#: ui/config/playback.py:47
+#: ui/config/playback.py:41
 msgid "Enable metronome"
 msgstr "메트로놈 사용"
 
-#: ui/config/playback.py:54
+#: ui/config/playback.py:48
 msgid "Shift metronome clicks relative to the beat (positive = earlier)"
 msgstr "메트로놈 클릭을 비트에 대해 옮깁니다 (양수 = 더 이르게)"
 
-#: ui/config/playback.py:63
+#: ui/config/playback.py:57
 msgid "Use timestretch"
 msgstr "타임 스트레치 사용"
 
-#: ui/config/playback.py:65
+#: ui/config/playback.py:59
 msgid "Tempo changes keep the pitch (time stretch) instead of varispeed"
 msgstr "템포를 바꿔도 피치를 유지합니다(타임 스트레치). 끄면 바리스피드"
 
-#: ui/config/playback.py:81
+#: ui/config/playback.py:75
 msgid "Duck music under metronome clicks"
 msgstr "메트로놈 클릭 아래로 음악 줄이기"
 
-#: ui/config/playback.py:84
+#: ui/config/playback.py:78
 msgid "Lowers the music by up to 6 dB, following each click"
 msgstr "클릭마다 음악을 최대 6 dB 낮춥니다"
 
-#: ui/config/playback.py:86
+#: ui/config/playback.py:80
 msgid "Soft clip output (tanh)"
 msgstr "출력 소프트 클립 (tanh)"
 
-#: ui/config/playback.py:88
+#: ui/config/playback.py:82
 msgid ""
 "Output above -1.9 dBFS is rounded off by tanh up to 0 dBFS instead of "
 "hard clipping"
@@ -2657,95 +3300,34 @@ msgstr "-1.9 dBFS를 넘는 출력을 하드 클리핑 대신 tanh로 0 dBFS까�
 
 # | msgid "Active"
 # | msgid "Native"
-#: ui/config/playback.py:95
+#: ui/config/playback.py:88
 msgid "Native first"
 msgstr "Native 우선"
 
 # | msgid "Path"
-#: ui/config/playback.py:96 ui/config/playback.py:360
+#: ui/config/playback.py:89 ui/config/playback.py:322
 msgid "Python"
 msgstr "Python"
 
-#: ui/config/playback.py:99
-msgid ""
-"<p>The device the player plays on, as its audio engine names it. Changed "
-"while the app runs, the sound keeps the format (sample rate, channels) of"
-" the device it started with, converted by the system.</p>"
-msgstr ""
-"<p>플레이어가 소리를 내는 장치입니다(오디오 엔진이 부르는 이름). 앱이 실행 중일 때 바꾸면, 앱을 시작할 때 쓰던 장치의 "
-"형식(샘플레이트, 채널)을 유지한 채 시스템이 변환해서 냅니다.</p>"
-
-#: ui/config/playback.py:113
-msgid ""
-"<p>The audio API the native engine plays through. WASAPI: its own, with a"
-" low-latency shared stream or exclusive mode. WASAPI (cpal): the usual "
-"shared stream (more latency), for a device the other one cannot open. "
-"JACK (Linux): through the JACK or PipeWire server.</p>"
-msgstr ""
-"<p>Native 엔진이 소리를 내보내는 오디오 API입니다. WASAPI: 엔진이 직접 여는 경로로, 저지연 공유 스트림 또는 "
-"배타 모드를 씁니다. WASAPI (cpal): 일반 공유 스트림(지연이 더 큼)으로, 다른 쪽으로 열리지 않는 장치용입니다. "
-"JACK(Linux): JACK 또는 PipeWire 서버를 거칩니다.</p>"
-
-#: ui/config/playback.py:118
-msgid "Shared"
-msgstr "공유"
-
-#: ui/config/playback.py:119
-msgid "Exclusive"
-msgstr "배타"
-
-# | msgid "" "<p>How the native engine reaches the output device. Shared: with
-# | other " "apps (on Windows at the smallest period the driver allows).
-# | Exclusive " "(Windows): the device to Mixlyzer alone, the shortest
-# latency;
-# | other apps" " cannot play on it meanwhile. JACK (Linux): through the JACK
-# or
-# | PipeWire " "server. A mode the device cannot open falls back to
-# shared.</p>"
-#: ui/config/playback.py:121
-msgid ""
-"<p>Shared: with other apps, at the smallest period the driver allows. "
-"Exclusive: the device to Mixlyzer alone, the shortest latency; other apps"
-" cannot play on it meanwhile. A mode the device cannot open falls back to"
-" the usual shared stream.</p>"
-msgstr ""
-"<p>공유: 다른 앱과 함께, 드라이버가 허용하는 가장 짧은 주기로 씁니다. 배타: 장치를 Mixlyzer만 쓰며 지연이 가장 "
-"짧습니다. 그동안 다른 앱은 그 장치로 소리를 낼 수 없습니다. 장치가 열 수 없는 방식은 일반 공유 스트림으로 돌아갑니다.</p>"
-
-# | msgid "Output buffer"
-# | msgid "Output device"
-#: ui/config/playback.py:126
-msgid "The device's"
-msgstr "장치 기본값"
-
-#: ui/config/playback.py:130
-msgid ""
-"<p>The sample rate the device runs at in exclusive mode (the tracks are "
-"decoded for it). Applied from the next track loaded; a rate the device "
-"does not take falls back to the usual shared stream.</p>"
-msgstr ""
-"<p>배타 모드에서 장치가 동작할 샘플레이트입니다(곡도 이 레이트로 디코드합니다). 다음에 로드하는 곡부터 적용되며, 장치가 받지 "
-"않는 레이트는 일반 공유 스트림으로 돌아갑니다.</p>"
-
 # | msgid "General"
-#: ui/config/playback.py:135
+#: ui/config/playback.py:92
 msgctxt "process priority"
 msgid "Normal"
 msgstr "보통"
 
 # | msgid "Waveform"
-#: ui/config/playback.py:136
+#: ui/config/playback.py:93
 msgctxt "process priority"
 msgid "Above normal"
 msgstr "보통 초과"
 
 # | msgid "High"
-#: ui/config/playback.py:137
+#: ui/config/playback.py:94
 msgctxt "process priority"
 msgid "High"
 msgstr "높음"
 
-#: ui/config/playback.py:140
+#: ui/config/playback.py:97
 msgid ""
 "<p>The priority class of the native engine's process. High: its threads "
 "run ahead of the analysis and other apps, so it wakes on time when the "
@@ -2754,7 +3336,7 @@ msgstr ""
 "<p>네이티브 엔진 프로세스의 우선순위 클래스입니다. 높음: 엔진의 스레드가 분석과 다른 앱보다 먼저 실행되어, 컴퓨터가 바쁠 때도"
 " 제때 깨어납니다(작은 버퍼에서 드롭아웃 감소). 바로 적용됩니다.</p>"
 
-#: ui/config/playback.py:145
+#: ui/config/playback.py:102
 msgid ""
 "<p>The priority of the native engine's threads (its own and the ALSA "
 "output's; JACK's is the server's). High: real-time, else nice -10; Above "
@@ -2766,7 +3348,7 @@ msgstr ""
 "-10. 보통 초과: nice -5. 사용자가 직접 설정할 수 없으면(audio 그룹 한도가 없을 때) rtkit에 요청합니다. "
 "바로 적용되며, 실제로 적용된 상태는 미터 아래에 표시됩니다.</p>"
 
-#: ui/config/playback.py:151
+#: ui/config/playback.py:108
 msgid ""
 "<p>The priority of the native engine's thread. High: real-time (a time "
 "constraint, as CoreAudio's own output thread); Above normal: QoS user-"
@@ -2775,11 +3357,11 @@ msgstr ""
 "<p>네이티브 엔진 스레드의 우선순위입니다. 높음: 실시간(CoreAudio 출력 스레드와 같은 time constraint), "
 "보통 초과: QoS user-interactive, 보통: QoS default. 바로 적용됩니다.</p>"
 
-#: ui/config/playback.py:156
+#: ui/config/playback.py:113
 msgid "The system's choice"
 msgstr "시스템에 맡김"
 
-#: ui/config/playback.py:159
+#: ui/config/playback.py:116
 msgid ""
 "<p>Whether Windows may power-throttle the native engine's process "
 "(EcoQoS: efficiency cores, lower clocks, coarser timers) to save power. "
@@ -2789,7 +3371,7 @@ msgstr ""
 "<p>Windows가 전력을 아끼려고 네이티브 엔진 프로세스를 제한할 수 있는지(EcoQoS, 효율성 모드: 효율 코어, 낮은 "
 "클럭, 거친 타이머) 정합니다. 끔: 최고 속도와 1 ms 타이머로 실행되어 제때 깨어납니다. 바로 적용됩니다.</p>"
 
-#: ui/config/playback.py:164
+#: ui/config/playback.py:121
 msgid ""
 "<p>Whether Linux may save power on the native engine's threads. Off: a 1 "
 "ns timer slack, and uclamp keeping the CPU clock up while they run (Linux"
@@ -2799,7 +3381,7 @@ msgstr ""
 "스레드가 도는 동안 CPU 클럭을 높게 유지합니다(Linux 5.3 이상, schedutil governor). 바로 "
 "적용됩니다.</p>"
 
-#: ui/config/playback.py:169
+#: ui/config/playback.py:126
 msgid ""
 "<p>Whether macOS may save power on the native engine (App Nap, timer "
 "coalescing). Off: a latency-critical activity keeps both off (the "
@@ -2807,6 +3389,28 @@ msgid ""
 msgstr ""
 "<p>macOS가 네이티브 엔진에서 전력을 아낄 수 있는지(App Nap, 타이머 병합) 정합니다. 끔: 지연에 민감한 작업으로 "
 "표시해 둘 다 끕니다(유휴 시 잠자기는 그대로). 바로 적용됩니다.</p>"
+
+#: ui/config/playback.py:136
+msgid ""
+"<p>The device the player plays on, as its audio engine names it. Changed "
+"while the app runs, the sound keeps the format (sample rate, channels) of"
+" the device it started with, converted by the system.</p>"
+msgstr ""
+"<p>플레이어가 소리를 내는 장치입니다(오디오 엔진이 부르는 이름). 앱이 실행 중일 때 바꾸면, 앱을 시작할 때 쓰던 장치의 "
+"형식(샘플레이트, 채널)을 유지한 채 시스템이 변환해서 냅니다.</p>"
+
+#: ui/config/playback.py:151
+msgid ""
+"<p>The sample rate the device runs at in exclusive mode (the tracks are "
+"decoded for it). Applied from the next track loaded; a rate the device "
+"does not take falls back to the usual shared stream.</p>"
+msgstr ""
+"<p>배타 모드에서 장치가 동작할 샘플레이트입니다(곡도 이 레이트로 디코드합니다). 다음에 로드하는 곡부터 적용되며, 장치가 받지 "
+"않는 레이트는 일반 공유 스트림으로 돌아갑니다.</p>"
+
+#: ui/config/playback.py:158
+msgid "<p>The device's channels the master plays on.</p>"
+msgstr "<p>마스터가 나가는 장치의 채널.</p>"
 
 # | msgid "" "<p>Audio queued in the output device ahead of what is heard,
 # with
@@ -2832,7 +3436,7 @@ msgstr ""
 # is
 # | busy. The" " device's own latency comes after it (shown under the
 # | meter).</p>"
-#: ui/config/playback.py:178
+#: ui/config/playback.py:162
 msgid ""
 "<p>The native engine's audio queued ahead of the output device. Smaller "
 "answers sooner (play, pause, seek, CUE calls, volume, tempo); too small "
@@ -2866,7 +3470,7 @@ msgstr ""
 # | what is" " heard, with the time stretch on or off. Smaller answers sooner
 # | (play, " "pause, seek, CUE calls, volume, tempo); too small drops out when
 # | the " "computer is busy (with the time stretch, below about 80 ms).</p>"
-#: ui/config/playback.py:185
+#: ui/config/playback.py:169
 msgid ""
 "<p>The Python engine's audio queued in the output device ahead of what is"
 " heard. Smaller answers sooner (play, pause, seek, CUE calls, volume, "
@@ -2877,192 +3481,159 @@ msgstr ""
 "탐색, CUE 호출, 볼륨, 템포), 너무 작으면 컴퓨터가 바쁠 때 소리가 끊깁니다(타임 스트레치를 쓰면 약 80 ms "
 "미만에서).</p>"
 
-# | msgid "Audio"
-#: ui/config/playback.py:200
-msgid "Audio API"
-msgstr "오디오 API"
+#: ui/config/playback.py:184
+msgid "Play a click on every beat of the beat grid."
+msgstr "비트그리드의 모든 박에 클릭을 냅니다."
 
-# | msgid "Output buffer"
-# | msgid "Output device"
-#: ui/config/playback.py:200
-msgid "Output mode"
-msgstr "출력 방식"
+#: ui/config/playback.py:185
+msgid "WAV file used as the metronome click."
+msgstr "메트로놈 클릭으로 쓸 WAV 파일."
 
-#: ui/config/playback.py:201
-msgid "Sample rate (exclusive)"
-msgstr "샘플레이트 (배타)"
+#: ui/config/playback.py:187
+msgid "Fixed gain applied to the output before the volume slider (headroom)."
+msgstr "볼륨 슬라이더 앞에서 출력에 거는 고정 게인(헤드룸)."
+
+#: ui/config/playback.py:189
+msgid "Volume slider position at startup."
+msgstr "시작할 때의 볼륨 슬라이더 위치."
+
+#: ui/config/playback.py:190
+msgid "Click volume on the first beat of each bar."
+msgstr "각 마디 첫 박의 클릭 볼륨."
+
+#: ui/config/playback.py:192
+msgid "Pitch shift of the click on the first beat of each bar."
+msgstr "각 마디 첫 박 클릭의 피치 이동."
+
+#: ui/config/playback.py:194
+msgid "Click volume on the other beats."
+msgstr "나머지 박의 클릭 볼륨."
+
+#: ui/config/playback.py:195
+msgid "Pitch shift of the click on the other beats."
+msgstr "나머지 박 클릭의 피치 이동."
+
+#: ui/config/playback.py:199
+msgid "Audio engine"
+msgstr "오디오 엔진"
 
 # | msgid "Process"
-#: ui/config/playback.py:202
+#: ui/config/playback.py:200
 msgid "Process priority"
 msgstr "프로세스 우선순위"
 
 # | msgid "Process"
 # | msgid "Process priority"
-#: ui/config/playback.py:202
+#: ui/config/playback.py:200
 msgid "Thread priority"
 msgstr "스레드 우선순위"
 
-#: ui/config/playback.py:204
+#: ui/config/playback.py:202
 msgid "Power throttling"
 msgstr "전원 제한"
 
-# | msgid "Audio engine"
-#: ui/config/playback.py:211
-msgid "Native engine"
-msgstr "Native 엔진"
-
-#: ui/config/playback.py:213
-msgid "Play a click on every beat of the beat grid."
-msgstr "비트그리드의 모든 박에 클릭을 냅니다."
-
-#: ui/config/playback.py:214
-msgid "WAV file used as the metronome click."
-msgstr "메트로놈 클릭으로 쓸 WAV 파일."
-
-#: ui/config/playback.py:216
-msgid "Fixed gain applied to the output before the volume slider (headroom)."
-msgstr "볼륨 슬라이더 앞에서 출력에 거는 고정 게인(헤드룸)."
-
-#: ui/config/playback.py:218
-msgid "Volume slider position at startup."
-msgstr "시작할 때의 볼륨 슬라이더 위치."
-
-#: ui/config/playback.py:219
-msgid "Click volume on the first beat of each bar."
-msgstr "각 마디 첫 박의 클릭 볼륨."
-
-#: ui/config/playback.py:221
-msgid "Pitch shift of the click on the first beat of each bar."
-msgstr "각 마디 첫 박 클릭의 피치 이동."
-
-#: ui/config/playback.py:223
-msgid "Click volume on the other beats."
-msgstr "나머지 박의 클릭 볼륨."
-
-#: ui/config/playback.py:224
-msgid "Pitch shift of the click on the other beats."
-msgstr "나머지 박 클릭의 피치 이동."
-
-#: ui/config/playback.py:230
-#, python-brace-format, python-format
-msgid ""
-"<p>The time the output buffer spent at each level over the last {seconds}"
-" s (log scale): the left end is a dropout. Dashed: the buffer size; "
-"yellow: the 1% low.</p>"
-msgstr ""
-"<p>최근 {seconds}초 동안 출력 버퍼가 각 수준에 머문 시간입니다(로그 눈금). 왼쪽 끝이 드롭아웃입니다. 점선: 버퍼 "
-"크기, 노란 선: 하위 1%.</p>"
-
-#: ui/config/playback.py:234
-msgid "Average audio queued in the output buffer (smoothed)."
-msgstr "출력 버퍼에 쌓인 오디오의 평균(평활화)."
-
-#: ui/config/playback.py:237
-#, python-format
-msgid "Buffer level the output stayed above 99% of the time in the recent window."
-msgstr "최근 구간에서 출력이 99%의 시간 동안 유지한 버퍼 수준."
-
-#: ui/config/playback.py:239
-msgid "Waiting for playback..."
-msgstr "재생 대기 중..."
-
-#: ui/config/playback.py:241
-msgid "Audio queued in the output device buffer while playing, 0 ms = dropout."
-msgstr "재생 중 출력 장치 버퍼에 쌓인 오디오. 0 ms = 드롭아웃."
-
-#: ui/config/playback.py:251
-msgid "Audio engine"
-msgstr "오디오 엔진"
-
-# | msgid "Output buffer"
-#: ui/config/playback.py:252
-msgid "Output device"
-msgstr "출력 장치"
-
-#: ui/config/playback.py:255
+#: ui/config/playback.py:203
 msgid "Trim"
 msgstr "트림"
 
-#: ui/config/playback.py:256
+#: ui/config/playback.py:204
 msgid "Default volume (%)"
 msgstr "기본 볼륨 (%)"
 
-#: ui/config/playback.py:258
-msgid "Buffer size"
-msgstr "버퍼 크기"
+#: ui/config/playback.py:207
+msgid "Main output"
+msgstr "메인 출력"
 
-#: ui/config/playback.py:259
-msgid "Output buffer"
-msgstr "출력 버퍼"
+#: ui/config/playback.py:213
+msgid "Sample rate (exclusive)"
+msgstr "샘플레이트 (배타)"
 
-#: ui/config/playback.py:261
-#, python-brace-format, python-format
-msgid "1% low ({seconds} s)"
-msgstr "하위 1% ({seconds}초)"
-
-#: ui/config/playback.py:263
-msgid "Histogram"
-msgstr "히스토그램"
-
-#: ui/config/playback.py:271
+#: ui/config/playback.py:226
 msgid "Show or hide the settings of the audio engine not playing."
 msgstr "재생하고 있지 않은 오디오 엔진의 설정을 보이거나 숨깁니다."
 
-#: ui/config/playback.py:285
+#: ui/config/playback.py:238
+msgid "Headphones output"
+msgstr "헤드폰 출력"
+
+# | msgid "" "<p>The device's channels for the headphones (a controller's or
+# an
+# | " "interface's second output): the decks whose CUE is on, before their "
+# | "faders, mixed with the master (a controller's CUE / MASTER knob).</p>"
+#: ui/config/playback.py:239
+msgid ""
+"<p>The headphones (a controller's or an interface's second output): the "
+"decks whose CUE is on, before their faders, mixed with the master (a "
+"controller's CUE / MASTER knob).</p>"
+msgstr ""
+"<p>헤드폰(컨트롤러나 인터페이스의 두 번째 출력): CUE를 켠 덱의 페이더 전 소리를 마스터와 섞습니다(컨트롤러의 CUE / "
+"MASTER 노브).</p>"
+
+# | msgid "Zoom out"
+#: ui/config/playback.py:243
+msgid "Booth output"
+msgstr "부스 출력"
+
+# | msgid "<p>The device's channels for the booth monitors: the master
+# | again.</p>"
+#: ui/config/playback.py:243
+msgid "<p>The booth monitors: the master again.</p>"
+msgstr "<p>부스 모니터: 마스터를 한 번 더 냅니다.</p>"
+
+#: ui/config/playback.py:247
 msgid "Time Stretch"
 msgstr "타임 스트레치"
 
-#: ui/config/playback.py:289
+#: ui/config/playback.py:251
 msgid "Metronome"
 msgstr "메트로놈"
 
-#: ui/config/playback.py:293
+#: ui/config/playback.py:255
 msgid "Details"
 msgstr "자세히"
 
-#: ui/config/playback.py:298
+#: ui/config/playback.py:260
 msgid "Show or hide the metronome options."
 msgstr "메트로놈 옵션을 보이거나 숨깁니다."
 
-#: ui/config/playback.py:304
+#: ui/config/playback.py:266
 msgid "WAV path"
 msgstr "WAV 경로"
 
-#: ui/config/playback.py:305
+#: ui/config/playback.py:267
 msgid "Offset (ms)"
 msgstr "오프셋 (ms)"
 
-#: ui/config/playback.py:307
+#: ui/config/playback.py:269
 msgid "Downbeat volume (%)"
 msgstr "다운비트 볼륨 (%)"
 
-#: ui/config/playback.py:310
+#: ui/config/playback.py:272
 msgid "Downbeat pitch (semitones)"
 msgstr "다운비트 피치 (반음)"
 
-#: ui/config/playback.py:312
+#: ui/config/playback.py:274
 msgid "Beat volume (%)"
 msgstr "박 볼륨 (%)"
 
-#: ui/config/playback.py:314
+#: ui/config/playback.py:276
 msgid "Beat pitch (semitones)"
 msgstr "박 피치 (반음)"
 
-#: ui/config/playback.py:358
+#: ui/config/playback.py:320
 msgid "Buffer size, Python engine"
 msgstr "버퍼 크기, Python 엔진"
 
-#: ui/config/playback.py:359
+#: ui/config/playback.py:321
 msgid "Buffer size, native engine"
 msgstr "버퍼 크기, Native 엔진"
 
 # | msgid "Active"
-#: ui/config/playback.py:360
+#: ui/config/playback.py:322
 msgid "Native"
 msgstr "Native"
 
-#: ui/config/playback.py:362
+#: ui/config/playback.py:324
 #, python-brace-format
 msgid ""
 "<p>Native: the audio engine in a process of its own (no dropouts when the"
@@ -3074,61 +3645,29 @@ msgstr ""
 "빌드되어 있지 않거나 시작할 수 없으면 Python 엔진을 씁니다. Python: Python 엔진만 씁니다. 다음 시작부터 "
 "적용됩니다.</p><p>지금 재생 중: {engine}.</p>"
 
-#: ui/config/playback.py:368
+#: ui/config/playback.py:330
 msgid "<p>The native engine on Linux and macOS is experimental.</p>"
 msgstr "<p>Linux와 macOS의 네이티브 엔진은 실험적 기능입니다.</p>"
 
-# | msgid "Default"
-#: ui/config/playback.py:393
-msgid "System default"
-msgstr "시스템 기본값"
-
-#: ui/config/playback.py:419
-msgid ""
-"The output device could not be opened (another app may hold it in "
-"exclusive mode); it is tried again every second."
-msgstr "출력 장치를 열 수 없습니다(다른 앱이 배타 모드로 쓰고 있을 수 있습니다). 1초마다 다시 시도합니다."
-
-# | msgid "" "EMA {ema} / {capacity} ms   1% low {low} ms   lowest {lowest} ms
-# "
-# | "({seconds} s)\n" "Dropout since opened {dropout} ms"
-# | "({seconds} s)\n" "Dropout since opened {dropout} ms   Device latency
-# | {device} ms (fixed)"
-# | {device} ms"
-#: ui/config/playback.py:475
-#, python-brace-format, python-format
-msgid ""
-"EMA {ema} / {capacity} µs   1% low {low} µs   lowest {lowest} µs "
-"({seconds} s)\n"
-"Dropout since opened {dropout} ms   Device latency {device} ms"
-msgstr ""
-"EMA {ema} / {capacity} µs   하위 1% {low} µs   최저 {lowest} µs ({seconds}초)\n"
-"연 뒤 드롭아웃 {dropout} ms   장치 지연 {device} ms"
-
-#: ui/config/playback.py:480
-#, python-brace-format
-msgid "Late output wake-ups: {count} (longest gap {gap} ms)"
-msgstr "출력 스레드 늦은 깨어남: {count}회 (최장 간격 {gap} ms)"
-
-#: ui/config/playback.py:483
+#: ui/config/playback.py:433
 #, python-brace-format
 msgid "Engine thread: {engine}   Output thread: {output}"
 msgstr "엔진 스레드: {engine}   출력 스레드: {output}"
 
-#: ui/config/playback.py:487
+#: ui/config/playback.py:437
 msgid "Power throttling could be turned off only in part."
 msgstr "전원 제한을 일부만 끌 수 있었습니다."
 
-#: ui/config/playback.py:489
+#: ui/config/playback.py:439
 msgid "Power throttling could not be turned off."
 msgstr "전원 제한을 끌 수 없었습니다."
 
-#: ui/config/playback.py:494
+#: ui/config/playback.py:444
 #, python-brace-format
 msgid "Response measured: play {play} ms   pause {pause} ms   seek {seek} ms"
 msgstr "실측 응답: 재생 {play} ms   일시정지 {pause} ms   탐색 {seek} ms"
 
-#: ui/config/playback.py:498
+#: ui/config/playback.py:447
 #, python-brace-format, python-format
 msgid ""
 "EMA {ema} / {capacity} ms   1% low {low} ms   lowest {lowest} ms "
@@ -4528,7 +5067,7 @@ msgstr "BPM이 한 템포에서 다른 템포로 바뀌는 트랙"
 msgid "Tracks whose key changes from one key to another"
 msgstr "키가 한 키에서 다른 키로 바뀌는 트랙"
 
-#: ui/config/midi.py:112 ui/library.py:861
+#: ui/config/midi.py:114 ui/library.py:861
 msgid "Clear"
 msgstr "지우기"
 
@@ -4620,7 +5159,7 @@ msgstr "플레이리스트"
 msgid "Local Folders"
 msgstr "로컬 폴더"
 
-#: ui/config/external_sync.py:105 ui/library.py:1656 ui/pane.py:471
+#: ui/config/external_sync.py:105 ui/library.py:1656 ui/pane.py:472
 msgid "External Sync"
 msgstr "외부 동기화"
 
@@ -4787,11 +5326,11 @@ msgstr "템포 초기화 (100%)"
 msgid "Master tempo: time stretch keeps the pitch"
 msgstr "마스터 템포: 타임 스트레치로 피치를 유지합니다"
 
-#: ui/pane.py:472
+#: ui/pane.py:473
 msgid "Playback is disabled while External Sync is enabled."
 msgstr "외부 동기화가 켜져 있는 동안에는 재생할 수 없습니다."
 
-#: ui/pane.py:811
+#: ui/pane.py:812
 msgid "Not Loaded"
 msgstr "불러온 트랙 없음"
 
@@ -4822,7 +5361,7 @@ msgstr ""
 "비트 트래커는 모든 템포를 여기서부터 한 옥타브 안(BPM 최소 .. 2 x BPM 최소)으로 읽습니다.\n"
 "이 범위 밖의 곡은 절반이나 두 배 템포로 읽힙니다."
 
-#: ui/config/analysis.py:62 ui/config/window.py:218 ui/reanalyze_dialog.py:38
+#: ui/config/analysis.py:62 ui/config/window.py:224 ui/reanalyze_dialog.py:38
 #: ui/reanalyze_dialog.py:81
 #, python-brace-format
 msgid "Reads {low} - {high} BPM"
@@ -4870,8 +5409,8 @@ msgid "CUE point"
 msgstr "CUE 포인트"
 
 #: ui/config/analysis.py:200 ui/config/dialogs/optimization.py:220
-#: ui/config/dialogs/optimization.py:344 ui/config/playback.py:155
-#: ui/reanalyze_dialog.py:59
+#: ui/config/dialogs/optimization.py:344 ui/config/output_group.py:226
+#: ui/config/playback.py:112 ui/reanalyze_dialog.py:59
 msgid "Off"
 msgstr "끔"
 
@@ -4907,7 +5446,7 @@ msgstr "자동 시작"
 msgid "Reanalyze"
 msgstr "재분석"
 
-#: ui/config/playback.py:326 ui/shortcuts.py:29
+#: ui/config/playback.py:291 ui/shortcuts.py:29
 msgid "Playback"
 msgstr "재생"
 
