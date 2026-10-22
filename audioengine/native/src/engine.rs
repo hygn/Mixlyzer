@@ -61,6 +61,7 @@ pub struct Engine {
     display: Option<(f64, f64)>,
     mode_speed: bool,
     factor: f64,
+    bend: f64, // a jog wheel's pitch bend (deck.rs): the speed times 1 + bend
     halted: bool,
     last_step: f64,
     music_gain: f32,
@@ -146,6 +147,7 @@ impl Engine {
             display: None,
             mode_speed: true,
             factor: 1.0,
+            bend: 0.0,
             halted: false,
             last_step: 1.0,
             music_gain: 1.0,
@@ -249,6 +251,33 @@ impl Engine {
         self.factor = if f.is_finite() { f.clamp(0.0, 4.0) } else { 1.0 };
     }
 
+    /// The deck's tempo (deck.rs): 1 exactly plays the original as it is (the mode "none"), else at the speed.
+    pub fn set_tempo(&mut self, f: f64) {
+        self.set_factor(f);
+        self.mode_speed = (self.factor - 1.0).abs() > 1e-9;
+    }
+
+    pub fn factor(&self) -> f64 {
+        if self.mode_speed { self.factor } else { 1.0 }
+    }
+
+    pub fn set_bend(&mut self, bend: f64) {
+        self.bend = bend;
+    }
+
+    pub fn len_frames(&self) -> usize {
+        self.len
+    }
+
+    pub fn has_track(&self) -> bool {
+        self.pcm.is_some()
+    }
+
+    /// The JumpCUE jump armed: its destination (input frame).
+    pub fn jump_armed(&self) -> Option<f64> {
+        self.jump_dest.map(|_| self.jump_dest_base)
+    }
+
     pub fn set_music_gain(&mut self, g: f64) {
         self.music_gain = g.max(0.0) as f32;
     }
@@ -315,6 +344,23 @@ impl Engine {
         self.pos = self.scratch_target;
     }
 
+    /// A jog wheel grabbed (true) or let go: scratching that follows scratch_to, the platter ``delay`` late.
+    pub fn grab(&mut self, on: bool, delay: f64) {
+        self.set_scratching(on, 0.0);
+        self.platter.delay = if on { delay } else { Platter::DELAY };
+    }
+
+    /// The record held still where it is (a jog wheel stopped under the hand): no carrying on.
+    pub fn scratch_rest(&mut self, at: f64) {
+        if self.scratching && self.poller.is_none() {
+            self.platter.set_target(self.scratch_target, at, true);
+        }
+    }
+
+    pub fn scratch_target(&self) -> f64 {
+        self.scratch_target
+    }
+
     pub fn scratch_to(&mut self, frame: f64, at: f64) {
         if !self.scratching || self.poller.is_some() {
             return;
@@ -348,10 +394,11 @@ impl Engine {
     }
 
     fn step(&self) -> f64 {
-        if !self.mode_speed || (self.stretch.is_some() && (self.scrubbing || self.resume_at.is_some())) {
+        if self.stretch.is_some() && (self.scrubbing || self.resume_at.is_some()) {
             return 1.0;
         }
-        self.factor
+        let tempo = if self.mode_speed { self.factor } else { 1.0 };
+        if self.bend != 0.0 { tempo * (1.0 + self.bend) } else { tempo }
     }
 
     /// The deck's tempo (the speed it plays at, unity overrides aside).
@@ -942,8 +989,10 @@ impl Engine {
             // play / seek: the new frame being played out (past it: a report made before it ends exactly there);
             // pause: the last frame heard
             let reached = if kind == 1 { heard >= frame as f64 } else { heard >= frame as f64 + 1.0 };
-            if reached && sent_at > 0.0 {
-                self.responses[kind] = (now - sent_at) * 1000.0;
+            if reached {
+                if sent_at > 0.0 {
+                    self.responses[kind] = (now - sent_at) * 1000.0;
+                }
                 self.probe = None;
             }
         }
@@ -955,6 +1004,8 @@ impl Engine {
             if let Some(end) = self.end_out_frame {
                 if heard >= end as f64 {
                     self.sent_finished = true;
+                    // the track's end heard: the deck plays on (silence), so the record dragged or the playhead
+                    // moved back plays again from there
                     self.finished_count += 1;
                 }
             }

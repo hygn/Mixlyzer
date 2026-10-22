@@ -11,14 +11,13 @@ class EventBus(QtCore.QObject):
     sig_transport_enabled = QtCore.Signal(bool)
     sig_external_sync_enabled = QtCore.Signal(bool)
     sig_external_sync_state = QtCore.Signal(object)
-    sig_volume_changed = QtCore.Signal(float)
     sig_peak_meter_gain_changed = QtCore.Signal(float)
     sig_output_peak_dbfs = QtCore.Signal(float)
     # Output buffer: queued ms now, time-continuous observations since the last report
     # (PCMFeeder.take_buffer_stats: hist / seconds / mean_ms) or None, capacity ms
     sig_output_buffer = QtCore.Signal(float, object, float)
+    # the deck's tempo as the player reports it (1: 100 %); notification of a change
     sig_tempo_factor_changed = QtCore.Signal(float)
-    sig_tempo_mode_changed = QtCore.Signal(str)
     sig_stop_requested = QtCore.Signal(bool)
     sig_play_requested = QtCore.Signal(bool)
     sig_pause_requested = QtCore.Signal(bool)
@@ -91,9 +90,23 @@ class EventBus(QtCore.QObject):
     sig_timestretch_toggle_requested = QtCore.Signal(bool)
     sig_metronome_toggle_requested = QtCore.Signal(bool)
 
-    sig_jump_arm = QtCore.Signal(object)
-    sig_jump_disarm = QtCore.Signal()
-    sig_jump_fired = QtCore.Signal()  # an armed jump was played
+    # The deck (the native engine's src/deck.rs, or the Python engine's audioengine/python/deck.py): requests from
+    # the GUI, combined there with a MIDI controller's; what the deck then is comes back as sig_deck_state (a
+    # DeckReport: playing, factor, volume, cue s, jump_dest s, lamps, tempo_range, midi_state), which the GUI shows
+    sig_deck_action = QtCore.Signal(int, bool)   # client.DECK_ACTIONS code, pressed (True) / let go
+    sig_tempo_requested = QtCore.Signal(float)   # the tempo fader moved: factor
+    sig_tempo_range_requested = QtCore.Signal(int)   # +-% (100: WIDE)
+    sig_volume_requested = QtCore.Signal(float)   # the volume fader moved: 0 .. 1
+    sig_jump_to_requested = QtCore.Signal(float)   # a JumpCUE's JUMP: its point (s)
+    sig_call_requested = QtCore.Signal(float)   # a CUE point's CALL: its time (s)
+    # the track's marks as edited: (beats s, downbeat flags, CUE points s, JumpCUEs A-Z s or NaN)
+    sig_deck_marks = QtCore.Signal(object)
+    sig_deck_state = QtCore.Signal(object)
+    # MIDI messages from the controller (status, data1, data2, flags, action): the GUI's actions, and all while
+    # learning
+    sig_midi_events = QtCore.Signal(object)
+    # the MIDI mapping or input saved in the settings
+    sig_midi_changed = QtCore.Signal()
 
     # UI timing
     sig_ui_draw_interval = QtCore.Signal(float)

@@ -8,8 +8,9 @@ from typing import Optional
 import numpy as np
 from PySide6 import QtCore, QtMultimedia
 
-from audioengine.native.client import NativeClicks, NativeEngine, NativeFeeder
+from audioengine.native.client import MIDI_EVENT_GUI, DeckReport, NativeClicks, NativeEngine, NativeFeeder
 from audioengine.python.clicks import ClickTrack
+from audioengine.python.deck import PythonDeck
 from audioengine.python.feeder import PCMFeeder
 from core import os_support
 from core.audio.decoder import decode_to_memmap
@@ -52,6 +53,12 @@ class _AudioWorker(QtCore.QObject):
     separate thread so the sink keeps being fed while a track loads; transport commands
     that arrive meanwhile are replayed, in order, once the track is ready. The playhead time
     and the output peak reach the GUI through _Latest (newest only, never piling up).
+
+    The deck (``deck``: the native engine's, src/deck.rs, or PythonDeck over PCMFeeder) takes the
+    requests (actions, tempo, volume, JUMP, CALL) and reports what it is (DeckReport: playing,
+    tempo, volume, the cue point, the lamps, the armed JumpCUE), which is all the GUI shows: this
+    thread keeps no transport state of its own. The native engine reads a MIDI controller itself;
+    the messages bound to the GUI's actions (and all of them while learning) come out here.
     """
 
     time_ready = QtCore.Signal()   # latest_time has a new value
@@ -60,7 +67,8 @@ class _AudioWorker(QtCore.QObject):
     transport_enabled = QtCore.Signal(bool)
     track_loaded = QtCore.Signal(object, int)  # pcm [N, ch] float32, sample rate
     peak_ready = QtCore.Signal()   # latest_peak has a new value (dBFS)
-    jumped = QtCore.Signal()
+    deck_ready = QtCore.Signal()   # latest_deck has a new DeckReport
+    midi_events = QtCore.Signal(object)   # [(status, data1, data2, flags, action)] the GUI wants
     output_buffer = QtCore.Signal(float, object, float)  # queued ms, observations (see PCMFeeder.take_buffer_stats) or None, capacity ms
     _decoded = QtCore.Signal(int, object, str)  # token, pcm or None, error message
 
@@ -71,21 +79,24 @@ class _AudioWorker(QtCore.QObject):
 
     _COMMANDS = frozenset({
         "load", "unload", "play", "pause", "stop", "seek",
-        "scrub_begin", "scrub_update", "scrub_end", "arm_jump", "disarm_jump",
+        "scrub_begin", "scrub_update", "scrub_end",
         "scratch_begin", "scratch_update", "scratch_end",
-        "set_tempo_mode", "set_tempo_factor", "set_volume", "set_peak_meter_gain",
+        "deck_action", "set_tempo", "set_tempo_range", "set_volume", "set_volume_trim", "set_marks",
+        "jump_to", "call_at", "set_peak_meter_gain",
         "set_refresh_fps", "set_timestretch", "set_soft_clip", "set_buffer_ms", "set_output_device",
         "set_output_mode", "set_exclusive_rate", "set_process",
-        "tone_hold",
+        "tone_hold", "midi_open", "midi_map", "midi_options", "set_midi_learn",
     })
     _WAIT_FOR_TRACK = frozenset({
         "play", "pause", "stop", "seek",
-        "scrub_begin", "scrub_update", "scrub_end", "arm_jump", "disarm_jump",
+        "scrub_begin", "scrub_update", "scrub_end",
         "scratch_begin", "scratch_update", "scratch_end",
+        "deck_action", "jump_to", "call_at",
     })
 
-    def __init__(self, *, volume_linear: float = 1.0, peak_meter_gain_linear: float = 1.0,
-                 buffer_ms: float = 80.0, engine: Optional[NativeEngine] = None, output_device: str = "") -> None:
+    def __init__(self, *, volume_position: float = 1.0, volume_trim_dbfs: float = 0.0, tempo_range: int = 100,
+                 peak_meter_gain_linear: float = 1.0, buffer_ms: float = 80.0,
+                 engine: Optional[NativeEngine] = None, output_device: str = "") -> None:
         super().__init__()
         self._device_name = output_device   # the output device asked for ("": the system's default)
         self._output_route = ("wasapi", False)   # the native engine's API and exclusive mode (as PlayerController started it)
@@ -93,24 +104,31 @@ class _AudioWorker(QtCore.QObject):
         self._engine = engine   # the native engine, started by PlayerController (None: the Python engine)
         self.audio: Optional[QtMultimedia.QAudioSink] = None
         self.feeder: Optional[PCMFeeder | NativeFeeder] = None
+        self.deck: Optional[PythonDeck | NativeFeeder] = None
         self.rate = 0
         self.ch = 0
 
         self._path: Optional[str] = None
         self._track_ready = False
-        self._is_playing = False
+        self._is_playing = False   # as the deck last reported
         self._duration_ms = 0
         self._last_emit_ms: float = -1
         self._last_peak: Optional[float] = None
         self._buffer_reported = 0.0
         self.latest_time = _Latest(self.time_ready)
         self.latest_peak = _Latest(self.peak_ready)
+        self.latest_deck = _Latest(self.deck_ready)
+        self._deck_key: Optional[tuple] = None
+        self._marks: Optional[tuple] = None   # the track's marks (set_marks), sent again once a track is decoded
+        self._midi_learn = False
 
         self._decode_token = 0
         self._decoding = False
         self._deferred: list[tuple[str, tuple]] = []
 
-        self._volume_linear = max(0.0, min(1.0, float(volume_linear)))
+        self._volume_position = max(0.0, min(1.0, float(volume_position)))
+        self._volume_trim_dbfs = float(volume_trim_dbfs)
+        self._tempo_range = int(tempo_range)
         self._peak_meter_gain_linear = max(0.0, min(1.0, float(peak_meter_gain_linear)))
         self._buffer_ms = float(buffer_ms)  # the output buffer
 
@@ -126,6 +144,7 @@ class _AudioWorker(QtCore.QObject):
         if engine is not None:
             self.rate, self.ch = engine.rate, engine.channels
             self.feeder = NativeFeeder(engine, self)
+            self.deck = self.feeder
             route = getattr(self, "_native_route", None)
             if route is not None:
                 self.feeder._device, self.feeder._api, self.feeder._exclusive, self.feeder._exclusive_rate = route
@@ -144,13 +163,18 @@ class _AudioWorker(QtCore.QObject):
         self.audio = QtMultimedia.QAudioSink(out_dev, fmt, self)
 
         self.feeder = PCMFeeder(self.audio, self.rate, self.ch, self)
+        self.deck = PythonDeck(self.feeder)
         self._init_feeder()
 
     def _init_feeder(self) -> None:
         self.feeder.set_buffer_ms(self._buffer_ms)   # the sink's size, set where the feeder opens it
-        self.feeder.set_music_gain(self._volume_linear)
-        self.feeder.finished.connect(self.pause)
-        self.feeder.jumped.connect(self.jumped)
+        self.deck.set_volume_trim(self._volume_trim_dbfs)
+        self.deck.set_volume(self._volume_position)
+        self.deck.set_tempo_range(self._tempo_range)
+        if isinstance(self.feeder, NativeFeeder):
+            self.feeder.set_meter_gain(self._peak_meter_gain_linear)   # a controller's level meter, from the start
+        # at the track's end either engine plays on (silence): the record dragged or the playhead moved back plays
+        # again from there
         # While playing, every transport change (seek, scrub, jump) is rendered by the feeder
         # into the running sink: reset()/start() cycles during scrubbing crash Qt 6.10's WASAPI
         # backend. The feeder suspends the sink only when playback is idle.
@@ -168,17 +192,15 @@ class _AudioWorker(QtCore.QObject):
 
     # Track loading
     def load(self, path: str) -> None:
-        self.pause()
+        self.feeder.pause()
         self.feeder.set_track(None)
+        self.deck.new_track()
         self._path = path
         self._track_ready = False
         self._duration_ms = 0
         self._last_emit_ms = -1
         self._deferred.clear()
-        self.playback_status.emit(False)
         self.duration_changed.emit(0.0)
-        self._emit_time(0.0, force=True)
-        self._publish_peak(self.PEAK_FLOOR_DBFS)
         self.transport_enabled.emit(False)
 
         self._decode_token += 1
@@ -206,8 +228,9 @@ class _AudioWorker(QtCore.QObject):
 
     def unload(self) -> None:
         """No track: silent, nothing to play."""
-        self.pause()
+        self.feeder.pause()
         self.feeder.set_track(None)
+        self.deck.new_track()
         self._path = None
         self._track_ready = False
         self._decode_token += 1  # drop a decode still running
@@ -215,10 +238,7 @@ class _AudioWorker(QtCore.QObject):
         self._duration_ms = 0
         self._last_emit_ms = -1
         self._deferred.clear()
-        self.playback_status.emit(False)
         self.duration_changed.emit(0.0)
-        self._emit_time(0.0, force=True)
-        self._publish_peak(self.PEAK_FLOOR_DBFS)
         self.transport_enabled.emit(False)
 
     @QtCore.Slot(int, object, str)
@@ -234,57 +254,90 @@ class _AudioWorker(QtCore.QObject):
         except Exception as exc:
             print(f"[Player] Decode error: {exc}")
             self._deferred.clear()
-            self.playback_status.emit(False)
-            self._publish_peak(self.PEAK_FLOOR_DBFS)
             self.transport_enabled.emit(True)
             return
 
         self._track_ready = True
         self._duration_ms = int(round((pcm_array.shape[0] * 1000.0) / max(1, self.rate)))
+        # the deck starts the track anew (the native engine on its load): its marks again
+        self.deck.new_track()
+        if self._marks is not None:
+            self.deck.set_marks(*self._marks)
         self.track_loaded.emit(pcm_array, self.rate)
         self.duration_changed.emit(self._duration_ms / 1000.0)
-        self._emit_time(0.0, force=True)
-        self.playback_status.emit(False)
         self.transport_enabled.emit(True)
-        self._publish_peak(self.PEAK_FLOOR_DBFS)
 
         deferred, self._deferred = self._deferred, []
         for name, args in deferred:
             self.run_command(name, args)
 
-    # Transport
+    # Transport: requests; whether it plays and where comes back in the deck's report and the playhead
     @QtCore.Slot()
     def play(self) -> None:
-        if not self._path or self._is_playing or not self._track_ready:
-            return
-        if not self.feeder.play():
-            return
-        self._is_playing = True
-        self.playback_status.emit(True)
+        if self._path and self._track_ready:
+            self.feeder.play()
 
     @QtCore.Slot()
     def pause(self) -> None:
-        if not self._is_playing:
-            return
         self.feeder.pause()
-        self._is_playing = False
-        self.playback_status.emit(False)
-        self._emit_time(self._track_now_ms())
 
     def stop(self) -> None:
         self.feeder.pause()
         self.feeder.seek(0)
-        self._is_playing = False
-        self._last_emit_ms = -1
-        self.playback_status.emit(False)
-        self._emit_time(0)
 
     def seek(self, sec: float) -> None:
         if not self._track_ready:
             return
         self.feeder.seek(int(round(max(0.0, sec) * self.rate)))
-        if not self._is_playing:
-            self._emit_time(sec * 1000.0, force=True)
+
+    # The deck (src/deck.rs / PythonDeck)
+    def deck_action(self, code: int, pressed: bool) -> None:
+        if self._track_ready:
+            self.deck.deck_action(int(code), bool(pressed))
+
+    def set_tempo(self, factor: float) -> None:
+        self.deck.set_tempo(float(factor))
+
+    def set_tempo_range(self, percent: int) -> None:
+        self.deck.set_tempo_range(int(percent))
+
+    def set_volume(self, position: float) -> None:
+        self.deck.set_volume(float(position))
+
+    def set_volume_trim(self, db: float) -> None:
+        self.deck.set_volume_trim(float(db))
+
+    def set_marks(self, marks: tuple) -> None:
+        """(beats s, downbeat flags, CUE points s, JumpCUEs A-Z s): kept for the next track decoded too (they
+        may come before it)."""
+        self._marks = marks
+        if self._track_ready:
+            self.deck.set_marks(*marks)
+
+    def jump_to(self, sec: float) -> None:
+        if self._track_ready:
+            self.deck.jump_to(float(sec))
+
+    def call_at(self, sec: float) -> None:
+        if self._track_ready:
+            self.deck.call_at(float(sec))
+
+    # The MIDI controller: the native engine's alone
+    def midi_open(self, port: str) -> None:
+        if isinstance(self.feeder, NativeFeeder):
+            self.feeder.midi_open(port)
+
+    def midi_map(self, bindings: list) -> None:
+        if isinstance(self.feeder, NativeFeeder):
+            self.feeder.midi_map(bindings)
+
+    def midi_options(self, jog_ticks: int) -> None:
+        if isinstance(self.feeder, NativeFeeder):
+            self.feeder.midi_options(jog_ticks)
+
+    def set_midi_learn(self, learning: bool) -> None:
+        """Every message passed on (Settings > MIDI's learn), not only those bound to the GUI's actions."""
+        self._midi_learn = bool(learning)
 
     def scrub_begin(self) -> None:
         self.feeder.set_scrubbing(True)
@@ -293,8 +346,6 @@ class _AudioWorker(QtCore.QObject):
         if not self._track_ready:
             return
         self.feeder.seek(int(round(sec * self.rate)))
-        if not self._is_playing:
-            self._emit_time(sec * 1000.0, force=True)
 
     def scrub_end(self, _sec: float) -> None:
         self.feeder.set_scrubbing(False)
@@ -312,38 +363,7 @@ class _AudioWorker(QtCore.QObject):
     def scratch_end(self, _sec: float) -> None:
         self.feeder.set_scratching(False)
 
-    def arm_jump(self, payload: object) -> None:
-        if not isinstance(payload, dict):
-            return
-        jump_start = None
-        jump_dest = None
-        source = payload.get("source")
-        target = payload.get("target")
-        if isinstance(source, dict) and isinstance(target, dict):
-            jump_start = source.get("point", source.get("start"))
-            jump_dest = target.get("point", target.get("start"))
-        else:
-            label = payload["label"]
-            cue = payload["cue"]
-            if cue["forward"]["label"] == label:
-                jump_start = cue["forward"]["point"]
-                jump_dest = cue["backward"]["point"]
-            elif cue["backward"]["label"] == label:
-                jump_start = cue["backward"]["point"]
-                jump_dest = cue["forward"]["point"]
-        self.feeder.arm_jump(jump_start, jump_dest, once=bool(payload.get("once", False)),
-                             starts_sec=payload.get("starts"))
-
-    def disarm_jump(self) -> None:
-        self.feeder.disarm_jump()
-
     # Settings
-    def set_tempo_mode(self, mode: str) -> None:
-        self.feeder.set_mode(mode)
-
-    def set_tempo_factor(self, factor: float) -> None:
-        self.feeder.set_factor(float(factor))
-
     def set_timestretch(self, enabled: bool) -> None:
         self.feeder.set_timestretch(bool(enabled))
 
@@ -382,14 +402,10 @@ class _AudioWorker(QtCore.QObject):
         if notes:
             self.feeder.wake()
 
-    def set_volume(self, value: float) -> None:
-        # Applied to the music inside the feeder so metronome clicks keep their own level.
-        self._volume_linear = max(0.0, min(1.0, float(value)))
-        self.feeder.set_music_gain(self._volume_linear)
-        self._emit_peak()
-
     def set_peak_meter_gain(self, value: float) -> None:
         self._peak_meter_gain_linear = max(0.0, min(1.0, float(value)))
+        if isinstance(self.feeder, NativeFeeder):
+            self.feeder.set_meter_gain(self._peak_meter_gain_linear)   # a controller's level meter: the same reading
         self._emit_peak()
 
     def set_refresh_fps(self, fps: int) -> None:
@@ -404,6 +420,7 @@ class _AudioWorker(QtCore.QObject):
         if self.feeder is None:
             return
         self.stop()
+        self.midi_open("")   # the controller's lamps out
         self._track_ready = False
         self._publish_peak(self.PEAK_FLOOR_DBFS)
         self.transport_enabled.emit(False)
@@ -438,6 +455,8 @@ class _AudioWorker(QtCore.QObject):
         poll = getattr(self.feeder, "poll", None)   # the native engine's state, read once a frame
         if poll is not None:
             poll()
+        self.deck.tick()
+        self._report_deck()
         cur = (self.feeder.display_frame() * 1000.0) / max(1, self.rate)
         if self._duration_ms and cur >= self._duration_ms:
             cur = self._duration_ms
@@ -449,6 +468,25 @@ class _AudioWorker(QtCore.QObject):
             queued, hist, capacity = self.feeder.take_buffer_stats()
             ms = 1000.0 / max(1, self.rate)
             self.output_buffer.emit(queued * ms, hist, capacity * ms)
+
+    def _report_deck(self) -> None:
+        """The deck's report to the GUI when it changed (the play state also as playback_status), and the MIDI
+        messages it wants."""
+        report: Optional[DeckReport] = self.deck.deck_report()
+        if report is not None:
+            if report.playing != self._is_playing:
+                self._is_playing = report.playing
+                self.playback_status.emit(report.playing)
+            key = report.key()
+            if key != self._deck_key:
+                self._deck_key = key
+                self.latest_deck.publish(report)
+        if isinstance(self.feeder, NativeFeeder):
+            events = self.feeder.midi_events()
+            if not self._midi_learn:
+                events = [e for e in events if e[3] & MIDI_EVENT_GUI]
+            if events:
+                self.midi_events.emit(events)
 
 
 def qt_output_device(name: str) -> QtMultimedia.QAudioDevice:
@@ -463,7 +501,9 @@ def qt_output_device(name: str) -> QtMultimedia.QAudioDevice:
 class PlayerController(QtCore.QObject):
     """
     Main-thread facade of the player: forwards commands to the audio-thread worker and
-    relays its state to the event bus. External sync mode disables local playback.
+    relays its state to the event bus. External sync mode disables local playback (and the
+    MIDI controller). The deck's report reaches the bus as sig_deck_state (and the tempo, when it
+    changed, as sig_tempo_factor_changed); the GUI shows it rather than what it asked for.
     """
 
     _command = QtCore.Signal(str, object)  # worker method name, args tuple
@@ -474,7 +514,9 @@ class PlayerController(QtCore.QObject):
         bus: EventBus,
         model=None,
         *,
-        default_volume_linear: float = 1.0,
+        volume_position: float = 1.0,
+        volume_trim_dbfs: float = 0.0,
+        tempo_range: int = 100,
         default_peak_meter_gain_linear: float = 1.0,
         engine: str = "native",
         native_buffer_ms: float = 20.0,
@@ -489,6 +531,8 @@ class PlayerController(QtCore.QObject):
         self.model = model
         self._path: Optional[str] = None
         self._external_sync_enabled = False
+        self._midi_port = ""   # the MIDI input asked for (closed while External Sync follows another deck)
+        self._factor: Optional[float] = None   # the tempo last reported
 
         # the audio engine (Settings > Playback): the native one (audioengine/native), started here so the app
         # knows which plays, or where it is not built or does not start the Python one (audioengine/python);
@@ -501,7 +545,9 @@ class PlayerController(QtCore.QObject):
         self._audio_thread = QtCore.QThread(self)
         self._audio_thread.setObjectName("AudioThread")
         self._audio_worker = _AudioWorker(
-            volume_linear=default_volume_linear,
+            volume_position=volume_position,
+            volume_trim_dbfs=volume_trim_dbfs,
+            tempo_range=tempo_range,
             peak_meter_gain_linear=default_peak_meter_gain_linear,
             buffer_ms=native_buffer_ms if self.native else python_buffer_ms,
             engine=native_engine,
@@ -520,7 +566,8 @@ class PlayerController(QtCore.QObject):
         w.transport_enabled.connect(bus.sig_transport_enabled)
         w.peak_ready.connect(self._relay_peak, QtCore.Qt.QueuedConnection)
         w.output_buffer.connect(bus.sig_output_buffer)
-        w.jumped.connect(bus.sig_jump_fired)
+        w.deck_ready.connect(self._relay_deck, QtCore.Qt.QueuedConnection)
+        w.midi_events.connect(bus.sig_midi_events)
         w.track_loaded.connect(self._on_track_loaded, QtCore.Qt.QueuedConnection)
 
         self._audio_thread.started.connect(w.initialize)
@@ -548,13 +595,16 @@ class PlayerController(QtCore.QObject):
         bus.sig_scratch_begin.connect(lambda sec_per_px: self._send_local("scratch_begin", float(sec_per_px)))
         bus.sig_scratch_update.connect(lambda sec, at: self._send_local("scratch_update", float(sec), float(at)))
         bus.sig_scratch_end.connect(lambda sec: self._send_local("scratch_end", float(sec)))
-        bus.sig_volume_changed.connect(lambda v: self._send("set_volume", float(v)))
         bus.sig_peak_meter_gain_changed.connect(lambda v: self._send("set_peak_meter_gain", float(v)))
-        bus.sig_jump_arm.connect(lambda payload: self._send("arm_jump", payload))
-        bus.sig_jump_disarm.connect(lambda: self._send("disarm_jump"))
         bus.sig_tone_hold.connect(lambda notes: self._send("tone_hold", tuple(notes or ())))
-        bus.sig_tempo_mode_changed.connect(self.set_tempo_mode)
-        bus.sig_tempo_factor_changed.connect(self.set_tempo_factor)
+        # the deck's requests (what it then is: sig_deck_state)
+        bus.sig_deck_action.connect(lambda code, pressed: self._send_local("deck_action", int(code), bool(pressed)))
+        bus.sig_tempo_requested.connect(lambda f: self._send("set_tempo", float(f)))
+        bus.sig_tempo_range_requested.connect(lambda r: self._send("set_tempo_range", int(r)))
+        bus.sig_volume_requested.connect(lambda v: self._send("set_volume", float(v)))
+        bus.sig_jump_to_requested.connect(lambda sec: self._send_local("jump_to", float(sec)))
+        bus.sig_call_requested.connect(lambda sec: self._send_local("call_at", float(sec)))
+        bus.sig_deck_marks.connect(lambda marks: self._send("set_marks", marks))
         bus.sig_external_sync_enabled.connect(self._on_external_sync_enabled)
 
     def _on_scrub_begin(self) -> None:
@@ -591,6 +641,16 @@ class PlayerController(QtCore.QObject):
         sec = self._audio_worker.latest_time.take()
         if sec is not None:
             self.bus.sig_time_changed.emit(float(sec))
+
+    @QtCore.Slot()
+    def _relay_deck(self) -> None:
+        report = self._audio_worker.latest_deck.take()
+        if report is None:
+            return
+        self.bus.sig_deck_state.emit(report)
+        if report.factor != self._factor:
+            self._factor = report.factor
+            self.bus.sig_tempo_factor_changed.emit(report.factor)
 
     @QtCore.Slot()
     def _relay_peak(self) -> None:
@@ -653,11 +713,28 @@ class PlayerController(QtCore.QObject):
             return
         self._send("seek", float(sec))
 
-    def set_tempo_mode(self, mode: str) -> None:
-        self._send("set_tempo_mode", mode)
+    def set_volume_trim(self, db: float) -> None:
+        """The volume fader's trim (dB; Settings > Playback)."""
+        self._send("set_volume_trim", float(db))
 
-    def set_tempo_factor(self, factor: float) -> None:
-        self._send("set_tempo_factor", float(factor))
+    # The MIDI controller: the native engine reads it (never this process); none on the Python engine
+    def midi_configure(self, port: str, bindings: list, jog_ticks: int) -> None:
+        """Read MIDI input ``port`` ("": none) with ``bindings`` ((status, data1, 14-bit, action code) each)."""
+        if not self.native:
+            return
+        self._midi_port = str(port or "")
+        self._send("midi_options", int(jog_ticks))
+        self._send("midi_map", list(bindings))
+        self._send("midi_open", "" if self._external_sync_enabled else self._midi_port)
+
+    def set_midi_learn(self, learning: bool) -> None:
+        """Every MIDI message to sig_midi_events (Settings > MIDI's learn), not only the GUI's actions'."""
+        self._send("set_midi_learn", bool(learning))
+
+    def midi_ports(self) -> list[str]:
+        """The MIDI input ports as the native engine finds them ([] on the Python engine)."""
+        feeder = self._audio_worker.feeder
+        return feeder.midi_ports() if isinstance(feeder, NativeFeeder) else []
 
     def set_timestretch(self, enabled: bool) -> None:
         """Pitch-preserving time stretch instead of varispeed for tempo changes."""
@@ -697,8 +774,8 @@ class PlayerController(QtCore.QObject):
         feeder = self._audio_worker.feeder
         if isinstance(feeder, NativeFeeder):
             return feeder.output_devices()   # the engine it holds now (started again for another rate)
-        audio = self._audio_worker.audio
-        current = audio.device().description() if audio is not None else ""
+        # the Python engine: the device it was asked for (QAudioSink does not say which it opened)
+        current = qt_output_device(self._audio_worker._device_name).description()
         return current, [d.description() for d in QtMultimedia.QMediaDevices.audioOutputs()]
 
     def shutdown(self) -> None:
@@ -717,6 +794,8 @@ class PlayerController(QtCore.QObject):
     @QtCore.Slot(bool)
     def _on_external_sync_enabled(self, enabled: bool) -> None:
         self._external_sync_enabled = bool(enabled)
+        if self.native:
+            self._send("midi_open", "" if self._external_sync_enabled else self._midi_port)
         if self._external_sync_enabled:
             self._send("pause")
             self.bus.sig_playback_status.emit(False)

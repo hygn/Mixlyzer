@@ -47,6 +47,7 @@ class Action:
     repeat: bool = False      # repeats while the key is held (nudges, steps), at the system's key repeat
     hold_rate: float = 0.0    # > 0: repeats while the key is held at this many a second, from the press on (the
                               # playhead's steps: an even pace, not the system's delay and rate)
+    momentary: bool = False   # its handler takes pressed (True) and let go (False): CUE, held to play
     args: dict = field(default_factory=dict)
     tip: str = ""             # the details, for its tooltip (translated where shown, filled with ``args``)
 
@@ -69,6 +70,10 @@ def _page(name: str) -> Callable[[], str]:
 
 ACTIONS: tuple[Action, ...] = (
     Action("playback.play_pause", PLAYBACK, tr_mark("Play / pause")),
+    Action("playback.cue", PLAYBACK, "CUE", momentary=True,
+           tip=tr_mark("As rekordbox's CUE: stopped, sets the cue point at the playhead (on the nearest beat); held "
+                       "on the cue point, plays until let go (PLAY while held: plays on); playing, back to the cue "
+                       "point and stop.")),
     Action("playback.stop", PLAYBACK, tr_mark("Stop"), tip=tr_mark("Stop and go back to the start of the track.")),
     Action("playback.beat_back", PLAYBACK, tr_mark("One beat back"), hold_rate=8.0,
            tip=tr_mark("The playhead one beat back: while playing, as a beat jump (its place in the beat kept); "
@@ -83,6 +88,8 @@ ACTIONS: tuple[Action, ...] = (
     Action("playback.tempo_down", PLAYBACK, tr_mark("Tempo -1%"), repeat=True),
     Action("playback.tempo_up", PLAYBACK, tr_mark("Tempo +1%"), repeat=True),
     Action("playback.tempo_reset", PLAYBACK, tr_mark("Tempo reset (100%)")),
+    Action("playback.tempo_range", PLAYBACK, tr_mark("Tempo range"),
+           tip=tr_mark("The tempo fader's range: ±6% / ±10% / ±16% / WIDE (0%-200%), the next one.")),
     Action("playback.master_tempo", PLAYBACK, tr_mark("Master tempo on / off")),
     Action("playback.metronome", PLAYBACK, tr_mark("Metronome on / off")),
     Action("playback.zoom_in", PLAYBACK, tr_mark("Zoom in"), repeat=True),
@@ -221,7 +228,8 @@ STATUS_MS = 3000
 class ShortcutManager(QtCore.QObject):
     """One QShortcut per action on ``window`` (keys set by ``apply``); ``handlers``: action id -> callable
     returning None or a message for ``status(message, ms)``. An action with a hold rate is repeated by a timer
-    while its key is held (the key's release, or the app losing the focus, stops it)."""
+    while its key is held (the key's release, or the app losing the focus, stops it); a momentary one's handler
+    is called with True when its key is pressed and False when it is let go (or the app loses the focus)."""
 
     def __init__(self, window: QtWidgets.QWidget, handlers: dict[str, Callable[[], Optional[str]]],
                  status: Callable[[str, int], None]):
@@ -229,6 +237,7 @@ class ShortcutManager(QtCore.QObject):
         self._status = status
         self._shortcuts: dict[str, QtGui.QShortcut] = {}
         self._held: Optional[tuple[str, Callable[[], Optional[str]]]] = None   # (action id, handler) held
+        self._held_momentary = False
         self._hold_timer = QtCore.QTimer(self)
         self._hold_timer.setTimerType(QtCore.Qt.PreciseTimer)
         self._hold_timer.timeout.connect(self._hold_step)
@@ -239,8 +248,10 @@ class ShortcutManager(QtCore.QObject):
                 continue
             sc = QtGui.QShortcut(window)
             sc.setContext(QtCore.Qt.WindowShortcut)
-            sc.setAutoRepeat(action.repeat and action.hold_rate <= 0.0)
-            if action.hold_rate > 0.0:
+            sc.setAutoRepeat(action.repeat and action.hold_rate <= 0.0 and not action.momentary)
+            if action.momentary:
+                sc.activated.connect(lambda action=action, handler=handler: self._press_momentary(action, handler))
+            elif action.hold_rate > 0.0:
                 sc.activated.connect(lambda action=action, handler=handler: self._press(action, handler))
             else:
                 sc.activated.connect(lambda handler=handler: self._run(handler))
@@ -269,9 +280,20 @@ class ShortcutManager(QtCore.QObject):
             self._status(message, STATUS_MS)
 
     def _press(self, action: Action, handler: Callable[[], Optional[str]]) -> None:
+        self._release()   # a key held before (CUE) is let go first: one held at a time
         self._run(handler)
         self._held = (action.id, handler)
         self._hold_timer.start(max(1, round(1000.0 / action.hold_rate)))
+
+    def _press_momentary(self, action: Action, handler: Callable[[bool], Optional[str]]) -> None:
+        if self._held is not None and self._held[0] == action.id:
+            return   # the key's own repeat
+        self._release()
+        message = handler(True)
+        if message:
+            self._status(message, STATUS_MS)
+        self._held = (action.id, handler)
+        self._held_momentary = True
 
     def _hold_step(self) -> None:
         if self._held is None:
@@ -280,8 +302,12 @@ class ShortcutManager(QtCore.QObject):
         self._run(self._held[1])
 
     def _release(self) -> None:
+        held, momentary = self._held, self._held_momentary
         self._held = None
+        self._held_momentary = False
         self._hold_timer.stop()
+        if held is not None and momentary:
+            held[1](False)
 
     def _held_keys(self) -> set[int]:
         """The keys (without modifiers) of the held action's shortcuts."""

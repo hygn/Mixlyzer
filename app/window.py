@@ -5,7 +5,7 @@ import copy
 import json
 
 from app.print_hook import install_print_hook, log_environment_info
-from core import os_support, shortcuts
+from core import midi, os_support, shortcuts
 from core.event_bus import EventBus
 from core.model import DataModel
 from core.timeline import TimelineCoordinator
@@ -28,7 +28,7 @@ from ui.config.window import SettingsDialog
 from ui.workers import WorkersDialog
 from ui.oss_support import SupportDialog
 from ui.about_dialog import AboutDialog
-from ui.shortcuts import ShortcutManager
+from ui.shortcuts import ACTIONS as SHORTCUT_ACTIONS, ShortcutManager
 
 from core.workflows.segment_reanalysis import SegmentReanalysisWorkflow
 from core.config import config, load_cfg, search_settings
@@ -65,7 +65,9 @@ class AppWindow(QtWidgets.QMainWindow):
         self.player = PlayerController(
             self.bus,
             model=self.model,
-            default_volume_linear=self._default_volume_linear_from_cfg(self.cfg),
+            volume_position=max(0, min(100, int(self.cfg.playbackconfig.default_volume_percent or 100))) / 100.0,
+            volume_trim_dbfs=float(self.cfg.playbackconfig.volume_trim_dbfs),
+            tempo_range=int(self.cfg.playbackconfig.tempo_range),
             default_peak_meter_gain_linear=self._default_peak_meter_gain_linear_from_cfg(
                 self.cfg
             ),
@@ -115,6 +117,8 @@ class AppWindow(QtWidgets.QMainWindow):
         self.cfgwin = SettingsDialog(bus=self.bus)
         # the engine that plays (its buffer shown first) and its output devices
         self.cfgwin.set_audio_engine(self.player.native, self.player.output_devices)
+        # a MIDI controller: the native engine's alone
+        self.cfgwin.set_midi_access(self.player.native, self.player.midi_ports, self.player.set_midi_learn)
         self.cfgwin.set_config(self.cfg)
         step(0.6, tr("Dialogs, workflows and metronome"))
         self.workers = WorkersDialog()
@@ -138,9 +142,18 @@ class AppWindow(QtWidgets.QMainWindow):
         tb.addActions([a_cfg, a_workers, a_support_tb, a_about])
 
         # keyboard shortcuts (assets/shortcuts; Settings > Shortcuts)
-        self.shortcuts = ShortcutManager(self, self.pane.shortcut_handlers(), self.statusBar().showMessage)
+        handlers = self.pane.shortcut_handlers()
+        self.shortcuts = ShortcutManager(self, handlers, self.statusBar().showMessage)
         self.shortcuts.apply(shortcuts.keymap())
         self.bus.sig_shortcuts_changed.connect(self.shortcuts.apply)
+        # a MIDI controller (assets/midi; Settings > MIDI): the native engine does the deck's actions itself; the
+        # others it passes on (sig_midi_events) are run here as their shortcuts
+        self._midi_handlers = handlers
+        self._midi_gui_ids = [a.id for a in SHORTCUT_ACTIONS if a.id not in midi.DECK_ACTIONS]
+        self.bus.sig_midi_events.connect(self._on_midi_events)
+        self.bus.sig_midi_changed.connect(self._apply_midi)
+        self.bus.sig_deck_state.connect(self._keep_tempo_range)
+        self._apply_midi()
 
 
         # events
@@ -244,6 +257,31 @@ class AppWindow(QtWidgets.QMainWindow):
                 self.analyze_file(path)
         except Exception as ex:
             self.statusBar().showMessage(tr("Drop error: {error}").format(error=ex))
+
+    def _apply_midi(self) -> None:
+        """The MIDI input, the mapping and the jog's resolution to the native engine."""
+        pcfg = self.cfg.playbackconfig
+        self.player.midi_configure(pcfg.midi_input, midi.bindings(midi.mapping(), self._midi_gui_ids),
+                                   int(pcfg.midi_jog_ticks))
+
+    def _on_midi_events(self, events) -> None:
+        """The controller's messages bound to the GUI's actions: each press run as its shortcut."""
+        for _status, _d1, d2, flags, code in events:
+            if not flags & 1 or d2 == 0:   # MIDI_EVENT_GUI; a key let go
+                continue
+            i = int(code) - 0x1000   # client.ACT_GUI
+            if 0 <= i < len(self._midi_gui_ids):
+                handler = self._midi_handlers.get(self._midi_gui_ids[i])
+                message = handler() if handler is not None else None
+                if message:
+                    self.statusBar().showMessage(message, 3000)
+
+    def _keep_tempo_range(self, report) -> None:
+        """The tempo range as the deck has it (its button, a key, a controller), kept for the next start."""
+        tempo_range = int(report.tempo_range)
+        if tempo_range != int(self.cfg.playbackconfig.tempo_range):
+            self.cfg.playbackconfig.tempo_range = tempo_range
+            atomic_write_json("config.json", self.cfg.to_dict(), ensure_ascii=True, indent=None)
 
     def open_cfg(self):
         self.cfgwin.show()
@@ -599,6 +637,8 @@ class AppWindow(QtWidgets.QMainWindow):
             self.bus.sig_reload_UI.emit(_config)
         elif prev_cfg.get("externalsyncconfig") != _config.to_dict().get("externalsyncconfig"):
             self.bus.sig_reload_UI.emit(_config)
+        if any(prev_pcfg.get(k) != new_pcfg.get(k) for k in ("midi_input", "midi_jog_ticks")):
+            self._apply_midi()
 
     def _open_support(self):
         # Non-modal dialog; reuse instance
@@ -697,6 +737,7 @@ class AppWindow(QtWidgets.QMainWindow):
             QtCore.Q_ARG(bool, bool(pcfg.metronome_ducking)),
         )
         self.player.set_soft_clip(bool(pcfg.soft_clip))
+        self.player.set_volume_trim(float(pcfg.volume_trim_dbfs))
         self.player.set_buffer_ms(float(pcfg.native_buffer_ms), float(pcfg.python_buffer_ms))
         self.player.set_output_device(pcfg.output_device)
         self.player.set_output_mode(pcfg.native_audio_api, bool(pcfg.native_exclusive))

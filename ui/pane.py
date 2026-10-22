@@ -7,6 +7,8 @@ from PySide6 import QtWidgets, QtGui, QtCore, QtMultimedia
 import pyqtgraph as pg
 import numpy as np
 
+from audioengine.native import client as deck
+
 from views.base import REGISTRY, ViewPlugin
 from views.overview import OverviewWidget
 from ui.library import LibraryWidget
@@ -27,17 +29,29 @@ from core.tempo_rows import segment_end_bpm
 from core.timeline import step_window
 from core.i18n import tr
 
-def _tempo_text(percent: int) -> str:
-    """Tempo fader reading as DJ gear shows it: change from 100 %, +000% / −050% / +100%
-    (U+2212 minus: as wide as "+")."""
-    return f"{int(percent) - 100:+04d}%".replace("-", "−")
+# the tempo fader's step in each range (+-%), as rekordbox's; WIDE (100: 0 - 200 %) by whole percents
+TEMPO_STEP = {6: 0.02, 10: 0.05, 16: 0.05, 100: 1.0}
+CUE_COLOR = "#f2c014"   # the CUE button: yellow, as a CDJ's
+
+
+def _tempo_text(factor: float, tempo_range: int = 100) -> str:
+    """Tempo fader reading as DJ gear shows it: change from 100 %, WIDE in whole percents (+000% / −050% /
+    +100%), a narrow range to its step (+3.40%); U+2212 minus, as wide as "+"."""
+    change = (float(factor) - 1.0) * 100.0
+    if tempo_range >= 100:
+        return f"{int(round(change)):+04d}%".replace("-", "−")
+    return f"{change:+.2f}%".replace("-", "−")
+
+
+def _range_text(tempo_range: int) -> str:
+    return "WIDE" if tempo_range >= 100 else f"±{tempo_range}%"
 
 
 _transport_icons: dict[str, QtGui.QIcon] = {}
 
 
 def _transport_icon(name: str) -> QtGui.QIcon:
-    """Deck button icon from assets/icons/transport_<name>.png (stop / play / pause)."""
+    """Deck button icon from assets/icons/transport_<name>.png (stop / play / pause / cue, cue_lit)."""
     icon = _transport_icons.get(name)
     if icon is None:
         icon = QtGui.QIcon(str(resource_path(f"assets/icons/transport_{name}.png")))
@@ -103,6 +117,11 @@ class MainPane(QtWidgets.QWidget):
         bus.sig_edit_focus_changed.connect(self._on_edit_focus)
         self._tempo_segments = np.empty((0, 5), dtype=float)
         self._key_segments = None
+        # the deck as the player reports it (sig_deck_state): what the faders and buttons show
+        self._tempo_factor = 1.0
+        self._tempo_range = int(getattr(getattr(cfg, "playbackconfig", None), "tempo_range", 100) or 100)
+        self._volume_position: Optional[float] = None   # none reported yet: the first report is shown, whatever it is
+        self._cue_lit = False
 
         # Plot container
         self.gl = _TrackedGraphicsLayoutWidget(self.bus, show=True)
@@ -154,6 +173,7 @@ class MainPane(QtWidgets.QWidget):
         self.bus.sig_properties_loaded.connect(self._on_properties)
         self.bus.sig_albumart_loaded.connect(self._on_albumart)
         self.bus.sig_playback_status.connect(self._on_playback_state_changed)
+        self.bus.sig_deck_state.connect(self._on_deck_state)
         self.bus.sig_reload_UI.connect(self._on_reload_requested)
         self.bus.sig_beatgrid_edited.connect(self._on_beatgrid_edited)
         self.bus.sig_key_segments_updated.connect(self._on_key_segments_updated)
@@ -234,7 +254,7 @@ class MainPane(QtWidgets.QWidget):
         self.l_volume.setFont(f)
         self.l_volume.setAlignment(QtCore.Qt.AlignHCenter)
 
-        self.v_volume = QtWidgets.QLabel("50%")
+        self.v_volume = QtWidgets.QLabel(f"{default_volume_slider}%")   # until the player reports its volume
         f = self.v_volume.font()
         f.setPointSize(9)
         f.setBold(True)
@@ -247,8 +267,8 @@ class MainPane(QtWidgets.QWidget):
 
         _match_track_info_height(volume_box)
 
-        self.vol_slider.valueChanged.connect(self._on_volume_slider_changed)
-        QtCore.QTimer.singleShot(0, lambda: self._on_volume_slider_changed(self.vol_slider.value()))
+        # a request: the fader shows the volume the player then reports
+        self.vol_slider.valueChanged.connect(lambda value: self.bus.sig_volume_requested.emit(value / 100.0))
 
         # Tempo column
         tempo_box = QtWidgets.QWidget()
@@ -256,28 +276,41 @@ class MainPane(QtWidgets.QWidget):
         tempo_v.setContentsMargins(0, 0, 0, 0)
         tempo_v.setSpacing(2)
 
-        self.l_tempo = QtWidgets.QLabel("Tempo")
-        f = self.l_tempo.font()
+        # the column's head: the fader's range (as rekordbox's TEMPO RANGE: +-6 / 10 / 16 % or WIDE), a button
+        # that takes the next; as wide as its widest text, so WIDE fits
+        self.btn_tempo_range = QtWidgets.QToolButton()
+        f = self.btn_tempo_range.font()
         f.setPointSize(9)
         f.setBold(True)
-        self.l_tempo.setFont(f)
-        self.l_tempo.setAlignment(QtCore.Qt.AlignHCenter)
+        self.btn_tempo_range.setFont(f)
+        fm = QtGui.QFontMetrics(f)
+        widest = max(fm.horizontalAdvance(_range_text(r)) for r in TEMPO_STEP)
+        self.btn_tempo_range.setFixedSize(widest + 2 * 4 + 2 + 4, fm.height() + 4)
+        self.btn_tempo_range.setText(_range_text(self._tempo_range))
+        self.btn_tempo_range.setToolTip(tr("Tempo range: ±6% / ±10% / ±16% / WIDE (0%-200%); click for the next"))
+        self.btn_tempo_range.setStyleSheet(
+            "QToolButton { border: 1px solid #4a4a4a; background: #181818; border-radius: 3px; color: #e6e6e6;"
+            " padding: 0px 4px; }\n"
+            "QToolButton:hover { background: #222; }\n"
+            "QToolButton:pressed { background: #0c0c0c; }\n"
+        )
+        self.btn_tempo_range.clicked.connect(lambda: self._deck_action(deck.ACT_TEMPO_RANGE))
 
-        self.v_tempo = QtWidgets.QLabel(_tempo_text(100))
+        self.v_tempo = QtWidgets.QLabel(_tempo_text(1.0))
         f = self.v_tempo.font()
         f.setPointSize(9)
         f.setBold(True)
         self.v_tempo.setFont(f)
         self.v_tempo.setAlignment(QtCore.Qt.AlignHCenter)
         # fixed width: the widest reading, so the fader column never shifts
-        self.v_tempo.setFixedWidth(QtGui.QFontMetrics(f).horizontalAdvance(_tempo_text(0)) + 4)
+        widest = max((_tempo_text(0.0), _tempo_text(0.84, 16)), key=QtGui.QFontMetrics(f).horizontalAdvance)
+        self.v_tempo.setFixedWidth(QtGui.QFontMetrics(f).horizontalAdvance(widest) + 4)
 
         self.tempo_slider = _OneStepWheelSlider(QtCore.Qt.Vertical)
-        self.tempo_slider.setRange(0, 200)  # 0 halts the deck
-        self.tempo_slider.setValue(100)
-        self.tempo_slider.setToolTip(tr("Tempo (0%-200%, 0 stops)"))
+        self.tempo_slider.setToolTip(tr("Tempo (WIDE: 0%-200%, 0 stops)"))
+        self._set_tempo_fader(self._tempo_factor, self._tempo_range)
 
-        tempo_v.addWidget(self.l_tempo, 0, QtCore.Qt.AlignHCenter)
+        tempo_v.addWidget(self.btn_tempo_range, 0, QtCore.Qt.AlignHCenter)
         tempo_v.addWidget(self.tempo_slider, 0, QtCore.Qt.AlignHCenter)
         tempo_v.addWidget(self.v_tempo, 0, QtCore.Qt.AlignHCenter)
 
@@ -285,15 +318,9 @@ class MainPane(QtWidgets.QWidget):
         top_row.addWidget(volume_box, 0, QtCore.Qt.AlignVCenter)
         top_row.addWidget(tempo_box, 0, QtCore.Qt.AlignVCenter)
 
+        # a request: the fader shows the tempo the player then reports
         self.tempo_slider.valueChanged.connect(
-            lambda value: (
-                self.v_tempo.setText(_tempo_text(value)),
-                self.bus.sig_tempo_factor_changed.emit(value / 100.0)
-            )
-        )
-        self.tempo_slider.valueChanged.connect(
-            lambda value: self.bus.sig_tempo_mode_changed.emit("none" if abs(value-100) < 1e-9 else "speed")
-        )
+            lambda value: self.bus.sig_tempo_requested.emit(1.0 + value * TEMPO_STEP[self._tempo_range] / 100.0))
 
         # Deck buttons, after a DJ deck: square MT (time stretch) / RST (tempo
         # reset) in a row above the record, round stop / play left of it.
@@ -337,6 +364,17 @@ class MainPane(QtWidgets.QWidget):
         self.btn_stop = _mk_round_btn("stop", "#8a8a8a")
         self.btn_play = _mk_round_btn("play", "#3fbf5f")
         self.btn_play.setCheckable(True)
+        # CUE as rekordbox's (the player's deck: audioengine/native/src/deck.rs): pressed and let go are both
+        # sent; lit as the player reports its lamp (blinking: a new cue point can be set)
+        # the word as an icon (transport_cue / _lit: dark on the lit yellow), larger than the others' glyphs
+        self.btn_cue = _mk_round_btn("cue", CUE_COLOR)
+        self.btn_cue.setIconSize(QtCore.QSize(int(ROUND_D * 0.76), int(ROUND_D * 0.76)))
+        self.btn_cue.setStyleSheet(
+            self.btn_cue.styleSheet() + f"QToolButton[lit=true] {{ background: {CUE_COLOR}; }}\n")
+        self.btn_cue.setProperty("lit", False)
+        self.btn_cue.setToolTip(tr(
+            "CUE: stopped, sets the cue point here (on the nearest beat) / held on the cue point, plays until let "
+            "go (PLAY while held: plays on); playing, back to the cue point and stop"))
 
         self.btn_tempo_reset = _mk_square_btn("RST")
         self.btn_tempo_reset.setToolTip(tr("Tempo reset (100%)"))
@@ -346,7 +384,7 @@ class MainPane(QtWidgets.QWidget):
 
         for btn in (self.btn_mt, self.btn_tempo_reset):
             self.track_info.record_buttons_slot.addWidget(btn, 0, QtCore.Qt.AlignVCenter)
-        for btn in (self.btn_stop, self.btn_play):
+        for btn in (self.btn_stop, self.btn_cue, self.btn_play):
             self.track_info.transport_slot.addWidget(btn, 0, QtCore.Qt.AlignHCenter)
 
         header_v.addWidget(self.ov, 0, QtCore.Qt.AlignTop)
@@ -356,6 +394,8 @@ class MainPane(QtWidgets.QWidget):
         self.btn_mt.toggled.connect(self.bus.sig_timestretch_toggle_requested.emit)
         self.btn_stop.clicked.connect(self._on_click_stop)
         self.btn_play.clicked.connect(self._on_click_play)
+        self.btn_cue.pressed.connect(lambda: self._cue(True))
+        self.btn_cue.released.connect(lambda: self._cue(False))
         self._fit_header_height()
 
     # View management
@@ -413,18 +453,16 @@ class MainPane(QtWidgets.QWidget):
     def _on_edit_focus(self, focus) -> None:
         self._edit_focus = frozenset(focus or ())
 
-    # Transport handlers
+    # Transport handlers: requests to the player's deck, which combines them with a MIDI controller's; the
+    # buttons and faders show what it then reports (_on_deck_state, _on_playback_state_changed)
+    def _deck_action(self, code: int, pressed: bool = True) -> None:
+        self.bus.sig_deck_action.emit(int(code), bool(pressed))
+
     def _on_click_tempo_reset(self):
-        self.tempo_slider.blockSignals(True)
-        self.tempo_slider.setValue(100)
-        self.tempo_slider.blockSignals(False)
-        self.v_tempo.setText(_tempo_text(100))
-        self.bus.sig_tempo_factor_changed.emit(1.0)
-        self.bus.sig_tempo_mode_changed.emit("none")
+        self._deck_action(deck.ACT_TEMPO_RESET)
 
     def _on_click_stop(self):
-        self.bus.sig_stop_requested.emit(True)
-        self._on_playback_state_changed(False)
+        self._deck_action(deck.ACT_STOP)
 
     def _on_click_play(self):
         if self._external_sync_enabled:
@@ -434,25 +472,68 @@ class MainPane(QtWidgets.QWidget):
                 tr("Playback is disabled while External Sync is enabled."),
             )
             return
-        want_play = not bool(getattr(self, "_is_playing", False))
-        if want_play:
-            self.bus.sig_play_requested.emit(True)
-        else:
-            self.bus.sig_pause_requested.emit(True)
+        self._deck_action(deck.ACT_PLAY_PAUSE)
+
+    def _cue(self, pressed: bool) -> None:
+        """The CUE button (or its key) pressed or let go."""
+        if pressed and not self._can_use_transport():
+            return
+        self._deck_action(deck.ACT_CUE, pressed)
+
+    def _set_tempo_fader(self, factor: float, tempo_range: int) -> None:
+        """The tempo fader at ``factor`` in ``tempo_range``'s steps (no request sent)."""
+        step = TEMPO_STEP.get(tempo_range, 1.0)
+        n = int(round(tempo_range / step))
+        self.tempo_slider.blockSignals(True)
+        self.tempo_slider.setRange(-n, n)
+        self.tempo_slider.setValue(int(round((factor - 1.0) * 100.0 / step)))
+        self.tempo_slider.blockSignals(False)
+        self.v_tempo.setText(_tempo_text(factor, tempo_range))
+
+    def _on_deck_state(self, report) -> None:
+        """The player's deck as it is (DeckReport): the faders, the tempo range, the CUE lamp."""
+        factor, tempo_range = float(report.factor), int(report.tempo_range)
+        if (factor, tempo_range) != (self._tempo_factor, self._tempo_range):
+            self._tempo_factor, self._tempo_range = factor, tempo_range
+            if not self.tempo_slider.isSliderDown():   # the hand on it: it shows the hand's position
+                self._set_tempo_fader(factor, tempo_range)
+            else:
+                self.v_tempo.setText(_tempo_text(factor, tempo_range))
+            self.btn_tempo_range.setText(_range_text(tempo_range))
+            self._update_bpm_display()
+            self._on_time(self.current_time)   # the key follows the tempo (varispeed)
+        if report.volume != self._volume_position:
+            self._volume_position = float(report.volume)
+            if not self.vol_slider.isSliderDown():
+                self.vol_slider.blockSignals(True)
+                self.vol_slider.setValue(int(round(self._volume_position * 100.0)))
+                self.vol_slider.blockSignals(False)
+            self._apply_volume_report()
+        lit = bool(report.lamps & 2)
+        if lit != self._cue_lit:
+            self._cue_lit = lit
+            self.btn_cue.setProperty("lit", lit)
+            self.btn_cue.setIcon(_transport_icon("cue_lit" if lit else "cue"))
+            self.btn_cue.style().unpolish(self.btn_cue)
+            self.btn_cue.style().polish(self.btn_cue)
 
     # Keyboard shortcuts (ui.shortcuts)
     def shortcut_handlers(self) -> dict:
         """Action id -> handler of every shortcut: the deck's here, the editor's and the library's from them."""
         return {
             "playback.play_pause": lambda: self._on_click_play() if self.btn_play.isEnabled() else None,
+            # pressed and let go (ui.shortcuts: a momentary action)
+            "playback.cue": self._cue,
             "playback.stop": lambda: self._on_click_stop() if self.btn_stop.isEnabled() else None,
-            "playback.beat_back": lambda: self._step_beats(-1),
-            "playback.beat_forward": lambda: self._step_beats(1),
-            "playback.bar_back": lambda: self._step_beats(-1, bars=True),
-            "playback.bar_forward": lambda: self._step_beats(1, bars=True),
-            "playback.tempo_down": lambda: self.tempo_slider.setValue(self.tempo_slider.value() - 1),
-            "playback.tempo_up": lambda: self.tempo_slider.setValue(self.tempo_slider.value() + 1),
+            **{action: (lambda code=code: self._deck_action(code) if self._can_use_transport() else None)
+               for action, code in (("playback.beat_back", deck.ACT_BEAT_BACK),
+                                    ("playback.beat_forward", deck.ACT_BEAT_FORWARD),
+                                    ("playback.bar_back", deck.ACT_BAR_BACK),
+                                    ("playback.bar_forward", deck.ACT_BAR_FORWARD))},
+            "playback.tempo_down": lambda: self._deck_action(deck.ACT_TEMPO_DOWN),
+            "playback.tempo_up": lambda: self._deck_action(deck.ACT_TEMPO_UP),
             "playback.tempo_reset": self._on_click_tempo_reset,
+            "playback.tempo_range": lambda: self._deck_action(deck.ACT_TEMPO_RANGE),
             "playback.master_tempo": self.btn_mt.toggle,
             "playback.zoom_in": lambda: self._zoom(-1),
             "playback.zoom_out": lambda: self._zoom(1),
@@ -474,33 +555,6 @@ class MainPane(QtWidgets.QWidget):
         elif isinstance(focus, (QtWidgets.QLineEdit, QtWidgets.QAbstractSpinBox)):
             self.setFocus(QtCore.Qt.ShortcutFocusReason)
 
-    def _step_beats(self, step: int, bars: bool = False) -> None:
-        """The playhead ``step`` beats (``bars``: bars) on. Playing, by as many beats from where it is, its
-        place in the beat kept (a beat jump); stopped, to the beat (downbeat) itself."""
-        beats = getattr(self, "_beat_times", None)
-        if not self._can_use_transport() or beats is None or beats.size == 0:
-            return
-        marks = beats[self._beat_in_bar == 0] if bars else beats
-        if marks.size == 0:
-            return
-        t = float(self.current_time)
-        i = int(np.searchsorted(marks, t, side="right")) - 1   # the mark at or before the playhead
-        if self._is_playing and i >= 0:
-            j = int(np.clip(i + step, 0, marks.size - 1))
-            target = t + float(marks[j] - marks[i])
-        elif step > 0:
-            ahead = marks[marks > t + 1e-3]
-            if ahead.size == 0:
-                return
-            target = float(ahead[min(step, ahead.size) - 1])
-        else:
-            behind = marks[marks < t - 1e-3]
-            if behind.size == 0:
-                return
-            target = float(behind[max(behind.size + step, 0)])
-        duration = float(self.model.duration_sec or 0.0)
-        self.bus.sig_seek_requested.emit(min(max(target, 0.0), duration))
-
     def _zoom(self, steps: int) -> None:
         """The main view ``steps`` widths narrower (< 0) or wider, as the wheel."""
         window = float(self.tl.window_sec)
@@ -508,7 +562,11 @@ class MainPane(QtWidgets.QWidget):
         if new_window != window:
             self.bus.sig_window_changed.emit(new_window)
 
-    def _on_volume_slider_changed(self, value: int) -> None:
+    def _apply_volume_report(self) -> None:
+        """The volume the player reports: its reading, and the peak meter's gain from it."""
+        if self._volume_position is None:
+            return
+        value = int(round(self._volume_position * 100.0))
         self.v_volume.setText(f"{value}%")
         trim_dbfs = float(
             getattr(
@@ -518,7 +576,6 @@ class MainPane(QtWidgets.QWidget):
             )
         )
         linear_volume = slider_percent_to_linear(value, trim_dbfs)
-        self.bus.sig_volume_changed.emit(float(linear_volume))
         use_output_volume = bool(
             getattr(
                 getattr(self.cfg, "viewconfig", None),
@@ -557,7 +614,7 @@ class MainPane(QtWidgets.QWidget):
         self._update_bpm_display(t)
         
         active_key = self._key_from_segments(self._key_segments, t)
-        speed = self.tempo_slider.value() / 100
+        speed = self._tempo_factor
         if active_key is not None and speed <= 0.0 and not self._timestretch_enabled():
             # varispeed at tempo 0: no pitch to show (12 * log2(0) is -inf)
             self.track_info.set_key(None)
@@ -743,7 +800,7 @@ class MainPane(QtWidgets.QWidget):
             return
         cur_t = self.current_time if t is None else float(t)
         bpm, meter = self._current_segment(cur_t)
-        factor = self.tempo_slider.value() / 100.0
+        factor = self._tempo_factor
         if not np.isfinite(bpm):
             self.track_info.set_bpm(None)
         else:
@@ -816,7 +873,7 @@ class MainPane(QtWidgets.QWidget):
 
     def _refresh_transport_buttons(self) -> None:
         can_use_transport = self._can_use_transport()
-        for btn_name in ("btn_play", "btn_stop"):
+        for btn_name in ("btn_play", "btn_stop", "btn_cue"):
             btn = getattr(self, btn_name, None)
             if btn is not None:
                 btn.setEnabled(can_use_transport)
@@ -833,9 +890,7 @@ class MainPane(QtWidgets.QWidget):
 
     def apply_playback_config(self, cfg: config) -> None:
         self.cfg = cfg
-        current_volume = int(self.vol_slider.value())
-        current_volume = max(0, min(100, current_volume))
-        self._on_volume_slider_changed(current_volume)
+        self._apply_volume_report()   # the trim changes the peak meter's gain
         self._on_time(self.current_time)  # key display depends on use_timestretch
         self.btn_mt.blockSignals(True)
         self.btn_mt.setChecked(self._timestretch_enabled())

@@ -9,10 +9,12 @@
 
 mod clock;
 mod cursor;
+mod deck;
 mod device;
 mod dsp;
 mod engine;
 mod ipc;
+mod midi;
 mod mixers;
 mod sched;
 mod shm;
@@ -26,6 +28,7 @@ use std::sync::Arc;
 use std::sync::atomic::Ordering;
 use std::time::Duration;
 
+use deck::Deck;
 use engine::Engine;
 use ipc::{Control, Reader, op, st};
 
@@ -102,6 +105,7 @@ fn main() {
         }
     };
     let mut engine = Engine::new(rate, ch, ring.clone());
+    let mut deck = Deck::new(rate as f64);
     let mut cmd_done = 0u64;
     let mut device_errors = 0u32;
     let mut reopen_at = 0.0;
@@ -129,7 +133,8 @@ fn main() {
             last_op = (cmd.op, clock::now());
             if cmd.op == op::SHUTDOWN {
                 engine.pause();
-                publish(&ctl, &mut engine, cmd_done, device_errors, output.as_ref(), &sched);
+                deck.close_midi();
+                publish(&ctl, &mut engine, &deck, cmd_done, device_errors, output.as_ref(), &sched);
                 return;
             }
             // a seek another one in this batch overrides (a drag's positions come faster than the ticks): only
@@ -154,7 +159,12 @@ fn main() {
                     let mut r = Reader::new(&cmd.payload);
                     sched.set(r.u32().unwrap_or(sched::PRIORITY_HIGH), r.u32().unwrap_or(0) != 0, &ring);
                 }
-                _ if !superseded => handle(&mut engine, cmd.op, &cmd.payload),
+                op::MIDI_LIST => ctl.put_midi_ports(&midi::ports()),
+                op::MIDI_OPEN => {
+                    let name = Reader::new(&cmd.payload).str().unwrap_or_default();
+                    deck.open_midi(&name, ring.engine_thread.get().cloned());
+                }
+                _ if !superseded => handle(&mut engine, &mut deck, cmd.op, &cmd.payload),
                 _ => {}
             }
         }
@@ -194,8 +204,11 @@ fn main() {
             }
         }
         sched.follow_output(&ring);
+        // the controller's messages as soon as they come (its input thread wakes this one)
+        deck.read_midi(&mut engine, &ctl);
+        deck.tick(&mut engine);
         engine.tick();
-        publish(&ctl, &mut engine, cmd_done, device_errors, output.as_ref(), &sched);
+        publish(&ctl, &mut engine, &deck, cmd_done, device_errors, output.as_ref(), &sched);
         trace.tick(&ring, tick_start, level_before, last_op, engine.playing, output.as_ref().map(|o| o.mode.code()));
         if now - parent_checked > 0.5 {
             parent_checked = now;
@@ -205,9 +218,10 @@ fn main() {
                 }
             }
         }
-        // woken by the device's read (the ring topped up at once), else every 2 ms (1 ms while scratching or with
-        // a buffer under 10 ms)
-        std::thread::park_timeout(Duration::from_micros(if engine.scratching || engine.small_buffer() { 1000 } else { 2000 }));
+        // woken by the device's read (the ring topped up at once) or a MIDI message, else every 2 ms (1 ms while
+        // scratching, a jog wheel bending, or with a buffer under 10 ms)
+        let fast = engine.scratching || engine.small_buffer() || deck.wants_fast_ticks();
+        std::thread::park_timeout(Duration::from_micros(if fast { 1000 } else { 2000 }));
     }
 }
 
@@ -380,9 +394,26 @@ impl Trace {
     }
 }
 
-fn handle(e: &mut Engine, op_code: u32, payload: &[u8]) {
+fn handle(e: &mut Engine, deck: &mut Deck, op_code: u32, payload: &[u8]) {
     let mut r = Reader::new(payload);
+    if matches!(op_code, op::LOAD | op::UNLOAD) {
+        deck.new_track();
+    }
     match op_code {
+        op::DECK_ACTION => {
+            let (code, pressed) = (r.u32().unwrap_or(0), r.u32().unwrap_or(0) != 0);
+            deck.action(e, code, pressed);
+        }
+        op::SET_TEMPO => deck.set_tempo(e, r.f64().unwrap_or(1.0)),
+        op::SET_TEMPO_RANGE => deck.set_tempo_range(e, r.u32().unwrap_or(100)),
+        op::SET_VOLUME => deck.set_volume(e, r.f64().unwrap_or(1.0)),
+        op::SET_VOLUME_TRIM => deck.set_volume_trim(e, r.f64().unwrap_or(0.0)),
+        op::DECK_MARKS => deck.set_marks(payload),
+        op::JUMP_TO => deck.jump_to(e, r.f64().unwrap_or(f64::NAN)),
+        op::CALL_AT => deck.call_at(e, r.f64().unwrap_or(f64::NAN)),
+        op::MIDI_MAP => deck.set_bindings(payload),
+        op::MIDI_OPTIONS => deck.set_jog_ticks(r.u32().unwrap_or(720)),
+        op::SET_METER_GAIN => deck.set_meter_gain(r.f64().unwrap_or(1.0)),
         op::LOAD => {
             let (Some(generation), Some(channels), Some(frames), Some(name)) = (r.u32(), r.u32(), r.u64(), r.str()) else {
                 return;
@@ -471,8 +502,8 @@ fn handle(e: &mut Engine, op_code: u32, payload: &[u8]) {
     }
 }
 
-fn publish(ctl: &Control, e: &mut Engine, cmd_done: u64, device_errors: u32, out: Option<&device::Output>,
-           sched: &sched::Sched) {
+fn publish(ctl: &Control, e: &mut Engine, deck: &Deck, cmd_done: u64, device_errors: u32,
+           out: Option<&device::Output>, sched: &sched::Sched) {
     let now = clock::now();
     let (display, display_rate) = e.display_frame(now);
     let playhead = e.playhead_frame();
@@ -513,6 +544,13 @@ fn publish(ctl: &Control, e: &mut Engine, cmd_done: u64, device_errors: u32, out
     ctl.put_u32(st::THREADS, sched.engine_state() | sched.output_state(ring) << 8);
     ctl.put_u32(st::POWER, sched.power_state());
     ctl.put_hist(&e.hist);
+    ctl.put_f64(st::FACTOR, e.factor());
+    ctl.put_f64(st::VOLUME, deck.volume());
+    ctl.put_f64(st::CUE, deck.cue_frame(e));
+    ctl.put_f64(st::JUMP_DEST, e.jump_armed().unwrap_or(f64::NAN));
+    ctl.put_u32(st::LEDS, deck.lamps(e, now));
+    ctl.put_u32(st::TEMPO_RANGE, deck.tempo_range);
+    ctl.put_u32(st::MIDI_STATE, deck.midi_state);
     ctl.state_end();
 }
 

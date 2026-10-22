@@ -15,6 +15,8 @@ realfft = "3.5.0"
 volk = "0.2.2"
 num-complex = "0.4.6"
 crc32fast = "1.5.0"
+# a MIDI controller (WinMM, ALSA, CoreMIDI), read in the engine
+midir = "0.11.1"
 
 [target.'cfg(windows)'.dependencies]
 # the WASAPI output of its own (low-latency shared and exclusive modes, which cpal does not open)

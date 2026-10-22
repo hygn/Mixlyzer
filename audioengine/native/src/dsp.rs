@@ -255,10 +255,12 @@ pub struct Platter {
     clock: f64,
     zi: [f64; 2],
     pub position: f64,
+    /// The hand's samples followed this late (s): DELAY for the mouse; a jog wheel's steadier messages less.
+    pub delay: f64,
 }
 
 impl Platter {
-    const DELAY: f64 = 0.06;
+    pub const DELAY: f64 = 0.06;
     const EXTRAPOLATE: f64 = 0.02;
     const RATE_SEC: f64 = 0.012;
     const SMOOTH: f64 = 0.008;
@@ -277,6 +279,7 @@ impl Platter {
             clock: 0.0,
             zi: [0.0; 2],
             position: 0.0,
+            delay: Self::DELAY,
         };
         p.reset(0.0, 0.0, 0.0);
         p
@@ -350,7 +353,7 @@ impl Platter {
         let b = 1.0 - self.pole;
         let mut out = Vec::with_capacity(n);
         for k in 0..n {
-            let lookup = start + k as f64 / self.rate - Self::DELAY;
+            let lookup = start + k as f64 / self.rate - self.delay;
             let mut hand = self.interp(lookup);
             if lookup > t_last {
                 if let Some(speed) = speed {

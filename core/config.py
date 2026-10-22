@@ -102,6 +102,13 @@ class playbackconfig:
     # slack and uclamp; macOS App Nap and timer coalescing): audioengine/native/src/sched.rs
     native_priority: Literal["normal", "above_normal", "high"]
     native_power_throttling: bool
+    # the tempo fader's range (+-%: 6, 10, 16; 100 WIDE: 0 - 200 %), as the deck last had it (its button, a key,
+    # a MIDI controller)
+    tempo_range: int
+    # a MIDI controller (the native engine reads it; Settings > MIDI, its mapping in assets/midi): the input port
+    # ("": none) and its jog wheel's messages per turn (33 1/3 rpm)
+    midi_input: str
+    midi_jog_ticks: int
 
 
 @dataclass
@@ -419,6 +426,9 @@ def default_cfg():
         native_exclusive_rate=0,
         native_priority="high",
         native_power_throttling=False,
+        tempo_range=100,
+        midi_input="",
+        midi_jog_ticks=720,
     )
     xcfg = externalsyncconfig(
         enabled=False,

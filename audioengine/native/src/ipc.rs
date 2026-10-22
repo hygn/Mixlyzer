@@ -9,11 +9,14 @@
 //!   length u32, sent at f64 (the GUI's perf_counter: the response measurement)] + payload (+ padding); a record never wraps (the GUI pads to the ring's end with a size-only record of op 0). The
 //!   checksum (CRC-32 over op, seq and payload: Python's zlib.crc32) is checked before a record is taken: a weakly ordered CPU may
 //!   show the write position before the bytes it covers, which are then read again on the next tick.
+//! [MIDI_PORTS_OFFSET, MIDI_EVENTS_OFFSET): the MIDI input ports, written when asked (op::MIDI_LIST), as the devices.
+//! [MIDI_EVENTS_OFFSET, DEVICES_OFFSET): the MIDI messages received, a ring the engine writes (deck.rs: the GUI's
+//!   own actions bound to them, and every message for the settings' MIDI learn).
 
 use std::sync::atomic::{AtomicU64, Ordering, fence};
 
 pub const MAGIC: u64 = u64::from_le_bytes(*b"MXAUDIC1");
-pub const VERSION: u32 = 2;
+pub const VERSION: u32 = 3;
 pub const STATE_OFFSET: usize = 64;
 pub const RING_OFFSET: usize = 65536;
 pub const RING_HEADER: usize = 64;
@@ -22,6 +25,16 @@ pub const HIST_MAX: usize = 4096;
 /// the device in use on its first line, then one listed device a line. The generation is written last.
 pub const DEVICES_OFFSET: usize = 40960;
 pub const DEVICES_MAX: usize = RING_OFFSET - DEVICES_OFFSET - 16;
+/// The MIDI input ports (op::MIDI_LIST): [generation u64, length u32, pad u32] + UTF-8 text, one port a line.
+pub const MIDI_PORTS_OFFSET: usize = 34816;
+pub const MIDI_PORTS_MAX: usize = MIDI_EVENTS_OFFSET - MIDI_PORTS_OFFSET - 16;
+/// The MIDI messages received: [written u64 (messages ever), pad u64] + MIDI_EVENTS slots of 16 bytes, message k
+/// at k % MIDI_EVENTS: [seq u32 (k + 1, written last), status u8, data1 u8, data2 u8, flags u8 (MIDI_EVENT_*),
+/// action u32 (the binding's, 0: none), pad u32].
+pub const MIDI_EVENTS_OFFSET: usize = 36864;
+pub const MIDI_EVENTS: usize = 240;
+/// The message is bound to one of the GUI's actions (its action code: 0x1000 and up, the GUI's numbering).
+pub const MIDI_EVENT_GUI: u8 = 1;
 
 // State fields (byte offsets inside the state area)
 pub mod st {
@@ -65,6 +78,15 @@ pub mod st {
     pub const THREADS: usize = 248;
     pub const POWER: usize = 252;
     pub const HIST: usize = 256; // f64[HIST_LEN] cumulative seconds per 1 ms level
+    // the deck (deck.rs), after the histogram: what the GUI shows, as the engine has it
+    pub const DECK: usize = 256 + 8 * super::HIST_MAX;
+    pub const FACTOR: usize = DECK; // f64 the tempo (1: 100 %)
+    pub const VOLUME: usize = DECK + 8; // f64 the volume fader (0 .. 1)
+    pub const CUE: usize = DECK + 16; // f64 the cue point (input frame; NaN: no track)
+    pub const JUMP_DEST: usize = DECK + 24; // f64 the JumpCUE armed: its destination (input frame; NaN: none)
+    pub const LEDS: usize = DECK + 32; // u32 bit 0 PLAY lit, bit 1 CUE lit (blinking: as they are now)
+    pub const TEMPO_RANGE: usize = DECK + 36; // u32 the tempo fader's range (+-%; 100: WIDE, 0 - 200 %)
+    pub const MIDI_STATE: usize = DECK + 40; // u32 0 closed, 1 open, 2 the port did not open
 }
 
 pub mod op {
@@ -101,6 +123,52 @@ pub mod op {
     pub const SET_OUTPUT_MODE: u32 = 30; // u32 API (0 WASAPI, 1 cpal, 2 JACK), u32 exclusive (WASAPI)
     // u32 priority (0 normal, 1 above normal, 2 high), u32 power throttling allowed (sched.rs: per system)
     pub const SET_PROCESS: u32 = 31;
+    // the deck (deck.rs): the GUI's requests, combined there with the MIDI controller's
+    pub const DECK_ACTION: u32 = 32; // u32 action (act), u32 pressed (1) / released (0)
+    pub const SET_TEMPO: u32 = 33; // f64 factor (the tempo fader's position)
+    pub const SET_VOLUME: u32 = 34; // f64 the volume fader (0 .. 1)
+    pub const SET_VOLUME_TRIM: u32 = 35; // f64 dB
+    // u32 n, f64[n] beats (input frames), u8[n] downbeat, u32 m, f64[m] CUE points, f64[26] JumpCUEs A-Z (NaN: none)
+    pub const DECK_MARKS: u32 = 36;
+    pub const JUMP_TO: u32 = 37; // f64 frame: a JumpCUE's JUMP
+    pub const CALL_AT: u32 = 38; // f64 frame: a CUE point's CALL
+    pub const MIDI_OPEN: u32 = 39; // name (u32 len + utf8; empty: closed)
+    // u32 n, n x [status u8, data1 u8, flags u8 (1: 14-bit, LSB at data1 + 32), lamp u8, action u32]; lamp: the
+    // controller's light at that message (deck.rs LAMP_*: 1 - 26 the JumpCUE A - Z set, PLAY, CUE; 0 none)
+    pub const MIDI_MAP: u32 = 40;
+    pub const MIDI_LIST: u32 = 41;
+    pub const MIDI_OPTIONS: u32 = 42; // u32 a jog wheel's messages (ticks) per turn
+    pub const SET_TEMPO_RANGE: u32 = 43; // u32 the tempo fader's range (+-%: 6, 10, 16, 100 WIDE)
+    pub const SET_METER_GAIN: u32 = 44; // f64 linear: the level meter's input, as the GUI's peak meter
+}
+
+/// The deck's actions (deck.rs; client.py DECK_ACTIONS): the GUI's buttons and keys and the MIDI controller's.
+pub mod act {
+    pub const PLAY_PAUSE: u32 = 1;
+    pub const CUE: u32 = 2;
+    pub const STOP: u32 = 3;
+    pub const BEAT_BACK: u32 = 4;
+    pub const BEAT_FORWARD: u32 = 5;
+    pub const BAR_BACK: u32 = 6;
+    pub const BAR_FORWARD: u32 = 7;
+    pub const TEMPO_DOWN: u32 = 8;
+    pub const TEMPO_UP: u32 = 9;
+    pub const TEMPO_RESET: u32 = 10;
+    pub const CALL_PREVIOUS: u32 = 11;
+    pub const CALL_NEXT: u32 = 12;
+    pub const TEMPO_RANGE: u32 = 13;
+    pub const JUMP_A: u32 = 16; // .. JUMP_A + 7: H
+    // a MIDI controller's alone (values, not presses)
+    pub const TEMPO_FADER: u32 = 32;
+    pub const VOLUME_FADER: u32 = 33;
+    pub const JOG_TOUCH: u32 = 34;
+    pub const JOG_SCRATCH: u32 = 35;
+    pub const JOG_BEND: u32 = 36;
+    pub const JOG_SEARCH: u32 = 37;
+    /// An output: the controller's level meter (a CC, 0 - 127 over the GUI meter's -24 - 0 dBFS).
+    pub const LEVEL_METER: u32 = 38;
+    /// The GUI's own actions (library, editor ...) from here: passed on to it (MIDI_EVENT_GUI).
+    pub const GUI: u32 = 0x1000;
 }
 
 pub struct Control {
@@ -238,6 +306,39 @@ impl Control {
         }
         let generation = self.atomic(DEVICES_OFFSET);
         generation.store(generation.load(Ordering::Relaxed) + 1, Ordering::Release);
+    }
+
+    /// The MIDI input ports (see MIDI_PORTS_OFFSET).
+    pub fn put_midi_ports(&self, ports: &[String]) {
+        let mut bytes = ports.join("
+").into_bytes();
+        bytes.truncate(MIDI_PORTS_MAX);
+        unsafe {
+            std::ptr::copy_nonoverlapping(bytes.as_ptr(), self.base.add(MIDI_PORTS_OFFSET + 16), bytes.len());
+            std::ptr::write_volatile(self.base.add(MIDI_PORTS_OFFSET + 8) as *mut u32, bytes.len() as u32);
+        }
+        let generation = self.atomic(MIDI_PORTS_OFFSET);
+        generation.store(generation.load(Ordering::Relaxed) + 1, Ordering::Release);
+    }
+
+    /// A MIDI message received, into the ring (see MIDI_EVENTS_OFFSET).
+    pub fn put_midi_event(&self, msg: [u8; 3], flags: u8, action: u32) {
+        let written = self.atomic(MIDI_EVENTS_OFFSET);
+        let k = written.load(Ordering::Relaxed);
+        let slot = MIDI_EVENTS_OFFSET + 16 + (k as usize % MIDI_EVENTS) * 16;
+        unsafe {
+            let p = self.base.add(slot);
+            std::ptr::write_volatile(p as *mut u32, 0);
+            fence(Ordering::Release);
+            std::ptr::write_volatile(p.add(4), msg[0]);
+            std::ptr::write_volatile(p.add(5), msg[1]);
+            std::ptr::write_volatile(p.add(6), msg[2]);
+            std::ptr::write_volatile(p.add(7), flags);
+            std::ptr::write_volatile(p.add(8) as *mut u32, action);
+            fence(Ordering::Release);
+            std::ptr::write_volatile(p as *mut u32, (k + 1) as u32);
+        }
+        written.store(k + 1, Ordering::Release);
     }
 
     pub fn put_hist(&self, hist: &[f64]) {

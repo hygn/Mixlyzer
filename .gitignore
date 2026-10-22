@@ -51,6 +51,7 @@ debug/
 ffmpeg.exe
 config.json
 assets/shortcuts/shortcuts.json
+assets/midi/midi.json
 *.xml
 tests/
 

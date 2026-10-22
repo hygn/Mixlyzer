@@ -128,10 +128,11 @@ class CuePointEditMixin:
         self._update_cue_point(cue, label=name)
 
     def _cp_call(self, slot: int) -> None:
+        """CALL (stopped): the player's deck moves the playhead and its cue point there."""
         cue = self._cp_at(slot)
         if cue is None or getattr(self, "_playing", False):
             return
-        self.bus.sig_seek_requested.emit(float(cue.get("time_sec", 0.0)))
+        self.bus.sig_call_requested.emit(float(cue.get("time_sec", 0.0)))
 
     def _cp_color_menu(self, slot: int) -> None:
         cue = self._cp_at(slot)

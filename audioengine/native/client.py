@@ -7,6 +7,12 @@ which is also the PCM this process keeps (DataModel.predecoded_pcm): no copy. Na
 PCMFeeder in the player's audio worker (the same methods), NativeClicks for its ClickTrack (the metronome's
 mixer), NativeTones for its ToneTrack. Settings > Playback's Audio engine chooses it (the default); without
 its executable (not built), or if it cannot start, the player uses PCMFeeder (the Python engine).
+
+The deck (src/deck.rs) combines the requests of the GUI (its buttons, keys and faders: NativeFeeder's deck
+methods) and of a MIDI controller, which the engine reads itself (never through this process); what the GUI
+shows (playing, tempo, volume, the cue point, the lamps, the armed JumpCUE) is the deck's report (deck_report).
+The controller's messages bound to the GUI's own actions, and all of them for MIDI learn, come through a ring
+(NativeEngine.midi_events).
 """
 from __future__ import annotations
 
@@ -31,7 +37,7 @@ from core import os_support
 from core.resource_paths import resource_path
 
 MAGIC = int.from_bytes(b"MXAUDIC1", "little")
-VERSION = 2
+VERSION = 3
 STATE_OFFSET = 64
 RING_OFFSET = 65536
 RING_HEADER = 64
@@ -45,6 +51,10 @@ SEND_TIMEOUT_SEC = 0.5
 # the state fields, SEQ .. MAX_GAP_MS (offsets 0 .. 248: ipc.rs st)
 _STATE = struct.Struct("<Q IIIIII Q ddddddd QQQ dd Q II d d I 4x d ddd dd I 4x Q d II")
 _HIST = 256
+# the deck's state after the histogram (ipc.rs st::DECK): factor, volume, cue, jump dest, lamps, tempo range,
+# MIDI state
+_DECK = struct.Struct("<dddd III 4x")
+_DECK_AT = 256 + 8 * 4096
 
 # commands (ipc.rs op)
 OP_PAD, OP_LOAD, OP_UNLOAD, OP_PLAY, OP_PAUSE, OP_STOP, OP_SEEK = 0, 1, 2, 3, 4, 5, 6
@@ -54,6 +64,22 @@ OP_TONE_HOLD, OP_SET_MUSIC_GAIN = 17, 18
 OP_CLICK_SAMPLE, OP_CLICK_PITCHES, OP_CLICK_BEATS, OP_CLICK_ENABLED = 19, 20, 21, 22
 OP_CLICK_OFFSET, OP_CLICK_DUCKING, OP_CLICK_CLEAR, OP_SHUTDOWN, OP_WAKE = 23, 24, 25, 26, 27
 OP_SET_DEVICE, OP_LIST_DEVICES, OP_SET_OUTPUT_MODE, OP_SET_PROCESS = 28, 29, 30, 31
+OP_DECK_ACTION, OP_SET_TEMPO, OP_SET_VOLUME, OP_SET_VOLUME_TRIM, OP_DECK_MARKS = 32, 33, 34, 35, 36
+OP_JUMP_TO, OP_CALL_AT, OP_MIDI_OPEN, OP_MIDI_MAP, OP_MIDI_LIST, OP_MIDI_OPTIONS, OP_SET_TEMPO_RANGE = (
+    37, 38, 39, 40, 41, 42, 43)
+OP_SET_METER_GAIN = 44
+# the deck's actions (ipc.rs act): the GUI's buttons and keys and the MIDI controller's
+ACT_PLAY_PAUSE, ACT_CUE, ACT_STOP, ACT_BEAT_BACK, ACT_BEAT_FORWARD, ACT_BAR_BACK, ACT_BAR_FORWARD = 1, 2, 3, 4, 5, 6, 7
+ACT_TEMPO_DOWN, ACT_TEMPO_UP, ACT_TEMPO_RESET, ACT_CALL_PREVIOUS, ACT_CALL_NEXT, ACT_TEMPO_RANGE = 8, 9, 10, 11, 12, 13
+ACT_JUMP_A = 16   # .. + 7: H
+# a MIDI controller's alone: a fader, a jog wheel
+ACT_TEMPO_FADER, ACT_VOLUME_FADER, ACT_JOG_TOUCH, ACT_JOG_SCRATCH, ACT_JOG_BEND, ACT_JOG_SEARCH = 32, 33, 34, 35, 36, 37
+ACT_LEVEL_METER = 38   # an output: the controller's level meter (a CC)
+# a binding's lamp (src/deck.rs): the controller's light at its message; 1 - 26 the JumpCUE A - Z (lit while set)
+LAMP_PLAY, LAMP_CUE = 32, 33
+ACT_GUI = 0x1000   # the GUI's own actions from here (core.midi: their numbering), passed on to it
+# the tempo fader's ranges (+-%; 100: WIDE, 0 - 200 %)
+TEMPO_RANGES = (6, 10, 16, 100)
 # the engine's priority (ipc.rs op::SET_PROCESS; sched.rs: what each system makes of it)
 PRIORITY_CODES = {"normal": 0, "above_normal": 1, "high": 2}
 # a thread's scheduling as the engine got it (st::THREADS, sched.rs) and power throttling's (st::POWER)
@@ -65,6 +91,29 @@ POWER_STATES = {0: "left", 1: "off", 2: "partly", 3: "refused"}
 API_CODES = {"wasapi": 0, "cpal": 1, "jack": 2}
 DEVICES_OFFSET = 40960   # ipc.rs: [generation u64, length u32, pad] + the names, the one in use first
 DEVICES_TIMEOUT_SEC = 1.0
+MIDI_PORTS_OFFSET = 34816   # ipc.rs: as the devices, one MIDI input port a line
+MIDI_EVENTS_OFFSET = 36864  # ipc.rs: [written u64, pad] + MIDI_EVENTS slots of 16 bytes
+MIDI_EVENTS = 240
+MIDI_EVENT_GUI = 1   # the message is bound to one of the GUI's actions
+_MIDI_EVENT = struct.Struct("<IBBBBI4x")
+
+
+class DeckReport:
+    """What the deck is (src/deck.rs), as the GUI shows it: ``cue`` and ``jump_dest`` (the armed JumpCUE's
+    destination) in seconds, NaN for none; ``lamps`` bit 0 PLAY lit, bit 1 CUE lit (blinking: as they are now);
+    ``midi_state`` 0 closed, 1 open, 2 the port did not open."""
+
+    __slots__ = ("playing", "factor", "volume", "cue", "jump_dest", "lamps", "tempo_range", "midi_state")
+
+    def __init__(self, playing: bool, factor: float, volume: float, cue: float, jump_dest: float, lamps: int,
+                 tempo_range: int, midi_state: int) -> None:
+        self.playing, self.factor, self.volume = bool(playing), float(factor), float(volume)
+        self.cue, self.jump_dest, self.lamps = float(cue), float(jump_dest), int(lamps)
+        self.tempo_range, self.midi_state = int(tempo_range), int(midi_state)
+
+    def key(self) -> tuple:
+        return (self.playing, self.factor, self.volume, self.cue, self.jump_dest, self.lamps, self.tempo_range,
+                self.midi_state)
 
 
 def executable() -> Optional[Path]:
@@ -86,15 +135,17 @@ class EngineState:
                  "display", "display_at", "display_rate", "peak", "queued", "capacity", "jumped", "finished",
                  "buffer_gen", "obs_seconds", "obs_level", "underruns", "hist_len", "device_errors", "render_ms",
                  "latency_ms", "output_mode", "period_ms", "response_play", "response_pause", "response_seek",
-                 "hist_bucket_ms", "lowest_ms", "output_open", "device_late", "max_gap_ms", "threads", "power")
+                 "hist_bucket_ms", "lowest_ms", "output_open", "device_late", "max_gap_ms", "threads", "power",
+                 "factor", "volume", "cue", "jump_dest", "lamps", "tempo_range", "midi_state")
 
-    def __init__(self, values: tuple) -> None:
+    def __init__(self, values: tuple, deck: tuple) -> None:
         (_seq, self.ready, self.rate, self.channels, self.playing, self.track_gen, self.at_end, self.cmd_done,
          self.playhead, self.display, self.display_at, self.display_rate, self.peak, self.queued, self.capacity,
          self.jumped, self.finished, self.buffer_gen, self.obs_seconds, self.obs_level, self.underruns,
          self.hist_len, self.device_errors, self.render_ms, self.latency_ms, self.output_mode,
          self.period_ms, self.response_play, self.response_pause, self.response_seek, self.hist_bucket_ms,
          self.lowest_ms, self.output_open, self.device_late, self.max_gap_ms, self.threads, self.power) = values
+        (self.factor, self.volume, self.cue, self.jump_dest, self.lamps, self.tempo_range, self.midi_state) = deck
 
 
 class NativeEngine:
@@ -107,6 +158,7 @@ class NativeEngine:
         struct.pack_into("<QI", self._buf, 0, MAGIC, VERSION)
         self._lock = threading.Lock()
         self._seq = 0
+        self._midi_read = 0   # the MIDI messages read from the ring (its count)
         args = [str(exe), "--shm", self._shm.name, "--size", str(CONTROL_SIZE), "--parent", str(os.getpid())]
         if device:
             args += ["--device", device]
@@ -162,9 +214,15 @@ class NativeEngine:
             if s1 & 1:
                 continue
             values = _STATE.unpack_from(buf, STATE_OFFSET)
+            deck = _DECK.unpack_from(buf, STATE_OFFSET + _DECK_AT)
             if struct.unpack_from("<Q", buf, STATE_OFFSET)[0] == s1:
-                return EngineState(values)
+                return EngineState(values, deck)
         return None
+
+    @property
+    def sent(self) -> int:
+        """The sequence number of the last command sent (EngineState.cmd_done reaches it once all are taken)."""
+        return self._seq
 
     def histogram(self) -> Optional[tuple[int, float, float, np.ndarray]]:
         """(buffer generation, cumulative seconds, cumulative level integral, cumulative seconds per 1 ms)."""
@@ -198,6 +256,42 @@ class NativeEngine:
         text = bytes(buf[DEVICES_OFFSET + 16:DEVICES_OFFSET + 16 + length]).decode("utf-8", "replace")
         lines = text.split("\n")
         return lines[0], [n for n in lines[1:] if n]
+
+    def midi_ports(self) -> list[str]:
+        """The MIDI input ports, asked of the engine; [] if it does not answer. Any thread."""
+        buf = self._buf
+        if buf is None:
+            return []
+        before = struct.unpack_from("<Q", buf, MIDI_PORTS_OFFSET)[0]
+        if not self.send(OP_MIDI_LIST):
+            return []
+        deadline = time.monotonic() + DEVICES_TIMEOUT_SEC
+        while struct.unpack_from("<Q", buf, MIDI_PORTS_OFFSET)[0] == before:
+            if time.monotonic() > deadline or not self.alive():
+                return []
+            time.sleep(0.002)
+        length = struct.unpack_from("<I", buf, MIDI_PORTS_OFFSET + 8)[0]
+        text = bytes(buf[MIDI_PORTS_OFFSET + 16:MIDI_PORTS_OFFSET + 16 + length]).decode("utf-8", "replace")
+        return [n for n in text.split("\n") if n]
+
+    def midi_events(self) -> list[tuple[int, int, int, int, int]]:
+        """The MIDI messages received since the last call: (status, data1, data2, flags, action); the oldest
+        are lost past MIDI_EVENTS. One reader (the player's audio thread)."""
+        buf = self._buf
+        if buf is None:
+            return []
+        written = struct.unpack_from("<Q", buf, MIDI_EVENTS_OFFSET)[0]
+        k = max(self._midi_read, written - MIDI_EVENTS)
+        out = []
+        while k < written:
+            seq, status, d1, d2, flags, action = _MIDI_EVENT.unpack_from(
+                buf, MIDI_EVENTS_OFFSET + 16 + (k % MIDI_EVENTS) * 16)
+            if seq != (k + 1) & 0xFFFFFFFF:
+                break   # not all written yet: the next call
+            out.append((status, d1, d2, flags, action))
+            k += 1
+        self._midi_read = k
+        return out
 
     def send(self, op: int, payload: bytes = b"") -> bool:
         """Queues a command; False if the engine is gone or did not take its earlier ones in time."""
@@ -412,6 +506,10 @@ class NativeFeeder(QtCore.QObject):
         self._api = "wasapi"
         self._exclusive = False
         self._exclusive_rate = 0
+        # the deck: its marks (seconds: sent as frames at the engine's rate) and the last report (the state of every
+        # command sent: a request still on its way is not shown undone)
+        self._marks: Optional[tuple] = None
+        self._report: Optional[DeckReport] = None
 
     # Commands
     def send(self, op: int, payload: bytes = b"") -> None:
@@ -446,22 +544,12 @@ class NativeFeeder(QtCore.QObject):
         name = shared.shm_name.encode("utf-8")
         self.send(OP_LOAD, struct.pack("<IIQI", self._gen, int(shared.shape[1]), self._len, len(name)) + name)
 
-    def set_mode(self, mode: str) -> None:
-        self.setting(OP_SET_MODE, struct.pack("<I", 0 if (mode or "speed").lower() == "none" else 1))
-
     def set_timestretch(self, enabled: bool) -> None:
         self.setting(OP_SET_TIMESTRETCH, struct.pack("<I", int(bool(enabled))))
 
     def set_buffer_ms(self, ms: float) -> None:
         lo, hi = self.BUFFER_MS_RANGE
         self.setting(OP_SET_BUFFER_MS, struct.pack("<d", float(min(hi, max(lo, ms)))))
-
-    def set_factor(self, f: float) -> None:
-        f = float(f)
-        self.setting(OP_SET_FACTOR, struct.pack("<d", f if math.isfinite(f) else 1.0))
-
-    def set_music_gain(self, gain: float) -> None:
-        self.setting(OP_SET_MUSIC_GAIN, struct.pack("<d", max(0.0, float(gain))))
 
     def set_soft_clip(self, enabled: bool) -> None:
         self.setting(OP_SET_SOFT_CLIP, struct.pack("<I", int(bool(enabled))))
@@ -509,15 +597,102 @@ class NativeFeeder(QtCore.QObject):
         self._hist_prev = None
         self._underruns_prev = None
         self._pcm = None
-        for op, payload in self._settings.items():
-            if op not in (OP_LOAD, OP_UNLOAD):
-                engine.send(op, payload)
+        self._replay()
         self.clicks.ch = self.ch
         self.clicks.follow_rate(self.rate)
         return changed
 
+    def _replay(self) -> None:
+        """A new engine: the settings, the deck as it was reported, its marks at this engine's rate."""
+        for op, payload in self._settings.items():
+            self._engine.send(op, payload)
+        r = self._report
+        if r is not None:
+            self._engine.send(OP_SET_TEMPO_RANGE, struct.pack("<I", r.tempo_range))
+            self._engine.send(OP_SET_TEMPO, struct.pack("<d", r.factor))
+            self._engine.send(OP_SET_VOLUME, struct.pack("<d", r.volume))
+        self._send_marks()
+
     def output_devices(self) -> tuple[str, list[str]]:
         return self._engine.devices()
+
+    # The deck (src/deck.rs): requests, combined there with the MIDI controller's; what it is: deck_report
+    def deck_action(self, code: int, pressed: bool = True) -> None:
+        self.send(OP_DECK_ACTION, struct.pack("<II", int(code), int(bool(pressed))))
+
+    def set_tempo(self, factor: float) -> None:
+        f = float(factor)
+        self.send(OP_SET_TEMPO, struct.pack("<d", f if math.isfinite(f) else 1.0))
+
+    def set_tempo_range(self, percent: int) -> None:
+        self.send(OP_SET_TEMPO_RANGE, struct.pack("<I", int(percent)))
+
+    def set_volume(self, position: float) -> None:
+        self.send(OP_SET_VOLUME, struct.pack("<d", min(1.0, max(0.0, float(position)))))
+
+    def set_volume_trim(self, db: float) -> None:
+        self.setting(OP_SET_VOLUME_TRIM, struct.pack("<d", float(db)))
+
+    def set_marks(self, beats_sec, downbeats, cue_points_sec, jumpcues_sec) -> None:
+        """The track's beats (with their downbeat flags), CUE points and JumpCUEs A-Z (NaN: none), in seconds."""
+        self._marks = (np.asarray(beats_sec, dtype=np.float64).reshape(-1),
+                       np.asarray(downbeats, dtype=bool).reshape(-1),
+                       np.asarray(cue_points_sec, dtype=np.float64).reshape(-1),
+                       np.asarray(jumpcues_sec, dtype=np.float64).reshape(-1))
+        self._send_marks()
+
+    def _send_marks(self) -> None:
+        if self._marks is None:
+            return
+        beats, down, cues, jumps = self._marks
+        n = min(beats.size, down.size)
+        jc = np.full(26, np.nan)
+        jc[:min(26, jumps.size)] = jumps[:26]
+        rate = float(self.rate)
+        self.send(OP_DECK_MARKS, struct.pack("<I", n) + (beats[:n] * rate).astype("<f8").tobytes()
+                  + down[:n].astype(np.uint8).tobytes() + struct.pack("<I", cues.size)
+                  + (cues * rate).astype("<f8").tobytes() + (jc * rate).astype("<f8").tobytes())
+
+    def jump_to(self, sec: float) -> None:
+        self.send(OP_JUMP_TO, struct.pack("<d", float(sec) * self.rate))
+
+    def call_at(self, sec: float) -> None:
+        self.send(OP_CALL_AT, struct.pack("<d", float(sec) * self.rate))
+
+    def new_track(self) -> None:
+        """The engine resets its deck itself when it loads a track."""
+
+    def tick(self) -> None:
+        """The deck runs in the engine."""
+
+    def deck_report(self) -> Optional[DeckReport]:
+        return self._report
+
+    # The MIDI controller (read by the engine)
+    def midi_open(self, port: str) -> None:
+        """Read the MIDI input ``port`` ("": none)."""
+        data = (port or "").encode("utf-8")
+        self.setting(OP_MIDI_OPEN, struct.pack("<I", len(data)) + data)
+
+    def midi_map(self, bindings) -> None:
+        """``bindings``: (status, data1, 14-bit, lamp, action code) each."""
+        payload = struct.pack("<I", len(bindings)) + b"".join(
+            struct.pack("<BBBBI", int(st), int(d1), int(bool(hires)), int(lamp), int(code))
+            for st, d1, hires, lamp, code in bindings)
+        self.setting(OP_MIDI_MAP, payload)
+
+    def set_meter_gain(self, gain: float) -> None:
+        """The controller's level meter shows the heard peak times this (the GUI peak meter's gain)."""
+        self.setting(OP_SET_METER_GAIN, struct.pack("<d", max(0.0, float(gain))))
+
+    def midi_options(self, jog_ticks: int) -> None:
+        self.setting(OP_MIDI_OPTIONS, struct.pack("<I", max(1, int(jog_ticks))))
+
+    def midi_ports(self) -> list[str]:
+        return self._engine.midi_ports()
+
+    def midi_events(self) -> list[tuple[int, int, int, int, int]]:
+        return self._engine.midi_events()
 
     def set_scrubbing(self, scrubbing: bool) -> None:
         self.send(OP_SCRUB, struct.pack("<I", int(bool(scrubbing))))
@@ -528,34 +703,15 @@ class NativeFeeder(QtCore.QObject):
     def scratch_to(self, frame: float, at: float) -> None:
         self.send(OP_SCRATCH_TO, struct.pack("<dd", float(frame), float(at)))
 
-    # Transport
-    def is_playing(self) -> bool:
-        return bool(self._state and self._state.playing)
-
-    def play(self) -> bool:
-        st = self._state
-        if self._pcm is None or (st is not None and st.track_gen == self._gen and st.at_end and not st.playing):
-            return False
+    # Transport (whether it plays: deck_report)
+    def play(self) -> None:
         self.send(OP_PLAY)
-        return True
 
     def pause(self) -> None:
         self.send(OP_PAUSE)
 
     def seek(self, frame: float) -> None:
         self.send(OP_SEEK, struct.pack("<d", float(frame)))
-
-    def arm_jump(self, start_sec, dest_sec, once: bool = False, starts_sec=None) -> None:
-        if dest_sec is None or (start_sec is None and not starts_sec):
-            self.disarm_jump()
-            return
-        starts = np.asarray(starts_sec if starts_sec else [], dtype="<f8") * self.rate
-        start = float(start_sec) * self.rate if start_sec is not None else math.nan
-        self.send(OP_ARM_JUMP, struct.pack("<ddII", start, float(dest_sec) * self.rate, int(bool(once)), starts.size)
-                  + starts.tobytes())
-
-    def disarm_jump(self) -> None:
-        self.send(OP_DISARM_JUMP)
 
     def wake(self) -> None:
         self.send(OP_WAKE)
@@ -570,6 +726,9 @@ class NativeFeeder(QtCore.QObject):
         if st is None:
             return
         self._state = st
+        if st.cmd_done >= self._engine.sent:
+            self._report = DeckReport(st.playing, st.factor, st.volume, st.cue / max(1, self.rate),
+                                      st.jump_dest / max(1, self.rate), st.lamps, st.tempo_range, st.midi_state)
         if self._unlink_gen and st.track_gen >= self._unlink_gen and self._pcm is not None:
             _unlink(self._pcm.shm_name)   # opened by the engine: the name is no longer needed
             self._unlink_gen = 0
@@ -598,8 +757,7 @@ class NativeFeeder(QtCore.QObject):
         self._engine = engine
         self._counts = (0, 0)
         self._hist_prev = None
-        for op, payload in self._settings.items():
-            engine.send(op, payload)
+        self._replay()
         if self._pcm is not None:
             pcm, self._pcm = self._pcm, None
             self.set_track(pcm)

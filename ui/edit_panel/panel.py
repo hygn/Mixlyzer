@@ -7,7 +7,9 @@ from typing import Optional
 import numpy as np
 from PySide6 import QtCore, QtGui, QtWidgets
 
+from audioengine.native import client as deck
 from core.analysis_lib_handler import FeatureNPZStore
+from core.beat_geometry import downbeat_beat_indices
 from core.config import load_cfg
 from core.event_bus import EventBus
 from core.model import DataModel
@@ -120,17 +122,41 @@ class EditPanel(
             )
         )
         self.bus.sig_segment_reanalyze_state.connect(self._set_edit_enabled)
+        # the marks the player's deck works with, sent when an edit (or a new track) replaced them
+        self._marks_sent: Optional[tuple] = None
+        self._marks_timer = QtCore.QTimer(self)
+        self._marks_timer.setInterval(100)
+        self._marks_timer.timeout.connect(self._send_deck_marks)
+        self._marks_timer.start()
         self.bus.sig_tempo_factor_changed.connect(self._on_playback_tempo_changed)
         self.bus.sig_playback_status.connect(self._on_playback_status)
         self._set_locked(self.btn_lock.isChecked())
 
     def _on_playback_status(self, playing: bool) -> None:
-        """CALL works only while stopped; an armed jump ends with playback."""
+        """CALL works only while stopped (the player reports it)."""
         self._playing = bool(playing)
-        if not self._playing:
-            self._disarm_jumpcue()
         self._refresh_jumpcue_slots()
         self._refresh_cue_point_slots()
+
+    def _send_deck_marks(self) -> None:
+        """The beats (with their downbeats), CUE points and JumpCUEs as edited, to the player's deck (its beat /
+        bar steps, CUE, CALL, JUMP; a MIDI controller's too), whenever one of them was replaced."""
+        held = (self._beatgrid, self._segments, self._jumpcue_graph_cues, self._cue_points)
+        if self._marks_sent is not None and all(a is b for a, b in zip(held, self._marks_sent)):
+            return
+        self._marks_sent = held
+        beats = np.asarray(self._beatgrid if self._beatgrid is not None else [], dtype=float).reshape(-1)
+        down = np.zeros(beats.size, dtype=bool)
+        if beats.size:
+            idx = np.asarray(downbeat_beat_indices(beats, self._segments), dtype=np.int64).reshape(-1)
+            down[idx[(idx >= 0) & (idx < beats.size)]] = True
+        cues = np.asarray([float(p.get("time_sec", 0.0)) for p in self._cue_points], dtype=float)
+        jumps = np.full(26, np.nan)
+        for c in self._jumpcue_graph_cues:
+            i = ord(str(c.get("label", "?"))[:1] or "?") - ord("A")
+            if 0 <= i < 26:
+                jumps[i] = float(c.get("point", 0.0))
+        self.bus.sig_deck_marks.emit((beats, down, cues, jumps))
 
     def _init_ui(self) -> None:
         self.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
@@ -512,7 +538,6 @@ class EditPanel(
 
     def update_time(self, t: float) -> None:
         self._current_time = float(t)
-        self._follow_jumpcue_arm(float(t))
         self._update_key_current()
         self._update_beat_counter(float(t))
         self._update_barbeat_display(float(t))
@@ -911,14 +936,15 @@ class EditPanel(
         return self._shortcut_click(self.cp_memory, None)
 
     def _shortcut_call(self, step: int) -> str | None:
-        """CALL the previous (``step`` < 0) / next CUE point, shown in the CUE point list."""
+        """CALL the previous (``step`` < 0) / next CUE point (the player's deck: as a MIDI controller's), shown in
+        the CUE point list."""
         self._show_cue_list(1)
         if getattr(self, "_playing", False):
             return tr("CALL works while stopped.")
         cue = self._cp_call_target(step)
         if cue is not None:
             slot = self._show_cue_point_slot(cue)
-            self.bus.sig_seek_requested.emit(float(cue["time_sec"]))
+            self.bus.sig_deck_action.emit(deck.ACT_CALL_NEXT if step > 0 else deck.ACT_CALL_PREVIOUS, True)
             flash(slot.btn_action)
         return None
 

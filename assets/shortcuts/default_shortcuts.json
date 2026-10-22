@@ -3,6 +3,9 @@
     "Z",
     "Space"
   ],
+  "playback.cue": [
+    "A"
+  ],
   "playback.stop": [
     "Shift+A"
   ],
@@ -26,6 +29,9 @@
   ],
   "playback.tempo_reset": [
     "Shift+R"
+  ],
+  "playback.tempo_range": [
+    "Shift+Q"
   ],
   "playback.master_tempo": [
     "Shift+5"

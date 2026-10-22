@@ -36,6 +36,7 @@ from ui.config.external_sync import (
     build_external_sync_tab,
 )
 from ui.config.library import LibrarySettingsMixin, build_library_tab
+from ui.config.midi import MidiSettingsMixin, build_midi_tab
 from ui.config.playback import PlaybackSettingsMixin, build_playback_tab
 from ui.config.search import SearchSettingsMixin, build_search_tab
 from ui.config.shortcuts import ShortcutSettingsMixin, build_shortcuts_tab
@@ -50,6 +51,7 @@ class SettingsDialog(
     AnalysisSettingsMixin,
     ExternalSyncSettingsMixin,
     ShortcutSettingsMixin,
+    MidiSettingsMixin,
     QDialog,
 ):
     DIALOG_WIDTH = 780
@@ -70,6 +72,7 @@ class SettingsDialog(
         build_library_tab(self)
         build_analysis_tab(self)
         build_shortcuts_tab(self)
+        build_midi_tab(self)
         build_external_sync_tab(self)
         self._stabilize_layout_widths()
 
@@ -102,6 +105,7 @@ class SettingsDialog(
         self._initialize_view_settings(bus)
         self._initialize_playback_settings(bus)
         self._initialize_shortcut_settings()
+        self._initialize_midi_settings(bus)
 
     def _stabilize_layout_widths(self) -> None:
         """Give every settings form the same label/field geometry."""
@@ -209,6 +213,7 @@ class SettingsDialog(
         self.cb_native_power.setCurrentIndex(1 if p.native_power_throttling else 0)
         self._output_device = p.output_device
         self._load_output_devices(p.output_device)
+        self._set_midi_config(p)
 
         # analysis
         a = cfg.analysisconfig
@@ -384,6 +389,10 @@ class SettingsDialog(
                 native_exclusive_rate=int(self.cb_native_rate.currentData() or 0),
                 native_priority=str(self.cb_native_priority.currentData() or "high"),
                 native_power_throttling=bool(self.cb_native_power.currentData()),
+                # the deck's own (its button): as last kept
+                tempo_range=int(getattr(getattr(self._current_cfg, "playbackconfig", None), "tempo_range", 100)),
+                midi_input=self._midi_input(),
+                midi_jog_ticks=int(self.sp_midi_jog_ticks.value()),
             ),
             externalsyncconfig=externalsyncconfig(
                 enabled=bool(self.cb_external_sync_enabled.isChecked()) and os_support.MEMORY_SYNC,
@@ -410,17 +419,20 @@ class SettingsDialog(
     def _on_apply(self):
         cfg = self.get_config()
         self._save_shortcut_settings()
+        self._save_midi_settings()
         # Save and Reload Requenst
         self.saveJsonRequested.emit(cfg)
 
     def _on_ok(self):
         cfg = self.get_config()
         self._save_shortcut_settings()
+        self._save_midi_settings()
         # Save and Reload Requenst
         self.saveJsonRequested.emit(cfg)
         self.accept()
 
     def _on_cancel(self):
+        self._stop_midi_learn()
         self.reject()
 
     def showEvent(self, event: QtGui.QShowEvent) -> None:
@@ -429,3 +441,4 @@ class SettingsDialog(
         # the devices connected now (one plugged in since)
         self._load_output_devices(str(self.cb_output_device.currentData() or getattr(self, "_output_device", "")))
         self._load_shortcut_settings()  # the edits not kept are dropped
+        self._load_midi_settings()
