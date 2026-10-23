@@ -161,7 +161,9 @@ class AppWindow(QtWidgets.QMainWindow):
 
         # keyboard shortcuts (assets/shortcuts; Settings > Shortcuts)
         handlers = {**self.pane.shortcut_handlers(), **self.fx_bar.shortcut_handlers(),
-                    **self.pane.deck_switches.shortcut_handlers()}
+                    **self.pane.deck_switches.shortcut_handlers(),
+                    "playback.restart_engine": self._restart_engine}
+        self.bus.sig_engine_restarted.connect(self._on_engine_restarted)
         self.shortcuts = ShortcutManager(self, handlers, self.statusBar().showMessage)
         self.shortcuts.apply(shortcuts.keymap())
         self.bus.sig_shortcuts_changed.connect(self.shortcuts.apply)
@@ -333,6 +335,18 @@ class AppWindow(QtWidgets.QMainWindow):
         if tempo_range != int(self.cfg.playbackconfig.tempo_range):
             self.cfg.playbackconfig.tempo_range = tempo_range
             atomic_write_json("config.json", self.cfg.to_dict(), ensure_ascii=True, indent=None)
+
+    def _restart_engine(self) -> None:
+        """The native audio engine started again by hand (the shortcut; Settings > Audio > Engine has its button)."""
+        if not self.player.native:
+            self.statusBar().showMessage(tr("The Python audio engine plays: there is no native engine to restart."))
+            return
+        self.statusBar().showMessage(tr("Restarting the audio engine..."))
+        self.bus.sig_engine_restart_requested.emit()
+
+    def _on_engine_restarted(self, ok: bool) -> None:
+        self.statusBar().showMessage(tr("Audio engine restarted.") if ok else
+                                     tr("The audio engine did not start; it is tried again every 2 seconds."), 5000)
 
     def _keep_trim(self, report) -> None:
         """The trim as the deck has it (its TRIM knob, the settings, a controller), kept as Settings > Audio's

@@ -564,43 +564,108 @@ pub fn list(mode: Mode) -> (Option<(String, usize)>, Vec<(String, usize)>) {
     (default, devices)
 }
 
-/// The output device named ``name`` (None or "": the default; one not found: the default too).
-fn find(name: Option<&str>, mode: Mode) -> Result<cpal::Device, String> {
+/// A named device not there: the error's end. The master takes the system's default then (``fallback``: it plays
+/// on); an output of its own (the headphones, the booth) waits for its device, so its sound (the CUE) never goes
+/// to another one (nor holds it: an exclusive stream there would lock the master out).
+pub const NOT_PRESENT: &str = "not present";
+
+/// An endpoint's name without Windows's instance number ("Speakers (2- DDJ-400)": "Speakers (DDJ-400)"): a device
+/// plugged in again may come back under another number.
+pub fn without_instance(name: &str) -> String {
+    let mut out = String::with_capacity(name.len());
+    let mut rest = name;
+    while let Some(at) = rest.find('(') {
+        out.push_str(&rest[..=at]);
+        rest = &rest[at + 1..];
+        let digits = rest.bytes().take_while(u8::is_ascii_digit).count();
+        if digits > 0 && rest[digits..].starts_with("- ") {
+            rest = &rest[digits + 2..];
+        }
+    }
+    out.push_str(rest);
+    out
+}
+
+/// Of the devices ``names``, the one ``wanted`` names: its very name, else the only one of that name but for its
+/// instance number.
+pub fn pick(names: &[String], wanted: &str) -> Option<usize> {
+    if let Some(k) = names.iter().position(|n| n == wanted) {
+        return Some(k);
+    }
+    let key = without_instance(wanted);
+    let mut matches = names.iter().enumerate().filter(|(_, n)| without_instance(n) == key);
+    match (matches.next(), matches.next()) {
+        (Some((k, _)), None) => Some(k),
+        _ => None,
+    }
+}
+
+/// An audio client's error codes (WASAPI's HRESULTs, cpal's "OS Error" the same in decimal) said in words.
+pub fn explain(e: &str) -> String {
+    const CODES: [(u32, &str, &str); 4] = [
+        (0x8889_0004, "AUDCLNT_E_DEVICE_INVALIDATED", "the device was removed"),
+        (0x8889_0008, "AUDCLNT_E_UNSUPPORTED_FORMAT", "the device does not take the format"),
+        (0x8889_000A, "AUDCLNT_E_DEVICE_IN_USE", "a stream holds the device in exclusive mode"),
+        (0x8889_000E, "AUDCLNT_E_EXCLUSIVE_MODE_NOT_ALLOWED", "the device does not allow exclusive mode"),
+    ];
+    for (code, name, words) in CODES {
+        if e.contains(&format!("0x{code:08X}")) || e.contains(&(code as i32).to_string()) {
+            return format!("{e} ({name}: {words})");
+        }
+    }
+    e.to_string()
+}
+
+/// The output device named ``name`` (None or "": the default); one not there: the default with ``fallback``, else
+/// NOT_PRESENT.
+fn find(name: Option<&str>, mode: Mode, fallback: bool) -> Result<cpal::Device, String> {
     let host = host(mode);
     if let Some(wanted) = name.filter(|n| !n.is_empty()) {
-        if let Ok(mut devices) = host.output_devices() {
-            if let Some(dev) = devices.find(|d| device_name(d) == wanted) {
-                return Ok(dev);
+        if let Ok(devices) = host.output_devices() {
+            let mut devices: Vec<cpal::Device> = devices.collect();
+            let names: Vec<String> = devices.iter().map(device_name).collect();
+            if let Some(k) = pick(&names, wanted) {
+                return Ok(devices.swap_remove(k));
             }
+        }
+        if !fallback {
+            return Err(format!("{wanted}: {NOT_PRESENT}"));
         }
     }
     host.default_output_device().ok_or_else(|| "no output device".to_string())
 }
 
 /// The preferred format of the device named ``name`` (see find): (sample rate, channels).
-pub fn default_format(name: Option<&str>, mode: Mode) -> Result<(u32, usize), String> {
-    let dev = find(name, mode)?;
+pub fn default_format(name: Option<&str>, mode: Mode, fallback: bool) -> Result<(u32, usize), String> {
+    let dev = find(name, mode, fallback)?;
     let cfg = dev.default_output_config().map_err(|e| e.to_string())?;
     Ok((cfg.sample_rate(), cfg.channels() as usize))
 }
 
 /// Opens the device named ``name`` (see find) in ``mode`` at ``rate`` / ``channels`` (the session's: the track
 /// was decoded for them) and starts it reading ``source``; a mode that cannot be opened falls back to Shared.
-/// Returns the output and the name of the device opened.
-pub fn open(source: Source, rate: u32, channels: usize, name: Option<&str>, mode: Mode)
+/// Returns the output and the name of the device opened; an error in words (explain).
+pub fn open(source: Source, rate: u32, channels: usize, name: Option<&str>, mode: Mode, fallback: bool)
+    -> Result<(Output, String), String> {
+    open_on(source, rate, channels, name, mode, fallback).map_err(|e| explain(&e))
+}
+
+fn open_on(source: Source, rate: u32, channels: usize, name: Option<&str>, mode: Mode, fallback: bool)
     -> Result<(Output, String), String> {
     source.port().reset();
     #[cfg(windows)]
     if mode.api == Api::Wasapi {
-        match crate::wasapi::WasapiOutput::open(source.clone(), rate, channels, name, mode.exclusive) {
+        match crate::wasapi::WasapiOutput::open(source.clone(), rate, channels, name, mode.exclusive, fallback) {
             Ok((w, device, period_ms)) => {
                 return Ok((Output { _backend: Backend::Wasapi(w), mode, period_ms }, device));
             }
-            Err(e) => log_line!("{mode:?} output not opened ({e}); cpal's WASAPI shared stream instead"),
+            Err(e) if e.ends_with(NOT_PRESENT) => return Err(e),
+            Err(e) => log_line!("{} output not opened ({}); cpal's WASAPI shared stream instead", mode.label(),
+                                explain(&e)),
         }
     }
     let cpal_mode = Mode { api: if mode.api == Api::Jack { Api::Jack } else { Api::Cpal }, exclusive: false };
-    let dev = find(name, cpal_mode)?;
+    let dev = find(name, cpal_mode, fallback)?;
     let def = dev.default_output_config().map_err(|e| e.to_string())?;
     // a small device buffer where the system lets one be asked for (ALSA, CoreAudio: ~5 ms; WASAPI's shared
     // stream takes its own)
@@ -660,4 +725,36 @@ fn build<T: SizedSample + FromSample<f32> + 'static>(
         None,
     )
     .map_err(|e| e.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn names(list: &[&str]) -> Vec<String> {
+        list.iter().map(|s| s.to_string()).collect()
+    }
+
+    #[test]
+    fn a_device_plugged_in_again_is_found_under_another_number() {
+        assert_eq!(without_instance("Speakers (2- DDJ-400)"), "Speakers (DDJ-400)");
+        assert_eq!(without_instance("Line (12- USB Audio)"), "Line (USB Audio)");
+        assert_eq!(without_instance("Speakers (Realtek(R) Audio)"), "Speakers (Realtek(R) Audio)");
+        let listed = names(&["Speakers (Realtek(R) Audio)", "Speakers (3- DDJ-400)"]);
+        assert_eq!(pick(&listed, "Speakers (Realtek(R) Audio)"), Some(0));
+        assert_eq!(pick(&listed, "Speakers (2- DDJ-400)"), Some(1));
+        assert_eq!(pick(&listed, "Speakers (DDJ-400)"), Some(1));
+        assert_eq!(pick(&listed, "Speakers (2- DDJ-SB3)"), None);
+        // two of that name: only the very name is taken
+        let two = names(&["Speakers (3- DDJ-400)", "Speakers (4- DDJ-400)"]);
+        assert_eq!(pick(&two, "Speakers (4- DDJ-400)"), Some(1));
+        assert_eq!(pick(&two, "Speakers (2- DDJ-400)"), None);
+    }
+
+    #[test]
+    fn audio_client_errors_in_words() {
+        assert!(explain("low-latency shared stream refused: 0x8889000A").contains("AUDCLNT_E_DEVICE_IN_USE"));
+        assert!(explain("Failed to initialize audio client: OS Error -2004287478").contains("exclusive mode"));
+        assert_eq!(explain("no output device"), "no output device");
+    }
 }

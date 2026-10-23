@@ -74,6 +74,7 @@ class _AudioWorker(QtCore.QObject):
     deck_ready = QtCore.Signal()   # latest_deck has a new DeckReport
     midi_events = QtCore.Signal(object)   # [(status, data1, data2, flags, action)] the GUI wants
     output_buffer = QtCore.Signal(float, object, float)  # queued ms, observations (see PCMFeeder.take_buffer_stats) or None, capacity ms
+    engine_restarted = QtCore.Signal(bool)   # restart_engine: the new engine started
     _decoded = QtCore.Signal(int, object, str)  # token, pcm or None, error message
 
     PEAK_FLOOR_DBFS = -24.0
@@ -90,7 +91,7 @@ class _AudioWorker(QtCore.QObject):
         "set_refresh_fps", "set_timestretch", "set_soft_clip", "set_buffer_ms", "set_output_device",
         "set_output_mode", "set_exclusive_rate", "set_process",
         "tone_hold", "midi_open", "midi_map", "midi_options", "set_midi_learn", "set_routing", "set_headphones",
-        "set_knob", "set_mixer", "set_channel_cue",
+        "set_knob", "set_mixer", "set_channel_cue", "restart_engine",
     })
     _WAIT_FOR_TRACK = frozenset({
         "play", "pause", "stop", "seek",
@@ -362,6 +363,11 @@ class _AudioWorker(QtCore.QObject):
             else:
                 self.feeder.set_aux_output(k, None)
 
+    def restart_engine(self) -> None:
+        """The native engine started again by hand, the track and the settings as they were."""
+        if isinstance(self.feeder, NativeFeeder):
+            self.engine_restarted.emit(self.feeder.restart_engine())
+
     def set_headphones(self, master: bool, mix: float, level: float) -> None:
         """The native engine's headphones: the master mixed in (by ``mix``, 0 CUE .. 1 MASTER) or not, their level
         (a knob's position)."""
@@ -622,6 +628,7 @@ class PlayerController(QtCore.QObject):
         w.transport_enabled.connect(bus.sig_transport_enabled)
         w.peak_ready.connect(self._relay_peak, QtCore.Qt.QueuedConnection)
         w.output_buffer.connect(bus.sig_output_buffer)
+        w.engine_restarted.connect(bus.sig_engine_restarted)
         w.deck_ready.connect(self._relay_deck, QtCore.Qt.QueuedConnection)
         w.midi_events.connect(bus.sig_midi_events)
         w.track_loaded.connect(self._on_track_loaded, QtCore.Qt.QueuedConnection)
@@ -662,6 +669,7 @@ class PlayerController(QtCore.QObject):
         bus.sig_mixer_requested.connect(lambda key, v: self._send("set_mixer", str(key), float(v)))
         bus.sig_jog_mode_requested.connect(self.set_jog_mode)
         bus.sig_channel_cue_requested.connect(lambda on: self._send("set_channel_cue", bool(on)))
+        bus.sig_engine_restart_requested.connect(lambda: self._send("restart_engine"))
         bus.sig_jump_to_requested.connect(lambda sec: self._send_local("jump_to", float(sec)))
         bus.sig_call_requested.connect(lambda sec: self._send_local("call_at", float(sec)))
         bus.sig_deck_marks.connect(lambda marks: self._send("set_marks", marks))

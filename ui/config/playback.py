@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
     QGroupBox,
     QLabel,
     QLineEdit,
+    QPushButton,
     QSpinBox,
     QTabWidget,
     QToolButton,
@@ -258,6 +259,18 @@ def build_playback_tab(dialog) -> None:
     f_engine.addRow(tr("Process priority") if os_support.IS_WINDOWS else tr("Thread priority"),
                     dialog.cb_native_priority)
     f_engine.addRow(tr("Power throttling"), dialog.cb_native_power)
+    # the last resort: the native engine started again (a device or the engine stuck)
+    dialog.btn_restart_engine = QPushButton(tr("Restart Audio Engine"))
+    dialog.btn_restart_engine.setToolTip(tr(
+        "<p>Stops the native audio engine and starts it again on the same outputs, with the track, its place and "
+        "the settings as they were. The last resort when an output or the engine stays stuck (a controller "
+        "unplugged and plugged in again).</p>"))
+    dialog.lbl_restart_engine = QLabel()
+    restart_row = QHBoxLayout()
+    restart_row.addWidget(dialog.btn_restart_engine)
+    restart_row.addWidget(dialog.lbl_restart_engine, 1)
+    f_engine.addRow(restart_row)
+    dialog.btn_restart_engine.clicked.connect(dialog._restart_engine)
     dialog.btn_playback_advanced = QToolButton()
     dialog.btn_playback_advanced.setText(tr("Advanced"))
     dialog.btn_playback_advanced.setCheckable(True)
@@ -351,9 +364,23 @@ class PlaybackSettingsMixin:
         self._deck_mix: dict = {}
         self._midi_state = 0
         self._last_stats = None
+        self._bus = bus
         if bus is not None:
             bus.sig_output_buffer.connect(self._on_output_buffer)
             bus.sig_deck_state.connect(self._on_deck_report)
+            bus.sig_engine_restarted.connect(self._on_engine_restarted)
+
+    def _restart_engine(self) -> None:
+        if self._bus is None:
+            return
+        self.btn_restart_engine.setEnabled(False)
+        self.lbl_restart_engine.setText(tr("Restarting..."))
+        self._bus.sig_engine_restart_requested.emit()
+
+    def _on_engine_restarted(self, ok: bool) -> None:
+        self.btn_restart_engine.setEnabled(getattr(self, "_native_playing", False))
+        self.lbl_restart_engine.setText(tr("Restarted.") if ok else
+                                        tr("The engine did not start; it is tried again every 2 seconds."))
 
     def _on_deck_report(self, report) -> None:
         """The deck's mixer values and MIDI input state, for the overview."""
@@ -397,6 +424,7 @@ class PlaybackSettingsMixin:
         ``devices(api=None)`` -> (the output device in use, the output devices, their channels by name) of it
         (None: not known yet); ``channels()`` -> its main output device's channels (when not listed)."""
         self._native_playing = bool(native)
+        self.btn_restart_engine.setEnabled(bool(native))
         self._output_devices_provider = devices
         self._output_channels_provider = channels
         shown, other = ((self.sp_native_buffer_ms, self.sp_python_buffer_ms) if native

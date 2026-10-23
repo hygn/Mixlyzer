@@ -48,6 +48,9 @@
   "playback.unload": [
     "Shift+U"
   ],
+  "playback.restart_engine": [
+    "Alt+Shift+E"
+  ],
   "cue.jump.A": [
     "1"
   ],

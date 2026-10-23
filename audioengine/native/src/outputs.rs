@@ -169,6 +169,7 @@ struct Stream {
     reopen_at: f64,
     resyncs: u64,
     resynced_at: Vec<f64>,
+    last_error: String, // said once until it changes (an open is tried each second)
 }
 
 /// A stream whose bridges skipped a surplus more than RESYNCS_MAX times within RESYNC_SPAN_SEC is not keeping pace
@@ -260,7 +261,7 @@ fn regroup(wanted: &[Option<AuxWanted>; BRIDGED_BUSES], streams: &mut Vec<Stream
         buses.iter().for_each(|&k| shared[k].state.store(out::STATE_OPENING, Ordering::Relaxed));
         let rate = rate_of(&buses);
         streams.push(Stream { device, buses, rate, output: None, port: Arc::new(Port::default()), reopen_at: 0.0,
-                              resyncs: 0, resynced_at: Vec::new() });
+                              resyncs: 0, resynced_at: Vec::new(), last_error: String::new() });
     }
 }
 
@@ -273,29 +274,33 @@ fn start_bridges(s: &Stream, wanted: &[Option<AuxWanted>; BRIDGED_BUSES], bridge
 }
 
 /// Opens a stream's device at its own format (its mix format, or the rate asked for), its buses' bridges prepared
-/// for that rate.
+/// for that rate; its device alone (not there: device::NOT_PRESENT, tried again each second).
 fn open(s: &mut Stream, wanted: &[Option<AuxWanted>; BRIDGED_BUSES], bridges: &[Arc<Bridge>; BRIDGED_BUSES],
         shared: &[BusState; BRIDGED_BUSES]) {
     let (name, mode) = s.device.clone();
     let names: Vec<&str> = s.buses.iter().map(|&k| BUS_NAMES[k]).collect();
-    let fail = |e: String| {
+    let fail = |s: &mut Stream, e: String| {
         for &k in &s.buses {
             shared[k].errors.fetch_add(1, Ordering::Relaxed);
             shared[k].state.store(out::STATE_FAILED, Ordering::Relaxed);
         }
-        log_line!("output of {} not opened: {e}", names.join(" + "));
+        if e != s.last_error {
+            log_line!("output of {} not opened: {e} (tried again each second)", names.join(" + "));
+            s.last_error = e;
+        }
     };
-    let (rate, channels) = match device::default_format(name.as_deref(), mode) {
+    let (rate, channels) = match device::default_format(name.as_deref(), mode, false) {
         Ok((mix, ch)) => (if s.rate > 0 { s.rate } else { mix }, ch),
-        Err(e) => return fail(e),
+        Err(e) => return fail(s, e),
     };
     for &k in &s.buses {
         bridges[k].prepare(rate as f64);
     }
     s.port = Arc::new(Port::default());
     let sink = Sink::new(s.port.clone(), rate as f64, s.buses.iter().map(|&k| (k, bridges[k].clone())).collect());
-    match device::open(Source::Sink(Arc::new(sink)), rate, channels, name.as_deref(), mode) {
+    match device::open(Source::Sink(Arc::new(sink)), rate, channels, name.as_deref(), mode, false) {
         Ok((o, opened)) => {
+            s.last_error.clear();
             log_line!("{} on {opened}: {}, {rate} Hz, {channels} ch", names.join(" + "), o.mode.label());
             for &k in &s.buses {
                 let b = &shared[k];
@@ -312,6 +317,6 @@ fn open(s: &mut Stream, wanted: &[Option<AuxWanted>; BRIDGED_BUSES], bridges: &[
                 shared[k].state.store(out::STATE_OPEN, Ordering::Relaxed);
             }
         }
-        Err(e) => fail(e),
+        Err(e) => fail(s, e),
     }
 }

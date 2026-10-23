@@ -96,6 +96,9 @@ ACTIONS: tuple[Action, ...] = (
     Action("playback.zoom_in", PLAYBACK, tr_mark("Zoom in"), repeat=True),
     Action("playback.zoom_out", PLAYBACK, tr_mark("Zoom out"), repeat=True),
     Action("playback.unload", PLAYBACK, tr_mark("Unload the track")),
+    Action("playback.restart_engine", PLAYBACK, tr_mark("Restart the audio engine"),
+           tip=tr_mark("The native audio engine stopped and started again, the track, its place and the settings as "
+                       "they were: the last resort when an output or the engine stays stuck.")),
 
     *(Action(f"cue.jump.{c}", CUE, tr_mark("JUMP: JumpCUE {letter}"), args={"letter": c},
              tip=tr_mark("Jump to JumpCUE {letter} on the next beat (stopped: move the playhead there)."))

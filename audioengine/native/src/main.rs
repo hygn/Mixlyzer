@@ -109,7 +109,7 @@ fn main() {
     let mut wanted_mode = device::Mode::from_codes(code("--api"), code("--exclusive"));
     // the session's format: the device's, at the rate asked for in exclusive mode (the GUI decodes for it)
     let asked_rate = code("--rate");
-    let format = device::default_format(wanted_device.as_deref(), wanted_mode)
+    let format = device::default_format(wanted_device.as_deref(), wanted_mode, true)
         .map(|(r, c)| (if wanted_mode.exclusive && asked_rate > 0 { asked_rate } else { r }, c));
     let (rate, ch) = match format {
         Ok(f) => f,
@@ -136,7 +136,11 @@ fn main() {
     ring.attach_bus(device::Bus { decks: lanes[1..].to_vec(), params: params.clone(), bridges: aux.bridges.clone() });
     let _ = port.engine_thread.set(std::thread::current());
     let mut current_device = String::new();
-    let mut output = match device::open(Source::Main(ring.clone()), rate, out_ch, wanted_device.as_deref(), wanted_mode) {
+    // the master: on the system's default while its device is not there (see device::NOT_PRESENT); a reopen's
+    // failure said once until it changes
+    let mut last_error = String::new();
+    let mut output = match device::open(Source::Main(ring.clone()), rate, out_ch, wanted_device.as_deref(), wanted_mode,
+                                        true) {
         Ok((o, name)) => {
             log_line!("master on {name}: {}, {rate} Hz, {out_ch} ch (the decks {ch} ch, {MAX_DECKS} at most)",
                       o.mode.label());
@@ -145,6 +149,7 @@ fn main() {
         }
         Err(e) => {
             log_line!("device open failed: {e}");
+            last_error = e;
             None
         }
     };
@@ -330,17 +335,22 @@ fn main() {
                 reopen_at = now + 1.0;
                 output = None;
                 port.failed.store(false, Ordering::Relaxed);
-                match device::open(Source::Main(ring.clone()), rate, out_ch, wanted_device.as_deref(), wanted_mode) {
+                match device::open(Source::Main(ring.clone()), rate, out_ch, wanted_device.as_deref(), wanted_mode,
+                                   true) {
                     Ok((o, name)) => {
-                        output = Some(o);
-                        if name != current_device {
-                            log_line!("output device: {name}");
+                        if name != current_device || !last_error.is_empty() {
+                            log_line!("master on {name}: {}", o.mode.label());
                             current_device = name;
                         }
+                        output = Some(o);
+                        last_error.clear();
                     }
                     Err(e) => {
                         device_errors += 1;
-                        log_line!("device reopen failed: {e}");
+                        if e != last_error {
+                            log_line!("device reopen failed: {e} (tried again each second)");
+                            last_error = e;
+                        }
                     }
                 }
             }

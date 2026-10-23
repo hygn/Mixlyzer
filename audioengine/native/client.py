@@ -1185,12 +1185,33 @@ class NativeFeeder(QtCore.QObject):
         if finished > old_finished and row["track_gen"] == self._gen:
             self.finished.emit()
 
-    def _restart(self) -> None:
+    def restart_engine(self) -> bool:
+        """The engine started again by hand (Settings > Audio > Engine: the last resort when a device or the engine
+        stays stuck): the old one stopped (ended when it does not answer), a new one on the same output with the
+        settings, the track, its place and its play as they were. False when the new one did not start (tried
+        again every RESTART_SEC, as a dead one is)."""
+        if self.deck_index:
+            return False
+        report = self._report
+        playing = bool(report.playing) if report is not None else False
+        frame = self.playhead_frame()
+        self._engine.close()
+        self._restart_at = 0.0
+        self._restart("restarting it as asked")
+        if not self._engine.alive():
+            return False
+        if self._pcm is not None:
+            self.seek(frame)
+            if playing:
+                self.play()
+        return True
+
+    def _restart(self, why: str = "the engine stopped") -> None:
         now = time.monotonic()
         if now < self._restart_at:
             return
         self._restart_at = now + self.RESTART_SEC
-        print("[AudioEngine] the engine stopped; starting it again")
+        print(f"[AudioEngine] {why}; starting it again")
         wanted = self._exclusive_rate if self._exclusive else 0
         engine = NativeEngine.start(self._device, self._api, self._exclusive, wanted)
         if engine is None:

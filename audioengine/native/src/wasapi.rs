@@ -273,9 +273,10 @@ pub struct WasapiOutput {
 }
 
 impl WasapiOutput {
-    /// Opens the device named ``name`` (None or "": the default; one not found: the default too), ``exclusive``
-    /// or shared, at ``rate`` / ``channels``; returns it, the device's name and its period (ms).
-    pub fn open(source: Source, rate: u32, channels: usize, name: Option<&str>, exclusive: bool)
+    /// Opens the device named ``name`` (None or "": the default; one not there: the default with ``fallback``,
+    /// else device::NOT_PRESENT), ``exclusive`` or shared, at ``rate`` / ``channels``; returns it, the device's
+    /// name and its period (ms).
+    pub fn open(source: Source, rate: u32, channels: usize, name: Option<&str>, exclusive: bool, fallback: bool)
         -> Result<(WasapiOutput, String, f64), String> {
         let stop = Arc::new(AtomicBool::new(false));
         let (tx, rx) = mpsc::channel();
@@ -283,7 +284,7 @@ impl WasapiOutput {
         let s = stop.clone();
         let thread = std::thread::Builder::new()
             .name("WasapiOutput".into())
-            .spawn(move || render_thread(source, rate, channels, wanted, exclusive, s, tx))
+            .spawn(move || render_thread(source, rate, channels, wanted, exclusive, fallback, s, tx))
             .map_err(|e| e.to_string())?;
         match rx.recv() {
             Ok(Ok((device, period_ms))) => Ok((WasapiOutput { stop, thread: Some(thread) }, device, period_ms)),
@@ -329,17 +330,26 @@ unsafe fn friendly_name(device: &IMMDevice) -> Option<String> {
     }
 }
 
-unsafe fn find_device(enumerator: &IMMDeviceEnumerator, name: Option<&str>) -> Result<IMMDevice, String> {
+/// The endpoint named ``name`` as device::find picks it (its instance number aside when it alone matches).
+unsafe fn find_device(enumerator: &IMMDeviceEnumerator, name: Option<&str>, fallback: bool)
+    -> Result<IMMDevice, String> {
     unsafe {
         if let Some(wanted) = name.filter(|n| !n.is_empty()) {
             if let Ok(collection) = enumerator.EnumAudioEndpoints(eRender, DEVICE_STATE_ACTIVE) {
+                let mut devices = Vec::new();
                 for i in 0..collection.GetCount().unwrap_or(0) {
                     if let Ok(d) = collection.Item(i) {
-                        if friendly_name(&d).as_deref() == Some(wanted) {
-                            return Ok(d);
-                        }
+                        let n = friendly_name(&d).unwrap_or_default();
+                        devices.push((d, n));
                     }
                 }
+                let names: Vec<String> = devices.iter().map(|(_, n)| n.clone()).collect();
+                if let Some(k) = crate::device::pick(&names, wanted) {
+                    return Ok(devices.swap_remove(k).0);
+                }
+            }
+            if !fallback {
+                return Err(format!("{wanted}: {}", crate::device::NOT_PRESENT));
             }
         }
         enumerator.GetDefaultAudioEndpoint(eRender, eConsole).map_err(|e| format!("no output device: {e}"))
@@ -564,6 +574,7 @@ fn render_thread(
     channels: usize,
     name: Option<String>,
     exclusive: bool,
+    fallback: bool,
     stop: Arc<AtomicBool>,
     ready: mpsc::Sender<Result<(String, f64), String>>,
 ) {
@@ -577,7 +588,7 @@ fn render_thread(
         let opened = (|| {
             let enumerator: IMMDeviceEnumerator =
                 CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL).map_err(|e| e.to_string())?;
-            let device = find_device(&enumerator, name.as_deref())?;
+            let device = find_device(&enumerator, name.as_deref(), fallback)?;
             let device_name = friendly_name(&device).unwrap_or_default();
             let o = if exclusive {
                 let (level, poll) = (period_level(&device_name), poll_periods(&device_name));

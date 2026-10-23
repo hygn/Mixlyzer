@@ -110,6 +110,9 @@ class EventBus(QtCore.QObject):
     # the track's marks as edited: (beats s, downbeat flags, CUE points s, JumpCUEs A-Z s or NaN)
     sig_deck_marks = QtCore.Signal(object)
     sig_deck_state = QtCore.Signal(object)
+    # the native audio engine started again by hand (Settings > Audio > Engine), and whether it did
+    sig_engine_restart_requested = QtCore.Signal()
+    sig_engine_restarted = QtCore.Signal(bool)
     # MIDI messages from the controller (status, data1, data2, flags, action): the GUI's actions, and all while
     # learning
     sig_midi_events = QtCore.Signal(object)
