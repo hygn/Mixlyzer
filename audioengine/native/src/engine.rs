@@ -211,8 +211,8 @@ impl Engine {
             return;
         }
         let rate = self.rate as u32;
-        self.stretch = if on { Some(Box::new(Stretcher::new(self.ch, rate))) } else { None };
-        self.standby = if on { Some(Box::new(Stretcher::new(self.ch, rate))) } else { None };
+        self.stretch = if on { Some(Box::new(Stretcher::light(self.ch, rate))) } else { None };
+        self.standby = if on { Some(Box::new(Stretcher::light(self.ch, rate))) } else { None };
         self.cancel_standby();
     }
 

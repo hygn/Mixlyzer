@@ -37,6 +37,7 @@ mod outputs;
 mod sched;
 mod shm;
 mod simd;
+mod split;
 mod stretch;
 mod timeline;
 mod vk;
@@ -490,7 +491,7 @@ fn mix_file(args: &[String], input: &str) {
 }
 
 /// Offline: the time stretch of a raw float32 file (interleaved), for checks against the Python engine's.
-/// --stretch-file IN --out OUT --channels C --rate R --factor F [--block N]
+/// --stretch-file IN --out OUT --channels C --rate R --factor F [--block N] [--light]
 fn stretch_file(args: &[String], input: &str) {
     let get = |n: &str, d: &str| arg(args, n).unwrap_or_else(|| d.to_string());
     let ch: usize = get("--channels", "2").parse().unwrap();
@@ -500,7 +501,11 @@ fn stretch_file(args: &[String], input: &str) {
     let bytes = std::fs::read(input).expect("read input");
     let pcm: Vec<f32> = bytes.chunks_exact(4).map(|b| f32::from_le_bytes(b.try_into().unwrap())).collect();
     vk::warm();
-    let mut s = stretch::Stretcher::new(ch, rate);
+    let mut s = if args.iter().any(|a| a == "--light") {
+        stretch::Stretcher::light(ch, rate)
+    } else {
+        stretch::Stretcher::new(ch, rate)
+    };
     let mut pos = 0.0;
     let mut out: Vec<f32> = Vec::new();
     let t0 = clock::now();

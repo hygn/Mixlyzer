@@ -1,6 +1,7 @@
 //! Streaming, percussion-aware, pitch-preserving time scaling: audioengine/python/timestretch.py's
 //! StreamingTimeStretcher (its docs hold the design), with the FFTs on realfft / rustfft and the vector work
-//! on VOLK. ``factor`` is input frames per output frame.
+//! on VOLK. ``factor`` is input frames per output frame. Two modes: the full one (``Stretcher::new``, the
+//! Python engine's, sample for sample) and the light one the engine plays (``Stretcher::light``, see ``Light``).
 
 use std::collections::{HashMap, VecDeque};
 use std::f64::consts::PI;
@@ -10,6 +11,7 @@ use std::sync::Arc;
 use num_complex::Complex32;
 use realfft::{ComplexToReal, RealFftPlanner, RealToComplex};
 
+use crate::split::{dot, BandSplit};
 use crate::vk;
 
 const EPS: f64 = 1e-12;
@@ -190,7 +192,6 @@ fn sosfiltfilt(sos: &Sos, x: &[f64]) -> Vec<f64> {
 
 #[derive(Clone, Copy)]
 struct Event {
-    frame: i64,
     strength: f64,
     kick: f64,
 }
@@ -418,7 +419,7 @@ impl Detector {
         }
         let low_score = ((self.low[&j] - 0.25) / 0.35).clamp(0.0, 1.0);
         let percussion_score = ((value - 0.30) / 0.30).clamp(0.0, 1.0);
-        self.events.insert(j, Event { frame: j, strength: value, kick: (low_score * percussion_score).sqrt() });
+        self.events.insert(j, Event { strength: value, kick: (low_score * percussion_score).sqrt() });
     }
 
     fn prune(&mut self, frame: i64) {
@@ -592,6 +593,19 @@ fn rtpghi_frame(
         }
     }
 
+    lock_and_wrap(out, analysis, joint, channels, bins, lock_strength, work);
+}
+
+/// Identity phase locking around the joint peaks, then the phases wrapped.
+fn lock_and_wrap(
+    out: &mut [f64],
+    analysis: &[f64],
+    joint: &[f32],
+    channels: usize,
+    bins: usize,
+    lock_strength: f64,
+    work: &mut PhaseWork,
+) {
     if lock_strength > 0.0 && bins >= 3 {
         let mut peak_at = 0;
         let mut peak_value = EPS;
@@ -629,6 +643,134 @@ fn rtpghi_frame(
     for v in out.iter_mut() {
         *v = wrap(*v);
     }
+}
+
+/// The light mode's RTPGHI: ``rtpghi_frame``'s integration with a bucket queue in place of its heap and its
+/// sorted seeds: magnitudes ordered to 1/8 octave (0.75 dB; the f32's exponent and three mantissa bits), each
+/// push and pop O(1). Bins within one bucket go in last-in first-out order: the order of integration is
+/// RTPGHI's heuristic, not its result's definition.
+#[allow(clippy::too_many_arguments)]
+fn rtpghi_frame_buckets(
+    out: &mut [f64],
+    analysis: &[f64],
+    joint: &[f32],
+    previous_analysis: &[f64],
+    previous_synthesis: &[f64],
+    previous_joint: &[f32],
+    channels: usize,
+    bins: usize,
+    analysis_hop: i64,
+    synthesis_hop: i64,
+    n_fft: usize,
+    tolerance: f64,
+    lock_strength: f64,
+    work: &mut PhaseWork,
+) {
+    const SHIFT: u32 = 20;
+    out.copy_from_slice(analysis);
+    let ha = analysis_hop.max(1) as f64;
+    let hs = synthesis_hop.max(1) as f64;
+    let local = hs / ha;
+    let mut max_mag = EPS;
+    for m in 0..bins {
+        max_mag = max_mag.max(previous_joint[m] as f64).max(joint[m] as f64);
+    }
+    let floor = tolerance * max_mag;
+    let floor_key = (floor as f32).to_bits() >> SHIFT;
+    let count = (((max_mag as f32).to_bits() >> SHIFT).saturating_sub(floor_key) + 2) as usize;
+    let key = |v: f32| -> usize { ((v.to_bits() >> SHIFT).saturating_sub(floor_key) as usize).min(count - 1) };
+    let buckets = &mut work.buckets;
+    if buckets.len() < count {
+        buckets.resize_with(count, Vec::new);
+    }
+    for b in buckets.iter_mut().take(count) {
+        b.clear();
+    }
+    let remaining = &mut work.remaining;
+    remaining.clear();
+    remaining.resize(bins, false);
+    let mut remaining_count = 0usize;
+    let mut top = 0usize;
+    let mut queued = 0usize;
+    // the seeds: a bin's integration in time, keyed by its previous magnitude (item 2m)
+    for m in 0..bins {
+        if joint[m] as f64 > floor {
+            remaining[m] = true;
+            remaining_count += 1;
+            let k = key(previous_joint[m]);
+            buckets[k].push(2 * m as u32);
+            top = top.max(k);
+            queued += 1;
+        }
+    }
+    let time_step = |out: &mut [f64], m: usize| {
+        let omega = TWO_PI * m as f64 / n_fft as f64;
+        for c in 0..channels {
+            let i = c * bins + m;
+            let residual = wrap(analysis[i] - previous_analysis[i] - omega * ha);
+            out[i] = previous_synthesis[i] + omega * hs + local * residual;
+        }
+    };
+    while remaining_count > 0 {
+        if queued == 0 {
+            let mut m = 0;
+            while m < bins && !remaining[m] {
+                m += 1;
+            }
+            time_step(out, m);
+            remaining[m] = false;
+            remaining_count -= 1;
+            let k = key(joint[m]);
+            buckets[k].push(2 * m as u32 + 1);
+            top = top.max(k);
+            queued += 1;
+        }
+        while buckets[top].is_empty() {
+            top -= 1;
+        }
+        let item = buckets[top].pop().unwrap() as usize;
+        queued -= 1;
+        let m = item >> 1;
+        if item & 1 == 0 {
+            if remaining[m] {
+                time_step(out, m);
+                remaining[m] = false;
+                remaining_count -= 1;
+                let k = key(joint[m]);
+                buckets[k].push(2 * m as u32 + 1);
+                top = top.max(k);
+                queued += 1;
+            }
+            continue;
+        }
+        let up = m + 1;
+        if up < bins && remaining[up] {
+            for c in 0..channels {
+                let b = c * bins;
+                out[b + up] = out[b + m] + local * wrap(analysis[b + up] - analysis[b + m]);
+            }
+            remaining[up] = false;
+            remaining_count -= 1;
+            let k = key(joint[up]);
+            buckets[k].push(2 * up as u32 + 1);
+            top = top.max(k);
+            queued += 1;
+        }
+        if m >= 1 && remaining[m - 1] {
+            let down = m - 1;
+            for c in 0..channels {
+                let b = c * bins;
+                out[b + down] = out[b + m] - local * wrap(analysis[b + m] - analysis[b + down]);
+            }
+            remaining[down] = false;
+            remaining_count -= 1;
+            let k = key(joint[down]);
+            buckets[k].push(2 * down as u32 + 1);
+            top = top.max(k);
+            queued += 1;
+        }
+    }
+    lock_and_wrap(out, analysis, joint, channels, bins, lock_strength, work);
 }
 
 /// One rotation per bin shared by all channels (the input's L/R phase relation kept): the synthesis phases
@@ -703,6 +845,7 @@ impl CoherentWork {
 
 #[derive(Default)]
 struct PhaseWork {
+    buckets: Vec<Vec<u32>>,
     remaining: Vec<bool>,
     seeds: Vec<i64>,
     heap: Vec<i64>,
@@ -722,6 +865,76 @@ struct Attack {
     post: i64,
     fade: usize,
     sos: Option<Sos>,
+}
+
+/// The light mode's analysis and synthesis windows for one low-rate window length ``wl``: the analysis at the
+/// low rate, the synthesis the same window at the full rate (``d * wl``).
+struct LightWindow {
+    analysis: Vec<f32>,
+    center_ramp: Vec<Complex32>,
+    inverse_ramp: Vec<Complex32>,
+    synthesis: Vec<f32>,
+    synthesis_sq: Vec<f32>,
+}
+
+/// The light mode (``Stretcher::light``), the full mode's work at about 40 %: the phase vocoder on the low band
+/// only (below 7 - 8 kHz, decimated by ``d``: a third of the bins, the RTPGHI's queue with them, a bucket
+/// queue: ``rtpghi_frame_buckets``), synthesised at the full rate from the low band's bins (a zero-padded
+/// inverse FFT: the band-limited interpolation itself); the high band (the residual: the bands sum to the
+/// source, split.rs) by WSOLA on the vocoder's own frames: each frame's input and output centres are the
+/// vocoder's, so both bands follow one time map. WSOLA looks within 5 ms for the segment continuing the
+/// previous one (the high band's partials, a synth's or a voice's harmonics, align only over their
+/// fundamental's period: within 0.5 ms they warbled), its splices' level kept whatever their correlation.
+/// The attack is the source's own: at each event (its onset found in the source, ``onset``, and carried to
+/// its destination on the time map) the high band, and the vocoder's band above 200 Hz where the full mode
+/// restores an attack, are crossfaded to the source's (``restore_light``), so every band's attack lands at
+/// the same time and none is overlap-added; the bass below keeps its own phase.
+struct Light {
+    split: BandSplit,
+    rate: f64,
+    hop_low: i64,
+    fft: Arc<dyn RealToComplex<f32>>,
+    ifft: Arc<dyn ComplexToReal<f32>>,
+    fft_scratch: Vec<Complex32>,
+    ifft_scratch: Vec<Complex32>,
+    fft_in: Vec<f32>,
+    fft_out: Vec<Complex32>,
+    synth_spec: Vec<Complex32>,
+    synth_out: Vec<f32>,
+    windows: HashMap<usize, Rc<LightWindow>>,
+    previous_center: Option<i64>,
+    // WSOLA: segments of two hops (a periodic Hann: at one hop apart they sum to 1), placed within
+    // ``tolerance`` of the vocoder's input centre where they best continue the previous one
+    segment_window: Vec<f32>,
+    tolerance: i64,
+    previous_start: Option<i64>,
+    energy: Vec<f64>,
+    // the candidates' cross-correlation with the continuation, by FFT (a length of at least 2 tolerance + 2 hops)
+    xc_fft: Arc<dyn RealToComplex<f32>>,
+    xc_ifft: Arc<dyn ComplexToReal<f32>>,
+    xc_in: Vec<f32>,
+    xc_spec: Vec<Complex32>,
+    xc_ref: Vec<Complex32>,
+    xc_sum: Vec<Complex32>,
+    xc_out: Vec<f32>,
+    xc_scratch: Vec<Complex32>,
+}
+
+/// The smallest even length of the factors 2, 3 and 5 from ``n`` up (a fast size for rustfft).
+fn fast_even_length(n: usize) -> usize {
+    let mut m = n.max(2) + (n & 1);
+    loop {
+        let mut r = m;
+        for f in [2, 3, 5] {
+            while r % f == 0 {
+                r /= f;
+            }
+        }
+        if r == 1 {
+            return m;
+        }
+        m += 2;
+    }
 }
 
 pub struct Stretcher {
@@ -764,7 +977,7 @@ pub struct Stretcher {
 
     frame_map: VecDeque<(i64, i64)>,
     next_event_frame: i64,
-    pending_events: VecDeque<(i64, Event)>,
+    pending_events: VecDeque<(i64, i64, Event)>, // (destination, the input sample aligned to it, the event)
 
     streaming: bool,
     stream_gain: f64,
@@ -789,6 +1002,8 @@ pub struct Stretcher {
     phase32: Vec<f32>,
     phase_work: PhaseWork,
     coherent_work: CoherentWork,
+    light: Option<Box<Light>>,
+    ola_high: Vec<f32>, // [len, ch]: the light mode's high band
 }
 
 impl Stretcher {
@@ -898,9 +1113,85 @@ impl Stretcher {
             phase32: vec![0.0; bins],
             phase_work: PhaseWork::default(),
             coherent_work: CoherentWork::default(),
+            light: None,
+            ola_high: vec![],
         };
         s.reset();
         s
+    }
+
+    /// The light mode (see ``Light``); the full one where the rate leaves no band to split.
+    pub fn light(channels: usize, sample_rate: u32) -> Stretcher {
+        let mut s = Stretcher::new(channels, sample_rate);
+        let Some(split) = BandSplit::new(channels, sample_rate) else { return s };
+        let d = split.d;
+        let hop_low = 1.max((s.hop as f64 / d as f64).round_ties_even() as i64);
+        s.hop = d as i64 * hop_low;
+        let wl_max = Self::low_length(d, s.max_window);
+        s.max_window = s.max_window.max(d * wl_max);
+        let n_fft = fast_even_length((wl_max as f64 * s.cfg.frequency_oversampling).ceil() as usize);
+        let n_fft_full = d * n_fft;
+        let bins = n_fft / 2 + 1;
+        s.n_fft = n_fft;
+        s.bins = bins;
+        let (ch, zc) = (channels, Complex32::new(0.0, 0.0));
+        s.coeff = vec![zc; ch * bins];
+        s.analysis_phase = vec![0.0; ch * bins];
+        s.synthesis_phase = vec![0.0; ch * bins];
+        s.previous_analysis_phase = vec![0.0; ch * bins];
+        s.previous_synthesis_phase = vec![0.0; ch * bins];
+        s.magnitude = vec![0.0; ch * bins];
+        s.joint = vec![0.0; bins];
+        s.previous_joint = vec![0.0; bins];
+        s.phase32 = vec![0.0; bins];
+        let mut planner = RealFftPlanner::<f32>::new();
+        let fft = planner.plan_fft_forward(n_fft);
+        let ifft = planner.plan_fft_inverse(n_fft_full);
+        let segment = 2 * s.hop as usize;
+        let tolerance = 1.max((sample_rate as f64 * Self::WSOLA_TOLERANCE_MS / 1000.0).round_ties_even() as i64);
+        let xc_n = fast_even_length(2 * tolerance as usize + 2 * s.hop as usize);
+        let xc_fft = planner.plan_fft_forward(xc_n);
+        let xc_ifft = planner.plan_fft_inverse(xc_n);
+        let xc_scratch = vec![zc; xc_fft.get_scratch_len().max(xc_ifft.get_scratch_len())];
+        s.light = Some(Box::new(Light {
+            hop_low,
+            fft_scratch: fft.make_scratch_vec(),
+            ifft_scratch: ifft.make_scratch_vec(),
+            fft_in: vec![0.0; n_fft],
+            fft_out: vec![zc; bins],
+            synth_spec: vec![zc; n_fft_full / 2 + 1],
+            synth_out: vec![0.0; n_fft_full],
+            fft,
+            ifft,
+            windows: HashMap::new(),
+            previous_center: None,
+            segment_window: periodic_hann(segment),
+            tolerance,
+            rate: sample_rate as f64,
+            previous_start: None,
+            energy: Vec::new(),
+            xc_in: vec![0.0; xc_n],
+            xc_spec: vec![zc; xc_n / 2 + 1],
+            xc_ref: vec![zc; xc_n / 2 + 1],
+            xc_sum: vec![zc; xc_n / 2 + 1],
+            xc_out: vec![0.0; xc_n],
+            xc_scratch,
+            xc_fft,
+            xc_ifft,
+            split,
+        }));
+        s.reset();
+        s
+    }
+
+    const WSOLA_TOLERANCE_MS: f64 = 5.0;
+    /// The light mode's attack: the vocoder's band crossfaded to the source's above this.
+    const ATTACK_LOW_CUTOFF_HZ: f64 = 200.0;
+
+    /// A full-rate window length's low-rate one (even).
+    fn low_length(d: usize, length: usize) -> usize {
+        let wl = 16.max((length as f64 / d as f64).round_ties_even() as usize);
+        wl + (wl & 1)
     }
 
     pub fn expected_input_position(&self) -> Option<f64> {
@@ -924,6 +1215,12 @@ impl Stretcher {
         self.ola.clear();
         self.weight.clear();
         self.correction.clear();
+        self.ola_high.clear();
+        if let Some(light) = &mut self.light {
+            light.previous_center = None;
+            light.previous_start = None;
+            light.split.reset();
+        }
         self.frame_map.clear();
         self.pending_events.clear();
         self.streaming = false;
@@ -1138,6 +1435,12 @@ impl Stretcher {
         self.ola = vec![0.0; initial * self.ch];
         self.weight = vec![0.0; initial];
         self.correction = vec![0.0; initial * self.ch];
+        if let Some(light) = &mut self.light {
+            self.ola_high = vec![0.0; initial * self.ch];
+            light.previous_center = None;
+            light.previous_start = None;
+            light.split.reset();
+        }
     }
 
     fn window_data(&mut self, length: usize) -> Rc<WindowData> {
@@ -1167,7 +1470,22 @@ impl Stretcher {
             Some(p) => 1.max(input_center - p),
         };
         let (window_length, lock_strength) = self.frame_window(source, input_center);
-        self.analyze(source, input_center, window_length);
+        let (mut analysis_hop, mut synthesis_hop, mut window_length) = (analysis_hop, self.hop, window_length);
+        let mut light = self.light.take();
+        if let Some(light) = &mut light {
+            let d = light.split.d as i64;
+            let center = (input_center as f64 / d as f64).round_ties_even() as i64;
+            analysis_hop = match light.previous_center {
+                Some(p) => 1.max(center - p),
+                None => 1.max((factor * light.hop_low as f64).round_ties_even() as i64),
+            };
+            synthesis_hop = light.hop_low;
+            window_length = Self::low_length(light.split.d, window_length);
+            self.analyze_light(light, source, center, window_length);
+            light.previous_center = Some(center);
+        } else {
+            self.analyze(source, input_center, window_length);
+        }
         // polar: phases (f64 from VOLK's f32 atan2), magnitudes, the joint magnitude over the channels
         let (ch, bins) = (self.ch, self.bins);
         for c in 0..ch {
@@ -1188,7 +1506,8 @@ impl Stretcher {
         }
         // the synthesis spectrum, into coeff
         if self.has_previous {
-            rtpghi_frame(
+            let phase = if light.is_some() { rtpghi_frame_buckets } else { rtpghi_frame };
+            phase(
                 &mut self.synthesis_phase,
                 &self.analysis_phase,
                 &self.joint,
@@ -1198,7 +1517,7 @@ impl Stretcher {
                 ch,
                 bins,
                 analysis_hop,
-                self.hop,
+                synthesis_hop,
                 self.n_fft,
                 self.cfg.rtpghi_tolerance,
                 lock_strength,
@@ -1240,12 +1559,18 @@ impl Stretcher {
                 self.handover_at = Some(output_center.max(self.output_read));
             }
         }
-        self.overlap_add(output_center, window_length);
+        if let Some(light) = &mut light {
+            self.overlap_add_light(light, output_center, window_length);
+            self.wsola_frame(light, source, input_center, output_center);
+        } else {
+            self.overlap_add(output_center, window_length);
+        }
+        self.light = light;
         if self.frame_map.len() == 512 {
             self.frame_map.pop_front();
         }
         self.frame_map.push_back((input_center, output_center));
-        self.queue_events(input_center);
+        self.queue_events(source, input_center);
         self.previous_analysis_center = Some(input_center);
         std::mem::swap(&mut self.previous_analysis_phase, &mut self.analysis_phase);
         std::mem::swap(&mut self.previous_synthesis_phase, &mut self.synthesis_phase);
@@ -1322,6 +1647,344 @@ impl Stretcher {
         }
     }
 
+    fn light_window(&self, light: &mut Light, wl: usize) -> Rc<LightWindow> {
+        if let Some(w) = light.windows.get(&wl) {
+            return w.clone();
+        }
+        let d = light.split.d;
+        let half = (wl / 2) as f64;
+        let (mut center_ramp, mut inverse_ramp) = (Vec::with_capacity(self.bins), Vec::with_capacity(self.bins));
+        for k in 0..self.bins {
+            let a = TWO_PI * k as f64 / self.n_fft as f64 * half;
+            center_ramp.push(Complex32::new(a.cos() as f32, a.sin() as f32));
+            inverse_ramp.push(Complex32::new(a.cos() as f32, -a.sin() as f32));
+        }
+        let synthesis = periodic_hann(d * wl);
+        let synthesis_sq = synthesis.iter().map(|w| w * w).collect();
+        let w = Rc::new(LightWindow { analysis: periodic_hann(wl), center_ramp, inverse_ramp, synthesis, synthesis_sq });
+        light.windows.insert(wl, w.clone());
+        w
+    }
+
+    /// The low band's windowed frame (``wl`` low-rate samples about ``center``) per channel, centre-referenced,
+    /// into coeff ([ch, bins]).
+    fn analyze_light(&mut self, light: &mut Light, source: &[f32], center: i64, wl: usize) {
+        let wd = self.light_window(light, wl);
+        let left = center - (wl / 2) as i64;
+        light.split.ensure_low(source, left, left + wl as i64);
+        for c in 0..self.ch {
+            vk::mul(&mut light.fft_in[..wl], light.split.low(c, left, left + wl as i64), &wd.analysis);
+            light.fft_in[wl..].iter_mut().for_each(|v| *v = 0.0);
+            light.fft.process_with_scratch(&mut light.fft_in, &mut light.fft_out, &mut light.fft_scratch).ok();
+            vk::cmul_in(&mut light.fft_out, &wd.center_ramp);
+            self.coeff[c * self.bins..(c + 1) * self.bins].copy_from_slice(&light.fft_out);
+        }
+    }
+
+    /// The low band's synthesis frame at the full rate: its bins zero-padded to the full rate's inverse FFT,
+    /// the full-rate window, overlap-added as ``overlap_add`` does.
+    fn overlap_add_light(&mut self, light: &mut Light, center: i64, wl: usize) {
+        let wd = self.light_window(light, wl);
+        let ch = self.ch;
+        let length = light.split.d * wl;
+        let mut left = center - (length / 2) as i64;
+        let right = left + length as i64;
+        let mut src_start = 0usize;
+        if left < self.ola_base {
+            src_start = (self.ola_base - left) as usize;
+            left = self.ola_base;
+        }
+        if right <= left || src_start >= length {
+            return;
+        }
+        self.ensure_capacity(right);
+        let start = (left - self.ola_base) as usize;
+        let stop = (right - self.ola_base) as usize;
+        let span = stop - start;
+        // the low band's spectrum was taken at 1 / d of the rate: 1 / n_fft (not the full rate's) keeps its level
+        let scale = 1.0 / self.n_fft as f32;
+        let bins = self.bins;
+        for c in 0..ch {
+            let spec = &mut light.synth_spec;
+            spec[..bins].copy_from_slice(&self.coeff[c * bins..(c + 1) * bins]);
+            vk::cmul_in(&mut spec[..bins], &wd.inverse_ramp);
+            spec[0].im = 0.0;
+            spec[bins - 1] = Complex32::new(0.0, 0.0); // the low rate's Nyquist bin: the band stops below it
+            spec[bins..].iter_mut().for_each(|v| *v = Complex32::new(0.0, 0.0));
+            light.ifft.process_with_scratch(spec, &mut light.synth_out, &mut light.ifft_scratch).ok();
+            let frame = &mut self.frame_buf[..span];
+            vk::mul(frame, &light.synth_out[src_start..src_start + span], &wd.synthesis[src_start..src_start + span]);
+            for k in 0..span {
+                self.ola[(start + k) * ch + c] += frame[k] * scale;
+            }
+        }
+        vk::add_in(&mut self.weight[start..stop], &wd.synthesis_sq[src_start..src_start + span]);
+    }
+
+    /// The high band's segment for one vocoder frame: two hops of the source's high band from within
+    /// ``tolerance`` of the frame's input start, where it best continues the previous segment, overlap-added at
+    /// the frame's output start.
+    fn wsola_frame(&mut self, light: &mut Light, source: &[f32], input_center: i64, output_center: i64) {
+        let ch = self.ch;
+        let hop = self.hop;
+        let segment = 2 * hop;
+        let tol = light.tolerance;
+        let nominal = input_center - hop;
+        let mut start = nominal;
+        // the splice's correlation: the previous segment's second half and this one's first
+        let mut correlation = 1f32;
+        if let Some(previous) = light.previous_start {
+            // compared over the overlap: this segment's first half against the previous one's continuation
+            let natural = previous + hop;
+            let search = (natural - nominal).abs() <= 4 * hop;
+            let (a, b) = if search { (nominal - tol, nominal + tol + hop) } else { (nominal, nominal + hop) };
+            light.split.ensure_high(source, a.min(natural), b.max(natural + hop));
+            // each candidate's energy from running sums
+            let span = (b - a) as usize;
+            let energy = &mut light.energy;
+            energy.clear();
+            energy.resize(span + 1, 0.0);
+            for c in 0..ch {
+                let x = light.split.high(c, a, b);
+                let mut acc = 0f64;
+                for k in 0..span {
+                    acc += (x[k] * x[k]) as f64;
+                    energy[k + 1] += acc;
+                }
+            }
+            let hop_u = hop as usize;
+            let energy_at = |at: i64| -> f32 {
+                let k = (at - a) as usize;
+                (light.energy[k + hop_u] - light.energy[k]).max(0.0) as f32
+            };
+            let cross = |at: i64| -> f32 {
+                let mut num = 0f32;
+                for c in 0..ch {
+                    num += dot(light.split.high(c, at, at + hop), light.split.high(c, natural, natural + hop));
+                }
+                num
+            };
+            let mut num = cross(nominal);
+            let mut best = num / (energy_at(nominal) + 1e-12).sqrt();
+            if search {
+                // every candidate's correlation at once: sum over channels of X conj(Y), one inverse FFT
+                let n = light.xc_in.len();
+                light.xc_sum.iter_mut().for_each(|v| *v = Complex32::new(0.0, 0.0));
+                for c in 0..ch {
+                    light.xc_in[..span].copy_from_slice(light.split.high(c, a, b));
+                    light.xc_in[span..].iter_mut().for_each(|v| *v = 0.0);
+                    light.xc_fft.process_with_scratch(&mut light.xc_in, &mut light.xc_spec, &mut light.xc_scratch).ok();
+                    light.xc_in[..hop_u].copy_from_slice(light.split.high(c, natural, natural + hop));
+                    light.xc_in[hop_u..].iter_mut().for_each(|v| *v = 0.0);
+                    light.xc_fft.process_with_scratch(&mut light.xc_in, &mut light.xc_ref, &mut light.xc_scratch).ok();
+                    for (sum, (x, y)) in light.xc_sum.iter_mut().zip(light.xc_spec.iter().zip(light.xc_ref.iter())) {
+                        *sum += x * y.conj();
+                    }
+                }
+                light.xc_sum[0].im = 0.0;
+                let last = light.xc_sum.len() - 1;
+                light.xc_sum[last].im = 0.0;
+                light.xc_ifft.process_with_scratch(&mut light.xc_sum, &mut light.xc_out, &mut light.xc_scratch).ok();
+                let scale = 1.0 / n as f32;
+                for k in 0..=(2 * tol) as usize {
+                    let at = a + k as i64;
+                    if at == nominal {
+                        continue;
+                    }
+                    let c = light.xc_out[k] * scale;
+                    let score = c / (energy_at(at) + 1e-12).sqrt();
+                    if score > best {
+                        best = score;
+                        num = c;
+                        start = at;
+                    }
+                }
+            }
+            let mut e0 = 0f32;
+            for c in 0..ch {
+                let x0 = light.split.high(c, natural, natural + hop);
+                e0 += dot(x0, x0);
+            }
+            let e1 = energy_at(start);
+            correlation = if e0 > 0.0 && e1 > 0.0 { (num / (e0 * e1).sqrt()).clamp(0.0, 1.0) } else { 1.0 };
+        }
+        light.previous_start = Some(start);
+        let mut left = output_center - hop;
+        let right = left + segment;
+        let mut offset = 0i64;
+        if left < self.ola_base {
+            offset = self.ola_base - left;
+            left = self.ola_base;
+        }
+        if right <= left {
+            return;
+        }
+        self.ensure_capacity(right);
+        light.split.ensure_high(source, start + offset, start + segment);
+        let base = (left - self.ola_base) as usize;
+        let n = (right - left) as usize;
+        let window = &light.segment_window[offset as usize..];
+        for c in 0..ch {
+            let x = light.split.high(c, start + offset, start + segment);
+            for k in 0..n {
+                self.ola_high[(base + k) * ch + c] += window[k] * x[k];
+            }
+        }
+        // the crossfade's level kept whatever the splice's correlation r: the two halves' sum divided by
+        // sqrt(a^2 + b^2 + 2 r a b) (a + b = 1): Hann's own at r = 1, an equal-power crossfade at r = 0
+        if correlation < 1.0 {
+            let r = correlation as f64;
+            for k in 0..(hop - offset).max(0) as usize {
+                let a = window[k] as f64;
+                let b = 1.0 - a;
+                let g = (1.0 / (a * a + b * b + 2.0 * r * a * b).sqrt()) as f32;
+                for c in 0..ch {
+                    self.ola_high[(base + k) * ch + c] *= g;
+                }
+            }
+        }
+    }
+
+    /// The light mode's attack, one band of it (``low``: the vocoder's, else WSOLA's): the output crossfaded to
+    /// the source's own band, its onset at the event's destination on the time map, so the attack is the
+    /// source's and never overlap-added. The crossfades adapt to what they join: the rise (1 ms) ends before
+    /// the attack by as much as WSOLA may have placed a copy of it early (the stretch's drift over a hop plus
+    /// its tolerance); the plateau ends where the attack has decayed by 9 dB and the source and the stretched
+    /// output agree best (their correlation r over 4 ms, 6 - 30 ms after the onset); the fall lasts 2 ms when
+    /// they agree (r = 1) to 8 ms when they do not (r = 0), and both crossfades keep the level whatever r
+    /// (the sum divided by sqrt(s^2 + (1 - s)^2 + 2 r s (1 - s))).
+    fn restore_light(&mut self, light: &mut Light, source: &[f32], at: i64, destination: i64, low: bool) {
+        let ch = self.ch;
+        let ms = |v: f64| 1.max((v * light.rate / 1000.0).round_ties_even() as i64);
+        let factor = self.factor.unwrap_or(1.0);
+        let drift = ((1.0 - factor).abs() * self.hop as f64).ceil() as i64 + light.tolerance;
+        let rise = ms(1.0);
+        let first = destination - drift - rise - ms(1.0);
+        let (post_min, post_max) = (ms(6.0), ms(30.0));
+        let fall_max = ms(8.0);
+        let end = (destination + post_max + fall_max).min(self.finalized_until);
+        let lo = first.max(self.output_read).max(self.ola_base);
+        if end <= lo.max(destination + post_min) {
+            return;
+        }
+        // the vocoder's band is crossfaded above a cutoff only: the bass below keeps its own phase (the
+        // source's and the stretched one's phases are unrelated there, and a crossfade of the two cancels)
+        let head = if low { ms(10.0) } else { 0 };
+        let first = first - head;
+        let len = (end - first) as usize;
+        // the source's band (x) and the output's (y) over [first, end), per channel
+        let x_first = at - (destination - first);
+        light.split.ensure_high(source, x_first, x_first + len as i64);
+        let frames = (source.len() / ch) as i64;
+        let mut x = vec![vec![0f32; len]; ch];
+        let mut y = vec![vec![0f32; len]; ch];
+        for c in 0..ch {
+            let high = light.split.high(c, x_first, x_first + len as i64);
+            for k in 0..len {
+                x[c][k] = if low {
+                    let i = x_first + k as i64;
+                    let v = if i >= 0 && i < frames { source[i as usize * ch + c] } else { 0.0 };
+                    v - high[k]
+                } else {
+                    high[k]
+                };
+            }
+        }
+        for k in 0..len {
+            let t = first + k as i64;
+            if t < self.ola_base {
+                continue;
+            }
+            let i = (t - self.ola_base) as usize;
+            let w = self.weight[i];
+            for c in 0..ch {
+                y[c][k] = if low {
+                    (if w > 1e-10 { self.ola[i * ch + c] / w } else { 0.0 }) + self.correction[i * ch + c]
+                } else {
+                    self.ola_high[i * ch + c]
+                };
+            }
+        }
+        if low {
+            let sos = butter_highpass4(Self::ATTACK_LOW_CUTOFF_HZ, light.rate);
+            for c in 0..ch {
+                let xf: Vec<f64> = x[c].iter().map(|&v| v as f64).collect();
+                let yf: Vec<f64> = y[c].iter().map(|&v| v as f64).collect();
+                x[c] = sosfiltfilt(&sos, &xf).iter().map(|&v| v as f32).collect();
+                y[c] = sosfiltfilt(&sos, &yf).iter().map(|&v| v as f32).collect();
+            }
+        }
+        let correlation = |a: usize, b: usize| -> f64 {
+            let (mut xy, mut xx, mut yy) = (0f64, 0f64, 0f64);
+            for c in 0..ch {
+                xy += dot(&x[c][a..b], &y[c][a..b]) as f64;
+                xx += dot(&x[c][a..b], &x[c][a..b]) as f64;
+                yy += dot(&y[c][a..b], &y[c][a..b]) as f64;
+            }
+            if xx > 0.0 && yy > 0.0 { (xy / (xx * yy).sqrt()).clamp(0.0, 1.0) } else { 1.0 }
+        };
+        // the attack's envelope (1 ms power) and its peak over the first 10 ms
+        let w = ms(1.0) as usize;
+        let power: Vec<f64> = (0..len).map(|k| (0..ch).map(|c| (x[c][k] * x[c][k]) as f64).sum::<f64>()).collect();
+        let mut envelope = vec![0f64; len];
+        let mut acc = 0.0;
+        for k in 0..len {
+            acc += power[k];
+            if k >= w {
+                acc -= power[k - w];
+            }
+            envelope[k] = acc.max(0.0);
+        }
+        let d = (destination - first) as usize;
+        let peak = envelope[d..(d + ms(10.0) as usize).min(len)].iter().cloned().fold(0.0, f64::max);
+        let decayed = peak * 10f64.powf(-0.9);
+        // the plateau's end: the decayed position of best agreement (else the quietest)
+        let window = ms(4.0) as usize;
+        let (mut best, mut fall_at, mut quietest) = (-1.0f64, usize::MAX, (f64::MAX, d + post_min as usize));
+        let mut k = d + post_min as usize;
+        while k <= d + post_max as usize && k + fall_max as usize <= len {
+            let e = envelope[k];
+            if e < quietest.0 {
+                quietest = (e, k);
+            }
+            if e <= decayed {
+                let r = correlation(k, (k + window).min(len));
+                if r > best {
+                    best = r;
+                    fall_at = k;
+                }
+            }
+            k += ms(0.25) as usize;
+        }
+        if fall_at == usize::MAX {
+            fall_at = quietest.1.min(len.saturating_sub(fall_max as usize));
+            best = correlation(fall_at, (fall_at + window).min(len));
+        }
+        let fall = ms(2.0 + 6.0 * (1.0 - best)) as usize;
+        let (h, rise) = (head as usize, rise as usize);
+        let rise_r = correlation(h, h + rise);
+        let stop = (fall_at + fall).min(len);
+        for k in ((lo - first) as usize).max(h)..stop {
+            let (s, r) = if k < h + rise {
+                ((0.5 * PI * (k - h) as f64 / rise as f64).sin().powi(2), rise_r)
+            } else if k >= fall_at {
+                ((0.5 * PI * (stop - k) as f64 / fall as f64).sin().powi(2), best)
+            } else {
+                (1.0, 1.0)
+            };
+            let norm = (s * s + (1.0 - s) * (1.0 - s) + 2.0 * r * s * (1.0 - s)).sqrt();
+            let i = ((first + k as i64) - self.ola_base) as usize;
+            for c in 0..ch {
+                let out = ((s * x[c][k] as f64 + (1.0 - s) * y[c][k] as f64) / norm) as f32;
+                if low {
+                    self.correction[i * ch + c] += out - y[c][k];
+                } else {
+                    self.ola_high[i * ch + c] = out;
+                }
+            }
+        }
+    }
+
     fn overlap_add(&mut self, center: i64, length: usize) {
         let wd = self.window_data(length);
         let ch = self.ch;
@@ -1367,6 +2030,9 @@ impl Stretcher {
         self.weight.resize(len, 0.0);
         self.ola.resize(len * self.ch, 0.0);
         self.correction.resize(len * self.ch, 0.0);
+        if !self.ola_high.is_empty() {
+            self.ola_high.resize(len * self.ch, 0.0);
+        }
     }
 
     fn read_output(&mut self, count: usize) -> Vec<f32> {
@@ -1377,7 +2043,10 @@ impl Stretcher {
             let w = self.weight[start + k];
             for c in 0..ch {
                 let i = (start + k) * ch + c;
-                let v = if w > 1e-10 { self.ola[i] / w } else { 0.0 };
+                let mut v = if w > 1e-10 { self.ola[i] / w } else { 0.0 };
+                if !self.ola_high.is_empty() {
+                    v += self.ola_high[i];
+                }
                 out[k * ch + c] = v + self.correction[i];
             }
         }
@@ -1395,6 +2064,9 @@ impl Stretcher {
         self.weight.drain(..c);
         self.ola.drain(..c * self.ch);
         self.correction.drain(..c * self.ch);
+        if !self.ola_high.is_empty() {
+            self.ola_high.drain(..c * self.ch);
+        }
         self.ola_base += consumed;
     }
 
@@ -1411,40 +2083,98 @@ impl Stretcher {
     }
 
     // Attack preservation
-    fn queue_events(&mut self, input_center: i64) {
+    /// Queues the events the time map reaches, each with its destination: the full mode aligns an event's
+    /// frame centre, the light mode its onset (``onset``), so every band's attack lands where the map puts it.
+    fn queue_events(&mut self, source: &[f32], input_center: i64) {
         let dh = self.detector.hop;
-        let last = (input_center as f64 / dh as f64).floor() as i64;
+        // the light mode looks two frames on: an onset lies up to 1.5 frames after its frame's centre
+        let ahead = if self.light.is_some() { 2 * dh } else { 0 };
+        let last = ((input_center + ahead) as f64 / dh as f64).floor() as i64;
         if last < self.next_event_frame {
             return;
         }
         let mut centers: Option<(Vec<f64>, Vec<f64>)> = None;
         for frame in self.next_event_frame..=last {
-            let Some(&event) = self.detector.events.get(&frame) else { continue };
-            let (xs, ys) = centers.get_or_insert_with(|| {
-                (self.frame_map.iter().map(|p| p.0 as f64).collect(), self.frame_map.iter().map(|p| p.1 as f64).collect())
-            });
-            let destination = interp((frame * dh) as f64, xs, ys).round_ties_even() as i64;
-            self.pending_events.push_back((destination, event));
+            if let Some(&event) = self.detector.events.get(&frame) {
+                let at = if self.light.is_some() { self.onset(source, frame * dh) } else { frame * dh };
+                if at > input_center {
+                    // the map does not reach it yet
+                    self.next_event_frame = frame;
+                    return;
+                }
+                let (xs, ys) = centers.get_or_insert_with(|| {
+                    (self.frame_map.iter().map(|p| p.0 as f64).collect(), self.frame_map.iter().map(|p| p.1 as f64).collect())
+                });
+                let destination = interp(at as f64, xs, ys).round_ties_even() as i64;
+                self.pending_events.push_back((destination, at, event));
+            }
+            self.next_event_frame = frame + 1;
         }
-        self.next_event_frame = last + 1;
+    }
+
+    /// An event's onset in the source: the steepest rise of the 1 ms energy of the mono signal's first
+    /// difference (its highs) within 1.5 detector frames of the frame's centre.
+    fn onset(&self, source: &[f32], center: i64) -> i64 {
+        let ch = self.ch;
+        let frames = (source.len() / ch) as i64;
+        let dh = self.detector.hop;
+        let w = self.envelope_window as i64;
+        let (a, b) = (center - 3 * dh / 2, center + 3 * dh / 2);
+        let first = a - 2 * w - 1;
+        let mono = |i: i64| -> f32 {
+            if i < 0 || i >= frames {
+                return 0.0;
+            }
+            source[i as usize * ch..(i as usize + 1) * ch].iter().sum::<f32>()
+        };
+        let energy: Vec<f64> = (first..b).map(|i| ((mono(i) - mono(i - 1)) as f64).powi(2)).collect();
+        // running 1 ms sums: sum[k] over energy[k - w + 1 ..= k]
+        let mut sum = vec![0f64; energy.len()];
+        let mut acc = 0.0;
+        for k in 0..energy.len() {
+            acc += energy[k];
+            if k as i64 >= w {
+                acc -= energy[k - w as usize];
+            }
+            sum[k] = acc;
+        }
+        let (mut best, mut at) = (f64::MIN, center);
+        for n in a..b {
+            let k = (n - first) as usize;
+            let rise = sum[k] - sum[k - w as usize];
+            if rise > best {
+                best = rise;
+                at = n - w / 2;
+            }
+        }
+        at
     }
 
     fn apply_due_events(&mut self, source: &[f32]) {
-        while let Some(&(destination, event)) = self.pending_events.front() {
+        while let Some(&(destination, at, event)) = self.pending_events.front() {
             if destination + self.attack_ahead - self.dry.pre.max(self.kick.pre) > self.finalized_until {
                 return;
             }
             self.pending_events.pop_front();
             let cfg = self.cfg;
-            let center = event.frame * self.detector.hop;
+            let center = at;
             let span = cfg.dry_transient_full_strength - cfg.dry_transient_threshold;
-            let confidence = ((event.strength - cfg.dry_transient_threshold) / span).clamp(0.0, 1.0);
-            if cfg.dry_transient_amount > 0.0 && confidence > 0.0 {
-                self.restore_attack(source, center, destination, self.dry, cfg.dry_transient_amount * confidence, true);
+            let dry = ((event.strength - cfg.dry_transient_threshold) / span).clamp(0.0, 1.0);
+            let kick = ((event.kick - Self::KICK_CONFIDENCE_FROM) / Self::KICK_CONFIDENCE_SPAN).clamp(0.0, 1.0);
+            if let Some(mut light) = self.light.take() {
+                // the high band's attack at every event; the vocoder's where the full mode restores one
+                self.restore_light(&mut light, source, center, destination, false);
+                if dry > 0.0 || kick > 0.0 {
+                    self.restore_light(&mut light, source, center, destination, true);
+                }
+                self.light = Some(light);
+                continue;
             }
-            let confidence = ((event.kick - Self::KICK_CONFIDENCE_FROM) / Self::KICK_CONFIDENCE_SPAN).clamp(0.0, 1.0);
-            if cfg.kick_transient_bypass > 0.0 && confidence > 0.0 {
-                self.restore_attack(source, center, destination, self.kick, cfg.kick_transient_bypass * confidence, false);
+            if cfg.dry_transient_amount > 0.0 && dry > 0.0 {
+                self.restore_attack(source, center, destination, self.dry, cfg.dry_transient_amount * dry, true);
+            }
+            if cfg.kick_transient_bypass > 0.0 && kick > 0.0 {
+                self.restore_attack(source, center, destination, self.kick, cfg.kick_transient_bypass * kick, false);
             }
         }
     }
@@ -1475,7 +2205,10 @@ impl Stretcher {
             let w = self.weight[a + k] as f64;
             for c in 0..ch {
                 let i = (a + k) * ch + c;
-                let v = if w > 1e-10 { self.ola[i] as f64 / w } else { 0.0 };
+                let mut v = if w > 1e-10 { self.ola[i] as f64 / w } else { 0.0 };
+                if !self.ola_high.is_empty() {
+                    v += self.ola_high[i] as f64;
+                }
                 y_band[c][k] = v + self.correction[i] as f64;
             }
             let s = x_lo + k as i64;
