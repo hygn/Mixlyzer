@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-23 21:09+0900\n"
+"POT-Creation-Date: 2026-10-23 21:19+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ko_KR\n"
@@ -297,7 +297,7 @@ msgstr "설정"
 msgid "Dialogs, workflows and metronome"
 msgstr "대화상자, 워크플로, 메트로놈"
 
-#: app/window.py:142 core/midi.py:60 ui/config/playback.py:327
+#: app/window.py:142 core/midi.py:59 ui/config/playback.py:327
 msgid "Mixer"
 msgstr "믹서"
 
@@ -491,49 +491,49 @@ msgstr "이 파일은 이미 라이브러리에 \"{track}\"(으)로 있습니다
 msgid "Playlist name cannot be empty"
 msgstr "플레이리스트 이름은 비워 둘 수 없습니다"
 
-#: core/midi.py:53
+#: core/midi.py:52
 msgid "Deck"
 msgstr "덱"
 
 # | msgid "JumpCUE Updated"
-#: core/midi.py:54
+#: core/midi.py:53
 msgid "JumpCUE pads"
 msgstr "JumpCUE 패드"
 
-#: core/midi.py:55 ui/config/pipeline_map.py:33 ui/edit_panel/cue_slots.py:233
+#: core/midi.py:54 ui/config/pipeline_map.py:33 ui/edit_panel/cue_slots.py:233
 msgid "CUE points"
 msgstr "CUE 포인트"
 
 # | msgid "Beat"
-#: core/midi.py:56
+#: core/midi.py:55
 msgid "Beat jump"
 msgstr "비트 점프"
 
-#: analyzer_core/global_analyzer.py:304 core/midi.py:57
+#: analyzer_core/global_analyzer.py:304 core/midi.py:56
 msgid "Tempo"
 msgstr "템포"
 
 # | msgid "Jog wheel: touch"
-#: core/midi.py:58
+#: core/midi.py:57
 msgid "Jog wheel"
 msgstr "조그 휠"
 
 # | msgid "Browse..."
-#: core/midi.py:59
+#: core/midi.py:58
 msgid "Browser"
 msgstr "브라우저"
 
-#: core/midi.py:61
+#: core/midi.py:60
 msgid "Effects"
 msgstr "이펙트"
 
 # | msgid "Play / pause"
-#: core/midi.py:88
+#: core/midi.py:87
 #, python-brace-format
 msgid "Deck {deck}: PLAY / PAUSE"
 msgstr "덱 {deck}: PLAY / PAUSE"
 
-#: core/midi.py:90
+#: core/midi.py:89
 #, python-brace-format
 msgid "Deck {deck}: CUE"
 msgstr "덱 {deck}: CUE"
@@ -541,7 +541,7 @@ msgstr "덱 {deck}: CUE"
 # | msgid "" "As rekordbox's CUE: stopped, sets the cue point at the playhead
 # | (on the " "nearest beat); held on the cue point, plays until let go (PLAY
 # | while " "held: plays on); playing, back to the cue point and stop."
-#: core/midi.py:92
+#: core/midi.py:91
 msgid ""
 "As rekordbox's CUE: stopped, sets the cue point (on the nearest beat); "
 "held on it, plays until let go; playing, back to it and stop."
@@ -552,38 +552,38 @@ msgstr ""
 # | msgid "Unload track"
 # | msgid "Unload the track"
 # | msgid "Back to the tracks"
-#: core/midi.py:94
+#: core/midi.py:93
 #, python-brace-format
 msgid "Deck {deck}: back to the track's start"
 msgstr "덱 {deck}: 곡 처음으로"
 
-#: core/midi.py:96
+#: core/midi.py:95
 msgid "As rekordbox's SHIFT + CUE: the track's start, playing on if it plays."
 msgstr "rekordbox의 SHIFT + CUE와 같음: 곡 처음으로 가고, 재생 중이면 계속 재생합니다."
 
 # | msgid "Load the selected track"
-#: core/midi.py:100
+#: core/midi.py:99
 #, python-brace-format
 msgid "Deck {deck}: LOAD (the selected track)"
 msgstr "덱 {deck}: LOAD (선택한 곡)"
 
-#: core/midi.py:102
+#: core/midi.py:101
 #, python-brace-format
 msgid "Deck {deck}: MASTER TEMPO"
 msgstr "덱 {deck}: MASTER TEMPO"
 
 # | msgid "Master tempo: time stretch keeps the pitch"
-#: core/midi.py:103
+#: core/midi.py:102
 msgid "Key lock: the time stretch keeps the pitch."
 msgstr "키 고정: 타임 스트레치로 음정을 유지합니다."
 
-#: core/midi.py:106
+#: core/midi.py:105
 #, python-brace-format
 msgid "Deck {deck}: TEMPO slider"
 msgstr "덱 {deck}: TEMPO 슬라이더"
 
 # | msgid "The tempo over the tempo range (Tempo range); its middle is 100%."
-#: core/midi.py:108
+#: core/midi.py:107
 msgid ""
 "The tempo over the tempo range; its middle is 100%. A pitch bend message "
 "or a CC."
@@ -591,7 +591,7 @@ msgstr "템포 범위 안의 템포. 가운데가 100%입니다. 피치벤드 �
 
 # | msgid "Tempo Analyzing"
 # | msgid "Tempo range"
-#: core/midi.py:109
+#: core/midi.py:108
 #, python-brace-format
 msgid "Deck {deck}: TEMPO RANGE"
 msgstr "덱 {deck}: TEMPO RANGE"
@@ -599,50 +599,50 @@ msgstr "덱 {deck}: TEMPO RANGE"
 # | msgid "The tempo fader's range: ±6% / ±10% / ±16% / WIDE (0%-200%), the
 # next
 # | one."
-#: core/midi.py:111
+#: core/midi.py:110
 msgid "±6% / ±10% / ±16% / WIDE, the next one."
 msgstr "±6% / ±10% / ±16% / WIDE 중 다음 범위."
 
-#: core/midi.py:112
+#: core/midi.py:111
 #, python-brace-format
 msgid "Deck {deck}: TEMPO RESET"
 msgstr "덱 {deck}: TEMPO RESET"
 
 # | msgid "Jog wheel: pitch bend"
-#: core/midi.py:114
+#: core/midi.py:113
 #, python-brace-format
 msgid "Deck {deck}: PITCH BEND −"
 msgstr "덱 {deck}: PITCH BEND −"
 
-#: core/midi.py:115
+#: core/midi.py:114
 msgid "Held: the tempo bent down 4%."
 msgstr "누르고 있는 동안 템포를 4% 내립니다."
 
 # | msgid "Jog wheel: pitch bend"
-#: core/midi.py:116
+#: core/midi.py:115
 #, python-brace-format
 msgid "Deck {deck}: PITCH BEND +"
 msgstr "덱 {deck}: PITCH BEND +"
 
-#: core/midi.py:117
+#: core/midi.py:116
 msgid "Held: the tempo bent up 4%."
 msgstr "누르고 있는 동안 템포를 4% 올립니다."
 
 # | msgid "Jog wheel: touch"
 # | msgid "Deck {deck}: jog wheel touch"
-#: core/midi.py:118
+#: core/midi.py:117
 #, python-brace-format
 msgid "Deck {deck}: JOG MODE (VINYL / CDJ)"
 msgstr "덱 {deck}: JOG MODE (VINYL / CDJ)"
 
-#: core/midi.py:120
+#: core/midi.py:119
 msgid ""
 "A press switches the jog wheel's mode: VINYL (its top's touch holds the "
 "record) or CDJ (a bend only). Lit in VINYL mode."
 msgstr "누를 때마다 조그 휠 모드가 바뀝니다: VINYL(윗면을 터치하면 레코드를 잡음) 또는 CDJ(벤드만). VINYL 모드에서 점등."
 
 # | msgid "Jog wheel: touch"
-#: core/midi.py:122
+#: core/midi.py:121
 #, python-brace-format
 msgid "Deck {deck}: jog wheel touch"
 msgstr "덱 {deck}: 조그 휠 터치"
@@ -650,13 +650,13 @@ msgstr "덱 {deck}: 조그 휠 터치"
 # | msgid "" "The jog wheel's top touched: the record held (scratch); let go,
 # it
 # | plays " "on."
-#: core/midi.py:124
+#: core/midi.py:123
 msgid ""
 "The top touched: the record held (vinyl mode); let go, it plays on (a "
 "spin: when it stops)."
 msgstr "윗면을 터치하면 레코드를 잡습니다(바이닐 모드). 놓으면 계속 재생합니다(돌리던 중이면 멈춘 뒤)."
 
-#: core/midi.py:126
+#: core/midi.py:125
 #, python-brace-format
 msgid "Deck {deck}: jog wheel top"
 msgstr "덱 {deck}: 조그 휠 윗면"
@@ -664,62 +664,62 @@ msgstr "덱 {deck}: 조그 휠 윗면"
 # | msgid "" "The jog wheel's top turned: touched, the record moves with it
 # (33
 # | 1/3 " "rpm); else a pitch bend."
-#: core/midi.py:128
+#: core/midi.py:127
 msgid "Turned: touched, the record moves with it (33 1/3 rpm); else a pitch bend."
 msgstr "돌리면: 터치 중이면 레코드가 함께 움직이고(33 1/3 rpm), 아니면 피치 벤드."
 
 # | msgid "Jog wheel: pitch bend"
-#: core/midi.py:129
+#: core/midi.py:128
 #, python-brace-format
 msgid "Deck {deck}: jog wheel side (pitch bend)"
 msgstr "덱 {deck}: 조그 휠 옆면 (피치 벤드)"
 
 # | msgid "" "The jog wheel turned: the tempo bent while it turns (a turn a
 # | second: " "+10%)."
-#: core/midi.py:131
+#: core/midi.py:130
 msgid "Turned: the tempo bent while it turns (a turn a second: +10%)."
 msgstr "돌리는 동안 템포를 휘게 합니다(초당 한 바퀴: +10%)."
 
-#: core/midi.py:132
+#: core/midi.py:131
 #, python-brace-format
 msgid "Deck {deck}: jog wheel search (SHIFT)"
 msgstr "덱 {deck}: 조그 휠 서치 (SHIFT)"
 
 # | msgid "The jog wheel turned: the playhead moved through the track fast."
-#: core/midi.py:134
+#: core/midi.py:133
 msgid "Turned: the playhead moved through the track fast."
 msgstr "돌리면 재생 위치를 곡 안에서 빠르게 옮깁니다."
 
-#: core/midi.py:135
+#: core/midi.py:134
 #, python-brace-format
 msgid "Deck {deck}: CUE CALL ◁"
 msgstr "덱 {deck}: CUE CALL ◁"
 
-#: core/midi.py:137
+#: core/midi.py:136
 msgid "The CUE point before (stopped); the cue point moves there."
 msgstr "앞의 CUE 포인트로(정지 중). 큐 포인트도 그곳으로 옮깁니다."
 
-#: core/midi.py:138
+#: core/midi.py:137
 #, python-brace-format
 msgid "Deck {deck}: CUE CALL ▷"
 msgstr "덱 {deck}: CUE CALL ▷"
 
-#: core/midi.py:140
+#: core/midi.py:139
 msgid "The CUE point after (stopped); the cue point moves there."
 msgstr "다음 CUE 포인트로(정지 중). 큐 포인트도 그곳으로 옮깁니다."
 
-#: core/midi.py:144
+#: core/midi.py:143
 #, python-brace-format
 msgid "Deck {deck}: MEMORY"
 msgstr "덱 {deck}: MEMORY"
 
 # | msgid "MEMORY: set a CUE point at the nearest beat or track edge"
-#: core/midi.py:145
+#: core/midi.py:144
 msgid "A CUE point at the nearest beat (an edit)."
 msgstr "가장 가까운 비트에 CUE 포인트(편집)."
 
 # | msgid "Delete CUE point {time}"
-#: core/midi.py:146
+#: core/midi.py:145
 #, python-brace-format
 msgid "Deck {deck}: CUE point DELETE"
 msgstr "덱 {deck}: CUE 포인트 DELETE"
@@ -727,44 +727,44 @@ msgstr "덱 {deck}: CUE 포인트 DELETE"
 # | msgid "Split the current segment at the playhead"
 # | msgid "No CUE point at the playhead."
 # | msgid "The CUE point the playhead is on, as after CALL."
-#: core/midi.py:147
+#: core/midi.py:146
 msgid "The CUE point the playhead is on (an edit)."
 msgstr "재생 위치에 있는 CUE 포인트(편집)."
 
 # | msgid "Delete JumpCUE {letter}"
-#: core/midi.py:151
+#: core/midi.py:150
 #, python-brace-format
 msgid "Deck {deck}: JumpCUE {letter}"
 msgstr "덱 {deck}: JumpCUE {letter}"
 
 # | msgid "Jump here on the next beat (when stopped: move the playhead here)"
-#: core/midi.py:153
+#: core/midi.py:152
 msgid ""
 "JUMP on the next beat (stopped: the playhead there); an empty slot: SET "
 "(an edit). Lit while set."
 msgstr "다음 비트에서 JUMP(정지 중이면 재생 위치를 그곳으로). 빈 슬롯이면 SET(편집). 설정돼 있으면 불이 켜집니다."
 
 # | msgid "Delete JumpCUE {letter}"
-#: core/midi.py:156
+#: core/midi.py:155
 #, python-brace-format
 msgid "Deck {deck}: JumpCUE {letter} delete"
 msgstr "덱 {deck}: JumpCUE {letter} 삭제"
 
-#: core/midi.py:158
+#: core/midi.py:157
 msgid "As SHIFT + a pad (an edit)."
 msgstr "SHIFT + 패드처럼(편집)."
 
-#: core/midi.py:161
+#: core/midi.py:160
 #, python-brace-format
 msgid "Deck {deck}: BEAT JUMP ◁ {beats}"
 msgstr "덱 {deck}: BEAT JUMP ◁ {beats}"
 
-#: core/midi.py:163
+#: core/midi.py:162
 #, python-brace-format
 msgid "Deck {deck}: BEAT JUMP ▷ {beats}"
 msgstr "덱 {deck}: BEAT JUMP ▷ {beats}"
 
-#: core/midi.py:173
+#: core/midi.py:172
 #, python-brace-format
 msgid "Channel {channel}: channel fader"
 msgstr "채널 {channel}: 채널 페이더"
@@ -772,64 +772,64 @@ msgstr "채널 {channel}: 채널 페이더"
 # | msgid "Output buffer"
 # | msgid "Output device"
 # | msgid "The device's"
-#: core/midi.py:174
+#: core/midi.py:173
 msgid "The deck's volume."
 msgstr "덱의 볼륨."
 
-#: core/midi.py:175
+#: core/midi.py:174
 #, python-brace-format
 msgid "Channel {channel}: EQ HI"
 msgstr "채널 {channel}: EQ HI"
 
-#: core/midi.py:177 core/midi.py:180 core/midi.py:183
+#: core/midi.py:176 core/midi.py:179 core/midi.py:182
 msgid "An isolator band: the bottom kills it, the middle 0 dB, the top +6 dB."
 msgstr "아이솔레이터 밴드: 맨 아래는 차단, 가운데 0 dB, 맨 위 +6 dB."
 
-#: core/midi.py:178
+#: core/midi.py:177
 #, python-brace-format
 msgid "Channel {channel}: EQ MID"
 msgstr "채널 {channel}: EQ MID"
 
-#: core/midi.py:181
+#: core/midi.py:180
 #, python-brace-format
 msgid "Channel {channel}: EQ LOW"
 msgstr "채널 {channel}: EQ LOW"
 
-#: core/midi.py:184
+#: core/midi.py:183
 #, python-brace-format
 msgid "Channel {channel}: TRIM"
 msgstr "채널 {channel}: TRIM"
 
 # | msgid "Channel {channel}: channel fader"
-#: core/midi.py:186
+#: core/midi.py:185
 #, python-brace-format
 msgid "Channel {channel}: COLOR (Sound Color FX)"
 msgstr "채널 {channel}: COLOR (Sound Color FX)"
 
-#: core/midi.py:188
+#: core/midi.py:187
 msgid ""
 "The Sound Color FX picked, on the channel: its middle off, its two "
 "flavours left and right (a DDJ's CFX knob)."
 msgstr "선택한 Sound Color FX를 채널에 겁니다: 가운데는 꺼짐, 왼쪽과 오른쪽이 서로 다른 효과(DDJ의 CFX 노브)."
 
-#: core/midi.py:190
+#: core/midi.py:189
 #, python-brace-format
 msgid "Channel {channel}: headphones CUE"
 msgstr "채널 {channel}: 헤드폰 CUE"
 
-#: core/midi.py:192
+#: core/midi.py:191
 msgid ""
 "A press turns it on or off: the channel's sound before its fader in the "
 "headphones. Lit while on."
 msgstr "누를 때마다 켜고 끕니다: 이 채널의 페이더 전 소리를 헤드폰으로 보냅니다. 켜져 있는 동안 불이 들어옵니다."
 
 # | msgid "Level meter (output)"
-#: core/midi.py:194
+#: core/midi.py:193
 #, python-brace-format
 msgid "Channel {channel}: level meter (output)"
 msgstr "채널 {channel}: 레벨 미터 (출력)"
 
-#: core/midi.py:196
+#: core/midi.py:195
 msgid ""
 "The controller's level meter shows the deck's peak meter (a CC sent, 0 - "
 "127 over -24 - 0 dBFS); taken from a rekordbox mapping (its "
@@ -839,17 +839,17 @@ msgstr ""
 "rekordbox 매핑(ChannelLevel)에서 가져옵니다."
 
 # | msgid "Sound Color FX: the next effect"
-#: core/midi.py:205
+#: core/midi.py:204
 #, python-brace-format
 msgid "Sound Color FX: {effect}"
 msgstr "Sound Color FX: {effect}"
 
-#: core/midi.py:207
+#: core/midi.py:206
 msgid "A press picks it; pressed again, none. Lit while picked."
 msgstr "누르면 선택, 다시 누르면 해제. 선택된 동안 점등."
 
 # | msgid "Sound Color FX: the next effect"
-#: core/midi.py:209
+#: core/midi.py:208
 msgid "Sound Color FX: PARAMETER"
 msgstr "Sound Color FX: PARAMETER"
 
@@ -859,74 +859,70 @@ msgstr "Sound Color FX: PARAMETER"
 # | msgid "" "The effect's quantity (feedback, centre frequency, noise, crush,
 # "
 # | "resonance)."
-#: core/midi.py:210
+#: core/midi.py:209
 msgid ""
 "The effect's quantity (feedback, centre frequency, noise, crush, "
 "resonance, JET's feedback)."
 msgstr "이펙트의 양(피드백, 중심 주파수, 노이즈, 크러시, 레조넌스, JET의 피드백)."
 
-#: core/midi.py:216
+#: core/midi.py:215
 msgid "Browser: BROWSE knob"
 msgstr "브라우저: BROWSE 노브"
 
-#: core/midi.py:217
+#: core/midi.py:216
 msgid "Turned: the next / previous track."
 msgstr "돌리면 다음 / 이전 곡."
 
-#: core/midi.py:218
+#: core/midi.py:217
 msgid "Browser: BROWSE pressed"
 msgstr "브라우저: BROWSE 누름"
 
 # | msgid "" "In the sources panel: the highlighted playlist or folder shown
 # in
 # | the " "library."
-#: core/midi.py:219
+#: core/midi.py:218
 msgid "To the sources panel (playlists, folders) and back."
 msgstr "소스 패널(플레이리스트, 폴더)로 갔다가 돌아옵니다."
 
 # | msgid "Playhead one bar back"
 # | msgid "One bar back"
-#: core/midi.py:220
+#: core/midi.py:219
 msgid "Browser: BACK"
 msgstr "브라우저: BACK"
 
 # | msgid "Unload track"
 # | msgid "Unload the track"
 # | msgid "Back to the tracks"
-#: core/midi.py:221
+#: core/midi.py:220
 msgid "Back to the tracks."
 msgstr "곡 목록으로 돌아갑니다."
 
-#: core/midi.py:222
+#: core/midi.py:221
 msgid "Browser: waveform zoom (SHIFT + BROWSE)"
 msgstr "브라우저: 파형 확대 (SHIFT + BROWSE)"
 
-#: core/midi.py:223
+#: core/midi.py:222
 msgid "Turned: the waveform zoomed in / out."
 msgstr "돌리면 파형을 확대 / 축소합니다."
 
-#: core/midi.py:225
-msgid "Crossfader"
-msgstr "크로스페이더"
-
-#: core/midi.py:226
+#: core/midi.py:224
 msgid "Headphones: CUE / MASTER"
 msgstr "헤드폰: CUE / MASTER"
 
 # | msgid "" "The CUE'd channels against the master in the headphones (with
 # the
 # | master " "mixed in: Settings > Playback > Headphones output)."
-#: core/midi.py:227
+#: core/midi.py:225
 msgid ""
 "The CUE'd channels against the master in the headphones (with the master "
 "mixed in: Settings > Audio > Headphones)."
 msgstr "헤드폰에서 CUE를 켠 채널과 마스터의 비율(마스터를 섞을 때: 설정 > 오디오 > 헤드폰)."
 
-#: core/midi.py:229
+#: core/midi.py:227
 msgid "Headphones: level"
 msgstr "헤드폰: 레벨"
 
-#: core/midi.py:230
+#: core/midi.py:228
 msgid "Master: level"
 msgstr "마스터: 레벨"
 
@@ -6741,14 +6737,22 @@ msgstr "이 컴퓨터의 다른 프로그램이 {keys}를 가져가서 이 단�
 msgid "{keys} is used by more than one action (Settings > Shortcuts)."
 msgstr "{keys}가 여러 동작에 지정되어 있습니다 (설정 > 단축키)."
 
-#: ui/track_info_panel.py:374
+#: ui/track_info_panel.py:166
+msgid ""
+"Channel level (before the fader), as a DJM-A9's: -30 to +12 dB; 0 dB is "
+"-12 dBFS, +12 dB the full scale (clipping)."
+msgstr ""
+"채널 레벨(페이더 전), DJM-A9과 같은 눈금: -30 ~ +12 dB. 0 dB는 -12 dBFS, "
+"+12 dB는 풀스케일(클리핑)입니다."
+
+#: ui/track_info_panel.py:370
 msgid "Unload track"
 msgstr "트랙 내리기"
 
 # | msgid "" "TRIM: the level before the volume fader, -24 to +9 dB (0 dB in
 # the
 # | " "middle), kept as Settings > Playback > Trim. Double-click: 0 dB."
-#: ui/track_info_panel.py:768
+#: ui/track_info_panel.py:764
 msgid ""
 "TRIM: the level before the volume fader, -24 to +9 dB (0 dB in the "
 "middle), kept as Settings > Audio > Mixer > Trim. Double-click: 0 dB."
@@ -6756,7 +6760,7 @@ msgstr ""
 "TRIM: 볼륨 페이더 앞의 레벨, -24 ~ +9 dB(가운데 0 dB). 설정 > 오디오 > 믹서 > 트림으로 저장됩니다. "
 "더블클릭: 0 dB."
 
-#: ui/track_info_panel.py:773
+#: ui/track_info_panel.py:769
 #, python-brace-format
 msgid ""
 "EQ {band}: the isolator's band, from a kill to +6 dB (0 dB in the "
@@ -6765,14 +6769,14 @@ msgstr "EQ {band}: 아이솔레이터 밴드, 차단부터 +6 dB까지(가운데
 
 # | msgid "" "EQ {band}: the native audio engine's mixer only (Settings >
 # | Playback > " "Audio engine)."
-#: ui/track_info_panel.py:775
+#: ui/track_info_panel.py:771
 #, python-brace-format
 msgid ""
 "EQ {band}: the native audio engine's mixer only (Settings > Audio > "
 "Engine)."
 msgstr "EQ {band}: Native 오디오 엔진의 믹서에서만 동작합니다(설정 > 오디오 > 엔진)."
 
-#: ui/track_info_panel.py:786 ui/workers.py:196
+#: ui/track_info_panel.py:782 ui/workers.py:196
 msgid "No Art"
 msgstr "아트 없음"
 

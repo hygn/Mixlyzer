@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-23 21:09+0900\n"
+"POT-Creation-Date: 2026-10-23 21:19+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -281,7 +281,7 @@ msgstr ""
 msgid "Dialogs, workflows and metronome"
 msgstr ""
 
-#: app/window.py:142 core/midi.py:60 ui/config/playback.py:327
+#: app/window.py:142 core/midi.py:59 ui/config/playback.py:327
 msgid "Mixer"
 msgstr ""
 
@@ -459,372 +459,368 @@ msgstr ""
 msgid "Playlist name cannot be empty"
 msgstr ""
 
-#: core/midi.py:53
+#: core/midi.py:52
 msgid "Deck"
 msgstr ""
 
-#: core/midi.py:54
+#: core/midi.py:53
 msgid "JumpCUE pads"
 msgstr ""
 
-#: core/midi.py:55 ui/config/pipeline_map.py:33 ui/edit_panel/cue_slots.py:233
+#: core/midi.py:54 ui/config/pipeline_map.py:33 ui/edit_panel/cue_slots.py:233
 msgid "CUE points"
 msgstr ""
 
-#: core/midi.py:56
+#: core/midi.py:55
 msgid "Beat jump"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:304 core/midi.py:57
+#: analyzer_core/global_analyzer.py:304 core/midi.py:56
 msgid "Tempo"
 msgstr ""
 
-#: core/midi.py:58
+#: core/midi.py:57
 msgid "Jog wheel"
 msgstr ""
 
-#: core/midi.py:59
+#: core/midi.py:58
 msgid "Browser"
 msgstr ""
 
-#: core/midi.py:61
+#: core/midi.py:60
 msgid "Effects"
 msgstr ""
 
-#: core/midi.py:88
+#: core/midi.py:87
 #, python-brace-format
 msgid "Deck {deck}: PLAY / PAUSE"
 msgstr ""
 
-#: core/midi.py:90
+#: core/midi.py:89
 #, python-brace-format
 msgid "Deck {deck}: CUE"
 msgstr ""
 
-#: core/midi.py:92
+#: core/midi.py:91
 msgid ""
 "As rekordbox's CUE: stopped, sets the cue point (on the nearest beat); "
 "held on it, plays until let go; playing, back to it and stop."
 msgstr ""
 
-#: core/midi.py:94
+#: core/midi.py:93
 #, python-brace-format
 msgid "Deck {deck}: back to the track's start"
 msgstr ""
 
-#: core/midi.py:96
+#: core/midi.py:95
 msgid "As rekordbox's SHIFT + CUE: the track's start, playing on if it plays."
 msgstr ""
 
-#: core/midi.py:100
+#: core/midi.py:99
 #, python-brace-format
 msgid "Deck {deck}: LOAD (the selected track)"
 msgstr ""
 
-#: core/midi.py:102
+#: core/midi.py:101
 #, python-brace-format
 msgid "Deck {deck}: MASTER TEMPO"
 msgstr ""
 
-#: core/midi.py:103
+#: core/midi.py:102
 msgid "Key lock: the time stretch keeps the pitch."
 msgstr ""
 
-#: core/midi.py:106
+#: core/midi.py:105
 #, python-brace-format
 msgid "Deck {deck}: TEMPO slider"
 msgstr ""
 
-#: core/midi.py:108
+#: core/midi.py:107
 msgid ""
 "The tempo over the tempo range; its middle is 100%. A pitch bend message "
 "or a CC."
 msgstr ""
 
-#: core/midi.py:109
+#: core/midi.py:108
 #, python-brace-format
 msgid "Deck {deck}: TEMPO RANGE"
 msgstr ""
 
-#: core/midi.py:111
+#: core/midi.py:110
 msgid "±6% / ±10% / ±16% / WIDE, the next one."
 msgstr ""
 
-#: core/midi.py:112
+#: core/midi.py:111
 #, python-brace-format
 msgid "Deck {deck}: TEMPO RESET"
 msgstr ""
 
-#: core/midi.py:114
+#: core/midi.py:113
 #, python-brace-format
 msgid "Deck {deck}: PITCH BEND −"
 msgstr ""
 
-#: core/midi.py:115
+#: core/midi.py:114
 msgid "Held: the tempo bent down 4%."
 msgstr ""
 
-#: core/midi.py:116
+#: core/midi.py:115
 #, python-brace-format
 msgid "Deck {deck}: PITCH BEND +"
 msgstr ""
 
-#: core/midi.py:117
+#: core/midi.py:116
 msgid "Held: the tempo bent up 4%."
 msgstr ""
 
-#: core/midi.py:118
+#: core/midi.py:117
 #, python-brace-format
 msgid "Deck {deck}: JOG MODE (VINYL / CDJ)"
 msgstr ""
 
-#: core/midi.py:120
+#: core/midi.py:119
 msgid ""
 "A press switches the jog wheel's mode: VINYL (its top's touch holds the "
 "record) or CDJ (a bend only). Lit in VINYL mode."
 msgstr ""
 
-#: core/midi.py:122
+#: core/midi.py:121
 #, python-brace-format
 msgid "Deck {deck}: jog wheel touch"
 msgstr ""
 
-#: core/midi.py:124
+#: core/midi.py:123
 msgid ""
 "The top touched: the record held (vinyl mode); let go, it plays on (a "
 "spin: when it stops)."
 msgstr ""
 
-#: core/midi.py:126
+#: core/midi.py:125
 #, python-brace-format
 msgid "Deck {deck}: jog wheel top"
 msgstr ""
 
-#: core/midi.py:128
+#: core/midi.py:127
 msgid "Turned: touched, the record moves with it (33 1/3 rpm); else a pitch bend."
 msgstr ""
 
-#: core/midi.py:129
+#: core/midi.py:128
 #, python-brace-format
 msgid "Deck {deck}: jog wheel side (pitch bend)"
 msgstr ""
 
-#: core/midi.py:131
+#: core/midi.py:130
 msgid "Turned: the tempo bent while it turns (a turn a second: +10%)."
 msgstr ""
 
-#: core/midi.py:132
+#: core/midi.py:131
 #, python-brace-format
 msgid "Deck {deck}: jog wheel search (SHIFT)"
 msgstr ""
 
-#: core/midi.py:134
+#: core/midi.py:133
 msgid "Turned: the playhead moved through the track fast."
 msgstr ""
 
-#: core/midi.py:135
+#: core/midi.py:134
 #, python-brace-format
 msgid "Deck {deck}: CUE CALL ◁"
 msgstr ""
 
-#: core/midi.py:137
+#: core/midi.py:136
 msgid "The CUE point before (stopped); the cue point moves there."
 msgstr ""
 
-#: core/midi.py:138
+#: core/midi.py:137
 #, python-brace-format
 msgid "Deck {deck}: CUE CALL ▷"
 msgstr ""
 
-#: core/midi.py:140
+#: core/midi.py:139
 msgid "The CUE point after (stopped); the cue point moves there."
 msgstr ""
 
-#: core/midi.py:144
+#: core/midi.py:143
 #, python-brace-format
 msgid "Deck {deck}: MEMORY"
 msgstr ""
 
-#: core/midi.py:145
+#: core/midi.py:144
 msgid "A CUE point at the nearest beat (an edit)."
 msgstr ""
 
-#: core/midi.py:146
+#: core/midi.py:145
 #, python-brace-format
 msgid "Deck {deck}: CUE point DELETE"
 msgstr ""
 
-#: core/midi.py:147
+#: core/midi.py:146
 msgid "The CUE point the playhead is on (an edit)."
 msgstr ""
 
-#: core/midi.py:151
+#: core/midi.py:150
 #, python-brace-format
 msgid "Deck {deck}: JumpCUE {letter}"
 msgstr ""
 
-#: core/midi.py:153
+#: core/midi.py:152
 msgid ""
 "JUMP on the next beat (stopped: the playhead there); an empty slot: SET "
 "(an edit). Lit while set."
 msgstr ""
 
-#: core/midi.py:156
+#: core/midi.py:155
 #, python-brace-format
 msgid "Deck {deck}: JumpCUE {letter} delete"
 msgstr ""
 
-#: core/midi.py:158
+#: core/midi.py:157
 msgid "As SHIFT + a pad (an edit)."
 msgstr ""
 
-#: core/midi.py:161
+#: core/midi.py:160
 #, python-brace-format
 msgid "Deck {deck}: BEAT JUMP ◁ {beats}"
 msgstr ""
 
-#: core/midi.py:163
+#: core/midi.py:162
 #, python-brace-format
 msgid "Deck {deck}: BEAT JUMP ▷ {beats}"
 msgstr ""
 
-#: core/midi.py:173
+#: core/midi.py:172
 #, python-brace-format
 msgid "Channel {channel}: channel fader"
 msgstr ""
 
-#: core/midi.py:174
+#: core/midi.py:173
 msgid "The deck's volume."
 msgstr ""
 
-#: core/midi.py:175
+#: core/midi.py:174
 #, python-brace-format
 msgid "Channel {channel}: EQ HI"
 msgstr ""
 
-#: core/midi.py:177 core/midi.py:180 core/midi.py:183
+#: core/midi.py:176 core/midi.py:179 core/midi.py:182
 msgid "An isolator band: the bottom kills it, the middle 0 dB, the top +6 dB."
 msgstr ""
 
-#: core/midi.py:178
+#: core/midi.py:177
 #, python-brace-format
 msgid "Channel {channel}: EQ MID"
 msgstr ""
 
-#: core/midi.py:181
+#: core/midi.py:180
 #, python-brace-format
 msgid "Channel {channel}: EQ LOW"
 msgstr ""
 
-#: core/midi.py:184
+#: core/midi.py:183
 #, python-brace-format
 msgid "Channel {channel}: TRIM"
 msgstr ""
 
-#: core/midi.py:186
+#: core/midi.py:185
 #, python-brace-format
 msgid "Channel {channel}: COLOR (Sound Color FX)"
 msgstr ""
 
-#: core/midi.py:188
+#: core/midi.py:187
 msgid ""
 "The Sound Color FX picked, on the channel: its middle off, its two "
 "flavours left and right (a DDJ's CFX knob)."
 msgstr ""
 
-#: core/midi.py:190
+#: core/midi.py:189
 #, python-brace-format
 msgid "Channel {channel}: headphones CUE"
 msgstr ""
 
-#: core/midi.py:192
+#: core/midi.py:191
 msgid ""
 "A press turns it on or off: the channel's sound before its fader in the "
 "headphones. Lit while on."
 msgstr ""
 
-#: core/midi.py:194
+#: core/midi.py:193
 #, python-brace-format
 msgid "Channel {channel}: level meter (output)"
 msgstr ""
 
-#: core/midi.py:196
+#: core/midi.py:195
 msgid ""
 "The controller's level meter shows the deck's peak meter (a CC sent, 0 - "
 "127 over -24 - 0 dBFS); taken from a rekordbox mapping (its "
 "ChannelLevel), not learned."
 msgstr ""
 
-#: core/midi.py:205
+#: core/midi.py:204
 #, python-brace-format
 msgid "Sound Color FX: {effect}"
 msgstr ""
 
-#: core/midi.py:207
+#: core/midi.py:206
 msgid "A press picks it; pressed again, none. Lit while picked."
 msgstr ""
 
-#: core/midi.py:209
+#: core/midi.py:208
 msgid "Sound Color FX: PARAMETER"
 msgstr ""
 
-#: core/midi.py:210
+#: core/midi.py:209
 msgid ""
 "The effect's quantity (feedback, centre frequency, noise, crush, "
 "resonance, JET's feedback)."
 msgstr ""
 
-#: core/midi.py:216
+#: core/midi.py:215
 msgid "Browser: BROWSE knob"
 msgstr ""
 
-#: core/midi.py:217
+#: core/midi.py:216
 msgid "Turned: the next / previous track."
 msgstr ""
 
-#: core/midi.py:218
+#: core/midi.py:217
 msgid "Browser: BROWSE pressed"
 msgstr ""
 
-#: core/midi.py:219
+#: core/midi.py:218
 msgid "To the sources panel (playlists, folders) and back."
 msgstr ""
 
-#: core/midi.py:220
+#: core/midi.py:219
 msgid "Browser: BACK"
 msgstr ""
 
-#: core/midi.py:221
+#: core/midi.py:220
 msgid "Back to the tracks."
 msgstr ""
 
-#: core/midi.py:222
+#: core/midi.py:221
 msgid "Browser: waveform zoom (SHIFT + BROWSE)"
 msgstr ""
 
-#: core/midi.py:223
+#: core/midi.py:222
 msgid "Turned: the waveform zoomed in / out."
 msgstr ""
 
-#: core/midi.py:225
-msgid "Crossfader"
-msgstr ""
-
-#: core/midi.py:226
+#: core/midi.py:224
 msgid "Headphones: CUE / MASTER"
 msgstr ""
 
-#: core/midi.py:227
+#: core/midi.py:225
 msgid ""
 "The CUE'd channels against the master in the headphones (with the master "
 "mixed in: Settings > Audio > Headphones)."
 msgstr ""
 
-#: core/midi.py:229
+#: core/midi.py:227
 msgid "Headphones: level"
 msgstr ""
 
-#: core/midi.py:230
+#: core/midi.py:228
 msgid "Master: level"
 msgstr ""
 
@@ -5979,31 +5975,37 @@ msgstr ""
 msgid "{keys} is used by more than one action (Settings > Shortcuts)."
 msgstr ""
 
-#: ui/track_info_panel.py:374
+#: ui/track_info_panel.py:166
+msgid ""
+"Channel level (before the fader), as a DJM-A9's: -30 to +12 dB; 0 dB is "
+"-12 dBFS, +12 dB the full scale (clipping)."
+msgstr ""
+
+#: ui/track_info_panel.py:370
 msgid "Unload track"
 msgstr ""
 
-#: ui/track_info_panel.py:768
+#: ui/track_info_panel.py:764
 msgid ""
 "TRIM: the level before the volume fader, -24 to +9 dB (0 dB in the "
 "middle), kept as Settings > Audio > Mixer > Trim. Double-click: 0 dB."
 msgstr ""
 
-#: ui/track_info_panel.py:773
+#: ui/track_info_panel.py:769
 #, python-brace-format
 msgid ""
 "EQ {band}: the isolator's band, from a kill to +6 dB (0 dB in the "
 "middle). Double-click: 0 dB."
 msgstr ""
 
-#: ui/track_info_panel.py:775
+#: ui/track_info_panel.py:771
 #, python-brace-format
 msgid ""
 "EQ {band}: the native audio engine's mixer only (Settings > Audio > "
 "Engine)."
 msgstr ""
 
-#: ui/track_info_panel.py:786 ui/workers.py:196
+#: ui/track_info_panel.py:782 ui/workers.py:196
 msgid "No Art"
 msgstr ""
 

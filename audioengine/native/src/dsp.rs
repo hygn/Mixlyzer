@@ -243,6 +243,46 @@ pub fn read_at(t: &ReadTables, pcm: &[f32], ch: usize, positions: &[f64], previo
     out
 }
 
+/// The record's level by its speed while scratching, as a needle's: on a record held still it is silent, and it
+/// sounds at its level from FULL_SPEED on (a raised cosine between, followed over SMOOTH_SEC). Without it a record
+/// held still sounds the sample under the needle, a constant: touched while stopped, or let go, the step to it and
+/// back clicks. Below FULL_SPEED the music is moved under ~30 Hz (1 kHz at 3 %): little of it is heard anyway.
+pub struct SpeedGain {
+    gain: f32,
+    pole: f32,
+}
+
+impl SpeedGain {
+    pub const FULL_SPEED: f64 = 0.03; // input frames per output frame
+    const SMOOTH_SEC: f64 = 0.002;
+
+    pub fn new(rate: f64) -> SpeedGain {
+        SpeedGain { gain: 0.0, pole: (-1.0 / (Self::SMOOTH_SEC * rate)).exp() as f32 }
+    }
+
+    /// The record taken in hand: silent until it moves.
+    pub fn reset(&mut self) {
+        self.gain = 0.0;
+    }
+
+    pub fn level(&self) -> f32 {
+        self.gain
+    }
+
+    /// ``out`` (interleaved, read at ``positions``; ``previous`` the position before the first) by the speed.
+    pub fn apply(&mut self, out: &mut [f32], ch: usize, positions: &[f64], previous: f64) {
+        let mut last = previous;
+        for (frame, &p) in out.chunks_exact_mut(ch).zip(positions) {
+            let target = fade_gain(((p - last).abs() / Self::FULL_SPEED) as f32);
+            last = p;
+            self.gain = target + self.pole * (self.gain - target);
+            for v in frame {
+                *v *= self.gain;
+            }
+        }
+    }
+}
+
 /// The record under the hand while scratching (audioengine/python/dsp.py's ScratchPlatter): the hand's samples
 /// followed DELAY late (a jitter buffer), carried on past the last one briefly, smoothed twice.
 pub struct Platter {
@@ -374,5 +414,34 @@ impl Platter {
             self.position = last;
         }
         out
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_still_record_is_silent_and_a_moving_one_at_its_level() {
+        let rate = 48000.0;
+        let n = 4800; // 0.1 s
+        let mut g = SpeedGain::new(rate);
+        // held still on a sample of 0.5 (the constant the reader gives): silent, no step in
+        let mut out = vec![0.5f32; n * 2];
+        g.apply(&mut out, 2, &vec![1000.0; n], 1000.0);
+        assert!(out.iter().all(|v| v.abs() < 1e-6));
+        // moved at unity: up to its level within a few ms, smoothly
+        let mut out = vec![0.5f32; n * 2];
+        let positions: Vec<f64> = (1..=n).map(|k| 1000.0 + k as f64).collect();
+        g.apply(&mut out, 2, &positions, 1000.0);
+        assert!(out[0].abs() < 0.05);
+        assert!((out[2 * 960] - 0.5).abs() < 1e-4); // 20 ms on
+        let jumps = out.chunks_exact(2).collect::<Vec<_>>().windows(2).map(|w| (w[1][0] - w[0][0]).abs())
+            .fold(0.0f32, f32::max);
+        assert!(jumps < 0.01, "{jumps}");
+        // stopped again: back to silence
+        let mut out = vec![0.5f32; n * 2];
+        g.apply(&mut out, 2, &vec![1000.0 + n as f64; n], 1000.0 + n as f64);
+        assert!(out[2 * (n - 1)].abs() < 1e-4);
     }
 }

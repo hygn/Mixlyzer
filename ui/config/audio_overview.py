@@ -355,7 +355,7 @@ class AudioOverview(QtWidgets.QWidget):
         g = slider_percent_to_linear(volume * 100.0, 0.0)
         m["fader_text"] = _db(20 * math.log10(g) if g > 0 else -120.0)
         m["cue_on"] = bool(deck.get("channel_cue", False))
-        peak = float(deck.get("peak", -24.0))
+        peak = float(deck.get("peak", client.NativeFeeder.PEAK_FLOOR_DBFS))
         m["peak_value"] = f"{peak:.1f} dBFS"
         m["master_text"] = _db(client.level_knob_to_db(mix.get("master_level", client.LEVEL_UNITY)))
         m["main"] = self._main(stats, capacity_ms, ctx)

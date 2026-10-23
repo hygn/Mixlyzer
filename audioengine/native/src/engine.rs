@@ -15,7 +15,7 @@ use std::sync::Arc;
 use crate::clock;
 use crate::cursor::CursorPoller;
 use crate::device::Ring;
-use crate::dsp::{self, Platter, ReadTables};
+use crate::dsp::{self, Platter, ReadTables, SpeedGain};
 use crate::mixer::StripParams;
 use crate::mixers::{Clicks, Tones};
 use crate::monitor::Monitor;
@@ -48,6 +48,7 @@ pub struct Engine {
     pub tones: Tones,
     tables: ReadTables,
     platter: Platter,
+    scratch_gain: SpeedGain, // the record's level by its speed (a still record is silent)
 
     stretch: Option<Box<Stretcher>>, // the speed renderer when the time stretch is on (else varispeed)
     standby: Option<Box<Stretcher>>,
@@ -104,7 +105,8 @@ pub struct Engine {
 
 impl Engine {
     pub const LATE_JUMP_SEC: f64 = 0.15;
-    pub const PEAK_FLOOR_DBFS: f64 = -24.0;
+    // below the GUI's meter's lowest segment (-30 dB on a DJM-A9's scale: -42 dBFS)
+    pub const PEAK_FLOOR_DBFS: f64 = -45.0;
     // the meter holds a peak this long (the GUI's meter reads at its frame rate, the engine takes peaks each tick)
     const PEAK_HOLD_SEC: f64 = 0.05;
     pub const BUFFER_MS_RANGE: (f64, f64) = (2.0, 500.0);
@@ -132,6 +134,7 @@ impl Engine {
             tones: Tones::new(r),
             tables: ReadTables::new(),
             platter: Platter::new(r),
+            scratch_gain: SpeedGain::new(r),
             stretch: None,
             standby: None,
             standby_for: None,
@@ -322,6 +325,7 @@ impl Engine {
             self.poll_frames_per_px = if self.poller.is_some() { frames_per_px } else { 0.0 };
             self.poll_anchor = None;
             self.platter.reset(self.pos, clock::now(), self.poll_frames_per_px);
+            self.scratch_gain.reset();
             self.end_out_frame = None;
             self.sent_finished = false;
             self.clicks.clear_voices();
@@ -331,6 +335,9 @@ impl Engine {
         self.poller = None;
         self.scratching = false;
         self.pos = self.scratch_target;
+        if self.playing && self.scratch_gain.level() < 0.5 {
+            self.halted = true; // let go of a record held (near) still: playing fades in (render_block)
+        }
     }
 
     /// A jog wheel grabbed (true) or let go: scratching that follows scratch_to, the platter ``delay`` late.
@@ -374,10 +381,11 @@ impl Engine {
         let queued = self.ring.written() as f64 - self.ring.heard(clock::now());
         let heard_at = clock::now() + queued.max(0.0) / self.rate;
         let positions = self.platter.positions(n, heard_at);
-        let out = match &self.pcm {
+        let mut out = match &self.pcm {
             Some(p) => dsp::read_at(&self.tables, p.data(), self.ch, &positions, Some(start)),
             None => vec![0.0; n * self.ch],
         };
+        self.scratch_gain.apply(&mut out, self.ch, &positions, start);
         let step = (self.platter.position - start) / n.max(1) as f64;
         self.append(out, start, step, Some(true));
     }

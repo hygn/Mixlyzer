@@ -263,7 +263,7 @@ class DeckReport:
 
     def __init__(self, playing: bool, factor: float, volume: float, cue: float, jump_dest: float, lamps: int,
                  tempo_range: int, midi_state: int, knobs: tuple = (0.5, 0.5, 0.5, 0.5), channel_cue: bool = False,
-                 peak: float = -24.0, crossfader: float = 0.5, color: float = 0.5, mix: tuple = (),
+                 peak: float = -45.0, crossfader: float = 0.5, color: float = 0.5, mix: tuple = (),
                  beat_bpm: float = 0.0) -> None:
         self.playing, self.factor, self.volume = bool(playing), float(factor), float(volume)
         self.cue, self.jump_dest, self.lamps = float(cue), float(jump_dest), int(lamps)
@@ -767,7 +767,7 @@ class NativeFeeder(QtCore.QObject):
     jumped = QtCore.Signal()
     format_changed = QtCore.Signal()   # deck 2 ..: the engine plays at another rate now (its track decoded again)
 
-    PEAK_FLOOR_DBFS = -24.0
+    PEAK_FLOOR_DBFS = -45.0   # src/engine.rs': below the meter's lowest segment (-42 dBFS)
     BUFFER_MS_RANGE = (2, 500)   # the engine fills its buffer every 1 ms below 10 ms (engine.rs)
     RESTART_SEC = 2.0
     EXCLUSIVE_RATES = (44100, 48000, 88200, 96000, 176400, 192000)
@@ -1137,7 +1137,7 @@ class NativeFeeder(QtCore.QObject):
         mix = tuple(values.get(k, 0.0) for k in MIX_KEYS) if values else ()
         bpm = float((mixer.get("meters") or {}).get("beat_bpm", 0.0))
         if row is None:
-            return (0.5, 0.5, 0.5, 0.5), False, -24.0, float(mixer.get("crossfader", 0.5)), 0.5, mix, bpm
+            return (0.5, 0.5, 0.5, 0.5), False, -45.0, float(mixer.get("crossfader", 0.5)), 0.5, mix, bpm
         return ((row["trim"], row["eq_low"], row["eq_mid"], row["eq_high"]), bool(row["channel_cue"]), row["peak"],
                 float(mixer.get("crossfader", 0.5)), float(row["color"]), mix, bpm)
 

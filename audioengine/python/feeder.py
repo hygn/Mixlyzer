@@ -50,7 +50,7 @@ class PCMFeeder(QtCore.QObject):
     # stays in phase, only offset by the delay.
     LATE_JUMP_SEC = 0.15
 
-    PEAK_FLOOR_DBFS = -24.0
+    PEAK_FLOOR_DBFS = -45.0   # below the meter's lowest segment (-42 dBFS)
     SOFT_CLIP_KNEE = 0.8
 
     # The sink is topped up every FLUSH_MS: it holds the output buffer (set_buffer_ms; the time stretch wants

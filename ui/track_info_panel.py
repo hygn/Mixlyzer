@@ -141,7 +141,12 @@ class MarqueeLabel(QtWidgets.QLabel):
 
 
 class VerticalPeakMeter(QtWidgets.QWidget):
-    FLOOR_DBFS = -24.0
+    """The channel's level meter as a DJM-A9's channel level indicator: 15 segments, -30 to +12 dB in 3 dB steps
+    (a segment lit at its level and above), its 0 dB at REFERENCE_DBFS: -12 dBFS (one of the A9's DIGITAL MASTER OUT
+    reference levels), so +12, the top, is 0 dBFS: the output's full scale, where it clips. The peak held 0.5 s."""
+    REFERENCE_DBFS = -12.0
+    SEGMENTS_DB = tuple(range(-30, 13, 3))
+    FLOOR_DBFS = REFERENCE_DBFS + SEGMENTS_DB[0] - 3.0   # nothing lit
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -158,10 +163,12 @@ class VerticalPeakMeter(QtWidgets.QWidget):
         self.setFixedWidth(10)
         self.setMinimumHeight(TrackInfoPanel.HEADER_H - 6)
         self.setMaximumHeight(TrackInfoPanel.HEADER_H - 6)
+        self.setToolTip(tr("Channel level (before the fader), as a DJM-A9's: -30 to +12 dB; 0 dB is -12 dBFS, "
+                           "+12 dB the full scale (clipping)."))
         self._anim.start()
 
     def set_level_dbfs(self, dbfs: float) -> None:
-        value = max(self.FLOOR_DBFS, min(0.0, float(dbfs)))
+        value = max(self.FLOOR_DBFS, min(0.0, float(dbfs)))   # the engine reports 0 dBFS at most
         self._target_dbfs = value
         if value >= self._display_dbfs:
             self._display_dbfs = value
@@ -196,31 +203,20 @@ class VerticalPeakMeter(QtWidgets.QWidget):
         super().paintEvent(event)
         painter = QtGui.QPainter(self)
         painter.setRenderHint(QtGui.QPainter.Antialiasing, True)
-        rect = self.rect().adjusted(3, 2, -3, -2)
+        rect = QtCore.QRectF(self.rect()).adjusted(2, 2, -2, -2)
         painter.fillRect(rect, QtGui.QColor("#111"))
-        painter.setPen(QtGui.QPen(QtGui.QColor("#444"), 1))
-        painter.drawRect(rect)
-
-        fill_ratio = (self._display_dbfs - self.FLOOR_DBFS) / abs(self.FLOOR_DBFS)
-        fill_ratio = max(0.0, min(1.0, fill_ratio))
-        fill_h = int(round(rect.height() * fill_ratio))
-        if fill_h > 0:
-            fill_rect = QtCore.QRect(rect.left() + 1, rect.bottom() - fill_h + 1, rect.width() - 1, fill_h - 1)
-            grad_rect = rect.adjusted(1, 1, -1, -1)
-            grad = QtGui.QLinearGradient(grad_rect.topLeft(), grad_rect.bottomLeft())
-            grad.setColorAt(0.0, QtGui.QColor("#ff4d4d"))
-            grad.setColorAt(0.35, QtGui.QColor("#ffcf40"))
-            grad.setColorAt(1.0, QtGui.QColor("#34d399"))
-            painter.save()
-            painter.setClipRect(fill_rect)
-            painter.fillRect(grad_rect, grad)
-            painter.restore()
-
-        peak_ratio = (self._peak_hold_dbfs - self.FLOOR_DBFS) / abs(self.FLOOR_DBFS)
-        peak_ratio = max(0.0, min(1.0, peak_ratio))
-        peak_y = rect.bottom() - int(round(rect.height() * peak_ratio))
-        painter.setPen(QtGui.QPen(QtGui.QColor("#f8fafc"), 2))
-        painter.drawLine(rect.left() + 1, peak_y, rect.right() - 1, peak_y)
+        level = self._display_dbfs - self.REFERENCE_DBFS
+        held = self._peak_hold_dbfs - self.REFERENCE_DBFS
+        n = len(self.SEGMENTS_DB)
+        pitch = (rect.height() - 1) / n
+        for k, db in enumerate(self.SEGMENTS_DB):
+            # green below 0 dB, amber 0 to +9, red at +12 (clipping)
+            color = QtGui.QColor("#ff4d4d" if db >= 12 else "#ffb020" if db >= 0 else "#34d399")
+            lit = level >= db - 1e-6 or db - 1e-6 <= held < db + 3.0   # the level, and the peak held
+            if not lit:
+                color.setAlpha(38)
+            seg = QtCore.QRectF(rect.left() + 1, rect.bottom() - (k + 1) * pitch + 1, rect.width() - 2, pitch - 1)
+            painter.fillRect(seg, color)
         painter.end()
 
 

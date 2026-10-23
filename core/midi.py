@@ -6,7 +6,7 @@ The actions (``ACTIONS``) are a DJ controller's, as rekordbox / a CDJ and DJM do
 the deck (PLAY, CUE, SHIFT + CUE to the track's start, the tempo fader and its range, pitch bend buttons, the jog
 wheel), the JumpCUE pads (JUMP; SET on an empty slot; SHIFT: delete), the CUE points (CALL, MEMORY, DELETE), beat
 jumps (1 - 32 beats), the browser (its knob turned / pressed), the mixer (a channel's fader, EQ, trim and level
-meter, the crossfader). The native audio engine reads the controller (audioengine/native/src/deck.rs, never through
+meter; not the crossfader: the engine's act has no action, not shown to the user). The native audio engine reads the controller (audioengine/native/src/deck.rs, never through
 the GUI's Python) and does the deck's and the mixer's actions itself; the others (loading, the browser, edits) are
 passed on to the GUI, which runs them as its shortcuts do.
 
@@ -19,8 +19,7 @@ a CC, "E000" a pitch bend: data 1 not read), then its options: "H" a 14-bit CC (
 a knob's turns one way only (clockwise / counterclockwise, a step an action), "I" inverted (a fader the other way up,
 a knob the other way round), and a knob's encoding: "O" 64 + steps, "T" two's complement, "S" sign and magnitude
 (none: told apart by the values, offset or two's complement). ``import_rekordbox_csv`` reads a mapping exported from
-rekordbox (DDJ-400 and the like): deck 1's column, mixer channel 1, the browser, the crossfader and the
-headphones' knobs.
+rekordbox (DDJ-400 and the like): deck 1's column, mixer channel 1, the browser and the headphones' knobs.
 """
 
 from __future__ import annotations
@@ -222,7 +221,6 @@ ACTIONS: tuple[Action, ...] = (
     Action("browser.zoom", BROWSER, tr_mark("Browser: waveform zoom (SHIFT + BROWSE)"), KNOB,
            gui=("playback.zoom_in", "playback.zoom_out"), tip=tr_mark("Turned: the waveform zoomed in / out.")),
     *(action for n in range(1, DECKS + 1) for action in _mixer_actions(n)),
-    Action("mixer.crossfader", MIXER, tr_mark("Crossfader"), FADER, engine.ACT_CROSSFADER, shown=False),
     Action("mixer.headphones_mix", MIXER, tr_mark("Headphones: CUE / MASTER"), FADER, engine.ACT_HEADPHONES_MIX,
            tip=tr_mark("The CUE'd channels against the master in the headphones (with the master mixed in: Settings "
                        "> Audio > Headphones).")),
@@ -414,13 +412,12 @@ _REKORDBOX = {
     **{f"PAD{i + 1}_HotCue": f"deck1.jumpcue.{c}" for i, c in enumerate(JUMPCUE_PADS)},
     **{f"PAD{i + 1}_HotCue+Shift": f"deck1.jumpcue_delete.{c}" for i, c in enumerate(JUMPCUE_PADS)},
 }
-# the browser and the crossfader: one of each (the input column)
+# the browser and the headphones: one of each (the input column)
 _REKORDBOX_GLOBAL = {
     "Browse": "browser.rotate",
     "Forward": "browser.press",
     "Back": "browser.back",
     "Zoom": "browser.zoom",
-    "CrossFader": "mixer.crossfader",
     "HeadphonesMix": "mixer.headphones_mix",
     "HeadphonesVolume": "mixer.headphones_level",
     # its CFX knobs (the channel's COLOR); FX1 (Beat FX) is left out: not shown to the user
@@ -435,7 +432,7 @@ _HEX4 = re.compile(r"^[0-9A-Fa-f]{4}$")
 def import_rekordbox_csv(path: str) -> tuple[Mapping, list[str]]:
     """A rekordbox MIDI mapping (CSV: function, controller name, type, input, deck 1-4 inputs, output, deck 1-4
     outputs, options, comment): deck 1's controls (its column: a whole message, "900B", or a channel offset to
-    the input column's, "0"), mixer channel 1's, the browser's and the crossfader as Mixlyzer's actions. Returns
+    the input column's, "0"), mixer channel 1's and the browser's as Mixlyzer's actions. Returns
     (the mapping, the functions not taken)."""
     out: Mapping = {}
     skipped: list[str] = []
