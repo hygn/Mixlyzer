@@ -21,6 +21,7 @@ from core.taskmanager import taskmanager
 from core.external_sync import ExternalSyncController
 from core.workflows.rekordbox_sync import RekordboxXmlSync
 from core.workflows.reading_refresh import LibraryReadingRefresh
+from core.workflows.music_index import LibraryMusicIndex
 from .metronome import MetronomeController
 from utils.window_visibility import is_window_fully_hidden
 from utils.volume import slider_percent_to_linear, trim_dbfs_to_linear, trim_knob_to_db
@@ -115,6 +116,11 @@ class AppWindow(QtWidgets.QMainWindow):
         self.reading_refresh.failed.connect(self.bus.sig_reading_refresh_failed)
         # the library's search takes the new readings
         self.reading_refresh.finished.connect(lambda _request, _result: self._emit_library_update(self.cfg, None))
+        self.music_index = LibraryMusicIndex(cfg_getter=lambda: self.cfg, parent=self)
+        self.music_index.started.connect(self.bus.sig_music_index_started)
+        self.music_index.progress.connect(self.bus.sig_music_index_progress)
+        self.music_index.finished.connect(self.bus.sig_music_index_finished)
+        self.music_index.failed.connect(self.bus.sig_music_index_failed)
 
         # Main UI pane
         step(0.03, tr("Main view, editor and library"))
@@ -232,6 +238,7 @@ class AppWindow(QtWidgets.QMainWindow):
         self.bus.sig_rekordbox_sync_requested.connect(self.rekordbox_sync.sync_requested)
         self.bus.sig_rekordbox_sync_track_requested.connect(self.rekordbox_sync.sync_track_requested)
         self.bus.sig_reading_refresh_requested.connect(self.reading_refresh.refresh_requested)
+        self.bus.sig_music_index_requested.connect(self.music_index.index_requested)
         self.bus.sig_reanalyze_requested.connect(self.reanalyze_file)
 
         self.resize(1600, 900)  # minimum target: FHD

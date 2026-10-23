@@ -1,6 +1,7 @@
 from PySide6 import QtCore
 from PySide6.QtWidgets import (
     QCheckBox,
+    QDoubleSpinBox,
     QFormLayout,
     QGridLayout,
     QGroupBox,
@@ -13,7 +14,7 @@ from PySide6.QtWidgets import (
 
 from core import reading
 from core.config import searchconfig
-from ui.config.dialogs import ReadingRefreshProgressDialog
+from ui.config.dialogs import MusicIndexProgressDialog, ReadingRefreshProgressDialog
 from ui.config.scroll import scroll_page
 from core.i18n import tr, tr_mark
 
@@ -128,9 +129,43 @@ def build_search_tab(dialog) -> None:
     _keep_one_checked([dialog.cb_query_hangul_korean, dialog.cb_query_hangul_foreign])
     f_query.addRow(tr("Hangul"), hangul_box)
 
+    # Search by Music (core.music_search)
+    grp_music = QGroupBox(tr("Search by Music"))
+    f_music = QFormLayout(grp_music)
+    dialog.cb_music_index = QCheckBox(tr("Index tracks when analyzing"))
+    dialog.cb_music_index.setToolTip(
+        tr("<p>The analysis also indexes each track for Search by Music: its melody (the lead and the top line) "
+           "and fingerprints of its sound, about 6 seconds more a track.</p>"))
+    f_music.addRow(dialog.cb_music_index)
+    dialog.sp_music_window = QDoubleSpinBox()
+    dialog.sp_music_window.setRange(4.0, 30.0)
+    dialog.sp_music_window.setDecimals(0)
+    dialog.sp_music_window.setSuffix(tr(" s"))
+    dialog.sp_music_window.setToolTip(
+        tr("<p>While listening, the search looks at this many seconds of what was heard last. A melody is "
+           "found best from 8 to 15 seconds of it.</p>"))
+    f_music.addRow(tr("Listen to the last"), dialog.sp_music_window)
+    dialog.sp_music_interval = QDoubleSpinBox()
+    dialog.sp_music_interval.setRange(1.0, 10.0)
+    dialog.sp_music_interval.setDecimals(1)
+    dialog.sp_music_interval.setSingleStep(0.5)
+    dialog.sp_music_interval.setSuffix(tr(" s"))
+    dialog.sp_music_interval.setToolTip(tr("<p>While listening, a search is made this often.</p>"))
+    f_music.addRow(tr("Search every"), dialog.sp_music_interval)
+    dialog.lbl_music_index_status = QLabel()
+    dialog.lbl_music_index_status.setWordWrap(True)
+    f_music.addRow(dialog.lbl_music_index_status)
+    dialog.btn_music_index_now = QPushButton(tr("Index Now"))
+    dialog.btn_music_index_now.setToolTip(
+        tr("<p>Index the library's tracks that are not indexed yet (analyzed before Search by Music, or with "
+           "indexing off), in the background; tracks gone from the library leave the index.</p>"))
+    f_music.addRow("", dialog.btn_music_index_now)
+
     form.addRow(grp_db)
     form.addRow(grp_query)
+    form.addRow(grp_music)
     dialog.btn_reread_library.clicked.connect(dialog._reread_library_now)
+    dialog.btn_music_index_now.clicked.connect(dialog._music_index_now)
     dialog.tabs.addTab(scroll_page(dialog.tab_search), tr("Search"))
 
 
@@ -150,6 +185,10 @@ class SearchSettingsMixin:
         self.cb_han_runs.setChecked(bool(s.han_runs))
         self.sp_han_run_min.setValue(max(reading.HAN_RUN_LEAST, int(s.han_run_min)))
         self._sync_han_runs()
+        self.cb_music_index.setChecked(bool(s.music_index))
+        self.sp_music_window.setValue(float(s.music_listen_window))
+        self.sp_music_interval.setValue(float(s.music_listen_interval))
+        self._show_music_index_status()
 
     def _get_search_config(self) -> searchconfig:
         return searchconfig(
@@ -160,12 +199,20 @@ class SearchSettingsMixin:
             query_hangul_korean=bool(self.cb_query_hangul_korean.isChecked()),
             query_hangul_foreign=bool(self.cb_query_hangul_foreign.isChecked()),
             query_keyboard_layout=bool(self.cb_query_keyboard_layout.isChecked()),
+            music_index=bool(self.cb_music_index.isChecked()),
+            music_listen_window=float(self.sp_music_window.value()),
+            music_listen_interval=float(self.sp_music_interval.value()),
         )
 
     def _initialize_search_settings(self, bus) -> None:
         self._reading_refresh_dialog: ReadingRefreshProgressDialog | None = None
+        self._music_index_dialog: MusicIndexProgressDialog | None = None
         if bus is None:
             return
+        bus.sig_music_index_started.connect(self._on_music_index_started)
+        bus.sig_music_index_progress.connect(self._on_music_index_progress)
+        bus.sig_music_index_finished.connect(self._on_music_index_finished)
+        bus.sig_music_index_failed.connect(self._on_music_index_failed)
         bus.sig_reading_refresh_started.connect(self._on_reading_refresh_started)
         bus.sig_reading_refresh_progress.connect(self._on_reading_refresh_progress)
         bus.sig_reading_refresh_finished.connect(self._on_reading_refresh_finished)
@@ -208,3 +255,46 @@ class SearchSettingsMixin:
         self.btn_reread_library.setEnabled(True)
         if self._reading_refresh_dialog is not None:
             self._reading_refresh_dialog.set_failed(message)
+
+    def _show_music_index_status(self) -> None:
+        from core.workflows.music_index import index_status
+        cfg = getattr(self, "_current_cfg", None)
+        if cfg is None:
+            return
+        indexed, total = index_status(str(cfg.libconfig.libpath))
+        self.lbl_music_index_status.setText(
+            tr("{indexed} of {total} library tracks are indexed.").format(indexed=indexed, total=total))
+
+    def _music_index_now(self) -> None:
+        if self._bus is None:
+            return
+        self.saveJsonRequested.emit(self.get_config())
+        self._bus.sig_music_index_requested.emit(None)
+
+    @QtCore.Slot(object)
+    def _on_music_index_started(self, run) -> None:
+        self.btn_music_index_now.setEnabled(False)
+        if self._music_index_dialog is None:
+            self._music_index_dialog = MusicIndexProgressDialog(self)
+        self._music_index_dialog.set_started(run)
+        self._music_index_dialog.show()
+        self._music_index_dialog.raise_()
+
+    @QtCore.Slot(object, int, str)
+    def _on_music_index_progress(self, _run, value: int, message: str) -> None:
+        if self._music_index_dialog is not None:
+            self._music_index_dialog.set_progress(value, message)
+
+    @QtCore.Slot(object, object)
+    def _on_music_index_finished(self, _run, summary) -> None:
+        self.btn_music_index_now.setEnabled(True)
+        if self._music_index_dialog is not None:
+            self._music_index_dialog.set_finished(summary)
+        self._show_music_index_status()
+
+    @QtCore.Slot(object, str)
+    def _on_music_index_failed(self, _run, message: str) -> None:
+        self.btn_music_index_now.setEnabled(True)
+        if self._music_index_dialog is not None:
+            self._music_index_dialog.set_failed(message)
+        self._show_music_index_status()

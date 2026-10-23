@@ -30,6 +30,8 @@ from core.library_handler import LibraryDB
 from core.audio.tag_writer import TagWriteError, read_fields, read_picture, tag_format, tag_sources
 from core.analysis_lib_handler import FeatureNPZStore
 from core.thumbnails import save_thumbnail
+from core.music_search import store as music_store
+from core.music_search.indexing import index_audio
 from core.config import ANALYSIS_SAMPLE_RATE, config
 from core.i18n import tr
 from core.taskmanager import taskmanager
@@ -499,6 +501,18 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
     features["key_segments_auto"] = np.array(key_segments, dtype=float, copy=True)
     features["sr"] = global_sr
 
+    # The search by music's index (core.music_search): the reference lines from the decoded stereo and the mono
+    # harmonic part already made, the landmarks; written to music_search.db once the track has its uid. A failure
+    # leaves the track unindexed, never the analysis undone.
+    music_entry = None
+    if bool(getattr(config.searchconfig, "music_index", True)):
+        yield {"status": tr("Search by Music")}
+        taskmgr.updatetask(taskid, tr("Indexing for Search by Music"), 0.78)
+        try:
+            music_entry = index_audio(samp_stereo, y_harm)
+        except Exception as exc:
+            print(f"[Music search] indexing skipped: {exc}")
+
     # DB Features
     taskmgr.updatetask(taskid, tr("Processing Metadata"), 0.85)
     duration_out = float(features.get("duration_sec", 0.0))
@@ -549,6 +563,16 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
         )
     finally:
         l.close()
+    if music_entry is not None:
+        try:
+            con = music_store.open_writer(music_store.path_for(config.libconfig.libpath))
+            try:
+                with con:
+                    music_store.put(con, properties["uid"], int(fsize), float(fmtime), music_entry)
+            finally:
+                con.close()
+        except Exception as exc:
+            print(f"[Music search] index not written: {exc}")
     features_properties["library"] = lib_full
     print("[Analyzer] Analysis Finished")
     taskmgr.updatetask(taskid, tr("Finished"), 1)

@@ -256,6 +256,11 @@ class searchconfig:
     query_hangul_foreign: bool   # ... as Korean spells a foreign word (도쿄 tokyo: Japanese / English titles)
     # a query typed on the 2-set keyboard without the 한/영 key also read as what was meant (tkghl 사회, 무ㅐㅜㄷ anone)
     query_keyboard_layout: bool
+    # Search by Music (core.music_search): the analysis indexes each track it analyzes (about 6 s more a track);
+    # listening, the last music_listen_window seconds are searched every music_listen_interval seconds
+    music_index: bool
+    music_listen_window: float
+    music_listen_interval: float
 
     def han_run(self) -> int:
         """core.reading's ``han_run``: the Han run length read in Korean Hanja beside kana, 0: off."""
@@ -492,6 +497,9 @@ def default_cfg():
         query_hangul_korean=True,
         query_hangul_foreign=True,
         query_keyboard_layout=True,
+        music_index=True,
+        music_listen_window=10.0,
+        music_listen_interval=2.0,
     )
     return config(
         libconfig=lcfg,

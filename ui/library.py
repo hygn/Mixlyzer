@@ -1,5 +1,6 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
+import copy
 import json
 from pathlib import Path
 from typing import List, Optional
@@ -16,11 +17,17 @@ from core.model import DataModel
 from ui.edit_song import EditTrackPanel
 from ui.export import ExportTrackPanel
 from ui.reanalyze_dialog import ReanalyzeDialog
+from ui.music_search import DeckSeekAfterLoad, MusicListener, MusicSearchBar, close_icon, mic_icon
 from ui.theme import current_theme
 from ui.edit_panel.key_picker import KeyPickButton
 from ui.edit_panel.flash import flash
 from core.thumbnails import delete_thumbnail, load_thumbnail
 from core.i18n import tr, tr_mark, tr_n
+
+
+def _mmss(sec: float) -> str:
+    sec = max(0, int(round(sec)))
+    return f"{sec // 60}:{sec % 60:02d}"
 
 
 # Data schema
@@ -879,6 +886,35 @@ class LibraryWidget(QtWidgets.QWidget):
         self.btn_clear_filters = QtWidgets.QToolButton()
         self.btn_clear_filters.setText(tr("Clear"))
         self.btn_clear_filters.setToolTip(tr("Remove every search condition (text and filters)"))
+        # Search by Music (ui.music_search): the microphone left of the search field; on, the field becomes the
+        # microphone's waveform and the library shows the songs heard, best first, until it is turned off; the close
+        # button beside it is the plain library again
+        self._mic_icon, self._mic_icon_on = mic_icon(), mic_icon(current_theme().on_accent)   # on: on the accent
+        self.btn_mic = QtWidgets.QToolButton()
+        self.btn_mic.setIcon(self._mic_icon)
+        self.btn_mic.setCheckable(True)
+        self.btn_mic.setAutoRaise(True)
+        self.btn_mic.setToolTip(tr(
+            "<p>Search by Music: hum, sing or whistle a melody, or play the song from a phone, and the library "
+            "shows the songs the microphone hears, best first. Click again to stop listening (the results stay).</p>"))
+        self.btn_mic.clicked.connect(self._toggle_mic)
+        self.btn_music_close = QtWidgets.QToolButton()
+        self.btn_music_close.setIcon(close_icon())
+        self.btn_music_close.setAutoRaise(True)
+        self.btn_music_close.setToolTip(tr("Back to the library"))
+        self.btn_music_close.clicked.connect(self._exit_music_mode)
+        self.btn_music_close.hide()
+        self.music_bar = MusicSearchBar()
+        self.music_bar.hide()
+        self._music_mode = False
+        self._music_matches: list = []          # core.music_search.search.MusicMatch, best first
+        self._music_saved_text = ""
+        self._music = MusicListener(bus, lambda: self.cfg, parent=self)
+        self._music.audio.connect(self.music_bar.wave.add)
+        self._music.status.connect(self.music_bar.status.setText)
+        self._music.results.connect(self._on_music_results)
+        self._music.listening_changed.connect(self._on_listening_changed)
+        self._deck_seek = DeckSeekAfterLoad(bus, model, parent=self)
 
         # Phrase filter: the label always applies; BPM and key refine it.
         self.cmb_phrase_label = QtWidgets.QComboBox()
@@ -980,14 +1016,19 @@ class LibraryWidget(QtWidgets.QWidget):
         row_h = self.e_search.sizeHint().height()
         for widget in (self.cb_column, self.cb_fuzzy, self.cb_phrase_filter, self.cb_transition_bpm,
                        self.cb_transition_key, self.match_toggle,
-                       self.btn_clear_filters):
+                       self.btn_clear_filters, self.btn_mic, self.btn_music_close, self.music_bar):
             widget.setFixedHeight(row_h)
+        self.btn_mic.setFixedWidth(row_h)
+        self.btn_music_close.setFixedWidth(row_h)
 
         primary = QtWidgets.QHBoxLayout()
         primary.setContentsMargins(0, 0, 0, 0)
         primary.setSpacing(4)
         self.e_search.setMinimumWidth(220)
+        primary.addWidget(self.btn_mic)
+        primary.addWidget(self.btn_music_close)
         primary.addWidget(self.e_search, 1)
+        primary.addWidget(self.music_bar, 1)
         primary.addWidget(self.cb_column)
         primary.addWidget(self.cb_fuzzy)
         primary.addSpacing(4)
@@ -1239,13 +1280,19 @@ class LibraryWidget(QtWidgets.QWidget):
     def _on_source_changed(self, current, _previous=None) -> None:
         if current is None or self.source_tree.keyboard_move:
             return
+        if self._music_mode:
+            self._exit_music_mode()
         self._source_kind = str(current.data(0, _SOURCE_KIND_ROLE) or "")
         self._source_value = current.data(0, _SOURCE_VALUE_ROLE)
         self._refresh_current_source(reset_sort=True)
 
     def _refresh_current_source(self, *, reset_sort: bool = False) -> None:
-        self.table.setPlaylistReorderEnabled(self._source_kind == "playlist")
-        if self._source_kind == "library":
+        self.table.setPlaylistReorderEnabled(self._source_kind == "playlist" and not self._music_mode)
+        if self._music_mode:
+            tracks = self._music_tracks()
+            default_column = "#"
+            default_order = QtCore.Qt.SortOrder.AscendingOrder
+        elif self._source_kind == "library":
             tracks = list(self._library_tracks)
             default_column = "Added"
             default_order = QtCore.Qt.SortOrder.DescendingOrder
@@ -1273,8 +1320,8 @@ class LibraryWidget(QtWidgets.QWidget):
             default_column = "Title"
             default_order = QtCore.Qt.SortOrder.AscendingOrder
 
-        source = (self._source_kind, self._source_value)
-        if (self._source_kind == "library" and not reset_sort and self._table_source == source
+        source = ("music", None) if self._music_mode else (self._source_kind, self._source_value)
+        if (source[0] == "library" and not reset_sort and self._table_source == source
                 and self._update_library_rows(tracks)):
             self._apply_filter()
             return
@@ -1288,6 +1335,8 @@ class LibraryWidget(QtWidgets.QWidget):
             )
         self._populate_table(tracks)   # sorted by the sort indicator
         self._table_source = source
+        if self._music_mode:
+            self._music_tooltips()
         self._apply_filter()
         self.table.setUpdatesEnabled(True)
 
@@ -1687,7 +1736,10 @@ class LibraryWidget(QtWidgets.QWidget):
         if not item:
             return
         path = item.text()
-        if path:
+        match = next((m for m in self._music_matches if m.uid == self._row_uid(r)), None) if self._music_mode else None
+        if path and match is not None:
+            self._deck_seek.load(path, max(0.0, match.start_sec - 1.0))
+        elif path:
             self.bus.sig_request_load_track.emit(path)
 
     def _on_external_sync_enabled(self, enabled: bool) -> None:
@@ -1820,6 +1872,7 @@ class LibraryWidget(QtWidgets.QWidget):
             "library.load": self._load_selected,
             "library.browse_sources": self._toggle_sources,
             "library.search": self._focus_search,
+            "library.music_search": self._toggle_mic,
             "library.locate_loaded": self._select_loaded_track,
             "library.edit_track": self._edit_selected,
             "library.export_track": self._export_selected,
@@ -1887,6 +1940,95 @@ class LibraryWidget(QtWidgets.QWidget):
                 tree.blockSignals(False)
                 return
             iterator += 1
+
+    # Search by Music
+    def _toggle_mic(self) -> None:
+        """The microphone on (into music mode, listening) or off (the results stay, no longer followed)."""
+        if self._music.listening():
+            self._music.stop()
+            return
+        if not self._music_mode:
+            self._enter_music_mode()
+        self.music_bar.wave.reset(48000)
+        if self._music.start():
+            self.music_bar.wave.reset(self._music.rate)
+        else:
+            self.btn_mic.setChecked(False)
+
+    def _enter_music_mode(self) -> None:
+        self._music_mode = True
+        self._music_matches = []
+        self._music_saved_text = self.e_search.text()
+        for widget in (self.e_search, self.cb_column, self.cb_fuzzy):
+            widget.hide()
+        self.music_bar.show()
+        self.btn_music_close.show()
+        self.e_search.blockSignals(True)
+        self.e_search.clear()
+        self.e_search.blockSignals(False)
+        self._refresh_current_source(reset_sort=True)
+
+    def _exit_music_mode(self) -> None:
+        self._music.stop()
+        if not self._music_mode:
+            return
+        self._music_mode = False
+        self._music_matches = []
+        self.music_bar.hide()
+        self.btn_music_close.hide()
+        for widget in (self.e_search, self.cb_column, self.cb_fuzzy):
+            widget.show()
+        self.e_search.blockSignals(True)
+        self.e_search.setText(self._music_saved_text)
+        self.e_search.blockSignals(False)
+        self._refresh_current_source(reset_sort=True)
+
+    def _on_listening_changed(self, on: bool) -> None:
+        self.btn_mic.setChecked(on)
+        self.btn_mic.setIcon(self._mic_icon_on if on else self._mic_icon)
+        if not on:
+            self.music_bar.wave.silence()
+
+    def _on_music_results(self, result) -> None:
+        """A search while listening: the library shows its songs, best first (kept while the selection is in it)."""
+        if not self._music_mode:
+            return
+        library = {t.uid for t in self._library_tracks}
+        selected = self._row_uid(self.table.currentRow()) if self.table.currentRow() >= 0 else ""
+        self._music_matches = [m for m in result.matches if m.uid in library]
+        self._refresh_current_source(reset_sort=True)
+        for r in range(self.table.rowCount()):
+            if selected and self._row_uid(r) == selected:
+                self._select_row(r)
+                break
+
+    def _music_tracks(self) -> List[Track]:
+        by_uid = {t.uid: t for t in self._library_tracks}
+        tracks = []
+        for rank, match in enumerate(self._music_matches, start=1):
+            track = copy.copy(by_uid[match.uid])
+            track.playlist_index = rank
+            track._disp_playlist_index = str(rank)
+            tracks.append(track)
+        return tracks
+
+    def _music_tooltips(self) -> None:
+        """Each result row says where in the song it matched and how."""
+        matches = {m.uid: m for m in self._music_matches}
+        for r in range(self.table.rowCount()):
+            m = matches.get(self._row_uid(r))
+            if m is None:
+                continue
+            if m.kind == "recording":
+                tip = tr("Matched at {start} - {end}, by the sound of the recording ({n} matches)").format(
+                    start=_mmss(m.start_sec), end=_mmss(m.end_sec), n=int(m.score))
+            else:
+                tip = tr("Matched at {start} - {end}, by the melody").format(
+                    start=_mmss(m.start_sec), end=_mmss(m.end_sec))
+            for c in range(self.table.columnCount()):
+                item = self.table.item(r, c)
+                if item is not None:
+                    item.setToolTip(tip)
 
     def _focus_search(self) -> None:
         self.e_search.setFocus(QtCore.Qt.ShortcutFocusReason)

@@ -132,6 +132,9 @@ ACTIONS: tuple[Action, ...] = (
            tip=tr_mark("To the panel beside the library (playlists, local folders) and back. Up / Down browse, "
                        "Left / Right close / open a folder, the load key shows the highlighted one.")),
     Action("library.search", LIBRARY, tr_mark("Search")),
+    Action("library.music_search", LIBRARY, tr_mark("Search by Music: microphone on / off"),
+           tip=tr_mark("The search field's microphone: the library shows the songs it hears (a hummed, sung or "
+                       "whistled melody, or the song played from a phone), best first; off, the results stay.")),
     Action("library.leave_search", LIBRARY, tr_mark("Back to the tracks"),
            tip=tr_mark("To the track list from the search field (its text kept), the sources panel or the track "
                        "panel; out of another text field: the keys work the shortcuts again.")),

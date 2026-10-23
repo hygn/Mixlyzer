@@ -95,6 +95,19 @@ def register_audio_thread() -> bool:
         return False
 
 
+def lower_process_priority() -> None:
+    """The calling process below the others (a background job: the GUI and the audio go first): Windows' below
+    normal priority class, elsewhere a nice of 10."""
+    try:
+        if IS_WINDOWS:
+            import ctypes
+            ctypes.windll.kernel32.SetPriorityClass(ctypes.windll.kernel32.GetCurrentProcess(), 0x4000)
+        else:
+            os.nice(10)
+    except Exception:
+        pass
+
+
 def hidden_subprocess_kwargs() -> dict:
     """Popen keyword arguments that keep a console program's window from opening (Windows); none elsewhere."""
     if not IS_WINDOWS:

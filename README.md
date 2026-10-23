@@ -13,7 +13,8 @@ Mixlyzer is a track-analysis and editing companion built for DJs and producers w
 - **Dynamic Key Analysis** - Trace musical key changes over time so mixing stays in key.  
 - **JumpCUE Analysis** - Find compatible cue pairs for clean forward/backward jumps or creative mashups.  
 - **Fast, Interactive Editing** - Segment-based beatgrid tools, partial reanalysis, and undo/redo so you can move quickly.  
-- **Export** - Rekordbox XML export with corrected tempo segments, downbeats, and JumpCUE entries.
+- **Export** - Rekordbox XML export with corrected tempo segments, downbeats, and JumpCUE entries.  
+- **Search by Music** - Hum, sing or whistle a melody, or play the song from a phone, and the microphone finds it in your library (indexed while analyzing).
 
 ## Made For
 

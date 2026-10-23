@@ -59,6 +59,12 @@ class EventBus(QtCore.QObject):
     sig_reading_refresh_progress = QtCore.Signal(object, int, str)
     sig_reading_refresh_finished = QtCore.Signal(object, object)
     sig_reading_refresh_failed = QtCore.Signal(object, str)
+    # Search by Music: Index Now (Settings > Search) and its run
+    sig_music_index_requested = QtCore.Signal(object)
+    sig_music_index_started = QtCore.Signal(object)
+    sig_music_index_progress = QtCore.Signal(object, int, str)
+    sig_music_index_finished = QtCore.Signal(object, object)
+    sig_music_index_failed = QtCore.Signal(object, str)
 
     # reload configs
     sig_reload_UI = QtCore.Signal(object)

@@ -162,6 +162,9 @@
   "library.search": [
     "Alt+F"
   ],
+  "library.music_search": [
+    "Alt+M"
+  ],
   "library.leave_search": [
     "Esc"
   ],
