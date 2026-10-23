@@ -1,4 +1,4 @@
-"""The output buffer's histogram (Settings > Playback): how long the buffer spent at each level over the recent
+"""The output buffer's histogram (Settings > Audio): how long the buffer spent at each level over the recent
 window, so a buffer that nears empty now and then shows even when its average looks safe."""
 from __future__ import annotations
 

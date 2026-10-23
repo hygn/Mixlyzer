@@ -250,7 +250,7 @@ ACTIONS: tuple[Action, ...] = (
     Action("mixer.crossfader", MIXER, tr_mark("Crossfader"), FADER, engine.ACT_CROSSFADER, shown=False),
     Action("mixer.headphones_mix", MIXER, tr_mark("Headphones: CUE / MASTER"), FADER, engine.ACT_HEADPHONES_MIX,
            tip=tr_mark("The CUE'd channels against the master in the headphones (with the master mixed in: Settings "
-                       "> Playback > Headphones output).")),
+                       "> Audio > Headphones).")),
     Action("mixer.headphones_level", MIXER, tr_mark("Headphones: level"), FADER, engine.ACT_HEADPHONES_LEVEL),
     Action("mixer.master_level", MIXER, tr_mark("Master: level"), FADER, engine.ACT_MASTER_LEVEL),
     *_effect_actions(),

@@ -1,3 +1,5 @@
+"""Settings > Audio: the audio engine and its outputs in pages: Overview (the signal path, each part's state and
+buffer: ui/config/audio_overview.py), Engine, Main output, Headphones, Booth, Mixer, Metronome."""
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -9,12 +11,13 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QSpinBox,
+    QTabWidget,
     QToolButton,
     QVBoxLayout,
     QWidget,
 )
 
-from audioengine.native.client import NativeFeeder
+from audioengine.native.client import BOOTH_EQ_DB, LEVEL_DB_MIN, NativeFeeder, booth_eq_knob_to_db, level_knob_to_db
 from audioengine.python.feeder import PCMFeeder
 from ui.config.output_group import (
     THREAD_STATE_NAMES,
@@ -29,14 +32,15 @@ from ui.config.output_group import (
     opened_as_text,
     output_mode_tip,
 )
+from ui.config.audio_overview import AudioOverview
 from ui.config.scroll import scroll_page
 from core import os_support
 from core.i18n import tr, tr_ctx
+from utils.volume import TRIM_DB_RANGE
 
 
 def build_playback_tab(dialog) -> None:
     dialog.tab_playback = QWidget()
-    form = QFormLayout(dialog.tab_playback)
 
     dialog.cb_metronome = QCheckBox(tr("Enable metronome"))
     dialog.ed_metronome_wav_path = QLineEdit()
@@ -48,7 +52,7 @@ def build_playback_tab(dialog) -> None:
         tr("Shift metronome clicks relative to the beat (positive = earlier)")
     )
     dialog.sp_volume_trim_dbfs = QDoubleSpinBox()
-    dialog.sp_volume_trim_dbfs.setRange(-60.0, 0.0)
+    dialog.sp_volume_trim_dbfs.setRange(*TRIM_DB_RANGE)   # the player's TRIM knob's
     dialog.sp_volume_trim_dbfs.setDecimals(2)
     dialog.sp_volume_trim_dbfs.setSingleStep(0.5)
     dialog.sp_default_volume_percent = QSpinBox()
@@ -184,7 +188,7 @@ def build_playback_tab(dialog) -> None:
     dialog.cb_metronome.setToolTip(tr("Play a click on every beat of the beat grid."))
     dialog.ed_metronome_wav_path.setToolTip(tr("WAV file used as the metronome click."))
     dialog.sp_volume_trim_dbfs.setToolTip(
-        tr("Fixed gain applied to the output before the volume slider (headroom).")
+        tr("The level before the volume fader, as the player's TRIM knob sets it (-24 to +9 dB).")
     )
     dialog.sp_default_volume_percent.setToolTip(tr("Volume slider position at startup."))
     dialog.sp_click_down_volume.setToolTip(tr("Click volume on the first beat of each bar."))
@@ -194,15 +198,45 @@ def build_playback_tab(dialog) -> None:
     dialog.sp_click_beat_volume.setToolTip(tr("Click volume on the other beats."))
     dialog.sp_click_beat_pitch.setToolTip(tr("Pitch shift of the click on the other beats."))
 
-    grp_general = QGroupBox(tr("General"))
-    f_general = QFormLayout(grp_general)
-    f_general.addRow(tr("Audio engine"), dialog.cb_audio_engine)
-    f_general.addRow(tr("Process priority") if os_support.IS_WINDOWS else tr("Thread priority"),
-                     dialog.cb_native_priority)
-    f_general.addRow(tr("Power throttling"), dialog.cb_native_power)
-    f_general.addRow(tr("Trim"), dialog.sp_volume_trim_dbfs)
-    f_general.addRow(tr("Default volume (%)"), dialog.sp_default_volume_percent)
-    f_general.addRow(dialog.cb_soft_clip)
+    grp_mixer = QGroupBox(tr("Channel"))
+    f_mixer = QFormLayout(grp_mixer)
+    f_mixer.addRow(tr("Trim"), dialog.sp_volume_trim_dbfs)
+    f_mixer.addRow(tr("Default volume (%)"), dialog.sp_default_volume_percent)
+    lbl_mixer_note = QLabel(tr("The EQ, the channel fader's curve, the headphones CUE and the master and headphones "
+                               "levels are on the main screen, between the player and the overview."))
+    lbl_mixer_note.setWordWrap(True)
+    f_mixer.addRow(lbl_mixer_note)
+
+    grp_master = QGroupBox(tr("Master"))
+    f_master = QFormLayout(grp_master)
+    f_master.addRow(dialog.cb_soft_clip)
+
+    # the booth's level and EQ (a DJ mixer's BOOTH knobs: set for the room), the headphones' MONO SPLIT
+    def db_spin(low: float, high: float, tip: str) -> QDoubleSpinBox:
+        spin = QDoubleSpinBox()
+        spin.setRange(low, high)
+        spin.setDecimals(1)
+        spin.setSingleStep(0.5)
+        spin.setSuffix(" dB")
+        spin.setToolTip(tip)
+        return spin
+
+    dialog.sp_booth_level = db_spin(LEVEL_DB_MIN, round(level_knob_to_db(1.0), 1), tr(
+        "<p>The booth output's level against the master ({low} dB: silent).</p>").format(low=f"{LEVEL_DB_MIN:.0f}"))
+    dialog.sp_booth_eq_hi = db_spin(*BOOTH_EQ_DB, tr("<p>The booth's high shelf (-12 to +6 dB).</p>"))
+    dialog.sp_booth_eq_low = db_spin(*BOOTH_EQ_DB, tr("<p>The booth's low shelf (-12 to +6 dB).</p>"))
+    grp_booth_mix = QGroupBox(tr("Booth level and EQ"))
+    f_booth_mix = QFormLayout(grp_booth_mix)
+    f_booth_mix.addRow(tr("Level"), dialog.sp_booth_level)
+    f_booth_mix.addRow(tr("EQ HI"), dialog.sp_booth_eq_hi)
+    f_booth_mix.addRow(tr("EQ LOW"), dialog.sp_booth_eq_low)
+    dialog.cb_headphones_split = QCheckBox(tr("MONO SPLIT"))
+    dialog.cb_headphones_split.setToolTip(tr(
+        "<p>The headphones in mono, split: the CUE in the left ear, the master in the right (a DJ mixer's MONO "
+        "SPLIT / STEREO switch). Off: both in stereo, mixed by the CUE / MASTER mix.</p>"))
+    grp_hp_mix = QGroupBox(tr("Headphones mix"))
+    f_hp_mix = QFormLayout(grp_hp_mix)
+    f_hp_mix.addRow(dialog.cb_headphones_split)
 
     grp_main = QGroupBox(tr("Main output"))
     f_main = QFormLayout(grp_main)
@@ -217,6 +251,13 @@ def build_playback_tab(dialog) -> None:
         dialog._native_rows.append((label, widget))
     f_main.addRow(tr("Buffer size"), dialog.buffer_slot)
     dialog.main_monitor.add_rows(f_main)
+
+    grp_engine = QGroupBox(tr("Engine"))
+    f_engine = QFormLayout(grp_engine)
+    f_engine.addRow(tr("Audio engine"), dialog.cb_audio_engine)
+    f_engine.addRow(tr("Process priority") if os_support.IS_WINDOWS else tr("Thread priority"),
+                    dialog.cb_native_priority)
+    f_engine.addRow(tr("Power throttling"), dialog.cb_native_power)
     dialog.btn_playback_advanced = QToolButton()
     dialog.btn_playback_advanced.setText(tr("Advanced"))
     dialog.btn_playback_advanced.setCheckable(True)
@@ -224,13 +265,13 @@ def build_playback_tab(dialog) -> None:
     dialog.btn_playback_advanced.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
     dialog.btn_playback_advanced.setAutoRaise(True)
     dialog.btn_playback_advanced.setToolTip(tr("Show or hide the settings of the audio engine not playing."))
-    f_main.addRow(dialog.btn_playback_advanced)
+    f_engine.addRow(dialog.btn_playback_advanced)
     dialog.playback_advanced = QWidget()
     f_advanced = QFormLayout(dialog.playback_advanced)
     f_advanced.setContentsMargins(16, 0, 0, 0)
     f_advanced.addRow(dialog.lbl_other_buffer, dialog.other_buffer_slot)
     dialog.playback_advanced.setVisible(False)
-    f_main.addRow(dialog.playback_advanced)
+    f_engine.addRow(dialog.playback_advanced)
     dialog.btn_playback_advanced.toggled.connect(dialog._toggle_playback_advanced)
 
     # the headphones and the booth: off, channels of the main device, or a device of their own
@@ -282,19 +323,73 @@ def build_playback_tab(dialog) -> None:
         dialog._toggle_metronome_details
     )
 
-    form.addRow(grp_general)
-    form.addRow(grp_main)
-    form.addRow(dialog.grp_output_headphones)
-    form.addRow(dialog.grp_output_booth)
-    form.addRow(grp_timestretch)
-    form.addRow(grp_metronome)
-    dialog.tabs.addTab(scroll_page(dialog.tab_playback), tr("Playback"))
+    # the pages
+    def page(*groups) -> QWidget:
+        widget = QWidget()
+        lay = QVBoxLayout(widget)
+        for group in groups:
+            lay.addWidget(group)
+        lay.addStretch(1)
+        return scroll_page(widget)
+
+    dialog.audio_overview = AudioOverview()
+    dialog.audio_tabs = QTabWidget(dialog.tab_playback)
+    dialog.audio_tabs.addTab(scroll_page(dialog.audio_overview), tr_ctx("settings page", "Overview"))
+    dialog.audio_tabs.addTab(page(grp_engine, grp_timestretch), tr("Engine"))
+    dialog.audio_tabs.addTab(page(grp_main, grp_master), tr("Main output"))
+    dialog.audio_tabs.addTab(page(dialog.grp_output_headphones, grp_hp_mix), tr("Headphones"))
+    dialog.audio_tabs.addTab(page(dialog.grp_output_booth, grp_booth_mix), tr("Booth"))
+    dialog.audio_tabs.addTab(page(grp_mixer), tr("Mixer"))
+    dialog.audio_tabs.addTab(page(grp_metronome), tr("Metronome"))
+    root = QVBoxLayout(dialog.tab_playback)
+    root.addWidget(dialog.audio_tabs)
+    dialog.tabs.addTab(dialog.tab_playback, tr("Audio"))
 
 
 class PlaybackSettingsMixin:
     def _initialize_playback_settings(self, bus) -> None:
+        self._deck_mix: dict = {}
+        self._midi_state = 0
+        self._last_stats = None
         if bus is not None:
             bus.sig_output_buffer.connect(self._on_output_buffer)
+            bus.sig_deck_state.connect(self._on_deck_report)
+
+    def _on_deck_report(self, report) -> None:
+        """The deck's mixer values and MIDI input state, for the overview."""
+        from audioengine.native.client import MIX_KEYS
+        if report.mix:
+            self._deck_mix = {k: report.mix_value(k) for k in MIX_KEYS}
+        self._midi_state = int(report.midi_state)
+        self._deck_info = {"playing": report.playing, "factor": report.factor, "volume": report.volume,
+                           "knobs": report.knobs, "channel_cue": report.channel_cue, "peak": report.peak,
+                           "color": report.color}
+
+    def _set_audio_mix_config(self, p) -> None:
+        """The booth's level and EQ, the headphones' MONO SPLIT (playbackconfig)."""
+        self.sp_booth_level.setValue(round(level_knob_to_db(float(p.booth_level)), 1))
+        self.sp_booth_eq_hi.setValue(round(booth_eq_knob_to_db(float(p.booth_eq_hi)), 1))
+        self.sp_booth_eq_low.setValue(round(booth_eq_knob_to_db(float(p.booth_eq_low)), 1))
+        self.cb_headphones_split.setChecked(bool(p.headphones_split))
+
+    def _overview_context(self) -> dict:
+        return {
+            "native": getattr(self, "_native_playing", False),
+            "timestretch": self.cb_use_timestretch.isChecked(),
+            "main_device": getattr(self, "_main_device_in_use", "") or self.cb_output_device.currentText(),
+            "api_names": api_names(self.cb_native_api),
+            "routes": {"headphones": self.grp_output_headphones.get_config(),
+                       "booth": self.grp_output_booth.get_config()},
+            "midi": (self._midi_input(), self._midi_state),
+            "mix": self._deck_mix,
+            "deck": getattr(self, "_deck_info", {}),
+            "soft_clip": self.cb_soft_clip.isChecked(),
+        }
+
+    def _refresh_overview(self) -> None:
+        if self.isVisible() and self.audio_tabs.currentIndex() == 0 and self.tabs.currentWidget() is self.tab_playback:
+            stats, capacity = self._last_stats or (None, 0.0)
+            self.audio_overview.update_view(stats, capacity, self._overview_context())
 
     def set_audio_engine(self, native: bool, devices, channels=None) -> None:
         """The engine that plays (``native``: its buffer is shown with the rest, the other one's under Advanced;
@@ -365,7 +460,8 @@ class PlaybackSettingsMixin:
         native = getattr(self, "_native_playing", False)
         listed = provider(str(self.cb_native_api.currentData() or "cpal") if native else None) \
             if provider is not None else ("", [], {})
-        _current, names, self._main_device_channels = listed
+        current, names, self._main_device_channels = listed
+        self._main_device_in_use = current
         load_devices(self.cb_output_device, names, wanted)
 
     def _main_output_channels(self) -> int:
@@ -390,6 +486,8 @@ class PlaybackSettingsMixin:
 
     def _reset_playback_monitor(self) -> None:
         self.main_monitor.reset()
+        self.audio_overview.reset()
+        self._last_stats = None
         for group in (self.grp_output_headphones, self.grp_output_booth):
             group.monitor.reset()
 
@@ -403,6 +501,8 @@ class PlaybackSettingsMixin:
     def _on_output_buffer(self, queued_ms: float, stats: object, capacity_ms: float) -> None:
         if not self.isVisible() or not isinstance(stats, dict):
             return
+        self._last_stats = (stats, capacity_ms)
+        self._refresh_overview()
         outputs = stats.get("outputs") or {}
         self.grp_output_headphones.on_stats(outputs.get("headphones"))
         self.grp_output_booth.on_stats(outputs.get("booth"))

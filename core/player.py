@@ -590,7 +590,7 @@ class PlayerController(QtCore.QObject):
         self._midi_port = ""   # the MIDI input asked for (closed while External Sync follows another deck)
         self._factor: Optional[float] = None   # the tempo last reported
 
-        # the audio engine (Settings > Playback): the native one (audioengine/native), started here so the app
+        # the audio engine (Settings > Audio > Engine): the native one (audioengine/native), started here so the app
         # knows which plays, or where it is not built or does not start the Python one (audioengine/python);
         # "python": the Python one only
         native_engine = (NativeEngine.start(output_device, native_api, native_exclusive,
@@ -774,7 +774,7 @@ class PlayerController(QtCore.QObject):
         self._send("seek", float(sec))
 
     def set_volume_trim(self, db: float) -> None:
-        """The volume fader's trim (dB; Settings > Playback)."""
+        """The volume fader's trim (dB; Settings > Audio > Mixer)."""
         self._send("set_volume_trim", float(db))
 
     def set_jog_mode(self, vinyl: bool) -> None:

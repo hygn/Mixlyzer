@@ -58,7 +58,7 @@ class PCMFeeder(QtCore.QObject):
     # scratching the queue is short (30 ms) and follows the hand: every FLUSH_SCRATCH_MS.
     FLUSH_MS = 4
     FLUSH_SCRATCH_MS = 1
-    # The output buffer (ms), Settings > Playback, one size for every path: the sink is opened again at the new
+    # The output buffer (ms), Settings > Audio, one size for every path: the sink is opened again at the new
     # size where it changes.
     BUFFER_MS_RANGE = (10, 500)
 

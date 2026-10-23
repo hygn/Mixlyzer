@@ -1,4 +1,4 @@
-"""Settings > Playback's outputs: an output's buffer monitor, and the group of a bus beyond the master (the
+"""Settings > Audio's outputs: an output's buffer monitor, and the group of a bus beyond the master (the
 headphones, the booth) with where it plays, its device's options, its buffer and its monitor."""
 from collections import deque
 import math

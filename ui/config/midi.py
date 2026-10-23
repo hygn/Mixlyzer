@@ -174,7 +174,7 @@ class MidiSettingsMixin:
         self.lbl_midi_note.setText(
             tr("The native audio engine reads the controller itself: its deck controls answer at once, whatever the "
                "app is doing. Deck 1's controls and mixer channel 1's fader and EQ are supported.") if available else
-            tr("A MIDI controller needs the native audio engine (Settings > Playback > Audio engine); the Python "
+            tr("A MIDI controller needs the native audio engine (Settings > Audio > Engine); the Python "
                "engine (the compatibility mode) has no MIDI."))
         for w in (self.cb_midi_input, self.btn_midi_refresh, self.sp_midi_jog_ticks, self.ed_midi_filter,
                   self.tree_midi, self.btn_midi_learn, self.btn_midi_clear, self.btn_midi_revert,

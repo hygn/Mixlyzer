@@ -25,6 +25,7 @@ from core.config import (
     playbackconfig,
     viewconfig,
 )
+from audioengine.native.client import booth_eq_db_to_knob, level_db_to_knob
 from core.event_bus import EventBus
 from core.i18n import tr
 from ui.config.analysis import AnalysisSettingsMixin, build_analysis_tab
@@ -51,7 +52,7 @@ class SettingsDialog(
     MidiSettingsMixin,
     QDialog,
 ):
-    DIALOG_WIDTH = 780
+    DIALOG_WIDTH = 980
     FORM_LABEL_WIDTH = 260
     COMPACT_FORM_LABEL_WIDTH = 220
 
@@ -94,13 +95,15 @@ class SettingsDialog(
         # Keep page-specific size hints from changing the top-level window width.
         # The height remains resizable (the pages scroll).
         self.setFixedWidth(self.DIALOG_WIDTH)
-        self.resize(self.DIALOG_WIDTH, 640)
+        self.resize(self.DIALOG_WIDTH, 860)
 
         self._current_cfg = None
         self._initialize_library_settings(bus)
         self._initialize_search_settings(bus)
         self._initialize_view_settings(bus)
         self._initialize_playback_settings(bus)
+        self.audio_tabs.currentChanged.connect(lambda _i: self._refresh_overview())
+        self.tabs.currentChanged.connect(lambda _i: self._refresh_overview())
         self._initialize_shortcut_settings()
         self._initialize_midi_settings(bus)
 
@@ -215,6 +218,7 @@ class SettingsDialog(
         self.grp_output_headphones.sp_cue_mix.setValue(int(p.headphones_cue_mix))
         self.grp_output_headphones.sp_cue_mix.setEnabled(bool(p.headphones_master_mix))
         self.grp_output_booth.set_config(p.output_booth)
+        self._set_audio_mix_config(p)
         self._load_output_routes(p.output_main)
         self._set_midi_config(p)
 
@@ -412,3 +416,4 @@ class SettingsDialog(
         self._load_output_routes(str(self.cb_output_main.currentData() or "1-2"))
         self._load_shortcut_settings()  # the edits not kept are dropped
         self._load_midi_settings()
+        self._refresh_overview()
