@@ -35,9 +35,11 @@ def _bus(name: str, out) -> str:
             f"buffer {out.buffer_ms} ms (its clock followed)")
 
 
-def audio_setup_lines(pcfg, native: bool) -> list[str]:
-    """The lines for the playback settings ``pcfg`` with the engine that plays (``native``)."""
-    stretch = "time stretch " + ("on" if pcfg.use_timestretch else "off (varispeed)")
+def audio_setup_lines(cfg, native: bool) -> list[str]:
+    """The lines for the settings ``cfg`` (its playbackconfig and deckconfig) with the engine that plays
+    (``native``)."""
+    pcfg, deck = cfg.playbackconfig, cfg.deckconfig
+    stretch = "time stretch " + ("on" if deck.use_timestretch else "off (varispeed)")
     if not native:
         if pcfg.audio_engine == "python":
             why = "Settings > Audio > Engine"
@@ -49,24 +51,25 @@ def audio_setup_lines(pcfg, native: bool) -> list[str]:
                 "deck 1 on one output, no mixer, no MIDI"]
     exe = client.executable()
     mapped = len(midi.bindings(midi.mapping()))
-    eq = "isolator" if pcfg.mixer_eq != "eq" else "EQ"
+    eq = "isolator" if deck.mixer_eq != "eq" else "EQ"
     return [
         f"native engine {exe.name if exe else ''}, protocol {client.VERSION}",
         f"master: {_device(pcfg.output_device)} channels {pcfg.output_main}, "
         f"{_api(pcfg.native_audio_api, pcfg.native_exclusive, pcfg.native_exclusive_rate)}, "
         f"buffer {pcfg.native_buffer_ms} ms, {stretch}",
         _bus("headphones", pcfg.output_headphones)
-        + (f", the master mixed in (CUE / MASTER {pcfg.headphones_cue_mix} %)" if pcfg.headphones_master_mix else ""),
+        + (f", the master mixed in (CUE / MASTER {deck.headphones_cue_mix} %)" if pcfg.headphones_master_mix else ""),
         _bus("booth", pcfg.output_booth),
         f"process: priority {_PRIORITIES.get(pcfg.native_priority, pcfg.native_priority)}, power throttling "
         + ("the system's choice" if pcfg.native_power_throttling else "off"),
-        f"mixer: {eq}, channel fader curve {pcfg.fader_curve}, trim {pcfg.volume_trim_dbfs:+.1f} dB, soft clip "
+        f"mixer: {eq}, channel fader curve {deck.fader_curve}, trim {deck.volume_trim_dbfs:+.1f} dB, soft clip "
         + ("on" if pcfg.soft_clip else "off"),
         "MIDI: " + (f'"{pcfg.midi_input}"' if pcfg.midi_input else "no input")
-        + f", {mapped} messages mapped, jog {pcfg.midi_jog_ticks} ticks a turn in {pcfg.jog_mode.upper()} mode",
+        + ("" if deck.midi_enabled else " (switched off)")
+        + f", {mapped} messages mapped, jog {pcfg.midi_jog_ticks} ticks a turn in {deck.jog_mode.upper()} mode",
     ]
 
 
-def print_audio_setup(pcfg, native: bool) -> None:
-    for line in audio_setup_lines(pcfg, native):
+def print_audio_setup(cfg, native: bool) -> None:
+    for line in audio_setup_lines(cfg, native):
         print(f"[AudioEngine] {line}")

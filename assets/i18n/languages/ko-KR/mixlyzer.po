@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-23 19:46+0900\n"
+"POT-Creation-Date: 2026-10-23 20:58+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ko_KR\n"
@@ -191,18 +191,18 @@ msgstr "설정 초기화"
 #: app/main.py:71
 #, python-brace-format
 msgid ""
-"config.json could not be read, so every setting is back to its default.\n"
+"{name} could not be read, so its settings are back to their defaults.\n"
 "The unreadable file was kept as:\n"
 "{path}\n"
 "\n"
-"To get the settings back, fix that file and put it in place of "
-"config.json while Mixlyzer is closed."
+"To get the settings back, fix that file and put it in place of {name} "
+"while Mixlyzer is closed."
 msgstr ""
-"config.json을 읽을 수 없어 모든 설정을 기본값으로 되돌렸습니다.\n"
+"{name}을(를) 읽을 수 없어 그 설정을 기본값으로 되돌렸습니다.\n"
 "읽을 수 없었던 파일은 다음 이름으로 보관했습니다:\n"
 "{path}\n"
 "\n"
-"설정을 되살리려면 Mixlyzer를 닫은 상태에서 그 파일을 고쳐 config.json 자리에 두세요."
+"설정을 되살리려면 Mixlyzer를 닫은 상태에서 그 파일을 고쳐 {name} 자리에 두세요."
 
 #: app/main.py:86
 msgid "Incompatible Library Version"
@@ -281,15 +281,15 @@ msgstr "라이브러리 불러오는 중"
 msgid "Building the window"
 msgstr "창 만드는 중"
 
-#: app/window.py:58
+#: app/window.py:59
 msgid "Core objects and playback"
 msgstr "핵심 객체와 재생"
 
-#: app/window.py:120
+#: app/window.py:121
 msgid "Main view, editor and library"
 msgstr "메인 뷰, 편집기, 라이브러리"
 
-#: app/window.py:127 app/window.py:144 ui/config/window.py:63
+#: app/window.py:127 app/window.py:153 ui/config/window.py:66
 msgid "Settings"
 msgstr "설정"
 
@@ -297,57 +297,75 @@ msgstr "설정"
 msgid "Dialogs, workflows and metronome"
 msgstr "대화상자, 워크플로, 메트로놈"
 
-#: app/window.py:142
-msgid "Transport"
-msgstr "트랜스포트"
+#: app/window.py:144 core/midi.py:60 ui/config/playback.py:327
+msgid "Mixer"
+msgstr "믹서"
 
-#: app/window.py:145 ui/workers.py:24
+#: app/window.py:154 ui/workers.py:24
 msgid "Workers"
 msgstr "작업"
 
-#: app/window.py:146
+#: app/window.py:155
 msgid "Open Source"
 msgstr "오픈 소스"
 
-#: app/window.py:147
+#: app/window.py:156
 msgid "About"
 msgstr "정보"
 
-#: app/window.py:342
+# | msgid "" "EQ {band}: the native audio engine's mixer only (Settings >
+# | Playback > " "Audio engine)."
+# Audio
+# | > " "Engine)."
+#: app/window.py:349
+msgid "MIDI needs the native audio engine (Settings > Audio > Engine)."
+msgstr "MIDI는 Native 오디오 엔진에서만 동작합니다(설정 > 오디오 > 엔진)."
+
+# | msgid "MIDI input"
+#: app/window.py:356
+msgid "MIDI input on."
+msgstr "MIDI 입력 켬."
+
+# | msgid "MIDI input"
+#: app/window.py:356
+msgid "MIDI input off."
+msgstr "MIDI 입력 끔."
+
+#: app/window.py:405
 msgid "The Python audio engine plays: there is no native engine to restart."
 msgstr "Python 오디오 엔진으로 재생 중입니다. 재시작할 네이티브 엔진이 없습니다."
 
 # | msgid "Starting the reading worker"
-#: app/window.py:344
+#: app/window.py:407
 msgid "Restarting the audio engine..."
 msgstr "오디오 엔진 재시작 중..."
 
 # | msgid "Audio engine"
-#: app/window.py:348
+#: app/window.py:411
 msgid "Audio engine restarted."
 msgstr "오디오 엔진을 재시작했습니다."
 
-#: app/window.py:349
+#: app/window.py:412
 msgid "The audio engine did not start; it is tried again every 2 seconds."
 msgstr "오디오 엔진이 시작되지 않았습니다. 2초마다 다시 시도합니다."
 
-#: app/window.py:415 app/window.py:484
+#: app/window.py:475 app/window.py:544
 msgid "External Sync is enabled. Local track loading is disabled."
 msgstr "외부 동기화가 켜져 있습니다. 로컬 트랙 불러오기가 비활성화됩니다."
 
-#: app/window.py:428
+#: app/window.py:488
 msgid "Segment reanalysis canceled (track changed)"
 msgstr "구간 재분석 취소됨 (트랙이 바뀜)"
 
-#: app/window.py:490
+#: app/window.py:550
 msgid "Track unloaded."
 msgstr "트랙을 내렸습니다."
 
-#: app/window.py:500
+#: app/window.py:560
 msgid "Track File Not Found"
 msgstr "트랙 파일을 찾을 수 없음"
 
-#: app/window.py:504
+#: app/window.py:564
 #, python-brace-format
 msgid ""
 "Cannot load \"{name}\": its file is missing.\n"
@@ -360,36 +378,36 @@ msgstr ""
 "\n"
 "파일의 새 위치를 지정할까요?"
 
-#: app/window.py:511
+#: app/window.py:571
 #, python-brace-format
 msgid "Locate {name}"
 msgstr "{name} 찾기"
 
-#: app/window.py:543 app/window.py:556
+#: app/window.py:603 app/window.py:616
 msgid "Analysis saved to library."
 msgstr "분석을 라이브러리에 저장했습니다."
 
-#: analyzer_core/global_analyzer.py:554 app/window.py:544
+#: analyzer_core/global_analyzer.py:554 app/window.py:604
 msgid "Finished"
 msgstr "완료"
 
-#: app/window.py:630
+#: app/window.py:690
 #, python-brace-format
 msgid "External Sync loading: {file}"
 msgstr "외부 동기화 불러오는 중: {file}"
 
-#: app/window.py:630
+#: app/window.py:690
 #, python-brace-format
 msgid "External Sync analyzing: {file}"
 msgstr "외부 동기화 분석 중: {file}"
 
 # | msgid "Memory Sync Disabled"
-#: app/window.py:646
+#: app/window.py:705
 msgid "External Sync Disabled"
 msgstr "외부 동기화 비활성화됨"
 
 # | msgid "External Sync enabled via {target}. Local play/load is locked."
-#: app/window.py:916
+#: app/window.py:979
 #, python-brace-format
 msgid "External Sync enabled: OSC on {address}. Local play/load is locked."
 msgstr "외부 동기화 사용: OSC {address}. 로컬 재생/불러오기가 잠깁니다."
@@ -504,10 +522,6 @@ msgstr "조그 휠"
 #: core/midi.py:59
 msgid "Browser"
 msgstr "브라우저"
-
-#: core/midi.py:60 ui/config/playback.py:355
-msgid "Mixer"
-msgstr "믹서"
 
 #: core/midi.py:61
 msgid "Effects"
@@ -868,11 +882,11 @@ msgstr "누르면 켜거나 끕니다. 켜진 동안 점등."
 msgid "Beat FX: LEVEL / DEPTH"
 msgstr "Beat FX: LEVEL / DEPTH"
 
-#: core/midi.py:214 ui/shortcuts.py:127
+#: core/midi.py:214 ui/shortcuts.py:129
 msgid "Beat FX: BEAT down"
 msgstr "Beat FX: BEAT 내리기"
 
-#: core/midi.py:215 ui/shortcuts.py:126
+#: core/midi.py:215 ui/shortcuts.py:128
 msgid "Beat FX: BEAT up"
 msgstr "Beat FX: BEAT 올리기"
 
@@ -880,7 +894,7 @@ msgstr "Beat FX: BEAT 올리기"
 # | key)"
 # | msgid "Merge the next segment into the current one"
 # | msgid "Merge the next segment"
-#: core/midi.py:216 ui/shortcuts.py:124
+#: core/midi.py:216 ui/shortcuts.py:126
 msgid "Beat FX: the next effect"
 msgstr "Beat FX: 다음 이펙트"
 
@@ -892,7 +906,7 @@ msgstr "버튼을 누르거나 이펙트 선택 노브를 돌립니다(돌린 �
 # | current " "key)"
 # | msgid "Merge the previous segment into the current one"
 # | msgid "Merge the previous segment"
-#: core/midi.py:218 ui/shortcuts.py:125
+#: core/midi.py:218 ui/shortcuts.py:127
 msgid "Beat FX: the previous effect"
 msgstr "Beat FX: 이전 이펙트"
 
@@ -1790,7 +1804,7 @@ msgstr "라이브러리의 비트그리드로 비트 분석 모델을 재학습�
 
 #: ui/config/analysis.py:132 ui/config/analysis.py:169
 #: ui/config/analysis.py:188 ui/config/dialogs/optimization.py:204
-#: ui/config/library.py:101 ui/config/playback.py:275 ui/config/view.py:150
+#: ui/config/library.py:101 ui/config/playback.py:261 ui/config/view.py:150
 msgid "Advanced"
 msgstr "고급"
 
@@ -2317,7 +2331,6 @@ msgid "Deck 1"
 msgstr "덱 1"
 
 #: ui/config/audio_overview.py:132 ui/config/audio_overview.py:152
-#: ui/config/playback.py:301
 msgid "Time Stretch"
 msgstr "타임 스트레치"
 
@@ -2359,7 +2372,7 @@ msgstr "페이더"
 
 # | msgid "Headphones: CUE / MASTER"
 # | msgid "CUE / MASTER"
-#: ui/config/audio_overview.py:212 ui/config/playback.py:211
+#: ui/config/audio_overview.py:212 ui/config/playback.py:197
 msgid "Master"
 msgstr "마스터"
 
@@ -2373,7 +2386,7 @@ msgid "CUE / MASTER"
 msgstr "CUE / MASTER"
 
 #: ui/config/audio_overview.py:245 ui/config/audio_overview.py:258
-#: ui/config/playback.py:231
+#: ui/config/playback.py:217
 msgid "Level"
 msgstr "레벨"
 
@@ -2443,13 +2456,13 @@ msgstr "열리지 않음: 1초마다 다시 시도"
 
 #: ui/config/audio_overview.py:408 ui/config/audio_overview.py:448
 #: ui/config/output_group.py:65 ui/config/output_group.py:239
-#: ui/config/playback.py:148
+#: ui/config/playback.py:138
 msgid "Shared"
 msgstr "공유"
 
 #: ui/config/audio_overview.py:408 ui/config/audio_overview.py:448
 #: ui/config/output_group.py:65 ui/config/output_group.py:240
-#: ui/config/playback.py:149
+#: ui/config/playback.py:139
 msgid "Exclusive"
 msgstr "배타"
 
@@ -3479,7 +3492,7 @@ msgstr "<p>이 출력이 나가는 장치의 채널.</p>"
 
 # | msgid "Output buffer"
 # | msgid "Output device"
-#: ui/config/output_group.py:245 ui/config/playback.py:152
+#: ui/config/output_group.py:245 ui/config/playback.py:142
 msgid "The device's"
 msgstr "장치 기본값"
 
@@ -3588,18 +3601,18 @@ msgid "Output"
 msgstr "출력"
 
 # | msgid "Output buffer"
-#: ui/config/output_group.py:291 ui/config/playback.py:244
+#: ui/config/output_group.py:291 ui/config/playback.py:230
 msgid "Output device"
 msgstr "출력 장치"
 
 # | msgid "Audio"
-#: ui/config/output_group.py:292 ui/config/playback.py:247
+#: ui/config/output_group.py:292 ui/config/playback.py:233
 msgid "Audio API"
 msgstr "오디오 API"
 
 # | msgid "Output buffer"
 # | msgid "Output device"
-#: ui/config/output_group.py:293 ui/config/playback.py:247
+#: ui/config/output_group.py:293 ui/config/playback.py:233
 msgid "Output mode"
 msgstr "출력 방식"
 
@@ -3609,11 +3622,11 @@ msgid "Sample rate"
 msgstr "샘플레이트"
 
 # | msgid "Cantonese"
-#: ui/config/output_group.py:295 ui/config/playback.py:249
+#: ui/config/output_group.py:295 ui/config/playback.py:235
 msgid "Channels"
 msgstr "채널"
 
-#: ui/config/output_group.py:296 ui/config/playback.py:253
+#: ui/config/output_group.py:296 ui/config/playback.py:239
 msgid "Buffer size"
 msgstr "버퍼 크기"
 
@@ -3631,7 +3644,7 @@ msgstr "클록 드리프트"
 msgid "Opening the output device..."
 msgstr "출력 장치를 여는 중..."
 
-#: ui/config/output_group.py:404 ui/config/playback.py:540
+#: ui/config/output_group.py:404 ui/config/playback.py:505
 msgid ""
 "The output device could not be opened (another app may hold it in "
 "exclusive mode); it is tried again every second."
@@ -3648,7 +3661,7 @@ msgstr "{ppm} ppm (이만큼 리샘플해 따라감)"
 msgid "Output thread: {output}"
 msgstr "출력 스레드: {output}"
 
-#: ui/config/output_group.py:420 ui/config/playback.py:558
+#: ui/config/output_group.py:420 ui/config/playback.py:523
 #, python-brace-format
 msgid "Late output wake-ups: {count} (longest gap {gap} ms)"
 msgstr "출력 스레드 늦은 깨어남: {count}회 (최장 간격 {gap} ms)"
@@ -3702,7 +3715,7 @@ msgstr "전체 파형 레벨"
 msgid "Waveform"
 msgstr "파형"
 
-#: ui/config/pipeline_map.py:31 ui/config/playback.py:359
+#: ui/config/pipeline_map.py:31 ui/config/playback.py:331
 msgid "Audio"
 msgstr "오디오"
 
@@ -3768,35 +3781,23 @@ msgstr ""
 msgid "{name}: open the {tab} settings"
 msgstr "{name}: {tab} 설정 열기"
 
-#: ui/config/playback.py:46
-msgid "Enable metronome"
-msgstr "메트로놈 사용"
-
-#: ui/config/playback.py:53
+#: ui/config/playback.py:51
 msgid "Shift metronome clicks relative to the beat (positive = earlier)"
 msgstr "메트로놈 클릭을 비트에 대해 옮깁니다 (양수 = 더 이르게)"
 
-#: ui/config/playback.py:62
-msgid "Use timestretch"
-msgstr "타임 스트레치 사용"
-
-#: ui/config/playback.py:64
-msgid "Tempo changes keep the pitch (time stretch) instead of varispeed"
-msgstr "템포를 바꿔도 피치를 유지합니다(타임 스트레치). 끄면 바리스피드"
-
-#: ui/config/playback.py:80
+#: ui/config/playback.py:70
 msgid "Duck music under metronome clicks"
 msgstr "메트로놈 클릭 아래로 음악 줄이기"
 
-#: ui/config/playback.py:83
+#: ui/config/playback.py:73
 msgid "Lowers the music by up to 6 dB, following each click"
 msgstr "클릭마다 음악을 최대 6 dB 낮춥니다"
 
-#: ui/config/playback.py:85
+#: ui/config/playback.py:75
 msgid "Soft clip output (tanh)"
 msgstr "출력 소프트 클립 (tanh)"
 
-#: ui/config/playback.py:87
+#: ui/config/playback.py:77
 msgid ""
 "Output above -1.9 dBFS is rounded off by tanh up to 0 dBFS instead of "
 "hard clipping"
@@ -3804,34 +3805,34 @@ msgstr "-1.9 dBFS를 넘는 출력을 하드 클리핑 대신 tanh로 0 dBFS까�
 
 # | msgid "Active"
 # | msgid "Native"
-#: ui/config/playback.py:93
+#: ui/config/playback.py:83
 msgid "Native first"
 msgstr "Native 우선"
 
 # | msgid "Path"
-#: ui/config/playback.py:94 ui/config/playback.py:445
+#: ui/config/playback.py:84 ui/config/playback.py:417
 msgid "Python"
 msgstr "Python"
 
 # | msgid "General"
-#: ui/config/playback.py:97
+#: ui/config/playback.py:87
 msgctxt "process priority"
 msgid "Normal"
 msgstr "보통"
 
 # | msgid "Waveform"
-#: ui/config/playback.py:98
+#: ui/config/playback.py:88
 msgctxt "process priority"
 msgid "Above normal"
 msgstr "보통 초과"
 
 # | msgid "High"
-#: ui/config/playback.py:99
+#: ui/config/playback.py:89
 msgctxt "process priority"
 msgid "High"
 msgstr "높음"
 
-#: ui/config/playback.py:102
+#: ui/config/playback.py:92
 msgid ""
 "<p>The priority class of the native engine's process. High: its threads "
 "run ahead of the analysis and other apps, so it wakes on time when the "
@@ -3840,7 +3841,7 @@ msgstr ""
 "<p>네이티브 엔진 프로세스의 우선순위 클래스입니다. 높음: 엔진의 스레드가 분석과 다른 앱보다 먼저 실행되어, 컴퓨터가 바쁠 때도"
 " 제때 깨어납니다(작은 버퍼에서 드롭아웃 감소). 바로 적용됩니다.</p>"
 
-#: ui/config/playback.py:107
+#: ui/config/playback.py:97
 msgid ""
 "<p>The priority of the native engine's threads (its own and the ALSA "
 "output's; JACK's is the server's). High: real-time, else nice -10; Above "
@@ -3852,7 +3853,7 @@ msgstr ""
 "-10. 보통 초과: nice -5. 사용자가 직접 설정할 수 없으면(audio 그룹 한도가 없을 때) rtkit에 요청합니다. "
 "바로 적용되며, 실제로 적용된 상태는 미터 아래에 표시됩니다.</p>"
 
-#: ui/config/playback.py:113
+#: ui/config/playback.py:103
 msgid ""
 "<p>The priority of the native engine's thread. High: real-time (a time "
 "constraint, as CoreAudio's own output thread); Above normal: QoS user-"
@@ -3861,11 +3862,11 @@ msgstr ""
 "<p>네이티브 엔진 스레드의 우선순위입니다. 높음: 실시간(CoreAudio 출력 스레드와 같은 time constraint), "
 "보통 초과: QoS user-interactive, 보통: QoS default. 바로 적용됩니다.</p>"
 
-#: ui/config/playback.py:118
+#: ui/config/playback.py:108
 msgid "The system's choice"
 msgstr "시스템에 맡김"
 
-#: ui/config/playback.py:121
+#: ui/config/playback.py:111
 msgid ""
 "<p>Whether Windows may power-throttle the native engine's process "
 "(EcoQoS: efficiency cores, lower clocks, coarser timers) to save power. "
@@ -3875,7 +3876,7 @@ msgstr ""
 "<p>Windows가 전력을 아끼려고 네이티브 엔진 프로세스를 제한할 수 있는지(EcoQoS, 효율성 모드: 효율 코어, 낮은 "
 "클럭, 거친 타이머) 정합니다. 끔: 최고 속도와 1 ms 타이머로 실행되어 제때 깨어납니다. 바로 적용됩니다.</p>"
 
-#: ui/config/playback.py:126
+#: ui/config/playback.py:116
 msgid ""
 "<p>Whether Linux may save power on the native engine's threads. Off: a 1 "
 "ns timer slack, and uclamp keeping the CPU clock up while they run (Linux"
@@ -3885,7 +3886,7 @@ msgstr ""
 "스레드가 도는 동안 CPU 클럭을 높게 유지합니다(Linux 5.3 이상, schedutil governor). 바로 "
 "적용됩니다.</p>"
 
-#: ui/config/playback.py:131
+#: ui/config/playback.py:121
 msgid ""
 "<p>Whether macOS may save power on the native engine (App Nap, timer "
 "coalescing). Off: a latency-critical activity keeps both off (the "
@@ -3894,7 +3895,7 @@ msgstr ""
 "<p>macOS가 네이티브 엔진에서 전력을 아낄 수 있는지(App Nap, 타이머 병합) 정합니다. 끔: 지연에 민감한 작업으로 "
 "표시해 둘 다 끕니다(유휴 시 잠자기는 그대로). 바로 적용됩니다.</p>"
 
-#: ui/config/playback.py:141
+#: ui/config/playback.py:131
 msgid ""
 "<p>The device the player plays on, as its audio engine names it. Changed "
 "while the app runs, the sound keeps the format (sample rate, channels) of"
@@ -3903,7 +3904,7 @@ msgstr ""
 "<p>플레이어가 소리를 내는 장치입니다(오디오 엔진이 부르는 이름). 앱이 실행 중일 때 바꾸면, 앱을 시작할 때 쓰던 장치의 "
 "형식(샘플레이트, 채널)을 유지한 채 시스템이 변환해서 냅니다.</p>"
 
-#: ui/config/playback.py:156
+#: ui/config/playback.py:146
 msgid ""
 "<p>The sample rate the device runs at in exclusive mode (the tracks are "
 "decoded for it). Applied from the next track loaded; a rate the device "
@@ -3912,7 +3913,7 @@ msgstr ""
 "<p>배타 모드에서 장치가 동작할 샘플레이트입니다(곡도 이 레이트로 디코드합니다). 다음에 로드하는 곡부터 적용되며, 장치가 받지 "
 "않는 레이트는 일반 공유 스트림으로 돌아갑니다.</p>"
 
-#: ui/config/playback.py:163
+#: ui/config/playback.py:153
 msgid "<p>The device's channels the master plays on.</p>"
 msgstr "<p>마스터가 나가는 장치의 채널.</p>"
 
@@ -3940,7 +3941,7 @@ msgstr "<p>마스터가 나가는 장치의 채널.</p>"
 # is
 # | busy. The" " device's own latency comes after it (shown under the
 # | meter).</p>"
-#: ui/config/playback.py:167
+#: ui/config/playback.py:157
 msgid ""
 "<p>The native engine's audio queued ahead of the output device. Smaller "
 "answers sooner (play, pause, seek, CUE calls, volume, tempo); too small "
@@ -3974,7 +3975,7 @@ msgstr ""
 # | what is" " heard, with the time stretch on or off. Smaller answers sooner
 # | (play, " "pause, seek, CUE calls, volume, tempo); too small drops out when
 # | the " "computer is busy (with the time stretch, below about 80 ms).</p>"
-#: ui/config/playback.py:174
+#: ui/config/playback.py:164
 msgid ""
 "<p>The Python engine's audio queued in the output device ahead of what is"
 " heard. Smaller answers sooner (play, pause, seek, CUE calls, volume, "
@@ -3985,95 +3986,83 @@ msgstr ""
 "탐색, CUE 호출, 볼륨, 템포), 너무 작으면 컴퓨터가 바쁠 때 소리가 끊깁니다(타임 스트레치를 쓰면 약 80 ms "
 "미만에서).</p>"
 
-#: ui/config/playback.py:189
-msgid "Play a click on every beat of the beat grid."
-msgstr "비트그리드의 모든 박에 클릭을 냅니다."
-
-#: ui/config/playback.py:190
+#: ui/config/playback.py:179
 msgid "WAV file used as the metronome click."
 msgstr "메트로놈 클릭으로 쓸 WAV 파일."
 
-#: ui/config/playback.py:192
-msgid ""
-"The level before the volume fader, as the player's TRIM knob sets it (-24"
-" to +9 dB)."
-msgstr "볼륨 페이더 앞의 레벨로, 플레이어의 TRIM 노브와 같습니다(-24 ~ +9 dB)."
-
-#: ui/config/playback.py:194
+#: ui/config/playback.py:180
 msgid "Volume slider position at startup."
 msgstr "시작할 때의 볼륨 슬라이더 위치."
 
-#: ui/config/playback.py:195
+#: ui/config/playback.py:181
 msgid "Click volume on the first beat of each bar."
 msgstr "각 마디 첫 박의 클릭 볼륨."
 
-#: ui/config/playback.py:197
+#: ui/config/playback.py:183
 msgid "Pitch shift of the click on the first beat of each bar."
 msgstr "각 마디 첫 박 클릭의 피치 이동."
 
-#: ui/config/playback.py:199
+#: ui/config/playback.py:185
 msgid "Click volume on the other beats."
 msgstr "나머지 박의 클릭 볼륨."
 
-#: ui/config/playback.py:200
+#: ui/config/playback.py:186
 msgid "Pitch shift of the click on the other beats."
 msgstr "나머지 박 클릭의 피치 이동."
 
 # | msgid "Cantonese"
 # | msgid "Channels"
-#: ui/config/playback.py:202
+#: ui/config/playback.py:188
 msgid "Channel"
 msgstr "채널"
 
-#: ui/config/playback.py:204
-msgid "Trim"
-msgstr "트림"
-
-#: ui/config/playback.py:205
+#: ui/config/playback.py:190
 msgid "Default volume (%)"
 msgstr "기본 볼륨 (%)"
 
-#: ui/config/playback.py:206
+#: ui/config/playback.py:191
 msgid ""
-"The EQ, the channel fader's curve, the headphones CUE and the master and "
-"headphones levels are on the main screen, between the player and the "
-"overview."
-msgstr "EQ, 채널 페이더 커브, 헤드폰 CUE, 마스터·헤드폰 레벨은 메인 화면의 플레이어와 오버뷰 사이에 있습니다."
+"The TRIM and EQ knobs are the player's; the EQ's curve, the channel "
+"fader's curve, Sound Color FX, the headphones CUE and the master and "
+"headphones levels are on the main screen's toolbar (kept in deck.json)."
+msgstr ""
+"TRIM과 EQ 노브는 플레이어에 있고, EQ 커브, 채널 페이더 커브, Sound Color FX, 헤드폰 CUE, "
+"마스터·헤드폰 레벨은 메인 화면의 툴바에 있습니다(deck.json에 저장)."
 
 # | msgid "<p>The device's channels for the booth monitors: the master
 # | again.</p>"
 # | msgid "<p>The booth monitors: the master again.</p>"
-#: ui/config/playback.py:226
+#: ui/config/playback.py:212
 #, python-brace-format
 msgid "<p>The booth output's level against the master ({low} dB: silent).</p>"
 msgstr "<p>마스터 대비 부스 출력 레벨({low} dB: 무음).</p>"
 
-#: ui/config/playback.py:227
+#: ui/config/playback.py:213
 msgid "<p>The booth's high shelf (-12 to +6 dB).</p>"
 msgstr "<p>부스의 고역 셸빙(-12 ~ +6 dB).</p>"
 
-#: ui/config/playback.py:228
+#: ui/config/playback.py:214
 msgid "<p>The booth's low shelf (-12 to +6 dB).</p>"
 msgstr "<p>부스의 저역 셸빙(-12 ~ +6 dB).</p>"
 
-#: ui/config/playback.py:229
+#: ui/config/playback.py:215
 msgid "Booth level and EQ"
 msgstr "부스 레벨과 EQ"
 
-#: ui/config/playback.py:232
+#: ui/config/playback.py:218
 msgid "EQ HI"
 msgstr "EQ HI"
 
 # | msgid "Low"
-#: ui/config/playback.py:233
+#: ui/config/playback.py:219
 msgid "EQ LOW"
 msgstr "EQ LOW"
 
-#: ui/config/playback.py:234
+#: ui/config/playback.py:220
 msgid "MONO SPLIT"
 msgstr "MONO SPLIT"
 
-#: ui/config/playback.py:236
+#: ui/config/playback.py:222
 msgid ""
 "<p>The headphones in mono, split: the CUE in the left ear, the master in "
 "the right (a DJ mixer's MONO SPLIT / STEREO switch). Off: both in stereo,"
@@ -4083,48 +4072,48 @@ msgstr ""
 "끄면 둘 다 스테레오로, CUE / MASTER 비율대로 섞입니다.</p>"
 
 # | msgid "Headphones: level"
-#: ui/config/playback.py:238
+#: ui/config/playback.py:224
 msgid "Headphones mix"
 msgstr "헤드폰 믹스"
 
-#: ui/config/playback.py:242 ui/config/playback.py:352
+#: ui/config/playback.py:228 ui/config/playback.py:324
 msgid "Main output"
 msgstr "메인 출력"
 
-#: ui/config/playback.py:248
+#: ui/config/playback.py:234
 msgid "Sample rate (exclusive)"
 msgstr "샘플레이트 (배타)"
 
 # | msgid "Audio engine"
-#: ui/config/playback.py:256 ui/config/playback.py:351
+#: ui/config/playback.py:242 ui/config/playback.py:323
 msgid "Engine"
 msgstr "엔진"
 
-#: ui/config/playback.py:258
+#: ui/config/playback.py:244
 msgid "Audio engine"
 msgstr "오디오 엔진"
 
 # | msgid "Process"
-#: ui/config/playback.py:259
+#: ui/config/playback.py:245
 msgid "Process priority"
 msgstr "프로세스 우선순위"
 
 # | msgid "Process"
 # | msgid "Process priority"
-#: ui/config/playback.py:259
+#: ui/config/playback.py:245
 msgid "Thread priority"
 msgstr "스레드 우선순위"
 
-#: ui/config/playback.py:261
+#: ui/config/playback.py:247
 msgid "Power throttling"
 msgstr "전원 제한"
 
 # | msgid "Audio engine"
-#: ui/config/playback.py:263
+#: ui/config/playback.py:249
 msgid "Restart Audio Engine"
 msgstr "오디오 엔진 재시작"
 
-#: ui/config/playback.py:265
+#: ui/config/playback.py:251
 msgid ""
 "<p>Stops the native audio engine and starts it again on the same outputs,"
 " with the track, its place and the settings as they were. The last resort"
@@ -4134,11 +4123,11 @@ msgstr ""
 "<p>네이티브 오디오 엔진을 멈추고 같은 출력에서 다시 시작합니다. 트랙, 재생 위치, 설정은 그대로 이어집니다. 출력이나 엔진이 "
 "멈춘 채 풀리지 않을 때(컨트롤러를 뺐다 다시 꽂았을 때 등) 쓰는 마지막 수단입니다.</p>"
 
-#: ui/config/playback.py:280
+#: ui/config/playback.py:266
 msgid "Show or hide the settings of the audio engine not playing."
 msgstr "재생하고 있지 않은 오디오 엔진의 설정을 보이거나 숨깁니다."
 
-#: ui/config/playback.py:292
+#: ui/config/playback.py:278
 msgid "Headphones output"
 msgstr "헤드폰 출력"
 
@@ -4146,7 +4135,7 @@ msgstr "헤드폰 출력"
 # an
 # | " "interface's second output): the decks whose CUE is on, before their "
 # | "faders, mixed with the master (a controller's CUE / MASTER knob).</p>"
-#: ui/config/playback.py:293
+#: ui/config/playback.py:279
 msgid ""
 "<p>The headphones (a controller's or an interface's second output): the "
 "decks whose CUE is on, before their faders, mixed with the master (a "
@@ -4156,96 +4145,92 @@ msgstr ""
 "MASTER 노브).</p>"
 
 # | msgid "Zoom out"
-#: ui/config/playback.py:297
+#: ui/config/playback.py:283
 msgid "Booth output"
 msgstr "부스 출력"
 
 # | msgid "<p>The device's channels for the booth monitors: the master
 # | again.</p>"
-#: ui/config/playback.py:297
+#: ui/config/playback.py:283
 msgid "<p>The booth monitors: the master again.</p>"
 msgstr "<p>부스 모니터: 마스터를 한 번 더 냅니다.</p>"
 
-#: ui/config/playback.py:305 ui/config/playback.py:356
+#: ui/config/playback.py:288 ui/config/playback.py:328
 msgid "Metronome"
 msgstr "메트로놈"
 
-#: ui/config/playback.py:309
-msgid "Details"
-msgstr "자세히"
+#: ui/config/playback.py:290
+msgid "On / off: the editor's metronome button."
+msgstr "켜기 / 끄기: 편집 패널의 메트로놈 버튼."
 
-#: ui/config/playback.py:314
-msgid "Show or hide the metronome options."
-msgstr "메트로놈 옵션을 보이거나 숨깁니다."
-
-#: ui/config/playback.py:320
+#: ui/config/playback.py:296
 msgid "WAV path"
 msgstr "WAV 경로"
 
-#: ui/config/playback.py:321
+#: ui/config/playback.py:297
 msgid "Offset (ms)"
 msgstr "오프셋 (ms)"
 
-#: ui/config/playback.py:323
+#: ui/config/playback.py:299
 msgid "Downbeat volume (%)"
 msgstr "다운비트 볼륨 (%)"
 
-#: ui/config/playback.py:326
+#: ui/config/playback.py:302
 msgid "Downbeat pitch (semitones)"
 msgstr "다운비트 피치 (반음)"
 
-#: ui/config/playback.py:328
+#: ui/config/playback.py:304
 msgid "Beat volume (%)"
 msgstr "박 볼륨 (%)"
 
-#: ui/config/playback.py:330
+#: ui/config/playback.py:306
 msgid "Beat pitch (semitones)"
 msgstr "박 피치 (반음)"
 
 # | msgid "Overview"
-#: ui/config/playback.py:350
+#: ui/config/playback.py:322
 msgctxt "settings page"
 msgid "Overview"
 msgstr "개요"
 
 # | msgid "Headphones: level"
-#: ui/config/playback.py:353
+#: ui/config/playback.py:325
 msgid "Headphones"
 msgstr "헤드폰"
 
 # | msgid "About"
-#: ui/config/playback.py:354
+#: ui/config/playback.py:326
 msgid "Booth"
 msgstr "부스"
 
 # | msgid "Starting"
-#: ui/config/playback.py:377
+#: ui/config/playback.py:349
 msgid "Restarting..."
 msgstr "재시작 중..."
 
 # | msgid "Start"
-#: ui/config/playback.py:382
+#: ui/config/playback.py:354
 msgid "Restarted."
 msgstr "재시작했습니다."
 
-#: ui/config/playback.py:383
+#: ui/config/playback.py:355
 msgid "The engine did not start; it is tried again every 2 seconds."
 msgstr "엔진이 시작되지 않았습니다. 2초마다 다시 시도합니다."
 
-#: ui/config/playback.py:443
+#: ui/config/playback.py:415
 msgid "Buffer size, Python engine"
 msgstr "버퍼 크기, Python 엔진"
 
-#: ui/config/playback.py:444
+#: ui/config/playback.py:416
 msgid "Buffer size, native engine"
 msgstr "버퍼 크기, Native 엔진"
 
 # | msgid "Active"
-#: ui/config/playback.py:445
+#: ui/config/playback.py:417
 msgid "Native"
 msgstr "Native"
 
-#: ui/config/playback.py:447
+#: ui/config/playback.py:419
 #, python-brace-format
 msgid ""
 "<p>Native: the audio engine in a process of its own (no dropouts when the"
@@ -4257,29 +4242,29 @@ msgstr ""
 "빌드되어 있지 않거나 시작할 수 없으면 Python 엔진을 씁니다. Python: Python 엔진만 씁니다. 다음 시작부터 "
 "적용됩니다.</p><p>지금 재생 중: {engine}.</p>"
 
-#: ui/config/playback.py:453
+#: ui/config/playback.py:425
 msgid "<p>The native engine on Linux and macOS is experimental.</p>"
 msgstr "<p>Linux와 macOS의 네이티브 엔진은 실험적 기능입니다.</p>"
 
-#: ui/config/playback.py:561
+#: ui/config/playback.py:526
 #, python-brace-format
 msgid "Engine thread: {engine}   Output thread: {output}"
 msgstr "엔진 스레드: {engine}   출력 스레드: {output}"
 
-#: ui/config/playback.py:565
+#: ui/config/playback.py:530
 msgid "Power throttling could be turned off only in part."
 msgstr "전원 제한을 일부만 끌 수 있었습니다."
 
-#: ui/config/playback.py:567
+#: ui/config/playback.py:532
 msgid "Power throttling could not be turned off."
 msgstr "전원 제한을 끌 수 없었습니다."
 
-#: ui/config/playback.py:572
+#: ui/config/playback.py:537
 #, python-brace-format
 msgid "Response measured: play {play} ms   pause {pause} ms   seek {seek} ms"
 msgstr "실측 응답: 재생 {play} ms   일시정지 {pause} ms   탐색 {seek} ms"
 
-#: ui/config/playback.py:575
+#: ui/config/playback.py:540
 #, python-brace-format, python-format
 msgid ""
 "EMA {ema} / {capacity} ms   1% low {low} ms   lowest {lowest} ms "
@@ -4757,69 +4742,73 @@ msgstr ""
 "전체 파형에서의 {label}. 여러 번 나오면 번호를 붙입니다\n"
 "(비우면: 이름의 첫 글자)"
 
-#: ui/config/window.py:83
+#: ui/config/window.py:86
 msgid "Save the settings and close."
 msgstr "설정을 저장하고 닫습니다."
 
-#: ui/config/window.py:85
+#: ui/config/window.py:88
 msgid "Close without saving unapplied changes."
 msgstr "적용하지 않은 변경은 저장하지 않고 닫습니다."
 
-#: ui/config/window.py:88
+#: ui/config/window.py:91
 msgid "Save the settings and keep the window open."
 msgstr "설정을 저장하고 창은 열어 둡니다."
 
-#: ui/deck_switches.py:107
+#: ui/deck_switches.py:64
 msgid "JOG MODE VINYL: touching the jog wheel's top holds the record (scratch)."
 msgstr "JOG MODE VINYL: 조그 휠 윗면을 터치하면 레코드를 잡습니다(스크래치)."
 
-#: ui/deck_switches.py:108
+#: ui/deck_switches.py:65
 msgid "JOG MODE CDJ: the jog wheel bends the tempo only, its top's touch ignored."
 msgstr "JOG MODE CDJ: 조그 휠은 템포 벤드만 하고, 윗면 터치는 무시합니다."
 
-#: ui/deck_switches.py:114
+#: ui/deck_switches.py:70
 msgid "EQ CURVE ISO: an isolator, each band from a kill to +6 dB."
 msgstr "EQ CURVE ISO: 아이솔레이터. 각 대역을 완전히 끄는 것부터 +6 dB까지."
 
-#: ui/deck_switches.py:115
+#: ui/deck_switches.py:71
 msgid "EQ CURVE EQ: an equalizer, each band from -26 dB to +6 dB."
 msgstr "EQ CURVE EQ: 이퀄라이저. 각 대역을 -26 dB부터 +6 dB까지."
 
-#: ui/deck_switches.py:121
+#: ui/deck_switches.py:76
 msgid "CH FADER curve: the app's (slow at first, full at the top)."
 msgstr "CH FADER 커브: 앱 기본(처음엔 천천히, 끝에서 최대)."
 
-#: ui/deck_switches.py:122
+#: ui/deck_switches.py:77
 msgid "CH FADER curve: steep (up fast)."
 msgstr "CH FADER 커브: 가파름(빠르게 올라감)."
 
-#: ui/deck_switches.py:123
+#: ui/deck_switches.py:78
 msgid "CH FADER curve: slow (most of the rise at the top)."
 msgstr "CH FADER 커브: 완만함(대부분 위쪽에서 올라감)."
 
+#: ui/deck_switches.py:93
+msgid "Sound Color FX: the effect the COLOR knob turns on (OFF: none)."
+msgstr "Sound Color FX: COLOR 노브로 거는 이펙트(OFF: 없음)."
+
+#: ui/deck_switches.py:96
+msgid ""
+"COLOR: the effect on the deck's channel, its two flavours left and right "
+"of the middle (off). Double-click: off."
+msgstr "COLOR: 덱 채널에 거는 이펙트. 가운데(꺼짐)의 왼쪽과 오른쪽이 서로 다른 효과입니다. 더블클릭: 꺼짐."
+
+# | msgid "" "PARAMETER: the effect's quantity (SPACE / DUB ECHO: feedback,
+# | SWEEP: the " "centre frequency, NOISE: its volume, CRUSH: how crushed,
+# | FILTER: " "resonance)."
+#: ui/deck_switches.py:100
+msgid ""
+"PARAMETER: the effect's quantity (SPACE / DUB ECHO: feedback, SWEEP: the "
+"centre frequency, NOISE: its volume, CRUSH: how crushed, FILTER: "
+"resonance, JET: feedback)."
+msgstr ""
+"PARAMETER: 이펙트의 양(SPACE / DUB ECHO: 피드백, SWEEP: 중심 주파수, NOISE: 노이즈 볼륨, "
+"CRUSH: 크러시 정도, FILTER: 레조넌스, JET: 피드백)."
+
 # | msgid "" "A press turns it on or off: the channel's sound before its fader
 # | in the " "headphones. Lit while on."
-#: ui/deck_switches.py:135
+#: ui/deck_switches.py:107
 msgid "Headphones CUE: the deck's channel, before its fader, in the headphones."
 msgstr "헤드폰 CUE: 덱의 채널을 페이더 앞에서 헤드폰으로 보냅니다."
-
-# | msgid "Headphones: level"
-#: ui/deck_switches.py:149 ui/deck_switches.py:187
-msgid "Headphones level"
-msgstr "헤드폰 레벨"
-
-#: ui/deck_switches.py:150 ui/deck_switches.py:188
-msgid "Master level"
-msgstr "마스터 레벨"
-
-#: ui/deck_switches.py:163
-msgid "-inf dB"
-msgstr "-inf dB"
-
-#: ui/deck_switches.py:164
-#, python-brace-format
-msgid "{name}: {level} (double-click: 0 dB)"
-msgstr "{name}: {level} (더블클릭: 0 dB)"
 
 # | msgid "" "EQ {band}: the native audio engine's mixer only (Settings >
 # | Playback > " "Audio engine)."
@@ -4829,11 +4818,40 @@ msgstr "{name}: {level} (더블클릭: 0 dB)"
 # | msgid "" "The jog wheel's mode, the EQ and the fader curve: the native
 # audio
 # | " "engine's only (Settings > Playback > Audio engine)."
-#: ui/deck_switches.py:177
+# | msgid "" "The jog wheel's mode, the EQ, the fader curve, the headphones
+# and
+# | the " "master level: the native audio engine's only (Settings > Audio >
+# | Engine)."
+# | msgid "" "The jog wheel's mode, the EQ, Sound Color FX, the fader curve,
+# the
+# | " "headphones and the master level: the native audio engine's only
+# | (Settings" " > Audio > Engine)."
+#: ui/deck_switches.py:142
 msgid ""
-"The jog wheel's mode, the EQ, the fader curve, the headphones and the "
-"master level: the native audio engine's only (Settings > Audio > Engine)."
-msgstr "조그 휠 모드, EQ, 페이더 커브, 헤드폰, 마스터 레벨: Native 오디오 엔진에서만 동작합니다(설정 > 오디오 > 엔진)."
+"The jog wheel's mode, the EQ, the fader curve, Sound Color FX, the "
+"headphones and the master level: the native audio engine's only (Settings"
+" > Audio > Engine)."
+msgstr ""
+"조그 휠 모드, EQ, 페이더 커브, Sound Color FX, 헤드폰, 마스터 레벨: Native 오디오 엔진에서만 "
+"동작합니다(설정 > 오디오 > 엔진)."
+
+#: ui/deck_switches.py:178 ui/deck_switches.py:199
+msgid "Master level"
+msgstr "마스터 레벨"
+
+# | msgid "Headphones: level"
+#: ui/deck_switches.py:179 ui/deck_switches.py:200
+msgid "Headphones level"
+msgstr "헤드폰 레벨"
+
+#: ui/deck_switches.py:190
+msgid "-inf dB"
+msgstr "-inf dB"
+
+#: ui/deck_switches.py:191
+#, python-brace-format
+msgid "{name}: {level} (double-click: 0 dB)"
+msgstr "{name}: {level} (더블클릭: 0 dB)"
 
 #: ui/edit_panel/beat_counter.py:19
 msgid "Hold to count beats passing under the playhead"
@@ -5518,7 +5536,7 @@ msgstr ""
 "{path}"
 
 #: ui/edit_song.py:375 ui/edit_song.py:398 ui/library.py:1727
-#: ui/library.py:1798 ui/library.py:2097 ui/shortcuts.py:147
+#: ui/library.py:1798 ui/library.py:2097 ui/shortcuts.py:149
 msgid "Edit Track"
 msgstr "트랙 편집"
 
@@ -5623,7 +5641,7 @@ msgstr "선택한 트랙이 없습니다."
 
 #: ui/export.py:296 ui/export.py:301 ui/export.py:307 ui/export.py:320
 #: ui/export.py:330 ui/export.py:438 ui/export.py:449 ui/library.py:1728
-#: ui/library.py:2101 ui/shortcuts.py:149
+#: ui/library.py:2101 ui/shortcuts.py:151
 msgid "Export Track"
 msgstr "트랙 내보내기"
 
@@ -5676,83 +5694,58 @@ msgstr ""
 "JumpCUE 오디오를 쓰지 못했습니다:\n"
 "{error}"
 
-#: ui/fx_bar.py:177
-msgid "Sound Color FX: the effect the COLOR knob turns on (OFF: none)."
-msgstr "Sound Color FX: COLOR 노브로 거는 이펙트(OFF: 없음)."
-
-#: ui/fx_bar.py:181
-msgid ""
-"COLOR: the effect on the deck's channel, its two flavours left and right "
-"of the middle (off). Double-click: off."
-msgstr "COLOR: 덱 채널에 거는 이펙트. 가운데(꺼짐)의 왼쪽과 오른쪽이 서로 다른 효과입니다. 더블클릭: 꺼짐."
-
-# | msgid "" "PARAMETER: the effect's quantity (SPACE / DUB ECHO: feedback,
-# | SWEEP: the " "centre frequency, NOISE: its volume, CRUSH: how crushed,
-# | FILTER: " "resonance)."
-#: ui/fx_bar.py:184
-msgid ""
-"PARAMETER: the effect's quantity (SPACE / DUB ECHO: feedback, SWEEP: the "
-"centre frequency, NOISE: its volume, CRUSH: how crushed, FILTER: "
-"resonance, JET: feedback)."
-msgstr ""
-"PARAMETER: 이펙트의 양(SPACE / DUB ECHO: 피드백, SWEEP: 중심 주파수, NOISE: 노이즈 볼륨, "
-"CRUSH: 크러시 정도, FILTER: 레조넌스, JET: 피드백)."
-
-#: ui/fx_bar.py:200
+#: ui/fx_bar.py:128
 msgid "Beat FX: the effect, on the master."
 msgstr "Beat FX: 마스터에 거는 이펙트."
 
-#: ui/fx_bar.py:204
+#: ui/fx_bar.py:131
 msgid "BEAT: the effect's time in beats of the BPM (REVERB: its level)."
 msgstr "BEAT: BPM 기준 박자 수로 정하는 이펙트 시간(REVERB: 리버브 양)."
 
-#: ui/fx_bar.py:208
+#: ui/fx_bar.py:134
 msgid ""
 "X-PAD: touched, the effect is on while held; the place under the finger "
 "is its BEAT (MOBIUS: its waveform, REVERB: its filter)."
 msgstr "X-PAD: 누르고 있는 동안 이펙트가 켜지고, 손가락 위치가 BEAT가 됩니다(MOBIUS: 파형, REVERB: 필터)."
 
-#: ui/fx_bar.py:216
+#: ui/fx_bar.py:141
 #, python-brace-format
 msgid ""
 "FX FREQUENCY {band}: the effect works on this band (lit), the others pass"
 " by."
 msgstr "FX FREQUENCY {band}: 켜진 대역에만 이펙트가 걸리고, 나머지 대역은 그대로 지나갑니다."
 
-#: ui/fx_bar.py:221
+#: ui/fx_bar.py:146
 msgid ""
 "LEVEL / DEPTH: the balance of the sound and the effect (the effect's "
 "depth, MOBIUS's volume, HELIX's overlay, as the effect has it)."
 msgstr "LEVEL / DEPTH: 원음과 이펙트의 밸런스(이펙트에 따라 효과의 깊이, MOBIUS의 볼륨, HELIX의 겹침 비율)."
 
-#: ui/fx_bar.py:231
+#: ui/fx_bar.py:156
 msgid "The BPM Beat FX plays at: the deck's (AUTO) or the one tapped (TAP)."
 msgstr "Beat FX가 쓰는 BPM: 덱의 BPM(AUTO) 또는 탭한 BPM(TAP)."
 
-#: ui/fx_bar.py:234
+#: ui/fx_bar.py:158
 msgid ""
-"TAP: tap more than twice in time with the beat to set the BPM (lit while "
-"tapped); BEAT goes to 1."
-msgstr "TAP: 박자에 맞춰 세 번 이상 누르면 BPM이 정해집니다(탭한 BPM을 쓰는 동안 점등). BEAT는 1이 됩니다."
+"TAP: tap more than twice in time with the beat to set the BPM (AUTO goes "
+"out); BEAT goes to 1."
+msgstr "TAP: 박자에 맞춰 세 번 이상 누르면 BPM이 정해집니다(AUTO가 꺼짐). BEAT는 1이 됩니다."
 
-#: ui/fx_bar.py:239
+#: ui/fx_bar.py:162
 msgid "AUTO: the deck's BPM again (lit while it is used)."
 msgstr "AUTO: 덱의 BPM으로 돌아갑니다(덱의 BPM을 쓰는 동안 점등)."
 
-#: ui/fx_bar.py:244
+#: ui/fx_bar.py:166
 msgid "Beat FX on / off (lit while on)."
 msgstr "Beat FX 켜기 / 끄기(켜져 있는 동안 점등)."
 
 # | msgid "" "EQ {band}: the native audio engine's mixer only (Settings >
 # | Playback > " "Audio engine)."
-# | msgid "" "Sound Color FX and Beat FX: the native audio engine's mixer only
-# "
-# | "(Settings > Playback > Audio engine)."
-#: ui/fx_bar.py:349
-msgid ""
-"Sound Color FX and Beat FX: the native audio engine's mixer only "
-"(Settings > Audio > Engine)."
-msgstr "Sound Color FX와 Beat FX: Native 오디오 엔진의 믹서에서만 동작합니다(설정 > 오디오 > 엔진)."
+# Audio
+# | > " "Engine)."
+#: ui/fx_bar.py:269
+msgid "Beat FX: the native audio engine's mixer only (Settings > Audio > Engine)."
+msgstr "Beat FX: Native 오디오 엔진의 믹서에서만 동작합니다(설정 > 오디오 > 엔진)."
 
 #: ui/library.py:708
 msgid "AND: require every search condition (click to switch)"
@@ -5915,7 +5908,7 @@ msgstr "플레이리스트"
 msgid "Local Folders"
 msgstr "로컬 폴더"
 
-#: ui/config/external_sync.py:105 ui/library.py:1678 ui/pane.py:521
+#: ui/config/external_sync.py:105 ui/library.py:1678 ui/pane.py:517
 msgid "External Sync"
 msgstr "외부 동기화"
 
@@ -5936,7 +5929,7 @@ msgstr "\"{title}\"의 변경 내용을 적용할까요? (아니요: 버립니�
 msgid "The loaded track is not in the list shown."
 msgstr "로드한 트랙이 지금 보이는 목록에 없습니다."
 
-#: ui/library.py:1923 ui/library.py:1952 ui/library.py:1959 ui/shortcuts.py:156
+#: ui/library.py:1923 ui/library.py:1952 ui/library.py:1959 ui/shortcuts.py:158
 msgid "New Playlist"
 msgstr "새 플레이리스트"
 
@@ -5977,19 +5970,19 @@ msgstr ""
 "플레이리스트 \"{name}\"을(를) 삭제할까요?\n"
 "트랙은 라이브러리에 남습니다."
 
-#: ui/library.py:2094 ui/shortcuts.py:154
+#: ui/library.py:2094 ui/shortcuts.py:156
 msgid "Show in Explorer"
 msgstr "탐색기에서 보기"
 
-#: ui/library.py:2095 ui/shortcuts.py:155
+#: ui/library.py:2095 ui/shortcuts.py:157
 msgid "Show in Finder"
 msgstr "Finder에서 보기"
 
-#: ui/library.py:2095 ui/shortcuts.py:155
+#: ui/library.py:2095 ui/shortcuts.py:157
 msgid "Show in File Manager"
 msgstr "파일 관리자에서 보기"
 
-#: ui/library.py:2096 ui/library.py:2182 ui/shortcuts.py:159
+#: ui/library.py:2096 ui/library.py:2182 ui/shortcuts.py:161
 msgid "Remove from Library"
 msgstr "라이브러리에서 제거"
 
@@ -5997,11 +5990,11 @@ msgstr "라이브러리에서 제거"
 msgid "Analyze Track"
 msgstr "트랙 분석"
 
-#: ui/library.py:2099 ui/reanalyze_dialog.py:16 ui/shortcuts.py:157
+#: ui/library.py:2099 ui/reanalyze_dialog.py:16 ui/shortcuts.py:159
 msgid "Reanalyze Track"
 msgstr "트랙 재분석"
 
-#: ui/library.py:2104 ui/shortcuts.py:160
+#: ui/library.py:2104 ui/shortcuts.py:162
 msgid "Remove from Playlist"
 msgstr "플레이리스트에서 제거"
 
@@ -6030,6 +6023,34 @@ msgstr[0] ""
 "트랙 {count}개를 라이브러리에서 제거할까요?\n"
 "분석과 편집 내용이 삭제됩니다. 오디오 파일은 그대로 남습니다."
 
+#: ui/midi_toggle.py:50
+msgid "MIDI input off: the controller is not read. Click: on."
+msgstr "MIDI 입력 꺼짐: 컨트롤러를 읽지 않습니다. 클릭: 켜기."
+
+#: ui/midi_toggle.py:53
+msgid "MIDI input on, no port picked (Settings > MIDI)."
+msgstr "MIDI 입력 켜짐, 포트가 선택되지 않았습니다(설정 > MIDI)."
+
+#: ui/midi_toggle.py:56
+#, python-brace-format
+msgid "MIDI input on: {port}. Click: off."
+msgstr "MIDI 입력 켜짐: {port}. 클릭: 끄기."
+
+# | msgid "Could not be opened (in use by another program, or disconnected)."
+#: ui/midi_toggle.py:59
+#, python-brace-format
+msgid ""
+"MIDI input on, {port} could not be opened (in use by another program, or "
+"disconnected). Click: off."
+msgstr "MIDI 입력 켜짐, {port}을(를) 열 수 없습니다(다른 프로그램이 사용 중이거나 연결이 끊김). 클릭: 끄기."
+
+#: ui/midi_toggle.py:63
+#, python-brace-format
+msgid ""
+"MIDI input on, {port} closed (External Sync follows another deck). Click:"
+" off."
+msgstr "MIDI 입력 켜짐, {port} 닫힘(외부 동기화가 다른 덱을 따라가는 중). 클릭: 끄기."
+
 #: ui/oss_support.py:12
 msgid "Support Python & Open Source"
 msgstr "Python과 오픈 소스 후원"
@@ -6055,22 +6076,22 @@ msgid "Open Link"
 msgstr "링크 열기"
 
 # | msgid "Unload track"
-#: ui/pane.py:143
+#: ui/pane.py:142
 msgid "Load to Deck"
 msgstr "덱에 로드"
 
-#: ui/pane.py:336
+#: ui/pane.py:335
 #, python-format
 msgid "Tempo range: ±6% / ±10% / ±16% / WIDE (0%-200%); click for the next"
 msgstr "템포 범위: ±6% / ±10% / ±16% / WIDE (0%-200%). 누를 때마다 다음 범위"
 
 # | msgid "Tempo (0%-200%, 0 stops)"
-#: ui/pane.py:356
+#: ui/pane.py:355
 #, python-format
 msgid "Tempo (WIDE: 0%-200%, 0 stops)"
 msgstr "템포 (WIDE: 0%-200%, 0이면 정지)"
 
-#: ui/pane.py:422
+#: ui/pane.py:421
 msgid ""
 "CUE: stopped, sets the cue point here (on the nearest beat) / held on the"
 " cue point, plays until let go (PLAY while held: plays on); playing, back"
@@ -6079,19 +6100,19 @@ msgstr ""
 "CUE: 정지 중이면 여기에 큐 포인트를 설정(가장 가까운 비트) / 큐 포인트에서 누르고 있으면 뗄 때까지 재생(누른 채 "
 "PLAY: 계속 재생). 재생 중이면 큐 포인트로 돌아가 정지"
 
-#: ui/pane.py:426 ui/shortcuts.py:91
+#: ui/pane.py:425 ui/shortcuts.py:91
 msgid "Tempo reset (100%)"
 msgstr "템포 초기화 (100%)"
 
-#: ui/pane.py:428
+#: ui/pane.py:427
 msgid "Master tempo: time stretch keeps the pitch"
 msgstr "마스터 템포: 타임 스트레치로 피치를 유지합니다"
 
-#: ui/pane.py:522
+#: ui/pane.py:518
 msgid "Playback is disabled while External Sync is enabled."
 msgstr "외부 동기화가 켜져 있는 동안에는 재생할 수 없습니다."
 
-#: ui/pane.py:863
+#: ui/pane.py:852
 msgid "Not Loaded"
 msgstr "불러온 트랙 없음"
 
@@ -6171,7 +6192,7 @@ msgstr "CUE 포인트"
 
 #: ui/config/analysis.py:200 ui/config/dialogs/optimization.py:220
 #: ui/config/dialogs/optimization.py:344 ui/config/output_group.py:226
-#: ui/config/playback.py:117 ui/reanalyze_dialog.py:59
+#: ui/config/playback.py:107 ui/reanalyze_dialog.py:59
 msgid "Off"
 msgstr "끔"
 
@@ -6333,12 +6354,21 @@ msgstr "축소"
 msgid "Unload the track"
 msgstr "트랙 내리기"
 
-# | msgid "Audio engine"
+# | msgid "MIDI input"
 #: ui/shortcuts.py:99
+msgid "MIDI input on / off"
+msgstr "MIDI 입력 켜기 / 끄기"
+
+#: ui/shortcuts.py:100
+msgid "The MIDI controller read or not (the port picked in Settings > MIDI kept)."
+msgstr "MIDI 컨트롤러를 읽을지 여부입니다(설정 > MIDI에서 고른 포트는 그대로 유지)."
+
+# | msgid "Audio engine"
+#: ui/shortcuts.py:101
 msgid "Restart the audio engine"
 msgstr "오디오 엔진 재시작"
 
-#: ui/shortcuts.py:100
+#: ui/shortcuts.py:102
 msgid ""
 "The native audio engine stopped and started again, the track, its place "
 "and the settings as they were: the last resort when an output or the "
@@ -6348,45 +6378,45 @@ msgstr ""
 " 때 쓰는 마지막 수단입니다."
 
 # | msgid "Delete JumpCUE {letter}"
-#: ui/shortcuts.py:103
+#: ui/shortcuts.py:105
 #, python-brace-format
 msgid "JUMP: JumpCUE {letter}"
 msgstr "JUMP: JumpCUE {letter}"
 
 # | msgid "Jump here on the next beat (when stopped: move the playhead here)"
-#: ui/shortcuts.py:104
+#: ui/shortcuts.py:106
 #, python-brace-format
 msgid ""
 "Jump to JumpCUE {letter} on the next beat (stopped: move the playhead "
 "there)."
 msgstr "다음 박에서 JumpCUE {letter}로 점프합니다 (정지 중: 플레이헤드를 거기로 이동)."
 
-#: ui/shortcuts.py:106
+#: ui/shortcuts.py:108
 msgid "CALL: the previous CUE point"
 msgstr "CALL: 이전 CUE 포인트"
 
 # | msgid "Move the playhead to this CUE (not while playing)"
-#: ui/shortcuts.py:107
+#: ui/shortcuts.py:109
 msgid "Move the playhead to the CUE point before it (while stopped)."
 msgstr "플레이헤드를 그 앞의 CUE 포인트로 옮깁니다 (정지 중)."
 
-#: ui/shortcuts.py:108
+#: ui/shortcuts.py:110
 msgid "CALL: the next CUE point"
 msgstr "CALL: 다음 CUE 포인트"
 
 # | msgid "Move the playhead to this CUE (not while playing)"
-#: ui/shortcuts.py:109
+#: ui/shortcuts.py:111
 msgid "Move the playhead to the CUE point after it (while stopped)."
 msgstr "플레이헤드를 그 뒤의 CUE 포인트로 옮깁니다 (정지 중)."
 
 # | msgid "Delete JumpCUE {letter}"
-#: ui/shortcuts.py:110
+#: ui/shortcuts.py:112
 #, python-brace-format
 msgid "SET: JumpCUE {letter}"
 msgstr "SET: JumpCUE {letter}"
 
 # | msgid "SET: a JumpCUE in this slot at the nearest beat or track edge"
-#: ui/shortcuts.py:111
+#: ui/shortcuts.py:113
 #, python-brace-format
 msgid ""
 "JumpCUE {letter} at the nearest beat or track edge, when its slot is "
@@ -6394,105 +6424,105 @@ msgid ""
 msgstr "슬롯이 비어 있으면 가장 가까운 박이나 트랙 끝에 JumpCUE {letter}를 둡니다."
 
 # | msgid "CUE point"
-#: ui/shortcuts.py:113
+#: ui/shortcuts.py:115
 msgid "MEMORY: a CUE point"
 msgstr "MEMORY: CUE 포인트"
 
-#: ui/edit_panel/cuepoint.py:31 ui/shortcuts.py:114
+#: ui/edit_panel/cuepoint.py:31 ui/shortcuts.py:116
 msgid "MEMORY: set a CUE point at the nearest beat or track edge"
 msgstr "MEMORY: 가장 가까운 박이나 트랙 끝에 CUE 포인트를 설정합니다"
 
-#: ui/edit_panel/jumpcue.py:186 ui/shortcuts.py:115
+#: ui/edit_panel/jumpcue.py:186 ui/shortcuts.py:117
 #, python-brace-format
 msgid "Delete JumpCUE {letter}"
 msgstr "JumpCUE {letter} 삭제"
 
 # | msgid "Split the current segment at the playhead"
-#: ui/shortcuts.py:116
+#: ui/shortcuts.py:118
 msgid "Delete the CUE point at the playhead"
 msgstr "플레이헤드의 CUE 포인트 삭제"
 
 # | msgid "Split the current segment at the playhead"
 # | msgid "No CUE point at the playhead."
-#: ui/shortcuts.py:117
+#: ui/shortcuts.py:119
 msgid "The CUE point the playhead is on, as after CALL."
 msgstr "플레이헤드가 있는 CUE 포인트 (CALL 직후처럼)."
 
 # | msgid "Metronome on / off"
 # | msgid "Edit lock on / off"
-#: ui/shortcuts.py:120
+#: ui/shortcuts.py:122
 msgid "Beat FX on / off"
 msgstr "Beat FX 켜기 / 끄기"
 
 # | msgid "Beat"
 # | msgid "Beat jump"
-#: ui/shortcuts.py:121
+#: ui/shortcuts.py:123
 msgid "Beat FX TAP"
 msgstr "Beat FX TAP"
 
-#: ui/shortcuts.py:122
+#: ui/shortcuts.py:124
 msgid "Tap more than twice in time with the beat to set Beat FX's BPM."
 msgstr "박자에 맞춰 세 번 이상 누르면 Beat FX의 BPM이 정해집니다."
 
-#: ui/shortcuts.py:123
+#: ui/shortcuts.py:125
 msgid "Beat FX AUTO"
 msgstr "Beat FX AUTO"
 
-#: ui/shortcuts.py:123
+#: ui/shortcuts.py:125
 msgid "Beat FX at the deck's BPM again."
 msgstr "Beat FX를 다시 덱의 BPM으로."
 
-#: ui/shortcuts.py:128
+#: ui/shortcuts.py:130
 #, python-brace-format
 msgid "FX FREQUENCY {band} on / off"
 msgstr "FX FREQUENCY {band} 켜기 / 끄기"
 
 # | msgid "Headphones: CUE / MASTER"
-#: ui/shortcuts.py:130
+#: ui/shortcuts.py:132
 msgid "Headphones CUE on / off"
 msgstr "헤드폰 CUE 켜기 / 끄기"
 
-#: ui/shortcuts.py:131
+#: ui/shortcuts.py:133
 msgid ""
 "The deck's channel, before its fader, in the headphones (the native "
 "engine's mixer)."
 msgstr "덱의 채널을 페이더 앞에서 헤드폰으로(Native 엔진의 믹서)."
 
-#: ui/shortcuts.py:132
+#: ui/shortcuts.py:134
 msgid "Sound Color FX: the next effect"
 msgstr "Sound Color FX: 다음 이펙트"
 
 # | msgid "CALL: the previous CUE point"
-#: ui/shortcuts.py:133
+#: ui/shortcuts.py:135
 msgid "Sound Color FX: the previous effect"
 msgstr "Sound Color FX: 이전 이펙트"
 
 # | msgid "Previous page"
-#: ui/shortcuts.py:135
+#: ui/shortcuts.py:137
 msgid "Previous track"
 msgstr "이전 트랙"
 
 # | msgid "Export Track"
-#: ui/shortcuts.py:136
+#: ui/shortcuts.py:138
 msgid "Next track"
 msgstr "다음 트랙"
 
-#: ui/shortcuts.py:137
+#: ui/shortcuts.py:139
 msgid "Load the selected track"
 msgstr "선택한 트랙 로드"
 
-#: ui/shortcuts.py:138
+#: ui/shortcuts.py:140
 msgid ""
 "In the sources panel: the highlighted playlist or folder shown in the "
 "library."
 msgstr "소스 패널에서는: 강조된 플레이리스트나 폴더를 라이브러리에 띄웁니다."
 
 # | msgid "Source"
-#: ui/shortcuts.py:139
+#: ui/shortcuts.py:141
 msgid "Sources panel"
 msgstr "소스 패널"
 
-#: ui/shortcuts.py:140
+#: ui/shortcuts.py:142
 msgid ""
 "To the panel beside the library (playlists, local folders) and back. Up /"
 " Down browse, Left / Right close / open a folder, the load key shows the "
@@ -6501,20 +6531,20 @@ msgstr ""
 "라이브러리 옆 패널 (플레이리스트, 로컬 폴더)로 갔다가 돌아옵니다. 위 / 아래로 둘러보고, 왼쪽 / 오른쪽으로 폴더를 닫고 / "
 "열고, 로드 키로 강조된 것을 띄웁니다."
 
-#: ui/config/search.py:134 ui/shortcuts.py:142
+#: ui/config/search.py:134 ui/shortcuts.py:144
 msgid "Search"
 msgstr "검색"
 
 # | msgid "Unload track"
 # | msgid "Unload the track"
-#: ui/shortcuts.py:143
+#: ui/shortcuts.py:145
 msgid "Back to the tracks"
 msgstr "트랙 목록으로"
 
 # | msgid "" "Back to the tracks from the search field (its text kept) or the
 # | sources " "panel; out of another text field: the keys work the shortcuts
 # | again."
-#: ui/shortcuts.py:144
+#: ui/shortcuts.py:146
 msgid ""
 "To the track list from the search field (its text kept), the sources "
 "panel or the track panel; out of another text field: the keys work the "
@@ -6523,304 +6553,304 @@ msgstr ""
 "검색 칸 (입력한 글자는 유지), 소스 패널, 트랙 패널에서 트랙 목록으로 돌아갑니다. 다른 입력 칸에서는 빠져나옵니다: 키가 다시"
 " 단축키로 동작합니다."
 
-#: ui/shortcuts.py:146
+#: ui/shortcuts.py:148
 msgid "Select the loaded track"
 msgstr "로드한 트랙 선택"
 
-#: ui/shortcuts.py:148
+#: ui/shortcuts.py:150
 msgid ""
 "The track panel's Edit tab with the selected track, its first field "
 "focused."
 msgstr "선택한 트랙으로 트랙 패널의 편집 탭을 열고 첫 칸에 포커스를 둡니다."
 
-#: ui/shortcuts.py:150
+#: ui/shortcuts.py:152
 msgid "The track panel's Export tab with the selected track, focused."
 msgstr "선택한 트랙으로 트랙 패널의 내보내기 탭을 열고 포커스를 둡니다."
 
-#: ui/shortcuts.py:151
+#: ui/shortcuts.py:153
 msgid "Write Tags to File"
 msgstr "파일에 태그 쓰기"
 
-#: ui/shortcuts.py:152
+#: ui/shortcuts.py:154
 msgid ""
 "The selected track's stored values written into its audio file's tags: "
 "the fields checked in the track panel's Export tab."
 msgstr "선택한 트랙의 저장된 값을 오디오 파일 태그에 씁니다. 트랙 패널의 내보내기 탭에서 체크한 항목만 씁니다."
 
-#: ui/shortcuts.py:158
+#: ui/shortcuts.py:160
 msgid ""
 "A full analysis of the selected tracks: their stored analysis and edits "
 "are replaced."
 msgstr "선택한 트랙의 전체 분석: 저장된 분석과 편집이 바뀝니다."
 
 # | msgid "Metronome on / off"
-#: ui/shortcuts.py:162
+#: ui/shortcuts.py:164
 msgid "Edit lock on / off"
 msgstr "편집 잠금 켜기 / 끄기"
 
 # | msgid "Page {page} of {pages}"
-#: ui/shortcuts.py:163
+#: ui/shortcuts.py:165
 #, python-brace-format
 msgid "Show the {page} page"
 msgstr "{page} 페이지 보기"
 
 # | msgid "Set the current segment to {meter}"
 # | msgid "Edit scope: the current segment"
-#: ui/shortcuts.py:164
+#: ui/shortcuts.py:166
 msgid "It becomes the current page."
 msgstr "그 페이지가 현재 페이지가 됩니다."
 
-#: ui/edit_panel/panel.py:169 ui/shortcuts.py:166
+#: ui/edit_panel/panel.py:169 ui/shortcuts.py:168
 msgid "Undo Changes"
 msgstr "변경 실행 취소"
 
-#: ui/edit_panel/panel.py:173 ui/shortcuts.py:167
+#: ui/edit_panel/panel.py:173 ui/shortcuts.py:169
 msgid "Redo Changes"
 msgstr "변경 다시 실행"
 
-#: ui/edit_panel/panel.py:177 ui/shortcuts.py:168
+#: ui/edit_panel/panel.py:177 ui/shortcuts.py:170
 msgid "Save Edits"
 msgstr "편집 저장"
 
 # | msgid "One beat earlier"
-#: ui/shortcuts.py:171
+#: ui/shortcuts.py:173
 msgid "Start earlier"
 msgstr "시작 앞당기기"
 
-#: ui/shortcuts.py:172 ui/shortcuts.py:174
+#: ui/shortcuts.py:174 ui/shortcuts.py:176
 msgid ""
 "Key, Phrase: the current segment's start, by a beat or a bar (the "
 "boundary step)."
 msgstr "Key, Phrase: 현재 구간의 시작을 한 박이나 한 마디씩 (경계 단위)."
 
 # | msgid "One beat later"
-#: ui/shortcuts.py:173
+#: ui/shortcuts.py:175
 msgid "Start later"
 msgstr "시작 늦추기"
 
 # | msgid "One beat earlier"
-#: ui/shortcuts.py:175
+#: ui/shortcuts.py:177
 msgid "End earlier"
 msgstr "끝 앞당기기"
 
-#: ui/shortcuts.py:176 ui/shortcuts.py:178
+#: ui/shortcuts.py:178 ui/shortcuts.py:180
 msgid ""
 "Key, Phrase: the current segment's end, by a beat or a bar (the boundary "
 "step)."
 msgstr "Key, Phrase: 현재 구간의 끝을 한 박이나 한 마디씩 (경계 단위)."
 
 # | msgid "One beat later"
-#: ui/shortcuts.py:177
+#: ui/shortcuts.py:179
 msgid "End later"
 msgstr "끝 늦추기"
 
 # | msgid "Split the current segment at the playhead"
-#: ui/shortcuts.py:179
+#: ui/shortcuts.py:181
 msgid "Split at the playhead"
 msgstr "플레이헤드에서 나누기"
 
 # | msgid "Set the current segment to {meter}"
 # | msgid "Key scope: the current segment"
-#: ui/shortcuts.py:180
+#: ui/shortcuts.py:182
 msgid "Beatgrid, Key, Phrase: the current segment."
 msgstr "비트그리드, Key, 프레이즈: 현재 구간."
 
 # | msgid "" "Merge the previous key segment into the current one (keeps the
 # | current " "key)"
 # | msgid "Merge the previous segment into the current one"
-#: ui/shortcuts.py:181
+#: ui/shortcuts.py:183
 msgid "Merge the previous segment"
 msgstr "이전 구간 합치기"
 
 # | msgid "" "Merge the previous key segment into the current one (keeps the
 # | current " "key)"
 # | msgid "Merge the previous segment into the current one"
-#: ui/shortcuts.py:182
+#: ui/shortcuts.py:184
 msgid "Beatgrid, Key, Phrase: the previous segment into the current one."
 msgstr "비트그리드, Key, 프레이즈: 이전 구간을 현재 구간에."
 
 # | msgid "Merge the next key segment into the current one (keeps the current
 # | key)"
 # | msgid "Merge the next segment into the current one"
-#: ui/shortcuts.py:183
+#: ui/shortcuts.py:185
 msgid "Merge the next segment"
 msgstr "다음 구간 합치기"
 
 # | msgid "Merge the next key segment into the current one (keeps the current
 # | key)"
 # | msgid "Merge the next segment into the current one"
-#: ui/shortcuts.py:184
+#: ui/shortcuts.py:186
 msgid "Beatgrid, Key, Phrase: the next segment into the current one."
 msgstr "비트그리드, Key, 프레이즈: 다음 구간을 현재 구간에."
 
 # | msgid "Reanalyze the current key segment's key from the audio"
-#: ui/shortcuts.py:185
+#: ui/shortcuts.py:187
 msgid "Reanalyze the current segment"
 msgstr "현재 구간 재분석"
 
 # | msgid "Beatgrid"
-#: ui/shortcuts.py:186 ui/shortcuts.py:189 ui/shortcuts.py:191
+#: ui/shortcuts.py:188 ui/shortcuts.py:191 ui/shortcuts.py:193
 msgid "Beatgrid, Key."
 msgstr "비트그리드, Key."
 
 # | msgid "Reanalyze Track"
-#: ui/shortcuts.py:187
+#: ui/shortcuts.py:189
 msgid "Reanalyze the whole track"
 msgstr "트랙 전체 재분석"
 
-#: ui/shortcuts.py:188
+#: ui/shortcuts.py:190
 msgid "Key, Phrase; on the CUE page, the JumpCUEs."
 msgstr "Key, 프레이즈. CUE 페이지에서는 JumpCUE."
 
 # | msgid "Key scope: the whole track"
-#: ui/shortcuts.py:189
+#: ui/shortcuts.py:191
 msgid "Edit scope: the whole track"
 msgstr "편집 범위: 트랙 전체"
 
 # | msgid "Set the current segment to {meter}"
-#: ui/shortcuts.py:190
+#: ui/shortcuts.py:192
 msgid "Edit scope: the current segment"
 msgstr "편집 범위: 현재 구간"
 
 # | msgid "Boundaries move by one beat"
-#: ui/shortcuts.py:192
+#: ui/shortcuts.py:194
 msgid "Boundary step: one beat"
 msgstr "경계 단위: 한 박"
 
 # | msgid "Phrase"
-#: ui/shortcuts.py:192 ui/shortcuts.py:193
+#: ui/shortcuts.py:194 ui/shortcuts.py:195
 msgid "Key, Phrase."
 msgstr "Key, 프레이즈."
 
 # | msgid "Boundaries move by one beat"
 # | msgid "Boundaries move by one bar"
-#: ui/shortcuts.py:193
+#: ui/shortcuts.py:195
 msgid "Boundary step: one bar"
 msgstr "경계 단위: 한 마디"
 
 # | msgid "Shift the current segment half a beat earlier"
-#: ui/shortcuts.py:195
+#: ui/shortcuts.py:197
 msgid "Shift half a beat earlier"
 msgstr "반 박 앞당기기"
 
 # | msgid "Shift the current segment 10 ms earlier"
-#: ui/shortcuts.py:196
+#: ui/shortcuts.py:198
 msgid "Shift 10 ms earlier"
 msgstr "10 ms 앞당기기"
 
 # | msgid "Shift the current segment 1 ms earlier"
-#: ui/shortcuts.py:197
+#: ui/shortcuts.py:199
 msgid "Shift 1 ms earlier"
 msgstr "1 ms 앞당기기"
 
 # | msgid "Shift the current segment 1 ms later"
-#: ui/shortcuts.py:198
+#: ui/shortcuts.py:200
 msgid "Shift 1 ms later"
 msgstr "1 ms 늦추기"
 
 # | msgid "Shift the current segment 10 ms later"
-#: ui/shortcuts.py:199
+#: ui/shortcuts.py:201
 msgid "Shift 10 ms later"
 msgstr "10 ms 늦추기"
 
 # | msgid "Shift the current segment half a beat later"
-#: ui/shortcuts.py:200
+#: ui/shortcuts.py:202
 msgid "Shift half a beat later"
 msgstr "반 박 늦추기"
 
 # | msgid "Error"
-#: ui/shortcuts.py:201
+#: ui/shortcuts.py:203
 msgid "ZERO"
 msgstr "ZERO"
 
-#: ui/edit_panel/beatgrid.py:75 ui/shortcuts.py:201
+#: ui/edit_panel/beatgrid.py:75 ui/shortcuts.py:203
 msgid "Clear the reference BPM and the tap history"
 msgstr "기준 BPM과 탭 기록을 지웁니다"
 
-#: ui/shortcuts.py:202
+#: ui/shortcuts.py:204
 msgid "TAP"
 msgstr "TAP"
 
-#: ui/edit_panel/beatgrid.py:81 ui/shortcuts.py:202
+#: ui/edit_panel/beatgrid.py:81 ui/shortcuts.py:204
 msgid "Tap the beat to set the reference BPM"
 msgstr "박에 맞춰 탭해 기준 BPM을 정합니다"
 
 # | msgid "Tap to set reference BPM"
 # | msgid "TAP: the reference BPM"
-#: ui/shortcuts.py:203
+#: ui/shortcuts.py:205
 msgid "Assign the reference BPM"
 msgstr "기준 BPM 지정"
 
-#: ui/edit_panel/beatgrid.py:100 ui/shortcuts.py:204
+#: ui/edit_panel/beatgrid.py:100 ui/shortcuts.py:206
 msgid "Assign the reference BPM to the current segment (downbeat at its start)"
 msgstr "기준 BPM을 현재 구간에 지정합니다 (다운비트는 구간 시작)"
 
 # | msgid "Clear the reference BPM and the tap history"
 # | msgid "The reference BPM as the starting tempo (ramp)"
-#: ui/shortcuts.py:205
+#: ui/shortcuts.py:207
 msgid "Ramp: the starting tempo"
 msgstr "램프: 시작 템포"
 
-#: ui/edit_panel/beatgrid.py:101 ui/shortcuts.py:206
+#: ui/edit_panel/beatgrid.py:101 ui/shortcuts.py:208
 msgid ""
 "Make the reference BPM the current segment's starting tempo (a ramp to "
 "its end tempo; its first beat stays)"
 msgstr "기준 BPM을 현재 구간의 시작 템포로 합니다 (끝 템포까지 이어지는 램프, 첫 박은 유지)"
 
-#: ui/shortcuts.py:208
+#: ui/shortcuts.py:210
 msgid "Ramp: the ending tempo"
 msgstr "램프: 끝 템포"
 
-#: ui/edit_panel/beatgrid.py:102 ui/shortcuts.py:209
+#: ui/edit_panel/beatgrid.py:102 ui/shortcuts.py:211
 msgid ""
 "Make the reference BPM the current segment's ending tempo (a ramp from "
 "its start tempo; its first beat stays)"
 msgstr "기준 BPM을 현재 구간의 끝 템포로 합니다 (시작 템포에서 이어지는 램프, 첫 박은 유지)"
 
 # | msgid "Hold to count beats passing under the playhead"
-#: ui/shortcuts.py:211
+#: ui/shortcuts.py:213
 msgid "Downbeat at the playhead"
 msgstr "플레이헤드에 다운비트"
 
-#: ui/edit_panel/beatgrid.py:109 ui/shortcuts.py:212
+#: ui/edit_panel/beatgrid.py:109 ui/shortcuts.py:214
 msgid "Make the beat nearest the playhead the current segment's downbeat"
 msgstr "플레이헤드에 가장 가까운 박을 현재 구간의 다운비트로 합니다"
 
-#: ui/shortcuts.py:213
+#: ui/shortcuts.py:215
 msgid "BPM x1/2"
 msgstr "BPM x1/2"
 
 # | msgid "BPM min"
-#: ui/shortcuts.py:214
+#: ui/shortcuts.py:216
 msgid "BPM x2"
 msgstr "BPM x2"
 
-#: ui/shortcuts.py:215
+#: ui/shortcuts.py:217
 #, python-brace-format
 msgid "Time signature {meter}"
 msgstr "박자 {meter}"
 
 # | msgid "Edit the key"
-#: ui/shortcuts.py:218
+#: ui/shortcuts.py:220
 msgid "Pick the key"
 msgstr "키 선택"
 
 # | msgid "Pick the key (Camelot wheel)"
-#: ui/edit_panel/key.py:95 ui/edit_panel/key_picker.py:82 ui/shortcuts.py:218
+#: ui/edit_panel/key.py:95 ui/edit_panel/key_picker.py:82 ui/shortcuts.py:220
 msgid "Pick the key (Alphanumeric wheel)"
 msgstr "키 선택 (Alphanumeric 휠)"
 
 # | msgid "Move Down"
-#: ui/shortcuts.py:219
+#: ui/shortcuts.py:221
 msgid "A semitone down"
 msgstr "반음 내림"
 
 # | msgid "Move Up"
-#: ui/shortcuts.py:220
+#: ui/shortcuts.py:222
 msgid "A semitone up"
 msgstr "반음 올림"
 
-#: ui/shortcuts.py:221
+#: ui/shortcuts.py:223
 msgid "Circle of fifths -1"
 msgstr "5도권 -1"
 
@@ -6829,84 +6859,84 @@ msgstr "5도권 -1"
 # | msgid "One step down the circle of fifths (Alphanumeric -1): every
 # segment's
 # | key"
-#: ui/shortcuts.py:222
+#: ui/shortcuts.py:224
 msgid "One step down the circle of fifths (Alphanumeric -1)"
 msgstr "5도권에서 한 칸 내림 (Alphanumeric -1)"
 
-#: ui/shortcuts.py:223
+#: ui/shortcuts.py:225
 msgid "Circle of fifths +1"
 msgstr "5도권 +1"
 
 # | msgid "One step up the circle of fifths (Camelot +1): every segment's key"
 # | msgid "One step up the circle of fifths (Alphanumeric +1): every segment's
 # | key"
-#: ui/shortcuts.py:224
+#: ui/shortcuts.py:226
 msgid "One step up the circle of fifths (Alphanumeric +1)"
 msgstr "5도권에서 한 칸 올림 (Alphanumeric +1)"
 
 # | msgid "Relative major / minor (C <-> Am): every segment's key"
 # | msgid "Relative major / minor (C <-> Am)"
-#: ui/shortcuts.py:225
+#: ui/shortcuts.py:227
 msgid "Relative major / minor"
 msgstr "나란한조 장조 / 단조"
 
 # | msgid "Relative major / minor (C <-> Am): every segment's key"
-#: ui/shortcuts.py:225
+#: ui/shortcuts.py:227
 msgid "Relative major / minor (C <-> Am)"
 msgstr "나란한조 장조 / 단조 (C <-> Am)"
 
-#: ui/shortcuts.py:226
+#: ui/shortcuts.py:228
 msgid "Merge the same keys"
 msgstr "같은 키 합치기"
 
-#: ui/edit_panel/key.py:80 ui/shortcuts.py:227
+#: ui/edit_panel/key.py:80 ui/shortcuts.py:229
 msgid "Merge every run of neighboring segments with the same key"
 msgstr "키가 같은 이웃 구간들을 모두 하나로 합칩니다"
 
-#: ui/shortcuts.py:228
+#: ui/shortcuts.py:230
 msgid "Listening aid: root"
 msgstr "듣기 보조: 근음"
 
-#: ui/shortcuts.py:229
+#: ui/shortcuts.py:231
 msgid "Listening aid: root and fifth"
 msgstr "듣기 보조: 근음과 5음"
 
-#: ui/shortcuts.py:230
+#: ui/shortcuts.py:232
 msgid "Listening aid: tonic chord"
 msgstr "듣기 보조: 으뜸화음"
 
 # | msgid "CUE points (set by the analysis from the phrases)"
 # | msgid "CUE points from the phrases (CUE rules)"
-#: ui/shortcuts.py:232
+#: ui/shortcuts.py:234
 msgid "CUE points from the phrases"
 msgstr "프레이즈로 CUE 포인트 만들기"
 
 # | msgid "" "Replace the CUE points with the ones the CUE rules give the
 # | current " "phrases\n" "(Settings > Analysis > CUE, as the full analysis
 # | makes them)"
-#: ui/shortcuts.py:233
+#: ui/shortcuts.py:235
 msgid ""
 "Replace the CUE points with the ones the CUE rules give the current "
 "phrases"
 msgstr "CUE 포인트를 현재 프레이즈에 CUE 규칙을 적용한 결과로 바꿉니다"
 
-#: ui/edit_panel/phrase.py:82 ui/shortcuts.py:234
+#: ui/edit_panel/phrase.py:82 ui/shortcuts.py:236
 msgid "Unassign the current phrase (UNASSIGNED)"
 msgstr "현재 프레이즈의 라벨을 해제합니다 (UNASSIGNED)"
 
-#: ui/edit_panel/phrase.py:167 ui/shortcuts.py:235
+#: ui/edit_panel/phrase.py:167 ui/shortcuts.py:237
 #, python-brace-format
 msgid "Label the current phrase {label}"
 msgstr "현재 프레이즈를 {label}(으)로 지정"
 
-#: ui/shortcuts.py:294
+#: ui/shortcuts.py:296
 #, python-brace-format
 msgid ""
 "Another program on this computer takes {keys}: these shortcuts do not "
 "work (Settings > Shortcuts)."
 msgstr "이 컴퓨터의 다른 프로그램이 {keys}를 가져가서 이 단축키는 동작하지 않습니다 (설정 > 단축키)."
 
-#: ui/shortcuts.py:340
+#: ui/shortcuts.py:342
 #, python-brace-format
 msgid "{keys} is used by more than one action (Settings > Shortcuts)."
 msgstr "{keys}가 여러 동작에 지정되어 있습니다 (설정 > 단축키)."

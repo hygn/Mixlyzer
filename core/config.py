@@ -86,18 +86,51 @@ class outputconfig:
 
 
 @dataclass
-class playbackconfig:
+class deckconfig:
+    """What playing changes, kept in deck.json (beside config.json, the settings that seldom change): saved as it
+    changes (the toolbar, the deck's buttons, a controller, the editor's metronome) and applied at the start. The
+    deck's momentary state (FX ON, the EQ and COLOR knobs, CUE, the crossfader, a tapped BPM) is not kept: every
+    start begins with the effects off and the knobs in their middles."""
+    use_timestretch: bool  # tempo changes keep the pitch (time stretch) instead of varispeed (the MT button)
+    # the metronome (the editor's listening aids; Settings > Audio > Metronome)
     enable_metronome: bool
     metronome_wav_path: str
     metronome_offset_msec: float
-    volume_trim_dbfs: float
-    default_volume_percent: int
-    use_timestretch: bool  # tempo changes keep the pitch (time stretch) instead of varispeed
     metronome_downbeat_volume_percent: int
     metronome_downbeat_pitch_semitones: float  # the click is played faster (higher) / slower
     metronome_beat_volume_percent: int
     metronome_beat_pitch_semitones: float
     metronome_ducking: bool  # lower the music under each click
+    # the channel's TRIM (dB; its knob, Settings > Audio > Mixer), the tempo fader's range (+-%: 6, 10, 16; 100 WIDE:
+    # 0 - 200 %), the MIDI input read or not (the toolbar's MIDI button)
+    volume_trim_dbfs: float
+    tempo_range: int
+    midi_enabled: bool
+    # the mixer's and the deck's switches: the EQ ("isolator": a band down to a kill; "eq": -26 dB at the bottom),
+    # the channel fader's curve ("default", "steep": up fast, "slow"), the jog wheel's mode ("vinyl": its top holds
+    # the record; "cdj": a bend)
+    mixer_eq: str
+    fader_curve: str
+    jog_mode: str
+    # the levels, knob positions 0 .. 1 (0.8 = 0 dB, client.LEVEL_UNITY): the master's and the headphones'; the
+    # headphones' CUE / MASTER mix (%: 0 CUE .. 100 MASTER)
+    master_level: float
+    headphones_level: float
+    headphones_cue_mix: int
+    # the effects as picked (not whether they are on): Sound Color FX (client.COLOR_TYPES' place, COLOR_OFF none)
+    # and its PARAMETER (0 .. 1); Beat FX (client.BEAT_TYPES' place), its BEAT (beats), LEVEL / DEPTH (0 .. 1) and
+    # FX FREQUENCY's bands (bits: 1 LOW, 2 MID, 4 HI)
+    color_type: int
+    color_param: float
+    beat_type: int
+    beat_beat: float
+    beat_level: float
+    beat_bands: int
+
+
+@dataclass
+class playbackconfig:
+    default_volume_percent: int
     soft_clip: bool  # tanh soft clip of the output above SOFT_CLIP_KNEE
     # the audio engine: "native" (audioengine/native; the Python one where it is not built or does not start)
     # or "python" (audioengine/python only); applied at the next start
@@ -116,11 +149,8 @@ class playbackconfig:
     # slack and uclamp; macOS App Nap and timer coalescing): audioengine/native/src/sched.rs
     native_priority: Literal["normal", "above_normal", "high"]
     native_power_throttling: bool
-    # the tempo fader's range (+-%: 6, 10, 16; 100 WIDE: 0 - 200 %), as the deck last had it (its button, a key,
-    # a MIDI controller)
-    tempo_range: int
     # a MIDI controller (the native engine reads it; Settings > MIDI, its mapping in assets/midi): the input port
-    # ("": none) and its jog wheel's messages per turn (33 1/3 rpm)
+    # ("": none) and its jog wheel's messages per turn (33 1/3 rpm); whether it is read: deckconfig.midi_enabled
     midi_input: str
     midi_jog_ticks: int
     # the native engine's outputs, as a DJ mixer's: the main device's channel pair of the master ("1-2"), the
@@ -128,22 +158,11 @@ class playbackconfig:
     output_main: str
     output_headphones: outputconfig
     output_booth: outputconfig
-    # the headphones: the master mixed in with the CUE'd channels (by the CUE / MASTER mix, %: 0 CUE .. 100 MASTER;
-    # a controller's knob moves it), or not (a controller that mixes the master into its headphones itself, as the
-    # DDJ-400 does in analog)
+    # the headphones: the master mixed in with the CUE'd channels (by deckconfig's CUE / MASTER mix), or not (a
+    # controller that mixes the master into its headphones itself, as the DDJ-400 does in analog)
     headphones_master_mix: bool
-    headphones_cue_mix: int
-    # the mixer's and the deck's switches, as last left (the block between the player and the overview, a
-    # controller): the EQ ("isolator": a band down to a kill; "eq": -26 dB at the bottom), the channel fader's curve
-    # ("default", "steep": up fast, "slow"), the jog wheel's mode ("vinyl": its top holds the record; "cdj": a bend)
-    mixer_eq: str
-    fader_curve: str
-    jog_mode: str
-    # the levels as last left, knob positions 0 .. 1 (0.8 = 0 dB, client.LEVEL_UNITY): the master's and the
-    # headphones' (the switches' block, a controller), the booth's (Settings > Audio > Booth); the booth EQ's HI / LOW
-    # (0 .. 1, the middle flat: -12 .. +6 dB); the headphones' MONO SPLIT (the CUE left, the master right)
-    master_level: float
-    headphones_level: float
+    # the booth's level, a knob position 0 .. 1 (0.8 = 0 dB, client.LEVEL_UNITY; Settings > Audio > Booth), its EQ's
+    # HI / LOW (0 .. 1, the middle flat: -12 .. +6 dB); the headphones' MONO SPLIT (the CUE left, the master right)
     booth_level: float
     booth_eq_hi: float
     booth_eq_low: float
@@ -261,13 +280,24 @@ class config:
     externalsyncconfig: externalsyncconfig
     cuepointconfig: cuepointconfig
     searchconfig: searchconfig
+    deckconfig: deckconfig   # kept in deck.json, not config.json
 
     def to_dict(self) -> dict:
-        return asdict(self)
+        """config.json's content: the settings but the deck's (deck_dict)."""
+        payload = asdict(self)
+        payload.pop("deckconfig", None)
+        return payload
+
+    def deck_dict(self) -> dict:
+        """deck.json's content."""
+        return asdict(self.deckconfig)
 
     @classmethod
-    def from_dict(cls, payload: dict):
-        return _coerce_dataclass(cls, _normalize_config_payload(payload))
+    def from_dict(cls, payload: dict, deck: dict | None = None):
+        """From config.json's content and deck.json's (None: the defaults)."""
+        merged = dict(_normalize_config_payload(payload))
+        merged["deckconfig"] = deck if isinstance(deck, dict) else asdict(default_cfg().deckconfig)
+        return _coerce_dataclass(cls, merged)
 
 
 def search_settings(payload: dict | None) -> searchconfig:
@@ -403,18 +433,34 @@ def default_cfg():
             f.name: phraselabelname(alias="", abbrev="") for f in fields(phraselabelnames)
         }),
     )
-    pcfg = playbackconfig(
+    dcfg = deckconfig(
+        use_timestretch=True,
         enable_metronome=False,
         metronome_wav_path="assets/sound/click.wav",
         metronome_offset_msec=0.0,
-        volume_trim_dbfs=-9.0,
-        default_volume_percent=100,
-        use_timestretch=True,
         metronome_downbeat_volume_percent=60,
         metronome_downbeat_pitch_semitones=7.0,
         metronome_beat_volume_percent=60,
         metronome_beat_pitch_semitones=0.0,
         metronome_ducking=True,
+        volume_trim_dbfs=-9.0,
+        tempo_range=100,
+        midi_enabled=True,
+        mixer_eq="isolator",
+        fader_curve="default",
+        jog_mode="vinyl",
+        master_level=0.8,
+        headphones_level=0.8,
+        headphones_cue_mix=50,
+        color_type=5,    # FILTER (client.COLOR_TYPES), as the engine starts
+        color_param=0.5,
+        beat_type=1,     # ECHO (client.BEAT_TYPES)
+        beat_beat=1.0,
+        beat_level=0.5,
+        beat_bands=7,
+    )
+    pcfg = playbackconfig(
+        default_volume_percent=100,
         soft_clip=True,
         audio_engine="native",
         native_buffer_ms=20,
@@ -425,7 +471,6 @@ def default_cfg():
         native_exclusive_rate=0,
         native_priority="high",
         native_power_throttling=False,
-        tempo_range=100,
         midi_input="",
         midi_jog_ticks=720,
         output_main="1-2",
@@ -434,12 +479,6 @@ def default_cfg():
         output_booth=outputconfig(route="off", device="", channels="1-2", audio_api="wasapi", exclusive=False,
                                   buffer_ms=20, rate=0),
         headphones_master_mix=True,
-        headphones_cue_mix=50,
-        mixer_eq="isolator",
-        fader_curve="default",
-        jog_mode="vinyl",
-        master_level=0.8,
-        headphones_level=0.8,
         booth_level=0.8,
         booth_eq_hi=0.5,
         booth_eq_low=0.5,
@@ -471,6 +510,7 @@ def default_cfg():
         externalsyncconfig=xcfg,
         cuepointconfig=cuepointconfig(**cue_rules),
         searchconfig=scfg,
+        deckconfig=dcfg,
     )
 
 
@@ -484,26 +524,29 @@ def ui_language() -> str:
     return value if isinstance(value, str) else ""
 
 
-# where load_cfg() kept a config.json it could not read (the settings then reset to the defaults), None: none
-_unreadable_kept: Path | None = None
+CONFIG_FILE = "config.json"   # the settings that seldom change (the settings dialog's)
+DECK_FILE = "deck.json"       # what playing changes (deckconfig)
+
+# the settings files load_cfg() could not read, kept aside (their settings then reset to the defaults): (the file's
+# name, where it was kept)
+_unreadable_kept: list[tuple[str, Path]] = []
 
 
-def unreadable_config() -> Path | None:
-    """The config.json that could not be read and was kept aside (its settings reset), None when it was read."""
-    return _unreadable_kept
+def unreadable_settings() -> list[tuple[str, Path]]:
+    """The settings files that could not be read and were kept aside (their settings reset): (name, kept as)."""
+    return list(_unreadable_kept)
 
 
-def _keep_unreadable_config(error: Exception) -> None:
-    """The unreadable config.json moved aside (config.json.unreadable-<time>), so its settings are not lost."""
-    global _unreadable_kept
-    kept = Path(f"config.json.unreadable-{datetime.now():%Y%m%d-%H%M%S}")
+def _keep_unreadable_config(error: Exception, name: str) -> None:
+    """The unreadable settings file ``name`` moved aside (<name>.unreadable-<time>), so its settings are not lost."""
+    kept = Path(f"{name}.unreadable-{datetime.now():%Y%m%d-%H%M%S}")
     try:
-        os.replace("config.json", kept)
+        os.replace(name, kept)
     except OSError as exc:
-        print(f"[Config] config.json could not be read ({error}) nor kept aside ({exc})")
+        print(f"[Config] {name} could not be read ({error}) nor kept aside ({exc})")
         return
-    _unreadable_kept = kept.resolve()
-    print(f"[Config] config.json could not be read ({error}): kept as {kept}, the settings reset to the defaults")
+    _unreadable_kept.append((name, kept.resolve()))
+    print(f"[Config] {name} could not be read ({error}): kept as {kept}, its settings reset to the defaults")
 
 
 def load_cfg() -> config:
@@ -533,21 +576,52 @@ def load_cfg() -> config:
             if text:
                 Path(text).mkdir(parents=True, exist_ok=True)
 
-    cfg = default_cfg()
+    defaults = default_cfg()
+    loaded: dict = {}
     try:
         with open("config.json", "r", encoding="utf-8") as f:
             loaded = json.load(f)
             if not isinstance(loaded, dict):
                 raise TypeError("not a JSON object")
             loaded = _normalize_config_payload(loaded)
-            merged = _merge_defaults(cfg.to_dict(), loaded)
-            cfg = config.from_dict(merged)
     except FileNotFoundError:
-        atomic_write_json("config.json", cfg.to_dict(), ensure_ascii=True, indent=None)
+        loaded = {}
     except (TypeError, ValueError, AttributeError, KeyError) as exc:   # not JSON or UTF-8, or not settings
-        _keep_unreadable_config(exc)
-        cfg = default_cfg()
-        atomic_write_json("config.json", cfg.to_dict(), ensure_ascii=True, indent=None)
+        _keep_unreadable_config(exc, CONFIG_FILE)
+        loaded = {}
+    deck = _load_deck(loaded)
+    cfg = config.from_dict(_merge_defaults(defaults.to_dict(), loaded),
+                           _merge_defaults(defaults.deck_dict(), deck))
+    save_cfg(cfg)
+    save_deck(cfg)
     _ensure_library_dir(cfg)
     _ensure_feature_cache_dirs(cfg)
     return cfg
+
+
+def _load_deck(settings: dict) -> dict:
+    """deck.json's content ({}: none, or not readable: kept aside). Where there is none yet, what config.json held
+    of it before deck.json was kept (its playbackconfig's keys of deckconfig's), so a first start keeps them."""
+    try:
+        with open(DECK_FILE, "r", encoding="utf-8") as f:
+            loaded = json.load(f)
+        if not isinstance(loaded, dict):
+            raise TypeError("not a JSON object")
+        return loaded
+    except FileNotFoundError:
+        playback = settings.get("playbackconfig")
+        names = {f.name for f in fields(deckconfig)}
+        return {k: v for k, v in playback.items() if k in names} if isinstance(playback, dict) else {}
+    except (TypeError, ValueError, AttributeError, KeyError) as exc:
+        _keep_unreadable_config(exc, DECK_FILE)
+        return {}
+
+
+def save_cfg(cfg: config) -> None:
+    """config.json: the settings that seldom change (the settings dialog's)."""
+    atomic_write_json(CONFIG_FILE, cfg.to_dict(), ensure_ascii=True, indent=None)
+
+
+def save_deck(cfg: config) -> None:
+    """deck.json: what playing changes (deckconfig), written as it changes."""
+    atomic_write_json(DECK_FILE, cfg.deck_dict(), ensure_ascii=True, indent=1)

@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 from PySide6 import QtWidgets
 from core import i18n, os_support
-from core.config import load_cfg, ui_language, unreadable_config
+from core.config import load_cfg, ui_language, unreadable_settings
 from core.resource_paths import app_folder
 from core.i18n import tr
 from core.library_version import (
@@ -64,14 +64,14 @@ def main():
     splash.show()
     app.processEvents()
     cfg = load_cfg()
-    if unreadable_config() is not None:
+    for name, kept in unreadable_settings():
         QtWidgets.QMessageBox.warning(
             None,
             tr("Settings Reset"),
-            tr("config.json could not be read, so every setting is back to its default.\n"
+            tr("{name} could not be read, so its settings are back to their defaults.\n"
                "The unreadable file was kept as:\n{path}\n\n"
-               "To get the settings back, fix that file and put it in place of config.json while Mixlyzer is "
-               "closed.").format(path=unreadable_config()),
+               "To get the settings back, fix that file and put it in place of {name} while Mixlyzer is "
+               "closed.").format(name=name, path=kept),
         )
     lib_path = Path(cfg.libconfig.libpath)
     version_path = version_file_path(lib_path)

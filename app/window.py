@@ -2,7 +2,6 @@
 
 from PySide6 import QtCore, QtGui, QtWidgets
 import copy
-import json
 
 from app.audio_report import print_audio_setup
 from app.print_hook import install_print_hook, log_environment_info
@@ -25,11 +24,13 @@ from core.workflows.reading_refresh import LibraryReadingRefresh
 from .metronome import MetronomeController
 from utils.window_visibility import is_window_fully_hidden
 from utils.volume import slider_percent_to_linear, trim_dbfs_to_linear, trim_knob_to_db
-from utils.atomic_io import atomic_write_json
 from utils.phrases import set_phrase_label_names
 
 from ui.pane import MainPane
+from ui.deck_controls import block, fill, row_title
+from ui.deck_switches import DeckSwitches, MasterLevels
 from ui.fx_bar import FxBar
+from ui.midi_toggle import MidiToggle
 from ui.config.window import SettingsDialog
 from ui.workers import WorkersDialog
 from ui.oss_support import SupportDialog
@@ -40,7 +41,7 @@ from ui.shortcuts import ShortcutManager
 MIDI_STEPS_MAX = 16
 
 from core.workflows.segment_reanalysis import SegmentReanalysisWorkflow
-from core.config import config, load_cfg, search_settings
+from core.config import config, load_cfg, save_cfg, save_deck, search_settings
 from core.beat_geometry import downbeat_beat_indices
 from core.i18n import tr
 from core.resource_paths import resource_path
@@ -75,8 +76,8 @@ class AppWindow(QtWidgets.QMainWindow):
             self.bus,
             model=self.model,
             volume_position=max(0, min(100, int(self.cfg.playbackconfig.default_volume_percent or 100))) / 100.0,
-            volume_trim_dbfs=float(self.cfg.playbackconfig.volume_trim_dbfs),
-            tempo_range=int(self.cfg.playbackconfig.tempo_range),
+            volume_trim_dbfs=float(self.cfg.deckconfig.volume_trim_dbfs),
+            tempo_range=int(self.cfg.deckconfig.tempo_range),
             default_peak_meter_gain_linear=self._default_peak_meter_gain_linear_from_cfg(
                 self.cfg
             ),
@@ -120,7 +121,6 @@ class AppWindow(QtWidgets.QMainWindow):
         step(0.03, tr("Main view, editor and library"))
         self.pane = MainPane(self.bus, self.model, self.tl, self.cfg)
         self.pane.track_info.set_eq_available(self.player.native)   # the Python engine has no mixer
-        self.pane.deck_switches.set_available(self.player.native)
         self.setCentralWidget(self.pane)
         self.pane.install_default()
 
@@ -138,9 +138,18 @@ class AppWindow(QtWidgets.QMainWindow):
         self.support_dlg = SupportDialog(self)
         self.about_dialog = AboutDialog(self)
 
-        # Toolbar
-        tb = self.addToolBar(tr("Transport"))
+        # the menus' bar at the top (thin); under it one toolbar of two rows in the signal's order: CH 1 (the
+        # controller, the deck, its channel), then MASTER (Beat FX on the master, the master's and the headphones'
+        # levels)
+        tb = self.addToolBar(tr("Mixer"))
         tb.setMovable(False)
+        tb.setStyleSheet("QToolBar { padding: 0; spacing: 0; border: none; }")
+        tb.layout().setContentsMargins(0, 0, 0, 0)
+        rows = QtWidgets.QWidget()
+        rows.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+        rows_layout = QtWidgets.QVBoxLayout(rows)
+        rows_layout.setContentsMargins(0, 2, 0, 2)
+        rows_layout.setSpacing(2)
         a_cfg = QtGui.QAction(tr("Settings"), self);  a_cfg.triggered.connect(self.open_cfg)
         a_workers = QtGui.QAction(tr("Workers"), self); a_workers.triggered.connect(self.open_workers)
         a_support_tb = QtGui.QAction(tr("Open Source"), self); a_support_tb.triggered.connect(self._open_support)
@@ -151,18 +160,51 @@ class AppWindow(QtWidgets.QMainWindow):
         self.bus.sig_play_requested.connect(self.player.play)
         self.bus.sig_timestretch_toggle_requested.connect(self._on_timestretch_toggle)
         self.bus.sig_metronome_toggle_requested.connect(self._on_metronome_toggle)
-        tb.addActions([a_cfg, a_workers, a_support_tb, a_about])
-        # the mixer's effects (Sound Color FX, Beat FX on the master): requests out, the deck's report shown
+        menus = self.menuBar()
+        menus.setNativeMenuBar(False)
+        font = menus.font()   # a thin bar
+        font.setPointSize(9)
+        menus.setFont(font)
+        menus.setStyleSheet("QMenuBar { padding: 0; } QMenuBar::item { padding: 2px 10px; }")
+        for action in (a_cfg, a_workers, a_support_tb, a_about):
+            menus.addAction(action)
+
+        def toolbar_row(title: str, widgets: list) -> None:
+            """A row of blocks from its title to the window's right edge (deck_controls.fill)."""
+            row = QtWidgets.QWidget()
+            lay = QtWidgets.QHBoxLayout(row)
+            lay.setContentsMargins(6, 0, 8, 0)
+            lay.setSpacing(6)
+            lay.addWidget(row_title(title), 0, QtCore.Qt.AlignVCenter)
+            lay.addSpacing(2)
+            fill(lay, widgets)
+            rows_layout.addWidget(row)
+
+        # CH 1: the MIDI controller's input on / off; the deck's and its channel's switches (jog mode, EQ, fader
+        # curve, Sound Color FX, the headphones CUE)
+        self.midi_toggle = MidiToggle()
+        self.midi_toggle.setEnabled(self.player.native)
+        self.midi_toggle.toggled_by_hand.connect(self._toggle_midi)
+        self.bus.sig_deck_state.connect(self._show_midi)
+        self.deck_switches = DeckSwitches(self.bus)
+        self.deck_switches.set_available(self.player.native)
+        self.bus.sig_deck_state.connect(self.deck_switches.set_report)
+        toolbar_row("CH 1", [block("CONTROLLER", [self.midi_toggle]), self.deck_switches])
+        # MASTER: Beat FX on the master, the master's and the headphones' levels
         self.fx_bar = FxBar(self.bus)
         self.fx_bar.set_available(self.player.native)
         self.bus.sig_deck_state.connect(self.fx_bar.set_report)
-        tb.addSeparator()
-        tb.addWidget(self.fx_bar)
+        self.master_levels = MasterLevels(self.bus)
+        self.master_levels.set_available(self.player.native)
+        self.bus.sig_deck_state.connect(self.master_levels.set_report)
+        toolbar_row("MASTER", [self.fx_bar, self.master_levels])
+        tb.addWidget(rows)
 
         # keyboard shortcuts (assets/shortcuts; Settings > Shortcuts)
         handlers = {**self.pane.shortcut_handlers(), **self.fx_bar.shortcut_handlers(),
-                    **self.pane.deck_switches.shortcut_handlers(),
-                    "playback.restart_engine": self._restart_engine}
+                    **self.deck_switches.shortcut_handlers(),
+                    "playback.restart_engine": self._restart_engine,
+                    "playback.midi_input": self._toggle_midi}
         self.bus.sig_engine_restarted.connect(self._on_engine_restarted)
         self.shortcuts = ShortcutManager(self, handlers, self.statusBar().showMessage)
         self.shortcuts.apply(shortcuts.keymap())
@@ -175,12 +217,12 @@ class AppWindow(QtWidgets.QMainWindow):
         self.bus.sig_deck_state.connect(self._keep_tempo_range)
         self.bus.sig_deck_state.connect(self._keep_trim)
         self.bus.sig_deck_state.connect(self._keep_switches)
-        # what the deck keeps in the settings (the trim, the switches), written a second after it last changed (a
-        # knob turned reports every frame)
-        self._cfg_save = QtCore.QTimer(self)
-        self._cfg_save.setSingleShot(True)
-        self._cfg_save.setInterval(1000)
-        self._cfg_save.timeout.connect(self._save_cfg)
+        # what the deck keeps (deck.json: the trim, the tempo range, the switches, the levels, the effects picked),
+        # written a second after it last changed (a knob turned reports every frame)
+        self._deck_save = QtCore.QTimer(self)
+        self._deck_save.setSingleShot(True)
+        self._deck_save.setInterval(1000)
+        self._deck_save.timeout.connect(lambda: save_deck(self.cfg))
         self._apply_midi()
 
 
@@ -232,22 +274,22 @@ class AppWindow(QtWidgets.QMainWindow):
         )
 
         self.metro = MetronomeController(
-            click_wav_path=self.cfg.playbackconfig.metronome_wav_path,
+            click_wav_path=self.cfg.deckconfig.metronome_wav_path,
         )
         self.metro.set_downbeat_cycle(1)
-        self.metro.set_offset(float(getattr(self.cfg.playbackconfig, "metronome_offset_msec", 0.0)))
-        self._apply_click_settings(self.cfg.playbackconfig)
+        self.metro.set_offset(float(self.cfg.deckconfig.metronome_offset_msec))
+        self._apply_click_settings(self.cfg)
         self.metro.moveToThread(self.player.audio_thread())
         self.metro.bind_mixer(self.player.click_mixer)
         self._sig_metronome_set_beats.connect(self.metro.set_beats, QtCore.Qt.QueuedConnection)
         QtCore.QMetaObject.invokeMethod(self.metro, "initialize_audio", QtCore.Qt.QueuedConnection)
-        if self.cfg.playbackconfig.enable_metronome:
+        if self.cfg.deckconfig.enable_metronome:
             QtCore.QMetaObject.invokeMethod(self.metro, "start", QtCore.Qt.QueuedConnection)
         else:
             QtCore.QMetaObject.invokeMethod(self.metro, "stop", QtCore.Qt.QueuedConnection)
         self.bus.sig_beatgrid_edited.connect(self._sync_metronome_beats)
-        self._apply_timestretch(bool(self.cfg.playbackconfig.use_timestretch))
-        print_audio_setup(self.cfg.playbackconfig, self.player.native)
+        self._apply_timestretch(bool(self.cfg.deckconfig.use_timestretch))
+        print_audio_setup(self.cfg, self.player.native)
         # The scratch reader's and cursor poller's numba code, loaded here on the main
         # thread once the window is up (~1 s from the disk cache), so the audio thread
         # never waits for it (already loaded when the app started with app.startup).
@@ -297,7 +339,28 @@ class AppWindow(QtWidgets.QMainWindow):
     def _apply_midi(self) -> None:
         """The MIDI input, the mapping and the jog's resolution to the native engine."""
         pcfg = self.cfg.playbackconfig
-        self.player.midi_configure(pcfg.midi_input, midi.bindings(midi.mapping()), int(pcfg.midi_jog_ticks))
+        self.player.midi_configure(pcfg.midi_input, midi.bindings(midi.mapping()), int(pcfg.midi_jog_ticks),
+                                   bool(self.cfg.deckconfig.midi_enabled))
+        self._show_midi()
+
+    def _toggle_midi(self) -> None:
+        """The MIDI input switched on or off (the toolbar's button, its shortcut), kept in deck.json."""
+        if not self.player.native:
+            self.statusBar().showMessage(tr("MIDI needs the native audio engine (Settings > Audio > Engine)."))
+            return
+        deck = self.cfg.deckconfig
+        deck.midi_enabled = not deck.midi_enabled
+        self.player.set_midi_enabled(deck.midi_enabled)
+        self._deck_save.start()
+        self._show_midi()
+        self.statusBar().showMessage(tr("MIDI input on.") if deck.midi_enabled else tr("MIDI input off."), 3000)
+
+    def _show_midi(self, report=None) -> None:
+        """The toolbar's MIDI button: the setting and, from the deck's report, the port's state."""
+        if report is not None:
+            self._midi_state = int(report.midi_state)
+        self.midi_toggle.show_state(bool(self.cfg.deckconfig.midi_enabled),
+                                    str(self.cfg.playbackconfig.midi_input or ""), getattr(self, "_midi_state", 0))
 
     def _on_midi_events(self, events) -> None:
         """The controller's messages passed on to the GUI: a JumpCUE pad on an empty slot (SET), a knob's turn
@@ -332,9 +395,9 @@ class AppWindow(QtWidgets.QMainWindow):
     def _keep_tempo_range(self, report) -> None:
         """The tempo range as the deck has it (its button, a key, a controller), kept for the next start."""
         tempo_range = int(report.tempo_range)
-        if tempo_range != int(self.cfg.playbackconfig.tempo_range):
-            self.cfg.playbackconfig.tempo_range = tempo_range
-            atomic_write_json("config.json", self.cfg.to_dict(), ensure_ascii=True, indent=None)
+        if tempo_range != int(self.cfg.deckconfig.tempo_range):
+            self.cfg.deckconfig.tempo_range = tempo_range
+            self._deck_save.start()
 
     def _restart_engine(self) -> None:
         """The native audio engine started again by hand (the shortcut; Settings > Audio > Engine has its button)."""
@@ -349,44 +412,41 @@ class AppWindow(QtWidgets.QMainWindow):
                                      tr("The audio engine did not start; it is tried again every 2 seconds."), 5000)
 
     def _keep_trim(self, report) -> None:
-        """The trim as the deck has it (its TRIM knob, the settings, a controller), kept as Settings > Audio's
-        trim: the peak meter's gain follows it at once, config.json a second after it last moved."""
+        """The trim as the deck has it (its TRIM knob, a controller), kept in deck.json: the peak meter's gain follows
+        it at once, the file a second after it last moved."""
         trim = round(trim_knob_to_db(report.knobs[0]), 2)
-        if abs(trim - float(self.cfg.playbackconfig.volume_trim_dbfs)) < 0.005:
+        if abs(trim - float(self.cfg.deckconfig.volume_trim_dbfs)) < 0.005:
             return
-        self.cfg.playbackconfig.volume_trim_dbfs = trim
+        self.cfg.deckconfig.volume_trim_dbfs = trim
         self.pane.apply_playback_config(self.cfg)
-        # the settings dialog's field too (a save from it would write its old value back)
-        field = self.cfgwin.sp_volume_trim_dbfs
-        field.blockSignals(True)
-        field.setValue(trim)
-        field.blockSignals(False)
-        self._cfg_save.start()
+        self._deck_save.start()
 
     def _keep_switches(self, report) -> None:
-        """The jog's mode, the EQ and the fader curve as the deck has them (the switches' block, a controller), kept
-        in the settings (the native engine's: the Python engine has none)."""
+        """The jog's mode, the EQ, the fader curve, the levels and the effects picked as the deck has them (the
+        toolbar, a controller), kept in deck.json (the native engine's: the Python engine has none of them)."""
         if not self.player.native or not report.mix:
             return
-        pcfg = self.cfg.playbackconfig
-        eq = EQ_MODES[min(1, max(0, int(report.mix_value("eq_mode"))))]
-        curve = FADER_CURVES[min(2, max(0, int(report.mix_value("fader_curve"))))]
-        jog = "vinyl" if report.vinyl else "cdj"
-        if (pcfg.mixer_eq, pcfg.fader_curve, pcfg.jog_mode) != (eq, curve, jog):
-            pcfg.mixer_eq, pcfg.fader_curve, pcfg.jog_mode = eq, curve, jog
-            self._cfg_save.start()
-        # the levels (the switches' block's knobs, a controller's), the headphones' CUE / MASTER mix
-        kept = {"master_level": round(report.mix_value("master_level", pcfg.master_level), 3),
-                "headphones_level": round(report.mix_value("hp_a_level", pcfg.headphones_level), 3),
-                "headphones_cue_mix": int(round(100.0 * report.mix_value("hp_a_mix", pcfg.headphones_cue_mix / 100.0)))}
-        changed = {k: v for k, v in kept.items() if getattr(pcfg, k) != v}
+        deck = self.cfg.deckconfig
+        v = report.mix_value
+        kept = {
+            "mixer_eq": EQ_MODES[min(1, max(0, int(v("eq_mode"))))],
+            "fader_curve": FADER_CURVES[min(2, max(0, int(v("fader_curve"))))],
+            "jog_mode": "vinyl" if report.vinyl else "cdj",
+            "master_level": round(v("master_level", deck.master_level), 3),
+            "headphones_level": round(v("hp_a_level", deck.headphones_level), 3),
+            "headphones_cue_mix": int(round(100.0 * v("hp_a_mix", deck.headphones_cue_mix / 100.0))),
+            "color_type": int(v("color_type", deck.color_type)),
+            "color_param": round(v("color_param", deck.color_param), 3),
+            "beat_type": int(v("beat_type", deck.beat_type)),
+            "beat_beat": round(v("beat_beat", deck.beat_beat), 4),
+            "beat_level": round(v("beat_level", deck.beat_level), 3),
+            "beat_bands": int(v("beat_bands", deck.beat_bands)),
+        }
+        changed = {k: value for k, value in kept.items() if getattr(deck, k) != value}
         if changed:
-            for k, v in changed.items():
-                setattr(pcfg, k, v)
-            self._cfg_save.start()
-
-    def _save_cfg(self) -> None:
-        atomic_write_json("config.json", self.cfg.to_dict(), ensure_ascii=True, indent=None)
+            for k, value in changed.items():
+                setattr(deck, k, value)
+            self._deck_save.start()
 
     def open_cfg(self):
         self.cfgwin.show()
@@ -633,10 +693,9 @@ class AppWindow(QtWidgets.QMainWindow):
         self.player.seek(float(time_sec))   # replayed once the track is decoded
 
     def _on_external_sync_failure(self, message: str) -> None:
-        failed_cfg = self.cfg.to_dict()
-        failed_cfg["externalsyncconfig"]["enabled"] = False
-        new_cfg = config.from_dict(failed_cfg)
-        atomic_write_json("config.json", new_cfg.to_dict(), ensure_ascii=True, indent=None)
+        new_cfg = copy.deepcopy(self.cfg)
+        new_cfg.externalsyncconfig.enabled = False
+        save_cfg(new_cfg)
         self.cfg = new_cfg
         self.cfgwin.set_config(new_cfg)
         self.external_sync.set_config(new_cfg.externalsyncconfig)
@@ -648,9 +707,10 @@ class AppWindow(QtWidgets.QMainWindow):
         )
 
     def _on_settings_save(self, _config: config):
-        with open("config.json", "r") as f:
-            prev_cfg = json.load(f)
-        atomic_write_json("config.json", _config.to_dict(), ensure_ascii=True, indent=None)
+        prev_cfg = self.cfg.to_dict()
+        prev_deck = self.cfg.deck_dict()
+        save_cfg(_config)
+        save_deck(_config)
         os.makedirs(_config.libconfig.libpath or ".", exist_ok=True)
         self.cfg = _config
         self.cfgwin.set_config(_config)
@@ -688,7 +748,7 @@ class AppWindow(QtWidgets.QMainWindow):
         _VIEW_LAYOUT_KEYS = {"display_waveform", "display_beatgrid", "display_keystrip", "display_JumpCUE", "display_phrase"}
         layout_changed = any(prev_vcfg.get(k) != new_vcfg.get(k) for k in _VIEW_LAYOUT_KEYS)
         viewconfig_changed = prev_vcfg != new_vcfg
-        playbackconfig_changed = prev_pcfg != new_pcfg
+        playbackconfig_changed = prev_pcfg != new_pcfg or prev_deck != _config.deck_dict()
         peak_meter_config_changed = (
             prev_vcfg.get("use_output_volume_as_peak_meter_input", True)
             != new_vcfg.get("use_output_volume_as_peak_meter_input", True)
@@ -713,7 +773,7 @@ class AppWindow(QtWidgets.QMainWindow):
                 track_edit.refresh_phrase_label_names()
             self.bus.sig_phrase_segments_updated.emit()
         if playbackconfig_changed:
-            if _config.playbackconfig.enable_metronome:
+            if _config.deckconfig.enable_metronome:
                 QtCore.QMetaObject.invokeMethod(self.metro, "start", QtCore.Qt.QueuedConnection)
             else:
                 QtCore.QMetaObject.invokeMethod(self.metro, "stop", QtCore.Qt.QueuedConnection)
@@ -721,16 +781,16 @@ class AppWindow(QtWidgets.QMainWindow):
                 self.metro,
                 "set_soundfile",
                 QtCore.Qt.QueuedConnection,
-                QtCore.Q_ARG(str, _config.playbackconfig.metronome_wav_path),
+                QtCore.Q_ARG(str, _config.deckconfig.metronome_wav_path),
             )
             QtCore.QMetaObject.invokeMethod(
                 self.metro,
                 "set_offset",
                 QtCore.Qt.QueuedConnection,
-                QtCore.Q_ARG(float, float(_config.playbackconfig.metronome_offset_msec)),
+                QtCore.Q_ARG(float, float(_config.deckconfig.metronome_offset_msec)),
             )
-            self._apply_timestretch(bool(_config.playbackconfig.use_timestretch))
-            self._apply_click_settings(_config.playbackconfig)
+            self._apply_timestretch(bool(_config.deckconfig.use_timestretch))
+            self._apply_click_settings(_config)
         if playbackconfig_changed or peak_meter_config_changed:
             self.pane.apply_playback_config(_config)
         if layout_changed:
@@ -821,36 +881,41 @@ class AppWindow(QtWidgets.QMainWindow):
             target_fps = self._HIDDEN_REFRESH_FPS
         self._apply_effective_refresh_fps(target_fps, force=force)
 
-    def _apply_click_settings(self, pcfg) -> None:
-        """Metronome click volumes / pitches and ducking, and the output soft clip."""
+    def _apply_click_settings(self, cfg: config) -> None:
+        """The metronome's clicks (volumes / pitches, ducking), the output's soft clip and routing, and the deck as
+        deck.json keeps it (trim, switches, levels, the effects picked)."""
+        pcfg, deck = cfg.playbackconfig, cfg.deckconfig
         QtCore.QMetaObject.invokeMethod(
             self.metro,
             "set_click_levels",
             QtCore.Qt.QueuedConnection,
-            QtCore.Q_ARG(float, float(pcfg.metronome_downbeat_volume_percent) / 100.0),
-            QtCore.Q_ARG(float, float(pcfg.metronome_downbeat_pitch_semitones)),
-            QtCore.Q_ARG(float, float(pcfg.metronome_beat_volume_percent) / 100.0),
-            QtCore.Q_ARG(float, float(pcfg.metronome_beat_pitch_semitones)),
+            QtCore.Q_ARG(float, float(deck.metronome_downbeat_volume_percent) / 100.0),
+            QtCore.Q_ARG(float, float(deck.metronome_downbeat_pitch_semitones)),
+            QtCore.Q_ARG(float, float(deck.metronome_beat_volume_percent) / 100.0),
+            QtCore.Q_ARG(float, float(deck.metronome_beat_pitch_semitones)),
         )
         QtCore.QMetaObject.invokeMethod(
             self.metro, "set_ducking", QtCore.Qt.QueuedConnection,
-            QtCore.Q_ARG(bool, bool(pcfg.metronome_ducking)),
+            QtCore.Q_ARG(bool, bool(deck.metronome_ducking)),
         )
         self.player.set_soft_clip(bool(pcfg.soft_clip))
-        self.player.set_volume_trim(float(pcfg.volume_trim_dbfs))
+        self.player.set_volume_trim(float(deck.volume_trim_dbfs))
         # the switches as last left
-        eq = EQ_MODES.index(pcfg.mixer_eq) if pcfg.mixer_eq in EQ_MODES else 0
-        curve = FADER_CURVES.index(pcfg.fader_curve) if pcfg.fader_curve in FADER_CURVES else 0
+        eq = EQ_MODES.index(deck.mixer_eq) if deck.mixer_eq in EQ_MODES else 0
+        curve = FADER_CURVES.index(deck.fader_curve) if deck.fader_curve in FADER_CURVES else 0
         self.bus.sig_mixer_requested.emit("eq_mode", float(eq))
         self.bus.sig_mixer_requested.emit("fader_curve", float(curve))
-        self.player.set_jog_mode(pcfg.jog_mode != "cdj")
+        self.player.set_jog_mode(deck.jog_mode != "cdj")
         self.player.set_routing(pcfg.output_main, pcfg.output_headphones, pcfg.output_booth)
-        self.player.set_headphones(bool(pcfg.headphones_master_mix), int(pcfg.headphones_cue_mix) / 100.0,
-                                   float(pcfg.headphones_level))
-        # the levels and the booth's EQ as last left
-        for key, value in (("master_level", pcfg.master_level), ("booth_level", pcfg.booth_level),
+        self.player.set_headphones(bool(pcfg.headphones_master_mix), int(deck.headphones_cue_mix) / 100.0,
+                                   float(deck.headphones_level))
+        # the levels, the booth's EQ and the effects picked as last left (the effects themselves off)
+        for key, value in (("master_level", deck.master_level), ("booth_level", pcfg.booth_level),
                            ("booth_eq_hi", pcfg.booth_eq_hi), ("booth_eq_low", pcfg.booth_eq_low),
-                           ("hp_a_split", 1.0 if pcfg.headphones_split else 0.0)):
+                           ("hp_a_split", 1.0 if pcfg.headphones_split else 0.0),
+                           ("color_type", deck.color_type), ("color_param", deck.color_param),
+                           ("beat_type", deck.beat_type), ("beat_beat", deck.beat_beat),
+                           ("beat_level", deck.beat_level), ("beat_bands", deck.beat_bands)):
             self.bus.sig_mixer_requested.emit(key, float(value))
         self.player.set_buffer_ms(float(pcfg.native_buffer_ms), float(pcfg.python_buffer_ms))
         self.player.set_output_device(pcfg.output_device)
@@ -859,19 +924,19 @@ class AppWindow(QtWidgets.QMainWindow):
         self.player.set_process(pcfg.native_priority, bool(pcfg.native_power_throttling))
 
     def _on_timestretch_toggle(self, enabled: bool) -> None:
-        """Deck MT button: same as switching "Use timestretch" in the settings and saving."""
-        if bool(self.cfg.playbackconfig.use_timestretch) == bool(enabled):
+        """The deck's MT button (the time stretch's one place), kept in deck.json."""
+        if bool(self.cfg.deckconfig.use_timestretch) == bool(enabled):
             return
         new_cfg = copy.deepcopy(self.cfg)
-        new_cfg.playbackconfig.use_timestretch = bool(enabled)
+        new_cfg.deckconfig.use_timestretch = bool(enabled)
         self._on_settings_save(new_cfg)
 
     def _on_metronome_toggle(self, enabled: bool) -> None:
-        """Editor metronome button: same as switching "Enable metronome" in the settings and saving."""
-        if bool(self.cfg.playbackconfig.enable_metronome) == bool(enabled):
+        """The editor's metronome button (the metronome's on / off's one place), kept in deck.json."""
+        if bool(self.cfg.deckconfig.enable_metronome) == bool(enabled):
             return
         new_cfg = copy.deepcopy(self.cfg)
-        new_cfg.playbackconfig.enable_metronome = bool(enabled)
+        new_cfg.deckconfig.enable_metronome = bool(enabled)
         self._on_settings_save(new_cfg)
 
     def _apply_timestretch(self, enabled: bool) -> None:
@@ -882,14 +947,12 @@ class AppWindow(QtWidgets.QMainWindow):
             warm_timestretch_numba()
         self.player.set_timestretch(enabled)
     def _default_volume_linear_from_cfg(self, cfg: config) -> float:
-        playback_cfg = getattr(cfg, "playbackconfig", None)
-        trim_dbfs = float(getattr(playback_cfg, "volume_trim_dbfs", -6.0))
-        default_percent = int(getattr(playback_cfg, "default_volume_percent", 100) or 100)
+        trim_dbfs = float(cfg.deckconfig.volume_trim_dbfs)
+        default_percent = int(cfg.playbackconfig.default_volume_percent or 100)
         return slider_percent_to_linear(default_percent, trim_dbfs)
 
     def _default_peak_meter_gain_linear_from_cfg(self, cfg: config) -> float:
-        playback_cfg = getattr(cfg, "playbackconfig", None)
-        trim_dbfs = float(getattr(playback_cfg, "volume_trim_dbfs", -6.0))
+        trim_dbfs = float(cfg.deckconfig.volume_trim_dbfs)
         use_output_volume = bool(
             getattr(
                 getattr(cfg, "viewconfig", None),

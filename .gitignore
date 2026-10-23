@@ -51,6 +51,7 @@ backups/
 debug/
 ffmpeg.exe
 config.json
+deck.json
 assets/shortcuts/shortcuts.json
 assets/midi/midi.json
 *.xml

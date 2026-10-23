@@ -37,13 +37,11 @@ from ui.config.audio_overview import AudioOverview
 from ui.config.scroll import scroll_page
 from core import os_support
 from core.i18n import tr, tr_ctx
-from utils.volume import TRIM_DB_RANGE
 
 
 def build_playback_tab(dialog) -> None:
     dialog.tab_playback = QWidget()
 
-    dialog.cb_metronome = QCheckBox(tr("Enable metronome"))
     dialog.ed_metronome_wav_path = QLineEdit()
     dialog.sp_metronome_offset_msec = QDoubleSpinBox()
     dialog.sp_metronome_offset_msec.setRange(-500.0, 500.0)
@@ -52,17 +50,9 @@ def build_playback_tab(dialog) -> None:
     dialog.sp_metronome_offset_msec.setToolTip(
         tr("Shift metronome clicks relative to the beat (positive = earlier)")
     )
-    dialog.sp_volume_trim_dbfs = QDoubleSpinBox()
-    dialog.sp_volume_trim_dbfs.setRange(*TRIM_DB_RANGE)   # the player's TRIM knob's
-    dialog.sp_volume_trim_dbfs.setDecimals(2)
-    dialog.sp_volume_trim_dbfs.setSingleStep(0.5)
     dialog.sp_default_volume_percent = QSpinBox()
     dialog.sp_default_volume_percent.setRange(0, 100)
     dialog.sp_default_volume_percent.setSingleStep(1)
-    dialog.cb_use_timestretch = QCheckBox(tr("Use timestretch"))
-    dialog.cb_use_timestretch.setToolTip(
-        tr("Tempo changes keep the pitch (time stretch) instead of varispeed")
-    )
 
     dialog.sp_click_down_volume = QSpinBox()
     dialog.sp_click_down_volume.setRange(0, 100)
@@ -186,11 +176,7 @@ def build_playback_tab(dialog) -> None:
     dialog.lbl_other_buffer = QLabel()
     dialog.main_monitor = BufferMonitor()
 
-    dialog.cb_metronome.setToolTip(tr("Play a click on every beat of the beat grid."))
     dialog.ed_metronome_wav_path.setToolTip(tr("WAV file used as the metronome click."))
-    dialog.sp_volume_trim_dbfs.setToolTip(
-        tr("The level before the volume fader, as the player's TRIM knob sets it (-24 to +9 dB).")
-    )
     dialog.sp_default_volume_percent.setToolTip(tr("Volume slider position at startup."))
     dialog.sp_click_down_volume.setToolTip(tr("Click volume on the first beat of each bar."))
     dialog.sp_click_down_pitch.setToolTip(
@@ -201,10 +187,10 @@ def build_playback_tab(dialog) -> None:
 
     grp_mixer = QGroupBox(tr("Channel"))
     f_mixer = QFormLayout(grp_mixer)
-    f_mixer.addRow(tr("Trim"), dialog.sp_volume_trim_dbfs)
     f_mixer.addRow(tr("Default volume (%)"), dialog.sp_default_volume_percent)
-    lbl_mixer_note = QLabel(tr("The EQ, the channel fader's curve, the headphones CUE and the master and headphones "
-                               "levels are on the main screen, between the player and the overview."))
+    lbl_mixer_note = QLabel(tr("The TRIM and EQ knobs are the player's; the EQ's curve, the channel fader's curve, "
+                               "Sound Color FX, the headphones CUE and the master and headphones levels are on the "
+                               "main screen's toolbar (kept in deck.json)."))
     lbl_mixer_note.setWordWrap(True)
     f_mixer.addRow(lbl_mixer_note)
 
@@ -298,25 +284,15 @@ def build_playback_tab(dialog) -> None:
         dialog._list_native_devices, dialog._main_output_channels)
     dialog.set_audio_engine(native=False, devices=None)
 
-    grp_timestretch = QGroupBox(tr("Time Stretch"))
-    f_timestretch = QFormLayout(grp_timestretch)
-    f_timestretch.addRow(dialog.cb_use_timestretch)
-
+    # the metronome's sound (its on / off: the editor's metronome button)
     grp_metronome = QGroupBox(tr("Metronome"))
     metronome_layout = QVBoxLayout(grp_metronome)
-    metronome_layout.addWidget(dialog.cb_metronome)
-    dialog.btn_metronome_details = QToolButton()
-    dialog.btn_metronome_details.setText(tr("Details"))
-    dialog.btn_metronome_details.setCheckable(True)
-    dialog.btn_metronome_details.setArrowType(Qt.RightArrow)
-    dialog.btn_metronome_details.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
-    dialog.btn_metronome_details.setAutoRaise(True)
-    dialog.btn_metronome_details.setToolTip(tr("Show or hide the metronome options."))
-    metronome_layout.addWidget(dialog.btn_metronome_details)
-
+    lbl_metronome_note = QLabel(tr("On / off: the editor's metronome button."))
+    lbl_metronome_note.setWordWrap(True)
+    metronome_layout.addWidget(lbl_metronome_note)
     dialog.metronome_details = QWidget()
     f_metronome_details = QFormLayout(dialog.metronome_details)
-    f_metronome_details.setContentsMargins(16, 0, 0, 0)
+    f_metronome_details.setContentsMargins(0, 0, 0, 0)
     f_metronome_details.addRow(tr("WAV path"), dialog.ed_metronome_wav_path)
     f_metronome_details.addRow(tr("Offset (ms)"), dialog.sp_metronome_offset_msec)
     f_metronome_details.addRow(
@@ -330,11 +306,7 @@ def build_playback_tab(dialog) -> None:
         tr("Beat pitch (semitones)"), dialog.sp_click_beat_pitch
     )
     f_metronome_details.addRow(dialog.cb_metronome_ducking)
-    dialog.metronome_details.setVisible(False)
     metronome_layout.addWidget(dialog.metronome_details)
-    dialog.btn_metronome_details.toggled.connect(
-        dialog._toggle_metronome_details
-    )
 
     # the pages
     def page(*groups) -> QWidget:
@@ -348,7 +320,7 @@ def build_playback_tab(dialog) -> None:
     dialog.audio_overview = AudioOverview()
     dialog.audio_tabs = QTabWidget(dialog.tab_playback)
     dialog.audio_tabs.addTab(scroll_page(dialog.audio_overview), tr_ctx("settings page", "Overview"))
-    dialog.audio_tabs.addTab(page(grp_engine, grp_timestretch), tr("Engine"))
+    dialog.audio_tabs.addTab(page(grp_engine), tr("Engine"))
     dialog.audio_tabs.addTab(page(grp_main, grp_master), tr("Main output"))
     dialog.audio_tabs.addTab(page(dialog.grp_output_headphones, grp_hp_mix), tr("Headphones"))
     dialog.audio_tabs.addTab(page(dialog.grp_output_booth, grp_booth_mix), tr("Booth"))
@@ -402,7 +374,7 @@ class PlaybackSettingsMixin:
     def _overview_context(self) -> dict:
         return {
             "native": getattr(self, "_native_playing", False),
-            "timestretch": self.cb_use_timestretch.isChecked(),
+            "timestretch": bool(getattr(getattr(self._current_cfg, "deckconfig", None), "use_timestretch", True)),
             "main_device": getattr(self, "_main_device_in_use", "") or self.cb_output_device.currentText(),
             "api_names": api_names(self.cb_native_api),
             "routes": {"headphones": self.grp_output_headphones.get_config(),
@@ -518,13 +490,6 @@ class PlaybackSettingsMixin:
         self._last_stats = None
         for group in (self.grp_output_headphones, self.grp_output_booth):
             group.monitor.reset()
-
-    def _toggle_metronome_details(self, shown: bool) -> None:
-        self.btn_metronome_details.setArrowType(
-            Qt.DownArrow if shown else Qt.RightArrow
-        )
-        self.metronome_details.setVisible(shown)
-        self.tab_playback.updateGeometry()
 
     def _on_output_buffer(self, queued_ms: float, stats: object, capacity_ms: float) -> None:
         if not self.isVisible() or not isinstance(stats, dict):

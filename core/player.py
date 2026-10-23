@@ -594,6 +594,7 @@ class PlayerController(QtCore.QObject):
         self._path: Optional[str] = None
         self._external_sync_enabled = False
         self._midi_port = ""   # the MIDI input asked for (closed while External Sync follows another deck)
+        self._midi_enabled = True   # the toolbar's MIDI button
         self._factor: Optional[float] = None   # the tempo last reported
 
         # the audio engine (Settings > Audio > Engine): the native one (audioengine/native), started here so the app
@@ -790,14 +791,26 @@ class PlayerController(QtCore.QObject):
         self._send("midi_options", None, bool(vinyl))
 
     # The MIDI controller: the native engine reads it (never this process); none on the Python engine
-    def midi_configure(self, port: str, bindings: list, jog_ticks: int) -> None:
-        """Read MIDI input ``port`` ("": none) with ``bindings`` ((status, data1, 14-bit, action code) each)."""
+    def midi_configure(self, port: str, bindings: list, jog_ticks: int, enabled: bool = True) -> None:
+        """Read MIDI input ``port`` ("": none) with ``bindings`` ((status, data1, 14-bit, action code) each), when
+        ``enabled``."""
         if not self.native:
             return
         self._midi_port = str(port or "")
+        self._midi_enabled = bool(enabled)
         self._send("midi_options", int(jog_ticks), None)
         self._send("midi_map", list(bindings))
-        self._send("midi_open", "" if self._external_sync_enabled else self._midi_port)
+        self._send("midi_open", self._midi_wanted())
+
+    def set_midi_enabled(self, enabled: bool) -> None:
+        """The MIDI input read or not (the port kept)."""
+        self._midi_enabled = bool(enabled)
+        if self.native:
+            self._send("midi_open", self._midi_wanted())
+
+    def _midi_wanted(self) -> str:
+        """The port to open: none while switched off or while External Sync follows another deck."""
+        return self._midi_port if self._midi_enabled and not self._external_sync_enabled else ""
 
     def set_midi_learn(self, learning: bool) -> None:
         """Every MIDI message to sig_midi_events (Settings > MIDI's learn), not only the GUI's actions'."""
@@ -886,7 +899,7 @@ class PlayerController(QtCore.QObject):
     def _on_external_sync_enabled(self, enabled: bool) -> None:
         self._external_sync_enabled = bool(enabled)
         if self.native:
-            self._send("midi_open", "" if self._external_sync_enabled else self._midi_port)
+            self._send("midi_open", self._midi_wanted())
         if self._external_sync_enabled:
             self._send("pause")
             self.bus.sig_playback_status.emit(False)

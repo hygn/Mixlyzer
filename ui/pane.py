@@ -21,7 +21,6 @@ from core.event_bus import EventBus
 from core.config import config
 from ui.mainplotvbx import ScratchViewBox
 from ui.track_info_panel import TrackInfoPanel
-from ui.deck_switches import DeckSwitches
 from ui.edit_panel import EditPanel
 from utils.volume import slider_percent_to_linear, trim_dbfs_to_linear
 from core.resource_paths import resource_path
@@ -162,7 +161,7 @@ class MainPane(QtWidgets.QWidget):
         self._key_segments = None
         # the deck as the player reports it (sig_deck_state): what the faders and buttons show
         self._tempo_factor = 1.0
-        self._tempo_range = int(getattr(getattr(cfg, "playbackconfig", None), "tempo_range", 100) or 100)
+        self._tempo_range = int(cfg.deckconfig.tempo_range or 100)
         self._volume_position: Optional[float] = None   # none reported yet: the first report is shown, whatever it is
         self._cue_lit = False
 
@@ -433,9 +432,6 @@ class MainPane(QtWidgets.QWidget):
         for btn in (self.btn_stop, self.btn_cue, self.btn_play):
             self.track_info.transport_slot.addWidget(btn, 0, QtCore.Qt.AlignHCenter)
 
-        # the jog's mode, the EQ and the fader curve, between the player and the overview
-        self.deck_switches = DeckSwitches(self.bus)
-        header_v.addWidget(self.deck_switches, 0)
         header_v.addWidget(self.ov, 0, QtCore.Qt.AlignTop)
 
         # Wire transport buttons
@@ -560,7 +556,6 @@ class MainPane(QtWidgets.QWidget):
                 self.vol_slider.blockSignals(False)
             self._apply_volume_report()
         self.track_info.set_knobs(report.knobs)
-        self.deck_switches.set_report(report)
         lit = bool(report.lamps & 2)
         if lit != self._cue_lit:
             self._cue_lit = lit
@@ -620,13 +615,7 @@ class MainPane(QtWidgets.QWidget):
             return
         value = int(round(self._volume_position * 100.0))
         self.v_volume.setText(f"{value}%")
-        trim_dbfs = float(
-            getattr(
-                getattr(self.cfg, "playbackconfig", None),
-                "volume_trim_dbfs",
-                -6.0,
-            )
-        )
+        trim_dbfs = float(self.cfg.deckconfig.volume_trim_dbfs)
         linear_volume = slider_percent_to_linear(value, trim_dbfs)
         use_output_volume = bool(
             getattr(
@@ -965,10 +954,10 @@ class MainPane(QtWidgets.QWidget):
         self.track_edit.set_metronome_checked(self._metronome_enabled())
 
     def _metronome_enabled(self) -> bool:
-        return bool(getattr(getattr(self.cfg, "playbackconfig", None), "enable_metronome", False))
+        return bool(self.cfg.deckconfig.enable_metronome)
 
     def _timestretch_enabled(self) -> bool:
-        return bool(getattr(getattr(self.cfg, "playbackconfig", None), "use_timestretch", False))
+        return bool(self.cfg.deckconfig.use_timestretch)
 
     def _fit_header_height(self) -> None:
         # Let the header layout report the exact height it needs. It accounts

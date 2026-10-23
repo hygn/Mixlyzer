@@ -1,3 +1,4 @@
+import copy
 from dataclasses import asdict, is_dataclass
 from typing import Tuple
 
@@ -20,6 +21,8 @@ from PySide6.QtWidgets import (
 from core.config import (
     analysisconfig,
     config,
+    deckconfig,
+    default_cfg,
     externalsyncconfig,
     libconfig,
     playbackconfig,
@@ -190,18 +193,15 @@ class SettingsDialog(
         self.sp_mainview_wave_frame_ms_long.setValue(float(v.mainview_wave_frame_ms_long))
         self.sp_mainview_wave_filter_order.setValue(int(v.mainview_wave_filter_order))
 
-        p = cfg.playbackconfig
-        self.cb_metronome.setChecked(bool(p.enable_metronome))
-        self.ed_metronome_wav_path.setText(p.metronome_wav_path)
-        self.sp_metronome_offset_msec.setValue(float(getattr(p, "metronome_offset_msec", 0.0)))
-        self.sp_volume_trim_dbfs.setValue(float(p.volume_trim_dbfs))
+        p, deck = cfg.playbackconfig, cfg.deckconfig
+        self.ed_metronome_wav_path.setText(deck.metronome_wav_path)
+        self.sp_metronome_offset_msec.setValue(float(deck.metronome_offset_msec))
         self.sp_default_volume_percent.setValue(int(p.default_volume_percent))
-        self.cb_use_timestretch.setChecked(bool(getattr(p, "use_timestretch", False)))
-        self.sp_click_down_volume.setValue(int(p.metronome_downbeat_volume_percent))
-        self.sp_click_down_pitch.setValue(float(p.metronome_downbeat_pitch_semitones))
-        self.sp_click_beat_volume.setValue(int(p.metronome_beat_volume_percent))
-        self.sp_click_beat_pitch.setValue(float(p.metronome_beat_pitch_semitones))
-        self.cb_metronome_ducking.setChecked(bool(p.metronome_ducking))
+        self.sp_click_down_volume.setValue(int(deck.metronome_downbeat_volume_percent))
+        self.sp_click_down_pitch.setValue(float(deck.metronome_downbeat_pitch_semitones))
+        self.sp_click_beat_volume.setValue(int(deck.metronome_beat_volume_percent))
+        self.sp_click_beat_pitch.setValue(float(deck.metronome_beat_pitch_semitones))
+        self.cb_metronome_ducking.setChecked(bool(deck.metronome_ducking))
         self.cb_soft_clip.setChecked(bool(p.soft_clip))
         self.cb_audio_engine.setCurrentIndex(max(0, self.cb_audio_engine.findData(p.audio_engine)))
         self.sp_native_buffer_ms.setValue(int(p.native_buffer_ms))
@@ -215,7 +215,7 @@ class SettingsDialog(
         self._load_output_devices(p.output_device)
         self.grp_output_headphones.set_config(p.output_headphones)
         self.grp_output_headphones.cb_master_mix.setChecked(bool(p.headphones_master_mix))
-        self.grp_output_headphones.sp_cue_mix.setValue(int(p.headphones_cue_mix))
+        self.grp_output_headphones.sp_cue_mix.setValue(int(deck.headphones_cue_mix))
         self.grp_output_headphones.sp_cue_mix.setEnabled(bool(p.headphones_master_mix))
         self.grp_output_booth.set_config(p.output_booth)
         self._set_audio_mix_config(p)
@@ -271,9 +271,11 @@ class SettingsDialog(
         self.sp_external_sync_port.setValue(int(x.osc_port))
         self._sync_external_sync_address_ui()
 
-    def _kept_playback(self):
-        """The playback settings as last kept (the deck's own: its switches, levels and tempo range)."""
-        return getattr(self._current_cfg, "playbackconfig", None)
+    def _kept_deck(self) -> deckconfig:
+        """deck.json's settings as last kept (the main screen's, a controller's: the dialog shows only the
+        metronome's sound and the headphones' CUE / MASTER mix of them)."""
+        kept = getattr(self._current_cfg, "deckconfig", None)
+        return copy.deepcopy(kept) if kept is not None else default_cfg().deckconfig
 
     def _set_band(self, sp_lo: QDoubleSpinBox, sp_hi: QDoubleSpinBox, band: Tuple[float, float]):
         sp_lo.setValue(float(band[0])); sp_hi.setValue(float(band[1]))
@@ -335,17 +337,7 @@ class SettingsDialog(
                 phrase_labels=self._get_phrase_label_names(),
             ),
             playbackconfig=playbackconfig(
-                enable_metronome=bool(self.cb_metronome.isChecked()),
-                metronome_wav_path=self.ed_metronome_wav_path.text().strip(),
-                metronome_offset_msec=float(self.sp_metronome_offset_msec.value()),
-                volume_trim_dbfs=float(self.sp_volume_trim_dbfs.value()),
                 default_volume_percent=int(self.sp_default_volume_percent.value()),
-                use_timestretch=bool(self.cb_use_timestretch.isChecked()),
-                metronome_downbeat_volume_percent=int(self.sp_click_down_volume.value()),
-                metronome_downbeat_pitch_semitones=float(self.sp_click_down_pitch.value()),
-                metronome_beat_volume_percent=int(self.sp_click_beat_volume.value()),
-                metronome_beat_pitch_semitones=float(self.sp_click_beat_pitch.value()),
-                metronome_ducking=bool(self.cb_metronome_ducking.isChecked()),
                 soft_clip=bool(self.cb_soft_clip.isChecked()),
                 audio_engine=str(self.cb_audio_engine.currentData() or "native"),
                 native_buffer_ms=int(self.sp_native_buffer_ms.value()),
@@ -356,21 +348,12 @@ class SettingsDialog(
                 native_exclusive_rate=int(self.cb_native_rate.currentData() or 0),
                 native_priority=str(self.cb_native_priority.currentData() or "high"),
                 native_power_throttling=bool(self.cb_native_power.currentData()),
-                # the deck's own (its button): as last kept
-                tempo_range=int(getattr(getattr(self._current_cfg, "playbackconfig", None), "tempo_range", 100)),
                 midi_input=self._midi_input(),
                 midi_jog_ticks=int(self.sp_midi_jog_ticks.value()),
                 output_main=str(self.cb_output_main.currentData() or "1-2"),
                 output_headphones=self.grp_output_headphones.get_config(),
                 output_booth=self.grp_output_booth.get_config(),
                 headphones_master_mix=bool(self.grp_output_headphones.cb_master_mix.isChecked()),
-                headphones_cue_mix=int(self.grp_output_headphones.sp_cue_mix.value()),
-                mixer_eq=str(getattr(self._kept_playback(), "mixer_eq", "isolator")),
-                fader_curve=str(getattr(self._kept_playback(), "fader_curve", "default")),
-                jog_mode=str(getattr(self._kept_playback(), "jog_mode", "vinyl")),
-                # the switches' block's knobs: as last kept
-                master_level=float(getattr(self._kept_playback(), "master_level", 0.8)),
-                headphones_level=float(getattr(self._kept_playback(), "headphones_level", 0.8)),
                 booth_level=level_db_to_knob(self.sp_booth_level.value()),
                 booth_eq_hi=booth_eq_db_to_knob(self.sp_booth_eq_hi.value()),
                 booth_eq_low=booth_eq_db_to_knob(self.sp_booth_eq_low.value()),
@@ -383,7 +366,22 @@ class SettingsDialog(
             ),
             cuepointconfig=self._get_cue_point_rules(),
             searchconfig=self._get_search_config(),
+            deckconfig=self._get_deck_config(),
         )
+
+    def _get_deck_config(self) -> deckconfig:
+        """deck.json's settings: as kept, with the ones this dialog edits (the metronome's sound, the headphones'
+        CUE / MASTER mix)."""
+        deck = self._kept_deck()
+        deck.metronome_wav_path = self.ed_metronome_wav_path.text().strip()
+        deck.metronome_offset_msec = float(self.sp_metronome_offset_msec.value())
+        deck.metronome_downbeat_volume_percent = int(self.sp_click_down_volume.value())
+        deck.metronome_downbeat_pitch_semitones = float(self.sp_click_down_pitch.value())
+        deck.metronome_beat_volume_percent = int(self.sp_click_beat_volume.value())
+        deck.metronome_beat_pitch_semitones = float(self.sp_click_beat_pitch.value())
+        deck.metronome_ducking = bool(self.cb_metronome_ducking.isChecked())
+        deck.headphones_cue_mix = int(self.grp_output_headphones.sp_cue_mix.value())
+        return deck
 
     def get_dict(self) -> dict:
         return asdict(self.get_config())
