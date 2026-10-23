@@ -1,4 +1,8 @@
-"""Orchestration for full-track analysis jobs."""
+"""Orchestration for full-track analysis jobs.
+
+A request names its listener: the deck loading the track (AppWindow.load_track: it plays the file at once and takes
+the analysis's results when they come: a library track's stored features at once) or none (into the library
+alone: a file dropped on the library). A file being analyzed takes another request's listener too."""
 
 from __future__ import annotations
 
@@ -17,12 +21,11 @@ from core.workers.analysis import AnalysisWorker
 from core.i18n import tr
 
 
+# the library's and a request's listener: the result (features, properties) of its track
 ResultCallback = Callable[[dict], None]
 StatusCallback = Callable[[str], None]
-AlbumArtCallback = Callable[[object], None]
-CancelReanalysisCallback = Callable[[str], None]
-# (the track, a reanalysis, its analysis settings for the run or None)
-MissingFileCallback = Callable[[object, bool, Optional[dict]], None]
+# (the track, a reanalysis, its analysis settings for the run or None, the request's listener or None)
+MissingFileCallback = Callable[[object, bool, Optional[dict], Optional[ResultCallback]], None]
 
 
 class AnalysisWorkflow(QtCore.QObject):
@@ -34,8 +37,6 @@ class AnalysisWorkflow(QtCore.QObject):
         taskmanager,
         result_callback: ResultCallback,
         reanalysis_result_callback: ResultCallback,
-        album_art_callback: AlbumArtCallback,
-        cancel_reanalysis_callback: CancelReanalysisCallback,
         status_callback: StatusCallback,
         missing_file_callback: MissingFileCallback | None = None,
         parent: QtCore.QObject | None = None,
@@ -47,8 +48,6 @@ class AnalysisWorkflow(QtCore.QObject):
         self.taskmanager = taskmanager
         self._result_callback = result_callback
         self._reanalysis_result_callback = reanalysis_result_callback
-        self._album_art_callback = album_art_callback
-        self._cancel_reanalysis_callback = cancel_reanalysis_callback
         self._status_callback = status_callback
         self._missing_file_callback = missing_file_callback
         self._cfg_loader = cfg_loader
@@ -56,15 +55,27 @@ class AnalysisWorkflow(QtCore.QObject):
         self._tag_extractor = tag_extractor
         self._workers: dict[int, AnalysisWorker] = {}
         self._contexts: dict[int, dict] = {}
-        self.current_path: str | None = None
 
-    def analyze(self, path: str) -> None:
-        self._start(path, force_analyze=False)
+    def analyze(self, path: str, listener: ResultCallback | None = None) -> None:
+        """The track's features: a library track's stored ones, else an analysis; to ``listener`` (a deck) and
+        the library (result_callback)."""
+        self._start(path, force_analyze=False, listener=listener)
 
     def reanalyze(self, path: str, analysis: dict | None = None) -> None:
         """A fresh full analysis; ``analysis``: analysis settings (analysisconfig fields) for this run only,
         over the saved ones (which stay as they are)."""
         self._start(path, force_analyze=True, analysis=analysis)
+
+    @staticmethod
+    def library_track(path: str, cfg=None):
+        """The library's track of the file ``path`` (however the path spells it), or None."""
+        cfg = cfg or load_cfg()
+        database = LibraryDB(os.path.join(cfg.libconfig.libpath, "library.db"))
+        database.connect()
+        try:
+            return database.find_file(path)
+        finally:
+            database.close()
 
     def cancel_all(self, reason: str | None = None) -> None:
         reason = reason or tr("Analysis canceled")
@@ -78,7 +89,8 @@ class AnalysisWorkflow(QtCore.QObject):
             self._workers.pop(taskid, None)
             self._contexts.pop(taskid, None)
 
-    def _start(self, path: str, *, force_analyze: bool, analysis: dict | None = None) -> None:
+    def _start(self, path: str, *, force_analyze: bool, analysis: dict | None = None,
+               listener: ResultCallback | None = None) -> None:
         cfg = self._cfg_loader()
         if analysis:
             cfg = replace(cfg, analysisconfig=replace(cfg.analysisconfig, **analysis))
@@ -96,19 +108,19 @@ class AnalysisWorkflow(QtCore.QObject):
                 # the track's file is gone: no guessing, the user sets its new path
                 self._show_status(tr("File not found: {path}").format(path=path))
                 if self._missing_file_callback is not None:
-                    self._missing_file_callback(track, force_analyze, analysis)
+                    self._missing_file_callback(track, force_analyze, analysis, listener)
                 return
-        auto_load = track is not None
 
-        if self._find_inflight_task(path) is not None:
+        inflight = self._find_inflight_task(path)
+        if inflight is not None:
+            # its result goes to this request's listener too
+            if listener is not None:
+                self._contexts[inflight].setdefault("listeners", []).append(listener)
             self._show_status(tr("Analysis already in progress: {file}").format(file=os.path.basename(path)))
             return
-
-        self._cancel_reanalysis_callback(
-            tr("Segment reanalysis canceled (track changed)")
-        )
-        self._show_status(tr("Analyzing: {file}").format(file=os.path.basename(path)))
-        self.current_path = path
+        if track is not None and listener is None and not force_analyze:   # in the library: analyzed
+            self._show_status(tr("Already in the library: {file}").format(file=os.path.basename(path)))
+            return
 
         thumbnail = self._albumart_provider(path)
         title, _artist, _album, _comment = self._tag_extractor(path)
@@ -130,18 +142,15 @@ class AnalysisWorkflow(QtCore.QObject):
             except (FileNotFoundError, ValueError):
                 pass
             else:
-                self._album_art_callback(thumbnail)
-                self._result_callback(
-                    {
-                        "features": features,
-                        "properties": track.to_meta(),
-                        "update_db": False,
-                        "taskid": taskid,
-                        "auto_load": True,
-                    }
-                )
+                self._show_status(tr("Loaded from the library: {file}").format(file=os.path.basename(path)))
+                result = {"features": features, "properties": track.to_meta(), "update_db": False,
+                          "taskid": taskid, "album_art": thumbnail}
+                self._result_callback(result)
+                if listener is not None:
+                    listener(result)
                 return
 
+        self._show_status(tr("Analyzing: {file}").format(file=os.path.basename(path)))
         worker = AnalysisWorker(
             path,
             cfg,
@@ -153,7 +162,8 @@ class AnalysisWorkflow(QtCore.QObject):
         self._contexts[taskid] = {
             "path": path,
             "force": force_analyze,
-            "auto_load": auto_load,
+            "listeners": [listener] if listener is not None else [],
+            "album_art": thumbnail,
         }
         worker.progress.connect(
             lambda status, progress, tid=taskid: self._on_progress(
@@ -203,13 +213,15 @@ class AnalysisWorkflow(QtCore.QObject):
         try:
             context = self._contexts.get(taskid, {})
             result = dict(payload)
-            result.setdefault("auto_load", context.get("auto_load", True))
+            result.setdefault("album_art", context.get("album_art"))
             callback = (
                 self._reanalysis_result_callback
                 if context.get("force")
                 else self._result_callback
             )
             callback(result)
+            for listener in context.get("listeners", []):
+                listener(result)
         finally:
             self._finalize(taskid)
 

@@ -28,6 +28,7 @@ from core.beat_geometry import downbeat_beat_indices, segment_time_signature
 from core.tempo_rows import segment_end_bpm
 from core.timeline import step_window
 from core.i18n import tr
+from ui.theme import current_theme
 
 # the tempo fader's step in each range (+-%), as rekordbox's; WIDE (100: 0 - 200 %) by whole percents
 TEMPO_STEP = {6: 0.02, 10: 0.05, 16: 0.05, 100: 1.0}
@@ -102,8 +103,49 @@ class _OneStepWheelSlider(QtWidgets.QSlider):
         event.accept()
 
 
+class _DropZone(QtWidgets.QWidget):
+    """Over the deck (everything above the library) while files are dragged: where they would load, lit while the
+    pointer is over it."""
+
+    def __init__(self, parent: QtWidgets.QWidget) -> None:
+        super().__init__(parent)
+        self.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents)
+        self.lit = False
+        self.hide()
+
+    def show_at(self, rect: QtCore.QRect, lit: bool) -> None:
+        self.lit = lit
+        self.setGeometry(rect)
+        self.raise_()
+        self.show()
+        self.update()
+
+    def paintEvent(self, event) -> None:
+        theme = current_theme()
+        accent = QtGui.QColor(theme.accent)
+        p = QtGui.QPainter(self)
+        font = p.font()
+        font.setPointSize(16)
+        font.setBold(True)
+        p.setFont(font)
+        rect = self.rect().adjusted(4, 4, -5, -5)
+        fill = QtGui.QColor(accent)
+        fill.setAlpha(70 if self.lit else 25)
+        p.fillRect(rect, fill)
+        edge = QtGui.QColor(accent)
+        edge.setAlpha(230 if self.lit else 120)
+        p.setPen(QtGui.QPen(edge, 2, QtCore.Qt.DashLine))
+        p.drawRect(rect)
+        text = QtGui.QColor(theme.text)
+        text.setAlpha(230 if self.lit else 150)
+        p.setPen(text)
+        p.drawText(self.rect(), QtCore.Qt.AlignCenter, tr("Load to Deck"))
+
+
 class MainPane(QtWidgets.QWidget):
-    """Main pane containing header controls, overview, and library."""
+    """Main pane containing header controls, overview, and library. Files dragged over the deck (the area above
+    the library) show where they would load (drop_zone_at / show_drop_zone); the window loads them dropped there,
+    and the library's own drop only analyzes."""
 
     def __init__(self, bus: EventBus, model, tl, cfg: config):
         super().__init__()
@@ -155,6 +197,7 @@ class MainPane(QtWidgets.QWidget):
         v.addWidget(self.gl)
         v.addWidget(self.header)
         v.addWidget(self.lib, stretch=5)
+        self._drop_zone = _DropZone(self)
 
         self._is_playing = False
         self._transport_enabled = True
@@ -888,6 +931,21 @@ class MainPane(QtWidgets.QWidget):
         self._install_views_from_config(cfg)
         self._refresh_transport_buttons()
         print("UI Reloaded")
+
+    # Files dragged over the deck
+    def _deck_rect(self) -> QtCore.QRect:
+        """The deck: the pane above the library."""
+        return QtCore.QRect(0, 0, self.width(), max(0, self.lib.geometry().top() - 3))
+
+    def drop_zone_at(self, pos: QtCore.QPoint) -> bool:
+        """``pos`` (the pane's) is over the deck."""
+        return self._deck_rect().contains(pos)
+
+    def show_drop_zone(self, lit: bool) -> None:
+        self._drop_zone.show_at(self._deck_rect(), lit)
+
+    def hide_drop_zone(self) -> None:
+        self._drop_zone.hide()
 
     def apply_playback_config(self, cfg: config) -> None:
         self.cfg = cfg

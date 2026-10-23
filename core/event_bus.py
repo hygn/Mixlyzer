@@ -36,7 +36,8 @@ class EventBus(QtCore.QObject):
 
     # Library
     sig_lib_updated = QtCore.Signal(object)
-    sig_request_load_track = QtCore.Signal(str)
+    sig_request_load_track = QtCore.Signal(str)   # loaded onto the deck (played at once, analyzed meanwhile)
+    sig_request_analyze = QtCore.Signal(str)      # analyzed into the library, not loaded
     sig_unload_track_requested = QtCore.Signal()
     # a track's full reanalysis: its path and analysis settings for this run only (analysisconfig fields; None:
     # the saved settings)

@@ -82,13 +82,17 @@ class DataModel(QtCore.QObject):
         self.sig_updated.emit()
         print(f"[DataModel] {desc}")
 
-    def load(self, features: dict, properties: dict, duration_sec: float, album_art: Optional[QImage] = None):
+    def load(self, features: dict, properties: dict, duration_sec: float, album_art: Optional[QImage] = None,
+             keep_audio: bool = False):
+        """A track's data; ``keep_audio``: the decoded audio kept (the same track's analysis come in while it
+        plays), else dropped (another track: its own comes once decoded)."""
         self.features = self._wrap_observable(features, name="features")
         self.properties = self._wrap_observable(properties, name="properties")
         self.duration_sec = duration_sec
         self.album_art = album_art
-        self.predecoded_pcm = None
-        self.predecoded_rate = 0
+        if not keep_audio:
+            self.predecoded_pcm = None
+            self.predecoded_rate = 0
         self._notify_changed("load")
         print(f"[DataModel] Summary {self.debug_summary()}")
 

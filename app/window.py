@@ -15,6 +15,7 @@ from core.timeline import TimelineCoordinator
 from core.player import PlayerController
 from core.library_handler import LibraryDB
 from core.analysis_lib_handler import FeatureNPZStore
+from analyzer_core.global_analyzer import extract_tags
 from core.workflows.analysis import AnalysisWorkflow
 from core.taskmanager import taskmanager
 from core.external_sync import ExternalSyncController
@@ -164,7 +165,9 @@ class AppWindow(QtWidgets.QMainWindow):
 
         # events
         self.bus.sig_features_loaded.connect(self._on_features_loaded)
-        self.bus.sig_request_load_track.connect(self.analyze_file)
+        self.bus.sig_request_load_track.connect(self.load_track)
+        self.bus.sig_request_analyze.connect(self.analyze_file)
+        self.bus.sig_duration_changed.connect(self._on_duration)
         self.bus.sig_unload_track_requested.connect(self.unload_track)
         self.bus.sig_setting_saveJsonRequested.connect(self._on_settings_save)
         self.bus.sig_rekordbox_sync_requested.connect(self.rekordbox_sync.sync_requested)
@@ -175,7 +178,7 @@ class AppWindow(QtWidgets.QMainWindow):
         self.resize(1600, 900)  # minimum target: FHD
 
         # status
-        self._external_sync_pending_seek: float | None = None
+        self._deck_path: str | None = None   # the file the deck holds
         self._external_sync_applied_enabled: bool | None = None
         self._effective_refresh_fps: int | None = None
         self._hidden_visibility_streak = 0
@@ -193,7 +196,7 @@ class AppWindow(QtWidgets.QMainWindow):
             bus=self.bus,
             model=self.model,
             taskmanager=self.taskmanager,
-            get_current_path=lambda: self.analysis_workflow.current_path,
+            get_current_path=lambda: self._deck_path,
             track_edit_getter=lambda: getattr(self.pane, "track_edit", None),
             status_callback=status_bar.showMessage,
             parent=self,
@@ -202,8 +205,6 @@ class AppWindow(QtWidgets.QMainWindow):
             taskmanager=self.taskmanager,
             result_callback=self._on_features_ready,
             reanalysis_result_callback=self._on_features_reanalyze,
-            album_art_callback=self._set_album_art,
-            cancel_reanalysis_callback=self.segment_reanalysis_workflow.cancel_all,
             status_callback=status_bar.showMessage,
             missing_file_callback=self._on_track_file_missing,
             parent=self,
@@ -236,33 +237,40 @@ class AppWindow(QtWidgets.QMainWindow):
         self._apply_visibility_refresh_setting(force=True)
         step(1.0, "")
 
-    # DnD
+    # DnD: a file dropped on the deck (the area above the library) loads there, shown by its drop zone while
+    # dragged; the library's tracks take a file from elsewhere themselves (analyzed, not loaded)
+    @staticmethod
+    def _dropped_file(e) -> str | None:
+        for url in e.mimeData().urls():
+            if url.isLocalFile() and os.path.isfile(url.toLocalFile()):
+                return url.toLocalFile()
+        return None
+
+    def _over_deck(self, e) -> bool:
+        return self.pane.drop_zone_at(self.pane.mapFrom(self, e.position().toPoint()))
+
     def dragEnterEvent(self, e: QtGui.QDragEnterEvent):
-        if e.mimeData().hasUrls(): e.acceptProposedAction()
+        self.dragMoveEvent(e)
 
     def dragMoveEvent(self, e: QtGui.QDragMoveEvent):
-        # A track dragged from the library loads when dropped on the deck, not
-        # back on the library.
-        over = self.childAt(e.position().toPoint())
-        lib = getattr(self.pane, "lib", None)
-        if lib is not None and over is not None and (over is lib or lib.isAncestorOf(over)):
-            e.ignore()
-        elif e.mimeData().hasUrls():
+        if self._dropped_file(e) is not None and self._over_deck(e):
+            self.pane.show_drop_zone(True)
             e.acceptProposedAction()
+        else:
+            self.pane.hide_drop_zone()
+            e.ignore()
+
+    def dragLeaveEvent(self, e: QtGui.QDragLeaveEvent):
+        self.pane.hide_drop_zone()
 
     def dropEvent(self, e: QtGui.QDropEvent):
-        if self._is_external_sync_active():
-            self.statusBar().showMessage(tr("External Sync is enabled. Local track loading is disabled."))
+        self.pane.hide_drop_zone()
+        path = self._dropped_file(e)
+        if path is None or not self._over_deck(e):
             e.ignore()
             return
-        try:
-            urls = e.mimeData().urls()
-            if not urls: return
-            path = urls[0].toLocalFile()
-            if os.path.isfile(path):
-                self.analyze_file(path)
-        except Exception as ex:
-            self.statusBar().showMessage(tr("Drop error: {error}").format(error=ex))
+        e.acceptProposedAction()
+        self.load_track(path)
 
     def _apply_midi(self) -> None:
         """The MIDI input, the mapping and the jog's resolution to the native engine."""
@@ -326,11 +334,75 @@ class AppWindow(QtWidgets.QMainWindow):
         except (FileNotFoundError, ValueError):
             return None
 
-    def analyze_file(self, path: str):
+    def load_track(self, path: str) -> None:
+        """The file onto the deck: it plays at once (decoded), its analysis comes when done (a library track's
+        stored one at once); the analysis's results alone are applied then, the playback goes on."""
         if self._is_external_sync_active():
             self.statusBar().showMessage(tr("External Sync is enabled. Local track loading is disabled."))
             return
+        self._load(path)
+
+    def _load(self, path: str) -> None:
+        if not os.path.isfile(path) and self.analysis_workflow.library_track(path) is None:
+            return
+        track = self.analysis_workflow.library_track(path)
+        if track is not None and not os.path.isfile(track.path):
+            # a library track whose file is gone: the analysis asks for its new place (loaded here then); the
+            # deck keeps its track meanwhile
+            self.analysis_workflow.analyze(track.path, listener=self._on_deck_analysis)
+            return
+        self.segment_reanalysis_workflow.cancel_all(tr("Segment reanalysis canceled (track changed)"))
+        self._deck_path = track.path if track is not None else path
+        if track is None:
+            # a new file: its tags meanwhile, the analysis's results when it is done
+            title, artist, album, _comment = extract_tags(path)
+            self.model.load({}, {"path": path, "title": title, "artist": artist, "album": album}, 0.0)
+            self._emit_loaded()
+        self.player.stop()
+        self.player.set_source(self._deck_path)
+        self.analysis_workflow.analyze(self._deck_path, listener=self._on_deck_analysis)
+
+    def analyze_file(self, path: str) -> None:
+        """The file into the library (analyzed), not loaded."""
         self.analysis_workflow.analyze(path)
+
+    def _holds(self, path: str | None) -> bool:
+        """The deck's track is the file ``path``."""
+        if not path or not self._deck_path:
+            return False
+        return os.path.normcase(os.path.normpath(path)) == os.path.normcase(os.path.normpath(self._deck_path))
+
+    def _on_deck_analysis(self, result: dict) -> None:
+        """A track's analysis (stored or new) for the deck: applied when the deck still holds that track."""
+        if self._holds(dict(result.get("properties") or {}).get("path")):
+            self._apply_analysis(result)
+
+    def _apply_analysis(self, result: dict) -> None:
+        """The analysis's features (the stored ones: the library's standard form) and properties into the model,
+        the decoded audio kept (the playback goes on)."""
+        properties = dict(result.get("properties") or {})
+        features = dict(result.get("features") or {})
+        stored = self._load_features_from_store(properties.get("uid"), load_cfg())
+        if stored is not None:
+            features = stored
+        duration = float(features.get("duration_sec") or self.model.duration_sec or 0.0)
+        self.model.load(features, properties, duration, keep_audio=True)
+        album_art = result.get("album_art")
+        if album_art is not None:
+            self.model.set_album_art(album_art)
+        self._emit_loaded()
+
+    def _emit_loaded(self) -> None:
+        self.bus.sig_features_loaded.emit()
+        self.bus.sig_properties_loaded.emit()
+        self.bus.sig_albumart_loaded.emit()
+
+    def _on_duration(self, duration_sec: float) -> None:
+        """The decoded track's length: the views' until the analysis gives its own."""
+        if duration_sec > 0.0 and float(self.model.duration_sec or 0.0) <= 0.0 and self._deck_path:
+            self.model.duration_sec = float(duration_sec)
+            self.model.sig_updated.emit()
+            self.bus.sig_properties_loaded.emit()
 
     def unload_track(self) -> None:
         """Empty the deck: no track in the player or the views."""
@@ -338,20 +410,19 @@ class AppWindow(QtWidgets.QMainWindow):
             self.statusBar().showMessage(tr("External Sync is enabled. Local track loading is disabled."))
             return
         self.player.unload()
-        self.analysis_workflow.current_path = None
+        self._deck_path = None
         self.model.load({}, {}, 0.0)
-        self.bus.sig_features_loaded.emit()
-        self.bus.sig_properties_loaded.emit()
-        self.bus.sig_albumart_loaded.emit()
+        self._emit_loaded()
         self.statusBar().showMessage(tr("Track unloaded."))
 
     def reanalyze_file(self, path: str, analysis: dict | None = None):
         """``analysis``: analysis settings for this reanalysis only (the saved ones stay)."""
         self.analysis_workflow.reanalyze(path, analysis)
 
-    def _on_track_file_missing(self, track, force_analyze: bool, analysis: dict | None = None) -> None:
+    def _on_track_file_missing(self, track, force_analyze: bool, analysis: dict | None = None,
+                               listener=None) -> None:
         """A library track whose file is gone: say so and let the user set its new path (then the analysis
-        asked for, with its settings for this run)."""
+        asked for, with its settings for this run, or the deck's load that asked)."""
         title = tr("Track File Not Found")
         name = track.title or os.path.basename(track.path)
         answer = QtWidgets.QMessageBox.question(
@@ -382,101 +453,33 @@ class AppWindow(QtWidgets.QMainWindow):
         self._sync_rekordbox_track(track.uid)
         if force_analyze:
             self.reanalyze_file(new_path, analysis)
+        elif listener is not None:
+            self._load(new_path)
         else:
             self.analyze_file(new_path)
 
     @QtCore.Slot(dict)
     def _on_features_ready(self, feat: dict):
-        raw_features = dict(feat["features"])
+        """A track's analysis (a new one, or a library track's stored one): the library; the deck takes it itself
+        when it asked (its listener)."""
         properties = dict(feat["properties"])
-        update_db = feat.get("update_db", False)
-        auto_load = bool(feat.get("auto_load", True))
-        cfg = load_cfg()
-        feat_std = self._load_features_from_store(properties.get("uid"), cfg)
-        if feat_std is None:
-            feat_std = raw_features
-        lib_rows = feat.get("library")
-        duration_sec = float(feat_std.get("duration_sec"))
-        if update_db:
-            self._emit_library_update(cfg, lib_rows)
+        if feat.get("update_db", False):
+            self._emit_library_update(load_cfg(), feat.get("library"))
             self._sync_rekordbox_track(properties.get("uid"))
-
-        if auto_load:
-            self._apply_model_update(
-                feat_std,
-                properties,
-                duration_sec,
-                stop_playback=True,
-                refresh_source=True,
-            )
-            if self._external_sync_pending_seek is not None:
-                self.player.seek(float(self._external_sync_pending_seek))
-                self._external_sync_pending_seek = None
-
+            self.statusBar().showMessage(tr("Analysis saved to library."))
         self.taskmanager.updatetask(feat["taskid"], tr("Finished"), 1)
         self.taskmanager.rmtask(feat["taskid"])
-        if auto_load:
-            self.statusBar().showMessage(tr("Done. Press Play."))
-        else:
-            self.statusBar().showMessage(tr("Analysis saved to library."))
 
-    def _on_features_reanalyze(self, feat:dict):
-        raw_features = dict(feat["features"])
+    def _on_features_reanalyze(self, feat: dict):
+        """A full reanalysis: the library, and the deck when it holds the track (its playback goes on)."""
         properties = dict(feat["properties"])
-        update_db = feat.get("update_db", False)
-        is_current_track = self.player.get_source() == properties.get("path")
-        cfg = load_cfg()
-        feat_std = self._load_features_from_store(properties.get("uid"), cfg)
-        if feat_std is None:
-            feat_std = raw_features
-        lib_rows = feat.get("library")
-        duration_sec = float(feat_std.get("duration_sec"))
-        if update_db:
-            self._emit_library_update(cfg, lib_rows)
+        if feat.get("update_db", False):
+            self._emit_library_update(load_cfg(), feat.get("library"))
             self._sync_rekordbox_track(properties.get("uid"))
-            if is_current_track:
-                self._apply_model_update(
-                    feat_std,
-                    properties,
-                    duration_sec,
-                    stop_playback=False,
-                    refresh_source=False,
-                )
-        else:
-            if is_current_track:
-                self._apply_model_update(
-                    feat_std,
-                    properties,
-                    duration_sec,
-                    stop_playback=False,
-                    refresh_source=False,
-                )
+        if self._holds(properties.get("path")):
+            self._apply_analysis(feat)
         self.taskmanager.rmtask(feat["taskid"])
-        self.statusBar().showMessage(tr("Done. Press Play."))
-
-    def _apply_model_update(
-        self,
-        features: dict,
-        properties: dict,
-        duration_sec: float,
-        *,
-        stop_playback: bool,
-        refresh_source: bool,
-    ) -> None:
-        """Update the shared DataModel and notify listeners."""
-        self.model.load(features, properties, duration_sec)
-        if stop_playback:
-            self.player.stop()
-        if refresh_source:
-            self.player.set_source(properties.get("path"))
-        self.bus.sig_features_loaded.emit()
-        self.bus.sig_properties_loaded.emit()
-        if self.model.album_art:
-            self.bus.sig_albumart_loaded.emit()
-
-    def _set_album_art(self, album_art: QtGui.QImage | None) -> None:
-        self.model.set_album_art(album_art)
-        self.bus.sig_albumart_loaded.emit()
+        self.statusBar().showMessage(tr("Analysis saved to library."))
 
     def _emit_library_update(self, cfg: config, lib_rows):
         if lib_rows is None:
@@ -552,8 +555,8 @@ class AppWindow(QtWidgets.QMainWindow):
         exists_in_library = self._track_exists_in_library(path)
         message = tr("External Sync loading: {file}") if exists_in_library else tr("External Sync analyzing: {file}")
         self.statusBar().showMessage(message.format(file=os.path.basename(path)))
-        self._external_sync_pending_seek = float(time_sec)
-        self.analysis_workflow.analyze(path)
+        self._load(path)
+        self.player.seek(float(time_sec))   # replayed once the track is decoded
 
     def _on_external_sync_failure(self, message: str) -> None:
         failed_cfg = self.cfg.to_dict()

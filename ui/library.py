@@ -196,9 +196,11 @@ class FastDelegate(QtWidgets.QStyledItemDelegate):
 # QTableWidget-based implementation
 class _TrackTable(QtWidgets.QTableWidget):
     """Library table whose rows drag out as their audio files (dropped on the
-    deck, the window loads the track)."""
+    deck, the window loads the track); files dropped on it from elsewhere go into the library (analyzed, not
+    loaded: filesDropped)."""
 
     playlistRowsDropped = QtCore.Signal(object, object)
+    filesDropped = QtCore.Signal(object)   # paths dropped from elsewhere (a file manager): analyzed, not loaded
 
     def __init__(self, path_column: int, index_column: int, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -301,8 +303,16 @@ class _TrackTable(QtWidgets.QTableWidget):
             event.setDropAction(QtCore.Qt.MoveAction)
             event.accept()
             return
+        if self._external_files(event):
+            event.acceptProposedAction()
+            return
         self._set_drop_line(None)
         event.ignore()
+
+    @staticmethod
+    def _external_files(event) -> bool:
+        """Files dragged from outside the library (its own rows carry their files too: those not taken)."""
+        return event.mimeData().hasUrls() and not isinstance(event.source(), QtWidgets.QAbstractItemView)
 
     def dragLeaveEvent(self, event):
         self._set_drop_line(None)
@@ -318,10 +328,19 @@ class _TrackTable(QtWidgets.QTableWidget):
             event.setDropAction(QtCore.Qt.MoveAction)
             event.accept()
             return
+        if self._external_files(event):
+            event.acceptProposedAction()
+            return
         self._set_drop_line(None)
         event.ignore()
 
     def dropEvent(self, event):
+        if self._external_files(event):
+            self._set_drop_line(None)
+            paths = [url.toLocalFile() for url in event.mimeData().urls() if url.isLocalFile()]
+            self.filesDropped.emit([p for p in paths if os.path.isfile(p)])
+            event.acceptProposedAction()
+            return
         if not (
             self._playlist_reorder_enabled
             and event.source() is self
@@ -1063,6 +1082,9 @@ class LibraryWidget(QtWidgets.QWidget):
         self._library_timer.setSingleShot(True)
         self._library_timer.setInterval(LIBRARY_UPDATE_DELAY_MS)
         self._library_timer.timeout.connect(self._apply_library_update)
+
+        # files dropped on the tracks: into the library (analyzed), not loaded (the deck's drop loads)
+        self.table.filesDropped.connect(lambda paths: [self.bus.sig_request_analyze.emit(p) for p in paths])
 
         # Initial load
         self.bus.sig_lib_updated.connect(self._on_library_updated)
@@ -2058,7 +2080,7 @@ class LibraryWidget(QtWidgets.QWidget):
             self._pending_playlist_paths.setdefault(
                 self._file_identity(path), []
             ).append(playlist_uid)
-            self.bus.sig_request_load_track.emit(path)
+            self.bus.sig_request_analyze.emit(path)
         if self._source_kind == "playlist" and str(self._source_value) == playlist_uid:
             self._refresh_current_source()
 
@@ -2197,7 +2219,7 @@ class LibraryWidget(QtWidgets.QWidget):
             if path in analyzed:
                 self.bus.sig_reanalyze_requested.emit(path, analysis)
             else:
-                self.bus.sig_request_load_track.emit(path)
+                self.bus.sig_request_analyze.emit(path)
 
     # Edit
     def _edit_selected(self):
