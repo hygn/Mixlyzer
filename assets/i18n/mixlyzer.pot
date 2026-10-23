@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-23 21:19+0900\n"
+"POT-Creation-Date: 2026-10-23 21:40+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -750,77 +750,77 @@ msgstr ""
 
 #: core/midi.py:195
 msgid ""
-"The controller's level meter shows the deck's peak meter (a CC sent, 0 - "
-"127 over -24 - 0 dBFS); taken from a rekordbox mapping (its "
-"ChannelLevel), not learned."
+"The controller's level meter shows the deck's peak meter (a CC sent: its "
+"segments lit, -30 to +12 dB, as 0 - 127); taken from a rekordbox mapping "
+"(its ChannelLevel), not learned."
 msgstr ""
 
-#: core/midi.py:204
+#: core/midi.py:205
 #, python-brace-format
 msgid "Sound Color FX: {effect}"
 msgstr ""
 
-#: core/midi.py:206
+#: core/midi.py:207
 msgid "A press picks it; pressed again, none. Lit while picked."
 msgstr ""
 
-#: core/midi.py:208
+#: core/midi.py:209
 msgid "Sound Color FX: PARAMETER"
 msgstr ""
 
-#: core/midi.py:209
+#: core/midi.py:210
 msgid ""
 "The effect's quantity (feedback, centre frequency, noise, crush, "
 "resonance, JET's feedback)."
 msgstr ""
 
-#: core/midi.py:215
+#: core/midi.py:216
 msgid "Browser: BROWSE knob"
 msgstr ""
 
-#: core/midi.py:216
+#: core/midi.py:217
 msgid "Turned: the next / previous track."
 msgstr ""
 
-#: core/midi.py:217
+#: core/midi.py:218
 msgid "Browser: BROWSE pressed"
 msgstr ""
 
-#: core/midi.py:218
+#: core/midi.py:219
 msgid "To the sources panel (playlists, folders) and back."
 msgstr ""
 
-#: core/midi.py:219
+#: core/midi.py:220
 msgid "Browser: BACK"
 msgstr ""
 
-#: core/midi.py:220
+#: core/midi.py:221
 msgid "Back to the tracks."
 msgstr ""
 
-#: core/midi.py:221
+#: core/midi.py:222
 msgid "Browser: waveform zoom (SHIFT + BROWSE)"
 msgstr ""
 
-#: core/midi.py:222
+#: core/midi.py:223
 msgid "Turned: the waveform zoomed in / out."
 msgstr ""
 
-#: core/midi.py:224
+#: core/midi.py:225
 msgid "Headphones: CUE / MASTER"
 msgstr ""
 
-#: core/midi.py:225
+#: core/midi.py:226
 msgid ""
 "The CUE'd channels against the master in the headphones (with the master "
 "mixed in: Settings > Audio > Headphones)."
 msgstr ""
 
-#: core/midi.py:227
+#: core/midi.py:228
 msgid "Headphones: level"
 msgstr ""
 
-#: core/midi.py:228
+#: core/midi.py:229
 msgid "Master: level"
 msgstr ""
 

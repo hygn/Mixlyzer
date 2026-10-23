@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-23 21:19+0900\n"
+"POT-Creation-Date: 2026-10-23 21:40+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ko_KR\n"
@@ -831,25 +831,25 @@ msgstr "채널 {channel}: 레벨 미터 (출력)"
 
 #: core/midi.py:195
 msgid ""
-"The controller's level meter shows the deck's peak meter (a CC sent, 0 - "
-"127 over -24 - 0 dBFS); taken from a rekordbox mapping (its "
-"ChannelLevel), not learned."
+"The controller's level meter shows the deck's peak meter (a CC sent: its "
+"segments lit, -30 to +12 dB, as 0 - 127); taken from a rekordbox mapping "
+"(its ChannelLevel), not learned."
 msgstr ""
-"컨트롤러의 레벨 미터에 덱의 피크 미터를 표시합니다(CC 송신, -24 ~ 0 dBFS를 0 ~ 127로). Learn이 아니라 "
+"컨트롤러의 레벨 미터에 덱의 피크 미터를 표시합니다(CC 송신, -30 ~ +12 dB 중 켜진 칸을 0 ~ 127로). Learn이 아니라 "
 "rekordbox 매핑(ChannelLevel)에서 가져옵니다."
 
 # | msgid "Sound Color FX: the next effect"
-#: core/midi.py:204
+#: core/midi.py:205
 #, python-brace-format
 msgid "Sound Color FX: {effect}"
 msgstr "Sound Color FX: {effect}"
 
-#: core/midi.py:206
+#: core/midi.py:207
 msgid "A press picks it; pressed again, none. Lit while picked."
 msgstr "누르면 선택, 다시 누르면 해제. 선택된 동안 점등."
 
 # | msgid "Sound Color FX: the next effect"
-#: core/midi.py:208
+#: core/midi.py:209
 msgid "Sound Color FX: PARAMETER"
 msgstr "Sound Color FX: PARAMETER"
 
@@ -859,70 +859,70 @@ msgstr "Sound Color FX: PARAMETER"
 # | msgid "" "The effect's quantity (feedback, centre frequency, noise, crush,
 # "
 # | "resonance)."
-#: core/midi.py:209
+#: core/midi.py:210
 msgid ""
 "The effect's quantity (feedback, centre frequency, noise, crush, "
 "resonance, JET's feedback)."
 msgstr "이펙트의 양(피드백, 중심 주파수, 노이즈, 크러시, 레조넌스, JET의 피드백)."
 
-#: core/midi.py:215
+#: core/midi.py:216
 msgid "Browser: BROWSE knob"
 msgstr "브라우저: BROWSE 노브"
 
-#: core/midi.py:216
+#: core/midi.py:217
 msgid "Turned: the next / previous track."
 msgstr "돌리면 다음 / 이전 곡."
 
-#: core/midi.py:217
+#: core/midi.py:218
 msgid "Browser: BROWSE pressed"
 msgstr "브라우저: BROWSE 누름"
 
 # | msgid "" "In the sources panel: the highlighted playlist or folder shown
 # in
 # | the " "library."
-#: core/midi.py:218
+#: core/midi.py:219
 msgid "To the sources panel (playlists, folders) and back."
 msgstr "소스 패널(플레이리스트, 폴더)로 갔다가 돌아옵니다."
 
 # | msgid "Playhead one bar back"
 # | msgid "One bar back"
-#: core/midi.py:219
+#: core/midi.py:220
 msgid "Browser: BACK"
 msgstr "브라우저: BACK"
 
 # | msgid "Unload track"
 # | msgid "Unload the track"
 # | msgid "Back to the tracks"
-#: core/midi.py:220
+#: core/midi.py:221
 msgid "Back to the tracks."
 msgstr "곡 목록으로 돌아갑니다."
 
-#: core/midi.py:221
+#: core/midi.py:222
 msgid "Browser: waveform zoom (SHIFT + BROWSE)"
 msgstr "브라우저: 파형 확대 (SHIFT + BROWSE)"
 
-#: core/midi.py:222
+#: core/midi.py:223
 msgid "Turned: the waveform zoomed in / out."
 msgstr "돌리면 파형을 확대 / 축소합니다."
 
-#: core/midi.py:224
+#: core/midi.py:225
 msgid "Headphones: CUE / MASTER"
 msgstr "헤드폰: CUE / MASTER"
 
 # | msgid "" "The CUE'd channels against the master in the headphones (with
 # the
 # | master " "mixed in: Settings > Playback > Headphones output)."
-#: core/midi.py:225
+#: core/midi.py:226
 msgid ""
 "The CUE'd channels against the master in the headphones (with the master "
 "mixed in: Settings > Audio > Headphones)."
 msgstr "헤드폰에서 CUE를 켠 채널과 마스터의 비율(마스터를 섞을 때: 설정 > 오디오 > 헤드폰)."
 
-#: core/midi.py:227
+#: core/midi.py:228
 msgid "Headphones: level"
 msgstr "헤드폰: 레벨"
 
-#: core/midi.py:228
+#: core/midi.py:229
 msgid "Master: level"
 msgstr "마스터: 레벨"
 
@@ -6742,8 +6742,8 @@ msgid ""
 "Channel level (before the fader), as a DJM-A9's: -30 to +12 dB; 0 dB is "
 "-12 dBFS, +12 dB the full scale (clipping)."
 msgstr ""
-"채널 레벨(페이더 전), DJM-A9과 같은 눈금: -30 ~ +12 dB. 0 dB는 -12 dBFS, "
-"+12 dB는 풀스케일(클리핑)입니다."
+"채널 레벨(페이더 전), DJM-A9과 같은 눈금: -30 ~ +12 dB. 0 dB는 -12 dBFS, +12 dB는 "
+"풀스케일(클리핑)입니다."
 
 #: ui/track_info_panel.py:370
 msgid "Unload track"

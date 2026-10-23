@@ -192,8 +192,9 @@ def _mixer_actions(n: int) -> list[Action]:
                            "while on.")),
         Action(f"{c}.level_meter", MIXER, tr_mark("Channel {channel}: level meter (output)"), METER,
                _deck_code(engine.ACT_LEVEL_METER, n), shown=one, args=a,
-               tip=tr_mark("The controller's level meter shows the deck's peak meter (a CC sent, 0 - 127 over -24 - 0 "
-                           "dBFS); taken from a rekordbox mapping (its ChannelLevel), not learned.")),
+               tip=tr_mark("The controller's level meter shows the deck's peak meter (a CC sent: its segments lit, "
+                           "-30 to +12 dB, as 0 - 127); taken from a rekordbox mapping (its ChannelLevel), not "
+                           "learned.")),
     ]
 
 

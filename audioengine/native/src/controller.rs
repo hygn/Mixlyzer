@@ -10,7 +10,8 @@
 //!
 //! The lights (each binding's lamp, of its deck): PLAY and CUE (deck.rs lamps), a JumpCUE's pad lit while it is set
 //! (blinking while its jump is armed), as rekordbox's hot cue pads; a channel's level meter (LEVEL_METER, a CC) as
-//! the GUI's peak meter: the deck's heard peak times its gain, -24 - 0 dBFS as 0 - 127, falling 24 dB/s.
+//! the GUI's peak meter: the deck's heard peak times its gain, the GUI meter's segments lit (a DJM-A9's, -30 to
+//! +12 dB: -42 to 0 dBFS) as their share of 0 - 127, falling 24 dB/s.
 
 use crate::clock;
 use crate::deck::Decks;
@@ -44,8 +45,11 @@ const TAP_KEEP: usize = 8;
 const TIME_STEP: f64 = 1.03;
 // a knob's steps acted on from one message at most (a fast turn)
 const RELATIVE_STEPS_MAX: u32 = 16;
-// the level meter: ui/track_info_panel.py VerticalPeakMeter's scale and fall; sent at most this often
-const METER_FLOOR_DBFS: f64 = -24.0;
+// the level meter: ui/track_info_panel.py VerticalPeakMeter's scale (its 0 dB, its segments from -30 dB, 3 dB each,
+// the top at 0 dBFS) and fall; sent at most this often
+const METER_REFERENCE_DBFS: f64 = -12.0;
+const METER_SEGMENTS: u32 = 15;
+const METER_FLOOR_DBFS: f64 = METER_REFERENCE_DBFS - 33.0; // below the lowest segment
 const METER_FALL_DB_PER_SEC: f64 = 24.0;
 const METER_INTERVAL_SEC: f64 = 0.02;
 
@@ -610,9 +614,11 @@ fn relative_steps(d2: u8, encoding: u8) -> i32 {
     }
 }
 
-/// A level (dBFS, METER_FLOOR_DBFS - 0) as the meter's CC value.
+/// A level (dBFS) as the meter's CC value: the GUI meter's segments lit (each from -30 dB on, 3 dB apart, lit at
+/// its level and above) as their share of 127.
 fn meter_value(db: f64) -> u8 {
-    (127.0 * ((db - METER_FLOOR_DBFS) / -METER_FLOOR_DBFS).clamp(0.0, 1.0)).round() as u8
+    let lit = (0..METER_SEGMENTS).filter(|&k| db - METER_REFERENCE_DBFS >= -30.0 + 3.0 * k as f64 - 1e-6).count();
+    (127.0 * lit as f64 / METER_SEGMENTS as f64).round() as u8
 }
 
 #[cfg(test)]
@@ -707,10 +713,13 @@ mod tests {
 
     #[test]
     fn level_meter_scale() {
+        // as the GUI meter: 0 dBFS all 15 segments, -12 dBFS (0 dB) 11, -42 dBFS (-30 dB) the lowest, under it none
         assert_eq!(meter_value(0.0), 127);
-        assert_eq!(meter_value(-24.0), 0);
-        assert_eq!(meter_value(-12.0), 64);
-        assert_eq!(meter_value(-40.0), 0);
+        assert_eq!(meter_value(-12.0), 93);
+        assert_eq!(meter_value(-13.0), 85);
+        assert_eq!(meter_value(-42.0), 8);
+        assert_eq!(meter_value(-43.0), 0);
+        assert_eq!(meter_value(METER_FLOOR_DBFS), 0);
     }
 
     #[test]
