@@ -199,41 +199,16 @@ def _mixer_actions(n: int) -> list[Action]:
 
 
 def _effect_actions() -> list[Action]:
-    """The mixer's effects: Sound Color FX (each effect's button, PARAMETER) and Beat FX on the master (as the
-    toolbar's FX bar: ON, LEVEL / DEPTH, BEAT, the effect, TAP / AUTO, the X-PAD, FX FREQUENCY)."""
-    out = [
+    """The mixer's effects: Sound Color FX (each effect's button, PARAMETER). The engine's Beat FX acts
+    (engine.ACT_BEAT_FX_*) have no action: Beat FX is not shown to the user (the engine keeps it, off)."""
+    return [
         *(Action(f"fx.color_select.{k}", EFFECTS, tr_mark("Sound Color FX: {effect}"), BUTTON,
                  engine.ACT_COLOR_SELECT + k, lamp=engine.LAMP_COLOR + k, args={"effect": name},
                  tip=tr_mark("A press picks it; pressed again, none. Lit while picked."))
           for k, name in enumerate(engine.COLOR_TYPES)),
         Action("fx.color_param", EFFECTS, tr_mark("Sound Color FX: PARAMETER"), FADER, engine.ACT_COLOR_PARAM,
                tip=tr_mark("The effect's quantity (feedback, centre frequency, noise, crush, resonance, JET's feedback).")),
-        Action("fx.beat_on", EFFECTS, tr_mark("Beat FX: ON / OFF"), BUTTON, engine.ACT_BEAT_FX_ON,
-               lamp=engine.LAMP_BEAT_FX, tip=tr_mark("A press turns it on or off. Lit while on.")),
-        Action("fx.beat_level", EFFECTS, tr_mark("Beat FX: LEVEL / DEPTH"), FADER, engine.ACT_BEAT_FX_LEVEL),
-        Action("fx.beat_down", EFFECTS, tr_mark("Beat FX: BEAT down"), BUTTON, engine.ACT_BEAT_FX_BEAT_DOWN),
-        Action("fx.beat_up", EFFECTS, tr_mark("Beat FX: BEAT up"), BUTTON, engine.ACT_BEAT_FX_BEAT_UP),
-        Action("fx.beat_next", EFFECTS, tr_mark("Beat FX: the next effect"), BUTTON, engine.ACT_BEAT_FX_SELECT,
-               tip=tr_mark("A press, or an effect selector knob turned (its direction).")),
-        Action("fx.beat_previous", EFFECTS, tr_mark("Beat FX: the previous effect"), BUTTON,
-               engine.ACT_BEAT_FX_SELECT_BACK),
-        Action("fx.beat_time", EFFECTS, tr_mark("Beat FX: TIME"), FADER, engine.ACT_BEAT_FX_TIME,
-               tip=tr_mark("The effect's time in ms over its range, in place of BEAT (a knob turned: its time "
-                           "longer / shorter).")),
-        Action("fx.beat_tap", EFFECTS, tr_mark("Beat FX: TAP"), BUTTON, engine.ACT_BEAT_FX_TAP,
-               lamp=engine.LAMP_BEAT_TAP, tip=tr_mark("Tapped more than twice in time: the BPM. Lit while tapped.")),
-        Action("fx.beat_auto", EFFECTS, tr_mark("Beat FX: AUTO"), BUTTON, engine.ACT_BEAT_FX_AUTO,
-               tip=tr_mark("The deck's BPM again.")),
-        Action("fx.xpad", EFFECTS, tr_mark("Beat FX: X-PAD (place)"), FADER, engine.ACT_BEAT_FX_XPAD,
-               tip=tr_mark("The place touched: the effect's BEAT (MOBIUS: its waveform, REVERB: its filter).")),
-        Action("fx.xpad_touch", EFFECTS, tr_mark("Beat FX: X-PAD (touch)"), TOUCH, engine.ACT_BEAT_FX_XPAD_TOUCH,
-               tip=tr_mark("Touched: the effect on while held.")),
-        *(Action(f"fx.band_{band.lower()}", EFFECTS, tr_mark("Beat FX: FX FREQUENCY {band}"), BUTTON,
-                 engine.ACT_BEAT_FX_BAND + k, lamp=engine.LAMP_BEAT_BAND + k, args={"band": band},
-                 tip=tr_mark("A press turns the band on or off: the effect works on the bands lit."))
-          for k, band in enumerate(("LOW", "MID", "HI"))),
     ]
-    return out
 
 
 ACTIONS: tuple[Action, ...] = (
@@ -448,17 +423,9 @@ _REKORDBOX_GLOBAL = {
     "CrossFader": "mixer.crossfader",
     "HeadphonesMix": "mixer.headphones_mix",
     "HeadphonesVolume": "mixer.headphones_level",
-    # its CFX knobs (the channel's COLOR) and FX1 (Beat FX: Mixlyzer's on the master alone, its CH assigns left out)
+    # its CFX knobs (the channel's COLOR); FX1 (Beat FX) is left out: not shown to the user
     "CFXParameterCH1": "mixer.ch1.color",
     "CFXParameterCH2": "mixer.ch2.color",
-    "FX1-1On": "fx.beat_on",
-    "FX1-1": "fx.beat_level",
-    "FX1BeatDown": "fx.beat_down",
-    "FX1BeatUp": "fx.beat_up",
-    "FX1AutoBeat": "fx.beat_auto",
-    "FX1TapBeat": "fx.beat_tap",
-    "FX1-1Select": "fx.beat_next",
-    "FX1-1SelectBack": "fx.beat_previous",
 }
 # outputs: deck 1's output column
 _REKORDBOX_OUTPUT = {"ChannelLevel": "mixer.ch1.level_meter"}

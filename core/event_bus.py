@@ -100,7 +100,7 @@ class EventBus(QtCore.QObject):
     sig_volume_requested = QtCore.Signal(float)   # the volume fader moved: 0 .. 1
     # the player's channel knob turned: 0 TRIM, 1 EQ LOW, 2 MID, 3 HIGH; its position 0 .. 1 (the middle 0 dB)
     sig_knob_requested = QtCore.Signal(int, float)
-    # the mixer's setting asked for (the FX bar: Sound Color FX, Beat FX): client.MIX_KEYS' key, its value (the
+    # the mixer's setting asked for (the toolbar's switches, levels and Sound Color FX): client.MIX_KEYS' key, its value (the
     # native engine's mixer; what it then is comes back in the deck's report, DeckReport.mix)
     sig_mixer_requested = QtCore.Signal(str, float)
     sig_jog_mode_requested = QtCore.Signal(bool)   # the jog wheel's mode asked for: VINYL (True) / CDJ

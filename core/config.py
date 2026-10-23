@@ -117,15 +117,10 @@ class deckconfig:
     master_level: float
     headphones_level: float
     headphones_cue_mix: int
-    # the effects as picked (not whether they are on): Sound Color FX (client.COLOR_TYPES' place, COLOR_OFF none)
-    # and its PARAMETER (0 .. 1); Beat FX (client.BEAT_TYPES' place), its BEAT (beats), LEVEL / DEPTH (0 .. 1) and
-    # FX FREQUENCY's bands (bits: 1 LOW, 2 MID, 4 HI)
+    # Sound Color FX as picked (not whether it is on): client.COLOR_TYPES' place (COLOR_OFF none), its PARAMETER
+    # (0 .. 1)
     color_type: int
     color_param: float
-    beat_type: int
-    beat_beat: float
-    beat_level: float
-    beat_bands: int
 
 
 @dataclass
@@ -454,10 +449,6 @@ def default_cfg():
         headphones_cue_mix=50,
         color_type=5,    # FILTER (client.COLOR_TYPES), as the engine starts
         color_param=0.5,
-        beat_type=1,     # ECHO (client.BEAT_TYPES)
-        beat_beat=1.0,
-        beat_level=0.5,
-        beat_bands=7,
     )
     pcfg = playbackconfig(
         default_volume_percent=100,

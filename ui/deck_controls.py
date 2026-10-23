@@ -1,10 +1,9 @@
-"""The toolbar rows' controls, one look per kind, so a control shows what it does: a mode is a segmented switch
+"""The toolbar row's controls, one look per kind, so a control shows what it does: a mode is a segmented switch
 (its choices joined, the one in use filled in the accent); a switch that turns something on is a lamp (outlined in
-its colour while off, filled while on: CUE yellow as a mixer's, Beat FX ON red, the rest blue); a momentary action
-is a pill outlined only (TAP). Each group is a block as the settings' group boxes are (a frame, its title on its
-top edge, the controls in its middle); a row starts with its title (CH 1, MASTER: one width, so the rows line up)
-and its blocks fill the window's width, each widened in proportion to its own (``fill``). What is lit is what the
-deck reports: a click is a request."""
+its colour while off, filled while on: CUE yellow as a mixer's, the rest blue). Each group is a block as the
+settings' group boxes are (a frame, its title at its left, the controls after it); each part of the row starts
+with its title (CH 1, MASTER: one width) and the blocks fill the window's width, each widened in proportion to its
+own (``fill``). What is lit is what the deck reports: a click is a request."""
 from __future__ import annotations
 
 from PySide6 import QtCore, QtGui, QtWidgets
@@ -95,24 +94,6 @@ class Lamp(_Lit):
             f" color: {_rgba(color, 0.85)}; border-radius: 3px; padding: 0 6px; }}\n"
             f"QToolButton:hover {{ border-color: {color}; }}\n"
             f"QToolButton[lit=true] {{ background: {color}; border-color: {color}; color: {on_text}; }}\n"
-            f"QToolButton:disabled {{ color: {theme.text_disabled}; border-color: {theme.border}; }}")
-
-
-class Momentary(QtWidgets.QToolButton):
-    """A momentary action: a pill outlined only."""
-
-    def __init__(self, text: str, parent=None) -> None:
-        super().__init__(parent)
-        self.setText(text)
-        _bold(self)
-        self.setFixedHeight(HEIGHT)
-        self.setMinimumWidth(40)
-        theme = current_theme()
-        self.setStyleSheet(
-            f"QToolButton {{ border: 1px solid {theme.border_strong}; background: transparent; color: {theme.text};"
-            f" border-radius: {HEIGHT // 2}px; padding: 0 10px; }}\n"
-            f"QToolButton:hover {{ background: {theme.raised_hover}; }}\n"
-            f"QToolButton:pressed {{ background: {theme.raised_pressed}; border-color: {theme.text}; }}\n"
             f"QToolButton:disabled {{ color: {theme.text_disabled}; border-color: {theme.border}; }}")
 
 

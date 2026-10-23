@@ -28,7 +28,7 @@ from utils.phrases import PHRASE_LABELS, phrase_display_name
 # the groups, in the settings' order (translated where shown; Key and CUE as they are)
 PLAYBACK = tr_mark("Playback")
 CUE = "CUE"
-FX = "FX"   # the toolbar's Sound Color FX and Beat FX (as they are)
+FX = "FX"   # the toolbar's Sound Color FX (as it is)
 LIBRARY = tr_mark("Library")
 EDITOR = tr_mark("Editor")
 CURRENT_PAGE = tr_mark("Current page")
@@ -118,17 +118,7 @@ ACTIONS: tuple[Action, ...] = (
     Action("cue.memory_delete", CUE, tr_mark("Delete the CUE point at the playhead"),
            tip=tr_mark("The CUE point the playhead is on, as after CALL.")),
 
-    # the toolbar's effects (ui.fx_bar)
-    Action("fx.beat_on", FX, tr_mark("Beat FX on / off")),
-    Action("fx.beat_tap", FX, tr_mark("Beat FX TAP"),
-           tip=tr_mark("Tap more than twice in time with the beat to set Beat FX's BPM.")),
-    Action("fx.beat_auto", FX, tr_mark("Beat FX AUTO"), tip=tr_mark("Beat FX at the deck's BPM again.")),
-    Action("fx.beat_next", FX, tr_mark("Beat FX: the next effect")),
-    Action("fx.beat_previous", FX, tr_mark("Beat FX: the previous effect")),
-    Action("fx.beat_up", FX, tr_mark("Beat FX: BEAT up"), repeat=True),
-    Action("fx.beat_down", FX, tr_mark("Beat FX: BEAT down"), repeat=True),
-    *(Action(f"fx.band_{band.lower()}", FX, tr_mark("FX FREQUENCY {band} on / off"), args={"band": band})
-      for band in ("LOW", "MID", "HI")),
+    # the toolbar's channel switches (ui.deck_switches)
     Action("mixer.headphones_cue", PLAYBACK, tr_mark("Headphones CUE on / off"),
            tip=tr_mark("The deck's channel, before its fader, in the headphones (the native engine's mixer).")),
     Action("fx.color_next", FX, tr_mark("Sound Color FX: the next effect")),

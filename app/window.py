@@ -29,7 +29,6 @@ from utils.phrases import set_phrase_label_names
 from ui.pane import MainPane
 from ui.deck_controls import block, fill, row_title
 from ui.deck_switches import DeckSwitches, MasterLevels
-from ui.fx_bar import FxBar
 from ui.midi_toggle import MidiToggle
 from ui.config.window import SettingsDialog
 from ui.workers import WorkersDialog
@@ -138,9 +137,8 @@ class AppWindow(QtWidgets.QMainWindow):
         self.support_dlg = SupportDialog(self)
         self.about_dialog = AboutDialog(self)
 
-        # the menus' bar at the top (thin); under it one toolbar of two rows in the signal's order: CH 1 (the
-        # controller, the deck, its channel), then MASTER (Beat FX on the master, the master's and the headphones'
-        # levels)
+        # the menus' bar at the top (thin); under it one toolbar row in the signal's order: CH 1 (the controller,
+        # the deck, its channel), then MASTER (the master's and the headphones' levels)
         tb = self.addToolBar(tr("Mixer"))
         tb.setMovable(False)
         tb.setStyleSheet("QToolBar { padding: 0; spacing: 0; border: none; }")
@@ -169,17 +167,17 @@ class AppWindow(QtWidgets.QMainWindow):
         for action in (a_cfg, a_workers, a_support_tb, a_about):
             menus.addAction(action)
 
-        def toolbar_row(title: str, widgets: list) -> None:
-            """A row of blocks from its title to the window's right edge (deck_controls.fill)."""
-            row = QtWidgets.QWidget()
-            lay = QtWidgets.QHBoxLayout(row)
-            lay.setContentsMargins(6, 0, 8, 0)
-            lay.setSpacing(6)
+        def toolbar_part(lay: QtWidgets.QHBoxLayout, title: str, widgets: list) -> None:
+            """A part of the row: its title, then its blocks, widened to the window's right edge with the others
+            (deck_controls.fill)."""
             lay.addWidget(row_title(title), 0, QtCore.Qt.AlignVCenter)
             lay.addSpacing(2)
             fill(lay, widgets)
-            rows_layout.addWidget(row)
 
+        row = QtWidgets.QWidget()
+        row_layout = QtWidgets.QHBoxLayout(row)
+        row_layout.setContentsMargins(6, 0, 8, 0)
+        row_layout.setSpacing(6)
         # CH 1: the MIDI controller's input on / off; the deck's and its channel's switches (jog mode, EQ, fader
         # curve, Sound Color FX, the headphones CUE)
         self.midi_toggle = MidiToggle()
@@ -189,20 +187,18 @@ class AppWindow(QtWidgets.QMainWindow):
         self.deck_switches = DeckSwitches(self.bus)
         self.deck_switches.set_available(self.player.native)
         self.bus.sig_deck_state.connect(self.deck_switches.set_report)
-        toolbar_row("CH 1", [block("CONTROLLER", [self.midi_toggle]), self.deck_switches])
-        # MASTER: Beat FX on the master, the master's and the headphones' levels
-        self.fx_bar = FxBar(self.bus)
-        self.fx_bar.set_available(self.player.native)
-        self.bus.sig_deck_state.connect(self.fx_bar.set_report)
+        toolbar_part(row_layout, "CH 1", [block("CONTROLLER", [self.midi_toggle]), self.deck_switches])
+        # MASTER: the master's and the headphones' levels
         self.master_levels = MasterLevels(self.bus)
         self.master_levels.set_available(self.player.native)
         self.bus.sig_deck_state.connect(self.master_levels.set_report)
-        toolbar_row("MASTER", [self.fx_bar, self.master_levels])
+        row_layout.addSpacing(4)
+        toolbar_part(row_layout, "MASTER", [self.master_levels])
+        rows_layout.addWidget(row)
         tb.addWidget(rows)
 
         # keyboard shortcuts (assets/shortcuts; Settings > Shortcuts)
-        handlers = {**self.pane.shortcut_handlers(), **self.fx_bar.shortcut_handlers(),
-                    **self.deck_switches.shortcut_handlers(),
+        handlers = {**self.pane.shortcut_handlers(), **self.deck_switches.shortcut_handlers(),
                     "playback.restart_engine": self._restart_engine,
                     "playback.midi_input": self._toggle_midi}
         self.bus.sig_engine_restarted.connect(self._on_engine_restarted)
@@ -437,10 +433,6 @@ class AppWindow(QtWidgets.QMainWindow):
             "headphones_cue_mix": int(round(100.0 * v("hp_a_mix", deck.headphones_cue_mix / 100.0))),
             "color_type": int(v("color_type", deck.color_type)),
             "color_param": round(v("color_param", deck.color_param), 3),
-            "beat_type": int(v("beat_type", deck.beat_type)),
-            "beat_beat": round(v("beat_beat", deck.beat_beat), 4),
-            "beat_level": round(v("beat_level", deck.beat_level), 3),
-            "beat_bands": int(v("beat_bands", deck.beat_bands)),
         }
         changed = {k: value for k, value in kept.items() if getattr(deck, k) != value}
         if changed:
@@ -913,9 +905,7 @@ class AppWindow(QtWidgets.QMainWindow):
         for key, value in (("master_level", deck.master_level), ("booth_level", pcfg.booth_level),
                            ("booth_eq_hi", pcfg.booth_eq_hi), ("booth_eq_low", pcfg.booth_eq_low),
                            ("hp_a_split", 1.0 if pcfg.headphones_split else 0.0),
-                           ("color_type", deck.color_type), ("color_param", deck.color_param),
-                           ("beat_type", deck.beat_type), ("beat_beat", deck.beat_beat),
-                           ("beat_level", deck.beat_level), ("beat_bands", deck.beat_bands)):
+                           ("color_type", deck.color_type), ("color_param", deck.color_param)):
             self.bus.sig_mixer_requested.emit(key, float(value))
         self.player.set_buffer_ms(float(pcfg.native_buffer_ms), float(pcfg.python_buffer_ms))
         self.player.set_output_device(pcfg.output_device)

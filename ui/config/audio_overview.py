@@ -201,17 +201,14 @@ class SimulinkCanvas(ModelCanvas):
         # the strip's output: the ㄹ turn, from line 1's right end down the right edge, back left, down to line 2
         self._line(p, [(strip.right(), y), (W - 6, y), (W - 6, main_lane), (26, main_lane), (26, ROW_M),
                        (40, ROW_M)], c1)
-        # line 2: the master: the channels summed, Beat FX, its level, soft clip, its device
+        # line 2: the master: the channels summed, its level, soft clip, its device
         y = ROW_M
         sx = 50.0
         self._sum(p, QtCore.QPointF(sx, y), 10, c1)
-        beat = QtCore.QRectF(80, y - 25, 92, 50)
-        self._block(p, beat, "Beat FX", m["beat_lines"], c1, live=m["beat_on"])
-        self._line(p, [(sx + 10, y), (beat.left(), y)], c1)
-        mg = QtCore.QRectF(192, y - 21, 50, 42)
+        mg = QtCore.QRectF(92, y - 21, 50, 42)
         self._gain(p, mg, tr("Master"), m["master_text"], c1)
-        self._line(p, [(beat.right(), y), (mg.left(), y)], c1)
-        clip = QtCore.QRectF(262, y - 19, 46, 38)
+        self._line(p, [(sx + 10, y), (mg.left(), y)], c1)
+        clip = QtCore.QRectF(162, y - 19, 46, 38)
         self._block(p, clip, tr("Soft Clip"), [], c1, live=m["soft_clip"])
         p.setPen(QtGui.QPen(c1 if m["soft_clip"] else PAL.commented, 1.0))
         curve = QtGui.QPainterPath()
@@ -224,7 +221,7 @@ class SimulinkCanvas(ModelCanvas):
         p.drawPath(curve)
         self._line(p, [(mg.right(), y), (clip.left(), y)], c1)
         main = m["main"]
-        branch_x = 328.0
+        branch_x = 228.0
         wr = self._writer(p, y, main, c1)
         self._line(p, [(clip.right(), y), (wr.left(), y)], c1)
         self._text(p, QtCore.QRectF(wr.left(), y - 44, wr.width(), 12), main.get("signal", ""), FONT_LABEL,
@@ -360,11 +357,6 @@ class AudioOverview(QtWidgets.QWidget):
         m["cue_on"] = bool(deck.get("channel_cue", False))
         peak = float(deck.get("peak", -24.0))
         m["peak_value"] = f"{peak:.1f} dBFS"
-        beat_on = bool(mix.get("beat_on", 0.0))
-        btype = int(mix.get("beat_type", 1))
-        m["beat_on"] = beat_on
-        m["beat_lines"] = [client.BEAT_TYPES[btype] if btype < len(client.BEAT_TYPES) else "-",
-                           client.beat_label(btype, float(mix.get("beat_beat", 1.0))) if beat_on else tr("off")]
         m["master_text"] = _db(client.level_knob_to_db(mix.get("master_level", client.LEVEL_UNITY)))
         m["main"] = self._main(stats, capacity_ms, ctx)
         routes = ctx.get("routes") or {}
