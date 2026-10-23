@@ -18,7 +18,7 @@ use crate::device::{self, BRIDGED_BUSES, Port, Source};
 use crate::ipc::{Control, out};
 use crate::monitor::Monitor;
 
-const BUS_NAMES: [&str; BRIDGED_BUSES] = ["headphones", "booth"];
+const BUS_NAMES: [&str; BRIDGED_BUSES] = ["headphones", "booth", "headphones B"];
 
 /// What a bus's own output is asked to be (op::SET_AUX_OUTPUT).
 #[derive(Clone, PartialEq)]
@@ -102,6 +102,13 @@ impl AuxOutputs {
         for k in 0..BRIDGED_BUSES {
             let bridge = &self.bridges[k];
             bridge.sound_due.store(due, Ordering::Relaxed);
+            // its device's port too: its late wake-ups and longest gap count while sound is due (never waited for:
+            // the outputs' thread holds the lock only to swap the port)
+            if let Ok(port) = self.shared[k].port.try_lock() {
+                if let Some(p) = port.as_ref() {
+                    p.sound_due.store(due, Ordering::Relaxed);
+                }
+            }
             let open = self.wanted[k].is_some() && self.shared[k].state.load(Ordering::Relaxed) == out::STATE_OPEN;
             let level = if due && open { Some(bridge.buffered(clock::now())) } else { None };
             self.monitors[k].observe(level, bridge.capacity_frames());
@@ -151,7 +158,8 @@ fn buffer_frames(bridge: &Bridge, w: &AuxWanted) -> u64 {
     (w.buffer_ms / 1000.0 * bridge.rate()).round() as u64
 }
 
-/// A device's stream: the buses on it (in bus order), the rate asked for (the first bus's), and its output.
+/// A device's stream: the buses on it (in bus order), the rate asked for (the first bus's), and its output; when
+/// its bridges last skipped a surplus (their resyncs then).
 struct Stream {
     device: (Option<String>, device::Mode),
     buses: Vec<usize>,
@@ -159,6 +167,25 @@ struct Stream {
     output: Option<device::Output>,
     port: Arc<Port>,
     reopen_at: f64,
+    resyncs: u64,
+    resynced_at: Vec<f64>,
+}
+
+/// A stream whose bridges skipped a surplus more than RESYNCS_MAX times within RESYNC_SPAN_SEC is not keeping pace
+/// with the main device (its device takes less than its rate: whatever its backend; the engine's own WASAPI output
+/// also watches its events itself): it is opened again.
+const RESYNCS_MAX: usize = 2;
+const RESYNC_SPAN_SEC: f64 = 30.0;
+
+/// The stream's bridges' resyncs since the last look: true when it has needed too many (RESYNCS_MAX).
+fn behind(s: &mut Stream, bridges: &[Arc<Bridge>; BRIDGED_BUSES], now: f64) -> bool {
+    let total: u64 = s.buses.iter().map(|&k| bridges[k].resyncs.load(Ordering::Relaxed)).sum();
+    if total > s.resyncs {
+        s.resynced_at.push(now);
+    }
+    s.resyncs = total;
+    s.resynced_at.retain(|&t| now - t < RESYNC_SPAN_SEC);
+    s.resynced_at.len() > RESYNCS_MAX
 }
 
 /// The outputs' thread: the buses grouped into a stream per device, each opened, kept and let go as told.
@@ -178,6 +205,12 @@ fn worker(rx: mpsc::Receiver<Command>, bridges: [Arc<Bridge>; BRIDGED_BUSES], sh
         }
         let now = clock::now();
         for s in streams.iter_mut() {
+            if s.output.is_some() && behind(s, &bridges, now) {
+                let names: Vec<&str> = s.buses.iter().map(|&k| BUS_NAMES[k]).collect();
+                log_line!("output of {}: its device kept falling behind: opened again", names.join(" + "));
+                s.resynced_at.clear();
+                s.port.failed.store(true, Ordering::Relaxed);
+            }
             if s.output.is_some() && s.port.failed.load(Ordering::Relaxed) {
                 s.output = None;
                 s.buses.iter().for_each(|&k| bridges[k].stop());
@@ -226,7 +259,8 @@ fn regroup(wanted: &[Option<AuxWanted>; BRIDGED_BUSES], streams: &mut Vec<Stream
         }
         buses.iter().for_each(|&k| shared[k].state.store(out::STATE_OPENING, Ordering::Relaxed));
         let rate = rate_of(&buses);
-        streams.push(Stream { device, buses, rate, output: None, port: Arc::new(Port::default()), reopen_at: 0.0 });
+        streams.push(Stream { device, buses, rate, output: None, port: Arc::new(Port::default()), reopen_at: 0.0,
+                              resyncs: 0, resynced_at: Vec::new() });
     }
 }
 
@@ -249,7 +283,7 @@ fn open(s: &mut Stream, wanted: &[Option<AuxWanted>; BRIDGED_BUSES], bridges: &[
             shared[k].errors.fetch_add(1, Ordering::Relaxed);
             shared[k].state.store(out::STATE_FAILED, Ordering::Relaxed);
         }
-        eprintln!("[AudioEngine] output of {} not opened: {e}", names.join(" + "));
+        log_line!("output of {} not opened: {e}", names.join(" + "));
     };
     let (rate, channels) = match device::default_format(name.as_deref(), mode) {
         Ok((mix, ch)) => (if s.rate > 0 { s.rate } else { mix }, ch),
@@ -262,7 +296,7 @@ fn open(s: &mut Stream, wanted: &[Option<AuxWanted>; BRIDGED_BUSES], bridges: &[
     let sink = Sink::new(s.port.clone(), rate as f64, s.buses.iter().map(|&k| (k, bridges[k].clone())).collect());
     match device::open(Source::Sink(Arc::new(sink)), rate, channels, name.as_deref(), mode) {
         Ok((o, opened)) => {
-            eprintln!("[AudioEngine] output of {}: {opened}, {rate} Hz, {channels} ch, {:?}", names.join(" + "), o.mode);
+            log_line!("{} on {opened}: {}, {rate} Hz, {channels} ch", names.join(" + "), o.mode.label());
             for &k in &s.buses {
                 let b = &shared[k];
                 b.mode.store(o.mode.code(), Ordering::Relaxed);

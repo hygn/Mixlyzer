@@ -19,7 +19,8 @@
 //! The jog wheel as rekordbox's: touched, the record is held and follows the platter (both its rotation messages:
 //! a DDJ sends the scratch CC or, out of its vinyl mode and once the hand is off, the bend CC); let go while the
 //! platter still turns (a spin, a backspin), the record follows it on until it stops, then plays (or rests) as
-//! before. Not held, a rotation bends the tempo.
+//! before. Not held, a rotation bends the tempo. Its mode (JOG_MODE, set_jog_vinyl): VINYL as above, CDJ the top's
+//! touch ignored and any rotation a bend (as a CDJ's jog without its VINYL mode).
 //!
 //! Up to MAX_DECKS decks (Decks): deck 1 always, the others made when first used, each rendering its own lanes.
 
@@ -28,7 +29,7 @@ use std::sync::Arc;
 use crate::clock;
 use crate::engine::Engine;
 
-use crate::controller::{LAMP_CUE, LAMP_PLAY};
+use crate::controller::{LAMP_CUE, LAMP_PLAY, LAMP_VINYL};
 use crate::device::Ring;
 use crate::ipc::{MAX_DECKS, Reader, act};
 use crate::mixer::{self, MixParams};
@@ -53,12 +54,10 @@ const BEND_MAX: f64 = 0.5;
 // a pitch bend button held: the tempo bent this much (a CDJ's PITCH BEND -/+)
 const BUTTON_BEND: f64 = 0.04;
 const SEARCH_SPEED: f64 = 16.0; // the jog's search: this many times the record's speed
-const VOLUME_CURVE_GAMMA: f64 = 0.4; // utils/volume.py
 
 pub struct Deck {
     rate: f64,
     volume: f64,
-    trim_db: f64,
     cue: f64,
     previewing: bool,
     latched: bool,
@@ -71,9 +70,11 @@ pub struct Deck {
     jumped_seen: u64,
     pub tempo_range: u32,
     pub jog_ticks: u32,
-    // the mixer channel's knobs (0 - 1, the middle 0 dB): trim, EQ low / mid / high
+    jog_vinyl: bool, // VINYL mode: the top's touch holds the record (CDJ: a bend only)
+    // the mixer channel's knobs (0 - 1, the middle 0 dB / off): trim, EQ low / mid / high, COLOR
     trim_knob: f64,
     eq_knobs: [f64; 3],
+    color_knob: f64,
     jog_held: bool,     // the record held: the hand on the platter, or the platter let go of still turning
     jog_spinning: bool, // let go of while it turned: held until it stops
     jog_last: f64,
@@ -90,7 +91,6 @@ impl Deck {
         Deck {
             rate,
             volume: 1.0,
-            trim_db: 0.0,
             cue: 0.0,
             previewing: false,
             latched: false,
@@ -103,8 +103,10 @@ impl Deck {
             jumped_seen: 0,
             tempo_range: 100,
             jog_ticks: 720,
+            jog_vinyl: true,
             trim_knob: 0.5,
             eq_knobs: [0.5; 3],
+            color_knob: 0.5,
             jog_held: false,
             jog_spinning: false,
             jog_last: 0.0,
@@ -158,22 +160,47 @@ impl Deck {
         self.apply_volume(e);
     }
 
-    pub fn set_volume_trim(&mut self, e: &mut Engine, db: f64) {
-        self.trim_db = if db.is_finite() { db } else { 0.0 };
-        self.apply_volume(e);
+    /// The channel fader's position to the mixer (its gain on the mixer's fader curve, mixer::fader_gain; the
+    /// channel's TRIM knob sets its level before it).
+    fn apply_volume(&self, e: &mut Engine) {
+        e.strip.set_fader(self.volume);
     }
 
-    /// utils/volume.py's slider_percent_to_linear: the fader's position on a curve, Qt's logarithmic volume
-    /// scale as linear, the trim on top.
-    fn apply_volume(&self, e: &mut Engine) {
-        let v = self.volume.powf(VOLUME_CURVE_GAMMA);
-        let base = if v > 0.99 { 1.0 } else { -(1.0 - v).ln() / 100f64.ln() };
-        let trim = 10f64.powf(self.trim_db / 20.0).clamp(0.0, 1.0);
-        e.strip.set_fader((base * trim).clamp(0.0, 1.0));
+    /// The tempo the deck plays at (BPM, the beats around the playhead at its speed; 0: no beats), for Beat FX.
+    pub fn publish_bpm(&self, e: &Engine) {
+        let at = e.playhead_frame();
+        let i = self.beats.partition_point(|&b| b <= at).clamp(1, self.beats.len().max(1)) ;
+        let bpm = if self.beats.len() >= 2 {
+            let i = i.min(self.beats.len() - 1);
+            let interval = self.beats[i] - self.beats[i - 1];
+            if interval > 0.0 { 60.0 * self.rate / interval * e.factor() } else { 0.0 }
+        } else {
+            0.0
+        };
+        e.strip.set_bpm(bpm);
     }
 
     pub fn set_jog_ticks(&mut self, jog_ticks: u32) {
         self.jog_ticks = jog_ticks.max(1);
+    }
+
+    /// The jog wheel's mode: VINYL (``on``: the top's touch holds the record) or CDJ (a bend only; a record held
+    /// let go).
+    pub fn set_jog_vinyl(&mut self, e: &mut Engine, on: bool) {
+        self.jog_vinyl = on;
+        if !on && self.jog_held {
+            self.release_jog(e);
+        }
+    }
+
+    #[cfg(test)]
+    pub fn jog_vinyl(&self) -> bool {
+        self.jog_vinyl
+    }
+
+    #[cfg(test)]
+    pub fn jog_held(&self) -> bool {
+        self.jog_held
     }
 
     /// The tempo fader's range (TEMPO_RANGES): the tempo kept, inside the new range.
@@ -257,6 +284,7 @@ impl Deck {
                 let at = TEMPO_RANGES.iter().position(|&r| r == self.tempo_range).map(|i| i + 1).unwrap_or(0);
                 self.set_tempo_range(e, TEMPO_RANGES[at % TEMPO_RANGES.len()]);
             }
+            act::JOG_MODE => self.set_jog_vinyl(e, !self.jog_vinyl),
             c if (act::JUMP_A..act::JUMP_A + 8).contains(&c) => {
                 let dest = self.jumpcues[(c - act::JUMP_A) as usize];
                 if dest.is_finite() {
@@ -404,10 +432,15 @@ impl Deck {
                 self.trim_knob = value as f64 / top;
                 e.strip.set_trim(mixer::trim_knob_gain(self.trim_knob));
             }
+            act::COLOR_KNOB => {
+                self.color_knob = value as f64 / top;
+                e.strip.set_color(self.color_knob);
+            }
             act::EQ_LOW | act::EQ_MID | act::EQ_HIGH => {
                 self.eq_knobs[(action - act::EQ_LOW) as usize] = value as f64 / top;
-                e.strip.set_eq(self.eq_knobs.map(mixer::eq_knob_gain));
+                e.strip.set_eq(self.eq_knobs);
             }
+            act::JOG_TOUCH if !self.jog_vinyl => {} // CDJ mode: the top is no platter
             act::JOG_TOUCH if d2 > 0 => {
                 self.jog_spinning = false; // the hand back on a turning platter: held again
                 if !self.jog_held {
@@ -502,7 +535,7 @@ impl Deck {
     /// armed), bit LAMP_PLAY / LAMP_CUE those buttons' (lamps).
     pub fn lights(&self, e: &Engine, now: f64) -> u64 {
         let lamps = self.lamps(e, now) as u64;
-        let mut out = (lamps & 1) << LAMP_PLAY | (lamps >> 1 & 1) << LAMP_CUE;
+        let mut out = (lamps & 1) << LAMP_PLAY | (lamps >> 1 & 1) << LAMP_CUE | (self.jog_vinyl as u64) << LAMP_VINYL;
         if !e.has_track() {
             return out;
         }
@@ -520,16 +553,17 @@ impl Deck {
         out
     }
 
-    /// Bit 0 PLAY, bit 1 CUE: lit now (a blinking one as it is at this moment).
+    /// Bit 0 PLAY, bit 1 CUE: lit now (a blinking one as it is at this moment); bit 2 the jog's VINYL mode.
     pub fn lamps(&self, e: &Engine, now: f64) -> u32 {
+        let vinyl = (self.jog_vinyl as u32) << 2;
         if !e.has_track() {
-            return 0;
+            return vinyl;
         }
         let blink = (now / BLINK_SEC).floor() as i64 % 2 == 0;
         let play = e.playing || blink;
         let on_cue = (e.playhead_frame() - self.cue).abs() <= CUE_AT_SEC * self.rate;
         let cue = e.playing || self.previewing || on_cue || blink;
-        play as u32 | (cue as u32) << 1
+        play as u32 | (cue as u32) << 1 | vinyl
     }
 
     // Reported
@@ -539,6 +573,37 @@ impl Deck {
 
     pub fn volume(&self) -> f64 {
         self.volume
+    }
+
+    /// Its mixer channel's knobs: TRIM, EQ LOW, MID, HIGH (0 .. 1, the middle 0 dB).
+    pub fn knobs(&self) -> [f64; 4] {
+        [self.trim_knob, self.eq_knobs[0], self.eq_knobs[1], self.eq_knobs[2]]
+    }
+
+    /// Its mixer channel's COLOR knob (0 .. 1, 0.5 off).
+    pub fn color_knob(&self) -> f64 {
+        self.color_knob
+    }
+
+    /// A mixer channel knob turned (the GUI's; a controller's come as midi_value): 0 TRIM, 1 EQ LOW, 2 MID, 3 HIGH,
+    /// 4 COLOR.
+    pub fn set_knob(&mut self, e: &mut Engine, which: u32, position: f64) {
+        let p = if position.is_finite() { position.clamp(0.0, 1.0) } else { 0.5 };
+        match which {
+            0 => {
+                self.trim_knob = p;
+                e.strip.set_trim(mixer::trim_knob_gain(p));
+            }
+            1..=3 => {
+                self.eq_knobs[which as usize - 1] = p;
+                e.strip.set_eq(self.eq_knobs);
+            }
+            4 => {
+                self.color_knob = p;
+                e.strip.set_color(p);
+            }
+            _ => {}
+        }
     }
 
     /// JumpCUE ``k`` (A + k) is set.
@@ -562,8 +627,8 @@ pub struct Slot {
 pub struct Shared {
     pub timestretch: bool,
     pub buffer_ms: f64,
-    pub trim_db: f64,
     pub jog_ticks: u32,
+    pub jog_vinyl: bool,
 }
 
 /// The decks (up to MAX_DECKS): deck 1 always, on the device's ring; the others made when first used (a command
@@ -585,7 +650,7 @@ impl Decks {
             ch,
             lanes,
             params,
-            shared: Shared { timestretch: false, buffer_ms: 40.0, trim_db: 0.0, jog_ticks: 720 },
+            shared: Shared { timestretch: false, buffer_ms: 40.0, jog_ticks: 720, jog_vinyl: true },
         };
         d.get(0);
         d
@@ -600,8 +665,8 @@ impl Decks {
             let s = self.shared;
             engine.set_timestretch(s.timestretch);
             engine.set_buffer_ms(s.buffer_ms);
-            deck.set_volume_trim(&mut engine, s.trim_db);
             deck.set_jog_ticks(s.jog_ticks);
+            deck.set_jog_vinyl(&mut engine, s.jog_vinyl);
             self.slots[k] = Some(Slot { engine, deck });
         }
         self.slots[k].as_mut().unwrap()
@@ -610,6 +675,10 @@ impl Decks {
     /// Deck ``k`` if it is there.
     pub fn slot(&self, k: usize) -> Option<&Slot> {
         self.slots.get(k).and_then(|s| s.as_ref())
+    }
+
+    pub fn slot_mut(&mut self, k: usize) -> Option<&mut Slot> {
+        self.slots.get_mut(k).and_then(|s| s.as_mut())
     }
 
     /// The decks there.
@@ -632,13 +701,14 @@ impl Decks {
         self.iter_mut().for_each(|s| s.engine.set_buffer_ms(ms));
     }
 
-    pub fn set_volume_trim(&mut self, db: f64) {
-        self.shared.trim_db = db;
-        self.iter_mut().for_each(|s| s.deck.set_volume_trim(&mut s.engine, db));
-    }
-
     pub fn set_jog_ticks(&mut self, ticks: u32) {
         self.shared.jog_ticks = ticks.max(1);
         self.iter_mut().for_each(|s| s.deck.set_jog_ticks(ticks));
+    }
+
+    /// Every deck's jog mode (VINYL ``on``, CDJ off), a deck made later's too.
+    pub fn set_jog_vinyl(&mut self, on: bool) {
+        self.shared.jog_vinyl = on;
+        self.iter_mut().for_each(|s| s.deck.set_jog_vinyl(&mut s.engine, on));
     }
 }

@@ -5,7 +5,7 @@ The engine is started with the name of a shared memory block made here (the cont
 its state out; layout in audioengine/native/src/ipc.rs) and opens each track's PCM from a block of its own,
 which is also the PCM this process keeps (DataModel.predecoded_pcm): no copy. NativeFeeder stands in for
 PCMFeeder in the player's audio worker (the same methods), NativeClicks for its ClickTrack (the metronome's
-mixer), NativeTones for its ToneTrack. Settings > Playback's Audio engine chooses it (the default); without
+mixer), NativeTones for its ToneTrack. Settings > Audio > Engine chooses it (the default); without
 its executable (not built), or if it cannot start, the player uses PCMFeeder (the Python engine).
 
 The headphones and the booth may play on devices of their own (src/bridge.rs: each fed from the main device's mix,
@@ -38,11 +38,12 @@ from PySide6 import QtCore
 
 from core import os_support
 from core.resource_paths import resource_path
+from utils.volume import trim_db_to_knob
 
 MAGIC = int.from_bytes(b"MXAUDIC1", "little")
-VERSION = 4
+VERSION = 6
 STATE_OFFSET = 64
-RING_OFFSET = 135168
+RING_OFFSET = 172032
 RING_HEADER = 64
 RING_BYTES = 4 << 20
 CONTROL_SIZE = RING_OFFSET + RING_HEADER + RING_BYTES
@@ -58,10 +59,16 @@ _HIST = 256
 # MIDI state
 _DECK = struct.Struct("<dddd IIII")
 _DECK_AT = 256 + 8 * 4096
-# every deck's (ipc.rs st::DECKS_STATE): there, playing, track_gen, lamps, playhead, factor, volume, cue, jump dest
-_DECK_ROW = struct.Struct("<IIII ddddd 8x")
+# every deck's (ipc.rs st::DECKS_STATE, ROW_*): a player's and its mixer channel's report
+_DECK_ROW = struct.Struct("<IIIIIII 4x dddddddd dddd QQ d I 4x")
+_DECK_ROW_KEYS = ("there", "playing", "track_gen", "lamps", "tempo_range", "at_end", "channel_cue",
+                  "playhead", "factor", "volume", "cue", "jump_dest", "display", "display_rate", "peak",
+                  "trim", "eq_low", "eq_mid", "eq_high", "jumped", "finished", "color", "cue_b")
 _DECKS_AT = _DECK_AT + 48
-MAX_DECKS = 8   # the decks the engine plays (the app shows deck 1)
+# the mixer's (ipc.rs st::MIXER_STATE): crossfader, headphones' mix, their level, the master mixed in, the curve
+_MIXER = struct.Struct("<ddd II")
+MAX_DECKS = 8   # the decks the engine plays (the app shows decks 1 and 2)
+_MIXER_AT = _DECKS_AT + _DECK_ROW.size * MAX_DECKS
 
 # commands (ipc.rs op)
 OP_PAD, OP_LOAD, OP_UNLOAD, OP_PLAY, OP_PAUSE, OP_STOP, OP_SEEK = 0, 1, 2, 3, 4, 5, 6
@@ -71,7 +78,7 @@ OP_TONE_HOLD = 17
 OP_CLICK_SAMPLE, OP_CLICK_PITCHES, OP_CLICK_BEATS, OP_CLICK_ENABLED = 19, 20, 21, 22
 OP_CLICK_OFFSET, OP_CLICK_DUCKING, OP_CLICK_CLEAR, OP_SHUTDOWN, OP_WAKE = 23, 24, 25, 26, 27
 OP_SET_DEVICE, OP_LIST_DEVICES, OP_SET_OUTPUT_MODE, OP_SET_PROCESS = 28, 29, 30, 31
-OP_DECK_ACTION, OP_SET_TEMPO, OP_SET_VOLUME, OP_SET_VOLUME_TRIM, OP_DECK_MARKS = 32, 33, 34, 35, 36
+OP_DECK_ACTION, OP_SET_TEMPO, OP_SET_VOLUME, OP_DECK_MARKS = 32, 33, 34, 36
 OP_JUMP_TO, OP_CALL_AT, OP_MIDI_OPEN, OP_MIDI_MAP, OP_MIDI_LIST, OP_MIDI_OPTIONS, OP_SET_TEMPO_RANGE = (
     37, 38, 39, 40, 41, 42, 43)
 OP_SET_METER_GAIN = 44
@@ -79,10 +86,97 @@ OP_SET_METER_GAIN = 44
 OP_FOR_DECK, OP_SET_CROSSFADER, OP_SET_ROUTING, OP_SET_ASSIGN, OP_SET_CHANNEL_CUE = 45, 46, 47, 48, 49
 OP_SET_AUX_OUTPUT = 50   # a bus on a device of its own
 OP_SET_HEADPHONES = 51   # the master mixed into the headphones, the CUE / MASTER mix, their level
+OP_SET_MIXER_KNOB = 52   # a deck's mixer channel knob: u32 0 TRIM, 1 EQ LOW, 2 MID, 3 HIGH, 4 COLOR; f64 its position
+OP_SET_MIXER = 53   # the mixer's setting: u32 key (MIX_KEYS' place), f64 value
+# the commands of a deck (sent to deck 2 .. as FOR_DECK); the others are the engine's, the mixer's, the outputs'
+DECK_OPS = frozenset({
+    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 17, 19, 20, 21, 22, 23, 24, 25, 27,
+    32, 33, 34, 36, 37, 38, 43, 52,
+})
 NO_CHANNEL = 0xFF   # a bus not routed
 # the buses that may play on a device of their own (ipc.rs OUTPUTS_OFFSET: a state block each, out::*)
-AUX_BUSES = ("headphones", "booth")
+AUX_BUSES = ("headphones", "booth", "headphones_b")
 OUTPUTS_OFFSET = 65536
+# the mixer's settings as it has them (ipc.rs mix: f64 each, MIX_OFFSET + 8 * key) and its meters (from METERS on)
+MIX_OFFSET = 165888
+MIX_KEYS = ("eq_mode", "fader_curve", "xf_curve", "crossfader", "color_type", "color_param", "beat_on", "beat_type",
+            "beat_channel", "beat_beat", "beat_level", "hp_a_mix", "hp_a_level", "hp_a_master", "hp_b_mix", "hp_b_level",
+            "hp_b_master", "master_level", "booth_level", "booth_eq_hi", "booth_eq_low", "beat_time", "beat_bands", "beat_bpm",
+            "beat_xpad", "hp_a_split", "hp_b_split", "master_cue_a", "master_cue_b")
+MIX_KEY = {name: k for k, name in enumerate(MIX_KEYS)}
+MIX_METERS_AT = 64
+MIX_METERS = ("master", "booth", "beat_bpm")
+LEVEL_UNITY = 0.8   # a level knob's position at 0 dB
+BOOTH_EQ_DB = (-12.0, 6.0)   # the booth EQ's knob: its bottom and top (src/mixer.rs booth_eq_db)
+LEVEL_DB_MIN = -40.0   # a level shown in dB: its bottom (the knob's 0 is silence)
+
+
+def level_knob_to_db(knob: float) -> float:
+    """A level knob's gain in dB (src/mixer.rs level_gain: (knob / LEVEL_UNITY)^2); LEVEL_DB_MIN at most down."""
+    k = min(1.0, max(0.0, float(knob)))
+    return max(LEVEL_DB_MIN, 40.0 * math.log10(k / LEVEL_UNITY)) if k > 0.0 else LEVEL_DB_MIN
+
+
+def level_db_to_knob(db: float) -> float:
+    return min(1.0, LEVEL_UNITY * 10.0 ** (float(db) / 40.0)) if db > LEVEL_DB_MIN else 0.0
+
+
+def booth_eq_knob_to_db(knob: float) -> float:
+    k = min(1.0, max(0.0, float(knob)))
+    return BOOTH_EQ_DB[0] * (1.0 - 2.0 * k) if k < 0.5 else BOOTH_EQ_DB[1] * (2.0 * k - 1.0)
+
+
+def booth_eq_db_to_knob(db: float) -> float:
+    d = min(BOOTH_EQ_DB[1], max(BOOTH_EQ_DB[0], float(db)))
+    return 0.5 * (1.0 - d / BOOTH_EQ_DB[0]) if d < 0.0 else 0.5 + 0.5 * d / BOOTH_EQ_DB[1]
+# Sound Color FX (mix color_type; COLOR_OFF none), Beat FX (beat_type: src/beatfx.rs, its BEAT values there; beat_beat
+# the beats themselves), the beat channels past the decks' (beat_channel: 0 .. 7 the decks' channels), FX FREQUENCY's
+# bands (beat_bands)
+COLOR_TYPES = ("SPACE", "DUB ECHO", "SWEEP", "NOISE", "CRUSH", "FILTER", "JET")
+COLOR_OFF = 7
+# each effect's place in a channel's strip (src/colorfx.rs ColorType::slot, the A9's block diagram): before the EQ,
+# after it (before the CUE and the fader), after the fader
+COLOR_SLOTS = ("post_fader", "post_fader", "post_eq", "pre_eq", "post_eq", "post_eq", "post_eq")
+BEAT_TYPES = ("DELAY", "ECHO", "PING PONG", "SPIRAL", "HELIX", "REVERB", "FLANGER", "PHASER", "FILTER", "TRIPLET FILTER",
+              "TRANS", "ROLL", "TRIPLET ROLL", "MOBIUS")
+BEAT_MASTER, BEAT_XF_A, BEAT_XF_B = 8, 9, 10
+BEAT_BAND_LOW, BEAT_BAND_MID, BEAT_BAND_HI = 1, 2, 4
+# each Beat FX's BEAT values in its buttons' order and its default (src/beatfx.rs BeatType::beats / default_beat;
+# REVERB's: its level %, MOBIUS's below 0 falling)
+_STRAIGHT = (1 / 16, 1 / 8, 1 / 4, 1 / 3, 1 / 2, 2 / 3, 3 / 4, 1.0, 2.0, 4.0, 8.0, 16.0)
+_LOOPS = (1 / 16, 1 / 8, 1 / 4, 1 / 2, 1.0, 2.0, 4.0, 8.0, 16.0)
+_REVERB = (1.0, 10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0, 90.0, 100.0)
+_CYCLES = (1 / 16, 1 / 8, 1 / 4, 1 / 2, 1.0, 2.0, 4.0, 8.0, 16.0, 32.0, 64.0)
+_TRIPLETS = (1 / 12, 1 / 6, 1 / 3, 2 / 3, 4 / 3, 8 / 3, 12 / 3)
+_MOBIUS = _CYCLES + tuple(-v for v in reversed(_CYCLES))
+BEAT_VALUES = (_STRAIGHT, _STRAIGHT, _STRAIGHT, _STRAIGHT, _LOOPS, _REVERB, _CYCLES, _CYCLES, _CYCLES, _TRIPLETS,
+               _LOOPS, _LOOPS, _TRIPLETS, _MOBIUS)
+BEAT_DEFAULTS = (1.0, 1.0, 1.0, 1.0, 1.0, 50.0, 4.0, 4.0, 4.0, 4 / 3, 1.0, 1.0, 1 / 3, 4.0)
+BEAT_REVERB, BEAT_MOBIUS = 5, 13   # the two that read the X-PAD themselves (its filter, its waveform)
+
+
+def snap_beat(kind: int, value: float) -> float:
+    """``value`` held to the nearest of Beat FX ``kind``'s BEAT values (REVERB's: 1 - 100), as the engine does."""
+    if kind == BEAT_REVERB:
+        return min(100.0, max(1.0, float(value)))
+    values = BEAT_VALUES[min(max(0, int(kind)), len(BEAT_VALUES) - 1)]
+    v = float(value) or 1.0
+    return min(values, key=lambda b: abs(math.log(abs(b)) - math.log(abs(v))) + (0.0 if (b > 0) == (v > 0) else 100.0))
+
+
+def beat_label(kind: int, value: float) -> str:
+    """A BEAT value as the A9 shows it: a fraction of beats (1/16, 2/3, 12/3, -4), REVERB's a %."""
+    if kind == BEAT_REVERB:
+        return f"{int(round(value))}%"
+    sign = "-" if value < 0 else ""
+    v = abs(value)
+    if BEAT_VALUES[kind] is _TRIPLETS and abs(v - 4.0) < 1e-6:
+        return "12/3"   # the triplets' top, in thirds as the rest
+    for den in (1, 2, 3, 4, 6, 8, 12, 16):
+        num = int(round(v * den))
+        if abs(v * den - num) < 1e-6:
+            return f"{sign}{num}" if den == 1 else f"{sign}{num}/{den}"
+    return f"{sign}{v:g}"
 _OUT = struct.Struct("<II dddd QQ d II d Q dd dd II I")
 _OUT_HIST = 384
 _OUT_SIZE = _OUT_HIST + 8 * 4096
@@ -95,6 +189,7 @@ ACT_TEMPO_DOWN, ACT_TEMPO_UP, ACT_TEMPO_RESET, ACT_CALL_PREVIOUS, ACT_CALL_NEXT,
 ACT_TRACK_START = 14   # to the track's start, playing on (rekordbox's SHIFT + CUE)
 ACT_JUMP_A = 16   # .. + 7: H
 ACT_BEND_DOWN, ACT_BEND_UP = 24, 25   # held: the tempo bent (pitch bend buttons)
+ACT_JOG_MODE = 26   # a press: the jog wheel's VINYL / CDJ mode switched
 ACT_BEAT_JUMP = 64   # + 2 k back, + 2 k + 1 forward, by BEAT_JUMP_SIZES[k] beats
 BEAT_JUMP_SIZES = (1, 2, 4, 8, 16, 32)
 # a MIDI controller's alone: a fader, a jog wheel
@@ -103,11 +198,32 @@ ACT_LEVEL_METER = 38   # an output: the controller's level meter (a CC)
 # the mixer (src/mixer.rs): a channel's trim and EQ bands, the crossfader, a channel's headphones CUE
 ACT_TRIM, ACT_EQ_LOW, ACT_EQ_MID, ACT_EQ_HIGH, ACT_CROSSFADER, ACT_CHANNEL_CUE = 39, 40, 41, 42, 43, 44
 ACT_HEADPHONES_MIX, ACT_HEADPHONES_LEVEL = 45, 46   # the headphones' CUE / MASTER mix, their level
+# a DJM's: a channel's COLOR knob and CUE B (by its deck), headphones B, the master, the booth, Sound Color FX, Beat FX
+ACT_COLOR_KNOB, ACT_CHANNEL_CUE_B, ACT_HEADPHONES_B_MIX, ACT_HEADPHONES_B_LEVEL = 47, 48, 49, 50
+ACT_MASTER_LEVEL, ACT_BOOTH_LEVEL, ACT_BOOTH_EQ_HI, ACT_BOOTH_EQ_LOW, ACT_COLOR_PARAM = 51, 52, 53, 54, 55
+ACT_COLOR_SELECT = 56   # + k: Sound Color FX k picked (COLOR_TYPES)
+ACT_BEAT_FX_ON, ACT_BEAT_FX_LEVEL, ACT_BEAT_FX_BEAT_DOWN, ACT_BEAT_FX_BEAT_UP = 80, 81, 82, 83
+ACT_BEAT_FX_SELECT, ACT_BEAT_FX_CHANNEL = 84, 85   # knobs turned: the next / previous effect, channel
+ACT_BEAT_FX_TIME, ACT_BEAT_FX_TAP, ACT_BEAT_FX_AUTO = 86, 87, 88   # the TIME knob, TAP, AUTO/TAP (back to AUTO)
+ACT_BEAT_FX_XPAD, ACT_BEAT_FX_XPAD_TOUCH = 89, 90   # the X-PAD's place (a fader), touched
+ACT_BEAT_FX_BAND = 91   # + k: FX FREQUENCY LOW (0), MID (1), HI (2) on / off
+ACT_HEADPHONES_A_SPLIT, ACT_HEADPHONES_B_SPLIT, ACT_MASTER_CUE_A, ACT_MASTER_CUE_B = 94, 95, 96, 97
+ACT_BEAT_FX_SELECT_BACK = 98   # a press: the previous effect (ACT_BEAT_FX_SELECT's: the next)
 # a deck's (a mixer channel's) actions carry its number - 1 from this bit up (0: deck 1)
 ACT_DECK_SHIFT = 24
 # a binding's lamp (src/deck.rs): the controller's light at its message; 1 - 26 the JumpCUE A - Z (lit while set)
 LAMP_PLAY, LAMP_CUE = 32, 33
 LAMP_CHANNEL_CUE = 34   # a mixer channel's headphones CUE: lit while it is on
+LAMP_CHANNEL_CUE_B = 35   # its headphones B CUE
+LAMP_BEAT_FX = 36   # Beat FX on
+LAMP_BEAT_BAND = 37   # + k: FX FREQUENCY k on
+LAMP_HP_A_SPLIT, LAMP_HP_B_SPLIT, LAMP_MASTER_CUE_A, LAMP_MASTER_CUE_B = 40, 41, 42, 43
+LAMP_BEAT_TAP = 44   # a BPM tapped (TAP mode)
+LAMP_COLOR = 45   # + k: Sound Color FX k picked
+LAMP_VINYL = 52   # a deck's jog in VINYL mode
+# the mixer's EQ (mix eq_mode) and channel fader curves (fader_curve), by their settings' names
+EQ_MODES = ("isolator", "eq")
+FADER_CURVES = ("default", "steep", "slow")
 ACT_GUI = 0x1000   # the GUI's own actions from here (core.midi: their numbering), passed on to it
 # the tempo fader's ranges (+-%; 100: WIDE, 0 - 200 %)
 TEMPO_RANGES = (6, 10, 16, 100)
@@ -138,19 +254,41 @@ BIND_ENC_AUTO, BIND_ENC_OFFSET, BIND_ENC_TWOS, BIND_ENC_SIGN = 0, 1, 2, 3
 class DeckReport:
     """What the deck is (src/deck.rs), as the GUI shows it: ``cue`` and ``jump_dest`` (the armed JumpCUE's
     destination) in seconds, NaN for none; ``lamps`` bit 0 PLAY lit, bit 1 CUE lit (blinking: as they are now);
-    ``midi_state`` 0 closed, 1 open, 2 the port did not open."""
+    ``midi_state`` 0 closed, 1 open, 2 the port did not open; its mixer channel: ``knobs`` (TRIM, EQ LOW, MID,
+    HIGH: 0 .. 1, the middle 0 dB), ``channel_cue`` (its headphones CUE), ``peak`` (its meter, dBFS); the mixer's
+    ``crossfader`` (0 A .. 1 B)."""
 
-    __slots__ = ("playing", "factor", "volume", "cue", "jump_dest", "lamps", "tempo_range", "midi_state")
+    __slots__ = ("playing", "factor", "volume", "cue", "jump_dest", "lamps", "tempo_range", "midi_state", "knobs",
+                 "channel_cue", "peak", "crossfader", "color", "mix", "beat_bpm")
 
     def __init__(self, playing: bool, factor: float, volume: float, cue: float, jump_dest: float, lamps: int,
-                 tempo_range: int, midi_state: int) -> None:
+                 tempo_range: int, midi_state: int, knobs: tuple = (0.5, 0.5, 0.5, 0.5), channel_cue: bool = False,
+                 peak: float = -24.0, crossfader: float = 0.5, color: float = 0.5, mix: tuple = (),
+                 beat_bpm: float = 0.0) -> None:
         self.playing, self.factor, self.volume = bool(playing), float(factor), float(volume)
         self.cue, self.jump_dest, self.lamps = float(cue), float(jump_dest), int(lamps)
         self.tempo_range, self.midi_state = int(tempo_range), int(midi_state)
+        self.knobs, self.channel_cue = tuple(float(k) for k in knobs), bool(channel_cue)
+        self.peak, self.crossfader = float(peak), float(crossfader)
+        # its channel's COLOR knob; the mixer's settings (MIX_KEYS' order; empty: none, the Python engine); the
+        # BPM Beat FX last played at
+        self.color, self.mix, self.beat_bpm = float(color), tuple(float(v) for v in mix), float(beat_bpm)
+
+    @property
+    def vinyl(self) -> bool:
+        """Its jog wheel in VINYL mode (lamps bit 2; CDJ: off)."""
+        return bool(self.lamps & 4)
+
+    def mix_value(self, key: str, default: float = 0.0) -> float:
+        """The mixer's setting ``key`` (MIX_KEYS) as reported."""
+        k = MIX_KEY.get(key)
+        return self.mix[k] if k is not None and k < len(self.mix) else default
 
     def key(self) -> tuple:
+        """What a change of shows (the peak aside: the meters read it at their own pace)."""
         return (self.playing, self.factor, self.volume, self.cue, self.jump_dest, self.lamps, self.tempo_range,
-                self.midi_state)
+                self.midi_state, self.knobs, self.channel_cue, self.crossfader, self.color, self.mix,
+                round(self.beat_bpm, 1))
 
 
 def executable() -> Optional[Path]:
@@ -186,6 +324,26 @@ class EngineState:
          self.out_channels) = deck
 
 
+def _relay_console(stream) -> None:
+    """The engine's console lines (src/log.rs: written by a thread of its own, so this reader being late holds up no
+    audio) printed here: into the app's log and the startup splash. Ends with the process."""
+    try:
+        for raw in iter(stream.readline, b""):
+            line = raw.decode("utf-8", "replace").rstrip()
+            if line:
+                try:
+                    print(line, flush=True)
+                except Exception:
+                    pass
+    except (OSError, ValueError):
+        pass
+    finally:
+        try:
+            stream.close()
+        except OSError:
+            pass
+
+
 class NativeEngine:
     """The engine's process and its control block. Commands may be sent from any thread (one at a time)."""
 
@@ -204,9 +362,11 @@ class NativeEngine:
         self.asked_rate = int(rate)   # the session's rate asked for (exclusive mode; 0: the device's)
         self._proc = subprocess.Popen(
             args,
-            stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, cwd=str(exe.parent),
+            stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, cwd=str(exe.parent),
             **os_support.hidden_subprocess_kwargs(),
         )
+        threading.Thread(target=_relay_console, args=(self._proc.stderr,), name="AudioEngineConsole",
+                         daemon=True).start()
         self.rate = 0
         self.channels = 0
 
@@ -224,12 +384,14 @@ class NativeEngine:
         except Exception as exc:
             print(f"[AudioEngine] start failed: {exc}")
             return None
-        deadline = time.monotonic() + START_TIMEOUT_SEC
+        started = time.monotonic()
+        deadline = started + START_TIMEOUT_SEC
         while time.monotonic() < deadline:
             state = engine.state()
             if state is not None and state.ready == 1:
                 engine.rate, engine.channels = int(state.rate), int(state.channels)
-                print(f"[AudioEngine] native engine: {engine.rate} Hz, {engine.channels} ch")
+                print(f"[AudioEngine] native engine ready in {1000 * (time.monotonic() - started):.0f} ms: "
+                      f"{engine.rate} Hz, {engine.channels} ch")
                 return engine
             if (state is not None and state.ready == 2) or engine._proc.poll() is not None:
                 break
@@ -263,20 +425,33 @@ class NativeEngine:
         return self._seq
 
     def deck_states(self) -> list[Optional[dict]]:
-        """Every deck's state (None: not made), frames at the engine's rate: playing, track_gen, lamps, playhead,
-        factor, volume, cue, jump_dest."""
+        """Every deck's state (None: not made; _DECK_ROW_KEYS, frames at the engine's rate)."""
+        read = self.deck_rows()
+        return read[0] if read is not None else []
+
+    def deck_rows(self) -> Optional[tuple[list[Optional[dict]], dict, float, int]]:
+        """One reading of (every deck's row (None: not made), the mixer's, the display's time (perf_counter s), the
+        last command taken)."""
         buf = self._buf
         if buf is None:
-            return []
+            return None
         for _ in range(1000):
             s1 = struct.unpack_from("<Q", buf, STATE_OFFSET)[0]
             if s1 & 1:
                 continue
-            rows = [_DECK_ROW.unpack_from(buf, STATE_OFFSET + _DECKS_AT + 64 * k) for k in range(MAX_DECKS)]
+            rows = [_DECK_ROW.unpack_from(buf, STATE_OFFSET + _DECKS_AT + _DECK_ROW.size * k) for k in range(MAX_DECKS)]
+            mixer = _MIXER.unpack_from(buf, STATE_OFFSET + _MIXER_AT)
+            values = struct.unpack_from(f"<{len(MIX_KEYS)}d", buf, MIX_OFFSET)
+            meters = struct.unpack_from(f"<{len(MIX_METERS)}d", buf, MIX_OFFSET + 8 * MIX_METERS_AT)
+            display_at = struct.unpack_from("<d", buf, STATE_OFFSET + 56)[0]
+            cmd_done = struct.unpack_from("<Q", buf, STATE_OFFSET + 32)[0]
             if struct.unpack_from("<Q", buf, STATE_OFFSET)[0] == s1:
-                keys = ("playing", "track_gen", "lamps", "playhead", "factor", "volume", "cue", "jump_dest")
-                return [dict(zip(keys, (bool(r[1]),) + r[2:])) if r[0] else None for r in rows]
-        return []
+                decks = [dict(zip(_DECK_ROW_KEYS, r)) if r[0] else None for r in rows]
+                mix = dict(zip(("crossfader", "cue_mix", "cue_level", "master_cue", "curve"), mixer))
+                mix["values"] = dict(zip(MIX_KEYS, values))
+                mix["meters"] = dict(zip(MIX_METERS, meters))
+                return decks, mix, display_at, cmd_done
+        return None
 
     def send_to_deck(self, deck: int, op: int, payload: bytes = b"") -> bool:
         """A command for deck ``deck`` (0: deck 1; the others are made when first used)."""
@@ -572,28 +747,46 @@ class NativeTones:
         self.hold(())
 
 
+class EngineHolder:
+    """The engine the decks' feeders share: deck 1's feeder starts it (again, when it died or for another rate);
+    the others follow ``generation``."""
+
+    def __init__(self, engine: NativeEngine) -> None:
+        self.engine = engine
+        self.generation = 0
+
+
 class NativeFeeder(QtCore.QObject):
-    """PCMFeeder's methods on the native engine. Lives in the player's audio worker thread; poll() (the
-    worker's frame tick) reads the engine's state and reports the track's end and the jumps played. A
-    engine that died is started again, with the track and the settings it had."""
+    """PCMFeeder's methods on the native engine, for its deck ``deck`` (0: deck 1, which also holds the engine's
+    own settings, the mixer's, the outputs' and the MIDI controller; deck 2 .. its commands as FOR_DECK, its state
+    from its row). Lives in its player's audio worker thread; poll() (the worker's frame tick) reads the engine's
+    state and reports the track's end and the jumps played. An engine that died is started again (by deck 1's),
+    with the track and the settings each deck had."""
 
     finished = QtCore.Signal()
     jumped = QtCore.Signal()
+    format_changed = QtCore.Signal()   # deck 2 ..: the engine plays at another rate now (its track decoded again)
 
     PEAK_FLOOR_DBFS = -24.0
     BUFFER_MS_RANGE = (2, 500)   # the engine fills its buffer every 1 ms below 10 ms (engine.rs)
     RESTART_SEC = 2.0
     EXCLUSIVE_RATES = (44100, 48000, 88200, 96000, 176400, 192000)
 
-    def __init__(self, engine: NativeEngine, parent: Optional[QtCore.QObject] = None) -> None:
+    def __init__(self, engine: NativeEngine, parent: Optional[QtCore.QObject] = None, deck: int = 0,
+                 holder: Optional[EngineHolder] = None) -> None:
         super().__init__(parent)
-        self._engine = engine
+        self.deck_index = int(deck)
+        self.holder = holder or EngineHolder(engine)
+        self._holder_generation = self.holder.generation
+        self._row: Optional[dict] = None   # deck 2 ..: its row last read
+        self._display_at = 0.0
         self.rate = engine.rate
         self.ch = engine.channels
         self.clicks = NativeClicks(self)
         self.tones = NativeTones(self)
         # the last of each setting (by its op, and what it is for), sent again to a restarted engine
         self._settings: dict[tuple, tuple[int, bytes]] = {}
+        self._jog_ticks, self._jog_vinyl = 720, True   # the jog wheel's messages per turn, its mode (midi_options)
         self._pcm: Optional[SharedPCM] = None
         self._gen = 0
         self._len = 0
@@ -614,20 +807,38 @@ class NativeFeeder(QtCore.QObject):
         self._marks: Optional[tuple] = None
         self._report: Optional[DeckReport] = None
 
+    @property
+    def _engine(self) -> NativeEngine:
+        return self.holder.engine
+
+    @_engine.setter
+    def _engine(self, engine: NativeEngine) -> None:
+        self.holder.engine = engine
+        self.holder.generation += 1
+        self._holder_generation = self.holder.generation
+
     # Commands
+    def _send_raw(self, op: int, payload: bytes = b"") -> None:
+        """A command: a deck's to this deck (FOR_DECK beyond deck 1), the engine's from deck 1 alone."""
+        if not self.deck_index:
+            self._engine.send(op, payload)
+        elif op in DECK_OPS:
+            self._engine.send_to_deck(self.deck_index, op, payload)
+
     def send(self, op: int, payload: bytes = b"") -> None:
-        self._engine.send(op, payload)
+        self._send_raw(op, payload)
 
     def setting(self, op: int, payload: bytes = b"", key=None) -> None:
         self._settings[(op, key)] = (op, payload)
-        self._engine.send(op, payload)
+        self._send_raw(op, payload)
 
     # Lifecycle
     def open(self) -> None:
         pass
 
     def close(self) -> None:
-        self._engine.close()
+        if not self.deck_index:   # the engine is deck 1's (the others share it)
+            self._engine.close()
 
     def adopt(self, pcm: np.ndarray) -> np.ndarray:
         """The decoded PCM as the engine reads it (a shared block). Any thread."""
@@ -680,7 +891,13 @@ class NativeFeeder(QtCore.QObject):
 
     def apply_session_format(self) -> bool:
         """Before a track is decoded: the engine started again where the rate asked for differs from its own
-        (exclusive mode's rate, or the device's again); True if the format (rate, channels) changed."""
+        (exclusive mode's rate, or the device's again); True if the format (rate, channels) changed. Deck 1's
+        alone (the others follow the engine it starts)."""
+        if self.deck_index:
+            engine = self._engine
+            changed = (engine.rate, engine.channels) != (self.rate, self.ch)
+            self.rate, self.ch = engine.rate, engine.channels
+            return changed
         wanted = self._exclusive_rate if self._exclusive else 0
         if wanted == self._engine.asked_rate:
             return False
@@ -709,12 +926,15 @@ class NativeFeeder(QtCore.QObject):
     def _replay(self) -> None:
         """A new engine: the settings, the deck as it was reported, its marks at this engine's rate."""
         for op, payload in self._settings.values():
-            self._engine.send(op, payload)
+            self._send_raw(op, payload)
         r = self._report
         if r is not None:
-            self._engine.send(OP_SET_TEMPO_RANGE, struct.pack("<I", r.tempo_range))
-            self._engine.send(OP_SET_TEMPO, struct.pack("<d", r.factor))
-            self._engine.send(OP_SET_VOLUME, struct.pack("<d", r.volume))
+            self._send_raw(OP_SET_TEMPO_RANGE, struct.pack("<I", r.tempo_range))
+            self._send_raw(OP_SET_TEMPO, struct.pack("<d", r.factor))
+            self._send_raw(OP_SET_VOLUME, struct.pack("<d", r.volume))
+            for which, position in enumerate(r.knobs):
+                self._send_raw(OP_SET_MIXER_KNOB, struct.pack("<Id", which, position))
+            self._engine.send(OP_SET_CHANNEL_CUE, struct.pack("<II", self.deck_index, int(r.channel_cue)))
         self._send_marks()
 
     def output_devices(self, api: Optional[str] = None) -> tuple[str, list[str], dict[str, int]]:
@@ -734,8 +954,28 @@ class NativeFeeder(QtCore.QObject):
     def set_volume(self, position: float) -> None:
         self.send(OP_SET_VOLUME, struct.pack("<d", min(1.0, max(0.0, float(position)))))
 
+    # its mixer channel, and the mixer's crossfader
+    def set_knob(self, which: int, position: float) -> None:
+        """Its channel's TRIM (0), EQ LOW (1), MID (2), HIGH (3) or COLOR (4) knob at ``position`` (0 .. 1, the middle
+        0 dB / off)."""
+        self.send(OP_SET_MIXER_KNOB, struct.pack("<Id", int(which), min(1.0, max(0.0, float(position)))))
+
     def set_volume_trim(self, db: float) -> None:
-        self.setting(OP_SET_VOLUME_TRIM, struct.pack("<d", float(db)))
+        """Its level before the fader (Settings > Audio > Mixer's trim): its channel's TRIM knob at ``db`` (held to
+        utils.volume.TRIM_DB_RANGE)."""
+        self.set_knob(0, trim_db_to_knob(db))
+
+    def set_channel_cue(self, on: bool, bus: int = 0) -> None:
+        """Its channel's headphones CUE: A (``bus`` 0) or B (1)."""
+        self._engine.send(OP_SET_CHANNEL_CUE, struct.pack("<III", self.deck_index, int(bool(on)), int(bus)))
+
+    def set_mixer(self, key: str, value: float) -> None:
+        """A setting of the mixer's (MIX_KEYS: knobs 0 .. 1, switches 0 / 1, choices their code)."""
+        self._engine.send(OP_SET_MIXER, struct.pack("<Id", MIX_KEY[key], float(value)))
+
+    def set_crossfader(self, position: float) -> None:
+        """The mixer's crossfader (0 the A side .. 1 the B side)."""
+        self._engine.send(OP_SET_CROSSFADER, struct.pack("<dI", min(1.0, max(0.0, float(position))), 0))
 
     def set_marks(self, beats_sec, downbeats, cue_points_sec, jumpcues_sec) -> None:
         """The track's beats (with their downbeat flags), CUE points and JumpCUEs A-Z (NaN: none), in seconds."""
@@ -812,7 +1052,7 @@ class NativeFeeder(QtCore.QObject):
                    + struct.pack("<I", len(name)) + name)
         self.setting(OP_SET_AUX_OUTPUT, payload, key=int(bus))
 
-    def set_headphones(self, master: bool, mix: float = 0.5, level: float = 1.0) -> None:
+    def set_headphones(self, master: bool, mix: float = 0.5, level: float = LEVEL_UNITY) -> None:
         """The headphones: the CUE'd channels before their faders, and the master mixed in by ``mix`` (0 CUE .. 1
         MASTER) with ``master`` (off: a device that mixes the master into its headphones itself, as the DDJ-400 does
         in analog), at ``level``; a controller's CUE / MASTER and level knobs move them later."""
@@ -823,14 +1063,19 @@ class NativeFeeder(QtCore.QObject):
         """The controller's level meter shows the heard peak times this (the GUI peak meter's gain)."""
         self.setting(OP_SET_METER_GAIN, struct.pack("<d", max(0.0, float(gain))))
 
-    def midi_options(self, jog_ticks: int) -> None:
-        self.setting(OP_MIDI_OPTIONS, struct.pack("<I", max(1, int(jog_ticks))))
+    def midi_options(self, jog_ticks: Optional[int] = None, vinyl: Optional[bool] = None) -> None:
+        """The jog wheel: its messages per turn and its mode (VINYL / CDJ); None: as it was."""
+        if jog_ticks is not None:
+            self._jog_ticks = max(1, int(jog_ticks))
+        if vinyl is not None:
+            self._jog_vinyl = bool(vinyl)
+        self.setting(OP_MIDI_OPTIONS, struct.pack("<II", self._jog_ticks, int(self._jog_vinyl)))
 
     def midi_ports(self) -> list[str]:
         return self._engine.midi_ports()
 
     def midi_events(self) -> list[tuple[int, int, int, int, int, int]]:
-        return self._engine.midi_events()
+        return [] if self.deck_index else self._engine.midi_events()   # one reader: deck 1's
 
     def set_scrubbing(self, scrubbing: bool) -> None:
         self.send(OP_SCRUB, struct.pack("<I", int(bool(scrubbing))))
@@ -857,6 +1102,9 @@ class NativeFeeder(QtCore.QObject):
     # What is being heard
     def poll(self) -> None:
         """Reads the engine's state (the worker's frame tick): the track's end and the jumps played."""
+        if self.deck_index:
+            self._poll_row()
+            return
         if not self._engine.alive():
             self._restart()
             return
@@ -864,9 +1112,12 @@ class NativeFeeder(QtCore.QObject):
         if st is None:
             return
         self._state = st
+        rows = self._engine.deck_rows()
+        row, mixer = (rows[0][0], rows[1]) if rows is not None else (None, {})
         if st.cmd_done >= self._engine.sent:
             self._report = DeckReport(st.playing, st.factor, st.volume, st.cue / max(1, self.rate),
-                                      st.jump_dest / max(1, self.rate), st.lamps, st.tempo_range, st.midi_state)
+                                      st.jump_dest / max(1, self.rate), st.lamps, st.tempo_range, st.midi_state,
+                                      *self._channel(row, mixer))
         if self._unlink_gen and st.track_gen >= self._unlink_gen and self._pcm is not None:
             _unlink(self._pcm.shm_name)   # opened by the engine: the name is no longer needed
             self._unlink_gen = 0
@@ -876,6 +1127,62 @@ class NativeFeeder(QtCore.QObject):
         if jumped > old_jumped:
             self.jumped.emit()
         if finished > old_finished and st.track_gen == self._gen:
+            self.finished.emit()
+
+    @staticmethod
+    def _channel(row: Optional[dict], mixer: dict) -> tuple:
+        """A row's mixer channel for DeckReport: knobs, channel CUE, peak, the crossfader, its COLOR knob, the mixer's
+        settings, Beat FX's BPM."""
+        values = mixer.get("values") or {}
+        mix = tuple(values.get(k, 0.0) for k in MIX_KEYS) if values else ()
+        bpm = float((mixer.get("meters") or {}).get("beat_bpm", 0.0))
+        if row is None:
+            return (0.5, 0.5, 0.5, 0.5), False, -24.0, float(mixer.get("crossfader", 0.5)), 0.5, mix, bpm
+        return ((row["trim"], row["eq_low"], row["eq_mid"], row["eq_high"]), bool(row["channel_cue"]), row["peak"],
+                float(mixer.get("crossfader", 0.5)), float(row["color"]), mix, bpm)
+
+    def _poll_row(self) -> None:
+        """Deck 2 ..: its row (the engine's other state is deck 1's); a new engine (deck 1's feeder started it
+        again): this deck's settings and track again (at another rate: decoded again, format_changed)."""
+        if self._holder_generation != self.holder.generation:
+            self._holder_generation = self.holder.generation
+            engine = self._engine
+            rate_changed = (engine.rate, engine.channels) != (self.rate, self.ch)
+            self.rate, self.ch = engine.rate, engine.channels
+            self._counts = (0, 0)
+            self._replay()
+            self.clicks.ch = self.ch
+            self.clicks.follow_rate(self.rate)
+            if rate_changed:
+                self._pcm = None
+                self.format_changed.emit()
+            elif self._pcm is not None:
+                pcm, self._pcm = self._pcm, None
+                self.set_track(pcm)
+        if not self._engine.alive():
+            return
+        read = self._engine.deck_rows()
+        if read is None:
+            return
+        rows, mixer, self._display_at, cmd_done = read
+        row = rows[self.deck_index] if self.deck_index < len(rows) else None
+        if row is None:
+            return
+        self._row = row
+        rate = max(1, self.rate)
+        if cmd_done >= self._engine.sent:
+            self._report = DeckReport(row["playing"], row["factor"], row["volume"], row["cue"] / rate,
+                                      row["jump_dest"] / rate, row["lamps"], row["tempo_range"], 0,
+                                      *self._channel(row, mixer))
+        if self._unlink_gen and row["track_gen"] >= self._unlink_gen and self._pcm is not None:
+            _unlink(self._pcm.shm_name)
+            self._unlink_gen = 0
+        jumped, finished = int(row["jumped"]), int(row["finished"])
+        old_jumped, old_finished = self._counts
+        self._counts = (jumped, finished)
+        if jumped > old_jumped:
+            self.jumped.emit()
+        if finished > old_finished and row["track_gen"] == self._gen:
             self.finished.emit()
 
     def _restart(self) -> None:
@@ -902,9 +1209,24 @@ class NativeFeeder(QtCore.QObject):
             self.set_track(pcm)
 
     def playhead_frame(self) -> float:
+        if self.deck_index:
+            return float(self._row["playhead"]) if self._row is not None else 0.0
         return float(self._state.playhead) if self._state is not None else 0.0
 
+    def display_rate(self) -> float:
+        """Frames a second display_frame() runs at (0: held)."""
+        if self.deck_index:
+            return float(self._row["display_rate"]) if self._row is not None else 0.0
+        return float(self._state.display_rate) if self._state is not None else 0.0
+
     def display_frame(self) -> float:
+        if self.deck_index:
+            row = self._row
+            if row is None:
+                return 0.0
+            if row["display_rate"] > 0.0:
+                return float(row["display"] + (time.perf_counter() - self._display_at) * row["display_rate"])
+            return float(row["display"])
         st = self._state
         if st is None:
             return 0.0
@@ -913,9 +1235,16 @@ class NativeFeeder(QtCore.QObject):
         return float(st.display)
 
     def heard_peak_dbfs(self) -> float:
+        if self.deck_index:
+            return float(self._row["peak"]) if self._row is not None else self.PEAK_FLOOR_DBFS
         return float(self._state.peak) if self._state is not None else self.PEAK_FLOOR_DBFS
 
     def take_buffer_stats(self) -> tuple[int, Optional[dict], int]:
+        if self.deck_index:
+            return 0, None, 1   # the outputs' buffers are deck 1's report
+        return self._take_buffer_stats()
+
+    def _take_buffer_stats(self) -> tuple[int, Optional[dict], int]:
         """(frames queued now, the observations since the last call or None, buffer capacity in frames), as
         PCMFeeder.take_buffer_stats, of the engine's own buffer (the setting; the device's fixed latency comes
         after it); the observations also hold "dropout_sec" (the device played silence for want of audio: the
@@ -943,6 +1272,9 @@ class NativeFeeder(QtCore.QObject):
                          "bucket_ms": float(st.hist_bucket_ms) if st is not None else 1.0,
                          "lowest_ms": float(st.lowest_ms) if st is not None else -1.0,
                          "output_open": bool(st.output_open) if st is not None else True,
+                         "rate": int(self.rate), "period_ms": float(st.period_ms) if st is not None else 0.0,
+                         "channels": int(st.out_channels) if st is not None else 0,
+                         "underruns": underruns,
                          "late": int(st.device_late) if st is not None else 0,
                          "max_gap_ms": float(st.max_gap_ms) if st is not None else 0.0,
                          "engine_thread": THREAD_STATES.get(int(st.threads) & 0xFF, "api") if st is not None else "api",

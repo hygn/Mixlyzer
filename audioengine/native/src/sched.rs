@@ -34,6 +34,33 @@ pub const POWER_PARTLY: u32 = 2; // some of it could not be turned off (Linux: u
 pub const POWER_REFUSED: u32 = 3;
 
 #[cfg_attr(target_os = "linux", allow(dead_code))] // Linux: the match's other arm
+/// A thread's state (THREADS) as the console says it.
+pub fn state_name(state: u32) -> &'static str {
+    match state {
+        NORMAL => "normal",
+        RAISED if cfg!(windows) => "above normal",
+        RAISED if cfg!(target_os = "macos") => "QoS user-interactive",
+        RAISED => "nice -10",
+        RAISED_RTKIT => "raised (rtkit)",
+        REALTIME if cfg!(windows) => "MMCSS Pro Audio",
+        REALTIME if cfg!(target_os = "macos") => "time-constraint",
+        REALTIME => "SCHED_FIFO",
+        REALTIME_RTKIT => "real-time (rtkit)",
+        REFUSED => "not raised (refused)",
+        _ => "the audio API's own",
+    }
+}
+
+/// Power throttling's state (POWER) as the console says it.
+pub fn power_name(state: u32) -> &'static str {
+    match state {
+        POWER_OFF => "off",
+        POWER_PARTLY => "partly off",
+        POWER_REFUSED => "not turned off (refused)",
+        _ => "left to the system",
+    }
+}
+
 pub const PRIORITY_NORMAL: u32 = 0;
 pub const PRIORITY_ABOVE_NORMAL: u32 = 1;
 pub const PRIORITY_HIGH: u32 = 2;
@@ -91,8 +118,10 @@ impl Sched {
         self.throttling = throttling;
         self.asked = true;
         self.apply(port);
-        eprintln!("[AudioEngine] priority {} power throttling {}: engine thread {}, output thread {}, power {}",
-            self.priority, self.throttling, self.engine, self.output_state(port), self.power);
+        log_line!("priority {}, power throttling {}: engine thread {}, output thread {}, power throttling {}",
+            ["normal", "above normal", "high"][self.priority as usize],
+            if self.throttling { "the system's choice" } else { "off" }, state_name(self.engine),
+            state_name(self.output_state(port)), power_name(self.power));
     }
 
     /// Each tick: an output thread not seen before (the device opened again) gets the setting.

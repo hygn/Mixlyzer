@@ -16,12 +16,32 @@ use crate::clock;
 use crate::deck::Decks;
 use crate::ipc::{Control, MAX_DECKS, MIDI_EVENT_GUI, MIDI_EVENT_HOTCUE_SET, MIDI_EVENT_RELATIVE, Reader, act, bind};
 use crate::midi::Midi;
+use crate::ipc::mix as keys;
+use crate::beatfx::BeatType;
+use crate::colorfx::ColorType;
 use crate::mixer::MixParams;
 
 // a binding's lamp (ipc.rs op::MIDI_MAP): 1 - 26 the JumpCUE A - Z
 pub const LAMP_PLAY: u8 = 32;
 pub const LAMP_CUE: u8 = 33;
 pub const LAMP_CHANNEL_CUE: u8 = 34; // the mixer channel's headphones CUE: lit while it is on
+pub const LAMP_CHANNEL_CUE_B: u8 = 35; // its headphones B CUE
+pub const LAMP_BEAT_FX: u8 = 36; // Beat FX on: lit (every deck's binding of it)
+// the mixer's own, lit while on (every deck's binding of them): FX FREQUENCY LOW, MID, HI; MONO SPLIT A, B; the
+// master's CUE A, B; TAP (a BPM tapped), the Sound Color FX picked (LAMP_COLOR + its code)
+pub const LAMP_BEAT_BAND: u8 = 37;
+pub const LAMP_HP_A_SPLIT: u8 = 40;
+pub const LAMP_HP_B_SPLIT: u8 = 41;
+pub const LAMP_MASTER_CUE_A: u8 = 42;
+pub const LAMP_MASTER_CUE_B: u8 = 43;
+pub const LAMP_BEAT_TAP: u8 = 44;
+pub const LAMP_COLOR: u8 = 45;
+pub const LAMP_VINYL: u8 = 52; // a deck's jog in VINYL mode (deck.rs lights; LAMP_COLOR's seven before it)
+// TAP: taps further apart than this start anew; the BPM from the last TAP_KEEP of them (more than two)
+const TAP_GAP_SEC: f64 = 2.0;
+const TAP_KEEP: usize = 8;
+// the TIME knob turned (a relative control): its time times this a step
+const TIME_STEP: f64 = 1.03;
 // a knob's steps acted on from one message at most (a fast turn)
 const RELATIVE_STEPS_MAX: u32 = 16;
 // the level meter: ui/track_info_panel.py VerticalPeakMeter's scale and fall; sent at most this often
@@ -64,40 +84,82 @@ struct Meter {
 
 pub struct Controller {
     midi: Option<Midi>,
+    // a port being opened on a thread of its own (an open takes tens of ms: the engine thread never waits for it)
+    opening: Option<std::sync::mpsc::Receiver<Result<Midi, String>>>,
+    port: String, // the input open or being opened ("": none)
+    closing: Option<std::thread::JoinHandle<()>>, // the last input let go, until it is (an open waits for it)
     pub midi_state: u32,
     bindings: Vec<Binding>,
     lamps_sent: [Option<u64>; MAX_DECKS],
     meter_gain: f64,
     meters: [Meter; MAX_DECKS],
     last_tick: f64,
+    taps: Vec<f64>,        // TAP's times
+    xpad_turned_on: bool,  // the X-PAD's touch turned Beat FX on (its release turns it off)
 }
 
 impl Controller {
     pub fn new() -> Controller {
         Controller {
             midi: None,
+            opening: None,
+            port: String::new(),
+            closing: None,
             midi_state: 0,
             bindings: vec![],
             lamps_sent: [None; MAX_DECKS],
             meter_gain: 1.0,
             meters: [Meter { db: METER_FLOOR_DBFS, sent: None, at: 0.0 }; MAX_DECKS],
             last_tick: clock::now(),
+            taps: Vec::with_capacity(TAP_KEEP),
+            xpad_turned_on: false,
         }
     }
 
+    /// The input ``name`` opened ("": none), on a thread of its own: taken by the engine thread when it is
+    /// (take_opened).
     pub fn open_midi(&mut self, name: &str, wake: Option<std::thread::Thread>) {
+        // the input already open or being opened: kept (asked again, it is not let go and taken anew, which the
+        // system may refuse while the old port is still being closed: MMSYSERR_ALLOCATED)
+        if !name.is_empty() && name == self.port && (self.midi.is_some() || self.opening.is_some()) {
+            return;
+        }
         self.close_midi();
+        self.opening = None;   // one asked for before: dropped when it comes
         if name.is_empty() {
             return;
         }
-        match Midi::open(name, wake) {
+        let (tx, rx) = std::sync::mpsc::channel();
+        self.port = name.to_string();
+        let name = name.to_string();
+        let closing = self.closing.take();
+        std::thread::spawn(move || {
+            if let Some(c) = closing {
+                let _ = c.join(); // the port let go first
+            }
+            let _ = tx.send(Midi::open(&name, wake));
+        });
+        self.opening = Some(rx);
+    }
+
+    /// The input opened meanwhile, when it is.
+    fn take_opened(&mut self) {
+        let Some(rx) = self.opening.as_ref() else { return };
+        let result = match rx.try_recv() {
+            Ok(r) => r,
+            Err(std::sync::mpsc::TryRecvError::Empty) => return,
+            Err(std::sync::mpsc::TryRecvError::Disconnected) => Err("the MIDI input's opening thread ended".into()),
+        };
+        self.opening = None;
+        match result {
             Ok(m) => {
-                eprintln!("[AudioEngine] MIDI input: {}", m.name);
+                log_line!("MIDI input: {}", m.name);
                 self.midi = Some(m);
                 self.midi_state = 1;
+                self.lamps_sent = [None; MAX_DECKS];   // its lights sent whole at the next tick
             }
             Err(err) => {
-                eprintln!("[AudioEngine] {err}");
+                log_line!("{err}");
                 self.midi_state = 2;
             }
         }
@@ -108,7 +170,17 @@ impl Controller {
             self.send_lamps(k, 0, None); // the controller's lights out
             self.send_meter(k, 0);
         }
-        self.midi = None;
+        // let go on a thread of its own (closing a port takes as long as opening one); the next open waits for it
+        if let Some(m) = self.midi.take() {
+            let before = self.closing.take();
+            self.closing = Some(std::thread::spawn(move || {
+                if let Some(b) = before {
+                    let _ = b.join();
+                }
+                drop(m)
+            }));
+        }
+        self.port.clear();
         self.midi_state = 0;
         self.lamps_sent = [None; MAX_DECKS];
     }
@@ -150,6 +222,7 @@ impl Controller {
 
     /// The messages come since the last call: each acted on, and into the GUI's ring.
     pub fn read_midi(&mut self, decks: &mut Decks, mix: &MixParams, ctl: &Control) {
+        self.take_opened();
         let Some(midi) = self.midi.as_ref() else { return };
         for (at, msg) in midi.drain() {
             let (flags, gui_action, steps) = self.message(decks, mix, at, msg);
@@ -200,8 +273,146 @@ impl Controller {
             if k >= MAX_DECKS {
                 continue;
             }
-            // the mixer's: the crossfader, the headphones, a channel's CUE (its deck need not exist)
+            // the mixer's: the crossfader, the headphones, a channel's CUE, its COLOR knob, the master, the booth, Sound
+            // Color FX and Beat FX (a channel's deck need not exist)
+            let unit = value as f64 / top;
+            let pressed = d2 > 0;
             match code {
+                act::CHANNEL_CUE_B => {
+                    if d2 > 0 {
+                        mix.toggle_cue_bus(k, 1);
+                    }
+                    continue;
+                }
+                act::HEADPHONES_B_MIX => {
+                    mix.set(keys::HP_B_MIX, unit);
+                    continue;
+                }
+                act::HEADPHONES_B_LEVEL => {
+                    mix.set(keys::HP_B_LEVEL, unit);
+                    continue;
+                }
+                act::MASTER_LEVEL => {
+                    mix.set(keys::MASTER_LEVEL, unit);
+                    continue;
+                }
+                act::BOOTH_LEVEL => {
+                    mix.set(keys::BOOTH_LEVEL, unit);
+                    continue;
+                }
+                act::BOOTH_EQ_HI => {
+                    mix.set(keys::BOOTH_EQ_HI, unit);
+                    continue;
+                }
+                act::BOOTH_EQ_LOW => {
+                    mix.set(keys::BOOTH_EQ_LOW, unit);
+                    continue;
+                }
+                act::COLOR_PARAM => {
+                    mix.set(keys::COLOR_PARAM, unit);
+                    continue;
+                }
+                c if (act::COLOR_SELECT..act::COLOR_SELECT + ColorType::COUNT as u32).contains(&c) => {
+                    // the effect's button; pressed again it turns the effect off
+                    if pressed {
+                        let code = (c - act::COLOR_SELECT) as f64;
+                        let off = ColorType::Off as u8 as f64;
+                        mix.set(keys::COLOR_TYPE, if mix.get(keys::COLOR_TYPE) == code { off } else { code });
+                    }
+                    continue;
+                }
+                act::BEAT_FX_TIME => {
+                    self.beat_time(mix, unit, steps);
+                    continue;
+                }
+                act::BEAT_FX_TAP => {
+                    if pressed {
+                        self.tap(mix, at);
+                    }
+                    continue;
+                }
+                act::BEAT_FX_AUTO => {
+                    if pressed {
+                        mix.set(keys::BEAT_BPM, 0.0);
+                        self.taps.clear();
+                    }
+                    continue;
+                }
+                act::BEAT_FX_XPAD => {
+                    // MOBIUS's waveform, REVERB's filter; the others' BEAT, the pad's width split among its values
+                    let kind = BeatType::from_code(mix.get(keys::BEAT_TYPE) as u8);
+                    if matches!(kind, BeatType::Mobius | BeatType::Reverb) {
+                        mix.set(keys::BEAT_XPAD, unit);
+                    } else {
+                        let list = kind.beats();
+                        mix.set(keys::BEAT_BEAT, list[((unit * list.len() as f64) as usize).min(list.len() - 1)]);
+                        mix.set(keys::BEAT_TIME, 0.0);
+                    }
+                    continue;
+                }
+                act::BEAT_FX_XPAD_TOUCH => {
+                    if pressed && mix.get(keys::BEAT_ON) == 0.0 {
+                        mix.set(keys::BEAT_ON, 1.0);
+                        self.xpad_turned_on = true;
+                    } else if !pressed {
+                        if std::mem::take(&mut self.xpad_turned_on) {
+                            mix.set(keys::BEAT_ON, 0.0);
+                        }
+                        if BeatType::from_code(mix.get(keys::BEAT_TYPE) as u8) == BeatType::Reverb {
+                            mix.set(keys::BEAT_XPAD, -1.0); // its filter off with the finger
+                        }
+                    }
+                    continue;
+                }
+                c if (act::BEAT_FX_BAND..act::BEAT_FX_BAND + 3).contains(&c) => {
+                    if pressed {
+                        mix.toggle_band((c - act::BEAT_FX_BAND) as usize);
+                    }
+                    continue;
+                }
+                act::HEADPHONES_A_SPLIT | act::HEADPHONES_B_SPLIT | act::MASTER_CUE_A | act::MASTER_CUE_B => {
+                    if pressed {
+                        mix.step(match code {
+                            act::HEADPHONES_A_SPLIT => keys::HP_A_SPLIT,
+                            act::HEADPHONES_B_SPLIT => keys::HP_B_SPLIT,
+                            act::MASTER_CUE_A => keys::MASTER_CUE_A,
+                            _ => keys::MASTER_CUE_B,
+                        }, 1);
+                    }
+                    continue;
+                }
+                act::BEAT_FX_ON => {
+                    if pressed {
+                        mix.step(keys::BEAT_ON, 1);
+                    }
+                    continue;
+                }
+                act::BEAT_FX_LEVEL => {
+                    mix.set(keys::BEAT_LEVEL, unit);
+                    continue;
+                }
+                act::BEAT_FX_BEAT_DOWN | act::BEAT_FX_BEAT_UP => {
+                    if pressed {
+                        mix.step(keys::BEAT_BEAT, if code == act::BEAT_FX_BEAT_UP { 1 } else { -1 });
+                    }
+                    continue;
+                }
+                act::BEAT_FX_SELECT_BACK => {
+                    if pressed {
+                        mix.step(keys::BEAT_TYPE, -1);
+                    }
+                    continue;
+                }
+                act::BEAT_FX_SELECT | act::BEAT_FX_CHANNEL => {
+                    // the selector stepped (an effect picked anew: its BEAT at its default)
+                    let key = if code == act::BEAT_FX_SELECT { keys::BEAT_TYPE } else { keys::BEAT_CHANNEL };
+                    if steps != 0 {
+                        mix.step(key, steps.signum() as i64);
+                    } else if pressed {
+                        mix.step(key, 1);
+                    }
+                    continue;
+                }
                 act::CROSSFADER => {
                     mix.set_crossfader(value as f64 / top);
                     continue;
@@ -259,7 +470,10 @@ impl Controller {
         }
         for k in 0..MAX_DECKS {
             let lights = decks.slot(k).map(|s| s.deck.lights(&s.engine, now)).unwrap_or(0)
-                | (mix.cue_on(k) as u64) << LAMP_CHANNEL_CUE;
+                | (mix.cue_on(k) as u64) << LAMP_CHANNEL_CUE
+                | (mix.cue_on_bus(k, 1) as u64) << LAMP_CHANNEL_CUE_B
+                | ((mix.get(keys::BEAT_ON) != 0.0) as u64) << LAMP_BEAT_FX
+                | Self::mixer_lights(mix);
             if self.lamps_sent[k] != Some(lights) {
                 let before = self.lamps_sent[k];
                 self.send_lamps(k, lights, before);
@@ -279,6 +493,74 @@ impl Controller {
                 }
             }
         }
+    }
+
+    /// The mixer's own lights (every deck's bindings of them).
+    fn mixer_lights(mix: &MixParams) -> u64 {
+        let on = |key: usize| (mix.get(key) != 0.0) as u64;
+        let bands = mix.get(keys::BEAT_BANDS) as u64 & 7;
+        let color = mix.get(keys::COLOR_TYPE) as u64;
+        bands << LAMP_BEAT_BAND
+            | on(keys::HP_A_SPLIT) << LAMP_HP_A_SPLIT
+            | on(keys::HP_B_SPLIT) << LAMP_HP_B_SPLIT
+            | on(keys::MASTER_CUE_A) << LAMP_MASTER_CUE_A
+            | on(keys::MASTER_CUE_B) << LAMP_MASTER_CUE_B
+            | on(keys::BEAT_BPM) << LAMP_BEAT_TAP
+            | if color < ColorType::COUNT as u64 { 1u64 << (LAMP_COLOR as u64 + color) } else { 0 }
+    }
+
+    /// TAP pressed at ``at``: the BPM from the taps so far (more than two, none further apart than TAP_GAP_SEC), its
+    /// BEAT then 1 (the manual's), the TIME knob's time let go.
+    fn tap(&mut self, mix: &MixParams, at: f64) {
+        if self.taps.last().is_some_and(|&t| at - t > TAP_GAP_SEC || at < t) {
+            self.taps.clear();
+        }
+        if self.taps.len() == TAP_KEEP {
+            self.taps.remove(0);
+        }
+        self.taps.push(at);
+        if self.taps.len() >= 3 {
+            let span = self.taps[self.taps.len() - 1] - self.taps[0];
+            let bpm = 60.0 * (self.taps.len() - 1) as f64 / span.max(1e-3);
+            mix.set(keys::BEAT_BPM, bpm);
+            if BeatType::from_code(mix.get(keys::BEAT_TYPE) as u8) != BeatType::Reverb {
+                mix.set(keys::BEAT_BEAT, 1.0);
+            }
+            mix.set(keys::BEAT_TIME, 0.0);
+        }
+    }
+
+    /// The TIME knob: a fader's ``unit`` over the effect's time range (log; MOBIUS's falling below the middle,
+    /// REVERB's its level 1 - 100 %), or a knob's ``steps`` moving the time it plays at by TIME_STEP each.
+    fn beat_time(&self, mix: &MixParams, unit: f64, steps: i32) {
+        let kind = BeatType::from_code(mix.get(keys::BEAT_TYPE) as u8);
+        if kind == BeatType::Reverb {
+            let v = if steps != 0 { kind.snap(mix.get(keys::BEAT_BEAT)) + steps as f64 } else { 1.0 + 99.0 * unit };
+            mix.set(keys::BEAT_BEAT, v.clamp(1.0, 100.0));
+            return;
+        }
+        let (lo, hi) = kind.time_range();
+        let ms = if steps != 0 {
+            let now = match mix.get(keys::BEAT_TIME) {
+                0.0 => {
+                    let bpm = match mix.get(keys::BEAT_BPM) {
+                        0.0 => mix.beat_bpm(),
+                        b => b,
+                    };
+                    60000.0 / if bpm > 20.0 { bpm } else { 120.0 } * kind.snap(mix.get(keys::BEAT_BEAT))
+                }
+                t => t,
+            };
+            let m = (now.abs() * TIME_STEP.powi(steps)).clamp(lo, hi);
+            if now < 0.0 { -m } else { m }
+        } else if kind == BeatType::Mobius {
+            let u = (2.0 * unit - 1.0).abs();
+            let m = lo * (hi / lo).powf(1.0 - u);
+            if unit < 0.5 { -m } else { m }
+        } else {
+            lo * (hi / lo).powf(unit)
+        };
+        mix.set(keys::BEAT_TIME, ms);
     }
 
     /// Deck ``k``'s bindings' lights as ``lights`` (Deck::lights), those that changed since ``before`` (None: all).
@@ -499,6 +781,39 @@ mod tests {
     }
 
     #[test]
+    fn effect_selector_and_jog_mode() {
+        let (mut c, mut d, m) = rig(&[
+            (0x94, 0x63, 0, act::BEAT_FX_SELECT),
+            (0x94, 0x64, 0, act::BEAT_FX_SELECT_BACK),
+            (0x90, 0x10, 0, act::JOG_MODE),
+            (0x90, 0x36, 0, act::JOG_TOUCH),
+        ]);
+        let first = m.get(keys::BEAT_TYPE);
+        c.message(&mut d, &m, 0.0, [0x94, 0x63, 0x7F]); // the next
+        c.message(&mut d, &m, 0.0, [0x94, 0x63, 0x00]);
+        assert_ne!(m.get(keys::BEAT_TYPE), first);
+        c.message(&mut d, &m, 0.0, [0x94, 0x64, 0x7F]); // the previous: back
+        c.message(&mut d, &m, 0.0, [0x94, 0x64, 0x00]); // let go: nothing
+        assert_eq!(m.get(keys::BEAT_TYPE), first);
+        c.message(&mut d, &m, 0.0, [0x94, 0x64, 0x7F]); // from the first, the last
+        assert_ne!(m.get(keys::BEAT_TYPE), first);
+
+        assert!(d.first().deck.jog_vinyl(), "VINYL at the start");
+        c.message(&mut d, &m, 0.0, [0x90, 0x36, 0x7F]); // the top touched: the record held
+        assert!(d.first().deck.jog_held());
+        c.message(&mut d, &m, 0.0, [0x90, 0x10, 0x7F]); // JOG MODE: CDJ, the record let go
+        c.message(&mut d, &m, 0.0, [0x90, 0x10, 0x00]);
+        assert!(!d.first().deck.jog_vinyl() && !d.first().deck.jog_held());
+        c.message(&mut d, &m, 0.0, [0x90, 0x36, 0x00]);
+        c.message(&mut d, &m, 0.0, [0x90, 0x36, 0x7F]); // CDJ: the top's touch ignored
+        assert!(!d.first().deck.jog_held());
+        c.message(&mut d, &m, 0.0, [0x90, 0x36, 0x00]);
+        c.message(&mut d, &m, 0.0, [0x90, 0x10, 0x7F]); // VINYL again, a deck made later too
+        assert!(d.first().deck.jog_vinyl());
+        assert!(d.get(1).deck.jog_vinyl());
+    }
+
+    #[test]
     fn mixer_actions() {
         let (mut c, mut d, m) = rig(&[
             (0xB0, 0x0F, 0, act::EQ_LOW),
@@ -511,7 +826,8 @@ mod tests {
         // through deck 1's mixer channel (its strip as the callback runs it)
         let lane: Vec<f32> = x.chunks_exact(2).flat_map(|f| [f[0], f[1], 0.0, 0.0]).collect();
         let (mut pfl, mut post) = (vec![0f32; x.len()], vec![0f32; x.len()]);
-        crate::mixer::Strip::new(48000.0, 2).process(&lane, 4800, 2, &d.first().engine.strip, &mut pfl, &mut post);
+        crate::mixer::Strip::new(48000.0, 1).process(&lane, 4800, 2, &d.first().engine.strip, &m.read(), &mut pfl,
+                                                     &mut post, None);
         let rms = (post[4800..].iter().map(|v| (*v as f64).powi(2)).sum::<f64>() / 4800.0).sqrt();
         assert!(rms < 0.05, "50 Hz with the low killed: {rms}");
         c.message(&mut d, &m, 0.0, [0xB6, 0x1F, 0]);
@@ -522,7 +838,7 @@ mod tests {
         assert!(!m.cue_on(1));
         c.message(&mut d, &m, 0.0, [0xB6, 0x0C, 127]);
         let mix = m.read();
-        assert_eq!(mix.cue_mix, 1.0);
-        assert_eq!(mix.gains[0], 1.0, "deck 1 THRU: the crossfader passes it");
+        assert_eq!(mix.hp[0].0, 1.0);
+        assert_eq!(mix.assign[0], crate::mixer::Assign::Thru, "deck 1 THRU: the crossfader passes it");
     }
 }

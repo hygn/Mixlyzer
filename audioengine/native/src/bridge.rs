@@ -48,8 +48,14 @@ const KP: f64 = 0.4;
 const KI: f64 = 0.04;
 /// The drift's room around 1 (the clocks' drift is well inside it).
 const MAX_DRIFT: f64 = 0.001;
-/// A surplus this far over the buffer (the reader stalled, the writer not) is skipped at once.
+/// A surplus this far over the buffer (the reader stalled, the writer not; the buffer set this much lower) is
+/// skipped at once.
 const RESYNC_SEC: f64 = 0.1;
+/// A reader held up longer than this (or three of its callbacks) between its device's callbacks (its thread late,
+/// its device run dry meanwhile: already heard as a gap) starts again as at a restart: what was written meanwhile
+/// dropped, the bridge filled to its buffer, the loop settled anew. Followed on instead, the catch-up's surplus and
+/// its queue's jump were taken for drift: a 60 ms hold drove it to its 1000 ppm limit, drained at 1 ms/s for 50 s.
+const GAP_SEC: f64 = 0.02;
 
 pub struct Bridge {
     buf: Box<[UnsafeCell<f32>]>, // stereo frames
@@ -79,6 +85,7 @@ pub struct Bridge {
     w_queue_mean: UnsafeCell<f64>,
     w_chunk_mean: UnsafeCell<f64>,
     pub underruns: AtomicU64,
+    pub resyncs: AtomicU64, // surpluses skipped (RESYNC_SEC): the outputs' thread reopens a device that keeps needing them
     drift: AtomicU64,       // f64 bits: the reader's ratio - 1
     heard: HeardClock,
 }
@@ -110,6 +117,7 @@ impl Bridge {
             w_queue_mean: UnsafeCell::new(-1.0),
             w_chunk_mean: UnsafeCell::new(-1.0),
             underruns: AtomicU64::new(0),
+            resyncs: AtomicU64::new(0),
             drift: AtomicU64::new(0f64.to_bits()),
             heard: HeardClock::default(),
         }
@@ -246,6 +254,11 @@ impl Bridge {
     /// before its device plays it.
     fn fill_at(&self, out: &mut [f32], ch_out: usize, rd: &mut BridgeReader, latency: f64, now: f64) {
         let frames = out.len() / ch_out;
+        // a gap: longer than three of its callbacks (GAP_SEC at least): started again
+        let usual = if rd.chunk_mean > 0.0 { rd.chunk_mean / self.rate } else { 0.0 };
+        if rd.last_at > 0.0 && now - rd.last_at > GAP_SEC.max(3.0 * usual) {
+            self.restart.store(true, Ordering::Release);
+        }
         let write = self.write.load(Ordering::Acquire);
         let mut read = self.read.load(Ordering::Relaxed);
         if self.restart.swap(false, Ordering::AcqRel) {
@@ -259,6 +272,7 @@ impl Bridge {
             rd.nominal = f64::from_bits(self.nominal.load(Ordering::Acquire));
             rd.ratio = rd.nominal;
         }
+        rd.last_at = now;
         let pair = self.pair.load(Ordering::Relaxed);
         let (left, right) = ((pair & 0xFF) as usize, (pair >> 8 & 0xFF) as usize);
         let target = self.target();
@@ -309,6 +323,7 @@ impl Bridge {
                 if let Some(skip) = rd.follow(level, dt, target, self.rate) {
                     read = (read + skip).min(write);
                     rd.reset_history();
+                    self.resyncs.fetch_add(1, Ordering::Relaxed);
                 }
                 self.drift.store((KI * rd.integral).to_bits(), Ordering::Relaxed);
             }
@@ -333,6 +348,13 @@ pub struct Sink {
 impl Sink {
     pub fn new(port: Arc<Port>, rate: f64, bridges: Vec<(usize, Arc<Bridge>)>) -> Sink {
         Sink { port, rate, bridges }
+    }
+
+    /// Its readers fill again from what is written now (Source::restarted).
+    pub fn restart_bridges(&self) {
+        for (_, b) in &self.bridges {
+            b.restart.store(true, Ordering::Release);
+        }
     }
 
     /// The device's callback: each bus read into its channels (summed where they share them), in pieces of the
@@ -388,6 +410,7 @@ pub(crate) struct BridgeReader {
     // drift alone, not on the fill's surplus; then moved to the buffer at SLEW
     hold: Option<f64>,
     settled: f64, // seconds played since the bridge filled (up to SETTLE_SEC)
+    last_at: f64, // its last callback's time (0: none yet)
 }
 
 impl BridgeReader {
@@ -407,6 +430,7 @@ impl BridgeReader {
             chunk_mean: -1.0,
             hold: None,
             settled: 0.0,
+            last_at: 0.0,
         }
     }
 
@@ -473,7 +497,9 @@ impl BridgeReader {
         *hold += moved;
         let feed = -moved / (rate * step);
         let error = (mean - *hold) / rate;
-        if error > RESYNC_SEC {
+        // far over the buffer itself (not the level held: a reader stalled while the bridge settled would have its
+        // surplus held, then moved off at SLEW only): skipped at once
+        if (mean - target) / rate > RESYNC_SEC {
             return Some((mean - target) as u64);
         }
         self.integral = (self.integral + error * step).clamp(-MAX_DRIFT / KI, MAX_DRIFT / KI);
@@ -617,7 +643,8 @@ mod tests {
     /// The writer at the main device's clock (``drift`` off the reader's), in its periods, the reader in its own at
     /// ``out_rate``, both woken late now and then by up to ``jitter`` s and topping their device up to full (a shared
     /// stream): the bridge is followed without running dry, the ratio settles on the drift, the level on the buffer.
-    fn follow_drift(drift: f64, jitter: f64, out_rate: f64) {
+    /// ``stall``: the reader not called from a time for so long (its device's callbacks held up, the writer's not).
+    fn follow_drift(drift: f64, jitter: f64, out_rate: f64, stall: Option<(f64, f64)>) {
         let rate = 48000.0;
         let bridge = Bridge::new(48000, rate);
         let (w_period, r_period) = (480usize, (out_rate / 100.0) as usize - 7);
@@ -637,6 +664,7 @@ mod tests {
         };
         let mut drifts = Vec::new();
         let mut early = f64::NAN;
+        let mut most_after_stall = 0u64;
         while tr < 200.0 {
             if tw <= tr {
                 let queue = (w_given - tw * w_rate).max(0.0);
@@ -646,6 +674,16 @@ mod tests {
                 w_given += n as f64;
                 tw += w_period as f64 / w_rate + late();
             } else {
+                if let Some((at, len)) = stall {
+                    if tr >= at && tr < at + len {
+                        tr = at + len; // its device's clock went on: its queue played out meanwhile
+                        continue;
+                    }
+                    if tr > at + len + SETTLE_SEC + 2.0 {
+                        let level = bridge.write.load(Ordering::Relaxed) - bridge.read.load(Ordering::Relaxed);
+                        most_after_stall = most_after_stall.max(level);
+                    }
+                }
                 let queue = (r_taken - tr * r_rate).max(0.0);
                 let n = (r_buf - queue).round().max(0.0) as usize;
                 let mut out = vec![0f32; n * 2];
@@ -668,8 +706,15 @@ mod tests {
         let spread = drifts.iter().fold(0f64, |m, &v| m.max((v - mean).abs()));
         eprintln!("drift {:+.0} ppm, jitter {:.1} ms, {out_rate} Hz: read {mean:+.2} +- {spread:.2} ppm (at 20 s {early:+.1})",
                   drift * 1e6, jitter * 1e3);
-        // on its way there from 0, not past it (the fill's surplus is no drift)
-        assert!(early * drift >= 0.0 && early.abs() <= 1.05 * drift.abs() * 1e6 + 15.0, "at 20 s {early:.1} ppm");
+        if stall.is_some() {
+            // back to the buffer, not holding the stall's surplus
+            let most_ms = most_after_stall as f64 / rate * 1000.0;
+            eprintln!("  after the stall {stall:?}: the bridge held at most {most_ms:.1} ms");
+            assert!(most_ms < (bridge.target() / rate + RESYNC_SEC) * 1000.0, "held {most_ms:.1} ms after the stall");
+        } else {
+            // on its way there from 0, not past it (the fill's surplus is no drift)
+            assert!(early * drift >= 0.0 && early.abs() <= 1.05 * drift.abs() * 1e6 + 15.0, "at 20 s {early:.1} ppm");
+        }
         assert!((mean - drift * 1e6).abs() < 2.0 && spread < 8.0, "drift {mean:.2} +- {spread:.2} ppm for {}", drift * 1e6);
     }
 
@@ -710,10 +755,18 @@ mod tests {
     fn follows_a_faster_and_a_slower_clock() {
         for jitter in [0.0, 0.002] {
             for out_rate in [48000.0, 44100.0] {
-                follow_drift(250e-6, jitter, out_rate);
-                follow_drift(-180e-6, jitter, out_rate);
-                follow_drift(0.0, jitter, out_rate);
+                follow_drift(250e-6, jitter, out_rate, None);
+                follow_drift(-180e-6, jitter, out_rate, None);
+                follow_drift(0.0, jitter, out_rate, None);
             }
+        }
+    }
+
+    /// The reader held up for 1.5 s (the bridge full), while it settles and later: back to its buffer at once.
+    #[test]
+    fn a_stalled_reader_comes_back_to_its_buffer() {
+        for at in [1.0, 60.0] {
+            follow_drift(120e-6, 0.002, 44100.0, Some((at, 1.5)));
         }
     }
 }

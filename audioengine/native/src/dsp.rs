@@ -5,11 +5,17 @@
 pub fn fade(out: &mut [f32], ch: usize, fade: usize, rising: bool) {
     for (i, frame) in out.chunks_exact_mut(ch).enumerate() {
         let r = ((i as f32 + 0.5) / fade.max(1) as f32).clamp(0.0, 1.0);
-        let g = if rising { r } else { 1.0 - r };
+        let g = if rising { fade_gain(r) } else { 1.0 - fade_gain(r) };
         for v in frame {
             *v *= g;
         }
     }
+}
+
+/// A fade's gain at ``r`` (0 .. 1) of its way: a raised cosine, no corner at either end (a linear ramp's corners
+/// click on low notes); a fade in and the matching fade out sum to 1 (a crossfade keeps the level).
+pub fn fade_gain(r: f32) -> f32 {
+    0.5 - 0.5 * (std::f32::consts::PI * r.clamp(0.0, 1.0)).cos()
 }
 
 /// Linear up to |x| = knee, then a tanh curve to the ceiling 1.0 (continuous slope at the knee).

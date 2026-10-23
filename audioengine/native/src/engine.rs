@@ -28,6 +28,9 @@ enum Standby {
     Seek,
     Jump,
     Resume, // a scrub let go: the tempo's stream from a point ahead (resume_at)
+    // stopped off unity: the stream from where play would start (CUE's preview, PLAY), prepared while stopped, so
+    // a start is no stream restart in one tick (~10 ms of work: CUE tapped fast ran a small buffer dry)
+    Start,
 }
 
 pub struct Engine {
@@ -54,6 +57,7 @@ pub struct Engine {
     // the stream prepared for it (Standby::Resume) takes over
     resume_at: Option<f64>,
     prep_cost: f64, // one prepare_step's cost (s), smoothed: the standby's work stops before it would overrun
+    start_step: f64, // the step Standby::Start was prepared at (the tempo changed while stopped: prepared again)
 
     pos: f64,
     pub playing: bool,
@@ -134,6 +138,7 @@ impl Engine {
             pending_seek: None,
             resume_at: None,
             prep_cost: 0.0005,
+            start_step: 0.0,
             pos: 0.0,
             playing: false,
             scrubbing: false,
@@ -157,7 +162,7 @@ impl Engine {
             end_out_frame: None,
             sent_finished: false,
             buffer_ms: 40.0,
-            fade_frames: (rate as usize / 250).max(1),
+            fade_frames: (rate as usize / 100).max(1), // 10 ms: start, stop, a seek's crossfade
             chunk_frames: 2048,
             idle_queue_frames: (rate as usize / 50).max(1),
             scratch_queue_frames: ((r * 0.02) as usize).max(1), // in the ring; the device's buffer comes after
@@ -305,6 +310,7 @@ impl Engine {
         }
         if on {
             if self.playing {
+                self.queue_for_fade();
                 let heard = self.playhead_frame();
                 self.ring.flush();
                 self.pos = heard.clamp(0.0, self.len as f64);
@@ -405,6 +411,7 @@ impl Engine {
         if self.pcm.is_none() || self.pos >= self.len as f64 {
             return false;
         }
+        self.take_start_standby();
         self.playing = true;
         self.monitor.observe(None, 0.0);
         self.probe = Some((self.ring.written(), self.command_at, 0));
@@ -430,6 +437,7 @@ impl Engine {
             self.playing = false;
             return;
         }
+        self.queue_for_fade();
         let heard = self.playhead_frame();
         self.playing = false;
         self.monitor.observe(None, 0.0);
@@ -440,6 +448,17 @@ impl Engine {
         self.ring.flush();
         self.clicks.clear_voices();
         self.pos = heard.clamp(0.0, self.len as f64);
+    }
+
+    /// Before a flush (pause, the record grabbed): a fade's worth and more queued past the frame being read, so
+    /// the callback's fade-out runs whole (a small buffer the device has just read holds a few frames only: the
+    /// fade cut short clicks).
+    fn queue_for_fade(&mut self) {
+        let queued = self.ring.written().saturating_sub(self.ring.read_index());
+        let want = 2 * self.fade_frames as u64;
+        if self.playing && self.pcm.is_some() && self.pos < self.len as f64 && queued < want {
+            self.render_block(((want - queued) as usize).min(self.ring.free() as usize));
+        }
     }
 
     pub fn stop(&mut self) {
@@ -560,6 +579,44 @@ impl Engine {
                 return true;
             }
         }
+    }
+
+    /// Stopped off unity with the time stretch: the stream from where play would start, prepared a little each
+    /// tick (Standby::Start); else none wanted.
+    fn keep_start_standby(&mut self) {
+        let step = self.step();
+        let wanted = self.standby.is_some() && !self.playing && !self.scratching && !self.scrubbing
+            && self.pcm.is_some() && self.pos < self.len as f64 && step > 0.0 && (step - 1.0).abs() > 1e-8;
+        let starting = matches!(self.standby_for, Some((Standby::Start, _)));
+        if !wanted {
+            if starting {
+                self.standby_for = None;
+            }
+            return;
+        }
+        if starting && step != self.start_step {
+            self.standby_for = None; // the tempo moved: prepared again at the new one
+        }
+        if self.standby_for.is_none() || starting {
+            self.start_step = step;
+            self.prepare_standby_at(Standby::Start, self.pos, step);
+        }
+    }
+
+    /// play(): the stream prepared here while stopped taken (the rest of its work done now: none once it had a
+    /// few ticks), so the start renders on in sequence instead of restarting the stream.
+    fn take_start_standby(&mut self) {
+        let here = self.pos.clamp(0.0, self.len as f64);
+        if self.standby_for != Some((Standby::Start, here)) || self.step() != self.start_step {
+            if matches!(self.standby_for, Some((Standby::Start, _))) {
+                self.standby_for = None;
+            }
+            return;
+        }
+        let (Some(sb), Some(pcm)) = (self.standby.as_mut(), self.pcm.as_ref()) else { return };
+        while !sb.prepare_step(pcm.data(), self.fade_frames) {}
+        std::mem::swap(&mut self.stretch, &mut self.standby);
+        self.standby_for = None;
     }
 
     fn cancel_standby(&mut self) {
@@ -900,14 +957,16 @@ impl Engine {
     // The feed: once a tick
     pub fn tick(&mut self) {
         let resuming = matches!(self.standby_for, Some((Standby::Resume, _)));
-        if self.standby_for.is_some() && !self.can_defer() && !(resuming && self.playing && !self.scrubbing) {
+        let starting = matches!(self.standby_for, Some((Standby::Start, _)));
+        if self.standby_for.is_some() && !starting && !self.can_defer() && !(resuming && self.playing && !self.scrubbing) {
             self.cancel_standby(); // scrubbing, scratching, back at unity: no longer wanted
         }
         if self.resume_at.is_some() && (!self.playing || (self.tempo() - 1.0).abs() <= 1e-8) {
             self.cancel_standby(); // paused, or the tempo back at unity: nothing to resume to
         }
+        self.keep_start_standby();
         // the ring first (a small buffer cannot wait), then the standby stretcher's work (a jump's, a seek's, a
-        // scrub's resume: a little each tick, so it is ready when wanted), then the ring again
+        // scrub's resume, a start's: a little each tick, so it is ready when wanted), then the ring again
         self.fill();
         if self.standby_for.is_some() && self.standby_ready() {
             if let Some(target) = self.pending_seek {

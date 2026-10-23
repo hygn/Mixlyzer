@@ -28,7 +28,7 @@ use cpal::{FromSample, SizedSample};
 
 use crate::bridge::{Bridge, BridgeReader, Sink};
 use crate::clock;
-use crate::mixer::{Mixer, NO_CHANNEL};
+use crate::mixer::{Mixer, NO_CHANNEL, Wanted};
 
 /// An open device's side of things: what its output thread reports and is told. The main device's lanes share
 /// one; each bridge has its own.
@@ -149,7 +149,7 @@ impl Ring {
             cap: cap_frames,
             ch,
             rate,
-            fade: (rate / 250.0).max(1.0) as u64, // 4 ms
+            fade: (rate / 100.0).max(1.0) as u64, // 10 ms, a raised cosine (dsp::fade_gain)
             write: AtomicU64::new(0),
             read: AtomicU64::new(0),
             flush_gen: AtomicU64::new(0),
@@ -239,7 +239,7 @@ impl Ring {
             if read < write {
                 let at = (read % self.cap) as usize * self.ch;
                 let gain = if ls.fade_left > 0 {
-                    let g = ls.fade_left as f32 / self.fade as f32;
+                    let g = crate::dsp::fade_gain(ls.fade_left as f32 / self.fade as f32);
                     ls.fade_left -= 1;
                     if ls.fade_left == 0 {
                         read = read.max(ls.cut).saturating_sub(1); // +1 below
@@ -294,8 +294,13 @@ impl Ring {
         let bridges: [Option<&Bridge>; BRIDGED_BUSES] = std::array::from_fn(|k| Some(&*bus.bridges[k]).filter(|b| b.active()));
         let lch = self.ch; // a lane's frame: the deck's music and aids
         let lane_len = SCRATCH_FRAMES * lch;
-        let [_, _, cue_l, cue_r, _, _] = mix.routes;
-        let headphones = cue_l != NO_CHANNEL || cue_r != NO_CHANNEL || bridges[0].is_some();
+        let r = mix.routes;
+        let routed = |l: usize| r[l] != NO_CHANNEL || r[l + 1] != NO_CHANNEL;
+        // each bus made where it is heard: routed to the main device's channels or bridged to a device of its own
+        let wanted = Wanted {
+            headphones: [routed(2) || bridges[0].is_some(), routed(6) || bridges[2].is_some()],
+            booth: routed(4) || bridges[1].is_some(),
+        };
         // each lane's report covers the whole callback: where it started and what it took
         let mut start_read = [0u64; MAX_DECKS];
         let mut taken = [0u64; MAX_DECKS];
@@ -315,14 +320,17 @@ impl Ring {
             }
             let blocks: [Option<&[f32]>; MAX_DECKS] =
                 std::array::from_fn(|k| gave[k].then(|| &state.scratch[k * lane_len..k * lane_len + n * lch]));
-            state.mixer.process(&blocks, n, &mix, &bus.params, headphones);
+            state.mixer.process(&blocks, n, &mix, &bus.params, wanted);
             let out = &mut out[done * ch_out..(done + n) * ch_out];
-            route(out, ch_out, n, &mix, &state.mixer, headphones);
+            route(out, ch_out, n, &mix, &state.mixer, wanted);
             if let Some(b) = bridges[0] {
-                b.push(&state.mixer.headphones[..n * 2]);
+                b.push(&state.mixer.headphones[0][..n * 2]);
             }
             if let Some(b) = bridges[1] {
-                b.push(&state.mixer.master[..n * 2]);
+                b.push(&state.mixer.booth[..n * 2]);
+            }
+            if let Some(b) = bridges[2] {
+                b.push(&state.mixer.headphones[1][..n * 2]);
             }
             done += n;
         }
@@ -354,22 +362,22 @@ const SCRATCH_FRAMES: usize = 2048;
 pub const DECK_CH_MAX: usize = 2;
 const LANE_CH_MAX: usize = 2 * DECK_CH_MAX;
 pub use crate::ipc::MAX_DECKS;
-/// The buses that may go to a device of their own: the headphones, the booth.
-pub const BRIDGED_BUSES: usize = 2;
+/// The buses that may go to a device of their own: headphones A, the booth, headphones B.
+pub const BRIDGED_BUSES: usize = 3;
 
-/// The other decks' lanes, the mixer's settings, and the bridges to the devices of the headphones and the booth
-/// (Ring::attach_bus).
+/// The other decks' lanes, the mixer's settings, the bridges to the devices of headphones A, the booth and
+/// headphones B (Ring::attach_bus).
 pub struct Bus {
     pub decks: Vec<Arc<Ring>>, // decks 2 .. MAX_DECKS' lanes
     pub params: Arc<crate::mixer::MixParams>,
     pub bridges: [Arc<Bridge>; BRIDGED_BUSES],
 }
 
-/// The mixer's buses into ``out``'s channels as routed: the master (MAIN), the booth (SUB: the master again), the
-/// headphones (CUE).
+/// The mixer's buses into ``out``'s channels as routed: the master (MAIN), headphones A (CUE A), the booth (SUB),
+/// headphones B (CUE B).
 fn route<T: SizedSample + FromSample<f32>>(out: &mut [T], ch_out: usize, n: usize, mix: &crate::mixer::Mix,
-                                          mixer: &Mixer, headphones: bool) {
-    let [main_l, main_r, cue_l, cue_r, sub_l, sub_r] = mix.routes;
+                                          mixer: &Mixer, wanted: Wanted) {
+    let r = mix.routes;
     for f in 0..n {
         let o = &mut out[f * ch_out..(f + 1) * ch_out];
         o.iter_mut().for_each(|v| *v = T::EQUILIBRIUM);
@@ -378,15 +386,20 @@ fn route<T: SizedSample + FromSample<f32>>(out: &mut [T], ch_out: usize, n: usiz
                 o[channel as usize] = T::from_sample(v);
             }
         };
-        let (left, right) = (mixer.master[2 * f], mixer.master[2 * f + 1]);
-        if headphones {
-            put(cue_l, mixer.headphones[2 * f]);
-            put(cue_r, mixer.headphones[2 * f + 1]);
+        if wanted.headphones[0] {
+            put(r[2], mixer.headphones[0][2 * f]);
+            put(r[3], mixer.headphones[0][2 * f + 1]);
         }
-        put(sub_l, left);
-        put(sub_r, right);
-        put(main_l, left);
-        put(main_r, right);
+        if wanted.headphones[1] {
+            put(r[6], mixer.headphones[1][2 * f]);
+            put(r[7], mixer.headphones[1][2 * f + 1]);
+        }
+        if wanted.booth {
+            put(r[4], mixer.booth[2 * f]);
+            put(r[5], mixer.booth[2 * f + 1]);
+        }
+        put(r[0], mixer.master[2 * f]);
+        put(r[1], mixer.master[2 * f + 1]);
     }
 }
 
@@ -438,6 +451,14 @@ impl Source {
         }
     }
 
+    /// Its device's stream started again in place (its events had thinned out): a sink's bridges fill again from
+    /// what is written now (the surplus that piled up meanwhile dropped); the main ring goes on as it is.
+    pub fn restarted(&self) {
+        if let Source::Sink(s) = self {
+            s.restart_bridges();
+        }
+    }
+
     pub(crate) fn fill<T: SizedSample + FromSample<f32>>(&self, out: &mut [T], state: &mut CallbackState, latency: f64) {
         match self {
             Source::Main(r) => r.fill(out, state, latency),
@@ -473,6 +494,19 @@ impl Mode {
             _ => Api::Cpal,
         };
         Mode { api, exclusive: exclusive != 0 && api == Api::Wasapi }
+    }
+
+    /// As the console says it.
+    pub fn label(self) -> &'static str {
+        match (self.api, self.exclusive) {
+            (Api::Wasapi, true) => "WASAPI exclusive",
+            (Api::Wasapi, false) => "WASAPI low-latency shared",
+            (Api::Jack, _) => "JACK",
+            (Api::Cpal, _) if cfg!(windows) => "WASAPI shared (cpal)",
+            (Api::Cpal, _) if cfg!(target_os = "linux") => "ALSA",
+            (Api::Cpal, _) if cfg!(target_os = "macos") => "CoreAudio",
+            (Api::Cpal, _) => "cpal",
+        }
     }
 
     /// The code published: the API's, and 0x100 when exclusive.
@@ -562,7 +596,7 @@ pub fn open(source: Source, rate: u32, channels: usize, name: Option<&str>, mode
             Ok((w, device, period_ms)) => {
                 return Ok((Output { _backend: Backend::Wasapi(w), mode, period_ms }, device));
             }
-            Err(e) => eprintln!("[AudioEngine] {mode:?} output not opened ({e}); cpal's WASAPI shared stream instead"),
+            Err(e) => log_line!("{mode:?} output not opened ({e}); cpal's WASAPI shared stream instead"),
         }
     }
     let cpal_mode = Mode { api: if mode.api == Api::Jack { Api::Jack } else { Api::Cpal }, exclusive: false };
@@ -596,6 +630,12 @@ pub fn open(source: Source, rate: u32, channels: usize, name: Option<&str>, mode
         cpal::BufferSize::Fixed(f) => f as f64 * 1000.0 / rate as f64,
         cpal::BufferSize::Default => 0.0,
     };
+    let buffer = match config.buffer_size {
+        cpal::BufferSize::Fixed(f) => format!("{f} frames ({period_ms:.2} ms)"),
+        cpal::BufferSize::Default => "the system's".to_string(),
+    };
+    log_line!("{}: {}, {:?} {rate} Hz {channels} ch, device buffer {buffer}", device_name(&dev), cpal_mode.label(),
+              def.sample_format());
     Ok((Output { _backend: Backend::Cpal(stream), mode: cpal_mode, period_ms }, device_name(&dev)))
 }
 
@@ -614,7 +654,7 @@ fn build<T: SizedSample + FromSample<f32> + 'static>(
             source.fill(data, &mut state, latency);
         },
         move |err| {
-            eprintln!("[AudioEngine] device error: {err}");
+            log_line!("device error: {err}");
             err_source.port().failed.store(true, Ordering::Relaxed);
         },
         None,
