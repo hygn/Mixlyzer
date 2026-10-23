@@ -5,6 +5,10 @@ edition = "2024"
 license-file = "../../LICENSE"
 publish = false
 
+[features]
+# tests only (never in a build of the app's): MIXLYZER_AUDIO_FAULT makes a device's output fall behind (wasapi.rs)
+fault = []
+
 [[bin]]
 name = "mixlyzer-audio"
 path = "src/main.rs"
