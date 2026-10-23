@@ -16,7 +16,7 @@ from audioengine.native.client import (
     ACT_JUMP_A as JUMP_A, ACT_PLAY_PAUSE as PLAY_PAUSE, ACT_STOP as STOP, ACT_TEMPO_DOWN as TEMPO_DOWN,
     ACT_TEMPO_RANGE as TEMPO_RANGE, ACT_TEMPO_RESET as TEMPO_RESET, ACT_TEMPO_UP as TEMPO_UP, TEMPO_RANGES, DeckReport,
 )
-from utils.volume import slider_percent_to_linear
+from utils.volume import TRIM_DB_RANGE, slider_percent_to_linear, trim_db_to_knob
 CUE_AT_SEC = 0.001
 JUMP_CANDIDATE_BEATS = 8
 JUMP_LANDING_SEC = 0.5
@@ -80,7 +80,8 @@ class PythonDeck:
         self._apply_volume()
 
     def set_volume_trim(self, db: float) -> None:
-        self._trim_db = float(db)
+        lo, hi = TRIM_DB_RANGE
+        self._trim_db = min(hi, max(lo, float(db)))
         self._apply_volume()
 
     def _apply_volume(self) -> None:
@@ -258,4 +259,6 @@ class PythonDeck:
         rate = self._rate
         cue = self._cue / rate if self._has_track() else math.nan
         dest = self._armed[0] / rate if self._armed is not None else math.nan
-        return DeckReport(playing, self._factor, self._volume, cue, dest, lamps, self._tempo_range, 0)
+        # its trim as the TRIM knob (no EQ: the native engine's mixer alone has one)
+        return DeckReport(playing, self._factor, self._volume, cue, dest, lamps, self._tempo_range, 0,
+                          knobs=(trim_db_to_knob(self._trim_db), 0.5, 0.5, 0.5))

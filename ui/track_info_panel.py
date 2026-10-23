@@ -11,6 +11,7 @@ from core.config import config
 from utils.labels import ALPHANUMERIC_LABELS, CLASSICAL_LABELS
 from core.i18n import tr
 from core.resource_paths import setting_path
+from ui.knob import Knob
 
 
 _VALUE = "#f0f3f6"   # current values, title
@@ -403,8 +404,29 @@ class _UnloadButton(QtWidgets.QAbstractButton):
         p.end()
 
 
+# the player's channel knobs right of its peak meter, top to bottom as a DJ mixer's: (label, the player's knob:
+# 0 TRIM, 1 EQ LOW, 2 MID, 3 HIGH)
+CHANNEL_KNOBS = (("TRIM", 0), ("HI", 3), ("MID", 2), ("LOW", 1))
+KNOB_SIZE = 18
+
+
+def _knob_label(text: str) -> QtWidgets.QLabel:
+    label = QtWidgets.QLabel(text)
+    f = label.font()
+    f.setPointSize(7)
+    f.setBold(True)
+    label.setFont(f)
+    label.setAlignment(QtCore.Qt.AlignHCenter)
+    label.setStyleSheet(f"color: {current_theme().text_dim};")
+    label.setFixedHeight(QtGui.QFontMetrics(f).height())
+    return label
+
+
 class TrackInfoPanel(QtWidgets.QWidget):
     """Header widget that displays central track information."""
+
+    # the player's channel knob turned by the hand: (0 TRIM, 1 EQ LOW, 2 MID, 3 HIGH; its position 0 .. 1)
+    knob_moved = QtCore.Signal(int, float)
 
     HEADER_H = 120
     # record diameter: the header minus the MT / RST row above and the beat bars below
@@ -601,6 +623,21 @@ class TrackInfoPanel(QtWidgets.QWidget):
         self.peak_meter = VerticalPeakMeter()
         layout.addWidget(self.peak_meter, 0, QtCore.Qt.AlignVCenter)
 
+        # its channel's knobs right of the meter (the player reports them: set_knobs)
+        knob_col = QtWidgets.QVBoxLayout()
+        knob_col.setContentsMargins(0, 0, 0, 0)
+        knob_col.setSpacing(0)
+        knob_col.setAlignment(QtCore.Qt.AlignVCenter)
+        self.knobs: dict[int, Knob] = {}
+        for text, which in CHANNEL_KNOBS:
+            knob = Knob(KNOB_SIZE)
+            knob.moved.connect(lambda v, which=which: self.knob_moved.emit(which, v))
+            self.knobs[which] = knob
+            knob_col.addWidget(knob, 0, QtCore.Qt.AlignHCenter)
+            knob_col.addWidget(_knob_label(text))
+        self.set_eq_available(True)
+        layout.addLayout(knob_col)
+
     # External
     def set_title(self, text: str):
         self.title_label.set_marquee_text((text or "").strip())
@@ -719,6 +756,24 @@ class TrackInfoPanel(QtWidgets.QWidget):
 
     def set_output_peak_dbfs(self, dbfs: float):
         self.peak_meter.set_level_dbfs(dbfs)
+
+    def set_knobs(self, positions) -> None:
+        """The channel's knobs as the player reports them (TRIM, EQ LOW, MID, HIGH: 0 .. 1); a knob in the hand
+        shows the hand's position."""
+        for which, position in enumerate(tuple(positions)[:4]):
+            self.knobs[which].set_value(position)
+
+    def set_eq_available(self, available: bool) -> None:
+        """The EQ knobs work on the native engine's mixer alone (the Python engine has no EQ)."""
+        self.knobs[0].setToolTip(tr("TRIM: the level before the volume fader, -24 to +9 dB (0 dB in the middle), "
+                                    "kept as Settings > Audio > Mixer > Trim. Double-click: 0 dB."))
+        for text, which in CHANNEL_KNOBS[1:]:
+            knob = self.knobs[which]
+            knob.setEnabled(available)
+            knob.setToolTip(tr("EQ {band}: the isolator's band, from a kill to +6 dB (0 dB in the middle). "
+                               "Double-click: 0 dB.").format(band=text) if available else
+                            tr("EQ {band}: the native audio engine's mixer only (Settings > Audio > "
+                               "Engine).").format(band=text))
 
     # Internal helper
     def _set_placeholder_cover(self):

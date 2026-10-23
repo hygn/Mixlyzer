@@ -18,6 +18,7 @@ from audioengine.python.feeder import PCMFeeder
 from core import os_support
 from core.audio.decoder import decode_to_memmap
 from core.event_bus import EventBus
+from utils.volume import trim_knob_to_db
 
 
 class _Latest:
@@ -89,6 +90,7 @@ class _AudioWorker(QtCore.QObject):
         "set_refresh_fps", "set_timestretch", "set_soft_clip", "set_buffer_ms", "set_output_device",
         "set_output_mode", "set_exclusive_rate", "set_process",
         "tone_hold", "midi_open", "midi_map", "midi_options", "set_midi_learn", "set_routing", "set_headphones",
+        "set_knob", "set_mixer", "set_channel_cue",
     })
     _WAIT_FOR_TRACK = frozenset({
         "play", "pause", "stop", "seek",
@@ -334,9 +336,9 @@ class _AudioWorker(QtCore.QObject):
         if isinstance(self.feeder, NativeFeeder):
             self.feeder.midi_map(bindings)
 
-    def midi_options(self, jog_ticks: int) -> None:
+    def midi_options(self, jog_ticks, vinyl) -> None:
         if isinstance(self.feeder, NativeFeeder):
-            self.feeder.midi_options(jog_ticks)
+            self.feeder.midi_options(jog_ticks, vinyl)
 
     def set_midi_learn(self, learning: bool) -> None:
         """Every message passed on (Settings > MIDI's learn), not only those bound to the GUI's actions."""
@@ -360,10 +362,29 @@ class _AudioWorker(QtCore.QObject):
             else:
                 self.feeder.set_aux_output(k, None)
 
-    def set_headphones(self, master: bool, mix: float) -> None:
-        """The native engine's headphones: the master mixed in (by ``mix``, 0 CUE .. 1 MASTER) or not."""
+    def set_headphones(self, master: bool, mix: float, level: float) -> None:
+        """The native engine's headphones: the master mixed in (by ``mix``, 0 CUE .. 1 MASTER) or not, their level
+        (a knob's position)."""
         if isinstance(self.feeder, NativeFeeder):
-            self.feeder.set_headphones(master, mix)
+            self.feeder.set_headphones(master, mix, level)
+
+    def set_channel_cue(self, on: bool) -> None:
+        """The deck's channel's headphones CUE (the native engine's mixer)."""
+        if isinstance(self.feeder, NativeFeeder):
+            self.feeder.set_channel_cue(bool(on))
+
+    def set_knob(self, which: int, position: float) -> None:
+        """The deck's channel knob: TRIM (0, the trim on either engine) or EQ LOW / MID / HIGH, COLOR (1 - 4: the
+        native engine's mixer; the Python engine has none)."""
+        if which == 0:
+            self.deck.set_volume_trim(trim_knob_to_db(position))
+        elif isinstance(self.feeder, NativeFeeder):
+            self.feeder.set_knob(int(which), float(position))
+
+    def set_mixer(self, key: str, value: float) -> None:
+        """The native engine's mixer setting ``key`` (client.MIX_KEYS; the Python engine has no mixer)."""
+        if isinstance(self.feeder, NativeFeeder):
+            self.feeder.set_mixer(str(key), float(value))
 
     def scrub_begin(self) -> None:
         self.feeder.set_scrubbing(True)
@@ -637,6 +658,10 @@ class PlayerController(QtCore.QObject):
         bus.sig_tempo_requested.connect(lambda f: self._send("set_tempo", float(f)))
         bus.sig_tempo_range_requested.connect(lambda r: self._send("set_tempo_range", int(r)))
         bus.sig_volume_requested.connect(lambda v: self._send("set_volume", float(v)))
+        bus.sig_knob_requested.connect(lambda which, v: self._send("set_knob", int(which), float(v)))
+        bus.sig_mixer_requested.connect(lambda key, v: self._send("set_mixer", str(key), float(v)))
+        bus.sig_jog_mode_requested.connect(self.set_jog_mode)
+        bus.sig_channel_cue_requested.connect(lambda on: self._send("set_channel_cue", bool(on)))
         bus.sig_jump_to_requested.connect(lambda sec: self._send_local("jump_to", float(sec)))
         bus.sig_call_requested.connect(lambda sec: self._send_local("call_at", float(sec)))
         bus.sig_deck_marks.connect(lambda marks: self._send("set_marks", marks))
@@ -752,13 +777,17 @@ class PlayerController(QtCore.QObject):
         """The volume fader's trim (dB; Settings > Playback)."""
         self._send("set_volume_trim", float(db))
 
+    def set_jog_mode(self, vinyl: bool) -> None:
+        """The jog wheel's mode: VINYL (its top holds the record) or CDJ (a bend only); the native engine's."""
+        self._send("midi_options", None, bool(vinyl))
+
     # The MIDI controller: the native engine reads it (never this process); none on the Python engine
     def midi_configure(self, port: str, bindings: list, jog_ticks: int) -> None:
         """Read MIDI input ``port`` ("": none) with ``bindings`` ((status, data1, 14-bit, action code) each)."""
         if not self.native:
             return
         self._midi_port = str(port or "")
-        self._send("midi_options", int(jog_ticks))
+        self._send("midi_options", int(jog_ticks), None)
         self._send("midi_map", list(bindings))
         self._send("midi_open", "" if self._external_sync_enabled else self._midi_port)
 
@@ -809,10 +838,10 @@ class PlayerController(QtCore.QObject):
         own)."""
         self._send("set_routing", str(main or "1-2"), asdict(headphones), asdict(booth))
 
-    def set_headphones(self, master: bool, mix: float) -> None:
+    def set_headphones(self, master: bool, mix: float, level: float) -> None:
         """The native engine's headphones: the CUE'd channels, and the master mixed in by ``mix`` (0 CUE .. 1
-        MASTER) with ``master`` (off for a device that mixes it in itself)."""
-        self._send("set_headphones", bool(master), float(mix))
+        MASTER) with ``master`` (off for a device that mixes it in itself), at ``level`` (a knob's position)."""
+        self._send("set_headphones", bool(master), float(mix), float(level))
 
     def output_channels(self) -> int:
         """The output device's channels (the native engine's; the Python engine: 2)."""

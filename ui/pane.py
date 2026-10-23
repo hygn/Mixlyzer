@@ -21,6 +21,7 @@ from core.event_bus import EventBus
 from core.config import config
 from ui.mainplotvbx import ScratchViewBox
 from ui.track_info_panel import TrackInfoPanel
+from ui.deck_switches import DeckSwitches
 from ui.edit_panel import EditPanel
 from utils.volume import slider_percent_to_linear, trim_dbfs_to_linear
 from core.resource_paths import resource_path
@@ -256,6 +257,8 @@ class MainPane(QtWidgets.QWidget):
         self.track_info = TrackInfoPanel(self.cfg)
         self.track_info.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
         self.track_info.unload_button.clicked.connect(self.bus.sig_unload_track_requested.emit)
+        # its channel's TRIM / EQ knobs: requests (the player's report moves them: _on_deck_state)
+        self.track_info.knob_moved.connect(self.bus.sig_knob_requested.emit)
         top_row.addWidget(self.track_info, 1, QtCore.Qt.AlignVCenter)
 
         # the edit panel sits in the track info header, between the info and the deck
@@ -430,6 +433,9 @@ class MainPane(QtWidgets.QWidget):
         for btn in (self.btn_stop, self.btn_cue, self.btn_play):
             self.track_info.transport_slot.addWidget(btn, 0, QtCore.Qt.AlignHCenter)
 
+        # the jog's mode, the EQ and the fader curve, between the player and the overview
+        self.deck_switches = DeckSwitches(self.bus)
+        header_v.addWidget(self.deck_switches, 0)
         header_v.addWidget(self.ov, 0, QtCore.Qt.AlignTop)
 
         # Wire transport buttons
@@ -535,7 +541,7 @@ class MainPane(QtWidgets.QWidget):
         self.v_tempo.setText(_tempo_text(factor, tempo_range))
 
     def _on_deck_state(self, report) -> None:
-        """The player's deck as it is (DeckReport): the faders, the tempo range, the CUE lamp."""
+        """The player's deck as it is (DeckReport): the faders, the tempo range, its channel's knobs, the CUE lamp."""
         factor, tempo_range = float(report.factor), int(report.tempo_range)
         if (factor, tempo_range) != (self._tempo_factor, self._tempo_range):
             self._tempo_factor, self._tempo_range = factor, tempo_range
@@ -553,6 +559,8 @@ class MainPane(QtWidgets.QWidget):
                 self.vol_slider.setValue(int(round(self._volume_position * 100.0)))
                 self.vol_slider.blockSignals(False)
             self._apply_volume_report()
+        self.track_info.set_knobs(report.knobs)
+        self.deck_switches.set_report(report)
         lit = bool(report.lamps & 2)
         if lit != self._cue_lit:
             self._cue_lit = lit

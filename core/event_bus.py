@@ -98,6 +98,13 @@ class EventBus(QtCore.QObject):
     sig_tempo_requested = QtCore.Signal(float)   # the tempo fader moved: factor
     sig_tempo_range_requested = QtCore.Signal(int)   # +-% (100: WIDE)
     sig_volume_requested = QtCore.Signal(float)   # the volume fader moved: 0 .. 1
+    # the player's channel knob turned: 0 TRIM, 1 EQ LOW, 2 MID, 3 HIGH; its position 0 .. 1 (the middle 0 dB)
+    sig_knob_requested = QtCore.Signal(int, float)
+    # the mixer's setting asked for (the FX bar: Sound Color FX, Beat FX): client.MIX_KEYS' key, its value (the
+    # native engine's mixer; what it then is comes back in the deck's report, DeckReport.mix)
+    sig_mixer_requested = QtCore.Signal(str, float)
+    sig_jog_mode_requested = QtCore.Signal(bool)   # the jog wheel's mode asked for: VINYL (True) / CDJ
+    sig_channel_cue_requested = QtCore.Signal(bool)   # the deck's channel's headphones CUE asked for (on / off)
     sig_jump_to_requested = QtCore.Signal(float)   # a JumpCUE's JUMP: its point (s)
     sig_call_requested = QtCore.Signal(float)   # a CUE point's CALL: its time (s)
     # the track's marks as edited: (beats s, downbeat flags, CUE points s, JumpCUEs A-Z s or NaN)

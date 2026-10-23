@@ -267,6 +267,10 @@ class SettingsDialog(
         self.sp_external_sync_port.setValue(int(x.osc_port))
         self._sync_external_sync_address_ui()
 
+    def _kept_playback(self):
+        """The playback settings as last kept (the deck's own: its switches, levels and tempo range)."""
+        return getattr(self._current_cfg, "playbackconfig", None)
+
     def _set_band(self, sp_lo: QDoubleSpinBox, sp_hi: QDoubleSpinBox, band: Tuple[float, float]):
         sp_lo.setValue(float(band[0])); sp_hi.setValue(float(band[1]))
 
@@ -357,6 +361,16 @@ class SettingsDialog(
                 output_booth=self.grp_output_booth.get_config(),
                 headphones_master_mix=bool(self.grp_output_headphones.cb_master_mix.isChecked()),
                 headphones_cue_mix=int(self.grp_output_headphones.sp_cue_mix.value()),
+                mixer_eq=str(getattr(self._kept_playback(), "mixer_eq", "isolator")),
+                fader_curve=str(getattr(self._kept_playback(), "fader_curve", "default")),
+                jog_mode=str(getattr(self._kept_playback(), "jog_mode", "vinyl")),
+                # the switches' block's knobs: as last kept
+                master_level=float(getattr(self._kept_playback(), "master_level", 0.8)),
+                headphones_level=float(getattr(self._kept_playback(), "headphones_level", 0.8)),
+                booth_level=level_db_to_knob(self.sp_booth_level.value()),
+                booth_eq_hi=booth_eq_db_to_knob(self.sp_booth_eq_hi.value()),
+                booth_eq_low=booth_eq_db_to_knob(self.sp_booth_eq_low.value()),
+                headphones_split=bool(self.cb_headphones_split.isChecked()),
             ),
             externalsyncconfig=externalsyncconfig(
                 enabled=bool(self.cb_external_sync_enabled.isChecked()),

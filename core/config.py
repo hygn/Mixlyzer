@@ -133,6 +133,21 @@ class playbackconfig:
     # DDJ-400 does in analog)
     headphones_master_mix: bool
     headphones_cue_mix: int
+    # the mixer's and the deck's switches, as last left (the block between the player and the overview, a
+    # controller): the EQ ("isolator": a band down to a kill; "eq": -26 dB at the bottom), the channel fader's curve
+    # ("default", "steep": up fast, "slow"), the jog wheel's mode ("vinyl": its top holds the record; "cdj": a bend)
+    mixer_eq: str
+    fader_curve: str
+    jog_mode: str
+    # the levels as last left, knob positions 0 .. 1 (0.8 = 0 dB, client.LEVEL_UNITY): the master's and the
+    # headphones' (the switches' block, a controller), the booth's (Settings > Audio > Booth); the booth EQ's HI / LOW
+    # (0 .. 1, the middle flat: -12 .. +6 dB); the headphones' MONO SPLIT (the CUE left, the master right)
+    master_level: float
+    headphones_level: float
+    booth_level: float
+    booth_eq_hi: float
+    booth_eq_low: float
+    headphones_split: bool
 
 
 @dataclass
@@ -420,6 +435,15 @@ def default_cfg():
                                   buffer_ms=20, rate=0),
         headphones_master_mix=True,
         headphones_cue_mix=50,
+        mixer_eq="isolator",
+        fader_curve="default",
+        jog_mode="vinyl",
+        master_level=0.8,
+        headphones_level=0.8,
+        booth_level=0.8,
+        booth_eq_hi=0.5,
+        booth_eq_low=0.5,
+        headphones_split=False,
     )
     xcfg = externalsyncconfig(enabled=False, osc_host="127.0.0.1", osc_port=39321)
     # CUE points at the start of an interlude and of the outro (not between two

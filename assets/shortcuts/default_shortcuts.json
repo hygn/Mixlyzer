@@ -132,6 +132,45 @@
   "cue.memory_delete": [
     "Ctrl+Shift+R"
   ],
+  "fx.beat_on": [
+    "F"
+  ],
+  "fx.beat_tap": [
+    "G"
+  ],
+  "fx.beat_auto": [
+    "Shift+G"
+  ],
+  "fx.beat_next": [
+    "]"
+  ],
+  "fx.beat_previous": [
+    "["
+  ],
+  "fx.beat_up": [
+    "."
+  ],
+  "fx.beat_down": [
+    ","
+  ],
+  "fx.band_low": [
+    "Alt+7"
+  ],
+  "fx.band_mid": [
+    "Alt+8"
+  ],
+  "fx.band_hi": [
+    "Alt+9"
+  ],
+  "mixer.headphones_cue": [
+    "H"
+  ],
+  "fx.color_next": [
+    "'"
+  ],
+  "fx.color_previous": [
+    ";"
+  ],
   "library.previous": [
     "Up"
   ],

@@ -6,7 +6,7 @@ import json
 
 from app.print_hook import install_print_hook, log_environment_info
 from audioengine.native.client import (
-    ACT_DECK_SHIFT, ACT_JUMP_A, MIDI_EVENT_GUI, MIDI_EVENT_HOTCUE_SET, MIDI_EVENT_RELATIVE,
+    ACT_DECK_SHIFT, ACT_JUMP_A, EQ_MODES, FADER_CURVES, MIDI_EVENT_GUI, MIDI_EVENT_HOTCUE_SET, MIDI_EVENT_RELATIVE,
 )
 from core import midi, os_support, shortcuts
 from core.event_bus import EventBus
@@ -23,11 +23,12 @@ from core.workflows.rekordbox_sync import RekordboxXmlSync
 from core.workflows.reading_refresh import LibraryReadingRefresh
 from .metronome import MetronomeController
 from utils.window_visibility import is_window_fully_hidden
-from utils.volume import slider_percent_to_linear, trim_dbfs_to_linear
+from utils.volume import slider_percent_to_linear, trim_dbfs_to_linear, trim_knob_to_db
 from utils.atomic_io import atomic_write_json
 from utils.phrases import set_phrase_label_names
 
 from ui.pane import MainPane
+from ui.fx_bar import FxBar
 from ui.config.window import SettingsDialog
 from ui.workers import WorkersDialog
 from ui.oss_support import SupportDialog
@@ -117,6 +118,8 @@ class AppWindow(QtWidgets.QMainWindow):
         # Main UI pane
         step(0.03, tr("Main view, editor and library"))
         self.pane = MainPane(self.bus, self.model, self.tl, self.cfg)
+        self.pane.track_info.set_eq_available(self.player.native)   # the Python engine has no mixer
+        self.pane.deck_switches.set_available(self.player.native)
         self.setCentralWidget(self.pane)
         self.pane.install_default()
 
@@ -148,9 +151,16 @@ class AppWindow(QtWidgets.QMainWindow):
         self.bus.sig_timestretch_toggle_requested.connect(self._on_timestretch_toggle)
         self.bus.sig_metronome_toggle_requested.connect(self._on_metronome_toggle)
         tb.addActions([a_cfg, a_workers, a_support_tb, a_about])
+        # the mixer's effects (Sound Color FX, Beat FX on the master): requests out, the deck's report shown
+        self.fx_bar = FxBar(self.bus)
+        self.fx_bar.set_available(self.player.native)
+        self.bus.sig_deck_state.connect(self.fx_bar.set_report)
+        tb.addSeparator()
+        tb.addWidget(self.fx_bar)
 
         # keyboard shortcuts (assets/shortcuts; Settings > Shortcuts)
-        handlers = self.pane.shortcut_handlers()
+        handlers = {**self.pane.shortcut_handlers(), **self.fx_bar.shortcut_handlers(),
+                    **self.pane.deck_switches.shortcut_handlers()}
         self.shortcuts = ShortcutManager(self, handlers, self.statusBar().showMessage)
         self.shortcuts.apply(shortcuts.keymap())
         self.bus.sig_shortcuts_changed.connect(self.shortcuts.apply)
@@ -160,6 +170,14 @@ class AppWindow(QtWidgets.QMainWindow):
         self.bus.sig_midi_events.connect(self._on_midi_events)
         self.bus.sig_midi_changed.connect(self._apply_midi)
         self.bus.sig_deck_state.connect(self._keep_tempo_range)
+        self.bus.sig_deck_state.connect(self._keep_trim)
+        self.bus.sig_deck_state.connect(self._keep_switches)
+        # what the deck keeps in the settings (the trim, the switches), written a second after it last changed (a
+        # knob turned reports every frame)
+        self._cfg_save = QtCore.QTimer(self)
+        self._cfg_save.setSingleShot(True)
+        self._cfg_save.setInterval(1000)
+        self._cfg_save.timeout.connect(self._save_cfg)
         self._apply_midi()
 
 
@@ -313,6 +331,46 @@ class AppWindow(QtWidgets.QMainWindow):
         if tempo_range != int(self.cfg.playbackconfig.tempo_range):
             self.cfg.playbackconfig.tempo_range = tempo_range
             atomic_write_json("config.json", self.cfg.to_dict(), ensure_ascii=True, indent=None)
+
+    def _keep_trim(self, report) -> None:
+        """The trim as the deck has it (its TRIM knob, the settings, a controller), kept as Settings > Audio's
+        trim: the peak meter's gain follows it at once, config.json a second after it last moved."""
+        trim = round(trim_knob_to_db(report.knobs[0]), 2)
+        if abs(trim - float(self.cfg.playbackconfig.volume_trim_dbfs)) < 0.005:
+            return
+        self.cfg.playbackconfig.volume_trim_dbfs = trim
+        self.pane.apply_playback_config(self.cfg)
+        # the settings dialog's field too (a save from it would write its old value back)
+        field = self.cfgwin.sp_volume_trim_dbfs
+        field.blockSignals(True)
+        field.setValue(trim)
+        field.blockSignals(False)
+        self._cfg_save.start()
+
+    def _keep_switches(self, report) -> None:
+        """The jog's mode, the EQ and the fader curve as the deck has them (the switches' block, a controller), kept
+        in the settings (the native engine's: the Python engine has none)."""
+        if not self.player.native or not report.mix:
+            return
+        pcfg = self.cfg.playbackconfig
+        eq = EQ_MODES[min(1, max(0, int(report.mix_value("eq_mode"))))]
+        curve = FADER_CURVES[min(2, max(0, int(report.mix_value("fader_curve"))))]
+        jog = "vinyl" if report.vinyl else "cdj"
+        if (pcfg.mixer_eq, pcfg.fader_curve, pcfg.jog_mode) != (eq, curve, jog):
+            pcfg.mixer_eq, pcfg.fader_curve, pcfg.jog_mode = eq, curve, jog
+            self._cfg_save.start()
+        # the levels (the switches' block's knobs, a controller's), the headphones' CUE / MASTER mix
+        kept = {"master_level": round(report.mix_value("master_level", pcfg.master_level), 3),
+                "headphones_level": round(report.mix_value("hp_a_level", pcfg.headphones_level), 3),
+                "headphones_cue_mix": int(round(100.0 * report.mix_value("hp_a_mix", pcfg.headphones_cue_mix / 100.0)))}
+        changed = {k: v for k, v in kept.items() if getattr(pcfg, k) != v}
+        if changed:
+            for k, v in changed.items():
+                setattr(pcfg, k, v)
+            self._cfg_save.start()
+
+    def _save_cfg(self) -> None:
+        atomic_write_json("config.json", self.cfg.to_dict(), ensure_ascii=True, indent=None)
 
     def open_cfg(self):
         self.cfgwin.show()
@@ -764,8 +822,20 @@ class AppWindow(QtWidgets.QMainWindow):
         )
         self.player.set_soft_clip(bool(pcfg.soft_clip))
         self.player.set_volume_trim(float(pcfg.volume_trim_dbfs))
+        # the switches as last left
+        eq = EQ_MODES.index(pcfg.mixer_eq) if pcfg.mixer_eq in EQ_MODES else 0
+        curve = FADER_CURVES.index(pcfg.fader_curve) if pcfg.fader_curve in FADER_CURVES else 0
+        self.bus.sig_mixer_requested.emit("eq_mode", float(eq))
+        self.bus.sig_mixer_requested.emit("fader_curve", float(curve))
+        self.player.set_jog_mode(pcfg.jog_mode != "cdj")
         self.player.set_routing(pcfg.output_main, pcfg.output_headphones, pcfg.output_booth)
-        self.player.set_headphones(bool(pcfg.headphones_master_mix), int(pcfg.headphones_cue_mix) / 100.0)
+        self.player.set_headphones(bool(pcfg.headphones_master_mix), int(pcfg.headphones_cue_mix) / 100.0,
+                                   float(pcfg.headphones_level))
+        # the levels and the booth's EQ as last left
+        for key, value in (("master_level", pcfg.master_level), ("booth_level", pcfg.booth_level),
+                           ("booth_eq_hi", pcfg.booth_eq_hi), ("booth_eq_low", pcfg.booth_eq_low),
+                           ("hp_a_split", 1.0 if pcfg.headphones_split else 0.0)):
+            self.bus.sig_mixer_requested.emit(key, float(value))
         self.player.set_buffer_ms(float(pcfg.native_buffer_ms), float(pcfg.python_buffer_ms))
         self.player.set_output_device(pcfg.output_device)
         self.player.set_output_mode(pcfg.native_audio_api, bool(pcfg.native_exclusive))

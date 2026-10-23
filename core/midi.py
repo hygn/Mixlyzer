@@ -58,7 +58,8 @@ TEMPO = tr_mark("Tempo")
 JOG = tr_mark("Jog wheel")
 BROWSER = tr_mark("Browser")
 MIXER = tr_mark("Mixer")
-GROUPS = (DECK, JUMPCUE, CUE_POINTS, BEAT_JUMP, TEMPO, JOG, BROWSER, MIXER)
+EFFECTS = tr_mark("Effects")
+GROUPS = (DECK, JUMPCUE, CUE_POINTS, BEAT_JUMP, TEMPO, JOG, BROWSER, MIXER, EFFECTS)
 
 
 @dataclass(frozen=True)
@@ -114,6 +115,10 @@ def _deck_actions(n: int) -> list[Action]:
                _deck_code(engine.ACT_BEND_DOWN, n), shown=one, args=a, tip=tr_mark("Held: the tempo bent down 4%.")),
         Action(f"{d}.bend_up", TEMPO, tr_mark("Deck {deck}: PITCH BEND +"), BUTTON,
                _deck_code(engine.ACT_BEND_UP, n), shown=one, args=a, tip=tr_mark("Held: the tempo bent up 4%.")),
+        Action(f"{d}.jog_mode", JOG, tr_mark("Deck {deck}: JOG MODE (VINYL / CDJ)"), BUTTON,
+               _deck_code(engine.ACT_JOG_MODE, n), lamp=engine.LAMP_VINYL, shown=one, args=a,
+               tip=tr_mark("A press switches the jog wheel's mode: VINYL (its top's touch holds the record) or CDJ "
+                           "(a bend only). Lit in VINYL mode.")),
         Action(f"{d}.jog_touch", JOG, tr_mark("Deck {deck}: jog wheel touch"), TOUCH,
                _deck_code(engine.ACT_JOG_TOUCH, n), shown=one, args=a,
                tip=tr_mark("The top touched: the record held (vinyl mode); let go, it plays on (a spin: when it "
@@ -178,6 +183,10 @@ def _mixer_actions(n: int) -> list[Action]:
                tip=tr_mark("An isolator band: the bottom kills it, the middle 0 dB, the top +6 dB.")),
         Action(f"{c}.trim", MIXER, tr_mark("Channel {channel}: TRIM"), FADER,
                _deck_code(engine.ACT_TRIM, n), shown=False, args=a),
+        Action(f"{c}.color", EFFECTS, tr_mark("Channel {channel}: COLOR (Sound Color FX)"), FADER,
+               _deck_code(engine.ACT_COLOR_KNOB, n), shown=one, args=a,
+               tip=tr_mark("The Sound Color FX picked, on the channel: its middle off, its two flavours left and "
+                           "right (a DDJ's CFX knob).")),
         Action(f"{c}.cue", MIXER, tr_mark("Channel {channel}: headphones CUE"), BUTTON,
                _deck_code(engine.ACT_CHANNEL_CUE, n), lamp=engine.LAMP_CHANNEL_CUE, shown=one, args=a,
                tip=tr_mark("A press turns it on or off: the channel's sound before its fader in the headphones. Lit "
@@ -187,6 +196,44 @@ def _mixer_actions(n: int) -> list[Action]:
                tip=tr_mark("The controller's level meter shows the deck's peak meter (a CC sent, 0 - 127 over -24 - 0 "
                            "dBFS); taken from a rekordbox mapping (its ChannelLevel), not learned.")),
     ]
+
+
+def _effect_actions() -> list[Action]:
+    """The mixer's effects: Sound Color FX (each effect's button, PARAMETER) and Beat FX on the master (as the
+    toolbar's FX bar: ON, LEVEL / DEPTH, BEAT, the effect, TAP / AUTO, the X-PAD, FX FREQUENCY)."""
+    out = [
+        *(Action(f"fx.color_select.{k}", EFFECTS, tr_mark("Sound Color FX: {effect}"), BUTTON,
+                 engine.ACT_COLOR_SELECT + k, lamp=engine.LAMP_COLOR + k, args={"effect": name},
+                 tip=tr_mark("A press picks it; pressed again, none. Lit while picked."))
+          for k, name in enumerate(engine.COLOR_TYPES)),
+        Action("fx.color_param", EFFECTS, tr_mark("Sound Color FX: PARAMETER"), FADER, engine.ACT_COLOR_PARAM,
+               tip=tr_mark("The effect's quantity (feedback, centre frequency, noise, crush, resonance, JET's feedback).")),
+        Action("fx.beat_on", EFFECTS, tr_mark("Beat FX: ON / OFF"), BUTTON, engine.ACT_BEAT_FX_ON,
+               lamp=engine.LAMP_BEAT_FX, tip=tr_mark("A press turns it on or off. Lit while on.")),
+        Action("fx.beat_level", EFFECTS, tr_mark("Beat FX: LEVEL / DEPTH"), FADER, engine.ACT_BEAT_FX_LEVEL),
+        Action("fx.beat_down", EFFECTS, tr_mark("Beat FX: BEAT down"), BUTTON, engine.ACT_BEAT_FX_BEAT_DOWN),
+        Action("fx.beat_up", EFFECTS, tr_mark("Beat FX: BEAT up"), BUTTON, engine.ACT_BEAT_FX_BEAT_UP),
+        Action("fx.beat_next", EFFECTS, tr_mark("Beat FX: the next effect"), BUTTON, engine.ACT_BEAT_FX_SELECT,
+               tip=tr_mark("A press, or an effect selector knob turned (its direction).")),
+        Action("fx.beat_previous", EFFECTS, tr_mark("Beat FX: the previous effect"), BUTTON,
+               engine.ACT_BEAT_FX_SELECT_BACK),
+        Action("fx.beat_time", EFFECTS, tr_mark("Beat FX: TIME"), FADER, engine.ACT_BEAT_FX_TIME,
+               tip=tr_mark("The effect's time in ms over its range, in place of BEAT (a knob turned: its time "
+                           "longer / shorter).")),
+        Action("fx.beat_tap", EFFECTS, tr_mark("Beat FX: TAP"), BUTTON, engine.ACT_BEAT_FX_TAP,
+               lamp=engine.LAMP_BEAT_TAP, tip=tr_mark("Tapped more than twice in time: the BPM. Lit while tapped.")),
+        Action("fx.beat_auto", EFFECTS, tr_mark("Beat FX: AUTO"), BUTTON, engine.ACT_BEAT_FX_AUTO,
+               tip=tr_mark("The deck's BPM again.")),
+        Action("fx.xpad", EFFECTS, tr_mark("Beat FX: X-PAD (place)"), FADER, engine.ACT_BEAT_FX_XPAD,
+               tip=tr_mark("The place touched: the effect's BEAT (MOBIUS: its waveform, REVERB: its filter).")),
+        Action("fx.xpad_touch", EFFECTS, tr_mark("Beat FX: X-PAD (touch)"), TOUCH, engine.ACT_BEAT_FX_XPAD_TOUCH,
+               tip=tr_mark("Touched: the effect on while held.")),
+        *(Action(f"fx.band_{band.lower()}", EFFECTS, tr_mark("Beat FX: FX FREQUENCY {band}"), BUTTON,
+                 engine.ACT_BEAT_FX_BAND + k, lamp=engine.LAMP_BEAT_BAND + k, args={"band": band},
+                 tip=tr_mark("A press turns the band on or off: the effect works on the bands lit."))
+          for k, band in enumerate(("LOW", "MID", "HI"))),
+    ]
+    return out
 
 
 ACTIONS: tuple[Action, ...] = (
@@ -205,6 +252,8 @@ ACTIONS: tuple[Action, ...] = (
            tip=tr_mark("The CUE'd channels against the master in the headphones (with the master mixed in: Settings "
                        "> Playback > Headphones output).")),
     Action("mixer.headphones_level", MIXER, tr_mark("Headphones: level"), FADER, engine.ACT_HEADPHONES_LEVEL),
+    Action("mixer.master_level", MIXER, tr_mark("Master: level"), FADER, engine.ACT_MASTER_LEVEL),
+    *_effect_actions(),
 )
 ACTIONS_SHOWN = tuple(a for a in ACTIONS if a.shown)
 BY_ID = {a.id: a for a in ACTIONS}
@@ -399,6 +448,17 @@ _REKORDBOX_GLOBAL = {
     "CrossFader": "mixer.crossfader",
     "HeadphonesMix": "mixer.headphones_mix",
     "HeadphonesVolume": "mixer.headphones_level",
+    # its CFX knobs (the channel's COLOR) and FX1 (Beat FX: Mixlyzer's on the master alone, its CH assigns left out)
+    "CFXParameterCH1": "mixer.ch1.color",
+    "CFXParameterCH2": "mixer.ch2.color",
+    "FX1-1On": "fx.beat_on",
+    "FX1-1": "fx.beat_level",
+    "FX1BeatDown": "fx.beat_down",
+    "FX1BeatUp": "fx.beat_up",
+    "FX1AutoBeat": "fx.beat_auto",
+    "FX1TapBeat": "fx.beat_tap",
+    "FX1-1Select": "fx.beat_next",
+    "FX1-1SelectBack": "fx.beat_previous",
 }
 # outputs: deck 1's output column
 _REKORDBOX_OUTPUT = {"ChannelLevel": "mixer.ch1.level_meter"}
