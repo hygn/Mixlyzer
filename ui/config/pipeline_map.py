@@ -1,8 +1,8 @@
 """The analysis pipeline map of Settings > Analysis > Global: the analyses, the order they run in and what each
 needs (assets/images/analysis_pipeline.svg; its block rectangles and its words in analysis_pipeline.json). Drawn
-from the vector image at the screen's own pixel size, so it stays sharp at any display scale; the words are drawn
-over it in the UI's language (a translation too wide for its room is drawn smaller). Clicking a block opens that
-analysis's settings tab."""
+from the vector image at the screen's own pixel size, so it stays sharp at any display scale, fitted to the page's
+width (its height following) and centred; the words are drawn over it in the UI's language (a translation too wide
+for its room is drawn smaller). Clicking a block opens that analysis's settings tab."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from core.resource_paths import resource_path
 
 IMAGE = "assets/images/analysis_pipeline.svg"
 REGIONS = "assets/images/analysis_pipeline.json"
-SHOWN_WIDTH = 680
+MIN_WIDTH = 480
 # block -> the settings tab it opens, by its English title (the audio decode / HPSS has no settings)
 TARGETS = {
     "Waveform": tr_mark("View"),     # the waveform's bands are view settings
@@ -48,7 +48,9 @@ class PipelineMap(QtWidgets.QWidget):
                            "to open its settings."))
         self._blocks: dict[str, QtCore.QRectF] = {}
         self._texts: list[dict] = []
+        self._size = QtCore.QSizeF(1.0, 1.0)     # the image's own size
         self._scale = 1.0
+        self._origin = QtCore.QPointF()
         self._hovered: str | None = None
         self._renderer = QtSvg.QSvgRenderer(str(resource_path(IMAGE)), self)
         if not self._renderer.isValid():
@@ -62,8 +64,31 @@ class PipelineMap(QtWidgets.QWidget):
             view = self._renderer.viewBoxF()
             width, height = view.width(), view.height()
             self._blocks = {}
-        self._scale = SHOWN_WIDTH / width
-        self.setFixedSize(SHOWN_WIDTH, round(height * self._scale))
+        self._size = QtCore.QSizeF(width, height)
+        policy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Preferred)
+        policy.setHeightForWidth(True)
+        self.setSizePolicy(policy)
+        self.setMinimumWidth(MIN_WIDTH)
+
+    def hasHeightForWidth(self) -> bool:
+        return True
+
+    def heightForWidth(self, width: int) -> int:
+        return round(width * self._size.height() / self._size.width())
+
+    def sizeHint(self) -> QtCore.QSize:
+        width = round(self._size.width())
+        return QtCore.QSize(width, self.heightForWidth(width))
+
+    def minimumSizeHint(self) -> QtCore.QSize:
+        return QtCore.QSize(MIN_WIDTH, self.heightForWidth(MIN_WIDTH))
+
+    def _place(self) -> QtCore.QRectF:
+        """The image's rectangle: as wide as the widget allows at its aspect, centred."""
+        self._scale = min(self.width() / self._size.width(), self.height() / self._size.height())
+        w, h = self._size.width() * self._scale, self._size.height() * self._scale
+        self._origin = QtCore.QPointF((self.width() - w) / 2, (self.height() - h) / 2)
+        return QtCore.QRectF(self._origin, QtCore.QSizeF(w, h))
 
     def paintEvent(self, event: QtGui.QPaintEvent) -> None:
         if not self._renderer.isValid():
@@ -71,7 +96,8 @@ class PipelineMap(QtWidgets.QWidget):
         painter = QtGui.QPainter(self)
         painter.setRenderHint(QtGui.QPainter.Antialiasing)
         painter.setRenderHint(QtGui.QPainter.TextAntialiasing)
-        self._renderer.render(painter, QtCore.QRectF(self.rect()))
+        self._renderer.render(painter, self._place())
+        painter.translate(self._origin)
         for item in self._texts:
             self._draw_text(painter, item)
         painter.end()
@@ -95,7 +121,8 @@ class PipelineMap(QtWidgets.QWidget):
         painter.drawText(QtCore.QPointF(x, float(item.get("y", 0.0)) * self._scale), text)
 
     def block_at(self, pos: QtCore.QPointF) -> str | None:
-        point = QtCore.QPointF(pos.x() / self._scale, pos.y() / self._scale)
+        self._place()
+        point = (pos - self._origin) / self._scale
         return next((name for name, rect in self._blocks.items() if rect.contains(point)), None)
 
     def mouseMoveEvent(self, event: QtGui.QMouseEvent) -> None:

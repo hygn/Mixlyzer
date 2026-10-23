@@ -1,57 +1,57 @@
 {
  "size": [
-  780,
-  310
+  780.0,
+  310.0
  ],
  "blocks": {
   "Audio": [
-   58,
+   58.0,
    135.0,
-   136,
-   50
+   136.0,
+   50.0
   ],
   "Waveform": [
-   58,
+   58.0,
    35.0,
-   136,
-   50
+   136.0,
+   50.0
   ],
   "Beat grid": [
-   236,
+   236.0,
    135.0,
-   136,
-   50
+   136.0,
+   50.0
   ],
   "Phrase": [
-   446,
+   446.0,
    135.0,
-   136,
-   50
+   136.0,
+   50.0
   ],
   "CUE points": [
-   632,
+   632.0,
    135.0,
-   136,
-   50
+   136.0,
+   50.0
   ],
   "JumpCUE": [
-   632,
+   632.0,
    35.0,
-   136,
-   50
+   136.0,
+   50.0
   ],
   "Key": [
-   632,
+   632.0,
    235.0,
-   136,
-   50
+   136.0,
+   50.0
   ]
  },
  "texts": [
   {
    "text": "file",
-   "x": 25.98,
-   "y": 181.38,
+   "x": 26.0,
+   "y": 181.4,
    "size": 9.167,
    "color": "#8a8a8a",
    "align": "center",
@@ -60,7 +60,7 @@
   {
    "text": "Audio",
    "x": 106.0,
-   "y": 155.82,
+   "y": 155.8,
    "size": 10.833,
    "color": "#d8d8d8",
    "align": "left",
@@ -69,16 +69,25 @@
   {
    "text": "decoded, HPSS",
    "x": 106.0,
-   "y": 171.17,
+   "y": 171.2,
    "size": 8.333,
    "color": "#8a8a8a",
    "align": "left",
    "room": 82.0
   },
   {
+   "text": "1",
+   "x": 59.0,
+   "y": 139.2,
+   "size": 8.5,
+   "color": "#0b0b0b",
+   "align": "center",
+   "room": 12
+  },
+  {
    "text": "Waveform",
    "x": 106.0,
-   "y": 55.82,
+   "y": 55.8,
    "size": 10.833,
    "color": "#d8d8d8",
    "align": "left",
@@ -87,16 +96,25 @@
   {
    "text": "overview levels",
    "x": 106.0,
-   "y": 71.17,
+   "y": 71.2,
    "size": 8.333,
    "color": "#8a8a8a",
    "align": "left",
    "room": 82.0
   },
   {
+   "text": "2",
+   "x": 59.0,
+   "y": 39.2,
+   "size": 8.5,
+   "color": "#0b0b0b",
+   "align": "center",
+   "room": 12
+  },
+  {
    "text": "Beat grid",
    "x": 284.0,
-   "y": 155.82,
+   "y": 155.8,
    "size": 10.833,
    "color": "#d8d8d8",
    "align": "left",
@@ -105,16 +123,25 @@
   {
    "text": "beats, tempo, bars",
    "x": 284.0,
-   "y": 171.17,
+   "y": 171.2,
    "size": 8.333,
    "color": "#8a8a8a",
    "align": "left",
    "room": 82.0
   },
   {
+   "text": "3",
+   "x": 237.0,
+   "y": 139.2,
+   "size": 8.5,
+   "color": "#0b0b0b",
+   "align": "center",
+   "room": 12
+  },
+  {
    "text": "Phrase",
    "x": 494.0,
-   "y": 155.82,
+   "y": 155.8,
    "size": 10.833,
    "color": "#d8d8d8",
    "align": "left",
@@ -123,16 +150,25 @@
   {
    "text": "sections + labels",
    "x": 494.0,
-   "y": 171.17,
+   "y": 171.2,
    "size": 8.333,
    "color": "#8a8a8a",
    "align": "left",
    "room": 82.0
   },
   {
+   "text": "4",
+   "x": 447.0,
+   "y": 139.2,
+   "size": 8.5,
+   "color": "#0b0b0b",
+   "align": "center",
+   "room": 12
+  },
+  {
    "text": "CUE points",
    "x": 680.0,
-   "y": 155.82,
+   "y": 155.8,
    "size": 10.833,
    "color": "#d8d8d8",
    "align": "left",
@@ -141,16 +177,25 @@
   {
    "text": "by phrase label",
    "x": 680.0,
-   "y": 171.17,
+   "y": 171.2,
    "size": 8.333,
    "color": "#8a8a8a",
    "align": "left",
    "room": 82.0
   },
   {
+   "text": "5",
+   "x": 633.0,
+   "y": 139.2,
+   "size": 8.5,
+   "color": "#0b0b0b",
+   "align": "center",
+   "room": 12
+  },
+  {
    "text": "JumpCUE",
    "x": 680.0,
-   "y": 55.82,
+   "y": 55.8,
    "size": 10.833,
    "color": "#d8d8d8",
    "align": "left",
@@ -159,16 +204,25 @@
   {
    "text": "jump points",
    "x": 680.0,
-   "y": 71.17,
+   "y": 71.2,
    "size": 8.333,
    "color": "#8a8a8a",
    "align": "left",
    "room": 82.0
   },
   {
+   "text": "6",
+   "x": 633.0,
+   "y": 39.2,
+   "size": 8.5,
+   "color": "#0b0b0b",
+   "align": "center",
+   "room": 12
+  },
+  {
    "text": "Key",
    "x": 680.0,
-   "y": 255.82,
+   "y": 255.8,
    "size": 10.833,
    "color": "#d8d8d8",
    "align": "left",
@@ -177,56 +231,65 @@
   {
    "text": "key sections",
    "x": 680.0,
-   "y": 271.17,
+   "y": 271.2,
    "size": 8.333,
    "color": "#8a8a8a",
    "align": "left",
    "room": 82.0
   },
   {
-   "text": "audio",
-   "x": 215.06,
-   "y": 155.28,
-   "size": 8.75,
-   "color": "#8a8a8a",
+   "text": "7",
+   "x": 633.0,
+   "y": 239.2,
+   "size": 8.5,
+   "color": "#0b0b0b",
    "align": "center",
-   "room": 38
+   "room": 12
+  },
+  {
+   "text": "audio",
+   "x": 215.0,
+   "y": 155.3,
+   "size": 8.0,
+   "color": "#5aa9ff",
+   "align": "center",
+   "room": 40
   },
   {
    "text": "beat grid",
-   "x": 397.04,
-   "y": 155.28,
-   "size": 8.75,
-   "color": "#8a8a8a",
+   "x": 399.5,
+   "y": 155.3,
+   "size": 8.0,
+   "color": "#f0a35a",
    "align": "center",
-   "room": 68
+   "room": 70
+  },
+  {
+   "text": "beat grid",
+   "x": 515.0,
+   "y": 46.9,
+   "size": 8.0,
+   "color": "#f0a35a",
+   "align": "center",
+   "room": 100
+  },
+  {
+   "text": "beat grid",
+   "x": 515.0,
+   "y": 278.6,
+   "size": 8.0,
+   "color": "#f0a35a",
+   "align": "center",
+   "room": 100
   },
   {
    "text": "phrases",
    "x": 580.6,
-   "y": 116.44,
-   "size": 8.75,
-   "color": "#8a8a8a",
+   "y": 116.4,
+   "size": 8.0,
+   "color": "#e879b9",
    "align": "center",
-   "room": 64
-  },
-  {
-   "text": "beat grid",
-   "x": 515.04,
-   "y": 46.94,
-   "size": 8.75,
-   "color": "#8a8a8a",
-   "align": "center",
-   "room": 160
-  },
-  {
-   "text": "beat grid",
-   "x": 515.04,
-   "y": 278.61,
-   "size": 8.75,
-   "color": "#8a8a8a",
-   "align": "center",
-   "room": 160
+   "room": 40
   }
  ]
 }
