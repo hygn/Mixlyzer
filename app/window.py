@@ -4,6 +4,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 import copy
 import json
 
+from app.audio_report import print_audio_setup
 from app.print_hook import install_print_hook, log_environment_info
 from audioengine.native.client import (
     ACT_DECK_SHIFT, ACT_JUMP_A, EQ_MODES, FADER_CURVES, MIDI_EVENT_GUI, MIDI_EVENT_HOTCUE_SET, MIDI_EVENT_RELATIVE,
@@ -244,6 +245,7 @@ class AppWindow(QtWidgets.QMainWindow):
             QtCore.QMetaObject.invokeMethod(self.metro, "stop", QtCore.Qt.QueuedConnection)
         self.bus.sig_beatgrid_edited.connect(self._sync_metronome_beats)
         self._apply_timestretch(bool(self.cfg.playbackconfig.use_timestretch))
+        print_audio_setup(self.cfg.playbackconfig, self.player.native)
         # The scratch reader's and cursor poller's numba code, loaded here on the main
         # thread once the window is up (~1 s from the disk cache), so the audio thread
         # never waits for it (already loaded when the app started with app.startup).

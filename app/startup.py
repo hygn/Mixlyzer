@@ -16,6 +16,7 @@ from typing import Any, Callable
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
+from app.startup_console import ConsoleLines, StartupConsole
 from ui.theme import current_theme
 from core.i18n import tr
 from core.resource_paths import resource_path
@@ -50,17 +51,21 @@ def center_on_screen(widget: QtWidgets.QWidget, screen: QtGui.QScreen | None) ->
 
 
 class StartupSplash(QtWidgets.QWidget):
-    """The task (title, what it is doing, its progress bar) and the overall progress bar below it."""
+    """The task (title, what it is doing, its progress bar), the overall progress bar below it and, under them, the
+    console's last lines (``lines``: app.startup_console, the app's and the audio engine's)."""
 
     _PAINT_INTERVAL = 0.03   # s between repaints in a fast loop
 
-    def __init__(self) -> None:
+    def __init__(self, lines: ConsoleLines | None = None) -> None:
         super().__init__(None, QtCore.Qt.SplashScreen | QtCore.Qt.FramelessWindowHint)
         theme = current_theme()
         self.setObjectName("startupSplash")
         self.setAttribute(QtCore.Qt.WA_StyledBackground, True)
-        self.setStyleSheet(f"QWidget#startupSplash {{ background: {theme.window}; "
-                           f"border: 1px solid {theme.border}; }}")
+        self.setStyleSheet(
+            f"QWidget#startupSplash {{ background: {theme.window}; border: 1px solid {theme.border}; }}\n"
+            f"QProgressBar {{ border: none; border-radius: 2px; background: {theme.raised}; }}\n"
+            f"QProgressBar::chunk {{ border-radius: 2px; background: {theme.accent}; }}\n"
+            f"QProgressBar#overall::chunk {{ background: {theme.success}; }}")
         self.setWindowTitle("Mixlyzer")
         self.setWindowIcon(QtGui.QIcon(str(resource_path("assets/images/mixlyzer.png"))))
 
@@ -78,37 +83,67 @@ class StartupSplash(QtWidgets.QWidget):
         header.addWidget(name)
         header.addStretch(1)
 
+        # the task's title with its percent; what it is doing; its bar; the overall bar with its percent
         self.lbl_task = QtWidgets.QLabel(tr("Starting"))
+        bold = self.lbl_task.font()
+        bold.setBold(True)
+        self.lbl_task.setFont(bold)
+        self.lbl_task_pct = self._percent()
         self.lbl_detail = QtWidgets.QLabel("")
         self.lbl_detail.setStyleSheet(f"color: {theme.text_dim};")
-        # the task's progress above the overall progress
-        self.bar_task = self._bar()
-        self.bar_overall = self._bar()
-        bars = QtWidgets.QVBoxLayout()
-        bars.addWidget(self.bar_task)
-        bars.addWidget(self.bar_overall)
+        self.bar_task = self._bar(4)
+        self.bar_overall = self._bar(4)
+        self.bar_overall.setObjectName("overall")
+        self.lbl_overall = QtWidgets.QLabel(tr("Overall"))
+        self.lbl_overall.setStyleSheet(f"color: {theme.text_dim};")
+        self.lbl_overall_pct = self._percent()
+        task_row = QtWidgets.QHBoxLayout()
+        task_row.addWidget(self.lbl_task, 1)
+        task_row.addWidget(self.lbl_task_pct)
+        overall_row = QtWidgets.QHBoxLayout()
+        overall_row.addWidget(self.lbl_overall, 1)
+        overall_row.addWidget(self.lbl_overall_pct)
 
         layout = QtWidgets.QVBoxLayout(self)
-        layout.setContentsMargins(20, 16, 20, 18)
+        layout.setContentsMargins(22, 18, 22, 20)
+        layout.setSpacing(4)
         layout.addLayout(header)
-        layout.addSpacing(10)
-        layout.addWidget(self.lbl_task)
+        layout.addSpacing(12)
+        layout.addLayout(task_row)
         layout.addWidget(self.lbl_detail)
-        layout.addSpacing(6)
-        layout.addLayout(bars)
-        self.setFixedWidth(520)
+        layout.addSpacing(2)
+        layout.addWidget(self.bar_task)
+        layout.addSpacing(8)
+        layout.addLayout(overall_row)
+        layout.addSpacing(2)
+        layout.addWidget(self.bar_overall)
+        self.console = None
+        if lines is not None:
+            self.console = StartupConsole(lines)
+            layout.addSpacing(14)
+            layout.addWidget(self.console)
+        self.setFixedWidth(720)
         self.adjustSize()
         center_on_screen(self, launch_screen())
         self.pump_events = True
         self._painted = 0.0
 
     @staticmethod
-    def _bar() -> QtWidgets.QProgressBar:
+    def _bar(height: int) -> QtWidgets.QProgressBar:
         bar = QtWidgets.QProgressBar()
         bar.setRange(0, 1000)
-        bar.setFormat("%p%")
-        bar.setAlignment(QtCore.Qt.AlignCenter)
+        bar.setTextVisible(False)
+        bar.setFixedHeight(height)
         return bar
+
+    @staticmethod
+    def _percent() -> QtWidgets.QLabel:
+        """A percent's label, fixed in size (it changes every repaint)."""
+        label = QtWidgets.QLabel("0%")
+        label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        label.setFixedSize(label.fontMetrics().horizontalAdvance("100%") + 4, label.fontMetrics().height())
+        label.setStyleSheet(f"color: {current_theme().text_dim};")
+        return label
 
     def set_task(self, title: str) -> None:
         self.lbl_task.setText(title)
@@ -116,10 +151,13 @@ class StartupSplash(QtWidgets.QWidget):
         self._paint(force=True)
 
     def set_progress(self, task: float, overall: float, detail: str = "") -> None:
-        self.bar_task.setValue(round(1000 * min(max(task, 0.0), 1.0)))
-        self.bar_overall.setValue(round(1000 * min(max(overall, 0.0), 1.0)))
+        task, overall = min(max(task, 0.0), 1.0), min(max(overall, 0.0), 1.0)
+        self.bar_task.setValue(round(1000 * task))
+        self.bar_overall.setValue(round(1000 * overall))
+        self.lbl_task_pct.setText(f"{100 * task:.0f}%")
+        self.lbl_overall_pct.setText(f"{100 * overall:.0f}%")
         if detail:
-            width = self.lbl_detail.width() or self.width() - 40
+            width = self.lbl_detail.width() or self.width() - 44
             self.lbl_detail.setText(self.lbl_detail.fontMetrics().elidedText(detail, QtCore.Qt.ElideMiddle, width))
         self._paint()
 
@@ -128,6 +166,8 @@ class StartupSplash(QtWidgets.QWidget):
         if not force and now - self._painted < self._PAINT_INTERVAL:
             return
         self._painted = now
+        if self.console is not None:
+            self.console.refresh()
         if self.pump_events:
             QtWidgets.QApplication.processEvents(QtCore.QEventLoop.ExcludeUserInputEvents)
         else:

@@ -13,6 +13,7 @@ from core.library_version import (
 )
 from migration import library_migration
 from app.startup import StartupSplash, center_on_screen, one_blas_thread, run_startup, startup_tasks
+from app.startup_console import ConsoleLines
 from ui.theme import apply_theme
 from utils.fonts import load_fonts_and_set_global
 
@@ -30,6 +31,9 @@ def main():
     # (a shortcut's "Start in", a terminal): another folder's config.json, or a program in it named as one the
     # app runs, is never taken
     os.chdir(app_folder())
+    # what the start prints (the app's and the audio engine's lines), shown on the splash too
+    console = ConsoleLines()
+    console.install()
     one_blas_thread()   # before numpy loads (the startup imports it): none of the imports above does
     # The audio thread waits for the GIL whenever this (GUI) thread holds it: handed over after 1 ms instead of
     # Python's 5, so a small output buffer is fed in time (measured: a 20 ms buffer ran dry under GUI work).
@@ -56,7 +60,7 @@ def main():
                "Close it and launch again as a normal user."),
         )
         sys.exit(1)
-    splash = StartupSplash()
+    splash = StartupSplash(console)
     splash.show()
     app.processEvents()
     cfg = load_cfg()
@@ -97,6 +101,7 @@ def main():
     center_on_screen(w, splash.screen())   # on the screen the splash is on
     w.show()
     splash.close()
+    console.uninstall()
     sys.exit(app.exec())
 
 if __name__ == "__main__":
