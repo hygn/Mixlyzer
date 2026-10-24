@@ -14,7 +14,7 @@ class MusicIndexProgressDialog(QDialog):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle(tr("Index for Search by Music"))
+        self.setWindowTitle(tr("Index for Search by Music and Variants"))
         self.setModal(False)
 
         self.lbl_status = QLabel(tr("Starting the indexing workers"))
@@ -52,4 +52,4 @@ class MusicIndexProgressDialog(QDialog):
         self.lbl_status.setText(text)
 
     def set_failed(self, message: str) -> None:
-        self.lbl_status.setText(tr("Indexing for Search by Music failed:\n{error}").format(error=message))
+        self.lbl_status.setText(tr("Indexing for Search by Music and Variants failed:\n{error}").format(error=message))

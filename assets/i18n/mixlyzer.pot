@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-25 08:08+0900\n"
+"POT-Creation-Date: 2026-10-25 08:45+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -107,57 +107,57 @@ msgstr ""
 msgid "Phrases Updated"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:60
+#: analyzer_core/global_analyzer.py:61
 #, python-brace-format
 msgid "Audio decode failed via FFmpeg and SoundFile: {path}"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:273
+#: analyzer_core/global_analyzer.py:274
 msgid "Loading"
 msgstr ""
 
 #: analyzer_core/editor/jumpcue.py:37 analyzer_core/editor/phrase.py:32
-#: analyzer_core/global_analyzer.py:281
+#: analyzer_core/global_analyzer.py:282
 msgid "Processing HPSS"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:292
+#: analyzer_core/global_analyzer.py:293
 msgid "Processing Waveform"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:309
+#: analyzer_core/global_analyzer.py:310
 msgid "Tempo Analyzing"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:377
+#: analyzer_core/global_analyzer.py:378
 msgid "Phrase Boundary Analyzing"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:431
+#: analyzer_core/global_analyzer.py:432
 msgid "JumpCUE Analyzing"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:482
+#: analyzer_core/global_analyzer.py:483
 msgid "Analyzing Keys"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:515
+#: analyzer_core/global_analyzer.py:516
 msgid "Indexing for Search by Music"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:524
+#: analyzer_core/global_analyzer.py:525
 msgid "Processing Metadata"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:533
+#: analyzer_core/global_analyzer.py:534
 msgid "Rendering/Normalizing"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:558
+#: analyzer_core/global_analyzer.py:559
 msgid "Saving"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:560
+#: analyzer_core/global_analyzer.py:561
 msgid "Saving Result"
 msgstr ""
 
@@ -363,7 +363,7 @@ msgstr ""
 msgid "Analysis saved to library."
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:585 app/window.py:603
+#: analyzer_core/global_analyzer.py:598 app/window.py:603
 msgid "Finished"
 msgstr ""
 
@@ -479,7 +479,7 @@ msgstr ""
 msgid "Beat jump"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:307 core/midi.py:56
+#: analyzer_core/global_analyzer.py:308 core/midi.py:56
 msgid "Tempo"
 msgstr ""
 
@@ -889,7 +889,7 @@ msgstr ""
 msgid "Analysis process exited unexpectedly ({code})."
 msgstr ""
 
-#: core/workers/music_index.py:106
+#: core/workers/music_index.py:132
 #, python-brace-format
 msgid "The music search index process exited unexpectedly ({code})."
 msgstr ""
@@ -991,9 +991,9 @@ msgstr ""
 msgid "Error"
 msgstr ""
 
-#: core/workflows/music_index.py:112
+#: core/workflows/music_index.py:127
 #, python-brace-format
-msgid "Indexing for Search by Music: {done} / {total} tracks"
+msgid "Indexing for Search by Music and Variants: {done} / {total} tracks"
 msgstr ""
 
 #: core/workflows/reading_refresh.py:58
@@ -2297,7 +2297,7 @@ msgid "MIDI: {port} (closed)"
 msgstr ""
 
 #: ui/config/dialogs/music_index.py:17
-msgid "Index for Search by Music"
+msgid "Index for Search by Music and Variants"
 msgstr ""
 
 #: ui/config/dialogs/music_index.py:20
@@ -2341,7 +2341,7 @@ msgstr[1] ""
 #: ui/config/dialogs/music_index.py:55
 #, python-brace-format
 msgid ""
-"Indexing for Search by Music failed:\n"
+"Indexing for Search by Music and Variants failed:\n"
 "{error}"
 msgstr ""
 
@@ -3268,7 +3268,7 @@ msgstr ""
 msgid "overview levels"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:290 ui/config/pipeline_map.py:31
+#: analyzer_core/global_analyzer.py:291 ui/config/pipeline_map.py:31
 msgid "Waveform"
 msgstr ""
 
@@ -3816,7 +3816,7 @@ msgstr ""
 msgid "Hangul"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:514 ui/config/search.py:133
+#: analyzer_core/global_analyzer.py:515 ui/config/search.py:133
 msgid "Search by Music"
 msgstr ""
 
@@ -3859,12 +3859,14 @@ msgstr ""
 
 #: ui/config/search.py:160
 msgid ""
-"<p>Index the library's tracks that are not indexed yet (analyzed before "
-"Search by Music, or with indexing off), in the background; tracks gone "
-"from the library leave the index.</p>"
+"<p>Index the library's tracks that are not indexed yet for Search by "
+"Music or for the library's Variants (analyzed before they existed, or "
+"with indexing off), in the background; tracks gone from the library leave"
+" the index. The Variants are found from the stored analysis, without "
+"reading the audio.</p>"
 msgstr ""
 
-#: ui/config/search.py:266
+#: ui/config/search.py:267
 #, python-brace-format
 msgid "{indexed} of {total} library tracks are indexed."
 msgstr ""
@@ -4841,16 +4843,16 @@ msgid "Browse..."
 msgstr ""
 
 #: ui/edit_song.py:131 ui/edit_song.py:155 ui/export.py:73 ui/export.py:100
-#: ui/library.py:763
+#: ui/library.py:769
 msgid "Title"
 msgstr ""
 
 #: ui/edit_song.py:131 ui/edit_song.py:156 ui/export.py:74 ui/export.py:101
-#: ui/library.py:763
+#: ui/library.py:769
 msgid "Artist"
 msgstr ""
 
-#: ui/edit_song.py:131 ui/edit_song.py:157 ui/export.py:102 ui/library.py:764
+#: ui/edit_song.py:131 ui/edit_song.py:157 ui/export.py:102 ui/library.py:770
 msgid "Album"
 msgstr ""
 
@@ -4863,21 +4865,21 @@ msgid ""
 "reading for good, and type it again to bring it back.</p>"
 msgstr ""
 
-#: ui/edit_song.py:154 ui/library.py:765
+#: ui/edit_song.py:154 ui/library.py:771
 msgid "Path"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:480 ui/config/analysis.py:235
+#: analyzer_core/global_analyzer.py:481 ui/config/analysis.py:235
 #: ui/config/pipeline_map.py:26 ui/config/pipeline_map.py:34
 #: ui/edit_song.py:159
 msgid "Key"
 msgstr ""
 
-#: ui/edit_song.py:160 ui/library.py:764
+#: ui/edit_song.py:160 ui/library.py:770
 msgid "Rating"
 msgstr ""
 
-#: ui/edit_song.py:161 ui/export.py:103 ui/library.py:765
+#: ui/edit_song.py:161 ui/export.py:103 ui/library.py:771
 msgid "Comment"
 msgstr ""
 
@@ -4916,8 +4918,8 @@ msgid ""
 "{path}"
 msgstr ""
 
-#: ui/edit_song.py:375 ui/edit_song.py:398 ui/library.py:1784
-#: ui/library.py:1855 ui/library.py:2251 ui/shortcuts.py:142
+#: ui/edit_song.py:375 ui/edit_song.py:398 ui/library.py:1816
+#: ui/library.py:1887 ui/library.py:2359 ui/shortcuts.py:142
 msgid "Edit Track"
 msgstr ""
 
@@ -5017,8 +5019,8 @@ msgid "No track is selected."
 msgstr ""
 
 #: ui/export.py:296 ui/export.py:301 ui/export.py:307 ui/export.py:320
-#: ui/export.py:330 ui/export.py:438 ui/export.py:449 ui/library.py:1785
-#: ui/library.py:2255 ui/shortcuts.py:144
+#: ui/export.py:330 ui/export.py:438 ui/export.py:449 ui/library.py:1817
+#: ui/library.py:2363 ui/shortcuts.py:144
 msgid "Export Track"
 msgstr ""
 
@@ -5062,276 +5064,337 @@ msgid ""
 "{error}"
 msgstr ""
 
-#: ui/library.py:716
+#: ui/library.py:722
 msgid "AND: require every search condition (click to switch)"
 msgstr ""
 
-#: ui/library.py:717
+#: ui/library.py:723
 msgid "OR: accept any search condition (click to switch)"
 msgstr ""
 
-#: ui/library.py:763
+#: ui/library.py:769
 msgid "All"
 msgstr ""
 
-#: ui/library.py:764
+#: ui/library.py:770
 msgid "Duration"
 msgstr ""
 
-#: ui/library.py:765
+#: ui/library.py:771
 msgid "Added"
 msgstr ""
 
-#: ui/library.py:836
+#: ui/library.py:845
 msgid "Search title, artist, key ..."
 msgstr ""
 
-#: ui/library.py:838
+#: ui/library.py:847
 msgid ""
 "<p>Titles, artists and albums are also found by how they read, in any "
 "script: あのね by anone, ano ne or 아노네 (the reading is set in Edit "
 "Track).</p>"
 msgstr ""
 
-#: ui/library.py:844
+#: ui/library.py:853
 msgid "Column the text search looks in"
 msgstr ""
 
-#: ui/library.py:847
+#: ui/library.py:856
 msgid "Fuzzy"
 msgstr ""
 
-#: ui/library.py:847
+#: ui/library.py:856
 msgid ""
 "<p>Also find a similar pronunciation (from six letters of the reading on:"
 " about one sound in five off). Off: the reading must match, up to its "
 "spelling.</p>"
 msgstr ""
 
-#: ui/library.py:883
+#: ui/library.py:892
 msgid "Tracks with a phrase of this label (optionally at a BPM / key)"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:375 ui/config/analysis.py:236
+#: analyzer_core/global_analyzer.py:376 ui/config/analysis.py:236
 #: ui/config/pipeline_map.py:23 ui/config/pipeline_map.py:32
-#: ui/edit_panel/panel.py:63 ui/library.py:883 ui/library.py:976
+#: ui/edit_panel/panel.py:63 ui/library.py:892 ui/library.py:985
 #: ui/shortcuts.py:37
 msgid "Phrase"
 msgstr ""
 
-#: ui/library.py:884
+#: ui/library.py:893
 msgid "Tracks whose BPM changes from one tempo to another"
 msgstr ""
 
-#: ui/library.py:885
+#: ui/library.py:894
 msgid "Tracks whose key changes from one key to another"
 msgstr ""
 
-#: ui/config/midi.py:114 ui/library.py:888
+#: ui/config/midi.py:114 ui/library.py:897
 msgid "Clear"
 msgstr ""
 
-#: ui/library.py:889
+#: ui/library.py:898
 msgid "Remove every search condition (text and filters)"
 msgstr ""
 
-#: ui/library.py:899
+#: ui/library.py:908
 msgid ""
 "<p>Search by Music: hum, sing or whistle a melody, or play the song from "
 "a phone, and the library shows the songs the microphone hears, best "
 "first. Click again to stop listening (the results stay).</p>"
 msgstr ""
 
-#: ui/library.py:905
+#: ui/library.py:914
 msgid "Back to the library"
 msgstr ""
 
-#: ui/library.py:929
+#: ui/library.py:938
 msgid "Also require this BPM inside the phrase"
 msgstr ""
 
-#: ui/library.py:934
+#: ui/library.py:943
 msgid "Phrase BPM tolerance"
 msgstr ""
 
-#: ui/library.py:935
+#: ui/library.py:944
 msgid "Also require this key inside the phrase"
 msgstr ""
 
-#: ui/library.py:937
+#: ui/library.py:946
 msgid "Key inside the selected phrase (Alphanumeric wheel)"
 msgstr ""
 
-#: ui/library.py:939
+#: ui/library.py:948
 msgid ""
 "Also match harmonically compatible keys (±1 on the Alphanumeric wheel, "
 "relative key)"
 msgstr ""
 
-#: ui/library.py:939 ui/library.py:965
+#: ui/library.py:948 ui/library.py:974
 msgid "Compat"
 msgstr ""
 
-#: ui/library.py:948
+#: ui/library.py:957
 msgid "BPM transition tolerance"
 msgstr ""
 
-#: ui/library.py:950
+#: ui/library.py:959
 msgid "Require the transition to start at the first BPM segment"
 msgstr ""
 
-#: ui/library.py:950 ui/library.py:963
+#: ui/library.py:959 ui/library.py:972
 msgid "1st"
 msgstr ""
 
-#: ui/library.py:954
+#: ui/library.py:963
 msgid "Key before the change (Alphanumeric wheel)"
 msgstr ""
 
-#: ui/library.py:957
+#: ui/library.py:966
 msgid "Key after the change (Alphanumeric wheel)"
 msgstr ""
 
-#: ui/library.py:963
+#: ui/library.py:972
 msgid "Require the transition to start at the first key segment"
 msgstr ""
 
-#: ui/library.py:965
+#: ui/library.py:974
 msgid ""
 "Also match harmonically compatible keys at both ends (±1 on the "
 "Alphanumeric wheel, relative key)"
 msgstr ""
 
-#: ui/library.py:974 ui/library.py:987
+#: ui/library.py:983 ui/library.py:996
 msgid "Minimum duration of both sides of each enabled transition"
 msgstr ""
 
-#: ui/library.py:986
+#: ui/library.py:995
 msgid "Min seg"
 msgstr ""
 
-#: ui/library.py:1208
+#: ui/library.py:1217
 msgid "Library (All)"
 msgstr ""
 
-#: ui/library.py:1212
-msgid "Playlists"
+#: ui/library.py:1221
+msgid "Variants"
+msgstr ""
+
+#: ui/library.py:1224
+msgid ""
+"<p>The library's tracks that are versions of one song: the same audio, "
+"another vocal, the instrumental, an edit (a TV size). # is the song; a "
+"row's tooltip says how it differs from the others.</p>"
 msgstr ""
 
 #: ui/library.py:1227
+msgid "Loaded Track"
+msgstr ""
+
+#: ui/library.py:1229
+msgid ""
+"<p>The versions of the track loaded on the deck, following each track "
+"loaded.</p>"
+msgstr ""
+
+#: ui/library.py:1234
+msgid "Playlists"
+msgstr ""
+
+#: ui/library.py:1249
 msgid "Local Folders"
 msgstr ""
 
-#: ui/config/external_sync.py:105 ui/library.py:1732 ui/pane.py:517
+#: ui/config/external_sync.py:105 ui/library.py:1764 ui/pane.py:517
 msgid "External Sync"
 msgstr ""
 
-#: ui/library.py:1733
+#: ui/library.py:1765
 msgid "Track loading is disabled while External Sync is enabled."
 msgstr ""
 
-#: ui/library.py:1787
+#: ui/library.py:1819
 msgid "The selected track; click the open tab to fold the panel"
 msgstr ""
 
-#: ui/library.py:1856
+#: ui/library.py:1888
 #, python-brace-format
 msgid "Apply the changes to \"{title}\"? (No: they are dropped)"
 msgstr ""
 
-#: ui/library.py:2035
+#: ui/library.py:2067
 #, python-brace-format
 msgid "Matched at {start} - {end}, by the sound of the recording ({n} matches)"
 msgstr ""
 
-#: ui/library.py:2038
+#: ui/library.py:2070
 #, python-brace-format
 msgid "Matched at {start} - {end}, by the melody"
 msgstr ""
 
-#: ui/library.py:2055
+#: ui/library.py:2114
+msgid "the same mix"
+msgstr ""
+
+#: ui/library.py:2116
+#, python-brace-format
+msgid "{relation}, a shorter edit"
+msgstr ""
+
+#: ui/library.py:2118
+#, python-brace-format
+msgid "{relation}, a longer version"
+msgstr ""
+
+#: ui/library.py:2120
+#, python-brace-format
+msgid "{relation}, some sections differ"
+msgstr ""
+
+#: ui/library.py:2123
+msgid "a shorter edit"
+msgstr ""
+
+#: ui/library.py:2125
+msgid "a longer version"
+msgstr ""
+
+#: ui/library.py:2127
+msgid "some sections differ"
+msgstr ""
+
+#: ui/library.py:2144
+#, python-brace-format
+msgid "{title}: {relation}"
+msgstr ""
+
+#: ui/library.py:2146
+msgid "Variants of this track:"
+msgstr ""
+
+#: ui/library.py:2163
 msgid "The loaded track is not in the list shown."
 msgstr ""
 
-#: ui/library.py:2077 ui/library.py:2106 ui/library.py:2113 ui/shortcuts.py:151
+#: ui/library.py:2185 ui/library.py:2214 ui/library.py:2221 ui/shortcuts.py:151
 msgid "New Playlist"
 msgstr ""
 
-#: ui/library.py:2080
+#: ui/library.py:2188
 msgid "Rename"
 msgstr ""
 
-#: ui/library.py:2081
+#: ui/library.py:2189
 msgid "Move Up"
 msgstr ""
 
-#: ui/library.py:2082
+#: ui/library.py:2190
 msgid "Move Down"
 msgstr ""
 
-#: ui/library.py:2083 ui/library.py:2142
+#: ui/library.py:2191 ui/library.py:2250
 msgid "Delete Playlist"
 msgstr ""
 
-#: ui/library.py:2085
+#: ui/library.py:2193
 msgid "Refresh Folders"
 msgstr ""
 
-#: ui/library.py:2106 ui/library.py:2124
+#: ui/library.py:2214 ui/library.py:2232
 msgid "Name"
 msgstr ""
 
-#: ui/library.py:2124 ui/library.py:2132
+#: ui/library.py:2232 ui/library.py:2240
 msgid "Rename Playlist"
 msgstr ""
 
-#: ui/library.py:2143
+#: ui/library.py:2251
 #, python-brace-format
 msgid ""
 "Delete playlist \"{name}\"?\n"
 "Tracks remain in the Library."
 msgstr ""
 
-#: ui/library.py:2248 ui/shortcuts.py:149
+#: ui/library.py:2356 ui/shortcuts.py:149
 msgid "Show in Explorer"
 msgstr ""
 
-#: ui/library.py:2249 ui/shortcuts.py:150
+#: ui/library.py:2357 ui/shortcuts.py:150
 msgid "Show in Finder"
 msgstr ""
 
-#: ui/library.py:2249 ui/shortcuts.py:150
+#: ui/library.py:2357 ui/shortcuts.py:150
 msgid "Show in File Manager"
 msgstr ""
 
-#: ui/library.py:2250 ui/library.py:2336 ui/shortcuts.py:154
+#: ui/library.py:2358 ui/library.py:2444 ui/shortcuts.py:154
 msgid "Remove from Library"
 msgstr ""
 
-#: ui/library.py:2253
+#: ui/library.py:2361
 msgid "Analyze Track"
 msgstr ""
 
-#: ui/library.py:2253 ui/reanalyze_dialog.py:16 ui/shortcuts.py:152
+#: ui/library.py:2361 ui/reanalyze_dialog.py:16 ui/shortcuts.py:152
 msgid "Reanalyze Track"
 msgstr ""
 
-#: ui/library.py:2258 ui/shortcuts.py:155
+#: ui/library.py:2366 ui/shortcuts.py:155
 msgid "Remove from Playlist"
 msgstr ""
 
-#: ui/library.py:2259
+#: ui/library.py:2367
 msgid "Add to Playlist"
 msgstr ""
 
-#: ui/library.py:2328
+#: ui/library.py:2436
 #, python-brace-format
 msgid ""
 "Remove \"{title}\" from the library?\n"
 "Its analysis and edits are deleted; the audio file stays."
 msgstr ""
 
-#: ui/library.py:2331
+#: ui/library.py:2439
 #, python-brace-format
 msgid ""
 "Remove {count} track from the library?\n"
@@ -5811,7 +5874,7 @@ msgid ""
 "highlighted one."
 msgstr ""
 
-#: ui/config/search.py:169 ui/shortcuts.py:134
+#: ui/config/search.py:170 ui/shortcuts.py:134
 msgid "Search"
 msgstr ""
 

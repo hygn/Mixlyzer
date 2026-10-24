@@ -33,6 +33,7 @@ from core.analysis_lib_handler import FeatureNPZStore
 from core.thumbnails import save_thumbnail
 from core.music_search import store as music_store
 from core.music_search.indexing import index_audio
+from core.variants import store as variant_store
 from core.config import ANALYSIS_SAMPLE_RATE, config
 from core.i18n import tr
 from core.taskmanager import taskmanager
@@ -580,6 +581,18 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
                 con.close()
         except Exception as exc:
             print(f"[Music search] index not written: {exc}")
+    # the variants' fingerprint (core.variants: from the beats and the overview's bands, ~20 ms), queried against
+    # the library's; a failure leaves the track out of the variants, never the analysis undone
+    try:
+        con = variant_store.open_writer(variant_store.path_for(config.libconfig.libpath))
+        try:
+            found = variant_store.put(con, properties["uid"], features)
+        finally:
+            con.close()
+        if found:
+            print(f"[Variants] {found} found")
+    except Exception as exc:
+        print(f"[Variants] not indexed: {exc}")
     features_properties["library"] = lib_full
     print("[Analyzer] Analysis Finished")
     taskmgr.updatetask(taskid, tr("Finished"), 1)

@@ -1,7 +1,9 @@
-"""Index Now (Settings > Search > Search by Music): the library tracks analyzed before the music search existed get
-their index (core.music_search.indexing: reference lines and landmarks; about 6 s a track) in spawned processes at a
-lower priority, each its share of the tracks; each writes its tracks to music_search.db itself (SQLite serializes
-the writes). The analysis indexes the tracks it analyzes."""
+"""Index Now (Settings > Search > Search by Music): the library tracks analyzed before the music search or the
+variants existed get their index in spawned processes at a lower priority, each its share of the tracks: Search by
+Music's (core.music_search.indexing: reference lines and landmarks from the audio; about 3 s a track) and the
+variants' fingerprint (core.variants: from the stored features, no audio; about 20 ms a track). Each writes its
+tracks to music_search.db / variants.db itself (SQLite serializes the writes). The analysis indexes the tracks it
+analyzes."""
 
 from __future__ import annotations
 
@@ -16,10 +18,22 @@ from core.i18n import tr
 
 
 @dataclass(frozen=True)
+class IndexTrack:
+    uid: str
+    path: str            # the audio file
+    size: int            # its size and time, kept with Search by Music's index
+    mtime: float
+    music: bool          # Search by Music's index to make (from the audio)
+    variants: str        # the stored features (NPZ) to fingerprint for the variants, or ""
+
+
+@dataclass(frozen=True)
 class MusicIndexRequest:
     search_db: str
-    tracks: tuple[tuple[str, str, int, float], ...]   # (uid, path, file size, file time) to index
-    drop: tuple[str, ...] = ()                         # uids gone from the library: out of the index
+    variants_db: str
+    tracks: tuple[IndexTrack, ...]
+    drop: tuple[str, ...] = ()            # uids gone from the library: out of Search by Music's index
+    drop_variants: tuple[str, ...] = ()   # and out of the variants'
 
 
 @dataclass(frozen=True)
@@ -30,31 +44,43 @@ class MusicIndexResult:
 
 def index_tracks(request: MusicIndexRequest, progress=None) -> MusicIndexResult:
     """Index ``request.tracks``; ``progress(done)`` after each."""
+    import numpy as np
     from threadpoolctl import threadpool_limits
     from analyzer_core.global_analyzer import fast_load
     from core.music_search import indexing, store
+    from core.variants import fingerprint as variant_fp, store as variant_store
 
     con = store.open_writer(request.search_db)
+    vcon = variant_store.open_writer(request.variants_db)
     failed: list[str] = []
     done = 0
     try:
         with con:
             for uid in request.drop:
                 store.drop(con, uid)
-        for uid, path, size, mtime in request.tracks:
+        with vcon:
+            for uid in request.drop_variants:
+                variant_store.drop(vcon, uid)
+        for track in request.tracks:
             try:
-                with threadpool_limits(1):
-                    entry = indexing.index_audio(fast_load(path, target_sr=indexing.SR, stereo=True))
-                with con:
-                    store.put(con, uid, size, mtime, entry)
+                if track.variants:
+                    with np.load(track.variants, allow_pickle=False) as npz:
+                        features = {k: npz[k] for k in variant_fp.FEATURES}
+                    variant_store.put(vcon, track.uid, features)
+                if track.music:
+                    with threadpool_limits(1):
+                        entry = indexing.index_audio(fast_load(track.path, target_sr=indexing.SR, stereo=True))
+                    with con:
+                        store.put(con, track.uid, track.size, track.mtime, entry)
             except Exception:
-                failed.append(path)
+                failed.append(track.path)
             done += 1
             if progress is not None:
                 progress(done)
         return MusicIndexResult(indexed=done - len(failed), failed=tuple(failed))
     finally:
         con.close()
+        vcon.close()
 
 
 def _music_index_process_entry(request: MusicIndexRequest, queue: Any) -> None:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
 import copy
+import html
 import json
 from pathlib import Path
 from typing import List, Optional
@@ -23,6 +24,7 @@ from ui.theme import current_theme
 from ui.edit_panel.key_picker import KeyPickButton
 from ui.edit_panel.flash import flash
 from core.thumbnails import delete_thumbnail, load_thumbnail
+from core.variants import fingerprint as variant_fp, store as variant_store
 from core.i18n import tr, tr_mark, tr_n
 
 
@@ -165,6 +167,10 @@ class FastDelegate(QtWidgets.QStyledItemDelegate):
         selected = bool(option.state & QtWidgets.QStyle.State_Selected)
         if selected:
             painter.fillRect(rect, option.palette.highlight())
+        else:
+            background = index.data(QtCore.Qt.BackgroundRole)   # a row's own (Variants: its song's)
+            if isinstance(background, QtGui.QBrush):
+                painter.fillRect(rect, background)
         if index.column() == self._art_column:
             # the top of the art, fitted to the column's width
             dpr = painter.device().devicePixelRatio() or 1.0
@@ -824,6 +830,9 @@ class LibraryWidget(QtWidgets.QWidget):
         self._library_tracks: List[Track] = []
         self._source_kind = "library"
         self._source_value = None
+        # Variants shown: uid -> its relations (core.variants.store.Pair), uid -> its song's number
+        self._variant_pairs: dict[str, list] = {}
+        self._variant_song: dict[str, int] = {}
         # file identity -> the playlists (uids) it goes into once analyzed, once per drop
         self._pending_playlist_paths: dict[str, list[str]] = {}
 
@@ -1209,6 +1218,19 @@ class LibraryWidget(QtWidgets.QWidget):
         library_item.setData(0, _SOURCE_KIND_ROLE, "library")
         tree.addTopLevelItem(library_item)
 
+        variants_item = QtWidgets.QTreeWidgetItem([tr("Variants")])
+        variants_item.setData(0, _SOURCE_KIND_ROLE, "variants")
+        variants_item.setToolTip(0, tr(
+            "<p>The library's tracks that are versions of one song: the same audio, another vocal, the instrumental, "
+            "an edit (a TV size). # is the song; a row's tooltip says how it differs from the others.</p>"))
+        tree.addTopLevelItem(variants_item)
+        loaded_item = QtWidgets.QTreeWidgetItem([tr("Loaded Track")])
+        loaded_item.setData(0, _SOURCE_KIND_ROLE, "variants_loaded")
+        loaded_item.setToolTip(0, tr("<p>The versions of the track loaded on the deck, following each track "
+                                     "loaded.</p>"))
+        variants_item.addChild(loaded_item)
+        variants_item.setExpanded(True)
+
         playlists_item = QtWidgets.QTreeWidgetItem([tr("Playlists")])
         playlists_item.setData(0, _SOURCE_KIND_ROLE, "playlists")
         tree.addTopLevelItem(playlists_item)
@@ -1316,6 +1338,10 @@ class LibraryWidget(QtWidgets.QWidget):
                 tracks.append(track)
             default_column = "#"
             default_order = QtCore.Qt.SortOrder.AscendingOrder
+        elif self._source_kind in ("variants", "variants_loaded"):
+            tracks = self._variant_tracks(self._loaded_uid or "" if self._source_kind == "variants_loaded" else None)
+            default_column = "#"
+            default_order = QtCore.Qt.SortOrder.AscendingOrder
         elif self._source_kind == "directory":
             tracks = self._scan_directory(str(self._source_value or ""))
             default_column = "Title"
@@ -1342,6 +1368,8 @@ class LibraryWidget(QtWidgets.QWidget):
         self._table_source = source
         if self._music_mode:
             self._music_tooltips()
+        elif self._source_kind in ("variants", "variants_loaded"):
+            self._variant_marks()
         self._apply_filter()
         self.table.setUpdatesEnabled(True)
 
@@ -1517,7 +1545,11 @@ class LibraryWidget(QtWidgets.QWidget):
     def _on_properties_loaded(self) -> None:
         properties = self.model.properties if self.model is not None else {}
         uid = properties.get("uid") if isinstance(properties, dict) else None
-        self._loaded_uid = str(uid or "").strip() or None
+        loaded = str(uid or "").strip() or None
+        if loaded != self._loaded_uid and self._source_kind == "variants_loaded" and not self._music_mode:
+            self._loaded_uid = loaded
+            self._refresh_current_source(reset_sort=True)   # the new track's versions
+        self._loaded_uid = loaded
         self._mark_loaded_track()
 
     def _mark_loaded_track(self) -> None:
@@ -2041,6 +2073,82 @@ class LibraryWidget(QtWidgets.QWidget):
                 item = self.table.item(r, c)
                 if item is not None:
                     item.setToolTip(tip)
+
+    def _variant_tracks(self, of: str | None = None) -> List[Track]:
+        """The library's tracks with variants (core.variants), # their song: the songs with the newest track first,
+        each song's longest track first; with ``of``, that track's song only (none for "": no track loaded)."""
+        by_uid = {t.uid: t for t in self._library_tracks if t.uid}
+        found = variant_store.pairs(variant_store.path_for(self.cfg.libconfig.libpath))
+        self._variant_pairs = {}
+        for p in found:
+            if p.a in by_uid and p.b in by_uid:
+                self._variant_pairs.setdefault(p.a, []).append(p)
+                self._variant_pairs.setdefault(p.b, []).append(p)
+
+        def added(uid: str) -> int:
+            t = by_uid[uid]
+            return t.added.toSecsSinceEpoch() if t.added else 0
+
+        groups = sorted(variant_store.groups(found, set(by_uid)), key=lambda g: -max(added(u) for u in g))
+        if of is not None:
+            groups = [g for g in groups if of in g]
+        self._variant_song = {}
+        tracks = []
+        for song, group in enumerate(groups, start=1):
+            group.sort(key=lambda u: (-(by_uid[u].duration_sec or 0.0), by_uid[u].title))
+            for k, uid in enumerate(group):
+                track = copy.copy(by_uid[uid])
+                track.playlist_index = song * 1000 + k
+                track._disp_playlist_index = str(song)
+                tracks.append(track)
+                self._variant_song[uid] = song
+        return tracks
+
+    def _variant_relation(self, uid: str, p: variant_store.Pair) -> str:
+        """How the other track of ``p`` differs from ``uid``'s, in words ("" for nothing to say): the same mix, and
+        its length. Another vocal / the instrumental are not told apart (the vocal range's level misreads quiet
+        vocals)."""
+        cover_self, cover_other = (p.cover_b, p.cover_a) if p.b == uid else (p.cover_a, p.cover_b)
+        length = variant_fp.length(cover_other, cover_self)
+        if p.kind == variant_fp.SAME_MIX_KIND:
+            text = tr("the same mix")
+            if length == "edit":
+                return tr("{relation}, a shorter edit").format(relation=text)
+            if length == "longer":
+                return tr("{relation}, a longer version").format(relation=text)
+            if length == "partly":
+                return tr("{relation}, some sections differ").format(relation=text)
+            return text
+        if length == "edit":
+            return tr("a shorter edit")
+        if length == "longer":
+            return tr("a longer version")
+        if length == "partly":
+            return tr("some sections differ")
+        return ""
+
+    def _variant_marks(self) -> None:
+        """Each song's rows on one background (the songs alternating), each row's tooltip its variants."""
+        theme = current_theme()
+        shades = (QtGui.QBrush(QtGui.QColor(theme.base)), QtGui.QBrush(QtGui.QColor(theme.alt_base)))
+        titles = {t.uid: t.title or os.path.basename(t.path) for t in self._all_tracks}
+        for r in range(self.table.rowCount()):
+            uid = self._row_uid(r)
+            song = self._variant_song.get(uid)
+            if song is None:
+                continue
+            lines = []
+            for p in self._variant_pairs.get(uid, ()):
+                title = titles.get(p.b if p.a == uid else p.a, "")
+                relation = self._variant_relation(uid, p)
+                lines.append(html.escape(tr("{title}: {relation}").format(title=title, relation=relation)
+                                         if relation else title))
+            tip = "<p>" + html.escape(tr("Variants of this track:")) + "<br>" + "<br>".join(lines) + "</p>"
+            for c in range(self.table.columnCount()):
+                item = self.table.item(r, c)
+                if item is not None:
+                    item.setToolTip(tip)
+                    item.setBackground(shades[song % 2])
 
     def _focus_search(self) -> None:
         self.e_search.setFocus(QtCore.Qt.ShortcutFocusReason)
