@@ -212,13 +212,43 @@ def _contours_python(salience: np.ndarray, frame_sec: float) -> list[tuple[list[
     return [(c[0], c[1], c[2]) for c in finished if len(c[0]) >= min_len]
 
 
+# The last harmonic part's contours (before the voicing filter), its frames and the candidates' frequencies: the
+# search by music's index reads the contours of the same harmonic part later in the same analysis
+# (core.music_search.melody), and takes them from here instead of finding them again. The part itself is kept with
+# them (its memory can then not be another part's).
+_kept: tuple | None = None
+
+
+def take_contours(harmonic: np.ndarray, sample_rate: int, hop_length: int) -> tuple | None:
+    """(contours, frames, candidate frequencies) extract_melody_contour found in this very harmonic part (the same
+    memory, rate and hop), handed over once; None otherwise."""
+    global _kept
+    if _kept is None:
+        return None
+    part, rate, hop, found = _kept
+    same = (rate, hop) == (sample_rate, hop_length) and part.shape == harmonic.shape and part.dtype == harmonic.dtype \
+        and part.__array_interface__["data"][0] == harmonic.__array_interface__["data"][0]
+    if not same:
+        return None
+    _kept = None
+    return found
+
+
+def forget_contours() -> None:
+    global _kept
+    _kept = None
+
+
 def extract_melody_contour(
     harmonic: np.ndarray, sample_rate: int, hop_length: int, n_frames: int
 ) -> tuple[np.ndarray, np.ndarray]:
     """Per frame: melody pitch in MIDI semitones (NaN when unvoiced) and the id of its contour (-1)."""
+    global _kept
     frame_sec = hop_length / float(sample_rate)
-    salience, f0s = _salience(np.asarray(harmonic, dtype=np.float32), sample_rate, hop_length)
+    harmonic = np.asarray(harmonic, dtype=np.float32)
+    salience, f0s = _salience(harmonic, sample_rate, hop_length)
     contours = _contours(salience, frame_sec)
+    _kept = (harmonic, sample_rate, hop_length, (list(contours), salience.shape[1], f0s))
     if contours:
         means = np.array([np.mean(c[1]) for c in contours])
         keep = means >= means.mean() - VOICING_NU * means.std()

@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-24 01:26+0900\n"
+"POT-Creation-Date: 2026-10-25 08:08+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ja_JP\n"
@@ -108,57 +108,57 @@ msgstr "フレーズを解析中"
 msgid "Phrases Updated"
 msgstr "フレーズを更新しました"
 
-#: analyzer_core/global_analyzer.py:59
+#: analyzer_core/global_analyzer.py:60
 #, python-brace-format
 msgid "Audio decode failed via FFmpeg and SoundFile: {path}"
 msgstr "FFmpeg と SoundFile のどちらでもオーディオをデコードできませんでした: {path}"
 
-#: analyzer_core/global_analyzer.py:272
+#: analyzer_core/global_analyzer.py:273
 msgid "Loading"
 msgstr "読み込み中"
 
 #: analyzer_core/editor/jumpcue.py:37 analyzer_core/editor/phrase.py:32
-#: analyzer_core/global_analyzer.py:280
+#: analyzer_core/global_analyzer.py:281
 msgid "Processing HPSS"
 msgstr "HPSS を処理中"
 
-#: analyzer_core/global_analyzer.py:291
+#: analyzer_core/global_analyzer.py:292
 msgid "Processing Waveform"
 msgstr "波形を処理中"
 
-#: analyzer_core/global_analyzer.py:308
+#: analyzer_core/global_analyzer.py:309
 msgid "Tempo Analyzing"
 msgstr "テンポを解析中"
 
-#: analyzer_core/global_analyzer.py:376
+#: analyzer_core/global_analyzer.py:377
 msgid "Phrase Boundary Analyzing"
 msgstr "フレーズ境界を解析中"
 
-#: analyzer_core/global_analyzer.py:430
+#: analyzer_core/global_analyzer.py:431
 msgid "JumpCUE Analyzing"
 msgstr "JumpCUE を解析中"
 
-#: analyzer_core/global_analyzer.py:477
+#: analyzer_core/global_analyzer.py:482
 msgid "Analyzing Keys"
 msgstr "キーを解析中"
 
-#: analyzer_core/global_analyzer.py:510
+#: analyzer_core/global_analyzer.py:515
 msgid "Indexing for Search by Music"
 msgstr "音楽で検索のインデックスを作成中"
 
-#: analyzer_core/global_analyzer.py:517
+#: analyzer_core/global_analyzer.py:524
 msgid "Processing Metadata"
 msgstr "メタデータを処理中"
 
-#: analyzer_core/global_analyzer.py:526
+#: analyzer_core/global_analyzer.py:533
 msgid "Rendering/Normalizing"
 msgstr "レンダリング/ノーマライズ中"
 
-#: analyzer_core/global_analyzer.py:551
+#: analyzer_core/global_analyzer.py:558
 msgid "Saving"
 msgstr "保存中"
 
-#: analyzer_core/global_analyzer.py:553
+#: analyzer_core/global_analyzer.py:560
 msgid "Saving Result"
 msgstr "結果を保存中"
 
@@ -391,7 +391,7 @@ msgstr "{name} の場所を指定"
 msgid "Analysis saved to library."
 msgstr "解析をライブラリに保存しました。"
 
-#: analyzer_core/global_analyzer.py:578 app/window.py:603
+#: analyzer_core/global_analyzer.py:585 app/window.py:603
 msgid "Finished"
 msgstr "完了"
 
@@ -513,7 +513,7 @@ msgstr "CUEポイント"
 msgid "Beat jump"
 msgstr "ビートジャンプ"
 
-#: analyzer_core/global_analyzer.py:306 core/midi.py:56
+#: analyzer_core/global_analyzer.py:307 core/midi.py:56
 msgid "Tempo"
 msgstr "テンポ"
 
@@ -2332,12 +2332,6 @@ msgstr "D1 {rate} kHz: {device}"
 msgid "D2 {rate} kHz: {device}"
 msgstr "D2 {rate} kHz: {device}"
 
-# | msgid "Default"
-#: ui/config/audio_overview.py:388 ui/config/audio_overview.py:429
-#: ui/config/output_group.py:95
-msgid "System default"
-msgstr "システムのデフォルト"
-
 # | msgid "Waiting for playback..."
 #: ui/config/audio_overview.py:390 ui/config/audio_overview.py:430
 #: ui/config/audio_overview.py:488
@@ -3224,11 +3218,6 @@ msgstr ""
 msgid "None"
 msgstr "なし"
 
-#: ui/config/midi.py:201 ui/config/output_group.py:99
-#, python-brace-format
-msgid "{name} (not connected)"
-msgstr "{name} (未接続)"
-
 #: ui/config/midi.py:207
 msgid "Open."
 msgstr "接続中。"
@@ -3669,7 +3658,7 @@ msgstr "デコード、HPSS"
 msgid "overview levels"
 msgstr "全体波形のレベル"
 
-#: analyzer_core/global_analyzer.py:289 ui/config/pipeline_map.py:31
+#: analyzer_core/global_analyzer.py:290 ui/config/pipeline_map.py:31
 msgid "Waveform"
 msgstr "波形"
 
@@ -4365,7 +4354,7 @@ msgstr ""
 msgid "Hangul"
 msgstr "ハングル"
 
-#: analyzer_core/global_analyzer.py:509 ui/config/search.py:133
+#: analyzer_core/global_analyzer.py:514 ui/config/search.py:133
 msgid "Search by Music"
 msgstr "音楽で検索"
 
@@ -5471,16 +5460,16 @@ msgid "Browse..."
 msgstr "参照..."
 
 #: ui/edit_song.py:131 ui/edit_song.py:155 ui/export.py:73 ui/export.py:100
-#: ui/library.py:762
+#: ui/library.py:763
 msgid "Title"
 msgstr "タイトル"
 
 #: ui/edit_song.py:131 ui/edit_song.py:156 ui/export.py:74 ui/export.py:101
-#: ui/library.py:762
+#: ui/library.py:763
 msgid "Artist"
 msgstr "アーティスト"
 
-#: ui/edit_song.py:131 ui/edit_song.py:157 ui/export.py:102 ui/library.py:763
+#: ui/edit_song.py:131 ui/edit_song.py:157 ui/export.py:102 ui/library.py:764
 msgid "Album"
 msgstr "アルバム"
 
@@ -5497,21 +5486,21 @@ msgstr ""
 "の言語でテキストから読み取ったもの。セルに入力すると自分の読みを追加し、セルを空にする (Delete) "
 "か上書きするとその読みを完全に削除します。もう一度入力すると元に戻ります。</p>"
 
-#: ui/edit_song.py:154 ui/library.py:764
+#: ui/edit_song.py:154 ui/library.py:765
 msgid "Path"
 msgstr "パス"
 
-#: analyzer_core/global_analyzer.py:475 ui/config/analysis.py:235
+#: analyzer_core/global_analyzer.py:480 ui/config/analysis.py:235
 #: ui/config/pipeline_map.py:26 ui/config/pipeline_map.py:34
 #: ui/edit_song.py:159
 msgid "Key"
 msgstr "キー"
 
-#: ui/edit_song.py:160 ui/library.py:763
+#: ui/edit_song.py:160 ui/library.py:764
 msgid "Rating"
 msgstr "レーティング"
 
-#: ui/edit_song.py:161 ui/export.py:103 ui/library.py:764
+#: ui/edit_song.py:161 ui/export.py:103 ui/library.py:765
 msgid "Comment"
 msgstr "コメント"
 
@@ -5552,8 +5541,8 @@ msgstr ""
 "ファイルがありません:\n"
 "{path}"
 
-#: ui/edit_song.py:375 ui/edit_song.py:398 ui/library.py:1779
-#: ui/library.py:1850 ui/library.py:2239 ui/shortcuts.py:142
+#: ui/edit_song.py:375 ui/edit_song.py:398 ui/library.py:1784
+#: ui/library.py:1855 ui/library.py:2251 ui/shortcuts.py:142
 msgid "Edit Track"
 msgstr "トラックの編集"
 
@@ -5657,8 +5646,8 @@ msgid "No track is selected."
 msgstr "トラックが選択されていません。"
 
 #: ui/export.py:296 ui/export.py:301 ui/export.py:307 ui/export.py:320
-#: ui/export.py:330 ui/export.py:438 ui/export.py:449 ui/library.py:1780
-#: ui/library.py:2243 ui/shortcuts.py:144
+#: ui/export.py:330 ui/export.py:438 ui/export.py:449 ui/library.py:1785
+#: ui/library.py:2255 ui/shortcuts.py:144
 msgid "Export Track"
 msgstr "トラックのエクスポート"
 
@@ -5711,31 +5700,31 @@ msgstr ""
 "JumpCUE のオーディオを書き込めませんでした:\n"
 "{error}"
 
-#: ui/library.py:715
+#: ui/library.py:716
 msgid "AND: require every search condition (click to switch)"
 msgstr "AND: すべての検索条件を満たす (クリックで切り替え)"
 
-#: ui/library.py:716
+#: ui/library.py:717
 msgid "OR: accept any search condition (click to switch)"
 msgstr "OR: いずれかの検索条件を満たす (クリックで切り替え)"
 
-#: ui/library.py:762
+#: ui/library.py:763
 msgid "All"
 msgstr "すべて"
 
-#: ui/library.py:763
+#: ui/library.py:764
 msgid "Duration"
 msgstr "時間"
 
-#: ui/library.py:764
+#: ui/library.py:765
 msgid "Added"
 msgstr "追加日"
 
-#: ui/library.py:835
+#: ui/library.py:836
 msgid "Search title, artist, key ..."
 msgstr "タイトル、アーティスト、キーを検索..."
 
-#: ui/library.py:837
+#: ui/library.py:838
 msgid ""
 "<p>Titles, artists and albums are also found by how they read, in any "
 "script: あのね by anone, ano ne or 아노네 (the reading is set in Edit "
@@ -5744,15 +5733,15 @@ msgstr ""
 "<p>タイトル、アーティスト、アルバムは読みでも検索できます。どの文字でも: あのね を anone、ano ne、아노네 で "
 "(読みは「トラックの編集」で設定)。</p>"
 
-#: ui/library.py:843
+#: ui/library.py:844
 msgid "Column the text search looks in"
 msgstr "テキスト検索の対象の列"
 
-#: ui/library.py:846
+#: ui/library.py:847
 msgid "Fuzzy"
 msgstr "あいまい"
 
-#: ui/library.py:846
+#: ui/library.py:847
 msgid ""
 "<p>Also find a similar pronunciation (from six letters of the reading on:"
 " about one sound in five off). Off: the reading must match, up to its "
@@ -5761,36 +5750,36 @@ msgstr ""
 "<p>似た読みも見つけます (読みの 6 文字目から: 5 音に 1 音程度の違い)。オフ: "
 "綴りの違いを除いて読みが一致する必要があります。</p>"
 
-#: ui/library.py:882
+#: ui/library.py:883
 msgid "Tracks with a phrase of this label (optionally at a BPM / key)"
 msgstr "このラベルのフレーズがあるトラック (BPM / キーの条件も指定可能)"
 
-#: analyzer_core/global_analyzer.py:374 ui/config/analysis.py:236
+#: analyzer_core/global_analyzer.py:375 ui/config/analysis.py:236
 #: ui/config/pipeline_map.py:23 ui/config/pipeline_map.py:32
-#: ui/edit_panel/panel.py:63 ui/library.py:882 ui/library.py:971
+#: ui/edit_panel/panel.py:63 ui/library.py:883 ui/library.py:976
 #: ui/shortcuts.py:37
 msgid "Phrase"
 msgstr "フレーズ"
 
-#: ui/library.py:883
+#: ui/library.py:884
 msgid "Tracks whose BPM changes from one tempo to another"
 msgstr "BPM があるテンポから別のテンポへ変わるトラック"
 
-#: ui/library.py:884
+#: ui/library.py:885
 msgid "Tracks whose key changes from one key to another"
 msgstr "キーがあるキーから別のキーへ変わるトラック"
 
-#: ui/config/midi.py:114 ui/library.py:887
+#: ui/config/midi.py:114 ui/library.py:888
 msgid "Clear"
 msgstr "クリア"
 
-#: ui/library.py:888
+#: ui/library.py:889
 msgid "Remove every search condition (text and filters)"
 msgstr "すべての検索条件 (テキストとフィルター) を消去します"
 
 # | msgid "" "<p>Search by Music: hum, sing or whistle a melody, or play the
 # | song from " "a phone, and the microphone finds it in the library.</p>"
-#: ui/library.py:898
+#: ui/library.py:899
 msgid ""
 "<p>Search by Music: hum, sing or whistle a melody, or play the song from "
 "a phone, and the library shows the songs the microphone hears, best "
@@ -5802,159 +5791,159 @@ msgstr ""
 # | msgid "Unload track"
 # | msgid "Unload the track"
 # | msgid "Back to the tracks"
-#: ui/library.py:904
+#: ui/library.py:905
 msgid "Back to the library"
 msgstr "ライブラリに戻る"
 
-#: ui/library.py:924
+#: ui/library.py:929
 msgid "Also require this BPM inside the phrase"
 msgstr "フレーズ内にこの BPM があることも条件にする"
 
-#: ui/library.py:929
+#: ui/library.py:934
 msgid "Phrase BPM tolerance"
 msgstr "フレーズの BPM の許容誤差"
 
-#: ui/library.py:930
+#: ui/library.py:935
 msgid "Also require this key inside the phrase"
 msgstr "フレーズ内にこのキーがあることも条件にする"
 
 # | msgid "Key inside the selected phrase (Camelot wheel)"
-#: ui/library.py:932
+#: ui/library.py:937
 msgid "Key inside the selected phrase (Alphanumeric wheel)"
 msgstr "選択したフレーズ内のキー (Alphanumeric ホイール)"
 
 # | msgid "" "Also match harmonically compatible keys (±1 on the Camelot
 # wheel,
 # | " "relative key)"
-#: ui/library.py:934
+#: ui/library.py:939
 msgid ""
 "Also match harmonically compatible keys (±1 on the Alphanumeric wheel, "
 "relative key)"
 msgstr "相性の良いキーも含める (Alphanumeric ホイール ±1、平行調)"
 
-#: ui/library.py:934 ui/library.py:960
+#: ui/library.py:939 ui/library.py:965
 msgid "Compat"
 msgstr "相性"
 
-#: ui/library.py:943
+#: ui/library.py:948
 msgid "BPM transition tolerance"
 msgstr "BPM 変化の許容誤差"
 
-#: ui/library.py:945
+#: ui/library.py:950
 msgid "Require the transition to start at the first BPM segment"
 msgstr "変化が最初の BPM 区間から始まることを条件にする"
 
-#: ui/library.py:945 ui/library.py:958
+#: ui/library.py:950 ui/library.py:963
 msgid "1st"
 msgstr "最初"
 
 # | msgid "Key before the change (Camelot wheel)"
-#: ui/library.py:949
+#: ui/library.py:954
 msgid "Key before the change (Alphanumeric wheel)"
 msgstr "変化前のキー (Alphanumeric ホイール)"
 
 # | msgid "Key after the change (Camelot wheel)"
-#: ui/library.py:952
+#: ui/library.py:957
 msgid "Key after the change (Alphanumeric wheel)"
 msgstr "変化後のキー (Alphanumeric ホイール)"
 
-#: ui/library.py:958
+#: ui/library.py:963
 msgid "Require the transition to start at the first key segment"
 msgstr "変化が最初のキー区間から始まることを条件にする"
 
 # | msgid "" "Also match harmonically compatible keys at both ends (±1 on the
 # | Camelot " "wheel, relative key)"
-#: ui/library.py:960
+#: ui/library.py:965
 msgid ""
 "Also match harmonically compatible keys at both ends (±1 on the "
 "Alphanumeric wheel, relative key)"
 msgstr "両端とも相性の良いキーも含める (Alphanumeric ホイール ±1、平行調)"
 
-#: ui/library.py:969 ui/library.py:982
+#: ui/library.py:974 ui/library.py:987
 msgid "Minimum duration of both sides of each enabled transition"
 msgstr "有効な各変化の前後それぞれの最小の長さ"
 
-#: ui/library.py:981
+#: ui/library.py:986
 msgid "Min seg"
 msgstr "最小区間"
 
-#: ui/library.py:1203
+#: ui/library.py:1208
 msgid "Library (All)"
 msgstr "ライブラリ (すべて)"
 
-#: ui/library.py:1207
+#: ui/library.py:1212
 msgid "Playlists"
 msgstr "プレイリスト"
 
-#: ui/library.py:1222
+#: ui/library.py:1227
 msgid "Local Folders"
 msgstr "ローカルフォルダー"
 
-#: ui/config/external_sync.py:105 ui/library.py:1727 ui/pane.py:517
+#: ui/config/external_sync.py:105 ui/library.py:1732 ui/pane.py:517
 msgid "External Sync"
 msgstr "外部同期"
 
-#: ui/library.py:1728
+#: ui/library.py:1733
 msgid "Track loading is disabled while External Sync is enabled."
 msgstr "外部同期が有効な間はトラックを読み込めません。"
 
-#: ui/library.py:1782
+#: ui/library.py:1787
 msgid "The selected track; click the open tab to fold the panel"
 msgstr "選択したトラック。開いているタブをクリックするとパネルを畳みます"
 
-#: ui/library.py:1851
+#: ui/library.py:1856
 #, python-brace-format
 msgid "Apply the changes to \"{title}\"? (No: they are dropped)"
 msgstr "「{title}」の変更を適用しますか? (いいえ: 破棄します)"
 
 # | msgid "Found by the sound of the recording ({n} matches)"
-#: ui/library.py:2023
+#: ui/library.py:2035
 #, python-brace-format
 msgid "Matched at {start} - {end}, by the sound of the recording ({n} matches)"
 msgstr "{start} - {end} で一致、録音の音で検出 (一致 {n} 件)"
 
-#: ui/library.py:2026
+#: ui/library.py:2038
 #, python-brace-format
 msgid "Matched at {start} - {end}, by the melody"
 msgstr "{start} - {end} で一致、メロディーで検出"
 
-#: ui/library.py:2043
+#: ui/library.py:2055
 msgid "The loaded track is not in the list shown."
 msgstr "ロードしたトラックは表示中のリストにありません。"
 
-#: ui/library.py:2065 ui/library.py:2094 ui/library.py:2101 ui/shortcuts.py:151
+#: ui/library.py:2077 ui/library.py:2106 ui/library.py:2113 ui/shortcuts.py:151
 msgid "New Playlist"
 msgstr "新規プレイリスト"
 
-#: ui/library.py:2068
+#: ui/library.py:2080
 msgid "Rename"
 msgstr "名前を変更"
 
-#: ui/library.py:2069
+#: ui/library.py:2081
 msgid "Move Up"
 msgstr "上へ移動"
 
-#: ui/library.py:2070
+#: ui/library.py:2082
 msgid "Move Down"
 msgstr "下へ移動"
 
-#: ui/library.py:2071 ui/library.py:2130
+#: ui/library.py:2083 ui/library.py:2142
 msgid "Delete Playlist"
 msgstr "プレイリストを削除"
 
-#: ui/library.py:2073
+#: ui/library.py:2085
 msgid "Refresh Folders"
 msgstr "フォルダーを更新"
 
-#: ui/library.py:2094 ui/library.py:2112
+#: ui/library.py:2106 ui/library.py:2124
 msgid "Name"
 msgstr "名前"
 
-#: ui/library.py:2112 ui/library.py:2120
+#: ui/library.py:2124 ui/library.py:2132
 msgid "Rename Playlist"
 msgstr "プレイリスト名を変更"
 
-#: ui/library.py:2131
+#: ui/library.py:2143
 #, python-brace-format
 msgid ""
 "Delete playlist \"{name}\"?\n"
@@ -5963,39 +5952,39 @@ msgstr ""
 "プレイリスト「{name}」を削除しますか?\n"
 "トラックはライブラリに残ります。"
 
-#: ui/library.py:2236 ui/shortcuts.py:149
+#: ui/library.py:2248 ui/shortcuts.py:149
 msgid "Show in Explorer"
 msgstr "エクスプローラーで表示"
 
-#: ui/library.py:2237 ui/shortcuts.py:150
+#: ui/library.py:2249 ui/shortcuts.py:150
 msgid "Show in Finder"
 msgstr "Finder で表示"
 
-#: ui/library.py:2237 ui/shortcuts.py:150
+#: ui/library.py:2249 ui/shortcuts.py:150
 msgid "Show in File Manager"
 msgstr "ファイルマネージャーで表示"
 
-#: ui/library.py:2238 ui/library.py:2324 ui/shortcuts.py:154
+#: ui/library.py:2250 ui/library.py:2336 ui/shortcuts.py:154
 msgid "Remove from Library"
 msgstr "ライブラリから削除"
 
-#: ui/library.py:2241
+#: ui/library.py:2253
 msgid "Analyze Track"
 msgstr "トラックを解析"
 
-#: ui/library.py:2241 ui/reanalyze_dialog.py:16 ui/shortcuts.py:152
+#: ui/library.py:2253 ui/reanalyze_dialog.py:16 ui/shortcuts.py:152
 msgid "Reanalyze Track"
 msgstr "トラックを再解析"
 
-#: ui/library.py:2246 ui/shortcuts.py:155
+#: ui/library.py:2258 ui/shortcuts.py:155
 msgid "Remove from Playlist"
 msgstr "プレイリストから削除"
 
-#: ui/library.py:2247
+#: ui/library.py:2259
 msgid "Add to Playlist"
 msgstr "プレイリストに追加"
 
-#: ui/library.py:2316
+#: ui/library.py:2328
 #, python-brace-format
 msgid ""
 "Remove \"{title}\" from the library?\n"
@@ -6004,7 +5993,7 @@ msgstr ""
 "「{title}」をライブラリから削除しますか?\n"
 "解析と編集の内容は削除されます。オーディオファイルはそのまま残ります。"
 
-#: ui/library.py:2319
+#: ui/library.py:2331
 #, python-brace-format
 msgid ""
 "Remove {count} track from the library?\n"
@@ -6044,14 +6033,47 @@ msgid ""
 " off."
 msgstr "MIDI 入力オン、{port} は閉じています（外部同期がほかのデッキに追従中）。クリック: オフ。"
 
+#: ui/music_search.py:181
+msgid "The microphone Search by Music listens to: click its name to pick another."
+msgstr "音楽で検索が聞くマイクです。名前をクリックすると別のマイクを選べます。"
+
+# | msgid "No microphone found."
+#: ui/music_search.py:200
+msgid "no microphone"
+msgstr "マイクなし"
+
+# | msgid "Listening aid: tonic chord"
+# | msgid "Listening on {device} …"
+#: ui/music_search.py:203
+#, python-brace-format
+msgid "Listening on {device}"
+msgstr "{device} で聞いています"
+
+# | msgid "No microphone found."
+#: ui/music_search.py:203
+#, python-brace-format
+msgid "Microphone: {device}"
+msgstr "マイク: {device}"
+
+# | msgid "Default"
+#: ui/config/audio_overview.py:388 ui/config/audio_overview.py:429
+#: ui/config/output_group.py:95 ui/music_search.py:210
+msgid "System default"
+msgstr "システムのデフォルト"
+
+#: ui/config/midi.py:201 ui/config/output_group.py:99 ui/music_search.py:212
+#, python-brace-format
+msgid "{name} (not connected)"
+msgstr "{name} (未接続)"
+
 # | msgid "The file could not be written: {error}"
 # | msgid "The file could not be read: {error}"
-#: ui/music_search.py:256
+#: ui/music_search.py:302
 #, python-brace-format
 msgid "The index could not be read: {error}"
 msgstr "インデックスを読み込めませんでした: {error}"
 
-#: ui/music_search.py:264
+#: ui/music_search.py:310
 msgid ""
 "No track is indexed for Search by Music yet: Settings > Search > Index "
 "Now (new tracks are indexed when analyzed)."
@@ -6059,30 +6081,17 @@ msgstr ""
 "音楽で検索用にインデックスされたトラックはまだありません: 設定 > 検索 > "
 "今すぐインデックス作成(新しいトラックは解析時にインデックスされます)。"
 
-#: ui/music_search.py:275
+#: ui/music_search.py:349
 msgid "No microphone found."
 msgstr "マイクが見つかりません。"
 
-# | msgid "Listening aid: tonic chord"
-#: ui/music_search.py:288
-#, python-brace-format
-msgid "Listening on {device} …"
-msgstr "{device} で聴いています …"
-
 # | msgid "Reading the analysis failed: {error}"
-#: ui/music_search.py:346
+#: ui/music_search.py:433
 #, python-brace-format
 msgid "The search failed: {error}"
 msgstr "検索に失敗しました: {error}"
 
-# | msgid "Listening aid: tonic chord"
-# | msgid "Listening on {device} …"
-#: ui/music_search.py:352
-#, python-brace-format
-msgid "Listening {time}"
-msgstr "聴いています {time}"
-
-#: ui/music_search.py:354
+#: ui/music_search.py:441
 msgid "Nothing found yet: hum or whistle for 8 seconds or more, or play the song."
 msgstr "まだ見つかりません: 8 秒以上ハミングか口笛をするか、曲を再生してください。"
 

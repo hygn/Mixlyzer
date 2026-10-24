@@ -225,8 +225,9 @@ class MelodyIndex:
     def __len__(self) -> int:
         return len(self.uids)
 
-    def search(self, q_pitch: np.ndarray, top: int = 10, rng: float = RANGE) -> list[MelodyMatch]:
-        """The best songs for a query's pitch (MIDI per HOP at SR, NaN unvoiced)."""
+    def search(self, q_pitch: np.ndarray, top: int = 10, rng: float = RANGE,
+               hop_sec: float = HOP / SR) -> list[MelodyMatch]:
+        """The best songs for a query's pitch (MIDI per ``hop_sec``, NaN unvoiced)."""
         if not self.uids:
             return []
         songs = np.arange(len(self.uids))
@@ -239,7 +240,7 @@ class MelodyIndex:
                 # the lanes within `around` of each song's key so far, a third of a semitone apart, kept in the range
                 near = lane_offsets(around, LANE_STEP)
                 offs = np.clip(key[:, None] + near[None, :], -rng, rng).astype(np.float32)
-            q = reduce_pitch(q_pitch, HOP / SR, f)
+            q = reduce_pitch(q_pitch, hop_sec, f)
             per, ends = _scan(np.nan_to_num(q).astype(np.float32), np.isfinite(q), self.refs[f], self.starts[f],
                               self.ends[f], songs, np.ascontiguousarray(offs), TOL, CAP, UNVOICED)
             ln = per.argmin(axis=1)

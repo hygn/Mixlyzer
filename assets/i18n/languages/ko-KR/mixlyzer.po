@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-24 01:26+0900\n"
+"POT-Creation-Date: 2026-10-25 08:08+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ko_KR\n"
@@ -108,57 +108,57 @@ msgstr "프레이즈 분석 중"
 msgid "Phrases Updated"
 msgstr "프레이즈 갱신됨"
 
-#: analyzer_core/global_analyzer.py:59
+#: analyzer_core/global_analyzer.py:60
 #, python-brace-format
 msgid "Audio decode failed via FFmpeg and SoundFile: {path}"
 msgstr "FFmpeg와 SoundFile 모두 오디오를 디코딩하지 못했습니다: {path}"
 
-#: analyzer_core/global_analyzer.py:272
+#: analyzer_core/global_analyzer.py:273
 msgid "Loading"
 msgstr "불러오는 중"
 
 #: analyzer_core/editor/jumpcue.py:37 analyzer_core/editor/phrase.py:32
-#: analyzer_core/global_analyzer.py:280
+#: analyzer_core/global_analyzer.py:281
 msgid "Processing HPSS"
 msgstr "HPSS 처리 중"
 
-#: analyzer_core/global_analyzer.py:291
+#: analyzer_core/global_analyzer.py:292
 msgid "Processing Waveform"
 msgstr "파형 처리 중"
 
-#: analyzer_core/global_analyzer.py:308
+#: analyzer_core/global_analyzer.py:309
 msgid "Tempo Analyzing"
 msgstr "템포 분석 중"
 
-#: analyzer_core/global_analyzer.py:376
+#: analyzer_core/global_analyzer.py:377
 msgid "Phrase Boundary Analyzing"
 msgstr "프레이즈 경계 분석 중"
 
-#: analyzer_core/global_analyzer.py:430
+#: analyzer_core/global_analyzer.py:431
 msgid "JumpCUE Analyzing"
 msgstr "JumpCUE 분석 중"
 
-#: analyzer_core/global_analyzer.py:477
+#: analyzer_core/global_analyzer.py:482
 msgid "Analyzing Keys"
 msgstr "키 분석 중"
 
-#: analyzer_core/global_analyzer.py:510
+#: analyzer_core/global_analyzer.py:515
 msgid "Indexing for Search by Music"
 msgstr "음악으로 검색 색인 중"
 
-#: analyzer_core/global_analyzer.py:517
+#: analyzer_core/global_analyzer.py:524
 msgid "Processing Metadata"
 msgstr "메타데이터 처리 중"
 
-#: analyzer_core/global_analyzer.py:526
+#: analyzer_core/global_analyzer.py:533
 msgid "Rendering/Normalizing"
 msgstr "렌더링/정규화 중"
 
-#: analyzer_core/global_analyzer.py:551
+#: analyzer_core/global_analyzer.py:558
 msgid "Saving"
 msgstr "저장 중"
 
-#: analyzer_core/global_analyzer.py:553
+#: analyzer_core/global_analyzer.py:560
 msgid "Saving Result"
 msgstr "결과 저장 중"
 
@@ -391,7 +391,7 @@ msgstr "{name} 찾기"
 msgid "Analysis saved to library."
 msgstr "분석을 라이브러리에 저장했습니다."
 
-#: analyzer_core/global_analyzer.py:578 app/window.py:603
+#: analyzer_core/global_analyzer.py:585 app/window.py:603
 msgid "Finished"
 msgstr "완료"
 
@@ -513,7 +513,7 @@ msgstr "CUE 포인트"
 msgid "Beat jump"
 msgstr "비트 점프"
 
-#: analyzer_core/global_analyzer.py:306 core/midi.py:56
+#: analyzer_core/global_analyzer.py:307 core/midi.py:56
 msgid "Tempo"
 msgstr "템포"
 
@@ -2326,12 +2326,6 @@ msgstr "D1 {rate} kHz: {device}"
 msgid "D2 {rate} kHz: {device}"
 msgstr "D2 {rate} kHz: {device}"
 
-# | msgid "Default"
-#: ui/config/audio_overview.py:388 ui/config/audio_overview.py:429
-#: ui/config/output_group.py:95
-msgid "System default"
-msgstr "시스템 기본값"
-
 # | msgid "Waiting for playback..."
 #: ui/config/audio_overview.py:390 ui/config/audio_overview.py:430
 #: ui/config/audio_overview.py:488
@@ -3213,11 +3207,6 @@ msgstr ""
 msgid "None"
 msgstr "없음"
 
-#: ui/config/midi.py:201 ui/config/output_group.py:99
-#, python-brace-format
-msgid "{name} (not connected)"
-msgstr "{name} (연결되지 않음)"
-
 #: ui/config/midi.py:207
 msgid "Open."
 msgstr "열림."
@@ -3654,7 +3643,7 @@ msgstr "디코딩, HPSS"
 msgid "overview levels"
 msgstr "전체 파형 레벨"
 
-#: analyzer_core/global_analyzer.py:289 ui/config/pipeline_map.py:31
+#: analyzer_core/global_analyzer.py:290 ui/config/pipeline_map.py:31
 msgid "Waveform"
 msgstr "파형"
 
@@ -4351,7 +4340,7 @@ msgstr ""
 msgid "Hangul"
 msgstr "한글"
 
-#: analyzer_core/global_analyzer.py:509 ui/config/search.py:133
+#: analyzer_core/global_analyzer.py:514 ui/config/search.py:133
 msgid "Search by Music"
 msgstr "음악으로 검색"
 
@@ -5458,16 +5447,16 @@ msgid "Browse..."
 msgstr "찾아보기..."
 
 #: ui/edit_song.py:131 ui/edit_song.py:155 ui/export.py:73 ui/export.py:100
-#: ui/library.py:762
+#: ui/library.py:763
 msgid "Title"
 msgstr "제목"
 
 #: ui/edit_song.py:131 ui/edit_song.py:156 ui/export.py:74 ui/export.py:101
-#: ui/library.py:762
+#: ui/library.py:763
 msgid "Artist"
 msgstr "아티스트"
 
-#: ui/edit_song.py:131 ui/edit_song.py:157 ui/export.py:102 ui/library.py:763
+#: ui/edit_song.py:131 ui/edit_song.py:157 ui/export.py:102 ui/library.py:764
 msgid "Album"
 msgstr "앨범"
 
@@ -5483,21 +5472,21 @@ msgstr ""
 "anone이나 아노네로). 흐린 글자: 설정 > 검색의 언어로 텍스트에서 읽은 것. 칸에 입력하면 내 발음을 추가하고, 칸을 "
 "비우거나(Delete) 덮어쓰면 그 발음을 영구히 지우며, 다시 입력하면 되살립니다.</p>"
 
-#: ui/edit_song.py:154 ui/library.py:764
+#: ui/edit_song.py:154 ui/library.py:765
 msgid "Path"
 msgstr "경로"
 
-#: analyzer_core/global_analyzer.py:475 ui/config/analysis.py:235
+#: analyzer_core/global_analyzer.py:480 ui/config/analysis.py:235
 #: ui/config/pipeline_map.py:26 ui/config/pipeline_map.py:34
 #: ui/edit_song.py:159
 msgid "Key"
 msgstr "키"
 
-#: ui/edit_song.py:160 ui/library.py:763
+#: ui/edit_song.py:160 ui/library.py:764
 msgid "Rating"
 msgstr "평점"
 
-#: ui/edit_song.py:161 ui/export.py:103 ui/library.py:764
+#: ui/edit_song.py:161 ui/export.py:103 ui/library.py:765
 msgid "Comment"
 msgstr "코멘트"
 
@@ -5538,8 +5527,8 @@ msgstr ""
 "파일이 없습니다:\n"
 "{path}"
 
-#: ui/edit_song.py:375 ui/edit_song.py:398 ui/library.py:1779
-#: ui/library.py:1850 ui/library.py:2239 ui/shortcuts.py:142
+#: ui/edit_song.py:375 ui/edit_song.py:398 ui/library.py:1784
+#: ui/library.py:1855 ui/library.py:2251 ui/shortcuts.py:142
 msgid "Edit Track"
 msgstr "트랙 편집"
 
@@ -5643,8 +5632,8 @@ msgid "No track is selected."
 msgstr "선택한 트랙이 없습니다."
 
 #: ui/export.py:296 ui/export.py:301 ui/export.py:307 ui/export.py:320
-#: ui/export.py:330 ui/export.py:438 ui/export.py:449 ui/library.py:1780
-#: ui/library.py:2243 ui/shortcuts.py:144
+#: ui/export.py:330 ui/export.py:438 ui/export.py:449 ui/library.py:1785
+#: ui/library.py:2255 ui/shortcuts.py:144
 msgid "Export Track"
 msgstr "트랙 내보내기"
 
@@ -5697,31 +5686,31 @@ msgstr ""
 "JumpCUE 오디오를 쓰지 못했습니다:\n"
 "{error}"
 
-#: ui/library.py:715
+#: ui/library.py:716
 msgid "AND: require every search condition (click to switch)"
 msgstr "AND: 모든 검색 조건을 만족 (클릭하면 전환)"
 
-#: ui/library.py:716
+#: ui/library.py:717
 msgid "OR: accept any search condition (click to switch)"
 msgstr "OR: 검색 조건 중 하나라도 만족 (클릭하면 전환)"
 
-#: ui/library.py:762
+#: ui/library.py:763
 msgid "All"
 msgstr "전체"
 
-#: ui/library.py:763
+#: ui/library.py:764
 msgid "Duration"
 msgstr "길이"
 
-#: ui/library.py:764
+#: ui/library.py:765
 msgid "Added"
 msgstr "추가일"
 
-#: ui/library.py:835
+#: ui/library.py:836
 msgid "Search title, artist, key ..."
 msgstr "제목, 아티스트, 키 검색..."
 
-#: ui/library.py:837
+#: ui/library.py:838
 msgid ""
 "<p>Titles, artists and albums are also found by how they read, in any "
 "script: あのね by anone, ano ne or 아노네 (the reading is set in Edit "
@@ -5730,15 +5719,15 @@ msgstr ""
 "<p>제목, 아티스트, 앨범은 읽는 소리로도 찾을 수 있습니다. 어떤 문자로든: あのね를 anone, ano ne, 아노네로 "
 "(발음은 트랙 편집에서 설정).</p>"
 
-#: ui/library.py:843
+#: ui/library.py:844
 msgid "Column the text search looks in"
 msgstr "텍스트 검색이 찾을 열"
 
-#: ui/library.py:846
+#: ui/library.py:847
 msgid "Fuzzy"
 msgstr "유사"
 
-#: ui/library.py:846
+#: ui/library.py:847
 msgid ""
 "<p>Also find a similar pronunciation (from six letters of the reading on:"
 " about one sound in five off). Off: the reading must match, up to its "
@@ -5747,36 +5736,36 @@ msgstr ""
 "<p>비슷한 발음도 찾습니다(발음 6글자부터: 다섯 소리 중 하나 정도 다름). 끄면 발음이 철자 차이를 빼고 일치해야 "
 "합니다.</p>"
 
-#: ui/library.py:882
+#: ui/library.py:883
 msgid "Tracks with a phrase of this label (optionally at a BPM / key)"
 msgstr "이 라벨의 프레이즈가 있는 트랙 (BPM / 키 조건 선택 가능)"
 
-#: analyzer_core/global_analyzer.py:374 ui/config/analysis.py:236
+#: analyzer_core/global_analyzer.py:375 ui/config/analysis.py:236
 #: ui/config/pipeline_map.py:23 ui/config/pipeline_map.py:32
-#: ui/edit_panel/panel.py:63 ui/library.py:882 ui/library.py:971
+#: ui/edit_panel/panel.py:63 ui/library.py:883 ui/library.py:976
 #: ui/shortcuts.py:37
 msgid "Phrase"
 msgstr "프레이즈"
 
-#: ui/library.py:883
+#: ui/library.py:884
 msgid "Tracks whose BPM changes from one tempo to another"
 msgstr "BPM이 한 템포에서 다른 템포로 바뀌는 트랙"
 
-#: ui/library.py:884
+#: ui/library.py:885
 msgid "Tracks whose key changes from one key to another"
 msgstr "키가 한 키에서 다른 키로 바뀌는 트랙"
 
-#: ui/config/midi.py:114 ui/library.py:887
+#: ui/config/midi.py:114 ui/library.py:888
 msgid "Clear"
 msgstr "지우기"
 
-#: ui/library.py:888
+#: ui/library.py:889
 msgid "Remove every search condition (text and filters)"
 msgstr "모든 검색 조건(텍스트와 필터)을 지웁니다"
 
 # | msgid "" "<p>Search by Music: hum, sing or whistle a melody, or play the
 # | song from " "a phone, and the microphone finds it in the library.</p>"
-#: ui/library.py:898
+#: ui/library.py:899
 msgid ""
 "<p>Search by Music: hum, sing or whistle a melody, or play the song from "
 "a phone, and the library shows the songs the microphone hears, best "
@@ -5788,159 +5777,159 @@ msgstr ""
 # | msgid "Unload track"
 # | msgid "Unload the track"
 # | msgid "Back to the tracks"
-#: ui/library.py:904
+#: ui/library.py:905
 msgid "Back to the library"
 msgstr "라이브러리로 돌아가기"
 
-#: ui/library.py:924
+#: ui/library.py:929
 msgid "Also require this BPM inside the phrase"
 msgstr "프레이즈 안에 이 BPM이 있어야 함"
 
-#: ui/library.py:929
+#: ui/library.py:934
 msgid "Phrase BPM tolerance"
 msgstr "프레이즈 BPM 허용 오차"
 
-#: ui/library.py:930
+#: ui/library.py:935
 msgid "Also require this key inside the phrase"
 msgstr "프레이즈 안에 이 키가 있어야 함"
 
 # | msgid "Key inside the selected phrase (Camelot wheel)"
-#: ui/library.py:932
+#: ui/library.py:937
 msgid "Key inside the selected phrase (Alphanumeric wheel)"
 msgstr "선택한 프레이즈 안의 키 (Alphanumeric 휠)"
 
 # | msgid "" "Also match harmonically compatible keys (±1 on the Camelot
 # wheel,
 # | " "relative key)"
-#: ui/library.py:934
+#: ui/library.py:939
 msgid ""
 "Also match harmonically compatible keys (±1 on the Alphanumeric wheel, "
 "relative key)"
 msgstr "화성적으로 호환되는 키도 포함 (Alphanumeric 휠 ±1, 나란한조)"
 
-#: ui/library.py:934 ui/library.py:960
+#: ui/library.py:939 ui/library.py:965
 msgid "Compat"
 msgstr "호환"
 
-#: ui/library.py:943
+#: ui/library.py:948
 msgid "BPM transition tolerance"
 msgstr "BPM 전환 허용 오차"
 
-#: ui/library.py:945
+#: ui/library.py:950
 msgid "Require the transition to start at the first BPM segment"
 msgstr "전환이 첫 BPM 구간에서 시작해야 함"
 
-#: ui/library.py:945 ui/library.py:958
+#: ui/library.py:950 ui/library.py:963
 msgid "1st"
 msgstr "처음"
 
 # | msgid "Key before the change (Camelot wheel)"
-#: ui/library.py:949
+#: ui/library.py:954
 msgid "Key before the change (Alphanumeric wheel)"
 msgstr "바뀌기 전 키 (Alphanumeric 휠)"
 
 # | msgid "Key after the change (Camelot wheel)"
-#: ui/library.py:952
+#: ui/library.py:957
 msgid "Key after the change (Alphanumeric wheel)"
 msgstr "바뀐 뒤 키 (Alphanumeric 휠)"
 
-#: ui/library.py:958
+#: ui/library.py:963
 msgid "Require the transition to start at the first key segment"
 msgstr "전환이 첫 키 구간에서 시작해야 함"
 
 # | msgid "" "Also match harmonically compatible keys at both ends (±1 on the
 # | Camelot " "wheel, relative key)"
-#: ui/library.py:960
+#: ui/library.py:965
 msgid ""
 "Also match harmonically compatible keys at both ends (±1 on the "
 "Alphanumeric wheel, relative key)"
 msgstr "양쪽 끝 모두 화성적으로 호환되는 키도 포함 (Alphanumeric 휠 ±1, 나란한조)"
 
-#: ui/library.py:969 ui/library.py:982
+#: ui/library.py:974 ui/library.py:987
 msgid "Minimum duration of both sides of each enabled transition"
 msgstr "켜 둔 각 전환의 양쪽 최소 길이"
 
-#: ui/library.py:981
+#: ui/library.py:986
 msgid "Min seg"
 msgstr "최소 구간"
 
-#: ui/library.py:1203
+#: ui/library.py:1208
 msgid "Library (All)"
 msgstr "라이브러리 (전체)"
 
-#: ui/library.py:1207
+#: ui/library.py:1212
 msgid "Playlists"
 msgstr "플레이리스트"
 
-#: ui/library.py:1222
+#: ui/library.py:1227
 msgid "Local Folders"
 msgstr "로컬 폴더"
 
-#: ui/config/external_sync.py:105 ui/library.py:1727 ui/pane.py:517
+#: ui/config/external_sync.py:105 ui/library.py:1732 ui/pane.py:517
 msgid "External Sync"
 msgstr "외부 동기화"
 
-#: ui/library.py:1728
+#: ui/library.py:1733
 msgid "Track loading is disabled while External Sync is enabled."
 msgstr "외부 동기화가 켜져 있는 동안에는 트랙을 불러올 수 없습니다."
 
-#: ui/library.py:1782
+#: ui/library.py:1787
 msgid "The selected track; click the open tab to fold the panel"
 msgstr "선택한 트랙. 열린 탭을 누르면 패널을 접습니다"
 
-#: ui/library.py:1851
+#: ui/library.py:1856
 #, python-brace-format
 msgid "Apply the changes to \"{title}\"? (No: they are dropped)"
 msgstr "\"{title}\"의 변경 내용을 적용할까요? (아니요: 버립니다)"
 
 # | msgid "Found by the sound of the recording ({n} matches)"
-#: ui/library.py:2023
+#: ui/library.py:2035
 #, python-brace-format
 msgid "Matched at {start} - {end}, by the sound of the recording ({n} matches)"
 msgstr "{start} - {end}에서 일치, 녹음된 소리로 찾음 (일치 {n}개)"
 
-#: ui/library.py:2026
+#: ui/library.py:2038
 #, python-brace-format
 msgid "Matched at {start} - {end}, by the melody"
 msgstr "{start} - {end}에서 일치, 멜로디로 찾음"
 
-#: ui/library.py:2043
+#: ui/library.py:2055
 msgid "The loaded track is not in the list shown."
 msgstr "로드한 트랙이 지금 보이는 목록에 없습니다."
 
-#: ui/library.py:2065 ui/library.py:2094 ui/library.py:2101 ui/shortcuts.py:151
+#: ui/library.py:2077 ui/library.py:2106 ui/library.py:2113 ui/shortcuts.py:151
 msgid "New Playlist"
 msgstr "새 플레이리스트"
 
-#: ui/library.py:2068
+#: ui/library.py:2080
 msgid "Rename"
 msgstr "이름 바꾸기"
 
-#: ui/library.py:2069
+#: ui/library.py:2081
 msgid "Move Up"
 msgstr "위로 이동"
 
-#: ui/library.py:2070
+#: ui/library.py:2082
 msgid "Move Down"
 msgstr "아래로 이동"
 
-#: ui/library.py:2071 ui/library.py:2130
+#: ui/library.py:2083 ui/library.py:2142
 msgid "Delete Playlist"
 msgstr "플레이리스트 삭제"
 
-#: ui/library.py:2073
+#: ui/library.py:2085
 msgid "Refresh Folders"
 msgstr "폴더 새로 고침"
 
-#: ui/library.py:2094 ui/library.py:2112
+#: ui/library.py:2106 ui/library.py:2124
 msgid "Name"
 msgstr "이름"
 
-#: ui/library.py:2112 ui/library.py:2120
+#: ui/library.py:2124 ui/library.py:2132
 msgid "Rename Playlist"
 msgstr "플레이리스트 이름 바꾸기"
 
-#: ui/library.py:2131
+#: ui/library.py:2143
 #, python-brace-format
 msgid ""
 "Delete playlist \"{name}\"?\n"
@@ -5949,39 +5938,39 @@ msgstr ""
 "플레이리스트 \"{name}\"을(를) 삭제할까요?\n"
 "트랙은 라이브러리에 남습니다."
 
-#: ui/library.py:2236 ui/shortcuts.py:149
+#: ui/library.py:2248 ui/shortcuts.py:149
 msgid "Show in Explorer"
 msgstr "탐색기에서 보기"
 
-#: ui/library.py:2237 ui/shortcuts.py:150
+#: ui/library.py:2249 ui/shortcuts.py:150
 msgid "Show in Finder"
 msgstr "Finder에서 보기"
 
-#: ui/library.py:2237 ui/shortcuts.py:150
+#: ui/library.py:2249 ui/shortcuts.py:150
 msgid "Show in File Manager"
 msgstr "파일 관리자에서 보기"
 
-#: ui/library.py:2238 ui/library.py:2324 ui/shortcuts.py:154
+#: ui/library.py:2250 ui/library.py:2336 ui/shortcuts.py:154
 msgid "Remove from Library"
 msgstr "라이브러리에서 제거"
 
-#: ui/library.py:2241
+#: ui/library.py:2253
 msgid "Analyze Track"
 msgstr "트랙 분석"
 
-#: ui/library.py:2241 ui/reanalyze_dialog.py:16 ui/shortcuts.py:152
+#: ui/library.py:2253 ui/reanalyze_dialog.py:16 ui/shortcuts.py:152
 msgid "Reanalyze Track"
 msgstr "트랙 재분석"
 
-#: ui/library.py:2246 ui/shortcuts.py:155
+#: ui/library.py:2258 ui/shortcuts.py:155
 msgid "Remove from Playlist"
 msgstr "플레이리스트에서 제거"
 
-#: ui/library.py:2247
+#: ui/library.py:2259
 msgid "Add to Playlist"
 msgstr "플레이리스트에 추가"
 
-#: ui/library.py:2316
+#: ui/library.py:2328
 #, python-brace-format
 msgid ""
 "Remove \"{title}\" from the library?\n"
@@ -5990,7 +5979,7 @@ msgstr ""
 "\"{title}\"을(를) 라이브러리에서 제거할까요?\n"
 "분석과 편집 내용이 삭제됩니다. 오디오 파일은 그대로 남습니다."
 
-#: ui/library.py:2319
+#: ui/library.py:2331
 #, python-brace-format
 msgid ""
 "Remove {count} track from the library?\n"
@@ -6030,43 +6019,63 @@ msgid ""
 " off."
 msgstr "MIDI 입력 켜짐, {port} 닫힘(외부 동기화가 다른 덱을 따라가는 중). 클릭: 끄기."
 
+#: ui/music_search.py:181
+msgid "The microphone Search by Music listens to: click its name to pick another."
+msgstr "음악으로 검색이 듣는 마이크입니다. 이름을 누르면 다른 마이크를 고를 수 있습니다."
+
+# | msgid "No microphone found."
+#: ui/music_search.py:200
+msgid "no microphone"
+msgstr "마이크 없음"
+
+# | msgid "Listening aid: tonic chord"
+# | msgid "Listening on {device} …"
+#: ui/music_search.py:203
+#, python-brace-format
+msgid "Listening on {device}"
+msgstr "{device}에서 듣는 중"
+
+# | msgid "No microphone found."
+#: ui/music_search.py:203
+#, python-brace-format
+msgid "Microphone: {device}"
+msgstr "마이크: {device}"
+
+# | msgid "Default"
+#: ui/config/audio_overview.py:388 ui/config/audio_overview.py:429
+#: ui/config/output_group.py:95 ui/music_search.py:210
+msgid "System default"
+msgstr "시스템 기본값"
+
+#: ui/config/midi.py:201 ui/config/output_group.py:99 ui/music_search.py:212
+#, python-brace-format
+msgid "{name} (not connected)"
+msgstr "{name} (연결되지 않음)"
+
 # | msgid "The file could not be written: {error}"
 # | msgid "The file could not be read: {error}"
-#: ui/music_search.py:256
+#: ui/music_search.py:302
 #, python-brace-format
 msgid "The index could not be read: {error}"
 msgstr "색인을 읽지 못했습니다: {error}"
 
-#: ui/music_search.py:264
+#: ui/music_search.py:310
 msgid ""
 "No track is indexed for Search by Music yet: Settings > Search > Index "
 "Now (new tracks are indexed when analyzed)."
 msgstr "아직 음악으로 검색용으로 색인된 트랙이 없습니다: 설정 > 검색 > 지금 색인 (새 트랙은 분석할 때 색인됩니다)."
 
-#: ui/music_search.py:275
+#: ui/music_search.py:349
 msgid "No microphone found."
 msgstr "마이크를 찾지 못했습니다."
 
-# | msgid "Listening aid: tonic chord"
-#: ui/music_search.py:288
-#, python-brace-format
-msgid "Listening on {device} …"
-msgstr "{device}에서 듣는 중 …"
-
 # | msgid "Reading the analysis failed: {error}"
-#: ui/music_search.py:346
+#: ui/music_search.py:433
 #, python-brace-format
 msgid "The search failed: {error}"
 msgstr "검색에 실패했습니다: {error}"
 
-# | msgid "Listening aid: tonic chord"
-# | msgid "Listening on {device} …"
-#: ui/music_search.py:352
-#, python-brace-format
-msgid "Listening {time}"
-msgstr "듣는 중 {time}"
-
-#: ui/music_search.py:354
+#: ui/music_search.py:441
 msgid "Nothing found yet: hum or whistle for 8 seconds or more, or play the song."
 msgstr "아직 찾은 곡이 없습니다: 8초 이상 흥얼거리거나 휘파람을 불거나, 곡을 트세요."
 

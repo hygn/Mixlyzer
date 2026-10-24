@@ -9,6 +9,7 @@ from PySide6 import QtGui
 from typing import Optional
 from analyzer_core.key.chord_key import analyze_keys as analyze_chord_keys
 from core.beat_geometry import downbeat_times
+from analyzer_core.beat import melody_contour
 from analyzer_core.beat.frame_features import FRAME_HOP_LENGTH, extract_frame_features
 from analyzer_core.hpss import HPSS_HOP_LENGTH, HPSS_N_FFT, hpss_audio_with_spectra
 from analyzer_core.dsp.resample import resample_audio
@@ -470,6 +471,10 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
     # The automatic result is kept beside the user's JumpCUEs (which edits
     # replace): the JumpCUE optimizer learns from where the two differ.
     features["jump_cues_auto_np"] = {k: np.array(v, copy=True) for k, v in features["jump_cues_np"].items()}
+    # the search by music's index takes the harmonic mask (its own STFT frames are these): no second HPSS
+    music_mask = None
+    if bool(getattr(config.searchconfig, "music_index", True)) and hpss_spectra is not None:
+        music_mask = (hpss_spectra.harmonic / np.maximum(hpss_spectra.magnitude, 1e-12)).astype(np.float32)
     hpss_spectra = None
 
     yield {"status": tr("Key")}
@@ -501,17 +506,19 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
     features["key_segments_auto"] = np.array(key_segments, dtype=float, copy=True)
     features["sr"] = global_sr
 
-    # The search by music's index (core.music_search): the reference lines from the decoded stereo and the mono
-    # harmonic part already made, the landmarks; written to music_search.db once the track has its uid. A failure
-    # leaves the track unindexed, never the analysis undone.
+    # The search by music's index (core.music_search): the reference lines from the decoded stereo and the HPSS's
+    # harmonic part, mask and melody contours already made, the landmarks; written to music_search.db once the track
+    # has its uid. A failure leaves the track unindexed, never the analysis undone.
     music_entry = None
     if bool(getattr(config.searchconfig, "music_index", True)):
         yield {"status": tr("Search by Music")}
         taskmgr.updatetask(taskid, tr("Indexing for Search by Music"), 0.78)
         try:
-            music_entry = index_audio(samp_stereo, y_harm)
+            music_entry = index_audio(samp_stereo, y_harm, music_mask)
         except Exception as exc:
             print(f"[Music search] indexing skipped: {exc}")
+        music_mask = None
+    melody_contour.forget_contours()      # the frame features' contours, kept for the index
 
     # DB Features
     taskmgr.updatetask(taskid, tr("Processing Metadata"), 0.85)

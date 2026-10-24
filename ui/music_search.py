@@ -21,6 +21,7 @@ import numpy as np
 from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtMultimedia import QAudioFormat, QAudioSource, QMediaDevices
 
+from core.config import save_deck
 from core.event_bus import EventBus
 from core.i18n import tr
 from core.music_search import store
@@ -160,7 +161,12 @@ class MicWaveform(QtWidgets.QWidget):
 
 
 class MusicSearchBar(QtWidgets.QFrame):
-    """What the search field's place holds in music mode: the waveform with its level meter, and the status."""
+    """What the search field's place holds in music mode: the waveform with its level meter, the input listened to
+    ("Listening on <input>": the input's name a link to the system's inputs, one picked from them) and the status."""
+
+    device_picked = QtCore.Signal(str)        # an input's name, "" the system's default
+
+    DEVICE_WIDTH = 280                        # px of the input's name at most (cut in its middle)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -168,13 +174,51 @@ class MusicSearchBar(QtWidgets.QFrame):
         theme = current_theme()
         self.setStyleSheet(f"#musicSearchBar {{ border: 1px solid {theme.separator}; border-radius: 4px; }}")
         self.wave = MicWaveform()
+        self.device = QtWidgets.QLabel()
+        self.device.setTextFormat(QtCore.Qt.RichText)
+        self.device.setTextInteractionFlags(QtCore.Qt.LinksAccessibleByMouse | QtCore.Qt.LinksAccessibleByKeyboard)
+        self.device.setStyleSheet(f"color: {theme.text_dim}; background: transparent;")
+        self.device.setToolTip(tr("The microphone Search by Music listens to: click its name to pick another."))
+        self.device.linkActivated.connect(lambda _link: self._menu())
         self.status = ElidedLabel()
         self.status.setStyleSheet(f"color: {theme.text_dim}; background: transparent;")
+        self._inputs: Callable[[], list[str]] = list
+        self._picked = ""
         lay = QtWidgets.QHBoxLayout(self)
         lay.setContentsMargins(4, 0, 6, 0)
         lay.setSpacing(8)
         lay.addWidget(self.wave, 3)
+        lay.addWidget(self.device, 0)
         lay.addWidget(self.status, 2)
+
+    def show_device(self, name: str, picked: str, listening: bool, inputs: Callable[[], list[str]]) -> None:
+        """The input heard (``name``), the one picked ("": the system's default), whether it is listened to now, and
+        how to list the inputs for the menu."""
+        import html
+        theme = current_theme()
+        self._inputs, self._picked = inputs, picked
+        shown = self.fontMetrics().elidedText(name or tr("no microphone"), QtCore.Qt.ElideMiddle, self.DEVICE_WIDTH)
+        link = (f'<a href="device" style="color: {theme.accent}; text-decoration: none;">'
+                f'{html.escape(shown)}&nbsp;▾</a>')
+        text = tr("Listening on {device}") if listening else tr("Microphone: {device}")
+        self.device.setText(html.escape(text).replace("{device}", link))
+
+    def _menu(self) -> None:
+        menu = QtWidgets.QMenu(self)
+        group = QtGui.QActionGroup(menu)
+        names = self._inputs()
+        entries = [("", tr("System default"))] + [(n, n) for n in names]
+        if self._picked and self._picked not in names:
+            entries.append((self._picked, tr("{name} (not connected)").format(name=self._picked)))
+        for value, label in entries:
+            act = menu.addAction(label)
+            act.setCheckable(True)
+            act.setChecked(value == self._picked)
+            act.setData(value)
+            group.addAction(act)
+        chosen = menu.exec(self.device.mapToGlobal(QtCore.QPoint(0, self.device.height())))
+        if chosen is not None and chosen.data() != self._picked:
+            self.device_picked.emit(str(chosen.data()))
 
 
 # --- listening and searching -----------------------------------------------------------------------------------------
@@ -187,7 +231,9 @@ class MusicListener(QtCore.QObject):
     """The microphone listened to and its last seconds searched every few seconds."""
 
     audio = QtCore.Signal(object)             # a chunk heard: mono float at `rate`
+    rate_changed = QtCore.Signal(int)         # an input opened at this rate
     listening_changed = QtCore.Signal(bool)
+    device_changed = QtCore.Signal()          # another input picked, listening started or stopped: device() / picked()
     status = QtCore.Signal(str)
     results = QtCore.Signal(object)           # SearchResult, while listening (none when nothing was found)
 
@@ -267,10 +313,38 @@ class MusicListener(QtCore.QObject):
             self._load_index()
 
     # the microphone
-    def start(self) -> bool:
+    @staticmethod
+    def inputs() -> list[str]:
+        """The system's input devices by name."""
+        return [d.description() for d in QMediaDevices.audioInputs()]
+
+    def picked(self) -> str:
+        """The input picked ("": the system's default)."""
+        return str(getattr(self._cfg_getter().deckconfig, "music_input_device", "") or "")
+
+    def device(self):
+        """The input listened to: the one picked when the system has it, else the system's default."""
+        name = self.picked()
+        for dev in QMediaDevices.audioInputs():
+            if name and dev.description() == name:
+                return dev
+        return QMediaDevices.defaultAudioInput()
+
+    def pick(self, name: str) -> None:
+        """Listen to another input ("": the system's default), kept in deck.json; while listening, from now on."""
+        deck = self._cfg_getter().deckconfig
+        deck.music_input_device = str(name or "")
+        save_deck(self._cfg_getter())
         if self._source is not None:
-            return True
-        dev = QMediaDevices.defaultAudioInput()
+            self._close_source()
+            if not self._open_source():
+                self._timer.stop()
+                self.listening_changed.emit(False)
+                return
+        self.device_changed.emit()
+
+    def _open_source(self) -> bool:
+        dev = self.device()
         if dev.isNull():
             self.status.emit(tr("No microphone found."))
             return False
@@ -280,24 +354,37 @@ class MusicListener(QtCore.QObject):
         self._live, self._live_n = [], 0
         self._io = self._source.start()
         self._io.readyRead.connect(self._on_audio)
+        self.rate_changed.emit(self.rate)
+        return True
+
+    def _close_source(self) -> None:
+        self._source.stop()
+        self._source.deleteLater()
+        self._source = self._io = None
+        self._live, self._live_n = [], 0
+
+    def start(self) -> bool:
+        if self._source is not None:
+            return True
+        if not self._open_source():
+            return False
         self._t0 = time.monotonic()
         self._listening = Listening(float(self._cfg_getter().searchconfig.music_listen_window))
         self._timer.start(int(float(self._cfg_getter().searchconfig.music_listen_interval) * 1000))
         if self._index is None or self._stale:
             self._load_index()
-        self.status.emit(tr("Listening on {device} …").format(device=dev.description()))
+        self.status.emit("")
         self.listening_changed.emit(True)
+        self.device_changed.emit()
         return True
 
     def stop(self) -> None:
         self._timer.stop()
         if self._source is None:
             return
-        self._source.stop()
-        self._source.deleteLater()
-        self._source = self._io = None
-        self._live, self._live_n = [], 0
+        self._close_source()
         self.listening_changed.emit(False)
+        self.device_changed.emit()
 
     def _on_audio(self) -> None:
         if self._io is None:
@@ -349,7 +436,7 @@ class MusicListener(QtCore.QObject):
         result: SearchResult
         # joined with the searches before (core.music_search.listening): a song heard on and on leads
         joined = self._listening.update(result, heard_at)
-        listening = tr("Listening {time}").format(time=mmss(time.monotonic() - self._t0))
+        listening = mmss(time.monotonic() - self._t0)
         if not joined:
             listening += "  ·  " + tr("Nothing found yet: hum or whistle for 8 seconds or more, or play the song.")
         self.status.emit(listening)

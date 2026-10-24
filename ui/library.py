@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 from typing import List, Optional
 from PySide6 import QtCore, QtGui, QtWidgets
+from PySide6.QtMultimedia import QMediaDevices
 import os
 from utils.labels import idx_to_labels
 from utils.phrases import PHRASE_LABELS, phrase_display_name
@@ -911,9 +912,13 @@ class LibraryWidget(QtWidgets.QWidget):
         self._music_saved_text = ""
         self._music = MusicListener(bus, lambda: self.cfg, parent=self)
         self._music.audio.connect(self.music_bar.wave.add)
+        self._music.rate_changed.connect(self.music_bar.wave.reset)
         self._music.status.connect(self.music_bar.status.setText)
         self._music.results.connect(self._on_music_results)
         self._music.listening_changed.connect(self._on_listening_changed)
+        self._music.device_changed.connect(self._show_music_device)
+        self.music_bar.device_picked.connect(self._music.pick)
+        QMediaDevices(self).audioInputsChanged.connect(self._show_music_device)    # plugged in / out
         self._deck_seek = DeckSeekAfterLoad(bus, model, parent=self)
 
         # Phrase filter: the label always applies; BPM and key refine it.
@@ -1963,6 +1968,7 @@ class LibraryWidget(QtWidgets.QWidget):
             widget.hide()
         self.music_bar.show()
         self.btn_music_close.show()
+        self._show_music_device()
         self.e_search.blockSignals(True)
         self.e_search.clear()
         self.e_search.blockSignals(False)
@@ -1982,6 +1988,12 @@ class LibraryWidget(QtWidgets.QWidget):
         self.e_search.setText(self._music_saved_text)
         self.e_search.blockSignals(False)
         self._refresh_current_source(reset_sort=True)
+
+    def _show_music_device(self) -> None:
+        """The music bar's input: the one heard (or to be heard) and the one picked."""
+        dev = self._music.device()
+        self.music_bar.show_device("" if dev.isNull() else dev.description(), self._music.picked(),
+                                   self._music.listening(), self._music.inputs)
 
     def _on_listening_changed(self, on: bool) -> None:
         self.btn_mic.setChecked(on)

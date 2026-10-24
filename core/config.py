@@ -121,6 +121,9 @@ class deckconfig:
     # (0 .. 1)
     color_type: int
     color_param: float
+    # Search by Music's microphone, by its name as the system lists it ("": the system's default input), picked in
+    # the library's search bar
+    music_input_device: str
 
 
 @dataclass
@@ -454,6 +457,7 @@ def default_cfg():
         headphones_cue_mix=50,
         color_type=5,    # FILTER (client.COLOR_TYPES), as the engine starts
         color_param=0.5,
+        music_input_device="",
     )
     pcfg = playbackconfig(
         default_volume_percent=100,
