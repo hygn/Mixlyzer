@@ -34,7 +34,7 @@ def refresh_library_readings(db_path: str, languages: tuple[str, ...], progress=
                              han_run: int | None = None) -> ReadingRefreshResult:
     """Read every track's title / artist / album again in ``languages`` and ``han_run``
     (LibraryDB's; the user's readings kept); ``progress(done, total)`` after each batch."""
-    from core import reading
+    from core import reading, tieup
     from core.library_handler import READING_FIELDS, LibraryDB
 
     reading.warm_up()
@@ -55,6 +55,8 @@ def refresh_library_readings(db_path: str, languages: tuple[str, ...], progress=
                     changed += sum(before.get(f) != after.get(f) for f in READING_FIELDS)
             if progress is not None:
                 progress(min(start + BATCH_TRACKS, len(uids)), len(uids))
+        with db.tx():   # the tie-ups' works' titles (core.tieup) too
+            tieup.refresh_work_readings(db.conn, db.reading_languages, db.han_run)
         return ReadingRefreshResult(tracks=len(uids), changed_fields=changed)
     finally:
         db.close()

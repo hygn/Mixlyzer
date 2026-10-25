@@ -20,6 +20,13 @@ class libconfig:
     # How far (ms) the XML's steps of steady tempo standing in for a tempo ramp may put a beat from the
     # ramp's (0: a step per beat).
     rekordbox_ramp_tolerance_ms: float
+    # The track's tie-ups (core.tieup) after each track's comment in the XML: [Title OP; Other ED].
+    rekordbox_comment_tieups: bool
+    # A tie-up added in the Edit tab added to the track's versions (its Variants) too.
+    tieup_to_versions: bool
+    # A new track its versions gave no tie-up looked up on Wikipedia / Wikidata (core.tieup_web; sends its title and
+    # artist there).
+    tieup_web_search: bool
 
 
 @dataclass
@@ -393,6 +400,9 @@ def default_cfg():
         rekordbox_sync_enabled=True,
         rekordbox_xml_path="./rekordbox.xml",
         rekordbox_ramp_tolerance_ms=1.0,
+        rekordbox_comment_tieups=False,
+        tieup_to_versions=True,
+        tieup_web_search=False,
     )
     acfg = analysisconfig(
         bpm_min=100,

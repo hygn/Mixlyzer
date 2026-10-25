@@ -22,6 +22,7 @@ from core.external_sync import ExternalSyncController
 from core.workflows.rekordbox_sync import RekordboxXmlSync
 from core.workflows.reading_refresh import LibraryReadingRefresh
 from core.workflows.music_index import LibraryMusicIndex
+from core.workflows.tieup_web import TieupWebLookup
 from .metronome import MetronomeController
 from utils.window_visibility import is_window_fully_hidden
 from utils.volume import slider_percent_to_linear, trim_dbfs_to_linear, trim_knob_to_db
@@ -117,6 +118,10 @@ class AppWindow(QtWidgets.QMainWindow):
         # the library's search takes the new readings
         self.reading_refresh.finished.connect(lambda _request, _result: self._emit_library_update(self.cfg, None))
         self.music_index = LibraryMusicIndex(cfg_getter=lambda: self.cfg, parent=self)
+        self.tieup_web = TieupWebLookup(libpath=lambda: self.cfg.libconfig.libpath,
+                                        settings=lambda: self.cfg.searchconfig,
+                                        enabled=lambda: bool(self.cfg.libconfig.tieup_web_search), parent=self)
+        self.tieup_web.tagged.connect(self._on_tieups_tagged)
         self.music_index.started.connect(self.bus.sig_music_index_started)
         self.music_index.progress.connect(self.bus.sig_music_index_progress)
         self.music_index.finished.connect(self.bus.sig_music_index_finished)
@@ -600,6 +605,8 @@ class AppWindow(QtWidgets.QMainWindow):
             self._emit_library_update(load_cfg(), feat.get("library"))
             self._sync_rekordbox_track(properties.get("uid"))
             self.statusBar().showMessage(tr("Analysis saved to library."))
+            if feat.get("new_track") and not feat.get("tieups"):   # a new track its versions gave none: the web
+                self.tieup_web.new_track(str(properties.get("uid") or ""))
         self.taskmanager.updatetask(feat["taskid"], tr("Finished"), 1)
         self.taskmanager.rmtask(feat["taskid"])
 
@@ -613,6 +620,12 @@ class AppWindow(QtWidgets.QMainWindow):
             self._apply_analysis(feat)
         self.taskmanager.rmtask(feat["taskid"])
         self.statusBar().showMessage(tr("Analysis saved to library."))
+
+    def _on_tieups_tagged(self, uids: list) -> None:
+        """Tracks given a tie-up from the web: the library, the Rekordbox XML's comments."""
+        self._emit_library_update(load_cfg(), None)
+        for uid in uids:
+            self._sync_rekordbox_track(uid)
 
     def _emit_library_update(self, cfg: config, lib_rows):
         if lib_rows is None:
@@ -725,7 +738,8 @@ class AppWindow(QtWidgets.QMainWindow):
             self.pane.lib.set_config(_config)
         rekordbox_cfg_changed = any(
             prev_lcfg.get(k) != new_lcfg.get(k)
-            for k in ("rekordbox_sync_enabled", "rekordbox_xml_path", "rekordbox_ramp_tolerance_ms")
+            for k in ("rekordbox_sync_enabled", "rekordbox_xml_path", "rekordbox_ramp_tolerance_ms",
+                      "rekordbox_comment_tieups")
         )
         if (
             rekordbox_cfg_changed

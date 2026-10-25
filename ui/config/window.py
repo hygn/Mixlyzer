@@ -166,6 +166,9 @@ class SettingsDialog(
         self.cb_rekordbox_sync.setChecked(bool(cfg.libconfig.rekordbox_sync_enabled))
         self.ed_rekordbox_xml_path.setText(cfg.libconfig.rekordbox_xml_path)
         self.sp_rekordbox_ramp_tolerance_ms.setValue(float(cfg.libconfig.rekordbox_ramp_tolerance_ms))
+        self.cb_rekordbox_comment_tieups.setChecked(bool(cfg.libconfig.rekordbox_comment_tieups))
+        self.cb_tieup_to_versions.setChecked(bool(cfg.libconfig.tieup_to_versions))
+        self.cb_tieup_web_search.setChecked(bool(cfg.libconfig.tieup_web_search))
 
         # search
         self._set_search_config(cfg.searchconfig)
@@ -313,6 +316,9 @@ class SettingsDialog(
                 rekordbox_sync_enabled=bool(self.cb_rekordbox_sync.isChecked()),
                 rekordbox_xml_path=self.ed_rekordbox_xml_path.text().strip(),
                 rekordbox_ramp_tolerance_ms=float(self.sp_rekordbox_ramp_tolerance_ms.value()),
+                rekordbox_comment_tieups=bool(self.cb_rekordbox_comment_tieups.isChecked()),
+                tieup_to_versions=bool(self.cb_tieup_to_versions.isChecked()),
+                tieup_web_search=bool(self.cb_tieup_web_search.isChecked()),
             ),
             viewconfig=viewconfig(
                 language=self._get_language(),

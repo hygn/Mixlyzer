@@ -22,7 +22,12 @@ from typing import Mapping
 
 import numpy as np
 
-METHOD = "fp1;hash=6;stride=8"
+from analyzer_core.beat.grid_version import BEAT_GRID_VERSION
+from utils.wave import WAVE_BANDS_VERSION
+
+# the fingerprint's method: this algorithm and the version of each stored feature it reads (core.variants.store keeps
+# it with every fingerprint and compares only fingerprints of one method)
+METHOD = f"fp1;hash=6;stride=8;beats={BEAT_GRID_VERSION};bands={WAVE_BANDS_VERSION}"
 FEATURES = ("wave_bands_np", "wave_bands_ref", "beats_time_sec", "duration_sec")   # what it is made from
 
 BACKING = (0, 1, 2, 3, 10, 11)

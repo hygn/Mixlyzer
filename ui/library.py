@@ -4,6 +4,7 @@ import copy
 import html
 import json
 from pathlib import Path
+import threading
 from typing import List, Optional
 from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtMultimedia import QMediaDevices
@@ -25,7 +26,29 @@ from ui.edit_panel.key_picker import KeyPickButton
 from ui.edit_panel.flash import flash
 from core.thumbnails import delete_thumbnail, load_thumbnail
 from core.variants import fingerprint as variant_fp, store as variant_store
+from core.music_search import store as music_store
+from core import tieup
 from core.i18n import tr, tr_mark, tr_n
+
+
+def _drop_from_indexes(libpath: str, uids: list[str]) -> None:
+    """Removed tracks out of the Variants' index (their fingerprints and relations) and Search by Music's; a failure
+    leaves them for Index Now to drop."""
+    for name, path, open_writer, drop in (
+            ("Variants", variant_store.path_for(libpath), variant_store.open_writer, variant_store.drop),
+            ("Search by Music", music_store.path_for(libpath), music_store.open_writer, music_store.drop)):
+        if not os.path.isfile(path):
+            continue
+        try:
+            con = open_writer(path)
+            try:
+                with con:
+                    for uid in uids:
+                        drop(con, uid)
+            finally:
+                con.close()
+        except Exception as exc:
+            print(f"[Library] removed tracks left in the {name} index: {exc}")
 
 
 def _mmss(sec: float) -> str:
@@ -47,6 +70,8 @@ class Track:
     added: Optional[QtCore.QDateTime] = None
     path: str = ""
     comment: str = ""
+    tieup: str = ""          # its song's tie-ups as shown (core.tieup): "Title OP; Other ED"
+    tieup_text: str = ""     # every title of their works and the roles, for the plain text search
     uid: str = ""
     playlist_index: Optional[int] = None
     analyzed: bool = True
@@ -84,21 +109,26 @@ class Track:
         if self.playlist_index is not None:
             self._disp_playlist_index = str(self.playlist_index + 1)
 
-def row_to_track(row: TrackRow, readings: Optional[dict] = None) -> Track:
-    """``readings``: the track's readings by field (LibraryDB.all_readings), for the search."""
+def row_to_track(row: TrackRow, readings: Optional[dict] = None,
+                 tieups: Optional[tieup.TrackTieups] = None) -> Track:
+    """``readings``: the track's readings by field (LibraryDB.all_readings), for the search; ``tieups``: its
+    song's tie-ups (tieup.track_texts)."""
     added_qt = QtCore.QDateTime.fromSecsSinceEpoch(int(row.added_ts)) if row.added_ts else None
+    keys = {f: [reading.keys(r) for r in (readings or {}).get(f, [])] for f in READ_FIELDS if f != "tieup"}
+    keys["tieup"] = [reading.keys(r) for r in tieups.readings] if tieups is not None else []
     return Track(
         track_id=row.path, title=row.title or "", artist=row.artist or "",
         album=row.album or "", bpm=row.bpm, key=row.key, duration_sec=row.duration,
         rating=int(row.rating or 0), added=added_qt, path=row.path, comment=row.comment or "",
-        uid=row.uid or "",
-        reading_keys={f: [reading.keys(r) for r in (readings or {}).get(f, [])] for f in READ_FIELDS},
+        tieup=tieups.shown if tieups is not None else "", tieup_text=tieups.text if tieups is not None else "",
+        uid=row.uid or "", reading_keys=keys,
     )
 
 
-# the columns found by their reading too (core.reading): the text search's columns -> Track fields
-READ_FIELDS = ("title", "artist", "album")
-READ_COLUMNS = {"Title": "title", "Artist": "artist", "Album": "album"}
+# the columns found by their reading too (core.reading): the text search's columns -> Track fields (the tie-ups':
+# their works' titles)
+READ_FIELDS = ("title", "artist", "album", "tieup")
+READ_COLUMNS = {"Title": "title", "Artist": "artist", "Album": "album", "Tie-up": "tieup"}
 
 
 _SOURCE_KIND_ROLE = QtCore.Qt.UserRole
@@ -764,10 +794,12 @@ class LibraryWidget(QtWidgets.QWidget):
     ART_HEADER = ""  # the album art column (the top of the art)
     ART_WIDTH = 56
     # the columns by their English names (the code's keys); shown as HEADER_NAMES (BPM, Key: as they are)
-    HEADERS = [ART_HEADER, "#", "Title", "Artist", "Album", "BPM", "Key", "Duration", "Rating", "Added", "Path", "Comment"]
+    HEADERS = [ART_HEADER, "#", "Title", "Artist", "Album", "Tie-up", "BPM", "Key", "Duration", "Rating", "Added",
+               "Path", "Comment"]
     SEARCH_MODES = ["All"] + HEADERS[1:]
     HEADER_NAMES = {"All": tr_mark("All"), "Title": tr_mark("Title"), "Artist": tr_mark("Artist"),
-                    "Album": tr_mark("Album"), "Duration": tr_mark("Duration"), "Rating": tr_mark("Rating"),
+                    "Album": tr_mark("Album"), "Tie-up": tr_mark("Tie-up"), "Duration": tr_mark("Duration"),
+                    "Rating": tr_mark("Rating"),
                     "Added": tr_mark("Added"), "Path": tr_mark("Path"), "Comment": tr_mark("Comment")}
     AUDIO_EXTENSIONS = frozenset({
         ".aac", ".aif", ".aiff", ".alac", ".flac", ".m4a", ".mp3",
@@ -1129,6 +1161,8 @@ class LibraryWidget(QtWidgets.QWidget):
         self._loaded_uid: Optional[str] = None
         self._marked_uid: Optional[str] = None   # the uid whose rows are green
         self.bus.sig_properties_loaded.connect(self._on_properties_loaded)
+        # Index Now found new Variants: shown
+        self.bus.sig_music_index_finished.connect(lambda *_args: self.reload_from_db())
 
         # the table's rows are this source's tracks (a library update changes them in place)
         self._table_source: Optional[tuple] = None
@@ -1166,13 +1200,15 @@ class LibraryWidget(QtWidgets.QWidget):
         self.table.viewport().update()
 
     def _tracks(self, rows) -> List[Track]:
-        """Library rows as Tracks, with their readings for the search."""
+        """Library rows as Tracks, with their readings and tie-ups for the search."""
         db = self._db()
         try:
             readings = db.all_readings()
+            tieups = tieup.track_texts(db.conn)
         finally:
             db.close()
-        return [row_to_track(row, readings.get(row.uid)) if isinstance(row, TrackRow) else row for row in rows]
+        return [row_to_track(row, readings.get(row.uid), tieups.get(row.uid)) if isinstance(row, TrackRow) else row
+                for row in rows]
 
     @staticmethod
     def _file_identity(path: object) -> str:
@@ -1328,11 +1364,12 @@ class LibraryWidget(QtWidgets.QWidget):
             try:
                 rows = db.list_playlist_tracks(str(self._source_value))
                 readings = db.all_readings()
+                tieups = tieup.track_texts(db.conn)
             finally:
                 db.close()
             tracks = []
             for position, row in rows:
-                track = row_to_track(row, readings.get(row.uid))
+                track = row_to_track(row, readings.get(row.uid), tieups.get(row.uid))
                 track.playlist_index = position
                 track._disp_playlist_index = str(position + 1)
                 tracks.append(track)
@@ -1512,7 +1549,7 @@ class LibraryWidget(QtWidgets.QWidget):
         column is set last: with sorting on, the row then moves to its place once."""
         values = [
             "", t._disp_playlist_index,
-            t.title, t.artist, t.album, t._disp_bpm, t._disp_key_alphanumeric,
+            t.title, t.artist, t.album, t.tieup, t._disp_bpm, t._disp_key_alphanumeric,
             t._disp_duration, t._disp_rating, t._disp_added, t.path, t.comment
         ]
         bpm_col = self.HEADERS.index("BPM")
@@ -1593,6 +1630,7 @@ class LibraryWidget(QtWidgets.QWidget):
             "Title": "title",
             "Artist": "artist",
             "Album": "album",
+            "Tie-up": "tieup_text",
             "Comment": "comment",
             "Key": "_disp_key_alphanumeric",
             "BPM": "_disp_bpm",
@@ -1793,7 +1831,8 @@ class LibraryWidget(QtWidgets.QWidget):
 
     def _build_track_panel(self) -> QtWidgets.QHBoxLayout:
         self.edit_panel = EditTrackPanel(bus=self.bus, libpath=self.cfg.libconfig.libpath,
-                                         search_settings=lambda: self.cfg.searchconfig)
+                                         search_settings=lambda: self.cfg.searchconfig,
+                                         tieup_to_versions=lambda: bool(self.cfg.libconfig.tieup_to_versions))
         self.export_panel = ExportTrackPanel(
             self.cfg.libconfig.libpath, model=self.model, bus=self.bus,
             unapplied_edits=lambda uid: self.edit_panel.track_uid() == uid and self.edit_panel.has_changes())
@@ -2421,6 +2460,10 @@ class LibraryWidget(QtWidgets.QWidget):
         for uid in uids:
             n.delete(uid)
             delete_thumbnail(self.cfg.libconfig.libpath, uid)
+        # out of the indexes made from them too (their fingerprints, Search by Music's), on a thread of their own:
+        # each a pass over its index
+        threading.Thread(target=_drop_from_indexes, args=(self.cfg.libconfig.libpath, list(uids)),
+                         name="drop-from-indexes", daemon=True).start()
         self.bus.sig_lib_updated.emit(lib_full)
         for uid in uids:
             track_uid = str(uid or "").strip()

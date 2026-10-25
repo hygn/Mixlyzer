@@ -43,10 +43,11 @@ def index_status(libpath: str) -> tuple[int, int]:
 
 
 class LibraryMusicIndex(QtCore.QObject):
-    """Index Now (Settings > Search > Search by Music): the library tracks not in the music search's or the variants'
-    index (analyzed before they existed) indexed, the tracks gone from the library dropped from them; one run at a
-    time, its tracks shared by up to MAX_PROCESSES processes (a quarter of the cores). The analysis indexes what it
-    analyzes."""
+    """Index Now (Settings > Search > Search by Music): the library tracks not in the music search's index, or
+    without a Variants fingerprint of the current method (analyzed before they existed, or before the method
+    changed), indexed; the tracks gone from the library dropped; once done, the fingerprints of earlier methods the
+    current one has replaced removed. One run at a time, its tracks shared by up to MAX_PROCESSES processes (a quarter
+    of the cores). The analysis indexes what it analyzes."""
 
     started = QtCore.Signal(object)               # MusicIndexRun
     progress = QtCore.Signal(object, int, str)    # run, percent, text
@@ -62,6 +63,7 @@ class LibraryMusicIndex(QtCore.QObject):
         self._results: list[MusicIndexResult] = []
         self._errors: list[str] = []
         self._dropped = 0
+        self._variants_db = ""
 
     def running(self) -> bool:
         return self._run is not None
@@ -96,7 +98,8 @@ class LibraryMusicIndex(QtCore.QObject):
             if music or variants:
                 todo.append(IndexTrack(uid, path, size, mtime, music, variants))
         drop = tuple(sorted(have - uids))
-        drop_variants = tuple(sorted(have_variants - uids))
+        drop_variants = tuple(sorted(variant_store.indexed_uids(variants_db, any_method=True) - uids))
+        self._variants_db = variants_db
         n = max(1, min(MAX_PROCESSES, (os.cpu_count() or 4) // 4, len(todo)))
         run = MusicIndexRun(len(todo), n)
         self._run, self._done, self._results, self._errors = run, {}, [], []
@@ -147,6 +150,14 @@ class LibraryMusicIndex(QtCore.QObject):
         if self._errors:
             self.failed.emit(run, self._errors[0])
             return
+        try:    # every worker done: the fingerprints of earlier methods the current one replaced removed (quick)
+            con = variant_store.open_writer(self._variants_db)
+            try:
+                variant_store.prune_old_methods(con)
+            finally:
+                con.close()
+        except Exception as exc:
+            print(f"[Variants] earlier methods not removed: {exc}")
         self.finished.emit(run, MusicIndexSummary(
             indexed=sum(r.indexed for r in self._results),
             failed=tuple(p for r in self._results for p in r.failed),

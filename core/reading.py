@@ -640,7 +640,7 @@ def read(text: str) -> str:
 # ---- normalization ----
 
 _NORMALIZE_STEPS = [(re.compile(pattern), repl) for pattern, repl in [
-    (r"tch", "ch"), (r"(?:ch|sh|zh|ts|dz|j|z|c(?=[eiy]))", "s"),   # s z j sh ch zh ts as one
+    (r"[tc]ch", "ch"), (r"(?:ch|sh|zh|ts|dz|j|z|c(?=[eiy]))", "s"),   # s z j sh ch zh ts as one; っち: tchi = cchi
     (r"c|q|g|x", "k"), (r"d", "t"), (r"[fbpv]", "h"), (r"l", "r"),
     (r"(?<=s)y", ""),                                            # sha = sya = sa
     (r"m(?=h)", "n"),                                            # shimbun = shinbun

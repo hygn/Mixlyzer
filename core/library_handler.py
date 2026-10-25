@@ -5,7 +5,7 @@ from dataclasses import dataclass, asdict
 from typing import Iterable, List, Optional, Dict, Any, Tuple
 from uuid import UUID, uuid4
 
-from core import reading
+from core import reading, tieup
 from core.linear_segments import harmonic_compatible_keys
 from utils.labels import idx_to_labels
 from core.i18n import tr
@@ -366,6 +366,8 @@ class LibraryDB:
         self._conn.execute("CREATE INDEX IF NOT EXISTS idx_playlists_sort ON playlists(sort_index);")
         self._conn.execute("CREATE INDEX IF NOT EXISTS idx_playlist_tracks_track ON playlist_tracks(track_uid);")
         self._conn.commit()
+        # the songs' tie-ups (core.tieup): works, their names, tie-ups, references, a track's song
+        tieup.create_schema(self._conn)
 
     def close(self):
         if self._conn:

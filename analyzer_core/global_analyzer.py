@@ -34,6 +34,7 @@ from core.thumbnails import save_thumbnail
 from core.music_search import store as music_store
 from core.music_search.indexing import index_audio
 from core.variants import store as variant_store
+from core import tieup
 from core.config import ANALYSIS_SAMPLE_RATE, config
 from core.i18n import tr
 from core.taskmanager import taskmanager
@@ -593,6 +594,18 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
             print(f"[Variants] {found} found")
     except Exception as exc:
         print(f"[Variants] not indexed: {exc}")
+    # a new track (not in the library before this analysis) takes its versions' tie-ups (core.tieup); a failure
+    # leaves it without, never the analysis undone
+    features_properties["new_track"] = track is None
+    if track is None:
+        try:
+            added = tieup.tag_new_track(os.path.join(config.libconfig.libpath, "library.db"),
+                                        variant_store.path_for(config.libconfig.libpath), properties["uid"])
+            features_properties["tieups"] = added      # none: the GUI may look on the web (core.workflows.tieup_web)
+            if added:
+                print(f"[Tie-ups] {added} taken from its versions")
+        except Exception as exc:
+            print(f"[Tie-ups] not taken from its versions: {exc}")
     features_properties["library"] = lib_full
     print("[Analyzer] Analysis Finished")
     taskmgr.updatetask(taskid, tr("Finished"), 1)

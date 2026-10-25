@@ -16,6 +16,7 @@ from core import reading
 from core.event_bus import EventBus
 from core.library_handler import READING_FIELDS, USER_SOURCE, TrackRow, LibraryDB, field_readings
 from ui.config.scroll import scroll_page
+from ui.tieup_editor import TieupBox
 from ui.theme import current_theme
 from core.config import config, default_cfg, searchconfig
 from utils.labels import ALPHANUMERIC_LABELS, CLASSICAL_LABELS
@@ -88,13 +89,16 @@ class EditTrackPanel(QWidget):
     sig_track_saved = Signal(object)  # TrackRow
 
     def __init__(self, bus: Optional[EventBus] = None, libpath: Optional[str] = None,
-                 search_settings: Optional[Callable[[], searchconfig]] = None):
+                 search_settings: Optional[Callable[[], searchconfig]] = None,
+                 tieup_to_versions: Optional[Callable[[], bool]] = None):
         """``search_settings``: the search settings (read when needed: the stored readings'
-        languages; the defaults when None)."""
+        languages; the defaults when None); ``tieup_to_versions``: whether a tie-up added goes to
+        the track's versions too (Settings > Library; read when one is added)."""
         super().__init__()
         self._bus = bus
         self._libpath = libpath
         self._search_settings = search_settings or (lambda: default_cfg().searchconfig)
+        self._tieup_to_versions = tieup_to_versions or (lambda: default_cfg().libconfig.tieup_to_versions)
         self._row: Optional[TrackRow] = None
 
         body = QWidget()
@@ -181,7 +185,12 @@ class EditTrackPanel(QWidget):
         btn_box.button(QDialogButtonBox.Apply).clicked.connect(self._on_apply)
         btn_box.button(QDialogButtonBox.Reset).clicked.connect(self._on_reset)
 
+        # the song's tie-ups (core.tieup): written at once, not by Apply
+        self.tieups = TieupBox(lambda: self._libpath, self._search_settings, self._tieup_to_versions)
+        self.tieups.changed.connect(self._on_tieups_changed)
+
         content.addWidget(grp_edit)
+        content.addWidget(self.tieups)
         content.addWidget(grp_ro)
         content.addStretch(1)
         root = QVBoxLayout(self)
@@ -226,6 +235,7 @@ class EditTrackPanel(QWidget):
             self._reading_user[f] = [text for text, src in stored.get(f, []) if src == USER_SOURCE]
             self._reading_removed[f] = list(removed.get(f, []))
             self._fill_readings(f, stored.get(f, []))
+        self.tieups.set_track(row.uid)
 
         # read-only
         self.ro_uid.setText(row.uid or "")
@@ -407,6 +417,20 @@ class EditTrackPanel(QWidget):
             if track_uid:
                 self._bus.sig_rekordbox_sync_track_requested.emit(track_uid)
         return True
+
+    def _on_tieups_changed(self, uids: list) -> None:
+        """The song's tie-ups were written: the library shows them, the Rekordbox XML takes its tracks' comments."""
+        if self._bus is None or not self._libpath:
+            return
+        db = LibraryDB(os.path.join(self._libpath, "library.db"))
+        db.connect()
+        try:
+            lib_full = db.list_all()
+        finally:
+            db.close()
+        self._bus.sig_lib_updated.emit(lib_full)
+        for uid in uids:
+            self._bus.sig_rekordbox_sync_track_requested.emit(str(uid))
 
     def _on_apply(self):
         updated = self.get_updated_row()

@@ -8,7 +8,7 @@ from urllib.parse import unquote, urlparse
 import numpy as np
 from PySide6 import QtCore, QtWidgets
 import soundfile as sf
-from core import os_support
+from core import os_support, tieup
 from core.analysis_lib_handler import FeatureNPZStore
 from core.library_handler import LibraryDB, TrackRow
 from core.audio.decoder import decode_to_memmap, get_samplerate
@@ -110,6 +110,13 @@ class ExportTrackPanel(QtWidgets.QWidget):
                 box.setToolTip(tip)
             grid.addWidget(box, i // 2, i % 2)
             self.tag_fields[field] = box
+        self.cb_comment_tieups = QtWidgets.QCheckBox(tr("Tie-ups after the comment"))
+        self.cb_comment_tieups.setToolTip(tr(
+            "<p>The comment written with the song's tie-ups after it, as [Title OP; Other ED]; the library's "
+            "comment stays as it is.</p>"))
+        self.cb_comment_tieups.setEnabled(False)
+        self.tag_fields["comment"].toggled.connect(lambda _on: self._update_tag_controls())
+        grid.addWidget(self.cb_comment_tieups, (len(self.tag_fields) + 1) // 2, 0, 1, 2)
         self.tag_note = QtWidgets.QLabel("")
         self.tag_note.setWordWrap(True)
         self.btn_write_tags = QtWidgets.QPushButton(tr("Write Tags"))
@@ -172,6 +179,7 @@ class ExportTrackPanel(QtWidgets.QWidget):
         fmt = self._tag_format()
         for box in self.tag_fields.values():
             box.setEnabled(fmt is not None)
+        self.cb_comment_tieups.setEnabled(fmt is not None and self.tag_fields["comment"].isChecked())
         self.btn_write_tags.setEnabled(fmt is not None and self._tags_writing is None)
         if self._source is not None and self._source.is_file() and fmt is None:
             self._set_tag_note(tr("Tags cannot be written to this file's format."))
@@ -205,6 +213,7 @@ class ExportTrackPanel(QtWidgets.QWidget):
         db.connect()
         try:
             row = db.get_by_uid(uid)
+            suffix = tieup.comment_suffix(tieup.track_tieups(db.conn, uid)) if self.cb_comment_tieups.isChecked() else ""
         finally:
             db.close()
         if row is None:
@@ -214,7 +223,7 @@ class ExportTrackPanel(QtWidgets.QWidget):
             "title": row.title or "",
             "artist": row.artist or "",
             "album": row.album or "",
-            "comment": row.comment or "",
+            "comment": tieup.with_suffix(row.comment or "", suffix),
             "bpm": row.bpm,
             "key": idx_to_labels(row.key)[1] if row.key is not None else "",
         }

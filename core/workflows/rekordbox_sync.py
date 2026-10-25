@@ -82,6 +82,7 @@ class RekordboxXmlSync(QtCore.QObject):
             xml_path=Path(xml_path_text).expanduser(),
             mode=mode,
             ramp_tolerance_ms=float(libcfg.rekordbox_ramp_tolerance_ms),
+            comment_tieups=bool(getattr(libcfg, "rekordbox_comment_tieups", False)),
             **kwargs,
         )
 

@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-25 08:45+0900\n"
+"POT-Creation-Date: 2026-10-26 03:00+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -107,57 +107,57 @@ msgstr ""
 msgid "Phrases Updated"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:61
+#: analyzer_core/global_analyzer.py:62
 #, python-brace-format
 msgid "Audio decode failed via FFmpeg and SoundFile: {path}"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:274
+#: analyzer_core/global_analyzer.py:275
 msgid "Loading"
 msgstr ""
 
 #: analyzer_core/editor/jumpcue.py:37 analyzer_core/editor/phrase.py:32
-#: analyzer_core/global_analyzer.py:282
+#: analyzer_core/global_analyzer.py:283
 msgid "Processing HPSS"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:293
+#: analyzer_core/global_analyzer.py:294
 msgid "Processing Waveform"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:310
+#: analyzer_core/global_analyzer.py:311
 msgid "Tempo Analyzing"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:378
+#: analyzer_core/global_analyzer.py:379
 msgid "Phrase Boundary Analyzing"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:432
+#: analyzer_core/global_analyzer.py:433
 msgid "JumpCUE Analyzing"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:483
+#: analyzer_core/global_analyzer.py:484
 msgid "Analyzing Keys"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:516
+#: analyzer_core/global_analyzer.py:517
 msgid "Indexing for Search by Music"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:525
+#: analyzer_core/global_analyzer.py:526
 msgid "Processing Metadata"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:534
+#: analyzer_core/global_analyzer.py:535
 msgid "Rendering/Normalizing"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:559
+#: analyzer_core/global_analyzer.py:560
 msgid "Saving"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:561
+#: analyzer_core/global_analyzer.py:562
 msgid "Saving Result"
 msgstr ""
 
@@ -269,83 +269,83 @@ msgstr ""
 msgid "Building the window"
 msgstr ""
 
-#: app/window.py:59
+#: app/window.py:60
 msgid "Core objects and playback"
 msgstr ""
 
-#: app/window.py:126
+#: app/window.py:131
 msgid "Main view, editor and library"
 msgstr ""
 
-#: app/window.py:132 app/window.py:157 ui/config/window.py:66
+#: app/window.py:137 app/window.py:162 ui/config/window.py:66
 msgid "Settings"
 msgstr ""
 
-#: app/window.py:140
+#: app/window.py:145
 msgid "Dialogs, workflows and metronome"
 msgstr ""
 
-#: app/window.py:148 core/midi.py:59 ui/config/playback.py:327
+#: app/window.py:153 core/midi.py:59 ui/config/playback.py:327
 msgid "Mixer"
 msgstr ""
 
-#: app/window.py:158 ui/workers.py:24
+#: app/window.py:163 ui/workers.py:24
 msgid "Workers"
 msgstr ""
 
-#: app/window.py:159
+#: app/window.py:164
 msgid "Open Source"
 msgstr ""
 
-#: app/window.py:160
+#: app/window.py:165
 msgid "About"
 msgstr ""
 
-#: app/window.py:352
+#: app/window.py:357
 msgid "MIDI needs the native audio engine (Settings > Audio > Engine)."
 msgstr ""
 
-#: app/window.py:359
+#: app/window.py:364
 msgid "MIDI input on."
 msgstr ""
 
-#: app/window.py:359
+#: app/window.py:364
 msgid "MIDI input off."
 msgstr ""
 
-#: app/window.py:408
+#: app/window.py:413
 msgid "The Python audio engine plays: there is no native engine to restart."
 msgstr ""
 
-#: app/window.py:410
+#: app/window.py:415
 msgid "Restarting the audio engine..."
 msgstr ""
 
-#: app/window.py:414
+#: app/window.py:419
 msgid "Audio engine restarted."
 msgstr ""
 
-#: app/window.py:415
+#: app/window.py:420
 msgid "The audio engine did not start; it is tried again every 2 seconds."
 msgstr ""
 
-#: app/window.py:474 app/window.py:543
+#: app/window.py:479 app/window.py:548
 msgid "External Sync is enabled. Local track loading is disabled."
 msgstr ""
 
-#: app/window.py:487
+#: app/window.py:492
 msgid "Segment reanalysis canceled (track changed)"
 msgstr ""
 
-#: app/window.py:549
+#: app/window.py:554
 msgid "Track unloaded."
 msgstr ""
 
-#: app/window.py:559
+#: app/window.py:564
 msgid "Track File Not Found"
 msgstr ""
 
-#: app/window.py:563
+#: app/window.py:568
 #, python-brace-format
 msgid ""
 "Cannot load \"{name}\": its file is missing.\n"
@@ -354,34 +354,34 @@ msgid ""
 "Set the file's new location?"
 msgstr ""
 
-#: app/window.py:570
+#: app/window.py:575
 #, python-brace-format
 msgid "Locate {name}"
 msgstr ""
 
-#: app/window.py:602 app/window.py:615
+#: app/window.py:607 app/window.py:622
 msgid "Analysis saved to library."
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:598 app/window.py:603
+#: analyzer_core/global_analyzer.py:611 app/window.py:610
 msgid "Finished"
 msgstr ""
 
-#: app/window.py:689
+#: app/window.py:702
 #, python-brace-format
 msgid "External Sync loading: {file}"
 msgstr ""
 
-#: app/window.py:689
+#: app/window.py:702
 #, python-brace-format
 msgid "External Sync analyzing: {file}"
 msgstr ""
 
-#: app/window.py:704
+#: app/window.py:717
 msgid "External Sync Disabled"
 msgstr ""
 
-#: app/window.py:976
+#: app/window.py:990
 #, python-brace-format
 msgid "External Sync enabled: OSC on {address}. Local play/load is locked."
 msgstr ""
@@ -397,7 +397,7 @@ msgid "The written tags did not read back as written; the file is unchanged."
 msgstr ""
 
 #: core/audio/tag_writer.py:205 core/audio/tag_writer.py:286
-#: core/audio/tag_writer.py:1371 ui/export.py:177
+#: core/audio/tag_writer.py:1371 ui/export.py:185
 msgid "Tags cannot be written to this file's format."
 msgstr ""
 
@@ -450,16 +450,16 @@ msgstr ""
 msgid "External Sync analyzing external track before load: {path}"
 msgstr ""
 
-#: core/library_handler.py:585
+#: core/library_handler.py:587
 msgid "The path cannot be empty."
 msgstr ""
 
-#: core/library_handler.py:588
+#: core/library_handler.py:590
 #, python-brace-format
 msgid "This file is already in the library as \"{track}\"."
 msgstr ""
 
-#: core/library_handler.py:609 core/library_handler.py:630
+#: core/library_handler.py:611 core/library_handler.py:632
 msgid "Playlist name cannot be empty"
 msgstr ""
 
@@ -479,7 +479,7 @@ msgstr ""
 msgid "Beat jump"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:308 core/midi.py:56
+#: analyzer_core/global_analyzer.py:309 core/midi.py:56
 msgid "Tempo"
 msgstr ""
 
@@ -884,6 +884,143 @@ msgstr ""
 msgid "Sino-Vietnamese (Unihan)"
 msgstr ""
 
+#: core/tieup.py:37
+msgid "Anime"
+msgstr ""
+
+#: core/tieup.py:38
+msgid "Game"
+msgstr ""
+
+#: core/tieup.py:39
+msgid "Drama"
+msgstr ""
+
+#: core/tieup.py:40
+msgid "Movie"
+msgstr ""
+
+#: core/tieup.py:41
+msgid "Media mix"
+msgstr ""
+
+#: core/tieup.py:42
+msgid "2D idol"
+msgstr ""
+
+#: core/tieup.py:43
+msgid "Commercial"
+msgstr ""
+
+#: core/tieup.py:44 core/tieup.py:61
+msgid "Other"
+msgstr ""
+
+#: core/tieup.py:49
+msgid "Not specified"
+msgstr ""
+
+#: core/tieup.py:50
+msgid "Opening"
+msgstr ""
+
+#: core/tieup.py:50
+msgid "OP"
+msgstr ""
+
+#: core/tieup.py:51
+msgid "Ending"
+msgstr ""
+
+#: core/tieup.py:51
+msgid "ED"
+msgstr ""
+
+#: core/tieup.py:52
+msgid "Insert song"
+msgstr ""
+
+#: core/tieup.py:52
+msgid "Insert"
+msgstr ""
+
+#: core/tieup.py:53
+msgid "Theme song"
+msgstr ""
+
+#: core/tieup.py:53
+msgid "Theme"
+msgstr ""
+
+#: core/tieup.py:54
+msgid "Character song"
+msgstr ""
+
+#: core/tieup.py:54
+msgid "Chara"
+msgstr ""
+
+#: core/tieup.py:55
+msgid "Unit song"
+msgstr ""
+
+#: core/tieup.py:55
+msgid "Unit"
+msgstr ""
+
+#: core/tieup.py:56
+msgid "Image song"
+msgstr ""
+
+#: core/tieup.py:56
+msgid "Image"
+msgstr ""
+
+#: core/tieup.py:57
+msgid "Title / login screen"
+msgstr ""
+
+#: core/tieup.py:57
+msgid "Title screen"
+msgstr ""
+
+#: core/tieup.py:58
+msgid "Main screen"
+msgstr ""
+
+#: core/tieup.py:58
+msgid "Menu"
+msgstr ""
+
+#: core/tieup.py:59
+msgid "Event song"
+msgstr ""
+
+#: core/tieup.py:59
+msgid "Event"
+msgstr ""
+
+#: core/tieup.py:60
+msgid "BGM"
+msgstr ""
+
+#: core/tieup.py:66
+msgid "Synonym"
+msgstr ""
+
+#: core/tieup.py:67
+msgid "Short"
+msgstr ""
+
+#: core/tieup.py:68
+msgid "Search hint"
+msgstr ""
+
+#: core/tieup.py:302 ui/tieup_editor.py:255
+#, python-brace-format
+msgid "A language is written as ko-KR (language-REGION): {code}"
+msgstr ""
+
 #: core/workers/analysis.py:124
 #, python-brace-format
 msgid "Analysis process exited unexpectedly ({code})."
@@ -904,43 +1041,43 @@ msgstr ""
 msgid "{name} optimizer returned {results} of {jobs} results."
 msgstr ""
 
-#: core/workers/reading_refresh.py:109
+#: core/workers/reading_refresh.py:111
 #, python-brace-format
 msgid "The reading refresh process exited unexpectedly ({code})."
 msgstr ""
 
-#: core/workers/rekordbox_sync.py:83
+#: core/workers/rekordbox_sync.py:102
 msgid "Loading Mixlyzer library"
 msgstr ""
 
-#: core/workers/rekordbox_sync.py:93 core/workers/rekordbox_sync.py:122
-#: core/workers/rekordbox_sync.py:136
+#: core/workers/rekordbox_sync.py:112 core/workers/rekordbox_sync.py:141
+#: core/workers/rekordbox_sync.py:155
 msgid "Loading Rekordbox XML"
 msgstr ""
 
-#: core/workers/rekordbox_sync.py:114
+#: core/workers/rekordbox_sync.py:133
 #, python-brace-format
 msgid "Syncing tracks {done}/{total}"
 msgstr ""
 
-#: core/workers/rekordbox_sync.py:130
+#: core/workers/rekordbox_sync.py:149
 #, python-brace-format
 msgid "Syncing changed tracks {done}/{total}"
 msgstr ""
 
-#: core/workers/rekordbox_sync.py:144
+#: core/workers/rekordbox_sync.py:165
 msgid "Building Rekordbox track entry"
 msgstr ""
 
-#: core/workers/rekordbox_sync.py:161
+#: core/workers/rekordbox_sync.py:182
 msgid "Formatting Rekordbox XML"
 msgstr ""
 
-#: core/workers/rekordbox_sync.py:163
+#: core/workers/rekordbox_sync.py:184
 msgid "Writing Rekordbox XML"
 msgstr ""
 
-#: core/workers/rekordbox_sync.py:165
+#: core/workers/rekordbox_sync.py:186
 msgid "Rekordbox XML sync complete"
 msgstr ""
 
@@ -991,7 +1128,7 @@ msgstr ""
 msgid "Error"
 msgstr ""
 
-#: core/workflows/music_index.py:127
+#: core/workflows/music_index.py:130
 #, python-brace-format
 msgid "Indexing for Search by Music and Variants: {done} / {total} tracks"
 msgstr ""
@@ -1582,7 +1719,7 @@ msgstr ""
 
 #: ui/config/analysis.py:132 ui/config/analysis.py:169
 #: ui/config/analysis.py:188 ui/config/dialogs/optimization.py:204
-#: ui/config/library.py:101 ui/config/playback.py:261 ui/config/view.py:150
+#: ui/config/library.py:118 ui/config/playback.py:261 ui/config/view.py:150
 msgid "Advanced"
 msgstr ""
 
@@ -2713,10 +2850,6 @@ msgstr ""
 msgid "Add Folder…"
 msgstr ""
 
-#: ui/config/library.py:33
-msgid "Remove"
-msgstr ""
-
 #: ui/config/library.py:35
 msgid ""
 "When this list is empty, the operating system's default Music folder is "
@@ -2738,100 +2871,130 @@ msgid ""
 "of Mixlyzer's beats, one beat at least (0: a step per beat).</p>"
 msgstr ""
 
-#: ui/config/library.py:52
+#: ui/config/library.py:54
+msgid ""
+"<p>Each track's comment in the XML with its song's tie-ups after it, as "
+"[Title OP; Other ED]; the library's comment stays as it is.</p>"
+msgstr ""
+
+#: ui/config/library.py:56
 msgid "Sync Now"
 msgstr ""
 
-#: ui/config/library.py:53
+#: ui/config/library.py:57
 msgid "Logging settings apply on next app launch."
 msgstr ""
 
-#: ui/config/library.py:54
+#: ui/config/library.py:58
 msgid "Use Sync Now to rebuild the whole XML explicitly."
 msgstr ""
 
-#: ui/config/library.py:58
+#: ui/config/library.py:62
 msgid ""
 "Folder holding library.db and the per-track feature files (.npz).\n"
 "Relative paths are resolved from the app folder."
 msgstr ""
 
-#: ui/config/library.py:62
+#: ui/config/library.py:66
 msgid "Root folders shown under Local Folders in the library browser."
 msgstr ""
 
-#: ui/config/library.py:64
+#: ui/config/library.py:68
 msgid "Add a local music root folder."
 msgstr ""
 
-#: ui/config/library.py:65
+#: ui/config/library.py:69
 msgid "Remove the selected root folders."
 msgstr ""
 
-#: ui/config/library.py:66
+#: ui/config/library.py:70
 msgid "Write console output to a log file."
 msgstr ""
 
-#: ui/config/library.py:67
+#: ui/config/library.py:71
 msgid "Log file written when 'Write log to file' is on."
 msgstr ""
 
-#: ui/config/library.py:69
+#: ui/config/library.py:73
 msgid ""
 "Keep a Rekordbox XML file updated with the library's beat grids, keys and"
 " cues."
 msgstr ""
 
-#: ui/config/library.py:72
+#: ui/config/library.py:76
 msgid "Rekordbox XML file to write. Import it in Rekordbox to use the analysis."
 msgstr ""
 
-#: ui/config/library.py:75
+#: ui/config/library.py:79
 msgid "Save these settings and rebuild the whole XML from the library now."
 msgstr ""
 
-#: ui/config/library.py:80
+#: ui/config/library.py:84
 msgid "Library Path"
 msgstr ""
 
-#: ui/config/library.py:91
+#: ui/config/library.py:95
 msgid "Local Music Folders"
 msgstr ""
 
-#: ui/config/library.py:93
+#: ui/config/library.py:96
+msgid "Add a tie-up to the track's versions too"
+msgstr ""
+
+#: ui/config/library.py:98
+msgid ""
+"<p>A tie-up added in the Edit tab is added to the track's other versions "
+"as well (its Variants: the instrumental, a TV size, another singer's), "
+"where they lack it. Edits and removals stay on the track.</p>"
+msgstr ""
+
+#: ui/config/library.py:101
+msgid "Look up a new track's tie-ups on Wikipedia"
+msgstr ""
+
+#: ui/config/library.py:103
+msgid ""
+"<p>A new track whose versions in the library have no tie-up is looked up "
+"on Japanese Wikipedia and Wikidata after its analysis: its title and "
+"artist are sent there. A tie-up found for certain (on the song's own "
+"article) is added, the work's page kept as its reference; the Edit tab's "
+"Find on the Web shows the others.</p>"
+msgstr ""
+
+#: ui/config/library.py:109
 msgid "Rekordbox XML"
 msgstr ""
 
-#: ui/config/library.py:96
+#: ui/config/library.py:112
 msgid "XML Path"
 msgstr ""
 
-#: ui/config/library.py:97
+#: ui/config/library.py:113
 msgid "Tempo ramp tolerance"
 msgstr ""
 
-#: ui/config/library.py:104
+#: ui/config/library.py:121
 msgid "Log Path"
 msgstr ""
 
-#: ui/config/library.py:129
+#: ui/config/library.py:146
 msgid "Add Local Music Folder"
 msgstr ""
 
-#: ui/config/library.py:184
+#: ui/config/library.py:201
 msgid "Enable Sync with Rekordbox XML first."
 msgstr ""
 
-#: ui/config/dialogs/rekordbox.py:15 ui/config/library.py:184
-#: ui/config/library.py:189
+#: ui/config/dialogs/rekordbox.py:15 ui/config/library.py:201
+#: ui/config/library.py:206
 msgid "Sync Rekordbox XML"
 msgstr ""
 
-#: ui/config/library.py:189
+#: ui/config/library.py:206
 msgid "Rekordbox XML Path is empty."
 msgstr ""
 
-#: ui/config/library.py:228
+#: ui/config/library.py:247
 msgid "Rekordbox XML worker started"
 msgstr ""
 
@@ -3268,7 +3431,7 @@ msgstr ""
 msgid "overview levels"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:291 ui/config/pipeline_map.py:31
+#: analyzer_core/global_analyzer.py:292 ui/config/pipeline_map.py:31
 msgid "Waveform"
 msgstr ""
 
@@ -3816,7 +3979,7 @@ msgstr ""
 msgid "Hangul"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:515 ui/config/search.py:133
+#: analyzer_core/global_analyzer.py:516 ui/config/search.py:133
 msgid "Search by Music"
 msgstr ""
 
@@ -4052,10 +4215,6 @@ msgstr ""
 msgid "Image drawn as the spinning record when a track has no album art."
 msgstr ""
 
-#: ui/config/view.py:95 ui/config/view.py:97
-msgid "Language"
-msgstr ""
-
 #: ui/config/view.py:99
 msgid "Display"
 msgstr ""
@@ -4161,10 +4320,6 @@ msgstr ""
 
 #: ui/config/view.py:167
 msgid "Phrase labels"
-msgstr ""
-
-#: ui/config/view.py:170
-msgid "Alias"
 msgstr ""
 
 #: ui/config/view.py:171
@@ -4821,42 +4976,42 @@ msgstr ""
 msgid "{label} | Seg {index} | +{beats} beats | Left: {left}"
 msgstr ""
 
-#: ui/edit_song.py:46
+#: ui/edit_song.py:47
 #, python-brace-format
 msgid "{count} star (click it again to clear the rating)"
 msgid_plural "{count} stars (click the last one again to clear the rating)"
 msgstr[0] ""
 msgstr[1] ""
 
-#: ui/edit_song.py:104
+#: ui/edit_song.py:108
 msgid "Editable Fields"
 msgstr ""
 
-#: ui/edit_song.py:118
+#: ui/edit_song.py:122
 msgid ""
 "The track's audio file. Set it when the file was moved or renamed;\n"
 "the analysis, playlists and CUEs stay with the track."
 msgstr ""
 
-#: ui/edit_song.py:120 ui/export.py:55
+#: ui/edit_song.py:124 ui/export.py:55
 msgid "Browse..."
 msgstr ""
 
-#: ui/edit_song.py:131 ui/edit_song.py:155 ui/export.py:73 ui/export.py:100
-#: ui/library.py:769
+#: ui/edit_song.py:135 ui/edit_song.py:159 ui/export.py:73 ui/export.py:100
+#: ui/library.py:778 ui/tieup_editor.py:115
 msgid "Title"
 msgstr ""
 
-#: ui/edit_song.py:131 ui/edit_song.py:156 ui/export.py:74 ui/export.py:101
-#: ui/library.py:769
+#: ui/edit_song.py:135 ui/edit_song.py:160 ui/export.py:74 ui/export.py:101
+#: ui/library.py:778
 msgid "Artist"
 msgstr ""
 
-#: ui/edit_song.py:131 ui/edit_song.py:157 ui/export.py:102 ui/library.py:770
+#: ui/edit_song.py:135 ui/edit_song.py:161 ui/export.py:102 ui/library.py:779
 msgid "Album"
 msgstr ""
 
-#: ui/edit_song.py:138
+#: ui/edit_song.py:142
 msgid ""
 "<p>How the title, artist and album read in Latin letters: the search "
 "finds the track by them in any script (あのね by anone or 아노네). Dim: read "
@@ -4865,61 +5020,61 @@ msgid ""
 "reading for good, and type it again to bring it back.</p>"
 msgstr ""
 
-#: ui/edit_song.py:154 ui/library.py:771
+#: ui/edit_song.py:158 ui/library.py:781
 msgid "Path"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:481 ui/config/analysis.py:235
+#: analyzer_core/global_analyzer.py:482 ui/config/analysis.py:235
 #: ui/config/pipeline_map.py:26 ui/config/pipeline_map.py:34
-#: ui/edit_song.py:159
+#: ui/edit_song.py:163
 msgid "Key"
 msgstr ""
 
-#: ui/edit_song.py:160 ui/library.py:770
+#: ui/edit_song.py:164 ui/library.py:780
 msgid "Rating"
 msgstr ""
 
-#: ui/edit_song.py:161 ui/export.py:103 ui/library.py:771
+#: ui/edit_song.py:165 ui/export.py:103 ui/library.py:781
 msgid "Comment"
 msgstr ""
 
-#: ui/edit_song.py:162
+#: ui/edit_song.py:166
 msgid "Readings"
 msgstr ""
 
-#: ui/edit_song.py:165
+#: ui/edit_song.py:169
 msgid "Read-only Fields"
 msgstr ""
 
-#: ui/edit_song.py:174
+#: ui/edit_song.py:178
 msgid "Duration (sec)"
 msgstr ""
 
-#: ui/edit_song.py:175
+#: ui/edit_song.py:179
 msgid "Added (epoch)"
 msgstr ""
 
-#: ui/edit_song.py:176
+#: ui/edit_song.py:180
 msgid "File mtime"
 msgstr ""
 
-#: ui/edit_song.py:177
+#: ui/edit_song.py:181
 msgid "File size (bytes)"
 msgstr ""
 
-#: ui/edit_song.py:367
+#: ui/edit_song.py:377
 msgid "Track File"
 msgstr ""
 
-#: ui/edit_song.py:375
+#: ui/edit_song.py:385
 #, python-brace-format
 msgid ""
 "The file does not exist:\n"
 "{path}"
 msgstr ""
 
-#: ui/edit_song.py:375 ui/edit_song.py:398 ui/library.py:1816
-#: ui/library.py:1887 ui/library.py:2359 ui/shortcuts.py:142
+#: ui/edit_song.py:385 ui/edit_song.py:408 ui/library.py:1833
+#: ui/library.py:1904 ui/library.py:2376 ui/shortcuts.py:142
 msgid "Edit Track"
 msgstr ""
 
@@ -4966,435 +5121,450 @@ msgstr ""
 msgid "Written as a musical key (Am, F#)."
 msgstr ""
 
-#: ui/export.py:115 ui/export.py:198 ui/export.py:260
+#: ui/config/library.py:52 ui/export.py:113
+msgid "Tie-ups after the comment"
+msgstr ""
+
+#: ui/export.py:115
+msgid ""
+"<p>The comment written with the song's tie-ups after it, as [Title OP; "
+"Other ED]; the library's comment stays as it is.</p>"
+msgstr ""
+
+#: ui/export.py:122 ui/export.py:206 ui/export.py:269
 msgid "Write Tags"
 msgstr ""
 
-#: ui/export.py:116
+#: ui/export.py:123
 msgid "Write the checked fields' stored values into the file's tags."
 msgstr ""
 
-#: ui/export.py:159
+#: ui/export.py:166
 msgid "Source file not found at the specified path."
 msgstr ""
 
-#: ui/export.py:162
+#: ui/export.py:169
 msgid "Source path is invalid."
 msgstr ""
 
-#: ui/export.py:193
+#: ui/export.py:201
 msgid "Check the fields to write."
 msgstr ""
 
-#: ui/export.py:199
+#: ui/export.py:207
 msgid ""
 "The Edit tab has changes to this track that are not applied: the stored "
 "values are written.\n"
 "Write the tags anyway?"
 msgstr ""
 
-#: ui/export.py:211
+#: ui/export.py:220
 msgid "The track is no longer in the library."
 msgstr ""
 
-#: ui/export.py:224
+#: ui/export.py:233
 msgid "Writing the tags..."
 msgstr ""
 
-#: ui/export.py:252
+#: ui/export.py:261
 #, python-brace-format
 msgid "The file could not be written: {error}"
 msgstr ""
 
-#: ui/export.py:258
+#: ui/export.py:267
 msgid "The tags were written to the file."
 msgstr ""
 
-#: ui/export.py:288
+#: ui/export.py:297
 msgid "Select Destination Folder"
 msgstr ""
 
-#: ui/export.py:296
+#: ui/export.py:305
 msgid "No track is selected."
 msgstr ""
 
-#: ui/export.py:296 ui/export.py:301 ui/export.py:307 ui/export.py:320
-#: ui/export.py:330 ui/export.py:438 ui/export.py:449 ui/library.py:1817
-#: ui/library.py:2363 ui/shortcuts.py:144
+#: ui/export.py:305 ui/export.py:310 ui/export.py:316 ui/export.py:329
+#: ui/export.py:339 ui/export.py:447 ui/export.py:458 ui/library.py:1834
+#: ui/library.py:2380 ui/shortcuts.py:144
 msgid "Export Track"
 msgstr ""
 
-#: ui/export.py:301
+#: ui/export.py:310
 msgid "Please select a destination folder."
 msgstr ""
 
-#: ui/export.py:307
+#: ui/export.py:316
 #, python-brace-format
 msgid ""
 "Cannot create destination folder:\n"
 "{error}"
 msgstr ""
 
-#: ui/export.py:321
+#: ui/export.py:330
 msgid "Select a JumpCUE direction to render."
 msgstr ""
 
-#: ui/export.py:330
+#: ui/export.py:339
 #, python-brace-format
 msgid ""
 "Export completed:\n"
 "{files}"
 msgstr ""
 
-#: ui/export.py:349
+#: ui/export.py:358
 msgid "The track's analysis could not be read."
 msgstr ""
 
-#: ui/export.py:439
+#: ui/export.py:448
 #, python-brace-format
 msgid ""
 "'{name}' already exists.\n"
 "Overwrite?"
 msgstr ""
 
-#: ui/export.py:449
+#: ui/export.py:458
 #, python-brace-format
 msgid ""
 "Failed to write JumpCUE audio:\n"
 "{error}"
 msgstr ""
 
-#: ui/library.py:722
+#: ui/library.py:730
 msgid "AND: require every search condition (click to switch)"
 msgstr ""
 
-#: ui/library.py:723
+#: ui/library.py:731
 msgid "OR: accept any search condition (click to switch)"
 msgstr ""
 
-#: ui/library.py:769
+#: ui/library.py:778
 msgid "All"
 msgstr ""
 
-#: ui/library.py:770
+#: ui/library.py:779
 msgid "Duration"
 msgstr ""
 
-#: ui/library.py:771
+#: ui/library.py:779 ui/tieup_editor.py:98 ui/tieup_editor.py:248
+#: ui/tieup_editor.py:254
+msgid "Tie-up"
+msgstr ""
+
+#: ui/library.py:781
 msgid "Added"
 msgstr ""
 
-#: ui/library.py:845
+#: ui/library.py:855
 msgid "Search title, artist, key ..."
 msgstr ""
 
-#: ui/library.py:847
+#: ui/library.py:857
 msgid ""
 "<p>Titles, artists and albums are also found by how they read, in any "
 "script: あのね by anone, ano ne or 아노네 (the reading is set in Edit "
 "Track).</p>"
 msgstr ""
 
-#: ui/library.py:853
+#: ui/library.py:863
 msgid "Column the text search looks in"
 msgstr ""
 
-#: ui/library.py:856
+#: ui/library.py:866
 msgid "Fuzzy"
 msgstr ""
 
-#: ui/library.py:856
+#: ui/library.py:866
 msgid ""
 "<p>Also find a similar pronunciation (from six letters of the reading on:"
 " about one sound in five off). Off: the reading must match, up to its "
 "spelling.</p>"
 msgstr ""
 
-#: ui/library.py:892
+#: ui/library.py:902
 msgid "Tracks with a phrase of this label (optionally at a BPM / key)"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:376 ui/config/analysis.py:236
+#: analyzer_core/global_analyzer.py:377 ui/config/analysis.py:236
 #: ui/config/pipeline_map.py:23 ui/config/pipeline_map.py:32
-#: ui/edit_panel/panel.py:63 ui/library.py:892 ui/library.py:985
+#: ui/edit_panel/panel.py:63 ui/library.py:902 ui/library.py:995
 #: ui/shortcuts.py:37
 msgid "Phrase"
 msgstr ""
 
-#: ui/library.py:893
+#: ui/library.py:903
 msgid "Tracks whose BPM changes from one tempo to another"
 msgstr ""
 
-#: ui/library.py:894
+#: ui/library.py:904
 msgid "Tracks whose key changes from one key to another"
 msgstr ""
 
-#: ui/config/midi.py:114 ui/library.py:897
+#: ui/config/midi.py:114 ui/library.py:907
 msgid "Clear"
 msgstr ""
 
-#: ui/library.py:898
+#: ui/library.py:908
 msgid "Remove every search condition (text and filters)"
 msgstr ""
 
-#: ui/library.py:908
+#: ui/library.py:918
 msgid ""
 "<p>Search by Music: hum, sing or whistle a melody, or play the song from "
 "a phone, and the library shows the songs the microphone hears, best "
 "first. Click again to stop listening (the results stay).</p>"
 msgstr ""
 
-#: ui/library.py:914
+#: ui/library.py:924
 msgid "Back to the library"
 msgstr ""
 
-#: ui/library.py:938
+#: ui/library.py:948
 msgid "Also require this BPM inside the phrase"
 msgstr ""
 
-#: ui/library.py:943
+#: ui/library.py:953
 msgid "Phrase BPM tolerance"
 msgstr ""
 
-#: ui/library.py:944
+#: ui/library.py:954
 msgid "Also require this key inside the phrase"
 msgstr ""
 
-#: ui/library.py:946
+#: ui/library.py:956
 msgid "Key inside the selected phrase (Alphanumeric wheel)"
 msgstr ""
 
-#: ui/library.py:948
+#: ui/library.py:958
 msgid ""
 "Also match harmonically compatible keys (±1 on the Alphanumeric wheel, "
 "relative key)"
 msgstr ""
 
-#: ui/library.py:948 ui/library.py:974
+#: ui/library.py:958 ui/library.py:984
 msgid "Compat"
 msgstr ""
 
-#: ui/library.py:957
+#: ui/library.py:967
 msgid "BPM transition tolerance"
 msgstr ""
 
-#: ui/library.py:959
+#: ui/library.py:969
 msgid "Require the transition to start at the first BPM segment"
 msgstr ""
 
-#: ui/library.py:959 ui/library.py:972
+#: ui/library.py:969 ui/library.py:982
 msgid "1st"
 msgstr ""
 
-#: ui/library.py:963
+#: ui/library.py:973
 msgid "Key before the change (Alphanumeric wheel)"
 msgstr ""
 
-#: ui/library.py:966
+#: ui/library.py:976
 msgid "Key after the change (Alphanumeric wheel)"
 msgstr ""
 
-#: ui/library.py:972
+#: ui/library.py:982
 msgid "Require the transition to start at the first key segment"
 msgstr ""
 
-#: ui/library.py:974
+#: ui/library.py:984
 msgid ""
 "Also match harmonically compatible keys at both ends (±1 on the "
 "Alphanumeric wheel, relative key)"
 msgstr ""
 
-#: ui/library.py:983 ui/library.py:996
+#: ui/library.py:993 ui/library.py:1006
 msgid "Minimum duration of both sides of each enabled transition"
 msgstr ""
 
-#: ui/library.py:995
+#: ui/library.py:1005
 msgid "Min seg"
 msgstr ""
 
-#: ui/library.py:1217
+#: ui/library.py:1231
 msgid "Library (All)"
 msgstr ""
 
-#: ui/library.py:1221
+#: ui/library.py:1235
 msgid "Variants"
 msgstr ""
 
-#: ui/library.py:1224
+#: ui/library.py:1238
 msgid ""
 "<p>The library's tracks that are versions of one song: the same audio, "
 "another vocal, the instrumental, an edit (a TV size). # is the song; a "
 "row's tooltip says how it differs from the others.</p>"
 msgstr ""
 
-#: ui/library.py:1227
+#: ui/library.py:1241
 msgid "Loaded Track"
 msgstr ""
 
-#: ui/library.py:1229
+#: ui/library.py:1243
 msgid ""
 "<p>The versions of the track loaded on the deck, following each track "
 "loaded.</p>"
 msgstr ""
 
-#: ui/library.py:1234
+#: ui/library.py:1248
 msgid "Playlists"
 msgstr ""
 
-#: ui/library.py:1249
+#: ui/library.py:1263
 msgid "Local Folders"
 msgstr ""
 
-#: ui/config/external_sync.py:105 ui/library.py:1764 ui/pane.py:517
+#: ui/config/external_sync.py:105 ui/library.py:1780 ui/pane.py:517
 msgid "External Sync"
 msgstr ""
 
-#: ui/library.py:1765
+#: ui/library.py:1781
 msgid "Track loading is disabled while External Sync is enabled."
 msgstr ""
 
-#: ui/library.py:1819
+#: ui/library.py:1836
 msgid "The selected track; click the open tab to fold the panel"
 msgstr ""
 
-#: ui/library.py:1888
+#: ui/library.py:1905
 #, python-brace-format
 msgid "Apply the changes to \"{title}\"? (No: they are dropped)"
 msgstr ""
 
-#: ui/library.py:2067
+#: ui/library.py:2084
 #, python-brace-format
 msgid "Matched at {start} - {end}, by the sound of the recording ({n} matches)"
 msgstr ""
 
-#: ui/library.py:2070
+#: ui/library.py:2087
 #, python-brace-format
 msgid "Matched at {start} - {end}, by the melody"
 msgstr ""
 
-#: ui/library.py:2114
+#: ui/library.py:2131
 msgid "the same mix"
 msgstr ""
 
-#: ui/library.py:2116
+#: ui/library.py:2133
 #, python-brace-format
 msgid "{relation}, a shorter edit"
 msgstr ""
 
-#: ui/library.py:2118
+#: ui/library.py:2135
 #, python-brace-format
 msgid "{relation}, a longer version"
 msgstr ""
 
-#: ui/library.py:2120
+#: ui/library.py:2137
 #, python-brace-format
 msgid "{relation}, some sections differ"
 msgstr ""
 
-#: ui/library.py:2123
+#: ui/library.py:2140
 msgid "a shorter edit"
 msgstr ""
 
-#: ui/library.py:2125
+#: ui/library.py:2142
 msgid "a longer version"
 msgstr ""
 
-#: ui/library.py:2127
+#: ui/library.py:2144
 msgid "some sections differ"
 msgstr ""
 
-#: ui/library.py:2144
+#: ui/library.py:2161
 #, python-brace-format
 msgid "{title}: {relation}"
 msgstr ""
 
-#: ui/library.py:2146
+#: ui/library.py:2163
 msgid "Variants of this track:"
 msgstr ""
 
-#: ui/library.py:2163
+#: ui/library.py:2180
 msgid "The loaded track is not in the list shown."
 msgstr ""
 
-#: ui/library.py:2185 ui/library.py:2214 ui/library.py:2221 ui/shortcuts.py:151
+#: ui/library.py:2202 ui/library.py:2231 ui/library.py:2238 ui/shortcuts.py:151
 msgid "New Playlist"
 msgstr ""
 
-#: ui/library.py:2188
+#: ui/library.py:2205
 msgid "Rename"
 msgstr ""
 
-#: ui/library.py:2189
+#: ui/library.py:2206
 msgid "Move Up"
 msgstr ""
 
-#: ui/library.py:2190
+#: ui/library.py:2207
 msgid "Move Down"
 msgstr ""
 
-#: ui/library.py:2191 ui/library.py:2250
+#: ui/library.py:2208 ui/library.py:2267
 msgid "Delete Playlist"
 msgstr ""
 
-#: ui/library.py:2193
+#: ui/library.py:2210
 msgid "Refresh Folders"
 msgstr ""
 
-#: ui/library.py:2214 ui/library.py:2232
+#: ui/library.py:2231 ui/library.py:2249
 msgid "Name"
 msgstr ""
 
-#: ui/library.py:2232 ui/library.py:2240
+#: ui/library.py:2249 ui/library.py:2257
 msgid "Rename Playlist"
 msgstr ""
 
-#: ui/library.py:2251
+#: ui/library.py:2268
 #, python-brace-format
 msgid ""
 "Delete playlist \"{name}\"?\n"
 "Tracks remain in the Library."
 msgstr ""
 
-#: ui/library.py:2356 ui/shortcuts.py:149
+#: ui/library.py:2373 ui/shortcuts.py:149
 msgid "Show in Explorer"
 msgstr ""
 
-#: ui/library.py:2357 ui/shortcuts.py:150
+#: ui/library.py:2374 ui/shortcuts.py:150
 msgid "Show in Finder"
 msgstr ""
 
-#: ui/library.py:2357 ui/shortcuts.py:150
+#: ui/library.py:2374 ui/shortcuts.py:150
 msgid "Show in File Manager"
 msgstr ""
 
-#: ui/library.py:2358 ui/library.py:2444 ui/shortcuts.py:154
+#: ui/library.py:2375 ui/library.py:2461 ui/shortcuts.py:154
 msgid "Remove from Library"
 msgstr ""
 
-#: ui/library.py:2361
+#: ui/library.py:2378
 msgid "Analyze Track"
 msgstr ""
 
-#: ui/library.py:2361 ui/reanalyze_dialog.py:16 ui/shortcuts.py:152
+#: ui/library.py:2378 ui/reanalyze_dialog.py:16 ui/shortcuts.py:152
 msgid "Reanalyze Track"
 msgstr ""
 
-#: ui/library.py:2366 ui/shortcuts.py:155
+#: ui/library.py:2383 ui/shortcuts.py:155
 msgid "Remove from Playlist"
 msgstr ""
 
-#: ui/library.py:2367
+#: ui/library.py:2384
 msgid "Add to Playlist"
 msgstr ""
 
-#: ui/library.py:2436
+#: ui/library.py:2453
 #, python-brace-format
 msgid ""
 "Remove \"{title}\" from the library?\n"
 "Its analysis and edits are deleted; the audio file stays."
 msgstr ""
 
-#: ui/library.py:2439
+#: ui/library.py:2456
 #, python-brace-format
 msgid ""
 "Remove {count} track from the library?\n"
@@ -5563,7 +5733,7 @@ msgid ""
 "a song outside it is read at half or double tempo."
 msgstr ""
 
-#: ui/config/analysis.py:62 ui/config/window.py:228 ui/reanalyze_dialog.py:38
+#: ui/config/analysis.py:62 ui/config/window.py:231 ui/reanalyze_dialog.py:38
 #: ui/reanalyze_dialog.py:81
 #, python-brace-format
 msgid "Reads {low} - {high} BPM"
@@ -5639,7 +5809,7 @@ msgstr ""
 msgid "Playback"
 msgstr ""
 
-#: ui/config/library.py:78 ui/config/library.py:116 ui/shortcuts.py:32
+#: ui/config/library.py:82 ui/config/library.py:133 ui/shortcuts.py:32
 msgid "Library"
 msgstr ""
 
@@ -6221,6 +6391,206 @@ msgstr ""
 #: ui/shortcuts.py:335
 #, python-brace-format
 msgid "{keys} is used by more than one action (Settings > Shortcuts)."
+msgstr ""
+
+#: ui/tieup_editor.py:107
+msgid "Type a title in any language or script"
+msgstr ""
+
+#: ui/tieup_editor.py:108
+msgid ""
+"<p>Finds the works already entered by any of their titles, also by how "
+"they read (あのね by anone or 아노네). Pick one to use it, or New work.</p>"
+msgstr ""
+
+#: ui/config/view.py:95 ui/config/view.py:97 ui/tieup_editor.py:115
+#: ui/tieup_editor.py:119
+msgid "Language"
+msgstr ""
+
+#: ui/tieup_editor.py:116
+msgid ""
+"<p>The work's official titles, each with its language as language-REGION "
+"(ja-JP, ko-KR, en-US). The library and the comment show the first title "
+"in the interface's language, else the first of all.</p>"
+msgstr ""
+
+#: ui/tieup_editor.py:119
+msgid "Type"
+msgstr ""
+
+#: ui/config/view.py:170 ui/tieup_editor.py:119
+msgid "Alias"
+msgstr ""
+
+#: ui/tieup_editor.py:121
+msgid ""
+"<p>Other names the work is found by, never shown: a name it is commonly "
+"called by (ぼざろ, a romanization), an abbreviation, or a search hint (a "
+"misspelling, a typing slip). The search finds the work by them, also by "
+"how they read.</p>"
+msgstr ""
+
+#: ui/tieup_editor.py:125
+msgid "Label"
+msgstr ""
+
+#: ui/tieup_editor.py:125
+msgid "URL"
+msgstr ""
+
+#: ui/tieup_editor.py:133
+msgid "Which one, when the work has several (OP2: 2)."
+msgstr ""
+
+#: ui/tieup_editor.py:135
+msgid "Season 2, episodes 1-12; TV size"
+msgstr ""
+
+#: ui/tieup_editor.py:136
+msgid ""
+"Where and how it is used: the episodes, the version of the song (a TV "
+"size, a character's version)."
+msgstr ""
+
+#: ui/tieup_editor.py:139 ui/tieup_editor.py:324
+msgid "Work"
+msgstr ""
+
+#: ui/tieup_editor.py:141
+msgid "Find"
+msgstr ""
+
+#: ui/tieup_editor.py:143
+msgid "Category"
+msgstr ""
+
+#: ui/tieup_editor.py:144
+msgid "Titles"
+msgstr ""
+
+#: ui/tieup_editor.py:145
+msgid "Aliases"
+msgstr ""
+
+#: ui/tieup_editor.py:146
+msgid "References"
+msgstr ""
+
+#: ui/tieup_editor.py:151
+msgid "Use"
+msgstr ""
+
+#: ui/tieup_editor.py:157
+msgid "No."
+msgstr ""
+
+#: ui/tieup_editor.py:159 ui/tieup_editor.py:324
+msgid "Role"
+msgstr ""
+
+#: ui/tieup_editor.py:160 ui/tieup_editor.py:324
+msgid "Detail"
+msgstr ""
+
+#: ui/tieup_editor.py:203
+#, python-brace-format
+msgid "New work: “{title}”"
+msgstr ""
+
+#: ui/tieup_editor.py:203
+msgid "New work"
+msgstr ""
+
+#: ui/tieup_editor.py:235
+#, python-brace-format
+msgid "Changes to the work apply to the {n} track using it."
+msgid_plural "Changes to the work apply to the {n} tracks using it."
+msgstr[0] ""
+msgstr[1] ""
+
+#: ui/tieup_editor.py:248
+msgid "Give the work a title."
+msgstr ""
+
+#: ui/tieup_editor.py:275 ui/tieup_editor.py:446 ui/tieup_editor.py:453
+msgid "Tie-ups on the Web"
+msgstr ""
+
+#: ui/tieup_editor.py:285
+#, python-brace-format
+msgid "Read on {page}"
+msgstr ""
+
+#: ui/tieup_editor.py:287
+msgid ""
+"From Japanese Wikipedia and Wikidata. A checked one is added with the "
+"work's names in other languages and its page as a reference."
+msgstr ""
+
+#: ui/tieup_editor.py:310
+msgid "Tie-ups"
+msgstr ""
+
+#: ui/tieup_editor.py:311
+msgid ""
+"<p>The works this track is used in: an anime's opening, a game's title "
+"screen, a character song.</p>"
+msgstr ""
+
+#: ui/tieup_editor.py:334
+msgid "Add…"
+msgstr ""
+
+#: ui/tieup_editor.py:335
+msgid "Edit…"
+msgstr ""
+
+#: ui/config/library.py:33 ui/tieup_editor.py:336
+msgid "Remove"
+msgstr ""
+
+#: ui/tieup_editor.py:337 ui/tieup_editor.py:440
+msgid "Find on the Web"
+msgstr ""
+
+#: ui/tieup_editor.py:338
+msgid ""
+"<p>Look the track up on Japanese Wikipedia and Wikidata (its title and "
+"artist are sent there) and pick the tie-ups to add.</p>"
+msgstr ""
+
+#: ui/tieup_editor.py:389
+#, python-brace-format
+msgid ""
+"A tie-up added here is added to its {n} other version too (Settings > "
+"Library)."
+msgid_plural ""
+"A tie-up added here is added to its {n} other versions too (Settings > "
+"Library)."
+msgstr[0] ""
+msgstr[1] ""
+
+#: ui/tieup_editor.py:392
+#, python-brace-format
+msgid "{n} other version of this track (Variants)."
+msgid_plural "{n} other versions of this track (Variants)."
+msgstr[0] ""
+msgstr[1] ""
+
+#: ui/tieup_editor.py:435
+msgid "Looking up…"
+msgstr ""
+
+#: ui/tieup_editor.py:446
+#, python-brace-format
+msgid ""
+"The lookup failed:\n"
+"{error}"
+msgstr ""
+
+#: ui/tieup_editor.py:453
+msgid "Wikipedia has no tie-up for this track."
 msgstr ""
 
 #: ui/track_info_panel.py:166

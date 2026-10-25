@@ -56,6 +56,7 @@ assets/shortcuts/shortcuts.json
 assets/midi/midi.json
 *.xml
 tests/
+madb_works/
 
 # dataset file (will be splitted into separate repo.)
 annotator/
@@ -69,3 +70,5 @@ interchange/
 
 # Local maintenance notes
 docs/internal/
+# the web lookups' answers (core.tieup_web)
+cache/

@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import hashlib
 import traceback
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 from typing import Callable, Optional
 
 import numpy as np
 from PySide6 import QtCore
 
+from core import tieup
 from core.analysis_lib_handler import FeatureNPZStore
 from core.library_handler import TrackRow
 from third_party.rekordbox import (
@@ -26,6 +27,7 @@ class RekordboxSyncRequest:
     xml_path: Path
     mode: str
     ramp_tolerance_ms: float = 0.0
+    comment_tieups: bool = False     # each track's comment with its song's tie-ups after it (core.tieup)
     full_rebuild: bool = False
     rows: tuple[TrackRow, ...] = ()
     uid: str = ""
@@ -68,6 +70,7 @@ class _RekordboxSyncEngine:
         self.progress = progress
         self.store = FeatureNPZStore(base_dir=str(request.library_dir), compressed=True)
         self._track_percent: Optional[int] = None
+        self._suffixes: Optional[dict[str, str]] = None   # uid -> its tie-ups' comment suffix, read once a run
 
     def _track_progress(self, index: int, total: int, text: str) -> None:
         """A track's progress, reported when its percent changes: a report is a queued event
@@ -77,14 +80,30 @@ class _RekordboxSyncEngine:
             self._track_percent = percent
             self.progress(percent, text)
 
+    def _with_tieups(self, row: TrackRow) -> TrackRow:
+        """The row as the XML writes it: with the comment option, its song's tie-ups after its comment."""
+        if not self.request.comment_tieups:
+            return row
+        if self._suffixes is None:
+            from core.library_handler import LibraryDB
+
+            db = LibraryDB(str(self.request.library_dir / "library.db"))
+            db.connect()
+            try:
+                self._suffixes = tieup.comment_suffixes(db.conn)
+            finally:
+                db.close()
+        suffix = self._suffixes.get(str(row.uid or ""), "")
+        return replace(row, comment=tieup.with_suffix(row.comment or "", suffix)) if suffix else row
+
     def run(self) -> RekordboxSyncResult:
         self.request.xml_path.parent.mkdir(parents=True, exist_ok=True)
         if self.request.mode == "library":
             self.progress(1, tr("Loading Mixlyzer library"))
-            rows = self._load_library_rows()
+            rows = [self._with_tieups(row) for row in self._load_library_rows()]
             return self._sync_library(rows)
         if self.request.mode == "incremental":
-            return self._sync_incremental(list(self.request.rows))
+            return self._sync_incremental([self._with_tieups(row) for row in self.request.rows])
         if self.request.mode == "track":
             return self._sync_track(self.request.uid)
         raise ValueError(f"Unsupported Rekordbox sync mode: {self.request.mode}")
@@ -138,6 +157,8 @@ class _RekordboxSyncEngine:
             self.request.xml_path, force_new=False
         )
         row = self._load_track_row(uid)
+        if row is not None:
+            row = self._with_tieups(row)
         document.remove_track(uid)
         processed = 0
         if row is not None:

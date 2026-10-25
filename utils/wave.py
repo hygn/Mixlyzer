@@ -15,6 +15,9 @@ from utils.color import oklab_to_srgb, srgb_to_oklab
 # its log-frequency overlap with a range), so a change of the ranges redraws at once, without re-analysis.
 # Drawn at WAVE_OVERVIEW_RENDER_COLUMNS columns.
 WAVE_MINMAX_COLUMNS = 32768
+# the version of the stored bands (wave_bands_np / _ref): raised whenever their making changes (what is made from
+# them carries it: the Variants' fingerprint, core.variants.fingerprint.METHOD)
+WAVE_BANDS_VERSION = 1
 WAVE_BAND_COLUMNS = 8192
 WAVE_BAND_COUNT = 12
 WAVE_BAND_EDGES = np.geomspace(20.0, 20000.0, WAVE_BAND_COUNT + 1)

@@ -49,6 +49,10 @@ def build_library_tab(dialog) -> None:
         "beats as stay within this many milliseconds of Mixlyzer's beats, one beat at least (0: a step per "
         "beat).</p>"
     ))
+    dialog.cb_rekordbox_comment_tieups = QCheckBox(tr("Tie-ups after the comment"))
+    dialog.cb_rekordbox_comment_tieups.setToolTip(tr(
+        "<p>Each track's comment in the XML with its song's tie-ups after it, as [Title OP; Other ED]; the "
+        "library's comment stays as it is.</p>"))
     dialog.btn_rekordbox_sync_now = QPushButton(tr("Sync Now"))
     dialog.lbl_log_note = QLabel(tr("Logging settings apply on next app launch."))
     dialog.lbl_rekordbox_note = QLabel(tr("Use Sync Now to rebuild the whole XML explicitly."))
@@ -89,12 +93,25 @@ def build_library_tab(dialog) -> None:
     local_layout.addLayout(local_buttons)
     local_layout.addWidget(dialog.lbl_local_music_directory_note)
     f_library.addRow(tr("Local Music Folders"), local_box)
+    dialog.cb_tieup_to_versions = QCheckBox(tr("Add a tie-up to the track's versions too"))
+    dialog.cb_tieup_to_versions.setToolTip(tr(
+        "<p>A tie-up added in the Edit tab is added to the track's other versions as well (its Variants: the "
+        "instrumental, a TV size, another singer's), where they lack it. Edits and removals stay on the track.</p>"))
+    f_library.addRow(dialog.cb_tieup_to_versions)
+    dialog.cb_tieup_web_search = QCheckBox(tr("Look up a new track's tie-ups on Wikipedia"))
+    dialog.cb_tieup_web_search.setToolTip(tr(
+        "<p>A new track whose versions in the library have no tie-up is looked up on Japanese Wikipedia and "
+        "Wikidata after its analysis: its title and artist are sent there. A tie-up found for certain (on the "
+        "song's own article) is added, the work's page kept as its reference; the Edit tab's Find on the Web "
+        "shows the others.</p>"))
+    f_library.addRow(dialog.cb_tieup_web_search)
 
     grp_rekordbox = QGroupBox(tr("Rekordbox XML"))
     f_rekordbox = QFormLayout(grp_rekordbox)
     f_rekordbox.addRow(dialog.cb_rekordbox_sync)
     f_rekordbox.addRow(tr("XML Path"), dialog.ed_rekordbox_xml_path)
     f_rekordbox.addRow(tr("Tempo ramp tolerance"), dialog.sp_rekordbox_ramp_tolerance_ms)
+    f_rekordbox.addRow(dialog.cb_rekordbox_comment_tieups)
     f_rekordbox.addRow("", dialog.btn_rekordbox_sync_now)
     f_rekordbox.addRow(dialog.lbl_rekordbox_note)
 
@@ -198,6 +215,8 @@ class LibrarySettingsMixin:
             != str(cfg.libconfig.rekordbox_xml_path).strip()
             or float(previous_libcfg.rekordbox_ramp_tolerance_ms)
             != float(cfg.libconfig.rekordbox_ramp_tolerance_ms)
+            or bool(previous_libcfg.rekordbox_comment_tieups)
+            != bool(cfg.libconfig.rekordbox_comment_tieups)
         )
         if self._rekordbox_sync_dialog is not None:
             self._rekordbox_sync_dialog.deleteLater()
