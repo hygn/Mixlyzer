@@ -25,6 +25,7 @@ from dataclasses import dataclass, field
 import re
 import sqlite3
 from typing import Iterable, Optional
+import unicodedata
 import uuid
 
 from core import i18n, reading
@@ -69,6 +70,8 @@ ALIAS_TYPES = (
 )
 # the languages the editor offers (any other ll-RR tag may be typed)
 LANGUAGES = ("ja-JP", "ko-KR", "en-US", "zh-CN", "zh-TW", "zh-HK")
+# the references that name a work itself (find_work): its Wikidata item first, its Wikipedia page
+IDENTITY_URLS = ("https://www.wikidata.org/wiki/", "https://ja.wikipedia.org/wiki/")
 _LANG = re.compile(r"[a-z]{2}-[A-Z]{2}\Z")
 _ROLE_SHORT = {code: short for code, _name, short in ROLES}
 _ROLE_NAME = {code: name for code, name, _short in ROLES}
@@ -219,16 +222,32 @@ def work_keys(con: sqlite3.Connection) -> list[tuple[str, tuple[str, str]]]:
             for r in text.split("\n") if r]
 
 
-def find_work(con: sqlite3.Connection, names: Iterable[str]) -> Optional[str]:
-    """The work one of these names is a name of (letters and digits compared: さくひん・ざ・わーく！ and さくひん・ざ・わーく!
-    alike), or None."""
-    keys = {reading.fine_key(n) for n in names} - {""}
-    if not keys:
-        return None
-    for work_id, name in con.execute("SELECT work_id, name FROM tieup_name ORDER BY rank;"):
-        if reading.fine_key(name) in keys:
-            return work_id
-    return None
+def name_key(name: str) -> str:
+    """A name as two works' names are compared: NFKC, case folded, its letters and digits in their own script
+    (さくひん・ざ・わーく！ and さくひん・ざ・わーく! alike; two Han spellings read alike never: no reading involved)."""
+    return "".join(ch for ch in unicodedata.normalize("NFKC", str(name or "")).casefold() if ch.isalnum())
+
+
+def _identity(url: str) -> bool:
+    """A reference naming the work itself: its Wikidata item, its Wikipedia page."""
+    return url.startswith(IDENTITY_URLS)
+
+
+def find_work(con: sqlite3.Connection, w: Work) -> Optional[str]:
+    """The library's work that ``w`` is: the one whose references hold the same Wikidata item or Wikipedia page
+    (Wikidata's first), else the one sharing an official title or a synonym with it (name_key; abbreviations and search
+    hints never: short names collide); None where none is, or where two works are (left to the user to merge)."""
+    urls = sorted((u for _label, u in w.urls if _identity(u)), key=lambda u: not u.startswith(IDENTITY_URLS[0]))
+    for url in urls:
+        ids = {i for (i,) in con.execute("SELECT DISTINCT work_id FROM tieup_url WHERE url=?;", (url,))}
+        if ids:
+            return ids.pop() if len(ids) == 1 else None
+    kinds = (OFFICIAL, "synonym")
+    keys = ({name_key(t) for _lang, t in w.titles}
+            | {name_key(a) for kind, _lang, a in w.aliases if kind in kinds}) - {""}
+    ids = {i for i, name in con.execute("SELECT work_id, name FROM tieup_name WHERE type IN (?, ?);", kinds)
+           if name_key(name) in keys}
+    return ids.pop() if len(ids) == 1 else None
 
 
 def track_tieups(con: sqlite3.Connection, uid: str) -> list[TieUp]:
