@@ -3,20 +3,18 @@ import os
 from typing import Callable, Optional
 from dataclasses import asdict, replace
 
-from PySide6.QtCore import QEvent, Qt, Signal
-from PySide6.QtGui import QBrush, QColor, QFontMetrics
+from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QFontMetrics
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QFormLayout,
-    QLineEdit, QDoubleSpinBox, QLabel, QDialogButtonBox,
+    QLineEdit, QDoubleSpinBox, QDialogButtonBox,
     QGroupBox, QComboBox, QPushButton, QFileDialog, QMessageBox,
-    QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView, QPlainTextEdit, QToolButton
+    QPlainTextEdit, QToolButton
 )
 
-from core import reading
 from core.event_bus import EventBus
-from core.library_handler import READING_FIELDS, USER_SOURCE, TrackRow, LibraryDB, field_readings
+from core.library_handler import TrackRow, LibraryDB
 from ui.config.scroll import scroll_page
-from ui.tieup_editor import TieupBox
 from ui.theme import current_theme
 from core.config import config, default_cfg, searchconfig
 from utils.labels import ALPHANUMERIC_LABELS, CLASSICAL_LABELS
@@ -74,7 +72,8 @@ class RatingStars(QWidget):
 
 
 class EditTrackPanel(QWidget):
-    """The library panel's Edit tab: a track's metadata (TrackRow).
+    """The library panel's Edit tab: a track's metadata (TrackRow). Its readings and audio fingerprints are the
+    Search Index tab's (ui.track_search_index), its tie-ups the Tie-ups tab's (ui.tieup_editor.TieupPanel).
 
     - Only mutable metadata is editable (title, artist, album, bpm, key, rating, comment)
       and the file path (a moved or renamed file; the uid keeps the track's analysis).
@@ -89,16 +88,13 @@ class EditTrackPanel(QWidget):
     sig_track_saved = Signal(object)  # TrackRow
 
     def __init__(self, bus: Optional[EventBus] = None, libpath: Optional[str] = None,
-                 search_settings: Optional[Callable[[], searchconfig]] = None,
-                 tieup_to_versions: Optional[Callable[[], bool]] = None):
+                 search_settings: Optional[Callable[[], searchconfig]] = None):
         """``search_settings``: the search settings (read when needed: the stored readings'
-        languages; the defaults when None); ``tieup_to_versions``: whether a tie-up added goes to
-        the track's versions too (Settings > Library; read when one is added)."""
+        languages; the defaults when None)."""
         super().__init__()
         self._bus = bus
         self._libpath = libpath
         self._search_settings = search_settings or (lambda: default_cfg().searchconfig)
-        self._tieup_to_versions = tieup_to_versions or (lambda: default_cfg().libconfig.tieup_to_versions)
         self._row: Optional[TrackRow] = None
 
         body = QWidget()
@@ -126,35 +122,6 @@ class EditTrackPanel(QWidget):
         path_row = QWidget(); path_lay = QHBoxLayout(path_row); path_lay.setContentsMargins(0, 0, 0, 0)
         path_lay.addWidget(self.ed_path, 1); path_lay.addWidget(btn_browse)
 
-        # The readings (core.reading): how title / artist / album read in Latin letters, up to
-        # READING_SLOTS each (Han: one per language) -- what the search compares. The ones typed here
-        # are the user's (kept); the others (dim) are read from the text in the stored languages,
-        # after them, but those emptied or typed over here (removed, kept so). A column per field,
-        # a row per slot.
-        self.tbl_readings = QTableWidget(reading.READING_SLOTS, len(READING_FIELDS))
-        names = {"title": tr("Title"), "artist": tr("Artist"), "album": tr("Album")}
-        self.tbl_readings.setHorizontalHeaderLabels([names.get(f, f.capitalize()) for f in READING_FIELDS])
-        self.tbl_readings.setVerticalHeaderLabels([str(i + 1) for i in range(reading.READING_SLOTS)])
-        self.tbl_readings.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.tbl_readings.verticalHeader().setSectionResizeMode(QHeaderView.Fixed)
-        self.tbl_readings.setEditTriggers(QAbstractItemView.AllEditTriggers)
-        self.tbl_readings.setToolTip(
-            tr("<p>How the title, artist and album read in Latin letters: the search finds the track by them "
-               "in any script (あのね by anone or 아노네). Dim: read from the text in Settings > Search's "
-               "languages. Type in a cell to add a reading of yours; empty a cell (Delete) or type over it to "
-               "remove its reading for good, and type it again to bring it back.</p>"))
-        self.tbl_readings.setFixedHeight(
-            self.tbl_readings.horizontalHeader().sizeHint().height()
-            + self.tbl_readings.verticalHeader().defaultSectionSize() * reading.READING_SLOTS + 4)
-        self.tbl_readings.itemChanged.connect(self._on_reading_changed)
-        self.tbl_readings.installEventFilter(self)                   # Delete / Backspace empty the selected cells
-        self._reading_user = {f: [] for f in READING_FIELDS}         # the readings the user added
-        self._reading_removed = {f: [] for f in READING_FIELDS}      # the automatic ones the user removed
-        self._reading_touched = {f: False for f in READING_FIELDS}   # changed here (saved on apply)
-        self._sources = {"title": self.ed_title, "artist": self.ed_artist, "album": self.ed_album}
-        for f, edit in self._sources.items():
-            edit.textChanged.connect(lambda _text, f=f: self._refresh_auto_readings(f))
-
         form_edit.addRow(tr("Path"), path_row)
         form_edit.addRow(tr("Title"), self.ed_title)
         form_edit.addRow(tr("Artist"), self.ed_artist)
@@ -163,7 +130,6 @@ class EditTrackPanel(QWidget):
         form_edit.addRow(tr("Key"), self.cmb_key)
         form_edit.addRow(tr("Rating"), self.rating_stars)
         form_edit.addRow(tr("Comment"), self.ed_comment)
-        form_edit.addRow(tr("Readings"), self.tbl_readings)   # last: the search's, read from the fields above
 
         # Read-only fields
         grp_ro = QGroupBox(tr("Read-only Fields"))
@@ -185,12 +151,7 @@ class EditTrackPanel(QWidget):
         btn_box.button(QDialogButtonBox.Apply).clicked.connect(self._on_apply)
         btn_box.button(QDialogButtonBox.Reset).clicked.connect(self._on_reset)
 
-        # the song's tie-ups (core.tieup): written at once, not by Apply
-        self.tieups = TieupBox(lambda: self._libpath, self._search_settings, self._tieup_to_versions)
-        self.tieups.changed.connect(self._on_tieups_changed)
-
         content.addWidget(grp_edit)
-        content.addWidget(self.tieups)
         content.addWidget(grp_ro)
         content.addStretch(1)
         root = QVBoxLayout(self)
@@ -220,22 +181,6 @@ class EditTrackPanel(QWidget):
         self.rating_stars.setValue(int(row.rating or 0))
         self.ed_comment.setPlainText(row.comment or "")
         self.ed_path.setText(row.path or "")
-        stored = {f: [] for f in READING_FIELDS}
-        removed = {f: [] for f in READING_FIELDS}
-        if self._libpath:
-            db = LibraryDB(os.path.join(self._libpath, "library.db"))
-            db.connect()
-            try:
-                stored = db.readings(row.uid)
-                removed = db.removed_readings(row.uid)
-            finally:
-                db.close()
-        for f in READING_FIELDS:
-            self._reading_touched[f] = False
-            self._reading_user[f] = [text for text, src in stored.get(f, []) if src == USER_SOURCE]
-            self._reading_removed[f] = list(removed.get(f, []))
-            self._fill_readings(f, stored.get(f, []))
-        self.tieups.set_track(row.uid)
 
         # read-only
         self.ro_uid.setText(row.uid or "")
@@ -278,92 +223,12 @@ class EditTrackPanel(QWidget):
             return str(value or "").strip()
 
         fields = ("title", "artist", "album", "bpm", "key", "rating", "comment", "path")
-        return (any(norm(f, getattr(updated, f)) != norm(f, getattr(self._row, f)) for f in fields)
-                or any(self._reading_touched.values()))
+        return any(norm(f, getattr(updated, f)) != norm(f, getattr(self._row, f)) for f in fields)
 
     def apply(self) -> bool:
         """Save the fields (as Apply); False when they cannot be (said in a message)."""
         updated = self.get_updated_row()
         return updated is None or self._persist_if_configured(updated)
-
-    def user_readings(self) -> dict:
-        """The fields whose readings were changed here: field -> (the readings the user added, the
-        automatic ones they removed)."""
-        return {f: (list(self._reading_user[f]), list(self._reading_removed[f]))
-                for f in READING_FIELDS if self._reading_touched[f]}
-
-    # Readings
-    _SOURCE_ROLE = Qt.UserRole        # a cell's source (USER_SOURCE: the user's)
-    _SHOWN_ROLE = Qt.UserRole + 1     # its text as shown, before an edit
-
-    def _fill_readings(self, field: str, readings: list) -> None:
-        """Show (reading, source) pairs in the field's column: dim when read from the text."""
-        c = READING_FIELDS.index(field)
-        dim = QBrush(QColor(current_theme().text_dim))
-        self.tbl_readings.blockSignals(True)
-        for r in range(reading.READING_SLOTS):
-            text, source = readings[r] if r < len(readings) else ("", "")
-            item = QTableWidgetItem(text)
-            item.setData(self._SOURCE_ROLE, source)
-            item.setData(self._SHOWN_ROLE, text)
-            item.setToolTip(f"{text}  ({tr(reading.SOURCES.get(source, source))})" if text else "")
-            if source != USER_SOURCE:
-                item.setForeground(dim)
-            self.tbl_readings.setItem(r, c, item)
-        self.tbl_readings.blockSignals(False)
-
-    def _automatic_readings(self, field: str) -> list:
-        s = self._search_settings()
-        return reading.readings(self._sources[field].text(), s.db_languages, han_run=s.han_run())
-
-    def _refresh_auto_readings(self, field: str) -> None:
-        """The user's readings, then the ones read from the text (following it as it is typed) but
-        the removed ones."""
-        if self._row is None:
-            return
-        self._fill_readings(field, field_readings(
-            self._reading_user[field], self._automatic_readings(field), self._reading_removed[field]))
-
-    def _edit_reading(self, field: str, shown: str, source: str, text: str) -> None:
-        """A cell's reading changed from ``shown`` (from ``source``) to ``text`` ("": emptied)."""
-        user, removed = list(self._reading_user[field]), list(self._reading_removed[field])
-        if source == USER_SOURCE and shown in user:
-            i = user.index(shown)
-            if text:
-                user[i] = text
-            else:
-                del user[i]
-            if shown in [r for r, _src in self._automatic_readings(field)]:
-                removed.append(shown)           # also read from the text: removed too
-        else:
-            if shown:
-                removed.append(shown)           # an automatic reading emptied or typed over
-            if text:
-                user.append(text)
-        self._reading_user[field] = list(dict.fromkeys(user))
-        self._reading_removed[field] = [r for r in dict.fromkeys(removed) if r not in self._reading_user[field]]
-        self._reading_touched[field] = True
-
-    def _on_reading_changed(self, item: QTableWidgetItem) -> None:
-        field = READING_FIELDS[item.column()]
-        shown = str(item.data(self._SHOWN_ROLE) or "")
-        text = item.text().strip()
-        if text != shown:
-            self._edit_reading(field, shown, str(item.data(self._SOURCE_ROLE) or ""), text)
-        self._refresh_auto_readings(field)
-
-    def eventFilter(self, obj, event) -> bool:
-        if (obj is self.tbl_readings and event.type() == QEvent.KeyPress
-                and event.key() in (Qt.Key_Delete, Qt.Key_Backspace)):
-            cells = [(READING_FIELDS[i.column()], str(i.data(self._SHOWN_ROLE) or ""), str(i.data(self._SOURCE_ROLE) or ""))
-                     for i in self.tbl_readings.selectedItems()]
-            for field, shown, source in cells:
-                if shown:
-                    self._edit_reading(field, shown, source, "")
-            for field in dict.fromkeys(field for field, _shown, _source in cells):
-                self._refresh_auto_readings(field)
-            return True
-        return super().eventFilter(obj, event)
 
     # Internal
     def _make_ro(self, w: QLineEdit) -> None:
@@ -393,13 +258,11 @@ class EditTrackPanel(QWidget):
                        han_run=s.han_run())
         db.connect()
         try:
-            # the path first (checked: one file, one track; the file's size and mtime follow it),
-            # then the metadata and the readings set here
+            # the path first (checked: one file, one track; the file's size and mtime follow it), then the metadata
+            # (its readings read again: the Search Index tab shows them)
             if path_changed:
                 db.set_path(updated.uid, updated.path)
             db.upsert(replace(updated, file_mtime=None, file_size=None))
-            for field, (added, removed) in self.user_readings().items():
-                db.set_user_readings(updated.uid, field, added, removed)
             db.conn.commit()
             saved = db.get_by_uid(updated.uid)
             lib_full = db.list_all()
@@ -417,20 +280,6 @@ class EditTrackPanel(QWidget):
             if track_uid:
                 self._bus.sig_rekordbox_sync_track_requested.emit(track_uid)
         return True
-
-    def _on_tieups_changed(self, uids: list) -> None:
-        """The song's tie-ups were written: the library shows them, the Rekordbox XML takes its tracks' comments."""
-        if self._bus is None or not self._libpath:
-            return
-        db = LibraryDB(os.path.join(self._libpath, "library.db"))
-        db.connect()
-        try:
-            lib_full = db.list_all()
-        finally:
-            db.close()
-        self._bus.sig_lib_updated.emit(lib_full)
-        for uid in uids:
-            self._bus.sig_rekordbox_sync_track_requested.emit(str(uid))
 
     def _on_apply(self):
         updated = self.get_updated_row()

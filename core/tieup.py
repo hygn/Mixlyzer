@@ -364,6 +364,34 @@ def delete_tieup(con: sqlite3.Connection, uid: str, key: tuple[str, str, int]) -
     con.execute("DELETE FROM tieup WHERE track_uid=? AND work_id=? AND role=? AND seq=?;", (uid, *key))
 
 
+def work_tracks(con: sqlite3.Connection, work_id: str) -> list[str]:
+    """The tracks with a tie-up to the work."""
+    return [u for (u,) in con.execute("SELECT DISTINCT track_uid FROM tieup WHERE work_id=? ORDER BY track_uid;",
+                                      (work_id,))]
+
+
+def delete_work(con: sqlite3.Connection, work_id: str) -> list[str]:
+    """A work deleted with its names, references and every track's tie-up to it. Returns those tracks."""
+    tracks = work_tracks(con, work_id)
+    con.execute("DELETE FROM tieup WHERE work_id=?;", (work_id,))
+    con.execute("DELETE FROM tieup_work WHERE id=?;", (work_id,))     # its names and references cascade
+    return tracks
+
+
+def merge_works(con: sqlite3.Connection, keep: str, drop: str, languages: Optional[list[str]] = None,
+                han_run: int = reading.HAN_RUN_MIN) -> list[str]:
+    """Two entries of one work made one: ``drop``'s names and references added after ``keep``'s, its tie-ups moved
+    to ``keep`` (one a track has under both kept once, ``keep``'s), ``drop`` deleted. Returns the tracks moved."""
+    other = work(con, drop)
+    if other is None or keep == drop:
+        return []
+    tracks = work_tracks(con, drop)
+    add_names(con, keep, other.titles, other.aliases, other.urls, languages, han_run)
+    con.execute("UPDATE OR IGNORE tieup SET work_id=? WHERE work_id=?;", (keep, drop))
+    delete_work(con, drop)
+    return tracks
+
+
 def refresh_work_readings(con: sqlite3.Connection, languages: Optional[list[str]], han_run: int) -> None:
     """Every name read again (the stored languages changed)."""
     con.executemany("UPDATE tieup_name SET readings=? WHERE work_id=? AND name=?;",

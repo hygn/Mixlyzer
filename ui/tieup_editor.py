@@ -1,5 +1,5 @@
-"""The Edit tab's tie-ups (core.tieup): the works the track is used in, edited in a dialog; written at once (not by
-the tab's Apply). A tie-up added goes to the track's versions (its Variants) too when Settings > Library says so."""
+"""The track panel's Tie-ups tab (core.tieup): the works the track is used in, edited in a dialog; written at once. A
+tie-up added goes to the track's versions (its Variants) too when Settings > Library says so."""
 from __future__ import annotations
 
 import os
@@ -14,11 +14,12 @@ from PySide6.QtWidgets import (
 )
 
 from core import reading, tieup, tieup_web
-from core.config import searchconfig
+from core.config import default_cfg, searchconfig
 from core.i18n import tr, tr_n
 from core.library_handler import LibraryDB
 from core.variants import store as variant_store
 from core.workflows.tieup_web import TieupWebLookup
+from ui.config.scroll import scroll_page
 
 MATCHES_SHOWN = 30
 LANG = "lang"   # a column of ll-RR language tags (a pick of tieup.LANGUAGES, or one typed)
@@ -119,9 +120,8 @@ class TieupDialog(QDialog):
         self.tbl_aliases = _TextTable(tr("Type"), tr("Language"), tr("Alias"), rows_shown=2,
                                       picks={0: tieup.ALIAS_TYPES, 1: LANG})
         self.tbl_aliases.setToolTip(tr("<p>Other names the work is found by, never shown: a name it is commonly "
-                                       "called by (ぼざろ, a romanization), an abbreviation, or a search hint (a "
-                                       "misspelling, a typing slip). The search finds the work by them, also by how "
-                                       "they read.</p>"))
+                                       "called by (a romanization), an abbreviation, or a search hint (a misspelling, "
+                                       "a typing slip). The search finds the work by them, also by how they read.</p>"))
         self.tbl_urls = _TextTable(tr("Label"), tr("URL"), rows_shown=2)
 
         self.cmb_role = QComboBox()
@@ -482,3 +482,46 @@ class TieupBox(QGroupBox):
             db.close()
         self.set_track(self._uid)
         self.changed.emit([self._uid])
+
+
+class TieupPanel(QWidget):
+    """The track panel's Tie-ups tab: the track's tie-ups (TieupBox, written at once); the library and the Rekordbox
+    XML's comments follow each change."""
+
+    def __init__(self, bus=None, libpath: Optional[str] = None, settings: Optional[Callable[[], searchconfig]] = None,
+                 to_versions: Optional[Callable[[], bool]] = None):
+        super().__init__()
+        self._bus = bus
+        self._libpath = libpath
+        self._uid: Optional[str] = None
+        self.box = TieupBox(lambda: self._libpath, settings or (lambda: default_cfg().searchconfig),
+                            to_versions or (lambda: default_cfg().libconfig.tieup_to_versions))
+        self.box.changed.connect(self._on_changed)
+        body = QWidget()
+        content = QVBoxLayout(body)
+        content.addWidget(self.box)
+        content.addStretch(1)
+        root = QVBoxLayout(self)
+        root.setContentsMargins(0, 0, 0, 0)
+        root.addWidget(scroll_page(body), 1)
+
+    def track_uid(self) -> Optional[str]:
+        return self._uid
+
+    def set_track(self, row) -> None:
+        self._uid = row.uid if row is not None else None
+        self.box.set_track(self._uid)
+
+    def _on_changed(self, uids: list) -> None:
+        """The tracks' tie-ups were written: the library shows them, the Rekordbox XML takes their comments."""
+        if self._bus is None or not self._libpath:
+            return
+        db = LibraryDB(os.path.join(self._libpath, "library.db"))
+        db.connect()
+        try:
+            lib_full = db.list_all()
+        finally:
+            db.close()
+        self._bus.sig_lib_updated.emit(lib_full)
+        for uid in uids:
+            self._bus.sig_rekordbox_sync_track_requested.emit(str(uid))

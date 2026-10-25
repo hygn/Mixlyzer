@@ -161,6 +161,7 @@ class AppWindow(QtWidgets.QMainWindow):
         rows_layout.setSpacing(2)
         a_cfg = QtGui.QAction(tr("Settings"), self);  a_cfg.triggered.connect(self.open_cfg)
         a_workers = QtGui.QAction(tr("Workers"), self); a_workers.triggered.connect(self.open_workers)
+        a_works = QtGui.QAction(tr("Tie-up Works"), self); a_works.triggered.connect(lambda: self.pane.lib.open_works())
         a_support_tb = QtGui.QAction(tr("Open Source"), self); a_support_tb.triggered.connect(self._open_support)
         a_about = QtGui.QAction(tr("About"), self); a_about.triggered.connect(self._open_about)
 
@@ -175,7 +176,7 @@ class AppWindow(QtWidgets.QMainWindow):
         font.setPointSize(9)
         menus.setFont(font)
         menus.setStyleSheet("QMenuBar { padding: 0; } QMenuBar::item { padding: 2px 10px; }")
-        for action in (a_cfg, a_workers, a_support_tb, a_about):
+        for action in (a_cfg, a_works, a_workers, a_support_tb, a_about):
             menus.addAction(action)
 
         def toolbar_part(lay: QtWidgets.QHBoxLayout, title: str, widgets: list) -> None:

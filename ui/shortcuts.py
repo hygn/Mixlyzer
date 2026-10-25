@@ -141,6 +141,19 @@ ACTIONS: tuple[Action, ...] = (
     Action("library.locate_loaded", LIBRARY, tr_mark("Select the loaded track")),
     Action("library.edit_track", LIBRARY, tr_mark("Edit Track"),
            tip=tr_mark("The track panel's Edit tab with the selected track, its first field focused.")),
+    Action("library.search_index_track", LIBRARY, tr_mark("Search Index"),
+           tip=tr_mark("The track panel's Search Index tab with the selected track: its readings and audio "
+                       "fingerprints.")),
+    Action("library.rebuild_fingerprints", LIBRARY, tr_mark("Rebuild Audio Fingerprints"),
+           tip=tr_mark("The selected track's Variants fingerprint and Search by Music index made again (Index Now "
+                       "indexes it).")),
+    Action("library.tieups_track", LIBRARY, tr_mark("Tie-ups"),
+           tip=tr_mark("The track panel's Tie-ups tab with the selected track.")),
+    Action("library.find_tieups_on_web", LIBRARY, tr_mark("Find Tie-ups on the Web"),
+           tip=tr_mark("The selected track looked up on Japanese Wikipedia and Wikidata, the tie-ups found offered "
+                       "to add.")),
+    Action("library.tieup_works", LIBRARY, tr_mark("Tie-up Works"),
+           tip=tr_mark("The works window: every work the tie-ups name, edited, merged or deleted.")),
     Action("library.export_track", LIBRARY, tr_mark("Export Track"),
            tip=tr_mark("The track panel's Export tab with the selected track, focused.")),
     Action("library.write_tags", LIBRARY, tr_mark("Write Tags to File"),

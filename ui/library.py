@@ -19,6 +19,9 @@ from core.config import config, load_cfg
 from core.model import DataModel
 from ui.edit_song import EditTrackPanel
 from ui.export import ExportTrackPanel
+from ui.tieup_editor import TieupPanel
+from ui.tieup_works import WorksWindow
+from ui.track_search_index import SearchIndexPanel
 from ui.reanalyze_dialog import ReanalyzeDialog
 from ui.music_search import DeckSeekAfterLoad, MusicListener, MusicSearchBar, close_icon, mic_icon
 from ui.theme import current_theme
@@ -865,6 +868,7 @@ class LibraryWidget(QtWidgets.QWidget):
         # Variants shown: uid -> its relations (core.variants.store.Pair), uid -> its song's number
         self._variant_pairs: dict[str, list] = {}
         self._variant_song: dict[str, int] = {}
+        self._works_window: Optional[WorksWindow] = None     # made when first opened (open_works)
         # file identity -> the playlists (uids) it goes into once analyzed, once per drop
         self._pending_playlist_paths: dict[str, list[str]] = {}
 
@@ -1823,22 +1827,27 @@ class LibraryWidget(QtWidgets.QWidget):
     # The track panel: Edit / Export tabs on a thin vertical tab bar right of the track list, under the search (as
     # tall as the list). Clicking the open tab folds it to the tab bar; another tab unfolds it. Unfolded, it shows
     # the selected track (the first analyzed one), following the selection once it rests for PANEL_FOLLOW_MS (keys
-    # held down do not load every track passed); the Edit tab's changes not applied are asked about first.
-    EDIT_TAB, EXPORT_TAB = 0, 1
+    # held down do not load every track passed); a tab's changes not applied (Edit, Search Index) are asked about
+    # first.
+    EDIT_TAB, INDEX_TAB, TIEUPS_TAB, EXPORT_TAB = 0, 1, 2, 3
     TRACK_PANEL_WIDTH = 380
     TRACK_PANEL_MIN_WIDTH = 300
     PANEL_FOLLOW_MS = 120
 
     def _build_track_panel(self) -> QtWidgets.QHBoxLayout:
         self.edit_panel = EditTrackPanel(bus=self.bus, libpath=self.cfg.libconfig.libpath,
-                                         search_settings=lambda: self.cfg.searchconfig,
-                                         tieup_to_versions=lambda: bool(self.cfg.libconfig.tieup_to_versions))
+                                         search_settings=lambda: self.cfg.searchconfig)
+        self.index_panel = SearchIndexPanel(bus=self.bus, libpath=self.cfg.libconfig.libpath,
+                                            search_settings=lambda: self.cfg.searchconfig)
+        self.tieup_panel = TieupPanel(bus=self.bus, libpath=self.cfg.libconfig.libpath,
+                                      settings=lambda: self.cfg.searchconfig,
+                                      to_versions=lambda: bool(self.cfg.libconfig.tieup_to_versions))
         self.export_panel = ExportTrackPanel(
             self.cfg.libconfig.libpath, model=self.model, bus=self.bus,
             unapplied_edits=lambda uid: self.edit_panel.track_uid() == uid and self.edit_panel.has_changes())
         self.panel_stack = QtWidgets.QStackedWidget()
-        self.panel_stack.addWidget(self.edit_panel)
-        self.panel_stack.addWidget(self.export_panel)
+        for panel in (self.edit_panel, self.index_panel, self.tieup_panel, self.export_panel):   # the tabs' order
+            self.panel_stack.addWidget(panel)
         self.panel_stack.setMinimumWidth(self.TRACK_PANEL_MIN_WIDTH)
         self.panel_stack.hide()
         self.panel_tabs = QtWidgets.QTabBar()
@@ -1853,6 +1862,8 @@ class LibraryWidget(QtWidgets.QWidget):
             "QTabBar::tab { padding: 10px 2px; border: none; border-left: 2px solid transparent; }"
             f"QTabBar::tab:selected {{ border-left-color: {theme.accent}; }}")
         self.panel_tabs.addTab(tr("Edit Track"))
+        self.panel_tabs.addTab(tr("Search Index"))
+        self.panel_tabs.addTab(tr("Tie-ups"))
         self.panel_tabs.addTab(tr("Export Track"))
         for i in range(self.panel_tabs.count()):
             self.panel_tabs.setTabToolTip(i, tr("The selected track; click the open tab to fold the panel"))
@@ -1901,29 +1912,32 @@ class LibraryWidget(QtWidgets.QWidget):
             total = sum(self.panel_split.sizes())
             width = min(self._panel_width, max(self.TRACK_PANEL_MIN_WIDTH, total // 2))
             self.panel_split.setSizes([max(1, total - width), width])
-        self._show_selection_in_panel()
+        self._show_selection_in_panel(reload=True)
         if focus:
-            target = self.edit_panel.ed_title if index == self.EDIT_TAB else self.export_panel.cmb_jump_pair
+            target = {self.EDIT_TAB: self.edit_panel.ed_title, self.INDEX_TAB: self.index_panel.tbl_readings,
+                      self.TIEUPS_TAB: self.tieup_panel.box.table}.get(index, self.export_panel.cmb_jump_pair)
             if not target.isEnabled():
-                target = self.export_panel.dest_edit
+                target = self.export_panel.dest_edit if index == self.EXPORT_TAB else self.table
             target.setFocus(QtCore.Qt.OtherFocusReason)
             if isinstance(target, QtWidgets.QLineEdit):
                 target.selectAll()
 
-    def _show_selection_in_panel(self) -> None:
-        """The open tab shows the selected track (the first analyzed one), unless it shows it already; the Edit
-        tab's changes not applied are asked about first (applied, or dropped)."""
+    def _show_selection_in_panel(self, reload: bool = False) -> None:
+        """The open tab shows the selected track (the first analyzed one), unless it shows it already (``reload``:
+        read again, a tab just opened: another tab may have changed it, unless it holds changes not applied); a
+        tab's changes not applied (Edit, Search Index) are asked about first (applied, or dropped)."""
         if not self.panel_stack.isVisible():
             return
         uids = self._selected_uids()
         panel = self.panel_stack.currentWidget()
-        if not uids or uids[0] == panel.track_uid():
+        unapplied = getattr(panel, "has_changes", lambda: False)()
+        if not uids or (uids[0] == panel.track_uid() and (not reload or unapplied)):
             return
-        if panel is self.edit_panel and panel.has_changes():
-            title = QtGui.QFontMetrics(self.font()).elidedText(
-                panel.ed_title.text() or panel.track_uid() or "", QtCore.Qt.ElideMiddle, 420)
+        if unapplied:
+            title = next((t.title for t in self._all_tracks if t.uid == panel.track_uid()), "") or panel.track_uid()
+            title = QtGui.QFontMetrics(self.font()).elidedText(title or "", QtCore.Qt.ElideMiddle, 420)
             answer = QtWidgets.QMessageBox.question(
-                self, tr("Edit Track"),
+                self, self.panel_tabs.tabText(self.panel_stack.currentIndex()),
                 tr('Apply the changes to "{title}"? (No: they are dropped)').format(title=title),
                 QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No, QtWidgets.QMessageBox.Yes)
             if answer == QtWidgets.QMessageBox.Yes and not panel.apply():
@@ -1951,6 +1965,11 @@ class LibraryWidget(QtWidgets.QWidget):
             "library.music_search": self._toggle_mic,
             "library.locate_loaded": self._select_loaded_track,
             "library.edit_track": self._edit_selected,
+            "library.search_index_track": lambda: self._open_tab_selected(self.INDEX_TAB),
+            "library.tieups_track": lambda: self._open_tab_selected(self.TIEUPS_TAB),
+            "library.rebuild_fingerprints": self._rebuild_fingerprints_selected,
+            "library.find_tieups_on_web": self._find_tieups_selected,
+            "library.tieup_works": self.open_works,
             "library.export_track": self._export_selected,
             "library.write_tags": self._write_tags_selected,
             "library.reveal": self._reveal_selected,
@@ -2528,5 +2547,28 @@ class LibraryWidget(QtWidgets.QWidget):
 
     # Edit
     def _edit_selected(self):
+        self._open_tab_selected(self.EDIT_TAB)
+
+    def _open_tab_selected(self, index: int) -> None:
         if self._selected_uids():
-            self.open_track_panel(self.EDIT_TAB)
+            self.open_track_panel(index)
+
+    def _rebuild_fingerprints_selected(self) -> None:
+        """The Search Index tab with the selected track, its audio fingerprints rebuilt."""
+        if self._selected_uids():
+            self.open_track_panel(self.INDEX_TAB, focus=False)
+            flash(self.index_panel.btn_rebuild)
+            self.index_panel.rebuild()
+
+    def _find_tieups_selected(self) -> None:
+        """The Tie-ups tab with the selected track, looked up on the web."""
+        if self._selected_uids():
+            self.open_track_panel(self.TIEUPS_TAB, focus=False)
+            flash(self.tieup_panel.box.btn_web)
+            self.tieup_panel.box.btn_web.click()
+
+    def open_works(self) -> None:
+        """The tie-ups' works window (non-modal; one)."""
+        if self._works_window is None:
+            self._works_window = WorksWindow(self.bus, lambda: self.cfg, self.window())
+        self._works_window.show_works()
