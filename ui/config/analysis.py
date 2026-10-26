@@ -34,12 +34,14 @@ from ui.config.pipeline_map import PipelineMap
 from ui.config.scroll import scroll_page
 
 
-def build_analysis_tab(dialog) -> None:
-    dialog.tab_analysis = QWidget()
-    root = QVBoxLayout(dialog.tab_analysis)
-    analysis_tabs = QTabWidget(dialog.tab_analysis)
+def _path_hints() -> tuple[str, str, str]:
+    """The path fields' hints: a .npz model, a .json model, a feature cache folder."""
+    return (tr("relative or absolute .npz path"), tr("relative or absolute .json path"),
+            tr("Folder for features cached while reoptimizing, so later runs are faster."))
 
-    # Global
+
+def _global_page(dialog) -> QWidget:
+    """Global: the analyses' order and dependencies (a click opens one's tab)."""
     tab_global = QWidget(); f_global = QFormLayout(tab_global)
     grp_global = QGroupBox(tr("General"))
     f_global_general = QFormLayout(grp_global)
@@ -49,9 +51,12 @@ def build_analysis_tab(dialog) -> None:
     f_global_general.addRow(dialog.lbl_pipeline_title)
     f_global_general.addRow(dialog.pipeline_map)
     f_global.addRow(grp_global)
-    
+    return tab_global
 
-    # Beat
+
+def _beat_page(dialog) -> QWidget:
+    """Beat: the BPM octave, dynamic analysis / downbeats; Advanced: the beat models and their caches, Reoptimize Beat Models."""
+    npz_hint, json_hint, cache_tip = _path_hints()
     tab_beat = QWidget(); f_beat = QFormLayout(tab_beat)
     dialog.sp_bpm_min = QSpinBox(); dialog.sp_bpm_min.setRange(60,  400)
     dialog.sp_bpm_min.setToolTip(tr(
@@ -83,16 +88,11 @@ def build_analysis_tab(dialog) -> None:
             dialog.cb_dynamic_downbeat.setChecked(getattr(dialog, "_static_dynamic_downbeat", True))
         dialog.cb_dynamic_downbeat.setEnabled(not on)
     dialog.cb_bpm_dynamic.toggled.connect(_follow_dynamic)
-    npz_hint = tr("relative or absolute .npz path")
-    json_hint = tr("relative or absolute .json path")
     dialog.ed_refine_onset_parameter_path = QLineEdit()
     dialog.ed_refine_onset_parameter_path.setPlaceholderText(npz_hint)
     dialog.ed_refine_onset_parameter_path.setToolTip(tr(
         "Gradient-boosted onset model (.npz) that places the tracker's tempo changes."
     ))
-    cache_tip = tr(
-        "Folder for features cached while reoptimizing, so later runs are faster."
-    )
     dialog.ed_onset_feature_cache_path = QLineEdit()
     dialog.ed_onset_feature_cache_path.setToolTip(cache_tip)
     dialog.ed_beat_tcn_parameter_path = QLineEdit()
@@ -143,8 +143,12 @@ def build_analysis_tab(dialog) -> None:
 
     f_beat.addRow(grp_bpm)
     f_beat.addRow(grp_beat_advanced)
+    return tab_beat
 
-    # Key: the chord-aware key model
+
+def _key_page(dialog) -> QWidget:
+    """Key: dynamic analysis; Advanced: the key model, its cache, Reoptimize Key Model."""
+    npz_hint, _json_hint, cache_tip = _path_hints()
     tab_key = QWidget(); f_key = QFormLayout(tab_key)
     dialog.cb_key_dynamic = QCheckBox(tr("Dynamic Analysis"))
     dialog.cb_key_dynamic.setToolTip(tr(
@@ -173,8 +177,12 @@ def build_analysis_tab(dialog) -> None:
     f_key_advanced.addRow(tr("Key feature cache"), dialog.ed_key_feature_cache_path)
     f_key_advanced.addRow("", dialog.btn_reoptimize_key_model)
     f_key.addRow(grp_key_advanced)
+    return tab_key
 
-    # Phrase
+
+def _phrase_page(dialog) -> QWidget:
+    """Phrase: Advanced: the phrase model, its cache, Reoptimize Phrase Parameter."""
+    npz_hint, _json_hint, cache_tip = _path_hints()
     tab_phrase = QWidget(); f_phrase = QFormLayout(tab_phrase)
     dialog.ed_phrase_parameter_path = QLineEdit()
     dialog.ed_phrase_parameter_path.setPlaceholderText(npz_hint)
@@ -192,8 +200,12 @@ def build_analysis_tab(dialog) -> None:
     f_phrase_advanced.addRow(tr("Feature cache"), dialog.ed_phrase_feature_cache_path)
     f_phrase_advanced.addRow("", dialog.btn_reoptimize_phrase_parameter)
     f_phrase.addRow(grp_phrase_advanced)
+    return tab_phrase
 
-    # CUE: AutoCUE, the CUE point rules and the JumpCUE model
+
+def _cue_page(dialog) -> QWidget:
+    """CUE: AutoCUE, the CUE point rules, the JumpCUE model, its cache, Reoptimize JumpCUE Parameter."""
+    _npz_hint, json_hint, cache_tip = _path_hints()
     tab_cue = QWidget(); f_cue = QFormLayout(tab_cue)
     dialog.cmb_autocue = QComboBox()
     dialog.cmb_autocue.addItem(tr("CUE point"), "cue_point")
@@ -229,6 +241,16 @@ def build_analysis_tab(dialog) -> None:
     f_cue.addRow(grp_autocue)
     f_cue.addRow(_build_cue_point_rules(dialog))
     f_cue.addRow(grp_jumpcue_advanced)
+    return tab_cue
+
+
+def build_analysis_tab(dialog) -> None:
+    """Settings > Analysis: its pages (Global, Beat, Key, Phrase, CUE)."""
+    dialog.tab_analysis = QWidget()
+    root = QVBoxLayout(dialog.tab_analysis)
+    analysis_tabs = QTabWidget(dialog.tab_analysis)
+    tab_global, tab_beat, tab_key = _global_page(dialog), _beat_page(dialog), _key_page(dialog)
+    tab_phrase, tab_cue = _phrase_page(dialog), _cue_page(dialog)
 
     # Assemble
     analysis_tabs.addTab(scroll_page(tab_global), tr("Global"))
@@ -249,6 +271,7 @@ def build_analysis_tab(dialog) -> None:
     dialog.pipeline_map.tabRequested.connect(open_tab)
     root.addWidget(analysis_tabs)
     dialog.tabs.addTab(dialog.tab_analysis, tr("Analysis"))
+
 
 
 def _build_cue_point_rules(dialog) -> QGroupBox:
