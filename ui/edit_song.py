@@ -1,7 +1,7 @@
 from __future__ import annotations
 import os
-from typing import Callable, Optional
-from dataclasses import asdict, replace
+from typing import Optional
+from dataclasses import asdict
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QFontMetrics
@@ -13,10 +13,11 @@ from PySide6.QtWidgets import (
 )
 
 from core.event_bus import EventBus
-from core.library_handler import TrackRow, LibraryDB
+from core.library import jobs
+from core.library.records import TrackRow
+from core.library.service import LibraryService
 from ui.config.scroll import scroll_page
 from ui.theme import current_theme
-from core.config import config, default_cfg, searchconfig
 from utils.labels import ALPHANUMERIC_LABELS, CLASSICAL_LABELS
 from core.i18n import tr, tr_n
 
@@ -87,14 +88,11 @@ class EditTrackPanel(QWidget):
 
     sig_track_saved = Signal(object)  # TrackRow
 
-    def __init__(self, bus: Optional[EventBus] = None, libpath: Optional[str] = None,
-                 search_settings: Optional[Callable[[], searchconfig]] = None):
-        """``search_settings``: the search settings (read when needed: the stored readings'
-        languages; the defaults when None)."""
+    def __init__(self, bus: Optional[EventBus] = None, library: Optional[LibraryService] = None):
+        """``library``: where the changes are written (core.library.service); None: only sig_track_saved."""
         super().__init__()
         self._bus = bus
-        self._libpath = libpath
-        self._search_settings = search_settings or (lambda: default_cfg().searchconfig)
+        self._library = library
         self._row: Optional[TrackRow] = None
 
         body = QWidget()
@@ -249,36 +247,28 @@ class EditTrackPanel(QWidget):
         if path_changed and not os.path.isfile(updated.path):
             QMessageBox.warning(self, tr("Edit Track"), tr("The file does not exist:\n{path}").format(path=updated.path))
             return False
-        if not self._libpath:
+        if self._library is None:
             # No persistence configured; emit signal for external handling
             self.sig_track_saved.emit(updated)
             return True
-        s = self._search_settings()
-        db = LibraryDB(os.path.join(self._libpath, "library.db"), reading_languages=s.db_languages,
-                       han_run=s.han_run())
-        db.connect()
-        try:
-            # the path first (checked: one file, one track; the file's size and mtime follow it), then the metadata
-            # (its readings read again: the Search Index tab shows them)
-            if path_changed:
-                db.set_path(updated.uid, updated.path)
-            db.upsert(replace(updated, file_mtime=None, file_size=None))
-            db.conn.commit()
-            saved = db.get_by_uid(updated.uid)
-            lib_full = db.list_all()
-        except ValueError as exc:
-            db.conn.rollback()
+
+        def written(saved: Optional[TrackRow]) -> None:
+            # shown as stored, unless another track is shown or the fields were changed again meanwhile
+            if saved is not None and self._row is not None and self._row.uid == saved.uid and not self.has_changes():
+                self.set_track(saved)
+            if self._bus is not None and updated.uid:
+                self._bus.sig_rekordbox_sync_track_requested.emit(str(updated.uid))
+
+        def refused(exc: Exception) -> None:
+            # the path another track's (one file, one track): said, the fields kept as changes not applied
+            if self._row is not None and self._row.uid == updated.uid:
+                self._row = before
             QMessageBox.warning(self, tr("Edit Track"), str(exc))
-            return False
-        finally:
-            db.close()
-        if saved is not None:
-            self.set_track(saved)
-        if self._bus is not None:
-            self._bus.sig_lib_updated.emit(lib_full)
-            track_uid = str(updated.uid or "").strip()
-            if track_uid:
-                self._bus.sig_rekordbox_sync_track_requested.emit(track_uid)
+
+        # written by the library's owner (the path first, then the metadata: jobs.save_track); meanwhile the fields
+        # count as stored (has_changes: none)
+        before, self._row = self._row, updated
+        self._library.write(jobs.save_track, updated, path_changed, done=written, failed=refused)
         return True
 
     def _on_apply(self):

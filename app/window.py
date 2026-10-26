@@ -13,12 +13,11 @@ from core.event_bus import EventBus
 from core.model import DataModel
 from core.timeline import TimelineCoordinator
 from core.player import PlayerController
-from core.library_handler import LibraryDB
-from core.analysis_lib_handler import FeatureNPZStore
+from core.library import jobs
+from core.library.service import LibraryService
 from analyzer_core.global_analyzer import extract_tags
 from core.workflows.analysis import AnalysisWorkflow
 from core.taskmanager import TIEUP_LOOKUP, taskmanager
-from core.thumbnails import load_thumbnail
 from core.external_sync import ExternalSyncController
 from core.workflows.rekordbox_sync import RekordboxXmlSync
 from core.workflows.reading_refresh import LibraryReadingRefresh
@@ -54,8 +53,9 @@ class AppWindow(QtWidgets.QMainWindow):
     _HIDDEN_REFRESH_FPS = 1
     _HIDDEN_ENTER_POLLS = 5
 
-    def __init__(self, progress=None):
-        """``progress(fraction, part)``: how far the window is built (the startup splash)."""
+    def __init__(self, progress=None, library: LibraryService | None = None):
+        """``progress(fraction, part)``: how far the window is built (the startup splash); ``library``: the library's
+        owner the startup started (else one is started here)."""
         super().__init__()
         step = progress or (lambda _fraction, _part: None)
         step(0.0, tr("Core objects and playback"))
@@ -72,6 +72,20 @@ class AppWindow(QtWidgets.QMainWindow):
 
         # Core objects
         self.bus = EventBus()
+        # the library's one owner: its reads and writes on a thread of their own (core.library.service); the
+        # startup's (its snapshot read already), else started here; its snapshot read before the library is shown
+        if library is None or library.libpath != self.cfg.libconfig.libpath:
+            if library is not None:
+                library.close()
+            library = LibraryService(self.cfg.libconfig.libpath)
+            library.refresh()
+            library.wait()
+        self.library = library
+        self.library.setParent(self)
+        self.library.attach(bus=self.bus, settings=lambda: self.cfg.searchconfig)
+        app = QtWidgets.QApplication.instance()
+        if app is not None:     # its last jobs run, its connection closed
+            app.aboutToQuit.connect(self.library.close)
         self.model = DataModel()
         self.tl = TimelineCoordinator(self.bus)
         self.player = PlayerController(
@@ -106,24 +120,23 @@ class AppWindow(QtWidgets.QMainWindow):
             track_total_samples_callback=self._track_total_samples_in_library,
             failure_callback=self._on_external_sync_failure,
         )
-        self.rekordbox_sync = RekordboxXmlSync(cfg_getter=lambda: self.cfg, parent=self)
+        self.rekordbox_sync = RekordboxXmlSync(cfg_getter=lambda: self.cfg, library=self.library, parent=self)
         self.rekordbox_sync.started.connect(self.bus.sig_rekordbox_sync_started)
         self.rekordbox_sync.progress.connect(self.bus.sig_rekordbox_sync_progress)
         self.rekordbox_sync.finished.connect(self.bus.sig_rekordbox_sync_finished)
         self.rekordbox_sync.failed.connect(self.bus.sig_rekordbox_sync_failed)
-        self.reading_refresh = LibraryReadingRefresh(cfg_getter=lambda: self.cfg, parent=self)
+        # (the new readings written by the library's owner, which shows them to the search)
+        self.reading_refresh = LibraryReadingRefresh(cfg_getter=lambda: self.cfg, library=self.library, parent=self)
         self.reading_refresh.started.connect(self.bus.sig_reading_refresh_started)
         self.reading_refresh.progress.connect(self.bus.sig_reading_refresh_progress)
         self.reading_refresh.finished.connect(self.bus.sig_reading_refresh_finished)
         self.reading_refresh.failed.connect(self.bus.sig_reading_refresh_failed)
-        # the library's search takes the new readings
-        self.reading_refresh.finished.connect(lambda _request, _result: self._emit_library_update(self.cfg, None))
-        self.music_index = LibraryMusicIndex(cfg_getter=lambda: self.cfg, parent=self)
-        self.tieup_web = TieupWebLookup(libpath=lambda: self.cfg.libconfig.libpath,
-                                        settings=lambda: self.cfg.searchconfig,
+        self.music_index = LibraryMusicIndex(library=self.library, parent=self)
+        self.tieup_web = TieupWebLookup(library=self.library,
                                         enabled=lambda: bool(self.cfg.libconfig.tieup_web_search), parent=self)
         self.tieup_web.tagged.connect(self._on_tieups_tagged)
         self._tieup_tasks: dict[str, int] = {}      # a track looked up in the background -> its task
+        self._tieup_art: dict = {}                  # a track about to be looked up -> its cover (its task's)
         self.tieup_web.queued.connect(self._on_tieup_lookup_queued)
         self.tieup_web.started.connect(self._on_tieup_lookup_started)
         self.tieup_web.done.connect(self._on_tieup_lookup_done)
@@ -134,13 +147,14 @@ class AppWindow(QtWidgets.QMainWindow):
 
         # Main UI pane
         step(0.03, tr("Main view, editor and library"))
-        self.pane = MainPane(self.bus, self.model, self.tl, self.cfg)
+        self.pane = MainPane(self.bus, self.model, self.tl, self.cfg, self.library)
         self.pane.track_info.set_eq_available(self.player.native)   # the Python engine has no mixer
         self.setCentralWidget(self.pane)
         self.pane.install_default()
 
         step(0.3, tr("Settings"))
         self.cfgwin = SettingsDialog(bus=self.bus)
+        self.cfgwin.set_library(self.library)
         # the engine that plays (its buffer shown first) and its output devices
         self.cfgwin.set_audio_engine(self.player.native, self.player.output_devices, self.player.output_channels)
         # a MIDI controller: the native engine's alone
@@ -279,6 +293,7 @@ class AppWindow(QtWidgets.QMainWindow):
             parent=self,
         )
         self.analysis_workflow = AnalysisWorkflow(
+            library=self.library,
             taskmanager=self.taskmanager,
             result_callback=self._on_features_ready,
             reanalysis_result_callback=self._on_features_reanalyze,
@@ -469,15 +484,6 @@ class AppWindow(QtWidgets.QMainWindow):
         self.workers.raise_()
         self.workers.activateWindow()
 
-    def _load_features_from_store(self, uid: str | None, cfg: config) -> dict | None:
-        if not uid:
-            return None
-        store = FeatureNPZStore(base_dir=cfg.libconfig.libpath, compressed=True)
-        try:
-            return store.load(uid)
-        except (FileNotFoundError, ValueError):
-            return None
-
     def load_track(self, path: str) -> None:
         """The file onto the deck: it plays at once (decoded), its analysis comes when done (a library track's
         stored one at once); the analysis's results alone are applied then, the playback goes on."""
@@ -522,13 +528,22 @@ class AppWindow(QtWidgets.QMainWindow):
             self._apply_analysis(result)
 
     def _apply_analysis(self, result: dict) -> None:
-        """The analysis's features (the stored ones: the library's standard form) and properties into the model,
-        the decoded audio kept (the playback goes on)."""
+        """The analysis's features (the stored ones, read on the library thread: the library's standard form) and
+        properties into the model, the decoded audio kept (the playback goes on); while the deck still holds the
+        track."""
         properties = dict(result.get("properties") or {})
-        features = dict(result.get("features") or {})
-        stored = self._load_features_from_store(properties.get("uid"), load_cfg())
-        if stored is not None:
-            features = stored
+
+        def apply(features):
+            if self._holds(properties.get("path")):
+                self._apply_features(result, properties, features if features is not None else
+                                     dict(result.get("features") or {}))
+
+        if result.get("update_db", True) is False and result.get("features") is not None:
+            apply(result["features"])    # a library track's: read from the store already
+        else:
+            self.library.read(jobs.features, properties.get("uid"), done=apply)
+
+    def _apply_features(self, result: dict, properties: dict, features: dict) -> None:
         duration = float(features.get("duration_sec") or self.model.duration_sec or 0.0)
         self.model.load(features, properties, duration, keep_audio=True)
         album_art = result.get("album_art")
@@ -582,37 +597,31 @@ class AppWindow(QtWidgets.QMainWindow):
         if not new_path:
             return
         new_path = os.path.normpath(new_path)
-        cfg = load_cfg()
-        db = LibraryDB(os.path.join(cfg.libconfig.libpath, "library.db"))
-        db.connect()
-        try:
-            db.set_path(track.uid, new_path)
-            lib_rows = db.list_all()
-        except ValueError as exc:
-            QtWidgets.QMessageBox.warning(self, title, str(exc))
-            return
-        finally:
-            db.close()
-        self._emit_library_update(cfg, lib_rows)
-        self._sync_rekordbox_track(track.uid)
-        if force_analyze:
-            self.reanalyze_file(new_path, analysis)
-        elif listener is not None:
-            self._load(new_path)
-        else:
-            self.analyze_file(new_path)
+
+        def located(_result) -> None:
+            self._sync_rekordbox_track(track.uid)
+            if force_analyze:
+                self.reanalyze_file(new_path, analysis)
+            elif listener is not None:
+                self._load(new_path)
+            else:
+                self.analyze_file(new_path)
+
+        self.library.write(jobs.set_track_path, track.uid, new_path, done=located,
+                           failed=lambda exc: QtWidgets.QMessageBox.warning(self, title, str(exc)))
 
     @QtCore.Slot(dict)
     def _on_features_ready(self, feat: dict):
         """A track's analysis (a new one, or a library track's stored one): the library; the deck takes it itself
         when it asked (its listener)."""
         properties = dict(feat["properties"])
-        if feat.get("update_db", False):
-            self._emit_library_update(load_cfg(), feat.get("library"))
+        if feat.get("update_db", False):     # stored by the library's owner, which showed it
             self._sync_rekordbox_track(properties.get("uid"))
             self.statusBar().showMessage(tr("Analysis saved to library."))
             if feat.get("new_track") and not feat.get("tieups"):   # a new track its versions gave none: the web
-                self.tieup_web.new_track(str(properties.get("uid") or ""), str(properties.get("title") or ""))
+                uid = str(properties.get("uid") or "")
+                self._tieup_art[uid] = feat.get("album_art")       # its task's picture (the file's cover)
+                self.tieup_web.new_track(uid, str(properties.get("title") or ""))
         self.taskmanager.updatetask(feat["taskid"], tr("Finished"), 1)
         self.taskmanager.rmtask(feat["taskid"])
 
@@ -620,7 +629,6 @@ class AppWindow(QtWidgets.QMainWindow):
         """A full reanalysis: the library, and the deck when it holds the track (its playback goes on)."""
         properties = dict(feat["properties"])
         if feat.get("update_db", False):
-            self._emit_library_update(load_cfg(), feat.get("library"))
             self._sync_rekordbox_track(properties.get("uid"))
         if self._holds(properties.get("path")):
             self._apply_analysis(feat)
@@ -628,16 +636,17 @@ class AppWindow(QtWidgets.QMainWindow):
         self.statusBar().showMessage(tr("Analysis saved to library."))
 
     def _on_tieups_tagged(self, uids: list) -> None:
-        """Tracks given a tie-up from the web: the library, the Rekordbox XML's comments."""
-        self._emit_library_update(load_cfg(), None)
+        """Tracks given a tie-up from the web (written by the library's owner, which shows them): the Rekordbox XML's
+        comments."""
         for uid in uids:
             self._sync_rekordbox_track(uid)
 
     # a new track's background lookup as a task of the Workers window's Tie-up Lookup tab
     def _on_tieup_lookup_queued(self, uid: str, title: str) -> None:
+        art = self._tieup_art.pop(uid, None)
         if uid not in self._tieup_tasks:
-            task = self.taskmanager.addtask(title or uid, load_thumbnail(self.cfg.libconfig.libpath, uid),
-                                            tr("Waiting to be looked up on Wikipedia"), 0.0, kind=TIEUP_LOOKUP)
+            task = self.taskmanager.addtask(title or uid, art, tr("Waiting to be looked up on Wikipedia"), 0.0,
+                                            kind=TIEUP_LOOKUP)
             self._tieup_tasks[uid] = task.taskid
 
     def _on_tieup_lookup_started(self, uid: str) -> None:
@@ -648,14 +657,6 @@ class AppWindow(QtWidgets.QMainWindow):
         tid = self._tieup_tasks.pop(uid, None)
         if tid is not None:
             self.taskmanager.rmtask(tid, tr("The lookup failed.") if outcome == "failed" else None)
-
-    def _emit_library_update(self, cfg: config, lib_rows):
-        if lib_rows is None:
-            l = LibraryDB(os.path.join(cfg.libconfig.libpath, "library.db"))
-            l.connect()
-            lib_rows = l.list_all()
-            l.close()
-        self.bus.sig_lib_updated.emit(lib_rows)
 
     def _sync_rekordbox_track(self, uid: object) -> None:
         track_uid = str(uid or "").strip()
@@ -679,45 +680,22 @@ class AppWindow(QtWidgets.QMainWindow):
                 )
         self._sig_metronome_set_beats.emit(beats, downbeats, float(self.tl.current_time))
 
+    # External Sync's questions, answered from the library's snapshot (in memory)
     def _track_exists_in_library(self, path: str) -> bool:
-        cfg = load_cfg()
-        db = LibraryDB(os.path.join(cfg.libconfig.libpath, "library.db"))
-        db.connect()
-        try:
-            return db.get(path) is not None
-        finally:
-            db.close()
+        return self.library.snapshot.get(path) is not None
 
     def _library_path_of_file(self, path: str) -> str | None:
         """The path the library stores the file ``path`` points to under, if it is in it."""
-        cfg = load_cfg()
-        db = LibraryDB(os.path.join(cfg.libconfig.libpath, "library.db"))
-        db.connect()
-        try:
-            row = db.find_file(path)
-            return row.path if row else None
-        finally:
-            db.close()
+        row = self.library.snapshot.find_file(path)
+        return row.path if row else None
 
     def _track_duration_in_library(self, path: str) -> float | None:
-        cfg = load_cfg()
-        db = LibraryDB(os.path.join(cfg.libconfig.libpath, "library.db"))
-        db.connect()
-        try:
-            row = db.get(path)
-            return float(row.duration) if row and row.duration is not None else None
-        finally:
-            db.close()
+        row = self.library.snapshot.get(path)
+        return float(row.duration) if row and row.duration is not None else None
 
     def _track_total_samples_in_library(self, path: str) -> int | None:
-        cfg = load_cfg()
-        db = LibraryDB(os.path.join(cfg.libconfig.libpath, "library.db"))
-        db.connect()
-        try:
-            row = db.get(path)
-            return int(row.total_samples) if row and row.total_samples is not None else None
-        finally:
-            db.close()
+        row = self.library.snapshot.get(path)
+        return int(row.total_samples) if row and row.total_samples is not None else None
 
     def _load_track_from_external_sync(self, path: str, time_sec: float) -> None:
         exists_in_library = self._track_exists_in_library(path)
@@ -747,6 +725,7 @@ class AppWindow(QtWidgets.QMainWindow):
         save_deck(_config)
         os.makedirs(_config.libconfig.libpath or ".", exist_ok=True)
         self.cfg = _config
+        self.library.set_libpath(_config.libconfig.libpath)
         self.cfgwin.set_config(_config)
         self.external_sync.set_config(_config.externalsyncconfig)
         self.external_sync.set_poll_fps(_config.viewconfig.fps)

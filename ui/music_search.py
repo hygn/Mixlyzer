@@ -12,7 +12,6 @@ thread of its own (its kernels leave the interpreter lock), one at a time: one d
 from __future__ import annotations
 
 import os
-import sqlite3
 import threading
 import time
 from typing import Callable
@@ -24,7 +23,7 @@ from PySide6.QtMultimedia import QAudioFormat, QAudioSource, QMediaDevices
 from core.config import save_deck
 from core.event_bus import EventBus
 from core.i18n import tr
-from core.music_search import store
+from core.library import jobs
 from core.music_search.listening import Listening
 from core.music_search.search import SearchResult, search_audio
 from ui.elided_label import ElidedLabel
@@ -237,11 +236,15 @@ class MusicListener(QtCore.QObject):
     status = QtCore.Signal(str)
     results = QtCore.Signal(object)           # SearchResult, while listening (none when nothing was found)
 
-    def __init__(self, bus: EventBus, cfg_getter: Callable[[], object], parent=None):
+    def __init__(self, bus: EventBus, cfg_getter: Callable[[], object], library, parent=None):
+        """``library``: the library's owner (core.library.service), which opens the index and lends its read-only
+        connection to the searches (they read the landmarks every few seconds: on the owner's thread they would
+        hold its other jobs)."""
         super().__init__(parent)
         self._cfg_getter = cfg_getter
+        self._owner = library
         self._index = None
-        self._con: sqlite3.Connection | None = None
+        self._landmarks = None             # the index's landmarks (core.library.music_index.LandmarkIndex), lent
         self._library: set[str] = set()
         self._stale = True
         self._loading = False
@@ -275,18 +278,15 @@ class MusicListener(QtCore.QObject):
             return
         self._loading = True
         self._stale = False
-        libpath = str(self._cfg_getter().libconfig.libpath)
-        threading.Thread(target=self._read_index, args=(libpath,), name="MusicSearchIndex", daemon=True).start()
+        threading.Thread(target=self._read_index, name="MusicSearchIndex", daemon=True).start()
 
-    def _read_index(self, libpath: str) -> None:
+    def _read_index(self) -> None:
         try:
-            con = store.open_reader(store.path_for(libpath))
-            index = store.melody_index(con) if con is not None else None
-            lib = sqlite3.connect(f"file:{os.path.join(libpath, 'library.db')}?mode=ro", uri=True)
-            try:
-                library = {u for (u,) in lib.execute("SELECT uid FROM tracks")}
-            finally:
-                lib.close()
+            # opened and read by the library's owner (its landmarks lent to the searches); the library's tracks
+            # from its snapshot
+            opened = self._owner.call(jobs.open_music_search)
+            con, index = opened if opened is not None else (None, None)
+            library = set(self._owner.snapshot.by_uid)
             if index is not None and len(index):
                 import numba
                 from core.music_search.search import SEARCH_THREADS
@@ -301,9 +301,9 @@ class MusicListener(QtCore.QObject):
         if isinstance(res, str):
             self.status.emit(tr("The index could not be read: {error}").format(error=res))
             return
-        old = self._con
-        self._index, self._con, self._library = res
-        if old is not None and old is not self._con:
+        old = self._landmarks
+        self._index, self._landmarks, self._library = res
+        if old is not None and old is not self._landmarks:
             old.close()
         indexed = len(set(self._index.uids) & self._library) if self._index is not None else 0
         if not indexed:
@@ -413,7 +413,7 @@ class MusicListener(QtCore.QObject):
         if float(np.sqrt(np.mean(y ** 2))) < QUIET_RMS:
             return         # nothing heard: no search
         self._searching = True
-        threading.Thread(target=self._run_search, args=(y, self.rate, self._index, self._con, time.monotonic()),
+        threading.Thread(target=self._run_search, args=(y, self.rate, self._index, self._landmarks, time.monotonic()),
                          name="MusicSearch", daemon=True).start()
 
     def _run_search(self, y, rate, index, con, heard_at) -> None:

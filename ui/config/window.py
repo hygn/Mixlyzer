@@ -101,6 +101,7 @@ class SettingsDialog(
         self.resize(self.DIALOG_WIDTH, 860)
 
         self._current_cfg = None
+        self._library = None      # the library's owner (set_library)
         self._initialize_library_settings(bus)
         self._initialize_search_settings(bus)
         self._initialize_view_settings(bus)
@@ -154,6 +155,10 @@ class SettingsDialog(
                 control.setSizePolicy(policy)
 
     # Public API
+    def set_library(self, library) -> None:
+        """The library's owner (core.library.service): what the pages show of the library is asked of it."""
+        self._library = library
+
     def set_config(self, cfg: config):
         assert is_dataclass(cfg), "cfg must be a dataclass 'config'"
         self._current_cfg = cfg

@@ -2,15 +2,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import os
-import sqlite3
-from typing import Callable
 
 from PySide6 import QtCore
 
 from core.i18n import tr
-from core.music_search import store
-from core.variants import store as variant_store
-from core.workers.music_index import IndexTrack, MusicIndexRequest, MusicIndexResult, MusicIndexWorker
+from core.library import jobs
+from core.workers.music_index import MusicIndexRequest, MusicIndexWorker
 
 MAX_PROCESSES = 4
 
@@ -28,121 +25,133 @@ class MusicIndexSummary:
     dropped: int
 
 
-def index_status(libpath: str) -> tuple[int, int]:
-    """(library tracks indexed for Search by Music and the variants, library tracks)."""
-    try:
-        con = sqlite3.connect(f"file:{os.path.join(str(libpath), 'library.db')}?mode=ro", uri=True)
-        try:
-            uids = {u for (u,) in con.execute("SELECT uid FROM tracks")}
-        finally:
-            con.close()
-    except sqlite3.Error:
-        return 0, 0
-    indexed = store.indexed_uids(store.path_for(libpath)) & variant_store.indexed_uids(variant_store.path_for(libpath))
-    return len(uids & indexed), len(uids)
-
-
 class LibraryMusicIndex(QtCore.QObject):
     """Index Now (Settings > Search > Search by Music): the library tracks not in the music search's index, or
     without a Variants fingerprint of the current method (analyzed before they existed, or before the method
     changed), indexed; the tracks gone from the library dropped; once done, the fingerprints of earlier methods the
-    current one has replaced removed. One run at a time, its tracks shared by up to MAX_PROCESSES processes (a quarter
-    of the cores). The analysis indexes what it analyzes."""
+    current one has replaced removed. One run at a time. The audio is read in up to MAX_PROCESSES processes (a
+    quarter of the cores), each its share of the tracks; everything else, and every write, is the library's owner's
+    (core.library.service), a track a job. The analysis indexes what it analyzes."""
 
     started = QtCore.Signal(object)               # MusicIndexRun
     progress = QtCore.Signal(object, int, str)    # run, percent, text
     finished = QtCore.Signal(object, object)      # run, MusicIndexSummary
     failed = QtCore.Signal(object, str)
 
-    def __init__(self, *, cfg_getter: Callable[[], object], parent=None) -> None:
+    def __init__(self, *, library, parent=None) -> None:
+        """``library``: the library's owner (core.library.service)."""
         super().__init__(parent)
-        self._cfg_getter = cfg_getter
+        self._library = library
+        self._planning = False
         self._run: MusicIndexRun | None = None
         self._workers: list[MusicIndexWorker] = []
-        self._done: dict[int, int] = {}
-        self._results: list[MusicIndexResult] = []
+        self._ended = 0                         # the workers whose processes ended
+        self._pending: dict[str, set] = {}      # a track -> its parts not done yet ("music", "variants")
+        self._tracks: dict = {}                 # uid -> core.library.records.IndexTrack
+        self._handed: set[str] = set()
+        self._indexed = 0
+        self._failed: list[str] = []
         self._errors: list[str] = []
         self._dropped = 0
-        self._variants_db = ""
 
     def running(self) -> bool:
-        return self._run is not None
+        return self._run is not None or self._planning
 
     @QtCore.Slot(object)
     def index_requested(self, _payload: object = None) -> None:
-        if self._run is not None:
+        if self.running():
             return
-        libpath = str(self._cfg_getter().libconfig.libpath)
-        search_db = store.path_for(libpath)
-        try:
-            con = sqlite3.connect(f"file:{os.path.join(libpath, 'library.db')}?mode=ro", uri=True)
-            try:
-                tracks = [(u, p, int(s or 0), float(m or 0.0)) for u, p, s, m in
-                          con.execute("SELECT uid, path, file_size, file_mtime FROM tracks ORDER BY added_ts, uid")]
-            finally:
-                con.close()
-        except sqlite3.Error as exc:
-            run = MusicIndexRun(0, 0)
-            self.started.emit(run)
-            self.failed.emit(run, str(exc))
-            return
-        variants_db = variant_store.path_for(libpath)
-        have = store.indexed_uids(search_db)
-        have_variants = variant_store.indexed_uids(variants_db)
-        uids = {t[0] for t in tracks}
-        todo = []
-        for uid, path, size, mtime in tracks:
-            music = uid not in have and bool(path) and os.path.isfile(path)
-            npz = os.path.join(libpath, f"{uid}.npz")
-            variants = npz if uid not in have_variants and os.path.isfile(npz) else ""
-            if music or variants:
-                todo.append(IndexTrack(uid, path, size, mtime, music, variants))
-        drop = tuple(sorted(have - uids))
-        drop_variants = tuple(sorted(variant_store.indexed_uids(variants_db, any_method=True) - uids))
-        self._variants_db = variants_db
-        n = max(1, min(MAX_PROCESSES, (os.cpu_count() or 4) // 4, len(todo)))
-        run = MusicIndexRun(len(todo), n)
-        self._run, self._done, self._results, self._errors = run, {}, [], []
-        self._dropped = len(set(drop) | set(drop_variants))
+        self._planning = True       # what to do read by the library's owner, then the run (_start)
+        self._library.read(jobs.index_plan, done=self._start, failed=self._plan_failed)
+
+    def _plan_failed(self, exc: Exception) -> None:
+        self._planning = False
+        run = MusicIndexRun(0, 0)
         self.started.emit(run)
-        if not todo and not drop and not drop_variants:
-            QtCore.QTimer.singleShot(0, self._maybe_finish)
-            return
+        self.failed.emit(run, str(exc))
+
+    def _start(self, plan: jobs.IndexPlan) -> None:
+        self._planning = False
+        todo = list(plan.todo)
+        music = [t for t in todo if t.music]
+        n = max(1, min(MAX_PROCESSES, (os.cpu_count() or 4) // 4, len(music))) if music else 0
+        run = MusicIndexRun(len(todo), n)
+        self._run, self._ended, self._indexed, self._failed, self._errors = run, 0, 0, [], []
+        self._tracks = {t.uid: t for t in todo}
+        self._handed = set()        # the tracks whose entry a process handed back
+        self._pending = {t.uid: {p for p, on in (("music", t.music), ("variants", t.variants)) if on} for t in todo}
+        self._dropped = len(set(plan.drop) | set(plan.drop_variants))
+        self.started.emit(run)
+        if plan.drop or plan.drop_variants:
+            self._library.write(jobs.drop_gone, plan)
+        # the variants' fingerprints: from the stored features, by the library's owner, a track a job
+        for t in todo:
+            if t.variants:
+                self._library.write(jobs.fingerprint, t.uid,
+                                    done=lambda _r, uid=t.uid: self._part_done(uid, "variants", True),
+                                    failed=lambda _exc, uid=t.uid: self._part_done(uid, "variants", False))
+        # Search by Music's: the audio read in the processes, each entry stored by the owner as it comes
+        self._workers = []
         for k in range(n):
-            share = tuple(todo[k::n])
-            first = k == 0
-            worker = MusicIndexWorker(MusicIndexRequest(
-                search_db, variants_db, share, drop if first else (), drop_variants if first else ()), parent=self)
-            worker.progress.connect(lambda done, k=k: self._on_progress(k, done))
-            worker.finished.connect(self._on_finished)
-            worker.failed.connect(self._on_failed)
+            worker = MusicIndexWorker(MusicIndexRequest(tuple(music[k::n])), parent=self)
+            worker.entry.connect(self._on_entry)
+            worker.finished.connect(self._on_worker_ended)
+            worker.failed.connect(self._on_worker_failed)
             self._workers.append(worker)
-            self._done[k] = 0
             worker.start()
+        self._maybe_finish()
 
-    def _on_progress(self, share: int, done: int) -> None:
-        if self._run is None:
+    @QtCore.Slot(str, object)
+    def _on_entry(self, uid: str, entry) -> None:
+        track = self._tracks.get(uid)
+        if track is None or self._run is None:
             return
-        self._done[share] = done
-        total = self._run.total
-        n = sum(self._done.values())
-        self.progress.emit(self._run, 100 * n // total if total else 100,
-                           tr("Indexing for Search by Music and Variants: {done} / {total} tracks").format(done=n, total=total))
+        self._handed.add(uid)
+        if entry is None:       # its audio could not be read
+            self._part_done(uid, "music", False)
+            return
+        self._library.write(jobs.store_music_entry, track, entry, done=lambda _r: self._part_done(uid, "music", True),
+                            failed=lambda _exc: self._part_done(uid, "music", False))
 
-    @QtCore.Slot(object)
-    def _on_finished(self, result: MusicIndexResult) -> None:
-        self._results.append(result)
+    def _part_done(self, uid: str, part: str, ok: bool, check: bool = True) -> None:
+        parts = self._pending.get(uid)
+        if parts is None or part not in parts or self._run is None:
+            return
+        parts.discard(part)
+        track = self._tracks[uid]
+        if not ok and track.path not in self._failed:
+            self._failed.append(track.path)
+        if not parts:
+            del self._pending[uid]
+            self._indexed += track.path not in self._failed
+            done, total = self._run.total - len(self._pending), self._run.total
+            self.progress.emit(self._run, 100 * done // total if total else 100,
+                               tr("Indexing for Search by Music and Variants: {done} / {total} tracks").format(
+                                   done=done, total=total))
+        if check:
+            self._maybe_finish()
+
+    @QtCore.Slot()
+    def _on_worker_ended(self) -> None:
+        self._ended += 1
         self._maybe_finish()
 
     @QtCore.Slot(str)
-    def _on_failed(self, message: str) -> None:
+    def _on_worker_failed(self, message: str) -> None:
         self._errors.append(str(message))
+        self._ended += 1
         self._maybe_finish()
 
     def _maybe_finish(self) -> None:
         run = self._run
-        if run is None or len(self._results) + len(self._errors) < len(self._workers):
+        if run is None or self._ended < len(self._workers):
             return
+        if self._errors:
+            # a process failed: its tracks not handed back are not indexed
+            for uid in [u for u, parts in self._pending.items() if "music" in parts and u not in self._handed]:
+                self._part_done(uid, "music", False, check=False)
+        if self._pending:
+            return      # the owner's jobs still running: done as they come
         for worker in self._workers:
             worker.deleteLater()
         self._workers = []
@@ -150,15 +159,12 @@ class LibraryMusicIndex(QtCore.QObject):
         if self._errors:
             self.failed.emit(run, self._errors[0])
             return
-        try:    # every worker done: the fingerprints of earlier methods the current one replaced removed (quick)
-            con = variant_store.open_writer(self._variants_db)
-            try:
-                variant_store.prune_old_methods(con)
-            finally:
-                con.close()
-        except Exception as exc:
+        summary = MusicIndexSummary(indexed=self._indexed, failed=tuple(self._failed), dropped=self._dropped)
+
+        def failed(exc: Exception) -> None:
             print(f"[Variants] earlier methods not removed: {exc}")
-        self.finished.emit(run, MusicIndexSummary(
-            indexed=sum(r.indexed for r in self._results),
-            failed=tuple(p for r in self._results for p in r.failed),
-            dropped=self._dropped))
+            self.finished.emit(run, summary)
+
+        # every track done: the fingerprints of earlier methods removed by the library's owner; finished told after
+        # it (the library's Variants read again by then)
+        self._library.write(jobs.prune_fingerprints, done=lambda _r: self.finished.emit(run, summary), failed=failed)

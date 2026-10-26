@@ -258,13 +258,13 @@ class SearchSettingsMixin:
             self._reading_refresh_dialog.set_failed(message)
 
     def _show_music_index_status(self) -> None:
-        from core.workflows.music_index import index_status
-        cfg = getattr(self, "_current_cfg", None)
-        if cfg is None:
+        """How many tracks are indexed, read by the library's owner (set_library) and shown when it comes."""
+        from core.library import jobs
+        library = getattr(self, "_library", None)
+        if library is None:
             return
-        indexed, total = index_status(str(cfg.libconfig.libpath))
-        self.lbl_music_index_status.setText(
-            tr("{indexed} of {total} library tracks are indexed.").format(indexed=indexed, total=total))
+        library.read(jobs.index_status, done=lambda counts: self.lbl_music_index_status.setText(
+            tr("{indexed} of {total} library tracks are indexed.").format(indexed=counts[0], total=counts[1])))
 
     def _music_index_now(self) -> None:
         if self._bus is None:

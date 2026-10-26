@@ -5,10 +5,9 @@ then Index Now indexes it again (core.workflows.music_index: its audio decoded i
 from __future__ import annotations
 
 import os
-import threading
 from typing import Callable, Optional
 
-from PySide6.QtCore import QEvent, QObject, Qt, Signal
+from PySide6.QtCore import QEvent, Qt
 from PySide6.QtGui import QBrush, QColor
 from PySide6.QtWidgets import (
     QAbstractItemView, QDialogButtonBox, QFormLayout, QGroupBox, QHeaderView, QLabel, QPushButton, QTableWidget,
@@ -19,55 +18,22 @@ from core import reading
 from core.config import default_cfg, searchconfig
 from core.event_bus import EventBus
 from core.i18n import tr
-from core.library_handler import READING_FIELDS, USER_SOURCE, LibraryDB, TrackRow, field_readings
-from core.music_search import store as music_store
-from core.variants import store as variant_store
+from core.library import jobs
+from core.library.records import READING_FIELDS, USER_SOURCE, TrackRow, field_readings
+from core.library.service import LibraryService
 from ui.config.scroll import scroll_page
 from ui.theme import current_theme
-
-
-class _Dropped(QObject):
-    """The index threads' word back to the GUI thread."""
-    done = Signal(str, str)             # the track, an error ("" when dropped)
-    state = Signal(str, bool, bool)     # the track, in the Variants' index (its current method), in Search by Music's
-
-
-def _state(libpath: str, uid: str, out: _Dropped) -> None:
-    """Whether the track is in each index (read off the GUI thread)."""
-    try:
-        variants = uid in variant_store.indexed_uids(variant_store.path_for(libpath))
-        music = uid in music_store.indexed_uids(music_store.path_for(libpath))
-    except Exception:
-        variants = music = False
-    out.state.emit(uid, variants, music)
-
-
-def _drop(libpath: str, uid: str, out: _Dropped) -> None:
-    """The track out of both indexes (each a pass over its index: off the GUI thread)."""
-    try:
-        for path, open_writer, drop in ((variant_store.path_for(libpath), variant_store.open_writer, variant_store.drop),
-                                        (music_store.path_for(libpath), music_store.open_writer, music_store.drop)):
-            if os.path.isfile(path):
-                con = open_writer(path)
-                try:
-                    with con:
-                        drop(con, uid)
-                finally:
-                    con.close()
-    except Exception as exc:
-        out.done.emit(uid, str(exc))
-        return
-    out.done.emit(uid, "")
 
 
 class SearchIndexPanel(QWidget):
     """A track's readings and audio fingerprints (the module)."""
 
-    def __init__(self, bus: Optional[EventBus] = None, libpath: Optional[str] = None,
+    def __init__(self, bus: Optional[EventBus] = None, library: Optional[LibraryService] = None,
                  search_settings: Optional[Callable[[], searchconfig]] = None):
+        """``library``: where the readings are read and written (core.library.service)."""
         super().__init__()
         self._bus = bus
-        self._libpath = libpath
+        self._library = library
         self._search_settings = search_settings or (lambda: default_cfg().searchconfig)
         self._row: Optional[TrackRow] = None
         self._rebuilding: Optional[str] = None    # the track dropped, waiting for Index Now
@@ -130,9 +96,6 @@ class SearchIndexPanel(QWidget):
         audio_form.addRow(tr("Search by Music"), self.lbl_music)
         audio_form.addRow("", self.btn_rebuild)
         audio_form.addRow(self.lbl_rebuild)
-        self._dropped = _Dropped(self)
-        self._dropped.done.connect(self._on_dropped)
-        self._dropped.state.connect(self._on_state)
         if bus is not None:
             bus.sig_music_index_progress.connect(self._on_index_progress)
             bus.sig_music_index_finished.connect(self._on_index_finished)
@@ -151,24 +114,25 @@ class SearchIndexPanel(QWidget):
         return self._row.uid if self._row is not None else None
 
     def set_track(self, row: Optional[TrackRow]) -> None:
+        """The track's readings, read on the library thread (shown when they come, while it is still shown)."""
         self._row = row
-        stored = {f: [] for f in READING_FIELDS}
-        removed = {f: [] for f in READING_FIELDS}
-        if row is not None and self._libpath:
-            db = LibraryDB(os.path.join(self._libpath, "library.db"))
-            db.connect()
-            try:
-                stored = db.readings(row.uid)
-                removed = db.removed_readings(row.uid)
-            finally:
-                db.close()
+        if row is not None and self._library is not None:
+            uid = row.uid
+            self._library.read(jobs.readings, uid, done=lambda found: self._show_readings(uid, *found, came=True))
+        self._show_readings(row.uid if row is not None else None, {}, {})
+
+    def _show_readings(self, uid: Optional[str], stored: dict, removed: dict, *, came: bool = False) -> None:
+        """``came``: the stored readings, come from the library (not shown over readings typed meanwhile)."""
+        if (self._row.uid if self._row is not None else None) != uid or (came and self.has_changes()):
+            return
         for f in READING_FIELDS:
             self._reading_touched[f] = False
             self._reading_user[f] = [text for text, src in stored.get(f, []) if src == USER_SOURCE]
             self._reading_removed[f] = list(removed.get(f, []))
             self._fill_readings(f, stored.get(f, []))
-        self.tbl_readings.setEnabled(row is not None)
-        self._show_index_state()
+        self.tbl_readings.setEnabled(uid is not None)
+        if not came:
+            self._show_index_state()
 
     def has_changes(self) -> bool:
         """Whether readings were changed here and not applied."""
@@ -176,23 +140,18 @@ class SearchIndexPanel(QWidget):
 
     def apply(self) -> bool:
         """The readings changed here saved (the others of the track kept)."""
-        if self._row is None or not self.has_changes() or not self._libpath:
+        if self._row is None or not self.has_changes() or self._library is None:
             return True
-        s = self._search_settings()
-        db = LibraryDB(os.path.join(self._libpath, "library.db"), reading_languages=s.db_languages,
-                       han_run=s.han_run())
-        db.connect()
-        try:
-            for field, (added, removed) in self.user_readings().items():
-                db.set_user_readings(self._row.uid, field, added, removed)
-            db.conn.commit()
-            saved = db.get_by_uid(self._row.uid)
-            lib_full = db.list_all()
-        finally:
-            db.close()
-        self.set_track(saved)
-        if self._bus is not None:
-            self._bus.sig_lib_updated.emit(lib_full)
+        uid, changes = self._row.uid, self.user_readings()
+
+        def written(saved: Optional[TrackRow]) -> None:
+            if saved is not None and self.track_uid() == uid and not self.has_changes():
+                self.set_track(saved)
+
+        # written by the library's owner; meanwhile nothing counts as not applied
+        for f in READING_FIELDS:
+            self._reading_touched[f] = False
+        self._library.write(jobs.set_user_readings, uid, changes, done=written)
         return True
 
     def user_readings(self) -> dict:
@@ -279,16 +238,20 @@ class SearchIndexPanel(QWidget):
 
     # Audio fingerprints
     def _show_index_state(self) -> None:
-        """Whether the track is in each index, read on a thread (_on_state)."""
+        """Whether the track is in each index, read by the library's owner (_on_state)."""
         uid = self.track_uid()
         self.lbl_variants.setText("")
         self.lbl_music.setText("")
         self.btn_rebuild.setEnabled(uid is not None and self._rebuilding is None and self._bus is not None)
         if self._rebuilding is None:
             self.lbl_rebuild.setText("")
-        if uid is not None and self._libpath:
-            threading.Thread(target=_state, args=(self._libpath, uid, self._dropped), name="index-state",
-                             daemon=True).start()
+        if uid is not None:
+            self._read_state(uid)
+
+    def _read_state(self, uid: str) -> None:
+        if self._library is not None:
+            self._library.read(jobs.index_state, uid, done=lambda found: self._on_state(uid, *found),
+                               failed=lambda _exc: self._on_state(uid, False, False))
 
     def _on_state(self, uid: str, variants: bool, music: bool) -> None:
         if uid == self._rebuilding and self._checking:      # Index Now done: was the track indexed?
@@ -308,9 +271,9 @@ class SearchIndexPanel(QWidget):
         self.lbl_music.setText(tr("Indexed") if music else tr("Not indexed"))
 
     def rebuild(self) -> None:
-        """The track out of both indexes (on a thread), then Index Now asked for (_on_dropped)."""
+        """The track out of both indexes (by the library's owner), then Index Now asked for (_on_dropped)."""
         uid = self.track_uid()
-        if uid is None or self._rebuilding is not None or self._bus is None or not self._libpath:
+        if uid is None or self._rebuilding is not None or self._bus is None or self._library is None:
             return
         if self._row is not None and not os.path.isfile(self._row.path or ""):
             self.lbl_rebuild.setText(tr("The audio file is not there: the fingerprints cannot be made again."))
@@ -318,8 +281,8 @@ class SearchIndexPanel(QWidget):
         self._rebuilding, self._asked_again = uid, False
         self.btn_rebuild.setEnabled(False)
         self.lbl_rebuild.setText(tr("Taking the track out of the indexes…"))
-        threading.Thread(target=_drop, args=(self._libpath, uid, self._dropped), name="rebuild-fingerprints",
-                         daemon=True).start()
+        self._library.write(jobs.drop_from_indexes, [uid], done=lambda _r: self._on_dropped(uid, ""),
+                            failed=lambda exc: self._on_dropped(uid, str(exc)))
 
     def _on_dropped(self, uid: str, error: str) -> None:
         if error:
@@ -342,9 +305,8 @@ class SearchIndexPanel(QWidget):
             if self._row is not None:
                 self._show_index_state()
             return
-        self._checking = True       # whether it was indexed: read on a thread (_on_state)
-        threading.Thread(target=_state, args=(self._libpath, uid, self._dropped), name="index-state",
-                         daemon=True).start()
+        self._checking = True       # whether it was indexed: read by the library's owner (_on_state)
+        self._read_state(uid)
 
     def _on_index_failed(self, _run, error: str) -> None:
         if self._rebuilding is None:

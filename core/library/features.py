@@ -3,7 +3,7 @@ import os
 from typing import Any, Dict, Optional
 import numpy as np
 
-from core.library_handler import _canonical_uuid4
+from core.library.db import _canonical_uuid4
 from utils.atomic_io import atomic_output_path
 
 def _ensure_dir(d: str) -> str:

@@ -147,12 +147,13 @@ class MainPane(QtWidgets.QWidget):
     the library) show where they would load (drop_zone_at / show_drop_zone); the window loads them dropped there,
     and the library's own drop only analyzes."""
 
-    def __init__(self, bus: EventBus, model, tl, cfg: config):
+    def __init__(self, bus: EventBus, model, tl, cfg: config, library):
         super().__init__()
         self.bus = bus
         self.model = model
         self.tl = tl
         self.cfg = cfg
+        self.library = library      # the library's owner (core.library.service)
         self.current_time = 0.0
         # the edit pages emphasized (EditPanel, while unlocked), for the views created later
         self._edit_focus: frozenset = frozenset()
@@ -188,7 +189,7 @@ class MainPane(QtWidgets.QWidget):
         self._init_header_ui()
 
         # Library
-        self.lib = LibraryWidget(bus, self.cfg, model=self.model)
+        self.lib = LibraryWidget(bus, self.cfg, library, model=self.model)
 
         # Layout
         v = QtWidgets.QVBoxLayout(self)
@@ -261,7 +262,7 @@ class MainPane(QtWidgets.QWidget):
         top_row.addWidget(self.track_info, 1, QtCore.Qt.AlignVCenter)
 
         # the edit panel sits in the track info header, between the info and the deck
-        self.track_edit = EditPanel(bus=self.bus, model=self.model)
+        self.track_edit = EditPanel(bus=self.bus, model=self.model, library=self.library)
         self.track_info.editor_slot.addWidget(self.track_edit, 0, QtCore.Qt.AlignVCenter)
         self.track_edit.set_metronome_checked(self._metronome_enabled())
         # more edit pages side by side when the header has room for them

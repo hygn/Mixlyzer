@@ -4,7 +4,6 @@ merged into another (two entries of one work), or deleted with its tie-ups. Writ
 Rekordbox XML's comments follow."""
 from __future__ import annotations
 
-import os
 from typing import Callable, Optional
 
 from PySide6.QtCore import QTimer, Qt
@@ -16,7 +15,8 @@ from PySide6.QtWidgets import (
 from core import reading, tieup
 from core.event_bus import EventBus
 from core.i18n import tr, tr_n
-from core.library_handler import LibraryDB
+from core.library import jobs
+from core.library.service import LibraryService
 from ui.tieup_editor import FIND_PAUSE_MS, LANG, _TextTable
 
 ALL = ""    # the category filter's "all"
@@ -25,12 +25,14 @@ ALL = ""    # the category filter's "all"
 class WorksWindow(QDialog):
     """The works (the module)."""
 
-    def __init__(self, bus: Optional[EventBus], cfg: Callable[[], object], parent=None):
+    def __init__(self, bus: Optional[EventBus], cfg: Callable[[], object], library: LibraryService, parent=None):
+        """``library``: where the works are read and written (core.library.service)."""
         super().__init__(parent)
         self.setWindowTitle(tr("Tie-up Works"))
         self.setWindowFlag(Qt.Window, True)
         self._bus = bus
         self._cfg = cfg
+        self._library = library
         self._works: dict[str, tieup.Work] = {}
         self._uses: dict[str, int] = {}
         self._keys: list = []
@@ -131,14 +133,6 @@ class WorksWindow(QDialog):
         self._show(None)
 
     # the library
-    def _db(self) -> LibraryDB:
-        cfg = self._cfg()
-        s = cfg.searchconfig
-        db = LibraryDB(os.path.join(cfg.libconfig.libpath, "library.db"), reading_languages=s.db_languages,
-                       han_run=s.han_run())
-        db.connect()
-        return db
-
     def show_works(self) -> None:
         """Shown (raised when open) with the works as stored."""
         self._load()
@@ -148,14 +142,11 @@ class WorksWindow(QDialog):
         self.ed_find.setFocus(Qt.OtherFocusReason)
 
     def _load(self, select: Optional[str] = None) -> None:
-        db = self._db()
-        try:
-            self._works = {w.id: w for w in tieup.works(db.conn)}
-            self._uses = {w: int(n) for w, n in db.conn.execute(
-                "SELECT work_id, COUNT(DISTINCT track_uid) FROM tieup GROUP BY work_id;")}
-            self._keys = tieup.work_keys(db.conn)
-        finally:
-            db.close()
+        """The works read on the library thread, listed when they come."""
+        self._library.read(jobs.tieup_catalog, done=lambda catalog: self._loaded(catalog, select))
+
+    def _loaded(self, catalog: tieup.Catalog, select: Optional[str]) -> None:
+        self._works, self._uses, self._keys = catalog.works, catalog.uses, catalog.keys
         self._fill(select if select is not None else (self._current.id if self._current else None))
 
     def _found(self) -> list[tieup.Work]:
@@ -218,28 +209,27 @@ class WorksWindow(QDialog):
         self._show(self._works.get(work_id) if work_id else None)
 
     def _show(self, w: Optional[tieup.Work]) -> None:
-        """The work in the editor, as stored (its references and tracks read)."""
-        tracks: list[str] = []
-        if w is not None:
-            db = self._db()
-            try:
-                w = tieup.work(db.conn, w.id) or w
-                uids = tieup.work_tracks(db.conn, w.id)
-                titles = dict(db.conn.execute(
-                    f"SELECT uid, title FROM tracks WHERE uid IN ({','.join('?' * len(uids))});", uids)) if uids else {}
-                tracks = sorted((titles.get(u) or u for u in uids), key=str.casefold)
-            finally:
-                db.close()
+        """The work in the editor, as stored (the catalog's); its tracks read on the library thread."""
         self._current = w
         self.cmb_category.setCurrentIndex(max(0, self.cmb_category.findData(w.category if w else "other")))
         self.tbl_titles.set_values(w.titles if w else [])
         self.tbl_aliases.set_values(w.aliases if w else [])
         self.tbl_urls.set_values(w.urls if w else [])
         self.list_tracks.clear()
-        self.list_tracks.addItems(tracks)
         for widget in (self.cmb_category, self.tbl_titles, self.tbl_aliases, self.tbl_urls, self.btn_save,
                        self.btn_revert, self.btn_merge, self.btn_delete):
             widget.setEnabled(w is not None)
+        if w is not None:
+            work_id = w.id
+            self._library.read(jobs.work_tracks, work_id, done=lambda uids: self._show_tracks(work_id, uids))
+
+    def _show_tracks(self, work_id: str, uids: list[str]) -> None:
+        if self._current is None or self._current.id != work_id:
+            return
+        snap = self._library.snapshot
+        self.list_tracks.clear()
+        self.list_tracks.addItems(sorted(((snap.track(u).title if snap.track(u) else "") or u for u in uids),
+                                         key=str.casefold))
 
     def _edited(self) -> tieup.Work:
         return tieup.Work(self._current.id, str(self.cmb_category.currentData()), self.tbl_titles.values(),
@@ -252,39 +242,37 @@ class WorksWindow(QDialog):
         return (e.category, e.titles, e.aliases, e.urls) != (w.category, list(w.titles), list(w.aliases), list(w.urls))
 
     def _written(self, tracks: list[str], select: Optional[str]) -> None:
-        """After a write: the works read again, the library and the Rekordbox XML's comments of the tracks."""
+        """After a write (the library's owner showed it): the works read again, the Rekordbox XML's comments of the
+        tracks."""
         self._load(select)
         if self._bus is None:
             return
-        db = self._db()
-        try:
-            lib_full = db.list_all()
-        finally:
-            db.close()
-        self._bus.sig_lib_updated.emit(lib_full)
         for uid in tracks:
             self._bus.sig_rekordbox_sync_track_requested.emit(str(uid))
 
     def _save(self, reselect: bool = True) -> bool:
+        """The work as edited, written on the library thread (checked here first: a title, ll-RR languages)."""
         if self._current is None:
             return True
         w = self._edited()
         if not w.titles:
             QMessageBox.warning(self, tr("Tie-up Works"), tr("Give the work a title."))
             return False
-        s = self._cfg().searchconfig
-        db = self._db()
-        try:
-            with db.tx():
-                tieup.save_work(db.conn, w, s.db_languages, s.han_run())
-                tracks = tieup.work_tracks(db.conn, w.id)
-        except ValueError as exc:       # a language not ll-RR
-            QMessageBox.warning(self, tr("Tie-up Works"), str(exc))
+        bad = [lang for lang, _t in w.titles if not tieup.is_lang(lang)] + \
+              [lang for _k, lang, _a in w.aliases if not tieup.is_lang(lang)]
+        if bad:
+            QMessageBox.warning(self, tr("Tie-up Works"),
+                                tr("A language is written as ko-KR (language-REGION): {code}").format(code=bad[0]))
             return False
-        finally:
-            db.close()
-        self._current = w
-        self._written(tracks, w.id if reselect else self._picked_id())
+        before, self._current = self._current, w      # meanwhile stored as edited (nothing counts as changed)
+        select = w.id if reselect else self._picked_id()
+
+        def refused(exc: Exception) -> None:
+            if self._current is w:
+                self._current = before
+            QMessageBox.warning(self, tr("Tie-up Works"), str(exc))
+
+        self._library.write(jobs.save_work, w, done=lambda tracks: self._written(tracks, select), failed=refused)
         return True
 
     def _merge(self) -> None:
@@ -319,15 +307,9 @@ class WorksWindow(QDialog):
             QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
         if answer != QMessageBox.Yes:
             return
-        s = self._cfg().searchconfig
-        db = self._db()
-        try:
-            with db.tx():
-                moved = tieup.merge_works(db.conn, keep, self._current.id, s.db_languages, s.han_run())
-        finally:
-            db.close()
+        drop = self._current.id
         self._current = None
-        self._written(moved, keep)
+        self._library.write(jobs.merge_works, keep, drop, done=lambda moved: self._written(moved, keep))
 
     def _delete(self) -> None:
         if self._current is None:
@@ -341,14 +323,9 @@ class WorksWindow(QDialog):
             QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
         if answer != QMessageBox.Yes:
             return
-        db = self._db()
-        try:
-            with db.tx():
-                tracks = tieup.delete_work(db.conn, self._current.id)
-        finally:
-            db.close()
+        work_id = self._current.id
         self._current = None
-        self._written(tracks, None)
+        self._library.write(jobs.delete_work, work_id, done=lambda tracks: self._written(tracks, None))
 
     def reject(self) -> None:
         self.close()        # Esc: asked about the changes as a close is

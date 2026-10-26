@@ -78,12 +78,16 @@ _OPTIMIZER_LOADERS: dict[str, Callable[[], _OptimizerDefinition]] = {
 def _optimizer_process_entry(
     process_group: str,
     jobs: tuple[dict[str, object], ...],
+    tracks: tuple[dict, ...],
     queue: Any,
 ) -> None:
-    """Execute all jobs for one optimizer run inside one child process."""
+    """Execute all jobs for one optimizer run inside one child process. ``tracks``: the library's tracks as its owner
+    gave them (core.library.jobs.training_tracks), what the optimizers list their tracks from."""
     install_parent_watchdog()
     loaded: dict[str, _OptimizerDefinition] = {}
     try:
+        from optimizer import library_tracks
+        library_tracks.use(tracks)
         total = len(jobs)
         for index, job in enumerate(jobs, start=1):
             optimizer_name = str(job["optimizer_name"])
@@ -137,15 +141,17 @@ class OptimizerWorker(SpawnProcessWorker):
         self,
         process_group: str,
         jobs: list[dict[str, object]],
+        tracks: list[dict],
         parent: QtCore.QObject | None = None,
     ) -> None:
+        """``tracks``: the library's tracks for this run (core.library.jobs.training_tracks)."""
         self._process_group = str(process_group)
         self._jobs = tuple(dict(job) for job in jobs)
         self._results: list[object] = []
         self._error_emitted = False
         super().__init__(
             target=_optimizer_process_entry,
-            args=(self._process_group, self._jobs),
+            args=(self._process_group, self._jobs, tuple(dict(t) for t in tracks)),
             # Optimizers create ProcessPoolExecutor children for feature caches.
             daemon=False,
             process_name=f"Mixlyzer-{self._process_group}-optimizer",

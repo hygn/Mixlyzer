@@ -1,6 +1,7 @@
 """The variants' index, `{libpath}/variants.db`: kept apart from library.db because it is made from the analysis's
-features (never edited by the user). Written by the analysis (each track it analyzes) and Index Now, several
-processes at once (SQLite serializes them; a writer waits up to WRITE_WAIT_SEC); read by the library's Variants.
+features (never edited by the user). Its SQL, used by the library's owner alone (core.library.jobs: an analysis
+stored, Index Now, a track removed; its relations read into the snapshot); the relations themselves are
+core.variants.relations'.
 
 Each fingerprint carries its method (fingerprint.METHOD: the algorithm and the analysis's features it reads), so a
 method's change leaves the index as it is: a track is fingerprinted by the current method when it is analyzed or
@@ -11,12 +12,11 @@ Tables: variant_method (id, name); variant_song (id, uid, method, the fingerprin
 hash, song, frame), clustered by method and hash; variant_pair (a, b: uids, a < b; the method that found it; the
 relation, b's to a, and the share of each covered by the other's material).
 
-A track is stored first, then queried against all stored (itself left out), each in its own transaction: of two
-tracks indexed at once by two processes, the one stored second finds the other.
+A track is stored first, then queried against all stored (itself left out): of two tracks, the one stored second
+finds the other.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
 import os
 import sqlite3
 from typing import Mapping
@@ -24,6 +24,7 @@ from typing import Mapping
 import numpy as np
 
 from core.variants import fingerprint as fpm
+from core.variants.relations import Pair
 
 FILE_NAME = "variants.db"
 WRITE_WAIT_SEC = 60.0
@@ -42,16 +43,6 @@ CREATE TABLE IF NOT EXISTS variant_pair (
     WITHOUT ROWID;
 CREATE INDEX IF NOT EXISTS variant_pair_b ON variant_pair (b);
 """
-
-
-@dataclass(frozen=True)
-class Pair:
-    a: str
-    b: str
-    kind: str          # fingerprint.relation's: b's to a
-    cover_a: float
-    cover_b: float
-    full: float
 
 
 def path_for(libpath: str) -> str:
@@ -245,24 +236,3 @@ def pairs(path: str) -> list[Pair]:
     for row in rows:
         out.setdefault((row[0], row[1]), Pair(*row))
     return list(out.values())
-
-
-def groups(found: list[Pair], uids: set[str]) -> list[list[str]]:
-    """The tracks of ``uids`` joined by relations into groups (versions of one song), two tracks or more each."""
-    parent: dict[str, str] = {}
-
-    def root(u: str) -> str:
-        while parent.setdefault(u, u) != u:
-            parent[u] = parent[parent[u]]
-            u = parent[u]
-        return u
-
-    for p in found:
-        if p.a in uids and p.b in uids:
-            ra, rb = root(p.a), root(p.b)
-            if ra != rb:
-                parent[max(ra, rb)] = min(ra, rb)
-    members: dict[str, list[str]] = {}
-    for u in parent:
-        members.setdefault(root(u), []).append(u)
-    return [sorted(g) for g in members.values() if len(g) > 1]

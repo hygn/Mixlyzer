@@ -27,14 +27,8 @@ from utils.cue_points import (
 )
 from utils.phrases import build_phrase_segments_np
 from core.audio.decoder import COVER_MAX_BYTES, decode_to_memmap, get_total_samples, read_cover, read_metadata
-from core.library_handler import LibraryDB
 from core.audio.tag_writer import TagWriteError, read_fields, read_picture, tag_format, tag_sources
-from core.analysis_lib_handler import FeatureNPZStore
-from core.thumbnails import save_thumbnail
-from core.music_search import store as music_store
 from core.music_search.indexing import index_audio
-from core.variants import store as variant_store
-from core import tieup
 from core.config import ANALYSIS_SAMPLE_RATE, config
 from core.i18n import tr
 from core.taskmanager import taskmanager
@@ -191,50 +185,13 @@ def read_tag_sources(path: str, title: str, artist: str, album: str, comment: st
         return {}
 
 
-def _merge_track_properties(properties: dict, track, *, preserve_existing: bool) -> dict:
-    if not (preserve_existing and track):
-        return properties
-    merged = dict(properties)
-    for key in ("album", "artist", "rating", "title", "comment"):
-        merged[key] = getattr(track, key, merged.get(key))
-    return merged
-
-
-def _persist_analysis_result(
-    library: LibraryDB,
-    store: FeatureNPZStore,
-    features: dict,
-    properties: dict,
-    *,
-    bpm_segments=None,
-    key_segments=None,
-    phrase_sections=None,
-):
-    uid = library.upsert_meta(properties)
-    library.conn.commit()
-    properties["uid"] = uid
-    if properties.get("tag_sources"):
-        library.set_tag_sources(uid, properties["tag_sources"])
-    if bpm_segments is not None:
-        library.replace_bpm_segments(uid, bpm_segments)
-        library.conn.commit()
-    if key_segments is not None:
-        library.replace_key_segments(uid, key_segments)
-        library.conn.commit()
-    if phrase_sections is not None:
-        library.replace_phrase_index(uid, phrase_sections)
-        library.conn.commit()
-    store.save(uid, dict(features))
-    save_thumbnail(store.base_dir, uid, getAlbumArt(properties.get("path")))
-    return library.list_all()
-
 # the picture formats a cover is read in (by its first bytes): named to Qt, so no other image reader sees it
 _COVER_FORMATS = ((b"\xff\xd8\xff", "JPEG"), (b"\x89PNG\r\n\x1a\n", "PNG"), (b"GIF8", "GIF"), (b"BM", "BMP"))
 
 
-def getAlbumArt(path) -> Optional[QtGui.QImage]:
-    """The file's cover picture (JPEG, PNG, GIF, BMP or WebP), None when it has none: read as the tags are
-    (``_file_fields``), this app's reader first, else FFmpeg's."""
+def cover_data(path) -> Optional[tuple[bytes, str]]:
+    """The file's cover picture as stored (its bytes and their format: JPEG, PNG, GIF, BMP or WebP), None when it has
+    none: read as the tags are (``_file_fields``), this app's reader first, else FFmpeg's."""
     if not path:
         return None
     try:
@@ -248,28 +205,20 @@ def getAlbumArt(path) -> Optional[QtGui.QImage]:
     fmt = next((name for magic, name in _COVER_FORMATS if data.startswith(magic)), None)
     if fmt is None and data[:4] == b"RIFF" and data[8:12] == b"WEBP":
         fmt = "WEBP"
-    if fmt is None:
+    return (bytes(data), fmt) if fmt is not None else None
+
+
+def getAlbumArt(path) -> Optional[QtGui.QImage]:
+    """The file's cover picture (cover_data's, decoded), None when it has none."""
+    cover = cover_data(path)
+    if cover is None:
         return None
-    img = QtGui.QImage.fromData(data, fmt)
+    img = QtGui.QImage.fromData(*cover)
     return None if img.isNull() else img
 
 def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:int, force_analyze: bool = False):
-    l = LibraryDB(os.path.join(config.libconfig.libpath, "library.db"),
-                  reading_languages=config.searchconfig.db_languages, han_run=config.searchconfig.han_run())
-    l.connect()
-    track = l.get(path)
-    feature_store = FeatureNPZStore(base_dir=config.libconfig.libpath, compressed=True)
-    if (track is not None) and track.uid and (not force_analyze):
-        try:
-            feat = feature_store.load(track.uid)
-            l.close()
-            metadata = track.to_meta()
-            features_properties = {"features": feat, "properties": metadata, "update_db": False, "taskid":taskid}
-            yield features_properties
-            return
-        except (FileNotFoundError, ValueError):
-            pass
-    
+    """The track's analysis, in a worker process: it reads the audio only, never the library. Its last item is the
+    results with what the library's owner stores of them (``store``: store_analysis, in the GUI process)."""
     title, artist, album, comment = extract_tags(path)
     sources = read_tag_sources(path, title, artist, album, comment)
     yield {"status": tr("Loading")}
@@ -550,64 +499,13 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
         "file_size": int(fsize),
         "tag_sources": sources,
     }
-    properties = _merge_track_properties(properties, track, preserve_existing=bool(force_analyze and track is not None))
-    if track and track.uid:
-        properties["uid"] = track.uid
     bpm_segments = build_bpm_segments(features.get("tempo_segments"))
     key_segments_db = build_key_segments(features.get("key_segments"))
     phrase_sections = build_phrase_index_rows(phrase_segments, bpm_segments, key_segments_db)
-    features_properties = {"features": features, "properties": properties, "update_db": True, "taskid":taskid}
-    yield {"status": tr("Saving")}
-    print("[Analyzer] Saving Results")
-    taskmgr.updatetask(taskid, tr("Saving Result"), 0.92)
-    try:
-        lib_full = _persist_analysis_result(
-            l,
-            feature_store,
-            features,
-            properties,
-            bpm_segments=bpm_segments,
-            key_segments=key_segments_db,
-            phrase_sections=phrase_sections,
-        )
-    finally:
-        l.close()
-    if music_entry is not None:
-        try:
-            con = music_store.open_writer(music_store.path_for(config.libconfig.libpath))
-            try:
-                with con:
-                    music_store.put(con, properties["uid"], int(fsize), float(fmtime), music_entry)
-            finally:
-                con.close()
-        except Exception as exc:
-            print(f"[Music search] index not written: {exc}")
-    # the variants' fingerprint (core.variants: from the beats and the overview's bands, ~20 ms), queried against
-    # the library's; a failure leaves the track out of the variants, never the analysis undone
-    try:
-        con = variant_store.open_writer(variant_store.path_for(config.libconfig.libpath))
-        try:
-            found = variant_store.put(con, properties["uid"], features)
-        finally:
-            con.close()
-        if found:
-            print(f"[Variants] {found} found")
-    except Exception as exc:
-        print(f"[Variants] not indexed: {exc}")
-    # a new track (not in the library before this analysis) takes its versions' tie-ups (core.tieup); a failure
-    # leaves it without, never the analysis undone
-    features_properties["new_track"] = track is None
-    if track is None:
-        try:
-            added = tieup.tag_new_track(os.path.join(config.libconfig.libpath, "library.db"),
-                                        variant_store.path_for(config.libconfig.libpath), properties["uid"])
-            features_properties["tieups"] = added      # none: the GUI may look on the web (core.workflows.tieup_web)
-            if added:
-                print(f"[Tie-ups] {added} taken from its versions")
-        except Exception as exc:
-            print(f"[Tie-ups] not taken from its versions: {exc}")
-    features_properties["library"] = lib_full
     print("[Analyzer] Analysis Finished")
-    taskmgr.updatetask(taskid, tr("Finished"), 1)
-
-    yield features_properties
+    taskmgr.updatetask(taskid, tr("Saving Result"), 0.92)
+    # stored by the library's owner (core.library.jobs.store_analysis): the track's row merged with the library's (a
+    # reanalysis keeps the user's metadata), its uid given there; the cover as the file holds it (its thumbnail)
+    yield {"features": features, "properties": properties, "update_db": True, "taskid": taskid,
+           "store": {"force": bool(force_analyze), "bpm_segments": bpm_segments, "key_segments": key_segments_db,
+                     "phrase_sections": phrase_sections, "music_entry": music_entry, "cover": cover_data(path)}}

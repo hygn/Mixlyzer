@@ -2,7 +2,6 @@
 tie-up added goes to the track's versions (its Variants) too when Settings > Library says so."""
 from __future__ import annotations
 
-import os
 from typing import Callable, Optional
 import urllib.parse
 
@@ -13,11 +12,11 @@ from PySide6.QtWidgets import (
     QTableWidgetItem, QVBoxLayout, QWidget,
 )
 
-from core import reading, tieup, tieup_web
+from core import reading, tieup
 from core.config import default_cfg, searchconfig
 from core.i18n import tr, tr_n
-from core.library_handler import LibraryDB
-from core.variants import store as variant_store
+from core.library import jobs
+from core.library.service import LibraryService
 from core.workflows.tieup_web import TieupWebLookup
 from ui.config.scroll import scroll_page
 from ui.language_picker import LanguageCombo
@@ -116,14 +115,15 @@ class _TextTable(QTableWidget):
 class TieupDialog(QDialog):
     """One tie-up: its work (found by a name in any script, or a new one) and its role in it."""
 
-    def __init__(self, con, t: tieup.TieUp, settings: searchconfig, parent=None):
+    def __init__(self, catalog: tieup.Catalog, t: tieup.TieUp, settings: searchconfig, parent=None):
+        """``catalog``: the library's works (read on the library thread before the dialog opens)."""
         super().__init__(parent)
         self.setWindowTitle(tr("Tie-up"))
         self._tieup = t
         self._settings = settings
-        self._works = {w.id: w for w in tieup.works(con)}
-        self._keys = tieup.work_keys(con)
-        self._con = con
+        self._works = catalog.works
+        self._keys = catalog.keys
+        self._uses = catalog.uses
 
         # the work: typed to find one, or a new one
         self.ed_find = QLineEdit()
@@ -260,13 +260,12 @@ class TieupDialog(QDialog):
             return
         self._picked = work_id
         if work_id:
-            w = tieup.work(self._con, work_id) or self._works[work_id]
+            w = self._works[work_id]
             self.cmb_category.setCurrentIndex(max(0, self.cmb_category.findData(w.category)))
             self.tbl_titles.set_values(w.titles)
             self.tbl_aliases.set_values(w.aliases)
             self.tbl_urls.set_values(w.urls)
-            uses = self._con.execute("SELECT COUNT(DISTINCT track_uid) FROM tieup WHERE work_id=?;",
-                                     (work_id,)).fetchone()[0]
+            uses = self._uses.get(work_id, 0)
             self.lbl_shared.setText(tr_n("Changes to the work apply to the {n} track using it.",
                                          "Changes to the work apply to the {n} tracks using it.",
                                          int(uses)).format(n=int(uses)))
@@ -340,12 +339,13 @@ class TieupBox(QGroupBox):
 
     changed = Signal(list)   # the tracks whose tie-ups changed
 
-    def __init__(self, libpath: Callable[[], Optional[str]], settings: Callable[[], searchconfig],
+    def __init__(self, library: Optional[LibraryService], settings: Callable[[], searchconfig],
                  to_versions: Callable[[], bool], parent=None):
+        """``library``: where the tie-ups are read and written (core.library.service)."""
         super().__init__(tr("Tie-ups"), parent)
         self.setToolTip(tr("<p>The works this track is used in: an anime's opening, a game's title screen, a "
                            "character song.</p>"))
-        self._libpath = libpath
+        self._library = library
         self._settings = settings
         self._to_versions = to_versions
         self._uid: Optional[str] = None
@@ -376,7 +376,7 @@ class TieupBox(QGroupBox):
         self.btn_edit.clicked.connect(self._edit)
         self.btn_remove.clicked.connect(self._remove)
         self.btn_web.clicked.connect(self._find_on_web)
-        self._web = TieupWebLookup(libpath=lambda: self._libpath() or "", settings=self._settings, parent=self)
+        self._web = TieupWebLookup(library=library, parent=self)
         self._web.found.connect(self._on_found)
         self._web.failed.connect(self._on_web_failed)
         buttons = QHBoxLayout()
@@ -390,26 +390,21 @@ class TieupBox(QGroupBox):
         layout.addWidget(self.lbl_versions)
         self.set_track(None)
 
-    def _db(self) -> Optional[LibraryDB]:
-        libpath = self._libpath()
-        if not libpath:
-            return None
-        s = self._settings()
-        db = LibraryDB(os.path.join(libpath, "library.db"), reading_languages=s.db_languages, han_run=s.han_run())
-        db.connect()
-        return db
-
     def set_track(self, uid: Optional[str]) -> None:
+        """The track's tie-ups, read on the library thread (shown when they come, while it is still shown); its
+        versions from the library's snapshot."""
         self._uid = uid or None
-        self._tieups = []
-        self._versions = set()
-        db = self._db() if self._uid else None
-        if db is not None:
-            try:
-                self._tieups = tieup.track_tieups(db.conn, self._uid)
-            finally:
-                db.close()
-            self._versions = tieup.versions_of(self._uid, variant_store.pairs(variant_store.path_for(self._libpath())))
+        self._show(self._uid, [])
+        if self._uid is not None and self._library is not None:
+            u = self._uid
+            self._library.read(jobs.track_tieups, u, done=lambda found: self._show(u, found))
+
+    def _show(self, uid: Optional[str], tieups: list) -> None:
+        if uid != self._uid:
+            return
+        self._tieups = list(tieups)
+        self._versions = tieup.versions_of(uid, self._library.snapshot.variant_pairs) \
+            if uid is not None and self._library is not None else set()
         self.table.setRowCount(len(self._tieups))
         roles = {code: name for code, name, _short in tieup.ROLES}
         for r, t in enumerate(self._tieups):
@@ -426,7 +421,7 @@ class TieupBox(QGroupBox):
             if self._to_versions() else
             tr_n("{n} other version of this track (Variants).", "{n} other versions of this track (Variants).",
                  n).format(n=n))
-        enabled = self._uid is not None and self._libpath() is not None
+        enabled = self._uid is not None and self._library is not None
         self.btn_add.setEnabled(enabled)
         self.btn_edit.setEnabled(enabled and bool(self._tieups))
         self.btn_remove.setEnabled(enabled and bool(self._tieups))
@@ -437,22 +432,26 @@ class TieupBox(QGroupBox):
         return self._tieups[r] if 0 <= r < len(self._tieups) else None
 
     def _open(self, t: tieup.TieUp, old: Optional[tuple] = None) -> None:
-        db = self._db()
-        if db is None or self._uid is None:
+        """The dialog, once the library's works are read (on the library thread); what it gives written there."""
+        if self._library is None or self._uid is None:
             return
-        try:
-            dialog = TieupDialog(db.conn, t, self._settings(), self)
-            if dialog.exec() != QDialog.Accepted:
-                return
-            s = self._settings()
-            versions = self._versions if old is None and self._to_versions() else ()
-            with db.tx():
-                written = tieup.save_tieup(db.conn, self._uid, dialog.tieup(), old, versions,
-                                           s.db_languages, s.han_run())
-        finally:
-            db.close()
+        uid = self._uid
+        self._library.read(jobs.tieup_catalog, done=lambda catalog: self._edit_in(uid, catalog, t, old))
+
+    def _edit_in(self, uid: str, catalog: tieup.Catalog, t: tieup.TieUp, old: Optional[tuple]) -> None:
+        if uid != self._uid:
+            return
+        dialog = TieupDialog(catalog, t, self._settings(), self)
+        if dialog.exec() != QDialog.Accepted or uid != self._uid:
+            return
+        edited = dialog.tieup()
+        versions = tuple(self._versions) if old is None and self._to_versions() else ()
+        self._library.write(jobs.save_tieup, uid, edited, old, versions, done=self._written)
+
+    def _written(self, tracks: list) -> None:
+        """Tie-ups written (the library's snapshot has them): shown again, the tracks told (changed)."""
         self.set_track(self._uid)
-        self.changed.emit(written)
+        self.changed.emit(list(tracks))
 
     def _add(self) -> None:
         self._open(tieup.TieUp())
@@ -473,7 +472,7 @@ class TieupBox(QGroupBox):
     def _web_done(self) -> None:
         self._looking_up = None
         self.btn_web.setText(tr("Find on the Web"))
-        self.btn_web.setEnabled(self._uid is not None and self._libpath() is not None)
+        self.btn_web.setEnabled(self._uid is not None and self._library is not None)
 
     def _on_web_failed(self, uid: str, error: str) -> None:
         self._web_done()
@@ -488,48 +487,29 @@ class TieupBox(QGroupBox):
             QMessageBox.information(self, tr("Tie-ups on the Web"), tr("Wikipedia has no tie-up for this track."))
             return
         dialog = WebCandidatesDialog(candidates, self)
-        if dialog.exec() != QDialog.Accepted or not dialog.chosen():
+        if dialog.exec() != QDialog.Accepted or not dialog.chosen() or self._library is None:
             return
-        db = self._db()
-        if db is None:
-            return
-        s = self._settings()
         tracks = [uid] + (sorted(self._versions) if self._to_versions() else [])
-        try:
-            with db.tx():
-                for c in dialog.chosen():
-                    for track in tracks:
-                        tieup_web.add(db.conn, track, c, s.db_languages, s.han_run())
-        finally:
-            db.close()
-        self.set_track(uid)
-        self.changed.emit(tracks)
+        found = [c.as_tieup() for c in dialog.chosen()]
+        self._library.write(jobs.add_found_tieups, tracks, found, done=self._written)
 
     def _remove(self) -> None:
         t = self._selected()
-        db = self._db()
-        if t is None or db is None:
+        if t is None or self._library is None:
             return
-        try:
-            with db.tx():
-                tieup.delete_tieup(db.conn, self._uid, t.key())
-        finally:
-            db.close()
-        self.set_track(self._uid)
-        self.changed.emit([self._uid])
+        self._library.write(jobs.delete_tieup, self._uid, t.key(), done=self._written)
 
 
 class TieupPanel(QWidget):
     """The track panel's Tie-ups tab: the track's tie-ups (TieupBox, written at once); the library and the Rekordbox
     XML's comments follow each change."""
 
-    def __init__(self, bus=None, libpath: Optional[str] = None, settings: Optional[Callable[[], searchconfig]] = None,
-                 to_versions: Optional[Callable[[], bool]] = None):
+    def __init__(self, bus=None, library: Optional[LibraryService] = None,
+                 settings: Optional[Callable[[], searchconfig]] = None, to_versions: Optional[Callable[[], bool]] = None):
         super().__init__()
         self._bus = bus
-        self._libpath = libpath
         self._uid: Optional[str] = None
-        self.box = TieupBox(lambda: self._libpath, settings or (lambda: default_cfg().searchconfig),
+        self.box = TieupBox(library, settings or (lambda: default_cfg().searchconfig),
                             to_versions or (lambda: default_cfg().libconfig.tieup_to_versions))
         self.box.changed.connect(self._on_changed)
         body = QWidget()
@@ -548,15 +528,9 @@ class TieupPanel(QWidget):
         self.box.set_track(self._uid)
 
     def _on_changed(self, uids: list) -> None:
-        """The tracks' tie-ups were written: the library shows them, the Rekordbox XML takes their comments."""
-        if self._bus is None or not self._libpath:
+        """The tracks' tie-ups were written (the library's owner showed them): the Rekordbox XML takes their
+        comments."""
+        if self._bus is None:
             return
-        db = LibraryDB(os.path.join(self._libpath, "library.db"))
-        db.connect()
-        try:
-            lib_full = db.list_all()
-        finally:
-            db.close()
-        self._bus.sig_lib_updated.emit(lib_full)
         for uid in uids:
             self._bus.sig_rekordbox_sync_track_requested.emit(str(uid))

@@ -1,7 +1,8 @@
 """The music search's index, `{libpath}/music_search.db`: kept apart from library.db because it is made from the
 audio alone (rebuilt whenever its method changes, never edited by the user) and large (the landmarks, about 130 KB a
-song). Written by the analysis (each track it analyzes) and Index Now, several processes at once (SQLite serializes
-them; a writer waits up to WRITE_WAIT_SEC); read by the search (WAL: reads go on while they write).
+song). Its SQL, used by the library's owner alone (core.library.jobs: an analysis stored, Index Now, a track removed);
+the search reads the landmarks through a `LandmarkIndex` the owner opens and lends it (WAL: reads go on while the
+owner writes).
 
 Tables: meta (key, value: the methods it was made with); melody (uid, the file's size and time it was made from,
 the reference lines at each frame size: lines x frames u8); landmark_song (id, uid) and landmark (hash, song, t),
@@ -107,3 +108,37 @@ def melody_index(con: sqlite3.Connection) -> MelodyIndex:
     for uid, k, *blobs in con.execute(f"SELECT uid, lines, {', '.join(_COLUMNS.values())} FROM melody ORDER BY uid"):
         idx.add(uid, {f: np.frombuffer(b, np.uint8).reshape(int(k), -1) for f, b in zip(_COLUMNS, blobs)})
     return idx.freeze()
+
+
+class LandmarkIndex:
+    """The landmarks as the search reads them (core.music_search.landmarks), on a read-only connection of their own:
+    the owner opens it (core.library.jobs.open_music_search) and lends it to the search's thread."""
+
+    def __init__(self, con: sqlite3.Connection):
+        self._con = con
+
+    def rows(self, hashes: np.ndarray) -> np.ndarray:
+        """The index's (hash, song, t) rows of ``hashes`` (each looked up once)."""
+        con = self._con
+        con.execute("CREATE TEMP TABLE IF NOT EXISTS qh (hash INTEGER PRIMARY KEY)")
+        con.execute("DELETE FROM qh")
+        con.executemany("INSERT INTO qh VALUES (?)", ((h,) for h in np.unique(hashes).tolist()))
+        # CROSS JOIN keeps this order (SQLite would otherwise scan the whole index against the query's few hashes)
+        return np.array(con.execute("SELECT l.hash, l.song, l.t FROM qh CROSS JOIN landmark l ON l.hash = qh.hash")
+                        .fetchall(), np.int64).reshape(-1, 3)
+
+    def songs(self) -> dict[int, str]:
+        """The songs' ids in the landmark rows -> their uids."""
+        return dict(self._con.execute("SELECT id, uid FROM landmark_song"))
+
+    def close(self) -> None:
+        self._con.close()
+
+
+def open_search(path: str) -> tuple[LandmarkIndex, MelodyIndex] | None:
+    """The search's view of the index: its landmarks (a read-only connection for the search's thread) and every
+    song's reference lines; None while there is no index of this method."""
+    con = open_reader(path)
+    if con is None:
+        return None
+    return LandmarkIndex(con), melody_index(con)

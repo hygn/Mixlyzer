@@ -4,7 +4,6 @@ import copy
 import html
 import json
 from pathlib import Path
-import threading
 from typing import List, Optional
 from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtMultimedia import QMediaDevices
@@ -12,8 +11,9 @@ import os
 from utils.labels import idx_to_labels
 from utils.phrases import PHRASE_LABELS, phrase_display_name
 from core import os_support, reading
-from core.library_handler import TrackRow, LibraryDB
-from core.analysis_lib_handler import FeatureNPZStore
+from core.library import jobs
+from core.library.records import TrackRow
+from core.library.service import LibraryService
 from core.event_bus import EventBus
 from core.config import config, load_cfg
 from core.model import DataModel
@@ -27,31 +27,9 @@ from ui.music_search import DeckSeekAfterLoad, MusicListener, MusicSearchBar, cl
 from ui.theme import current_theme
 from ui.edit_panel.key_picker import KeyPickButton
 from ui.edit_panel.flash import flash
-from core.thumbnails import delete_thumbnail, load_thumbnail
-from core.variants import fingerprint as variant_fp, store as variant_store
-from core.music_search import store as music_store
+from core.variants import fingerprint as variant_fp, relations as variant_relations
 from core import tieup
 from core.i18n import tr, tr_mark, tr_n
-
-
-def _drop_from_indexes(libpath: str, uids: list[str]) -> None:
-    """Removed tracks out of the Variants' index (their fingerprints and relations) and Search by Music's; a failure
-    leaves them for Index Now to drop."""
-    for name, path, open_writer, drop in (
-            ("Variants", variant_store.path_for(libpath), variant_store.open_writer, variant_store.drop),
-            ("Search by Music", music_store.path_for(libpath), music_store.open_writer, music_store.drop)):
-        if not os.path.isfile(path):
-            continue
-        try:
-            con = open_writer(path)
-            try:
-                with con:
-                    for uid in uids:
-                        drop(con, uid)
-            finally:
-                con.close()
-        except Exception as exc:
-            print(f"[Library] removed tracks left in the {name} index: {exc}")
 
 
 def _mmss(sec: float) -> str:
@@ -169,31 +147,39 @@ class FastDelegate(QtWidgets.QStyledItemDelegate):
 
     _CACHE_LIMIT = 4000
 
-    def __init__(self, parent=None, *, art_column: int = -1, libpath: str = ""):
+    def __init__(self, parent=None, *, art_column: int = -1, library: Optional[LibraryService] = None):
+        """``library``: the thumbnails' owner (read on its thread, painted when they come)."""
         super().__init__(parent)
         self._cache: dict = {}
         self._art_column = int(art_column)
-        self._libpath = libpath
-        self._art: dict = {}  # (uid, width, dpr) -> QPixmap or None (no thumbnail)
+        self._library = library
+        self._art: dict = {}  # (uid, width, dpr) -> QPixmap or None (no thumbnail; or asked, not come yet)
 
     def clear_cache(self) -> None:
         self._cache.clear()
         self._art.clear()
 
     def _art_pixmap(self, uid: str, width: int, dpr: float):
-        """The track's thumbnail scaled to ``width`` (logical px), or None."""
+        """The track's thumbnail scaled to ``width`` (logical px), or None (none, or still being read)."""
         key = (uid, width, dpr)
         if key not in self._art:
             if len(self._art) > self._CACHE_LIMIT:
                 self._art.clear()
-            image = load_thumbnail(self._libpath, uid) if uid else None
-            pm = None
-            if image is not None:
-                pm = QtGui.QPixmap.fromImage(image.scaledToWidth(
-                    max(1, round(width * dpr)), QtCore.Qt.SmoothTransformation))
-                pm.setDevicePixelRatio(dpr)
-            self._art[key] = pm
+            self._art[key] = None
+            if uid and self._library is not None:
+                self._library.read(jobs.thumbnail, uid, max(1, round(width * dpr)),
+                                   done=lambda image: self._art_came(key, image))
         return self._art[key]
+
+    def _art_came(self, key: tuple, image) -> None:
+        if image is None or key not in self._art:
+            return
+        pm = QtGui.QPixmap.fromImage(image)
+        pm.setDevicePixelRatio(key[2])
+        self._art[key] = pm
+        view = self.parent()
+        if isinstance(view, QtWidgets.QAbstractItemView):
+            view.viewport().update()
 
     def paint(self, painter, option, index):
         rect = option.rect
@@ -855,17 +841,20 @@ class LibraryWidget(QtWidgets.QWidget):
             row.addWidget(widget)
         return card
 
-    def __init__(self, bus: EventBus, cfg: config, model: DataModel | None = None, parent=None):
+    def __init__(self, bus: EventBus, cfg: config, library: LibraryService, model: DataModel | None = None,
+                 parent=None):
+        """``library``: the library's reads (its snapshot) and writes, on its own thread."""
         super().__init__(parent)
         self.bus = bus
         self.cfg = cfg
+        self.library = library
         self.model = model
         self._external_sync_enabled = bool(getattr(cfg, "externalsyncconfig", None) and cfg.externalsyncconfig.enabled)
         self._all_tracks: List[Track] = []
         self._library_tracks: List[Track] = []
         self._source_kind = "library"
         self._source_value = None
-        # Variants shown: uid -> its relations (core.variants.store.Pair), uid -> its song's number
+        # Variants shown: uid -> its relations (core.variants.relations.Pair), uid -> its song's number
         self._variant_pairs: dict[str, list] = {}
         self._variant_song: dict[str, int] = {}
         self._works_window: Optional[WorksWindow] = None     # made when first opened (open_works)
@@ -955,7 +944,7 @@ class LibraryWidget(QtWidgets.QWidget):
         self._music_mode = False
         self._music_matches: list = []          # core.music_search.search.MusicMatch, best first
         self._music_saved_text = ""
-        self._music = MusicListener(bus, lambda: self.cfg, parent=self)
+        self._music = MusicListener(bus, lambda: self.cfg, self.library, parent=self)
         self._music.audio.connect(self.music_bar.wave.add)
         self._music.rate_changed.connect(self.music_bar.wave.reset)
         self._music.status.connect(self.music_bar.status.setText)
@@ -1050,7 +1039,7 @@ class LibraryWidget(QtWidgets.QWidget):
         self.table.horizontalHeader().setDefaultAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
         self.table.verticalHeader().setDefaultSectionSize(self.table.fontMetrics().height() + 8)
         self.table.setItemDelegate(FastDelegate(
-            self.table, art_column=self.HEADERS.index(self.ART_HEADER), libpath=self.cfg.libconfig.libpath))
+            self.table, art_column=self.HEADERS.index(self.ART_HEADER), library=self.library))
         art_column = self.HEADERS.index(self.ART_HEADER)
         self.table.horizontalHeader().setSectionResizeMode(art_column, QtWidgets.QHeaderView.Fixed)
         self.table.setColumnWidth(art_column, self.ART_WIDTH)
@@ -1165,11 +1154,14 @@ class LibraryWidget(QtWidgets.QWidget):
         self._loaded_uid: Optional[str] = None
         self._marked_uid: Optional[str] = None   # the uid whose rows are green
         self.bus.sig_properties_loaded.connect(self._on_properties_loaded)
-        # Index Now found new Variants: shown
-        self.bus.sig_music_index_finished.connect(lambda *_args: self.reload_from_db())
+        # Index Now found new Variants: read again and shown
+        self.bus.sig_music_index_finished.connect(lambda *_args: self.library.refresh())
 
         # the table's rows are this source's tracks (a library update changes them in place)
         self._table_source: Optional[tuple] = None
+        # the phrase / transition filters' search (on the library thread): asked, and the last answer
+        self._structured_asked: Optional[tuple] = None
+        self._structured_found: Optional[tuple] = None
         self._pending_library_rows = None
         self._library_timer = QtCore.QTimer(self)
         self._library_timer.setSingleShot(True)
@@ -1188,11 +1180,7 @@ class LibraryWidget(QtWidgets.QWidget):
 
     # Data loading
     def reload_from_db(self):
-        l = LibraryDB(os.path.join(self.cfg.libconfig.libpath, "library.db"))
-        l.connect()
-        lib_full = l.list_all()
-        l.close()
-        self.reload(lib_full)
+        self.reload(self.library.snapshot.tracks)
 
     def reload(self, data):
         """Refresh analyzed library data, then redraw the selected source."""
@@ -1204,25 +1192,15 @@ class LibraryWidget(QtWidgets.QWidget):
         self.table.viewport().update()
 
     def _tracks(self, rows) -> List[Track]:
-        """Library rows as Tracks, with their readings and tie-ups for the search."""
-        db = self._db()
-        try:
-            readings = db.all_readings()
-            tieups = tieup.track_texts(db.conn)
-        finally:
-            db.close()
-        return [row_to_track(row, readings.get(row.uid), tieups.get(row.uid)) if isinstance(row, TrackRow) else row
-                for row in rows]
+        """Library rows as Tracks, with their readings and tie-ups for the search (the library's snapshot)."""
+        snap = self.library.snapshot
+        return [row_to_track(row, snap.readings.get(row.uid), snap.tieups.get(row.uid)) if isinstance(row, TrackRow)
+                else row for row in rows]
 
     @staticmethod
     def _file_identity(path: object) -> str:
         text = os.path.expanduser(os.path.expandvars(str(path or "")))
         return os.path.normcase(os.path.realpath(os.path.abspath(text)))
-
-    def _db(self) -> LibraryDB:
-        db = LibraryDB(os.path.join(self.cfg.libconfig.libpath, "library.db"))
-        db.connect()
-        return db
 
     def _local_music_roots(self) -> list[str]:
         configured = [
@@ -1274,11 +1252,8 @@ class LibraryWidget(QtWidgets.QWidget):
         playlists_item = QtWidgets.QTreeWidgetItem([tr("Playlists")])
         playlists_item.setData(0, _SOURCE_KIND_ROLE, "playlists")
         tree.addTopLevelItem(playlists_item)
-        db = self._db()
-        try:
-            playlists = db.list_playlists()
-        finally:
-            db.close()
+        playlists = self.library.snapshot.playlists
+        self._shown_playlists = tuple((p.uid, p.name) for p in playlists)
         for playlist in playlists:
             item = QtWidgets.QTreeWidgetItem([playlist.name])
             item.setData(0, _SOURCE_KIND_ROLE, "playlist")
@@ -1364,16 +1339,10 @@ class LibraryWidget(QtWidgets.QWidget):
             default_column = "Added"
             default_order = QtCore.Qt.SortOrder.DescendingOrder
         elif self._source_kind == "playlist":
-            db = self._db()
-            try:
-                rows = db.list_playlist_tracks(str(self._source_value))
-                readings = db.all_readings()
-                tieups = tieup.track_texts(db.conn)
-            finally:
-                db.close()
+            snap = self.library.snapshot
             tracks = []
-            for position, row in rows:
-                track = row_to_track(row, readings.get(row.uid), tieups.get(row.uid))
+            for position, row in snap.playlist_tracks(str(self._source_value)):
+                track = row_to_track(row, snap.readings.get(row.uid), snap.tieups.get(row.uid))
                 track.playlist_index = position
                 track._disp_playlist_index = str(position + 1)
                 tracks.append(track)
@@ -1493,6 +1462,7 @@ class LibraryWidget(QtWidgets.QWidget):
         if data is None:
             return
         self._library_tracks = self._tracks(data)
+        self._structured_found = None      # the phrase / transition searches asked again
         resolved: dict[str, list[str]] = {}
         for track in self._library_tracks:
             playlist_uids = self._pending_playlist_paths.pop(
@@ -1500,13 +1470,10 @@ class LibraryWidget(QtWidgets.QWidget):
             )
             for playlist_uid in playlist_uids:
                 resolved.setdefault(playlist_uid, []).append(track.uid)
-        if resolved:
-            db = self._db()
-            try:
-                for playlist_uid, uids in resolved.items():
-                    db.add_playlist_tracks(playlist_uid, uids)
-            finally:
-                db.close()
+        if resolved:     # files analyzed for a playlist: into it now (the library updated again once written)
+            self.library.write(jobs.add_to_playlists, resolved)
+        if tuple((p.uid, p.name) for p in self.library.snapshot.playlists) != self._shown_playlists:
+            self._rebuild_source_tree()      # another library, or playlists changed elsewhere
         self._refresh_current_source()
 
     def set_config(self, cfg: config) -> None:
@@ -1515,8 +1482,7 @@ class LibraryWidget(QtWidgets.QWidget):
         self.cfg = cfg
         delegate = self.table.itemDelegate()
         if isinstance(delegate, FastDelegate):
-            delegate._libpath = cfg.libconfig.libpath
-            delegate.clear_cache()
+            delegate.clear_cache()      # another library's thumbnails
         if old_local != list(cfg.libconfig.local_music_directories):
             self._source_kind, self._source_value = "library", None
         if old_library != cfg.libconfig.libpath:
@@ -1670,7 +1636,10 @@ class LibraryWidget(QtWidgets.QWidget):
                     query, [k for _path, k in entries], similar=self.cb_fuzzy.isChecked()))
             conditions.append(text_paths)
 
-        conditions.extend(self._search_structured_paths())
+        structured = self._structured_conditions()
+        if structured is None:
+            return      # applied when the phrase / transition search comes
+        conditions.extend(structured)
         if not conditions:
             allowed = None
         elif self.match_toggle.match_all():
@@ -1728,76 +1697,69 @@ class LibraryWidget(QtWidgets.QWidget):
         self._sync_filter_ui()
         self._apply_filter()
 
-    def _search_structured_paths(self) -> list[set[str]]:
-        """Return one path set per enabled phrase/transition condition."""
-        if not any((
-            self.cb_phrase_filter.isChecked(),
-            self.cb_transition_bpm.isChecked(),
-            self.cb_transition_key.isChecked(),
-        )):
-            return []
-        db = LibraryDB(os.path.join(self.cfg.libconfig.libpath, "library.db"))
-        db.connect()
-        try:
-            conditions: list[set[str]] = []
-            match_all = self.match_toggle.match_all()
-            if self.cb_phrase_filter.isChecked():
-                bpm_min = bpm_max = None
-                if self.cb_phrase_bpm.isChecked():
-                    center = float(self.sp_phrase_bpm.value())
-                    scale = max(0.0, float(self.sp_phrase_bpm_tolerance.value())) / 100.0
-                    # At 0%, still match values that round to the BPM shown by
-                    # this two-decimal editor (analysis values retain more
-                    # floating-point precision in the database).
-                    delta = max(center * scale, 0.5 * 10 ** -self.sp_phrase_bpm.decimals())
-                    bpm_min = center - delta
-                    bpm_max = center + delta
-                key_value = (
-                    self.cmb_phrase_key.key()
-                    if self.cb_phrase_key.isChecked()
-                    else None
-                )
-                rows = db.search_phrase_sections(
-                    str(self.cmb_phrase_label.currentData()),
-                    bpm_min=bpm_min,
-                    bpm_max=bpm_max,
-                    key_value=key_value,
-                    compatible_keys=self.cb_phrase_key_compatible.isChecked(),
-                    match_all=match_all,
-                )
-                conditions.append({str(row.path) for row in rows})
+    def _structured_searches(self) -> tuple:
+        """The phrase / transition filters that are on, as the LibraryDB searches they are: (method, args, keyword
+        args) each, read from the widgets here and run by the library's owner (jobs.run_searches), one path set
+        each."""
+        searches = []
+        match_all = self.match_toggle.match_all()
+        if self.cb_phrase_filter.isChecked():
+            bpm_min = bpm_max = None
+            if self.cb_phrase_bpm.isChecked():
+                center = float(self.sp_phrase_bpm.value())
+                scale = max(0.0, float(self.sp_phrase_bpm_tolerance.value())) / 100.0
+                # At 0%, still match values that round to the BPM shown by
+                # this two-decimal editor (analysis values retain more
+                # floating-point precision in the database).
+                delta = max(center * scale, 0.5 * 10 ** -self.sp_phrase_bpm.decimals())
+                bpm_min = center - delta
+                bpm_max = center + delta
+            key_value = (
+                self.cmb_phrase_key.key()
+                if self.cb_phrase_key.isChecked()
+                else None
+            )
+            searches.append(("search_phrase_sections", (str(self.cmb_phrase_label.currentData()),), (
+                ("bpm_min", bpm_min), ("bpm_max", bpm_max), ("key_value", key_value),
+                ("compatible_keys", self.cb_phrase_key_compatible.isChecked()), ("match_all", match_all))))
 
-            min_duration = float(self.sp_transition_min_duration.value())
-            if self.cb_transition_bpm.isChecked():
-                center_from = float(self.sp_from_bpm.value())
-                center_to = float(self.sp_to_bpm.value())
-                tol_pct = max(0.0, float(self.sp_bpm_tolerance.value()))
-                scale = tol_pct / 100.0
-                from_delta = max(
-                    center_from * scale, 0.5 * 10 ** -self.sp_from_bpm.decimals())
-                to_delta = max(
-                    center_to * scale, 0.5 * 10 ** -self.sp_to_bpm.decimals())
-                bpm_rows = db.search_bpm_transitions(
-                    center_from - from_delta,
-                    center_from + from_delta,
-                    center_to - to_delta,
-                    center_to + to_delta,
-                    min_duration_sec=min_duration,
-                    require_first_segment=self.cb_bpm_first_segment.isChecked(),
-                )
-                conditions.append({str(row.path) for row in bpm_rows})
-            if self.cb_transition_key.isChecked():
-                key_rows = db.search_harmonic_key_transitions(
-                    self.cmb_from_key.key(),
-                    self.cmb_to_key.key(),
-                    min_duration_sec=min_duration,
-                    require_first_segment=self.cb_key_first_segment.isChecked(),
-                    compatible=self.cb_key_compatible.isChecked(),
-                )
-                conditions.append({str(row.path) for row in key_rows})
-            return conditions
-        finally:
-            db.close()
+        min_duration = float(self.sp_transition_min_duration.value())
+        if self.cb_transition_bpm.isChecked():
+            center_from = float(self.sp_from_bpm.value())
+            center_to = float(self.sp_to_bpm.value())
+            tol_pct = max(0.0, float(self.sp_bpm_tolerance.value()))
+            scale = tol_pct / 100.0
+            from_delta = max(
+                center_from * scale, 0.5 * 10 ** -self.sp_from_bpm.decimals())
+            to_delta = max(
+                center_to * scale, 0.5 * 10 ** -self.sp_to_bpm.decimals())
+            searches.append(("search_bpm_transitions", (
+                center_from - from_delta, center_from + from_delta, center_to - to_delta, center_to + to_delta), (
+                ("min_duration_sec", min_duration), ("require_first_segment", self.cb_bpm_first_segment.isChecked()))))
+        if self.cb_transition_key.isChecked():
+            searches.append(("search_harmonic_key_transitions", (self.cmb_from_key.key(), self.cmb_to_key.key()), (
+                ("min_duration_sec", min_duration), ("require_first_segment", self.cb_key_first_segment.isChecked()),
+                ("compatible", self.cb_key_compatible.isChecked()))))
+        return tuple(searches)
+
+    def _structured_conditions(self) -> Optional[list[set[str]]]:
+        """One path set per phrase / transition filter on; None while their search is on its way (the filter is
+        applied again when it comes). The last search's answer is kept until the library changes."""
+        searches = self._structured_searches()
+        if not searches:
+            return []
+        if self._structured_found is not None and self._structured_found[0] == searches:
+            return self._structured_found[1]
+        if self._structured_asked != searches:
+            self._structured_asked = searches
+            self.library.read(jobs.run_searches, searches, done=lambda found: self._structured_came(searches, found))
+        return None
+
+    def _structured_came(self, searches: tuple, found: list) -> None:
+        if self._structured_asked == searches:
+            self._structured_asked = None
+        self._structured_found = (searches, found)
+        self._apply_filter()
 
     def _on_activate(self, idx: QtCore.QModelIndex):
         if self._external_sync_enabled:
@@ -1835,15 +1797,14 @@ class LibraryWidget(QtWidgets.QWidget):
     PANEL_FOLLOW_MS = 120
 
     def _build_track_panel(self) -> QtWidgets.QHBoxLayout:
-        self.edit_panel = EditTrackPanel(bus=self.bus, libpath=self.cfg.libconfig.libpath,
-                                         search_settings=lambda: self.cfg.searchconfig)
-        self.index_panel = SearchIndexPanel(bus=self.bus, libpath=self.cfg.libconfig.libpath,
+        self.edit_panel = EditTrackPanel(bus=self.bus, library=self.library)
+        self.index_panel = SearchIndexPanel(bus=self.bus, library=self.library,
                                             search_settings=lambda: self.cfg.searchconfig)
-        self.tieup_panel = TieupPanel(bus=self.bus, libpath=self.cfg.libconfig.libpath,
+        self.tieup_panel = TieupPanel(bus=self.bus, library=self.library,
                                       settings=lambda: self.cfg.searchconfig,
                                       to_versions=lambda: bool(self.cfg.libconfig.tieup_to_versions))
         self.export_panel = ExportTrackPanel(
-            self.cfg.libconfig.libpath, model=self.model, bus=self.bus,
+            self.library, model=self.model, bus=self.bus,
             unapplied_edits=lambda uid: self.edit_panel.track_uid() == uid and self.edit_panel.has_changes())
         self.panel_stack = QtWidgets.QStackedWidget()
         for panel in (self.edit_panel, self.index_panel, self.tieup_panel, self.export_panel):   # the tabs' order
@@ -1942,11 +1903,7 @@ class LibraryWidget(QtWidgets.QWidget):
                 QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No, QtWidgets.QMessageBox.Yes)
             if answer == QtWidgets.QMessageBox.Yes and not panel.apply():
                 return  # not saved (said why): the panel keeps them
-        db = self._db()
-        try:
-            row = db.get_by_uid(uids[0])
-        finally:
-            db.close()
+        row = self.library.snapshot.track(uids[0])
         if row is not None:
             panel.set_track(row)
 
@@ -2136,7 +2093,7 @@ class LibraryWidget(QtWidgets.QWidget):
         """The library's tracks with variants (core.variants), # their song: the songs with the newest track first,
         each song's longest track first; with ``of``, that track's song only (none for "": no track loaded)."""
         by_uid = {t.uid: t for t in self._library_tracks if t.uid}
-        found = variant_store.pairs(variant_store.path_for(self.cfg.libconfig.libpath))
+        found = list(self.library.snapshot.variant_pairs)
         self._variant_pairs = {}
         for p in found:
             if p.a in by_uid and p.b in by_uid:
@@ -2147,7 +2104,7 @@ class LibraryWidget(QtWidgets.QWidget):
             t = by_uid[uid]
             return t.added.toSecsSinceEpoch() if t.added else 0
 
-        groups = sorted(variant_store.groups(found, set(by_uid)), key=lambda g: -max(added(u) for u in g))
+        groups = sorted(variant_relations.groups(found, set(by_uid)), key=lambda g: -max(added(u) for u in g))
         if of is not None:
             groups = [g for g in groups if of in g]
         self._variant_song = {}
@@ -2162,7 +2119,7 @@ class LibraryWidget(QtWidgets.QWidget):
                 self._variant_song[uid] = song
         return tracks
 
-    def _variant_relation(self, uid: str, p: variant_store.Pair) -> str:
+    def _variant_relation(self, uid: str, p: variant_relations.Pair) -> str:
         """How the other track of ``p`` differs from ``uid``'s, in words ("" for nothing to say): the same mix, and
         its length. Another vocal / the instrumental are not told apart (the vocal range's level misreads quiet
         vocals)."""
@@ -2272,17 +2229,14 @@ class LibraryWidget(QtWidgets.QWidget):
         name, accepted = QtWidgets.QInputDialog.getText(self, tr("New Playlist"), tr("Name"))
         if not accepted or not name.strip():
             return
-        db = self._db()
-        try:
-            playlist = db.create_playlist(name)
-        except Exception as exc:
-            QtWidgets.QMessageBox.warning(self, tr("New Playlist"), str(exc))
-            return
-        finally:
-            db.close()
-        self._source_kind, self._source_value = "playlist", playlist.uid
+        self.library.write(jobs.create_playlist, name, done=lambda playlist: self._show_playlist(playlist.uid),
+                           failed=lambda exc: QtWidgets.QMessageBox.warning(self, tr("New Playlist"), str(exc)))
+
+    def _show_playlist(self, playlist_uid: str) -> None:
+        """A playlist written (the library's snapshot has it): the sources again, it selected."""
+        self._source_kind, self._source_value = "playlist", playlist_uid
         self._rebuild_source_tree()
-        self._select_source("playlist", playlist.uid)
+        self._select_source("playlist", playlist_uid)
 
     def _rename_playlist(self, item: QtWidgets.QTreeWidgetItem) -> None:
         playlist_uid = str(item.data(0, _SOURCE_VALUE_ROLE))
@@ -2291,16 +2245,8 @@ class LibraryWidget(QtWidgets.QWidget):
         )
         if not accepted or not name.strip():
             return
-        db = self._db()
-        try:
-            db.rename_playlist(playlist_uid, name)
-        except Exception as exc:
-            QtWidgets.QMessageBox.warning(self, tr("Rename Playlist"), str(exc))
-            return
-        finally:
-            db.close()
-        self._rebuild_source_tree()
-        self._select_source("playlist", playlist_uid)
+        self.library.write(jobs.rename_playlist, playlist_uid, name, done=lambda _r: self._show_playlist(playlist_uid),
+                           failed=lambda exc: QtWidgets.QMessageBox.warning(self, tr("Rename Playlist"), str(exc)))
 
     def _delete_playlist(self, item: QtWidgets.QTreeWidgetItem) -> None:
         answer = QtWidgets.QMessageBox.question(
@@ -2311,54 +2257,33 @@ class LibraryWidget(QtWidgets.QWidget):
         if answer != QtWidgets.QMessageBox.Yes:
             return
         playlist_uid = str(item.data(0, _SOURCE_VALUE_ROLE))
-        db = self._db()
-        try:
-            db.delete_playlist(playlist_uid)
-        finally:
-            db.close()
-        self._source_kind, self._source_value = "library", None
-        self._rebuild_source_tree()
-        self._select_source("library", None)
+
+        def deleted(_r) -> None:
+            self._source_kind, self._source_value = "library", None
+            self._rebuild_source_tree()
+            self._select_source("library", None)
+
+        self.library.write(jobs.delete_playlist, playlist_uid, done=deleted)
 
     def _move_playlist(self, item: QtWidgets.QTreeWidgetItem, offset: int) -> None:
         playlist_uid = str(item.data(0, _SOURCE_VALUE_ROLE))
-        db = self._db()
-        try:
-            db.move_playlist(playlist_uid, offset)
-        finally:
-            db.close()
-        self._rebuild_source_tree()
-        self._select_source("playlist", playlist_uid)
+        self.library.write(jobs.move_playlist, playlist_uid, offset, done=lambda _r: self._show_playlist(playlist_uid))
 
     def _drop_playlist_order(self, playlist_uid: str, before_playlist_uid) -> None:
-        db = self._db()
-        try:
-            changed = db.move_playlist_before(playlist_uid, before_playlist_uid)
-        finally:
-            db.close()
-        if changed:
-            QtCore.QTimer.singleShot(
-                0, lambda playlist_uid=playlist_uid: self._finish_playlist_drop(playlist_uid)
-            )
-
-    def _finish_playlist_drop(self, playlist_uid: str) -> None:
-        self._rebuild_source_tree()
-        self._select_source("playlist", playlist_uid)
+        # shown once written (the drop's own handling done by then: the tree is rebuilt after it)
+        self.library.write(jobs.move_playlist_before, playlist_uid, before_playlist_uid,
+                           done=lambda changed: changed and self._show_playlist(playlist_uid))
 
     def _drop_playlist_tracks(self, positions, before_position) -> None:
         if self._source_kind != "playlist":
             return
-        db = self._db()
-        try:
-            changed = db.move_playlist_tracks_before(
-                str(self._source_value), positions, before_position
-            )
-        finally:
-            db.close()
-        if changed:
-            QtCore.QTimer.singleShot(
-                0, lambda: self._refresh_current_source(reset_sort=True)
-            )
+        playlist_uid = str(self._source_value)
+
+        def moved(changed) -> None:
+            if changed and self._source_kind == "playlist" and str(self._source_value) == playlist_uid:
+                self._refresh_current_source(reset_sort=True)
+
+        self.library.write(jobs.move_playlist_entries, playlist_uid, positions, before_position, done=moved)
 
     def _selected_rows(self) -> list[int]:
         """The rows selected and shown (Ctrl+A selects hidden rows too: never acted on)."""
@@ -2384,25 +2309,25 @@ class LibraryWidget(QtWidgets.QWidget):
             return
         analyzed_uids = []
         pending_paths = []
-        db = self._db()
-        try:
-            for path in requested:
-                row = db.find_file(path)
-                if row is not None:
-                    analyzed_uids.append(row.uid)
-                elif os.path.isfile(path):
-                    pending_paths.append(path)
-            if analyzed_uids:
-                db.add_playlist_tracks(playlist_uid, analyzed_uids)
-        finally:
-            db.close()
+        snap = self.library.snapshot
+        for path in requested:
+            row = snap.find_file(path)
+            if row is not None:
+                analyzed_uids.append(row.uid)
+            elif os.path.isfile(path):
+                pending_paths.append(path)
+
+        def added(_r) -> None:
+            if self._source_kind == "playlist" and str(self._source_value) == playlist_uid:
+                self._refresh_current_source()
+
+        if analyzed_uids:
+            self.library.write(jobs.add_to_playlists, {playlist_uid: analyzed_uids}, done=added)
         for path in pending_paths:
             self._pending_playlist_paths.setdefault(
                 self._file_identity(path), []
             ).append(playlist_uid)
             self.bus.sig_request_analyze.emit(path)
-        if self._source_kind == "playlist" and str(self._source_value) == playlist_uid:
-            self._refresh_current_source()
 
     def _on_context_menu(self, pos):
         menu = QtWidgets.QMenu(self)
@@ -2424,11 +2349,7 @@ class LibraryWidget(QtWidgets.QWidget):
             act_remove_playlist = menu.addAction(tr("Remove from Playlist"))
         add_menu = menu.addMenu(tr("Add to Playlist"))
         playlist_actions = {}
-        db = self._db()
-        try:
-            playlists = db.list_playlists()
-        finally:
-            db.close()
+        playlists = self.library.snapshot.playlists
         for playlist in playlists:
             playlist_actions[add_menu.addAction(playlist.name)] = playlist.uid
         if not playlists:
@@ -2459,35 +2380,25 @@ class LibraryWidget(QtWidgets.QWidget):
         positions = [position for position in positions if position is not None]
         if not positions:
             return
-        db = self._db()
-        try:
-            db.remove_playlist_tracks(str(self._source_value), positions)
-        finally:
-            db.close()
-        self._refresh_current_source(reset_sort=True)
+        playlist_uid = str(self._source_value)
+
+        def removed(_r) -> None:
+            if self._source_kind == "playlist" and str(self._source_value) == playlist_uid:
+                self._refresh_current_source(reset_sort=True)
+
+        self.library.write(jobs.remove_playlist_entries, playlist_uid, positions, done=removed)
 
     def _on_remove_selected(self):
         uids = self._selected_uids()
         if not uids or not self._confirm_remove(uids):
             return
-        l = LibraryDB(os.path.join(self.cfg.libconfig.libpath, "library.db"))
-        l.connect()
-        l.delete_tracks(uids)
-        lib_full = l.list_all()
-        l.close()
-        n = FeatureNPZStore(base_dir=self.cfg.libconfig.libpath, compressed=True)
-        for uid in uids:
-            n.delete(uid)
-            delete_thumbnail(self.cfg.libconfig.libpath, uid)
-        # out of the indexes made from them too (their fingerprints, Search by Music's), on a thread of their own:
-        # each a pass over its index
-        threading.Thread(target=_drop_from_indexes, args=(self.cfg.libconfig.libpath, list(uids)),
-                         name="drop-from-indexes", daemon=True).start()
-        self.bus.sig_lib_updated.emit(lib_full)
-        for uid in uids:
-            track_uid = str(uid or "").strip()
-            if track_uid:
-                self.bus.sig_rekordbox_sync_track_requested.emit(track_uid)
+
+        def removed(_r) -> None:
+            for uid in uids:
+                self.bus.sig_rekordbox_sync_track_requested.emit(uid)
+
+        # the tracks, their features and thumbnails, and their place in the indexes made from them
+        self.library.write(jobs.remove_tracks, list(uids), done=removed)
 
     def _confirm_remove(self, uids: list[str]) -> bool:
         """Asked before tracks leave the library (their analysis and edits deleted; No by default)."""
@@ -2570,5 +2481,5 @@ class LibraryWidget(QtWidgets.QWidget):
     def open_works(self) -> None:
         """The tie-ups' works window (non-modal; one)."""
         if self._works_window is None:
-            self._works_window = WorksWindow(self.bus, lambda: self.cfg, self.window())
+            self._works_window = WorksWindow(self.bus, lambda: self.cfg, self.library, self.window())
         self._works_window.show_works()

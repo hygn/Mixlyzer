@@ -13,8 +13,7 @@ from analyzer_core.beat.frame_features import extract_frame_features
 from analyzer_core.hpss import hpss_audio
 from analyzer_core.beat.learned_onset import ONSET_CHANNEL_NAMES, onset_channels
 from core.audio.decoder import decode_to_memmap
-from core.library_handler import LibraryDB
-from optimizer import SkippedOptimizationTrack, skipped_track
+from optimizer import SkippedOptimizationTrack, library_tracks, skipped_track
 from utils.atomic_io import atomic_output_path
 from core.i18n import tr
 
@@ -36,31 +35,13 @@ def _list_beat_tracks(
     library_dir: Path,
     ignored: list[SkippedOptimizationTrack] | None = None,
 ) -> list[dict[str, object]]:
-    database_path = library_dir / "library.db"
-    if not database_path.is_file():
-        raise FileNotFoundError(f"Library database not found: {database_path}")
-
-    library = LibraryDB(str(database_path))
-    library.connect()
-    try:
-        rows = library.list_all(order_by="uid ASC")
-    finally:
-        library.close()
-
+    """The tracks with a usable beat grid, of the tracks the library's owner gave this run (optimizer.library_tracks;
+    ``library_dir`` is kept for the callers' signatures)."""
     tracks: list[dict[str, object]] = []
-    for row in rows:
-        if not row.uid:
-            continue
-        uid = str(row.uid)
-        analysis_path = library_dir / f"{uid}.npz"
-        audio_path = Path(row.path) if row.path else Path()
-        track = {
-            "uid": uid,
-            "title": str(row.title or ""),
-            "artist": str(row.artist or ""),
-            "audio_path": audio_path,
-            "analysis_path": analysis_path,
-        }
+    for track in library_tracks.tracks():
+        analysis_path = Path(track["analysis_path"])
+        audio_path = Path(track["audio_path"])
+        track.update(audio_path=audio_path, analysis_path=analysis_path)
         if not analysis_path.is_file():
             if ignored is not None:
                 ignored.append(skipped_track(track, tr("analysis NPZ is missing")))

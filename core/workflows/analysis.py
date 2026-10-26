@@ -12,11 +12,10 @@ from typing import Callable, Optional
 from PySide6 import QtCore
 
 from analyzer_core.global_analyzer import extract_tags, getAlbumArt
-from core.analysis_lib_handler import FeatureNPZStore
+from core.library import jobs
 from dataclasses import replace
 
 from core.config import load_cfg
-from core.library_handler import LibraryDB
 from core.workers.analysis import AnalysisWorker
 from core.i18n import tr
 
@@ -34,6 +33,7 @@ class AnalysisWorkflow(QtCore.QObject):
     def __init__(
         self,
         *,
+        library,
         taskmanager,
         result_callback: ResultCallback,
         reanalysis_result_callback: ResultCallback,
@@ -45,6 +45,7 @@ class AnalysisWorkflow(QtCore.QObject):
         tag_extractor=extract_tags,
     ) -> None:
         super().__init__(parent)
+        self._library = library          # core.library.service.LibraryService
         self.taskmanager = taskmanager
         self._result_callback = result_callback
         self._reanalysis_result_callback = reanalysis_result_callback
@@ -66,16 +67,9 @@ class AnalysisWorkflow(QtCore.QObject):
         over the saved ones (which stay as they are)."""
         self._start(path, force_analyze=True, analysis=analysis)
 
-    @staticmethod
-    def library_track(path: str, cfg=None):
+    def library_track(self, path: str):
         """The library's track of the file ``path`` (however the path spells it), or None."""
-        cfg = cfg or load_cfg()
-        database = LibraryDB(os.path.join(cfg.libconfig.libpath, "library.db"))
-        database.connect()
-        try:
-            return database.find_file(path)
-        finally:
-            database.close()
+        return self._library.snapshot.find_file(path)
 
     def cancel_all(self, reason: str | None = None) -> None:
         reason = reason or tr("Analysis canceled")
@@ -94,14 +88,9 @@ class AnalysisWorkflow(QtCore.QObject):
         cfg = self._cfg_loader()
         if analysis:
             cfg = replace(cfg, analysisconfig=replace(cfg.analysisconfig, **analysis))
-        database = LibraryDB(os.path.join(cfg.libconfig.libpath, "library.db"))
-        database.connect()
-        try:
-            # a file in the library goes by the path it is stored under, however
-            # ``path`` spells it (a drop's separators, another case, a link)
-            track = database.find_file(path)
-        finally:
-            database.close()
+        # a file in the library goes by the path it is stored under, however ``path`` spells it (a drop's
+        # separators, another case, a link)
+        track = self.library_track(path)
         if track is not None:
             path = track.path
             if not os.path.isfile(path):
@@ -133,23 +122,24 @@ class AnalysisWorkflow(QtCore.QObject):
         taskid = task_info.taskid
 
         if track is not None and track.uid and not force_analyze:
-            try:
-                store = FeatureNPZStore(
-                    base_dir=cfg.libconfig.libpath,
-                    compressed=True,
-                )
-                features = store.load(track.uid)
-            except (FileNotFoundError, ValueError):
-                pass
-            else:
+            # its stored features, read on the library thread; none readable: analyzed
+            def loaded(features) -> None:
+                if features is None:
+                    self._analyze(path, cfg, taskid, thumbnail, force_analyze, listener)
+                    return
                 self._show_status(tr("Loaded from the library: {file}").format(file=os.path.basename(path)))
                 result = {"features": features, "properties": track.to_meta(), "update_db": False,
                           "taskid": taskid, "album_art": thumbnail}
                 self._result_callback(result)
                 if listener is not None:
                     listener(result)
-                return
 
+            self._library.read(jobs.features, track.uid, done=loaded)
+            return
+        self._analyze(path, cfg, taskid, thumbnail, force_analyze, listener)
+
+    def _analyze(self, path: str, cfg, taskid: int, thumbnail, force_analyze: bool,
+                 listener: ResultCallback | None) -> None:
         self._show_status(tr("Analyzing: {file}").format(file=os.path.basename(path)))
         worker = AnalysisWorker(
             path,
@@ -210,6 +200,18 @@ class AnalysisWorkflow(QtCore.QObject):
         self._finalize(taskid)
 
     def _on_success(self, taskid: int, payload: dict) -> None:
+        """The analysis's results, stored by the library's owner (jobs.store_analysis: the analysis process does
+        not open the library), then handed on (the deck, the library); the request stays in flight until then."""
+        if payload.get("store") is None:
+            self._deliver(taskid, payload)
+            return
+        self.taskmanager.updatetask(taskid, tr("Saving Result"), 0.95)
+        self._library.write(
+            jobs.store_analysis, payload, done=lambda stored: self._deliver(taskid, stored),
+            failed=lambda exc: self._on_error(taskid, tr("The analysis could not be stored: {error}").format(
+                error=exc)))
+
+    def _deliver(self, taskid: int, payload: dict) -> None:
         try:
             context = self._contexts.get(taskid, {})
             result = dict(payload)

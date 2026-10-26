@@ -10,8 +10,8 @@ import numpy as np
 from PySide6 import QtCore
 
 from core import tieup
-from core.analysis_lib_handler import FeatureNPZStore
-from core.library_handler import TrackRow
+from core.library import jobs
+from core.library.records import TrackRow
 from third_party.rekordbox import (
     RekordboxXmlDocument,
     build_rekordbox_track_element,
@@ -47,14 +47,16 @@ class RekordboxSyncWorker(QtCore.QObject):
     finished = QtCore.Signal(object)
     failed = QtCore.Signal(str)
 
-    def __init__(self, request: RekordboxSyncRequest, parent=None) -> None:
+    def __init__(self, request: RekordboxSyncRequest, library, parent=None) -> None:
+        """``library``: the library's owner (core.library.service), asked for the rows and features."""
         super().__init__(parent)
         self._request = request
+        self._library = library
 
     @QtCore.Slot()
     def run(self) -> None:
         try:
-            engine = _RekordboxSyncEngine(self._request, self.progress.emit)
+            engine = _RekordboxSyncEngine(self._request, self.progress.emit, self._library)
             self.finished.emit(engine.run())
         except Exception:
             self.failed.emit(traceback.format_exc())
@@ -65,10 +67,13 @@ class _RekordboxSyncEngine:
         self,
         request: RekordboxSyncRequest,
         progress: Callable[[int, str], None],
+        library,
     ) -> None:
+        """``library``: the library's owner: every read of the library asked of it (LibraryService.call, from the
+        sync's thread), the XML written here."""
         self.request = request
         self.progress = progress
-        self.store = FeatureNPZStore(base_dir=str(request.library_dir), compressed=True)
+        self.library = library
         self._track_percent: Optional[int] = None
         self._suffixes: Optional[dict[str, str]] = None   # uid -> its tie-ups' comment suffix, read once a run
 
@@ -85,14 +90,7 @@ class _RekordboxSyncEngine:
         if not self.request.comment_tieups:
             return row
         if self._suffixes is None:
-            from core.library_handler import LibraryDB
-
-            db = LibraryDB(str(self.request.library_dir / "library.db"))
-            db.connect()
-            try:
-                self._suffixes = tieup.comment_suffixes(db.conn)
-            finally:
-                db.close()
+            self._suffixes = self.library.call(jobs.comment_suffixes)
         suffix = self._suffixes.get(str(row.uid or ""), "")
         return replace(row, comment=tieup.with_suffix(row.comment or "", suffix)) if suffix else row
 
@@ -188,42 +186,23 @@ class _RekordboxSyncEngine:
     def _load_features(self, uid: Optional[str]) -> dict[str, np.ndarray]:
         if not uid:
             return {}
-        try:
-            return self.store.load(uid)
-        except Exception:
-            return {}
+        return self.library.call(jobs.features, uid) or {}
 
     def _track_hash(self, row: TrackRow) -> str:
         parts = [str(v) for k, v in sorted(asdict(row).items())]
         parts.append(f"ramp_tolerance_ms={float(self.request.ramp_tolerance_ms):g}")   # the TEMPO steps
         uid = str(row.uid or "").strip()
-        npz_path = Path(self.store.path(uid)) if uid else None
-        if npz_path is not None and npz_path.exists():
-            stat = npz_path.stat()
-            parts.append(str(stat.st_mtime_ns))
-            parts.append(str(stat.st_size))
+        stamp = self.library.call(jobs.features_stamp, uid) if uid else None
+        if stamp is not None:
+            parts += [str(stamp[0]), str(stamp[1])]
         digest = hashlib.md5("|".join(parts).encode("utf-8")).hexdigest()
         return digest
 
     def _load_library_rows(self) -> list[TrackRow]:
-        from core.library_handler import LibraryDB
-
-        db = LibraryDB(str(self.request.library_dir / "library.db"))
-        db.connect()
-        try:
-            return db.list_all()
-        finally:
-            db.close()
+        return self.library.call(jobs.all_tracks)
 
     def _load_track_row(self, uid: str) -> TrackRow | None:
-        from core.library_handler import LibraryDB
-
-        db = LibraryDB(str(self.request.library_dir / "library.db"))
-        db.connect()
-        try:
-            return db.get_by_uid(uid)
-        finally:
-            db.close()
+        return self.library.call(jobs.track, uid)
 
     @staticmethod
     def _resolve_audio_path(path: str | None) -> Optional[Path]:

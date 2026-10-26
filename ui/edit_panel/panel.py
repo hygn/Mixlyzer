@@ -8,9 +8,7 @@ import numpy as np
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from audioengine.native import client as deck
-from core.analysis_lib_handler import FeatureNPZStore
 from core.beat_geometry import downbeat_beat_indices
-from core.config import load_cfg
 from core.event_bus import EventBus
 from core.model import DataModel
 from ui.edit_panel.beat_counter import BeatCounterMixin
@@ -23,7 +21,7 @@ from ui.edit_panel.icons import icon
 from ui.edit_panel.jumpcue import JumpCUEEditMixin
 from ui.edit_panel.key import KeyEditMixin
 from ui.edit_panel.phrase import PhraseEditMixin
-from ui.edit_panel.save_worker import SaveWorker
+from core.library import jobs
 from ui.edit_panel.styles import BUTTON_STYLESHEET, WARNING_BUTTON_STYLESHEET
 from ui.theme import current_theme
 from utils.cue_points import build_cue_points_np
@@ -68,8 +66,10 @@ class EditPanel(
     # the pages shown together for each column count
     PAGE_GROUPS = {1: ((0,), (1,), (2,), (3,)), 2: ((0, 1), (2, 3)), 4: ((0, 1, 2, 3),)}
 
-    def __init__(self, bus: EventBus, model: DataModel | None = None, parent=None):
+    def __init__(self, bus: EventBus, model: DataModel | None = None, library=None, parent=None):
+        """``library``: the library's owner (core.library.service), which saves the edits."""
         super().__init__(parent)
+        self._library = library
         self.setStyleSheet(BUTTON_STYLESHEET)
         self._segments: np.ndarray = np.empty((0, 6), dtype=float)
         self._beatgrid: np.ndarray = np.asarray([])
@@ -82,8 +82,6 @@ class EditPanel(
         self.model = model
         self.prev_tap_time = None
         self.prev_tap_BPM = 0
-        self._save_thread = None
-        self._save_worker = None
         self._edit_enabled = True
         # editing needs the lock open (it is on at every start) and no segment reanalysis running
         self._locked = True
@@ -678,11 +676,8 @@ class EditPanel(
     def _save(self) -> None:
         if self.uid is None or self._save_in_progress or not self._edit_enabled:
             return
-        cfg = load_cfg()
-        store = FeatureNPZStore(base_dir=cfg.libconfig.libpath, compressed=True)
-        thread = QtCore.QThread(self)
-        save_worker = SaveWorker()
-        save_worker.moveToThread(thread)
+        if self._library is None:
+            return
         beatgrid = np.asarray(self._beatgrid, dtype=float).copy() if self._beatgrid is not None else None
         segments = np.asarray(self._segments, dtype=float).copy() if self._segments is not None else None
         key_segments = np.asarray(self._key_segments, dtype=float).copy() if self._key_segments is not None else None
@@ -700,30 +695,18 @@ class EditPanel(
         cue_points_np = build_cue_points_np(copy.deepcopy(self._cue_points))
         self._save_in_progress = True
         self.btn_save.setEnabled(False)
-        thread.started.connect(
-            lambda: save_worker.save(
-                store,
-                cfg.libconfig.libpath,
-                self.uid,
-                beatgrid=beatgrid,
-                segments=segments,
-                key_segments=key_segments,
-                key_segments_auto=key_segments_auto,
-                jump_cues_np=jump_cues_np,
-                jump_cues_auto_np=jump_cues_auto_np,
-                phrase_segments_np=phrase_segments_np,
-                cue_points_np=cue_points_np,
-            )
-        )
-        save_worker.finished.connect(thread.quit)
-        save_worker.finished.connect(save_worker.deleteLater)
-        save_worker.finished.connect(thread.deleteLater)
-        save_worker.finished.connect(self._on_save_finished)
-        thread.finished.connect(lambda: setattr(self, "_save_thread", None))
-        thread.finished.connect(lambda: setattr(self, "_save_worker", None))
-        self._save_thread = thread
-        self._save_worker = save_worker
-        thread.start()
+        uid = self.uid
+        # written by the library's owner (jobs.save_edits); a failure said, the edits kept unsaved
+        edits = {"beatgrid": beatgrid, "segments": segments, "key_segments": key_segments,
+                 "key_segments_auto": key_segments_auto, "jump_cues_np": jump_cues_np,
+                 "jump_cues_auto_np": jump_cues_auto_np, "phrase_segments_np": phrase_segments_np,
+                 "cue_points_np": cue_points_np}
+        self._library.write(jobs.save_edits, uid, edits, done=self._on_save_finished, failed=self._on_save_failed)
+
+    def _on_save_failed(self, exc: Exception) -> None:
+        self._save_in_progress = False
+        self.btn_save.setEnabled(self._edit_enabled)
+        QtWidgets.QMessageBox.warning(self, tr("Save"), tr("The edits could not be saved:\n{error}").format(error=exc))
 
     def _on_save_finished(self, saved_uid=None) -> None:
         self._save_in_progress = False

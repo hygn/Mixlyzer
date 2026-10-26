@@ -5,7 +5,7 @@ from typing import Callable, Iterable
 
 from PySide6 import QtCore
 
-from core.library_handler import TrackRow
+from core.library.records import TrackRow
 from core.workers.rekordbox_sync import (
     RekordboxSyncRequest,
     RekordboxSyncResult,
@@ -21,9 +21,11 @@ class RekordboxXmlSync(QtCore.QObject):
     finished = QtCore.Signal(object, object)
     failed = QtCore.Signal(object, str)
 
-    def __init__(self, *, cfg_getter: Callable[[], object], parent=None) -> None:
+    def __init__(self, *, cfg_getter: Callable[[], object], library, parent=None) -> None:
+        """``library``: the library's owner (core.library.service), which the sync's thread asks for the library."""
         super().__init__(parent)
         self._cfg_getter = cfg_getter
+        self._library = library
         self._queue: list[RekordboxSyncRequest] = []
         self._active_request: RekordboxSyncRequest | None = None
         self._thread: QtCore.QThread | None = None
@@ -96,7 +98,7 @@ class RekordboxXmlSync(QtCore.QObject):
             return
         request = self._queue.pop(0)
         thread = QtCore.QThread(self)
-        worker = RekordboxSyncWorker(request)
+        worker = RekordboxSyncWorker(request, self._library)
         worker.moveToThread(thread)
         worker.progress.connect(self._relay_progress)
         worker.finished.connect(self._job_finished)

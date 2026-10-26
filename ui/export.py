@@ -9,8 +9,9 @@ import numpy as np
 from PySide6 import QtCore, QtWidgets
 import soundfile as sf
 from core import os_support, tieup
-from core.analysis_lib_handler import FeatureNPZStore
-from core.library_handler import LibraryDB, TrackRow
+from core.library import jobs
+from core.library.records import TrackRow
+from core.library.service import LibraryService
 from core.audio.decoder import decode_to_memmap, get_samplerate
 from core.audio.tag_writer import TEXT_FIELDS, TagWriteError, tag_format, write_tags
 from core.model import DataModel
@@ -32,11 +33,13 @@ class ExportTrackPanel(QtWidgets.QWidget):
 
     _sig_tags_done = QtCore.Signal(str, str)   # the track's uid, the error ("": written)
 
-    def __init__(self, lib_dir: str, parent: Optional[QtWidgets.QWidget] = None, *, model: Optional[DataModel] = None,
-                 bus=None, unapplied_edits: Optional[Callable[[str], bool]] = None) -> None:
-        """``unapplied_edits(uid)``: whether the Edit tab has changes to that track not applied yet."""
+    def __init__(self, library: LibraryService, parent: Optional[QtWidgets.QWidget] = None, *,
+                 model: Optional[DataModel] = None, bus=None,
+                 unapplied_edits: Optional[Callable[[str], bool]] = None) -> None:
+        """``library``: the library's owner (core.library.service: the stored values, the analysis);
+        ``unapplied_edits(uid)``: whether the Edit tab has changes to that track not applied yet."""
         super().__init__(parent)
-        self._lib_dir = lib_dir
+        self._library = library
         self._model: Optional[DataModel] = model
         self._bus = bus
         self._unapplied_edits = unapplied_edits
@@ -170,6 +173,7 @@ class ExportTrackPanel(QtWidgets.QWidget):
         self._set_tag_note("")
         self._update_tag_controls()
         self._populate_jump_pairs()
+        self._read_features()
 
     # File tags
     def _tag_format(self) -> Optional[str]:
@@ -209,14 +213,17 @@ class ExportTrackPanel(QtWidgets.QWidget):
                 QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No, QtWidgets.QMessageBox.No)
             if answer != QtWidgets.QMessageBox.Yes:
                 return
-        db = LibraryDB(os.path.join(self._lib_dir, "library.db"))
-        db.connect()
-        try:
-            row = db.get_by_uid(uid)
-            suffix = tieup.comment_suffix(tieup.track_tieups(db.conn, uid)) if self.cb_comment_tieups.isChecked() else ""
-        finally:
-            db.close()
+        with_tieups = self.cb_comment_tieups.isChecked()
+        self._tags_writing = uid
+        self.btn_write_tags.setEnabled(False)
+        self._set_tag_note(tr("Writing the tags..."))
+        # the stored values read by the library's owner, then written into the file on a thread of its own
+        self._library.read(jobs.tag_values, uid, with_tieups, done=lambda found: self._write_stored(uid, fields, *found))
+
+    def _write_stored(self, uid: str, fields: list, row: Optional[TrackRow], suffix: str) -> None:
         if row is None:
+            self._tags_writing = None
+            self._update_tag_controls()
             self._set_tag_note(tr("The track is no longer in the library."), error=True)
             return
         stored = {
@@ -228,32 +235,27 @@ class ExportTrackPanel(QtWidgets.QWidget):
             "key": idx_to_labels(row.key)[1] if row.key is not None else "",
         }
         values = {field: stored[field] for field in fields}
-        self._tags_writing = uid
-        self.btn_write_tags.setEnabled(False)
-        self._set_tag_note(tr("Writing the tags..."))
         threading.Thread(target=self._write_tags_job, args=(uid, str(self._source), row.path, values),
                          daemon=True).start()
 
     def _write_tags_job(self, uid: str, file_path: str, stored_path: str, values: dict) -> None:
         """A worker thread (no widgets here): the tags written where the analysis read the fields from (their
         sources in the library; a track without them, as one added before they were kept or given another
-        file: found now as the analysis would read the file, and kept), the file's new size and time stored."""
+        file: found now as the analysis would read the file, and kept), the file's new size and time stored. The
+        library's part asked of its owner (LibraryService.call)."""
         from analyzer_core.global_analyzer import extract_tags, read_tag_sources
+        library = self._library
         try:
-            db = LibraryDB(os.path.join(self._lib_dir, "library.db"))
-            db.connect()
-            try:
-                sources = db.tag_sources(uid)
-                missing = [f for f in TEXT_FIELDS if f in values and f not in sources]
-                if missing:
-                    found = read_tag_sources(file_path, *extract_tags(file_path))
-                    if found:
-                        db.set_tag_sources(uid, {f: found[f] for f in missing})
-                        sources.update({f: found[f] for f in missing})
-                write_tags(file_path, values, sources)
-                db.touch_file_stats(stored_path)
-            finally:
-                db.close()
+            sources = library.call(jobs.tag_sources, uid)
+            missing = [f for f in TEXT_FIELDS if f in values and f not in sources]
+            if missing:
+                found = read_tag_sources(file_path, *extract_tags(file_path))
+                if found:
+                    kept = {f: found[f] for f in missing}
+                    library.call(jobs.set_tag_sources, uid, kept, write=True)
+                    sources.update(kept)
+            write_tags(file_path, values, sources)
+            library.call(jobs.touch_file_stats, stored_path, write=True)
             error = ""
         except TagWriteError as exc:
             error = str(exc)
@@ -339,6 +341,8 @@ class ExportTrackPanel(QtWidgets.QWidget):
         QtWidgets.QMessageBox.information(self, tr("Export Track"), tr("Export completed:\n{files}").format(files=lines))
 
     def _load_features(self) -> Optional[dict[str, np.ndarray]]:
+        """The track's features: the deck's (the in-memory model) when it holds the track, else its stored ones as
+        read on the library thread (set_track asks for them; None until they come)."""
         if self._features is not None:
             return self._features
         if self._track is None or not self._track.uid:
@@ -351,13 +355,25 @@ class ExportTrackPanel(QtWidgets.QWidget):
                 self._features = getattr(self._model, "features", None)
                 if self._features:
                     return self._features
-        store = FeatureNPZStore(base_dir=self._lib_dir, compressed=True)
-        try:
-            self._features = store.load(self._track.uid)
-        except (OSError, ValueError):
-            self.status_label.setText(tr("The track's analysis could not be read."))
-            return None
-        return self._features
+        return None
+
+    def _read_features(self) -> None:
+        """The track's stored features asked of the library's owner (not the deck's track); the JumpCUE pairs
+        listed when they come."""
+        if self._track is None or not self._track.uid or self._load_features() is not None:
+            return
+        uid = self._track.uid
+
+        def came(features) -> None:
+            if self._track is None or self._track.uid != uid:
+                return
+            if features is None:
+                self.status_label.setText(tr("The track's analysis could not be read."))
+                return
+            self._features = features
+            self._populate_jump_pairs()
+
+        self._library.read(jobs.features, uid, done=came)
 
     def _populate_jump_pairs(self) -> None:
         self.cmb_jump_pair.clear()

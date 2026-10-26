@@ -1,5 +1,7 @@
-"""The library's readings read again (core.reading), in a spawned process: the readers are Python
-(a thread would share the interpreter lock with the GUI). The readings the user set are kept."""
+"""The library's readings read again (core.reading), in a spawned process: the readers are Python (a thread would
+share the interpreter lock with the GUI). The process only reads texts: the library's owner gives it the library's
+texts (core.library.jobs.reading_texts) and writes what it read (jobs.apply_readings, jobs.apply_work_readings), the
+readings the user set kept: core.workflows.reading_refresh runs it."""
 
 from __future__ import annotations
 
@@ -12,16 +14,19 @@ from PySide6 import QtCore
 from core.concurrency.process_worker import SpawnProcessWorker, install_parent_watchdog
 from core.i18n import tr
 
-# tracks per transaction: the app's own writes (an analysis, Edit Track) wait at most about this many
-# tracks' reading (a few ms each)
+# tracks per write job: the owner's other jobs (the GUI's reads, an analysis stored) wait at most about this many
+# tracks' writing
 BATCH_TRACKS = 50
+# texts read between two progress reports
+PROGRESS_TEXTS = 200
 
 
 @dataclass(frozen=True)
 class ReadingRefreshRequest:
-    db_path: str
+    texts: tuple[str, ...]       # every text to read, each once (jobs.reading_texts)
     languages: tuple[str, ...]   # the search settings' db_languages
-    han_run: int               # its han_run()
+    han_run: int                 # its han_run()
+    tracks: int                  # the tracks they are of (the progress is counted in tracks)
 
 
 @dataclass(frozen=True)
@@ -30,45 +35,28 @@ class ReadingRefreshResult:
     changed_fields: int   # title / artist / album fields whose readings changed
 
 
-def refresh_library_readings(db_path: str, languages: tuple[str, ...], progress=None, *,
-                             han_run: int | None = None) -> ReadingRefreshResult:
-    """Read every track's title / artist / album again in ``languages`` and ``han_run``
-    (LibraryDB's; the user's readings kept); ``progress(done, total)`` after each batch."""
-    from core import reading, tieup
-    from core.library_handler import READING_FIELDS, LibraryDB
-
+def read_texts(texts, languages, han_run: int, progress=None) -> dict[str, list[tuple[str, str]]]:
+    """Each text's readings (core.reading.readings, in ``languages``): the process's work. ``progress(done,
+    total)`` in texts."""
+    from core import reading
     reading.warm_up()
-    db = LibraryDB(db_path, reading_languages=list(languages),
-                   han_run=reading.HAN_RUN_MIN if han_run is None else han_run)
-    db.connect()
-    try:
-        uids = [uid for (uid,) in db.conn.execute("SELECT uid FROM tracks ORDER BY added_ts, uid;")]
-        changed = 0
-        if progress is not None:
-            progress(0, len(uids))
-        for start in range(0, len(uids), BATCH_TRACKS):
-            with db.tx():
-                for uid in uids[start:start + BATCH_TRACKS]:
-                    before = db.readings(uid)
-                    db.refresh_readings(uid)
-                    after = db.readings(uid)
-                    changed += sum(before.get(f) != after.get(f) for f in READING_FIELDS)
-            if progress is not None:
-                progress(min(start + BATCH_TRACKS, len(uids)), len(uids))
-        with db.tx():   # the tie-ups' works' titles (core.tieup) too
-            tieup.refresh_work_readings(db.conn, db.reading_languages, db.han_run)
-        return ReadingRefreshResult(tracks=len(uids), changed_fields=changed)
-    finally:
-        db.close()
+    read = {}
+    for i, text in enumerate(texts):
+        if progress is not None and i % PROGRESS_TEXTS == 0:
+            progress(i, len(texts))
+        read[text] = reading.readings(text, list(languages), han_run=han_run)
+    if progress is not None:
+        progress(len(texts), len(texts))
+    return read
 
 
-def _reading_refresh_process_entry(db_path: str, languages: tuple[str, ...], han_run: int, queue: Any) -> None:
+def _reading_refresh_process_entry(request: ReadingRefreshRequest, queue: Any) -> None:
     install_parent_watchdog()
     try:
-        result = refresh_library_readings(
-            db_path, languages, lambda done, total: queue.put({"type": "progress", "done": done, "total": total}),
-            han_run=han_run)
-        queue.put({"type": "result", "payload": result})
+        texts = request.texts
+        read = read_texts(texts, request.languages, request.han_run, lambda done, total: queue.put(
+            {"type": "progress", "done": request.tracks * done // max(total, 1), "total": request.tracks}))
+        queue.put({"type": "result", "payload": read})
     except Exception:
         queue.put({"type": "error", "traceback": traceback.format_exc()})
     finally:
@@ -76,18 +64,18 @@ def _reading_refresh_process_entry(db_path: str, languages: tuple[str, ...], han
 
 
 class ReadingRefreshWorker(SpawnProcessWorker):
-    """Qt-facing worker for one library re-read."""
+    """Qt-facing worker for one library re-read: the texts read, handed back (finished)."""
 
     progress = QtCore.Signal(int, int)      # done, total tracks
-    finished = QtCore.Signal(object)        # ReadingRefreshResult
+    finished = QtCore.Signal(object)        # {text: readings}
     failed = QtCore.Signal(str)
 
     def __init__(self, request: ReadingRefreshRequest, parent: QtCore.QObject | None = None) -> None:
-        self._result: ReadingRefreshResult | None = None
+        self._result: dict | None = None
         self._error_emitted = False
         super().__init__(
             target=_reading_refresh_process_entry,
-            args=(str(request.db_path), tuple(request.languages), int(request.han_run)),
+            args=(request,),
             daemon=True,
             process_name="Mixlyzer-reading-refresh",
             parent=parent,

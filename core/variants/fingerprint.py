@@ -11,7 +11,7 @@ octave's edge also tries the neighbouring one). Per frame, the mean log power of
   voc   i8   the vocal range's (200 Hz - 6.3 kHz) level over the backing bands', 0.5 dB steps: where two versions
              share a backing, which one carries more in the vocal range (an instrumental: less)
 Index rows: the backing bits of HASH_FRAMES frames (30 bits), every DB_STRIDE-th frame; a query tries every frame
-and each window with its PROBE weakest bits flipped, votes per (track, frame offset) (core.variants.store), and its
+and each window with its PROBE weakest bits flipped, votes per (track, frame offset) (core.library.variants), and its
 candidates are verified on the stored codes: the stretches of WINDOW frames whose reliable backing bits agree >= GOOD
 over the offsets (an edit has several), their union covering each track -> the relation.
 """
@@ -25,7 +25,7 @@ import numpy as np
 from analyzer_core.beat.grid_version import BEAT_GRID_VERSION
 from utils.wave import WAVE_BANDS_VERSION
 
-# the fingerprint's method: this algorithm and the version of each stored feature it reads (core.variants.store keeps
+# the fingerprint's method: this algorithm and the version of each stored feature it reads (core.library.variants keeps
 # it with every fingerprint and compares only fingerprints of one method)
 METHOD = f"fp1;hash=6;stride=8;beats={BEAT_GRID_VERSION};bands={WAVE_BANDS_VERSION}"
 FEATURES = ("wave_bands_np", "wave_bands_ref", "beats_time_sec", "duration_sec")   # what it is made from
@@ -210,7 +210,7 @@ def verify(a: Fingerprint, b: Fingerprint, offsets) -> Verification:
         voc_lower_b=float((vd > VOCAL_DB).mean()) if vd.size else 0.0)
 
 
-# the relations: of b to a, as stored (core.variants.store); RELATED the ones that are variants
+# the relations: of b to a, as stored (core.library.variants); RELATED the ones that are variants
 SAME_MIX_KIND = "same"            # the same mix (the same audio, or its edit)
 A_INSTRUMENTAL = "a_instrumental"
 B_INSTRUMENTAL = "b_instrumental"

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import sqlite3
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from pathlib import Path
@@ -531,13 +530,14 @@ def _feature_set_names(base_names: list[str], feature_set: str) -> list[str]:
     return list(dict.fromkeys([*base_names, *FEATURE_SET_TERMS[feature_set]]))
 
 
-def run(dataset: Path, model_path: Path, db_path: Path, output: Path, *,
+def run(dataset: Path, model_path: Path, output: Path, *,
         stage: str = "all", state_dir: Path = Path("featurecache/jumpcue/training_state"),
         phrase_cache_dir: Path = Path("featurecache/phrase"),
         trial_l2: float = 1.0, trial_hard_weight: float = 1.0,
         trial_feature_set: str = "base", trial_corrected_weight: float = 1.0,
         trial_preference_weight: float = 3.0,
-        label_model_path: Path | None = None) -> dict:
+        label_model_path: Path | None = None, titles: dict[str, str] | None = None) -> dict:
+    """``titles``: uid -> title for the report (the library is not opened here: without them, uids only)."""
     raw = load_cache(dataset)
     raw_groups = list(raw["groups"] if isinstance(raw, dict) else raw)
     model = json.loads(model_path.read_text(encoding="utf-8"))
@@ -570,9 +570,7 @@ def run(dataset: Path, model_path: Path, db_path: Path, output: Path, *,
     current = _metrics(groups, current_weights, threshold)
     hard_uids = {r["uid"] for r in current["rows"] if not r["acceptable"]}
 
-    con = sqlite3.connect(f"file:{db_path.as_posix()}?mode=ro", uri=True)
-    titles = {str(u): str(t) for u, t in con.execute("SELECT uid, title FROM tracks")}
-    con.close()
+    titles = titles or {}
     wrong_tracks = []
     for uid in sorted(hard_uids):
         rs = [r for r in current["rows"] if r["uid"] == uid and not r["acceptable"]]
@@ -982,30 +980,27 @@ def optimize_jumpcue_parameters(
 ) -> JumpCueOptimizationResult:
     from concurrent.futures import as_completed
 
-    from core.analysis_lib_handler import FeatureNPZStore
     from core.concurrency.process_pool import create_spawn_process_pool
-    from optimizer import optimizer_track_name, skipped_track
+    from optimizer import library_tracks, optimizer_track_name, skipped_track
     from utils.jump_cues import jump_cue_point_groups
 
-    library_dir = Path(request.library_dir).resolve()
     cache_dir = Path(request.cache_dir)
     output_path = Path(request.output_path)
     MS.check_output(output_path)
     cache_dir.mkdir(parents=True, exist_ok=True)
     settings = _analysis_settings(Path(request.phrase_parameter_path))
-    store = FeatureNPZStore(str(library_dir))
     skipped: list = []
 
-    con = sqlite3.connect(f"file:{(library_dir / 'library.db').as_posix()}?mode=ro", uri=True)
-    rows = con.execute("SELECT uid, path, title, artist FROM tracks").fetchall()
-    con.close()
     tracks: list[dict] = []
-    for uid, path, title, artist in rows:
-        info = {"uid": str(uid), "audio_path": Path(path or ""), "title": title or "", "artist": artist or ""}
+    for given in library_tracks.tracks():     # the tracks the library's owner gave this run
+        info = {"uid": str(given["uid"]), "audio_path": Path(given["audio_path"]),
+                "title": given["title"], "artist": given["artist"]}
+        analysis_path = Path(given["analysis_path"])
         try:
-            if not store.exists(uid):
+            if not analysis_path.is_file():
                 continue
-            feats = store.load(uid)
+            with np.load(analysis_path, allow_pickle=False) as archive:
+                feats = {key: archive[key] for key in archive.files}
             saved = jump_cue_point_groups(feats, "jump_cues_np")
             if not saved:
                 continue
@@ -1138,7 +1133,6 @@ def main() -> None:
     parser.add_argument("--dataset", type=Path, default=Path("featurecache/jumpcue/dataset_v5.npz"))
     parser.add_argument("--model", type=Path, default=Path("assets/weights/jumpcue_jump_point.json"))
     parser.add_argument("--label-model", type=Path)
-    parser.add_argument("--db", type=Path, default=Path("library/library.db"))
     parser.add_argument("--output", type=Path, default=Path("featurecache/jumpcue/training_report_current.json"))
     parser.add_argument("--stage", choices=("audit", "trial", "sweep", "finalize", "all"), default="all")
     parser.add_argument("--state-dir", type=Path, default=Path("featurecache/jumpcue/training_state"))
@@ -1150,7 +1144,7 @@ def main() -> None:
                         help="weight of the saved choice over a group's rejected model pick")
     parser.add_argument("--feature-set", choices=tuple(FEATURE_SET_TERMS), default="base")
     args = parser.parse_args()
-    report = run(args.dataset, args.model, args.db, args.output, stage=args.stage,
+    report = run(args.dataset, args.model, args.output, stage=args.stage,
                  state_dir=args.state_dir, trial_l2=args.l2,
                  phrase_cache_dir=args.phrase_cache_dir,
                  trial_hard_weight=args.hard_weight, trial_feature_set=args.feature_set,

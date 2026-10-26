@@ -11,11 +11,14 @@ first 95 %, about 30 ms; the melody search on the same recordings 75 %.
 """
 from __future__ import annotations
 
-import sqlite3
+from typing import TYPE_CHECKING
 
 import numpy as np
 from numba import njit
 from scipy.ndimage import maximum_filter
+
+if TYPE_CHECKING:       # the index's landmarks, lent by the library's owner (its SQL is the library's)
+    from core.library.music_index import LandmarkIndex
 
 SR = 8000
 N_FFT, HOP = 1024, 256          # 128 ms windows, 32 ms frames
@@ -98,15 +101,15 @@ def audio_hashes(y: np.ndarray, sr: int, per_sec: int = PEAKS_PER_SEC,
     return hashes(peaks(to_sr(y, sr), per_sec), fan_out)
 
 
-def search(con: sqlite3.Connection, y: np.ndarray, sr: int, top: int = 10, per_sec: int = PEAKS_PER_SEC,
+def search(index: "LandmarkIndex", y: np.ndarray, sr: int, top: int = 10, per_sec: int = PEAKS_PER_SEC,
            fan_out: int = FAN_OUT) -> list[tuple[int, str, float, tuple[float, ...]]]:
     """[(votes, uid, start_sec, places)] best first: the songs whose hashes line up at one offset with the query's;
     places: every offset with half the best's votes or more (a song repeats itself: a chorus again), 3 s apart at
     least, best first."""
-    return [m[:4] for m in _matches(con, [audio_hashes(y, sr, per_sec, fan_out)], top)]
+    return [m[:4] for m in _matches(index, [audio_hashes(y, sr, per_sec, fan_out)], top)]
 
 
-def search_tempo(con: sqlite3.Connection, y: np.ndarray, sr: int, top: int = 10,
+def search_tempo(index: "LandmarkIndex", y: np.ndarray, sr: int, top: int = 10,
                  factors: np.ndarray = TEMPO_FACTORS, per_sec: int = PEAKS_PER_SEC,
                  fan_out: int = FAN_OUT) -> list[tuple[int, str, float, tuple[float, ...], float]]:
     """``search`` through a DJ's tempo change with the key locked (master tempo: the frequencies stay, the times
@@ -121,10 +124,10 @@ def search_tempo(con: sqlite3.Connection, y: np.ndarray, sr: int, top: int = 10,
         q = p.copy()
         q[:, 0] = np.round(p[:, 0] * float(s)).astype(np.int64)
         sets.append(hashes(q, fan_out))
-    return [(*m[:4], float(factors[m[4]])) for m in _matches(con, sets, top)]
+    return [(*m[:4], float(factors[m[4]])) for m in _matches(index, sets, top)]
 
 
-def _matches(con: sqlite3.Connection, sets: list[tuple[np.ndarray, np.ndarray]], top: int) -> list[tuple]:
+def _matches(index: "LandmarkIndex", sets: list[tuple[np.ndarray, np.ndarray]], top: int) -> list[tuple]:
     """The songs whose hashes line up with one of the query's hash sets (hash, anchor frame in the song's time) at one
     offset: [(votes, uid, start_sec, places, set)] best first, each song at its best set."""
     qh = np.concatenate([h for h, _t in sets]) if sets else np.zeros(0, np.int64)
@@ -133,12 +136,7 @@ def _matches(con: sqlite3.Connection, sets: list[tuple[np.ndarray, np.ndarray]],
     qt = np.concatenate([t for _h, t in sets])
     qk = np.concatenate([np.full(h.size, k, np.int64) for k, (h, _t) in enumerate(sets)])
     # the index's rows of the query's hashes (each hash looked up once, however many sets have it), joined here
-    con.execute("CREATE TEMP TABLE IF NOT EXISTS qh (hash INTEGER PRIMARY KEY)")
-    con.execute("DELETE FROM qh")
-    con.executemany("INSERT INTO qh VALUES (?)", ((h,) for h in np.unique(qh).tolist()))
-    # CROSS JOIN keeps this order (SQLite would otherwise scan the whole index against the query's few hashes)
-    rows = np.array(con.execute("SELECT l.hash, l.song, l.t FROM qh CROSS JOIN landmark l ON l.hash = qh.hash")
-                    .fetchall(), np.int64).reshape(-1, 3)
+    rows = index.rows(qh)
     if rows.shape[0] == 0:
         return []
     rows = rows[np.argsort(rows[:, 0], kind="stable")]
@@ -161,7 +159,7 @@ def _matches(con: sqlite3.Connection, sets: list[tuple[np.ndarray, np.ndarray]],
     order = np.lexsort((-v, u >> 30))                  # each song's offsets, the most votes first
     first = order[np.r_[True, (u[order] >> 30)[1:] != (u[order] >> 30)[:-1]]]
     first = first[np.argsort(-v[first], kind="stable")][:top]
-    ids = dict(con.execute("SELECT id, uid FROM landmark_song"))
+    ids = index.songs()
     gap = int(round(3.0 / FRAME_SEC))
     out = []
     for i in first:

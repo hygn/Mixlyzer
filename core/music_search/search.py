@@ -16,9 +16,9 @@ GUI and the audio, never all the cores.
 from __future__ import annotations
 
 import os
-import sqlite3
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 import numba
 import numpy as np
@@ -26,6 +26,9 @@ import numpy as np
 from core.music_search import landmarks, melody, query
 from core.music_search.matcher import MelodyIndex
 from core.music_search.melody import SR
+
+if TYPE_CHECKING:
+    from core.library.music_index import LandmarkIndex
 
 QUERY_PEAKS_PER_SEC = 30   # the query's landmarks, three times the index's: a crowd's calls and screams take a
 QUERY_FAN_OUT = 12         # second's strongest peaks, so a query keeping more (paired with more, the index's pairs
@@ -65,17 +68,17 @@ class SearchResult:
     voiced_sec: float               # seconds of pitch in the query (the voice's)
 
 
-def _recording(con, y, sr, top, least, dense=True):
+def _recording(landmark_index, y, sr, top, least, dense=True):
     span = y.size / float(sr)
-    found = landmarks.search(con, y, sr, top, *((QUERY_PEAKS_PER_SEC, QUERY_FAN_OUT) if dense else
+    found = landmarks.search(landmark_index, y, sr, top, *((QUERY_PEAKS_PER_SEC, QUERY_FAN_OUT) if dense else
                                                 (landmarks.PEAKS_PER_SEC, landmarks.FAN_OUT)))
     return [MusicMatch(uid, "recording", float(v), max(0.0, st), max(0.0, st) + span, 0.0, places)
             for v, uid, st, places in found if v >= least]
 
 
-def _recording_tempo(con, y, sr, top, least):
+def _recording_tempo(landmark_index, y, sr, top, least):
     span = y.size / float(sr)
-    found = landmarks.search_tempo(con, y, sr, top, per_sec=QUERY_PEAKS_PER_SEC, fan_out=QUERY_FAN_OUT)
+    found = landmarks.search_tempo(landmark_index, y, sr, top, per_sec=QUERY_PEAKS_PER_SEC, fan_out=QUERY_FAN_OUT)
     return [MusicMatch(uid, "recording", float(v), max(0.0, st), max(0.0, st) + span * f, 0.0, places)
             for v, uid, st, places, f in found if v >= least]
 
@@ -95,10 +98,10 @@ def _music(index, y, top):
             if m.cost <= MUSIC_MAX_COST]
 
 
-def search_audio(y: np.ndarray, sr: int, index: MelodyIndex | None, con: sqlite3.Connection | None,
+def search_audio(y: np.ndarray, sr: int, index: MelodyIndex | None, landmark_index: "LandmarkIndex | None",
                  top: int = 10) -> SearchResult:
-    """The best songs for a query (mono float at ``sr``) over ``index`` (the reference lines) and ``con`` (the
-    landmarks; store.open_reader's)."""
+    """The best songs for a query (mono float at ``sr``) over ``index`` (the reference lines) and ``landmark_index`` (the
+    landmarks: core.library.music_index.LandmarkIndex, lent by the library's owner)."""
     y = np.asarray(y, dtype=np.float32)
     if sr != SR:
         import soxr
@@ -108,15 +111,15 @@ def search_audio(y: np.ndarray, sr: int, index: MelodyIndex | None, con: sqlite3
     voiced = float(np.isfinite(pitch).sum()) * QUERY_HOP / SR
     # a single voice (or an instrument) gets more landmark votes by chance than a mix: its few strong partials
     voice_like = voiced_frac >= VOICE_LIKE
-    if con is not None:
-        found = (_recording(con, y, SR, top, VOICE_MIN_VOTES, dense=False) if voice_like else
-                 _recording(con, y, SR, top, MIN_VOTES))
+    if landmark_index is not None:
+        found = (_recording(landmark_index, y, SR, top, VOICE_MIN_VOTES, dense=False) if voice_like else
+                 _recording(landmark_index, y, SR, top, MIN_VOTES))
         if found:
             return SearchResult("recording", tuple(found), voiced)
     if index is None or not len(index):
         return SearchResult("none", (), voiced)
-    mix = con is not None and not voice_like
-    tempo = _POOL.submit(_recording_tempo, con, y, SR, top, MIN_TEMPO_VOTES) if mix else None
+    mix = landmark_index is not None and not voice_like
+    tempo = _POOL.submit(_recording_tempo, landmark_index, y, SR, top, MIN_TEMPO_VOTES) if mix else None
     voice = _POOL.submit(_voice, index, pitch, top) if voiced >= MIN_VOICED_SEC else None
     music = _POOL.submit(_music, index, y, top) if not voice_like else None
     found = tempo.result() if tempo else []

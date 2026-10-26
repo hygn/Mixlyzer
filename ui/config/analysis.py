@@ -366,6 +366,7 @@ class AnalysisSettingsMixin:
         worker = OptimizerWorkflow(
             key,
             [{"optimizer_name": key, "display_name": title, "request_values": request_values}],
+            self._library,
             parent=self,
         )
         worker.featureProgress.connect(dialog.set_feature_progress)
@@ -509,6 +510,7 @@ class AnalysisSettingsMixin:
                 }
                 for key, name, _options, request_values in self._beat_jobs
             ],
+            self._library,
             parent=self,
         )
         worker.featureProgress.connect(dialog.set_feature_progress)

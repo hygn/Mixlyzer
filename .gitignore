@@ -44,8 +44,8 @@ audioengine/native/bin/
 audioengine/native/target/
 audioengine/native/third_party/
 
-# User data / caches
-library/
+# User data / caches (the library folder at the root only: core/library/ is code)
+/library/
 featurecache/
 backups/
 debug/

@@ -659,59 +659,11 @@ def lookup(api: Wikimedia, title: str, artist: str = "", cache_path: str = CACHE
         con.close()
 
 
-# ---- into the library ----
+# (what is found goes into the library through its owner: core.library.jobs.add_found_tieups)
 
-def add(con: sqlite3.Connection, uid: str, c: Candidate, languages: Optional[list[str]] = None,
-        han_run: int = reading.HAN_RUN_MIN) -> None:
-    """A candidate added to the track, in the caller's transaction: its work the library's it is (tieup.find_work: the
-    same Wikidata item or Wikipedia page, else one title or synonym in common; its other names and references added,
-    nothing overwritten, its category kept), else a new one. On the track: none with no role where the track has the
-    work already; a role found replaces the work's tie-up with none (its place kept)."""
-    work_id = tieup.find_work(con, c.work)
-    if work_id is None:
-        work_id = tieup.save_work(con, tieup.Work("", c.work.category, c.work.titles, c.work.aliases, c.work.urls),
-                                  languages, han_run)
-    else:
-        tieup.add_names(con, work_id, c.work.titles, c.work.aliases, c.work.urls, languages, han_run)
-    roles = {(r, int(s)) for r, s in con.execute("SELECT role, seq FROM tieup WHERE track_uid=? AND work_id=?;",
-                                                 (uid, work_id))}
-    if (c.role, c.seq) in roles or (c.role == tieup.UNSPECIFIED and roles):
-        return
-    if (tieup.UNSPECIFIED, 0) in roles:
-        con.execute("UPDATE tieup SET role=?, seq=?, detail=? WHERE track_uid=? AND work_id=? AND role=? AND seq=0;",
-                    (c.role, c.seq, c.detail, uid, work_id, tieup.UNSPECIFIED))
-        return
-    con.execute("INSERT INTO tieup(track_uid, work_id, role, seq, detail, rank) VALUES(?, ?, ?, ?, ?, "
-                "(SELECT COALESCE(MAX(rank) + 1, 0) FROM tieup WHERE track_uid=?));",
-                (uid, work_id, c.role, c.seq, c.detail, uid))
-
-
-def tag_track(library_db: str, uid: str, api: Wikimedia, cache_path: str = CACHE_NAME,
-              languages: Optional[list[str]] = None, han_run: int = reading.HAN_RUN_MIN) -> bool:
-    """A track without tie-ups given the sure one Wikimedia has for it (its title and artist). Whether it was."""
-    con = tieup.connect(library_db)
-    try:
-        if con.execute("SELECT 1 FROM tieup WHERE track_uid=?;", (uid,)).fetchone():
-            return False
-        row = con.execute("SELECT title, artist, album FROM tracks WHERE uid=?;", (uid,)).fetchone()
-        if row is None or not row[0]:
-            return False
-        sure = [c for c in lookup(api, row[0], row[1] or "", cache_path, row[2] or "") if c.sure]
-        if not sure:
-            return False
-        with con:
-            add(con, uid, sure[0], languages, han_run)
-        return True
-    finally:
-        con.close()
-
-
-def candidates_for(library_db: str, uid: str, api: Wikimedia, cache_path: str = CACHE_NAME) -> list[Candidate]:
-    """Every candidate Wikimedia gives for the track (the Edit tab's suggestions)."""
-    con = sqlite3.connect(f"file:{library_db}?mode=ro", uri=True)
-    try:
-        row = con.execute("SELECT title, artist, album FROM tracks WHERE uid=?;", (uid,)).fetchone()
-    finally:
-        con.close()
-    return lookup(api, row[0], row[1] or "", cache_path, row[2] or "") if row is not None and row[0] else []
+def sure_of(api: Wikimedia, song: tuple[str, str, str], cache_path: str = CACHE_NAME) -> Optional[Candidate]:
+    """The sure tie-up Wikimedia has for a song ((title, artist, album): core.library.jobs.song_of), or None: the
+    network only, no library."""
+    title, artist, album = song
+    return next((c for c in lookup(api, title, artist, cache_path, album) if c.sure), None)
 

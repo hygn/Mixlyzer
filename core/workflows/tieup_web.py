@@ -3,7 +3,6 @@ looked up when Settings > Library says so (its sure tie-up written), and the Edi
 thread works through them in turn (Wikimedia is asked one request at a time anyway)."""
 from __future__ import annotations
 
-import os
 import queue
 import threading
 from typing import Callable
@@ -11,11 +10,13 @@ from typing import Callable
 from PySide6 import QtCore
 
 from core import tieup_web
+from core.library import jobs
 
 
 class TieupWebLookup(QtCore.QObject):
-    """``libpath`` / ``settings`` (the search settings: the readings' languages) / ``enabled`` (Settings > Library's
-    option for new tracks) are read at each lookup."""
+    """``library``: the library's owner (core.library.service), whom the lookup thread asks for the track's title and
+    artist and gives the tie-ups to write; ``enabled`` (Settings > Library's option for new tracks) is read at each
+    lookup. The thread itself only asks Wikimedia."""
 
     tagged = QtCore.Signal(list)           # the tracks given a tie-up
     found = QtCore.Signal(str, object)     # a track, its candidates (a list of tieup_web.Candidate), "Find on the Web"
@@ -26,17 +27,12 @@ class TieupWebLookup(QtCore.QObject):
     started = QtCore.Signal(str)
     done = QtCore.Signal(str, str)
 
-    def __init__(self, *, libpath: Callable[[], str], settings: Callable[[], object],
-                 enabled: Callable[[], bool] = lambda: False, parent=None) -> None:
+    def __init__(self, *, library, enabled: Callable[[], bool] = lambda: False, parent=None) -> None:
         super().__init__(parent)
-        self._libpath = libpath
-        self._settings = settings
+        self._library = library
         self._enabled = enabled
         self._jobs: queue.Queue = queue.Queue()
         self._thread: threading.Thread | None = None
-
-    def _library_db(self) -> str:
-        return os.path.join(str(self._libpath()), "library.db")
 
     def new_track(self, uid: str, title: str = "") -> None:
         """A new track's lookup, when Settings > Library's option is on."""
@@ -61,19 +57,22 @@ class TieupWebLookup(QtCore.QObject):
                 kind, uid = self._jobs.get(timeout=5.0)
             except queue.Empty:
                 return
-            s = self._settings()
             if kind == "tag":
                 self.started.emit(uid)
             try:
+                song = self._library.call(jobs.song_of, uid, kind == "tag")
                 if kind == "tag":
-                    if tieup_web.tag_track(self._library_db(), uid, tieup_web.shared(), languages=s.db_languages,
-                                           han_run=s.han_run()):
+                    sure = tieup_web.sure_of(tieup_web.shared(), song) if song is not None else None
+                    if sure is not None:
+                        # written by the library's owner (the readings in its languages)
+                        self._library.call(jobs.add_found_tieups, [uid], [sure.as_tieup()], write=True)
                         self.tagged.emit([uid])
                         self.done.emit(uid, "tagged")
                     else:
                         self.done.emit(uid, "none")
                 else:
-                    self.found.emit(uid, tieup_web.candidates_for(self._library_db(), uid, tieup_web.shared()))
+                    self.found.emit(uid, tieup_web.lookup(tieup_web.shared(), *song[:2], album=song[2])
+                                    if song is not None else [])
             except Exception as exc:     # the network, a page: nothing written
                 print(f"[Tie-ups] web lookup failed: {exc}")
                 if kind == "find":

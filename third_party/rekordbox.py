@@ -12,7 +12,7 @@ from xml.etree import ElementTree as ET
 
 import numpy as np
 
-from core.library_handler import TrackRow
+from core.library.records import TrackRow
 from utils.labels import idx_to_labels
 from utils.jump_cues import extract_jump_cue_graph
 from core.tempo_rows import is_ramp_row, ramp_beat_times, segment_end_bpm

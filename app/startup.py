@@ -264,19 +264,19 @@ def _load_readers(progress: Progress) -> None:
     reading.warm_up(progress)
 
 
-def _search_keys(libpath: str) -> Callable[[Progress], None]:
+def _open_library(libpath: str, held: dict) -> Callable[[Progress], None]:
     def run(progress: Progress) -> None:
-        """Every stored reading's search keys into reading.keys' cache, so the library opens and
-        searches without building them."""
+        """The library's owner started (core.library.service: its thread reads the library), then every stored
+        reading's search keys into reading.keys' cache, so the library opens and searches without building them.
+        The window takes the owner (``held``)."""
         from core import reading
-        from core.library_handler import LibraryDB
+        from core.library.service import LibraryService
         progress(0.0, tr("library.db: readings"))
-        db = LibraryDB(os.path.join(libpath, "library.db"))
-        db.connect()
-        try:
-            stored = db.all_readings()
-        finally:
-            db.close()
+        library = LibraryService(libpath)
+        library.refresh()
+        library.wait()
+        held["library"] = library
+        stored = library.snapshot.readings
         texts = [text for fields in stored.values() for texts in fields.values() for text in texts]
         for i, text in enumerate(texts):
             if i % 256 == 0:
@@ -286,21 +286,24 @@ def _search_keys(libpath: str) -> Callable[[Progress], None]:
     return run
 
 
-def _build_window(progress: Progress):
-    from app.window import AppWindow
-    return AppWindow(progress=progress)
+def _build_window(held: dict) -> Callable[[Progress], object]:
+    def run(progress: Progress):
+        from app.window import AppWindow
+        return AppWindow(progress=progress, library=held.get("library"))
+    return run
 
 
 def startup_tasks(cfg) -> list[StartupTask]:
     """What the app does before its window opens, in order; the last gives the window."""
+    held: dict = {}     # the library's owner, from its task to the window's
     # weights: the measured times (s) of a start with the files in the OS cache
     tasks = [
         StartupTask(tr("Loading libraries"), 3.0, _import_libraries),
         StartupTask(tr("Compiling audio kernels (JIT)"), 0.4, _compile_audio_kernels),
         StartupTask(tr("Starting FFmpeg"), 0.1, _warm_ffmpeg),
         StartupTask(tr("Loading search readers"), 1.5, _load_readers),
-        StartupTask(tr("Loading the library"), 0.1, _search_keys(cfg.libconfig.libpath)),
-        StartupTask(tr("Building the window"), 2.3, _build_window, pump_events=False),
+        StartupTask(tr("Loading the library"), 0.1, _open_library(cfg.libconfig.libpath, held)),
+        StartupTask(tr("Building the window"), 2.3, _build_window(held), pump_events=False),
     ]
     from audioengine.native.client import available
     if cfg.playbackconfig.audio_engine == "native" and available():
