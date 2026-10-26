@@ -19,7 +19,6 @@ from __future__ import annotations
 
 import numpy as np
 
-from foundation.model_files import resolve_model
 
 from .decode import is_ramp
 from .tcn import frame_inputs
@@ -31,12 +30,11 @@ DIL = (1, 3, 6, 12)
 SHARED = {'r32': 1.0 / 2.0, 'r23': 1.0 / 3.0, 'r43': 1.0 / 3.0, 'r34': 1.0 / 4.0}
 READINGS = (('r32', 2.0 / 3.0, (0.0, 1.0 / 3.0, 2.0 / 3.0)), ('r23', 1.5, (0.0, 0.5, 1.0)),
             ('r43', 0.75, (0.0, 0.25, 0.5)), ('r34', 4.0 / 3.0, (0.0, 1.0 / 3.0, 2.0 / 3.0, 1.0)))
-WEIGHT_PATH = 'assets/weights/beat_critic.npz'
 
 
-def load_weights(path: str = WEIGHT_PATH) -> list[dict]:
+def load_weights(path: str) -> list[dict]:
     """The fold models, each a dict of the torch state dict's arrays (npz keys 'f<k>/<name>')."""
-    with np.load(resolve_model(path)) as z:
+    with np.load(path) as z:
         folds = sorted({k.split('/', 1)[0] for k in z.files})
         return [{k.split('/', 1)[1]: np.asarray(z[k], np.float32) for k in z.files if k.startswith(f + '/')} for f in folds]
 

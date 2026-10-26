@@ -25,6 +25,7 @@ from sklearn.model_selection import GroupKFold
 
 from analyzer.beat.general import tracker as TR
 from core.concurrency.process_pool import create_spawn_process_pool
+from core.workers.analysis_settings import model_file
 from optimizer import SkippedOptimizationTrack, optimizer_track_name, skipped_track
 from optimizer.beat_frames import cache_path, ensure_frames, list_grid_tracks, read_frames
 from optimizer.beat_grid_check import USABLE_SEC, GridCheck, from_scores, missed_bar_time, usable_error
@@ -74,10 +75,10 @@ class BeatDecoderOptimizationResult:
 def _score_song(job):
     """Process-worker entry point: one song's wrong time for every combination of the candidate costs
     [section, half_reset, odd_bar] -> (unusable beats, missed bars) in seconds."""
-    track, cache_dir_text, paths, refine_path, bpm_min, grid = job
+    track, cache_dir_text, files, refine_file, bpm_min, grid = job
     from threadpoolctl import threadpool_limits
     from analyzer.beat.general import bars as B, critic as C, decode as D, tcn as T
-    from analyzer.beat.learned_onset import REFINE_ONSET_PATH, refine_onset_activation
+    from analyzer.beat.learned_onset import refine_onset_activation
     from analyzer.music.beat_geometry import downbeat_times
     from analyzer.music.tempo_rows import rebuild_grid_from_segments
     sections_c, resets_c, bars_c = grid
@@ -89,10 +90,10 @@ def _score_song(job):
     ibi = np.r_[np.diff(ref), np.diff(ref)[-1]]
     out = np.zeros((len(sections_c), len(resets_c), len(bars_c), 2))
     with threadpool_limits(limits=1):
-        models = TR.load_models(*[None if p in (None, "", "None") else p for p in paths])
+        models = TR.load_models(*files)
         ft = np.asarray(frames.frame_times, float)
         t0, hop = float(ft[0]), float(np.median(np.diff(ft)))
-        refine = (refine_onset_activation(frames, refine_path or REFINE_ONSET_PATH).astype(np.float64), hop, t0)
+        refine = (refine_onset_activation(frames, refine_file).astype(np.float64), hop, t0)
         x = T.frame_inputs(frames)
         octave = D.Octave(bpm_min)
         critic_track = C.track_features(frames)
@@ -152,11 +153,14 @@ def optimize_beat_decoder(
     grid = (around(() if request.quick else SECTION_COSTS, current.section), around(HALF_RESET_COSTS, current.half_reset),
             around(ODD_BAR_COSTS, current.odd_bar))
     paths = tuple(None if p is None else str(p) for p in (request.downbeat_ctx_path, request.tcn_path, request.critic_path))
+    # the files read (a path not given: the setting's default)
+    files = (model_file(paths[0], "downbeat_ctx_parameter_path"), model_file(paths[1], "beat_tcn_parameter_path"),
+             model_file(paths[2], "beat_critic_parameter_path"), model_file(None, "beat_decoder_parameter_path"))
+    refine_file = model_file(request.refine_onset_path, "refine_onset_parameter_path")
     tables, kept = {}, []
     workers = max(1, int(request.max_cache_workers or 4))
     with create_spawn_process_pool(workers) as executor:
-        futures = {executor.submit(_score_song, (t, str(cache_dir), paths,
-                                                 None if request.refine_onset_path is None else str(request.refine_onset_path),
+        futures = {executor.submit(_score_song, (t, str(cache_dir), files, refine_file,
                                                  float(request.bpm_min), grid)): t for t in tracks}
         for done, f in enumerate(as_completed(futures), start=1):
             uid, table = f.result()

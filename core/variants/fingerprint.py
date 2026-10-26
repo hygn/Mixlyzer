@@ -23,7 +23,7 @@ from typing import Mapping
 import numpy as np
 
 from analyzer.beat.grid_version import BEAT_GRID_VERSION
-from utils.wave import WAVE_BANDS_VERSION
+from analyzer.audio.wave_overview import WAVE_BANDS_VERSION
 
 # the fingerprint's method: this algorithm and the version of each stored feature it reads (core.library.variants keeps
 # it with every fingerprint and compares only fingerprints of one method)

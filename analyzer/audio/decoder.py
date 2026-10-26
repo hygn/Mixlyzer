@@ -9,8 +9,7 @@ from pathlib import Path
 
 import numpy as np
 
-from foundation import os_support
-from foundation.resource_paths import project_root
+from analyzer.runtime import IS_WINDOWS, hidden_subprocess_kwargs
 
 try:
     import soundfile as sf  # lightweight header probe
@@ -20,8 +19,8 @@ except Exception:  # pragma: no cover
 
 _ffmpeg_warm_lock = threading.Lock()
 _ffmpeg_warmed = False
-# an FFmpeg next to the app (ffmpeg.exe on Windows; a package's in _internal), else the one on PATH
-_BUNDLED_FFMPEG = project_root() / ("ffmpeg.exe" if os_support.IS_WINDOWS else "ffmpeg")
+# an FFmpeg in the folder holding the analyzer (the app's folder; a package's _internal), else the one on PATH
+_BUNDLED_FFMPEG = Path(__file__).resolve().parents[2] / ("ffmpeg.exe" if IS_WINDOWS else "ffmpeg")
 
 
 @lru_cache(maxsize=1)
@@ -29,7 +28,7 @@ def _ffmpeg_command() -> str:
     """FFmpeg by its full path: the app's, else the first on PATH (absolute entries only: a bare name or a
     relative entry would take one from the current folder). The app's path when there is none (not found)."""
     def runnable(p: Path) -> bool:
-        return p.is_file() and (os_support.IS_WINDOWS or os.access(p, os.X_OK))
+        return p.is_file() and (IS_WINDOWS or os.access(p, os.X_OK))
 
     if runnable(_BUNDLED_FFMPEG):
         return str(_BUNDLED_FFMPEG)
@@ -73,7 +72,7 @@ def warm_ffmpeg_decoder() -> None:
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
                 check=False,
-                **os_support.hidden_subprocess_kwargs(),
+                **hidden_subprocess_kwargs(),
             )
             if proc.returncode == 0:
                 _ffmpeg_warmed = True
@@ -114,7 +113,7 @@ def decode_to_memmap(path: str, sr: int, ch: int) -> np.ndarray:
         "pipe:1",
     ]
 
-    popen_kwargs = os_support.hidden_subprocess_kwargs()
+    popen_kwargs = hidden_subprocess_kwargs()
 
     proc = subprocess.Popen(
         args,
@@ -186,7 +185,7 @@ def read_metadata(path: str) -> dict[str, str]:
                 "-map_metadata", source, "-f", "ffmetadata", "pipe:1"]
         try:
             proc = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, check=False,
-                                  timeout=30, **os_support.hidden_subprocess_kwargs())
+                                  timeout=30, **hidden_subprocess_kwargs())
         except (OSError, subprocess.TimeoutExpired):
             return out
         if proc.returncode != 0:
@@ -203,7 +202,7 @@ def read_cover(path: str) -> bytes | None:
             "-map", "0:v:0", "-c", "copy", "-frames:v", "1", "-f", "image2pipe", "pipe:1"]
     try:   # one packet copied: no more than the file holds
         proc = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, check=False, timeout=30,
-                              **os_support.hidden_subprocess_kwargs())
+                              **hidden_subprocess_kwargs())
     except (OSError, subprocess.TimeoutExpired):
         return None
     data = proc.stdout
@@ -257,7 +256,7 @@ def _probe_audio_stream(path: str) -> tuple[int, float]:
         "-i",
         path,
     ]
-    popen_kwargs = os_support.hidden_subprocess_kwargs()
+    popen_kwargs = hidden_subprocess_kwargs()
     try:
         proc = subprocess.run(
             args,

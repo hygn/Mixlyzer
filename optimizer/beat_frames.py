@@ -74,7 +74,7 @@ def build_frames(track: dict[str, object], cache_dir_text: str) -> str:
     from threadpoolctl import threadpool_limits
     from analyzer.beat.frame_features import extract_frame_features
     from analyzer.beat.general import FRAME_HOP_LENGTH, SAMPLE_RATE
-    from analyzer.pipeline.track import fast_load
+    from analyzer.audio.load import fast_load
     from analyzer.audio.hpss import hpss_audio_with_spectra
 
     path = cache_path(Path(cache_dir_text), str(track["uid"]))

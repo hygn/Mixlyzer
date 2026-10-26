@@ -10,7 +10,6 @@ from pathlib import Path
 import numpy as np
 
 from analyzer.beat.frame_features import FrameFeatures
-from foundation.resource_paths import resource_path
 
 
 # Per-frame onset sources, in model order. librosa's onset strength is one
@@ -145,11 +144,10 @@ def stack_context(channels: np.ndarray, frame_index: np.ndarray | None = None) -
 # Gradient-boosted onset over those inputs. It also fires on triplet subdivisions, so the
 # tracker reads tempo from its TCN; this one only places the tempo changes.
 REFINE_ONSET_FORMAT = "mixlyzer_refine_onset_hgb_v1"
-REFINE_ONSET_PATH = resource_path("assets/weights/refine_onset_hgb.npz")
 
 
 @lru_cache(maxsize=2)
-def load_refine_onset_model(path: str = str(REFINE_ONSET_PATH)):
+def load_refine_onset_model(path: str):
     from analyzer.phrase.phrase_analyzer import _load_numpy_hgb
 
     with np.load(Path(path), allow_pickle=False) as archive:
@@ -162,10 +160,9 @@ def load_refine_onset_model(path: str = str(REFINE_ONSET_PATH)):
     return model, hop
 
 
-def refine_onset_activation(frames: FrameFeatures, path: str | Path = REFINE_ONSET_PATH) -> np.ndarray:
-    """Gradient-boosted beat activation on the frame grid [T]."""
-    from foundation.model_files import resolve_model
-    model, hop = load_refine_onset_model(str(resolve_model(path)))
+def refine_onset_activation(frames: FrameFeatures, path: str | Path) -> np.ndarray:
+    """Gradient-boosted beat activation on the frame grid [T] (the model in the file at ``path``)."""
+    model, hop = load_refine_onset_model(str(path))
     if hop != int(frames.hop_length):
         raise ValueError(f"Refinement onset model expects hop {hop}, frames use {frames.hop_length}")
     inputs = stack_context(onset_channels(frames)).astype(np.float64)
@@ -174,7 +171,7 @@ def refine_onset_activation(frames: FrameFeatures, path: str | Path = REFINE_ONS
 
 def export_refine_onset_model(classifier, output_path: str | Path, frame_hop_length: int, training: dict | None = None) -> None:
     from analyzer.phrase.phrase_analyzer import _hgb_to_npz_payload
-    from utils.atomic_io import atomic_output_path
+    from analyzer.files import atomic_output_path
 
     payload: dict[str, np.ndarray] = {
         "format": np.asarray(REFINE_ONSET_FORMAT),

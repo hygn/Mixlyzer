@@ -1,4 +1,23 @@
+"""The analyzer's process: the operating system it runs on (detected here: the analyzer imports no app code),
+console programs started without a window, the physical core count sklearn sizes its pool by; and the small
+signal helpers the beat and JumpCUE code share."""
+import subprocess
+import sys
+
 import numpy as np
+
+IS_WINDOWS = sys.platform == "win32"
+
+
+def hidden_subprocess_kwargs() -> dict:
+    """Popen keyword arguments that keep a console program's window from opening (Windows); none elsewhere."""
+    if not IS_WINDOWS:
+        return {}
+    startupinfo = subprocess.STARTUPINFO()
+    startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+    startupinfo.wShowWindow = getattr(subprocess, "SW_HIDE", 0)
+    return {"creationflags": getattr(subprocess, "CREATE_NO_WINDOW", 0), "startupinfo": startupinfo}
+
 
 def moving_average(x: np.ndarray, win: int) -> np.ndarray:
     x = np.asarray(x, dtype=float)
@@ -48,9 +67,7 @@ def prime_physical_core_count() -> None:
     every analysis process). The same number is read here from
     GetLogicalProcessorInformationEx; on any failure loky keeps its own lookup.
     """
-    from foundation import os_support
-
-    if not os_support.IS_WINDOWS:
+    if not IS_WINDOWS:
         return
     try:
         import ctypes

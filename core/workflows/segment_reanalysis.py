@@ -6,7 +6,7 @@ from typing import Callable, Optional
 import numpy as np
 from PySide6 import QtCore
 
-from analyzer.pipeline.track import getAlbumArt
+from core.audio.track_tags import getAlbumArt
 from core.config import load_cfg
 from core.workers.segment_reanalysis import SegmentReanalysisWorker
 from core.event_bus import EventBus
@@ -88,7 +88,6 @@ class SegmentReanalysisWorkflow(QtCore.QObject):
         if analyze_type.startswith("key"):
             selection = self._parse_selection(payload.get("selection"))
         prev_bpm = payload.get("prev_bpm")
-        use_prev_only = bool(payload.get("use_only_prev_bpm"))
         duration = payload.get("duration_sec")
         if prev_bpm is not None:
             try:
@@ -148,7 +147,6 @@ class SegmentReanalysisWorkflow(QtCore.QObject):
             segment_index=seg_index,
             taskid=task.taskid,
             prev_bpm=prev_bpm,
-            use_only_prev_bpm=use_prev_only,
             parent=self,
             analyze_type=analyze_type,
             phrases=payload.get("phrases"),

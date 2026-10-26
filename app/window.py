@@ -17,7 +17,7 @@ from core.player import PlayerController
 from core.analysis_library import jobs as analysis_jobs
 from core.library import jobs
 from core.library.service import LibraryService
-from analyzer.pipeline.track import extract_tags
+from core.audio.track_tags import extract_tags
 from core.workflows.analysis import AnalysisWorkflow
 from core.taskmanager import TIEUP_LOOKUP, taskmanager
 from core.external_sync import ExternalSyncController

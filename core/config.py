@@ -183,10 +183,6 @@ class externalsyncconfig:
     osc_port: int
 
 
-# Every analysis runs at this sample rate (the learned models -- beat, phrase, JumpCUE, key -- were trained on it).
-ANALYSIS_SAMPLE_RATE = 22050
-
-
 @dataclass
 class analysisconfig:
     # The beat tracker reads every tempo in the octave from here (bpm_min .. 2 x bpm_min).

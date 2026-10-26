@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-27 00:06+0900\n"
+"POT-Creation-Date: 2026-10-27 00:27+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ja_JP\n"
@@ -17,142 +17,6 @@ msgstr ""
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
-
-#: analyzer/pipeline/beatgrid.py:155 analyzer/pipeline/jumpcues.py:32
-#: analyzer/pipeline/keys.py:17 analyzer/pipeline/phrases.py:28
-msgid "Loading audio"
-msgstr "オーディオを読み込み中"
-
-#: analyzer/pipeline/beatgrid.py:167
-msgid "segment too short for reanalysis"
-msgstr "再解析するには区間が短すぎます"
-
-#: analyzer/pipeline/beatgrid.py:173
-msgid "Preparing audio"
-msgstr "オーディオを準備中"
-
-#: analyzer/pipeline/beatgrid.py:178
-msgid "Beat activations"
-msgstr "ビートアクティベーション"
-
-#: analyzer/pipeline/beatgrid.py:196
-msgid "Estimating BPM"
-msgstr "BPM を推定中"
-
-#: analyzer/pipeline/beatgrid.py:237
-msgid "Downbeat analysis"
-msgstr "ダウンビート解析"
-
-#: analyzer/pipeline/beatgrid.py:250
-msgid "Updating beat grid"
-msgstr "ビートグリッドを更新中"
-
-#: analyzer/pipeline/beatgrid.py:260
-msgid "Segment updated"
-msgstr "区間を更新しました"
-
-#: analyzer/pipeline/jumpcues.py:29
-msgid "tempo segments are required for JumpCUE reanalysis"
-msgstr "JumpCUE の再解析にはテンポ区間が必要です"
-
-#: analyzer/pipeline/jumpcues.py:37 analyzer/pipeline/phrases.py:32
-#: analyzer/pipeline/track.py:232
-msgid "Processing HPSS"
-msgstr "HPSS を処理中"
-
-#: analyzer/pipeline/jumpcues.py:40
-msgid "Frame features"
-msgstr "フレーム特徴量"
-
-#: analyzer/pipeline/jumpcues.py:43
-msgid "Phrase boundaries"
-msgstr "フレーズ境界"
-
-#: analyzer/pipeline/jumpcues.py:55
-msgid "too few beats for the phrase analysis JumpCUE needs"
-msgstr "JumpCUE に必要なフレーズ解析を行うには拍が少なすぎます"
-
-#: analyzer/pipeline/jumpcues.py:57
-msgid "Analyzing JumpCUE"
-msgstr "JumpCUE を解析中"
-
-#: analyzer/pipeline/jumpcues.py:100
-msgid "JumpCUE Updated"
-msgstr "JumpCUE を更新しました"
-
-#: analyzer/pipeline/keys.py:23
-msgid "Separating harmonics"
-msgstr "和声成分を分離中"
-
-#: analyzer/pipeline/keys.py:26
-msgid "Analyzing key"
-msgstr "キーを解析中"
-
-#: analyzer/pipeline/keys.py:51 analyzer/pipeline/keys.py:84
-msgid "Key segment updated"
-msgstr "キー区間を更新しました"
-
-#: analyzer/pipeline/keys.py:81
-msgid "selection duration too small"
-msgstr "選択範囲が短すぎます"
-
-#: analyzer/pipeline/phrases.py:23
-#, python-brace-format
-msgid "the phrase analysis needs at least {count} beats"
-msgstr "フレーズ解析には少なくとも {count} 拍が必要です"
-
-#: analyzer/pipeline/phrases.py:25
-msgid "tempo segments are required for phrase reanalysis"
-msgstr "フレーズの再解析にはテンポ区間が必要です"
-
-#: analyzer/pipeline/phrases.py:36
-msgid "Analyzing phrases"
-msgstr "フレーズを解析中"
-
-#: analyzer/pipeline/phrases.py:51
-msgid "Phrases Updated"
-msgstr "フレーズを更新しました"
-
-#: analyzer/pipeline/track.py:56
-#, python-brace-format
-msgid "Audio decode failed via FFmpeg and SoundFile: {path}"
-msgstr "FFmpeg と SoundFile のどちらでもオーディオをデコードできませんでした: {path}"
-
-#: analyzer/pipeline/track.py:224
-msgid "Loading"
-msgstr "読み込み中"
-
-#: analyzer/pipeline/track.py:243
-msgid "Processing Waveform"
-msgstr "波形を処理中"
-
-#: analyzer/pipeline/track.py:260
-msgid "Tempo Analyzing"
-msgstr "テンポを解析中"
-
-#: analyzer/pipeline/track.py:328
-msgid "Phrase Boundary Analyzing"
-msgstr "フレーズ境界を解析中"
-
-#: analyzer/pipeline/track.py:382
-msgid "JumpCUE Analyzing"
-msgstr "JumpCUE を解析中"
-
-#: analyzer/pipeline/track.py:433
-msgid "Analyzing Keys"
-msgstr "キーを解析中"
-
-#: analyzer/pipeline/track.py:466
-msgid "Indexing for Search by Music"
-msgstr "音楽で検索のインデックスを作成中"
-
-#: analyzer/pipeline/track.py:475
-msgid "Processing Metadata"
-msgstr "メタデータを処理中"
-
-#: analyzer/pipeline/track.py:484
-msgid "Rendering/Normalizing"
-msgstr "レンダリング/ノーマライズ中"
 
 #: app/main.py:51
 msgid "Unsupported Operating System"
@@ -532,7 +396,7 @@ msgstr "CUEポイント"
 msgid "Beat jump"
 msgstr "ビートジャンプ"
 
-#: analyzer/pipeline/track.py:258 core/midi.py:56
+#: core/midi.py:56 core/workers/analysis_texts.py:16
 msgid "Tempo"
 msgstr "テンポ"
 
@@ -1162,10 +1026,138 @@ msgstr "略称"
 msgid "Search hint"
 msgstr "検索ヒント"
 
-#: core/workers/analysis.py:124
+#: core/workers/analysis.py:73
+msgid "Processing Metadata"
+msgstr "メタデータを処理中"
+
+#: core/workers/analysis.py:178
 #, python-brace-format
 msgid "Analysis process exited unexpectedly ({code})."
 msgstr "解析プロセスが予期せず終了しました ({code})。"
+
+#: core/workers/analysis_texts.py:13
+msgid "Loading"
+msgstr "読み込み中"
+
+#: core/workers/analysis_texts.py:14 core/workers/analysis_texts.py:26
+msgid "Processing HPSS"
+msgstr "HPSS を処理中"
+
+#: core/workers/analysis_texts.py:15
+msgid "Processing Waveform"
+msgstr "波形を処理中"
+
+#: core/workers/analysis_texts.py:15 ui/config/pipeline_map.py:31
+msgid "Waveform"
+msgstr "波形"
+
+#: core/workers/analysis_texts.py:16
+msgid "Tempo Analyzing"
+msgstr "テンポを解析中"
+
+#: core/workers/analysis_texts.py:17
+msgid "Phrase Boundary Analyzing"
+msgstr "フレーズ境界を解析中"
+
+#: core/workers/analysis_texts.py:17 ui/config/analysis.py:236
+#: ui/config/pipeline_map.py:23 ui/config/pipeline_map.py:32
+#: ui/edit_panel/panel.py:57 ui/library.py:918 ui/library.py:1011
+#: ui/shortcuts.py:37
+msgid "Phrase"
+msgstr "フレーズ"
+
+#: core/workers/analysis_texts.py:18
+msgid "JumpCUE Analyzing"
+msgstr "JumpCUE を解析中"
+
+#: core/workers/analysis_texts.py:19
+msgid "Analyzing Keys"
+msgstr "キーを解析中"
+
+#: core/workers/analysis_texts.py:19 ui/config/analysis.py:235
+#: ui/config/pipeline_map.py:26 ui/config/pipeline_map.py:34
+#: ui/edit_song.py:128
+msgid "Key"
+msgstr "キー"
+
+#: core/workers/analysis_texts.py:20
+msgid "Indexing for Search by Music"
+msgstr "音楽で検索のインデックスを作成中"
+
+#: core/workers/analysis_texts.py:20 ui/config/search.py:133
+#: ui/track_search_index.py:96
+msgid "Search by Music"
+msgstr "音楽で検索"
+
+#: core/workers/analysis_texts.py:25
+msgid "Loading audio"
+msgstr "オーディオを読み込み中"
+
+#: core/workers/analysis_texts.py:27
+msgid "Frame features"
+msgstr "フレーム特徴量"
+
+#: core/workers/analysis_texts.py:28
+msgid "Phrase boundaries"
+msgstr "フレーズ境界"
+
+#: core/workers/analysis_texts.py:29
+msgid "Analyzing phrases"
+msgstr "フレーズを解析中"
+
+#: core/workers/analysis_texts.py:30
+msgid "Analyzing JumpCUE"
+msgstr "JumpCUE を解析中"
+
+#: core/workers/analysis_texts.py:31
+msgid "Analyzing key"
+msgstr "キーを解析中"
+
+#: core/workers/analysis_texts.py:32
+msgid "Beat activations"
+msgstr "ビートアクティベーション"
+
+#: core/workers/analysis_texts.py:33
+msgid "Estimating BPM"
+msgstr "BPM を推定中"
+
+#: core/workers/analysis_texts.py:34
+msgid "Downbeat analysis"
+msgstr "ダウンビート解析"
+
+#: core/workers/analysis_texts.py:35
+msgid "Updating beat grid"
+msgstr "ビートグリッドを更新中"
+
+#: core/workers/analysis_texts.py:39
+#, python-brace-format
+msgid "Audio decode failed via FFmpeg and SoundFile: {path}"
+msgstr "FFmpeg と SoundFile のどちらでもオーディオをデコードできませんでした: {path}"
+
+#: core/workers/analysis_texts.py:40
+msgid "segment too short for reanalysis"
+msgstr "再解析するには区間が短すぎます"
+
+#: core/workers/analysis_texts.py:41
+msgid "selection duration too small"
+msgstr "選択範囲が短すぎます"
+
+#: core/workers/analysis_texts.py:42
+#, python-brace-format
+msgid "the phrase analysis needs at least {count} beats"
+msgstr "フレーズ解析には少なくとも {count} 拍が必要です"
+
+#: core/workers/analysis_texts.py:43
+msgid "tempo segments are required for phrase reanalysis"
+msgstr "フレーズの再解析にはテンポ区間が必要です"
+
+#: core/workers/analysis_texts.py:44
+msgid "too few beats for the phrase analysis JumpCUE needs"
+msgstr "JumpCUE に必要なフレーズ解析を行うには拍が少なすぎます"
+
+#: core/workers/analysis_texts.py:45
+msgid "tempo segments are required for JumpCUE reanalysis"
+msgstr "JumpCUE の再解析にはテンポ区間が必要です"
 
 # | msgid "The reading refresh process exited unexpectedly ({code})."
 #: core/workers/music_index.py:91
@@ -1223,10 +1215,27 @@ msgstr "Rekordbox XML を書き込み中"
 msgid "Rekordbox XML sync complete"
 msgstr "Rekordbox XML の同期が完了しました"
 
-#: core/workers/segment_reanalysis.py:91
+#: core/workers/segment_reanalysis.py:87
 #, python-brace-format
 msgid "Segment analysis process exited unexpectedly ({code})."
 msgstr "区間解析プロセスが予期せず終了しました ({code})。"
+
+#: core/workers/segment_reanalysis.py:130
+msgid "Segment updated"
+msgstr "区間を更新しました"
+
+#: core/workers/segment_reanalysis.py:139
+#: core/workers/segment_reanalysis.py:147
+msgid "Key segment updated"
+msgstr "キー区間を更新しました"
+
+#: core/workers/segment_reanalysis.py:155
+msgid "JumpCUE Updated"
+msgstr "JumpCUE を更新しました"
+
+#: core/workers/segment_reanalysis.py:158
+msgid "Phrases Updated"
+msgstr "フレーズを更新しました"
 
 #: core/workflows/analysis.py:76
 msgid "Analysis canceled"
@@ -1272,7 +1281,7 @@ msgstr "エラー ({file})"
 msgid "Error"
 msgstr "エラー"
 
-#: analyzer/pipeline/track.py:506 core/workflows/analysis.py:209
+#: core/workflows/analysis.py:209
 msgid "Saving Result"
 msgstr "結果を保存中"
 
@@ -1307,100 +1316,100 @@ msgstr "区間の再解析をキャンセルしました"
 msgid "Load a track before segment reanalysis"
 msgstr "区間を再解析する前にトラックを読み込んでください"
 
-#: core/workflows/segment_reanalysis.py:123
+#: core/workflows/segment_reanalysis.py:122
 msgid "JumpCUE reanalyze"
 msgstr "JumpCUE の再解析"
 
-#: core/workflows/segment_reanalysis.py:125
+#: core/workflows/segment_reanalysis.py:124
 #, python-brace-format
 msgid "{song} (Phrase)"
 msgstr "{song} (フレーズ)"
 
-#: core/workflows/segment_reanalysis.py:126
+#: core/workflows/segment_reanalysis.py:125
 msgid "Phrase reanalyze"
 msgstr "フレーズの再解析"
 
-#: core/workflows/segment_reanalysis.py:128
+#: core/workflows/segment_reanalysis.py:127
 #, python-brace-format
 msgid "{song} (Key)"
 msgstr "{song} (キー)"
 
-#: core/workflows/segment_reanalysis.py:129
+#: core/workflows/segment_reanalysis.py:128
 msgid "Key reanalyze"
 msgstr "キーの再解析"
 
-#: core/workflows/segment_reanalysis.py:131
+#: core/workflows/segment_reanalysis.py:130
 #, python-brace-format
 msgid "{song} (Seg {index})"
 msgstr "{song} (区間 {index})"
 
-#: core/workflows/segment_reanalysis.py:132
+#: core/workflows/segment_reanalysis.py:131
 msgid "Segment reanalyze"
 msgstr "区間の再解析"
 
-#: core/workflows/segment_reanalysis.py:182
+#: core/workflows/segment_reanalysis.py:180
 msgid "No beatgrid available for JumpCUE reanalysis"
 msgstr "JumpCUE を再解析するためのビートグリッドがありません"
 
-#: core/workflows/segment_reanalysis.py:187
+#: core/workflows/segment_reanalysis.py:185
 msgid "No beatgrid available for phrase reanalysis"
 msgstr "フレーズを再解析するためのビートグリッドがありません"
 
-#: core/workflows/segment_reanalysis.py:190
+#: core/workflows/segment_reanalysis.py:188
 msgid "No tempo segments available for phrase reanalysis"
 msgstr "フレーズを再解析するためのテンポ区間がありません"
 
-#: core/workflows/segment_reanalysis.py:195
+#: core/workflows/segment_reanalysis.py:193
 msgid "No tempo segments available for key reanalysis"
 msgstr "キーを再解析するためのテンポ区間がありません"
 
-#: core/workflows/segment_reanalysis.py:198
-#: core/workflows/segment_reanalysis.py:202
+#: core/workflows/segment_reanalysis.py:196
+#: core/workflows/segment_reanalysis.py:200
 msgid "No key segments available for reanalysis"
 msgstr "再解析するキー区間がありません"
 
-#: core/workflows/segment_reanalysis.py:210
+#: core/workflows/segment_reanalysis.py:208
 msgid "Invalid key selection"
 msgstr "無効なキーの選択"
 
-#: core/workflows/segment_reanalysis.py:239
+#: core/workflows/segment_reanalysis.py:237
 msgid "Key reanalysis completed"
 msgstr "キーの再解析が完了しました"
 
-#: core/workflows/segment_reanalysis.py:242
+#: core/workflows/segment_reanalysis.py:240
 msgid "JumpCUE reanalysis completed"
 msgstr "JumpCUE の再解析が完了しました"
 
-#: core/workflows/segment_reanalysis.py:245
+#: core/workflows/segment_reanalysis.py:243
 msgid "Phrase reanalysis completed"
 msgstr "フレーズの再解析が完了しました"
 
-#: core/workflows/segment_reanalysis.py:248
+#: core/workflows/segment_reanalysis.py:246
 msgid "Segment reanalysis completed"
 msgstr "区間の再解析が完了しました"
 
-#: core/workflows/segment_reanalysis.py:263
+#: core/workflows/segment_reanalysis.py:261
 #, python-brace-format
 msgid "JumpCUE reanalysis failed: {error}"
 msgstr "JumpCUE の再解析に失敗しました: {error}"
 
-#: core/workflows/segment_reanalysis.py:264
+#: core/workflows/segment_reanalysis.py:262
 msgid "JumpCUE reanalysis finished"
 msgstr "JumpCUE の再解析が終了しました"
 
-#: core/workflows/segment_reanalysis.py:272
+#: core/workflows/segment_reanalysis.py:270
 msgid "Phrase reanalysis finished"
 msgstr "フレーズの再解析が終了しました"
 
-#: core/workflows/segment_reanalysis.py:282
+#: core/workflows/segment_reanalysis.py:280
 msgid "Key reanalysis finished"
 msgstr "キーの再解析が終了しました"
 
-#: core/workflows/segment_reanalysis.py:290
+#: core/workflows/segment_reanalysis.py:288
 msgid "Segment reanalysis finished"
 msgstr "区間の再解析が終了しました"
 
-#: core/workflows/segment_reanalysis.py:300
+#: core/workflows/segment_reanalysis.py:298
 #, python-brace-format
 msgid "Segment reanalysis failed: {error}"
 msgstr "区間の再解析に失敗しました: {error}"
@@ -1422,13 +1431,13 @@ msgstr ""
 msgid "Unknown validation error"
 msgstr "不明な検証エラー"
 
-#: optimizer/beat_critic_optimizer.py:263
-#: optimizer/beat_decoder_optimizer.py:164 optimizer/beat_tcn_optimizer.py:179
+#: optimizer/beat_critic_optimizer.py:264
+#: optimizer/beat_decoder_optimizer.py:168 optimizer/beat_tcn_optimizer.py:179
 #: optimizer/downbeat_ctx_optimizer.py:92
 msgid "frame feature cache is not current"
 msgstr "フレーム特徴量のキャッシュが最新ではありません"
 
-#: optimizer/beat_critic_optimizer.py:375
+#: optimizer/beat_critic_optimizer.py:376
 #, python-brace-format
 msgid "{stage}: step {done}/{steps} of each fold model"
 msgstr "{stage}: 各フォールドモデル {steps} ステップ中 {done} ステップ"
@@ -1439,7 +1448,7 @@ msgid "Decoder readings {done}/{total}"
 msgstr "デコーダーの読み取り {done}/{total}"
 
 #: optimizer/beat_critic_optimizer.py:475 optimizer/beat_tcn_optimizer.py:376
-#: optimizer/key_model_optimizer.py:520
+#: optimizer/key_model_optimizer.py:521
 msgid "Held-out check"
 msgstr "検証用の曲で確認"
 
@@ -1448,16 +1457,16 @@ msgid "Not saved: the grids got worse on the held-out songs"
 msgstr "保存しませんでした: 検証用の曲でグリッドが悪化しました"
 
 #: optimizer/beat_critic_optimizer.py:495 optimizer/beat_tcn_optimizer.py:397
-#: optimizer/key_model_optimizer.py:534
+#: optimizer/key_model_optimizer.py:535
 msgid "Fine-tuning"
 msgstr "ファインチューニング"
 
-#: optimizer/beat_decoder_optimizer.py:169
+#: optimizer/beat_decoder_optimizer.py:173
 #, python-brace-format
 msgid "Tracking with every cost combination {done}/{total}"
 msgstr "すべてのコストの組み合わせでトラッキング {done}/{total}"
 
-#: optimizer/beat_decoder_optimizer.py:214
+#: optimizer/beat_decoder_optimizer.py:218
 msgid "Not saved: the held-out songs got worse"
 msgstr "保存しませんでした: 検証用の曲で悪化しました"
 
@@ -1480,7 +1489,7 @@ msgstr "フレーム特徴量キャッシュの作成に失敗しました: {err
 msgid "Frame features {done}/{total}"
 msgstr "フレーム特徴量 {done}/{total}"
 
-#: optimizer/beat_grid_check.py:169
+#: optimizer/beat_grid_check.py:181
 #, python-brace-format
 msgid "End-to-end check {done}/{total}"
 msgstr "エンドツーエンドの確認 {done}/{total}"
@@ -1517,86 +1526,86 @@ msgstr "保存しませんでした: 検証用の曲のグリッドが悪化し�
 msgid "Fitting all tracks"
 msgstr "全トラックで学習中"
 
-#: optimizer/jumpcue_parameter_optimizer.py:1008
+#: optimizer/jumpcue_parameter_optimizer.py:1011
 msgid "Audio file not found"
 msgstr "オーディオファイルが見つかりません"
 
-#: optimizer/jumpcue_parameter_optimizer.py:1014
+#: optimizer/jumpcue_parameter_optimizer.py:1017
 #, python-brace-format
 msgid "Reading the analysis failed: {error}"
 msgstr "解析の読み込みに失敗しました: {error}"
 
-#: optimizer/jumpcue_parameter_optimizer.py:1016
+#: optimizer/jumpcue_parameter_optimizer.py:1019
 #, python-brace-format
 msgid "Need at least five tracks with saved JumpCUEs ({count} found)."
 msgstr "JumpCUE が保存されたトラックが少なくとも 5 件必要です ({count} 件)。"
 
-#: optimizer/jumpcue_parameter_optimizer.py:1033
+#: optimizer/jumpcue_parameter_optimizer.py:1036
 #, python-brace-format
 msgid "Building {count} JumpCUE candidate caches"
 msgstr "JumpCUE 候補キャッシュを {count} 件作成中"
 
-#: optimizer/jumpcue_parameter_optimizer.py:1034
+#: optimizer/jumpcue_parameter_optimizer.py:1037
 msgid "JumpCUE candidate cache is current"
 msgstr "JumpCUE 候補キャッシュは最新です"
 
-#: optimizer/jumpcue_parameter_optimizer.py:1046
+#: optimizer/jumpcue_parameter_optimizer.py:1049
 #, python-brace-format
 msgid "JumpCUE analysis failed: {error}"
 msgstr "JumpCUE の解析に失敗しました: {error}"
 
-#: optimizer/jumpcue_parameter_optimizer.py:1064
+#: optimizer/jumpcue_parameter_optimizer.py:1067
 msgid "No saved JumpCUE group matches an automatically found group"
 msgstr "保存された JumpCUE グループのうち、自動で見つかったグループに一致するものがありません"
 
-#: optimizer/jumpcue_parameter_optimizer.py:1069
+#: optimizer/jumpcue_parameter_optimizer.py:1072
 #, python-brace-format
 msgid "{count} labeled groups"
 msgstr "ラベル付きグループ {count} 件"
 
-#: optimizer/jumpcue_parameter_optimizer.py:1087
+#: optimizer/jumpcue_parameter_optimizer.py:1090
 #, python-brace-format
 msgid "Cross-validation fold {fold}/{folds}"
 msgstr "交差検証フォールド {fold}/{folds}"
 
-#: optimizer/jumpcue_parameter_optimizer.py:1093
+#: optimizer/jumpcue_parameter_optimizer.py:1096
 msgid "Fitting on all tracks"
 msgstr "全トラックで学習中"
 
-#: optimizer/key_model_optimizer.py:122
+#: optimizer/key_model_optimizer.py:123
 #, python-brace-format
 msgid "unreadable analysis: {error}"
 msgstr "解析を読み込めません: {error}"
 
-#: optimizer/key_model_optimizer.py:125
+#: optimizer/key_model_optimizer.py:126
 msgid "no key annotation"
 msgstr "キーのアノテーションがありません"
 
-#: optimizer/key_model_optimizer.py:195
+#: optimizer/key_model_optimizer.py:196
 #, python-brace-format
 msgid "key feature cache build failed: {error}"
 msgstr "キー特徴量キャッシュの作成に失敗しました: {error}"
 
-#: optimizer/key_model_optimizer.py:198
+#: optimizer/key_model_optimizer.py:199
 #, python-brace-format
 msgid "Key features {done}/{total}"
 msgstr "キー特徴量 {done}/{total}"
 
-#: optimizer/key_model_optimizer.py:441
+#: optimizer/key_model_optimizer.py:442
 #, python-brace-format
 msgid "{stage}: epoch {epoch}/{epochs}, loss {loss}"
 msgstr "{stage}: エポック {epoch}/{epochs}、損失 {loss}"
 
-#: optimizer/key_model_optimizer.py:500
+#: optimizer/key_model_optimizer.py:501
 msgid "too few beats or no key features"
 msgstr "拍が少なすぎるか、キー特徴量がありません"
 
-#: optimizer/key_model_optimizer.py:505
+#: optimizer/key_model_optimizer.py:506
 #, python-brace-format
 msgid "Beat inputs {done}/{total}"
 msgstr "拍の入力 {done}/{total}"
 
-#: optimizer/key_model_optimizer.py:525
+#: optimizer/key_model_optimizer.py:526
 msgid "Not saved: the held-out songs' keys got worse"
 msgstr "保存しませんでした: 検証用の曲のキーが悪化しました"
 
@@ -2127,10 +2136,10 @@ msgstr ""
 "実行されなかったもの: {remaining}"
 
 #: optimizer/beat_critic_optimizer.py:504
-#: optimizer/beat_decoder_optimizer.py:214 optimizer/beat_tcn_optimizer.py:409
+#: optimizer/beat_decoder_optimizer.py:218 optimizer/beat_tcn_optimizer.py:409
 #: optimizer/downbeat_ctx_optimizer.py:139
-#: optimizer/jumpcue_parameter_optimizer.py:1120
-#: optimizer/key_model_optimizer.py:541
+#: optimizer/jumpcue_parameter_optimizer.py:1123
+#: optimizer/key_model_optimizer.py:542
 #: optimizer/phrase_parameter_optimizer.py:586
 #: optimizer/refine_onset_optimizer.py:208 ui/config/analysis.py:574
 #: ui/config/dialogs/optimization.py:95
@@ -2219,7 +2228,7 @@ msgid "CV"
 msgstr "CV"
 
 #: optimizer/beat_critic_optimizer.py:495 optimizer/beat_tcn_optimizer.py:397
-#: optimizer/key_model_optimizer.py:534 ui/config/analysis.py:676
+#: optimizer/key_model_optimizer.py:535 ui/config/analysis.py:676
 #: ui/config/analysis.py:737 ui/config/dialogs/optimization.py:75
 msgid "Training"
 msgstr "学習"
@@ -3881,10 +3890,6 @@ msgstr "デコード、HPSS"
 msgid "overview levels"
 msgstr "全体波形のレベル"
 
-#: analyzer/pipeline/track.py:241 ui/config/pipeline_map.py:31
-msgid "Waveform"
-msgstr "波形"
-
 #: ui/config/pipeline_map.py:31 ui/config/playback.py:331
 msgid "Audio"
 msgstr "オーディオ"
@@ -5209,23 +5214,23 @@ msgstr "現在の区間のビートグリッドを基準 BPM で再解析しま�
 msgid "Seg {index} | Elapsed: {elapsed} | Left: {left}"
 msgstr "区間 {index} | 経過: {elapsed} | 残り: {left}"
 
-#: ui/edit_panel/beatgrid.py:511
+#: ui/edit_panel/beatgrid.py:510
 msgid ""
 "Tap to set reference BPM (WARNING! Tempo factor is not 1. RefBPM Will be "
 "scaled accordingly)"
 msgstr "タップして基準 BPM を設定 (注意: テンポ倍率が 1 ではありません。基準 BPM はそれに合わせて換算されます)"
 
-#: ui/edit_panel/beatgrid.py:512
+#: ui/edit_panel/beatgrid.py:511
 msgid ""
 "Reference BPM for Analysis and BPM Assigning (WARNING! Tempo factor is "
 "not 1. RefBPM Will be scaled accordingly)"
 msgstr "解析と BPM の割り当てに使う基準 BPM (注意: テンポ倍率が 1 ではありません。基準 BPM はそれに合わせて換算されます)"
 
-#: ui/edit_panel/beatgrid.py:516
+#: ui/edit_panel/beatgrid.py:515
 msgid "Tap to set reference BPM"
 msgstr "タップして基準 BPM を設定"
 
-#: ui/edit_panel/beatgrid.py:517
+#: ui/edit_panel/beatgrid.py:516
 msgid "Reference BPM for Analysis and BPM Assigning"
 msgstr "解析と BPM の割り当てに使う基準 BPM"
 
@@ -5427,11 +5432,11 @@ msgid ""
 "later"
 msgstr "現在のキー区間の終了を 1 小節 (隣のダウンビートまで) 遅らせます"
 
-#: ui/edit_panel/key.py:67 ui/edit_panel/phrase.py:66
+#: ui/edit_panel/key.py:67 ui/edit_panel/phrase.py:61
 msgid "Boundaries move by one beat"
 msgstr "境界を 1 拍ずつ移動します"
 
-#: ui/edit_panel/key.py:68 ui/edit_panel/phrase.py:67
+#: ui/edit_panel/key.py:68 ui/edit_panel/phrase.py:62
 msgid "Boundaries move by one bar (to the neighboring downbeat)"
 msgstr "境界を 1 小節ずつ (隣のダウンビートまで) 移動します"
 
@@ -5592,61 +5597,61 @@ msgstr "CALL は停止中にだけ動作します。"
 msgid "No CUE point at the playhead."
 msgstr "再生位置に CUEポイントがありません。"
 
-#: ui/edit_panel/phrase.py:30
+#: ui/edit_panel/phrase.py:25
 msgid "Move the current phrase's start one beat earlier"
 msgstr "現在のフレーズの開始を 1 拍早めます"
 
-#: ui/edit_panel/phrase.py:31
+#: ui/edit_panel/phrase.py:26
 msgid ""
 "Move the current phrase's start one bar (to the neighboring downbeat) "
 "earlier"
 msgstr "現在のフレーズの開始を 1 小節 (隣のダウンビートまで) 早めます"
 
-#: ui/edit_panel/phrase.py:32
+#: ui/edit_panel/phrase.py:27
 msgid "Move the current phrase's start one beat later"
 msgstr "現在のフレーズの開始を 1 拍遅らせます"
 
-#: ui/edit_panel/phrase.py:33
+#: ui/edit_panel/phrase.py:28
 msgid ""
 "Move the current phrase's start one bar (to the neighboring downbeat) "
 "later"
 msgstr "現在のフレーズの開始を 1 小節 (隣のダウンビートまで) 遅らせます"
 
-#: ui/edit_panel/phrase.py:34
+#: ui/edit_panel/phrase.py:29
 msgid "Move the current phrase's end one beat earlier"
 msgstr "現在のフレーズの終了を 1 拍早めます"
 
-#: ui/edit_panel/phrase.py:35
+#: ui/edit_panel/phrase.py:30
 msgid ""
 "Move the current phrase's end one bar (to the neighboring downbeat) "
 "earlier"
 msgstr "現在のフレーズの終了を 1 小節 (隣のダウンビートまで) 早めます"
 
-#: ui/edit_panel/phrase.py:36
+#: ui/edit_panel/phrase.py:31
 msgid "Move the current phrase's end one beat later"
 msgstr "現在のフレーズの終了を 1 拍遅らせます"
 
-#: ui/edit_panel/phrase.py:37
+#: ui/edit_panel/phrase.py:32
 msgid "Move the current phrase's end one bar (to the neighboring downbeat) later"
 msgstr "現在のフレーズの終了を 1 小節 (隣のダウンビートまで) 遅らせます"
 
-#: ui/edit_panel/phrase.py:75
+#: ui/edit_panel/phrase.py:70
 msgid "Split the current phrase at the beat nearest the playhead"
 msgstr "現在のフレーズを再生位置に最も近い拍で分割します"
 
-#: ui/edit_panel/phrase.py:76
+#: ui/edit_panel/phrase.py:71
 msgid "Merge the previous phrase into the current one (keeps the current label)"
 msgstr "前のフレーズを現在のフレーズに結合します (現在のラベルを維持)"
 
-#: ui/edit_panel/phrase.py:77
+#: ui/edit_panel/phrase.py:72
 msgid "Merge the next phrase into the current one (keeps the current label)"
 msgstr "次のフレーズを現在のフレーズに結合します (現在のラベルを維持)"
 
-#: ui/edit_panel/phrase.py:82
+#: ui/edit_panel/phrase.py:77
 msgid "Reanalyze the phrases of the whole track with the current beatgrid"
 msgstr "現在のビートグリッドでトラック全体のフレーズを再解析します"
 
-#: ui/edit_panel/phrase.py:85
+#: ui/edit_panel/phrase.py:80
 msgid ""
 "Replace the CUE points with the ones the CUE rules give the current "
 "phrases\n"
@@ -5655,11 +5660,11 @@ msgstr ""
 "CUEポイントを、現在のフレーズに CUE のルールを適用した結果で置き換えます\n"
 "(環境設定 > 解析 > CUE。通常の解析と同じ方法)"
 
-#: ui/edit_panel/phrase.py:101 ui/edit_panel/phrase.py:224
+#: ui/edit_panel/phrase.py:96 ui/edit_panel/phrase.py:216
 msgid "-- | Seg -- | +0 beats | Left: 00:00.00"
 msgstr "-- | 区間 -- | +0 拍 | 残り: 00:00.00"
 
-#: ui/edit_panel/phrase.py:231
+#: ui/edit_panel/phrase.py:223
 #, python-brace-format
 msgid "{label} | Seg {index} | +{beats} beats | Left: {left}"
 msgstr "{label} | 区間 {index} | +{beats} 拍 | 残り: {left}"
@@ -5704,12 +5709,6 @@ msgstr "アーティスト"
 #: ui/track_search_index.py:53
 msgid "Album"
 msgstr "アルバム"
-
-#: analyzer/pipeline/track.py:431 ui/config/analysis.py:235
-#: ui/config/pipeline_map.py:26 ui/config/pipeline_map.py:34
-#: ui/edit_song.py:128
-msgid "Key"
-msgstr "キー"
 
 #: ui/edit_song.py:129 ui/library.py:792
 msgid "Rating"
@@ -6224,13 +6223,6 @@ msgstr ""
 #: ui/library.py:918
 msgid "Tracks with a phrase of this label (optionally at a BPM / key)"
 msgstr "このラベルのフレーズがあるトラック (BPM / キーの条件も指定可能)"
-
-#: analyzer/pipeline/track.py:326 ui/config/analysis.py:236
-#: ui/config/pipeline_map.py:23 ui/config/pipeline_map.py:32
-#: ui/edit_panel/panel.py:57 ui/library.py:918 ui/library.py:1011
-#: ui/shortcuts.py:37
-msgid "Phrase"
-msgstr "フレーズ"
 
 #: ui/library.py:919
 msgid "Tracks whose BPM changes from one tempo to another"
@@ -7540,11 +7532,11 @@ msgid ""
 "phrases"
 msgstr "CUEポイントを、現在のフレーズに CUE のルールを適用した結果で置き換えます"
 
-#: ui/edit_panel/phrase.py:78 ui/shortcuts.py:242
+#: ui/edit_panel/phrase.py:73 ui/shortcuts.py:242
 msgid "Unassign the current phrase (UNASSIGNED)"
 msgstr "現在のフレーズのラベルを解除します (UNASSIGNED)"
 
-#: ui/edit_panel/phrase.py:163 ui/shortcuts.py:243
+#: ui/edit_panel/phrase.py:158 ui/shortcuts.py:243
 #, python-brace-format
 msgid "Label the current phrase {label}"
 msgstr "現在のフレーズを {label} にする"
@@ -7950,11 +7942,6 @@ msgid ""
 "version by mistake, or missing from Search by Music.</p>"
 msgstr "<p>このトラックのバージョン違いのフィンガープリントと音楽で検索のインデックスを作り直します。両方のインデックスからトラックを外し、今すぐインデックス作成で作り直します（オーディオをデコードするため数秒かかります）。別の曲のバージョンと誤って判定されたトラックや、音楽で検索に出てこないトラックに使います。</p>"
 
-#: analyzer/pipeline/track.py:465 ui/config/search.py:133
-#: ui/track_search_index.py:96
-msgid "Search by Music"
-msgstr "音楽で検索"
-
 #: ui/track_search_index.py:265
 msgid "Rebuilt."
 msgstr "作り直しました。"
@@ -8027,7 +8014,7 @@ msgstr "タスク {id}"
 msgid "JumpCUE labels are limited to unique A-Z."
 msgstr "JumpCUE のラベルには重複しない A-Z しか使えません。"
 
-#: utils/jump_cues.py:132 utils/jump_cues.py:135 utils/jump_cues.py:315
+#: utils/jump_cues.py:132 utils/jump_cues.py:135 utils/jump_cues.py:303
 msgid "JumpCUE labels must be unique single letters A-Z."
 msgstr "JumpCUE のラベルは重複しない 1 文字の A-Z である必要があります。"
 

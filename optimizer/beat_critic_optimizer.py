@@ -35,6 +35,7 @@ from optimizer.beat_grid_check import GridCheck, ModelSet, grid_check
 from optimizer import model_start as MS
 from optimizer.beat_tcn_optimizer import _rate
 from foundation.model_files import resolve_model
+from core.workers.analysis_settings import model_file
 from optimizer.refine_onset_optimizer import _group_key
 from foundation.i18n import tr
 
@@ -431,13 +432,12 @@ def optimize_beat_critic(
         raise ValueError("Critic model path must end with .npz")
     MS.check_output(output_path)
     scratch = request.start == MS.SCRATCH and request.base_path is None
-    from analyzer.beat.general import tcn as TCN
-    tcn_text = str(request.tcn_path) if request.tcn_path else TCN.WEIGHT_PATH
+    tcn_text = model_file(request.tcn_path, "beat_tcn_parameter_path")
     base_path = request.base_path or MS.base_model(output_path, request.start)
     # the critic in use: what the new one is compared with
     reference_path = resolve_model(output_path)
     reference = C.load_weights(str(reference_path))
-    base = [_init_critic(reference[0], i) for i in range(len(reference))] if scratch else C.load_weights(str(base_path))
+    base = [_init_critic(reference[0], i) for i in range(len(reference))] if scratch else C.load_weights(str(resolve_model(base_path)))
     ignored: list[SkippedOptimizationTrack] = []
     tracks = list_grid_tracks(library_dir, ignored)
     MS.require_tracks(len(tracks), MS.kind_of(request.start))

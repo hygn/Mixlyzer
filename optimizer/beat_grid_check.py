@@ -39,6 +39,18 @@ class ModelSet:
         values = {**self.__dict__, **{k: (None if v is None else str(v)) for k, v in kw.items()}}
         return ModelSet(**values)
 
+    def files(self) -> tuple[str, str, str, str]:
+        """The files the tracker reads: (downbeat, TCN, critic, decoder)."""
+        from core.workers.analysis_settings import model_file
+        return (model_file(self.downbeat_ctx, "downbeat_ctx_parameter_path"),
+                model_file(self.tcn, "beat_tcn_parameter_path"),
+                model_file(self.critic, "beat_critic_parameter_path"),
+                model_file(self.decoder, "beat_decoder_parameter_path"))
+
+    def refine_onset_file(self) -> str:
+        from core.workers.analysis_settings import model_file
+        return model_file(self.refine_onset, "refine_onset_parameter_path")
+
 
 @dataclass(frozen=True)
 class SongChange:
@@ -135,10 +147,10 @@ def song_scores(track, frames, result) -> tuple[float, float]:
 def track_song(frames, models: ModelSet, bpm_min: float):
     """The full analysis's beat tracking of one song with a model set."""
     from analyzer.beat.general import tracker as TR
-    from analyzer.beat.learned_onset import REFINE_ONSET_PATH, refine_onset_activation
-    loaded = TR.load_models(models.downbeat_ctx, models.tcn, models.critic, models.decoder)
+    from analyzer.beat.learned_onset import refine_onset_activation
+    loaded = TR.load_models(*models.files())
     ft = np.asarray(frames.frame_times, float)
-    refine = (refine_onset_activation(frames, models.refine_onset or REFINE_ONSET_PATH).astype(np.float64),
+    refine = (refine_onset_activation(frames, models.refine_onset_file()).astype(np.float64),
               float(np.median(np.diff(ft))), float(ft[0]))
     return TR.track(frames, bpm_min, loaded, refine, parallel=False)
 

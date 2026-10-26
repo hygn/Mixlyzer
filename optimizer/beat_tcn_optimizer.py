@@ -344,7 +344,7 @@ def optimize_beat_tcn(
     # the model in use: what the new one is compared with
     reference_path = resolve_model(output_path)
     reference = T.load_weights(str(reference_path))
-    base = None if scratch and request.base_path is None else T.load_weights(str(base_path))
+    base = None if scratch and request.base_path is None else T.load_weights(str(resolve_model(base_path)))
     ignored: list[SkippedOptimizationTrack] = []
     tracks = list_grid_tracks(library_dir, ignored)
     MS.require_tracks(len(tracks), MS.kind_of(request.start))

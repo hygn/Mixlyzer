@@ -245,7 +245,7 @@ class ExportTrackPanel(QtWidgets.QWidget):
         sources in the library; a track without them, as one added before they were kept or given another
         file: found now as the analysis would read the file, and kept), the file's new size and time stored. The
         library's part asked of its owner (LibraryService.call)."""
-        from analyzer.pipeline.track import extract_tags, read_tag_sources
+        from core.audio.track_tags import extract_tags, read_tag_sources
         library = self._library
         try:
             sources = library.call(jobs.tag_sources, uid)

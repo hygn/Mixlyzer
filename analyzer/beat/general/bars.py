@@ -122,14 +122,12 @@ def section_starts(beats, rows):
 
 
 CTX_FORMAT = 'mixlyzer.downbeat_ctx.v1'
-CTX_PATH = 'assets/weights/downbeat_ctx_hgb.npz'
 
 
-def load_ctx_model(path: str = CTX_PATH):
+def load_ctx_model(path: str):
     """The contextual downbeat GBM (beat-level downbeat features and their neighbour differences)."""
     from analyzer.phrase.phrase_analyzer import _load_numpy_hgb
-    from foundation.model_files import resolve_model
-    with np.load(resolve_model(path), allow_pickle=False) as z:
+    with np.load(path, allow_pickle=False) as z:
         if str(np.asarray(z['format']).item()) != CTX_FORMAT:
             raise ValueError(f'Contextual downbeat model format mismatch: {path}')
         return _load_numpy_hgb(z, 'downbeat_ctx')

@@ -38,6 +38,7 @@ from optimizer.onset_training import _auto_cache_workers, _list_beat_tracks
 from optimizer.refine_onset_optimizer import _group_key
 from utils.atomic_io import atomic_output_path
 from foundation.i18n import tr
+from foundation.model_files import resolve_model
 
 ProgressCallback = Callable[[int, str], None]
 KEY_FRAME_CACHE_FORMAT = "mixlyzer_key_frame_cache_v1"
@@ -160,7 +161,7 @@ def read_key_frames(path: Path, track: dict[str, object]) -> np.ndarray | None:
 def build_key_frames(track: dict[str, object], cache_dir_text: str) -> str:
     """Process-worker entry point: the frame chroma the full analysis's key model reads."""
     from threadpoolctl import threadpool_limits
-    from analyzer.pipeline.track import fast_load
+    from analyzer.audio.load import fast_load
     from analyzer.audio.hpss import hpss_audio_with_spectra
 
     path = cache_path(Path(cache_dir_text), str(track["uid"]))
@@ -485,7 +486,7 @@ def optimize_key_model(
         raise ValueError("Key model path must end with .npz")
     MS.check_output(output_path)
     scratch = request.start == MS.SCRATCH
-    reference = CK.read_model_arrays(output_path)                 # the model in use: what the new one is compared with
+    reference = CK.read_model_arrays(resolve_model(output_path))  # the model in use: what the new one is compared with
     base = reference if scratch else CK.read_model_arrays(MS.base_model(output_path, request.start))
     ignored: list[SkippedOptimizationTrack] = []
     tracks = list_key_tracks(library_dir, ignored)

@@ -3,17 +3,12 @@ from __future__ import annotations
 import numpy as np
 from PySide6 import QtCore, QtGui, QtWidgets
 
+from analyzer.phrase.cue_points import phrase_cue_points
 from core.config import load_cfg
+from core.workers.analysis_settings import cue_rules
 from ui.edit_panel.blocks import mode_column, rule_cell
 from ui.edit_panel.icons import badged_icon, icon
-from utils.cue_points import (
-    add_autocue_cue_point,
-    autocue_time_sec,
-    build_cue_points_np,
-    build_phrase_cue_points,
-    extract_cue_points,
-    lead_in_end_sec,
-)
+from utils.cue_points import build_cue_points_np, extract_cue_points
 from utils.phrases import (
     PHRASE_LABELS,
     UNASSIGNED,
@@ -187,11 +182,8 @@ class PhraseEditMixin:
         the current ones, as one edit."""
         cfg = load_cfg()
         phrases = assigned_phrases(self._phrase_segments)
-        points = build_phrase_cue_points(phrases, cfg.cuepointconfig.by_label())
-        lead_in_end = lead_in_end_sec(phrases)
-        if cfg.analysisconfig.autocue == "cue_point":
-            target = autocue_time_sec(phrases, self._beatgrid, self._segments)
-            points = add_autocue_cue_point(points, target, lead_in_end=lead_in_end is not None)
+        points = phrase_cue_points(phrases, self._beatgrid, self._segments, cue_rules(cfg),
+                                   cfg.analysisconfig.autocue)
         # through the stored form, so they read back as loaded ones do
         self.model.set_cue_points(extract_cue_points({"cue_points_np": build_cue_points_np(points)}))
 

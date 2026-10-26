@@ -22,11 +22,9 @@ from pathlib import Path
 
 import numpy as np
 
-from foundation.model_files import resolve_model
 
 SR = 22050
 HOP = 512
-MODEL_PATH = "assets/weights/key_chord_cnn.npz"
 _SIG_OF = np.r_[np.arange(12), (np.arange(12) + 3) % 12]       # key index (pc + 12 * minor) -> its signature (major tonic)
 _REL = _SIG_OF[:, None] == _SIG_OF[None, :]
 
@@ -158,9 +156,9 @@ WEIGHTS = ("c1_w", "c1_b", "c2_w", "c2_b", "out_w", "out_b", "tab")
 SETTINGS = ("J", "JX", "J_REL", "LAM", "MINEX", "iv_cost")
 
 
-def read_model_arrays(path: str | Path | None = None) -> dict[str, np.ndarray]:
-    """Every array of a key model file (the user's file when it exists, else the shipped one)."""
-    with np.load(resolve_model(path or MODEL_PATH), allow_pickle=False) as z:
+def read_model_arrays(path: str | Path) -> dict[str, np.ndarray]:
+    """Every array of a key model file."""
+    with np.load(path, allow_pickle=False) as z:
         return {k: np.asarray(z[k]) for k in WEIGHTS + SETTINGS}
 
 
@@ -251,15 +249,15 @@ class ChordKeyModel:
 _MODEL_CACHE: dict[str, ChordKeyModel] = {}
 
 
-def load_model(path: str | Path | None = None) -> ChordKeyModel:
-    key = str(resolve_model(path or MODEL_PATH))
+def load_model(path: str | Path) -> ChordKeyModel:
+    key = str(path)
     if key not in _MODEL_CACHE:
         _MODEL_CACHE[key] = ChordKeyModel(key)
     return _MODEL_CACHE[key]
 
 
 def key_evidence(y_harm: np.ndarray, sr: int, beats: np.ndarray, downbeats, phrase_starts, duration: float,
-                 model_path: str | Path | None = None) -> tuple[ChordKeyModel, BeatGrid, np.ndarray]:
+                 model_path: str | Path) -> tuple[ChordKeyModel, BeatGrid, np.ndarray]:
     """(model, beat grid, per-beat key log-likelihoods [nb, 24])."""
     model = load_model(model_path)
     grid = beat_grid(beats, downbeats, np.asarray(phrase_starts if phrase_starts is not None else [], float), duration)
@@ -308,7 +306,7 @@ def track_keys(model: ChordKeyModel, grid: BeatGrid, L: np.ndarray, duration: fl
 
 
 def analyze_keys(y_harm: np.ndarray, sr: int, beats: np.ndarray, downbeats, phrase_starts,
-                 duration: float, model_path: str | Path | None = None,
+                 duration: float, model_path: str | Path,
                  dynamic: bool = True, phrases=None) -> tuple[np.ndarray, np.ndarray]:
     """Key segments of a track (dynamic: key changes; static: one key, the dynamic analysis's key in the intro /
     outro / interludes, given ``phrases`` with their labels).

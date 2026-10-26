@@ -31,8 +31,7 @@ from analyzer.phrase.structural_features import (
 from analyzer.phrase import lead_in as _lead_in
 from analyzer.phrase import refinement as _refine
 from analyzer.phrase.refinement import REFINEMENT_VERSION
-from utils.atomic_io import atomic_output_path
-from foundation.model_files import resolve_model
+from analyzer.files import atomic_output_path
 
 
 EPS = 1e-9
@@ -815,8 +814,7 @@ def detect_two_stage_phrase_segments(
     return_feature_z: bool = False,
 ):
     """Phrase segments and optional reusable per-beat analysis outputs."""
-    # the settings' path: the user's (retrained) file, else the shipped model (foundation.model_files)
-    artifact = load_two_stage_model(str(resolve_model(model_path).resolve()))
+    artifact = load_two_stage_model(str(Path(model_path).resolve()))
     settings = artifact["settings"]
     grid = build_predictor_grid(beat_times_sec, tempo_segments)
     if grid.n_beats < 17:

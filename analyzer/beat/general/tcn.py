@@ -14,13 +14,11 @@ from __future__ import annotations
 
 import numpy as np
 
-from foundation.model_files import resolve_model
 
 DILATIONS = (1, 2, 4, 8, 16, 32, 64, 128, 256)
 K = 5
 CHANNELS = ('chroma', 'bass_chroma', 'mfcc', 'tonnetz', 'onset_bands', 'rms_db', 'band_ratios', 'flatness',
             'librosa_onset', 'harmonic_onset', 'percussive_bands', 'percussive_share', 'melody_chroma', 'melody_onset')
-WEIGHT_PATH = 'assets/weights/beat_tcn.npz'
 ENSEMBLE_FORMAT = 'mixlyzer.beat_tcn.v1'
 # The frame grid every shipped model of the tracker was trained on (11.6 ms frames): the dilations count
 # frames and the spectral features depend on the rate, so the tracker reads frames on this grid only.
@@ -32,9 +30,9 @@ def elu(x):
     return np.where(x > 0, x, np.expm1(np.minimum(x, 0)))
 
 
-def load_weights(path: str = WEIGHT_PATH) -> list[dict]:
+def load_weights(path: str) -> list[dict]:
     """The trainings in an ensemble file, each a dict of float32 arrays."""
-    with np.load(resolve_model(path), allow_pickle=False) as z:
+    with np.load(path, allow_pickle=False) as z:
         if str(np.asarray(z['format']).item()) != ENSEMBLE_FORMAT:
             raise ValueError(f'Beat TCN model format mismatch: {path}')
         nets = []

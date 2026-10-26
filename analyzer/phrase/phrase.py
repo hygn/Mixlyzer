@@ -23,16 +23,13 @@ from analyzer.phrase.phrase_analyzer import (
 )
 
 
-_ASSET_MODEL = "assets/weights/phrase_analyzer.npz"   # the user's file, else the shipped default_ one
-
-
 def detect_phrase_segments(
     audio: np.ndarray,
     sample_rate: int,
     beat_times_sec: np.ndarray,
     tempo_segments: np.ndarray,
     *,
-    model_path: str | Path | None = None,
+    model_path: str | Path,
     hpss: HpssSpectra | None = None,
     return_boundary_probability: bool = False,
     return_feature_z: bool = False,
@@ -50,7 +47,7 @@ def detect_phrase_segments(
         int(sample_rate),
         beat_times_sec,
         tempo_segments,
-        model_path=model_path if model_path is not None else _ASSET_MODEL,
+        model_path=model_path,
         hpss=hpss,
         return_boundary_probability=return_boundary_probability,
         return_feature_z=return_feature_z,

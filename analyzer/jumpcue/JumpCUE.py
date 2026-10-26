@@ -8,7 +8,6 @@ import numpy as np
 from scipy.signal import find_peaks
 
 from analyzer.music.beat_geometry import downbeat_beat_indices
-from foundation.model_files import resolve_model
 
 from .jump_point_model import JumpContextCache, JumpPointFeatures, JumpPointModel
 
@@ -123,7 +122,7 @@ class JumpCueConfig:
     # Learned jump point (jump_point_model.py): with the per-beat features and
     # the vocal context, it re-chooses the jump beat and the kept members of
     # every placed group; without them the rules above decide.
-    jump_point_model_path: str = "assets/weights/jumpcue_jump_point.json"
+    jump_point_model_path: str = ""      # its file; none: the rules decide
 
 
 @dataclass
@@ -175,8 +174,8 @@ class JumpCueEngine:
         self._pair_cache: Dict[Tuple[int, int, int], Tuple[np.ndarray, np.ndarray]] = {}
         self._score_cache: Optional[JumpContextCache] = None
         self._jump_features: Optional[JumpPointFeatures] = None
-        self._jump_model: Optional[JumpPointModel] = JumpPointModel.load(
-            resolve_model(self.config.jump_point_model_path)
+        self._jump_model: Optional[JumpPointModel] = (
+            JumpPointModel.load(self.config.jump_point_model_path) if self.config.jump_point_model_path else None
         )
 
     def run(

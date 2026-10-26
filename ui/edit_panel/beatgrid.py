@@ -7,7 +7,7 @@ from typing import Optional
 import numpy as np
 from PySide6 import QtCore, QtGui, QtWidgets
 
-from analyzer.pipeline.beatgrid import canonical_inizio, shift_grid_in_seg
+from analyzer.music.tempo_rows import canonical_inizio, shift_grid_in_seg
 from analyzer.music.tempo_rows import (bpm_at, is_ramp_row, rebuild_grid_from_segments, retempo_row, segment_end_bpm, split_row,
                              with_end_bpm)
 from analyzer.music.beat_geometry import MAX_BEATS_PER_BAR
@@ -487,9 +487,9 @@ class BeatgridEditMixin:
             return
         if not (np.isfinite(bpm) and bpm > 0):
             return
-        self._request_segment_reanalysis(prev_bpm=bpm, use_only_prev_bpm=True)
+        self._request_segment_reanalysis(prev_bpm=bpm)
 
-    def _request_segment_reanalysis(self, prev_bpm: float | None = None, use_only_prev_bpm: bool = False) -> None:
+    def _request_segment_reanalysis(self, prev_bpm: float | None = None) -> None:
         if not self._has_active_segment():
             return
         if self._beatgrid is None or len(self._beatgrid) == 0:
@@ -503,7 +503,6 @@ class BeatgridEditMixin:
         payload["analyze_type"] = "beat"
         if prev_bpm is not None:
             payload["prev_bpm"] = float(prev_bpm)
-            payload["use_only_prev_bpm"] = bool(use_only_prev_bpm)
         self.bus.sig_segment_reanalyze_requested.emit(payload)
 
     def _on_playback_tempo_changed(self, tempofactor):

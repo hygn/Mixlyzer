@@ -1,66 +1,63 @@
+"""The editor's JumpCUE reanalysis: JumpCUEs on the current beat grid, computed as in the full analysis (the parts it
+needs, HPSS, the frame features and the phrase boundary probability, analyzed first)."""
 from dataclasses import replace
+from typing import Optional
 
-from analyzer.jumpcue.JumpCUE import JumpCueConfig, JumpCueEngine
-from analyzer.jumpcue.jump_point_model import jump_point_beat_features
-from typing import Callable, Optional
 import numpy as np
-from analyzer.beat.frame_features import FRAME_HOP_LENGTH, extract_frame_features
-from analyzer.phrase import detect_phrase_segments
-from analyzer.pipeline.track import fast_load
+
 from analyzer.audio.hpss import hpss_audio_with_spectra
-from core.config import ANALYSIS_SAMPLE_RATE, config
-from utils.cue_points import autocue_time_sec
-from utils.jump_cues import autocue_jump_pair, build_jump_cues_np
-from foundation.i18n import tr
+from analyzer.audio.load import fast_load
+from analyzer.beat.frame_features import FRAME_HOP_LENGTH, extract_frame_features
+from analyzer.errors import JUMPCUE_NEEDS_TEMPO, JUMPCUE_TOO_FEW_BEATS, AnalysisError
+from analyzer.jumpcue.JumpCUE import JumpCueConfig, JumpCueEngine
+from analyzer.jumpcue.autocue import autocue_jump_pair
+from analyzer.jumpcue.jump_point_model import jump_point_beat_features
+from analyzer.phrase import detect_phrase_segments
+from analyzer.phrase.cue_points import autocue_time_sec
+from analyzer.pipeline import stages
+from analyzer.pipeline.stages import Progress, report
+from analyzer.settings import ANALYSIS_SAMPLE_RATE, AnalysisSettings
 
-def reanalyze_jumpCUE(path:str, cfg:config, beats_time_arr:np.ndarray, *,
-    tempo_segments: Optional[np.ndarray] = None,
-    phrases: Optional[list] = None,
-    progress_cb: Optional[Callable[[str, float], None]] = None,):
-    """JumpCUE on the current beat grid, computed as in the full analysis: the
-    parts it needs (HPSS, frame features, phrase boundary probability) are
-    analyzed first.
 
-    ``phrases``: the editor's current phrases. With AutoCUE on JumpCUEs, its
-    position follows the current lead-in and beat grid (one hot cue slot is kept
-    for it), so it follows phrase and beat-grid edits and reanalyses."""
-    gcf = cfg.analysisconfig
+def reanalyze_jumpcues(path: str, settings: AnalysisSettings, beats_time_arr: np.ndarray, *,
+                       tempo_segments: Optional[np.ndarray] = None,
+                       phrases: Optional[list] = None,
+                       progress: Progress = None) -> list[dict]:
+    """The JumpCUE pairs (AutoCUE's last, with AutoCUE on JumpCUEs).
+
+    ``phrases``: the editor's current phrases. With AutoCUE on JumpCUEs, its position follows the current lead-in
+    and beat grid (one hot cue slot is kept for it), so it follows phrase and beat-grid edits and reanalyses."""
     if tempo_segments is None or np.asarray(tempo_segments).size == 0:
-        raise ValueError(tr("tempo segments are required for JumpCUE reanalysis"))
+        raise AnalysisError(JUMPCUE_NEEDS_TEMPO)
     tempo_segments = np.asarray(tempo_segments, dtype=float)
-    if progress_cb:
-        progress_cb(tr("Loading audio"), 0.0)
+    report(progress, stages.LOAD, 0.0)
     sr = ANALYSIS_SAMPLE_RATE
     audio_stereo = fast_load(path, sr, stereo=True)
     audio_full = np.ascontiguousarray(audio_stereo.mean(axis=1), dtype=np.float32)
-    if progress_cb:
-        progress_cb(tr("Processing HPSS"), 0.1)
+    report(progress, stages.HPSS, 0.1)
     y_harm, y_perc, hpss_spectra = hpss_audio_with_spectra(audio_full, sr)
-    if progress_cb:
-        progress_cb(tr("Frame features"), 0.25)
+    report(progress, stages.FRAME_FEATURES, 0.25)
     frames = extract_frame_features(audio_full, sr, y_perc, y_harm, hop_length=FRAME_HOP_LENGTH)
-    if progress_cb:
-        progress_cb(tr("Phrase boundaries"), 0.4)
+    report(progress, stages.PHRASE_BOUNDARIES, 0.4)
     _segments, boundary_prob, phrase_feature_z = detect_phrase_segments(
         audio_stereo,
         sr,
         beats_time_arr,
         tempo_segments,
-        model_path=str(gcf.phrase_parameter_path).strip(),
+        model_path=settings.models.phrase,
         hpss=hpss_spectra,
         return_boundary_probability=True,
         return_feature_z=True,
     )
     if boundary_prob is None:
-        raise ValueError(tr("too few beats for the phrase analysis JumpCUE needs"))
-    if progress_cb:
-        progress_cb(tr("Analyzing JumpCUE"), 0.55)
+        raise AnalysisError(JUMPCUE_TOO_FEW_BEATS)
+    report(progress, stages.JUMPCUE, 0.55)
     autocue_target = (
         autocue_time_sec(phrases, beats_time_arr, tempo_segments)
-        if gcf.autocue == "jumpcue"
+        if settings.autocue == "jumpcue"
         else None
     )
-    jump_config = JumpCueConfig(jump_point_model_path=str(gcf.jumpcue_parameter_path))
+    jump_config = JumpCueConfig(jump_point_model_path=settings.models.jumpcue)
     if autocue_target is not None:
         # one hot cue slot stays free for the AutoCUE JumpCUE (below)
         jump_config = replace(jump_config, hot_cue_slots=jump_config.hot_cue_slots - 1)
@@ -90,15 +87,4 @@ def reanalyze_jumpCUE(path:str, cfg:config, beats_time_arr:np.ndarray, *,
         print("[JumpCUE] no jump-compatible pairs detected")
     if autocue_target is not None:
         jump_pairs = [*jump_pairs, autocue_jump_pair(autocue_target)]
-    jump_cues_np = build_jump_cues_np(
-        jump_pairs,
-        canonicalize_labels=True,
-        merge_coincident=True,
-    )
-
-    if progress_cb:
-        progress_cb(tr("JumpCUE Updated"), 0.9)
-    return {
-        "jump_cues_np": jump_cues_np,
-        "jump_cues_auto_np": jump_cues_np,
-    }
+    return jump_pairs

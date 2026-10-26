@@ -809,7 +809,8 @@ class JumpCueOptimizationResult:
 
 
 def _analysis_settings(phrase_parameter_path: Path) -> dict:
-    from core.config import ANALYSIS_SAMPLE_RATE, default_cfg
+    from analyzer.settings import ANALYSIS_SAMPLE_RATE
+    from core.config import default_cfg
     from foundation.resource_paths import project_root
 
     values = dict(default_cfg().to_dict()["analysisconfig"])
@@ -843,9 +844,10 @@ def _record_candidates(audio_path: str, beats: np.ndarray, segments: np.ndarray,
     the candidates the model scores for every placed group."""
     from analyzer.beat.frame_features import extract_frame_features
     from analyzer.phrase import detect_phrase_segments
-    from analyzer.pipeline.track import fast_load
+    from analyzer.audio.load import fast_load
     from analyzer.audio.hpss import hpss_audio_with_spectra
-    from analyzer.jumpcue.JumpCUE import JumpCueEngine
+    from analyzer.jumpcue.JumpCUE import JumpCueConfig, JumpCueEngine
+    from core.workers.analysis_settings import model_file
     from analyzer.jumpcue.jump_point_model import jump_point_beat_features
 
     class RecordingEngine(JumpCueEngine):
@@ -874,12 +876,13 @@ def _record_candidates(audio_path: str, beats: np.ndarray, segments: np.ndarray,
     y_harm, y_perc, spectra = hpss_audio_with_spectra(mono, sr)
     frames = extract_frame_features(mono, sr, y_perc, y_harm, hop_length=settings["bpm_hop_length"])
     _segments, prob, feature_z = detect_phrase_segments(
-        stereo, sr, beats, segments, model_path=settings["phrase_parameter_path"], hpss=spectra,
+        stereo, sr, beats, segments, model_path=model_file(settings["phrase_parameter_path"], "phrase_parameter_path"),
+        hpss=spectra,
         return_boundary_probability=True, return_feature_z=True,
     )
     if prob is None:
         raise ValueError("too few beats for the phrase analysis")
-    engine = RecordingEngine()
+    engine = RecordingEngine(JumpCueConfig(jump_point_model_path=model_file(None, "jumpcue_parameter_path")))
     features = jump_point_beat_features(frames, beats, segments, prob, phrase_feature_z=feature_z)
     engine.run(
         y_harm=y_harm, sr=sr, beats_time=beats, y_mix=mono, tempo_segments=segments,
