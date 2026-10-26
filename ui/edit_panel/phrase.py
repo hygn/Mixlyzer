@@ -5,7 +5,6 @@ from PySide6 import QtCore, QtGui, QtWidgets
 
 from core.config import load_cfg
 from ui.edit_panel.blocks import mode_column, rule_cell
-from ui.edit_panel.history import logElement
 from ui.edit_panel.icons import badged_icon, icon
 from utils.cue_points import (
     add_autocue_cue_point,
@@ -19,9 +18,6 @@ from utils.phrases import (
     PHRASE_LABELS,
     UNASSIGNED,
     assigned_phrases,
-    build_phrase_segments_np,
-    fill_unassigned,
-    normalize_phrase_segments,
     number_phrase_labels,
     phrase_color,
     phrase_display_name,
@@ -171,49 +167,7 @@ class PhraseEditMixin:
         self._phrase_cur = -1
         self._update_phrase_status()
 
-    # ---- data in / out ----
-
-    def set_phrase_segments(self, phrases, *, initialize: bool = True) -> None:
-        """Load phrases (list of {start, end, label}, covering the track: read with
-        extract_phrase_segments). Default does not re-broadcast."""
-        self._phrase_segments = normalize_phrase_segments(phrases or [])
-        self._phrase_cur = -1
-        self._update_phrase_status()
-        if not initialize:
-            self._broadcast_phrase()
-
-    def _phrase_rows(self, phrases) -> list[dict]:
-        """The phrases covering the track, the gaps UNASSIGNED."""
-        return fill_unassigned(phrases, self.duration if self.duration > 0.0 else None)
-
-    def _broadcast_phrase(self, *, record: bool = False) -> None:
-        if record:
-            self.edit_log.push(
-                logElement(
-                    beats_time=self._beatgrid,
-                    beat_segments=self._segments,
-                    key_segments=self._key_segments,
-                    jump_cues=self._JumpCUE,
-                    phrases=self._phrase_segments,
-                    cue_points=self._cue_points,
-                )
-            )
-            self._update_undo_redo_buttons()
-            self._mark_unsaved(True)
-        if self.model is not None:
-            try:
-                self.model.features["phrase_segments_np"] = build_phrase_segments_np(self._phrase_segments)
-            except Exception:
-                pass
-        self._phrase_cur = -1
-        self._update_phrase_status()
-        self.bus.sig_phrase_segments_updated.emit()
-
-    def apply_phrase_update_from_external(self, phrases) -> None:
-        """Phrases from a reanalysis replace the current ones, as an edit (undoable,
-        saved with the next save). The CUE points stay; reassign them from the
-        phrases with the CUE button."""
-        self._set_phrases_edited(normalize_phrase_segments(phrases or []))
+    # ---- reanalysis ----
 
     def _reanalyze_phrases(self) -> None:
         if self._beatgrid is None or len(self._beatgrid) == 0:
@@ -239,12 +193,10 @@ class PhraseEditMixin:
             target = autocue_time_sec(phrases, self._beatgrid, self._segments)
             points = add_autocue_cue_point(points, target, lead_in_end=lead_in_end is not None)
         # through the stored form, so they read back as loaded ones do
-        self.set_cue_points(extract_cue_points({"cue_points_np": build_cue_points_np(points)}))
-        self._emit_cue_points_update()
+        self.model.set_cue_points(extract_cue_points({"cue_points_np": build_cue_points_np(points)}))
 
     def _set_phrases_edited(self, rows: list[dict]) -> None:
-        self._phrase_segments = self._phrase_rows(rows)
-        self._broadcast_phrase(record=True)
+        self.model.set_phrases(rows)
 
     # ---- the current phrase ----
 

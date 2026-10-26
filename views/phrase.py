@@ -65,8 +65,9 @@ class PhraseView(ViewPlugin):
         self.bus.sig_time_changed.connect(self._on_view_changed)
         self.bus.sig_window_changed.connect(self._on_view_changed)
         self.bus.sig_center_changed.connect(self._on_view_changed)
-        self.bus.sig_features_loaded.connect(self._on_features_loaded)
-        self.bus.sig_phrase_segments_updated.connect(self._on_phrases_updated)
+        self.model.sig_loaded.connect(self._on_features_loaded)
+        self.model.sig_phrases_changed.connect(self._on_phrases_updated)
+        self.bus.sig_phrase_labels_changed.connect(self._on_phrases_updated)
 
     def attach(self, plot: pg.PlotItem):
         self.plot = plot

@@ -308,13 +308,12 @@ class BeatgridEditMixin:
         value = int(value)
         if value < 1:
             return
-        self._segments = self._ensure_ts_column(self._segments)
+        segments = self._ensure_ts_column(self._segments)
         idx = self._cur_idx
-        if int(round(float(self._segments[idx, 4]))) == value:
+        if int(round(float(segments[idx, 4]))) == value:
             return
-        self._segments[idx, 4] = float(value)
-        self._emit_edit_update()
-        self._refresh_time_sig_selector()
+        segments[idx, 4] = float(value)
+        self.model.set_beatgrid(self._beatgrid, segments)
 
     def _has_active_segment(self) -> bool:
         """Return True when a valid editing target exists."""
@@ -331,8 +330,7 @@ class BeatgridEditMixin:
             if not (np.isfinite(bpm) and bpm > 0):
                 continue
             beatgrid, segments = shift_grid_in_seg(beatgrid, segments, idx, offset)
-        self._beatgrid, self._segments = beatgrid, segments
-        self._emit_edit_update()
+        self.model.set_beatgrid(beatgrid, segments)
 
     def _shift_beatgrid_by_beats(self, beats: float) -> None:
         """Shift each of the scope's segments by ``beats`` of its own beat period."""
@@ -346,8 +344,7 @@ class BeatgridEditMixin:
             if not (np.isfinite(bpm) and bpm > 0):
                 continue
             beatgrid, segments = shift_grid_in_seg(beatgrid, segments, idx, beats * 60.0 / bpm)
-        self._beatgrid, self._segments = beatgrid, segments
-        self._emit_edit_update()
+        self.model.set_beatgrid(beatgrid, segments)
 
     def _scale_bpm(self, factor: float) -> None:
         """BPM x2 / x1/2 over the scope; each segment keeps its downbeat (inizio)."""
@@ -369,10 +366,7 @@ class BeatgridEditMixin:
             changed = True
         if not changed:
             return
-        self._segments = segments
-        self._beatgrid = rebuild_grid_from_segments(self._segments)
-        self._emit_edit_update()
-        self.update_time(self._current_time)
+        self.model.set_beatgrid(rebuild_grid_from_segments(segments), segments)
 
     def _set_downbeat_at_playhead(self) -> None:
         """The beat nearest the playhead (inside the current segment) becomes its downbeat."""
@@ -390,10 +384,7 @@ class BeatgridEditMixin:
             segments[self._cur_idx, 3] = beat
         else:
             segments[self._cur_idx, 3] = canonical_inizio(beat, st, bpm, ts_num)
-        self._segments = segments
-        self._beatgrid = rebuild_grid_from_segments(self._segments)
-        self._emit_edit_update()
-        self.update_time(self._current_time)
+        self.model.set_beatgrid(rebuild_grid_from_segments(segments), segments)
 
     def _cut_current_segment(self) -> None:
         """Split the active segment at the playhead while keeping absolute downbeats."""
@@ -424,10 +415,7 @@ class BeatgridEditMixin:
             next_seg = np.array([cut_t, ed, bpm, next_inz, ts_num, bpm], dtype=float)
             new_segments = np.insert(new_segments, idx + 1, next_seg, axis=0)
 
-        self._segments = new_segments
-        self._beatgrid = rebuild_grid_from_segments(self._segments)
-        self._emit_edit_update()
-        self.update_time(self._current_time)
+        self.model.set_beatgrid(rebuild_grid_from_segments(new_segments), new_segments)
 
     def _merge_segments(self, *, direction: str, keep: str) -> None:
         """Merge the active segment with its neighbor, preserving downbeat alignment."""
@@ -485,11 +473,8 @@ class BeatgridEditMixin:
         if donor_idx < target_idx:
             target_idx -= 1
 
-        self._segments = updated
-        self._beatgrid = rebuild_grid_from_segments(self._segments)
         self._cur_idx = target_idx
-        self._emit_edit_update()
-        self.update_time(self._current_time)
+        self.model.set_beatgrid(rebuild_grid_from_segments(updated), updated)
 
     def _reanalyze_current_segment(self) -> None:
         self._request_segment_reanalysis()
@@ -574,10 +559,7 @@ class BeatgridEditMixin:
         seg_start = float(segments[idx, 0])
         segments[idx, 2] = segments[idx, 5] = bpm   # a typed BPM makes the segment steady
         segments[idx, 3] = float(seg_start)
-        self._segments = segments
-        self._beatgrid = rebuild_grid_from_segments(self._segments)
-        self._emit_edit_update()
-        self.update_time(self._current_time)
+        self.model.set_beatgrid(rebuild_grid_from_segments(segments), segments)
 
     def _set_ramp_bpm(self, *, at_end: bool) -> None:
         """The reference BPM becomes the current segment's tempo at its start (or end); the other end
@@ -600,10 +582,7 @@ class BeatgridEditMixin:
         inside = beats[(beats >= st - 1e-3) & (beats < ed)]
         keep = float(inside[0]) if inside.size else float(row[3])
         segments[idx] = retempo_row(row, b0, b1, keep)
-        self._segments = segments
-        self._beatgrid = rebuild_grid_from_segments(self._segments)
-        self._emit_edit_update()
-        self.update_time(self._current_time)
+        self.model.set_beatgrid(rebuild_grid_from_segments(segments), segments)
 
     def _zeroBPM(self):
         self.prev_tap_time = None

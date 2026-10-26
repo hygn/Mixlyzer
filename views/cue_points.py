@@ -36,8 +36,8 @@ class CUEPointView(ViewPlugin):
             symbol=_down_triangle_path(),
         )
         self._markers.setZValue(110)
-        self.bus.sig_features_loaded.connect(self._on_features_loaded)
-        self.bus.sig_cue_points_updated.connect(self._on_features_loaded)
+        self.model.sig_loaded.connect(self._on_features_loaded)
+        self.model.sig_cue_points_changed.connect(self._on_features_loaded)
         self.bus.sig_time_changed.connect(self._reposition)
         self.bus.sig_window_changed.connect(self._reposition)
         self.bus.sig_center_changed.connect(self._reposition)

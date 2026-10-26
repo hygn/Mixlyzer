@@ -16,7 +16,7 @@ from core.library.records import TrackRow
 from core.library.service import LibraryService
 from core.event_bus import EventBus
 from core.config import config, load_cfg
-from core.model import DataModel
+from core.track.model import DataModel
 from ui.edit_song import EditTrackPanel
 from ui.export import ExportTrackPanel
 from ui.tieup_editor import TieupPanel
@@ -1153,7 +1153,8 @@ class LibraryWidget(QtWidgets.QWidget):
         # The loaded track is shown in green.
         self._loaded_uid: Optional[str] = None
         self._marked_uid: Optional[str] = None   # the uid whose rows are green
-        self.bus.sig_properties_loaded.connect(self._on_properties_loaded)
+        if self.model is not None:
+            self.model.sig_properties_changed.connect(self._on_properties_loaded)
         # Index Now found new Variants: read again and shown
         self.bus.sig_music_index_finished.connect(lambda *_args: self.library.refresh())
 

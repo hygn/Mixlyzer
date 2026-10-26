@@ -33,8 +33,8 @@ class KeyStripView(ViewPlugin):
         self.bus.sig_time_changed.connect(self.update_time)
         self.bus.sig_window_changed.connect(self.update_window)
         self.bus.sig_center_changed.connect(self.update_window)
-        self.bus.sig_features_loaded.connect(self.update_features)
-        self.bus.sig_key_segments_updated.connect(self._on_key_segments_updated)
+        self.model.sig_loaded.connect(self.update_features)
+        self.model.sig_keys_changed.connect(self._on_key_segments_updated)
 
     def attach(self, plot: pg.PlotItem):
         self.plot = plot

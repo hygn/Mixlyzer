@@ -10,7 +10,7 @@ from audioengine.native.client import (
 )
 from core import midi, os_support, shortcuts
 from core.event_bus import EventBus
-from core.model import DataModel
+from core.track.model import DataModel
 from core.timeline import TimelineCoordinator
 from core.player import PlayerController
 from core.analysis_library import jobs as analysis_jobs
@@ -255,7 +255,7 @@ class AppWindow(QtWidgets.QMainWindow):
 
 
         # events
-        self.bus.sig_features_loaded.connect(self._on_features_loaded)
+        self.model.sig_loaded.connect(self._on_features_loaded)
         self.bus.sig_request_load_track.connect(self.load_track)
         self.bus.sig_request_analyze.connect(self.analyze_file)
         self.bus.sig_duration_changed.connect(self._on_duration)
@@ -289,7 +289,6 @@ class AppWindow(QtWidgets.QMainWindow):
             model=self.model,
             taskmanager=self.taskmanager,
             get_current_path=lambda: self._deck_path,
-            track_edit_getter=lambda: getattr(self.pane, "track_edit", None),
             status_callback=status_bar.showMessage,
             parent=self,
         )
@@ -317,7 +316,7 @@ class AppWindow(QtWidgets.QMainWindow):
             QtCore.QMetaObject.invokeMethod(self.metro, "start", QtCore.Qt.QueuedConnection)
         else:
             QtCore.QMetaObject.invokeMethod(self.metro, "stop", QtCore.Qt.QueuedConnection)
-        self.bus.sig_beatgrid_edited.connect(self._sync_metronome_beats)
+        self.model.sig_beatgrid_changed.connect(self._sync_metronome_beats)
         self._apply_timestretch(bool(self.cfg.deckconfig.use_timestretch))
         print_audio_setup(self.cfg, self.player.native)
         # The scratch reader's and cursor poller's numba code, loaded here on the main
@@ -508,7 +507,6 @@ class AppWindow(QtWidgets.QMainWindow):
             # a new file: its tags meanwhile, the analysis's results when it is done
             title, artist, album, _comment = extract_tags(path)
             self.model.load({}, {"path": path, "title": title, "artist": artist, "album": album}, 0.0)
-            self._emit_loaded()
         self.player.stop()
         self.player.set_source(self._deck_path)
         self.analysis_workflow.analyze(self._deck_path, listener=self._on_deck_analysis)
@@ -546,23 +544,12 @@ class AppWindow(QtWidgets.QMainWindow):
 
     def _apply_features(self, result: dict, properties: dict, features: dict) -> None:
         duration = float(features.get("duration_sec") or self.model.duration_sec or 0.0)
-        self.model.load(features, properties, duration, keep_audio=True)
-        album_art = result.get("album_art")
-        if album_art is not None:
-            self.model.set_album_art(album_art)
-        self._emit_loaded()
-
-    def _emit_loaded(self) -> None:
-        self.bus.sig_features_loaded.emit()
-        self.bus.sig_properties_loaded.emit()
-        self.bus.sig_albumart_loaded.emit()
+        self.model.load(features, properties, duration, album_art=result.get("album_art"), keep_audio=True)
 
     def _on_duration(self, duration_sec: float) -> None:
         """The decoded track's length: the views' until the analysis gives its own."""
         if duration_sec > 0.0 and float(self.model.duration_sec or 0.0) <= 0.0 and self._deck_path:
-            self.model.duration_sec = float(duration_sec)
-            self.model.sig_updated.emit()
-            self.bus.sig_properties_loaded.emit()
+            self.model.set_decoded_duration(duration_sec)
 
     def unload_track(self) -> None:
         """Empty the deck: no track in the player or the views."""
@@ -572,7 +559,6 @@ class AppWindow(QtWidgets.QMainWindow):
         self.player.unload()
         self._deck_path = None
         self.model.load({}, {}, 0.0)
-        self._emit_loaded()
         self.statusBar().showMessage(tr("Track unloaded."))
 
     def reanalyze_file(self, path: str, analysis: dict | None = None):
@@ -783,10 +769,7 @@ class AppWindow(QtWidgets.QMainWindow):
                 self.bus.sig_reload_UI.emit(_config)  # the waveform view takes the style when installed
         if prev_vcfg.get("phrase_labels") != new_vcfg["phrase_labels"]:
             set_phrase_label_names(_config.viewconfig.phrase_labels.by_label())
-            track_edit = getattr(self.pane, "track_edit", None)
-            if track_edit is not None:
-                track_edit.refresh_phrase_label_names()
-            self.bus.sig_phrase_segments_updated.emit()
+            self.bus.sig_phrase_labels_changed.emit()
         if playbackconfig_changed:
             if _config.deckconfig.enable_metronome:
                 QtCore.QMetaObject.invokeMethod(self.metro, "start", QtCore.Qt.QueuedConnection)

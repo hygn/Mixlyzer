@@ -69,8 +69,8 @@ class JumpCUEView(ViewPlugin):
         self.bus.sig_time_changed.connect(self._refresh)
         self.bus.sig_window_changed.connect(self._refresh)
         self.bus.sig_center_changed.connect(self._refresh)
-        self.bus.sig_features_loaded.connect(self._on_features_loaded)
-        self.bus.sig_jumpcue_updated.connect(self._on_jumpcue_updated)
+        self.model.sig_loaded.connect(self._on_features_loaded)
+        self.model.sig_jump_cues_changed.connect(self._on_jumpcue_updated)
 
     def attach(self, plot: pg.PlotItem):
         self.plot = plot

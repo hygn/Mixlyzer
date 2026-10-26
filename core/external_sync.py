@@ -31,7 +31,7 @@ from core import osc
 from core.config import externalsyncconfig
 from core.event_bus import EventBus
 from core.i18n import tr
-from core.model import DataModel
+from core.track.model import DataModel
 
 TIME_ADDRESS = "/mixlyzer/deck/time"
 SAMPLES_ADDRESS = "/mixlyzer/deck/samples"
@@ -212,9 +212,9 @@ class ExternalSyncController(QtCore.QObject):
 
         self.bus.sig_time_changed.connect(self._on_time_changed)
         self.bus.sig_playback_status.connect(self._on_playback_status_changed)
-        self.bus.sig_features_loaded.connect(self._on_features_loaded)
+        self.model.sig_loaded.connect(self._on_features_loaded)
         self.bus.sig_lib_updated.connect(self._on_library_updated)
-        self.bus.sig_properties_loaded.connect(self.publish_state)
+        self.model.sig_properties_changed.connect(self.publish_state)
         app = QtCore.QCoreApplication.instance()
         if app is not None:
             app.aboutToQuit.connect(self.close)   # the port let go with the app

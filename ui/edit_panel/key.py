@@ -5,7 +5,6 @@ from PySide6 import QtCore, QtWidgets
 
 from core.beat_geometry import downbeat_beat_indices
 from ui.edit_panel.blocks import mode_column, rule_cell
-from ui.edit_panel.history import logElement
 from ui.edit_panel.icons import badged_icon, badged_icon_beside, icon
 from ui.edit_panel.key_picker import ALPHANUMERIC_INDEX, KeyPickerPopup
 from utils.color import key_cmap_color, key_label_text_color
@@ -213,52 +212,6 @@ class KeyEditMixin:
             btn.setIcon(badged_icon(name, "step_bar" if by_bar else "step_beat"))
             btn.setToolTip(tr(KEY_STEP_TOOLS[name][1 if by_bar else 0]))
 
-    # ---- data in / out ----
-
-    def set_key_segments(self, key_segments, *, initialize: bool = False) -> None:
-        if key_segments is None:
-            self._key_segments = np.empty((0, 4), dtype=float)
-        else:
-            arr = np.asarray(key_segments, dtype=float)
-            if arr.ndim == 1 and arr.size % 4 == 0:
-                arr = arr.reshape((-1, 4))
-            if arr.ndim != 2 or arr.shape[1] < 4:
-                self._key_segments = np.empty((0, 4), dtype=float)
-            else:
-                arr = arr[:, :4].copy()
-                self._key_segments = arr[np.argsort(arr[:, 2], kind="stable")]
-        self._key_cur = -1
-        self._update_key_current()
-        if initialize:
-            return
-        self._emit_key_update()
-
-    def _emit_key_update(self) -> None:
-        self.edit_log.push(
-            logElement(
-                beats_time=self._beatgrid,
-                beat_segments=self._segments,
-                key_segments=self._key_segments,
-                jump_cues=self._JumpCUE,
-                phrases=self._phrase_segments,
-                cue_points=self._cue_points,
-            )
-        )
-        self._mark_unsaved(True)
-        self._broadcast_key_segments()
-        self._update_undo_redo_buttons()
-
-    def _broadcast_key_segments(self) -> None:
-        """Publish the key segments; views render the key strip from them."""
-        if self.model is not None:
-            try:
-                self.model.features["key_segments"] = np.asarray(self._key_segments, dtype=float)
-            except Exception:
-                pass
-        self._key_cur = -1
-        self._update_key_current()
-        self.bus.sig_key_segments_updated.emit()
-
     # ---- the current key segment ----
 
     def _key_index_at(self, t: float) -> int:
@@ -356,8 +309,7 @@ class KeyEditMixin:
     # ---- edits ----
 
     def _set_key_segments_edited(self, segs: np.ndarray) -> None:
-        self._key_segments = np.asarray(segs, dtype=float)
-        self._emit_key_update()
+        self.model.set_key_segments(segs)
 
     def _key_scope_whole(self) -> bool:
         return self.key_scope_all.isChecked()

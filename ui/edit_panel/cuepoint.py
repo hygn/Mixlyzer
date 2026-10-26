@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import copy
-
 import numpy as np
 from PySide6 import QtCore, QtGui, QtWidgets
 
@@ -9,7 +7,6 @@ from ui.edit_panel.cue_slots import SLOTS_PER_PAGE, CuePageWidget, color_swatch_
 from ui.edit_panel.icons import icon
 from ui.edit_panel.jumpcue import format_cue_time
 from ui.edit_panel.quantize import quantize_to_beat_or_edge
-from utils.cue_points import build_cue_points_np
 from utils.jumpcue_colors import CUE_POINT_COLORS, get_cue_point_color
 from core.i18n import tr
 
@@ -47,12 +44,6 @@ class CuePointEditMixin:
         page.page_changed.connect(self._refresh_cue_point_slots)
         return [self.cp_memory]
 
-    def set_cue_points(self, points) -> None:
-        self._cue_points = sorted(
-            (dict(p) for p in (points or [])), key=lambda p: float(p.get("time_sec", 0.0))
-        )
-        self._refresh_cue_point_slots()
-
     def _cp_at(self, slot: int) -> dict | None:
         i = self.cue_page.page_start(1) + int(slot)
         return self._cue_points[i] if 0 <= i < len(self._cue_points) else None
@@ -86,11 +77,10 @@ class CuePointEditMixin:
             return
         points = [dict(p) for p in self._cue_points]
         points.append({"time_sec": t, "label": "", "comment": "", "color_idx": 0})
-        self.set_cue_points(points)
+        self.model.set_cue_points(points)
         index = next(i for i, p in enumerate(self._cue_points) if abs(float(p["time_sec"]) - t) < 1e-3)
         self.cue_page.pages[1] = index // SLOTS_PER_PAGE
         self._refresh_cue_point_slots()
-        self._emit_cue_points_update()
 
     def _delete_memory_cue(self, slot: int) -> None:
         cue = self._cp_at(slot)
@@ -118,8 +108,7 @@ class CuePointEditMixin:
 
     def _delete_cue_point(self, cue: dict) -> None:
         t = float(cue["time_sec"])
-        self.set_cue_points([p for p in self._cue_points if abs(float(p["time_sec"]) - t) >= 1e-3])
-        self._emit_cue_points_update()
+        self.model.set_cue_points([p for p in self._cue_points if abs(float(p["time_sec"]) - t) >= 1e-3])
 
     def _rename_cue_point(self, slot: int, name: str) -> None:
         cue = self._cp_at(slot)
@@ -160,19 +149,4 @@ class CuePointEditMixin:
         for p in points:
             if abs(float(p["time_sec"]) - float(cue["time_sec"])) < 1e-3:
                 p.update(fields)
-        self.set_cue_points(points)
-        self._emit_cue_points_update()
-
-    def _emit_cue_points_update(self) -> None:
-        self.edit_log.push(self._log_element())
-        self._mark_unsaved(True)
-        self._broadcast_cue_points()
-        self._update_undo_redo_buttons()
-
-    def _broadcast_cue_points(self) -> None:
-        if self.model is not None:
-            try:
-                self.model.features["cue_points_np"] = build_cue_points_np(copy.deepcopy(self._cue_points))
-            except Exception:
-                pass
-        self.bus.sig_cue_points_updated.emit()
+        self.model.set_cue_points(points)

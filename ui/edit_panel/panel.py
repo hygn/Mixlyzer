@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import copy
 import html
 from typing import Optional
 
@@ -10,13 +9,12 @@ from PySide6 import QtCore, QtGui, QtWidgets
 from audioengine.native import client as deck
 from core.beat_geometry import downbeat_beat_indices
 from core.event_bus import EventBus
-from core.model import DataModel
+from core.track.model import DataModel
 from ui.edit_panel.beat_counter import BeatCounterMixin
 from ui.edit_panel.beatgrid import BeatgridEditMixin
 from ui.edit_panel.cue_slots import SLOTS_PER_PAGE, CuePageWidget
 from ui.edit_panel.cuepoint import CuePointEditMixin
 from ui.edit_panel.flash import flash
-from ui.edit_panel.history import logElement, logs
 from ui.edit_panel.icons import icon
 from ui.edit_panel.jumpcue import JumpCUEEditMixin
 from ui.edit_panel.key import KeyEditMixin
@@ -24,8 +22,7 @@ from ui.edit_panel.phrase import PhraseEditMixin
 from core.analysis_library import jobs as analysis_jobs
 from ui.edit_panel.styles import BUTTON_STYLESHEET, WARNING_BUTTON_STYLESHEET
 from ui.theme import current_theme
-from utils.cue_points import build_cue_points_np
-from utils.phrases import assigned_phrases, build_phrase_segments_np
+from utils.jump_cues import build_jump_cue_graph
 from core.i18n import tr, tr_mark
 
 
@@ -66,20 +63,18 @@ class EditPanel(
     # the pages shown together for each column count
     PAGE_GROUPS = {1: ((0,), (1,), (2,), (3,)), 2: ((0, 1), (2, 3)), 4: ((0, 1, 2, 3),)}
 
-    def __init__(self, bus: EventBus, model: DataModel | None = None, library=None, parent=None):
-        """``library``: the library's owner (core.library.service), which saves the edits."""
+    def __init__(self, bus: EventBus, model: DataModel, library=None, parent=None):
+        """``model``: the loaded track (core.track.model), which holds the marks shown here and is asked to change
+        them; ``library``: the library's owner (core.library.service), which saves the edits."""
         super().__init__(parent)
         self._library = library
         self.setStyleSheet(BUTTON_STYLESHEET)
-        self._segments: np.ndarray = np.empty((0, 6), dtype=float)
-        self._beatgrid: np.ndarray = np.asarray([])
-        self._cur_idx: int = -1
+        self._cur_idx: int = -1          # the tempo segment under the playhead
         self._current_time: float = 0.0
-        self._key_segments: np.ndarray = np.empty((0, 4), dtype=float)
-        self._phrase_segments: list[dict] = []
-        self.uid = None
         self.bus = bus
         self.model = model
+        self._graph_cues_of: Optional[list] = None   # the JumpCUE pairs _jumpcue_graph_cues was built from
+        self._graph_cues: list[dict] = []
         self.prev_tap_time = None
         self.prev_tap_BPM = 0
         self._edit_enabled = True
@@ -90,10 +85,6 @@ class EditPanel(
         self._edit_focus: frozenset = frozenset()
         self._save_in_progress = False
         self.tempo_multiplier = 1
-        self.duration = 1e-3
-        self._JumpCUE = []
-        self._jumpcue_graph_cues: list[dict] = []
-        self._cue_points: list[dict] = []
         self._playing = False
         # BeatCounter: while the Count button is held, count beats crossed by
         # the playhead relative to the beat index at press time.
@@ -109,16 +100,15 @@ class EditPanel(
         self._page_titles: dict[int, QtWidgets.QToolButton] = {}   # 4 pages shown: the title over each
         self._pair_labels: dict[int, QtWidgets.QLabel] = {}         # 2 shown: the names on each pair's button
         self._init_ui()
-        self.edit_log = logs(
-            default=logElement(
-                beats_time=self._beatgrid,
-                beat_segments=self._segments,
-                key_segments=self._key_segments,
-                jump_cues=self._JumpCUE,
-                phrases=self._phrase_segments,
-                cue_points=self._cue_points,
-            )
-        )
+        # the marks shown follow the model: an edit here, a reanalysis, undo / redo, a track loaded
+        model.sig_loaded.connect(self._on_track_loaded)
+        model.sig_beatgrid_changed.connect(self._on_beatgrid_changed)
+        model.sig_keys_changed.connect(self._on_keys_changed)
+        model.sig_phrases_changed.connect(self._on_phrases_changed)
+        model.sig_jump_cues_changed.connect(self._refresh_jumpcue_slots)
+        model.sig_cue_points_changed.connect(self._refresh_cue_point_slots)
+        model.sig_edits_changed.connect(self._on_edits_changed)
+        self.bus.sig_phrase_labels_changed.connect(self.refresh_phrase_label_names)
         self.bus.sig_segment_reanalyze_state.connect(self._set_edit_enabled)
         # the marks the player's deck works with, sent when an edit (or a new track) replaced them
         self._marks_sent: Optional[tuple] = None
@@ -129,6 +119,76 @@ class EditPanel(
         self.bus.sig_tempo_factor_changed.connect(self._on_playback_tempo_changed)
         self.bus.sig_playback_status.connect(self._on_playback_status)
         self._set_locked(self.btn_lock.isChecked())
+
+    # ---- the marks shown: the model's (read-only here; an edit asks the model, model.set_*) ----
+    @property
+    def _beatgrid(self) -> np.ndarray:
+        return self.model.beats
+
+    @property
+    def _segments(self) -> np.ndarray:
+        return self.model.tempo_segments
+
+    @property
+    def _key_segments(self) -> np.ndarray:
+        return self.model.key_segments
+
+    @property
+    def _phrase_segments(self) -> list[dict]:
+        return self.model.phrases
+
+    @property
+    def _JumpCUE(self) -> list[dict]:
+        return self.model.jump_cues
+
+    @property
+    def _cue_points(self) -> list[dict]:
+        return self.model.cue_points
+
+    @property
+    def _jumpcue_graph_cues(self) -> list[dict]:
+        """The JumpCUEs' cues with their slots (built once per set of pairs the model holds)."""
+        if self._graph_cues_of is not self.model.jump_cues:
+            self._graph_cues_of = self.model.jump_cues
+            # cues keep their letters (slots): lettered by point only by the analysis
+            self._graph_cues, _links = build_jump_cue_graph(self._graph_cues_of, keep_labels=True)
+        return self._graph_cues
+
+    @property
+    def uid(self) -> Optional[str]:
+        return self.model.properties.get("uid")
+
+    @property
+    def duration(self) -> float:
+        value = float(self.model.duration_sec or 0.0)
+        return value if np.isfinite(value) and value > 0.0 else 0.0
+
+    def _on_track_loaded(self) -> None:
+        self._cur_idx = -1
+        self._zeroBPM()
+        self._on_keys_changed()
+        self._on_phrases_changed()
+        self._refresh_jumpcue_slots()
+        self._refresh_cue_point_slots()
+        self.update_time(self._current_time)
+
+    def _on_beatgrid_changed(self) -> None:
+        if not 0 <= self._cur_idx < len(self._segments):
+            self._cur_idx = -1
+        self.update_time(self._current_time)
+        self._refresh_time_sig_selector()
+
+    def _on_keys_changed(self) -> None:
+        self._key_cur = -1
+        self._update_key_current()
+
+    def _on_phrases_changed(self) -> None:
+        self._phrase_cur = -1
+        self._update_phrase_status()
+
+    def _on_edits_changed(self) -> None:
+        self._update_undo_redo_buttons()
+        self._mark_unsaved(self.model.unsaved)
 
     def _on_playback_status(self, playing: bool) -> None:
         """CALL works only while stopped (the player reports it)."""
@@ -478,62 +538,6 @@ class EditPanel(
             self._edit_focus = focus
             self.bus.sig_edit_focus_changed.emit(focus)
 
-    def set_track_uid(self, uid):
-        self.uid = uid
-        self._zeroBPM()
-        self._mark_unsaved(False)
-    
-    def set_track_duration(self, duration):
-        value = float(duration or 0.0)
-        self.duration = value if np.isfinite(value) and value > 0.0 else 0.0
-        if self.duration > 0.0:
-            # the editor's own rows only: the model's phrases are not edited by this
-            self._phrase_segments = self._phrase_rows(self._phrase_segments)
-            self._phrase_cur = -1
-            self._update_phrase_status()
-
-    def set_segments(self, beatgrid: np.ndarray, segments: Optional[np.ndarray]) -> None:
-        """Set tempo segments: (N, 6) [start, end, bpm, inizio, ts_num, bpm_end]."""
-        if segments is None:
-            self._segments = np.empty((0, 6), dtype=float)
-            self._cur_idx = -1
-            return
-        if beatgrid is None:
-            beatgrid = np.asarray([])
-            return
-        self._beatgrid = beatgrid
-        arr = np.asarray(segments, dtype=float)
-        if arr.ndim != 2 or arr.shape[1] < 4:
-            self._segments = np.empty((0, 6), dtype=float)
-            self._cur_idx = -1
-            return
-        # Keep 6 columns [start, end, bpm, inizio, ts_num, bpm_end]; backfill ts=4 / steady.
-        arr = self._ensure_ts_column(arr)
-        # Keep only valid rows: finite start/end and end > start
-        starts = arr[:, 0]
-        ends = arr[:, 1]
-        valid = np.isfinite(starts) & np.isfinite(ends) & (ends > starts)
-        if not np.any(valid):
-            self._segments = np.empty((0, 6), dtype=float)
-            self._cur_idx = -1
-            return
-        arr = arr[valid]
-        # Sort by start ascending
-        order = np.argsort(arr[:, 0])
-        self._segments = arr[order]
-        self._cur_idx = -1
-        self.edit_log = logs(
-            default=logElement(
-                beats_time=self._beatgrid,
-                beat_segments=self._segments,
-                key_segments=self._key_segments,
-                jump_cues=self._JumpCUE,
-                phrases=self._phrase_segments,
-                cue_points=self._cue_points,
-            )
-        )
-        self._update_undo_redo_buttons()
-
     def update_time(self, t: float) -> None:
         self._current_time = float(t)
         self._update_key_current()
@@ -564,144 +568,27 @@ class EditPanel(
         self._cur_idx = idx
         self._set_status(idx, elapsed, left)
 
-    def _emit_edit_update(self) -> None:
-        """Notify listeners that the beatgrid/segments changed."""
-        self.edit_log.push(
-            logElement(
-                beats_time=self._beatgrid,
-                beat_segments=self._segments,
-                key_segments=self._key_segments,
-                jump_cues=self._JumpCUE,
-                phrases=self._phrase_segments,
-                cue_points=self._cue_points,
-            )
-        )
-        if self.model is not None:
-            try:
-                self.model.features["beats_time_sec"] = np.asarray(self._beatgrid, dtype=float)
-                self.model.features["tempo_segments"] = np.asarray(self._segments, dtype=float)
-            except Exception:
-                pass
-        self.bus.sig_beatgrid_edited.emit()
-        self._update_undo_redo_buttons()
-        self._mark_unsaved(True)
-
-    def apply_update_from_external(self, *, beatgrid=None, segments=None, key_segments=None) -> None:
-        updated = False
-        if beatgrid is not None and segments is not None:
-            self._beatgrid = beatgrid
-            self._segments = segments
-            self.edit_log.push(
-                logElement(
-                    beats_time=self._beatgrid,
-                    beat_segments=self._segments,
-                    key_segments=self._key_segments,
-                    jump_cues=self._JumpCUE,
-                    phrases=self._phrase_segments,
-                    cue_points=self._cue_points,
-                )
-            )
-            self._mark_unsaved(True)
-            if self.model is not None:
-                try:
-                    self.model.features["beats_time_sec"] = np.asarray(self._beatgrid, dtype=float)
-                    self.model.features["tempo_segments"] = np.asarray(self._segments, dtype=float)
-                except Exception:
-                    pass
-            self.bus.sig_beatgrid_edited.emit()
-            updated = True
-        if key_segments is not None:
-            self.set_key_segments(key_segments)
-        if updated:
-            self._update_undo_redo_buttons()
-
     def _undo(self) -> None:
-        loge = self.edit_log.undo()
-        self._update_undo_redo_buttons()
-        if loge is None:
-            return
-        self._beatgrid = loge.beats_time
-        self._segments = loge.beat_segments
-        if self.model is not None:
-            try:
-                self.model.features["beats_time_sec"] = np.asarray(self._beatgrid, dtype=float)
-                self.model.features["tempo_segments"] = np.asarray(self._segments, dtype=float)
-            except Exception:
-                pass
-        self.bus.sig_beatgrid_edited.emit()
-        if loge.key_segments is not None:
-            self._key_segments = loge.key_segments
-            self._broadcast_key_segments()
-        if loge.jump_cues is not None:
-            restored = copy.deepcopy(loge.jump_cues)
-            self.set_JumpCUE(restored)
-            self._broadcast_jumpcue()
-        if loge.phrases is not None:
-            self._phrase_segments = copy.deepcopy(loge.phrases)
-            self._broadcast_phrase()
-        if loge.cue_points is not None:
-            self.set_cue_points(copy.deepcopy(loge.cue_points))
-            self._broadcast_cue_points()
-        self.update_time(self._current_time)
+        self.model.undo()
 
     def _redo(self) -> None:
-        loge = self.edit_log.redo()
-        self._update_undo_redo_buttons()
-        if loge is None:
-            return
-        self._beatgrid = loge.beats_time
-        self._segments = loge.beat_segments
-        if self.model is not None:
-            try:
-                self.model.features["beats_time_sec"] = np.asarray(self._beatgrid, dtype=float)
-                self.model.features["tempo_segments"] = np.asarray(self._segments, dtype=float)
-            except Exception:
-                pass
-        self.bus.sig_beatgrid_edited.emit()
-        if loge.key_segments is not None:
-            self._key_segments = loge.key_segments
-            self._broadcast_key_segments()
-        if loge.jump_cues is not None:
-            restored = copy.deepcopy(loge.jump_cues)
-            self.set_JumpCUE(restored)
-            self._broadcast_jumpcue()
-        if loge.phrases is not None:
-            self._phrase_segments = copy.deepcopy(loge.phrases)
-            self._broadcast_phrase()
-        if loge.cue_points is not None:
-            self.set_cue_points(copy.deepcopy(loge.cue_points))
-            self._broadcast_cue_points()
-        self.update_time(self._current_time)
-    
+        self.model.redo()
+
     def _save(self) -> None:
         if self.uid is None or self._save_in_progress or not self._edit_enabled:
             return
         if self._library is None:
             return
-        beatgrid = np.asarray(self._beatgrid, dtype=float).copy() if self._beatgrid is not None else None
-        segments = np.asarray(self._segments, dtype=float).copy() if self._segments is not None else None
-        key_segments = np.asarray(self._key_segments, dtype=float).copy() if self._key_segments is not None else None
         try:
-            jump_cues_np = self._jumpcues_to_np(self._JumpCUE)
+            edits = self.model.stored_edits()
         except ValueError as exc:
             QtWidgets.QMessageBox.warning(self, tr("Invalid JumpCUE Label"), str(exc))
             return
-        auto_block = self.model.features.get("jump_cues_auto_np") if self.model is not None else None
-        jump_cues_auto_np = auto_block if isinstance(auto_block, dict) else None
-        key_auto = self.model.features.get("key_segments_auto") if self.model is not None else None
-        key_segments_auto = np.asarray(key_auto, dtype=float).copy() if key_auto is not None else None
-        # UNASSIGNED is not stored: it is where no phrase is
-        phrase_segments_np = build_phrase_segments_np(assigned_phrases(self._phrase_segments))
-        cue_points_np = build_cue_points_np(copy.deepcopy(self._cue_points))
         self._save_in_progress = True
         self.btn_save.setEnabled(False)
-        uid = self.uid
         # written by the library's owner (analysis_jobs.save_edits); a failure said, the edits kept unsaved
-        edits = {"beatgrid": beatgrid, "segments": segments, "key_segments": key_segments,
-                 "key_segments_auto": key_segments_auto, "jump_cues_np": jump_cues_np,
-                 "jump_cues_auto_np": jump_cues_auto_np, "phrase_segments_np": phrase_segments_np,
-                 "cue_points_np": cue_points_np}
-        self._library.write(analysis_jobs.save_edits,uid, edits, done=self._on_save_finished, failed=self._on_save_failed)
+        self._library.write(analysis_jobs.save_edits, self.uid, edits, done=self._on_save_finished,
+                            failed=self._on_save_failed)
 
     def _on_save_failed(self, exc: Exception) -> None:
         self._save_in_progress = False
@@ -711,8 +598,9 @@ class EditPanel(
     def _on_save_finished(self, saved_uid=None) -> None:
         self._save_in_progress = False
         self.btn_save.setEnabled(self._edit_enabled)
-        self._mark_unsaved(False)
         uid = str(saved_uid or "").strip()
+        if uid and uid == self.uid:      # still the loaded track: its edits are stored
+            self.model.mark_saved()
         if uid:
             try:
                 self.bus.sig_rekordbox_sync_track_requested.emit(uid)
@@ -947,7 +835,5 @@ class EditPanel(
     def _update_undo_redo_buttons(self) -> None:
         if not hasattr(self, "btn_undo") or not hasattr(self, "btn_redo"):
             return
-        can_undo = bool(getattr(self, "edit_log", None)) and self.edit_log.can_undo()
-        can_redo = bool(getattr(self, "edit_log", None)) and self.edit_log.can_redo()
-        self.btn_undo.setEnabled(self._edit_enabled and can_undo)
-        self.btn_redo.setEnabled(self._edit_enabled and can_redo)
+        self.btn_undo.setEnabled(self._edit_enabled and self.model.can_undo())
+        self.btn_redo.setEnabled(self._edit_enabled and self.model.can_redo())

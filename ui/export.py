@@ -15,7 +15,7 @@ from core.library.records import TrackRow
 from core.library.service import LibraryService
 from core.audio.decoder import decode_to_memmap, get_samplerate
 from core.audio.tag_writer import TEXT_FIELDS, TagWriteError, tag_format, write_tags
-from core.model import DataModel
+from core.track.model import DataModel
 from third_party.rekordbox import sanitize_filename
 from ui.config.scroll import scroll_page
 from ui.elided_label import ElidedLabel

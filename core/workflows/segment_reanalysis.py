@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from typing import Any, Callable, Optional
+from typing import Callable, Optional
 
 import numpy as np
 from PySide6 import QtCore
@@ -10,26 +10,26 @@ from analyzer_core.global_analyzer import getAlbumArt
 from core.config import load_cfg
 from core.workers.segment_reanalysis import SegmentReanalysisWorker
 from core.event_bus import EventBus
+from core.track.model import DataModel
 from utils.jump_cues import extract_jump_cue_pairs
 from core.i18n import tr
 
 
 StatusCallback = Callable[[str], None]
 PathGetter = Callable[[], Optional[str]]
-TrackEditGetter = Callable[[], Any]
 
 
 class SegmentReanalysisWorkflow(QtCore.QObject):
-    """Orchestrates beat/key reanalysis requests outside of the main window."""
+    """Orchestrates beat/key reanalysis requests outside of the main window; their results go to the loaded track
+    (``model``) as edits."""
 
     def __init__(
         self,
         *,
         bus: EventBus,
-        model,
+        model: DataModel,
         taskmanager,
         get_current_path: PathGetter,
-        track_edit_getter: TrackEditGetter,
         status_callback: Optional[StatusCallback] = None,
         parent: QtCore.QObject | None = None,
         cfg_loader=load_cfg,
@@ -40,7 +40,6 @@ class SegmentReanalysisWorkflow(QtCore.QObject):
         self.model = model
         self.taskmanager = taskmanager
         self._get_current_path = get_current_path
-        self._track_edit_getter = track_edit_getter
         self._status_callback = status_callback or (lambda _msg: None)
         self._cfg_loader = cfg_loader
         self._albumart_provider = albumart_provider
@@ -250,31 +249,26 @@ class SegmentReanalysisWorkflow(QtCore.QObject):
         if not self._workers:
             self.bus.sig_segment_reanalyze_state.emit(True)
     
+    # A result is an edit of the loaded track like any other (core.track.model: undoable, saved with the editor's
+    # next save); an automatic result beside it (a whole-track reanalysis's) is what the optimizers compare the
+    # user's edits with.
+
     def _handle_jumpCUE_result(self, taskid: int, payload: dict):
         jc_block = payload.get("jump_cues_np")
+        self.model.set_automatic(jump_cues_block=payload.get("jump_cues_auto_np"))
         if isinstance(jc_block, dict):
-            self.model.features["jump_cues_np"] = jc_block
-        auto_block = payload.get("jump_cues_auto_np")
-        if isinstance(auto_block, dict):
-            # Saved with the editor's next save (the reanalysis is the new automatic result).
-            self.model.features["jump_cues_auto_np"] = auto_block
-        track_edit = self._track_edit_getter()
-        if track_edit is not None and isinstance(jc_block, dict):
             try:
-                track_edit.apply_jc_update_from_external(
-                    jump_cues=extract_jump_cue_pairs({"jump_cues_np": jc_block}), record=True, broadcast=True
-                )
-            except Exception:
-                pass
+                self.model.set_jump_cues(extract_jump_cue_pairs({"jump_cues_np": jc_block}))
+            except ValueError as exc:
+                self._show_status(tr("JumpCUE reanalysis failed: {error}").format(error=exc))
         self.taskmanager.updatetask(taskid, tr("JumpCUE reanalysis finished"), 1.0)
         self.taskmanager.rmtask(taskid)
 
     def _handle_phrase_result(self, taskid: int, payload: dict) -> None:
         phrases = payload.get("phrases")
-        track_edit = self._track_edit_getter()
-        if track_edit is not None and isinstance(phrases, list):
-            # an edit like any other: undoable, saved with the editor's next save
-            track_edit.apply_phrase_update_from_external(phrases)
+        if isinstance(phrases, list):
+            # the CUE points stay: the Phrase page's CUE button places them from the new phrases
+            self.model.set_phrases(phrases, normalize=True)
         self.taskmanager.updatetask(taskid, tr("Phrase reanalysis finished"), 1.0)
         self.taskmanager.rmtask(taskid)
 
@@ -282,27 +276,17 @@ class SegmentReanalysisWorkflow(QtCore.QObject):
         key_segments = np.asarray(payload.get("key_segments", ()), dtype=float)
         auto = np.asarray(payload.get("key_segments_auto", ()), dtype=float)
         if auto.ndim == 2 and auto.size:
-            # Saved with the editor's next save (a whole-track reanalysis is the new automatic result).
-            self.model.features["key_segments_auto"] = auto
+            self.model.set_automatic(key_segments=auto)
         if key_segments.ndim == 2 and key_segments.size:
-            self.model.features["key_segments"] = key_segments
-            track_edit = self._track_edit_getter()
-            if track_edit is not None:
-                track_edit.apply_update_from_external(key_segments=key_segments)
+            self.model.set_key_segments(key_segments)
         self.taskmanager.updatetask(taskid, tr("Key reanalysis finished"), 1.0)
         self.taskmanager.rmtask(taskid)
 
     def _handle_segment_result(self, taskid: int, payload: dict) -> None:
         beats = np.asarray(payload.get("beats_time_sec", ()), dtype=float)
         segments = np.asarray(payload.get("tempo_segments", ()), dtype=float)
-        track_edit = self._track_edit_getter()
-        if track_edit is not None and beats.size and segments.size:
-            track_edit.apply_update_from_external(beatgrid=beats, segments=segments)
-        else:
-            if beats.size:
-                self.model.features["beats_time_sec"] = beats
-            if segments.ndim == 2 and segments.size:
-                self.model.features["tempo_segments"] = segments
+        if beats.size and segments.ndim == 2 and segments.size:
+            self.model.set_beatgrid(beats, segments)
         self.taskmanager.updatetask(taskid, tr("Segment reanalysis finished"), 1.0)
         self.taskmanager.rmtask(taskid)
 

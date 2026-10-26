@@ -1,16 +1,13 @@
 from __future__ import annotations
 
-import copy
 import math
 
 import numpy as np
 from PySide6 import QtCore, QtWidgets
 
 from ui.edit_panel.cue_slots import SLOTS_PER_PAGE, CuePageWidget, color_swatch_icon, slot_letter
-from ui.edit_panel.history import logElement
 from ui.edit_panel.icons import icon
 from ui.edit_panel.quantize import beat_quantize_grid
-from utils.jump_cues import build_jump_cue_graph, build_jump_cues_np
 from utils.jumpcue_colors import JUMPCUE_PAIR_COLORS
 from utils.phrases import assigned_phrases
 from core.i18n import tr
@@ -62,14 +59,6 @@ class JumpCUEEditMixin:
         # SET (an empty slot's button) and the menu's edits follow the edit lock in
         # _refresh_jumpcue_slots / _jc_group_menu; JUMP stays usable
         return [self.jc_reanalyze]
-
-    def set_JumpCUE(self, JumpCUE) -> None:
-        if JumpCUE is None:
-            JumpCUE = []
-        self._JumpCUE = JumpCUE
-        # cues keep their letters (slots): lettered by point only by the analysis
-        self._jumpcue_graph_cues, _links = build_jump_cue_graph(self._JumpCUE, keep_labels=True)
-        self._refresh_jumpcue_slots()
 
     # ---- slots ----
 
@@ -260,8 +249,11 @@ class JumpCUEEditMixin:
                             "confidence": 1.0,
                         }
                     )
-        self.set_JumpCUE(pairs)
-        self._emit_jumpcue_update()
+        try:
+            self.model.set_jump_cues(pairs)
+        except ValueError as exc:      # a letter that is not a slot's
+            QtWidgets.QMessageBox.warning(self, tr("Invalid JumpCUE Label"), str(exc))
+            return False
         return True
 
     def _set_jumpcue_color(self, point: float, color_idx: int, *, groups=None) -> None:
@@ -364,40 +356,6 @@ class JumpCUEEditMixin:
                                                 "point": point, "color_idx": int(color_idx)}]
         self._set_jumpcue_color(point, color_idx, groups=groups)
 
-    def _emit_jumpcue_update(self) -> None:
-        self.edit_log.push(self._log_element(jump_cues=self._JumpCUE))
-        self._mark_unsaved(True)
-        self._broadcast_jumpcue()
-        self._update_undo_redo_buttons()
-
-    def _broadcast_jumpcue(self) -> None:
-        if self.model is not None:
-            try:
-                self.model.features["jump_cues_np"] = self._jumpcues_to_np(self._JumpCUE)
-            except ValueError as exc:
-                QtWidgets.QMessageBox.warning(self, tr("Invalid JumpCUE Label"), str(exc))
-            except Exception:
-                pass
-        self.bus.sig_jumpcue_updated.emit()
-
-    @staticmethod
-    def _jumpcues_to_np(jump_cues: list[dict]):
-        if jump_cues is not None and not isinstance(jump_cues, list):
-            return None
-        return build_jump_cues_np(jump_cues or [])
-
-    def apply_jc_update_from_external(self, *, jump_cues=None, record: bool = True, broadcast: bool = True) -> None:
-        if jump_cues is None:
-            return
-        cues_copy = copy.deepcopy(jump_cues)
-        self.set_JumpCUE(cues_copy)
-        if record:
-            self.edit_log.push(self._log_element(jump_cues=cues_copy))
-            self._update_undo_redo_buttons()
-            self._mark_unsaved(True)
-        if broadcast:
-            self._broadcast_jumpcue()
-
     def _reanalyze_jumpCUE(self) -> None:
         if self._beatgrid is None or len(self._beatgrid) == 0:
             return
@@ -411,16 +369,3 @@ class JumpCUEEditMixin:
         payload["phrases"] = [dict(row) for row in assigned_phrases(self._phrase_segments)]
         payload["analyze_type"] = "jumpcue"
         self.bus.sig_segment_reanalyze_requested.emit(payload)
-
-    def _log_element(self, **override) -> logElement:
-        """Snapshot of every edited state for the undo log (``override`` replaces fields)."""
-        fields = dict(
-            beats_time=self._beatgrid,
-            beat_segments=self._segments,
-            key_segments=self._key_segments,
-            jump_cues=self._JumpCUE,
-            phrases=self._phrase_segments,
-            cue_points=self._cue_points,
-        )
-        fields.update(override)
-        return logElement(**fields)

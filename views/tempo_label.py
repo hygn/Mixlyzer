@@ -110,8 +110,8 @@ class TempoLabelView(ViewPlugin):
         self.bus.sig_time_changed.connect(self._reposition)
         self.bus.sig_window_changed.connect(self._reposition)
         self.bus.sig_center_changed.connect(self._reposition)
-        self.bus.sig_features_loaded.connect(self._rebuild)
-        self.bus.sig_beatgrid_edited.connect(self._rebuild)
+        self.model.sig_loaded.connect(self._rebuild)
+        self.model.sig_beatgrid_changed.connect(self._rebuild)
 
     def attach(self, plot: pg.PlotItem):
         self.plot = plot

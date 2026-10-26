@@ -12,11 +12,9 @@ from audioengine.native import client as deck
 from views.base import REGISTRY, ViewPlugin
 from views.overview import OverviewWidget
 from ui.library import LibraryWidget
-from utils.cue_points import extract_cue_points
 from utils.labels import idx_to_labels
 from utils.semitone import speed_to_semitone
-from utils.jump_cues import extract_jump_cue_pairs
-from utils.phrases import extract_phrase_segments, number_phrase_labels, phrase_color
+from utils.phrases import number_phrase_labels, phrase_color
 from core.event_bus import EventBus
 from core.config import config
 from ui.mainplotvbx import ScratchViewBox
@@ -213,15 +211,16 @@ class MainPane(QtWidgets.QWidget):
         self.p.getViewBox().sigResized.connect(self._update_pixel_sec)
         self._update_pixel_sec()
         self.bus.sig_output_peak_dbfs.connect(self._on_output_peak_dbfs)
-        self.bus.sig_features_loaded.connect(self._on_features)
-        self.bus.sig_properties_loaded.connect(self._on_properties)
-        self.bus.sig_albumart_loaded.connect(self._on_albumart)
+        self.model.sig_loaded.connect(self._on_features)
+        self.model.sig_properties_changed.connect(self._on_properties)
+        self.model.sig_album_art_changed.connect(self._on_albumart)
         self.bus.sig_playback_status.connect(self._on_playback_state_changed)
         self.bus.sig_deck_state.connect(self._on_deck_state)
         self.bus.sig_reload_UI.connect(self._on_reload_requested)
-        self.bus.sig_beatgrid_edited.connect(self._on_beatgrid_edited)
-        self.bus.sig_key_segments_updated.connect(self._on_key_segments_updated)
-        self.bus.sig_phrase_segments_updated.connect(self._on_phrases_updated)
+        self.model.sig_beatgrid_changed.connect(self._on_beatgrid_edited)
+        self.model.sig_keys_changed.connect(self._on_key_segments_updated)
+        self.model.sig_phrases_changed.connect(self._on_phrases_updated)
+        self.bus.sig_phrase_labels_changed.connect(self._on_phrases_updated)
         try:
             self.bus.sig_transport_enabled.connect(self._on_transport_enabled)
             self.bus.sig_external_sync_enabled.connect(self._on_external_sync_enabled)
@@ -723,8 +722,7 @@ class MainPane(QtWidgets.QWidget):
 
     def _on_phrases_updated(self) -> None:
         """Cache the displayed phrases (numbered like the phrase view)."""
-        f = self.model.features if isinstance(self.model.features, dict) else {}
-        rows = extract_phrase_segments(f, self.model.duration_sec)
+        rows = self.model.phrases
         self._phrase_starts = np.asarray([float(r["start"]) for r in rows], dtype=float)
         self._phrase_ends = np.asarray([float(r["end"]) for r in rows], dtype=float)
         self._phrase_names = number_phrase_labels(rows)
@@ -743,36 +741,18 @@ class MainPane(QtWidgets.QWidget):
         self.track_info.set_phrase(self._phrase_names[i], self._phrase_colors[i])
 
     def _on_features(self):
-        f = self.model.features
+        """A track (or its analysis) loaded: the overview, the phrase / BPM / key lines read it (the editor follows
+        the model itself)."""
         self.ov.set_data()
         self._on_phrases_updated()
         self._rebuild_beat_positions()
-        segments = f.get("tempo_segments")
-        if hasattr(self, "track_edit"):
-            self.track_edit.set_key_segments(f.get("key_segments"), initialize=True)
-            self.track_edit.set_JumpCUE(extract_jump_cue_pairs(f))
-            self.track_edit.set_cue_points(extract_cue_points(f))
-            self.track_edit.set_phrase_segments(extract_phrase_segments(f, self.model.duration_sec), initialize=True)
-            # Build the initial undo snapshot only after all editor-owned state
-            # has been loaded, so undo cannot restore stale Phrase/JumpCUE data.
-            self.track_edit.set_segments(f.get("beats_time_sec"), segments)
-        self._set_tempo_segments(segments)
-        key_segments = f.get("key_segments")
-        self._key_segments = None
-        if key_segments is not None:
-            try:
-                self._key_segments = np.asarray(key_segments, dtype=float)
-            except Exception:
-                self._key_segments = None
-        if self._key_segments is None:
+        self._set_tempo_segments(self.model.tempo_segments)
+        self._on_key_segments_updated()
+        if self._key_segments is None or self._key_segments.size == 0:
             self.track_info.set_key(None)  # e.g. unloaded
 
     def _on_beatgrid_edited(self):
-        if not isinstance(self.model.features, dict):
-            return
-        beatgrid = self.model.features.get("beats_time_sec")
-        segments = self.model.features.get("tempo_segments")
-        self._set_tempo_segments(segments)
+        self._set_tempo_segments(self.model.tempo_segments)
         self._rebuild_beat_positions()
         self._update_beat_display(self.current_time)
 
@@ -854,8 +834,6 @@ class MainPane(QtWidgets.QWidget):
         artist_text = p.get("artist") or "" if isinstance(p, dict) else ""
         self.track_info.set_title(title_text.strip())
         self.track_info.set_artist(artist_text.strip())
-        self.track_edit.set_track_uid(p.get("uid"))
-        self.track_edit.set_track_duration(p.get("duration_sec"))
         self.track_info.set_track_loaded(float(self.model.duration_sec or 0.0) > 0.0)
 
     def _on_albumart(self):
@@ -973,11 +951,7 @@ class MainPane(QtWidgets.QWidget):
             self.header.setMaximumHeight(header_h)
 
     def _on_key_segments_updated(self) -> None:
-        key_segments = self.model.features.get("key_segments")
-        try:
-            self._key_segments = np.asarray(key_segments, dtype=float)
-        except Exception:
-            self._key_segments = None
+        self._key_segments = self.model.key_segments
         if hasattr(self.ov, "update_key_strip"):
             self.ov.update_key_strip()
 

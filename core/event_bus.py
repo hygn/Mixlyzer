@@ -29,10 +29,8 @@ class EventBus(QtCore.QObject):
     sig_scratch_update = QtCore.Signal(float, float)  # sec, time.perf_counter() of the pointer event
     sig_scratch_end    = QtCore.Signal(float)  # sec
 
-    # Data
-    sig_features_loaded = QtCore.Signal()    # notification only; read from shared model
-    sig_properties_loaded = QtCore.Signal()  # notification only; read from shared model
-    sig_albumart_loaded = QtCore.Signal()    # notification only; read from shared model
+    # The loaded track and its marks as edited are the model's (core.track.model: DataModel.sig_loaded,
+    # sig_beatgrid_changed, ...), not the bus's.
 
     # Library
     sig_lib_updated = QtCore.Signal(object)
@@ -82,13 +80,9 @@ class EventBus(QtCore.QObject):
     sig_task_finished = QtCore.Signal(int, str)
 
     # Editor signals
-    sig_beatgrid_edited = QtCore.Signal()
-    sig_key_segments_updated = QtCore.Signal()
     sig_tone_hold = QtCore.Signal(object)      # MIDI notes held under the music (empty: off)
-    sig_phrase_segments_updated = QtCore.Signal()
-    sig_cue_points_updated = QtCore.Signal()      # notification only; read from shared model
-
-    sig_jumpcue_updated = QtCore.Signal()
+    # the phrase labels' names shown changed (Settings > View): the phrases are drawn again, not changed
+    sig_phrase_labels_changed = QtCore.Signal()
     # The edit pages shown while editing is unlocked (frozenset of views.base.EDIT_PAGES; empty:
     # locked): the views emphasize those pages' visualizations and dim the others'.
     sig_edit_focus_changed = QtCore.Signal(object)

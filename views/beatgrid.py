@@ -26,8 +26,8 @@ class BeatgridView(ViewPlugin):
         self.bus.sig_time_changed.connect(self._on_time)
         self.bus.sig_window_changed.connect(self._on_window)
         self.bus.sig_center_changed.connect(self._on_center)
-        self.bus.sig_features_loaded.connect(self._on_features_loaded)
-        self.bus.sig_beatgrid_edited.connect(self._on_beatgrid_updated)
+        self.model.sig_loaded.connect(self._on_features_loaded)
+        self.model.sig_beatgrid_changed.connect(self._on_beatgrid_updated)
 
     def attach(self, plot: pg.PlotItem):
         self.plot = plot

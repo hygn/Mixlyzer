@@ -411,8 +411,8 @@ class WaveformView(ViewPlugin):
         self.bus.sig_scrub_update.connect(self._on_scrub_update)
         self.bus.sig_scrub_end.connect(self._on_scrub_end)
         self.bus.sig_window_changed.connect(self.update_window)
-        self.bus.sig_features_loaded.connect(self.update_features)
-        self.model.sig_updated.connect(self._on_model_updated)
+        self.model.sig_loaded.connect(self.update_features)
+        self.model.sig_audio_changed.connect(self._on_model_updated)
 
     # The shown layer
     @property

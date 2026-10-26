@@ -219,10 +219,11 @@ class OverviewWidget(QtWidgets.QWidget):
 
         self.bus.sig_time_changed.connect(self._on_time)
         self.bus.sig_duration_changed.connect(self._on_duration)
-        self.bus.sig_beatgrid_edited.connect(self._on_beatgrid_updated)
-        self.bus.sig_jumpcue_updated.connect(self._on_jumpcue_updated)
-        self.bus.sig_phrase_segments_updated.connect(self._on_phrases_updated)
-        self.bus.sig_cue_points_updated.connect(self._render_cue_points)
+        self.model.sig_beatgrid_changed.connect(self._on_beatgrid_updated)
+        self.model.sig_jump_cues_changed.connect(self._on_jumpcue_updated)
+        self.model.sig_phrases_changed.connect(self._on_phrases_updated)
+        self.bus.sig_phrase_labels_changed.connect(self._on_phrases_updated)
+        self.model.sig_cue_points_changed.connect(self._render_cue_points)
         # the edit pages' emphasis (views.base: edit focus)
         self._emphasis = {page: "normal" for page in EDIT_PAGES}
         self.bus.sig_edit_focus_changed.connect(self.apply_edit_focus)
