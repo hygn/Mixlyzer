@@ -8,6 +8,7 @@ from typing import Any, Optional
 import numpy as np
 
 from analyzer.music.tempo_rows import with_end_bpm
+from analyzer.music.marks import CuePoint
 from core.analysis_library.cue_points import build_cue_points_np, extract_cue_points
 from core.analysis_library.jump_cues import build_jump_cues_np, extract_jump_cue_pairs
 from core.analysis_library.phrases import build_phrase_segments_np, extract_phrase_segments, fill_unassigned, \
@@ -51,9 +52,9 @@ def phrase_rows(phrases, duration_sec: Optional[float], *, normalize: bool = Tru
     return fill_unassigned(rows, duration_sec if duration_sec and duration_sec > 0.0 else None)
 
 
-def cue_point_rows(points) -> list[dict[str, Any]]:
-    """The CUE points by time (copies)."""
-    return sorted((dict(p) for p in (points or [])), key=lambda p: float(p.get("time_sec", 0.0)))
+def cue_point_rows(points) -> list[CuePoint]:
+    """The CUE points by time."""
+    return sorted(points or [], key=lambda p: float(p.time_sec))
 
 
 def from_features(features: dict, duration_sec: float) -> dict[str, Any]:
@@ -86,5 +87,5 @@ def stored_jump_cues(pairs: list[dict]) -> dict[str, Any]:
     return {"jump_cues_np": build_jump_cues_np(pairs or [])}
 
 
-def stored_cue_points(points: list[dict]) -> dict[str, Any]:
-    return {"cue_points_np": build_cue_points_np([dict(p) for p in points])}
+def stored_cue_points(points: list[CuePoint]) -> dict[str, Any]:
+    return {"cue_points_np": build_cue_points_np(points)}

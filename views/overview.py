@@ -303,8 +303,8 @@ class OverviewWidget(QtWidgets.QWidget):
         if not points:
             self.cue_point_markers.setData([], [])
             return
-        times = [float(point["time_sec"]) for point in points]
-        colors = [get_cue_point_color(int(point.get("color_idx", 0) or 0)) for point in points]
+        times = [float(point.time_sec) for point in points]
+        colors = [get_cue_point_color(int(point.color_idx or 0)) for point in points]
         y = self._wave_top - 0.05
         self.cue_point_markers.setData(
             times, [y] * len(times),

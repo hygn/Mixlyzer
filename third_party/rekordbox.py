@@ -360,9 +360,9 @@ def _extract_memory_cues(features: dict[str, np.ndarray]) -> list[dict[str, obje
     """The CUE points as memory cues: their names and colours, in time order."""
     return [
         {
-            "name": str(point["label"]).strip(),
-            "start": float(point["time_sec"]),
-            "color": get_cue_point_color(int(point["color_idx"])),
+            "name": str(point.label).strip(),
+            "start": float(point.time_sec),
+            "color": get_cue_point_color(int(point.color_idx)),
         }
         for point in extract_cue_points(features)
     ]

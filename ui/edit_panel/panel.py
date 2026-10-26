@@ -8,6 +8,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 
 from audioengine.native import client as deck
 from analyzer.music.beat_geometry import downbeat_beat_indices
+from analyzer.music.marks import CuePoint
 from core.workflows.event_bus import EventBus
 from core.track.model import DataModel
 from ui.edit_panel.beat_counter import BeatCounterMixin
@@ -139,7 +140,7 @@ class EditPanel(
         return self.model.jump_cues
 
     @property
-    def _cue_points(self) -> list[dict]:
+    def _cue_points(self) -> list[CuePoint]:
         return self.model.cue_points
 
     @property
@@ -201,7 +202,7 @@ class EditPanel(
         if beats.size:
             idx = np.asarray(downbeat_beat_indices(beats, self._segments), dtype=np.int64).reshape(-1)
             down[idx[(idx >= 0) & (idx < beats.size)]] = True
-        cues = np.asarray([float(p.get("time_sec", 0.0)) for p in self._cue_points], dtype=float)
+        cues = np.asarray([float(p.time_sec) for p in self._cue_points], dtype=float)
         jumps = np.full(26, np.nan)
         for c in self._jumpcue_graph_cues:
             i = ord(str(c.get("label", "?"))[:1] or "?") - ord("A")

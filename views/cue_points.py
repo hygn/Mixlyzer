@@ -64,8 +64,8 @@ class CUEPointView(ViewPlugin):
 
     def _load_points(self) -> None:
         points = self.model.cue_points
-        self._times = [float(point["time_sec"]) for point in points]
-        colors = [get_cue_point_color(int(point.get("color_idx", 0) or 0)) for point in points]
+        self._times = [float(point.time_sec) for point in points]
+        colors = [get_cue_point_color(int(point.color_idx or 0)) for point in points]
         self._brushes = [pg.mkBrush(*c, 240) for c in colors]
         self._pens = [pg.mkPen(c, width=1.2) for c in colors]
 

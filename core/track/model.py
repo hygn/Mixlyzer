@@ -26,6 +26,7 @@ from PySide6.QtGui import QImage
 
 from core.track import marks
 from core.track.history import History, Marks
+from analyzer.music.marks import CuePoint
 from core.analysis_library.cue_points import build_cue_points_np
 from core.analysis_library.jump_cues import build_jump_cue_graph, build_jump_cues_np
 from core.analysis_library.phrases import assigned_phrases, build_phrase_segments_np
@@ -156,8 +157,8 @@ class DataModel(QtCore.QObject):
         return self._graph
 
     @property
-    def cue_points(self) -> list[dict]:
-        """The CUE points by time ({time_sec, label, comment, color_idx})."""
+    def cue_points(self) -> list[CuePoint]:
+        """The CUE points by time (analyzer.music.marks.CuePoint)."""
         return self._cue_points
 
     # ---- edits ----
@@ -243,7 +244,7 @@ class DataModel(QtCore.QObject):
             "jump_cues_auto_np": auto_jump if isinstance(auto_jump, dict) else None,
             # UNASSIGNED is not stored: it is where no phrase is
             "phrase_segments_np": build_phrase_segments_np(assigned_phrases(self._phrases)),
-            "cue_points_np": build_cue_points_np([dict(p) for p in self._cue_points]),
+            "cue_points_np": build_cue_points_np(self._cue_points),
         }
 
     # ---- inside ----

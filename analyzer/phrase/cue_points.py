@@ -1,5 +1,5 @@
 """The CUE points the analysis sets: at phrase starts / ends by each label's rule, and AutoCUE's (where the LEAD_IN
-ends, an early first downbeat, or 0:00). Points are dicts {id, time_sec, label, comment, color_idx}."""
+ends, an early first downbeat, or 0:00), as analyzer.music.marks.CuePoint."""
 from __future__ import annotations
 
 import math
@@ -8,13 +8,14 @@ from typing import Any, Mapping
 import numpy as np
 
 from analyzer.music.beat_geometry import downbeat_times
+from analyzer.music.marks import CuePoint
 from analyzer.settings import CueRule
 
 _DEDUP_TIME_EPSILON_SEC = 1e-3
 
 
 def phrase_cue_points(phrases: list[dict[str, Any]] | None, beat_times: Any, tempo_segments: Any,
-                      rules: Mapping[str, CueRule], autocue: str) -> list[dict[str, Any]]:
+                      rules: Mapping[str, CueRule], autocue: str) -> list[CuePoint]:
     """The CUE points of the phrases: each label's rule, and with AutoCUE on CUE points (``autocue`` "cue_point") its
     start."""
     points = build_phrase_cue_points(phrases, rules)
@@ -30,48 +31,31 @@ def _append_unique(parts: list[str], value: object) -> None:
         parts.append(text)
 
 
-def merge_coincident(points: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """The points in time order, those within a millisecond of each other one (their labels and comments joined),
-    renumbered."""
+def merge_coincident(points: list[CuePoint]) -> list[CuePoint]:
+    """The points in time order (``id`` orders points at one time; None: their place in ``points``), those within a
+    millisecond of each other one (their labels and comments joined, the first one's colour), renumbered."""
     if not points:
         return []
-    rows = sorted(points, key=lambda point: (float(point["time_sec"]), int(point["id"])))
-    merged: list[dict[str, Any]] = []
-    for point in rows:
-        time_sec = float(point["time_sec"])
-        if (
-            merged
-            and abs(float(merged[-1]["time_sec"]) - time_sec) <= _DEDUP_TIME_EPSILON_SEC
-        ):
-            _append_unique(merged[-1]["_labels"], point.get("label"))
-            _append_unique(merged[-1]["_comments"], point.get("comment"))
+    rows = sorted(enumerate(points), key=lambda item: (float(item[1].time_sec),
+                                                       item[0] if item[1].id is None else int(item[1].id)))
+    merged: list[tuple[float, list[str], list[str], int]] = []
+    for _index, point in rows:
+        time_sec = float(point.time_sec)
+        if merged and abs(merged[-1][0] - time_sec) <= _DEDUP_TIME_EPSILON_SEC:
+            _append_unique(merged[-1][1], point.label)
+            _append_unique(merged[-1][2], point.comment)
             continue
         labels: list[str] = []
         comments: list[str] = []
-        _append_unique(labels, point.get("label"))
-        _append_unique(comments, point.get("comment"))
-        merged.append(
-            {
-                "id": len(merged),
-                "time_sec": time_sec,
-                "_labels": labels,
-                "_comments": comments,
-                "color_idx": int(point.get("color_idx", 0) or 0),
-            }
-        )
-    return [
-        {
-            "id": index,
-            "time_sec": float(point["time_sec"]),
-            "label": "/".join(point["_labels"]),
-            "comment": " / ".join(point["_comments"]),
-            "color_idx": int(point["color_idx"]),
-        }
-        for index, point in enumerate(merged)
-    ]
+        _append_unique(labels, point.label)
+        _append_unique(comments, point.comment)
+        merged.append((time_sec, labels, comments, int(point.color_idx or 0)))
+    return [CuePoint(time_sec=time_sec, label="/".join(labels), comment=" / ".join(comments), color_idx=color,
+                     id=index)
+            for index, (time_sec, labels, comments, color) in enumerate(merged)]
 
 
-def build_phrase_cue_points(phrases: list[dict[str, Any]] | None, rules: dict[str, Any]) -> list[dict[str, Any]]:
+def build_phrase_cue_points(phrases: list[dict[str, Any]] | None, rules: Mapping[str, CueRule]) -> list[CuePoint]:
     """CUE points at phrase starts / ends by the rule of each phrase's label
     (``rules``: uppercase label -> object with ``at_start``, ``at_end`` and
     ``same_label_boundaries``, analyzer.settings.CueRule). A start or end
@@ -89,7 +73,7 @@ def build_phrase_cue_points(phrases: list[dict[str, Any]] | None, rules: dict[st
         rows.append({"start": start, "end": end, "label": str(phrase.get("label", "") or "").strip().upper()})
     rows.sort(key=lambda phrase: phrase["start"])
 
-    points: list[dict[str, Any]] = []
+    points: list[CuePoint] = []
     for i, phrase in enumerate(rows):
         label = phrase["label"]
         rule = rules.get(label)
@@ -98,11 +82,11 @@ def build_phrase_cue_points(phrases: list[dict[str, Any]] | None, rules: dict[st
         prev_same = i > 0 and rows[i - 1]["label"] == label
         next_same = i + 1 < len(rows) and rows[i + 1]["label"] == label
         if rule.at_start and (rule.same_label_boundaries or not prev_same):
-            points.append({"id": len(points), "time_sec": phrase["start"], "label": label,
-                           "comment": f"{label.title()} start"})
+            points.append(CuePoint(id=len(points), time_sec=phrase["start"], label=label,
+                                   comment=f"{label.title()} start"))
         if rule.at_end and (rule.same_label_boundaries or not next_same):
-            points.append({"id": len(points), "time_sec": phrase["end"], "label": f"{label}_OUT",
-                           "comment": f"{label.title()} end"})
+            points.append(CuePoint(id=len(points), time_sec=phrase["end"], label=f"{label}_OUT",
+                                   comment=f"{label.title()} end"))
     return merge_coincident(points)
 
 
@@ -181,17 +165,8 @@ def autocue_time_sec(
     return 0.0
 
 
-def add_autocue_cue_point(
-    points: list[dict[str, Any]],
-    time_sec: float,
-    *,
-    lead_in_end: bool = False,
-) -> list[dict[str, Any]]:
+def add_autocue_cue_point(points: list[CuePoint], time_sec: float, *, lead_in_end: bool = False) -> list[CuePoint]:
     """Add the selected AutoCUE position, merging a coincident phrase cue."""
-    point = {
-        "id": len(points),
-        "time_sec": float(time_sec),
-        "label": "LEAD_IN_OUT" if lead_in_end else "AUTOCUE",
-        "comment": "Lead-in end" if lead_in_end else "AutoCUE",
-    }
+    point = CuePoint(id=len(points), time_sec=float(time_sec), label="LEAD_IN_OUT" if lead_in_end else "AUTOCUE",
+                     comment="Lead-in end" if lead_in_end else "AutoCUE")
     return merge_coincident([*points, point])
