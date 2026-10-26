@@ -39,45 +39,8 @@ from system import os_support
 from system.i18n import tr, tr_ctx
 
 
-def build_playback_tab(dialog) -> None:
-    dialog.tab_playback = QWidget()
-
-    dialog.ed_metronome_wav_path = QLineEdit()
-    dialog.sp_metronome_offset_msec = QDoubleSpinBox()
-    dialog.sp_metronome_offset_msec.setRange(-500.0, 500.0)
-    dialog.sp_metronome_offset_msec.setDecimals(1)
-    dialog.sp_metronome_offset_msec.setSingleStep(1.0)
-    dialog.sp_metronome_offset_msec.setToolTip(
-        tr("Shift metronome clicks relative to the beat (positive = earlier)")
-    )
-    dialog.sp_default_volume_percent = QSpinBox()
-    dialog.sp_default_volume_percent.setRange(0, 100)
-    dialog.sp_default_volume_percent.setSingleStep(1)
-
-    dialog.sp_click_down_volume = QSpinBox()
-    dialog.sp_click_down_volume.setRange(0, 100)
-    dialog.sp_click_down_pitch = QDoubleSpinBox()
-    dialog.sp_click_down_pitch.setRange(-24.0, 24.0)
-    dialog.sp_click_down_pitch.setSingleStep(1.0)
-    dialog.sp_click_down_pitch.setDecimals(1)
-    dialog.sp_click_beat_volume = QSpinBox()
-    dialog.sp_click_beat_volume.setRange(0, 100)
-    dialog.sp_click_beat_pitch = QDoubleSpinBox()
-    dialog.sp_click_beat_pitch.setRange(-24.0, 24.0)
-    dialog.sp_click_beat_pitch.setSingleStep(1.0)
-    dialog.sp_click_beat_pitch.setDecimals(1)
-    dialog.cb_metronome_ducking = QCheckBox(
-        tr("Duck music under metronome clicks")
-    )
-    dialog.cb_metronome_ducking.setToolTip(
-        tr("Lowers the music by up to 6 dB, following each click")
-    )
-    dialog.cb_soft_clip = QCheckBox(tr("Soft clip output (tanh)"))
-    dialog.cb_soft_clip.setToolTip(
-        tr("Output above -1.9 dBFS is rounded off by tanh up to 0 dBFS "
-           "instead of hard clipping")
-    )
-
+def _engine_group(dialog) -> QGroupBox:
+    """Engine: the audio engine, its priority and power throttling, Restart Audio Engine, the other engine's buffer under Advanced."""
     # the audio engine (applied at the next start)
     dialog.cb_audio_engine = QComboBox()
     dialog.cb_audio_engine.addItem(tr("Native first"), "native")
@@ -122,6 +85,50 @@ def build_playback_tab(dialog) -> None:
             "latency-critical activity keeps both off (the computer may still sleep when idle). Applied at "
             "once.</p>")
     dialog.cb_native_power.setToolTip(power_tip)
+
+    grp_engine = QGroupBox(tr("Engine"))
+    f_engine = QFormLayout(grp_engine)
+    f_engine.addRow(tr("Audio engine"), dialog.cb_audio_engine)
+    f_engine.addRow(tr("Process priority") if os_support.IS_WINDOWS else tr("Thread priority"),
+                    dialog.cb_native_priority)
+    f_engine.addRow(tr("Power throttling"), dialog.cb_native_power)
+    # the last resort: the native engine started again (a device or the engine stuck)
+    dialog.btn_restart_engine = QPushButton(tr("Restart Audio Engine"))
+    dialog.btn_restart_engine.setToolTip(tr(
+        "<p>Stops the native audio engine and starts it again on the same outputs, with the track, its place and "
+        "the settings as they were. The last resort when an output or the engine stays stuck (a controller "
+        "unplugged and plugged in again).</p>"))
+    dialog.lbl_restart_engine = QLabel()
+    restart_row = QHBoxLayout()
+    restart_row.addWidget(dialog.btn_restart_engine)
+    restart_row.addWidget(dialog.lbl_restart_engine, 1)
+    f_engine.addRow(restart_row)
+    dialog.btn_restart_engine.clicked.connect(dialog._restart_engine)
+    dialog.btn_playback_advanced = QToolButton()
+    dialog.btn_playback_advanced.setText(tr("Advanced"))
+    dialog.btn_playback_advanced.setCheckable(True)
+    dialog.btn_playback_advanced.setArrowType(Qt.RightArrow)
+    dialog.btn_playback_advanced.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+    dialog.btn_playback_advanced.setAutoRaise(True)
+    dialog.btn_playback_advanced.setToolTip(tr("Show or hide the settings of the audio engine not playing."))
+    f_engine.addRow(dialog.btn_playback_advanced)
+    dialog.playback_advanced = QWidget()
+    f_advanced = QFormLayout(dialog.playback_advanced)
+    f_advanced.setContentsMargins(16, 0, 0, 0)
+    f_advanced.addRow(dialog.lbl_other_buffer, dialog.other_buffer_slot)
+    dialog.playback_advanced.setVisible(False)
+    f_engine.addRow(dialog.playback_advanced)
+    dialog.btn_playback_advanced.toggled.connect(dialog._toggle_playback_advanced)
+    return grp_engine
+
+
+def _main_output_groups(dialog) -> tuple[QGroupBox, QGroupBox]:
+    """Main output: the device, the native engine's way to it, the master's channels, each engine's buffer and the monitor; the master's soft clip."""
+    dialog.cb_soft_clip = QCheckBox(tr("Soft clip output (tanh)"))
+    dialog.cb_soft_clip.setToolTip(
+        tr("Output above -1.9 dBFS is rounded off by tanh up to 0 dBFS "
+           "instead of hard clipping")
+    )
 
     # the main output: its device, the native engine's way to it (the audio APIs this system has, WASAPI's mode
     # and exclusive rate), the master's channels, each engine's buffer (ms): the one playing with the rest, the
@@ -176,14 +183,32 @@ def build_playback_tab(dialog) -> None:
     dialog.lbl_other_buffer = QLabel()
     dialog.main_monitor = BufferMonitor()
 
-    dialog.ed_metronome_wav_path.setToolTip(tr("WAV file used as the metronome click."))
+    grp_main = QGroupBox(tr("Main output"))
+    f_main = QFormLayout(grp_main)
+    f_main.addRow(tr("Output device"), dialog.cb_output_device)
+    # the native engine's own rows (hidden while the Python engine plays: it has none of them)
+    dialog._native_rows = []
+    for text, widget in ((tr("Audio API"), dialog.cb_native_api), (tr("Output mode"), dialog.cb_native_output_mode),
+                         (tr("Sample rate (exclusive)"), dialog.cb_native_rate),
+                         (tr("Channels"), dialog.cb_output_main)):
+        label = QLabel(text)
+        f_main.addRow(label, widget)
+        dialog._native_rows.append((label, widget))
+    f_main.addRow(tr("Buffer size"), dialog.buffer_slot)
+    dialog.main_monitor.add_rows(f_main)
+
+    grp_master = QGroupBox(tr("Master"))
+    f_master = QFormLayout(grp_master)
+    f_master.addRow(dialog.cb_soft_clip)
+    return grp_main, grp_master
+
+
+def _mixer_group(dialog) -> QGroupBox:
+    """Mixer: the volume at the start (the channel's other controls are the main screen's)."""
+    dialog.sp_default_volume_percent = QSpinBox()
+    dialog.sp_default_volume_percent.setRange(0, 100)
+    dialog.sp_default_volume_percent.setSingleStep(1)
     dialog.sp_default_volume_percent.setToolTip(tr("Volume slider position at startup."))
-    dialog.sp_click_down_volume.setToolTip(tr("Click volume on the first beat of each bar."))
-    dialog.sp_click_down_pitch.setToolTip(
-        tr("Pitch shift of the click on the first beat of each bar.")
-    )
-    dialog.sp_click_beat_volume.setToolTip(tr("Click volume on the other beats."))
-    dialog.sp_click_beat_pitch.setToolTip(tr("Pitch shift of the click on the other beats."))
 
     grp_mixer = QGroupBox(tr("Channel"))
     f_mixer = QFormLayout(grp_mixer)
@@ -193,12 +218,11 @@ def build_playback_tab(dialog) -> None:
                                "main screen's toolbar (kept in deck.json)."))
     lbl_mixer_note.setWordWrap(True)
     f_mixer.addRow(lbl_mixer_note)
+    return grp_mixer
 
-    grp_master = QGroupBox(tr("Master"))
-    f_master = QFormLayout(grp_master)
-    f_master.addRow(dialog.cb_soft_clip)
 
-    # the booth's level and EQ (a DJ mixer's BOOTH knobs: set for the room), the headphones' MONO SPLIT
+def _booth_and_headphones_mix_groups(dialog) -> tuple[QGroupBox, QGroupBox]:
+    """The booth's level and EQ (a DJ mixer's BOOTH knobs: set for the room), the headphones' MONO SPLIT."""
     def db_spin(low: float, high: float, tip: str) -> QDoubleSpinBox:
         spin = QDoubleSpinBox()
         spin.setRange(low, high)
@@ -224,56 +248,11 @@ def build_playback_tab(dialog) -> None:
     grp_hp_mix = QGroupBox(tr("Headphones mix"))
     f_hp_mix = QFormLayout(grp_hp_mix)
     f_hp_mix.addRow(dialog.cb_headphones_split)
+    return grp_booth_mix, grp_hp_mix
 
-    grp_main = QGroupBox(tr("Main output"))
-    f_main = QFormLayout(grp_main)
-    f_main.addRow(tr("Output device"), dialog.cb_output_device)
-    # the native engine's own rows (hidden while the Python engine plays: it has none of them)
-    dialog._native_rows = []
-    for text, widget in ((tr("Audio API"), dialog.cb_native_api), (tr("Output mode"), dialog.cb_native_output_mode),
-                         (tr("Sample rate (exclusive)"), dialog.cb_native_rate),
-                         (tr("Channels"), dialog.cb_output_main)):
-        label = QLabel(text)
-        f_main.addRow(label, widget)
-        dialog._native_rows.append((label, widget))
-    f_main.addRow(tr("Buffer size"), dialog.buffer_slot)
-    dialog.main_monitor.add_rows(f_main)
 
-    grp_engine = QGroupBox(tr("Engine"))
-    f_engine = QFormLayout(grp_engine)
-    f_engine.addRow(tr("Audio engine"), dialog.cb_audio_engine)
-    f_engine.addRow(tr("Process priority") if os_support.IS_WINDOWS else tr("Thread priority"),
-                    dialog.cb_native_priority)
-    f_engine.addRow(tr("Power throttling"), dialog.cb_native_power)
-    # the last resort: the native engine started again (a device or the engine stuck)
-    dialog.btn_restart_engine = QPushButton(tr("Restart Audio Engine"))
-    dialog.btn_restart_engine.setToolTip(tr(
-        "<p>Stops the native audio engine and starts it again on the same outputs, with the track, its place and "
-        "the settings as they were. The last resort when an output or the engine stays stuck (a controller "
-        "unplugged and plugged in again).</p>"))
-    dialog.lbl_restart_engine = QLabel()
-    restart_row = QHBoxLayout()
-    restart_row.addWidget(dialog.btn_restart_engine)
-    restart_row.addWidget(dialog.lbl_restart_engine, 1)
-    f_engine.addRow(restart_row)
-    dialog.btn_restart_engine.clicked.connect(dialog._restart_engine)
-    dialog.btn_playback_advanced = QToolButton()
-    dialog.btn_playback_advanced.setText(tr("Advanced"))
-    dialog.btn_playback_advanced.setCheckable(True)
-    dialog.btn_playback_advanced.setArrowType(Qt.RightArrow)
-    dialog.btn_playback_advanced.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
-    dialog.btn_playback_advanced.setAutoRaise(True)
-    dialog.btn_playback_advanced.setToolTip(tr("Show or hide the settings of the audio engine not playing."))
-    f_engine.addRow(dialog.btn_playback_advanced)
-    dialog.playback_advanced = QWidget()
-    f_advanced = QFormLayout(dialog.playback_advanced)
-    f_advanced.setContentsMargins(16, 0, 0, 0)
-    f_advanced.addRow(dialog.lbl_other_buffer, dialog.other_buffer_slot)
-    dialog.playback_advanced.setVisible(False)
-    f_engine.addRow(dialog.playback_advanced)
-    dialog.btn_playback_advanced.toggled.connect(dialog._toggle_playback_advanced)
-
-    # the headphones and the booth: off, channels of the main device, or a device of their own
+def _aux_output_groups(dialog) -> None:
+    """The headphones' and the booth's outputs: off, channels of the main device, or a device of their own."""
     dialog.grp_output_headphones = AuxOutputGroup(
         tr("Headphones output"),
         tr("<p>The headphones (a controller's or an interface's second output): the decks whose CUE is on, before "
@@ -282,9 +261,45 @@ def build_playback_tab(dialog) -> None:
     dialog.grp_output_booth = AuxOutputGroup(
         tr("Booth output"), tr("<p>The booth monitors: the master again.</p>"),
         dialog._list_native_devices, dialog._main_output_channels)
-    dialog.set_audio_engine(native=False, devices=None)
 
-    # the metronome's sound (its on / off: the editor's metronome button)
+
+def _metronome_group(dialog) -> QGroupBox:
+    """Metronome: its sound (its on / off: the editor's metronome button)."""
+    dialog.ed_metronome_wav_path = QLineEdit()
+    dialog.sp_metronome_offset_msec = QDoubleSpinBox()
+    dialog.sp_metronome_offset_msec.setRange(-500.0, 500.0)
+    dialog.sp_metronome_offset_msec.setDecimals(1)
+    dialog.sp_metronome_offset_msec.setSingleStep(1.0)
+    dialog.sp_metronome_offset_msec.setToolTip(
+        tr("Shift metronome clicks relative to the beat (positive = earlier)")
+    )
+    dialog.sp_click_down_volume = QSpinBox()
+    dialog.sp_click_down_volume.setRange(0, 100)
+    dialog.sp_click_down_pitch = QDoubleSpinBox()
+    dialog.sp_click_down_pitch.setRange(-24.0, 24.0)
+    dialog.sp_click_down_pitch.setSingleStep(1.0)
+    dialog.sp_click_down_pitch.setDecimals(1)
+    dialog.sp_click_beat_volume = QSpinBox()
+    dialog.sp_click_beat_volume.setRange(0, 100)
+    dialog.sp_click_beat_pitch = QDoubleSpinBox()
+    dialog.sp_click_beat_pitch.setRange(-24.0, 24.0)
+    dialog.sp_click_beat_pitch.setSingleStep(1.0)
+    dialog.sp_click_beat_pitch.setDecimals(1)
+    dialog.cb_metronome_ducking = QCheckBox(
+        tr("Duck music under metronome clicks")
+    )
+    dialog.cb_metronome_ducking.setToolTip(
+        tr("Lowers the music by up to 6 dB, following each click")
+    )
+
+    dialog.ed_metronome_wav_path.setToolTip(tr("WAV file used as the metronome click."))
+    dialog.sp_click_down_volume.setToolTip(tr("Click volume on the first beat of each bar."))
+    dialog.sp_click_down_pitch.setToolTip(
+        tr("Pitch shift of the click on the first beat of each bar.")
+    )
+    dialog.sp_click_beat_volume.setToolTip(tr("Click volume on the other beats."))
+    dialog.sp_click_beat_pitch.setToolTip(tr("Pitch shift of the click on the other beats."))
+
     grp_metronome = QGroupBox(tr("Metronome"))
     metronome_layout = QVBoxLayout(grp_metronome)
     lbl_metronome_note = QLabel(tr("On / off: the editor's metronome button."))
@@ -307,28 +322,43 @@ def build_playback_tab(dialog) -> None:
     )
     f_metronome_details.addRow(dialog.cb_metronome_ducking)
     metronome_layout.addWidget(dialog.metronome_details)
+    return grp_metronome
 
-    # the pages
-    def page(*groups) -> QWidget:
-        widget = QWidget()
-        lay = QVBoxLayout(widget)
-        for group in groups:
-            lay.addWidget(group)
-        lay.addStretch(1)
-        return scroll_page(widget)
+
+def _page(*groups) -> QWidget:
+    """A page of groups, top to bottom, scrolling."""
+    widget = QWidget()
+    lay = QVBoxLayout(widget)
+    for group in groups:
+        lay.addWidget(group)
+    lay.addStretch(1)
+    return scroll_page(widget)
+
+
+def build_playback_tab(dialog) -> None:
+    """Settings > Audio: its pages (Overview, Engine, Main output, Headphones, Booth, Mixer, Metronome)."""
+    dialog.tab_playback = QWidget()
+    grp_main, grp_master = _main_output_groups(dialog)
+    grp_engine = _engine_group(dialog)     # its Advanced holds the other engine's buffer slot (made above)
+    grp_mixer = _mixer_group(dialog)
+    grp_booth_mix, grp_hp_mix = _booth_and_headphones_mix_groups(dialog)
+    _aux_output_groups(dialog)
+    dialog.set_audio_engine(native=False, devices=None)
+    grp_metronome = _metronome_group(dialog)
 
     dialog.audio_overview = AudioOverview()
     dialog.audio_tabs = QTabWidget(dialog.tab_playback)
     dialog.audio_tabs.addTab(scroll_page(dialog.audio_overview), tr_ctx("settings page", "Overview"))
-    dialog.audio_tabs.addTab(page(grp_engine), tr("Engine"))
-    dialog.audio_tabs.addTab(page(grp_main, grp_master), tr("Main output"))
-    dialog.audio_tabs.addTab(page(dialog.grp_output_headphones, grp_hp_mix), tr("Headphones"))
-    dialog.audio_tabs.addTab(page(dialog.grp_output_booth, grp_booth_mix), tr("Booth"))
-    dialog.audio_tabs.addTab(page(grp_mixer), tr("Mixer"))
-    dialog.audio_tabs.addTab(page(grp_metronome), tr("Metronome"))
+    dialog.audio_tabs.addTab(_page(grp_engine), tr("Engine"))
+    dialog.audio_tabs.addTab(_page(grp_main, grp_master), tr("Main output"))
+    dialog.audio_tabs.addTab(_page(dialog.grp_output_headphones, grp_hp_mix), tr("Headphones"))
+    dialog.audio_tabs.addTab(_page(dialog.grp_output_booth, grp_booth_mix), tr("Booth"))
+    dialog.audio_tabs.addTab(_page(grp_mixer), tr("Mixer"))
+    dialog.audio_tabs.addTab(_page(grp_metronome), tr("Metronome"))
     root = QVBoxLayout(dialog.tab_playback)
     root.addWidget(dialog.audio_tabs)
     dialog.tabs.addTab(dialog.tab_playback, tr("Audio"))
+
 
 
 class PlaybackSettingsMixin:
