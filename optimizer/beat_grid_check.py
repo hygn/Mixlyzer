@@ -123,8 +123,8 @@ def missed_bar_time(ref_down: np.ndarray, est_down: np.ndarray) -> float:
 
 def song_scores(track, frames, result) -> tuple[float, float]:
     """(unusable beats, missed bars) in seconds of a tracker result against the song's grid."""
-    from foundation.beat_geometry import downbeat_times
-    from foundation.tempo_rows import rebuild_grid_from_segments
+    from analyzer.music.beat_geometry import downbeat_times
+    from analyzer.music.tempo_rows import rebuild_grid_from_segments
     ref = np.sort(np.asarray(track["beats"], float))
     ibi = np.r_[np.diff(ref), np.diff(ref)[-1]]
     est = rebuild_grid_from_segments(result.segments)
@@ -134,8 +134,8 @@ def song_scores(track, frames, result) -> tuple[float, float]:
 
 def track_song(frames, models: ModelSet, bpm_min: float):
     """The full analysis's beat tracking of one song with a model set."""
-    from analyzer_core.beat.general import tracker as TR
-    from analyzer_core.beat.learned_onset import REFINE_ONSET_PATH, refine_onset_activation
+    from analyzer.beat.general import tracker as TR
+    from analyzer.beat.learned_onset import REFINE_ONSET_PATH, refine_onset_activation
     loaded = TR.load_models(models.downbeat_ctx, models.tcn, models.critic, models.decoder)
     ft = np.asarray(frames.frame_times, float)
     refine = (refine_onset_activation(frames, models.refine_onset or REFINE_ONSET_PATH).astype(np.float64),

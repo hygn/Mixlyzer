@@ -28,8 +28,8 @@ import numpy as np
 from sklearn.metrics import average_precision_score
 from sklearn.model_selection import GroupKFold
 
-from analyzer_core.beat.general import tcn as T
-from foundation.beat_geometry import downbeat_beat_indices
+from analyzer.beat.general import tcn as T
+from analyzer.music.beat_geometry import downbeat_beat_indices
 from core.concurrency.process_pool import create_spawn_process_pool
 from optimizer import SkippedOptimizationTrack, skipped_track
 from optimizer.beat_frames import cache_path, ensure_frames, list_grid_tracks, read_frames
@@ -83,7 +83,7 @@ class BeatTcnOptimizationResult:
     saved: bool = True
 
 
-# --- the network's gradients (the forward pass is analyzer_core.beat.general.tcn's) -------------------
+# --- the network's gradients (the forward pass is analyzer.beat.general.tcn's) -------------------
 
 def _elu_grad(x):
     return np.where(x > 0, 1.0, np.exp(np.minimum(x, 0))).astype(np.float32)

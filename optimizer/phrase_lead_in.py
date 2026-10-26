@@ -1,4 +1,4 @@
-"""Training of the Phrase LEAD_IN models (see analyzer_core/cue_and_phrase/lead_in.py).
+"""Training of the Phrase LEAD_IN models (see analyzer/phrase/lead_in.py).
 
 The features read pass-1 outputs, so every training track's features come from
 the out-of-fold pass-1 models of ``phrase_refinement.fit_two_pass``. Only song
@@ -17,7 +17,7 @@ import numpy as np
 from sklearn.ensemble import HistGradientBoostingClassifier
 from sklearn.model_selection import StratifiedKFold
 
-from analyzer_core.cue_and_phrase import lead_in as _lead_in
+from analyzer.phrase import lead_in as _lead_in
 
 # Tiny models: a few hundred tracks, one row (presence) or five rows (location) each.
 PARAMS = dict(learning_rate=0.05, max_iter=150, max_leaf_nodes=4, max_depth=2, min_samples_leaf=8,

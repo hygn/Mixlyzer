@@ -6,7 +6,7 @@ from typing import Callable, Optional
 import numpy as np
 from PySide6 import QtCore
 
-from analyzer_core.global_analyzer import getAlbumArt
+from analyzer.pipeline.track import getAlbumArt
 from core.config import load_cfg
 from core.workers.segment_reanalysis import SegmentReanalysisWorker
 from core.event_bus import EventBus

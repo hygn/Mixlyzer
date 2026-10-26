@@ -30,7 +30,7 @@ def index_audio_tracks(request: MusicIndexRequest, report) -> None:
     """Each track's Search by Music entry from its audio: ``report(uid, entry)``, the entry None when the audio
     could not be read."""
     from threadpoolctl import threadpool_limits
-    from analyzer_core.global_analyzer import fast_load
+    from analyzer.pipeline.track import fast_load
     from core.music_search import indexing
 
     for track in request.tracks:

@@ -1,8 +1,8 @@
 import numpy as np
 from scipy.signal import get_window
 
-from analyzer_core.dsp.conversion import fft_frequencies
-from analyzer_core.dsp.spectral import stft
+from analyzer.audio.conversion import fft_frequencies
+from analyzer.audio.spectral import stft
 from utils.color import oklab_to_srgb, srgb_to_oklab
 
 

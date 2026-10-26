@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 from PySide6 import QtCore, QtWidgets
 
-from foundation.beat_geometry import downbeat_beat_indices
+from analyzer.music.beat_geometry import downbeat_beat_indices
 from ui.edit_panel.blocks import mode_column, rule_cell
 from ui.edit_panel.icons import badged_icon, badged_icon_beside, icon
 from ui.edit_panel.key_picker import ALPHANUMERIC_INDEX, KeyPickerPopup

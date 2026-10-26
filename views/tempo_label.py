@@ -3,7 +3,7 @@ from typing import Optional
 import numpy as np
 import pyqtgraph as pg
 
-from foundation.tempo_rows import bpm_at, segment_end_bpm
+from analyzer.music.tempo_rows import bpm_at, segment_end_bpm
 from .base import ViewPlugin, emphasis_opacity, register_view
 from .phrase import _sticky_label_left
 from .playhead import _outlined_text_item

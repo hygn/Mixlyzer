@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-26 23:45+0900\n"
+"POT-Creation-Date: 2026-10-27 00:06+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,139 +17,139 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
-#: analyzer_core/editor/beatgrid.py:155 analyzer_core/editor/jumpcue.py:32
-#: analyzer_core/editor/keystrip.py:17 analyzer_core/editor/phrase.py:28
+#: analyzer/pipeline/beatgrid.py:155 analyzer/pipeline/jumpcues.py:32
+#: analyzer/pipeline/keys.py:17 analyzer/pipeline/phrases.py:28
 msgid "Loading audio"
 msgstr ""
 
-#: analyzer_core/editor/beatgrid.py:167
+#: analyzer/pipeline/beatgrid.py:167
 msgid "segment too short for reanalysis"
 msgstr ""
 
-#: analyzer_core/editor/beatgrid.py:173
+#: analyzer/pipeline/beatgrid.py:173
 msgid "Preparing audio"
 msgstr ""
 
-#: analyzer_core/editor/beatgrid.py:178
+#: analyzer/pipeline/beatgrid.py:178
 msgid "Beat activations"
 msgstr ""
 
-#: analyzer_core/editor/beatgrid.py:196
+#: analyzer/pipeline/beatgrid.py:196
 msgid "Estimating BPM"
 msgstr ""
 
-#: analyzer_core/editor/beatgrid.py:237
+#: analyzer/pipeline/beatgrid.py:237
 msgid "Downbeat analysis"
 msgstr ""
 
-#: analyzer_core/editor/beatgrid.py:250
+#: analyzer/pipeline/beatgrid.py:250
 msgid "Updating beat grid"
 msgstr ""
 
-#: analyzer_core/editor/beatgrid.py:260
+#: analyzer/pipeline/beatgrid.py:260
 msgid "Segment updated"
 msgstr ""
 
-#: analyzer_core/editor/jumpcue.py:29
+#: analyzer/pipeline/jumpcues.py:29
 msgid "tempo segments are required for JumpCUE reanalysis"
 msgstr ""
 
-#: analyzer_core/editor/jumpcue.py:40
+#: analyzer/pipeline/jumpcues.py:37 analyzer/pipeline/phrases.py:32
+#: analyzer/pipeline/track.py:232
+msgid "Processing HPSS"
+msgstr ""
+
+#: analyzer/pipeline/jumpcues.py:40
 msgid "Frame features"
 msgstr ""
 
-#: analyzer_core/editor/jumpcue.py:43
+#: analyzer/pipeline/jumpcues.py:43
 msgid "Phrase boundaries"
 msgstr ""
 
-#: analyzer_core/editor/jumpcue.py:55
+#: analyzer/pipeline/jumpcues.py:55
 msgid "too few beats for the phrase analysis JumpCUE needs"
 msgstr ""
 
-#: analyzer_core/editor/jumpcue.py:57
+#: analyzer/pipeline/jumpcues.py:57
 msgid "Analyzing JumpCUE"
 msgstr ""
 
-#: analyzer_core/editor/jumpcue.py:100
+#: analyzer/pipeline/jumpcues.py:100
 msgid "JumpCUE Updated"
 msgstr ""
 
-#: analyzer_core/editor/keystrip.py:23
+#: analyzer/pipeline/keys.py:23
 msgid "Separating harmonics"
 msgstr ""
 
-#: analyzer_core/editor/keystrip.py:26
+#: analyzer/pipeline/keys.py:26
 msgid "Analyzing key"
 msgstr ""
 
-#: analyzer_core/editor/keystrip.py:51 analyzer_core/editor/keystrip.py:84
+#: analyzer/pipeline/keys.py:51 analyzer/pipeline/keys.py:84
 msgid "Key segment updated"
 msgstr ""
 
-#: analyzer_core/editor/keystrip.py:81
+#: analyzer/pipeline/keys.py:81
 msgid "selection duration too small"
 msgstr ""
 
-#: analyzer_core/editor/phrase.py:23
+#: analyzer/pipeline/phrases.py:23
 #, python-brace-format
 msgid "the phrase analysis needs at least {count} beats"
 msgstr ""
 
-#: analyzer_core/editor/phrase.py:25
+#: analyzer/pipeline/phrases.py:25
 msgid "tempo segments are required for phrase reanalysis"
 msgstr ""
 
-#: analyzer_core/editor/phrase.py:36
+#: analyzer/pipeline/phrases.py:36
 msgid "Analyzing phrases"
 msgstr ""
 
-#: analyzer_core/editor/phrase.py:51
+#: analyzer/pipeline/phrases.py:51
 msgid "Phrases Updated"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:56
+#: analyzer/pipeline/track.py:56
 #, python-brace-format
 msgid "Audio decode failed via FFmpeg and SoundFile: {path}"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:224
+#: analyzer/pipeline/track.py:224
 msgid "Loading"
 msgstr ""
 
-#: analyzer_core/editor/jumpcue.py:37 analyzer_core/editor/phrase.py:32
-#: analyzer_core/global_analyzer.py:232
-msgid "Processing HPSS"
-msgstr ""
-
-#: analyzer_core/global_analyzer.py:243
+#: analyzer/pipeline/track.py:243
 msgid "Processing Waveform"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:260
+#: analyzer/pipeline/track.py:260
 msgid "Tempo Analyzing"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:328
+#: analyzer/pipeline/track.py:328
 msgid "Phrase Boundary Analyzing"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:382
+#: analyzer/pipeline/track.py:382
 msgid "JumpCUE Analyzing"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:433
+#: analyzer/pipeline/track.py:433
 msgid "Analyzing Keys"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:466
+#: analyzer/pipeline/track.py:466
 msgid "Indexing for Search by Music"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:475
+#: analyzer/pipeline/track.py:475
 msgid "Processing Metadata"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:484
+#: analyzer/pipeline/track.py:484
 msgid "Rendering/Normalizing"
 msgstr ""
 
@@ -494,7 +494,7 @@ msgstr ""
 msgid "Beat jump"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:258 core/midi.py:56
+#: analyzer/pipeline/track.py:258 core/midi.py:56
 msgid "Tempo"
 msgstr ""
 
@@ -1138,7 +1138,7 @@ msgstr ""
 msgid "Error"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:506 core/workflows/analysis.py:209
+#: analyzer/pipeline/track.py:506 core/workflows/analysis.py:209
 msgid "Saving Result"
 msgstr ""
 
@@ -3456,7 +3456,7 @@ msgstr ""
 msgid "overview levels"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:241 ui/config/pipeline_map.py:31
+#: analyzer/pipeline/track.py:241 ui/config/pipeline_map.py:31
 msgid "Waveform"
 msgstr ""
 
@@ -5044,7 +5044,7 @@ msgstr ""
 msgid "Album"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:431 ui/config/analysis.py:235
+#: analyzer/pipeline/track.py:431 ui/config/analysis.py:235
 #: ui/config/pipeline_map.py:26 ui/config/pipeline_map.py:34
 #: ui/edit_song.py:128
 msgid "Key"
@@ -5502,7 +5502,7 @@ msgstr ""
 msgid "Tracks with a phrase of this label (optionally at a BPM / key)"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:326 ui/config/analysis.py:236
+#: analyzer/pipeline/track.py:326 ui/config/analysis.py:236
 #: ui/config/pipeline_map.py:23 ui/config/pipeline_map.py:32
 #: ui/edit_panel/panel.py:57 ui/library.py:918 ui/library.py:1011
 #: ui/shortcuts.py:37
@@ -6992,7 +6992,7 @@ msgid ""
 "version by mistake, or missing from Search by Music.</p>"
 msgstr ""
 
-#: analyzer_core/global_analyzer.py:465 ui/config/search.py:133
+#: analyzer/pipeline/track.py:465 ui/config/search.py:133
 #: ui/track_search_index.py:96
 msgid "Search by Music"
 msgstr ""

@@ -11,7 +11,7 @@ from scipy.optimize import minimize
 from scipy.special import expit, logsumexp
 from sklearn.model_selection import GroupKFold
 
-from analyzer_core.self_correlation.jump_point_model import (
+from analyzer.jumpcue.jump_point_model import (
     SEMANTIC_PAIR_SCORES,
     feature_vector,
     semantic_pair_scores,
@@ -841,12 +841,12 @@ def _cache_key(beats: np.ndarray, segments: np.ndarray, settings: dict) -> str:
 def _record_candidates(audio_path: str, beats: np.ndarray, segments: np.ndarray, settings: dict) -> dict:
     """The production analysis path up to the learned jump point, recording
     the candidates the model scores for every placed group."""
-    from analyzer_core.beat.frame_features import extract_frame_features
-    from analyzer_core.cue_and_phrase import detect_phrase_segments
-    from analyzer_core.global_analyzer import fast_load
-    from analyzer_core.hpss import hpss_audio_with_spectra
-    from analyzer_core.self_correlation.JumpCUE import JumpCueEngine
-    from analyzer_core.self_correlation.jump_point_model import jump_point_beat_features
+    from analyzer.beat.frame_features import extract_frame_features
+    from analyzer.phrase import detect_phrase_segments
+    from analyzer.pipeline.track import fast_load
+    from analyzer.audio.hpss import hpss_audio_with_spectra
+    from analyzer.jumpcue.JumpCUE import JumpCueEngine
+    from analyzer.jumpcue.jump_point_model import jump_point_beat_features
 
     class RecordingEngine(JumpCueEngine):
         def _model_points(self, groups, beats_time):

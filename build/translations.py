@@ -21,7 +21,7 @@ sys.path.insert(0, str(ROOT))
 
 from foundation.i18n import CATALOG_DIR, DOMAIN, LANGUAGES, SOURCE_LANGUAGE  # noqa: E402
 
-SOURCES = ["app", "foundation", "core", "ui", "views", "utils", "optimizer", "analyzer_core", "third_party"]
+SOURCES = ["app", "foundation", "core", "ui", "views", "utils", "optimizer", "analyzer", "third_party"]
 KEYWORDS = ["tr", "tr_n:1,2", "tr_ctx:1c,2", "tr_mark"]
 TEMPLATE = Path("assets/i18n") / f"{DOMAIN}.pot"
 

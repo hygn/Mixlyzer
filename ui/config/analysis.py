@@ -431,7 +431,7 @@ class AnalysisSettingsMixin:
         if self._parameter_optimization_is_running():
             return
         title = tr("Reoptimize Beat Models")
-        from analyzer_core.beat.frame_features import FRAME_HOP_LENGTH
+        from analyzer.beat.frame_features import FRAME_HOP_LENGTH
 
         paths = {
             "refine_onset": (self.ed_refine_onset_parameter_path, self.ed_onset_feature_cache_path),

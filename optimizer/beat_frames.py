@@ -10,7 +10,7 @@ from typing import Callable
 
 import numpy as np
 
-from analyzer_core.beat.frame_features import FrameFeatures
+from analyzer.beat.frame_features import FrameFeatures
 from core.concurrency.process_pool import create_spawn_process_pool
 from optimizer import SkippedOptimizationTrack, optimizer_track_name, skipped_track
 from optimizer.onset_training import _auto_cache_workers, _list_beat_tracks
@@ -72,10 +72,10 @@ def read_frames(path: Path, track: dict[str, object]) -> FrameFeatures | None:
 def build_frames(track: dict[str, object], cache_dir_text: str) -> str:
     """Process-worker entry point: the frames the full analysis gives the beat tracker."""
     from threadpoolctl import threadpool_limits
-    from analyzer_core.beat.frame_features import extract_frame_features
-    from analyzer_core.beat.general import FRAME_HOP_LENGTH, SAMPLE_RATE
-    from analyzer_core.global_analyzer import fast_load
-    from analyzer_core.hpss import hpss_audio_with_spectra
+    from analyzer.beat.frame_features import extract_frame_features
+    from analyzer.beat.general import FRAME_HOP_LENGTH, SAMPLE_RATE
+    from analyzer.pipeline.track import fast_load
+    from analyzer.audio.hpss import hpss_audio_with_spectra
 
     path = cache_path(Path(cache_dir_text), str(track["uid"]))
     with threadpool_limits(limits=1):

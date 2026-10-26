@@ -1,4 +1,4 @@
-"""Training of the Phrase second pass (see analyzer_core/cue_and_phrase/refinement.py).
+"""Training of the Phrase second pass (see analyzer/phrase/refinement.py).
 
 The pass-2 boundary GBM, the pass-2 label GBM and the bar-pair same-label GBM
 learn from pass-1 outputs. Those outputs must look like they will at
@@ -19,8 +19,8 @@ import numpy as np
 from sklearn.ensemble import HistGradientBoostingClassifier
 from sklearn.model_selection import GroupKFold
 
-from analyzer_core.cue_and_phrase.model_features import segment_feature_matrix
-from analyzer_core.cue_and_phrase.phrase_analyzer import (
+from analyzer.phrase.model_features import segment_feature_matrix
+from analyzer.phrase.phrase_analyzer import (
     _predict_boundary_probability,
     decode_phrase_boundaries,
     finish_phrase_segments,
@@ -29,8 +29,8 @@ from analyzer_core.cue_and_phrase.phrase_analyzer import (
     refinement_label_matrix,
     similarity_from_inputs,
 )
-from analyzer_core.cue_and_phrase.lead_in import LEAD_IN_VERSION
-from analyzer_core.cue_and_phrase.refinement import (
+from analyzer.phrase.lead_in import LEAD_IN_VERSION
+from analyzer.phrase.refinement import (
     beat_posterior,
     label_change_features,
     phrase_grid_features,

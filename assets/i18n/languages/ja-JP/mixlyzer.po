@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-26 23:45+0900\n"
+"POT-Creation-Date: 2026-10-27 00:06+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ja_JP\n"
@@ -18,139 +18,139 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
-#: analyzer_core/editor/beatgrid.py:155 analyzer_core/editor/jumpcue.py:32
-#: analyzer_core/editor/keystrip.py:17 analyzer_core/editor/phrase.py:28
+#: analyzer/pipeline/beatgrid.py:155 analyzer/pipeline/jumpcues.py:32
+#: analyzer/pipeline/keys.py:17 analyzer/pipeline/phrases.py:28
 msgid "Loading audio"
 msgstr "オーディオを読み込み中"
 
-#: analyzer_core/editor/beatgrid.py:167
+#: analyzer/pipeline/beatgrid.py:167
 msgid "segment too short for reanalysis"
 msgstr "再解析するには区間が短すぎます"
 
-#: analyzer_core/editor/beatgrid.py:173
+#: analyzer/pipeline/beatgrid.py:173
 msgid "Preparing audio"
 msgstr "オーディオを準備中"
 
-#: analyzer_core/editor/beatgrid.py:178
+#: analyzer/pipeline/beatgrid.py:178
 msgid "Beat activations"
 msgstr "ビートアクティベーション"
 
-#: analyzer_core/editor/beatgrid.py:196
+#: analyzer/pipeline/beatgrid.py:196
 msgid "Estimating BPM"
 msgstr "BPM を推定中"
 
-#: analyzer_core/editor/beatgrid.py:237
+#: analyzer/pipeline/beatgrid.py:237
 msgid "Downbeat analysis"
 msgstr "ダウンビート解析"
 
-#: analyzer_core/editor/beatgrid.py:250
+#: analyzer/pipeline/beatgrid.py:250
 msgid "Updating beat grid"
 msgstr "ビートグリッドを更新中"
 
-#: analyzer_core/editor/beatgrid.py:260
+#: analyzer/pipeline/beatgrid.py:260
 msgid "Segment updated"
 msgstr "区間を更新しました"
 
-#: analyzer_core/editor/jumpcue.py:29
+#: analyzer/pipeline/jumpcues.py:29
 msgid "tempo segments are required for JumpCUE reanalysis"
 msgstr "JumpCUE の再解析にはテンポ区間が必要です"
 
-#: analyzer_core/editor/jumpcue.py:40
+#: analyzer/pipeline/jumpcues.py:37 analyzer/pipeline/phrases.py:32
+#: analyzer/pipeline/track.py:232
+msgid "Processing HPSS"
+msgstr "HPSS を処理中"
+
+#: analyzer/pipeline/jumpcues.py:40
 msgid "Frame features"
 msgstr "フレーム特徴量"
 
-#: analyzer_core/editor/jumpcue.py:43
+#: analyzer/pipeline/jumpcues.py:43
 msgid "Phrase boundaries"
 msgstr "フレーズ境界"
 
-#: analyzer_core/editor/jumpcue.py:55
+#: analyzer/pipeline/jumpcues.py:55
 msgid "too few beats for the phrase analysis JumpCUE needs"
 msgstr "JumpCUE に必要なフレーズ解析を行うには拍が少なすぎます"
 
-#: analyzer_core/editor/jumpcue.py:57
+#: analyzer/pipeline/jumpcues.py:57
 msgid "Analyzing JumpCUE"
 msgstr "JumpCUE を解析中"
 
-#: analyzer_core/editor/jumpcue.py:100
+#: analyzer/pipeline/jumpcues.py:100
 msgid "JumpCUE Updated"
 msgstr "JumpCUE を更新しました"
 
-#: analyzer_core/editor/keystrip.py:23
+#: analyzer/pipeline/keys.py:23
 msgid "Separating harmonics"
 msgstr "和声成分を分離中"
 
-#: analyzer_core/editor/keystrip.py:26
+#: analyzer/pipeline/keys.py:26
 msgid "Analyzing key"
 msgstr "キーを解析中"
 
-#: analyzer_core/editor/keystrip.py:51 analyzer_core/editor/keystrip.py:84
+#: analyzer/pipeline/keys.py:51 analyzer/pipeline/keys.py:84
 msgid "Key segment updated"
 msgstr "キー区間を更新しました"
 
-#: analyzer_core/editor/keystrip.py:81
+#: analyzer/pipeline/keys.py:81
 msgid "selection duration too small"
 msgstr "選択範囲が短すぎます"
 
-#: analyzer_core/editor/phrase.py:23
+#: analyzer/pipeline/phrases.py:23
 #, python-brace-format
 msgid "the phrase analysis needs at least {count} beats"
 msgstr "フレーズ解析には少なくとも {count} 拍が必要です"
 
-#: analyzer_core/editor/phrase.py:25
+#: analyzer/pipeline/phrases.py:25
 msgid "tempo segments are required for phrase reanalysis"
 msgstr "フレーズの再解析にはテンポ区間が必要です"
 
-#: analyzer_core/editor/phrase.py:36
+#: analyzer/pipeline/phrases.py:36
 msgid "Analyzing phrases"
 msgstr "フレーズを解析中"
 
-#: analyzer_core/editor/phrase.py:51
+#: analyzer/pipeline/phrases.py:51
 msgid "Phrases Updated"
 msgstr "フレーズを更新しました"
 
-#: analyzer_core/global_analyzer.py:56
+#: analyzer/pipeline/track.py:56
 #, python-brace-format
 msgid "Audio decode failed via FFmpeg and SoundFile: {path}"
 msgstr "FFmpeg と SoundFile のどちらでもオーディオをデコードできませんでした: {path}"
 
-#: analyzer_core/global_analyzer.py:224
+#: analyzer/pipeline/track.py:224
 msgid "Loading"
 msgstr "読み込み中"
 
-#: analyzer_core/editor/jumpcue.py:37 analyzer_core/editor/phrase.py:32
-#: analyzer_core/global_analyzer.py:232
-msgid "Processing HPSS"
-msgstr "HPSS を処理中"
-
-#: analyzer_core/global_analyzer.py:243
+#: analyzer/pipeline/track.py:243
 msgid "Processing Waveform"
 msgstr "波形を処理中"
 
-#: analyzer_core/global_analyzer.py:260
+#: analyzer/pipeline/track.py:260
 msgid "Tempo Analyzing"
 msgstr "テンポを解析中"
 
-#: analyzer_core/global_analyzer.py:328
+#: analyzer/pipeline/track.py:328
 msgid "Phrase Boundary Analyzing"
 msgstr "フレーズ境界を解析中"
 
-#: analyzer_core/global_analyzer.py:382
+#: analyzer/pipeline/track.py:382
 msgid "JumpCUE Analyzing"
 msgstr "JumpCUE を解析中"
 
-#: analyzer_core/global_analyzer.py:433
+#: analyzer/pipeline/track.py:433
 msgid "Analyzing Keys"
 msgstr "キーを解析中"
 
-#: analyzer_core/global_analyzer.py:466
+#: analyzer/pipeline/track.py:466
 msgid "Indexing for Search by Music"
 msgstr "音楽で検索のインデックスを作成中"
 
-#: analyzer_core/global_analyzer.py:475
+#: analyzer/pipeline/track.py:475
 msgid "Processing Metadata"
 msgstr "メタデータを処理中"
 
-#: analyzer_core/global_analyzer.py:484
+#: analyzer/pipeline/track.py:484
 msgid "Rendering/Normalizing"
 msgstr "レンダリング/ノーマライズ中"
 
@@ -532,7 +532,7 @@ msgstr "CUEポイント"
 msgid "Beat jump"
 msgstr "ビートジャンプ"
 
-#: analyzer_core/global_analyzer.py:258 core/midi.py:56
+#: analyzer/pipeline/track.py:258 core/midi.py:56
 msgid "Tempo"
 msgstr "テンポ"
 
@@ -1272,7 +1272,7 @@ msgstr "エラー ({file})"
 msgid "Error"
 msgstr "エラー"
 
-#: analyzer_core/global_analyzer.py:506 core/workflows/analysis.py:209
+#: analyzer/pipeline/track.py:506 core/workflows/analysis.py:209
 msgid "Saving Result"
 msgstr "結果を保存中"
 
@@ -3881,7 +3881,7 @@ msgstr "デコード、HPSS"
 msgid "overview levels"
 msgstr "全体波形のレベル"
 
-#: analyzer_core/global_analyzer.py:241 ui/config/pipeline_map.py:31
+#: analyzer/pipeline/track.py:241 ui/config/pipeline_map.py:31
 msgid "Waveform"
 msgstr "波形"
 
@@ -5705,7 +5705,7 @@ msgstr "アーティスト"
 msgid "Album"
 msgstr "アルバム"
 
-#: analyzer_core/global_analyzer.py:431 ui/config/analysis.py:235
+#: analyzer/pipeline/track.py:431 ui/config/analysis.py:235
 #: ui/config/pipeline_map.py:26 ui/config/pipeline_map.py:34
 #: ui/edit_song.py:128
 msgid "Key"
@@ -6225,7 +6225,7 @@ msgstr ""
 msgid "Tracks with a phrase of this label (optionally at a BPM / key)"
 msgstr "このラベルのフレーズがあるトラック (BPM / キーの条件も指定可能)"
 
-#: analyzer_core/global_analyzer.py:326 ui/config/analysis.py:236
+#: analyzer/pipeline/track.py:326 ui/config/analysis.py:236
 #: ui/config/pipeline_map.py:23 ui/config/pipeline_map.py:32
 #: ui/edit_panel/panel.py:57 ui/library.py:918 ui/library.py:1011
 #: ui/shortcuts.py:37
@@ -7950,7 +7950,7 @@ msgid ""
 "version by mistake, or missing from Search by Music.</p>"
 msgstr "<p>このトラックのバージョン違いのフィンガープリントと音楽で検索のインデックスを作り直します。両方のインデックスからトラックを外し、今すぐインデックス作成で作り直します（オーディオをデコードするため数秒かかります）。別の曲のバージョンと誤って判定されたトラックや、音楽で検索に出てこないトラックに使います。</p>"
 
-#: analyzer_core/global_analyzer.py:465 ui/config/search.py:133
+#: analyzer/pipeline/track.py:465 ui/config/search.py:133
 #: ui/track_search_index.py:96
 msgid "Search by Music"
 msgstr "音楽で検索"

@@ -3,7 +3,7 @@ import pyqtgraph as pg
 import numpy as np
 from .base import ViewPlugin, emphasis_opacity, emphasis_width, register_view
 from core.event_bus import EventBus
-from foundation.beat_geometry import downbeat_times
+from analyzer.music.beat_geometry import downbeat_times
 
 @register_view("BeatgridView")
 class BeatgridView(ViewPlugin):

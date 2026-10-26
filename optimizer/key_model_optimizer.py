@@ -1,4 +1,4 @@
-"""Retrain the chord-aware key model (analyzer_core/key/chord_key.py) on the keys the user checked, in NumPy.
+"""Retrain the chord-aware key model (analyzer/key/chord_key.py) on the keys the user checked, in NumPy.
 
 Training songs are the library's tracks whose key annotation is the user's:
 - a track with the automatic key result kept beside it (``key_segments_auto``, written by the full analysis and a
@@ -28,8 +28,8 @@ from typing import Callable
 import numpy as np
 from sklearn.model_selection import GroupKFold
 
-from analyzer_core.key import chord_key as CK
-from foundation.beat_geometry import downbeat_times
+from analyzer.key import chord_key as CK
+from analyzer.music.beat_geometry import downbeat_times
 from core.concurrency.process_pool import create_spawn_process_pool
 from optimizer import SkippedOptimizationTrack, optimizer_track_name, skipped_track
 from optimizer import model_start as MS
@@ -160,8 +160,8 @@ def read_key_frames(path: Path, track: dict[str, object]) -> np.ndarray | None:
 def build_key_frames(track: dict[str, object], cache_dir_text: str) -> str:
     """Process-worker entry point: the frame chroma the full analysis's key model reads."""
     from threadpoolctl import threadpool_limits
-    from analyzer_core.global_analyzer import fast_load
-    from analyzer_core.hpss import hpss_audio_with_spectra
+    from analyzer.pipeline.track import fast_load
+    from analyzer.audio.hpss import hpss_audio_with_spectra
 
     path = cache_path(Path(cache_dir_text), str(track["uid"]))
     with threadpool_limits(limits=1):

@@ -14,7 +14,7 @@ from core.analysis_library import jobs as analysis_jobs
 from core.library import jobs
 from core.library.records import TrackRow
 from core.library.service import LibraryService
-from foundation.decoder import decode_to_memmap, get_samplerate
+from analyzer.audio.decoder import decode_to_memmap, get_samplerate
 from core.audio.tag_writer import TEXT_FIELDS, TagWriteError, tag_format, write_tags
 from core.track.model import DataModel
 from third_party.rekordbox import sanitize_filename
@@ -245,7 +245,7 @@ class ExportTrackPanel(QtWidgets.QWidget):
         sources in the library; a track without them, as one added before they were kept or given another
         file: found now as the analysis would read the file, and kept), the file's new size and time stored. The
         library's part asked of its owner (LibraryService.call)."""
-        from analyzer_core.global_analyzer import extract_tags, read_tag_sources
+        from analyzer.pipeline.track import extract_tags, read_tag_sources
         library = self._library
         try:
             sources = library.call(jobs.tag_sources, uid)

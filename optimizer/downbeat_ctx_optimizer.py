@@ -15,9 +15,9 @@ import numpy as np
 from sklearn.ensemble import HistGradientBoostingClassifier
 from sklearn.model_selection import GroupKFold
 
-from analyzer_core.beat.downbeat_features import downbeat_feature_matrix, robust_standardize_columns
-from analyzer_core.beat.general.bars import context, export_ctx_model
-from foundation.beat_geometry import downbeat_beat_indices
+from analyzer.beat.downbeat_features import downbeat_feature_matrix, robust_standardize_columns
+from analyzer.beat.general.bars import context, export_ctx_model
+from analyzer.music.beat_geometry import downbeat_beat_indices
 from optimizer import SkippedOptimizationTrack, skipped_track
 from optimizer.beat_frames import cache_path, ensure_frames, list_grid_tracks, read_frames
 from optimizer.refine_onset_optimizer import _group_key

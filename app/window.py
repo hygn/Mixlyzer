@@ -17,7 +17,7 @@ from core.player import PlayerController
 from core.analysis_library import jobs as analysis_jobs
 from core.library import jobs
 from core.library.service import LibraryService
-from analyzer_core.global_analyzer import extract_tags
+from analyzer.pipeline.track import extract_tags
 from core.workflows.analysis import AnalysisWorkflow
 from core.taskmanager import TIEUP_LOOKUP, taskmanager
 from core.external_sync import ExternalSyncController
@@ -45,7 +45,7 @@ MIDI_STEPS_MAX = 16
 
 from core.workflows.segment_reanalysis import SegmentReanalysisWorkflow
 from core.config import config, load_cfg, save_cfg, save_deck, search_settings
-from foundation.beat_geometry import downbeat_beat_indices
+from analyzer.music.beat_geometry import downbeat_beat_indices
 from foundation.i18n import tr
 from foundation.resource_paths import resource_path
 

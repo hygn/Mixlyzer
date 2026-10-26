@@ -223,7 +223,7 @@ def _release_blas_threads() -> None:
 # the app's heavy imports in dependency order, with their usual time (s, measured)
 _IMPORTS = (
     ("numpy", 0.17), ("scipy.signal", 1.17), ("numba", 0.36), ("sklearn.metrics", 0.31), ("pyqtgraph", 0.34),
-    ("analyzer_core.global_analyzer", 0.36), ("core.player", 0.05), ("ui.pane", 0.08), ("ui.config.window", 0.05),
+    ("analyzer.pipeline.track", 0.36), ("core.player", 0.05), ("ui.pane", 0.08), ("ui.config.window", 0.05),
     ("app.window", 0.09),
 )
 
@@ -254,7 +254,7 @@ def _compile_audio_kernels(progress: Progress) -> None:
 
 
 def _warm_ffmpeg(progress: Progress) -> None:
-    from foundation.decoder import warm_ffmpeg_decoder
+    from analyzer.audio.decoder import warm_ffmpeg_decoder
     progress(0.0, tr("ffmpeg: a short silent decode"))
     warm_ffmpeg_decoder()
 

@@ -4,7 +4,7 @@ from typing import Any
 
 import numpy as np
 
-from foundation.tempo_rows import END_BPM_COLUMN, segment_end_bpm
+from analyzer.music.tempo_rows import END_BPM_COLUMN, segment_end_bpm
 from utils.labels import idx_to_labels
 from utils.phrases import assigned_phrases
 

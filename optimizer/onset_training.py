@@ -9,10 +9,10 @@ from pathlib import Path
 
 import numpy as np
 
-from analyzer_core.beat.frame_features import extract_frame_features
-from analyzer_core.hpss import hpss_audio
-from analyzer_core.beat.learned_onset import ONSET_CHANNEL_NAMES, onset_channels
-from foundation.decoder import decode_to_memmap
+from analyzer.beat.frame_features import extract_frame_features
+from analyzer.audio.hpss import hpss_audio
+from analyzer.beat.learned_onset import ONSET_CHANNEL_NAMES, onset_channels
+from analyzer.audio.decoder import decode_to_memmap
 from optimizer import SkippedOptimizationTrack, library_tracks, skipped_track
 from utils.atomic_io import atomic_output_path
 from foundation.i18n import tr

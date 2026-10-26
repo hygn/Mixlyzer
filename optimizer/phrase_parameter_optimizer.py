@@ -16,24 +16,24 @@ from optimizer import (
 )
 from core.concurrency.process_pool import create_spawn_process_pool
 from optimizer import phrase_backend as _phrase_backend
-from analyzer_core.cue_and_phrase.phrase_analyzer import (
+from analyzer.phrase.phrase_analyzer import (
     export_two_stage_npz_artifact,
     load_two_stage_model,
     repeat_inputs,
 )
-from analyzer_core.cue_and_phrase.refinement import REFINEMENT_VERSION
+from analyzer.phrase.refinement import REFINEMENT_VERSION
 from optimizer import phrase_refinement as _refinement
-from analyzer_core.cue_and_phrase.context_features import (
+from analyzer.phrase.context_features import (
     CONTEXT_FEATURE_VERSION,
     DEFAULT_BOUNDARY_REGIONAL_CONTEXT_BEATS,
     DEFAULT_LABEL_CONTEXT_BEATS,
 )
-from analyzer_core.cue_and_phrase.model_features import (
+from analyzer.phrase.model_features import (
     boundary_feature_matrix,
     grid_context_feature_matrix,
     valid_boundary_mask,
 )
-from analyzer_core.cue_and_phrase.structural_features import (
+from analyzer.phrase.structural_features import (
     MULTI_VIEW_STRUCTURE_FEATURE_DIM,
     STRUCTURE_FEATURE_VERSION,
     multi_view_structure_features,

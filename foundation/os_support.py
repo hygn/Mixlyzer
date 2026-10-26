@@ -10,7 +10,7 @@ Where the Windows API is used, the other systems have a fallback:
 - revealing a file: Explorer, the file selected / Finder, the file selected / the folder in the file manager
 - the window's occlusion (utils.window_visibility): user32 + DWM / whether Qt has the window exposed
 - the scratch cursor poller (audioengine.python.cursor_poller): Win32 cursor + waitable timer / the GUI's mouse events
-- the physical core count for sklearn (analyzer_core.utils): GetLogicalProcessorInformationEx / loky's own
+- the physical core count for sklearn (analyzer.runtime): GetLogicalProcessorInformationEx / loky's own
 - a key another program holds as a global hotkey (Settings > Shortcuts): RegisterHotKey refused / not checked
 """
 

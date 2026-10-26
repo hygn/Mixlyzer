@@ -1,0 +1,876 @@
+"""Production beat-level two-stage GBM phrase detector."""
+
+from __future__ import annotations
+
+import math
+import json
+from functools import lru_cache
+from pathlib import Path
+from typing import Iterable
+
+import numpy as np
+
+from analyzer.audio.hpss import HpssSpectra
+from analyzer.phrase.structure import (
+    FeatureConfig,
+    build_predictor_grid,
+    extract_song_features,
+)
+from analyzer.phrase.context_features import CONTEXT_FEATURE_VERSION
+from analyzer.phrase.model_features import (
+    boundary_feature_matrix,
+    feature_z_from_acoustic,
+    grid_context_feature_matrix,
+    segment_feature_matrix,
+    valid_boundary_mask,
+)
+from analyzer.phrase.structural_features import (
+    STRUCTURE_FEATURE_VERSION,
+    multi_view_structure_features,
+)
+from analyzer.phrase import lead_in as _lead_in
+from analyzer.phrase import refinement as _refine
+from analyzer.phrase.refinement import REFINEMENT_VERSION
+from utils.atomic_io import atomic_output_path
+from foundation.model_files import resolve_model
+
+
+EPS = 1e-9
+NPZ_FORMAT = "mixlyzer_phrase_weight_v1"
+# Optional second-pass models: pass-2 boundary GBM, pass-2 label GBM and the
+# bar-pair same-label GBM. Artifacts without them run pass 1 only.
+REFINEMENT_MODELS = ("boundary2", "label2", "pair")
+# Later additions on top of pass 2: the label-change GBM (pairwise term of the
+# label Viterbi) and the bar-shift GBM for changes between key labels.
+OPTIONAL_REFINEMENT_MODELS = ("change", "shift")
+# Optional LEAD_IN models (analyzer/phrase/lead_in.py), stored as
+# lead_in_<name>. Artifacts without them never place a lead-in.
+LEAD_IN_MODELS = ("presence", "location")
+_REQUIRED_SETTINGS = frozenset(
+    {
+        "sr",
+        "hop_length",
+        "n_fft",
+        "n_mels",
+        "n_mfcc",
+        "context_feature_version",
+        "structure_feature_version",
+        "boundary_mode",
+        "boundary_context_beats",
+        "boundary_regional_context_beats",
+        "multi_view_structural_features",
+        "threshold",
+        "min_distance_beats",
+        "max_boundaries",
+        "edge_beats",
+        "boundary_refine_window_beats",
+        "boundary_lengths_beats",
+        "boundary_length_weight",
+        "boundary_shift_penalty",
+        "boundary_downbeat_bonus",
+        "label_context_beats",
+        "label_weight",
+        "transition_weight",
+        "length_weight",
+    }
+)
+
+
+def _parse_feature_config(settings: dict[str, object]) -> FeatureConfig:
+    sr = int(settings["sr"])
+    return FeatureConfig(
+        sample_rate=sr,
+        hop_length=int(settings["hop_length"]),
+        n_fft=int(settings["n_fft"]),
+        n_mels=int(settings["n_mels"]),
+        n_mfcc=int(settings["n_mfcc"]),
+        fmax=0.5 * sr,
+    )
+
+
+def _validate_current_settings(settings: object, path: str) -> dict[str, object]:
+    if not isinstance(settings, dict):
+        raise ValueError(f"Phrase model settings must be a JSON object: {path}")
+    missing = sorted(_REQUIRED_SETTINGS.difference(settings))
+    if missing:
+        raise ValueError(
+            f"Phrase model is missing current settings {missing}: {path}"
+        )
+    if int(settings["context_feature_version"]) != CONTEXT_FEATURE_VERSION:
+        raise ValueError(f"Unsupported Phrase context feature version: {path}")
+    if int(settings["structure_feature_version"]) != STRUCTURE_FEATURE_VERSION:
+        raise ValueError(f"Unsupported Phrase structure feature version: {path}")
+    if str(settings["boundary_mode"]) != "probability":
+        raise ValueError(f"Phrase model does not use the current probability boundary mode: {path}")
+    if not bool(settings["multi_view_structural_features"]):
+        raise ValueError(f"Phrase model does not use current multi-view structure features: {path}")
+    return settings
+
+
+def _raw_predict_trees(x, baseline, tree_classes, tree_offsets, value, feature_idx, threshold, missing_left, left,
+                       right, is_leaf):
+    """Every tree on every row, the leaf values summed per class in tree order (as raw_predict's NumPy path:
+    the same comparisons and the same order of additions, so the same floats)."""
+    rows = x.shape[0]
+    raw = np.empty((rows, baseline.shape[0]), dtype=np.float64)
+    for i in range(rows):
+        for c in range(baseline.shape[0]):
+            raw[i, c] = baseline[c]
+    for t in range(tree_classes.shape[0]):
+        start = tree_offsets[t]
+        cls = tree_classes[t]
+        for i in range(rows):
+            node = 0
+            while not is_leaf[start + node]:
+                k = start + node
+                v = x[i, feature_idx[k]]
+                if np.isnan(v):
+                    go_left = missing_left[k]
+                else:
+                    go_left = v <= threshold[k]
+                node = left[k] if go_left else right[k]
+            raw[i, cls] += value[start + node]
+    return raw
+
+
+try:
+    from numba import njit
+
+    _raw_predict_trees_numba = njit(cache=True, nogil=True)(_raw_predict_trees)
+except Exception:  # pragma: no cover - numba is optional
+    _raw_predict_trees_numba = None
+
+
+class NumpyHistGradientBoostingClassifier:
+    """Small NumPy runtime for sklearn HistGradientBoostingClassifier exports."""
+
+    def __init__(
+        self,
+        *,
+        baseline: np.ndarray,
+        tree_classes: np.ndarray,
+        tree_offsets: np.ndarray,
+        node_value: np.ndarray,
+        node_feature_idx: np.ndarray,
+        node_num_threshold: np.ndarray,
+        node_missing_go_to_left: np.ndarray,
+        node_left: np.ndarray,
+        node_right: np.ndarray,
+        node_is_leaf: np.ndarray,
+    ) -> None:
+        self.baseline = np.asarray(baseline, dtype=np.float64).reshape(-1)
+        self.tree_classes = np.asarray(tree_classes, dtype=np.int32).reshape(-1)
+        self.tree_offsets = np.asarray(tree_offsets, dtype=np.int64).reshape(-1)
+        self.node_value = np.asarray(node_value, dtype=np.float64).reshape(-1)
+        self.node_feature_idx = np.asarray(node_feature_idx, dtype=np.int32).reshape(-1)
+        self.node_num_threshold = np.asarray(node_num_threshold, dtype=np.float64).reshape(-1)
+        self.node_missing_go_to_left = np.asarray(node_missing_go_to_left, dtype=bool).reshape(-1)
+        self.node_left = np.asarray(node_left, dtype=np.int32).reshape(-1)
+        self.node_right = np.asarray(node_right, dtype=np.int32).reshape(-1)
+        self.node_is_leaf = np.asarray(node_is_leaf, dtype=bool).reshape(-1)
+        self._max_feature = self._validate()
+
+    def _validate(self) -> int:
+        """Checks the trees can be walked within the arrays (the compiled walk has no bounds checks: a model file
+        is outside data) and returns the largest feature index read (-1: none). Each tree is its nodes in
+        sklearn's order (a parent before its children), so every child is after its parent inside its tree:
+        each walk ends on a leaf."""
+        nodes = self.node_value.size
+        offsets, classes = self.tree_offsets, self.tree_classes
+        if self.baseline.size == 0 or offsets.size != classes.size + 1 or offsets[0] != 0 or offsets[-1] != nodes:
+            raise ValueError("Gradient-boosting model: tree offsets do not match the nodes")
+        for name in ("node_feature_idx", "node_num_threshold", "node_missing_go_to_left", "node_left",
+                     "node_right", "node_is_leaf"):
+            if getattr(self, name).size != nodes:
+                raise ValueError(f"Gradient-boosting model: {name} does not match the nodes")
+        sizes = np.diff(offsets)
+        if np.any(sizes < 1):
+            raise ValueError("Gradient-boosting model: an empty tree")
+        if np.any(classes < 0) or np.any(classes >= self.baseline.size):
+            raise ValueError("Gradient-boosting model: a tree's class is out of range")
+        tree = np.repeat(np.arange(classes.size), sizes)
+        local = np.arange(nodes) - offsets[:-1][tree]
+        inner = ~self.node_is_leaf
+        size, at = sizes[tree][inner], local[inner]
+        for child in (self.node_left[inner], self.node_right[inner]):
+            if np.any(child <= at) or np.any(child >= size):
+                raise ValueError("Gradient-boosting model: a split's child is outside its tree")
+        features = self.node_feature_idx[inner]
+        if np.any(features < 0):
+            raise ValueError("Gradient-boosting model: a negative feature index")
+        return int(features.max()) if features.size else -1
+
+    def _predict_tree(self, X: np.ndarray, start: int, end: int) -> np.ndarray:
+        x = np.asarray(X, dtype=np.float64)
+        out = np.empty(x.shape[0], dtype=np.float64)
+        value = self.node_value[start:end]
+        feature_idx = self.node_feature_idx[start:end]
+        threshold = self.node_num_threshold[start:end]
+        missing_left = self.node_missing_go_to_left[start:end]
+        left = self.node_left[start:end]
+        right = self.node_right[start:end]
+        is_leaf = self.node_is_leaf[start:end]
+        # All rows descend one level per step until every row sits on a leaf.
+        rows = np.arange(x.shape[0])
+        node = np.zeros(x.shape[0], dtype=np.int64)
+        active = ~is_leaf[node]
+        while np.any(active):
+            r, n = rows[active], node[active]
+            data_val = x[r, feature_idx[n]]
+            go_left = np.where(np.isnan(data_val), missing_left[n], data_val <= threshold[n])
+            node[active] = np.where(go_left, left[n], right[n])
+            active = ~is_leaf[node]
+        out[:] = value[node]
+        return out
+
+    def raw_predict(self, X: np.ndarray) -> np.ndarray:
+        x = np.asarray(X, dtype=np.float64)
+        if x.ndim != 2 or x.shape[1] <= self._max_feature:
+            raise ValueError(f"Gradient-boosting model reads feature {self._max_feature}; the rows have "
+                             f"{x.shape[-1] if x.ndim else 0}")
+        if _raw_predict_trees_numba is not None:
+            # compiled: the per-tree NumPy loop below cost more in overhead than in work (thousands of trees)
+            return _raw_predict_trees_numba(
+                np.ascontiguousarray(x), self.baseline, self.tree_classes, self.tree_offsets, self.node_value,
+                self.node_feature_idx, self.node_num_threshold, self.node_missing_go_to_left, self.node_left,
+                self.node_right, self.node_is_leaf,
+            )
+        raw = np.tile(self.baseline.reshape(1, -1), (x.shape[0], 1)).astype(np.float64)
+        for tree_index, tree_class in enumerate(self.tree_classes):
+            start = int(self.tree_offsets[tree_index])
+            end = int(self.tree_offsets[tree_index + 1])
+            raw[:, int(tree_class)] += self._predict_tree(x, start, end)
+        return raw
+
+    def predict_proba(self, X: np.ndarray) -> np.ndarray:
+        raw = self.raw_predict(X)
+        if raw.shape[1] == 1:
+            p1 = 1.0 / (1.0 + np.exp(-np.clip(raw.ravel(), -50.0, 50.0)))
+            return np.vstack([1.0 - p1, p1]).T
+        shifted = raw - np.max(raw, axis=1, keepdims=True)
+        exp = np.exp(np.clip(shifted, -50.0, 50.0))
+        return exp / np.maximum(exp.sum(axis=1, keepdims=True), EPS)
+
+
+def _hgb_to_npz_payload(prefix: str, clf, payload: dict[str, np.ndarray]) -> None:
+    values: list[np.ndarray] = []
+    feature_idx: list[np.ndarray] = []
+    thresholds: list[np.ndarray] = []
+    missing_left: list[np.ndarray] = []
+    left: list[np.ndarray] = []
+    right: list[np.ndarray] = []
+    is_leaf: list[np.ndarray] = []
+    tree_classes: list[int] = []
+    offsets = [0]
+
+    for predictors_at_iteration in clf._predictors:
+        for class_index, predictor in enumerate(predictors_at_iteration):
+            nodes = predictor.nodes
+            if np.any(np.asarray(nodes["is_categorical"], dtype=bool)):
+                raise ValueError("Categorical HistGradientBoosting splits are not supported.")
+            values.append(np.asarray(nodes["value"], dtype=np.float64))
+            feature_idx.append(np.asarray(nodes["feature_idx"], dtype=np.int32))
+            thresholds.append(np.asarray(nodes["num_threshold"], dtype=np.float64))
+            missing_left.append(np.asarray(nodes["missing_go_to_left"], dtype=np.uint8))
+            left.append(np.asarray(nodes["left"], dtype=np.int32))
+            right.append(np.asarray(nodes["right"], dtype=np.int32))
+            is_leaf.append(np.asarray(nodes["is_leaf"], dtype=np.uint8))
+            tree_classes.append(int(class_index))
+            offsets.append(offsets[-1] + int(nodes.shape[0]))
+
+    payload[f"{prefix}_classes"] = np.asarray(clf.classes_).astype(str)
+    payload[f"{prefix}_baseline"] = np.asarray(clf._baseline_prediction, dtype=np.float64).reshape(-1)
+    payload[f"{prefix}_tree_classes"] = np.asarray(tree_classes, dtype=np.int32)
+    payload[f"{prefix}_tree_offsets"] = np.asarray(offsets, dtype=np.int64)
+    payload[f"{prefix}_node_value"] = np.concatenate(values).astype(np.float64)
+    payload[f"{prefix}_node_feature_idx"] = np.concatenate(feature_idx).astype(np.int32)
+    payload[f"{prefix}_node_num_threshold"] = np.concatenate(thresholds).astype(np.float64)
+    payload[f"{prefix}_node_missing_go_to_left"] = np.concatenate(missing_left).astype(np.uint8)
+    payload[f"{prefix}_node_left"] = np.concatenate(left).astype(np.int32)
+    payload[f"{prefix}_node_right"] = np.concatenate(right).astype(np.int32)
+    payload[f"{prefix}_node_is_leaf"] = np.concatenate(is_leaf).astype(np.uint8)
+
+
+def export_two_stage_npz_artifact(artifact: dict[str, object], output_path: str | Path) -> None:
+    settings = dict(artifact["settings"])
+    payload: dict[str, np.ndarray] = {
+        "format": np.asarray(NPZ_FORMAT),
+        "settings_json": np.asarray(json.dumps(settings, ensure_ascii=False, sort_keys=True)),
+        "label_labels": np.asarray(list(artifact["label_labels"])).astype(str),
+        "label_transition": np.asarray(artifact["label_transition"], dtype=np.float64),
+        "label_length_mu": np.asarray(artifact["label_length_mu"], dtype=np.float64),
+        "label_length_sigma": np.asarray(artifact["label_length_sigma"], dtype=np.float64),
+    }
+    _hgb_to_npz_payload("boundary", artifact["boundary_clf"], payload)
+    _hgb_to_npz_payload("label", artifact["label_clf"], payload)
+    if artifact.get("refinement") is not None:
+        for prefix, clf in artifact["refinement"].items():
+            _hgb_to_npz_payload(prefix, clf, payload)
+    if artifact.get("lead_in"):
+        for name, clf in artifact["lead_in"].items():
+            _hgb_to_npz_payload(f"lead_in_{name}", clf, payload)
+    out = Path(output_path)
+    if out.suffix.lower() != ".npz":
+        raise ValueError(f"Phrase artifact output must end with .npz: {out}")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        with atomic_output_path(out) as temp_path:
+            np.savez_compressed(temp_path, **payload)
+            # Validate the complete current artifact before replacing a working
+            # model. This also catches truncated ZIP members and schema drift.
+            load_two_stage_model.cache_clear()
+            load_two_stage_model(str(temp_path))
+    finally:
+        load_two_stage_model.cache_clear()
+
+
+def _load_numpy_hgb(archive: np.lib.npyio.NpzFile, prefix: str) -> NumpyHistGradientBoostingClassifier:
+    return NumpyHistGradientBoostingClassifier(
+        baseline=np.asarray(archive[f"{prefix}_baseline"], dtype=np.float64),
+        tree_classes=np.asarray(archive[f"{prefix}_tree_classes"], dtype=np.int32),
+        tree_offsets=np.asarray(archive[f"{prefix}_tree_offsets"], dtype=np.int64),
+        node_value=np.asarray(archive[f"{prefix}_node_value"], dtype=np.float64),
+        node_feature_idx=np.asarray(archive[f"{prefix}_node_feature_idx"], dtype=np.int32),
+        node_num_threshold=np.asarray(archive[f"{prefix}_node_num_threshold"], dtype=np.float64),
+        node_missing_go_to_left=np.asarray(archive[f"{prefix}_node_missing_go_to_left"], dtype=np.uint8),
+        node_left=np.asarray(archive[f"{prefix}_node_left"], dtype=np.int32),
+        node_right=np.asarray(archive[f"{prefix}_node_right"], dtype=np.int32),
+        node_is_leaf=np.asarray(archive[f"{prefix}_node_is_leaf"], dtype=np.uint8),
+    )
+
+
+@lru_cache(maxsize=2)
+def load_two_stage_model(path: str) -> dict[str, object]:
+    model_path = Path(path)
+    if model_path.suffix.lower() != ".npz":
+        raise ValueError(f"Phrase model must be a NumPy .npz artifact, got: {path}")
+    with np.load(model_path, allow_pickle=False) as archive:
+        fmt = str(np.asarray(archive["format"]).item())
+        if fmt != NPZ_FORMAT:
+            raise ValueError(f"Unsupported phrase model artifact: {path}")
+        settings = _validate_current_settings(
+            json.loads(str(np.asarray(archive["settings_json"]).item())),
+            path,
+        )
+        boundary_classes = np.asarray(archive["boundary_classes"]).astype(str).tolist()
+        label_classes = np.asarray(archive["label_classes"]).astype(str).tolist()
+        label_labels = np.asarray(archive["label_labels"]).astype(str).tolist()
+        if boundary_classes != ["0", "1"]:
+            raise ValueError(f"Unsupported Phrase boundary classes: {path}")
+        if label_classes != label_labels:
+            raise ValueError(f"Phrase label class order does not match the current format: {path}")
+        refinement = None
+        if "boundary2_baseline" in archive.files:
+            if int(settings.get("refinement_version", -1)) != REFINEMENT_VERSION:
+                raise ValueError(f"Unsupported Phrase refinement version: {path}")
+            if np.asarray(archive["label2_classes"]).astype(str).tolist() != label_labels:
+                raise ValueError(f"Phrase refinement label classes do not match: {path}")
+            refinement = {prefix: _load_numpy_hgb(archive, prefix) for prefix in REFINEMENT_MODELS}
+            for prefix in OPTIONAL_REFINEMENT_MODELS:
+                if f"{prefix}_baseline" in archive.files:
+                    refinement[prefix] = _load_numpy_hgb(archive, prefix)
+            if "shift" in refinement and not {"shift_offsets_beats", "shift_labels"} <= set(settings):
+                raise ValueError(f"Phrase shift model is missing its settings: {path}")
+        lead_in = None
+        if "lead_in_presence_baseline" in archive.files:
+            if int(settings.get("lead_in_version", -1)) != _lead_in.LEAD_IN_VERSION:
+                raise ValueError(f"Unsupported Phrase lead-in version: {path}")
+            if "lead_in_threshold" not in settings:
+                raise ValueError(f"Phrase lead-in models are missing their threshold: {path}")
+            lead_in = {name: _load_numpy_hgb(archive, f"lead_in_{name}") for name in LEAD_IN_MODELS}
+        return {
+            "refinement": refinement,
+            "lead_in": lead_in,
+            "settings": settings,
+            "boundary_clf": _load_numpy_hgb(archive, "boundary"),
+            "label_clf": _load_numpy_hgb(archive, "label"),
+            "label_labels": label_labels,
+            "label_transition": np.asarray(archive["label_transition"], dtype=np.float64),
+            "label_length_mu": np.asarray(archive["label_length_mu"], dtype=np.float64),
+            "label_length_sigma": np.asarray(archive["label_length_sigma"], dtype=np.float64),
+        }
+
+
+def _predict_boundary_probability(clf, boundary_feature_z: np.ndarray, valid: np.ndarray) -> np.ndarray:
+    p = np.clip(clf.predict_proba(np.asarray(boundary_feature_z, dtype=np.float64))[:, 1], 1e-6, 1.0 - 1e-6)
+    p = np.where(np.asarray(valid, dtype=bool), p, 0.0)
+    if p.size:
+        p[0] = 0.0
+        p[-1] = 0.0
+    return p
+
+
+def _pick_boundaries_probability(
+    probability: np.ndarray,
+    *,
+    threshold: float,
+    min_distance_beats: int,
+    max_boundaries: int | None,
+) -> np.ndarray:
+    p = np.asarray(probability, dtype=np.float64)
+    n = int(p.size)
+    candidates = [
+        i for i in range(1, n - 1)
+        if p[i] >= float(threshold) and p[i] >= p[i - 1] and p[i] >= p[i + 1]
+    ]
+    selected: list[int] = []
+    for beat in sorted(candidates, key=lambda i: float(p[i]), reverse=True):
+        if all(abs(beat - prev) >= int(min_distance_beats) for prev in selected):
+            selected.append(int(beat))
+            if max_boundaries is not None and len(selected) >= int(max_boundaries):
+                break
+    selected.sort()
+    return np.asarray([0, *selected, n], dtype=np.int32)
+
+
+def _boundary_length_prior(length: int, target_lengths: Iterable[int]) -> float:
+    length = max(int(length), 1)
+    targets = np.asarray([max(int(x), 1) for x in target_lengths], dtype=np.float64)
+    if targets.size == 0:
+        return 0.0
+    z = np.log(float(length)) - np.log(targets)
+    return -0.5 * float(np.min(z * z))
+
+
+def _refine_boundaries(
+    raw_bounds: np.ndarray,
+    probability: np.ndarray,
+    valid: np.ndarray,
+    downbeat_mask: np.ndarray,
+    *,
+    window_beats: int,
+    target_lengths_beats: Iterable[int],
+    length_weight: float,
+    shift_penalty: float,
+    downbeat_bonus: float,
+) -> np.ndarray:
+    raw = np.asarray(raw_bounds, dtype=np.int32).reshape(-1)
+    if raw.size <= 2 or int(window_beats) <= 0:
+        return raw
+    n = int(raw[-1])
+    p = np.asarray(probability, dtype=np.float64).reshape(-1)
+    valid = np.asarray(valid, dtype=bool).reshape(-1)
+    downbeat = np.asarray(downbeat_mask, dtype=bool).reshape(-1)
+    if p.size != n or valid.size != n:
+        return raw
+    if downbeat.size != n:
+        downbeat = np.zeros(n, dtype=bool)
+
+    candidate_sets: list[np.ndarray] = []
+    emissions: list[np.ndarray] = []
+    for boundary in raw[1:-1]:
+        center = int(boundary)
+        lo = max(1, center - int(window_beats))
+        hi = min(n - 1, center + int(window_beats))
+        candidates = np.arange(lo, hi + 1, dtype=np.int32) if hi >= lo else np.asarray([center], dtype=np.int32)
+        candidates = candidates[valid[candidates]]
+        if candidates.size == 0:
+            candidates = np.asarray([center], dtype=np.int32)
+        candidate_sets.append(candidates)
+        score = np.log(np.clip(p[candidates], 1e-7, 1.0))
+        score -= float(shift_penalty) * np.abs(candidates.astype(np.float64) - float(center))
+        score += float(downbeat_bonus) * downbeat[candidates].astype(np.float64)
+        emissions.append(score.astype(np.float64))
+
+    dp: list[np.ndarray] = []
+    back: list[np.ndarray] = []
+    for i, candidates in enumerate(candidate_sets):
+        scores = np.full(candidates.size, -1e18, dtype=np.float64)
+        prev_choice = np.full(candidates.size, -1, dtype=np.int32)
+        if i == 0:
+            for j, beat in enumerate(candidates):
+                scores[j] = emissions[i][j] + float(length_weight) * _boundary_length_prior(
+                    int(beat), target_lengths_beats
+                )
+        else:
+            prev_candidates = candidate_sets[i - 1]
+            prev_scores = dp[i - 1]
+            for j, beat in enumerate(candidates):
+                lengths = beat - prev_candidates
+                ok = lengths > 0
+                if not np.any(ok):
+                    continue
+                trans = np.asarray(
+                    [
+                        float(length_weight) * _boundary_length_prior(int(length), target_lengths_beats)
+                        for length in lengths[ok]
+                    ],
+                    dtype=np.float64,
+                )
+                values = prev_scores[ok] + trans
+                best_local = int(np.argmax(values))
+                source_indices = np.flatnonzero(ok)
+                prev_choice[j] = int(source_indices[best_local])
+                scores[j] = emissions[i][j] + float(values[best_local])
+        dp.append(scores)
+        back.append(prev_choice)
+
+    last_candidates = candidate_sets[-1]
+    final_lengths = n - last_candidates
+    ok = final_lengths > 0
+    if not np.any(ok):
+        return raw
+    final_values = dp[-1][ok] + np.asarray(
+        [
+            float(length_weight) * _boundary_length_prior(int(length), target_lengths_beats)
+            for length in final_lengths[ok]
+        ],
+        dtype=np.float64,
+    )
+    source_indices = np.flatnonzero(ok)
+    choice = int(source_indices[int(np.argmax(final_values))])
+    out = [int(last_candidates[choice])]
+    for i in range(len(candidate_sets) - 1, 0, -1):
+        choice = int(back[i][choice])
+        if choice < 0:
+            return raw
+        out.append(int(candidate_sets[i - 1][choice]))
+    out.reverse()
+    refined = np.asarray([0, *out, n], dtype=np.int32)
+    if np.any(np.diff(refined) <= 0):
+        return raw
+    return refined
+
+
+def _label_logp(
+    label_clf,
+    feature_z: np.ndarray,
+    bounds: np.ndarray,
+    context_windows: Iterable[int],
+) -> np.ndarray:
+    X = segment_feature_matrix(feature_z, bounds, context_windows)
+    return np.log(np.clip(label_clf.predict_proba(X), 1e-7, 1.0))
+
+
+def _length_ll(length_mu: np.ndarray, length_sigma: np.ndarray, length: int) -> np.ndarray:
+    sigma = np.maximum(np.asarray(length_sigma, dtype=np.float64), 0.25)
+    z = (math.log(max(int(length), 1)) - np.asarray(length_mu, dtype=np.float64)) / sigma
+    return -0.5 * z * z - np.log(sigma)
+
+
+def _decode_labels(
+    labels: list[str],
+    transition: np.ndarray,
+    length_mu: np.ndarray,
+    length_sigma: np.ndarray,
+    logp: np.ndarray,
+    bounds: np.ndarray,
+    *,
+    label_weight: float,
+    transition_weight: float,
+    length_weight: float,
+    change_probability: np.ndarray | None = None,
+    change_weight: float = 0.0,
+    allowed: np.ndarray | None = None,
+) -> list[str]:
+    """Label Viterbi over fixed segments. ``change_probability[i - 1]``: the
+    probability that the label changes between segments i - 1 and i, added as
+    ``change_weight * log p`` (different labels) or ``log (1 - p)`` (same).
+    ``allowed[i, j]`` False keeps label j off segment i."""
+    m, n_labels = logp.shape
+    if m == 0:
+        return []
+    trans = np.asarray(transition, dtype=np.float64)
+    start_state, end_state = n_labels, n_labels + 1
+    emit = float(label_weight) * logp
+    if length_weight:
+        lengths = np.diff(np.asarray(bounds, dtype=np.int32))
+        emit = emit + float(length_weight) * np.vstack(
+            [_length_ll(length_mu, length_sigma, int(length)) for length in lengths]
+        )
+    if allowed is not None:
+        emit = np.where(allowed, emit, -1e12)
+    same = np.eye(n_labels, dtype=bool)
+    dp = np.full((m, n_labels), -1e18, dtype=np.float64)
+    back = np.full((m, n_labels), -1, dtype=np.int32)
+    dp[0] = emit[0] + float(transition_weight) * trans[start_state, :n_labels]
+    for i in range(1, m):
+        scores = dp[i - 1][:, np.newaxis] + float(transition_weight) * trans[:n_labels, :n_labels]
+        if change_probability is not None and change_weight:
+            pc = float(np.clip(change_probability[i - 1], 1e-4, 1.0 - 1e-4))
+            scores = scores + float(change_weight) * np.where(same, math.log(1.0 - pc), math.log(pc))
+        back[i] = np.argmax(scores, axis=0)
+        dp[i] = emit[i] + scores[back[i], np.arange(n_labels)]
+    final = dp[-1] + float(transition_weight) * trans[:n_labels, end_state]
+    label = int(np.argmax(final))
+    out = [label]
+    for i in range(m - 1, 0, -1):
+        label = int(back[i, label])
+        out.append(label)
+    out.reverse()
+    return [str(labels[i]) for i in out]
+
+
+def decode_phrase_boundaries(
+    probability: np.ndarray,
+    valid: np.ndarray,
+    downbeat: np.ndarray,
+    settings: dict[str, object],
+) -> np.ndarray:
+    """Peak picking plus DP drift correction; returns bounds including 0 and n."""
+    bounds = _pick_boundaries_probability(
+        probability,
+        threshold=float(settings["threshold"]),
+        min_distance_beats=int(settings["min_distance_beats"]),
+        max_boundaries=settings["max_boundaries"],
+    )
+    return _refine_boundaries(
+        bounds,
+        probability,
+        valid,
+        downbeat,
+        window_beats=int(settings["boundary_refine_window_beats"]),
+        target_lengths_beats=settings["boundary_lengths_beats"],
+        length_weight=float(settings["boundary_length_weight"]),
+        shift_penalty=float(settings["boundary_shift_penalty"]),
+        downbeat_bonus=float(settings["boundary_downbeat_bonus"]),
+    )
+
+
+def decode_phrase_labels(
+    artifact: dict[str, object],
+    logp: np.ndarray,
+    bounds: np.ndarray,
+    change_probability: np.ndarray | None = None,
+    lead_in: int | None = None,
+) -> list[str]:
+    """Label Viterbi over fixed segments with the artifact's transition / length model.
+    With lead-in models, LEAD_IN goes on the first segment exactly when ``lead_in`` is set."""
+    settings = artifact["settings"]
+    allowed = None
+    if artifact.get("lead_in"):
+        allowed = _lead_in.label_mask(list(artifact["label_labels"]), int(logp.shape[0]), lead_in is not None)
+    return _decode_labels(
+        list(artifact["label_labels"]),
+        np.asarray(artifact["label_transition"], dtype=np.float64),
+        np.asarray(artifact["label_length_mu"], dtype=np.float64),
+        np.asarray(artifact["label_length_sigma"], dtype=np.float64),
+        logp,
+        bounds,
+        label_weight=float(settings["label_weight"]),
+        transition_weight=float(settings["transition_weight"]),
+        length_weight=float(settings["length_weight"]),
+        change_probability=change_probability,
+        change_weight=float(settings.get("label_change_weight", 0.0)),
+        allowed=allowed,
+    )
+
+
+def repeat_inputs(feature_z: np.ndarray, downbeat: np.ndarray) -> dict[str, np.ndarray]:
+    """Label-independent repetition inputs of the refinement pass (cacheable per track)."""
+    n = int(np.asarray(feature_z).shape[0])
+    mats = _refine.repetition_matrices(feature_z)
+    bars = _refine.bar_beats(downbeat, n)
+    pair_X, pair_a, pair_b = _refine.pair_features(feature_z, mats, bars)
+    partner_idx, partner_w = _refine.repeat_partners(mats)
+    return {
+        "repetition": _refine.repetition_features(mats),
+        "partner_idx": partner_idx,
+        "partner_w": partner_w,
+        "bars": bars.astype(np.int32),
+        "pair_X": pair_X,
+        "pair_a": pair_a,
+        "pair_b": pair_b,
+    }
+
+
+def similarity_from_inputs(pair_clf, inputs: dict[str, np.ndarray]) -> np.ndarray:
+    return _refine.similarity_matrix(
+        pair_clf, inputs["pair_X"], inputs["pair_a"], inputs["pair_b"], int(inputs["bars"].size)
+    )
+
+
+def pass_one_context(
+    label_clf,
+    feature_z: np.ndarray,
+    bounds: np.ndarray,
+    valid: np.ndarray,
+    downbeat: np.ndarray,
+    label_context_beats,
+) -> dict[str, np.ndarray]:
+    """Pass-1 label posteriors the refinement pass reads (per beat and per left/right window)."""
+    n = int(np.asarray(feature_z).shape[0])
+    post = label_clf.predict_proba(
+        segment_feature_matrix(np.asarray(feature_z, dtype=np.float64), bounds, label_context_beats)
+    )
+    left, right = _refine.window_label_posteriors(label_clf, feature_z, valid, downbeat, label_context_beats)
+    return {"beat_post": _refine.beat_posterior(post, bounds, n), "left": left, "right": right}
+
+
+def refinement_boundary_matrix(
+    boundary_feature_z: np.ndarray,
+    probability: np.ndarray,
+    bounds: np.ndarray,
+    context: dict[str, np.ndarray],
+    inputs: dict[str, np.ndarray],
+    S: np.ndarray,
+) -> np.ndarray:
+    n = int(np.asarray(probability).size)
+    return _refine.boundary_refinement_features(
+        boundary_feature_z, probability, bounds, context["beat_post"], context["left"], context["right"],
+        inputs["repetition"], (inputs["partner_idx"], inputs["partner_w"]),
+        _refine.similarity_boundary_features(S, inputs["bars"], n),
+    )
+
+
+def refinement_label_matrix(
+    feature_z: np.ndarray,
+    bounds: np.ndarray,
+    label_context_beats,
+    beat_post: np.ndarray,
+    inputs: dict[str, np.ndarray],
+    S: np.ndarray,
+) -> np.ndarray:
+    return _refine.label_refinement_features(
+        feature_z, bounds, label_context_beats, beat_post, inputs["repetition"],
+        (inputs["partner_idx"], inputs["partner_w"]), S, inputs["bars"],
+    )
+
+
+def refine_phrase_segments(
+    artifact: dict[str, object],
+    feature_z: np.ndarray,
+    boundary_feature_z: np.ndarray,
+    valid: np.ndarray,
+    downbeat: np.ndarray,
+    probability: np.ndarray,
+    bounds: np.ndarray,
+    inputs: dict[str, np.ndarray],
+    lead_in: int | None = None,
+) -> tuple[np.ndarray, list[str]]:
+    """Pass 2: re-predict boundaries from pass-1 outputs, then re-label the segments.
+    ``lead_in``: end beat of the lead-in (``predict_lead_in``), placed before labelling."""
+    settings = artifact["settings"]
+    models = artifact["refinement"]
+    ctx = settings["label_context_beats"]
+    n = int(np.asarray(feature_z).shape[0])
+    S = similarity_from_inputs(models["pair"], inputs)
+    context = pass_one_context(artifact["label_clf"], feature_z, bounds, valid, downbeat, ctx)
+    X2 = refinement_boundary_matrix(boundary_feature_z, probability, bounds, context, inputs, S)
+    pass_one_bounds = bounds
+    bounds = decode_phrase_boundaries(
+        _predict_boundary_probability(models["boundary2"], X2, valid), valid, downbeat, settings
+    )
+    bounds = _lead_in.insert_lead_in(bounds, lead_in)
+    post = artifact["label_clf"].predict_proba(
+        segment_feature_matrix(np.asarray(feature_z, dtype=np.float64), bounds, ctx)
+    )
+    beat_post = _refine.beat_posterior(post, bounds, n)
+    X3 = refinement_label_matrix(feature_z, bounds, ctx, beat_post, inputs, S)
+    logp = np.log(np.clip(models["label2"].predict_proba(X3), 1e-7, 1.0))
+    change = None
+    if "change" in models and bounds.size > 2:
+        change = models["change"].predict_proba(
+            _refine.label_change_features(feature_z, bounds, ctx, beat_post, S, inputs["bars"])
+        )[:, 1]
+    labels = decode_phrase_labels(artifact, logp, bounds, change, lead_in)
+    if "shift" in models:
+        if settings.get("shift_phrase_grid", False):
+            X2 = np.hstack([X2, _refine.phrase_grid_features(pass_one_bounds, n)])
+        bounds = _refine.shift_key_changes(
+            bounds, labels, models["shift"], X2,
+            settings["shift_offsets_beats"], settings["shift_labels"],
+        )
+    return bounds, labels
+
+
+def finish_phrase_segments(
+    artifact: dict[str, object],
+    feature_z: np.ndarray,
+    boundary_feature_z: np.ndarray,
+    valid: np.ndarray,
+    downbeat: np.ndarray,
+    beat_times_sec: np.ndarray,
+    probability: np.ndarray,
+    bounds: np.ndarray,
+    inputs,
+) -> tuple[np.ndarray, list[str]]:
+    """From the pass-1 boundaries: the lead-in, pass 2 (when the artifact has it) and the labels.
+    ``inputs``: the track's ``repeat_inputs``, or a callable returning them."""
+    lead_in = _lead_in.predict_lead_in(artifact, feature_z, boundary_feature_z, downbeat, beat_times_sec, bounds)
+    if artifact.get("refinement") is not None:
+        return refine_phrase_segments(
+            artifact, feature_z, boundary_feature_z, valid, downbeat, probability, bounds,
+            inputs() if callable(inputs) else inputs, lead_in,
+        )
+    bounds = _lead_in.insert_lead_in(bounds, lead_in)
+    labels = decode_phrase_labels(
+        artifact,
+        _label_logp(artifact["label_clf"], feature_z, bounds, artifact["settings"]["label_context_beats"]),
+        bounds,
+        lead_in=lead_in,
+    )
+    return bounds, labels
+
+
+def detect_two_stage_phrase_segments(
+    audio: np.ndarray,
+    sample_rate: int,
+    beat_times_sec: np.ndarray,
+    tempo_segments: np.ndarray,
+    *,
+    model_path: str | Path,
+    hpss: HpssSpectra | None = None,
+    return_boundary_probability: bool = False,
+    return_feature_z: bool = False,
+):
+    """Phrase segments and optional reusable per-beat analysis outputs."""
+    # the settings' path: the user's (retrained) file, else the shipped model (foundation.model_files)
+    artifact = load_two_stage_model(str(resolve_model(model_path).resolve()))
+    settings = artifact["settings"]
+    grid = build_predictor_grid(beat_times_sec, tempo_segments)
+    if grid.n_beats < 17:
+        if return_boundary_probability and return_feature_z:
+            return [], None, None
+        return ([], None) if return_boundary_probability else []
+
+    acoustic = extract_song_features(
+        None,
+        grid,
+        _parse_feature_config(settings),
+        audio_array=audio,
+        audio_sr=int(sample_rate),
+        hpss=hpss,
+    )
+    feature_z = feature_z_from_acoustic(acoustic)
+    boundary_feature_z = boundary_feature_matrix(
+        feature_z,
+        settings["boundary_context_beats"],
+        grid_context_feature_matrix(feature_z, grid),
+        settings["boundary_regional_context_beats"],
+    )
+    structural = multi_view_structure_features(feature_z)
+    boundary_feature_z = np.hstack([boundary_feature_z, structural])
+    valid = valid_boundary_mask(feature_z.shape[0], int(settings["edge_beats"]))
+    downbeat = np.asarray(grid.downbeat_mask, dtype=bool)
+    # The returned per-beat probability stays the pass-1 one: downstream
+    # analyzers (JumpCUE) are trained on it.
+    probability = _predict_boundary_probability(artifact["boundary_clf"], boundary_feature_z, valid)
+    bounds = decode_phrase_boundaries(probability, valid, downbeat, settings)
+    beat_times = np.asarray(grid.beat_times_sec, dtype=np.float64)
+    bounds, labels = finish_phrase_segments(
+        artifact, feature_z, boundary_feature_z, valid, downbeat, beat_times, probability, bounds,
+        lambda: repeat_inputs(feature_z, downbeat),
+    )
+
+    duration = float(acoustic.audio_duration_sec)
+    if beat_times.size >= 2:
+        beat_tail = float(beat_times[-1] + np.median(np.diff(beat_times)))
+        duration = max(duration, beat_tail)
+    segments: list[dict[str, object]] = []
+    for (s0, e0), label in zip(zip(bounds[:-1], bounds[1:]), labels):
+        s = int(s0)
+        e = int(e0)
+        start = float(beat_times[s]) if s < beat_times.size else duration
+        end = float(beat_times[e]) if e < beat_times.size else duration
+        if end - start <= 1e-6:
+            continue
+        segments.append({"start": start, "end": end, "label": str(label)})
+    if segments:
+        # the first phrase takes the lead-in before the first beat
+        segments[0]["start"] = 0.0
+    if return_boundary_probability and return_feature_z:
+        return segments, probability, feature_z
+    if return_boundary_probability:
+        return segments, probability
+    return segments

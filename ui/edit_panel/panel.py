@@ -7,7 +7,7 @@ import numpy as np
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from audioengine.native import client as deck
-from foundation.beat_geometry import downbeat_beat_indices
+from analyzer.music.beat_geometry import downbeat_beat_indices
 from core.event_bus import EventBus
 from core.track.model import DataModel
 from ui.edit_panel.beat_counter import BeatCounterMixin

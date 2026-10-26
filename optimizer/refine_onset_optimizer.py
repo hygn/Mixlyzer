@@ -17,7 +17,7 @@ from sklearn.ensemble import HistGradientBoostingClassifier
 from sklearn.metrics import average_precision_score
 from sklearn.model_selection import GroupKFold
 
-from analyzer_core.beat.learned_onset import export_refine_onset_model, stack_context
+from analyzer.beat.learned_onset import export_refine_onset_model, stack_context
 from core.concurrency.process_pool import create_spawn_process_pool
 from optimizer import SkippedOptimizationTrack, optimizer_track_name, skipped_track
 from optimizer import model_start as MS

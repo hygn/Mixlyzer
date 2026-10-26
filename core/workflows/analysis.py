@@ -11,7 +11,7 @@ from typing import Callable, Optional
 
 from PySide6 import QtCore
 
-from analyzer_core.global_analyzer import extract_tags, getAlbumArt
+from analyzer.pipeline.track import extract_tags, getAlbumArt
 from core.analysis_library import jobs as analysis_jobs
 from core.library import jobs
 from dataclasses import replace

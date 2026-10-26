@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 from PySide6 import QtCore, QtWidgets
 
-from foundation.beat_geometry import bar_beat_position, downbeat_beat_indices
+from analyzer.music.beat_geometry import bar_beat_position, downbeat_beat_indices
 from ui.edit_panel.icons import icon
 from foundation.i18n import tr
 

@@ -13,7 +13,7 @@ from utils.wave import band_ranges, has_wave_overview, render_wave_overview
 from views.base import EDIT_PAGES, edit_emphasis, emphasis_opacity, emphasis_size, emphasis_width
 from views.segment_strip import SegmentStrip
 from core.config import load_cfg
-from foundation.tempo_rows import segment_end_bpm
+from analyzer.music.tempo_rows import segment_end_bpm
 
 
 # Pixel rows of the overview waveform image.

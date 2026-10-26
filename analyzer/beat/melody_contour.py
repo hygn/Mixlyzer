@@ -1,0 +1,274 @@
+from __future__ import annotations
+
+import librosa
+import numpy as np
+from scipy.ndimage import uniform_filter1d
+
+from analyzer.audio.conversion import amplitude_to_db, cqt_frequencies, note_to_hz
+
+
+# Predominant melody without source separation, after MELODIA (Salamon & Gomez
+# 2012), kept light: harmonic-summation pitch salience on a whitened CQT of the
+# harmonic part, pitch contours linked by continuity, weak contours dropped
+# (voicing), and at every frame the most salient contour is the melody.
+# The beat-phase model reads note starts and held lengths from it (strong beats
+# take long notes: Temperley & Sleator's length rule, Parncutt's durational accent).
+CQT_BINS_PER_OCTAVE = 36
+CQT_FMIN_NOTE = "C2"
+CQT_OCTAVES = 7
+F0_MIN_NOTE = "F3"
+F0_MAX_NOTE = "C6"
+N_HARMONICS = 10
+HARMONIC_DECAY = 0.8
+PEAKS_PER_FRAME = 5
+PEAK_RELATIVE_FLOOR = 0.35        # peaks within 35 % of the frame's strongest salience
+LINK_BINS = 2.4                   # 80 cents at 36 bins per octave
+GAP_SEC = 0.05
+MIN_CONTOUR_SEC = 0.1
+VOICING_NU = 0.2                  # keep contours with mean salience >= mean - nu * std
+
+
+def _salience(harmonic: np.ndarray, sample_rate: int, hop_length: int) -> tuple[np.ndarray, np.ndarray]:
+    n_bins = CQT_BINS_PER_OCTAVE * CQT_OCTAVES
+    fmin = note_to_hz(CQT_FMIN_NOTE)
+    magnitude = np.abs(librosa.cqt(
+        harmonic, sr=sample_rate, hop_length=hop_length, fmin=fmin,
+        n_bins=n_bins, bins_per_octave=CQT_BINS_PER_OCTAVE,
+    ))
+    level = amplitude_to_db(magnitude, ref=np.max, top_db=80.0)
+    envelope = uniform_filter1d(level, size=CQT_BINS_PER_OCTAVE, axis=0, mode="nearest")
+    whitened = np.maximum(level - envelope, 0.0)
+    frequencies = cqt_frequencies(n_bins, fmin=fmin, bins_per_octave=CQT_BINS_PER_OCTAVE)
+    candidates = np.flatnonzero(
+        (frequencies >= note_to_hz(F0_MIN_NOTE)) & (frequencies <= note_to_hz(F0_MAX_NOTE))
+    )
+    salience = np.zeros((candidates.size, whitened.shape[1]))
+    for harmonic_number in range(1, N_HARMONICS + 1):
+        offset = int(round(CQT_BINS_PER_OCTAVE * np.log2(harmonic_number)))
+        salience += HARMONIC_DECAY ** (harmonic_number - 1) * whitened[np.minimum(candidates + offset, n_bins - 1)]
+    return salience, frequencies[candidates]
+
+
+def _frame_peaks(salience: np.ndarray) -> list[np.ndarray]:
+    is_peak = (salience >= np.roll(salience, 1, axis=0)) & (salience >= np.roll(salience, -1, axis=0)) & (salience > 0)
+    floor = (1.0 - PEAK_RELATIVE_FLOOR) * salience.max(axis=0)
+    peaks = []
+    for t in range(salience.shape[1]):
+        bins = np.flatnonzero(is_peak[:, t] & (salience[:, t] >= floor[t]))
+        peaks.append(bins[np.argsort(salience[bins, t])[::-1][:PEAKS_PER_FRAME]])
+    return peaks
+
+
+def _contours(salience: np.ndarray, frame_sec: float) -> list[tuple[np.ndarray, np.ndarray, int]]:
+    """Link salience peaks across frames: (bins, saliences, start frame) per contour.
+
+    A contour takes, at each frame, the free peak nearest its last bin (within
+    LINK_BINS) and ends after GAP_SEC without one; unclaimed peaks start new
+    contours. Contours are returned in the order they end.
+    """
+    global _link_peaks_numba
+    if _link_peaks_numba is None:
+        return _contours_python(salience, frame_sec)
+    gap = int(round(GAP_SEC / frame_sec))
+    peaks = _frame_peaks(salience)
+    padded = np.full((len(peaks), PEAKS_PER_FRAME), -1, dtype=np.int64)
+    for t, frame_peaks in enumerate(peaks):
+        padded[t, : frame_peaks.size] = frame_peaks
+    try:
+        entry_contour, entry_bin, entry_salience, start, finish_order = _link_peaks_numba(
+            padded, np.ascontiguousarray(salience, dtype=np.float64), gap, LINK_BINS
+        )
+    except Exception:  # compilation failed: use the Python implementation from now on
+        _link_peaks_numba = None
+        return _contours_python(salience, frame_sec)
+    # Entries are chronological; group them per contour keeping that order.
+    order = np.argsort(entry_contour, kind="stable")
+    bounds = np.searchsorted(entry_contour[order], np.arange(start.size + 1))
+    min_len = int(round(MIN_CONTOUR_SEC / frame_sec))
+    contours = []
+    for contour in finish_order:
+        entries = order[bounds[contour]:bounds[contour + 1]]
+        if entries.size >= min_len:
+            contours.append((entry_bin[entries], entry_salience[entries], int(start[contour])))
+    return contours
+
+
+def _link_peaks(peaks: np.ndarray, salience: np.ndarray, gap: int, link_bins: float):
+    """Contour linking of :func:`_contours_python` on arrays.
+
+    ``peaks``: ``[T, PEAKS_PER_FRAME]`` peak bins per frame, strongest first,
+    padded with -1. Returns per linked peak (contour id, bin, salience), each
+    contour's start frame, and the contour ids in the order they end.
+    """
+    n_frames, n_slots = peaks.shape
+    capacity = max(1, int((peaks >= 0).sum()))
+    entry_contour = np.empty(capacity, np.int64)
+    entry_bin = np.empty(capacity, np.int64)
+    entry_salience = np.empty(capacity, np.float64)
+    last_bin = np.empty(capacity, np.int64)
+    last_frame = np.empty(capacity, np.int64)
+    start = np.empty(capacity, np.int64)
+    active = np.empty(capacity, np.int64)
+    kept = np.empty(capacity, np.int64)
+    finish_order = np.empty(capacity, np.int64)
+    used = np.zeros(n_slots, np.bool_)
+    n_entries = n_contours = n_active = n_finished = 0
+    for t in range(n_frames):
+        used[:] = False
+        for a in range(n_active):
+            contour = active[a]
+            if t - last_frame[contour] > gap:
+                continue
+            last = last_bin[contour]
+            best = -1
+            for j in range(n_slots):
+                p = peaks[t, j]
+                if p < 0 or used[j] or abs(p - last) > link_bins:
+                    continue
+                if best < 0 or abs(p - last) < abs(peaks[t, best] - last):
+                    best = j
+            if best >= 0:
+                used[best] = True
+                p = peaks[t, best]
+                entry_contour[n_entries] = contour
+                entry_bin[n_entries] = p
+                entry_salience[n_entries] = salience[p, t]
+                n_entries += 1
+                last_bin[contour] = p
+                last_frame[contour] = t
+        n_kept = 0
+        for a in range(n_active):
+            contour = active[a]
+            if t - last_frame[contour] > gap:
+                finish_order[n_finished] = contour
+                n_finished += 1
+            else:
+                kept[n_kept] = contour
+                n_kept += 1
+        active[:n_kept] = kept[:n_kept]
+        n_active = n_kept
+        for j in range(n_slots):
+            p = peaks[t, j]
+            if p < 0 or used[j]:
+                continue
+            contour = n_contours
+            n_contours += 1
+            start[contour] = t
+            last_bin[contour] = p
+            last_frame[contour] = t
+            entry_contour[n_entries] = contour
+            entry_bin[n_entries] = p
+            entry_salience[n_entries] = salience[p, t]
+            n_entries += 1
+            active[n_active] = contour
+            n_active += 1
+    for a in range(n_active):
+        finish_order[n_finished] = active[a]
+        n_finished += 1
+    return (
+        entry_contour[:n_entries],
+        entry_bin[:n_entries],
+        entry_salience[:n_entries],
+        start[:n_contours],
+        finish_order[:n_finished],
+    )
+
+
+try:
+    from numba import njit
+
+    _link_peaks_numba = njit(cache=True)(_link_peaks)
+except Exception:  # pragma: no cover - numba is optional
+    _link_peaks_numba = None
+
+
+def _contours_python(salience: np.ndarray, frame_sec: float) -> list[tuple[list[int], list[float], int]]:
+    """Reference implementation of :func:`_contours` (used when numba is unavailable)."""
+    gap = int(round(GAP_SEC / frame_sec))
+    active: list[list] = []                         # [bins, saliences, start, last_frame]
+    finished: list[list] = []
+    for t, peaks in enumerate(_frame_peaks(salience)):
+        used: set[int] = set()
+        for contour in active:
+            if t - contour[3] > gap:
+                continue
+            last = contour[0][-1]
+            best = None
+            for p in peaks:
+                if p in used or abs(p - last) > LINK_BINS:
+                    continue
+                if best is None or abs(p - last) < abs(best - last):
+                    best = p
+            if best is not None:
+                used.add(int(best))
+                contour[0].append(int(best)); contour[1].append(float(salience[best, t])); contour[3] = t
+        finished.extend(c for c in active if t - c[3] > gap)
+        active = [c for c in active if t - c[3] <= gap]
+        for p in peaks:
+            if int(p) not in used:
+                active.append([[int(p)], [float(salience[p, t])], t, t])
+    finished.extend(active)
+    min_len = int(round(MIN_CONTOUR_SEC / frame_sec))
+    return [(c[0], c[1], c[2]) for c in finished if len(c[0]) >= min_len]
+
+
+# The last harmonic part's contours (before the voicing filter), its frames and the candidates' frequencies: the
+# search by music's index reads the contours of the same harmonic part later in the same analysis
+# (core.music_search.melody), and takes them from here instead of finding them again. The part itself is kept with
+# them (its memory can then not be another part's).
+_kept: tuple | None = None
+
+
+def take_contours(harmonic: np.ndarray, sample_rate: int, hop_length: int) -> tuple | None:
+    """(contours, frames, candidate frequencies) extract_melody_contour found in this very harmonic part (the same
+    memory, rate and hop), handed over once; None otherwise."""
+    global _kept
+    if _kept is None:
+        return None
+    part, rate, hop, found = _kept
+    same = (rate, hop) == (sample_rate, hop_length) and part.shape == harmonic.shape and part.dtype == harmonic.dtype \
+        and part.__array_interface__["data"][0] == harmonic.__array_interface__["data"][0]
+    if not same:
+        return None
+    _kept = None
+    return found
+
+
+def forget_contours() -> None:
+    global _kept
+    _kept = None
+
+
+def extract_melody_contour(
+    harmonic: np.ndarray, sample_rate: int, hop_length: int, n_frames: int
+) -> tuple[np.ndarray, np.ndarray]:
+    """Per frame: melody pitch in MIDI semitones (NaN when unvoiced) and the id of its contour (-1)."""
+    global _kept
+    frame_sec = hop_length / float(sample_rate)
+    harmonic = np.asarray(harmonic, dtype=np.float32)
+    salience, f0s = _salience(harmonic, sample_rate, hop_length)
+    contours = _contours(salience, frame_sec)
+    _kept = (harmonic, sample_rate, hop_length, (list(contours), salience.shape[1], f0s))
+    if contours:
+        means = np.array([np.mean(c[1]) for c in contours])
+        keep = means >= means.mean() - VOICING_NU * means.std()
+        contours = [c for c, k in zip(contours, keep) if k]
+    T = salience.shape[1]
+    best = np.zeros(T); f0_bin = np.full(T, -1); owner = np.full(T, -1)
+    for index, (bins, saliences, start) in enumerate(contours):
+        strength = float(np.mean(saliences))
+        frames = np.arange(start, min(start + len(bins), T))
+        take = strength > best[frames]
+        best[frames[take]] = strength
+        f0_bin[frames[take]] = np.asarray(bins)[: frames.size][take]
+        owner[frames[take]] = index
+    pitch = np.where(f0_bin >= 0, 12.0 * np.log2(f0s[np.maximum(f0_bin, 0)] / 440.0) + 69.0, np.nan)
+    pitch = _fit(pitch, n_frames, np.nan)
+    owner = _fit(owner.astype(np.float64), n_frames, -1.0).astype(np.int32)
+    return pitch.astype(np.float32), owner
+
+
+def _fit(values: np.ndarray, length: int, fill: float) -> np.ndarray:
+    if values.size >= length:
+        return values[:length]
+    return np.concatenate([values, np.full(length - values.size, fill)])

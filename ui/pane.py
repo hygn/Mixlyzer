@@ -22,8 +22,8 @@ from ui.track_info_panel import TrackInfoPanel
 from ui.edit_panel import EditPanel
 from utils.volume import slider_percent_to_linear, trim_dbfs_to_linear
 from foundation.resource_paths import resource_path
-from foundation.beat_geometry import downbeat_beat_indices, segment_time_signature
-from foundation.tempo_rows import segment_end_bpm
+from analyzer.music.beat_geometry import downbeat_beat_indices, segment_time_signature
+from analyzer.music.tempo_rows import segment_end_bpm
 from core.timeline import step_window
 from foundation.i18n import tr
 from ui.theme import current_theme

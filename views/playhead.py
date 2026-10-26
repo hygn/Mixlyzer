@@ -1,7 +1,7 @@
 from PySide6 import QtCore, QtGui, QtWidgets
 import pyqtgraph as pg
 from .base import ViewPlugin, register_view
-from foundation.beat_geometry import downbeat_beat_indices, bar_beat_label
+from analyzer.music.beat_geometry import downbeat_beat_indices, bar_beat_label
 
 
 class _OutlinedText(QtWidgets.QGraphicsTextItem):

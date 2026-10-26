@@ -23,7 +23,7 @@ from typing import Callable
 import numpy as np
 from sklearn.model_selection import GroupKFold
 
-from analyzer_core.beat.general import tracker as TR
+from analyzer.beat.general import tracker as TR
 from core.concurrency.process_pool import create_spawn_process_pool
 from optimizer import SkippedOptimizationTrack, optimizer_track_name, skipped_track
 from optimizer.beat_frames import cache_path, ensure_frames, list_grid_tracks, read_frames
@@ -76,10 +76,10 @@ def _score_song(job):
     [section, half_reset, odd_bar] -> (unusable beats, missed bars) in seconds."""
     track, cache_dir_text, paths, refine_path, bpm_min, grid = job
     from threadpoolctl import threadpool_limits
-    from analyzer_core.beat.general import bars as B, critic as C, decode as D, tcn as T
-    from analyzer_core.beat.learned_onset import REFINE_ONSET_PATH, refine_onset_activation
-    from foundation.beat_geometry import downbeat_times
-    from foundation.tempo_rows import rebuild_grid_from_segments
+    from analyzer.beat.general import bars as B, critic as C, decode as D, tcn as T
+    from analyzer.beat.learned_onset import REFINE_ONSET_PATH, refine_onset_activation
+    from analyzer.music.beat_geometry import downbeat_times
+    from analyzer.music.tempo_rows import rebuild_grid_from_segments
     sections_c, resets_c, bars_c = grid
     frames = read_frames(cache_path(Path(cache_dir_text), str(track["uid"])), track)
     if frames is None:

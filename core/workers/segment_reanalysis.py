@@ -8,16 +8,16 @@ from typing import Any
 import numpy as np
 from PySide6 import QtCore
 
-from analyzer_core.editor.beatgrid import (
+from analyzer.pipeline.beatgrid import (
     reanalyze_segment_from_file as beat_reanalyze_segment_from_file,
 )
-from analyzer_core.editor.keystrip import (
+from analyzer.pipeline.keys import (
     reanalyze_segment_from_file as key_reanalyze_segment_from_file,
     reanalyze_full as key_reanalyze_full,
     update_key_segments_with_selection,
 )
-from analyzer_core.editor.jumpcue import reanalyze_jumpCUE
-from analyzer_core.editor.phrase import reanalyze_phrases
+from analyzer.pipeline.jumpcues import reanalyze_jumpCUE
+from analyzer.pipeline.phrases import reanalyze_phrases
 from core.config import config
 from core.concurrency.process_worker import SpawnProcessWorker, install_parent_watchdog
 from foundation.i18n import tr

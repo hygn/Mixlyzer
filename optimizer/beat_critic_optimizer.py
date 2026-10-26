@@ -27,7 +27,7 @@ from typing import Callable
 import numpy as np
 from sklearn.model_selection import GroupKFold
 
-from analyzer_core.beat.general import critic as C
+from analyzer.beat.general import critic as C
 from core.concurrency.process_pool import create_spawn_process_pool
 from optimizer import SkippedOptimizationTrack, optimizer_track_name, skipped_track
 from optimizer.beat_frames import cache_path, ensure_frames, list_grid_tracks, read_frames
@@ -85,7 +85,7 @@ def _save(path, nets) -> None:
     np.savez_compressed(path, **{f"f{i}/{k}": v for i, P in enumerate(nets) for k, v in P.items()})
 
 
-# --- the network's gradients (the forward pass mirrors analyzer_core.beat.general.critic) ---------------
+# --- the network's gradients (the forward pass mirrors analyzer.beat.general.critic) ---------------
 
 def _elu_grad(x):
     return np.where(x > 0, 1.0, np.exp(np.minimum(x, 0))).astype(np.float32)
@@ -220,8 +220,8 @@ def _decoder_grids(job) -> tuple[str, list[np.ndarray]]:
     """Process-worker entry point: the decoder's grids of one song with each training of the beat model."""
     track, cache_dir_text, tcn_path, bpm_min = job
     from threadpoolctl import threadpool_limits
-    from analyzer_core.beat.general import decode as D, tcn as T
-    from foundation.tempo_rows import rebuild_grid_from_segments
+    from analyzer.beat.general import decode as D, tcn as T
+    from analyzer.music.tempo_rows import rebuild_grid_from_segments
     frames = read_frames(cache_path(Path(cache_dir_text), str(track["uid"])), track)
     if frames is None:
         return str(track["uid"]), []
@@ -431,7 +431,7 @@ def optimize_beat_critic(
         raise ValueError("Critic model path must end with .npz")
     MS.check_output(output_path)
     scratch = request.start == MS.SCRATCH and request.base_path is None
-    from analyzer_core.beat.general import tcn as TCN
+    from analyzer.beat.general import tcn as TCN
     tcn_text = str(request.tcn_path) if request.tcn_path else TCN.WEIGHT_PATH
     base_path = request.base_path or MS.base_model(output_path, request.start)
     # the critic in use: what the new one is compared with

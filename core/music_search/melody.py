@@ -1,7 +1,7 @@
 """Every song's reference lines for the melody search, made from its audio.
 
 Two lines a frame, because a hummed melody is not always the line a melody extractor calls the melody:
-- the predominant melody (analyzer_core.beat.melody_contour) of the stereo centre: the lead vocal is mixed to the
+- the predominant melody (analyzer.beat.melody_contour) of the stereo centre: the lead vocal is mixed to the
   centre, much of a dense backing wide (each STFT bin weighted by how alike left and right are, Avendano 2003);
   measured against sung lines: right on 55 % of the sung frames, 48 % from the mix; its harmonic part by the mix's
   HPSS mask in the same STFT (harmonic_parts: one STFT a channel, one HPSS, none when the analysis made it);
@@ -56,7 +56,7 @@ def pack(p: np.ndarray) -> np.ndarray:
 def _frame_peaks(salience: np.ndarray) -> np.ndarray:
     """(frames, PEAKS_PER_FRAME) bins, -1 padded: melody_contour._frame_peaks' peaks for all frames at once (the
     strongest local maxima within its floor, strongest first)."""
-    from analyzer_core.beat import melody_contour as MC
+    from analyzer.beat import melody_contour as MC
     is_peak = (salience >= np.roll(salience, 1, axis=0)) & (salience >= np.roll(salience, -1, axis=0)) & (salience > 0)
     floor = (1.0 - MC.PEAK_RELATIVE_FLOOR) * salience.max(axis=0)
     cand = np.where(is_peak & (salience >= floor[None, :]), salience, -np.inf)
@@ -70,7 +70,7 @@ def _frame_peaks(salience: np.ndarray) -> np.ndarray:
 
 def _contours(salience: np.ndarray) -> list:
     """melody_contour._contours with the peaks of every frame found at once."""
-    from analyzer_core.beat import melody_contour as MC
+    from analyzer.beat import melody_contour as MC
     if MC._link_peaks_numba is None:
         return MC._contours(salience, HOP / SR)
     gap = int(round(MC.GAP_SEC / (HOP / SR)))
@@ -88,14 +88,14 @@ def _contours(salience: np.ndarray) -> list:
 
 
 def _stft(y: np.ndarray) -> np.ndarray:
-    from analyzer_core.dsp.spectral import stft
-    from analyzer_core.hpss import HPSS_N_FFT
+    from analyzer.audio.spectral import stft
+    from analyzer.audio.hpss import HPSS_N_FFT
     return stft(y, n_fft=HPSS_N_FFT, hop_length=HPSS_N_FFT // 4, center=True, pad_mode="constant")
 
 
 def _istft(spectrum: np.ndarray, length: int) -> np.ndarray:
-    from analyzer_core.dsp.spectral import istft
-    from analyzer_core.hpss import HPSS_N_FFT
+    from analyzer.audio.spectral import istft
+    from analyzer.audio.hpss import HPSS_N_FFT
     return istft(spectrum, dtype=np.float32, n_fft=HPSS_N_FFT, hop_length=HPSS_N_FFT // 4, length=length)
 
 
@@ -106,7 +106,7 @@ def harmonic_parts(stereo: np.ndarray, mix_mask: np.ndarray | None = None,
     and right), and both take the mix's harmonic mask (``mix_mask``: the analysis's HPSS's, the same STFT frames,
     when made; else made here) -- the centre's own HPSS found the same melodies (quick eval: hum 0.82 / 0.82,
     whistle 0.88 / 0.84) at a second HPSS's cost."""
-    from analyzer_core.hpss import hpss_masks
+    from analyzer.audio.hpss import hpss_masks
     y = np.asarray(stereo, dtype=np.float32)
     if y.ndim == 1 or y.shape[1] == 1:
         X = _stft(y.reshape(-1))
@@ -144,7 +144,7 @@ def candidates(harmonic: np.ndarray, k: int) -> np.ndarray:
     """(k, frames) MIDI (NaN where fewer) of an HPSS harmonic part at SR: the melody extractor's contours (its voicing
     filter kept), the k strongest present at each frame by rank; rank 0 is the extractor's own melody. Its contours
     are the analysis's when its frame features found them in this very harmonic part."""
-    from analyzer_core.beat import melody_contour as MC
+    from analyzer.beat import melody_contour as MC
     harmonic = np.ascontiguousarray(harmonic, dtype=np.float32)
     n_frames = 1 + harmonic.size // HOP
     found = MC.take_contours(harmonic, SR, HOP)
@@ -172,7 +172,7 @@ def candidates(harmonic: np.ndarray, k: int) -> np.ndarray:
 
 
 def harmonic_part(y: np.ndarray) -> np.ndarray:
-    from analyzer_core.hpss import hpss_audio_with_spectra
+    from analyzer.audio.hpss import hpss_audio_with_spectra
     return hpss_audio_with_spectra(np.ascontiguousarray(y, dtype=np.float32), SR)[0]
 
 

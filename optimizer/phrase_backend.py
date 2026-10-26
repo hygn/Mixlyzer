@@ -9,7 +9,7 @@
 
 Feature policy:
     Uses the current production structure feature extractor
-    ``analyzer_core.cue_and_phrase.structure.extract_song_features`` at beat
+    ``analyzer.phrase.structure.extract_song_features`` at beat
     resolution (``family_beat``).
 
 Long segments are not split into 8-bar chunks.
@@ -25,12 +25,12 @@ import numpy as np
 
 from optimizer import SkippedOptimizationTrack, library_tracks, skipped_track
 
-from analyzer_core.cue_and_phrase.structure import (
+from analyzer.phrase.structure import (
     FeatureConfig,
     build_predictor_grid,
     extract_song_features,
 )
-from analyzer_core.cue_and_phrase.model_features import (
+from analyzer.phrase.model_features import (
     feature_z_from_acoustic,
     segment_feature_matrix,
 )
