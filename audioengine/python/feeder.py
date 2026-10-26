@@ -7,6 +7,7 @@ from typing import Optional
 import numpy as np
 from PySide6 import QtCore, QtMultimedia
 
+from audioengine import controls
 from audioengine.python import cursor_poller
 from audioengine.python.clicks import ClickTrack
 from audioengine.python.tones import ToneTrack
@@ -50,7 +51,7 @@ class PCMFeeder(QtCore.QObject):
     # stays in phase, only offset by the delay.
     LATE_JUMP_SEC = 0.15
 
-    PEAK_FLOOR_DBFS = -45.0   # below the meter's lowest segment (-42 dBFS)
+    PEAK_FLOOR_DBFS = controls.PEAK_FLOOR_DBFS
     SOFT_CLIP_KNEE = 0.8
 
     # The sink is topped up every FLUSH_MS: it holds the output buffer (set_buffer_ms; the time stretch wants
@@ -60,7 +61,7 @@ class PCMFeeder(QtCore.QObject):
     FLUSH_SCRATCH_MS = 1
     # The output buffer (ms), Settings > Audio, one size for every path: the sink is opened again at the new
     # size where it changes.
-    BUFFER_MS_RANGE = (10, 500)
+    BUFFER_MS_RANGE = controls.PYTHON_BUFFER_MS_RANGE
 
     # Displayed playhead (display_frame): nudged toward the heard position by this
     # fraction of the difference per reading; taken as is when they differ by more

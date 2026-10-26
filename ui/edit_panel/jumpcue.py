@@ -6,13 +6,13 @@ from dataclasses import replace
 import numpy as np
 from PySide6 import QtCore, QtWidgets
 
-from analyzer.music.marks import JumpCue, JumpCueGroup
+from analyzer.music.marks import JumpCue, JumpCueGroup, cues_by_point
 from ui.edit_panel.cue_slots import CuePageWidget, color_swatch_icon, slot_letter
 from ui.edit_panel.icons import icon
 from ui.edit_panel.quantize import beat_quantize_grid
-from core.analysis_library.jumpcue_colors import JUMPCUE_PAIR_COLORS, get_jumpcue_pair_color
-from core.analysis_library.phrases import assigned_phrases
-from core.workers.segment_reanalysis import JUMPCUE, ReanalysisRequest
+from core.marks.colors import JUMPCUE_PAIR_COLORS, get_jumpcue_pair_color
+from core.marks.phrases import assigned_phrases
+from core.track.reanalysis import JUMPCUE, ReanalysisRequest
 from system.i18n import tr
 
 # JumpCUE slots are the letters A-Z (rekordbox hot cue letters).
@@ -69,9 +69,12 @@ class JumpCUEEditMixin:
     # ---- slots ----
 
     def _jc_cues(self) -> list[tuple[JumpCue, int]]:
-        """Every cue with its group's index, by point."""
-        return sorted(((cue, gi) for gi, group in enumerate(self._jump_cue_groups) for cue in group.cues),
-                      key=lambda item: item[0].point)
+        """Every cue with its group's index, by point: made once per list of groups the model holds (it replaces the
+        list on every edit), however many slots and colours ask."""
+        groups = self._jump_cue_groups
+        if getattr(self, "_jc_cues_of", None) is not groups:
+            self._jc_cues_of, self._jc_cues_list = groups, cues_by_point(groups)
+        return self._jc_cues_list
 
     def _jc_slot_letter(self, slot: int) -> str | None:
         i = self.cue_page.page_start(0) + int(slot)
@@ -220,20 +223,25 @@ class JumpCUEEditMixin:
             return False
         return True
 
-    def _set_jumpcue_color(self, point: float, color_idx: int, *, groups: Groups | None = None) -> None:
+    def _set_jumpcue_color(self, point: float, color_idx: int) -> None:
         """Give the cue at ``point`` a colour; the colour is its group: it joins the
         group of that colour, or becomes one of its own."""
-        groups = self._jumpcue_groups() if groups is None else groups
+        groups = self._jumpcue_groups()
         cue = next((c for cues, _color in groups for c in cues if abs(c.point - point) < 1e-3), None)
         if cue is None:
             return
         groups = [([c for c in cues if abs(c.point - point) >= 1e-3], color) for cues, color in groups]
+        self._set_jumpcue_groups(self._joined(groups, cue, color_idx))
+
+    @staticmethod
+    def _joined(groups: Groups, cue: JumpCue, color_idx: int) -> Groups:
+        """``groups`` with ``cue`` in the group of ``color_idx`` (the colour is the group), or in one of its own."""
         target = next((k for k, (cues, color) in enumerate(groups) if cues and int(color) == int(color_idx)), None)
         if target is None:
             groups.append(([cue], int(color_idx)))
         else:
             groups[target][0].append(cue)
-        self._set_jumpcue_groups(groups)
+        return groups
 
     def _shift_jumpcue_group(self, gidx: int, beats: int) -> None:
         """Move a group (points and passages) by ``beats`` beats."""
@@ -304,9 +312,10 @@ class JumpCUEEditMixin:
         self._insert_jumpcue(p, color, letter)
 
     def _insert_jumpcue(self, point: float, color_idx: int, letter: str) -> None:
-        groups = self._jumpcue_groups()
-        groups.append(([JumpCue(label=letter, comment=letter, start=point, end=point, point=point)], int(color_idx)))
-        self._set_jumpcue_color(point, color_idx, groups=groups)
+        """A new cue in slot ``letter`` at ``point``, in the group of ``color_idx`` (or a group of its own); where a
+        cue already is, _set_jumpcue_groups refuses it and says so (two cues never share a point: each is a slot)."""
+        cue = JumpCue(label=letter, comment=letter, start=point, end=point, point=point)
+        self._set_jumpcue_groups(self._joined(self._jumpcue_groups(), cue, color_idx))
 
     def _reanalyze_jumpCUE(self) -> None:
         if self._beatgrid is None or len(self._beatgrid) == 0:

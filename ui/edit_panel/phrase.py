@@ -12,7 +12,7 @@ from core.workers.analysis_settings import cue_rules
 from ui.edit_panel.blocks import mode_column, rule_cell
 from ui.edit_panel.icons import badged_icon, icon
 from core.analysis_library.cue_points import as_stored as stored_cue_points
-from core.analysis_library.phrases import (
+from core.marks.phrases import (
     PHRASE_LABELS,
     UNASSIGNED,
     assigned_phrases,
@@ -20,7 +20,7 @@ from core.analysis_library.phrases import (
     phrase_color,
     phrase_display_name,
 )
-from core.workers.segment_reanalysis import PHRASE, ReanalysisRequest
+from core.track.reanalysis import PHRASE, ReanalysisRequest
 from system.i18n import tr, tr_mark
 from ui.live_label import LiveLabel
 

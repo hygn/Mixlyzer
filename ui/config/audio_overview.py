@@ -18,7 +18,7 @@ from collections import deque
 import numpy as np
 from PySide6 import QtCore, QtGui, QtWidgets
 
-from audioengine.native import client
+from audioengine import controls
 from system.i18n import tr
 from ui.config.output_group import BufferMonitor, THREAD_STATE_NAMES
 from ui.model_canvas import DOMAINS, FONT_LABEL, FONT_MAIN, FONT_NAME, FONT_SUB, PAL, ModelCanvas, soft
@@ -293,7 +293,7 @@ class SimulinkCanvas(ModelCanvas):
 
 class AudioOverview(QtWidgets.QWidget):
     """The page: the model on its canvas. ``update_view(stats, capacity_ms, ctx)`` with the player's buffer stats
-    (client.take_buffer_stats' dict; None: none yet) and what the settings know (``ctx``: native, timestretch,
+    (the engine client's take_buffer_stats' dict; None: none yet) and what the settings know (``ctx``: native, timestretch,
     main_device, api_names, routes, midi, mix, deck, soft_clip)."""
 
     def __init__(self, parent=None) -> None:
@@ -345,19 +345,19 @@ class AudioOverview(QtWidgets.QWidget):
 
         m["eq_name"] = "ISO" if iso else "EQ"
         m["eq_lines"] = [f"H {eq_db(knobs[3])}", f"M {eq_db(knobs[2])}  L {eq_db(knobs[1])}"]
-        ctype = int(mix.get("color_type", client.COLOR_OFF))
+        ctype = int(mix.get("color_type", controls.COLOR_OFF))
         cknob = float(deck.get("color", 0.5))
-        m["color_on"] = ctype < len(client.COLOR_TYPES) and abs(cknob - 0.5) > 0.01
-        m["color_slot"] = client.COLOR_SLOTS[ctype] if m["color_on"] else None
-        m["color_lines"] = [client.COLOR_TYPES[ctype] if ctype < len(client.COLOR_TYPES) else "OFF",
+        m["color_on"] = ctype < len(controls.COLOR_TYPES) and abs(cknob - 0.5) > 0.01
+        m["color_slot"] = controls.COLOR_SLOTS[ctype] if m["color_on"] else None
+        m["color_lines"] = [controls.COLOR_TYPES[ctype] if ctype < len(controls.COLOR_TYPES) else "OFF",
                             f"{(cknob - 0.5) * 200:+.0f} %"]
         volume = float(deck.get("volume", 1.0))
         g = slider_percent_to_linear(volume * 100.0, 0.0)
         m["fader_text"] = _db(20 * math.log10(g) if g > 0 else -120.0)
         m["cue_on"] = bool(deck.get("channel_cue", False))
-        peak = float(deck.get("peak", client.NativeFeeder.PEAK_FLOOR_DBFS))
+        peak = float(deck.get("peak", controls.PEAK_FLOOR_DBFS))
         m["peak_value"] = f"{peak:.1f} dBFS"
-        m["master_text"] = _db(client.level_knob_to_db(mix.get("master_level", client.LEVEL_UNITY)))
+        m["master_text"] = _db(controls.level_knob_to_db(mix.get("master_level", controls.LEVEL_UNITY)))
         m["main"] = self._main(stats, capacity_ms, ctx)
         routes = ctx.get("routes") or {}
         outputs = (stats or {}).get("outputs") or {}
@@ -366,14 +366,14 @@ class AudioOverview(QtWidgets.QWidget):
             "master_in": bool(mix.get("hp_a_master", 1.0)),
             "mix_lines": [f"{int(round(mix.get('hp_a_mix', 0.5) * 100))} % MASTER",
                           tr("master in") if mix.get("hp_a_master", 1.0) else tr("CUE only")],
-            "level_text": _db(client.level_knob_to_db(mix.get("hp_a_level", client.LEVEL_UNITY))),
+            "level_text": _db(controls.level_knob_to_db(mix.get("hp_a_level", controls.LEVEL_UNITY))),
             "split": bool(mix.get("hp_a_split", 0.0)),
             "split_text": "SPLIT" if mix.get("hp_a_split", 0.0) else "STEREO"})
         m["booth"] = self._aux("booth", outputs.get("booth"), routes.get("booth"), m["main"])
         m["booth"].update({
-            "eq_lines": [f"HI {client.booth_eq_knob_to_db(mix.get('booth_eq_hi', 0.5)):+.1f} dB",
-                         f"LOW {client.booth_eq_knob_to_db(mix.get('booth_eq_low', 0.5)):+.1f} dB"],
-            "level_text": _db(client.level_knob_to_db(mix.get("booth_level", client.LEVEL_UNITY)))})
+            "eq_lines": [f"HI {controls.booth_eq_knob_to_db(mix.get('booth_eq_hi', 0.5)):+.1f} dB",
+                         f"LOW {controls.booth_eq_knob_to_db(mix.get('booth_eq_low', 0.5)):+.1f} dB"],
+            "level_text": _db(controls.level_knob_to_db(mix.get("booth_level", controls.LEVEL_UNITY)))})
         m["status"] = self._status_text(stats, ctx)
         legend = [(D1, tr("D1 {rate} kHz: {device}").format(rate=m["main"].get("rate_text", "-"),
                                                               device=m["main"].get("device", "")))]

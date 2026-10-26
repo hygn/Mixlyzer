@@ -9,8 +9,8 @@ from PySide6 import QtCore
 
 from core.tags.reader import getAlbumArt
 from core.settings.config import load_cfg
-from core.workers.segment_reanalysis import JUMPCUE, KEY_DYNAMIC, PHRASE, ReanalysisRequest, ReanalysisResult, \
-    SegmentReanalysisWorker
+from core.track.reanalysis import JUMPCUE, KEY_DYNAMIC, PHRASE, ReanalysisRequest, ReanalysisResult
+from core.workers.segment_reanalysis import SegmentReanalysisWorker
 from core.workflows.event_bus import EventBus
 from core.track.model import DataModel
 from system.i18n import tr

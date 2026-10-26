@@ -7,14 +7,14 @@ from PySide6 import QtWidgets, QtGui, QtCore
 import pyqtgraph as pg
 import numpy as np
 
-from audioengine.native import client as deck
+from audioengine import controls as deck
 
 from views.base import REGISTRY, ViewPlugin
 from views.overview import OverviewWidget
 from ui.library import LibraryWidget
 from analyzer.music.key_names import idx_to_labels
 from ui.render.semitone import speed_to_semitone
-from core.analysis_library.phrases import number_phrase_labels, phrase_color
+from core.marks.phrases import number_phrase_labels, phrase_color
 from core.workflows.event_bus import EventBus
 from core.settings.config import config
 from ui.mainplotvbx import ScratchViewBox
@@ -24,7 +24,7 @@ from audioengine.volume import slider_percent_to_linear, trim_dbfs_to_linear
 from system.resource_paths import resource_path
 from analyzer.music.beat_geometry import downbeat_beat_indices, segment_time_signature
 from analyzer.music.tempo_rows import segment_end_bpm
-from ui.timeline import step_window
+from views.timeline import step_window
 from system.i18n import tr
 from ui.theme import current_theme
 

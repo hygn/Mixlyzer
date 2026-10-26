@@ -5,7 +5,7 @@ import copy
 
 from app.audio_report import print_audio_setup
 from app.print_hook import install_print_hook, log_environment_info
-from audioengine.native.client import (
+from audioengine.controls import (
     ACT_DECK_SHIFT, ACT_JUMP_A, EQ_MODES, FADER_CURVES, MIDI_EVENT_GUI, MIDI_EVENT_HOTCUE_SET, MIDI_EVENT_RELATIVE,
 )
 from core.controls import midi
@@ -13,7 +13,7 @@ from core.controls import shortcuts
 from system import os_support
 from core.workflows.event_bus import EventBus
 from core.track.model import DataModel
-from ui.timeline import TimelineCoordinator
+from views.timeline import TimelineCoordinator
 from core.playback.player import PlayerController
 from core.analysis_library.stored import StoredAnalysis
 from core.library import jobs
@@ -29,7 +29,7 @@ from core.workflows.tieup_web import TieupWebLookup
 from .metronome import MetronomeController
 from ui.window_visibility import is_window_fully_hidden
 from audioengine.volume import slider_percent_to_linear, trim_dbfs_to_linear, trim_knob_to_db
-from core.analysis_library.phrases import set_phrase_label_names
+from core.marks.phrases import set_phrase_label_names
 
 from ui.pane import MainPane
 from ui.deck_controls import block, fill, row_title
@@ -47,7 +47,7 @@ MIDI_STEPS_MAX = 16
 from core.workflows.segment_reanalysis import SegmentReanalysisWorkflow
 from core.settings.config import config, load_cfg, save_cfg, save_deck, search_settings
 from analyzer.music.beat_geometry import downbeat_beat_indices
-from system.i18n import tr
+from system.i18n import tr, tr_n
 from system.resource_paths import resource_path
 
 class AppWindow(QtWidgets.QMainWindow):
@@ -569,12 +569,23 @@ class AppWindow(QtWidgets.QMainWindow):
             self._apply_analysis(result)
 
     def _apply_analysis(self, result: dict) -> None:
-        """The track's stored analysis (as the library's owner read it: a new analysis is read back once stored) and
-        properties into the model, the decoded audio kept (the playback goes on)."""
+        """The track's stored analysis (as the library's owner read it; a new analysis as it was stored) and
+        properties into the model, the decoded audio kept (the playback goes on). None read: the track without its
+        analysis (never the previous track's marks over this one's audio), and the status bar says so."""
         properties = dict(result.get("properties") or {})
-        analysis = result.get("analysis") or StoredAnalysis()
-        duration = float(analysis.duration_sec or self.model.duration_sec or 0.0)
-        self.model.load(analysis, properties, duration, album_art=result.get("album_art"), keep_audio=True)
+        analysis = result.get("analysis")
+        duration = float((analysis.duration_sec if analysis is not None else 0.0) or self.model.duration_sec or 0.0)
+        self.model.load(analysis or StoredAnalysis(), properties, duration, album_art=result.get("album_art"),
+                        keep_audio=True)
+        name = os.path.basename(str(properties.get("path") or ""))
+        if analysis is None:
+            self.statusBar().showMessage(tr("The track's analysis could not be read: {file}").format(file=name))
+        elif self.model.jump_cues_left_out:
+            n = self.model.jump_cues_left_out
+            self.statusBar().showMessage(tr_n(
+                "{n} JumpCUE past slot Z is not shown ({file}); it stays stored until the JumpCUEs are edited.",
+                "{n} JumpCUEs past slot Z are not shown ({file}); they stay stored until the JumpCUEs are edited.",
+                n).format(n=n, file=name))
 
     def _on_duration(self, duration_sec: float) -> None:
         """The decoded track's length: the views' until the analysis gives its own."""
@@ -587,6 +598,7 @@ class AppWindow(QtWidgets.QMainWindow):
             self.statusBar().showMessage(tr("External Sync is enabled. Local track loading is disabled."))
             return
         self.player.unload()
+        self.segment_reanalysis_workflow.cancel_all(tr("Segment reanalysis canceled (track changed)"))
         self._deck_path = None
         self.model.load(StoredAnalysis(), {}, 0.0)
         self.statusBar().showMessage(tr("Track unloaded."))

@@ -10,8 +10,8 @@ import numpy as np
 
 from analyzer.music.tempo_rows import with_end_bpm
 from analyzer.music.marks import CuePoint, JumpCueGroup, Phrase
-from core.analysis_library.jump_cues import has_slot_letters, lettered_by_point
-from core.analysis_library.phrases import fill_unassigned, normalize_phrase_segments
+from core.marks.jump_cues import has_slot_letters, lettered_by_point
+from core.marks.phrases import fill_unassigned, normalize_phrase_segments
 from core.analysis_library.stored import StoredAnalysis
 
 

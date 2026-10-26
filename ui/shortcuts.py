@@ -23,7 +23,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 
 from system import os_support
 from system.i18n import tr, tr_mark
-from core.analysis_library.phrases import PHRASE_LABELS, phrase_display_name
+from core.marks.phrases import PHRASE_LABELS, phrase_display_name
 
 # the groups, in the settings' order (translated where shown; Key and CUE as they are)
 PLAYBACK = tr_mark("Playback")

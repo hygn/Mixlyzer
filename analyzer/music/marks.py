@@ -19,7 +19,7 @@ class CuePoint:
 
 @dataclass(frozen=True)
 class Phrase:
-    """A phrase of the track: from ``start`` to ``end`` (s), its label (core.analysis_library.phrases.PHRASE_LABELS,
+    """A phrase of the track: from ``start`` to ``end`` (s), its label (core.marks.phrases.PHRASE_LABELS,
     or UNASSIGNED where none is)."""
     start: float
     end: float
@@ -40,6 +40,11 @@ class JumpCue:
 @dataclass(frozen=True)
 class JumpCueGroup:
     """JumpCUEs that jump between each other (one cue alone: a cue to jump to), shown in one colour preset
-    (core.analysis_library.jumpcue_colors); its cues by point."""
+    (core.marks.colors); its cues by point."""
     cues: tuple[JumpCue, ...]
     color_idx: int
+
+
+def cues_by_point(groups) -> list[tuple[JumpCue, int]]:
+    """Every JumpCUE of ``groups`` (JumpCueGroup) with its group's index, by point."""
+    return sorted(((cue, gi) for gi, group in enumerate(groups) for cue in group.cues), key=lambda item: item[0].point)

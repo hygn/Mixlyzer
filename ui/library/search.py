@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Optional
 from PySide6 import QtCore, QtGui, QtWidgets
-from core.analysis_library.phrases import PHRASE_LABELS, phrase_display_name
+from core.marks.phrases import PHRASE_LABELS, phrase_display_name
 from core.search import reading
 from core.library import jobs
 from ui.edit_panel.key_picker import KeyPickButton

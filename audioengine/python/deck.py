@@ -10,7 +10,7 @@ from typing import Optional
 
 import numpy as np
 
-from audioengine.native.client import (
+from audioengine.controls import (
     ACT_BAR_BACK as BAR_BACK, ACT_BAR_FORWARD as BAR_FORWARD, ACT_BEAT_BACK as BEAT_BACK,
     ACT_BEAT_FORWARD as BEAT_FORWARD, ACT_CALL_NEXT as CALL_NEXT, ACT_CALL_PREVIOUS as CALL_PREVIOUS, ACT_CUE as CUE,
     ACT_JUMP_A as JUMP_A, ACT_PLAY_PAUSE as PLAY_PAUSE, ACT_STOP as STOP, ACT_TEMPO_DOWN as TEMPO_DOWN,

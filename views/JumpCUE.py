@@ -5,7 +5,7 @@ from typing import List
 import pyqtgraph as pg
 from PySide6 import QtCore, QtGui, QtWidgets
 
-from core.analysis_library.jumpcue_colors import jump_cue_colors
+from core.marks.colors import jump_cue_colors
 
 from .base import ViewPlugin, emphasis_opacity, emphasis_size, register_view
 

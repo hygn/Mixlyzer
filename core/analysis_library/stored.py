@@ -9,6 +9,7 @@ blocks; the rest of the app reads the fields.
 """
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from typing import Any, Mapping, Optional
 
@@ -19,9 +20,9 @@ from analyzer.music.marks import CuePoint, JumpCueGroup, Phrase
 from analyzer.training.library_tracks import Annotation
 from core.analysis_library.cue_points import build_cue_points_np, extract_cue_points
 from core.analysis_library.jump_cues import build_jump_cue_block, build_jump_cues_np, extract_jump_cue_groups, \
-    has_slot_letters, jump_cue_point_groups
+    jump_cue_point_groups
 from core.analysis_library.phrases import build_phrase_segments_np, stored_phrase_rows
-from system.i18n import tr
+from core.marks.jump_cues import check_slot_letters
 
 # the stored keys: scalars and arrays, then the blocks (a block's fields stored flattened, ``block.field``)
 DURATION, SAMPLE_RATE, TEMPO, BEATS, TEMPO_ROWS = "duration_sec", "sr", "tempo_global", "beats_time_sec", "tempo_segments"
@@ -31,7 +32,7 @@ WAVE_DETAIL_REF = "wave_detail_band_ref"
 PHRASES, CUE_POINTS, JUMP_CUES, JUMP_CUES_AUTO = "phrase_segments_np", "cue_points_np", "jump_cues_np", "jump_cues_auto_np"
 
 
-def _scalar(value: Any, default: float = 0.0) -> float:
+def _scalar(value: Any, default: Optional[float] = 0.0) -> Optional[float]:
     """A stored scalar (a 0-d or 1-element array), ``default`` when it is not one."""
     if value is None:
         return default
@@ -122,14 +123,14 @@ class TrackEdits:
     tempo_segments: np.ndarray
     key_segments: np.ndarray
     phrases: tuple[Phrase, ...]          # UNASSIGNED left out (it is where no phrase is)
-    jump_cues: tuple[JumpCueGroup, ...]
+    jump_cues: Optional[tuple[JumpCueGroup, ...]]   # None: the stored block as it is (DataModel.jump_cues_left_out)
     cue_points: tuple[CuePoint, ...]
     key_segments_auto: Optional[np.ndarray] = None
     jump_cues_auto: Optional[tuple[JumpCueGroup, ...]] = None
 
     def __post_init__(self) -> None:
-        if not has_slot_letters([group for group in self.jump_cues if group.cues]):
-            raise ValueError(tr("JumpCUE labels must be unique single letters A-Z."))
+        if self.jump_cues is not None:
+            check_slot_letters([group for group in self.jump_cues if group.cues])
 
 
 def _replace_block(arrays: dict, name: str, block: dict) -> None:
@@ -147,7 +148,8 @@ def apply_edits(arrays: dict, edits: TrackEdits) -> None:
     arrays[KEYS] = np.array(edits.key_segments, dtype=float)
     if edits.key_segments_auto is not None:
         arrays[KEYS_AUTO] = np.array(edits.key_segments_auto, dtype=float)
-    _replace_block(arrays, JUMP_CUES, build_jump_cue_block(list(edits.jump_cues)))
+    if edits.jump_cues is not None:
+        _replace_block(arrays, JUMP_CUES, build_jump_cue_block(list(edits.jump_cues)))
     if edits.jump_cues_auto is not None:
         _replace_block(arrays, JUMP_CUES_AUTO, build_jump_cue_block(list(edits.jump_cues_auto)))
     _replace_block(arrays, PHRASES, build_phrase_segments_np(edits.phrases))
@@ -158,6 +160,8 @@ def apply_edits(arrays: dict, edits: TrackEdits) -> None:
 # a track; the overview and the rest are not decompressed)
 ANNOTATION_KEYS = (BEATS, SAMPLE_RATE, DURATION, TEMPO_ROWS, KEYS, KEYS_AUTO)
 ANNOTATION_BLOCKS = (PHRASES + ".", JUMP_CUES + ".", JUMP_CUES_AUTO + ".")
+# what the Variants' fingerprint reads (analyzer.search.variants): the beats, the length and the overview
+FINGERPRINT_KEYS = (BEATS, DURATION, *WAVE, WAVE_DETAIL_REF)
 
 
 def annotation_of(arrays: Mapping) -> Annotation:
@@ -169,10 +173,8 @@ def annotation_of(arrays: Mapping) -> Annotation:
         return np.asarray(a[key]) if key in a else None
 
     def scalar(key, kind):
-        try:
-            return kind(np.asarray(a[key]).ravel()[0]) if key in a else None
-        except (IndexError, TypeError, ValueError):
-            return None
+        value = _scalar(a.get(key), None)
+        return kind(value) if value is not None and math.isfinite(value) else None
 
     def points(block):
         try:

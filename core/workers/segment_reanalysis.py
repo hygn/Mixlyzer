@@ -1,17 +1,15 @@
 """Segment reanalysis subprocess worker: the editor's partial reanalyses (analyzer.pipeline: a tempo segment, the
 keys, the phrases, the JumpCUEs) on the track's current marks (a `ReanalysisRequest`), their results in the editor's
-form (a `ReanalysisResult`)."""
+form (a `ReanalysisResult`; both core.track.reanalysis's)."""
 
 from __future__ import annotations
 
 import traceback
-from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 import numpy as np
 from PySide6 import QtCore
 
-from analyzer.music.marks import JumpCueGroup, Phrase
 from analyzer.pipeline.beatgrid import reanalyze_segment
 from analyzer.pipeline.jumpcues import reanalyze_jumpcues
 from analyzer.pipeline.keys import reanalyze_full as reanalyze_keys, reanalyze_selection as reanalyze_key_selection
@@ -22,40 +20,8 @@ from core.workers.analysis_settings import analysis_settings
 from core.workers.analysis_texts import error_text, reanalysis_stage
 from system.i18n import tr
 from core.analysis_library.jump_cues import jump_cue_groups_of_pairs
-
-# what is read again
-BEAT = "beat"                  # a tempo segment (its row)
-KEY_STATIC = "key_static"      # the key of a span
-KEY_DYNAMIC = "key_dynamic"    # the keys of the whole track
-JUMPCUE = "jumpcue"            # the JumpCUEs of the whole track
-PHRASE = "phrase"              # the phrases of the whole track
-
-
-@dataclass(frozen=True)
-class ReanalysisRequest:
-    """An editor's partial reanalysis: what is read again (``kind``) and the track's current marks it reads."""
-    kind: str
-    beats: np.ndarray
-    tempo_segments: np.ndarray = field(default_factory=lambda: np.empty((0, 6)))
-    path: Optional[str] = None                  # None: the deck's track
-    segment_index: int = 0                      # BEAT: the row read again
-    prev_bpm: Optional[float] = None            # BEAT: the reference BPM
-    key_segments: Optional[np.ndarray] = None   # KEY_*: the current keys
-    selection: Optional[tuple[float, float]] = None   # KEY_STATIC: the span (s)
-    phrases: Optional[tuple[Phrase, ...]] = None      # KEY_*, JUMPCUE: the current phrases (UNASSIGNED left out)
-    duration_sec: float = 0.0
-
-
-@dataclass(frozen=True)
-class ReanalysisResult:
-    """A partial reanalysis's result: the marks it gives (None: not this kind's)."""
-    beats: Optional[np.ndarray] = None
-    tempo_segments: Optional[np.ndarray] = None
-    key_segments: Optional[np.ndarray] = None
-    key_segments_auto: Optional[np.ndarray] = None    # KEY_DYNAMIC: the new automatic result
-    key_selection: Optional[tuple] = None
-    jump_cues: Optional[tuple[JumpCueGroup, ...]] = None   # also the new automatic result
-    phrases: Optional[list[Phrase]] = None
+from core.track.reanalysis import BEAT, JUMPCUE, KEY_DYNAMIC, KEY_STATIC, PHRASE, ReanalysisRequest, \
+    ReanalysisResult
 
 
 class SegmentReanalysisWorker(SpawnProcessWorker):
@@ -91,8 +57,13 @@ class SegmentReanalysisWorker(SpawnProcessWorker):
         elif mtype == "status":
             self.status.emit(message.get("status", ""))
         elif mtype == "result" and not self._result_emitted:
-            self._result_emitted = True
-            self.finished.emit(message.get("payload"))
+            payload = message.get("payload")
+            if isinstance(payload, ReanalysisResult):
+                self._result_emitted = True
+                self.finished.emit(payload)
+            elif not self._error_emitted:      # a result that is none: the task ends as failed, the editor freed
+                self._error_emitted = True
+                self.error.emit(tr("The segment reanalysis gave no result."))
         elif mtype == "error" and not self._error_emitted:
             self._error_emitted = True
             self.error.emit(message.get("message", "Unknown error"))
@@ -142,11 +113,10 @@ def _segment_reanalysis_entry(
         elif kind == KEY_STATIC:
             if key_segments is None or key_segments.ndim != 2 or key_segments.shape[1] < 4:
                 raise ValueError("key_segments must be provided for key reanalysis")
-            updated_segments, picked = reanalyze_key_selection(
+            updated_segments, _picked = reanalyze_key_selection(
                 path, settings, beats, request.duration_sec, request.selection, key_segments,
                 tempo_segments=tempo_segments, phrases=phrases, progress=progress)
-            done(tr("Key segment updated"), ReanalysisResult(key_segments=np.asarray(updated_segments, dtype=float),
-                                                             key_selection=tuple(picked)))
+            done(tr("Key segment updated"), ReanalysisResult(key_segments=np.asarray(updated_segments, dtype=float)))
         elif kind == KEY_DYNAMIC:
             updated_segments = np.asarray(reanalyze_keys(
                 path, settings, beats, tempo_segments=tempo_segments, phrases=phrases, progress=progress),

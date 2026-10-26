@@ -30,7 +30,7 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from audioengine.native import client as engine
+from audioengine import controls as engine
 from system.i18n import tr_mark
 from system.model_files import is_shipped
 from system.resource_paths import resource_path

@@ -5,7 +5,7 @@ import numpy as np
 import pyqtgraph as pg
 from PySide6 import QtCore
 
-from ui.timeline import step_window
+from views.timeline import step_window
 
 
 class NoDragNoWheelViewBox(pg.ViewBox):
@@ -28,7 +28,7 @@ class NoDragNoWheelViewBox(pg.ViewBox):
 class ScratchViewBox(NoDragNoWheelViewBox):
     """Main view box: holding the waveform with the left button holds the deck
     (scratch), dragging moves the track under the pointer, as on rekordbox. The
-    wheel zooms the view through ui.timeline.WINDOW_STEPS_SEC (up: narrower)."""
+    wheel zooms the view through views.timeline.WINDOW_STEPS_SEC (up: narrower)."""
 
     def __init__(self, bus, get_time: Callable[[], float], get_duration: Callable[[], float],
                  can_scratch: Callable[[], bool], get_window: Callable[[], float], *args, **kwargs):

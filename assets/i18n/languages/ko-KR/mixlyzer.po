@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-27 02:50+0900\n"
+"POT-Creation-Date: 2026-10-27 03:45+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ko_KR\n"
@@ -579,23 +579,39 @@ msgstr "오디오 엔진을 재시작했습니다."
 msgid "The audio engine did not start; it is tried again every 2 seconds."
 msgstr "오디오 엔진이 시작되지 않았습니다. 2초마다 다시 시도합니다."
 
-#: app/window.py:533 app/window.py:587
+#: app/window.py:533 app/window.py:598
 msgid "External Sync is enabled. Local track loading is disabled."
 msgstr "외부 동기화가 켜져 있습니다. 로컬 트랙 불러오기가 비활성화됩니다."
 
-#: app/window.py:546
+#: app/window.py:546 app/window.py:601
 msgid "Segment reanalysis canceled (track changed)"
 msgstr "구간 재분석 취소됨 (트랙이 바뀜)"
 
-#: app/window.py:592
+# | msgid "Phrase reanalysis completed"
+#: app/window.py:582
+#, python-brace-format
+msgid "The track's analysis could not be read: {file}"
+msgstr "트랙의 분석을 읽을 수 없습니다: {file}"
+
+#: app/window.py:586
+#, python-brace-format
+msgid ""
+"{n} JumpCUE past slot Z is not shown ({file}); it stays stored until the "
+"JumpCUEs are edited."
+msgid_plural ""
+"{n} JumpCUEs past slot Z are not shown ({file}); they stay stored until "
+"the JumpCUEs are edited."
+msgstr[0] "슬롯 Z를 넘는 JumpCUE {n}개는 표시되지 않습니다({file}). JumpCUE를 편집하기 전까지는 저장된 그대로 남습니다."
+
+#: app/window.py:604
 msgid "Track unloaded."
 msgstr "트랙을 내렸습니다."
 
-#: app/window.py:602
+#: app/window.py:614
 msgid "Track File Not Found"
 msgstr "트랙 파일을 찾을 수 없음"
 
-#: app/window.py:606
+#: app/window.py:618
 #, python-brace-format
 msgid ""
 "Cannot load \"{name}\": its file is missing.\n"
@@ -608,63 +624,61 @@ msgstr ""
 "\n"
 "파일의 새 위치를 지정할까요?"
 
-#: app/window.py:613
+#: app/window.py:625
 #, python-brace-format
 msgid "Locate {name}"
 msgstr "{name} 찾기"
 
-#: app/window.py:637 app/window.py:653
+#: app/window.py:649 app/window.py:665
 msgid "Analysis saved to library."
 msgstr "분석을 라이브러리에 저장했습니다."
 
-#: app/window.py:642
+#: app/window.py:654
 msgid "Finished"
 msgstr "완료"
 
-#: app/window.py:665
+#: app/window.py:677
 msgid "Waiting to be looked up on Wikipedia"
 msgstr "위키백과 조사 대기 중"
 
-#: app/window.py:671
+#: app/window.py:683
 msgid "Looking up on Wikipedia and Wikidata…"
 msgstr "위키백과와 위키데이터에서 찾는 중…"
 
 # | msgid "Reading the analysis failed: {error}"
 # | msgid "The search failed: {error}"
 # | msgid "" "The lookup failed:\n" "{error}"
-#: app/window.py:676
+#: app/window.py:688
 msgid "The lookup failed."
 msgstr "조사하지 못했습니다."
 
-#: app/window.py:712
+#: app/window.py:724
 #, python-brace-format
 msgid "External Sync loading: {file}"
 msgstr "외부 동기화 불러오는 중: {file}"
 
-#: app/window.py:712
+#: app/window.py:724
 #, python-brace-format
 msgid "External Sync analyzing: {file}"
 msgstr "외부 동기화 분석 중: {file}"
 
 # | msgid "Memory Sync Disabled"
-#: app/window.py:727
+#: app/window.py:739
 msgid "External Sync Disabled"
 msgstr "외부 동기화 비활성화됨"
 
 # | msgid "External Sync enabled via {target}. Local play/load is locked."
-#: app/window.py:998
+#: app/window.py:1010
 #, python-brace-format
 msgid "External Sync enabled: OSC on {address}. Local play/load is locked."
 msgstr "외부 동기화 사용: OSC {address}. 로컬 재생/불러오기가 잠깁니다."
 
-#: core/analysis_library/jump_cues.py:71
+#: core/analysis_library/jump_cues.py:70
 msgid "JumpCUE labels are limited to unique A-Z."
 msgstr "JumpCUE 라벨은 서로 다른 A-Z로만 쓸 수 있습니다."
 
-#: core/analysis_library/jump_cues.py:98 core/analysis_library/jump_cues.py:101
-#: core/analysis_library/jump_cues.py:237
-#: core/analysis_library/jump_cues.py:397 core/analysis_library/stored.py:132
-#: core/track/model.py:180
+#: core/analysis_library/jump_cues.py:97 core/analysis_library/jump_cues.py:100
+#: core/analysis_library/jump_cues.py:236 core/marks/jump_cues.py:26
 msgid "JumpCUE labels must be unique single letters A-Z."
 msgstr "JumpCUE 라벨은 서로 다른 한 글자 A-Z여야 합니다."
 
@@ -1589,25 +1603,29 @@ msgstr "Rekordbox XML 쓰는 중"
 msgid "Rekordbox XML sync complete"
 msgstr "Rekordbox XML 동기화 완료"
 
-#: core/workers/segment_reanalysis.py:103
+#: core/workers/segment_reanalysis.py:66
+msgid "The segment reanalysis gave no result."
+msgstr "구간 재분석이 결과를 내지 않았습니다."
+
+#: core/workers/segment_reanalysis.py:74
 #, python-brace-format
 msgid "Segment analysis process exited unexpectedly ({code})."
 msgstr "구간 분석 프로세스가 예기치 않게 종료되었습니다 ({code})."
 
-#: core/workers/segment_reanalysis.py:140
+#: core/workers/segment_reanalysis.py:111
 msgid "Segment updated"
 msgstr "구간 갱신됨"
 
-#: core/workers/segment_reanalysis.py:148
-#: core/workers/segment_reanalysis.py:155
+#: core/workers/segment_reanalysis.py:119
+#: core/workers/segment_reanalysis.py:125
 msgid "Key segment updated"
 msgstr "키 구간 갱신됨"
 
-#: core/workers/segment_reanalysis.py:160
+#: core/workers/segment_reanalysis.py:130
 msgid "JumpCUE Updated"
 msgstr "JumpCUE 갱신됨"
 
-#: core/workers/segment_reanalysis.py:163
+#: core/workers/segment_reanalysis.py:133
 msgid "Phrases Updated"
 msgstr "프레이즈 갱신됨"
 
@@ -5281,7 +5299,7 @@ msgstr "플레이헤드를 이 CUE로 옮깁니다 (재생 중에는 안 됨)"
 msgid "CUE color / delete"
 msgstr "CUE 색 / 삭제"
 
-#: ui/edit_panel/cuepoint.py:69 ui/edit_panel/jumpcue.py:112
+#: ui/edit_panel/cuepoint.py:69 ui/edit_panel/jumpcue.py:115
 #, python-brace-format
 msgid "{time} - double-click to rename"
 msgstr "{time} - 더블클릭해 이름 바꾸기"
@@ -5308,53 +5326,53 @@ msgstr "현재 비트그리드로 JumpCUE를 재분석합니다"
 msgid "Color (its group), beat moves, slots, delete"
 msgstr "색(그룹), 박 이동, 슬롯, 삭제"
 
-#: ui/edit_panel/jumpcue.py:103
+#: ui/edit_panel/jumpcue.py:106
 msgid "SET: a JumpCUE in this slot at the nearest beat or track edge"
 msgstr "SET: 가장 가까운 박이나 트랙 끝에 이 슬롯의 JumpCUE를 둡니다"
 
-#: ui/edit_panel/jumpcue.py:108
+#: ui/edit_panel/jumpcue.py:111
 msgid "Jump here on the next beat (when stopped: move the playhead here)"
 msgstr "다음 박에서 여기로 점프 (정지 중: 플레이헤드를 여기로 이동)"
 
-#: ui/edit_panel/jumpcue.py:160
+#: ui/edit_panel/jumpcue.py:163
 msgid "Color (cues of one color jump between each other)"
 msgstr "색 (같은 색의 큐끼리 서로 점프합니다)"
 
-#: ui/edit_panel/jumpcue.py:163
+#: ui/edit_panel/jumpcue.py:166
 msgid "(unused)"
 msgstr "(사용 안 함)"
 
-#: ui/edit_panel/jumpcue.py:167
+#: ui/edit_panel/jumpcue.py:170
 msgid "This color"
 msgstr "이 색"
 
-#: ui/edit_panel/jumpcue.py:168
+#: ui/edit_panel/jumpcue.py:171
 msgid "One beat earlier"
 msgstr "한 박 앞으로"
 
-#: ui/edit_panel/jumpcue.py:169
+#: ui/edit_panel/jumpcue.py:172
 msgid "One beat later"
 msgstr "한 박 뒤로"
 
-#: ui/edit_panel/jumpcue.py:170
+#: ui/edit_panel/jumpcue.py:173
 msgid "Slots"
 msgstr "슬롯"
 
-#: ui/edit_panel/jumpcue.py:172
+#: ui/edit_panel/jumpcue.py:175
 #, python-brace-format
 msgid "Insert a slot at {letter} (this and later cues move one slot on)"
 msgstr "{letter}에 슬롯 끼워 넣기 (이 큐와 이후 큐가 한 슬롯씩 뒤로 밀림)"
 
-#: ui/edit_panel/jumpcue.py:176
+#: ui/edit_panel/jumpcue.py:179
 #, python-brace-format
 msgid "Move into the empty slot {letter} (this and later cues move one slot back)"
 msgstr "빈 슬롯 {letter}로 옮기기 (이 큐와 이후 큐가 한 슬롯씩 앞으로 당겨짐)"
 
-#: ui/edit_panel/jumpcue.py:213
+#: ui/edit_panel/jumpcue.py:216
 msgid "Two JumpCUEs cannot share a point."
 msgstr "두 JumpCUE가 같은 지점을 가질 수 없습니다."
 
-#: ui/edit_panel/jumpcue.py:219 ui/edit_panel/panel.py:575
+#: ui/edit_panel/jumpcue.py:222 ui/edit_panel/panel.py:576
 msgid "Invalid JumpCUE Label"
 msgstr "잘못된 JumpCUE 라벨"
 
@@ -5558,7 +5576,7 @@ msgid "Edit the JumpCUEs and CUE points"
 msgstr "JumpCUE와 CUE 포인트 편집"
 
 # | msgid "The file could not be written: {error}"
-#: ui/edit_panel/panel.py:586
+#: ui/edit_panel/panel.py:589
 #, python-brace-format
 msgid ""
 "The edits could not be saved:\n"
@@ -5567,13 +5585,13 @@ msgstr ""
 "편집 내용을 저장할 수 없습니다:\n"
 "{error}"
 
-#: ui/edit_panel/panel.py:619
+#: ui/edit_panel/panel.py:622
 msgid ""
 "<p>Editing is locked: pages switch, but nothing is edited or saved. Click"
 " to unlock.</p>"
 msgstr "<p>편집이 잠겨 있습니다: 페이지는 바뀌지만 편집이나 저장은 되지 않습니다. 클릭하면 잠금이 풀립니다.</p>"
 
-#: ui/edit_panel/panel.py:621
+#: ui/edit_panel/panel.py:624
 msgid ""
 "<p>Editing is unlocked: the shown pages' graphics are emphasized. Click "
 "to lock: no edits, no saving (on at every start).</p>"
@@ -5581,37 +5599,37 @@ msgstr ""
 "<p>편집이 풀려 있습니다: 보이는 페이지의 그래픽이 강조됩니다. 클릭하면 잠급니다: 편집과 저장이 막힙니다 (시작할 때마다 "
 "잠김).</p>"
 
-#: ui/edit_panel/panel.py:732
+#: ui/edit_panel/panel.py:735
 #, python-brace-format
 msgid "This shortcut does nothing on the {page} page."
 msgstr "이 단축키는 {page} 페이지에서는 아무것도 하지 않습니다."
 
-#: ui/edit_panel/panel.py:740
+#: ui/edit_panel/panel.py:743
 msgid "Editing is locked."
 msgstr "편집이 잠겨 있습니다."
 
 # | msgid "Segment reanalysis finished"
-#: ui/edit_panel/panel.py:742
+#: ui/edit_panel/panel.py:745
 msgid "Editing waits for the segment reanalysis to finish."
 msgstr "구간 재분석이 끝날 때까지 편집할 수 없습니다."
 
 # | msgid "Delete JumpCUE {letter}"
-#: ui/edit_panel/panel.py:775 ui/edit_panel/panel.py:788
+#: ui/edit_panel/panel.py:778 ui/edit_panel/panel.py:791
 #, python-brace-format
 msgid "JumpCUE {letter} is not set."
 msgstr "JumpCUE {letter}가 설정되어 있지 않습니다."
 
-#: ui/edit_panel/panel.py:784
+#: ui/edit_panel/panel.py:787
 #, python-brace-format
 msgid "JumpCUE {letter} is already set."
 msgstr "JumpCUE {letter}가 이미 설정되어 있습니다."
 
-#: ui/edit_panel/panel.py:804
+#: ui/edit_panel/panel.py:807
 msgid "CALL works while stopped."
 msgstr "CALL은 정지 중에만 동작합니다."
 
 # | msgid "Split the current segment at the playhead"
-#: ui/edit_panel/panel.py:820
+#: ui/edit_panel/panel.py:823
 msgid "No CUE point at the playhead."
 msgstr "플레이헤드에 CUE 포인트가 없습니다."
 
@@ -6987,7 +7005,7 @@ msgstr "MEMORY: CUE 포인트"
 msgid "MEMORY: set a CUE point at the nearest beat or track edge"
 msgstr "MEMORY: 가장 가까운 박이나 트랙 끝에 CUE 포인트를 설정합니다"
 
-#: ui/edit_panel/jumpcue.py:180 ui/shortcuts.py:117
+#: ui/edit_panel/jumpcue.py:183 ui/shortcuts.py:117
 #, python-brace-format
 msgid "Delete JumpCUE {letter}"
 msgstr "JumpCUE {letter} 삭제"
@@ -7217,15 +7235,15 @@ msgstr "{page} 페이지 보기"
 msgid "It becomes the current page."
 msgstr "그 페이지가 현재 페이지가 됩니다."
 
-#: ui/edit_panel/panel.py:217 ui/shortcuts.py:174
+#: ui/edit_panel/panel.py:218 ui/shortcuts.py:174
 msgid "Undo Changes"
 msgstr "변경 실행 취소"
 
-#: ui/edit_panel/panel.py:221 ui/shortcuts.py:175
+#: ui/edit_panel/panel.py:222 ui/shortcuts.py:175
 msgid "Redo Changes"
 msgstr "변경 다시 실행"
 
-#: ui/edit_panel/panel.py:225 ui/shortcuts.py:176
+#: ui/edit_panel/panel.py:226 ui/shortcuts.py:176
 msgid "Save Edits"
 msgstr "편집 저장"
 
@@ -7808,7 +7826,7 @@ msgid "The tracks with a tie-up to this work: a change to the work is theirs."
 msgstr "이 작품의 타이업이 있는 트랙: 작품을 바꾸면 이 트랙들에 모두 적용됩니다."
 
 # | msgid "Shared"
-#: ui/edit_panel/panel.py:586 ui/tieup_works.py:90
+#: ui/edit_panel/panel.py:589 ui/tieup_works.py:90
 msgid "Save"
 msgstr "저장"
 

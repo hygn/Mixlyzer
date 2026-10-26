@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from PySide6 import QtCore, QtWidgets
 
-from ui.render.color import key_cmap_color, key_label_text_color
-from ui.render.keystrip import key_segment_label
+from views.render.color import key_cmap_color, key_label_text_color
+from views.render.keystrip import key_segment_label
 from analyzer.music.key_names import ALPHANUMERIC_LABELS, idx_to_labels
 from system.i18n import tr
 

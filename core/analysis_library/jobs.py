@@ -3,11 +3,11 @@ library's jobs (core.library.jobs), a job is ``job(lib, *args)`` run on the libr
 (core.library.service: one owner for every file of the library), and the app asks the owner for it:
 
     library.read(analysis_jobs.analysis, uid, done=show)        # a track's stored analysis (StoredAnalysis)
-    library.write(analysis_jobs.save_edits, uid, edits)          # the editor's save (TrackEdits)
 
 Below it, core.analysis_library.store is how the files are kept, which nothing outside the library touches, and
-core.analysis_library.stored what their arrays hold. The jobs that store a whole analysis or remove tracks write
-library.db and these files together: they are the library's (core.library.jobs.store_analysis, remove_tracks).
+core.analysis_library.stored what their arrays hold. The jobs that write library.db and these files together are
+the library's (core.library.jobs: store_analysis, save_edits, remove_tracks): this package imports nothing of
+core.library (tests/test_library_boundary.py).
 """
 from __future__ import annotations
 
@@ -16,9 +16,8 @@ from pathlib import Path
 from typing import Optional
 
 from analyzer.training.library_tracks import Annotation
-from core.library.segments import build_bpm_segments, build_key_segments, build_phrase_index_rows
-from core.analysis_library.phrases import assigned_phrases, extract_phrase_segments
-from core.analysis_library.stored import ANNOTATION_BLOCKS, ANNOTATION_KEYS, StoredAnalysis, TrackEdits,     annotation_of, apply_edits
+from core.analysis_library.stored import ANNOTATION_BLOCKS, ANNOTATION_KEYS, FINGERPRINT_KEYS, StoredAnalysis, \
+    annotation_of
 
 
 def analysis(lib, uid: str) -> Optional[StoredAnalysis]:
@@ -29,6 +28,15 @@ def analysis(lib, uid: str) -> Optional[StoredAnalysis]:
         return None
 
 
+def fingerprint_source(lib, uid: str) -> StoredAnalysis:
+    """What the Variants' fingerprint reads of a track's stored analysis: its beats, length and overview (the rest
+    is not decompressed). Raises what the read raised; FileNotFoundError when the track has none stored."""
+    arrays = lib.features.load_keys(uid, FINGERPRINT_KEYS)
+    if arrays is None:
+        raise FileNotFoundError(lib.features.path(uid))
+    return StoredAnalysis.from_arrays(arrays)
+
+
 def features_stamp(lib, uid: str) -> Optional[tuple[int, int]]:
     """When and how large a track's stored analysis was written (the Rekordbox XML's change check)."""
     path = lib.features.path(uid)
@@ -36,24 +44,6 @@ def features_stamp(lib, uid: str) -> Optional[tuple[int, int]]:
         return None
     st = os.stat(path)
     return st.st_mtime_ns, st.st_size
-
-
-# ---- the editor's save ----
-
-def save_edits(lib, uid: str, edits: TrackEdits) -> str:
-    """The editor's save: ``edits`` into the track's stored analysis (each mark's block replaced whole), its segment
-    tables in library.db written from them. Returns the uid. Unmarked (the snapshot read whole, sig_lib_updated
-    sent): the library's phrase / transition filters read those tables and run again on it."""
-    stored = lib.features.load(uid)
-    apply_edits(stored, edits)
-    lib.features.save(uid, stored)
-    bpm_rows = build_bpm_segments(stored.get("tempo_segments"))
-    key_rows = build_key_segments(stored.get("key_segments"))
-    phrase_rows = assigned_phrases(extract_phrase_segments(stored))
-    lib.db.replace_bpm_segments(uid, bpm_rows)
-    lib.db.replace_key_segments(uid, key_rows)
-    lib.db.replace_phrase_index(uid, build_phrase_index_rows(phrase_rows, bpm_rows, key_rows))
-    return uid
 
 
 # ---- Reoptimize (the models trained on the library's edits) ----

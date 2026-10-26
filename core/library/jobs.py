@@ -24,10 +24,14 @@ from PySide6 import QtCore, QtGui
 
 from core.library import music_index, thumbnails, tieups, variants
 from core.library.records import READING_FIELDS, IndexTrack, TrackRow
+from core.library.segments import build_bpm_segments, build_key_segments, build_phrase_index_rows
 from core.library.service import PLAYLISTS, READINGS, TIEUPS, TRACKS, VARIANTS, changes
 from core.tieups.domain import Catalog, TieUp, Work
 from analyzer.search import variants as variant_fp
 from core.analysis_library import jobs as analysis_jobs
+from core.analysis_library.phrases import extract_phrase_segments
+from core.marks.phrases import assigned_phrases
+from core.analysis_library.stored import StoredAnalysis, TrackEdits, apply_edits
 
 
 # ---- tracks ----
@@ -58,15 +62,36 @@ def save_track(lib, row: TrackRow, path_changed: bool) -> Optional[TrackRow]:
 
 def remove_tracks(lib, uids: list[str]) -> None:
     """Tracks out of the library: their rows (their readings, tie-ups and playlist entries go with them), features,
-    thumbnails, and their place in the indexes made from them (each a pass over its index)."""
+    thumbnails, and their place in the indexes made from them (each a pass over its index). The rows go first: a
+    file that cannot be removed (in use) is left behind, said on the console, and the others still go."""
     lib.db.delete_tracks(uids)
     for uid in uids:
-        lib.features.delete(uid)
-        thumbnails.delete_thumbnail(lib.path, uid)
+        for what, remove, args in (("analysis", lib.features.delete, (uid,)),
+                                   ("thumbnail", thumbnails.delete_thumbnail, (lib.path, uid))):
+            try:
+                remove(*args)
+            except OSError as exc:
+                print(f"[Library] a removed track's {what} left behind: {exc}")
     try:
         drop_from_indexes(lib, uids)
     except Exception as exc:        # left for Index Now to drop
         print(f"[Library] removed tracks left in the indexes: {exc}")
+
+
+def save_edits(lib, uid: str, edits: TrackEdits) -> str:
+    """The editor's save: ``edits`` into the track's stored analysis (each mark's block replaced whole), its segment
+    tables in library.db written from them. Returns the uid. Unmarked (the snapshot read whole, sig_lib_updated
+    sent): the library's phrase / transition filters read those tables and run again on it."""
+    stored = lib.features.load(uid)
+    apply_edits(stored, edits)
+    lib.features.save(uid, stored)
+    bpm_rows = build_bpm_segments(stored.get("tempo_segments"))
+    key_rows = build_key_segments(stored.get("key_segments"))
+    phrase_rows = assigned_phrases(extract_phrase_segments(stored))
+    lib.db.replace_bpm_segments(uid, bpm_rows)
+    lib.db.replace_key_segments(uid, key_rows)
+    lib.db.replace_phrase_index(uid, build_phrase_index_rows(phrase_rows, bpm_rows, key_rows))
+    return uid
 
 
 def tag_sources(lib, uid: str) -> dict:
@@ -341,8 +366,8 @@ def store_music_entry(lib, track: IndexTrack, entry) -> None:
 def fingerprint(lib, uid: str) -> int:
     """A track's variants fingerprint from its stored analysis (its beats and overview), queried against the
     library's. The versions found."""
-    stored = analysis_jobs.analysis(lib, uid)
-    if stored is None or stored.wave is None:
+    stored = analysis_jobs.fingerprint_source(lib, uid)
+    if stored.wave is None:
         raise ValueError(f"no stored overview to fingerprint: {uid}")
     con = variants.open_writer(variants.path_for(lib.path))
     try:
@@ -393,7 +418,8 @@ def store_analysis(lib, payload: dict) -> dict:
     the track's row (a reanalysis keeps the user's metadata; a new track given its uid), its tag sources and segment
     tables, its stored analysis (``arrays``, the NPZ) and thumbnail, Search by Music's entry, the Variants' fingerprint
     (queried against the library's), and a new track's versions' tie-ups. Returns the payload with its properties'
-    uid, ``analysis`` (the StoredAnalysis read back, as a library track's is), ``new_track`` and ``tieups`` (taken
+    uid, ``analysis`` (the StoredAnalysis of the arrays stored, made from them in memory; None when they do not
+    read), ``new_track`` and ``tieups`` (taken
     from its versions)."""
     payload = dict(payload)
     stored = payload.pop("store")
@@ -413,7 +439,13 @@ def store_analysis(lib, payload: dict) -> dict:
     db.replace_phrase_index(uid, stored["phrase_sections"])
     db.conn.commit()
     lib.features.save(uid, dict(arrays))
-    payload["analysis"] = analysis_jobs.analysis(lib, uid)
+    # the analysis as a library track's is read (StoredAnalysis), from the arrays just stored: no second read of the
+    # file; one that does not read leaves the deck without it, never the rest of the store undone
+    try:
+        payload["analysis"] = StoredAnalysis.from_arrays(arrays)
+    except Exception as exc:
+        payload["analysis"] = None
+        print(f"[Library] the stored analysis could not be read for the deck: {exc}")
     cover = stored.get("cover")
     thumbnails.save_thumbnail(lib.path, uid, QtGui.QImage.fromData(*cover) if cover is not None else None)
     if stored["music_entry"] is not None:

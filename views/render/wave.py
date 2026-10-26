@@ -1,7 +1,7 @@
 import numpy as np
 
 from analyzer.audio.wave_overview import WAVE_BAND_COUNT, WAVE_BAND_EDGES, WaveOverview
-from ui.render.color import oklab_to_srgb, srgb_to_oklab
+from views.render.color import oklab_to_srgb, srgb_to_oklab
 
 
 # The overview waveform is measured by the analysis (analyzer.audio.wave_overview.WaveOverview: what it holds and

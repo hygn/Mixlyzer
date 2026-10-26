@@ -18,8 +18,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from audioengine.native.client import BOOTH_EQ_DB, LEVEL_DB_MIN, NativeFeeder, booth_eq_knob_to_db, level_knob_to_db
-from audioengine.python.feeder import PCMFeeder
+from audioengine.controls import BOOTH_EQ_DB, LEVEL_DB_MIN, NATIVE_BUFFER_MS_RANGE, NATIVE_EXCLUSIVE_RATES, \
+    PYTHON_BUFFER_MS_RANGE, booth_eq_knob_to_db, level_knob_to_db
 from ui.config.output_group import (
     THREAD_STATE_NAMES,
     AuxOutputGroup,
@@ -147,7 +147,7 @@ def _main_output_groups(dialog) -> tuple[QGroupBox, QGroupBox]:
     dialog.cb_native_output_mode.setToolTip(output_mode_tip())
     dialog.cb_native_rate = QComboBox()
     dialog.cb_native_rate.addItem(tr("The device's"), 0)
-    for rate in NativeFeeder.EXCLUSIVE_RATES:
+    for rate in NATIVE_EXCLUSIVE_RATES:
         dialog.cb_native_rate.addItem(f"{rate / 1000:g} kHz", rate)
     dialog.cb_native_rate.setToolTip(tr(
         "<p>The sample rate the device runs at in exclusive mode (the tracks are decoded for it). Applied from the "
@@ -159,14 +159,14 @@ def _main_output_groups(dialog) -> tuple[QGroupBox, QGroupBox]:
     dialog.cb_output_main = QComboBox()
     dialog.cb_output_main.setToolTip(tr("<p>The device's channels the master plays on.</p>"))
     dialog.sp_native_buffer_ms = QSpinBox()
-    dialog.sp_native_buffer_ms.setRange(*NativeFeeder.BUFFER_MS_RANGE)
+    dialog.sp_native_buffer_ms.setRange(*NATIVE_BUFFER_MS_RANGE)
     dialog.sp_native_buffer_ms.setToolTip(tr(
         "<p>The native engine's audio queued ahead of the output device. Smaller answers sooner (play, pause, seek, "
         "CUE calls, volume, tempo); too small drops out when the computer is busy. The device's own latency comes "
         "after it (shown under the meter).</p>"
     ))
     dialog.sp_python_buffer_ms = QSpinBox()
-    dialog.sp_python_buffer_ms.setRange(*PCMFeeder.BUFFER_MS_RANGE)
+    dialog.sp_python_buffer_ms.setRange(*PYTHON_BUFFER_MS_RANGE)
     dialog.sp_python_buffer_ms.setToolTip(tr(
         "<p>The Python engine's audio queued in the output device ahead of what is heard. Smaller answers sooner "
         "(play, pause, seek, CUE calls, volume, tempo); too small drops out when the computer is busy (with the time "
@@ -386,7 +386,7 @@ class PlaybackSettingsMixin:
 
     def _on_deck_report(self, report) -> None:
         """The deck's mixer values and MIDI input state, for the overview."""
-        from audioengine.native.client import MIX_KEYS
+        from audioengine.controls import MIX_KEYS
         if report.mix:
             self._deck_mix = {k: report.mix_value(k) for k in MIX_KEYS}
         self._midi_state = int(report.midi_state)

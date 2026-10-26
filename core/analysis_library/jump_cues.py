@@ -4,17 +4,17 @@ written as analyzer.music.marks.JumpCueGroup (extract_jump_cue_groups, build_jum
 pairs (the detector's) are made into a block by build_jump_cues_np."""
 from __future__ import annotations
 
-from dataclasses import replace
 from typing import Any, Dict, List
 
 import numpy as np
 
-from analyzer.music.marks import JumpCue, JumpCueGroup
-from core.analysis_library.jumpcue_colors import JUMPCUE_PAIR_COLORS
+from analyzer.music.marks import JumpCue, JumpCueGroup, cues_by_point
+from core.marks.colors import JUMPCUE_PAIR_COLORS
+from core.marks.jump_cues import SLOT_LETTERS, check_slot_letters
 from system.i18n import tr
 
 
-_VALID_JUMPCUE_LABELS = set("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+_VALID_JUMPCUE_LABELS = set(SLOT_LETTERS)
 
 _GRAPH_BLOCK_REQUIRED = [
     "cue_id",
@@ -65,9 +65,8 @@ def _cue_color_idx(cue: dict) -> int | None:
 
 
 def _label_from_index(idx: int) -> str:
-    alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-    if 0 <= idx < len(alphabet):
-        return alphabet[idx]
+    if 0 <= idx < len(SLOT_LETTERS):
+        return SLOT_LETTERS[idx]
     raise ValueError(tr("JumpCUE labels are limited to unique A-Z."))
 
 
@@ -358,8 +357,12 @@ def _block_groups(block: Dict[str, Any]) -> List[JumpCueGroup]:
     members: dict[int, list[JumpCue]] = {}
     for i in range(cue_length):
         graph_idx = graph_of_cue.get(int(block["cue_id"][i]), 0)
+        # a letter in its one spelling (build_jump_cue_block's: "a" / " B" are slots A / B); a name that was the
+        # letter follows it
+        stored_label, comment = str(block["cue_label"][i]), str(block["cue_comment"][i])
+        label = stored_label.strip().upper()
         members.setdefault(graph_idx, []).append(JumpCue(
-            label=str(block["cue_label"][i]), comment=str(block["cue_comment"][i]),
+            label=label, comment=label if comment == stored_label else comment,
             start=float(block["cue_start"][i]), end=float(block["cue_end"][i]), point=float(block["cue_point"][i])))
     return [JumpCueGroup(tuple(sorted(cues, key=lambda cue: cue.point)), int(color_of_graph.get(g, g)))
             for g, cues in sorted(members.items())]
@@ -372,34 +375,17 @@ def jump_cue_point_groups(features: Dict[str, Any], key: str = "jump_cues_np") -
             if len(group.cues) >= 2]
 
 
-def has_slot_letters(groups: List[JumpCueGroup]) -> bool:
-    """Every cue in a slot of its own: a single letter A-Z, no two alike."""
-    labels = [cue.label.strip().upper() for group in groups for cue in group.cues]
-    return all(label in _VALID_JUMPCUE_LABELS for label in labels) and len(labels) == len(set(labels))
-
-
-def lettered_by_point(groups: List[JumpCueGroup]) -> List[JumpCueGroup]:
-    """The groups with their cues lettered A-Z by point (a name that was its letter follows it)."""
-    order = sorted((cue.point, gi, ci) for gi, group in enumerate(groups) for ci, cue in enumerate(group.cues))
-    letter = {(gi, ci): _label_from_index(k) for k, (_point, gi, ci) in enumerate(order)}
-    return [replace(group, cues=tuple(replace(cue, label=letter[(gi, ci)],
-                                              comment=letter[(gi, ci)] if cue.comment == cue.label else cue.comment)
-                                      for ci, cue in enumerate(group.cues)))
-            for gi, group in enumerate(groups)]
-
-
 def build_jump_cue_block(groups: List[JumpCueGroup] | None) -> Dict[str, np.ndarray]:
     """The stored graph block of ``groups`` (empty groups left out): the cues numbered by point, the groups by their
     first cue's point, each with its colour preset; a cue without a name stored with its letter as its comment.
     ValueError when the letters are not single letters A-Z, no two alike (each cue is a slot)."""
     groups = [group for group in (groups or []) if group.cues]
-    if not has_slot_letters(groups):
-        raise ValueError(tr("JumpCUE labels must be unique single letters A-Z."))
+    check_slot_letters(groups)
     if not groups:
         return _empty_jump_cues_np()
     groups = sorted(groups, key=lambda group: min(cue.point for cue in group.cues))
-    cues = sorted(((cue, gi) for gi, group in enumerate(groups) for cue in group.cues), key=lambda item: item[0].point)
-    labels = [cue.label.strip().upper() for cue, _gi in cues]
+    cues = cues_by_point(groups)
+    labels = [cue.label for cue, _gi in cues]
     comments = [str(cue.comment or "") or label for (cue, _gi), label in zip(cues, labels)]
     return {
         "cue_id": np.arange(len(cues), dtype=np.int32),
@@ -419,7 +405,5 @@ __all__ = [
     "build_jump_cues_np",
     "build_jump_cue_block",
     "extract_jump_cue_groups",
-    "has_slot_letters",
     "jump_cue_point_groups",
-    "lettered_by_point",
 ]

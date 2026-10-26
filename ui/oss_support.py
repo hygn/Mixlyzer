@@ -1,5 +1,5 @@
 from PySide6 import QtCore, QtGui, QtWidgets
-from audioengine.native.client import available as native_engine_built
+from core.playback.player import native_engine_built
 from system import os_support
 from system.i18n import tr
 

@@ -6,7 +6,7 @@ import numpy as np
 
 from analyzer.music.tempo_rows import END_BPM_COLUMN, segment_end_bpm
 from analyzer.music.key_names import idx_to_labels
-from core.analysis_library.phrases import assigned_phrases
+from core.marks.phrases import assigned_phrases
 
 
 def key_value_to_label(key_value: int | None) -> str:

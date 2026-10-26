@@ -2,7 +2,6 @@
 moving along them. The model alone keeps it."""
 from __future__ import annotations
 
-import copy
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -15,7 +14,8 @@ MAX_HISTORY = 50
 
 @dataclass
 class Marks:
-    """The edited marks at one moment, as the model holds them (copies: a snapshot never changes)."""
+    """The edited marks at one moment, as the model holds them (copies: a snapshot never changes; the marks are
+    frozen dataclasses, so a copy of each list is a copy of them)."""
     beats: np.ndarray
     tempo_segments: np.ndarray
     key_segments: np.ndarray
@@ -27,9 +27,9 @@ class Marks:
         self.beats = np.asarray(self.beats, dtype=float).copy()
         self.tempo_segments = np.asarray(self.tempo_segments, dtype=float).copy()
         self.key_segments = np.asarray(self.key_segments, dtype=float).copy()
-        self.phrases = copy.deepcopy(self.phrases)
-        self.jump_cues = copy.deepcopy(self.jump_cues)
-        self.cue_points = copy.deepcopy(self.cue_points)
+        self.phrases = list(self.phrases)
+        self.jump_cues = list(self.jump_cues)
+        self.cue_points = list(self.cue_points)
 
     def clone(self) -> Marks:
         return Marks(self.beats, self.tempo_segments, self.key_segments, self.phrases, self.jump_cues,
@@ -64,6 +64,11 @@ class History:
             return None
         self.index += 1
         return self.entries[self.index].clone()
+
+    def current(self) -> Optional[Marks]:
+        """The snapshot shown, the history's own (never changed: the model compares it by identity, as the one
+        saved)."""
+        return self.entries[self.index] if 0 <= self.index < len(self.entries) else None
 
     def can_undo(self) -> bool:
         return self.index > 0

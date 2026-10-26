@@ -9,9 +9,9 @@ from typing import Optional
 import numpy as np
 from PySide6 import QtCore, QtMultimedia
 
-from audioengine.native.client import (
-    MIDI_EVENT_GUI, MIDI_EVENT_HOTCUE_SET, NO_CHANNEL, DeckReport, NativeClicks, NativeEngine, NativeFeeder,
-)
+from audioengine.controls import MIDI_EVENT_GUI, MIDI_EVENT_HOTCUE_SET, DeckReport
+from audioengine.native import client as native_client
+from audioengine.native.client import NO_CHANNEL, NativeClicks, NativeEngine, NativeFeeder
 from audioengine.python.clicks import ClickTrack
 from audioengine.python.deck import PythonDeck
 from audioengine.python.feeder import PCMFeeder
@@ -540,6 +540,12 @@ class _AudioWorker(QtCore.QObject):
                 events = [e for e in events if e[3] & (MIDI_EVENT_GUI | MIDI_EVENT_HOTCUE_SET)]
             if events:
                 self.midi_events.emit(events)
+
+
+def native_engine_built() -> bool:
+    """The native engine is built (its executable there; whether it starts is known when it does): what the
+    interface asks of the engines, never their modules (audioengine.controls aside)."""
+    return native_client.available()
 
 
 def channel_pair(text: str) -> tuple[int, int] | None:

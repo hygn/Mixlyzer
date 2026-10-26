@@ -5,8 +5,9 @@
     i18n            the UI's language and its catalogs (tr)
     model_files     a learned model's file: the user's, else the shipped default
     atomic_io       files replaced whole or not at all
+    ids             the app's ids (UUIDv4s) in one spelling
     process_worker  a spawned worker process's Qt lifecycle (its messages, its end)
 
 The layers, each importing only those before it (tests/test_layers.py): system -> analyzer, audioengine -> core ->
-views, ui -> app.
+views -> ui -> app.
 """

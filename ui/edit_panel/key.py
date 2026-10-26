@@ -7,11 +7,11 @@ from analyzer.music.beat_geometry import downbeat_beat_indices
 from ui.edit_panel.blocks import mode_column, rule_cell
 from ui.edit_panel.icons import badged_icon, badged_icon_beside, icon
 from ui.edit_panel.key_picker import ALPHANUMERIC_INDEX, KeyPickerPopup
-from ui.render.color import key_cmap_color, key_label_text_color
-from ui.render.keystrip import key_segment_label
+from views.render.color import key_cmap_color, key_label_text_color
+from views.render.keystrip import key_segment_label
 from analyzer.music.key_names import ALPHANUMERIC_LABELS
-from core.analysis_library.phrases import assigned_phrases
-from core.workers.segment_reanalysis import KEY_DYNAMIC, KEY_STATIC, ReanalysisRequest
+from core.marks.phrases import assigned_phrases
+from core.track.reanalysis import KEY_DYNAMIC, KEY_STATIC, ReanalysisRequest
 from system.i18n import tr, tr_mark
 from ui.live_label import LiveLabel
 

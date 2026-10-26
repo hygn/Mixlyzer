@@ -2,14 +2,14 @@ from PySide6 import QtCore, QtWidgets, QtGui
 import numpy as np
 import pyqtgraph as pg
 from core.workflows.event_bus import EventBus
-from core.analysis_library.jumpcue_colors import get_cue_point_color, jump_cue_colors
-from core.analysis_library.phrases import (
+from core.marks.colors import get_cue_point_color, jump_cue_colors
+from core.marks.phrases import (
     abbreviate_phrase_labels,
     phrase_strip_segments,
 )
-from ui.render.color import key_label_text_color
-from ui.render.keystrip import key_segment_label, key_segment_rows, key_strip_segments
-from ui.render.wave import band_ranges, render_wave_overview
+from views.render.color import key_label_text_color
+from views.render.keystrip import key_segment_label, key_segment_rows, key_strip_segments
+from views.render.wave import band_ranges, render_wave_overview
 from views.base import EDIT_PAGES, edit_emphasis, emphasis_opacity, emphasis_size, emphasis_width
 from views.segment_strip import SegmentStrip
 from core.settings.config import load_cfg

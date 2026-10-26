@@ -37,7 +37,7 @@ class phraselabelname:
 
 @dataclass
 class phraselabelnames:
-    """How each phrase label is shown (core.analysis_library.phrases.PHRASE_LABELS, lowercased)."""
+    """How each phrase label is shown (core.marks.phrases.PHRASE_LABELS, lowercased)."""
     lead_in: phraselabelname
     intro: phraselabelname
     verse: phraselabelname
@@ -68,7 +68,7 @@ class viewconfig:
     env_mid: Tuple[float, float]
     env_hi: Tuple[float, float]
     # main view waveform: drawing frame (bar) length (ms) of the short views (up to
-    # ui.timeline.SHORT_WINDOW_MAX_SEC wide) and of the longer ones
+    # views.timeline.SHORT_WINDOW_MAX_SEC wide) and of the longer ones
     mainview_wave_frame_ms_short: float
     mainview_wave_frame_ms_long: float
     mainview_wave_filter_order: int  # main view waveform: band filter order
@@ -228,7 +228,7 @@ class cuepointrule:
 @dataclass
 class cuepointconfig:
     """CUE points the analysis sets from the phrases, by phrase label (the
-    predefined labels, core.analysis_library.phrases.PHRASE_LABELS, lowercased). LEAD_IN has no
+    predefined labels, core.marks.phrases.PHRASE_LABELS, lowercased). LEAD_IN has no
     rule: where it ends is analysisconfig.autocue."""
     intro: cuepointrule
     verse: cuepointrule

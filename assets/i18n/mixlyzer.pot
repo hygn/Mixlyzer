@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-27 02:50+0900\n"
+"POT-Creation-Date: 2026-10-27 03:45+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -552,23 +552,39 @@ msgstr ""
 msgid "The audio engine did not start; it is tried again every 2 seconds."
 msgstr ""
 
-#: app/window.py:533 app/window.py:587
+#: app/window.py:533 app/window.py:598
 msgid "External Sync is enabled. Local track loading is disabled."
 msgstr ""
 
-#: app/window.py:546
+#: app/window.py:546 app/window.py:601
 msgid "Segment reanalysis canceled (track changed)"
 msgstr ""
 
-#: app/window.py:592
+#: app/window.py:582
+#, python-brace-format
+msgid "The track's analysis could not be read: {file}"
+msgstr ""
+
+#: app/window.py:586
+#, python-brace-format
+msgid ""
+"{n} JumpCUE past slot Z is not shown ({file}); it stays stored until the "
+"JumpCUEs are edited."
+msgid_plural ""
+"{n} JumpCUEs past slot Z are not shown ({file}); they stay stored until "
+"the JumpCUEs are edited."
+msgstr[0] ""
+msgstr[1] ""
+
+#: app/window.py:604
 msgid "Track unloaded."
 msgstr ""
 
-#: app/window.py:602
+#: app/window.py:614
 msgid "Track File Not Found"
 msgstr ""
 
-#: app/window.py:606
+#: app/window.py:618
 #, python-brace-format
 msgid ""
 "Cannot load \"{name}\": its file is missing.\n"
@@ -577,58 +593,56 @@ msgid ""
 "Set the file's new location?"
 msgstr ""
 
-#: app/window.py:613
+#: app/window.py:625
 #, python-brace-format
 msgid "Locate {name}"
 msgstr ""
 
-#: app/window.py:637 app/window.py:653
+#: app/window.py:649 app/window.py:665
 msgid "Analysis saved to library."
 msgstr ""
 
-#: app/window.py:642
+#: app/window.py:654
 msgid "Finished"
 msgstr ""
 
-#: app/window.py:665
+#: app/window.py:677
 msgid "Waiting to be looked up on Wikipedia"
 msgstr ""
 
-#: app/window.py:671
+#: app/window.py:683
 msgid "Looking up on Wikipedia and Wikidata…"
 msgstr ""
 
-#: app/window.py:676
+#: app/window.py:688
 msgid "The lookup failed."
 msgstr ""
 
-#: app/window.py:712
+#: app/window.py:724
 #, python-brace-format
 msgid "External Sync loading: {file}"
 msgstr ""
 
-#: app/window.py:712
+#: app/window.py:724
 #, python-brace-format
 msgid "External Sync analyzing: {file}"
 msgstr ""
 
-#: app/window.py:727
+#: app/window.py:739
 msgid "External Sync Disabled"
 msgstr ""
 
-#: app/window.py:998
+#: app/window.py:1010
 #, python-brace-format
 msgid "External Sync enabled: OSC on {address}. Local play/load is locked."
 msgstr ""
 
-#: core/analysis_library/jump_cues.py:71
+#: core/analysis_library/jump_cues.py:70
 msgid "JumpCUE labels are limited to unique A-Z."
 msgstr ""
 
-#: core/analysis_library/jump_cues.py:98 core/analysis_library/jump_cues.py:101
-#: core/analysis_library/jump_cues.py:237
-#: core/analysis_library/jump_cues.py:397 core/analysis_library/stored.py:132
-#: core/track/model.py:180
+#: core/analysis_library/jump_cues.py:97 core/analysis_library/jump_cues.py:100
+#: core/analysis_library/jump_cues.py:236 core/marks/jump_cues.py:26
 msgid "JumpCUE labels must be unique single letters A-Z."
 msgstr ""
 
@@ -1457,25 +1471,29 @@ msgstr ""
 msgid "Rekordbox XML sync complete"
 msgstr ""
 
-#: core/workers/segment_reanalysis.py:103
+#: core/workers/segment_reanalysis.py:66
+msgid "The segment reanalysis gave no result."
+msgstr ""
+
+#: core/workers/segment_reanalysis.py:74
 #, python-brace-format
 msgid "Segment analysis process exited unexpectedly ({code})."
 msgstr ""
 
-#: core/workers/segment_reanalysis.py:140
+#: core/workers/segment_reanalysis.py:111
 msgid "Segment updated"
 msgstr ""
 
-#: core/workers/segment_reanalysis.py:148
-#: core/workers/segment_reanalysis.py:155
+#: core/workers/segment_reanalysis.py:119
+#: core/workers/segment_reanalysis.py:125
 msgid "Key segment updated"
 msgstr ""
 
-#: core/workers/segment_reanalysis.py:160
+#: core/workers/segment_reanalysis.py:130
 msgid "JumpCUE Updated"
 msgstr ""
 
-#: core/workers/segment_reanalysis.py:163
+#: core/workers/segment_reanalysis.py:133
 msgid "Phrases Updated"
 msgstr ""
 
@@ -4659,7 +4677,7 @@ msgstr ""
 msgid "CUE color / delete"
 msgstr ""
 
-#: ui/edit_panel/cuepoint.py:69 ui/edit_panel/jumpcue.py:112
+#: ui/edit_panel/cuepoint.py:69 ui/edit_panel/jumpcue.py:115
 #, python-brace-format
 msgid "{time} - double-click to rename"
 msgstr ""
@@ -4686,53 +4704,53 @@ msgstr ""
 msgid "Color (its group), beat moves, slots, delete"
 msgstr ""
 
-#: ui/edit_panel/jumpcue.py:103
+#: ui/edit_panel/jumpcue.py:106
 msgid "SET: a JumpCUE in this slot at the nearest beat or track edge"
 msgstr ""
 
-#: ui/edit_panel/jumpcue.py:108
+#: ui/edit_panel/jumpcue.py:111
 msgid "Jump here on the next beat (when stopped: move the playhead here)"
 msgstr ""
 
-#: ui/edit_panel/jumpcue.py:160
+#: ui/edit_panel/jumpcue.py:163
 msgid "Color (cues of one color jump between each other)"
 msgstr ""
 
-#: ui/edit_panel/jumpcue.py:163
+#: ui/edit_panel/jumpcue.py:166
 msgid "(unused)"
 msgstr ""
 
-#: ui/edit_panel/jumpcue.py:167
+#: ui/edit_panel/jumpcue.py:170
 msgid "This color"
 msgstr ""
 
-#: ui/edit_panel/jumpcue.py:168
+#: ui/edit_panel/jumpcue.py:171
 msgid "One beat earlier"
 msgstr ""
 
-#: ui/edit_panel/jumpcue.py:169
+#: ui/edit_panel/jumpcue.py:172
 msgid "One beat later"
 msgstr ""
 
-#: ui/edit_panel/jumpcue.py:170
+#: ui/edit_panel/jumpcue.py:173
 msgid "Slots"
 msgstr ""
 
-#: ui/edit_panel/jumpcue.py:172
+#: ui/edit_panel/jumpcue.py:175
 #, python-brace-format
 msgid "Insert a slot at {letter} (this and later cues move one slot on)"
 msgstr ""
 
-#: ui/edit_panel/jumpcue.py:176
+#: ui/edit_panel/jumpcue.py:179
 #, python-brace-format
 msgid "Move into the empty slot {letter} (this and later cues move one slot back)"
 msgstr ""
 
-#: ui/edit_panel/jumpcue.py:213
+#: ui/edit_panel/jumpcue.py:216
 msgid "Two JumpCUEs cannot share a point."
 msgstr ""
 
-#: ui/edit_panel/jumpcue.py:219 ui/edit_panel/panel.py:575
+#: ui/edit_panel/jumpcue.py:222 ui/edit_panel/panel.py:576
 msgid "Invalid JumpCUE Label"
 msgstr ""
 
@@ -4916,53 +4934,53 @@ msgstr ""
 msgid "Edit the JumpCUEs and CUE points"
 msgstr ""
 
-#: ui/edit_panel/panel.py:586
+#: ui/edit_panel/panel.py:589
 #, python-brace-format
 msgid ""
 "The edits could not be saved:\n"
 "{error}"
 msgstr ""
 
-#: ui/edit_panel/panel.py:619
+#: ui/edit_panel/panel.py:622
 msgid ""
 "<p>Editing is locked: pages switch, but nothing is edited or saved. Click"
 " to unlock.</p>"
 msgstr ""
 
-#: ui/edit_panel/panel.py:621
+#: ui/edit_panel/panel.py:624
 msgid ""
 "<p>Editing is unlocked: the shown pages' graphics are emphasized. Click "
 "to lock: no edits, no saving (on at every start).</p>"
 msgstr ""
 
-#: ui/edit_panel/panel.py:732
+#: ui/edit_panel/panel.py:735
 #, python-brace-format
 msgid "This shortcut does nothing on the {page} page."
 msgstr ""
 
-#: ui/edit_panel/panel.py:740
+#: ui/edit_panel/panel.py:743
 msgid "Editing is locked."
 msgstr ""
 
-#: ui/edit_panel/panel.py:742
+#: ui/edit_panel/panel.py:745
 msgid "Editing waits for the segment reanalysis to finish."
 msgstr ""
 
-#: ui/edit_panel/panel.py:775 ui/edit_panel/panel.py:788
+#: ui/edit_panel/panel.py:778 ui/edit_panel/panel.py:791
 #, python-brace-format
 msgid "JumpCUE {letter} is not set."
 msgstr ""
 
-#: ui/edit_panel/panel.py:784
+#: ui/edit_panel/panel.py:787
 #, python-brace-format
 msgid "JumpCUE {letter} is already set."
 msgstr ""
 
-#: ui/edit_panel/panel.py:804
+#: ui/edit_panel/panel.py:807
 msgid "CALL works while stopped."
 msgstr ""
 
-#: ui/edit_panel/panel.py:820
+#: ui/edit_panel/panel.py:823
 msgid "No CUE point at the playhead."
 msgstr ""
 
@@ -6184,7 +6202,7 @@ msgstr ""
 msgid "MEMORY: set a CUE point at the nearest beat or track edge"
 msgstr ""
 
-#: ui/edit_panel/jumpcue.py:180 ui/shortcuts.py:117
+#: ui/edit_panel/jumpcue.py:183 ui/shortcuts.py:117
 #, python-brace-format
 msgid "Delete JumpCUE {letter}"
 msgstr ""
@@ -6380,15 +6398,15 @@ msgstr ""
 msgid "It becomes the current page."
 msgstr ""
 
-#: ui/edit_panel/panel.py:217 ui/shortcuts.py:174
+#: ui/edit_panel/panel.py:218 ui/shortcuts.py:174
 msgid "Undo Changes"
 msgstr ""
 
-#: ui/edit_panel/panel.py:221 ui/shortcuts.py:175
+#: ui/edit_panel/panel.py:222 ui/shortcuts.py:175
 msgid "Redo Changes"
 msgstr ""
 
-#: ui/edit_panel/panel.py:225 ui/shortcuts.py:176
+#: ui/edit_panel/panel.py:226 ui/shortcuts.py:176
 msgid "Save Edits"
 msgstr ""
 
@@ -6877,7 +6895,7 @@ msgstr ""
 msgid "The tracks with a tie-up to this work: a change to the work is theirs."
 msgstr ""
 
-#: ui/edit_panel/panel.py:586 ui/tieup_works.py:90
+#: ui/edit_panel/panel.py:589 ui/tieup_works.py:90
 msgid "Save"
 msgstr ""
 

@@ -5,23 +5,10 @@ from __future__ import annotations
 import time
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Optional, Tuple
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 from core.search import reading
-
-
-def canonical_uuid4(value: object) -> str:
-    parsed = UUID(str(value).strip())
-    if parsed.version != 4:
-        raise ValueError(f"Expected UUIDv4, got version {parsed.version}")
-    return str(parsed)
-
-
-def canonical_uuid4_or_none(value: object) -> Optional[str]:
-    text = str(value or "").strip()
-    if not text:
-        return None
-    return canonical_uuid4(text)
+from system.ids import canonical_uuid4
 
 
 @dataclass

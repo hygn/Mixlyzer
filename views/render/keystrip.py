@@ -1,6 +1,6 @@
 import math
 import numpy as np
-from ui.render.color import key_cmap_color
+from views.render.color import key_cmap_color
 
 
 def key_strip_segments(key_segments) -> list[tuple[float, float, tuple[int, int, int]]]:

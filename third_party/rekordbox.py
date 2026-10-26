@@ -16,7 +16,7 @@ from core.library.records import TrackRow
 from analyzer.music.key_names import idx_to_labels
 from core.analysis_library.stored import StoredAnalysis
 from analyzer.music.tempo_rows import is_ramp_row, ramp_beat_times, segment_end_bpm
-from core.analysis_library.jumpcue_colors import get_cue_point_color, jump_cue_colors
+from core.marks.colors import get_cue_point_color, jump_cue_colors
 
 ResolvePath = Callable[[str | None], Optional[Path]]
 

@@ -6,7 +6,7 @@ from typing import Optional
 import numpy as np
 from PySide6 import QtCore, QtGui, QtWidgets
 
-from audioengine.native import client as deck
+from audioengine import controls as deck
 from analyzer.music.beat_geometry import downbeat_beat_indices
 from analyzer.music.marks import CuePoint, JumpCueGroup, Phrase
 from core.workflows.event_bus import EventBus
@@ -20,7 +20,7 @@ from ui.edit_panel.icons import icon
 from ui.edit_panel.jumpcue import JumpCUEEditMixin
 from ui.edit_panel.key import KeyEditMixin
 from ui.edit_panel.phrase import PhraseEditMixin
-from core.analysis_library import jobs as analysis_jobs
+from core.library import jobs as library_jobs
 from ui.edit_panel.styles import BUTTON_STYLESHEET, WARNING_BUTTON_STYLESHEET
 from ui.theme import current_theme
 from system.i18n import tr, tr_mark
@@ -82,6 +82,7 @@ class EditPanel(
         # the pages whose visualizations the views emphasize (sig_edit_focus_changed)
         self._edit_focus: frozenset = frozenset()
         self._save_in_progress = False
+        self._save_point: tuple = ()          # the model's save point of the save running (DataModel.save_point)
         self.tempo_multiplier = 1
         self._playing = False
         # BeatCounter: while the Count button is held, count beats crossed by
@@ -576,8 +577,10 @@ class EditPanel(
             return
         self._save_in_progress = True
         self.btn_save.setEnabled(False)
-        # written by the library's owner (analysis_jobs.save_edits); a failure said, the edits kept unsaved
-        self._library.write(analysis_jobs.save_edits, self.uid, edits, done=self._on_save_finished,
+        # what this save stores: an edit made while it runs stays unsaved
+        self._save_point = self.model.save_point()
+        # written by the library's owner (library_jobs.save_edits); a failure said, the edits kept unsaved
+        self._library.write(library_jobs.save_edits, self.uid, edits, done=self._on_save_finished,
                             failed=self._on_save_failed)
 
     def _on_save_failed(self, exc: Exception) -> None:
@@ -589,8 +592,8 @@ class EditPanel(
         self._save_in_progress = False
         self.btn_save.setEnabled(self._edit_enabled)
         uid = str(saved_uid or "").strip()
-        if uid and uid == self.uid:      # still the loaded track: its edits are stored
-            self.model.mark_saved()
+        if uid and uid == self.uid:      # still the loaded track: the edits of the save point are stored
+            self.model.mark_saved(self._save_point)
         if uid:
             try:
                 self.bus.sig_rekordbox_sync_track_requested.emit(uid)

@@ -53,7 +53,7 @@ _BEAT_FEATURE_CACHE_KEYS = frozenset(
         "audio_mtime_ns",
     }
 )
-_PHRASE_TIME_TOLERANCE_SEC = 1e-4   # the stored phrases' float32 resolution (core.analysis_library.phrases.MIN_PHRASE_DUR)
+_PHRASE_TIME_TOLERANCE_SEC = 1e-4   # the stored phrases' float32 resolution (core.marks.phrases.MIN_PHRASE_DUR)
 # Stored phrase/tempo-segment ends sit up to ~1 ms before duration_sec, so track-edge
 # coverage is checked with a looser tolerance than segment contiguity.
 _COVERAGE_TOLERANCE_SEC = 0.01

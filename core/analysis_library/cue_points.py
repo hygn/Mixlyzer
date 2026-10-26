@@ -15,7 +15,7 @@ CUE_POINT_KEYS = (
     "cue_time_sec",
     "cue_label",
     "cue_comment",
-    "cue_color_idx",  # colour preset (core.analysis_library.jumpcue_colors.CUE_POINT_COLORS)
+    "cue_color_idx",  # colour preset (core.marks.colors.CUE_POINT_COLORS)
 )
 
 

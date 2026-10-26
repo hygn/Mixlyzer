@@ -13,9 +13,9 @@ from core.search import reading
 from core.library import tieups
 from core.library.records import (
     READING_FIELDS, USER_SOURCE, BpmSegmentRow, KeySegmentRow, LinearTransitionRow, PhraseIndexRow, PlaylistRow,
-    TrackRow, canonical_uuid4 as _canonical_uuid4, canonical_uuid4_or_none as _canonical_uuid4_or_none,
-    field_readings,
+    TrackRow, field_readings,
 )
+from system.ids import canonical_uuid4 as _canonical_uuid4, canonical_uuid4_or_none as _canonical_uuid4_or_none
 from core.library.segments import harmonic_compatible_keys
 from analyzer.music.key_names import idx_to_labels
 from system.i18n import tr

@@ -10,7 +10,7 @@ from ui.edit_panel.icons import icon
 from ui.edit_panel.jumpcue import format_cue_time
 from ui.edit_panel.quantize import quantize_to_beat_or_edge
 from analyzer.music.marks import CuePoint
-from core.analysis_library.jumpcue_colors import CUE_POINT_COLORS, get_cue_point_color
+from core.marks.colors import CUE_POINT_COLORS, get_cue_point_color
 from system.i18n import tr
 
 # the playhead is on a CUE point this close to it (CALL puts it exactly there)
@@ -47,7 +47,7 @@ class CuePointEditMixin:
         page.page_changed.connect(self._refresh_cue_point_slots)
         return [self.cp_memory]
 
-    def _cp_at(self, slot: int) -> dict | None:
+    def _cp_at(self, slot: int) -> CuePoint | None:
         i = self.cue_page.page_start(1) + int(slot)
         return self._cue_points[i] if 0 <= i < len(self._cue_points) else None
 

@@ -13,7 +13,7 @@ import math
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
-from audioengine.native import client
+from audioengine import controls
 from core.workflows.event_bus import EventBus
 from system.i18n import tr
 from ui.deck_controls import KNOB, Lamp, Segment, block, blocks_row, label, segments
@@ -86,9 +86,9 @@ class DeckSwitches(QtWidgets.QWidget):
 
         # Sound Color FX: the effect, the channel's COLOR knob, PARAMETER
         self.color_type = QtWidgets.QComboBox()
-        for code, name in enumerate(client.COLOR_TYPES):
+        for code, name in enumerate(controls.COLOR_TYPES):
             self.color_type.addItem(name, code)
-        self.color_type.addItem("OFF", client.COLOR_OFF)
+        self.color_type.addItem("OFF", controls.COLOR_OFF)
         self.color_type.setSizeAdjustPolicy(QtWidgets.QComboBox.AdjustToContents)
         self.color_type.setToolTip(tr("Sound Color FX: the effect the COLOR knob turns on (OFF: none)."))
         self.color_type.activated.connect(lambda _i: self._mix("color_type", self.color_type.currentData()))
@@ -120,7 +120,7 @@ class DeckSwitches(QtWidgets.QWidget):
 
     def step_color_type(self, by: int) -> None:
         """The next / previous Sound Color FX, OFF among them."""
-        codes = list(range(len(client.COLOR_TYPES))) + [client.COLOR_OFF]
+        codes = list(range(len(controls.COLOR_TYPES))) + [controls.COLOR_OFF]
         report = self._report
         now = int(report.mix_value("color_type", 5.0)) if report is not None and report.mix else 5
         at = codes.index(now) if now in codes else 0
@@ -175,19 +175,19 @@ class MasterLevels(QtWidgets.QWidget):
         self.master = self._level_knob(lambda v: self.bus.sig_mixer_requested.emit("master_level", v))
         self.phones = self._level_knob(lambda v: self.bus.sig_mixer_requested.emit("hp_a_level", v))
         blocks_row(self, [block("LEVEL", [label("MASTER"), self.master, 10, label("PHONES"), self.phones])])
-        self._show_level(self.master, tr("Master level"), client.LEVEL_UNITY)
-        self._show_level(self.phones, tr("Headphones level"), client.LEVEL_UNITY)
+        self._show_level(self.master, tr("Master level"), controls.LEVEL_UNITY)
+        self._show_level(self.phones, tr("Headphones level"), controls.LEVEL_UNITY)
 
     def _level_knob(self, request) -> Knob:
-        knob = Knob(KNOB, neutral=client.LEVEL_UNITY)
+        knob = Knob(KNOB, neutral=controls.LEVEL_UNITY)
         knob.moved.connect(request)
         return knob
 
     @staticmethod
     def _show_level(knob: Knob, title: str, value: float) -> None:
         knob.set_value(value)
-        db = client.level_knob_to_db(knob.value())
-        text = tr("-inf dB") if db <= client.LEVEL_DB_MIN else f"{db:+.1f} dB"
+        db = controls.level_knob_to_db(knob.value())
+        text = tr("-inf dB") if db <= controls.LEVEL_DB_MIN else f"{db:+.1f} dB"
         knob.setToolTip(tr("{name}: {level} (double-click: 0 dB)").format(name=title, level=text))
 
     def set_available(self, available: bool) -> None:
@@ -198,6 +198,6 @@ class MasterLevels(QtWidgets.QWidget):
             return
         for knob, key, title in ((self.master, "master_level", tr("Master level")),
                                  (self.phones, "hp_a_level", tr("Headphones level"))):
-            value = report.mix_value(key, client.LEVEL_UNITY)
+            value = report.mix_value(key, controls.LEVEL_UNITY)
             if abs(value - knob.value()) > 1e-6:
                 self._show_level(knob, title, value)

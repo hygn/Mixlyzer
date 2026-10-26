@@ -5,7 +5,7 @@ import os
 from typing import Any, Dict, Optional
 import numpy as np
 
-from core.library.records import canonical_uuid4 as _canonical_uuid4
+from system.ids import canonical_uuid4 as _canonical_uuid4
 from system.atomic_io import atomic_output_path
 
 def _ensure_dir(d: str) -> str:

@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-27 02:50+0900\n"
+"POT-Creation-Date: 2026-10-27 03:45+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ja_JP\n"
@@ -581,23 +581,39 @@ msgstr "オーディオエンジンを再起動しました。"
 msgid "The audio engine did not start; it is tried again every 2 seconds."
 msgstr "オーディオエンジンが起動しませんでした。2 秒ごとに再試行します。"
 
-#: app/window.py:533 app/window.py:587
+#: app/window.py:533 app/window.py:598
 msgid "External Sync is enabled. Local track loading is disabled."
 msgstr "外部同期が有効です。ローカルでのトラックの読み込みは無効になります。"
 
-#: app/window.py:546
+#: app/window.py:546 app/window.py:601
 msgid "Segment reanalysis canceled (track changed)"
 msgstr "区間の再解析をキャンセルしました (トラックが変わりました)"
 
-#: app/window.py:592
+# | msgid "Phrase reanalysis completed"
+#: app/window.py:582
+#, python-brace-format
+msgid "The track's analysis could not be read: {file}"
+msgstr "トラックの解析を読み込めませんでした: {file}"
+
+#: app/window.py:586
+#, python-brace-format
+msgid ""
+"{n} JumpCUE past slot Z is not shown ({file}); it stays stored until the "
+"JumpCUEs are edited."
+msgid_plural ""
+"{n} JumpCUEs past slot Z are not shown ({file}); they stay stored until "
+"the JumpCUEs are edited."
+msgstr[0] "スロットZを超えるJumpCUE {n}個は表示されません（{file}）。JumpCUEを編集するまでは保存されたまま残ります。"
+
+#: app/window.py:604
 msgid "Track unloaded."
 msgstr "トラックをアンロードしました。"
 
-#: app/window.py:602
+#: app/window.py:614
 msgid "Track File Not Found"
 msgstr "トラックファイルが見つかりません"
 
-#: app/window.py:606
+#: app/window.py:618
 #, python-brace-format
 msgid ""
 "Cannot load \"{name}\": its file is missing.\n"
@@ -610,63 +626,61 @@ msgstr ""
 "\n"
 "ファイルの新しい場所を指定しますか?"
 
-#: app/window.py:613
+#: app/window.py:625
 #, python-brace-format
 msgid "Locate {name}"
 msgstr "{name} の場所を指定"
 
-#: app/window.py:637 app/window.py:653
+#: app/window.py:649 app/window.py:665
 msgid "Analysis saved to library."
 msgstr "解析をライブラリに保存しました。"
 
-#: app/window.py:642
+#: app/window.py:654
 msgid "Finished"
 msgstr "完了"
 
-#: app/window.py:665
+#: app/window.py:677
 msgid "Waiting to be looked up on Wikipedia"
 msgstr "Wikipediaでの調査待ち"
 
-#: app/window.py:671
+#: app/window.py:683
 msgid "Looking up on Wikipedia and Wikidata…"
 msgstr "WikipediaとWikidataで調べています…"
 
 # | msgid "Reading the analysis failed: {error}"
 # | msgid "The search failed: {error}"
 # | msgid "" "The lookup failed:\n" "{error}"
-#: app/window.py:676
+#: app/window.py:688
 msgid "The lookup failed."
 msgstr "調査できませんでした。"
 
-#: app/window.py:712
+#: app/window.py:724
 #, python-brace-format
 msgid "External Sync loading: {file}"
 msgstr "外部同期で読み込み中: {file}"
 
-#: app/window.py:712
+#: app/window.py:724
 #, python-brace-format
 msgid "External Sync analyzing: {file}"
 msgstr "外部同期で解析中: {file}"
 
 # | msgid "Memory Sync Disabled"
-#: app/window.py:727
+#: app/window.py:739
 msgid "External Sync Disabled"
 msgstr "外部同期を無効にしました"
 
 # | msgid "External Sync enabled via {target}. Local play/load is locked."
-#: app/window.py:998
+#: app/window.py:1010
 #, python-brace-format
 msgid "External Sync enabled: OSC on {address}. Local play/load is locked."
 msgstr "外部同期が有効です: OSC {address}。ローカルでの再生/読み込みはロックされます。"
 
-#: core/analysis_library/jump_cues.py:71
+#: core/analysis_library/jump_cues.py:70
 msgid "JumpCUE labels are limited to unique A-Z."
 msgstr "JumpCUE のラベルには重複しない A-Z しか使えません。"
 
-#: core/analysis_library/jump_cues.py:98 core/analysis_library/jump_cues.py:101
-#: core/analysis_library/jump_cues.py:237
-#: core/analysis_library/jump_cues.py:397 core/analysis_library/stored.py:132
-#: core/track/model.py:180
+#: core/analysis_library/jump_cues.py:97 core/analysis_library/jump_cues.py:100
+#: core/analysis_library/jump_cues.py:236 core/marks/jump_cues.py:26
 msgid "JumpCUE labels must be unique single letters A-Z."
 msgstr "JumpCUE のラベルは重複しない 1 文字の A-Z である必要があります。"
 
@@ -1593,25 +1607,29 @@ msgstr "Rekordbox XML を書き込み中"
 msgid "Rekordbox XML sync complete"
 msgstr "Rekordbox XML の同期が完了しました"
 
-#: core/workers/segment_reanalysis.py:103
+#: core/workers/segment_reanalysis.py:66
+msgid "The segment reanalysis gave no result."
+msgstr "区間の再解析は結果を返しませんでした。"
+
+#: core/workers/segment_reanalysis.py:74
 #, python-brace-format
 msgid "Segment analysis process exited unexpectedly ({code})."
 msgstr "区間解析プロセスが予期せず終了しました ({code})。"
 
-#: core/workers/segment_reanalysis.py:140
+#: core/workers/segment_reanalysis.py:111
 msgid "Segment updated"
 msgstr "区間を更新しました"
 
-#: core/workers/segment_reanalysis.py:148
-#: core/workers/segment_reanalysis.py:155
+#: core/workers/segment_reanalysis.py:119
+#: core/workers/segment_reanalysis.py:125
 msgid "Key segment updated"
 msgstr "キー区間を更新しました"
 
-#: core/workers/segment_reanalysis.py:160
+#: core/workers/segment_reanalysis.py:130
 msgid "JumpCUE Updated"
 msgstr "JumpCUE を更新しました"
 
-#: core/workers/segment_reanalysis.py:163
+#: core/workers/segment_reanalysis.py:133
 msgid "Phrases Updated"
 msgstr "フレーズを更新しました"
 
@@ -5290,7 +5308,7 @@ msgstr "再生位置をこの CUE に移動します (再生中は不可)"
 msgid "CUE color / delete"
 msgstr "CUE のカラー / 削除"
 
-#: ui/edit_panel/cuepoint.py:69 ui/edit_panel/jumpcue.py:112
+#: ui/edit_panel/cuepoint.py:69 ui/edit_panel/jumpcue.py:115
 #, python-brace-format
 msgid "{time} - double-click to rename"
 msgstr "{time} - ダブルクリックで名前を変更"
@@ -5317,53 +5335,53 @@ msgstr "現在のビートグリッドで JumpCUE を再解析します"
 msgid "Color (its group), beat moves, slots, delete"
 msgstr "カラー (グループ)、拍の移動、スロット、削除"
 
-#: ui/edit_panel/jumpcue.py:103
+#: ui/edit_panel/jumpcue.py:106
 msgid "SET: a JumpCUE in this slot at the nearest beat or track edge"
 msgstr "SET: 最も近い拍またはトラックの端に、このスロットの JumpCUE を置きます"
 
-#: ui/edit_panel/jumpcue.py:108
+#: ui/edit_panel/jumpcue.py:111
 msgid "Jump here on the next beat (when stopped: move the playhead here)"
 msgstr "次の拍でここへジャンプ (停止中: 再生位置をここへ移動)"
 
-#: ui/edit_panel/jumpcue.py:160
+#: ui/edit_panel/jumpcue.py:163
 msgid "Color (cues of one color jump between each other)"
 msgstr "カラー (同じカラーのキュー同士でジャンプします)"
 
-#: ui/edit_panel/jumpcue.py:163
+#: ui/edit_panel/jumpcue.py:166
 msgid "(unused)"
 msgstr "(未使用)"
 
-#: ui/edit_panel/jumpcue.py:167
+#: ui/edit_panel/jumpcue.py:170
 msgid "This color"
 msgstr "このカラー"
 
-#: ui/edit_panel/jumpcue.py:168
+#: ui/edit_panel/jumpcue.py:171
 msgid "One beat earlier"
 msgstr "1 拍早く"
 
-#: ui/edit_panel/jumpcue.py:169
+#: ui/edit_panel/jumpcue.py:172
 msgid "One beat later"
 msgstr "1 拍遅く"
 
-#: ui/edit_panel/jumpcue.py:170
+#: ui/edit_panel/jumpcue.py:173
 msgid "Slots"
 msgstr "スロット"
 
-#: ui/edit_panel/jumpcue.py:172
+#: ui/edit_panel/jumpcue.py:175
 #, python-brace-format
 msgid "Insert a slot at {letter} (this and later cues move one slot on)"
 msgstr "{letter} にスロットを挿入 (このキューと以降のキューが 1 スロットずつ後ろへずれます)"
 
-#: ui/edit_panel/jumpcue.py:176
+#: ui/edit_panel/jumpcue.py:179
 #, python-brace-format
 msgid "Move into the empty slot {letter} (this and later cues move one slot back)"
 msgstr "空いているスロット {letter} へ移動 (このキューと以降のキューが 1 スロットずつ前へずれます)"
 
-#: ui/edit_panel/jumpcue.py:213
+#: ui/edit_panel/jumpcue.py:216
 msgid "Two JumpCUEs cannot share a point."
 msgstr "2 つの JumpCUE が同じポイントを共有することはできません。"
 
-#: ui/edit_panel/jumpcue.py:219 ui/edit_panel/panel.py:575
+#: ui/edit_panel/jumpcue.py:222 ui/edit_panel/panel.py:576
 msgid "Invalid JumpCUE Label"
 msgstr "無効な JumpCUE ラベル"
 
@@ -5567,7 +5585,7 @@ msgid "Edit the JumpCUEs and CUE points"
 msgstr "JumpCUE と CUEポイントを編集"
 
 # | msgid "The file could not be written: {error}"
-#: ui/edit_panel/panel.py:586
+#: ui/edit_panel/panel.py:589
 #, python-brace-format
 msgid ""
 "The edits could not be saved:\n"
@@ -5576,13 +5594,13 @@ msgstr ""
 "編集内容を保存できませんでした:\n"
 "{error}"
 
-#: ui/edit_panel/panel.py:619
+#: ui/edit_panel/panel.py:622
 msgid ""
 "<p>Editing is locked: pages switch, but nothing is edited or saved. Click"
 " to unlock.</p>"
 msgstr "<p>編集はロックされています: ページは切り替わりますが、編集も保存もされません。クリックするとロックを解除します。</p>"
 
-#: ui/edit_panel/panel.py:621
+#: ui/edit_panel/panel.py:624
 msgid ""
 "<p>Editing is unlocked: the shown pages' graphics are emphasized. Click "
 "to lock: no edits, no saving (on at every start).</p>"
@@ -5590,37 +5608,37 @@ msgstr ""
 "<p>編集のロックは解除されています: 表示中のページのグラフィックが強調されます。クリックするとロックします: 編集も保存もできなくなります "
 "(起動のたびにロック)。</p>"
 
-#: ui/edit_panel/panel.py:732
+#: ui/edit_panel/panel.py:735
 #, python-brace-format
 msgid "This shortcut does nothing on the {page} page."
 msgstr "このショートカットは {page} ページでは何もしません。"
 
-#: ui/edit_panel/panel.py:740
+#: ui/edit_panel/panel.py:743
 msgid "Editing is locked."
 msgstr "編集はロックされています。"
 
 # | msgid "Segment reanalysis finished"
-#: ui/edit_panel/panel.py:742
+#: ui/edit_panel/panel.py:745
 msgid "Editing waits for the segment reanalysis to finish."
 msgstr "区間の再解析が終わるまで編集できません。"
 
 # | msgid "Delete JumpCUE {letter}"
-#: ui/edit_panel/panel.py:775 ui/edit_panel/panel.py:788
+#: ui/edit_panel/panel.py:778 ui/edit_panel/panel.py:791
 #, python-brace-format
 msgid "JumpCUE {letter} is not set."
 msgstr "JumpCUE {letter} は設定されていません。"
 
-#: ui/edit_panel/panel.py:784
+#: ui/edit_panel/panel.py:787
 #, python-brace-format
 msgid "JumpCUE {letter} is already set."
 msgstr "JumpCUE {letter} はすでに設定されています。"
 
-#: ui/edit_panel/panel.py:804
+#: ui/edit_panel/panel.py:807
 msgid "CALL works while stopped."
 msgstr "CALL は停止中にだけ動作します。"
 
 # | msgid "Split the current segment at the playhead"
-#: ui/edit_panel/panel.py:820
+#: ui/edit_panel/panel.py:823
 msgid "No CUE point at the playhead."
 msgstr "再生位置に CUEポイントがありません。"
 
@@ -6996,7 +7014,7 @@ msgstr "MEMORY: CUEポイント"
 msgid "MEMORY: set a CUE point at the nearest beat or track edge"
 msgstr "MEMORY: 最も近い拍またはトラックの端に CUEポイントを設定します"
 
-#: ui/edit_panel/jumpcue.py:180 ui/shortcuts.py:117
+#: ui/edit_panel/jumpcue.py:183 ui/shortcuts.py:117
 #, python-brace-format
 msgid "Delete JumpCUE {letter}"
 msgstr "JumpCUE {letter} を削除"
@@ -7226,15 +7244,15 @@ msgstr "{page} ページを表示"
 msgid "It becomes the current page."
 msgstr "そのページが現在のページになります。"
 
-#: ui/edit_panel/panel.py:217 ui/shortcuts.py:174
+#: ui/edit_panel/panel.py:218 ui/shortcuts.py:174
 msgid "Undo Changes"
 msgstr "変更を元に戻す"
 
-#: ui/edit_panel/panel.py:221 ui/shortcuts.py:175
+#: ui/edit_panel/panel.py:222 ui/shortcuts.py:175
 msgid "Redo Changes"
 msgstr "変更をやり直す"
 
-#: ui/edit_panel/panel.py:225 ui/shortcuts.py:176
+#: ui/edit_panel/panel.py:226 ui/shortcuts.py:176
 msgid "Save Edits"
 msgstr "編集を保存"
 
@@ -7815,7 +7833,7 @@ msgid "The tracks with a tie-up to this work: a change to the work is theirs."
 msgstr "この作品のタイアップがあるトラック：作品の変更はこれらすべてに反映されます。"
 
 # | msgid "Shared"
-#: ui/edit_panel/panel.py:586 ui/tieup_works.py:90
+#: ui/edit_panel/panel.py:589 ui/tieup_works.py:90
 msgid "Save"
 msgstr "保存"
 

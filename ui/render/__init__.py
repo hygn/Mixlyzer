@@ -1,2 +1,2 @@
-"""What the views draw, made from the stored analysis: colours, the key strip, the waveforms, a JumpCUE's audio, the
-semitone helpers."""
+"""The interface's own renders: a JumpCUE's audio (the Export tab), the semitone helpers (what the views draw is
+views.render's)."""

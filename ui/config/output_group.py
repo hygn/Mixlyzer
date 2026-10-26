@@ -8,7 +8,7 @@ import numpy as np
 
 from PySide6.QtWidgets import QCheckBox, QComboBox, QFormLayout, QGroupBox, QLabel, QSpinBox
 
-from audioengine.native.client import NativeFeeder
+from audioengine.controls import NATIVE_BUFFER_MS_RANGE, NATIVE_EXCLUSIVE_RATES
 from system import os_support
 from core.settings.config import outputconfig
 from system.i18n import tr, tr_mark
@@ -243,7 +243,7 @@ class AuxOutputGroup(QGroupBox):
         self.cb_channels.setToolTip(tr("<p>The device's channels this output plays on.</p>"))
         self.cb_rate = QComboBox()
         self.cb_rate.addItem(tr("The device's"), 0)
-        for rate in NativeFeeder.EXCLUSIVE_RATES:
+        for rate in NATIVE_EXCLUSIVE_RATES:
             self.cb_rate.addItem(f"{rate / 1000:g} kHz", rate)
         self.cb_rate.setToolTip(tr(
             "<p>The rate this output's device runs at; the main output's sound is converted to it (a band-limited "
@@ -251,7 +251,7 @@ class AuxOutputGroup(QGroupBox):
             "lowest latency. Another rate: in exclusive mode the device runs at it; shared, the system converts it "
             "(WASAPI (cpal)'s usual stream, more latency).</p>"))
         self.sp_buffer = QSpinBox()
-        self.sp_buffer.setRange(*NativeFeeder.BUFFER_MS_RANGE)
+        self.sp_buffer.setRange(*NATIVE_BUFFER_MS_RANGE)
         self.sp_buffer.setSingleStep(5)
         self.sp_buffer.setSuffix(" ms")
         self.sp_buffer.setToolTip(tr(
