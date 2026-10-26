@@ -16,9 +16,8 @@ from analyzer.jumpcue.jump_point_model import (
     feature_vector,
     semantic_pair_scores,
 )
-from optimizer import model_start as MS
-from utils.atomic_io import atomic_output_path, atomic_write_json, atomic_write_text
-from foundation.i18n import tr
+from analyzer.files import atomic_output_path, atomic_write_json, atomic_write_text
+from analyzer.training.text import TrainingError, msg
 
 
 PAIR_FEATURES = ("long", "short", "pre", "masking")
@@ -793,6 +792,10 @@ class JumpCueOptimizationRequest:
     cv_folds: int = 5
     rebuild_cache: bool = False
     max_cache_workers: int | None = None
+    # the files read (the app's): the model in use, the phrase model, the jump point model the candidates are scored by
+    current_path: str | None = None
+    phrase_model_file: str | None = None
+    jump_point_model_path: str | None = None
 
 
 @dataclass(frozen=True)
@@ -809,21 +812,15 @@ class JumpCueOptimizationResult:
 
 
 def _analysis_settings(phrase_parameter_path: Path) -> dict:
+    """What the candidates are made with (the cache key's)."""
+    from analyzer.beat.frame_features import FRAME_HOP_LENGTH
     from analyzer.settings import ANALYSIS_SAMPLE_RATE
-    from core.config import default_cfg
-    from foundation.resource_paths import project_root
 
-    values = dict(default_cfg().to_dict()["analysisconfig"])
-    try:
-        loaded = json.loads((project_root() / "config.json").read_text(encoding="utf-8"))
-        values.update(loaded.get("analysisconfig", {}))
-    except (OSError, ValueError):
-        pass
     phrase = Path(phrase_parameter_path)
     return {
         "sr": ANALYSIS_SAMPLE_RATE,
         "use_hpss": True,                  # always on (part of the cache key)
-        "bpm_hop_length": int(values.get("bpm_hop_length", 256)),
+        "bpm_hop_length": int(FRAME_HOP_LENGTH),
         "phrase_parameter_path": str(phrase),
         "phrase_mtime": phrase.stat().st_mtime if phrase.exists() else 0.0,
     }
@@ -839,15 +836,15 @@ def _cache_key(beats: np.ndarray, segments: np.ndarray, settings: dict) -> str:
     return h.hexdigest()
 
 
-def _record_candidates(audio_path: str, beats: np.ndarray, segments: np.ndarray, settings: dict) -> dict:
+def _record_candidates(audio_path: str, beats: np.ndarray, segments: np.ndarray, settings: dict,
+                       files: tuple[str, str]) -> dict:
     """The production analysis path up to the learned jump point, recording
-    the candidates the model scores for every placed group."""
+    the candidates the model scores for every placed group (``files``: the phrase model, the jump point model)."""
     from analyzer.beat.frame_features import extract_frame_features
     from analyzer.phrase import detect_phrase_segments
     from analyzer.audio.load import fast_load
     from analyzer.audio.hpss import hpss_audio_with_spectra
     from analyzer.jumpcue.JumpCUE import JumpCueConfig, JumpCueEngine
-    from core.workers.analysis_settings import model_file
     from analyzer.jumpcue.jump_point_model import jump_point_beat_features
 
     class RecordingEngine(JumpCueEngine):
@@ -876,13 +873,13 @@ def _record_candidates(audio_path: str, beats: np.ndarray, segments: np.ndarray,
     y_harm, y_perc, spectra = hpss_audio_with_spectra(mono, sr)
     frames = extract_frame_features(mono, sr, y_perc, y_harm, hop_length=settings["bpm_hop_length"])
     _segments, prob, feature_z = detect_phrase_segments(
-        stereo, sr, beats, segments, model_path=model_file(settings["phrase_parameter_path"], "phrase_parameter_path"),
+        stereo, sr, beats, segments, model_path=files[0],
         hpss=spectra,
         return_boundary_probability=True, return_feature_z=True,
     )
     if prob is None:
         raise ValueError("too few beats for the phrase analysis")
-    engine = RecordingEngine(JumpCueConfig(jump_point_model_path=model_file(None, "jumpcue_parameter_path")))
+    engine = RecordingEngine(JumpCueConfig(jump_point_model_path=files[1]))
     features = jump_point_beat_features(frames, beats, segments, prob, phrase_feature_z=feature_z)
     engine.run(
         y_harm=y_harm, sr=sr, beats_time=beats, y_mix=mono, tempo_segments=segments,
@@ -893,9 +890,9 @@ def _record_candidates(audio_path: str, beats: np.ndarray, segments: np.ndarray,
     return {"records": getattr(engine, "recorded", []), "harmony": features.harmony}
 
 
-def _build_track_cache(track: dict, cache_dir: str, settings: dict) -> str:
+def _build_track_cache(track: dict, cache_dir: str, settings: dict, files: tuple[str, str]) -> str:
     """Spawn-pool entry: (re)build one track's candidate cache."""
-    data = _record_candidates(str(track["audio_path"]), track["beats"], track["segments"], settings)
+    data = _record_candidates(str(track["audio_path"]), track["beats"], track["segments"], settings, files)
     save_cache(Path(cache_dir) / f"{track['uid']}.npz", {"key": track["cache_key"], **data})
     return str(track["uid"])
 
@@ -983,15 +980,14 @@ def optimize_jumpcue_parameters(
 ) -> JumpCueOptimizationResult:
     from concurrent.futures import as_completed
 
-    from core.concurrency.process_pool import create_spawn_process_pool
-    from optimizer import library_tracks, optimizer_track_name, skipped_track
-    from utils.jump_cues import jump_cue_point_groups
+    from analyzer.runtime import spawn_pool
+    from analyzer.training import library_tracks, optimizer_track_name, skipped_track
 
     cache_dir = Path(request.cache_dir)
     output_path = Path(request.output_path)
-    MS.check_output(output_path)
     cache_dir.mkdir(parents=True, exist_ok=True)
     settings = _analysis_settings(Path(request.phrase_parameter_path))
+    files = (str(request.phrase_model_file), str(request.jump_point_model_path))
     skipped: list = []
 
     tracks: list[dict] = []
@@ -1002,21 +998,22 @@ def optimize_jumpcue_parameters(
         try:
             if feats is None:
                 continue
-            saved = jump_cue_point_groups(feats, "jump_cues_np")
+            # each JumpCUE group's cue points, as the app read them from the stored blocks (core.analysis_library)
+            saved = feats.get("jump_cue_groups") or []
             if not saved:
                 continue
             beats = np.asarray(feats["beats_time_sec"], dtype=float)
             segments = np.asarray(feats["tempo_segments"], dtype=float)
             if not info["audio_path"].exists():
-                skipped.append(skipped_track(info, tr("Audio file not found")))
+                skipped.append(skipped_track(info, msg("Audio file not found")))
                 continue
             tracks.append({**info, "beats": beats, "segments": segments, "saved": saved,
-                           "auto": jump_cue_point_groups(feats, "jump_cues_auto_np"),
+                           "auto": feats.get("jump_cue_auto_groups") or [],
                            "cache_key": _cache_key(beats, segments, settings)})
         except Exception as exc:
-            skipped.append(skipped_track(info, tr("Reading the analysis failed: {error}").format(error=exc)))
+            skipped.append(skipped_track(info, msg("Reading the analysis failed: {error}", error=exc)))
     if len(tracks) < 5:
-        raise RuntimeError(tr("Need at least five tracks with saved JumpCUEs ({count} found).").format(count=len(tracks)))
+        raise TrainingError(msg("Need at least five tracks with saved JumpCUEs ({count} found).", count=len(tracks)))
 
     def cached(track: dict) -> dict | None:
         path = cache_dir / f"{track['uid']}.npz"
@@ -1033,26 +1030,26 @@ def optimize_jumpcue_parameters(
     done = total - len(jobs)
     if feature_progress is not None:
         feature_progress(int(done * 90 / total),
-                         tr("Building {count} JumpCUE candidate caches").format(count=len(jobs)) if jobs
-                         else tr("JumpCUE candidate cache is current"))
+                         msg("Building {count} JumpCUE candidate caches", count=len(jobs)) if jobs
+                         else msg("JumpCUE candidate cache is current"))
     if jobs:
         workers = max(1, min(request.max_cache_workers or 2, len(jobs)))
         failed: set[str] = set()
-        with create_spawn_process_pool(workers) as executor:
-            futures = {executor.submit(_build_track_cache, t, str(cache_dir), settings): t for t in jobs}
+        with spawn_pool(workers) as executor:
+            futures = {executor.submit(_build_track_cache, t, str(cache_dir), settings, files): t for t in jobs}
             for future in as_completed(futures):
                 track = futures[future]
                 try:
                     future.result()
                 except Exception as exc:
                     failed.add(track["uid"])
-                    skipped.append(skipped_track(track, tr("JumpCUE analysis failed: {error}").format(error=exc)))
+                    skipped.append(skipped_track(track, msg("JumpCUE analysis failed: {error}", error=exc)))
                 done += 1
                 if feature_progress is not None:
-                    feature_progress(int(done * 90 / total), f"({done}/{total})\n{optimizer_track_name(track)}")
+                    feature_progress(int(done * 90 / total), (f"({done}/{total})", optimizer_track_name(track)))
         tracks = [t for t in tracks if t["uid"] not in failed]
 
-    base_path = MS.base_model(output_path, MS.CURRENT)   # the model in use: the user's, else the shipped one
+    base_path = request.current_path   # the model in use: the user's, else the shipped one
     model = json.loads(Path(base_path).read_text(encoding="utf-8"))
     names = list(model["features"])
     threshold = float(model["short_threshold"])
@@ -1064,12 +1061,12 @@ def optimize_jumpcue_parameters(
             continue
         labeled = _library_groups(track, data["records"])
         if not labeled:
-            skipped.append(skipped_track(track, tr("No saved JumpCUE group matches an automatically found group")))
+            skipped.append(skipped_track(track, msg("No saved JumpCUE group matches an automatically found group")))
             continue
         harmony = {track["uid"]: data["harmony"]} if data.get("harmony") is not None else {}
         groups.extend(_candidate_rows(g, names, threshold, harmony) for g in labeled)
     if feature_progress is not None:
-        feature_progress(100, tr("{count} labeled groups").format(count=len(groups)))
+        feature_progress(100, msg("{count} labeled groups", count=len(groups)))
     uids = np.asarray([g.uid for g in groups])
     if np.unique(uids).size < 5:
         raise RuntimeError(f"Need labeled groups on at least five tracks ({np.unique(uids).size} found).")
@@ -1087,13 +1084,13 @@ def optimize_jumpcue_parameters(
         splits = list(GroupKFold(n_splits=folds).split(np.arange(len(groups)), groups=uids))
         for k, (train, valid) in enumerate(splits, start=1):
             if optimize_progress is not None:
-                optimize_progress(int((k - 1) * 80 / folds), tr("Cross-validation fold {fold}/{folds}").format(fold=k, folds=folds))
+                optimize_progress(int((k - 1) * 80 / folds), msg("Cross-validation fold {fold}/{folds}", fold=k, folds=folds))
             w = fit([groups[i] for i in train])
             for key, values in _rank_values([groups[i] for i in valid], w, threshold, names).items():
                 pooled[key].extend(values)
         metrics = _mean_values(pooled)
     if optimize_progress is not None:
-        optimize_progress(85, tr("Fitting on all tracks"))
+        optimize_progress(85, msg("Fitting on all tracks"))
     weights = fit(groups)
     if not cross_validated:
         metrics = _mean_values(_rank_values(groups, weights, threshold, names))
@@ -1120,7 +1117,7 @@ def optimize_jumpcue_parameters(
     output_path.parent.mkdir(parents=True, exist_ok=True)
     atomic_write_json(output_path, out)
     if optimize_progress is not None:
-        optimize_progress(100, tr("Done"))
+        optimize_progress(100, msg("Done"))
     return JumpCueOptimizationResult(
         output_path=output_path, track_count=int(np.unique(uids).size), group_count=len(groups),
         preference_pairs=int(pairs), label_auc=metrics["auc"], pick_downbeat=metrics["pick_downbeat"],

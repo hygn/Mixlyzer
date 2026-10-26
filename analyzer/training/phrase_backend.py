@@ -23,7 +23,7 @@ from typing import Iterable
 
 import numpy as np
 
-from optimizer import SkippedOptimizationTrack, library_tracks, skipped_track
+from analyzer.training import SkippedOptimizationTrack, library_tracks, skipped_track
 
 from analyzer.phrase.structure import (
     FeatureConfig,
@@ -34,9 +34,8 @@ from analyzer.phrase.model_features import (
     feature_z_from_acoustic,
     segment_feature_matrix,
 )
-from utils.atomic_io import atomic_output_path
-from utils.phrases import MIN_PHRASE_DUR
-from foundation.i18n import tr
+from analyzer.files import atomic_output_path
+from analyzer.training.text import msg
 
 
 EPS = 1e-9
@@ -60,7 +59,7 @@ _PHRASE_ANNOTATION_KEYS = frozenset(
         "phrase_segments_np.label",
     }
 )
-_PHRASE_TIME_TOLERANCE_SEC = MIN_PHRASE_DUR
+_PHRASE_TIME_TOLERANCE_SEC = 1e-4   # the stored phrases' float32 resolution (utils.phrases.MIN_PHRASE_DUR)
 # Stored phrase/tempo-segment ends sit up to ~1 ms before duration_sec, so track-edge
 # coverage is checked with a looser tolerance than segment contiguity.
 _COVERAGE_TOLERANCE_SEC = 0.01
@@ -142,7 +141,7 @@ def _list_annotated_tracks(
     ignored: list[SkippedOptimizationTrack] | None = None,
 ) -> list[dict[str, object]]:
     """The tracks with phrase annotations, of the tracks the library's owner gave this run with their stored
-    features (optimizer.library_tracks; ``library_dir`` is kept for the callers' signatures)."""
+    features (analyzer.training.library_tracks; ``library_dir`` is kept for the callers' signatures)."""
     out: list[dict[str, object]] = []
     for track in library_tracks.tracks():
         audio_path = Path(track["audio_path"])
@@ -151,25 +150,25 @@ def _list_annotated_tracks(
         if stored is None:
             if ignored is not None:
                 reason = track.get("error")
-                ignored.append(skipped_track(track, tr("invalid Phrase annotation: {error}").format(error=reason)
-                                             if reason else tr("analysis NPZ is missing")))
+                ignored.append(skipped_track(track, msg("invalid Phrase annotation: {error}", error=reason)
+                                             if reason else msg("analysis NPZ is missing")))
             continue
         if not audio_path.is_file():
             if ignored is not None:
-                ignored.append(skipped_track(track, tr("audio file is missing")))
+                ignored.append(skipped_track(track, msg("audio file is missing")))
             continue
         try:
             starts, ends, labels = _load_phrase_annotation(stored)
         except Exception as exc:
             if ignored is not None:
                 ignored.append(
-                    skipped_track(track, tr("invalid Phrase annotation: {error}").format(error=exc))
+                    skipped_track(track, msg("invalid Phrase annotation: {error}", error=exc))
                 )
             continue
         if starts.size < 2:
             if starts.size and ignored is not None:
                 ignored.append(
-                    skipped_track(track, tr("fewer than two usable Phrase segments"))
+                    skipped_track(track, msg("fewer than two usable Phrase segments"))
                 )
             continue
         track.update(

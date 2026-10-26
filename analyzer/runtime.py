@@ -98,3 +98,11 @@ def prime_physical_core_count() -> None:
             context.physical_cores_cache = cores
     except Exception:
         pass
+
+
+def spawn_pool(max_workers: int):
+    """A bounded pool of spawned processes for the training's CPU-bound jobs (inside its own, non-daemon process)."""
+    import multiprocessing
+    from concurrent.futures import ProcessPoolExecutor
+
+    return ProcessPoolExecutor(max_workers=max(1, int(max_workers)), mp_context=multiprocessing.get_context("spawn"))

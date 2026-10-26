@@ -16,9 +16,9 @@ from typing import Callable
 
 import numpy as np
 
-from core.concurrency.process_pool import create_spawn_process_pool
-from optimizer.beat_frames import cache_path, read_frames
-from foundation.i18n import tr
+from analyzer.runtime import spawn_pool
+from analyzer.training.beat_frames import cache_path, read_frames
+from analyzer.training.text import msg
 
 ProgressCallback = Callable[[int, str], None]
 USABLE_SEC = 0.025
@@ -28,7 +28,7 @@ CHANGE_SEC = 1.0                  # a song is listed as better / worse when it c
 
 @dataclass(frozen=True)
 class ModelSet:
-    """The beat analysis's model files (None: the configured default)."""
+    """The beat analysis's model files (as read: the app resolves them, core.workers.training_models.prepare)."""
     downbeat_ctx: str | None = None
     tcn: str | None = None
     critic: str | None = None
@@ -41,15 +41,7 @@ class ModelSet:
 
     def files(self) -> tuple[str, str, str, str]:
         """The files the tracker reads: (downbeat, TCN, critic, decoder)."""
-        from core.workers.analysis_settings import model_file
-        return (model_file(self.downbeat_ctx, "downbeat_ctx_parameter_path"),
-                model_file(self.tcn, "beat_tcn_parameter_path"),
-                model_file(self.critic, "beat_critic_parameter_path"),
-                model_file(self.decoder, "beat_decoder_parameter_path"))
-
-    def refine_onset_file(self) -> str:
-        from core.workers.analysis_settings import model_file
-        return model_file(self.refine_onset, "refine_onset_parameter_path")
+        return (str(self.downbeat_ctx), str(self.tcn), str(self.critic), str(self.decoder))
 
 
 @dataclass(frozen=True)
@@ -150,7 +142,7 @@ def track_song(frames, models: ModelSet, bpm_min: float):
     from analyzer.beat.learned_onset import refine_onset_activation
     loaded = TR.load_models(*models.files())
     ft = np.asarray(frames.frame_times, float)
-    refine = (refine_onset_activation(frames, models.refine_onset_file()).astype(np.float64),
+    refine = (refine_onset_activation(frames, str(models.refine_onset)).astype(np.float64),
               float(np.median(np.diff(ft))), float(ft[0]))
     return TR.track(frames, bpm_min, loaded, refine, parallel=False)
 
@@ -171,14 +163,14 @@ def grid_check(tracks, cache_dir: Path, bpm_min: float, before: ModelSet, after:
                max_workers: int | None, progress: ProgressCallback | None, span: tuple[int, int]) -> GridCheck:
     lo, hi = span
     rows = []
-    with create_spawn_process_pool(max(1, int(max_workers or 4))) as executor:
+    with spawn_pool(max(1, int(max_workers or 4))) as executor:
         futures = [executor.submit(_score_song, (t, str(cache_dir), float(bpm_min), before, after)) for t in tracks]
         for done, f in enumerate(as_completed(futures), start=1):
             r = f.result()
             if r is not None:
                 rows.append(r)
             if progress:
-                progress(lo + int(round((hi - lo) * done / len(futures))), tr("End-to-end check {done}/{total}").format(done=done, total=len(futures)))
+                progress(lo + int(round((hi - lo) * done / len(futures))), msg("End-to-end check {done}/{total}", done=done, total=len(futures)))
     if not rows:
         return GridCheck(0, 0.0, 0.0, 0.0, 0.0)
     return from_scores([r[0] for r in rows], [r[1][0] for r in rows], [r[1][1] for r in rows])

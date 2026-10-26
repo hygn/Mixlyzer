@@ -244,7 +244,7 @@ class BeatParameterOptimizeDialog(QDialog):
 
     def _warnings(self) -> tuple[list[str], bool]:
         """What to warn about for the chosen trainings, and whether one of them cannot run."""
-        from optimizer import model_start as MS
+        from core.workers import training_models as MS
         if self._track_count is None:
             return [], False
         out, blocked = [], False
@@ -368,7 +368,7 @@ class KeyModelOptimizeDialog(QDialog):
         self._update_enabled()
 
     def _warnings(self) -> tuple[list[str], bool]:
-        from optimizer import model_start as MS
+        from core.workers import training_models as MS
         if self._track_count is None:
             return [], False
         start = str(self.cmb_start.currentData())

@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Optional
 
 from core.linear_segments import build_bpm_segments, build_key_segments, build_phrase_index_rows
+from utils.jump_cues import jump_cue_point_groups
 from utils.phrases import assigned_phrases, extract_phrase_segments
 
 
@@ -96,6 +97,8 @@ def save_edits(lib, uid: str, edits: dict) -> str:
 # (a few kB a track; the waveform overview and the rest are left out)
 TRAINING_KEYS = ("beats_time_sec", "sr", "duration_sec", "tempo_segments", "key_segments", "key_segments_auto")
 TRAINING_PREFIXES = ("phrase_segments_np.", "jump_cues_np.", "jump_cues_auto_np.")
+# the JumpCUE blocks handed over as each group's cue points (the training reads no stored block of them)
+TRAINING_JUMP_CUES = {"jump_cue_groups": "jump_cues_np", "jump_cue_auto_groups": "jump_cues_auto_np"}
 # tracks read a job (training_features): 3 - 14 ms a track measured, so the owner's other jobs (the GUI's) wait
 # at most about a second between two
 TRAINING_BATCH = 50
@@ -103,7 +106,7 @@ TRAINING_BATCH = 50
 
 def training_tracks(lib) -> list[dict]:
     """The library's tracks as the optimizers read them, in uid order: uid, title, artist, audio_path; their stored
-    features are read in batches after (training_features). Handed to their process (optimizer.library_tracks),
+    features are read in batches after (training_features). Handed to their process (analyzer.training.library_tracks),
     which reads the audio from its path and never opens the library's files."""
     return [{"uid": row.uid, "title": row.title or "", "artist": row.artist or "",
              "audio_path": Path(row.path) if row.path else Path()}
@@ -116,7 +119,16 @@ def training_features(lib, uids: list[str]) -> list[tuple[Optional[dict], str]]:
     out = []
     for uid in uids:
         try:
-            out.append((lib.features.load_keys(uid, TRAINING_KEYS, TRAINING_PREFIXES), ""))
+            features = lib.features.load_keys(uid, TRAINING_KEYS, TRAINING_PREFIXES)
+            if features is not None:
+                for name, block in TRAINING_JUMP_CUES.items():
+                    try:
+                        features[name] = jump_cue_point_groups(features, block)
+                    except Exception:
+                        features[name] = []        # an unreadable block: no JumpCUEs
+                    for key in [k for k in features if k.startswith(block + ".")]:
+                        del features[key]
+            out.append((features, ""))
         except (OSError, ValueError) as exc:
             out.append((None, str(exc)))
     return out

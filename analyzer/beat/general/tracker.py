@@ -11,7 +11,7 @@ pipeline's discrete choices flip with small changes of the activation; the medoi
 trainings agree on). Finally the production rows: inizio = a downbeat, ts = the bar length.
 
 Knobs: the decoder's costs (``Knobs``: a new section, a same-tempo half-beat reset, an odd bar), in evidence
-units of the activation -- so they belong to the beat model and are refitted with it (optimizer/
+units of the activation -- so they belong to the beat model and are refitted with it (analyzer/training/
 beat_decoder_optimizer.py); the BPM octave comes from the user's BPM range setting (bpm_min .. 2 bpm_min). Static analysis (a setting): the one steady grid with the most
 evidence over the whole track instead of the section decoding, none of the tempo-change stages; its bars
 are static too (one bar length and phase, no restarts) unless dynamic downbeats are asked for.

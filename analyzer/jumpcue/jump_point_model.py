@@ -16,7 +16,7 @@ the members to keep:
   depth and downbeat; the share of members kept; product / square terms;
 - score: the features standardized over the group's candidates, weighted
   (assets/weights/default_jumpcue_jump_point.json shipped, see
-  optimizer/jumpcue_parameter_optimizer.py).
+  analyzer/training/jumpcue_parameter_optimizer.py).
 
 Sections: feature terms, harmonic context, splice masking, the track-local
 score cache shared with the rule stage, and the model.

@@ -8,7 +8,7 @@ several bars of context. Engineering: the same frames the rest of the analyzer u
 
 Weights: one npz with the equally good trainings (seeds) the tracker's consensus runs, each the torch state
 dict's arrays plus the input statistics (``mu``, ``sd``) under ``s<i>.``, see ``assets/weights/default_beat_tcn.npz`` (shipped; a retrained one is ``beat_tcn.npz``)
-(Reoptimize fine-tunes them on the library, optimizer/beat_tcn_optimizer.py).
+(Reoptimize fine-tunes them on the library, analyzer/training/beat_tcn_optimizer.py).
 """
 from __future__ import annotations
 

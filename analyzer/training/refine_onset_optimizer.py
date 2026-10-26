@@ -1,6 +1,6 @@
 """Retrain the gradient-boosted onset used by the beat-grid refinement (where a tempo change starts). With
 cross-validation, a group of songs is held out first: the model trained on the others is checked end to end on
-them (optimizer/beat_grid_check.py) and the model is retrained on every song and written only when those songs'
+them (analyzer/training/beat_grid_check.py) and the model is retrained on every song and written only when those songs'
 grids are not worse."""
 
 from __future__ import annotations
@@ -18,11 +18,11 @@ from sklearn.metrics import average_precision_score
 from sklearn.model_selection import GroupKFold
 
 from analyzer.beat.learned_onset import export_refine_onset_model, stack_context
-from core.concurrency.process_pool import create_spawn_process_pool
-from optimizer import SkippedOptimizationTrack, optimizer_track_name, skipped_track
-from optimizer import model_start as MS
-from optimizer.beat_grid_check import GridCheck, ModelSet, grid_check
-from optimizer.onset_training import (
+from analyzer.runtime import spawn_pool
+from analyzer.training import SkippedOptimizationTrack, optimizer_track_name, skipped_track
+from analyzer.training import model_start as MS
+from analyzer.training.beat_grid_check import GridCheck, ModelSet, grid_check
+from analyzer.training.onset_training import (
     _auto_cache_workers,
     _build_track_cache,
     _cache_path,
@@ -31,7 +31,7 @@ from optimizer.onset_training import (
     beat_targets,
     samples_from_inputs,
 )
-from foundation.i18n import tr
+from analyzer.training.text import msg
 
 ProgressCallback = Callable[[int, str], None]
 # Share of each sample kind kept for training (near a beat / beat subdivision / other),
@@ -109,7 +109,6 @@ def optimize_refine_onset(
     hop = int(request.frame_hop_length)
     ignored: list[SkippedOptimizationTrack] = []
     tracks = _list_beat_tracks(library_dir, ignored)
-    MS.check_output(output_path)
     MS.require_tracks(len(tracks), "gbm")
 
     jobs = [
@@ -119,7 +118,7 @@ def optimize_refine_onset(
     ]
     workers = _auto_cache_workers(request.max_cache_workers, len(jobs))
     if jobs:
-        with create_spawn_process_pool(workers) as executor:
+        with spawn_pool(workers) as executor:
             futures = {
                 executor.submit(_build_track_cache, track, str(cache_dir), bool(request.use_hpss), hop): track
                 for track in jobs
@@ -131,18 +130,17 @@ def optimize_refine_onset(
                     future.result()
                 except Exception as exc:
                     failed.add(str(track["uid"]))
-                    ignored.append(skipped_track(track, tr("feature cache build failed: {error}").format(error=exc)))
+                    ignored.append(skipped_track(track, msg("feature cache build failed: {error}", error=exc)))
                 if feature_progress:
                     feature_progress(int(round(80 * done / len(jobs))),
-                                     tr("Feature cache {done}/{total}").format(done=done, total=len(jobs))
-                                     + "\n" + optimizer_track_name(track))
+                                     (msg("Feature cache {done}/{total}", done=done, total=len(jobs)), optimizer_track_name(track)))
         tracks = [track for track in tracks if str(track["uid"]) not in failed]
 
     data = []
     for index, track in enumerate(tracks, start=1):
         cached = _read_current_cache(_cache_path(cache_dir, str(track["uid"])), track, bool(request.use_hpss), hop)
         if cached is None:
-            ignored.append(skipped_track(track, tr("feature cache is not current")))
+            ignored.append(skipped_track(track, msg("feature cache is not current")))
             continue
         frame_times, channels = cached
         x, y, w = _track_samples(frame_times, channels, np.asarray(track["beats"]), index)
@@ -155,12 +153,12 @@ def optimize_refine_onset(
     ap_values: list[float] = []
     grid = None
     if cross_validated:
-        from optimizer.beat_frames import ensure_frames, list_grid_tracks
+        from analyzer.training.beat_frames import ensure_frames, list_grid_tracks
         groups = np.asarray([_group_key(track) for track, *_ in data])
         n_splits = min(int(request.cv_folds), np.unique(groups).size)
         train, held = next(GroupKFold(n_splits=n_splits).split(data, groups=groups))
         if optimize_progress:
-            optimize_progress(10, tr("Training on the other songs"))
+            optimize_progress(10, msg("Training on the other songs"))
         trial_model = _model(1).fit(
             np.concatenate([data[i][1] for i in train]).astype(np.float32),
             np.concatenate([data[i][2] for i in train]),
@@ -181,14 +179,14 @@ def optimize_refine_onset(
             trial.unlink(missing_ok=True)
         if not grid.not_worse:
             if optimize_progress:
-                optimize_progress(100, tr("Not saved: the held-out songs' grids got worse"))
+                optimize_progress(100, msg("Not saved: the held-out songs' grids got worse"))
             return RefineOnsetOptimizationResult(
                 output_path=output_path, track_count=len(data), sample_count=0, beat_average_precision=float("nan"),
                 skipped_tracks=tuple(ignored), cross_validated=True, grid=grid, saved=False,
             )
 
     if optimize_progress:
-        optimize_progress(75, tr("Fitting all tracks"))
+        optimize_progress(75, msg("Fitting all tracks"))
     x = np.concatenate([item[1] for item in data]).astype(np.float32)
     y = np.concatenate([item[2] for item in data])
     w = np.concatenate([item[3] for item in data])
@@ -205,7 +203,7 @@ def optimize_refine_onset(
          "cross_validated": cross_validated},
     )
     if optimize_progress:
-        optimize_progress(100, tr("Done"))
+        optimize_progress(100, msg("Done"))
     return RefineOnsetOptimizationResult(
         output_path=output_path,
         track_count=len(data),

@@ -1,6 +1,6 @@
 """Fine-tune the beat tracker's frame TCN (each of its trainings) on the library's grids, in NumPy.
 
-Each training starts from the shipped model, from the model in use, or from scratch (optimizer/model_start.py)
+Each training starts from the shipped model, from the model in use, or from scratch (analyzer/training/model_start.py)
 and is trained on the user's beats and downbeats with the original recipe: crops of 3000 frames (about 35 s) stretched by a random tempo factor (0.8 - 1.25, so the
 model hears each song at other tempos too), binary cross-entropy on the beat and downbeat frames (each
 annotated frame and half its neighbours; positives weighted 10 / 30, they are rare), dropout 0.1, Adam (from scratch: 4000 steps, the rate warmed up over the first tenth). The trainings
@@ -8,7 +8,7 @@ run in parallel processes on one shared, memory-mapped copy of the training fram
 
 With cross-validation, one group of songs is held out first: the current and the fine-tuned model are
 compared on it -- the frame-level average precision of the activations, and the grids the whole tracker
-gives with each (optimizer/beat_grid_check.py) -- and only when the grids are not worse is the model
+gives with each (analyzer/training/beat_grid_check.py) -- and only when the grids are not worse is the model
 fine-tuned on every song and written.
 """
 
@@ -30,14 +30,13 @@ from sklearn.model_selection import GroupKFold
 
 from analyzer.beat.general import tcn as T
 from analyzer.music.beat_geometry import downbeat_beat_indices
-from core.concurrency.process_pool import create_spawn_process_pool
-from optimizer import SkippedOptimizationTrack, skipped_track
-from optimizer.beat_frames import cache_path, ensure_frames, list_grid_tracks, read_frames
-from optimizer.beat_grid_check import GridCheck, ModelSet, grid_check
-from optimizer import model_start as MS
-from foundation.model_files import resolve_model
-from optimizer.refine_onset_optimizer import _group_key
-from foundation.i18n import tr
+from analyzer.runtime import spawn_pool
+from analyzer.training import SkippedOptimizationTrack, skipped_track
+from analyzer.training.beat_frames import cache_path, ensure_frames, list_grid_tracks, read_frames
+from analyzer.training.beat_grid_check import GridCheck, ModelSet, grid_check
+from analyzer.training import model_start as MS
+from analyzer.training.refine_onset_optimizer import _group_key
+from analyzer.training.text import msg
 
 ProgressCallback = Callable[[int, str], None]
 DROPOUT = 0.1
@@ -57,6 +56,8 @@ class BeatTcnOptimizationRequest:
     output_path: Path
     start: str = MS.CURRENT          # shipped | current | scratch
     base_path: Path | None = None    # overrides where the trainings start (tests)
+    current_path: str | None = None  # the model in use, what the new one is compared with (the app's file)
+    start_path: str | None = None    # the model the trainings start from (the app's file; None: from scratch)
     current_models: dict | None = None      # the analysis's model files in use (ModelSet fields)
     bpm_min: float = 100.0
     steps: int = 0                   # 0: 600 (improving a model) or 4000 (from scratch)
@@ -176,7 +177,7 @@ def _write_training_data(tracks, cache_dir: Path, work: Path, ignored) -> list[d
     for track, size in zip(tracks, sizes):
         frames = read_frames(cache_path(cache_dir, str(track["uid"])), track) if size else None
         if frames is None or np.asarray(frames.frame_times).size != size:
-            ignored.append(skipped_track(track, tr("frame feature cache is not current")))
+            ignored.append(skipped_track(track, msg("frame feature cache is not current")))
             continue
         a = offsets[-1]
         x_out[a:a + size] = T.frame_inputs(frames)
@@ -285,7 +286,7 @@ def _train_all(nets, work, songs, steps, lr, max_workers, progress, span, label,
     out: list[dict | None] = [None] * len(nets)
     workers = max(1, min(len(nets), int(max_workers or len(nets))))
     try:
-        with create_spawn_process_pool(workers) as executor:
+        with spawn_pool(workers) as executor:
             futures = {executor.submit(_train_one, (P, str(work), np.asarray(songs), steps, lr, i, q, warmup)): i
                        for i, P in enumerate(nets)}
             pending = set(futures)
@@ -301,7 +302,7 @@ def _train_all(nets, work, songs, steps, lr, max_workers, progress, span, label,
                     done_steps[i] = max(done_steps[i], s)
                 if progress:
                     frac = sum(done_steps.values()) / (steps * len(nets))
-                    progress(lo + int(round((hi - lo) * frac)), tr("{stage}: step {done}/{steps} of each training").format(stage=label, done=min(done_steps.values()), steps=steps))
+                    progress(lo + int(round((hi - lo) * frac)), msg("{stage}: step {done}/{steps} of each training", stage=label, done=min(done_steps.values()), steps=steps))
     finally:
         manager.shutdown()
     return out
@@ -338,13 +339,10 @@ def optimize_beat_tcn(
     output_path = Path(request.output_path).resolve()
     if output_path.suffix.lower() != ".npz":
         raise ValueError("Beat TCN model path must end with .npz")
-    MS.check_output(output_path)
     scratch = request.start == MS.SCRATCH
-    base_path = request.base_path or MS.base_model(output_path, request.start)
-    # the model in use: what the new one is compared with
-    reference_path = resolve_model(output_path)
+    reference_path = request.current_path
     reference = T.load_weights(str(reference_path))
-    base = None if scratch and request.base_path is None else T.load_weights(str(resolve_model(base_path)))
+    base = None if request.start_path is None else T.load_weights(str(request.start_path))
     ignored: list[SkippedOptimizationTrack] = []
     tracks = list_grid_tracks(library_dir, ignored)
     MS.require_tracks(len(tracks), MS.kind_of(request.start))
@@ -353,11 +351,11 @@ def optimize_beat_tcn(
     work = cache_dir / "_tcn_training"
     try:
         if feature_progress:
-            feature_progress(90, tr("Training frames"))
+            feature_progress(90, msg("Training frames"))
         tracks = _write_training_data(tracks, cache_dir, work, ignored)
         MS.require_tracks(len(tracks), MS.kind_of(request.start))
         if feature_progress:
-            feature_progress(100, tr("Training frames ready"))
+            feature_progress(100, msg("Training frames ready"))
         steps = int(request.steps) or (SCRATCH_STEPS if base is None else 600)
         lr = float(request.learning_rate) or (SCRATCH_RATE if base is None else 5e-4)
         warmup = 0.1 if base is None else 0.0
@@ -373,7 +371,7 @@ def optimize_beat_tcn(
             k = min(int(request.cv_folds), np.unique(groups).size)
             train, held = next(GroupKFold(n_splits=k).split(everything, groups=groups))
             tuned = _train_all(base, work, train, steps, lr, request.max_train_workers, optimize_progress,
-                               (0, 35), tr("Held-out check"), warmup)
+                               (0, 35), msg("Held-out check"), warmup)
             before, after = _ap(reference, work, held), _ap(tuned, work, held)
             trial = work / "held_out_model.npz"
             T.save_weights(trial, tuned)
@@ -383,7 +381,7 @@ def optimize_beat_tcn(
                               request.max_cache_workers, optimize_progress, (35, 50))
             if not grid.not_worse and not request.keep_if_worse:
                 if optimize_progress:
-                    optimize_progress(100, tr("Not saved: the grids got worse on the held-out songs"))
+                    optimize_progress(100, msg("Not saved: the grids got worse on the held-out songs"))
                 return BeatTcnOptimizationResult(
                     output_path=output_path, track_count=len(tracks), steps=steps,
                     beat_ap_before=before[0], beat_ap_after=after[0], downbeat_ap_before=before[1],
@@ -394,19 +392,19 @@ def optimize_beat_tcn(
         else:
             span = (0, 98)
         nets = _train_all(base, work, everything, steps, lr, request.max_train_workers, optimize_progress, span,
-                          tr("Training") if scratch else tr("Fine-tuning"), warmup)
+                          msg("Training") if scratch else msg("Fine-tuning"), warmup)
         if not cross_validated:
             sample = everything[: min(40, everything.size)]
             before, after = _ap(reference, work, sample), _ap(nets, work, sample)
         T.save_weights(output_path, nets, {
-            "start": request.start, "started_from": None if scratch else str(base_path), "steps": steps, "learning_rate": lr, "batch": BATCH,
+            "start": request.start, "started_from": None if scratch else str(request.start_path), "steps": steps, "learning_rate": lr, "batch": BATCH,
             "crop_frames": CROP, "tracks": len(tracks), "date": date.today().isoformat(),
             "cross_validated": cross_validated, "source": "the library's beat grids (Reoptimize)",
         })
     finally:
         shutil.rmtree(work, ignore_errors=True)
     if optimize_progress:
-        optimize_progress(100, tr("Done"))
+        optimize_progress(100, msg("Done"))
     return BeatTcnOptimizationResult(
         output_path=output_path, track_count=len(tracks), steps=steps,
         beat_ap_before=before[0], beat_ap_after=after[0], downbeat_ap_before=before[1], downbeat_ap_after=after[1],

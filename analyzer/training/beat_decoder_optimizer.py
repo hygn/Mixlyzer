@@ -24,14 +24,13 @@ import numpy as np
 from sklearn.model_selection import GroupKFold
 
 from analyzer.beat.general import tracker as TR
-from core.concurrency.process_pool import create_spawn_process_pool
-from core.workers.analysis_settings import model_file
-from optimizer import SkippedOptimizationTrack, optimizer_track_name, skipped_track
-from optimizer.beat_frames import cache_path, ensure_frames, list_grid_tracks, read_frames
-from optimizer.beat_grid_check import USABLE_SEC, GridCheck, from_scores, missed_bar_time, usable_error
-from optimizer.refine_onset_optimizer import _group_key
-from optimizer import model_start as MS
-from foundation.i18n import tr
+from analyzer.runtime import spawn_pool
+from analyzer.training import SkippedOptimizationTrack, optimizer_track_name, skipped_track
+from analyzer.training.beat_frames import cache_path, ensure_frames, list_grid_tracks, read_frames
+from analyzer.training.beat_grid_check import USABLE_SEC, GridCheck, from_scores, missed_bar_time, usable_error
+from analyzer.training.refine_onset_optimizer import _group_key
+from analyzer.training import model_start as MS
+from analyzer.training.text import msg
 
 ProgressCallback = Callable[[int, str], None]
 # candidates: steps of sqrt(2) around the shipped costs
@@ -56,6 +55,8 @@ class BeatDecoderOptimizationRequest:
     rebuild_cache: bool = False
     max_cache_workers: int | None = None
     table_path: Path | None = None         # also write every song's wrong time per cost combination here
+    current_path: str | None = None        # the costs in use (the app's file)
+    start_path: str | None = None          # the costs refitted around (the app's file)
 
 
 @dataclass(frozen=True)
@@ -140,8 +141,7 @@ def optimize_beat_decoder(
     output_path = Path(request.output_path).resolve()
     if output_path.suffix.lower() != ".json":
         raise ValueError("Decoder settings path must end with .json")
-    MS.check_output(output_path)
-    current = TR.load_knobs(str(MS.base_model(output_path, MS.SHIPPED if request.start == MS.SHIPPED else MS.CURRENT)))
+    current = TR.load_knobs(str(request.start_path))
     ignored: list[SkippedOptimizationTrack] = []
     tracks = list_grid_tracks(library_dir, ignored)
     MS.require_tracks(len(tracks), "search")
@@ -153,25 +153,23 @@ def optimize_beat_decoder(
     grid = (around(() if request.quick else SECTION_COSTS, current.section), around(HALF_RESET_COSTS, current.half_reset),
             around(ODD_BAR_COSTS, current.odd_bar))
     paths = tuple(None if p is None else str(p) for p in (request.downbeat_ctx_path, request.tcn_path, request.critic_path))
-    # the files read (a path not given: the setting's default)
-    files = (model_file(paths[0], "downbeat_ctx_parameter_path"), model_file(paths[1], "beat_tcn_parameter_path"),
-             model_file(paths[2], "beat_critic_parameter_path"), model_file(None, "beat_decoder_parameter_path"))
-    refine_file = model_file(request.refine_onset_path, "refine_onset_parameter_path")
+    # the files read (the app's: a path not given is the setting's default)
+    files = (*paths, str(request.current_path))
+    refine_file = str(request.refine_onset_path)
     tables, kept = {}, []
     workers = max(1, int(request.max_cache_workers or 4))
-    with create_spawn_process_pool(workers) as executor:
+    with spawn_pool(workers) as executor:
         futures = {executor.submit(_score_song, (t, str(cache_dir), files, refine_file,
                                                  float(request.bpm_min), grid)): t for t in tracks}
         for done, f in enumerate(as_completed(futures), start=1):
             uid, table = f.result()
             if table is None:
-                ignored.append(skipped_track(futures[f], tr("frame feature cache is not current")))
+                ignored.append(skipped_track(futures[f], msg("frame feature cache is not current")))
             else:
                 tables[uid] = table
             if optimize_progress:
                 optimize_progress(int(round(90 * done / len(futures))),
-                                  tr("Tracking with every cost combination {done}/{total}").format(
-                                      done=done, total=len(futures)) + "\n" + optimizer_track_name(futures[f]))
+                                  (msg("Tracking with every cost combination {done}/{total}", done=done, total=len(futures)), optimizer_track_name(futures[f])))
     kept = [t for t in tracks if str(t["uid"]) in tables]
     MS.require_tracks(len(kept), "search")
     full = np.stack([tables[str(t["uid"])] for t in kept])                  # [songs, S, H, O, beats/bars] seconds
@@ -215,7 +213,7 @@ def optimize_beat_decoder(
             "models": {"beat_tcn": paths[1], "critic": paths[2], "downbeat": paths[0]},
         })
     if optimize_progress:
-        optimize_progress(100, tr("Done") if saved else tr("Not saved: the held-out songs got worse"))
+        optimize_progress(100, msg("Done") if saved else msg("Not saved: the held-out songs got worse"))
     from dataclasses import asdict
     return BeatDecoderOptimizationResult(
         output_path=output_path, track_count=len(kept), knobs_before=asdict(current), knobs_after=asdict(knobs),

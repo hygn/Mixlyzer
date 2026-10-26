@@ -11,11 +11,11 @@ from typing import Callable
 import numpy as np
 
 from analyzer.beat.frame_features import FrameFeatures
-from core.concurrency.process_pool import create_spawn_process_pool
-from optimizer import SkippedOptimizationTrack, optimizer_track_name, skipped_track
-from optimizer.onset_training import _auto_cache_workers, _list_beat_tracks
-from utils.atomic_io import atomic_output_path
-from foundation.i18n import tr
+from analyzer.runtime import spawn_pool
+from analyzer.training import SkippedOptimizationTrack, optimizer_track_name, skipped_track
+from analyzer.training.onset_training import _auto_cache_workers, _list_beat_tracks
+from analyzer.files import atomic_output_path
+from analyzer.training.text import msg
 
 ProgressCallback = Callable[[int, str], None]
 BEAT_FRAME_CACHE_FORMAT = "mixlyzer_beat_frame_cache_v1"
@@ -30,10 +30,10 @@ def list_grid_tracks(library_dir: Path, ignored: list[SkippedOptimizationTrack])
         try:
             rows = np.asarray(track["features"]["tempo_segments"], dtype=np.float64)
         except (KeyError, ValueError) as exc:
-            ignored.append(skipped_track(track, tr("invalid tempo rows: {error}").format(error=exc)))
+            ignored.append(skipped_track(track, msg("invalid tempo rows: {error}", error=exc)))
             continue
         if rows.ndim != 2 or rows.shape[0] == 0 or rows.shape[1] < 4:
-            ignored.append(skipped_track(track, tr("no tempo rows")))
+            ignored.append(skipped_track(track, msg("no tempo rows")))
             continue
         track["segments"] = rows
         tracks.append(track)
@@ -116,7 +116,7 @@ def ensure_frames(
     failed: set[str] = set()
     if jobs:
         lo, hi = progress_span
-        with create_spawn_process_pool(_auto_cache_workers(max_workers, len(jobs))) as executor:
+        with spawn_pool(_auto_cache_workers(max_workers, len(jobs))) as executor:
             futures = {executor.submit(build_frames, t, str(cache_dir)): t for t in jobs}
             for done, future in enumerate(as_completed(futures), start=1):
                 track = futures[future]
@@ -124,9 +124,8 @@ def ensure_frames(
                     future.result()
                 except Exception as exc:
                     failed.add(str(track["uid"]))
-                    ignored.append(skipped_track(track, tr("frame feature cache build failed: {error}").format(error=exc)))
+                    ignored.append(skipped_track(track, msg("frame feature cache build failed: {error}", error=exc)))
                 if progress:
                     progress(lo + int(round((hi - lo) * done / len(jobs))),
-                             tr("Frame features {done}/{total}").format(done=done, total=len(jobs))
-                             + "\n" + optimizer_track_name(track))
+                             (msg("Frame features {done}/{total}", done=done, total=len(jobs)), optimizer_track_name(track)))
     return [t for t in tracks if str(t["uid"]) not in failed]

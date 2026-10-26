@@ -1,4 +1,5 @@
-"""One-shot optimizer subprocess worker and optimizer registry."""
+"""One-shot optimizer subprocess worker and optimizer registry: Reoptimize's runs (analyzer.training) in a process of
+their own, each request given its files (core.workers.training_models.prepare) and what it reports worded."""
 
 from __future__ import annotations
 
@@ -8,7 +9,9 @@ from typing import Any, Callable
 
 from PySide6 import QtCore
 
+from analyzer.training.text import TrainingError
 from core.concurrency.process_worker import SpawnProcessWorker, install_parent_watchdog
+from core.workers.training_models import prepare, words
 from foundation.i18n import tr
 
 
@@ -23,42 +26,42 @@ class _OptimizerDefinition:
 
 
 def _load_refine_onset_optimizer() -> _OptimizerDefinition:
-    from optimizer.refine_onset_optimizer import RefineOnsetOptimizationRequest, optimize_refine_onset
+    from analyzer.training.refine_onset_optimizer import RefineOnsetOptimizationRequest, optimize_refine_onset
     return _OptimizerDefinition(RefineOnsetOptimizationRequest, optimize_refine_onset)
 
 
 def _load_beat_tcn_optimizer() -> _OptimizerDefinition:
-    from optimizer.beat_tcn_optimizer import BeatTcnOptimizationRequest, optimize_beat_tcn
+    from analyzer.training.beat_tcn_optimizer import BeatTcnOptimizationRequest, optimize_beat_tcn
     return _OptimizerDefinition(BeatTcnOptimizationRequest, optimize_beat_tcn)
 
 
 def _load_beat_critic_optimizer() -> _OptimizerDefinition:
-    from optimizer.beat_critic_optimizer import BeatCriticOptimizationRequest, optimize_beat_critic
+    from analyzer.training.beat_critic_optimizer import BeatCriticOptimizationRequest, optimize_beat_critic
     return _OptimizerDefinition(BeatCriticOptimizationRequest, optimize_beat_critic)
 
 
 def _load_beat_decoder_optimizer() -> _OptimizerDefinition:
-    from optimizer.beat_decoder_optimizer import BeatDecoderOptimizationRequest, optimize_beat_decoder
+    from analyzer.training.beat_decoder_optimizer import BeatDecoderOptimizationRequest, optimize_beat_decoder
     return _OptimizerDefinition(BeatDecoderOptimizationRequest, optimize_beat_decoder)
 
 
 def _load_downbeat_ctx_optimizer() -> _OptimizerDefinition:
-    from optimizer.downbeat_ctx_optimizer import DownbeatCtxOptimizationRequest, optimize_downbeat_ctx
+    from analyzer.training.downbeat_ctx_optimizer import DownbeatCtxOptimizationRequest, optimize_downbeat_ctx
     return _OptimizerDefinition(DownbeatCtxOptimizationRequest, optimize_downbeat_ctx)
 
 
 def _load_phrase_optimizer() -> _OptimizerDefinition:
-    from optimizer.phrase_parameter_optimizer import PhraseOptimizationRequest, optimize_phrase_parameters
+    from analyzer.training.phrase_parameter_optimizer import PhraseOptimizationRequest, optimize_phrase_parameters
     return _OptimizerDefinition(PhraseOptimizationRequest, optimize_phrase_parameters)
 
 
 def _load_jumpcue_optimizer() -> _OptimizerDefinition:
-    from optimizer.jumpcue_parameter_optimizer import JumpCueOptimizationRequest, optimize_jumpcue_parameters
+    from analyzer.training.jumpcue_parameter_optimizer import JumpCueOptimizationRequest, optimize_jumpcue_parameters
     return _OptimizerDefinition(JumpCueOptimizationRequest, optimize_jumpcue_parameters)
 
 
 def _load_key_model_optimizer() -> _OptimizerDefinition:
-    from optimizer.key_model_optimizer import KeyModelOptimizationRequest, optimize_key_model
+    from analyzer.training.key_model_optimizer import KeyModelOptimizationRequest, optimize_key_model
     return _OptimizerDefinition(KeyModelOptimizationRequest, optimize_key_model)
 
 
@@ -86,7 +89,7 @@ def _optimizer_process_entry(
     install_parent_watchdog()
     loaded: dict[str, _OptimizerDefinition] = {}
     try:
-        from optimizer import library_tracks
+        from analyzer.training import library_tracks
         library_tracks.use(tracks)
         total = len(jobs)
         for index, job in enumerate(jobs, start=1):
@@ -102,11 +105,11 @@ def _optimizer_process_entry(
                 }
             )
 
-            def feature_progress(value: int, text: str) -> None:
-                queue.put({"type": "feature_progress", "value": int(value), "text": str(text)})
+            def feature_progress(value: int, text) -> None:
+                queue.put({"type": "feature_progress", "value": int(value), "text": words(text)})
 
-            def optimize_progress(value: int, text: str) -> None:
-                queue.put({"type": "optimize_progress", "value": int(value), "text": str(text)})
+            def optimize_progress(value: int, text) -> None:
+                queue.put({"type": "optimize_progress", "value": int(value), "text": words(text)})
 
             loader = _OPTIMIZER_LOADERS.get(optimizer_name)
             if loader is None:
@@ -115,13 +118,15 @@ def _optimizer_process_entry(
             if definition is None:
                 definition = loader()
                 loaded[optimizer_name] = definition
-            request = definition.request_type(**dict(job["request_values"]))
+            request = definition.request_type(**prepare(optimizer_name, dict(job["request_values"])))
             result = definition.optimize(
                 request,
                 feature_progress=feature_progress,
                 optimize_progress=optimize_progress,
             )
             queue.put({"type": "job_result", "optimizer_name": optimizer_name, "payload": result})
+    except TrainingError as exc:          # a refusal (too few songs): its words, no traceback
+        queue.put({"type": "error", "process_group": process_group, "traceback": words(exc.text)})
     except Exception:
         queue.put({"type": "error", "process_group": process_group, "traceback": traceback.format_exc()})
     finally:

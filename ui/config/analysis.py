@@ -24,6 +24,7 @@ from core.config import cuepointconfig, cuepointrule
 from foundation.i18n import tr, tr_n
 from foundation.resource_paths import project_root
 from core.workflows.optimizer import OptimizerWorkflow
+from core.workers.training_models import words
 from ui.config.dialogs import (
     BeatParameterOptimizeDialog,
     KeyModelOptimizeDialog,
@@ -415,9 +416,9 @@ class AnalysisSettingsMixin:
             details: list[str] = []
             for index, track in enumerate(skipped, start=1):
                 details.append(
-                    f"{index}.\n{track.display_name}\n"
+                    f"{index}.\n{words(track.display_name)}\n"
                     f"UUID: {track.uid}\n"
-                    + tr("Reason: {reason}").format(reason=track.reason)
+                    + tr("Reason: {reason}").format(reason=words(track.reason))
                 )
             message.setDetailedText("\n\n".join(details))
         message.exec()

@@ -11,7 +11,7 @@ the template-chord term (KL to the fixed triad templates), as when the shipped m
 
 The network (a root-equivariant chord CNN, the fixed chord-in-key tables) is trained with Adam on random crops of
 384 beats: cross-entropy of every bar's key (the sum of its beats' key evidence) plus the template-chord term. It
-starts from the model in use, the shipped model or from scratch (optimizer/model_start.py). The decoder settings
+starts from the model in use, the shipped model or from scratch (analyzer/training/model_start.py). The decoder settings
 (key-change costs) are kept. With cross-validation one group of songs is held out first and the current and the
 retrained model -- the whole key analysis, decoder included -- are compared on it; only when the held-out keys are
 not worse is the model retrained on every song and written.
@@ -30,15 +30,14 @@ from sklearn.model_selection import GroupKFold
 
 from analyzer.key import chord_key as CK
 from analyzer.music.beat_geometry import downbeat_times
-from core.concurrency.process_pool import create_spawn_process_pool
-from optimizer import SkippedOptimizationTrack, optimizer_track_name, skipped_track
-from optimizer import model_start as MS
-from optimizer.beat_tcn_optimizer import _rate
-from optimizer.onset_training import _auto_cache_workers, _list_beat_tracks
-from optimizer.refine_onset_optimizer import _group_key
-from utils.atomic_io import atomic_output_path
-from foundation.i18n import tr
-from foundation.model_files import resolve_model
+from analyzer.runtime import spawn_pool
+from analyzer.training import SkippedOptimizationTrack, optimizer_track_name, skipped_track
+from analyzer.training import model_start as MS
+from analyzer.training.beat_tcn_optimizer import _rate
+from analyzer.training.onset_training import _auto_cache_workers, _list_beat_tracks
+from analyzer.training.refine_onset_optimizer import _group_key
+from analyzer.files import atomic_output_path
+from analyzer.training.text import msg
 
 ProgressCallback = Callable[[int, str], None]
 KEY_FRAME_CACHE_FORMAT = "mixlyzer_key_frame_cache_v1"
@@ -64,6 +63,8 @@ class KeyModelOptimizationRequest:
     rebuild_cache: bool = False
     max_cache_workers: int | None = None
     seed: int = 0
+    current_path: str | None = None  # the model in use, what the new one is compared with (the app's file)
+    start_path: str | None = None    # the model the training starts from (the app's file; None: from scratch)
 
 
 @dataclass(frozen=True)
@@ -112,7 +113,7 @@ def list_key_tracks(library_dir: Path, ignored: list[SkippedOptimizationTrack]) 
     """The library's tracks whose keys are the user's, with what training reads (beats, bars, phrases, keys)."""
     tracks = []
     for track in _list_beat_tracks(library_dir, ignored):
-        z = track["features"]          # the stored features the library's owner gave (optimizer.library_tracks)
+        z = track["features"]          # the stored features the library's owner gave (analyzer.training.library_tracks)
         try:
             ks = _rows(z["key_segments"]) if "key_segments" in z else np.zeros((0, 4))
             auto = _rows(z["key_segments_auto"]) if "key_segments_auto" in z else None
@@ -120,10 +121,10 @@ def list_key_tracks(library_dir: Path, ignored: list[SkippedOptimizationTrack]) 
             starts = np.asarray(z["phrase_segments_np.start"], float) if "phrase_segments_np.start" in z else np.zeros(0)
             duration = float(np.asarray(z["duration_sec"]).item())
         except Exception as exc:
-            ignored.append(skipped_track(track, tr("unreadable analysis: {error}").format(error=exc)))
+            ignored.append(skipped_track(track, msg("unreadable analysis: {error}", error=exc)))
             continue
         if ks.shape[0] == 0:
-            ignored.append(skipped_track(track, tr("no key annotation")))
+            ignored.append(skipped_track(track, msg("no key annotation")))
             continue
         if auto is not None:
             if _same_keys(ks, auto):
@@ -185,7 +186,7 @@ def ensure_key_frames(tracks, cache_dir: Path, ignored, *, rebuild=False, max_wo
     failed: set[str] = set()
     if jobs:
         lo, hi = progress_span
-        with create_spawn_process_pool(_auto_cache_workers(max_workers, len(jobs))) as executor:
+        with spawn_pool(_auto_cache_workers(max_workers, len(jobs))) as executor:
             futures = {executor.submit(build_key_frames, t, str(cache_dir)): t for t in jobs}
             for done, future in enumerate(as_completed(futures), start=1):
                 track = futures[future]
@@ -193,11 +194,10 @@ def ensure_key_frames(tracks, cache_dir: Path, ignored, *, rebuild=False, max_wo
                     future.result()
                 except Exception as exc:
                     failed.add(str(track["uid"]))
-                    ignored.append(skipped_track(track, tr("key feature cache build failed: {error}").format(error=exc)))
+                    ignored.append(skipped_track(track, msg("key feature cache build failed: {error}", error=exc)))
                 if progress:
                     progress(lo + int(round((hi - lo) * done / len(jobs))),
-                             tr("Key features {done}/{total}").format(done=done, total=len(jobs))
-                             + "\n" + optimizer_track_name(track))
+                             (msg("Key features {done}/{total}", done=done, total=len(jobs)), optimizer_track_name(track)))
     return [t for t in tracks if str(t["uid"]) not in failed]
 
 
@@ -439,8 +439,7 @@ def train(arrays: dict, songs: list[Song], idx, epochs: int, lr: float, distill:
                 v2[k] = b2 * v2[k] + (1 - b2) * g * g
                 P[k] = (P[k] - rate * (m[k] / (1 - b1 ** step)) / (np.sqrt(v2[k] / (1 - b2 ** step)) + eps)).astype(np.float32)
         if progress:
-            progress(lo + int(round((hi - lo) * (ep + 1) / epochs)), tr("{stage}: epoch {epoch}/{epochs}, loss {loss}").format(
-                stage=label, epoch=ep + 1, epochs=epochs, loss=f"{total / per_epoch:.3f}"))
+            progress(lo + int(round((hi - lo) * (ep + 1) / epochs)), msg("{stage}: epoch {epoch}/{epochs}, loss {loss}", stage=label, epoch=ep + 1, epochs=epochs, loss=f"{total / per_epoch:.3f}"))
     out = {k: np.asarray(v) for k, v in arrays.items()}
     out.update(P)
     return out
@@ -484,10 +483,9 @@ def optimize_key_model(
     output_path = Path(request.output_path).resolve()
     if output_path.suffix.lower() != ".npz":
         raise ValueError("Key model path must end with .npz")
-    MS.check_output(output_path)
-    scratch = request.start == MS.SCRATCH
-    reference = CK.read_model_arrays(resolve_model(output_path))  # the model in use: what the new one is compared with
-    base = reference if scratch else CK.read_model_arrays(MS.base_model(output_path, request.start))
+    scratch = request.start_path is None
+    reference = CK.read_model_arrays(request.current_path)        # the model in use: what the new one is compared with
+    base = reference if scratch else CK.read_model_arrays(request.start_path)
     ignored: list[SkippedOptimizationTrack] = []
     tracks = list_key_tracks(library_dir, ignored)
     MS.require_tracks(len(tracks), MS.kind_of(request.start), MS.KEY_SONGS)
@@ -498,12 +496,12 @@ def optimize_key_model(
         frames = read_key_frames(cache_path(cache_dir, str(t["uid"])), t)
         s = song_of(t, frames) if frames is not None else None
         if s is None:
-            ignored.append(skipped_track(t, tr("too few beats or no key features")))
+            ignored.append(skipped_track(t, msg("too few beats or no key features")))
             continue
         songs.append(s); kept.append(t)
         if feature_progress and done % 10 == 0:
             feature_progress(90 + int(round(10 * done / len(tracks))),
-                             tr("Beat inputs {done}/{total}").format(done=done, total=len(tracks)))
+                             msg("Beat inputs {done}/{total}", done=done, total=len(tracks)))
     if feature_progress:
         feature_progress(100, f"{len(songs)} songs")
     MS.require_tracks(len(songs), MS.kind_of(request.start), MS.KEY_SONGS)
@@ -518,12 +516,12 @@ def optimize_key_model(
         k = min(int(request.cv_folds), np.unique(groups).size)
         train_idx, held = next(GroupKFold(n_splits=k).split(everything, groups=groups))
         trial = train(base, songs, train_idx, epochs, lr, request.distill, request.seed, scratch, optimize_progress,
-                      (0, 45), tr("Held-out check"))
+                      (0, 45), msg("Held-out check"))
         before, f_before = evaluate(reference, songs, held)
         after, f_after = evaluate(trial, songs, held)
         if after < before and not request.keep_if_worse:
             if optimize_progress:
-                optimize_progress(100, tr("Not saved: the held-out songs' keys got worse"))
+                optimize_progress(100, msg("Not saved: the held-out songs' keys got worse"))
             return KeyModelOptimizationResult(
                 output_path=output_path, track_count=len(songs), accuracy_before=before, accuracy_after=after,
                 fifth_before=f_before, fifth_after=f_after, eval_songs=int(held.size), cross_validated=True,
@@ -532,14 +530,14 @@ def optimize_key_model(
     else:
         span = (0, 95)
     final = train(base, songs, everything, epochs, lr, request.distill, request.seed, scratch, optimize_progress, span,
-                  tr("Training") if scratch else tr("Fine-tuning"))
+                  msg("Training") if scratch else msg("Fine-tuning"))
     if not cross_validated:
         before, f_before = evaluate(reference, songs, everything)
         after, f_after = evaluate(final, songs, everything)
         held = everything
     _save(output_path, final)
     if optimize_progress:
-        optimize_progress(100, tr("Done"))
+        optimize_progress(100, msg("Done"))
     return KeyModelOptimizationResult(
         output_path=output_path, track_count=len(songs), accuracy_before=before, accuracy_after=after,
         fifth_before=f_before, fifth_after=f_after, eval_songs=int(np.size(held)), cross_validated=cross_validated,
