@@ -1,9 +1,11 @@
+"""{libpath}/{uid}.npz: each track's stored analysis (`FeatureNPZStore`), the file format alone. Used by the jobs
+(core.analysis_library.jobs, core.library.jobs) on the library's owner's thread, nowhere else."""
 from __future__ import annotations
 import os
 from typing import Any, Dict, Optional
 import numpy as np
 
-from core.library.db import _canonical_uuid4
+from core.library.records import canonical_uuid4 as _canonical_uuid4
 from utils.atomic_io import atomic_output_path
 
 def _ensure_dir(d: str) -> str:
@@ -132,6 +134,15 @@ class FeatureNPZStore:
             raise FileNotFoundError(p)
         with np.load(p, allow_pickle=False) as npz:
             return {k: npz[k] for k in npz.files}
+
+    def load_keys(self, uid: str, keys: tuple, prefixes: tuple = ()) -> Optional[Dict[str, np.ndarray]]:
+        """Only the stored arrays named in ``keys`` or starting with one of ``prefixes`` (the others are not
+        decompressed); None when the track has no stored features."""
+        p = self.path(uid)
+        if not os.path.exists(p):
+            return None
+        with np.load(p, allow_pickle=False) as npz:
+            return {k: npz[k] for k in npz.files if k in keys or k.startswith(prefixes)}
 
     def exists(self, uid: str) -> bool:
         try:

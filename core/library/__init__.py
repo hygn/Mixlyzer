@@ -12,8 +12,11 @@ asks the owner. Where to look:
     tieups.py       library.db: the tie-up tables (what a tie-up is: core.tieup)
     variants.py     variants.db: the Variants' fingerprints and relations (what they are: core.variants)
     music_index.py  music_search.db: Search by Music's index (the search itself: core.music_search)
-    features.py     {uid}.npz: the analysis's features
     thumbnails.py   thumbs/{uid}.jpg
 
-tests/test_library_boundary.py fails when code outside core.library imports an inside module or SQLite.
+  beside it, the same owner's: core.analysis_library, the tracks' stored analyses ({uid}.npz; its jobs.py the
+  operations, its store.py the files)
+
+tests/test_library_boundary.py fails when code outside the library (core.library, core.analysis_library) imports an
+inside module or SQLite.
 """

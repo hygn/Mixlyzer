@@ -7,8 +7,9 @@ folder and its feature store). The app never calls a job itself: it asks the own
     library.write(jobs.rename_playlist, uid, name, done=...)  # a write: the snapshot read again before done
     library.call(jobs.song_of, uid)                           # another thread of the app: waits for it
 
-so this module is the library's whole surface: below it (core.library.db, tieups, variants, music_index, features,
-thumbnails) is how the library is kept, which nothing outside core.library touches.
+so this module and core.analysis_library.jobs (the tracks' stored analyses, {uid}.npz) are the library's whole
+surface: below them (core.library.db, tieups, variants, music_index, thumbnails; core.analysis_library.store) is how
+the library is kept, which nothing outside them touches.
 
 A write job is marked with the snapshot's parts it changes (``@changes(TRACKS, READINGS)``; ``@changes()``: none),
 so the owner reads only those again; a write job left unmarked has the snapshot read whole after it.
@@ -24,10 +25,8 @@ from PySide6 import QtCore, QtGui
 from core.library import music_index, thumbnails, tieups, variants
 from core.library.records import READING_FIELDS, IndexTrack, TrackRow
 from core.library.service import PLAYLISTS, READINGS, TIEUPS, TRACKS, VARIANTS, changes
-from core.linear_segments import build_bpm_segments, build_key_segments, build_phrase_index_rows
 from core.tieup import Catalog, TieUp, Work
 from core.variants import fingerprint as variant_fp
-from utils.phrases import assigned_phrases, extract_phrase_segments
 
 
 # ---- tracks ----
@@ -365,80 +364,12 @@ def open_music_search(lib):
     return music_index.open_search(music_index.path_for(lib.path))
 
 
-# ---- the analysis's features and the thumbnails ----
-
-def features(lib, uid: str) -> Optional[dict]:
-    """A track's stored features (its NPZ), None when there are none to read."""
-    try:
-        return lib.features.load(uid) if uid else None
-    except (OSError, ValueError):
-        return None
-
-
-def features_stamp(lib, uid: str) -> Optional[tuple[int, int]]:
-    """When and how large a track's stored features were written (the Rekordbox XML's change check)."""
-    path = lib.features.path(uid)
-    if not os.path.exists(path):
-        return None
-    st = os.stat(path)
-    return st.st_mtime_ns, st.st_size
-
+# ---- the thumbnails (the stored features' jobs are core.analysis_library.jobs') ----
 
 def thumbnail(lib, uid: str, width_px: int) -> Optional[QtGui.QImage]:
     """A track's thumbnail scaled to ``width_px``, None when it has none."""
     image = thumbnails.load_thumbnail(lib.path, uid)
     return image.scaledToWidth(max(1, int(width_px)), QtCore.Qt.SmoothTransformation) if image is not None else None
-
-
-def _replace_block(features: dict, name: str, block: dict) -> None:
-    """Replace a stored block (flattened as ``name.<field>``) as a whole, so no field of the previous block is left
-    behind."""
-    for key in [k for k in features if k.startswith(name + ".")]:
-        del features[key]
-    features[name] = block
-
-
-EDIT_BLOCKS = ("beatgrid", "segments", "key_segments", "key_segments_auto", "jump_cues_np", "jump_cues_auto_np",
-               "phrase_segments_np", "cue_points_np")
-
-
-def save_edits(lib, uid: str, edits: dict) -> str:
-    """The editor's save: the blocks in ``edits`` (EDIT_BLOCKS; one left out or None: as stored) replaced in the
-    track's stored features, its segment tables written from them. Returns the uid. Unmarked (the snapshot read
-    whole, sig_lib_updated sent): the library's phrase / transition filters read those tables and run again on it."""
-    unknown = set(edits) - set(EDIT_BLOCKS)
-    if unknown:
-        raise ValueError(f"not an editor block: {sorted(unknown)}")
-    beatgrid, segments, key_segments, key_segments_auto, jump_cues_np, jump_cues_auto_np, phrase_segments_np, \
-        cue_points_np = (edits.get(name) for name in EDIT_BLOCKS)
-    stored = lib.features.load(uid)
-    if beatgrid is not None:
-        stored["beats_time_sec"] = beatgrid
-    if segments is not None:
-        stored["tempo_segments"] = segments
-    if key_segments is not None:
-        stored["key_segments"] = key_segments
-    if key_segments_auto is not None:
-        # the automatic key result (full analysis / whole-track reanalysis); the key optimizer learns from the tracks
-        # whose keys differ from it
-        stored["key_segments_auto"] = key_segments_auto
-    if jump_cues_np is not None:
-        _replace_block(stored, "jump_cues_np", jump_cues_np)
-    if jump_cues_auto_np is not None:
-        # a JumpCUE reanalysis replaces the stored automatic result
-        _replace_block(stored, "jump_cues_auto_np", jump_cues_auto_np)
-    if phrase_segments_np is not None:
-        _replace_block(stored, "phrase_segments_np", phrase_segments_np)
-    if cue_points_np is not None:
-        _replace_block(stored, "cue_points_np", cue_points_np)
-    lib.features.save(uid, stored)
-    bpm_rows = build_bpm_segments(stored.get("tempo_segments"))
-    key_rows = build_key_segments(stored.get("key_segments"))
-    phrase_rows = assigned_phrases(extract_phrase_segments(stored))
-    lib.db.replace_bpm_segments(uid, bpm_rows)
-    lib.db.replace_key_segments(uid, key_rows)
-    lib.db.replace_phrase_index(uid, build_phrase_index_rows(phrase_rows, bpm_rows, key_rows))
-    return uid
 
 
 # ---- an analysis's results ----
@@ -512,16 +443,3 @@ def store_analysis(lib, payload: dict) -> dict:
             print(f"[Tie-ups] not taken from its versions: {exc}")
     payload["properties"] = properties
     return payload
-
-
-# ---- Reoptimize (the models trained on the library's edits) ----
-
-def training_tracks(lib) -> list[dict]:
-    """The library's tracks as the optimizers read them (uid, title, artist, audio_path, analysis_path), in uid
-    order: handed to their process, which reads the analysis files and the audio from these paths and never opens
-    library.db."""
-    from pathlib import Path
-    return [{"uid": row.uid, "title": row.title or "", "artist": row.artist or "",
-             "audio_path": Path(row.path) if row.path else Path(),
-             "analysis_path": Path(lib.features.path(row.uid))}
-            for row in lib.db.list_all(order_by="uid ASC") if row.uid]

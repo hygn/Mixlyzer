@@ -35,26 +35,27 @@ def _list_beat_tracks(
     library_dir: Path,
     ignored: list[SkippedOptimizationTrack] | None = None,
 ) -> list[dict[str, object]]:
-    """The tracks with a usable beat grid, of the tracks the library's owner gave this run (optimizer.library_tracks;
-    ``library_dir`` is kept for the callers' signatures)."""
+    """The tracks with a usable beat grid, of the tracks the library's owner gave this run with their stored
+    features (optimizer.library_tracks; ``library_dir`` is kept for the callers' signatures)."""
     tracks: list[dict[str, object]] = []
     for track in library_tracks.tracks():
-        analysis_path = Path(track["analysis_path"])
         audio_path = Path(track["audio_path"])
-        track.update(audio_path=audio_path, analysis_path=analysis_path)
-        if not analysis_path.is_file():
+        track.update(audio_path=audio_path)
+        stored = track["features"]
+        if stored is None:
             if ignored is not None:
-                ignored.append(skipped_track(track, tr("analysis NPZ is missing")))
+                reason = track.get("error")
+                ignored.append(skipped_track(track, tr("invalid beat analysis: {error}").format(error=reason)
+                                             if reason else tr("analysis NPZ is missing")))
             continue
         if not audio_path.is_file():
             if ignored is not None:
                 ignored.append(skipped_track(track, tr("audio file is missing")))
             continue
         try:
-            with np.load(analysis_path, allow_pickle=False) as archive:
-                beats = np.asarray(archive["beats_time_sec"], dtype=np.float64)
-                sample_rate = int(np.asarray(archive["sr"]).item())
-        except (KeyError, OSError, ValueError) as exc:
+            beats = np.asarray(stored["beats_time_sec"], dtype=np.float64)
+            sample_rate = int(np.asarray(stored["sr"]).item())
+        except (KeyError, ValueError) as exc:
             if ignored is not None:
                 ignored.append(skipped_track(track, tr("invalid beat analysis: {error}").format(error=exc)))
             continue

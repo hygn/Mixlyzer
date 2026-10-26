@@ -111,13 +111,13 @@ def list_key_tracks(library_dir: Path, ignored: list[SkippedOptimizationTrack]) 
     """The library's tracks whose keys are the user's, with what training reads (beats, bars, phrases, keys)."""
     tracks = []
     for track in _list_beat_tracks(library_dir, ignored):
+        z = track["features"]          # the stored features the library's owner gave (optimizer.library_tracks)
         try:
-            with np.load(track["analysis_path"], allow_pickle=False) as z:
-                ks = _rows(z["key_segments"]) if "key_segments" in z.files else np.zeros((0, 4))
-                auto = _rows(z["key_segments_auto"]) if "key_segments_auto" in z.files else None
-                segs = np.asarray(z["tempo_segments"], dtype=np.float64)
-                starts = np.asarray(z["phrase_segments_np.start"], float) if "phrase_segments_np.start" in z.files else np.zeros(0)
-                duration = float(np.asarray(z["duration_sec"]).item())
+            ks = _rows(z["key_segments"]) if "key_segments" in z else np.zeros((0, 4))
+            auto = _rows(z["key_segments_auto"]) if "key_segments_auto" in z else None
+            segs = np.asarray(z["tempo_segments"], dtype=np.float64)
+            starts = np.asarray(z["phrase_segments_np.start"], float) if "phrase_segments_np.start" in z else np.zeros(0)
+            duration = float(np.asarray(z["duration_sec"]).item())
         except Exception as exc:
             ignored.append(skipped_track(track, tr("unreadable analysis: {error}").format(error=exc)))
             continue

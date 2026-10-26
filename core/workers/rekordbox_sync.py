@@ -10,6 +10,7 @@ import numpy as np
 from PySide6 import QtCore
 
 from core import tieup
+from core.analysis_library import jobs as analysis_jobs
 from core.library import jobs
 from core.library.records import TrackRow
 from third_party.rekordbox import (
@@ -186,13 +187,13 @@ class _RekordboxSyncEngine:
     def _load_features(self, uid: Optional[str]) -> dict[str, np.ndarray]:
         if not uid:
             return {}
-        return self.library.call(jobs.features, uid) or {}
+        return self.library.call(analysis_jobs.features, uid) or {}
 
     def _track_hash(self, row: TrackRow) -> str:
         parts = [str(v) for k, v in sorted(asdict(row).items())]
         parts.append(f"ramp_tolerance_ms={float(self.request.ramp_tolerance_ms):g}")   # the TEMPO steps
         uid = str(row.uid or "").strip()
-        stamp = self.library.call(jobs.features_stamp, uid) if uid else None
+        stamp = self.library.call(analysis_jobs.features_stamp, uid) if uid else None
         if stamp is not None:
             parts += [str(stamp[0]), str(stamp[1])]
         digest = hashlib.md5("|".join(parts).encode("utf-8")).hexdigest()

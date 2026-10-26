@@ -1,6 +1,7 @@
 """The library's one owner: a thread of its own that does every read and write of the library (library.db, the
 features' NPZ files, the thumbnails, the Variants' and Search by Music's indexes beside them). The rest of the app
-asks it by name (core.library.jobs) and is told; nothing else opens the library.
+asks it by name (core.library.jobs; the stored analyses' core.analysis_library.jobs) and is told; nothing else opens
+the library.
 
     the GUI           library.read(jobs.track_tieups, uid, done=show)     done runs on the GUI thread
                       library.write(jobs.rename_playlist, uid, name)      then the snapshot is read again
@@ -30,7 +31,7 @@ from PySide6 import QtCore
 
 from core.library import tieups, variants
 from core.library.db import LibraryDB
-from core.library.features import FeatureNPZStore
+from core.analysis_library.store import FeatureNPZStore
 from core.library.records import PlaylistRow, TrackRow
 
 READ, WRITE = "read", "write"

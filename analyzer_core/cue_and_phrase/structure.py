@@ -248,34 +248,11 @@ def _reconstruct_bars(
 def build_predictor_grid(
     beat_times_sec: np.ndarray, tempo_segments: np.ndarray
 ) -> PredictorGrid:
-    """Build the predictor grid from in-memory beats + tempo_segments arrays.
-
-    Same as :func:`load_predictor_grid` but without reading an NPZ, for callers
-    (e.g. the live analyzer) that already hold these arrays.
-    """
+    """Build the predictor grid from beats + tempo_segments arrays (the live analyzer's, or a track's stored ones
+    as the library's owner gives them to Reoptimize): only the predictor-permitted fields, never its phrases,
+    keys or cues."""
     beats = _validate_beat_grid(np.asarray(beat_times_sec, dtype=np.float64))
     segments = _parse_meter_segments(np.asarray(tempo_segments, dtype=np.float64))
-    return _reconstruct_bars(beats, segments)
-
-
-def load_predictor_grid(npz_path: str | Path) -> PredictorGrid:
-    """Read only the predictor-permitted fields from a Mixlyzer analysis NPZ.
-
-    No key enumeration is performed.  In particular, this function never
-    accesses ``phrase_segments_np.*``, precomputed chroma, key, cue, or image
-    fields.
-    """
-
-    with np.load(Path(npz_path), allow_pickle=False) as archive:
-        try:
-            beats = _validate_beat_grid(archive["beats_time_sec"])
-        except KeyError as exc:
-            raise KeyError("NPZ is missing required field 'beats_time_sec'.") from exc
-        try:
-            segments = _parse_meter_segments(archive["tempo_segments"])
-        except KeyError as exc:
-            raise KeyError("NPZ is missing required field 'tempo_segments'.") from exc
-
     return _reconstruct_bars(beats, segments)
 
 

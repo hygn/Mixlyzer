@@ -992,15 +992,13 @@ def optimize_jumpcue_parameters(
     skipped: list = []
 
     tracks: list[dict] = []
-    for given in library_tracks.tracks():     # the tracks the library's owner gave this run
+    for given in library_tracks.tracks():     # the tracks the library's owner gave this run, with their features
         info = {"uid": str(given["uid"]), "audio_path": Path(given["audio_path"]),
                 "title": given["title"], "artist": given["artist"]}
-        analysis_path = Path(given["analysis_path"])
+        feats = given["features"]
         try:
-            if not analysis_path.is_file():
+            if feats is None:
                 continue
-            with np.load(analysis_path, allow_pickle=False) as archive:
-                feats = {key: archive[key] for key in archive.files}
             saved = jump_cue_point_groups(feats, "jump_cues_np")
             if not saved:
                 continue

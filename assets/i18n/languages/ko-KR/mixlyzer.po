@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-26 22:30+0900\n"
+"POT-Creation-Date: 2026-10-26 22:53+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ko_KR\n"
@@ -277,42 +277,42 @@ msgstr "라이브러리 불러오는 중"
 msgid "Building the window"
 msgstr "창 만드는 중"
 
-#: app/window.py:61
+#: app/window.py:62
 msgid "Core objects and playback"
 msgstr "핵심 객체와 재생"
 
-#: app/window.py:149
+#: app/window.py:150
 msgid "Main view, editor and library"
 msgstr "메인 뷰, 편집기, 라이브러리"
 
-#: app/window.py:155 app/window.py:181 ui/config/window.py:66
+#: app/window.py:156 app/window.py:182 ui/config/window.py:66
 msgid "Settings"
 msgstr "설정"
 
-#: app/window.py:164
+#: app/window.py:165
 msgid "Dialogs, workflows and metronome"
 msgstr "대화상자, 워크플로, 메트로놈"
 
-#: app/window.py:172 core/midi.py:59 ui/config/playback.py:327
+#: app/window.py:173 core/midi.py:59 ui/config/playback.py:327
 msgid "Mixer"
 msgstr "믹서"
 
-#: app/window.py:182 ui/workers.py:28
+#: app/window.py:183 ui/workers.py:28
 msgid "Workers"
 msgstr "작업"
 
 # | msgid "Tie-ups"
-#: app/window.py:183 ui/shortcuts.py:155 ui/tieup_works.py:31
+#: app/window.py:184 ui/shortcuts.py:155 ui/tieup_works.py:31
 #: ui/tieup_works.py:204 ui/tieup_works.py:259 ui/tieup_works.py:264
 #: ui/tieup_works.py:273 ui/tieup_works.py:336
 msgid "Tie-up Works"
 msgstr "타이업 작품"
 
-#: app/window.py:184
+#: app/window.py:185
 msgid "Open Source"
 msgstr "오픈 소스"
 
-#: app/window.py:185
+#: app/window.py:186
 msgid "About"
 msgstr "정보"
 
@@ -320,55 +320,55 @@ msgstr "정보"
 # | Playback > " "Audio engine)."
 # Audio
 # | > " "Engine)."
-#: app/window.py:378
+#: app/window.py:379
 msgid "MIDI needs the native audio engine (Settings > Audio > Engine)."
 msgstr "MIDI는 Native 오디오 엔진에서만 동작합니다(설정 > 오디오 > 엔진)."
 
 # | msgid "MIDI input"
-#: app/window.py:385
+#: app/window.py:386
 msgid "MIDI input on."
 msgstr "MIDI 입력 켬."
 
 # | msgid "MIDI input"
-#: app/window.py:385
+#: app/window.py:386
 msgid "MIDI input off."
 msgstr "MIDI 입력 끔."
 
-#: app/window.py:434
+#: app/window.py:435
 msgid "The Python audio engine plays: there is no native engine to restart."
 msgstr "Python 오디오 엔진으로 재생 중입니다. 재시작할 네이티브 엔진이 없습니다."
 
 # | msgid "Starting the reading worker"
-#: app/window.py:436
+#: app/window.py:437
 msgid "Restarting the audio engine..."
 msgstr "오디오 엔진 재시작 중..."
 
 # | msgid "Audio engine"
-#: app/window.py:440
+#: app/window.py:441
 msgid "Audio engine restarted."
 msgstr "오디오 엔진을 재시작했습니다."
 
-#: app/window.py:441
+#: app/window.py:442
 msgid "The audio engine did not start; it is tried again every 2 seconds."
 msgstr "오디오 엔진이 시작되지 않았습니다. 2초마다 다시 시도합니다."
 
-#: app/window.py:491 app/window.py:569
+#: app/window.py:492 app/window.py:570
 msgid "External Sync is enabled. Local track loading is disabled."
 msgstr "외부 동기화가 켜져 있습니다. 로컬 트랙 불러오기가 비활성화됩니다."
 
-#: app/window.py:504
+#: app/window.py:505
 msgid "Segment reanalysis canceled (track changed)"
 msgstr "구간 재분석 취소됨 (트랙이 바뀜)"
 
-#: app/window.py:575
+#: app/window.py:576
 msgid "Track unloaded."
 msgstr "트랙을 내렸습니다."
 
-#: app/window.py:585
+#: app/window.py:586
 msgid "Track File Not Found"
 msgstr "트랙 파일을 찾을 수 없음"
 
-#: app/window.py:589
+#: app/window.py:590
 #, python-brace-format
 msgid ""
 "Cannot load \"{name}\": its file is missing.\n"
@@ -381,51 +381,51 @@ msgstr ""
 "\n"
 "파일의 새 위치를 지정할까요?"
 
-#: app/window.py:596
+#: app/window.py:597
 #, python-brace-format
 msgid "Locate {name}"
 msgstr "{name} 찾기"
 
-#: app/window.py:620 app/window.py:636
+#: app/window.py:621 app/window.py:637
 msgid "Analysis saved to library."
 msgstr "분석을 라이브러리에 저장했습니다."
 
-#: app/window.py:625
+#: app/window.py:626
 msgid "Finished"
 msgstr "완료"
 
-#: app/window.py:648
+#: app/window.py:649
 msgid "Waiting to be looked up on Wikipedia"
 msgstr "위키백과 조사 대기 중"
 
-#: app/window.py:654
+#: app/window.py:655
 msgid "Looking up on Wikipedia and Wikidata…"
 msgstr "위키백과와 위키데이터에서 찾는 중…"
 
 # | msgid "Reading the analysis failed: {error}"
 # | msgid "The search failed: {error}"
 # | msgid "" "The lookup failed:\n" "{error}"
-#: app/window.py:659
+#: app/window.py:660
 msgid "The lookup failed."
 msgstr "조사하지 못했습니다."
 
-#: app/window.py:702
+#: app/window.py:703
 #, python-brace-format
 msgid "External Sync loading: {file}"
 msgstr "외부 동기화 불러오는 중: {file}"
 
-#: app/window.py:702
+#: app/window.py:703
 #, python-brace-format
 msgid "External Sync analyzing: {file}"
 msgstr "외부 동기화 분석 중: {file}"
 
 # | msgid "Memory Sync Disabled"
-#: app/window.py:717
+#: app/window.py:718
 msgid "External Sync Disabled"
 msgstr "외부 동기화 비활성화됨"
 
 # | msgid "External Sync enabled via {target}. Local play/load is locked."
-#: app/window.py:991
+#: app/window.py:992
 #, python-brace-format
 msgid "External Sync enabled: OSC on {address}. Local play/load is locked."
 msgstr "외부 동기화 사용: OSC {address}. 로컬 재생/불러오기가 잠깁니다."
@@ -441,7 +441,7 @@ msgid "The written tags did not read back as written; the file is unchanged."
 msgstr "쓴 태그가 쓴 그대로 다시 읽히지 않았습니다. 파일은 바뀌지 않았습니다."
 
 #: core/audio/tag_writer.py:205 core/audio/tag_writer.py:286
-#: core/audio/tag_writer.py:1371 ui/export.py:189
+#: core/audio/tag_writer.py:1371 ui/export.py:190
 msgid "Tags cannot be written to this file's format."
 msgstr "이 파일 형식에는 태그를 쓸 수 없습니다."
 
@@ -1186,38 +1186,38 @@ msgstr "{name} 최적화가 결과를 {jobs}개 중 {results}개만 돌려주었
 msgid "The reading refresh process exited unexpectedly ({code})."
 msgstr "발음 갱신 프로세스가 예기치 않게 종료되었습니다 ({code})."
 
-#: core/workers/rekordbox_sync.py:100
+#: core/workers/rekordbox_sync.py:101
 msgid "Loading Mixlyzer library"
 msgstr "Mixlyzer 라이브러리 불러오는 중"
 
-#: core/workers/rekordbox_sync.py:110 core/workers/rekordbox_sync.py:139
-#: core/workers/rekordbox_sync.py:153
+#: core/workers/rekordbox_sync.py:111 core/workers/rekordbox_sync.py:140
+#: core/workers/rekordbox_sync.py:154
 msgid "Loading Rekordbox XML"
 msgstr "Rekordbox XML 불러오는 중"
 
-#: core/workers/rekordbox_sync.py:131
+#: core/workers/rekordbox_sync.py:132
 #, python-brace-format
 msgid "Syncing tracks {done}/{total}"
 msgstr "트랙 동기화 중 {done}/{total}"
 
-#: core/workers/rekordbox_sync.py:147
+#: core/workers/rekordbox_sync.py:148
 #, python-brace-format
 msgid "Syncing changed tracks {done}/{total}"
 msgstr "바뀐 트랙 동기화 중 {done}/{total}"
 
-#: core/workers/rekordbox_sync.py:163
+#: core/workers/rekordbox_sync.py:164
 msgid "Building Rekordbox track entry"
 msgstr "Rekordbox 트랙 항목 만드는 중"
 
-#: core/workers/rekordbox_sync.py:180
+#: core/workers/rekordbox_sync.py:181
 msgid "Formatting Rekordbox XML"
 msgstr "Rekordbox XML 서식 맞추는 중"
 
-#: core/workers/rekordbox_sync.py:182
+#: core/workers/rekordbox_sync.py:183
 msgid "Writing Rekordbox XML"
 msgstr "Rekordbox XML 쓰는 중"
 
-#: core/workers/rekordbox_sync.py:184
+#: core/workers/rekordbox_sync.py:185
 msgid "Rekordbox XML sync complete"
 msgstr "Rekordbox XML 동기화 완료"
 
@@ -1226,56 +1226,56 @@ msgstr "Rekordbox XML 동기화 완료"
 msgid "Segment analysis process exited unexpectedly ({code})."
 msgstr "구간 분석 프로세스가 예기치 않게 종료되었습니다 ({code})."
 
-#: core/workflows/analysis.py:75
+#: core/workflows/analysis.py:76
 msgid "Analysis canceled"
 msgstr "분석 취소됨"
 
-#: core/workflows/analysis.py:98
+#: core/workflows/analysis.py:99
 #, python-brace-format
 msgid "File not found: {path}"
 msgstr "파일을 찾을 수 없습니다: {path}"
 
-#: core/workflows/analysis.py:108
+#: core/workflows/analysis.py:109
 #, python-brace-format
 msgid "Analysis already in progress: {file}"
 msgstr "이미 분석 중입니다: {file}"
 
 # | msgid "Reading the library"
-#: core/workflows/analysis.py:111
+#: core/workflows/analysis.py:112
 #, python-brace-format
 msgid "Already in the library: {file}"
 msgstr "이미 라이브러리에 있음: {file}"
 
-#: core/workflows/analysis.py:119
+#: core/workflows/analysis.py:120
 msgid "Loading Track"
 msgstr "트랙 불러오는 중"
 
 # | msgid "Loading the library"
-#: core/workflows/analysis.py:130
+#: core/workflows/analysis.py:131
 #, python-brace-format
 msgid "Loaded from the library: {file}"
 msgstr "라이브러리에서 불러옴: {file}"
 
-#: core/workflows/analysis.py:143
+#: core/workflows/analysis.py:144
 #, python-brace-format
 msgid "Analyzing: {file}"
 msgstr "분석 중: {file}"
 
-#: core/workflows/analysis.py:197
+#: core/workflows/analysis.py:198
 #, python-brace-format
 msgid "Error ({file})"
 msgstr "오류 ({file})"
 
-#: core/workflows/analysis.py:197
+#: core/workflows/analysis.py:198
 msgid "Error"
 msgstr "오류"
 
-#: analyzer_core/global_analyzer.py:506 core/workflows/analysis.py:208
+#: analyzer_core/global_analyzer.py:506 core/workflows/analysis.py:209
 msgid "Saving Result"
 msgstr "결과 저장 중"
 
 # | msgid "The file could not be written: {error}"
-#: core/workflows/analysis.py:211
+#: core/workflows/analysis.py:212
 #, python-brace-format
 msgid "The analysis could not be stored: {error}"
 msgstr "분석 결과를 저장할 수 없습니다: {error}"
@@ -1286,6 +1286,11 @@ msgstr "분석 결과를 저장할 수 없습니다: {error}"
 #, python-brace-format
 msgid "Indexing for Search by Music and Variants: {done} / {total} tracks"
 msgstr "음악으로 검색·다른 버전 색인 중: {done} / {total} 트랙"
+
+#: core/workflows/optimizer.py:52
+#, python-brace-format
+msgid "Reading the stored analyses: {done} / {total} tracks"
+msgstr "저장된 분석 읽는 중: 트랙 {done} / {total}"
 
 #: core/workflows/reading_refresh.py:72
 #, python-brace-format
@@ -1449,21 +1454,21 @@ msgstr "모든 비용 조합으로 트래킹 {done}/{total}"
 msgid "Not saved: the held-out songs got worse"
 msgstr "저장 안 함: 검증용 곡에서 나빠졌습니다"
 
-#: optimizer/beat_frames.py:34
+#: optimizer/beat_frames.py:33
 #, python-brace-format
 msgid "invalid tempo rows: {error}"
 msgstr "잘못된 템포 행: {error}"
 
-#: optimizer/beat_frames.py:37
+#: optimizer/beat_frames.py:36
 msgid "no tempo rows"
 msgstr "템포 행 없음"
 
-#: optimizer/beat_frames.py:128
+#: optimizer/beat_frames.py:127
 #, python-brace-format
 msgid "frame feature cache build failed: {error}"
 msgstr "프레임 특징 캐시 생성 실패: {error}"
 
-#: optimizer/beat_frames.py:131
+#: optimizer/beat_frames.py:130
 #, python-brace-format
 msgid "Frame features {done}/{total}"
 msgstr "프레임 특징 {done}/{total}"
@@ -1505,49 +1510,49 @@ msgstr "저장 안 함: 검증용 곡의 그리드가 나빠졌습니다"
 msgid "Fitting all tracks"
 msgstr "전체 트랙으로 학습 중"
 
-#: optimizer/jumpcue_parameter_optimizer.py:1010
+#: optimizer/jumpcue_parameter_optimizer.py:1008
 msgid "Audio file not found"
 msgstr "오디오 파일을 찾을 수 없음"
 
-#: optimizer/jumpcue_parameter_optimizer.py:1016
+#: optimizer/jumpcue_parameter_optimizer.py:1014
 #, python-brace-format
 msgid "Reading the analysis failed: {error}"
 msgstr "분석 읽기 실패: {error}"
 
-#: optimizer/jumpcue_parameter_optimizer.py:1018
+#: optimizer/jumpcue_parameter_optimizer.py:1016
 #, python-brace-format
 msgid "Need at least five tracks with saved JumpCUEs ({count} found)."
 msgstr "JumpCUE가 저장된 트랙이 최소 5개 필요합니다 ({count}개 찾음)."
 
-#: optimizer/jumpcue_parameter_optimizer.py:1035
+#: optimizer/jumpcue_parameter_optimizer.py:1033
 #, python-brace-format
 msgid "Building {count} JumpCUE candidate caches"
 msgstr "JumpCUE 후보 캐시 {count}개 만드는 중"
 
-#: optimizer/jumpcue_parameter_optimizer.py:1036
+#: optimizer/jumpcue_parameter_optimizer.py:1034
 msgid "JumpCUE candidate cache is current"
 msgstr "JumpCUE 후보 캐시가 최신입니다"
 
-#: optimizer/jumpcue_parameter_optimizer.py:1048
+#: optimizer/jumpcue_parameter_optimizer.py:1046
 #, python-brace-format
 msgid "JumpCUE analysis failed: {error}"
 msgstr "JumpCUE 분석 실패: {error}"
 
-#: optimizer/jumpcue_parameter_optimizer.py:1066
+#: optimizer/jumpcue_parameter_optimizer.py:1064
 msgid "No saved JumpCUE group matches an automatically found group"
 msgstr "저장된 JumpCUE 그룹 중 자동으로 찾은 그룹과 맞는 것이 없습니다"
 
-#: optimizer/jumpcue_parameter_optimizer.py:1071
+#: optimizer/jumpcue_parameter_optimizer.py:1069
 #, python-brace-format
 msgid "{count} labeled groups"
 msgstr "라벨이 있는 그룹 {count}개"
 
-#: optimizer/jumpcue_parameter_optimizer.py:1089
+#: optimizer/jumpcue_parameter_optimizer.py:1087
 #, python-brace-format
 msgid "Cross-validation fold {fold}/{folds}"
 msgstr "교차 검증 폴드 {fold}/{folds}"
 
-#: optimizer/jumpcue_parameter_optimizer.py:1095
+#: optimizer/jumpcue_parameter_optimizer.py:1093
 msgid "Fitting on all tracks"
 msgstr "전체 트랙으로 학습 중"
 
@@ -1669,29 +1674,29 @@ msgstr ""
 msgid "Fine-tuning the shipped model replaces the earlier retrained model."
 msgstr "기본 제공 모델을 미세 조정하면 이전에 재학습한 모델을 대체합니다."
 
-#: optimizer/onset_training.py:47 optimizer/phrase_backend.py:150
-msgid "analysis NPZ is missing"
-msgstr "분석 NPZ가 없음"
-
-#: optimizer/onset_training.py:51 optimizer/phrase_backend.py:154
-msgid "audio file is missing"
-msgstr "오디오 파일이 없음"
-
-#: optimizer/onset_training.py:59
+#: optimizer/onset_training.py:48 optimizer/onset_training.py:60
 #, python-brace-format
 msgid "invalid beat analysis: {error}"
 msgstr "잘못된 비트 분석: {error}"
 
-#: optimizer/onset_training.py:63
+#: optimizer/onset_training.py:49 optimizer/phrase_backend.py:155
+msgid "analysis NPZ is missing"
+msgstr "분석 NPZ가 없음"
+
+#: optimizer/onset_training.py:53 optimizer/phrase_backend.py:159
+msgid "audio file is missing"
+msgstr "오디오 파일이 없음"
+
+#: optimizer/onset_training.py:64
 msgid "invalid or insufficient beat grid"
 msgstr "비트그리드가 잘못되었거나 부족함"
 
-#: optimizer/phrase_backend.py:161
+#: optimizer/phrase_backend.py:154 optimizer/phrase_backend.py:166
 #, python-brace-format
 msgid "invalid Phrase annotation: {error}"
 msgstr "잘못된 프레이즈 주석: {error}"
 
-#: optimizer/phrase_backend.py:167
+#: optimizer/phrase_backend.py:172
 msgid "fewer than two usable Phrase segments"
 msgstr "사용할 수 있는 프레이즈 구간이 두 개 미만"
 
@@ -1940,8 +1945,8 @@ msgstr "키 모델 (NPZ)"
 msgid "Key feature cache"
 msgstr "키 특징 캐시"
 
-#: ui/config/analysis.py:181 ui/config/analysis.py:631
-#: ui/config/analysis.py:692 ui/config/analysis.py:703
+#: ui/config/analysis.py:181 ui/config/analysis.py:632
+#: ui/config/analysis.py:693 ui/config/analysis.py:704
 msgid "Reoptimize Phrase Parameter"
 msgstr "프레이즈 파라미터 재최적화"
 
@@ -1961,8 +1966,8 @@ msgstr "파라미터 (NPZ)"
 msgid "Feature cache"
 msgstr "특징 캐시"
 
-#: ui/config/analysis.py:214 ui/config/analysis.py:710
-#: ui/config/analysis.py:755 ui/config/analysis.py:766
+#: ui/config/analysis.py:214 ui/config/analysis.py:711
+#: ui/config/analysis.py:756 ui/config/analysis.py:767
 msgid "Reoptimize JumpCUE Parameter"
 msgstr "JumpCUE 파라미터 재최적화"
 
@@ -2066,17 +2071,17 @@ msgstr[0] "잘못된 트랙 {count}개를 제외하고 최적화를 마쳤습니
 msgid "Reason: {reason}"
 msgstr "이유: {reason}"
 
-#: ui/config/analysis.py:428 ui/config/dialogs/optimization.py:153
+#: ui/config/analysis.py:433 ui/config/dialogs/optimization.py:153
 #: ui/config/dialogs/optimization.py:267
 msgid "Reoptimize Beat Models"
 msgstr "비트 모델 재최적화"
 
-#: ui/config/analysis.py:454
+#: ui/config/analysis.py:455
 #, python-brace-format
 msgid "{name}: parameter path or feature cache path is empty."
 msgstr "{name}: 파라미터 경로나 특징 캐시 경로가 비어 있습니다."
 
-#: ui/config/analysis.py:493
+#: ui/config/analysis.py:494
 #, python-brace-format
 msgid ""
 "Failed to back up the {name} parameter:\n"
@@ -2085,21 +2090,21 @@ msgstr ""
 "{name} 파라미터를 백업하지 못했습니다:\n"
 "{error}"
 
-#: ui/config/analysis.py:535
+#: ui/config/analysis.py:536
 #, python-brace-format
 msgid "{name}: feature build pending"
 msgstr "{name}: 특징 생성 대기 중"
 
-#: ui/config/analysis.py:536
+#: ui/config/analysis.py:537
 #, python-brace-format
 msgid "{name}: optimize pending"
 msgstr "{name}: 최적화 대기 중"
 
-#: ui/config/analysis.py:554 ui/config/analysis.py:565
+#: ui/config/analysis.py:555 ui/config/analysis.py:566
 msgid "none"
 msgstr "없음"
 
-#: ui/config/analysis.py:562
+#: ui/config/analysis.py:563
 #, python-brace-format
 msgid ""
 "{name} optimization failed:\n"
@@ -2117,27 +2122,27 @@ msgstr ""
 #: optimizer/beat_critic_optimizer.py:504
 #: optimizer/beat_decoder_optimizer.py:214 optimizer/beat_tcn_optimizer.py:409
 #: optimizer/downbeat_ctx_optimizer.py:139
-#: optimizer/jumpcue_parameter_optimizer.py:1122
+#: optimizer/jumpcue_parameter_optimizer.py:1120
 #: optimizer/key_model_optimizer.py:541
 #: optimizer/phrase_parameter_optimizer.py:586
-#: optimizer/refine_onset_optimizer.py:208 ui/config/analysis.py:573
+#: optimizer/refine_onset_optimizer.py:208 ui/config/analysis.py:574
 #: ui/config/dialogs/optimization.py:95
 msgid "Done"
 msgstr "완료"
 
-#: ui/config/analysis.py:589
+#: ui/config/analysis.py:590
 #, python-brace-format
 msgid "{name}: saved to {path}"
 msgstr "{name}: {path}에 저장함"
 
-#: ui/config/analysis.py:591
+#: ui/config/analysis.py:592
 #, python-brace-format
 msgid ""
 "{name}: NOT saved -- the end-to-end check found the grids worse; the "
 "model in use is kept."
 msgstr "{name}: 저장 안 함 -- 종단 간 검사에서 그리드가 나빠졌습니다. 사용 중인 모델을 유지합니다."
 
-#: ui/config/analysis.py:595
+#: ui/config/analysis.py:596
 #, python-brace-format
 msgid ""
 "Costs: section {section_before} -> {section_after}, half-beat reset "
@@ -2146,73 +2151,73 @@ msgstr ""
 "비용: 구간 {section_before} -> {section_after}, 반 박 재설정 {reset_before} -> "
 "{reset_after}, 홀수 마디 {odd_before} -> {odd_after}"
 
-#: ui/config/analysis.py:601
+#: ui/config/analysis.py:602
 msgid "No end-to-end check (cross-validation is off): saved without a comparison."
 msgstr "종단 간 검사 없음(교차 검증 꺼짐): 비교 없이 저장했습니다."
 
-#: ui/config/analysis.py:604
+#: ui/config/analysis.py:605
 #, python-brace-format
 msgid ""
 "End-to-end check on {count} held-out songs (the whole analysis, current "
 "vs new):"
 msgstr "검증용 곡 {count}곡으로 종단 간 검사 (분석 전체, 현재 대 새 모델):"
 
-#: ui/config/analysis.py:607
+#: ui/config/analysis.py:608
 #, python-brace-format
 msgid "End-to-end check on {count} songs (the whole analysis, current vs new):"
 msgstr "{count}곡으로 종단 간 검사 (분석 전체, 현재 대 새 모델):"
 
-#: ui/config/analysis.py:609
+#: ui/config/analysis.py:610
 #, python-brace-format
 msgid "beats off by more than 25 ms: {before} -> {after} min"
 msgstr "25 ms 넘게 어긋난 비트: {before} -> {after}분"
 
-#: ui/config/analysis.py:611
+#: ui/config/analysis.py:612
 #, python-brace-format
 msgid "bars whose downbeat is off by more than 70 ms: {before} -> {after} min"
 msgstr "다운비트가 70 ms 넘게 어긋난 마디: {before} -> {after}분"
 
-#: ui/config/analysis.py:618
+#: ui/config/analysis.py:619
 #, python-brace-format
 msgid " and {count} more"
 msgstr " 외 {count}곡"
 
-#: ui/config/analysis.py:620
+#: ui/config/analysis.py:621
 msgid "better"
 msgstr "좋아짐"
 
-#: ui/config/analysis.py:621
+#: ui/config/analysis.py:622
 msgid "worse"
 msgstr "나빠짐"
 
-#: ui/config/analysis.py:623
+#: ui/config/analysis.py:624
 msgid "no song changed by more than a second"
 msgstr "1초 넘게 바뀐 곡 없음"
 
-#: ui/config/analysis.py:636
+#: ui/config/analysis.py:637
 msgid "Phrase Parameter Path (npz) is empty."
 msgstr "프레이즈 파라미터 경로(npz)가 비어 있습니다."
 
-#: ui/config/analysis.py:643
+#: ui/config/analysis.py:644
 msgid "Phrase Feature Cache Path (directory) is empty."
 msgstr "프레이즈 특징 캐시 경로(폴더)가 비어 있습니다."
 
-#: ui/config/analysis.py:652
+#: ui/config/analysis.py:653
 msgid "phrase"
 msgstr "프레이즈"
 
-#: ui/config/analysis.py:675 ui/config/analysis.py:736
+#: ui/config/analysis.py:676 ui/config/analysis.py:737
 #: ui/config/dialogs/optimization.py:75
 msgid "CV"
 msgstr "CV"
 
 #: optimizer/beat_critic_optimizer.py:495 optimizer/beat_tcn_optimizer.py:397
-#: optimizer/key_model_optimizer.py:534 ui/config/analysis.py:675
-#: ui/config/analysis.py:736 ui/config/dialogs/optimization.py:75
+#: optimizer/key_model_optimizer.py:534 ui/config/analysis.py:676
+#: ui/config/analysis.py:737 ui/config/dialogs/optimization.py:75
 msgid "Training"
 msgstr "학습"
 
-#: ui/config/analysis.py:677
+#: ui/config/analysis.py:678
 #, python-brace-format
 msgid ""
 "Phrase parameter updated:\n"
@@ -2221,44 +2226,44 @@ msgstr ""
 "프레이즈 파라미터를 갱신했습니다:\n"
 "{path}"
 
-#: ui/config/analysis.py:679
+#: ui/config/analysis.py:680
 #, python-brace-format
 msgid "Tracks: {count}"
 msgstr "트랙: {count}"
 
-#: ui/config/analysis.py:680
+#: ui/config/analysis.py:681
 #, python-brace-format
 msgid "{kind} boundary F1 (exact beat): {value}"
 msgstr "{kind} 경계 F1 (정확한 박): {value}"
 
-#: ui/config/analysis.py:681
+#: ui/config/analysis.py:682
 #, python-brace-format
 msgid "{kind} key-section change F1: {value}"
 msgstr "{kind} 키 구간 변화 F1: {value}"
 
-#: ui/config/analysis.py:682
+#: ui/config/analysis.py:683
 #, python-brace-format
 msgid "{kind} label-change boundary F1: {value}"
 msgstr "{kind} 라벨 변화 경계 F1: {value}"
 
-#: ui/config/analysis.py:683
+#: ui/config/analysis.py:684
 #, python-brace-format
 msgid "{kind} beat label accuracy: {value}"
 msgstr "{kind} 박 단위 라벨 정확도: {value}"
 
-#: ui/config/analysis.py:684
+#: ui/config/analysis.py:685
 #, python-brace-format
 msgid "{kind} lead-in accuracy: {value}"
 msgstr "{kind} 리드인 정확도: {value}"
 
-#: ui/config/analysis.py:687
+#: ui/config/analysis.py:688
 msgid ""
 "Interpretation: these in-sample scores only confirm how well the model "
 "fits its training data. They do not estimate performance on unseen "
 "tracks."
 msgstr "해석: 이 학습 표본 점수는 모델이 학습 데이터에 얼마나 맞는지만 보여 줍니다. 처음 보는 트랙에서의 성능을 추정하지 않습니다."
 
-#: ui/config/analysis.py:704
+#: ui/config/analysis.py:705
 #, python-brace-format
 msgid ""
 "Phrase parameter optimization failed:\n"
@@ -2267,24 +2272,24 @@ msgstr ""
 "프레이즈 파라미터 최적화 실패:\n"
 "{error}"
 
-#: ui/config/analysis.py:714
+#: ui/config/analysis.py:715
 msgid "JumpCUE parameter path and feature cache path are required."
 msgstr "JumpCUE 파라미터 경로와 특징 캐시 경로가 필요합니다."
 
-#: ui/config/analysis.py:738
+#: ui/config/analysis.py:739
 #, python-brace-format
 msgid ""
 "{kind} saved choice above the automatic one: {value} ({count} corrected "
 "groups)"
 msgstr "{kind} 저장된 선택이 자동 선택보다 위: {value} (수정된 그룹 {count}개)"
 
-#: ui/config/analysis.py:741
+#: ui/config/analysis.py:742
 msgid ""
 "No corrected groups yet: the library's JumpCUEs all match their automatic"
 " analysis, or were analyzed before it was kept."
 msgstr "아직 수정된 그룹이 없습니다: 라이브러리의 JumpCUE가 모두 자동 분석과 같거나, 자동 분석을 보관하기 전에 분석되었습니다."
 
-#: ui/config/analysis.py:745
+#: ui/config/analysis.py:746
 #, python-brace-format
 msgid ""
 "JumpCUE parameter updated:\n"
@@ -2293,22 +2298,22 @@ msgstr ""
 "JumpCUE 파라미터를 갱신했습니다:\n"
 "{path}"
 
-#: ui/config/analysis.py:747
+#: ui/config/analysis.py:748
 #, python-brace-format
 msgid "Tracks: {tracks}, groups: {groups}"
 msgstr "트랙: {tracks}, 그룹: {groups}"
 
-#: ui/config/analysis.py:748
+#: ui/config/analysis.py:749
 #, python-brace-format
 msgid "{kind} rank of the saved point among the candidates (AUC): {value}"
 msgstr "{kind} 후보 중 저장된 지점의 순위 (AUC): {value}"
 
-#: ui/config/analysis.py:750
+#: ui/config/analysis.py:751
 #, python-brace-format
 msgid "{kind} chosen points on a downbeat: {value}"
 msgstr "{kind} 다운비트에 놓인 선택 지점: {value}"
 
-#: ui/config/analysis.py:767
+#: ui/config/analysis.py:768
 #, python-brace-format
 msgid ""
 "JumpCUE parameter optimization failed:\n"
@@ -2317,17 +2322,17 @@ msgstr ""
 "JumpCUE 파라미터 최적화 실패:\n"
 "{error}"
 
-#: ui/config/analysis.py:773 ui/config/analysis.py:829
-#: ui/config/analysis.py:835 ui/config/dialogs/optimization.py:324
+#: ui/config/analysis.py:774 ui/config/analysis.py:825
+#: ui/config/analysis.py:831 ui/config/dialogs/optimization.py:324
 #: ui/config/dialogs/optimization.py:384
 msgid "Reoptimize Key Model"
 msgstr "키 모델 재최적화"
 
-#: ui/config/analysis.py:777
+#: ui/config/analysis.py:778
 msgid "Key model path and feature cache path are required."
 msgstr "키 모델 경로와 특징 캐시 경로가 필요합니다."
 
-#: ui/config/analysis.py:792
+#: ui/config/analysis.py:788
 #, python-brace-format
 msgid ""
 "Failed to back up the key model:\n"
@@ -2336,53 +2341,53 @@ msgstr ""
 "키 모델을 백업하지 못했습니다:\n"
 "{error}"
 
-#: ui/config/analysis.py:812
+#: ui/config/analysis.py:808
 #, python-brace-format
 msgid "Key model saved to {path}"
 msgstr "키 모델을 {path}에 저장했습니다"
 
-#: ui/config/analysis.py:813
+#: ui/config/analysis.py:809
 msgid ""
 "Key model NOT saved: the held-out songs' keys got worse; the model in use"
 " is kept."
 msgstr "키 모델 저장 안 함: 검증용 곡의 키가 나빠졌습니다. 사용 중인 모델을 유지합니다."
 
-#: ui/config/analysis.py:815
+#: ui/config/analysis.py:811
 #, python-brace-format
 msgid ""
 "Training songs: {count} ({edited} with keys changed from the automatic "
 "result, {legacy} analyzed before it was kept)"
 msgstr "학습 곡: {count}곡 (자동 결과에서 키를 바꾼 곡 {edited}곡, 자동 결과를 보관하기 전에 분석한 곡 {legacy}곡)"
 
-#: ui/config/analysis.py:818
+#: ui/config/analysis.py:814
 #, python-brace-format
 msgid "Key analysis on {count} held-out songs, current -> new:"
 msgstr "검증용 곡 {count}곡의 키 분석, 현재 -> 새 모델:"
 
-#: ui/config/analysis.py:820
+#: ui/config/analysis.py:816
 #, python-brace-format
 msgid "Key analysis on the {count} training songs, current -> new:"
 msgstr "학습 곡 {count}곡의 키 분석, 현재 -> 새 모델:"
 
 # | msgid "beats in the right key (Camelot number): {before} -> {after}"
-#: ui/config/analysis.py:821
+#: ui/config/analysis.py:817
 #, python-brace-format
 msgid "beats in the right key (Alphanumeric number): {before} -> {after}"
 msgstr "키가 맞은 박 (Alphanumeric 번호): {before} -> {after}"
 
 # | msgid "beats off by a fifth (Camelot neighbor): {before} -> {after}"
-#: ui/config/analysis.py:823
+#: ui/config/analysis.py:819
 #, python-brace-format
 msgid "beats off by a fifth (Alphanumeric neighbor): {before} -> {after}"
 msgstr "5도 어긋난 박 (Alphanumeric 이웃): {before} -> {after}"
 
-#: ui/config/analysis.py:827
+#: ui/config/analysis.py:823
 msgid ""
 "Without cross-validation these are the training songs: they show the fit,"
 " not unseen songs."
 msgstr "교차 검증 없이 본 학습 곡의 결과입니다: 모델이 맞는 정도이지, 처음 보는 곡에서의 성능이 아닙니다."
 
-#: ui/config/analysis.py:836
+#: ui/config/analysis.py:832
 #, python-brace-format
 msgid ""
 "Key model optimization failed:\n"
@@ -5517,12 +5522,13 @@ msgstr "JumpCUE와 CUE 포인트 편집"
 
 # | msgid "The file could not be written: {error}"
 #: ui/edit_panel/panel.py:709
-#, fuzzy, python-brace-format
-#| msgid "The file could not be read: {error}"
+#, python-brace-format
 msgid ""
 "The edits could not be saved:\n"
 "{error}"
-msgstr "파일을 읽을 수 없습니다: {error}"
+msgstr ""
+"편집 내용을 저장할 수 없습니다:\n"
+"{error}"
 
 #: ui/edit_panel/panel.py:741
 msgid ""
@@ -5662,7 +5668,7 @@ msgstr ""
 "트랙의 오디오 파일. 파일을 옮기거나 이름을 바꿨을 때 지정하세요.\n"
 "분석, 플레이리스트, CUE는 트랙에 그대로 남습니다."
 
-#: ui/edit_song.py:118 ui/export.py:58
+#: ui/edit_song.py:118 ui/export.py:59
 msgid "Browse..."
 msgstr "찾아보기..."
 
@@ -5670,17 +5676,17 @@ msgstr "찾아보기..."
 msgid "Path"
 msgstr "경로"
 
-#: ui/edit_song.py:124 ui/export.py:76 ui/export.py:103 ui/library.py:789
+#: ui/edit_song.py:124 ui/export.py:77 ui/export.py:104 ui/library.py:789
 #: ui/tieup_editor.py:138 ui/tieup_works.py:75 ui/track_search_index.py:53
 msgid "Title"
 msgstr "제목"
 
-#: ui/edit_song.py:125 ui/export.py:77 ui/export.py:104 ui/library.py:789
+#: ui/edit_song.py:125 ui/export.py:78 ui/export.py:105 ui/library.py:789
 #: ui/track_search_index.py:53
 msgid "Artist"
 msgstr "아티스트"
 
-#: ui/edit_song.py:126 ui/export.py:105 ui/library.py:790
+#: ui/edit_song.py:126 ui/export.py:106 ui/library.py:790
 #: ui/track_search_index.py:53
 msgid "Album"
 msgstr "앨범"
@@ -5695,7 +5701,7 @@ msgstr "키"
 msgid "Rating"
 msgstr "평점"
 
-#: ui/edit_song.py:130 ui/export.py:106 ui/library.py:792
+#: ui/edit_song.py:130 ui/export.py:107 ui/library.py:792
 msgid "Comment"
 msgstr "코멘트"
 
@@ -5737,35 +5743,35 @@ msgstr ""
 msgid "Edit Track"
 msgstr "트랙 편집"
 
-#: ui/export.py:71
+#: ui/export.py:72
 msgid "No JumpCUE directions"
 msgstr "JumpCUE 방향 없음"
 
-#: ui/export.py:78
+#: ui/export.py:79
 msgid "Source"
 msgstr "원본"
 
-#: ui/export.py:80
+#: ui/export.py:81
 msgid "Prerender JumpCUE Audio"
 msgstr "JumpCUE 오디오 미리 렌더링"
 
-#: ui/export.py:81
+#: ui/export.py:82
 msgid "Write WAV files with JumpCUE skips baked in."
 msgstr "JumpCUE 건너뛰기를 반영한 WAV 파일을 씁니다."
 
-#: ui/export.py:83
+#: ui/export.py:84
 msgid "Destination Folder"
 msgstr "대상 폴더"
 
-#: ui/export.py:85
+#: ui/export.py:86
 msgid "Export"
 msgstr "내보내기"
 
-#: ui/export.py:94
+#: ui/export.py:95
 msgid "File Tags"
 msgstr "파일 태그"
 
-#: ui/export.py:96
+#: ui/export.py:97
 msgid ""
 "<p>Write the library's values into the audio file's own tags: only the "
 "fields checked change; the file's other tags, its artwork and its audio "
@@ -5774,45 +5780,45 @@ msgstr ""
 "<p>라이브러리의 값을 오디오 파일 자체의 태그에 씁니다. 체크한 항목만 바뀌고, 파일의 다른 태그와 아트워크, 오디오는 그대로 "
 "둡니다. FLAC, MP3, AAC, WAV, AIFF, MP4 / M4A 파일에 쓸 수 있습니다.</p>"
 
-#: ui/export.py:107
+#: ui/export.py:108
 msgid "MP4 / M4A files hold a whole BPM only."
 msgstr "MP4 / M4A 파일에는 정수 BPM만 들어갑니다."
 
-#: ui/export.py:108
+#: ui/export.py:109
 msgid "Written as a musical key (Am, F#)."
 msgstr "일반 조성 표기(Am, F#)로 씁니다."
 
-#: ui/config/library.py:52 ui/export.py:116
+#: ui/config/library.py:52 ui/export.py:117
 msgid "Tie-ups after the comment"
 msgstr "코멘트 뒤에 타이업 붙이기"
 
-#: ui/export.py:118
+#: ui/export.py:119
 msgid ""
 "<p>The comment written with the song's tie-ups after it, as [Title OP; "
 "Other ED]; the library's comment stays as it is.</p>"
 msgstr "<p>코멘트 뒤에 곡의 타이업을 [제목 OP; 다른 작품 ED] 형식으로 붙여서 씁니다. 라이브러리의 코멘트는 그대로 둡니다.</p>"
 
-#: ui/export.py:125 ui/export.py:210 ui/export.py:271
+#: ui/export.py:126 ui/export.py:211 ui/export.py:272
 msgid "Write Tags"
 msgstr "태그 쓰기"
 
-#: ui/export.py:126
+#: ui/export.py:127
 msgid "Write the checked fields' stored values into the file's tags."
 msgstr "체크한 항목의 저장된 값을 파일 태그에 씁니다."
 
-#: ui/export.py:169
+#: ui/export.py:170
 msgid "Source file not found at the specified path."
 msgstr "지정한 경로에 원본 파일이 없습니다."
 
-#: ui/export.py:172
+#: ui/export.py:173
 msgid "Source path is invalid."
 msgstr "원본 경로가 잘못되었습니다."
 
-#: ui/export.py:205
+#: ui/export.py:206
 msgid "Check the fields to write."
 msgstr "쓸 항목을 체크하세요."
 
-#: ui/export.py:211
+#: ui/export.py:212
 msgid ""
 "The Edit tab has changes to this track that are not applied: the stored "
 "values are written.\n"
@@ -5821,42 +5827,42 @@ msgstr ""
 "편집 탭에 이 트랙의 적용하지 않은 변경이 있습니다. 저장된 값이 쓰입니다.\n"
 "그래도 태그를 쓸까요?"
 
-#: ui/export.py:219
+#: ui/export.py:220
 msgid "Writing the tags..."
 msgstr "태그를 쓰는 중..."
 
-#: ui/export.py:227
+#: ui/export.py:228
 msgid "The track is no longer in the library."
 msgstr "이 트랙은 더 이상 라이브러리에 없습니다."
 
-#: ui/export.py:263
+#: ui/export.py:264
 #, python-brace-format
 msgid "The file could not be written: {error}"
 msgstr "파일을 쓸 수 없습니다: {error}"
 
-#: ui/export.py:269
+#: ui/export.py:270
 msgid "The tags were written to the file."
 msgstr "파일에 태그를 썼습니다."
 
-#: ui/export.py:299
+#: ui/export.py:300
 msgid "Select Destination Folder"
 msgstr "대상 폴더 선택"
 
-#: ui/export.py:307
+#: ui/export.py:308
 msgid "No track is selected."
 msgstr "선택한 트랙이 없습니다."
 
-#: ui/export.py:307 ui/export.py:312 ui/export.py:318 ui/export.py:331
-#: ui/export.py:341 ui/export.py:463 ui/export.py:474 ui/library.py:1828
+#: ui/export.py:308 ui/export.py:313 ui/export.py:319 ui/export.py:332
+#: ui/export.py:342 ui/export.py:464 ui/export.py:475 ui/library.py:1828
 #: ui/library.py:2346 ui/shortcuts.py:157
 msgid "Export Track"
 msgstr "트랙 내보내기"
 
-#: ui/export.py:312
+#: ui/export.py:313
 msgid "Please select a destination folder."
 msgstr "대상 폴더를 선택하세요."
 
-#: ui/export.py:318
+#: ui/export.py:319
 #, python-brace-format
 msgid ""
 "Cannot create destination folder:\n"
@@ -5865,11 +5871,11 @@ msgstr ""
 "대상 폴더를 만들 수 없습니다:\n"
 "{error}"
 
-#: ui/export.py:332
+#: ui/export.py:333
 msgid "Select a JumpCUE direction to render."
 msgstr "렌더링할 JumpCUE 방향을 고르세요."
 
-#: ui/export.py:341
+#: ui/export.py:342
 #, python-brace-format
 msgid ""
 "Export completed:\n"
@@ -5879,11 +5885,11 @@ msgstr ""
 "{files}"
 
 # | msgid "Phrase reanalysis completed"
-#: ui/export.py:371
+#: ui/export.py:372
 msgid "The track's analysis could not be read."
 msgstr "트랙의 분석을 읽을 수 없습니다."
 
-#: ui/export.py:464
+#: ui/export.py:465
 #, python-brace-format
 msgid ""
 "'{name}' already exists.\n"
@@ -5892,7 +5898,7 @@ msgstr ""
 "'{name}'이(가) 이미 있습니다.\n"
 "덮어쓸까요?"
 
-#: ui/export.py:474
+#: ui/export.py:475
 #, python-brace-format
 msgid ""
 "Failed to write JumpCUE audio:\n"

@@ -12,6 +12,7 @@ from typing import Callable, Optional
 from PySide6 import QtCore
 
 from analyzer_core.global_analyzer import extract_tags, getAlbumArt
+from core.analysis_library import jobs as analysis_jobs
 from core.library import jobs
 from dataclasses import replace
 
@@ -134,7 +135,7 @@ class AnalysisWorkflow(QtCore.QObject):
                 if listener is not None:
                     listener(result)
 
-            self._library.read(jobs.features, track.uid, done=loaded)
+            self._library.read(analysis_jobs.features,track.uid, done=loaded)
             return
         self._analyze(path, cfg, taskid, thumbnail, force_analyze, listener)
 

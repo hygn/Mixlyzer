@@ -82,7 +82,7 @@ def _optimizer_process_entry(
     queue: Any,
 ) -> None:
     """Execute all jobs for one optimizer run inside one child process. ``tracks``: the library's tracks as its owner
-    gave them (core.library.jobs.training_tracks), what the optimizers list their tracks from."""
+    gave them (core.analysis_library.jobs.training_tracks), what the optimizers list their tracks from."""
     install_parent_watchdog()
     loaded: dict[str, _OptimizerDefinition] = {}
     try:
@@ -144,7 +144,7 @@ class OptimizerWorker(SpawnProcessWorker):
         tracks: list[dict],
         parent: QtCore.QObject | None = None,
     ) -> None:
-        """``tracks``: the library's tracks for this run (core.library.jobs.training_tracks)."""
+        """``tracks``: the library's tracks for this run (core.analysis_library.jobs.training_tracks)."""
         self._process_group = str(process_group)
         self._jobs = tuple(dict(job) for job in jobs)
         self._results: list[object] = []

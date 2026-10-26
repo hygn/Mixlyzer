@@ -13,6 +13,7 @@ from core.event_bus import EventBus
 from core.model import DataModel
 from core.timeline import TimelineCoordinator
 from core.player import PlayerController
+from core.analysis_library import jobs as analysis_jobs
 from core.library import jobs
 from core.library.service import LibraryService
 from analyzer_core.global_analyzer import extract_tags
@@ -541,7 +542,7 @@ class AppWindow(QtWidgets.QMainWindow):
         if result.get("update_db", True) is False and result.get("features") is not None:
             apply(result["features"])    # a library track's: read from the store already
         else:
-            self.library.read(jobs.features, properties.get("uid"), done=apply)
+            self.library.read(analysis_jobs.features,properties.get("uid"), done=apply)
 
     def _apply_features(self, result: dict, properties: dict, features: dict) -> None:
         duration = float(features.get("duration_sec") or self.model.duration_sec or 0.0)

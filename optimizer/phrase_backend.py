@@ -27,8 +27,8 @@ from optimizer import SkippedOptimizationTrack, library_tracks, skipped_track
 
 from analyzer_core.cue_and_phrase.structure import (
     FeatureConfig,
+    build_predictor_grid,
     extract_song_features,
-    load_predictor_grid,
 )
 from analyzer_core.cue_and_phrase.model_features import (
     feature_z_from_acoustic,
@@ -76,27 +76,24 @@ class LabelModel:
 
 
 def _load_phrase_annotation(
-    npz_path: Path,
+    stored: dict,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    with np.load(npz_path, allow_pickle=False) as archive:
-        present = _PHRASE_ANNOTATION_KEYS.intersection(archive.files)
-        if not present:
-            # A track without Phrase analysis is not optimizer training data.
-            empty = np.asarray([], dtype=np.float64)
-            return empty, empty.copy(), np.asarray([], dtype="U1")
-        missing = _PHRASE_ANNOTATION_KEYS.difference(archive.files)
-        if missing:
-            raise ValueError(
-                f"Incomplete current Phrase NPZ structure in {npz_path}: "
-                f"missing {', '.join(sorted(missing))}"
-            )
-        starts = np.asarray(archive["phrase_segments_np.start"], dtype=np.float64).ravel()
-        ends = np.asarray(archive["phrase_segments_np.end"], dtype=np.float64).ravel()
-        labels = np.asarray(archive["phrase_segments_np.label"]).astype(str).ravel()
+    """The phrase annotation of a track's stored features (as the library's owner gave them)."""
+    present = _PHRASE_ANNOTATION_KEYS.intersection(stored)
+    if not present:
+        # A track without Phrase analysis is not optimizer training data.
+        empty = np.asarray([], dtype=np.float64)
+        return empty, empty.copy(), np.asarray([], dtype="U1")
+    missing = _PHRASE_ANNOTATION_KEYS.difference(stored)
+    if missing:
+        raise ValueError(f"Incomplete current Phrase structure: missing {', '.join(sorted(missing))}")
+    starts = np.asarray(stored["phrase_segments_np.start"], dtype=np.float64).ravel()
+    ends = np.asarray(stored["phrase_segments_np.end"], dtype=np.float64).ravel()
+    labels = np.asarray(stored["phrase_segments_np.label"]).astype(str).ravel()
     if not (starts.size == ends.size == labels.size):
-        raise ValueError(f"Mismatched current Phrase arrays in {npz_path}")
+        raise ValueError("Mismatched current Phrase arrays")
     if not np.all(np.isfinite(starts)) or not np.all(np.isfinite(ends)):
-        raise ValueError(f"Non-finite current Phrase timestamps in {npz_path}")
+        raise ValueError("Non-finite current Phrase timestamps")
 
     # Float32 persistence can collapse a tiny edited fragment to a
     # zero-length row. It contains no trainable interval and must not overwrite
@@ -109,52 +106,60 @@ def _load_phrase_annotation(
         empty = np.asarray([], dtype=np.float64)
         return empty, empty.copy(), np.asarray([], dtype="U1")
     if any(not str(label).strip() for label in labels):
-        raise ValueError(f"Empty current Phrase label in {npz_path}")
+        raise ValueError("Empty current Phrase label")
     if np.any(np.diff(starts) < -_PHRASE_TIME_TOLERANCE_SEC):
-        raise ValueError(f"Unsorted current Phrase segments in {npz_path}")
+        raise ValueError("Unsorted current Phrase segments")
     if np.any(starts[1:] < ends[:-1] - _PHRASE_TIME_TOLERANCE_SEC):
-        raise ValueError(f"Overlapping current Phrase segments in {npz_path}")
+        raise ValueError("Overlapping current Phrase segments")
     if np.any(starts[1:] > ends[:-1] + _PHRASE_TIME_TOLERANCE_SEC):
-        raise ValueError(
-            f"Phrase optimizer requires contiguous current annotations: {npz_path}"
-        )
+        raise ValueError("Phrase optimizer requires contiguous current annotations")
     return starts, ends, labels
 
 
-def _load_duration_sec(npz_path: Path) -> float:
+def _load_duration_sec(stored: dict) -> float:
     """Audio duration stored with the analysis, or inf when it is unavailable."""
     try:
-        with np.load(npz_path, allow_pickle=False) as archive:
-            if "duration_sec" in archive.files:
-                value = float(np.asarray(archive["duration_sec"]).ravel()[0])
-                if np.isfinite(value) and value > 0.0:
-                    return value
+        if "duration_sec" in stored:
+            value = float(np.asarray(stored["duration_sec"]).ravel()[0])
+            if np.isfinite(value) and value > 0.0:
+                return value
     except Exception:
         pass
     return float("inf")
+
+
+def predictor_grid(track: dict):
+    """The track's predictor grid from its stored beats and tempo rows (structure.build_predictor_grid)."""
+    stored = track["features"]
+    for key in ("beats_time_sec", "tempo_segments"):
+        if key not in stored:
+            raise KeyError(f"the stored features are missing '{key}'")
+    return build_predictor_grid(stored["beats_time_sec"], stored["tempo_segments"])
 
 
 def _list_annotated_tracks(
     library_dir: Path,
     ignored: list[SkippedOptimizationTrack] | None = None,
 ) -> list[dict[str, object]]:
-    """The tracks with phrase annotations, of the tracks the library's owner gave this run
-    (optimizer.library_tracks; ``library_dir`` is kept for the callers' signatures)."""
+    """The tracks with phrase annotations, of the tracks the library's owner gave this run with their stored
+    features (optimizer.library_tracks; ``library_dir`` is kept for the callers' signatures)."""
     out: list[dict[str, object]] = []
     for track in library_tracks.tracks():
-        analysis_path = Path(track["analysis_path"])
         audio_path = Path(track["audio_path"])
-        track.update(audio_path=audio_path, analysis_path=analysis_path)
-        if not analysis_path.exists():
+        track.update(audio_path=audio_path)
+        stored = track["features"]
+        if stored is None:
             if ignored is not None:
-                ignored.append(skipped_track(track, tr("analysis NPZ is missing")))
+                reason = track.get("error")
+                ignored.append(skipped_track(track, tr("invalid Phrase annotation: {error}").format(error=reason)
+                                             if reason else tr("analysis NPZ is missing")))
             continue
         if not audio_path.is_file():
             if ignored is not None:
                 ignored.append(skipped_track(track, tr("audio file is missing")))
             continue
         try:
-            starts, ends, labels = _load_phrase_annotation(analysis_path)
+            starts, ends, labels = _load_phrase_annotation(stored)
         except Exception as exc:
             if ignored is not None:
                 ignored.append(
@@ -168,7 +173,7 @@ def _list_annotated_tracks(
                 )
             continue
         track.update(
-            duration_sec=_load_duration_sec(analysis_path),
+            duration_sec=_load_duration_sec(stored),
             phrase_starts_sec=starts,
             phrase_ends_sec=ends,
             phrase_labels=labels,
@@ -247,15 +252,14 @@ def _beat_feature_cache_is_current(
 
     uid = str(track["uid"])
     audio_path = Path(track["audio_path"])
-    analysis_path = Path(track["analysis_path"])
     cache_path = Path(cache_dir) / f"{uid}.npz"
     if not cache_path.exists():
         return False
     try:
-        predictor_grid = grid if grid is not None else load_predictor_grid(analysis_path)
+        current_grid = grid if grid is not None else predictor_grid(track)
         with np.load(cache_path, allow_pickle=False) as cache:
             return _beat_feature_cache_metadata_is_current(
-                cache, audio_path, predictor_grid, config
+                cache, audio_path, current_grid, config
             )
     except Exception:
         return False
@@ -271,10 +275,9 @@ def _current_beat_features(
 ):
     uid = str(track["uid"])
     audio_path = Path(track["audio_path"])
-    analysis_path = Path(track["analysis_path"])
     cache_dir.mkdir(parents=True, exist_ok=True)
     cache_path = cache_dir / f"{uid}.npz"
-    grid = grid if grid is not None else load_predictor_grid(analysis_path)
+    grid = grid if grid is not None else predictor_grid(track)
     if cache_path.exists() and not rebuild:
         with np.load(cache_path, allow_pickle=False) as cache:
             if _beat_feature_cache_metadata_is_current(

@@ -368,7 +368,7 @@ def optimize_phrase_parameters(
     tracks_src: list[dict[str, object]] = []
     for track in candidates:
         try:
-            grid = _phrase_backend.load_predictor_grid(track["analysis_path"])
+            grid = _phrase_backend.predictor_grid(track)
             validation_track = {
                 **track,
                 "beat_times_sec": np.asarray(grid.beat_times_sec, dtype=np.float64),
@@ -423,7 +423,7 @@ def optimize_phrase_parameters(
                     "title": str(track["title"]),
                     "artist": str(track["artist"]),
                     "audio_path": Path(track["audio_path"]),
-                    "analysis_path": Path(track["analysis_path"]),
+                    "features": {k: track["features"][k] for k in ("beats_time_sec", "tempo_segments")},
                     "rebuild_beat_cache": not beat_current,
                 }
             )

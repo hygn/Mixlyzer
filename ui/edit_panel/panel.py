@@ -21,7 +21,7 @@ from ui.edit_panel.icons import icon
 from ui.edit_panel.jumpcue import JumpCUEEditMixin
 from ui.edit_panel.key import KeyEditMixin
 from ui.edit_panel.phrase import PhraseEditMixin
-from core.library import jobs
+from core.analysis_library import jobs as analysis_jobs
 from ui.edit_panel.styles import BUTTON_STYLESHEET, WARNING_BUTTON_STYLESHEET
 from ui.theme import current_theme
 from utils.cue_points import build_cue_points_np
@@ -696,12 +696,12 @@ class EditPanel(
         self._save_in_progress = True
         self.btn_save.setEnabled(False)
         uid = self.uid
-        # written by the library's owner (jobs.save_edits); a failure said, the edits kept unsaved
+        # written by the library's owner (analysis_jobs.save_edits); a failure said, the edits kept unsaved
         edits = {"beatgrid": beatgrid, "segments": segments, "key_segments": key_segments,
                  "key_segments_auto": key_segments_auto, "jump_cues_np": jump_cues_np,
                  "jump_cues_auto_np": jump_cues_auto_np, "phrase_segments_np": phrase_segments_np,
                  "cue_points_np": cue_points_np}
-        self._library.write(jobs.save_edits, uid, edits, done=self._on_save_finished, failed=self._on_save_failed)
+        self._library.write(analysis_jobs.save_edits,uid, edits, done=self._on_save_finished, failed=self._on_save_failed)
 
     def _on_save_failed(self, exc: Exception) -> None:
         self._save_in_progress = False

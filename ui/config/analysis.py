@@ -422,6 +422,11 @@ class AnalysisSettingsMixin:
             message.setDetailedText("\n\n".join(details))
         message.exec()
 
+    def _library_track_count(self) -> int | None:
+        """The library's tracks, as its owner's snapshot holds them (the dialogs' warnings on too few songs)."""
+        library = getattr(self, "_library", None)
+        return len(library.snapshot.tracks) if library is not None else None
+
     def _on_reoptimize_beat_parameters(self) -> None:
         if self._parameter_optimization_is_running():
             return
@@ -435,11 +440,7 @@ class AnalysisSettingsMixin:
             "beat_critic": (self.ed_beat_critic_parameter_path, self.ed_beat_feature_cache_path),
             "beat_decoder": (self.ed_beat_decoder_parameter_path, self.ed_beat_feature_cache_path),
         }
-        library = Path(self._project_path(self.ed_libpath.text().strip()))
-        try:
-            track_count = sum(1 for _ in library.glob("*.npz"))
-        except OSError:
-            track_count = None
+        track_count = self._library_track_count()
         dialog = BeatParameterOptimizeDialog(
             self, track_count=track_count,
             model_paths={key: self._project_path(field.text().strip()) for key, (field, _cache) in paths.items()},
@@ -777,12 +778,7 @@ class AnalysisSettingsMixin:
             QMessageBox.warning(self, title, tr("Key model path and feature cache path are required."))
             return
         parameter_path = self._project_path(parameter_text)
-        library = Path(self._project_path(self.ed_libpath.text().strip()))
-        try:
-            track_count = sum(1 for _ in library.glob("*.npz"))
-        except OSError:
-            track_count = None
-        dialog = KeyModelOptimizeDialog(self, track_count=track_count, model_path=str(parameter_path))
+        dialog = KeyModelOptimizeDialog(self, track_count=self._library_track_count(), model_path=str(parameter_path))
         if dialog.exec() != QDialog.Accepted:
             return
         if dialog.backup_existing() and parameter_path.exists():
@@ -795,7 +791,7 @@ class AnalysisSettingsMixin:
             key="key_model",
             title=title,
             request_values={
-                "library_dir": str(library),
+                "library_dir": str(self._project_path(self.ed_libpath.text().strip())),
                 "cache_dir": str(self._project_path(cache_text)),
                 "output_path": str(parameter_path),
                 **dialog.options(),

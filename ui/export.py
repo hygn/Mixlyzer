@@ -9,6 +9,7 @@ import numpy as np
 from PySide6 import QtCore, QtWidgets
 import soundfile as sf
 from core import os_support, tieup
+from core.analysis_library import jobs as analysis_jobs
 from core.library import jobs
 from core.library.records import TrackRow
 from core.library.service import LibraryService
@@ -373,7 +374,7 @@ class ExportTrackPanel(QtWidgets.QWidget):
             self._features = features
             self._populate_jump_pairs()
 
-        self._library.read(jobs.features, uid, done=came)
+        self._library.read(analysis_jobs.features,uid, done=came)
 
     def _populate_jump_pairs(self) -> None:
         self.cmb_jump_pair.clear()
