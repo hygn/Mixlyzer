@@ -146,10 +146,6 @@ class MetronomeController(QtCore.QObject):
                 )
         self._push_beats()
 
-    @QtCore.Slot()
-    def clear_beats(self):
-        self.set_beats(None, None)
-
     # Mixer sync
     def _beat_accents(self) -> np.ndarray:
         """Downbeats (all False when every beat would be one, i.e. no downbeat is known)."""

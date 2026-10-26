@@ -113,10 +113,6 @@ class DataModel(QtCore.QObject):
         self.sig_audio_changed.emit()
         self.sig_properties_changed.emit()
 
-    def set_album_art(self, album_art: Optional[QImage]) -> None:
-        self.album_art = album_art
-        self.sig_album_art_changed.emit()
-
     def set_predecoded_audio(self, pcm: Any, sample_rate: int) -> None:
         try:
             self.predecoded_pcm = np.asarray(pcm, dtype=np.float32, order="C")

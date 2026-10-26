@@ -236,7 +236,6 @@ class SupportDialog(QtWidgets.QDialog):
             otherwise None for MKL/Accelerate/Unknown.
         """
         try:
-            import numpy as _np  # noqa: F401
             from numpy import __config__ as _npconf
 
             keys = [

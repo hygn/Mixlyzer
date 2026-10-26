@@ -2,7 +2,8 @@
 tie-ups' tables are core.library.tieups'. Used by the library's owner alone (core.library.service), on its thread:
 the records it reads and writes are core.library.records'."""
 from __future__ import annotations
-import os, sqlite3, csv
+import os
+import sqlite3
 from contextlib import contextmanager
 from dataclasses import asdict
 from typing import Iterable, List, Optional, Dict, Any, Tuple
@@ -750,19 +751,6 @@ class LibraryDB:
         )
         return [BpmSegmentRow(**dict(row)) for row in cur.fetchall()]
 
-    def get_key_segments(self, track_uid: str) -> List[KeySegmentRow]:
-        track_uid = _canonical_uuid4(track_uid)
-        cur = self.conn.execute(
-            """
-            SELECT track_uid, seq_index, start_sec, end_sec, duration_sec, key_value, key_label
-            FROM track_key_segments
-            WHERE track_uid=?
-            ORDER BY seq_index ASC;
-            """,
-            (track_uid,),
-        )
-        return [KeySegmentRow(**dict(row)) for row in cur.fetchall()]
-
     def search_phrase_sections(
         self,
         phrase_label: str,
@@ -964,28 +952,7 @@ class LibraryDB:
         cur = self.conn.execute(q, params)
         return [_track_row_from_db_row(row) for row in cur.fetchall()]
 
-    def search_like(self, query: str, cols: Tuple[str,...]=("title","artist","album","comment"),
-                    order_by: str = "added_ts DESC", limit: Optional[int]=200, offset:int=0) -> List[TrackRow]:
-        kw = f"%{query}%"
-        where = " OR ".join([f"{c} LIKE ?" for c in cols])
-        params: List[Any] = [kw]*len(cols)
-        q = f"SELECT * FROM tracks WHERE {where} ORDER BY {_safe_order_by(order_by)}"
-        if limit is not None:
-            q += " LIMIT ? OFFSET ?"
-            params += [limit, offset]
-        cur = self.conn.execute(q, tuple(params))
-        return [_track_row_from_db_row(row) for row in cur.fetchall()]
-
     # Utilities 
-    def export_csv(self, out_path: str):
-        cur = self.conn.execute("SELECT * FROM tracks ORDER BY added_ts DESC;")
-        cols = [d[0] for d in cur.description]
-        with open(out_path, "w", newline="", encoding="utf-8") as f:
-            w = csv.writer(f)
-            w.writerow(cols)
-            for row in cur.fetchall():
-                w.writerow([row[c] for c in cols])
-
     def touch_file_stats(self, path: str):
         """Refresh file mtime/size (for change detection)."""
         try:
@@ -999,12 +966,3 @@ class LibraryDB:
             pass
 
     # NPZ/JSON path
-    @staticmethod
-    def npz_path_for(base_dir: str, uid: str) -> str:
-        os.makedirs(base_dir, exist_ok=True)
-        return os.path.join(base_dir, f"{_canonical_uuid4(uid)}.npz")
-
-    @staticmethod
-    def json_path_for(base_dir: str, uid: str) -> str:
-        os.makedirs(base_dir, exist_ok=True)
-        return os.path.join(base_dir, f"{_canonical_uuid4(uid)}.json")

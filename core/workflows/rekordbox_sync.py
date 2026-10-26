@@ -32,15 +32,6 @@ class RekordboxXmlSync(QtCore.QObject):
         self._worker: RekordboxSyncWorker | None = None
 
     @QtCore.Slot(object)
-    def sync_incremental(self, rows: object) -> None:
-        track_rows = self._coerce_rows(rows)
-        if track_rows is None:
-            return
-        request = self._request_from_config(mode="incremental", rows=tuple(track_rows))
-        if request is not None:
-            self._enqueue(request)
-
-    @QtCore.Slot(object)
     def sync_requested(self, payload: object) -> None:
         if isinstance(payload, dict):
             full_rebuild = bool(payload.get("full_rebuild", True))

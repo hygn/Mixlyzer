@@ -55,7 +55,3 @@ class taskmanager():
         self.taskidlist.remove(tid)
         if send_sig:
             self.bus.sig_task_finished.emit(tid, err)
-
-    def sendInitSignals(self):
-        for tid in self.tasks.keys():
-            self.bus.sig_task_created.emit(tid, self.tasks[tid])

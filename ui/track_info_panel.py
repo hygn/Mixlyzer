@@ -177,12 +177,6 @@ class VerticalPeakMeter(QtWidgets.QWidget):
             self._peak_hold_deadline = QtCore.QDeadlineTimer(self._hold_ms)
         self.update()
 
-    def reset_level(self) -> None:
-        self._display_dbfs = self.FLOOR_DBFS
-        self._target_dbfs = self.FLOOR_DBFS
-        self._peak_hold_dbfs = self.FLOOR_DBFS
-        self.update()
-
     def _tick(self) -> None:
         dt = self._anim.interval() / 1000.0
         changed = False

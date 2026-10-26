@@ -689,12 +689,3 @@ class OverviewWidget(QtWidgets.QWidget):
             label.setVisible(self._strip_label_fits(start, end, label_text))
 
     # seeking by click/drag
-    def _map_scene_pos_to_time(self, ev) -> float | None:
-        vb = self.p.getViewBox()
-        if vb is None:
-            return None
-        pos = ev.scenePos() if hasattr(ev, "scenePos") else QtCore.QPointF(*ev)
-        x = vb.mapSceneToView(pos).x()
-        if not np.isfinite(x):
-            return None
-        return float(np.clip(x, 0.0, max(0.0, self.duration)))

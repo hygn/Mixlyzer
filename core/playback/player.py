@@ -740,9 +740,6 @@ class PlayerController(QtCore.QObject):
         self._path = path
         self._send("load", path)
 
-    def get_source(self) -> Optional[str]:
-        return self._path
-
     def unload(self) -> None:
         self._path = None
         self._send("unload")

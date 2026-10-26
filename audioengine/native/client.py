@@ -155,15 +155,6 @@ BEAT_DEFAULTS = (1.0, 1.0, 1.0, 1.0, 1.0, 50.0, 4.0, 4.0, 4.0, 4 / 3, 1.0, 1.0, 
 BEAT_REVERB, BEAT_MOBIUS = 5, 13   # the two that read the X-PAD themselves (its filter, its waveform)
 
 
-def snap_beat(kind: int, value: float) -> float:
-    """``value`` held to the nearest of Beat FX ``kind``'s BEAT values (REVERB's: 1 - 100), as the engine does."""
-    if kind == BEAT_REVERB:
-        return min(100.0, max(1.0, float(value)))
-    values = BEAT_VALUES[min(max(0, int(kind)), len(BEAT_VALUES) - 1)]
-    v = float(value) or 1.0
-    return min(values, key=lambda b: abs(math.log(abs(b)) - math.log(abs(v))) + (0.0 if (b > 0) == (v > 0) else 100.0))
-
-
 def beat_label(kind: int, value: float) -> str:
     """A BEAT value as the A9 shows it: a fraction of beats (1/16, 2/3, 12/3, -4), REVERB's a %."""
     if kind == BEAT_REVERB:

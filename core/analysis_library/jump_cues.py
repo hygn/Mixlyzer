@@ -40,11 +40,6 @@ def _cue_timing_key(cue: dict[str, float | str]) -> tuple[float, float, float]:
     )
 
 
-def _cue_label_sort_key(cue: dict[str, float | str]) -> tuple[str, float, float, float]:
-    label = str(cue.get("label", "") or "").strip().upper()
-    return (label, *_cue_timing_key(cue))
-
-
 def _pair_display_sort_key(pair: dict) -> tuple[str, str, float, float, float, float]:
     forward = pair.get("forward") or {}
     backward = pair.get("backward") or {}
@@ -200,22 +195,6 @@ def jump_cue_point_groups(features: Dict[str, Any], key: str = "jump_cues_np") -
                              np.asarray(block["cue_point"], dtype=float).tolist()):
         groups.setdefault(graph_of.get(cue_id, 0), []).append(float(point))
     return [sorted(points) for _, points in sorted(groups.items()) if len(points) >= 2]
-
-
-def build_jump_cues_np_from_point_groups(groups: List[List[float]]) -> Dict[str, np.ndarray]:
-    """Graph block of JumpCUE groups given only their cue points (seconds)."""
-    pairs: list[dict] = []
-    index = 0
-    for points in groups:
-        cues = []
-        for point in sorted(float(p) for p in points):
-            cues.append({"label": _label_from_index(index), "start": point, "end": point, "point": point})
-            index += 1
-        for i in range(len(cues)):
-            for j in range(i + 1, len(cues)):
-                pairs.append({"forward": cues[j], "backward": cues[i], "lag_beats": 0.0,
-                              "lag_sec": cues[j]["point"] - cues[i]["point"], "score": 1.0, "confidence": 1.0})
-    return build_jump_cues_np(pairs, canonicalize_labels=True, merge_coincident=True)
 
 
 def _empty_jump_cues_np() -> Dict[str, np.ndarray]:

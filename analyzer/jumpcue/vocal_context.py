@@ -386,13 +386,3 @@ def jump_point_scores(
         )
     return scores
 
-
-def score_jump_points(
-    ctx: VocalContext,
-    a_range: tuple[int, int],
-    lag_beats: int,
-    config: Optional[JumpContextConfig] = None,
-) -> Optional[JumpPointScore]:
-    """Best of :func:`jump_point_scores`."""
-    scores = jump_point_scores(ctx, a_range, lag_beats, config)
-    return max(scores, key=lambda s: s.score) if scores else None

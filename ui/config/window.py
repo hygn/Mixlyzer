@@ -1,5 +1,5 @@
 import copy
-from dataclasses import asdict, is_dataclass
+from dataclasses import is_dataclass
 from typing import Tuple
 
 from PySide6 import QtGui
@@ -393,9 +393,6 @@ class SettingsDialog(
         deck.metronome_ducking = bool(self.cb_metronome_ducking.isChecked())
         deck.headphones_cue_mix = int(self.grp_output_headphones.sp_cue_mix.value())
         return deck
-
-    def get_dict(self) -> dict:
-        return asdict(self.get_config())
 
     # Buttons
     def _on_apply(self):

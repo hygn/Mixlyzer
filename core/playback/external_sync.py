@@ -239,9 +239,6 @@ class ExternalSyncController(QtCore.QObject):
         self._apply_polling_state()
         self.publish_state()
 
-    def is_enabled(self) -> bool:
-        return bool(self._cfg.enabled)
-
     def set_poll_fps(self, fps: int) -> None:
         fps = max(1, min(240, int(fps)))
         interval_ms = max(1, int(round(1000.0 / fps)))

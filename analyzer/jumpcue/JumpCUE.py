@@ -816,21 +816,6 @@ class JumpCueEngine:
         denom = float(np.sum(weights)) or 1.0
         return [float(w / denom) for w in weights]
 
-    @staticmethod
-    def _snap_time(value: float, beats_time: np.ndarray, tol: float) -> float:
-        idx = int(np.searchsorted(beats_time, value))
-        candidates = []
-        if 0 <= idx < beats_time.size:
-            candidates.append(beats_time[idx])
-        if idx > 0:
-            candidates.append(beats_time[idx - 1])
-        if idx + 1 < beats_time.size:
-            candidates.append(beats_time[idx + 1])
-        if not candidates:
-            return value
-        best = min(candidates, key=lambda x: abs(x - value))
-        return float(best) if abs(best - value) <= float(tol) else float(value)
-
 __all__ = [
     "RepeatGroup",
     "JumpCuePoint",

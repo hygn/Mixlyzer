@@ -30,9 +30,6 @@ class SegmentStrip(pg.GraphicsObject):
     def clear(self) -> None:
         self.set_segments([], self._y0, self._h)
 
-    def is_empty(self) -> bool:
-        return not self._segments
-
     def boundingRect(self) -> QtCore.QRectF:
         return self._bounds
 

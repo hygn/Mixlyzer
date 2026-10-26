@@ -5,7 +5,7 @@ import math
 import numpy as np
 from PySide6 import QtCore, QtWidgets
 
-from ui.edit_panel.cue_slots import SLOTS_PER_PAGE, CuePageWidget, color_swatch_icon, slot_letter
+from ui.edit_panel.cue_slots import CuePageWidget, color_swatch_icon, slot_letter
 from ui.edit_panel.icons import icon
 from ui.edit_panel.quantize import beat_quantize_grid
 from core.analysis_library.jumpcue_colors import JUMPCUE_PAIR_COLORS
@@ -72,10 +72,6 @@ class JumpCUEEditMixin:
 
     def _jc_cue_by_letter(self, letter: str | None) -> dict | None:
         return next((c for c in self._jumpcue_graph_cues if str(c.get("label", "")) == letter), None)
-
-    def _show_jumpcue_slot(self, letter: str) -> None:
-        """The JumpCUE list at the page holding ``letter``'s slot."""
-        self.cue_page.show_list(0, (ord(letter) - ord("A")) // SLOTS_PER_PAGE)
 
     def _refresh_jumpcue_slots(self) -> None:
         if not hasattr(self, "cue_page"):
