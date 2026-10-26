@@ -75,6 +75,55 @@ class AppWindow(QtWidgets.QMainWindow):
 
         # Core objects
         self.bus = EventBus()
+        self._start_library(library)
+        self.model = DataModel()
+        self.tl = TimelineCoordinator(self.bus)
+        self._start_player()
+        self._start_external_sync()
+        self._start_background_jobs()
+
+        # Main UI pane
+        step(0.03, tr("Main view, editor and library"))
+        self.pane = MainPane(self.bus, self.model, self.tl, self.cfg, self.library)
+        self.pane.track_info.set_eq_available(self.player.native)   # the Python engine has no mixer
+        self.setCentralWidget(self.pane)
+        self.pane.install_default()
+
+        step(0.3, tr("Settings"))
+        self._build_settings()
+        step(0.6, tr("Dialogs, workflows and metronome"))
+        self.workers = WorkersDialog()
+        self.workers.set_bus(self.bus)
+        self.support_dlg = SupportDialog(self)
+        self.about_dialog = AboutDialog(self)
+
+        self._build_menus()
+        self._connect_transport()
+        self._build_toolbar()
+        self._install_shortcuts()
+        self._connect_requests()
+
+        self.resize(1600, 900)  # minimum target: FHD
+
+        # status
+        self._deck_path: str | None = None   # the file the deck holds
+        self._external_sync_applied_enabled: bool | None = None
+        self._effective_refresh_fps: int | None = None
+        self._hidden_visibility_streak = 0
+        self._visibility_refresh_enabled = False
+        self._visibility_refresh_failed = False
+        self._visibility_refresh_timer = QtCore.QTimer(self)
+        self._visibility_refresh_timer.setInterval(self._WINDOW_VISIBILITY_POLL_MS)
+        self._visibility_refresh_timer.timeout.connect(self._update_refresh_fps_for_visibility)
+
+        self._start_workflows()
+        self._start_metronome()
+        self._apply_external_sync_mode(self.cfg.externalsyncconfig)
+        self._apply_visibility_refresh_setting(force=True)
+        step(1.0, "")
+
+    def _start_library(self, library: LibraryService | None) -> None:
+        """The library's one owner: the startup's (its snapshot read already), else started here."""
         # the library's one owner: its reads and writes on a thread of their own (core.library.service); the
         # startup's (its snapshot read already), else started here; its snapshot read before the library is shown
         if library is None or library.libpath != self.cfg.libconfig.libpath:
@@ -89,8 +138,9 @@ class AppWindow(QtWidgets.QMainWindow):
         app = QtWidgets.QApplication.instance()
         if app is not None:     # its last jobs run, its connection closed
             app.aboutToQuit.connect(self.library.close)
-        self.model = DataModel()
-        self.tl = TimelineCoordinator(self.bus)
+
+    def _start_player(self) -> None:
+        """The player and its audio engine, from the settings."""
         self.player = PlayerController(
             self.bus,
             model=self.model,
@@ -109,6 +159,9 @@ class AppWindow(QtWidgets.QMainWindow):
             native_exclusive_rate=self.cfg.playbackconfig.native_exclusive_rate,
         )
         self.player.set_refresh_fps(self.cfg.viewconfig.fps)
+
+    def _start_external_sync(self) -> None:
+        """External Sync: another program's deck followed (OSC)."""
         self.external_sync = ExternalSyncController(
             self.bus,
             self.model,
@@ -123,6 +176,9 @@ class AppWindow(QtWidgets.QMainWindow):
             track_total_samples_callback=self._track_total_samples_in_library,
             failure_callback=self._on_external_sync_failure,
         )
+
+    def _start_background_jobs(self) -> None:
+        """The library's background jobs: the Rekordbox XML sync, Re-read Library, Index Now, the tie-up web lookup, their reports on the bus."""
         self.rekordbox_sync = RekordboxXmlSync(cfg_getter=lambda: self.cfg, library=self.library, parent=self)
         self.rekordbox_sync.started.connect(self.bus.sig_rekordbox_sync_started)
         self.rekordbox_sync.progress.connect(self.bus.sig_rekordbox_sync_progress)
@@ -148,14 +204,8 @@ class AppWindow(QtWidgets.QMainWindow):
         self.music_index.finished.connect(self.bus.sig_music_index_finished)
         self.music_index.failed.connect(self.bus.sig_music_index_failed)
 
-        # Main UI pane
-        step(0.03, tr("Main view, editor and library"))
-        self.pane = MainPane(self.bus, self.model, self.tl, self.cfg, self.library)
-        self.pane.track_info.set_eq_available(self.player.native)   # the Python engine has no mixer
-        self.setCentralWidget(self.pane)
-        self.pane.install_default()
-
-        step(0.3, tr("Settings"))
+    def _build_settings(self) -> None:
+        """The settings dialog, given the library, the engine and External Sync."""
         self.cfgwin = SettingsDialog(bus=self.bus)
         self.cfgwin.set_library(self.library)
         # the engine that plays (its buffer shown first) and its output devices
@@ -164,14 +214,33 @@ class AppWindow(QtWidgets.QMainWindow):
         self.cfgwin.set_midi_access(self.player.native, self.player.midi_ports, self.player.set_midi_learn)
         self.cfgwin.set_external_sync_status(self.external_sync.snapshot)
         self.cfgwin.set_config(self.cfg)
-        step(0.6, tr("Dialogs, workflows and metronome"))
-        self.workers = WorkersDialog()
-        self.workers.set_bus(self.bus)
-        self.support_dlg = SupportDialog(self)
-        self.about_dialog = AboutDialog(self)
 
-        # the menus' bar at the top (thin); under it one toolbar row in the signal's order: CH 1 (the controller,
-        # the deck, its channel), then MASTER (the master's and the headphones' levels)
+    def _build_menus(self) -> None:
+        """The menus' bar at the top (thin)."""
+        a_cfg = QtGui.QAction(tr("Settings"), self);  a_cfg.triggered.connect(self.open_cfg)
+        a_workers = QtGui.QAction(tr("Workers"), self); a_workers.triggered.connect(self.open_workers)
+        a_works = QtGui.QAction(tr("Tie-up Works"), self); a_works.triggered.connect(lambda: self.pane.lib.open_works())
+        a_support_tb = QtGui.QAction(tr("Open Source"), self); a_support_tb.triggered.connect(self._open_support)
+        a_about = QtGui.QAction(tr("About"), self); a_about.triggered.connect(self._open_about)
+        menus = self.menuBar()
+        menus.setNativeMenuBar(False)
+        font = menus.font()   # a thin bar
+        font.setPointSize(9)
+        menus.setFont(font)
+        menus.setStyleSheet("QMenuBar { padding: 0; } QMenuBar::item { padding: 2px 10px; }")
+        for action in (a_cfg, a_works, a_workers, a_support_tb, a_about):
+            menus.addAction(action)
+
+    def _connect_transport(self) -> None:
+        """The deck's transport requests to the player."""
+        self.bus.sig_stop_requested.connect(self.player.stop)
+        self.bus.sig_pause_requested.connect(self.player.pause)
+        self.bus.sig_play_requested.connect(self.player.play)
+        self.bus.sig_timestretch_toggle_requested.connect(self._on_timestretch_toggle)
+        self.bus.sig_metronome_toggle_requested.connect(self._on_metronome_toggle)
+
+    def _build_toolbar(self) -> None:
+        """One toolbar row under the menus in the signal's order: CH 1 (the controller, the deck, its channel), then MASTER (the master's and the headphones' levels)."""
         tb = self.addToolBar(tr("Mixer"))
         tb.setMovable(False)
         tb.setStyleSheet("QToolBar { padding: 0; spacing: 0; border: none; }")
@@ -181,25 +250,6 @@ class AppWindow(QtWidgets.QMainWindow):
         rows_layout = QtWidgets.QVBoxLayout(rows)
         rows_layout.setContentsMargins(0, 2, 0, 2)
         rows_layout.setSpacing(2)
-        a_cfg = QtGui.QAction(tr("Settings"), self);  a_cfg.triggered.connect(self.open_cfg)
-        a_workers = QtGui.QAction(tr("Workers"), self); a_workers.triggered.connect(self.open_workers)
-        a_works = QtGui.QAction(tr("Tie-up Works"), self); a_works.triggered.connect(lambda: self.pane.lib.open_works())
-        a_support_tb = QtGui.QAction(tr("Open Source"), self); a_support_tb.triggered.connect(self._open_support)
-        a_about = QtGui.QAction(tr("About"), self); a_about.triggered.connect(self._open_about)
-
-        self.bus.sig_stop_requested.connect(self.player.stop)
-        self.bus.sig_pause_requested.connect(self.player.pause)
-        self.bus.sig_play_requested.connect(self.player.play)
-        self.bus.sig_timestretch_toggle_requested.connect(self._on_timestretch_toggle)
-        self.bus.sig_metronome_toggle_requested.connect(self._on_metronome_toggle)
-        menus = self.menuBar()
-        menus.setNativeMenuBar(False)
-        font = menus.font()   # a thin bar
-        font.setPointSize(9)
-        menus.setFont(font)
-        menus.setStyleSheet("QMenuBar { padding: 0; } QMenuBar::item { padding: 2px 10px; }")
-        for action in (a_cfg, a_works, a_workers, a_support_tb, a_about):
-            menus.addAction(action)
 
         def toolbar_part(lay: QtWidgets.QHBoxLayout, title: str, widgets: list) -> None:
             """A part of the row: its title, then its blocks, widened to the window's right edge with the others
@@ -231,6 +281,8 @@ class AppWindow(QtWidgets.QMainWindow):
         rows_layout.addWidget(row)
         tb.addWidget(rows)
 
+    def _install_shortcuts(self) -> None:
+        """The keyboard shortcuts and a MIDI controller's actions run as them; what the deck keeps (deck.json)."""
         # keyboard shortcuts (assets/shortcuts; Settings > Shortcuts)
         handlers = {**self.pane.shortcut_handlers(), **self.deck_switches.shortcut_handlers(),
                     "playback.restart_engine": self._restart_engine,
@@ -255,8 +307,8 @@ class AppWindow(QtWidgets.QMainWindow):
         self._deck_save.timeout.connect(lambda: save_deck(self.cfg))
         self._apply_midi()
 
-
-        # events
+    def _connect_requests(self) -> None:
+        """The app's requests on the bus: loading and analyzing tracks, the settings saved, the background jobs asked for."""
         self.model.sig_loaded.connect(self._on_features_loaded)
         self.bus.sig_request_load_track.connect(self.load_track)
         self.bus.sig_request_analyze.connect(self.analyze_file)
@@ -269,20 +321,8 @@ class AppWindow(QtWidgets.QMainWindow):
         self.bus.sig_music_index_requested.connect(self.music_index.index_requested)
         self.bus.sig_reanalyze_requested.connect(self.reanalyze_file)
 
-        self.resize(1600, 900)  # minimum target: FHD
-
-        # status
-        self._deck_path: str | None = None   # the file the deck holds
-        self._external_sync_applied_enabled: bool | None = None
-        self._effective_refresh_fps: int | None = None
-        self._hidden_visibility_streak = 0
-        self._visibility_refresh_enabled = False
-        self._visibility_refresh_failed = False
-        self._visibility_refresh_timer = QtCore.QTimer(self)
-        self._visibility_refresh_timer.setInterval(self._WINDOW_VISIBILITY_POLL_MS)
-        self._visibility_refresh_timer.timeout.connect(self._update_refresh_fps_for_visibility)
-
-        # task manager
+    def _start_workflows(self) -> None:
+        """The task list and the workflows (the analysis, the segment reanalysis)."""
         self.taskmanager = taskmanager(self.bus)
 
         status_bar = self.statusBar()
@@ -304,6 +344,8 @@ class AppWindow(QtWidgets.QMainWindow):
             parent=self,
         )
 
+    def _start_metronome(self) -> None:
+        """The metronome on the audio thread, the time stretch and the Python engine's kernels."""
         self.metro = MetronomeController(
             click_wav_path=self.cfg.deckconfig.metronome_wav_path,
         )
@@ -328,9 +370,7 @@ class AppWindow(QtWidgets.QMainWindow):
             from audioengine.python.cursor_poller import warm_cursor_poller
             from audioengine.python.dsp import warm_scratch_numba
             QtCore.QTimer.singleShot(0, lambda: (warm_scratch_numba(), warm_cursor_poller()))
-        self._apply_external_sync_mode(self.cfg.externalsyncconfig)
-        self._apply_visibility_refresh_setting(force=True)
-        step(1.0, "")
+
 
     # DnD: a file dropped on the deck (the area above the library) loads there, shown by its drop zone while
     # dragged; the library's tracks take a file from elsewhere themselves (analyzed, not loaded)
