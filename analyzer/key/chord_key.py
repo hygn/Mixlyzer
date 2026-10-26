@@ -276,11 +276,9 @@ def static_key(segments: np.ndarray, phrases, duration: float) -> tuple[int, int
     the intro, outro and interlude phrases; without them, the key that holds the most time. -> (pc, mode)"""
     spans = []
     for p in phrases or ():
-        label = str(p.get("label", "") if isinstance(p, dict) else p[2]).upper()
+        label = str(p.label).upper()
         if label in MIX_LABELS:
-            a = float(p["start"] if isinstance(p, dict) else p[0])
-            b = float(p["end"] if isinstance(p, dict) else p[1])
-            spans.append((a, b))
+            spans.append((float(p.start), float(p.end)))
     if not spans:
         spans = [(0.0, float(duration))]
     held: dict[tuple[int, int], float] = {}
@@ -297,7 +295,7 @@ def static_key(segments: np.ndarray, phrases, duration: float) -> tuple[int, int
 def track_keys(model: ChordKeyModel, grid: BeatGrid, L: np.ndarray, duration: float, dynamic: bool = True,
                phrases=None) -> tuple[np.ndarray, np.ndarray]:
     """The keys from the evidence: the decoder's key sections (dynamic), or one key for the whole track (static):
-    the dynamic analysis's key in the intro / outro / interludes (``phrases``: dicts or (start, end, label))."""
+    the dynamic analysis's key in the intro / outro / interludes (``phrases``: analyzer.music.marks.Phrase)."""
     segments, key_per_bar = model.decode(L, grid, duration)
     if dynamic:
         return np.asarray(key_per_bar)[grid.bar], segments

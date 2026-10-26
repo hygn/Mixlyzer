@@ -7,6 +7,7 @@ import numpy as np
 from analyzer.audio.hpss import hpss_audio_with_spectra
 from analyzer.audio.load import fast_load
 from analyzer.errors import PHRASE_NEEDS_TEMPO, PHRASE_TOO_FEW_BEATS, AnalysisError
+from analyzer.music.marks import Phrase
 from analyzer.phrase import detect_phrase_segments
 from analyzer.pipeline import stages
 from analyzer.pipeline.stages import Progress, report
@@ -18,8 +19,8 @@ MIN_BEATS = 17
 
 def reanalyze_phrases(path: str, settings: AnalysisSettings, beats_time_arr: np.ndarray, *,
                       tempo_segments: Optional[np.ndarray] = None,
-                      progress: Progress = None) -> list[dict]:
-    """[{start, end, label}, ...]"""
+                      progress: Progress = None) -> list[Phrase]:
+    """The phrases (analyzer.music.marks.Phrase)."""
     beats_time_arr = np.asarray(beats_time_arr, dtype=float)
     if beats_time_arr.size < MIN_BEATS:
         raise AnalysisError(PHRASE_TOO_FEW_BEATS, count=MIN_BEATS)
@@ -41,9 +42,6 @@ def reanalyze_phrases(path: str, settings: AnalysisSettings, beats_time_arr: np.
         model_path=settings.models.phrase,
         hpss=hpss_spectra,
     )
-    rows = [
-        {"start": float(s["start"]), "end": float(s["end"]), "label": str(s["label"])}
-        for s in segments
-    ]
-    print(f"[Phrase] reanalysis segments={len(rows)} labels=[{', '.join(r['label'] for r in rows)}]")
+    rows = list(segments)
+    print(f"[Phrase] reanalysis segments={len(rows)} labels=[{', '.join(r.label for r in rows)}]")
     return rows

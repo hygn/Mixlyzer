@@ -8,13 +8,13 @@ from typing import Any, Mapping
 import numpy as np
 
 from analyzer.music.beat_geometry import downbeat_times
-from analyzer.music.marks import CuePoint
+from analyzer.music.marks import CuePoint, Phrase
 from analyzer.settings import CueRule
 
 _DEDUP_TIME_EPSILON_SEC = 1e-3
 
 
-def phrase_cue_points(phrases: list[dict[str, Any]] | None, beat_times: Any, tempo_segments: Any,
+def phrase_cue_points(phrases: list[Phrase] | None, beat_times: Any, tempo_segments: Any,
                       rules: Mapping[str, CueRule], autocue: str) -> list[CuePoint]:
     """The CUE points of the phrases: each label's rule, and with AutoCUE on CUE points (``autocue`` "cue_point") its
     start."""
@@ -55,49 +55,48 @@ def merge_coincident(points: list[CuePoint]) -> list[CuePoint]:
             for index, (time_sec, labels, comments, color) in enumerate(merged)]
 
 
-def build_phrase_cue_points(phrases: list[dict[str, Any]] | None, rules: Mapping[str, CueRule]) -> list[CuePoint]:
+def build_phrase_cue_points(phrases: list[Phrase] | None, rules: Mapping[str, CueRule]) -> list[CuePoint]:
     """CUE points at phrase starts / ends by the rule of each phrase's label
     (``rules``: uppercase label -> object with ``at_start``, ``at_end`` and
     ``same_label_boundaries``, analyzer.settings.CueRule). A start or end
     next to a phrase of the same label gets one only with ``same_label_boundaries``.
     Named after the label (the end: ``<LABEL>_OUT``)."""
-    rows: list[dict[str, Any]] = []
+    rows: list[Phrase] = []
     for phrase in phrases or []:
         try:
-            start = float(phrase.get("start"))
-            end = float(phrase.get("end"))
-        except (AttributeError, TypeError, ValueError):
+            start = float(phrase.start)
+            end = float(phrase.end)
+        except (TypeError, ValueError):
             continue
         if not (math.isfinite(start) and math.isfinite(end)) or end <= start:
             continue
-        rows.append({"start": start, "end": end, "label": str(phrase.get("label", "") or "").strip().upper()})
-    rows.sort(key=lambda phrase: phrase["start"])
+        rows.append(Phrase(start, end, str(phrase.label or "").strip().upper()))
+    rows.sort(key=lambda phrase: phrase.start)
 
     points: list[CuePoint] = []
     for i, phrase in enumerate(rows):
-        label = phrase["label"]
+        label = phrase.label
         rule = rules.get(label)
         if rule is None:
             continue
-        prev_same = i > 0 and rows[i - 1]["label"] == label
-        next_same = i + 1 < len(rows) and rows[i + 1]["label"] == label
+        prev_same = i > 0 and rows[i - 1].label == label
+        next_same = i + 1 < len(rows) and rows[i + 1].label == label
         if rule.at_start and (rule.same_label_boundaries or not prev_same):
-            points.append(CuePoint(id=len(points), time_sec=phrase["start"], label=label,
+            points.append(CuePoint(id=len(points), time_sec=phrase.start, label=label,
                                    comment=f"{label.title()} start"))
         if rule.at_end and (rule.same_label_boundaries or not next_same):
-            points.append(CuePoint(id=len(points), time_sec=phrase["end"], label=f"{label}_OUT",
+            points.append(CuePoint(id=len(points), time_sec=phrase.end, label=f"{label}_OUT",
                                    comment=f"{label.title()} end"))
     return merge_coincident(points)
 
 
-def lead_in_end_sec(phrases: list[dict[str, Any]] | None) -> float | None:
+def lead_in_end_sec(phrases: list[Phrase] | None) -> float | None:
     """Where the song's LEAD_IN (its first phrase, when labelled so) ends."""
     rows = []
     for phrase in phrases or []:
         try:
-            rows.append((float(phrase.get("start")), float(phrase.get("end")),
-                         str(phrase.get("label", "") or "").strip().upper()))
-        except (AttributeError, TypeError, ValueError):
+            rows.append((float(phrase.start), float(phrase.end), str(phrase.label or "").strip().upper()))
+        except (TypeError, ValueError):
             continue
     if not rows:
         return None
@@ -108,7 +107,7 @@ def lead_in_end_sec(phrases: list[dict[str, Any]] | None) -> float | None:
 
 
 def autocue_time_sec(
-    phrases: list[dict[str, Any]] | None,
+    phrases: list[Phrase] | None,
     beat_times: Any = None,
     tempo_segments: Any = None,
 ) -> float:

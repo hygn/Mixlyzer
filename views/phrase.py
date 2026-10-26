@@ -123,8 +123,8 @@ class PhraseView(ViewPlugin):
         # Thin boundary lines at every segment edge (kept even between same labels).
         edges: list[float] = []
         for seg in self._phrases:
-            edges.append(float(seg.get("start", 0.0)))
-            edges.append(float(seg.get("end", 0.0)))
+            edges.append(float(seg.start))
+            edges.append(float(seg.end))
         self.boundaries.setPath(_vertical_lines_path(edges, self.BAND_BOTTOM, self.BAND_TOP))
 
         # Pool TextItems for the numbered labels.
@@ -169,8 +169,8 @@ class PhraseView(ViewPlugin):
                 label.setVisible(False)
                 continue
             seg = self._phrases[idx]
-            seg_start = float(seg.get("start", 0.0))
-            seg_end = float(seg.get("end", 0.0))
+            seg_start = float(seg.start)
+            seg_end = float(seg.end)
             # Skip phrases entirely outside the viewport — no need to position
             # (and measure) labels that aren't on screen.
             if seg_end < visible_start or seg_start > visible_end:

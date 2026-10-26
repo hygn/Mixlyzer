@@ -8,7 +8,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 
 from audioengine.native import client as deck
 from analyzer.music.beat_geometry import downbeat_beat_indices
-from analyzer.music.marks import CuePoint
+from analyzer.music.marks import CuePoint, Phrase
 from core.workflows.event_bus import EventBus
 from core.track.model import DataModel
 from ui.edit_panel.beat_counter import BeatCounterMixin
@@ -132,7 +132,7 @@ class EditPanel(
         return self.model.key_segments
 
     @property
-    def _phrase_segments(self) -> list[dict]:
+    def _phrase_segments(self) -> list[Phrase]:
         return self.model.phrases
 
     @property

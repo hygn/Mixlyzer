@@ -120,8 +120,8 @@ def build_phrase_index_rows(
     out: list[dict[str, Any]] = []
 
     for phrase_seq, phrase in enumerate(phrase_rows):
-        phrase_start = float(phrase["start"])
-        phrase_end = float(phrase["end"])
+        phrase_start = float(phrase.start)
+        phrase_end = float(phrase.end)
         phrase_duration = phrase_end - phrase_start
         boundaries = {phrase_start, phrase_end}
         for segment in (*bpm_rows, *key_rows):
@@ -145,7 +145,7 @@ def build_phrase_index_rows(
                 {
                     "phrase_seq_index": phrase_seq,
                     "section_index": section_index,
-                    "phrase_label": str(phrase.get("label") or "").strip().upper(),
+                    "phrase_label": str(phrase.label or "").strip().upper(),
                     "phrase_start_sec": phrase_start,
                     "phrase_end_sec": phrase_end,
                     "phrase_duration_sec": phrase_duration,

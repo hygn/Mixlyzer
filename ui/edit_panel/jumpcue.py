@@ -362,6 +362,6 @@ class JumpCUEEditMixin:
         if self._segments is not None:
             payload["segments"] = np.asarray(self._segments, dtype=float).copy()
         # AutoCUE follows the current phrases and beat grid.
-        payload["phrases"] = [dict(row) for row in assigned_phrases(self._phrase_segments)]
+        payload["phrases"] = assigned_phrases(self._phrase_segments)
         payload["analyze_type"] = "jumpcue"
         self.bus.sig_segment_reanalyze_requested.emit(payload)

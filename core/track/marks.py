@@ -8,7 +8,7 @@ from typing import Any, Optional
 import numpy as np
 
 from analyzer.music.tempo_rows import with_end_bpm
-from analyzer.music.marks import CuePoint
+from analyzer.music.marks import CuePoint, Phrase
 from core.analysis_library.cue_points import build_cue_points_np, extract_cue_points
 from core.analysis_library.jump_cues import build_jump_cues_np, extract_jump_cue_pairs
 from core.analysis_library.phrases import build_phrase_segments_np, extract_phrase_segments, fill_unassigned, \
@@ -45,7 +45,7 @@ def key_rows(segments) -> np.ndarray:
     return arr[np.argsort(arr[:, 2], kind="stable")]
 
 
-def phrase_rows(phrases, duration_sec: Optional[float], *, normalize: bool = True) -> list[dict[str, Any]]:
+def phrase_rows(phrases, duration_sec: Optional[float], *, normalize: bool = True) -> list[Phrase]:
     """The phrases covering the track (its stretches without one UNASSIGNED); ``normalize``: first ordered, slivers
     and overlaps taken out (phrases read or found; an edit's rows are taken as they are)."""
     rows = normalize_phrase_segments(phrases or []) if normalize else list(phrases or [])
@@ -78,7 +78,7 @@ def stored_key_segments(segments: np.ndarray) -> dict[str, Any]:
     return {"key_segments": np.asarray(segments, dtype=float)}
 
 
-def stored_phrases(rows: list[dict]) -> dict[str, Any]:
+def stored_phrases(rows: list[Phrase]) -> dict[str, Any]:
     return {"phrase_segments_np": build_phrase_segments_np(rows)}
 
 

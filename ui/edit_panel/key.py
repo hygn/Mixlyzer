@@ -458,7 +458,7 @@ class KeyEditMixin:
             "beats_time_sec": np.asarray(self._beatgrid, dtype=float).copy(),
             "key_segments": np.asarray(self._key_segments, dtype=float).copy(),
             "selection": (start, end),
-            "phrases": [dict(row) for row in assigned_phrases(self._phrase_segments)],
+            "phrases": assigned_phrases(self._phrase_segments),
             "analyze_type": "key_static",
             "duration_sec": self.duration,
         }
@@ -474,7 +474,7 @@ class KeyEditMixin:
             "beats_time_sec": np.asarray(self._beatgrid, dtype=float).copy(),
             "key_segments": np.asarray(self._key_segments, dtype=float).copy(),
             # the key analysis reads the progressions per phrase
-            "phrases": [dict(row) for row in assigned_phrases(self._phrase_segments)],
+            "phrases": assigned_phrases(self._phrase_segments),
             "analyze_type": "key_dynamic",
         }
         self.bus.sig_segment_reanalyze_requested.emit(payload)

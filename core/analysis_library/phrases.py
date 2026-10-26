@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import math
+from dataclasses import replace
 from typing import Any, Dict, List
 
 import numpy as np
+
+from analyzer.music.marks import Phrase
 
 
 # The phrase labels (uppercase); no others.
@@ -78,7 +81,7 @@ def normalize_phrase_segments(
     *,
     min_time: float | None = None,
     max_time: float | None = None,
-) -> list[dict[str, Any]]:
+) -> list[Phrase]:
     """Return finite, ordered, non-overlapping Phrase segments.
 
     Optional time bounds clip stale segments left behind after beatgrid or
@@ -91,12 +94,12 @@ def normalize_phrase_segments(
     if lower is not None and upper is not None and upper < lower:
         lower, upper = upper, lower
 
-    rows: list[dict[str, Any]] = []
+    rows: list[Phrase] = []
     for p in phrases or []:
         try:
-            start = float(p.get("start"))
-            end = float(p.get("end"))
-        except Exception:
+            start = float(p.start)       # not a Phrase: an error, never left out quietly
+            end = float(p.end)
+        except (TypeError, ValueError):
             continue
         if not (math.isfinite(start) and math.isfinite(end)):
             continue
@@ -108,27 +111,26 @@ def normalize_phrase_segments(
             end = min(end, upper)
         if end - start <= MIN_PHRASE_DUR:
             continue
-        label = str(p.get("label") or "").strip()
-        rows.append({"start": start, "end": end, "label": label})
-    rows.sort(key=lambda r: r["start"])
+        label = str(p.label or "").strip()
+        rows.append(Phrase(start, end, label))
+    rows.sort(key=lambda r: r.start)
 
-    normalized: list[dict[str, Any]] = []
-    for row in rows:
-        current = dict(row)
+    normalized: list[Phrase] = []
+    for current in rows:
         if normalized:
-            previous_end = float(normalized[-1]["end"])
-            if float(current["start"]) < previous_end + MIN_PHRASE_DUR:
-                current["start"] = previous_end
-            elif float(current["start"]) - previous_end < PHRASE_SLIVER_SEC:
+            previous_end = float(normalized[-1].end)
+            if float(current.start) < previous_end + MIN_PHRASE_DUR:
+                current = replace(current, start=previous_end)
+            elif float(current.start) - previous_end < PHRASE_SLIVER_SEC:
                 # a hairline gap left by a boundary from an older beatgrid
-                normalized[-1]["end"] = float(current["start"])
-        if float(current["end"]) - float(current["start"]) < PHRASE_SLIVER_SEC:
+                normalized[-1] = replace(normalized[-1], end=float(current.start))
+        if float(current.end) - float(current.start) < PHRASE_SLIVER_SEC:
             continue
         normalized.append(current)
     return normalized
 
 
-def _sorted_phrases(phrases) -> list[dict[str, Any]]:
+def _sorted_phrases(phrases) -> list[Phrase]:
     return normalize_phrase_segments(phrases)
 
 
@@ -137,11 +139,11 @@ def _phrase_numbers(rows) -> list[str]:
     once, and for UNASSIGNED)."""
     counts: dict[str, int] = {}
     for r in rows:
-        counts[r["label"]] = counts.get(r["label"], 0) + 1
+        counts[r.label] = counts.get(r.label, 0) + 1
     running: dict[str, int] = {}
     out: list[str] = []
     for r in rows:
-        base = r["label"]
+        base = r.label
         if counts[base] >= 2 and base != UNASSIGNED:
             running[base] = running.get(base, 0) + 1
             out.append(str(running[base]))
@@ -154,13 +156,13 @@ def number_phrase_labels(phrases) -> list[str]:
     """Display names in time order: the label's name, numbered from 1 when the
     label occurs more than once (e.g. CHORUS1, CHORUS2)."""
     rows = _sorted_phrases(phrases)
-    return [phrase_display_name(r["label"]) + n for r, n in zip(rows, _phrase_numbers(rows))]
+    return [phrase_display_name(r.label) + n for r, n in zip(rows, _phrase_numbers(rows))]
 
 
 def abbreviate_phrase_labels(phrases) -> list[str]:
     """Overview labels: the abbreviation + number (e.g. CHORUS2 -> "C2", VERSE -> "V")."""
     rows = _sorted_phrases(phrases)
-    return [phrase_abbrev(r["label"]) + n for r, n in zip(rows, _phrase_numbers(rows))]
+    return [phrase_abbrev(r.label) + n for r, n in zip(rows, _phrase_numbers(rows))]
 
 
 def build_phrase_segments_np(phrases) -> Dict[str, np.ndarray]:
@@ -172,8 +174,8 @@ def build_phrase_segments_np(phrases) -> Dict[str, np.ndarray]:
             "end": np.asarray([], dtype=np.float32),
             "label": np.asarray([], dtype="U1"),
         }
-    starts = np.asarray([r["start"] for r in rows], dtype=np.float32)
-    ends = np.asarray([r["end"] for r in rows], dtype=np.float32)
+    starts = np.asarray([r.start for r in rows], dtype=np.float32)
+    ends = np.asarray([r.end for r in rows], dtype=np.float32)
     # Validate after quantization too: distinct float64 boundaries can map to
     # the same float32 timestamp at the end of a long track.
     valid = (ends.astype(np.float64) - starts.astype(np.float64)) > MIN_PHRASE_DUR
@@ -186,11 +188,11 @@ def build_phrase_segments_np(phrases) -> Dict[str, np.ndarray]:
             "end": np.asarray([], dtype=np.float32),
             "label": np.asarray([], dtype="U1"),
         }
-    label_width = max(1, max(len(r["label"]) for r in rows))
+    label_width = max(1, max(len(r.label) for r in rows))
     return {
         "start": starts,
         "end": ends,
-        "label": np.asarray([r["label"] for r in rows], dtype=f"U{label_width}"),
+        "label": np.asarray([r.label for r in rows], dtype=f"U{label_width}"),
     }
 
 
@@ -208,12 +210,12 @@ def _extract_phrase_block(features: Dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def extract_phrase_segments(features: Dict[str, Any], duration_sec: float | None = None) -> List[dict[str, Any]]:
+def extract_phrase_segments(features: Dict[str, Any], duration_sec: float | None = None) -> List[Phrase]:
     """Read phrases (base labels) from a features dict; returns a sorted list
     covering the whole track (``duration_sec``, else the features' own), the
     stretches without a phrase as UNASSIGNED."""
     block = _extract_phrase_block(features)
-    rows: list[dict[str, Any]] = []
+    rows: list[Phrase] = []
     try:
         starts = np.asarray(block["start"], dtype=float).ravel()
         ends = np.asarray(block["end"], dtype=float).ravel()
@@ -221,17 +223,13 @@ def extract_phrase_segments(features: Dict[str, Any], duration_sec: float | None
     except Exception:
         starts = ends = labels = np.asarray([])
     for i in range(min(len(starts), len(ends), len(labels))):
-        rows.append({
-            "start": float(starts[i]),
-            "end": float(ends[i]),
-            "label": str(labels[i]).strip(),
-        })
+        rows.append(Phrase(float(starts[i]), float(ends[i]), str(labels[i]).strip()))
     if not duration_sec and isinstance(features, dict):
         duration_sec = features.get("duration_sec")
     return fill_unassigned(rows, duration_sec)
 
 
-def fill_unassigned(phrases, duration_sec) -> List[dict[str, Any]]:
+def fill_unassigned(phrases, duration_sec) -> List[Phrase]:
     """The phrases with every stretch of [0, duration] they leave uncovered as an
     UNASSIGNED phrase (the whole track when there are none); phrases past the
     end are cut there."""
@@ -242,23 +240,23 @@ def fill_unassigned(phrases, duration_sec) -> List[dict[str, Any]]:
     if not (math.isfinite(duration) and duration > 0.0):
         return _sorted_phrases(phrases)
     rows = normalize_phrase_segments(phrases, min_time=0.0, max_time=duration)
-    out: list[dict[str, Any]] = []
+    out: list[Phrase] = []
     cursor = 0.0
     for row in rows:
-        if row["start"] - cursor >= PHRASE_SLIVER_SEC:
-            out.append({"start": cursor, "end": row["start"], "label": UNASSIGNED})
+        if row.start - cursor >= PHRASE_SLIVER_SEC:
+            out.append(Phrase(cursor, row.start, UNASSIGNED))
         out.append(row)
-        cursor = max(cursor, row["end"])
+        cursor = max(cursor, row.end)
     if duration - cursor >= PHRASE_SLIVER_SEC:
-        out.append({"start": cursor, "end": duration, "label": UNASSIGNED})
+        out.append(Phrase(cursor, duration, UNASSIGNED))
     return out
 
 
-def assigned_phrases(phrases) -> List[dict[str, Any]]:
+def assigned_phrases(phrases) -> List[Phrase]:
     """The phrases to store: UNASSIGNED ones left out (gaps)."""
-    return [row for row in _sorted_phrases(phrases) if row["label"] != UNASSIGNED]
+    return [row for row in _sorted_phrases(phrases) if row.label != UNASSIGNED]
 
 
 def phrase_strip_segments(phrases) -> list[tuple[float, float, tuple[int, int, int]]]:
     """(start, end, colour) of each phrase, for a SegmentStrip."""
-    return [(seg["start"], seg["end"], phrase_color(seg["label"])) for seg in _sorted_phrases(phrases)]
+    return [(seg.start, seg.end, phrase_color(seg.label)) for seg in _sorted_phrases(phrases)]

@@ -21,6 +21,7 @@ from analyzer.jumpcue.autocue import autocue_jump_pair
 from analyzer.jumpcue.jump_point_model import jump_point_beat_features
 from analyzer.key.chord_key import analyze_keys as analyze_chord_keys
 from analyzer.music.beat_geometry import downbeat_times
+from analyzer.music.marks import Phrase
 from analyzer.phrase import detect_phrase_segments
 from analyzer.phrase.cue_points import autocue_time_sec, phrase_cue_points
 from analyzer.pipeline import stages
@@ -41,7 +42,7 @@ class TrackAnalysis:
     tempo_segments: np.ndarray             # float32 rows [start, end, bpm, inizio, ts, bpm_end] covering the track
     beats: np.ndarray                      # the beats the rows make
     main_tempo: float
-    phrases: list[dict]                    # {start, end, label, ...} as detected ([]: none)
+    phrases: list[Phrase]                  # as detected ([]: none)
     cue_points: list[dict]                 # {id, time_sec, label, comment}
     jump_pairs: list[dict]                 # the JumpCUE pairs (AutoCUE's last, with AutoCUE on JumpCUEs)
     key_segments: np.ndarray               # [n, 4] (pitch class, mode, start, end)
@@ -171,7 +172,7 @@ def analyze_track(path: str, settings: AnalysisSettings, progress: Progress = No
     autocue = settings.autocue
     autocue_target = autocue_time_sec(phrase_segments, beats_time_arr, seg_arr)
     cue_points = phrase_cue_points(phrase_segments, beats_time_arr, seg_arr, settings.cue_rules, autocue)
-    labels_summary = ", ".join(str(s["label"]) for s in phrase_segments)
+    labels_summary = ", ".join(str(s.label) for s in phrase_segments)
     print(
         f"[Phrase] segments={len(phrase_segments)} "
         f"cue_points={len(cue_points)} labels=[{labels_summary}]"
@@ -230,7 +231,7 @@ def analyze_track(path: str, settings: AnalysisSettings, progress: Progress = No
             int(global_sr),
             beats_time_arr,
             downbeat_times(beats_time_arr, seg_arr),
-            [float(s["start"]) for s in phrase_segments],
+            [float(s.start) for s in phrase_segments],
             float(duration_sec),
             models.key,
             dynamic=bool(settings.key_dynamic),

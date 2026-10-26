@@ -15,3 +15,12 @@ class CuePoint:
     comment: str = ""
     color_idx: int = 0
     id: int | None = None
+
+
+@dataclass(frozen=True)
+class Phrase:
+    """A phrase of the track: from ``start`` to ``end`` (s), its label (core.analysis_library.phrases.PHRASE_LABELS,
+    or UNASSIGNED where none is)."""
+    start: float
+    end: float
+    label: str

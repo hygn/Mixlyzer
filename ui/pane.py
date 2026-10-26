@@ -732,10 +732,10 @@ class MainPane(QtWidgets.QWidget):
     def _on_phrases_updated(self) -> None:
         """Cache the displayed phrases (numbered like the phrase view)."""
         rows = self.model.phrases
-        self._phrase_starts = np.asarray([float(r["start"]) for r in rows], dtype=float)
-        self._phrase_ends = np.asarray([float(r["end"]) for r in rows], dtype=float)
+        self._phrase_starts = np.asarray([float(r.start) for r in rows], dtype=float)
+        self._phrase_ends = np.asarray([float(r.end) for r in rows], dtype=float)
         self._phrase_names = number_phrase_labels(rows)
-        self._phrase_colors = [phrase_color(r["label"]) for r in rows]
+        self._phrase_colors = [phrase_color(r.label) for r in rows]
         self._update_phrase_display(self.current_time)
 
     def _update_phrase_display(self, t: float) -> None:

@@ -27,7 +27,7 @@ def _track_evidence(path: str, settings: AnalysisSettings, beats, tempo_segments
     beats = np.asarray(beats, dtype=float).ravel()
     segs = np.asarray(tempo_segments, dtype=float) if tempo_segments is not None else np.zeros((0, 5))
     downbeats = downbeat_times(beats, segs) if segs.ndim == 2 and segs.shape[0] else None
-    starts = [float(p["start"]) for p in (phrases or []) if "start" in p]
+    starts = [float(p.start) for p in (phrases or [])]
     model, grid, L = CK.key_evidence(y_harm, sr, beats, downbeats, starts, duration, settings.models.key)
     return model, grid, L, duration
 

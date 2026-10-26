@@ -26,7 +26,7 @@ from PySide6.QtGui import QImage
 
 from core.track import marks
 from core.track.history import History, Marks
-from analyzer.music.marks import CuePoint
+from analyzer.music.marks import CuePoint, Phrase
 from core.analysis_library.cue_points import build_cue_points_np
 from core.analysis_library.jump_cues import build_jump_cue_graph, build_jump_cues_np
 from core.analysis_library.phrases import assigned_phrases, build_phrase_segments_np
@@ -138,8 +138,8 @@ class DataModel(QtCore.QObject):
         return self._key_segments
 
     @property
-    def phrases(self) -> list[dict]:
-        """The phrases covering the track ({start, end, label}; its stretches without one UNASSIGNED)."""
+    def phrases(self) -> list[Phrase]:
+        """The phrases covering the track (analyzer.music.marks.Phrase; its stretches without one UNASSIGNED)."""
         return self._phrases
 
     @property

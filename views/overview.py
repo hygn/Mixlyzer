@@ -630,8 +630,8 @@ class OverviewWidget(QtWidgets.QWidget):
         # Thin boundary lines at every segment edge, within the band only.
         edges: list[float] = []
         for seg in phrases:
-            edges.append(float(seg.get("start", 0.0)))
-            edges.append(float(seg.get("end", 0.0)))
+            edges.append(float(seg.start))
+            edges.append(float(seg.end))
         self.phrase_boundaries.setPath(self._phrase_boundary_path(edges, band_bottom, band_bottom + band_h))
 
         while len(self.phrase_labels) < len(phrases):
@@ -644,7 +644,7 @@ class OverviewWidget(QtWidgets.QWidget):
         for idx, lbl in enumerate(self.phrase_labels):
             if idx < len(phrases):
                 seg = phrases[idx]
-                center = (float(seg.get("start", 0.0)) + float(seg.get("end", 0.0))) * 0.5
+                center = (float(seg.start) + float(seg.end)) * 0.5
                 lbl.setText(numbered[idx] if idx < len(numbered) else "")
                 lbl.setPos(center, label_y)
                 lbl.setVisible(True)

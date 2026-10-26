@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+from dataclasses import replace
+
 import numpy as np
 from PySide6 import QtCore, QtGui, QtWidgets
 
+from analyzer.music.marks import Phrase
 from analyzer.phrase.cue_points import phrase_cue_points
 from core.settings.config import load_cfg
 from core.workers.analysis_settings import cue_rules
@@ -187,7 +190,7 @@ class PhraseEditMixin:
         # through the stored form, so they read back as loaded ones do
         self.model.set_cue_points(extract_cue_points({"cue_points_np": build_cue_points_np(points)}))
 
-    def _set_phrases_edited(self, rows: list[dict]) -> None:
+    def _set_phrases_edited(self, rows: list[Phrase]) -> None:
         self.model.set_phrases(rows)
 
     # ---- the current phrase ----
@@ -197,9 +200,9 @@ class PhraseEditMixin:
         if not rows:
             return -1
         for i, row in enumerate(rows):
-            if row["start"] <= t < row["end"]:
+            if row.start <= t < row.end:
                 return i
-        return 0 if t < rows[0]["start"] else len(rows) - 1
+        return 0 if t < rows[0].start else len(rows) - 1
 
     def _current_phrase_row(self) -> int | None:
         idx = self._phrase_index_at(float(self._current_time))
@@ -217,15 +220,15 @@ class PhraseEditMixin:
             self._refresh_phrase_label_buttons(None)
             return
         row = self._phrase_segments[idx]
-        left = max(0.0, float(row["end"]) - t)
+        left = max(0.0, float(row.end) - t)
         m = int(left // 60)
         name = number_phrase_labels(self._phrase_segments)[idx]
         self.phrase_status.setText(tr("{label} | Seg {index} | +{beats} beats | Left: {left}").format(
-            label=name, index=idx + 1, beats=self._phrase_beats_elapsed(t, float(row["start"])),
+            label=name, index=idx + 1, beats=self._phrase_beats_elapsed(t, float(row.start)),
             left=f"{m:02d}:{left - 60 * m:05.2f}"))
         if idx != self._phrase_cur:
             self._phrase_cur = idx
-            self._refresh_phrase_label_buttons(row["label"])
+            self._refresh_phrase_label_buttons(row.label)
 
     def _phrase_beats_elapsed(self, t: float, start: float) -> int:
         """Beats from the phrase's first beat to the playhead, counting both."""
@@ -257,34 +260,34 @@ class PhraseEditMixin:
 
     def _assign_phrase_label(self, label: str) -> None:
         idx = self._current_phrase_row()
-        if idx is None or self._phrase_segments[idx]["label"] == label:
+        if idx is None or self._phrase_segments[idx].label == label:
             return
-        rows = [dict(row) for row in self._phrase_segments]
-        rows[idx]["label"] = label
+        rows = list(self._phrase_segments)
+        rows[idx] = replace(rows[idx], label=label)
         self._set_phrases_edited(rows)
 
     def _nudge_phrase_boundary(self, which: str, direction: int) -> None:
         idx = self._current_phrase_row()
         if idx is None:
             return
-        rows = [dict(row) for row in self._phrase_segments]
+        rows = list(self._phrase_segments)
         by_bar = self.phrase_step_bar.isChecked()
         if which == "start":
             if idx == 0:
                 return  # the track start does not move
-            new = self._step_on_grid(float(rows[idx]["start"]), direction, by_bar)
-            if new is None or not (rows[idx - 1]["start"] < new < rows[idx]["end"]):
+            new = self._step_on_grid(float(rows[idx].start), direction, by_bar)
+            if new is None or not (rows[idx - 1].start < new < rows[idx].end):
                 return
-            rows[idx - 1]["end"] = new
-            rows[idx]["start"] = new
+            rows[idx - 1] = replace(rows[idx - 1], end=new)
+            rows[idx] = replace(rows[idx], start=new)
         else:
             if idx == len(rows) - 1:
                 return  # the track end does not move
-            new = self._step_on_grid(float(rows[idx]["end"]), direction, by_bar)
-            if new is None or not (rows[idx]["start"] < new < rows[idx + 1]["end"]):
+            new = self._step_on_grid(float(rows[idx].end), direction, by_bar)
+            if new is None or not (rows[idx].start < new < rows[idx + 1].end):
                 return
-            rows[idx]["end"] = new
-            rows[idx + 1]["start"] = new
+            rows[idx] = replace(rows[idx], end=new)
+            rows[idx + 1] = replace(rows[idx + 1], start=new)
         self._set_phrases_edited(rows)
 
     def _split_phrase(self) -> None:
@@ -295,11 +298,11 @@ class PhraseEditMixin:
         beats = np.asarray(self._beatgrid, dtype=float)
         if beats.size:
             t = float(beats[int(np.argmin(np.abs(beats - t)))])
-        rows = [dict(row) for row in self._phrase_segments]
-        if not (rows[idx]["start"] + 1e-3 < t < rows[idx]["end"] - 1e-3):
+        rows = list(self._phrase_segments)
+        if not (rows[idx].start + 1e-3 < t < rows[idx].end - 1e-3):
             return
-        second = dict(rows[idx], start=t)
-        rows[idx]["end"] = t
+        second = replace(rows[idx], start=t)
+        rows[idx] = replace(rows[idx], end=t)
         rows.insert(idx + 1, second)
         self._set_phrases_edited(rows)
 
@@ -307,14 +310,14 @@ class PhraseEditMixin:
         idx = self._current_phrase_row()
         if idx is None:
             return
-        rows = [dict(row) for row in self._phrase_segments]
+        rows = list(self._phrase_segments)
         other = idx + direction
         if not 0 <= other < len(rows):
             return
         if direction < 0:
-            rows[idx]["start"] = rows[other]["start"]
+            rows[idx] = replace(rows[idx], start=rows[other].start)
         else:
-            rows[idx]["end"] = rows[other]["end"]
+            rows[idx] = replace(rows[idx], end=rows[other].end)
         del rows[other]
         self._set_phrases_edited(rows)
 
