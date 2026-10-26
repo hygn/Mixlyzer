@@ -3,7 +3,7 @@ import numpy as np
 import pyqtgraph as pg
 from .base import PHRASE_LANE, ViewPlugin, emphasis_opacity, emphasis_width, register_view
 from .segment_strip import SegmentStrip
-from utils.phrases import (
+from core.analysis_library.phrases import (
     number_phrase_labels,
     phrase_strip_segments,
 )

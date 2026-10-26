@@ -8,29 +8,29 @@ from urllib.parse import unquote, urlparse
 import numpy as np
 from PySide6 import QtCore, QtWidgets
 import soundfile as sf
-from core import tieup
-from foundation import os_support
+from core.tieups import domain as tieup
+from system import os_support
 from core.analysis_library import jobs as analysis_jobs
 from core.library import jobs
 from core.library.records import TrackRow
 from core.library.service import LibraryService
 from analyzer.audio.decoder import decode_to_memmap, get_samplerate
-from core.audio.tag_writer import TEXT_FIELDS, TagWriteError, tag_format, write_tags
+from core.tags.writer import TEXT_FIELDS, TagWriteError, tag_format, write_tags
 from core.track.model import DataModel
 from third_party.rekordbox import sanitize_filename
 from ui.config.scroll import scroll_page
 from ui.elided_label import ElidedLabel
-from utils.jump_cues import extract_jump_cue_pairs
-from utils.jumprender import jump_renderer
-from utils.labels import idx_to_labels
+from core.analysis_library.jump_cues import extract_jump_cue_pairs
+from ui.render.jumprender import jump_renderer
+from analyzer.music.key_names import idx_to_labels
 from ui.theme import current_theme
-from foundation.i18n import tr
+from system.i18n import tr
 
 
 class ExportTrackPanel(QtWidgets.QWidget):
     """The library panel's Export tab: a track's audio rendered with a JumpCUE jump baked in (WAV), one direction
     of one JumpCUE pair (prefers the in-memory DataModel for the loaded track, else the track's NPZ); and the
-    track's stored values written into its audio file's tags (``core.audio.tag_writer``: the fields checked,
+    track's stored values written into its audio file's tags (``core.tags.writer``: the fields checked,
     the file's other tags and its audio kept)."""
 
     _sig_tags_done = QtCore.Signal(str, str)   # the track's uid, the error ("": written)
@@ -245,7 +245,7 @@ class ExportTrackPanel(QtWidgets.QWidget):
         sources in the library; a track without them, as one added before they were kept or given another
         file: found now as the analysis would read the file, and kept), the file's new size and time stored. The
         library's part asked of its owner (LibraryService.call)."""
-        from core.audio.track_tags import extract_tags, read_tag_sources
+        from core.tags.reader import extract_tags, read_tag_sources
         library = self._library
         try:
             sources = library.call(jobs.tag_sources, uid)

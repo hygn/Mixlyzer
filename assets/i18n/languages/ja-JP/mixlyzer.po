@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-27 00:51+0900\n"
+"POT-Creation-Date: 2026-10-27 01:25+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ja_JP\n"
@@ -383,11 +383,11 @@ msgstr "特徴量キャッシュ {done}/{total}"
 msgid "feature cache is not current"
 msgstr "特徴量キャッシュが最新ではありません"
 
-#: app/main.py:51
+#: app/main.py:52
 msgid "Unsupported Operating System"
 msgstr "サポートされていない OS"
 
-#: app/main.py:52
+#: app/main.py:53
 #, python-brace-format
 msgid ""
 "Mixlyzer supports Windows, Linux and macOS; this system ({system}) is not"
@@ -397,11 +397,11 @@ msgstr ""
 "Mixlyzer は Windows、Linux、macOS に対応しています。このシステム ({system}) はそのいずれでもありません。\n"
 "正しく動作しない可能性があります。"
 
-#: app/main.py:58
+#: app/main.py:59
 msgid "Administrator Execution Blocked"
 msgstr "管理者としての実行はブロックされています"
 
-#: app/main.py:59
+#: app/main.py:60
 msgid ""
 "Mixlyzer cannot run with administrator privileges.\n"
 "Close it and launch again as a normal user."
@@ -409,11 +409,11 @@ msgstr ""
 "Mixlyzer は管理者権限では実行できません。\n"
 "終了してから一般ユーザーとして起動し直してください。"
 
-#: app/main.py:70
+#: app/main.py:71
 msgid "Settings Reset"
 msgstr "設定のリセット"
 
-#: app/main.py:71
+#: app/main.py:72
 #, python-brace-format
 msgid ""
 "{name} could not be read, so its settings are back to their defaults.\n"
@@ -429,11 +429,11 @@ msgstr ""
 "\n"
 "設定を元に戻すには、Mixlyzer を閉じた状態でそのファイルを修正し、{name} と置き換えてください。"
 
-#: app/main.py:86
+#: app/main.py:87
 msgid "Incompatible Library Version"
 msgstr "互換性のないライブラリバージョン"
 
-#: app/main.py:87
+#: app/main.py:88
 #, python-brace-format
 msgid ""
 "This library cannot be opened by the current app version.\n"
@@ -506,42 +506,42 @@ msgstr "ライブラリを読み込み中"
 msgid "Building the window"
 msgstr "ウィンドウを作成中"
 
-#: app/window.py:63
+#: app/window.py:64
 msgid "Core objects and playback"
 msgstr "コアオブジェクトと再生"
 
-#: app/window.py:151
+#: app/window.py:152
 msgid "Main view, editor and library"
 msgstr "メインビュー、エディター、ライブラリ"
 
-#: app/window.py:157 app/window.py:183 ui/config/window.py:66
+#: app/window.py:158 app/window.py:184 ui/config/window.py:66
 msgid "Settings"
 msgstr "環境設定"
 
-#: app/window.py:166
+#: app/window.py:167
 msgid "Dialogs, workflows and metronome"
 msgstr "ダイアログ、ワークフロー、メトロノーム"
 
-#: app/window.py:174 core/midi.py:59 ui/config/playback.py:327
+#: app/window.py:175 core/controls/midi.py:59 ui/config/playback.py:327
 msgid "Mixer"
 msgstr "ミキサー"
 
-#: app/window.py:184 ui/workers.py:28
+#: app/window.py:185 ui/workers.py:28
 msgid "Workers"
 msgstr "タスク"
 
 # | msgid "Tie-ups"
-#: app/window.py:185 ui/shortcuts.py:155 ui/tieup_works.py:31
-#: ui/tieup_works.py:204 ui/tieup_works.py:259 ui/tieup_works.py:264
-#: ui/tieup_works.py:273 ui/tieup_works.py:336
+#: app/window.py:186 ui/shortcuts.py:155 ui/tieup_works.py:33
+#: ui/tieup_works.py:206 ui/tieup_works.py:261 ui/tieup_works.py:266
+#: ui/tieup_works.py:275 ui/tieup_works.py:338
 msgid "Tie-up Works"
 msgstr "タイアップ作品"
 
-#: app/window.py:186
+#: app/window.py:187
 msgid "Open Source"
 msgstr "オープンソース"
 
-#: app/window.py:187
+#: app/window.py:188
 msgid "About"
 msgstr "情報"
 
@@ -549,55 +549,55 @@ msgstr "情報"
 # | Playback > " "Audio engine)."
 # Audio
 # | > " "Engine)."
-#: app/window.py:379
+#: app/window.py:380
 msgid "MIDI needs the native audio engine (Settings > Audio > Engine)."
 msgstr "MIDI は Native オーディオエンジンでのみ動作します（設定 > オーディオ > エンジン）。"
 
 # | msgid "MIDI input"
-#: app/window.py:386
+#: app/window.py:387
 msgid "MIDI input on."
 msgstr "MIDI 入力オン。"
 
 # | msgid "MIDI input"
-#: app/window.py:386
+#: app/window.py:387
 msgid "MIDI input off."
 msgstr "MIDI 入力オフ。"
 
-#: app/window.py:435
+#: app/window.py:436
 msgid "The Python audio engine plays: there is no native engine to restart."
 msgstr "Python オーディオエンジンで再生中です。再起動するネイティブエンジンがありません。"
 
 # | msgid "Starting the reading worker"
-#: app/window.py:437
+#: app/window.py:438
 msgid "Restarting the audio engine..."
 msgstr "オーディオエンジンを再起動中..."
 
 # | msgid "Audio engine"
-#: app/window.py:441
+#: app/window.py:442
 msgid "Audio engine restarted."
 msgstr "オーディオエンジンを再起動しました。"
 
-#: app/window.py:442
+#: app/window.py:443
 msgid "The audio engine did not start; it is tried again every 2 seconds."
 msgstr "オーディオエンジンが起動しませんでした。2 秒ごとに再試行します。"
 
-#: app/window.py:492 app/window.py:558
+#: app/window.py:493 app/window.py:559
 msgid "External Sync is enabled. Local track loading is disabled."
 msgstr "外部同期が有効です。ローカルでのトラックの読み込みは無効になります。"
 
-#: app/window.py:505
+#: app/window.py:506
 msgid "Segment reanalysis canceled (track changed)"
 msgstr "区間の再解析をキャンセルしました (トラックが変わりました)"
 
-#: app/window.py:563
+#: app/window.py:564
 msgid "Track unloaded."
 msgstr "トラックをアンロードしました。"
 
-#: app/window.py:573
+#: app/window.py:574
 msgid "Track File Not Found"
 msgstr "トラックファイルが見つかりません"
 
-#: app/window.py:577
+#: app/window.py:578
 #, python-brace-format
 msgid ""
 "Cannot load \"{name}\": its file is missing.\n"
@@ -610,120 +610,503 @@ msgstr ""
 "\n"
 "ファイルの新しい場所を指定しますか?"
 
-#: app/window.py:584
+#: app/window.py:585
 #, python-brace-format
 msgid "Locate {name}"
 msgstr "{name} の場所を指定"
 
-#: app/window.py:608 app/window.py:624
+#: app/window.py:609 app/window.py:625
 msgid "Analysis saved to library."
 msgstr "解析をライブラリに保存しました。"
 
-#: app/window.py:613
+#: app/window.py:614
 msgid "Finished"
 msgstr "完了"
 
-#: app/window.py:636
+#: app/window.py:637
 msgid "Waiting to be looked up on Wikipedia"
 msgstr "Wikipediaでの調査待ち"
 
-#: app/window.py:642
+#: app/window.py:643
 msgid "Looking up on Wikipedia and Wikidata…"
 msgstr "WikipediaとWikidataで調べています…"
 
 # | msgid "Reading the analysis failed: {error}"
 # | msgid "The search failed: {error}"
 # | msgid "" "The lookup failed:\n" "{error}"
-#: app/window.py:647
+#: app/window.py:648
 msgid "The lookup failed."
 msgstr "調査できませんでした。"
 
-#: app/window.py:683
+#: app/window.py:684
 #, python-brace-format
 msgid "External Sync loading: {file}"
 msgstr "外部同期で読み込み中: {file}"
 
-#: app/window.py:683
+#: app/window.py:684
 #, python-brace-format
 msgid "External Sync analyzing: {file}"
 msgstr "外部同期で解析中: {file}"
 
 # | msgid "Memory Sync Disabled"
-#: app/window.py:698
+#: app/window.py:699
 msgid "External Sync Disabled"
 msgstr "外部同期を無効にしました"
 
 # | msgid "External Sync enabled via {target}. Local play/load is locked."
-#: app/window.py:969
+#: app/window.py:970
 #, python-brace-format
 msgid "External Sync enabled: OSC on {address}. Local play/load is locked."
 msgstr "外部同期が有効です: OSC {address}。ローカルでの再生/読み込みはロックされます。"
 
-#: core/audio/tag_writer.py:97
+#: core/analysis_library/jump_cues.py:105
+msgid "JumpCUE labels are limited to unique A-Z."
+msgstr "JumpCUE のラベルには重複しない A-Z しか使えません。"
+
+#: core/analysis_library/jump_cues.py:132
+#: core/analysis_library/jump_cues.py:135
+#: core/analysis_library/jump_cues.py:303
+msgid "JumpCUE labels must be unique single letters A-Z."
+msgstr "JumpCUE のラベルは重複しない 1 文字の A-Z である必要があります。"
+
+#: core/controls/midi.py:52
+msgid "Deck"
+msgstr "デッキ"
+
+# | msgid "JumpCUE Updated"
+#: core/controls/midi.py:53
+msgid "JumpCUE pads"
+msgstr "JumpCUE パッド"
+
+#: core/controls/midi.py:54 ui/config/pipeline_map.py:33
+#: ui/edit_panel/cue_slots.py:233
+msgid "CUE points"
+msgstr "CUEポイント"
+
+# | msgid "Beat"
+#: core/controls/midi.py:55
+msgid "Beat jump"
+msgstr "ビートジャンプ"
+
+#: core/controls/midi.py:56 core/workers/analysis_texts.py:16
+msgid "Tempo"
+msgstr "テンポ"
+
+# | msgid "Jog wheel: touch"
+#: core/controls/midi.py:57
+msgid "Jog wheel"
+msgstr "ジョグダイヤル"
+
+# | msgid "Browse..."
+#: core/controls/midi.py:58
+msgid "Browser"
+msgstr "ブラウザー"
+
+#: core/controls/midi.py:60
+msgid "Effects"
+msgstr "エフェクト"
+
+# | msgid "Play / pause"
+#: core/controls/midi.py:87
+#, python-brace-format
+msgid "Deck {deck}: PLAY / PAUSE"
+msgstr "デッキ {deck}: PLAY / PAUSE"
+
+#: core/controls/midi.py:89
+#, python-brace-format
+msgid "Deck {deck}: CUE"
+msgstr "デッキ {deck}: CUE"
+
+# | msgid "" "As rekordbox's CUE: stopped, sets the cue point at the playhead
+# | (on the " "nearest beat); held on the cue point, plays until let go (PLAY
+# | while " "held: plays on); playing, back to the cue point and stop."
+#: core/controls/midi.py:91
 msgid ""
-"The file's tags are damaged or of a kind not written here; the file is "
-"unchanged."
-msgstr "ファイルのタグが壊れているか、ここでは書き込まない種類です。ファイルは変更されていません。"
+"As rekordbox's CUE: stopped, sets the cue point (on the nearest beat); "
+"held on it, plays until let go; playing, back to it and stop."
+msgstr ""
+"rekordbox の CUE と同じ: "
+"停止中はキューポイントを設定（最も近いビート）、キューポイントで押している間は再生、再生中はキューポイントに戻って停止。"
 
-#: core/audio/tag_writer.py:101
-msgid "The written tags did not read back as written; the file is unchanged."
-msgstr "書き込んだタグが書いたとおりに読み戻せませんでした。ファイルは変更されていません。"
-
-#: core/audio/tag_writer.py:205 core/audio/tag_writer.py:286
-#: core/audio/tag_writer.py:1371 ui/export.py:191
-msgid "Tags cannot be written to this file's format."
-msgstr "このファイル形式にはタグを書き込めません。"
-
-#: core/audio/tag_writer.py:391
-msgid "The file changed while its tags were written; it is unchanged."
-msgstr "タグの書き込み中にファイルが変更されました。ファイルは変更されていません。"
-
-#: core/audio/tag_writer.py:486 core/audio/tag_writer.py:528
-msgid "The tags are too long for the file."
-msgstr "このファイルにはタグが長すぎます。"
-
-#: core/audio/tag_writer.py:1211
-msgid "The file's chunk offsets cannot take the longer tags; it is unchanged."
-msgstr "ファイルのチャンクオフセットが長くなったタグに対応できません。ファイルは変更されていません。"
-
-#: core/audio/tag_writer.py:1238
-msgid "Fragmented MP4 files are not written."
-msgstr "フラグメント化された MP4 ファイルには書き込みません。"
-
-#: core/audio/tag_writer.py:1257
-msgid "MP4 files with QuickTime keys metadata are not written."
-msgstr "QuickTime keys メタデータを持つ MP4 ファイルには書き込みません。"
-
-#: core/external_sync.py:349
+# | msgid "Unload track"
+# | msgid "Unload the track"
+# | msgid "Back to the tracks"
+#: core/controls/midi.py:93
 #, python-brace-format
+msgid "Deck {deck}: back to the track's start"
+msgstr "デッキ {deck}: 曲の先頭へ"
+
+#: core/controls/midi.py:95
+msgid "As rekordbox's SHIFT + CUE: the track's start, playing on if it plays."
+msgstr "rekordbox の SHIFT + CUE と同じ: 曲の先頭へ移動し、再生中なら再生を続けます。"
+
+# | msgid "Load the selected track"
+#: core/controls/midi.py:99
+#, python-brace-format
+msgid "Deck {deck}: LOAD (the selected track)"
+msgstr "デッキ {deck}: LOAD（選択した曲）"
+
+#: core/controls/midi.py:101
+#, python-brace-format
+msgid "Deck {deck}: MASTER TEMPO"
+msgstr "デッキ {deck}: MASTER TEMPO"
+
+# | msgid "Master tempo: time stretch keeps the pitch"
+#: core/controls/midi.py:102
+msgid "Key lock: the time stretch keeps the pitch."
+msgstr "キーロック: タイムストレッチで音程を保ちます。"
+
+#: core/controls/midi.py:105
+#, python-brace-format
+msgid "Deck {deck}: TEMPO slider"
+msgstr "デッキ {deck}: TEMPO スライダー"
+
+# | msgid "The tempo over the tempo range (Tempo range); its middle is 100%."
+#: core/controls/midi.py:107
 msgid ""
-"External Sync could not listen for OSC on {host}:{port} ({error}) and has"
-" been disabled."
-msgstr "外部同期は {host}:{port} で OSC を受信できなかったため({error})、無効にしました。"
+"The tempo over the tempo range; its middle is 100%. A pitch bend message "
+"or a CC."
+msgstr "テンポ範囲内のテンポ。中央が 100% です。ピッチベンドメッセージまたは CC。"
 
-# | msgid "External Sync blocked for denied process: {process}"
-#: core/external_sync.py:353
+# | msgid "Tempo Analyzing"
+# | msgid "Tempo range"
+#: core/controls/midi.py:108
 #, python-brace-format
-msgid "External Sync listening for OSC on {address}."
-msgstr "外部同期は {address} で OSC を受信しています。"
+msgid "Deck {deck}: TEMPO RANGE"
+msgstr "デッキ {deck}: TEMPO RANGE"
 
-#: core/external_sync.py:399
-#, python-brace-format
-msgid "External Sync ignored unsafe track path: {path}"
-msgstr "外部同期は安全でないトラックパスを無視しました: {path}"
+# | msgid "The tempo fader's range: ±6% / ±10% / ±16% / WIDE (0%-200%), the
+# next
+# | one."
+#: core/controls/midi.py:110
+msgid "±6% / ±10% / ±16% / WIDE, the next one."
+msgstr "±6% / ±10% / ±16% / WIDE の次の範囲。"
 
-# | msgid "External Sync ignored unsafe track path: {path}"
-#: core/external_sync.py:452
+#: core/controls/midi.py:111
 #, python-brace-format
+msgid "Deck {deck}: TEMPO RESET"
+msgstr "デッキ {deck}: TEMPO RESET"
+
+# | msgid "Jog wheel: pitch bend"
+#: core/controls/midi.py:113
+#, python-brace-format
+msgid "Deck {deck}: PITCH BEND −"
+msgstr "デッキ {deck}: PITCH BEND −"
+
+#: core/controls/midi.py:114
+msgid "Held: the tempo bent down 4%."
+msgstr "押している間、テンポを 4% 下げます。"
+
+# | msgid "Jog wheel: pitch bend"
+#: core/controls/midi.py:115
+#, python-brace-format
+msgid "Deck {deck}: PITCH BEND +"
+msgstr "デッキ {deck}: PITCH BEND +"
+
+#: core/controls/midi.py:116
+msgid "Held: the tempo bent up 4%."
+msgstr "押している間、テンポを 4% 上げます。"
+
+# | msgid "Jog wheel: touch"
+# | msgid "Deck {deck}: jog wheel touch"
+#: core/controls/midi.py:117
+#, python-brace-format
+msgid "Deck {deck}: JOG MODE (VINYL / CDJ)"
+msgstr "デッキ {deck}: JOG MODE (VINYL / CDJ)"
+
+#: core/controls/midi.py:119
 msgid ""
-"External Sync ignored a track not in the library (OSC from the network): "
-"{path}"
-msgstr "外部同期はライブラリにないトラックを無視しました(ネットワークからの OSC): {path}"
+"A press switches the jog wheel's mode: VINYL (its top's touch holds the "
+"record) or CDJ (a bend only). Lit in VINYL mode."
+msgstr ""
+"押すたびにジョグダイヤルのモードが切り替わります: VINYL（天面に触れるとレコードを押さえる）または CDJ（ベンドのみ）。VINYL "
+"モードで点灯。"
 
-#: core/external_sync.py:457
+# | msgid "Jog wheel: touch"
+#: core/controls/midi.py:121
 #, python-brace-format
-msgid "External Sync analyzing external track before load: {path}"
-msgstr "外部同期: 読み込む前に外部トラックを解析中: {path}"
+msgid "Deck {deck}: jog wheel touch"
+msgstr "デッキ {deck}: ジョグダイヤル タッチ"
+
+# | msgid "" "The jog wheel's top touched: the record held (scratch); let go,
+# it
+# | plays " "on."
+#: core/controls/midi.py:123
+msgid ""
+"The top touched: the record held (vinyl mode); let go, it plays on (a "
+"spin: when it stops)."
+msgstr "天面に触れるとレコードを押さえます（バイナルモード）。離すと再生を続けます（回転中なら止まってから）。"
+
+#: core/controls/midi.py:125
+#, python-brace-format
+msgid "Deck {deck}: jog wheel top"
+msgstr "デッキ {deck}: ジョグダイヤル 天面"
+
+# | msgid "" "The jog wheel's top turned: touched, the record moves with it
+# (33
+# | 1/3 " "rpm); else a pitch bend."
+#: core/controls/midi.py:127
+msgid "Turned: touched, the record moves with it (33 1/3 rpm); else a pitch bend."
+msgstr "回すと: 触れている間はレコードが一緒に動き（33 1/3 rpm）、それ以外はピッチベンド。"
+
+# | msgid "Jog wheel: pitch bend"
+#: core/controls/midi.py:128
+#, python-brace-format
+msgid "Deck {deck}: jog wheel side (pitch bend)"
+msgstr "デッキ {deck}: ジョグダイヤル 側面（ピッチベンド）"
+
+# | msgid "" "The jog wheel turned: the tempo bent while it turns (a turn a
+# | second: " "+10%)."
+#: core/controls/midi.py:130
+msgid "Turned: the tempo bent while it turns (a turn a second: +10%)."
+msgstr "回している間、テンポをベンドします（1 秒に 1 回転: +10%）。"
+
+#: core/controls/midi.py:131
+#, python-brace-format
+msgid "Deck {deck}: jog wheel search (SHIFT)"
+msgstr "デッキ {deck}: ジョグダイヤル サーチ（SHIFT）"
+
+# | msgid "The jog wheel turned: the playhead moved through the track fast."
+#: core/controls/midi.py:133
+msgid "Turned: the playhead moved through the track fast."
+msgstr "回すと再生位置を曲の中で速く移動します。"
+
+#: core/controls/midi.py:134
+#, python-brace-format
+msgid "Deck {deck}: CUE CALL ◁"
+msgstr "デッキ {deck}: CUE CALL ◁"
+
+#: core/controls/midi.py:136
+msgid "The CUE point before (stopped); the cue point moves there."
+msgstr "前の CUE ポイントへ（停止中）。キューポイントもそこへ移ります。"
+
+#: core/controls/midi.py:137
+#, python-brace-format
+msgid "Deck {deck}: CUE CALL ▷"
+msgstr "デッキ {deck}: CUE CALL ▷"
+
+#: core/controls/midi.py:139
+msgid "The CUE point after (stopped); the cue point moves there."
+msgstr "次の CUE ポイントへ（停止中）。キューポイントもそこへ移ります。"
+
+#: core/controls/midi.py:143
+#, python-brace-format
+msgid "Deck {deck}: MEMORY"
+msgstr "デッキ {deck}: MEMORY"
+
+# | msgid "MEMORY: set a CUE point at the nearest beat or track edge"
+#: core/controls/midi.py:144
+msgid "A CUE point at the nearest beat (an edit)."
+msgstr "最も近いビートに CUE ポイント（編集）。"
+
+# | msgid "Delete CUE point {time}"
+#: core/controls/midi.py:145
+#, python-brace-format
+msgid "Deck {deck}: CUE point DELETE"
+msgstr "デッキ {deck}: CUE ポイント DELETE"
+
+# | msgid "Split the current segment at the playhead"
+# | msgid "No CUE point at the playhead."
+# | msgid "The CUE point the playhead is on, as after CALL."
+#: core/controls/midi.py:146
+msgid "The CUE point the playhead is on (an edit)."
+msgstr "再生位置にある CUE ポイント（編集）。"
+
+# | msgid "Delete JumpCUE {letter}"
+#: core/controls/midi.py:150
+#, python-brace-format
+msgid "Deck {deck}: JumpCUE {letter}"
+msgstr "デッキ {deck}: JumpCUE {letter}"
+
+# | msgid "Jump here on the next beat (when stopped: move the playhead here)"
+#: core/controls/midi.py:152
+msgid ""
+"JUMP on the next beat (stopped: the playhead there); an empty slot: SET "
+"(an edit). Lit while set."
+msgstr "次のビートで JUMP（停止中は再生位置をそこへ）。空きスロットなら SET（編集）。設定中は点灯します。"
+
+# | msgid "Delete JumpCUE {letter}"
+#: core/controls/midi.py:155
+#, python-brace-format
+msgid "Deck {deck}: JumpCUE {letter} delete"
+msgstr "デッキ {deck}: JumpCUE {letter} 削除"
+
+#: core/controls/midi.py:157
+msgid "As SHIFT + a pad (an edit)."
+msgstr "SHIFT + パッドと同じ（編集）。"
+
+#: core/controls/midi.py:160
+#, python-brace-format
+msgid "Deck {deck}: BEAT JUMP ◁ {beats}"
+msgstr "デッキ {deck}: BEAT JUMP ◁ {beats}"
+
+#: core/controls/midi.py:162
+#, python-brace-format
+msgid "Deck {deck}: BEAT JUMP ▷ {beats}"
+msgstr "デッキ {deck}: BEAT JUMP ▷ {beats}"
+
+#: core/controls/midi.py:172
+#, python-brace-format
+msgid "Channel {channel}: channel fader"
+msgstr "チャンネル {channel}: チャンネルフェーダー"
+
+# | msgid "Output buffer"
+# | msgid "Output device"
+# | msgid "The device's"
+#: core/controls/midi.py:173
+msgid "The deck's volume."
+msgstr "デッキの音量。"
+
+#: core/controls/midi.py:174
+#, python-brace-format
+msgid "Channel {channel}: EQ HI"
+msgstr "チャンネル {channel}: EQ HI"
+
+#: core/controls/midi.py:176 core/controls/midi.py:179
+#: core/controls/midi.py:182
+msgid "An isolator band: the bottom kills it, the middle 0 dB, the top +6 dB."
+msgstr "アイソレーターのバンド: 一番下でカット、中央 0 dB、一番上 +6 dB。"
+
+#: core/controls/midi.py:177
+#, python-brace-format
+msgid "Channel {channel}: EQ MID"
+msgstr "チャンネル {channel}: EQ MID"
+
+#: core/controls/midi.py:180
+#, python-brace-format
+msgid "Channel {channel}: EQ LOW"
+msgstr "チャンネル {channel}: EQ LOW"
+
+#: core/controls/midi.py:183
+#, python-brace-format
+msgid "Channel {channel}: TRIM"
+msgstr "チャンネル {channel}: TRIM"
+
+# | msgid "Channel {channel}: channel fader"
+#: core/controls/midi.py:185
+#, python-brace-format
+msgid "Channel {channel}: COLOR (Sound Color FX)"
+msgstr "チャンネル {channel}: COLOR (Sound Color FX)"
+
+#: core/controls/midi.py:187
+msgid ""
+"The Sound Color FX picked, on the channel: its middle off, its two "
+"flavours left and right (a DDJ's CFX knob)."
+msgstr "選んだ Sound Color FX をチャンネルにかけます: 中央でオフ、左右で効果が変わります（DDJ の CFX つまみ）。"
+
+#: core/controls/midi.py:189
+#, python-brace-format
+msgid "Channel {channel}: headphones CUE"
+msgstr "チャンネル {channel}: ヘッドホン CUE"
+
+#: core/controls/midi.py:191
+msgid ""
+"A press turns it on or off: the channel's sound before its fader in the "
+"headphones. Lit while on."
+msgstr "押すたびにオン / オフします: このチャンネルのフェーダー前の音をヘッドホンに送ります。オンの間は点灯します。"
+
+# | msgid "Level meter (output)"
+#: core/controls/midi.py:193
+#, python-brace-format
+msgid "Channel {channel}: level meter (output)"
+msgstr "チャンネル {channel}: レベルメーター（出力）"
+
+#: core/controls/midi.py:195
+msgid ""
+"The controller's level meter shows the deck's peak meter (a CC sent: its "
+"segments lit, -30 to +12 dB, as 0 - 127); taken from a rekordbox mapping "
+"(its ChannelLevel), not learned."
+msgstr ""
+"コントローラーのレベルメーターにデッキのピークメーターを表示します（CC 送信、-30 ～ +12 dB の点灯セグメントを 0 ～ 127 "
+"に）。Learn ではなく rekordbox のマッピング（ChannelLevel）から読み込みます。"
+
+# | msgid "Sound Color FX: the next effect"
+#: core/controls/midi.py:205
+#, python-brace-format
+msgid "Sound Color FX: {effect}"
+msgstr "Sound Color FX: {effect}"
+
+#: core/controls/midi.py:207
+msgid "A press picks it; pressed again, none. Lit while picked."
+msgstr "押すと選択、もう一度押すと解除。選択中は点灯。"
+
+# | msgid "Sound Color FX: the next effect"
+#: core/controls/midi.py:209
+msgid "Sound Color FX: PARAMETER"
+msgstr "Sound Color FX: PARAMETER"
+
+# | msgid "" "PARAMETER: the effect's quantity (SPACE / DUB ECHO: feedback,
+# | SWEEP: the " "centre frequency, NOISE: its volume, CRUSH: how crushed,
+# | FILTER: " "resonance)."
+# | msgid "" "The effect's quantity (feedback, centre frequency, noise, crush,
+# "
+# | "resonance)."
+#: core/controls/midi.py:210
+msgid ""
+"The effect's quantity (feedback, centre frequency, noise, crush, "
+"resonance, JET's feedback)."
+msgstr "エフェクトの量（フィードバック、中心周波数、ノイズ、クラッシュ、レゾナンス、JET のフィードバック）。"
+
+#: core/controls/midi.py:216
+msgid "Browser: BROWSE knob"
+msgstr "ブラウザー: BROWSE つまみ"
+
+#: core/controls/midi.py:217
+msgid "Turned: the next / previous track."
+msgstr "回すと次 / 前の曲。"
+
+#: core/controls/midi.py:218
+msgid "Browser: BROWSE pressed"
+msgstr "ブラウザー: BROWSE 押す"
+
+# | msgid "" "In the sources panel: the highlighted playlist or folder shown
+# in
+# | the " "library."
+#: core/controls/midi.py:219
+msgid "To the sources panel (playlists, folders) and back."
+msgstr "ソースパネル（プレイリスト、フォルダー）へ移動し、また戻ります。"
+
+# | msgid "Playhead one bar back"
+# | msgid "One bar back"
+#: core/controls/midi.py:220
+msgid "Browser: BACK"
+msgstr "ブラウザー: BACK"
+
+# | msgid "Unload track"
+# | msgid "Unload the track"
+# | msgid "Back to the tracks"
+#: core/controls/midi.py:221
+msgid "Back to the tracks."
+msgstr "曲リストに戻ります。"
+
+#: core/controls/midi.py:222
+msgid "Browser: waveform zoom (SHIFT + BROWSE)"
+msgstr "ブラウザー: 波形ズーム（SHIFT + BROWSE）"
+
+#: core/controls/midi.py:223
+msgid "Turned: the waveform zoomed in / out."
+msgstr "回すと波形を拡大 / 縮小します。"
+
+#: core/controls/midi.py:225
+msgid "Headphones: CUE / MASTER"
+msgstr "ヘッドホン: CUE / MASTER"
+
+# | msgid "" "The CUE'd channels against the master in the headphones (with
+# the
+# | master " "mixed in: Settings > Playback > Headphones output)."
+#: core/controls/midi.py:226
+msgid ""
+"The CUE'd channels against the master in the headphones (with the master "
+"mixed in: Settings > Audio > Headphones)."
+msgstr "ヘッドホンでの CUE チャンネルとマスターのバランス（マスターを混ぜるとき: 設定 > オーディオ > ヘッドホン）。"
+
+#: core/controls/midi.py:228
+msgid "Headphones: level"
+msgstr "ヘッドホン: レベル"
+
+#: core/controls/midi.py:229
+msgid "Master: level"
+msgstr "マスター: レベル"
 
 #: core/library/db.py:429
 msgid "The path cannot be empty."
@@ -738,656 +1121,285 @@ msgstr "このファイルはすでにライブラリに「{track}」として�
 msgid "Playlist name cannot be empty"
 msgstr "プレイリスト名を空にすることはできません"
 
-#: core/library/tieups.py:176 ui/tieup_editor.py:289 ui/tieup_works.py:265
+#: core/library/tieups.py:176 ui/tieup_editor.py:291 ui/tieup_works.py:267
 #, python-brace-format
 msgid "A language is written as ko-KR (language-REGION): {code}"
 msgstr "言語は ko-KR(言語-地域)の形で書きます: {code}"
 
-#: core/midi.py:52
-msgid "Deck"
-msgstr "デッキ"
-
-# | msgid "JumpCUE Updated"
-#: core/midi.py:53
-msgid "JumpCUE pads"
-msgstr "JumpCUE パッド"
-
-#: core/midi.py:54 ui/config/pipeline_map.py:33 ui/edit_panel/cue_slots.py:233
-msgid "CUE points"
-msgstr "CUEポイント"
-
-# | msgid "Beat"
-#: core/midi.py:55
-msgid "Beat jump"
-msgstr "ビートジャンプ"
-
-#: core/midi.py:56 core/workers/analysis_texts.py:16
-msgid "Tempo"
-msgstr "テンポ"
-
-# | msgid "Jog wheel: touch"
-#: core/midi.py:57
-msgid "Jog wheel"
-msgstr "ジョグダイヤル"
-
-# | msgid "Browse..."
-#: core/midi.py:58
-msgid "Browser"
-msgstr "ブラウザー"
-
-#: core/midi.py:60
-msgid "Effects"
-msgstr "エフェクト"
-
-# | msgid "Play / pause"
-#: core/midi.py:87
+#: core/playback/external_sync.py:349
 #, python-brace-format
-msgid "Deck {deck}: PLAY / PAUSE"
-msgstr "デッキ {deck}: PLAY / PAUSE"
-
-#: core/midi.py:89
-#, python-brace-format
-msgid "Deck {deck}: CUE"
-msgstr "デッキ {deck}: CUE"
-
-# | msgid "" "As rekordbox's CUE: stopped, sets the cue point at the playhead
-# | (on the " "nearest beat); held on the cue point, plays until let go (PLAY
-# | while " "held: plays on); playing, back to the cue point and stop."
-#: core/midi.py:91
 msgid ""
-"As rekordbox's CUE: stopped, sets the cue point (on the nearest beat); "
-"held on it, plays until let go; playing, back to it and stop."
-msgstr ""
-"rekordbox の CUE と同じ: "
-"停止中はキューポイントを設定（最も近いビート）、キューポイントで押している間は再生、再生中はキューポイントに戻って停止。"
+"External Sync could not listen for OSC on {host}:{port} ({error}) and has"
+" been disabled."
+msgstr "外部同期は {host}:{port} で OSC を受信できなかったため({error})、無効にしました。"
 
-# | msgid "Unload track"
-# | msgid "Unload the track"
-# | msgid "Back to the tracks"
-#: core/midi.py:93
+# | msgid "External Sync blocked for denied process: {process}"
+#: core/playback/external_sync.py:353
 #, python-brace-format
-msgid "Deck {deck}: back to the track's start"
-msgstr "デッキ {deck}: 曲の先頭へ"
+msgid "External Sync listening for OSC on {address}."
+msgstr "外部同期は {address} で OSC を受信しています。"
 
-#: core/midi.py:95
-msgid "As rekordbox's SHIFT + CUE: the track's start, playing on if it plays."
-msgstr "rekordbox の SHIFT + CUE と同じ: 曲の先頭へ移動し、再生中なら再生を続けます。"
-
-# | msgid "Load the selected track"
-#: core/midi.py:99
+#: core/playback/external_sync.py:399
 #, python-brace-format
-msgid "Deck {deck}: LOAD (the selected track)"
-msgstr "デッキ {deck}: LOAD（選択した曲）"
+msgid "External Sync ignored unsafe track path: {path}"
+msgstr "外部同期は安全でないトラックパスを無視しました: {path}"
 
-#: core/midi.py:101
+# | msgid "External Sync ignored unsafe track path: {path}"
+#: core/playback/external_sync.py:452
 #, python-brace-format
-msgid "Deck {deck}: MASTER TEMPO"
-msgstr "デッキ {deck}: MASTER TEMPO"
-
-# | msgid "Master tempo: time stretch keeps the pitch"
-#: core/midi.py:102
-msgid "Key lock: the time stretch keeps the pitch."
-msgstr "キーロック: タイムストレッチで音程を保ちます。"
-
-#: core/midi.py:105
-#, python-brace-format
-msgid "Deck {deck}: TEMPO slider"
-msgstr "デッキ {deck}: TEMPO スライダー"
-
-# | msgid "The tempo over the tempo range (Tempo range); its middle is 100%."
-#: core/midi.py:107
 msgid ""
-"The tempo over the tempo range; its middle is 100%. A pitch bend message "
-"or a CC."
-msgstr "テンポ範囲内のテンポ。中央が 100% です。ピッチベンドメッセージまたは CC。"
+"External Sync ignored a track not in the library (OSC from the network): "
+"{path}"
+msgstr "外部同期はライブラリにないトラックを無視しました(ネットワークからの OSC): {path}"
 
-# | msgid "Tempo Analyzing"
-# | msgid "Tempo range"
-#: core/midi.py:108
+#: core/playback/external_sync.py:457
 #, python-brace-format
-msgid "Deck {deck}: TEMPO RANGE"
-msgstr "デッキ {deck}: TEMPO RANGE"
+msgid "External Sync analyzing external track before load: {path}"
+msgstr "外部同期: 読み込む前に外部トラックを解析中: {path}"
 
-# | msgid "The tempo fader's range: ±6% / ±10% / ±16% / WIDE (0%-200%), the
-# next
-# | one."
-#: core/midi.py:110
-msgid "±6% / ±10% / ±16% / WIDE, the next one."
-msgstr "±6% / ±10% / ±16% / WIDE の次の範囲。"
-
-#: core/midi.py:111
-#, python-brace-format
-msgid "Deck {deck}: TEMPO RESET"
-msgstr "デッキ {deck}: TEMPO RESET"
-
-# | msgid "Jog wheel: pitch bend"
-#: core/midi.py:113
-#, python-brace-format
-msgid "Deck {deck}: PITCH BEND −"
-msgstr "デッキ {deck}: PITCH BEND −"
-
-#: core/midi.py:114
-msgid "Held: the tempo bent down 4%."
-msgstr "押している間、テンポを 4% 下げます。"
-
-# | msgid "Jog wheel: pitch bend"
-#: core/midi.py:115
-#, python-brace-format
-msgid "Deck {deck}: PITCH BEND +"
-msgstr "デッキ {deck}: PITCH BEND +"
-
-#: core/midi.py:116
-msgid "Held: the tempo bent up 4%."
-msgstr "押している間、テンポを 4% 上げます。"
-
-# | msgid "Jog wheel: touch"
-# | msgid "Deck {deck}: jog wheel touch"
-#: core/midi.py:117
-#, python-brace-format
-msgid "Deck {deck}: JOG MODE (VINYL / CDJ)"
-msgstr "デッキ {deck}: JOG MODE (VINYL / CDJ)"
-
-#: core/midi.py:119
-msgid ""
-"A press switches the jog wheel's mode: VINYL (its top's touch holds the "
-"record) or CDJ (a bend only). Lit in VINYL mode."
-msgstr ""
-"押すたびにジョグダイヤルのモードが切り替わります: VINYL（天面に触れるとレコードを押さえる）または CDJ（ベンドのみ）。VINYL "
-"モードで点灯。"
-
-# | msgid "Jog wheel: touch"
-#: core/midi.py:121
-#, python-brace-format
-msgid "Deck {deck}: jog wheel touch"
-msgstr "デッキ {deck}: ジョグダイヤル タッチ"
-
-# | msgid "" "The jog wheel's top touched: the record held (scratch); let go,
-# it
-# | plays " "on."
-#: core/midi.py:123
-msgid ""
-"The top touched: the record held (vinyl mode); let go, it plays on (a "
-"spin: when it stops)."
-msgstr "天面に触れるとレコードを押さえます（バイナルモード）。離すと再生を続けます（回転中なら止まってから）。"
-
-#: core/midi.py:125
-#, python-brace-format
-msgid "Deck {deck}: jog wheel top"
-msgstr "デッキ {deck}: ジョグダイヤル 天面"
-
-# | msgid "" "The jog wheel's top turned: touched, the record moves with it
-# (33
-# | 1/3 " "rpm); else a pitch bend."
-#: core/midi.py:127
-msgid "Turned: touched, the record moves with it (33 1/3 rpm); else a pitch bend."
-msgstr "回すと: 触れている間はレコードが一緒に動き（33 1/3 rpm）、それ以外はピッチベンド。"
-
-# | msgid "Jog wheel: pitch bend"
-#: core/midi.py:128
-#, python-brace-format
-msgid "Deck {deck}: jog wheel side (pitch bend)"
-msgstr "デッキ {deck}: ジョグダイヤル 側面（ピッチベンド）"
-
-# | msgid "" "The jog wheel turned: the tempo bent while it turns (a turn a
-# | second: " "+10%)."
-#: core/midi.py:130
-msgid "Turned: the tempo bent while it turns (a turn a second: +10%)."
-msgstr "回している間、テンポをベンドします（1 秒に 1 回転: +10%）。"
-
-#: core/midi.py:131
-#, python-brace-format
-msgid "Deck {deck}: jog wheel search (SHIFT)"
-msgstr "デッキ {deck}: ジョグダイヤル サーチ（SHIFT）"
-
-# | msgid "The jog wheel turned: the playhead moved through the track fast."
-#: core/midi.py:133
-msgid "Turned: the playhead moved through the track fast."
-msgstr "回すと再生位置を曲の中で速く移動します。"
-
-#: core/midi.py:134
-#, python-brace-format
-msgid "Deck {deck}: CUE CALL ◁"
-msgstr "デッキ {deck}: CUE CALL ◁"
-
-#: core/midi.py:136
-msgid "The CUE point before (stopped); the cue point moves there."
-msgstr "前の CUE ポイントへ（停止中）。キューポイントもそこへ移ります。"
-
-#: core/midi.py:137
-#, python-brace-format
-msgid "Deck {deck}: CUE CALL ▷"
-msgstr "デッキ {deck}: CUE CALL ▷"
-
-#: core/midi.py:139
-msgid "The CUE point after (stopped); the cue point moves there."
-msgstr "次の CUE ポイントへ（停止中）。キューポイントもそこへ移ります。"
-
-#: core/midi.py:143
-#, python-brace-format
-msgid "Deck {deck}: MEMORY"
-msgstr "デッキ {deck}: MEMORY"
-
-# | msgid "MEMORY: set a CUE point at the nearest beat or track edge"
-#: core/midi.py:144
-msgid "A CUE point at the nearest beat (an edit)."
-msgstr "最も近いビートに CUE ポイント（編集）。"
-
-# | msgid "Delete CUE point {time}"
-#: core/midi.py:145
-#, python-brace-format
-msgid "Deck {deck}: CUE point DELETE"
-msgstr "デッキ {deck}: CUE ポイント DELETE"
-
-# | msgid "Split the current segment at the playhead"
-# | msgid "No CUE point at the playhead."
-# | msgid "The CUE point the playhead is on, as after CALL."
-#: core/midi.py:146
-msgid "The CUE point the playhead is on (an edit)."
-msgstr "再生位置にある CUE ポイント（編集）。"
-
-# | msgid "Delete JumpCUE {letter}"
-#: core/midi.py:150
-#, python-brace-format
-msgid "Deck {deck}: JumpCUE {letter}"
-msgstr "デッキ {deck}: JumpCUE {letter}"
-
-# | msgid "Jump here on the next beat (when stopped: move the playhead here)"
-#: core/midi.py:152
-msgid ""
-"JUMP on the next beat (stopped: the playhead there); an empty slot: SET "
-"(an edit). Lit while set."
-msgstr "次のビートで JUMP（停止中は再生位置をそこへ）。空きスロットなら SET（編集）。設定中は点灯します。"
-
-# | msgid "Delete JumpCUE {letter}"
-#: core/midi.py:155
-#, python-brace-format
-msgid "Deck {deck}: JumpCUE {letter} delete"
-msgstr "デッキ {deck}: JumpCUE {letter} 削除"
-
-#: core/midi.py:157
-msgid "As SHIFT + a pad (an edit)."
-msgstr "SHIFT + パッドと同じ（編集）。"
-
-#: core/midi.py:160
-#, python-brace-format
-msgid "Deck {deck}: BEAT JUMP ◁ {beats}"
-msgstr "デッキ {deck}: BEAT JUMP ◁ {beats}"
-
-#: core/midi.py:162
-#, python-brace-format
-msgid "Deck {deck}: BEAT JUMP ▷ {beats}"
-msgstr "デッキ {deck}: BEAT JUMP ▷ {beats}"
-
-#: core/midi.py:172
-#, python-brace-format
-msgid "Channel {channel}: channel fader"
-msgstr "チャンネル {channel}: チャンネルフェーダー"
-
-# | msgid "Output buffer"
-# | msgid "Output device"
-# | msgid "The device's"
-#: core/midi.py:173
-msgid "The deck's volume."
-msgstr "デッキの音量。"
-
-#: core/midi.py:174
-#, python-brace-format
-msgid "Channel {channel}: EQ HI"
-msgstr "チャンネル {channel}: EQ HI"
-
-#: core/midi.py:176 core/midi.py:179 core/midi.py:182
-msgid "An isolator band: the bottom kills it, the middle 0 dB, the top +6 dB."
-msgstr "アイソレーターのバンド: 一番下でカット、中央 0 dB、一番上 +6 dB。"
-
-#: core/midi.py:177
-#, python-brace-format
-msgid "Channel {channel}: EQ MID"
-msgstr "チャンネル {channel}: EQ MID"
-
-#: core/midi.py:180
-#, python-brace-format
-msgid "Channel {channel}: EQ LOW"
-msgstr "チャンネル {channel}: EQ LOW"
-
-#: core/midi.py:183
-#, python-brace-format
-msgid "Channel {channel}: TRIM"
-msgstr "チャンネル {channel}: TRIM"
-
-# | msgid "Channel {channel}: channel fader"
-#: core/midi.py:185
-#, python-brace-format
-msgid "Channel {channel}: COLOR (Sound Color FX)"
-msgstr "チャンネル {channel}: COLOR (Sound Color FX)"
-
-#: core/midi.py:187
-msgid ""
-"The Sound Color FX picked, on the channel: its middle off, its two "
-"flavours left and right (a DDJ's CFX knob)."
-msgstr "選んだ Sound Color FX をチャンネルにかけます: 中央でオフ、左右で効果が変わります（DDJ の CFX つまみ）。"
-
-#: core/midi.py:189
-#, python-brace-format
-msgid "Channel {channel}: headphones CUE"
-msgstr "チャンネル {channel}: ヘッドホン CUE"
-
-#: core/midi.py:191
-msgid ""
-"A press turns it on or off: the channel's sound before its fader in the "
-"headphones. Lit while on."
-msgstr "押すたびにオン / オフします: このチャンネルのフェーダー前の音をヘッドホンに送ります。オンの間は点灯します。"
-
-# | msgid "Level meter (output)"
-#: core/midi.py:193
-#, python-brace-format
-msgid "Channel {channel}: level meter (output)"
-msgstr "チャンネル {channel}: レベルメーター（出力）"
-
-#: core/midi.py:195
-msgid ""
-"The controller's level meter shows the deck's peak meter (a CC sent: its "
-"segments lit, -30 to +12 dB, as 0 - 127); taken from a rekordbox mapping "
-"(its ChannelLevel), not learned."
-msgstr ""
-"コントローラーのレベルメーターにデッキのピークメーターを表示します（CC 送信、-30 ～ +12 dB の点灯セグメントを 0 ～ 127 "
-"に）。Learn ではなく rekordbox のマッピング（ChannelLevel）から読み込みます。"
-
-# | msgid "Sound Color FX: the next effect"
-#: core/midi.py:205
-#, python-brace-format
-msgid "Sound Color FX: {effect}"
-msgstr "Sound Color FX: {effect}"
-
-#: core/midi.py:207
-msgid "A press picks it; pressed again, none. Lit while picked."
-msgstr "押すと選択、もう一度押すと解除。選択中は点灯。"
-
-# | msgid "Sound Color FX: the next effect"
-#: core/midi.py:209
-msgid "Sound Color FX: PARAMETER"
-msgstr "Sound Color FX: PARAMETER"
-
-# | msgid "" "PARAMETER: the effect's quantity (SPACE / DUB ECHO: feedback,
-# | SWEEP: the " "centre frequency, NOISE: its volume, CRUSH: how crushed,
-# | FILTER: " "resonance)."
-# | msgid "" "The effect's quantity (feedback, centre frequency, noise, crush,
-# "
-# | "resonance)."
-#: core/midi.py:210
-msgid ""
-"The effect's quantity (feedback, centre frequency, noise, crush, "
-"resonance, JET's feedback)."
-msgstr "エフェクトの量（フィードバック、中心周波数、ノイズ、クラッシュ、レゾナンス、JET のフィードバック）。"
-
-#: core/midi.py:216
-msgid "Browser: BROWSE knob"
-msgstr "ブラウザー: BROWSE つまみ"
-
-#: core/midi.py:217
-msgid "Turned: the next / previous track."
-msgstr "回すと次 / 前の曲。"
-
-#: core/midi.py:218
-msgid "Browser: BROWSE pressed"
-msgstr "ブラウザー: BROWSE 押す"
-
-# | msgid "" "In the sources panel: the highlighted playlist or folder shown
-# in
-# | the " "library."
-#: core/midi.py:219
-msgid "To the sources panel (playlists, folders) and back."
-msgstr "ソースパネル（プレイリスト、フォルダー）へ移動し、また戻ります。"
-
-# | msgid "Playhead one bar back"
-# | msgid "One bar back"
-#: core/midi.py:220
-msgid "Browser: BACK"
-msgstr "ブラウザー: BACK"
-
-# | msgid "Unload track"
-# | msgid "Unload the track"
-# | msgid "Back to the tracks"
-#: core/midi.py:221
-msgid "Back to the tracks."
-msgstr "曲リストに戻ります。"
-
-#: core/midi.py:222
-msgid "Browser: waveform zoom (SHIFT + BROWSE)"
-msgstr "ブラウザー: 波形ズーム（SHIFT + BROWSE）"
-
-#: core/midi.py:223
-msgid "Turned: the waveform zoomed in / out."
-msgstr "回すと波形を拡大 / 縮小します。"
-
-#: core/midi.py:225
-msgid "Headphones: CUE / MASTER"
-msgstr "ヘッドホン: CUE / MASTER"
-
-# | msgid "" "The CUE'd channels against the master in the headphones (with
-# the
-# | master " "mixed in: Settings > Playback > Headphones output)."
-#: core/midi.py:226
-msgid ""
-"The CUE'd channels against the master in the headphones (with the master "
-"mixed in: Settings > Audio > Headphones)."
-msgstr "ヘッドホンでの CUE チャンネルとマスターのバランス（マスターを混ぜるとき: 設定 > オーディオ > ヘッドホン）。"
-
-#: core/midi.py:228
-msgid "Headphones: level"
-msgstr "ヘッドホン: レベル"
-
-#: core/midi.py:229
-msgid "Master: level"
-msgstr "マスター: レベル"
-
-#: core/reading.py:59
+#: core/search/reading.py:59
 msgid "Mandarin"
 msgstr "標準中国語"
 
-#: core/reading.py:59
+#: core/search/reading.py:59
 msgid "Taiwan Mandarin"
 msgstr "台湾華語"
 
-#: core/reading.py:59 ui/language_picker.py:19
+#: core/search/reading.py:59 ui/language_picker.py:19
 msgid "Japanese"
 msgstr "日本語"
 
-#: core/reading.py:60
+#: core/search/reading.py:60
 msgid "Cantonese"
 msgstr "広東語"
 
-#: core/reading.py:60
+#: core/search/reading.py:60
 msgid "Korean Hanja"
 msgstr "韓国漢字音"
 
-#: core/reading.py:60
+#: core/search/reading.py:60
 msgid "Sino-Vietnamese"
 msgstr "ベトナム漢字音"
 
-#: core/reading.py:61
+#: core/search/reading.py:61
 msgid "as written"
 msgstr "表記どおり"
 
-#: core/reading.py:61
+#: core/search/reading.py:61
 msgid "set by the user"
 msgstr "ユーザー指定"
 
-#: core/reading.py:61 ui/language_picker.py:19
+#: core/search/reading.py:61 ui/language_picker.py:19
 msgid "Korean"
 msgstr "韓国語"
 
-#: core/reading.py:546
+#: core/search/reading.py:546
 msgid "Japanese (SudachiDict)"
 msgstr "日本語 (SudachiDict)"
 
-#: core/reading.py:547
+#: core/search/reading.py:547
 msgid "Mandarin (pypinyin)"
 msgstr "標準中国語 (pypinyin)"
 
-#: core/reading.py:548
+#: core/search/reading.py:548
 msgid "Cantonese (pycantonese)"
 msgstr "広東語 (pycantonese)"
 
-#: core/reading.py:549
+#: core/search/reading.py:549
 msgid "Korean Hanja (Unihan)"
 msgstr "韓国漢字音 (Unihan)"
 
-#: core/reading.py:550
+#: core/search/reading.py:550
 msgid "Sino-Vietnamese (Unihan)"
 msgstr "ベトナム漢字音 (Unihan)"
 
+#: core/tags/writer.py:97
+msgid ""
+"The file's tags are damaged or of a kind not written here; the file is "
+"unchanged."
+msgstr "ファイルのタグが壊れているか、ここでは書き込まない種類です。ファイルは変更されていません。"
+
+#: core/tags/writer.py:101
+msgid "The written tags did not read back as written; the file is unchanged."
+msgstr "書き込んだタグが書いたとおりに読み戻せませんでした。ファイルは変更されていません。"
+
+#: core/tags/writer.py:205 core/tags/writer.py:286 core/tags/writer.py:1371
+#: ui/export.py:191
+msgid "Tags cannot be written to this file's format."
+msgstr "このファイル形式にはタグを書き込めません。"
+
+#: core/tags/writer.py:391
+msgid "The file changed while its tags were written; it is unchanged."
+msgstr "タグの書き込み中にファイルが変更されました。ファイルは変更されていません。"
+
+#: core/tags/writer.py:486 core/tags/writer.py:528
+msgid "The tags are too long for the file."
+msgstr "このファイルにはタグが長すぎます。"
+
+#: core/tags/writer.py:1211
+msgid "The file's chunk offsets cannot take the longer tags; it is unchanged."
+msgstr "ファイルのチャンクオフセットが長くなったタグに対応できません。ファイルは変更されていません。"
+
+#: core/tags/writer.py:1238
+msgid "Fragmented MP4 files are not written."
+msgstr "フラグメント化された MP4 ファイルには書き込みません。"
+
+#: core/tags/writer.py:1257
+msgid "MP4 files with QuickTime keys metadata are not written."
+msgstr "QuickTime keys メタデータを持つ MP4 ファイルには書き込みません。"
+
 # | msgid "Name"
-#: core/tieup.py:23
+#: core/tieups/domain.py:23
 msgid "Anime"
 msgstr "アニメ"
 
 # | msgid "Name"
-#: core/tieup.py:24
+#: core/tieups/domain.py:24
 msgid "Game"
 msgstr "ゲーム"
 
-#: core/tieup.py:25
+#: core/tieups/domain.py:25
 msgid "Drama"
 msgstr "ドラマ"
 
 # | msgid "Remove"
-#: core/tieup.py:26
+#: core/tieups/domain.py:26
 msgid "Movie"
 msgstr "映画"
 
-#: core/tieup.py:27
+#: core/tieups/domain.py:27
 msgid "Media mix"
 msgstr "メディアミックス"
 
-#: core/tieup.py:28
+#: core/tieups/domain.py:28
 msgid "2D idol"
 msgstr "二次元アイドル"
 
-#: core/tieup.py:29
+#: core/tieups/domain.py:29
 msgid "Commercial"
 msgstr "CM"
 
 # | msgid "About"
 # | msgid "Booth"
 # | msgid "Booth EQ"
-#: core/tieup.py:30 core/tieup.py:47
+#: core/tieups/domain.py:30 core/tieups/domain.py:47
 msgid "Other"
 msgstr "その他"
 
-#: core/tieup.py:35
+#: core/tieups/domain.py:35
 msgid "Not specified"
 msgstr "指定なし"
 
 # | msgid "Open."
 # | msgid "Opening..."
 # | msgid "opening..."
-#: core/tieup.py:36
+#: core/tieups/domain.py:36
 msgid "Opening"
 msgstr "オープニング"
 
 # | msgid "Stop"
-#: core/tieup.py:36
+#: core/tieups/domain.py:36
 msgid "OP"
 msgstr "OP"
 
 # | msgid "Readings"
-#: core/tieup.py:37
+#: core/tieups/domain.py:37
 msgid "Ending"
 msgstr "エンディング"
 
-#: core/tieup.py:37
+#: core/tieups/domain.py:37
 msgid "ED"
 msgstr "ED"
 
-#: core/tieup.py:38
+#: core/tieups/domain.py:38
 msgid "Insert song"
 msgstr "挿入歌"
 
 # | msgid "Min seg"
-#: core/tieup.py:38
+#: core/tieups/domain.py:38
 msgid "Insert"
 msgstr "挿入歌"
 
-#: core/tieup.py:39
+#: core/tieups/domain.py:39
 msgid "Theme song"
 msgstr "主題歌"
 
 # | msgid "Tempo"
-#: core/tieup.py:39
+#: core/tieups/domain.py:39
 msgid "Theme"
 msgstr "主題歌"
 
 # | msgid " characters"
-#: core/tieup.py:40
+#: core/tieups/domain.py:40
 msgid "Character song"
 msgstr "キャラクターソング"
 
 # | msgid " characters"
-#: core/tieup.py:40
+#: core/tieups/domain.py:40
 msgid "Chara"
 msgstr "キャラソン"
 
-#: core/tieup.py:41
+#: core/tieups/domain.py:41
 msgid "Unit song"
 msgstr "ユニット曲"
 
 # | msgid "Untitled"
-#: core/tieup.py:41
+#: core/tieups/domain.py:41
 msgid "Unit"
 msgstr "ユニット曲"
 
-#: core/tieup.py:42
+#: core/tieups/domain.py:42
 msgid "Image song"
 msgstr "イメージソング"
 
 # | msgid "Page"
-#: core/tieup.py:42
+#: core/tieups/domain.py:42
 msgid "Image"
 msgstr "イメージソング"
 
-#: core/tieup.py:43
+#: core/tieups/domain.py:43
 msgid "Title / login screen"
 msgstr "タイトル・ログイン画面"
 
 # | msgid "Title / login screen"
-#: core/tieup.py:43
+#: core/tieups/domain.py:43
 msgid "Title screen"
 msgstr "タイトル画面"
 
 # | msgid "Min seg"
-#: core/tieup.py:44
+#: core/tieups/domain.py:44
 msgid "Main screen"
 msgstr "メイン画面"
 
-#: core/tieup.py:44
+#: core/tieups/domain.py:44
 msgid "Menu"
 msgstr "メイン画面"
 
-#: core/tieup.py:45
+#: core/tieups/domain.py:45
 msgid "Event song"
 msgstr "イベント曲"
 
 # | msgid "Remove"
 # | msgid "Revert"
-#: core/tieup.py:45
+#: core/tieups/domain.py:45
 msgid "Event"
 msgstr "イベント曲"
 
-#: core/tieup.py:46
+#: core/tieups/domain.py:46
 msgid "BGM"
 msgstr "BGM"
 
-#: core/tieup.py:52
+#: core/tieups/domain.py:52
 msgid "Synonym"
 msgstr "通称"
 
 # | msgid "Shortcut"
-#: core/tieup.py:53
+#: core/tieups/domain.py:53
 msgid "Short"
 msgstr "略称"
 
 # | msgid "Search"
-#: core/tieup.py:54
+#: core/tieups/domain.py:54
 msgid "Search hint"
 msgstr "検索ヒント"
 
@@ -5706,7 +5718,7 @@ msgid "Path"
 msgstr "パス"
 
 #: ui/edit_song.py:124 ui/export.py:78 ui/export.py:105 ui/library.py:791
-#: ui/tieup_editor.py:138 ui/tieup_works.py:75 ui/track_search_index.py:53
+#: ui/tieup_editor.py:140 ui/tieup_works.py:77 ui/track_search_index.py:53
 msgid "Title"
 msgstr "タイトル"
 
@@ -6191,8 +6203,8 @@ msgstr "すべて"
 msgid "Duration"
 msgstr "時間"
 
-#: ui/library.py:792 ui/tieup_editor.py:121 ui/tieup_editor.py:282
-#: ui/tieup_editor.py:288
+#: ui/library.py:792 ui/tieup_editor.py:123 ui/tieup_editor.py:284
+#: ui/tieup_editor.py:290
 msgid "Tie-up"
 msgstr "タイアップ"
 
@@ -6391,7 +6403,7 @@ msgstr "外部同期が有効な間はトラックを読み込めません。"
 msgid "Search Index"
 msgstr "検索インデックス"
 
-#: ui/library.py:1830 ui/shortcuts.py:150 ui/tieup_editor.py:345
+#: ui/library.py:1830 ui/shortcuts.py:150 ui/tieup_editor.py:347
 msgid "Tie-ups"
 msgstr "タイアップ"
 
@@ -7563,11 +7575,11 @@ msgstr "このコンピューターのほかのプログラムが {keys} を使�
 msgid "{keys} is used by more than one action (Settings > Shortcuts)."
 msgstr "{keys} は複数の操作に割り当てられています (環境設定 > ショートカット)。"
 
-#: ui/tieup_editor.py:130
+#: ui/tieup_editor.py:132
 msgid "Type a title in any language or script"
 msgstr "どの言語・文字でもタイトルを入力"
 
-#: ui/tieup_editor.py:131
+#: ui/tieup_editor.py:133
 msgid ""
 "<p>Finds the works already entered by any of their titles, also by how "
 "they read (あのね by anone or 아노네). Pick one to use it, or New work.</p>"
@@ -7575,8 +7587,8 @@ msgstr ""
 "<p>入力済みの作品を、どのタイトルでも、読みでも探します(あのね を anone や 아노네 "
 "で)。見つかった作品か、新しい作品を選んでください。</p>"
 
-#: ui/config/view.py:95 ui/config/view.py:97 ui/tieup_editor.py:138
-#: ui/tieup_editor.py:142 ui/tieup_works.py:75 ui/tieup_works.py:79
+#: ui/config/view.py:95 ui/config/view.py:97 ui/tieup_editor.py:140
+#: ui/tieup_editor.py:144 ui/tieup_works.py:77 ui/tieup_works.py:81
 msgid "Language"
 msgstr "言語"
 
@@ -7586,7 +7598,7 @@ msgstr "言語"
 # | msgid "" "<p>The work's official titles in any languages (ja, ko, en,
 # | zh-Hans, ja-" "Latn ...). The library and the comment show the first title
 # | in the " "interface's language, else the first of all.</p>"
-#: ui/tieup_editor.py:139 ui/tieup_works.py:76
+#: ui/tieup_editor.py:141 ui/tieup_works.py:78
 msgid ""
 "<p>The work's official titles, each with its language as language-REGION "
 "(ja-JP, ko-KR, en-US). The library and the comment show the first title "
@@ -7595,15 +7607,15 @@ msgstr ""
 "<p>作品の正式タイトルです。言語は言語-地域の形(ja-JP、ko-KR、en-"
 "US)で書きます。ライブラリとコメントにはインターフェースの言語の最初のタイトルが、なければ一番最初のタイトルが表示されます。</p>"
 
-#: ui/tieup_editor.py:142 ui/tieup_works.py:79
+#: ui/tieup_editor.py:144 ui/tieup_works.py:81
 msgid "Type"
 msgstr "種類"
 
-#: ui/config/view.py:170 ui/tieup_editor.py:142 ui/tieup_works.py:79
+#: ui/config/view.py:170 ui/tieup_editor.py:144 ui/tieup_works.py:81
 msgid "Alias"
 msgstr "別名"
 
-#: ui/tieup_editor.py:144 ui/tieup_works.py:81
+#: ui/tieup_editor.py:146 ui/tieup_works.py:83
 msgid ""
 "<p>Other names the work is found by, never shown: a name it is commonly "
 "called by (a romanization), an abbreviation, or a search hint (a "
@@ -7612,145 +7624,145 @@ msgid ""
 msgstr "<p>表示されず検索にだけ使われる別名：よく呼ばれる名前（ローマ字表記）、略称、検索ヒント（誤記、打ち間違い）。検索はこれらの名前とその読みでも作品を見つけます。</p>"
 
 # | msgid "Level"
-#: ui/tieup_editor.py:147 ui/tieup_works.py:84
+#: ui/tieup_editor.py:149 ui/tieup_works.py:86
 msgid "Label"
 msgstr "名前"
 
-#: ui/tieup_editor.py:147 ui/tieup_works.py:84
+#: ui/tieup_editor.py:149 ui/tieup_works.py:86
 msgid "URL"
 msgstr "URL"
 
-#: ui/tieup_editor.py:155
+#: ui/tieup_editor.py:157
 msgid "Which one, when the work has several (OP2: 2)."
 msgstr "作品に複数あるときの番号(OP2 なら 2)。"
 
 # | msgid "Season 2, episodes 1-12"
-#: ui/tieup_editor.py:157
+#: ui/tieup_editor.py:159
 msgid "Season 2, episodes 1-12; TV size"
 msgstr "第2期 1～12話; TVサイズ"
 
-#: ui/tieup_editor.py:158
+#: ui/tieup_editor.py:160
 msgid ""
 "Where and how it is used: the episodes, the version of the song (a TV "
 "size, a character's version)."
 msgstr "どこでどう使われたか: 使用話数、曲のバージョン(TVサイズ、キャラクターバージョン)。"
 
 # | msgid "Workers"
-#: ui/tieup_editor.py:161 ui/tieup_editor.py:359 ui/tieup_works.py:50
+#: ui/tieup_editor.py:163 ui/tieup_editor.py:361 ui/tieup_works.py:52
 msgid "Work"
 msgstr "作品"
 
 # | msgid "Finished"
-#: ui/tieup_editor.py:163
+#: ui/tieup_editor.py:165
 msgid "Find"
 msgstr "検索"
 
-#: ui/tieup_editor.py:165 ui/tieup_works.py:50 ui/tieup_works.py:98
+#: ui/tieup_editor.py:167 ui/tieup_works.py:52 ui/tieup_works.py:100
 msgid "Category"
 msgstr "カテゴリー"
 
 # | msgid "Title"
-#: ui/tieup_editor.py:166 ui/tieup_works.py:99
+#: ui/tieup_editor.py:168 ui/tieup_works.py:101
 msgid "Titles"
 msgstr "タイトル"
 
 # | msgid "Alias"
-#: ui/tieup_editor.py:167 ui/tieup_works.py:100
+#: ui/tieup_editor.py:169 ui/tieup_works.py:102
 msgid "Aliases"
 msgstr "別名"
 
 # | msgid "Refresh"
-#: ui/tieup_editor.py:168 ui/tieup_works.py:101
+#: ui/tieup_editor.py:170 ui/tieup_works.py:103
 msgid "References"
 msgstr "参考リンク"
 
 # | msgid "CUE"
-#: ui/tieup_editor.py:173
+#: ui/tieup_editor.py:175
 msgid "Use"
 msgstr "用途"
 
-#: ui/tieup_editor.py:179
+#: ui/tieup_editor.py:181
 msgid "No."
 msgstr "番号"
 
-#: ui/tieup_editor.py:181 ui/tieup_editor.py:359
+#: ui/tieup_editor.py:183 ui/tieup_editor.py:361
 msgid "Role"
 msgstr "役割"
 
 # | msgid "Default"
-#: ui/tieup_editor.py:182 ui/tieup_editor.py:359
+#: ui/tieup_editor.py:184 ui/tieup_editor.py:361
 msgid "Detail"
 msgstr "詳細"
 
-#: ui/tieup_editor.py:232
+#: ui/tieup_editor.py:234
 #, python-brace-format
 msgid "New work: “{title}”"
 msgstr "新しい作品:「{title}」"
 
-#: ui/tieup_editor.py:232
+#: ui/tieup_editor.py:234
 msgid "New work"
 msgstr "新しい作品"
 
 # | msgid "Changes to the work apply to every song using it ({n})."
-#: ui/tieup_editor.py:269
+#: ui/tieup_editor.py:271
 #, python-brace-format
 msgid "Changes to the work apply to the {n} track using it."
 msgid_plural "Changes to the work apply to the {n} tracks using it."
 msgstr[0] "作品の変更は、この作品を使う {n} トラックすべてに反映されます。"
 
-#: ui/tieup_editor.py:282 ui/tieup_works.py:259
+#: ui/tieup_editor.py:284 ui/tieup_works.py:261
 msgid "Give the work a title."
 msgstr "作品のタイトルを入力してください。"
 
 # | msgid "Tie-ups after the comment"
-#: ui/tieup_editor.py:309 ui/tieup_editor.py:480 ui/tieup_editor.py:487
+#: ui/tieup_editor.py:311 ui/tieup_editor.py:482 ui/tieup_editor.py:489
 msgid "Tie-ups on the Web"
 msgstr "Webのタイアップ"
 
 # | msgid "Redo Changes"
-#: ui/tieup_editor.py:319
+#: ui/tieup_editor.py:321
 #, python-brace-format
 msgid "Read on {page}"
 msgstr "出典: {page}"
 
-#: ui/tieup_editor.py:321
+#: ui/tieup_editor.py:323
 msgid ""
 "From Japanese Wikipedia and Wikidata. A checked one is added with the "
 "work's names in other languages and its page as a reference."
 msgstr "日本語版Wikipediaと Wikidataから見つかりました。チェックしたタイアップを、他の言語の作品名と作品の記事のリンクとともに追加します。"
 
-#: ui/tieup_editor.py:346
+#: ui/tieup_editor.py:348
 msgid ""
 "<p>The works this track is used in: an anime's opening, a game's title "
 "screen, a character song.</p>"
 msgstr "<p>このトラックが使われた作品です: アニメのオープニング、ゲームのタイトル画面、キャラクターソングなど。</p>"
 
 # | msgid "Added"
-#: ui/tieup_editor.py:369
+#: ui/tieup_editor.py:371
 msgid "Add…"
 msgstr "追加…"
 
 # | msgid "Edit Track"
 # | msgid "Editor"
-#: ui/tieup_editor.py:370
+#: ui/tieup_editor.py:372
 msgid "Edit…"
 msgstr "編集…"
 
-#: ui/config/library.py:33 ui/tieup_editor.py:371
+#: ui/config/library.py:33 ui/tieup_editor.py:373
 msgid "Remove"
 msgstr "削除"
 
-#: ui/tieup_editor.py:372 ui/tieup_editor.py:474
+#: ui/tieup_editor.py:374 ui/tieup_editor.py:476
 msgid "Find on the Web"
 msgstr "Webで探す"
 
-#: ui/tieup_editor.py:373
+#: ui/tieup_editor.py:375
 msgid ""
 "<p>Look the track up on Japanese Wikipedia and Wikidata (its title and "
 "artist are sent there) and pick the tie-ups to add.</p>"
 msgstr "<p>日本語版WikipediaとWikidataでこのトラックを探し(タイトルとアーティストが送信されます)、追加するタイアップを選びます。</p>"
 
-#: ui/tieup_editor.py:419
+#: ui/tieup_editor.py:421
 #, python-brace-format
 msgid ""
 "A tie-up added here is added to its {n} other version too (Settings > "
@@ -7762,19 +7774,19 @@ msgstr[0] "ここで追加したタイアップは、このトラックの他の
 
 # | msgid "Shared with {n} other version of this song."
 # | msgid_plural "Shared with {n} other versions of this song."
-#: ui/tieup_editor.py:422
+#: ui/tieup_editor.py:424
 #, python-brace-format
 msgid "{n} other version of this track (Variants)."
 msgid_plural "{n} other versions of this track (Variants)."
 msgstr[0] "このトラックの他の {n} バージョン(Variants)。"
 
-#: ui/tieup_editor.py:469
+#: ui/tieup_editor.py:471
 msgid "Looking up…"
 msgstr "検索中…"
 
 # | msgid "Reading the analysis failed: {error}"
 # | msgid "The search failed: {error}"
-#: ui/tieup_editor.py:480
+#: ui/tieup_editor.py:482
 #, python-brace-format
 msgid ""
 "The lookup failed:\n"
@@ -7783,35 +7795,35 @@ msgstr ""
 "検索できませんでした:\n"
 "{error}"
 
-#: ui/tieup_editor.py:487
+#: ui/tieup_editor.py:489
 msgid "Wikipedia has no tie-up for this track."
 msgstr "Wikipediaにこのトラックのタイアップはありません。"
 
-#: ui/tieup_works.py:43
+#: ui/tieup_works.py:45
 msgid "Find a work by any of its names"
 msgstr "作品をいずれかの名前で探す"
 
 # | msgid "Category"
-#: ui/tieup_works.py:46
+#: ui/tieup_works.py:48
 msgid "All categories"
 msgstr "すべてのカテゴリー"
 
 # | msgid "Track File"
-#: ui/tieup_works.py:50 ui/tieup_works.py:102
+#: ui/tieup_works.py:52 ui/tieup_works.py:104
 msgid "Tracks"
 msgstr "トラック"
 
-#: ui/tieup_works.py:87
+#: ui/tieup_works.py:89
 msgid "The tracks with a tie-up to this work: a change to the work is theirs."
 msgstr "この作品のタイアップがあるトラック：作品の変更はこれらすべてに反映されます。"
 
 # | msgid "Shared"
-#: ui/edit_panel/panel.py:589 ui/tieup_works.py:88
+#: ui/edit_panel/panel.py:589 ui/tieup_works.py:90
 msgid "Save"
 msgstr "保存"
 
 # | msgid "Redo Changes"
-#: ui/tieup_works.py:89
+#: ui/tieup_works.py:91
 msgid "Discard Changes"
 msgstr "変更を破棄"
 
@@ -7819,11 +7831,11 @@ msgstr "変更を破棄"
 # | msgid "CUE / MASTER"
 # | msgid "Master"
 # | msgid "master in"
-#: ui/tieup_works.py:90 ui/tieup_works.py:285 ui/tieup_works.py:303
+#: ui/tieup_works.py:92 ui/tieup_works.py:287 ui/tieup_works.py:305
 msgid "Merge Into…"
 msgstr "別の作品に統合…"
 
-#: ui/tieup_works.py:91
+#: ui/tieup_works.py:93
 msgid ""
 "<p>The same work entered twice: this one's names and references are added"
 " to the one picked, its tracks' tie-ups moved there, and this one "
@@ -7831,33 +7843,33 @@ msgid ""
 msgstr "<p>同じ作品が二重に登録されている場合：この作品の名前と参考リンクを選んだ作品に加え、トラックのタイアップをそちらに移してから、この作品を削除します。</p>"
 
 # | msgid "New work"
-#: ui/tieup_works.py:93 ui/tieup_works.py:319
+#: ui/tieup_works.py:95 ui/tieup_works.py:321
 msgid "Delete Work"
 msgstr "作品を削除"
 
-#: ui/tieup_works.py:94
+#: ui/tieup_works.py:96
 msgid "The work deleted with every track's tie-up to it."
 msgstr "作品を削除します。すべてのトラックからこの作品のタイアップも削除されます。"
 
 # | msgid "New work"
-#: ui/tieup_works.py:185
+#: ui/tieup_works.py:187
 #, python-brace-format
 msgid "{n} work"
 msgid_plural "{n} works"
 msgstr[0] "{n} 作品"
 
 # | msgid "Apply the changes to \"{title}\"? (No: they are dropped)"
-#: ui/tieup_works.py:205 ui/tieup_works.py:337
+#: ui/tieup_works.py:207 ui/tieup_works.py:339
 #, python-brace-format
 msgid "Save the changes to \"{title}\"? (No: they are dropped)"
 msgstr "「{title}」の変更を保存しますか？（いいえ：破棄します）"
 
-#: ui/tieup_works.py:295
+#: ui/tieup_works.py:297
 #, python-brace-format
 msgid "Merge \"{title}\" into:"
 msgstr "「{title}」の統合先："
 
-#: ui/tieup_works.py:304
+#: ui/tieup_works.py:306
 #, python-brace-format
 msgid ""
 "Merge \"{title}\" into \"{into}\"? Its {n} track's tie-up moves there and"
@@ -7867,7 +7879,7 @@ msgid_plural ""
 " \"{title}\" is deleted."
 msgstr[0] "「{title}」を「{into}」に統合しますか？{n} トラックのタイアップがそちらに移り、「{title}」は削除されます。"
 
-#: ui/tieup_works.py:320
+#: ui/tieup_works.py:322
 #, python-brace-format
 msgid "Delete \"{title}\"? Its tie-up on {n} track is deleted too."
 msgid_plural "Delete \"{title}\"? Its tie-ups on {n} tracks are deleted too."
@@ -8019,12 +8031,4 @@ msgstr "{name} ({n})"
 #, python-brace-format
 msgid "Task {id}"
 msgstr "タスク {id}"
-
-#: utils/jump_cues.py:105
-msgid "JumpCUE labels are limited to unique A-Z."
-msgstr "JumpCUE のラベルには重複しない A-Z しか使えません。"
-
-#: utils/jump_cues.py:132 utils/jump_cues.py:135 utils/jump_cues.py:303
-msgid "JumpCUE labels must be unique single letters A-Z."
-msgstr "JumpCUE のラベルは重複しない 1 文字の A-Z である必要があります。"
 

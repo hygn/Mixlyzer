@@ -14,8 +14,8 @@ import math
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from audioengine.native import client
-from core.event_bus import EventBus
-from foundation.i18n import tr
+from core.workflows.event_bus import EventBus
+from system.i18n import tr
 from ui.deck_controls import KNOB, Lamp, Segment, block, blocks_row, label, segments
 from ui.knob import Knob
 from ui.theme import current_theme
@@ -40,7 +40,7 @@ def _curve_icon(curve: int, color: str) -> QtGui.QIcon:
             y = 1 - (1 - x) ** 3
         elif curve == 2:
             y = x ** 3
-        else:   # the app's default (utils/volume.py; src/mixer.rs fader_gain)
+        else:   # the app's default (audioengine/volume.py; src/mixer.rs fader_gain)
             v = x ** 0.4
             y = 1.0 if v > 0.99 else -math.log(1 - v) / math.log(100)
         point = QtCore.QPointF(2 + x * (GLYPH_W - 4), GLYPH_H - 2 - y * (GLYPH_H - 4))

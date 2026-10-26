@@ -59,7 +59,7 @@ _PHRASE_ANNOTATION_KEYS = frozenset(
         "phrase_segments_np.label",
     }
 )
-_PHRASE_TIME_TOLERANCE_SEC = 1e-4   # the stored phrases' float32 resolution (utils.phrases.MIN_PHRASE_DUR)
+_PHRASE_TIME_TOLERANCE_SEC = 1e-4   # the stored phrases' float32 resolution (core.analysis_library.phrases.MIN_PHRASE_DUR)
 # Stored phrase/tempo-segment ends sit up to ~1 ms before duration_sec, so track-edge
 # coverage is checked with a looser tolerance than segment contiguity.
 _COVERAGE_TOLERANCE_SEC = 0.01

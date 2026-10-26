@@ -15,7 +15,7 @@ from ui.edit_panel.blocks import mode_column, rule_cell
 from ui.edit_panel.icons import badged_icon, icon
 from ui.theme import current_theme
 from ui.edit_panel.styles import BUTTON_STYLESHEET, WARNING_BUTTON_STYLESHEET
-from foundation.i18n import tr, tr_mark
+from system.i18n import tr, tr_mark
 from ui.live_label import LiveLabel
 
 # time signatures with their own button; the rest are under Custom

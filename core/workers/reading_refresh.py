@@ -1,4 +1,4 @@
-"""The library's readings read again (core.reading), in a spawned process: the readers are Python (a thread would
+"""The library's readings read again (core.search.reading), in a spawned process: the readers are Python (a thread would
 share the interpreter lock with the GUI). The process only reads texts: the library's owner gives it the library's
 texts (core.library.jobs.reading_texts) and writes what it read (jobs.apply_readings, jobs.apply_work_readings), the
 readings the user set kept: core.workflows.reading_refresh runs it."""
@@ -11,8 +11,8 @@ from typing import Any
 
 from PySide6 import QtCore
 
-from core.concurrency.process_worker import SpawnProcessWorker, install_parent_watchdog
-from foundation.i18n import tr
+from system.process_worker import SpawnProcessWorker, install_parent_watchdog
+from system.i18n import tr
 
 # tracks per write job: the owner's other jobs (the GUI's reads, an analysis stored) wait at most about this many
 # tracks' writing
@@ -36,9 +36,9 @@ class ReadingRefreshResult:
 
 
 def read_texts(texts, languages, han_run: int, progress=None) -> dict[str, list[tuple[str, str]]]:
-    """Each text's readings (core.reading.readings, in ``languages``): the process's work. ``progress(done,
+    """Each text's readings (core.search.reading.readings, in ``languages``): the process's work. ``progress(done,
     total)`` in texts."""
-    from core import reading
+    from core.search import reading
     reading.warm_up()
     read = {}
     for i, text in enumerate(texts):

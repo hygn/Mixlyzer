@@ -1,4 +1,4 @@
-"""The track panel's Tie-ups tab (core.tieup): the works the track is used in, edited in a dialog; written at once. A
+"""The track panel's Tie-ups tab (core.tieups.domain): the works the track is used in, edited in a dialog; written at once. A
 tie-up added goes to the track's versions (its Variants) too when Settings > Library says so."""
 from __future__ import annotations
 
@@ -12,9 +12,11 @@ from PySide6.QtWidgets import (
     QTableWidgetItem, QVBoxLayout, QWidget,
 )
 
-from core import reading, tieup
-from core.config import default_cfg, searchconfig
-from foundation.i18n import tr, tr_n
+from core.search import reading
+
+from core.tieups import domain as tieup
+from core.settings.config import default_cfg, searchconfig
+from system.i18n import tr, tr_n
 from core.library import jobs
 from core.library.service import LibraryService
 from core.workflows.tieup_web import TieupWebLookup
@@ -302,7 +304,7 @@ class TieupDialog(QDialog):
 
 
 class WebCandidatesDialog(QDialog):
-    """The tie-ups Wikimedia gave for the track (core.tieup_web), each to be added or not (a sure one checked)."""
+    """The tie-ups Wikimedia gave for the track (core.tieups.web), each to be added or not (a sure one checked)."""
 
     def __init__(self, candidates: list, parent=None):
         super().__init__(parent)

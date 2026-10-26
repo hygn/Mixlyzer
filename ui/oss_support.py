@@ -1,7 +1,7 @@
 from PySide6 import QtCore, QtGui, QtWidgets
 from audioengine.native.client import available as native_engine_built
-from foundation import os_support
-from foundation.i18n import tr
+from system import os_support
+from system.i18n import tr
 
 
 class SupportDialog(QtWidgets.QDialog):

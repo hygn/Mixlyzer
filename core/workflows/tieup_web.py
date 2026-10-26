@@ -1,4 +1,4 @@
-"""The tie-ups' web lookups (core.tieup_web) off the GUI thread: a new track left without tie-ups after its analysis
+"""The tie-ups' web lookups (core.tieups.web) off the GUI thread: a new track left without tie-ups after its analysis
 looked up when Settings > Library says so (its sure tie-up written), and the Edit tab's "Find on the Web". One
 thread works through them in turn (Wikimedia is asked one request at a time anyway)."""
 from __future__ import annotations
@@ -9,7 +9,7 @@ from typing import Callable
 
 from PySide6 import QtCore
 
-from core import tieup_web
+from core.tieups import web as tieup_web
 from core.library import jobs
 
 

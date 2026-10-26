@@ -1,4 +1,4 @@
-"""Keyboard shortcuts: the actions (``ACTIONS``) and the manager binding their keys (``core.shortcuts``) to what
+"""Keyboard shortcuts: the actions (``ACTIONS``) and the manager binding their keys (``core.controls.shortcuts``) to what
 the main window's parts do for them (``MainPane.shortcut_handlers``).
 
 The shipped keys follow rekordbox's (Performance 1 preset, deck 1) where Mixlyzer has the function, in three tiers:
@@ -21,9 +21,9 @@ from typing import Callable, Optional
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
-from foundation import os_support
-from foundation.i18n import tr, tr_mark
-from utils.phrases import PHRASE_LABELS, phrase_display_name
+from system import os_support
+from system.i18n import tr, tr_mark
+from core.analysis_library.phrases import PHRASE_LABELS, phrase_display_name
 
 # the groups, in the settings' order (translated where shown; Key and CUE as they are)
 PLAYBACK = tr_mark("Playback")

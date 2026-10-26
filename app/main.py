@@ -3,11 +3,12 @@ import os
 import sys
 from pathlib import Path
 from PySide6 import QtWidgets
-from foundation import i18n, os_support
-from core.config import load_cfg, ui_language, unreadable_settings
-from foundation.resource_paths import app_folder
-from foundation.i18n import tr
-from core.library_version import (
+from system import i18n
+from system import os_support
+from core.settings.config import load_cfg, ui_language, unreadable_settings
+from system.resource_paths import app_folder
+from system.i18n import tr
+from core.library.version import (
     ensure_current_version_file,
     version_file_path,
 )
@@ -15,7 +16,7 @@ from migration import library_migration
 from app.startup import StartupSplash, center_on_screen, one_blas_thread, run_startup, startup_tasks
 from app.startup_console import ConsoleLines
 from ui.theme import apply_theme
-from utils.fonts import load_fonts_and_set_global
+from ui.fonts import load_fonts_and_set_global
 
 # the logs carry translated texts and track titles: a console that cannot show a character escapes it instead of
 # failing (run in the worker processes too: they import this module again)

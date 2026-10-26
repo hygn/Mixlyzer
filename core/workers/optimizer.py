@@ -10,9 +10,9 @@ from typing import Any, Callable
 from PySide6 import QtCore
 
 from analyzer.training.text import TrainingError
-from core.concurrency.process_worker import SpawnProcessWorker, install_parent_watchdog
+from system.process_worker import SpawnProcessWorker, install_parent_watchdog
 from core.workers.training_models import prepare, words
-from foundation.i18n import tr
+from system.i18n import tr
 
 
 ProgressCallback = Callable[[int, str], None]

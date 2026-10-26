@@ -11,14 +11,14 @@ from typing import Callable, Optional
 
 from PySide6 import QtCore
 
-from core.audio.track_tags import extract_tags, getAlbumArt
+from core.tags.reader import extract_tags, getAlbumArt
 from core.analysis_library import jobs as analysis_jobs
 from core.library import jobs
 from dataclasses import replace
 
-from core.config import load_cfg
+from core.settings.config import load_cfg
 from core.workers.analysis import AnalysisWorker
-from foundation.i18n import tr
+from system.i18n import tr
 
 
 # the library's and a request's listener: the result (features, properties) of its track

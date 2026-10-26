@@ -12,16 +12,16 @@ from threadpoolctl import threadpool_limits
 
 from analyzer.audio.decoder import get_total_samples
 from analyzer.pipeline.track import analyze_track
-from core.audio.track_tags import cover_data, extract_tags, read_tag_sources
-from core.concurrency.process_worker import SpawnProcessWorker, install_parent_watchdog
-from core.config import config
-from core.linear_segments import build_bpm_segments, build_key_segments, build_phrase_index_rows
+from core.tags.reader import cover_data, extract_tags, read_tag_sources
+from system.process_worker import SpawnProcessWorker, install_parent_watchdog
+from core.settings.config import config
+from core.library.segments import build_bpm_segments, build_key_segments, build_phrase_index_rows
 from core.workers.analysis_settings import analysis_settings
 from core.workers.analysis_texts import error_text, track_stage
-from foundation.i18n import tr
-from utils.cue_points import build_cue_points_np
-from utils.jump_cues import build_jump_cues_np
-from utils.phrases import build_phrase_segments_np
+from system.i18n import tr
+from core.analysis_library.cue_points import build_cue_points_np
+from core.analysis_library.jump_cues import build_jump_cues_np
+from core.analysis_library.phrases import build_phrase_segments_np
 
 
 def _file_stats(path: str) -> tuple[int, float]:

@@ -176,7 +176,7 @@ def _ffmetadata(text: str) -> dict[str, str]:
 
 
 def read_metadata(path: str) -> dict[str, str]:
-    """The file's tags as FFmpeg reads them (for the formats core.audio.tag_writer does not read): its global
+    """The file's tags as FFmpeg reads them (for the formats core.tags.writer does not read): its global
     metadata, else its first audio stream's (Ogg keeps the comments there); key (FFmpeg's, lower case) ->
     value. {} when FFmpeg cannot read the file."""
     out: dict[str, str] = {}

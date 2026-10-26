@@ -1,9 +1,9 @@
 """Settings > MIDI: a MIDI controller for the deck, read by the native audio engine itself (never through the GUI's
 Python; none on the Python engine): its input port, its jog wheel's resolution, and the MIDI messages of deck 1's
-and mixer channel 1's actions shown (``core.midi.ACTIONS_SHOWN``: a DJ controller's; the other decks' and channels'
+and mixer channel 1's actions shown (``core.controls.midi.ACTIONS_SHOWN``: a DJ controller's; the other decks' and channels'
 are kept as they are in the mapping, not shown). Learn takes the next control moved or pressed: a fader's 14-bit CC
 or pitch bend, a knob's turn (a button bound to a knob: the direction turned), a button; Import reads a rekordbox
-MIDI mapping (CSV). OK / Apply keep the mapping as the user's (``core.midi.save``)."""
+MIDI mapping (CSV). OK / Apply keep the mapping as the user's (``core.controls.midi.save``)."""
 
 from __future__ import annotations
 
@@ -25,8 +25,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from core import midi
-from foundation.i18n import tr
+from core.controls import midi
+from system.i18n import tr
 
 _ACTION_ROLE = QtCore.Qt.UserRole
 # Learn: a fader's CC waits this long for its LSB (data 1 + 32: 14 bits); a button's CC sending 127 for its 0 (let

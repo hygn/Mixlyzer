@@ -26,9 +26,9 @@ from PySide6.QtGui import QImage
 
 from core.track import marks
 from core.track.history import History, Marks
-from utils.cue_points import build_cue_points_np
-from utils.jump_cues import build_jump_cue_graph, build_jump_cues_np
-from utils.phrases import assigned_phrases, build_phrase_segments_np
+from core.analysis_library.cue_points import build_cue_points_np
+from core.analysis_library.jump_cues import build_jump_cue_graph, build_jump_cues_np
+from core.analysis_library.phrases import assigned_phrases, build_phrase_segments_np
 
 
 class _ReadOnly(dict):
@@ -147,7 +147,7 @@ class DataModel(QtCore.QObject):
 
     @property
     def jump_cues(self) -> list[dict]:
-        """The JumpCUEs as pairs of cues (utils.jump_cues' editor form)."""
+        """The JumpCUEs as pairs of cues (core.analysis_library.jump_cues' editor form)."""
         return self._jump_cues
 
     @property

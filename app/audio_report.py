@@ -5,7 +5,7 @@ period, buffer and latency, its threads' scheduling, the MIDI input) follows as 
 from __future__ import annotations
 
 from audioengine.native import client
-from core import midi
+from core.controls import midi
 
 _APIS = {"wasapi": "WASAPI", "cpal": "cpal", "jack": "JACK"}
 _PRIORITIES = {"normal": "normal", "above_normal": "above normal", "high": "high"}

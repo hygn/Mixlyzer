@@ -6,13 +6,13 @@ from typing import Callable, Optional
 import numpy as np
 from PySide6 import QtCore
 
-from core.audio.track_tags import getAlbumArt
-from core.config import load_cfg
+from core.tags.reader import getAlbumArt
+from core.settings.config import load_cfg
 from core.workers.segment_reanalysis import SegmentReanalysisWorker
-from core.event_bus import EventBus
+from core.workflows.event_bus import EventBus
 from core.track.model import DataModel
-from utils.jump_cues import extract_jump_cue_pairs
-from foundation.i18n import tr
+from core.analysis_library.jump_cues import extract_jump_cue_pairs
+from system.i18n import tr
 
 
 StatusCallback = Callable[[str], None]

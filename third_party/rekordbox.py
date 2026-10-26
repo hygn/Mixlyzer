@@ -13,11 +13,11 @@ from xml.etree import ElementTree as ET
 import numpy as np
 
 from core.library.records import TrackRow
-from utils.labels import idx_to_labels
-from utils.jump_cues import extract_jump_cue_graph
+from analyzer.music.key_names import idx_to_labels
+from core.analysis_library.jump_cues import extract_jump_cue_graph
 from analyzer.music.tempo_rows import is_ramp_row, ramp_beat_times, segment_end_bpm
-from utils.cue_points import extract_cue_points
-from utils.jumpcue_colors import get_cue_point_color
+from core.analysis_library.cue_points import extract_cue_points
+from core.analysis_library.jumpcue_colors import get_cue_point_color
 
 ResolvePath = Callable[[str | None], Optional[Path]]
 

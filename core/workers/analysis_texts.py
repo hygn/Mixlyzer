@@ -6,7 +6,7 @@ from __future__ import annotations
 from analyzer import errors
 from analyzer.errors import AnalysisError
 from analyzer.pipeline import stages
-from foundation.i18n import tr, tr_mark
+from system.i18n import tr, tr_mark
 
 # the full analysis's stages: (the status line's word, the task's)
 TRACK_STAGES = {

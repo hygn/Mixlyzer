@@ -15,9 +15,9 @@ import os
 from pathlib import Path
 from typing import Optional
 
-from core.linear_segments import build_bpm_segments, build_key_segments, build_phrase_index_rows
-from utils.jump_cues import jump_cue_point_groups
-from utils.phrases import assigned_phrases, extract_phrase_segments
+from core.library.segments import build_bpm_segments, build_key_segments, build_phrase_index_rows
+from core.analysis_library.jump_cues import jump_cue_point_groups
+from core.analysis_library.phrases import assigned_phrases, extract_phrase_segments
 
 
 def features(lib, uid: str) -> Optional[dict]:

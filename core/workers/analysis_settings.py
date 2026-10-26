@@ -1,13 +1,13 @@
 """The analyzer's settings from the app's (config.json): what an analysis is asked for, each model the file it reads
-(the user's retrained file where there is one, else the shipped one: foundation.model_files)."""
+(the user's retrained file where there is one, else the shipped one: system.model_files)."""
 
 from __future__ import annotations
 
 from functools import lru_cache
 
 from analyzer.settings import AnalysisSettings, CueRule, ModelPaths
-from core.config import config, default_cfg
-from foundation.model_files import resolve_model
+from core.settings.config import config, default_cfg
+from system.model_files import resolve_model
 
 
 @lru_cache(maxsize=1)

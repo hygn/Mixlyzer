@@ -25,7 +25,7 @@ from PySide6 import QtCore, QtGui
 from core.library import music_index, thumbnails, tieups, variants
 from core.library.records import READING_FIELDS, IndexTrack, TrackRow
 from core.library.service import PLAYLISTS, READINGS, TIEUPS, TRACKS, VARIANTS, changes
-from core.tieup import Catalog, TieUp, Work
+from core.tieups.domain import Catalog, TieUp, Work
 from analyzer.search import variants as variant_fp
 
 
@@ -86,7 +86,7 @@ def touch_file_stats(lib, path: str) -> None:
 def tag_values(lib, uid: str, with_tieups: bool) -> tuple[Optional[TrackRow], str]:
     """What the Export tab writes into the file's tags: the track's row, and its tie-ups' comment suffix ("" without
     ``with_tieups``)."""
-    from core.tieup import comment_suffix
+    from core.tieups.domain import comment_suffix
     row = lib.db.get_by_uid(uid)
     return row, comment_suffix(tieups.track_tieups(lib.db.conn, uid)) if with_tieups and row is not None else ""
 
@@ -100,7 +100,7 @@ def song_of(lib, uid: str, untagged: bool = False) -> Optional[tuple[str, str, s
     return (row.title, row.artist or "", row.album or "") if row is not None and row.title else None
 
 
-# ---- readings (the search's: core.reading) ----
+# ---- readings (the search's: core.search.reading) ----
 
 def readings(lib, uid: str) -> tuple[dict, dict]:
     """The track's readings by field ((reading, source) pairs) and the automatic ones the user removed."""

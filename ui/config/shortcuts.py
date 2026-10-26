@@ -1,5 +1,5 @@
 """Settings > Shortcuts: every action's keys (``ui.shortcuts.ACTIONS``), a main and an alternative one. OK / Apply
-keep them as the user's (``core.shortcuts.save``: only what differs from the shipped keys, never the shipped file);
+keep them as the user's (``core.controls.shortcuts.save``: only what differs from the shipped keys, never the shipped file);
 Revert takes the selected action back to its shipped keys, Revert All every action."""
 
 from __future__ import annotations
@@ -19,9 +19,9 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from core import shortcuts
-from foundation import os_support
-from foundation.i18n import tr
+from core.controls import shortcuts
+from system import os_support
+from system.i18n import tr
 from ui.shortcuts import ACTIONS, GROUPS
 from ui.theme import current_theme
 

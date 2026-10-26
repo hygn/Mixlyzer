@@ -10,8 +10,8 @@ import json
 
 from PySide6 import QtCore, QtGui, QtSvg, QtWidgets
 
-from foundation.i18n import tr, tr_mark
-from foundation.resource_paths import resource_path
+from system.i18n import tr, tr_mark
+from system.resource_paths import resource_path
 
 IMAGE = "assets/images/analysis_pipeline.svg"
 REGIONS = "assets/images/analysis_pipeline.json"

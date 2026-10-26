@@ -17,7 +17,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from foundation.i18n import tr, tr_mark
+from system.i18n import tr, tr_mark
 
 
 def wrapped_tooltip(text: str) -> str:

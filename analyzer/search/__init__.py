@@ -8,7 +8,7 @@
   or rate; another vocal; the instrumental / off vocal; an edit, a TV size; not arrangements, remixes or bootlegs:
   another song's form), found by a fingerprint of the analysis's beats and overview bands (no audio): the
   fingerprint, its index rows and queries, the verification and the relation it reads. Its store is
-  `{libpath}/variants.db` (core.library.variants), the relations as the app uses them core.variants.relations. The
+  `{libpath}/variants.db` (core.library.variants), the relations as the app uses them core.search.variants. The
   research behind it (566 tracks of version sets, 1351 tracks queried against each other: no different song called
   a version) is `benchmark/fingerprint_research` (not committed).
 """

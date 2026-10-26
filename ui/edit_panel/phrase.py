@@ -4,12 +4,12 @@ import numpy as np
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from analyzer.phrase.cue_points import phrase_cue_points
-from core.config import load_cfg
+from core.settings.config import load_cfg
 from core.workers.analysis_settings import cue_rules
 from ui.edit_panel.blocks import mode_column, rule_cell
 from ui.edit_panel.icons import badged_icon, icon
-from utils.cue_points import build_cue_points_np, extract_cue_points
-from utils.phrases import (
+from core.analysis_library.cue_points import build_cue_points_np, extract_cue_points
+from core.analysis_library.phrases import (
     PHRASE_LABELS,
     UNASSIGNED,
     assigned_phrases,
@@ -17,7 +17,7 @@ from utils.phrases import (
     phrase_color,
     phrase_display_name,
 )
-from foundation.i18n import tr, tr_mark
+from system.i18n import tr, tr_mark
 from ui.live_label import LiveLabel
 
 # boundary nudges follow the step: icon -> (tooltip by one beat, by one bar), translated where shown

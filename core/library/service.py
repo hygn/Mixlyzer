@@ -71,10 +71,10 @@ class LibrarySnapshot:
     """The library as the GUI shows it, read at one moment."""
     tracks: tuple[TrackRow, ...] = ()
     readings: dict = field(default_factory=dict)           # uid -> field -> readings (LibraryDB.all_readings)
-    tieups: dict = field(default_factory=dict)             # uid -> core.tieup.TrackTieups
+    tieups: dict = field(default_factory=dict)             # uid -> core.tieups.domain.TrackTieups
     playlists: tuple[PlaylistRow, ...] = ()
     entries: dict = field(default_factory=dict)            # playlist uid -> ((position, track uid), ...)
-    variant_pairs: tuple = ()                              # core.variants.relations.Pair
+    variant_pairs: tuple = ()                              # core.search.variants.Pair
     by_uid: dict = field(default_factory=dict)
     by_path: dict = field(default_factory=dict)
 

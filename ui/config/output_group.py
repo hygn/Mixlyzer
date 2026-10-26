@@ -9,9 +9,9 @@ import numpy as np
 from PySide6.QtWidgets import QCheckBox, QComboBox, QFormLayout, QGroupBox, QLabel, QSpinBox
 
 from audioengine.native.client import NativeFeeder
-from foundation import os_support
-from core.config import outputconfig
-from foundation.i18n import tr, tr_mark
+from system import os_support
+from core.settings.config import outputconfig
+from system.i18n import tr, tr_mark
 from ui.buffer_histogram import BufferHistogram
 from ui.live_label import LiveLabel
 from ui.track_info_panel import HorizontalBufferMeter

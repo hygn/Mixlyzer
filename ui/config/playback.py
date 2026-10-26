@@ -35,8 +35,8 @@ from ui.config.output_group import (
 )
 from ui.config.audio_overview import AudioOverview
 from ui.config.scroll import scroll_page
-from foundation import os_support
-from foundation.i18n import tr, tr_ctx
+from system import os_support
+from system.i18n import tr, tr_ctx
 
 
 def build_playback_tab(dialog) -> None:

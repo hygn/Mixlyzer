@@ -8,27 +8,28 @@ from app.print_hook import install_print_hook, log_environment_info
 from audioengine.native.client import (
     ACT_DECK_SHIFT, ACT_JUMP_A, EQ_MODES, FADER_CURVES, MIDI_EVENT_GUI, MIDI_EVENT_HOTCUE_SET, MIDI_EVENT_RELATIVE,
 )
-from core import midi, shortcuts
-from foundation import os_support
-from core.event_bus import EventBus
+from core.controls import midi
+from core.controls import shortcuts
+from system import os_support
+from core.workflows.event_bus import EventBus
 from core.track.model import DataModel
-from core.timeline import TimelineCoordinator
-from core.player import PlayerController
+from ui.timeline import TimelineCoordinator
+from core.playback.player import PlayerController
 from core.analysis_library import jobs as analysis_jobs
 from core.library import jobs
 from core.library.service import LibraryService
-from core.audio.track_tags import extract_tags
+from core.tags.reader import extract_tags
 from core.workflows.analysis import AnalysisWorkflow
-from core.taskmanager import TIEUP_LOOKUP, taskmanager
-from core.external_sync import ExternalSyncController
+from core.workflows.taskmanager import TIEUP_LOOKUP, taskmanager
+from core.playback.external_sync import ExternalSyncController
 from core.workflows.rekordbox_sync import RekordboxXmlSync
 from core.workflows.reading_refresh import LibraryReadingRefresh
 from core.workflows.music_index import LibraryMusicIndex
 from core.workflows.tieup_web import TieupWebLookup
 from .metronome import MetronomeController
-from utils.window_visibility import is_window_fully_hidden
-from utils.volume import slider_percent_to_linear, trim_dbfs_to_linear, trim_knob_to_db
-from utils.phrases import set_phrase_label_names
+from ui.window_visibility import is_window_fully_hidden
+from audioengine.volume import slider_percent_to_linear, trim_dbfs_to_linear, trim_knob_to_db
+from core.analysis_library.phrases import set_phrase_label_names
 
 from ui.pane import MainPane
 from ui.deck_controls import block, fill, row_title
@@ -44,10 +45,10 @@ from ui.shortcuts import ShortcutManager
 MIDI_STEPS_MAX = 16
 
 from core.workflows.segment_reanalysis import SegmentReanalysisWorkflow
-from core.config import config, load_cfg, save_cfg, save_deck, search_settings
+from core.settings.config import config, load_cfg, save_cfg, save_deck, search_settings
 from analyzer.music.beat_geometry import downbeat_beat_indices
-from foundation.i18n import tr
-from foundation.resource_paths import resource_path
+from system.i18n import tr
+from system.resource_paths import resource_path
 
 class AppWindow(QtWidgets.QMainWindow):
     _sig_metronome_set_beats = QtCore.Signal(object, object, float)

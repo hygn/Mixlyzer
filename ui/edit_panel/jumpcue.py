@@ -8,9 +8,9 @@ from PySide6 import QtCore, QtWidgets
 from ui.edit_panel.cue_slots import SLOTS_PER_PAGE, CuePageWidget, color_swatch_icon, slot_letter
 from ui.edit_panel.icons import icon
 from ui.edit_panel.quantize import beat_quantize_grid
-from utils.jumpcue_colors import JUMPCUE_PAIR_COLORS
-from utils.phrases import assigned_phrases
-from foundation.i18n import tr
+from core.analysis_library.jumpcue_colors import JUMPCUE_PAIR_COLORS
+from core.analysis_library.phrases import assigned_phrases
+from system.i18n import tr
 
 # JumpCUE slots are the letters A-Z (rekordbox hot cue letters).
 JUMPCUE_SLOTS = 26

@@ -8,16 +8,16 @@ from dataclasses import asdict
 from typing import Iterable, List, Optional, Dict, Any, Tuple
 from uuid import uuid4
 
-from core import reading
+from core.search import reading
 from core.library import tieups
 from core.library.records import (
     READING_FIELDS, USER_SOURCE, BpmSegmentRow, KeySegmentRow, LinearTransitionRow, PhraseIndexRow, PlaylistRow,
     TrackRow, canonical_uuid4 as _canonical_uuid4, canonical_uuid4_or_none as _canonical_uuid4_or_none,
     field_readings,
 )
-from core.linear_segments import harmonic_compatible_keys
-from utils.labels import idx_to_labels
-from foundation.i18n import tr
+from core.library.segments import harmonic_compatible_keys
+from analyzer.music.key_names import idx_to_labels
+from system.i18n import tr
 
 
 # Columns that may appear in an ORDER BY clause. Used to validate the
@@ -105,7 +105,7 @@ class LibraryDB:
             FOREIGN KEY (track_uid) REFERENCES tracks(uid) ON DELETE CASCADE
         );
         """)
-        # The romanized readings (core.reading) of each track's title / artist / album: the
+        # The romanized readings (core.search.reading) of each track's title / artist / album: the
         # search's intermediate representation, up to READING_SLOTS a field. The ones the user
         # added (source "user") are kept; the automatic ones are made anew whenever the track is
         # written, except those the user removed (track_reading_removals).
@@ -130,7 +130,7 @@ class LibraryDB:
         );
         """)
         # Where the track's file holds each of its title / artist / album / comment (the analysis's
-        # reading: core.audio.tag_writer's spellings, as "vorbis:PERFORMER" or "mp4:titl"; one row with
+        # reading: core.tags.writer's spellings, as "vorbis:PERFORMER" or "mp4:titl"; one row with
         # source "" when none does: a title from the file name, a field read empty): the file's tags are
         # written back there. BPM and key are not read from the tags.
         self._conn.execute("""
@@ -205,7 +205,7 @@ class LibraryDB:
         self._conn.execute("CREATE INDEX IF NOT EXISTS idx_playlists_sort ON playlists(sort_index);")
         self._conn.execute("CREATE INDEX IF NOT EXISTS idx_playlist_tracks_track ON playlist_tracks(track_uid);")
         self._conn.commit()
-        # the songs' tie-ups (core.tieup): works, their names, tie-ups, references, a track's song
+        # the songs' tie-ups (core.tieups.domain): works, their names, tie-ups, references, a track's song
         tieups.create_schema(self._conn)
 
     def close(self):
@@ -265,7 +265,7 @@ class LibraryDB:
         self.conn.execute(q, values)
         self.refresh_readings(values["uid"])
 
-    # Readings (core.reading)
+    # Readings (core.search.reading)
     def refresh_readings(self, uid: str, read: Optional[Dict[str, list]] = None) -> None:
         """Read the track's title / artist / album again: each field's automatic readings made anew
         in the stored languages (but those the user removed), after the readings the user added.

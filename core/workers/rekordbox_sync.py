@@ -9,7 +9,7 @@ from typing import Callable, Optional
 import numpy as np
 from PySide6 import QtCore
 
-from core import tieup
+from core.tieups import domain as tieup
 from core.analysis_library import jobs as analysis_jobs
 from core.library import jobs
 from core.library.records import TrackRow
@@ -18,8 +18,8 @@ from third_party.rekordbox import (
     build_rekordbox_track_element,
     rekordbox_track_key_for_row,
 )
-from utils.atomic_io import atomic_write_text
-from foundation.i18n import tr
+from system.atomic_io import atomic_write_text
+from system.i18n import tr
 
 
 @dataclass(frozen=True)
@@ -28,7 +28,7 @@ class RekordboxSyncRequest:
     xml_path: Path
     mode: str
     ramp_tolerance_ms: float = 0.0
-    comment_tieups: bool = False     # each track's comment with its song's tie-ups after it (core.tieup)
+    comment_tieups: bool = False     # each track's comment with its song's tie-ups after it (core.tieups.domain)
     full_rebuild: bool = False
     rows: tuple[TrackRow, ...] = ()
     uid: str = ""

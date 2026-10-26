@@ -1,5 +1,5 @@
 """A language-REGION tag (ll-RR: ko-KR, ja-JP, en-US) picked in a combo box typed into: every locale Qt knows written
-so (several hundred), the tie-ups' usual ones (core.tieup.LANGUAGES) first, each shown with its language's name in the
+so (several hundred), the tie-ups' usual ones (core.tieups.domain.LANGUAGES) first, each shown with its language's name in the
 interface's language (the common ones), in itself and in English, and its region's; typing narrows the list to the
 ones holding the text anywhere (일본, japan, 日本語, ja-), and a tag typed whole is taken as it is."""
 from __future__ import annotations
@@ -11,8 +11,8 @@ from PySide6.QtCore import QLocale, Qt
 from PySide6.QtGui import QStandardItem, QStandardItemModel
 from PySide6.QtWidgets import QComboBox, QCompleter
 
-from core import tieup
-from foundation.i18n import tr, tr_mark
+from core.tieups import domain as tieup
+from system.i18n import tr, tr_mark
 
 # the common languages' names, shown (and found) in the interface's language
 NAMES = {

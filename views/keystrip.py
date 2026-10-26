@@ -1,7 +1,7 @@
 from PySide6 import QtGui, QtWidgets
 import pyqtgraph as pg
-from utils.color import key_label_text_color
-from utils.keystrip import key_segment_label, key_segment_rows, key_strip_segments
+from ui.render.color import key_label_text_color
+from ui.render.keystrip import key_segment_label, key_segment_rows, key_strip_segments
 from .base import KEY_LANE, ViewPlugin, emphasis_opacity, emphasis_width, register_view
 from .phrase import _sticky_label_left, _vertical_lines_path
 from .segment_strip import SegmentStrip

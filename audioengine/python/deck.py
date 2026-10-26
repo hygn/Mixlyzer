@@ -16,7 +16,7 @@ from audioengine.native.client import (
     ACT_JUMP_A as JUMP_A, ACT_PLAY_PAUSE as PLAY_PAUSE, ACT_STOP as STOP, ACT_TEMPO_DOWN as TEMPO_DOWN,
     ACT_TEMPO_RANGE as TEMPO_RANGE, ACT_TEMPO_RESET as TEMPO_RESET, ACT_TEMPO_UP as TEMPO_UP, TEMPO_RANGES, DeckReport,
 )
-from utils.volume import TRIM_DB_RANGE, slider_percent_to_linear, trim_db_to_knob
+from audioengine.volume import TRIM_DB_RANGE, slider_percent_to_linear, trim_db_to_knob
 CUE_AT_SEC = 0.001
 JUMP_CANDIDATE_BEATS = 8
 JUMP_LANDING_SEC = 0.5

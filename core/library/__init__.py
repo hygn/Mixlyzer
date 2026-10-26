@@ -9,8 +9,8 @@ asks the owner. Where to look:
 
   inside (used by jobs.py and service.py alone; every SQL statement and library file is here):
     db.py           library.db: tracks, readings, tag sources, playlists, segment tables
-    tieups.py       library.db: the tie-up tables (what a tie-up is: core.tieup)
-    variants.py     variants.db: the Variants' fingerprints and relations (what they are: core.variants)
+    tieups.py       library.db: the tie-up tables (what a tie-up is: core.tieups.domain)
+    variants.py     variants.db: the Variants' fingerprints and relations (what they are: analyzer.search.variants, core.search.variants)
     music_index.py  music_search.db: Search by Music's index (the search itself: analyzer.search.music)
     thumbnails.py   thumbs/{uid}.jpg
 

@@ -2,7 +2,7 @@ from PySide6 import QtGui, QtWidgets
 import pyqtgraph as pg
 import numpy as np
 from .base import ViewPlugin, emphasis_opacity, emphasis_width, register_view
-from core.event_bus import EventBus
+from core.workflows.event_bus import EventBus
 from analyzer.music.beat_geometry import downbeat_times
 
 @register_view("BeatgridView")

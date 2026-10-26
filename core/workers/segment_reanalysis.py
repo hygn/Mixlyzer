@@ -13,12 +13,12 @@ from analyzer.pipeline.beatgrid import reanalyze_segment
 from analyzer.pipeline.jumpcues import reanalyze_jumpcues
 from analyzer.pipeline.keys import reanalyze_full as reanalyze_keys, reanalyze_selection as reanalyze_key_selection
 from analyzer.pipeline.phrases import reanalyze_phrases
-from core.concurrency.process_worker import SpawnProcessWorker, install_parent_watchdog
-from core.config import config
+from system.process_worker import SpawnProcessWorker, install_parent_watchdog
+from core.settings.config import config
 from core.workers.analysis_settings import analysis_settings
 from core.workers.analysis_texts import error_text, reanalysis_stage
-from foundation.i18n import tr
-from utils.jump_cues import build_jump_cues_np
+from system.i18n import tr
+from core.analysis_library.jump_cues import build_jump_cues_np
 
 
 class SegmentReanalysisWorker(SpawnProcessWorker):

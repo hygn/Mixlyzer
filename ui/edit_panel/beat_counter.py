@@ -5,7 +5,7 @@ from PySide6 import QtCore, QtWidgets
 
 from analyzer.music.beat_geometry import bar_beat_position, downbeat_beat_indices
 from ui.edit_panel.icons import icon
-from foundation.i18n import tr
+from system.i18n import tr
 
 class BeatCounterMixin:
     """BeatCounter section: hold Count to count beats passing under the playhead."""

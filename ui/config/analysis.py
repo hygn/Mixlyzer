@@ -20,9 +20,9 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from core.config import cuepointconfig, cuepointrule
-from foundation.i18n import tr, tr_n
-from foundation.resource_paths import project_root
+from core.settings.config import cuepointconfig, cuepointrule
+from system.i18n import tr, tr_n
+from system.resource_paths import project_root
 from core.workflows.optimizer import OptimizerWorkflow
 from core.workers.training_models import words
 from ui.config.dialogs import (

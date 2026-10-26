@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
-from core.config import (
+from core.settings.config import (
     analysisconfig,
     config,
     deckconfig,
@@ -29,8 +29,8 @@ from core.config import (
     viewconfig,
 )
 from audioengine.native.client import booth_eq_db_to_knob, level_db_to_knob
-from core.event_bus import EventBus
-from foundation.i18n import tr
+from core.workflows.event_bus import EventBus
+from system.i18n import tr
 from ui.config.analysis import AnalysisSettingsMixin, build_analysis_tab
 from ui.config.external_sync import (
     ExternalSyncSettingsMixin,

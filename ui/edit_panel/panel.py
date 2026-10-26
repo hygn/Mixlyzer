@@ -8,7 +8,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 
 from audioengine.native import client as deck
 from analyzer.music.beat_geometry import downbeat_beat_indices
-from core.event_bus import EventBus
+from core.workflows.event_bus import EventBus
 from core.track.model import DataModel
 from ui.edit_panel.beat_counter import BeatCounterMixin
 from ui.edit_panel.beatgrid import BeatgridEditMixin
@@ -22,7 +22,7 @@ from ui.edit_panel.phrase import PhraseEditMixin
 from core.analysis_library import jobs as analysis_jobs
 from ui.edit_panel.styles import BUTTON_STYLESHEET, WARNING_BUTTON_STYLESHEET
 from ui.theme import current_theme
-from foundation.i18n import tr, tr_mark
+from system.i18n import tr, tr_mark
 
 
 class EditPanel(

@@ -36,9 +36,9 @@ from typing import Optional
 import numpy as np
 from PySide6 import QtCore
 
-from foundation import os_support
-from foundation.resource_paths import resource_path
-from utils.volume import trim_db_to_knob
+from system import os_support
+from system.resource_paths import resource_path
+from audioengine.volume import trim_db_to_knob
 
 MAGIC = int.from_bytes(b"MXAUDIC1", "little")
 VERSION = 6
@@ -224,7 +224,7 @@ LAMP_VINYL = 52   # a deck's jog in VINYL mode
 # the mixer's EQ (mix eq_mode) and channel fader curves (fader_curve), by their settings' names
 EQ_MODES = ("isolator", "eq")
 FADER_CURVES = ("default", "steep", "slow")
-ACT_GUI = 0x1000   # the GUI's own actions from here (core.midi: their numbering), passed on to it
+ACT_GUI = 0x1000   # the GUI's own actions from here (core.controls.midi: their numbering), passed on to it
 # the tempo fader's ranges (+-%; 100: WIDE, 0 - 200 %)
 TEMPO_RANGES = (6, 10, 16, 100)
 # the engine's priority (ipc.rs op::SET_PROCESS; sched.rs: what each system makes of it)
@@ -962,7 +962,7 @@ class NativeFeeder(QtCore.QObject):
 
     def set_volume_trim(self, db: float) -> None:
         """Its level before the fader (Settings > Audio > Mixer's trim): its channel's TRIM knob at ``db`` (held to
-        utils.volume.TRIM_DB_RANGE)."""
+        audioengine.volume.TRIM_DB_RANGE)."""
         self.set_knob(0, trim_db_to_knob(db))
 
     def set_channel_cue(self, on: bool, bus: int = 0) -> None:

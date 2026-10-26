@@ -20,9 +20,9 @@ import numpy as np
 from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtMultimedia import QAudioFormat, QAudioSource, QMediaDevices
 
-from core.config import save_deck
-from core.event_bus import EventBus
-from foundation.i18n import tr
+from core.settings.config import save_deck
+from core.workflows.event_bus import EventBus
+from system.i18n import tr
 from core.library import jobs
 from analyzer.search.music.listening import Listening
 from analyzer.search.music.search import SearchResult, search_audio

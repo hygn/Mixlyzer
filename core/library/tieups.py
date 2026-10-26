@@ -1,5 +1,5 @@
 """The tie-ups' tables in library.db: every read and write of them (their SQL). Used by the library's owner alone
-(core.library.jobs on its thread); what a tie-up and a work are, their roles and categories, is core.tieup's.
+(core.library.jobs on its thread); what a tie-up and a work are, their roles and categories, is core.tieups.domain's.
 
 Tables (made by LibraryDB.connect):
   tieup_work  (id, category)                         a work: an anime, a game, a drama ...
@@ -8,7 +8,7 @@ Tables (made by LibraryDB.connect):
                                                      titles (type official; a language's first its primary: the one
                                                      shown in that language) and names never shown (synonym, short,
                                                      search_hint); every name's language an ll-RR tag (ko-KR, ja-JP:
-                                                     ISO 639-1 + ISO 3166-1 alpha-2); their readings (core.reading)
+                                                     ISO 639-1 + ISO 3166-1 alpha-2); their readings (core.search.reading)
   tieup_url   (work_id, url, label, rank)            the work's web references
   tieup       (track_uid, work_id, role, seq, detail, rank)
                                                      the track used in the work: its role and number (OP2), one row
@@ -22,9 +22,9 @@ import sqlite3
 from typing import Iterable, Optional
 import uuid
 
-from core import reading
-from foundation.i18n import tr
-from core.tieup import (
+from core.search import reading
+from system.i18n import tr
+from core.tieups.domain import (
     IDENTITY_URLS, OFFICIAL, UNSPECIFIED, Catalog, TieUp, TrackTieups, Work, describe, is_identity_url, is_lang,
     name_key, name_readings, versions_of,
 )
@@ -136,7 +136,7 @@ def track_tieups(con: sqlite3.Connection, uid: str) -> list[TieUp]:
 
 
 def track_texts(con: sqlite3.Connection) -> dict[str, TrackTieups]:
-    """Every tagged track's tie-ups as the library shows and searches them (core.tieup.describe)."""
+    """Every tagged track's tie-ups as the library shows and searches them (core.tieups.domain.describe)."""
     names = _names(con)
     works = {i: _work(i, c, names.get(i, []), []) for i, c in con.execute("SELECT id, category FROM tieup_work;")}
     by_track: dict[str, list[tuple]] = {}

@@ -1,4 +1,4 @@
-"""Settings > External Sync: the OSC messages another program's deck is followed by (core.external_sync), where
+"""Settings > External Sync: the OSC messages another program's deck is followed by (core.playback.external_sync), where
 they are received, and what has been received."""
 
 import ipaddress
@@ -15,8 +15,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from core.external_sync import SAMPLES_ADDRESS, TIME_ADDRESS
-from foundation.i18n import tr
+from core.playback.external_sync import SAMPLES_ADDRESS, TIME_ADDRESS
+from system.i18n import tr
 from ui.config.scroll import scroll_page
 from ui.live_label import LiveLabel
 

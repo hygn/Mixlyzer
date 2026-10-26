@@ -7,10 +7,10 @@ from typing import Optional
 from PySide6 import QtWidgets, QtGui, QtCore
 
 from ui.theme import current_theme
-from core.config import config
-from utils.labels import ALPHANUMERIC_LABELS, CLASSICAL_LABELS
-from foundation.i18n import tr
-from foundation.resource_paths import setting_path
+from core.settings.config import config
+from analyzer.music.key_names import ALPHANUMERIC_LABELS, CLASSICAL_LABELS
+from system.i18n import tr
+from system.resource_paths import setting_path
 from ui.knob import Knob
 
 

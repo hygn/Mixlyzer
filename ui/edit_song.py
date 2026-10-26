@@ -12,14 +12,14 @@ from PySide6.QtWidgets import (
     QPlainTextEdit, QToolButton
 )
 
-from core.event_bus import EventBus
+from core.workflows.event_bus import EventBus
 from core.library import jobs
 from core.library.records import TrackRow
 from core.library.service import LibraryService
 from ui.config.scroll import scroll_page
 from ui.theme import current_theme
-from utils.labels import ALPHANUMERIC_LABELS, CLASSICAL_LABELS
-from foundation.i18n import tr, tr_n
+from analyzer.music.key_names import ALPHANUMERIC_LABELS, CLASSICAL_LABELS
+from system.i18n import tr, tr_n
 
 COMMENT_LINES = 6   # the comment field's height in lines
 

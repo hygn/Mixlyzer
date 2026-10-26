@@ -12,20 +12,20 @@ from audioengine.native import client as deck
 from views.base import REGISTRY, ViewPlugin
 from views.overview import OverviewWidget
 from ui.library import LibraryWidget
-from utils.labels import idx_to_labels
-from utils.semitone import speed_to_semitone
-from utils.phrases import number_phrase_labels, phrase_color
-from core.event_bus import EventBus
-from core.config import config
+from analyzer.music.key_names import idx_to_labels
+from ui.render.semitone import speed_to_semitone
+from core.analysis_library.phrases import number_phrase_labels, phrase_color
+from core.workflows.event_bus import EventBus
+from core.settings.config import config
 from ui.mainplotvbx import ScratchViewBox
 from ui.track_info_panel import TrackInfoPanel
 from ui.edit_panel import EditPanel
-from utils.volume import slider_percent_to_linear, trim_dbfs_to_linear
-from foundation.resource_paths import resource_path
+from audioengine.volume import slider_percent_to_linear, trim_dbfs_to_linear
+from system.resource_paths import resource_path
 from analyzer.music.beat_geometry import downbeat_beat_indices, segment_time_signature
 from analyzer.music.tempo_rows import segment_end_bpm
-from core.timeline import step_window
-from foundation.i18n import tr
+from ui.timeline import step_window
+from system.i18n import tr
 from ui.theme import current_theme
 
 # the tempo fader's step in each range (+-%), as rekordbox's; WIDE (100: 0 - 200 %) by whole percents

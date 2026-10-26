@@ -8,15 +8,15 @@ from typing import List, Optional
 from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtMultimedia import QMediaDevices
 import os
-from utils.labels import idx_to_labels
-from utils.phrases import PHRASE_LABELS, phrase_display_name
-from core import reading
-from foundation import os_support
+from analyzer.music.key_names import idx_to_labels
+from core.analysis_library.phrases import PHRASE_LABELS, phrase_display_name
+from core.search import reading
+from system import os_support
 from core.library import jobs
 from core.library.records import TrackRow
 from core.library.service import LibraryService
-from core.event_bus import EventBus
-from core.config import config, load_cfg
+from core.workflows.event_bus import EventBus
+from core.settings.config import config, load_cfg
 from core.track.model import DataModel
 from ui.edit_song import EditTrackPanel
 from ui.export import ExportTrackPanel
@@ -29,9 +29,9 @@ from ui.theme import current_theme
 from ui.edit_panel.key_picker import KeyPickButton
 from ui.edit_panel.flash import flash
 from analyzer.search import variants as variant_fp
-from core.variants import relations as variant_relations
-from core import tieup
-from foundation.i18n import tr, tr_mark, tr_n
+from core.search import variants as variant_relations
+from core.tieups import domain as tieup
+from system.i18n import tr, tr_mark, tr_n
 
 
 def _mmss(sec: float) -> str:
@@ -53,12 +53,12 @@ class Track:
     added: Optional[QtCore.QDateTime] = None
     path: str = ""
     comment: str = ""
-    tieup: str = ""          # its song's tie-ups as shown (core.tieup): "Title OP; Other ED"
+    tieup: str = ""          # its song's tie-ups as shown (core.tieups.domain): "Title OP; Other ED"
     tieup_text: str = ""     # every title of their works and the roles, for the plain text search
     uid: str = ""
     playlist_index: Optional[int] = None
     analyzed: bool = True
-    # search keys of the title / artist / album readings (core.reading): field -> one per reading
+    # search keys of the title / artist / album readings (core.search.reading): field -> one per reading
     reading_keys: dict = field(default_factory=dict)
     _disp_playlist_index: str = field(init=False, default="")
 
@@ -108,7 +108,7 @@ def row_to_track(row: TrackRow, readings: Optional[dict] = None,
     )
 
 
-# the columns found by their reading too (core.reading): the text search's columns -> Track fields (the tie-ups':
+# the columns found by their reading too (core.search.reading): the text search's columns -> Track fields (the tie-ups':
 # their works' titles)
 READ_FIELDS = ("title", "artist", "album", "tieup")
 READ_COLUMNS = {"Title": "title", "Artist": "artist", "Album": "album", "Tie-up": "tieup"}
@@ -856,7 +856,7 @@ class LibraryWidget(QtWidgets.QWidget):
         self._library_tracks: List[Track] = []
         self._source_kind = "library"
         self._source_value = None
-        # Variants shown: uid -> its relations (core.variants.relations.Pair), uid -> its song's number
+        # Variants shown: uid -> its relations (core.search.variants.Pair), uid -> its song's number
         self._variant_pairs: dict[str, list] = {}
         self._variant_song: dict[str, int] = {}
         self._works_window: Optional[WorksWindow] = None     # made when first opened (open_works)
@@ -2093,7 +2093,7 @@ class LibraryWidget(QtWidgets.QWidget):
                     item.setToolTip(tip)
 
     def _variant_tracks(self, of: str | None = None) -> List[Track]:
-        """The library's tracks with variants (core.variants), # their song: the songs with the newest track first,
+        """The library's tracks with variants (core.search.variants), # their song: the songs with the newest track first,
         each song's longest track first; with ``of``, that track's song only (none for "": no track loaded)."""
         by_uid = {t.uid: t for t in self._library_tracks if t.uid}
         found = list(self.library.snapshot.variant_pairs)

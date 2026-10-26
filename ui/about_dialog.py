@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from PySide6 import QtCore, QtWidgets
-from foundation.i18n import tr
+from system.i18n import tr
 
 
 LGPL3_TEXT = """

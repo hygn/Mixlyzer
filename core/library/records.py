@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 from uuid import UUID, uuid4
 
-from core import reading
+from core.search import reading
 
 
 def canonical_uuid4(value: object) -> str:

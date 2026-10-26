@@ -18,8 +18,8 @@ from PySide6 import QtCore, QtGui, QtWidgets
 
 from app.startup_console import ConsoleLines, StartupConsole
 from ui.theme import current_theme
-from foundation.i18n import tr
-from foundation.resource_paths import resource_path
+from system.i18n import tr
+from system.resource_paths import resource_path
 
 # fraction of the task done, what it is doing ("" keeps the last)
 Progress = Callable[[float, str], None]
@@ -223,7 +223,7 @@ def _release_blas_threads() -> None:
 # the app's heavy imports in dependency order, with their usual time (s, measured)
 _IMPORTS = (
     ("numpy", 0.17), ("scipy.signal", 1.17), ("numba", 0.36), ("sklearn.metrics", 0.31), ("pyqtgraph", 0.34),
-    ("analyzer.pipeline.track", 0.36), ("core.player", 0.05), ("ui.pane", 0.08), ("ui.config.window", 0.05),
+    ("analyzer.pipeline.track", 0.36), ("core.playback.player", 0.05), ("ui.pane", 0.08), ("ui.config.window", 0.05),
     ("app.window", 0.09),
 )
 
@@ -260,7 +260,7 @@ def _warm_ffmpeg(progress: Progress) -> None:
 
 
 def _load_readers(progress: Progress) -> None:
-    from core import reading
+    from core.search import reading
     reading.warm_up(progress)
 
 
@@ -269,7 +269,7 @@ def _open_library(libpath: str, held: dict) -> Callable[[Progress], None]:
         """The library's owner started (core.library.service: its thread reads the library), then every stored
         reading's search keys into reading.keys' cache, so the library opens and searches without building them.
         The window takes the owner (``held``)."""
-        from core import reading
+        from core.search import reading
         from core.library.service import LibraryService
         progress(0.0, tr("library.db: readings"))
         library = LibraryService(libpath)

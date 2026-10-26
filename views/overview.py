@@ -1,18 +1,18 @@
 from PySide6 import QtCore, QtWidgets, QtGui
 import numpy as np
 import pyqtgraph as pg
-from core.event_bus import EventBus
-from utils.jumpcue_colors import get_cue_point_color
-from utils.phrases import (
+from core.workflows.event_bus import EventBus
+from core.analysis_library.jumpcue_colors import get_cue_point_color
+from core.analysis_library.phrases import (
     abbreviate_phrase_labels,
     phrase_strip_segments,
 )
-from utils.color import key_label_text_color
-from utils.keystrip import key_segment_label, key_segment_rows, key_strip_segments
-from utils.wave import band_ranges, has_wave_overview, render_wave_overview
+from ui.render.color import key_label_text_color
+from ui.render.keystrip import key_segment_label, key_segment_rows, key_strip_segments
+from ui.render.wave import band_ranges, has_wave_overview, render_wave_overview
 from views.base import EDIT_PAGES, edit_emphasis, emphasis_opacity, emphasis_size, emphasis_width
 from views.segment_strip import SegmentStrip
-from core.config import load_cfg
+from core.settings.config import load_cfg
 from analyzer.music.tempo_rows import segment_end_bpm
 
 

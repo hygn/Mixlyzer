@@ -12,9 +12,11 @@ from PySide6.QtWidgets import (
     QMessageBox, QPushButton, QSplitter, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget,
 )
 
-from core import reading, tieup
-from core.event_bus import EventBus
-from foundation.i18n import tr, tr_n
+from core.search import reading
+
+from core.tieups import domain as tieup
+from core.workflows.event_bus import EventBus
+from system.i18n import tr, tr_n
 from core.library import jobs
 from core.library.service import LibraryService
 from ui.tieup_editor import FIND_PAUSE_MS, LANG, _TextTable

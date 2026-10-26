@@ -17,7 +17,7 @@ from PySide6.QtWidgets import (
 
 from ui.config.dialogs import RekordboxSyncProgressDialog
 from ui.config.scroll import scroll_page
-from foundation.i18n import tr
+from system.i18n import tr
 
 
 def build_library_tab(dialog) -> None:

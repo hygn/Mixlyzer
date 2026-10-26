@@ -6,14 +6,14 @@ from PySide6.QtWidgets import (
     QLabel, QListWidget, QListWidgetItem, QProgressBar,
     QDialogButtonBox, QTabWidget
 )
-from core.event_bus import EventBus
-from foundation.i18n import tr, tr_mark
-from core.taskmanager import ANALYSIS, TIEUP_LOOKUP
+from core.workflows.event_bus import EventBus
+from system.i18n import tr, tr_mark
+from core.workflows.taskmanager import ANALYSIS, TIEUP_LOOKUP
 from ui.elided_label import ElidedLabel
 
 
 class WorkersDialog(QDialog):
-    """Subwindow showing the tasks in progress, a tab per kind (core.taskmanager): the analyses, and the tie-ups looked
+    """Subwindow showing the tasks in progress, a tab per kind (core.workflows.taskmanager): the analyses, and the tie-ups looked
     up on the web in the background (core.workflows.tieup_web), each tab's title with its count."""
 
     # Public signals (Dialog re-emits with same payload)

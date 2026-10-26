@@ -9,9 +9,9 @@ from PySide6 import QtCore, QtGui, QtWidgets
 from scipy.ndimage import gaussian_filter1d, uniform_filter1d
 from scipy.signal import butter, sosfiltfilt
 
-from core.config import load_cfg
-from core.timeline import SHORT_WINDOW_MAX_SEC
-from utils.wave import (
+from core.settings.config import load_cfg
+from ui.timeline import SHORT_WINDOW_MAX_SEC
+from ui.render.wave import (
     RGB_DETAIL_COLOR_SMOOTH_SEC,
     RGB_DETAIL_SAT_FLOOR,
     THREE_BAND_DETAIL_RMS_SEC,
@@ -151,7 +151,7 @@ def _render_waveform_chunk(
     low / mid / high band levels (smoothed over RGB_DETAIL_COLOR_SMOOTH_SEC),
     averaged FRAMES_PER_COLUMN to a column.
     3band: the band RMS (over THREE_BAND_DETAIL_RMS_SEC) of each column on the
-    bands' common scale, drawn as mirrored layers (utils.wave.three_band_detail_layers). Blurred slightly along time.
+    bands' common scale, drawn as mirrored layers (ui.render.wave.three_band_detail_layers). Blurred slightly along time.
     The chunk is computed with RENDER_CONTEXT_SEC of audio on each side, on the
     track-wide frame grid, and cropped.
     """

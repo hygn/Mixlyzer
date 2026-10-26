@@ -1,5 +1,5 @@
 """Reoptimize's model files and words on the app's side: which file each training reads and writes (the user's
-retrained model where there is one, else the shipped one: foundation.model_files), the shipped model never written,
+retrained model where there is one, else the shipped one: system.model_files), the shipped model never written,
 the warnings the dialogs show, and the training's texts in the UI's language (analyzer.training.text)."""
 
 from __future__ import annotations
@@ -11,8 +11,8 @@ from analyzer.training.model_start import (
 )
 from analyzer.training.text import render
 from core.workers.analysis_settings import model_file
-from foundation.i18n import tr
-from foundation.model_files import has_user_model, is_shipped, resolve_model, shipped_path
+from system.i18n import tr
+from system.model_files import has_user_model, is_shipped, resolve_model, shipped_path
 
 __all__ = ["BEAT_SONGS", "CURRENT", "KEY_SONGS", "SCRATCH", "SHIPPED", "base_model", "check_output", "kind_of",
            "prepare", "warnings", "words"]

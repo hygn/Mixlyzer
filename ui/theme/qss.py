@@ -4,7 +4,7 @@ Rules here are the defaults every widget gets; a widget's own setStyleSheet
 still wins where it sets the same property (deck buttons, edit panel states).
 
 Ground rules, so the sheet stays safe to apply to the whole app:
-- No fonts: the global font (utils.fonts) and per-widget setFont stay in charge.
+- No fonts: the global font (ui.fonts) and per-widget setFont stay in charge.
 - No min/max sizes: many widgets are fixed-size; only paddings that fit them.
 - No QWidget / QFrame / QAbstractScrollArea rules: they would reach the
   pyqtgraph views and the custom-painted deck widgets.
@@ -18,7 +18,7 @@ from __future__ import annotations
 from dataclasses import asdict
 from string import Template
 
-from foundation.resource_paths import resource_path
+from system.resource_paths import resource_path
 from ui.theme.tokens import Theme
 
 QSS_PATH = resource_path("assets/styles/app.qss")

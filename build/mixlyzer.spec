@@ -24,7 +24,7 @@ a = Analysis(
     ['../app/main.py'],
     pathex=['.'],
     binaries=[],
-    # The shipped assets, found through foundation.resource_paths: not the user's files beside them (a retrained model
+    # The shipped assets, found through system.resource_paths: not the user's files beside them (a retrained model
     # without default_, assets/shortcuts/shortcuts.json, assets/midi/midi.json). config.json is not bundled: the local one holds personal
     # settings, and load_cfg() writes one from default_cfg() on first launch.
     datas=shipped('assets/weights', lambda name: name.startswith('default_'))
@@ -33,13 +33,13 @@ a = Analysis(
                                         and name != 'mixlyzer_large.png')
     + shipped('assets/fonts') + shipped('assets/sound')
     + shipped('assets/styles') + shipped('assets/readings')
-    # the UI's languages (foundation.i18n): the list and each one's catalog
+    # the UI's languages (system.i18n): the list and each one's catalog
     + shipped('assets/i18n', lambda name: name in ('languages.json', 'mixlyzer.po'))
     + shipped('assets/shortcuts', lambda name: name == 'default_shortcuts.json')
     + shipped('assets/midi', lambda name: name == 'default_midi.json')
     # the native audio engine and its VOLK (build/audio_engine.py), as built: copied, not analysed or packed
     + shipped('audioengine/native/bin')
-    # the title readings (core.reading): the readers' dictionaries and tables
+    # the title readings (core.search.reading): the readers' dictionaries and tables
     + collect_data_files('sudachipy')
     + collect_data_files('sudachidict_core')
     + collect_data_files('anyascii')

@@ -6,7 +6,7 @@ from functools import lru_cache
 import numpy as np
 from PySide6 import QtCore, QtGui
 
-from foundation.resource_paths import resource_path
+from system.resource_paths import resource_path
 
 # A tool whose action follows an edit mode shows the mode under its glyph (in the 72 px icon):
 #   scope_all / scope_segment: three blocks like the scope buttons' icons, all filled (the whole

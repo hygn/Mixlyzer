@@ -19,10 +19,10 @@ import numpy as np
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from audioengine.native import client
-from foundation.i18n import tr
+from system.i18n import tr
 from ui.config.output_group import BufferMonitor, THREAD_STATE_NAMES
 from ui.model_canvas import DOMAINS, FONT_LABEL, FONT_MAIN, FONT_NAME, FONT_SUB, PAL, ModelCanvas, soft
-from utils.volume import slider_percent_to_linear, trim_knob_to_db
+from audioengine.volume import slider_percent_to_linear, trim_knob_to_db
 
 W, H = 1000.0, 530.0          # the model's coordinates (scaled to the widget's width)
 # its lines: the deck and its strip, the master, the headphones, the booth

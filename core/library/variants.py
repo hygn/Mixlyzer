@@ -1,7 +1,7 @@
 """The variants' index, `{libpath}/variants.db`: kept apart from library.db because it is made from the analysis's
 features (never edited by the user). Its SQL, used by the library's owner alone (core.library.jobs: an analysis
 stored, Index Now, a track removed; its relations read into the snapshot); the relations themselves are
-core.variants.relations'.
+core.search.variants'.
 
 Each fingerprint carries its method (fingerprint.METHOD: the algorithm and the analysis's features it reads), so a
 method's change leaves the index as it is: a track is fingerprinted by the current method when it is analyzed or
@@ -23,7 +23,7 @@ import sqlite3
 import numpy as np
 
 from analyzer.search import variants as fpm
-from core.variants.relations import Pair
+from core.search.variants import Pair
 
 FILE_NAME = "variants.db"
 WRITE_WAIT_SEC = 60.0

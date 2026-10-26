@@ -1,4 +1,4 @@
-"""The track panel's Search Index tab: what the library's searches find the track by. Its readings (core.reading: how
+"""The track panel's Search Index tab: what the library's searches find the track by. Its readings (core.search.reading: how
 its title, artist and album read in Latin letters; the user's added or the automatic ones removed, saved by Apply), and
 its audio fingerprints (the Variants' and Search by Music's), rebuilt on demand: the track dropped from both indexes,
 then Index Now indexes it again (core.workflows.music_index: its audio decoded in a worker process)."""
@@ -14,10 +14,10 @@ from PySide6.QtWidgets import (
     QTableWidgetItem, QVBoxLayout, QWidget,
 )
 
-from core import reading
-from core.config import default_cfg, searchconfig
-from core.event_bus import EventBus
-from foundation.i18n import tr
+from core.search import reading
+from core.settings.config import default_cfg, searchconfig
+from core.workflows.event_bus import EventBus
+from system.i18n import tr
 from core.library import jobs
 from core.library.records import READING_FIELDS, USER_SOURCE, TrackRow, field_readings
 from core.library.service import LibraryService
@@ -43,7 +43,7 @@ class SearchIndexPanel(QWidget):
         body = QWidget()
         content = QVBoxLayout(body)
 
-        # The readings (core.reading): how title / artist / album read in Latin letters, up to READING_SLOTS each
+        # The readings (core.search.reading): how title / artist / album read in Latin letters, up to READING_SLOTS each
         # (Han: one per language) -- what the search compares. The ones typed here are the user's (kept); the others
         # (dim) are read from the stored text in the stored languages, after them, but those emptied or typed over
         # here (removed, kept so). A column per field, a row per slot.

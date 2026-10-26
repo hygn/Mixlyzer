@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from core.library_version import CURRENT_LIBRARY_VERSION, read_library_version
+from core.library.version import CURRENT_LIBRARY_VERSION, read_library_version
 
 
 @dataclass(frozen=True)

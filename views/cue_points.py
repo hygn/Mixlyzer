@@ -2,7 +2,7 @@ from PySide6 import QtGui
 import pyqtgraph as pg
 
 from .base import ViewPlugin, emphasis_opacity, emphasis_size, register_view
-from utils.jumpcue_colors import get_cue_point_color
+from core.analysis_library.jumpcue_colors import get_cue_point_color
 
 
 def _down_triangle_path() -> QtGui.QPainterPath:
