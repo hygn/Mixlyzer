@@ -8,7 +8,7 @@ from typing import Optional
 
 import numpy as np
 
-from analyzer.music.marks import CuePoint, Phrase
+from analyzer.music.marks import CuePoint, JumpCueGroup, Phrase
 
 MAX_HISTORY = 50
 
@@ -20,7 +20,7 @@ class Marks:
     tempo_segments: np.ndarray
     key_segments: np.ndarray
     phrases: list[Phrase]
-    jump_cues: list[dict]
+    jump_cues: list[JumpCueGroup]
     cue_points: list[CuePoint]
 
     def __post_init__(self) -> None:

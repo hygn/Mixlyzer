@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from analyzer.music.marks import JumpCue, JumpCueGroup
+
 # JumpCUE group colour presets. A group stores its preset index (graph_color_idx),
 # independent of its group number; the analysis gives group n preset n % N. Hues apart
 # from each other and from the CUE point red.
@@ -20,6 +22,12 @@ def get_jumpcue_pair_color(index: int) -> tuple[int, int, int]:
     if not JUMPCUE_PAIR_COLORS:
         return (34, 139, 34)
     return JUMPCUE_PAIR_COLORS[int(index) % len(JUMPCUE_PAIR_COLORS)]
+
+
+def jump_cue_colors(groups: list[JumpCueGroup]) -> list[tuple[JumpCue, tuple[int, int, int]]]:
+    """Every JumpCUE with its group's colour, by point (as the views draw them)."""
+    return sorted(((cue, get_jumpcue_pair_color(group.color_idx)) for group in groups for cue in group.cues),
+                  key=lambda item: item[0].point)
 
 
 def get_cue_point_color(index: int) -> tuple[int, int, int]:

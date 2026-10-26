@@ -1,16 +1,18 @@
 """The loaded track's marks in the form the editor works on, made from its stored features and written back to them
-(core.track.model holds them): the tempo rows, the key rows, the phrases covering the track, the JumpCUE pairs and
+(core.track.model holds them): the tempo rows, the key rows, the phrases covering the track, the JumpCUE groups and
 the CUE points. Pure functions: no state, no signals."""
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import Any, Optional
 
 import numpy as np
 
 from analyzer.music.tempo_rows import with_end_bpm
-from analyzer.music.marks import CuePoint, Phrase
+from analyzer.music.marks import CuePoint, JumpCueGroup, Phrase
 from core.analysis_library.cue_points import build_cue_points_np, extract_cue_points
-from core.analysis_library.jump_cues import build_jump_cues_np, extract_jump_cue_pairs
+from core.analysis_library.jump_cues import build_jump_cue_block, extract_jump_cue_groups, has_slot_letters, \
+    lettered_by_point
 from core.analysis_library.phrases import build_phrase_segments_np, extract_phrase_segments, fill_unassigned, \
     normalize_phrase_segments
 
@@ -64,7 +66,7 @@ def from_features(features: dict, duration_sec: float) -> dict[str, Any]:
         "tempo_segments": tempo_rows(features.get("tempo_segments")),
         "key_segments": key_rows(features.get("key_segments")),
         "phrases": phrase_rows(extract_phrase_segments(features, duration_sec), duration_sec),
-        "jump_cues": extract_jump_cue_pairs(features),
+        "jump_cues": jump_cue_groups(features),
         "cue_points": cue_point_rows(extract_cue_points(features)),
     }
 
@@ -82,9 +84,23 @@ def stored_phrases(rows: list[Phrase]) -> dict[str, Any]:
     return {"phrase_segments_np": build_phrase_segments_np(rows)}
 
 
-def stored_jump_cues(pairs: list[dict]) -> dict[str, Any]:
-    """ValueError when a cue's letter is not a slot's (A-Z)."""
-    return {"jump_cues_np": build_jump_cues_np(pairs or [])}
+def jump_cue_groups(features: dict) -> list[JumpCueGroup]:
+    """The stored JumpCUE groups; their cues lettered by point where the stored letters are not slots' (each a
+    single letter A-Z, no two alike)."""
+    groups = extract_jump_cue_groups(features)
+    return jump_cue_group_rows(groups if has_slot_letters(groups) else lettered_by_point(groups))
+
+
+def jump_cue_group_rows(groups) -> list[JumpCueGroup]:
+    """The groups as the model keeps them: none empty, each one's cues by point, the groups by their first cue."""
+    rows = [replace(group, cues=tuple(sorted(group.cues, key=lambda cue: cue.point)))
+            for group in (groups or []) if group.cues]
+    return sorted(rows, key=lambda group: group.cues[0].point)
+
+
+def stored_jump_cues(groups: list[JumpCueGroup]) -> dict[str, Any]:
+    """ValueError when a cue's letter is not a slot's (A-Z, no two alike)."""
+    return {"jump_cues_np": build_jump_cue_block(groups)}
 
 
 def stored_cue_points(points: list[CuePoint]) -> dict[str, Any]:

@@ -5,6 +5,8 @@ from typing import List
 import pyqtgraph as pg
 from PySide6 import QtCore, QtGui, QtWidgets
 
+from core.analysis_library.jumpcue_colors import jump_cue_colors
+
 from .base import ViewPlugin, emphasis_opacity, emphasis_size, register_view
 
 
@@ -56,7 +58,7 @@ class JumpCUEView(ViewPlugin):
         super().__init__(bus, model, tl)
         self.plot: pg.PlotItem | None = None
         self._duration = 0.0
-        self._cues: List[dict] = []
+        self._cues: List[tuple] = []     # (JumpCue, its colour), by point
         # One entry per labelled cue, built when the cues change:
         # [point, marker, shown]. Playback only moves the markers by the view offset.
         self._entries: List[list] = []
@@ -91,7 +93,7 @@ class JumpCUEView(ViewPlugin):
         self.plot = None
 
     def render_initial(self):
-        self._cues = self.model.jump_cue_graph[0]
+        self._cues = jump_cue_colors(self.model.jump_cues)
         self._duration = float(self.model.duration_sec or 0.0)
         self._build_items()
         self._refresh()
@@ -113,12 +115,12 @@ class JumpCUEView(ViewPlugin):
         self._clear_items()
         if self.plot is None:
             return
-        for cue in self._cues:
-            label = str(cue.get("label", "")).strip()
+        for cue, color in self._cues:
+            label = str(cue.label).strip()
             if not label:
                 continue
-            point = float(cue.get("point", cue.get("start", 0.0)))
-            marker = JumpCueMarker(label, cue["color"], self._font)
+            point = float(cue.point)
+            marker = JumpCueMarker(label, color, self._font)
             # over the beatgrid lines (10, 11) and lane boundaries (15), which used to
             # cross the square and darken it; under the CUE point markers (110)
             marker.setZValue(105)

@@ -11,7 +11,7 @@ from core.settings.config import load_cfg
 from core.workers.segment_reanalysis import SegmentReanalysisWorker
 from core.workflows.event_bus import EventBus
 from core.track.model import DataModel
-from core.analysis_library.jump_cues import extract_jump_cue_pairs
+from core.analysis_library.jump_cues import extract_jump_cue_groups
 from system.i18n import tr
 
 
@@ -256,7 +256,7 @@ class SegmentReanalysisWorkflow(QtCore.QObject):
         self.model.set_automatic(jump_cues_block=payload.get("jump_cues_auto_np"))
         if isinstance(jc_block, dict):
             try:
-                self.model.set_jump_cues(extract_jump_cue_pairs({"jump_cues_np": jc_block}))
+                self.model.set_jump_cues(extract_jump_cue_groups({"jump_cues_np": jc_block}))
             except ValueError as exc:
                 self._show_status(tr("JumpCUE reanalysis failed: {error}").format(error=exc))
         self.taskmanager.updatetask(taskid, tr("JumpCUE reanalysis finished"), 1.0)

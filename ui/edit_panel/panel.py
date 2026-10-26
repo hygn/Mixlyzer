@@ -8,7 +8,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 
 from audioengine.native import client as deck
 from analyzer.music.beat_geometry import downbeat_beat_indices
-from analyzer.music.marks import CuePoint, Phrase
+from analyzer.music.marks import CuePoint, JumpCueGroup, Phrase
 from core.workflows.event_bus import EventBus
 from core.track.model import DataModel
 from ui.edit_panel.beat_counter import BeatCounterMixin
@@ -136,17 +136,13 @@ class EditPanel(
         return self.model.phrases
 
     @property
-    def _JumpCUE(self) -> list[dict]:
-        return self.model.jump_cues
-
-    @property
     def _cue_points(self) -> list[CuePoint]:
         return self.model.cue_points
 
     @property
-    def _jumpcue_graph_cues(self) -> list[dict]:
-        """The JumpCUEs' cues with their slots (letters kept: lettered by point only by the analysis)."""
-        return self.model.jump_cue_graph[0]
+    def _jump_cue_groups(self) -> list[JumpCueGroup]:
+        """The JumpCUE groups (their cues keep their slots' letters: lettered by point only by the analysis)."""
+        return self.model.jump_cues
 
     @property
     def uid(self) -> Optional[str]:
@@ -193,7 +189,7 @@ class EditPanel(
     def _send_deck_marks(self) -> None:
         """The beats (with their downbeats), CUE points and JumpCUEs as edited, to the player's deck (its beat /
         bar steps, CUE, CALL, JUMP; a MIDI controller's too), whenever one of them was replaced."""
-        held = (self._beatgrid, self._segments, self._jumpcue_graph_cues, self._cue_points)
+        held = (self._beatgrid, self._segments, self._jump_cue_groups, self._cue_points)
         if self._marks_sent is not None and all(a is b for a, b in zip(held, self._marks_sent)):
             return
         self._marks_sent = held
@@ -204,10 +200,10 @@ class EditPanel(
             down[idx[(idx >= 0) & (idx < beats.size)]] = True
         cues = np.asarray([float(p.time_sec) for p in self._cue_points], dtype=float)
         jumps = np.full(26, np.nan)
-        for c in self._jumpcue_graph_cues:
-            i = ord(str(c.get("label", "?"))[:1] or "?") - ord("A")
+        for c in (cue for group in self._jump_cue_groups for cue in group.cues):
+            i = ord(c.label[:1] or "?") - ord("A")
             if 0 <= i < 26:
-                jumps[i] = float(c.get("point", 0.0))
+                jumps[i] = float(c.point)
         self.bus.sig_deck_marks.emit((beats, down, cues, jumps))
 
     def _init_ui(self) -> None:

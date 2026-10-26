@@ -14,10 +14,10 @@ import numpy as np
 
 from core.library.records import TrackRow
 from analyzer.music.key_names import idx_to_labels
-from core.analysis_library.jump_cues import extract_jump_cue_graph
+from core.analysis_library.jump_cues import extract_jump_cue_groups
 from analyzer.music.tempo_rows import is_ramp_row, ramp_beat_times, segment_end_bpm
 from core.analysis_library.cue_points import extract_cue_points
-from core.analysis_library.jumpcue_colors import get_cue_point_color
+from core.analysis_library.jumpcue_colors import get_cue_point_color, jump_cue_colors
 
 ResolvePath = Callable[[str | None], Optional[Path]]
 
@@ -326,24 +326,15 @@ def _extract_tempo_segments(features: dict[str, np.ndarray]) -> np.ndarray:
 
 
 def _extract_jump_marks(features: dict[str, np.ndarray]) -> list[dict[str, object]]:
-    """Extract graph-wise jump cue marks using the normalized jump_cues_np format."""
-
-    cues, _links = extract_jump_cue_graph(features)
-    if not cues:
-        return []
-
+    """The JumpCUEs as hot cues: their names, points, group colours and slots, by point."""
     marks: list[dict[str, object]] = []
-    for cue in cues:
-        label = str(cue.get("label", "")).strip()
-        point = cue.get("point")
-        if point is None:
-            continue
-        point_val = float(point)
+    for cue, color in jump_cue_colors(extract_jump_cue_groups(features)):
+        label = str(cue.label).strip()
+        point_val = float(cue.point)
         if not np.isfinite(point_val):
             continue
-        color = cue["color"]
         slot = _slot_index(label)
-        comment = str(cue.get("comment", "") or "").strip()
+        comment = str(cue.comment or "").strip()
         marks.append(
             {
                 "name": comment or label or "",

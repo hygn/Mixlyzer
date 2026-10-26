@@ -24,3 +24,22 @@ class Phrase:
     start: float
     end: float
     label: str
+
+
+@dataclass(frozen=True)
+class JumpCue:
+    """A JumpCUE (rekordbox's hot cue): its slot letter (A-Z), its name (its comment; the letter itself: no name), the
+    passage it marks and the point jumped to and from."""
+    label: str
+    comment: str
+    start: float
+    end: float
+    point: float
+
+
+@dataclass(frozen=True)
+class JumpCueGroup:
+    """JumpCUEs that jump between each other (one cue alone: a cue to jump to), shown in one colour preset
+    (core.analysis_library.jumpcue_colors); its cues by point."""
+    cues: tuple[JumpCue, ...]
+    color_idx: int

@@ -1,10 +1,16 @@
+"""JumpCUEs' stored form: a graph block per track (``jump_cues_np``, the user's; ``jump_cues_auto_np``, the automatic
+analysis's): the cues (slot letter, name, passage, point), each cue's group, each group's colour preset. Read and
+written as analyzer.music.marks.JumpCueGroup (extract_jump_cue_groups, build_jump_cue_block); the analysis's JumpCUE
+pairs (the detector's) are made into a block by build_jump_cues_np."""
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import Any, Dict, List
 
 import numpy as np
 
-from core.analysis_library.jumpcue_colors import JUMPCUE_PAIR_COLORS, get_jumpcue_pair_color
+from analyzer.music.marks import JumpCue, JumpCueGroup
+from core.analysis_library.jumpcue_colors import JUMPCUE_PAIR_COLORS
 from system.i18n import tr
 
 
@@ -30,41 +36,6 @@ def _cue_sort_key(cue: dict[str, float | str]) -> tuple[float, float, float, str
     end = float(cue.get("end", start) or start)
     label = str(cue.get("label", "") or "")
     return (point, start, end, label)
-
-
-def _cue_timing_key(cue: dict[str, float | str]) -> tuple[float, float, float]:
-    return (
-        float(cue.get("start", 0.0) or 0.0),
-        float(cue.get("end", cue.get("start", 0.0)) or 0.0),
-        float(cue.get("point", cue.get("start", 0.0)) or 0.0),
-    )
-
-
-def _pair_display_sort_key(pair: dict) -> tuple[str, str, float, float, float, float]:
-    forward = pair.get("forward") or {}
-    backward = pair.get("backward") or {}
-    f_label = str(forward.get("label", "") or "").strip().upper()
-    b_label = str(backward.get("label", "") or "").strip().upper()
-    f_point = float(forward.get("point", forward.get("start", 0.0)) or 0.0)
-    b_point = float(backward.get("point", backward.get("start", 0.0)) or 0.0)
-    return (
-        min(f_label, b_label),
-        max(f_label, b_label),
-        min(f_point, b_point),
-        max(f_point, b_point),
-        f_point,
-        b_point,
-    )
-
-
-def _link_display_sort_key(link: dict[str, Any]) -> tuple[str, str, str, float, float]:
-    return (
-        str(link.get("source_label", "") or "").strip().upper(),
-        str(link.get("kind", "") or "").strip().upper(),
-        str(link.get("target_label", "") or "").strip().upper(),
-        float(link.get("source_point", 0.0) or 0.0),
-        float(link.get("target_point", 0.0) or 0.0),
-    )
 
 
 def _normalized_cue(cue: dict | None) -> dict[str, float | str]:
@@ -179,22 +150,6 @@ def _extract_jump_cue_block(features: Dict[str, Any], key: str = "jump_cues_np")
         for name, value in features.items()
         if isinstance(name, str) and name.startswith(prefix)
     }
-
-
-def jump_cue_point_groups(features: Dict[str, Any], key: str = "jump_cues_np") -> List[List[float]]:
-    """Cue points (seconds, ascending) of each JumpCUE group in the graph block
-    ``key`` ('jump_cues_np' = the user's JumpCUEs, 'jump_cues_auto_np' = the
-    automatic analysis result); groups of fewer than two cues are left out."""
-    block = _extract_jump_cue_block(features, key)
-    if not all(name in block for name in ("cue_id", "cue_point", "graph_cue_id", "graph_idx")):
-        return []
-    graph_of = dict(zip(np.asarray(block["graph_cue_id"], dtype=int).tolist(),
-                        np.asarray(block["graph_idx"], dtype=int).tolist()))
-    groups: dict[int, list[float]] = {}
-    for cue_id, point in zip(np.asarray(block["cue_id"], dtype=int).tolist(),
-                             np.asarray(block["cue_point"], dtype=float).tolist()):
-        groups.setdefault(graph_of.get(cue_id, 0), []).append(float(point))
-    return [sorted(points) for _, points in sorted(groups.items()) if len(points) >= 2]
 
 
 def _empty_jump_cues_np() -> Dict[str, np.ndarray]:
@@ -380,195 +335,82 @@ def _graph_color_indices(block: Dict[str, Any]) -> dict[int, int]:
     return {int(g): int(c) for g, c in zip(graph_ids, colors)}
 
 
-def _extract_pairs_from_new_graph_block(block: Dict[str, Any]) -> List[dict]:
-    cue_length = min(
-        len(block[key])
-        for key in (
-            "cue_id",
-            "cue_label",
-            "cue_comment",
-            "cue_start",
-            "cue_end",
-            "cue_point",
-        )
-    )
-    map_length = min(len(block[key]) for key in ("graph_cue_id", "graph_idx"))
-    color_of_graph = _graph_color_indices(block)
+def extract_jump_cue_groups(features: Dict[str, Any], key: str = "jump_cues_np") -> List[JumpCueGroup]:
+    """The JumpCUE groups of the graph block ``key`` ('jump_cues_np' = the user's, 'jump_cues_auto_np' = the automatic
+    analysis's), by their stored group index, each one's cues by point and its colour preset."""
+    block = _extract_jump_cue_block(features, key)
+    if not block or not all(name in block for name in _GRAPH_BLOCK_REQUIRED):
+        return []
+    cue_length = min(len(block[name]) for name in ("cue_id", "cue_label", "cue_comment", "cue_start", "cue_end",
+                                                   "cue_point"))
+    map_length = min(len(block[name]) for name in ("graph_cue_id", "graph_idx"))
     graph_of_cue = {int(block["graph_cue_id"][i]): int(block["graph_idx"][i]) for i in range(map_length)}
-    cue_lookup: dict[int, dict[str, float | str]] = {}
-    for idx in range(cue_length):
-        cue_id = int(block["cue_id"][idx])
-        graph_idx = graph_of_cue.get(cue_id, 0)
-        cue_lookup[cue_id] = {
-            "label": str(block["cue_label"][idx]),
-            "comment": str(block["cue_comment"][idx]),
-            "start": float(block["cue_start"][idx]),
-            "end": float(block["cue_end"][idx]),
-            "point": float(block["cue_point"][idx]),
-            "color_idx": int(color_of_graph.get(graph_idx, graph_idx)),
-        }
-
-    members_by_graph: dict[int, list[int]] = {}
-    for idx in range(map_length):
-        cue_id = int(block["graph_cue_id"][idx])
-        graph_idx = int(block["graph_idx"][idx])
-        members_by_graph.setdefault(graph_idx, []).append(cue_id)
-
-    pairs: list[dict] = []
-    for graph_idx in sorted(members_by_graph):
-        member_ids = sorted(
-            set(members_by_graph[graph_idx]),
-            key=lambda cue_id: float(cue_lookup.get(cue_id, {}).get("point", 0.0)),
-        )
-        # A one-cue group is kept as a pair of the cue with itself.
-        if len(member_ids) == 1 and member_ids[0] in cue_lookup:
-            cue = cue_lookup[member_ids[0]]
-            pairs.append({"forward": dict(cue), "backward": dict(cue), "lag_beats": 0.0,
-                          "lag_sec": 0.0, "score": 1.0, "confidence": 1.0})
-        for i in range(len(member_ids)):
-            for j in range(i + 1, len(member_ids)):
-                a = cue_lookup.get(member_ids[i])
-                b = cue_lookup.get(member_ids[j])
-                if a is None or b is None:
-                    continue
-                pairs.append(
-                    {
-                        "forward": dict(a),
-                        "backward": dict(b),
-                        "lag_beats": 0.0,
-                        "lag_sec": abs(float(b["point"]) - float(a["point"])),
-                        "score": 1.0,
-                        "confidence": 1.0,
-                    }
-                )
-    return pairs
+    color_of_graph = _graph_color_indices(block)
+    members: dict[int, list[JumpCue]] = {}
+    for i in range(cue_length):
+        graph_idx = graph_of_cue.get(int(block["cue_id"][i]), 0)
+        members.setdefault(graph_idx, []).append(JumpCue(
+            label=str(block["cue_label"][i]), comment=str(block["cue_comment"][i]),
+            start=float(block["cue_start"][i]), end=float(block["cue_end"][i]), point=float(block["cue_point"][i])))
+    return [JumpCueGroup(tuple(sorted(cues, key=lambda cue: cue.point)), int(color_of_graph.get(g, g)))
+            for g, cues in sorted(members.items())]
 
 
-def extract_jump_cue_pairs(features: Dict[str, Any]) -> List[dict]:
-    """Pairs of cues of each group of the graph block (the editor's form)."""
-    block = _extract_jump_cue_block(features)
-    if not block or not all(key in block for key in _GRAPH_BLOCK_REQUIRED):
-        return []
-    return _extract_pairs_from_new_graph_block(block)
+def jump_cue_point_groups(features: Dict[str, Any], key: str = "jump_cues_np") -> List[List[float]]:
+    """Cue points (seconds, ascending) of each JumpCUE group of the graph block ``key`` (as
+    extract_jump_cue_groups); groups of fewer than two cues are left out."""
+    return [[cue.point for cue in group.cues] for group in extract_jump_cue_groups(features, key)
+            if len(group.cues) >= 2]
 
 
-def extract_jump_cue_graph(features: Dict[str, Any]) -> tuple[List[dict[str, float | str | int]], List[dict[str, Any]]]:
-    block = _extract_jump_cue_block(features)
-    if not block:
-        return [], []
-
-    if not all(key in block for key in _GRAPH_BLOCK_REQUIRED):
-        return [], []
-
-    cue_length = min(
-        len(block[key])
-        for key in (
-            "cue_id",
-            "cue_label",
-            "cue_comment",
-            "cue_start",
-            "cue_end",
-            "cue_point",
-        )
-    )
-    map_length = min(len(block[key]) for key in ("graph_cue_id", "graph_idx"))
-    color_idx_by_graph = _graph_color_indices(block)
-
-    graph_by_cue_id: dict[int, int] = {}
-    for idx in range(map_length):
-        graph_by_cue_id[int(block["graph_cue_id"][idx])] = int(block["graph_idx"][idx])
-
-    cues: list[dict[str, float | str | int]] = []
-    cue_lookup: dict[int, dict[str, float | str | int]] = {}
-    for idx in range(cue_length):
-        cue_id = int(block["cue_id"][idx])
-        graph_idx = int(graph_by_cue_id.get(cue_id, 0))
-        color_idx = int(color_idx_by_graph.get(graph_idx, graph_idx))
-        color = get_jumpcue_pair_color(color_idx)
-        cue = {
-            "id": cue_id,
-            "label": str(block["cue_label"][idx]),
-            "comment": str(block["cue_comment"][idx]),
-            "start": float(block["cue_start"][idx]),
-            "end": float(block["cue_end"][idx]),
-            "point": float(block["cue_point"][idx]),
-            "graph_idx": graph_idx,
-            "color_idx": color_idx,
-            "color": color,
-        }
-        cues.append(cue)
-        cue_lookup[cue_id] = cue
-
-    cues.sort(key=lambda cue: float(cue.get("point", 0.0)))
-    members_by_graph: dict[int, list[dict[str, float | str | int]]] = {}
-    for cue in cues:
-        graph_idx = int(cue.get("graph_idx", 0) or 0)
-        members_by_graph.setdefault(graph_idx, []).append(cue)
-
-    links: list[dict[str, Any]] = []
-    for graph_idx in sorted(members_by_graph):
-        members = sorted(members_by_graph[graph_idx], key=lambda cue: float(cue.get("point", 0.0)))
-        for i in range(len(members)):
-            for j in range(i + 1, len(members)):
-                a = members[i]
-                b = members[j]
-                lag_sec = abs(float(b["point"]) - float(a["point"]))
-                directed = (
-                    ("F", a, b),
-                    ("B", b, a),
-                )
-                for kind, src, dst in directed:
-                    links.append(
-                        {
-                            "kind": kind,
-                            "source_id": int(src["id"]),
-                            "target_id": int(dst["id"]),
-                            "source_label": str(src["label"]),
-                            "target_label": str(dst["label"]),
-                            "source": dict(src),
-                            "target": dict(dst),
-                            "source_point": float(src["point"]),
-                            "target_point": float(dst["point"]),
-                            "graph_idx": graph_idx,
-                            "color_idx": src["color_idx"],
-                            "color": src["color"],
-                            "lag_beats": 0.0,
-                            "lag_sec": lag_sec,
-                            "score": 1.0,
-                            "confidence": 1.0,
-                        }
-                    )
-
-    links.sort(key=_link_display_sort_key)
-    return cues, links
+def has_slot_letters(groups: List[JumpCueGroup]) -> bool:
+    """Every cue in a slot of its own: a single letter A-Z, no two alike."""
+    labels = [cue.label.strip().upper() for group in groups for cue in group.cues]
+    return all(label in _VALID_JUMPCUE_LABELS for label in labels) and len(labels) == len(set(labels))
 
 
-def sort_jump_cue_pairs_for_display(pairs: List[dict] | None) -> List[dict]:
-    if not isinstance(pairs, list):
-        return []
-    return sorted((dict(pair) for pair in pairs), key=_pair_display_sort_key)
+def lettered_by_point(groups: List[JumpCueGroup]) -> List[JumpCueGroup]:
+    """The groups with their cues lettered A-Z by point (a name that was its letter follows it)."""
+    order = sorted((cue.point, gi, ci) for gi, group in enumerate(groups) for ci, cue in enumerate(group.cues))
+    letter = {(gi, ci): _label_from_index(k) for k, (_point, gi, ci) in enumerate(order)}
+    return [replace(group, cues=tuple(replace(cue, label=letter[(gi, ci)],
+                                              comment=letter[(gi, ci)] if cue.comment == cue.label else cue.comment)
+                                      for ci, cue in enumerate(group.cues)))
+            for gi, group in enumerate(groups)]
 
 
-def build_jump_cue_graph(
-    pairs: List[dict] | None, *, keep_labels: bool = False
-) -> tuple[List[dict[str, float | str | int]], List[dict[str, Any]]]:
-    """Graph of the pairs' cues, lettered A-Z by point, or with their own letters
-    (``keep_labels``: the editor's slots; falls back to lettering by point when
-    they are not unique single letters)."""
-    if keep_labels:
-        try:
-            block = build_jump_cues_np(pairs, canonicalize_labels=False, merge_coincident=True)
-            return extract_jump_cue_graph({"jump_cues_np": block})
-        except ValueError:
-            pass
-    block = build_jump_cues_np(pairs, canonicalize_labels=True, merge_coincident=True)
-    return extract_jump_cue_graph({"jump_cues_np": block})
+def build_jump_cue_block(groups: List[JumpCueGroup] | None) -> Dict[str, np.ndarray]:
+    """The stored graph block of ``groups`` (empty groups left out): the cues numbered by point, the groups by their
+    first cue's point, each with its colour preset; a cue without a name stored with its letter as its comment.
+    ValueError when the letters are not single letters A-Z, no two alike (each cue is a slot)."""
+    groups = [group for group in (groups or []) if group.cues]
+    if not has_slot_letters(groups):
+        raise ValueError(tr("JumpCUE labels must be unique single letters A-Z."))
+    if not groups:
+        return _empty_jump_cues_np()
+    groups = sorted(groups, key=lambda group: min(cue.point for cue in group.cues))
+    cues = sorted(((cue, gi) for gi, group in enumerate(groups) for cue in group.cues), key=lambda item: item[0].point)
+    labels = [cue.label.strip().upper() for cue, _gi in cues]
+    comments = [str(cue.comment or "") or label for (cue, _gi), label in zip(cues, labels)]
+    return {
+        "cue_id": np.arange(len(cues), dtype=np.int32),
+        "cue_label": np.asarray(labels, dtype=f"U{max(1, max(len(x) for x in labels))}"),
+        "cue_comment": np.asarray(comments, dtype=f"U{max(1, max(len(x) for x in comments))}"),
+        "cue_start": np.asarray([cue.start for cue, _gi in cues], dtype=np.float32),
+        "cue_end": np.asarray([cue.end for cue, _gi in cues], dtype=np.float32),
+        "cue_point": np.asarray([cue.point for cue, _gi in cues], dtype=np.float32),
+        "graph_cue_id": np.arange(len(cues), dtype=np.int32),
+        "graph_idx": np.asarray([gi for _cue, gi in cues], dtype=np.int32),
+        "graph_id": np.arange(len(groups), dtype=np.int32),
+        "graph_color_idx": np.asarray([int(group.color_idx) for group in groups], dtype=np.int32),
+    }
 
 
 __all__ = [
     "build_jump_cues_np",
-    "extract_jump_cue_pairs",
-    "extract_jump_cue_graph",
-    "sort_jump_cue_pairs_for_display",
-    "build_jump_cue_graph",
+    "build_jump_cue_block",
+    "extract_jump_cue_groups",
+    "has_slot_letters",
+    "jump_cue_point_groups",
+    "lettered_by_point",
 ]

@@ -2,7 +2,7 @@ from PySide6 import QtCore, QtWidgets, QtGui
 import numpy as np
 import pyqtgraph as pg
 from core.workflows.event_bus import EventBus
-from core.analysis_library.jumpcue_colors import get_cue_point_color
+from core.analysis_library.jumpcue_colors import get_cue_point_color, jump_cue_colors
 from core.analysis_library.phrases import (
     abbreviate_phrase_labels,
     phrase_strip_segments,
@@ -210,8 +210,7 @@ class OverviewWidget(QtWidgets.QWidget):
         self._cue_font = QtGui.QFont()
         self._cue_font.setPointSizeF(8.0)
         self._cue_font.setBold(True)
-        self._jump_cues: list[dict] = []
-        self._jump_links: list[dict] = []
+        self._jump_cues: list[tuple] = []     # (JumpCue, its colour), by point
         self._wave_bottom = self.KEY_H
 
         self.bus.sig_time_changed.connect(self._on_time)
@@ -314,7 +313,7 @@ class OverviewWidget(QtWidgets.QWidget):
         )
     
     def _on_jumpcue_updated(self) -> None:
-        self._jump_cues, self._jump_links = self.model.jump_cue_graph
+        self._jump_cues = jump_cue_colors(self.model.jump_cues)
         self._render_jump_cues(self._jump_cues)
 
     def update_key_strip(self) -> None:
@@ -386,7 +385,7 @@ class OverviewWidget(QtWidgets.QWidget):
         )
         self._update_played_overlay()
 
-    def _render_jump_cues(self, cues: list[dict]):
+    def _render_jump_cues(self, cues: list[tuple]):
         # Cull to cues intersecting current view
         try:
             view_min, view_max = self.p.viewRange()[0]
@@ -395,12 +394,11 @@ class OverviewWidget(QtWidgets.QWidget):
 
         # the jump point only (the start/end range is not shown)
         data: list[tuple[float, tuple[int, int, int], str]] = []
-        for cue in cues:
-            label = str(cue.get("label", "")).strip()
+        for cue, color in cues:
+            label = str(cue.label).strip()
             if not label:
                 continue
-            color = cue["color"]
-            j_pnt = float(cue.get("point", cue.get("start", 0.0)))
+            j_pnt = float(cue.point)
             if j_pnt < view_min - 0.1 or j_pnt > view_max + 0.1:
                 continue
             data.append((j_pnt, color, label))

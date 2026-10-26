@@ -20,7 +20,8 @@ from core.track.model import DataModel
 from third_party.rekordbox import sanitize_filename
 from ui.config.scroll import scroll_page
 from ui.elided_label import ElidedLabel
-from core.analysis_library.jump_cues import extract_jump_cue_pairs
+from analyzer.music.marks import JumpCue
+from core.analysis_library.jump_cues import extract_jump_cue_groups
 from ui.render.jumprender import jump_renderer
 from analyzer.music.key_names import idx_to_labels
 from ui.theme import current_theme
@@ -50,7 +51,7 @@ class ExportTrackPanel(QtWidgets.QWidget):
         self._track: Optional[TrackRow] = None
         self._source: Optional[Path] = None
         self._features: Optional[dict[str, np.ndarray]] = None
-        self._jump_pairs: list[dict] = []
+        self._jump_pairs: list[tuple] = []     # (JumpCue, JumpCue): every two cues of a group
 
         self.lbl_title = ElidedLabel("-")
         self.lbl_artist = ElidedLabel("-")
@@ -334,8 +335,8 @@ class ExportTrackPanel(QtWidgets.QWidget):
                 tr("Select a JumpCUE direction to render."),
             )
             return
-        pair, directions = selection
-        exported = self._write_jumpcue_audio(dest_dir, features, pair, [directions])
+        src, dst = selection
+        exported = self._write_jumpcue_audio(dest_dir, features, [(src, dst)])
         if exported is None:
             return
 
@@ -384,39 +385,33 @@ class ExportTrackPanel(QtWidgets.QWidget):
         if not features:
             self.cmb_jump_pair.setEnabled(False)
             return
-        # One-cue groups are pairs of a cue with itself; there is no jump in them.
-        pairs = [
-            pair for pair in extract_jump_cue_pairs(features)
-            if pair.get("forward", {}).get("point") != pair.get("backward", {}).get("point")
-        ]
+        # every two cues of a group, each way (a one-cue group has no jump)
+        pairs = [(group.cues[i], group.cues[j]) for group in extract_jump_cue_groups(features)
+                 for i in range(len(group.cues)) for j in range(i + 1, len(group.cues))]
         self._jump_pairs = pairs
-        for idx, pair in enumerate(pairs):
-            fwd = str(pair.get("forward", {}).get("label", "")).strip()
-            bwd = str(pair.get("backward", {}).get("label", "")).strip()
-            self.cmb_jump_pair.addItem(f"{idx + 1}: {fwd}->{bwd}", (pair, ("forward", "backward")))
-            self.cmb_jump_pair.addItem(f"{idx + 1}: {bwd}->{fwd}", (pair, ("backward", "forward")))
+        for idx, (a, b) in enumerate(pairs):
+            fwd, bwd = a.label.strip(), b.label.strip()
+            self.cmb_jump_pair.addItem(f"{idx + 1}: {fwd}->{bwd}", (a, b))
+            self.cmb_jump_pair.addItem(f"{idx + 1}: {bwd}->{fwd}", (b, a))
         self.cmb_jump_pair.setEnabled(bool(pairs))
 
-    def _selected_jump_pair(self) -> Optional[tuple[dict, tuple[str, str]]]:
+    def _selected_jump_pair(self) -> Optional[tuple[JumpCue, JumpCue]]:
+        """The jump picked: (the cue jumped from, the cue jumped to)."""
         if self.cmb_jump_pair.count() <= 0:
             return None
         idx = int(self.cmb_jump_pair.currentIndex())
         if idx < 0:
             return None
         data = self.cmb_jump_pair.itemData(idx)
-        if not isinstance(data, tuple) or len(data) != 2:
+        if not isinstance(data, tuple) or len(data) != 2 or not all(isinstance(c, JumpCue) for c in data):
             return None
-        pair, direction = data
-        if not isinstance(pair, dict) or not isinstance(direction, tuple) or len(direction) != 2:
-            return None
-        return pair, direction
+        return data
 
     def _write_jumpcue_audio(
         self,
         dest_dir: Path,
         features: dict[str, np.ndarray],
-        pair: dict,
-        directions: list[tuple[str, str]],
+        jumps: list[tuple[JumpCue, JumpCue]],
     ) -> Optional[list[tuple[str, Path]]]:
         assert self._track is not None
 
@@ -434,14 +429,12 @@ class ExportTrackPanel(QtWidgets.QWidget):
         exports: list[tuple[str, Path]] = []
         title_base = sanitize_filename(self._track.title or audio_path.stem)
 
-        for src_role, dst_role in directions:
-            src = pair.get(src_role, {})
-            dst = pair.get(dst_role, {})
-            src_label = str(src.get("label", "")).strip()
-            dst_label = str(dst.get("label", "")).strip()
+        for src, dst in jumps:
+            src_label = src.label.strip()
+            dst_label = dst.label.strip()
 
-            start = float(np.clip(float(src.get("point")), 0.0, max_time))
-            dest = float(np.clip(float(dst.get("point")), 0.0, max_time))
+            start = float(np.clip(float(src.point), 0.0, max_time))
+            dest = float(np.clip(float(dst.point), 0.0, max_time))
 
             rendered_channels = []
             for ch_idx in range(pcm_arr.shape[1]):
