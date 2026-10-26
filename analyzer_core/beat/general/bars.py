@@ -14,15 +14,15 @@ bass and neighbour-beat differences). An odd bar (restart) costs CB inside a sec
 new grid section starts (the DJ grid itself restarts there).
 
 to_rows: the production tempo rows ([start, end, bpm, inizio = a downbeat, ts, bpm_end]) for the beats and
-downbeats, split wherever the bar length changes, so that ``core.beat_geometry.downbeat_beat_indices``
+downbeats, split wherever the bar length changes, so that ``foundation.beat_geometry.downbeat_beat_indices``
 gives exactly these downbeats.
 """
 from __future__ import annotations
 
 import numpy as np
 
-from core.beat_geometry import downbeat_beat_indices
-from core.tempo_rows import rebuild_grid_from_segments, split_row
+from foundation.beat_geometry import downbeat_beat_indices
+from foundation.tempo_rows import rebuild_grid_from_segments, split_row
 
 from .decode import is_ramp
 
@@ -128,7 +128,7 @@ CTX_PATH = 'assets/weights/downbeat_ctx_hgb.npz'
 def load_ctx_model(path: str = CTX_PATH):
     """The contextual downbeat GBM (beat-level downbeat features and their neighbour differences)."""
     from analyzer_core.cue_and_phrase.phrase_analyzer import _load_numpy_hgb
-    from core.model_files import resolve_model
+    from foundation.model_files import resolve_model
     with np.load(resolve_model(path), allow_pickle=False) as z:
         if str(np.asarray(z['format']).item()) != CTX_FORMAT:
             raise ValueError(f'Contextual downbeat model format mismatch: {path}')

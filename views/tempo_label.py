@@ -3,7 +3,7 @@ from typing import Optional
 import numpy as np
 import pyqtgraph as pg
 
-from core.tempo_rows import bpm_at, segment_end_bpm
+from foundation.tempo_rows import bpm_at, segment_end_bpm
 from .base import ViewPlugin, emphasis_opacity, register_view
 from .phrase import _sticky_label_left
 from .playhead import _outlined_text_item
@@ -137,8 +137,7 @@ class TempoLabelView(ViewPlugin):
     def _rebuild(self, *_args) -> None:
         if self.plot is None:
             return
-        features = self.model.features if isinstance(self.model.features, dict) else {}
-        self._rows = snap_to_beats(tempo_rows(features.get("tempo_segments")), features.get("beats_time_sec"))
+        self._rows = snap_to_beats(tempo_rows(self.model.tempo_segments), self.model.beats)
         while len(self._labels) < len(self._rows):
             label = _outlined_text_item(TEXT_COLOR, anchor=(0.0, 0.0))
             label.setZValue(Z_VALUE)

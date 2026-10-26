@@ -1,4 +1,4 @@
-from PySide6 import QtCore, QtGui, QtWidgets
+from PySide6 import QtGui, QtWidgets
 import pyqtgraph as pg
 from utils.color import key_label_text_color
 from utils.keystrip import key_segment_label, key_segment_rows, key_strip_segments
@@ -58,8 +58,7 @@ class KeyStripView(ViewPlugin):
         self.plot = None
 
     def render_initial(self):
-        f = self.model.features
-        self.duration = float(f.get("duration_sec") or 0.0)
+        self.duration = float(self.model.duration_sec or 0.0)
         self._render()
 
     def update_time(self, _t: float):
@@ -71,18 +70,17 @@ class KeyStripView(ViewPlugin):
     def update_features(self):
         self.render_initial()
 
-    def _on_key_segments_updated(self, payload=None) -> None:
+    def _on_key_segments_updated(self) -> None:
         if self.duration <= 0:
             self.duration = float(self.model.duration_sec or 0.0)
         self._render()
 
     def _render(self) -> None:
-        """Draw the strip, boundaries and labels from the current key segments
-        (rendered just in time)."""
-        features = self.model.features if isinstance(self.model.features, dict) else {}
-        segments = key_strip_segments(features.get("key_segments")) if self.duration > 0 else []
+        """Draw the strip, boundaries and labels from the loaded track's key segments (rendered just in time)."""
+        keys = self.model.key_segments
+        segments = key_strip_segments(keys) if self.duration > 0 else []
         self._strip = segments or None
-        self._rows = key_segment_rows(features.get("key_segments")) if segments else []
+        self._rows = key_segment_rows(keys) if segments else []
         self.img.set_segments(segments, self.y0, self.h)
 
         edges = [t for _idx, start, end in self._rows for t in (start, end)]

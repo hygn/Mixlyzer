@@ -7,7 +7,7 @@ from typing import Any, Optional
 
 import numpy as np
 
-from core.tempo_rows import with_end_bpm
+from foundation.tempo_rows import with_end_bpm
 from utils.cue_points import build_cue_points_np, extract_cue_points
 from utils.jump_cues import build_jump_cues_np, extract_jump_cue_pairs
 from utils.phrases import build_phrase_segments_np, extract_phrase_segments, fill_unassigned, \

@@ -15,7 +15,7 @@ from core.concurrency.process_pool import create_spawn_process_pool
 from optimizer import SkippedOptimizationTrack, optimizer_track_name, skipped_track
 from optimizer.onset_training import _auto_cache_workers, _list_beat_tracks
 from utils.atomic_io import atomic_output_path
-from core.i18n import tr
+from foundation.i18n import tr
 
 ProgressCallback = Callable[[int, str], None]
 BEAT_FRAME_CACHE_FORMAT = "mixlyzer_beat_frame_cache_v1"

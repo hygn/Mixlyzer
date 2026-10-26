@@ -4,7 +4,7 @@ from typing import Callable
 
 from PySide6 import QtCore
 
-from core.i18n import tr
+from foundation.i18n import tr
 from core.library import jobs
 from core.workers.reading_refresh import (
     BATCH_TRACKS, ReadingRefreshRequest, ReadingRefreshResult, ReadingRefreshWorker,

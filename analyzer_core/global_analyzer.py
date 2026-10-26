@@ -8,7 +8,7 @@ from pathlib import Path
 from PySide6 import QtGui
 from typing import Optional
 from analyzer_core.key.chord_key import analyze_keys as analyze_chord_keys
-from core.beat_geometry import downbeat_times
+from foundation.beat_geometry import downbeat_times
 from analyzer_core.beat import melody_contour
 from analyzer_core.beat.frame_features import FRAME_HOP_LENGTH, extract_frame_features
 from analyzer_core.hpss import HPSS_HOP_LENGTH, HPSS_N_FFT, hpss_audio_with_spectra
@@ -26,11 +26,11 @@ from utils.cue_points import (
     lead_in_end_sec,
 )
 from utils.phrases import build_phrase_segments_np
-from core.audio.decoder import COVER_MAX_BYTES, decode_to_memmap, get_total_samples, read_cover, read_metadata
+from foundation.decoder import COVER_MAX_BYTES, decode_to_memmap, get_total_samples, read_cover, read_metadata
 from core.audio.tag_writer import TagWriteError, read_fields, read_picture, tag_format, tag_sources
 from core.music_search.indexing import index_audio
 from core.config import ANALYSIS_SAMPLE_RATE, config
-from core.i18n import tr
+from foundation.i18n import tr
 from core.taskmanager import taskmanager
 from core.linear_segments import build_bpm_segments, build_key_segments, build_phrase_index_rows
 from analyzer_core.utils import prime_physical_core_count
@@ -305,7 +305,7 @@ def precompute_features(path: str, config: config, taskmgr: taskmanager, taskid:
         seg_arr[-1, 1] = max(float(seg_arr[-1, 1]), duration_sec)
     seg_arr = seg_arr.astype(np.float32)
     # The stored rows are the grid (the editor and the views rebuild it from them): the saved beats are theirs.
-    from core.tempo_rows import rebuild_grid_from_segments
+    from foundation.tempo_rows import rebuild_grid_from_segments
     beats_out = rebuild_grid_from_segments(seg_arr)
     beats_out = beats_out[(beats_out >= 0.0) & (beats_out <= duration_sec)]
     features["tempo_segments"] = seg_arr

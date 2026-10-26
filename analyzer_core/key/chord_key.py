@@ -12,7 +12,7 @@ a minor third, a half step up, a whole step -- costs less than a fifth, which is
 commonest misreading). The output signature runs are named major or minor by the song's majority mode.
 
 Weights: ``assets/weights/key_chord_cnn.npz`` (the chord CNN, the chord-in-key tables and the decoder settings);
-a missing file means the shipped ``default_key_chord_cnn.npz`` (``core/model_files.py``). The models were trained
+a missing file means the shipped ``default_key_chord_cnn.npz`` (``foundation/model_files.py``). The models were trained
 on 22050 Hz HPSS harmonic audio; other rates are resampled.
 """
 from __future__ import annotations
@@ -22,7 +22,7 @@ from pathlib import Path
 
 import numpy as np
 
-from core.model_files import resolve_model
+from foundation.model_files import resolve_model
 
 SR = 22050
 HOP = 512

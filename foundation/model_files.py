@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from core.resource_paths import resource_path
+from foundation.resource_paths import resource_path
 
 SHIPPED_PREFIX = "default_"
 

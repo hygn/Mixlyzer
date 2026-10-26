@@ -23,7 +23,7 @@ from typing import Iterable, Optional
 import uuid
 
 from core import reading
-from core.i18n import tr
+from foundation.i18n import tr
 from core.tieup import (
     IDENTITY_URLS, OFFICIAL, UNSPECIFIED, Catalog, TieUp, TrackTieups, Work, describe, is_identity_url, is_lang,
     name_key, name_readings, versions_of,

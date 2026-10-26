@@ -15,7 +15,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 
 from audioengine.native import client
 from core.event_bus import EventBus
-from core.i18n import tr
+from foundation.i18n import tr
 from ui.deck_controls import KNOB, Lamp, Segment, block, blocks_row, label, segments
 from ui.knob import Knob
 from ui.theme import current_theme

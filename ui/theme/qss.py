@@ -18,7 +18,7 @@ from __future__ import annotations
 from dataclasses import asdict
 from string import Template
 
-from core.resource_paths import resource_path
+from foundation.resource_paths import resource_path
 from ui.theme.tokens import Theme
 
 QSS_PATH = resource_path("assets/styles/app.qss")

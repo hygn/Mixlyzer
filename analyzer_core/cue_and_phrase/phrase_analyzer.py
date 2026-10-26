@@ -32,7 +32,7 @@ from analyzer_core.cue_and_phrase import lead_in as _lead_in
 from analyzer_core.cue_and_phrase import refinement as _refine
 from analyzer_core.cue_and_phrase.refinement import REFINEMENT_VERSION
 from utils.atomic_io import atomic_output_path
-from core.model_files import resolve_model
+from foundation.model_files import resolve_model
 
 
 EPS = 1e-9
@@ -815,7 +815,7 @@ def detect_two_stage_phrase_segments(
     return_feature_z: bool = False,
 ):
     """Phrase segments and optional reusable per-beat analysis outputs."""
-    # the settings' path: the user's (retrained) file, else the shipped model (core.model_files)
+    # the settings' path: the user's (retrained) file, else the shipped model (foundation.model_files)
     artifact = load_two_stage_model(str(resolve_model(model_path).resolve()))
     settings = artifact["settings"]
     grid = build_predictor_grid(beat_times_sec, tempo_segments)

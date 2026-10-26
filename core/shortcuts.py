@@ -1,5 +1,5 @@
 """Keyboard shortcuts: the shipped ones in ``assets/shortcuts/default_shortcuts.json``, the user's changes in
-``assets/shortcuts/shortcuts.json`` (the shipped-file convention of the models, ``core.model_files``).
+``assets/shortcuts/shortcuts.json`` (the shipped-file convention of the models, ``foundation.model_files``).
 
 Both map an action (``ui.shortcuts.ACTIONS``) to its key sequences in Qt's portable text ("Ctrl+Shift+Del"); an
 empty list is no shortcut. The user's file holds only the actions changed from the shipped ones, so a missing file
@@ -12,8 +12,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from core.model_files import is_shipped
-from core.resource_paths import resource_path
+from foundation.model_files import is_shipped
+from foundation.resource_paths import resource_path
 from utils.atomic_io import atomic_write_json
 
 DEFAULT_FILE = "assets/shortcuts/default_shortcuts.json"

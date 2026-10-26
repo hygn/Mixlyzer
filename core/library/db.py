@@ -17,7 +17,7 @@ from core.library.records import (
 )
 from core.linear_segments import harmonic_compatible_keys
 from utils.labels import idx_to_labels
-from core.i18n import tr
+from foundation.i18n import tr
 
 
 # Columns that may appear in an ORDER BY clause. Used to validate the

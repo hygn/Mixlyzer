@@ -5,7 +5,7 @@ from typing import Any
 
 import numpy as np
 
-from core.beat_geometry import downbeat_times
+from foundation.beat_geometry import downbeat_times
 
 
 CUE_POINT_PREFIX = "cue_points_np."

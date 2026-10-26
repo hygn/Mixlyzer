@@ -5,7 +5,7 @@ import os
 
 from PySide6 import QtCore
 
-from core.i18n import tr
+from foundation.i18n import tr
 from core.library import jobs
 from core.workers.music_index import MusicIndexRequest, MusicIndexWorker
 

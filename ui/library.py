@@ -10,7 +10,8 @@ from PySide6.QtMultimedia import QMediaDevices
 import os
 from utils.labels import idx_to_labels
 from utils.phrases import PHRASE_LABELS, phrase_display_name
-from core import os_support, reading
+from core import reading
+from foundation import os_support
 from core.library import jobs
 from core.library.records import TrackRow
 from core.library.service import LibraryService
@@ -29,7 +30,7 @@ from ui.edit_panel.key_picker import KeyPickButton
 from ui.edit_panel.flash import flash
 from core.variants import fingerprint as variant_fp, relations as variant_relations
 from core import tieup
-from core.i18n import tr, tr_mark, tr_n
+from foundation.i18n import tr, tr_mark, tr_n
 
 
 def _mmss(sec: float) -> str:

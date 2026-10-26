@@ -18,8 +18,8 @@ from PySide6 import QtCore, QtGui, QtWidgets
 
 from app.startup_console import ConsoleLines, StartupConsole
 from ui.theme import current_theme
-from core.i18n import tr
-from core.resource_paths import resource_path
+from foundation.i18n import tr
+from foundation.resource_paths import resource_path
 
 # fraction of the task done, what it is doing ("" keeps the last)
 Progress = Callable[[float, str], None]
@@ -254,7 +254,7 @@ def _compile_audio_kernels(progress: Progress) -> None:
 
 
 def _warm_ffmpeg(progress: Progress) -> None:
-    from core.audio.decoder import warm_ffmpeg_decoder
+    from foundation.decoder import warm_ffmpeg_decoder
     progress(0.0, tr("ffmpeg: a short silent decode"))
     warm_ffmpeg_decoder()
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import List, Optional, Type
 import time
 
-from PySide6 import QtWidgets, QtGui, QtCore, QtMultimedia
+from PySide6 import QtWidgets, QtGui, QtCore
 import pyqtgraph as pg
 import numpy as np
 
@@ -21,11 +21,11 @@ from ui.mainplotvbx import ScratchViewBox
 from ui.track_info_panel import TrackInfoPanel
 from ui.edit_panel import EditPanel
 from utils.volume import slider_percent_to_linear, trim_dbfs_to_linear
-from core.resource_paths import resource_path
-from core.beat_geometry import downbeat_beat_indices, segment_time_signature
-from core.tempo_rows import segment_end_bpm
+from foundation.resource_paths import resource_path
+from foundation.beat_geometry import downbeat_beat_indices, segment_time_signature
+from foundation.tempo_rows import segment_end_bpm
 from core.timeline import step_window
-from core.i18n import tr
+from foundation.i18n import tr
 from ui.theme import current_theme
 
 # the tempo fader's step in each range (+-%), as rekordbox's; WIDE (100: 0 - 200 %) by whole percents
@@ -644,7 +644,6 @@ class MainPane(QtWidgets.QWidget):
     def _on_time(self, t: float):
         self.current_time = t
         self.track_info.update_record_pix(t)
-        f = self.model.features
         if hasattr(self, "track_edit"):
             self.track_edit.update_time(t)
         # the main view's range is set when the window changes (auto-range is off): here only
@@ -683,9 +682,8 @@ class MainPane(QtWidgets.QWidget):
     def _rebuild_beat_positions(self) -> None:
         """Per beat: its 0-based position in the bar and the bar's meter, from the same
         downbeats the beatgrid view draws (downbeat_beat_indices)."""
-        f = self.model.features if isinstance(self.model.features, dict) else {}
-        beats = np.asarray(f.get("beats_time_sec") if f.get("beats_time_sec") is not None else [], dtype=float)
-        segments = f.get("tempo_segments")
+        beats = self.model.beats
+        segments = self.model.tempo_segments
         self._beat_times = beats
         self._beat_in_bar = np.zeros(beats.size, dtype=np.int64)
         self._beat_meter = np.full(beats.size, 4, dtype=np.int64)

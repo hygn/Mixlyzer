@@ -21,8 +21,8 @@ from typing import Callable, Optional
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
-from core import os_support
-from core.i18n import tr, tr_mark
+from foundation import os_support
+from foundation.i18n import tr, tr_mark
 from utils.phrases import PHRASE_LABELS, phrase_display_name
 
 # the groups, in the settings' order (translated where shown; Key and CUE as they are)

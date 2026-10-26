@@ -30,7 +30,7 @@ from optimizer.beat_frames import cache_path, ensure_frames, list_grid_tracks, r
 from optimizer.beat_grid_check import USABLE_SEC, GridCheck, from_scores, missed_bar_time, usable_error
 from optimizer.refine_onset_optimizer import _group_key
 from optimizer import model_start as MS
-from core.i18n import tr
+from foundation.i18n import tr
 
 ProgressCallback = Callable[[int, str], None]
 # candidates: steps of sqrt(2) around the shipped costs
@@ -78,8 +78,8 @@ def _score_song(job):
     from threadpoolctl import threadpool_limits
     from analyzer_core.beat.general import bars as B, critic as C, decode as D, tcn as T
     from analyzer_core.beat.learned_onset import REFINE_ONSET_PATH, refine_onset_activation
-    from core.beat_geometry import downbeat_times
-    from core.tempo_rows import rebuild_grid_from_segments
+    from foundation.beat_geometry import downbeat_times
+    from foundation.tempo_rows import rebuild_grid_from_segments
     sections_c, resets_c, bars_c = grid
     frames = read_frames(cache_path(Path(cache_dir_text), str(track["uid"])), track)
     if frames is None:

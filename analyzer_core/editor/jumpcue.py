@@ -11,7 +11,7 @@ from analyzer_core.hpss import hpss_audio_with_spectra
 from core.config import ANALYSIS_SAMPLE_RATE, config
 from utils.cue_points import autocue_time_sec
 from utils.jump_cues import autocue_jump_pair, build_jump_cues_np
-from core.i18n import tr
+from foundation.i18n import tr
 
 def reanalyze_jumpCUE(path:str, cfg:config, beats_time_arr:np.ndarray, *,
     tempo_segments: Optional[np.ndarray] = None,

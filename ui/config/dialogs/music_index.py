@@ -6,7 +6,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QVBoxLayout,
 )
-from core.i18n import tr, tr_n
+from foundation.i18n import tr, tr_n
 
 
 class MusicIndexProgressDialog(QDialog):

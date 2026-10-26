@@ -12,10 +12,10 @@ import numpy as np
 from analyzer_core.beat.frame_features import extract_frame_features
 from analyzer_core.hpss import hpss_audio
 from analyzer_core.beat.learned_onset import ONSET_CHANNEL_NAMES, onset_channels
-from core.audio.decoder import decode_to_memmap
+from foundation.decoder import decode_to_memmap
 from optimizer import SkippedOptimizationTrack, library_tracks, skipped_track
 from utils.atomic_io import atomic_output_path
-from core.i18n import tr
+from foundation.i18n import tr
 
 
 ONSET_FEATURE_CACHE_FORMAT = "mixlyzer_onset_feature_cache_v4"

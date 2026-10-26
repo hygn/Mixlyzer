@@ -7,7 +7,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 
 from ui.edit_panel.icons import icon
 from ui.theme import current_theme
-from core.i18n import tr
+from foundation.i18n import tr
 
 SLOT_ROWS = 4
 SLOT_COLS = 2

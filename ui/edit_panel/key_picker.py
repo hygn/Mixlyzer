@@ -7,7 +7,7 @@ from PySide6 import QtCore, QtWidgets
 from utils.color import key_cmap_color, key_label_text_color
 from utils.keystrip import key_segment_label
 from utils.labels import ALPHANUMERIC_LABELS, idx_to_labels
-from core.i18n import tr
+from foundation.i18n import tr
 
 # key index for each Alphanumeric cell: ALPHANUMERIC_INDEX[(number, letter)]
 ALPHANUMERIC_INDEX = {(int(c[:-1]), c[-1]): i for i, c in enumerate(ALPHANUMERIC_LABELS)}

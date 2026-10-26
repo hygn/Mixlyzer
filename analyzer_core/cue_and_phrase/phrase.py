@@ -15,7 +15,6 @@ from pathlib import Path
 
 import numpy as np
 
-from core.model_files import resolve_model
 
 from analyzer_core.hpss import HpssSpectra
 

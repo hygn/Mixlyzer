@@ -31,7 +31,7 @@ from optimizer.onset_training import (
     beat_targets,
     samples_from_inputs,
 )
-from core.i18n import tr
+from foundation.i18n import tr
 
 ProgressCallback = Callable[[int, str], None]
 # Share of each sample kind kept for training (near a beat / beat subdivision / other),

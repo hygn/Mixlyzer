@@ -29,7 +29,7 @@ import numpy as np
 from sklearn.model_selection import GroupKFold
 
 from analyzer_core.key import chord_key as CK
-from core.beat_geometry import downbeat_times
+from foundation.beat_geometry import downbeat_times
 from core.concurrency.process_pool import create_spawn_process_pool
 from optimizer import SkippedOptimizationTrack, optimizer_track_name, skipped_track
 from optimizer import model_start as MS
@@ -37,7 +37,7 @@ from optimizer.beat_tcn_optimizer import _rate
 from optimizer.onset_training import _auto_cache_workers, _list_beat_tracks
 from optimizer.refine_onset_optimizer import _group_key
 from utils.atomic_io import atomic_output_path
-from core.i18n import tr
+from foundation.i18n import tr
 
 ProgressCallback = Callable[[int, str], None]
 KEY_FRAME_CACHE_FORMAT = "mixlyzer_key_frame_cache_v1"

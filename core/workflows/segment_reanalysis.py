@@ -12,7 +12,7 @@ from core.workers.segment_reanalysis import SegmentReanalysisWorker
 from core.event_bus import EventBus
 from core.track.model import DataModel
 from utils.jump_cues import extract_jump_cue_pairs
-from core.i18n import tr
+from foundation.i18n import tr
 
 
 StatusCallback = Callable[[str], None]

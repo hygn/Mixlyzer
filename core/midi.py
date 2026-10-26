@@ -31,9 +31,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from audioengine.native import client as engine
-from core.i18n import tr_mark
-from core.model_files import is_shipped
-from core.resource_paths import resource_path
+from foundation.i18n import tr_mark
+from foundation.model_files import is_shipped
+from foundation.resource_paths import resource_path
 from utils.atomic_io import atomic_write_json
 
 DEFAULT_FILE = "assets/midi/default_midi.json"
@@ -234,7 +234,7 @@ BY_ID = {a.id: a for a in ACTIONS}
 
 
 def action_label(action: Action) -> str:
-    from core.i18n import tr
+    from foundation.i18n import tr
     return tr(action.text).format(**action.args) if action.args else tr(action.text)
 
 

@@ -37,7 +37,7 @@ from analyzer_core.cue_and_phrase.refinement import (
     shift_candidates,
 )
 from optimizer import phrase_lead_in as _lead_in
-from core.i18n import tr
+from foundation.i18n import tr
 
 ProgressCallback = Callable[[int, str], None]
 

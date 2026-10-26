@@ -3,10 +3,10 @@ import os
 import sys
 from pathlib import Path
 from PySide6 import QtWidgets
-from core import i18n, os_support
+from foundation import i18n, os_support
 from core.config import load_cfg, ui_language, unreadable_settings
-from core.resource_paths import app_folder
-from core.i18n import tr
+from foundation.resource_paths import app_folder
+from foundation.i18n import tr
 from core.library_version import (
     ensure_current_version_file,
     version_file_path,

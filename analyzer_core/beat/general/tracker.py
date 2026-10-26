@@ -23,7 +23,7 @@ import json
 
 import numpy as np
 
-from core.tempo_rows import rebuild_grid_from_segments
+from foundation.tempo_rows import rebuild_grid_from_segments
 
 from . import bars as B
 from . import critic as C
@@ -64,7 +64,7 @@ KNOBS_PATH = 'assets/weights/beat_decoder.json'    # the user's; missing: the sh
 def load_knobs(path: str | None) -> Knobs:
     """The costs in a decoder settings file (JSON); no path: the shipped costs."""
     path = path or KNOBS_PATH
-    from core.model_files import resolve_model
+    from foundation.model_files import resolve_model
     with open(resolve_model(path), encoding='utf-8') as f:
         data = json.load(f)
     if data.get('format') != KNOBS_FORMAT:

@@ -55,7 +55,7 @@ class phraselabelnames:
 
 @dataclass
 class viewconfig:
-    language: str  # the UI's (core.i18n.LANGUAGES; "" = the operating system's), applied at the next start
+    language: str  # the UI's (foundation.i18n.LANGUAGES; "" = the operating system's), applied at the next start
     display_waveform: bool
     display_beatgrid: bool
     display_keystrip: bool

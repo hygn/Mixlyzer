@@ -4,10 +4,10 @@ from PySide6 import QtGui
 from PySide6.QtWidgets import (
     QDialog, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QListWidget, QListWidgetItem, QProgressBar,
-    QDialogButtonBox, QPushButton, QTabWidget
+    QDialogButtonBox, QTabWidget
 )
 from core.event_bus import EventBus
-from core.i18n import tr, tr_mark
+from foundation.i18n import tr, tr_mark
 from core.taskmanager import ANALYSIS, TIEUP_LOOKUP
 from ui.elided_label import ElidedLabel
 

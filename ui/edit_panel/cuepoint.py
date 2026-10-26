@@ -8,7 +8,7 @@ from ui.edit_panel.icons import icon
 from ui.edit_panel.jumpcue import format_cue_time
 from ui.edit_panel.quantize import quantize_to_beat_or_edge
 from utils.jumpcue_colors import CUE_POINT_COLORS, get_cue_point_color
-from core.i18n import tr
+from foundation.i18n import tr
 
 # the playhead is on a CUE point this close to it (CALL puts it exactly there)
 CUE_AT_PLAYHEAD_SEC = 0.05

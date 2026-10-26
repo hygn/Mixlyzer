@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from core.tempo_rows import ramp_beat_times
+from foundation.tempo_rows import ramp_beat_times
 
 from .decode import J as SECTION_COST, is_ramp, steady_beats
 

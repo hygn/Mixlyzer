@@ -1,6 +1,5 @@
-from pathlib import Path
 from PySide6 import QtWidgets, QtGui
-from core.resource_paths import resource_path
+from foundation.resource_paths import resource_path
 
 def load_fonts_and_set_global(app: QtWidgets.QApplication):
     # 1) Register bundled fonts (all font files under the given directory)

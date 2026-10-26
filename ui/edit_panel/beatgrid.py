@@ -8,14 +8,14 @@ import numpy as np
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from analyzer_core.editor.beatgrid import canonical_inizio, shift_grid_in_seg
-from core.tempo_rows import (bpm_at, is_ramp_row, rebuild_grid_from_segments, retempo_row, segment_end_bpm, split_row,
+from foundation.tempo_rows import (bpm_at, is_ramp_row, rebuild_grid_from_segments, retempo_row, segment_end_bpm, split_row,
                              with_end_bpm)
-from core.beat_geometry import MAX_BEATS_PER_BAR
+from foundation.beat_geometry import MAX_BEATS_PER_BAR
 from ui.edit_panel.blocks import mode_column, rule_cell
 from ui.edit_panel.icons import badged_icon, icon
 from ui.theme import current_theme
 from ui.edit_panel.styles import BUTTON_STYLESHEET, WARNING_BUTTON_STYLESHEET
-from core.i18n import tr, tr_mark
+from foundation.i18n import tr, tr_mark
 from ui.live_label import LiveLabel
 
 # time signatures with their own button; the rest are under Custom

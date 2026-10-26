@@ -2,7 +2,7 @@
 
     uv run python build/translations.py
 
-extracts the texts of every tr / tr_n / tr_ctx / tr_mark call (core.i18n), with the comments above them that
+extracts the texts of every tr / tr_n / tr_ctx / tr_mark call (foundation.i18n), with the comments above them that
 start with ``TRANSLATORS:``, into assets/i18n/mixlyzer.pot and merges it into the catalog of each language of
 assets/i18n/languages.json (assets/i18n/languages/<tag>/mixlyzer.po, made when missing; English is the source):
 a new text comes in untranslated, a changed one keeps its old translation marked fuzzy (left out by the app until
@@ -19,9 +19,9 @@ from babel.messages.frontend import CommandLineInterface
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from core.i18n import CATALOG_DIR, DOMAIN, LANGUAGES, SOURCE_LANGUAGE  # noqa: E402
+from foundation.i18n import CATALOG_DIR, DOMAIN, LANGUAGES, SOURCE_LANGUAGE  # noqa: E402
 
-SOURCES = ["app", "core", "ui", "views", "utils", "optimizer", "analyzer_core", "third_party"]
+SOURCES = ["app", "foundation", "core", "ui", "views", "utils", "optimizer", "analyzer_core", "third_party"]
 KEYWORDS = ["tr", "tr_n:1,2", "tr_ctx:1c,2", "tr_mark"]
 TEMPLATE = Path("assets/i18n") / f"{DOMAIN}.pot"
 

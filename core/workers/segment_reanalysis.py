@@ -20,7 +20,7 @@ from analyzer_core.editor.jumpcue import reanalyze_jumpCUE
 from analyzer_core.editor.phrase import reanalyze_phrases
 from core.config import config
 from core.concurrency.process_worker import SpawnProcessWorker, install_parent_watchdog
-from core.i18n import tr
+from foundation.i18n import tr
 
 
 class SegmentReanalysisWorker(SpawnProcessWorker):

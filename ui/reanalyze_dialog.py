@@ -6,7 +6,7 @@ from __future__ import annotations
 from PySide6 import QtWidgets
 
 from core.config import analysisconfig
-from core.i18n import tr, tr_n
+from foundation.i18n import tr, tr_n
 from ui.elided_label import ElidedLabel
 
 class ReanalyzeDialog(QtWidgets.QDialog):

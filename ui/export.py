@@ -8,12 +8,13 @@ from urllib.parse import unquote, urlparse
 import numpy as np
 from PySide6 import QtCore, QtWidgets
 import soundfile as sf
-from core import os_support, tieup
+from core import tieup
+from foundation import os_support
 from core.analysis_library import jobs as analysis_jobs
 from core.library import jobs
 from core.library.records import TrackRow
 from core.library.service import LibraryService
-from core.audio.decoder import decode_to_memmap, get_samplerate
+from foundation.decoder import decode_to_memmap, get_samplerate
 from core.audio.tag_writer import TEXT_FIELDS, TagWriteError, tag_format, write_tags
 from core.track.model import DataModel
 from third_party.rekordbox import sanitize_filename
@@ -23,7 +24,7 @@ from utils.jump_cues import extract_jump_cue_pairs
 from utils.jumprender import jump_renderer
 from utils.labels import idx_to_labels
 from ui.theme import current_theme
-from core.i18n import tr
+from foundation.i18n import tr
 
 
 class ExportTrackPanel(QtWidgets.QWidget):

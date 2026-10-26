@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from core.model_files import resolve_model
+from foundation.model_files import resolve_model
 
 DILATIONS = (1, 2, 4, 8, 16, 32, 64, 128, 256)
 K = 5

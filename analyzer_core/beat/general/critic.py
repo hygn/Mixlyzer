@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from core.model_files import resolve_model
+from foundation.model_files import resolve_model
 
 from .decode import is_ramp
 from .tcn import frame_inputs

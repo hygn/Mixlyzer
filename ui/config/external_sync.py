@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (
 )
 
 from core.external_sync import SAMPLES_ADDRESS, TIME_ADDRESS
-from core.i18n import tr
+from foundation.i18n import tr
 from ui.config.scroll import scroll_page
 from ui.live_label import LiveLabel
 

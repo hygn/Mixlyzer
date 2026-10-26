@@ -30,7 +30,7 @@ from core.config import (
 )
 from audioengine.native.client import booth_eq_db_to_knob, level_db_to_knob
 from core.event_bus import EventBus
-from core.i18n import tr
+from foundation.i18n import tr
 from ui.config.analysis import AnalysisSettingsMixin, build_analysis_tab
 from ui.config.external_sync import (
     ExternalSyncSettingsMixin,

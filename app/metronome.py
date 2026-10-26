@@ -2,7 +2,7 @@ from typing import Callable, Optional
 
 from PySide6 import QtCore
 import numpy as np
-from core.resource_paths import setting_path
+from foundation.resource_paths import setting_path
 
 try:
     import soundfile as sf

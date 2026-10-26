@@ -1,9 +1,9 @@
-from PySide6 import QtCore, QtGui, QtWidgets
+from PySide6 import QtGui, QtWidgets
 import pyqtgraph as pg
 import numpy as np
 from .base import ViewPlugin, emphasis_opacity, emphasis_width, register_view
 from core.event_bus import EventBus
-from core.beat_geometry import downbeat_times
+from foundation.beat_geometry import downbeat_times
 
 @register_view("BeatgridView")
 class BeatgridView(ViewPlugin):
@@ -68,11 +68,14 @@ class BeatgridView(ViewPlugin):
         self.plot = None
 
     def render_initial(self):
-        f = self.model.features or {}
-        self.beats_time = f.get("beats_time_sec")  # seconds from start
-        self.downbeats_time = downbeat_times(self.beats_time, f.get("tempo_segments"))
-        self.duration = float(self.model.duration_sec or 0.0)
+        self._read_grid()
         self._refresh_lines(force=True)
+
+    def _read_grid(self) -> None:
+        """The beats and downbeats (seconds from the start) of the loaded track's beatgrid."""
+        self.beats_time = self.model.beats
+        self.downbeats_time = downbeat_times(self.beats_time, self.model.tempo_segments)
+        self.duration = float(self.model.duration_sec or 0.0)
 
     # bus callbacks
     def _on_time(self, _t: float):
@@ -144,10 +147,7 @@ class BeatgridView(ViewPlugin):
         self._update_item_offset()
     
     def _on_beatgrid_updated(self, bg_seg=None):
-        f = self.model.features or {}
-        self.beats_time = f.get("beats_time_sec")
-        self.downbeats_time = downbeat_times(self.beats_time, f.get("tempo_segments"))
-        self.duration = float(self.model.duration_sec or 0.0)
+        self._read_grid()
         self._cached_track_range = None
         self._refresh_lines(force=True)
 

@@ -22,7 +22,7 @@ from utils.phrases import (
     phrase_color,
     phrase_display_name,
 )
-from core.i18n import tr, tr_mark
+from foundation.i18n import tr, tr_mark
 from ui.live_label import LiveLabel
 
 # boundary nudges follow the step: icon -> (tooltip by one beat, by one bar), translated where shown

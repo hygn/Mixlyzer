@@ -3,9 +3,9 @@ from __future__ import annotations
 import numpy as np
 from PySide6 import QtCore, QtWidgets
 
-from core.beat_geometry import bar_beat_position, downbeat_beat_indices
+from foundation.beat_geometry import bar_beat_position, downbeat_beat_indices
 from ui.edit_panel.icons import icon
-from core.i18n import tr
+from foundation.i18n import tr
 
 class BeatCounterMixin:
     """BeatCounter section: hold Count to count beats passing under the playhead."""

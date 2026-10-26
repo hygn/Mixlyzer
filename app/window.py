@@ -8,7 +8,8 @@ from app.print_hook import install_print_hook, log_environment_info
 from audioengine.native.client import (
     ACT_DECK_SHIFT, ACT_JUMP_A, EQ_MODES, FADER_CURVES, MIDI_EVENT_GUI, MIDI_EVENT_HOTCUE_SET, MIDI_EVENT_RELATIVE,
 )
-from core import midi, os_support, shortcuts
+from core import midi, shortcuts
+from foundation import os_support
 from core.event_bus import EventBus
 from core.track.model import DataModel
 from core.timeline import TimelineCoordinator
@@ -44,9 +45,9 @@ MIDI_STEPS_MAX = 16
 
 from core.workflows.segment_reanalysis import SegmentReanalysisWorkflow
 from core.config import config, load_cfg, save_cfg, save_deck, search_settings
-from core.beat_geometry import downbeat_beat_indices
-from core.i18n import tr
-from core.resource_paths import resource_path
+from foundation.beat_geometry import downbeat_beat_indices
+from foundation.i18n import tr
+from foundation.resource_paths import resource_path
 
 class AppWindow(QtWidgets.QMainWindow):
     _sig_metronome_set_beats = QtCore.Signal(object, object, float)
@@ -656,15 +657,8 @@ class AppWindow(QtWidgets.QMainWindow):
         self._sync_metronome_beats()
 
     def _sync_metronome_beats(self):
-        beats = None
-        downbeats = None
-        if self.model.features:
-            beats = self.model.features.get("beats_time_sec")
-            if beats is not None:
-                downbeats = downbeat_beat_indices(
-                    beats,
-                    self.model.features.get("tempo_segments"),
-                )
+        beats = self.model.beats if self.model.beats.size else None
+        downbeats = downbeat_beat_indices(beats, self.model.tempo_segments) if beats is not None else None
         self._sig_metronome_set_beats.emit(beats, downbeats, float(self.tl.current_time))
 
     # External Sync's questions, answered from the library's snapshot (in memory)

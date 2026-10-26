@@ -6,7 +6,7 @@ from analyzer_core.cue_and_phrase import detect_phrase_segments
 from analyzer_core.global_analyzer import fast_load
 from analyzer_core.hpss import hpss_audio_with_spectra
 from core.config import ANALYSIS_SAMPLE_RATE, config
-from core.i18n import tr
+from foundation.i18n import tr
 
 # the full analysis's floor: fewer beats are too short for the phrase model
 MIN_BEATS = 17

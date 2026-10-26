@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from core.tempo_rows import is_ramp_row, ramp_beat_times, segment_end_bpm
+from foundation.tempo_rows import is_ramp_row, ramp_beat_times, segment_end_bpm
 
 
 DEFAULT_TIME_SIGNATURE = 4
@@ -130,7 +130,7 @@ def downbeat_beat_indices(beat_times, tempo_segments) -> np.ndarray:
 
     out: list[int] = []
     for seg in arr:
-        start, end, bpm = seg[0], seg[1], seg[2]
+        start, end = seg[0], seg[1]
         inizio = seg[3] if seg.size >= 4 else start
         if not (np.isfinite(start) and np.isfinite(end) and np.isfinite(inizio)):
             continue

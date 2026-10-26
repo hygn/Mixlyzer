@@ -36,8 +36,8 @@ from typing import Optional
 import numpy as np
 from PySide6 import QtCore
 
-from core import os_support
-from core.resource_paths import resource_path
+from foundation import os_support
+from foundation.resource_paths import resource_path
 from utils.volume import trim_db_to_knob
 
 MAGIC = int.from_bytes(b"MXAUDIC1", "little")

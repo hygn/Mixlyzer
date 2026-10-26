@@ -19,7 +19,7 @@ from third_party.rekordbox import (
     rekordbox_track_key_for_row,
 )
 from utils.atomic_io import atomic_write_text
-from core.i18n import tr
+from foundation.i18n import tr
 
 
 @dataclass(frozen=True)

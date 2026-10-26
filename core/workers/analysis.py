@@ -8,7 +8,7 @@ from threadpoolctl import threadpool_limits
 
 from analyzer_core.global_analyzer import precompute_features
 from core.config import config
-from core.i18n import tr
+from foundation.i18n import tr
 from core.concurrency.process_worker import SpawnProcessWorker, install_parent_watchdog
 
 

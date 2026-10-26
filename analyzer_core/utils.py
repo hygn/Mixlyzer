@@ -48,7 +48,7 @@ def prime_physical_core_count() -> None:
     every analysis process). The same number is read here from
     GetLogicalProcessorInformationEx; on any failure loky keeps its own lookup.
     """
-    from core import os_support
+    from foundation import os_support
 
     if not os_support.IS_WINDOWS:
         return

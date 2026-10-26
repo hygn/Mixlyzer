@@ -22,7 +22,7 @@ from PySide6.QtMultimedia import QAudioFormat, QAudioSource, QMediaDevices
 
 from core.config import save_deck
 from core.event_bus import EventBus
-from core.i18n import tr
+from foundation.i18n import tr
 from core.library import jobs
 from core.music_search.listening import Listening
 from core.music_search.search import SearchResult, search_audio

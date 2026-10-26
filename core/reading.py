@@ -52,7 +52,7 @@ from typing import Callable, Iterable
 from anyascii import anyascii
 from rapidfuzz import fuzz, process
 
-from core.i18n import tr, tr_mark
+from foundation.i18n import tr, tr_mark
 
 READING_SLOTS = 7  # readings stored per text (language readings and the user's own)
 # a reading's source -> its name (translated where shown)
@@ -385,7 +385,7 @@ def _taiwan_readings() -> dict[str, tuple[str, str]]:
     """Han character -> (mainland, Taiwan) Mandarin, where they differ (Unihan kMandarin)."""
     global _taiwan
     if _taiwan is None:
-        from core.resource_paths import resource_path
+        from foundation.resource_paths import resource_path
         table = {}
         for line in resource_path("assets/readings/unihan_taiwan_mandarin.tsv").read_text(encoding="utf-8").splitlines():
             if line and not line.startswith("#"):
@@ -460,7 +460,7 @@ _tables: dict[str, dict[str, str]] = {}
 def _unihan_table(name: str) -> dict[str, str]:
     """Han character -> reading, from assets/readings/<name>.tsv (Unihan)."""
     if name not in _tables:
-        from core.resource_paths import resource_path
+        from foundation.resource_paths import resource_path
         text = resource_path(f"assets/readings/{name}.tsv").read_text(encoding="utf-8")
         _tables[name] = dict(line.split("\t")[:2] for line in text.splitlines() if line and not line.startswith("#"))
     return _tables[name]

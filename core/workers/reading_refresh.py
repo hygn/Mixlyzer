@@ -12,7 +12,7 @@ from typing import Any
 from PySide6 import QtCore
 
 from core.concurrency.process_worker import SpawnProcessWorker, install_parent_watchdog
-from core.i18n import tr
+from foundation.i18n import tr
 
 # tracks per write job: the owner's other jobs (the GUI's reads, an analysis stored) wait at most about this many
 # tracks' writing

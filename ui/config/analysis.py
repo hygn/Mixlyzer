@@ -21,8 +21,8 @@ from PySide6.QtWidgets import (
 )
 
 from core.config import cuepointconfig, cuepointrule
-from core.i18n import tr, tr_n
-from core.resource_paths import project_root
+from foundation.i18n import tr, tr_n
+from foundation.resource_paths import project_root
 from core.workflows.optimizer import OptimizerWorkflow
 from ui.config.dialogs import (
     BeatParameterOptimizeDialog,

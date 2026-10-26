@@ -9,7 +9,8 @@ from pathlib import Path
 
 import numpy as np
 
-from core import os_support
+from foundation import os_support
+from foundation.resource_paths import project_root
 
 try:
     import soundfile as sf  # lightweight header probe
@@ -19,9 +20,8 @@ except Exception:  # pragma: no cover
 
 _ffmpeg_warm_lock = threading.Lock()
 _ffmpeg_warmed = False
-_PROJECT_ROOT = Path(__file__).resolve().parents[2]
-# an FFmpeg next to the app (ffmpeg.exe on Windows), else the one on PATH
-_BUNDLED_FFMPEG = _PROJECT_ROOT / ("ffmpeg.exe" if os_support.IS_WINDOWS else "ffmpeg")
+# an FFmpeg next to the app (ffmpeg.exe on Windows; a package's in _internal), else the one on PATH
+_BUNDLED_FFMPEG = project_root() / ("ffmpeg.exe" if os_support.IS_WINDOWS else "ffmpeg")
 
 
 @lru_cache(maxsize=1)

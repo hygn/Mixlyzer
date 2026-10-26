@@ -11,7 +11,7 @@ from pathlib import Path
 # launched from elsewhere. Anchoring to this module's location keeps the
 # lookup stable regardless of CWD.
 #
-# This module lives at ``<project_root>/core/resource_paths.py`` so the project
+# This module lives at ``<project_root>/foundation/resource_paths.py`` so the project
 # root is ``parents[1]``; in a PyInstaller 6 build that is the package's ``_internal`` folder, where the
 # bundled files are (the module's path is there), so no sys._MEIPASS handling is needed.
 _PROJECT_ROOT = Path(__file__).resolve().parents[1]

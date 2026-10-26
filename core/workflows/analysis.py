@@ -18,7 +18,7 @@ from dataclasses import replace
 
 from core.config import load_cfg
 from core.workers.analysis import AnalysisWorker
-from core.i18n import tr
+from foundation.i18n import tr
 
 
 # the library's and a request's listener: the result (features, properties) of its track

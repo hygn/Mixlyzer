@@ -9,8 +9,8 @@ from PySide6 import QtWidgets, QtGui, QtCore
 from ui.theme import current_theme
 from core.config import config
 from utils.labels import ALPHANUMERIC_LABELS, CLASSICAL_LABELS
-from core.i18n import tr
-from core.resource_paths import setting_path
+from foundation.i18n import tr
+from foundation.resource_paths import setting_path
 from ui.knob import Knob
 
 

@@ -32,7 +32,7 @@ from typing import Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 
-from core.beat_geometry import downbeat_beat_indices
+from foundation.beat_geometry import downbeat_beat_indices
 
 from .vocal_context import JumpContextConfig, JumpPointScore, VocalContext, jump_point_scores
 

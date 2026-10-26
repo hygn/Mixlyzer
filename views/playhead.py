@@ -1,7 +1,7 @@
 from PySide6 import QtCore, QtGui, QtWidgets
 import pyqtgraph as pg
 from .base import ViewPlugin, register_view
-from core.beat_geometry import downbeat_beat_indices, bar_beat_label
+from foundation.beat_geometry import downbeat_beat_indices, bar_beat_label
 
 
 class _OutlinedText(QtWidgets.QGraphicsTextItem):
@@ -66,7 +66,7 @@ class PlayHead(ViewPlugin):
         self._last_label = None
         self.plot = None
 
-        self._set_beats(self.model.features)
+        self._set_beats()
 
         self.bus.sig_window_changed.connect(self.update_window)
         self.bus.sig_time_changed.connect(self.update_time)
@@ -99,11 +99,11 @@ class PlayHead(ViewPlugin):
         self._update_playhead()
 
     def _on_features_loaded(self):
-        self._set_beats(self.model.features)
+        self._set_beats()
         self._update_beat_label()
 
     def _on_beatgrid_edited(self, _payload=None):
-        self._set_beats(self.model.features)
+        self._set_beats()
         self._update_beat_label()
 
     def _update_playhead(self):
@@ -146,22 +146,8 @@ class PlayHead(ViewPlugin):
         y = float(ymax) - y_pad
         self.beat_label.setPos(x, y)
 
-    def _set_beats(self, features):
-        beats = features.get("beats_time_sec") if features else None
-        if beats is None:
-            self._beats_time = ()
-            self._downbeats = ()
-            return
-        try:
-            values = tuple(float(b) for b in beats)
-        except TypeError:
-            self._beats_time = ()
-            self._downbeats = ()
-            return
-        self._beats_time = values if values else ()
-        # Downbeat positions as beat indices (drift-free); cached for cheap
-        # per-frame bar.beat lookups.
-        self._downbeats = downbeat_beat_indices(
-            self._beats_time,
-            features.get("tempo_segments") if features else None,
-        )
+    def _set_beats(self):
+        """The loaded track's beats, and its downbeats as beat indices (drift-free), cached for cheap per-frame
+        bar.beat lookups."""
+        self._beats_time = tuple(float(b) for b in self.model.beats)
+        self._downbeats = downbeat_beat_indices(self._beats_time, self.model.tempo_segments)

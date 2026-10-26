@@ -9,7 +9,7 @@ from typing import Any, Callable
 from PySide6 import QtCore
 
 from core.concurrency.process_worker import SpawnProcessWorker, install_parent_watchdog
-from core.i18n import tr
+from foundation.i18n import tr
 
 
 ProgressCallback = Callable[[int, str], None]

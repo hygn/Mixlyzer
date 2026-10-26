@@ -18,7 +18,7 @@ from analyzer_core.self_correlation.jump_point_model import (
 )
 from optimizer import model_start as MS
 from utils.atomic_io import atomic_output_path, atomic_write_json, atomic_write_text
-from core.i18n import tr
+from foundation.i18n import tr
 
 
 PAIR_FEATURES = ("long", "short", "pre", "masking")
@@ -810,7 +810,7 @@ class JumpCueOptimizationResult:
 
 def _analysis_settings(phrase_parameter_path: Path) -> dict:
     from core.config import ANALYSIS_SAMPLE_RATE, default_cfg
-    from core.resource_paths import project_root
+    from foundation.resource_paths import project_root
 
     values = dict(default_cfg().to_dict()["analysisconfig"])
     try:

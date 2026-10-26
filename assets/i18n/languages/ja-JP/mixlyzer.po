@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-26 23:22+0900\n"
+"POT-Creation-Date: 2026-10-26 23:45+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ja_JP\n"
@@ -277,42 +277,42 @@ msgstr "ライブラリを読み込み中"
 msgid "Building the window"
 msgstr "ウィンドウを作成中"
 
-#: app/window.py:62
+#: app/window.py:63
 msgid "Core objects and playback"
 msgstr "コアオブジェクトと再生"
 
-#: app/window.py:150
+#: app/window.py:151
 msgid "Main view, editor and library"
 msgstr "メインビュー、エディター、ライブラリ"
 
-#: app/window.py:156 app/window.py:182 ui/config/window.py:66
+#: app/window.py:157 app/window.py:183 ui/config/window.py:66
 msgid "Settings"
 msgstr "環境設定"
 
-#: app/window.py:165
+#: app/window.py:166
 msgid "Dialogs, workflows and metronome"
 msgstr "ダイアログ、ワークフロー、メトロノーム"
 
-#: app/window.py:173 core/midi.py:59 ui/config/playback.py:327
+#: app/window.py:174 core/midi.py:59 ui/config/playback.py:327
 msgid "Mixer"
 msgstr "ミキサー"
 
-#: app/window.py:183 ui/workers.py:28
+#: app/window.py:184 ui/workers.py:28
 msgid "Workers"
 msgstr "タスク"
 
 # | msgid "Tie-ups"
-#: app/window.py:184 ui/shortcuts.py:155 ui/tieup_works.py:31
+#: app/window.py:185 ui/shortcuts.py:155 ui/tieup_works.py:31
 #: ui/tieup_works.py:204 ui/tieup_works.py:259 ui/tieup_works.py:264
 #: ui/tieup_works.py:273 ui/tieup_works.py:336
 msgid "Tie-up Works"
 msgstr "タイアップ作品"
 
-#: app/window.py:185
+#: app/window.py:186
 msgid "Open Source"
 msgstr "オープンソース"
 
-#: app/window.py:186
+#: app/window.py:187
 msgid "About"
 msgstr "情報"
 
@@ -320,55 +320,55 @@ msgstr "情報"
 # | Playback > " "Audio engine)."
 # Audio
 # | > " "Engine)."
-#: app/window.py:378
+#: app/window.py:379
 msgid "MIDI needs the native audio engine (Settings > Audio > Engine)."
 msgstr "MIDI は Native オーディオエンジンでのみ動作します（設定 > オーディオ > エンジン）。"
 
 # | msgid "MIDI input"
-#: app/window.py:385
+#: app/window.py:386
 msgid "MIDI input on."
 msgstr "MIDI 入力オン。"
 
 # | msgid "MIDI input"
-#: app/window.py:385
+#: app/window.py:386
 msgid "MIDI input off."
 msgstr "MIDI 入力オフ。"
 
-#: app/window.py:434
+#: app/window.py:435
 msgid "The Python audio engine plays: there is no native engine to restart."
 msgstr "Python オーディオエンジンで再生中です。再起動するネイティブエンジンがありません。"
 
 # | msgid "Starting the reading worker"
-#: app/window.py:436
+#: app/window.py:437
 msgid "Restarting the audio engine..."
 msgstr "オーディオエンジンを再起動中..."
 
 # | msgid "Audio engine"
-#: app/window.py:440
+#: app/window.py:441
 msgid "Audio engine restarted."
 msgstr "オーディオエンジンを再起動しました。"
 
-#: app/window.py:441
+#: app/window.py:442
 msgid "The audio engine did not start; it is tried again every 2 seconds."
 msgstr "オーディオエンジンが起動しませんでした。2 秒ごとに再試行します。"
 
-#: app/window.py:491 app/window.py:557
+#: app/window.py:492 app/window.py:558
 msgid "External Sync is enabled. Local track loading is disabled."
 msgstr "外部同期が有効です。ローカルでのトラックの読み込みは無効になります。"
 
-#: app/window.py:504
+#: app/window.py:505
 msgid "Segment reanalysis canceled (track changed)"
 msgstr "区間の再解析をキャンセルしました (トラックが変わりました)"
 
-#: app/window.py:562
+#: app/window.py:563
 msgid "Track unloaded."
 msgstr "トラックをアンロードしました。"
 
-#: app/window.py:572
+#: app/window.py:573
 msgid "Track File Not Found"
 msgstr "トラックファイルが見つかりません"
 
-#: app/window.py:576
+#: app/window.py:577
 #, python-brace-format
 msgid ""
 "Cannot load \"{name}\": its file is missing.\n"
@@ -381,51 +381,51 @@ msgstr ""
 "\n"
 "ファイルの新しい場所を指定しますか?"
 
-#: app/window.py:583
+#: app/window.py:584
 #, python-brace-format
 msgid "Locate {name}"
 msgstr "{name} の場所を指定"
 
-#: app/window.py:607 app/window.py:623
+#: app/window.py:608 app/window.py:624
 msgid "Analysis saved to library."
 msgstr "解析をライブラリに保存しました。"
 
-#: app/window.py:612
+#: app/window.py:613
 msgid "Finished"
 msgstr "完了"
 
-#: app/window.py:635
+#: app/window.py:636
 msgid "Waiting to be looked up on Wikipedia"
 msgstr "Wikipediaでの調査待ち"
 
-#: app/window.py:641
+#: app/window.py:642
 msgid "Looking up on Wikipedia and Wikidata…"
 msgstr "WikipediaとWikidataで調べています…"
 
 # | msgid "Reading the analysis failed: {error}"
 # | msgid "The search failed: {error}"
 # | msgid "" "The lookup failed:\n" "{error}"
-#: app/window.py:646
+#: app/window.py:647
 msgid "The lookup failed."
 msgstr "調査できませんでした。"
 
-#: app/window.py:689
+#: app/window.py:683
 #, python-brace-format
 msgid "External Sync loading: {file}"
 msgstr "外部同期で読み込み中: {file}"
 
-#: app/window.py:689
+#: app/window.py:683
 #, python-brace-format
 msgid "External Sync analyzing: {file}"
 msgstr "外部同期で解析中: {file}"
 
 # | msgid "Memory Sync Disabled"
-#: app/window.py:704
+#: app/window.py:698
 msgid "External Sync Disabled"
 msgstr "外部同期を無効にしました"
 
 # | msgid "External Sync enabled via {target}. Local play/load is locked."
-#: app/window.py:975
+#: app/window.py:969
 #, python-brace-format
 msgid "External Sync enabled: OSC on {address}. Local play/load is locked."
 msgstr "外部同期が有効です: OSC {address}。ローカルでの再生/読み込みはロックされます。"
@@ -441,7 +441,7 @@ msgid "The written tags did not read back as written; the file is unchanged."
 msgstr "書き込んだタグが書いたとおりに読み戻せませんでした。ファイルは変更されていません。"
 
 #: core/audio/tag_writer.py:205 core/audio/tag_writer.py:286
-#: core/audio/tag_writer.py:1371 ui/export.py:190
+#: core/audio/tag_writer.py:1371 ui/export.py:191
 msgid "Tags cannot be written to this file's format."
 msgstr "このファイル形式にはタグを書き込めません。"
 
@@ -1008,157 +1008,157 @@ msgid "Sino-Vietnamese (Unihan)"
 msgstr "ベトナム漢字音 (Unihan)"
 
 # | msgid "Name"
-#: core/tieup.py:22
+#: core/tieup.py:23
 msgid "Anime"
 msgstr "アニメ"
 
 # | msgid "Name"
-#: core/tieup.py:23
+#: core/tieup.py:24
 msgid "Game"
 msgstr "ゲーム"
 
-#: core/tieup.py:24
+#: core/tieup.py:25
 msgid "Drama"
 msgstr "ドラマ"
 
 # | msgid "Remove"
-#: core/tieup.py:25
+#: core/tieup.py:26
 msgid "Movie"
 msgstr "映画"
 
-#: core/tieup.py:26
+#: core/tieup.py:27
 msgid "Media mix"
 msgstr "メディアミックス"
 
-#: core/tieup.py:27
+#: core/tieup.py:28
 msgid "2D idol"
 msgstr "二次元アイドル"
 
-#: core/tieup.py:28
+#: core/tieup.py:29
 msgid "Commercial"
 msgstr "CM"
 
 # | msgid "About"
 # | msgid "Booth"
 # | msgid "Booth EQ"
-#: core/tieup.py:29 core/tieup.py:46
+#: core/tieup.py:30 core/tieup.py:47
 msgid "Other"
 msgstr "その他"
 
-#: core/tieup.py:34
+#: core/tieup.py:35
 msgid "Not specified"
 msgstr "指定なし"
 
 # | msgid "Open."
 # | msgid "Opening..."
 # | msgid "opening..."
-#: core/tieup.py:35
+#: core/tieup.py:36
 msgid "Opening"
 msgstr "オープニング"
 
 # | msgid "Stop"
-#: core/tieup.py:35
+#: core/tieup.py:36
 msgid "OP"
 msgstr "OP"
 
 # | msgid "Readings"
-#: core/tieup.py:36
+#: core/tieup.py:37
 msgid "Ending"
 msgstr "エンディング"
 
-#: core/tieup.py:36
+#: core/tieup.py:37
 msgid "ED"
 msgstr "ED"
 
-#: core/tieup.py:37
+#: core/tieup.py:38
 msgid "Insert song"
 msgstr "挿入歌"
 
 # | msgid "Min seg"
-#: core/tieup.py:37
+#: core/tieup.py:38
 msgid "Insert"
 msgstr "挿入歌"
 
-#: core/tieup.py:38
+#: core/tieup.py:39
 msgid "Theme song"
 msgstr "主題歌"
 
 # | msgid "Tempo"
-#: core/tieup.py:38
+#: core/tieup.py:39
 msgid "Theme"
 msgstr "主題歌"
 
 # | msgid " characters"
-#: core/tieup.py:39
+#: core/tieup.py:40
 msgid "Character song"
 msgstr "キャラクターソング"
 
 # | msgid " characters"
-#: core/tieup.py:39
+#: core/tieup.py:40
 msgid "Chara"
 msgstr "キャラソン"
 
-#: core/tieup.py:40
+#: core/tieup.py:41
 msgid "Unit song"
 msgstr "ユニット曲"
 
 # | msgid "Untitled"
-#: core/tieup.py:40
+#: core/tieup.py:41
 msgid "Unit"
 msgstr "ユニット曲"
 
-#: core/tieup.py:41
+#: core/tieup.py:42
 msgid "Image song"
 msgstr "イメージソング"
 
 # | msgid "Page"
-#: core/tieup.py:41
+#: core/tieup.py:42
 msgid "Image"
 msgstr "イメージソング"
 
-#: core/tieup.py:42
+#: core/tieup.py:43
 msgid "Title / login screen"
 msgstr "タイトル・ログイン画面"
 
 # | msgid "Title / login screen"
-#: core/tieup.py:42
+#: core/tieup.py:43
 msgid "Title screen"
 msgstr "タイトル画面"
 
 # | msgid "Min seg"
-#: core/tieup.py:43
+#: core/tieup.py:44
 msgid "Main screen"
 msgstr "メイン画面"
 
-#: core/tieup.py:43
+#: core/tieup.py:44
 msgid "Menu"
 msgstr "メイン画面"
 
-#: core/tieup.py:44
+#: core/tieup.py:45
 msgid "Event song"
 msgstr "イベント曲"
 
 # | msgid "Remove"
 # | msgid "Revert"
-#: core/tieup.py:44
+#: core/tieup.py:45
 msgid "Event"
 msgstr "イベント曲"
 
-#: core/tieup.py:45
+#: core/tieup.py:46
 msgid "BGM"
 msgstr "BGM"
 
-#: core/tieup.py:51
+#: core/tieup.py:52
 msgid "Synonym"
 msgstr "通称"
 
 # | msgid "Shortcut"
-#: core/tieup.py:52
+#: core/tieup.py:53
 msgid "Short"
 msgstr "略称"
 
 # | msgid "Search"
-#: core/tieup.py:53
+#: core/tieup.py:54
 msgid "Search hint"
 msgstr "検索ヒント"
 
@@ -3352,11 +3352,11 @@ msgid "MIDI"
 msgstr "MIDI"
 
 # | msgid "Duration"
-#: ui/config/midi.py:79 ui/config/shortcuts.py:63
+#: ui/config/midi.py:79 ui/config/shortcuts.py:64
 msgid "Action"
 msgstr "操作"
 
-#: ui/config/midi.py:79 ui/config/shortcuts.py:63
+#: ui/config/midi.py:79 ui/config/shortcuts.py:64
 msgid "Default"
 msgstr "デフォルト"
 
@@ -3376,7 +3376,7 @@ msgid "The selected action's MIDI messages removed."
 msgstr "選択した操作の MIDI メッセージを削除します。"
 
 # | msgid "Remove"
-#: ui/config/midi.py:116 ui/config/shortcuts.py:97
+#: ui/config/midi.py:116 ui/config/shortcuts.py:98
 msgid "Revert"
 msgstr "デフォルトに戻す"
 
@@ -3402,7 +3402,7 @@ msgstr ""
 "rekordbox から書き出した MIDI マッピング（CSV、DDJ-400 など）: デッキ 1 の操作、ミキサー "
 "1ch、ブラウザーで現在のマッピングを置き換えます（OK / 適用で保存）。"
 
-#: ui/config/midi.py:122 ui/config/shortcuts.py:99
+#: ui/config/midi.py:122 ui/config/shortcuts.py:100
 msgid "Revert All"
 msgstr "すべてデフォルトに戻す"
 
@@ -3449,7 +3449,7 @@ msgstr "接続中。"
 msgid "Could not be opened (in use by another program, or disconnected)."
 msgstr "開けませんでした（他のプログラムが使用中か、接続されていません）。"
 
-#: ui/config/midi.py:274 ui/config/shortcuts.py:225
+#: ui/config/midi.py:274 ui/config/shortcuts.py:226
 #, python-brace-format
 msgid ""
 "Already used:\n"
@@ -4637,11 +4637,11 @@ msgstr "<p>音楽で検索やバージョン違いのインデックスがまだ
 msgid "{indexed} of {total} library tracks are indexed."
 msgstr "ライブラリの {total} トラック中 {indexed} トラックがインデックス済みです。"
 
-#: ui/config/shortcuts.py:47
+#: ui/config/shortcuts.py:48
 msgid "No modifier: changes no data · Ctrl: edits · Ctrl+Shift: deletes"
 msgstr "修飾キーなし: データを変更しない · Ctrl: 編集 · Ctrl+Shift: 削除"
 
-#: ui/config/shortcuts.py:49
+#: ui/config/shortcuts.py:50
 msgid ""
 "<p>No modifier: what changes no data (playback, the playhead, the "
 "library's selection, the editor's pages and lock). Ctrl: edits of the "
@@ -4658,50 +4658,50 @@ msgstr ""
 "(ページが並んで表示されているときは、セレクターで示されたページ: 最後に選んだかクリックしたページ)。1 "
 "つのページだけのショートカットはそのページを表示します。操作したボタンが光り、編集には編集のロックの解除が必要です。</p>"
 
-#: ui/config/shortcuts.py:57
+#: ui/config/shortcuts.py:58
 msgid "Find an action or a key ..."
 msgstr "操作またはキーを検索..."
 
-#: ui/config/shortcuts.py:63 ui/config/shortcuts.py:101
+#: ui/config/shortcuts.py:64 ui/config/shortcuts.py:102
 msgid "Shortcut"
 msgstr "ショートカット"
 
-#: ui/config/shortcuts.py:92
+#: ui/config/shortcuts.py:93
 msgid "Click, then press the keys (one combination)."
 msgstr "クリックしてからキーを押してください (1 つの組み合わせ)。"
 
-#: ui/config/shortcuts.py:93
+#: ui/config/shortcuts.py:94
 msgid "A second combination doing the same."
 msgstr "同じ操作をする 2 つ目の組み合わせです。"
 
-#: ui/config/shortcuts.py:98
+#: ui/config/shortcuts.py:99
 msgid "The selected action's shipped shortcut again."
 msgstr "選択した操作をデフォルトのショートカットに戻します。"
 
-#: ui/config/shortcuts.py:100
+#: ui/config/shortcuts.py:101
 msgid "Every action's shipped shortcut again (kept with OK / Apply)."
 msgstr "すべての操作をデフォルトのショートカットに戻します (OK / 適用で保存)。"
 
-#: ui/config/shortcuts.py:103
+#: ui/config/shortcuts.py:104
 msgid "Alternative"
 msgstr "サブ"
 
-#: ui/config/shortcuts.py:112 ui/config/shortcuts.py:213
-#: ui/config/shortcuts.py:224
+#: ui/config/shortcuts.py:113 ui/config/shortcuts.py:214
+#: ui/config/shortcuts.py:225
 msgid "Shortcuts"
 msgstr "ショートカット"
 
-#: ui/config/shortcuts.py:168
+#: ui/config/shortcuts.py:169
 #, python-brace-format
 msgid "Also used by: {actions}"
 msgstr "ほかの操作でも使用: {actions}"
 
-#: ui/config/shortcuts.py:170
+#: ui/config/shortcuts.py:171
 #, python-brace-format
 msgid "Another program on this computer takes {keys}: Mixlyzer never receives it."
 msgstr "このコンピューターのほかのプログラムが {keys} を使っているため、Mixlyzer には届きません。"
 
-#: ui/config/shortcuts.py:214
+#: ui/config/shortcuts.py:215
 #, python-brace-format
 msgid ""
 "Another program on this computer takes {keys} (a graphics card overlay, "
@@ -5331,7 +5331,7 @@ msgstr "空いているスロット {letter} へ移動 (このキューと以降
 msgid "Two JumpCUEs cannot share a point."
 msgstr "2 つの JumpCUE が同じポイントを共有することはできません。"
 
-#: ui/edit_panel/jumpcue.py:255 ui/edit_panel/panel.py:585
+#: ui/edit_panel/jumpcue.py:255 ui/edit_panel/panel.py:578
 msgid "Invalid JumpCUE Label"
 msgstr "無効な JumpCUE ラベル"
 
@@ -5518,24 +5518,24 @@ msgstr "現在の区間のキーを選択 (Alphanumeric ホイール)"
 msgid "{key} | Seg {index} | Elapsed: {elapsed} | Left: {left}"
 msgstr "{key} | 区間 {index} | 経過: {elapsed} | 残り: {left}"
 
-#: ui/edit_panel/panel.py:59
+#: ui/edit_panel/panel.py:58
 msgid "Edit the beatgrid"
 msgstr "ビートグリッドを編集"
 
-#: ui/edit_panel/panel.py:59
+#: ui/edit_panel/panel.py:58
 msgid "Edit the key"
 msgstr "キーを編集"
 
-#: ui/edit_panel/panel.py:60
+#: ui/edit_panel/panel.py:59
 msgid "Edit the phrase"
 msgstr "フレーズを編集"
 
-#: ui/edit_panel/panel.py:60
+#: ui/edit_panel/panel.py:59
 msgid "Edit the JumpCUEs and CUE points"
 msgstr "JumpCUE と CUEポイントを編集"
 
 # | msgid "The file could not be written: {error}"
-#: ui/edit_panel/panel.py:596
+#: ui/edit_panel/panel.py:589
 #, python-brace-format
 msgid ""
 "The edits could not be saved:\n"
@@ -5544,13 +5544,13 @@ msgstr ""
 "編集内容を保存できませんでした:\n"
 "{error}"
 
-#: ui/edit_panel/panel.py:629
+#: ui/edit_panel/panel.py:622
 msgid ""
 "<p>Editing is locked: pages switch, but nothing is edited or saved. Click"
 " to unlock.</p>"
 msgstr "<p>編集はロックされています: ページは切り替わりますが、編集も保存もされません。クリックするとロックを解除します。</p>"
 
-#: ui/edit_panel/panel.py:631
+#: ui/edit_panel/panel.py:624
 msgid ""
 "<p>Editing is unlocked: the shown pages' graphics are emphasized. Click "
 "to lock: no edits, no saving (on at every start).</p>"
@@ -5558,37 +5558,37 @@ msgstr ""
 "<p>編集のロックは解除されています: 表示中のページのグラフィックが強調されます。クリックするとロックします: 編集も保存もできなくなります "
 "(起動のたびにロック)。</p>"
 
-#: ui/edit_panel/panel.py:742
+#: ui/edit_panel/panel.py:735
 #, python-brace-format
 msgid "This shortcut does nothing on the {page} page."
 msgstr "このショートカットは {page} ページでは何もしません。"
 
-#: ui/edit_panel/panel.py:750
+#: ui/edit_panel/panel.py:743
 msgid "Editing is locked."
 msgstr "編集はロックされています。"
 
 # | msgid "Segment reanalysis finished"
-#: ui/edit_panel/panel.py:752
+#: ui/edit_panel/panel.py:745
 msgid "Editing waits for the segment reanalysis to finish."
 msgstr "区間の再解析が終わるまで編集できません。"
 
 # | msgid "Delete JumpCUE {letter}"
-#: ui/edit_panel/panel.py:785 ui/edit_panel/panel.py:798
+#: ui/edit_panel/panel.py:778 ui/edit_panel/panel.py:791
 #, python-brace-format
 msgid "JumpCUE {letter} is not set."
 msgstr "JumpCUE {letter} は設定されていません。"
 
-#: ui/edit_panel/panel.py:794
+#: ui/edit_panel/panel.py:787
 #, python-brace-format
 msgid "JumpCUE {letter} is already set."
 msgstr "JumpCUE {letter} はすでに設定されています。"
 
-#: ui/edit_panel/panel.py:814
+#: ui/edit_panel/panel.py:807
 msgid "CALL works while stopped."
 msgstr "CALL は停止中にだけ動作します。"
 
 # | msgid "Split the current segment at the playhead"
-#: ui/edit_panel/panel.py:830
+#: ui/edit_panel/panel.py:823
 msgid "No CUE point at the playhead."
 msgstr "再生位置に CUEポイントがありません。"
 
@@ -5682,25 +5682,25 @@ msgstr ""
 "トラックのオーディオファイル。ファイルを移動したり名前を変更したりしたときに指定してください。\n"
 "解析、プレイリスト、CUE はトラックに残ります。"
 
-#: ui/edit_song.py:118 ui/export.py:59
+#: ui/edit_song.py:118 ui/export.py:60
 msgid "Browse..."
 msgstr "参照..."
 
-#: ui/edit_song.py:123 ui/library.py:792
+#: ui/edit_song.py:123 ui/library.py:793
 msgid "Path"
 msgstr "パス"
 
-#: ui/edit_song.py:124 ui/export.py:77 ui/export.py:104 ui/library.py:789
+#: ui/edit_song.py:124 ui/export.py:78 ui/export.py:105 ui/library.py:790
 #: ui/tieup_editor.py:138 ui/tieup_works.py:75 ui/track_search_index.py:53
 msgid "Title"
 msgstr "タイトル"
 
-#: ui/edit_song.py:125 ui/export.py:78 ui/export.py:105 ui/library.py:789
+#: ui/edit_song.py:125 ui/export.py:79 ui/export.py:106 ui/library.py:790
 #: ui/track_search_index.py:53
 msgid "Artist"
 msgstr "アーティスト"
 
-#: ui/edit_song.py:126 ui/export.py:106 ui/library.py:790
+#: ui/edit_song.py:126 ui/export.py:107 ui/library.py:791
 #: ui/track_search_index.py:53
 msgid "Album"
 msgstr "アルバム"
@@ -5711,11 +5711,11 @@ msgstr "アルバム"
 msgid "Key"
 msgstr "キー"
 
-#: ui/edit_song.py:129 ui/library.py:791
+#: ui/edit_song.py:129 ui/library.py:792
 msgid "Rating"
 msgstr "レーティング"
 
-#: ui/edit_song.py:130 ui/export.py:107 ui/library.py:792
+#: ui/edit_song.py:130 ui/export.py:108 ui/library.py:793
 msgid "Comment"
 msgstr "コメント"
 
@@ -5752,40 +5752,40 @@ msgstr ""
 "ファイルがありません:\n"
 "{path}"
 
-#: ui/edit_song.py:248 ui/edit_song.py:266 ui/library.py:1826
-#: ui/library.py:2343 ui/shortcuts.py:142
+#: ui/edit_song.py:248 ui/edit_song.py:266 ui/library.py:1827
+#: ui/library.py:2344 ui/shortcuts.py:142
 msgid "Edit Track"
 msgstr "トラックの編集"
 
-#: ui/export.py:72
+#: ui/export.py:73
 msgid "No JumpCUE directions"
 msgstr "JumpCUE の方向がありません"
 
-#: ui/export.py:79
+#: ui/export.py:80
 msgid "Source"
 msgstr "ソース"
 
-#: ui/export.py:81
+#: ui/export.py:82
 msgid "Prerender JumpCUE Audio"
 msgstr "JumpCUE のオーディオを事前レンダリング"
 
-#: ui/export.py:82
+#: ui/export.py:83
 msgid "Write WAV files with JumpCUE skips baked in."
 msgstr "JumpCUE のスキップを反映した WAV ファイルを書き出します。"
 
-#: ui/export.py:84
+#: ui/export.py:85
 msgid "Destination Folder"
 msgstr "保存先フォルダー"
 
-#: ui/export.py:86
+#: ui/export.py:87
 msgid "Export"
 msgstr "エクスポート"
 
-#: ui/export.py:95
+#: ui/export.py:96
 msgid "File Tags"
 msgstr "ファイルのタグ"
 
-#: ui/export.py:97
+#: ui/export.py:98
 msgid ""
 "<p>Write the library's values into the audio file's own tags: only the "
 "fields checked change; the file's other tags, its artwork and its audio "
@@ -5794,45 +5794,45 @@ msgstr ""
 "<p>ライブラリの値をオーディオファイル自体のタグに書き込みます。チェックした項目だけが変わり、ファイルのほかのタグ、アートワーク、オーディオはそのままです。FLAC、MP3、AAC、WAV、AIFF、MP4"
 " / M4A ファイルに書き込めます。</p>"
 
-#: ui/export.py:108
+#: ui/export.py:109
 msgid "MP4 / M4A files hold a whole BPM only."
 msgstr "MP4 / M4A ファイルには整数の BPM しか入りません。"
 
-#: ui/export.py:109
+#: ui/export.py:110
 msgid "Written as a musical key (Am, F#)."
 msgstr "一般的なキー表記 (Am、F#) で書き込みます。"
 
-#: ui/config/library.py:52 ui/export.py:117
+#: ui/config/library.py:52 ui/export.py:118
 msgid "Tie-ups after the comment"
 msgstr "コメントの後にタイアップを付ける"
 
-#: ui/export.py:119
+#: ui/export.py:120
 msgid ""
 "<p>The comment written with the song's tie-ups after it, as [Title OP; "
 "Other ED]; the library's comment stays as it is.</p>"
 msgstr "<p>コメントの後に曲のタイアップを [タイトル OP; 別作品 ED] の形で付けて書き込みます。ライブラリのコメントはそのままです。</p>"
 
-#: ui/export.py:126 ui/export.py:211 ui/export.py:272
+#: ui/export.py:127 ui/export.py:212 ui/export.py:273
 msgid "Write Tags"
 msgstr "タグを書き込む"
 
-#: ui/export.py:127
+#: ui/export.py:128
 msgid "Write the checked fields' stored values into the file's tags."
 msgstr "チェックした項目の保存済みの値をファイルのタグに書き込みます。"
 
-#: ui/export.py:170
+#: ui/export.py:171
 msgid "Source file not found at the specified path."
 msgstr "指定したパスにソースファイルがありません。"
 
-#: ui/export.py:173
+#: ui/export.py:174
 msgid "Source path is invalid."
 msgstr "ソースのパスが無効です。"
 
-#: ui/export.py:206
+#: ui/export.py:207
 msgid "Check the fields to write."
 msgstr "書き込む項目をチェックしてください。"
 
-#: ui/export.py:212
+#: ui/export.py:213
 msgid ""
 "The Edit tab has changes to this track that are not applied: the stored "
 "values are written.\n"
@@ -5841,42 +5841,42 @@ msgstr ""
 "編集タブにこのトラックの未適用の変更があります。保存済みの値が書き込まれます。\n"
 "それでもタグを書き込みますか?"
 
-#: ui/export.py:220
+#: ui/export.py:221
 msgid "Writing the tags..."
 msgstr "タグを書き込み中..."
 
-#: ui/export.py:228
+#: ui/export.py:229
 msgid "The track is no longer in the library."
 msgstr "このトラックはもうライブラリにありません。"
 
-#: ui/export.py:264
+#: ui/export.py:265
 #, python-brace-format
 msgid "The file could not be written: {error}"
 msgstr "ファイルに書き込めません: {error}"
 
-#: ui/export.py:270
+#: ui/export.py:271
 msgid "The tags were written to the file."
 msgstr "ファイルにタグを書き込みました。"
 
-#: ui/export.py:300
+#: ui/export.py:301
 msgid "Select Destination Folder"
 msgstr "保存先フォルダーを選択"
 
-#: ui/export.py:308
+#: ui/export.py:309
 msgid "No track is selected."
 msgstr "トラックが選択されていません。"
 
-#: ui/export.py:308 ui/export.py:313 ui/export.py:319 ui/export.py:332
-#: ui/export.py:342 ui/export.py:464 ui/export.py:475 ui/library.py:1829
-#: ui/library.py:2347 ui/shortcuts.py:157
+#: ui/export.py:309 ui/export.py:314 ui/export.py:320 ui/export.py:333
+#: ui/export.py:343 ui/export.py:465 ui/export.py:476 ui/library.py:1830
+#: ui/library.py:2348 ui/shortcuts.py:157
 msgid "Export Track"
 msgstr "トラックのエクスポート"
 
-#: ui/export.py:313
+#: ui/export.py:314
 msgid "Please select a destination folder."
 msgstr "保存先フォルダーを選択してください。"
 
-#: ui/export.py:319
+#: ui/export.py:320
 #, python-brace-format
 msgid ""
 "Cannot create destination folder:\n"
@@ -5885,11 +5885,11 @@ msgstr ""
 "保存先フォルダーを作成できません:\n"
 "{error}"
 
-#: ui/export.py:333
+#: ui/export.py:334
 msgid "Select a JumpCUE direction to render."
 msgstr "レンダリングする JumpCUE の方向を選んでください。"
 
-#: ui/export.py:342
+#: ui/export.py:343
 #, python-brace-format
 msgid ""
 "Export completed:\n"
@@ -5899,11 +5899,11 @@ msgstr ""
 "{files}"
 
 # | msgid "Phrase reanalysis completed"
-#: ui/export.py:372
+#: ui/export.py:373
 msgid "The track's analysis could not be read."
 msgstr "トラックの解析を読み込めませんでした。"
 
-#: ui/export.py:465
+#: ui/export.py:466
 #, python-brace-format
 msgid ""
 "'{name}' already exists.\n"
@@ -5912,7 +5912,7 @@ msgstr ""
 "「{name}」はすでに存在します。\n"
 "上書きしますか?"
 
-#: ui/export.py:475
+#: ui/export.py:476
 #, python-brace-format
 msgid ""
 "Failed to write JumpCUE audio:\n"
@@ -6166,36 +6166,36 @@ msgid ""
 "KR)."
 msgstr "言語名をどの言語でも入力するか、タグ（言語-地域：ko-KR）を入力してください。"
 
-#: ui/library.py:741
+#: ui/library.py:742
 msgid "AND: require every search condition (click to switch)"
 msgstr "AND: すべての検索条件を満たす (クリックで切り替え)"
 
-#: ui/library.py:742
+#: ui/library.py:743
 msgid "OR: accept any search condition (click to switch)"
 msgstr "OR: いずれかの検索条件を満たす (クリックで切り替え)"
 
-#: ui/library.py:789
+#: ui/library.py:790
 msgid "All"
 msgstr "すべて"
 
-#: ui/library.py:790
+#: ui/library.py:791
 msgid "Duration"
 msgstr "時間"
 
-#: ui/library.py:790 ui/tieup_editor.py:121 ui/tieup_editor.py:282
+#: ui/library.py:791 ui/tieup_editor.py:121 ui/tieup_editor.py:282
 #: ui/tieup_editor.py:288
 msgid "Tie-up"
 msgstr "タイアップ"
 
-#: ui/library.py:792
+#: ui/library.py:793
 msgid "Added"
 msgstr "追加日"
 
-#: ui/library.py:870
+#: ui/library.py:871
 msgid "Search title, artist, key ..."
 msgstr "タイトル、アーティスト、キーを検索..."
 
-#: ui/library.py:872
+#: ui/library.py:873
 msgid ""
 "<p>Titles, artists and albums are also found by how they read, in any "
 "script: あのね by anone, ano ne or 아노네 (the reading is set in Edit "
@@ -6204,15 +6204,15 @@ msgstr ""
 "<p>タイトル、アーティスト、アルバムは読みでも検索できます。どの文字でも: あのね を anone、ano ne、아노네 で "
 "(読みは「トラックの編集」で設定)。</p>"
 
-#: ui/library.py:878
+#: ui/library.py:879
 msgid "Column the text search looks in"
 msgstr "テキスト検索の対象の列"
 
-#: ui/library.py:881
+#: ui/library.py:882
 msgid "Fuzzy"
 msgstr "あいまい"
 
-#: ui/library.py:881
+#: ui/library.py:882
 msgid ""
 "<p>Also find a similar pronunciation (from six letters of the reading on:"
 " about one sound in five off). Off: the reading must match, up to its "
@@ -6221,36 +6221,36 @@ msgstr ""
 "<p>似た読みも見つけます (読みの 6 文字目から: 5 音に 1 音程度の違い)。オフ: "
 "綴りの違いを除いて読みが一致する必要があります。</p>"
 
-#: ui/library.py:917
+#: ui/library.py:918
 msgid "Tracks with a phrase of this label (optionally at a BPM / key)"
 msgstr "このラベルのフレーズがあるトラック (BPM / キーの条件も指定可能)"
 
 #: analyzer_core/global_analyzer.py:326 ui/config/analysis.py:236
 #: ui/config/pipeline_map.py:23 ui/config/pipeline_map.py:32
-#: ui/edit_panel/panel.py:58 ui/library.py:917 ui/library.py:1010
+#: ui/edit_panel/panel.py:57 ui/library.py:918 ui/library.py:1011
 #: ui/shortcuts.py:37
 msgid "Phrase"
 msgstr "フレーズ"
 
-#: ui/library.py:918
+#: ui/library.py:919
 msgid "Tracks whose BPM changes from one tempo to another"
 msgstr "BPM があるテンポから別のテンポへ変わるトラック"
 
-#: ui/library.py:919
+#: ui/library.py:920
 msgid "Tracks whose key changes from one key to another"
 msgstr "キーがあるキーから別のキーへ変わるトラック"
 
-#: ui/config/midi.py:114 ui/library.py:922
+#: ui/config/midi.py:114 ui/library.py:923
 msgid "Clear"
 msgstr "クリア"
 
-#: ui/library.py:923
+#: ui/library.py:924
 msgid "Remove every search condition (text and filters)"
 msgstr "すべての検索条件 (テキストとフィルター) を消去します"
 
 # | msgid "" "<p>Search by Music: hum, sing or whistle a melody, or play the
 # | song from " "a phone, and the microphone finds it in the library.</p>"
-#: ui/library.py:933
+#: ui/library.py:934
 msgid ""
 "<p>Search by Music: hum, sing or whistle a melody, or play the song from "
 "a phone, and the library shows the songs the microphone hears, best "
@@ -6262,92 +6262,92 @@ msgstr ""
 # | msgid "Unload track"
 # | msgid "Unload the track"
 # | msgid "Back to the tracks"
-#: ui/library.py:939
+#: ui/library.py:940
 msgid "Back to the library"
 msgstr "ライブラリに戻る"
 
-#: ui/library.py:963
+#: ui/library.py:964
 msgid "Also require this BPM inside the phrase"
 msgstr "フレーズ内にこの BPM があることも条件にする"
 
-#: ui/library.py:968
+#: ui/library.py:969
 msgid "Phrase BPM tolerance"
 msgstr "フレーズの BPM の許容誤差"
 
-#: ui/library.py:969
+#: ui/library.py:970
 msgid "Also require this key inside the phrase"
 msgstr "フレーズ内にこのキーがあることも条件にする"
 
 # | msgid "Key inside the selected phrase (Camelot wheel)"
-#: ui/library.py:971
+#: ui/library.py:972
 msgid "Key inside the selected phrase (Alphanumeric wheel)"
 msgstr "選択したフレーズ内のキー (Alphanumeric ホイール)"
 
 # | msgid "" "Also match harmonically compatible keys (±1 on the Camelot
 # wheel,
 # | " "relative key)"
-#: ui/library.py:973
+#: ui/library.py:974
 msgid ""
 "Also match harmonically compatible keys (±1 on the Alphanumeric wheel, "
 "relative key)"
 msgstr "相性の良いキーも含める (Alphanumeric ホイール ±1、平行調)"
 
-#: ui/library.py:973 ui/library.py:999
+#: ui/library.py:974 ui/library.py:1000
 msgid "Compat"
 msgstr "相性"
 
-#: ui/library.py:982
+#: ui/library.py:983
 msgid "BPM transition tolerance"
 msgstr "BPM 変化の許容誤差"
 
-#: ui/library.py:984
+#: ui/library.py:985
 msgid "Require the transition to start at the first BPM segment"
 msgstr "変化が最初の BPM 区間から始まることを条件にする"
 
-#: ui/library.py:984 ui/library.py:997
+#: ui/library.py:985 ui/library.py:998
 msgid "1st"
 msgstr "最初"
 
 # | msgid "Key before the change (Camelot wheel)"
-#: ui/library.py:988
+#: ui/library.py:989
 msgid "Key before the change (Alphanumeric wheel)"
 msgstr "変化前のキー (Alphanumeric ホイール)"
 
 # | msgid "Key after the change (Camelot wheel)"
-#: ui/library.py:991
+#: ui/library.py:992
 msgid "Key after the change (Alphanumeric wheel)"
 msgstr "変化後のキー (Alphanumeric ホイール)"
 
-#: ui/library.py:997
+#: ui/library.py:998
 msgid "Require the transition to start at the first key segment"
 msgstr "変化が最初のキー区間から始まることを条件にする"
 
 # | msgid "" "Also match harmonically compatible keys at both ends (±1 on the
 # | Camelot " "wheel, relative key)"
-#: ui/library.py:999
+#: ui/library.py:1000
 msgid ""
 "Also match harmonically compatible keys at both ends (±1 on the "
 "Alphanumeric wheel, relative key)"
 msgstr "両端とも相性の良いキーも含める (Alphanumeric ホイール ±1、平行調)"
 
-#: ui/library.py:1008 ui/library.py:1021
+#: ui/library.py:1009 ui/library.py:1022
 msgid "Minimum duration of both sides of each enabled transition"
 msgstr "有効な各変化の前後それぞれの最小の長さ"
 
-#: ui/library.py:1020
+#: ui/library.py:1021
 msgid "Min seg"
 msgstr "最小区間"
 
-#: ui/library.py:1236
+#: ui/library.py:1237
 msgid "Library (All)"
 msgstr "ライブラリ (すべて)"
 
 # | msgid "Alias"
-#: ui/library.py:1240 ui/track_search_index.py:95
+#: ui/library.py:1241 ui/track_search_index.py:95
 msgid "Variants"
 msgstr "バージョン違い"
 
-#: ui/library.py:1243
+#: ui/library.py:1244
 msgid ""
 "<p>The library's tracks that are versions of one song: the same audio, "
 "another vocal, the instrumental, an edit (a TV size). # is the song; a "
@@ -6357,144 +6357,144 @@ msgstr ""
 "は曲の番号で、各行のツールチップに他のバージョンとの違いが表示されます。</p>"
 
 # | msgid "Unload track"
-#: ui/library.py:1246
+#: ui/library.py:1247
 msgid "Loaded Track"
 msgstr "ロード中の曲"
 
-#: ui/library.py:1248
+#: ui/library.py:1249
 msgid ""
 "<p>The versions of the track loaded on the deck, following each track "
 "loaded.</p>"
 msgstr "<p>デッキにロードした曲のバージョン違いを表示します。曲をロードするたびに切り替わります。</p>"
 
-#: ui/library.py:1253
+#: ui/library.py:1254
 msgid "Playlists"
 msgstr "プレイリスト"
 
-#: ui/library.py:1265
+#: ui/library.py:1266
 msgid "Local Folders"
 msgstr "ローカルフォルダー"
 
-#: ui/config/external_sync.py:105 ui/library.py:1769 ui/pane.py:517
+#: ui/config/external_sync.py:105 ui/library.py:1770 ui/pane.py:517
 msgid "External Sync"
 msgstr "外部同期"
 
-#: ui/library.py:1770
+#: ui/library.py:1771
 msgid "Track loading is disabled while External Sync is enabled."
 msgstr "外部同期が有効な間はトラックを読み込めません。"
 
 # | msgid "Search"
 # | msgid "Search hint"
-#: ui/library.py:1827 ui/shortcuts.py:144
+#: ui/library.py:1828 ui/shortcuts.py:144
 msgid "Search Index"
 msgstr "検索インデックス"
 
-#: ui/library.py:1828 ui/shortcuts.py:150 ui/tieup_editor.py:345
+#: ui/library.py:1829 ui/shortcuts.py:150 ui/tieup_editor.py:345
 msgid "Tie-ups"
 msgstr "タイアップ"
 
-#: ui/library.py:1831
+#: ui/library.py:1832
 msgid "The selected track; click the open tab to fold the panel"
 msgstr "選択したトラック。開いているタブをクリックするとパネルを畳みます"
 
-#: ui/library.py:1903
+#: ui/library.py:1904
 #, python-brace-format
 msgid "Apply the changes to \"{title}\"? (No: they are dropped)"
 msgstr "「{title}」の変更を適用しますか? (いいえ: 破棄します)"
 
 # | msgid "Found by the sound of the recording ({n} matches)"
-#: ui/library.py:2083
+#: ui/library.py:2084
 #, python-brace-format
 msgid "Matched at {start} - {end}, by the sound of the recording ({n} matches)"
 msgstr "{start} - {end} で一致、録音の音で検出 (一致 {n} 件)"
 
-#: ui/library.py:2086
+#: ui/library.py:2087
 #, python-brace-format
 msgid "Matched at {start} - {end}, by the melody"
 msgstr "{start} - {end} で一致、メロディーで検出"
 
 # | msgid "Headphones: level"
 # | msgid "Headphones mix"
-#: ui/library.py:2130
+#: ui/library.py:2131
 msgid "the same mix"
 msgstr "同じミックス"
 
-#: ui/library.py:2132
+#: ui/library.py:2133
 #, python-brace-format
 msgid "{relation}, a shorter edit"
 msgstr "{relation}(短縮版)"
 
-#: ui/library.py:2134
+#: ui/library.py:2135
 #, python-brace-format
 msgid "{relation}, a longer version"
 msgstr "{relation}(長いバージョン)"
 
-#: ui/library.py:2136
+#: ui/library.py:2137
 #, python-brace-format
 msgid "{relation}, some sections differ"
 msgstr "{relation}(一部のセクションが異なる)"
 
 # | msgid "{relation}, a shorter edit"
-#: ui/library.py:2139
+#: ui/library.py:2140
 msgid "a shorter edit"
 msgstr "短縮版"
 
 # | msgid "{relation}, a longer version"
-#: ui/library.py:2141
+#: ui/library.py:2142
 msgid "a longer version"
 msgstr "長いバージョン"
 
 # | msgid "{relation}, some sections differ"
-#: ui/library.py:2143
+#: ui/library.py:2144
 msgid "some sections differ"
 msgstr "一部のセクションが異なる"
 
-#: ui/library.py:2160
+#: ui/library.py:2161
 #, python-brace-format
 msgid "{title}: {relation}"
 msgstr "{title}: {relation}"
 
-#: ui/library.py:2162
+#: ui/library.py:2163
 msgid "Variants of this track:"
 msgstr "この曲のバージョン違い:"
 
-#: ui/library.py:2179
+#: ui/library.py:2180
 msgid "The loaded track is not in the list shown."
 msgstr "ロードしたトラックは表示中のリストにありません。"
 
-#: ui/library.py:2201 ui/library.py:2230 ui/library.py:2234 ui/shortcuts.py:164
+#: ui/library.py:2202 ui/library.py:2231 ui/library.py:2235 ui/shortcuts.py:164
 msgid "New Playlist"
 msgstr "新規プレイリスト"
 
-#: ui/library.py:2204
+#: ui/library.py:2205
 msgid "Rename"
 msgstr "名前を変更"
 
-#: ui/library.py:2205
+#: ui/library.py:2206
 msgid "Move Up"
 msgstr "上へ移動"
 
-#: ui/library.py:2206
+#: ui/library.py:2207
 msgid "Move Down"
 msgstr "下へ移動"
 
-#: ui/library.py:2207 ui/library.py:2255
+#: ui/library.py:2208 ui/library.py:2256
 msgid "Delete Playlist"
 msgstr "プレイリストを削除"
 
-#: ui/library.py:2209
+#: ui/library.py:2210
 msgid "Refresh Folders"
 msgstr "フォルダーを更新"
 
-#: ui/library.py:2230 ui/library.py:2245
+#: ui/library.py:2231 ui/library.py:2246
 msgid "Name"
 msgstr "名前"
 
-#: ui/library.py:2245 ui/library.py:2250
+#: ui/library.py:2246 ui/library.py:2251
 msgid "Rename Playlist"
 msgstr "プレイリスト名を変更"
 
-#: ui/library.py:2256
+#: ui/library.py:2257
 #, python-brace-format
 msgid ""
 "Delete playlist \"{name}\"?\n"
@@ -6503,39 +6503,39 @@ msgstr ""
 "プレイリスト「{name}」を削除しますか?\n"
 "トラックはライブラリに残ります。"
 
-#: ui/library.py:2340 ui/shortcuts.py:162
+#: ui/library.py:2341 ui/shortcuts.py:162
 msgid "Show in Explorer"
 msgstr "エクスプローラーで表示"
 
-#: ui/library.py:2341 ui/shortcuts.py:163
+#: ui/library.py:2342 ui/shortcuts.py:163
 msgid "Show in Finder"
 msgstr "Finder で表示"
 
-#: ui/library.py:2341 ui/shortcuts.py:163
+#: ui/library.py:2342 ui/shortcuts.py:163
 msgid "Show in File Manager"
 msgstr "ファイルマネージャーで表示"
 
-#: ui/library.py:2342 ui/library.py:2418 ui/shortcuts.py:167
+#: ui/library.py:2343 ui/library.py:2419 ui/shortcuts.py:167
 msgid "Remove from Library"
 msgstr "ライブラリから削除"
 
-#: ui/library.py:2345
+#: ui/library.py:2346
 msgid "Analyze Track"
 msgstr "トラックを解析"
 
-#: ui/library.py:2345 ui/reanalyze_dialog.py:16 ui/shortcuts.py:165
+#: ui/library.py:2346 ui/reanalyze_dialog.py:16 ui/shortcuts.py:165
 msgid "Reanalyze Track"
 msgstr "トラックを再解析"
 
-#: ui/library.py:2350 ui/shortcuts.py:168
+#: ui/library.py:2351 ui/shortcuts.py:168
 msgid "Remove from Playlist"
 msgstr "プレイリストから削除"
 
-#: ui/library.py:2351
+#: ui/library.py:2352
 msgid "Add to Playlist"
 msgstr "プレイリストに追加"
 
-#: ui/library.py:2410
+#: ui/library.py:2411
 #, python-brace-format
 msgid ""
 "Remove \"{title}\" from the library?\n"
@@ -6544,7 +6544,7 @@ msgstr ""
 "「{title}」をライブラリから削除しますか?\n"
 "解析と編集の内容は削除されます。オーディオファイルはそのまま残ります。"
 
-#: ui/library.py:2413
+#: ui/library.py:2414
 #, python-brace-format
 msgid ""
 "Remove {count} track from the library?\n"
@@ -6707,7 +6707,7 @@ msgstr "マスターテンポ: タイムストレッチでピッチを保ちま�
 msgid "Playback is disabled while External Sync is enabled."
 msgstr "外部同期が有効な間は再生できません。"
 
-#: ui/pane.py:833
+#: ui/pane.py:831
 msgid "Not Loaded"
 msgstr "トラックが読み込まれていません"
 
@@ -6841,7 +6841,7 @@ msgstr "エディター"
 msgid "Current page"
 msgstr "現在のページ"
 
-#: ui/edit_panel/panel.py:58 ui/shortcuts.py:35
+#: ui/edit_panel/panel.py:57 ui/shortcuts.py:35
 msgid "Beatgrid"
 msgstr "ビートグリッド"
 
@@ -7220,15 +7220,15 @@ msgstr "{page} ページを表示"
 msgid "It becomes the current page."
 msgstr "そのページが現在のページになります。"
 
-#: ui/edit_panel/panel.py:227 ui/shortcuts.py:174
+#: ui/edit_panel/panel.py:220 ui/shortcuts.py:174
 msgid "Undo Changes"
 msgstr "変更を元に戻す"
 
-#: ui/edit_panel/panel.py:231 ui/shortcuts.py:175
+#: ui/edit_panel/panel.py:224 ui/shortcuts.py:175
 msgid "Redo Changes"
 msgstr "変更をやり直す"
 
-#: ui/edit_panel/panel.py:235 ui/shortcuts.py:176
+#: ui/edit_panel/panel.py:228 ui/shortcuts.py:176
 msgid "Save Edits"
 msgstr "編集を保存"
 
@@ -7804,7 +7804,7 @@ msgid "The tracks with a tie-up to this work: a change to the work is theirs."
 msgstr "この作品のタイアップがあるトラック：作品の変更はこれらすべてに反映されます。"
 
 # | msgid "Shared"
-#: ui/edit_panel/panel.py:596 ui/tieup_works.py:88
+#: ui/edit_panel/panel.py:589 ui/tieup_works.py:88
 msgid "Save"
 msgstr "保存"
 

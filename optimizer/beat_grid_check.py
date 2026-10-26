@@ -18,7 +18,7 @@ import numpy as np
 
 from core.concurrency.process_pool import create_spawn_process_pool
 from optimizer.beat_frames import cache_path, read_frames
-from core.i18n import tr
+from foundation.i18n import tr
 
 ProgressCallback = Callable[[int, str], None]
 USABLE_SEC = 0.025
@@ -123,8 +123,8 @@ def missed_bar_time(ref_down: np.ndarray, est_down: np.ndarray) -> float:
 
 def song_scores(track, frames, result) -> tuple[float, float]:
     """(unusable beats, missed bars) in seconds of a tracker result against the song's grid."""
-    from core.beat_geometry import downbeat_times
-    from core.tempo_rows import rebuild_grid_from_segments
+    from foundation.beat_geometry import downbeat_times
+    from foundation.tempo_rows import rebuild_grid_from_segments
     ref = np.sort(np.asarray(track["beats"], float))
     ibi = np.r_[np.diff(ref), np.diff(ref)[-1]]
     est = rebuild_grid_from_segments(result.segments)

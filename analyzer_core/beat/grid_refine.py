@@ -1,5 +1,5 @@
 """Beat-grid refinements the beat tracker applies after its decoding, on tempo segments
-(``[start, end, bpm, inizio, ts, bpm_end]`` rows, see ``core.tempo_rows``):
+(``[start, end, bpm, inizio, ts, bpm_end]`` rows, see ``foundation.tempo_rows``):
 
 * Boundary refinement: each tempo change moves to where the two grids fit the tempo-change
   onset activation best (``learned_onset.refine_onset_activation``).
@@ -12,7 +12,7 @@ from __future__ import annotations
 import numpy as np
 from scipy.ndimage import maximum_filter1d
 
-from core.tempo_rows import is_ramp_row, with_end_bpm
+from foundation.tempo_rows import is_ramp_row, with_end_bpm
 
 BOUNDARY_SEARCH_SEC = 8.0
 BOUNDARY_MIN_STEP = 0.01

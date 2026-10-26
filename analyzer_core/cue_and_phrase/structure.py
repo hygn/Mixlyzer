@@ -15,7 +15,7 @@ from analyzer_core.dsp.conversion import fft_frequencies, frames_to_time, power_
 from analyzer_core.dsp.resample import resample_audio
 from analyzer_core.dsp.spectral import stft
 from analyzer_core.hpss import HpssSpectra, hpss_masks
-from core.audio.decoder import decode_to_memmap
+from foundation.decoder import decode_to_memmap
 
 
 EPS = 1e-10

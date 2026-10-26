@@ -3,20 +3,17 @@ import numpy as np
 import pyqtgraph as pg
 from core.event_bus import EventBus
 from utils.jumpcue_colors import get_cue_point_color
-from utils.jump_cues import extract_jump_cue_graph
 from utils.phrases import (
     abbreviate_phrase_labels,
-    extract_phrase_segments,
     phrase_strip_segments,
 )
-from utils.cue_points import extract_cue_points
 from utils.color import key_label_text_color
 from utils.keystrip import key_segment_label, key_segment_rows, key_strip_segments
 from utils.wave import band_ranges, has_wave_overview, render_wave_overview
 from views.base import EDIT_PAGES, edit_emphasis, emphasis_opacity, emphasis_size, emphasis_width
 from views.segment_strip import SegmentStrip
 from core.config import load_cfg
-from core.tempo_rows import segment_end_bpm
+from foundation.tempo_rows import segment_end_bpm
 
 
 # Pixel rows of the overview waveform image.
@@ -259,7 +256,6 @@ class OverviewWidget(QtWidgets.QWidget):
 
     def set_data(self) -> None:
         """Initialize overview visuals from the shared model."""
-        features = self.model.features
         self.duration = float(self.model.duration_sec or 0.0)
         self._current_time = 0.0
         self._now_px = None
@@ -283,10 +279,8 @@ class OverviewWidget(QtWidgets.QWidget):
         self.refresh_waveform()
 
         self.update_key_strip()
-        self._jump_cues, self._jump_links = extract_jump_cue_graph(features)
-        self._render_jump_cues(self._jump_cues)
-        self._tempo_segments = features.get("tempo_segments")
-        self._render_tempo_strips(self._tempo_segments)
+        self._on_jumpcue_updated()
+        self._on_beatgrid_updated()
         self._render_phrases()
         self._render_cue_points()
         self._update_played_overlay()
@@ -305,7 +299,7 @@ class OverviewWidget(QtWidgets.QWidget):
         self.img_wave.setRect(QtCore.QRectF(0.0, self._wave_bottom, self.duration, self._wave_top - self._wave_bottom))
 
     def _render_cue_points(self) -> None:
-        points = extract_cue_points(self.model.features)
+        points = self.model.cue_points
         if not points:
             self.cue_point_markers.setData([], [])
             return
@@ -320,13 +314,12 @@ class OverviewWidget(QtWidgets.QWidget):
         )
     
     def _on_jumpcue_updated(self) -> None:
-        feats = self.model.features
-        self._jump_cues, self._jump_links = extract_jump_cue_graph(feats)
+        self._jump_cues, self._jump_links = self.model.jump_cue_graph
         self._render_jump_cues(self._jump_cues)
 
     def update_key_strip(self) -> None:
         """Draw the key strip from the current key segments (rendered just in time)."""
-        key_segments = (self.model.features or {}).get("key_segments") if self.duration > 0 else None
+        key_segments = self.model.key_segments if self.duration > 0 else None
         self.img_key.set_segments(key_strip_segments(key_segments), self._key_bottom, self.KEY_H)
         self._key_rows = key_segment_rows(key_segments)
         edges = [t for _idx, start, end in self._key_rows for t in (start, end)]
@@ -449,8 +442,7 @@ class OverviewWidget(QtWidgets.QWidget):
         self._apply_emphasis()
 
     def _on_beatgrid_updated(self) -> None:
-        segments = self.model.features.get("tempo_segments")
-        self._tempo_segments = segments
+        self._tempo_segments = self.model.tempo_segments
         self._render_tempo_strips(self._tempo_segments)
 
     def _render_tempo_strips(self, tempo_segments) -> None:
@@ -623,8 +615,7 @@ class OverviewWidget(QtWidgets.QWidget):
         self._render_cue_points()
 
     def _render_phrases(self) -> None:
-        feats = self.model.features or {}
-        phrases = extract_phrase_segments(feats, self.duration) if self._phrase_visible else []
+        phrases = self.model.phrases if self._phrase_visible else []
         numbered = abbreviate_phrase_labels(phrases)
         band_bottom = self._wave_bottom
         band_h = self._phrase_band_h

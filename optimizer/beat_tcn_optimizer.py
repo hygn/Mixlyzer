@@ -29,15 +29,15 @@ from sklearn.metrics import average_precision_score
 from sklearn.model_selection import GroupKFold
 
 from analyzer_core.beat.general import tcn as T
-from core.beat_geometry import downbeat_beat_indices
+from foundation.beat_geometry import downbeat_beat_indices
 from core.concurrency.process_pool import create_spawn_process_pool
 from optimizer import SkippedOptimizationTrack, skipped_track
 from optimizer.beat_frames import cache_path, ensure_frames, list_grid_tracks, read_frames
 from optimizer.beat_grid_check import GridCheck, ModelSet, grid_check
 from optimizer import model_start as MS
-from core.model_files import resolve_model
+from foundation.model_files import resolve_model
 from optimizer.refine_onset_optimizer import _group_key
-from core.i18n import tr
+from foundation.i18n import tr
 
 ProgressCallback = Callable[[int, str], None]
 DROPOUT = 0.1

@@ -2,7 +2,6 @@ from PySide6 import QtGui
 import pyqtgraph as pg
 
 from .base import ViewPlugin, emphasis_opacity, emphasis_size, register_view
-from utils.cue_points import extract_cue_points
 from utils.jumpcue_colors import get_cue_point_color
 
 
@@ -64,7 +63,7 @@ class CUEPointView(ViewPlugin):
         self._reposition()
 
     def _load_points(self) -> None:
-        points = extract_cue_points(self.model.features)
+        points = self.model.cue_points
         self._times = [float(point["time_sec"]) for point in points]
         colors = [get_cue_point_color(int(point.get("color_idx", 0) or 0)) for point in points]
         self._brushes = [pg.mkBrush(*c, 240) for c in colors]

@@ -7,8 +7,8 @@ from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 import numpy as np
 from scipy.signal import find_peaks
 
-from core.beat_geometry import downbeat_beat_indices
-from core.model_files import resolve_model
+from foundation.beat_geometry import downbeat_beat_indices
+from foundation.model_files import resolve_model
 
 from .jump_point_model import JumpContextCache, JumpPointFeatures, JumpPointModel
 

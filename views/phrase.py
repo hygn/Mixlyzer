@@ -1,10 +1,9 @@
-from PySide6 import QtCore, QtGui, QtWidgets
+from PySide6 import QtGui, QtWidgets
 import numpy as np
 import pyqtgraph as pg
 from .base import PHRASE_LANE, ViewPlugin, emphasis_opacity, emphasis_width, register_view
 from .segment_strip import SegmentStrip
 from utils.phrases import (
-    extract_phrase_segments,
     number_phrase_labels,
     phrase_strip_segments,
 )
@@ -111,9 +110,8 @@ class PhraseView(ViewPlugin):
         self._reposition()
 
     def _load_phrases(self):
-        features = self.model.features or {}
-        self.duration = float(self.model.duration_sec or features.get("duration_sec") or 0.0)
-        self._phrases = extract_phrase_segments(features, self.duration)
+        self.duration = float(self.model.duration_sec or 0.0)
+        self._phrases = self.model.phrases
         self._numbered = number_phrase_labels(self._phrases)
 
     def _rebuild(self):
@@ -151,8 +149,6 @@ class PhraseView(ViewPlugin):
         if self.plot is None:
             return
         left = self.tl.left_edge()
-        band_bottom = self.BAND_BOTTOM
-        band_h = self.BAND_TOP - self.BAND_BOTTOM
         self.img.setPos(left, 0.0)
         self.boundaries.setPos(left, 0.0)
         label_y = (self.BAND_BOTTOM + self.BAND_TOP) * 0.5

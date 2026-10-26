@@ -36,7 +36,7 @@ from analyzer_core.cue_and_phrase.model_features import (
 )
 from utils.atomic_io import atomic_output_path
 from utils.phrases import MIN_PHRASE_DUR
-from core.i18n import tr
+from foundation.i18n import tr
 
 
 EPS = 1e-9

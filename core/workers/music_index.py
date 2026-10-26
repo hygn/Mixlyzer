@@ -15,7 +15,7 @@ from typing import Any
 from PySide6 import QtCore
 
 from core.concurrency.process_worker import SpawnProcessWorker, install_parent_watchdog
-from core.i18n import tr
+from foundation.i18n import tr
 from core.library.records import IndexTrack
 
 
@@ -44,7 +44,7 @@ def index_audio_tracks(request: MusicIndexRequest, report) -> None:
 
 def _music_index_process_entry(request: MusicIndexRequest, queue: Any) -> None:
     install_parent_watchdog()
-    from core.os_support import lower_process_priority
+    from foundation.os_support import lower_process_priority
     lower_process_priority()
     try:
         index_audio_tracks(request, lambda uid, entry: queue.put({"type": "entry", "uid": uid, "entry": entry}))

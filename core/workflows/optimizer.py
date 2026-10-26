@@ -3,7 +3,7 @@ from __future__ import annotations
 from PySide6 import QtCore
 
 from core.analysis_library import jobs as analysis_jobs
-from core.i18n import tr
+from foundation.i18n import tr
 from core.workers.optimizer import OptimizerWorker
 
 

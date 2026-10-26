@@ -34,9 +34,9 @@ from optimizer.beat_frames import cache_path, ensure_frames, list_grid_tracks, r
 from optimizer.beat_grid_check import GridCheck, ModelSet, grid_check
 from optimizer import model_start as MS
 from optimizer.beat_tcn_optimizer import _rate
-from core.model_files import resolve_model
+from foundation.model_files import resolve_model
 from optimizer.refine_onset_optimizer import _group_key
-from core.i18n import tr
+from foundation.i18n import tr
 
 ProgressCallback = Callable[[int, str], None]
 SCRATCH_STEPS = 6000
@@ -221,7 +221,7 @@ def _decoder_grids(job) -> tuple[str, list[np.ndarray]]:
     track, cache_dir_text, tcn_path, bpm_min = job
     from threadpoolctl import threadpool_limits
     from analyzer_core.beat.general import decode as D, tcn as T
-    from core.tempo_rows import rebuild_grid_from_segments
+    from foundation.tempo_rows import rebuild_grid_from_segments
     frames = read_frames(cache_path(Path(cache_dir_text), str(track["uid"])), track)
     if frames is None:
         return str(track["uid"]), []

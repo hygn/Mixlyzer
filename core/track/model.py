@@ -27,7 +27,7 @@ from PySide6.QtGui import QImage
 from core.track import marks
 from core.track.history import History, Marks
 from utils.cue_points import build_cue_points_np
-from utils.jump_cues import build_jump_cues_np
+from utils.jump_cues import build_jump_cue_graph, build_jump_cues_np
 from utils.phrases import assigned_phrases, build_phrase_segments_np
 
 
@@ -65,6 +65,8 @@ class DataModel(QtCore.QObject):
         self.album_art: Optional[QImage] = None
         self.predecoded_pcm: Any = None
         self.predecoded_rate: int = 0
+        self._graph_of: Optional[list] = None      # the pairs jump_cue_graph was made from
+        self._graph: tuple[list[dict], list[dict]] = ([], [])
         self._set_marks(marks.from_features({}, 0.0))
         self._history = History.starting_at(self._snapshot())
         self._unsaved = False
@@ -147,6 +149,15 @@ class DataModel(QtCore.QObject):
     def jump_cues(self) -> list[dict]:
         """The JumpCUEs as pairs of cues (utils.jump_cues' editor form)."""
         return self._jump_cues
+
+    @property
+    def jump_cue_graph(self) -> tuple[list[dict], list[dict]]:
+        """The JumpCUEs as the editor's slots and the views draw them: (cues with their letters, colours and
+        groups, the links between them), made once per set of pairs."""
+        if self._graph_of is not self._jump_cues:
+            self._graph_of = self._jump_cues
+            self._graph = build_jump_cue_graph(self._jump_cues, keep_labels=True)
+        return self._graph
 
     @property
     def cue_points(self) -> list[dict]:

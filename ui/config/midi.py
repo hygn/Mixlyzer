@@ -26,7 +26,7 @@ from PySide6.QtWidgets import (
 )
 
 from core import midi
-from core.i18n import tr
+from foundation.i18n import tr
 
 _ACTION_ROLE = QtCore.Qt.UserRole
 # Learn: a fader's CC waits this long for its LSB (data 1 + 32: 14 bits); a button's CC sending 127 for its 0 (let

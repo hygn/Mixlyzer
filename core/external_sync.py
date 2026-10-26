@@ -30,7 +30,7 @@ from PySide6 import QtCore
 from core import osc
 from core.config import externalsyncconfig
 from core.event_bus import EventBus
-from core.i18n import tr
+from foundation.i18n import tr
 from core.track.model import DataModel
 
 TIME_ADDRESS = "/mixlyzer/deck/time"

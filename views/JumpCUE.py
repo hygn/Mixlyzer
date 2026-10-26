@@ -6,7 +6,6 @@ import pyqtgraph as pg
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from .base import ViewPlugin, emphasis_opacity, emphasis_size, register_view
-from utils.jump_cues import extract_jump_cue_graph
 
 
 class JumpCueMarker(QtWidgets.QGraphicsItem):
@@ -92,8 +91,7 @@ class JumpCUEView(ViewPlugin):
         self.plot = None
 
     def render_initial(self):
-        f = self.model.features or {}
-        self._cues, _links = extract_jump_cue_graph(f)
+        self._cues = self.model.jump_cue_graph[0]
         self._duration = float(self.model.duration_sec or 0.0)
         self._build_items()
         self._refresh()
@@ -101,12 +99,8 @@ class JumpCUEView(ViewPlugin):
     def _on_features_loaded(self):
         self.render_initial()
 
-    def _on_jumpcue_updated(self, payload: dict | None = None) -> None:
-        f = self.model.features or {}
-        self._cues, _links = extract_jump_cue_graph(f)
-        self._duration = float(self.model.duration_sec or 0.0)
-        self._build_items()
-        self._refresh()
+    def _on_jumpcue_updated(self) -> None:
+        self.render_initial()
 
     def _clear_items(self) -> None:
         for _point, marker, _shown in self._entries:

@@ -5,7 +5,7 @@ from typing import Any, Dict, List
 import numpy as np
 
 from utils.jumpcue_colors import JUMPCUE_PAIR_COLORS, get_jumpcue_pair_color
-from core.i18n import tr
+from foundation.i18n import tr
 
 
 _VALID_JUMPCUE_LABELS = set("ABCDEFGHIJKLMNOPQRSTUVWXYZ")

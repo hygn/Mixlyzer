@@ -19,8 +19,9 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from core import os_support, shortcuts
-from core.i18n import tr
+from core import shortcuts
+from foundation import os_support
+from foundation.i18n import tr
 from ui.shortcuts import ACTIONS, GROUPS
 from ui.theme import current_theme
 

@@ -18,7 +18,7 @@ from typing import Optional
 
 import numpy as np
 
-from core import os_support
+from foundation import os_support
 
 _kernels = None    # audioengine.python._cursor_numba once loaded, False if that failed
 _timer_api = None  # (CreateWaitableTimerExW, CloseHandle, QPC frequency)

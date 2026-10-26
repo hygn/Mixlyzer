@@ -17,7 +17,7 @@ from PySide6.QtWidgets import (
 from core import reading
 from core.config import default_cfg, searchconfig
 from core.event_bus import EventBus
-from core.i18n import tr
+from foundation.i18n import tr
 from core.library import jobs
 from core.library.records import READING_FIELDS, USER_SOURCE, TrackRow, field_readings
 from core.library.service import LibraryService

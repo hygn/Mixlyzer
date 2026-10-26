@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from analyzer_core.utils import prime_physical_core_count
-from core.i18n import tr
+from foundation.i18n import tr
 
 # sklearn (KMeans, HistGradientBoosting) would otherwise launch powershell.exe to count cores.
 prime_physical_core_count()

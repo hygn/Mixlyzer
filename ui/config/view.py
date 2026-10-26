@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (
 )
 
 from core.config import phraselabelname, phraselabelnames
-from core.i18n import LANGUAGES, system_language, tr
+from foundation.i18n import LANGUAGES, system_language, tr
 from core.timeline import SHORT_WINDOW_MAX_SEC
 from ui.config.scroll import scroll_page
 

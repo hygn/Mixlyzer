@@ -25,7 +25,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
-from core import os_support  # noqa: E402
+from foundation import os_support  # noqa: E402
 
 NATIVE = ROOT / "audioengine" / "native"
 THIRD = NATIVE / "third_party"

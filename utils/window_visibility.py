@@ -1,11 +1,11 @@
 """Whether the app's window can be seen at all (the views redraw less while it cannot: Settings > View >
 Reduce FPS when occluded). Windows: hidden, minimized, cloaked or covered by other windows at every sampled point
-(user32 + DWM). Elsewhere (core.os_support): hidden, minimized or not exposed by the window system (Qt; macOS
+(user32 + DWM). Elsewhere (foundation.os_support): hidden, minimized or not exposed by the window system (Qt; macOS
 reports an occluded window so, X11 / Wayland mostly when it is not mapped)."""
 
 from __future__ import annotations
 
-from core import os_support
+from foundation import os_support
 
 if os_support.IS_WINDOWS:
     import ctypes

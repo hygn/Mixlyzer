@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
 
 from core import reading, tieup
 from core.event_bus import EventBus
-from core.i18n import tr, tr_n
+from foundation.i18n import tr, tr_n
 from core.library import jobs
 from core.library.service import LibraryService
 from ui.tieup_editor import FIND_PAUSE_MS, LANG, _TextTable

@@ -14,8 +14,9 @@ import re
 from typing import Iterable, Optional
 import unicodedata
 
-from core import i18n, reading
-from core.i18n import tr, tr_mark
+from core import reading
+from foundation import i18n
+from foundation.i18n import tr, tr_mark
 
 # (code, name): stored as the code, shown translated
 CATEGORIES = (

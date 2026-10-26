@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 from PySide6 import QtCore, QtWidgets
 
-from core.beat_geometry import downbeat_beat_indices
+from foundation.beat_geometry import downbeat_beat_indices
 from ui.edit_panel.blocks import mode_column, rule_cell
 from ui.edit_panel.icons import badged_icon, badged_icon_beside, icon
 from ui.edit_panel.key_picker import ALPHANUMERIC_INDEX, KeyPickerPopup
@@ -11,7 +11,7 @@ from utils.color import key_cmap_color, key_label_text_color
 from utils.keystrip import key_segment_label
 from utils.labels import ALPHANUMERIC_LABELS
 from utils.phrases import assigned_phrases
-from core.i18n import tr, tr_mark
+from foundation.i18n import tr, tr_mark
 from ui.live_label import LiveLabel
 
 

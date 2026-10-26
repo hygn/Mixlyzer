@@ -17,13 +17,13 @@ from sklearn.model_selection import GroupKFold
 
 from analyzer_core.beat.downbeat_features import downbeat_feature_matrix, robust_standardize_columns
 from analyzer_core.beat.general.bars import context, export_ctx_model
-from core.beat_geometry import downbeat_beat_indices
+from foundation.beat_geometry import downbeat_beat_indices
 from optimizer import SkippedOptimizationTrack, skipped_track
 from optimizer.beat_frames import cache_path, ensure_frames, list_grid_tracks, read_frames
 from optimizer.refine_onset_optimizer import _group_key
 from optimizer import model_start as MS
 from optimizer.beat_grid_check import GridCheck, ModelSet, grid_check
-from core.i18n import tr
+from foundation.i18n import tr
 
 ProgressCallback = Callable[[int, str], None]
 PARAMS = dict(max_iter=300, learning_rate=0.06, max_leaf_nodes=31, min_samples_leaf=80, l2_regularization=1.0)

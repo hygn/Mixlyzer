@@ -10,7 +10,7 @@ from pathlib import Path
 import numpy as np
 
 from analyzer_core.beat.frame_features import FrameFeatures
-from core.resource_paths import resource_path
+from foundation.resource_paths import resource_path
 
 
 # Per-frame onset sources, in model order. librosa's onset strength is one
@@ -164,7 +164,7 @@ def load_refine_onset_model(path: str = str(REFINE_ONSET_PATH)):
 
 def refine_onset_activation(frames: FrameFeatures, path: str | Path = REFINE_ONSET_PATH) -> np.ndarray:
     """Gradient-boosted beat activation on the frame grid [T]."""
-    from core.model_files import resolve_model
+    from foundation.model_files import resolve_model
     model, hop = load_refine_onset_model(str(resolve_model(path)))
     if hop != int(frames.hop_length):
         raise ValueError(f"Refinement onset model expects hop {hop}, frames use {frames.hop_length}")

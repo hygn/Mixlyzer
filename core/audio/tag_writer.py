@@ -42,7 +42,7 @@ import zlib
 from pathlib import Path
 from typing import Callable, Optional, Union
 
-from core.i18n import tr
+from foundation.i18n import tr
 
 FIELDS = ("title", "artist", "album", "comment", "bpm", "key")
 TEXT_FIELDS = ("title", "artist", "album", "comment")   # the ones the analysis reads from the tags

@@ -22,7 +22,7 @@ import json
 import os
 from pathlib import Path
 
-from core.resource_paths import resource_path
+from foundation.resource_paths import resource_path
 
 SOURCE_LANGUAGE = "en-US"
 LANGUAGE_LIST = "assets/i18n/languages.json"

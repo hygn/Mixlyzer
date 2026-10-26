@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from core.tempo_rows import rebuild_grid_from_segments
+from foundation.tempo_rows import rebuild_grid_from_segments
 
 from .decode import is_ramp, steady_beats
 

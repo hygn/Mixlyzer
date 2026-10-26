@@ -19,7 +19,7 @@ import numpy as np
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from audioengine.native import client
-from core.i18n import tr
+from foundation.i18n import tr
 from ui.config.output_group import BufferMonitor, THREAD_STATE_NAMES
 from ui.model_canvas import DOMAINS, FONT_LABEL, FONT_MAIN, FONT_NAME, FONT_SUB, PAL, ModelCanvas, soft
 from utils.volume import slider_percent_to_linear, trim_knob_to_db

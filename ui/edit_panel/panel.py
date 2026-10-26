@@ -7,7 +7,7 @@ import numpy as np
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from audioengine.native import client as deck
-from core.beat_geometry import downbeat_beat_indices
+from foundation.beat_geometry import downbeat_beat_indices
 from core.event_bus import EventBus
 from core.track.model import DataModel
 from ui.edit_panel.beat_counter import BeatCounterMixin
@@ -22,8 +22,7 @@ from ui.edit_panel.phrase import PhraseEditMixin
 from core.analysis_library import jobs as analysis_jobs
 from ui.edit_panel.styles import BUTTON_STYLESHEET, WARNING_BUTTON_STYLESHEET
 from ui.theme import current_theme
-from utils.jump_cues import build_jump_cue_graph
-from core.i18n import tr, tr_mark
+from foundation.i18n import tr, tr_mark
 
 
 class EditPanel(
@@ -73,8 +72,6 @@ class EditPanel(
         self._current_time: float = 0.0
         self.bus = bus
         self.model = model
-        self._graph_cues_of: Optional[list] = None   # the JumpCUE pairs _jumpcue_graph_cues was built from
-        self._graph_cues: list[dict] = []
         self.prev_tap_time = None
         self.prev_tap_BPM = 0
         self._edit_enabled = True
@@ -147,12 +144,8 @@ class EditPanel(
 
     @property
     def _jumpcue_graph_cues(self) -> list[dict]:
-        """The JumpCUEs' cues with their slots (built once per set of pairs the model holds)."""
-        if self._graph_cues_of is not self.model.jump_cues:
-            self._graph_cues_of = self.model.jump_cues
-            # cues keep their letters (slots): lettered by point only by the analysis
-            self._graph_cues, _links = build_jump_cue_graph(self._graph_cues_of, keep_labels=True)
-        return self._graph_cues
+        """The JumpCUEs' cues with their slots (letters kept: lettered by point only by the analysis)."""
+        return self.model.jump_cue_graph[0]
 
     @property
     def uid(self) -> Optional[str]:

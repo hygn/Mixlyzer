@@ -15,8 +15,8 @@ from audioengine.native.client import (
 from audioengine.python.clicks import ClickTrack
 from audioengine.python.deck import PythonDeck
 from audioengine.python.feeder import PCMFeeder
-from core import os_support
-from core.audio.decoder import decode_to_memmap
+from foundation import os_support
+from foundation.decoder import decode_to_memmap
 from core.event_bus import EventBus
 from utils.volume import trim_knob_to_db
 

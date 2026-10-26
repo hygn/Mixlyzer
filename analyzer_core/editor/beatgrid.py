@@ -2,7 +2,7 @@ from typing import Callable, Optional, Tuple
 import numpy as np
 
 from analyzer_core.global_analyzer import fast_load
-from core.tempo_rows import (
+from foundation.tempo_rows import (
     bpm_at,
     is_ramp_row,
     prune_close_beats,
@@ -14,7 +14,7 @@ from core.tempo_rows import (
 from analyzer_core.beat.frame_features import extract_frame_features
 from analyzer_core.hpss import hpss_audio
 from core.config import config
-from core.i18n import tr
+from foundation.i18n import tr
 
 
 def build_grid_from_period_phase(total_len_frames: int,

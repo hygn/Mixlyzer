@@ -10,7 +10,7 @@ from ui.edit_panel.icons import icon
 from ui.edit_panel.quantize import beat_quantize_grid
 from utils.jumpcue_colors import JUMPCUE_PAIR_COLORS
 from utils.phrases import assigned_phrases
-from core.i18n import tr
+from foundation.i18n import tr
 
 # JumpCUE slots are the letters A-Z (rekordbox hot cue letters).
 JUMPCUE_SLOTS = 26

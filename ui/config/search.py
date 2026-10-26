@@ -16,7 +16,7 @@ from core import reading
 from core.config import searchconfig
 from ui.config.dialogs import MusicIndexProgressDialog, ReadingRefreshProgressDialog
 from ui.config.scroll import scroll_page
-from core.i18n import tr, tr_mark
+from foundation.i18n import tr, tr_mark
 
 _LANGUAGE_TIPS = {
     "ja": tr_mark("Japanese, by word (SudachiDict): 東京 toukyou."),

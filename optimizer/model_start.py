@@ -11,8 +11,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from core.i18n import tr, tr_mark
-from core.model_files import has_user_model, is_shipped, resolve_model, shipped_path
+from foundation.i18n import tr, tr_mark
+from foundation.model_files import has_user_model, is_shipped, resolve_model, shipped_path
 
 SHIPPED, CURRENT, SCRATCH = "shipped", "current", "scratch"
 SHIPPED_TRAINING_TRACKS = 340

@@ -6,9 +6,9 @@ import numpy as np
 from analyzer_core.global_analyzer import fast_load
 from analyzer_core.hpss import hpss_audio_with_spectra
 from analyzer_core.key import chord_key as CK
-from core.beat_geometry import downbeat_times
+from foundation.beat_geometry import downbeat_times
 from core.config import ANALYSIS_SAMPLE_RATE, config
-from core.i18n import tr
+from foundation.i18n import tr
 
 
 def _track_evidence(path: str, cfg: config, beats, tempo_segments, phrases, progress_cb):

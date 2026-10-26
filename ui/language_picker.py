@@ -12,7 +12,7 @@ from PySide6.QtGui import QStandardItem, QStandardItemModel
 from PySide6.QtWidgets import QComboBox, QCompleter
 
 from core import tieup
-from core.i18n import tr, tr_mark
+from foundation.i18n import tr, tr_mark
 
 # the common languages' names, shown (and found) in the interface's language
 NAMES = {
