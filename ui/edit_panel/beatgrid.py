@@ -15,6 +15,7 @@ from ui.edit_panel.blocks import mode_column, rule_cell
 from ui.edit_panel.icons import badged_icon, icon
 from ui.theme import current_theme
 from ui.edit_panel.styles import BUTTON_STYLESHEET, WARNING_BUTTON_STYLESHEET
+from core.workers.segment_reanalysis import BEAT, ReanalysisRequest
 from system.i18n import tr, tr_mark
 from ui.live_label import LiveLabel
 
@@ -494,16 +495,11 @@ class BeatgridEditMixin:
             return
         if self._beatgrid is None or len(self._beatgrid) == 0:
             return
-        payload = {
-            "path": self._current_track_path(),
-            "segment_index": int(self._cur_idx),
-            "segments": np.asarray(self._segments, dtype=float).copy(),
-            "beats_time_sec": np.asarray(self._beatgrid, dtype=float).copy(),
-        }
-        payload["analyze_type"] = "beat"
-        if prev_bpm is not None:
-            payload["prev_bpm"] = float(prev_bpm)
-        self.bus.sig_segment_reanalyze_requested.emit(payload)
+        self.bus.sig_segment_reanalyze_requested.emit(ReanalysisRequest(
+            kind=BEAT, path=self._current_track_path(), segment_index=int(self._cur_idx),
+            tempo_segments=np.asarray(self._segments, dtype=float).copy(),
+            beats=np.asarray(self._beatgrid, dtype=float).copy(),
+            prev_bpm=float(prev_bpm) if prev_bpm is not None else None))
 
     def _on_playback_tempo_changed(self, tempofactor):
         if abs(tempofactor - 1) > 0.0001:

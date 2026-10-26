@@ -210,10 +210,8 @@ def _extract_phrase_block(features: Dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def extract_phrase_segments(features: Dict[str, Any], duration_sec: float | None = None) -> List[Phrase]:
-    """Read phrases (base labels) from a features dict; returns a sorted list
-    covering the whole track (``duration_sec``, else the features' own), the
-    stretches without a phrase as UNASSIGNED."""
+def stored_phrase_rows(features: Dict[str, Any]) -> List[Phrase]:
+    """The phrases of a stored block (its rows as stored; UNASSIGNED stretches are gaps)."""
     block = _extract_phrase_block(features)
     rows: list[Phrase] = []
     try:
@@ -224,6 +222,14 @@ def extract_phrase_segments(features: Dict[str, Any], duration_sec: float | None
         starts = ends = labels = np.asarray([])
     for i in range(min(len(starts), len(ends), len(labels))):
         rows.append(Phrase(float(starts[i]), float(ends[i]), str(labels[i]).strip()))
+    return rows
+
+
+def extract_phrase_segments(features: Dict[str, Any], duration_sec: float | None = None) -> List[Phrase]:
+    """Read phrases (base labels) from a features dict; returns a sorted list
+    covering the whole track (``duration_sec``, else the features' own), the
+    stretches without a phrase as UNASSIGNED."""
+    rows = stored_phrase_rows(features)
     if not duration_sec and isinstance(features, dict):
         duration_sec = features.get("duration_sec")
     return fill_unassigned(rows, duration_sec)

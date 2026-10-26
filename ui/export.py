@@ -20,8 +20,7 @@ from core.track.model import DataModel
 from third_party.rekordbox import sanitize_filename
 from ui.config.scroll import scroll_page
 from ui.elided_label import ElidedLabel
-from analyzer.music.marks import JumpCue
-from core.analysis_library.jump_cues import extract_jump_cue_groups
+from analyzer.music.marks import JumpCue, JumpCueGroup
 from ui.render.jumprender import jump_renderer
 from analyzer.music.key_names import idx_to_labels
 from ui.theme import current_theme
@@ -50,7 +49,7 @@ class ExportTrackPanel(QtWidgets.QWidget):
         self._sig_tags_done.connect(self._on_tags_done)
         self._track: Optional[TrackRow] = None
         self._source: Optional[Path] = None
-        self._features: Optional[dict[str, np.ndarray]] = None
+        self._jump_cues: Optional[list[JumpCueGroup]] = None   # the track's JumpCUE groups (None: not read yet)
         self._jump_pairs: list[tuple] = []     # (JumpCue, JumpCue): every two cues of a group
 
         self.lbl_title = ElidedLabel("-")
@@ -153,7 +152,7 @@ class ExportTrackPanel(QtWidgets.QWidget):
 
     def set_track(self, track: TrackRow) -> None:
         self._track = track
-        self._features = None
+        self._jump_cues = None
         self._jump_pairs = []
         self.cmb_jump_pair.clear()
         self.cmb_jump_pair.setEnabled(False)
@@ -176,7 +175,7 @@ class ExportTrackPanel(QtWidgets.QWidget):
         self._set_tag_note("")
         self._update_tag_controls()
         self._populate_jump_pairs()
-        self._read_features()
+        self._read_jump_cues()
 
     # File tags
     def _tag_format(self) -> Optional[str]:
@@ -321,8 +320,7 @@ class ExportTrackPanel(QtWidgets.QWidget):
             QtWidgets.QMessageBox.critical(self, tr("Export Track"), tr("Cannot create destination folder:\n{error}").format(error=exc))
             return
 
-        features = self._load_features()
-        if features is None:
+        if self._load_jump_cues() is None:
             return
 
         if not self._jump_pairs:
@@ -336,18 +334,18 @@ class ExportTrackPanel(QtWidgets.QWidget):
             )
             return
         src, dst = selection
-        exported = self._write_jumpcue_audio(dest_dir, features, [(src, dst)])
+        exported = self._write_jumpcue_audio(dest_dir, [(src, dst)])
         if exported is None:
             return
 
         lines = "\n".join(f"{label}: {path}" for label, path in exported)
         QtWidgets.QMessageBox.information(self, tr("Export Track"), tr("Export completed:\n{files}").format(files=lines))
 
-    def _load_features(self) -> Optional[dict[str, np.ndarray]]:
-        """The track's features: the deck's (the in-memory model) when it holds the track, else its stored ones as
-        read on the library thread (set_track asks for them; None until they come)."""
-        if self._features is not None:
-            return self._features
+    def _load_jump_cues(self) -> Optional[list[JumpCueGroup]]:
+        """The track's JumpCUE groups: the deck's (as edited) when it holds the track, else the stored ones as read
+        on the library thread (set_track asks for them; None until they come)."""
+        if self._jump_cues is not None:
+            return self._jump_cues
         if self._track is None or not self._track.uid:
             return None
         # Prefer in-memory model data when it matches the requested track.
@@ -355,38 +353,37 @@ class ExportTrackPanel(QtWidgets.QWidget):
             props = getattr(self._model, "properties", {}) or {}
             model_path = props.get("path")
             if model_path and self._track.path and os.path.normcase(os.path.abspath(model_path)) == os.path.normcase(os.path.abspath(self._track.path)):
-                self._features = getattr(self._model, "features", None)
-                if self._features:
-                    return self._features
+                self._jump_cues = list(self._model.jump_cues)
+                return self._jump_cues
         return None
 
-    def _read_features(self) -> None:
-        """The track's stored features asked of the library's owner (not the deck's track); the JumpCUE pairs
-        listed when they come."""
-        if self._track is None or not self._track.uid or self._load_features() is not None:
+    def _read_jump_cues(self) -> None:
+        """The track's stored analysis asked of the library's owner (not the deck's track); the JumpCUE pairs
+        listed when it comes."""
+        if self._track is None or not self._track.uid or self._load_jump_cues() is not None:
             return
         uid = self._track.uid
 
-        def came(features) -> None:
+        def came(analysis) -> None:
             if self._track is None or self._track.uid != uid:
                 return
-            if features is None:
+            if analysis is None:
                 self.status_label.setText(tr("The track's analysis could not be read."))
                 return
-            self._features = features
+            self._jump_cues = list(analysis.jump_cues)
             self._populate_jump_pairs()
 
-        self._library.read(analysis_jobs.features,uid, done=came)
+        self._library.read(analysis_jobs.analysis, uid, done=came)
 
     def _populate_jump_pairs(self) -> None:
         self.cmb_jump_pair.clear()
         self._jump_pairs = []
-        features = self._load_features()
-        if not features:
+        groups = self._load_jump_cues()
+        if not groups:
             self.cmb_jump_pair.setEnabled(False)
             return
         # every two cues of a group, each way (a one-cue group has no jump)
-        pairs = [(group.cues[i], group.cues[j]) for group in extract_jump_cue_groups(features)
+        pairs = [(group.cues[i], group.cues[j]) for group in groups
                  for i in range(len(group.cues)) for j in range(i + 1, len(group.cues))]
         self._jump_pairs = pairs
         for idx, (a, b) in enumerate(pairs):
@@ -410,7 +407,6 @@ class ExportTrackPanel(QtWidgets.QWidget):
     def _write_jumpcue_audio(
         self,
         dest_dir: Path,
-        features: dict[str, np.ndarray],
         jumps: list[tuple[JumpCue, JumpCue]],
     ) -> Optional[list[tuple[str, Path]]]:
         assert self._track is not None

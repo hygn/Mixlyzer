@@ -1,7 +1,7 @@
 """Orchestration for full-track analysis jobs.
 
 A request names its listener: the deck loading the track (AppWindow.load_track: it plays the file at once and takes
-the analysis's results when they come: a library track's stored features at once) or none (into the library
+the analysis's results when they come: a library track's stored analysis at once) or none (into the library
 alone: a file dropped on the library). A file being analyzed takes another request's listener too."""
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ from core.workers.analysis import AnalysisWorker
 from system.i18n import tr
 
 
-# the library's and a request's listener: the result (features, properties) of its track
+# the library's and a request's listener: the result (its StoredAnalysis ``analysis``, properties) of its track
 ResultCallback = Callable[[dict], None]
 StatusCallback = Callable[[str], None]
 # (the track, a reanalysis, its analysis settings for the run or None, the request's listener or None)
@@ -59,7 +59,7 @@ class AnalysisWorkflow(QtCore.QObject):
         self._contexts: dict[int, dict] = {}
 
     def analyze(self, path: str, listener: ResultCallback | None = None) -> None:
-        """The track's features: a library track's stored ones, else an analysis; to ``listener`` (a deck) and
+        """The track's analysis: a library track's stored one, else a new one; to ``listener`` (a deck) and
         the library (result_callback)."""
         self._start(path, force_analyze=False, listener=listener)
 
@@ -123,19 +123,19 @@ class AnalysisWorkflow(QtCore.QObject):
         taskid = task_info.taskid
 
         if track is not None and track.uid and not force_analyze:
-            # its stored features, read on the library thread; none readable: analyzed
-            def loaded(features) -> None:
-                if features is None:
+            # its stored analysis, read on the library thread; none readable: analyzed
+            def loaded(analysis) -> None:
+                if analysis is None:
                     self._analyze(path, cfg, taskid, thumbnail, force_analyze, listener)
                     return
                 self._show_status(tr("Loaded from the library: {file}").format(file=os.path.basename(path)))
-                result = {"features": features, "properties": track.to_meta(), "update_db": False,
+                result = {"analysis": analysis, "properties": track.to_meta(), "update_db": False,
                           "taskid": taskid, "album_art": thumbnail}
                 self._result_callback(result)
                 if listener is not None:
                     listener(result)
 
-            self._library.read(analysis_jobs.features,track.uid, done=loaded)
+            self._library.read(analysis_jobs.analysis, track.uid, done=loaded)
             return
         self._analyze(path, cfg, taskid, thumbnail, force_analyze, listener)
 

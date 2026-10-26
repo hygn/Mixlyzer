@@ -113,13 +113,15 @@ def list_key_tracks(library_dir: Path, ignored: list[SkippedOptimizationTrack]) 
     """The library's tracks whose keys are the user's, with what training reads (beats, bars, phrases, keys)."""
     tracks = []
     for track in _list_beat_tracks(library_dir, ignored):
-        z = track["features"]          # the stored features the library's owner gave (analyzer.training.library_tracks)
+        a = track["annotation"]        # the track's annotation the library's owner gave (analyzer.training.library_tracks)
         try:
-            ks = _rows(z["key_segments"]) if "key_segments" in z else np.zeros((0, 4))
-            auto = _rows(z["key_segments_auto"]) if "key_segments_auto" in z else None
-            segs = np.asarray(z["tempo_segments"], dtype=np.float64)
-            starts = np.asarray(z["phrase_segments_np.start"], float) if "phrase_segments_np.start" in z else np.zeros(0)
-            duration = float(np.asarray(z["duration_sec"]).item())
+            ks = _rows(a.key_segments) if a.key_segments is not None else np.zeros((0, 4))
+            auto = _rows(a.key_segments_auto) if a.key_segments_auto is not None else None
+            if a.tempo_segments is None or a.duration_sec is None:
+                raise ValueError("no tempo rows" if a.tempo_segments is None else "no duration")
+            segs = np.asarray(a.tempo_segments, dtype=np.float64)
+            starts = np.asarray(a.phrase_starts, float) if a.phrase_starts is not None else np.zeros(0)
+            duration = float(a.duration_sec)
         except Exception as exc:
             ignored.append(skipped_track(track, msg("unreadable analysis: {error}", error=exc)))
             continue

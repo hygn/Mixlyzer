@@ -27,6 +27,7 @@ from core.library.records import READING_FIELDS, IndexTrack, TrackRow
 from core.library.service import PLAYLISTS, READINGS, TIEUPS, TRACKS, VARIANTS, changes
 from core.tieups.domain import Catalog, TieUp, Work
 from analyzer.search import variants as variant_fp
+from core.analysis_library import jobs as analysis_jobs
 
 
 # ---- tracks ----
@@ -301,7 +302,7 @@ class IndexPlan:
 
 
 def index_plan(lib) -> IndexPlan:
-    """The library tracks to index (their audio there for Search by Music; their stored features for the variants)
+    """The library tracks to index (their audio there for Search by Music; their stored analyses for the variants)
     and the ones gone to drop."""
     search_db, variants_db = music_index.path_for(lib.path), variants.path_for(lib.path)
     rows = lib.db.list_all(order_by="added_ts ASC")
@@ -338,11 +339,14 @@ def store_music_entry(lib, track: IndexTrack, entry) -> None:
 
 @changes(VARIANTS)
 def fingerprint(lib, uid: str) -> int:
-    """A track's variants fingerprint from its stored features, queried against the library's. The versions found."""
-    features = lib.features.load(uid)
+    """A track's variants fingerprint from its stored analysis (its beats and overview), queried against the
+    library's. The versions found."""
+    stored = analysis_jobs.analysis(lib, uid)
+    if stored is None or stored.wave is None:
+        raise ValueError(f"no stored overview to fingerprint: {uid}")
     con = variants.open_writer(variants.path_for(lib.path))
     try:
-        return variants.put(con, uid, variant_fp.track_fingerprints({k: features[k] for k in variant_fp.FEATURES}))
+        return variants.put(con, uid, variant_fp.track_fingerprints(stored.beats, stored.wave, stored.duration_sec))
     finally:
         con.close()
 
@@ -364,7 +368,7 @@ def open_music_search(lib):
     return music_index.open_search(music_index.path_for(lib.path))
 
 
-# ---- the thumbnails (the stored features' jobs are core.analysis_library.jobs') ----
+# ---- the thumbnails (the stored analyses' jobs are core.analysis_library.jobs') ----
 
 def thumbnail(lib, uid: str, width_px: int) -> Optional[QtGui.QImage]:
     """A track's thumbnail scaled to ``width_px``, None when it has none."""
@@ -387,11 +391,13 @@ def _kept_metadata(properties: dict, track: Optional[TrackRow], *, reanalysis: b
 def store_analysis(lib, payload: dict) -> dict:
     """An analysis's results stored (the analysis process never opens the library: its last item carries ``store``):
     the track's row (a reanalysis keeps the user's metadata; a new track given its uid), its tag sources and segment
-    tables, its features (NPZ) and thumbnail, Search by Music's entry, the Variants' fingerprint (queried against the
-    library's), and a new track's versions' tie-ups. Returns the payload with its properties' uid, ``new_track`` and
-    ``tieups`` (taken from its versions)."""
+    tables, its stored analysis (``arrays``, the NPZ) and thumbnail, Search by Music's entry, the Variants' fingerprint
+    (queried against the library's), and a new track's versions' tie-ups. Returns the payload with its properties'
+    uid, ``analysis`` (the StoredAnalysis read back, as a library track's is), ``new_track`` and ``tieups`` (taken
+    from its versions)."""
     payload = dict(payload)
     stored = payload.pop("store")
+    arrays = payload.pop("arrays")
     db = lib.db
     properties = dict(payload["properties"])
     known = db.get(properties["path"])
@@ -406,7 +412,8 @@ def store_analysis(lib, payload: dict) -> dict:
     db.replace_key_segments(uid, stored["key_segments"])
     db.replace_phrase_index(uid, stored["phrase_sections"])
     db.conn.commit()
-    lib.features.save(uid, dict(payload["features"]))
+    lib.features.save(uid, dict(arrays))
+    payload["analysis"] = analysis_jobs.analysis(lib, uid)
     cover = stored.get("cover")
     thumbnails.save_thumbnail(lib.path, uid, QtGui.QImage.fromData(*cover) if cover is not None else None)
     if stored["music_entry"] is not None:

@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-27 02:13+0900\n"
+"POT-Creation-Date: 2026-10-27 02:50+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ko_KR\n"
@@ -54,7 +54,7 @@ msgstr "디코더 판독 {done}/{total}"
 
 #: analyzer/training/beat_critic_optimizer.py:471
 #: analyzer/training/beat_tcn_optimizer.py:374
-#: analyzer/training/key_model_optimizer.py:519
+#: analyzer/training/key_model_optimizer.py:521
 msgid "Held-out check"
 msgstr "검증용 곡 확인"
 
@@ -65,7 +65,7 @@ msgstr "저장 안 함: 검증용 곡에서 그리드가 나빠졌습니다"
 
 #: analyzer/training/beat_critic_optimizer.py:491
 #: analyzer/training/beat_tcn_optimizer.py:395
-#: analyzer/training/key_model_optimizer.py:533
+#: analyzer/training/key_model_optimizer.py:535
 msgid "Fine-tuning"
 msgstr "미세 조정"
 
@@ -134,86 +134,86 @@ msgstr "저장 안 함: 검증용 곡의 그리드가 나빠졌습니다"
 msgid "Fitting all tracks"
 msgstr "전체 트랙으로 학습 중"
 
-#: analyzer/training/jumpcue_parameter_optimizer.py:1008
+#: analyzer/training/jumpcue_parameter_optimizer.py:1010
 msgid "Audio file not found"
 msgstr "오디오 파일을 찾을 수 없음"
 
-#: analyzer/training/jumpcue_parameter_optimizer.py:1014
+#: analyzer/training/jumpcue_parameter_optimizer.py:1016
 #, python-brace-format
 msgid "Reading the analysis failed: {error}"
 msgstr "분석 읽기 실패: {error}"
 
-#: analyzer/training/jumpcue_parameter_optimizer.py:1016
+#: analyzer/training/jumpcue_parameter_optimizer.py:1018
 #, python-brace-format
 msgid "Need at least five tracks with saved JumpCUEs ({count} found)."
 msgstr "JumpCUE가 저장된 트랙이 최소 5개 필요합니다 ({count}개 찾음)."
 
-#: analyzer/training/jumpcue_parameter_optimizer.py:1033
+#: analyzer/training/jumpcue_parameter_optimizer.py:1035
 #, python-brace-format
 msgid "Building {count} JumpCUE candidate caches"
 msgstr "JumpCUE 후보 캐시 {count}개 만드는 중"
 
-#: analyzer/training/jumpcue_parameter_optimizer.py:1034
+#: analyzer/training/jumpcue_parameter_optimizer.py:1036
 msgid "JumpCUE candidate cache is current"
 msgstr "JumpCUE 후보 캐시가 최신입니다"
 
-#: analyzer/training/jumpcue_parameter_optimizer.py:1046
+#: analyzer/training/jumpcue_parameter_optimizer.py:1048
 #, python-brace-format
 msgid "JumpCUE analysis failed: {error}"
 msgstr "JumpCUE 분석 실패: {error}"
 
-#: analyzer/training/jumpcue_parameter_optimizer.py:1064
+#: analyzer/training/jumpcue_parameter_optimizer.py:1066
 msgid "No saved JumpCUE group matches an automatically found group"
 msgstr "저장된 JumpCUE 그룹 중 자동으로 찾은 그룹과 맞는 것이 없습니다"
 
-#: analyzer/training/jumpcue_parameter_optimizer.py:1069
+#: analyzer/training/jumpcue_parameter_optimizer.py:1071
 #, python-brace-format
 msgid "{count} labeled groups"
 msgstr "라벨이 있는 그룹 {count}개"
 
-#: analyzer/training/jumpcue_parameter_optimizer.py:1087
+#: analyzer/training/jumpcue_parameter_optimizer.py:1089
 #, python-brace-format
 msgid "Cross-validation fold {fold}/{folds}"
 msgstr "교차 검증 폴드 {fold}/{folds}"
 
-#: analyzer/training/jumpcue_parameter_optimizer.py:1093
+#: analyzer/training/jumpcue_parameter_optimizer.py:1095
 msgid "Fitting on all tracks"
 msgstr "전체 트랙으로 학습 중"
 
-#: analyzer/training/key_model_optimizer.py:124
+#: analyzer/training/key_model_optimizer.py:126
 #, python-brace-format
 msgid "unreadable analysis: {error}"
 msgstr "분석을 읽을 수 없음: {error}"
 
-#: analyzer/training/key_model_optimizer.py:127
+#: analyzer/training/key_model_optimizer.py:129
 msgid "no key annotation"
 msgstr "키 주석 없음"
 
-#: analyzer/training/key_model_optimizer.py:197
+#: analyzer/training/key_model_optimizer.py:199
 #, python-brace-format
 msgid "key feature cache build failed: {error}"
 msgstr "키 특징 캐시 생성 실패: {error}"
 
-#: analyzer/training/key_model_optimizer.py:200
+#: analyzer/training/key_model_optimizer.py:202
 #, python-brace-format
 msgid "Key features {done}/{total}"
 msgstr "키 특징 {done}/{total}"
 
-#: analyzer/training/key_model_optimizer.py:442
+#: analyzer/training/key_model_optimizer.py:444
 #, python-brace-format
 msgid "{stage}: epoch {epoch}/{epochs}, loss {loss}"
 msgstr "{stage}: 에포크 {epoch}/{epochs}, 손실 {loss}"
 
-#: analyzer/training/key_model_optimizer.py:499
+#: analyzer/training/key_model_optimizer.py:501
 msgid "too few beats or no key features"
 msgstr "비트가 너무 적거나 키 특징이 없음"
 
-#: analyzer/training/key_model_optimizer.py:504
+#: analyzer/training/key_model_optimizer.py:506
 #, python-brace-format
 msgid "Beat inputs {done}/{total}"
 msgstr "비트 입력 {done}/{total}"
 
-#: analyzer/training/key_model_optimizer.py:524
+#: analyzer/training/key_model_optimizer.py:526
 msgid "Not saved: the held-out songs' keys got worse"
 msgstr "저장 안 함: 검증용 곡의 키가 나빠졌습니다"
 
@@ -243,18 +243,18 @@ msgid "Refitting needs at least {needed} {songs} (the library has {count})"
 msgstr "다시 맞추려면 {songs}이(가) 최소 {needed}곡 필요합니다 (라이브러리에 {count}곡)"
 
 #: analyzer/training/onset_training.py:48
-#: analyzer/training/onset_training.py:60
+#: analyzer/training/onset_training.py:58
 #, python-brace-format
 msgid "invalid beat analysis: {error}"
 msgstr "잘못된 비트 분석: {error}"
 
 #: analyzer/training/onset_training.py:49
-#: analyzer/training/phrase_backend.py:154
+#: analyzer/training/phrase_backend.py:144
 msgid "analysis NPZ is missing"
 msgstr "분석 NPZ가 없음"
 
 #: analyzer/training/onset_training.py:53
-#: analyzer/training/phrase_backend.py:158
+#: analyzer/training/phrase_backend.py:148
 msgid "audio file is missing"
 msgstr "오디오 파일이 없음"
 
@@ -262,79 +262,79 @@ msgstr "오디오 파일이 없음"
 msgid "invalid or insufficient beat grid"
 msgstr "비트그리드가 잘못되었거나 부족함"
 
-#: analyzer/training/phrase_backend.py:153
-#: analyzer/training/phrase_backend.py:165
+#: analyzer/training/phrase_backend.py:143
+#: analyzer/training/phrase_backend.py:155
 #, python-brace-format
 msgid "invalid Phrase annotation: {error}"
 msgstr "잘못된 프레이즈 주석: {error}"
 
-#: analyzer/training/phrase_backend.py:171
+#: analyzer/training/phrase_backend.py:161
 msgid "fewer than two usable Phrase segments"
 msgstr "사용할 수 있는 프레이즈 구간이 두 개 미만"
 
-#: analyzer/training/phrase_parameter_optimizer.py:207
+#: analyzer/training/phrase_parameter_optimizer.py:208
 #, python-brace-format
 msgid "Cross-validation fold {fold}/{folds}: "
 msgstr "교차 검증 폴드 {fold}/{folds}: "
 
-#: analyzer/training/phrase_parameter_optimizer.py:381
+#: analyzer/training/phrase_parameter_optimizer.py:382
 #, python-brace-format
 msgid "Phrase annotation validation failed: {error}"
 msgstr "프레이즈 주석 검증 실패: {error}"
 
-#: analyzer/training/phrase_parameter_optimizer.py:384
+#: analyzer/training/phrase_parameter_optimizer.py:385
 #, python-brace-format
 msgid ""
 "Need at least five valid annotated tracks to train a Phrase parameter "
 "artifact ({valid} valid, {ignored} ignored)."
 msgstr "프레이즈 파라미터를 학습하려면 유효한 주석 트랙이 최소 5개 필요합니다 (유효 {valid}개, 제외 {ignored}개)."
 
-#: analyzer/training/phrase_parameter_optimizer.py:394
+#: analyzer/training/phrase_parameter_optimizer.py:395
 #, python-brace-format
 msgid "Checking feature cache: {count} tracks"
 msgstr "특징 캐시 확인 중: 트랙 {count}개"
 
-#: analyzer/training/phrase_parameter_optimizer.py:433
+#: analyzer/training/phrase_parameter_optimizer.py:435
 #, python-brace-format
 msgid "Building {count} missing feature caches with {workers} workers"
 msgstr "없는 특징 캐시 {count}개를 워커 {workers}개로 만드는 중"
 
-#: analyzer/training/phrase_parameter_optimizer.py:435
+#: analyzer/training/phrase_parameter_optimizer.py:437
 msgid "Feature cache is current"
 msgstr "특징 캐시가 최신입니다"
 
-#: analyzer/training/phrase_parameter_optimizer.py:462
+#: analyzer/training/phrase_parameter_optimizer.py:464
 #, python-brace-format
 msgid "Phrase feature cache build failed: {error}"
 msgstr "프레이즈 특징 캐시 생성 실패: {error}"
 
-#: analyzer/training/phrase_parameter_optimizer.py:487
+#: analyzer/training/phrase_parameter_optimizer.py:489
 #, python-brace-format
 msgid "Preparing optimizer features {done}/{total}"
 msgstr "최적화용 특징 준비 중 {done}/{total}"
 
-#: analyzer/training/phrase_parameter_optimizer.py:534
+#: analyzer/training/phrase_parameter_optimizer.py:536
 #, python-brace-format
 msgid "Phrase feature preparation failed: {error}"
 msgstr "프레이즈 특징 준비 실패: {error}"
 
-#: analyzer/training/phrase_parameter_optimizer.py:539
+#: analyzer/training/phrase_parameter_optimizer.py:541
 #, python-brace-format
 msgid "prepared ({done}/{total})"
 msgstr "준비 완료 ({done}/{total})"
 
-#: analyzer/training/phrase_parameter_optimizer.py:543
+#: analyzer/training/phrase_parameter_optimizer.py:545
 #, python-brace-format
 msgid ""
 "Need at least five tracks after Phrase feature validation ({valid} valid,"
 " {ignored} ignored)."
 msgstr "프레이즈 특징 검증 후 트랙이 최소 5개 필요합니다 (유효 {valid}개, 제외 {ignored}개)."
 
-#: analyzer/training/phrase_parameter_optimizer.py:567
+#: analyzer/training/phrase_parameter_optimizer.py:569
 msgid "Evaluating fitted Phrase models"
 msgstr "학습한 프레이즈 모델 평가 중"
 
-#: analyzer/training/phrase_parameter_optimizer.py:572
+#: analyzer/training/phrase_parameter_optimizer.py:574
 msgid "Writing parameter artifact"
 msgstr "파라미터 파일 쓰는 중"
 
@@ -579,7 +579,7 @@ msgstr "오디오 엔진을 재시작했습니다."
 msgid "The audio engine did not start; it is tried again every 2 seconds."
 msgstr "오디오 엔진이 시작되지 않았습니다. 2초마다 다시 시도합니다."
 
-#: app/window.py:533 app/window.py:599
+#: app/window.py:533 app/window.py:587
 msgid "External Sync is enabled. Local track loading is disabled."
 msgstr "외부 동기화가 켜져 있습니다. 로컬 트랙 불러오기가 비활성화됩니다."
 
@@ -587,15 +587,15 @@ msgstr "외부 동기화가 켜져 있습니다. 로컬 트랙 불러오기가 �
 msgid "Segment reanalysis canceled (track changed)"
 msgstr "구간 재분석 취소됨 (트랙이 바뀜)"
 
-#: app/window.py:604
+#: app/window.py:592
 msgid "Track unloaded."
 msgstr "트랙을 내렸습니다."
 
-#: app/window.py:614
+#: app/window.py:602
 msgid "Track File Not Found"
 msgstr "트랙 파일을 찾을 수 없음"
 
-#: app/window.py:618
+#: app/window.py:606
 #, python-brace-format
 msgid ""
 "Cannot load \"{name}\": its file is missing.\n"
@@ -608,51 +608,51 @@ msgstr ""
 "\n"
 "파일의 새 위치를 지정할까요?"
 
-#: app/window.py:625
+#: app/window.py:613
 #, python-brace-format
 msgid "Locate {name}"
 msgstr "{name} 찾기"
 
-#: app/window.py:649 app/window.py:665
+#: app/window.py:637 app/window.py:653
 msgid "Analysis saved to library."
 msgstr "분석을 라이브러리에 저장했습니다."
 
-#: app/window.py:654
+#: app/window.py:642
 msgid "Finished"
 msgstr "완료"
 
-#: app/window.py:677
+#: app/window.py:665
 msgid "Waiting to be looked up on Wikipedia"
 msgstr "위키백과 조사 대기 중"
 
-#: app/window.py:683
+#: app/window.py:671
 msgid "Looking up on Wikipedia and Wikidata…"
 msgstr "위키백과와 위키데이터에서 찾는 중…"
 
 # | msgid "Reading the analysis failed: {error}"
 # | msgid "The search failed: {error}"
 # | msgid "" "The lookup failed:\n" "{error}"
-#: app/window.py:688
+#: app/window.py:676
 msgid "The lookup failed."
 msgstr "조사하지 못했습니다."
 
-#: app/window.py:724
+#: app/window.py:712
 #, python-brace-format
 msgid "External Sync loading: {file}"
 msgstr "외부 동기화 불러오는 중: {file}"
 
-#: app/window.py:724
+#: app/window.py:712
 #, python-brace-format
 msgid "External Sync analyzing: {file}"
 msgstr "외부 동기화 분석 중: {file}"
 
 # | msgid "Memory Sync Disabled"
-#: app/window.py:739
+#: app/window.py:727
 msgid "External Sync Disabled"
 msgstr "외부 동기화 비활성화됨"
 
 # | msgid "External Sync enabled via {target}. Local play/load is locked."
-#: app/window.py:1010
+#: app/window.py:998
 #, python-brace-format
 msgid "External Sync enabled: OSC on {address}. Local play/load is locked."
 msgstr "외부 동기화 사용: OSC {address}. 로컬 재생/불러오기가 잠깁니다."
@@ -663,7 +663,8 @@ msgstr "JumpCUE 라벨은 서로 다른 A-Z로만 쓸 수 있습니다."
 
 #: core/analysis_library/jump_cues.py:98 core/analysis_library/jump_cues.py:101
 #: core/analysis_library/jump_cues.py:237
-#: core/analysis_library/jump_cues.py:388
+#: core/analysis_library/jump_cues.py:397 core/analysis_library/stored.py:132
+#: core/track/model.py:180
 msgid "JumpCUE labels must be unique single letters A-Z."
 msgstr "JumpCUE 라벨은 서로 다른 한 글자 A-Z여야 합니다."
 
@@ -1220,7 +1221,7 @@ msgid "The written tags did not read back as written; the file is unchanged."
 msgstr "쓴 태그가 쓴 그대로 다시 읽히지 않았습니다. 파일은 바뀌지 않았습니다."
 
 #: core/tags/writer.py:205 core/tags/writer.py:286 core/tags/writer.py:1371
-#: ui/export.py:192
+#: ui/export.py:191
 msgid "Tags cannot be written to this file's format."
 msgstr "이 파일 형식에는 태그를 쓸 수 없습니다."
 
@@ -1399,11 +1400,11 @@ msgstr "줄임말"
 msgid "Search hint"
 msgstr "검색 힌트"
 
-#: core/workers/analysis.py:66
+#: core/workers/analysis.py:47
 msgid "Processing Metadata"
 msgstr "메타데이터 처리 중"
 
-#: core/workers/analysis.py:171
+#: core/workers/analysis.py:152
 #, python-brace-format
 msgid "Analysis process exited unexpectedly ({code})."
 msgstr "분석 프로세스가 예기치 않게 종료되었습니다 ({code})."
@@ -1588,25 +1589,25 @@ msgstr "Rekordbox XML 쓰는 중"
 msgid "Rekordbox XML sync complete"
 msgstr "Rekordbox XML 동기화 완료"
 
-#: core/workers/segment_reanalysis.py:87
+#: core/workers/segment_reanalysis.py:103
 #, python-brace-format
 msgid "Segment analysis process exited unexpectedly ({code})."
 msgstr "구간 분석 프로세스가 예기치 않게 종료되었습니다 ({code})."
 
-#: core/workers/segment_reanalysis.py:130
+#: core/workers/segment_reanalysis.py:140
 msgid "Segment updated"
 msgstr "구간 갱신됨"
 
-#: core/workers/segment_reanalysis.py:139
-#: core/workers/segment_reanalysis.py:147
+#: core/workers/segment_reanalysis.py:148
+#: core/workers/segment_reanalysis.py:155
 msgid "Key segment updated"
 msgstr "키 구간 갱신됨"
 
-#: core/workers/segment_reanalysis.py:155
+#: core/workers/segment_reanalysis.py:160
 msgid "JumpCUE Updated"
 msgstr "JumpCUE 갱신됨"
 
-#: core/workers/segment_reanalysis.py:158
+#: core/workers/segment_reanalysis.py:163
 msgid "Phrases Updated"
 msgstr "프레이즈 갱신됨"
 
@@ -1737,7 +1738,7 @@ msgstr "저장된 분석 읽는 중: 트랙 {done} / {total}"
 msgid "Reading the library: {done} / {total} tracks"
 msgstr "라이브러리 읽는 중: 트랙 {done} / {total}"
 
-#: core/workflows/segment_reanalysis.py:54
+#: core/workflows/segment_reanalysis.py:55
 msgid "Segment reanalysis canceled"
 msgstr "구간 재분석 취소됨"
 
@@ -1745,100 +1746,100 @@ msgstr "구간 재분석 취소됨"
 msgid "Load a track before segment reanalysis"
 msgstr "구간을 재분석하기 전에 트랙을 불러오세요"
 
-#: core/workflows/segment_reanalysis.py:122
+#: core/workflows/segment_reanalysis.py:106
 msgid "JumpCUE reanalyze"
 msgstr "JumpCUE 재분석"
 
-#: core/workflows/segment_reanalysis.py:124
+#: core/workflows/segment_reanalysis.py:108
 #, python-brace-format
 msgid "{song} (Phrase)"
 msgstr "{song} (프레이즈)"
 
-#: core/workflows/segment_reanalysis.py:125
+#: core/workflows/segment_reanalysis.py:109
 msgid "Phrase reanalyze"
 msgstr "프레이즈 재분석"
 
-#: core/workflows/segment_reanalysis.py:127
+#: core/workflows/segment_reanalysis.py:111
 #, python-brace-format
 msgid "{song} (Key)"
 msgstr "{song} (키)"
 
-#: core/workflows/segment_reanalysis.py:128
+#: core/workflows/segment_reanalysis.py:112
 msgid "Key reanalyze"
 msgstr "키 재분석"
 
-#: core/workflows/segment_reanalysis.py:130
+#: core/workflows/segment_reanalysis.py:114
 #, python-brace-format
 msgid "{song} (Seg {index})"
 msgstr "{song} (구간 {index})"
 
-#: core/workflows/segment_reanalysis.py:131
+#: core/workflows/segment_reanalysis.py:115
 msgid "Segment reanalyze"
 msgstr "구간 재분석"
 
-#: core/workflows/segment_reanalysis.py:180
+#: core/workflows/segment_reanalysis.py:157
 msgid "No beatgrid available for JumpCUE reanalysis"
 msgstr "JumpCUE를 재분석할 비트그리드가 없습니다"
 
-#: core/workflows/segment_reanalysis.py:185
+#: core/workflows/segment_reanalysis.py:162
 msgid "No beatgrid available for phrase reanalysis"
 msgstr "프레이즈를 재분석할 비트그리드가 없습니다"
 
-#: core/workflows/segment_reanalysis.py:188
+#: core/workflows/segment_reanalysis.py:165
 msgid "No tempo segments available for phrase reanalysis"
 msgstr "프레이즈를 재분석할 템포 구간이 없습니다"
 
-#: core/workflows/segment_reanalysis.py:193
+#: core/workflows/segment_reanalysis.py:170
 msgid "No tempo segments available for key reanalysis"
 msgstr "키를 재분석할 템포 구간이 없습니다"
 
-#: core/workflows/segment_reanalysis.py:196
-#: core/workflows/segment_reanalysis.py:200
+#: core/workflows/segment_reanalysis.py:173
+#: core/workflows/segment_reanalysis.py:177
 msgid "No key segments available for reanalysis"
 msgstr "재분석할 키 구간이 없습니다"
 
-#: core/workflows/segment_reanalysis.py:208
+#: core/workflows/segment_reanalysis.py:185
 msgid "Invalid key selection"
 msgstr "잘못된 키 선택"
 
-#: core/workflows/segment_reanalysis.py:237
+#: core/workflows/segment_reanalysis.py:214
 msgid "Key reanalysis completed"
 msgstr "키 재분석 완료"
 
-#: core/workflows/segment_reanalysis.py:240
+#: core/workflows/segment_reanalysis.py:217
 msgid "JumpCUE reanalysis completed"
 msgstr "JumpCUE 재분석 완료"
 
-#: core/workflows/segment_reanalysis.py:243
+#: core/workflows/segment_reanalysis.py:220
 msgid "Phrase reanalysis completed"
 msgstr "프레이즈 재분석 완료"
 
-#: core/workflows/segment_reanalysis.py:246
+#: core/workflows/segment_reanalysis.py:223
 msgid "Segment reanalysis completed"
 msgstr "구간 재분석 완료"
 
-#: core/workflows/segment_reanalysis.py:261
+#: core/workflows/segment_reanalysis.py:237
 #, python-brace-format
 msgid "JumpCUE reanalysis failed: {error}"
 msgstr "JumpCUE 재분석 실패: {error}"
 
-#: core/workflows/segment_reanalysis.py:262
+#: core/workflows/segment_reanalysis.py:238
 msgid "JumpCUE reanalysis finished"
 msgstr "JumpCUE 재분석 끝남"
 
-#: core/workflows/segment_reanalysis.py:270
+#: core/workflows/segment_reanalysis.py:246
 msgid "Phrase reanalysis finished"
 msgstr "프레이즈 재분석 끝남"
 
-#: core/workflows/segment_reanalysis.py:280
+#: core/workflows/segment_reanalysis.py:256
 msgid "Key reanalysis finished"
 msgstr "키 재분석 끝남"
 
-#: core/workflows/segment_reanalysis.py:288
+#: core/workflows/segment_reanalysis.py:264
 msgid "Segment reanalysis finished"
 msgstr "구간 재분석 끝남"
 
-#: core/workflows/segment_reanalysis.py:298
+#: core/workflows/segment_reanalysis.py:274
 #, python-brace-format
 msgid "Segment reanalysis failed: {error}"
 msgstr "구간 재분석 실패: {error}"
@@ -2157,9 +2158,9 @@ msgstr ""
 #: analyzer/training/beat_decoder_optimizer.py:216
 #: analyzer/training/beat_tcn_optimizer.py:407
 #: analyzer/training/downbeat_ctx_optimizer.py:138
-#: analyzer/training/jumpcue_parameter_optimizer.py:1120
-#: analyzer/training/key_model_optimizer.py:540
-#: analyzer/training/phrase_parameter_optimizer.py:576
+#: analyzer/training/jumpcue_parameter_optimizer.py:1122
+#: analyzer/training/key_model_optimizer.py:542
+#: analyzer/training/phrase_parameter_optimizer.py:578
 #: analyzer/training/refine_onset_optimizer.py:206 ui/config/analysis.py:598
 #: ui/config/dialogs/optimization.py:95
 msgid "Done"
@@ -2248,7 +2249,7 @@ msgstr "CV"
 
 #: analyzer/training/beat_critic_optimizer.py:491
 #: analyzer/training/beat_tcn_optimizer.py:395
-#: analyzer/training/key_model_optimizer.py:533 ui/config/analysis.py:700
+#: analyzer/training/key_model_optimizer.py:535 ui/config/analysis.py:700
 #: ui/config/analysis.py:761 ui/config/dialogs/optimization.py:75
 msgid "Training"
 msgstr "학습"
@@ -5109,145 +5110,145 @@ msgstr "카운트 버튼을 누르고 있는 동안 센 박"
 msgid "Bar.Beat of the current playhead position"
 msgstr "현재 플레이헤드 위치의 마디.박"
 
-#: ui/edit_panel/beatgrid.py:27
+#: ui/edit_panel/beatgrid.py:28
 msgid "Shift the whole beatgrid (every segment) half a beat earlier"
 msgstr "비트그리드 전체(모든 구간)를 반 박 앞당깁니다"
 
-#: ui/edit_panel/beatgrid.py:28
+#: ui/edit_panel/beatgrid.py:29
 msgid "Shift the current segment half a beat earlier"
 msgstr "현재 구간을 반 박 앞당깁니다"
 
-#: ui/edit_panel/beatgrid.py:29
+#: ui/edit_panel/beatgrid.py:30
 msgid "Shift the whole beatgrid (every segment) 10 ms earlier"
 msgstr "비트그리드 전체(모든 구간)를 10 ms 앞당깁니다"
 
-#: ui/edit_panel/beatgrid.py:30
+#: ui/edit_panel/beatgrid.py:31
 msgid "Shift the current segment 10 ms earlier"
 msgstr "현재 구간을 10 ms 앞당깁니다"
 
-#: ui/edit_panel/beatgrid.py:31
+#: ui/edit_panel/beatgrid.py:32
 msgid "Shift the whole beatgrid (every segment) 1 ms earlier"
 msgstr "비트그리드 전체(모든 구간)를 1 ms 앞당깁니다"
 
-#: ui/edit_panel/beatgrid.py:32
+#: ui/edit_panel/beatgrid.py:33
 msgid "Shift the current segment 1 ms earlier"
 msgstr "현재 구간을 1 ms 앞당깁니다"
 
-#: ui/edit_panel/beatgrid.py:33
+#: ui/edit_panel/beatgrid.py:34
 msgid "Shift the whole beatgrid (every segment) 1 ms later"
 msgstr "비트그리드 전체(모든 구간)를 1 ms 늦춥니다"
 
-#: ui/edit_panel/beatgrid.py:34
+#: ui/edit_panel/beatgrid.py:35
 msgid "Shift the current segment 1 ms later"
 msgstr "현재 구간을 1 ms 늦춥니다"
 
-#: ui/edit_panel/beatgrid.py:35
+#: ui/edit_panel/beatgrid.py:36
 msgid "Shift the whole beatgrid (every segment) 10 ms later"
 msgstr "비트그리드 전체(모든 구간)를 10 ms 늦춥니다"
 
-#: ui/edit_panel/beatgrid.py:36
+#: ui/edit_panel/beatgrid.py:37
 msgid "Shift the current segment 10 ms later"
 msgstr "현재 구간을 10 ms 늦춥니다"
 
-#: ui/edit_panel/beatgrid.py:37
+#: ui/edit_panel/beatgrid.py:38
 msgid "Shift the whole beatgrid (every segment) half a beat later"
 msgstr "비트그리드 전체(모든 구간)를 반 박 늦춥니다"
 
-#: ui/edit_panel/beatgrid.py:38
+#: ui/edit_panel/beatgrid.py:39
 msgid "Shift the current segment half a beat later"
 msgstr "현재 구간을 반 박 늦춥니다"
 
-#: ui/edit_panel/beatgrid.py:39
+#: ui/edit_panel/beatgrid.py:40
 msgid "Halve the BPM of the whole beatgrid (every segment); the downbeats stay"
 msgstr "비트그리드 전체(모든 구간)의 BPM을 절반으로 합니다. 다운비트는 유지됩니다"
 
-#: ui/edit_panel/beatgrid.py:40
+#: ui/edit_panel/beatgrid.py:41
 msgid "Halve the BPM of the current segment; the downbeats stay"
 msgstr "현재 구간의 BPM을 절반으로 합니다. 다운비트는 유지됩니다"
 
-#: ui/edit_panel/beatgrid.py:41
+#: ui/edit_panel/beatgrid.py:42
 msgid "Double the BPM of the whole beatgrid (every segment); the downbeats stay"
 msgstr "비트그리드 전체(모든 구간)의 BPM을 두 배로 합니다. 다운비트는 유지됩니다"
 
-#: ui/edit_panel/beatgrid.py:42
+#: ui/edit_panel/beatgrid.py:43
 msgid "Double the BPM of the current segment; the downbeats stay"
 msgstr "현재 구간의 BPM을 두 배로 합니다. 다운비트는 유지됩니다"
 
-#: ui/edit_panel/beatgrid.py:96
+#: ui/edit_panel/beatgrid.py:97
 msgid "Ref"
 msgstr "기준"
 
-#: ui/edit_panel/beatgrid.py:99
+#: ui/edit_panel/beatgrid.py:100
 msgid "Reference BPM (tapped or typed)"
 msgstr "기준 BPM (탭 또는 입력)"
 
-#: ui/edit_panel/beatgrid.py:106
+#: ui/edit_panel/beatgrid.py:107
 msgid ""
 "Merge the previous segment into the current one (keeps the current tempo "
 "/ phase)"
 msgstr "이전 구간을 현재 구간에 합칩니다 (현재 템포 / 위상 유지)"
 
-#: ui/edit_panel/beatgrid.py:107
+#: ui/edit_panel/beatgrid.py:108
 msgid ""
 "Merge the next segment into the current one (keeps the current tempo / "
 "phase)"
 msgstr "다음 구간을 현재 구간에 합칩니다 (현재 템포 / 위상 유지)"
 
-#: ui/edit_panel/beatgrid.py:108
+#: ui/edit_panel/beatgrid.py:109
 msgid "Split the current segment at the playhead"
 msgstr "현재 구간을 플레이헤드에서 나눕니다"
 
-#: ui/edit_panel/beatgrid.py:114
+#: ui/edit_panel/beatgrid.py:115
 msgid "Edit the whole beatgrid: shift and BPM x2 / x1/2 apply to every segment"
 msgstr "비트그리드 전체 편집: 이동과 BPM x2 / x1/2를 모든 구간에 적용합니다"
 
-#: ui/edit_panel/beatgrid.py:115
+#: ui/edit_panel/beatgrid.py:116
 msgid "Edit the current segment: shift and BPM x2 / x1/2 apply to it only"
 msgstr "현재 구간 편집: 이동과 BPM x2 / x1/2를 이 구간에만 적용합니다"
 
-#: ui/edit_panel/beatgrid.py:132
+#: ui/edit_panel/beatgrid.py:133
 #, python-brace-format
 msgid "Set the current segment to {meter}"
 msgstr "현재 구간을 {meter}로 설정합니다"
 
-#: ui/edit_panel/beatgrid.py:136
+#: ui/edit_panel/beatgrid.py:137
 msgid "Set the current segment to another time signature (1/4 - 8/4)"
 msgstr "현재 구간을 다른 박자로 설정합니다 (1/4 - 8/4)"
 
-#: ui/edit_panel/beatgrid.py:150 ui/edit_panel/beatgrid.py:266
+#: ui/edit_panel/beatgrid.py:151 ui/edit_panel/beatgrid.py:267
 msgid "Seg -- | Elapsed: 00:00.00 | Left: 00:00.00"
 msgstr "구간 -- | 경과: 00:00.00 | 남음: 00:00.00"
 
-#: ui/edit_panel/beatgrid.py:239
+#: ui/edit_panel/beatgrid.py:240
 msgid "Reanalyze the current segment's beatgrid from the audio"
 msgstr "현재 구간의 비트그리드를 오디오에서 재분석합니다"
 
-#: ui/edit_panel/beatgrid.py:242
+#: ui/edit_panel/beatgrid.py:243
 msgid "Reanalyze the current segment's beatgrid at the reference BPM"
 msgstr "현재 구간의 비트그리드를 기준 BPM으로 재분석합니다"
 
-#: ui/edit_panel/beatgrid.py:268
+#: ui/edit_panel/beatgrid.py:269
 #, python-brace-format
 msgid "Seg {index} | Elapsed: {elapsed} | Left: {left}"
 msgstr "구간 {index} | 경과: {elapsed} | 남음: {left}"
 
-#: ui/edit_panel/beatgrid.py:510
+#: ui/edit_panel/beatgrid.py:506
 msgid ""
 "Tap to set reference BPM (WARNING! Tempo factor is not 1. RefBPM Will be "
 "scaled accordingly)"
 msgstr "탭해서 기준 BPM 설정 (주의! 템포 배율이 1이 아닙니다. 기준 BPM이 그에 맞게 환산됩니다)"
 
-#: ui/edit_panel/beatgrid.py:511
+#: ui/edit_panel/beatgrid.py:507
 msgid ""
 "Reference BPM for Analysis and BPM Assigning (WARNING! Tempo factor is "
 "not 1. RefBPM Will be scaled accordingly)"
 msgstr "분석과 BPM 지정에 쓰는 기준 BPM (주의! 템포 배율이 1이 아닙니다. 기준 BPM이 그에 맞게 환산됩니다)"
 
-#: ui/edit_panel/beatgrid.py:515
+#: ui/edit_panel/beatgrid.py:511
 msgid "Tap to set reference BPM"
 msgstr "탭해서 기준 BPM 설정"
 
-#: ui/edit_panel/beatgrid.py:516
+#: ui/edit_panel/beatgrid.py:512
 msgid "Reference BPM for Analysis and BPM Assigning"
 msgstr "분석과 BPM 지정에 쓰는 기준 BPM"
 
@@ -5280,7 +5281,7 @@ msgstr "플레이헤드를 이 CUE로 옮깁니다 (재생 중에는 안 됨)"
 msgid "CUE color / delete"
 msgstr "CUE 색 / 삭제"
 
-#: ui/edit_panel/cuepoint.py:69 ui/edit_panel/jumpcue.py:111
+#: ui/edit_panel/cuepoint.py:69 ui/edit_panel/jumpcue.py:112
 #, python-brace-format
 msgid "{time} - double-click to rename"
 msgstr "{time} - 더블클릭해 이름 바꾸기"
@@ -5299,195 +5300,195 @@ msgstr "색 {number}"
 msgid "Delete CUE point {time}"
 msgstr "CUE 포인트 {time} 삭제"
 
-#: ui/edit_panel/jumpcue.py:50
+#: ui/edit_panel/jumpcue.py:51
 msgid "Reanalyze the JumpCUEs with the current beatgrid"
 msgstr "현재 비트그리드로 JumpCUE를 재분석합니다"
 
-#: ui/edit_panel/jumpcue.py:56
+#: ui/edit_panel/jumpcue.py:57
 msgid "Color (its group), beat moves, slots, delete"
 msgstr "색(그룹), 박 이동, 슬롯, 삭제"
 
-#: ui/edit_panel/jumpcue.py:102
+#: ui/edit_panel/jumpcue.py:103
 msgid "SET: a JumpCUE in this slot at the nearest beat or track edge"
 msgstr "SET: 가장 가까운 박이나 트랙 끝에 이 슬롯의 JumpCUE를 둡니다"
 
-#: ui/edit_panel/jumpcue.py:107
+#: ui/edit_panel/jumpcue.py:108
 msgid "Jump here on the next beat (when stopped: move the playhead here)"
 msgstr "다음 박에서 여기로 점프 (정지 중: 플레이헤드를 여기로 이동)"
 
-#: ui/edit_panel/jumpcue.py:159
+#: ui/edit_panel/jumpcue.py:160
 msgid "Color (cues of one color jump between each other)"
 msgstr "색 (같은 색의 큐끼리 서로 점프합니다)"
 
-#: ui/edit_panel/jumpcue.py:162
+#: ui/edit_panel/jumpcue.py:163
 msgid "(unused)"
 msgstr "(사용 안 함)"
 
-#: ui/edit_panel/jumpcue.py:166
+#: ui/edit_panel/jumpcue.py:167
 msgid "This color"
 msgstr "이 색"
 
-#: ui/edit_panel/jumpcue.py:167
+#: ui/edit_panel/jumpcue.py:168
 msgid "One beat earlier"
 msgstr "한 박 앞으로"
 
-#: ui/edit_panel/jumpcue.py:168
+#: ui/edit_panel/jumpcue.py:169
 msgid "One beat later"
 msgstr "한 박 뒤로"
 
-#: ui/edit_panel/jumpcue.py:169
+#: ui/edit_panel/jumpcue.py:170
 msgid "Slots"
 msgstr "슬롯"
 
-#: ui/edit_panel/jumpcue.py:171
+#: ui/edit_panel/jumpcue.py:172
 #, python-brace-format
 msgid "Insert a slot at {letter} (this and later cues move one slot on)"
 msgstr "{letter}에 슬롯 끼워 넣기 (이 큐와 이후 큐가 한 슬롯씩 뒤로 밀림)"
 
-#: ui/edit_panel/jumpcue.py:175
+#: ui/edit_panel/jumpcue.py:176
 #, python-brace-format
 msgid "Move into the empty slot {letter} (this and later cues move one slot back)"
 msgstr "빈 슬롯 {letter}로 옮기기 (이 큐와 이후 큐가 한 슬롯씩 앞으로 당겨짐)"
 
-#: ui/edit_panel/jumpcue.py:212
+#: ui/edit_panel/jumpcue.py:213
 msgid "Two JumpCUEs cannot share a point."
 msgstr "두 JumpCUE가 같은 지점을 가질 수 없습니다."
 
-#: ui/edit_panel/jumpcue.py:218 ui/edit_panel/panel.py:575
+#: ui/edit_panel/jumpcue.py:219 ui/edit_panel/panel.py:575
 msgid "Invalid JumpCUE Label"
 msgstr "잘못된 JumpCUE 라벨"
 
-#: ui/edit_panel/key.py:21
+#: ui/edit_panel/key.py:22
 msgid "A semitone down: every segment's key"
 msgstr "반음 내림: 모든 구간의 키"
 
-#: ui/edit_panel/key.py:22
+#: ui/edit_panel/key.py:23
 msgid "A semitone down: the current segment's key"
 msgstr "반음 내림: 현재 구간의 키"
 
-#: ui/edit_panel/key.py:23
+#: ui/edit_panel/key.py:24
 msgid "A semitone up: every segment's key"
 msgstr "반음 올림: 모든 구간의 키"
 
-#: ui/edit_panel/key.py:24
+#: ui/edit_panel/key.py:25
 msgid "A semitone up: the current segment's key"
 msgstr "반음 올림: 현재 구간의 키"
 
 # | msgid "One step down the circle of fifths (Camelot -1): every segment's
 # key"
-#: ui/edit_panel/key.py:25
+#: ui/edit_panel/key.py:26
 msgid "One step down the circle of fifths (Alphanumeric -1): every segment's key"
 msgstr "5도권에서 한 칸 내림 (Alphanumeric -1): 모든 구간의 키"
 
 # | msgid "One step down the circle of fifths (Camelot -1): the current
 # | segment's key"
-#: ui/edit_panel/key.py:26
+#: ui/edit_panel/key.py:27
 msgid ""
 "One step down the circle of fifths (Alphanumeric -1): the current "
 "segment's key"
 msgstr "5도권에서 한 칸 내림 (Alphanumeric -1): 현재 구간의 키"
 
 # | msgid "One step up the circle of fifths (Camelot +1): every segment's key"
-#: ui/edit_panel/key.py:27
+#: ui/edit_panel/key.py:28
 msgid "One step up the circle of fifths (Alphanumeric +1): every segment's key"
 msgstr "5도권에서 한 칸 올림 (Alphanumeric +1): 모든 구간의 키"
 
 # | msgid "One step up the circle of fifths (Camelot +1): the current
 # segment's
 # | key"
-#: ui/edit_panel/key.py:28
+#: ui/edit_panel/key.py:29
 msgid ""
 "One step up the circle of fifths (Alphanumeric +1): the current segment's"
 " key"
 msgstr "5도권에서 한 칸 올림 (Alphanumeric +1): 현재 구간의 키"
 
-#: ui/edit_panel/key.py:29
+#: ui/edit_panel/key.py:30
 msgid "Relative major / minor (C <-> Am): every segment's key"
 msgstr "나란한조 장조 / 단조 (C <-> Am): 모든 구간의 키"
 
-#: ui/edit_panel/key.py:30
+#: ui/edit_panel/key.py:31
 msgid "Relative major / minor (C <-> Am): the current segment's key"
 msgstr "나란한조 장조 / 단조 (C <-> Am): 현재 구간의 키"
 
-#: ui/edit_panel/key.py:36
+#: ui/edit_panel/key.py:37
 msgid "Move the current key segment's start one beat earlier"
 msgstr "현재 키 구간의 시작을 한 박 앞당깁니다"
 
-#: ui/edit_panel/key.py:37
+#: ui/edit_panel/key.py:38
 msgid ""
 "Move the current key segment's start one bar (to the neighboring "
 "downbeat) earlier"
 msgstr "현재 키 구간의 시작을 한 마디(이웃한 다운비트까지) 앞당깁니다"
 
-#: ui/edit_panel/key.py:38
+#: ui/edit_panel/key.py:39
 msgid "Move the current key segment's start one beat later"
 msgstr "현재 키 구간의 시작을 한 박 늦춥니다"
 
-#: ui/edit_panel/key.py:39
+#: ui/edit_panel/key.py:40
 msgid ""
 "Move the current key segment's start one bar (to the neighboring "
 "downbeat) later"
 msgstr "현재 키 구간의 시작을 한 마디(이웃한 다운비트까지) 늦춥니다"
 
-#: ui/edit_panel/key.py:40
+#: ui/edit_panel/key.py:41
 msgid "Move the current key segment's end one beat earlier"
 msgstr "현재 키 구간의 끝을 한 박 앞당깁니다"
 
-#: ui/edit_panel/key.py:41
+#: ui/edit_panel/key.py:42
 msgid ""
 "Move the current key segment's end one bar (to the neighboring downbeat) "
 "earlier"
 msgstr "현재 키 구간의 끝을 한 마디(이웃한 다운비트까지) 앞당깁니다"
 
-#: ui/edit_panel/key.py:42
+#: ui/edit_panel/key.py:43
 msgid "Move the current key segment's end one beat later"
 msgstr "현재 키 구간의 끝을 한 박 늦춥니다"
 
-#: ui/edit_panel/key.py:43
+#: ui/edit_panel/key.py:44
 msgid ""
 "Move the current key segment's end one bar (to the neighboring downbeat) "
 "later"
 msgstr "현재 키 구간의 끝을 한 마디(이웃한 다운비트까지) 늦춥니다"
 
-#: ui/edit_panel/key.py:67 ui/edit_panel/phrase.py:64
+#: ui/edit_panel/key.py:68 ui/edit_panel/phrase.py:65
 msgid "Boundaries move by one beat"
 msgstr "경계를 한 박씩 옮깁니다"
 
-#: ui/edit_panel/key.py:68 ui/edit_panel/phrase.py:65
+#: ui/edit_panel/key.py:69 ui/edit_panel/phrase.py:66
 msgid "Boundaries move by one bar (to the neighboring downbeat)"
 msgstr "경계를 한 마디씩(이웃한 다운비트까지) 옮깁니다"
 
-#: ui/edit_panel/key.py:76
+#: ui/edit_panel/key.py:77
 msgid "Split the current key segment at the beat nearest the playhead"
 msgstr "현재 키 구간을 플레이헤드에 가장 가까운 박에서 나눕니다"
 
-#: ui/edit_panel/key.py:77
+#: ui/edit_panel/key.py:78
 msgid ""
 "Merge the previous key segment into the current one (keeps the current "
 "key)"
 msgstr "이전 키 구간을 현재 구간에 합칩니다 (현재 키 유지)"
 
-#: ui/edit_panel/key.py:78
+#: ui/edit_panel/key.py:79
 msgid "Merge the next key segment into the current one (keeps the current key)"
 msgstr "다음 키 구간을 현재 구간에 합칩니다 (현재 키 유지)"
 
-#: ui/edit_panel/key.py:80
+#: ui/edit_panel/key.py:81
 msgid "Reanalyze the current key segment's key from the audio"
 msgstr "현재 키 구간의 키를 오디오에서 재분석합니다"
 
-#: ui/edit_panel/key.py:81
+#: ui/edit_panel/key.py:82
 msgid "Reanalyze the keys of the whole track (dynamic)"
 msgstr "트랙 전체의 키를 재분석합니다 (다이내믹)"
 
-#: ui/edit_panel/key.py:84
+#: ui/edit_panel/key.py:85
 msgid "Key changes (pick, semitone, fifth, relative) apply to the whole track"
 msgstr "키 변경(선택, 반음, 5도, 나란한조)을 트랙 전체에 적용합니다"
 
-#: ui/edit_panel/key.py:85
+#: ui/edit_panel/key.py:86
 msgid "Key changes (pick, semitone, fifth, relative) apply to the current segment"
 msgstr "키 변경(선택, 반음, 5도, 나란한조)을 현재 구간에 적용합니다"
 
-#: ui/edit_panel/key.py:109
+#: ui/edit_panel/key.py:110
 msgid ""
 "Root: hold the current key's root (and its octave) under the music.\n"
 "The plainest check of the tonic: it should feel like the note the music "
@@ -5496,7 +5497,7 @@ msgstr ""
 "근음: 현재 키의 근음(과 그 옥타브)을 음악 아래에 지속합니다.\n"
 "으뜸음을 가장 단순하게 확인하는 방법으로, 음악이 머무는 음처럼 느껴져야 합니다."
 
-#: ui/edit_panel/key.py:115
+#: ui/edit_panel/key.py:116
 msgid ""
 "Root and fifth: hold the current key's root and fifth under the music.\n"
 "In the right key it sounds at home all the way through; a lasting clash\n"
@@ -5506,7 +5507,7 @@ msgstr ""
 "맞는 키라면 처음부터 끝까지 자연스럽게 들립니다. 계속 부딪히면\n"
 "으뜸음이 틀렸거나(반음 / 5도 이동을 시도) 키가 바뀐 것입니다."
 
-#: ui/edit_panel/key.py:122
+#: ui/edit_panel/key.py:123
 msgid ""
 "Tonic chord: hold the current key's major / minor triad under the music.\n"
 "Tests the third: if the drone fits but the chord clashes, try the other "
@@ -5518,24 +5519,24 @@ msgstr ""
 "3음을 확인합니다: 드론은 맞는데 화음이 부딪히면 같은 근음의 다른 조성을,\n"
 "멜로디가 계속 다른 곳으로 해결되면 나란한조를 시도하세요."
 
-#: ui/edit_panel/key.py:128 ui/edit_panel/key.py:235
+#: ui/edit_panel/key.py:129 ui/edit_panel/key.py:236
 msgid "-- | Seg -- | Elapsed: 00:00.00 | Left: 00:00.00"
 msgstr "-- | 구간 -- | 경과: 00:00.00 | 남음: 00:00.00"
 
 # | msgid "" "Pick one key for the whole track: it becomes one segment in that
 # | key " "(Camelot wheel)"
-#: ui/edit_panel/key.py:207
+#: ui/edit_panel/key.py:208
 msgid ""
 "Pick one key for the whole track: it becomes one segment in that key "
 "(Alphanumeric wheel)"
 msgstr "트랙 전체에 키 하나를 고릅니다: 그 키로 된 한 구간이 됩니다 (Alphanumeric 휠)"
 
 # | msgid "Pick the current segment's key (Camelot wheel)"
-#: ui/edit_panel/key.py:208
+#: ui/edit_panel/key.py:209
 msgid "Pick the current segment's key (Alphanumeric wheel)"
 msgstr "현재 구간의 키 선택 (Alphanumeric 휠)"
 
-#: ui/edit_panel/key.py:248
+#: ui/edit_panel/key.py:249
 #, python-brace-format
 msgid "{key} | Seg {index} | Elapsed: {elapsed} | Left: {left}"
 msgstr "{key} | 구간 {index} | 경과: {elapsed} | 남음: {left}"
@@ -5614,61 +5615,61 @@ msgstr "CALL은 정지 중에만 동작합니다."
 msgid "No CUE point at the playhead."
 msgstr "플레이헤드에 CUE 포인트가 없습니다."
 
-#: ui/edit_panel/phrase.py:28
+#: ui/edit_panel/phrase.py:29
 msgid "Move the current phrase's start one beat earlier"
 msgstr "현재 프레이즈의 시작을 한 박 앞당깁니다"
 
-#: ui/edit_panel/phrase.py:29
+#: ui/edit_panel/phrase.py:30
 msgid ""
 "Move the current phrase's start one bar (to the neighboring downbeat) "
 "earlier"
 msgstr "현재 프레이즈의 시작을 한 마디(이웃한 다운비트까지) 앞당깁니다"
 
-#: ui/edit_panel/phrase.py:30
+#: ui/edit_panel/phrase.py:31
 msgid "Move the current phrase's start one beat later"
 msgstr "현재 프레이즈의 시작을 한 박 늦춥니다"
 
-#: ui/edit_panel/phrase.py:31
+#: ui/edit_panel/phrase.py:32
 msgid ""
 "Move the current phrase's start one bar (to the neighboring downbeat) "
 "later"
 msgstr "현재 프레이즈의 시작을 한 마디(이웃한 다운비트까지) 늦춥니다"
 
-#: ui/edit_panel/phrase.py:32
+#: ui/edit_panel/phrase.py:33
 msgid "Move the current phrase's end one beat earlier"
 msgstr "현재 프레이즈의 끝을 한 박 앞당깁니다"
 
-#: ui/edit_panel/phrase.py:33
+#: ui/edit_panel/phrase.py:34
 msgid ""
 "Move the current phrase's end one bar (to the neighboring downbeat) "
 "earlier"
 msgstr "현재 프레이즈의 끝을 한 마디(이웃한 다운비트까지) 앞당깁니다"
 
-#: ui/edit_panel/phrase.py:34
+#: ui/edit_panel/phrase.py:35
 msgid "Move the current phrase's end one beat later"
 msgstr "현재 프레이즈의 끝을 한 박 늦춥니다"
 
-#: ui/edit_panel/phrase.py:35
+#: ui/edit_panel/phrase.py:36
 msgid "Move the current phrase's end one bar (to the neighboring downbeat) later"
 msgstr "현재 프레이즈의 끝을 한 마디(이웃한 다운비트까지) 늦춥니다"
 
-#: ui/edit_panel/phrase.py:73
+#: ui/edit_panel/phrase.py:74
 msgid "Split the current phrase at the beat nearest the playhead"
 msgstr "현재 프레이즈를 플레이헤드에 가장 가까운 박에서 나눕니다"
 
-#: ui/edit_panel/phrase.py:74
+#: ui/edit_panel/phrase.py:75
 msgid "Merge the previous phrase into the current one (keeps the current label)"
 msgstr "이전 프레이즈를 현재 프레이즈에 합칩니다 (현재 라벨 유지)"
 
-#: ui/edit_panel/phrase.py:75
+#: ui/edit_panel/phrase.py:76
 msgid "Merge the next phrase into the current one (keeps the current label)"
 msgstr "다음 프레이즈를 현재 프레이즈에 합칩니다 (현재 라벨 유지)"
 
-#: ui/edit_panel/phrase.py:80
+#: ui/edit_panel/phrase.py:81
 msgid "Reanalyze the phrases of the whole track with the current beatgrid"
 msgstr "현재 비트그리드로 트랙 전체의 프레이즈를 재분석합니다"
 
-#: ui/edit_panel/phrase.py:83
+#: ui/edit_panel/phrase.py:84
 msgid ""
 "Replace the CUE points with the ones the CUE rules give the current "
 "phrases\n"
@@ -5677,11 +5678,11 @@ msgstr ""
 "CUE 포인트를 현재 프레이즈에 CUE 규칙을 적용한 결과로 바꿉니다\n"
 "(설정 > 분석 > CUE, 전체 분석이 만드는 방식과 같음)"
 
-#: ui/edit_panel/phrase.py:99 ui/edit_panel/phrase.py:219
+#: ui/edit_panel/phrase.py:100 ui/edit_panel/phrase.py:215
 msgid "-- | Seg -- | +0 beats | Left: 00:00.00"
 msgstr "-- | 구간 -- | +0박 | 남음: 00:00.00"
 
-#: ui/edit_panel/phrase.py:226
+#: ui/edit_panel/phrase.py:222
 #, python-brace-format
 msgid "{label} | Seg {index} | +{beats} beats | Left: {left}"
 msgstr "{label} | 구간 {index} | +{beats}박 | 남음: {left}"
@@ -5704,7 +5705,7 @@ msgstr ""
 "트랙의 오디오 파일. 파일을 옮기거나 이름을 바꿨을 때 지정하세요.\n"
 "분석, 플레이리스트, CUE는 트랙에 그대로 남습니다."
 
-#: ui/edit_song.py:118 ui/export.py:61
+#: ui/edit_song.py:118 ui/export.py:60
 msgid "Browse..."
 msgstr "찾아보기..."
 
@@ -5712,17 +5713,17 @@ msgstr "찾아보기..."
 msgid "Path"
 msgstr "경로"
 
-#: ui/edit_song.py:124 ui/export.py:79 ui/export.py:106 ui/library/widget.py:35
+#: ui/edit_song.py:124 ui/export.py:78 ui/export.py:105 ui/library/widget.py:35
 #: ui/tieup_editor.py:140 ui/tieup_works.py:77 ui/track_search_index.py:53
 msgid "Title"
 msgstr "제목"
 
-#: ui/edit_song.py:125 ui/export.py:80 ui/export.py:107 ui/library/widget.py:35
+#: ui/edit_song.py:125 ui/export.py:79 ui/export.py:106 ui/library/widget.py:35
 #: ui/track_search_index.py:53
 msgid "Artist"
 msgstr "아티스트"
 
-#: ui/edit_song.py:126 ui/export.py:108 ui/library/widget.py:36
+#: ui/edit_song.py:126 ui/export.py:107 ui/library/widget.py:36
 #: ui/track_search_index.py:53
 msgid "Album"
 msgstr "앨범"
@@ -5731,7 +5732,7 @@ msgstr "앨범"
 msgid "Rating"
 msgstr "평점"
 
-#: ui/edit_song.py:130 ui/export.py:109 ui/library/widget.py:38
+#: ui/edit_song.py:130 ui/export.py:108 ui/library/widget.py:38
 msgid "Comment"
 msgstr "코멘트"
 
@@ -5773,35 +5774,35 @@ msgstr ""
 msgid "Edit Track"
 msgstr "트랙 편집"
 
-#: ui/export.py:74
+#: ui/export.py:73
 msgid "No JumpCUE directions"
 msgstr "JumpCUE 방향 없음"
 
-#: ui/export.py:81
+#: ui/export.py:80
 msgid "Source"
 msgstr "원본"
 
-#: ui/export.py:83
+#: ui/export.py:82
 msgid "Prerender JumpCUE Audio"
 msgstr "JumpCUE 오디오 미리 렌더링"
 
-#: ui/export.py:84
+#: ui/export.py:83
 msgid "Write WAV files with JumpCUE skips baked in."
 msgstr "JumpCUE 건너뛰기를 반영한 WAV 파일을 씁니다."
 
-#: ui/export.py:86
+#: ui/export.py:85
 msgid "Destination Folder"
 msgstr "대상 폴더"
 
-#: ui/export.py:88
+#: ui/export.py:87
 msgid "Export"
 msgstr "내보내기"
 
-#: ui/export.py:97
+#: ui/export.py:96
 msgid "File Tags"
 msgstr "파일 태그"
 
-#: ui/export.py:99
+#: ui/export.py:98
 msgid ""
 "<p>Write the library's values into the audio file's own tags: only the "
 "fields checked change; the file's other tags, its artwork and its audio "
@@ -5810,45 +5811,45 @@ msgstr ""
 "<p>라이브러리의 값을 오디오 파일 자체의 태그에 씁니다. 체크한 항목만 바뀌고, 파일의 다른 태그와 아트워크, 오디오는 그대로 "
 "둡니다. FLAC, MP3, AAC, WAV, AIFF, MP4 / M4A 파일에 쓸 수 있습니다.</p>"
 
-#: ui/export.py:110
+#: ui/export.py:109
 msgid "MP4 / M4A files hold a whole BPM only."
 msgstr "MP4 / M4A 파일에는 정수 BPM만 들어갑니다."
 
-#: ui/export.py:111
+#: ui/export.py:110
 msgid "Written as a musical key (Am, F#)."
 msgstr "일반 조성 표기(Am, F#)로 씁니다."
 
-#: ui/config/library.py:52 ui/export.py:119
+#: ui/config/library.py:52 ui/export.py:118
 msgid "Tie-ups after the comment"
 msgstr "코멘트 뒤에 타이업 붙이기"
 
-#: ui/export.py:121
+#: ui/export.py:120
 msgid ""
 "<p>The comment written with the song's tie-ups after it, as [Title OP; "
 "Other ED]; the library's comment stays as it is.</p>"
 msgstr "<p>코멘트 뒤에 곡의 타이업을 [제목 OP; 다른 작품 ED] 형식으로 붙여서 씁니다. 라이브러리의 코멘트는 그대로 둡니다.</p>"
 
-#: ui/export.py:128 ui/export.py:213 ui/export.py:274
+#: ui/export.py:127 ui/export.py:212 ui/export.py:273
 msgid "Write Tags"
 msgstr "태그 쓰기"
 
-#: ui/export.py:129
+#: ui/export.py:128
 msgid "Write the checked fields' stored values into the file's tags."
 msgstr "체크한 항목의 저장된 값을 파일 태그에 씁니다."
 
-#: ui/export.py:172
+#: ui/export.py:171
 msgid "Source file not found at the specified path."
 msgstr "지정한 경로에 원본 파일이 없습니다."
 
-#: ui/export.py:175
+#: ui/export.py:174
 msgid "Source path is invalid."
 msgstr "원본 경로가 잘못되었습니다."
 
-#: ui/export.py:208
+#: ui/export.py:207
 msgid "Check the fields to write."
 msgstr "쓸 항목을 체크하세요."
 
-#: ui/export.py:214
+#: ui/export.py:213
 msgid ""
 "The Edit tab has changes to this track that are not applied: the stored "
 "values are written.\n"
@@ -5857,42 +5858,42 @@ msgstr ""
 "편집 탭에 이 트랙의 적용하지 않은 변경이 있습니다. 저장된 값이 쓰입니다.\n"
 "그래도 태그를 쓸까요?"
 
-#: ui/export.py:222
+#: ui/export.py:221
 msgid "Writing the tags..."
 msgstr "태그를 쓰는 중..."
 
-#: ui/export.py:230
+#: ui/export.py:229
 msgid "The track is no longer in the library."
 msgstr "이 트랙은 더 이상 라이브러리에 없습니다."
 
-#: ui/export.py:266
+#: ui/export.py:265
 #, python-brace-format
 msgid "The file could not be written: {error}"
 msgstr "파일을 쓸 수 없습니다: {error}"
 
-#: ui/export.py:272
+#: ui/export.py:271
 msgid "The tags were written to the file."
 msgstr "파일에 태그를 썼습니다."
 
-#: ui/export.py:302
+#: ui/export.py:301
 msgid "Select Destination Folder"
 msgstr "대상 폴더 선택"
 
-#: ui/export.py:310
+#: ui/export.py:309
 msgid "No track is selected."
 msgstr "선택한 트랙이 없습니다."
 
-#: ui/export.py:310 ui/export.py:315 ui/export.py:321 ui/export.py:334
-#: ui/export.py:344 ui/export.py:458 ui/export.py:469 ui/library/actions.py:51
+#: ui/export.py:309 ui/export.py:314 ui/export.py:320 ui/export.py:332
+#: ui/export.py:342 ui/export.py:454 ui/export.py:465 ui/library/actions.py:51
 #: ui/library/track_panel.py:46 ui/shortcuts.py:157
 msgid "Export Track"
 msgstr "트랙 내보내기"
 
-#: ui/export.py:315
+#: ui/export.py:314
 msgid "Please select a destination folder."
 msgstr "대상 폴더를 선택하세요."
 
-#: ui/export.py:321
+#: ui/export.py:320
 #, python-brace-format
 msgid ""
 "Cannot create destination folder:\n"
@@ -5901,11 +5902,11 @@ msgstr ""
 "대상 폴더를 만들 수 없습니다:\n"
 "{error}"
 
-#: ui/export.py:335
+#: ui/export.py:333
 msgid "Select a JumpCUE direction to render."
 msgstr "렌더링할 JumpCUE 방향을 고르세요."
 
-#: ui/export.py:344
+#: ui/export.py:342
 #, python-brace-format
 msgid ""
 "Export completed:\n"
@@ -5915,11 +5916,11 @@ msgstr ""
 "{files}"
 
 # | msgid "Phrase reanalysis completed"
-#: ui/export.py:374
+#: ui/export.py:371
 msgid "The track's analysis could not be read."
 msgstr "트랙의 분석을 읽을 수 없습니다."
 
-#: ui/export.py:459
+#: ui/export.py:455
 #, python-brace-format
 msgid ""
 "'{name}' already exists.\n"
@@ -5928,7 +5929,7 @@ msgstr ""
 "'{name}'이(가) 이미 있습니다.\n"
 "덮어쓸까요?"
 
-#: ui/export.py:469
+#: ui/export.py:465
 #, python-brace-format
 msgid ""
 "Failed to write JumpCUE audio:\n"
@@ -6891,7 +6892,7 @@ msgstr "템포 페이더의 범위를 다음으로: ±6% / ±10% / ±16% / WIDE 
 msgid "Master tempo on / off"
 msgstr "마스터 템포 켜기 / 끄기"
 
-#: ui/edit_panel/beatgrid.py:147 ui/shortcuts.py:95
+#: ui/edit_panel/beatgrid.py:148 ui/shortcuts.py:95
 msgid "Metronome on / off"
 msgstr "메트로놈 켜기 / 끄기"
 
@@ -6986,7 +6987,7 @@ msgstr "MEMORY: CUE 포인트"
 msgid "MEMORY: set a CUE point at the nearest beat or track edge"
 msgstr "MEMORY: 가장 가까운 박이나 트랙 끝에 CUE 포인트를 설정합니다"
 
-#: ui/edit_panel/jumpcue.py:179 ui/shortcuts.py:117
+#: ui/edit_panel/jumpcue.py:180 ui/shortcuts.py:117
 #, python-brace-format
 msgid "Delete JumpCUE {letter}"
 msgstr "JumpCUE {letter} 삭제"
@@ -7379,7 +7380,7 @@ msgstr "반 박 늦추기"
 msgid "ZERO"
 msgstr "ZERO"
 
-#: ui/edit_panel/beatgrid.py:75 ui/shortcuts.py:209
+#: ui/edit_panel/beatgrid.py:76 ui/shortcuts.py:209
 msgid "Clear the reference BPM and the tap history"
 msgstr "기준 BPM과 탭 기록을 지웁니다"
 
@@ -7387,7 +7388,7 @@ msgstr "기준 BPM과 탭 기록을 지웁니다"
 msgid "TAP"
 msgstr "TAP"
 
-#: ui/edit_panel/beatgrid.py:81 ui/shortcuts.py:210
+#: ui/edit_panel/beatgrid.py:82 ui/shortcuts.py:210
 msgid "Tap the beat to set the reference BPM"
 msgstr "박에 맞춰 탭해 기준 BPM을 정합니다"
 
@@ -7397,7 +7398,7 @@ msgstr "박에 맞춰 탭해 기준 BPM을 정합니다"
 msgid "Assign the reference BPM"
 msgstr "기준 BPM 지정"
 
-#: ui/edit_panel/beatgrid.py:100 ui/shortcuts.py:212
+#: ui/edit_panel/beatgrid.py:101 ui/shortcuts.py:212
 msgid "Assign the reference BPM to the current segment (downbeat at its start)"
 msgstr "기준 BPM을 현재 구간에 지정합니다 (다운비트는 구간 시작)"
 
@@ -7407,7 +7408,7 @@ msgstr "기준 BPM을 현재 구간에 지정합니다 (다운비트는 구간 �
 msgid "Ramp: the starting tempo"
 msgstr "램프: 시작 템포"
 
-#: ui/edit_panel/beatgrid.py:101 ui/shortcuts.py:214
+#: ui/edit_panel/beatgrid.py:102 ui/shortcuts.py:214
 msgid ""
 "Make the reference BPM the current segment's starting tempo (a ramp to "
 "its end tempo; its first beat stays)"
@@ -7417,7 +7418,7 @@ msgstr "기준 BPM을 현재 구간의 시작 템포로 합니다 (끝 템포까
 msgid "Ramp: the ending tempo"
 msgstr "램프: 끝 템포"
 
-#: ui/edit_panel/beatgrid.py:102 ui/shortcuts.py:217
+#: ui/edit_panel/beatgrid.py:103 ui/shortcuts.py:217
 msgid ""
 "Make the reference BPM the current segment's ending tempo (a ramp from "
 "its start tempo; its first beat stays)"
@@ -7428,7 +7429,7 @@ msgstr "기준 BPM을 현재 구간의 끝 템포로 합니다 (시작 템포에
 msgid "Downbeat at the playhead"
 msgstr "플레이헤드에 다운비트"
 
-#: ui/edit_panel/beatgrid.py:109 ui/shortcuts.py:220
+#: ui/edit_panel/beatgrid.py:110 ui/shortcuts.py:220
 msgid "Make the beat nearest the playhead the current segment's downbeat"
 msgstr "플레이헤드에 가장 가까운 박을 현재 구간의 다운비트로 합니다"
 
@@ -7452,7 +7453,7 @@ msgid "Pick the key"
 msgstr "키 선택"
 
 # | msgid "Pick the key (Camelot wheel)"
-#: ui/edit_panel/key.py:94 ui/edit_panel/key_picker.py:82 ui/shortcuts.py:226
+#: ui/edit_panel/key.py:95 ui/edit_panel/key_picker.py:82 ui/shortcuts.py:226
 msgid "Pick the key (Alphanumeric wheel)"
 msgstr "키 선택 (Alphanumeric 휠)"
 
@@ -7505,7 +7506,7 @@ msgstr "나란한조 장조 / 단조 (C <-> Am)"
 msgid "Merge the same keys"
 msgstr "같은 키 합치기"
 
-#: ui/edit_panel/key.py:79 ui/shortcuts.py:235
+#: ui/edit_panel/key.py:80 ui/shortcuts.py:235
 msgid "Merge every run of neighboring segments with the same key"
 msgstr "키가 같은 이웃 구간들을 모두 하나로 합칩니다"
 
@@ -7536,11 +7537,11 @@ msgid ""
 "phrases"
 msgstr "CUE 포인트를 현재 프레이즈에 CUE 규칙을 적용한 결과로 바꿉니다"
 
-#: ui/edit_panel/phrase.py:76 ui/shortcuts.py:242
+#: ui/edit_panel/phrase.py:77 ui/shortcuts.py:242
 msgid "Unassign the current phrase (UNASSIGNED)"
 msgstr "현재 프레이즈의 라벨을 해제합니다 (UNASSIGNED)"
 
-#: ui/edit_panel/phrase.py:161 ui/shortcuts.py:243
+#: ui/edit_panel/phrase.py:162 ui/shortcuts.py:243
 #, python-brace-format
 msgid "Label the current phrase {label}"
 msgstr "현재 프레이즈를 {label}(으)로 지정"

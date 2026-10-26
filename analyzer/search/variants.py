@@ -1,5 +1,5 @@
-"""The song fingerprint, from the analysis's stored features only: the beat grid and the overview's 12 log-spaced
-bands (20 Hz - 20 kHz).
+"""The song fingerprint, from the analysis's results only (no audio): the beat grid and the overview's 12 log-spaced
+bands (20 Hz - 20 kHz, analyzer.audio.wave_overview.WaveOverview).
 
 Frames: beat subdivisions putting the frame rate in FRAMES_PER_MIN, so the fingerprint follows the music's time
 whatever the tempo or a start offset, and a grid read at half or double tempo gives the same frames (a query near the
@@ -18,17 +18,14 @@ over the offsets (an edit has several), their union covering each track -> the r
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Mapping
-
 import numpy as np
 
 from analyzer.beat.grid_version import BEAT_GRID_VERSION
-from analyzer.audio.wave_overview import WAVE_BANDS_VERSION
+from analyzer.audio.wave_overview import WAVE_BANDS_VERSION, WaveOverview
 
-# the fingerprint's method: this algorithm and the version of each stored feature it reads (core.library.variants keeps
+# the fingerprint's method: this algorithm and the version of each result it reads (core.library.variants keeps
 # it with every fingerprint and compares only fingerprints of one method)
 METHOD = f"fp1;hash=6;stride=8;beats={BEAT_GRID_VERSION};bands={WAVE_BANDS_VERSION}"
-FEATURES = ("wave_bands_np", "wave_bands_ref", "beats_time_sec", "duration_sec")   # what it is made from
 
 BACKING = (0, 1, 2, 3, 10, 11)
 VOCAL = (4, 5, 6, 7, 8, 9)
@@ -63,10 +60,10 @@ class Fingerprint:
     margin: np.ndarray | None = None   # (frames, 5) |change| of the backing bits: the weakest are probed
 
 
-def subdivisions(features: Mapping, query: bool = False) -> list[float]:
+def subdivisions(beats, query: bool = False) -> list[float]:
     """Frames per beat: the one putting the frame rate in FRAMES_PER_MIN; for a query near the edge, also the
     neighbouring octave's (another analysis of the same audio may read the tempo just across it)."""
-    b = np.asarray(features["beats_time_sec"], dtype=np.float64)
+    b = np.asarray(beats, dtype=np.float64)
     if b.size < 3:
         return [1.0]
     bpm = 60.0 / float(np.median(np.diff(b)))
@@ -85,21 +82,22 @@ def subdivisions(features: Mapping, query: bool = False) -> list[float]:
     return out
 
 
-def track_fingerprints(features: Mapping) -> list[Fingerprint]:
-    """A track's fingerprints (``FEATURES`` of its analysis): the one stored first, then the queries' of the octave's
-    neighbour when its frame rate is near the edge."""
-    return [fingerprint(features)] + [fingerprint(features, sub) for sub in subdivisions(features, query=True)[1:]]
+def track_fingerprints(beats, wave: WaveOverview, duration_sec: float) -> list[Fingerprint]:
+    """A track's fingerprints from its beats, its overview and its length: the one stored first, then the queries'
+    of the octave's neighbour when its frame rate is near the edge."""
+    return [fingerprint(beats, wave, duration_sec)] + [fingerprint(beats, wave, duration_sec, sub)
+                                                       for sub in subdivisions(beats, query=True)[1:]]
 
 
-def _frames_energy(features: Mapping, sub: float) -> np.ndarray:
-    """(frames x 12) mean log power per frame, from wave_bands_np / _ref and the beats."""
-    lv = np.asarray(features["wave_bands_np"]).astype(np.float64) * (1.0 / 255.0)
-    logp = np.log(np.power(lv, 4.0) * np.asarray(features["wave_bands_ref"]).astype(np.float64)[None, :] + 1e-12)
+def _frames_energy(beats, wave: WaveOverview, duration_sec: float, sub: float) -> np.ndarray:
+    """(frames x 12) mean log power per frame, from the overview's bands and the beats."""
+    lv = np.asarray(wave.bands).astype(np.float64) * (1.0 / 255.0)
+    logp = np.log(np.power(lv, 4.0) * np.asarray(wave.bands_ref).astype(np.float64)[None, :] + 1e-12)
     n = logp.shape[0]
-    b = np.asarray(features["beats_time_sec"], dtype=np.float64)
+    b = np.asarray(beats, dtype=np.float64)
     if b.size < 3 or n == 0 or logp.shape[1] != 12:
         return np.zeros((0, 12))
-    width = float(features["duration_sec"]) / n
+    width = float(duration_sec) / n
     if sub >= 1.0:
         k = int(sub)
         edges = (b[:-1, None] + np.diff(b)[:, None] * (np.arange(k)[None, :] / k)).reshape(-1)
@@ -122,9 +120,9 @@ def _changes(E: np.ndarray, bands) -> np.ndarray:
     return dd
 
 
-def fingerprint(features: Mapping, sub: float | None = None) -> Fingerprint:
+def fingerprint(beats, wave: WaveOverview, duration_sec: float, sub: float | None = None) -> Fingerprint:
     """One track's fingerprint at ``sub`` frames a beat (default: its own, `subdivisions`)."""
-    E = _frames_energy(features, subdivisions(features)[0] if sub is None else sub)
+    E = _frames_energy(beats, wave, duration_sec, subdivisions(beats)[0] if sub is None else sub)
     full, back = _changes(E, tuple(range(12))), _changes(E, BACKING)
     w11 = (1 << np.arange(11)).astype(np.uint16)
     w5 = (1 << np.arange(5)).astype(np.uint16)

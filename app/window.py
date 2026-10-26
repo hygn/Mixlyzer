@@ -15,7 +15,7 @@ from core.workflows.event_bus import EventBus
 from core.track.model import DataModel
 from ui.timeline import TimelineCoordinator
 from core.playback.player import PlayerController
-from core.analysis_library import jobs as analysis_jobs
+from core.analysis_library.stored import StoredAnalysis
 from core.library import jobs
 from core.library.service import LibraryService
 from core.tags.reader import extract_tags
@@ -309,7 +309,7 @@ class AppWindow(QtWidgets.QMainWindow):
 
     def _connect_requests(self) -> None:
         """The app's requests on the bus: loading and analyzing tracks, the settings saved, the background jobs asked for."""
-        self.model.sig_loaded.connect(self._on_features_loaded)
+        self.model.sig_loaded.connect(self._on_track_loaded)
         self.bus.sig_request_load_track.connect(self.load_track)
         self.bus.sig_request_analyze.connect(self.analyze_file)
         self.bus.sig_duration_changed.connect(self._on_duration)
@@ -337,8 +337,8 @@ class AppWindow(QtWidgets.QMainWindow):
         self.analysis_workflow = AnalysisWorkflow(
             library=self.library,
             taskmanager=self.taskmanager,
-            result_callback=self._on_features_ready,
-            reanalysis_result_callback=self._on_features_reanalyze,
+            result_callback=self._on_analysis_ready,
+            reanalysis_result_callback=self._on_reanalysis_ready,
             status_callback=status_bar.showMessage,
             missing_file_callback=self._on_track_file_missing,
             parent=self,
@@ -548,7 +548,7 @@ class AppWindow(QtWidgets.QMainWindow):
         if track is None:
             # a new file: its tags meanwhile, the analysis's results when it is done
             title, artist, album, _comment = extract_tags(path)
-            self.model.load({}, {"path": path, "title": title, "artist": artist, "album": album}, 0.0)
+            self.model.load(StoredAnalysis(), {"path": path, "title": title, "artist": artist, "album": album}, 0.0)
         self.player.stop()
         self.player.set_source(self._deck_path)
         self.analysis_workflow.analyze(self._deck_path, listener=self._on_deck_analysis)
@@ -569,24 +569,12 @@ class AppWindow(QtWidgets.QMainWindow):
             self._apply_analysis(result)
 
     def _apply_analysis(self, result: dict) -> None:
-        """The analysis's features (the stored ones, read on the library thread: the library's standard form) and
-        properties into the model, the decoded audio kept (the playback goes on); while the deck still holds the
-        track."""
+        """The track's stored analysis (as the library's owner read it: a new analysis is read back once stored) and
+        properties into the model, the decoded audio kept (the playback goes on)."""
         properties = dict(result.get("properties") or {})
-
-        def apply(features):
-            if self._holds(properties.get("path")):
-                self._apply_features(result, properties, features if features is not None else
-                                     dict(result.get("features") or {}))
-
-        if result.get("update_db", True) is False and result.get("features") is not None:
-            apply(result["features"])    # a library track's: read from the store already
-        else:
-            self.library.read(analysis_jobs.features,properties.get("uid"), done=apply)
-
-    def _apply_features(self, result: dict, properties: dict, features: dict) -> None:
-        duration = float(features.get("duration_sec") or self.model.duration_sec or 0.0)
-        self.model.load(features, properties, duration, album_art=result.get("album_art"), keep_audio=True)
+        analysis = result.get("analysis") or StoredAnalysis()
+        duration = float(analysis.duration_sec or self.model.duration_sec or 0.0)
+        self.model.load(analysis, properties, duration, album_art=result.get("album_art"), keep_audio=True)
 
     def _on_duration(self, duration_sec: float) -> None:
         """The decoded track's length: the views' until the analysis gives its own."""
@@ -600,7 +588,7 @@ class AppWindow(QtWidgets.QMainWindow):
             return
         self.player.unload()
         self._deck_path = None
-        self.model.load({}, {}, 0.0)
+        self.model.load(StoredAnalysis(), {}, 0.0)
         self.statusBar().showMessage(tr("Track unloaded."))
 
     def reanalyze_file(self, path: str, analysis: dict | None = None):
@@ -640,28 +628,28 @@ class AppWindow(QtWidgets.QMainWindow):
                            failed=lambda exc: QtWidgets.QMessageBox.warning(self, title, str(exc)))
 
     @QtCore.Slot(dict)
-    def _on_features_ready(self, feat: dict):
+    def _on_analysis_ready(self, result: dict):
         """A track's analysis (a new one, or a library track's stored one): the library; the deck takes it itself
         when it asked (its listener)."""
-        properties = dict(feat["properties"])
-        if feat.get("update_db", False):     # stored by the library's owner, which showed it
+        properties = dict(result["properties"])
+        if result.get("update_db", False):     # stored by the library's owner, which showed it
             self._sync_rekordbox_track(properties.get("uid"))
             self.statusBar().showMessage(tr("Analysis saved to library."))
-            if feat.get("new_track") and not feat.get("tieups"):   # a new track its versions gave none: the web
+            if result.get("new_track") and not result.get("tieups"):   # a new track its versions gave none: the web
                 uid = str(properties.get("uid") or "")
-                self._tieup_art[uid] = feat.get("album_art")       # its task's picture (the file's cover)
+                self._tieup_art[uid] = result.get("album_art")       # its task's picture (the file's cover)
                 self.tieup_web.new_track(uid, str(properties.get("title") or ""))
-        self.taskmanager.updatetask(feat["taskid"], tr("Finished"), 1)
-        self.taskmanager.rmtask(feat["taskid"])
+        self.taskmanager.updatetask(result["taskid"], tr("Finished"), 1)
+        self.taskmanager.rmtask(result["taskid"])
 
-    def _on_features_reanalyze(self, feat: dict):
+    def _on_reanalysis_ready(self, result: dict):
         """A full reanalysis: the library, and the deck when it holds the track (its playback goes on)."""
-        properties = dict(feat["properties"])
-        if feat.get("update_db", False):
+        properties = dict(result["properties"])
+        if result.get("update_db", False):
             self._sync_rekordbox_track(properties.get("uid"))
         if self._holds(properties.get("path")):
-            self._apply_analysis(feat)
-        self.taskmanager.rmtask(feat["taskid"])
+            self._apply_analysis(result)
+        self.taskmanager.rmtask(result["taskid"])
         self.statusBar().showMessage(tr("Analysis saved to library."))
 
     def _on_tieups_tagged(self, uids: list) -> None:
@@ -692,7 +680,7 @@ class AppWindow(QtWidgets.QMainWindow):
         if track_uid:
             self.bus.sig_rekordbox_sync_track_requested.emit(track_uid)
 
-    def _on_features_loaded(self):
+    def _on_track_loaded(self):
         self.bus.sig_window_changed.emit(self.tl.window_sec)
         self.bus.sig_center_changed.emit(self.tl.center_t)
         self._sync_metronome_beats()

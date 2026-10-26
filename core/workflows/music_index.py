@@ -84,7 +84,7 @@ class LibraryMusicIndex(QtCore.QObject):
         self.started.emit(run)
         if plan.drop or plan.drop_variants:
             self._library.write(jobs.drop_gone, plan)
-        # the variants' fingerprints: from the stored features, by the library's owner, a track a job
+        # the variants' fingerprints: from the stored analyses, by the library's owner, a track a job
         for t in todo:
             if t.variants:
                 self._library.write(jobs.fingerprint, t.uid,

@@ -28,8 +28,8 @@ def list_grid_tracks(library_dir: Path, ignored: list[SkippedOptimizationTrack])
     tracks = []
     for track in _list_beat_tracks(library_dir, ignored):
         try:
-            rows = np.asarray(track["features"]["tempo_segments"], dtype=np.float64)
-        except (KeyError, ValueError) as exc:
+            rows = np.asarray(track["annotation"].tempo_segments, dtype=np.float64)
+        except (TypeError, ValueError) as exc:
             ignored.append(skipped_track(track, msg("invalid tempo rows: {error}", error=exc)))
             continue
         if rows.ndim != 2 or rows.shape[0] == 0 or rows.shape[1] < 4:

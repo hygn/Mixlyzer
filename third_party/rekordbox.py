@@ -14,9 +14,8 @@ import numpy as np
 
 from core.library.records import TrackRow
 from analyzer.music.key_names import idx_to_labels
-from core.analysis_library.jump_cues import extract_jump_cue_groups
+from core.analysis_library.stored import StoredAnalysis
 from analyzer.music.tempo_rows import is_ramp_row, ramp_beat_times, segment_end_bpm
-from core.analysis_library.cue_points import extract_cue_points
 from core.analysis_library.jumpcue_colors import get_cue_point_color, jump_cue_colors
 
 ResolvePath = Callable[[str | None], Optional[Path]]
@@ -31,7 +30,7 @@ __all__ = [
 
 def build_rekordbox_track_element(
     track: TrackRow,
-    features: dict[str, np.ndarray],
+    analysis: StoredAnalysis,
     *,
     resolve_path: ResolvePath,
     audio_path: Optional[Path] = None,
@@ -42,11 +41,11 @@ def build_rekordbox_track_element(
     the CUE points as memory cues. ``ramp_tolerance_sec``: how far a tempo ramp's steps may put a beat
     from the ramp's (0: a step per beat; ``_ramp_tempo_entries``)."""
 
-    tempo_segments = _extract_tempo_segments(features)
-    duration = _get_duration(track, features)
-    average_bpm = _compute_average_bpm(track, tempo_segments, features)
-    position_marks = _extract_jump_marks(features)
-    memory_cues = _extract_memory_cues(features)
+    tempo_segments = _extract_tempo_segments(analysis)
+    duration = _get_duration(track, analysis)
+    average_bpm = _compute_average_bpm(track, tempo_segments, analysis)
+    position_marks = _extract_jump_marks(analysis)
+    memory_cues = _extract_memory_cues(analysis)
 
     if duration <= 0 and tempo_segments.size:
         duration = float(np.max(tempo_segments[:, 1]))
@@ -66,8 +65,8 @@ def build_rekordbox_track_element(
     elif track.file_size:
         file_size = int(track.file_size)
 
-    sample_rate = int(_safe_scalar(features.get("sr")) or 44100)
-    tempo_global = _safe_scalar(features.get("tempo_global"))
+    sample_rate = int(analysis.sample_rate or 44100)
+    tempo_global = analysis.main_tempo
     if not np.isfinite(average_bpm) or average_bpm <= 0:
         average_bpm = tempo_global if tempo_global > 0 else 0.0
 
@@ -302,17 +301,14 @@ def sanitize_filename(name: str) -> str:
     return sanitized or "track"
 
 
-def _extract_tempo_segments(features: dict[str, np.ndarray]) -> np.ndarray:
+def _extract_tempo_segments(analysis: StoredAnalysis) -> np.ndarray:
     """Return tempo segments as (N,3|4|5|6) array.
 
     Format:
       [start, end, bpm] | [start, end, bpm, inizio] | [start, end, bpm, inizio, ts_num]
       | [start, end, bpm, inizio, ts_num, bpm_end] (bpm_end != bpm: linear tempo ramp)
     """
-    raw = features.get("tempo_segments")
-    if raw is None:
-        return np.empty((0, 3), dtype=float)
-    arr = np.asarray(raw, dtype=float)
+    arr = np.asarray(analysis.tempo_segments, dtype=float)
     if arr.ndim == 1:
         for width in (6, 5, 4, 3):
             if arr.size % width == 0:
@@ -325,10 +321,10 @@ def _extract_tempo_segments(features: dict[str, np.ndarray]) -> np.ndarray:
     return np.empty((0, 3), dtype=float)
 
 
-def _extract_jump_marks(features: dict[str, np.ndarray]) -> list[dict[str, object]]:
+def _extract_jump_marks(analysis: StoredAnalysis) -> list[dict[str, object]]:
     """The JumpCUEs as hot cues: their names, points, group colours and slots, by point."""
     marks: list[dict[str, object]] = []
-    for cue, color in jump_cue_colors(extract_jump_cue_groups(features)):
+    for cue, color in jump_cue_colors(list(analysis.jump_cues)):
         label = str(cue.label).strip()
         point_val = float(cue.point)
         if not np.isfinite(point_val):
@@ -347,7 +343,7 @@ def _extract_jump_marks(features: dict[str, np.ndarray]) -> list[dict[str, objec
     return marks
 
 
-def _extract_memory_cues(features: dict[str, np.ndarray]) -> list[dict[str, object]]:
+def _extract_memory_cues(analysis: StoredAnalysis) -> list[dict[str, object]]:
     """The CUE points as memory cues: their names and colours, in time order."""
     return [
         {
@@ -355,7 +351,7 @@ def _extract_memory_cues(features: dict[str, np.ndarray]) -> list[dict[str, obje
             "start": float(point.time_sec),
             "color": get_cue_point_color(int(point.color_idx)),
         }
-        for point in extract_cue_points(features)
+        for point in analysis.cue_points
     ]
 
 
@@ -491,7 +487,7 @@ def _step_bpm(written: np.ndarray, first: int, after: int) -> float:
 def _compute_average_bpm(
     track: Optional[TrackRow],
     tempo_segments: np.ndarray,
-    features: dict[str, np.ndarray],
+    analysis: StoredAnalysis,
 ) -> float:
     if track and track.bpm:
         return float(track.bpm)
@@ -507,27 +503,14 @@ def _compute_average_bpm(
             return float(np.average(bpms, weights=durations))
         except ZeroDivisionError:
             return float(np.mean(bpms))
-    tempo_global = _safe_scalar(features.get("tempo_global"))
+    tempo_global = analysis.main_tempo
     return float(tempo_global) if tempo_global > 0 else 0.0
 
 
-def _get_duration(track: Optional[TrackRow], features: dict[str, np.ndarray]) -> float:
+def _get_duration(track: Optional[TrackRow], analysis: StoredAnalysis) -> float:
     if track and track.duration:
         return float(track.duration)
-    return float(_safe_scalar(features.get("duration_sec")))
-
-
-def _safe_scalar(value: Optional[np.ndarray]) -> float:
-    if value is None:
-        return 0.0
-    arr = np.asarray(value)
-    try:
-        return float(arr.item())
-    except Exception:
-        try:
-            return float(arr.astype(float).flatten()[0])
-        except Exception:
-            return 0.0
+    return float(analysis.duration_sec)
 
 
 def _generate_track_id(track: Optional[TrackRow]) -> str:

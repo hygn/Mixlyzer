@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-27 02:13+0900\n"
+"POT-Creation-Date: 2026-10-27 02:50+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -51,7 +51,7 @@ msgstr ""
 
 #: analyzer/training/beat_critic_optimizer.py:471
 #: analyzer/training/beat_tcn_optimizer.py:374
-#: analyzer/training/key_model_optimizer.py:519
+#: analyzer/training/key_model_optimizer.py:521
 msgid "Held-out check"
 msgstr ""
 
@@ -62,7 +62,7 @@ msgstr ""
 
 #: analyzer/training/beat_critic_optimizer.py:491
 #: analyzer/training/beat_tcn_optimizer.py:395
-#: analyzer/training/key_model_optimizer.py:533
+#: analyzer/training/key_model_optimizer.py:535
 msgid "Fine-tuning"
 msgstr ""
 
@@ -131,86 +131,86 @@ msgstr ""
 msgid "Fitting all tracks"
 msgstr ""
 
-#: analyzer/training/jumpcue_parameter_optimizer.py:1008
+#: analyzer/training/jumpcue_parameter_optimizer.py:1010
 msgid "Audio file not found"
-msgstr ""
-
-#: analyzer/training/jumpcue_parameter_optimizer.py:1014
-#, python-brace-format
-msgid "Reading the analysis failed: {error}"
 msgstr ""
 
 #: analyzer/training/jumpcue_parameter_optimizer.py:1016
 #, python-brace-format
+msgid "Reading the analysis failed: {error}"
+msgstr ""
+
+#: analyzer/training/jumpcue_parameter_optimizer.py:1018
+#, python-brace-format
 msgid "Need at least five tracks with saved JumpCUEs ({count} found)."
 msgstr ""
 
-#: analyzer/training/jumpcue_parameter_optimizer.py:1033
+#: analyzer/training/jumpcue_parameter_optimizer.py:1035
 #, python-brace-format
 msgid "Building {count} JumpCUE candidate caches"
 msgstr ""
 
-#: analyzer/training/jumpcue_parameter_optimizer.py:1034
+#: analyzer/training/jumpcue_parameter_optimizer.py:1036
 msgid "JumpCUE candidate cache is current"
 msgstr ""
 
-#: analyzer/training/jumpcue_parameter_optimizer.py:1046
+#: analyzer/training/jumpcue_parameter_optimizer.py:1048
 #, python-brace-format
 msgid "JumpCUE analysis failed: {error}"
 msgstr ""
 
-#: analyzer/training/jumpcue_parameter_optimizer.py:1064
+#: analyzer/training/jumpcue_parameter_optimizer.py:1066
 msgid "No saved JumpCUE group matches an automatically found group"
 msgstr ""
 
-#: analyzer/training/jumpcue_parameter_optimizer.py:1069
+#: analyzer/training/jumpcue_parameter_optimizer.py:1071
 #, python-brace-format
 msgid "{count} labeled groups"
 msgstr ""
 
-#: analyzer/training/jumpcue_parameter_optimizer.py:1087
+#: analyzer/training/jumpcue_parameter_optimizer.py:1089
 #, python-brace-format
 msgid "Cross-validation fold {fold}/{folds}"
 msgstr ""
 
-#: analyzer/training/jumpcue_parameter_optimizer.py:1093
+#: analyzer/training/jumpcue_parameter_optimizer.py:1095
 msgid "Fitting on all tracks"
 msgstr ""
 
-#: analyzer/training/key_model_optimizer.py:124
+#: analyzer/training/key_model_optimizer.py:126
 #, python-brace-format
 msgid "unreadable analysis: {error}"
 msgstr ""
 
-#: analyzer/training/key_model_optimizer.py:127
+#: analyzer/training/key_model_optimizer.py:129
 msgid "no key annotation"
 msgstr ""
 
-#: analyzer/training/key_model_optimizer.py:197
+#: analyzer/training/key_model_optimizer.py:199
 #, python-brace-format
 msgid "key feature cache build failed: {error}"
 msgstr ""
 
-#: analyzer/training/key_model_optimizer.py:200
+#: analyzer/training/key_model_optimizer.py:202
 #, python-brace-format
 msgid "Key features {done}/{total}"
 msgstr ""
 
-#: analyzer/training/key_model_optimizer.py:442
+#: analyzer/training/key_model_optimizer.py:444
 #, python-brace-format
 msgid "{stage}: epoch {epoch}/{epochs}, loss {loss}"
 msgstr ""
 
-#: analyzer/training/key_model_optimizer.py:499
+#: analyzer/training/key_model_optimizer.py:501
 msgid "too few beats or no key features"
 msgstr ""
 
-#: analyzer/training/key_model_optimizer.py:504
+#: analyzer/training/key_model_optimizer.py:506
 #, python-brace-format
 msgid "Beat inputs {done}/{total}"
 msgstr ""
 
-#: analyzer/training/key_model_optimizer.py:524
+#: analyzer/training/key_model_optimizer.py:526
 msgid "Not saved: the held-out songs' keys got worse"
 msgstr ""
 
@@ -240,18 +240,18 @@ msgid "Refitting needs at least {needed} {songs} (the library has {count})"
 msgstr ""
 
 #: analyzer/training/onset_training.py:48
-#: analyzer/training/onset_training.py:60
+#: analyzer/training/onset_training.py:58
 #, python-brace-format
 msgid "invalid beat analysis: {error}"
 msgstr ""
 
 #: analyzer/training/onset_training.py:49
-#: analyzer/training/phrase_backend.py:154
+#: analyzer/training/phrase_backend.py:144
 msgid "analysis NPZ is missing"
 msgstr ""
 
 #: analyzer/training/onset_training.py:53
-#: analyzer/training/phrase_backend.py:158
+#: analyzer/training/phrase_backend.py:148
 msgid "audio file is missing"
 msgstr ""
 
@@ -259,79 +259,79 @@ msgstr ""
 msgid "invalid or insufficient beat grid"
 msgstr ""
 
-#: analyzer/training/phrase_backend.py:153
-#: analyzer/training/phrase_backend.py:165
+#: analyzer/training/phrase_backend.py:143
+#: analyzer/training/phrase_backend.py:155
 #, python-brace-format
 msgid "invalid Phrase annotation: {error}"
 msgstr ""
 
-#: analyzer/training/phrase_backend.py:171
+#: analyzer/training/phrase_backend.py:161
 msgid "fewer than two usable Phrase segments"
 msgstr ""
 
-#: analyzer/training/phrase_parameter_optimizer.py:207
+#: analyzer/training/phrase_parameter_optimizer.py:208
 #, python-brace-format
 msgid "Cross-validation fold {fold}/{folds}: "
 msgstr ""
 
-#: analyzer/training/phrase_parameter_optimizer.py:381
+#: analyzer/training/phrase_parameter_optimizer.py:382
 #, python-brace-format
 msgid "Phrase annotation validation failed: {error}"
 msgstr ""
 
-#: analyzer/training/phrase_parameter_optimizer.py:384
+#: analyzer/training/phrase_parameter_optimizer.py:385
 #, python-brace-format
 msgid ""
 "Need at least five valid annotated tracks to train a Phrase parameter "
 "artifact ({valid} valid, {ignored} ignored)."
 msgstr ""
 
-#: analyzer/training/phrase_parameter_optimizer.py:394
+#: analyzer/training/phrase_parameter_optimizer.py:395
 #, python-brace-format
 msgid "Checking feature cache: {count} tracks"
 msgstr ""
 
-#: analyzer/training/phrase_parameter_optimizer.py:433
+#: analyzer/training/phrase_parameter_optimizer.py:435
 #, python-brace-format
 msgid "Building {count} missing feature caches with {workers} workers"
 msgstr ""
 
-#: analyzer/training/phrase_parameter_optimizer.py:435
+#: analyzer/training/phrase_parameter_optimizer.py:437
 msgid "Feature cache is current"
 msgstr ""
 
-#: analyzer/training/phrase_parameter_optimizer.py:462
+#: analyzer/training/phrase_parameter_optimizer.py:464
 #, python-brace-format
 msgid "Phrase feature cache build failed: {error}"
 msgstr ""
 
-#: analyzer/training/phrase_parameter_optimizer.py:487
+#: analyzer/training/phrase_parameter_optimizer.py:489
 #, python-brace-format
 msgid "Preparing optimizer features {done}/{total}"
 msgstr ""
 
-#: analyzer/training/phrase_parameter_optimizer.py:534
+#: analyzer/training/phrase_parameter_optimizer.py:536
 #, python-brace-format
 msgid "Phrase feature preparation failed: {error}"
 msgstr ""
 
-#: analyzer/training/phrase_parameter_optimizer.py:539
+#: analyzer/training/phrase_parameter_optimizer.py:541
 #, python-brace-format
 msgid "prepared ({done}/{total})"
 msgstr ""
 
-#: analyzer/training/phrase_parameter_optimizer.py:543
+#: analyzer/training/phrase_parameter_optimizer.py:545
 #, python-brace-format
 msgid ""
 "Need at least five tracks after Phrase feature validation ({valid} valid,"
 " {ignored} ignored)."
 msgstr ""
 
-#: analyzer/training/phrase_parameter_optimizer.py:567
+#: analyzer/training/phrase_parameter_optimizer.py:569
 msgid "Evaluating fitted Phrase models"
 msgstr ""
 
-#: analyzer/training/phrase_parameter_optimizer.py:572
+#: analyzer/training/phrase_parameter_optimizer.py:574
 msgid "Writing parameter artifact"
 msgstr ""
 
@@ -552,7 +552,7 @@ msgstr ""
 msgid "The audio engine did not start; it is tried again every 2 seconds."
 msgstr ""
 
-#: app/window.py:533 app/window.py:599
+#: app/window.py:533 app/window.py:587
 msgid "External Sync is enabled. Local track loading is disabled."
 msgstr ""
 
@@ -560,15 +560,15 @@ msgstr ""
 msgid "Segment reanalysis canceled (track changed)"
 msgstr ""
 
-#: app/window.py:604
+#: app/window.py:592
 msgid "Track unloaded."
 msgstr ""
 
-#: app/window.py:614
+#: app/window.py:602
 msgid "Track File Not Found"
 msgstr ""
 
-#: app/window.py:618
+#: app/window.py:606
 #, python-brace-format
 msgid ""
 "Cannot load \"{name}\": its file is missing.\n"
@@ -577,46 +577,46 @@ msgid ""
 "Set the file's new location?"
 msgstr ""
 
-#: app/window.py:625
+#: app/window.py:613
 #, python-brace-format
 msgid "Locate {name}"
 msgstr ""
 
-#: app/window.py:649 app/window.py:665
+#: app/window.py:637 app/window.py:653
 msgid "Analysis saved to library."
 msgstr ""
 
-#: app/window.py:654
+#: app/window.py:642
 msgid "Finished"
 msgstr ""
 
-#: app/window.py:677
+#: app/window.py:665
 msgid "Waiting to be looked up on Wikipedia"
 msgstr ""
 
-#: app/window.py:683
+#: app/window.py:671
 msgid "Looking up on Wikipedia and Wikidata…"
 msgstr ""
 
-#: app/window.py:688
+#: app/window.py:676
 msgid "The lookup failed."
 msgstr ""
 
-#: app/window.py:724
+#: app/window.py:712
 #, python-brace-format
 msgid "External Sync loading: {file}"
 msgstr ""
 
-#: app/window.py:724
+#: app/window.py:712
 #, python-brace-format
 msgid "External Sync analyzing: {file}"
 msgstr ""
 
-#: app/window.py:739
+#: app/window.py:727
 msgid "External Sync Disabled"
 msgstr ""
 
-#: app/window.py:1010
+#: app/window.py:998
 #, python-brace-format
 msgid "External Sync enabled: OSC on {address}. Local play/load is locked."
 msgstr ""
@@ -627,7 +627,8 @@ msgstr ""
 
 #: core/analysis_library/jump_cues.py:98 core/analysis_library/jump_cues.py:101
 #: core/analysis_library/jump_cues.py:237
-#: core/analysis_library/jump_cues.py:388
+#: core/analysis_library/jump_cues.py:397 core/analysis_library/stored.py:132
+#: core/track/model.py:180
 msgid "JumpCUE labels must be unique single letters A-Z."
 msgstr ""
 
@@ -1112,7 +1113,7 @@ msgid "The written tags did not read back as written; the file is unchanged."
 msgstr ""
 
 #: core/tags/writer.py:205 core/tags/writer.py:286 core/tags/writer.py:1371
-#: ui/export.py:192
+#: ui/export.py:191
 msgid "Tags cannot be written to this file's format."
 msgstr ""
 
@@ -1268,11 +1269,11 @@ msgstr ""
 msgid "Search hint"
 msgstr ""
 
-#: core/workers/analysis.py:66
+#: core/workers/analysis.py:47
 msgid "Processing Metadata"
 msgstr ""
 
-#: core/workers/analysis.py:171
+#: core/workers/analysis.py:152
 #, python-brace-format
 msgid "Analysis process exited unexpectedly ({code})."
 msgstr ""
@@ -1456,25 +1457,25 @@ msgstr ""
 msgid "Rekordbox XML sync complete"
 msgstr ""
 
-#: core/workers/segment_reanalysis.py:87
+#: core/workers/segment_reanalysis.py:103
 #, python-brace-format
 msgid "Segment analysis process exited unexpectedly ({code})."
 msgstr ""
 
-#: core/workers/segment_reanalysis.py:130
+#: core/workers/segment_reanalysis.py:140
 msgid "Segment updated"
 msgstr ""
 
-#: core/workers/segment_reanalysis.py:139
-#: core/workers/segment_reanalysis.py:147
+#: core/workers/segment_reanalysis.py:148
+#: core/workers/segment_reanalysis.py:155
 msgid "Key segment updated"
 msgstr ""
 
-#: core/workers/segment_reanalysis.py:155
+#: core/workers/segment_reanalysis.py:160
 msgid "JumpCUE Updated"
 msgstr ""
 
-#: core/workers/segment_reanalysis.py:158
+#: core/workers/segment_reanalysis.py:163
 msgid "Phrases Updated"
 msgstr ""
 
@@ -1596,7 +1597,7 @@ msgstr ""
 msgid "Reading the library: {done} / {total} tracks"
 msgstr ""
 
-#: core/workflows/segment_reanalysis.py:54
+#: core/workflows/segment_reanalysis.py:55
 msgid "Segment reanalysis canceled"
 msgstr ""
 
@@ -1604,100 +1605,100 @@ msgstr ""
 msgid "Load a track before segment reanalysis"
 msgstr ""
 
-#: core/workflows/segment_reanalysis.py:122
+#: core/workflows/segment_reanalysis.py:106
 msgid "JumpCUE reanalyze"
 msgstr ""
 
-#: core/workflows/segment_reanalysis.py:124
+#: core/workflows/segment_reanalysis.py:108
 #, python-brace-format
 msgid "{song} (Phrase)"
 msgstr ""
 
-#: core/workflows/segment_reanalysis.py:125
+#: core/workflows/segment_reanalysis.py:109
 msgid "Phrase reanalyze"
 msgstr ""
 
-#: core/workflows/segment_reanalysis.py:127
+#: core/workflows/segment_reanalysis.py:111
 #, python-brace-format
 msgid "{song} (Key)"
 msgstr ""
 
-#: core/workflows/segment_reanalysis.py:128
+#: core/workflows/segment_reanalysis.py:112
 msgid "Key reanalyze"
 msgstr ""
 
-#: core/workflows/segment_reanalysis.py:130
+#: core/workflows/segment_reanalysis.py:114
 #, python-brace-format
 msgid "{song} (Seg {index})"
 msgstr ""
 
-#: core/workflows/segment_reanalysis.py:131
+#: core/workflows/segment_reanalysis.py:115
 msgid "Segment reanalyze"
 msgstr ""
 
-#: core/workflows/segment_reanalysis.py:180
+#: core/workflows/segment_reanalysis.py:157
 msgid "No beatgrid available for JumpCUE reanalysis"
 msgstr ""
 
-#: core/workflows/segment_reanalysis.py:185
+#: core/workflows/segment_reanalysis.py:162
 msgid "No beatgrid available for phrase reanalysis"
 msgstr ""
 
-#: core/workflows/segment_reanalysis.py:188
+#: core/workflows/segment_reanalysis.py:165
 msgid "No tempo segments available for phrase reanalysis"
 msgstr ""
 
-#: core/workflows/segment_reanalysis.py:193
+#: core/workflows/segment_reanalysis.py:170
 msgid "No tempo segments available for key reanalysis"
 msgstr ""
 
-#: core/workflows/segment_reanalysis.py:196
-#: core/workflows/segment_reanalysis.py:200
+#: core/workflows/segment_reanalysis.py:173
+#: core/workflows/segment_reanalysis.py:177
 msgid "No key segments available for reanalysis"
 msgstr ""
 
-#: core/workflows/segment_reanalysis.py:208
+#: core/workflows/segment_reanalysis.py:185
 msgid "Invalid key selection"
 msgstr ""
 
-#: core/workflows/segment_reanalysis.py:237
+#: core/workflows/segment_reanalysis.py:214
 msgid "Key reanalysis completed"
 msgstr ""
 
-#: core/workflows/segment_reanalysis.py:240
+#: core/workflows/segment_reanalysis.py:217
 msgid "JumpCUE reanalysis completed"
 msgstr ""
 
-#: core/workflows/segment_reanalysis.py:243
+#: core/workflows/segment_reanalysis.py:220
 msgid "Phrase reanalysis completed"
 msgstr ""
 
-#: core/workflows/segment_reanalysis.py:246
+#: core/workflows/segment_reanalysis.py:223
 msgid "Segment reanalysis completed"
 msgstr ""
 
-#: core/workflows/segment_reanalysis.py:261
+#: core/workflows/segment_reanalysis.py:237
 #, python-brace-format
 msgid "JumpCUE reanalysis failed: {error}"
 msgstr ""
 
-#: core/workflows/segment_reanalysis.py:262
+#: core/workflows/segment_reanalysis.py:238
 msgid "JumpCUE reanalysis finished"
 msgstr ""
 
-#: core/workflows/segment_reanalysis.py:270
+#: core/workflows/segment_reanalysis.py:246
 msgid "Phrase reanalysis finished"
 msgstr ""
 
-#: core/workflows/segment_reanalysis.py:280
+#: core/workflows/segment_reanalysis.py:256
 msgid "Key reanalysis finished"
 msgstr ""
 
-#: core/workflows/segment_reanalysis.py:288
+#: core/workflows/segment_reanalysis.py:264
 msgid "Segment reanalysis finished"
 msgstr ""
 
-#: core/workflows/segment_reanalysis.py:298
+#: core/workflows/segment_reanalysis.py:274
 #, python-brace-format
 msgid "Segment reanalysis failed: {error}"
 msgstr ""
@@ -1998,9 +1999,9 @@ msgstr ""
 #: analyzer/training/beat_decoder_optimizer.py:216
 #: analyzer/training/beat_tcn_optimizer.py:407
 #: analyzer/training/downbeat_ctx_optimizer.py:138
-#: analyzer/training/jumpcue_parameter_optimizer.py:1120
-#: analyzer/training/key_model_optimizer.py:540
-#: analyzer/training/phrase_parameter_optimizer.py:576
+#: analyzer/training/jumpcue_parameter_optimizer.py:1122
+#: analyzer/training/key_model_optimizer.py:542
+#: analyzer/training/phrase_parameter_optimizer.py:578
 #: analyzer/training/refine_onset_optimizer.py:206 ui/config/analysis.py:598
 #: ui/config/dialogs/optimization.py:95
 msgid "Done"
@@ -2087,7 +2088,7 @@ msgstr ""
 
 #: analyzer/training/beat_critic_optimizer.py:491
 #: analyzer/training/beat_tcn_optimizer.py:395
-#: analyzer/training/key_model_optimizer.py:533 ui/config/analysis.py:700
+#: analyzer/training/key_model_optimizer.py:535 ui/config/analysis.py:700
 #: ui/config/analysis.py:761 ui/config/dialogs/optimization.py:75
 msgid "Training"
 msgstr ""
@@ -4487,145 +4488,145 @@ msgstr ""
 msgid "Bar.Beat of the current playhead position"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:27
+#: ui/edit_panel/beatgrid.py:28
 msgid "Shift the whole beatgrid (every segment) half a beat earlier"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:28
+#: ui/edit_panel/beatgrid.py:29
 msgid "Shift the current segment half a beat earlier"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:29
+#: ui/edit_panel/beatgrid.py:30
 msgid "Shift the whole beatgrid (every segment) 10 ms earlier"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:30
+#: ui/edit_panel/beatgrid.py:31
 msgid "Shift the current segment 10 ms earlier"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:31
+#: ui/edit_panel/beatgrid.py:32
 msgid "Shift the whole beatgrid (every segment) 1 ms earlier"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:32
+#: ui/edit_panel/beatgrid.py:33
 msgid "Shift the current segment 1 ms earlier"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:33
+#: ui/edit_panel/beatgrid.py:34
 msgid "Shift the whole beatgrid (every segment) 1 ms later"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:34
+#: ui/edit_panel/beatgrid.py:35
 msgid "Shift the current segment 1 ms later"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:35
+#: ui/edit_panel/beatgrid.py:36
 msgid "Shift the whole beatgrid (every segment) 10 ms later"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:36
+#: ui/edit_panel/beatgrid.py:37
 msgid "Shift the current segment 10 ms later"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:37
+#: ui/edit_panel/beatgrid.py:38
 msgid "Shift the whole beatgrid (every segment) half a beat later"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:38
+#: ui/edit_panel/beatgrid.py:39
 msgid "Shift the current segment half a beat later"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:39
+#: ui/edit_panel/beatgrid.py:40
 msgid "Halve the BPM of the whole beatgrid (every segment); the downbeats stay"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:40
+#: ui/edit_panel/beatgrid.py:41
 msgid "Halve the BPM of the current segment; the downbeats stay"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:41
+#: ui/edit_panel/beatgrid.py:42
 msgid "Double the BPM of the whole beatgrid (every segment); the downbeats stay"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:42
+#: ui/edit_panel/beatgrid.py:43
 msgid "Double the BPM of the current segment; the downbeats stay"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:96
+#: ui/edit_panel/beatgrid.py:97
 msgid "Ref"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:99
+#: ui/edit_panel/beatgrid.py:100
 msgid "Reference BPM (tapped or typed)"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:106
+#: ui/edit_panel/beatgrid.py:107
 msgid ""
 "Merge the previous segment into the current one (keeps the current tempo "
 "/ phase)"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:107
+#: ui/edit_panel/beatgrid.py:108
 msgid ""
 "Merge the next segment into the current one (keeps the current tempo / "
 "phase)"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:108
+#: ui/edit_panel/beatgrid.py:109
 msgid "Split the current segment at the playhead"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:114
+#: ui/edit_panel/beatgrid.py:115
 msgid "Edit the whole beatgrid: shift and BPM x2 / x1/2 apply to every segment"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:115
+#: ui/edit_panel/beatgrid.py:116
 msgid "Edit the current segment: shift and BPM x2 / x1/2 apply to it only"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:132
+#: ui/edit_panel/beatgrid.py:133
 #, python-brace-format
 msgid "Set the current segment to {meter}"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:136
+#: ui/edit_panel/beatgrid.py:137
 msgid "Set the current segment to another time signature (1/4 - 8/4)"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:150 ui/edit_panel/beatgrid.py:266
+#: ui/edit_panel/beatgrid.py:151 ui/edit_panel/beatgrid.py:267
 msgid "Seg -- | Elapsed: 00:00.00 | Left: 00:00.00"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:239
+#: ui/edit_panel/beatgrid.py:240
 msgid "Reanalyze the current segment's beatgrid from the audio"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:242
+#: ui/edit_panel/beatgrid.py:243
 msgid "Reanalyze the current segment's beatgrid at the reference BPM"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:268
+#: ui/edit_panel/beatgrid.py:269
 #, python-brace-format
 msgid "Seg {index} | Elapsed: {elapsed} | Left: {left}"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:510
+#: ui/edit_panel/beatgrid.py:506
 msgid ""
 "Tap to set reference BPM (WARNING! Tempo factor is not 1. RefBPM Will be "
 "scaled accordingly)"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:511
+#: ui/edit_panel/beatgrid.py:507
 msgid ""
 "Reference BPM for Analysis and BPM Assigning (WARNING! Tempo factor is "
 "not 1. RefBPM Will be scaled accordingly)"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:515
+#: ui/edit_panel/beatgrid.py:511
 msgid "Tap to set reference BPM"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:516
+#: ui/edit_panel/beatgrid.py:512
 msgid "Reference BPM for Analysis and BPM Assigning"
 msgstr ""
 
@@ -4658,7 +4659,7 @@ msgstr ""
 msgid "CUE color / delete"
 msgstr ""
 
-#: ui/edit_panel/cuepoint.py:69 ui/edit_panel/jumpcue.py:111
+#: ui/edit_panel/cuepoint.py:69 ui/edit_panel/jumpcue.py:112
 #, python-brace-format
 msgid "{time} - double-click to rename"
 msgstr ""
@@ -4677,201 +4678,201 @@ msgstr ""
 msgid "Delete CUE point {time}"
 msgstr ""
 
-#: ui/edit_panel/jumpcue.py:50
+#: ui/edit_panel/jumpcue.py:51
 msgid "Reanalyze the JumpCUEs with the current beatgrid"
 msgstr ""
 
-#: ui/edit_panel/jumpcue.py:56
+#: ui/edit_panel/jumpcue.py:57
 msgid "Color (its group), beat moves, slots, delete"
 msgstr ""
 
-#: ui/edit_panel/jumpcue.py:102
+#: ui/edit_panel/jumpcue.py:103
 msgid "SET: a JumpCUE in this slot at the nearest beat or track edge"
 msgstr ""
 
-#: ui/edit_panel/jumpcue.py:107
+#: ui/edit_panel/jumpcue.py:108
 msgid "Jump here on the next beat (when stopped: move the playhead here)"
 msgstr ""
 
-#: ui/edit_panel/jumpcue.py:159
+#: ui/edit_panel/jumpcue.py:160
 msgid "Color (cues of one color jump between each other)"
 msgstr ""
 
-#: ui/edit_panel/jumpcue.py:162
+#: ui/edit_panel/jumpcue.py:163
 msgid "(unused)"
 msgstr ""
 
-#: ui/edit_panel/jumpcue.py:166
+#: ui/edit_panel/jumpcue.py:167
 msgid "This color"
 msgstr ""
 
-#: ui/edit_panel/jumpcue.py:167
+#: ui/edit_panel/jumpcue.py:168
 msgid "One beat earlier"
 msgstr ""
 
-#: ui/edit_panel/jumpcue.py:168
+#: ui/edit_panel/jumpcue.py:169
 msgid "One beat later"
 msgstr ""
 
-#: ui/edit_panel/jumpcue.py:169
+#: ui/edit_panel/jumpcue.py:170
 msgid "Slots"
 msgstr ""
 
-#: ui/edit_panel/jumpcue.py:171
+#: ui/edit_panel/jumpcue.py:172
 #, python-brace-format
 msgid "Insert a slot at {letter} (this and later cues move one slot on)"
 msgstr ""
 
-#: ui/edit_panel/jumpcue.py:175
+#: ui/edit_panel/jumpcue.py:176
 #, python-brace-format
 msgid "Move into the empty slot {letter} (this and later cues move one slot back)"
 msgstr ""
 
-#: ui/edit_panel/jumpcue.py:212
+#: ui/edit_panel/jumpcue.py:213
 msgid "Two JumpCUEs cannot share a point."
 msgstr ""
 
-#: ui/edit_panel/jumpcue.py:218 ui/edit_panel/panel.py:575
+#: ui/edit_panel/jumpcue.py:219 ui/edit_panel/panel.py:575
 msgid "Invalid JumpCUE Label"
 msgstr ""
 
-#: ui/edit_panel/key.py:21
+#: ui/edit_panel/key.py:22
 msgid "A semitone down: every segment's key"
 msgstr ""
 
-#: ui/edit_panel/key.py:22
+#: ui/edit_panel/key.py:23
 msgid "A semitone down: the current segment's key"
 msgstr ""
 
-#: ui/edit_panel/key.py:23
+#: ui/edit_panel/key.py:24
 msgid "A semitone up: every segment's key"
 msgstr ""
 
-#: ui/edit_panel/key.py:24
+#: ui/edit_panel/key.py:25
 msgid "A semitone up: the current segment's key"
 msgstr ""
 
-#: ui/edit_panel/key.py:25
+#: ui/edit_panel/key.py:26
 msgid "One step down the circle of fifths (Alphanumeric -1): every segment's key"
 msgstr ""
 
-#: ui/edit_panel/key.py:26
+#: ui/edit_panel/key.py:27
 msgid ""
 "One step down the circle of fifths (Alphanumeric -1): the current "
 "segment's key"
 msgstr ""
 
-#: ui/edit_panel/key.py:27
+#: ui/edit_panel/key.py:28
 msgid "One step up the circle of fifths (Alphanumeric +1): every segment's key"
 msgstr ""
 
-#: ui/edit_panel/key.py:28
+#: ui/edit_panel/key.py:29
 msgid ""
 "One step up the circle of fifths (Alphanumeric +1): the current segment's"
 " key"
 msgstr ""
 
-#: ui/edit_panel/key.py:29
+#: ui/edit_panel/key.py:30
 msgid "Relative major / minor (C <-> Am): every segment's key"
 msgstr ""
 
-#: ui/edit_panel/key.py:30
+#: ui/edit_panel/key.py:31
 msgid "Relative major / minor (C <-> Am): the current segment's key"
 msgstr ""
 
-#: ui/edit_panel/key.py:36
+#: ui/edit_panel/key.py:37
 msgid "Move the current key segment's start one beat earlier"
 msgstr ""
 
-#: ui/edit_panel/key.py:37
+#: ui/edit_panel/key.py:38
 msgid ""
 "Move the current key segment's start one bar (to the neighboring "
 "downbeat) earlier"
 msgstr ""
 
-#: ui/edit_panel/key.py:38
+#: ui/edit_panel/key.py:39
 msgid "Move the current key segment's start one beat later"
 msgstr ""
 
-#: ui/edit_panel/key.py:39
+#: ui/edit_panel/key.py:40
 msgid ""
 "Move the current key segment's start one bar (to the neighboring "
 "downbeat) later"
 msgstr ""
 
-#: ui/edit_panel/key.py:40
+#: ui/edit_panel/key.py:41
 msgid "Move the current key segment's end one beat earlier"
 msgstr ""
 
-#: ui/edit_panel/key.py:41
+#: ui/edit_panel/key.py:42
 msgid ""
 "Move the current key segment's end one bar (to the neighboring downbeat) "
 "earlier"
 msgstr ""
 
-#: ui/edit_panel/key.py:42
+#: ui/edit_panel/key.py:43
 msgid "Move the current key segment's end one beat later"
 msgstr ""
 
-#: ui/edit_panel/key.py:43
+#: ui/edit_panel/key.py:44
 msgid ""
 "Move the current key segment's end one bar (to the neighboring downbeat) "
 "later"
 msgstr ""
 
-#: ui/edit_panel/key.py:67 ui/edit_panel/phrase.py:64
+#: ui/edit_panel/key.py:68 ui/edit_panel/phrase.py:65
 msgid "Boundaries move by one beat"
 msgstr ""
 
-#: ui/edit_panel/key.py:68 ui/edit_panel/phrase.py:65
+#: ui/edit_panel/key.py:69 ui/edit_panel/phrase.py:66
 msgid "Boundaries move by one bar (to the neighboring downbeat)"
 msgstr ""
 
-#: ui/edit_panel/key.py:76
+#: ui/edit_panel/key.py:77
 msgid "Split the current key segment at the beat nearest the playhead"
 msgstr ""
 
-#: ui/edit_panel/key.py:77
+#: ui/edit_panel/key.py:78
 msgid ""
 "Merge the previous key segment into the current one (keeps the current "
 "key)"
 msgstr ""
 
-#: ui/edit_panel/key.py:78
+#: ui/edit_panel/key.py:79
 msgid "Merge the next key segment into the current one (keeps the current key)"
 msgstr ""
 
-#: ui/edit_panel/key.py:80
+#: ui/edit_panel/key.py:81
 msgid "Reanalyze the current key segment's key from the audio"
 msgstr ""
 
-#: ui/edit_panel/key.py:81
+#: ui/edit_panel/key.py:82
 msgid "Reanalyze the keys of the whole track (dynamic)"
 msgstr ""
 
-#: ui/edit_panel/key.py:84
+#: ui/edit_panel/key.py:85
 msgid "Key changes (pick, semitone, fifth, relative) apply to the whole track"
 msgstr ""
 
-#: ui/edit_panel/key.py:85
+#: ui/edit_panel/key.py:86
 msgid "Key changes (pick, semitone, fifth, relative) apply to the current segment"
 msgstr ""
 
-#: ui/edit_panel/key.py:109
+#: ui/edit_panel/key.py:110
 msgid ""
 "Root: hold the current key's root (and its octave) under the music.\n"
 "The plainest check of the tonic: it should feel like the note the music "
 "rests on."
 msgstr ""
 
-#: ui/edit_panel/key.py:115
+#: ui/edit_panel/key.py:116
 msgid ""
 "Root and fifth: hold the current key's root and fifth under the music.\n"
 "In the right key it sounds at home all the way through; a lasting clash\n"
 "means a wrong tonic (try semitone / fifth steps) or a key change."
 msgstr ""
 
-#: ui/edit_panel/key.py:122
+#: ui/edit_panel/key.py:123
 msgid ""
 "Tonic chord: hold the current key's major / minor triad under the music.\n"
 "Tests the third: if the drone fits but the chord clashes, try the other "
@@ -4880,21 +4881,21 @@ msgid ""
 "relative key."
 msgstr ""
 
-#: ui/edit_panel/key.py:128 ui/edit_panel/key.py:235
+#: ui/edit_panel/key.py:129 ui/edit_panel/key.py:236
 msgid "-- | Seg -- | Elapsed: 00:00.00 | Left: 00:00.00"
 msgstr ""
 
-#: ui/edit_panel/key.py:207
+#: ui/edit_panel/key.py:208
 msgid ""
 "Pick one key for the whole track: it becomes one segment in that key "
 "(Alphanumeric wheel)"
 msgstr ""
 
-#: ui/edit_panel/key.py:208
+#: ui/edit_panel/key.py:209
 msgid "Pick the current segment's key (Alphanumeric wheel)"
 msgstr ""
 
-#: ui/edit_panel/key.py:248
+#: ui/edit_panel/key.py:249
 #, python-brace-format
 msgid "{key} | Seg {index} | Elapsed: {elapsed} | Left: {left}"
 msgstr ""
@@ -4965,72 +4966,72 @@ msgstr ""
 msgid "No CUE point at the playhead."
 msgstr ""
 
-#: ui/edit_panel/phrase.py:28
+#: ui/edit_panel/phrase.py:29
 msgid "Move the current phrase's start one beat earlier"
 msgstr ""
 
-#: ui/edit_panel/phrase.py:29
+#: ui/edit_panel/phrase.py:30
 msgid ""
 "Move the current phrase's start one bar (to the neighboring downbeat) "
 "earlier"
 msgstr ""
 
-#: ui/edit_panel/phrase.py:30
+#: ui/edit_panel/phrase.py:31
 msgid "Move the current phrase's start one beat later"
 msgstr ""
 
-#: ui/edit_panel/phrase.py:31
+#: ui/edit_panel/phrase.py:32
 msgid ""
 "Move the current phrase's start one bar (to the neighboring downbeat) "
 "later"
 msgstr ""
 
-#: ui/edit_panel/phrase.py:32
+#: ui/edit_panel/phrase.py:33
 msgid "Move the current phrase's end one beat earlier"
 msgstr ""
 
-#: ui/edit_panel/phrase.py:33
+#: ui/edit_panel/phrase.py:34
 msgid ""
 "Move the current phrase's end one bar (to the neighboring downbeat) "
 "earlier"
 msgstr ""
 
-#: ui/edit_panel/phrase.py:34
+#: ui/edit_panel/phrase.py:35
 msgid "Move the current phrase's end one beat later"
 msgstr ""
 
-#: ui/edit_panel/phrase.py:35
+#: ui/edit_panel/phrase.py:36
 msgid "Move the current phrase's end one bar (to the neighboring downbeat) later"
 msgstr ""
 
-#: ui/edit_panel/phrase.py:73
+#: ui/edit_panel/phrase.py:74
 msgid "Split the current phrase at the beat nearest the playhead"
 msgstr ""
 
-#: ui/edit_panel/phrase.py:74
+#: ui/edit_panel/phrase.py:75
 msgid "Merge the previous phrase into the current one (keeps the current label)"
 msgstr ""
 
-#: ui/edit_panel/phrase.py:75
+#: ui/edit_panel/phrase.py:76
 msgid "Merge the next phrase into the current one (keeps the current label)"
 msgstr ""
 
-#: ui/edit_panel/phrase.py:80
+#: ui/edit_panel/phrase.py:81
 msgid "Reanalyze the phrases of the whole track with the current beatgrid"
 msgstr ""
 
-#: ui/edit_panel/phrase.py:83
+#: ui/edit_panel/phrase.py:84
 msgid ""
 "Replace the CUE points with the ones the CUE rules give the current "
 "phrases\n"
 "(Settings > Analysis > CUE, as the full analysis makes them)"
 msgstr ""
 
-#: ui/edit_panel/phrase.py:99 ui/edit_panel/phrase.py:219
+#: ui/edit_panel/phrase.py:100 ui/edit_panel/phrase.py:215
 msgid "-- | Seg -- | +0 beats | Left: 00:00.00"
 msgstr ""
 
-#: ui/edit_panel/phrase.py:226
+#: ui/edit_panel/phrase.py:222
 #, python-brace-format
 msgid "{label} | Seg {index} | +{beats} beats | Left: {left}"
 msgstr ""
@@ -5052,7 +5053,7 @@ msgid ""
 "the analysis, playlists and CUEs stay with the track."
 msgstr ""
 
-#: ui/edit_song.py:118 ui/export.py:61
+#: ui/edit_song.py:118 ui/export.py:60
 msgid "Browse..."
 msgstr ""
 
@@ -5060,17 +5061,17 @@ msgstr ""
 msgid "Path"
 msgstr ""
 
-#: ui/edit_song.py:124 ui/export.py:79 ui/export.py:106 ui/library/widget.py:35
+#: ui/edit_song.py:124 ui/export.py:78 ui/export.py:105 ui/library/widget.py:35
 #: ui/tieup_editor.py:140 ui/tieup_works.py:77 ui/track_search_index.py:53
 msgid "Title"
 msgstr ""
 
-#: ui/edit_song.py:125 ui/export.py:80 ui/export.py:107 ui/library/widget.py:35
+#: ui/edit_song.py:125 ui/export.py:79 ui/export.py:106 ui/library/widget.py:35
 #: ui/track_search_index.py:53
 msgid "Artist"
 msgstr ""
 
-#: ui/edit_song.py:126 ui/export.py:108 ui/library/widget.py:36
+#: ui/edit_song.py:126 ui/export.py:107 ui/library/widget.py:36
 #: ui/track_search_index.py:53
 msgid "Album"
 msgstr ""
@@ -5079,7 +5080,7 @@ msgstr ""
 msgid "Rating"
 msgstr ""
 
-#: ui/edit_song.py:130 ui/export.py:109 ui/library/widget.py:38
+#: ui/edit_song.py:130 ui/export.py:108 ui/library/widget.py:38
 msgid "Comment"
 msgstr ""
 
@@ -5119,151 +5120,151 @@ msgstr ""
 msgid "Edit Track"
 msgstr ""
 
-#: ui/export.py:74
+#: ui/export.py:73
 msgid "No JumpCUE directions"
 msgstr ""
 
-#: ui/export.py:81
+#: ui/export.py:80
 msgid "Source"
 msgstr ""
 
-#: ui/export.py:83
+#: ui/export.py:82
 msgid "Prerender JumpCUE Audio"
 msgstr ""
 
-#: ui/export.py:84
+#: ui/export.py:83
 msgid "Write WAV files with JumpCUE skips baked in."
 msgstr ""
 
-#: ui/export.py:86
+#: ui/export.py:85
 msgid "Destination Folder"
 msgstr ""
 
-#: ui/export.py:88
+#: ui/export.py:87
 msgid "Export"
 msgstr ""
 
-#: ui/export.py:97
+#: ui/export.py:96
 msgid "File Tags"
 msgstr ""
 
-#: ui/export.py:99
+#: ui/export.py:98
 msgid ""
 "<p>Write the library's values into the audio file's own tags: only the "
 "fields checked change; the file's other tags, its artwork and its audio "
 "stay as they are. FLAC, MP3, AAC, WAV, AIFF and MP4 / M4A files.</p>"
 msgstr ""
 
-#: ui/export.py:110
+#: ui/export.py:109
 msgid "MP4 / M4A files hold a whole BPM only."
 msgstr ""
 
-#: ui/export.py:111
+#: ui/export.py:110
 msgid "Written as a musical key (Am, F#)."
 msgstr ""
 
-#: ui/config/library.py:52 ui/export.py:119
+#: ui/config/library.py:52 ui/export.py:118
 msgid "Tie-ups after the comment"
 msgstr ""
 
-#: ui/export.py:121
+#: ui/export.py:120
 msgid ""
 "<p>The comment written with the song's tie-ups after it, as [Title OP; "
 "Other ED]; the library's comment stays as it is.</p>"
 msgstr ""
 
-#: ui/export.py:128 ui/export.py:213 ui/export.py:274
+#: ui/export.py:127 ui/export.py:212 ui/export.py:273
 msgid "Write Tags"
 msgstr ""
 
-#: ui/export.py:129
+#: ui/export.py:128
 msgid "Write the checked fields' stored values into the file's tags."
 msgstr ""
 
-#: ui/export.py:172
+#: ui/export.py:171
 msgid "Source file not found at the specified path."
 msgstr ""
 
-#: ui/export.py:175
+#: ui/export.py:174
 msgid "Source path is invalid."
 msgstr ""
 
-#: ui/export.py:208
+#: ui/export.py:207
 msgid "Check the fields to write."
 msgstr ""
 
-#: ui/export.py:214
+#: ui/export.py:213
 msgid ""
 "The Edit tab has changes to this track that are not applied: the stored "
 "values are written.\n"
 "Write the tags anyway?"
 msgstr ""
 
-#: ui/export.py:222
+#: ui/export.py:221
 msgid "Writing the tags..."
 msgstr ""
 
-#: ui/export.py:230
+#: ui/export.py:229
 msgid "The track is no longer in the library."
 msgstr ""
 
-#: ui/export.py:266
+#: ui/export.py:265
 #, python-brace-format
 msgid "The file could not be written: {error}"
 msgstr ""
 
-#: ui/export.py:272
+#: ui/export.py:271
 msgid "The tags were written to the file."
 msgstr ""
 
-#: ui/export.py:302
+#: ui/export.py:301
 msgid "Select Destination Folder"
 msgstr ""
 
-#: ui/export.py:310
+#: ui/export.py:309
 msgid "No track is selected."
 msgstr ""
 
-#: ui/export.py:310 ui/export.py:315 ui/export.py:321 ui/export.py:334
-#: ui/export.py:344 ui/export.py:458 ui/export.py:469 ui/library/actions.py:51
+#: ui/export.py:309 ui/export.py:314 ui/export.py:320 ui/export.py:332
+#: ui/export.py:342 ui/export.py:454 ui/export.py:465 ui/library/actions.py:51
 #: ui/library/track_panel.py:46 ui/shortcuts.py:157
 msgid "Export Track"
 msgstr ""
 
-#: ui/export.py:315
+#: ui/export.py:314
 msgid "Please select a destination folder."
 msgstr ""
 
-#: ui/export.py:321
+#: ui/export.py:320
 #, python-brace-format
 msgid ""
 "Cannot create destination folder:\n"
 "{error}"
 msgstr ""
 
-#: ui/export.py:335
+#: ui/export.py:333
 msgid "Select a JumpCUE direction to render."
 msgstr ""
 
-#: ui/export.py:344
+#: ui/export.py:342
 #, python-brace-format
 msgid ""
 "Export completed:\n"
 "{files}"
 msgstr ""
 
-#: ui/export.py:374
+#: ui/export.py:371
 msgid "The track's analysis could not be read."
 msgstr ""
 
-#: ui/export.py:459
+#: ui/export.py:455
 #, python-brace-format
 msgid ""
 "'{name}' already exists.\n"
 "Overwrite?"
 msgstr ""
 
-#: ui/export.py:469
+#: ui/export.py:465
 #, python-brace-format
 msgid ""
 "Failed to write JumpCUE audio:\n"
@@ -6100,7 +6101,7 @@ msgstr ""
 msgid "Master tempo on / off"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:147 ui/shortcuts.py:95
+#: ui/edit_panel/beatgrid.py:148 ui/shortcuts.py:95
 msgid "Metronome on / off"
 msgstr ""
 
@@ -6183,7 +6184,7 @@ msgstr ""
 msgid "MEMORY: set a CUE point at the nearest beat or track edge"
 msgstr ""
 
-#: ui/edit_panel/jumpcue.py:179 ui/shortcuts.py:117
+#: ui/edit_panel/jumpcue.py:180 ui/shortcuts.py:117
 #, python-brace-format
 msgid "Delete JumpCUE {letter}"
 msgstr ""
@@ -6507,7 +6508,7 @@ msgstr ""
 msgid "ZERO"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:75 ui/shortcuts.py:209
+#: ui/edit_panel/beatgrid.py:76 ui/shortcuts.py:209
 msgid "Clear the reference BPM and the tap history"
 msgstr ""
 
@@ -6515,7 +6516,7 @@ msgstr ""
 msgid "TAP"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:81 ui/shortcuts.py:210
+#: ui/edit_panel/beatgrid.py:82 ui/shortcuts.py:210
 msgid "Tap the beat to set the reference BPM"
 msgstr ""
 
@@ -6523,7 +6524,7 @@ msgstr ""
 msgid "Assign the reference BPM"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:100 ui/shortcuts.py:212
+#: ui/edit_panel/beatgrid.py:101 ui/shortcuts.py:212
 msgid "Assign the reference BPM to the current segment (downbeat at its start)"
 msgstr ""
 
@@ -6531,7 +6532,7 @@ msgstr ""
 msgid "Ramp: the starting tempo"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:101 ui/shortcuts.py:214
+#: ui/edit_panel/beatgrid.py:102 ui/shortcuts.py:214
 msgid ""
 "Make the reference BPM the current segment's starting tempo (a ramp to "
 "its end tempo; its first beat stays)"
@@ -6541,7 +6542,7 @@ msgstr ""
 msgid "Ramp: the ending tempo"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:102 ui/shortcuts.py:217
+#: ui/edit_panel/beatgrid.py:103 ui/shortcuts.py:217
 msgid ""
 "Make the reference BPM the current segment's ending tempo (a ramp from "
 "its start tempo; its first beat stays)"
@@ -6551,7 +6552,7 @@ msgstr ""
 msgid "Downbeat at the playhead"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:109 ui/shortcuts.py:220
+#: ui/edit_panel/beatgrid.py:110 ui/shortcuts.py:220
 msgid "Make the beat nearest the playhead the current segment's downbeat"
 msgstr ""
 
@@ -6572,7 +6573,7 @@ msgstr ""
 msgid "Pick the key"
 msgstr ""
 
-#: ui/edit_panel/key.py:94 ui/edit_panel/key_picker.py:82 ui/shortcuts.py:226
+#: ui/edit_panel/key.py:95 ui/edit_panel/key_picker.py:82 ui/shortcuts.py:226
 msgid "Pick the key (Alphanumeric wheel)"
 msgstr ""
 
@@ -6612,7 +6613,7 @@ msgstr ""
 msgid "Merge the same keys"
 msgstr ""
 
-#: ui/edit_panel/key.py:79 ui/shortcuts.py:235
+#: ui/edit_panel/key.py:80 ui/shortcuts.py:235
 msgid "Merge every run of neighboring segments with the same key"
 msgstr ""
 
@@ -6638,11 +6639,11 @@ msgid ""
 "phrases"
 msgstr ""
 
-#: ui/edit_panel/phrase.py:76 ui/shortcuts.py:242
+#: ui/edit_panel/phrase.py:77 ui/shortcuts.py:242
 msgid "Unassign the current phrase (UNASSIGNED)"
 msgstr ""
 
-#: ui/edit_panel/phrase.py:161 ui/shortcuts.py:243
+#: ui/edit_panel/phrase.py:162 ui/shortcuts.py:243
 #, python-brace-format
 msgid "Label the current phrase {label}"
 msgstr ""

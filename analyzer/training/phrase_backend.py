@@ -35,6 +35,7 @@ from analyzer.phrase.model_features import (
     segment_feature_matrix,
 )
 from analyzer.files import atomic_output_path
+from analyzer.training.library_tracks import Annotation
 from analyzer.training.text import msg
 
 
@@ -50,13 +51,6 @@ _BEAT_FEATURE_CACHE_KEYS = frozenset(
         "feature_config",
         "res_type",
         "audio_mtime_ns",
-    }
-)
-_PHRASE_ANNOTATION_KEYS = frozenset(
-    {
-        "phrase_segments_np.start",
-        "phrase_segments_np.end",
-        "phrase_segments_np.label",
     }
 )
 _PHRASE_TIME_TOLERANCE_SEC = 1e-4   # the stored phrases' float32 resolution (core.analysis_library.phrases.MIN_PHRASE_DUR)
@@ -75,20 +69,20 @@ class LabelModel:
 
 
 def _load_phrase_annotation(
-    stored: dict,
+    annotation: Annotation,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """The phrase annotation of a track's stored features (as the library's owner gave them)."""
-    present = _PHRASE_ANNOTATION_KEYS.intersection(stored)
-    if not present:
+    """The phrase annotation of a track (as the library's owner gave it)."""
+    parts = {"start": annotation.phrase_starts, "end": annotation.phrase_ends, "label": annotation.phrase_labels}
+    if all(part is None for part in parts.values()):
         # A track without Phrase analysis is not optimizer training data.
         empty = np.asarray([], dtype=np.float64)
         return empty, empty.copy(), np.asarray([], dtype="U1")
-    missing = _PHRASE_ANNOTATION_KEYS.difference(stored)
+    missing = [name for name, part in parts.items() if part is None]
     if missing:
         raise ValueError(f"Incomplete current Phrase structure: missing {', '.join(sorted(missing))}")
-    starts = np.asarray(stored["phrase_segments_np.start"], dtype=np.float64).ravel()
-    ends = np.asarray(stored["phrase_segments_np.end"], dtype=np.float64).ravel()
-    labels = np.asarray(stored["phrase_segments_np.label"]).astype(str).ravel()
+    starts = np.asarray(annotation.phrase_starts, dtype=np.float64).ravel()
+    ends = np.asarray(annotation.phrase_ends, dtype=np.float64).ravel()
+    labels = np.asarray(annotation.phrase_labels).astype(str).ravel()
     if not (starts.size == ends.size == labels.size):
         raise ValueError("Mismatched current Phrase arrays")
     if not np.all(np.isfinite(starts)) or not np.all(np.isfinite(ends)):
@@ -115,39 +109,35 @@ def _load_phrase_annotation(
     return starts, ends, labels
 
 
-def _load_duration_sec(stored: dict) -> float:
+def _load_duration_sec(annotation: Annotation) -> float:
     """Audio duration stored with the analysis, or inf when it is unavailable."""
-    try:
-        if "duration_sec" in stored:
-            value = float(np.asarray(stored["duration_sec"]).ravel()[0])
-            if np.isfinite(value) and value > 0.0:
-                return value
-    except Exception:
-        pass
+    value = annotation.duration_sec
+    if value is not None and np.isfinite(value) and value > 0.0:
+        return float(value)
     return float("inf")
 
 
 def predictor_grid(track: dict):
-    """The track's predictor grid from its stored beats and tempo rows (structure.build_predictor_grid)."""
-    stored = track["features"]
-    for key in ("beats_time_sec", "tempo_segments"):
-        if key not in stored:
-            raise KeyError(f"the stored features are missing '{key}'")
-    return build_predictor_grid(stored["beats_time_sec"], stored["tempo_segments"])
+    """The track's predictor grid from its annotation's beats and tempo rows (structure.build_predictor_grid)."""
+    annotation = track["annotation"]
+    for name in ("beats", "tempo_segments"):
+        if getattr(annotation, name) is None:
+            raise KeyError(f"the stored analysis has no {name}")
+    return build_predictor_grid(annotation.beats, annotation.tempo_segments)
 
 
 def _list_annotated_tracks(
     library_dir: Path,
     ignored: list[SkippedOptimizationTrack] | None = None,
 ) -> list[dict[str, object]]:
-    """The tracks with phrase annotations, of the tracks the library's owner gave this run with their stored
-    features (analyzer.training.library_tracks; ``library_dir`` is kept for the callers' signatures)."""
+    """The tracks with phrase annotations, of the tracks the library's owner gave this run with their annotations
+    (analyzer.training.library_tracks; ``library_dir`` is kept for the callers' signatures)."""
     out: list[dict[str, object]] = []
     for track in library_tracks.tracks():
         audio_path = Path(track["audio_path"])
         track.update(audio_path=audio_path)
-        stored = track["features"]
-        if stored is None:
+        annotation = track["annotation"]
+        if annotation is None:
             if ignored is not None:
                 reason = track.get("error")
                 ignored.append(skipped_track(track, msg("invalid Phrase annotation: {error}", error=reason)
@@ -158,7 +148,7 @@ def _list_annotated_tracks(
                 ignored.append(skipped_track(track, msg("audio file is missing")))
             continue
         try:
-            starts, ends, labels = _load_phrase_annotation(stored)
+            starts, ends, labels = _load_phrase_annotation(annotation)
         except Exception as exc:
             if ignored is not None:
                 ignored.append(
@@ -172,7 +162,7 @@ def _list_annotated_tracks(
                 )
             continue
         track.update(
-            duration_sec=_load_duration_sec(stored),
+            duration_sec=_load_duration_sec(annotation),
             phrase_starts_sec=starts,
             phrase_ends_sec=ends,
             phrase_labels=labels,

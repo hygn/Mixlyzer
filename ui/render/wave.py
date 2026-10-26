@@ -1,16 +1,15 @@
 import numpy as np
 
-from analyzer.audio.wave_overview import WAVE_BAND_COUNT, WAVE_BAND_EDGES
+from analyzer.audio.wave_overview import WAVE_BAND_COUNT, WAVE_BAND_EDGES, WaveOverview
 from ui.render.color import oklab_to_srgb, srgb_to_oklab
 
 
-# The overview waveform is stored by the analysis (analyzer.audio.wave_overview: what it holds and how it is
-# measured) and drawn here, at WAVE_OVERVIEW_RENDER_COLUMNS columns.
+# The overview waveform is measured by the analysis (analyzer.audio.wave_overview.WaveOverview: what it holds and
+# how it is measured) and drawn here, at WAVE_OVERVIEW_RENDER_COLUMNS columns.
 WAVE_OVERVIEW_RENDER_COLUMNS = 4096
-WAVE_OVERVIEW_KEYS = ("wave_minmax_np", "wave_minmax_ref", "wave_bands_np", "wave_bands_ref")
-# The detail (scrolling) waveform is drawn from the audio; it reads one stored number: the three-band layers'
-# common scale (wave_detail_band_ref: the low / mid / high RMS track maxima of the ranges set at analysis, each the
-# maximum of the range's RMS at 16384 column centres).
+# The detail (scrolling) waveform is drawn from the audio; it reads one number of the overview: the three-band
+# layers' common scale (WaveOverview.detail_band_ref: the low / mid / high RMS track maxima of the ranges set at
+# analysis, each the maximum of the range's RMS at 16384 column centres).
 
 WAVEFORM_STYLES = ("rgb", "3band")
 # RGB overview colours (overview_colors), each column's own first: each band over the track's own usual level
@@ -134,30 +133,9 @@ def band_weights(ranges) -> np.ndarray:
     return weights
 
 
-def has_wave_overview(features) -> bool:
-    return isinstance(features, dict) and all(k in features for k in WAVE_OVERVIEW_KEYS)
-
-
-def wave_overview_source(features):
-    """The stored array the overview is drawn from (its identity tells a cached drawing is current)."""
-    return features.get("wave_minmax_np") if isinstance(features, dict) else None
-
-
-def _stored_minmax(features) -> np.ndarray:
-    """``[N, 2]`` min / max per column in sample units."""
-    q = np.asarray(features["wave_minmax_np"], dtype=np.float64) / 127.0
-    return np.sign(q) * np.square(q) * float(np.asarray(features["wave_minmax_ref"]).reshape(-1)[0])
-
-
-def _stored_band_power(features) -> np.ndarray:
-    """``[M, WAVE_BAND_COUNT]`` the stored bands' mean-square power per band column in sample units."""
-    power = np.power(np.asarray(features["wave_bands_np"], dtype=np.float64) / 255.0, 4.0)
-    return power * np.asarray(features["wave_bands_ref"], dtype=np.float64)[np.newaxis, :]
-
-
-def _stored_band_rms(features, ranges) -> np.ndarray:
-    """``[M, 3]`` low / mid / high RMS per band column in sample units, summed from the stored bands."""
-    return np.sqrt(_stored_band_power(features) @ band_weights(ranges).T)
+def _band_rms(wave: WaveOverview, ranges) -> np.ndarray:
+    """``[M, 3]`` low / mid / high RMS per band column in sample units, summed from the overview's bands."""
+    return np.sqrt(wave.band_power() @ band_weights(ranges).T)
 
 
 def _column_means(values: np.ndarray, columns: int) -> np.ndarray:
@@ -167,12 +145,12 @@ def _column_means(values: np.ndarray, columns: int) -> np.ndarray:
     return np.add.reduceat(values, starts, axis=0) / np.diff(np.append(starts, n)).astype(np.float64)[:, np.newaxis]
 
 
-def wave_detail_band_ref(features) -> float | None:
+def wave_detail_band_ref(wave: WaveOverview | None) -> float | None:
     """The detail waveform's three-band scale: the loudest band's track maximum RMS (sample units, the ranges set
-    at analysis)."""
-    if not isinstance(features, dict) or "wave_detail_band_ref" not in features:
+    at analysis); None without an overview."""
+    if wave is None or np.asarray(wave.detail_band_ref).size == 0:
         return None
-    return float(np.max(np.asarray(features["wave_detail_band_ref"])))
+    return float(np.max(np.asarray(wave.detail_band_ref)))
 
 
 def paint_layers(layers, height: int, *, mirrored: bool = False) -> np.ndarray:
@@ -265,18 +243,19 @@ def overview_colors(values: np.ndarray, bands: np.ndarray, heights: np.ndarray, 
 
 
 def render_wave_overview(
-    features: dict,
+    wave: WaveOverview,
     ranges,
     style: str,
     height: int,
     *,
+    duration_sec: float = 0.0,
     columns: int = WAVE_OVERVIEW_RENDER_COLUMNS,
 ) -> np.ndarray:
-    """Overview image ``[columns, height, 3]`` of a track's stored overview, bars rising from the first row. In
-    both styles a bar's height is the bands' power: the low / mid / high ``ranges`` on one scale, stacked with
-    the preview weights. ``style``: 'rgb', one bar coloured by the three levels against the track's usual
-    balance (overview_colors); '3band', the three stacked in their colors."""
-    rms = _stored_band_rms(features, ranges)
+    """Overview image ``[columns, height, 3]`` of a track's overview (``duration_sec`` long), bars rising from the
+    first row. In both styles a bar's height is the bands' power: the low / mid / high ``ranges`` on one scale,
+    stacked with the preview weights. ``style``: 'rgb', one bar coloured by the three levels against the track's
+    usual balance (overview_colors); '3band', the three stacked in their colors."""
+    rms = _band_rms(wave, ranges)
     values = _column_means(rms, columns) / (float(rms.max()) or 1.0)
     w_low, w_mid, w_high = THREE_BAND_PREVIEW_WEIGHTS
     stack_low = w_low * values[:, 0]
@@ -284,16 +263,15 @@ def render_wave_overview(
     stack_high = stack_mid + w_high * values[:, 2]
     scale = float(stack_high.max()) or 1.0
     if style != "3band":
-        duration = float(np.asarray(features.get("duration_sec", 0.0), dtype=np.float64).reshape(-1)[0])
-        colors = overview_colors(values, _column_means(_stored_band_power(features), columns), stack_high / scale,
-                                 duration)
+        colors = overview_colors(values, _column_means(wave.band_power(), columns), stack_high / scale,
+                                 float(duration_sec))
         return paint_layers([(stack_high / scale, colors)], height)
     return paint_layers([(stack_high / scale, THREE_BAND_HIGH), (stack_mid / scale, THREE_BAND_MID),
                          (stack_low / scale, THREE_BAND_LOW)], height)
 
 
 def render_wave_detail_preview(
-    features: dict,
+    wave: WaveOverview,
     ranges,
     style: str,
     height: int,
@@ -301,11 +279,11 @@ def render_wave_detail_preview(
     columns: int = WAVE_OVERVIEW_RENDER_COLUMNS,
 ) -> np.ndarray:
     """Stand-in for the main view's detail waveform until its chunks are rendered, drawn like them from the
-    stored overview (mirrored, sample units): RGB the min / max bars colored as the chunks are (the square roots
-    of the band RMS), 3band the layers of the scrolling waveform (bands on one scale)."""
-    rms = _stored_band_rms(features, ranges)
+    overview (mirrored, sample units): RGB the min / max bars colored as the chunks are (the square roots of the
+    band RMS), 3band the layers of the scrolling waveform (bands on one scale)."""
+    rms = _band_rms(wave, ranges)
     if style != "3band":
-        minmax = np.clip(_stored_minmax(features), -1.0, 1.0)
+        minmax = np.clip(wave.samples(), -1.0, 1.0)
         n = minmax.shape[0]
         band_col = np.minimum((np.arange(n, dtype=np.int64) * rms.shape[0]) // max(n, 1), rms.shape[0] - 1)
         amp = np.sqrt(rms[band_col])

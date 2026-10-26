@@ -1,12 +1,11 @@
 """Full-track analysis subprocess worker: the analyzer's pipeline (analyzer.pipeline.track) run on a track, and
-what the library stores of it made from its results (the track's row, the stored features, the index rows)."""
+what the library stores of it made from its results (the track's row, the stored analysis, the index rows)."""
 
 import os
 import time
 import traceback
 from typing import Any, Callable, Dict, Optional
 
-import numpy as np
 from PySide6 import QtCore
 from threadpoolctl import threadpool_limits
 
@@ -19,9 +18,7 @@ from core.library.segments import build_bpm_segments, build_key_segments, build_
 from core.workers.analysis_settings import analysis_settings
 from core.workers.analysis_texts import error_text, track_stage
 from system.i18n import tr
-from core.analysis_library.cue_points import build_cue_points_np
-from core.analysis_library.jump_cues import build_jump_cues_np
-from core.analysis_library.phrases import build_phrase_segments_np
+from core.analysis_library.stored import arrays_of
 
 
 def _file_stats(path: str) -> tuple[int, float]:
@@ -34,9 +31,9 @@ def _file_stats(path: str) -> tuple[int, float]:
 
 def analyze_for_library(path: str, cfg: config, force_analyze: bool = False,
                         progress: Optional[Callable[[str, str, float], None]] = None) -> Dict[str, Any]:
-    """The track analyzed, as the library's owner stores it (core.library.jobs.store_analysis): its features, its
-    row's properties and ``store`` (the index rows, Search by Music's entry, the Variants' fingerprints, the cover as
-    the file holds it).
+    """The track analyzed, as the library's owner stores it (core.library.jobs.store_analysis): its stored analysis
+    (``arrays``: core.analysis_library.stored), its row's properties and ``store`` (the index rows, Search by Music's
+    entry, the Variants' fingerprints, the cover as the file holds it).
     ``progress(status, task, fraction)``: each stage in words (the status line's, "" for none; the task's)."""
     def report(status: str, task: str, fraction: float) -> None:
         if progress is not None:
@@ -46,22 +43,6 @@ def analyze_for_library(path: str, cfg: config, force_analyze: bool = False,
     sources = read_tag_sources(path, title, artist, album, comment)
     result = analyze_track(path, analysis_settings(cfg),
                            progress=lambda stage, fraction: report(*track_stage(stage), fraction))
-    features = dict(result.wave_overview)
-    features["duration_sec"] = result.duration_sec
-    features["tempo_segments"] = result.tempo_segments
-    features["beats_time_sec"] = result.beats
-    features["tempo_global"] = result.main_tempo
-    features["phrase_segments_np"] = build_phrase_segments_np(result.phrases)
-    features["cue_points_np"] = build_cue_points_np(result.cue_points)
-    features["jump_cues_np"] = build_jump_cues_np(result.jump_pairs, canonicalize_labels=True, merge_coincident=True)
-    # The automatic result is kept beside the user's JumpCUEs (which edits
-    # replace): the JumpCUE optimizer learns from where the two differ.
-    features["jump_cues_auto_np"] = {k: np.array(v, copy=True) for k, v in features["jump_cues_np"].items()}
-    features["key_segments"] = result.key_segments
-    # the automatic result kept beside the user's keys (which edits replace): the key optimizer learns from
-    # the tracks whose keys differ from it
-    features["key_segments_auto"] = np.array(result.key_segments, dtype=float, copy=True)
-    features["sr"] = result.sample_rate
 
     report("", tr("Processing Metadata"), 0.85)
     fsize, fmtime = _file_stats(path)
@@ -86,7 +67,7 @@ def analyze_for_library(path: str, cfg: config, force_analyze: bool = False,
     phrase_sections = build_phrase_index_rows(result.phrases, bpm_segments, key_segments_db)
     # stored by the library's owner: the track's row merged with the library's (a reanalysis keeps the user's
     # metadata), its uid given there; the cover as the file holds it (its thumbnail)
-    return {"features": features, "properties": properties, "update_db": True,
+    return {"arrays": arrays_of(result), "properties": properties, "update_db": True,
             "store": {"force": bool(force_analyze), "bpm_segments": bpm_segments, "key_segments": key_segments_db,
                       "phrase_sections": phrase_sections, "music_entry": result.music_index,
                       "variants": result.variants, "cover": cover_data(path)}}

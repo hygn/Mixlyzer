@@ -118,7 +118,7 @@ class IndexTrack:
     size: int            # its size and time, kept with Search by Music's index
     mtime: float
     music: bool          # Search by Music's index to make (from the audio)
-    variants: bool       # the variants' fingerprint to make (from the stored features)
+    variants: bool       # the variants' fingerprint to make (from the stored analysis)
 
 
 @dataclass

@@ -13,7 +13,7 @@ import numpy as np
 
 from analyzer.audio.hpss import HPSS_HOP_LENGTH, HPSS_N_FFT, hpss_audio_with_spectra
 from analyzer.audio.load import fast_load
-from analyzer.audio.wave_overview import WAVE_OVERVIEW_SAMPLE_RATE, build_wave_overview
+from analyzer.audio.wave_overview import WAVE_OVERVIEW_SAMPLE_RATE, WaveOverview, build_wave_overview
 from analyzer.beat import melody_contour
 from analyzer.beat.frame_features import FRAME_HOP_LENGTH, extract_frame_features
 from analyzer.jumpcue.JumpCUE import JumpCueConfig, JumpCueEngine
@@ -21,7 +21,7 @@ from analyzer.jumpcue.autocue import autocue_jump_pair
 from analyzer.jumpcue.jump_point_model import jump_point_beat_features
 from analyzer.key.chord_key import analyze_keys as analyze_chord_keys
 from analyzer.music.beat_geometry import downbeat_times
-from analyzer.music.marks import Phrase
+from analyzer.music.marks import CuePoint, Phrase
 from analyzer.phrase import detect_phrase_segments
 from analyzer.phrase.cue_points import autocue_time_sec, phrase_cue_points
 from analyzer.pipeline import stages
@@ -38,12 +38,12 @@ prime_physical_core_count()
 class TrackAnalysis:
     duration_sec: float
     sample_rate: int                       # the analysis's (ANALYSIS_SAMPLE_RATE)
-    wave_overview: dict[str, np.ndarray]   # analyzer.audio.wave_overview's arrays
+    wave_overview: WaveOverview
     tempo_segments: np.ndarray             # float32 rows [start, end, bpm, inizio, ts, bpm_end] covering the track
     beats: np.ndarray                      # the beats the rows make
     main_tempo: float
     phrases: list[Phrase]                  # as detected ([]: none)
-    cue_points: list[dict]                 # {id, time_sec, label, comment}
+    cue_points: list[CuePoint]             # by the phrases' rules (and AutoCUE's)
     jump_pairs: list[dict]                 # the JumpCUE pairs (AutoCUE's last, with AutoCUE on JumpCUEs)
     key_segments: np.ndarray               # [n, 4] (pitch class, mode, start, end)
     main_key: int | None                   # the key of the most beats (pitch class + 12 * minor)
@@ -260,7 +260,7 @@ def analyze_track(path: str, settings: AnalysisSettings, progress: Progress = No
     # the Variants' fingerprints (from the beats and the overview's bands, ~20 ms); a failure leaves the track out of
     # the Variants, never the analysis undone
     try:
-        fingerprints = variants.track_fingerprints({**wave, "beats_time_sec": beats_out, "duration_sec": duration_sec})
+        fingerprints = variants.track_fingerprints(beats_out, wave, duration_sec)
     except Exception as exc:
         print(f"[Variants] not fingerprinted: {exc}")
         fingerprints = None

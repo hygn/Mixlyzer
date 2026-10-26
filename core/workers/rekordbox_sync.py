@@ -6,11 +6,11 @@ from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 from typing import Callable, Optional
 
-import numpy as np
 from PySide6 import QtCore
 
 from core.tieups import domain as tieup
 from core.analysis_library import jobs as analysis_jobs
+from core.analysis_library.stored import StoredAnalysis
 from core.library import jobs
 from core.library.records import TrackRow
 from third_party.rekordbox import (
@@ -49,7 +49,7 @@ class RekordboxSyncWorker(QtCore.QObject):
     failed = QtCore.Signal(str)
 
     def __init__(self, request: RekordboxSyncRequest, library, parent=None) -> None:
-        """``library``: the library's owner (core.library.service), asked for the rows and features."""
+        """``library``: the library's owner (core.library.service), asked for the rows and stored analyses."""
         super().__init__(parent)
         self._request = request
         self._library = library
@@ -171,7 +171,7 @@ class _RekordboxSyncEngine:
     def _build_track(self, row: TrackRow, track_hash: str):
         return build_rekordbox_track_element(
             row,
-            self._load_features(row.uid),
+            self._load_analysis(row.uid),
             resolve_path=self._resolve_audio_path,
             extra_attributes={"MixlyzerUID": str(row.uid or ""), "MixlyzerHash": track_hash},
             ramp_tolerance_sec=max(0.0, float(self.request.ramp_tolerance_ms)) / 1000.0,
@@ -184,10 +184,10 @@ class _RekordboxSyncEngine:
         atomic_write_text(self.request.xml_path, xml_text)
         self.progress(100, tr("Rekordbox XML sync complete"))
 
-    def _load_features(self, uid: Optional[str]) -> dict[str, np.ndarray]:
+    def _load_analysis(self, uid: Optional[str]) -> StoredAnalysis:
         if not uid:
-            return {}
-        return self.library.call(analysis_jobs.features, uid) or {}
+            return StoredAnalysis()
+        return self.library.call(analysis_jobs.analysis, uid) or StoredAnalysis()
 
     def _track_hash(self, row: TrackRow) -> str:
         parts = [str(v) for k, v in sorted(asdict(row).items())]

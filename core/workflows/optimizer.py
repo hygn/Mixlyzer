@@ -9,7 +9,7 @@ from core.workers.optimizer import OptimizerWorker
 
 class OptimizerWorkflow(QtCore.QObject):
     """Own one optimizer worker and expose its lifecycle to the UI. The library's owner gives the run its tracks and
-    what the optimizers read of their stored analyses (core.analysis_library.jobs.training_tracks, training_features)
+    the user's annotations the optimizers read (core.analysis_library.jobs.training_tracks, training_annotations)
     before the process starts: the optimizers never open the library's files."""
 
     featureProgress = QtCore.Signal(int, str)
@@ -41,10 +41,10 @@ class OptimizerWorkflow(QtCore.QObject):
         if self.is_running:
             raise RuntimeError(f"{self._process_group} optimizer is already running")
         self._starting = True
-        self._library.read(analysis_jobs.training_tracks, done=self._read_features, failed=self._not_started)
+        self._library.read(analysis_jobs.training_tracks, done=self._read_annotations, failed=self._not_started)
 
-    def _read_features(self, tracks: list[dict], start: int = 0) -> None:
-        """The tracks' stored analyses, TRAINING_BATCH tracks a job, each asked once the last came: the owner's
+    def _read_annotations(self, tracks: list[dict], start: int = 0) -> None:
+        """The tracks' annotations, TRAINING_BATCH tracks a job, each asked once the last came: the owner's
         other jobs (the GUI's) run between two."""
         if start >= len(tracks):
             self._spawn(tracks)
@@ -54,13 +54,13 @@ class OptimizerWorkflow(QtCore.QObject):
         batch = tracks[start:start + analysis_jobs.TRAINING_BATCH]
 
         def came(read: list) -> None:
-            for track, (features, error) in zip(batch, read):
-                track["features"] = features
+            for track, (annotation, error) in zip(batch, read):
+                track["annotation"] = annotation
                 if error:
                     track["error"] = error
-            self._read_features(tracks, start + len(batch))
+            self._read_annotations(tracks, start + len(batch))
 
-        self._library.read(analysis_jobs.training_features, [t["uid"] for t in batch], done=came,
+        self._library.read(analysis_jobs.training_annotations, [t["uid"] for t in batch], done=came,
                            failed=self._not_started)
 
     def _spawn(self, tracks: list[dict]) -> None:

@@ -56,6 +56,12 @@ def build_cue_points_np(points: list[CuePoint] | None) -> dict[str, np.ndarray]:
     }
 
 
+def as_stored(points: list[CuePoint] | None) -> list[CuePoint]:
+    """``points`` as they read back once stored (each time at the stored precision, coincident ones merged, a point
+    without a finite time from 0 left out, numbered), in time order."""
+    return extract_cue_points({"cue_points_np": build_cue_points_np(points)})
+
+
 def extract_cue_points(features: dict[str, Any] | None) -> list[CuePoint]:
     """The stored CUE points of ``features`` (its block, or its flattened keys), in time order."""
     if not features:
@@ -84,6 +90,7 @@ def extract_cue_points(features: dict[str, Any] | None) -> list[CuePoint]:
 __all__ = [
     "CUE_POINT_KEYS",
     "CUE_POINT_PREFIX",
+    "as_stored",
     "build_cue_points_np",
     "empty_cue_points_np",
     "extract_cue_points",

@@ -12,6 +12,7 @@ from ui.edit_panel.icons import icon
 from ui.edit_panel.quantize import beat_quantize_grid
 from core.analysis_library.jumpcue_colors import JUMPCUE_PAIR_COLORS, get_jumpcue_pair_color
 from core.analysis_library.phrases import assigned_phrases
+from core.workers.segment_reanalysis import JUMPCUE, ReanalysisRequest
 from system.i18n import tr
 
 # JumpCUE slots are the letters A-Z (rekordbox hot cue letters).
@@ -310,13 +311,7 @@ class JumpCUEEditMixin:
     def _reanalyze_jumpCUE(self) -> None:
         if self._beatgrid is None or len(self._beatgrid) == 0:
             return
-        payload = {
-            "path": self._current_track_path(),
-            "beats_time_sec": np.asarray(self._beatgrid, dtype=float).copy(),
-        }
-        if self._segments is not None:
-            payload["segments"] = np.asarray(self._segments, dtype=float).copy()
         # AutoCUE follows the current phrases and beat grid.
-        payload["phrases"] = assigned_phrases(self._phrase_segments)
-        payload["analyze_type"] = "jumpcue"
-        self.bus.sig_segment_reanalyze_requested.emit(payload)
+        self.bus.sig_segment_reanalyze_requested.emit(ReanalysisRequest(
+            kind=JUMPCUE, path=self._current_track_path(), beats=np.asarray(self._beatgrid, dtype=float).copy(),
+            tempo_segments=np.asarray(self._segments if self._segments is not None else np.empty((0, 6)), dtype=float).copy(), phrases=tuple(assigned_phrases(self._phrase_segments))))

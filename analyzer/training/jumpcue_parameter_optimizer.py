@@ -721,8 +721,8 @@ def run(dataset: Path, model_path: Path, output: Path, *,
 # --------------------------------------------------------------------------
 # Library optimizer (settings dialog): trains on the user's own library.
 #
-# A track contributes its saved JumpCUEs ('jump_cues_np') and, when kept, the
-# automatic analysis result ('jump_cues_auto_np'). The engine runs on the
+# A track contributes its saved JumpCUEs and, when kept, the
+# automatic analysis result beside them. The engine runs on the
 # track's current beat grid and every placed group's candidates (shift x
 # member subset) are cached. A saved group is the group's label; where the
 # automatic result chose differently for the same group, that choice is the
@@ -991,24 +991,26 @@ def optimize_jumpcue_parameters(
     skipped: list = []
 
     tracks: list[dict] = []
-    for given in library_tracks.tracks():     # the tracks the library's owner gave this run, with their features
+    for given in library_tracks.tracks():     # the tracks the library's owner gave this run, with their annotations
         info = {"uid": str(given["uid"]), "audio_path": Path(given["audio_path"]),
                 "title": given["title"], "artist": given["artist"]}
-        feats = given["features"]
+        annotation = given["annotation"]
         try:
-            if feats is None:
+            if annotation is None:
                 continue
-            # each JumpCUE group's cue points, as the app read them from the stored blocks (core.analysis_library)
-            saved = feats.get("jump_cue_groups") or []
+            # each JumpCUE group's cue points (core.analysis_library read them from the stored groups)
+            saved = annotation.jump_cue_groups or []
             if not saved:
                 continue
-            beats = np.asarray(feats["beats_time_sec"], dtype=float)
-            segments = np.asarray(feats["tempo_segments"], dtype=float)
+            if annotation.beats is None or annotation.tempo_segments is None:
+                raise ValueError("no beat grid")
+            beats = np.asarray(annotation.beats, dtype=float)
+            segments = np.asarray(annotation.tempo_segments, dtype=float)
             if not info["audio_path"].exists():
                 skipped.append(skipped_track(info, msg("Audio file not found")))
                 continue
             tracks.append({**info, "beats": beats, "segments": segments, "saved": saved,
-                           "auto": feats.get("jump_cue_auto_groups") or [],
+                           "auto": annotation.jump_cue_auto_groups or [],
                            "cache_key": _cache_key(beats, segments, settings)})
         except Exception as exc:
             skipped.append(skipped_track(info, msg("Reading the analysis failed: {error}", error=exc)))

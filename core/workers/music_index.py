@@ -2,7 +2,7 @@
 variants existed get their index. Search by Music's (analyzer.pipeline.music_index: reference lines and landmarks from
 the audio; about 3 s a track) is made in spawned processes at a lower priority, each its share of the tracks, and
 handed back track by track; the library's owner stores each (core.library.jobs.store_music_entry), makes the
-variants' fingerprints from the stored features (jobs.fingerprint: no audio, about 20 ms a track) and drops the
+variants' fingerprints from the stored analyses (jobs.fingerprint: no audio, about 20 ms a track) and drops the
 tracks gone (jobs.drop_gone): core.workflows.music_index runs it. The processes never open the library. The analysis
 indexes the tracks it analyzes."""
 

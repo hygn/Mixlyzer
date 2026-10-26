@@ -338,7 +338,16 @@ def _graph_color_indices(block: Dict[str, Any]) -> dict[int, int]:
 def extract_jump_cue_groups(features: Dict[str, Any], key: str = "jump_cues_np") -> List[JumpCueGroup]:
     """The JumpCUE groups of the graph block ``key`` ('jump_cues_np' = the user's, 'jump_cues_auto_np' = the automatic
     analysis's), by their stored group index, each one's cues by point and its colour preset."""
-    block = _extract_jump_cue_block(features, key)
+    return _block_groups(_extract_jump_cue_block(features, key))
+
+
+def jump_cue_groups_of_pairs(jump_pairs: List[dict] | None) -> List[JumpCueGroup]:
+    """The detector's JumpCUE pairs (analyzer.pipeline.jumpcues) as the groups they are stored as: lettered A-Z by
+    point, coincident cues merged."""
+    return _block_groups(build_jump_cues_np(jump_pairs, canonicalize_labels=True, merge_coincident=True))
+
+
+def _block_groups(block: Dict[str, Any]) -> List[JumpCueGroup]:
     if not block or not all(name in block for name in _GRAPH_BLOCK_REQUIRED):
         return []
     cue_length = min(len(block[name]) for name in ("cue_id", "cue_label", "cue_comment", "cue_start", "cue_end",

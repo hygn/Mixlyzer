@@ -23,6 +23,7 @@ from analyzer.phrase.phrase_analyzer import (
 )
 from analyzer.phrase.refinement import REFINEMENT_VERSION
 from analyzer.training import phrase_refinement as _refinement
+from analyzer.training.library_tracks import Annotation
 from analyzer.phrase.context_features import (
     CONTEXT_FEATURE_VERSION,
     DEFAULT_BOUNDARY_REGIONAL_CONTEXT_BEATS,
@@ -419,7 +420,8 @@ def optimize_phrase_parameters(
                     "title": str(track["title"]),
                     "artist": str(track["artist"]),
                     "audio_path": Path(track["audio_path"]),
-                    "features": {k: track["features"][k] for k in ("beats_time_sec", "tempo_segments")},
+                    "annotation": Annotation(beats=track["annotation"].beats,
+                                             tempo_segments=track["annotation"].tempo_segments),
                     "rebuild_beat_cache": not beat_current,
                 }
             )

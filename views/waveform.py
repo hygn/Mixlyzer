@@ -19,13 +19,11 @@ from ui.render.wave import (
     add_center_line,
     band_ranges,
     frame_minmax,
-    has_wave_overview,
     paint_layers,
     render_wave_detail_preview,
     three_band_detail_layers,
     wave_colors,
     wave_detail_band_ref,
-    wave_overview_source,
     wave_coverage_columns,
 )
 from .base import WAVEFORM_LANE, ViewPlugin, register_view
@@ -71,7 +69,7 @@ class _WaveStyle:
         return float(view.mainview_wave_frame_ms_short if short else view.mainview_wave_frame_ms_long)
 
     @classmethod
-    def from_config(cls, features, window_sec: float) -> "_WaveStyle":
+    def from_config(cls, wave, window_sec: float) -> "_WaveStyle":
         cfg = load_cfg()
         v = cfg.viewconfig
         return cls(
@@ -79,7 +77,7 @@ class _WaveStyle:
             filter_order=int(v.mainview_wave_filter_order),
             frame_ms=cls.frame_ms_for(v, window_sec),
             waveform_style=v.waveform_style,
-            band_ref=wave_detail_band_ref(features),
+            band_ref=wave_detail_band_ref(wave),
         )
 
     def frame_hop(self, sample_rate: int) -> int:
@@ -555,7 +553,7 @@ class WaveformView(ViewPlugin):
     def update_window(self, _w: float):
         if self._layer is not None:
             # crossing between the short and long views shows the other frame's layer
-            self._show_layer(_WaveStyle.from_config(self.model.features, self.tl.window_sec))
+            self._show_layer(_WaveStyle.from_config(self.model.analysis.wave, self.tl.window_sec))
         self._set_rect(force=True)
         self._evaluate_render_targets()  # a wider view shows chunks not rendered yet
 
@@ -619,19 +617,19 @@ class WaveformView(ViewPlugin):
         self._ensure_preview_item()
         if self._preview_item is None:
             return
-        features = self.model.features if isinstance(self.model.features, dict) else {}
-        if not has_wave_overview(features):
+        wave = self.model.analysis.wave
+        if wave is None:
             self._preview_item.setVisible(False)
             self._preview_source = None
             return
         cfg = load_cfg()
         ranges, style = band_ranges(cfg.viewconfig), cfg.viewconfig.waveform_style
-        source = (id(wave_overview_source(features)), ranges, style)
+        source = (id(wave), ranges, style)
         if self._preview_source != source:
             # Until chunks are rendered, the stored overview stands in, drawn like them.
             self._preview_item.setImage(
                 # with the chunks' centre line, so the two join without a seam
-                np.clip(add_center_line(render_wave_detail_preview(features, ranges, style, RENDER_HEIGHT))
+                np.clip(add_center_line(render_wave_detail_preview(wave, ranges, style, RENDER_HEIGHT))
                         + 0.5, 0.0, 255.0).astype(np.uint8),
                 autoLevels=False,
                 levels=self._wave_levels,
@@ -669,7 +667,7 @@ class WaveformView(ViewPlugin):
             self._remove_all_chunk_items()
             self._chunk_count = chunk_count
             self._sig_cancel.emit()
-            self._show_layer(_WaveStyle.from_config(self.model.features, self.tl.window_sec))
+            self._show_layer(_WaveStyle.from_config(self.model.analysis.wave, self.tl.window_sec))
         return self._chunk_count
 
     def _on_seek_requested(self, t: float) -> None:

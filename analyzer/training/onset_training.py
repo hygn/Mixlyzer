@@ -35,14 +35,14 @@ def _list_beat_tracks(
     library_dir: Path,
     ignored: list[SkippedOptimizationTrack] | None = None,
 ) -> list[dict[str, object]]:
-    """The tracks with a usable beat grid, of the tracks the library's owner gave this run with their stored
-    features (analyzer.training.library_tracks; ``library_dir`` is kept for the callers' signatures)."""
+    """The tracks with a usable beat grid, of the tracks the library's owner gave this run with their annotations
+    (analyzer.training.library_tracks; ``library_dir`` is kept for the callers' signatures)."""
     tracks: list[dict[str, object]] = []
     for track in library_tracks.tracks():
         audio_path = Path(track["audio_path"])
         track.update(audio_path=audio_path)
-        stored = track["features"]
-        if stored is None:
+        annotation = track["annotation"]
+        if annotation is None:
             if ignored is not None:
                 reason = track.get("error")
                 ignored.append(skipped_track(track, msg("invalid beat analysis: {error}", error=reason)
@@ -52,13 +52,13 @@ def _list_beat_tracks(
             if ignored is not None:
                 ignored.append(skipped_track(track, msg("audio file is missing")))
             continue
-        try:
-            beats = np.asarray(stored["beats_time_sec"], dtype=np.float64)
-            sample_rate = int(np.asarray(stored["sr"]).item())
-        except (KeyError, ValueError) as exc:
+        if annotation.beats is None or annotation.sample_rate is None:
             if ignored is not None:
-                ignored.append(skipped_track(track, msg("invalid beat analysis: {error}", error=exc)))
+                missing = "beats" if annotation.beats is None else "sample rate"
+                ignored.append(skipped_track(track, msg("invalid beat analysis: {error}", error=missing)))
             continue
+        beats = np.asarray(annotation.beats, dtype=np.float64)
+        sample_rate = int(annotation.sample_rate)
         if beats.ndim != 1 or beats.size < MIN_BEATS or not np.all(np.isfinite(beats)):
             if ignored is not None:
                 ignored.append(skipped_track(track, msg("invalid or insufficient beat grid")))

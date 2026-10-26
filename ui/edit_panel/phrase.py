@@ -11,7 +11,7 @@ from core.settings.config import load_cfg
 from core.workers.analysis_settings import cue_rules
 from ui.edit_panel.blocks import mode_column, rule_cell
 from ui.edit_panel.icons import badged_icon, icon
-from core.analysis_library.cue_points import build_cue_points_np, extract_cue_points
+from core.analysis_library.cue_points import as_stored as stored_cue_points
 from core.analysis_library.phrases import (
     PHRASE_LABELS,
     UNASSIGNED,
@@ -20,6 +20,7 @@ from core.analysis_library.phrases import (
     phrase_color,
     phrase_display_name,
 )
+from core.workers.segment_reanalysis import PHRASE, ReanalysisRequest
 from system.i18n import tr, tr_mark
 from ui.live_label import LiveLabel
 
@@ -170,14 +171,9 @@ class PhraseEditMixin:
     def _reanalyze_phrases(self) -> None:
         if self._beatgrid is None or len(self._beatgrid) == 0:
             return
-        payload = {
-            "path": self._current_track_path(),
-            "beats_time_sec": np.asarray(self._beatgrid, dtype=float).copy(),
-            "analyze_type": "phrase",
-        }
-        if self._segments is not None:
-            payload["segments"] = np.asarray(self._segments, dtype=float).copy()
-        self.bus.sig_segment_reanalyze_requested.emit(payload)
+        self.bus.sig_segment_reanalyze_requested.emit(ReanalysisRequest(
+            kind=PHRASE, path=self._current_track_path(), beats=np.asarray(self._beatgrid, dtype=float).copy(),
+            tempo_segments=np.asarray(self._segments if self._segments is not None else np.empty((0, 6)), dtype=float).copy()))
 
     def _assign_cue_points_from_phrases(self) -> None:
         """The CUE points the full analysis would make from the current phrases (the
@@ -187,8 +183,8 @@ class PhraseEditMixin:
         phrases = assigned_phrases(self._phrase_segments)
         points = phrase_cue_points(phrases, self._beatgrid, self._segments, cue_rules(cfg),
                                    cfg.analysisconfig.autocue)
-        # through the stored form, so they read back as loaded ones do
-        self.model.set_cue_points(extract_cue_points({"cue_points_np": build_cue_points_np(points)}))
+        # as they read back once stored, as loaded ones do
+        self.model.set_cue_points(stored_cue_points(points))
 
     def _set_phrases_edited(self, rows: list[Phrase]) -> None:
         self.model.set_phrases(rows)

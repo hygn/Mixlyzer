@@ -11,6 +11,7 @@ from ui.render.color import key_cmap_color, key_label_text_color
 from ui.render.keystrip import key_segment_label
 from analyzer.music.key_names import ALPHANUMERIC_LABELS
 from core.analysis_library.phrases import assigned_phrases
+from core.workers.segment_reanalysis import KEY_DYNAMIC, KEY_STATIC, ReanalysisRequest
 from system.i18n import tr, tr_mark
 from ui.live_label import LiveLabel
 
@@ -451,33 +452,23 @@ class KeyEditMixin:
         start, end = float(self._key_segments[idx, 2]), float(self._key_segments[idx, 3])
         if end - start <= 1e-6:
             return
-        payload = {
-            "path": self._current_track_path(),
-            "segment_index": int(self._cur_idx),
-            "segments": np.asarray(self._segments, dtype=float).copy(),
-            "beats_time_sec": np.asarray(self._beatgrid, dtype=float).copy(),
-            "key_segments": np.asarray(self._key_segments, dtype=float).copy(),
-            "selection": (start, end),
-            "phrases": assigned_phrases(self._phrase_segments),
-            "analyze_type": "key_static",
-            "duration_sec": self.duration,
-        }
-        self.bus.sig_segment_reanalyze_requested.emit(payload)
+        self.bus.sig_segment_reanalyze_requested.emit(ReanalysisRequest(
+            kind=KEY_STATIC, path=self._current_track_path(), segment_index=int(self._cur_idx),
+            tempo_segments=np.asarray(self._segments, dtype=float).copy(),
+            beats=np.asarray(self._beatgrid, dtype=float).copy(),
+            key_segments=np.asarray(self._key_segments, dtype=float).copy(), selection=(start, end),
+            phrases=tuple(assigned_phrases(self._phrase_segments)), duration_sec=float(self.duration or 0.0)))
 
     def _request_key_reanalysis_dynamic(self) -> None:
         if self._beatgrid is None or len(self._beatgrid) == 0:
             return
-        payload = {
-            "path": self._current_track_path(),
-            "segment_index": int(self._cur_idx),
-            "segments": np.asarray(self._segments, dtype=float).copy(),
-            "beats_time_sec": np.asarray(self._beatgrid, dtype=float).copy(),
-            "key_segments": np.asarray(self._key_segments, dtype=float).copy(),
+        self.bus.sig_segment_reanalyze_requested.emit(ReanalysisRequest(
+            kind=KEY_DYNAMIC, path=self._current_track_path(), segment_index=int(self._cur_idx),
+            tempo_segments=np.asarray(self._segments, dtype=float).copy(),
+            beats=np.asarray(self._beatgrid, dtype=float).copy(),
+            key_segments=np.asarray(self._key_segments, dtype=float).copy(),
             # the key analysis reads the progressions per phrase
-            "phrases": assigned_phrases(self._phrase_segments),
-            "analyze_type": "key_dynamic",
-        }
-        self.bus.sig_segment_reanalyze_requested.emit(payload)
+            phrases=tuple(assigned_phrases(self._phrase_segments))))
 
 
 def _alphanumeric_step(key: int, step: int) -> int:
