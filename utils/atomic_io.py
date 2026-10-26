@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 import tempfile
+import time
 from typing import Iterator
 
 
@@ -32,9 +33,24 @@ def atomic_output_path(path: str | Path) -> Iterator[Path]:
         yield temporary
         with temporary.open("rb+") as handle:
             os.fsync(handle.fileno())
-        os.replace(temporary, target)
+        _replace(temporary, target)
     finally:
         temporary.unlink(missing_ok=True)
+
+
+REPLACE_TRIES = 20          # Windows refuses to replace a file another process has open (a reader, the antivirus,
+REPLACE_WAIT_SEC = 0.025    # the indexer) for a moment: tried again for up to half a second
+
+
+def _replace(temporary: Path, target: Path) -> None:
+    for attempt in range(REPLACE_TRIES):
+        try:
+            os.replace(temporary, target)
+            return
+        except PermissionError:
+            if attempt == REPLACE_TRIES - 1:
+                raise
+            time.sleep(REPLACE_WAIT_SEC)
 
 
 def atomic_write_text(

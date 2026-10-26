@@ -17,7 +17,8 @@ from core.library_handler import LibraryDB
 from core.analysis_lib_handler import FeatureNPZStore
 from analyzer_core.global_analyzer import extract_tags
 from core.workflows.analysis import AnalysisWorkflow
-from core.taskmanager import taskmanager
+from core.taskmanager import TIEUP_LOOKUP, taskmanager
+from core.thumbnails import load_thumbnail
 from core.external_sync import ExternalSyncController
 from core.workflows.rekordbox_sync import RekordboxXmlSync
 from core.workflows.reading_refresh import LibraryReadingRefresh
@@ -122,6 +123,10 @@ class AppWindow(QtWidgets.QMainWindow):
                                         settings=lambda: self.cfg.searchconfig,
                                         enabled=lambda: bool(self.cfg.libconfig.tieup_web_search), parent=self)
         self.tieup_web.tagged.connect(self._on_tieups_tagged)
+        self._tieup_tasks: dict[str, int] = {}      # a track looked up in the background -> its task
+        self.tieup_web.queued.connect(self._on_tieup_lookup_queued)
+        self.tieup_web.started.connect(self._on_tieup_lookup_started)
+        self.tieup_web.done.connect(self._on_tieup_lookup_done)
         self.music_index.started.connect(self.bus.sig_music_index_started)
         self.music_index.progress.connect(self.bus.sig_music_index_progress)
         self.music_index.finished.connect(self.bus.sig_music_index_finished)
@@ -607,7 +612,7 @@ class AppWindow(QtWidgets.QMainWindow):
             self._sync_rekordbox_track(properties.get("uid"))
             self.statusBar().showMessage(tr("Analysis saved to library."))
             if feat.get("new_track") and not feat.get("tieups"):   # a new track its versions gave none: the web
-                self.tieup_web.new_track(str(properties.get("uid") or ""))
+                self.tieup_web.new_track(str(properties.get("uid") or ""), str(properties.get("title") or ""))
         self.taskmanager.updatetask(feat["taskid"], tr("Finished"), 1)
         self.taskmanager.rmtask(feat["taskid"])
 
@@ -627,6 +632,22 @@ class AppWindow(QtWidgets.QMainWindow):
         self._emit_library_update(load_cfg(), None)
         for uid in uids:
             self._sync_rekordbox_track(uid)
+
+    # a new track's background lookup as a task of the Workers window's Tie-up Lookup tab
+    def _on_tieup_lookup_queued(self, uid: str, title: str) -> None:
+        if uid not in self._tieup_tasks:
+            task = self.taskmanager.addtask(title or uid, load_thumbnail(self.cfg.libconfig.libpath, uid),
+                                            tr("Waiting to be looked up on Wikipedia"), 0.0, kind=TIEUP_LOOKUP)
+            self._tieup_tasks[uid] = task.taskid
+
+    def _on_tieup_lookup_started(self, uid: str) -> None:
+        if uid in self._tieup_tasks:
+            self.taskmanager.updatetask(self._tieup_tasks[uid], tr("Looking up on Wikipedia and Wikidata…"), 0.5)
+
+    def _on_tieup_lookup_done(self, uid: str, outcome: str) -> None:
+        tid = self._tieup_tasks.pop(uid, None)
+        if tid is not None:
+            self.taskmanager.rmtask(tid, tr("The lookup failed.") if outcome == "failed" else None)
 
     def _emit_library_update(self, cfg: config, lib_rows):
         if lib_rows is None:

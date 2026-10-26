@@ -20,6 +20,11 @@ class TieupWebLookup(QtCore.QObject):
     tagged = QtCore.Signal(list)           # the tracks given a tie-up
     found = QtCore.Signal(str, object)     # a track, its candidates (a list of tieup_web.Candidate), "Find on the Web"
     failed = QtCore.Signal(str, str)       # a track, why
+    # a new track's background lookup, for the Workers window: queued (the track, its title), started, done (the
+    # track, what came of it); started and done are emitted on the lookup's thread (queued to the receivers')
+    queued = QtCore.Signal(str, str)
+    started = QtCore.Signal(str)
+    done = QtCore.Signal(str, str)
 
     def __init__(self, *, libpath: Callable[[], str], settings: Callable[[], object],
                  enabled: Callable[[], bool] = lambda: False, parent=None) -> None:
@@ -33,9 +38,10 @@ class TieupWebLookup(QtCore.QObject):
     def _library_db(self) -> str:
         return os.path.join(str(self._libpath()), "library.db")
 
-    def new_track(self, uid: str) -> None:
+    def new_track(self, uid: str, title: str = "") -> None:
         """A new track's lookup, when Settings > Library's option is on."""
         if uid and self._enabled():
+            self.queued.emit(uid, title)
             self._put(("tag", uid))
 
     def find(self, uid: str) -> None:
@@ -56,14 +62,21 @@ class TieupWebLookup(QtCore.QObject):
             except queue.Empty:
                 return
             s = self._settings()
+            if kind == "tag":
+                self.started.emit(uid)
             try:
                 if kind == "tag":
                     if tieup_web.tag_track(self._library_db(), uid, tieup_web.shared(), languages=s.db_languages,
                                            han_run=s.han_run()):
                         self.tagged.emit([uid])
+                        self.done.emit(uid, "tagged")
+                    else:
+                        self.done.emit(uid, "none")
                 else:
                     self.found.emit(uid, tieup_web.candidates_for(self._library_db(), uid, tieup_web.shared()))
             except Exception as exc:     # the network, a page: nothing written
                 print(f"[Tie-ups] web lookup failed: {exc}")
                 if kind == "find":
                     self.failed.emit(uid, str(exc))
+                else:
+                    self.done.emit(uid, "failed")

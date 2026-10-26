@@ -6,7 +6,7 @@ import os
 from typing import Callable, Optional
 import urllib.parse
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import QTimer, Qt, Signal
 from PySide6.QtWidgets import (
     QAbstractItemView, QComboBox, QDialog, QDialogButtonBox, QFormLayout, QGroupBox, QHBoxLayout, QHeaderView,
     QLabel, QLineEdit, QListWidget, QListWidgetItem, QMessageBox, QPushButton, QSpinBox, QTableWidget,
@@ -20,9 +20,11 @@ from core.library_handler import LibraryDB
 from core.variants import store as variant_store
 from core.workflows.tieup_web import TieupWebLookup
 from ui.config.scroll import scroll_page
+from ui.language_picker import LanguageCombo
 
 MATCHES_SHOWN = 30
-LANG = "lang"   # a column of ll-RR language tags (a pick of tieup.LANGUAGES, or one typed)
+FIND_PAUSE_MS = 120     # the works looked for once typing pauses this long
+LANG = "lang"   # a column of ll-RR language tags (ui.language_picker: any locale, found by typing)
 
 
 class _TextTable(QTableWidget):
@@ -45,15 +47,12 @@ class _TextTable(QTableWidget):
         self.set_values([])
 
     def _combo(self, c: int, value: str) -> QComboBox:
-        combo = QComboBox()
         if self._picks[c] == LANG:
-            combo.setEditable(True)
-            combo.addItems(list(tieup.LANGUAGES))
-            combo.setEditText(value or tieup.LANGUAGES[0])
-        else:
-            for code, name in self._picks[c]:
-                combo.addItem(tr(name), code)
-            combo.setCurrentIndex(max(0, combo.findData(value)))
+            return LanguageCombo(value)
+        combo = QComboBox()
+        for code, name in self._picks[c]:
+            combo.addItem(tr(name), code)
+        combo.setCurrentIndex(max(0, combo.findData(value)))
         return combo
 
     def _append(self, row: tuple) -> None:
@@ -73,10 +72,33 @@ class _TextTable(QTableWidget):
             self._append(row)
         self.blockSignals(False)
 
+    def set_first(self, row: Optional[tuple]) -> None:
+        """The first row set in place (None: emptied), the others and their widgets kept."""
+        if row is None:
+            if self.rowCount() <= 1:
+                self.set_values([])
+                return
+            row = ()
+        self.blockSignals(True)
+        if self.rowCount() == 0:
+            self._append(())
+        for c in range(self.columnCount()):
+            text = str(row[c]) if c < len(row) else ""
+            if c in self._picks:
+                combo = self.cellWidget(0, c)
+                if self._picks[c] == LANG:
+                    combo.set_tag(text)
+                else:
+                    combo.setCurrentIndex(max(0, combo.findData(text)))
+            else:
+                self.setItem(0, c, QTableWidgetItem(text))
+        self.blockSignals(False)
+        self._keep_empty_row(None)
+
     def _cell(self, r: int, c: int) -> str:
         if c in self._picks:
             combo = self.cellWidget(r, c)
-            return combo.currentText().strip() if self._picks[c] == LANG else str(combo.currentData())
+            return combo.tag() if self._picks[c] == LANG else str(combo.currentData())
         return self.item(r, c).text().strip() if self.item(r, c) else ""
 
     def values(self) -> list[tuple]:
@@ -168,9 +190,15 @@ class TieupDialog(QDialog):
         root.addWidget(buttons)
         self.resize(600, 680)
 
-        self.ed_find.textChanged.connect(self._show_matches)
+        # the matches looked for once typing pauses (each a reading of the text and a search of every name)
+        self._find_timer = QTimer(self)
+        self._find_timer.setSingleShot(True)
+        self._find_timer.setInterval(FIND_PAUSE_MS)
+        self._find_timer.timeout.connect(self._show_matches)
+        self.ed_find.textChanged.connect(lambda _text: self._find_timer.start())
         self.list_works.currentItemChanged.connect(self._work_picked)
         self._loading = False
+        self._picked: Optional[str] = None      # the work the tables show ("": a new one; None: none yet)
         self._set_tieup(t)
 
     # the work
@@ -198,6 +226,7 @@ class TieupDialog(QDialog):
         else:
             found = set(self._works)
         shown = sorted((self._works[w] for w in found if w in self._works), key=lambda w: w.title().casefold())
+        categories = dict(tieup.CATEGORIES)
         self.list_works.blockSignals(True)
         self.list_works.clear()
         new = QListWidgetItem(tr("New work: “{title}”").format(title=text) if text else tr("New work"))
@@ -205,7 +234,7 @@ class TieupDialog(QDialog):
         self.list_works.addItem(new)
         for w in shown[:MATCHES_SHOWN]:
             others = " / ".join(n for n in w.names() if n != w.title())[:80]
-            item = QListWidgetItem(f"{w.title()}  ({tr(dict(tieup.CATEGORIES).get(w.category, 'Other'))})"
+            item = QListWidgetItem(f"{w.title()}  ({tr(categories.get(w.category, 'Other'))})"
                                    + (f" — {others}" if others else ""))
             item.setData(Qt.UserRole, w.id)
             self.list_works.addItem(item)
@@ -224,6 +253,12 @@ class TieupDialog(QDialog):
         if current is None:
             return
         work_id = str(current.data(Qt.UserRole) or "")
+        if work_id == self._picked:
+            if not work_id:     # a new work, its title typed on: the first title follows (the tables not made again)
+                text = self.ed_find.text().strip()
+                self.tbl_titles.set_first((tieup.guess_lang(text), text) if text else None)
+            return
+        self._picked = work_id
         if work_id:
             w = tieup.work(self._con, work_id) or self._works[work_id]
             self.cmb_category.setCurrentIndex(max(0, self.cmb_category.findData(w.category)))

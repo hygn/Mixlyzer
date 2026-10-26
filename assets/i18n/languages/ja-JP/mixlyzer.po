@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-26 03:51+0900\n"
+"POT-Creation-Date: 2026-10-26 20:18+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ja_JP\n"
@@ -285,42 +285,42 @@ msgstr "ライブラリを読み込み中"
 msgid "Building the window"
 msgstr "ウィンドウを作成中"
 
-#: app/window.py:60
+#: app/window.py:61
 msgid "Core objects and playback"
 msgstr "コアオブジェクトと再生"
 
-#: app/window.py:131
+#: app/window.py:136
 msgid "Main view, editor and library"
 msgstr "メインビュー、エディター、ライブラリ"
 
-#: app/window.py:137 app/window.py:162 ui/config/window.py:66
+#: app/window.py:142 app/window.py:167 ui/config/window.py:66
 msgid "Settings"
 msgstr "環境設定"
 
-#: app/window.py:145
+#: app/window.py:150
 msgid "Dialogs, workflows and metronome"
 msgstr "ダイアログ、ワークフロー、メトロノーム"
 
-#: app/window.py:153 core/midi.py:59 ui/config/playback.py:327
+#: app/window.py:158 core/midi.py:59 ui/config/playback.py:327
 msgid "Mixer"
 msgstr "ミキサー"
 
-#: app/window.py:163 ui/workers.py:24
+#: app/window.py:168 ui/workers.py:28
 msgid "Workers"
 msgstr "タスク"
 
 # | msgid "Tie-ups"
-#: app/window.py:164 ui/shortcuts.py:155 ui/tieup_works.py:30
-#: ui/tieup_works.py:209 ui/tieup_works.py:269 ui/tieup_works.py:278
-#: ui/tieup_works.py:355
+#: app/window.py:169 ui/shortcuts.py:155 ui/tieup_works.py:30
+#: ui/tieup_works.py:213 ui/tieup_works.py:273 ui/tieup_works.py:282
+#: ui/tieup_works.py:359
 msgid "Tie-up Works"
 msgstr "タイアップ作品"
 
-#: app/window.py:165
+#: app/window.py:170
 msgid "Open Source"
 msgstr "オープンソース"
 
-#: app/window.py:166
+#: app/window.py:171
 msgid "About"
 msgstr "情報"
 
@@ -328,55 +328,55 @@ msgstr "情報"
 # | Playback > " "Audio engine)."
 # Audio
 # | > " "Engine)."
-#: app/window.py:358
+#: app/window.py:363
 msgid "MIDI needs the native audio engine (Settings > Audio > Engine)."
 msgstr "MIDI は Native オーディオエンジンでのみ動作します（設定 > オーディオ > エンジン）。"
 
 # | msgid "MIDI input"
-#: app/window.py:365
+#: app/window.py:370
 msgid "MIDI input on."
 msgstr "MIDI 入力オン。"
 
 # | msgid "MIDI input"
-#: app/window.py:365
+#: app/window.py:370
 msgid "MIDI input off."
 msgstr "MIDI 入力オフ。"
 
-#: app/window.py:414
+#: app/window.py:419
 msgid "The Python audio engine plays: there is no native engine to restart."
 msgstr "Python オーディオエンジンで再生中です。再起動するネイティブエンジンがありません。"
 
 # | msgid "Starting the reading worker"
-#: app/window.py:416
+#: app/window.py:421
 msgid "Restarting the audio engine..."
 msgstr "オーディオエンジンを再起動中..."
 
 # | msgid "Audio engine"
-#: app/window.py:420
+#: app/window.py:425
 msgid "Audio engine restarted."
 msgstr "オーディオエンジンを再起動しました。"
 
-#: app/window.py:421
+#: app/window.py:426
 msgid "The audio engine did not start; it is tried again every 2 seconds."
 msgstr "オーディオエンジンが起動しませんでした。2 秒ごとに再試行します。"
 
-#: app/window.py:480 app/window.py:549
+#: app/window.py:485 app/window.py:554
 msgid "External Sync is enabled. Local track loading is disabled."
 msgstr "外部同期が有効です。ローカルでのトラックの読み込みは無効になります。"
 
-#: app/window.py:493
+#: app/window.py:498
 msgid "Segment reanalysis canceled (track changed)"
 msgstr "区間の再解析をキャンセルしました (トラックが変わりました)"
 
-#: app/window.py:555
+#: app/window.py:560
 msgid "Track unloaded."
 msgstr "トラックをアンロードしました。"
 
-#: app/window.py:565
+#: app/window.py:570
 msgid "Track File Not Found"
 msgstr "トラックファイルが見つかりません"
 
-#: app/window.py:569
+#: app/window.py:574
 #, python-brace-format
 msgid ""
 "Cannot load \"{name}\": its file is missing.\n"
@@ -389,36 +389,51 @@ msgstr ""
 "\n"
 "ファイルの新しい場所を指定しますか?"
 
-#: app/window.py:576
+#: app/window.py:581
 #, python-brace-format
 msgid "Locate {name}"
 msgstr "{name} の場所を指定"
 
-#: app/window.py:608 app/window.py:623
+#: app/window.py:613 app/window.py:628
 msgid "Analysis saved to library."
 msgstr "解析をライブラリに保存しました。"
 
-#: analyzer_core/global_analyzer.py:611 app/window.py:611
+#: analyzer_core/global_analyzer.py:611 app/window.py:616
 msgid "Finished"
 msgstr "完了"
 
-#: app/window.py:703
+#: app/window.py:640
+msgid "Waiting to be looked up on Wikipedia"
+msgstr "Wikipediaでの調査待ち"
+
+#: app/window.py:645
+msgid "Looking up on Wikipedia and Wikidata…"
+msgstr "WikipediaとWikidataで調べています…"
+
+# | msgid "Reading the analysis failed: {error}"
+# | msgid "The search failed: {error}"
+# | msgid "" "The lookup failed:\n" "{error}"
+#: app/window.py:650
+msgid "The lookup failed."
+msgstr "調査できませんでした。"
+
+#: app/window.py:724
 #, python-brace-format
 msgid "External Sync loading: {file}"
 msgstr "外部同期で読み込み中: {file}"
 
-#: app/window.py:703
+#: app/window.py:724
 #, python-brace-format
 msgid "External Sync analyzing: {file}"
 msgstr "外部同期で解析中: {file}"
 
 # | msgid "Memory Sync Disabled"
-#: app/window.py:718
+#: app/window.py:739
 msgid "External Sync Disabled"
 msgstr "外部同期を無効にしました"
 
 # | msgid "External Sync enabled via {target}. Local play/load is locked."
-#: app/window.py:991
+#: app/window.py:1012
 #, python-brace-format
 msgid "External Sync enabled: OSC on {address}. Local play/load is locked."
 msgstr "外部同期が有効です: OSC {address}。ローカルでの再生/読み込みはロックされます。"
@@ -940,16 +955,16 @@ msgid "Master: level"
 msgstr "マスター: レベル"
 
 #: core/reading.py:59
-msgid "Japanese"
-msgstr "日本語"
-
-#: core/reading.py:59
 msgid "Mandarin"
 msgstr "標準中国語"
 
 #: core/reading.py:59
 msgid "Taiwan Mandarin"
 msgstr "台湾華語"
+
+#: core/reading.py:59 ui/language_picker.py:19
+msgid "Japanese"
+msgstr "日本語"
 
 #: core/reading.py:60
 msgid "Cantonese"
@@ -964,16 +979,16 @@ msgid "Sino-Vietnamese"
 msgstr "ベトナム漢字音"
 
 #: core/reading.py:61
-msgid "Korean"
-msgstr "韓国語"
-
-#: core/reading.py:61
 msgid "as written"
 msgstr "表記どおり"
 
 #: core/reading.py:61
 msgid "set by the user"
 msgstr "ユーザー指定"
+
+#: core/reading.py:61 ui/language_picker.py:19
+msgid "Korean"
+msgstr "韓国語"
 
 #: core/reading.py:546
 msgid "Japanese (SudachiDict)"
@@ -996,161 +1011,161 @@ msgid "Sino-Vietnamese (Unihan)"
 msgstr "ベトナム漢字音 (Unihan)"
 
 # | msgid "Name"
-#: core/tieup.py:37
+#: core/tieup.py:38
 msgid "Anime"
 msgstr "アニメ"
 
 # | msgid "Name"
-#: core/tieup.py:38
+#: core/tieup.py:39
 msgid "Game"
 msgstr "ゲーム"
 
-#: core/tieup.py:39
+#: core/tieup.py:40
 msgid "Drama"
 msgstr "ドラマ"
 
 # | msgid "Remove"
-#: core/tieup.py:40
+#: core/tieup.py:41
 msgid "Movie"
 msgstr "映画"
 
-#: core/tieup.py:41
+#: core/tieup.py:42
 msgid "Media mix"
 msgstr "メディアミックス"
 
-#: core/tieup.py:42
+#: core/tieup.py:43
 msgid "2D idol"
 msgstr "二次元アイドル"
 
-#: core/tieup.py:43
+#: core/tieup.py:44
 msgid "Commercial"
 msgstr "CM"
 
 # | msgid "About"
 # | msgid "Booth"
 # | msgid "Booth EQ"
-#: core/tieup.py:44 core/tieup.py:61
+#: core/tieup.py:45 core/tieup.py:62
 msgid "Other"
 msgstr "その他"
 
-#: core/tieup.py:49
+#: core/tieup.py:50
 msgid "Not specified"
 msgstr "指定なし"
 
 # | msgid "Open."
 # | msgid "Opening..."
 # | msgid "opening..."
-#: core/tieup.py:50
+#: core/tieup.py:51
 msgid "Opening"
 msgstr "オープニング"
 
 # | msgid "Stop"
-#: core/tieup.py:50
+#: core/tieup.py:51
 msgid "OP"
 msgstr "OP"
 
 # | msgid "Readings"
-#: core/tieup.py:51
+#: core/tieup.py:52
 msgid "Ending"
 msgstr "エンディング"
 
-#: core/tieup.py:51
+#: core/tieup.py:52
 msgid "ED"
 msgstr "ED"
 
-#: core/tieup.py:52
+#: core/tieup.py:53
 msgid "Insert song"
 msgstr "挿入歌"
 
 # | msgid "Min seg"
-#: core/tieup.py:52
+#: core/tieup.py:53
 msgid "Insert"
 msgstr "挿入歌"
 
-#: core/tieup.py:53
+#: core/tieup.py:54
 msgid "Theme song"
 msgstr "主題歌"
 
 # | msgid "Tempo"
-#: core/tieup.py:53
+#: core/tieup.py:54
 msgid "Theme"
 msgstr "主題歌"
 
 # | msgid " characters"
-#: core/tieup.py:54
+#: core/tieup.py:55
 msgid "Character song"
 msgstr "キャラクターソング"
 
 # | msgid " characters"
-#: core/tieup.py:54
+#: core/tieup.py:55
 msgid "Chara"
 msgstr "キャラソン"
 
-#: core/tieup.py:55
+#: core/tieup.py:56
 msgid "Unit song"
 msgstr "ユニット曲"
 
 # | msgid "Untitled"
-#: core/tieup.py:55
+#: core/tieup.py:56
 msgid "Unit"
 msgstr "ユニット曲"
 
-#: core/tieup.py:56
+#: core/tieup.py:57
 msgid "Image song"
 msgstr "イメージソング"
 
 # | msgid "Page"
-#: core/tieup.py:56
+#: core/tieup.py:57
 msgid "Image"
 msgstr "イメージソング"
 
-#: core/tieup.py:57
+#: core/tieup.py:58
 msgid "Title / login screen"
 msgstr "タイトル・ログイン画面"
 
 # | msgid "Title / login screen"
-#: core/tieup.py:57
+#: core/tieup.py:58
 msgid "Title screen"
 msgstr "タイトル画面"
 
 # | msgid "Min seg"
-#: core/tieup.py:58
+#: core/tieup.py:59
 msgid "Main screen"
 msgstr "メイン画面"
 
-#: core/tieup.py:58
+#: core/tieup.py:59
 msgid "Menu"
 msgstr "メイン画面"
 
-#: core/tieup.py:59
+#: core/tieup.py:60
 msgid "Event song"
 msgstr "イベント曲"
 
 # | msgid "Remove"
 # | msgid "Revert"
-#: core/tieup.py:59
+#: core/tieup.py:60
 msgid "Event"
 msgstr "イベント曲"
 
-#: core/tieup.py:60
+#: core/tieup.py:61
 msgid "BGM"
 msgstr "BGM"
 
-#: core/tieup.py:66
+#: core/tieup.py:67
 msgid "Synonym"
 msgstr "通称"
 
 # | msgid "Shortcut"
-#: core/tieup.py:67
+#: core/tieup.py:68
 msgid "Short"
 msgstr "略称"
 
 # | msgid "Search"
-#: core/tieup.py:68
+#: core/tieup.py:69
 msgid "Search hint"
 msgstr "検索ヒント"
 
-#: core/tieup.py:302 ui/tieup_editor.py:255
+#: core/tieup.py:321 ui/tieup_editor.py:290
 #, python-brace-format
 msgid "A language is written as ko-KR (language-REGION): {code}"
 msgstr "言語は ko-KR(言語-地域)の形で書きます: {code}"
@@ -1980,10 +1995,6 @@ msgstr "全体"
 #: ui/config/pipeline_map.py:25
 msgid "CUE"
 msgstr "CUE"
-
-#: ui/config/analysis.py:250
-msgid "Analysis"
-msgstr "解析"
 
 #: ui/config/analysis.py:256
 msgid "CUE points (set by the analysis from the phrases)"
@@ -5658,7 +5669,7 @@ msgid "Path"
 msgstr "パス"
 
 #: ui/edit_song.py:126 ui/export.py:73 ui/export.py:100 ui/library.py:803
-#: ui/tieup_editor.py:116 ui/tieup_works.py:73 ui/track_search_index.py:87
+#: ui/tieup_editor.py:138 ui/tieup_works.py:73 ui/track_search_index.py:87
 msgid "Title"
 msgstr "タイトル"
 
@@ -5888,6 +5899,251 @@ msgstr ""
 "JumpCUE のオーディオを書き込めませんでした:\n"
 "{error}"
 
+# | msgid "Audio engine"
+# | msgid "Engine"
+#: ui/language_picker.py:19
+msgid "English"
+msgstr "英語"
+
+# | msgid "Cantonese"
+# | msgid "Channels"
+#: ui/language_picker.py:19
+msgid "Chinese"
+msgstr "中国語"
+
+# | msgid "Refresh"
+# | msgid "References"
+#: ui/language_picker.py:20
+msgid "French"
+msgstr "フランス語"
+
+#: ui/language_picker.py:20
+msgid "German"
+msgstr "ドイツ語"
+
+#: ui/language_picker.py:20
+msgid "Spanish"
+msgstr "スペイン語"
+
+# | msgid "Alias"
+#: ui/language_picker.py:20
+msgid "Italian"
+msgstr "イタリア語"
+
+#: ui/language_picker.py:21
+msgid "Portuguese"
+msgstr "ポルトガル語"
+
+#: ui/language_picker.py:21
+msgid "Russian"
+msgstr "ロシア語"
+
+# | msgid "Training"
+#: ui/language_picker.py:21
+msgid "Ukrainian"
+msgstr "ウクライナ語"
+
+#: ui/language_picker.py:21
+msgid "Polish"
+msgstr "ポーランド語"
+
+#: ui/language_picker.py:22
+msgid "Dutch"
+msgstr "オランダ語"
+
+#: ui/language_picker.py:22
+msgid "Swedish"
+msgstr "スウェーデン語"
+
+# | msgid "Korean"
+#: ui/language_picker.py:22
+msgid "Norwegian"
+msgstr "ノルウェー語"
+
+#: ui/language_picker.py:22
+msgid "Danish"
+msgstr "デンマーク語"
+
+# | msgid "Finished"
+#: ui/language_picker.py:23
+msgid "Finnish"
+msgstr "フィンランド語"
+
+#: ui/language_picker.py:23
+msgid "Czech"
+msgstr "チェコ語"
+
+#: ui/language_picker.py:23
+msgid "Slovak"
+msgstr "スロバキア語"
+
+#: ui/language_picker.py:23
+msgid "Hungarian"
+msgstr "ハンガリー語"
+
+# | msgid "Training"
+#: ui/language_picker.py:24
+msgid "Romanian"
+msgstr "ルーマニア語"
+
+#: ui/language_picker.py:24
+msgid "Bulgarian"
+msgstr "ブルガリア語"
+
+#: ui/language_picker.py:24
+msgid "Greek"
+msgstr "ギリシャ語"
+
+# | msgid "Track File"
+# | msgid "Tracks"
+#: ui/language_picker.py:24
+msgid "Turkish"
+msgstr "トルコ語"
+
+#: ui/language_picker.py:25
+msgid "Arabic"
+msgstr "アラビア語"
+
+#: ui/language_picker.py:25
+msgid "Hebrew"
+msgstr "ヘブライ語"
+
+#: ui/language_picker.py:25
+msgid "Persian"
+msgstr "ペルシア語"
+
+# | msgid "Mid"
+# | msgid "MIDI"
+#: ui/language_picker.py:25
+msgid "Hindi"
+msgstr "ヒンディー語"
+
+# | msgid "Audio engine"
+# | msgid "Engine"
+#: ui/language_picker.py:26
+msgid "Bengali"
+msgstr "ベンガル語"
+
+# | msgid "Default"
+# | msgid "Detail"
+#: ui/language_picker.py:26
+msgid "Tamil"
+msgstr "タミル語"
+
+# | msgid "hi"
+#: ui/language_picker.py:26
+msgid "Thai"
+msgstr "タイ語"
+
+# | msgid "Sino-Vietnamese"
+#: ui/language_picker.py:26
+msgid "Vietnamese"
+msgstr "ベトナム語"
+
+# | msgid "Index Now"
+# | msgid "Indexing…"
+#: ui/language_picker.py:27
+msgid "Indonesian"
+msgstr "インドネシア語"
+
+# | msgid "Alias"
+#: ui/language_picker.py:27
+msgid "Malay"
+msgstr "マレー語"
+
+# | msgid "Tempo"
+# | msgid "Theme"
+#: ui/language_picker.py:27
+msgid "Khmer"
+msgstr "クメール語"
+
+# | msgid "lo"
+#: ui/language_picker.py:27
+msgid "Lao"
+msgstr "ラオ語"
+
+# | msgid "CUE"
+# | msgid "Use"
+#: ui/language_picker.py:28
+msgid "Burmese"
+msgstr "ビルマ語"
+
+# | msgid "MONO SPLIT"
+#: ui/language_picker.py:28
+msgid "Mongolian"
+msgstr "モンゴル語"
+
+# | msgid "Rating"
+#: ui/language_picker.py:28
+msgid "Croatian"
+msgstr "クロアチア語"
+
+# | msgid "Headphones: CUE / MASTER"
+# | msgid "CUE / MASTER"
+# | msgid "Master"
+# | msgid "master in"
+#: ui/language_picker.py:28
+msgid "Serbian"
+msgstr "セルビア語"
+
+# | msgid "Open."
+# | msgid "Opening..."
+# | msgid "opening..."
+# | msgid "Opening"
+#: ui/language_picker.py:29
+msgid "Slovenian"
+msgstr "スロベニア語"
+
+#: ui/language_picker.py:29
+msgid "Lithuanian"
+msgstr "リトアニア語"
+
+# | msgid "Saving"
+#: ui/language_picker.py:29
+msgid "Latvian"
+msgstr "ラトビア語"
+
+#: ui/language_picker.py:29
+msgid "Estonian"
+msgstr "エストニア語"
+
+#: ui/language_picker.py:30
+msgid "Catalan"
+msgstr "カタルーニャ語"
+
+#: ui/language_picker.py:30
+msgid "Basque"
+msgstr "バスク語"
+
+# | msgid "Alias"
+#: ui/language_picker.py:30
+msgid "Galician"
+msgstr "ガリシア語"
+
+#: ui/language_picker.py:30
+msgid "Icelandic"
+msgstr "アイスランド語"
+
+# | msgid "Finished"
+#: ui/language_picker.py:31
+msgid "Irish"
+msgstr "アイルランド語"
+
+#: ui/language_picker.py:31
+msgid "Welsh"
+msgstr "ウェールズ語"
+
+# | msgid "Rating"
+#: ui/language_picker.py:31
+msgid "Latin"
+msgstr "ラテン語"
+
+#: ui/language_picker.py:106
+msgid ""
+"Type a language's name in any language, or its tag (language-REGION: ko-"
+"KR)."
+msgstr "言語名をどの言語でも入力するか、タグ（言語-地域：ko-KR）を入力してください。"
+
 #: ui/library.py:755
 msgid "AND: require every search condition (click to switch)"
 msgstr "AND: すべての検索条件を満たす (クリックで切り替え)"
@@ -5904,8 +6160,8 @@ msgstr "すべて"
 msgid "Duration"
 msgstr "時間"
 
-#: ui/library.py:804 ui/tieup_editor.py:99 ui/tieup_editor.py:248
-#: ui/tieup_editor.py:254
+#: ui/library.py:804 ui/tieup_editor.py:121 ui/tieup_editor.py:283
+#: ui/tieup_editor.py:289
 msgid "Tie-up"
 msgstr "タイアップ"
 
@@ -6111,7 +6367,7 @@ msgstr "外部同期が有効な間はトラックを読み込めません。"
 msgid "Search Index"
 msgstr "検索インデックス"
 
-#: ui/library.py:1866 ui/shortcuts.py:150 ui/tieup_editor.py:310
+#: ui/library.py:1866 ui/shortcuts.py:150 ui/tieup_editor.py:345
 msgid "Tie-ups"
 msgstr "タイアップ"
 
@@ -7283,11 +7539,11 @@ msgstr "このコンピューターのほかのプログラムが {keys} を使�
 msgid "{keys} is used by more than one action (Settings > Shortcuts)."
 msgstr "{keys} は複数の操作に割り当てられています (環境設定 > ショートカット)。"
 
-#: ui/tieup_editor.py:108
+#: ui/tieup_editor.py:130
 msgid "Type a title in any language or script"
 msgstr "どの言語・文字でもタイトルを入力"
 
-#: ui/tieup_editor.py:109
+#: ui/tieup_editor.py:131
 msgid ""
 "<p>Finds the works already entered by any of their titles, also by how "
 "they read (あのね by anone or 아노네). Pick one to use it, or New work.</p>"
@@ -7295,8 +7551,8 @@ msgstr ""
 "<p>入力済みの作品を、どのタイトルでも、読みでも探します(あのね を anone や 아노네 "
 "で)。見つかった作品か、新しい作品を選んでください。</p>"
 
-#: ui/config/view.py:95 ui/config/view.py:97 ui/tieup_editor.py:116
-#: ui/tieup_editor.py:120 ui/tieup_works.py:73 ui/tieup_works.py:77
+#: ui/config/view.py:95 ui/config/view.py:97 ui/tieup_editor.py:138
+#: ui/tieup_editor.py:142 ui/tieup_works.py:73 ui/tieup_works.py:77
 msgid "Language"
 msgstr "言語"
 
@@ -7306,7 +7562,7 @@ msgstr "言語"
 # | msgid "" "<p>The work's official titles in any languages (ja, ko, en,
 # | zh-Hans, ja-" "Latn ...). The library and the comment show the first title
 # | in the " "interface's language, else the first of all.</p>"
-#: ui/tieup_editor.py:117 ui/tieup_works.py:74
+#: ui/tieup_editor.py:139 ui/tieup_works.py:74
 msgid ""
 "<p>The work's official titles, each with its language as language-REGION "
 "(ja-JP, ko-KR, en-US). The library and the comment show the first title "
@@ -7315,15 +7571,15 @@ msgstr ""
 "<p>作品の正式タイトルです。言語は言語-地域の形(ja-JP、ko-KR、en-"
 "US)で書きます。ライブラリとコメントにはインターフェースの言語の最初のタイトルが、なければ一番最初のタイトルが表示されます。</p>"
 
-#: ui/tieup_editor.py:120 ui/tieup_works.py:77
+#: ui/tieup_editor.py:142 ui/tieup_works.py:77
 msgid "Type"
 msgstr "種類"
 
-#: ui/config/view.py:170 ui/tieup_editor.py:120 ui/tieup_works.py:77
+#: ui/config/view.py:170 ui/tieup_editor.py:142 ui/tieup_works.py:77
 msgid "Alias"
 msgstr "別名"
 
-#: ui/tieup_editor.py:122 ui/tieup_works.py:79
+#: ui/tieup_editor.py:144 ui/tieup_works.py:79
 msgid ""
 "<p>Other names the work is found by, never shown: a name it is commonly "
 "called by (a romanization), an abbreviation, or a search hint (a "
@@ -7332,145 +7588,145 @@ msgid ""
 msgstr "<p>表示されず検索にだけ使われる別名：よく呼ばれる名前（ローマ字表記）、略称、検索ヒント（誤記、打ち間違い）。検索はこれらの名前とその読みでも作品を見つけます。</p>"
 
 # | msgid "Level"
-#: ui/tieup_editor.py:125 ui/tieup_works.py:82
+#: ui/tieup_editor.py:147 ui/tieup_works.py:82
 msgid "Label"
 msgstr "名前"
 
-#: ui/tieup_editor.py:125 ui/tieup_works.py:82
+#: ui/tieup_editor.py:147 ui/tieup_works.py:82
 msgid "URL"
 msgstr "URL"
 
-#: ui/tieup_editor.py:133
+#: ui/tieup_editor.py:155
 msgid "Which one, when the work has several (OP2: 2)."
 msgstr "作品に複数あるときの番号(OP2 なら 2)。"
 
 # | msgid "Season 2, episodes 1-12"
-#: ui/tieup_editor.py:135
+#: ui/tieup_editor.py:157
 msgid "Season 2, episodes 1-12; TV size"
 msgstr "第2期 1～12話; TVサイズ"
 
-#: ui/tieup_editor.py:136
+#: ui/tieup_editor.py:158
 msgid ""
 "Where and how it is used: the episodes, the version of the song (a TV "
 "size, a character's version)."
 msgstr "どこでどう使われたか: 使用話数、曲のバージョン(TVサイズ、キャラクターバージョン)。"
 
 # | msgid "Workers"
-#: ui/tieup_editor.py:139 ui/tieup_editor.py:324 ui/tieup_works.py:48
+#: ui/tieup_editor.py:161 ui/tieup_editor.py:359 ui/tieup_works.py:48
 msgid "Work"
 msgstr "作品"
 
 # | msgid "Finished"
-#: ui/tieup_editor.py:141
+#: ui/tieup_editor.py:163
 msgid "Find"
 msgstr "検索"
 
-#: ui/tieup_editor.py:143 ui/tieup_works.py:48 ui/tieup_works.py:96
+#: ui/tieup_editor.py:165 ui/tieup_works.py:48 ui/tieup_works.py:96
 msgid "Category"
 msgstr "カテゴリー"
 
 # | msgid "Title"
-#: ui/tieup_editor.py:144 ui/tieup_works.py:97
+#: ui/tieup_editor.py:166 ui/tieup_works.py:97
 msgid "Titles"
 msgstr "タイトル"
 
 # | msgid "Alias"
-#: ui/tieup_editor.py:145 ui/tieup_works.py:98
+#: ui/tieup_editor.py:167 ui/tieup_works.py:98
 msgid "Aliases"
 msgstr "別名"
 
 # | msgid "Refresh"
-#: ui/tieup_editor.py:146 ui/tieup_works.py:99
+#: ui/tieup_editor.py:168 ui/tieup_works.py:99
 msgid "References"
 msgstr "参考リンク"
 
 # | msgid "CUE"
-#: ui/tieup_editor.py:151
+#: ui/tieup_editor.py:173
 msgid "Use"
 msgstr "用途"
 
-#: ui/tieup_editor.py:157
+#: ui/tieup_editor.py:179
 msgid "No."
 msgstr "番号"
 
-#: ui/tieup_editor.py:159 ui/tieup_editor.py:324
+#: ui/tieup_editor.py:181 ui/tieup_editor.py:359
 msgid "Role"
 msgstr "役割"
 
 # | msgid "Default"
-#: ui/tieup_editor.py:160 ui/tieup_editor.py:324
+#: ui/tieup_editor.py:182 ui/tieup_editor.py:359
 msgid "Detail"
 msgstr "詳細"
 
-#: ui/tieup_editor.py:203
+#: ui/tieup_editor.py:232
 #, python-brace-format
 msgid "New work: “{title}”"
 msgstr "新しい作品:「{title}」"
 
-#: ui/tieup_editor.py:203
+#: ui/tieup_editor.py:232
 msgid "New work"
 msgstr "新しい作品"
 
 # | msgid "Changes to the work apply to every song using it ({n})."
-#: ui/tieup_editor.py:235
+#: ui/tieup_editor.py:270
 #, python-brace-format
 msgid "Changes to the work apply to the {n} track using it."
 msgid_plural "Changes to the work apply to the {n} tracks using it."
 msgstr[0] "作品の変更は、この作品を使う {n} トラックすべてに反映されます。"
 
-#: ui/tieup_editor.py:248 ui/tieup_works.py:269
+#: ui/tieup_editor.py:283 ui/tieup_works.py:273
 msgid "Give the work a title."
 msgstr "作品のタイトルを入力してください。"
 
 # | msgid "Tie-ups after the comment"
-#: ui/tieup_editor.py:275 ui/tieup_editor.py:446 ui/tieup_editor.py:453
+#: ui/tieup_editor.py:310 ui/tieup_editor.py:481 ui/tieup_editor.py:488
 msgid "Tie-ups on the Web"
 msgstr "Webのタイアップ"
 
 # | msgid "Redo Changes"
-#: ui/tieup_editor.py:285
+#: ui/tieup_editor.py:320
 #, python-brace-format
 msgid "Read on {page}"
 msgstr "出典: {page}"
 
-#: ui/tieup_editor.py:287
+#: ui/tieup_editor.py:322
 msgid ""
 "From Japanese Wikipedia and Wikidata. A checked one is added with the "
 "work's names in other languages and its page as a reference."
 msgstr "日本語版Wikipediaと Wikidataから見つかりました。チェックしたタイアップを、他の言語の作品名と作品の記事のリンクとともに追加します。"
 
-#: ui/tieup_editor.py:311
+#: ui/tieup_editor.py:346
 msgid ""
 "<p>The works this track is used in: an anime's opening, a game's title "
 "screen, a character song.</p>"
 msgstr "<p>このトラックが使われた作品です: アニメのオープニング、ゲームのタイトル画面、キャラクターソングなど。</p>"
 
 # | msgid "Added"
-#: ui/tieup_editor.py:334
+#: ui/tieup_editor.py:369
 msgid "Add…"
 msgstr "追加…"
 
 # | msgid "Edit Track"
 # | msgid "Editor"
-#: ui/tieup_editor.py:335
+#: ui/tieup_editor.py:370
 msgid "Edit…"
 msgstr "編集…"
 
-#: ui/config/library.py:33 ui/tieup_editor.py:336
+#: ui/config/library.py:33 ui/tieup_editor.py:371
 msgid "Remove"
 msgstr "削除"
 
-#: ui/tieup_editor.py:337 ui/tieup_editor.py:440
+#: ui/tieup_editor.py:372 ui/tieup_editor.py:475
 msgid "Find on the Web"
 msgstr "Webで探す"
 
-#: ui/tieup_editor.py:338
+#: ui/tieup_editor.py:373
 msgid ""
 "<p>Look the track up on Japanese Wikipedia and Wikidata (its title and "
 "artist are sent there) and pick the tie-ups to add.</p>"
 msgstr "<p>日本語版WikipediaとWikidataでこのトラックを探し(タイトルとアーティストが送信されます)、追加するタイアップを選びます。</p>"
 
-#: ui/tieup_editor.py:389
+#: ui/tieup_editor.py:424
 #, python-brace-format
 msgid ""
 "A tie-up added here is added to its {n} other version too (Settings > "
@@ -7482,19 +7738,19 @@ msgstr[0] "ここで追加したタイアップは、このトラックの他の
 
 # | msgid "Shared with {n} other version of this song."
 # | msgid_plural "Shared with {n} other versions of this song."
-#: ui/tieup_editor.py:392
+#: ui/tieup_editor.py:427
 #, python-brace-format
 msgid "{n} other version of this track (Variants)."
 msgid_plural "{n} other versions of this track (Variants)."
 msgstr[0] "このトラックの他の {n} バージョン(Variants)。"
 
-#: ui/tieup_editor.py:435
+#: ui/tieup_editor.py:470
 msgid "Looking up…"
 msgstr "検索中…"
 
 # | msgid "Reading the analysis failed: {error}"
 # | msgid "The search failed: {error}"
-#: ui/tieup_editor.py:446
+#: ui/tieup_editor.py:481
 #, python-brace-format
 msgid ""
 "The lookup failed:\n"
@@ -7503,7 +7759,7 @@ msgstr ""
 "検索できませんでした:\n"
 "{error}"
 
-#: ui/tieup_editor.py:453
+#: ui/tieup_editor.py:488
 msgid "Wikipedia has no tie-up for this track."
 msgstr "Wikipediaにこのトラックのタイアップはありません。"
 
@@ -7539,7 +7795,7 @@ msgstr "変更を破棄"
 # | msgid "CUE / MASTER"
 # | msgid "Master"
 # | msgid "master in"
-#: ui/tieup_works.py:88 ui/tieup_works.py:293 ui/tieup_works.py:311
+#: ui/tieup_works.py:88 ui/tieup_works.py:297 ui/tieup_works.py:315
 msgid "Merge Into…"
 msgstr "別の作品に統合…"
 
@@ -7551,7 +7807,7 @@ msgid ""
 msgstr "<p>同じ作品が二重に登録されている場合：この作品の名前と参考リンクを選んだ作品に加え、トラックのタイアップをそちらに移してから、この作品を削除します。</p>"
 
 # | msgid "New work"
-#: ui/tieup_works.py:91 ui/tieup_works.py:333
+#: ui/tieup_works.py:91 ui/tieup_works.py:337
 msgid "Delete Work"
 msgstr "作品を削除"
 
@@ -7560,24 +7816,24 @@ msgid "The work deleted with every track's tie-up to it."
 msgstr "作品を削除します。すべてのトラックからこの作品のタイアップも削除されます。"
 
 # | msgid "New work"
-#: ui/tieup_works.py:190
+#: ui/tieup_works.py:194
 #, python-brace-format
 msgid "{n} work"
 msgid_plural "{n} works"
 msgstr[0] "{n} 作品"
 
 # | msgid "Apply the changes to \"{title}\"? (No: they are dropped)"
-#: ui/tieup_works.py:210 ui/tieup_works.py:356
+#: ui/tieup_works.py:214 ui/tieup_works.py:360
 #, python-brace-format
 msgid "Save the changes to \"{title}\"? (No: they are dropped)"
 msgstr "「{title}」の変更を保存しますか？（いいえ：破棄します）"
 
-#: ui/tieup_works.py:303
+#: ui/tieup_works.py:307
 #, python-brace-format
 msgid "Merge \"{title}\" into:"
 msgstr "「{title}」の統合先："
 
-#: ui/tieup_works.py:312
+#: ui/tieup_works.py:316
 #, python-brace-format
 msgid ""
 "Merge \"{title}\" into \"{into}\"? Its {n} track's tie-up moves there and"
@@ -7587,7 +7843,7 @@ msgid_plural ""
 " \"{title}\" is deleted."
 msgstr[0] "「{title}」を「{into}」に統合しますか？{n} トラックのタイアップがそちらに移り、「{title}」は削除されます。"
 
-#: ui/tieup_works.py:334
+#: ui/tieup_works.py:338
 #, python-brace-format
 msgid "Delete \"{title}\"? Its tie-up on {n} track is deleted too."
 msgid_plural "Delete \"{title}\"? Its tie-ups on {n} tracks are deleted too."
@@ -7632,7 +7888,7 @@ msgid ""
 "Engine)."
 msgstr "EQ {band}: Native オーディオエンジンのミキサーでのみ動作します（設定 > オーディオ > エンジン）。"
 
-#: ui/track_info_panel.py:782 ui/workers.py:196
+#: ui/track_info_panel.py:782 ui/workers.py:213
 msgid "No Art"
 msgstr "アートワークなし"
 
@@ -7725,11 +7981,22 @@ msgstr "インデックス作成中…"
 msgid "Indexing… {percent}%"
 msgstr "インデックス作成中… {percent}%"
 
-#: ui/workers.py:33
-msgid "Analysis Tasks"
-msgstr "解析タスク"
+# | msgid "Tie-ups"
+# | msgid "Tie-up Works"
+#: ui/workers.py:24
+msgid "Tie-up Lookup"
+msgstr "タイアップ調査"
 
-#: ui/workers.py:137
+#: ui/config/analysis.py:250 ui/workers.py:24
+msgid "Analysis"
+msgstr "解析"
+
+#: ui/workers.py:56
+#, python-brace-format
+msgid "{name} ({n})"
+msgstr "{name} ({n})"
+
+#: ui/workers.py:151
 #, python-brace-format
 msgid "Task {id}"
 msgstr "タスク {id}"

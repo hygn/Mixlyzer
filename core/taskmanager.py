@@ -3,6 +3,10 @@ from PySide6 import QtGui
 import numpy as np
 from core.event_bus import EventBus
 
+ANALYSIS = "analysis"        # a task's kind: the Workers window's tab it is listed in
+TIEUP_LOOKUP = "tieup_lookup"
+
+
 @dataclass
 class task():
     taskid: int
@@ -10,13 +14,15 @@ class task():
     thumbnail: QtGui.QImage
     status: str
     progress: float
+    kind: str = ANALYSIS
 
 class taskmanager():
     def __init__(self, bus: EventBus):
         self.tasks = {}
         self.taskidlist = []
         self.bus = bus
-    def addtask(self, songname:str, thumbnail:QtGui.QImage, status:str, progress:float, send_sig:bool=True) -> task:
+    def addtask(self, songname:str, thumbnail:QtGui.QImage, status:str, progress:float, send_sig:bool=True,
+                kind: str = ANALYSIS) -> task:
         while True:
             tid = np.random.randint(low=0, high=int(2**31-1))
             try: 
@@ -29,7 +35,8 @@ class taskmanager():
             songname=songname,
             thumbnail=thumbnail,
             status=status,
-            progress=progress
+            progress=progress,
+            kind=kind,
         )
         self.tasks.update({tid:tasktoadd})
         if send_sig:

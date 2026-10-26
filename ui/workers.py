@@ -4,20 +4,24 @@ from PySide6 import QtGui
 from PySide6.QtWidgets import (
     QDialog, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QListWidget, QListWidgetItem, QProgressBar,
-    QDialogButtonBox, QPushButton
+    QDialogButtonBox, QPushButton, QTabWidget
 )
 from core.event_bus import EventBus
-from core.i18n import tr
+from core.i18n import tr, tr_mark
+from core.taskmanager import ANALYSIS, TIEUP_LOOKUP
 from ui.elided_label import ElidedLabel
 
 
 class WorkersDialog(QDialog):
-    """Subwindow showing in-progress analysis tasks."""
+    """Subwindow showing the tasks in progress, a tab per kind (core.taskmanager): the analyses, and the tie-ups looked
+    up on the web in the background (core.workflows.tieup_web), each tab's title with its count."""
 
     # Public signals (Dialog re-emits with same payload)
     sig_task_started = Signal(int, object)          # task_id, metadata
     sig_task_progress = Signal(int, float, str)     # task_id, progress(0..1), message
     sig_task_finished = Signal(int, str)    # task_id, error
+
+    TABS = ((ANALYSIS, tr_mark("Analysis")), (TIEUP_LOOKUP, tr_mark("Tie-up Lookup")))
 
     def __init__(self):
         super().__init__()
@@ -26,21 +30,30 @@ class WorkersDialog(QDialog):
         self.resize(500, 700)
 
         self._items: Dict[int, QListWidgetItem] = {}
+        self._lists: Dict[int, QListWidget] = {}     # a task's list (its tab's)
         self._bus = None
 
-        # UI
+        # UI: a list per kind
         root = QVBoxLayout(self)
-        self.lbl_title = QLabel(tr("Analysis Tasks"))
-        self.list = QListWidget()
+        self.tabs = QTabWidget()
+        self.lists = {kind: QListWidget() for kind, _name in self.TABS}
+        for kind, _name in self.TABS:
+            self.tabs.addTab(self.lists[kind], "")
+        self._retitle()
 
         # Button box
         self.btn_box = QDialogButtonBox(QDialogButtonBox.Close)
 
         self.btn_box.rejected.connect(self.reject)
 
-        root.addWidget(self.lbl_title)
-        root.addWidget(self.list)
+        root.addWidget(self.tabs)
         root.addWidget(self.btn_box)
+
+    def _retitle(self) -> None:
+        """Each tab's title with its tasks' count."""
+        for i, (kind, name) in enumerate(self.TABS):
+            n = self.lists[kind].count()
+            self.tabs.setTabText(i, tr("{name} ({n})").format(name=tr(name), n=n) if n else tr(name))
 
     # EventBus wiring
     def set_bus(self, bus) -> None:
@@ -101,9 +114,10 @@ class WorkersDialog(QDialog):
 
     def _on_finished(self, task_id: int, error: Optional[str] = None):
         item = self._items.pop(task_id, None)
-        if item is not None:
-            row = self.list.row(item)
-            self.list.takeItem(row)
+        tasks = self._lists.pop(task_id, None)
+        if item is not None and tasks is not None:
+            tasks.takeItem(tasks.row(item))
+            self._retitle()
         self.sig_task_finished.emit(task_id, error or "")
 
     # Internal UI build
@@ -167,9 +181,12 @@ class WorkersDialog(QDialog):
             "bar": bar,
             "thumb": thumb_lbl,
         })
-        self.list.addItem(item)
-        self.list.setItemWidget(item, w)
+        tasks = self.lists.get(getattr(metadata, "kind", ANALYSIS), self.lists[ANALYSIS])
+        tasks.addItem(item)
+        tasks.setItemWidget(item, w)
         self._items[task_id] = item
+        self._lists[task_id] = tasks
+        self._retitle()
 
     def _extract_name(self, metadata: Optional[object]) -> Optional[str]:
         if metadata is None:

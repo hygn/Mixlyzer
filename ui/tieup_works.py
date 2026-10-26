@@ -7,7 +7,7 @@ from __future__ import annotations
 import os
 from typing import Callable, Optional
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QTimer, Qt
 from PySide6.QtWidgets import (
     QAbstractItemView, QComboBox, QDialog, QDialogButtonBox, QFormLayout, QHBoxLayout, QHeaderView, QLabel, QLineEdit, QListWidget,
     QMessageBox, QPushButton, QSplitter, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget,
@@ -17,7 +17,7 @@ from core import reading, tieup
 from core.event_bus import EventBus
 from core.i18n import tr, tr_n
 from core.library_handler import LibraryDB
-from ui.tieup_editor import LANG, _TextTable
+from ui.tieup_editor import FIND_PAUSE_MS, LANG, _TextTable
 
 ALL = ""    # the category filter's "all"
 
@@ -117,7 +117,11 @@ class WorksWindow(QDialog):
         self.resize(1000, 640)
 
         # the list narrowed: the work being edited kept in the editor (picked again when still listed)
-        self.ed_find.textChanged.connect(lambda _text: self._fill(self._current.id if self._current else None))
+        self._find_timer = QTimer(self)         # the list narrowed once typing pauses
+        self._find_timer.setSingleShot(True)
+        self._find_timer.setInterval(FIND_PAUSE_MS)
+        self._find_timer.timeout.connect(lambda: self._fill(self._current.id if self._current else None))
+        self.ed_find.textChanged.connect(lambda _text: self._find_timer.start())
         self.cmb_filter.currentIndexChanged.connect(lambda _i: self._fill(self._current.id if self._current else None))
         self.table.itemSelectionChanged.connect(self._on_picked)
         self.btn_save.clicked.connect(self._save)

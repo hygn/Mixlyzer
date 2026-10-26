@@ -605,8 +605,13 @@ def load_cfg() -> config:
     deck = _load_deck(loaded)
     cfg = config.from_dict(_merge_defaults(defaults.to_dict(), loaded),
                            _merge_defaults(defaults.deck_dict(), deck))
-    save_cfg(cfg)
-    save_deck(cfg)
+    # written only where the file is not what it reads as (missing, unreadable, a key added or migrated): load_cfg
+    # is called to read the settings, by the GUI and by worker processes at once, and a file replaced while
+    # another reads it fails on Windows
+    if _stored(CONFIG_FILE) != _as_json(cfg.to_dict()):
+        save_cfg(cfg)
+    if _stored(DECK_FILE) != _as_json(cfg.deck_dict()):
+        save_deck(cfg)
     _ensure_library_dir(cfg)
     _ensure_feature_cache_dirs(cfg)
     return cfg
@@ -628,6 +633,20 @@ def _load_deck(settings: dict) -> dict:
     except (TypeError, ValueError, AttributeError, KeyError) as exc:
         _keep_unreadable_config(exc, DECK_FILE)
         return {}
+
+
+def _stored(path: str) -> object:
+    """A settings file's content as JSON, or None (missing, unreadable)."""
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return None
+
+
+def _as_json(payload: dict) -> object:
+    """``payload`` as it reads back from its file (tuples as lists)."""
+    return json.loads(json.dumps(payload, ensure_ascii=True))
 
 
 def save_cfg(cfg: config) -> None:

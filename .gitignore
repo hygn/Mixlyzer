@@ -68,7 +68,8 @@ experiments
 # DJ software interchange research (local only)
 interchange/
 
-# Local maintenance notes
+# Local maintenance notes, and their site (mkdocs serve)
 docs/internal/
+mkdocs.yml
 # the web lookups' answers (core.tieup_web)
 cache/
