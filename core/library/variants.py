@@ -19,11 +19,10 @@ from __future__ import annotations
 
 import os
 import sqlite3
-from typing import Mapping
 
 import numpy as np
 
-from core.variants import fingerprint as fpm
+from analyzer.search import variants as fpm
 from core.variants.relations import Pair
 
 FILE_NAME = "variants.db"
@@ -167,11 +166,11 @@ def _find(con: sqlite3.Connection, query: fpm.Fingerprint, method: int,
     return found
 
 
-def put(con: sqlite3.Connection, uid: str, features: Mapping) -> int:
-    """One track fingerprinted from its features by the current method (replacing every fingerprint it had: its
-    features are these now) and queried against the stored of that method; its relations written. Commits as it goes
-    (store, then query: see the module's note). Returns the variants found."""
-    fp = fpm.fingerprint(features)
+def put(con: sqlite3.Connection, uid: str, fingerprints: list[fpm.Fingerprint]) -> int:
+    """One track's fingerprints by the current method (fpm.track_fingerprints: the first stored, replacing every
+    fingerprint it had, its features are these now; all queried against the stored of that method); its relations
+    written. Commits as it goes (store, then query: see the module's note). Returns the variants found."""
+    fp = fingerprints[0]
     hashes, frames = fpm.index_rows(fp)
     with con:
         con.execute("INSERT OR IGNORE INTO variant_method (name) VALUES (?)", (METHOD,))
@@ -187,7 +186,7 @@ def put(con: sqlite3.Connection, uid: str, features: Mapping) -> int:
         song = int(cur.lastrowid)
         con.executemany("INSERT OR IGNORE INTO variant_hash VALUES (?, ?, ?, ?)",
                         zip([method] * int(hashes.size), hashes.tolist(), [song] * int(hashes.size), frames.tolist()))
-    found = _find_all(con, features, fp, method, song)
+    found = _find_all(con, fingerprints, method, song)
     with con:
         for other, (v, kind) in found.items():
             con.execute("INSERT OR REPLACE INTO variant_pair VALUES (?, ?, ?, ?, ?, ?, ?)",
@@ -195,13 +194,12 @@ def put(con: sqlite3.Connection, uid: str, features: Mapping) -> int:
     return len(found)
 
 
-def _find_all(con: sqlite3.Connection, features: Mapping, fp: fpm.Fingerprint, method: int,
+def _find_all(con: sqlite3.Connection, fingerprints: list[fpm.Fingerprint], method: int,
               me: int) -> dict[str, tuple[fpm.Verification, str]]:
     """The stored tracks (fingerprints of ``method``, but ``me``) that are versions of the track with these
-    features, each at its best (the octave's neighbour tried near its edge): uid -> (verification, relation)."""
+    fingerprints, each at its best (the octave's neighbour tried near its edge): uid -> (verification, relation)."""
     found: dict[str, tuple[fpm.Verification, str]] = {}
-    for k, sub in enumerate(fpm.subdivisions(features, query=True)):
-        query = fp if k == 0 else fpm.fingerprint(features, sub)
+    for query in fingerprints:
         for other, (v, kind) in _find(con, query, method, me).items():
             if other not in found or v.covered > found[other][0].covered:
                 found[other] = (v, kind)

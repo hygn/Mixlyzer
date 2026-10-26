@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from core.music_search.melody import HOP, SR
+from analyzer.search.music.melody import HOP, SR
 
 YIN_THRESHOLD = 0.15     # the first dip of the normalized difference below this is the period
 YIN_VOICED = 0.3         # a frame whose best dip stays above this has no clear period: unvoiced

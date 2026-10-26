@@ -5,9 +5,10 @@ speaker, picked up by the microphone (or a file).
   a room, not to a changed tempo or pitch.
 - A melody from a voice: its pitch (`query`) matched against two reference lines of every song (`melody`: the stereo
   centre's melody and the mix's top line) by a subsequence DTW cascade over all songs (`matcher`).
-- Their index is `{libpath}/music_search.db` (`store`), apart from library.db: data made from the audio, rebuilt
-  whenever its method changes, large (the landmarks), never the user's own. Filled in the background
-  (core.workers.music_index).
+- A song's index entry (`index`: its reference lines and landmarks) is made by the full analysis (analyzer.pipeline.track)
+  and, for tracks analyzed before, by Index Now; the app keeps the entries (`{libpath}/music_search.db`,
+  core.library.music_index) and lends them to the search.
+- While listening, the searches of the last seconds are joined over time (`listening`).
 
 `search.search_audio` is the one entry: landmarks first, the melody when the recording found no song.
 """

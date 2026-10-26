@@ -1,4 +1,4 @@
-"""The melody match: a voice's pitch against every song's reference lines (core.music_search.melody).
+"""The melody match: a voice's pitch against every song's reference lines (analyzer.search.music.melody).
 
 Subsequence DTW (the query may start anywhere in the song), steps (1,1) / (1,2) / (2,1): the query at half to double
 the song's tempo. A frame's cost is the distance to the nearer reference line, folded into one octave (a hummer an
@@ -23,7 +23,7 @@ from dataclasses import dataclass
 import numpy as np
 from numba import njit, prange
 
-from core.music_search.melody import BASE, FRAMES, HOP, SR, STEPS, UNV, reduce_pitch
+from analyzer.search.music.melody import BASE, FRAMES, HOP, SR, STEPS, UNV, reduce_pitch
 
 CAP = 2.0
 UNVOICED = 1.0

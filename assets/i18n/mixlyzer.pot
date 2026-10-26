@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-27 00:27+0900\n"
+"POT-Creation-Date: 2026-10-27 00:39+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -895,11 +895,11 @@ msgstr ""
 msgid "Search hint"
 msgstr ""
 
-#: core/workers/analysis.py:73
+#: core/workers/analysis.py:66
 msgid "Processing Metadata"
 msgstr ""
 
-#: core/workers/analysis.py:178
+#: core/workers/analysis.py:171
 #, python-brace-format
 msgid "Analysis process exited unexpectedly ({code})."
 msgstr ""
@@ -930,7 +930,7 @@ msgstr ""
 
 #: core/workers/analysis_texts.py:17 ui/config/analysis.py:236
 #: ui/config/pipeline_map.py:23 ui/config/pipeline_map.py:32
-#: ui/edit_panel/panel.py:57 ui/library.py:918 ui/library.py:1011
+#: ui/edit_panel/panel.py:57 ui/library.py:919 ui/library.py:1012
 #: ui/shortcuts.py:37
 msgid "Phrase"
 msgstr ""
@@ -1028,7 +1028,7 @@ msgstr ""
 msgid "tempo segments are required for JumpCUE reanalysis"
 msgstr ""
 
-#: core/workers/music_index.py:91
+#: core/workers/music_index.py:90
 #, python-brace-format
 msgid "The music search index process exited unexpectedly ({code})."
 msgstr ""
@@ -5030,30 +5030,30 @@ msgstr ""
 msgid "Browse..."
 msgstr ""
 
-#: ui/edit_song.py:123 ui/library.py:793
+#: ui/edit_song.py:123 ui/library.py:794
 msgid "Path"
 msgstr ""
 
-#: ui/edit_song.py:124 ui/export.py:78 ui/export.py:105 ui/library.py:790
+#: ui/edit_song.py:124 ui/export.py:78 ui/export.py:105 ui/library.py:791
 #: ui/tieup_editor.py:138 ui/tieup_works.py:75 ui/track_search_index.py:53
 msgid "Title"
 msgstr ""
 
-#: ui/edit_song.py:125 ui/export.py:79 ui/export.py:106 ui/library.py:790
+#: ui/edit_song.py:125 ui/export.py:79 ui/export.py:106 ui/library.py:791
 #: ui/track_search_index.py:53
 msgid "Artist"
 msgstr ""
 
-#: ui/edit_song.py:126 ui/export.py:107 ui/library.py:791
+#: ui/edit_song.py:126 ui/export.py:107 ui/library.py:792
 #: ui/track_search_index.py:53
 msgid "Album"
 msgstr ""
 
-#: ui/edit_song.py:129 ui/library.py:792
+#: ui/edit_song.py:129 ui/library.py:793
 msgid "Rating"
 msgstr ""
 
-#: ui/edit_song.py:130 ui/export.py:108 ui/library.py:793
+#: ui/edit_song.py:130 ui/export.py:108 ui/library.py:794
 msgid "Comment"
 msgstr ""
 
@@ -5088,8 +5088,8 @@ msgid ""
 "{path}"
 msgstr ""
 
-#: ui/edit_song.py:248 ui/edit_song.py:266 ui/library.py:1827
-#: ui/library.py:2344 ui/shortcuts.py:142
+#: ui/edit_song.py:248 ui/edit_song.py:266 ui/library.py:1828
+#: ui/library.py:2345 ui/shortcuts.py:142
 msgid "Edit Track"
 msgstr ""
 
@@ -5199,8 +5199,8 @@ msgid "No track is selected."
 msgstr ""
 
 #: ui/export.py:309 ui/export.py:314 ui/export.py:320 ui/export.py:333
-#: ui/export.py:343 ui/export.py:465 ui/export.py:476 ui/library.py:1830
-#: ui/library.py:2348 ui/shortcuts.py:157
+#: ui/export.py:343 ui/export.py:465 ui/export.py:476 ui/library.py:1831
+#: ui/library.py:2349 ui/shortcuts.py:157
 msgid "Export Track"
 msgstr ""
 
@@ -5446,343 +5446,343 @@ msgid ""
 "KR)."
 msgstr ""
 
-#: ui/library.py:742
+#: ui/library.py:743
 msgid "AND: require every search condition (click to switch)"
 msgstr ""
 
-#: ui/library.py:743
+#: ui/library.py:744
 msgid "OR: accept any search condition (click to switch)"
 msgstr ""
 
-#: ui/library.py:790
+#: ui/library.py:791
 msgid "All"
 msgstr ""
 
-#: ui/library.py:791
+#: ui/library.py:792
 msgid "Duration"
 msgstr ""
 
-#: ui/library.py:791 ui/tieup_editor.py:121 ui/tieup_editor.py:282
+#: ui/library.py:792 ui/tieup_editor.py:121 ui/tieup_editor.py:282
 #: ui/tieup_editor.py:288
 msgid "Tie-up"
 msgstr ""
 
-#: ui/library.py:793
+#: ui/library.py:794
 msgid "Added"
 msgstr ""
 
-#: ui/library.py:871
+#: ui/library.py:872
 msgid "Search title, artist, key ..."
 msgstr ""
 
-#: ui/library.py:873
+#: ui/library.py:874
 msgid ""
 "<p>Titles, artists and albums are also found by how they read, in any "
 "script: あのね by anone, ano ne or 아노네 (the reading is set in Edit "
 "Track).</p>"
 msgstr ""
 
-#: ui/library.py:879
+#: ui/library.py:880
 msgid "Column the text search looks in"
 msgstr ""
 
-#: ui/library.py:882
+#: ui/library.py:883
 msgid "Fuzzy"
 msgstr ""
 
-#: ui/library.py:882
+#: ui/library.py:883
 msgid ""
 "<p>Also find a similar pronunciation (from six letters of the reading on:"
 " about one sound in five off). Off: the reading must match, up to its "
 "spelling.</p>"
 msgstr ""
 
-#: ui/library.py:918
+#: ui/library.py:919
 msgid "Tracks with a phrase of this label (optionally at a BPM / key)"
 msgstr ""
 
-#: ui/library.py:919
+#: ui/library.py:920
 msgid "Tracks whose BPM changes from one tempo to another"
 msgstr ""
 
-#: ui/library.py:920
+#: ui/library.py:921
 msgid "Tracks whose key changes from one key to another"
 msgstr ""
 
-#: ui/config/midi.py:114 ui/library.py:923
+#: ui/config/midi.py:114 ui/library.py:924
 msgid "Clear"
 msgstr ""
 
-#: ui/library.py:924
+#: ui/library.py:925
 msgid "Remove every search condition (text and filters)"
 msgstr ""
 
-#: ui/library.py:934
+#: ui/library.py:935
 msgid ""
 "<p>Search by Music: hum, sing or whistle a melody, or play the song from "
 "a phone, and the library shows the songs the microphone hears, best "
 "first. Click again to stop listening (the results stay).</p>"
 msgstr ""
 
-#: ui/library.py:940
+#: ui/library.py:941
 msgid "Back to the library"
 msgstr ""
 
-#: ui/library.py:964
+#: ui/library.py:965
 msgid "Also require this BPM inside the phrase"
 msgstr ""
 
-#: ui/library.py:969
+#: ui/library.py:970
 msgid "Phrase BPM tolerance"
 msgstr ""
 
-#: ui/library.py:970
+#: ui/library.py:971
 msgid "Also require this key inside the phrase"
 msgstr ""
 
-#: ui/library.py:972
+#: ui/library.py:973
 msgid "Key inside the selected phrase (Alphanumeric wheel)"
 msgstr ""
 
-#: ui/library.py:974
+#: ui/library.py:975
 msgid ""
 "Also match harmonically compatible keys (±1 on the Alphanumeric wheel, "
 "relative key)"
 msgstr ""
 
-#: ui/library.py:974 ui/library.py:1000
+#: ui/library.py:975 ui/library.py:1001
 msgid "Compat"
 msgstr ""
 
-#: ui/library.py:983
+#: ui/library.py:984
 msgid "BPM transition tolerance"
 msgstr ""
 
-#: ui/library.py:985
+#: ui/library.py:986
 msgid "Require the transition to start at the first BPM segment"
 msgstr ""
 
-#: ui/library.py:985 ui/library.py:998
+#: ui/library.py:986 ui/library.py:999
 msgid "1st"
 msgstr ""
 
-#: ui/library.py:989
+#: ui/library.py:990
 msgid "Key before the change (Alphanumeric wheel)"
 msgstr ""
 
-#: ui/library.py:992
+#: ui/library.py:993
 msgid "Key after the change (Alphanumeric wheel)"
 msgstr ""
 
-#: ui/library.py:998
+#: ui/library.py:999
 msgid "Require the transition to start at the first key segment"
 msgstr ""
 
-#: ui/library.py:1000
+#: ui/library.py:1001
 msgid ""
 "Also match harmonically compatible keys at both ends (±1 on the "
 "Alphanumeric wheel, relative key)"
 msgstr ""
 
-#: ui/library.py:1009 ui/library.py:1022
+#: ui/library.py:1010 ui/library.py:1023
 msgid "Minimum duration of both sides of each enabled transition"
 msgstr ""
 
-#: ui/library.py:1021
+#: ui/library.py:1022
 msgid "Min seg"
 msgstr ""
 
-#: ui/library.py:1237
+#: ui/library.py:1238
 msgid "Library (All)"
 msgstr ""
 
-#: ui/library.py:1241 ui/track_search_index.py:95
+#: ui/library.py:1242 ui/track_search_index.py:95
 msgid "Variants"
 msgstr ""
 
-#: ui/library.py:1244
+#: ui/library.py:1245
 msgid ""
 "<p>The library's tracks that are versions of one song: the same audio, "
 "another vocal, the instrumental, an edit (a TV size). # is the song; a "
 "row's tooltip says how it differs from the others.</p>"
 msgstr ""
 
-#: ui/library.py:1247
+#: ui/library.py:1248
 msgid "Loaded Track"
 msgstr ""
 
-#: ui/library.py:1249
+#: ui/library.py:1250
 msgid ""
 "<p>The versions of the track loaded on the deck, following each track "
 "loaded.</p>"
 msgstr ""
 
-#: ui/library.py:1254
+#: ui/library.py:1255
 msgid "Playlists"
 msgstr ""
 
-#: ui/library.py:1266
+#: ui/library.py:1267
 msgid "Local Folders"
 msgstr ""
 
-#: ui/config/external_sync.py:105 ui/library.py:1770 ui/pane.py:517
+#: ui/config/external_sync.py:105 ui/library.py:1771 ui/pane.py:517
 msgid "External Sync"
 msgstr ""
 
-#: ui/library.py:1771
+#: ui/library.py:1772
 msgid "Track loading is disabled while External Sync is enabled."
 msgstr ""
 
-#: ui/library.py:1828 ui/shortcuts.py:144
+#: ui/library.py:1829 ui/shortcuts.py:144
 msgid "Search Index"
 msgstr ""
 
-#: ui/library.py:1829 ui/shortcuts.py:150 ui/tieup_editor.py:345
+#: ui/library.py:1830 ui/shortcuts.py:150 ui/tieup_editor.py:345
 msgid "Tie-ups"
 msgstr ""
 
-#: ui/library.py:1832
+#: ui/library.py:1833
 msgid "The selected track; click the open tab to fold the panel"
 msgstr ""
 
-#: ui/library.py:1904
+#: ui/library.py:1905
 #, python-brace-format
 msgid "Apply the changes to \"{title}\"? (No: they are dropped)"
 msgstr ""
 
-#: ui/library.py:2084
+#: ui/library.py:2085
 #, python-brace-format
 msgid "Matched at {start} - {end}, by the sound of the recording ({n} matches)"
 msgstr ""
 
-#: ui/library.py:2087
+#: ui/library.py:2088
 #, python-brace-format
 msgid "Matched at {start} - {end}, by the melody"
 msgstr ""
 
-#: ui/library.py:2131
+#: ui/library.py:2132
 msgid "the same mix"
 msgstr ""
 
-#: ui/library.py:2133
+#: ui/library.py:2134
 #, python-brace-format
 msgid "{relation}, a shorter edit"
 msgstr ""
 
-#: ui/library.py:2135
+#: ui/library.py:2136
 #, python-brace-format
 msgid "{relation}, a longer version"
 msgstr ""
 
-#: ui/library.py:2137
+#: ui/library.py:2138
 #, python-brace-format
 msgid "{relation}, some sections differ"
 msgstr ""
 
-#: ui/library.py:2140
+#: ui/library.py:2141
 msgid "a shorter edit"
 msgstr ""
 
-#: ui/library.py:2142
+#: ui/library.py:2143
 msgid "a longer version"
 msgstr ""
 
-#: ui/library.py:2144
+#: ui/library.py:2145
 msgid "some sections differ"
 msgstr ""
 
-#: ui/library.py:2161
+#: ui/library.py:2162
 #, python-brace-format
 msgid "{title}: {relation}"
 msgstr ""
 
-#: ui/library.py:2163
+#: ui/library.py:2164
 msgid "Variants of this track:"
 msgstr ""
 
-#: ui/library.py:2180
+#: ui/library.py:2181
 msgid "The loaded track is not in the list shown."
 msgstr ""
 
-#: ui/library.py:2202 ui/library.py:2231 ui/library.py:2235 ui/shortcuts.py:164
+#: ui/library.py:2203 ui/library.py:2232 ui/library.py:2236 ui/shortcuts.py:164
 msgid "New Playlist"
 msgstr ""
 
-#: ui/library.py:2205
+#: ui/library.py:2206
 msgid "Rename"
 msgstr ""
 
-#: ui/library.py:2206
+#: ui/library.py:2207
 msgid "Move Up"
 msgstr ""
 
-#: ui/library.py:2207
+#: ui/library.py:2208
 msgid "Move Down"
 msgstr ""
 
-#: ui/library.py:2208 ui/library.py:2256
+#: ui/library.py:2209 ui/library.py:2257
 msgid "Delete Playlist"
 msgstr ""
 
-#: ui/library.py:2210
+#: ui/library.py:2211
 msgid "Refresh Folders"
 msgstr ""
 
-#: ui/library.py:2231 ui/library.py:2246
+#: ui/library.py:2232 ui/library.py:2247
 msgid "Name"
 msgstr ""
 
-#: ui/library.py:2246 ui/library.py:2251
+#: ui/library.py:2247 ui/library.py:2252
 msgid "Rename Playlist"
 msgstr ""
 
-#: ui/library.py:2257
+#: ui/library.py:2258
 #, python-brace-format
 msgid ""
 "Delete playlist \"{name}\"?\n"
 "Tracks remain in the Library."
 msgstr ""
 
-#: ui/library.py:2341 ui/shortcuts.py:162
+#: ui/library.py:2342 ui/shortcuts.py:162
 msgid "Show in Explorer"
 msgstr ""
 
-#: ui/library.py:2342 ui/shortcuts.py:163
+#: ui/library.py:2343 ui/shortcuts.py:163
 msgid "Show in Finder"
 msgstr ""
 
-#: ui/library.py:2342 ui/shortcuts.py:163
+#: ui/library.py:2343 ui/shortcuts.py:163
 msgid "Show in File Manager"
 msgstr ""
 
-#: ui/library.py:2343 ui/library.py:2419 ui/shortcuts.py:167
+#: ui/library.py:2344 ui/library.py:2420 ui/shortcuts.py:167
 msgid "Remove from Library"
 msgstr ""
 
-#: ui/library.py:2346
+#: ui/library.py:2347
 msgid "Analyze Track"
 msgstr ""
 
-#: ui/library.py:2346 ui/reanalyze_dialog.py:16 ui/shortcuts.py:165
+#: ui/library.py:2347 ui/reanalyze_dialog.py:16 ui/shortcuts.py:165
 msgid "Reanalyze Track"
 msgstr ""
 
-#: ui/library.py:2351 ui/shortcuts.py:168
+#: ui/library.py:2352 ui/shortcuts.py:168
 msgid "Remove from Playlist"
 msgstr ""
 
-#: ui/library.py:2352
+#: ui/library.py:2353
 msgid "Add to Playlist"
 msgstr ""
 
-#: ui/library.py:2411
+#: ui/library.py:2412
 #, python-brace-format
 msgid ""
 "Remove \"{title}\" from the library?\n"
 "Its analysis and edits are deleted; the audio file stays."
 msgstr ""
 
-#: ui/library.py:2414
+#: ui/library.py:2415
 #, python-brace-format
 msgid ""
 "Remove {count} track from the library?\n"

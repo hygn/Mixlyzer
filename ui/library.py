@@ -28,7 +28,8 @@ from ui.music_search import DeckSeekAfterLoad, MusicListener, MusicSearchBar, cl
 from ui.theme import current_theme
 from ui.edit_panel.key_picker import KeyPickButton
 from ui.edit_panel.flash import flash
-from core.variants import fingerprint as variant_fp, relations as variant_relations
+from analyzer.search import variants as variant_fp
+from core.variants import relations as variant_relations
 from core import tieup
 from foundation.i18n import tr, tr_mark, tr_n
 
@@ -943,7 +944,7 @@ class LibraryWidget(QtWidgets.QWidget):
         self.music_bar = MusicSearchBar()
         self.music_bar.hide()
         self._music_mode = False
-        self._music_matches: list = []          # core.music_search.search.MusicMatch, best first
+        self._music_matches: list = []          # analyzer.search.music.search.MusicMatch, best first
         self._music_saved_text = ""
         self._music = MusicListener(bus, lambda: self.cfg, self.library, parent=self)
         self._music.audio.connect(self.music_bar.wave.add)

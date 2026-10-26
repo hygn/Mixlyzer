@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from core.music_search.search import MusicMatch, SearchResult
+from analyzer.search.music.search import MusicMatch, SearchResult
 
 HALF_LIFE_SEC = 3.0          # what a search gave counts half this much later
 CONTINUITY = 2.0             # found in the search before, its place moved on with the time

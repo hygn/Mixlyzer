@@ -16,11 +16,11 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from core.music_search import landmarks, melody
-from core.music_search.matcher import MelodyIndex
+from analyzer.search.music import landmarks, melody
+from analyzer.search.music.matcher import MelodyIndex
 
 if TYPE_CHECKING:
-    from core.music_search.indexing import IndexEntry
+    from analyzer.search.music.index import IndexEntry
 
 FILE_NAME = "music_search.db"
 WRITE_WAIT_SEC = 60.0
@@ -111,7 +111,7 @@ def melody_index(con: sqlite3.Connection) -> MelodyIndex:
 
 
 class LandmarkIndex:
-    """The landmarks as the search reads them (core.music_search.landmarks), on a read-only connection of their own:
+    """The landmarks as the search reads them (analyzer.search.music.landmarks), on a read-only connection of their own:
     the owner opens it (core.library.jobs.open_music_search) and lends it to the search's thread."""
 
     def __init__(self, con: sqlite3.Connection):

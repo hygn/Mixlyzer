@@ -129,7 +129,7 @@ def build_search_tab(dialog) -> None:
     _keep_one_checked([dialog.cb_query_hangul_korean, dialog.cb_query_hangul_foreign])
     f_query.addRow(tr("Hangul"), hangul_box)
 
-    # Search by Music (core.music_search)
+    # Search by Music (analyzer.search.music)
     grp_music = QGroupBox(tr("Search by Music"))
     f_music = QFormLayout(grp_music)
     dialog.cb_music_index = QCheckBox(tr("Index tracks when analyzing"))

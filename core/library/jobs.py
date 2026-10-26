@@ -26,7 +26,7 @@ from core.library import music_index, thumbnails, tieups, variants
 from core.library.records import READING_FIELDS, IndexTrack, TrackRow
 from core.library.service import PLAYLISTS, READINGS, TIEUPS, TRACKS, VARIANTS, changes
 from core.tieup import Catalog, TieUp, Work
-from core.variants import fingerprint as variant_fp
+from analyzer.search import variants as variant_fp
 
 
 # ---- tracks ----
@@ -342,7 +342,7 @@ def fingerprint(lib, uid: str) -> int:
     features = lib.features.load(uid)
     con = variants.open_writer(variants.path_for(lib.path))
     try:
-        return variants.put(con, uid, {k: features[k] for k in variant_fp.FEATURES})
+        return variants.put(con, uid, variant_fp.track_fingerprints({k: features[k] for k in variant_fp.FEATURES}))
     finally:
         con.close()
 
@@ -416,18 +416,19 @@ def store_analysis(lib, payload: dict) -> dict:
                               stored["music_entry"])
         except Exception as exc:
             print(f"[Music search] index not written: {exc}")
-    # the variants' fingerprint (core.variants: from the beats and the overview's bands, ~20 ms), queried against
-    # the library's; a failure leaves the track out of the variants, never the analysis undone
-    try:
-        con = variants.open_writer(variants.path_for(lib.path))
+    # the variants' fingerprints (the analysis's: analyzer.search.variants), queried against the library's; a failure
+    # leaves the track out of the variants, never the analysis undone
+    if stored.get("variants"):
         try:
-            found = variants.put(con, uid, payload["features"])
-        finally:
-            con.close()
-        if found:
-            print(f"[Variants] {found} found")
-    except Exception as exc:
-        print(f"[Variants] not indexed: {exc}")
+            con = variants.open_writer(variants.path_for(lib.path))
+            try:
+                found = variants.put(con, uid, stored["variants"])
+            finally:
+                con.close()
+            if found:
+                print(f"[Variants] {found} found")
+        except Exception as exc:
+            print(f"[Variants] not indexed: {exc}")
     # a new track (not in the library before this analysis) takes its versions' tie-ups; a failure leaves it without,
     # never the analysis undone
     payload["new_track"] = known is None

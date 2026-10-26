@@ -1,5 +1,5 @@
 """Index Now (Settings > Search > Search by Music): the library tracks analyzed before the music search or the
-variants existed get their index. Search by Music's (core.music_search.indexing: reference lines and landmarks from
+variants existed get their index. Search by Music's (analyzer.pipeline.music_index: reference lines and landmarks from
 the audio; about 3 s a track) is made in spawned processes at a lower priority, each its share of the tracks, and
 handed back track by track; the library's owner stores each (core.library.jobs.store_music_entry), makes the
 variants' fingerprints from the stored features (jobs.fingerprint: no audio, about 20 ms a track) and drops the
@@ -30,13 +30,12 @@ def index_audio_tracks(request: MusicIndexRequest, report) -> None:
     """Each track's Search by Music entry from its audio: ``report(uid, entry)``, the entry None when the audio
     could not be read."""
     from threadpoolctl import threadpool_limits
-    from analyzer.audio.load import fast_load
-    from core.music_search import indexing
+    from analyzer.pipeline.music_index import index_track
 
     for track in request.tracks:
         try:
             with threadpool_limits(1):
-                entry = indexing.index_audio(fast_load(track.path, target_sr=indexing.SR, stereo=True))
+                entry = index_track(track.path)
         except Exception:
             entry = None
         report(track.uid, entry)

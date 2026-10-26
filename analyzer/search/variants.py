@@ -85,6 +85,12 @@ def subdivisions(features: Mapping, query: bool = False) -> list[float]:
     return out
 
 
+def track_fingerprints(features: Mapping) -> list[Fingerprint]:
+    """A track's fingerprints (``FEATURES`` of its analysis): the one stored first, then the queries' of the octave's
+    neighbour when its frame rate is near the edge."""
+    return [fingerprint(features)] + [fingerprint(features, sub) for sub in subdivisions(features, query=True)[1:]]
+
+
 def _frames_energy(features: Mapping, sub: float) -> np.ndarray:
     """(frames x 12) mean log power per frame, from wave_bands_np / _ref and the beats."""
     lv = np.asarray(features["wave_bands_np"]).astype(np.float64) * (1.0 / 255.0)

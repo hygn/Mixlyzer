@@ -2,10 +2,10 @@
 waveform and level meter and listens (a hum, singing, a whistle, or the song itself played from a phone or a
 speaker); the last seconds heard (searchconfig.music_listen_window) are searched every few seconds
 (music_listen_interval) and the library shows the songs found, best first: the searches joined over time
-(core.music_search.listening), so a song sung on and on leads. The microphone off, the results stay and
+(analyzer.search.music.listening), so a song sung on and on leads. The microphone off, the results stay and
 are no longer followed; the close button beside it is the plain library again.
 
-`MusicListener` listens and searches (core.music_search) over music_search.db: the index read on a thread when
+`MusicListener` listens and searches (analyzer.search.music) over music_search.db: the index read on a thread when
 first needed and again after Index Now or a library change, the reference lines held in memory; a search runs on a
 thread of its own (its kernels leave the interpreter lock), one at a time: one due while another runs is skipped.
 """
@@ -24,8 +24,8 @@ from core.config import save_deck
 from core.event_bus import EventBus
 from foundation.i18n import tr
 from core.library import jobs
-from core.music_search.listening import Listening
-from core.music_search.search import SearchResult, search_audio
+from analyzer.search.music.listening import Listening
+from analyzer.search.music.search import SearchResult, search_audio
 from ui.elided_label import ElidedLabel
 from ui.theme import current_theme
 
@@ -289,7 +289,7 @@ class MusicListener(QtCore.QObject):
             library = set(self._owner.snapshot.by_uid)
             if index is not None and len(index):
                 import numba
-                from core.music_search.search import SEARCH_THREADS
+                from analyzer.search.music.search import SEARCH_THREADS
                 numba.set_num_threads(SEARCH_THREADS)
                 index.search(np.full(40, 60.0), top=1)          # the kernels: from numba's cache, else compiled
             self._bridge.loaded.emit((index, con, library))
@@ -434,7 +434,7 @@ class MusicListener(QtCore.QObject):
             return
         result, heard_at = res
         result: SearchResult
-        # joined with the searches before (core.music_search.listening): a song heard on and on leads
+        # joined with the searches before (analyzer.search.music.listening): a song heard on and on leads
         joined = self._listening.update(result, heard_at)
         listening = mmss(time.monotonic() - self._t0)
         if not joined:

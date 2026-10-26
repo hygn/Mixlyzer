@@ -16,7 +16,7 @@ from analyzer.audio.spectral import stft
 # its log-frequency overlap with a range), so a change of the ranges redraws at once, without re-analysis.
 WAVE_MINMAX_COLUMNS = 32768
 # the version of the stored bands (wave_bands_np / _ref): raised whenever their making changes (what is made from
-# them carries it: the Variants' fingerprint, core.variants.fingerprint.METHOD)
+# them carries it: the Variants' fingerprint, analyzer.search.variants.METHOD)
 WAVE_BANDS_VERSION = 1
 WAVE_BAND_COLUMNS = 8192
 WAVE_BAND_COUNT = 12

@@ -32,15 +32,11 @@ def _file_stats(path: str) -> tuple[int, float]:
         return 0, 0.0
 
 
-def _index_music(stereo, harmonic, mask):
-    from core.music_search.indexing import index_audio
-    return index_audio(stereo, harmonic, mask)
-
-
 def analyze_for_library(path: str, cfg: config, force_analyze: bool = False,
                         progress: Optional[Callable[[str, str, float], None]] = None) -> Dict[str, Any]:
     """The track analyzed, as the library's owner stores it (core.library.jobs.store_analysis): its features, its
-    row's properties and ``store`` (the index rows, Search by Music's entry, the cover as the file holds it).
+    row's properties and ``store`` (the index rows, Search by Music's entry, the Variants' fingerprints, the cover as
+    the file holds it).
     ``progress(status, task, fraction)``: each stage in words (the status line's, "" for none; the task's)."""
     def report(status: str, task: str, fraction: float) -> None:
         if progress is not None:
@@ -48,11 +44,8 @@ def analyze_for_library(path: str, cfg: config, force_analyze: bool = False,
 
     title, artist, album, comment = extract_tags(path)
     sources = read_tag_sources(path, title, artist, album, comment)
-    result = analyze_track(
-        path, analysis_settings(cfg),
-        progress=lambda stage, fraction: report(*track_stage(stage), fraction),
-        index_music=_index_music if bool(getattr(cfg.searchconfig, "music_index", True)) else None,
-    )
+    result = analyze_track(path, analysis_settings(cfg),
+                           progress=lambda stage, fraction: report(*track_stage(stage), fraction))
     features = dict(result.wave_overview)
     features["duration_sec"] = result.duration_sec
     features["tempo_segments"] = result.tempo_segments
@@ -96,7 +89,7 @@ def analyze_for_library(path: str, cfg: config, force_analyze: bool = False,
     return {"features": features, "properties": properties, "update_db": True,
             "store": {"force": bool(force_analyze), "bpm_segments": bpm_segments, "key_segments": key_segments_db,
                       "phrase_sections": phrase_sections, "music_entry": result.music_index,
-                      "cover": cover_data(path)}}
+                      "variants": result.variants, "cover": cover_data(path)}}
 
 
 def _analysis_process_entry(

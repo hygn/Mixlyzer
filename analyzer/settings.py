@@ -44,3 +44,4 @@ class AnalysisSettings:
     # AutoCUE: what goes where the LEAD_IN ends (an early first downbeat, or 0:00): a CUE point, a JumpCUE, nothing
     autocue: Literal["off", "cue_point", "jumpcue"] = "off"
     cue_rules: Mapping[str, CueRule] = field(default_factory=dict)    # by phrase label (uppercase)
+    music_index: bool = False            # Search by Music's index entry made too (about 2 s of CPU a track)

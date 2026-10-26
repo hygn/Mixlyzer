@@ -1,5 +1,5 @@
-"""One song's index entry from its audio: the reference lines (core.music_search.melody) and the landmarks
-(core.music_search.landmarks). Made by the analysis (which passes its decoded stereo audio, its HPSS's harmonic part
+"""One song's index entry from its audio: the reference lines (analyzer.search.music.melody) and the landmarks
+(analyzer.search.music.landmarks). Made by the analysis (which passes its decoded stereo audio, its HPSS's harmonic part
 and mask) and by Index Now (core.workers.music_index) for tracks analyzed before."""
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from core.music_search import landmarks, melody
+from analyzer.search.music import landmarks, melody
 
 SR = melody.SR
 

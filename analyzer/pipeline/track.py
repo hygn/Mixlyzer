@@ -1,13 +1,13 @@
 """The full analysis of a track, every stage in order: the audio decoded once (stereo, its mono mix) -> HPSS -> the
 overview waveform (its own 48 kHz decode) -> the frame features and the beat tracker -> phrases and their CUE points
--> JumpCUEs -> keys -> Search by Music's index (given by the caller) -> TrackAnalysis.
+-> JumpCUEs -> keys -> Search by Music's index entry -> the Variants' fingerprints -> TrackAnalysis.
 
 It reads the audio only: where the results are stored, and in what form, is the caller's."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from typing import Any, Callable, Optional
+from typing import Any
 
 import numpy as np
 
@@ -26,15 +26,12 @@ from analyzer.phrase.cue_points import autocue_time_sec, phrase_cue_points
 from analyzer.pipeline import stages
 from analyzer.pipeline.stages import Progress, report
 from analyzer.runtime import prime_physical_core_count
+from analyzer.search import variants
+from analyzer.search.music.index import IndexEntry, index_audio
 from analyzer.settings import ANALYSIS_SAMPLE_RATE, AnalysisSettings
 
 # sklearn would otherwise launch powershell.exe to count cores in every analysis process.
 prime_physical_core_count()
-
-# Search by Music's index of the track, made by the caller from the decoded stereo, the HPSS's harmonic part and
-# its harmonic mask (None: no index)
-IndexMusic = Callable[[np.ndarray, np.ndarray, Optional[np.ndarray]], Any]
-
 
 @dataclass(frozen=True)
 class TrackAnalysis:
@@ -49,11 +46,11 @@ class TrackAnalysis:
     jump_pairs: list[dict]                 # the JumpCUE pairs (AutoCUE's last, with AutoCUE on JumpCUEs)
     key_segments: np.ndarray               # [n, 4] (pitch class, mode, start, end)
     main_key: int | None                   # the key of the most beats (pitch class + 12 * minor)
-    music_index: Any                       # what index_music made (None: not asked, or it failed)
+    music_index: IndexEntry | None         # Search by Music's entry (None: not asked, or it failed)
+    variants: list[Any] | None             # the Variants' fingerprints (search.variants.track_fingerprints; None: failed)
 
 
-def analyze_track(path: str, settings: AnalysisSettings, progress: Progress = None,
-                  index_music: IndexMusic | None = None) -> TrackAnalysis:
+def analyze_track(path: str, settings: AnalysisSettings, progress: Progress = None) -> TrackAnalysis:
     models = settings.models
     report(progress, stages.LOAD, 0.0)
     print("[Analyzer] Analysis Initalized")
@@ -220,7 +217,7 @@ def analyze_track(path: str, settings: AnalysisSettings, progress: Progress = No
         jump_pairs = [*jump_pairs, autocue_jump_pair(autocue_target)]
     # the search by music's index takes the harmonic mask (its own STFT frames are these): no second HPSS
     music_mask = None
-    if index_music is not None and hpss_spectra is not None:
+    if settings.music_index and hpss_spectra is not None:
         music_mask = (hpss_spectra.harmonic / np.maximum(hpss_spectra.magnitude, 1e-12)).astype(np.float32)
     hpss_spectra = None
 
@@ -250,14 +247,22 @@ def analyze_track(path: str, settings: AnalysisSettings, progress: Progress = No
     # Search by Music's index: from the decoded stereo and the HPSS's harmonic part, mask and melody contours already
     # made. A failure leaves the track unindexed, never the analysis undone.
     music_entry = None
-    if index_music is not None:
+    if settings.music_index:
         report(progress, stages.MUSIC_INDEX, 0.78)
         try:
-            music_entry = index_music(samp_stereo, y_harm, music_mask)
+            music_entry = index_audio(samp_stereo, y_harm, music_mask)
         except Exception as exc:
             print(f"[Music search] indexing skipped: {exc}")
         music_mask = None
     melody_contour.forget_contours()      # the frame features' contours, kept for the index
+
+    # the Variants' fingerprints (from the beats and the overview's bands, ~20 ms); a failure leaves the track out of
+    # the Variants, never the analysis undone
+    try:
+        fingerprints = variants.track_fingerprints({**wave, "beats_time_sec": beats_out, "duration_sec": duration_sec})
+    except Exception as exc:
+        print(f"[Variants] not fingerprinted: {exc}")
+        fingerprints = None
 
     values, counts = np.unique(key, return_counts=True)
     print("[Analyzer] Analysis Finished")
@@ -274,4 +279,5 @@ def analyze_track(path: str, settings: AnalysisSettings, progress: Progress = No
         key_segments=key_segments,
         main_key=int(values[np.argmax(counts)]) if values.size else None,
         music_index=music_entry,
+        variants=fingerprints,
     )

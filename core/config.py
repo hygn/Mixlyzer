@@ -262,7 +262,7 @@ class searchconfig:
     query_hangul_foreign: bool   # ... as Korean spells a foreign word (도쿄 tokyo: Japanese / English titles)
     # a query typed on the 2-set keyboard without the 한/영 key also read as what was meant (tkghl 사회, 무ㅐㅜㄷ anone)
     query_keyboard_layout: bool
-    # Search by Music (core.music_search): the analysis indexes each track it analyzes (about 6 s more a track);
+    # Search by Music (analyzer.search.music): the analysis indexes each track it analyzes (about 6 s more a track);
     # listening, the last music_listen_window seconds are searched every music_listen_interval seconds
     music_index: bool
     music_listen_window: float

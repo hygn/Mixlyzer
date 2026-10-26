@@ -214,7 +214,7 @@ def _contours_python(salience: np.ndarray, frame_sec: float) -> list[tuple[list[
 
 # The last harmonic part's contours (before the voicing filter), its frames and the candidates' frequencies: the
 # search by music's index reads the contours of the same harmonic part later in the same analysis
-# (core.music_search.melody), and takes them from here instead of finding them again. The part itself is kept with
+# (analyzer.search.music.melody), and takes them from here instead of finding them again. The part itself is kept with
 # them (its memory can then not be another part's).
 _kept: tuple | None = None
 

@@ -1,6 +1,6 @@
 """The search by music: one entry for any query, no mode to pick.
 
-- the voice's pitch first (a hum, singing, a whistle told from them: core.music_search.query; ~0.1 s), which also
+- the voice's pitch first (a hum, singing, a whistle told from them: analyzer.search.music.query; ~0.1 s), which also
   tells a single voice or instrument (VOICE_LIKE of its frames with a clear period) from a mix;
 - the landmarks (tens of ms): a recording of the song itself (a phone, a speaker, a room's microphone); a song with
   MIN_VOTES of them at one offset is it (a single voice: at the index's density, VOICE_MIN_VOTES), and nothing else
@@ -18,17 +18,13 @@ from __future__ import annotations
 import os
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
-
 import numba
 import numpy as np
 
-from core.music_search import landmarks, melody, query
-from core.music_search.matcher import MelodyIndex
-from core.music_search.melody import SR
-
-if TYPE_CHECKING:
-    from core.library.music_index import LandmarkIndex
+from analyzer.search.music import landmarks, melody, query
+from analyzer.search.music.landmarks import LandmarkIndex
+from analyzer.search.music.matcher import MelodyIndex
+from analyzer.search.music.melody import SR
 
 QUERY_PEAKS_PER_SEC = 30   # the query's landmarks, three times the index's: a crowd's calls and screams take a
 QUERY_FAN_OUT = 12         # second's strongest peaks, so a query keeping more (paired with more, the index's pairs
@@ -98,10 +94,10 @@ def _music(index, y, top):
             if m.cost <= MUSIC_MAX_COST]
 
 
-def search_audio(y: np.ndarray, sr: int, index: MelodyIndex | None, landmark_index: "LandmarkIndex | None",
+def search_audio(y: np.ndarray, sr: int, index: MelodyIndex | None, landmark_index: LandmarkIndex | None,
                  top: int = 10) -> SearchResult:
     """The best songs for a query (mono float at ``sr``) over ``index`` (the reference lines) and ``landmark_index`` (the
-    landmarks: core.library.music_index.LandmarkIndex, lent by the library's owner)."""
+    landmarks: the app's store lends them)."""
     y = np.asarray(y, dtype=np.float32)
     if sr != SR:
         import soxr

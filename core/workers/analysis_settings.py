@@ -53,4 +53,5 @@ def analysis_settings(cfg: config) -> AnalysisSettings:
         key_dynamic=bool(a.key_dynamic),
         autocue=a.autocue,
         cue_rules=cue_rules(cfg),
+        music_index=bool(cfg.searchconfig.music_index),
     )
