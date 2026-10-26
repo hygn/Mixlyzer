@@ -140,6 +140,12 @@ class _DropZone(QtWidgets.QWidget):
         p.drawText(self.rect(), QtCore.Qt.AlignCenter, tr("Load to Deck"))
 
 
+def _match_track_info_height(widget: QtWidgets.QWidget) -> None:
+    """A deck column as tall as the track info beside it."""
+    widget.setMinimumHeight(TrackInfoPanel.HEADER_H)
+    widget.setMaximumHeight(TrackInfoPanel.HEADER_H)
+
+
 class MainPane(QtWidgets.QWidget):
     """Main pane containing header controls, overview, and library. Files dragged over the deck (the area above
     the library) show where they would load (drop_zone_at / show_drop_zone); the window loads them dropped there,
@@ -267,11 +273,18 @@ class MainPane(QtWidgets.QWidget):
         # more edit pages side by side when the header has room for them
         self.track_info.installEventFilter(self)
 
-        def _match_track_info_height(widget: QtWidgets.QWidget) -> None:
-            widget.setMinimumHeight(TrackInfoPanel.HEADER_H)
-            widget.setMaximumHeight(TrackInfoPanel.HEADER_H)
+        volume_box = self._build_volume_column()
+        tempo_box = self._build_tempo_column()
+        top_row.addWidget(volume_box, 0, QtCore.Qt.AlignVCenter)
+        top_row.addWidget(tempo_box, 0, QtCore.Qt.AlignVCenter)
 
-        # Volume column
+        self._build_transport_buttons()
+
+        header_v.addWidget(self.ov, 0, QtCore.Qt.AlignTop)
+        self._fit_header_height()
+
+    def _build_volume_column(self) -> QtWidgets.QWidget:
+        """The Volume column: its head, the fader (a request: it shows the volume the player reports), the reading."""
         volume_box = QtWidgets.QWidget()
         volume_v = QtWidgets.QVBoxLayout(volume_box)
         volume_v.setContentsMargins(0, 0, 0, 0)
@@ -314,8 +327,10 @@ class MainPane(QtWidgets.QWidget):
 
         # a request: the fader shows the volume the player then reports
         self.vol_slider.valueChanged.connect(lambda value: self.bus.sig_volume_requested.emit(value / 100.0))
+        return volume_box
 
-        # Tempo column
+    def _build_tempo_column(self) -> QtWidgets.QWidget:
+        """The Tempo column: the range button as its head, the fader (a request: it shows the tempo the player reports), the reading."""
         tempo_box = QtWidgets.QWidget()
         tempo_v = QtWidgets.QVBoxLayout(tempo_box)
         tempo_v.setContentsMargins(0, 0, 0, 0)
@@ -360,15 +375,13 @@ class MainPane(QtWidgets.QWidget):
         tempo_v.addWidget(self.v_tempo, 0, QtCore.Qt.AlignHCenter)
 
         _match_track_info_height(tempo_box)
-        top_row.addWidget(volume_box, 0, QtCore.Qt.AlignVCenter)
-        top_row.addWidget(tempo_box, 0, QtCore.Qt.AlignVCenter)
-
         # a request: the fader shows the tempo the player then reports
         self.tempo_slider.valueChanged.connect(
             lambda value: self.bus.sig_tempo_requested.emit(1.0 + value * TEMPO_STEP[self._tempo_range] / 100.0))
+        return tempo_box
 
-        # Deck buttons, after a DJ deck: square MT (time stretch) / RST (tempo
-        # reset) in a row above the record, round stop / play left of it.
+    def _build_transport_buttons(self) -> None:
+        """The deck's buttons, after a DJ deck: square MT (time stretch) / RST (tempo reset) in a row above the record, round stop / CUE / play left of it; wired."""
         ROUND_D = int(TrackInfoPanel.HEADER_H / 3.5)
         SQUARE_H = int(TrackInfoPanel.HEADER_H / 6)
         COLUMN_W = int(ROUND_D * 1.15)
@@ -432,8 +445,6 @@ class MainPane(QtWidgets.QWidget):
         for btn in (self.btn_stop, self.btn_cue, self.btn_play):
             self.track_info.transport_slot.addWidget(btn, 0, QtCore.Qt.AlignHCenter)
 
-        header_v.addWidget(self.ov, 0, QtCore.Qt.AlignTop)
-
         # Wire transport buttons
         self.btn_tempo_reset.clicked.connect(self._on_click_tempo_reset)
         self.btn_mt.toggled.connect(self.bus.sig_timestretch_toggle_requested.emit)
@@ -441,7 +452,7 @@ class MainPane(QtWidgets.QWidget):
         self.btn_play.clicked.connect(self._on_click_play)
         self.btn_cue.pressed.connect(lambda: self._cue(True))
         self.btn_cue.released.connect(lambda: self._cue(False))
-        self._fit_header_height()
+
 
     # View management
     def install_default(self) -> None:
