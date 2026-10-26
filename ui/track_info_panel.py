@@ -443,6 +443,40 @@ class TrackInfoPanel(QtWidgets.QWidget):
         layout.setSpacing(12)
         layout.setAlignment(QtCore.Qt.AlignVCenter)
 
+        self._build_cover(layout)
+        layout.addWidget(self._build_info_area(), 1, QtCore.Qt.AlignVCenter)
+
+        # the edit panel (filled in by the main pane) between the track info and
+        # the deck, set off by thin rules
+        self.editor_slot = QtWidgets.QHBoxLayout()
+        self.editor_slot.setContentsMargins(0, 0, 0, 0)
+        # gaps either side of each rule grow with the window, evenly and only up
+        # to GAP_MAX; the info area takes the rest
+        for item in (_gap(), _vrule(), _gap(), self.editor_slot, _gap(), _vrule(), _gap()):
+            if isinstance(item, QtWidgets.QLayout):
+                layout.addLayout(item)
+            elif isinstance(item, QtWidgets.QFrame):
+                layout.addWidget(item, 0, QtCore.Qt.AlignVCenter)
+            else:
+                layout.addWidget(item, 1)
+
+        # round stop / play in a column left of the record, filled in by the
+        # main pane
+        self.transport_slot = QtWidgets.QVBoxLayout()
+        self.transport_slot.setContentsMargins(0, 0, 0, 0)
+        self.transport_slot.setSpacing(4)
+        self.transport_slot.setAlignment(QtCore.Qt.AlignBottom)
+        layout.addLayout(self.transport_slot)
+
+        layout.addLayout(self._build_record_column())
+
+        self.peak_meter = VerticalPeakMeter()
+        layout.addWidget(self.peak_meter, 0, QtCore.Qt.AlignVCenter)
+
+        layout.addLayout(self._build_knob_column())
+
+    def _build_cover(self, layout: QtWidgets.QHBoxLayout) -> None:
+        """The album art, and over its middle the eject button shown while hovered (unload)."""
         self.cover_label = QtWidgets.QLabel()
         self.cover_label.setFixedSize(self.HEADER_H, self.HEADER_H)
         self.cover_label.setAlignment(QtCore.Qt.AlignCenter)
@@ -454,6 +488,8 @@ class TrackInfoPanel(QtWidgets.QWidget):
         self.unload_button.move((self.HEADER_H - _UnloadButton.SIZE) // 2, (self.HEADER_H - _UnloadButton.SIZE) // 2)
         self.unload_button.setVisible(False)
 
+    def _build_info_area(self) -> QtWidgets.QWidget:
+        """The track's info: title and artist (scrolling), the BPM / KEY rows and the time row with the current phrase, every value in a cell of fixed width."""
         center = QtWidgets.QWidget()
         center.setMinimumHeight(self.HEADER_H)
         center.setMaximumHeight(self.HEADER_H)
@@ -568,32 +604,10 @@ class TrackInfoPanel(QtWidgets.QWidget):
         center.setMinimumWidth(self._info_width)
         self.info_area = center  # the main pane fits the edit panel's columns to its spare width
         center.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
-        layout.addWidget(center, 1, QtCore.Qt.AlignVCenter)
+        return center
 
-        # the edit panel (filled in by the main pane) between the track info and
-        # the deck, set off by thin rules
-        self.editor_slot = QtWidgets.QHBoxLayout()
-        self.editor_slot.setContentsMargins(0, 0, 0, 0)
-        # gaps either side of each rule grow with the window, evenly and only up
-        # to GAP_MAX; the info area takes the rest
-        for item in (_gap(), _vrule(), _gap(), self.editor_slot, _gap(), _vrule(), _gap()):
-            if isinstance(item, QtWidgets.QLayout):
-                layout.addLayout(item)
-            elif isinstance(item, QtWidgets.QFrame):
-                layout.addWidget(item, 0, QtCore.Qt.AlignVCenter)
-            else:
-                layout.addWidget(item, 1)
-
-        # round stop / play in a column left of the record, filled in by the
-        # main pane
-        self.transport_slot = QtWidgets.QVBoxLayout()
-        self.transport_slot.setContentsMargins(0, 0, 0, 0)
-        self.transport_slot.setSpacing(4)
-        self.transport_slot.setAlignment(QtCore.Qt.AlignBottom)
-        layout.addLayout(self.transport_slot)
-
-        # record with a row of deck buttons (MT / RST, filled in by the main
-        # pane) above it
+    def _build_record_column(self) -> QtWidgets.QVBoxLayout:
+        """The record with a row of deck buttons (MT / RST, filled in by the main pane) above it and the beat dots under it."""
         record_col = QtWidgets.QVBoxLayout()
         record_col.setContentsMargins(0, 0, 0, 0)
         record_col.setSpacing(4)
@@ -608,12 +622,10 @@ class TrackInfoPanel(QtWidgets.QWidget):
         record_col.addWidget(self.record_label, 0, QtCore.Qt.AlignHCenter)
         self.beat_dots = BeatDots()
         record_col.addWidget(self.beat_dots, 0, QtCore.Qt.AlignHCenter)
-        layout.addLayout(record_col)
+        return record_col
 
-        self.peak_meter = VerticalPeakMeter()
-        layout.addWidget(self.peak_meter, 0, QtCore.Qt.AlignVCenter)
-
-        # its channel's knobs right of the meter (the player reports them: set_knobs)
+    def _build_knob_column(self) -> QtWidgets.QVBoxLayout:
+        """Its channel's knobs right of the meter (TRIM, HI, MID, LOW: requests; the player reports them, set_knobs)."""
         knob_col = QtWidgets.QVBoxLayout()
         knob_col.setContentsMargins(0, 0, 0, 0)
         knob_col.setSpacing(0)
@@ -626,7 +638,8 @@ class TrackInfoPanel(QtWidgets.QWidget):
             knob_col.addWidget(knob, 0, QtCore.Qt.AlignHCenter)
             knob_col.addWidget(_knob_label(text))
         self.set_eq_available(True)
-        layout.addLayout(knob_col)
+        return knob_col
+
 
     # External
     def set_title(self, text: str):
