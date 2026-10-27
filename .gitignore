@@ -55,7 +55,10 @@ deck.json
 assets/shortcuts/shortcuts.json
 assets/midi/midi.json
 *.xml
-tests/
+# tests (tests/README.md): the native mixer's checks on the user's tracks and of the engine's features not shown to
+# the user stay local; the ground truth's audio places are the runner's own
+tests/native_mixer/
+tests/ground_truth/audio.json
 madb_works/
 
 # dataset file (will be splitted into separate repo.)
