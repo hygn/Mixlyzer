@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-28 01:56+0900\n"
+"POT-Creation-Date: 2026-10-28 02:24+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -394,11 +394,11 @@ msgstr ""
 msgid "feature cache is not current"
 msgstr ""
 
-#: app/main.py:54
+#: app/main.py:56
 msgid "Unsupported Operating System"
 msgstr ""
 
-#: app/main.py:55
+#: app/main.py:57
 #, python-brace-format
 msgid ""
 "Mixlyzer supports Windows, Linux and macOS; this system ({system}) is not"
@@ -406,21 +406,21 @@ msgid ""
 "It may not work correctly."
 msgstr ""
 
-#: app/main.py:61
+#: app/main.py:63
 msgid "Administrator Execution Blocked"
 msgstr ""
 
-#: app/main.py:62
+#: app/main.py:64
 msgid ""
 "Mixlyzer cannot run with administrator privileges.\n"
 "Close it and launch again as a normal user."
 msgstr ""
 
-#: app/main.py:73
+#: app/main.py:75
 msgid "Settings Reset"
 msgstr ""
 
-#: app/main.py:74
+#: app/main.py:76
 #, python-brace-format
 msgid ""
 "{name} could not be read, so its settings are back to their defaults.\n"
@@ -431,11 +431,11 @@ msgid ""
 "while Mixlyzer is closed."
 msgstr ""
 
-#: app/main.py:89
+#: app/main.py:91
 msgid "Incompatible Library Version"
 msgstr ""
 
-#: app/main.py:90
+#: app/main.py:92
 #, python-brace-format
 msgid ""
 "This library cannot be opened by the current app version.\n"
@@ -445,68 +445,68 @@ msgid ""
 "Automatic library migration is not available."
 msgstr ""
 
-#: app/startup.py:87
+#: app/startup.py:86
 msgid "Starting"
 msgstr ""
 
-#: app/startup.py:97
+#: app/startup.py:96
 msgid "Overall"
 msgstr ""
 
-#: app/startup.py:247
+#: app/startup.py:246
 msgid "Scratch reader"
 msgstr ""
 
-#: app/startup.py:247
+#: app/startup.py:246
 msgid "Cursor poller"
 msgstr ""
 
-#: app/startup.py:248
+#: app/startup.py:247
 msgid "Time stretch"
 msgstr ""
 
-#: app/startup.py:258
+#: app/startup.py:257
 msgid "ffmpeg: a short silent decode"
 msgstr ""
 
-#: app/startup.py:269
+#: app/startup.py:268
 msgid "Language names for the tie-ups' language pickers"
 msgstr ""
 
-#: app/startup.py:281
+#: app/startup.py:280
 msgid "library.db: readings"
 msgstr ""
 
-#: app/startup.py:291
+#: app/startup.py:290
 #, python-brace-format
 msgid "Search keys: {tracks} tracks, {done} / {total} readings"
 msgstr ""
 
-#: app/startup.py:312
+#: app/startup.py:311
 msgid "Loading libraries"
 msgstr ""
 
-#: app/startup.py:313
+#: app/startup.py:312
 msgid "Compiling audio kernels (JIT)"
 msgstr ""
 
-#: app/startup.py:314
+#: app/startup.py:313
 msgid "Starting FFmpeg"
 msgstr ""
 
-#: app/startup.py:315
+#: app/startup.py:314
 msgid "Loading search readers"
 msgstr ""
 
-#: app/startup.py:316
+#: app/startup.py:315
 msgid "Measuring language names"
 msgstr ""
 
-#: app/startup.py:317
+#: app/startup.py:316
 msgid "Loading the library"
 msgstr ""
 
-#: app/startup.py:318
+#: app/startup.py:317
 msgid "Building the window"
 msgstr ""
 
@@ -514,83 +514,83 @@ msgstr ""
 msgid "Core objects and playback"
 msgstr ""
 
-#: app/window.py:99
+#: app/window.py:98
 msgid "Main view, editor and library"
 msgstr ""
 
-#: app/window.py:105 app/window.py:249 ui/config/window.py:66
+#: app/window.py:104 app/window.py:248 ui/config/window.py:66
 msgid "Settings"
 msgstr ""
 
-#: app/window.py:107
+#: app/window.py:106
 msgid "Dialogs, workflows and metronome"
 msgstr ""
 
-#: app/window.py:250 ui/windows/workers.py:28
+#: app/window.py:249 ui/windows/workers.py:28
 msgid "Workers"
 msgstr ""
 
-#: app/window.py:251 ui/shortcuts.py:147 ui/windows/tieup_works.py:33
+#: app/window.py:250 ui/shortcuts.py:147 ui/windows/tieup_works.py:33
 #: ui/windows/tieup_works.py:204 ui/windows/tieup_works.py:259
 #: ui/windows/tieup_works.py:264 ui/windows/tieup_works.py:273
 #: ui/windows/tieup_works.py:336
 msgid "Tie-up Works"
 msgstr ""
 
-#: app/window.py:252
+#: app/window.py:251
 msgid "Open Source"
 msgstr ""
 
-#: app/window.py:253
+#: app/window.py:252
 msgid "About"
 msgstr ""
 
-#: app/window.py:270 core/controls/midi.py:55 ui/config/playback.py:329
+#: app/window.py:269 core/controls/midi.py:55 ui/config/playback.py:329
 msgid "Mixer"
 msgstr ""
 
-#: app/window.py:446
+#: app/window.py:445
 msgid "MIDI needs the native audio engine (Settings > Audio > Engine)."
 msgstr ""
 
-#: app/window.py:453
+#: app/window.py:452
 msgid "MIDI input on."
 msgstr ""
 
-#: app/window.py:453
+#: app/window.py:452
 msgid "MIDI input off."
 msgstr ""
 
-#: app/window.py:505
+#: app/window.py:504
 msgid "The Python audio engine plays: there is no native engine to restart."
 msgstr ""
 
-#: app/window.py:507
+#: app/window.py:506
 msgid "Restarting the audio engine..."
 msgstr ""
 
-#: app/window.py:511
+#: app/window.py:510
 msgid "Audio engine restarted."
 msgstr ""
 
-#: app/window.py:512
+#: app/window.py:511
 msgid "The audio engine did not start; it is tried again every 2 seconds."
 msgstr ""
 
-#: app/window.py:562 app/window.py:627
+#: app/window.py:561 app/window.py:626
 msgid "External Sync is enabled. Local track loading is disabled."
 msgstr ""
 
-#: app/window.py:575 app/window.py:630
+#: app/window.py:574 app/window.py:629
 msgid "Segment reanalysis canceled (track changed)"
 msgstr ""
 
-#: app/window.py:611
+#: app/window.py:610
 #, python-brace-format
 msgid "The track's analysis could not be read: {file}"
 msgstr ""
 
-#: app/window.py:615
+#: app/window.py:614
 #, python-brace-format
 msgid ""
 "{n} JumpCUE past slot Z is not shown ({file}); it stays stored until the "
@@ -601,15 +601,15 @@ msgid_plural ""
 msgstr[0] ""
 msgstr[1] ""
 
-#: app/window.py:633
+#: app/window.py:632
 msgid "Track unloaded."
 msgstr ""
 
-#: app/window.py:643
+#: app/window.py:642
 msgid "Track File Not Found"
 msgstr ""
 
-#: app/window.py:647
+#: app/window.py:646
 #, python-brace-format
 msgid ""
 "Cannot load \"{name}\": its file is missing.\n"
@@ -618,67 +618,67 @@ msgid ""
 "Set the file's new location?"
 msgstr ""
 
-#: app/window.py:654
+#: app/window.py:653
 #, python-brace-format
 msgid "Locate {name}"
 msgstr ""
 
-#: app/window.py:678 app/window.py:694
+#: app/window.py:677 app/window.py:693
 msgid "Analysis saved to library."
 msgstr ""
 
-#: app/window.py:683
+#: app/window.py:682
 msgid "Finished"
 msgstr ""
 
-#: app/window.py:706
+#: app/window.py:705
 msgid "Waiting to be looked up on Wikipedia"
 msgstr ""
 
-#: app/window.py:712
+#: app/window.py:711
 msgid "Looking up on Wikipedia and Wikidata…"
 msgstr ""
 
-#: app/window.py:717
+#: app/window.py:716
 msgid "The lookup failed."
 msgstr ""
 
-#: app/window.py:753
+#: app/window.py:752
 #, python-brace-format
 msgid "External Sync loading: {file}"
 msgstr ""
 
-#: app/window.py:753
+#: app/window.py:752
 #, python-brace-format
 msgid "External Sync analyzing: {file}"
 msgstr ""
 
-#: app/window.py:767
+#: app/window.py:766
 msgid "External Sync Disabled"
 msgstr ""
 
-#: app/window.py:777 ui/windows/library_backup.py:53
+#: app/window.py:776 ui/windows/library_backup.py:53
 msgid "Back Up Library"
 msgstr ""
 
-#: app/window.py:778 app/window.py:794
+#: app/window.py:777 app/window.py:793
 #, python-brace-format
 msgid "Mixlyzer library backup (*{suffix})"
 msgstr ""
 
-#: app/window.py:788
+#: app/window.py:787
 msgid ""
 "The editor has edits not saved. Save or undo them first: Mixlyzer "
 "restarts after a restore."
 msgstr ""
 
-#: app/window.py:790 app/window.py:793 app/window.py:800 app/window.py:807
-#: app/window.py:850 ui/windows/library_backup.py:133
+#: app/window.py:789 app/window.py:792 app/window.py:799 app/window.py:806
+#: app/window.py:849 ui/windows/library_backup.py:133
 #: ui/windows/library_backup.py:295
 msgid "Restore Library"
 msgstr ""
 
-#: app/window.py:831
+#: app/window.py:830
 #, python-brace-format
 msgid ""
 "Restored {n} track into:\n"
@@ -689,36 +689,36 @@ msgid_plural ""
 msgstr[0] ""
 msgstr[1] ""
 
-#: app/window.py:834
+#: app/window.py:833
 #, python-brace-format
 msgid "{n} track's file path was joined to this device's folders."
 msgid_plural "{n} tracks' file paths were joined to this device's folders."
 msgstr[0] ""
 msgstr[1] ""
 
-#: app/window.py:838
+#: app/window.py:837
 #, python-brace-format
 msgid "{n} path was left as it was: another track already had the new one."
 msgid_plural "{n} paths were left as they were: other tracks already had the new ones."
 msgstr[0] ""
 msgstr[1] ""
 
-#: app/window.py:842
+#: app/window.py:841
 #, python-brace-format
 msgid "{n} track had no stored analysis in the backup."
 msgid_plural "{n} tracks had no stored analysis in the backup."
 msgstr[0] ""
 msgstr[1] ""
 
-#: app/window.py:846
+#: app/window.py:845
 msgid "Files replaced by the backup's were kept beside them:"
 msgstr ""
 
-#: app/window.py:848
+#: app/window.py:847
 msgid "Mixlyzer now restarts to open the restored library."
 msgstr ""
 
-#: app/window.py:1123
+#: app/window.py:1122
 #, python-brace-format
 msgid "External Sync enabled: OSC on {address}. Local play/load is locked."
 msgstr ""
@@ -1392,7 +1392,7 @@ msgid "Processing Waveform"
 msgstr ""
 
 #: core/workers/analysis_texts.py:15 ui/config/pipeline_map.py:32
-#: ui/config/view.py:137 ui/config/view.py:176
+#: ui/config/view.py:149 ui/config/view.py:189
 msgid "Waveform"
 msgstr ""
 
@@ -1833,7 +1833,7 @@ msgid "Folder for features cached while reoptimizing, so later runs are faster."
 msgstr ""
 
 #: ui/config/analysis.py:47 ui/config/analysis.py:163 ui/config/library.py:160
-#: ui/config/view.py:174
+#: ui/config/view.py:187
 msgid "General"
 msgstr ""
 
@@ -1921,7 +1921,7 @@ msgstr ""
 #: ui/config/analysis.py:139 ui/config/analysis.py:177
 #: ui/config/analysis.py:200 ui/config/dialogs/optimization.py:204
 #: ui/config/library.py:153 ui/config/library.py:163 ui/config/playback.py:107
-#: ui/config/view.py:169
+#: ui/config/view.py:182
 msgid "Advanced"
 msgstr ""
 
@@ -3740,7 +3740,7 @@ msgstr ""
 msgid "Its device's stream is shared with another output, at that output's rate."
 msgstr ""
 
-#: ui/config/pipeline_map.py:22 ui/config/view.py:180
+#: ui/config/pipeline_map.py:22 ui/config/view.py:193
 msgid "View"
 msgstr ""
 
@@ -4386,42 +4386,42 @@ msgid ""
 "Use it anyway?"
 msgstr ""
 
-#: ui/config/view.py:42
+#: ui/config/view.py:45
 #, python-brace-format
 msgid "System ({language})"
 msgstr ""
 
-#: ui/config/view.py:45
+#: ui/config/view.py:48
 msgid "The language of the app's texts. Applied at the next start."
 msgstr ""
 
-#: ui/config/view.py:47
+#: ui/config/view.py:50
 msgid "Display waveform"
 msgstr ""
 
-#: ui/config/view.py:48
+#: ui/config/view.py:51
 msgid "Display beatgrid"
 msgstr ""
 
-#: ui/config/view.py:49
+#: ui/config/view.py:52
 msgid "Display keystrip"
 msgstr ""
 
-#: ui/config/view.py:50
+#: ui/config/view.py:53
 msgid "Display JumpCUE"
 msgstr ""
 
-#: ui/config/view.py:51
+#: ui/config/view.py:54
 msgid "Display phrase overlay"
 msgstr ""
 
-#: ui/config/view.py:56
+#: ui/config/view.py:69
 msgid ""
 "RGB: the waveform colored by its low / mid / high mix.\n"
 "3Band: the low (blue), mid (amber) and high (white) bands drawn as layers."
 msgstr ""
 
-#: ui/config/view.py:64
+#: ui/config/view.py:77
 #, python-brace-format
 msgid ""
 "Time resolution of the main view waveform bars when the view is up to "
@@ -4429,7 +4429,7 @@ msgid ""
 "Smaller is more detailed."
 msgstr ""
 
-#: ui/config/view.py:67
+#: ui/config/view.py:80
 #, python-brace-format
 msgid ""
 "Time resolution of the main view waveform bars when the view is wider "
@@ -4437,208 +4437,208 @@ msgid ""
 "Smaller is more detailed."
 msgstr ""
 
-#: ui/config/view.py:75
+#: ui/config/view.py:88
 msgid ""
 "Order of the main view waveform's band filters. Higher separates the "
 "bands more sharply."
 msgstr ""
 
-#: ui/config/view.py:78
+#: ui/config/view.py:91
 msgid "Use output volume as peak meter input"
 msgstr ""
 
-#: ui/config/view.py:80
+#: ui/config/view.py:93
 msgid "Reduce FPS when occluded"
 msgstr ""
 
-#: ui/config/view.py:86
+#: ui/config/view.py:99
 msgid "Waiting for FPS..."
 msgstr ""
 
-#: ui/config/view.py:88
+#: ui/config/view.py:101
 msgid "Measured from actual pyqtgraph plot repaint intervals."
 msgstr ""
 
-#: ui/config/view.py:90
+#: ui/config/view.py:103
 msgid "Show the detailed waveform view."
 msgstr ""
 
-#: ui/config/view.py:91
+#: ui/config/view.py:104
 msgid "Show the beat grid view."
 msgstr ""
 
-#: ui/config/view.py:92
+#: ui/config/view.py:105
 msgid "Show the key strip (detected key over time)."
 msgstr ""
 
-#: ui/config/view.py:93
+#: ui/config/view.py:106
 msgid "Show the JumpCUE view (detected repeat jump points)."
 msgstr ""
 
-#: ui/config/view.py:94
+#: ui/config/view.py:107
 msgid "Overlay the detected phrases on the views."
 msgstr ""
 
-#: ui/config/view.py:96
+#: ui/config/view.py:109
 msgid ""
 "Checked: the peak meter follows the volume slider (what you hear).\n"
 "Unchecked: the peak meter shows the level after Trim only."
 msgstr ""
 
-#: ui/config/view.py:100
+#: ui/config/view.py:113
 msgid ""
 "Lower the redraw rate while the window is hidden behind other windows\n"
 "or minimized, to save CPU."
 msgstr ""
 
-#: ui/config/view.py:103
+#: ui/config/view.py:116
 msgid "Target redraw rate of the views."
 msgstr ""
 
-#: ui/config/view.py:105
+#: ui/config/view.py:118
 msgid "Image drawn as the spinning record when a track has no album art."
 msgstr ""
 
-#: ui/config/view.py:108 ui/config/view.py:110
+#: ui/config/view.py:121 ui/config/view.py:123
 #: ui/library/tabs/tieup_editor.py:140 ui/library/tabs/tieup_editor.py:143
 #: ui/windows/tieup_works.py:77 ui/windows/tieup_works.py:80
 msgid "Language"
 msgstr ""
 
-#: ui/config/view.py:112 ui/config/view.py:175
+#: ui/config/view.py:125 ui/config/view.py:188
 msgid "Display"
 msgstr ""
 
-#: ui/config/view.py:119
-msgid "Waveform style"
-msgstr ""
-
-#: ui/config/view.py:131
+#: ui/config/view.py:143
 msgid "lo"
 msgstr ""
 
-#: ui/config/view.py:132
+#: ui/config/view.py:144
 msgid "hi"
 msgstr ""
 
-#: ui/config/view.py:139
+#: ui/config/view.py:151
 msgid "Low / mid / high bands of the waveforms' colors."
 msgstr ""
 
-#: ui/config/view.py:143
+#: ui/config/view.py:154
+msgid "Waveform style"
+msgstr ""
+
+#: ui/config/view.py:156
 msgid ""
 "<p>The master output's spectrum as it plays. Drag a band's edges to set "
 "it.</p>"
 msgstr ""
 
-#: ui/config/view.py:146
+#: ui/config/view.py:159
 msgid "Frame, short view (ms)"
 msgstr ""
 
-#: ui/config/view.py:147
+#: ui/config/view.py:160
 msgid "Frame, long view (ms)"
 msgstr ""
 
-#: ui/config/view.py:148
+#: ui/config/view.py:161
 msgid "Filter order"
 msgstr ""
 
-#: ui/config/view.py:150
+#: ui/config/view.py:163
 msgid ""
 "<p>The loaded track at the playhead, drawn with these settings. What is "
 "already drawn keeps the settings it was drawn with.</p>"
 msgstr ""
 
-#: ui/config/view.py:154
+#: ui/config/view.py:167
 msgid "Low"
 msgstr ""
 
-#: ui/config/view.py:154
+#: ui/config/view.py:167
 msgid "Frequency range (Hz) drawn as the low band of the waveform."
 msgstr ""
 
-#: ui/config/view.py:155
+#: ui/config/view.py:168
 msgid "Lower edge of the low band (Hz)."
 msgstr ""
 
-#: ui/config/view.py:155
+#: ui/config/view.py:168
 msgid "Upper edge of the low band (Hz)."
 msgstr ""
 
-#: ui/config/view.py:157
+#: ui/config/view.py:170
 msgid "Mid"
 msgstr ""
 
-#: ui/config/view.py:157
+#: ui/config/view.py:170
 msgid "Frequency range (Hz) drawn as the mid band of the waveform."
 msgstr ""
 
-#: ui/config/view.py:158
+#: ui/config/view.py:171
 msgid "Lower edge of the mid band (Hz)."
 msgstr ""
 
-#: ui/config/view.py:158
+#: ui/config/view.py:171
 msgid "Upper edge of the mid band (Hz)."
 msgstr ""
 
-#: ui/config/view.py:160
+#: ui/config/view.py:173
 msgid "High"
 msgstr ""
 
-#: ui/config/view.py:160
+#: ui/config/view.py:173
 msgid "Frequency range (Hz) drawn as the high band of the waveform."
 msgstr ""
 
-#: ui/config/view.py:161
+#: ui/config/view.py:174
 msgid "Lower edge of the high band (Hz)."
 msgstr ""
 
-#: ui/config/view.py:161
+#: ui/config/view.py:174
 msgid "Upper edge of the high band (Hz)."
 msgstr ""
 
-#: ui/config/view.py:163
+#: ui/config/view.py:176
 msgid "Performance"
 msgstr ""
 
-#: ui/config/view.py:167
+#: ui/config/view.py:180
 msgid "Actual FPS"
 msgstr ""
 
-#: ui/config/view.py:171
+#: ui/config/view.py:184
 msgid "Record image path"
 msgstr ""
 
-#: ui/config/view.py:177 ui/config/view.py:205
+#: ui/config/view.py:190 ui/config/view.py:218
 msgid "Phrase labels"
 msgstr ""
 
-#: ui/config/view.py:208 ui/library/tabs/tieup_editor.py:143
+#: ui/config/view.py:221 ui/library/tabs/tieup_editor.py:143
 #: ui/windows/tieup_works.py:80
 msgid "Alias"
 msgstr ""
 
-#: ui/config/view.py:209
+#: ui/config/view.py:222
 msgid "Overview"
 msgstr ""
 
-#: ui/config/view.py:215
+#: ui/config/view.py:228
 #, python-brace-format
 msgid "Shown in place of {label} (empty: {label})"
 msgstr ""
 
-#: ui/config/view.py:220
+#: ui/config/view.py:233
 #, python-brace-format
 msgid ""
 "{label} in the overview, numbered when it occurs more than once\n"
 "(empty: the first letter of its name)"
 msgstr ""
 
-#: ui/config/view.py:282
+#: ui/config/view.py:301
 msgid "The spectrum needs the native audio engine."
 msgstr ""
 
-#: ui/config/wave_bands.py:205
+#: ui/config/wave_bands.py:234
 msgid "Load a track to preview the waveform."
 msgstr ""
 
@@ -5558,7 +5558,7 @@ msgid "Name"
 msgstr ""
 
 #: ui/library/playlists.py:27 ui/library/playlists.py:32
-#: ui/library/sources.py:624
+#: ui/library/sources.py:662
 msgid "New Folder"
 msgstr ""
 
@@ -5570,7 +5570,7 @@ msgstr ""
 msgid "Rename Folder"
 msgstr ""
 
-#: ui/library/playlists.py:74 ui/library/sources.py:630
+#: ui/library/playlists.py:74 ui/library/sources.py:668
 msgid "Delete Playlist"
 msgstr ""
 
@@ -5581,7 +5581,7 @@ msgid ""
 "Tracks remain in the Library."
 msgstr ""
 
-#: ui/library/playlists.py:84 ui/library/sources.py:630
+#: ui/library/playlists.py:84 ui/library/sources.py:668
 msgid "Delete Folder"
 msgstr ""
 
@@ -5592,7 +5592,7 @@ msgid ""
 "Tracks remain in the Library."
 msgstr ""
 
-#: ui/library/playlists.py:114 ui/library/sources.py:302
+#: ui/library/playlists.py:114 ui/library/sources.py:320
 msgid "Playlists"
 msgstr ""
 
@@ -5709,93 +5709,124 @@ msgstr ""
 msgid "Min seg"
 msgstr ""
 
-#: ui/library/sources.py:282
-msgid "Library (All)"
-msgstr ""
-
-#: ui/library/sources.py:286 ui/library/tabs/track_search_index.py:87
-msgid "Variants"
-msgstr ""
-
-#: ui/library/sources.py:289
-msgid "<p>The library's tracks that are versions of one song. # is the song.</p>"
-msgstr ""
-
 #: ui/library/sources.py:291
-msgid "Loaded Track"
-msgstr ""
-
-#: ui/library/sources.py:293
-msgid "<p>The versions of the track loaded on the deck.</p>"
-msgstr ""
-
-#: ui/library/sources.py:297
 msgid "Mix Candidates"
 msgstr ""
 
-#: ui/library/sources.py:299
+#: ui/library/sources.py:293
 msgid ""
 "<p>Tracks to play after or before the loaded one, the best blend "
 "first.</p>"
 msgstr ""
 
-#: ui/library/sources.py:325
+#: ui/library/sources.py:296
+msgid "Related Tracks"
+msgstr ""
+
+#: ui/library/sources.py:298
+msgid "<p>The library's tracks related to the track loaded on the deck.</p>"
+msgstr ""
+
+#: ui/library/sources.py:301
+msgid "Same Artist"
+msgstr ""
+
+#: ui/library/sources.py:302
+msgid ""
+"<p>The tracks crediting an artist the loaded track credits: in the artist"
+" field (each name of \"A feat. B\", \"A &amp; B\", a character and its "
+"voice actor) or as featured in the title.</p>"
+msgstr ""
+
+#: ui/library/sources.py:304
+msgid "Same Album"
+msgstr ""
+
+#: ui/library/sources.py:304
+msgid "<p>The tracks of the loaded track's album (by its name).</p>"
+msgstr ""
+
+#: ui/library/sources.py:305
+msgid "Same Tie-up Work"
+msgstr ""
+
+#: ui/library/sources.py:305
+msgid "<p>The tracks with a tie-up to a work the loaded track's tie-ups name.</p>"
+msgstr ""
+
+#: ui/library/sources.py:307
+msgid "<p>The versions of the track loaded on the deck.</p>"
+msgstr ""
+
+#: ui/library/sources.py:307 ui/library/tabs/track_search_index.py:87
+msgid "Variants"
+msgstr ""
+
+#: ui/library/sources.py:314
+msgid "Tracks with Variants"
+msgstr ""
+
+#: ui/library/sources.py:317
+msgid "<p>The library's tracks that are versions of one song. # is the song.</p>"
+msgstr ""
+
+#: ui/library/sources.py:343
 msgid "Local Folders"
 msgstr ""
 
-#: ui/library/sources.py:564
+#: ui/library/sources.py:602
 msgid "the same mix"
 msgstr ""
 
-#: ui/library/sources.py:566
+#: ui/library/sources.py:604
 #, python-brace-format
 msgid "{relation}, a shorter edit"
 msgstr ""
 
-#: ui/library/sources.py:568
+#: ui/library/sources.py:606
 #, python-brace-format
 msgid "{relation}, a longer version"
 msgstr ""
 
-#: ui/library/sources.py:570
+#: ui/library/sources.py:608
 #, python-brace-format
 msgid "{relation}, some sections differ"
 msgstr ""
 
-#: ui/library/sources.py:573
+#: ui/library/sources.py:611
 msgid "a shorter edit"
 msgstr ""
 
-#: ui/library/sources.py:575
+#: ui/library/sources.py:613
 msgid "a longer version"
 msgstr ""
 
-#: ui/library/sources.py:577
+#: ui/library/sources.py:615
 msgid "some sections differ"
 msgstr ""
 
-#: ui/library/sources.py:594
+#: ui/library/sources.py:632
 #, python-brace-format
 msgid "{title}: {relation}"
 msgstr ""
 
-#: ui/library/sources.py:596
+#: ui/library/sources.py:634
 msgid "Variants of this track:"
 msgstr ""
 
-#: ui/library/sources.py:627
+#: ui/library/sources.py:665
 msgid "Rename"
 msgstr ""
 
-#: ui/library/sources.py:628
+#: ui/library/sources.py:666
 msgid "Move Up"
 msgstr ""
 
-#: ui/library/sources.py:629
+#: ui/library/sources.py:667
 msgid "Move Down"
 msgstr ""
 
-#: ui/library/sources.py:632
+#: ui/library/sources.py:670
 msgid "Refresh Folders"
 msgstr ""
 
@@ -6292,11 +6323,11 @@ msgstr ""
 msgid "Comment"
 msgstr ""
 
-#: ui/library/widget.py:382
+#: ui/library/widget.py:381
 msgid "Track loading is disabled while External Sync is enabled."
 msgstr ""
 
-#: ui/library/widget.py:467
+#: ui/library/widget.py:466
 msgid "The loaded track is not in the list shown."
 msgstr ""
 
@@ -6327,7 +6358,7 @@ msgstr ""
 msgid "Master tempo: time stretch keeps the pitch"
 msgstr ""
 
-#: ui/config/external_sync.py:105 ui/library/widget.py:381 ui/pane.py:528
+#: ui/config/external_sync.py:105 ui/library/widget.py:380 ui/pane.py:528
 msgid "External Sync"
 msgstr ""
 
@@ -6343,7 +6374,8 @@ msgstr ""
 msgid "Playback"
 msgstr ""
 
-#: ui/config/library.py:81 ui/config/library.py:175 ui/shortcuts.py:32
+#: ui/config/library.py:81 ui/config/library.py:175 ui/library/sources.py:287
+#: ui/shortcuts.py:32
 msgid "Library"
 msgstr ""
 
@@ -6677,7 +6709,7 @@ msgid "Show in File Manager"
 msgstr ""
 
 #: ui/library/playlists.py:18 ui/library/playlists.py:23
-#: ui/library/sources.py:623 ui/shortcuts.py:155
+#: ui/library/sources.py:661 ui/shortcuts.py:155
 msgid "New Playlist"
 msgstr ""
 

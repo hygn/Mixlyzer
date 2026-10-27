@@ -9,13 +9,13 @@ from typing import List, Optional
 
 from PySide6 import QtWidgets
 
-from analyzer.music.key_names import ALPHANUMERIC_LABELS
 from core.library import jobs
 from core.search import mixability
 from core.settings import store as settings_store
 from system.i18n import tr, tr_ctx
 from ui.library.common import Track, _mmss
 from ui.library.search import SEARCH_MIN_WIDTH, _MatchToggle, compact_spin, dim_label, separator
+from views.render.keystrip import key_segment_label
 
 MIX_SOURCE = "mix_candidates"
 MIX_SEARCH_MIN_WIDTH = 120      # the search field's least while the criteria share its row
@@ -163,7 +163,7 @@ class MixMixin:
 
 
 def _key_name(key: Optional[int]) -> str:
-    return ALPHANUMERIC_LABELS[int(key) % 24] if key is not None else "?"
+    return key_segment_label(int(key) % 24) if key is not None else "?"
 
 
 def _mix_lines(c: mixability.Candidate, previous: bool) -> list[str]:

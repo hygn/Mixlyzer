@@ -137,20 +137,23 @@ class TrackTieups:
     shown: str                   # the library's column: "Title OP; Other ED"
     text: str                    # every name and role, for the plain text search
     readings: tuple[str, ...]    # the works' readings, for the search by sound
+    works: tuple[str, ...] = ()  # the works' ids, for the tracks of the same work
 
 
 def describe(entries: Iterable[tuple]) -> TrackTieups:
     """A track's tie-ups as the library shows and searches them; ``entries``: (work, role, seq, detail, the work's
     readings) in the track's order."""
-    shown, text, keys = [], [], []
+    shown, text, keys, works = [], [], [], []
     for w, role, seq, detail, readings in entries:
+        if w.id and w.id not in works:
+            works.append(w.id)
         short = _short(role, seq)
         shown.append(f"{w.title()} {short}".strip())
         # the text search finds the role and the category by their names too, translated and in English
         role_name, category = _ROLE_NAME.get(role, "Other"), _CATEGORY_NAME.get(w.category, "Other")
         text += w.names() + [short, tr(role_name), role_name, tr(category), category, detail]
         keys += [r for r in readings if r not in keys]
-    return TrackTieups("; ".join(shown), " ".join(text), tuple(keys))
+    return TrackTieups("; ".join(shown), " ".join(text), tuple(keys), tuple(works))
 
 
 def name_key(name: str) -> str:

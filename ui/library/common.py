@@ -4,7 +4,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Optional
 from PySide6 import QtCore, QtWidgets
-from analyzer.music.key_names import idx_to_labels
+from analyzer.music.key_names import ALPHANUMERIC_LABELS
+from views.render.keystrip import key_segment_label
 from core.search import reading
 from core.library.records import TrackRow
 from core.tieups import domain as tieup
@@ -59,7 +60,7 @@ class Track:
     _disp_playlist_index: str = field(init=False, default="")
 
     _disp_bpm: str = field(init=False, default="--")
-    _disp_key_alphanumeric: str = field(init=False, default="--")
+    _disp_key: str = field(init=False, default="--")      # Alphanumeric / classical, as the app shows a key
     _disp_duration: str = field(init=False, default="00:00")
     _disp_rating: str = field(init=False, default="☆☆☆☆☆")
     _disp_added: str = field(init=False, default="")
@@ -70,7 +71,7 @@ class Track:
         # Key
         try:
             if isinstance(self.key, int) and 0 <= self.key <= 23:
-                self._disp_key_alphanumeric = idx_to_labels(self.key)[0]
+                self._disp_key = key_segment_label(self.key)
         except Exception:
             pass
         # Duration
@@ -87,6 +88,14 @@ class Track:
             self._disp_added = self.added.toString("yyyy-MM-dd HH:mm")
         if self.playlist_index is not None:
             self._disp_playlist_index = str(self.playlist_index + 1)
+
+
+def key_order(key: Optional[int]) -> int:
+    """A key's place in the Alphanumeric order, 1A 1B 2A .. 12B (-1 for none): the Key column's sort."""
+    if not isinstance(key, int) or not 0 <= key <= 23:
+        return -1
+    label = ALPHANUMERIC_LABELS[key]
+    return int(label[:-1]) * 2 + (label[-1] == "B")
 
 
 def row_to_track(row: TrackRow, readings: Optional[dict] = None,

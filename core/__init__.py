@@ -6,7 +6,8 @@
     track             the deck's loaded track, its one owner (DataModel)
     playback          the player and its engines' feeder, External Sync (OSC)
     controls          a MIDI controller's mapping, the keyboard shortcuts' files
-    search            the readings the library is searched by, the Variants' relations, the Mix Candidates
+    search            the readings the library is searched by, the Variants' relations, the Mix Candidates, the
+                      related tracks
     tieups            tie-ups: their domain and the web lookup
     tags              a track file's tags and cover, read and written
     workers           the worker processes (analysis, reanalysis, Reoptimize, indexing)

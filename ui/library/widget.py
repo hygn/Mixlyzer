@@ -14,12 +14,12 @@ from ui.theme import current_theme
 from system.i18n import tr, tr_mark
 from ui.library.actions import ActionsMixin
 from ui.library.common import (INCREMENTAL_ROWS_MAX, LIBRARY_UPDATE_DELAY_MS, Track, 
-    _ANALYZED_ROLE, _SORT_ROLE, _SortItem, row_to_track)
-from ui.library.mix import MIX_SOURCE, MixMixin
+    _ANALYZED_ROLE, _SORT_ROLE, _SortItem, key_order, row_to_track)
+from ui.library.mix import MixMixin
 from ui.library.music import MusicMixin
 from ui.library.playlists import PlaylistsMixin
 from ui.library.search import SearchMixin
-from ui.library.sources import SourcesMixin
+from ui.library.sources import LOADED_SOURCES, SourcesMixin
 from ui.library.table import FastDelegate, _TrackTable
 from ui.library.track_panel import TrackPanelMixin
 
@@ -311,12 +311,13 @@ class LibraryWidget(SourcesMixin, SearchMixin, MusicMixin, MixMixin, PlaylistsMi
         column is set last: with sorting on, the row then moves to its place once."""
         values = [
             "", t._disp_playlist_index,
-            t.title, t.artist, t.album, t.tieup, t._disp_bpm, t._disp_key_alphanumeric,
+            t.title, t.artist, t.album, t.tieup, t._disp_bpm, t._disp_key,
             t._disp_duration, t._disp_rating, t._disp_added, t.path, t.comment
         ]
         bpm_col = self.HEADERS.index("BPM")
         art_col = self.HEADERS.index(self.ART_HEADER)
         index_col = self.HEADERS.index("#")
+        key_col = self.HEADERS.index("Key")
         sort_col = self.table.horizontalHeader().sortIndicatorSection() if self.table.isSortingEnabled() else -1
         brush = None
         if self._loaded_uid is not None and t.uid == self._loaded_uid:
@@ -331,6 +332,8 @@ class LibraryWidget(SourcesMixin, SearchMixin, MusicMixin, MixMixin, PlaylistsMi
                 item.setData(QtCore.Qt.UserRole, t.uid)
             elif c == index_col:
                 item.setData(_SORT_ROLE, int(t.playlist_index or 0))
+            elif c == key_col:  # in the Alphanumeric order (as text, 10A came before 2A)
+                item.setData(_SORT_ROLE, key_order(t.key))
             item.setData(_ANALYZED_ROLE, bool(t.analyzed))
             if brush is not None:
                 item.setForeground(brush)
@@ -343,10 +346,9 @@ class LibraryWidget(SourcesMixin, SearchMixin, MusicMixin, MixMixin, PlaylistsMi
         properties = self.model.properties if self.model is not None else {}
         uid = properties.get("uid") if isinstance(properties, dict) else None
         loaded = str(uid or "").strip() or None
-        if (loaded != self._loaded_uid and self._source_kind in ("variants_loaded", MIX_SOURCE)
-                and not self._music_mode):
+        if loaded != self._loaded_uid and self._source_kind in LOADED_SOURCES and not self._music_mode:
             self._loaded_uid = loaded
-            self._refresh_current_source(reset_sort=True)   # the new track's versions, or candidates
+            self._refresh_current_source(reset_sort=True)   # the new track's candidates, related tracks or versions
         self._loaded_uid = loaded
         self._mark_loaded_track()
     def _mark_loaded_track(self) -> None:

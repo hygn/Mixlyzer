@@ -429,7 +429,7 @@ class SearchMixin:
             "Album": "album",
             "Tie-up": "tieup_text",
             "Comment": "comment",
-            "Key": "_disp_key_alphanumeric",
+            "Key": "_disp_key",
             "BPM": "_disp_bpm",
             "Duration": "_disp_duration",
             "Rating": "_disp_rating",

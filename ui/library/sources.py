@@ -1,5 +1,5 @@
-"""The sources panel's part: the library, Variants, Mix Candidates, playlists and folders listed, the one shown
-read."""
+"""The sources panel's part: the library, Mix Candidates, Related Tracks, the tracks with Variants, playlists and
+folders listed, the one shown read."""
 from __future__ import annotations
 
 import copy
@@ -9,7 +9,7 @@ from typing import List, Optional
 from PySide6 import QtCore, QtGui, QtWidgets
 import os
 from core.library.records import FOLDER_NODE, PLAYLIST_NODE
-from core.search import reading
+from core.search import reading, related
 from ui.edit_panel.icons import folder_icon
 from ui.theme import current_theme
 from analyzer.search import variants as variant_fp
@@ -22,6 +22,11 @@ from ui.library.mix import MIX_SOURCE
 
 # a source's kind in the tree -> its node's kind in the playlists' tree (core.library.records)
 _NODE_OF = {"playlist": PLAYLIST_NODE, "playlist_folder": FOLDER_NODE}
+
+# the Related Tracks (core.search.related)
+SAME_ARTIST, SAME_ALBUM, SAME_WORK = "related_artist", "related_album", "related_work"
+# the sources made from the deck's track: shown again at each track loaded
+LOADED_SOURCES = (MIX_SOURCE, SAME_ARTIST, SAME_ALBUM, SAME_WORK, "variants_loaded")
 
 
 def _folder_of(item: Optional[QtWidgets.QTreeWidgetItem]) -> Optional[str]:
@@ -279,25 +284,38 @@ class SourcesMixin:
         tree.blockSignals(True)
         tree.clear()
 
-        library_item = QtWidgets.QTreeWidgetItem([tr("Library (All)")])
+        library_item = QtWidgets.QTreeWidgetItem([tr("Library")])
         library_item.setData(0, _SOURCE_KIND_ROLE, "library")
         tree.addTopLevelItem(library_item)
-
-        variants_item = QtWidgets.QTreeWidgetItem([tr("Variants")])
-        variants_item.setData(0, _SOURCE_KIND_ROLE, "variants")
-        variants_item.setToolTip(0, tr(
-            "<p>The library's tracks that are versions of one song. # is the song.</p>"))
-        tree.addTopLevelItem(variants_item)
-        loaded_item = QtWidgets.QTreeWidgetItem([tr("Loaded Track")])
-        loaded_item.setData(0, _SOURCE_KIND_ROLE, "variants_loaded")
-        loaded_item.setToolTip(0, tr("<p>The versions of the track loaded on the deck.</p>"))
-        variants_item.addChild(loaded_item)
-        variants_item.setExpanded(True)
 
         mix_item = QtWidgets.QTreeWidgetItem([tr("Mix Candidates")])
         mix_item.setData(0, _SOURCE_KIND_ROLE, MIX_SOURCE)
         mix_item.setToolTip(0, tr("<p>Tracks to play after or before the loaded one, the best blend first.</p>"))
         tree.addTopLevelItem(mix_item)
+
+        related_item = QtWidgets.QTreeWidgetItem([tr("Related Tracks")])
+        related_item.setData(0, _SOURCE_KIND_ROLE, "related")
+        related_item.setToolTip(0, tr("<p>The library's tracks related to the track loaded on the deck.</p>"))
+        tree.addTopLevelItem(related_item)
+        for kind, name, tip in (
+                (SAME_ARTIST, tr("Same Artist"), tr(
+                    "<p>The tracks crediting an artist the loaded track credits: in the artist field (each name of "
+                    "\"A feat. B\", \"A &amp; B\", a character and its voice actor) or as featured in the title.</p>")),
+                (SAME_ALBUM, tr("Same Album"), tr("<p>The tracks of the loaded track's album (by its name).</p>")),
+                (SAME_WORK, tr("Same Tie-up Work"), tr("<p>The tracks with a tie-up to a work the loaded track's "
+                                                       "tie-ups name.</p>")),
+                ("variants_loaded", tr("Variants"), tr("<p>The versions of the track loaded on the deck.</p>"))):
+            item = QtWidgets.QTreeWidgetItem([name])
+            item.setData(0, _SOURCE_KIND_ROLE, kind)
+            item.setToolTip(0, tip)
+            related_item.addChild(item)
+        related_item.setExpanded(True)
+
+        variants_item = QtWidgets.QTreeWidgetItem([tr("Tracks with Variants")])
+        variants_item.setData(0, _SOURCE_KIND_ROLE, "variants")
+        variants_item.setToolTip(0, tr(
+            "<p>The library's tracks that are versions of one song. # is the song.</p>"))
+        tree.addTopLevelItem(variants_item)
 
         playlists_item = QtWidgets.QTreeWidgetItem([tr("Playlists")])
         playlists_item.setData(0, _SOURCE_KIND_ROLE, "playlists")
@@ -432,6 +450,10 @@ class SourcesMixin:
             tracks = self._mix_tracks()
             default_column = "#"
             default_order = QtCore.Qt.SortOrder.AscendingOrder
+        elif self._source_kind in (SAME_ARTIST, SAME_ALBUM, SAME_WORK):
+            tracks = self._related_tracks(self._source_kind)
+            default_column = "Title"
+            default_order = QtCore.Qt.SortOrder.AscendingOrder
         elif self._source_kind == "directory":
             tracks = self._scan_directory(str(self._source_value or ""))
             default_column = "Title"
@@ -523,6 +545,22 @@ class SourcesMixin:
                 tree.blockSignals(False)
                 return
             iterator += 1
+
+    def _related_tracks(self, kind: str) -> List[Track]:
+        """The library's tracks related to the deck's track by ``kind`` (core.search.related), the loaded one among
+        them; none without a library track loaded or with nothing to relate by (no artist, album or tie-up)."""
+        loaded = next((t for t in self._library_tracks if t.uid and t.uid == self._loaded_uid), None)
+        if loaded is None:
+            return []
+        if kind == SAME_ARTIST:
+            keys = related.artist_keys(loaded.title, loaded.artist)
+            return [t for t in self._library_tracks if keys & related.artist_keys(t.title, t.artist)]
+        if kind == SAME_ALBUM:
+            key = related.album_key(loaded.album)
+            return [t for t in self._library_tracks if key and related.album_key(t.album) == key]
+        tieups = self.library.snapshot.tieups
+        works = set(tieups[loaded.uid].works) if loaded.uid in tieups else set()
+        return [t for t in self._library_tracks if t.uid in tieups and works.intersection(tieups[t.uid].works)]
 
     def _variant_tracks(self, of: str | None = None) -> List[Track]:
         """The library's tracks with variants (core.search.variants), # their song: the songs with the newest track first,

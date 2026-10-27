@@ -30,6 +30,7 @@ from core.library.db import LibraryDB
 from core.library.records import BpmSegmentRow, TrackRow
 from core.library.service import LibraryService
 from core.settings.config import default_cfg
+from core.tieups.domain import TieUp, Work
 from core.track.model import DataModel
 from core.workflows.event_bus import EventBus
 from ui.library import widget as widget_module
@@ -147,7 +148,7 @@ class LibraryWidgetTests(unittest.TestCase):
         row = self.row_of(self.uids[0])
         t = self.w.table
         self.assertEqual(t.item(row, BPM).text(), "128.00")
-        self.assertEqual(t.item(row, KEY).text(), idx_to_labels(0)[0])
+        self.assertEqual(t.item(row, KEY).text(), " / ".join(idx_to_labels(0)))    # 8B / C
         self.assertEqual(t.item(row, DURATION).text(), "03:20")
         self.assertEqual(t.item(row, RATING).text(), "★★★☆☆")
         self.assertEqual(t.item(row, PATH).text(), self.paths[0])
@@ -155,6 +156,10 @@ class LibraryWidgetTests(unittest.TestCase):
     def test_bpm_column_sorts_by_number(self):
         self.w.table.sortItems(BPM, QtCore.Qt.AscendingOrder)
         self.assertEqual(self.column(BPM), ["125.00", "128.00", "140.00"])
+
+    def test_key_column_sorts_in_the_alphanumeric_order(self):
+        self.w.table.sortItems(KEY, QtCore.Qt.AscendingOrder)
+        self.assertEqual([k.split(" ")[0] for k in self.column(KEY)], ["5A", "7B", "8B"])
 
     # ---- the text search ----
     def test_typing_applies_once_it_pauses(self):
@@ -495,6 +500,36 @@ class LibraryWidgetTests(unittest.TestCase):
         self.assertEqual(self.w.table.item(self.row_of(self.uids[1]), TITLE).foreground().color(), green)
         self.model.load(StoredAnalysis.from_arrays({"duration_sec": 240.0}), {"uid": self.uids[2]}, 240.0)
         self.assertEqual(self.column(TITLE), [])
+
+    def test_related_tracks_of_the_loaded_track(self):
+        # Hello World credits あのね's singer as featured; Third Song shares its album and a tie-up's work
+        db = LibraryDB(os.path.join(self.lib, "library.db"))
+        db.connect()
+        db.upsert(replace(db.get_by_uid(self.uids[1]), title="Hello World feat. 歌手"))
+        db.conn.commit()
+        db.close()
+        self.library.refresh()
+        work = Work("w1", titles=[("en-US", "The Show")])
+        for uid in (self.uids[0], self.uids[2]):
+            self.library.write(jobs.save_tieup, uid, TieUp(work, "opening", 1))
+        self.apply_update()
+        tree = self.w.source_tree
+        kinds = [tree.topLevelItem(i).data(0, _SOURCE_KIND_ROLE) for i in range(tree.topLevelItemCount())]
+        self.assertEqual(kinds, ["library", "mix_candidates", "related", "variants", "playlists", "local_folders"])
+        related = self.source("related")
+        self.assertEqual([related.child(i).data(0, _SOURCE_KIND_ROLE) for i in range(related.childCount())],
+                         ["related_artist", "related_album", "related_work", "variants_loaded"])
+        for kind in ("related_artist", "related_album", "related_work"):
+            tree.setCurrentItem(self.source(kind))
+            self.assertEqual(self.column(TITLE), [], kind)          # no track loaded
+        self.model.load(StoredAnalysis.from_arrays({"duration_sec": 200.0}), {"uid": self.uids[0]}, 200.0)
+        self.assertEqual(self.column(TITLE), ["Third Song", "あのね"])          # shown again: the work's
+        tree.setCurrentItem(self.source("related_artist"))
+        self.assertEqual(self.column(TITLE), ["Hello World feat. 歌手", "あのね"])
+        tree.setCurrentItem(self.source("related_album"))
+        self.assertEqual(self.column(TITLE), ["Third Song", "あのね"])
+        self.model.load(StoredAnalysis.from_arrays({"duration_sec": 180.0}), {"uid": self.uids[1]}, 180.0)
+        self.assertEqual(self.column(TITLE), [])                                # no album
 
     def test_mix_candidates_of_the_loaded_track_by_the_criteria_under_the_search(self):
         db = LibraryDB(os.path.join(self.lib, "library.db"))
