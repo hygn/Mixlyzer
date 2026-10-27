@@ -115,7 +115,8 @@ def build_library_tab(dialog) -> None:
     dialog.btn_library_sync_now = QPushButton(tr("Sync Now"))
     dialog.btn_library_sync_now.setToolTip(tr(
         "<p>Every track's BPM, key and search tables in the library database made again from its stored analysis "
-        "(as the editor's save writes them). Titles, artists, ratings and comments are not touched.</p>"))
+        "(as the editor's save writes them), a BPM or key typed in the Edit Track tab replaced too. Titles, "
+        "artists, ratings and comments are not touched.</p>"))
     grp_database = QGroupBox(tr("Library Database"))
     f_database = QFormLayout(grp_database)
     f_database.addRow(dialog.cb_sync_stored_analysis)
@@ -216,8 +217,17 @@ class LibrarySettingsMixin:
 
     def _sync_library_now(self) -> None:
         """Sync Now: library.db made to agree with the stored analyses (core.workflows.library_sync), shown as it
-        runs; the settings on the page play no part in it, so nothing is saved first."""
+        runs; the settings on the page play no part in it, so nothing is saved first. Asked first (No by default):
+        it replaces every BPM and key typed in the Edit Track tab too."""
         if self._bus is None:
+            return
+        answer = QMessageBox.warning(
+            self, tr("Sync Library Database"),
+            tr("Every track's BPM, key and search tables in the library database will be made again from its "
+               "stored analysis. A BPM or key typed in the Edit Track tab is replaced too, and this cannot be "
+               "undone.\n\nSync now?"),
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        if answer != QMessageBox.Yes:
             return
         if self._library_sync_dialog is not None:
             self._library_sync_dialog.deleteLater()

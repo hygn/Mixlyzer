@@ -39,10 +39,12 @@ class LibraryIndexSync(QtCore.QObject):
     def _next(self) -> None:
         if not self._pending:
             done = self._sum
-            self._pending = None
             print(f"[Library] library.db synced with the stored analyses: {done.changed} of {self._total} tracks "
                   f"changed, {done.unread} without a stored analysis that reads")
-            self.finished.emit(done)
+            if done.changed:        # the snapshot and the library's filters follow, once
+                self._library.write(jobs.index_synced, done=lambda _r: self._finish(done), failed=self._failed)
+            else:
+                self._finish(done)
             return
         batch, self._pending = self._pending[:jobs.SYNC_BATCH], self._pending[jobs.SYNC_BATCH:]
         self._library.write(jobs.sync_index, batch, done=self._batch_done, failed=self._failed)
@@ -51,6 +53,10 @@ class LibraryIndexSync(QtCore.QObject):
         self._sum = jobs.IndexSync(self._sum.changed + result.changed, self._sum.unread + result.unread)
         self.progress.emit(self._total - len(self._pending or ()), self._total)
         self._next()
+
+    def _finish(self, done: jobs.IndexSync) -> None:
+        self._pending = None
+        self.finished.emit(done)
 
     def _failed(self, exc: Exception) -> None:
         self._pending = None

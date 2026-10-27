@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-27 17:58+0900\n"
+"POT-Creation-Date: 2026-10-27 18:32+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ja_JP\n"
@@ -1146,16 +1146,16 @@ msgstr "ヘッドホン: レベル"
 msgid "Master: level"
 msgstr "マスター: レベル"
 
-#: core/library/db.py:472
+#: core/library/db.py:482
 msgid "The path cannot be empty."
 msgstr "パスを空にすることはできません。"
 
-#: core/library/db.py:475
+#: core/library/db.py:485
 #, python-brace-format
 msgid "This file is already in the library as \"{track}\"."
 msgstr "このファイルはすでにライブラリに「{track}」として登録されています。"
 
-#: core/library/db.py:496 core/library/db.py:517
+#: core/library/db.py:506 core/library/db.py:527
 msgid "Playlist name cannot be empty"
 msgstr "プレイリスト名を空にすることはできません"
 
@@ -2019,7 +2019,7 @@ msgstr "最小 BPM"
 
 #: ui/config/analysis.py:142 ui/config/analysis.py:183
 #: ui/config/analysis.py:206 ui/config/dialogs/optimization.py:204
-#: ui/config/library.py:133 ui/config/playback.py:108 ui/config/view.py:150
+#: ui/config/library.py:134 ui/config/playback.py:108 ui/config/view.py:150
 msgid "Advanced"
 msgstr "詳細設定"
 
@@ -2869,11 +2869,6 @@ msgstr "MIDI: {port}（接続できません）"
 msgid "MIDI: {port} (closed)"
 msgstr "MIDI: {port}（未接続）"
 
-# | msgid "Library Path"
-#: ui/config/dialogs/library_sync.py:17
-msgid "Sync Library Database"
-msgstr "ライブラリデータベースの同期"
-
 # | msgid "Reading the stored analyses: {done} / {total} tracks"
 #: ui/config/dialogs/library_sync.py:21
 msgid "Reading the stored analyses"
@@ -3520,54 +3515,82 @@ msgstr ""
 "<p>エディターで保存すると、保存したマークからトラックの "
 "BPM、キー、トランジション検索とフレーズ検索が読む表をライブラリデータベース（library.db）にも書き込みます。オフにすると、トラックの保存された解析だけを書き込み、データベースは「今すぐ同期」で合わせます。</p>"
 
+# | msgid "" "<p>Every track's BPM, key and search tables in the library
+# | database made " "again from its stored analysis (as the editor's save
+# writes
+# | them). " "Titles, artists, ratings and comments are not touched.</p>"
 #: ui/config/library.py:117
 msgid ""
 "<p>Every track's BPM, key and search tables in the library database made "
-"again from its stored analysis (as the editor's save writes them). "
-"Titles, artists, ratings and comments are not touched.</p>"
+"again from its stored analysis (as the editor's save writes them), a BPM "
+"or key typed in the Edit Track tab replaced too. Titles, artists, ratings"
+" and comments are not touched.</p>"
 msgstr ""
 "<p>ライブラリデータベースのすべてのトラックの "
-"BPM、キー、検索用の表を、保存された解析から作り直します（エディターの保存と同じ方法）。タイトル、アーティスト、レーティング、コメントは変更しません。</p>"
+"BPM、キー、検索用の表を、保存された解析から作り直します（エディターの保存と同じ方法）。「トラックの編集」タブで入力した BPM "
+"とキーも置き換わります。タイトル、アーティスト、レーティング、コメントは変更しません。</p>"
 
 # | msgid "Library Path"
-#: ui/config/library.py:119
+#: ui/config/library.py:120
 msgid "Library Database"
 msgstr "ライブラリデータベース"
 
-#: ui/config/library.py:124
+#: ui/config/library.py:125
 msgid "Rekordbox XML"
 msgstr "Rekordbox XML"
 
-#: ui/config/library.py:127
+#: ui/config/library.py:128
 msgid "XML Path"
 msgstr "XML のパス"
 
-#: ui/config/library.py:128
+#: ui/config/library.py:129
 msgid "Tempo ramp tolerance"
 msgstr "テンポのランプの許容誤差"
 
-#: ui/config/library.py:136
+#: ui/config/library.py:137
 msgid "Log Path"
 msgstr "ログのパス"
 
-#: ui/config/library.py:163
+#: ui/config/library.py:164
 msgid "Add Local Music Folder"
 msgstr "ローカルの音楽フォルダーを追加"
 
-#: ui/config/library.py:252
+# | msgid "Library Path"
+#: ui/config/dialogs/library_sync.py:17 ui/config/library.py:225
+msgid "Sync Library Database"
+msgstr "ライブラリデータベースの同期"
+
+# | msgid "" "<p>Every track's BPM, key and search tables in the library
+# | database made " "again from its stored analysis (as the editor's save
+# writes
+# | them). " "Titles, artists, ratings and comments are not touched.</p>"
+#: ui/config/library.py:226
+msgid ""
+"Every track's BPM, key and search tables in the library database will be "
+"made again from its stored analysis. A BPM or key typed in the Edit Track"
+" tab is replaced too, and this cannot be undone.\n"
+"\n"
+"Sync now?"
+msgstr ""
+"ライブラリデータベースのすべてのトラックの BPM、キー、検索用の表を、保存された解析から作り直します。「トラックの編集」タブで入力した BPM "
+"とキーも置き換わり、元に戻すことはできません。\n"
+"\n"
+"今すぐ同期しますか？"
+
+#: ui/config/library.py:262
 msgid "Enable Sync with Rekordbox XML first."
 msgstr "先に「Rekordbox XML と同期」を有効にしてください。"
 
-#: ui/config/dialogs/rekordbox.py:15 ui/config/library.py:252
-#: ui/config/library.py:257
+#: ui/config/dialogs/rekordbox.py:15 ui/config/library.py:262
+#: ui/config/library.py:267
 msgid "Sync Rekordbox XML"
 msgstr "Rekordbox XML の同期"
 
-#: ui/config/library.py:257
+#: ui/config/library.py:267
 msgid "Rekordbox XML Path is empty."
 msgstr "Rekordbox XML のパスが空です。"
 
-#: ui/config/library.py:298
+#: ui/config/library.py:308
 msgid "Rekordbox XML worker started"
 msgstr "Rekordbox XML ワーカーを開始しました"
 
@@ -6993,7 +7016,7 @@ msgstr "トラックが読み込まれていません"
 msgid "Playback"
 msgstr "再生"
 
-#: ui/config/library.py:82 ui/config/library.py:150 ui/shortcuts.py:32
+#: ui/config/library.py:82 ui/config/library.py:151 ui/shortcuts.py:32
 msgid "Library"
 msgstr "ライブラリ"
 

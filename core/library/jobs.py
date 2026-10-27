@@ -104,26 +104,33 @@ class IndexSync:
     unread: int = 0
 
 
-@changes(TRACKS)
+@changes()
 def sync_index(lib, uids: list[str]) -> IndexSync:
     """library.db made to agree with the tracks' stored analyses (Settings > Library's Sync Now, SYNC_BATCH tracks a
-    job): each track's rows written from its stored marks (track_index, as the editor's save writes them); the
-    user's metadata untouched, nothing of the stored analyses written."""
+    job): each track's rows written from its stored marks (track_index, as the editor's save writes them; only where
+    they differ), the BPM and key typed in the Edit Track tab replaced too, the rest of its metadata untouched,
+    nothing of the stored analyses written. A stored analysis that does not read (a damaged file, a block of the
+    wrong shape) is counted and the others go on. The snapshot is not read again: the run's end does that once,
+    index_synced, where a row changed."""
     changed = unread = 0
     for uid in uids:
         try:
             marks = analysis_jobs.stored_marks(lib, uid)
-        except (OSError, ValueError, KeyError) as exc:
-            print(f"[Library] a stored analysis not read for the sync: {exc}")
-            marks = None
-        if marks is None:
+            index = track_index(*marks) if marks is not None else None
+        except Exception as exc:
+            print(f"[Library] a stored analysis not read for the sync: {exc!r}")
+            index = None
+        if index is None:
             unread += 1
             continue
-        with lib.db.tx():
-            before = lib.db.track_index_rows(uid)
-            lib.db.write_track_index(uid, track_index(*marks))
-            changed += lib.db.track_index_rows(uid) != before
+        changed += lib.db.update_track_index(uid, index)
     return IndexSync(changed, unread)
+
+
+@changes(TRACKS)
+def index_synced(lib) -> None:
+    """Nothing: a sync's end where it changed rows (the snapshot's tracks read again, sig_lib_updated sent, so the
+    library's columns and its phrase / transition filters follow)."""
 
 
 def tag_sources(lib, uid: str) -> dict:

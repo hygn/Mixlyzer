@@ -247,8 +247,7 @@ class LibraryDB:
                 yield
             except BaseException:
                 if depth:
-                    self.conn.execute(f"ROLLBACK TO {savepoint};")
-                    self.conn.execute(f"RELEASE {savepoint};")
+                    self._rollback_to(savepoint)
                 else:
                     self.conn.rollback()
                 raise
@@ -258,6 +257,17 @@ class LibraryDB:
                 self.conn.commit()
         finally:
             self._tx_depth -= 1
+
+    def _rollback_to(self, savepoint: str) -> None:
+        """A savepoint's writes undone on an exception, which goes on as it is: SQLite may have rolled the whole
+        transaction back itself (a full disk, an I/O error), and the savepoint is gone with it."""
+        if not self.conn.in_transaction:
+            return
+        try:
+            self.conn.execute(f"ROLLBACK TO {savepoint};")
+            self.conn.execute(f"RELEASE {savepoint};")
+        except sqlite3.Error:
+            pass
 
     # UPSERT / CRUD
     def upsert(self, row: TrackRow):
@@ -1007,6 +1017,23 @@ class LibraryDB:
             self.replace_bpm_segments(uid, index.bpm_rows)
             self.replace_key_segments(uid, index.key_rows)
             self.replace_phrase_index(uid, index.phrase_rows)
+
+    def update_track_index(self, uid: str, index) -> bool:
+        """write_track_index where its rows differ from the stored ones; the same, nothing is kept (the writes undone
+        to a savepoint: no commit, no row id used). Whether they differed."""
+        with self.tx():
+            before = self.track_index_rows(uid)
+            self.conn.execute("SAVEPOINT track_index;")
+            try:
+                self.write_track_index(uid, index)
+                same = self.track_index_rows(uid) == before
+            except BaseException:
+                self._rollback_to("track_index")
+                raise
+            if same:
+                self.conn.execute("ROLLBACK TO track_index;")
+            self.conn.execute("RELEASE track_index;")
+            return not same
 
     def track_index_rows(self, uid: str) -> tuple:
         """The track's rows write_track_index writes, as stored, their row ids left out (compared before and after a

@@ -139,10 +139,15 @@ class LibraryServiceTests(unittest.TestCase):
         from unittest import mock
         from core.analysis_library.stored import TrackEdits
         from core.workflows.library_sync import LibraryIndexSync
-        stale, bare = _row("s.wav", title="手で直した"), _row("t.wav")
+        stale, bare, broken = _row("s.wav", title="手で直した"), _row("t.wav"), _row("u.wav")
         stale.bpm, stale.key, stale.rating = 99.0, 3, 5
-        for row in (stale, bare):
+        for row in (broken, stale, bare):
             self.library.write(jobs.save_track, row, False)
+
+        def damaged(lib):           # not a zip: counted, the sync goes on
+            with open(lib.features.path(broken.uid), "wb") as f:
+                f.write(b"PK\x03\x04 cut off")
+        self.library.write(damaged)
         phrases = {"start": np.asarray([0.0, 3.0]), "end": np.asarray([3.0, 4.0]),
                    "label": np.asarray(["VERSE", "OUTRO"])}
         self.library.write(lambda lib: lib.features.save(stale.uid, {
@@ -151,13 +156,21 @@ class LibraryServiceTests(unittest.TestCase):
         self.settle()
         runs, steps = [], []
         sync = LibraryIndexSync(self.library)
+
+        def run():          # a job each batch, its next asked from the last's done: waited for to its end
+            count = len(runs)
+            sync.sync_requested()
+            for _ in range(50):
+                if len(runs) > count:
+                    break
+                self.library.wait()
+            self.settle()
         sync.finished.connect(runs.append)
         sync.progress.connect(lambda done, total: steps.append((done, total)))
         with mock.patch.object(jobs, "SYNC_BATCH", 1):
-            sync.sync_requested()
-            self.settle()
-        self.assertEqual(runs, [jobs.IndexSync(changed=1, unread=1)])
-        self.assertEqual(steps, [(0, 2), (1, 2), (2, 2)])
+            run()
+        self.assertEqual(runs, [jobs.IndexSync(changed=1, unread=2)])
+        self.assertEqual(steps, [(0, 3), (1, 3), (2, 3), (3, 3)])
         track = self.library.snapshot.track(stale.uid)
         self.assertEqual((track.bpm, track.key, track.title, track.rating), (128.0, 21, "手で直した", 5))  # the OUTRO's
         got = []
@@ -166,18 +179,25 @@ class LibraryServiceTests(unittest.TestCase):
             done=got.append)
         self.settle()
         self.assertEqual(got, [2])
-        sync.sync_requested()                   # again: nothing to change
-        self.settle()
-        self.assertEqual(runs[-1], jobs.IndexSync(changed=0, unread=1))
+        ids, updates = [], len(self.updates)
+
+        def last_id():
+            self.library.read(lambda lib: lib.db.conn.execute(
+                "SELECT MAX(id) FROM track_bpm_segments").fetchone()[0], done=ids.append)
+            self.settle()
+        last_id()
+        run()                                   # again: nothing to change, nothing written, the snapshot as it was
+        last_id()
+        self.assertEqual(runs[-1], jobs.IndexSync(changed=0, unread=2))
+        self.assertEqual((ids[0], len(self.updates)), (ids[1], updates))
         # the editor's save with the setting off: the stored analysis alone
         edits = TrackEdits(beats=np.arange(8) * 0.5, tempo_segments=np.asarray([[0, 4, 140, 0, 4, 140]], float),
                            key_segments=np.asarray([[2, 0, 0, 4]], float), phrases=(), jump_cues=(), cue_points=())
         self.library.write(jobs.save_edits, stale.uid, edits, False)
         self.settle()
         self.assertEqual(self.library.snapshot.track(stale.uid).bpm, 128.0)
-        sync.sync_requested()
-        self.settle()
-        self.assertEqual(runs[-1], jobs.IndexSync(changed=1, unread=1))
+        run()
+        self.assertEqual(runs[-1], jobs.IndexSync(changed=1, unread=2))
         self.assertEqual((self.library.snapshot.track(stale.uid).bpm, self.library.snapshot.track(stale.uid).key),
                          (140.0, 2))
 

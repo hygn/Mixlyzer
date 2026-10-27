@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-27 17:58+0900\n"
+"POT-Creation-Date: 2026-10-27 18:32+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ko_KR\n"
@@ -1142,16 +1142,16 @@ msgstr "헤드폰: 레벨"
 msgid "Master: level"
 msgstr "마스터: 레벨"
 
-#: core/library/db.py:472
+#: core/library/db.py:482
 msgid "The path cannot be empty."
 msgstr "경로는 비워 둘 수 없습니다."
 
-#: core/library/db.py:475
+#: core/library/db.py:485
 #, python-brace-format
 msgid "This file is already in the library as \"{track}\"."
 msgstr "이 파일은 이미 라이브러리에 \"{track}\"(으)로 있습니다."
 
-#: core/library/db.py:496 core/library/db.py:517
+#: core/library/db.py:506 core/library/db.py:527
 msgid "Playlist name cannot be empty"
 msgstr "플레이리스트 이름은 비워 둘 수 없습니다"
 
@@ -2019,7 +2019,7 @@ msgstr "BPM 최소"
 
 #: ui/config/analysis.py:142 ui/config/analysis.py:183
 #: ui/config/analysis.py:206 ui/config/dialogs/optimization.py:204
-#: ui/config/library.py:133 ui/config/playback.py:108 ui/config/view.py:150
+#: ui/config/library.py:134 ui/config/playback.py:108 ui/config/view.py:150
 msgid "Advanced"
 msgstr "고급"
 
@@ -2865,11 +2865,6 @@ msgstr "MIDI: {port} (열 수 없음)"
 msgid "MIDI: {port} (closed)"
 msgstr "MIDI: {port} (닫힘)"
 
-# | msgid "Library Path"
-#: ui/config/dialogs/library_sync.py:17
-msgid "Sync Library Database"
-msgstr "라이브러리 데이터베이스 동기화"
-
 # | msgid "Reading the stored analyses: {done} / {total} tracks"
 #: ui/config/dialogs/library_sync.py:21
 msgid "Reading the stored analyses"
@@ -3514,54 +3509,81 @@ msgstr ""
 "<p>편집기에서 저장하면 저장한 마크로부터 트랙의 BPM, 키, 전환 검색과 프레이즈 검색이 읽는 표를 라이브러리 "
 "데이터베이스(library.db)에도 씁니다. 끄면 트랙의 저장된 분석만 쓰고, 데이터베이스는 지금 동기화로 맞춥니다.</p>"
 
+# | msgid "" "<p>Every track's BPM, key and search tables in the library
+# | database made " "again from its stored analysis (as the editor's save
+# writes
+# | them). " "Titles, artists, ratings and comments are not touched.</p>"
 #: ui/config/library.py:117
 msgid ""
 "<p>Every track's BPM, key and search tables in the library database made "
-"again from its stored analysis (as the editor's save writes them). "
-"Titles, artists, ratings and comments are not touched.</p>"
+"again from its stored analysis (as the editor's save writes them), a BPM "
+"or key typed in the Edit Track tab replaced too. Titles, artists, ratings"
+" and comments are not touched.</p>"
 msgstr ""
 "<p>라이브러리 데이터베이스의 모든 트랙의 BPM, 키, 검색용 표를 저장된 분석으로부터 다시 만듭니다(편집기 저장과 같은 방식)."
-" 제목, 아티스트, 별점, 코멘트는 건드리지 않습니다.</p>"
+" 트랙 편집 탭에서 직접 입력한 BPM과 키도 바뀝니다. 제목, 아티스트, 별점, 코멘트는 건드리지 않습니다.</p>"
 
 # | msgid "Library Path"
-#: ui/config/library.py:119
+#: ui/config/library.py:120
 msgid "Library Database"
 msgstr "라이브러리 데이터베이스"
 
-#: ui/config/library.py:124
+#: ui/config/library.py:125
 msgid "Rekordbox XML"
 msgstr "Rekordbox XML"
 
-#: ui/config/library.py:127
+#: ui/config/library.py:128
 msgid "XML Path"
 msgstr "XML 경로"
 
-#: ui/config/library.py:128
+#: ui/config/library.py:129
 msgid "Tempo ramp tolerance"
 msgstr "템포 램프 허용 오차"
 
-#: ui/config/library.py:136
+#: ui/config/library.py:137
 msgid "Log Path"
 msgstr "로그 경로"
 
-#: ui/config/library.py:163
+#: ui/config/library.py:164
 msgid "Add Local Music Folder"
 msgstr "로컬 음악 폴더 추가"
 
-#: ui/config/library.py:252
+# | msgid "Library Path"
+#: ui/config/dialogs/library_sync.py:17 ui/config/library.py:225
+msgid "Sync Library Database"
+msgstr "라이브러리 데이터베이스 동기화"
+
+# | msgid "" "<p>Every track's BPM, key and search tables in the library
+# | database made " "again from its stored analysis (as the editor's save
+# writes
+# | them). " "Titles, artists, ratings and comments are not touched.</p>"
+#: ui/config/library.py:226
+msgid ""
+"Every track's BPM, key and search tables in the library database will be "
+"made again from its stored analysis. A BPM or key typed in the Edit Track"
+" tab is replaced too, and this cannot be undone.\n"
+"\n"
+"Sync now?"
+msgstr ""
+"라이브러리 데이터베이스의 모든 트랙의 BPM, 키, 검색용 표를 저장된 분석으로부터 다시 만듭니다. 트랙 편집 탭에서 직접 입력한 "
+"BPM과 키도 바뀌며, 되돌릴 수 없습니다.\n"
+"\n"
+"지금 동기화할까요?"
+
+#: ui/config/library.py:262
 msgid "Enable Sync with Rekordbox XML first."
 msgstr "먼저 'Rekordbox XML과 동기화'를 켜세요."
 
-#: ui/config/dialogs/rekordbox.py:15 ui/config/library.py:252
-#: ui/config/library.py:257
+#: ui/config/dialogs/rekordbox.py:15 ui/config/library.py:262
+#: ui/config/library.py:267
 msgid "Sync Rekordbox XML"
 msgstr "Rekordbox XML 동기화"
 
-#: ui/config/library.py:257
+#: ui/config/library.py:267
 msgid "Rekordbox XML Path is empty."
 msgstr "Rekordbox XML 경로가 비어 있습니다."
 
-#: ui/config/library.py:298
+#: ui/config/library.py:308
 msgid "Rekordbox XML worker started"
 msgstr "Rekordbox XML 작업 시작됨"
 
@@ -6988,7 +7010,7 @@ msgstr "불러온 트랙 없음"
 msgid "Playback"
 msgstr "재생"
 
-#: ui/config/library.py:82 ui/config/library.py:150 ui/shortcuts.py:32
+#: ui/config/library.py:82 ui/config/library.py:151 ui/shortcuts.py:32
 msgid "Library"
 msgstr "라이브러리"
 
