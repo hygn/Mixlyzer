@@ -317,6 +317,27 @@ class LibraryServiceTests(unittest.TestCase):
             self.library.set_libpath(self.lib)
             self.settle()
 
+    def test_a_thumbnail_held_by_another_program_leaves_the_rest_checked(self):
+        """A thumbnail that cannot be removed (Windows: a file another program holds) is left for the next start;
+        the stored analyses of no track are still set aside."""
+        import numpy as np
+        from unittest import mock
+        from core.library import thumbnails
+        kept, gone = _row("v.wav"), str(uuid4())
+        self.library.write(jobs.save_track, kept, False)
+
+        def leftovers(lib):
+            lib.features.save(gone, {"beats_time_sec": np.arange(4) * 0.5})
+            thumbnails.save_thumbnail(lib.path, gone, _image())
+        self.library.write(leftovers)
+        self.settle()
+        found = []
+        with mock.patch.object(thumbnails, "delete_thumbnail", side_effect=PermissionError("in use")):
+            self.library.write(jobs.check_stores, done=found.append)
+            self.settle()
+        self.assertEqual((found[0].thumbnails, found[0].analyses), (0, 1))
+        self.assertTrue(os.path.isfile(os.path.join(self.lib, jobs.ORPHANED_ANALYSES, f"{gone}.npz")))
+
     def test_another_thread_calls_and_waits(self):
         row = _row("b.wav")
         got = {}

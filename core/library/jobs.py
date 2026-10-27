@@ -464,8 +464,13 @@ def check_stores(lib) -> StoreCheck:
     rows = lib.db.drop_orphan_rows()
     drop_from_indexes(lib, sorted(music), fingerprints=False)
     drop_from_indexes(lib, sorted(fingerprinted), music=False)
+    dropped = 0
     for uid in thumbs:
-        thumbnails.delete_thumbnail(lib.path, uid)
+        try:        # a file another program holds (Explorer, an antivirus): left for the next start
+            thumbnails.delete_thumbnail(lib.path, uid)
+            dropped += 1
+        except OSError as exc:
+            print(f"[Library] a thumbnail of no track left in place: {exc}")
     moved = 0
     for uid in sorted(analyses):
         try:
@@ -473,10 +478,10 @@ def check_stores(lib) -> StoreCheck:
             moved += 1
         except OSError as exc:
             print(f"[Library] a stored analysis of no track left in place: {exc}")
-    found = StoreCheck(rows, len(music), len(fingerprinted), len(thumbs), moved)
+    found = StoreCheck(rows, len(music), len(fingerprinted), dropped, moved)
     if found.total():
         print(f"[Library] left over by tracks no longer in the library: {rows} rows, {len(music)} Search by Music "
-              f"entries, {len(fingerprinted)} Variants fingerprints, {len(thumbs)} thumbnails dropped; {moved} stored "
+              f"entries, {len(fingerprinted)} Variants fingerprints, {dropped} thumbnails dropped; {moved} stored "
               f"analyses moved to {os.path.join(lib.path, ORPHANED_ANALYSES)}")
     else:
         print(f"[Library] the stores agree with library.db ({len(uids)} tracks)")
