@@ -422,7 +422,7 @@ def default_cfg():
         key_parameter_path="assets/weights/key_chord_cnn.npz",
         key_feature_cache_path="featurecache/key",
         autocue="cue_point",
-        max_parallel_analyses=2,
+        max_parallel_analyses=4,
     )
     vcfg = viewconfig(
         language="",
