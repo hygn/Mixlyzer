@@ -6,7 +6,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 import os
 from system import os_support
 from core.library import jobs
-from core.settings.config import load_cfg
+from core.settings import store as settings_store
 from ui.windows.tieup_works import WorksWindow
 from ui.windows.reanalyze_dialog import ReanalyzeDialog
 from ui.edit_panel.flash import flash
@@ -137,7 +137,7 @@ class ActionsMixin:
         analyzed = [p for p in paths if by_path.get(p) is not None and by_path[p].analyzed]
         analysis = None
         if analyzed:
-            saved = load_cfg().analysisconfig
+            saved = settings_store.current().analysisconfig
             dlg = ReanalyzeDialog(saved, [by_path[p].title or os.path.basename(p) for p in analyzed], self)
             if dlg.exec() != QtWidgets.QDialog.Accepted:
                 return

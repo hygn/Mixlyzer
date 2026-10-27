@@ -17,7 +17,7 @@ from core.analysis_library import jobs as analysis_jobs
 from core.library import jobs
 from dataclasses import replace
 
-from core.settings.config import load_cfg
+from core.settings.store import current
 from core.workers.analysis import AnalysisWorker
 from system.i18n import tr
 
@@ -42,7 +42,7 @@ class AnalysisWorkflow(QtCore.QObject):
         status_callback: StatusCallback,
         missing_file_callback: MissingFileCallback | None = None,
         parent: QtCore.QObject | None = None,
-        cfg_loader=load_cfg,
+        cfg_loader=current,
         albumart_provider=getAlbumArt,
         tag_extractor=extract_tags,
     ) -> None:
@@ -177,6 +177,12 @@ class AnalysisWorkflow(QtCore.QObject):
             return max(1, int(self._cfg_loader().analysisconfig.max_parallel_analyses))
         except Exception:
             return 1
+
+    @QtCore.Slot(object, object)
+    def settings_changed(self, _old, _new) -> None:
+        """The settings saved (core.settings.store): more analyses allowed at once start the waiting ones now (fewer
+        leave the running ones to finish)."""
+        self._start_waiting()
 
     def _start_waiting(self) -> None:
         """The waiting analyses started, in their order, while there is room."""

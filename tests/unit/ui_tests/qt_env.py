@@ -1,6 +1,6 @@
 """What the interface tests share: offscreen Qt and one QApplication, and `isolated()`, which keeps the app's widgets
 off the user's files and devices while a test module runs: the current folder a temporary one (a relative path the
-app writes lands there), the settings read as `default_cfg()`, the user's shortcut and MIDI files temporary ones, no
+app writes lands there), the settings `default_cfg()` (no settings' owner installed: nothing written), the user's shortcut and MIDI files temporary ones, no
 audio input listed, no key reported as held by another program."""
 import contextlib
 import os
@@ -32,10 +32,8 @@ class NoAudioInputs(QtCore.QObject):
 def isolated() -> contextlib.ExitStack:
     """Entered by a module's setUpModule, closed by its tearDownModule."""
     from core.controls import midi, shortcuts
-    from core.settings.config import default_cfg
+    from core.settings import store as settings_store
     from system import os_support
-    import ui.edit_panel.phrase
-    import ui.library.actions
     import ui.library.music
     import ui.library.music_search
 
@@ -47,9 +45,7 @@ def isolated() -> contextlib.ExitStack:
     for patcher in (
         mock.patch.object(ui.library.music, "QMediaDevices", NoAudioInputs),
         mock.patch.object(ui.library.music_search, "QMediaDevices", NoAudioInputs),
-        mock.patch.object(ui.library.music_search, "save_deck", lambda _cfg: None),
-        mock.patch.object(ui.library.actions, "load_cfg", default_cfg),
-        mock.patch.object(ui.edit_panel.phrase, "load_cfg", default_cfg),
+        mock.patch.object(settings_store, "_store", None),
         mock.patch.object(shortcuts, "USER_FILE", os.path.join(folder, "shortcuts.json")),
         mock.patch.object(midi, "USER_FILE", os.path.join(folder, "midi.json")),
         mock.patch.object(os_support, "hotkey_taken", lambda _keys: False),

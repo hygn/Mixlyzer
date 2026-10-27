@@ -45,7 +45,8 @@ from ui.shortcuts import ShortcutManager
 MIDI_STEPS_MAX = 16
 
 from core.workflows.segment_reanalysis import SegmentReanalysisWorkflow
-from core.settings.config import config, load_cfg, save_cfg, save_deck, search_settings
+from core.settings.config import config, search_settings
+from core.settings.store import SettingsStore
 from analyzer.music.beat_geometry import downbeat_beat_indices
 from system.i18n import tr, tr_n
 from system.resource_paths import resource_path
@@ -56,9 +57,15 @@ class AppWindow(QtWidgets.QMainWindow):
     _HIDDEN_REFRESH_FPS = 1
     _HIDDEN_ENTER_POLLS = 5
 
-    def __init__(self, progress=None, library: LibraryService | None = None):
-        """``progress(fraction, part)``: how far the window is built (the startup splash); ``library``: the library's
-        owner the startup started (else one is started here)."""
+    @property
+    def cfg(self) -> config:
+        """The settings now: their owner's (core.settings.store)."""
+        return self.settings.current
+
+    def __init__(self, settings: SettingsStore, progress=None, library: LibraryService | None = None):
+        """``settings``: the settings' owner (core.settings.store; ``self.cfg`` its settings now); ``progress(fraction,
+        part)``: how far the window is built (the startup splash); ``library``: the library's owner the startup started
+        (else one is started here)."""
         super().__init__()
         step = progress or (lambda _fraction, _part: None)
         step(0.0, tr("Core objects and playback"))
@@ -67,7 +74,7 @@ class AppWindow(QtWidgets.QMainWindow):
         self.setAcceptDrops(True)
         self.setWindowIcon(QtGui.QIcon(str(resource_path("assets/images/mixlyzer.png"))))
 
-        self.cfg = load_cfg()
+        self.settings = settings
         set_phrase_label_names(self.cfg.viewconfig.phrase_labels.by_label())
         if self.cfg.libconfig.write_log:
             install_print_hook(log_path=self.cfg.libconfig.logpath)
@@ -296,12 +303,8 @@ class AppWindow(QtWidgets.QMainWindow):
         self.bus.sig_deck_state.connect(self._keep_tempo_range)
         self.bus.sig_deck_state.connect(self._keep_trim)
         self.bus.sig_deck_state.connect(self._keep_switches)
-        # what the deck keeps (deck.json: the trim, the tempo range, the switches, the levels, the effects picked),
-        # written a second after it last changed (a knob turned reports every frame)
-        self._deck_save = QtCore.QTimer(self)
-        self._deck_save.setSingleShot(True)
-        self._deck_save.setInterval(1000)
-        self._deck_save.timeout.connect(lambda: save_deck(self.cfg))
+        # what the deck keeps (deck.json: the trim, the tempo range, the switches, the levels, the effects picked) is
+        # written by the settings' owner a second after it last changed (settings.deck_changed)
         self._apply_midi()
 
     def _connect_requests(self) -> None:
@@ -330,6 +333,7 @@ class AppWindow(QtWidgets.QMainWindow):
             get_current_path=lambda: self._deck_path,
             status_callback=status_bar.showMessage,
             parent=self,
+            cfg_loader=lambda: self.cfg,
         )
         self.analysis_workflow = AnalysisWorkflow(
             library=self.library,
@@ -339,7 +343,10 @@ class AppWindow(QtWidgets.QMainWindow):
             status_callback=status_bar.showMessage,
             missing_file_callback=self._on_track_file_missing,
             parent=self,
+            cfg_loader=lambda: self.cfg,
         )
+        # more analyses allowed at once: the waiting ones started at once
+        self.settings.changed.connect(self.analysis_workflow.settings_changed)
 
     def _start_metronome(self) -> None:
         """The metronome on the audio thread, the time stretch and the Python engine's kernels."""
@@ -419,7 +426,7 @@ class AppWindow(QtWidgets.QMainWindow):
         deck = self.cfg.deckconfig
         deck.midi_enabled = not deck.midi_enabled
         self.player.set_midi_enabled(deck.midi_enabled)
-        self._deck_save.start()
+        self.settings.deck_changed()
         self._show_midi()
         self.statusBar().showMessage(tr("MIDI input on.") if deck.midi_enabled else tr("MIDI input off."), 3000)
 
@@ -465,7 +472,7 @@ class AppWindow(QtWidgets.QMainWindow):
         tempo_range = int(report.tempo_range)
         if tempo_range != int(self.cfg.deckconfig.tempo_range):
             self.cfg.deckconfig.tempo_range = tempo_range
-            self._deck_save.start()
+            self.settings.deck_changed()
 
     def _restart_engine(self) -> None:
         """The native audio engine started again by hand (the shortcut; Settings > Audio > Engine has its button)."""
@@ -487,7 +494,7 @@ class AppWindow(QtWidgets.QMainWindow):
             return
         self.cfg.deckconfig.volume_trim_dbfs = trim
         self.pane.apply_playback_config(self.cfg)
-        self._deck_save.start()
+        self.settings.deck_changed()
 
     def _keep_switches(self, report) -> None:
         """The jog's mode, the EQ, the fader curve, the levels and the effects picked as the deck has them (the
@@ -510,7 +517,7 @@ class AppWindow(QtWidgets.QMainWindow):
         if changed:
             for k, value in changed.items():
                 setattr(deck, k, value)
-            self._deck_save.start()
+            self.settings.deck_changed()
 
     def open_cfg(self):
         self.cfgwin.show()
@@ -726,8 +733,7 @@ class AppWindow(QtWidgets.QMainWindow):
     def _on_external_sync_failure(self, message: str) -> None:
         new_cfg = copy.deepcopy(self.cfg)
         new_cfg.externalsyncconfig.enabled = False
-        save_cfg(new_cfg)
-        self.cfg = new_cfg
+        self.settings.save(new_cfg)
         self.cfgwin.set_config(new_cfg)
         self.external_sync.set_config(new_cfg.externalsyncconfig)
         self._apply_external_sync_mode(new_cfg.externalsyncconfig)
@@ -740,10 +746,8 @@ class AppWindow(QtWidgets.QMainWindow):
     def _on_settings_save(self, _config: config):
         prev_cfg = self.cfg.to_dict()
         prev_deck = self.cfg.deck_dict()
-        save_cfg(_config)
-        save_deck(_config)
+        self.settings.save(_config)
         os.makedirs(_config.libconfig.libpath or ".", exist_ok=True)
-        self.cfg = _config
         self.library.set_libpath(_config.libconfig.libpath)
         self.cfgwin.set_config(_config)
         self.external_sync.set_config(_config.externalsyncconfig)

@@ -9,7 +9,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 from scipy.ndimage import gaussian_filter1d, uniform_filter1d
 from scipy.signal import butter, sosfiltfilt
 
-from core.settings.config import load_cfg
+from core.settings.store import current as current_settings
 from views.timeline import SHORT_WINDOW_MAX_SEC
 from views.render.wave import (
     RGB_DETAIL_COLOR_SMOOTH_SEC,
@@ -70,7 +70,7 @@ class _WaveStyle:
 
     @classmethod
     def from_config(cls, wave, window_sec: float) -> "_WaveStyle":
-        cfg = load_cfg()
+        cfg = current_settings()
         v = cfg.viewconfig
         return cls(
             bands=tuple((float(low), float(high)) for low, high in (v.env_lo, v.env_mid, v.env_hi)),
@@ -637,7 +637,7 @@ class WaveformView(ViewPlugin):
             self._preview_item.setVisible(False)
             self._preview_source = None
             return
-        cfg = load_cfg()
+        cfg = current_settings()
         ranges, style = band_ranges(cfg.viewconfig), cfg.viewconfig.waveform_style
         source = (id(wave), ranges, style)
         if self._preview_source != source:

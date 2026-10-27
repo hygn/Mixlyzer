@@ -83,6 +83,18 @@ class AnalysisQueueTests(unittest.TestCase):
         self.finish("b.wav")
         self.assertEqual(_Worker.started, ["a.wav", "b.wav", "c.wav", "d.wav"])
 
+    def test_a_limit_raised_starts_the_waiting_at_once(self):
+        self.limit = 1
+        for name in ("a.wav", "b.wav", "c.wav", "d.wav"):
+            self.ask(name)
+        self.assertEqual(_Worker.started, ["a.wav"])
+        self.limit = 3                      # the settings saved (core.settings.store's changed)
+        self.flow.settings_changed(None, None)
+        self.assertEqual(_Worker.started, ["a.wav", "b.wav", "c.wav"])
+        self.limit = 1                      # lowered: the running ones go on
+        self.flow.settings_changed(None, None)
+        self.assertEqual(len(self.flow._workers), 3)
+
     def test_the_decks_track_goes_first(self):
         self.limit = 1
         self.ask("a.wav")

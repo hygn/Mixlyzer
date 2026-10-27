@@ -288,10 +288,13 @@ def _open_library(libpath: str, held: dict) -> Callable[[Progress], None]:
     return run
 
 
-def _build_window(held: dict) -> Callable[[Progress], object]:
+def _build_window(held: dict, cfg) -> Callable[[Progress], object]:
     def run(progress: Progress):
         from app.window import AppWindow
-        return AppWindow(progress=progress, library=held.get("library"))
+        from core.settings import store
+        settings = store.SettingsStore(cfg)     # the settings as the start read them: their one owner from here
+        store.install(settings)
+        return AppWindow(settings, progress=progress, library=held.get("library"))
     return run
 
 
@@ -305,7 +308,7 @@ def startup_tasks(cfg) -> list[StartupTask]:
         StartupTask(tr("Starting FFmpeg"), 0.1, _warm_ffmpeg),
         StartupTask(tr("Loading search readers"), 1.5, _load_readers),
         StartupTask(tr("Loading the library"), 0.1, _open_library(cfg.libconfig.libpath, held)),
-        StartupTask(tr("Building the window"), 2.3, _build_window(held), pump_events=False),
+        StartupTask(tr("Building the window"), 2.3, _build_window(held, cfg), pump_events=False),
     ]
     from audioengine.native.client import available
     if cfg.playbackconfig.audio_engine == "native" and available():

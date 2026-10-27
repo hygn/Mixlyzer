@@ -12,7 +12,7 @@ from views.render.keystrip import key_segment_label, key_segment_rows, key_strip
 from views.render.wave import band_ranges, render_wave_overview
 from views.base import EDIT_PAGES, edit_emphasis, emphasis_opacity, emphasis_size, emphasis_width
 from views.segment_strip import SegmentStrip
-from core.settings.config import load_cfg
+from core.settings.store import current as current_settings
 from analyzer.music.tempo_rows import segment_end_bpm
 
 
@@ -291,7 +291,7 @@ class OverviewWidget(QtWidgets.QWidget):
         if analysis.wave is None or self.duration <= 0:
             self.img_wave.clear()
             return
-        cfg = load_cfg()
+        cfg = current_settings()
         image = render_wave_overview(analysis.wave, band_ranges(cfg.viewconfig), cfg.viewconfig.waveform_style,
                                      OVERVIEW_WAVE_HEIGHT, duration_sec=analysis.duration_sec,
                                      columns=_screen_pixel_width())

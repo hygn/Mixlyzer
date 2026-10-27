@@ -7,7 +7,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 
 from analyzer.music.marks import Phrase
 from analyzer.phrase.cue_points import phrase_cue_points
-from core.settings.config import load_cfg
+from core.settings.store import current as current_settings
 from core.workers.analysis_settings import cue_rules
 from ui.edit_panel.blocks import mode_column, rule_cell
 from ui.edit_panel.icons import badged_icon, icon
@@ -179,7 +179,7 @@ class PhraseEditMixin:
         """The CUE points the full analysis would make from the current phrases (the
         per-label rules and, with AutoCUE on CUE points, its selected start) replace
         the current ones, as one edit."""
-        cfg = load_cfg()
+        cfg = current_settings()
         phrases = assigned_phrases(self._phrase_segments)
         points = phrase_cue_points(phrases, self._beatgrid, self._segments, cue_rules(cfg),
                                    cfg.analysisconfig.autocue)

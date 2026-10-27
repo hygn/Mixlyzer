@@ -7,6 +7,7 @@ from typing import List
 from PySide6 import QtWidgets
 from PySide6.QtMultimedia import QMediaDevices
 
+from core.settings import store as settings_store
 from system.i18n import tr
 from ui.library.music_search import DeckSeekAfterLoad, MusicListener, MusicSearchBar, close_icon, mic_icon
 from ui.theme import current_theme
@@ -41,7 +42,7 @@ class MusicMixin:
         self._music_mode = False
         self._music_matches: list = []          # analyzer.search.music.search.MusicMatch, best first
         self._music_saved_text = ""
-        self._music = MusicListener(self.bus, lambda: self.cfg, self.library, parent=self)
+        self._music = MusicListener(self.bus, settings_store.current, self.library, parent=self)
         self._music.audio.connect(self.music_bar.wave.add)
         self._music.rate_changed.connect(self.music_bar.wave.reset)
         self._music.status.connect(self.music_bar.status.setText)

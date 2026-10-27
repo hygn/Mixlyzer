@@ -8,7 +8,7 @@ import numpy as np
 from PySide6 import QtCore
 
 from core.tags.reader import getAlbumArt
-from core.settings.config import load_cfg
+from core.settings.store import current
 from core.track.reanalysis import JUMPCUE, KEY_DYNAMIC, PHRASE, ReanalysisRequest, ReanalysisResult
 from core.workers.segment_reanalysis import SegmentReanalysisWorker
 from core.workflows.event_bus import EventBus
@@ -33,7 +33,7 @@ class SegmentReanalysisWorkflow(QtCore.QObject):
         get_current_path: PathGetter,
         status_callback: Optional[StatusCallback] = None,
         parent: QtCore.QObject | None = None,
-        cfg_loader=load_cfg,
+        cfg_loader=current,
         albumart_provider=getAlbumArt,
     ) -> None:
         super().__init__(parent)

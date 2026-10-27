@@ -20,7 +20,7 @@ import numpy as np
 from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtMultimedia import QAudioFormat, QAudioSource, QMediaDevices
 
-from core.settings.config import save_deck
+from core.settings import store as settings_store
 from core.workflows.event_bus import EventBus
 from system.i18n import tr
 from core.library import jobs
@@ -334,7 +334,7 @@ class MusicListener(QtCore.QObject):
         """Listen to another input ("": the system's default), kept in deck.json; while listening, from now on."""
         deck = self._cfg_getter().deckconfig
         deck.music_input_device = str(name or "")
-        save_deck(self._cfg_getter())
+        settings_store.deck_changed()
         if self._source is not None:
             self._close_source()
             if not self._open_source():
