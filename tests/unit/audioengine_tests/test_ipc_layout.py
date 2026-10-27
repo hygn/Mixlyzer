@@ -131,7 +131,7 @@ class TopLevelTests(unittest.TestCase):
                      "MIDI_EVENTS"):
             with self.subTest(name=name):
                 self.assertEqual(getattr(client, name), RS[""][name])
-        for name in ("MIDI_EVENT_GUI", "MIDI_EVENT_RELATIVE", "MIDI_EVENT_HOTCUE_SET"):
+        for name in ("MIDI_EVENT_GUI", "MIDI_EVENT_RELATIVE", "MIDI_EVENT_HOTCUE_SET", "MIN_RATE"):
             self.assertEqual(getattr(controls, name), RS[""][name])
 
     def test_regions_do_not_overlap(self):

@@ -26,6 +26,9 @@ pub const STATE_OFFSET: usize = 64;
 pub const RING_OFFSET: usize = 172032;
 pub const RING_HEADER: usize = 64;
 pub const HIST_MAX: usize = 4096;
+/// The lowest rate anything plays at, every output's and the offline renders' (controls.MIN_RATE; the time
+/// stretch's band split needs it): a device at less is not opened.
+pub const MIN_RATE: u32 = 44_100;
 /// The output devices, written when asked (op::LIST_DEVICES): [generation u64, length u32, pad u32] + UTF-8 text:
 /// the main output's device in use on the first line, the system's default as "name<TAB>channels" on the second
 /// (empty: none), then one listed device a line, "name<TAB>channels". The generation is written last.

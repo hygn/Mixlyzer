@@ -274,7 +274,8 @@ fn start_bridges(s: &Stream, wanted: &[Option<AuxWanted>; BRIDGED_BUSES], bridge
 }
 
 /// Opens a stream's device at its own format (its mix format, or the rate asked for), its buses' bridges prepared
-/// for that rate; its device alone (not there: device::NOT_PRESENT, tried again each second).
+/// for that rate; its device alone (not there: device::NOT_PRESENT, tried again each second; below 44.1 kHz:
+/// device::check_rate, refused).
 fn open(s: &mut Stream, wanted: &[Option<AuxWanted>; BRIDGED_BUSES], bridges: &[Arc<Bridge>; BRIDGED_BUSES],
         shared: &[BusState; BRIDGED_BUSES]) {
     let (name, mode) = s.device.clone();
@@ -293,6 +294,9 @@ fn open(s: &mut Stream, wanted: &[Option<AuxWanted>; BRIDGED_BUSES], bridges: &[
         Ok((mix, ch)) => (if s.rate > 0 { s.rate } else { mix }, ch),
         Err(e) => return fail(s, e),
     };
+    if let Err(e) = device::check_rate(rate) {
+        return fail(s, e);
+    }
     for &k in &s.buses {
         bridges[k].prepare(rate as f64);
     }

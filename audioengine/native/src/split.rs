@@ -1,4 +1,4 @@
-//! The band split of the light time stretch (stretch.rs, ``Stretcher::light``): the source's low band
+//! The band split of the time stretch (stretch.rs, ``Stretcher``): the source's low band
 //! decimated by ``d`` (a Kaiser-windowed lowpass, -90 dB from the low rate's Nyquist frequency down, its passband
 //! to seven eighths of it: 7 kHz at 48 kHz; the transition, where both bands carry a tone and their stretched
 //! parts add with unrelated phases, kept narrow) and the high band the residual, the source less the low band

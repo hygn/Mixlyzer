@@ -1,7 +1,8 @@
 //! Streaming, percussion-aware, pitch-preserving time scaling: audioengine/python/timestretch.py's
 //! StreamingTimeStretcher (its docs hold the design), with the FFTs on realfft / rustfft and the vector work
-//! on VOLK. ``factor`` is input frames per output frame. Two modes: the full one (``Stretcher::new``, the
-//! Python engine's, sample for sample) and the light one the engine plays (``Stretcher::light``, see ``Light``).
+//! on VOLK. ``factor`` is input frames per output frame. The phase vocoder runs on the low band alone, the high
+//! band by WSOLA on its frames (see ``Light``); the event detector, the window lengths, the time map and the
+//! stream's handovers are the Python one's.
 
 use std::collections::{HashMap, VecDeque};
 use std::f64::consts::PI;
@@ -70,16 +71,12 @@ pub struct Config {
     pub phase_lock_strength: f64,
     pub stereo_coherence: bool,
     pub rtpghi_tolerance: f64,
-    pub dry_transient_amount: f64,
     pub dry_transient_threshold: f64,
     pub dry_transient_full_strength: f64,
     pub dry_transient_pre_ms: f64,
     pub dry_transient_post_ms: f64,
-    pub dry_transient_highpass_hz: f64,
-    pub kick_transient_bypass: f64,
     pub kick_transient_pre_ms: f64,
     pub kick_transient_post_ms: f64,
-    pub kick_transient_highpass_hz: f64,
     pub attack_filter_pad_ms: f64,
 }
 
@@ -104,16 +101,12 @@ impl Default for Config {
             phase_lock_strength: 1.0,
             stereo_coherence: true,
             rtpghi_tolerance: 1e-6,
-            dry_transient_amount: 0.70,
             dry_transient_threshold: 0.40,
             dry_transient_full_strength: 0.68,
             dry_transient_pre_ms: 4.0,
             dry_transient_post_ms: 24.0,
-            dry_transient_highpass_hz: 500.0,
-            kick_transient_bypass: 1.0,
             kick_transient_pre_ms: 10.0,
             kick_transient_post_ms: 24.0,
-            kick_transient_highpass_hz: 220.0,
             attack_filter_pad_ms: 10.0,
         }
     }
@@ -437,165 +430,6 @@ impl Detector {
 
 // --- the phase kernels ---
 
-const ITEM_BITS: u32 = 15;
-
-#[inline(always)]
-fn entry(bits: u32, item: i64) -> i64 {
-    ((0xFFFF_FFFFi64 - bits as i64) << ITEM_BITS) | item
-}
-
-fn sift_down(heap: &mut [i64], start: usize, size: usize) {
-    let e = heap[start];
-    let mut parent = start;
-    loop {
-        let mut child = 2 * parent + 1;
-        if child >= size {
-            break;
-        }
-        let right = child + 1;
-        if right < size && heap[right] < heap[child] {
-            child = right;
-        }
-        if heap[child] < e {
-            heap[parent] = heap[child];
-            parent = child;
-        } else {
-            break;
-        }
-    }
-    heap[parent] = e;
-}
-
-fn push(heap: &mut [i64], size: usize, e: i64) -> usize {
-    let mut child = size;
-    while child > 0 {
-        let parent = (child - 1) / 2;
-        if e < heap[parent] {
-            heap[child] = heap[parent];
-            child = parent;
-        } else {
-            break;
-        }
-    }
-    heap[child] = e;
-    size + 1
-}
-
-/// RTPGHI: the synthesis phases of one frame (bins integrated in order of magnitude, in time from the
-/// previous frame or in frequency from a neighbour), then identity phase locking around the joint peaks.
-#[allow(clippy::too_many_arguments)]
-fn rtpghi_frame(
-    out: &mut [f64],
-    analysis: &[f64],
-    joint: &[f32],
-    previous_analysis: &[f64],
-    previous_synthesis: &[f64],
-    previous_joint: &[f32],
-    channels: usize,
-    bins: usize,
-    analysis_hop: i64,
-    synthesis_hop: i64,
-    n_fft: usize,
-    tolerance: f64,
-    lock_strength: f64,
-    work: &mut PhaseWork,
-) {
-    out.copy_from_slice(analysis);
-    let ha = analysis_hop.max(1) as f64;
-    let hs = synthesis_hop.max(1) as f64;
-    let local = hs / ha;
-    let mut max_mag = EPS;
-    for m in 0..bins {
-        max_mag = max_mag.max(previous_joint[m] as f64).max(joint[m] as f64);
-    }
-    let floor = tolerance * max_mag;
-    let item_mask = (1i64 << ITEM_BITS) - 1;
-    let remaining = &mut work.remaining;
-    remaining.clear();
-    remaining.resize(bins, false);
-    let mut remaining_count = 0usize;
-    let seeds = &mut work.seeds;
-    seeds.clear();
-    for m in 0..bins {
-        if joint[m] as f64 > floor {
-            remaining[m] = true;
-            remaining_count += 1;
-            seeds.push(entry(previous_joint[m].to_bits(), 2 * m as i64));
-        }
-    }
-    seeds.sort_unstable();
-    let seed_count = seeds.len();
-    let mut next_seed = 0;
-    let heap = &mut work.heap;
-    heap.clear();
-    heap.resize(2 * bins + 4, 0);
-    let mut size = 0usize;
-    let time_step = |out: &mut [f64], m: usize| {
-        let omega = TWO_PI * m as f64 / n_fft as f64;
-        for c in 0..channels {
-            let i = c * bins + m;
-            let residual = wrap(analysis[i] - previous_analysis[i] - omega * ha);
-            out[i] = previous_synthesis[i] + omega * hs + local * residual;
-        }
-    };
-    while remaining_count > 0 {
-        if size == 0 && next_seed >= seed_count {
-            let mut m = 0;
-            while m < bins && !remaining[m] {
-                m += 1;
-            }
-            time_step(out, m);
-            remaining[m] = false;
-            remaining_count -= 1;
-            size = push(heap, size, entry(joint[m].to_bits(), 2 * m as i64 + 1));
-        }
-        let item;
-        if size > 0 && (next_seed >= seed_count || heap[0] < seeds[next_seed]) {
-            item = heap[0] & item_mask;
-            size -= 1;
-            if size > 0 {
-                heap[0] = heap[size];
-                sift_down(heap, 0, size);
-            }
-        } else {
-            item = seeds[next_seed] & item_mask;
-            next_seed += 1;
-        }
-        let m = (item >> 1) as usize;
-        if item & 1 == 0 {
-            if remaining[m] {
-                time_step(out, m);
-                remaining[m] = false;
-                remaining_count -= 1;
-                size = push(heap, size, entry(joint[m].to_bits(), 2 * m as i64 + 1));
-            }
-            continue;
-        }
-        let up = m + 1;
-        if up < bins && remaining[up] {
-            for c in 0..channels {
-                let b = c * bins;
-                out[b + up] = out[b + m] + local * wrap(analysis[b + up] - analysis[b + m]);
-            }
-            remaining[up] = false;
-            remaining_count -= 1;
-            size = push(heap, size, entry(joint[up].to_bits(), 2 * up as i64 + 1));
-        }
-        if m >= 1 && remaining[m - 1] {
-            let down = m - 1;
-            for c in 0..channels {
-                let b = c * bins;
-                out[b + down] = out[b + m] - local * wrap(analysis[b + m] - analysis[b + down]);
-            }
-            remaining[down] = false;
-            remaining_count -= 1;
-            size = push(heap, size, entry(joint[down].to_bits(), 2 * down as i64 + 1));
-        }
-    }
-
-    lock_and_wrap(out, analysis, joint, channels, bins, lock_strength, work);
-}
-
 /// Identity phase locking around the joint peaks, then the phases wrapped.
 fn lock_and_wrap(
     out: &mut [f64],
@@ -645,12 +479,13 @@ fn lock_and_wrap(
     }
 }
 
-/// The light mode's RTPGHI: ``rtpghi_frame``'s integration with a bucket queue in place of its heap and its
-/// sorted seeds: magnitudes ordered to 1/8 octave (0.75 dB; the f32's exponent and three mantissa bits), each
-/// push and pop O(1). Bins within one bucket go in last-in first-out order: the order of integration is
-/// RTPGHI's heuristic, not its result's definition.
+/// RTPGHI: the synthesis phases of one frame (bins integrated in order of magnitude, in time from the previous
+/// frame or in frequency from a neighbour), then identity phase locking around the joint peaks. The order is kept
+/// by a bucket queue in place of the Python one's heap and sorted seeds: magnitudes ordered to 1/8 octave (0.75
+/// dB; the f32's exponent and three mantissa bits), each push and pop O(1). Bins within one bucket go in last-in
+/// first-out order: the order of integration is RTPGHI's heuristic, not its result's definition.
 #[allow(clippy::too_many_arguments)]
-fn rtpghi_frame_buckets(
+fn rtpghi_frame(
     out: &mut [f64],
     analysis: &[f64],
     joint: &[f32],
@@ -847,28 +682,18 @@ impl CoherentWork {
 struct PhaseWork {
     buckets: Vec<Vec<u32>>,
     remaining: Vec<bool>,
-    seeds: Vec<i64>,
-    heap: Vec<i64>,
     peaks: Vec<usize>,
 }
 
-struct WindowData {
-    window: Vec<f32>,
-    window_sq: Vec<f32>,
-    center_ramp: Vec<Complex32>,
-    inverse_ramp: Vec<Complex32>,
-}
-
+/// An attack's reach in the output around its destination (before, after).
 #[derive(Clone, Copy)]
 struct Attack {
     pre: i64,
     post: i64,
-    fade: usize,
-    sos: Option<Sos>,
 }
 
-/// The light mode's analysis and synthesis windows for one low-rate window length ``wl``: the analysis at the
-/// low rate, the synthesis the same window at the full rate (``d * wl``).
+/// The analysis and synthesis windows for one low-rate window length ``wl``: the analysis at the low rate, the
+/// synthesis the same window at the full rate (``d * wl``).
 struct LightWindow {
     analysis: Vec<f32>,
     center_ramp: Vec<Complex32>,
@@ -877,17 +702,17 @@ struct LightWindow {
     synthesis_sq: Vec<f32>,
 }
 
-/// The light mode (``Stretcher::light``), the full mode's work at about 40 %: the phase vocoder on the low band
-/// only (below 7 - 8 kHz, decimated by ``d``: a third of the bins, the RTPGHI's queue with them, a bucket
-/// queue: ``rtpghi_frame_buckets``), synthesised at the full rate from the low band's bins (a zero-padded
+/// The band split's part of the stretcher (a full-band vocoder's work at about 40 %): the phase vocoder on the low
+/// band only (below 7 - 8 kHz, decimated by ``d``: a third of the bins, the RTPGHI's queue with them, a bucket
+/// queue: ``rtpghi_frame``), synthesised at the full rate from the low band's bins (a zero-padded
 /// inverse FFT: the band-limited interpolation itself); the high band (the residual: the bands sum to the
 /// source, split.rs) by WSOLA on the vocoder's own frames: each frame's input and output centres are the
 /// vocoder's, so both bands follow one time map. WSOLA looks within 5 ms for the segment continuing the
 /// previous one (the high band's partials, a synth's or a voice's harmonics, align only over their
 /// fundamental's period: within 0.5 ms they warbled), its splices' level kept whatever their correlation.
 /// The attack is the source's own: at each event (its onset found in the source, ``onset``, and carried to
-/// its destination on the time map) the high band, and the vocoder's band above 200 Hz where the full mode
-/// restores an attack, are crossfaded to the source's (``restore_light``), so every band's attack lands at
+/// its destination on the time map) the high band, and the vocoder's band above 200 Hz where the event is strong
+/// (a dry or a kick attack), are crossfaded to the source's (``restore_light``), so every band's attack lands at
 /// the same time and none is overlap-added; the bass below keeps its own phase.
 struct Light {
     split: BandSplit,
@@ -953,16 +778,12 @@ pub struct Stretcher {
     filter_pad: i64,
     envelope_window: usize,
     attack_ahead: i64,
-    windows: HashMap<usize, Rc<WindowData>>,
-    fft: Arc<dyn RealToComplex<f32>>,
-    ifft: Arc<dyn ComplexToReal<f32>>,
 
     source_token: Option<(usize, usize)>,
     factor: Option<f64>,
     expected_pos: Option<f64>,
     next_analysis_center: f64,
     next_synthesis_center: i64,
-    previous_analysis_center: Option<i64>,
     previous_analysis_phase: Vec<f64>,
     previous_synthesis_phase: Vec<f64>,
     previous_joint: Vec<f32>,
@@ -989,10 +810,6 @@ pub struct Stretcher {
     warming: bool,
 
     // per-frame work
-    fft_in: Vec<f32>,
-    fft_out: Vec<Complex32>,
-    fft_scratch: Vec<Complex32>,
-    ifft_scratch: Vec<Complex32>,
     frame_buf: Vec<f32>,
     coeff: Vec<Complex32>,       // [ch, bins]
     analysis_phase: Vec<f64>,    // [ch, bins]
@@ -1002,8 +819,8 @@ pub struct Stretcher {
     phase32: Vec<f32>,
     phase_work: PhaseWork,
     coherent_work: CoherentWork,
-    light: Option<Box<Light>>,
-    ola_high: Vec<f32>, // [len, ch]: the light mode's high band
+    light: Option<Box<Light>>, // always there: taken out while a frame works on it beside the rest
+    ola_high: Vec<f32>,        // [len, ch]: the high band
 }
 
 impl Stretcher {
@@ -1019,41 +836,73 @@ impl Stretcher {
     const WARM_EXTRA_FRAMES: i64 = 1;
     const WARM_DETECTOR_FRAMES: usize = 8;
 
+    /// The stretcher at ``sample_rate``, 44.1 kHz or more (ipc::MIN_RATE: the engine plays at no less, and below
+    /// 28 kHz no band is left to split).
     pub fn new(channels: usize, sample_rate: u32) -> Stretcher {
         let cfg = Config::default();
         let rate = sample_rate as f64;
+        let split = BandSplit::new(channels, sample_rate).expect("the time stretch at 44.1 kHz or more");
+        let d = split.d;
+        // the detector's grid and the window lengths as the Python stretcher's at this rate
         let requested = 128.max((rate * cfg.window_ms / 1000.0).round_ties_even() as usize);
-        let max_window = requested + (requested & 1);
-        let hop = 1.max((rate * cfg.synthesis_hop_ms / 1000.0).round_ties_even() as i64);
-        let n_fft = ((max_window as f64 * cfg.frequency_oversampling).ceil() as usize).next_power_of_two();
-        let bins = n_fft / 2 + 1;
-        let min_window = 16.max((cfg.minimum_window_ratio * max_window as f64).ceil() as usize);
+        let full_window = requested + (requested & 1);
+        let full_hop = 1.max((rate * cfg.synthesis_hop_ms / 1000.0).round_ties_even() as i64);
+        let detector_fft = ((full_window as f64 * cfg.frequency_oversampling).ceil() as usize).next_power_of_two();
+        let min_window = 16.max((cfg.minimum_window_ratio * full_window as f64).ceil() as usize);
         let mut planner = RealFftPlanner::<f32>::new();
-        let detector = Detector::new(rate, max_window, hop, n_fft, &cfg, &mut planner);
-        let event_reach = (max_window as f64 / (2.0 * hop as f64)).ceil() as i64;
-        let handover_timeout = 1.max((rate * Self::HANDOVER_TIMEOUT_SEC / hop as f64).round_ties_even() as i64);
+        let detector = Detector::new(rate, full_window, full_hop, detector_fft, &cfg, &mut planner);
+        let event_reach = (full_window as f64 / (2.0 * full_hop as f64)).ceil() as i64;
+        let handover_timeout = 1.max((rate * Self::HANDOVER_TIMEOUT_SEC / full_hop as f64).round_ties_even() as i64);
         let ms = |v: f64| 1.max((v * rate / 1000.0).round_ties_even() as i64);
-        let hp = |hz: f64| if hz <= 0.0 { None } else { Some(butter_highpass4(hz, rate)) };
-        let dry = Attack {
-            pre: ms(cfg.dry_transient_pre_ms),
-            post: ms(cfg.dry_transient_post_ms),
-            fade: ms(3.0) as usize,
-            sos: hp(cfg.dry_transient_highpass_hz),
-        };
-        let kick = Attack {
-            pre: ms(cfg.kick_transient_pre_ms),
-            post: ms(cfg.kick_transient_post_ms),
-            fade: ms(4.0) as usize,
-            sos: hp(cfg.kick_transient_highpass_hz),
-        };
+        let dry = Attack { pre: ms(cfg.dry_transient_pre_ms), post: ms(cfg.dry_transient_post_ms) };
+        let kick = Attack { pre: ms(cfg.kick_transient_pre_ms), post: ms(cfg.kick_transient_post_ms) };
         let filter_pad = ms(cfg.attack_filter_pad_ms);
         let envelope_window = 3.max(ms(1.0) as usize);
         let attack_ahead = dry.pre.max(kick.pre) + dry.post.max(kick.post) + filter_pad + 1;
-        let fft = planner.plan_fft_forward(n_fft);
-        let ifft = planner.plan_fft_inverse(n_fft);
-        let fft_scratch = fft.make_scratch_vec();
-        let ifft_scratch = ifft.make_scratch_vec();
+        // the vocoder at the low band's rate (1 / d), its hop a whole number of low-rate samples
+        let hop_low = 1.max((full_hop as f64 / d as f64).round_ties_even() as i64);
+        let hop = d as i64 * hop_low;
+        let wl_max = Self::low_length(d, full_window);
+        let max_window = full_window.max(d * wl_max);
+        let n_fft = fast_even_length((wl_max as f64 * cfg.frequency_oversampling).ceil() as usize);
+        let n_fft_full = d * n_fft;
+        let bins = n_fft / 2 + 1;
         let zc = Complex32::new(0.0, 0.0);
+        let fft = planner.plan_fft_forward(n_fft);
+        let ifft = planner.plan_fft_inverse(n_fft_full);
+        let segment = 2 * hop as usize;
+        let tolerance = 1.max((rate * Self::WSOLA_TOLERANCE_MS / 1000.0).round_ties_even() as i64);
+        let xc_n = fast_even_length(2 * tolerance as usize + 2 * hop as usize);
+        let xc_fft = planner.plan_fft_forward(xc_n);
+        let xc_ifft = planner.plan_fft_inverse(xc_n);
+        let xc_scratch = vec![zc; xc_fft.get_scratch_len().max(xc_ifft.get_scratch_len())];
+        let light = Light {
+            hop_low,
+            fft_scratch: fft.make_scratch_vec(),
+            ifft_scratch: ifft.make_scratch_vec(),
+            fft_in: vec![0.0; n_fft],
+            fft_out: vec![zc; bins],
+            synth_spec: vec![zc; n_fft_full / 2 + 1],
+            synth_out: vec![0.0; n_fft_full],
+            fft,
+            ifft,
+            windows: HashMap::new(),
+            previous_center: None,
+            segment_window: periodic_hann(segment),
+            tolerance,
+            rate,
+            previous_start: None,
+            energy: Vec::new(),
+            xc_in: vec![0.0; xc_n],
+            xc_spec: vec![zc; xc_n / 2 + 1],
+            xc_ref: vec![zc; xc_n / 2 + 1],
+            xc_sum: vec![zc; xc_n / 2 + 1],
+            xc_out: vec![0.0; xc_n],
+            xc_scratch,
+            xc_fft,
+            xc_ifft,
+            split,
+        };
         let mut s = Stretcher {
             ch: channels,
             cfg,
@@ -1070,15 +919,11 @@ impl Stretcher {
             filter_pad,
             envelope_window,
             attack_ahead,
-            windows: HashMap::new(),
-            fft,
-            ifft,
             source_token: None,
             factor: None,
             expected_pos: None,
             next_analysis_center: 0.0,
             next_synthesis_center: 0,
-            previous_analysis_center: None,
             previous_analysis_phase: vec![0.0; channels * bins],
             previous_synthesis_phase: vec![0.0; channels * bins],
             previous_joint: vec![0.0; bins],
@@ -1100,11 +945,7 @@ impl Stretcher {
             anchor_in: 0.0,
             anchor_out: 0,
             warming: false,
-            fft_in: vec![0.0; n_fft],
-            fft_out: vec![zc; bins],
-            fft_scratch,
-            ifft_scratch,
-            frame_buf: vec![0.0; n_fft],
+            frame_buf: vec![0.0; detector_fft],
             coeff: vec![zc; channels * bins],
             analysis_phase: vec![0.0; channels * bins],
             synthesis_phase: vec![0.0; channels * bins],
@@ -1113,79 +954,15 @@ impl Stretcher {
             phase32: vec![0.0; bins],
             phase_work: PhaseWork::default(),
             coherent_work: CoherentWork::default(),
-            light: None,
+            light: Some(Box::new(light)),
             ola_high: vec![],
         };
         s.reset();
         s
     }
 
-    /// The light mode (see ``Light``); the full one where the rate leaves no band to split.
-    pub fn light(channels: usize, sample_rate: u32) -> Stretcher {
-        let mut s = Stretcher::new(channels, sample_rate);
-        let Some(split) = BandSplit::new(channels, sample_rate) else { return s };
-        let d = split.d;
-        let hop_low = 1.max((s.hop as f64 / d as f64).round_ties_even() as i64);
-        s.hop = d as i64 * hop_low;
-        let wl_max = Self::low_length(d, s.max_window);
-        s.max_window = s.max_window.max(d * wl_max);
-        let n_fft = fast_even_length((wl_max as f64 * s.cfg.frequency_oversampling).ceil() as usize);
-        let n_fft_full = d * n_fft;
-        let bins = n_fft / 2 + 1;
-        s.n_fft = n_fft;
-        s.bins = bins;
-        let (ch, zc) = (channels, Complex32::new(0.0, 0.0));
-        s.coeff = vec![zc; ch * bins];
-        s.analysis_phase = vec![0.0; ch * bins];
-        s.synthesis_phase = vec![0.0; ch * bins];
-        s.previous_analysis_phase = vec![0.0; ch * bins];
-        s.previous_synthesis_phase = vec![0.0; ch * bins];
-        s.magnitude = vec![0.0; ch * bins];
-        s.joint = vec![0.0; bins];
-        s.previous_joint = vec![0.0; bins];
-        s.phase32 = vec![0.0; bins];
-        let mut planner = RealFftPlanner::<f32>::new();
-        let fft = planner.plan_fft_forward(n_fft);
-        let ifft = planner.plan_fft_inverse(n_fft_full);
-        let segment = 2 * s.hop as usize;
-        let tolerance = 1.max((sample_rate as f64 * Self::WSOLA_TOLERANCE_MS / 1000.0).round_ties_even() as i64);
-        let xc_n = fast_even_length(2 * tolerance as usize + 2 * s.hop as usize);
-        let xc_fft = planner.plan_fft_forward(xc_n);
-        let xc_ifft = planner.plan_fft_inverse(xc_n);
-        let xc_scratch = vec![zc; xc_fft.get_scratch_len().max(xc_ifft.get_scratch_len())];
-        s.light = Some(Box::new(Light {
-            hop_low,
-            fft_scratch: fft.make_scratch_vec(),
-            ifft_scratch: ifft.make_scratch_vec(),
-            fft_in: vec![0.0; n_fft],
-            fft_out: vec![zc; bins],
-            synth_spec: vec![zc; n_fft_full / 2 + 1],
-            synth_out: vec![0.0; n_fft_full],
-            fft,
-            ifft,
-            windows: HashMap::new(),
-            previous_center: None,
-            segment_window: periodic_hann(segment),
-            tolerance,
-            rate: sample_rate as f64,
-            previous_start: None,
-            energy: Vec::new(),
-            xc_in: vec![0.0; xc_n],
-            xc_spec: vec![zc; xc_n / 2 + 1],
-            xc_ref: vec![zc; xc_n / 2 + 1],
-            xc_sum: vec![zc; xc_n / 2 + 1],
-            xc_out: vec![0.0; xc_n],
-            xc_scratch,
-            xc_fft,
-            xc_ifft,
-            split,
-        }));
-        s.reset();
-        s
-    }
-
     const WSOLA_TOLERANCE_MS: f64 = 5.0;
-    /// The light mode's attack: the vocoder's band crossfaded to the source's above this.
+    /// The attack: the vocoder's band crossfaded to the source's above this.
     const ATTACK_LOW_CUTOFF_HZ: f64 = 200.0;
 
     /// A full-rate window length's low-rate one (even).
@@ -1207,7 +984,6 @@ impl Stretcher {
         self.source_token = None;
         self.factor = None;
         self.expected_pos = None;
-        self.previous_analysis_center = None;
         self.has_previous = false;
         self.output_read = 0;
         self.finalized_until = 0;
@@ -1411,7 +1187,6 @@ impl Stretcher {
         self.source_token = Some(token);
         self.factor = Some(factor);
         self.expected_pos = Some(pos);
-        self.previous_analysis_center = None;
         self.has_previous = false;
         self.unity_frames = 0;
         self.handover_at = None;
@@ -1443,49 +1218,23 @@ impl Stretcher {
         }
     }
 
-    fn window_data(&mut self, length: usize) -> Rc<WindowData> {
-        if let Some(w) = self.windows.get(&length) {
-            return w.clone();
-        }
-        let window = periodic_hann(length);
-        let window_sq = window.iter().map(|w| w * w).collect();
-        let half = (length / 2) as f64;
-        let (mut center_ramp, mut inverse_ramp) = (Vec::with_capacity(self.bins), Vec::with_capacity(self.bins));
-        for k in 0..self.bins {
-            let a = TWO_PI * k as f64 / self.n_fft as f64 * half;
-            center_ramp.push(Complex32::new(a.cos() as f32, a.sin() as f32));
-            inverse_ramp.push(Complex32::new(a.cos() as f32, -a.sin() as f32));
-        }
-        let w = Rc::new(WindowData { window, window_sq, center_ramp, inverse_ramp });
-        self.windows.insert(length, w.clone());
-        w
-    }
-
     fn process_frame(&mut self, source: &[f32]) {
         let factor = self.factor.unwrap_or(1.0);
         let input_center = (self.next_analysis_center + 0.5).floor() as i64;
         let output_center = self.next_synthesis_center;
-        let analysis_hop = match self.previous_analysis_center {
-            None => 1.max((factor * self.hop as f64).round_ties_even() as i64),
-            Some(p) => 1.max(input_center - p),
-        };
         let (window_length, lock_strength) = self.frame_window(source, input_center);
-        let (mut analysis_hop, mut synthesis_hop, mut window_length) = (analysis_hop, self.hop, window_length);
-        let mut light = self.light.take();
-        if let Some(light) = &mut light {
-            let d = light.split.d as i64;
-            let center = (input_center as f64 / d as f64).round_ties_even() as i64;
-            analysis_hop = match light.previous_center {
-                Some(p) => 1.max(center - p),
-                None => 1.max((factor * light.hop_low as f64).round_ties_even() as i64),
-            };
-            synthesis_hop = light.hop_low;
-            window_length = Self::low_length(light.split.d, window_length);
-            self.analyze_light(light, source, center, window_length);
-            light.previous_center = Some(center);
-        } else {
-            self.analyze(source, input_center, window_length);
-        }
+        let mut light = self.light.take().expect("the stretcher's bands");
+        // the vocoder's frame at the low band's rate
+        let d = light.split.d as i64;
+        let center = (input_center as f64 / d as f64).round_ties_even() as i64;
+        let analysis_hop = match light.previous_center {
+            Some(p) => 1.max(center - p),
+            None => 1.max((factor * light.hop_low as f64).round_ties_even() as i64),
+        };
+        let synthesis_hop = light.hop_low;
+        let window_length = Self::low_length(light.split.d, window_length);
+        self.analyze_light(&mut light, source, center, window_length);
+        light.previous_center = Some(center);
         // polar: phases (f64 from VOLK's f32 atan2), magnitudes, the joint magnitude over the channels
         let (ch, bins) = (self.ch, self.bins);
         for c in 0..ch {
@@ -1506,8 +1255,7 @@ impl Stretcher {
         }
         // the synthesis spectrum, into coeff
         if self.has_previous {
-            let phase = if light.is_some() { rtpghi_frame_buckets } else { rtpghi_frame };
-            phase(
+            rtpghi_frame(
                 &mut self.synthesis_phase,
                 &self.analysis_phase,
                 &self.joint,
@@ -1559,19 +1307,14 @@ impl Stretcher {
                 self.handover_at = Some(output_center.max(self.output_read));
             }
         }
-        if let Some(light) = &mut light {
-            self.overlap_add_light(light, output_center, window_length);
-            self.wsola_frame(light, source, input_center, output_center);
-        } else {
-            self.overlap_add(output_center, window_length);
-        }
-        self.light = light;
+        self.overlap_add_light(&mut light, output_center, window_length);
+        self.wsola_frame(&mut light, source, input_center, output_center);
+        self.light = Some(light);
         if self.frame_map.len() == 512 {
             self.frame_map.pop_front();
         }
         self.frame_map.push_back((input_center, output_center));
         self.queue_events(source, input_center);
-        self.previous_analysis_center = Some(input_center);
         std::mem::swap(&mut self.previous_analysis_phase, &mut self.analysis_phase);
         std::mem::swap(&mut self.previous_synthesis_phase, &mut self.synthesis_phase);
         self.previous_joint.copy_from_slice(&self.joint);
@@ -1625,26 +1368,6 @@ impl Stretcher {
             strength *= 1.0 - percussiveness;
         }
         (window, strength)
-    }
-
-    /// The windowed frame's spectrum per channel, centre-referenced, into coeff ([ch, bins]).
-    fn analyze(&mut self, source: &[f32], center: i64, length: usize) {
-        let wd = self.window_data(length);
-        let ch = self.ch;
-        let frames = (source.len() / ch) as i64;
-        let left = center - (length / 2) as i64;
-        let (lo, hi) = (left.max(0), frames.min(left + length as i64));
-        for c in 0..ch {
-            self.frame_buf[..length].iter_mut().for_each(|v| *v = 0.0);
-            for i in lo..hi {
-                self.frame_buf[(i - left) as usize] = source[i as usize * ch + c];
-            }
-            vk::mul(&mut self.fft_in[..length], &self.frame_buf[..length], &wd.window);
-            self.fft_in[length..].iter_mut().for_each(|v| *v = 0.0);
-            self.fft.process_with_scratch(&mut self.fft_in, &mut self.fft_out, &mut self.fft_scratch).ok();
-            vk::cmul_in(&mut self.fft_out, &wd.center_ramp);
-            self.coeff[c * self.bins..(c + 1) * self.bins].copy_from_slice(&self.fft_out);
-        }
     }
 
     fn light_window(&self, light: &mut Light, wl: usize) -> Rc<LightWindow> {
@@ -1845,7 +1568,7 @@ impl Stretcher {
         }
     }
 
-    /// The light mode's attack, one band of it (``low``: the vocoder's, else WSOLA's): the output crossfaded to
+    /// The attack, one band of it (``low``: the vocoder's, else WSOLA's): the output crossfaded to
     /// the source's own band, its onset at the event's destination on the time map, so the attack is the
     /// source's and never overlap-added. The crossfades adapt to what they join: the rise (1 ms) ends before
     /// the attack by as much as WSOLA may have placed a copy of it early (the stretch's drift over a hop plus
@@ -1985,41 +1708,6 @@ impl Stretcher {
         }
     }
 
-    fn overlap_add(&mut self, center: i64, length: usize) {
-        let wd = self.window_data(length);
-        let ch = self.ch;
-        let mut left = center - (length / 2) as i64;
-        let right = left + length as i64;
-        let mut src_start = 0usize;
-        if left < self.ola_base {
-            src_start = (self.ola_base - left) as usize;
-            left = self.ola_base;
-        }
-        if right <= left || src_start >= length {
-            return;
-        }
-        self.ensure_capacity(right);
-        let start = (left - self.ola_base) as usize;
-        let stop = (right - self.ola_base) as usize;
-        let span = stop - start;
-        let scale = 1.0 / self.n_fft as f32;
-        for c in 0..ch {
-            self.fft_out.copy_from_slice(&self.coeff[c * self.bins..(c + 1) * self.bins]);
-            vk::cmul_in(&mut self.fft_out, &wd.inverse_ramp);
-            // irfft takes the DC and Nyquist bins as real
-            self.fft_out[0].im = 0.0;
-            let last = self.bins - 1;
-            self.fft_out[last].im = 0.0;
-            self.ifft.process_with_scratch(&mut self.fft_out, &mut self.fft_in, &mut self.ifft_scratch).ok();
-            let frame = &mut self.frame_buf[..span];
-            vk::mul(frame, &self.fft_in[src_start..src_start + span], &wd.window[src_start..src_start + span]);
-            for k in 0..span {
-                self.ola[(start + k) * ch + c] += frame[k] * scale;
-            }
-        }
-        vk::add_in(&mut self.weight[start..stop], &wd.window_sq[src_start..src_start + span]);
-    }
-
     fn ensure_capacity(&mut self, absolute_stop: i64) {
         let required = (absolute_stop - self.ola_base) as usize;
         if required <= self.weight.len() {
@@ -2030,9 +1718,7 @@ impl Stretcher {
         self.weight.resize(len, 0.0);
         self.ola.resize(len * self.ch, 0.0);
         self.correction.resize(len * self.ch, 0.0);
-        if !self.ola_high.is_empty() {
-            self.ola_high.resize(len * self.ch, 0.0);
-        }
+        self.ola_high.resize(len * self.ch, 0.0);
     }
 
     fn read_output(&mut self, count: usize) -> Vec<f32> {
@@ -2043,11 +1729,8 @@ impl Stretcher {
             let w = self.weight[start + k];
             for c in 0..ch {
                 let i = (start + k) * ch + c;
-                let mut v = if w > 1e-10 { self.ola[i] / w } else { 0.0 };
-                if !self.ola_high.is_empty() {
-                    v += self.ola_high[i];
-                }
-                out[k * ch + c] = v + self.correction[i];
+                let v = if w > 1e-10 { self.ola[i] / w } else { 0.0 };
+                out[k * ch + c] = v + self.ola_high[i] + self.correction[i];
             }
         }
         self.output_read += count as i64;
@@ -2064,9 +1747,7 @@ impl Stretcher {
         self.weight.drain(..c);
         self.ola.drain(..c * self.ch);
         self.correction.drain(..c * self.ch);
-        if !self.ola_high.is_empty() {
-            self.ola_high.drain(..c * self.ch);
-        }
+        self.ola_high.drain(..c * self.ch);
         self.ola_base += consumed;
     }
 
@@ -2083,20 +1764,19 @@ impl Stretcher {
     }
 
     // Attack preservation
-    /// Queues the events the time map reaches, each with its destination: the full mode aligns an event's
-    /// frame centre, the light mode its onset (``onset``), so every band's attack lands where the map puts it.
+    /// Queues the events the time map reaches, each with its destination: its onset (``onset``) aligned, so every
+    /// band's attack lands where the map puts it.
     fn queue_events(&mut self, source: &[f32], input_center: i64) {
         let dh = self.detector.hop;
-        // the light mode looks two frames on: an onset lies up to 1.5 frames after its frame's centre
-        let ahead = if self.light.is_some() { 2 * dh } else { 0 };
-        let last = ((input_center + ahead) as f64 / dh as f64).floor() as i64;
+        // two frames on: an onset lies up to 1.5 frames after its frame's centre
+        let last = ((input_center + 2 * dh) as f64 / dh as f64).floor() as i64;
         if last < self.next_event_frame {
             return;
         }
         let mut centers: Option<(Vec<f64>, Vec<f64>)> = None;
         for frame in self.next_event_frame..=last {
             if let Some(&event) = self.detector.events.get(&frame) {
-                let at = if self.light.is_some() { self.onset(source, frame * dh) } else { frame * dh };
+                let at = self.onset(source, frame * dh);
                 if at > input_center {
                     // the map does not reach it yet
                     self.next_event_frame = frame;
@@ -2161,116 +1841,13 @@ impl Stretcher {
             let span = cfg.dry_transient_full_strength - cfg.dry_transient_threshold;
             let dry = ((event.strength - cfg.dry_transient_threshold) / span).clamp(0.0, 1.0);
             let kick = ((event.kick - Self::KICK_CONFIDENCE_FROM) / Self::KICK_CONFIDENCE_SPAN).clamp(0.0, 1.0);
-            if let Some(mut light) = self.light.take() {
-                // the high band's attack at every event; the vocoder's where the full mode restores one
-                self.restore_light(&mut light, source, center, destination, false);
-                if dry > 0.0 || kick > 0.0 {
-                    self.restore_light(&mut light, source, center, destination, true);
-                }
-                self.light = Some(light);
-                continue;
+            let mut light = self.light.take().expect("the stretcher's bands");
+            // the high band's attack at every event; the vocoder's where it is a dry or a kick attack
+            self.restore_light(&mut light, source, center, destination, false);
+            if dry > 0.0 || kick > 0.0 {
+                self.restore_light(&mut light, source, center, destination, true);
             }
-            if cfg.dry_transient_amount > 0.0 && dry > 0.0 {
-                self.restore_attack(source, center, destination, self.dry, cfg.dry_transient_amount * dry, true);
-            }
-            if cfg.kick_transient_bypass > 0.0 && kick > 0.0 {
-                self.restore_attack(source, center, destination, self.kick, cfg.kick_transient_bypass * kick, false);
-            }
-        }
-    }
-
-    /// Pulls the output's high band around one attack toward the unstretched source (``match_envelope``:
-    /// the output's own band scaled toward the source's 1 ms envelope; else the source's band crossfaded in).
-    fn restore_attack(&mut self, source: &[f32], input_center: i64, output_center: i64, spec: Attack, amount: f64, match_envelope: bool) {
-        let ch = self.ch;
-        let pad = self.filter_pad;
-        let lo = (output_center - spec.pre).max(self.output_read).max(self.ola_base);
-        let hi = (output_center + spec.post + 1).min(self.finalized_until);
-        if hi <= lo {
-            return;
-        }
-        let y_lo = self.ola_base.max(lo - pad);
-        let y_hi = self.finalized_until.min(hi + pad);
-        let len = (y_hi - y_lo) as usize;
-        if spec.sos.is_some() && len <= 15 {
-            return;
-        }
-        // per channel: the output span (normalised, with corrections) and the source under it
-        let frames = (source.len() / ch) as i64;
-        let x_lo = input_center - (output_center - y_lo);
-        let a = (y_lo - self.ola_base) as usize;
-        let mut y_band = vec![vec![0f64; len]; ch];
-        let mut x_band = vec![vec![0f64; len]; ch];
-        for k in 0..len {
-            let w = self.weight[a + k] as f64;
-            for c in 0..ch {
-                let i = (a + k) * ch + c;
-                let mut v = if w > 1e-10 { self.ola[i] as f64 / w } else { 0.0 };
-                if !self.ola_high.is_empty() {
-                    v += self.ola_high[i] as f64;
-                }
-                y_band[c][k] = v + self.correction[i] as f64;
-            }
-            let s = x_lo + k as i64;
-            if s >= 0 && s < frames {
-                for c in 0..ch {
-                    x_band[c][k] = source[s as usize * ch + c] as f64;
-                }
-            }
-        }
-        if let Some(sos) = &spec.sos {
-            for c in 0..ch {
-                y_band[c] = sosfiltfilt(sos, &y_band[c]);
-                x_band[c] = sosfiltfilt(sos, &x_band[c]);
-            }
-        }
-        let n = (hi - lo) as usize;
-        let fade = spec.fade;
-        let ramp: Vec<f64> = (0..fade).map(|i| (0.5 * PI * i as f64 / fade as f64).sin().powi(2)).collect();
-        let mut shape = vec![1f64; n];
-        for (k, s) in shape.iter_mut().enumerate() {
-            let offset = lo + k as i64 - output_center; // -pre .. post
-            let from_start = (offset + spec.pre) as usize;
-            let to_end = (spec.post - offset) as usize;
-            if from_start < fade {
-                *s = ramp[from_start];
-            }
-            if to_end < fade {
-                *s = s.min(ramp[to_end]);
-            }
-        }
-        let base = (lo - y_lo) as usize;
-        let start = ((lo - self.ola_base) as usize) * ch;
-        if match_envelope {
-            let envelope = |band: &Vec<Vec<f64>>| -> Vec<f64> {
-                let power: Vec<f64> = (0..len).map(|k| band.iter().map(|b| b[k] * b[k]).sum::<f64>() / ch as f64).collect();
-                let w = self.envelope_window as i64;
-                let half = w / 2;
-                (0..len as i64)
-                    .map(|i| {
-                        let mut s = 0.0;
-                        for j in i - half..i - half + w {
-                            s += power[j.clamp(0, len as i64 - 1) as usize];
-                        }
-                        (s / w as f64 + EPS).sqrt()
-                    })
-                    .collect()
-            };
-            let (ex, ey) = (envelope(&x_band), envelope(&y_band));
-            for k in 0..n {
-                let ratio = (ex[base + k] / (ey[base + k] + EPS)).clamp(0.60, 1.80);
-                let g = amount * shape[k] * (ratio - 1.0);
-                for c in 0..ch {
-                    self.correction[start + k * ch + c] += (g * y_band[c][base + k]) as f32;
-                }
-            }
-        } else {
-            for k in 0..n {
-                let g = amount * shape[k];
-                for c in 0..ch {
-                    self.correction[start + k * ch + c] += (g * (x_band[c][base + k] - y_band[c][base + k])) as f32;
-                }
-            }
+            self.light = Some(light);
         }
     }
 }

@@ -332,6 +332,14 @@ const SCRATCH_FRAMES: usize = 2048;
 /// The most channels the deck plays (stereo; a mono device's deck: one); its lane holds twice as many (its music
 /// and its listening aids).
 pub const DECK_CH_MAX: usize = 2;
+
+/// ``rate`` refused below ipc::MIN_RATE (44.1 kHz), in words.
+pub fn check_rate(rate: u32) -> Result<(), String> {
+    if rate < crate::ipc::MIN_RATE {
+        return Err(format!("{rate} Hz is below the engine's 44.1 kHz"));
+    }
+    Ok(())
+}
 const LANE_CH_MAX: usize = 2 * DECK_CH_MAX;
 /// The buses that may go to a device of their own: the headphones, the booth.
 pub const BRIDGED_BUSES: usize = 2;

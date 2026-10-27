@@ -94,6 +94,7 @@ PEAK_FLOOR_DBFS = -45.0                 # a meter's floor: below its lowest segm
 NATIVE_BUFFER_MS_RANGE = (2, 500)       # the native engine fills its buffer every 1 ms below 10 ms (engine.rs)
 PYTHON_BUFFER_MS_RANGE = (10, 500)
 NATIVE_EXCLUSIVE_RATES = (44100, 48000, 88200, 96000, 176400, 192000)
+MIN_RATE = 44100   # the lowest rate either engine plays at (ipc.rs MIN_RATE): a device below it is not opened
 
 
 class DeckReport:

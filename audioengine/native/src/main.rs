@@ -109,11 +109,12 @@ fn main() {
     // the session's format: the device's, at the rate asked for in exclusive mode (the GUI decodes for it)
     let asked_rate = code("--rate");
     let format = device::default_format(wanted_device.as_deref(), wanted_mode, true)
-        .map(|(r, c)| (if wanted_mode.exclusive && asked_rate > 0 { asked_rate } else { r }, c));
+        .map(|(r, c)| (if wanted_mode.exclusive && asked_rate > 0 { asked_rate } else { r }, c))
+        .and_then(|(r, c)| device::check_rate(r).map(|()| (r, c)));
     let (rate, ch) = match format {
         Ok(f) => f,
         Err(e) => {
-            eprintln!("[AudioEngine] no output device: {e}");
+            eprintln!("[AudioEngine] no output: {e}");
             ctl.state_begin();
             ctl.put_u32(st::READY, 2);
             ctl.state_end();
@@ -359,6 +360,7 @@ fn main() {
 fn mix_file(args: &[String], input: &str) {
     let get = |n: &str, d: &str| arg(args, n).unwrap_or_else(|| d.to_string());
     let rate: u32 = get("--rate", "48000").parse().unwrap();
+    device::check_rate(rate).unwrap_or_else(|e| panic!("--rate: {e}"));
     let block: usize = get("--block", "512").parse().unwrap();
     let bpm: f64 = get("--bpm", "0").parse().unwrap();
     let stop_at: f64 = get("--stop-at", "-1").parse().unwrap();
@@ -433,22 +435,19 @@ fn mix_file(args: &[String], input: &str) {
     std::fs::write(get("--out", "out.f32"), bytes).expect("write output");
 }
 
-/// Offline: the time stretch of a raw float32 file (interleaved), for checks against the Python engine's.
-/// --stretch-file IN --out OUT --channels C --rate R --factor F [--block N] [--light]
+/// Offline: the time stretch of a raw float32 file (interleaved), for the tests' checks of its level and attacks.
+/// --stretch-file IN --out OUT --channels C --rate R --factor F [--block N]
 fn stretch_file(args: &[String], input: &str) {
     let get = |n: &str, d: &str| arg(args, n).unwrap_or_else(|| d.to_string());
     let ch: usize = get("--channels", "2").parse().unwrap();
     let rate: u32 = get("--rate", "48000").parse().unwrap();
+    device::check_rate(rate).unwrap_or_else(|e| panic!("--rate: {e}"));
     let factor: f64 = get("--factor", "1.0").parse().unwrap();
     let block: usize = get("--block", "480").parse().unwrap();
     let bytes = std::fs::read(input).expect("read input");
     let pcm: Vec<f32> = bytes.chunks_exact(4).map(|b| f32::from_le_bytes(b.try_into().unwrap())).collect();
     vk::warm();
-    let mut s = if args.iter().any(|a| a == "--light") {
-        stretch::Stretcher::light(ch, rate)
-    } else {
-        stretch::Stretcher::new(ch, rate)
-    };
+    let mut s = stretch::Stretcher::new(ch, rate);
     let mut pos = 0.0;
     let mut out: Vec<f32> = Vec::new();
     let t0 = clock::now();
@@ -474,6 +473,7 @@ fn scratch_file(args: &[String], input: &str) {
     let get = |n: &str, d: &str| arg(args, n).unwrap_or_else(|| d.to_string());
     let ch: usize = get("--channels", "2").parse().unwrap();
     let rate: f64 = get("--rate", "48000").parse().unwrap();
+    device::check_rate(rate as u32).unwrap_or_else(|e| panic!("--rate: {e}"));
     let block: usize = get("--block", "48").parse().unwrap();
     let f32s = |path: &str| -> Vec<f32> {
         std::fs::read(path).unwrap().chunks_exact(4).map(|b| f32::from_le_bytes(b.try_into().unwrap())).collect()

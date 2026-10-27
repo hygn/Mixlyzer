@@ -1,5 +1,5 @@
-"""The native audio engine (audioengine/native) against the Python engine it replaces: the scratch path and the
-time stretch render the same, and the engine plays through its control block. Skipped without the built engine
+"""The native audio engine (audioengine/native): its scratch path renders as the Python engine's, its time stretch
+keeps the level and the attacks, and the engine plays through its control block. Skipped without the built engine
 (build/audio_engine.py), and the playback test without an output device."""
 import os
 import struct
@@ -77,50 +77,10 @@ class NativeMatchesPython(unittest.TestCase):
         self.assertEqual(python.shape, rust.shape)
         np.testing.assert_allclose(rust, python, atol=1e-6)
 
-    def test_stretch_sounds_the_same(self):
-        """Phase paths may part (not bit-exact), the magnitude spectrograms not: within the spread that 1e-7 of
-        noise on the input makes in the Python stretch itself, or 0.5 % (the native one takes its phases and
-        magnitudes in float32 and turns the analysis coefficients for its spectrum; the Python one, kept as it
-        was, works them out in float64: 0.25 % apart at 125 %, where this signal's spread is 0.01 %; 0.3 % is its
-        spread at 80 %)."""
-        from scipy.signal import stft
-        from audioengine.python import timestretch as ts
-        ts.warm_timestretch_numba()
-        pcm = _music(6.0)
-
-        def python(src, factor):
-            st = ts.StreamingTimeStretcher(2, RATE)
-            pos, blocks = 0.0, []
-            while True:
-                y = st.render(src, pos, factor, 480)
-                if not len(y):
-                    return np.concatenate(blocks)
-                blocks.append(y)
-                pos = st.expected_input_position
-
-        def mags(y):
-            return np.abs(stft(y.mean(axis=1), nperseg=2048, noverlap=1536)[2])
-
-        def convergence(a, b):
-            n = min(len(a), len(b))
-            A, B = mags(a[:n]), mags(b[:n])
-            return np.linalg.norm(A - B) / np.linalg.norm(A)
-
-        noisy = pcm + np.random.default_rng(1).standard_normal(pcm.shape).astype(np.float32) * 1e-7
-        for factor in (0.8, 1.25):
-            out = os.path.join(self.dir, "st.f32")
-            subprocess.run([str(EXE), "--stretch-file", self._f32("st_in.f32", pcm), "--out", out, "--factor",
-                            str(factor)], check=True, capture_output=True)
-            rust = np.fromfile(out, "<f4").reshape(-1, 2)
-            ref = python(pcm, factor)
-            self.assertEqual(rust.shape, ref.shape)
-            floor = convergence(ref, python(noisy, factor))
-            self.assertLess(convergence(ref, rust), max(3 * floor, 5e-3), factor)
-
 
 @unittest.skipIf(EXE is None, "the native engine is not built (build/audio_engine.py)")
-class NativeLightStretch(unittest.TestCase):
-    """The light time stretch the engine plays (--stretch-file --light): the low band's vocoder and the high band's
+class NativeStretch(unittest.TestCase):
+    """The time stretch the engine plays (--stretch-file): the low band's vocoder and the high band's
     WSOLA keep the source's level, and every band's attack lands where the time map puts it, together."""
 
     def setUp(self):
@@ -139,10 +99,10 @@ class NativeLightStretch(unittest.TestCase):
         return x.astype(np.float32), onsets
 
     def _render(self, pcm: np.ndarray, factor: float) -> np.ndarray:
-        src = os.path.join(self.dir, "light_in.f32")
-        out = os.path.join(self.dir, "light_out.f32")
+        src = os.path.join(self.dir, "st_in.f32")
+        out = os.path.join(self.dir, "st_out.f32")
         np.ascontiguousarray(pcm).astype("<f4").tofile(src)
-        subprocess.run([str(EXE), "--stretch-file", src, "--out", out, "--factor", str(factor), "--light"],
+        subprocess.run([str(EXE), "--stretch-file", src, "--out", out, "--factor", str(factor)],
                        check=True, capture_output=True)
         return np.fromfile(out, "<f4").reshape(-1, 2)
 

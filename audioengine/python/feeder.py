@@ -76,6 +76,8 @@ class PCMFeeder(QtCore.QObject):
         self.rate = int(rate)
         self.ch = int(channels)
         self._bpf = self.ch * 4  # float32
+        if self.rate < controls.MIN_RATE:
+            print(f"[AudioEngine] no output: {self.rate} Hz is below the engine's 44.1 kHz")
 
         self.dev: Optional[QtCore.QIODevice] = None
         self._flush_timer: Optional[QtCore.QTimer] = None
@@ -216,6 +218,9 @@ class PCMFeeder(QtCore.QObject):
         self._timeline.reset()
         self._end_out_frame = None
         self._audible_until = 0
+        if self.rate < controls.MIN_RATE:
+            self.dev = None   # a device below 44.1 kHz is not opened (every engine's minimum)
+            return
         try:
             self.audio.setBufferSize(self._wanted_buffer_bytes())   # before start(): it takes effect there
             self.dev = self.audio.start()
@@ -247,6 +252,8 @@ class PCMFeeder(QtCore.QObject):
         """Restart the sink (at most once per second) only if it died on its own, e.g. device loss."""
         if self.dev is not None and self.audio.state() != QtMultimedia.QtAudio.State.StoppedState:
             return True
+        if self.rate < controls.MIN_RATE:
+            return False
         now = time.monotonic()
         if now < self._restart_at:
             return False
