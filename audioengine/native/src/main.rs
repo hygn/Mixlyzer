@@ -36,6 +36,7 @@ mod outputs;
 mod sched;
 mod shm;
 mod simd;
+mod spectrum;
 mod split;
 mod stretch;
 mod timeline;
@@ -150,6 +151,7 @@ fn main() {
         }
     };
     let mut slot = Slot::new(rate, ch, ring.clone(), params.strip.clone());
+    let mut spectrum = spectrum::Analyzer::new(rate as f64);
     let mut controller = Controller::new();
     let mut cmd_done = 0u64;
     let mut device_errors = 0u32;
@@ -277,6 +279,7 @@ fn main() {
                         params.set(key as usize, value);
                     }
                 }
+                op::SET_SPECTRUM => params.tap.set_on(Reader::new(&cmd.payload).u32().unwrap_or(0) != 0),
                 op::SET_ROUTING => {
                     let mut r = Reader::new(&cmd.payload);
                     let mut routes = Vec::with_capacity(mixer::ROUTES);
@@ -335,6 +338,10 @@ fn main() {
         slot.deck.publish_bpm(&slot.engine);
         controller.tick(&slot, &params);
         publish(&ctl, &mut slot, &controller, cmd_done, device_errors, output.as_ref(), &sched, &aux, &params);
+        // the master's spectrum, while the GUI asks (after the tick's own work: a frame is ~50 us)
+        if let Some(frame) = spectrum.tick(&params.tap) {
+            ctl.put_spectrum(&frame);
+        }
         let playing = slot.engine.playing;
         trace.tick(&ring, tick_start, level_before, last_op, playing, output.as_ref().map(|o| o.mode.code()));
         if now - parent_checked > 0.5 {

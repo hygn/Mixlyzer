@@ -96,6 +96,18 @@ PYTHON_BUFFER_MS_RANGE = (10, 500)
 NATIVE_EXCLUSIVE_RATES = (44100, 48000, 88200, 96000, 176400, 192000)
 MIN_RATE = 44100   # the lowest rate either engine plays at (ipc.rs MIN_RATE): a device below it is not opened
 
+# ---- the master's spectrum (the native engine's, src/spectrum.rs; ipc.rs SPECTRUM_*) ----
+SPECTRUM_BINS = 240
+SPECTRUM_F_LO = 20.0
+SPECTRUM_BINS_PER_OCTAVE = 24
+SPECTRUM_FRAMES_PER_SEC = 30.0
+
+
+def spectrum_edges() -> tuple[float, ...]:
+    """The spectrum's bins' edges (Hz, SPECTRUM_BINS + 1, log-spaced): a frame's value k is the power spectral
+    density (dB re full scale, per Hz) averaged over [edge k, edge k + 1)."""
+    return tuple(SPECTRUM_F_LO * 2.0 ** (k / SPECTRUM_BINS_PER_OCTAVE) for k in range(SPECTRUM_BINS + 1))
+
 
 class DeckReport:
     """What the deck is (src/deck.rs), as the GUI shows it: ``cue`` and ``jump_dest`` (the armed JumpCUE's

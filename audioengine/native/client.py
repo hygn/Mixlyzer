@@ -43,7 +43,7 @@ from audioengine.controls import LEVEL_UNITY, MIX_KEY, MIX_KEYS, DeckReport
 from audioengine.volume import trim_db_to_knob
 
 MAGIC = int.from_bytes(b"MXAUDIC1", "little")
-VERSION = 7
+VERSION = 8
 STATE_OFFSET = 64
 RING_OFFSET = 172032
 RING_HEADER = 64
@@ -80,6 +80,7 @@ OP_SET_AUX_OUTPUT = 50   # a bus on a device of its own
 OP_SET_HEADPHONES = 51   # the master mixed into the headphones, the CUE / MASTER mix, their level
 OP_SET_MIXER_KNOB = 52   # the deck's mixer channel knob: u32 0 TRIM, 1 EQ LOW, 2 MID, 3 HIGH, 4 COLOR; f64 its position
 OP_SET_MIXER = 53   # the mixer's setting: u32 key (MIX_KEYS' place), f64 value
+OP_SET_SPECTRUM = 54   # u32 the master's spectrum made (1) or not
 NO_CHANNEL = 0xFF   # a bus not routed
 # the buses that may play on a device of their own (ipc.rs OUTPUTS_OFFSET: a state block each, out::*)
 AUX_BUSES = ("headphones", "booth")
@@ -110,6 +111,13 @@ MIDI_PORTS_OFFSET = 34816   # ipc.rs: as the devices, one MIDI input port a line
 MIDI_EVENTS_OFFSET = 36864  # ipc.rs: [written u64, pad] + MIDI_EVENTS slots of 16 bytes
 MIDI_EVENTS = 240
 _MIDI_EVENT = struct.Struct("<IBBBBIi")
+# the master's spectrum (ipc.rs SPECTRUM_*): [written u64, pad] + SPECTRUM_FRAMES slots of SPECTRUM_SLOT bytes:
+# [seq u32, pad 12, SPECTRUM_BINS u8 (SPECTRUM_DB_FLOOR + v * SPECTRUM_DB_STEP dB)]
+SPECTRUM_OFFSET = 166912
+SPECTRUM_FRAMES = 16
+SPECTRUM_SLOT = 256
+SPECTRUM_DB_FLOOR = -160.0
+SPECTRUM_DB_STEP = 0.625
 
 
 def executable() -> Optional[Path]:
@@ -179,6 +187,7 @@ class NativeEngine:
         self._lock = threading.Lock()
         self._seq = 0
         self._midi_read = 0   # the MIDI messages read from the ring (its count)
+        self._spectrum_read = 0   # the spectrum frames read (their count)
         args = [str(exe), "--shm", self._shm.name, "--size", str(CONTROL_SIZE), "--parent", str(os.getpid())]
         if device:
             args += ["--device", device]
@@ -375,6 +384,32 @@ class NativeEngine:
             k += 1
         self._midi_read = k
         return out
+
+    def spectrum_frames(self) -> np.ndarray:
+        """The master's spectrum frames made since the last call (op SET_SPECTRUM on), oldest first: ``[k,
+        controls.SPECTRUM_BINS]`` float32 dB (controls.spectrum_edges); the oldest are lost past SPECTRUM_FRAMES.
+        One reader (the GUI thread)."""
+        buf = self._buf
+        bins = controls.SPECTRUM_BINS
+        if buf is None:
+            return np.zeros((0, bins), np.float32)
+        written = struct.unpack_from("<Q", buf, SPECTRUM_OFFSET)[0]
+        k = max(self._spectrum_read, written - SPECTRUM_FRAMES)
+        out = []
+        while k < written:
+            at = SPECTRUM_OFFSET + 16 + (k % SPECTRUM_FRAMES) * SPECTRUM_SLOT
+            want = (k + 1) & 0xFFFFFFFF
+            if struct.unpack_from("<I", buf, at)[0] != want:
+                break   # being written: the next call
+            values = np.frombuffer(bytes(buf[at + 16:at + 16 + bins]), np.uint8)
+            if struct.unpack_from("<I", buf, at)[0] != want:
+                break   # written over while copied
+            out.append(values)
+            k += 1
+        self._spectrum_read = k
+        if not out:
+            return np.zeros((0, bins), np.float32)
+        return (SPECTRUM_DB_FLOOR + np.stack(out).astype(np.float32) * SPECTRUM_DB_STEP).astype(np.float32)
 
     def send(self, op: int, payload: bytes = b"") -> bool:
         """Queues a command; False if the engine is gone or did not take its earlier ones in time."""
@@ -665,6 +700,15 @@ class NativeFeeder(QtCore.QObject):
         payload = struct.pack("<II", PRIORITY_CODES.get(priority, 2), int(bool(power_throttling)))
         if self._settings.get((OP_SET_PROCESS, None)) != (OP_SET_PROCESS, payload):
             self.setting(OP_SET_PROCESS, payload)
+
+    def set_spectrum(self, on: bool) -> None:
+        """The master's spectrum made (``on``: while Settings > View shows it) or not; a new engine gets it from
+        _replay."""
+        self.setting(OP_SET_SPECTRUM, struct.pack("<I", int(bool(on))))
+
+    def spectrum_frames(self) -> np.ndarray:
+        """NativeEngine.spectrum_frames of the engine running (the GUI thread reads them)."""
+        return self._engine.spectrum_frames()
 
     def apply_session_format(self) -> bool:
         """Before a track is decoded: the engine started again where the rate asked for differs from its own

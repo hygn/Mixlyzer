@@ -15,13 +15,15 @@
 //! [DEVICES_OFFSET, OUTPUTS_OFFSET): the output devices, written when asked (op::LIST_DEVICES).
 //! [OUTPUTS_OFFSET, MIX_OFFSET): the state of the buses on devices of their own (the headphones, the booth;
 //!   out::*), written with the state under its sequence lock.
-//! [MIX_OFFSET, RING_OFFSET): the mixer's settings as it has them (mix::*: f64 each by key) and its meters
+//! [MIX_OFFSET, SPECTRUM_OFFSET): the mixer's settings as it has them (mix::*: f64 each by key) and its meters
 //!   (mix::METERS), written with the state under its sequence lock.
+//! [SPECTRUM_OFFSET, RING_OFFSET): the master's spectrum (spectrum.rs), a ring of frames the engine writes while
+//!   asked (op::SET_SPECTRUM).
 
 use std::sync::atomic::{AtomicU64, Ordering, fence};
 
 pub const MAGIC: u64 = u64::from_le_bytes(*b"MXAUDIC1");
-pub const VERSION: u32 = 7;
+pub const VERSION: u32 = 8;
 pub const STATE_OFFSET: usize = 64;
 pub const RING_OFFSET: usize = 172032;
 pub const RING_HEADER: usize = 64;
@@ -39,6 +41,21 @@ pub const DEVICES_MAX: usize = OUTPUTS_OFFSET - DEVICES_OFFSET - 16;
 pub const OUTPUTS_OFFSET: usize = 65536;
 /// The mixer's settings and meters (mix::*), after the buses' blocks.
 pub const MIX_OFFSET: usize = 165888;
+/// The master's spectrum (spectrum.rs): [written u64 (frames ever), pad u64] + SPECTRUM_FRAMES slots of
+/// SPECTRUM_SLOT bytes, frame k at k % SPECTRUM_FRAMES: [seq u32 (k + 1, written last), pad 12 bytes, SPECTRUM_BINS
+/// u8: the power spectral density of SPECTRUM_BINS log-spaced bins from SPECTRUM_F_LO Hz, SPECTRUM_BINS_PER_OCTAVE
+/// an octave, each SPECTRUM_DB_FLOOR + v * SPECTRUM_DB_STEP dB (re full scale, per Hz)].
+pub const SPECTRUM_OFFSET: usize = 166912;
+pub const SPECTRUM_FRAMES: usize = 16;
+pub const SPECTRUM_SLOT: usize = 256;
+pub const SPECTRUM_BINS: usize = 240;
+pub const SPECTRUM_F_LO: f64 = 20.0;
+pub const SPECTRUM_BINS_PER_OCTAVE: usize = 24;
+pub const SPECTRUM_DB_FLOOR: f64 = -160.0;
+pub const SPECTRUM_DB_STEP: f64 = 0.625;
+const _: () = assert!(SPECTRUM_OFFSET >= MIX_OFFSET + 8 * (mix::METERS + mix::METER_COUNT));
+const _: () = assert!(SPECTRUM_OFFSET + 16 + SPECTRUM_FRAMES * SPECTRUM_SLOT <= RING_OFFSET);
+const _: () = assert!(16 + SPECTRUM_BINS <= SPECTRUM_SLOT);
 /// The MIDI input ports (op::MIDI_LIST): [generation u64, length u32, pad u32] + UTF-8 text, one port a line.
 pub const MIDI_PORTS_OFFSET: usize = 34816;
 pub const MIDI_PORTS_MAX: usize = MIDI_EVENTS_OFFSET - MIDI_PORTS_OFFSET - 16;
@@ -270,6 +287,7 @@ pub mod op {
     // the middle 0 dB / off)
     pub const SET_MIXER_KNOB: u32 = 52;
     pub const SET_MIXER: u32 = 53; // u32 key (mix::*), f64 value
+    pub const SET_SPECTRUM: u32 = 54; // u32 the master's spectrum made (1) or not (SPECTRUM_OFFSET)
 }
 
 /// The deck's actions (deck.rs; client.py DECK_ACTIONS): the GUI's buttons and keys and the MIDI controller's.
@@ -495,6 +513,25 @@ impl Control {
             std::ptr::write_volatile(p.add(7), flags);
             std::ptr::write_volatile(p.add(8) as *mut u32, action);
             std::ptr::write_volatile(p.add(12) as *mut i32, steps);
+            fence(Ordering::Release);
+            std::ptr::write_volatile(p as *mut u32, (k + 1) as u32);
+        }
+        written.store(k + 1, Ordering::Release);
+    }
+
+    /// A frame of the master's spectrum, into the ring (see SPECTRUM_OFFSET). Its seq is 0 while it is written:
+    /// the reader takes a frame whose seq is the frame's before and after it copies it.
+    pub fn put_spectrum(&self, bins: &[u8; SPECTRUM_BINS]) {
+        let written = self.atomic(SPECTRUM_OFFSET);
+        let k = written.load(Ordering::Relaxed);
+        let slot = SPECTRUM_OFFSET + 16 + (k as usize % SPECTRUM_FRAMES) * SPECTRUM_SLOT;
+        unsafe {
+            let p = self.base.add(slot);
+            std::ptr::write_volatile(p as *mut u32, 0);
+            fence(Ordering::Release);
+            for (i, &v) in bins.iter().enumerate() {
+                std::ptr::write_volatile(p.add(16 + i), v);
+            }
             fence(Ordering::Release);
             std::ptr::write_volatile(p as *mut u32, (k + 1) as u32);
         }

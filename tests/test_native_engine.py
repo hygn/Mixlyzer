@@ -173,6 +173,43 @@ class NativePlayback(unittest.TestCase):
             engine.close()
         self.assertFalse(engine.alive())
 
+    def test_the_masters_spectrum_while_asked(self):
+        """A 1 kHz sine played with the master routed nowhere (the device silent): its spectrum frames peak at
+        1 kHz while asked for (op SET_SPECTRUM), none come after."""
+        from audioengine.controls import SPECTRUM_BINS, SPECTRUM_FRAMES_PER_SEC, spectrum_edges
+        engine = client.NativeEngine.start()
+        if engine is None:
+            self.skipTest("the native engine did not start (no output device?)")
+        try:
+            rate, ch = engine.rate, engine.channels
+            t = np.arange(rate * 5) / rate
+            sine = (0.5 * np.sin(2 * np.pi * 1000.0 * t)).astype(np.float32)
+            pcm = client.share_pcm(np.repeat(sine[:, None], ch, axis=1))
+            name = pcm.shm_name.encode()
+            engine.send(client.OP_SET_ROUTING, struct.pack("<6B", *([client.NO_CHANNEL] * 6)))
+            engine.send(client.OP_SET_VOLUME, struct.pack("<d", 1.0))
+            engine.send(client.OP_LOAD, struct.pack("<IIQI", 1, ch, pcm.shape[0], len(name)) + name)
+            engine.send(client.OP_PLAY)
+            engine.send(client.OP_SET_SPECTRUM, struct.pack("<I", 1))
+            time.sleep(0.6)
+            if engine.state().device_errors > 0 or engine.state().playhead == 0.0:
+                self.skipTest("the output device is held (another app in exclusive mode?)")
+            engine.spectrum_frames()
+            time.sleep(0.4)
+            frames = engine.spectrum_frames()
+            self.assertGreaterEqual(len(frames), 0.4 * SPECTRUM_FRAMES_PER_SEC - 3)
+            self.assertEqual(frames.shape[1], SPECTRUM_BINS)
+            edges = np.asarray(spectrum_edges())
+            peak = int(np.argmax(frames[-1]))
+            self.assertTrue(edges[peak - 1] <= 1000.0 <= edges[peak + 2], (edges[peak], edges[peak + 1]))
+            engine.send(client.OP_SET_SPECTRUM, struct.pack("<I", 0))
+            time.sleep(0.2)
+            engine.spectrum_frames()
+            time.sleep(0.3)
+            self.assertEqual(len(engine.spectrum_frames()), 0)
+        finally:
+            engine.close()
+
 
 @unittest.skipIf(EXE is None, "the native engine is not built (build/audio_engine.py)")
 class NativeMalformedCommands(unittest.TestCase):

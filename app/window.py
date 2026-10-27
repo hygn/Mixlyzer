@@ -239,6 +239,8 @@ class AppWindow(QtWidgets.QMainWindow):
         self.cfgwin.set_audio_engine(self.player.native, self.player.output_devices, self.player.output_channels)
         # a MIDI controller: the native engine's alone
         self.cfgwin.set_midi_access(self.player.native, self.player.midi_ports, self.player.set_midi_learn)
+        self.cfgwin.set_waveform_sources(self.player.native, self.player.set_spectrum, self.player.spectrum_frames,
+                                         self.model)
         self.cfgwin.set_external_sync_status(self.external_sync.snapshot)
         self.cfgwin.set_config(self.cfg)
 

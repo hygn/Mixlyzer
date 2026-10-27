@@ -154,12 +154,26 @@ def _render_waveform_chunk(
     track-wide frame grid, and cropped.
     """
     n_samples = int(pcm.shape[0])
-    frame_hop = style.frame_hop(sample_rate)
-    column_hop = FRAMES_PER_COLUMN * frame_hop
+    column_hop = FRAMES_PER_COLUMN * style.frame_hop(sample_rate)
     c0, c1 = _chunk_columns(chunk_index, sample_rate, n_samples, column_hop)
     start_sec, end_sec = c0 * column_hop / sample_rate, c1 * column_hop / sample_rate
     if c1 <= c0:
         return np.zeros((1, height, 3), dtype=np.uint8), start_sec, max(end_sec, start_sec + 1e-3)
+    return render_columns(pcm, sample_rate, c0, c1, style, height=height), start_sec, end_sec
+
+
+def column_hop(style: _WaveStyle, sample_rate: int) -> int:
+    """Samples per image column (column ``c`` covers ``[c * hop, (c + 1) * hop)`` of the track)."""
+    return FRAMES_PER_COLUMN * style.frame_hop(sample_rate)
+
+
+def render_columns(pcm: np.ndarray, sample_rate: int, c0: int, c1: int, style: _WaveStyle, *,
+                   height: int) -> np.ndarray:
+    """Waveform image ``[c1 - c0, height, 3]`` of the track's columns ``[c0, c1)`` (column_hop's grid), drawn as
+    the main view draws its chunks (_render_waveform_chunk): the settings' preview draws any span with it."""
+    n_samples = int(pcm.shape[0])
+    frame_hop = style.frame_hop(sample_rate)
+    column_hop = FRAMES_PER_COLUMN * frame_hop
     context = int(np.ceil(RENDER_CONTEXT_SEC * sample_rate / column_hop))
     p0 = max(0, c0 - context)
     p1 = c1 + context
@@ -193,7 +207,7 @@ def _render_waveform_chunk(
         min_env, max_env = frame_minmax(mono, frame_hop)
         image = wave_coverage_columns(min_env, max_env, colors, column, height, flat_color=WAVE_CENTER_LINE_RGB)
     image = add_center_line(gaussian_filter1d(image, sigma=0.8, axis=0)[c0 - p0: c1 - p0])
-    return np.ascontiguousarray(np.clip(image, 0.0, 255.0).astype(np.uint8)), start_sec, end_sec
+    return np.ascontiguousarray(np.clip(image, 0.0, 255.0).astype(np.uint8))
 
 
 @lru_cache(maxsize=32)

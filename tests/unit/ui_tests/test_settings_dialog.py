@@ -435,5 +435,77 @@ class MidiPageTests(unittest.TestCase):
         self.assertEqual(self.d._midi_map["mixer.ch1.trim"], [])                # TRIM shown now, reverted too
 
 
+class WaveformBandsTests(unittest.TestCase):
+    """Settings > View's waveform bands: the sliders over the spectrum and the number fields follow each other, the
+    native engine's spectrum asked for only while shown, the preview keeping what it drew."""
+
+    def setUp(self):
+        import numpy as np
+        from core.track.model import DataModel
+        self.np = np
+        self.bus = EventBus()
+        self.d = SettingsDialog(self.bus)
+        self.d.set_config(default_cfg())
+        self.switched = []
+        self.model = DataModel()
+        t = np.arange(44100 * 8) / 44100
+        mono = (0.5 * np.sin(2 * np.pi * 80 * t) + 0.2 * np.sin(2 * np.pi * 3000 * t)).astype(np.float32)
+        self.model.set_predecoded_audio(np.stack([mono, mono], axis=1), 44100)
+        frame = np.full((1, 240), -90.0, np.float32)
+        self.d.set_waveform_sources(True, self.switched.append, lambda: frame, self.model)
+
+    def tearDown(self):
+        self.d.close()
+        self.d.deleteLater()
+        drain()
+
+    def test_sliders_and_fields_follow_each_other(self):
+        import math
+        self.d.band_spectrum._regions[1].setRegion((math.log10(300.0), math.log10(2000.0)))   # the mid band dragged
+        self.assertAlmostEqual(self.d.sp_env_mid_lo.value(), 300.0, delta=0.1)
+        self.assertAlmostEqual(self.d.sp_env_mid_hi.value(), 2000.0, delta=0.1)
+        self.d.sp_env_lo_hi.setValue(150.0)                                                     # a field typed in
+        self.assertAlmostEqual(10 ** self.d.band_spectrum._regions[0].getRegion()[1], 150.0, delta=0.1)
+        self.assertAlmostEqual(self.d.sp_env_mid_lo.value(), 300.0, delta=0.1)   # the others as they were
+
+    def test_the_spectrum_asked_for_only_while_shown(self):
+        self.d.show()
+        self.d.tabs.setCurrentIndex(0)
+        drain(50)
+        self.assertEqual(self.switched[-1:], [True])
+        self.d.tabs.setCurrentIndex(1)   # another page
+        drain()
+        self.assertEqual(self.switched[-1], False)
+        self.d.tabs.setCurrentIndex(0)
+        drain()
+        self.assertTrue(self.d._spectrum_timer.isActive())     # frames taken while shown
+        self.d._spectrum_timer.timeout.emit()
+        self.assertIsNotNone(self.d.band_spectrum._db)
+        self.d.close()
+        drain()
+        self.assertEqual(self.switched[-1], False)
+
+    def test_the_preview_keeps_what_it_drew(self):
+        preview = self.d.wave_preview
+
+        def draw() -> None:
+            preview._draw_more()
+            preview._pool.waitForDone()
+            drain()
+
+        preview.set_time(2.0)
+        draw()
+        self.assertEqual(len(preview._pieces), 1)
+        first = preview._pieces[0][2].image.copy()
+        self.d.sp_env_hi_lo.setValue(5000.0)     # another band from here on
+        draw()
+        self.assertEqual(len(preview._pieces), 2)
+        self.assertTrue(self.np.array_equal(preview._pieces[0][2].image, first))     # drawn before: as it was
+        self.assertAlmostEqual(preview._pieces[1][0], preview._pieces[0][1], delta=0.01)   # the next piece on
+        # another track: what was drawn goes
+        self.model.set_predecoded_audio(None, 0)
+        self.assertEqual(preview._pieces, [])
+
+
 if __name__ == "__main__":
     unittest.main()

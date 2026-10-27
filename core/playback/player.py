@@ -9,7 +9,7 @@ from typing import Optional
 import numpy as np
 from PySide6 import QtCore, QtMultimedia
 
-from audioengine.controls import MIDI_EVENT_GUI, MIDI_EVENT_HOTCUE_SET, DeckReport
+from audioengine.controls import MIDI_EVENT_GUI, MIDI_EVENT_HOTCUE_SET, SPECTRUM_BINS, DeckReport
 from audioengine.native import client as native_client
 from audioengine.native.client import NO_CHANNEL, NativeClicks, NativeEngine, NativeFeeder
 from audioengine.python.clicks import ClickTrack
@@ -91,7 +91,7 @@ class _AudioWorker(QtCore.QObject):
         "set_refresh_fps", "set_timestretch", "set_soft_clip", "set_buffer_ms", "set_output_device",
         "set_output_mode", "set_exclusive_rate", "set_process",
         "tone_hold", "midi_open", "midi_map", "midi_options", "set_midi_learn", "set_routing", "set_headphones",
-        "set_knob", "set_mixer", "set_channel_cue", "restart_engine",
+        "set_knob", "set_mixer", "set_channel_cue", "restart_engine", "set_spectrum",
     })
     _WAIT_FOR_TRACK = frozenset({
         "pause", "stop", "seek",
@@ -431,6 +431,10 @@ class _AudioWorker(QtCore.QObject):
     def set_process(self, priority: str, power_throttling: bool) -> None:
         if isinstance(self.feeder, NativeFeeder):
             self.feeder.set_process(priority, power_throttling)
+
+    def set_spectrum(self, on: bool) -> None:
+        if isinstance(self.feeder, NativeFeeder):
+            self.feeder.set_spectrum(on)
 
     def set_output_device(self, name: str) -> None:
         """Play on the output device ``name`` ("": the system's default) from now, at the session's format."""
@@ -849,6 +853,20 @@ class PlayerController(QtCore.QObject):
         """The native engine's headphones: the CUE'd channels, and the master mixed in by ``mix`` (0 CUE .. 1
         MASTER) with ``master`` (off for a device that mixes it in itself), at ``level`` (a knob's position)."""
         self._send("set_headphones", bool(master), float(mix), float(level))
+
+    def set_spectrum(self, on: bool) -> None:
+        """The native engine makes the master's spectrum (``on``: while it is shown) or not; the Python engine has
+        none."""
+        if self.native:
+            self._send("set_spectrum", bool(on))
+
+    def spectrum_frames(self) -> np.ndarray:
+        """The master's spectrum frames made since the last call (``[k, audioengine.controls.SPECTRUM_BINS]`` dB;
+        none on the Python engine). The GUI thread only (one reader)."""
+        feeder = self._audio_worker.feeder
+        if isinstance(feeder, NativeFeeder):
+            return feeder.spectrum_frames()
+        return np.zeros((0, SPECTRUM_BINS), np.float32)
 
     def output_channels(self) -> int:
         """The output device's channels (the native engine's; the Python engine: 2)."""

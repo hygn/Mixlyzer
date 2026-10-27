@@ -1,4 +1,5 @@
 from collections import deque
+from typing import Callable, Optional
 
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -10,14 +11,24 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QSlider,
     QSpinBox,
     QWidget,
 )
 
+from PySide6 import QtCore
+
 from core.settings.config import phraselabelname, phraselabelnames
 from system.i18n import LANGUAGES, system_language, tr
 from views.timeline import SHORT_WINDOW_MAX_SEC
+from views.render.wave import wave_detail_band_ref
+from views.waveform import _WaveStyle
 from ui.config.scroll import scroll_page
+from ui.config.wave_bands import BandSpectrum, WavePreview
+
+# the preview spans the main view's width its frame is for: up to SHORT_WINDOW_MAX_SEC, or a wider one
+PREVIEW_LONG_SEC = 16.0
+SPECTRUM_POLL_MS = 33
 
 
 def build_view_tab(dialog) -> None:
@@ -119,11 +130,24 @@ def build_view_tab(dialog) -> None:
         h.addWidget(QLabel(tr("hi"))); h.addWidget(hi)
         parent_form.addRow(label, box)
         return lo, hi
-    grp_wave_bands = QGroupBox(tr("Waveform bands"))
+    # the waveform, top to bottom: the spectrum under the bands' sliders, the main view's frames and filter order (a
+    # slider beside each field), the preview drawn with them, the bands' edges typed
+    grp_wave_bands = QGroupBox(tr("Waveform"))
     grp_wave_bands.setToolTip(tr(
         "Low / mid / high bands of the waveforms' colors."
     ))
     f_wave_bands = QFormLayout(grp_wave_bands)
+    dialog.band_spectrum = BandSpectrum()
+    dialog.band_spectrum.setToolTip(tr("<p>The master output's spectrum as it plays. Drag a band's edges to set "
+                                       "it.</p>"))
+    f_wave_bands.addRow(dialog.band_spectrum)
+    f_wave_bands.addRow(tr("Frame, short view (ms)"), _with_slider(dialog.sp_mainview_wave_frame_ms_short, 10))
+    f_wave_bands.addRow(tr("Frame, long view (ms)"), _with_slider(dialog.sp_mainview_wave_frame_ms_long, 10))
+    f_wave_bands.addRow(tr("Filter order"), _with_slider(dialog.sp_mainview_wave_filter_order, 1))
+    dialog.wave_preview = WavePreview(dialog._preview_style)
+    dialog.wave_preview.setToolTip(tr("<p>The loaded track at the playhead, drawn with these settings. What is "
+                                      "already drawn keeps the settings it was drawn with.</p>"))
+    f_wave_bands.addRow(dialog.wave_preview)
     dialog.sp_env_lo_lo,  dialog.sp_env_lo_hi  = make_band_row(
         f_wave_bands, tr("Low"), tr("Frequency range (Hz) drawn as the low band of the waveform."),
         tr("Lower edge of the low band (Hz)."), tr("Upper edge of the low band (Hz)."))
@@ -133,12 +157,6 @@ def build_view_tab(dialog) -> None:
     dialog.sp_env_hi_lo,  dialog.sp_env_hi_hi  = make_band_row(
         f_wave_bands, tr("High"), tr("Frequency range (Hz) drawn as the high band of the waveform."),
         tr("Lower edge of the high band (Hz)."), tr("Upper edge of the high band (Hz)."))
-
-    grp_mainview_wave = QGroupBox(tr("Main view waveform"))
-    f_mainview_wave = QFormLayout(grp_mainview_wave)
-    f_mainview_wave.addRow(tr("Frame, short view (ms)"), dialog.sp_mainview_wave_frame_ms_short)
-    f_mainview_wave.addRow(tr("Frame, long view (ms)"), dialog.sp_mainview_wave_frame_ms_long)
-    f_mainview_wave.addRow(tr("Filter order"), dialog.sp_mainview_wave_filter_order)
 
     grp_performance = QGroupBox(tr("Performance"))
     f_performance = QFormLayout(grp_performance)
@@ -153,11 +171,29 @@ def build_view_tab(dialog) -> None:
     form.addRow(grp_language)
     form.addRow(grp_display)
     form.addRow(grp_wave_bands)
-    form.addRow(grp_mainview_wave)
     form.addRow(_build_phrase_label_names(dialog))
     form.addRow(grp_performance)
     form.addRow(grp_advanced)
     dialog.tabs.addTab(scroll_page(dialog.tab_view), tr("View"))
+
+
+def _with_slider(spin, scale: int) -> QWidget:
+    """``spin`` with a slider beside it over its range (``scale`` slider steps a unit), each following the other:
+    the field stays what the settings read."""
+    box = QWidget()
+    h = QHBoxLayout(box)
+    h.setContentsMargins(0, 0, 0, 0)
+    h.setSpacing(6)
+    slider = QSlider(QtCore.Qt.Horizontal)
+    slider.setRange(round(spin.minimum() * scale), round(spin.maximum() * scale))
+    slider.setValue(round(spin.value() * scale))
+    slider.setToolTip(spin.toolTip())
+    slider.valueChanged.connect(lambda v: spin.setValue(v / scale if scale != 1 else v))
+    spin.valueChanged.connect(lambda v: slider.setValue(round(v * scale)))
+    h.addWidget(slider, 1)
+    spin.setFixedWidth(90)
+    h.addWidget(spin)
+    return box
 
 
 def _build_phrase_label_names(dialog) -> QGroupBox:
@@ -211,6 +247,94 @@ class ViewSettingsMixin:
         self._refresh_samples = deque(maxlen=32)
         if bus is not None:
             bus.sig_ui_draw_interval.connect(self._on_ui_draw_interval)
+            bus.sig_time_changed.connect(self.wave_preview.set_time)
+        # the waveform bands: the spectrum's and the preview's sources (set_waveform_sources), the frame the preview
+        # draws with (the one edited last: the short view's at first)
+        self._spectrum_native = False
+        self._spectrum_switch: Optional[Callable[[bool], None]] = None
+        self._spectrum_frames: Optional[Callable] = None
+        self._track_model = None
+        self._preview_long = False
+        self._spectrum_timer = QtCore.QTimer(self)
+        self._spectrum_timer.setInterval(SPECTRUM_POLL_MS)
+        self._spectrum_timer.timeout.connect(self._poll_spectrum)
+        self.band_spectrum.shown.connect(self._waveform_bands_shown)
+        self.band_spectrum.edited.connect(self._band_dragged)
+        for band, (lo, hi) in enumerate(self._band_spins()):
+            for spin in (lo, hi):
+                spin.valueChanged.connect(self._bands_typed)
+        self.cmb_waveform_style.currentIndexChanged.connect(
+            lambda _i: self.band_spectrum.set_style(str(self.cmb_waveform_style.currentData())))
+        self.sp_mainview_wave_frame_ms_short.valueChanged.connect(lambda _v: self._preview_frame(False))
+        self.sp_mainview_wave_frame_ms_long.valueChanged.connect(lambda _v: self._preview_frame(True))
+
+    def set_waveform_sources(self, native: bool, spectrum_switch: Callable[[bool], None], spectrum_frames: Callable,
+                             model) -> None:
+        """The waveform bands' sources: the native engine's master spectrum (switched on while shown; the Python
+        engine has none) and the loaded track (DataModel: its audio and overview) for the preview."""
+        self._spectrum_native = bool(native)
+        self._spectrum_switch = spectrum_switch
+        self._spectrum_frames = spectrum_frames
+        self._track_model = model
+        self.band_spectrum.set_note("" if native else tr("The spectrum needs the native audio engine."))
+        model.sig_audio_changed.connect(self._preview_track)
+        model.sig_loaded.connect(self._preview_track)
+        self._preview_track()
+
+    # ---- the waveform bands ----
+    def _band_spins(self):
+        return ((self.sp_env_lo_lo, self.sp_env_lo_hi), (self.sp_env_mid_lo, self.sp_env_mid_hi),
+                (self.sp_env_hi_lo, self.sp_env_hi_hi))
+
+    def _bands_typed(self, *_args) -> None:
+        self.band_spectrum.set_bands([(lo.value(), hi.value()) for lo, hi in self._band_spins()])
+
+    def _band_dragged(self, band: int, low: float, high: float) -> None:
+        lo, hi = self._band_spins()[band]
+        lo.setValue(low)
+        hi.setValue(high)
+
+    def _preview_frame(self, long: bool) -> None:
+        self._preview_long = long
+
+    def _preview_style(self) -> tuple[_WaveStyle, float]:
+        """The preview's waveform settings as edited, and the seconds it spans."""
+        model = self._track_model
+        wave = model.analysis.wave if model is not None else None
+        spin = self.sp_mainview_wave_frame_ms_long if self._preview_long else self.sp_mainview_wave_frame_ms_short
+        style = _WaveStyle(
+            bands=tuple((float(lo.value()), float(hi.value())) for lo, hi in self._band_spins()),
+            filter_order=int(self.sp_mainview_wave_filter_order.value()),
+            frame_ms=float(spin.value()),
+            waveform_style=str(self.cmb_waveform_style.currentData() or "rgb"),
+            band_ref=wave_detail_band_ref(wave),
+        )
+        return style, PREVIEW_LONG_SEC if self._preview_long else float(SHORT_WINDOW_MAX_SEC)
+
+    def _preview_track(self) -> None:
+        model = self._track_model
+        if model is not None:
+            self.wave_preview.set_track(model.predecoded_pcm, model.predecoded_rate)
+
+    def _waveform_bands_shown(self, shown: bool) -> None:
+        """In sight: the engine makes the spectrum and the preview draws; out of it, neither."""
+        if shown:
+            self._bands_typed()
+            self.band_spectrum.set_style(str(self.cmb_waveform_style.currentData()))
+            self.wave_preview.start()
+        else:
+            self.wave_preview.stop()
+        if self._spectrum_native and self._spectrum_switch is not None:
+            self._spectrum_switch(shown)
+            if shown:
+                self._spectrum_timer.start()
+            else:
+                self._spectrum_timer.stop()
+                self.band_spectrum.clear()
+
+    def _poll_spectrum(self) -> None:
+        if self._spectrum_frames is not None:
+            self.band_spectrum.add_frames(self._spectrum_frames())
 
     def _on_ui_draw_interval(self, dt_ms: float):
         if 1.0 <= dt_ms <= 1000.0:

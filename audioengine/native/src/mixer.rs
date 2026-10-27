@@ -27,6 +27,7 @@ use crate::filters::{Biquad4, Coeffs};
 use crate::fxkit::Smooth;
 use crate::ipc::mix;
 use crate::simd::{F4, peak_abs};
+use crate::spectrum::Tap;
 use crate::vk;
 
 pub const LOW_HZ: f64 = 246.0;
@@ -439,13 +440,15 @@ pub const ROUTES: usize = 6;
 
 /// The mixer's settings, changed from the engine thread and read once per callback: the channel's strip
 /// (StripParams), the mixer's own (ipc::mix keys, f64 each), soft clipping, where each bus goes on the main device
-/// (ROUTES: a pair of its channels, NO_CHANNEL: not there); and its meters, which the callback writes.
+/// (ROUTES: a pair of its channels, NO_CHANNEL: not there); and its meters and the master's spectrum tap, which the
+/// callback writes.
 pub struct MixParams {
     pub strip: Arc<StripParams>,
     values: [AtomicU64; mix::KEYS],
     soft_clip: AtomicBool,
     routes: [AtomicU8; ROUTES],
     meters: [AtomicU32; mix::METER_COUNT], // f32 bits: peaks (linear) since taken
+    pub tap: Tap,                           // the master after its level (spectrum.rs), while the GUI asks
 }
 
 /// One reading of MixParams (the callback's).
@@ -473,6 +476,7 @@ impl MixParams {
             soft_clip: AtomicBool::new(false),
             routes: std::array::from_fn(|_| AtomicU8::new(NO_CHANNEL)),
             meters: std::array::from_fn(|_| AtomicU32::new(0)),
+            tap: Tap::default(),
         };
         // the master on the device's first two channels (one: its only one), nothing else routed
         let mut routes = [NO_CHANNEL; ROUTES];
@@ -676,6 +680,7 @@ impl Mixer {
             vk::scale_in(master, m.master);
         }
         params.meter(mix::METER_MASTER, peak_abs(master));
+        params.tap.push(master, n);
         // the headphones: the CUE'd channel, the master by their mix when it is mixed in, their level
         if wanted.headphones {
             let (mix, level, master_in) = m.hp;
