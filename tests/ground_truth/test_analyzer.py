@@ -61,7 +61,23 @@ def settings():
     from system.model_files import shipped_path
     base = analysis_settings(default_cfg())
     models = ModelPaths(**{f.name: str(shipped_path(getattr(base.models, f.name))) for f in fields(ModelPaths)})
-    return replace(base, models=models, music_index=False)
+    return replace(base, models=models, music_index=True)
+
+
+_ANALYSES: dict[str, tuple[Path, object]] = {}
+
+
+def analysis_of(song: dict):
+    """(the audio's path, the analysis) of a song with audio of its annotated length, analyzed once a run (the search
+    test reads the songs' analyses after them); None without."""
+    if song["id"] not in _ANALYSES:
+        path = audio_path(song["id"])
+        if path is None:
+            return None
+        from analyzer.pipeline.track import analyze_track
+        _ANALYSES[song["id"]] = (path, analyze_track(str(path), settings()))
+    path, result = _ANALYSES[song["id"]]
+    return (path, result) if abs(result.duration_sec - song["duration_sec"]) <= DURATION_TOLERANCE_SEC else None
 
 
 def scores(song: dict, result) -> dict[str, float]:
@@ -91,14 +107,14 @@ def scores(song: dict, result) -> dict[str, float]:
 
 def _song_test(song: dict):
     def test(self):
-        path = audio_path(song["id"])
-        if path is None:
+        if audio_path(song["id"]) is None:
             self.skipTest(f"no audio for {song['id']} ({song['title']} / {song['release']})")
-        from analyzer.pipeline.track import analyze_track
-        result = analyze_track(str(path), settings())
-        if abs(result.duration_sec - song["duration_sec"]) > DURATION_TOLERANCE_SEC:
-            self.skipTest(f"{song['id']}: {result.duration_sec:.1f} s, annotated {song['duration_sec']:.1f} s "
+        done = analysis_of(song)
+        if done is None:
+            self.skipTest(f"{song['id']}: another length than annotated, {song['duration_sec']:.1f} s "
                           "(another edit of the song)")
+        _path, result = done
+        self.assertIsNotNone(result.music_index)                      # Search by Music's entry made with it
         got = scores(song, result)
         if REPORT:
             print(f"\n[GT] {song['id']}: " + json.dumps({k: round(v, 4) for k, v in got.items()}))
@@ -121,6 +137,96 @@ class GroundTruthTests(unittest.TestCase):
 
 for _song in songs():
     setattr(GroundTruthTests, f"test_{_song['id'].replace('-', '_')}", _song_test(_song))
+
+
+QUERY_SEC = 12.0
+
+
+def _queries(path: Path, duration: float, seed: int) -> dict[str, np.ndarray]:
+    """A song's excerpts as Search by Music hears them (mono at its rate): as it is, under noise at 10 dB SNR and
+    half the level, and through a phone's band (300 Hz - 3.4 kHz) with a little noise."""
+    from scipy.signal import butter, sosfiltfilt
+
+    from analyzer.audio.load import fast_load
+    from analyzer.search.music import melody
+    y = fast_load(str(path), melody.SR)
+    start = int(0.4 * duration * melody.SR)
+    clip = y[start:start + int(QUERY_SEC * melody.SR)].astype(np.float64)
+    rng = np.random.default_rng(seed)
+    rms = float(np.sqrt(np.mean(clip ** 2))) or 1e-9
+    noisy = 0.5 * (clip + rng.standard_normal(clip.size) * rms / np.sqrt(10.0))
+    phone = sosfiltfilt(butter(4, [300, 3400], "bandpass", fs=melody.SR, output="sos"), clip)
+    phone = phone + rng.standard_normal(clip.size) * rms * 0.03
+    return {name: q.astype(np.float32) for name, q in (("clean", clip), ("noisy", noisy), ("phone", phone))}
+
+
+HUM_SEC, HUM_SHIFT = 15.0, 2.0 - 12.0   # a hum: two semitones up, an octave down
+
+
+def _hum(entry) -> tuple[np.ndarray, float]:
+    """A sung melody's stand-in: a sine following the song's centre line (its lead vocal) at 0.1 s frames, over the
+    window of HUM_SEC it is voiced most, moved by HUM_SHIFT; and where the window starts (s)."""
+    from analyzer.search.music import melody
+    step = 0.1
+    line = entry.lines[step][0].astype(np.float64)
+    voiced = line != melody.UNV
+    n = int(HUM_SEC / step)
+    counts = np.convolve(voiced, np.ones(n), "valid")
+    at = int(np.argmax(counts))
+    midi = line[at:at + n] / melody.STEPS + melody.BASE + HUM_SHIFT
+    on = voiced[at:at + n]
+    per = int(step * melody.SR)
+    hz = np.repeat(np.where(on, 440.0 * 2.0 ** ((midi - 69.0) / 12.0), 0.0), per)
+    gain = np.convolve(np.repeat(on.astype(np.float64), per), np.ones(441) / 441, "same")   # 20 ms fades
+    phase = 2 * np.pi * np.cumsum(hz) / melody.SR
+    return (0.3 * gain * np.sin(phase)).astype(np.float32), at * step
+
+
+@unittest.skipUnless(ENABLED, "the analyzer's ground truth is off (MIXLYZER_GT_TESTS=1)")
+class SearchByMusicTests(unittest.TestCase):
+    """Search by Music over an index of the songs' own entries (as the analysis made them, stored as the library's
+    owner stores them): each song's excerpt finds that song first, at the place it was cut from."""
+
+    def test_each_song_found_by_its_excerpts(self):
+        import tempfile
+
+        from analyzer.search.music import melody
+        from analyzer.search.music.search import search_audio
+        from core.library import music_index
+        done = {s["id"]: (s, analysis_of(s)) for s in songs() if audio_path(s["id"]) is not None}
+        done = {k: v for k, v in done.items() if v[1] is not None}
+        if len(done) < 2:
+            self.skipTest("fewer than two songs with audio")
+        with tempfile.TemporaryDirectory() as tmp:
+            path = music_index.path_for(tmp)
+            con = music_index.open_writer(path)
+            with con:
+                for sid, (_song, (_p, result)) in done.items():
+                    music_index.put(con, sid, 0, 0.0, result.music_index)
+            con.close()
+            landmarks, melodies = music_index.open_search(path)
+            try:
+                for k, (sid, (song, (audio, result))) in enumerate(sorted(done.items())):
+                    at = 0.4 * song["duration_sec"]
+                    for name, q in _queries(audio, song["duration_sec"], k).items():
+                        with self.subTest(song=sid, query=name):
+                            found = search_audio(q, melody.SR, melodies, landmarks)
+                            self.assertTrue(found.matches, "nothing found")
+                            best = found.matches[0]
+                            self.assertEqual((best.uid, found.kind), (sid, "recording"))
+                            self.assertLess(abs(best.start_sec - at), 1.0)   # where the excerpt was cut from
+                    # hummed in another key and octave: no landmark of the recording, the melody matcher's
+                    hum, hum_at = _hum(result.music_index)
+                    with self.subTest(song=sid, query="hum"):
+                        found = search_audio(hum, melody.SR, melodies, landmarks)
+                        self.assertEqual(found.kind, "melody")
+                        best = found.matches[0]
+                        self.assertEqual(best.uid, sid)
+                        folded = (best.transposition + HUM_SHIFT + 6.0) % 12.0 - 6.0   # the song above the hum
+                        self.assertLess(abs(folded), 0.5, best.transposition)
+                        self.assertLess(abs(best.start_sec - hum_at), 3.0)
+            finally:
+                landmarks.close()
 
 
 class FixtureTests(unittest.TestCase):
