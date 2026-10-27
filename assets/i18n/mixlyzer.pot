@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-27 22:12+0900\n"
+"POT-Creation-Date: 2026-10-27 22:43+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -518,7 +518,7 @@ msgstr ""
 msgid "Main view, editor and library"
 msgstr ""
 
-#: app/window.py:105 app/window.py:246 ui/config/window.py:66
+#: app/window.py:105 app/window.py:247 ui/config/window.py:66
 msgid "Settings"
 msgstr ""
 
@@ -526,71 +526,71 @@ msgstr ""
 msgid "Dialogs, workflows and metronome"
 msgstr ""
 
-#: app/window.py:247 ui/windows/workers.py:28
+#: app/window.py:248 ui/windows/workers.py:28
 msgid "Workers"
 msgstr ""
 
-#: app/window.py:248 ui/shortcuts.py:155 ui/windows/tieup_works.py:33
+#: app/window.py:249 ui/shortcuts.py:155 ui/windows/tieup_works.py:33
 #: ui/windows/tieup_works.py:206 ui/windows/tieup_works.py:261
 #: ui/windows/tieup_works.py:266 ui/windows/tieup_works.py:275
 #: ui/windows/tieup_works.py:338
 msgid "Tie-up Works"
 msgstr ""
 
-#: app/window.py:249
+#: app/window.py:250
 msgid "Open Source"
 msgstr ""
 
-#: app/window.py:250
+#: app/window.py:251
 msgid "About"
 msgstr ""
 
-#: app/window.py:267 core/controls/midi.py:55 ui/config/playback.py:356
+#: app/window.py:268 core/controls/midi.py:55 ui/config/playback.py:356
 msgid "Mixer"
 msgstr ""
 
-#: app/window.py:443
+#: app/window.py:444
 msgid "MIDI needs the native audio engine (Settings > Audio > Engine)."
 msgstr ""
 
-#: app/window.py:450
+#: app/window.py:451
 msgid "MIDI input on."
 msgstr ""
 
-#: app/window.py:450
+#: app/window.py:451
 msgid "MIDI input off."
 msgstr ""
 
-#: app/window.py:499
+#: app/window.py:503
 msgid "The Python audio engine plays: there is no native engine to restart."
 msgstr ""
 
-#: app/window.py:501
+#: app/window.py:505
 msgid "Restarting the audio engine..."
 msgstr ""
 
-#: app/window.py:505
+#: app/window.py:509
 msgid "Audio engine restarted."
 msgstr ""
 
-#: app/window.py:506
+#: app/window.py:510
 msgid "The audio engine did not start; it is tried again every 2 seconds."
 msgstr ""
 
-#: app/window.py:556 app/window.py:621
+#: app/window.py:560 app/window.py:625
 msgid "External Sync is enabled. Local track loading is disabled."
 msgstr ""
 
-#: app/window.py:569 app/window.py:624
+#: app/window.py:573 app/window.py:628
 msgid "Segment reanalysis canceled (track changed)"
 msgstr ""
 
-#: app/window.py:605
+#: app/window.py:609
 #, python-brace-format
 msgid "The track's analysis could not be read: {file}"
 msgstr ""
 
-#: app/window.py:609
+#: app/window.py:613
 #, python-brace-format
 msgid ""
 "{n} JumpCUE past slot Z is not shown ({file}); it stays stored until the "
@@ -601,15 +601,15 @@ msgid_plural ""
 msgstr[0] ""
 msgstr[1] ""
 
-#: app/window.py:627
+#: app/window.py:631
 msgid "Track unloaded."
 msgstr ""
 
-#: app/window.py:637
+#: app/window.py:641
 msgid "Track File Not Found"
 msgstr ""
 
-#: app/window.py:641
+#: app/window.py:645
 #, python-brace-format
 msgid ""
 "Cannot load \"{name}\": its file is missing.\n"
@@ -618,66 +618,67 @@ msgid ""
 "Set the file's new location?"
 msgstr ""
 
-#: app/window.py:648
+#: app/window.py:652
 #, python-brace-format
 msgid "Locate {name}"
 msgstr ""
 
-#: app/window.py:672 app/window.py:688
+#: app/window.py:676 app/window.py:692
 msgid "Analysis saved to library."
 msgstr ""
 
-#: app/window.py:677
+#: app/window.py:681
 msgid "Finished"
 msgstr ""
 
-#: app/window.py:700
+#: app/window.py:704
 msgid "Waiting to be looked up on Wikipedia"
 msgstr ""
 
-#: app/window.py:706
+#: app/window.py:710
 msgid "Looking up on Wikipedia and Wikidata…"
 msgstr ""
 
-#: app/window.py:711
+#: app/window.py:715
 msgid "The lookup failed."
 msgstr ""
 
-#: app/window.py:747
+#: app/window.py:751
 #, python-brace-format
 msgid "External Sync loading: {file}"
 msgstr ""
 
-#: app/window.py:747
+#: app/window.py:751
 #, python-brace-format
 msgid "External Sync analyzing: {file}"
 msgstr ""
 
-#: app/window.py:761
+#: app/window.py:765
 msgid "External Sync Disabled"
 msgstr ""
 
-#: app/window.py:771 ui/windows/library_backup.py:53
+#: app/window.py:775 ui/windows/library_backup.py:53
 msgid "Back Up Library"
 msgstr ""
 
-#: app/window.py:772 app/window.py:788
+#: app/window.py:776 app/window.py:792
 #, python-brace-format
 msgid "Mixlyzer library backup (*{suffix})"
 msgstr ""
 
-#: app/window.py:783 app/window.py:787 app/window.py:798 app/window.py:828
-#: ui/windows/library_backup.py:129 ui/windows/library_backup.py:292
-msgid "Restore Library"
-msgstr ""
-
-#: app/window.py:784
+#: app/window.py:786
 msgid ""
 "The editor has edits not saved. Save or undo them first: Mixlyzer "
 "restarts after a restore."
 msgstr ""
 
-#: app/window.py:809
+#: app/window.py:788 app/window.py:791 app/window.py:798 app/window.py:805
+#: app/window.py:848 ui/windows/library_backup.py:133
+#: ui/windows/library_backup.py:296
+msgid "Restore Library"
+msgstr ""
+
+#: app/window.py:829
 #, python-brace-format
 msgid ""
 "Restored {n} track into:\n"
@@ -688,36 +689,36 @@ msgid_plural ""
 msgstr[0] ""
 msgstr[1] ""
 
-#: app/window.py:812
+#: app/window.py:832
 #, python-brace-format
 msgid "{n} track's file path was joined to this device's folders."
 msgid_plural "{n} tracks' file paths were joined to this device's folders."
 msgstr[0] ""
 msgstr[1] ""
 
-#: app/window.py:816
+#: app/window.py:836
 #, python-brace-format
 msgid "{n} path was left as it was: another track already had the new one."
 msgid_plural "{n} paths were left as they were: other tracks already had the new ones."
 msgstr[0] ""
 msgstr[1] ""
 
-#: app/window.py:820
+#: app/window.py:840
 #, python-brace-format
 msgid "{n} track had no stored analysis in the backup."
 msgid_plural "{n} tracks had no stored analysis in the backup."
 msgstr[0] ""
 msgstr[1] ""
 
-#: app/window.py:824
+#: app/window.py:844
 msgid "Files replaced by the backup's were kept beside them:"
 msgstr ""
 
-#: app/window.py:826
+#: app/window.py:846
 msgid "Mixlyzer now restarts to open the restored library."
 msgstr ""
 
-#: app/window.py:1096
+#: app/window.py:1116
 #, python-brace-format
 msgid "External Sync enabled: OSC on {address}. Local play/load is locked."
 msgstr ""
@@ -1106,21 +1107,26 @@ msgstr ""
 msgid "Master: level"
 msgstr ""
 
-#: core/library/db.py:504
+#: core/library/db.py:505
 msgid "The path cannot be empty."
 msgstr ""
 
-#: core/library/db.py:507
+#: core/library/db.py:508
 #, python-brace-format
 msgid "This file is already in the library as \"{track}\"."
 msgstr ""
 
-#: core/library/db.py:529 core/library/db.py:692
+#: core/library/db.py:530 core/library/db.py:706
 msgid "Playlist name cannot be empty"
 msgstr ""
 
-#: core/library/db.py:563 core/library/db.py:575
+#: core/library/db.py:565 core/library/db.py:577
 msgid "Folder name cannot be empty"
+msgstr ""
+
+#: core/library/db.py:653
+#, python-brace-format
+msgid "A playlist named \"{name}\" is already in this folder."
 msgstr ""
 
 #: core/library/tieups.py:176 ui/library/tabs/tieup_editor.py:291
@@ -3146,7 +3152,7 @@ msgstr ""
 msgid "Add Folder…"
 msgstr ""
 
-#: ui/config/library.py:33 ui/library/actions.py:87
+#: ui/config/library.py:33 ui/library/actions.py:98
 #: ui/library/tabs/tieup_editor.py:373
 msgid "Remove"
 msgstr ""
@@ -3324,7 +3330,7 @@ msgid ""
 "restarts on it. The library in use now is kept as it is.</p>"
 msgstr ""
 
-#: ui/config/library.py:145 ui/windows/library_backup.py:142
+#: ui/config/library.py:145 ui/windows/library_backup.py:146
 msgid "Backup"
 msgstr ""
 
@@ -3433,7 +3439,7 @@ msgid ""
 msgstr ""
 
 #: ui/config/midi.py:114 ui/library/search.py:273
-#: ui/windows/library_backup.py:201
+#: ui/windows/library_backup.py:205
 msgid "Clear"
 msgstr ""
 
@@ -5442,28 +5448,28 @@ msgstr ""
 msgid "{label} | Seg {index} | +{beats} beats | Left: {left}"
 msgstr ""
 
-#: ui/library/actions.py:48
+#: ui/library/actions.py:50
 msgid "Analyze Track"
 msgstr ""
 
-#: ui/library/actions.py:54
+#: ui/library/actions.py:56
 msgid "Add to Playlist"
 msgstr ""
 
-#: ui/library/actions.py:88
+#: ui/library/actions.py:99
 msgid ""
 "The deck's track cannot be removed while External Sync follows it.\n"
 "Turn External Sync off, or select other tracks."
 msgstr ""
 
-#: ui/library/actions.py:109
+#: ui/library/actions.py:120
 #, python-brace-format
 msgid ""
 "Remove \"{title}\" from the library?\n"
 "Its analysis and edits are deleted; the audio file stays."
 msgstr ""
 
-#: ui/library/actions.py:112
+#: ui/library/actions.py:123
 #, python-brace-format
 msgid ""
 "Remove {count} track from the library?\n"
@@ -5543,7 +5549,7 @@ msgid "Name"
 msgstr ""
 
 #: ui/library/playlists.py:27 ui/library/playlists.py:32
-#: ui/library/sources.py:601
+#: ui/library/sources.py:612
 msgid "New Folder"
 msgstr ""
 
@@ -5555,7 +5561,7 @@ msgstr ""
 msgid "Rename Folder"
 msgstr ""
 
-#: ui/library/playlists.py:74 ui/library/sources.py:607
+#: ui/library/playlists.py:74 ui/library/sources.py:618
 msgid "Delete Playlist"
 msgstr ""
 
@@ -5566,7 +5572,7 @@ msgid ""
 "Tracks remain in the Library."
 msgstr ""
 
-#: ui/library/playlists.py:84 ui/library/sources.py:607
+#: ui/library/playlists.py:84 ui/library/sources.py:618
 msgid "Delete Folder"
 msgstr ""
 
@@ -5575,6 +5581,10 @@ msgstr ""
 msgid ""
 "Delete folder \"{name}\" with every playlist and folder in it?\n"
 "Tracks remain in the Library."
+msgstr ""
+
+#: ui/library/playlists.py:114 ui/library/sources.py:297
+msgid "Playlists"
 msgstr ""
 
 #: ui/library/search.py:163
@@ -5691,92 +5701,88 @@ msgstr ""
 msgid "Min seg"
 msgstr ""
 
-#: ui/library/sources.py:271
+#: ui/library/sources.py:280
 msgid "Library (All)"
 msgstr ""
 
-#: ui/library/sources.py:275 ui/library/tabs/track_search_index.py:95
+#: ui/library/sources.py:284 ui/library/tabs/track_search_index.py:95
 msgid "Variants"
 msgstr ""
 
-#: ui/library/sources.py:278
+#: ui/library/sources.py:287
 msgid ""
 "<p>The library's tracks that are versions of one song: the same audio, "
 "another vocal, the instrumental, an edit (a TV size). # is the song; a "
 "row's tooltip says how it differs from the others.</p>"
 msgstr ""
 
-#: ui/library/sources.py:281
+#: ui/library/sources.py:290
 msgid "Loaded Track"
 msgstr ""
 
-#: ui/library/sources.py:283
+#: ui/library/sources.py:292
 msgid ""
 "<p>The versions of the track loaded on the deck, following each track "
 "loaded.</p>"
 msgstr ""
 
-#: ui/library/sources.py:288
-msgid "Playlists"
-msgstr ""
-
-#: ui/library/sources.py:311
+#: ui/library/sources.py:320
 msgid "Local Folders"
 msgstr ""
 
-#: ui/library/sources.py:541
+#: ui/library/sources.py:552
 msgid "the same mix"
 msgstr ""
 
-#: ui/library/sources.py:543
+#: ui/library/sources.py:554
 #, python-brace-format
 msgid "{relation}, a shorter edit"
 msgstr ""
 
-#: ui/library/sources.py:545
+#: ui/library/sources.py:556
 #, python-brace-format
 msgid "{relation}, a longer version"
 msgstr ""
 
-#: ui/library/sources.py:547
+#: ui/library/sources.py:558
 #, python-brace-format
 msgid "{relation}, some sections differ"
 msgstr ""
 
-#: ui/library/sources.py:550
+#: ui/library/sources.py:561
 msgid "a shorter edit"
 msgstr ""
 
-#: ui/library/sources.py:552
+#: ui/library/sources.py:563
 msgid "a longer version"
 msgstr ""
 
-#: ui/library/sources.py:554
+#: ui/library/sources.py:565
 msgid "some sections differ"
 msgstr ""
 
-#: ui/library/sources.py:571
+#: ui/library/sources.py:582
 #, python-brace-format
 msgid "{title}: {relation}"
 msgstr ""
 
-#: ui/library/sources.py:573
+#: ui/library/sources.py:584
 msgid "Variants of this track:"
 msgstr ""
 
-#: ui/library/sources.py:604
+#: ui/library/sources.py:615
 msgid "Rename"
 msgstr ""
 
-#: ui/library/sources.py:605
+#: ui/library/sources.py:616
 msgid "Move Up"
 msgstr ""
 
-#: ui/library/sources.py:606
+#: ui/library/sources.py:617
 msgid "Move Down"
 msgstr ""
 
-#: ui/library/sources.py:609
+#: ui/library/sources.py:620
 msgid "Refresh Folders"
 msgstr ""
 
@@ -6610,7 +6616,7 @@ msgstr ""
 msgid "Select the loaded track"
 msgstr ""
 
-#: ui/library/actions.py:46 ui/library/tabs/edit_song.py:248
+#: ui/library/actions.py:48 ui/library/tabs/edit_song.py:248
 #: ui/library/tabs/edit_song.py:266 ui/library/track_panel.py:43
 #: ui/shortcuts.py:142
 msgid "Edit Track"
@@ -6665,7 +6671,7 @@ msgstr ""
 msgid "The works window: every work the tie-ups name, edited, merged or deleted."
 msgstr ""
 
-#: ui/library/actions.py:50 ui/library/tabs/export.py:309
+#: ui/library/actions.py:52 ui/library/tabs/export.py:309
 #: ui/library/tabs/export.py:314 ui/library/tabs/export.py:320
 #: ui/library/tabs/export.py:332 ui/library/tabs/export.py:342
 #: ui/library/tabs/export.py:454 ui/library/tabs/export.py:465
@@ -6687,20 +6693,20 @@ msgid ""
 "the fields checked in the track panel's Export tab."
 msgstr ""
 
-#: ui/library/actions.py:43 ui/shortcuts.py:162
+#: ui/library/actions.py:45 ui/shortcuts.py:162
 msgid "Show in Explorer"
 msgstr ""
 
-#: ui/library/actions.py:44 ui/shortcuts.py:163
+#: ui/library/actions.py:46 ui/shortcuts.py:163
 msgid "Show in Finder"
 msgstr ""
 
-#: ui/library/actions.py:44 ui/shortcuts.py:163
+#: ui/library/actions.py:46 ui/shortcuts.py:163
 msgid "Show in File Manager"
 msgstr ""
 
 #: ui/library/playlists.py:18 ui/library/playlists.py:23
-#: ui/library/sources.py:600 ui/shortcuts.py:164
+#: ui/library/sources.py:611 ui/shortcuts.py:164
 msgid "New Playlist"
 msgstr ""
 
@@ -6720,7 +6726,7 @@ msgid ""
 "folder), else at the top."
 msgstr ""
 
-#: ui/library/actions.py:48 ui/shortcuts.py:169
+#: ui/library/actions.py:50 ui/shortcuts.py:169
 #: ui/windows/reanalyze_dialog.py:16
 msgid "Reanalyze Track"
 msgstr ""
@@ -6731,11 +6737,11 @@ msgid ""
 "are replaced."
 msgstr ""
 
-#: ui/library/actions.py:45 ui/library/actions.py:117 ui/shortcuts.py:171
+#: ui/library/actions.py:47 ui/library/actions.py:128 ui/shortcuts.py:171
 msgid "Remove from Library"
 msgstr ""
 
-#: ui/library/actions.py:53 ui/shortcuts.py:172
+#: ui/library/actions.py:55 ui/shortcuts.py:172
 msgid "Remove from Playlist"
 msgstr ""
 
@@ -7288,70 +7294,70 @@ msgstr ""
 msgid "Packing the library into:"
 msgstr ""
 
-#: ui/windows/library_backup.py:61 ui/windows/library_backup.py:216
+#: ui/windows/library_backup.py:61 ui/windows/library_backup.py:220
 msgid "Cancel"
 msgstr ""
 
-#: ui/windows/library_backup.py:107
+#: ui/windows/library_backup.py:111
 #, python-brace-format
 msgid "Backed up {n} track ({size}) to:"
 msgid_plural "Backed up {n} tracks ({size}) to:"
 msgstr[0] ""
 msgstr[1] ""
 
-#: ui/windows/library_backup.py:115
+#: ui/windows/library_backup.py:119
 msgid "The backup was cancelled; no file was left."
 msgstr ""
 
-#: ui/windows/library_backup.py:117
+#: ui/windows/library_backup.py:121
 #, python-brace-format
 msgid ""
 "The library could not be backed up:\n"
 "{error}"
 msgstr ""
 
-#: ui/windows/library_backup.py:144
+#: ui/windows/library_backup.py:148
 msgid "File"
 msgstr ""
 
-#: ui/windows/library_backup.py:145
+#: ui/windows/library_backup.py:149
 msgid "Made"
 msgstr ""
 
-#: ui/windows/library_backup.py:146
+#: ui/windows/library_backup.py:150
 msgid "On"
 msgstr ""
 
-#: ui/windows/library_backup.py:147 ui/windows/library_backup.py:177
+#: ui/windows/library_backup.py:151 ui/windows/library_backup.py:181
 #: ui/windows/tieup_works.py:52 ui/windows/tieup_works.py:104
 msgid "Tracks"
 msgstr ""
 
-#: ui/windows/library_backup.py:148
+#: ui/windows/library_backup.py:152
 msgid "Size"
 msgstr ""
 
-#: ui/windows/library_backup.py:149
+#: ui/windows/library_backup.py:153
 msgid "Feature caches"
 msgstr ""
 
-#: ui/windows/library_backup.py:150
+#: ui/windows/library_backup.py:154
 msgid "Included"
 msgstr ""
 
-#: ui/windows/library_backup.py:150
+#: ui/windows/library_backup.py:154
 msgid "Not included"
 msgstr ""
 
-#: ui/windows/library_backup.py:152 ui/windows/library_backup.py:347
+#: ui/windows/library_backup.py:156 ui/windows/library_backup.py:355
 msgid "New Library Folder"
 msgstr ""
 
-#: ui/windows/library_backup.py:156
+#: ui/windows/library_backup.py:160
 msgid "Browse…"
 msgstr ""
 
-#: ui/windows/library_backup.py:162
+#: ui/windows/library_backup.py:166
 msgid ""
 "The backup's library is unpacked into this new folder and Mixlyzer "
 "restarts on it. The library in use now stays as it is in its folder. Your"
@@ -7360,69 +7366,69 @@ msgid ""
 "this device's settings."
 msgstr ""
 
-#: ui/windows/library_backup.py:168
+#: ui/windows/library_backup.py:172
 msgid "Music Folders"
 msgstr ""
 
-#: ui/windows/library_backup.py:171
+#: ui/windows/library_backup.py:175
 msgid ""
 "Where each folder of the backup's music files is on this device. No file "
 "is moved or looked for: a folder left empty keeps its tracks' paths as "
 "they were, and Mixlyzer asks for a track's file when it is not found."
 msgstr ""
 
-#: ui/windows/library_backup.py:177
+#: ui/windows/library_backup.py:181
 msgid "In the Backup"
 msgstr ""
 
-#: ui/windows/library_backup.py:177
+#: ui/windows/library_backup.py:181
 msgid "On This Device"
 msgstr ""
 
-#: ui/windows/library_backup.py:177
+#: ui/windows/library_backup.py:181
 msgid "Found"
 msgstr ""
 
-#: ui/windows/library_backup.py:199
+#: ui/windows/library_backup.py:203
 msgid "Choose Folder…"
 msgstr ""
 
-#: ui/windows/library_backup.py:213
+#: ui/windows/library_backup.py:217
 msgid "Restore"
 msgstr ""
 
-#: ui/windows/library_backup.py:243
+#: ui/windows/library_backup.py:247
 msgid "Choose the Folder on This Device"
 msgstr ""
 
-#: ui/windows/library_backup.py:273
+#: ui/windows/library_backup.py:277
 msgid "Not joined"
 msgstr ""
 
-#: ui/windows/library_backup.py:274
-msgid "Its tracks keep their paths as they were."
-msgstr ""
-
-#: ui/windows/library_backup.py:276
-#, python-brace-format
-msgid "{n} found"
-msgstr ""
-
 #: ui/windows/library_backup.py:278
-#, python-brace-format
-msgid "{n} of another size"
+msgid "Its tracks keep their paths as they were."
 msgstr ""
 
 #: ui/windows/library_backup.py:280
 #, python-brace-format
+msgid "{n} found"
+msgstr ""
+
+#: ui/windows/library_backup.py:282
+#, python-brace-format
+msgid "{n} of another size"
+msgstr ""
+
+#: ui/windows/library_backup.py:284
+#, python-brace-format
 msgid "{n} missing"
 msgstr ""
 
-#: ui/windows/library_backup.py:300
+#: ui/windows/library_backup.py:304
 msgid "Unpacking the library…"
 msgstr ""
 
-#: ui/windows/library_backup.py:340
+#: ui/windows/library_backup.py:348
 #, python-brace-format
 msgid ""
 "The library could not be restored:\n"

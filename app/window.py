@@ -208,6 +208,7 @@ class AppWindow(QtWidgets.QMainWindow):
         self.library_sync.failed.connect(self.bus.sig_library_sync_failed)
         # the library packed into one file and restored from one (Settings > Library's Backup)
         self.library_backup = LibraryBackup(self.library, parent=self)
+        self._library_holds = 0     # backup / restore windows open: nothing edits the library meanwhile
         self.bus.sig_library_backup_requested.connect(self._backup_library)
         self.bus.sig_library_restore_requested.connect(self._restore_library)
         # (the new readings written by the library's owner, which shows them to the search)
@@ -458,7 +459,10 @@ class AppWindow(QtWidgets.QMainWindow):
 
     def _on_midi_events(self, events) -> None:
         """The controller's messages passed on to the GUI: a JumpCUE pad on an empty slot (SET), a knob's turn
-        (its steps, each a shortcut run), a button pressed (its shortcut run once)."""
+        (its steps, each a shortcut run), a button pressed (its shortcut run once). None while a backup or a restore
+        runs (_hold_library)."""
+        if self._library_holds:
+            return
         for _status, _d1, d2, flags, code, steps in events:
             if flags & MIDI_EVENT_HOTCUE_SET:
                 k = int(code) - ACT_JUMP_A
@@ -774,14 +778,14 @@ class AppWindow(QtWidgets.QMainWindow):
             return
         if not path.lower().endswith(package_suffix()):
             path += package_suffix()
-        BackupDialog(self.library_backup, path, feature_cache, parent).open()
+        self._hold_library(BackupDialog(self.library_backup, path, feature_cache, parent))
 
     def _restore_library(self) -> None:
         """Restore Library…: a backup picked, read and checked, then the restore's window."""
         parent = self.cfgwin if self.cfgwin.isVisible() else self
+        unsaved = tr("The editor has edits not saved. Save or undo them first: Mixlyzer restarts after a restore.")
         if self.model.unsaved:
-            QtWidgets.QMessageBox.warning(parent, tr("Restore Library"), tr(
-                "The editor has edits not saved. Save or undo them first: Mixlyzer restarts after a restore."))
+            QtWidgets.QMessageBox.warning(parent, tr("Restore Library"), unsaved)
             return
         path, _filter = QtWidgets.QFileDialog.getOpenFileName(
             parent, tr("Restore Library"), os.path.expanduser("~"),
@@ -790,13 +794,29 @@ class AppWindow(QtWidgets.QMainWindow):
             return
 
         def opened(info) -> None:
+            if self.model.unsaved:      # edited while the backup was read
+                QtWidgets.QMessageBox.warning(parent, tr("Restore Library"), unsaved)
+                return
             dialog = RestoreDialog(self.library_backup, info, self.cfg.libconfig.libpath, parent)
             dialog.finished_restore.connect(self._on_library_restored)
-            dialog.open()
+            self._hold_library(dialog)
 
         def refused(exc) -> None:
             QtWidgets.QMessageBox.warning(parent, tr("Restore Library"), reason_text(exc))
         self.library_backup.read(path, opened, refused)
+
+    def _hold_library(self, dialog: QtWidgets.QDialog) -> None:
+        """A backup's or a restore's window shown, until it ends: application modal (no other window takes input, so
+        nothing edits the library, the settings or the loaded track meanwhile; shown, not open(), which makes it
+        window modal), and the controller's actions the GUI runs (the library's, the editor's) dropped; the deck
+        plays on."""
+        dialog.setWindowModality(QtCore.Qt.ApplicationModal)
+        self._library_holds += 1
+        dialog.finished.connect(self._release_library)
+        dialog.show()
+
+    def _release_library(self) -> None:
+        self._library_holds = max(0, self._library_holds - 1)
 
     def _on_library_restored(self, result) -> None:
         """A backup unpacked: the settings made the package's on this device (config.restored_settings), saved, and

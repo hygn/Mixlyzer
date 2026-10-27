@@ -51,10 +51,10 @@ class RekordboxXmlSync(QtCore.QObject):
 
     @QtCore.Slot(object)
     def _on_library_updated(self, snapshot) -> None:
-        """The library's snapshot read again: the playlists' parts are new objects only where they were read again
-        (a write that changed them), so a change is told by identity."""
+        """The library's snapshot read again: the playlists written again when they differ (a job of no marked parts,
+        an edit's save or an analysis stored, reads them again unchanged: compared by value, not identity)."""
         seen = _playlist_parts(snapshot)
-        if self._playlists_seen is not None and any(a is not b for a, b in zip(seen, self._playlists_seen)):
+        if self._playlists_seen is not None and seen is not None and seen != self._playlists_seen:
             self._playlists_timer.start()
         self._playlists_seen = seen
 

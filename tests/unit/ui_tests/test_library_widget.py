@@ -16,7 +16,7 @@ import shiboken6
 
 from unit.ui_tests.qt_env import APP, isolated
 
-from PySide6 import QtCore, QtGui
+from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtWidgets import QDialog, QInputDialog, QMessageBox, QTreeWidgetItemIterator
 
 from analyzer.audio.wave_overview import WaveOverview
@@ -416,6 +416,44 @@ class LibraryWidgetTests(unittest.TestCase):
         self.settle()
         self.assertEqual((self.library.snapshot.playlists, self.library.snapshot.folders), ((), ()))
         self.assertEqual(self.w._source_kind, "library")
+
+    def test_a_drop_under_an_open_folder_and_the_add_menu_follow_the_tree(self):
+        with mock.patch.object(QInputDialog, "getText", return_value=("Events", True)):
+            self.w._create_folder()
+        self.settle()
+        events = self.library.snapshot.folders[0].uid
+        with mock.patch.object(QInputDialog, "getText", return_value=("Peak", True)):
+            self.w._create_playlist(events)
+        self.settle()
+        peak = next(p.uid for p in self.library.snapshot.playlists if p.name == "Peak")
+        top = self._new_playlist("Top")
+        # Add to Playlist: the folders as submenus, in the panel's order
+        shown = []
+
+        def entries(menu) -> list:
+            return [(a.text(), entries(a.menu())) if a.menu() is not None else a.text() for a in menu.actions()]
+
+        class Menu(QtWidgets.QMenu):
+            def exec_(self, *_args):
+                shown.extend(entries(self))
+
+        with mock.patch.object(QtWidgets, "QMenu", Menu):
+            self.w._on_context_menu(QtCore.QPoint(0, 0))
+        self.assertIn(("Add to Playlist", [("Events", ["Peak"]), "Top"]), shown)
+        # under an open folder's row: first in it, the line at its children's indent; closed: after it
+        self.w.resize(1400, 700)
+        self.w.show()
+        tree = self.w.source_tree
+        folder_item = self.source("playlist_folder", events)
+        rect = tree.visualItemRect(folder_item)
+        under = QtCore.QPoint(rect.center().x(), rect.bottom() - 1)
+        valid, folder, before, line, into = tree._playlist_insertion_at(under, ("playlist", top))
+        self.assertEqual((valid, folder, before, into), (True, events, ("playlist", peak), None))
+        self.assertEqual(line, (rect.bottom() + 1, tree.visualItemRect(folder_item.child(0)).left()))
+        folder_item.setExpanded(False)
+        rect = tree.visualItemRect(folder_item)
+        under = QtCore.QPoint(rect.center().x(), rect.bottom() - 1)
+        self.assertEqual(tree._playlist_insertion_at(under, ("playlist", top))[1:3], (None, ("playlist", top)))
 
     def test_an_empty_name_makes_no_playlist(self):
         with mock.patch.object(QInputDialog, "getText", return_value=("  ", True)):

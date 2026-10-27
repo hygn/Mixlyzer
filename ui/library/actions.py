@@ -6,9 +6,11 @@ from PySide6 import QtCore, QtGui, QtWidgets
 import os
 from system import os_support
 from core.library import jobs
+from core.library.records import FOLDER_NODE
 from core.settings import store as settings_store
 from ui.windows.reanalyze_dialog import ReanalyzeDialog
 from ui.edit_panel.flash import flash
+from ui.edit_panel.icons import folder_icon
 from system.i18n import tr, tr_n
 
 
@@ -53,10 +55,19 @@ class ActionsMixin:
             act_remove_playlist = menu.addAction(tr("Remove from Playlist"))
         add_menu = menu.addMenu(tr("Add to Playlist"))
         playlist_actions = {}
-        playlists = self.library.snapshot.playlists
-        for playlist in playlists:
-            playlist_actions[add_menu.addAction(playlist.name)] = playlist.uid
-        if not playlists:
+        children = self.library.snapshot.playlist_children()
+
+        def add_playlists(into: QtWidgets.QMenu, folder_uid) -> None:
+            """A folder's children in the sources panel's order, its folders as submenus."""
+            for node, row in children.get(folder_uid, ()):
+                if node == FOLDER_NODE:
+                    sub = into.addMenu(folder_icon(False), row.name)
+                    add_playlists(sub, row.uid)
+                    sub.setEnabled(not sub.isEmpty())
+                else:
+                    playlist_actions[into.addAction(row.name)] = row.uid
+        add_playlists(add_menu, None)
+        if not playlist_actions:
             add_menu.setEnabled(False)
         act_remove.setEnabled(all_analyzed)
         act_edit.setEnabled(all_analyzed)

@@ -91,10 +91,11 @@ class LibraryDB:
             file_size   INTEGER DEFAULT 0
         );
         """)
+        # a playlist's name is one in its folder, not in the library (_check_playlist_name)
         self._conn.execute("""
         CREATE TABLE IF NOT EXISTS playlists (
             uid        TEXT PRIMARY KEY,
-            name       TEXT NOT NULL COLLATE NOCASE UNIQUE,
+            name       TEXT NOT NULL COLLATE NOCASE,
             sort_index INTEGER NOT NULL DEFAULT 0
         );
         """)
@@ -528,6 +529,7 @@ class LibraryDB:
         if not name:
             raise ValueError(tr("Playlist name cannot be empty"))
         folder = self._folder_or_top(folder_uid)
+        self._check_playlist_name(name, folder)
         playlist_uid = str(uuid4())
         with self.tx():
             next_index = len(self._children(folder))
@@ -609,6 +611,9 @@ class LibraryDB:
         children.insert(children.index(before) if before in children else len(children), (kind, uid))
         if old_parent == folder and children == old_children:
             return False
+        if kind == PLAYLIST_NODE and old_parent != folder:
+            name = self.conn.execute("SELECT name FROM playlists WHERE uid=?;", (uid,)).fetchone()[0]
+            self._check_playlist_name(name, folder)
         with self.tx():
             if kind == FOLDER_NODE:
                 self.conn.execute("UPDATE playlist_folders SET parent_uid=? WHERE uid=?;", (folder, uid))
@@ -637,6 +642,15 @@ class LibraryDB:
         with self.tx():
             self._write_children(children)
         return True
+
+    def _check_playlist_name(self, name: str, folder: Optional[str], playlist_uid: Optional[str] = None) -> None:
+        """A playlist's name is one in its folder (as rekordbox's: the same name in another folder is another
+        playlist), letter case aside; ValueError when another playlist there has it."""
+        rows = self.conn.execute(
+            "SELECT p.uid FROM playlists p LEFT JOIN playlist_folder_items f ON f.playlist_uid = p.uid "
+            "WHERE p.name = ? COLLATE NOCASE AND f.folder_uid IS ?;", (name, folder)).fetchall()
+        if any(row[0] != playlist_uid for row in rows):
+            raise ValueError(tr('A playlist named "{name}" is already in this folder.').format(name=name))
 
     def _folder_or_top(self, folder_uid: Optional[str]) -> Optional[str]:
         """A folder's uid in its one spelling (it must exist), or None for the top."""
@@ -690,10 +704,10 @@ class LibraryDB:
         name = str(name or "").strip()
         if not name:
             raise ValueError(tr("Playlist name cannot be empty"))
+        playlist_uid = _canonical_uuid4(playlist_uid)
+        self._check_playlist_name(name, self._parent_of(PLAYLIST_NODE, playlist_uid), playlist_uid)
         with self.tx():
-            self.conn.execute(
-                "UPDATE playlists SET name=? WHERE uid=?;", (name, _canonical_uuid4(playlist_uid))
-            )
+            self.conn.execute("UPDATE playlists SET name=? WHERE uid=?;", (name, playlist_uid))
 
     def delete_playlist(self, playlist_uid: str) -> None:
         """The playlist deleted (the tracks stay in the library); its folder's other children close up."""

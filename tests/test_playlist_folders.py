@@ -103,6 +103,24 @@ class FolderTreeTests(unittest.TestCase):
         self.db.delete_playlist(keep.uid)
         self.assertEqual([(p.name, p.sort_index) for p in self.db.list_playlists()], [("Later", 0)])
 
+    def test_a_name_is_one_in_its_folder(self):
+        a = self.db.create_playlist_folder("A")
+        b = self.db.create_playlist_folder("B")
+        in_a = self.db.create_playlist("Warm-up", a.uid)
+        in_b = self.db.create_playlist("warm-UP", b.uid)          # another folder: another playlist
+        top = self.db.create_playlist("Warm-up")
+        with self.assertRaises(ValueError):
+            self.db.create_playlist("WARM-UP", a.uid)               # the same folder, letter case aside
+        with self.assertRaises(ValueError):
+            self.db.move_playlist_node(PLAYLIST_NODE, in_b.uid, a.uid)
+        other = self.db.create_playlist("Peak", a.uid)
+        with self.assertRaises(ValueError):
+            self.db.rename_playlist(other.uid, "warm-up")
+        self.db.rename_playlist(in_a.uid, "Warm-Up")                # its own name in another case
+        self.assertTrue(self.db.move_playlist_node_by(PLAYLIST_NODE, in_a.uid, 1))   # within its folder
+        self.assertEqual(self.tree(), [("A", ["Peak", "Warm-Up"]), ("B", ["warm-UP"]), "Warm-up"])
+        self.assertEqual(top.folder_uid, None)
+
     def test_rekordbox_xml_playlists(self):
         sets = self.db.create_playlist_folder("Sets")
         sub = self.db.create_playlist_folder("Empty", sets.uid)
@@ -162,6 +180,8 @@ class XmlSyncTests(unittest.TestCase):
         asked = []
         sync._enqueue = asked.append
         library.updated.emit(_Snapshot(first.playlists, first.folders, first.entries))   # the same parts
+        self.assertFalse(sync._playlists_timer.isActive())
+        library.updated.emit(_Snapshot((), (), {}))     # read again unchanged (an edit's save, an analysis stored)
         self.assertFalse(sync._playlists_timer.isActive())
         library.updated.emit(_Snapshot((), (), {"p": ()}))                               # entries read again
         self.assertTrue(sync._playlists_timer.isActive())

@@ -110,7 +110,8 @@ class PlaylistsMixin:
         node, uid = moving
         kind = "playlist_folder" if node == FOLDER_NODE else "playlist"
         self.library.write(jobs.move_playlist_node, node, uid, folder_uid, before,
-                           done=lambda changed: changed and self._show_source(kind, uid))
+                           done=lambda changed: changed and self._show_source(kind, uid),
+                           failed=lambda exc: QtWidgets.QMessageBox.warning(self, tr("Playlists"), str(exc)))
 
     def _drop_playlist_tracks(self, positions, before_position) -> None:
         if self._source_kind != "playlist":

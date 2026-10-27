@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-27 22:12+0900\n"
+"POT-Creation-Date: 2026-10-27 22:43+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ko_KR\n"
@@ -536,7 +536,7 @@ msgstr "핵심 객체와 재생"
 msgid "Main view, editor and library"
 msgstr "메인 뷰, 편집기, 라이브러리"
 
-#: app/window.py:105 app/window.py:246 ui/config/window.py:66
+#: app/window.py:105 app/window.py:247 ui/config/window.py:66
 msgid "Settings"
 msgstr "설정"
 
@@ -544,27 +544,27 @@ msgstr "설정"
 msgid "Dialogs, workflows and metronome"
 msgstr "대화상자, 워크플로, 메트로놈"
 
-#: app/window.py:247 ui/windows/workers.py:28
+#: app/window.py:248 ui/windows/workers.py:28
 msgid "Workers"
 msgstr "작업"
 
 # | msgid "Tie-ups"
-#: app/window.py:248 ui/shortcuts.py:155 ui/windows/tieup_works.py:33
+#: app/window.py:249 ui/shortcuts.py:155 ui/windows/tieup_works.py:33
 #: ui/windows/tieup_works.py:206 ui/windows/tieup_works.py:261
 #: ui/windows/tieup_works.py:266 ui/windows/tieup_works.py:275
 #: ui/windows/tieup_works.py:338
 msgid "Tie-up Works"
 msgstr "타이업 작품"
 
-#: app/window.py:249
+#: app/window.py:250
 msgid "Open Source"
 msgstr "오픈 소스"
 
-#: app/window.py:250
+#: app/window.py:251
 msgid "About"
 msgstr "정보"
 
-#: app/window.py:267 core/controls/midi.py:55 ui/config/playback.py:356
+#: app/window.py:268 core/controls/midi.py:55 ui/config/playback.py:356
 msgid "Mixer"
 msgstr "믹서"
 
@@ -572,53 +572,53 @@ msgstr "믹서"
 # | Playback > " "Audio engine)."
 # Audio
 # | > " "Engine)."
-#: app/window.py:443
+#: app/window.py:444
 msgid "MIDI needs the native audio engine (Settings > Audio > Engine)."
 msgstr "MIDI는 Native 오디오 엔진에서만 동작합니다(설정 > 오디오 > 엔진)."
 
 # | msgid "MIDI input"
-#: app/window.py:450
+#: app/window.py:451
 msgid "MIDI input on."
 msgstr "MIDI 입력 켬."
 
 # | msgid "MIDI input"
-#: app/window.py:450
+#: app/window.py:451
 msgid "MIDI input off."
 msgstr "MIDI 입력 끔."
 
-#: app/window.py:499
+#: app/window.py:503
 msgid "The Python audio engine plays: there is no native engine to restart."
 msgstr "Python 오디오 엔진으로 재생 중입니다. 재시작할 네이티브 엔진이 없습니다."
 
 # | msgid "Starting the reading worker"
-#: app/window.py:501
+#: app/window.py:505
 msgid "Restarting the audio engine..."
 msgstr "오디오 엔진 재시작 중..."
 
 # | msgid "Audio engine"
-#: app/window.py:505
+#: app/window.py:509
 msgid "Audio engine restarted."
 msgstr "오디오 엔진을 재시작했습니다."
 
-#: app/window.py:506
+#: app/window.py:510
 msgid "The audio engine did not start; it is tried again every 2 seconds."
 msgstr "오디오 엔진이 시작되지 않았습니다. 2초마다 다시 시도합니다."
 
-#: app/window.py:556 app/window.py:621
+#: app/window.py:560 app/window.py:625
 msgid "External Sync is enabled. Local track loading is disabled."
 msgstr "외부 동기화가 켜져 있습니다. 로컬 트랙 불러오기가 비활성화됩니다."
 
-#: app/window.py:569 app/window.py:624
+#: app/window.py:573 app/window.py:628
 msgid "Segment reanalysis canceled (track changed)"
 msgstr "구간 재분석 취소됨 (트랙이 바뀜)"
 
 # | msgid "Phrase reanalysis completed"
-#: app/window.py:605
+#: app/window.py:609
 #, python-brace-format
 msgid "The track's analysis could not be read: {file}"
 msgstr "트랙의 분석을 읽을 수 없습니다: {file}"
 
-#: app/window.py:609
+#: app/window.py:613
 #, python-brace-format
 msgid ""
 "{n} JumpCUE past slot Z is not shown ({file}); it stays stored until the "
@@ -628,15 +628,15 @@ msgid_plural ""
 "the JumpCUEs are edited."
 msgstr[0] "슬롯 Z를 넘는 JumpCUE {n}개는 표시되지 않습니다({file}). JumpCUE를 편집하기 전까지는 저장된 그대로 남습니다."
 
-#: app/window.py:627
+#: app/window.py:631
 msgid "Track unloaded."
 msgstr "트랙을 내렸습니다."
 
-#: app/window.py:637
+#: app/window.py:641
 msgid "Track File Not Found"
 msgstr "트랙 파일을 찾을 수 없음"
 
-#: app/window.py:641
+#: app/window.py:645
 #, python-brace-format
 msgid ""
 "Cannot load \"{name}\": its file is missing.\n"
@@ -649,70 +649,71 @@ msgstr ""
 "\n"
 "파일의 새 위치를 지정할까요?"
 
-#: app/window.py:648
+#: app/window.py:652
 #, python-brace-format
 msgid "Locate {name}"
 msgstr "{name} 찾기"
 
-#: app/window.py:672 app/window.py:688
+#: app/window.py:676 app/window.py:692
 msgid "Analysis saved to library."
 msgstr "분석을 라이브러리에 저장했습니다."
 
-#: app/window.py:677
+#: app/window.py:681
 msgid "Finished"
 msgstr "완료"
 
-#: app/window.py:700
+#: app/window.py:704
 msgid "Waiting to be looked up on Wikipedia"
 msgstr "위키백과 조사 대기 중"
 
-#: app/window.py:706
+#: app/window.py:710
 msgid "Looking up on Wikipedia and Wikidata…"
 msgstr "위키백과와 위키데이터에서 찾는 중…"
 
 # | msgid "Reading the analysis failed: {error}"
 # | msgid "The search failed: {error}"
 # | msgid "" "The lookup failed:\n" "{error}"
-#: app/window.py:711
+#: app/window.py:715
 msgid "The lookup failed."
 msgstr "조사하지 못했습니다."
 
-#: app/window.py:747
+#: app/window.py:751
 #, python-brace-format
 msgid "External Sync loading: {file}"
 msgstr "외부 동기화 불러오는 중: {file}"
 
-#: app/window.py:747
+#: app/window.py:751
 #, python-brace-format
 msgid "External Sync analyzing: {file}"
 msgstr "외부 동기화 분석 중: {file}"
 
 # | msgid "Memory Sync Disabled"
-#: app/window.py:761
+#: app/window.py:765
 msgid "External Sync Disabled"
 msgstr "외부 동기화 비활성화됨"
 
-#: app/window.py:771 ui/windows/library_backup.py:53
+#: app/window.py:775 ui/windows/library_backup.py:53
 msgid "Back Up Library"
 msgstr "라이브러리 백업"
 
-#: app/window.py:772 app/window.py:788
+#: app/window.py:776 app/window.py:792
 #, python-brace-format
 msgid "Mixlyzer library backup (*{suffix})"
 msgstr "Mixlyzer 라이브러리 백업 (*{suffix})"
 
-#: app/window.py:783 app/window.py:787 app/window.py:798 app/window.py:828
-#: ui/windows/library_backup.py:129 ui/windows/library_backup.py:292
-msgid "Restore Library"
-msgstr "라이브러리 복원"
-
-#: app/window.py:784
+#: app/window.py:786
 msgid ""
 "The editor has edits not saved. Save or undo them first: Mixlyzer "
 "restarts after a restore."
 msgstr "편집기에 저장하지 않은 편집이 있습니다. 먼저 저장하거나 되돌리세요. 복원하면 Mixlyzer가 재시작됩니다."
 
-#: app/window.py:809
+#: app/window.py:788 app/window.py:791 app/window.py:798 app/window.py:805
+#: app/window.py:848 ui/windows/library_backup.py:133
+#: ui/windows/library_backup.py:296
+msgid "Restore Library"
+msgstr "라이브러리 복원"
+
+#: app/window.py:829
 #, python-brace-format
 msgid ""
 "Restored {n} track into:\n"
@@ -724,34 +725,34 @@ msgstr[0] ""
 "트랙 {n}개를 다음 폴더에 복원했습니다:\n"
 "{folder}"
 
-#: app/window.py:812
+#: app/window.py:832
 #, python-brace-format
 msgid "{n} track's file path was joined to this device's folders."
 msgid_plural "{n} tracks' file paths were joined to this device's folders."
 msgstr[0] "트랙 {n}개의 파일 경로를 이 기기의 폴더로 이었습니다."
 
-#: app/window.py:816
+#: app/window.py:836
 #, python-brace-format
 msgid "{n} path was left as it was: another track already had the new one."
 msgid_plural "{n} paths were left as they were: other tracks already had the new ones."
 msgstr[0] "경로 {n}개는 그대로 두었습니다. 다른 트랙이 이미 새 경로를 쓰고 있습니다."
 
-#: app/window.py:820
+#: app/window.py:840
 #, python-brace-format
 msgid "{n} track had no stored analysis in the backup."
 msgid_plural "{n} tracks had no stored analysis in the backup."
 msgstr[0] "트랙 {n}개는 백업에 저장된 분석이 없었습니다."
 
-#: app/window.py:824
+#: app/window.py:844
 msgid "Files replaced by the backup's were kept beside them:"
 msgstr "백업의 파일로 바뀐 파일은 옆에 남겨 두었습니다:"
 
-#: app/window.py:826
+#: app/window.py:846
 msgid "Mixlyzer now restarts to open the restored library."
 msgstr "복원한 라이브러리를 열기 위해 Mixlyzer를 재시작합니다."
 
 # | msgid "External Sync enabled via {target}. Local play/load is locked."
-#: app/window.py:1096
+#: app/window.py:1116
 #, python-brace-format
 msgid "External Sync enabled: OSC on {address}. Local play/load is locked."
 msgstr "외부 동기화 사용: OSC {address}. 로컬 재생/불러오기가 잠깁니다."
@@ -1209,22 +1210,27 @@ msgstr "헤드폰: 레벨"
 msgid "Master: level"
 msgstr "마스터: 레벨"
 
-#: core/library/db.py:504
+#: core/library/db.py:505
 msgid "The path cannot be empty."
 msgstr "경로는 비워 둘 수 없습니다."
 
-#: core/library/db.py:507
+#: core/library/db.py:508
 #, python-brace-format
 msgid "This file is already in the library as \"{track}\"."
 msgstr "이 파일은 이미 라이브러리에 \"{track}\"(으)로 있습니다."
 
-#: core/library/db.py:529 core/library/db.py:692
+#: core/library/db.py:530 core/library/db.py:706
 msgid "Playlist name cannot be empty"
 msgstr "플레이리스트 이름은 비워 둘 수 없습니다"
 
-#: core/library/db.py:563 core/library/db.py:575
+#: core/library/db.py:565 core/library/db.py:577
 msgid "Folder name cannot be empty"
 msgstr "폴더 이름은 비워 둘 수 없습니다"
+
+#: core/library/db.py:653
+#, python-brace-format
+msgid "A playlist named \"{name}\" is already in this folder."
+msgstr "이 폴더에 이미 \"{name}\" 플레이리스트가 있습니다."
 
 #: core/library/tieups.py:176 ui/library/tabs/tieup_editor.py:291
 #: ui/windows/tieup_works.py:267
@@ -3436,7 +3442,7 @@ msgstr "{address}에서 받는 중; 로드되어 있고 활성인 덱이 없음 
 msgid "Add Folder…"
 msgstr "폴더 추가…"
 
-#: ui/config/library.py:33 ui/library/actions.py:87
+#: ui/config/library.py:33 ui/library/actions.py:98
 #: ui/library/tabs/tieup_editor.py:373
 msgid "Remove"
 msgstr "제거"
@@ -3640,7 +3646,7 @@ msgstr ""
 "<p>백업을 새 라이브러리 폴더에 풉니다(이 기기든 다른 기기든). 백업의 음악 폴더를 이 기기의 폴더로 이은 뒤 Mixlyzer가"
 " 그 라이브러리로 재시작합니다. 지금 쓰는 라이브러리는 그대로 둡니다.</p>"
 
-#: ui/config/library.py:145 ui/windows/library_backup.py:142
+#: ui/config/library.py:145 ui/windows/library_backup.py:146
 msgid "Backup"
 msgstr "백업"
 
@@ -3762,7 +3768,7 @@ msgid ""
 msgstr "그다음 컨트롤러의 조작부를 움직이거나 누르면, 그 메시지가 선택한 동작에 추가됩니다."
 
 #: ui/config/midi.py:114 ui/library/search.py:273
-#: ui/windows/library_backup.py:201
+#: ui/windows/library_backup.py:205
 msgid "Clear"
 msgstr "지우기"
 
@@ -6147,15 +6153,15 @@ msgstr "-- | 구간 -- | +0박 | 남음: 00:00.00"
 msgid "{label} | Seg {index} | +{beats} beats | Left: {left}"
 msgstr "{label} | 구간 {index} | +{beats}박 | 남음: {left}"
 
-#: ui/library/actions.py:48
+#: ui/library/actions.py:50
 msgid "Analyze Track"
 msgstr "트랙 분석"
 
-#: ui/library/actions.py:54
+#: ui/library/actions.py:56
 msgid "Add to Playlist"
 msgstr "플레이리스트에 추가"
 
-#: ui/library/actions.py:88
+#: ui/library/actions.py:99
 msgid ""
 "The deck's track cannot be removed while External Sync follows it.\n"
 "Turn External Sync off, or select other tracks."
@@ -6163,7 +6169,7 @@ msgstr ""
 "External Sync가 따라가는 덱의 트랙은 제거할 수 없습니다.\n"
 "External Sync를 끄거나 다른 트랙을 선택하세요."
 
-#: ui/library/actions.py:109
+#: ui/library/actions.py:120
 #, python-brace-format
 msgid ""
 "Remove \"{title}\" from the library?\n"
@@ -6172,7 +6178,7 @@ msgstr ""
 "\"{title}\"을(를) 라이브러리에서 제거할까요?\n"
 "분석과 편집 내용이 삭제됩니다. 오디오 파일은 그대로 남습니다."
 
-#: ui/library/actions.py:112
+#: ui/library/actions.py:123
 #, python-brace-format
 msgid ""
 "Remove {count} track from the library?\n"
@@ -6268,7 +6274,7 @@ msgid "Name"
 msgstr "이름"
 
 #: ui/library/playlists.py:27 ui/library/playlists.py:32
-#: ui/library/sources.py:601
+#: ui/library/sources.py:612
 msgid "New Folder"
 msgstr "새 폴더"
 
@@ -6280,7 +6286,7 @@ msgstr "플레이리스트 이름 바꾸기"
 msgid "Rename Folder"
 msgstr "폴더 이름 바꾸기"
 
-#: ui/library/playlists.py:74 ui/library/sources.py:607
+#: ui/library/playlists.py:74 ui/library/sources.py:618
 msgid "Delete Playlist"
 msgstr "플레이리스트 삭제"
 
@@ -6293,7 +6299,7 @@ msgstr ""
 "플레이리스트 \"{name}\"을(를) 삭제할까요?\n"
 "트랙은 라이브러리에 남습니다."
 
-#: ui/library/playlists.py:84 ui/library/sources.py:607
+#: ui/library/playlists.py:84 ui/library/sources.py:618
 msgid "Delete Folder"
 msgstr "폴더 삭제"
 
@@ -6305,6 +6311,10 @@ msgid ""
 msgstr ""
 "\"{name}\" 폴더를 그 안의 모든 플레이리스트와 폴더와 함께 삭제할까요?\n"
 "트랙은 라이브러리에 남습니다."
+
+#: ui/library/playlists.py:114 ui/library/sources.py:297
+msgid "Playlists"
+msgstr "플레이리스트"
 
 #: ui/library/search.py:163
 msgid "AND: require every search condition (click to switch)"
@@ -6432,16 +6442,16 @@ msgstr "켜 둔 각 전환의 양쪽 최소 길이"
 msgid "Min seg"
 msgstr "최소 구간"
 
-#: ui/library/sources.py:271
+#: ui/library/sources.py:280
 msgid "Library (All)"
 msgstr "라이브러리 (전체)"
 
 # | msgid "Alias"
-#: ui/library/sources.py:275 ui/library/tabs/track_search_index.py:95
+#: ui/library/sources.py:284 ui/library/tabs/track_search_index.py:95
 msgid "Variants"
 msgstr "다른 버전"
 
-#: ui/library/sources.py:278
+#: ui/library/sources.py:287
 msgid ""
 "<p>The library's tracks that are versions of one song: the same audio, "
 "another vocal, the instrumental, an edit (a TV size). # is the song; a "
@@ -6451,82 +6461,78 @@ msgstr ""
 "각 행의 툴팁에서 다른 버전과 무엇이 다른지 볼 수 있습니다.</p>"
 
 # | msgid "Unload track"
-#: ui/library/sources.py:281
+#: ui/library/sources.py:290
 msgid "Loaded Track"
 msgstr "로드한 곡"
 
-#: ui/library/sources.py:283
+#: ui/library/sources.py:292
 msgid ""
 "<p>The versions of the track loaded on the deck, following each track "
 "loaded.</p>"
 msgstr "<p>덱에 로드한 곡의 다른 버전을 보여 줍니다. 곡을 로드할 때마다 바뀝니다.</p>"
 
-#: ui/library/sources.py:288
-msgid "Playlists"
-msgstr "플레이리스트"
-
-#: ui/library/sources.py:311
+#: ui/library/sources.py:320
 msgid "Local Folders"
 msgstr "로컬 폴더"
 
 # | msgid "Headphones: level"
 # | msgid "Headphones mix"
-#: ui/library/sources.py:541
+#: ui/library/sources.py:552
 msgid "the same mix"
 msgstr "같은 믹스"
 
-#: ui/library/sources.py:543
+#: ui/library/sources.py:554
 #, python-brace-format
 msgid "{relation}, a shorter edit"
 msgstr "{relation} (짧게 편집한 버전)"
 
-#: ui/library/sources.py:545
+#: ui/library/sources.py:556
 #, python-brace-format
 msgid "{relation}, a longer version"
 msgstr "{relation} (더 긴 버전)"
 
-#: ui/library/sources.py:547
+#: ui/library/sources.py:558
 #, python-brace-format
 msgid "{relation}, some sections differ"
 msgstr "{relation} (일부 구간이 다름)"
 
 # | msgid "{relation}, a shorter edit"
-#: ui/library/sources.py:550
+#: ui/library/sources.py:561
 msgid "a shorter edit"
 msgstr "짧게 편집한 버전"
 
 # | msgid "{relation}, a longer version"
-#: ui/library/sources.py:552
+#: ui/library/sources.py:563
 msgid "a longer version"
 msgstr "더 긴 버전"
 
 # | msgid "{relation}, some sections differ"
-#: ui/library/sources.py:554
+#: ui/library/sources.py:565
 msgid "some sections differ"
 msgstr "일부 구간이 다름"
 
-#: ui/library/sources.py:571
+#: ui/library/sources.py:582
 #, python-brace-format
 msgid "{title}: {relation}"
 msgstr "{title}: {relation}"
 
-#: ui/library/sources.py:573
+#: ui/library/sources.py:584
 msgid "Variants of this track:"
 msgstr "이 곡의 다른 버전:"
 
-#: ui/library/sources.py:604
+#: ui/library/sources.py:615
 msgid "Rename"
 msgstr "이름 바꾸기"
 
-#: ui/library/sources.py:605
+#: ui/library/sources.py:616
 msgid "Move Up"
 msgstr "위로 이동"
 
-#: ui/library/sources.py:606
+#: ui/library/sources.py:617
 msgid "Move Down"
 msgstr "아래로 이동"
 
-#: ui/library/sources.py:609
+#: ui/library/sources.py:620
 msgid "Refresh Folders"
 msgstr "폴더 새로 고침"
 
@@ -7471,7 +7477,7 @@ msgstr ""
 msgid "Select the loaded track"
 msgstr "로드한 트랙 선택"
 
-#: ui/library/actions.py:46 ui/library/tabs/edit_song.py:248
+#: ui/library/actions.py:48 ui/library/tabs/edit_song.py:248
 #: ui/library/tabs/edit_song.py:266 ui/library/track_panel.py:43
 #: ui/shortcuts.py:142
 msgid "Edit Track"
@@ -7533,7 +7539,7 @@ msgstr "선택한 트랙을 일본어 위키백과와 위키데이터에서 찾�
 msgid "The works window: every work the tie-ups name, edited, merged or deleted."
 msgstr "작품 창: 타이업에 쓰인 모든 작품을 편집하거나 합치거나 삭제합니다."
 
-#: ui/library/actions.py:50 ui/library/tabs/export.py:309
+#: ui/library/actions.py:52 ui/library/tabs/export.py:309
 #: ui/library/tabs/export.py:314 ui/library/tabs/export.py:320
 #: ui/library/tabs/export.py:332 ui/library/tabs/export.py:342
 #: ui/library/tabs/export.py:454 ui/library/tabs/export.py:465
@@ -7555,20 +7561,20 @@ msgid ""
 "the fields checked in the track panel's Export tab."
 msgstr "선택한 트랙의 저장된 값을 오디오 파일 태그에 씁니다. 트랙 패널의 내보내기 탭에서 체크한 항목만 씁니다."
 
-#: ui/library/actions.py:43 ui/shortcuts.py:162
+#: ui/library/actions.py:45 ui/shortcuts.py:162
 msgid "Show in Explorer"
 msgstr "탐색기에서 보기"
 
-#: ui/library/actions.py:44 ui/shortcuts.py:163
+#: ui/library/actions.py:46 ui/shortcuts.py:163
 msgid "Show in Finder"
 msgstr "Finder에서 보기"
 
-#: ui/library/actions.py:44 ui/shortcuts.py:163
+#: ui/library/actions.py:46 ui/shortcuts.py:163
 msgid "Show in File Manager"
 msgstr "파일 관리자에서 보기"
 
 #: ui/library/playlists.py:18 ui/library/playlists.py:23
-#: ui/library/sources.py:600 ui/shortcuts.py:164
+#: ui/library/sources.py:611 ui/shortcuts.py:164
 msgid "New Playlist"
 msgstr "새 플레이리스트"
 
@@ -7588,7 +7594,7 @@ msgid ""
 "folder), else at the top."
 msgstr "표시 중인 폴더(또는 표시 중인 플레이리스트가 든 폴더)에 새 플레이리스트 폴더를 만듭니다. 둘 다 아니면 맨 위 단계에 만듭니다."
 
-#: ui/library/actions.py:48 ui/shortcuts.py:169
+#: ui/library/actions.py:50 ui/shortcuts.py:169
 #: ui/windows/reanalyze_dialog.py:16
 msgid "Reanalyze Track"
 msgstr "트랙 재분석"
@@ -7599,11 +7605,11 @@ msgid ""
 "are replaced."
 msgstr "선택한 트랙의 전체 분석: 저장된 분석과 편집이 바뀝니다."
 
-#: ui/library/actions.py:45 ui/library/actions.py:117 ui/shortcuts.py:171
+#: ui/library/actions.py:47 ui/library/actions.py:128 ui/shortcuts.py:171
 msgid "Remove from Library"
 msgstr "라이브러리에서 제거"
 
-#: ui/library/actions.py:53 ui/shortcuts.py:172
+#: ui/library/actions.py:55 ui/shortcuts.py:172
 msgid "Remove from Playlist"
 msgstr "플레이리스트에서 제거"
 
@@ -8268,21 +8274,21 @@ msgstr "취소했습니다."
 msgid "Packing the library into:"
 msgstr "라이브러리를 다음 파일에 담는 중:"
 
-#: ui/windows/library_backup.py:61 ui/windows/library_backup.py:216
+#: ui/windows/library_backup.py:61 ui/windows/library_backup.py:220
 msgid "Cancel"
 msgstr "취소"
 
-#: ui/windows/library_backup.py:107
+#: ui/windows/library_backup.py:111
 #, python-brace-format
 msgid "Backed up {n} track ({size}) to:"
 msgid_plural "Backed up {n} tracks ({size}) to:"
 msgstr[0] "트랙 {n}개({size})를 다음 파일에 백업했습니다:"
 
-#: ui/windows/library_backup.py:115
+#: ui/windows/library_backup.py:119
 msgid "The backup was cancelled; no file was left."
 msgstr "백업을 취소했습니다. 파일은 남지 않았습니다."
 
-#: ui/windows/library_backup.py:117
+#: ui/windows/library_backup.py:121
 #, python-brace-format
 msgid ""
 "The library could not be backed up:\n"
@@ -8291,49 +8297,49 @@ msgstr ""
 "라이브러리를 백업하지 못했습니다:\n"
 "{error}"
 
-#: ui/windows/library_backup.py:144
+#: ui/windows/library_backup.py:148
 msgid "File"
 msgstr "파일"
 
-#: ui/windows/library_backup.py:145
+#: ui/windows/library_backup.py:149
 msgid "Made"
 msgstr "만든 시각"
 
-#: ui/windows/library_backup.py:146
+#: ui/windows/library_backup.py:150
 msgid "On"
 msgstr "만든 OS"
 
 # | msgid "Track File"
-#: ui/windows/library_backup.py:147 ui/windows/library_backup.py:177
+#: ui/windows/library_backup.py:151 ui/windows/library_backup.py:181
 #: ui/windows/tieup_works.py:52 ui/windows/tieup_works.py:104
 msgid "Tracks"
 msgstr "트랙"
 
-#: ui/windows/library_backup.py:148
+#: ui/windows/library_backup.py:152
 msgid "Size"
 msgstr "크기"
 
-#: ui/windows/library_backup.py:149
+#: ui/windows/library_backup.py:153
 msgid "Feature caches"
 msgstr "특징 캐시"
 
-#: ui/windows/library_backup.py:150
+#: ui/windows/library_backup.py:154
 msgid "Included"
 msgstr "포함"
 
-#: ui/windows/library_backup.py:150
+#: ui/windows/library_backup.py:154
 msgid "Not included"
 msgstr "포함 안 함"
 
-#: ui/windows/library_backup.py:152 ui/windows/library_backup.py:347
+#: ui/windows/library_backup.py:156 ui/windows/library_backup.py:355
 msgid "New Library Folder"
 msgstr "새 라이브러리 폴더"
 
-#: ui/windows/library_backup.py:156
+#: ui/windows/library_backup.py:160
 msgid "Browse…"
 msgstr "찾아보기…"
 
-#: ui/windows/library_backup.py:162
+#: ui/windows/library_backup.py:166
 msgid ""
 "The backup's library is unpacked into this new folder and Mixlyzer "
 "restarts on it. The library in use now stays as it is in its folder. Your"
@@ -8345,11 +8351,11 @@ msgstr ""
 "남습니다. 단축키, MIDI 매핑, 재학습한 모델은 백업의 것으로 바뀌고, 이 기기의 것은 옆에 남겨 둡니다. 오디오와 파일 경로는"
 " 이 기기의 설정을 그대로 씁니다."
 
-#: ui/windows/library_backup.py:168
+#: ui/windows/library_backup.py:172
 msgid "Music Folders"
 msgstr "음악 폴더"
 
-#: ui/windows/library_backup.py:171
+#: ui/windows/library_backup.py:175
 msgid ""
 "Where each folder of the backup's music files is on this device. No file "
 "is moved or looked for: a folder left empty keeps its tracks' paths as "
@@ -8358,58 +8364,58 @@ msgstr ""
 "백업의 음악 파일 폴더가 이 기기에서는 각각 어디인지 지정합니다. 파일을 옮기거나 찾아다니지 않습니다. 비워 둔 폴더의 트랙은 "
 "경로가 그대로 남고, 파일을 찾지 못한 트랙은 열 때 Mixlyzer가 파일 위치를 묻습니다."
 
-#: ui/windows/library_backup.py:177
+#: ui/windows/library_backup.py:181
 msgid "In the Backup"
 msgstr "백업의 폴더"
 
-#: ui/windows/library_backup.py:177
+#: ui/windows/library_backup.py:181
 msgid "On This Device"
 msgstr "이 기기의 폴더"
 
-#: ui/windows/library_backup.py:177
+#: ui/windows/library_backup.py:181
 msgid "Found"
 msgstr "찾은 파일"
 
-#: ui/windows/library_backup.py:199
+#: ui/windows/library_backup.py:203
 msgid "Choose Folder…"
 msgstr "폴더 선택…"
 
-#: ui/windows/library_backup.py:213
+#: ui/windows/library_backup.py:217
 msgid "Restore"
 msgstr "복원"
 
-#: ui/windows/library_backup.py:243
+#: ui/windows/library_backup.py:247
 msgid "Choose the Folder on This Device"
 msgstr "이 기기의 폴더 선택"
 
-#: ui/windows/library_backup.py:273
+#: ui/windows/library_backup.py:277
 msgid "Not joined"
 msgstr "지정 안 함"
 
-#: ui/windows/library_backup.py:274
+#: ui/windows/library_backup.py:278
 msgid "Its tracks keep their paths as they were."
 msgstr "이 폴더의 트랙은 경로가 그대로 남습니다."
 
-#: ui/windows/library_backup.py:276
+#: ui/windows/library_backup.py:280
 #, python-brace-format
 msgid "{n} found"
 msgstr "{n}개 찾음"
 
-#: ui/windows/library_backup.py:278
+#: ui/windows/library_backup.py:282
 #, python-brace-format
 msgid "{n} of another size"
 msgstr "{n}개 크기 다름"
 
-#: ui/windows/library_backup.py:280
+#: ui/windows/library_backup.py:284
 #, python-brace-format
 msgid "{n} missing"
 msgstr "{n}개 없음"
 
-#: ui/windows/library_backup.py:300
+#: ui/windows/library_backup.py:304
 msgid "Unpacking the library…"
 msgstr "라이브러리를 푸는 중…"
 
-#: ui/windows/library_backup.py:340
+#: ui/windows/library_backup.py:348
 #, python-brace-format
 msgid ""
 "The library could not be restored:\n"

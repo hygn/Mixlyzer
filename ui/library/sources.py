@@ -53,7 +53,7 @@ class _LibrarySourceTree(QtWidgets.QTreeWidget):
         self.setDropIndicatorShown(True)
         self.setMinimumWidth(190)
         self.setMaximumWidth(360)
-        self._drop_line_y: Optional[int] = None
+        self._drop_line: Optional[tuple[int, int]] = None   # (y, x it starts at: the level the drop goes into)
         self._drop_target_rect: Optional[QtCore.QRect] = None
         # moving with the keys only highlights a source; the library shows it once picked (the load key)
         self.keyboard_move = False
@@ -91,15 +91,19 @@ class _LibrarySourceTree(QtWidgets.QTreeWidget):
         drag.exec(QtCore.Qt.MoveAction, QtCore.Qt.MoveAction)
 
     def _playlist_insertion_at(self, pos: QtCore.QPoint, moving: tuple[str, str]):
-        """Where a playlist or folder dropped at ``pos`` goes: (valid, folder, before, line y, folder rect). Over a
-        playlist: before it (its upper half) or after it; over a folder: before it (its top quarter), after it (its
-        bottom quarter) or into it at its end; over Playlists: at the top's end. A folder never into itself or a folder
-        inside it."""
+        """Where a playlist or folder dropped at ``pos`` goes: (valid, folder, before, line (y, x), folder rect). Over
+        a playlist: before it (its upper half) or after it; over a folder: before it (its top quarter), into it at its
+        end, or under it (its bottom quarter: first in it when it is open with children, as the line there shows,
+        else after it); over Playlists: at the top's end. The line starts at the level the drop goes into. A folder
+        never into itself or a folder inside it."""
         item = self.itemAt(pos)
         kind = item.data(0, _SOURCE_KIND_ROLE) if item is not None else ""
         if kind == "playlists":
-            last = item.child(item.childCount() - 1) if item.childCount() else item
-            return True, None, None, self.visualItemRect(last).bottom() + 1, None
+            last = item
+            while last.childCount() and last.isExpanded():   # under the last row shown (an open folder's last)
+                last = last.child(last.childCount() - 1)
+            line = (self.visualItemRect(last).bottom() + 1, self.visualItemRect(item).left() + self.indentation())
+            return True, None, None, line, None
         node = _node_of(item)
         if node is None:
             return False, None, None, None, None
@@ -115,10 +119,13 @@ class _LibrarySourceTree(QtWidgets.QTreeWidget):
         if kind == "playlist_folder" and rect.height() // 4 <= y < rect.height() - rect.height() // 4:
             return True, node[1], None, None, rect
         if y < rect.height() // 2:
-            return True, folder, node, rect.top(), None
+            return True, folder, node, (rect.top(), rect.left()), None
+        if kind == "playlist_folder" and item.isExpanded() and item.childCount():
+            first = item.child(0)       # the line between the folder and its first child: first in it
+            return True, node[1], _node_of(first), (rect.bottom() + 1, self.visualItemRect(first).left()), None
         parent = item.parent()
         following = parent.child(parent.indexOfChild(item) + 1) if parent is not None else None
-        return True, folder, _node_of(following), rect.bottom() + 1, None
+        return True, folder, _node_of(following), (rect.bottom() + 1, rect.left()), None
 
     @staticmethod
     def _moving(event) -> Optional[tuple[str, str]]:
@@ -132,17 +139,17 @@ class _LibrarySourceTree(QtWidgets.QTreeWidget):
     def _set_drop_visual(
         self,
         *,
-        line_y: Optional[int] = None,
+        line: Optional[tuple[int, int]] = None,
         target_rect: Optional[QtCore.QRect] = None,
     ) -> None:
-        if self._drop_line_y != line_y or self._drop_target_rect != target_rect:
-            self._drop_line_y = line_y
+        if self._drop_line != line or self._drop_target_rect != target_rect:
+            self._drop_line = line
             self._drop_target_rect = target_rect
             self.viewport().update()
 
     def paintEvent(self, event):
         super().paintEvent(event)
-        if self._drop_line_y is None and self._drop_target_rect is None:
+        if self._drop_line is None and self._drop_target_rect is None:
             return
         painter = QtGui.QPainter(self.viewport())
         color = self.palette().highlight().color()
@@ -152,12 +159,13 @@ class _LibrarySourceTree(QtWidgets.QTreeWidget):
             fill.setAlpha(35)
             painter.fillRect(self._drop_target_rect, fill)
             painter.drawRect(self._drop_target_rect.adjusted(1, 1, -2, -2))
-        if self._drop_line_y is not None:
+        if self._drop_line is not None:
             pen = QtGui.QPen(color, 3)
             pen.setCapStyle(QtCore.Qt.RoundCap)
             painter.setPen(pen)
-            y = max(1, min(self.viewport().height() - 2, self._drop_line_y))
-            painter.drawLine(8, y, self.viewport().width() - 5, y)
+            y, x = self._drop_line
+            y = max(1, min(self.viewport().height() - 2, y))
+            painter.drawLine(max(8, x), y, self.viewport().width() - 5, y)
 
     def _playlist_at(self, pos) -> Optional[str]:
         item = self.itemAt(pos)
@@ -177,9 +185,9 @@ class _LibrarySourceTree(QtWidgets.QTreeWidget):
     def dragMoveEvent(self, event):
         moving = self._moving(event) if event.source() is self else None
         if moving is not None:
-            valid, _folder, _before, line_y, into = self._playlist_insertion_at(event.position().toPoint(), moving)
+            valid, _folder, _before, line, into = self._playlist_insertion_at(event.position().toPoint(), moving)
             if valid:
-                self._set_drop_visual(line_y=line_y, target_rect=into)
+                self._set_drop_visual(line=line, target_rect=into)
                 event.setDropAction(QtCore.Qt.MoveAction)
                 event.accept()
             else:
@@ -200,7 +208,7 @@ class _LibrarySourceTree(QtWidgets.QTreeWidget):
     def dropEvent(self, event):
         moving = self._moving(event) if event.source() is self else None
         if moving is not None:
-            valid, folder, before, _line_y, _into = self._playlist_insertion_at(event.position().toPoint(), moving)
+            valid, folder, before, _line, _into = self._playlist_insertion_at(event.position().toPoint(), moving)
             self._set_drop_visual()
             if not valid:
                 event.ignore()

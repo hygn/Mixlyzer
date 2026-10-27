@@ -13,6 +13,7 @@ import sqlite3
 import tempfile
 import unittest
 import zipfile
+from unittest import mock
 from pathlib import Path
 from uuid import uuid4
 
@@ -29,8 +30,9 @@ from core.library.package import PackageError
 from core.library.records import TrackRow
 from core.library.service import Library
 from core.library.version import CURRENT_LIBRARY_VERSION, write_library_version
+from core.tieups import web
 from core.settings.config import default_cfg, restored_settings
-from core.workflows.library_backup import _music_folders
+from core.workflows.library_backup import LibraryBackup, _music_folders
 
 APP = QApplication.instance() or QApplication([])
 
@@ -278,6 +280,32 @@ class PackageTests(unittest.TestCase):
         finally:
             fx.close()
         self._refused(pkg, PackageError.SCHEMA, unpack=True)
+
+    def test_a_restore_failing_leaves_the_users_files_as_they_were(self):
+        mine = self.tmp / "here" / "shortcuts.json"
+        mine.parent.mkdir()
+        mine.write_text("mine", encoding="utf-8")
+        data = self.fx.shortcuts.read_bytes()
+        changed = self.tmp / "changed.mxlib"       # the user file's bytes changed, its size kept
+        _rewrite(self.pkg, changed, change={package.SHORTCUTS: bytes(b ^ 1 for b in data)})
+        dest = self.tmp / "restored"
+        backup = LibraryBackup(None)
+        # every place a restore writes in the test's folder (never the app's own caches)
+        caches = {package.FEATURE_CACHE + "key_feature_cache_path": str(self.tmp / "here" / "featurecache")}
+        tieups = str(self.tmp / "here" / "tieup_web.db")
+        real_restore_cache = web.restore_cache
+        with mock.patch("core.workflows.library_backup.user_files", return_value={package.SHORTCUTS: str(mine)}), \
+                mock.patch("core.workflows.library_backup.feature_caches", return_value=caches), \
+                mock.patch.object(web, "restore_cache", lambda source: real_restore_cache(source, tieups)):
+            with self.assertRaises(PackageError) as caught:
+                backup._restore(package.read_package(str(changed)), str(dest), {}, default_cfg())
+            self.assertEqual(caught.exception.reason, PackageError.DAMAGED)
+            self.assertEqual(mine.read_text(encoding="utf-8"), "mine")
+            self.assertEqual(sorted(p.name for p in mine.parent.iterdir()), ["shortcuts.json"])   # nothing beside
+            self.assertFalse(dest.exists())         # the library not unpacked: the same folder can be asked again
+            result = backup._restore(package.read_package(str(self.pkg)), str(dest), {}, default_cfg())
+        self.assertEqual(mine.read_bytes(), data)
+        self.assertEqual([Path(p).read_text(encoding="utf-8") for p in result.kept_aside], ["mine"])
 
     def test_folder_not_empty_refused(self):
         dest = self.tmp / "full"

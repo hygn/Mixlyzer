@@ -84,6 +84,10 @@ class BackupDialog(QtWidgets.QDialog):
             return
         super().closeEvent(event)
 
+    def reject(self) -> None:
+        if not self._running:   # Esc while it runs: kept open (closeEvent's guard is not asked on Esc)
+            super().reject()
+
     def _cancel(self) -> None:
         self.btn_cancel.setEnabled(False)
         self._backup.cancel()
@@ -315,6 +319,10 @@ class RestoreDialog(QtWidgets.QDialog):
             event.ignore()
             return
         super().closeEvent(event)
+
+    def reject(self) -> None:
+        if not self._running:   # Esc while it runs: kept open (closeEvent's guard is not asked on Esc)
+            super().reject()
 
     def _end(self) -> None:
         self._running = False

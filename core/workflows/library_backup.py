@@ -15,6 +15,7 @@ again on the new library.
 """
 from __future__ import annotations
 
+import contextlib
 import os
 import tempfile
 import threading
@@ -113,16 +114,27 @@ class LibraryBackup(QtCore.QObject):
         self._run(lambda: self._restore(info, folder, mapping, cfg), self.restored.emit, self.failed.emit)
 
     def _restore(self, info: package.PackageInfo, folder: str, mapping: dict, cfg: config) -> RestoreResult:
-        unpacked = package.unpack_library(info, folder, mapping, self.progress.emit, self._cancel.is_set)
         stamp = time.strftime("%Y%m%d-%H%M%S")
+        # the user's files unpacked beside theirs first (each hash checked), put in place once the library is: a
+        # failure before leaves the files in use as they were
+        staged: dict[str, str] = {}
         kept: list[str] = []
-        for name, target in user_files(cfg).items():
-            if info.has(name):
+        try:
+            for name, target in user_files(cfg).items():
+                if info.has(name):
+                    staged[target] = f"{target}.restoring-{stamp}"
+                    package.extract_file(info, name, staged[target])
+            unpacked = package.unpack_library(info, folder, mapping, self.progress.emit, self._cancel.is_set)
+            for target in list(staged):
                 if os.path.exists(target):
                     aside = f"{target}.before-restore-{stamp}"
                     os.replace(target, aside)
                     kept.append(aside)
-                package.extract_file(info, name, target)
+                os.replace(staged.pop(target), target)
+        finally:
+            for left in staged.values():
+                with contextlib.suppress(OSError):
+                    os.remove(left)
         if info.has(package.TIEUP_CACHE):
             with tempfile.TemporaryDirectory(prefix="mxlib-") as tmp:
                 copy = os.path.join(tmp, "tieup_web.db")
