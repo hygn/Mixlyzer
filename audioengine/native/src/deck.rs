@@ -21,8 +21,6 @@
 //! platter still turns (a spin, a backspin), the record follows it on until it stops, then plays (or rests) as
 //! before. Not held, a rotation bends the tempo. Its mode (JOG_MODE, set_jog_vinyl): VINYL as above, CDJ the top's
 //! touch ignored and any rotation a bend (as a CDJ's jog without its VINYL mode).
-//!
-//! Up to MAX_DECKS decks (Decks): deck 1 always, the others made when first used, each rendering its own lanes.
 
 use std::sync::Arc;
 
@@ -31,8 +29,8 @@ use crate::engine::Engine;
 
 use crate::controller::{LAMP_CUE, LAMP_PLAY, LAMP_VINYL};
 use crate::device::Ring;
-use crate::ipc::{MAX_DECKS, Reader, act};
-use crate::mixer::{self, MixParams};
+use crate::ipc::{Reader, act};
+use crate::mixer::{self, StripParams};
 
 const CUE_AT_SEC: f64 = 0.001; // the playhead is on the cue point this close to it
 const JUMP_CANDIDATE_BEATS: usize = 8;
@@ -166,7 +164,8 @@ impl Deck {
         e.strip.set_fader(self.volume);
     }
 
-    /// The tempo the deck plays at (BPM, the beats around the playhead at its speed; 0: no beats), for Beat FX.
+    /// The tempo the deck plays at (BPM, the beats around the playhead at its speed; 0: no beats), for its channel's
+    /// Sound Color FX (DUB ECHO's time).
     pub fn publish_bpm(&self, e: &Engine) {
         let at = e.playhead_frame();
         let i = self.beats.partition_point(|&b| b <= at).clamp(1, self.beats.len().max(1)) ;
@@ -616,99 +615,22 @@ impl Deck {
     }
 }
 
-/// A deck: its renderer and its controls.
+/// The deck: its renderer and its controls.
 pub struct Slot {
     pub engine: Engine,
     pub deck: Deck,
 }
 
-/// What every deck takes alike (the GUI's settings, the controller's jog resolution): a deck made later takes it too.
-#[derive(Clone, Copy)]
-pub struct Shared {
-    pub timestretch: bool,
-    pub buffer_ms: f64,
-    pub jog_ticks: u32,
-    pub jog_vinyl: bool,
-}
-
-/// The decks (up to MAX_DECKS): deck 1 always, on the device's ring; the others made when first used (a command
-/// or a controller's message for them), each on its lanes of the bus.
-pub struct Decks {
-    slots: Vec<Option<Slot>>,
-    rate: u32,
-    ch: usize,
-    lanes: Vec<Arc<Ring>>, // deck k's lane (k = 0: the main device's ring)
-    params: Arc<MixParams>, // its mixer channel's strip
-    pub shared: Shared,
-}
-
-impl Decks {
-    pub fn new(rate: u32, ch: usize, lanes: Vec<Arc<Ring>>, params: Arc<MixParams>) -> Decks {
-        let mut d = Decks {
-            slots: (0..MAX_DECKS).map(|_| None).collect(),
-            rate,
-            ch,
-            lanes,
-            params,
-            shared: Shared { timestretch: false, buffer_ms: 40.0, jog_ticks: 720, jog_vinyl: true },
-        };
-        d.get(0);
-        d
-    }
-
-    /// Deck ``k`` (0: deck 1), made now if it was not.
-    pub fn get(&mut self, k: usize) -> &mut Slot {
-        let k = k.min(MAX_DECKS - 1);
-        if self.slots[k].is_none() {
-            let mut engine = Engine::new(self.rate, self.ch, self.lanes[k].clone(), self.params.strips[k].clone());
-            let mut deck = Deck::new(self.rate as f64);
-            let s = self.shared;
-            engine.set_timestretch(s.timestretch);
-            engine.set_buffer_ms(s.buffer_ms);
-            deck.set_jog_ticks(s.jog_ticks);
-            deck.set_jog_vinyl(&mut engine, s.jog_vinyl);
-            self.slots[k] = Some(Slot { engine, deck });
-        }
-        self.slots[k].as_mut().unwrap()
-    }
-
-    /// Deck ``k`` if it is there.
-    pub fn slot(&self, k: usize) -> Option<&Slot> {
-        self.slots.get(k).and_then(|s| s.as_ref())
-    }
-
-    pub fn slot_mut(&mut self, k: usize) -> Option<&mut Slot> {
-        self.slots.get_mut(k).and_then(|s| s.as_mut())
-    }
-
-    /// The decks there.
-    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut Slot> {
-        self.slots.iter_mut().flatten()
-    }
-
-    pub fn first(&mut self) -> &mut Slot {
-        self.get(0)
-    }
-
-    // the settings every deck takes
-    pub fn set_timestretch(&mut self, on: bool) {
-        self.shared.timestretch = on;
-        self.iter_mut().for_each(|s| s.engine.set_timestretch(on));
-    }
-
-    pub fn set_buffer_ms(&mut self, ms: f64) {
-        self.shared.buffer_ms = ms;
-        self.iter_mut().for_each(|s| s.engine.set_buffer_ms(ms));
-    }
-
-    pub fn set_jog_ticks(&mut self, ticks: u32) {
-        self.shared.jog_ticks = ticks.max(1);
-        self.iter_mut().for_each(|s| s.deck.set_jog_ticks(ticks));
-    }
-
-    /// Every deck's jog mode (VINYL ``on``, CDJ off), a deck made later's too.
-    pub fn set_jog_vinyl(&mut self, on: bool) {
-        self.shared.jog_vinyl = on;
-        self.iter_mut().for_each(|s| s.deck.set_jog_vinyl(&mut s.engine, on));
+impl Slot {
+    /// The deck on the main device's ring (its lane), its mixer channel's strip ``strip``: the time stretch off,
+    /// a 40 ms buffer, a jog wheel of 720 messages a turn in VINYL mode until the GUI or a controller says otherwise.
+    pub fn new(rate: u32, ch: usize, ring: Arc<Ring>, strip: Arc<StripParams>) -> Slot {
+        let mut engine = Engine::new(rate, ch, ring, strip);
+        let mut deck = Deck::new(rate as f64);
+        engine.set_timestretch(false);
+        engine.set_buffer_ms(40.0);
+        deck.set_jog_ticks(720);
+        deck.set_jog_vinyl(&mut engine, true);
+        Slot { engine, deck }
     }
 }

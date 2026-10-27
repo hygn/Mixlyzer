@@ -4,19 +4,18 @@
 //! (ipc.rs), each track's PCM through a block of its own. The engine exits when told to or when the GUI
 //! process is gone.
 //!
-//! The signal flow: up to MAX_DECKS decks (deck.rs; the app uses deck 1), each a player (engine.rs) rendering its
-//! lane ahead; the mixer (mixer.rs) in the main output's callback (device.rs): each deck's channel strip (trim, EQ,
-//! meter, CUE, fader), the crossfader, the master, the headphones, the booth, soft clipping, the routing to the
-//! device's channels; the headphones and the booth may play on devices of their own (bridge.rs, outputs.rs). A MIDI
-//! controller drives the decks and the mixer (controller.rs). The decks play stereo whatever the device's
-//! channels. The outputs run from the start to the end, silence while nothing plays.
+//! The signal flow: the deck (deck.rs), its player (engine.rs) rendering its lane ahead; the mixer (mixer.rs) in the
+//! main output's callback (device.rs): the deck's channel strip (trim, EQ, Sound Color FX, meter, CUE, fader), the
+//! master, the headphones, the booth, soft clipping, the routing to the device's channels; the headphones and the
+//! booth may play on devices of their own (bridge.rs, outputs.rs). A MIDI controller drives the deck and the mixer
+//! (controller.rs). The deck plays stereo whatever the device's channels. The outputs run from the start to the end,
+//! silence while nothing plays.
 //!
 //! mixlyzer-audio --shm NAME --size BYTES --parent PID [--device NAME] [--api 0 WASAPI | 1 cpal | 2 JACK]
 //!     [--exclusive 0|1] [--rate HZ: exclusive only, else the device's]
 
 #[macro_use]
 mod log;
-mod beatfx;
 mod bridge;
 mod clock;
 mod colorfx;
@@ -49,10 +48,10 @@ use std::sync::atomic::Ordering;
 use std::time::Duration;
 
 use controller::Controller;
-use deck::{Decks, Slot};
+use deck::Slot;
 use device::{BRIDGED_BUSES, Port, Source};
-use ipc::{Control, MAX_DECKS, Reader, op, st};
-use mixer::{Assign, MixParams};
+use ipc::{Control, Reader, op, st};
+use mixer::MixParams;
 use outputs::{AuxOutputs, AuxWanted};
 
 fn arg(args: &[String], name: &str) -> Option<String> {
@@ -121,19 +120,16 @@ fn main() {
             std::process::exit(1);
         }
     };
-    // the decks play stereo (a mono device: mono); the device's channels take the buses as routed
+    // the deck plays stereo (a mono device: mono); the device's channels take the buses as routed
     let out_ch = ch;
     let ch = out_ch.clamp(1, device::DECK_CH_MAX);
-    // each deck's lane ([music, aids] a frame) holds the largest output buffer and what a flush leaves behind it;
-    // the main device's ring is deck 1's lane, the others hang on it (sharing its port); the headphones' and the
-    // booth's bridges hold a second
+    // the deck's lane, the main device's ring ([music, aids] a frame), holds the largest output buffer and what a
+    // flush leaves behind it; the headphones' and the booth's bridges hold a second
     let port = Arc::new(Port::default());
-    let lane = || Arc::new(device::Ring::new(rate as u64 * 5 / 2, 2 * ch, rate as f64, port.clone()));
-    let ring = lane();
-    let lanes: Vec<Arc<device::Ring>> = (0..MAX_DECKS).map(|k| if k == 0 { ring.clone() } else { lane() }).collect();
+    let ring = Arc::new(device::Ring::new(rate as u64 * 5 / 2, 2 * ch, rate as f64, port.clone()));
     let params = Arc::new(MixParams::new(out_ch));
     let mut aux = AuxOutputs::new(rate);
-    ring.attach_bus(device::Bus { decks: lanes[1..].to_vec(), params: params.clone(), bridges: aux.bridges.clone() });
+    ring.attach_bus(device::Bus { params: params.clone(), bridges: aux.bridges.clone() });
     let _ = port.engine_thread.set(std::thread::current());
     let mut current_device = String::new();
     // the master: on the system's default while its device is not there (see device::NOT_PRESENT); a reopen's
@@ -142,8 +138,7 @@ fn main() {
     let mut output = match device::open(Source::Main(ring.clone()), rate, out_ch, wanted_device.as_deref(), wanted_mode,
                                         true) {
         Ok((o, name)) => {
-            log_line!("master on {name}: {}, {rate} Hz, {out_ch} ch (the decks {ch} ch, {MAX_DECKS} at most)",
-                      o.mode.label());
+            log_line!("master on {name}: {}, {rate} Hz, {out_ch} ch (the deck {ch} ch)", o.mode.label());
             current_device = name;
             Some(o)
         }
@@ -153,7 +148,7 @@ fn main() {
             None
         }
     };
-    let mut decks = Decks::new(rate, ch, lanes, params.clone());
+    let mut slot = Slot::new(rate, ch, ring.clone(), params.strip.clone());
     let mut controller = Controller::new();
     let mut cmd_done = 0u64;
     let mut device_errors = 0u32;
@@ -190,9 +185,9 @@ fn main() {
             cmd_done = cmd.seq;
             last_op = (cmd.op, clock::now());
             if cmd.op == op::SHUTDOWN {
-                decks.iter_mut().for_each(|s| s.engine.pause());
+                slot.engine.pause();
                 controller.close_midi();
-                publish(&ctl, &mut decks, &controller, cmd_done, device_errors, output.as_ref(), &sched, &aux, &params);
+                publish(&ctl, &mut slot, &controller, cmd_done, device_errors, output.as_ref(), &sched, &aux, &params);
                 return;
             }
             // a seek another one in this batch overrides (a drag's positions come faster than the ticks): only
@@ -259,14 +254,13 @@ fn main() {
                 op::MIDI_MAP => controller.set_bindings(&cmd.payload),
                 op::MIDI_OPTIONS => {
                     let mut r = Reader::new(&cmd.payload);
-                    decks.set_jog_ticks(r.u32().unwrap_or(720));
+                    slot.deck.set_jog_ticks(r.u32().unwrap_or(720));
                     if let Some(vinyl) = r.u32() {
-                        decks.set_jog_vinyl(vinyl != 0);
+                        slot.deck.set_jog_vinyl(&mut slot.engine, vinyl != 0);
                     }
                 }
                 op::SET_METER_GAIN => controller.set_meter_gain(Reader::new(&cmd.payload).f64().unwrap_or(1.0)),
-                // what every deck takes alike
-                op::SET_TIMESTRETCH => decks.set_timestretch(Reader::new(&cmd.payload).u32().unwrap_or(0) != 0),
+                op::SET_TIMESTRETCH => slot.engine.set_timestretch(Reader::new(&cmd.payload).u32().unwrap_or(0) != 0),
                 op::SET_SOFT_CLIP => params.set_soft_clip(Reader::new(&cmd.payload).u32().unwrap_or(0) != 0),
                 op::SET_HEADPHONES => {
                     let mut r = Reader::new(&cmd.payload);
@@ -274,10 +268,8 @@ fn main() {
                     params.set_cue_mix(r.f64().unwrap_or(0.5));
                     params.set_cue_level(r.f64().unwrap_or(ipc::mix::LEVEL_UNITY));
                 }
-                op::SET_BUFFER_MS => decks.set_buffer_ms(Reader::new(&cmd.payload).f64().unwrap_or(40.0)),
+                op::SET_BUFFER_MS => slot.engine.set_buffer_ms(Reader::new(&cmd.payload).f64().unwrap_or(40.0)),
                 // the mix (the output callback's)
-                // its position (its curve: SET_MIXER's mix::XF_CURVE)
-                op::SET_CROSSFADER => params.set_crossfader(Reader::new(&cmd.payload).f64().unwrap_or(0.5)),
                 op::SET_MIXER => {
                     let mut r = Reader::new(&cmd.payload);
                     if let (Some(key), Some(value)) = (r.u32(), r.f64()) {
@@ -285,7 +277,6 @@ fn main() {
                     }
                 }
                 op::SET_ROUTING => {
-                    // 6 or 8 channels (headphones B's last): the ones sent
                     let mut r = Reader::new(&cmd.payload);
                     let mut routes = Vec::with_capacity(mixer::ROUTES);
                     while routes.len() < mixer::ROUTES {
@@ -294,36 +285,11 @@ fn main() {
                     }
                     params.set_routes(&routes);
                 }
-                op::SET_ASSIGN => {
-                    let mut r = Reader::new(&cmd.payload);
-                    let k = r.u32().unwrap_or(0) as usize;
-                    let assign = match r.u32().unwrap_or(1) {
-                        0 => Assign::A,
-                        2 => Assign::B,
-                        _ => Assign::Thru,
-                    };
-                    params.set_assign(k, assign);
-                }
-                op::SET_CHANNEL_CUE => {
-                    let mut r = Reader::new(&cmd.payload);
-                    let k = r.u32().unwrap_or(0) as usize;
-                    let on = r.u32().unwrap_or(0) != 0;
-                    params.set_cue_bus(k, r.u32().unwrap_or(0) as usize, on);
-                }
-                // a deck's command (the others: deck 1's)
-                op::FOR_DECK => {
-                    let mut r = Reader::new(&cmd.payload);
-                    let (Some(k), Some(inner)) = (r.u32(), r.u32()) else { continue };
-                    if (k as usize) < MAX_DECKS && !matches!(inner, op::FOR_DECK | op::SHUTDOWN) {
-                        let slot = decks.get(k as usize);
-                        slot.engine.command_at = cmd.sent_at;
-                        handle(slot, inner, r.rest());
-                    }
-                }
+                op::SET_CHANNEL_CUE => params.strip.set_cue(Reader::new(&cmd.payload).u32().unwrap_or(0) != 0),
+                // the deck's
                 _ if !superseded => {
-                    let slot = decks.first();
                     slot.engine.command_at = cmd.sent_at;
-                    handle(slot, cmd.op, &cmd.payload);
+                    handle(&mut slot, cmd.op, &cmd.payload);
                 }
                 _ => {}
             }
@@ -356,21 +322,19 @@ fn main() {
             }
         }
         // the buses on devices of their own: their buffers observed while sound is due
-        let due = decks.iter_mut().any(|s| s.engine.sound_due());
+        let due = slot.engine.sound_due();
         port.sound_due.store(due, Ordering::Relaxed);
         aux.tick(due);
         sched.follow_output(&port);
         // the controller's messages as soon as they come (its input thread wakes this one)
-        controller.read_midi(&mut decks, &params, &ctl);
-        for slot in decks.iter_mut() {
-            slot.deck.tick(&mut slot.engine);
-            slot.engine.tick();
-            slot.engine.take_peak();
-            slot.deck.publish_bpm(&slot.engine);
-        }
-        controller.tick(&decks, &params);
-        publish(&ctl, &mut decks, &controller, cmd_done, device_errors, output.as_ref(), &sched, &aux, &params);
-        let playing = decks.first().engine.playing;
+        controller.read_midi(&mut slot, &params, &ctl);
+        slot.deck.tick(&mut slot.engine);
+        slot.engine.tick();
+        slot.engine.take_peak();
+        slot.deck.publish_bpm(&slot.engine);
+        controller.tick(&slot, &params);
+        publish(&ctl, &mut slot, &controller, cmd_done, device_errors, output.as_ref(), &sched, &aux, &params);
+        let playing = slot.engine.playing;
         trace.tick(&ring, tick_start, level_before, last_op, playing, output.as_ref().map(|o| o.mode.code()));
         if now - parent_checked > 0.5 {
             parent_checked = now;
@@ -380,36 +344,28 @@ fn main() {
         }
         // woken by the device's read (the ring topped up at once) or a MIDI message, else every 2 ms (1 ms while
         // scratching, a jog wheel bending, or with a buffer under 10 ms)
-        let fast = decks.iter_mut().any(|s| s.engine.scratching || s.engine.small_buffer() || s.deck.wants_fast_ticks());
+        let fast = slot.engine.scratching || slot.engine.small_buffer() || slot.deck.wants_fast_ticks();
         std::thread::park_timeout(Duration::from_micros(if fast { 1000 } else { 2000 }));
     }
 }
 
-/// Offline: a raw float32 stereo file (interleaved) as deck 1 through the mixer (mixer.rs), its master written
-/// out, for checks of the EQ, Sound Color FX and Beat FX on real music. --mix-file IN --out OUT --rate R [--set
-/// name=value,...] (ipc::mix::NAMES) [--knob trim|low|mid|high|color|fader=value,...] [--bpm B] [--assign a|thru|b]
-/// [--cue a,b] (the channel's CUE A / B) [--bus master|hp_a|hp_b|booth|all] (the output written; all: every bus made,
-/// the master written) [--decks N] (N channels set alike: a load test; IN may name a file per deck, IN1,IN2,..., else
-/// deck k plays IN k * 1.37 s on) [--off-at S]
-/// (Beat FX off then, its tail heard) [--stop-at S] (the decks stopped then, their lanes giving nothing, and their
-/// faders down: the effects' tails after the fader ring on) [--tail S] (silence after the input) [--block N]. Prints
-/// the blocks' time.
+/// Offline: a raw float32 stereo file (interleaved) as the deck through the mixer (mixer.rs), its master written
+/// out, for checks of the EQ and Sound Color FX on real music. --mix-file IN --out OUT --rate R [--set
+/// name=value,...] (ipc::mix::NAMES) [--knob trim|low|mid|high|color|fader=value,...] [--bpm B] (the deck's tempo:
+/// DUB ECHO's time) [--cue] (the channel's headphones CUE) [--bus master|hp|booth|all] (the output written; all:
+/// every bus made, the master written) [--stop-at S] (the deck stopped then, its lane giving nothing, and its fader
+/// down: an effect's tail after the fader rings on) [--tail S] (silence after the input) [--block N]. Prints the
+/// blocks' time.
 fn mix_file(args: &[String], input: &str) {
     let get = |n: &str, d: &str| arg(args, n).unwrap_or_else(|| d.to_string());
     let rate: u32 = get("--rate", "48000").parse().unwrap();
     let block: usize = get("--block", "512").parse().unwrap();
     let bpm: f64 = get("--bpm", "0").parse().unwrap();
-    let off_at: f64 = get("--off-at", "-1").parse().unwrap();
     let stop_at: f64 = get("--stop-at", "-1").parse().unwrap();
     let tail: f64 = get("--tail", "0").parse().unwrap();
-    let read = |path: &str| {
-        let bytes = std::fs::read(path).expect("read input");
-        let mut pcm: Vec<f32> = bytes.chunks_exact(4).map(|b| f32::from_le_bytes(b.try_into().unwrap())).collect();
-        pcm.extend(std::iter::repeat_n(0.0, (tail * rate as f64) as usize * 2));
-        pcm
-    };
-    let inputs: Vec<Vec<f32>> = input.split(',').map(read).collect();
-    let pcm = &inputs[0];
+    let bytes = std::fs::read(input).expect("read input");
+    let mut pcm: Vec<f32> = bytes.chunks_exact(4).map(|b| f32::from_le_bytes(b.try_into().unwrap())).collect();
+    pcm.extend(std::iter::repeat_n(0.0, (tail * rate as f64) as usize * 2));
     vk::warm();
     let params = MixParams::new(2);
     for kv in get("--set", "").split(',').filter(|s| !s.is_empty()) {
@@ -417,74 +373,51 @@ fn mix_file(args: &[String], input: &str) {
         let key = ipc::mix::NAMES.iter().position(|n| *n == name).unwrap_or_else(|| panic!("no mixer key {name}"));
         params.set(key, value.parse().expect("a number"));
     }
-    let decks: usize = get("--decks", "1").parse::<usize>().unwrap().clamp(1, MAX_DECKS);
-    for strip in &params.strips[..decks] {
-        let mut eq = [0.5f64; 3];
-        for kv in get("--knob", "").split(',').filter(|s| !s.is_empty()) {
-            let (name, value) = kv.split_once('=').expect("name=value");
-            let v: f64 = value.parse().expect("a number");
-            match name {
-                "trim" => strip.set_trim(mixer::trim_knob_gain(v)),
-                "low" => eq[0] = v,
-                "mid" => eq[1] = v,
-                "high" => eq[2] = v,
-                "color" => strip.set_color(v),
-                "fader" => strip.set_fader(v),
-                _ => panic!("no knob {name}"),
-            }
-        }
-        strip.set_eq(eq);
-        strip.set_bpm(bpm);
-        strip.set_assign(match get("--assign", "thru").as_str() {
-            "a" => mixer::Assign::A,
-            "b" => mixer::Assign::B,
-            _ => mixer::Assign::Thru,
-        });
-        for (bus, name) in ["a", "b"].iter().enumerate() {
-            strip.set_cue_bus(bus, get("--cue", "").split(',').any(|c| c == *name));
+    let strip = &params.strip;
+    let mut eq = [0.5f64; 3];
+    for kv in get("--knob", "").split(',').filter(|s| !s.is_empty()) {
+        let (name, value) = kv.split_once('=').expect("name=value");
+        let v: f64 = value.parse().expect("a number");
+        match name {
+            "trim" => strip.set_trim(mixer::trim_knob_gain(v)),
+            "low" => eq[0] = v,
+            "mid" => eq[1] = v,
+            "high" => eq[2] = v,
+            "color" => strip.set_color(v),
+            "fader" => strip.set_fader(v),
+            _ => panic!("no knob {name}"),
         }
     }
+    strip.set_eq(eq);
+    strip.set_bpm(bpm);
+    strip.set_cue(args.iter().any(|a| a == "--cue"));
     let bus = get("--bus", "master");
     let all = bus == "all";
-    let wanted = mixer::Wanted { headphones: [all || bus == "hp_a", all || bus == "hp_b"], booth: all || bus == "booth" };
+    let wanted = mixer::Wanted { headphones: all || bus == "hp", booth: all || bus == "booth" };
     let mut mixer = mixer::Mixer::new(rate as f64, 2, block);
     let frames = pcm.len() / 2;
-    let mut lane = vec![vec![0f32; block * 4]; decks];
+    let mut lane = vec![0f32; block * 4];
     let mut out: Vec<f32> = Vec::with_capacity(pcm.len());
     let mut blocks: Vec<f64> = Vec::new(); // each block's time over its frames' time
     let t0 = clock::now();
     let mut done = 0;
     while done < frames {
         let n = (frames - done).min(block);
-        if off_at >= 0.0 && done as f64 / rate as f64 >= off_at {
-            params.set(ipc::mix::BEAT_ON, 0.0);
-        }
-        for (k, lane) in lane.iter_mut().enumerate() {
-            let (src, shift) = match inputs.get(k) {
-                Some(own) if k > 0 => (own, 0),
-                _ => (pcm, (k as f64 * 1.37 * rate as f64) as usize),
-            };
-            let len = src.len() / 2;
-            for f in 0..n {
-                let at = (done + f + shift) % len;
-                lane[4 * f] = src[2 * at];
-                lane[4 * f + 1] = src[2 * at + 1];
-                lane[4 * f + 2] = 0.0;
-                lane[4 * f + 3] = 0.0;
-            }
+        for f in 0..n {
+            lane[4 * f] = pcm[2 * (done + f)];
+            lane[4 * f + 1] = pcm[2 * (done + f) + 1];
+            lane[4 * f + 2] = 0.0;
+            lane[4 * f + 3] = 0.0;
         }
         let stopped = stop_at >= 0.0 && done as f64 / rate as f64 >= stop_at;
         if stopped {
-            params.strips[..decks].iter().for_each(|s| s.set_fader(0.0));
+            strip.set_fader(0.0);
         }
-        let lanes: [Option<&[f32]>; MAX_DECKS] =
-            std::array::from_fn(|k| if stopped { None } else { lane.get(k).map(|l| &l[..n * 4]) });
         let b0 = clock::now();
-        mixer.process(&lanes, n, &params.read(), &params, wanted);
+        mixer.process((!stopped).then(|| &lane[..n * 4]), n, &params.read(), &params, wanted);
         blocks.push((clock::now() - b0) * rate as f64 / n as f64);
         out.extend_from_slice(match bus.as_str() {
-            "hp_a" => &mixer.headphones[0][..n * 2],
-            "hp_b" => &mixer.headphones[1][..n * 2],
+            "hp" => &mixer.headphones[..n * 2],
             "booth" => &mixer.booth[..n * 2],
             _ => &mixer.master[..n * 2],
         });
@@ -789,41 +722,11 @@ fn handle(slot: &mut Slot, op_code: u32, payload: &[u8]) {
 }
 
 #[allow(clippy::too_many_arguments)]
-fn publish(ctl: &Control, decks: &mut Decks, controller: &Controller, cmd_done: u64, device_errors: u32,
+fn publish(ctl: &Control, slot: &mut Slot, controller: &Controller, cmd_done: u64, device_errors: u32,
            out: Option<&device::Output>, sched: &sched::Sched, aux: &AuxOutputs, params: &MixParams) {
     let now = clock::now();
-    // every deck's (as a player shows it), then deck 1's in full (the app's)
-    let mut rows: [Option<DeckRow>; MAX_DECKS] = [None; MAX_DECKS];
-    for (k, row) in rows.iter_mut().enumerate() {
-        if let Some(s) = decks.slot_mut(k) {
-            let lamps = s.deck.lamps(&s.engine, now);
-            let (display, display_rate) = s.engine.display_frame(now);
-            let e = &s.engine;
-            *row = Some(DeckRow {
-                playing: e.playing,
-                track_gen: e.track_gen,
-                lamps,
-                tempo_range: s.deck.tempo_range,
-                at_end: e.at_end(),
-                channel_cue: params.cue_on(k),
-                cue_b: params.cue_on_bus(k, 1),
-                color: s.deck.color_knob(),
-                playhead: e.playhead_frame(),
-                factor: e.factor(),
-                volume: s.deck.volume(),
-                cue: s.deck.cue_frame(e),
-                jump_dest: e.jump_armed().unwrap_or(f64::NAN),
-                display,
-                display_rate,
-                peak: e.heard_peak_dbfs(),
-                knobs: s.deck.knobs(),
-                jumped: e.jumped_count,
-                finished: e.finished_count,
-            });
-        }
-    }
-    let Slot { engine: e, deck } = decks.first();
-    let (display, display_rate) = rows[0].map_or((e.playhead_frame(), 0.0), |r| (r.display, r.display_rate));
+    let Slot { engine: e, deck } = slot;
+    let (display, display_rate) = e.display_frame(now);
     let playhead = e.playhead_frame();
     let peak = e.heard_peak_dbfs();
     let ring = e.ring();
@@ -869,42 +772,12 @@ fn publish(ctl: &Control, decks: &mut Decks, controller: &Controller, cmd_done: 
     ctl.put_u32(st::LEDS, deck.lamps(e, now));
     ctl.put_u32(st::TEMPO_RANGE, deck.tempo_range);
     ctl.put_u32(st::MIDI_STATE, controller.midi_state);
-    aux.publish(ctl);
-    for (k, row) in rows.iter().enumerate() {
-        let at = st::DECKS_STATE + k * st::DECK_STATE_SIZE;
-        let Some(r) = row else {
-            ctl.put_u32(at + st::ROW_THERE, 0);
-            continue;
-        };
-        ctl.put_u32(at + st::ROW_THERE, 1);
-        ctl.put_u32(at + st::ROW_PLAYING, r.playing as u32);
-        ctl.put_u32(at + st::ROW_TRACK_GEN, r.track_gen);
-        ctl.put_u32(at + st::ROW_LAMPS, r.lamps);
-        ctl.put_u32(at + st::ROW_TEMPO_RANGE, r.tempo_range);
-        ctl.put_u32(at + st::ROW_AT_END, r.at_end as u32);
-        ctl.put_u32(at + st::ROW_CHANNEL_CUE, r.channel_cue as u32);
-        ctl.put_f64(at + st::ROW_PLAYHEAD, r.playhead);
-        ctl.put_f64(at + st::ROW_FACTOR, r.factor);
-        ctl.put_f64(at + st::ROW_VOLUME, r.volume);
-        ctl.put_f64(at + st::ROW_CUE, r.cue);
-        ctl.put_f64(at + st::ROW_JUMP_DEST, r.jump_dest);
-        ctl.put_f64(at + st::ROW_DISPLAY, r.display);
-        ctl.put_f64(at + st::ROW_DISPLAY_RATE, r.display_rate);
-        ctl.put_f64(at + st::ROW_PEAK, r.peak);
-        for (j, v) in r.knobs.iter().enumerate() {
-            ctl.put_f64(at + st::ROW_KNOBS + 8 * j, *v);
-        }
-        ctl.put_u64(at + st::ROW_JUMPED, r.jumped);
-        ctl.put_u64(at + st::ROW_FINISHED, r.finished);
-        ctl.put_f64(at + st::ROW_COLOR, r.color);
-        ctl.put_u32(at + st::ROW_CUE_B, r.cue_b as u32);
+    ctl.put_u32(st::CHANNEL_CUE, params.strip.cue_on() as u32);
+    for (j, v) in deck.knobs().iter().enumerate() {
+        ctl.put_f64(st::KNOBS + 8 * j, *v);
     }
-    let (crossfader, cue_mix, cue_level, master_cue, curve) = params.report();
-    ctl.put_f64(st::MIXER_STATE, crossfader);
-    ctl.put_f64(st::MIXER_STATE + 8, cue_mix);
-    ctl.put_f64(st::MIXER_STATE + 16, cue_level);
-    ctl.put_u32(st::MIXER_STATE + 24, master_cue as u32);
-    ctl.put_u32(st::MIXER_STATE + 28, curve);
+    ctl.put_f64(st::COLOR, deck.color_knob());
+    aux.publish(ctl);
     // every setting of the mixer's, and its meters since the last publish
     for k in 0..ipc::mix::KEYS {
         ctl.put_f64(ipc::mix::at(k), params.get(k));
@@ -913,30 +786,6 @@ fn publish(ctl: &Control, decks: &mut Decks, controller: &Controller, cmd_done: 
         ctl.put_f64(ipc::mix::at(ipc::mix::METERS + k), *v as f64);
     }
     ctl.state_end();
-}
-
-/// A deck's report row (st::ROW_*): what its player and its mixer channel show.
-#[derive(Clone, Copy)]
-struct DeckRow {
-    playing: bool,
-    track_gen: u32,
-    lamps: u32,
-    tempo_range: u32,
-    at_end: bool,
-    channel_cue: bool,
-    cue_b: bool,
-    color: f64,
-    playhead: f64,
-    factor: f64,
-    volume: f64,
-    cue: f64,
-    jump_dest: f64,
-    display: f64,
-    display_rate: f64,
-    peak: f64,
-    knobs: [f64; 4],
-    jumped: u64,
-    finished: u64,
 }
 
 /// The GUI process, watched: on Windows through a handle opened at the start (its PID opened again later could

@@ -1,5 +1,5 @@
 //! A bus played on a device of its own (the headphones', the booth's): the main device's callback, the clock the
-//! decks play to, writes the bus's frames into a bridge; the other device's callback reads them at its own clock,
+//! deck plays to, writes the bus's frames into a bridge; the other device's callback reads them at its own clock,
 //! and at its own rate (opened at its mix format: a DJ controller's 44.1 kHz beside a 48 kHz main device).
 //!
 //! Two devices' clocks never run quite together (crystals a few tens to a few hundred ppm apart), so the reader

@@ -9,15 +9,14 @@
 //! holds from the read point on, faded out over a few ms in the callback itself (no click; the device's own
 //! buffer, ~10 ms, still plays out).
 //!
-//! Each deck's player renders into a ring of its own (its lane: [music, aids] a frame, before its mixer channel).
-//! The main device's ring is deck 1's lane; the others hang on it (Bus), and the callback reads every lane as it
-//! reads its own (a flush fades one deck out, the others play on), then runs the mixer (mixer.rs: each channel's
-//! strip, the crossfader, the master, the headphones) and writes the device's channels as routed. Deck 1 alone at
-//! its mixer channel's neutral settings, on the first two channels, comes out as its player rendered it. The
-//! outputs run from their opening to their end: silence while nothing plays.
+//! The deck's player renders into the main device's ring (its lane: [music, aids] a frame, before its mixer
+//! channel); the callback reads it, then runs the mixer (mixer.rs: the channel strip, the master, the headphones, the
+//! booth: Bus) and writes the device's channels as routed. The deck at its mixer channel's neutral settings, on the
+//! first two channels, comes out as its player rendered it. The outputs run from their opening to their end:
+//! silence while nothing plays.
 //!
-//! The headphones and the booth may go to devices of their own (bridge.rs): the main callback, the clock the
-//! decks play to, writes those buses into a bridge each, which the other device's callback reads at its own clock.
+//! The headphones and the booth may go to devices of their own (bridge.rs): the main callback, the clock the deck
+//! plays to, writes those buses into a bridge each, which the other device's callback reads at its own clock.
 
 use std::cell::UnsafeCell;
 use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
@@ -30,8 +29,8 @@ use crate::bridge::{Bridge, BridgeReader, Sink};
 use crate::clock;
 use crate::mixer::{Mixer, NO_CHANNEL, Wanted};
 
-/// An open device's side of things: what its output thread reports and is told. The main device's lanes share
-/// one; each bridge has its own.
+/// An open device's side of things: what its output thread reports and is told. The main device's ring has one;
+/// each bridge has its own.
 #[derive(Default)]
 pub struct Port {
     pub sound_due: AtomicBool, // late wake-ups count only while sound is expected (the engine sets it each tick)
@@ -133,8 +132,8 @@ pub struct Ring {
     heard: HeardClock,
     pub sound_due: AtomicBool, // underruns count only while sound is expected
     pub underruns: AtomicU64,
-    pub port: Arc<Port>, // the main device's (every lane's)
-    // the device ring's (deck 1's main lane): the other lanes and the mix (attach_bus)
+    pub port: Arc<Port>, // the main device's
+    // the mix (attach_bus)
     bus: OnceLock<Bus>,
 }
 
@@ -211,8 +210,7 @@ impl Ring {
         self.heard.heard(now, self.rate)
     }
 
-    /// The other decks' lanes and the mix (main.rs sets it once, before the device is opened): this ring is deck
-    /// 1's main lane and the main device's.
+    /// The mix (main.rs sets it once, before the device is opened).
     pub fn attach_bus(&self, bus: Bus) {
         let _ = self.bus.set(bus);
     }
@@ -276,8 +274,8 @@ impl Ring {
         self.heard.report(start_read, taken, now, latency);
     }
 
-    /// The main device's callback: every lane read (deck 1's this ring, the others' from the bus), mixed (mixer.rs),
-    /// the buses written to the device's channels as routed and into the bridges of those on devices of their own.
+    /// The main device's callback: the deck's lane (this ring) read, mixed (mixer.rs), the buses written to the
+    /// device's channels as routed and into the bridges of those on devices of their own.
     pub(crate) fn fill<T: SizedSample + FromSample<f32>>(&self, out: &mut [T], state: &mut CallbackState, latency: f64) {
         #[cfg(target_os = "linux")]
         crate::sched::output_thread(&self.port);
@@ -289,92 +287,62 @@ impl Ring {
             out.iter_mut().for_each(|v| *v = T::EQUILIBRIUM);
             return;
         };
-        let lanes = 1 + bus.decks.len();
         let mix = bus.params.read();
         let bridges: [Option<&Bridge>; BRIDGED_BUSES] = std::array::from_fn(|k| Some(&*bus.bridges[k]).filter(|b| b.active()));
         let lch = self.ch; // a lane's frame: the deck's music and aids
-        let lane_len = SCRATCH_FRAMES * lch;
         let r = mix.routes;
         let routed = |l: usize| r[l] != NO_CHANNEL || r[l + 1] != NO_CHANNEL;
         // each bus made where it is heard: routed to the main device's channels or bridged to a device of its own
-        let wanted = Wanted {
-            headphones: [routed(2) || bridges[0].is_some(), routed(6) || bridges[2].is_some()],
-            booth: routed(4) || bridges[1].is_some(),
-        };
-        // each lane's report covers the whole callback: where it started and what it took
-        let mut start_read = [0u64; MAX_DECKS];
-        let mut taken = [0u64; MAX_DECKS];
-        let mut missing = [0u64; MAX_DECKS];
-        for k in 0..lanes {
-            start_read[k] = self.lane(k).read.load(Ordering::Relaxed);
-        }
+        let wanted = Wanted { headphones: routed(2) || bridges[0].is_some(), booth: routed(4) || bridges[1].is_some() };
+        // the lane's report covers the whole callback: where it started and what it took
+        let start_read = self.read.load(Ordering::Relaxed);
+        let (mut taken, mut missing) = (0u64, 0u64);
         let mut done = 0;
         while done < frames {
             let n = (frames - done).min(SCRATCH_FRAMES);
-            let mut gave = [false; MAX_DECKS];
-            for k in 0..lanes {
-                let (t, m) = self.lane(k).read_lane(&mut state.scratch[k * lane_len..], n, &mut state.lanes[k]);
-                taken[k] += t;
-                missing[k] += m;
-                gave[k] = t > 0;
-            }
-            let blocks: [Option<&[f32]>; MAX_DECKS] =
-                std::array::from_fn(|k| gave[k].then(|| &state.scratch[k * lane_len..k * lane_len + n * lch]));
-            state.mixer.process(&blocks, n, &mix, &bus.params, wanted);
+            let (t, m) = self.read_lane(&mut state.scratch, n, &mut state.lane);
+            taken += t;
+            missing += m;
+            let block = (t > 0).then(|| &state.scratch[..n * lch]);
+            state.mixer.process(block, n, &mix, &bus.params, wanted);
             let out = &mut out[done * ch_out..(done + n) * ch_out];
             route(out, ch_out, n, &mix, &state.mixer, wanted);
             if let Some(b) = bridges[0] {
-                b.push(&state.mixer.headphones[0][..n * 2]);
+                b.push(&state.mixer.headphones[..n * 2]);
             }
             if let Some(b) = bridges[1] {
                 b.push(&state.mixer.booth[..n * 2]);
-            }
-            if let Some(b) = bridges[2] {
-                b.push(&state.mixer.headphones[1][..n * 2]);
             }
             done += n;
         }
         for b in bridges.iter().flatten() {
             b.wrote(frames as u64, latency);
         }
-        let mut any = false;
-        for k in 0..lanes {
-            self.lane(k).report(start_read[k], taken[k], missing[k], now, latency);
-            any |= taken[k] > 0;
-        }
-        if any {
+        self.report(start_read, taken, missing, now, latency);
+        if taken > 0 {
             if let Some(t) = self.port.engine_thread.get() {
                 t.unpark();
             }
         }
     }
-
-    /// Deck ``k``'s main lane (0: this ring).
-    fn lane(&self, k: usize) -> &Ring {
-        if k == 0 { self } else { &self.bus.get().expect("bus").decks[k - 1] }
-    }
 }
 
-/// The frames a callback reads at once per lane (a longer callback is read in pieces).
+/// The frames a callback reads at once (a longer callback is read in pieces).
 const SCRATCH_FRAMES: usize = 2048;
-/// The most channels a deck plays (stereo; a mono device's decks: one); its lane holds twice as many (its music and
-/// its listening aids).
+/// The most channels the deck plays (stereo; a mono device's deck: one); its lane holds twice as many (its music
+/// and its listening aids).
 pub const DECK_CH_MAX: usize = 2;
 const LANE_CH_MAX: usize = 2 * DECK_CH_MAX;
-pub use crate::ipc::MAX_DECKS;
-/// The buses that may go to a device of their own: headphones A, the booth, headphones B.
-pub const BRIDGED_BUSES: usize = 3;
+/// The buses that may go to a device of their own: the headphones, the booth.
+pub const BRIDGED_BUSES: usize = 2;
 
-/// The other decks' lanes, the mixer's settings, the bridges to the devices of headphones A, the booth and
-/// headphones B (Ring::attach_bus).
+/// The mixer's settings, the bridges to the devices of the headphones and the booth (Ring::attach_bus).
 pub struct Bus {
-    pub decks: Vec<Arc<Ring>>, // decks 2 .. MAX_DECKS' lanes
     pub params: Arc<crate::mixer::MixParams>,
     pub bridges: [Arc<Bridge>; BRIDGED_BUSES],
 }
 
-/// The mixer's buses into ``out``'s channels as routed: the master (MAIN), headphones A (CUE A), the booth (SUB),
-/// headphones B (CUE B).
+/// The mixer's buses into ``out``'s channels as routed: the master (MAIN), the headphones (CUE), the booth (SUB).
 fn route<T: SizedSample + FromSample<f32>>(out: &mut [T], ch_out: usize, n: usize, mix: &crate::mixer::Mix,
                                           mixer: &Mixer, wanted: Wanted) {
     let r = mix.routes;
@@ -386,13 +354,9 @@ fn route<T: SizedSample + FromSample<f32>>(out: &mut [T], ch_out: usize, n: usiz
                 o[channel as usize] = T::from_sample(v);
             }
         };
-        if wanted.headphones[0] {
-            put(r[2], mixer.headphones[0][2 * f]);
-            put(r[3], mixer.headphones[0][2 * f + 1]);
-        }
-        if wanted.headphones[1] {
-            put(r[6], mixer.headphones[1][2 * f]);
-            put(r[7], mixer.headphones[1][2 * f + 1]);
+        if wanted.headphones {
+            put(r[2], mixer.headphones[2 * f]);
+            put(r[3], mixer.headphones[2 * f + 1]);
         }
         if wanted.booth {
             put(r[4], mixer.booth[2 * f]);
@@ -403,7 +367,7 @@ fn route<T: SizedSample + FromSample<f32>>(out: &mut [T], ch_out: usize, n: usiz
     }
 }
 
-/// A lane's flush, as the callback follows it.
+/// The lane's flush, as the callback follows it.
 #[derive(Clone, Copy, Default)]
 struct LaneState {
     flush_seen: u64,
@@ -413,21 +377,21 @@ struct LaneState {
 
 pub(crate) struct CallbackState {
     pub(crate) channels: usize,
-    lanes: [LaneState; MAX_DECKS],
-    scratch: Vec<f32>, // every lane's frames, SCRATCH_FRAMES each
+    lane: LaneState,
+    scratch: Vec<f32>, // the lane's frames, SCRATCH_FRAMES
     mixer: Mixer,
     pub(crate) readers: Vec<Box<BridgeReader>>, // a Sink's: each bus's reader
     pub(crate) mix: Vec<f32>,                   // a Sink's: its buses mixed (a piece of the callback)
 }
 
 impl CallbackState {
-    /// A device's (``channels``, ``rate``): the main one's mixer (its decks stereo, mono on a mono device), or a
+    /// A device's (``channels``, ``rate``): the main one's mixer (its deck stereo, mono on a mono device), or a
     /// sink's readers.
     pub(crate) fn new(channels: usize, rate: f64) -> CallbackState {
         CallbackState {
             channels,
-            lanes: [LaneState::default(); MAX_DECKS],
-            scratch: vec![0.0; MAX_DECKS * SCRATCH_FRAMES * LANE_CH_MAX],
+            lane: LaneState::default(),
+            scratch: vec![0.0; SCRATCH_FRAMES * LANE_CH_MAX],
             mixer: Mixer::new(rate, channels.clamp(1, DECK_CH_MAX), SCRATCH_FRAMES),
             readers: crate::bridge::readers(),
             mix: vec![0.0; SCRATCH_FRAMES * channels.max(1)],
@@ -435,7 +399,7 @@ impl CallbackState {
     }
 }
 
-/// What a device's output reads: the main ring (the decks' lanes, mixed) or a sink (buses of the main mix through
+/// What a device's output reads: the main ring (the deck's lane, mixed) or a sink (buses of the main mix through
 /// their bridges, followed at this device's clock).
 #[derive(Clone)]
 pub enum Source {

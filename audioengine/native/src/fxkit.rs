@@ -1,6 +1,6 @@
-//! The effects' building blocks (colorfx.rs, beatfx.rs): a stereo delay line read anywhere between its samples, a
-//! four-line feedback delay network for reverbs (the four lines a SIMD lane each, simd::F4, mixed by a Hadamard
-//! matrix), an LFO, a one-pole smoother for parameters, white noise. Allocated when made (outside the callback);
+//! The effects' building blocks (colorfx.rs): a stereo delay line read anywhere between its samples, a four-line
+//! feedback delay network for reverbs (the four lines a SIMD lane each, simd::F4, mixed by a Hadamard matrix), a
+//! one-pole smoother for parameters, white noise. Allocated when made (outside the callback);
 //! the callback only reads and writes them.
 
 use crate::simd::F4;
@@ -71,24 +71,6 @@ impl Delay {
     pub fn read_whole(&self, delay: usize) -> (f32, f32) {
         let i = ((self.pos + self.mask + 1 - delay.clamp(1, self.mask)) & self.mask) * 2;
         (self.buf[i], self.buf[i + 1])
-    }
-}
-
-/// A sine / triangle / saw LFO, its phase 0 .. 1.
-#[derive(Clone, Copy, Default)]
-pub struct Lfo {
-    pub phase: f64,
-}
-
-impl Lfo {
-    #[inline(always)]
-    pub fn advance(&mut self, hz: f64, rate: f64) -> f64 {
-        self.phase = (self.phase + hz / rate).fract();
-        self.phase
-    }
-
-    pub fn triangle(&self) -> f64 {
-        1.0 - 4.0 * (self.phase - 0.5).abs()
     }
 }
 

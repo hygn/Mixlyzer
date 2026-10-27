@@ -1,7 +1,7 @@
-//! A deck's player (audioengine/python/feeder.py's PCMFeeder, its docs hold the design): a decoded track rendered
+//! The deck's player (audioengine/python/feeder.py's PCMFeeder, its docs hold the design): a decoded track rendered
 //! into the deck's lane ahead of what is heard, every block recorded on the timeline, so the playhead is the input
-//! position actually being heard. The player renders the music alone; its mixer channel (mixer.rs: trim, EQ, the
-//! fader, CUE, the crossfader) is the main device's callback's.
+//! position actually being heard. The player renders the music alone; its mixer channel (mixer.rs: trim, EQ, Sound
+//! Color FX, the fader, CUE) is the main device's callback's.
 //!
 //! Modes: speed (varispeed, or the pitch-preserving time stretch; while scrubbing it plays the original at unity,
 //! released it takes the tempo at once) / none (pass-through). With the time stretch off unity a seek or a jump while playing

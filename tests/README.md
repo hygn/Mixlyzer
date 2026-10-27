@@ -19,8 +19,8 @@ Some of the `tests/test_*.py` tests skip when something optional is missing:
 - FFmpeg: `test_tag_writer.py`'s MP4 cases
 - Babel (`uv sync --group dev`): `test_i18n.py`'s catalog check
 
-The public tests cover only the features the app shows to the user. The engine's other DSP (Beat FX, decks 2 – 8,
-the crossfader) is not tested here.
+The mixer's checks on the user's tracks and the engine live on the user's devices (`native_mixer/`) stay local:
+they read files and play on outputs only the user has.
 
 ## `test_*.py`
 

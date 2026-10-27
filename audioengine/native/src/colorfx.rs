@@ -5,7 +5,7 @@
 //! volume, CRUSH: how crushed, FILTER: resonance, JET: feedback). Each effect has its place in the channel's strip
 //! (``ColorType::slot``), as the A9's block diagram (page 93) has three: after the trim, before the EQ (NOISE: the
 //! EQ shapes its noise, as the manual says), after the EQ, before the CUE and the fader (the filters, CRUSH, JET), and
-//! after the fader (SPACE, DUB ECHO: their tail rings on with the fader down, as Beat FX's echoes do). At the knob's
+//! after the fader (SPACE, DUB ECHO: their tail rings on with the fader down, as a DJM's echoes do). At the knob's
 //! middle with no tail left the samples pass bit for bit.
 //!
 //! The filters run a stereo pair per SIMD pass (simd::F4 lanes: left, right), the reverb's four lines a lane each

@@ -173,7 +173,7 @@ class MasterLevels(QtWidgets.QWidget):
         super().__init__(parent)
         self.bus = bus
         self.master = self._level_knob(lambda v: self.bus.sig_mixer_requested.emit("master_level", v))
-        self.phones = self._level_knob(lambda v: self.bus.sig_mixer_requested.emit("hp_a_level", v))
+        self.phones = self._level_knob(lambda v: self.bus.sig_mixer_requested.emit("hp_level", v))
         blocks_row(self, [block("LEVEL", [label("MASTER"), self.master, 10, label("PHONES"), self.phones])])
         self._show_level(self.master, tr("Master level"), controls.LEVEL_UNITY)
         self._show_level(self.phones, tr("Headphones level"), controls.LEVEL_UNITY)
@@ -197,7 +197,7 @@ class MasterLevels(QtWidgets.QWidget):
         if not report.mix:
             return
         for knob, key, title in ((self.master, "master_level", tr("Master level")),
-                                 (self.phones, "hp_a_level", tr("Headphones level"))):
+                                 (self.phones, "hp_level", tr("Headphones level"))):
             value = report.mix_value(key, controls.LEVEL_UNITY)
             if abs(value - knob.value()) > 1e-6:
                 self._show_level(knob, title, value)

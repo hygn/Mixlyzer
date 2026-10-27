@@ -127,8 +127,7 @@ FIELD_TYPES = _comment_types(RAW)
 
 class TopLevelTests(unittest.TestCase):
     def test_offsets_and_versions(self):
-        for name in ("MAGIC", "VERSION", "STATE_OFFSET", "RING_OFFSET", "RING_HEADER", "HIST_MAX", "MAX_DECKS",
-                     "DEVICES_OFFSET", "OUTPUTS_OFFSET", "MIX_OFFSET", "MIDI_PORTS_OFFSET", "MIDI_EVENTS_OFFSET",
+        for name in ("MAGIC", "VERSION", "STATE_OFFSET", "RING_OFFSET", "RING_HEADER", "HIST_MAX", "DEVICES_OFFSET", "OUTPUTS_OFFSET", "MIX_OFFSET", "MIDI_PORTS_OFFSET", "MIDI_EVENTS_OFFSET",
                      "MIDI_EVENTS"):
             with self.subTest(name=name):
                 self.assertEqual(getattr(client, name), RS[""][name])
@@ -138,7 +137,7 @@ class TopLevelTests(unittest.TestCase):
     def test_regions_do_not_overlap(self):
         top, st, mix = RS[""], RS["st"], RS["mix"]
         regions = [
-            ("state", top["STATE_OFFSET"], top["STATE_OFFSET"] + st["MIXER_STATE"] + client._MIXER.size),
+            ("state", top["STATE_OFFSET"], top["STATE_OFFSET"] + st["DECK"] + client._DECK.size),
             ("midi ports", top["MIDI_PORTS_OFFSET"], top["MIDI_PORTS_OFFSET"] + 16 + top["MIDI_PORTS_MAX"]),
             ("midi events", top["MIDI_EVENTS_OFFSET"],
              top["MIDI_EVENTS_OFFSET"] + 16 + top["MIDI_EVENTS"] * client._MIDI_EVENT.size),
@@ -157,11 +156,10 @@ class TopLevelTests(unittest.TestCase):
 class StateTests(unittest.TestCase):
     def test_state_fields(self):
         st, types = RS["st"], TYPES["st"]
-        rust = sorted(v for k, v in st.items() if types[k] == "usize" and v < st["HIST"]
-                      and not k.startswith("ROW_") and k != "DECK_STATE_SIZE")
+        rust = sorted(v for k, v in st.items() if types[k] == "usize" and v < st["HIST"])
         self.assertEqual(rust, _field_offsets(client._STATE.format))
         self.assertEqual(client._HIST, st["HIST"])
-        self._same_types("st", client._STATE.format, 0, lambda k: st[k] < st["HIST"] and not k.startswith("ROW_"))
+        self._same_types("st", client._STATE.format, 0, lambda k: st[k] < st["HIST"])
 
     def _same_types(self, mod, fmt, base, picked):
         """Each field whose comment states its type is read as that type."""
@@ -177,30 +175,15 @@ class StateTests(unittest.TestCase):
 
     def test_field_types(self):
         st = RS["st"]
-        self._same_types("st", client._DECK.format, st["DECK"],
-                         lambda k: st["DECK"] < st[k] < st["DECKS_STATE"] or k == "FACTOR")
-        self._same_types("st", client._DECK_ROW.format, 0, lambda k: k.startswith("ROW_"))
+        self._same_types("st", client._DECK.format, st["DECK"], lambda k: st[k] >= st["DECK"])
         self._same_types("out", client._OUT.format, 0, lambda k: RS["out"][k] <= RS["out"]["NAME"])
 
     def test_deck_fields(self):
         st = RS["st"]
         self.assertEqual(client._DECK_AT, st["DECK"])
-        rust = sorted(v - st["DECK"] for k, v in st.items() if st["DECK"] <= v < st["DECKS_STATE"] and k != "DECK")
-        self.assertEqual(rust, _field_offsets(client._DECK.format))
-        self.assertEqual(client._DECKS_AT, st["DECKS_STATE"])
-        self.assertEqual(client._DECK_ROW.size, st["DECK_STATE_SIZE"])
-        self.assertEqual(client._MIXER_AT, st["MIXER_STATE"])
-        self.assertEqual(client.MAX_DECKS, RS[""]["MAX_DECKS"])
-
-    def test_deck_rows_by_name(self):
-        st = RS["st"]
-        python = dict(zip(client._DECK_ROW_KEYS, _field_offsets(client._DECK_ROW.format), strict=True))
-        names = {"KNOBS": "trim"}
-        rows = {k[4:]: v for k, v in st.items() if k.startswith("ROW_")}
-        self.assertEqual(len(rows), len(python) - 3)                             # the knobs: four fields, one row
-        for name, offset in rows.items():
-            with self.subTest(row=name):
-                self.assertEqual(python[names.get(name, name.lower())], offset)
+        rust = sorted(v - st["DECK"] for k, v in st.items() if v >= st["DECK"] and k != "DECK")
+        rust += [st["KNOBS"] - st["DECK"] + 8 * k for k in (1, 2, 3)]           # the knobs: four fields, one name
+        self.assertEqual(sorted(rust), _field_offsets(client._DECK.format))
 
     def test_output_fields(self):
         out, types = RS["out"], TYPES["out"]
@@ -232,7 +215,7 @@ class MixerTests(unittest.TestCase):
         defaults = dict(zip(controls.MIX_KEYS, RS["mix"]["DEFAULTS"]))
         self.assertIn(int(defaults["color_type"]), range(len(controls.COLOR_TYPES) + 1))
         self.assertEqual(defaults["master_level"], controls.LEVEL_UNITY)
-        self.assertEqual(defaults["hp_a_level"], controls.LEVEL_UNITY)
+        self.assertEqual(defaults["hp_level"], controls.LEVEL_UNITY)
         self.assertEqual(defaults["booth_level"], controls.LEVEL_UNITY)
         self.assertEqual((defaults["booth_eq_hi"], defaults["booth_eq_low"]), (0.5, 0.5))   # the booth EQ flat
 
@@ -243,13 +226,11 @@ class CodeTests(unittest.TestCase):
         python = {k[3:]: v for k, v in vars(client).items() if k.startswith("OP_")}
         self.assertEqual(python, rust)
         self.assertEqual(len(set(rust.values())), len(rust))
-        self.assertTrue(client.DECK_OPS <= set(rust.values()))
 
     def test_acts(self):
         rust = dict(RS["act"])
         sizes = rust.pop("BEAT_JUMP_SIZES")
         self.assertEqual(list(sizes), list(controls.BEAT_JUMP_SIZES))
-        self.assertEqual(rust.pop("CODE_MASK"), (1 << controls.ACT_DECK_SHIFT) - 1)
         python = {k[4:]: v for k, v in vars(controls).items() if k.startswith("ACT_") and isinstance(v, int)}
         self.assertEqual(python, rust)
 

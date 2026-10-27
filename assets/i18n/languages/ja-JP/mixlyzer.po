@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-27 12:02+0900\n"
+"POT-Creation-Date: 2026-10-27 13:37+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ja_JP\n"
@@ -557,7 +557,7 @@ msgstr "オープンソース"
 msgid "About"
 msgstr "情報"
 
-#: app/window.py:244 core/controls/midi.py:59 ui/config/playback.py:356
+#: app/window.py:244 core/controls/midi.py:55 ui/config/playback.py:356
 msgid "Mixer"
 msgstr "ミキサー"
 
@@ -700,50 +700,50 @@ msgstr "JumpCUE のラベルには重複しない A-Z しか使えません。"
 msgid "JumpCUE labels must be unique single letters A-Z."
 msgstr "JumpCUE のラベルは重複しない 1 文字の A-Z である必要があります。"
 
-#: core/controls/midi.py:52
+#: core/controls/midi.py:48
 msgid "Deck"
 msgstr "デッキ"
 
 # | msgid "JumpCUE Updated"
-#: core/controls/midi.py:53
+#: core/controls/midi.py:49
 msgid "JumpCUE pads"
 msgstr "JumpCUE パッド"
 
-#: core/controls/midi.py:54 ui/config/pipeline_map.py:33
+#: core/controls/midi.py:50 ui/config/pipeline_map.py:33
 #: ui/edit_panel/cue_slots.py:233
 msgid "CUE points"
 msgstr "CUEポイント"
 
 # | msgid "Beat"
-#: core/controls/midi.py:55
+#: core/controls/midi.py:51
 msgid "Beat jump"
 msgstr "ビートジャンプ"
 
-#: core/controls/midi.py:56 core/workers/analysis_texts.py:16
+#: core/controls/midi.py:52 core/workers/analysis_texts.py:16
 msgid "Tempo"
 msgstr "テンポ"
 
 # | msgid "Jog wheel: touch"
-#: core/controls/midi.py:57
+#: core/controls/midi.py:53
 msgid "Jog wheel"
 msgstr "ジョグダイヤル"
 
 # | msgid "Browse..."
-#: core/controls/midi.py:58
+#: core/controls/midi.py:54
 msgid "Browser"
 msgstr "ブラウザー"
 
-#: core/controls/midi.py:60
+#: core/controls/midi.py:56
 msgid "Effects"
 msgstr "エフェクト"
 
 # | msgid "Play / pause"
-#: core/controls/midi.py:87
+#: core/controls/midi.py:77
 #, python-brace-format
 msgid "Deck {deck}: PLAY / PAUSE"
 msgstr "デッキ {deck}: PLAY / PAUSE"
 
-#: core/controls/midi.py:89
+#: core/controls/midi.py:79
 #, python-brace-format
 msgid "Deck {deck}: CUE"
 msgstr "デッキ {deck}: CUE"
@@ -751,7 +751,7 @@ msgstr "デッキ {deck}: CUE"
 # | msgid "" "As rekordbox's CUE: stopped, sets the cue point at the playhead
 # | (on the " "nearest beat); held on the cue point, plays until let go (PLAY
 # | while " "held: plays on); playing, back to the cue point and stop."
-#: core/controls/midi.py:91
+#: core/controls/midi.py:80
 msgid ""
 "As rekordbox's CUE: stopped, sets the cue point (on the nearest beat); "
 "held on it, plays until let go; playing, back to it and stop."
@@ -762,38 +762,38 @@ msgstr ""
 # | msgid "Unload track"
 # | msgid "Unload the track"
 # | msgid "Back to the tracks"
-#: core/controls/midi.py:93
+#: core/controls/midi.py:82
 #, python-brace-format
 msgid "Deck {deck}: back to the track's start"
 msgstr "デッキ {deck}: 曲の先頭へ"
 
-#: core/controls/midi.py:95
+#: core/controls/midi.py:84
 msgid "As rekordbox's SHIFT + CUE: the track's start, playing on if it plays."
 msgstr "rekordbox の SHIFT + CUE と同じ: 曲の先頭へ移動し、再生中なら再生を続けます。"
 
 # | msgid "Load the selected track"
-#: core/controls/midi.py:99
+#: core/controls/midi.py:85
 #, python-brace-format
 msgid "Deck {deck}: LOAD (the selected track)"
 msgstr "デッキ {deck}: LOAD（選択した曲）"
 
-#: core/controls/midi.py:101
+#: core/controls/midi.py:87
 #, python-brace-format
 msgid "Deck {deck}: MASTER TEMPO"
 msgstr "デッキ {deck}: MASTER TEMPO"
 
 # | msgid "Master tempo: time stretch keeps the pitch"
-#: core/controls/midi.py:102
+#: core/controls/midi.py:88
 msgid "Key lock: the time stretch keeps the pitch."
 msgstr "キーロック: タイムストレッチで音程を保ちます。"
 
-#: core/controls/midi.py:105
+#: core/controls/midi.py:89
 #, python-brace-format
 msgid "Deck {deck}: TEMPO slider"
 msgstr "デッキ {deck}: TEMPO スライダー"
 
 # | msgid "The tempo over the tempo range (Tempo range); its middle is 100%."
-#: core/controls/midi.py:107
+#: core/controls/midi.py:90
 msgid ""
 "The tempo over the tempo range; its middle is 100%. A pitch bend message "
 "or a CC."
@@ -801,7 +801,7 @@ msgstr "テンポ範囲内のテンポ。中央が 100% です。ピッチベン
 
 # | msgid "Tempo Analyzing"
 # | msgid "Tempo range"
-#: core/controls/midi.py:108
+#: core/controls/midi.py:91
 #, python-brace-format
 msgid "Deck {deck}: TEMPO RANGE"
 msgstr "デッキ {deck}: TEMPO RANGE"
@@ -809,43 +809,43 @@ msgstr "デッキ {deck}: TEMPO RANGE"
 # | msgid "The tempo fader's range: ±6% / ±10% / ±16% / WIDE (0%-200%), the
 # next
 # | one."
-#: core/controls/midi.py:110
+#: core/controls/midi.py:92
 msgid "±6% / ±10% / ±16% / WIDE, the next one."
 msgstr "±6% / ±10% / ±16% / WIDE の次の範囲。"
 
-#: core/controls/midi.py:111
+#: core/controls/midi.py:93
 #, python-brace-format
 msgid "Deck {deck}: TEMPO RESET"
 msgstr "デッキ {deck}: TEMPO RESET"
 
 # | msgid "Jog wheel: pitch bend"
-#: core/controls/midi.py:113
+#: core/controls/midi.py:94
 #, python-brace-format
 msgid "Deck {deck}: PITCH BEND −"
 msgstr "デッキ {deck}: PITCH BEND −"
 
-#: core/controls/midi.py:114
+#: core/controls/midi.py:95
 msgid "Held: the tempo bent down 4%."
 msgstr "押している間、テンポを 4% 下げます。"
 
 # | msgid "Jog wheel: pitch bend"
-#: core/controls/midi.py:115
+#: core/controls/midi.py:96
 #, python-brace-format
 msgid "Deck {deck}: PITCH BEND +"
 msgstr "デッキ {deck}: PITCH BEND +"
 
-#: core/controls/midi.py:116
+#: core/controls/midi.py:97
 msgid "Held: the tempo bent up 4%."
 msgstr "押している間、テンポを 4% 上げます。"
 
 # | msgid "Jog wheel: touch"
 # | msgid "Deck {deck}: jog wheel touch"
-#: core/controls/midi.py:117
+#: core/controls/midi.py:98
 #, python-brace-format
 msgid "Deck {deck}: JOG MODE (VINYL / CDJ)"
 msgstr "デッキ {deck}: JOG MODE (VINYL / CDJ)"
 
-#: core/controls/midi.py:119
+#: core/controls/midi.py:100
 msgid ""
 "A press switches the jog wheel's mode: VINYL (its top's touch holds the "
 "record) or CDJ (a bend only). Lit in VINYL mode."
@@ -854,7 +854,7 @@ msgstr ""
 "モードで点灯。"
 
 # | msgid "Jog wheel: touch"
-#: core/controls/midi.py:121
+#: core/controls/midi.py:102
 #, python-brace-format
 msgid "Deck {deck}: jog wheel touch"
 msgstr "デッキ {deck}: ジョグダイヤル タッチ"
@@ -862,13 +862,13 @@ msgstr "デッキ {deck}: ジョグダイヤル タッチ"
 # | msgid "" "The jog wheel's top touched: the record held (scratch); let go,
 # it
 # | plays " "on."
-#: core/controls/midi.py:123
+#: core/controls/midi.py:103
 msgid ""
 "The top touched: the record held (vinyl mode); let go, it plays on (a "
 "spin: when it stops)."
 msgstr "天面に触れるとレコードを押さえます（バイナルモード）。離すと再生を続けます（回転中なら止まってから）。"
 
-#: core/controls/midi.py:125
+#: core/controls/midi.py:105
 #, python-brace-format
 msgid "Deck {deck}: jog wheel top"
 msgstr "デッキ {deck}: ジョグダイヤル 天面"
@@ -876,62 +876,62 @@ msgstr "デッキ {deck}: ジョグダイヤル 天面"
 # | msgid "" "The jog wheel's top turned: touched, the record moves with it
 # (33
 # | 1/3 " "rpm); else a pitch bend."
-#: core/controls/midi.py:127
+#: core/controls/midi.py:106
 msgid "Turned: touched, the record moves with it (33 1/3 rpm); else a pitch bend."
 msgstr "回すと: 触れている間はレコードが一緒に動き（33 1/3 rpm）、それ以外はピッチベンド。"
 
 # | msgid "Jog wheel: pitch bend"
-#: core/controls/midi.py:128
+#: core/controls/midi.py:107
 #, python-brace-format
 msgid "Deck {deck}: jog wheel side (pitch bend)"
 msgstr "デッキ {deck}: ジョグダイヤル 側面（ピッチベンド）"
 
 # | msgid "" "The jog wheel turned: the tempo bent while it turns (a turn a
 # | second: " "+10%)."
-#: core/controls/midi.py:130
+#: core/controls/midi.py:108
 msgid "Turned: the tempo bent while it turns (a turn a second: +10%)."
 msgstr "回している間、テンポをベンドします（1 秒に 1 回転: +10%）。"
 
-#: core/controls/midi.py:131
+#: core/controls/midi.py:109
 #, python-brace-format
 msgid "Deck {deck}: jog wheel search (SHIFT)"
 msgstr "デッキ {deck}: ジョグダイヤル サーチ（SHIFT）"
 
 # | msgid "The jog wheel turned: the playhead moved through the track fast."
-#: core/controls/midi.py:133
+#: core/controls/midi.py:110
 msgid "Turned: the playhead moved through the track fast."
 msgstr "回すと再生位置を曲の中で速く移動します。"
 
-#: core/controls/midi.py:134
+#: core/controls/midi.py:111
 #, python-brace-format
 msgid "Deck {deck}: CUE CALL ◁"
 msgstr "デッキ {deck}: CUE CALL ◁"
 
-#: core/controls/midi.py:136
+#: core/controls/midi.py:112
 msgid "The CUE point before (stopped); the cue point moves there."
 msgstr "前の CUE ポイントへ（停止中）。キューポイントもそこへ移ります。"
 
-#: core/controls/midi.py:137
+#: core/controls/midi.py:113
 #, python-brace-format
 msgid "Deck {deck}: CUE CALL ▷"
 msgstr "デッキ {deck}: CUE CALL ▷"
 
-#: core/controls/midi.py:139
+#: core/controls/midi.py:114
 msgid "The CUE point after (stopped); the cue point moves there."
 msgstr "次の CUE ポイントへ（停止中）。キューポイントもそこへ移ります。"
 
-#: core/controls/midi.py:143
+#: core/controls/midi.py:115
 #, python-brace-format
 msgid "Deck {deck}: MEMORY"
 msgstr "デッキ {deck}: MEMORY"
 
 # | msgid "MEMORY: set a CUE point at the nearest beat or track edge"
-#: core/controls/midi.py:144
+#: core/controls/midi.py:116
 msgid "A CUE point at the nearest beat (an edit)."
 msgstr "最も近いビートに CUE ポイント（編集）。"
 
 # | msgid "Delete CUE point {time}"
-#: core/controls/midi.py:145
+#: core/controls/midi.py:117
 #, python-brace-format
 msgid "Deck {deck}: CUE point DELETE"
 msgstr "デッキ {deck}: CUE ポイント DELETE"
@@ -939,44 +939,44 @@ msgstr "デッキ {deck}: CUE ポイント DELETE"
 # | msgid "Split the current segment at the playhead"
 # | msgid "No CUE point at the playhead."
 # | msgid "The CUE point the playhead is on, as after CALL."
-#: core/controls/midi.py:146
+#: core/controls/midi.py:118
 msgid "The CUE point the playhead is on (an edit)."
 msgstr "再生位置にある CUE ポイント（編集）。"
 
 # | msgid "Delete JumpCUE {letter}"
-#: core/controls/midi.py:150
+#: core/controls/midi.py:122
 #, python-brace-format
 msgid "Deck {deck}: JumpCUE {letter}"
 msgstr "デッキ {deck}: JumpCUE {letter}"
 
 # | msgid "Jump here on the next beat (when stopped: move the playhead here)"
-#: core/controls/midi.py:152
+#: core/controls/midi.py:124
 msgid ""
 "JUMP on the next beat (stopped: the playhead there); an empty slot: SET "
 "(an edit). Lit while set."
 msgstr "次のビートで JUMP（停止中は再生位置をそこへ）。空きスロットなら SET（編集）。設定中は点灯します。"
 
 # | msgid "Delete JumpCUE {letter}"
-#: core/controls/midi.py:155
+#: core/controls/midi.py:126
 #, python-brace-format
 msgid "Deck {deck}: JumpCUE {letter} delete"
 msgstr "デッキ {deck}: JumpCUE {letter} 削除"
 
-#: core/controls/midi.py:157
+#: core/controls/midi.py:128
 msgid "As SHIFT + a pad (an edit)."
 msgstr "SHIFT + パッドと同じ（編集）。"
 
-#: core/controls/midi.py:160
+#: core/controls/midi.py:131
 #, python-brace-format
 msgid "Deck {deck}: BEAT JUMP ◁ {beats}"
 msgstr "デッキ {deck}: BEAT JUMP ◁ {beats}"
 
-#: core/controls/midi.py:162
+#: core/controls/midi.py:133
 #, python-brace-format
 msgid "Deck {deck}: BEAT JUMP ▷ {beats}"
 msgstr "デッキ {deck}: BEAT JUMP ▷ {beats}"
 
-#: core/controls/midi.py:172
+#: core/controls/midi.py:142
 #, python-brace-format
 msgid "Channel {channel}: channel fader"
 msgstr "チャンネル {channel}: チャンネルフェーダー"
@@ -984,65 +984,71 @@ msgstr "チャンネル {channel}: チャンネルフェーダー"
 # | msgid "Output buffer"
 # | msgid "Output device"
 # | msgid "The device's"
-#: core/controls/midi.py:173
+#: core/controls/midi.py:143
 msgid "The deck's volume."
 msgstr "デッキの音量。"
 
-#: core/controls/midi.py:174
-#, python-brace-format
-msgid "Channel {channel}: EQ HI"
-msgstr "チャンネル {channel}: EQ HI"
-
-#: core/controls/midi.py:176 core/controls/midi.py:179
-#: core/controls/midi.py:182
-msgid "An isolator band: the bottom kills it, the middle 0 dB, the top +6 dB."
-msgstr "アイソレーターのバンド: 一番下でカット、中央 0 dB、一番上 +6 dB。"
-
-#: core/controls/midi.py:177
-#, python-brace-format
-msgid "Channel {channel}: EQ MID"
-msgstr "チャンネル {channel}: EQ MID"
-
-#: core/controls/midi.py:180
-#, python-brace-format
-msgid "Channel {channel}: EQ LOW"
-msgstr "チャンネル {channel}: EQ LOW"
-
-#: core/controls/midi.py:183
+#: core/controls/midi.py:144
 #, python-brace-format
 msgid "Channel {channel}: TRIM"
 msgstr "チャンネル {channel}: TRIM"
 
+#: core/controls/midi.py:145
+msgid ""
+"The channel's level before its EQ and fader: -24 to +9 dB, the middle 0 "
+"dB."
+msgstr "チャンネルの EQ とフェーダーの前のレベル: -24 ～ +9 dB、中央 0 dB。"
+
+#: core/controls/midi.py:146
+#, python-brace-format
+msgid "Channel {channel}: EQ HI"
+msgstr "チャンネル {channel}: EQ HI"
+
+#: core/controls/midi.py:147 core/controls/midi.py:149
+#: core/controls/midi.py:151
+msgid "An isolator band: the bottom kills it, the middle 0 dB, the top +6 dB."
+msgstr "アイソレーターのバンド: 一番下でカット、中央 0 dB、一番上 +6 dB。"
+
+#: core/controls/midi.py:148
+#, python-brace-format
+msgid "Channel {channel}: EQ MID"
+msgstr "チャンネル {channel}: EQ MID"
+
+#: core/controls/midi.py:150
+#, python-brace-format
+msgid "Channel {channel}: EQ LOW"
+msgstr "チャンネル {channel}: EQ LOW"
+
 # | msgid "Channel {channel}: channel fader"
-#: core/controls/midi.py:185
+#: core/controls/midi.py:152
 #, python-brace-format
 msgid "Channel {channel}: COLOR (Sound Color FX)"
 msgstr "チャンネル {channel}: COLOR (Sound Color FX)"
 
-#: core/controls/midi.py:187
+#: core/controls/midi.py:154
 msgid ""
 "The Sound Color FX picked, on the channel: its middle off, its two "
 "flavours left and right (a DDJ's CFX knob)."
 msgstr "選んだ Sound Color FX をチャンネルにかけます: 中央でオフ、左右で効果が変わります（DDJ の CFX つまみ）。"
 
-#: core/controls/midi.py:189
+#: core/controls/midi.py:156
 #, python-brace-format
 msgid "Channel {channel}: headphones CUE"
 msgstr "チャンネル {channel}: ヘッドホン CUE"
 
-#: core/controls/midi.py:191
+#: core/controls/midi.py:158
 msgid ""
 "A press turns it on or off: the channel's sound before its fader in the "
 "headphones. Lit while on."
 msgstr "押すたびにオン / オフします: このチャンネルのフェーダー前の音をヘッドホンに送ります。オンの間は点灯します。"
 
 # | msgid "Level meter (output)"
-#: core/controls/midi.py:193
+#: core/controls/midi.py:160
 #, python-brace-format
 msgid "Channel {channel}: level meter (output)"
 msgstr "チャンネル {channel}: レベルメーター（出力）"
 
-#: core/controls/midi.py:195
+#: core/controls/midi.py:162
 msgid ""
 "The controller's level meter shows the deck's peak meter (a CC sent: its "
 "segments lit, -30 to +12 dB, as 0 - 127); taken from a rekordbox mapping "
@@ -1052,17 +1058,17 @@ msgstr ""
 "に）。Learn ではなく rekordbox のマッピング（ChannelLevel）から読み込みます。"
 
 # | msgid "Sound Color FX: the next effect"
-#: core/controls/midi.py:205
+#: core/controls/midi.py:171
 #, python-brace-format
 msgid "Sound Color FX: {effect}"
 msgstr "Sound Color FX: {effect}"
 
-#: core/controls/midi.py:207
+#: core/controls/midi.py:173
 msgid "A press picks it; pressed again, none. Lit while picked."
 msgstr "押すと選択、もう一度押すと解除。選択中は点灯。"
 
 # | msgid "Sound Color FX: the next effect"
-#: core/controls/midi.py:209
+#: core/controls/midi.py:175
 msgid "Sound Color FX: PARAMETER"
 msgstr "Sound Color FX: PARAMETER"
 
@@ -1072,70 +1078,70 @@ msgstr "Sound Color FX: PARAMETER"
 # | msgid "" "The effect's quantity (feedback, centre frequency, noise, crush,
 # "
 # | "resonance)."
-#: core/controls/midi.py:210
+#: core/controls/midi.py:176
 msgid ""
 "The effect's quantity (feedback, centre frequency, noise, crush, "
 "resonance, JET's feedback)."
 msgstr "エフェクトの量（フィードバック、中心周波数、ノイズ、クラッシュ、レゾナンス、JET のフィードバック）。"
 
-#: core/controls/midi.py:216
+#: core/controls/midi.py:182
 msgid "Browser: BROWSE knob"
 msgstr "ブラウザー: BROWSE つまみ"
 
-#: core/controls/midi.py:217
+#: core/controls/midi.py:183
 msgid "Turned: the next / previous track."
 msgstr "回すと次 / 前の曲。"
 
-#: core/controls/midi.py:218
+#: core/controls/midi.py:184
 msgid "Browser: BROWSE pressed"
 msgstr "ブラウザー: BROWSE 押す"
 
 # | msgid "" "In the sources panel: the highlighted playlist or folder shown
 # in
 # | the " "library."
-#: core/controls/midi.py:219
+#: core/controls/midi.py:185
 msgid "To the sources panel (playlists, folders) and back."
 msgstr "ソースパネル（プレイリスト、フォルダー）へ移動し、また戻ります。"
 
 # | msgid "Playhead one bar back"
 # | msgid "One bar back"
-#: core/controls/midi.py:220
+#: core/controls/midi.py:186
 msgid "Browser: BACK"
 msgstr "ブラウザー: BACK"
 
 # | msgid "Unload track"
 # | msgid "Unload the track"
 # | msgid "Back to the tracks"
-#: core/controls/midi.py:221
+#: core/controls/midi.py:187
 msgid "Back to the tracks."
 msgstr "曲リストに戻ります。"
 
-#: core/controls/midi.py:222
+#: core/controls/midi.py:188
 msgid "Browser: waveform zoom (SHIFT + BROWSE)"
 msgstr "ブラウザー: 波形ズーム（SHIFT + BROWSE）"
 
-#: core/controls/midi.py:223
+#: core/controls/midi.py:189
 msgid "Turned: the waveform zoomed in / out."
 msgstr "回すと波形を拡大 / 縮小します。"
 
-#: core/controls/midi.py:225
+#: core/controls/midi.py:191
 msgid "Headphones: CUE / MASTER"
 msgstr "ヘッドホン: CUE / MASTER"
 
 # | msgid "" "The CUE'd channels against the master in the headphones (with
 # the
 # | master " "mixed in: Settings > Playback > Headphones output)."
-#: core/controls/midi.py:226
+#: core/controls/midi.py:192
 msgid ""
 "The CUE'd channels against the master in the headphones (with the master "
 "mixed in: Settings > Audio > Headphones)."
 msgstr "ヘッドホンでの CUE チャンネルとマスターのバランス（マスターを混ぜるとき: 設定 > オーディオ > ヘッドホン）。"
 
-#: core/controls/midi.py:228
+#: core/controls/midi.py:194
 msgid "Headphones: level"
 msgstr "ヘッドホン: レベル"
 
-#: core/controls/midi.py:229
+#: core/controls/midi.py:195
 msgid "Master: level"
 msgstr "マスター: レベル"
 
@@ -3455,7 +3461,7 @@ msgstr "デフォルトに戻す"
 msgid "The selected action's shipped MIDI messages again."
 msgstr "選択した操作を既定の MIDI メッセージに戻します。"
 
-#: ui/config/midi.py:118 ui/config/midi.py:296
+#: ui/config/midi.py:118 ui/config/midi.py:294
 msgid "Import rekordbox CSV..."
 msgstr "rekordbox CSV を読み込む..."
 
@@ -3519,7 +3525,7 @@ msgstr "接続中。"
 msgid "Could not be opened (in use by another program, or disconnected)."
 msgstr "開けませんでした（他のプログラムが使用中か、接続されていません）。"
 
-#: ui/config/midi.py:274 ui/config/shortcuts.py:226
+#: ui/config/midi.py:272 ui/config/shortcuts.py:226
 #, python-brace-format
 msgid ""
 "Already used:\n"
@@ -3532,33 +3538,33 @@ msgstr ""
 "\n"
 "その操作から外して、ここで使いますか?"
 
-#: ui/config/midi.py:296
+#: ui/config/midi.py:294
 msgid "rekordbox MIDI mapping (*.csv)"
 msgstr "rekordbox MIDI マッピング (*.csv)"
 
 # | msgid "The file could not be written: {error}"
-#: ui/config/midi.py:302
+#: ui/config/midi.py:300
 #, python-brace-format
 msgid "The file could not be read: {error}"
 msgstr "ファイルを読み込めませんでした: {error}"
 
-#: ui/config/midi.py:305
+#: ui/config/midi.py:303
 msgid "No deck 1 control in this file that Mixlyzer has."
 msgstr "このファイルには Mixlyzer が対応するデッキ 1 の操作がありません。"
 
-#: ui/config/midi.py:311
+#: ui/config/midi.py:309
 #, python-brace-format
 msgid ""
 "{count} MIDI messages for {actions} actions imported (kept with OK / "
 "Apply)."
 msgstr "{actions} 個の操作に {count} 個の MIDI メッセージを読み込みました（OK / 適用で保存）。"
 
-#: ui/config/midi.py:314
+#: ui/config/midi.py:312
 #, python-brace-format
 msgid "Not taken (another deck, or a function Mixlyzer has not): {names}"
 msgstr "読み込まなかったもの（他のデッキ、または Mixlyzer にない機能）: {names}"
 
-#: ui/config/midi.py:324
+#: ui/config/midi.py:322
 msgid "Move or press a control ..."
 msgstr "操作部を動かすか押してください..."
 
@@ -4341,11 +4347,11 @@ msgstr "ヘッドホン出力"
 #: ui/config/playback.py:258
 msgid ""
 "<p>The headphones (a controller's or an interface's second output): the "
-"decks whose CUE is on, before their faders, mixed with the master (a "
-"controller's CUE / MASTER knob).</p>"
+"deck's channel while its CUE is on, before its fader, mixed with the "
+"master (a controller's CUE / MASTER knob).</p>"
 msgstr ""
 "<p>ヘッドホン（コントローラーやインターフェースの 2 番目の出力）: CUE "
-"をオンにしたデッキのフェーダー前の音をマスターと混ぜます（コントローラーの CUE / MASTER つまみ）。</p>"
+"がオンの間、デッキのチャンネルのフェーダー前の音をマスターと混ぜます（コントローラーの CUE / MASTER つまみ）。</p>"
 
 # | msgid "Zoom out"
 #: ui/config/playback.py:262
@@ -6743,7 +6749,7 @@ msgstr ""
 "ビートトラッカーはすべてのテンポをここから 1 オクターブの範囲 (最小 BPM .. 2 x 最小 BPM) で読み取ります。\n"
 "範囲外の曲は半分または 2 倍のテンポで読み取られます。"
 
-#: ui/config/analysis.py:68 ui/config/window.py:236 ui/reanalyze_dialog.py:38
+#: ui/config/analysis.py:68 ui/config/window.py:237 ui/reanalyze_dialog.py:38
 #: ui/reanalyze_dialog.py:81
 #, python-brace-format
 msgid "Reads {low} - {high} BPM"

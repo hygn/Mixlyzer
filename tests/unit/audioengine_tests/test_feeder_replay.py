@@ -25,8 +25,7 @@ class _Engine:
 
 
 def _report(mix):
-    return controls.DeckReport(False, 1.0, 1.0, 0.0, 0.0, 0, 0, 0, (0.5, 0.5, 0.5, 0.5), False, -45.0, 0.5, 0.5,
-                               tuple(mix), 0.0)
+    return controls.DeckReport(False, 1.0, 1.0, 0.0, 0.0, 0, 0, 0, (0.5, 0.5, 0.5, 0.5), False, -45.0, 0.5, tuple(mix))
 
 
 class ReplayTests(unittest.TestCase):
@@ -40,7 +39,7 @@ class ReplayTests(unittest.TestCase):
         mix = [0.0] * len(controls.MIX_KEYS)
         mix[controls.MIX_KEY["eq_mode"]] = 1.0          # the EQ, not the isolator
         mix[controls.MIX_KEY["fader_curve"]] = 2.0
-        mix[controls.MIX_KEY["hp_a_mix"]] = 0.3         # a controller's CUE / MASTER mix
+        mix[controls.MIX_KEY["hp_mix"]] = 0.3           # a controller's CUE / MASTER mix
         mix[controls.MIX_KEY["color_type"]] = 4.0
         feeder._report = _report(mix)
         engine.calls.clear()
@@ -68,15 +67,15 @@ class ReplayTests(unittest.TestCase):
         feeder._replay()
         self.assertEqual(self._mixer_sent(engine), {})
 
-    def test_another_deck_sends_no_mixer(self):
+    def test_the_channel_cue_as_reported(self):
         engine = _Engine()
-        holder = client.EngineHolder(engine)
-        client.NativeFeeder(engine, holder=holder)
-        deck2 = client.NativeFeeder(engine, deck=1, holder=holder)
-        deck2._report = _report([1.0] * len(controls.MIX_KEYS))
+        feeder = client.NativeFeeder(engine)
+        report = _report([0.0] * len(controls.MIX_KEYS))
+        report.channel_cue = True
+        feeder._report = report
         engine.calls.clear()
-        deck2._replay()
-        self.assertEqual(self._mixer_sent(engine), {})
+        feeder._replay()
+        self.assertIn((client.OP_SET_CHANNEL_CUE, struct.pack("<I", 1)), engine.calls)
 
 
 if __name__ == "__main__":

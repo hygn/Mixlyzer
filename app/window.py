@@ -6,7 +6,7 @@ import copy
 from app.audio_report import print_audio_setup
 from app.print_hook import install_print_hook, log_environment_info
 from audioengine.controls import (
-    ACT_DECK_SHIFT, ACT_JUMP_A, EQ_MODES, FADER_CURVES, MIDI_EVENT_GUI, MIDI_EVENT_HOTCUE_SET, MIDI_EVENT_RELATIVE,
+    ACT_JUMP_A, EQ_MODES, FADER_CURVES, MIDI_EVENT_GUI, MIDI_EVENT_HOTCUE_SET, MIDI_EVENT_RELATIVE,
 )
 from core.controls import midi
 from core.controls import shortcuts
@@ -438,9 +438,9 @@ class AppWindow(QtWidgets.QMainWindow):
         (its steps, each a shortcut run), a button pressed (its shortcut run once)."""
         for _status, _d1, d2, flags, code, steps in events:
             if flags & MIDI_EVENT_HOTCUE_SET:
-                letter = midi.JUMPCUE_PADS[(int(code) & 0xFFFFFF) - ACT_JUMP_A]
-                if int(code) >> ACT_DECK_SHIFT == 0:   # the app's deck: deck 1
-                    self._run_midi_handler(f"cue.set.{letter}")
+                k = int(code) - ACT_JUMP_A
+                if 0 <= k < len(midi.JUMPCUE_PADS):
+                    self._run_midi_handler(f"cue.set.{midi.JUMPCUE_PADS[k]}")
                 continue
             if not flags & MIDI_EVENT_GUI:
                 continue
@@ -504,8 +504,8 @@ class AppWindow(QtWidgets.QMainWindow):
             "fader_curve": FADER_CURVES[min(2, max(0, int(v("fader_curve"))))],
             "jog_mode": "vinyl" if report.vinyl else "cdj",
             "master_level": round(v("master_level", deck.master_level), 3),
-            "headphones_level": round(v("hp_a_level", deck.headphones_level), 3),
-            "headphones_cue_mix": int(round(100.0 * v("hp_a_mix", deck.headphones_cue_mix / 100.0))),
+            "headphones_level": round(v("hp_level", deck.headphones_level), 3),
+            "headphones_cue_mix": int(round(100.0 * v("hp_mix", deck.headphones_cue_mix / 100.0))),
             "color_type": int(v("color_type", deck.color_type)),
             "color_param": round(v("color_param", deck.color_param), 3),
         }
@@ -945,7 +945,7 @@ class AppWindow(QtWidgets.QMainWindow):
         # the levels, the booth's EQ and the effects picked as last left (the effects themselves off)
         for key, value in (("master_level", deck.master_level), ("booth_level", pcfg.booth_level),
                            ("booth_eq_hi", pcfg.booth_eq_hi), ("booth_eq_low", pcfg.booth_eq_low),
-                           ("hp_a_split", 1.0 if pcfg.headphones_split else 0.0),
+                           ("hp_split", 1.0 if pcfg.headphones_split else 0.0),
                            ("color_type", deck.color_type), ("color_param", deck.color_param)):
             self.bus.sig_mixer_requested.emit(key, float(value))
         self.player.set_buffer_ms(float(pcfg.native_buffer_ms), float(pcfg.python_buffer_ms))

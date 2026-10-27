@@ -5,14 +5,11 @@ messages, the user's file holding only the actions changed from the shipped mapp
 The actions (``ACTIONS``) are a DJ controller's, as rekordbox / a CDJ and DJM do them, not the keyboard shortcuts:
 the deck (PLAY, CUE, SHIFT + CUE to the track's start, the tempo fader and its range, pitch bend buttons, the jog
 wheel), the JumpCUE pads (JUMP; SET on an empty slot; SHIFT: delete), the CUE points (CALL, MEMORY, DELETE), beat
-jumps (1 - 32 beats), the browser (its knob turned / pressed), the mixer (a channel's fader, EQ, trim and level
-meter; not the crossfader: the engine's act has no action, not shown to the user). The native audio engine reads the controller (audioengine/native/src/deck.rs, never through
-the GUI's Python) and does the deck's and the mixer's actions itself; the others (loading, the browser, edits) are
-passed on to the GUI, which runs them as its shortcuts do.
-
-Every deck's actions are here for decks 1 - 4 and every mixer channel's for channels 1 - 4 (the engine takes them
-all); the settings show deck 1's and channel 1's that are ``shown`` (``ACTIONS_SHOWN``): of the mixer's, the volume
-fader, the EQ, the headphones CUE and the level meter, and the headphones' CUE / MASTER mix and level.
+jumps (1 - 32 beats), the browser (its knob turned / pressed), the mixer (the channel's fader, trim, EQ, COLOR,
+headphones CUE and level meter; the headphones' CUE / MASTER mix and level, the master's level), Sound Color FX. The
+native audio engine reads the controller (audioengine/native/src/deck.rs, never through the GUI's Python) and does
+the deck's and the mixer's actions itself; the others (loading, the browser, edits) are passed on to the GUI, which
+runs them as its shortcuts do. The ids name deck 1 and mixer channel 1 (the deck and its channel).
 
 A message is written as rekordbox's MIDI CSV writes it, status and data 1 in hex ("900B" a note on channel 1, "B000"
 a CC, "E000" a pitch bend: data 1 not read), then its options: "H" a 14-bit CC (its LSB at data 1 + 32), "+" / "-"
@@ -45,7 +42,6 @@ Mapping = dict[str, list[str]]
 # bits, or a pitch bend), a knob turned (a relative CC), a touch (a note or a CC), an output (a CC sent)
 BUTTON, FADER, KNOB, TOUCH, METER = "button", "fader", "knob", "touch", "meter"
 
-DECKS = 8   # decks and mixer channels the engine takes (the app shows deck 1)
 JUMPCUE_PADS = "ABCDEFGH"
 
 # the groups, in the settings' order (translated where shown; CUE as it is)
@@ -67,131 +63,102 @@ class Action:
     group: str
     text: str            # its name (translated where shown, filled with ``args``)
     kind: str
-    code: int = 0        # the engine's action (client.ACT_*, the deck in its upper bits); 0: the GUI's
+    code: int = 0        # the engine's action (client.ACT_*); 0: the GUI's
     gui: tuple = ()      # the GUI's: the shortcut action run (an encoder's: clockwise, counterclockwise)
     lamp: int = 0        # the controller's light at its message (client.LAMP_*)
-    shown: bool = True   # in the settings (deck 1 / channel 1's)
     tip: str = ""
     args: dict = field(default_factory=dict)
 
 
-def _deck_code(code: int, n: int) -> int:
-    return code | (n - 1) << engine.ACT_DECK_SHIFT
-
-
-def _deck_actions(n: int) -> list[Action]:
-    """Deck ``n``'s actions (the GUI's for deck 1 only: the app shows one deck)."""
-    d, one = f"deck{n}", n == 1
-    a = {"deck": n}
+def _deck_actions() -> list[Action]:
+    """The deck's actions (deck 1: the ids and texts name it so, as a controller's deck 1 column)."""
+    a = {"deck": 1}
     out = [
-        Action(f"{d}.play_pause", DECK, tr_mark("Deck {deck}: PLAY / PAUSE"), BUTTON,
-               _deck_code(engine.ACT_PLAY_PAUSE, n), lamp=engine.LAMP_PLAY, shown=one, args=a),
-        Action(f"{d}.cue", DECK, tr_mark("Deck {deck}: CUE"), BUTTON, _deck_code(engine.ACT_CUE, n),
-               lamp=engine.LAMP_CUE, shown=one, args=a,
+        Action("deck1.play_pause", DECK, tr_mark("Deck {deck}: PLAY / PAUSE"), BUTTON, engine.ACT_PLAY_PAUSE,
+               lamp=engine.LAMP_PLAY, args=a),
+        Action("deck1.cue", DECK, tr_mark("Deck {deck}: CUE"), BUTTON, engine.ACT_CUE, lamp=engine.LAMP_CUE, args=a,
                tip=tr_mark("As rekordbox's CUE: stopped, sets the cue point (on the nearest beat); held on it, plays "
                            "until let go; playing, back to it and stop.")),
-        Action(f"{d}.track_start", DECK, tr_mark("Deck {deck}: back to the track's start"), BUTTON,
-               _deck_code(engine.ACT_TRACK_START, n), shown=one, args=a,
+        Action("deck1.track_start", DECK, tr_mark("Deck {deck}: back to the track's start"), BUTTON,
+               engine.ACT_TRACK_START, args=a,
                tip=tr_mark("As rekordbox's SHIFT + CUE: the track's start, playing on if it plays.")),
-    ]
-    if one:
-        out += [
-            Action("deck1.load", DECK, tr_mark("Deck {deck}: LOAD (the selected track)"), BUTTON,
-                   gui=("library.load",), args=a),
-            Action("deck1.master_tempo", DECK, tr_mark("Deck {deck}: MASTER TEMPO"), BUTTON,
-                   gui=("playback.master_tempo",), args=a, tip=tr_mark("Key lock: the time stretch keeps the pitch.")),
-        ]
-    out += [
-        Action(f"{d}.tempo_fader", TEMPO, tr_mark("Deck {deck}: TEMPO slider"), FADER,
-               _deck_code(engine.ACT_TEMPO_FADER, n), shown=one, args=a,
+        Action("deck1.load", DECK, tr_mark("Deck {deck}: LOAD (the selected track)"), BUTTON, gui=("library.load",),
+               args=a),
+        Action("deck1.master_tempo", DECK, tr_mark("Deck {deck}: MASTER TEMPO"), BUTTON, gui=("playback.master_tempo",),
+               args=a, tip=tr_mark("Key lock: the time stretch keeps the pitch.")),
+        Action("deck1.tempo_fader", TEMPO, tr_mark("Deck {deck}: TEMPO slider"), FADER, engine.ACT_TEMPO_FADER, args=a,
                tip=tr_mark("The tempo over the tempo range; its middle is 100%. A pitch bend message or a CC.")),
-        Action(f"{d}.tempo_range", TEMPO, tr_mark("Deck {deck}: TEMPO RANGE"), BUTTON,
-               _deck_code(engine.ACT_TEMPO_RANGE, n), shown=one, args=a,
+        Action("deck1.tempo_range", TEMPO, tr_mark("Deck {deck}: TEMPO RANGE"), BUTTON, engine.ACT_TEMPO_RANGE, args=a,
                tip=tr_mark("±6% / ±10% / ±16% / WIDE, the next one.")),
-        Action(f"{d}.tempo_reset", TEMPO, tr_mark("Deck {deck}: TEMPO RESET"), BUTTON,
-               _deck_code(engine.ACT_TEMPO_RESET, n), shown=one, args=a),
-        Action(f"{d}.bend_down", TEMPO, tr_mark("Deck {deck}: PITCH BEND −"), BUTTON,
-               _deck_code(engine.ACT_BEND_DOWN, n), shown=one, args=a, tip=tr_mark("Held: the tempo bent down 4%.")),
-        Action(f"{d}.bend_up", TEMPO, tr_mark("Deck {deck}: PITCH BEND +"), BUTTON,
-               _deck_code(engine.ACT_BEND_UP, n), shown=one, args=a, tip=tr_mark("Held: the tempo bent up 4%.")),
-        Action(f"{d}.jog_mode", JOG, tr_mark("Deck {deck}: JOG MODE (VINYL / CDJ)"), BUTTON,
-               _deck_code(engine.ACT_JOG_MODE, n), lamp=engine.LAMP_VINYL, shown=one, args=a,
+        Action("deck1.tempo_reset", TEMPO, tr_mark("Deck {deck}: TEMPO RESET"), BUTTON, engine.ACT_TEMPO_RESET, args=a),
+        Action("deck1.bend_down", TEMPO, tr_mark("Deck {deck}: PITCH BEND −"), BUTTON, engine.ACT_BEND_DOWN, args=a,
+               tip=tr_mark("Held: the tempo bent down 4%.")),
+        Action("deck1.bend_up", TEMPO, tr_mark("Deck {deck}: PITCH BEND +"), BUTTON, engine.ACT_BEND_UP, args=a,
+               tip=tr_mark("Held: the tempo bent up 4%.")),
+        Action("deck1.jog_mode", JOG, tr_mark("Deck {deck}: JOG MODE (VINYL / CDJ)"), BUTTON, engine.ACT_JOG_MODE,
+               lamp=engine.LAMP_VINYL, args=a,
                tip=tr_mark("A press switches the jog wheel's mode: VINYL (its top's touch holds the record) or CDJ "
                            "(a bend only). Lit in VINYL mode.")),
-        Action(f"{d}.jog_touch", JOG, tr_mark("Deck {deck}: jog wheel touch"), TOUCH,
-               _deck_code(engine.ACT_JOG_TOUCH, n), shown=one, args=a,
+        Action("deck1.jog_touch", JOG, tr_mark("Deck {deck}: jog wheel touch"), TOUCH, engine.ACT_JOG_TOUCH, args=a,
                tip=tr_mark("The top touched: the record held (vinyl mode); let go, it plays on (a spin: when it "
                            "stops).")),
-        Action(f"{d}.jog_scratch", JOG, tr_mark("Deck {deck}: jog wheel top"), KNOB,
-               _deck_code(engine.ACT_JOG_SCRATCH, n), shown=one, args=a,
+        Action("deck1.jog_scratch", JOG, tr_mark("Deck {deck}: jog wheel top"), KNOB, engine.ACT_JOG_SCRATCH, args=a,
                tip=tr_mark("Turned: touched, the record moves with it (33 1/3 rpm); else a pitch bend.")),
-        Action(f"{d}.jog_bend", JOG, tr_mark("Deck {deck}: jog wheel side (pitch bend)"), KNOB,
-               _deck_code(engine.ACT_JOG_BEND, n), shown=one, args=a,
-               tip=tr_mark("Turned: the tempo bent while it turns (a turn a second: +10%).")),
-        Action(f"{d}.jog_search", JOG, tr_mark("Deck {deck}: jog wheel search (SHIFT)"), KNOB,
-               _deck_code(engine.ACT_JOG_SEARCH, n), shown=one, args=a,
-               tip=tr_mark("Turned: the playhead moved through the track fast.")),
-        Action(f"{d}.memory_previous", CUE_POINTS, tr_mark("Deck {deck}: CUE CALL ◁"), BUTTON,
-               _deck_code(engine.ACT_CALL_PREVIOUS, n), shown=one, args=a,
-               tip=tr_mark("The CUE point before (stopped); the cue point moves there.")),
-        Action(f"{d}.memory_next", CUE_POINTS, tr_mark("Deck {deck}: CUE CALL ▷"), BUTTON,
-               _deck_code(engine.ACT_CALL_NEXT, n), shown=one, args=a,
-               tip=tr_mark("The CUE point after (stopped); the cue point moves there.")),
+        Action("deck1.jog_bend", JOG, tr_mark("Deck {deck}: jog wheel side (pitch bend)"), KNOB, engine.ACT_JOG_BEND,
+               args=a, tip=tr_mark("Turned: the tempo bent while it turns (a turn a second: +10%).")),
+        Action("deck1.jog_search", JOG, tr_mark("Deck {deck}: jog wheel search (SHIFT)"), KNOB, engine.ACT_JOG_SEARCH,
+               args=a, tip=tr_mark("Turned: the playhead moved through the track fast.")),
+        Action("deck1.memory_previous", CUE_POINTS, tr_mark("Deck {deck}: CUE CALL ◁"), BUTTON,
+               engine.ACT_CALL_PREVIOUS, args=a, tip=tr_mark("The CUE point before (stopped); the cue point moves there.")),
+        Action("deck1.memory_next", CUE_POINTS, tr_mark("Deck {deck}: CUE CALL ▷"), BUTTON, engine.ACT_CALL_NEXT,
+               args=a, tip=tr_mark("The CUE point after (stopped); the cue point moves there.")),
+        Action("deck1.memory_set", CUE_POINTS, tr_mark("Deck {deck}: MEMORY"), BUTTON, gui=("cue.memory",), args=a,
+               tip=tr_mark("A CUE point at the nearest beat (an edit).")),
+        Action("deck1.memory_delete", CUE_POINTS, tr_mark("Deck {deck}: CUE point DELETE"), BUTTON,
+               gui=("cue.memory_delete",), args=a, tip=tr_mark("The CUE point the playhead is on (an edit).")),
     ]
-    if one:
-        out += [
-            Action("deck1.memory_set", CUE_POINTS, tr_mark("Deck {deck}: MEMORY"), BUTTON, gui=("cue.memory",), args=a,
-                   tip=tr_mark("A CUE point at the nearest beat (an edit).")),
-            Action("deck1.memory_delete", CUE_POINTS, tr_mark("Deck {deck}: CUE point DELETE"), BUTTON,
-                   gui=("cue.memory_delete",), args=a, tip=tr_mark("The CUE point the playhead is on (an edit).")),
-        ]
     for i, letter in enumerate(JUMPCUE_PADS):
-        pad = {"deck": n, "letter": letter}
-        out.append(Action(f"{d}.jumpcue.{letter}", JUMPCUE, tr_mark("Deck {deck}: JumpCUE {letter}"), BUTTON,
-                          _deck_code(engine.ACT_JUMP_A + i, n), lamp=i + 1, shown=one, args=pad,
+        pad = {"deck": 1, "letter": letter}
+        out.append(Action(f"deck1.jumpcue.{letter}", JUMPCUE, tr_mark("Deck {deck}: JumpCUE {letter}"), BUTTON,
+                          engine.ACT_JUMP_A + i, lamp=i + 1, args=pad,
                           tip=tr_mark("JUMP on the next beat (stopped: the playhead there); an empty slot: SET (an "
                                       "edit). Lit while set.")))
-        if one:
-            out.append(Action(f"deck1.jumpcue_delete.{letter}", JUMPCUE, tr_mark("Deck {deck}: JumpCUE {letter} delete"),
-                              BUTTON, gui=(f"cue.delete.{letter}",), lamp=i + 1, args=pad,
-                              tip=tr_mark("As SHIFT + a pad (an edit).")))
+        out.append(Action(f"deck1.jumpcue_delete.{letter}", JUMPCUE, tr_mark("Deck {deck}: JumpCUE {letter} delete"),
+                          BUTTON, gui=(f"cue.delete.{letter}",), lamp=i + 1, args=pad,
+                          tip=tr_mark("As SHIFT + a pad (an edit).")))
     for k, beats in enumerate(engine.BEAT_JUMP_SIZES):
-        b = {"deck": n, "beats": beats}
-        out.append(Action(f"{d}.beatjump_back.{beats}", BEAT_JUMP, tr_mark("Deck {deck}: BEAT JUMP ◁ {beats}"), BUTTON,
-                          _deck_code(engine.ACT_BEAT_JUMP + 2 * k, n), shown=one, args=b))
-        out.append(Action(f"{d}.beatjump_forward.{beats}", BEAT_JUMP, tr_mark("Deck {deck}: BEAT JUMP ▷ {beats}"),
-                          BUTTON, _deck_code(engine.ACT_BEAT_JUMP + 2 * k + 1, n), shown=one, args=b))
+        b = {"deck": 1, "beats": beats}
+        out.append(Action(f"deck1.beatjump_back.{beats}", BEAT_JUMP, tr_mark("Deck {deck}: BEAT JUMP ◁ {beats}"), BUTTON,
+                          engine.ACT_BEAT_JUMP + 2 * k, args=b))
+        out.append(Action(f"deck1.beatjump_forward.{beats}", BEAT_JUMP, tr_mark("Deck {deck}: BEAT JUMP ▷ {beats}"),
+                          BUTTON, engine.ACT_BEAT_JUMP + 2 * k + 1, args=b))
     return out
 
 
-def _mixer_actions(n: int) -> list[Action]:
-    """Mixer channel ``n``'s (the settings show channel 1's volume fader, EQ, headphones CUE and level meter)."""
-    c, one = f"mixer.ch{n}", n == 1
-    a = {"channel": n}
+def _mixer_actions() -> list[Action]:
+    """The deck's mixer channel (channel 1)."""
+    a = {"channel": 1}
     return [
-        Action(f"{c}.volume", MIXER, tr_mark("Channel {channel}: channel fader"), FADER,
-               _deck_code(engine.ACT_VOLUME_FADER, n), shown=one, args=a, tip=tr_mark("The deck's volume.")),
-        Action(f"{c}.eq_high", MIXER, tr_mark("Channel {channel}: EQ HI"), FADER,
-               _deck_code(engine.ACT_EQ_HIGH, n), shown=one, args=a,
+        Action("mixer.ch1.volume", MIXER, tr_mark("Channel {channel}: channel fader"), FADER, engine.ACT_VOLUME_FADER,
+               args=a, tip=tr_mark("The deck's volume.")),
+        Action("mixer.ch1.trim", MIXER, tr_mark("Channel {channel}: TRIM"), FADER, engine.ACT_TRIM, args=a,
+               tip=tr_mark("The channel's level before its EQ and fader: -24 to +9 dB, the middle 0 dB.")),
+        Action("mixer.ch1.eq_high", MIXER, tr_mark("Channel {channel}: EQ HI"), FADER, engine.ACT_EQ_HIGH, args=a,
                tip=tr_mark("An isolator band: the bottom kills it, the middle 0 dB, the top +6 dB.")),
-        Action(f"{c}.eq_mid", MIXER, tr_mark("Channel {channel}: EQ MID"), FADER,
-               _deck_code(engine.ACT_EQ_MID, n), shown=one, args=a,
+        Action("mixer.ch1.eq_mid", MIXER, tr_mark("Channel {channel}: EQ MID"), FADER, engine.ACT_EQ_MID, args=a,
                tip=tr_mark("An isolator band: the bottom kills it, the middle 0 dB, the top +6 dB.")),
-        Action(f"{c}.eq_low", MIXER, tr_mark("Channel {channel}: EQ LOW"), FADER,
-               _deck_code(engine.ACT_EQ_LOW, n), shown=one, args=a,
+        Action("mixer.ch1.eq_low", MIXER, tr_mark("Channel {channel}: EQ LOW"), FADER, engine.ACT_EQ_LOW, args=a,
                tip=tr_mark("An isolator band: the bottom kills it, the middle 0 dB, the top +6 dB.")),
-        Action(f"{c}.trim", MIXER, tr_mark("Channel {channel}: TRIM"), FADER,
-               _deck_code(engine.ACT_TRIM, n), shown=False, args=a),
-        Action(f"{c}.color", EFFECTS, tr_mark("Channel {channel}: COLOR (Sound Color FX)"), FADER,
-               _deck_code(engine.ACT_COLOR_KNOB, n), shown=one, args=a,
+        Action("mixer.ch1.color", EFFECTS, tr_mark("Channel {channel}: COLOR (Sound Color FX)"), FADER,
+               engine.ACT_COLOR_KNOB, args=a,
                tip=tr_mark("The Sound Color FX picked, on the channel: its middle off, its two flavours left and "
                            "right (a DDJ's CFX knob).")),
-        Action(f"{c}.cue", MIXER, tr_mark("Channel {channel}: headphones CUE"), BUTTON,
-               _deck_code(engine.ACT_CHANNEL_CUE, n), lamp=engine.LAMP_CHANNEL_CUE, shown=one, args=a,
+        Action("mixer.ch1.cue", MIXER, tr_mark("Channel {channel}: headphones CUE"), BUTTON, engine.ACT_CHANNEL_CUE,
+               lamp=engine.LAMP_CHANNEL_CUE, args=a,
                tip=tr_mark("A press turns it on or off: the channel's sound before its fader in the headphones. Lit "
                            "while on.")),
-        Action(f"{c}.level_meter", MIXER, tr_mark("Channel {channel}: level meter (output)"), METER,
-               _deck_code(engine.ACT_LEVEL_METER, n), shown=one, args=a,
+        Action("mixer.ch1.level_meter", MIXER, tr_mark("Channel {channel}: level meter (output)"), METER,
+               engine.ACT_LEVEL_METER, args=a,
                tip=tr_mark("The controller's level meter shows the deck's peak meter (a CC sent: its segments lit, "
                            "-30 to +12 dB, as 0 - 127); taken from a rekordbox mapping (its ChannelLevel), not "
                            "learned.")),
@@ -199,8 +166,7 @@ def _mixer_actions(n: int) -> list[Action]:
 
 
 def _effect_actions() -> list[Action]:
-    """The mixer's effects: Sound Color FX (each effect's button, PARAMETER). The engine's Beat FX acts
-    (engine.ACT_BEAT_FX_*) have no action: Beat FX is not shown to the user (the engine keeps it, off)."""
+    """The mixer's effects: Sound Color FX (each effect's button, PARAMETER)."""
     return [
         *(Action(f"fx.color_select.{k}", EFFECTS, tr_mark("Sound Color FX: {effect}"), BUTTON,
                  engine.ACT_COLOR_SELECT + k, lamp=engine.LAMP_COLOR + k, args={"effect": name},
@@ -212,7 +178,7 @@ def _effect_actions() -> list[Action]:
 
 
 ACTIONS: tuple[Action, ...] = (
-    *(action for n in range(1, DECKS + 1) for action in _deck_actions(n)),
+    *_deck_actions(),
     Action("browser.rotate", BROWSER, tr_mark("Browser: BROWSE knob"), KNOB,
            gui=("library.next", "library.previous"), tip=tr_mark("Turned: the next / previous track.")),
     Action("browser.press", BROWSER, tr_mark("Browser: BROWSE pressed"), BUTTON, gui=("library.browse_sources",),
@@ -221,7 +187,7 @@ ACTIONS: tuple[Action, ...] = (
            tip=tr_mark("Back to the tracks.")),
     Action("browser.zoom", BROWSER, tr_mark("Browser: waveform zoom (SHIFT + BROWSE)"), KNOB,
            gui=("playback.zoom_in", "playback.zoom_out"), tip=tr_mark("Turned: the waveform zoomed in / out.")),
-    *(action for n in range(1, DECKS + 1) for action in _mixer_actions(n)),
+    *_mixer_actions(),
     Action("mixer.headphones_mix", MIXER, tr_mark("Headphones: CUE / MASTER"), FADER, engine.ACT_HEADPHONES_MIX,
            tip=tr_mark("The CUE'd channels against the master in the headphones (with the master mixed in: Settings "
                        "> Audio > Headphones).")),
@@ -229,7 +195,6 @@ ACTIONS: tuple[Action, ...] = (
     Action("mixer.master_level", MIXER, tr_mark("Master: level"), FADER, engine.ACT_MASTER_LEVEL),
     *_effect_actions(),
 )
-ACTIONS_SHOWN = tuple(a for a in ACTIONS if a.shown)
 BY_ID = {a.id: a for a in ACTIONS}
 
 
@@ -421,9 +386,8 @@ _REKORDBOX_GLOBAL = {
     "Zoom": "browser.zoom",
     "HeadphonesMix": "mixer.headphones_mix",
     "HeadphonesVolume": "mixer.headphones_level",
-    # its CFX knobs (the channel's COLOR); FX1 (Beat FX) is left out: not shown to the user
+    # its CFX knob of channel 1 (the channel's COLOR)
     "CFXParameterCH1": "mixer.ch1.color",
-    "CFXParameterCH2": "mixer.ch2.color",
 }
 # outputs: deck 1's output column
 _REKORDBOX_OUTPUT = {"ChannelLevel": "mixer.ch1.level_meter"}

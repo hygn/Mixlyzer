@@ -90,10 +90,10 @@ class ControlTableTests(unittest.TestCase):
         self.assertEqual(len(set(c.MIX_KEYS)), len(c.MIX_KEYS))
         self.assertEqual([c.MIX_KEY[k] for k in c.MIX_KEYS], list(range(len(c.MIX_KEYS))))
 
-    def test_deck_actions_fit_under_the_deck_bits(self):
+    def test_deck_actions_below_the_guis(self):
         acts = {name: value for name, value in vars(c).items() if name.startswith("ACT_") and isinstance(value, int)}
-        codes = [value for name, value in acts.items() if name not in ("ACT_DECK_SHIFT", "ACT_GUI")]
-        self.assertTrue(all(0 < code < 1 << c.ACT_DECK_SHIFT for code in codes))
+        codes = [value for name, value in acts.items() if name != "ACT_GUI"]
+        self.assertTrue(all(0 < code < c.ACT_GUI for code in codes))
         self.assertLess(c.ACT_JUMP_A + 7, c.ACT_BEND_DOWN)                       # pads A - H before the next act
         last_jump = c.ACT_BEAT_JUMP + 2 * len(c.BEAT_JUMP_SIZES) - 1
         self.assertGreater(c.ACT_GUI, last_jump)

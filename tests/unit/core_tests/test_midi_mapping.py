@@ -84,12 +84,12 @@ class RelativeStepsTests(unittest.TestCase):
 
 
 class ActionTests(unittest.TestCase):
-    """The actions Settings > MIDI shows (ACTIONS_SHOWN): the ones a user binds."""
+    """The actions Settings > MIDI shows (ACTIONS): the ones a user binds."""
 
     def test_ids_unique_and_grouped(self):
         ids = [a.id for a in midi.ACTIONS]
         self.assertEqual(len(ids), len(set(ids)))
-        for a in midi.ACTIONS_SHOWN:
+        for a in midi.ACTIONS:
             with self.subTest(action=a.id):
                 self.assertIn(a.group, midi.GROUPS)
                 self.assertIn(a.kind, (midi.BUTTON, midi.FADER, midi.KNOB, midi.TOUCH, midi.METER))
@@ -102,28 +102,27 @@ class ActionTests(unittest.TestCase):
     def test_engine_codes_unique(self):
         codes = [a.code for a in midi.ACTIONS if a.code]
         self.assertEqual(len(codes), len(set(codes)))
-        for a in midi.ACTIONS_SHOWN:
+        for a in midi.ACTIONS:
             if a.code:
-                self.assertEqual(a.code >> engine.ACT_DECK_SHIFT, 0)            # deck 1's, mixer channel 1's
                 self.assertLess(a.code, engine.ACT_GUI)
 
-    def test_shown_ones_are_deck_one(self):
-        for a in midi.ACTIONS_SHOWN:
+    def test_ids_name_deck_one(self):
+        for a in midi.ACTIONS:
             self.assertNotRegex(a.id, r"^(deck|mixer\.ch)(?!1\.)\d")
+        self.assertIn("mixer.ch1.trim", midi.BY_ID)                            # the TRIM knob, as the screen's
 
     def test_gui_actions_are_shortcuts(self):
         shortcut_ids = {a.id for a in ui_shortcuts.ACTIONS}
-        for a in midi.ACTIONS_SHOWN:
+        for a in midi.ACTIONS:
             for gui in a.gui:
                 with self.subTest(action=a.id, gui=gui):
                     self.assertIn(gui, shortcut_ids)
 
     def test_gui_codes_round_trip(self):
-        for a in midi.ACTIONS_SHOWN:
+        for a in midi.ACTIONS:
             self.assertIs(midi.gui_action(midi.gui_code(a)), a)
         self.assertIsNone(midi.gui_action(engine.ACT_GUI - 1))
         self.assertIsNone(midi.gui_action(engine.ACT_GUI + len(midi.ACTIONS)))
-        self.assertLess(midi.gui_code(midi.ACTIONS[-1]), 1 << engine.ACT_DECK_SHIFT)
 
     def test_bindings(self):
         got = midi.bindings({"deck1.play_pause": ["900B", "nonsense", "910B"], "no.such.action": ["9000"],

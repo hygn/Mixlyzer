@@ -96,7 +96,7 @@ class outputconfig:
 class deckconfig:
     """What playing changes, kept in deck.json (beside config.json, the settings that seldom change): saved as it
     changes (the toolbar, the deck's buttons, a controller, the editor's metronome) and applied at the start. The
-    deck's momentary state (FX ON, the EQ and COLOR knobs, CUE, the crossfader, a tapped BPM) is not kept: every
+    deck's momentary state (FX ON, the EQ and COLOR knobs, CUE) is not kept: every
     start begins with the effects off and the knobs in their middles."""
     use_timestretch: bool  # tempo changes keep the pitch (time stretch) instead of varispeed (the MT button)
     # the metronome (the editor's listening aids; Settings > Audio > Metronome)
@@ -159,7 +159,7 @@ class playbackconfig:
     midi_input: str
     midi_jog_ticks: int
     # the native engine's outputs, as a DJ mixer's: the main device's channel pair of the master ("1-2"), the
-    # headphones (the CUE'd decks and the master) and the booth (the master again)
+    # headphones (the CUE'd channel and the master) and the booth (the master again)
     output_main: str
     output_headphones: outputconfig
     output_booth: outputconfig

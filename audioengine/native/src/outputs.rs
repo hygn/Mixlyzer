@@ -18,7 +18,7 @@ use crate::device::{self, BRIDGED_BUSES, Port, Source};
 use crate::ipc::{Control, out};
 use crate::monitor::Monitor;
 
-const BUS_NAMES: [&str; BRIDGED_BUSES] = ["headphones", "booth", "headphones B"];
+const BUS_NAMES: [&str; BRIDGED_BUSES] = ["headphones", "booth"];
 
 /// What a bus's own output is asked to be (op::SET_AUX_OUTPUT).
 #[derive(Clone, PartialEq)]

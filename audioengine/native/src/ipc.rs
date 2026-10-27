@@ -13,29 +13,26 @@
 //! [MIDI_EVENTS_OFFSET, DEVICES_OFFSET): the MIDI messages received, a ring the engine writes (deck.rs: the GUI's
 //!   own actions bound to them, and every message for the settings' MIDI learn).
 //! [DEVICES_OFFSET, OUTPUTS_OFFSET): the output devices, written when asked (op::LIST_DEVICES).
-//! [OUTPUTS_OFFSET, MIX_OFFSET): the state of the buses on devices of their own (headphones A, the booth,
-//!   headphones B; out::*), written with the state under its sequence lock.
+//! [OUTPUTS_OFFSET, MIX_OFFSET): the state of the buses on devices of their own (the headphones, the booth;
+//!   out::*), written with the state under its sequence lock.
 //! [MIX_OFFSET, RING_OFFSET): the mixer's settings as it has them (mix::*: f64 each by key) and its meters
 //!   (mix::METERS), written with the state under its sequence lock.
 
 use std::sync::atomic::{AtomicU64, Ordering, fence};
 
 pub const MAGIC: u64 = u64::from_le_bytes(*b"MXAUDIC1");
-pub const VERSION: u32 = 6;
+pub const VERSION: u32 = 7;
 pub const STATE_OFFSET: usize = 64;
 pub const RING_OFFSET: usize = 172032;
 pub const RING_HEADER: usize = 64;
 pub const HIST_MAX: usize = 4096;
-/// The decks the engine plays (a mixer channel each), the app showing deck 1; deck k's actions carry k - 1 from
-/// act::DECK_SHIFT up, its commands op::FOR_DECK.
-pub const MAX_DECKS: usize = 8;
 /// The output devices, written when asked (op::LIST_DEVICES): [generation u64, length u32, pad u32] + UTF-8 text:
 /// the main output's device in use on the first line, the system's default as "name<TAB>channels" on the second
 /// (empty: none), then one listed device a line, "name<TAB>channels". The generation is written last.
 pub const DEVICES_OFFSET: usize = 40960;
 pub const DEVICES_MAX: usize = OUTPUTS_OFFSET - DEVICES_OFFSET - 16;
-/// The buses that may play on a device of their own (device.rs BRIDGED_BUSES: 0 headphones A, 1 the booth, 2
-/// headphones B), each a block of out::SIZE from here.
+/// The buses that may play on a device of their own (device.rs BRIDGED_BUSES: 0 the headphones, 1 the booth), each
+/// a block of out::SIZE from here.
 pub const OUTPUTS_OFFSET: usize = 65536;
 /// The mixer's settings and meters (mix::*), after the buses' blocks.
 pub const MIX_OFFSET: usize = 165888;
@@ -120,34 +117,11 @@ pub mod st {
     pub const LEDS: usize = DECK + 32; // u32 bit 0 PLAY lit, bit 1 CUE lit (blinking: as they are now)
     pub const TEMPO_RANGE: usize = DECK + 36; // u32 the tempo fader's range (+-%; 100: WIDE, 0 - 200 %)
     pub const MIDI_STATE: usize = DECK + 40; // u32 0 closed, 1 open, 2 the port did not open
-    pub const OUT_CHANNELS: usize = DECK + 44; // u32 the output device's channels (the decks play stereo)
-    // every deck's (a player's and its mixer channel's): DECKS_STATE + k * DECK_STATE_SIZE, ROW_* (deck 1's also
-    // above)
-    pub const DECKS_STATE: usize = DECK + 48;
-    pub const DECK_STATE_SIZE: usize = 160;
-    pub const ROW_THERE: usize = 0; // u32 1: the deck is made
-    pub const ROW_PLAYING: usize = 4; // u32
-    pub const ROW_TRACK_GEN: usize = 8; // u32
-    pub const ROW_LAMPS: usize = 12; // u32 bit 0 PLAY lit, bit 1 CUE lit
-    pub const ROW_TEMPO_RANGE: usize = 16; // u32
-    pub const ROW_AT_END: usize = 20; // u32
-    pub const ROW_CHANNEL_CUE: usize = 24; // u32 its mixer channel's headphones CUE on
-    pub const ROW_PLAYHEAD: usize = 32; // f64 input frame being heard
-    pub const ROW_FACTOR: usize = 40; // f64 the tempo
-    pub const ROW_VOLUME: usize = 48; // f64 the channel fader (0 .. 1)
-    pub const ROW_CUE: usize = 56; // f64 the cue point (input frame; NaN: no track)
-    pub const ROW_JUMP_DEST: usize = 64; // f64 the JumpCUE armed: its destination (NaN: none)
-    pub const ROW_DISPLAY: usize = 72; // f64 input frame to draw, at DISPLAY_AT
-    pub const ROW_DISPLAY_RATE: usize = 80; // f64 input frames per second it moves at (0: held)
-    pub const ROW_PEAK: usize = 88; // f64 dBFS: its channel's meter (before the fader)
-    pub const ROW_KNOBS: usize = 96; // f64 x 4: its channel's TRIM, EQ LOW, MID, HIGH knobs (0 .. 1, the middle 0 dB)
-    pub const ROW_JUMPED: usize = 128; // u64 jumps played
-    pub const ROW_FINISHED: usize = 136; // u64 track ends heard
-    pub const ROW_COLOR: usize = 144; // f64 its channel's COLOR knob (0 .. 1, 0.5 off)
-    pub const ROW_CUE_B: usize = 152; // u32 its mixer channel's headphones B CUE on
-    // the mixer's: f64 the crossfader (0 A .. 1 B), f64 the headphones' CUE / MASTER mix, f64 their level, u32 the
-    // master mixed into them, u32 the crossfader's curve (0 smooth, 1 sharp)
-    pub const MIXER_STATE: usize = DECKS_STATE + super::MAX_DECKS * DECK_STATE_SIZE;
+    pub const OUT_CHANNELS: usize = DECK + 44; // u32 the output device's channels (the deck plays stereo)
+    // its mixer channel's (the meter is PEAK above)
+    pub const CHANNEL_CUE: usize = DECK + 48; // u32 its headphones CUE on
+    pub const KNOBS: usize = DECK + 56; // f64 x 4: its TRIM, EQ LOW, MID, HIGH knobs (0 .. 1, the middle 0 dB)
+    pub const COLOR: usize = DECK + 88; // f64 its COLOR knob (0 .. 1, 0.5 off)
 }
 
 /// A bus's output on a device of its own (OUTPUTS_OFFSET + k * SIZE), its fields as the main output's above.
@@ -191,58 +165,36 @@ pub mod out {
 /// their code.
 pub mod mix {
     pub const EQ_MODE: usize = 0; // 0 isolator (a band down to a kill), 1 EQ (-26 dB at the bottom)
-    pub const FADER_CURVE: usize = 1; // the channel faders': 0 smooth (the GUI's), 1 steep (up fast), 2 slow
-    pub const XF_CURVE: usize = 2; // the crossfader's: 0 smooth (constant power), 1 sharp (cut), 2 linear
-    pub const CROSSFADER: usize = 3; // 0 the A side .. 1 the B side
-    pub const COLOR_TYPE: usize = 4; // Sound Color FX: 0 SPACE, 1 DUB ECHO, 2 SWEEP, 3 NOISE, 4 CRUSH, 5 FILTER, 6 none
-    pub const COLOR_PARAM: usize = 5; // its PARAMETER knob
-    pub const BEAT_ON: usize = 6; // Beat FX on
-    pub const BEAT_TYPE: usize = 7; // beatfx.rs BeatType's code
-    pub const BEAT_CHANNEL: usize = 8; // 0 .. 7 a deck's channel, 8 the master, 9 the crossfader's A, 10 B
-    pub const BEAT_BEAT: usize = 9; // BEAT: beats (BeatType::beats' values; REVERB its level %, MOBIUS below 0 falling)
-    pub const BEAT_LEVEL: usize = 10; // LEVEL / DEPTH
-    pub const HP_A_MIX: usize = 11; // headphones A: CUE / MASTER mix (0 CUE .. 1 MASTER)
-    pub const HP_A_LEVEL: usize = 12; // its level
-    pub const HP_A_MASTER: usize = 13; // the master mixed in (0: a device mixing it in itself)
-    pub const HP_B_MIX: usize = 14;
-    pub const HP_B_LEVEL: usize = 15;
-    pub const HP_B_MASTER: usize = 16;
-    pub const MASTER_LEVEL: usize = 17;
-    pub const BOOTH_LEVEL: usize = 18;
-    pub const BOOTH_EQ_HI: usize = 19;
-    pub const BOOTH_EQ_LOW: usize = 20;
-    pub const BEAT_TIME: usize = 21; // TIME: ms (BeatType::time_range; MOBIUS's either sign), 0 by BEAT
-    pub const BEAT_BANDS: usize = 22; // FX FREQUENCY: 1 LOW, 2 MID, 4 HI (the bands Beat FX works on)
-    pub const BEAT_BPM: usize = 23; // 0 AUTO (the channel's deck's BPM), else the BPM tapped (TAP)
-    pub const BEAT_XPAD: usize = 24; // the X-PAD where an effect reads it itself (MOBIUS, REVERB): 0 .. 1, -1 none
-    pub const HP_A_SPLIT: usize = 25; // headphones A MONO SPLIT: the CUE'd channels left, the master right
-    pub const HP_B_SPLIT: usize = 26;
-    pub const MASTER_CUE_A: usize = 27; // the master's CUE A: the master in headphones A's CUE
-    pub const MASTER_CUE_B: usize = 28;
-    pub const KEYS: usize = 29;
+    pub const FADER_CURVE: usize = 1; // the channel fader's: 0 smooth (the GUI's), 1 steep (up fast), 2 slow
+    pub const COLOR_TYPE: usize = 2; // Sound Color FX: colorfx::ColorType's code (ColorType::COUNT: none)
+    pub const COLOR_PARAM: usize = 3; // its PARAMETER knob
+    pub const HP_MIX: usize = 4; // the headphones: CUE / MASTER mix (0 CUE .. 1 MASTER)
+    pub const HP_LEVEL: usize = 5; // their level
+    pub const HP_MASTER: usize = 6; // the master mixed in (0: a device mixing it in itself)
+    pub const HP_SPLIT: usize = 7; // MONO SPLIT: the CUE left, the master right
+    pub const MASTER_LEVEL: usize = 8;
+    pub const BOOTH_LEVEL: usize = 9;
+    pub const BOOTH_EQ_HI: usize = 10;
+    pub const BOOTH_EQ_LOW: usize = 11;
+    pub const KEYS: usize = 12;
     /// The keys' names (client.py MIX_KEYS; mixlyzer-audio --mix-file's --set name=value).
     pub const NAMES: [&str; KEYS] = [
-        "eq_mode", "fader_curve", "xf_curve", "crossfader", "color_type", "color_param", "beat_on", "beat_type",
-        "beat_channel", "beat_beat", "beat_level", "hp_a_mix", "hp_a_level", "hp_a_master", "hp_b_mix", "hp_b_level",
-        "hp_b_master", "master_level", "booth_level", "booth_eq_hi", "booth_eq_low", "beat_time", "beat_bands", "beat_bpm",
-        "beat_xpad", "hp_a_split", "hp_b_split", "master_cue_a", "master_cue_b",
+        "eq_mode", "fader_curve", "color_type", "color_param", "hp_mix", "hp_level", "hp_master", "hp_split",
+        "master_level", "booth_level", "booth_eq_hi", "booth_eq_low",
     ];
     /// A level knob's position at 0 dB (mixer::level_gain).
     pub const LEVEL_UNITY: f64 = 0.8;
     /// Each key's value at the start.
     pub const DEFAULTS: [f64; KEYS] = [
-        0.0, 0.0, 0.0, 0.5, 5.0, 0.5, 0.0, 1.0, 8.0, 1.0, 0.5, //
-        0.5, LEVEL_UNITY, 1.0, 0.5, LEVEL_UNITY, 1.0, //
-        LEVEL_UNITY, LEVEL_UNITY, 0.5, 0.5, //
-        0.0, 7.0, 0.0, -1.0, 0.0, 0.0, 0.0, 0.0,
+        0.0, 0.0, 5.0, 0.5, //
+        0.5, LEVEL_UNITY, 1.0, 0.0, //
+        LEVEL_UNITY, LEVEL_UNITY, 0.5, 0.5,
     ];
-    /// The meters, after the keys' values (f64 linear peaks since the last publish; METER_BPM the tempo Beat FX
-    /// plays at, as it last did): MIX_OFFSET + 8 * (METERS + k).
+    /// The meters, after the keys' values (f64 linear peaks since the last publish): MIX_OFFSET + 8 * (METERS + k).
     pub const METERS: usize = 64;
     pub const METER_MASTER: usize = 0;
     pub const METER_BOOTH: usize = 1;
-    pub const METER_BPM: usize = 2;
-    pub const METER_COUNT: usize = 3;
+    pub const METER_COUNT: usize = 2;
     /// Value / meter ``k``'s place, as a state field (Control::put_*).
     pub const fn at(k: usize) -> usize {
         super::MIX_OFFSET - super::STATE_OFFSET + 8 * k
@@ -299,14 +251,10 @@ pub mod op {
     pub const MIDI_OPTIONS: u32 = 42; // u32 a jog wheel's messages (ticks) per turn; u32 its mode (1 VINYL, 0 CDJ)
     pub const SET_TEMPO_RANGE: u32 = 43; // u32 the tempo fader's range (+-%: 6, 10, 16, 100 WIDE)
     pub const SET_METER_GAIN: u32 = 44; // f64 linear: the level meter's input, as the GUI's peak meter
-    // u32 deck (0: deck 1), u32 op, its payload: a deck's command (the ops above without one: deck 1's)
-    pub const FOR_DECK: u32 = 45;
-    pub const SET_CROSSFADER: u32 = 46; // f64 position (0 A .. 1 B), u32 curve (0 smooth, 1 sharp)
-    // u8 x 6 (or 8) the device's channels: main L / R, headphones A L / R, booth L / R, [headphones B L / R] (255:
-    // not routed); the headphones' CUE / MASTER mix and level are mix::HP_*
+    // u8 x 6 the device's channels: main L / R, headphones L / R, booth L / R (255: not routed); the headphones'
+    // CUE / MASTER mix and level are mix::HP_*
     pub const SET_ROUTING: u32 = 47;
-    pub const SET_ASSIGN: u32 = 48; // u32 deck, u32 its crossfader side (0 A, 1 THRU, 2 B)
-    pub const SET_CHANNEL_CUE: u32 = 49; // u32 deck, u32 its headphones CUE on, [u32 which: 0 A, 1 B]
+    pub const SET_CHANNEL_CUE: u32 = 49; // u32 the mixer channel's headphones CUE on
     // a bus on a device of its own: u32 bus (0 the headphones, 1 the booth), u32 on (0: not: SET_ROUTING's channels
     // of the main device, if any), u32 API, u32 exclusive, f64 buffer ms, u8 left, u8 right (its device's channels),
     // u16 pad, u32 its rate (0: the device's mix format's), the device's name (u32 len + utf8; empty: the system's
@@ -315,8 +263,8 @@ pub mod op {
     // the headphones: u32 the master mixed in (0: a device mixing it in itself), f64 the CUE / MASTER mix (0 CUE ..
     // 1 MASTER), f64 their level (linear); a controller's knobs (act::HEADPHONES_MIX / LEVEL) move them later
     pub const SET_HEADPHONES: u32 = 51;
-    // a deck's mixer channel knob: u32 which (0 TRIM, 1 EQ LOW, 2 MID, 3 HIGH, 4 COLOR), f64 its position (0 .. 1,
-    // the middle 0 dB / off); with FOR_DECK another deck's
+    // the deck's mixer channel knob: u32 which (0 TRIM, 1 EQ LOW, 2 MID, 3 HIGH, 4 COLOR), f64 its position (0 .. 1,
+    // the middle 0 dB / off)
     pub const SET_MIXER_KNOB: u32 = 52;
     pub const SET_MIXER: u32 = 53; // u32 key (mix::*), f64 value
 }
@@ -353,21 +301,17 @@ pub mod act {
     pub const JOG_SEARCH: u32 = 37;
     /// An output: the controller's level meter (a CC, 0 - 127 over the GUI meter's -24 - 0 dBFS).
     pub const LEVEL_METER: u32 = 38;
-    // the mixer (mixer.rs): a channel's trim and EQ bands (knobs: the middle 0 dB), the crossfader, a channel's
-    // headphones CUE (a press turns it on or off), the headphones' CUE / MASTER mix and level
+    // the mixer (mixer.rs): the channel's trim and EQ bands (knobs: the middle 0 dB), its headphones CUE (a press
+    // turns it on or off), the headphones' CUE / MASTER mix and level
     pub const TRIM: u32 = 39;
     pub const EQ_LOW: u32 = 40;
     pub const EQ_MID: u32 = 41;
     pub const EQ_HIGH: u32 = 42;
-    pub const CROSSFADER: u32 = 43;
     pub const CHANNEL_CUE: u32 = 44;
     pub const HEADPHONES_MIX: u32 = 45;
     pub const HEADPHONES_LEVEL: u32 = 46;
-    // DJM's: a channel's COLOR knob and CUE B (its deck from DECK_SHIFT up), the others the mixer's
+    // DJM's: the channel's COLOR knob, the others the mixer's
     pub const COLOR_KNOB: u32 = 47;
-    pub const CHANNEL_CUE_B: u32 = 48;
-    pub const HEADPHONES_B_MIX: u32 = 49;
-    pub const HEADPHONES_B_LEVEL: u32 = 50;
     pub const MASTER_LEVEL: u32 = 51;
     pub const BOOTH_LEVEL: u32 = 52;
     pub const BOOTH_EQ_HI: u32 = 53;
@@ -375,27 +319,7 @@ pub mod act {
     pub const COLOR_PARAM: u32 = 55;
     /// COLOR_SELECT + k: Sound Color FX k picked (colorfx::ColorType's code: 0 - 6, up to 62)
     pub const COLOR_SELECT: u32 = 56;
-    pub const BEAT_FX_ON: u32 = 80; // a press turns it on or off
-    pub const BEAT_FX_LEVEL: u32 = 81;
-    pub const BEAT_FX_BEAT_DOWN: u32 = 82; // the beat value halved (a press)
-    pub const BEAT_FX_BEAT_UP: u32 = 83;
-    pub const BEAT_FX_SELECT: u32 = 84; // a knob turned: the next / previous effect
-    pub const BEAT_FX_CHANNEL: u32 = 85; // a knob turned: the next / previous channel
-    pub const BEAT_FX_TIME: u32 = 86; // the TIME knob (a fader's value or a knob's steps)
-    pub const BEAT_FX_TAP: u32 = 87; // TAP: the BPM from the taps (more than two)
-    pub const BEAT_FX_AUTO: u32 = 88; // AUTO/TAP: back to the deck's BPM
-    pub const BEAT_FX_XPAD: u32 = 89; // the X-PAD's place (a fader's value)
-    pub const BEAT_FX_XPAD_TOUCH: u32 = 90; // the X-PAD touched (on while held, when it turned it on)
-    /// BEAT_FX_BAND + k: FX FREQUENCY LOW (0), MID (1), HI (2) turned on or off
-    pub const BEAT_FX_BAND: u32 = 91;
-    pub const HEADPHONES_A_SPLIT: u32 = 94; // MONO SPLIT on or off
-    pub const HEADPHONES_B_SPLIT: u32 = 95;
-    pub const MASTER_CUE_A: u32 = 96; // the master's CUE A on or off
-    pub const MASTER_CUE_B: u32 = 97;
-    pub const BEAT_FX_SELECT_BACK: u32 = 98; // a press: the previous effect (BEAT_FX_SELECT's a press: the next)
-    /// An action's deck (its mixer channel), 0 for deck 1, from this bit up; the action below it.
-    pub const DECK_SHIFT: u32 = 24;
-    pub const CODE_MASK: u32 = (1 << DECK_SHIFT) - 1;
+    pub const HEADPHONES_SPLIT: u32 = 94; // MONO SPLIT on or off
     /// The GUI's own actions (library, editor ...) from here: passed on to it (MIDI_EVENT_GUI).
     pub const GUI: u32 = 0x1000;
 }
@@ -649,11 +573,6 @@ impl<'a> Reader<'a> {
 
     pub fn f64(&mut self) -> Option<f64> {
         self.take(8).map(|b| f64::from_le_bytes(b.try_into().unwrap()))
-    }
-
-    /// What is left of the payload.
-    pub fn rest(&self) -> &'a [u8] {
-        &self.data[self.at.min(self.data.len())..]
     }
 
     pub fn str(&mut self) -> Option<String> {

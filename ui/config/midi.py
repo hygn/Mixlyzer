@@ -1,7 +1,7 @@
 """Settings > MIDI: a MIDI controller for the deck, read by the native audio engine itself (never through the GUI's
-Python; none on the Python engine): its input port, its jog wheel's resolution, and the MIDI messages of deck 1's
-and mixer channel 1's actions shown (``core.controls.midi.ACTIONS_SHOWN``: a DJ controller's; the other decks' and channels'
-are kept as they are in the mapping, not shown). Learn takes the next control moved or pressed: a fader's 14-bit CC
+Python; none on the Python engine): its input port, its jog wheel's resolution, and the MIDI messages of the deck's
+and its mixer channel's actions (``core.controls.midi.ACTIONS``: a DJ controller's; a mapping's entries of no action
+are dropped at the next save). Learn takes the next control moved or pressed: a fader's 14-bit CC
 or pitch bend, a knob's turn (a button bound to a knob: the direction turned), a button; Import reads a rekordbox
 MIDI mapping (CSV). OK / Apply keep the mapping as the user's (``core.controls.midi.save``)."""
 
@@ -89,7 +89,7 @@ def build_midi_tab(dialog) -> None:
     bold.setBold(True)
     dialog._midi_items = {}   # action id -> its row
     groups = [(group, [(a.id, midi.action_label(a), f"<p>{tr(a.tip)}</p>" if a.tip else "")
-                       for a in midi.ACTIONS_SHOWN if a.group == group]) for group in midi.GROUPS]
+                       for a in midi.ACTIONS if a.group == group]) for group in midi.GROUPS]
     for group, rows in groups:
         if not rows:
             continue
@@ -211,9 +211,7 @@ class MidiSettingsMixin:
         self._stop_midi_learn()
         self._midi_defaults = midi.defaults()
         in_use = midi.mapping()
-        # every action's: the ones not shown (other decks, other channels) kept as they are
-        self._midi_map = {**{a: list(m) for a, m in in_use.items()},
-                          **{action_id: list(in_use.get(action_id, [])) for action_id in self._midi_items}}
+        self._midi_map = {action_id: list(in_use.get(action_id, [])) for action_id in self._midi_items}
         self._refresh_midi_items()
         self._show_selected_midi()
 

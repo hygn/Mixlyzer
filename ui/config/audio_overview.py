@@ -363,12 +363,12 @@ class AudioOverview(QtWidgets.QWidget):
         outputs = (stats or {}).get("outputs") or {}
         m["headphones"] = self._aux("headphones", outputs.get("headphones"), routes.get("headphones"), m["main"])
         m["headphones"].update({
-            "master_in": bool(mix.get("hp_a_master", 1.0)),
-            "mix_lines": [f"{int(round(mix.get('hp_a_mix', 0.5) * 100))} % MASTER",
-                          tr("master in") if mix.get("hp_a_master", 1.0) else tr("CUE only")],
-            "level_text": _db(controls.level_knob_to_db(mix.get("hp_a_level", controls.LEVEL_UNITY))),
-            "split": bool(mix.get("hp_a_split", 0.0)),
-            "split_text": "SPLIT" if mix.get("hp_a_split", 0.0) else "STEREO"})
+            "master_in": bool(mix.get("hp_master", 1.0)),
+            "mix_lines": [f"{int(round(mix.get('hp_mix', 0.5) * 100))} % MASTER",
+                          tr("master in") if mix.get("hp_master", 1.0) else tr("CUE only")],
+            "level_text": _db(controls.level_knob_to_db(mix.get("hp_level", controls.LEVEL_UNITY))),
+            "split": bool(mix.get("hp_split", 0.0)),
+            "split_text": "SPLIT" if mix.get("hp_split", 0.0) else "STEREO"})
         m["booth"] = self._aux("booth", outputs.get("booth"), routes.get("booth"), m["main"])
         m["booth"].update({
             "eq_lines": [f"HI {controls.booth_eq_knob_to_db(mix.get('booth_eq_hi', 0.5)):+.1f} dB",

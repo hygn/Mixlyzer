@@ -255,8 +255,8 @@ def _aux_output_groups(dialog) -> None:
     """The headphones' and the booth's outputs: off, channels of the main device, or a device of their own."""
     dialog.grp_output_headphones = AuxOutputGroup(
         tr("Headphones output"),
-        tr("<p>The headphones (a controller's or an interface's second output): the decks whose CUE is on, before "
-           "their faders, mixed with the master (a controller's CUE / MASTER knob).</p>"),
+        tr("<p>The headphones (a controller's or an interface's second output): the deck's channel while its CUE is "
+           "on, before its fader, mixed with the master (a controller's CUE / MASTER knob).</p>"),
         dialog._list_native_devices, dialog._main_output_channels, cue_options=True)
     dialog.grp_output_booth = AuxOutputGroup(
         tr("Booth output"), tr("<p>The booth monitors: the master again.</p>"),

@@ -332,7 +332,8 @@ class ShortcutPageTests(unittest.TestCase):
 class MidiPageTests(unittest.TestCase):
     def setUp(self):
         with open(midi.USER_FILE, "w", encoding="utf-8") as fh:
-            json.dump({"mixer.ch1.trim": ["B010"], "deck1.play_pause": ["900B"]}, fh)   # trim: not shown
+            # deck 2's: an action of an earlier version, none now
+            json.dump({"mixer.ch1.trim": ["B010"], "deck1.play_pause": ["900B"], "deck2.play_pause": ["910B"]}, fh)
         self.bus = EventBus()
         self.d = SettingsDialog(self.bus)
         self.learning = []
@@ -366,11 +367,10 @@ class MidiPageTests(unittest.TestCase):
         self.d._toggle_midi_learn(True)
         self.assertIsNone(self.d._midi_learning)
 
-    def test_only_deck_1_and_channel_1_shown(self):
+    def test_every_action_shown(self):
         shown = set(self.d._midi_items)
-        self.assertEqual(shown, {a.id for a in midi.ACTIONS_SHOWN})
-        self.assertNotIn("mixer.ch1.trim", shown)
-        self.assertFalse(any(a.startswith("deck") and not a.startswith("deck1.") for a in shown))
+        self.assertEqual(shown, {a.id for a in midi.ACTIONS})
+        self.assertIn("mixer.ch1.trim", shown)
 
     def test_inputs_listed_with_the_one_wanted(self):
         self.native()
@@ -414,7 +414,7 @@ class MidiPageTests(unittest.TestCase):
         self.assertEqual(self.d._midi_map["deck1.cue"], ["900B"])
         self.assertEqual(self.d._midi_map["deck1.play_pause"], [])
 
-    def test_saved_with_the_actions_not_shown_kept(self):
+    def test_saved_without_the_entries_of_no_action(self):
         self.native()
         self.learn("deck1.cue", (0x90, 0x0C, 127))
         told = []
@@ -424,13 +424,14 @@ class MidiPageTests(unittest.TestCase):
             saved = json.load(fh)
         self.assertEqual(saved["mixer.ch1.trim"], ["B010"])
         self.assertEqual(saved["deck1.cue"], ["900C"])
+        self.assertNotIn("deck2.play_pause", saved)
         self.assertEqual(told, [True])
 
-    def test_revert_all_keeps_the_actions_not_shown(self):
+    def test_revert_all_reverts_every_action(self):
         self.native()
         self.d.btn_midi_revert_all.click()
         self.assertEqual(self.d._midi_map["deck1.play_pause"], [])
-        self.assertEqual(self.d._midi_map["mixer.ch1.trim"], ["B010"])
+        self.assertEqual(self.d._midi_map["mixer.ch1.trim"], [])                # TRIM shown now, reverted too
 
 
 if __name__ == "__main__":

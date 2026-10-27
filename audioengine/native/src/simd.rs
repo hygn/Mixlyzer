@@ -87,12 +87,6 @@ impl F4 {
     pub fn abs(self) -> F4 {
         unsafe { F4(_mm_andnot_ps(_mm_set1_ps(-0.0), self.0)) }
     }
-    /// The lanes summed.
-    #[inline(always)]
-    pub fn sum(self) -> f32 {
-        let a = self.to_array();
-        (a[0] + a[1]) + (a[2] + a[3])
-    }
 }
 
 #[cfg(target_arch = "aarch64")]
@@ -153,11 +147,6 @@ impl F4 {
     pub fn abs(self) -> F4 {
         unsafe { F4(vabsq_f32(self.0)) }
     }
-    #[inline(always)]
-    pub fn sum(self) -> f32 {
-        let a = self.to_array();
-        (a[0] + a[1]) + (a[2] + a[3])
-    }
 }
 
 #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
@@ -217,10 +206,6 @@ impl F4 {
     #[inline(always)]
     pub fn abs(self) -> F4 {
         F4(self.0.map(f32::abs))
-    }
-    #[inline(always)]
-    pub fn sum(self) -> f32 {
-        (self.0[0] + self.0[1]) + (self.0[2] + self.0[3])
     }
 }
 
@@ -308,7 +293,6 @@ mod tests {
         let b = F4::splat(2.0);
         assert_eq!((a * b + b).to_array(), [4.0, -2.0, 8.0, -6.0]);
         assert_eq!(a.abs().to_array(), [1.0, 2.0, 3.0, 4.0]);
-        assert_eq!(a.sum(), -2.0);
         let s = F4::splat(0.25).soft_sat().to_array()[0];
         assert!((s - 0.25f32.tanh()).abs() < 1e-3, "{s}");
         assert_eq!(peak_abs(&[0.1, -0.9, 0.3, 0.2, 0.5, -0.95, 0.0]), 0.95);
