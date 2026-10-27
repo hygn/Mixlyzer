@@ -284,13 +284,11 @@ class SourcesMixin:
         variants_item = QtWidgets.QTreeWidgetItem([tr("Variants")])
         variants_item.setData(0, _SOURCE_KIND_ROLE, "variants")
         variants_item.setToolTip(0, tr(
-            "<p>The library's tracks that are versions of one song: the same audio, another vocal, the instrumental, "
-            "an edit (a TV size). # is the song; a row's tooltip says how it differs from the others.</p>"))
+            "<p>The library's tracks that are versions of one song. # is the song.</p>"))
         tree.addTopLevelItem(variants_item)
         loaded_item = QtWidgets.QTreeWidgetItem([tr("Loaded Track")])
         loaded_item.setData(0, _SOURCE_KIND_ROLE, "variants_loaded")
-        loaded_item.setToolTip(0, tr("<p>The versions of the track loaded on the deck, following each track "
-                                     "loaded.</p>"))
+        loaded_item.setToolTip(0, tr("<p>The versions of the track loaded on the deck.</p>"))
         variants_item.addChild(loaded_item)
         variants_item.setExpanded(True)
 

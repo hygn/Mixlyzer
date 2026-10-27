@@ -121,8 +121,7 @@ def build_view_tab(dialog) -> None:
         return lo, hi
     grp_wave_bands = QGroupBox(tr("Waveform bands"))
     grp_wave_bands.setToolTip(tr(
-        "Low / mid / high bands of the waveforms' colors. The overview and the preview sum them from the\n"
-        "12 stored bands, so a change redraws them at once (no re-analysis)."
+        "Low / mid / high bands of the waveforms' colors."
     ))
     f_wave_bands = QFormLayout(grp_wave_bands)
     dialog.sp_env_lo_lo,  dialog.sp_env_lo_hi  = make_band_row(

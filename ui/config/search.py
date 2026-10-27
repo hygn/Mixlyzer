@@ -61,8 +61,8 @@ def build_search_tab(dialog) -> None:
     f_db = QFormLayout(grp_db)
     db_box, dialog.db_language_boxes = _language_boxes(dialog, "db")
     db_box.setToolTip(
-        tr("<p>The languages a title, artist or album of Han characters without kana is read in and "
-           "stored for the search, one reading each. A change reads the library again when saved.</p>"))
+        tr("<p>The languages a title, artist or album of Han characters without kana is read in for the search. A "
+           "change reads the library again when saved.</p>"))
     f_db.addRow(tr("Han Characters"), db_box)
     # Han mixed with other characters: its runs in Korean Hanja too
     mixed = QWidget()
@@ -74,10 +74,8 @@ def build_search_tab(dialog) -> None:
     dialog.sp_han_run_min.setSuffix(tr(" characters"))
     mixed.setToolTip(
         tr("<p>Han characters mixed with other characters are found by their Korean Hanja reading too. "
-           "Beside Latin letters or Hangul all of them are read so; beside kana (read in Japanese with it) "
-           "the runs of this many or more, the rest staying Japanese (Re:ゼロから始める異世界生活: zero kara "
-           "hajimeru isegyesaenghwal; shorter runs there are mostly words read with the kana: 君, 始める). "
-           "Needs Korean Hanja checked.</p>"))
+           "Beside Latin letters or Hangul all of them are read so; beside kana only the runs of this many or more, "
+           "the rest staying Japanese.</p>"))
     row.addWidget(dialog.cb_han_runs)
     row.addWidget(dialog.sp_han_run_min)
     row.addStretch(1)
@@ -89,11 +87,6 @@ def build_search_tab(dialog) -> None:
     dialog.db_language_boxes["ko-hanja"].toggled.connect(sync_han_runs)
     dialog.cb_han_runs.toggled.connect(sync_han_runs)
     dialog._sync_han_runs = sync_han_runs
-    dialog.lbl_db_languages_note = QLabel(
-        tr("Kana is read in Japanese, Hangul in Korean, other scripts as written. "
-           "Readings set in Edit Track are kept."))
-    dialog.lbl_db_languages_note.setWordWrap(True)
-    f_db.addRow(dialog.lbl_db_languages_note)
     dialog.btn_reread_library = QPushButton(tr("Re-read Library"))
     dialog.btn_reread_library.setToolTip(
         tr("<p>Save these settings and read every track's title, artist and album again, in the "
@@ -121,8 +114,8 @@ def build_search_tab(dialog) -> None:
            "finds あのね.</p>"))
     dialog.cb_query_keyboard_layout = QCheckBox(tr("Typed without 한/영"))
     dialog.cb_query_keyboard_layout.setToolTip(
-        tr("<p>A query typed on the 2-set (Dubeolsik) keyboard in the wrong input mode is also read as "
-           "meant: tkghl as 사회 (whole syllables, two or more), 무ㅐㅜㄷ as anone.</p>"))
+        tr("<p>A query typed on the 2-set (Dubeolsik) keyboard in the wrong input mode is also read as meant: tkghl "
+           "as 사회, 무ㅐㅜㄷ as anone.</p>"))
     hangul_grid.addWidget(dialog.cb_query_hangul_korean, 0, 0)
     hangul_grid.addWidget(dialog.cb_query_hangul_foreign, 0, 1)
     hangul_grid.addWidget(dialog.cb_query_keyboard_layout, 0, 2)
@@ -134,8 +127,7 @@ def build_search_tab(dialog) -> None:
     f_music = QFormLayout(grp_music)
     dialog.cb_music_index = QCheckBox(tr("Index tracks when analyzing"))
     dialog.cb_music_index.setToolTip(
-        tr("<p>The analysis also indexes each track for Search by Music: its melody (the lead and the top line) "
-           "and fingerprints of its sound, about 6 seconds more a track.</p>"))
+        tr("<p>The analysis also indexes each track for Search by Music, about 6 seconds more a track.</p>"))
     f_music.addRow(dialog.cb_music_index)
     dialog.sp_music_window = QDoubleSpinBox()
     dialog.sp_music_window.setRange(4.0, 30.0)
@@ -157,9 +149,8 @@ def build_search_tab(dialog) -> None:
     f_music.addRow(dialog.lbl_music_index_status)
     dialog.btn_music_index_now = QPushButton(tr("Index Now"))
     dialog.btn_music_index_now.setToolTip(
-        tr("<p>Index the library's tracks that are not indexed yet for Search by Music or for the library's "
-           "Variants (analyzed before they existed, or with indexing off), in the background; tracks gone from the "
-           "library leave the index. The Variants are found from the stored analysis, without reading the audio.</p>"))
+        tr("<p>Index the library's tracks not indexed yet for Search by Music or the Variants, in the background. "
+           "Tracks gone from the library leave the index.</p>"))
     f_music.addRow("", dialog.btn_music_index_now)
 
     form.addRow(grp_db)

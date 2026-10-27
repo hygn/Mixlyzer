@@ -172,9 +172,8 @@ class RestoreDialog(QtWidgets.QDialog):
         grp_music = QtWidgets.QGroupBox(tr("Music Folders"))
         v_music = QtWidgets.QVBoxLayout(grp_music)
         note = QtWidgets.QLabel(tr(
-            "Where each folder of the backup's music files is on this device. No file is moved or looked for: a "
-            "folder left empty keeps its tracks' paths as they were, and Mixlyzer asks for a track's file when it "
-            "is not found."))
+            "Where each folder of the backup's music files is on this device. A folder left empty keeps its tracks' "
+            "paths as they were."))
         note.setWordWrap(True)
         v_music.addWidget(note)
         self.table = QtWidgets.QTableWidget(len(self._roots), 4)

@@ -64,8 +64,7 @@ def build_midi_tab(dialog) -> None:
     dialog.sp_midi_jog_ticks = QSpinBox()
     dialog.sp_midi_jog_ticks.setRange(16, 8192)
     dialog.sp_midi_jog_ticks.setToolTip(tr(
-        "The jog wheel's messages in one turn (a record at 33 1/3 rpm: a turn is 1.8 s of the track). DDJ-400: "
-        "720."))
+        "The jog wheel's messages in one turn. DDJ-400: 720."))
     form.addRow(tr("Jog wheel: messages per turn"), dialog.sp_midi_jog_ticks)
     lay.addLayout(form)
 
@@ -117,10 +116,10 @@ def build_midi_tab(dialog) -> None:
     dialog.btn_midi_revert.setToolTip(tr("The selected action's shipped MIDI messages again."))
     dialog.btn_midi_import = QPushButton(tr("Import rekordbox CSV..."))
     dialog.btn_midi_import.setToolTip(tr(
-        "A MIDI mapping exported from rekordbox (CSV), for the DDJ-400 and the like: its deck 1 controls, mixer "
-        "channel 1 and the browser replace the mapping (kept with OK / Apply)."))
+        "A MIDI mapping exported from rekordbox (CSV): its deck 1 controls, mixer channel 1 and the browser replace "
+        "the mapping."))
     dialog.btn_midi_revert_all = QPushButton(tr("Revert All"))
-    dialog.btn_midi_revert_all.setToolTip(tr("Every action's shipped MIDI messages again (kept with OK / Apply)."))
+    dialog.btn_midi_revert_all.setToolTip(tr("Every action's shipped MIDI messages again."))
     dialog.lbl_midi_learn = QLabel()
     buttons.addWidget(dialog.btn_midi_learn)
     buttons.addWidget(dialog.btn_midi_clear)

@@ -97,9 +97,7 @@ class DeckSwitches(QtWidgets.QWidget):
                                  "middle (off). Double-click: off."))
         self.color.moved.connect(lambda v: self.bus.sig_knob_requested.emit(COLOR_KNOB, v))
         self.param = Knob(KNOB)
-        self.param.setToolTip(tr("PARAMETER: the effect's quantity (SPACE / DUB ECHO: feedback, SWEEP: the centre "
-                                 "frequency, NOISE: its volume, CRUSH: how crushed, FILTER: resonance, JET: "
-                                 "feedback)."))
+        self.param.setToolTip(tr("PARAMETER: the effect's quantity."))
         self.param.moved.connect(lambda v: self._mix("color_param", v))
 
         # the channel's headphones CUE (the headphones' level: MasterLevels)
@@ -139,8 +137,7 @@ class DeckSwitches(QtWidgets.QWidget):
     def set_available(self, available: bool) -> None:
         self.setEnabled(available)
         if not available:
-            self.setToolTip(tr("The jog wheel's mode, the EQ, the fader curve, Sound Color FX, the headphones and the "
-                               "master level: the native audio engine's only (Settings > Audio > Engine)."))
+            self.setToolTip(tr("Available with the native audio engine only."))
 
     def set_report(self, report) -> None:
         """The deck's report (DeckReport): the jog's mode, the mixer's EQ, Sound Color FX and fader curve, the

@@ -116,7 +116,7 @@ class BufferMonitor:
             "<p>The time the output buffer spent at each level over the last {seconds} s (log scale): the left end is "
             "a dropout. Dashed: the buffer size; yellow: the 1% low.</p>"
         ).format(seconds=f"{self.WINDOW_SEC:.0f}"))
-        self.meter.setToolTip(tr("Average audio queued in the output buffer (smoothed)."))
+        self.meter.setToolTip(tr("Average audio queued in the output buffer."))
         self.low_meter.setToolTip(tr("Buffer level the output stayed above 99% of the time in the recent window."))
         self.label = QLabel(tr("Waiting for playback..."))
         self.label.setToolTip(tr("Audio queued in the output device buffer while playing, 0 ms = dropout."))
@@ -231,7 +231,7 @@ class AuxOutputGroup(QGroupBox):
             "the master. A device of its own: another device (its clock followed, the master's sound kept: "
             "resampled by the clocks' drift, a few hundred ppm at most).</p>"))
         self.cb_device = QComboBox()
-        self.cb_device.setToolTip(tr("<p>The device this output plays on, as the native engine names it.</p>"))
+        self.cb_device.setToolTip(tr("<p>The device this output plays on.</p>"))
         self.cb_api = QComboBox()
         add_native_api_items(self.cb_api)
         self.cb_api.setToolTip(native_api_tip())
@@ -246,39 +246,28 @@ class AuxOutputGroup(QGroupBox):
         for rate in NATIVE_EXCLUSIVE_RATES:
             self.cb_rate.addItem(f"{rate / 1000:g} kHz", rate)
         self.cb_rate.setToolTip(tr(
-            "<p>The rate this output's device runs at; the main output's sound is converted to it (a band-limited "
-            "interpolator, with the clocks' drift). The device's: its own format (WASAPI's shared mix format), the "
-            "lowest latency. Another rate: in exclusive mode the device runs at it; shared, the system converts it "
-            "(WASAPI (cpal)'s usual stream, more latency).</p>"))
+            "<p>The sample rate this output's device runs at. The main output's sound is converted to it.</p>"))
         self.sp_buffer = QSpinBox()
         self.sp_buffer.setRange(*NATIVE_BUFFER_MS_RANGE)
         self.sp_buffer.setSingleStep(5)
         self.sp_buffer.setSuffix(" ms")
         self.sp_buffer.setToolTip(tr(
-            "<p>The audio kept ahead of this output's device, from the main output's mix: the least it holds "
-            "whatever the two devices' periods (it holds up to one main device period more as they fall). Smaller "
-            "is heard sooner; too small drops out when the computer is busy. Its device's own latency comes after "
-            "it.</p>"))
+            "<p>The audio kept ahead of this output's device. Smaller is heard sooner.</p>"))
         # its clock against the main device's, as the engine follows it (the ratio it is resampled at)
         self.lbl_drift = LiveLabel("-")
         self.lbl_drift.setToolTip(tr(
             "<p>This device's clock against the main output's: how much faster (+) or slower (-) it runs, in parts "
-            "per million. The output is resampled by it (a band-limited interpolator), so it neither runs dry nor "
-            "fills up, and nothing is repeated or dropped. A few tens to a few hundred ppm is usual between two "
-            "devices.</p>"))
+            "per million.</p>"))
         # the headphones: the master mixed into them, or not (a controller mixing it in itself)
         self.cb_master_mix = QCheckBox(tr("Mix the master in"))
         self.cb_master_mix.setToolTip(tr(
-            "<p>The headphones carry the channels whose CUE is on (before their faders) and, with this on, the "
-            "master, mixed by the CUE / MASTER mix (a controller's knob moves it). Off for a controller that mixes "
-            "the master into its headphones itself (the DDJ-400's CUE / MASTER knob, in analog): the headphones "
-            "output then carries the CUE alone, silent while no CUE is on.</p>"))
+            "<p>The master mixed into the headphones with the CUE. Off for a controller that mixes the master into "
+            "its headphones itself.</p>"))
         self.sp_cue_mix = QSpinBox()
         self.sp_cue_mix.setRange(0, 100)
         self.sp_cue_mix.setSuffix(" %")
         self.sp_cue_mix.setToolTip(tr(
-            "<p>The master's share in the headphones: 0 % the CUE alone, 100 % the master alone. A controller's CUE "
-            "/ MASTER knob moves it as it is turned.</p>"))
+            "<p>The master's share in the headphones: 0 % the CUE alone, 100 % the master alone.</p>"))
         self.cb_master_mix.toggled.connect(self.sp_cue_mix.setEnabled)
         self._cue_options = cue_options
         self.lbl_note = QLabel(tr("The native engine's: applied when it plays."))

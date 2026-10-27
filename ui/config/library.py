@@ -45,9 +45,8 @@ def build_library_tab(dialog) -> None:
     dialog.sp_rekordbox_ramp_tolerance_ms.setSingleStep(0.5)
     dialog.sp_rekordbox_ramp_tolerance_ms.setSuffix(" ms")
     dialog.sp_rekordbox_ramp_tolerance_ms.setToolTip(tr(
-        "<p>Rekordbox has no tempo ramps: a ramp is written as steps of steady tempo. A step covers as many "
-        "beats as stay within this many milliseconds of Mixlyzer's beats, one beat at least (0: a step per "
-        "beat).</p>"
+        "<p>Rekordbox has no tempo ramps: a ramp is written as steps of steady tempo. Smaller makes the steps "
+        "finer.</p>"
     ))
     dialog.cb_rekordbox_comment_tieups = QCheckBox(tr("Tie-ups after the comment"))
     dialog.cb_rekordbox_comment_tieups.setToolTip(tr(
@@ -59,8 +58,7 @@ def build_library_tab(dialog) -> None:
     dialog.lbl_log_note.setWordWrap(True)
     dialog.lbl_rekordbox_note.setWordWrap(True)
     dialog.ed_libpath.setToolTip(
-        tr("Folder holding library.db and the per-track feature files (.npz).\n"
-           "Relative paths are resolved from the app folder.")
+        tr("Folder holding library.db and the per-track feature files (.npz).")
     )
     dialog.list_local_music_directories.setToolTip(
         tr("Root folders shown under Local Folders in the library browser.")
@@ -95,28 +93,23 @@ def build_library_tab(dialog) -> None:
     f_library.addRow(tr("Local Music Folders"), local_box)
     dialog.cb_tieup_to_versions = QCheckBox(tr("Add a tie-up to the track's versions too"))
     dialog.cb_tieup_to_versions.setToolTip(tr(
-        "<p>A tie-up added in the Edit tab is added to the track's other versions as well (its Variants: the "
-        "instrumental, a TV size, another singer's), where they lack it. Edits and removals stay on the track.</p>"))
+        "<p>A tie-up added in the Edit tab is added to the track's other versions as well.</p>"))
     f_library.addRow(dialog.cb_tieup_to_versions)
     dialog.cb_tieup_web_search = QCheckBox(tr("Look up a new track's tie-ups on Wikipedia"))
     dialog.cb_tieup_web_search.setToolTip(tr(
-        "<p>A new track whose versions in the library have no tie-up is looked up on Japanese Wikipedia and "
-        "Wikidata after its analysis: its title and artist are sent there. A tie-up found for certain (on the "
-        "song's own article) is added, the work's page kept as its reference; the Edit tab's Find on the Web "
-        "shows the others.</p>"))
+        "<p>After a new track's analysis, its tie-ups are looked up on Japanese Wikipedia and Wikidata and the ones "
+        "found for certain are added. Its title and artist are sent there.</p>"))
     f_library.addRow(dialog.cb_tieup_web_search)
 
     # library.db and the stored analyses ({uid}.npz) kept in agreement (core.library.jobs.save_edits / sync_index)
     dialog.cb_sync_stored_analysis = QCheckBox(tr("Update the library database when the editor saves"))
     dialog.cb_sync_stored_analysis.setToolTip(tr(
-        "<p>The editor's save also writes the track's BPM, key and the tables the transition and phrase searches "
-        "read into the library database (library.db), made from the marks saved. Off: only the track's stored "
-        "analysis is written; Sync Now brings the database up to it.</p>"))
+        "<p>The editor's save also writes the track's BPM, key and search tables into the library database.</p>"))
     dialog.btn_library_sync_now = QPushButton(tr("Sync Now"))
     dialog.btn_library_sync_now.setToolTip(tr(
-        "<p>Every track's BPM, key and search tables in the library database made again from its stored analysis "
-        "(as the editor's save writes them), a BPM or key typed in the Edit Track tab replaced too. Titles, "
-        "artists, ratings and comments are not touched.</p>"))
+        "<p>Every track's BPM, key and search tables in the library database made again from its stored analysis. A "
+        "BPM or key typed in the Edit Track tab is replaced too. Titles, artists, ratings and comments are not "
+        "touched.</p>"))
     grp_database = QGroupBox(tr("Library Database"))
     f_database = QFormLayout(grp_database)
     f_database.addRow(dialog.cb_sync_stored_analysis)
@@ -125,17 +118,17 @@ def build_library_tab(dialog) -> None:
     # the library packed into one file and restored from one (core.workflows.library_backup)
     dialog.cb_backup_feature_cache = QCheckBox(tr("Include the feature caches"))
     dialog.cb_backup_feature_cache.setToolTip(tr(
-        "<p>A backup also packs the analyses' feature caches: Reoptimize's training data, made again from the "
-        "library when missing, so a backup is smaller without them.</p>"))
+        "<p>A backup also packs the analyses' feature caches (Reoptimize's training data). Without them a backup is "
+        "smaller.</p>"))
     dialog.btn_backup_library = QPushButton(tr("Back Up Library…"))
     dialog.btn_backup_library.setToolTip(tr(
-        "<p>The library packed into one file, picked each time: its database, every track's stored analysis, the "
-        "thumbnails, the search indexes, the settings, your shortcuts, MIDI mapping and retrained models. The music "
-        "files themselves are not packed.</p>"))
+        "<p>The library packed into one file: its database, every track's stored analysis, the thumbnails, the "
+        "search indexes, the settings, your shortcuts, MIDI mapping and retrained models. The music files "
+        "themselves are not packed.</p>"))
     dialog.btn_restore_library = QPushButton(tr("Restore Library…"))
     dialog.btn_restore_library.setToolTip(tr(
-        "<p>A backup unpacked into a new library folder, on this device or another; its music folders joined to "
-        "this device's, then Mixlyzer restarts on it. The library in use now is kept as it is.</p>"))
+        "<p>A backup unpacked into a new library folder, then Mixlyzer restarts on it. The library in use now is "
+        "kept as it is.</p>"))
     backup_buttons = QWidget()
     backup_row = QtWidgets.QHBoxLayout(backup_buttons)
     backup_row.setContentsMargins(0, 0, 0, 0)

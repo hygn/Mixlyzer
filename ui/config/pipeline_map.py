@@ -80,8 +80,7 @@ class PipelineMap(QtWidgets.QWidget):
         super().__init__(parent)
         self.setMouseTracking(True)
         self.setToolTip(tr("Numbers: the order the analyses run in. A wire: the analysis at the arrow needs that "
-                           "result. Every analysis also reads the decoded audio (22050 Hz, HPSS). Click an analysis "
-                           "to open its settings."))
+                           "result. Click an analysis to open its settings."))
         self._blocks: dict[str, QtCore.QRectF] = {}
         self._texts: list[dict] = []
         self._size = QtCore.QSizeF(1.0, 1.0)     # the image's own size

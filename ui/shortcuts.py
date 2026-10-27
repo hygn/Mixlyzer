@@ -72,38 +72,34 @@ def _page(name: str) -> Callable[[], str]:
 ACTIONS: tuple[Action, ...] = (
     Action("playback.play_pause", PLAYBACK, tr_mark("Play / pause")),
     Action("playback.cue", PLAYBACK, "CUE", momentary=True,
-           tip=tr_mark("As rekordbox's CUE: stopped, sets the cue point at the playhead (on the nearest beat); held "
-                       "on the cue point, plays until let go (PLAY while held: plays on); playing, back to the cue "
-                       "point and stop.")),
+           tip=tr_mark("As rekordbox's CUE: stopped, sets the cue point at the playhead; held on the cue point, "
+                       "plays until let go; playing, back to the cue point and stop.")),
     Action("playback.stop", PLAYBACK, tr_mark("Stop"), tip=tr_mark("Stop and go back to the start of the track.")),
     Action("playback.beat_back", PLAYBACK, tr_mark("One beat back"), hold_rate=8.0,
-           tip=tr_mark("The playhead one beat back: while playing, as a beat jump (its place in the beat kept); "
-                       "stopped, to the beat itself.")),
+           tip=tr_mark("The playhead one beat back.")),
     Action("playback.beat_forward", PLAYBACK, tr_mark("One beat forward"), hold_rate=8.0,
-           tip=tr_mark("The playhead one beat forward: while playing, as a beat jump (its place in the beat "
-                       "kept); stopped, to the beat itself.")),
+           tip=tr_mark("The playhead one beat forward.")),
     Action("playback.bar_back", PLAYBACK, tr_mark("One bar back"), hold_rate=4.0,
-           tip=tr_mark("The playhead one bar back, as one beat back by downbeats.")),
+           tip=tr_mark("The playhead one bar back.")),
     Action("playback.bar_forward", PLAYBACK, tr_mark("One bar forward"), hold_rate=4.0,
-           tip=tr_mark("The playhead one bar forward, as one beat forward by downbeats.")),
+           tip=tr_mark("The playhead one bar forward.")),
     Action("playback.tempo_down", PLAYBACK, tr_mark("Tempo -1%"), repeat=True),
     Action("playback.tempo_up", PLAYBACK, tr_mark("Tempo +1%"), repeat=True),
     Action("playback.tempo_reset", PLAYBACK, tr_mark("Tempo reset (100%)")),
     Action("playback.tempo_range", PLAYBACK, tr_mark("Tempo range"),
-           tip=tr_mark("The tempo fader's range: ±6% / ±10% / ±16% / WIDE (0%-200%), the next one.")),
+           tip=tr_mark("The tempo fader's range, the next one: ±6% / ±10% / ±16% / WIDE.")),
     Action("playback.master_tempo", PLAYBACK, tr_mark("Master tempo on / off")),
     Action("playback.metronome", PLAYBACK, tr_mark("Metronome on / off")),
     Action("playback.zoom_in", PLAYBACK, tr_mark("Zoom in"), repeat=True),
     Action("playback.zoom_out", PLAYBACK, tr_mark("Zoom out"), repeat=True),
     Action("playback.unload", PLAYBACK, tr_mark("Unload the track")),
     Action("playback.midi_input", PLAYBACK, tr_mark("MIDI input on / off"),
-           tip=tr_mark("The MIDI controller read or not (the port picked in Settings > MIDI kept).")),
+           tip=tr_mark("The MIDI controller read or not.")),
     Action("playback.restart_engine", PLAYBACK, tr_mark("Restart the audio engine"),
-           tip=tr_mark("The native audio engine stopped and started again, the track, its place and the settings as "
-                       "they were: the last resort when an output or the engine stays stuck.")),
+           tip=tr_mark("The native audio engine stopped and started again. For when playback goes wrong.")),
 
     *(Action(f"cue.jump.{c}", CUE, tr_mark("JUMP: JumpCUE {letter}"), args={"letter": c},
-             tip=tr_mark("Jump to JumpCUE {letter} on the next beat (stopped: move the playhead there)."))
+             tip=tr_mark("Jump to JumpCUE {letter} on the next beat."))
       for c in JUMPCUE_LETTERS),
     Action("cue.call_previous", CUE, tr_mark("CALL: the previous CUE point"),
            tip=tr_mark("Move the playhead to the CUE point before it (while stopped).")),
@@ -120,7 +116,7 @@ ACTIONS: tuple[Action, ...] = (
 
     # the toolbar's channel switches (ui.deck.deck_switches)
     Action("mixer.headphones_cue", PLAYBACK, tr_mark("Headphones CUE on / off"),
-           tip=tr_mark("The deck's channel, before its fader, in the headphones (the native engine's mixer).")),
+           tip=tr_mark("The deck's channel, before its fader, in the headphones.")),
     Action("fx.color_next", FX, tr_mark("Sound Color FX: the next effect")),
     Action("fx.color_previous", FX, tr_mark("Sound Color FX: the previous effect")),
 
@@ -129,24 +125,20 @@ ACTIONS: tuple[Action, ...] = (
     Action("library.load", LIBRARY, tr_mark("Load the selected track"),
            tip=tr_mark("In the sources panel: the highlighted playlist or folder shown in the library.")),
     Action("library.browse_sources", LIBRARY, tr_mark("Sources panel"),
-           tip=tr_mark("To the panel beside the library (playlists, local folders) and back. Up / Down browse, "
-                       "Left / Right close / open a folder, the load key shows the highlighted one.")),
+           tip=tr_mark("To the panel beside the library and back. Up / Down browse, Left / Right close / open a "
+                       "folder, the load key shows the highlighted one.")),
     Action("library.search", LIBRARY, tr_mark("Search")),
     Action("library.music_search", LIBRARY, tr_mark("Search by Music: microphone on / off"),
-           tip=tr_mark("The search field's microphone: the library shows the songs it hears (a hummed, sung or "
-                       "whistled melody, or the song played from a phone), best first; off, the results stay.")),
+           tip=tr_mark("The search field's microphone on or off.")),
     Action("library.leave_search", LIBRARY, tr_mark("Back to the tracks"),
-           tip=tr_mark("To the track list from the search field (its text kept), the sources panel or the track "
-                       "panel; out of another text field: the keys work the shortcuts again.")),
+           tip=tr_mark("To the track list from the search field, the sources panel or the track panel.")),
     Action("library.locate_loaded", LIBRARY, tr_mark("Select the loaded track")),
     Action("library.edit_track", LIBRARY, tr_mark("Edit Track"),
-           tip=tr_mark("The track panel's Edit tab with the selected track, its first field focused.")),
+           tip=tr_mark("The track panel's Edit tab with the selected track.")),
     Action("library.search_index_track", LIBRARY, tr_mark("Search Index"),
-           tip=tr_mark("The track panel's Search Index tab with the selected track: its readings and audio "
-                       "fingerprints.")),
+           tip=tr_mark("The track panel's Search Index tab with the selected track.")),
     Action("library.rebuild_fingerprints", LIBRARY, tr_mark("Rebuild Audio Fingerprints"),
-           tip=tr_mark("The selected track's Variants fingerprint and Search by Music index made again (Index Now "
-                       "indexes it).")),
+           tip=tr_mark("The selected track's Variants fingerprint and Search by Music index made again.")),
     Action("library.tieups_track", LIBRARY, tr_mark("Tie-ups"),
            tip=tr_mark("The track panel's Tie-ups tab with the selected track.")),
     Action("library.find_tieups_on_web", LIBRARY, tr_mark("Find Tie-ups on the Web"),
@@ -155,17 +147,15 @@ ACTIONS: tuple[Action, ...] = (
     Action("library.tieup_works", LIBRARY, tr_mark("Tie-up Works"),
            tip=tr_mark("The works window: every work the tie-ups name, edited, merged or deleted.")),
     Action("library.export_track", LIBRARY, tr_mark("Export Track"),
-           tip=tr_mark("The track panel's Export tab with the selected track, focused.")),
+           tip=tr_mark("The track panel's Export tab with the selected track.")),
     Action("library.write_tags", LIBRARY, tr_mark("Write Tags to File"),
-           tip=tr_mark("The selected track's stored values written into its audio file's tags: the fields checked "
-                       "in the track panel's Export tab.")),
+           tip=tr_mark("The selected track's stored values written into its audio file's tags.")),
     Action("library.reveal", LIBRARY, tr_mark("Show in Explorer") if os_support.IS_WINDOWS else
            tr_mark("Show in Finder") if os_support.IS_MACOS else tr_mark("Show in File Manager")),
     Action("library.new_playlist", LIBRARY, tr_mark("New Playlist"),
-           tip=tr_mark("A new playlist in the folder shown (or the shown playlist's folder), else at the top.")),
+           tip=tr_mark("A new playlist in the folder shown.")),
     Action("library.new_playlist_folder", LIBRARY, tr_mark("New Playlist Folder"),
-           tip=tr_mark("A new playlist folder in the folder shown (or the shown playlist's folder), else at the "
-                       "top.")),
+           tip=tr_mark("A new playlist folder in the folder shown.")),
     Action("library.reanalyze", LIBRARY, tr_mark("Reanalyze Track"),
            tip=tr_mark("A full analysis of the selected tracks: their stored analysis and edits are replaced.")),
     Action("library.remove_from_library", LIBRARY, tr_mark("Remove from Library")),

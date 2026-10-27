@@ -130,22 +130,20 @@ class TieupDialog(QDialog):
         # the work: typed to find one, or a new one
         self.ed_find = QLineEdit()
         self.ed_find.setPlaceholderText(tr("Type a title in any language or script"))
-        self.ed_find.setToolTip(tr("<p>Finds the works already entered by any of their titles, also by how they "
-                                   "read (あのね by anone or 아노네). Pick one to use it, or New work.</p>"))
+        self.ed_find.setToolTip(tr("<p>Finds the works already entered by any of their titles. Pick one to use it, "
+                                   "or New work.</p>"))
         self.list_works = QListWidget()
         self.list_works.setFixedHeight(self.list_works.fontMetrics().lineSpacing() * 6 + 12)
         self.cmb_category = QComboBox()
         for code, name in tieup.CATEGORIES:
             self.cmb_category.addItem(tr(name), code)
         self.tbl_titles = _TextTable(tr("Language"), tr("Title"), picks={0: LANG})
-        self.tbl_titles.setToolTip(tr("<p>The work's official titles, each with its language as language-REGION "
-                                      "(ja-JP, ko-KR, en-US). The library and the comment show the first title in "
-                                      "the interface's language, else the first of all.</p>"))
+        self.tbl_titles.setToolTip(tr("<p>The work's official titles, each with its language. The library and the "
+                                      "comment show the title in the interface's language.</p>"))
         self.tbl_aliases = _TextTable(tr("Type"), tr("Language"), tr("Alias"), rows_shown=2,
                                       picks={0: tieup.ALIAS_TYPES, 1: LANG})
-        self.tbl_aliases.setToolTip(tr("<p>Other names the work is found by, never shown: a name it is commonly "
-                                       "called by (a romanization), an abbreviation, or a search hint (a misspelling, "
-                                       "a typing slip). The search finds the work by them, also by how they read.</p>"))
+        self.tbl_aliases.setToolTip(tr("<p>Other names the work is found by, never shown: a common name, an "
+                                       "abbreviation or a search hint.</p>"))
         self.tbl_urls = _TextTable(tr("Label"), tr("URL"), rows_shown=2)
 
         self.cmb_role = QComboBox()
@@ -157,8 +155,7 @@ class TieupDialog(QDialog):
         self.sp_seq.setToolTip(tr("Which one, when the work has several (OP2: 2)."))
         self.ed_detail = QLineEdit()
         self.ed_detail.setPlaceholderText(tr("Season 2, episodes 1-12; TV size"))
-        self.ed_detail.setToolTip(tr("Where and how it is used: the episodes, the version of the song (a TV size, "
-                                     "a character's version)."))
+        self.ed_detail.setToolTip(tr("Where and how it is used: the episodes, the version of the song."))
 
         work_box = QGroupBox(tr("Work"))
         wf = QFormLayout(work_box)
@@ -320,8 +317,7 @@ class WebCandidatesDialog(QDialog):
             item.setCheckState(Qt.Checked if c.sure else Qt.Unchecked)
             item.setToolTip(tr("Read on {page}").format(page=urllib.parse.unquote(c.source)))
             self.list.addItem(item)
-        note = QLabel(tr("From Japanese Wikipedia and Wikidata. A checked one is added with the work's names in "
-                         "other languages and its page as a reference."))
+        note = QLabel(tr("From Japanese Wikipedia and Wikidata. The checked ones are added."))
         note.setWordWrap(True)
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         buttons.accepted.connect(self.accept)
@@ -345,8 +341,7 @@ class TieupBox(QGroupBox):
                  to_versions: Callable[[], bool], parent=None):
         """``library``: where the tie-ups are read and written (core.library.service)."""
         super().__init__(tr("Tie-ups"), parent)
-        self.setToolTip(tr("<p>The works this track is used in: an anime's opening, a game's title screen, a "
-                           "character song.</p>"))
+        self.setToolTip(tr("<p>The works this track is used in.</p>"))
         self._library = library
         self._settings = settings
         self._to_versions = to_versions

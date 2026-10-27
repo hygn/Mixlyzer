@@ -28,8 +28,7 @@ class MusicMixin:
         self.btn_mic.setCheckable(True)
         self.btn_mic.setAutoRaise(True)
         self.btn_mic.setToolTip(tr(
-            "<p>Search by Music: hum, sing or whistle a melody, or play the song from a phone, and the library "
-            "shows the songs the microphone hears, best first. Click again to stop listening (the results stay).</p>"))
+            "<p>Search by Music: the library finds the songs the microphone hears.</p>"))
         self.btn_mic.clicked.connect(self._toggle_mic)
         self.btn_music_close = QtWidgets.QToolButton()
         self.btn_music_close.setIcon(close_icon())

@@ -249,8 +249,7 @@ class SearchMixin:
         # so an idle search bar is a single line and a filter is one click.
         self.e_search = QtWidgets.QLineEdit(placeholderText=tr("Search title, artist, key ..."))
         self.e_search.setToolTip(
-            tr("<p>Titles, artists and albums are also found by how they read, in any script: "
-               "あのね by anone, ano ne or 아노네 (the reading is set in Edit Track).</p>"))
+            tr("<p>Titles, artists and albums are also found by how they read, in any script.</p>"))
         self.e_search.setClearButtonEnabled(True)
         self.cb_column = QtWidgets.QComboBox()
         for mode in self.SEARCH_MODES:

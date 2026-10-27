@@ -347,7 +347,7 @@ class MainPane(QtWidgets.QWidget):
         widest = max(fm.horizontalAdvance(_range_text(r)) for r in TEMPO_STEP)
         self.btn_tempo_range.setFixedSize(widest + 2 * 4 + 2 + 4, fm.height() + 4)
         self.btn_tempo_range.setText(_range_text(self._tempo_range))
-        self.btn_tempo_range.setToolTip(tr("Tempo range: ±6% / ±10% / ±16% / WIDE (0%-200%); click for the next"))
+        self.btn_tempo_range.setToolTip(tr("Tempo range: ±6% / ±10% / ±16% / WIDE; click for the next"))
         self.btn_tempo_range.setStyleSheet(
             "QToolButton { border: 1px solid #4a4a4a; background: #181818; border-radius: 3px; color: #e6e6e6;"
             " padding: 0px 4px; }\n"
@@ -431,8 +431,8 @@ class MainPane(QtWidgets.QWidget):
             self.btn_cue.styleSheet() + f"QToolButton[lit=true] {{ background: {CUE_COLOR}; }}\n")
         self.btn_cue.setProperty("lit", False)
         self.btn_cue.setToolTip(tr(
-            "CUE: stopped, sets the cue point here (on the nearest beat) / held on the cue point, plays until let "
-            "go (PLAY while held: plays on); playing, back to the cue point and stop"))
+            "CUE: stopped, sets the cue point here / held on the cue point, plays until let go; playing, back to "
+            "the cue point and stop"))
 
         self.btn_tempo_reset = _mk_square_btn("RST")
         self.btn_tempo_reset.setToolTip(tr("Tempo reset (100%)"))

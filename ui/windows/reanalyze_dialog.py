@@ -29,7 +29,7 @@ class ReanalyzeDialog(QtWidgets.QDialog):
         self.sp_bpm_min = QtWidgets.QSpinBox()
         self.sp_bpm_min.setRange(60, 400)
         self.sp_bpm_min.setToolTip(tr(
-            "The beat tracker reads every tempo in the octave from here (BPM min .. 2 x BPM min);\n"
+            "The beat tracker reads tempos from here to twice this;\n"
             "a song outside it is read at half or double tempo."
         ))
         self.lbl_bpm_range = QtWidgets.QLabel()
@@ -44,25 +44,20 @@ class ReanalyzeDialog(QtWidgets.QDialog):
         self.cb_dynamic_downbeat = QtWidgets.QCheckBox(tr("Dynamic Downbeat"))
         self.cb_dynamic_downbeat.setToolTip(tr(
             "Checked: odd bars and meter changes within a track.\n"
-            "Unchecked: one bar length and downbeat phase for the whole track.\n"
-            "Always on with Dynamic Analysis."
+            "Unchecked: one bar length and downbeat phase for the whole track."
         ))
         self.cb_key_dynamic = QtWidgets.QCheckBox(tr("Dynamic Analysis"))
         self.cb_key_dynamic.setToolTip(tr(
-            "Key changes within a track. Off: one key for the whole track -- the key the dynamic analysis finds in "
-            "the intro, outro and interludes (where tracks are mixed), or the key it finds most when a track has none. "
-            "Applies to the analysis and the editor's whole-track key reanalysis."
+            "Key changes within a track. Off: one key for the whole track, the key of its intro, outro and "
+            "interludes."
         ))
         self.cmb_autocue = QtWidgets.QComboBox()
         self.cmb_autocue.addItem(tr("CUE point"), "cue_point")
         self.cmb_autocue.addItem("JumpCUE", "jumpcue")
         self.cmb_autocue.addItem(tr("Off"), "off")
         self.cmb_autocue.setToolTip(tr(
-            "What the analysis puts at the automatic start position:\n"
-            "the lead-in end, an early first downbeat, or 0:00.\n"
-            "CUE point: a CUE point (memory cue).\n"
-            "JumpCUE: a JumpCUE (hot cue) of its own.\n"
-            "Off: nothing."
+            "The mark the analysis puts at the automatic start position (the lead-in end, the first downbeat or "
+            "0:00)."
         ))
 
         # a dynamic grid always has dynamic bars; static analysis may have either (as in the settings)

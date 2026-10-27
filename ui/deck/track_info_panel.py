@@ -163,8 +163,7 @@ class VerticalPeakMeter(QtWidgets.QWidget):
         self.setFixedWidth(10)
         self.setMinimumHeight(TrackInfoPanel.HEADER_H - 6)
         self.setMaximumHeight(TrackInfoPanel.HEADER_H - 6)
-        self.setToolTip(tr("Channel level (before the fader), as a DJM-A9's: -30 to +12 dB; 0 dB is -12 dBFS, "
-                           "+12 dB the full scale (clipping)."))
+        self.setToolTip(tr("Channel level (before the fader): -30 to +12 dB."))
         self._anim.start()
 
     def set_level_dbfs(self, dbfs: float) -> None:
@@ -768,8 +767,7 @@ class TrackInfoPanel(QtWidgets.QWidget):
 
     def set_eq_available(self, available: bool) -> None:
         """The EQ knobs work on the native engine's mixer alone (the Python engine has no EQ)."""
-        self.knobs[0].setToolTip(tr("TRIM: the level before the volume fader, -24 to +9 dB (0 dB in the middle), "
-                                    "kept as Settings > Audio > Mixer > Trim. Double-click: 0 dB."))
+        self.knobs[0].setToolTip(tr("TRIM: the level before the volume fader, -24 to +9 dB. Double-click: 0 dB."))
         for text, which in CHANNEL_KNOBS[1:]:
             knob = self.knobs[which]
             knob.setEnabled(available)

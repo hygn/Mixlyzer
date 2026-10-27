@@ -46,12 +46,6 @@ def build_shortcuts_tab(dialog) -> None:
     lay = QVBoxLayout(dialog.tab_shortcuts)
 
     intro = QLabel(tr("No modifier: changes no data · Ctrl: edits · Ctrl+Shift: deletes"))
-    intro.setToolTip(tr(
-        "<p>No modifier: what changes no data (playback, the playhead, the library's selection, the editor's pages "
-        "and lock). Ctrl: edits of the data in memory (kept until saved). Ctrl+Shift: what deletes data. On macOS "
-        "Ctrl is the Command key.</p><p>Current page: an operation several editor pages have, done on the page "
-        "shown (with pages side by side, the one marked in the selector: picked or clicked last). A page's own "
-        "shortcut shows its page. The button worked flashes; edits need editing unlocked.</p>"))
     lay.addWidget(intro)
 
     dialog.ed_shortcut_filter = QLineEdit()
@@ -98,7 +92,7 @@ def build_shortcuts_tab(dialog) -> None:
     dialog.btn_shortcut_revert = QPushButton(tr("Revert"))
     dialog.btn_shortcut_revert.setToolTip(tr("The selected action's shipped shortcut again."))
     dialog.btn_shortcut_revert_all = QPushButton(tr("Revert All"))
-    dialog.btn_shortcut_revert_all.setToolTip(tr("Every action's shipped shortcut again (kept with OK / Apply)."))
+    dialog.btn_shortcut_revert_all.setToolTip(tr("Every action's shipped shortcut again."))
     row.addWidget(QLabel(tr("Shortcut")))
     row.addWidget(dialog.kse_shortcut_main, 1)
     row.addWidget(QLabel(tr("Alternative")))

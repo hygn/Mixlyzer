@@ -96,8 +96,7 @@ class ExportTrackPanel(QtWidgets.QWidget):
         tags = QtWidgets.QGroupBox(tr("File Tags"))
         tags.setToolTip(tr(
             "<p>Write the library's values into the audio file's own tags: only the fields checked change; the "
-            "file's other tags, its artwork and its audio stay as they are. FLAC, MP3, AAC, WAV, AIFF and MP4 / "
-            "M4A files.</p>"
+            "file's other tags, its artwork and its audio stay as they are.</p>"
         ))
         self.tag_fields: dict[str, QtWidgets.QCheckBox] = {}
         grid = QtWidgets.QGridLayout()

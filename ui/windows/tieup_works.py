@@ -75,14 +75,12 @@ class WorksWindow(QDialog):
         for code, name in tieup.CATEGORIES:
             self.cmb_category.addItem(tr(name), code)
         self.tbl_titles = _TextTable(tr("Language"), tr("Title"), rows_shown=4, picks={0: LANG})
-        self.tbl_titles.setToolTip(tr("<p>The work's official titles, each with its language as language-REGION "
-                                      "(ja-JP, ko-KR, en-US). The library and the comment show the first title in "
-                                      "the interface's language, else the first of all.</p>"))
+        self.tbl_titles.setToolTip(tr("<p>The work's official titles, each with its language. The library and the "
+                                      "comment show the title in the interface's language.</p>"))
         self.tbl_aliases = _TextTable(tr("Type"), tr("Language"), tr("Alias"), rows_shown=4,
                                       picks={0: tieup.ALIAS_TYPES, 1: LANG})
-        self.tbl_aliases.setToolTip(tr("<p>Other names the work is found by, never shown: a name it is commonly "
-                                       "called by (a romanization), an abbreviation, or a search hint (a misspelling, "
-                                       "a typing slip). The search finds the work by them, also by how they read.</p>"))
+        self.tbl_aliases.setToolTip(tr("<p>Other names the work is found by, never shown: a common name, an "
+                                       "abbreviation or a search hint.</p>"))
         self.tbl_urls = _TextTable(tr("Label"), tr("URL"), rows_shown=3)
         self.list_tracks = QListWidget()
         self.list_tracks.setFixedHeight(self.list_tracks.fontMetrics().lineSpacing() * 5 + 12)

@@ -57,10 +57,8 @@ class SearchIndexPanel(QWidget):
         self.tbl_readings.verticalHeader().setSectionResizeMode(QHeaderView.Fixed)
         self.tbl_readings.setEditTriggers(QAbstractItemView.AllEditTriggers)
         self.tbl_readings.setToolTip(
-            tr("<p>How the title, artist and album read in Latin letters: the search finds the track by them "
-               "in any script (あのね by anone or 아노네). Dim: read from the text in Settings > Search's "
-               "languages. Type in a cell to add a reading of yours; empty a cell (Delete) or type over it to "
-               "remove its reading for good, and type it again to bring it back.</p>"))
+            tr("<p>How the title, artist and album read in Latin letters: the search finds the track by them. Type "
+               "in a cell to add a reading; empty it to remove one.</p>"))
         self.tbl_readings.setFixedHeight(
             self.tbl_readings.horizontalHeader().sizeHint().height()
             + self.tbl_readings.verticalHeader().defaultSectionSize() * reading.READING_SLOTS + 4)
@@ -70,10 +68,6 @@ class SearchIndexPanel(QWidget):
         self._reading_removed = {f: [] for f in READING_FIELDS}      # the automatic ones the user removed
         self._reading_touched = {f: False for f in READING_FIELDS}   # changed here (saved on apply)
         readings_layout.addWidget(self.tbl_readings)
-        note = QLabel(tr("Read from the stored title, artist and album: a change in the Edit tab is read once it is "
-                         "applied."))
-        note.setWordWrap(True)
-        readings_layout.addWidget(note)
         btn_box = QDialogButtonBox(QDialogButtonBox.Apply | QDialogButtonBox.Reset)
         btn_box.button(QDialogButtonBox.Apply).clicked.connect(self.apply)
         btn_box.button(QDialogButtonBox.Reset).clicked.connect(self._on_reset)
@@ -86,9 +80,7 @@ class SearchIndexPanel(QWidget):
         self.lbl_music = QLabel()
         self.btn_rebuild = QPushButton(tr("Rebuild Audio Fingerprints"))
         self.btn_rebuild.setToolTip(
-            tr("<p>The track's Variants fingerprint and its Search by Music index made again: the track is taken "
-               "out of both indexes, then Index Now indexes it (its audio decoded, a few seconds). For a track "
-               "found as another's version by mistake, or missing from Search by Music.</p>"))
+            tr("<p>The track's Variants fingerprint and its Search by Music index made again.</p>"))
         self.btn_rebuild.clicked.connect(self.rebuild)
         self.lbl_rebuild = QLabel()
         self.lbl_rebuild.setWordWrap(True)

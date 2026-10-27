@@ -50,11 +50,7 @@ def _global_page(dialog) -> QWidget:
     # up to the logical cores, never below the default (a smaller computer keeps it unless the user lowers it)
     dialog.sp_max_parallel_analyses.setRange(
         1, max(os.cpu_count() or 1, default_cfg().analysisconfig.max_parallel_analyses))
-    dialog.sp_max_parallel_analyses.setToolTip(tr(
-        "How many tracks are analyzed at once: each analysis is a process of its own with several threads. "
-        "The others wait their turn, the track loaded onto the deck first. The editor's reanalyses (a segment, "
-        "the keys, the phrases, the JumpCUEs) are not counted: they start at once."
-    ))
+    dialog.sp_max_parallel_analyses.setToolTip(tr("How many tracks are analyzed at once."))
     f_global_general.addRow(tr("Full analyses at once"), dialog.sp_max_parallel_analyses)
     # the analyses, their order and what each needs; a click opens the analysis's settings tab
     dialog.lbl_pipeline_title = QLabel(tr("Analysis order and dependencies"))
@@ -71,7 +67,7 @@ def _beat_page(dialog) -> QWidget:
     tab_beat = QWidget(); f_beat = QFormLayout(tab_beat)
     dialog.sp_bpm_min = QSpinBox(); dialog.sp_bpm_min.setRange(60,  400)
     dialog.sp_bpm_min.setToolTip(tr(
-        "The beat tracker reads every tempo in the octave from here (BPM min .. 2 x BPM min);\n"
+        "The beat tracker reads tempos from here to twice this;\n"
         "a song outside it is read at half or double tempo."
     ))
     dialog.lbl_bpm_range = QLabel()
@@ -86,8 +82,7 @@ def _beat_page(dialog) -> QWidget:
     dialog.cb_dynamic_downbeat = QCheckBox(tr("Dynamic Downbeat"))
     dialog.cb_dynamic_downbeat.setToolTip(tr(
         "Checked: odd bars and meter changes within a track.\n"
-        "Unchecked: one bar length and downbeat phase for the whole track.\n"
-        "Always on with Dynamic Analysis."
+        "Unchecked: one bar length and downbeat phase for the whole track."
     ))
 
     def _follow_dynamic(on):
@@ -102,33 +97,33 @@ def _beat_page(dialog) -> QWidget:
     dialog.ed_refine_onset_parameter_path = QLineEdit()
     dialog.ed_refine_onset_parameter_path.setPlaceholderText(npz_hint)
     dialog.ed_refine_onset_parameter_path.setToolTip(tr(
-        "Gradient-boosted onset model (.npz) that places the tracker's tempo changes."
+        "The model (.npz) that places the tracker's tempo changes."
     ))
     dialog.ed_onset_feature_cache_path = QLineEdit()
     dialog.ed_onset_feature_cache_path.setToolTip(cache_tip)
     dialog.ed_beat_tcn_parameter_path = QLineEdit()
     dialog.ed_beat_tcn_parameter_path.setPlaceholderText(npz_hint)
     dialog.ed_beat_tcn_parameter_path.setToolTip(tr(
-        "The frame TCN (.npz, its trainings) that hears the beats and downbeats."
+        "The model (.npz) that hears the beats and downbeats."
     ))
     dialog.ed_beat_critic_parameter_path = QLineEdit()
     dialog.ed_beat_critic_parameter_path.setPlaceholderText(npz_hint)
     dialog.ed_beat_critic_parameter_path.setToolTip(tr(
-        "The metronome critic (.npz, its fold models) that judges 3:2 / 4:3 readings."
+        "The model (.npz) that judges 3:2 / 4:3 readings."
     ))
     dialog.ed_beat_decoder_parameter_path = QLineEdit()
     dialog.ed_beat_decoder_parameter_path.setPlaceholderText(json_hint)
     dialog.ed_beat_decoder_parameter_path.setToolTip(tr(
-        "The decoder's costs (.json): a new section, a same-tempo half-beat reset, an odd bar."
+        "The decoder's costs (.json)."
     ))
     dialog.ed_downbeat_ctx_parameter_path = QLineEdit()
     dialog.ed_downbeat_ctx_parameter_path.setPlaceholderText(npz_hint)
     dialog.ed_downbeat_ctx_parameter_path.setToolTip(tr(
-        "Gradient-boosted downbeat model (.npz) the tracker's bars read."
+        "The downbeat model (.npz) the tracker's bars read."
     ))
     dialog.ed_beat_feature_cache_path = QLineEdit()
     dialog.ed_beat_feature_cache_path.setToolTip(tr(
-        "Folder for the frame features the beat models are retrained on (the tracker's own frames)."
+        "Folder for the frame features the beat models are retrained on."
     ))
     dialog.btn_reoptimize_beat_parameters = QPushButton(tr("Reoptimize Beat Models..."))
     dialog.btn_reoptimize_beat_parameters.setToolTip(tr("Retrain the beat analysis's models on your library's beat grids."))
@@ -163,9 +158,7 @@ def _key_page(dialog) -> QWidget:
     tab_key = QWidget(); f_key = QFormLayout(tab_key)
     dialog.cb_key_dynamic = QCheckBox(tr("Dynamic Analysis"))
     dialog.cb_key_dynamic.setToolTip(tr(
-        "Key changes within a track. Off: one key for the whole track -- the key the dynamic analysis finds in "
-        "the intro, outro and interludes (where tracks are mixed), or the key it finds most when a track has none. "
-        "Applies to the analysis and the editor's whole-track key reanalysis."
+        "Key changes within a track. Off: one key for the whole track, the key of its intro, outro and interludes."
     ))
     grp_key_general = QGroupBox(tr("General"))
     f_key_general = QFormLayout(grp_key_general)
@@ -174,8 +167,7 @@ def _key_page(dialog) -> QWidget:
     dialog.ed_key_parameter_path = QLineEdit()
     dialog.ed_key_parameter_path.setPlaceholderText(npz_hint)
     dialog.ed_key_parameter_path.setToolTip(tr(
-        "The key model (.npz): the chord network that reads every beat, the chords each key uses by phrase "
-        "position, and the key-change costs. A missing file means the shipped model."
+        "The key model (.npz). A missing file means the shipped model."
     ))
     dialog.ed_key_feature_cache_path = QLineEdit()
     dialog.ed_key_feature_cache_path.setToolTip(cache_tip)
@@ -223,11 +215,7 @@ def _cue_page(dialog) -> QWidget:
     dialog.cmb_autocue.addItem("JumpCUE", "jumpcue")
     dialog.cmb_autocue.addItem(tr("Off"), "off")
     dialog.cmb_autocue.setToolTip(tr(
-        "What the analysis puts at the automatic start position:\n"
-        "the lead-in end, an early first downbeat, or 0:00.\n"
-        "CUE point: a CUE point (memory cue).\n"
-        "JumpCUE: a JumpCUE (hot cue) of its own.\n"
-        "Off: nothing."
+        "The mark the analysis puts at the automatic start position (the lead-in end, the first downbeat or 0:00)."
     ))
     grp_autocue = QGroupBox("AutoCUE")
     f_autocue = QFormLayout(grp_autocue)
@@ -240,9 +228,7 @@ def _cue_page(dialog) -> QWidget:
     dialog.ed_jumpcue_parameter_path.setToolTip(tr("Learned JumpCUE jump point model (.json)."))
     dialog.ed_jumpcue_feature_cache_path.setToolTip(cache_tip)
     dialog.btn_reoptimize_jumpcue_parameter.setToolTip(tr(
-        "Retrain the jump point model on the JumpCUEs stored in the library. Where a "
-        "track's JumpCUEs differ from its automatic analysis, the automatic choice is "
-        "learned as the one to avoid."
+        "Retrain the jump point model on the JumpCUEs stored in the library."
     ))
     grp_jumpcue_advanced = QGroupBox(tr("JumpCUE Advanced"))
     f_jumpcue_advanced = QFormLayout(grp_jumpcue_advanced)
