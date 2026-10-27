@@ -41,7 +41,6 @@ Only this file is loaded by itself. Each part's details are in an AGENTS.md besi
 - `docs/`: localized docs (`README.ko.md`, `README.ja.md`).
 - `assets/`: icons, fonts, sounds; `i18n/`: the UI's languages and their catalogs (`system.i18n`); `shortcuts/`: the keyboard shortcuts (`core.controls.shortcuts`).
 - `library/`: user library data directory created/used at runtime. Treat as user data.
-- `debug/`: generated debug artifacts; do not assume they are source assets.
 ## Change Guidelines
 - Keep heavy DSP, file IO, and long-running work off the GUI thread.
 - The library has one owner, `core.library.service.LibraryService`: library.db, the NPZ files, the thumbnails and the indexes beside them are opened by it alone, all SQL on them is in `core/library/` and every read and write of a `{uid}.npz` in `core/analysis_library/`. Outside them, code names a job (`core.library.jobs`, `core.analysis_library.jobs`) and gets records (`core.library.records`): the GUI `read` / `write` with a ``done`` on the GUI thread, or reads the snapshot; another thread `call`; a worker process is given what it reads (a track's stored analysis included: never its path) and hands back what the owner stores. Never `sqlite3`, `LibraryDB`, `FeatureNPZStore` or another module inside them outside them (`tests/test_library_boundary.py` fails; tests aside). A new operation is a new job in the `jobs.py` of what it is about, with the SQL or file access it needs in the module inside that owns the table or file.

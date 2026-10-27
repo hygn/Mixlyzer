@@ -46,7 +46,6 @@ audioengine/native/third_party/
 /library/
 featurecache/
 backups/
-debug/
 ffmpeg.exe
 /ffmpeg
 config.json
@@ -66,7 +65,8 @@ tests/ground_truth/audio.json
 #   experiments/      prototypes (mix_mode, inhouse_cqt, rekordbox_dragdrop)
 #   interchange/      the DJ software interchange research; run from the repository's root:
 #                     python -m research.interchange.tools.<tool>
-#   debug_vis/        the analyses' debug visualizations
+#   debug/            old debug outputs and the analyses' debug visualizations (scripts, their images); the
+#                     internal docs' site builds (mkdocs.yml / mkdocs.publish.yml site_dir)
 #   madb_works/       the MADB works comparison
 #   native_mixer_engine-full-2026-10/   the native mixer checks of the engine before its diet (tag engine-full-2026-10)
 research/
