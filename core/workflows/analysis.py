@@ -7,6 +7,7 @@ alone: a file dropped on the library). A file being analyzed takes another reque
 from __future__ import annotations
 
 import os
+from collections import deque
 from typing import Callable, Optional
 
 from PySide6 import QtCore
@@ -56,7 +57,8 @@ class AnalysisWorkflow(QtCore.QObject):
         self._albumart_provider = albumart_provider
         self._tag_extractor = tag_extractor
         self._workers: dict[int, AnalysisWorker] = {}
-        self._contexts: dict[int, dict] = {}
+        self._contexts: dict[int, dict] = {}     # every request in flight, running or waiting
+        self._waiting: deque[int] = deque()      # the requests waiting to start, in their order
 
     def analyze(self, path: str, listener: ResultCallback | None = None) -> None:
         """The track's analysis: a library track's stored one, else a new one; to ``listener`` (a deck) and
@@ -74,6 +76,13 @@ class AnalysisWorkflow(QtCore.QObject):
 
     def cancel_all(self, reason: str | None = None) -> None:
         reason = reason or tr("Analysis canceled")
+        for taskid in list(self._waiting):    # not started: their tasks only
+            self._waiting.remove(taskid)
+            self._contexts.pop(taskid, None)
+            try:
+                self.taskmanager.rmtask(taskid, reason)
+            except Exception:
+                pass
         for taskid, worker in list(self._workers.items()):
             worker.stop()
             worker.deleteLater()
@@ -106,6 +115,9 @@ class AnalysisWorkflow(QtCore.QObject):
             # its result goes to this request's listener too
             if listener is not None:
                 self._contexts[inflight].setdefault("listeners", []).append(listener)
+                if inflight in self._waiting:      # now the deck's: ahead of the others waiting
+                    self._waiting.remove(inflight)
+                    self._waiting.appendleft(inflight)
             self._show_status(tr("Analysis already in progress: {file}").format(file=os.path.basename(path)))
             return
         if track is not None and listener is None and not force_analyze:   # in the library: analyzed
@@ -141,20 +153,50 @@ class AnalysisWorkflow(QtCore.QObject):
 
     def _analyze(self, path: str, cfg, taskid: int, thumbnail, force_analyze: bool,
                  listener: ResultCallback | None) -> None:
-        self._show_status(tr("Analyzing: {file}").format(file=os.path.basename(path)))
-        worker = AnalysisWorker(
-            path,
-            cfg,
-            taskid,
-            parent=self,
-        )
-        self._workers[taskid] = worker
+        """A full analysis asked for: started now while fewer than analysisconfig.max_parallel_analyses run, else
+        waiting its turn (the deck's track ahead of the files only going into the library)."""
         self._contexts[taskid] = {
             "path": path,
+            "cfg": cfg,
             "force": force_analyze,
             "listeners": [listener] if listener is not None else [],
             "album_art": thumbnail,
         }
+        if listener is not None:
+            self._waiting.appendleft(taskid)
+        else:
+            self._waiting.append(taskid)
+        self._start_waiting()
+        if taskid in self._waiting:
+            self.taskmanager.updatetask(taskid, tr("Waiting for a free analysis slot"), 0.0)
+            self._show_status(tr("Waiting to analyze: {file}").format(file=os.path.basename(path)))
+
+    def _parallel_limit(self) -> int:
+        """The full analyses run at once (Settings > Analysis > Global), as the settings say now."""
+        try:
+            return max(1, int(self._cfg_loader().analysisconfig.max_parallel_analyses))
+        except Exception:
+            return 1
+
+    def _start_waiting(self) -> None:
+        """The waiting analyses started, in their order, while there is room."""
+        limit = self._parallel_limit()
+        while self._waiting and len(self._workers) < limit:
+            taskid = self._waiting.popleft()
+            if taskid in self._contexts:
+                self._start_worker(taskid)
+
+    def _start_worker(self, taskid: int) -> None:
+        context = self._contexts[taskid]
+        path = context["path"]
+        self._show_status(tr("Analyzing: {file}").format(file=os.path.basename(path)))
+        worker = AnalysisWorker(
+            path,
+            context.pop("cfg"),
+            taskid,
+            parent=self,
+        )
+        self._workers[taskid] = worker
         worker.progress.connect(
             lambda status, progress, tid=taskid: self._on_progress(
                 tid, status, progress
@@ -233,6 +275,7 @@ class AnalysisWorkflow(QtCore.QObject):
             worker.stop()
             worker.deleteLater()
         self._contexts.pop(taskid, None)
+        self._start_waiting()      # its slot to the next waiting
 
     def _show_status(self, message: str) -> None:
         try:

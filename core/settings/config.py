@@ -216,6 +216,9 @@ class analysisconfig:
     # AutoCUE: what the analysis puts at the LEAD_IN end, an early first
     # downbeat, or 0:00: a CUE point, a JumpCUE of its own, or nothing.
     autocue: Literal["off", "cue_point", "jumpcue"]
+    # Full analyses run at once (each a process of its own with threads of its own); the others wait their turn,
+    # the deck's track first.
+    max_parallel_analyses: int
 
 
 @dataclass
@@ -419,6 +422,7 @@ def default_cfg():
         key_parameter_path="assets/weights/key_chord_cnn.npz",
         key_feature_cache_path="featurecache/key",
         autocue="cue_point",
+        max_parallel_analyses=2,
     )
     vcfg = viewconfig(
         language="",

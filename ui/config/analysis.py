@@ -1,4 +1,5 @@
 from datetime import datetime
+import os
 from pathlib import Path
 import shutil
 
@@ -45,6 +46,14 @@ def _global_page(dialog) -> QWidget:
     tab_global = QWidget(); f_global = QFormLayout(tab_global)
     grp_global = QGroupBox(tr("General"))
     f_global_general = QFormLayout(grp_global)
+    dialog.sp_max_parallel_analyses = QSpinBox()
+    dialog.sp_max_parallel_analyses.setRange(1, max(1, os.cpu_count() or 1))
+    dialog.sp_max_parallel_analyses.setToolTip(tr(
+        "How many tracks are analyzed at once: each analysis is a process of its own with several threads. "
+        "The others wait their turn, the track loaded onto the deck first. The editor's reanalyses (a segment, "
+        "the keys, the phrases, the JumpCUEs) are not counted: they start at once."
+    ))
+    f_global_general.addRow(tr("Full analyses at once"), dialog.sp_max_parallel_analyses)
     # the analyses, their order and what each needs; a click opens the analysis's settings tab
     dialog.lbl_pipeline_title = QLabel(tr("Analysis order and dependencies"))
     dialog.pipeline_map = PipelineMap()

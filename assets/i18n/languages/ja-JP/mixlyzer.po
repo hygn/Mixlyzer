@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-27 13:37+0900\n"
+"POT-Creation-Date: 2026-10-27 16:17+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ja_JP\n"
@@ -489,36 +489,36 @@ msgstr "タイムストレッチ"
 msgid "ffmpeg: a short silent decode"
 msgstr "ffmpeg: 短い無音のデコード"
 
-#: app/startup.py:274
+#: app/startup.py:275
 msgid "library.db: readings"
 msgstr "library.db: 読み"
 
-#: app/startup.py:283
+#: app/startup.py:285
 #, python-brace-format
 msgid "Search keys: {tracks} tracks, {done} / {total} readings"
 msgstr "検索キー: トラック {tracks} 件、読み {done} / {total}"
 
-#: app/startup.py:301
+#: app/startup.py:303
 msgid "Loading libraries"
 msgstr "ライブラリモジュールを読み込み中"
 
-#: app/startup.py:302
+#: app/startup.py:304
 msgid "Compiling audio kernels (JIT)"
 msgstr "オーディオカーネルをコンパイル中 (JIT)"
 
-#: app/startup.py:303
+#: app/startup.py:305
 msgid "Starting FFmpeg"
 msgstr "FFmpeg を起動中"
 
-#: app/startup.py:304
+#: app/startup.py:306
 msgid "Loading search readers"
 msgstr "検索用の読み変換を読み込み中"
 
-#: app/startup.py:305
+#: app/startup.py:307
 msgid "Loading the library"
 msgstr "ライブラリを読み込み中"
 
-#: app/startup.py:306
+#: app/startup.py:308
 msgid "Building the window"
 msgstr "ウィンドウを作成中"
 
@@ -557,7 +557,7 @@ msgstr "オープンソース"
 msgid "About"
 msgstr "情報"
 
-#: app/window.py:244 core/controls/midi.py:55 ui/config/playback.py:356
+#: app/window.py:241 core/controls/midi.py:55 ui/config/playback.py:356
 msgid "Mixer"
 msgstr "ミキサー"
 
@@ -565,53 +565,53 @@ msgstr "ミキサー"
 # | Playback > " "Audio engine)."
 # Audio
 # | > " "Engine)."
-#: app/window.py:420
+#: app/window.py:417
 msgid "MIDI needs the native audio engine (Settings > Audio > Engine)."
 msgstr "MIDI は Native オーディオエンジンでのみ動作します（設定 > オーディオ > エンジン）。"
 
 # | msgid "MIDI input"
-#: app/window.py:427
+#: app/window.py:424
 msgid "MIDI input on."
 msgstr "MIDI 入力オン。"
 
 # | msgid "MIDI input"
-#: app/window.py:427
+#: app/window.py:424
 msgid "MIDI input off."
 msgstr "MIDI 入力オフ。"
 
-#: app/window.py:476
+#: app/window.py:473
 msgid "The Python audio engine plays: there is no native engine to restart."
 msgstr "Python オーディオエンジンで再生中です。再起動するネイティブエンジンがありません。"
 
 # | msgid "Starting the reading worker"
-#: app/window.py:478
+#: app/window.py:475
 msgid "Restarting the audio engine..."
 msgstr "オーディオエンジンを再起動中..."
 
 # | msgid "Audio engine"
-#: app/window.py:482
+#: app/window.py:479
 msgid "Audio engine restarted."
 msgstr "オーディオエンジンを再起動しました。"
 
-#: app/window.py:483
+#: app/window.py:480
 msgid "The audio engine did not start; it is tried again every 2 seconds."
 msgstr "オーディオエンジンが起動しませんでした。2 秒ごとに再試行します。"
 
-#: app/window.py:533 app/window.py:598
+#: app/window.py:530 app/window.py:595
 msgid "External Sync is enabled. Local track loading is disabled."
 msgstr "外部同期が有効です。ローカルでのトラックの読み込みは無効になります。"
 
-#: app/window.py:546 app/window.py:601
+#: app/window.py:543 app/window.py:598
 msgid "Segment reanalysis canceled (track changed)"
 msgstr "区間の再解析をキャンセルしました (トラックが変わりました)"
 
 # | msgid "Phrase reanalysis completed"
-#: app/window.py:582
+#: app/window.py:579
 #, python-brace-format
 msgid "The track's analysis could not be read: {file}"
 msgstr "トラックの解析を読み込めませんでした: {file}"
 
-#: app/window.py:586
+#: app/window.py:583
 #, python-brace-format
 msgid ""
 "{n} JumpCUE past slot Z is not shown ({file}); it stays stored until the "
@@ -621,15 +621,15 @@ msgid_plural ""
 "the JumpCUEs are edited."
 msgstr[0] "スロットZを超えるJumpCUE {n}個は表示されません（{file}）。JumpCUEを編集するまでは保存されたまま残ります。"
 
-#: app/window.py:604
+#: app/window.py:601
 msgid "Track unloaded."
 msgstr "トラックをアンロードしました。"
 
-#: app/window.py:614
+#: app/window.py:611
 msgid "Track File Not Found"
 msgstr "トラックファイルが見つかりません"
 
-#: app/window.py:618
+#: app/window.py:615
 #, python-brace-format
 msgid ""
 "Cannot load \"{name}\": its file is missing.\n"
@@ -642,51 +642,51 @@ msgstr ""
 "\n"
 "ファイルの新しい場所を指定しますか?"
 
-#: app/window.py:625
+#: app/window.py:622
 #, python-brace-format
 msgid "Locate {name}"
 msgstr "{name} の場所を指定"
 
-#: app/window.py:649 app/window.py:665
+#: app/window.py:646 app/window.py:662
 msgid "Analysis saved to library."
 msgstr "解析をライブラリに保存しました。"
 
-#: app/window.py:654
+#: app/window.py:651
 msgid "Finished"
 msgstr "完了"
 
-#: app/window.py:677
+#: app/window.py:674
 msgid "Waiting to be looked up on Wikipedia"
 msgstr "Wikipediaでの調査待ち"
 
-#: app/window.py:683
+#: app/window.py:680
 msgid "Looking up on Wikipedia and Wikidata…"
 msgstr "WikipediaとWikidataで調べています…"
 
 # | msgid "Reading the analysis failed: {error}"
 # | msgid "The search failed: {error}"
 # | msgid "" "The lookup failed:\n" "{error}"
-#: app/window.py:688
+#: app/window.py:685
 msgid "The lookup failed."
 msgstr "調査できませんでした。"
 
-#: app/window.py:724
+#: app/window.py:721
 #, python-brace-format
 msgid "External Sync loading: {file}"
 msgstr "外部同期で読み込み中: {file}"
 
-#: app/window.py:724
+#: app/window.py:721
 #, python-brace-format
 msgid "External Sync analyzing: {file}"
 msgstr "外部同期で解析中: {file}"
 
 # | msgid "Memory Sync Disabled"
-#: app/window.py:739
+#: app/window.py:736
 msgid "External Sync Disabled"
 msgstr "外部同期を無効にしました"
 
 # | msgid "External Sync enabled via {target}. Local play/load is locked."
-#: app/window.py:1010
+#: app/window.py:1007
 #, python-brace-format
 msgid "External Sync enabled: OSC on {address}. Local play/load is locked."
 msgstr "外部同期が有効です: OSC {address}。ローカルでの再生/読み込みはロックされます。"
@@ -1145,16 +1145,16 @@ msgstr "ヘッドホン: レベル"
 msgid "Master: level"
 msgstr "マスター: レベル"
 
-#: core/library/db.py:430
+#: core/library/db.py:451
 msgid "The path cannot be empty."
 msgstr "パスを空にすることはできません。"
 
-#: core/library/db.py:433
+#: core/library/db.py:454
 #, python-brace-format
 msgid "This file is already in the library as \"{track}\"."
 msgstr "このファイルはすでにライブラリに「{track}」として登録されています。"
 
-#: core/library/db.py:454 core/library/db.py:475
+#: core/library/db.py:475 core/library/db.py:496
 msgid "Playlist name cannot be empty"
 msgstr "プレイリスト名を空にすることはできません"
 
@@ -1163,7 +1163,7 @@ msgstr "プレイリスト名を空にすることはできません"
 msgid "A language is written as ko-KR (language-REGION): {code}"
 msgstr "言語は ko-KR(言語-地域)の形で書きます: {code}"
 
-#: core/playback/external_sync.py:346
+#: core/playback/external_sync.py:336
 #, python-brace-format
 msgid ""
 "External Sync could not listen for OSC on {host}:{port} ({error}) and has"
@@ -1171,25 +1171,25 @@ msgid ""
 msgstr "外部同期は {host}:{port} で OSC を受信できなかったため({error})、無効にしました。"
 
 # | msgid "External Sync blocked for denied process: {process}"
-#: core/playback/external_sync.py:350
+#: core/playback/external_sync.py:340
 #, python-brace-format
 msgid "External Sync listening for OSC on {address}."
 msgstr "外部同期は {address} で OSC を受信しています。"
 
-#: core/playback/external_sync.py:396
+#: core/playback/external_sync.py:386
 #, python-brace-format
 msgid "External Sync ignored unsafe track path: {path}"
 msgstr "外部同期は安全でないトラックパスを無視しました: {path}"
 
 # | msgid "External Sync ignored unsafe track path: {path}"
-#: core/playback/external_sync.py:449
+#: core/playback/external_sync.py:439
 #, python-brace-format
 msgid ""
 "External Sync ignored a track not in the library (OSC from the network): "
 "{path}"
 msgstr "外部同期はライブラリにないトラックを無視しました(ネットワークからの OSC): {path}"
 
-#: core/playback/external_sync.py:454
+#: core/playback/external_sync.py:444
 #, python-brace-format
 msgid "External Sync analyzing external track before load: {path}"
 msgstr "外部同期: 読み込む前に外部トラックを解析中: {path}"
@@ -1444,7 +1444,7 @@ msgstr "検索ヒント"
 msgid "Processing Metadata"
 msgstr "メタデータを処理中"
 
-#: core/workers/analysis.py:152
+#: core/workers/analysis.py:150
 #, python-brace-format
 msgid "Analysis process exited unexpectedly ({code})."
 msgstr "解析プロセスが予期せず終了しました ({code})。"
@@ -1473,7 +1473,7 @@ msgstr "テンポを解析中"
 msgid "Phrase Boundary Analyzing"
 msgstr "フレーズ境界を解析中"
 
-#: core/workers/analysis_texts.py:17 ui/config/analysis.py:259
+#: core/workers/analysis_texts.py:17 ui/config/analysis.py:268
 #: ui/config/pipeline_map.py:23 ui/config/pipeline_map.py:32
 #: ui/edit_panel/panel.py:58 ui/library/search.py:268 ui/library/search.py:328
 #: ui/shortcuts.py:37
@@ -1488,7 +1488,7 @@ msgstr "JumpCUE を解析中"
 msgid "Analyzing Keys"
 msgstr "キーを解析中"
 
-#: core/workers/analysis_texts.py:19 ui/config/analysis.py:258
+#: core/workers/analysis_texts.py:19 ui/config/analysis.py:267
 #: ui/config/pipeline_map.py:26 ui/config/pipeline_map.py:34
 #: ui/edit_song.py:128
 msgid "Key"
@@ -1709,56 +1709,66 @@ msgstr "現在のモデルはすでに再学習されています。もう一度
 msgid "Fine-tuning the shipped model replaces the earlier retrained model."
 msgstr "同梱モデルをファインチューニングすると、以前に再学習したモデルは置き換えられます。"
 
-#: core/workflows/analysis.py:76
+#: core/workflows/analysis.py:78
 msgid "Analysis canceled"
 msgstr "解析をキャンセルしました"
 
-#: core/workflows/analysis.py:99
+#: core/workflows/analysis.py:108
 #, python-brace-format
 msgid "File not found: {path}"
 msgstr "ファイルが見つかりません: {path}"
 
-#: core/workflows/analysis.py:109
+#: core/workflows/analysis.py:121
 #, python-brace-format
 msgid "Analysis already in progress: {file}"
 msgstr "すでに解析中です: {file}"
 
 # | msgid "Reading the library"
-#: core/workflows/analysis.py:112
+#: core/workflows/analysis.py:124
 #, python-brace-format
 msgid "Already in the library: {file}"
 msgstr "すでにライブラリにあります: {file}"
 
-#: core/workflows/analysis.py:120
+#: core/workflows/analysis.py:132
 msgid "Loading Track"
 msgstr "トラックを読み込み中"
 
 # | msgid "Loading the library"
-#: core/workflows/analysis.py:131
+#: core/workflows/analysis.py:143
 #, python-brace-format
 msgid "Loaded from the library: {file}"
 msgstr "ライブラリから読み込みました: {file}"
 
-#: core/workflows/analysis.py:144
+#: core/workflows/analysis.py:171
+msgid "Waiting for a free analysis slot"
+msgstr "解析の順番待ち"
+
+# | msgid "Analyzing: {file}"
+#: core/workflows/analysis.py:172
+#, python-brace-format
+msgid "Waiting to analyze: {file}"
+msgstr "解析待ち: {file}"
+
+#: core/workflows/analysis.py:192
 #, python-brace-format
 msgid "Analyzing: {file}"
 msgstr "解析中: {file}"
 
-#: core/workflows/analysis.py:198
+#: core/workflows/analysis.py:239
 #, python-brace-format
 msgid "Error ({file})"
 msgstr "エラー ({file})"
 
-#: core/workflows/analysis.py:198
+#: core/workflows/analysis.py:239
 msgid "Error"
 msgstr "エラー"
 
-#: core/workflows/analysis.py:209
+#: core/workflows/analysis.py:250
 msgid "Saving Result"
 msgstr "結果を保存中"
 
 # | msgid "The file could not be written: {error}"
-#: core/workflows/analysis.py:212
+#: core/workflows/analysis.py:253
 #, python-brace-format
 msgid "The analysis could not be stored: {error}"
 msgstr "解析結果を保存できませんでした: {error}"
@@ -1903,101 +1913,114 @@ msgstr ""
 "ビートグリッド、キー、JumpCUE を解析・編集するインタラクティブなツールです。\n"
 "GNU Lesser General Public License v3.0 で配布されています。ライセンスの全文は以下をご覧ください。"
 
-#: ui/config/analysis.py:39
+#: ui/config/analysis.py:40
 msgid "relative or absolute .npz path"
 msgstr "相対または絶対の .npz パス"
 
-#: ui/config/analysis.py:39
+#: ui/config/analysis.py:40
 msgid "relative or absolute .json path"
 msgstr "相対または絶対の .json パス"
 
-#: ui/config/analysis.py:40
+#: ui/config/analysis.py:41
 msgid "Folder for features cached while reoptimizing, so later runs are faster."
 msgstr "再最適化中に特徴量をキャッシュするフォルダー。次回以降の実行が速くなります。"
 
-#: ui/config/analysis.py:46 ui/config/analysis.py:159
+#: ui/config/analysis.py:47 ui/config/analysis.py:168
 msgid "General"
 msgstr "一般"
 
-#: ui/config/analysis.py:49
+#: ui/config/analysis.py:52
+msgid ""
+"How many tracks are analyzed at once: each analysis is a process of its "
+"own with several threads. The others wait their turn, the track loaded "
+"onto the deck first. The editor's reanalyses (a segment, the keys, the "
+"phrases, the JumpCUEs) are not counted: they start at once."
+msgstr "同時に解析するトラックの数です。解析はそれぞれ別のプロセスで、複数のスレッドを使います。残りは順番を待ち、デッキにロードしたトラックが先になります。エディターの再解析（区間、キー、フレーズ、JumpCUE）は数に入らず、すぐに始まります。"
+
+# | msgid "Analysis canceled"
+#: ui/config/analysis.py:56
+msgid "Full analyses at once"
+msgstr "同時に解析するトラック数"
+
+#: ui/config/analysis.py:58
 msgid "Analysis order and dependencies"
 msgstr "解析の順序と依存関係"
 
-#: ui/config/analysis.py:94
+#: ui/config/analysis.py:103
 msgid ""
 "Gradient-boosted onset model (.npz) that places the tracker's tempo "
 "changes."
 msgstr "トラッカーのテンポ変化の位置を決める勾配ブースティングのオンセットモデル (.npz)。"
 
-#: ui/config/analysis.py:101
+#: ui/config/analysis.py:110
 msgid "The frame TCN (.npz, its trainings) that hears the beats and downbeats."
 msgstr "拍とダウンビートを聞き取るフレーム TCN (.npz、各トレーニング)。"
 
-#: ui/config/analysis.py:106
+#: ui/config/analysis.py:115
 msgid ""
 "The metronome critic (.npz, its fold models) that judges 3:2 / 4:3 "
 "readings."
 msgstr "3:2 / 4:3 の読み取りを判定するメトロノームクリティック (.npz、各フォールドモデル)。"
 
-#: ui/config/analysis.py:111
+#: ui/config/analysis.py:120
 msgid ""
 "The decoder's costs (.json): a new section, a same-tempo half-beat reset,"
 " an odd bar."
 msgstr "デコーダーのコスト (.json): 新しい区間、同じテンポでの半拍リセット、端数小節。"
 
-#: ui/config/analysis.py:116
+#: ui/config/analysis.py:125
 msgid "Gradient-boosted downbeat model (.npz) the tracker's bars read."
 msgstr "トラッカーの小節が読み取る勾配ブースティングのダウンビートモデル (.npz)。"
 
-#: ui/config/analysis.py:120
+#: ui/config/analysis.py:129
 msgid ""
 "Folder for the frame features the beat models are retrained on (the "
 "tracker's own frames)."
 msgstr "ビートモデルの再学習に使うフレーム特徴量のフォルダー (トラッカー自身のフレーム)。"
 
-#: ui/config/analysis.py:122
+#: ui/config/analysis.py:131
 msgid "Reoptimize Beat Models..."
 msgstr "ビートモデルを再最適化..."
 
-#: ui/config/analysis.py:123
+#: ui/config/analysis.py:132
 msgid "Retrain the beat analysis's models on your library's beat grids."
 msgstr "ライブラリのビートグリッドでビート解析のモデルを再学習します。"
 
-#: ui/config/analysis.py:133 ui/config/analysis.py:174
-#: ui/config/analysis.py:197 ui/config/dialogs/optimization.py:204
+#: ui/config/analysis.py:142 ui/config/analysis.py:183
+#: ui/config/analysis.py:206 ui/config/dialogs/optimization.py:204
 #: ui/config/library.py:118 ui/config/playback.py:108 ui/config/view.py:150
 msgid "Advanced"
 msgstr "詳細設定"
 
-#: ui/config/analysis.py:135
+#: ui/config/analysis.py:144
 msgid "Tempo-change onset (NPZ)"
 msgstr "テンポ変化オンセット (NPZ)"
 
-#: ui/config/analysis.py:136
+#: ui/config/analysis.py:145
 msgid "Onset feature cache"
 msgstr "オンセット特徴量キャッシュ"
 
-#: ui/config/analysis.py:137
+#: ui/config/analysis.py:146
 msgid "Beat TCN (NPZ)"
 msgstr "ビート TCN (NPZ)"
 
-#: ui/config/analysis.py:138
+#: ui/config/analysis.py:147
 msgid "Metronome critic (NPZ)"
 msgstr "メトロノームクリティック (NPZ)"
 
-#: ui/config/analysis.py:139
+#: ui/config/analysis.py:148
 msgid "Downbeat model (NPZ)"
 msgstr "ダウンビートモデル (NPZ)"
 
-#: ui/config/analysis.py:140
+#: ui/config/analysis.py:149
 msgid "Decoder costs (JSON)"
 msgstr "デコーダーコスト (JSON)"
 
-#: ui/config/analysis.py:141
+#: ui/config/analysis.py:150
 msgid "Beat feature cache"
 msgstr "ビート特徴量キャッシュ"
 
-#: ui/config/analysis.py:166
+#: ui/config/analysis.py:175
 msgid ""
 "The key model (.npz): the chord network that reads every beat, the chords"
 " each key uses by phrase position, and the key-change costs. A missing "
@@ -2006,53 +2029,53 @@ msgstr ""
 "キーモデル (.npz): "
 "すべての拍を読み取るコードネットワーク、フレーズ内の位置ごとに各キーが使うコード、キー変化のコスト。ファイルがない場合は同梱モデルを使います。"
 
-#: ui/config/analysis.py:171
+#: ui/config/analysis.py:180
 msgid "Reoptimize Key Model..."
 msgstr "キーモデルを再最適化..."
 
-#: ui/config/analysis.py:172
+#: ui/config/analysis.py:181
 msgid "Retrain the key model on the keys you checked in your library."
 msgstr "ライブラリで確認したキーでキーモデルを再学習します。"
 
-#: ui/config/analysis.py:176
+#: ui/config/analysis.py:185
 msgid "Key model (NPZ)"
 msgstr "キーモデル (NPZ)"
 
-#: ui/config/analysis.py:177
+#: ui/config/analysis.py:186
 msgid "Key feature cache"
 msgstr "キー特徴量キャッシュ"
 
-#: ui/config/analysis.py:190 ui/config/analysis.py:656
-#: ui/config/analysis.py:717 ui/config/analysis.py:728
+#: ui/config/analysis.py:199 ui/config/analysis.py:665
+#: ui/config/analysis.py:726 ui/config/analysis.py:737
 msgid "Reoptimize Phrase Parameter"
 msgstr "フレーズパラメーターを再最適化"
 
-#: ui/config/analysis.py:192
+#: ui/config/analysis.py:201
 msgid "Learned phrase model (.npz)."
 msgstr "学習済みのフレーズモデル (.npz)。"
 
-#: ui/config/analysis.py:195
+#: ui/config/analysis.py:204
 msgid "Retrain the phrase model on the phrases stored in the library."
 msgstr "ライブラリに保存されたフレーズでフレーズモデルを再学習します。"
 
-#: ui/config/analysis.py:199
+#: ui/config/analysis.py:208
 msgid "Parameters (NPZ)"
 msgstr "パラメーター (NPZ)"
 
-#: ui/config/analysis.py:200 ui/config/analysis.py:239
+#: ui/config/analysis.py:209 ui/config/analysis.py:248
 msgid "Feature cache"
 msgstr "特徴量キャッシュ"
 
-#: ui/config/analysis.py:227 ui/config/analysis.py:735
-#: ui/config/analysis.py:780 ui/config/analysis.py:791
+#: ui/config/analysis.py:236 ui/config/analysis.py:744
+#: ui/config/analysis.py:789 ui/config/analysis.py:800
 msgid "Reoptimize JumpCUE Parameter"
 msgstr "JumpCUE パラメーターを再最適化"
 
-#: ui/config/analysis.py:229
+#: ui/config/analysis.py:238
 msgid "Learned JumpCUE jump point model (.json)."
 msgstr "学習済みの JumpCUE ジャンプポイントモデル (.json)。"
 
-#: ui/config/analysis.py:232
+#: ui/config/analysis.py:241
 msgid ""
 "Retrain the jump point model on the JumpCUEs stored in the library. Where"
 " a track's JumpCUEs differ from its automatic analysis, the automatic "
@@ -2061,61 +2084,61 @@ msgstr ""
 "ライブラリに保存された JumpCUE でジャンプポイントモデルを再学習します。トラックの JumpCUE "
 "が自動解析と異なる場合、自動で選ばれたほうを避けるべきものとして学習します。"
 
-#: ui/config/analysis.py:236
+#: ui/config/analysis.py:245
 msgid "JumpCUE Advanced"
 msgstr "JumpCUE 詳細設定"
 
-#: ui/config/analysis.py:238
+#: ui/config/analysis.py:247
 msgid "Parameters (JSON)"
 msgstr "パラメーター (JSON)"
 
-#: ui/config/analysis.py:256
+#: ui/config/analysis.py:265
 msgid "Global"
 msgstr "全体"
 
-#: ui/config/analysis.py:260 ui/config/pipeline_map.py:24
+#: ui/config/analysis.py:269 ui/config/pipeline_map.py:24
 #: ui/config/pipeline_map.py:25
 msgid "CUE"
 msgstr "CUE"
 
-#: ui/config/analysis.py:280
+#: ui/config/analysis.py:289
 msgid "CUE points (set by the analysis from the phrases)"
 msgstr "CUEポイント (解析がフレーズから設定)"
 
-#: ui/config/analysis.py:285
+#: ui/config/analysis.py:294
 msgid "At start"
 msgstr "開始位置"
 
-#: ui/config/analysis.py:286
+#: ui/config/analysis.py:295
 msgid "At end"
 msgstr "終了位置"
 
-#: ui/config/analysis.py:287
+#: ui/config/analysis.py:296
 msgid "Also between two of them"
 msgstr "同じラベルの間にも"
 
-#: ui/config/analysis.py:289
+#: ui/config/analysis.py:298
 #, python-brace-format
 msgid "A CUE point where a {label} phrase starts"
 msgstr "{label} フレーズが始まる位置に CUEポイント"
 
-#: ui/config/analysis.py:290
+#: ui/config/analysis.py:299
 #, python-brace-format
 msgid "A CUE point where a {label} phrase ends"
 msgstr "{label} フレーズが終わる位置に CUEポイント"
 
-#: ui/config/analysis.py:292
+#: ui/config/analysis.py:301
 #, python-brace-format
 msgid ""
 "Also where two {label} phrases meet; otherwise only where a {label} "
 "phrase meets a phrase of another label"
 msgstr "{label} フレーズ同士が接する位置にも置きます。オフの場合は {label} フレーズが別のラベルのフレーズと接する位置にだけ置きます"
 
-#: ui/config/analysis.py:307
+#: ui/config/analysis.py:316
 msgid "Applies to tracks analyzed (or reanalyzed) from now on."
 msgstr "今後解析 (または再解析) するトラックに適用されます。"
 
-#: ui/config/analysis.py:360
+#: ui/config/analysis.py:369
 #, python-brace-format
 msgid ""
 "A new {name} parameter file will be created at the configured path.\n"
@@ -2124,7 +2147,7 @@ msgstr ""
 "設定したパスに新しい {name} パラメーターファイルを作成します。\n"
 "上書きする前に既存のファイルをバックアップしますか?"
 
-#: ui/config/analysis.py:375
+#: ui/config/analysis.py:384
 #, python-brace-format
 msgid ""
 "Failed to back up {name} parameter:\n"
@@ -2133,7 +2156,7 @@ msgstr ""
 "{name} パラメーターをバックアップできませんでした:\n"
 "{error}"
 
-#: ui/config/analysis.py:435
+#: ui/config/analysis.py:444
 #, python-brace-format
 msgid ""
 "Optimization completed after ignoring {count} invalid track. Open Details"
@@ -2143,22 +2166,22 @@ msgid_plural ""
 "Details to see the songs and reasons."
 msgstr[0] "無効なトラック {count} 件を除外して最適化を完了しました。「詳細を表示」で曲と理由を確認できます。"
 
-#: ui/config/analysis.py:444
+#: ui/config/analysis.py:453
 #, python-brace-format
 msgid "Reason: {reason}"
 msgstr "理由: {reason}"
 
-#: ui/config/analysis.py:457 ui/config/dialogs/optimization.py:153
+#: ui/config/analysis.py:466 ui/config/dialogs/optimization.py:153
 #: ui/config/dialogs/optimization.py:267
 msgid "Reoptimize Beat Models"
 msgstr "ビートモデルの再最適化"
 
-#: ui/config/analysis.py:479
+#: ui/config/analysis.py:488
 #, python-brace-format
 msgid "{name}: parameter path or feature cache path is empty."
 msgstr "{name}: パラメーターのパスまたは特徴量キャッシュのパスが空です。"
 
-#: ui/config/analysis.py:518
+#: ui/config/analysis.py:527
 #, python-brace-format
 msgid ""
 "Failed to back up the {name} parameter:\n"
@@ -2167,21 +2190,21 @@ msgstr ""
 "{name} パラメーターをバックアップできませんでした:\n"
 "{error}"
 
-#: ui/config/analysis.py:560
+#: ui/config/analysis.py:569
 #, python-brace-format
 msgid "{name}: feature build pending"
 msgstr "{name}: 特徴量の作成待ち"
 
-#: ui/config/analysis.py:561
+#: ui/config/analysis.py:570
 #, python-brace-format
 msgid "{name}: optimize pending"
 msgstr "{name}: 最適化待ち"
 
-#: ui/config/analysis.py:579 ui/config/analysis.py:590
+#: ui/config/analysis.py:588 ui/config/analysis.py:599
 msgid "none"
 msgstr "なし"
 
-#: ui/config/analysis.py:587
+#: ui/config/analysis.py:596
 #, python-brace-format
 msgid ""
 "{name} optimization failed:\n"
@@ -2203,24 +2226,24 @@ msgstr ""
 #: analyzer/training/jumpcue_parameter_optimizer.py:1123
 #: analyzer/training/key_model_optimizer.py:542
 #: analyzer/training/phrase_parameter_optimizer.py:578
-#: analyzer/training/refine_onset_optimizer.py:206 ui/config/analysis.py:598
+#: analyzer/training/refine_onset_optimizer.py:206 ui/config/analysis.py:607
 #: ui/config/dialogs/optimization.py:95
 msgid "Done"
 msgstr "完了"
 
-#: ui/config/analysis.py:614
+#: ui/config/analysis.py:623
 #, python-brace-format
 msgid "{name}: saved to {path}"
 msgstr "{name}: {path} に保存しました"
 
-#: ui/config/analysis.py:616
+#: ui/config/analysis.py:625
 #, python-brace-format
 msgid ""
 "{name}: NOT saved -- the end-to-end check found the grids worse; the "
 "model in use is kept."
 msgstr "{name}: 保存しませんでした -- エンドツーエンドの確認でグリッドが悪化しました。使用中のモデルを維持します。"
 
-#: ui/config/analysis.py:620
+#: ui/config/analysis.py:629
 #, python-brace-format
 msgid ""
 "Costs: section {section_before} -> {section_after}, half-beat reset "
@@ -2229,74 +2252,74 @@ msgstr ""
 "コスト: 区間 {section_before} -> {section_after}、半拍リセット {reset_before} -> "
 "{reset_after}、端数小節 {odd_before} -> {odd_after}"
 
-#: ui/config/analysis.py:626
+#: ui/config/analysis.py:635
 msgid "No end-to-end check (cross-validation is off): saved without a comparison."
 msgstr "エンドツーエンドの確認なし (交差検証がオフ): 比較せずに保存しました。"
 
-#: ui/config/analysis.py:629
+#: ui/config/analysis.py:638
 #, python-brace-format
 msgid ""
 "End-to-end check on {count} held-out songs (the whole analysis, current "
 "vs new):"
 msgstr "検証用の {count} 曲でエンドツーエンドの確認 (解析全体、現在と新しいモデル):"
 
-#: ui/config/analysis.py:632
+#: ui/config/analysis.py:641
 #, python-brace-format
 msgid "End-to-end check on {count} songs (the whole analysis, current vs new):"
 msgstr "{count} 曲でエンドツーエンドの確認 (解析全体、現在と新しいモデル):"
 
-#: ui/config/analysis.py:634
+#: ui/config/analysis.py:643
 #, python-brace-format
 msgid "beats off by more than 25 ms: {before} -> {after} min"
 msgstr "25 ms 以上ずれた拍: {before} -> {after} 分"
 
-#: ui/config/analysis.py:636
+#: ui/config/analysis.py:645
 #, python-brace-format
 msgid "bars whose downbeat is off by more than 70 ms: {before} -> {after} min"
 msgstr "ダウンビートが 70 ms 以上ずれた小節: {before} -> {after} 分"
 
-#: ui/config/analysis.py:643
+#: ui/config/analysis.py:652
 #, python-brace-format
 msgid " and {count} more"
 msgstr " ほか {count} 曲"
 
-#: ui/config/analysis.py:645
+#: ui/config/analysis.py:654
 msgid "better"
 msgstr "改善"
 
-#: ui/config/analysis.py:646
+#: ui/config/analysis.py:655
 msgid "worse"
 msgstr "悪化"
 
-#: ui/config/analysis.py:648
+#: ui/config/analysis.py:657
 msgid "no song changed by more than a second"
 msgstr "1 秒以上変わった曲はありません"
 
-#: ui/config/analysis.py:661
+#: ui/config/analysis.py:670
 msgid "Phrase Parameter Path (npz) is empty."
 msgstr "フレーズパラメーターのパス (npz) が空です。"
 
-#: ui/config/analysis.py:668
+#: ui/config/analysis.py:677
 msgid "Phrase Feature Cache Path (directory) is empty."
 msgstr "フレーズ特徴量キャッシュのパス (フォルダー) が空です。"
 
-#: ui/config/analysis.py:677
+#: ui/config/analysis.py:686
 msgid "phrase"
 msgstr "フレーズ"
 
-#: ui/config/analysis.py:700 ui/config/analysis.py:761
+#: ui/config/analysis.py:709 ui/config/analysis.py:770
 #: ui/config/dialogs/optimization.py:75
 msgid "CV"
 msgstr "CV"
 
 #: analyzer/training/beat_critic_optimizer.py:492
 #: analyzer/training/beat_tcn_optimizer.py:395
-#: analyzer/training/key_model_optimizer.py:535 ui/config/analysis.py:700
-#: ui/config/analysis.py:761 ui/config/dialogs/optimization.py:75
+#: analyzer/training/key_model_optimizer.py:535 ui/config/analysis.py:709
+#: ui/config/analysis.py:770 ui/config/dialogs/optimization.py:75
 msgid "Training"
 msgstr "学習"
 
-#: ui/config/analysis.py:702
+#: ui/config/analysis.py:711
 #, python-brace-format
 msgid ""
 "Phrase parameter updated:\n"
@@ -2305,44 +2328,44 @@ msgstr ""
 "フレーズパラメーターを更新しました:\n"
 "{path}"
 
-#: ui/config/analysis.py:704
+#: ui/config/analysis.py:713
 #, python-brace-format
 msgid "Tracks: {count}"
 msgstr "トラック: {count}"
 
-#: ui/config/analysis.py:705
+#: ui/config/analysis.py:714
 #, python-brace-format
 msgid "{kind} boundary F1 (exact beat): {value}"
 msgstr "{kind} 境界 F1 (拍単位で一致): {value}"
 
-#: ui/config/analysis.py:706
+#: ui/config/analysis.py:715
 #, python-brace-format
 msgid "{kind} key-section change F1: {value}"
 msgstr "{kind} キー区間変化 F1: {value}"
 
-#: ui/config/analysis.py:707
+#: ui/config/analysis.py:716
 #, python-brace-format
 msgid "{kind} label-change boundary F1: {value}"
 msgstr "{kind} ラベル変化境界 F1: {value}"
 
-#: ui/config/analysis.py:708
+#: ui/config/analysis.py:717
 #, python-brace-format
 msgid "{kind} beat label accuracy: {value}"
 msgstr "{kind} 拍単位のラベル正解率: {value}"
 
-#: ui/config/analysis.py:709
+#: ui/config/analysis.py:718
 #, python-brace-format
 msgid "{kind} lead-in accuracy: {value}"
 msgstr "{kind} リードイン正解率: {value}"
 
-#: ui/config/analysis.py:712
+#: ui/config/analysis.py:721
 msgid ""
 "Interpretation: these in-sample scores only confirm how well the model "
 "fits its training data. They do not estimate performance on unseen "
 "tracks."
 msgstr "解釈: これらの学習データ内のスコアは、モデルが学習データにどれだけ合っているかを示すだけです。未知のトラックでの性能を推定するものではありません。"
 
-#: ui/config/analysis.py:729
+#: ui/config/analysis.py:738
 #, python-brace-format
 msgid ""
 "Phrase parameter optimization failed:\n"
@@ -2351,18 +2374,18 @@ msgstr ""
 "フレーズパラメーターの最適化に失敗しました:\n"
 "{error}"
 
-#: ui/config/analysis.py:739
+#: ui/config/analysis.py:748
 msgid "JumpCUE parameter path and feature cache path are required."
 msgstr "JumpCUE パラメーターのパスと特徴量キャッシュのパスが必要です。"
 
-#: ui/config/analysis.py:763
+#: ui/config/analysis.py:772
 #, python-brace-format
 msgid ""
 "{kind} saved choice above the automatic one: {value} ({count} corrected "
 "groups)"
 msgstr "{kind} 保存された選択が自動の選択より上位: {value} (修正されたグループ {count} 件)"
 
-#: ui/config/analysis.py:766
+#: ui/config/analysis.py:775
 msgid ""
 "No corrected groups yet: the library's JumpCUEs all match their automatic"
 " analysis, or were analyzed before it was kept."
@@ -2370,7 +2393,7 @@ msgstr ""
 "修正されたグループはまだありません: ライブラリの JumpCUE "
 "がすべて自動解析と一致しているか、自動解析を保存するようになる前に解析されています。"
 
-#: ui/config/analysis.py:770
+#: ui/config/analysis.py:779
 #, python-brace-format
 msgid ""
 "JumpCUE parameter updated:\n"
@@ -2379,22 +2402,22 @@ msgstr ""
 "JumpCUE パラメーターを更新しました:\n"
 "{path}"
 
-#: ui/config/analysis.py:772
+#: ui/config/analysis.py:781
 #, python-brace-format
 msgid "Tracks: {tracks}, groups: {groups}"
 msgstr "トラック: {tracks}、グループ: {groups}"
 
-#: ui/config/analysis.py:773
+#: ui/config/analysis.py:782
 #, python-brace-format
 msgid "{kind} rank of the saved point among the candidates (AUC): {value}"
 msgstr "{kind} 候補内での保存されたポイントの順位 (AUC): {value}"
 
-#: ui/config/analysis.py:775
+#: ui/config/analysis.py:784
 #, python-brace-format
 msgid "{kind} chosen points on a downbeat: {value}"
 msgstr "{kind} ダウンビート上にある選択ポイント: {value}"
 
-#: ui/config/analysis.py:792
+#: ui/config/analysis.py:801
 #, python-brace-format
 msgid ""
 "JumpCUE parameter optimization failed:\n"
@@ -2403,17 +2426,17 @@ msgstr ""
 "JumpCUE パラメーターの最適化に失敗しました:\n"
 "{error}"
 
-#: ui/config/analysis.py:798 ui/config/analysis.py:849
-#: ui/config/analysis.py:855 ui/config/dialogs/optimization.py:324
+#: ui/config/analysis.py:807 ui/config/analysis.py:858
+#: ui/config/analysis.py:864 ui/config/dialogs/optimization.py:324
 #: ui/config/dialogs/optimization.py:384
 msgid "Reoptimize Key Model"
 msgstr "キーモデルの再最適化"
 
-#: ui/config/analysis.py:802
+#: ui/config/analysis.py:811
 msgid "Key model path and feature cache path are required."
 msgstr "キーモデルのパスと特徴量キャッシュのパスが必要です。"
 
-#: ui/config/analysis.py:812
+#: ui/config/analysis.py:821
 #, python-brace-format
 msgid ""
 "Failed to back up the key model:\n"
@@ -2422,18 +2445,18 @@ msgstr ""
 "キーモデルをバックアップできませんでした:\n"
 "{error}"
 
-#: ui/config/analysis.py:832
+#: ui/config/analysis.py:841
 #, python-brace-format
 msgid "Key model saved to {path}"
 msgstr "キーモデルを {path} に保存しました"
 
-#: ui/config/analysis.py:833
+#: ui/config/analysis.py:842
 msgid ""
 "Key model NOT saved: the held-out songs' keys got worse; the model in use"
 " is kept."
 msgstr "キーモデルを保存しませんでした: 検証用の曲のキーが悪化しました。使用中のモデルを維持します。"
 
-#: ui/config/analysis.py:835
+#: ui/config/analysis.py:844
 #, python-brace-format
 msgid ""
 "Training songs: {count} ({edited} with keys changed from the automatic "
@@ -2442,35 +2465,35 @@ msgstr ""
 "学習に使った曲: {count} 曲 (自動の結果からキーを変更した曲 {edited} 曲、自動の結果を保存するようになる前に解析した曲 "
 "{legacy} 曲)"
 
-#: ui/config/analysis.py:838
+#: ui/config/analysis.py:847
 #, python-brace-format
 msgid "Key analysis on {count} held-out songs, current -> new:"
 msgstr "検証用の {count} 曲でのキー解析、現在 -> 新しいモデル:"
 
-#: ui/config/analysis.py:840
+#: ui/config/analysis.py:849
 #, python-brace-format
 msgid "Key analysis on the {count} training songs, current -> new:"
 msgstr "学習に使った {count} 曲でのキー解析、現在 -> 新しいモデル:"
 
 # | msgid "beats in the right key (Camelot number): {before} -> {after}"
-#: ui/config/analysis.py:841
+#: ui/config/analysis.py:850
 #, python-brace-format
 msgid "beats in the right key (Alphanumeric number): {before} -> {after}"
 msgstr "キーが合っている拍 (Alphanumeric 番号): {before} -> {after}"
 
 # | msgid "beats off by a fifth (Camelot neighbor): {before} -> {after}"
-#: ui/config/analysis.py:843
+#: ui/config/analysis.py:852
 #, python-brace-format
 msgid "beats off by a fifth (Alphanumeric neighbor): {before} -> {after}"
 msgstr "5 度ずれた拍 (Alphanumeric の隣): {before} -> {after}"
 
-#: ui/config/analysis.py:847
+#: ui/config/analysis.py:856
 msgid ""
 "Without cross-validation these are the training songs: they show the fit,"
 " not unseen songs."
 msgstr "交差検証なしでの学習に使った曲の結果です: モデルの当てはまりを示すもので、未知の曲での性能ではありません。"
 
-#: ui/config/analysis.py:856
+#: ui/config/analysis.py:865
 #, python-brace-format
 msgid ""
 "Key model optimization failed:\n"
@@ -6240,7 +6263,7 @@ msgstr "トラックを解析"
 msgid "Add to Playlist"
 msgstr "プレイリストに追加"
 
-#: ui/library/actions.py:99
+#: ui/library/actions.py:101
 #, python-brace-format
 msgid ""
 "Remove \"{title}\" from the library?\n"
@@ -6249,7 +6272,7 @@ msgstr ""
 "「{title}」をライブラリから削除しますか?\n"
 "解析と編集の内容は削除されます。オーディオファイルはそのまま残ります。"
 
-#: ui/library/actions.py:102
+#: ui/library/actions.py:104
 #, python-brace-format
 msgid ""
 "Remove {count} track from the library?\n"
@@ -6740,7 +6763,7 @@ msgid "Its stored analysis and edits are replaced; this cannot be undone."
 msgid_plural "Their stored analysis and edits are replaced; this cannot be undone."
 msgstr[0] "保存された解析と編集の内容が置き換わり、元に戻すことはできません。"
 
-#: ui/config/analysis.py:63 ui/reanalyze_dialog.py:32
+#: ui/config/analysis.py:72 ui/reanalyze_dialog.py:32
 msgid ""
 "The beat tracker reads every tempo in the octave from here (BPM min .. 2 "
 "x BPM min);\n"
@@ -6749,18 +6772,18 @@ msgstr ""
 "ビートトラッカーはすべてのテンポをここから 1 オクターブの範囲 (最小 BPM .. 2 x 最小 BPM) で読み取ります。\n"
 "範囲外の曲は半分または 2 倍のテンポで読み取られます。"
 
-#: ui/config/analysis.py:68 ui/config/window.py:237 ui/reanalyze_dialog.py:38
+#: ui/config/analysis.py:77 ui/config/window.py:238 ui/reanalyze_dialog.py:38
 #: ui/reanalyze_dialog.py:81
 #, python-brace-format
 msgid "Reads {low} - {high} BPM"
 msgstr "{low} - {high} BPM で読み取り"
 
-#: ui/config/analysis.py:70 ui/config/analysis.py:153 ui/reanalyze_dialog.py:39
+#: ui/config/analysis.py:79 ui/config/analysis.py:162 ui/reanalyze_dialog.py:39
 #: ui/reanalyze_dialog.py:50
 msgid "Dynamic Analysis"
 msgstr "ダイナミック解析"
 
-#: ui/config/analysis.py:72 ui/reanalyze_dialog.py:41
+#: ui/config/analysis.py:81 ui/reanalyze_dialog.py:41
 msgid ""
 "Checked: tempo changes within a track (sections, ramps).\n"
 "Unchecked: one steady BPM for the whole track."
@@ -6768,11 +6791,11 @@ msgstr ""
 "オン: トラック内のテンポ変化 (区間、ランプ) を検出します。\n"
 "オフ: トラック全体を一定の BPM 1 つとして扱います。"
 
-#: ui/config/analysis.py:75 ui/reanalyze_dialog.py:44
+#: ui/config/analysis.py:84 ui/reanalyze_dialog.py:44
 msgid "Dynamic Downbeat"
 msgstr "ダイナミックダウンビート"
 
-#: ui/config/analysis.py:77 ui/reanalyze_dialog.py:46
+#: ui/config/analysis.py:86 ui/reanalyze_dialog.py:46
 msgid ""
 "Checked: odd bars and meter changes within a track.\n"
 "Unchecked: one bar length and downbeat phase for the whole track.\n"
@@ -6782,7 +6805,7 @@ msgstr ""
 "オフ: トラック全体で小節の長さとダウンビートの位相を 1 つに固定します。\n"
 "ダイナミック解析では常にオンです。"
 
-#: ui/config/analysis.py:155 ui/reanalyze_dialog.py:52
+#: ui/config/analysis.py:164 ui/reanalyze_dialog.py:52
 msgid ""
 "Key changes within a track. Off: one key for the whole track -- the key "
 "the dynamic analysis finds in the intro, outro and interludes (where "
@@ -6792,17 +6815,17 @@ msgstr ""
 "トラック内のキーの変化を検出します。オフ: トラック全体でキーを 1 つにします。ダイナミック解析がイントロ、アウトロ、インタールード "
 "(ミックスする箇所) で見つけたキー、それらがない場合は最も多く見つけたキーです。解析と、エディターでのトラック全体のキー再解析に適用されます。"
 
-#: ui/config/analysis.py:211 ui/reanalyze_dialog.py:57
+#: ui/config/analysis.py:220 ui/reanalyze_dialog.py:57
 msgid "CUE point"
 msgstr "CUEポイント"
 
-#: ui/config/analysis.py:213 ui/config/dialogs/optimization.py:220
+#: ui/config/analysis.py:222 ui/config/dialogs/optimization.py:220
 #: ui/config/dialogs/optimization.py:344 ui/config/output_group.py:226
 #: ui/config/playback.py:70 ui/reanalyze_dialog.py:59
 msgid "Off"
 msgstr "オフ"
 
-#: ui/config/analysis.py:215 ui/reanalyze_dialog.py:61
+#: ui/config/analysis.py:224 ui/reanalyze_dialog.py:61
 msgid ""
 "What the analysis puts at the automatic start position:\n"
 "the lead-in end, an early first downbeat, or 0:00.\n"
@@ -6816,16 +6839,16 @@ msgstr ""
 "JumpCUE: 専用の JumpCUE (ホットキュー)。\n"
 "オフ: 何も置きません。"
 
-#: ui/config/analysis.py:257 ui/config/pipeline_map.py:22
+#: ui/config/analysis.py:266 ui/config/pipeline_map.py:22
 #: ui/reanalyze_dialog.py:89
 msgid "Beat"
 msgstr "ビート"
 
-#: ui/config/analysis.py:128 ui/reanalyze_dialog.py:91
+#: ui/config/analysis.py:137 ui/reanalyze_dialog.py:91
 msgid "BPM min"
 msgstr "最小 BPM"
 
-#: ui/config/analysis.py:223 ui/reanalyze_dialog.py:98
+#: ui/config/analysis.py:232 ui/reanalyze_dialog.py:98
 msgid "Automatic start"
 msgstr "自動開始"
 
@@ -7241,7 +7264,7 @@ msgid ""
 "are replaced."
 msgstr "選択したトラックの全体の解析: 保存された解析と編集が置き換わります。"
 
-#: ui/library/actions.py:46 ui/library/actions.py:107 ui/shortcuts.py:167
+#: ui/library/actions.py:46 ui/library/actions.py:109 ui/shortcuts.py:167
 msgid "Remove from Library"
 msgstr "ライブラリから削除"
 
@@ -8060,7 +8083,7 @@ msgstr "インデックス作成中… {percent}%"
 msgid "Tie-up Lookup"
 msgstr "タイアップ調査"
 
-#: ui/config/analysis.py:273 ui/workers.py:24
+#: ui/config/analysis.py:282 ui/workers.py:24
 msgid "Analysis"
 msgstr "解析"
 

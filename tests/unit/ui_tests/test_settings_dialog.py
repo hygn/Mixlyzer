@@ -37,7 +37,8 @@ def edited_cfg():
     """Every page's values off their defaults (deck.json's too, which the dialog does not edit)."""
     cfg = default_cfg()
     cfg.analysisconfig = replace(cfg.analysisconfig, bpm_min=85, bpm_dynamic=False, dynamic_downbeat=False,
-                                 key_dynamic=False, autocue="jumpcue", key_parameter_path="mine/key.npz")
+                                 key_dynamic=False, autocue="jumpcue", key_parameter_path="mine/key.npz",
+                                 max_parallel_analyses=1)
     cfg.libconfig = replace(cfg.libconfig, libpath="elsewhere/library", local_music_directories=["D:/Music"],
                             write_log=True, rekordbox_sync_enabled=False, rekordbox_ramp_tolerance_ms=2.5,
                             rekordbox_comment_tieups=True, tieup_to_versions=False, tieup_web_search=True)
