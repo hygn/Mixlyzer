@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-27 21:09+0900\n"
+"POT-Creation-Date: 2026-10-27 21:28+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ja_JP\n"
@@ -906,10 +906,11 @@ msgstr "回している間、テンポをベンドします（1 秒に 1 回転:
 msgid "Deck {deck}: jog wheel search (SHIFT)"
 msgstr "デッキ {deck}: ジョグダイヤル サーチ（SHIFT）"
 
-# | msgid "The jog wheel turned: the playhead moved through the track fast."
 #: core/controls/midi.py:110
-msgid "Turned: the playhead moved through the track fast."
-msgstr "回すと再生位置を曲の中で速く移動します。"
+msgid ""
+"Turned: a bar on or back for each eighth of a turn, as One bar forward / "
+"back."
+msgstr "回すと: 1/8 回転ごとに 1 小節進む / 戻る（1 小節進む / 戻ると同じ）。"
 
 #: core/controls/midi.py:111
 #, python-brace-format

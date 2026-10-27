@@ -107,7 +107,7 @@ def _deck_actions() -> list[Action]:
         Action("deck1.jog_bend", JOG, tr_mark("Deck {deck}: jog wheel side (pitch bend)"), KNOB, engine.ACT_JOG_BEND,
                args=a, tip=tr_mark("Turned: the tempo bent while it turns (a turn a second: +10%).")),
         Action("deck1.jog_search", JOG, tr_mark("Deck {deck}: jog wheel search (SHIFT)"), KNOB, engine.ACT_JOG_SEARCH,
-               args=a, tip=tr_mark("Turned: the playhead moved through the track fast.")),
+               args=a, tip=tr_mark("Turned: a bar on or back for each eighth of a turn, as One bar forward / back.")),
         Action("deck1.memory_previous", CUE_POINTS, tr_mark("Deck {deck}: CUE CALL ◁"), BUTTON,
                engine.ACT_CALL_PREVIOUS, args=a, tip=tr_mark("The CUE point before (stopped); the cue point moves there.")),
         Action("deck1.memory_next", CUE_POINTS, tr_mark("Deck {deck}: CUE CALL ▷"), BUTTON, engine.ACT_CALL_NEXT,

@@ -51,7 +51,12 @@ const BEND_TAU_SEC: f64 = 0.08;
 const BEND_MAX: f64 = 0.5;
 // a pitch bend button held: the tempo bent this much (a CDJ's PITCH BEND -/+)
 const BUTTON_BEND: f64 = 0.04;
-const SEARCH_SPEED: f64 = 16.0; // the jog's search: this many times the record's speed
+// the jog's search (SHIFT): the playhead a bar on or back per this much of a turn, as One bar forward / back:
+// a turn an 8-bar phrase
+const SEARCH_BARS_PER_TURN: f64 = 8.0;
+// a search's last step taken as where the deck is for this long (its crossfade not heard yet: the buffer and
+// the device's queue), and a part of a bar turned kept as long
+const SEARCH_AIM_SEC: f64 = 0.5;
 
 pub struct Deck {
     rate: f64,
@@ -81,6 +86,9 @@ pub struct Deck {
     button_bend: f64,
     bend_ticks: f64,
     search_ticks: f64,
+    search_part: f64,               // ticks turned toward the next bar
+    search_aim: Option<(f64, f64)>, // the last step's (frame, clock time)
+    search_at: f64,                 // the last turn's clock time
     last_tick: f64,
 }
 
@@ -113,6 +121,9 @@ impl Deck {
             button_bend: 0.0,
             bend_ticks: 0.0,
             search_ticks: 0.0,
+            search_part: 0.0,
+            search_aim: None,
+            search_at: 0.0,
             last_tick: clock::now(),
         }
     }
@@ -131,6 +142,7 @@ impl Deck {
         self.landing = None;
         self.jog_held = false;
         self.jog_spinning = false;
+        self.search_aim = None;
     }
 
     pub fn set_marks(&mut self, payload: &[u8]) {
@@ -353,11 +365,18 @@ impl Deck {
     /// The playhead ``step`` beats (bars) on (ui/pane.py's former _step_beats): playing, by as many beats from
     /// where it is, its place in the beat kept (a beat jump); stopped, to the beat (downbeat) itself.
     fn step_beats(&mut self, e: &mut Engine, step: i64, bars: bool) {
+        if let Some(target) = self.step_target(e, e.playhead_frame(), step, bars) {
+            e.seek(target);
+        }
+    }
+
+    /// Where ``step`` beats (bars) from ``t`` are: playing, as far on as the marks between (the phase kept);
+    /// stopped, on the mark itself. None: no marks, or none that way.
+    fn step_target(&self, e: &Engine, t: f64, step: i64, bars: bool) -> Option<f64> {
         let marks = if bars { &self.downbeats } else { &self.beats };
         if !e.has_track() || marks.is_empty() {
-            return;
+            return None;
         }
-        let t = e.playhead_frame();
         let near = 0.001 * self.rate;
         let i = marks.partition_point(|&m| m <= t) as i64 - 1;
         let target = if e.playing && i >= 0 {
@@ -365,18 +384,15 @@ impl Deck {
             t + marks[j as usize] - marks[i as usize]
         } else if step > 0 {
             let ahead: Vec<f64> = marks.iter().copied().filter(|&m| m > t + near).collect();
-            match ahead.get((step as usize).min(ahead.len()).saturating_sub(1)) {
-                Some(&m) => m,
-                None => return,
-            }
+            *ahead.get((step as usize).min(ahead.len()).saturating_sub(1))?
         } else {
             let behind: Vec<f64> = marks.iter().copied().filter(|&m| m < t - near).collect();
             if behind.is_empty() {
-                return;
+                return None;
             }
             behind[(behind.len() as i64 + step).max(0) as usize]
         };
-        e.seek(target.clamp(0.0, e.len_frames() as f64));
+        Some(target.clamp(0.0, e.len_frames() as f64))
     }
 
     /// A JumpCUE's JUMP (see the module's docs).
@@ -501,7 +517,7 @@ impl Deck {
             self.previewing = false; // the track's end reached
         }
         // the jog: a platter let go of has stopped (let go of it); the record rests when the hand stops; the bend
-        // eases out; the search seeks once a tick
+        // eases out; the search steps by bars
         if self.jog_spinning && now - self.jog_last > JOG_STOP_SEC {
             self.release_jog(e);
         } else if self.jog_held && !self.jog_spinning && !self.jog_rested && now - self.jog_last > JOG_REST_SEC {
@@ -516,18 +532,34 @@ impl Deck {
         }
         e.set_bend(self.bend + self.button_bend);
         if self.search_ticks != 0.0 && e.has_track() {
-            let frames = self.search_ticks * JOG_TURN_SEC * self.rate / self.jog_ticks as f64 * SEARCH_SPEED;
-            if self.jog_held {
-                // the record held: it is moved under the hand (a seek would play the record's sound under the scratch)
-                let target = (e.scratch_target() + frames).clamp(0.0, e.len_frames().saturating_sub(1) as f64);
-                e.scratch_to(target, now);
-                self.jog_last = now;
-                self.jog_rested = false;
-            } else {
-                e.seek((e.playhead_frame() + frames).clamp(0.0, e.len_frames() as f64));
+            if now - self.search_at > SEARCH_AIM_SEC {
+                self.search_part = 0.0; // a new turn: the last one's part of a bar dropped
+            }
+            self.search_at = now;
+            self.search_part += self.search_ticks;
+            let per_bar = self.jog_ticks as f64 / SEARCH_BARS_PER_TURN;
+            let bars = (self.search_part / per_bar).trunc();
+            if bars != 0.0 {
+                self.search_part -= bars * per_bar;
+                self.search_bars(e, bars as i64, now);
             }
         }
         self.search_ticks = 0.0;
+    }
+
+    /// The jog's search: ``bars`` on (back), as One bar forward / back. Playing, from the last step while it may
+    /// not be heard yet (the playhead heard still before it: steps in a row would land on the same bar).
+    fn search_bars(&mut self, e: &mut Engine, bars: i64, now: f64) {
+        let from = match self.search_aim {
+            Some((frame, at)) if e.playing && !e.scratching && now - at < SEARCH_AIM_SEC => {
+                frame + (now - at) * self.rate * e.factor()
+            }
+            _ => e.playhead_frame(),
+        };
+        if let Some(target) = self.step_target(e, from, bars, true) {
+            e.seek(target);
+            self.search_aim = Some((target, now));
+        }
     }
 
     /// Every light the bindings may show: bit k (0 - 25) the JumpCUE A + k lit (set; blinking while its jump is
@@ -970,5 +1002,56 @@ mod tests {
         assert!(near(r.s.engine.factor(), 1.0));
         r.s.deck.set_tempo_range(&mut r.s.engine, 7); // not a range: WIDE
         assert_eq!(r.s.deck.tempo_range, 100);
+    }
+
+    impl Rig {
+        /// The jog turned ``ticks`` with SHIFT (its search), then a tick.
+        fn search(&mut self, ticks: i32) {
+            self.s.deck.midi_value(&mut self.s.engine, act::JOG_SEARCH, (0, 127.0), ticks, 0, clock::now());
+            self.s.deck.tick(&mut self.s.engine);
+        }
+    }
+
+    #[test]
+    fn jog_search_steps_by_bars_while_stopped() {
+        let mut r = Rig::new(10.0, true, &[], &[]); // a bar: 2 s
+        r.seek(1.2);
+        r.search(90); // an eighth of a turn: a bar on, as One bar forward
+        assert!(near(r.at(), 2.0), "{}", r.at());
+        r.search(45);
+        assert!(near(r.at(), 2.0), "half a bar's turn: not yet");
+        r.search(45);
+        assert!(near(r.at(), 4.0), "{}", r.at());
+        r.search(-180);
+        assert!(near(r.at(), 0.0), "two bars back: {}", r.at());
+    }
+
+    #[test]
+    fn jog_search_while_playing_steps_bars_in_a_row() {
+        let mut r = Rig::new(20.0, true, &[], &[]);
+        r.seek(1.0);
+        r.tap(act::PLAY_PAUSE);
+        r.pump(2);
+        let from = r.at();
+        for _ in 0..4 {
+            r.search(90); // faster than the buffer is heard: each from the last step, not the playhead heard
+        }
+        r.pump(20);
+        let moved = r.at() - from;
+        assert!(r.playing() && moved > 8.0 && moved < 8.5, "4 bars on (8 s), the phase kept: {moved}");
+    }
+
+    #[test]
+    fn seeks_faster_than_the_ring_drains_never_overrun_it() {
+        let mut r = Rig::new(20.0, true, &[], &[]);
+        r.tap(act::PLAY_PAUSE);
+        let most = r.s.engine.buffer_frames() as u64 + 2 * (SEC as u64 / 100);
+        for k in 0..600 {
+            r.seek(1.0 + 0.01 * k as f64); // a seek each tick, the device reading nothing between
+            r.s.engine.tick();
+            assert!(r.ring.level() <= most, "{} frames queued", r.ring.level());
+        }
+        r.pump(10);
+        assert!(r.at() > 6.99 && r.at() < 7.2, "the last seek heard: {}", r.at());
     }
 }

@@ -659,8 +659,12 @@ class NativeFeeder(QtCore.QObject):
 
     def set_process(self, priority: str, power_throttling: bool) -> None:
         """The engine's priority (PRIORITY_CODES: Windows the process's class, Linux its threads' real-time / nice,
-        macOS its thread's time constraint / QoS) and whether the system may power-throttle it, at once."""
-        self.setting(OP_SET_PROCESS, struct.pack("<II", PRIORITY_CODES.get(priority, 2), int(bool(power_throttling))))
+        macOS its thread's time constraint / QoS) and whether the system may power-throttle it, at once. Sent
+        when it changes (every deck.json save applies the playback settings again: the engine applied and logged
+        it each time); a new engine gets it from _replay."""
+        payload = struct.pack("<II", PRIORITY_CODES.get(priority, 2), int(bool(power_throttling)))
+        if self._settings.get((OP_SET_PROCESS, None)) != (OP_SET_PROCESS, payload):
+            self.setting(OP_SET_PROCESS, payload)
 
     def apply_session_format(self) -> bool:
         """Before a track is decoded: the engine started again where the rate asked for differs from its own

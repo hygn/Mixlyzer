@@ -54,6 +54,9 @@ pub struct Engine {
     standby: Option<Box<Stretcher>>,
     standby_for: Option<(Standby, f64)>,
     pending_seek: Option<f64>,
+    // a seek while playing (not deferred): crossfaded in by the next block rendered, so the seeks between two
+    // blocks are one crossfade, the last (each appended at once, a seek a tick ran the ring over)
+    seek_to: Option<f64>,
     // a scrub let go with the time stretch off unity: the original plays on at unity up to this input frame, where
     // the stream prepared for it (Standby::Resume) takes over
     resume_at: Option<f64>,
@@ -139,6 +142,7 @@ impl Engine {
             standby: None,
             standby_for: None,
             pending_seek: None,
+            seek_to: None,
             resume_at: None,
             prep_cost: 0.0005,
             start_step: 0.0,
@@ -191,6 +195,7 @@ impl Engine {
         self.pcm = pcm;
         self.track_gen = generation;
         self.pos = 0.0;
+        self.seek_to = None;
         self.end_out_frame = None;
         self.sent_finished = false;
         self.scratching = false;
@@ -285,6 +290,11 @@ impl Engine {
     /// with the tempo over a few hundred ms (a tempo change's gentle path).
     pub fn set_scrubbing(&mut self, on: bool) {
         let released = self.scrubbing && !on;
+        if released && self.playing {
+            if let Some(target) = self.seek_to.take() {
+                self.crossfade_to(target); // the scrub's last seek in now: the resume below starts from it
+            }
+        }
         self.scrubbing = on;
         self.resume_at = None;
         if on {
@@ -313,10 +323,11 @@ impl Engine {
         }
         if on {
             if self.playing {
+                let sought = self.seek_to.take();
                 self.queue_for_fade();
                 let heard = self.playhead_frame();
                 self.ring.flush();
-                self.pos = heard.clamp(0.0, self.len as f64);
+                self.pos = sought.unwrap_or(heard).clamp(0.0, self.len as f64);
             }
             self.scratching = true;
             self.scratch_target = self.pos;
@@ -445,6 +456,7 @@ impl Engine {
             self.playing = false;
             return;
         }
+        let sought = self.seek_to.take(); // a seek not rendered yet: the deck stops where it was sent
         self.queue_for_fade();
         let heard = self.playhead_frame();
         self.playing = false;
@@ -455,7 +467,7 @@ impl Engine {
         self.probe = Some((silent_at, self.command_at, 1));
         self.ring.flush();
         self.clicks.clear_voices();
-        self.pos = heard.clamp(0.0, self.len as f64);
+        self.pos = sought.unwrap_or(heard).clamp(0.0, self.len as f64);
     }
 
     /// Before a flush (pause, the record grabbed): a fade's worth and more queued past the frame being read, so
@@ -489,6 +501,7 @@ impl Engine {
         }
         self.end_out_frame = None;
         self.sent_finished = false;
+        self.seek_to = None;
         if self.playing && self.pcm.is_some() && self.can_defer() {
             self.prepare_standby(Standby::Seek, target);
             self.pending_seek = Some(target);
@@ -496,7 +509,7 @@ impl Engine {
         } else if self.playing && self.pcm.is_some() {
             self.cancel_standby();
             self.probe = Some((self.ring.written(), self.command_at, 2));
-            self.crossfade_to(target);
+            self.seek_to = Some(target); // render_block
         } else {
             self.pos = target;
             self.timeline.hold_silence_at(target);
@@ -813,6 +826,14 @@ impl Engine {
 
     fn render_block(&mut self, mut n_out: usize) {
         let step = self.step();
+        if let Some(target) = self.seek_to.take() {
+            if step > 0.0 && !self.halted {
+                self.crossfade_to(target); // the block: the crossfade (a fade's length)
+                self.mark_end_if_done();
+                return;
+            }
+            self.pos = target.clamp(0.0, self.len as f64); // halted (silent): played from there when it starts again
+        }
         if step <= 0.0 {
             if !self.halted {
                 // tempo pulled to 0: fade out at the last speed instead of cutting off
@@ -1032,7 +1053,7 @@ impl Engine {
             let n = n as usize;
             if self.scratching {
                 self.render_scratch(n);
-            } else if self.playing && self.pos < self.len as f64 {
+            } else if self.playing && (self.pos < self.len as f64 || self.seek_to.is_some()) {
                 self.render_block(n);
             } else {
                 self.append_silence(n);
