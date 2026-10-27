@@ -42,10 +42,12 @@ def _down_triangle_path() -> QtGui.QPainterPath:
 
 class SeekOnlyViewBox(pg.ViewBox):
     """Seek-only view box used for scrub interactions."""
-    def __init__(self, bus, get_duration, *args, **kwargs):
+    def __init__(self, bus, get_duration, get_time=lambda: 0.0, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.bus = bus              # def seek_cb(t: float) -> None
         self._get_duration = get_duration    # def get_duration() -> float
+        self._get_time = get_time            # the playhead now: where a scrub with no place read ends
+        self._scrub_t: float | None = None   # the scrub's last place read
         self.setMouseEnabled(x=False, y=False)
         self.setDefaultPadding(0.0)
         if hasattr(self, 'setWheelEnabled'):
@@ -56,9 +58,11 @@ class SeekOnlyViewBox(pg.ViewBox):
     
     def mousePressEvent(self, ev):
         if ev.button() == QtCore.Qt.LeftButton:
+            self._scrub_t = None
             self.bus.sig_scrub_begin.emit()
             t = self._map_scene_x_to_time(ev.scenePos().x())
             if t is not None:
+                self._scrub_t = t
                 self.bus.sig_scrub_update.emit(t)
         ev.accept()
 
@@ -66,14 +70,19 @@ class SeekOnlyViewBox(pg.ViewBox):
         if ev.buttons() & QtCore.Qt.LeftButton:
             t = self._map_scene_x_to_time(ev.scenePos().x())
             if t is not None:
+                self._scrub_t = t
                 self.bus.sig_scrub_update.emit(t)
         ev.accept()
-    
+
     def mouseReleaseEvent(self, ev):
         if ev.button() == QtCore.Qt.LeftButton:
+            # a begun scrub always ends (its listeners hold their state until it does): where the release is read,
+            # else where it was last read, else where the playhead is
             t = self._map_scene_x_to_time(ev.scenePos().x())
-            if t is not None:
-                self.bus.sig_scrub_end.emit(t)
+            if t is None:
+                t = self._scrub_t if self._scrub_t is not None else float(self._get_time())
+            self._scrub_t = None
+            self.bus.sig_scrub_end.emit(t)
         ev.accept()
 
     def _map_scene_x_to_time(self, scene_x):
@@ -100,6 +109,7 @@ class OverviewWidget(QtWidgets.QWidget):
         self.vb = SeekOnlyViewBox(
             bus= bus,
             get_duration=lambda: self.duration,
+            get_time=lambda: float(self.tl.current_time) if self.tl is not None else 0.0,
         )
 
         self.p = self.canvas.addPlot(row=0, col=0, viewBox=self.vb)

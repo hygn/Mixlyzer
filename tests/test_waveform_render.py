@@ -8,7 +8,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import numpy as np  # noqa: E402
 import pyqtgraph as pg  # noqa: E402
-from PySide6 import QtWidgets  # noqa: E402
+from PySide6 import QtCore, QtWidgets  # noqa: E402
 
 from core.workflows.event_bus import EventBus  # noqa: E402
 from core.track.model import DataModel  # noqa: E402
@@ -225,6 +225,34 @@ class EvictionTests(unittest.TestCase):
         self.assertEqual(resumed, [50, 60, 90])
         at(91.1)
         self.assertEqual(resumed, [50, 60, 90])
+
+
+class OverviewScrubTests(unittest.TestCase):
+    """A scrub begun on the overview always ends (the waveform holds its scrubbing state until it does): where the
+    release is read, else where the drag was last read, else at the playhead."""
+
+    def test_a_release_read_nowhere_still_ends_the_scrub(self):
+        from views.overview import SeekOnlyViewBox
+        bus = EventBus()
+        ended = []
+        bus.sig_scrub_end.connect(ended.append)
+        vb = SeekOnlyViewBox(bus=bus, get_duration=lambda: 300.0, get_time=lambda: 42.0)
+
+        def event():
+            ev = mock.Mock()
+            ev.button.return_value = QtCore.Qt.LeftButton
+            ev.buttons.return_value = QtCore.Qt.LeftButton
+            return ev
+        places = iter([None, None])                # the view not mapped (a zero width): no place read at all
+        with mock.patch.object(vb, "_map_scene_x_to_time", side_effect=lambda _x: next(places)):
+            vb.mousePressEvent(event())
+            vb.mouseReleaseEvent(event())
+        places = iter([10.0, 20.0, None])          # read while dragged, not at the release
+        with mock.patch.object(vb, "_map_scene_x_to_time", side_effect=lambda _x: next(places)):
+            vb.mousePressEvent(event())
+            vb.mouseMoveEvent(event())
+            vb.mouseReleaseEvent(event())
+        self.assertEqual(ended, [42.0, 20.0])
 
 
 # The app's exit: the views held by the window's pane, freed when main()'s frame unwinds after app.exec()
