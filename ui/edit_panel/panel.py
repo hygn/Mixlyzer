@@ -21,6 +21,7 @@ from ui.edit_panel.jumpcue import JumpCUEEditMixin
 from ui.edit_panel.key import KeyEditMixin
 from ui.edit_panel.phrase import PhraseEditMixin
 from core.library import jobs as library_jobs
+from core.settings.store import current as current_settings
 from ui.edit_panel.styles import BUTTON_STYLESHEET, WARNING_BUTTON_STYLESHEET
 from ui.theme import current_theme
 from system.i18n import tr, tr_mark
@@ -579,8 +580,10 @@ class EditPanel(
         self.btn_save.setEnabled(False)
         # what this save stores: an edit made while it runs stays unsaved
         self._save_point = self.model.save_point()
-        # written by the library's owner (library_jobs.save_edits); a failure said, the edits kept unsaved
-        self._library.write(library_jobs.save_edits, self.uid, edits, done=self._on_save_finished,
+        # written by the library's owner (library_jobs.save_edits; library.db's rows too where Settings > Library says
+        # so); a failure said, the edits kept unsaved
+        sync = bool(current_settings().libconfig.sync_stored_analysis)
+        self._library.write(library_jobs.save_edits, self.uid, edits, sync, done=self._on_save_finished,
                             failed=self._on_save_failed)
 
     def _on_save_failed(self, exc: Exception) -> None:

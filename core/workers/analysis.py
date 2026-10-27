@@ -14,7 +14,7 @@ from analyzer.pipeline.track import analyze_track
 from core.tags.reader import cover_data, extract_tags, read_tag_sources
 from system.process_worker import SpawnProcessWorker, install_parent_watchdog
 from core.settings.config import config
-from core.library.segments import build_bpm_segments, build_key_segments, build_phrase_index_rows
+from core.library.segments import track_index
 from core.workers.analysis_settings import analysis_settings
 from core.workers.analysis_texts import error_text, track_stage
 from system.i18n import tr
@@ -46,13 +46,15 @@ def analyze_for_library(path: str, cfg: config,
 
     report("", tr("Processing Metadata"), 0.85)
     fsize, fmtime = _file_stats(path)
+    # library.db's rows of the track, by the rule the editor's save and the library's sync write them by
+    index = track_index(result.tempo_segments, result.key_segments, result.phrases)
     properties = {
         "path": path,
         "title": title,
         "artist": artist,
         "album": album,
-        "bpm": result.main_tempo,
-        "key": result.main_key,
+        "bpm": index.bpm,
+        "key": index.key,
         "duration_sec": float(result.duration_sec),
         "total_samples": int(get_total_samples(path) or 0),
         "rating": 0,
@@ -62,14 +64,11 @@ def analyze_for_library(path: str, cfg: config,
         "file_size": int(fsize),
         "tag_sources": sources,
     }
-    bpm_segments = build_bpm_segments(result.tempo_segments)
-    key_segments_db = build_key_segments(result.key_segments)
-    phrase_sections = build_phrase_index_rows(result.phrases, bpm_segments, key_segments_db)
     # stored by the library's owner: the track's row merged with the library's (a track in it keeps the user's
     # metadata), its uid given there; the cover as the file holds it (its thumbnail)
     return {"arrays": arrays_of(result), "properties": properties, "update_db": True,
-            "store": {"bpm_segments": bpm_segments, "key_segments": key_segments_db,
-                      "phrase_sections": phrase_sections, "music_entry": result.music_index,
+            "store": {"bpm_segments": index.bpm_rows, "key_segments": index.key_rows,
+                      "phrase_sections": index.phrase_rows, "music_entry": result.music_index,
                       "variants": result.variants, "cover": cover_data(path)}}
 
 

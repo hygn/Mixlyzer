@@ -131,6 +131,56 @@ class LibraryServiceTests(unittest.TestCase):
         self.assertEqual((track.bpm, track.key), (128.0, 21))
         self.assertEqual(float(got["arrays"]["tempo_global"]), 128.0)
 
+    def test_library_db_synced_with_the_stored_analyses(self):
+        """Sync Now (core.workflows.library_sync, jobs.sync_index): each track's BPM, key and segment tables written
+        from its stored marks, its metadata untouched; a track without a stored analysis counted; the editor's save
+        without the setting writes the stored analysis alone."""
+        import numpy as np
+        from unittest import mock
+        from core.analysis_library.stored import TrackEdits
+        from core.workflows.library_sync import LibraryIndexSync
+        stale, bare = _row("s.wav", title="手で直した"), _row("t.wav")
+        stale.bpm, stale.key, stale.rating = 99.0, 3, 5
+        for row in (stale, bare):
+            self.library.write(jobs.save_track, row, False)
+        phrases = {"start": np.asarray([0.0, 3.0]), "end": np.asarray([3.0, 4.0]),
+                   "label": np.asarray(["VERSE", "OUTRO"])}
+        self.library.write(lambda lib: lib.features.save(stale.uid, {
+            "duration_sec": 4.0, "tempo_segments": np.asarray([[0, 4, 128, 0, 4, 128]], float),
+            "key_segments": np.asarray([[0, 0, 0, 3], [9, 1, 3, 4]], float), "phrase_segments_np": phrases}))
+        self.settle()
+        runs, steps = [], []
+        sync = LibraryIndexSync(self.library)
+        sync.finished.connect(runs.append)
+        sync.progress.connect(lambda done, total: steps.append((done, total)))
+        with mock.patch.object(jobs, "SYNC_BATCH", 1):
+            sync.sync_requested()
+            self.settle()
+        self.assertEqual(runs, [jobs.IndexSync(changed=1, unread=1)])
+        self.assertEqual(steps, [(0, 2), (1, 2), (2, 2)])
+        track = self.library.snapshot.track(stale.uid)
+        self.assertEqual((track.bpm, track.key, track.title, track.rating), (128.0, 21, "手で直した", 5))  # the OUTRO's
+        got = []
+        self.library.read(lambda lib: lib.db.conn.execute(
+            "SELECT COUNT(*) FROM track_phrase_sections WHERE track_uid=?", (stale.uid,)).fetchone()[0],
+            done=got.append)
+        self.settle()
+        self.assertEqual(got, [2])
+        sync.sync_requested()                   # again: nothing to change
+        self.settle()
+        self.assertEqual(runs[-1], jobs.IndexSync(changed=0, unread=1))
+        # the editor's save with the setting off: the stored analysis alone
+        edits = TrackEdits(beats=np.arange(8) * 0.5, tempo_segments=np.asarray([[0, 4, 140, 0, 4, 140]], float),
+                           key_segments=np.asarray([[2, 0, 0, 4]], float), phrases=(), jump_cues=(), cue_points=())
+        self.library.write(jobs.save_edits, stale.uid, edits, False)
+        self.settle()
+        self.assertEqual(self.library.snapshot.track(stale.uid).bpm, 128.0)
+        sync.sync_requested()
+        self.settle()
+        self.assertEqual(runs[-1], jobs.IndexSync(changed=1, unread=1))
+        self.assertEqual((self.library.snapshot.track(stale.uid).bpm, self.library.snapshot.track(stale.uid).key),
+                         (140.0, 2))
+
     def test_an_editors_save_that_fails_leaves_library_db_as_it_was(self):
         """One transaction: a failure of its last library.db write or of the NPZ saved after it rolls back the BPM, key
         and segment tables written before it, and the NPZ is left as it was."""

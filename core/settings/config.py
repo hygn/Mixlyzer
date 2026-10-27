@@ -27,6 +27,9 @@ class libconfig:
     # A new track its versions gave no tie-up looked up on Wikipedia / Wikidata (core.tieups.web; sends its title and
     # artist there).
     tieup_web_search: bool
+    # The editor's save writes the track's rows in library.db too (its BPM, key and segment tables, made from the marks
+    # saved: core.library.segments.track_index); off, only its stored analysis (library.db brought up to it by Sync Now).
+    sync_stored_analysis: bool
 
 
 @dataclass
@@ -402,6 +405,7 @@ def default_cfg():
         rekordbox_comment_tieups=False,
         tieup_to_versions=True,
         tieup_web_search=False,
+        sync_stored_analysis=True,
     )
     acfg = analysisconfig(
         bpm_min=100,

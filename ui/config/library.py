@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ui.config.dialogs import RekordboxSyncProgressDialog
+from ui.config.dialogs import LibrarySyncProgressDialog, RekordboxSyncProgressDialog
 from ui.config.scroll import scroll_page
 from system.i18n import tr
 
@@ -106,6 +106,21 @@ def build_library_tab(dialog) -> None:
         "shows the others.</p>"))
     f_library.addRow(dialog.cb_tieup_web_search)
 
+    # library.db and the stored analyses ({uid}.npz) kept in agreement (core.library.jobs.save_edits / sync_index)
+    dialog.cb_sync_stored_analysis = QCheckBox(tr("Update the library database when the editor saves"))
+    dialog.cb_sync_stored_analysis.setToolTip(tr(
+        "<p>The editor's save also writes the track's BPM, key and the tables the transition and phrase searches "
+        "read into the library database (library.db), made from the marks saved. Off: only the track's stored "
+        "analysis is written; Sync Now brings the database up to it.</p>"))
+    dialog.btn_library_sync_now = QPushButton(tr("Sync Now"))
+    dialog.btn_library_sync_now.setToolTip(tr(
+        "<p>Every track's BPM, key and search tables in the library database made again from its stored analysis "
+        "(as the editor's save writes them). Titles, artists, ratings and comments are not touched.</p>"))
+    grp_database = QGroupBox(tr("Library Database"))
+    f_database = QFormLayout(grp_database)
+    f_database.addRow(dialog.cb_sync_stored_analysis)
+    f_database.addRow("", dialog.btn_library_sync_now)
+
     grp_rekordbox = QGroupBox(tr("Rekordbox XML"))
     f_rekordbox = QFormLayout(grp_rekordbox)
     f_rekordbox.addRow(dialog.cb_rekordbox_sync)
@@ -122,10 +137,12 @@ def build_library_tab(dialog) -> None:
     f_advanced.addRow(dialog.lbl_log_note)
 
     form.addRow(grp_library)
+    form.addRow(grp_database)
     form.addRow(grp_rekordbox)
     form.addRow(grp_advanced)
 
     dialog.btn_rekordbox_sync_now.clicked.connect(dialog._sync_rekordbox_now)
+    dialog.btn_library_sync_now.clicked.connect(dialog._sync_library_now)
     dialog.btn_add_local_music_directory.clicked.connect(dialog._browse_local_music_directory)
     dialog.btn_remove_local_music_directory.clicked.connect(
         dialog._remove_local_music_directories
@@ -185,12 +202,46 @@ class LibrarySettingsMixin:
         self._rekordbox_sync_dialog: RekordboxSyncProgressDialog | None = None
         self._rekordbox_progress_request = None
         self._accept_next_library_sync = False
+        self._library_sync_dialog: LibrarySyncProgressDialog | None = None
         if bus is None:
+            self.btn_library_sync_now.setEnabled(False)
             return
+        bus.sig_library_sync_progress.connect(self._on_library_sync_progress)
+        bus.sig_library_sync_finished.connect(self._on_library_sync_finished)
+        bus.sig_library_sync_failed.connect(self._on_library_sync_failed)
         bus.sig_rekordbox_sync_started.connect(self._on_rekordbox_sync_started)
         bus.sig_rekordbox_sync_progress.connect(self._on_rekordbox_sync_progress)
         bus.sig_rekordbox_sync_finished.connect(self._on_rekordbox_sync_finished)
         bus.sig_rekordbox_sync_failed.connect(self._on_rekordbox_sync_failed)
+
+    def _sync_library_now(self) -> None:
+        """Sync Now: library.db made to agree with the stored analyses (core.workflows.library_sync), shown as it
+        runs; the settings on the page play no part in it, so nothing is saved first."""
+        if self._bus is None:
+            return
+        if self._library_sync_dialog is not None:
+            self._library_sync_dialog.deleteLater()
+        self._library_sync_dialog = LibrarySyncProgressDialog(self)
+        self._library_sync_dialog.show()
+        self.btn_library_sync_now.setEnabled(False)
+        self._bus.sig_library_sync_requested.emit()
+
+    @QtCore.Slot(int, int)
+    def _on_library_sync_progress(self, done: int, total: int) -> None:
+        if self._library_sync_dialog is not None:
+            self._library_sync_dialog.set_progress(done, total)
+
+    @QtCore.Slot(object)
+    def _on_library_sync_finished(self, result) -> None:
+        self.btn_library_sync_now.setEnabled(True)
+        if self._library_sync_dialog is not None:
+            self._library_sync_dialog.set_finished(result)
+
+    @QtCore.Slot(str)
+    def _on_library_sync_failed(self, message: str) -> None:
+        self.btn_library_sync_now.setEnabled(True)
+        if self._library_sync_dialog is not None:
+            self._library_sync_dialog.set_failed(message)
 
     def _sync_rekordbox_now(self) -> None:
         if self._bus is None:

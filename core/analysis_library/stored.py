@@ -17,14 +17,14 @@ import numpy as np
 
 from analyzer.audio.wave_overview import WaveOverview
 from analyzer.beat.general.tracker import dominant_tempo
-from analyzer.music.key_rows import main_key
 from analyzer.music.marks import CuePoint, JumpCueGroup, Phrase
 from analyzer.training.library_tracks import Annotation
 from core.analysis_library.cue_points import build_cue_points_np, extract_cue_points
 from core.analysis_library.jump_cues import build_jump_cue_block, build_jump_cues_np, extract_jump_cue_groups, \
     jump_cue_point_groups
-from core.analysis_library.phrases import build_phrase_segments_np, stored_phrase_rows
+from core.analysis_library.phrases import build_phrase_segments_np, extract_phrase_segments, stored_phrase_rows
 from core.marks.jump_cues import check_slot_letters
+from core.marks.phrases import assigned_phrases
 
 # the stored keys: scalars and arrays, then the blocks (a block's fields stored flattened, ``block.field``)
 DURATION, SAMPLE_RATE, TEMPO, BEATS, TEMPO_ROWS = "duration_sec", "sr", "tempo_global", "beats_time_sec", "tempo_segments"
@@ -138,11 +138,6 @@ class TrackEdits:
         """The track's tempo as the analysis gives it, of the rows as edited (the library's BPM, the NPZ's)."""
         return dominant_tempo(self.tempo_segments)
 
-    def main_key(self) -> Optional[int]:
-        """The track's key as the static key analysis gives it, of the keys and phrases as edited (the library's
-        key)."""
-        return main_key(self.key_segments, self.phrases)
-
 
 def _replace_block(arrays: dict, name: str, block: dict) -> None:
     """Replace a stored block (flattened as ``name.<field>``) as a whole, so no field of the previous block is left
@@ -174,6 +169,20 @@ ANNOTATION_KEYS = (BEATS, SAMPLE_RATE, DURATION, TEMPO_ROWS, KEYS, KEYS_AUTO)
 ANNOTATION_BLOCKS = (PHRASES + ".", JUMP_CUES + ".", JUMP_CUES_AUTO + ".")
 # what the Variants' fingerprint reads (analyzer.search.variants): the beats, the length and the overview
 FINGERPRINT_KEYS = (BEATS, DURATION, *WAVE, WAVE_DETAIL_REF)
+# what library.db's rows of a track are made from (core.library.segments.track_index): the tempo and key rows and the
+# phrases
+INDEX_KEYS = (DURATION, TEMPO_ROWS, KEYS)
+INDEX_BLOCKS = (PHRASES + ".",)
+
+
+def index_marks(arrays: Mapping) -> tuple[np.ndarray, np.ndarray, list[Phrase]]:
+    """The marks library.db's rows of a track are made from (its arrays as stored, or as an edit left them):
+    (tempo rows, key rows, the phrases stored)."""
+    a = dict(arrays)
+
+    def rows(key, width):
+        return np.asarray(a[key], dtype=float) if key in a else np.empty((0, width))
+    return rows(TEMPO_ROWS, 6), rows(KEYS, 4), assigned_phrases(extract_phrase_segments(a))
 
 
 def annotation_of(arrays: Mapping) -> Annotation:

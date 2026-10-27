@@ -24,14 +24,12 @@ from PySide6 import QtCore, QtGui
 
 from core.library import music_index, thumbnails, tieups, variants
 from core.library.records import READING_FIELDS, IndexTrack, TrackRow
-from core.library.segments import build_bpm_segments, build_key_segments, build_phrase_index_rows
+from core.library.segments import track_index
 from core.library.service import PLAYLISTS, READINGS, TIEUPS, TRACKS, VARIANTS, changes
 from core.tieups.domain import Catalog, TieUp, Work
 from analyzer.search import variants as variant_fp
 from core.analysis_library import jobs as analysis_jobs
-from core.analysis_library.phrases import extract_phrase_segments
-from core.marks.phrases import assigned_phrases
-from core.analysis_library.stored import StoredAnalysis, TrackEdits, apply_edits
+from core.analysis_library.stored import StoredAnalysis, TrackEdits, apply_edits, index_marks
 
 
 # ---- tracks ----
@@ -78,24 +76,54 @@ def remove_tracks(lib, uids: list[str]) -> None:
         print(f"[Library] removed tracks left in the indexes: {exc}")
 
 
-def save_edits(lib, uid: str, edits: TrackEdits) -> str:
-    """The editor's save: ``edits`` into the track's stored analysis (each mark's block replaced whole), its BPM, key
-    and segment tables in library.db written from them (the Export tab's tags read the BPM and key). Returns the uid.
-    Unmarked (the snapshot read whole, sig_lib_updated sent): the library's phrase / transition filters read those
-    tables and run again on it. One transaction, the NPZ saved last inside it: a failure anywhere rolls library.db
-    back whole, so it never holds half an edit."""
+def save_edits(lib, uid: str, edits: TrackEdits, sync: bool = True) -> str:
+    """The editor's save: ``edits`` into the track's stored analysis (each mark's block replaced whole) and, with
+    ``sync`` (Settings > Library, libconfig.sync_stored_analysis), the track's rows in library.db made from them
+    (track_index: the BPM and key the library shows and the Export tab's tags take, the tables the phrase /
+    transition filters read; without, library.db is left for Sync Now, sync_index). Returns the uid. Unmarked (the
+    snapshot read whole, sig_lib_updated sent): the filters run again on it. One transaction, the NPZ saved last
+    inside it: a failure anywhere rolls library.db back whole, so it never holds half an edit."""
     stored = lib.features.load(uid)
     apply_edits(stored, edits)
     with lib.db.tx():
-        lib.db.set_tempo_key(uid, edits.main_tempo(), edits.main_key())
-        bpm_rows = build_bpm_segments(stored.get("tempo_segments"))
-        key_rows = build_key_segments(stored.get("key_segments"))
-        phrase_rows = assigned_phrases(extract_phrase_segments(stored))
-        lib.db.replace_bpm_segments(uid, bpm_rows)
-        lib.db.replace_key_segments(uid, key_rows)
-        lib.db.replace_phrase_index(uid, build_phrase_index_rows(phrase_rows, bpm_rows, key_rows))
+        if sync:
+            lib.db.write_track_index(uid, track_index(*index_marks(stored)))
         lib.features.save(uid, stored)
     return uid
+
+
+# tracks a sync job reads (sync_index): about 1 ms a track measured, so the GUI's jobs wait well under a second
+SYNC_BATCH = 50
+
+
+@dataclass(frozen=True)
+class IndexSync:
+    """What a sync did: the tracks whose rows in library.db changed, and those without a stored analysis that reads
+    (left as they are)."""
+    changed: int = 0
+    unread: int = 0
+
+
+@changes(TRACKS)
+def sync_index(lib, uids: list[str]) -> IndexSync:
+    """library.db made to agree with the tracks' stored analyses (Settings > Library's Sync Now, SYNC_BATCH tracks a
+    job): each track's rows written from its stored marks (track_index, as the editor's save writes them); the
+    user's metadata untouched, nothing of the stored analyses written."""
+    changed = unread = 0
+    for uid in uids:
+        try:
+            marks = analysis_jobs.stored_marks(lib, uid)
+        except (OSError, ValueError, KeyError) as exc:
+            print(f"[Library] a stored analysis not read for the sync: {exc}")
+            marks = None
+        if marks is None:
+            unread += 1
+            continue
+        with lib.db.tx():
+            before = lib.db.track_index_rows(uid)
+            lib.db.write_track_index(uid, track_index(*marks))
+            changed += lib.db.track_index_rows(uid) != before
+    return IndexSync(changed, unread)
 
 
 def tag_sources(lib, uid: str) -> dict:

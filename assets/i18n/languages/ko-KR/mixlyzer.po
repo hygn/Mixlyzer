@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-27 16:38+0900\n"
+"POT-Creation-Date: 2026-10-27 17:58+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ko_KR\n"
@@ -54,7 +54,7 @@ msgstr "디코더 판독 {done}/{total}"
 
 #: analyzer/training/beat_critic_optimizer.py:472
 #: analyzer/training/beat_tcn_optimizer.py:374
-#: analyzer/training/key_model_optimizer.py:521
+#: analyzer/training/key_model_optimizer.py:519
 msgid "Held-out check"
 msgstr "검증용 곡 확인"
 
@@ -65,7 +65,7 @@ msgstr "저장 안 함: 검증용 곡에서 그리드가 나빠졌습니다"
 
 #: analyzer/training/beat_critic_optimizer.py:492
 #: analyzer/training/beat_tcn_optimizer.py:395
-#: analyzer/training/key_model_optimizer.py:535
+#: analyzer/training/key_model_optimizer.py:533
 msgid "Fine-tuning"
 msgstr "미세 조정"
 
@@ -74,7 +74,7 @@ msgstr "미세 조정"
 msgid "Tracking with every cost combination {done}/{total}"
 msgstr "모든 비용 조합으로 트래킹 {done}/{total}"
 
-#: analyzer/training/beat_decoder_optimizer.py:219
+#: analyzer/training/beat_decoder_optimizer.py:218
 msgid "Not saved: the held-out songs got worse"
 msgstr "저장 안 함: 검증용 곡에서 나빠졌습니다"
 
@@ -87,12 +87,12 @@ msgstr "잘못된 템포 행: {error}"
 msgid "no tempo rows"
 msgstr "템포 행 없음"
 
-#: analyzer/training/beat_frames.py:127
+#: analyzer/training/beat_frames.py:125
 #, python-brace-format
 msgid "frame feature cache build failed: {error}"
 msgstr "프레임 특징 캐시 생성 실패: {error}"
 
-#: analyzer/training/beat_frames.py:130
+#: analyzer/training/beat_frames.py:128
 #, python-brace-format
 msgid "Frame features {done}/{total}"
 msgstr "프레임 특징 {done}/{total}"
@@ -200,36 +200,36 @@ msgstr "분석을 읽을 수 없음: {error}"
 msgid "no key annotation"
 msgstr "키 주석 없음"
 
-#: analyzer/training/key_model_optimizer.py:199
+#: analyzer/training/key_model_optimizer.py:198
 #, python-brace-format
 msgid "key feature cache build failed: {error}"
 msgstr "키 특징 캐시 생성 실패: {error}"
 
-#: analyzer/training/key_model_optimizer.py:202
+#: analyzer/training/key_model_optimizer.py:201
 #, python-brace-format
 msgid "Key features {done}/{total}"
 msgstr "키 특징 {done}/{total}"
 
-#: analyzer/training/key_model_optimizer.py:444
+#: analyzer/training/key_model_optimizer.py:443
 #, python-brace-format
 msgid "{stage}: epoch {epoch}/{epochs}, loss {loss}"
 msgstr "{stage}: 에포크 {epoch}/{epochs}, 손실 {loss}"
 
-#: analyzer/training/key_model_optimizer.py:501
+#: analyzer/training/key_model_optimizer.py:499
 msgid "too few beats or no key features"
 msgstr "비트가 너무 적거나 키 특징이 없음"
 
-#: analyzer/training/key_model_optimizer.py:506
+#: analyzer/training/key_model_optimizer.py:504
 #, python-brace-format
 msgid "Beat inputs {done}/{total}"
 msgstr "비트 입력 {done}/{total}"
 
-#: analyzer/training/key_model_optimizer.py:508
+#: analyzer/training/key_model_optimizer.py:506
 #, python-brace-format
 msgid "{count} songs"
 msgstr "{count}곡"
 
-#: analyzer/training/key_model_optimizer.py:526
+#: analyzer/training/key_model_optimizer.py:524
 msgid "Not saved: the held-out songs' keys got worse"
 msgstr "저장 안 함: 검증용 곡의 키가 나빠졌습니다"
 
@@ -293,64 +293,64 @@ msgstr "사용할 수 있는 프레이즈 구간이 두 개 미만"
 msgid "Cross-validation fold {fold}/{folds}: "
 msgstr "교차 검증 폴드 {fold}/{folds}: "
 
-#: analyzer/training/phrase_parameter_optimizer.py:382
+#: analyzer/training/phrase_parameter_optimizer.py:380
 #, python-brace-format
 msgid "Phrase annotation validation failed: {error}"
 msgstr "프레이즈 주석 검증 실패: {error}"
 
-#: analyzer/training/phrase_parameter_optimizer.py:385
+#: analyzer/training/phrase_parameter_optimizer.py:383
 #, python-brace-format
 msgid ""
 "Need at least five valid annotated tracks to train a Phrase parameter "
 "artifact ({valid} valid, {ignored} ignored)."
 msgstr "프레이즈 파라미터를 학습하려면 유효한 주석 트랙이 최소 5개 필요합니다 (유효 {valid}개, 제외 {ignored}개)."
 
-#: analyzer/training/phrase_parameter_optimizer.py:395
+#: analyzer/training/phrase_parameter_optimizer.py:393
 #, python-brace-format
 msgid "Checking feature cache: {count} tracks"
 msgstr "특징 캐시 확인 중: 트랙 {count}개"
 
-#: analyzer/training/phrase_parameter_optimizer.py:435
+#: analyzer/training/phrase_parameter_optimizer.py:433
 #, python-brace-format
 msgid "Building {count} missing feature caches with {workers} workers"
 msgstr "없는 특징 캐시 {count}개를 워커 {workers}개로 만드는 중"
 
-#: analyzer/training/phrase_parameter_optimizer.py:437
+#: analyzer/training/phrase_parameter_optimizer.py:435
 msgid "Feature cache is current"
 msgstr "특징 캐시가 최신입니다"
 
-#: analyzer/training/phrase_parameter_optimizer.py:464
+#: analyzer/training/phrase_parameter_optimizer.py:462
 #, python-brace-format
 msgid "Phrase feature cache build failed: {error}"
 msgstr "프레이즈 특징 캐시 생성 실패: {error}"
 
-#: analyzer/training/phrase_parameter_optimizer.py:489
+#: analyzer/training/phrase_parameter_optimizer.py:487
 #, python-brace-format
 msgid "Preparing optimizer features {done}/{total}"
 msgstr "최적화용 특징 준비 중 {done}/{total}"
 
-#: analyzer/training/phrase_parameter_optimizer.py:536
+#: analyzer/training/phrase_parameter_optimizer.py:534
 #, python-brace-format
 msgid "Phrase feature preparation failed: {error}"
 msgstr "프레이즈 특징 준비 실패: {error}"
 
-#: analyzer/training/phrase_parameter_optimizer.py:541
+#: analyzer/training/phrase_parameter_optimizer.py:539
 #, python-brace-format
 msgid "prepared ({done}/{total})"
 msgstr "준비 완료 ({done}/{total})"
 
-#: analyzer/training/phrase_parameter_optimizer.py:545
+#: analyzer/training/phrase_parameter_optimizer.py:543
 #, python-brace-format
 msgid ""
 "Need at least five tracks after Phrase feature validation ({valid} valid,"
 " {ignored} ignored)."
 msgstr "프레이즈 특징 검증 후 트랙이 최소 5개 필요합니다 (유효 {valid}개, 제외 {ignored}개)."
 
-#: analyzer/training/phrase_parameter_optimizer.py:569
+#: analyzer/training/phrase_parameter_optimizer.py:567
 msgid "Evaluating fitted Phrase models"
 msgstr "학습한 프레이즈 모델 평가 중"
 
-#: analyzer/training/phrase_parameter_optimizer.py:574
+#: analyzer/training/phrase_parameter_optimizer.py:572
 msgid "Writing parameter artifact"
 msgstr "파라미터 파일 쓰는 중"
 
@@ -496,67 +496,67 @@ msgstr "library.db: 발음"
 msgid "Search keys: {tracks} tracks, {done} / {total} readings"
 msgstr "검색 키: 트랙 {tracks}개, 발음 {done} / {total}"
 
-#: app/startup.py:303
+#: app/startup.py:306
 msgid "Loading libraries"
 msgstr "라이브러리 모듈 불러오는 중"
 
-#: app/startup.py:304
+#: app/startup.py:307
 msgid "Compiling audio kernels (JIT)"
 msgstr "오디오 커널 컴파일 중 (JIT)"
 
-#: app/startup.py:305
+#: app/startup.py:308
 msgid "Starting FFmpeg"
 msgstr "FFmpeg 시작 중"
 
-#: app/startup.py:306
+#: app/startup.py:309
 msgid "Loading search readers"
 msgstr "검색용 발음 변환기 불러오는 중"
 
-#: app/startup.py:307
+#: app/startup.py:310
 msgid "Loading the library"
 msgstr "라이브러리 불러오는 중"
 
-#: app/startup.py:308
+#: app/startup.py:311
 msgid "Building the window"
 msgstr "창 만드는 중"
 
-#: app/window.py:64
+#: app/window.py:72
 msgid "Core objects and playback"
 msgstr "핵심 객체와 재생"
 
-#: app/window.py:86
+#: app/window.py:94
 msgid "Main view, editor and library"
 msgstr "메인 뷰, 편집기, 라이브러리"
 
-#: app/window.py:92 app/window.py:220 ui/config/window.py:66
+#: app/window.py:100 app/window.py:234 ui/config/window.py:66
 msgid "Settings"
 msgstr "설정"
 
-#: app/window.py:94
+#: app/window.py:102
 msgid "Dialogs, workflows and metronome"
 msgstr "대화상자, 워크플로, 메트로놈"
 
-#: app/window.py:221 ui/windows/workers.py:28
+#: app/window.py:235 ui/windows/workers.py:28
 msgid "Workers"
 msgstr "작업"
 
 # | msgid "Tie-ups"
-#: app/window.py:222 ui/shortcuts.py:155 ui/windows/tieup_works.py:33
+#: app/window.py:236 ui/shortcuts.py:155 ui/windows/tieup_works.py:33
 #: ui/windows/tieup_works.py:206 ui/windows/tieup_works.py:261
 #: ui/windows/tieup_works.py:266 ui/windows/tieup_works.py:275
 #: ui/windows/tieup_works.py:338
 msgid "Tie-up Works"
 msgstr "타이업 작품"
 
-#: app/window.py:223
+#: app/window.py:237
 msgid "Open Source"
 msgstr "오픈 소스"
 
-#: app/window.py:224
+#: app/window.py:238
 msgid "About"
 msgstr "정보"
 
-#: app/window.py:241 core/controls/midi.py:55 ui/config/playback.py:356
+#: app/window.py:255 core/controls/midi.py:55 ui/config/playback.py:356
 msgid "Mixer"
 msgstr "믹서"
 
@@ -564,53 +564,53 @@ msgstr "믹서"
 # | Playback > " "Audio engine)."
 # Audio
 # | > " "Engine)."
-#: app/window.py:417
+#: app/window.py:431
 msgid "MIDI needs the native audio engine (Settings > Audio > Engine)."
 msgstr "MIDI는 Native 오디오 엔진에서만 동작합니다(설정 > 오디오 > 엔진)."
 
 # | msgid "MIDI input"
-#: app/window.py:424
+#: app/window.py:438
 msgid "MIDI input on."
 msgstr "MIDI 입력 켬."
 
 # | msgid "MIDI input"
-#: app/window.py:424
+#: app/window.py:438
 msgid "MIDI input off."
 msgstr "MIDI 입력 끔."
 
-#: app/window.py:473
+#: app/window.py:487
 msgid "The Python audio engine plays: there is no native engine to restart."
 msgstr "Python 오디오 엔진으로 재생 중입니다. 재시작할 네이티브 엔진이 없습니다."
 
 # | msgid "Starting the reading worker"
-#: app/window.py:475
+#: app/window.py:489
 msgid "Restarting the audio engine..."
 msgstr "오디오 엔진 재시작 중..."
 
 # | msgid "Audio engine"
-#: app/window.py:479
+#: app/window.py:493
 msgid "Audio engine restarted."
 msgstr "오디오 엔진을 재시작했습니다."
 
-#: app/window.py:480
+#: app/window.py:494
 msgid "The audio engine did not start; it is tried again every 2 seconds."
 msgstr "오디오 엔진이 시작되지 않았습니다. 2초마다 다시 시도합니다."
 
-#: app/window.py:530 app/window.py:595
+#: app/window.py:544 app/window.py:609
 msgid "External Sync is enabled. Local track loading is disabled."
 msgstr "외부 동기화가 켜져 있습니다. 로컬 트랙 불러오기가 비활성화됩니다."
 
-#: app/window.py:543 app/window.py:598
+#: app/window.py:557 app/window.py:612
 msgid "Segment reanalysis canceled (track changed)"
 msgstr "구간 재분석 취소됨 (트랙이 바뀜)"
 
 # | msgid "Phrase reanalysis completed"
-#: app/window.py:579
+#: app/window.py:593
 #, python-brace-format
 msgid "The track's analysis could not be read: {file}"
 msgstr "트랙의 분석을 읽을 수 없습니다: {file}"
 
-#: app/window.py:583
+#: app/window.py:597
 #, python-brace-format
 msgid ""
 "{n} JumpCUE past slot Z is not shown ({file}); it stays stored until the "
@@ -620,15 +620,15 @@ msgid_plural ""
 "the JumpCUEs are edited."
 msgstr[0] "슬롯 Z를 넘는 JumpCUE {n}개는 표시되지 않습니다({file}). JumpCUE를 편집하기 전까지는 저장된 그대로 남습니다."
 
-#: app/window.py:601
+#: app/window.py:615
 msgid "Track unloaded."
 msgstr "트랙을 내렸습니다."
 
-#: app/window.py:611
+#: app/window.py:625
 msgid "Track File Not Found"
 msgstr "트랙 파일을 찾을 수 없음"
 
-#: app/window.py:615
+#: app/window.py:629
 #, python-brace-format
 msgid ""
 "Cannot load \"{name}\": its file is missing.\n"
@@ -641,51 +641,51 @@ msgstr ""
 "\n"
 "파일의 새 위치를 지정할까요?"
 
-#: app/window.py:622
+#: app/window.py:636
 #, python-brace-format
 msgid "Locate {name}"
 msgstr "{name} 찾기"
 
-#: app/window.py:646 app/window.py:662
+#: app/window.py:660 app/window.py:676
 msgid "Analysis saved to library."
 msgstr "분석을 라이브러리에 저장했습니다."
 
-#: app/window.py:651
+#: app/window.py:665
 msgid "Finished"
 msgstr "완료"
 
-#: app/window.py:674
+#: app/window.py:688
 msgid "Waiting to be looked up on Wikipedia"
 msgstr "위키백과 조사 대기 중"
 
-#: app/window.py:680
+#: app/window.py:694
 msgid "Looking up on Wikipedia and Wikidata…"
 msgstr "위키백과와 위키데이터에서 찾는 중…"
 
 # | msgid "Reading the analysis failed: {error}"
 # | msgid "The search failed: {error}"
 # | msgid "" "The lookup failed:\n" "{error}"
-#: app/window.py:685
+#: app/window.py:699
 msgid "The lookup failed."
 msgstr "조사하지 못했습니다."
 
-#: app/window.py:721
+#: app/window.py:735
 #, python-brace-format
 msgid "External Sync loading: {file}"
 msgstr "외부 동기화 불러오는 중: {file}"
 
-#: app/window.py:721
+#: app/window.py:735
 #, python-brace-format
 msgid "External Sync analyzing: {file}"
 msgstr "외부 동기화 분석 중: {file}"
 
 # | msgid "Memory Sync Disabled"
-#: app/window.py:736
+#: app/window.py:749
 msgid "External Sync Disabled"
 msgstr "외부 동기화 비활성화됨"
 
 # | msgid "External Sync enabled via {target}. Local play/load is locked."
-#: app/window.py:1007
+#: app/window.py:1018
 #, python-brace-format
 msgid "External Sync enabled: OSC on {address}. Local play/load is locked."
 msgstr "외부 동기화 사용: OSC {address}. 로컬 재생/불러오기가 잠깁니다."
@@ -1142,16 +1142,16 @@ msgstr "헤드폰: 레벨"
 msgid "Master: level"
 msgstr "마스터: 레벨"
 
-#: core/library/db.py:451
+#: core/library/db.py:472
 msgid "The path cannot be empty."
 msgstr "경로는 비워 둘 수 없습니다."
 
-#: core/library/db.py:454
+#: core/library/db.py:475
 #, python-brace-format
 msgid "This file is already in the library as \"{track}\"."
 msgstr "이 파일은 이미 라이브러리에 \"{track}\"(으)로 있습니다."
 
-#: core/library/db.py:475 core/library/db.py:496
+#: core/library/db.py:496 core/library/db.py:517
 msgid "Playlist name cannot be empty"
 msgstr "플레이리스트 이름은 비워 둘 수 없습니다"
 
@@ -1442,7 +1442,7 @@ msgstr "검색 힌트"
 msgid "Processing Metadata"
 msgstr "메타데이터 처리 중"
 
-#: core/workers/analysis.py:150
+#: core/workers/analysis.py:149
 #, python-brace-format
 msgid "Analysis process exited unexpectedly ({code})."
 msgstr "분석 프로세스가 예기치 않게 종료되었습니다 ({code})."
@@ -1473,7 +1473,7 @@ msgstr "프레이즈 경계 분석 중"
 
 #: core/workers/analysis_texts.py:17 ui/config/analysis.py:268
 #: ui/config/pipeline_map.py:23 ui/config/pipeline_map.py:32
-#: ui/edit_panel/panel.py:58 ui/library/search.py:268 ui/library/search.py:328
+#: ui/edit_panel/panel.py:59 ui/library/search.py:268 ui/library/search.py:328
 #: ui/shortcuts.py:37
 msgid "Phrase"
 msgstr "프레이즈"
@@ -1749,26 +1749,26 @@ msgstr "분석 차례를 기다리는 중"
 msgid "Waiting to analyze: {file}"
 msgstr "분석 대기 중: {file}"
 
-#: core/workflows/analysis.py:192
+#: core/workflows/analysis.py:198
 #, python-brace-format
 msgid "Analyzing: {file}"
 msgstr "분석 중: {file}"
 
-#: core/workflows/analysis.py:239
+#: core/workflows/analysis.py:245
 #, python-brace-format
 msgid "Error ({file})"
 msgstr "오류 ({file})"
 
-#: core/workflows/analysis.py:239
+#: core/workflows/analysis.py:245
 msgid "Error"
 msgstr "오류"
 
-#: core/workflows/analysis.py:250
+#: core/workflows/analysis.py:256
 msgid "Saving Result"
 msgstr "결과 저장 중"
 
 # | msgid "The file could not be written: {error}"
-#: core/workflows/analysis.py:253
+#: core/workflows/analysis.py:259
 #, python-brace-format
 msgid "The analysis could not be stored: {error}"
 msgstr "분석 결과를 저장할 수 없습니다: {error}"
@@ -1940,7 +1940,7 @@ msgstr ""
 "비트 트래커는 모든 템포를 여기서부터 한 옥타브 안(BPM 최소 .. 2 x BPM 최소)으로 읽습니다.\n"
 "이 범위 밖의 곡은 절반이나 두 배 템포로 읽힙니다."
 
-#: ui/config/analysis.py:77 ui/config/window.py:238
+#: ui/config/analysis.py:77 ui/config/window.py:239
 #: ui/windows/reanalyze_dialog.py:38 ui/windows/reanalyze_dialog.py:81
 #, python-brace-format
 msgid "Reads {low} - {high} BPM"
@@ -2019,7 +2019,7 @@ msgstr "BPM 최소"
 
 #: ui/config/analysis.py:142 ui/config/analysis.py:183
 #: ui/config/analysis.py:206 ui/config/dialogs/optimization.py:204
-#: ui/config/library.py:118 ui/config/playback.py:108 ui/config/view.py:150
+#: ui/config/library.py:133 ui/config/playback.py:108 ui/config/view.py:150
 msgid "Advanced"
 msgstr "고급"
 
@@ -2298,12 +2298,12 @@ msgstr ""
 "실행하지 않은 것: {remaining}"
 
 #: analyzer/training/beat_critic_optimizer.py:501
-#: analyzer/training/beat_decoder_optimizer.py:219
+#: analyzer/training/beat_decoder_optimizer.py:218
 #: analyzer/training/beat_tcn_optimizer.py:407
 #: analyzer/training/downbeat_ctx_optimizer.py:138
 #: analyzer/training/jumpcue_parameter_optimizer.py:1123
-#: analyzer/training/key_model_optimizer.py:542
-#: analyzer/training/phrase_parameter_optimizer.py:578
+#: analyzer/training/key_model_optimizer.py:540
+#: analyzer/training/phrase_parameter_optimizer.py:576
 #: analyzer/training/refine_onset_optimizer.py:206 ui/config/analysis.py:607
 #: ui/config/dialogs/optimization.py:95
 msgid "Done"
@@ -2392,7 +2392,7 @@ msgstr "CV"
 
 #: analyzer/training/beat_critic_optimizer.py:492
 #: analyzer/training/beat_tcn_optimizer.py:395
-#: analyzer/training/key_model_optimizer.py:535 ui/config/analysis.py:709
+#: analyzer/training/key_model_optimizer.py:533 ui/config/analysis.py:709
 #: ui/config/analysis.py:770 ui/config/dialogs/optimization.py:75
 msgid "Training"
 msgstr "학습"
@@ -2865,6 +2865,54 @@ msgstr "MIDI: {port} (열 수 없음)"
 msgid "MIDI: {port} (closed)"
 msgstr "MIDI: {port} (닫힘)"
 
+# | msgid "Library Path"
+#: ui/config/dialogs/library_sync.py:17
+msgid "Sync Library Database"
+msgstr "라이브러리 데이터베이스 동기화"
+
+# | msgid "Reading the stored analyses: {done} / {total} tracks"
+#: ui/config/dialogs/library_sync.py:21
+msgid "Reading the stored analyses"
+msgstr "저장된 분석을 읽는 중"
+
+#: ui/config/dialogs/library_sync.py:25 ui/config/dialogs/music_index.py:24
+#: ui/config/dialogs/optimization.py:42 ui/config/dialogs/readings.py:24
+#: ui/config/dialogs/rekordbox.py:23
+msgid "Close"
+msgstr "닫기"
+
+# | msgid "Reading the library: {done} / {total} tracks"
+#: ui/config/dialogs/library_sync.py:43
+#, python-brace-format
+msgid "{done} / {total} tracks"
+msgstr "트랙 {done} / {total}"
+
+# | msgid "Done: {n} track indexed"
+# | msgid_plural "Done: {n} tracks indexed"
+#: ui/config/dialogs/library_sync.py:48
+#, python-brace-format
+msgid "Done: {n} track changed."
+msgid_plural "Done: {n} tracks changed."
+msgstr[0] "완료: 트랙 {n}개가 바뀌었습니다."
+
+#: ui/config/dialogs/library_sync.py:51
+#, python-brace-format
+msgid "{n} track has no stored analysis that reads: left as it is."
+msgid_plural "{n} tracks have no stored analysis that reads: left as they are."
+msgstr[0] "트랙 {n}개는 읽을 수 있는 저장된 분석이 없어 그대로 두었습니다."
+
+# | msgid "The file could not be written: {error}"
+# | msgid "The file could not be read: {error}"
+# | msgid "The index could not be read: {error}"
+#: ui/config/dialogs/library_sync.py:59
+#, python-brace-format
+msgid ""
+"The library database could not be synced:\n"
+"{error}"
+msgstr ""
+"라이브러리 데이터베이스를 동기화하지 못했습니다:\n"
+"{error}"
+
 # | msgid "Index for Search by Music"
 #: ui/config/dialogs/music_index.py:17
 msgid "Index for Search by Music and Variants"
@@ -2874,11 +2922,6 @@ msgstr "음악으로 검색·다른 버전 색인"
 #: ui/config/dialogs/music_index.py:20
 msgid "Starting the indexing workers"
 msgstr "색인 작업자를 시작하는 중"
-
-#: ui/config/dialogs/music_index.py:24 ui/config/dialogs/optimization.py:42
-#: ui/config/dialogs/readings.py:24 ui/config/dialogs/rekordbox.py:23
-msgid "Close"
-msgstr "닫기"
 
 # | msgid "Close this window; the re-read goes on in the background."
 #: ui/config/dialogs/music_index.py:25
@@ -3366,7 +3409,7 @@ msgstr ""
 "<p>XML의 각 트랙 코멘트 뒤에 곡의 타이업을 [제목 OP; 다른 작품 ED] 형식으로 붙입니다. 라이브러리의 코멘트는 그대로 "
 "둡니다.</p>"
 
-#: ui/config/library.py:56
+#: ui/config/library.py:56 ui/config/library.py:115
 msgid "Sync Now"
 msgstr "지금 동기화"
 
@@ -3457,40 +3500,68 @@ msgstr ""
 "제목과 아티스트가 전송됩니다. 곡 자체 문서에서 확실히 찾은 타이업은 추가하고 작품 문서를 참고 링크로 남깁니다. 나머지는 편집 "
 "탭의 \"웹에서 찾기\"에서 볼 수 있습니다.</p>"
 
-#: ui/config/library.py:109
+#: ui/config/library.py:110
+msgid "Update the library database when the editor saves"
+msgstr "편집기에서 저장할 때 라이브러리 데이터베이스도 갱신"
+
+#: ui/config/library.py:112
+msgid ""
+"<p>The editor's save also writes the track's BPM, key and the tables the "
+"transition and phrase searches read into the library database "
+"(library.db), made from the marks saved. Off: only the track's stored "
+"analysis is written; Sync Now brings the database up to it.</p>"
+msgstr ""
+"<p>편집기에서 저장하면 저장한 마크로부터 트랙의 BPM, 키, 전환 검색과 프레이즈 검색이 읽는 표를 라이브러리 "
+"데이터베이스(library.db)에도 씁니다. 끄면 트랙의 저장된 분석만 쓰고, 데이터베이스는 지금 동기화로 맞춥니다.</p>"
+
+#: ui/config/library.py:117
+msgid ""
+"<p>Every track's BPM, key and search tables in the library database made "
+"again from its stored analysis (as the editor's save writes them). "
+"Titles, artists, ratings and comments are not touched.</p>"
+msgstr ""
+"<p>라이브러리 데이터베이스의 모든 트랙의 BPM, 키, 검색용 표를 저장된 분석으로부터 다시 만듭니다(편집기 저장과 같은 방식)."
+" 제목, 아티스트, 별점, 코멘트는 건드리지 않습니다.</p>"
+
+# | msgid "Library Path"
+#: ui/config/library.py:119
+msgid "Library Database"
+msgstr "라이브러리 데이터베이스"
+
+#: ui/config/library.py:124
 msgid "Rekordbox XML"
 msgstr "Rekordbox XML"
 
-#: ui/config/library.py:112
+#: ui/config/library.py:127
 msgid "XML Path"
 msgstr "XML 경로"
 
-#: ui/config/library.py:113
+#: ui/config/library.py:128
 msgid "Tempo ramp tolerance"
 msgstr "템포 램프 허용 오차"
 
-#: ui/config/library.py:121
+#: ui/config/library.py:136
 msgid "Log Path"
 msgstr "로그 경로"
 
-#: ui/config/library.py:146
+#: ui/config/library.py:163
 msgid "Add Local Music Folder"
 msgstr "로컬 음악 폴더 추가"
 
-#: ui/config/library.py:201
+#: ui/config/library.py:252
 msgid "Enable Sync with Rekordbox XML first."
 msgstr "먼저 'Rekordbox XML과 동기화'를 켜세요."
 
-#: ui/config/dialogs/rekordbox.py:15 ui/config/library.py:201
-#: ui/config/library.py:206
+#: ui/config/dialogs/rekordbox.py:15 ui/config/library.py:252
+#: ui/config/library.py:257
 msgid "Sync Rekordbox XML"
 msgstr "Rekordbox XML 동기화"
 
-#: ui/config/library.py:206
+#: ui/config/library.py:257
 msgid "Rekordbox XML Path is empty."
 msgstr "Rekordbox XML 경로가 비어 있습니다."
 
-#: ui/config/library.py:247
+#: ui/config/library.py:298
 msgid "Rekordbox XML worker started"
 msgstr "Rekordbox XML 작업 시작됨"
 
@@ -5599,7 +5670,7 @@ msgstr "빈 슬롯 {letter}로 옮기기 (이 큐와 이후 큐가 한 슬롯씩
 msgid "Two JumpCUEs cannot share a point."
 msgstr "두 JumpCUE가 같은 지점을 가질 수 없습니다."
 
-#: ui/edit_panel/jumpcue.py:222 ui/edit_panel/panel.py:576
+#: ui/edit_panel/jumpcue.py:222 ui/edit_panel/panel.py:577
 msgid "Invalid JumpCUE Label"
 msgstr "잘못된 JumpCUE 라벨"
 
@@ -5786,24 +5857,24 @@ msgstr "현재 구간의 키 선택 (Alphanumeric 휠)"
 msgid "{key} | Seg {index} | Elapsed: {elapsed} | Left: {left}"
 msgstr "{key} | 구간 {index} | 경과: {elapsed} | 남음: {left}"
 
-#: ui/edit_panel/panel.py:59
+#: ui/edit_panel/panel.py:60
 msgid "Edit the beatgrid"
 msgstr "비트그리드 편집"
 
-#: ui/edit_panel/panel.py:59
+#: ui/edit_panel/panel.py:60
 msgid "Edit the key"
 msgstr "키 편집"
 
-#: ui/edit_panel/panel.py:60
+#: ui/edit_panel/panel.py:61
 msgid "Edit the phrase"
 msgstr "프레이즈 편집"
 
-#: ui/edit_panel/panel.py:60
+#: ui/edit_panel/panel.py:61
 msgid "Edit the JumpCUEs and CUE points"
 msgstr "JumpCUE와 CUE 포인트 편집"
 
 # | msgid "The file could not be written: {error}"
-#: ui/edit_panel/panel.py:589
+#: ui/edit_panel/panel.py:592
 #, python-brace-format
 msgid ""
 "The edits could not be saved:\n"
@@ -5813,17 +5884,17 @@ msgstr ""
 "{error}"
 
 # | msgid "Shared"
-#: ui/edit_panel/panel.py:589 ui/windows/tieup_works.py:90
+#: ui/edit_panel/panel.py:592 ui/windows/tieup_works.py:90
 msgid "Save"
 msgstr "저장"
 
-#: ui/edit_panel/panel.py:622
+#: ui/edit_panel/panel.py:625
 msgid ""
 "<p>Editing is locked: pages switch, but nothing is edited or saved. Click"
 " to unlock.</p>"
 msgstr "<p>편집이 잠겨 있습니다: 페이지는 바뀌지만 편집이나 저장은 되지 않습니다. 클릭하면 잠금이 풀립니다.</p>"
 
-#: ui/edit_panel/panel.py:624
+#: ui/edit_panel/panel.py:627
 msgid ""
 "<p>Editing is unlocked: the shown pages' graphics are emphasized. Click "
 "to lock: no edits, no saving (on at every start).</p>"
@@ -5831,37 +5902,37 @@ msgstr ""
 "<p>편집이 풀려 있습니다: 보이는 페이지의 그래픽이 강조됩니다. 클릭하면 잠급니다: 편집과 저장이 막힙니다 (시작할 때마다 "
 "잠김).</p>"
 
-#: ui/edit_panel/panel.py:735
+#: ui/edit_panel/panel.py:738
 #, python-brace-format
 msgid "This shortcut does nothing on the {page} page."
 msgstr "이 단축키는 {page} 페이지에서는 아무것도 하지 않습니다."
 
-#: ui/edit_panel/panel.py:743
+#: ui/edit_panel/panel.py:746
 msgid "Editing is locked."
 msgstr "편집이 잠겨 있습니다."
 
 # | msgid "Segment reanalysis finished"
-#: ui/edit_panel/panel.py:745
+#: ui/edit_panel/panel.py:748
 msgid "Editing waits for the segment reanalysis to finish."
 msgstr "구간 재분석이 끝날 때까지 편집할 수 없습니다."
 
 # | msgid "Delete JumpCUE {letter}"
-#: ui/edit_panel/panel.py:778 ui/edit_panel/panel.py:791
+#: ui/edit_panel/panel.py:781 ui/edit_panel/panel.py:794
 #, python-brace-format
 msgid "JumpCUE {letter} is not set."
 msgstr "JumpCUE {letter}가 설정되어 있지 않습니다."
 
-#: ui/edit_panel/panel.py:787
+#: ui/edit_panel/panel.py:790
 #, python-brace-format
 msgid "JumpCUE {letter} is already set."
 msgstr "JumpCUE {letter}가 이미 설정되어 있습니다."
 
-#: ui/edit_panel/panel.py:807
+#: ui/edit_panel/panel.py:810
 msgid "CALL works while stopped."
 msgstr "CALL은 정지 중에만 동작합니다."
 
 # | msgid "Split the current segment at the playhead"
-#: ui/edit_panel/panel.py:823
+#: ui/edit_panel/panel.py:826
 msgid "No CUE point at the playhead."
 msgstr "플레이헤드에 CUE 포인트가 없습니다."
 
@@ -5968,7 +6039,7 @@ msgstr[0] ""
 
 # | msgid "" "<p>Search by Music: hum, sing or whistle a melody, or play the
 # | song from " "a phone, and the microphone finds it in the library.</p>"
-#: ui/library/music.py:30
+#: ui/library/music.py:31
 msgid ""
 "<p>Search by Music: hum, sing or whistle a melody, or play the song from "
 "a phone, and the library shows the songs the microphone hears, best "
@@ -5980,17 +6051,17 @@ msgstr ""
 # | msgid "Unload track"
 # | msgid "Unload the track"
 # | msgid "Back to the tracks"
-#: ui/library/music.py:36
+#: ui/library/music.py:37
 msgid "Back to the library"
 msgstr "라이브러리로 돌아가기"
 
 # | msgid "Found by the sound of the recording ({n} matches)"
-#: ui/library/music.py:141
+#: ui/library/music.py:142
 #, python-brace-format
 msgid "Matched at {start} - {end}, by the sound of the recording ({n} matches)"
 msgstr "{start} - {end}에서 일치, 녹음된 소리로 찾음 (일치 {n}개)"
 
-#: ui/library/music.py:144
+#: ui/library/music.py:145
 #, python-brace-format
 msgid "Matched at {start} - {end}, by the melody"
 msgstr "{start} - {end}에서 일치, 멜로디로 찾음"
@@ -6917,7 +6988,7 @@ msgstr "불러온 트랙 없음"
 msgid "Playback"
 msgstr "재생"
 
-#: ui/config/library.py:82 ui/config/library.py:133 ui/shortcuts.py:32
+#: ui/config/library.py:82 ui/config/library.py:150 ui/shortcuts.py:32
 msgid "Library"
 msgstr "라이브러리"
 
@@ -6931,7 +7002,7 @@ msgstr "편집기"
 msgid "Current page"
 msgstr "현재 페이지"
 
-#: ui/edit_panel/panel.py:58 ui/shortcuts.py:35
+#: ui/edit_panel/panel.py:59 ui/shortcuts.py:35
 msgid "Beatgrid"
 msgstr "비트그리드"
 
@@ -7367,15 +7438,15 @@ msgstr "{page} 페이지 보기"
 msgid "It becomes the current page."
 msgstr "그 페이지가 현재 페이지가 됩니다."
 
-#: ui/edit_panel/panel.py:218 ui/shortcuts.py:174
+#: ui/edit_panel/panel.py:219 ui/shortcuts.py:174
 msgid "Undo Changes"
 msgstr "변경 실행 취소"
 
-#: ui/edit_panel/panel.py:222 ui/shortcuts.py:175
+#: ui/edit_panel/panel.py:223 ui/shortcuts.py:175
 msgid "Redo Changes"
 msgstr "변경 다시 실행"
 
-#: ui/edit_panel/panel.py:226 ui/shortcuts.py:176
+#: ui/edit_panel/panel.py:227 ui/shortcuts.py:176
 msgid "Save Edits"
 msgstr "편집 저장"
 

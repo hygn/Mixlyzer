@@ -995,9 +995,31 @@ class LibraryDB:
         return [_track_row_from_db_row(row) for row in cur.fetchall()]
 
     def set_tempo_key(self, uid: str, bpm: float, key: Optional[int]) -> None:
-        """The track's BPM and key (the editor's save: made from its marks as edited); committed with the job's other
-        writes, by the owner."""
+        """The track's BPM and key (made from its marks: core.library.segments.track_index); committed with the
+        job's other writes, by the owner."""
         self.conn.execute("UPDATE tracks SET bpm=?, key=? WHERE uid=?;", (float(bpm), key, _canonical_uuid4(uid)))
+
+    def write_track_index(self, uid: str, index) -> None:
+        """The track's rows made from its marks (a core.library.segments.TrackIndex: the BPM, the key, the segment and
+        phrase tables), in one transaction."""
+        with self.tx():
+            self.set_tempo_key(uid, index.bpm, index.key)
+            self.replace_bpm_segments(uid, index.bpm_rows)
+            self.replace_key_segments(uid, index.key_rows)
+            self.replace_phrase_index(uid, index.phrase_rows)
+
+    def track_index_rows(self, uid: str) -> tuple:
+        """The track's rows write_track_index writes, as stored, their row ids left out (compared before and after a
+        sync)."""
+        uid = _canonical_uuid4(uid)
+        head = self.conn.execute("SELECT bpm, key FROM tracks WHERE uid=?;", (uid,)).fetchone()
+        tables = []
+        for table, order in (("track_bpm_segments", "seq_index"), ("track_key_segments", "seq_index"),
+                             ("track_phrase_sections", "phrase_seq_index, section_index")):
+            columns = ", ".join(col[1] for col in self.conn.execute(f"PRAGMA table_info({table});") if col[1] != "id")
+            tables.append(tuple(tuple(row) for row in self.conn.execute(
+                f"SELECT {columns} FROM {table} WHERE track_uid=? ORDER BY {order};", (uid,)).fetchall()))
+        return (tuple(head) if head is not None else None, *tables)
 
     # Utilities
     def touch_file_stats(self, path: str):

@@ -47,6 +47,11 @@ class EventBus(QtCore.QObject):
     sig_rekordbox_sync_progress = QtCore.Signal(object, int, str)
     sig_rekordbox_sync_finished = QtCore.Signal(object, object)
     sig_rekordbox_sync_failed = QtCore.Signal(object, str)
+    # library.db made to agree with the stored analyses (Settings > Library's Sync Now: core.workflows.library_sync)
+    sig_library_sync_requested = QtCore.Signal()
+    sig_library_sync_progress = QtCore.Signal(int, int)        # tracks done, of
+    sig_library_sync_finished = QtCore.Signal(object)          # core.library.jobs.IndexSync
+    sig_library_sync_failed = QtCore.Signal(str)
     # the library's readings read again (Settings > Search)
     sig_reading_refresh_requested = QtCore.Signal(object)
     sig_reading_refresh_started = QtCore.Signal(object)

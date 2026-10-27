@@ -1,12 +1,38 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
 
+from analyzer.beat.general.tracker import dominant_tempo
+from analyzer.music.key_rows import main_key
 from analyzer.music.tempo_rows import END_BPM_COLUMN, segment_end_bpm
 from analyzer.music.key_names import idx_to_labels
 from core.marks.phrases import assigned_phrases
+
+
+@dataclass(frozen=True)
+class TrackIndex:
+    """What library.db keeps of a track's marks: its BPM and key (the library's columns, the files' tags) and the
+    rows the transition search and the phrase filters read (track_bpm_segments, track_key_segments,
+    track_phrase_sections)."""
+    bpm: float
+    key: int | None
+    bpm_rows: list[dict[str, Any]]
+    key_rows: list[dict[str, Any]]
+    phrase_rows: list[dict[str, Any]]
+
+
+def track_index(tempo_segments, key_segments, phrases) -> TrackIndex:
+    """library.db's rows of a track made from its marks, by one rule for every writer (the full analysis, the
+    editor's save, the library's sync): the BPM the tempo covering the most time (dominant_tempo), the key the
+    static key analysis's (key_rows.main_key), the segment and phrase rows built from them."""
+    bpm_rows = build_bpm_segments(tempo_segments)
+    key_rows = build_key_segments(key_segments)
+    return TrackIndex(bpm=float(dominant_tempo(tempo_segments)), key=main_key(key_segments, phrases),
+                      bpm_rows=bpm_rows, key_rows=key_rows,
+                      phrase_rows=build_phrase_index_rows(phrases, bpm_rows, key_rows))
 
 
 def key_value_to_label(key_value: int | None) -> str:

@@ -175,6 +175,7 @@ class SettingsDialog(
         self.cb_rekordbox_comment_tieups.setChecked(bool(cfg.libconfig.rekordbox_comment_tieups))
         self.cb_tieup_to_versions.setChecked(bool(cfg.libconfig.tieup_to_versions))
         self.cb_tieup_web_search.setChecked(bool(cfg.libconfig.tieup_web_search))
+        self.cb_sync_stored_analysis.setChecked(bool(cfg.libconfig.sync_stored_analysis))
 
         # search
         self._set_search_config(cfg.searchconfig)
@@ -327,6 +328,7 @@ class SettingsDialog(
                 rekordbox_comment_tieups=bool(self.cb_rekordbox_comment_tieups.isChecked()),
                 tieup_to_versions=bool(self.cb_tieup_to_versions.isChecked()),
                 tieup_web_search=bool(self.cb_tieup_web_search.isChecked()),
+                sync_stored_analysis=bool(self.cb_sync_stored_analysis.isChecked()),
             ),
             viewconfig=viewconfig(
                 language=self._get_language(),

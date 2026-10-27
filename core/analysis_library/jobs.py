@@ -16,8 +16,8 @@ from pathlib import Path
 from typing import Optional
 
 from analyzer.training.library_tracks import Annotation
-from core.analysis_library.stored import ANNOTATION_BLOCKS, ANNOTATION_KEYS, FINGERPRINT_KEYS, StoredAnalysis, \
-    annotation_of
+from core.analysis_library.stored import ANNOTATION_BLOCKS, ANNOTATION_KEYS, FINGERPRINT_KEYS, INDEX_BLOCKS, \
+    INDEX_KEYS, StoredAnalysis, annotation_of, index_marks
 
 
 def analysis(lib, uid: str) -> Optional[StoredAnalysis]:
@@ -35,6 +35,13 @@ def fingerprint_source(lib, uid: str) -> StoredAnalysis:
     if arrays is None:
         raise FileNotFoundError(lib.features.path(uid))
     return StoredAnalysis.from_arrays(arrays)
+
+
+def stored_marks(lib, uid: str):
+    """The marks library.db's rows of a track are made from (stored.index_marks: the tempo and key rows, the
+    phrases; the rest is not decompressed). None when the track has none stored; raises what the read raised."""
+    arrays = lib.features.load_keys(uid, INDEX_KEYS, INDEX_BLOCKS)
+    return index_marks(arrays) if arrays is not None else None
 
 
 def features_stamp(lib, uid: str) -> Optional[tuple[int, int]]:

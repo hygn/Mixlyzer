@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-27 16:38+0900\n"
+"POT-Creation-Date: 2026-10-27 17:58+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ja_JP\n"
@@ -54,7 +54,7 @@ msgstr "デコーダーの読み取り {done}/{total}"
 
 #: analyzer/training/beat_critic_optimizer.py:472
 #: analyzer/training/beat_tcn_optimizer.py:374
-#: analyzer/training/key_model_optimizer.py:521
+#: analyzer/training/key_model_optimizer.py:519
 msgid "Held-out check"
 msgstr "検証用の曲で確認"
 
@@ -65,7 +65,7 @@ msgstr "保存しませんでした: 検証用の曲でグリッドが悪化し�
 
 #: analyzer/training/beat_critic_optimizer.py:492
 #: analyzer/training/beat_tcn_optimizer.py:395
-#: analyzer/training/key_model_optimizer.py:535
+#: analyzer/training/key_model_optimizer.py:533
 msgid "Fine-tuning"
 msgstr "ファインチューニング"
 
@@ -74,7 +74,7 @@ msgstr "ファインチューニング"
 msgid "Tracking with every cost combination {done}/{total}"
 msgstr "すべてのコストの組み合わせでトラッキング {done}/{total}"
 
-#: analyzer/training/beat_decoder_optimizer.py:219
+#: analyzer/training/beat_decoder_optimizer.py:218
 msgid "Not saved: the held-out songs got worse"
 msgstr "保存しませんでした: 検証用の曲で悪化しました"
 
@@ -87,12 +87,12 @@ msgstr "無効なテンポ行: {error}"
 msgid "no tempo rows"
 msgstr "テンポ行がありません"
 
-#: analyzer/training/beat_frames.py:127
+#: analyzer/training/beat_frames.py:125
 #, python-brace-format
 msgid "frame feature cache build failed: {error}"
 msgstr "フレーム特徴量キャッシュの作成に失敗しました: {error}"
 
-#: analyzer/training/beat_frames.py:130
+#: analyzer/training/beat_frames.py:128
 #, python-brace-format
 msgid "Frame features {done}/{total}"
 msgstr "フレーム特徴量 {done}/{total}"
@@ -200,36 +200,36 @@ msgstr "解析を読み込めません: {error}"
 msgid "no key annotation"
 msgstr "キーのアノテーションがありません"
 
-#: analyzer/training/key_model_optimizer.py:199
+#: analyzer/training/key_model_optimizer.py:198
 #, python-brace-format
 msgid "key feature cache build failed: {error}"
 msgstr "キー特徴量キャッシュの作成に失敗しました: {error}"
 
-#: analyzer/training/key_model_optimizer.py:202
+#: analyzer/training/key_model_optimizer.py:201
 #, python-brace-format
 msgid "Key features {done}/{total}"
 msgstr "キー特徴量 {done}/{total}"
 
-#: analyzer/training/key_model_optimizer.py:444
+#: analyzer/training/key_model_optimizer.py:443
 #, python-brace-format
 msgid "{stage}: epoch {epoch}/{epochs}, loss {loss}"
 msgstr "{stage}: エポック {epoch}/{epochs}、損失 {loss}"
 
-#: analyzer/training/key_model_optimizer.py:501
+#: analyzer/training/key_model_optimizer.py:499
 msgid "too few beats or no key features"
 msgstr "拍が少なすぎるか、キー特徴量がありません"
 
-#: analyzer/training/key_model_optimizer.py:506
+#: analyzer/training/key_model_optimizer.py:504
 #, python-brace-format
 msgid "Beat inputs {done}/{total}"
 msgstr "拍の入力 {done}/{total}"
 
-#: analyzer/training/key_model_optimizer.py:508
+#: analyzer/training/key_model_optimizer.py:506
 #, python-brace-format
 msgid "{count} songs"
 msgstr "{count} 曲"
 
-#: analyzer/training/key_model_optimizer.py:526
+#: analyzer/training/key_model_optimizer.py:524
 msgid "Not saved: the held-out songs' keys got worse"
 msgstr "保存しませんでした: 検証用の曲のキーが悪化しました"
 
@@ -293,12 +293,12 @@ msgstr "使用できるフレーズ区間が 2 つ未満"
 msgid "Cross-validation fold {fold}/{folds}: "
 msgstr "交差検証フォールド {fold}/{folds}: "
 
-#: analyzer/training/phrase_parameter_optimizer.py:382
+#: analyzer/training/phrase_parameter_optimizer.py:380
 #, python-brace-format
 msgid "Phrase annotation validation failed: {error}"
 msgstr "フレーズのアノテーションの検証に失敗しました: {error}"
 
-#: analyzer/training/phrase_parameter_optimizer.py:385
+#: analyzer/training/phrase_parameter_optimizer.py:383
 #, python-brace-format
 msgid ""
 "Need at least five valid annotated tracks to train a Phrase parameter "
@@ -307,52 +307,52 @@ msgstr ""
 "フレーズパラメーターを学習するには、有効なアノテーション付きトラックが少なくとも 5 件必要です (有効 {valid} 件、除外 "
 "{ignored} 件)。"
 
-#: analyzer/training/phrase_parameter_optimizer.py:395
+#: analyzer/training/phrase_parameter_optimizer.py:393
 #, python-brace-format
 msgid "Checking feature cache: {count} tracks"
 msgstr "特徴量キャッシュを確認中: トラック {count} 件"
 
-#: analyzer/training/phrase_parameter_optimizer.py:435
+#: analyzer/training/phrase_parameter_optimizer.py:433
 #, python-brace-format
 msgid "Building {count} missing feature caches with {workers} workers"
 msgstr "不足している特徴量キャッシュ {count} 件をワーカー {workers} 個で作成中"
 
-#: analyzer/training/phrase_parameter_optimizer.py:437
+#: analyzer/training/phrase_parameter_optimizer.py:435
 msgid "Feature cache is current"
 msgstr "特徴量キャッシュは最新です"
 
-#: analyzer/training/phrase_parameter_optimizer.py:464
+#: analyzer/training/phrase_parameter_optimizer.py:462
 #, python-brace-format
 msgid "Phrase feature cache build failed: {error}"
 msgstr "フレーズ特徴量キャッシュの作成に失敗しました: {error}"
 
-#: analyzer/training/phrase_parameter_optimizer.py:489
+#: analyzer/training/phrase_parameter_optimizer.py:487
 #, python-brace-format
 msgid "Preparing optimizer features {done}/{total}"
 msgstr "最適化用の特徴量を準備中 {done}/{total}"
 
-#: analyzer/training/phrase_parameter_optimizer.py:536
+#: analyzer/training/phrase_parameter_optimizer.py:534
 #, python-brace-format
 msgid "Phrase feature preparation failed: {error}"
 msgstr "フレーズ特徴量の準備に失敗しました: {error}"
 
-#: analyzer/training/phrase_parameter_optimizer.py:541
+#: analyzer/training/phrase_parameter_optimizer.py:539
 #, python-brace-format
 msgid "prepared ({done}/{total})"
 msgstr "準備完了 ({done}/{total})"
 
-#: analyzer/training/phrase_parameter_optimizer.py:545
+#: analyzer/training/phrase_parameter_optimizer.py:543
 #, python-brace-format
 msgid ""
 "Need at least five tracks after Phrase feature validation ({valid} valid,"
 " {ignored} ignored)."
 msgstr "フレーズ特徴量の検証後、トラックが少なくとも 5 件必要です (有効 {valid} 件、除外 {ignored} 件)。"
 
-#: analyzer/training/phrase_parameter_optimizer.py:569
+#: analyzer/training/phrase_parameter_optimizer.py:567
 msgid "Evaluating fitted Phrase models"
 msgstr "学習したフレーズモデルを評価中"
 
-#: analyzer/training/phrase_parameter_optimizer.py:574
+#: analyzer/training/phrase_parameter_optimizer.py:572
 msgid "Writing parameter artifact"
 msgstr "パラメーターファイルを書き込み中"
 
@@ -498,67 +498,67 @@ msgstr "library.db: 読み"
 msgid "Search keys: {tracks} tracks, {done} / {total} readings"
 msgstr "検索キー: トラック {tracks} 件、読み {done} / {total}"
 
-#: app/startup.py:303
+#: app/startup.py:306
 msgid "Loading libraries"
 msgstr "ライブラリモジュールを読み込み中"
 
-#: app/startup.py:304
+#: app/startup.py:307
 msgid "Compiling audio kernels (JIT)"
 msgstr "オーディオカーネルをコンパイル中 (JIT)"
 
-#: app/startup.py:305
+#: app/startup.py:308
 msgid "Starting FFmpeg"
 msgstr "FFmpeg を起動中"
 
-#: app/startup.py:306
+#: app/startup.py:309
 msgid "Loading search readers"
 msgstr "検索用の読み変換を読み込み中"
 
-#: app/startup.py:307
+#: app/startup.py:310
 msgid "Loading the library"
 msgstr "ライブラリを読み込み中"
 
-#: app/startup.py:308
+#: app/startup.py:311
 msgid "Building the window"
 msgstr "ウィンドウを作成中"
 
-#: app/window.py:64
+#: app/window.py:72
 msgid "Core objects and playback"
 msgstr "コアオブジェクトと再生"
 
-#: app/window.py:86
+#: app/window.py:94
 msgid "Main view, editor and library"
 msgstr "メインビュー、エディター、ライブラリ"
 
-#: app/window.py:92 app/window.py:220 ui/config/window.py:66
+#: app/window.py:100 app/window.py:234 ui/config/window.py:66
 msgid "Settings"
 msgstr "環境設定"
 
-#: app/window.py:94
+#: app/window.py:102
 msgid "Dialogs, workflows and metronome"
 msgstr "ダイアログ、ワークフロー、メトロノーム"
 
-#: app/window.py:221 ui/windows/workers.py:28
+#: app/window.py:235 ui/windows/workers.py:28
 msgid "Workers"
 msgstr "タスク"
 
 # | msgid "Tie-ups"
-#: app/window.py:222 ui/shortcuts.py:155 ui/windows/tieup_works.py:33
+#: app/window.py:236 ui/shortcuts.py:155 ui/windows/tieup_works.py:33
 #: ui/windows/tieup_works.py:206 ui/windows/tieup_works.py:261
 #: ui/windows/tieup_works.py:266 ui/windows/tieup_works.py:275
 #: ui/windows/tieup_works.py:338
 msgid "Tie-up Works"
 msgstr "タイアップ作品"
 
-#: app/window.py:223
+#: app/window.py:237
 msgid "Open Source"
 msgstr "オープンソース"
 
-#: app/window.py:224
+#: app/window.py:238
 msgid "About"
 msgstr "情報"
 
-#: app/window.py:241 core/controls/midi.py:55 ui/config/playback.py:356
+#: app/window.py:255 core/controls/midi.py:55 ui/config/playback.py:356
 msgid "Mixer"
 msgstr "ミキサー"
 
@@ -566,53 +566,53 @@ msgstr "ミキサー"
 # | Playback > " "Audio engine)."
 # Audio
 # | > " "Engine)."
-#: app/window.py:417
+#: app/window.py:431
 msgid "MIDI needs the native audio engine (Settings > Audio > Engine)."
 msgstr "MIDI は Native オーディオエンジンでのみ動作します（設定 > オーディオ > エンジン）。"
 
 # | msgid "MIDI input"
-#: app/window.py:424
+#: app/window.py:438
 msgid "MIDI input on."
 msgstr "MIDI 入力オン。"
 
 # | msgid "MIDI input"
-#: app/window.py:424
+#: app/window.py:438
 msgid "MIDI input off."
 msgstr "MIDI 入力オフ。"
 
-#: app/window.py:473
+#: app/window.py:487
 msgid "The Python audio engine plays: there is no native engine to restart."
 msgstr "Python オーディオエンジンで再生中です。再起動するネイティブエンジンがありません。"
 
 # | msgid "Starting the reading worker"
-#: app/window.py:475
+#: app/window.py:489
 msgid "Restarting the audio engine..."
 msgstr "オーディオエンジンを再起動中..."
 
 # | msgid "Audio engine"
-#: app/window.py:479
+#: app/window.py:493
 msgid "Audio engine restarted."
 msgstr "オーディオエンジンを再起動しました。"
 
-#: app/window.py:480
+#: app/window.py:494
 msgid "The audio engine did not start; it is tried again every 2 seconds."
 msgstr "オーディオエンジンが起動しませんでした。2 秒ごとに再試行します。"
 
-#: app/window.py:530 app/window.py:595
+#: app/window.py:544 app/window.py:609
 msgid "External Sync is enabled. Local track loading is disabled."
 msgstr "外部同期が有効です。ローカルでのトラックの読み込みは無効になります。"
 
-#: app/window.py:543 app/window.py:598
+#: app/window.py:557 app/window.py:612
 msgid "Segment reanalysis canceled (track changed)"
 msgstr "区間の再解析をキャンセルしました (トラックが変わりました)"
 
 # | msgid "Phrase reanalysis completed"
-#: app/window.py:579
+#: app/window.py:593
 #, python-brace-format
 msgid "The track's analysis could not be read: {file}"
 msgstr "トラックの解析を読み込めませんでした: {file}"
 
-#: app/window.py:583
+#: app/window.py:597
 #, python-brace-format
 msgid ""
 "{n} JumpCUE past slot Z is not shown ({file}); it stays stored until the "
@@ -622,15 +622,15 @@ msgid_plural ""
 "the JumpCUEs are edited."
 msgstr[0] "スロットZを超えるJumpCUE {n}個は表示されません（{file}）。JumpCUEを編集するまでは保存されたまま残ります。"
 
-#: app/window.py:601
+#: app/window.py:615
 msgid "Track unloaded."
 msgstr "トラックをアンロードしました。"
 
-#: app/window.py:611
+#: app/window.py:625
 msgid "Track File Not Found"
 msgstr "トラックファイルが見つかりません"
 
-#: app/window.py:615
+#: app/window.py:629
 #, python-brace-format
 msgid ""
 "Cannot load \"{name}\": its file is missing.\n"
@@ -643,51 +643,51 @@ msgstr ""
 "\n"
 "ファイルの新しい場所を指定しますか?"
 
-#: app/window.py:622
+#: app/window.py:636
 #, python-brace-format
 msgid "Locate {name}"
 msgstr "{name} の場所を指定"
 
-#: app/window.py:646 app/window.py:662
+#: app/window.py:660 app/window.py:676
 msgid "Analysis saved to library."
 msgstr "解析をライブラリに保存しました。"
 
-#: app/window.py:651
+#: app/window.py:665
 msgid "Finished"
 msgstr "完了"
 
-#: app/window.py:674
+#: app/window.py:688
 msgid "Waiting to be looked up on Wikipedia"
 msgstr "Wikipediaでの調査待ち"
 
-#: app/window.py:680
+#: app/window.py:694
 msgid "Looking up on Wikipedia and Wikidata…"
 msgstr "WikipediaとWikidataで調べています…"
 
 # | msgid "Reading the analysis failed: {error}"
 # | msgid "The search failed: {error}"
 # | msgid "" "The lookup failed:\n" "{error}"
-#: app/window.py:685
+#: app/window.py:699
 msgid "The lookup failed."
 msgstr "調査できませんでした。"
 
-#: app/window.py:721
+#: app/window.py:735
 #, python-brace-format
 msgid "External Sync loading: {file}"
 msgstr "外部同期で読み込み中: {file}"
 
-#: app/window.py:721
+#: app/window.py:735
 #, python-brace-format
 msgid "External Sync analyzing: {file}"
 msgstr "外部同期で解析中: {file}"
 
 # | msgid "Memory Sync Disabled"
-#: app/window.py:736
+#: app/window.py:749
 msgid "External Sync Disabled"
 msgstr "外部同期を無効にしました"
 
 # | msgid "External Sync enabled via {target}. Local play/load is locked."
-#: app/window.py:1007
+#: app/window.py:1018
 #, python-brace-format
 msgid "External Sync enabled: OSC on {address}. Local play/load is locked."
 msgstr "外部同期が有効です: OSC {address}。ローカルでの再生/読み込みはロックされます。"
@@ -1146,16 +1146,16 @@ msgstr "ヘッドホン: レベル"
 msgid "Master: level"
 msgstr "マスター: レベル"
 
-#: core/library/db.py:451
+#: core/library/db.py:472
 msgid "The path cannot be empty."
 msgstr "パスを空にすることはできません。"
 
-#: core/library/db.py:454
+#: core/library/db.py:475
 #, python-brace-format
 msgid "This file is already in the library as \"{track}\"."
 msgstr "このファイルはすでにライブラリに「{track}」として登録されています。"
 
-#: core/library/db.py:475 core/library/db.py:496
+#: core/library/db.py:496 core/library/db.py:517
 msgid "Playlist name cannot be empty"
 msgstr "プレイリスト名を空にすることはできません"
 
@@ -1446,7 +1446,7 @@ msgstr "検索ヒント"
 msgid "Processing Metadata"
 msgstr "メタデータを処理中"
 
-#: core/workers/analysis.py:150
+#: core/workers/analysis.py:149
 #, python-brace-format
 msgid "Analysis process exited unexpectedly ({code})."
 msgstr "解析プロセスが予期せず終了しました ({code})。"
@@ -1477,7 +1477,7 @@ msgstr "フレーズ境界を解析中"
 
 #: core/workers/analysis_texts.py:17 ui/config/analysis.py:268
 #: ui/config/pipeline_map.py:23 ui/config/pipeline_map.py:32
-#: ui/edit_panel/panel.py:58 ui/library/search.py:268 ui/library/search.py:328
+#: ui/edit_panel/panel.py:59 ui/library/search.py:268 ui/library/search.py:328
 #: ui/shortcuts.py:37
 msgid "Phrase"
 msgstr "フレーズ"
@@ -1751,26 +1751,26 @@ msgstr "解析の順番待ち"
 msgid "Waiting to analyze: {file}"
 msgstr "解析待ち: {file}"
 
-#: core/workflows/analysis.py:192
+#: core/workflows/analysis.py:198
 #, python-brace-format
 msgid "Analyzing: {file}"
 msgstr "解析中: {file}"
 
-#: core/workflows/analysis.py:239
+#: core/workflows/analysis.py:245
 #, python-brace-format
 msgid "Error ({file})"
 msgstr "エラー ({file})"
 
-#: core/workflows/analysis.py:239
+#: core/workflows/analysis.py:245
 msgid "Error"
 msgstr "エラー"
 
-#: core/workflows/analysis.py:250
+#: core/workflows/analysis.py:256
 msgid "Saving Result"
 msgstr "結果を保存中"
 
 # | msgid "The file could not be written: {error}"
-#: core/workflows/analysis.py:253
+#: core/workflows/analysis.py:259
 #, python-brace-format
 msgid "The analysis could not be stored: {error}"
 msgstr "解析結果を保存できませんでした: {error}"
@@ -1940,7 +1940,7 @@ msgstr ""
 "ビートトラッカーはすべてのテンポをここから 1 オクターブの範囲 (最小 BPM .. 2 x 最小 BPM) で読み取ります。\n"
 "範囲外の曲は半分または 2 倍のテンポで読み取られます。"
 
-#: ui/config/analysis.py:77 ui/config/window.py:238
+#: ui/config/analysis.py:77 ui/config/window.py:239
 #: ui/windows/reanalyze_dialog.py:38 ui/windows/reanalyze_dialog.py:81
 #, python-brace-format
 msgid "Reads {low} - {high} BPM"
@@ -2019,7 +2019,7 @@ msgstr "最小 BPM"
 
 #: ui/config/analysis.py:142 ui/config/analysis.py:183
 #: ui/config/analysis.py:206 ui/config/dialogs/optimization.py:204
-#: ui/config/library.py:118 ui/config/playback.py:108 ui/config/view.py:150
+#: ui/config/library.py:133 ui/config/playback.py:108 ui/config/view.py:150
 msgid "Advanced"
 msgstr "詳細設定"
 
@@ -2298,12 +2298,12 @@ msgstr ""
 "実行されなかったもの: {remaining}"
 
 #: analyzer/training/beat_critic_optimizer.py:501
-#: analyzer/training/beat_decoder_optimizer.py:219
+#: analyzer/training/beat_decoder_optimizer.py:218
 #: analyzer/training/beat_tcn_optimizer.py:407
 #: analyzer/training/downbeat_ctx_optimizer.py:138
 #: analyzer/training/jumpcue_parameter_optimizer.py:1123
-#: analyzer/training/key_model_optimizer.py:542
-#: analyzer/training/phrase_parameter_optimizer.py:578
+#: analyzer/training/key_model_optimizer.py:540
+#: analyzer/training/phrase_parameter_optimizer.py:576
 #: analyzer/training/refine_onset_optimizer.py:206 ui/config/analysis.py:607
 #: ui/config/dialogs/optimization.py:95
 msgid "Done"
@@ -2392,7 +2392,7 @@ msgstr "CV"
 
 #: analyzer/training/beat_critic_optimizer.py:492
 #: analyzer/training/beat_tcn_optimizer.py:395
-#: analyzer/training/key_model_optimizer.py:535 ui/config/analysis.py:709
+#: analyzer/training/key_model_optimizer.py:533 ui/config/analysis.py:709
 #: ui/config/analysis.py:770 ui/config/dialogs/optimization.py:75
 msgid "Training"
 msgstr "学習"
@@ -2869,6 +2869,54 @@ msgstr "MIDI: {port}（接続できません）"
 msgid "MIDI: {port} (closed)"
 msgstr "MIDI: {port}（未接続）"
 
+# | msgid "Library Path"
+#: ui/config/dialogs/library_sync.py:17
+msgid "Sync Library Database"
+msgstr "ライブラリデータベースの同期"
+
+# | msgid "Reading the stored analyses: {done} / {total} tracks"
+#: ui/config/dialogs/library_sync.py:21
+msgid "Reading the stored analyses"
+msgstr "保存された解析を読み込み中"
+
+#: ui/config/dialogs/library_sync.py:25 ui/config/dialogs/music_index.py:24
+#: ui/config/dialogs/optimization.py:42 ui/config/dialogs/readings.py:24
+#: ui/config/dialogs/rekordbox.py:23
+msgid "Close"
+msgstr "閉じる"
+
+# | msgid "Reading the library: {done} / {total} tracks"
+#: ui/config/dialogs/library_sync.py:43
+#, python-brace-format
+msgid "{done} / {total} tracks"
+msgstr "{done} / {total} トラック"
+
+# | msgid "Done: {n} track indexed"
+# | msgid_plural "Done: {n} tracks indexed"
+#: ui/config/dialogs/library_sync.py:48
+#, python-brace-format
+msgid "Done: {n} track changed."
+msgid_plural "Done: {n} tracks changed."
+msgstr[0] "完了：{n} トラックが変更されました。"
+
+#: ui/config/dialogs/library_sync.py:51
+#, python-brace-format
+msgid "{n} track has no stored analysis that reads: left as it is."
+msgid_plural "{n} tracks have no stored analysis that reads: left as they are."
+msgstr[0] "{n} トラックは読み込める保存済みの解析がないため、そのままにしました。"
+
+# | msgid "The file could not be written: {error}"
+# | msgid "The file could not be read: {error}"
+# | msgid "The index could not be read: {error}"
+#: ui/config/dialogs/library_sync.py:59
+#, python-brace-format
+msgid ""
+"The library database could not be synced:\n"
+"{error}"
+msgstr ""
+"ライブラリデータベースを同期できませんでした：\n"
+"{error}"
+
 # | msgid "Index for Search by Music"
 #: ui/config/dialogs/music_index.py:17
 msgid "Index for Search by Music and Variants"
@@ -2878,11 +2926,6 @@ msgstr "音楽で検索・バージョン違いのインデックス"
 #: ui/config/dialogs/music_index.py:20
 msgid "Starting the indexing workers"
 msgstr "インデックス作成ワーカーを起動中"
-
-#: ui/config/dialogs/music_index.py:24 ui/config/dialogs/optimization.py:42
-#: ui/config/dialogs/readings.py:24 ui/config/dialogs/rekordbox.py:23
-msgid "Close"
-msgstr "閉じる"
 
 # | msgid "Close this window; the re-read goes on in the background."
 #: ui/config/dialogs/music_index.py:25
@@ -3375,7 +3418,7 @@ msgstr ""
 "<p>XML の各トラックのコメントの後に、曲のタイアップを [タイトル OP; 別作品 ED] "
 "の形で付けます。ライブラリのコメントはそのままです。</p>"
 
-#: ui/config/library.py:56
+#: ui/config/library.py:56 ui/config/library.py:115
 msgid "Sync Now"
 msgstr "今すぐ同期"
 
@@ -3463,40 +3506,68 @@ msgid ""
 "Find on the Web shows the others.</p>"
 msgstr "<p>ライブラリの他のバージョンにタイアップがない新しいトラックを、解析後に日本語版WikipediaとWikidataで探します。その際トラックのタイトルとアーティストが送信されます。曲自体の記事で確実に見つかったタイアップは追加し、作品の記事を参考リンクとして残します。その他は編集タブの「Webで探す」で見られます。</p>"
 
-#: ui/config/library.py:109
+#: ui/config/library.py:110
+msgid "Update the library database when the editor saves"
+msgstr "エディターでの保存時にライブラリデータベースも更新"
+
+#: ui/config/library.py:112
+msgid ""
+"<p>The editor's save also writes the track's BPM, key and the tables the "
+"transition and phrase searches read into the library database "
+"(library.db), made from the marks saved. Off: only the track's stored "
+"analysis is written; Sync Now brings the database up to it.</p>"
+msgstr ""
+"<p>エディターで保存すると、保存したマークからトラックの "
+"BPM、キー、トランジション検索とフレーズ検索が読む表をライブラリデータベース（library.db）にも書き込みます。オフにすると、トラックの保存された解析だけを書き込み、データベースは「今すぐ同期」で合わせます。</p>"
+
+#: ui/config/library.py:117
+msgid ""
+"<p>Every track's BPM, key and search tables in the library database made "
+"again from its stored analysis (as the editor's save writes them). "
+"Titles, artists, ratings and comments are not touched.</p>"
+msgstr ""
+"<p>ライブラリデータベースのすべてのトラックの "
+"BPM、キー、検索用の表を、保存された解析から作り直します（エディターの保存と同じ方法）。タイトル、アーティスト、レーティング、コメントは変更しません。</p>"
+
+# | msgid "Library Path"
+#: ui/config/library.py:119
+msgid "Library Database"
+msgstr "ライブラリデータベース"
+
+#: ui/config/library.py:124
 msgid "Rekordbox XML"
 msgstr "Rekordbox XML"
 
-#: ui/config/library.py:112
+#: ui/config/library.py:127
 msgid "XML Path"
 msgstr "XML のパス"
 
-#: ui/config/library.py:113
+#: ui/config/library.py:128
 msgid "Tempo ramp tolerance"
 msgstr "テンポのランプの許容誤差"
 
-#: ui/config/library.py:121
+#: ui/config/library.py:136
 msgid "Log Path"
 msgstr "ログのパス"
 
-#: ui/config/library.py:146
+#: ui/config/library.py:163
 msgid "Add Local Music Folder"
 msgstr "ローカルの音楽フォルダーを追加"
 
-#: ui/config/library.py:201
+#: ui/config/library.py:252
 msgid "Enable Sync with Rekordbox XML first."
 msgstr "先に「Rekordbox XML と同期」を有効にしてください。"
 
-#: ui/config/dialogs/rekordbox.py:15 ui/config/library.py:201
-#: ui/config/library.py:206
+#: ui/config/dialogs/rekordbox.py:15 ui/config/library.py:252
+#: ui/config/library.py:257
 msgid "Sync Rekordbox XML"
 msgstr "Rekordbox XML の同期"
 
-#: ui/config/library.py:206
+#: ui/config/library.py:257
 msgid "Rekordbox XML Path is empty."
 msgstr "Rekordbox XML のパスが空です。"
 
-#: ui/config/library.py:247
+#: ui/config/library.py:298
 msgid "Rekordbox XML worker started"
 msgstr "Rekordbox XML ワーカーを開始しました"
 
@@ -5606,7 +5677,7 @@ msgstr "空いているスロット {letter} へ移動 (このキューと以降
 msgid "Two JumpCUEs cannot share a point."
 msgstr "2 つの JumpCUE が同じポイントを共有することはできません。"
 
-#: ui/edit_panel/jumpcue.py:222 ui/edit_panel/panel.py:576
+#: ui/edit_panel/jumpcue.py:222 ui/edit_panel/panel.py:577
 msgid "Invalid JumpCUE Label"
 msgstr "無効な JumpCUE ラベル"
 
@@ -5793,24 +5864,24 @@ msgstr "現在の区間のキーを選択 (Alphanumeric ホイール)"
 msgid "{key} | Seg {index} | Elapsed: {elapsed} | Left: {left}"
 msgstr "{key} | 区間 {index} | 経過: {elapsed} | 残り: {left}"
 
-#: ui/edit_panel/panel.py:59
+#: ui/edit_panel/panel.py:60
 msgid "Edit the beatgrid"
 msgstr "ビートグリッドを編集"
 
-#: ui/edit_panel/panel.py:59
+#: ui/edit_panel/panel.py:60
 msgid "Edit the key"
 msgstr "キーを編集"
 
-#: ui/edit_panel/panel.py:60
+#: ui/edit_panel/panel.py:61
 msgid "Edit the phrase"
 msgstr "フレーズを編集"
 
-#: ui/edit_panel/panel.py:60
+#: ui/edit_panel/panel.py:61
 msgid "Edit the JumpCUEs and CUE points"
 msgstr "JumpCUE と CUEポイントを編集"
 
 # | msgid "The file could not be written: {error}"
-#: ui/edit_panel/panel.py:589
+#: ui/edit_panel/panel.py:592
 #, python-brace-format
 msgid ""
 "The edits could not be saved:\n"
@@ -5820,17 +5891,17 @@ msgstr ""
 "{error}"
 
 # | msgid "Shared"
-#: ui/edit_panel/panel.py:589 ui/windows/tieup_works.py:90
+#: ui/edit_panel/panel.py:592 ui/windows/tieup_works.py:90
 msgid "Save"
 msgstr "保存"
 
-#: ui/edit_panel/panel.py:622
+#: ui/edit_panel/panel.py:625
 msgid ""
 "<p>Editing is locked: pages switch, but nothing is edited or saved. Click"
 " to unlock.</p>"
 msgstr "<p>編集はロックされています: ページは切り替わりますが、編集も保存もされません。クリックするとロックを解除します。</p>"
 
-#: ui/edit_panel/panel.py:624
+#: ui/edit_panel/panel.py:627
 msgid ""
 "<p>Editing is unlocked: the shown pages' graphics are emphasized. Click "
 "to lock: no edits, no saving (on at every start).</p>"
@@ -5838,37 +5909,37 @@ msgstr ""
 "<p>編集のロックは解除されています: 表示中のページのグラフィックが強調されます。クリックするとロックします: 編集も保存もできなくなります "
 "(起動のたびにロック)。</p>"
 
-#: ui/edit_panel/panel.py:735
+#: ui/edit_panel/panel.py:738
 #, python-brace-format
 msgid "This shortcut does nothing on the {page} page."
 msgstr "このショートカットは {page} ページでは何もしません。"
 
-#: ui/edit_panel/panel.py:743
+#: ui/edit_panel/panel.py:746
 msgid "Editing is locked."
 msgstr "編集はロックされています。"
 
 # | msgid "Segment reanalysis finished"
-#: ui/edit_panel/panel.py:745
+#: ui/edit_panel/panel.py:748
 msgid "Editing waits for the segment reanalysis to finish."
 msgstr "区間の再解析が終わるまで編集できません。"
 
 # | msgid "Delete JumpCUE {letter}"
-#: ui/edit_panel/panel.py:778 ui/edit_panel/panel.py:791
+#: ui/edit_panel/panel.py:781 ui/edit_panel/panel.py:794
 #, python-brace-format
 msgid "JumpCUE {letter} is not set."
 msgstr "JumpCUE {letter} は設定されていません。"
 
-#: ui/edit_panel/panel.py:787
+#: ui/edit_panel/panel.py:790
 #, python-brace-format
 msgid "JumpCUE {letter} is already set."
 msgstr "JumpCUE {letter} はすでに設定されています。"
 
-#: ui/edit_panel/panel.py:807
+#: ui/edit_panel/panel.py:810
 msgid "CALL works while stopped."
 msgstr "CALL は停止中にだけ動作します。"
 
 # | msgid "Split the current segment at the playhead"
-#: ui/edit_panel/panel.py:823
+#: ui/edit_panel/panel.py:826
 msgid "No CUE point at the playhead."
 msgstr "再生位置に CUEポイントがありません。"
 
@@ -5975,7 +6046,7 @@ msgstr[0] ""
 
 # | msgid "" "<p>Search by Music: hum, sing or whistle a melody, or play the
 # | song from " "a phone, and the microphone finds it in the library.</p>"
-#: ui/library/music.py:30
+#: ui/library/music.py:31
 msgid ""
 "<p>Search by Music: hum, sing or whistle a melody, or play the song from "
 "a phone, and the library shows the songs the microphone hears, best "
@@ -5987,17 +6058,17 @@ msgstr ""
 # | msgid "Unload track"
 # | msgid "Unload the track"
 # | msgid "Back to the tracks"
-#: ui/library/music.py:36
+#: ui/library/music.py:37
 msgid "Back to the library"
 msgstr "ライブラリに戻る"
 
 # | msgid "Found by the sound of the recording ({n} matches)"
-#: ui/library/music.py:141
+#: ui/library/music.py:142
 #, python-brace-format
 msgid "Matched at {start} - {end}, by the sound of the recording ({n} matches)"
 msgstr "{start} - {end} で一致、録音の音で検出 (一致 {n} 件)"
 
-#: ui/library/music.py:144
+#: ui/library/music.py:145
 #, python-brace-format
 msgid "Matched at {start} - {end}, by the melody"
 msgstr "{start} - {end} で一致、メロディーで検出"
@@ -6922,7 +6993,7 @@ msgstr "トラックが読み込まれていません"
 msgid "Playback"
 msgstr "再生"
 
-#: ui/config/library.py:82 ui/config/library.py:133 ui/shortcuts.py:32
+#: ui/config/library.py:82 ui/config/library.py:150 ui/shortcuts.py:32
 msgid "Library"
 msgstr "ライブラリ"
 
@@ -6936,7 +7007,7 @@ msgstr "エディター"
 msgid "Current page"
 msgstr "現在のページ"
 
-#: ui/edit_panel/panel.py:58 ui/shortcuts.py:35
+#: ui/edit_panel/panel.py:59 ui/shortcuts.py:35
 msgid "Beatgrid"
 msgstr "ビートグリッド"
 
@@ -7370,15 +7441,15 @@ msgstr "{page} ページを表示"
 msgid "It becomes the current page."
 msgstr "そのページが現在のページになります。"
 
-#: ui/edit_panel/panel.py:218 ui/shortcuts.py:174
+#: ui/edit_panel/panel.py:219 ui/shortcuts.py:174
 msgid "Undo Changes"
 msgstr "変更を元に戻す"
 
-#: ui/edit_panel/panel.py:222 ui/shortcuts.py:175
+#: ui/edit_panel/panel.py:223 ui/shortcuts.py:175
 msgid "Redo Changes"
 msgstr "変更をやり直す"
 
-#: ui/edit_panel/panel.py:226 ui/shortcuts.py:176
+#: ui/edit_panel/panel.py:227 ui/shortcuts.py:176
 msgid "Save Edits"
 msgstr "編集を保存"
 

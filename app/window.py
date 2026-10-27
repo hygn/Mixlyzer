@@ -24,6 +24,7 @@ from core.workflows.taskmanager import TIEUP_LOOKUP, taskmanager
 from core.playback.external_sync import ExternalSyncController
 from core.workflows.rekordbox_sync import RekordboxXmlSync
 from core.workflows.reading_refresh import LibraryReadingRefresh
+from core.workflows.library_sync import LibraryIndexSync
 from core.workflows.music_index import LibraryMusicIndex
 from core.workflows.tieup_web import TieupWebLookup
 from .metronome import MetronomeController
@@ -191,6 +192,12 @@ class AppWindow(QtWidgets.QMainWindow):
         self.rekordbox_sync.progress.connect(self.bus.sig_rekordbox_sync_progress)
         self.rekordbox_sync.finished.connect(self.bus.sig_rekordbox_sync_finished)
         self.rekordbox_sync.failed.connect(self.bus.sig_rekordbox_sync_failed)
+        # library.db made to agree with the stored analyses (Settings > Library's Sync Now)
+        self.library_sync = LibraryIndexSync(self.library, parent=self)
+        self.bus.sig_library_sync_requested.connect(self.library_sync.sync_requested)
+        self.library_sync.progress.connect(self.bus.sig_library_sync_progress)
+        self.library_sync.finished.connect(self.bus.sig_library_sync_finished)
+        self.library_sync.failed.connect(self.bus.sig_library_sync_failed)
         # (the new readings written by the library's owner, which shows them to the search)
         self.reading_refresh = LibraryReadingRefresh(cfg_getter=lambda: self.cfg, library=self.library, parent=self)
         self.reading_refresh.started.connect(self.bus.sig_reading_refresh_started)
