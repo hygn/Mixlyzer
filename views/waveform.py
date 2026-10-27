@@ -383,6 +383,7 @@ class WaveformView(ViewPlugin):
         self._preview_item: pg.ImageItem | None = None
         self._preview_source = None
         self._playhead_chunk: int | None = None  # the chunk the playhead was last seen in
+        self._scrubbing = False                   # the playhead dragged (its moves are no jumps)
         self._show_clock = 0  # counts the scene passes: the order chunks were last shown in
 
         # Dedicated render worker thread
@@ -405,7 +406,7 @@ class WaveformView(ViewPlugin):
             app.aboutToQuit.connect(self._stop_worker)
 
         self.bus.sig_time_changed.connect(self.update_time)
-        self.bus.sig_seek_requested.connect(self._on_seek_requested)
+        self.bus.sig_scrub_begin.connect(self._on_scrub_begin)
         self.bus.sig_scrub_update.connect(self._on_scrub_update)
         self.bus.sig_scrub_end.connect(self._on_scrub_end)
         self.bus.sig_window_changed.connect(self.update_window)
@@ -509,10 +510,15 @@ class WaveformView(ViewPlugin):
 
     def _follow_playhead(self) -> None:
         """When the playhead enters another chunk: the worker renders nearest it first, and the far chunks
-        are dropped."""
+        are dropped. Jumped there (past the next chunk, not scrubbing: a seek, a CALL, a JumpCUE, a beat jump,
+        External Sync's), playback goes on from there: rendered as a scrub let go (_resume_at)."""
         center = self._current_chunk()
         if center == self._playhead_chunk:
             return
+        if self._playhead_chunk is not None and abs(center - self._playhead_chunk) > 1 and not self._scrubbing:
+            self._resume_at(float(self.tl.current_time))
+            if self._playhead_chunk == center:
+                return      # else no audio to render yet: followed as below
         self._playhead_chunk = center
         self._sig_playhead.emit(center)
         self._evict_far_chunks(center)
@@ -670,13 +676,14 @@ class WaveformView(ViewPlugin):
             self._show_layer(_WaveStyle.from_config(self.model.analysis.wave, self.tl.window_sec))
         return self._chunk_count
 
-    def _on_seek_requested(self, t: float) -> None:
-        self._resume_at(t)
+    def _on_scrub_begin(self) -> None:
+        self._scrubbing = True
 
     def _on_scrub_update(self, _t: float) -> None:
         self._evaluate_render_targets()
 
     def _on_scrub_end(self, t: float) -> None:
+        self._scrubbing = False
         self._resume_at(t)
 
     def _evaluate_render_targets(self) -> None:

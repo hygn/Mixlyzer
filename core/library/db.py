@@ -381,6 +381,27 @@ class LibraryDB:
                 self._write_playlist_entries(
                     playlist_uid, [uid for _position, uid in self._playlist_entries(playlist_uid)])
 
+    def drop_orphan_rows(self) -> int:
+        """The rows of tracks no longer in the library, in every table keyed by a track (the tie-ups' too), dropped
+        and the playlists holding one closed up: left by a removal from before every table followed its track.
+        Returns the rows dropped."""
+        tables = [name for (name,) in self.conn.execute("SELECT name FROM sqlite_master WHERE type='table';")
+                  if name != "playlist_tracks"
+                  and any(col[1] == "track_uid" for col in self.conn.execute(f'PRAGMA table_info("{name}");'))]
+        gone = "track_uid NOT IN (SELECT uid FROM tracks)"
+        dropped = 0
+        with self.tx():
+            for name in tables:
+                dropped += self.conn.execute(f'DELETE FROM "{name}" WHERE {gone};').rowcount
+            for (playlist_uid,) in self.conn.execute(
+                    f"SELECT DISTINCT playlist_uid FROM playlist_tracks WHERE {gone};").fetchall():
+                entries = [uid for _position, uid in self._playlist_entries(playlist_uid)]
+                kept = [uid for uid in entries
+                        if self.conn.execute("SELECT 1 FROM tracks WHERE uid=?;", (uid,)).fetchone()]
+                dropped += len(entries) - len(kept)
+                self._write_playlist_entries(playlist_uid, kept)
+        return dropped
+
     def get(self, path: str) -> Optional[TrackRow]:
         """The row stored under exactly ``path`` (paths are kept as given, never
         normalized: case and separators mean different files on some file systems)."""

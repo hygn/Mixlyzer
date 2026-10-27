@@ -173,6 +173,32 @@ class EvictionTests(unittest.TestCase):
         self.assertFalse(self.layer.submitted & {30, 31})            # the worker drops them: asked again later
         self.assertTrue(all(self.layer.items[i] is not None for i in range(20)))   # kept: shown recently
 
+    def test_a_jump_of_the_playhead_resumes_there(self):
+        """The playhead jumped (a seek, a CALL, a JumpCUE: past the next chunk) is played on from as a scrub let go;
+        playing on into the next chunk, or dragged, only followed."""
+        self.model.predecoded_pcm, self.model.predecoded_rate = np.zeros((300 * 100, 1), np.float32), 100
+        resumed, followed = [], []
+        self.view._sig_resume.connect(lambda _specs, chunk: resumed.append(chunk))
+        self.view._sig_playhead.connect(followed.append)
+
+        def at(t):
+            self.tl.current_time = t
+            with mock.patch.object(waveform._WaveStyle, "from_config", return_value=STYLE):
+                self.view._follow_playhead()
+        at(10.2)
+        at(11.1)                       # played on into the next chunk
+        self.assertEqual((resumed, followed), ([], [10, 11]))
+        at(150.5)                      # jumped
+        self.assertEqual(resumed, [150])
+        at(151.2)
+        self.assertEqual(followed[-1], 151)
+        self.bus.sig_scrub_begin.emit()
+        at(40.0)                       # dragged there: followed, resumed when let go
+        self.assertEqual((resumed, followed[-1]), ([150], 40))
+        with mock.patch.object(waveform._WaveStyle, "from_config", return_value=STYLE):
+            self.bus.sig_scrub_end.emit(40.0)
+        self.assertEqual(resumed, [150, 40])
+
 
 # The app's exit: the views held by the window's pane, freed when main()'s frame unwinds after app.exec()
 # (the window, its pane and their list of views with it), the render thread still running unless stopped.

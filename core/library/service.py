@@ -95,7 +95,10 @@ class LibrarySnapshot:
         if PLAYLISTS in parts:
             kept.update(playlists=tuple(db.list_playlists()), entries=db.playlist_entries())
         if VARIANTS in parts:
-            kept.update(variant_pairs=tuple(variants.pairs(variants.path_for(lib.path))))
+            # the library's tracks' relations only (an index entry a removal left behind joins no one)
+            known = kept.get("by_uid", old.by_uid)
+            kept.update(variant_pairs=tuple(p for p in variants.pairs(variants.path_for(lib.path))
+                                            if p.a in known and p.b in known))
         return replace(old, **kept)
 
     def track(self, uid: Optional[str]) -> Optional[TrackRow]:

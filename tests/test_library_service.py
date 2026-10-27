@@ -24,6 +24,13 @@ def _row(path: str, title: str = "曲") -> TrackRow:
     return TrackRow(uid=str(uuid4()), path=path, title=title, artist="歌手", added_ts=1)
 
 
+def _image():
+    from PySide6 import QtGui
+    image = QtGui.QImage(8, 8, QtGui.QImage.Format_RGB32)
+    image.fill(0x336699)
+    return image
+
+
 class LibraryServiceTests(unittest.TestCase):
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
@@ -123,6 +130,89 @@ class LibraryServiceTests(unittest.TestCase):
         track = self.library.snapshot.track(row.uid)
         self.assertEqual((track.bpm, track.key), (128.0, 21))
         self.assertEqual(float(got["arrays"]["tempo_global"]), 128.0)
+
+    def test_an_analysis_of_a_track_in_the_library_keeps_the_users_metadata(self):
+        """A library track analyzed again (its stored analysis did not read, or a reanalysis): the metadata the user
+        edited stays over the file's tags; its uid and added time too."""
+        import numpy as np
+        row = _row("h.wav", title="直した曲名")
+        row.rating, row.comment, row.album = 4, "メモ", "盤"
+        self.library.write(jobs.save_track, row, False)
+        self.settle()
+        tags = {"path": "h.wav", "title": "tag title", "artist": "tag artist", "album": "tag album", "rating": 0,
+                "comment": "tag comment", "added_ts": 99, "bpm": 128.0, "key": 21, "duration_sec": 4.0}
+        payload = {"properties": tags, "arrays": {"beats_time_sec": np.arange(8) * 0.5},
+                   "store": {"bpm_segments": [], "key_segments": [], "phrase_sections": [], "music_entry": None,
+                             "variants": None, "cover": None}}
+        stored = []
+        self.library.write(jobs.store_analysis, payload, done=stored.append)
+        self.settle()
+        track = self.library.snapshot.track(row.uid)
+        self.assertEqual((track.title, track.artist, track.album, track.comment, track.rating),
+                         ("直した曲名", "歌手", "盤", "メモ", 4))
+        self.assertEqual((track.bpm, track.added_ts), (128.0, 1))     # the analysis's values, the row's added time
+        self.assertEqual((stored[0]["properties"]["uid"], stored[0]["new_track"]), (row.uid, False))
+        # a new file takes its tags
+        self.library.write(jobs.store_analysis, dict(payload, properties=dict(tags, path="i.wav")), done=stored.append)
+        self.settle()
+        self.assertEqual(self.library.snapshot.track(stored[1]["properties"]["uid"]).title, "tag title")
+
+    def test_the_start_drops_what_tracks_gone_left_behind(self):
+        """check_stores: every store beside library.db made to agree with its tracks; a stored analysis set aside, not
+        deleted; a library.db without tracks touches nothing."""
+        import numpy as np
+        from core.library import music_index, thumbnails, variants
+        kept, gone = _row("k.wav"), str(uuid4())
+        self.library.write(jobs.save_track, kept, False)
+        self.library.write(jobs.create_playlist, "P", done=lambda p: self.library.write(
+            jobs.add_to_playlists, {p.uid: [kept.uid]}))
+        self.settle()
+        playlist = self.library.snapshot.playlists[0].uid
+
+        def leftovers(lib):
+            for uid in (kept.uid, gone):
+                lib.features.save(uid, {"beats_time_sec": np.arange(4) * 0.5})
+                thumbnails.save_thumbnail(lib.path, uid, _image())
+            with lib.db.tx():       # rows of a track removed before every table followed it
+                lib.db.conn.execute("PRAGMA foreign_keys=OFF;")
+                lib.db.conn.execute("INSERT INTO track_tag_sources(track_uid, field, slot, source) VALUES(?, 'title', 0, '');", (gone,))
+                lib.db.conn.execute("INSERT INTO playlist_tracks(playlist_uid, position, track_uid) VALUES(?, 1, ?);", (playlist, gone))
+            lib.db.conn.execute("PRAGMA foreign_keys=ON;")
+            con = music_index.open_writer(music_index.path_for(lib.path))
+            with con:
+                con.execute("INSERT INTO landmark_song(uid) VALUES(?)", (gone,))
+            con.close()
+            con = variants.open_writer(variants.path_for(lib.path))
+            with con:
+                con.execute("INSERT INTO variant_song(uid, method, frames) VALUES(?, 1, 0)", (gone,))
+                con.execute("INSERT INTO variant_pair(a, b, method, kind) VALUES(?, ?, 1, 'same')", (kept.uid, gone))
+            con.close()
+        self.library.write(leftovers)
+        found = []
+        self.library.write(jobs.check_stores, done=found.append)
+        self.settle()
+        self.assertEqual(found, [jobs.StoreCheck(rows=2, music=1, variants=1, thumbnails=1, analyses=1)])
+        lib = self.lib
+        self.assertEqual(thumbnails.thumbnail_uids(lib), {kept.uid})
+        self.assertEqual(music_index.stored_uids(music_index.path_for(lib)), set())
+        self.assertEqual(variants.pairs(variants.path_for(lib)), [])
+        self.assertTrue(os.path.isfile(os.path.join(lib, f"{kept.uid}.npz")))
+        self.assertTrue(os.path.isfile(os.path.join(lib, jobs.ORPHANED_ANALYSES, f"{gone}.npz")))   # kept aside
+        self.assertEqual([r.uid for _p, r in self.library.snapshot.playlist_tracks(playlist)], [kept.uid])
+        # again: nothing left over
+        self.library.write(jobs.check_stores, done=found.append)
+        self.settle()
+        self.assertEqual(found[-1].total(), 0)
+        # a library.db without tracks (lost, not emptied) beside stores that have some: nothing touched
+        with tempfile.TemporaryDirectory() as other:
+            self.library.set_libpath(other)
+            self.library.write(lambda lib: lib.features.save(gone, {"beats_time_sec": np.arange(4) * 0.5}))
+            self.library.write(jobs.check_stores, done=found.append)
+            self.settle()
+            self.assertTrue(found[-1].skipped)
+            self.assertTrue(os.path.isfile(os.path.join(other, f"{gone}.npz")))
+            self.library.set_libpath(self.lib)
+            self.settle()
 
     def test_another_thread_calls_and_waits(self):
         row = _row("b.wav")

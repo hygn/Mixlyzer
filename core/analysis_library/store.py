@@ -158,3 +158,26 @@ class FeatureNPZStore:
             os.remove(self.path(uid))
         except (FileNotFoundError, ValueError):
             pass
+
+    def uids(self) -> set[str]:
+        """The tracks with a stored analysis here: the files named as one ({uid}.npz, the uid in its one spelling)."""
+        out = set()
+        with os.scandir(self.base_dir) as entries:
+            for entry in entries:
+                name = entry.name
+                if not (name.endswith(".npz") and entry.is_file()):
+                    continue
+                try:
+                    if _validated_uid(name[:-4]) == name[:-4]:
+                        out.add(name[:-4])
+                except ValueError:
+                    pass
+        return out
+
+    def set_aside(self, uid: str, folder: str) -> str:
+        """The track's stored analysis moved into ``folder`` beside the others (kept, never read again by the app);
+        where it went."""
+        os.makedirs(os.path.join(self.base_dir, folder), exist_ok=True)
+        target = os.path.join(self.base_dir, folder, os.path.basename(self.path(uid)))
+        os.replace(self.path(uid), target)
+        return target

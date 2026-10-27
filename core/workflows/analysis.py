@@ -146,7 +146,6 @@ class AnalysisWorkflow(QtCore.QObject):
             path,
             cfg,
             taskid,
-            force_analyze=force_analyze,
             parent=self,
         )
         self._workers[taskid] = worker

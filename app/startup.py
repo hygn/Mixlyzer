@@ -271,8 +271,10 @@ def _open_library(libpath: str, held: dict) -> Callable[[Progress], None]:
         The window takes the owner (``held``)."""
         from core.search import reading
         from core.library.service import LibraryService
+        from core.library import jobs
         progress(0.0, tr("library.db: readings"))
         library = LibraryService(libpath)
+        library.write(jobs.check_stores)    # the stores beside library.db made to agree with it, first
         library.refresh()
         library.wait()
         held["library"] = library

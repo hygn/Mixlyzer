@@ -387,6 +387,64 @@ def prune_fingerprints(lib) -> None:
         con.close()
 
 
+# ---- the stores beside library.db checked against its tracks (at the start) ----
+
+ORPHANED_ANALYSES = "orphaned_analyses"   # where a stored analysis of no library track is moved (kept, never read)
+
+
+@dataclass(frozen=True)
+class StoreCheck:
+    """What the start's check of the library's stores found left over (of tracks not in library.db) and dropped."""
+    rows: int = 0            # library.db rows (segments, readings, tag sources, tie-ups, playlist entries)
+    music: int = 0           # Search by Music's index
+    variants: int = 0        # the Variants' index
+    thumbnails: int = 0
+    analyses: int = 0        # stored analyses moved into ORPHANED_ANALYSES
+    skipped: bool = False    # library.db holds no track but the stores do: nothing touched
+
+    def total(self) -> int:
+        return self.rows + self.music + self.variants + self.thumbnails + self.analyses
+
+
+@changes(PLAYLISTS, READINGS, TIEUPS, VARIANTS)
+def check_stores(lib) -> StoreCheck:
+    """Every store beside library.db made to agree with its tracks: what belongs to no track (a removal cut short, a
+    file in use then, an earlier version's) dropped, a stored analysis set aside instead (it may hold the user's
+    edits). A library.db without tracks beside stores that have some is taken for a library.db lost, not leftovers:
+    nothing touched. Said on the console."""
+    uids = {row.uid for row in lib.db.list_all()}
+    music_db, variants_db = music_index.path_for(lib.path), variants.path_for(lib.path)
+    music = music_index.stored_uids(music_db) - uids
+    fingerprinted = (variants.indexed_uids(variants_db, any_method=True)
+                     | {u for p in variants.pairs(variants_db) for u in (p.a, p.b)}) - uids
+    thumbs = thumbnails.thumbnail_uids(lib.path) - uids
+    analyses = lib.features.uids() - uids
+    if not uids and (music or fingerprinted or thumbs or analyses):
+        print(f"[Library] library.db holds no track, but {len(analyses)} stored analyses and "
+              f"{len(music | fingerprinted | thumbs)} index entries or thumbnails do: left as they are")
+        return StoreCheck(skipped=True)
+    rows = lib.db.drop_orphan_rows()
+    drop_from_indexes(lib, sorted(music), fingerprints=False)
+    drop_from_indexes(lib, sorted(fingerprinted), music=False)
+    for uid in thumbs:
+        thumbnails.delete_thumbnail(lib.path, uid)
+    moved = 0
+    for uid in sorted(analyses):
+        try:
+            lib.features.set_aside(uid, ORPHANED_ANALYSES)
+            moved += 1
+        except OSError as exc:
+            print(f"[Library] a stored analysis of no track left in place: {exc}")
+    found = StoreCheck(rows, len(music), len(fingerprinted), len(thumbs), moved)
+    if found.total():
+        print(f"[Library] left over by tracks no longer in the library: {rows} rows, {len(music)} Search by Music "
+              f"entries, {len(fingerprinted)} Variants fingerprints, {len(thumbs)} thumbnails dropped; {moved} stored "
+              f"analyses moved to {os.path.join(lib.path, ORPHANED_ANALYSES)}")
+    else:
+        print(f"[Library] the stores agree with library.db ({len(uids)} tracks)")
+    return found
+
+
 def open_music_search(lib):
     """Search by Music's view of its index, (LandmarkIndex, MelodyIndex) or None: the landmarks on a read-only
     connection lent to the search's thread (it reads them every few seconds: on the owner's thread they would hold
@@ -404,9 +462,10 @@ def thumbnail(lib, uid: str, width_px: int) -> Optional[QtGui.QImage]:
 
 # ---- an analysis's results ----
 
-def _kept_metadata(properties: dict, track: Optional[TrackRow], *, reanalysis: bool) -> dict:
-    """A reanalysis keeps the user's metadata (title, artist, album, rating, comment) over what the file's tags say."""
-    if not (reanalysis and track):
+def _kept_metadata(properties: dict, track: Optional[TrackRow]) -> dict:
+    """A track already in the library keeps the user's metadata (title, artist, album, rating, comment) over what the
+    file's tags say: a reanalysis, and an analysis of a track whose stored one did not read."""
+    if track is None:
         return properties
     merged = dict(properties)
     for key in ("album", "artist", "rating", "title", "comment"):
@@ -416,7 +475,7 @@ def _kept_metadata(properties: dict, track: Optional[TrackRow], *, reanalysis: b
 
 def store_analysis(lib, payload: dict) -> dict:
     """An analysis's results stored (the analysis process never opens the library: its last item carries ``store``):
-    the track's row (a reanalysis keeps the user's metadata; a new track given its uid), its tag sources and segment
+    the track's row (one in the library keeps the user's metadata; a new track given its uid), its tag sources and segment
     tables, its stored analysis (``arrays``, the NPZ) and thumbnail, Search by Music's entry, the Variants' fingerprint
     (queried against the library's), and a new track's versions' tie-ups. Returns the payload with its properties'
     uid, ``analysis`` (the StoredAnalysis of the arrays stored, made from them in memory; None when they do not
@@ -428,7 +487,7 @@ def store_analysis(lib, payload: dict) -> dict:
     db = lib.db
     properties = dict(payload["properties"])
     known = db.get(properties["path"])
-    properties = _kept_metadata(properties, known, reanalysis=bool(stored["force"]))
+    properties = _kept_metadata(properties, known)
     if known is not None and known.uid:
         properties["uid"] = known.uid
     uid = db.upsert_meta(properties)
@@ -474,7 +533,9 @@ def store_analysis(lib, payload: dict) -> dict:
     payload["new_track"] = known is None
     if known is None:
         try:
-            added = tieups.match_new_track(db.conn, uid, variants.pairs(variants.path_for(lib.path)))
+            known = {row.uid for row in db.list_all()}
+            added = tieups.match_new_track(db.conn, uid, [p for p in variants.pairs(variants.path_for(lib.path))
+                                                          if p.a in known and p.b in known])
             db.conn.commit()
             payload["tieups"] = added      # none: the GUI may look on the web (core.workflows.tieup_web)
             if added:

@@ -80,6 +80,18 @@ def indexed_uids(path: str) -> set[str]:
         con.close()
 
 
+def stored_uids(path: str) -> set[str]:
+    """Every song the index holds anything of: its reference lines or its landmarks (an index write cut short may
+    leave one without the other)."""
+    con = open_reader(path)
+    if con is None:
+        return set()
+    try:
+        return {u for (u,) in con.execute("SELECT uid FROM melody UNION SELECT uid FROM landmark_song")}
+    finally:
+        con.close()
+
+
 def put(con: sqlite3.Connection, uid: str, size: int, mtime: float, entry: "IndexEntry") -> None:
     """One song's index (replacing what it had), in the caller's transaction."""
     lines, hashes, times = entry.lines, entry.hashes, entry.times

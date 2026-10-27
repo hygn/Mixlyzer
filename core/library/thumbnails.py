@@ -37,6 +37,14 @@ def save_thumbnail(libpath: str, uid: str, art: Optional[QtGui.QImage]) -> bool:
     return True
 
 
+def thumbnail_uids(libpath: str) -> set[str]:
+    """The tracks with a thumbnail stored ({uid}.jpg)."""
+    folder = os.path.join(libpath, THUMBS_DIR)
+    if not os.path.isdir(folder):
+        return set()
+    return {name[:-4] for name in os.listdir(folder) if name.endswith(".jpg")}
+
+
 def delete_thumbnail(libpath: str, uid: str) -> None:
     try:
         os.remove(thumbnail_path(libpath, uid))

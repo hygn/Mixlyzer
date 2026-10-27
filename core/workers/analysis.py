@@ -29,7 +29,7 @@ def _file_stats(path: str) -> tuple[int, float]:
         return 0, 0.0
 
 
-def analyze_for_library(path: str, cfg: config, force_analyze: bool = False,
+def analyze_for_library(path: str, cfg: config,
                         progress: Optional[Callable[[str, str, float], None]] = None) -> Dict[str, Any]:
     """The track analyzed, as the library's owner stores it (core.library.jobs.store_analysis): its stored analysis
     (``arrays``: core.analysis_library.stored), its row's properties and ``store`` (the index rows, Search by Music's
@@ -65,10 +65,10 @@ def analyze_for_library(path: str, cfg: config, force_analyze: bool = False,
     bpm_segments = build_bpm_segments(result.tempo_segments)
     key_segments_db = build_key_segments(result.key_segments)
     phrase_sections = build_phrase_index_rows(result.phrases, bpm_segments, key_segments_db)
-    # stored by the library's owner: the track's row merged with the library's (a reanalysis keeps the user's
+    # stored by the library's owner: the track's row merged with the library's (a track in it keeps the user's
     # metadata), its uid given there; the cover as the file holds it (its thumbnail)
     return {"arrays": arrays_of(result), "properties": properties, "update_db": True,
-            "store": {"force": bool(force_analyze), "bpm_segments": bpm_segments, "key_segments": key_segments_db,
+            "store": {"bpm_segments": bpm_segments, "key_segments": key_segments_db,
                       "phrase_sections": phrase_sections, "music_entry": result.music_index,
                       "variants": result.variants, "cover": cover_data(path)}}
 
@@ -76,7 +76,6 @@ def analyze_for_library(path: str, cfg: config, force_analyze: bool = False,
 def _analysis_process_entry(
     path: str,
     cfg: config,
-    force_analyze: bool,
     taskid: int,
     queue,
 ) -> None:
@@ -92,7 +91,7 @@ def _analysis_process_entry(
         # BLAS threads on top of them only competed and spun (measured: 30 -> 25 s a track, CPU 47 -> 36 s,
         # every output bit-identical: no BLAS product here splits its sums across threads).
         with threadpool_limits(limits=1, user_api="blas"):
-            payload = analyze_for_library(path, cfg, force_analyze, progress)
+            payload = analyze_for_library(path, cfg, progress)
         payload["taskid"] = taskid
         queue.put({"type": "result", "taskid": taskid, "payload": payload})
     except Exception as exc:
@@ -120,12 +119,11 @@ class AnalysisWorker(SpawnProcessWorker):
         path: str,
         cfg: config,
         taskid: int,
-        force_analyze: bool = False,
         parent: QtCore.QObject | None = None,
     ) -> None:
         super().__init__(
             target=_analysis_process_entry,
-            args=(path, cfg, force_analyze, taskid),
+            args=(path, cfg, taskid),
             daemon=True,
             process_name=f"Mixlyzer-analysis-{taskid}",
             parent=parent,
