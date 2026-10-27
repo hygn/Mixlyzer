@@ -291,8 +291,18 @@ def shift_grid_in_seg(beatgrid_sec: np.ndarray, segments, segment_index: int, of
     else:
         new_beats = np.array([], dtype=float)
 
-    _beatgrid = prune_close_beats(np.concatenate([_beatgrid[:sti], new_beats, _beatgrid[edi:]]))
+    _beatgrid = prune_close_beats(np.concatenate([_beatgrid[:sti], new_beats,
+                                                  _next_rows_beats(_beatgrid, ed, end_limit, track_end),
+                                                  _beatgrid[edi:]]))
     return _beatgrid, _segments
+
+
+def _next_rows_beats(beatgrid: np.ndarray, end: float, end_limit: float, track_end: float) -> np.ndarray:
+    """The beats in the hair past a row's end: the next row's (its first beat, a downbeat), kept when the row is
+    moved; one the moved row lands on too is pruned as the rebuild prunes it. The last row's: none (its own)."""
+    if float(end) >= track_end:
+        return beatgrid[:0]
+    return beatgrid[(beatgrid >= float(end)) & (beatgrid < float(end_limit))]
 
 
 def _shift_ramp_in_seg(beatgrid: np.ndarray, segments: np.ndarray, segment_index: int, offset: float):
@@ -309,4 +319,6 @@ def _shift_ramp_in_seg(beatgrid: np.ndarray, segments: np.ndarray, segment_index
     edi = int(np.searchsorted(beatgrid, end_limit, side="left"))
     row = segments[segment_index]
     new_beats = ramp_beat_times(st, ed, float(row[2]), segment_end_bpm(row), float(row[3]), end_limit)
-    return prune_close_beats(np.concatenate([beatgrid[:sti], new_beats, beatgrid[edi:]])), segments
+    return prune_close_beats(np.concatenate([beatgrid[:sti], new_beats,
+                                             _next_rows_beats(beatgrid, ed, end_limit, track_end),
+                                             beatgrid[edi:]])), segments

@@ -38,10 +38,11 @@ def _flatten_dict(d: Dict[str, Any], parent: str = "", sep: str = ".") -> Dict[s
     flat: Dict[str, Any] = {}
     for k, v in d.items():
         key = f"{parent}{sep}{k}" if parent else f"{k}"
-        if isinstance(v, dict):
-            flat.update(_flatten_dict(v, key, sep=sep))
-        else:
-            flat[key] = v
+        items = _flatten_dict(v, key, sep=sep) if isinstance(v, dict) else {key: v}
+        for name, value in items.items():
+            if name in flat:
+                raise ValueError(f"two feature keys flattened as one: {name!r}")   # one value would be lost
+            flat[name] = value
     return flat
 
 def _as_np_compatible(value: Any) -> Optional[np.ndarray]:
@@ -104,6 +105,8 @@ class FeatureNPZStore:
 
         for k, v in flat.items():
             k2 = _sanitize_key(k)
+            if k2 in kv or k2 in skipped:
+                raise ValueError(f"two feature keys stored as one: {k2!r}")   # one value would be lost
             arr = _as_np_compatible(v)
             if arr is None:
                 skipped[k2] = v  # keep for potential logging

@@ -146,7 +146,7 @@ def optimize_refine_onset(
         x, y, w = _track_samples(frame_times, channels, np.asarray(track["beats"]), index)
         data.append((track, x, y, w))
         if feature_progress:
-            feature_progress(80 + int(round(20 * index / len(tracks))), f"Samples {index}/{len(tracks)}")
+            feature_progress(80 + int(round(20 * index / len(tracks))), msg("Samples {done}/{total}", done=index, total=len(tracks)))
     MS.require_tracks(len(data), "gbm")
 
     cross_validated = int(request.cv_folds) >= 2

@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-27 03:45+0900\n"
+"POT-Creation-Date: 2026-10-27 12:02+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ja_JP\n"
@@ -35,46 +35,46 @@ msgstr "タイトルなし"
 msgid "Unknown validation error"
 msgstr "不明な検証エラー"
 
-#: analyzer/training/beat_critic_optimizer.py:264
-#: analyzer/training/beat_decoder_optimizer.py:167
+#: analyzer/training/beat_critic_optimizer.py:265
+#: analyzer/training/beat_decoder_optimizer.py:168
 #: analyzer/training/beat_tcn_optimizer.py:180
 #: analyzer/training/downbeat_ctx_optimizer.py:91
 msgid "frame feature cache is not current"
 msgstr "フレーム特徴量のキャッシュが最新ではありません"
 
-#: analyzer/training/beat_critic_optimizer.py:376
+#: analyzer/training/beat_critic_optimizer.py:377
 #, python-brace-format
 msgid "{stage}: step {done}/{steps} of each fold model"
 msgstr "{stage}: 各フォールドモデル {steps} ステップ中 {done} ステップ"
 
-#: analyzer/training/beat_critic_optimizer.py:457
+#: analyzer/training/beat_critic_optimizer.py:458
 #, python-brace-format
 msgid "Decoder readings {done}/{total}"
 msgstr "デコーダーの読み取り {done}/{total}"
 
-#: analyzer/training/beat_critic_optimizer.py:471
+#: analyzer/training/beat_critic_optimizer.py:472
 #: analyzer/training/beat_tcn_optimizer.py:374
 #: analyzer/training/key_model_optimizer.py:521
 msgid "Held-out check"
 msgstr "検証用の曲で確認"
 
-#: analyzer/training/beat_critic_optimizer.py:482
+#: analyzer/training/beat_critic_optimizer.py:483
 #: analyzer/training/beat_tcn_optimizer.py:384
 msgid "Not saved: the grids got worse on the held-out songs"
 msgstr "保存しませんでした: 検証用の曲でグリッドが悪化しました"
 
-#: analyzer/training/beat_critic_optimizer.py:491
+#: analyzer/training/beat_critic_optimizer.py:492
 #: analyzer/training/beat_tcn_optimizer.py:395
 #: analyzer/training/key_model_optimizer.py:535
 msgid "Fine-tuning"
 msgstr "ファインチューニング"
 
-#: analyzer/training/beat_decoder_optimizer.py:172
+#: analyzer/training/beat_decoder_optimizer.py:173
 #, python-brace-format
 msgid "Tracking with every cost combination {done}/{total}"
 msgstr "すべてのコストの組み合わせでトラッキング {done}/{total}"
 
-#: analyzer/training/beat_decoder_optimizer.py:216
+#: analyzer/training/beat_decoder_optimizer.py:219
 msgid "Not saved: the held-out songs got worse"
 msgstr "保存しませんでした: 検証用の曲で悪化しました"
 
@@ -118,6 +118,12 @@ msgstr "学習用フレームの準備完了"
 #: analyzer/training/downbeat_ctx_optimizer.py:95
 msgid "fewer than two downbeats"
 msgstr "ダウンビートが 2 つ未満"
+
+#: analyzer/training/downbeat_ctx_optimizer.py:99
+#: analyzer/training/refine_onset_optimizer.py:149
+#, python-brace-format
+msgid "Samples {done}/{total}"
+msgstr "サンプル {done}/{total}"
 
 #: analyzer/training/downbeat_ctx_optimizer.py:109
 #: analyzer/training/refine_onset_optimizer.py:161
@@ -171,12 +177,17 @@ msgstr "保存された JumpCUE グループのうち、自動で見つかった
 msgid "{count} labeled groups"
 msgstr "ラベル付きグループ {count} 件"
 
-#: analyzer/training/jumpcue_parameter_optimizer.py:1089
+#: analyzer/training/jumpcue_parameter_optimizer.py:1074
+#, python-brace-format
+msgid "Need labeled groups on at least five tracks ({count} found)."
+msgstr "ラベル付きグループのあるトラックが少なくとも 5 件必要です ({count} 件)。"
+
+#: analyzer/training/jumpcue_parameter_optimizer.py:1090
 #, python-brace-format
 msgid "Cross-validation fold {fold}/{folds}"
 msgstr "交差検証フォールド {fold}/{folds}"
 
-#: analyzer/training/jumpcue_parameter_optimizer.py:1095
+#: analyzer/training/jumpcue_parameter_optimizer.py:1096
 msgid "Fitting on all tracks"
 msgstr "全トラックで学習中"
 
@@ -212,6 +223,11 @@ msgstr "拍が少なすぎるか、キー特徴量がありません"
 #, python-brace-format
 msgid "Beat inputs {done}/{total}"
 msgstr "拍の入力 {done}/{total}"
+
+#: analyzer/training/key_model_optimizer.py:508
+#, python-brace-format
+msgid "{count} songs"
+msgstr "{count} 曲"
 
 #: analyzer/training/key_model_optimizer.py:526
 msgid "Not saved: the held-out songs' keys got worse"
@@ -2174,11 +2190,11 @@ msgstr ""
 "失敗前に完了したもの: {done}\n"
 "実行されなかったもの: {remaining}"
 
-#: analyzer/training/beat_critic_optimizer.py:500
-#: analyzer/training/beat_decoder_optimizer.py:216
+#: analyzer/training/beat_critic_optimizer.py:501
+#: analyzer/training/beat_decoder_optimizer.py:219
 #: analyzer/training/beat_tcn_optimizer.py:407
 #: analyzer/training/downbeat_ctx_optimizer.py:138
-#: analyzer/training/jumpcue_parameter_optimizer.py:1122
+#: analyzer/training/jumpcue_parameter_optimizer.py:1123
 #: analyzer/training/key_model_optimizer.py:542
 #: analyzer/training/phrase_parameter_optimizer.py:578
 #: analyzer/training/refine_onset_optimizer.py:206 ui/config/analysis.py:598
@@ -2267,7 +2283,7 @@ msgstr "フレーズ"
 msgid "CV"
 msgstr "CV"
 
-#: analyzer/training/beat_critic_optimizer.py:491
+#: analyzer/training/beat_critic_optimizer.py:492
 #: analyzer/training/beat_tcn_optimizer.py:395
 #: analyzer/training/key_model_optimizer.py:535 ui/config/analysis.py:700
 #: ui/config/analysis.py:761 ui/config/dialogs/optimization.py:75

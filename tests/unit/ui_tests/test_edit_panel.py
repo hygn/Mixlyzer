@@ -173,10 +173,6 @@ class BeatgridTests(EditPanelCase):
         self.panel.btn_redo.click()
         self.assertAlmostEqual(self.model.tempo_segments[0, 3], 0.001)
 
-    # BUG: shifting a segment later drops the next segment's first beat, its downbeat (31.501 -> 32.5: a beat
-    # missing at the junction), though its tempo row still starts its bars there (analyzer.music.tempo_rows.
-    # shift_grid_in_seg: the beat within the hair past the segment's end is rebuilt as the segment's, then cut)
-    @unittest.expectedFailure
     def test_shifting_a_segment_leaves_the_next_ones_beats(self):
         self.panel.btn_shift_fine_fwd.click()
         beats = np.asarray(self.model.beats)
@@ -485,8 +481,6 @@ class JumpCueTests(EditPanelCase):
         self.panel._shift_jumpcue_group(0, 1)
         self.assertEqual(self.jump_cues(), {"A": (8.5, 0), "B": (40.5, 0)})
 
-    # BUG: the delete shortcut (Ctrl+Shift+1-8) reads the cue as a dict (cue.get("point")); a JumpCue has no get
-    @unittest.expectedFailure
     def test_the_delete_shortcut_deletes_the_slots_cue(self):
         self.assertIsNone(self.h["cue.delete.B"]())
         self.assertEqual(sorted(self.jump_cues()), ["A"])

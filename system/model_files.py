@@ -26,7 +26,8 @@ def resolve_model(path: str | Path) -> Path:
 
 
 def is_shipped(path: str | Path) -> bool:
-    return Path(path).name.startswith(SHIPPED_PREFIX)
+    """Whether ``path`` names a shipped file, in any letter case (Windows and macOS find it so)."""
+    return Path(path).name.casefold().startswith(SHIPPED_PREFIX)
 
 
 def has_user_model(path: str | Path) -> bool:

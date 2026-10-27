@@ -131,10 +131,13 @@ class StoreTests(unittest.TestCase):
         self.assertEqual(sorted(self.store.load(UID)), ["a"])                   # no key of the old file left
         self.assertEqual(self.files(), [f"{UID}.npz"])                           # no temporary left
 
-    @unittest.expectedFailure   # known: two keys made safe alike, the later silently replaces the earlier
-    def test_keys_made_alike_are_not_lost(self):
-        self.store.save(UID, {"a/b": 1, "a_b": 2})
-        self.assertEqual(len(self.store.load(UID)), 2)
+    def test_keys_made_alike_refused(self):
+        """Two keys made safe alike would lose one of the values: refused, the stored file as it was."""
+        self.store.save(UID, {"a": 1})
+        for features in ({"a/b": 1, "a_b": 2}, {"x": {"y": 1}, "x.y": 2}):
+            with self.subTest(features=list(features)), self.assertRaises(ValueError):
+                self.store.save(UID, features)
+        self.assertEqual(sorted(self.store.load(UID)), ["a"])
 
 
 if __name__ == "__main__":

@@ -791,7 +791,7 @@ class EditPanel(
             return tr("JumpCUE {letter} is not set.").format(letter=letter)
         else:
             flash(slot.squircle)
-            self._remove_jumpcue_member(float(cue.get("point", 0.0)))
+            self._remove_jumpcue_member(float(cue.point))
         return None
 
     def _shortcut_memory(self) -> str | None:

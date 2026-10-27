@@ -179,6 +179,10 @@ def fill_unassigned(phrases, duration_sec) -> List[Phrase]:
     if not (math.isfinite(duration) and duration > 0.0):
         return _sorted_phrases(phrases)
     rows = normalize_phrase_segments(phrases, min_time=0.0, max_time=duration)
+    if rows and rows[0].start < PHRASE_SLIVER_SEC:            # a hairline at either end closed, as between phrases
+        rows[0] = replace(rows[0], start=0.0)
+    if rows and duration - rows[-1].end < PHRASE_SLIVER_SEC:
+        rows[-1] = replace(rows[-1], end=duration)
     out: list[Phrase] = []
     cursor = 0.0
     for row in rows:

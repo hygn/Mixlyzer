@@ -366,8 +366,8 @@ class MidiSettingsMixin:
                 if is_cc:
                     if d1 < 32:
                         self._wait_learn("fader", status, d1)
-                    else:
-                        self._learned(midi.Message(status, d1))
+                        continue   # its LSB may come in this report too
+                    self._learned(midi.Message(status, d1))
                     return
                 continue
             if kind == midi.KNOB:
@@ -379,7 +379,7 @@ class MidiSettingsMixin:
                 continue   # a key let go: the press is what is learned
             if kind == midi.BUTTON and is_cc and d2 == 127:
                 self._wait_learn("button", status, d1)   # a button, or a knob's step back (two's complement)
-                return
+                continue   # its let go may come in this report too
             if kind == midi.BUTTON and is_cc and d2 != 127 and steps:
                 # a knob turned: this action on that direction only
                 self._learned(midi.Message(status, d1, direction=1 if steps > 0 else -1))

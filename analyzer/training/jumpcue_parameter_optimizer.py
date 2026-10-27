@@ -1071,7 +1071,8 @@ def optimize_jumpcue_parameters(
         feature_progress(100, msg("{count} labeled groups", count=len(groups)))
     uids = np.asarray([g.uid for g in groups])
     if np.unique(uids).size < 5:
-        raise RuntimeError(f"Need labeled groups on at least five tracks ({np.unique(uids).size} found).")
+        raise TrainingError(msg("Need labeled groups on at least five tracks ({count} found).",
+                                count=int(np.unique(uids).size)))
     _assign_positive_sets(groups, _metrics(groups, init, threshold), names, threshold)
 
     def fit(train: list[GroupRows]) -> np.ndarray:

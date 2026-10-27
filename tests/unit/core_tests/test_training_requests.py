@@ -24,9 +24,6 @@ class OutputTests(unittest.TestCase):
             self.assertIn("default_beat_tcn.npz", str(caught.exception))
         TM.check_output("assets/weights/beat_tcn.npz")
 
-    # Bug: the check compares the name case-sensitively; on Windows and macOS (case-insensitive file systems)
-    # DEFAULT_beat_tcn.npz is the shipped default_beat_tcn.npz, and it is overwritten.
-    @unittest.expectedFailure
     def test_a_shipped_model_in_other_case_is_never_an_output(self):
         with self.assertRaises(ValueError):
             TM.check_output("assets/weights/DEFAULT_beat_tcn.npz")

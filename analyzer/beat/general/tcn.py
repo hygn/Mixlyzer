@@ -45,13 +45,13 @@ def load_weights(path: str) -> list[dict]:
 def save_weights(path, nets: list[dict], training: dict | None = None) -> None:
     """Write trainings as an ensemble file (the format ``load_weights`` reads)."""
     import json
-    from pathlib import Path
+    from analyzer.files import atomic_output_path
     payload = {'format': np.asarray(ENSEMBLE_FORMAT), 'trainings': np.asarray(len(nets)),
                'training_json': np.asarray(json.dumps(training or {}, ensure_ascii=False, sort_keys=True))}
     for i, P in enumerate(nets):
         payload.update({f's{i}.{k}': np.asarray(v, dtype=np.float32) for k, v in P.items()})
-    Path(path).parent.mkdir(parents=True, exist_ok=True)
-    np.savez_compressed(path, **payload)
+    with atomic_output_path(path) as temporary:    # replaced whole: a cut-off write never leaves a model to read
+        np.savez_compressed(temporary, **payload)
 
 
 def frame_inputs(frames) -> np.ndarray:

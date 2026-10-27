@@ -505,7 +505,7 @@ def optimize_key_model(
             feature_progress(90 + int(round(10 * done / len(tracks))),
                              msg("Beat inputs {done}/{total}", done=done, total=len(tracks)))
     if feature_progress:
-        feature_progress(100, f"{len(songs)} songs")
+        feature_progress(100, msg("{count} songs", count=len(songs)))
     MS.require_tracks(len(songs), MS.kind_of(request.start), MS.KEY_SONGS)
     edited = sum(t["kind"] == "edited" for t in kept)
     epochs = int(request.epochs) or (SCRATCH_EPOCHS if scratch else TUNE_EPOCHS)

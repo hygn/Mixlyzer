@@ -96,7 +96,7 @@ def optimize_downbeat_ctx(
             continue
         data.append((track, x, y))
         if feature_progress:
-            feature_progress(85 + int(round(15 * index / len(tracks))), f"Samples {index}/{len(tracks)}")
+            feature_progress(85 + int(round(15 * index / len(tracks))), msg("Samples {done}/{total}", done=index, total=len(tracks)))
     MS.require_tracks(len(data), "gbm")
 
     cross_validated = int(request.cv_folds) >= 2

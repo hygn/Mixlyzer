@@ -47,7 +47,6 @@ class DownbeatTests(unittest.TestCase):
         shuffled = np.concatenate([beats[::-1], [np.nan, np.inf]])
         np.testing.assert_allclose(bg.downbeat_times(shuffled, rows), [0.0, 2.0, 4.0])
 
-    @unittest.expectedFailure   # known: the beat on the last row's end is counted past the bar (12.5 here)
     def test_a_beat_on_the_tracks_end(self):
         """The grid keeps a beat lying exactly on the last row's end (the track's end); it is still a beat of the
         bar: never beat 5 of a 4/4 bar, and a downbeat there is a downbeat as the segments' downbeats say."""

@@ -284,9 +284,6 @@ class RunTests(unittest.TestCase):
         self.assertEqual(len(built), 5)
         self.assertFalse(self.out.exists())
 
-    # Bug: too few tracks whose saved JumpCUEs match a found group raises a RuntimeError (shown as a traceback,
-    # its text untranslated) instead of the module's TrainingError refusal.
-    @unittest.expectedFailure
     def test_too_few_tracks_with_matching_groups_refused_as_a_training_error(self):
         self.tracks(5, unmatched=1)
         with self.assertRaises(TrainingError):

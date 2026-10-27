@@ -82,7 +82,6 @@ class CoverageTests(unittest.TestCase):
         self.assertEqual(ph.fill_unassigned([], 30.0), [Phrase(0, 30, UNASSIGNED)])
         self.assertEqual(ph.fill_unassigned([Phrase(0, 40, "INTRO")], 30.0), [Phrase(0, 30, "INTRO")])  # cut at the end
 
-    @unittest.expectedFailure   # known: a gap under PHRASE_SLIVER_SEC at the track's start or end is left uncovered
     def test_slivers_at_the_ends_covered(self):
         """The whole track is covered, its first and last few ms too (a playhead there is in a phrase)."""
         for rows in ([Phrase(0.02, 30, "INTRO")], [Phrase(0, 29.99, "INTRO")]):

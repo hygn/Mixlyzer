@@ -289,8 +289,6 @@ class RunTests(unittest.TestCase):
         self.assertTrue(0.0 <= result.accuracy_before <= 1.0 and 0.0 <= result.accuracy_after <= 1.0)
         self.assertEqual(progress[-1], 100)
 
-    # Bug: the last feature progress ("4 songs") is a plain f-string, not marked with text.msg: shown untranslated.
-    @unittest.expectedFailure
     def test_progress_texts_are_marked_for_translation(self):
         self.small()
         texts = []

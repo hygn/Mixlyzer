@@ -97,8 +97,6 @@ class RunTests(unittest.TestCase):
         self.assertFalse((self.cache / "_downbeat_ctx_held_out.npz").exists())      # the trial model removed
         self.assertTrue(check.call_args.args[4].downbeat_ctx.endswith("_downbeat_ctx_held_out.npz"))
 
-    # Bug: the samples' progress ("Samples 3/5") is a plain f-string, not marked with text.msg: shown untranslated.
-    @unittest.expectedFailure
     def test_progress_texts_are_marked_for_translation(self):
         self.enterContext(mock.patch.dict(MS.MIN_TRACKS, {"gbm": (SMALL, SMALL)}))
         self.tracks(SMALL)

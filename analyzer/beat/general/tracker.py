@@ -70,11 +70,8 @@ def load_knobs(path: str) -> Knobs:
 
 
 def save_knobs(path, knobs: Knobs, training: dict | None = None) -> None:
-    from pathlib import Path
-    Path(path).parent.mkdir(parents=True, exist_ok=True)
-    with open(path, 'w', encoding='utf-8') as f:
-        json.dump({'format': KNOBS_FORMAT, 'knobs': asdict(knobs), 'training': training or {}}, f, indent=2,
-                  ensure_ascii=False)
+    from analyzer.files import atomic_write_json
+    atomic_write_json(path, {'format': KNOBS_FORMAT, 'knobs': asdict(knobs), 'training': training or {}})
 
 
 class Models:

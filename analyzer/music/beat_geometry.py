@@ -129,15 +129,18 @@ def downbeat_beat_indices(beat_times, tempo_segments) -> np.ndarray:
         return np.arange(0, beats.size, DEFAULT_TIME_SIGNATURE, dtype=np.int64)
 
     out: list[int] = []
+    ends = arr[:, 1][np.isfinite(arr[:, 1])]
+    track_end = float(np.max(ends)) if ends.size else float("inf")
     for seg in arr:
         start, end = seg[0], seg[1]
         inizio = seg[3] if seg.size >= 4 else start
         if not (np.isfinite(start) and np.isfinite(end) and np.isfinite(inizio)):
             continue
         ts = segment_time_signature(seg)
-        # Beat-index range covered by this segment: [lo, hi).
+        # Beat-index range covered by this segment: [lo, hi); the last segment's also its beat on the track's end,
+        # which the grid keeps (rebuild_grid_from_segments: a hair past the end)
         lo = int(np.searchsorted(beats, float(start), side="left"))
-        hi = int(np.searchsorted(beats, float(end), side="left"))
+        hi = int(np.searchsorted(beats, float(end) + (1e-6 if float(end) >= track_end else 0.0), side="left"))
         if hi <= lo:
             continue
         # Reference downbeat = beat nearest the segment's inizio.

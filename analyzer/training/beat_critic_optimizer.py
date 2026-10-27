@@ -28,6 +28,7 @@ import numpy as np
 from sklearn.model_selection import GroupKFold
 
 from analyzer.beat.general import critic as C
+from analyzer.files import atomic_output_path
 from analyzer.runtime import spawn_pool
 from analyzer.training import SkippedOptimizationTrack, optimizer_track_name, skipped_track
 from analyzer.training.beat_frames import cache_path, ensure_frames, list_grid_tracks, read_frames
@@ -82,8 +83,8 @@ class BeatCriticOptimizationResult:
 
 
 def _save(path, nets) -> None:
-    Path(path).parent.mkdir(parents=True, exist_ok=True)
-    np.savez_compressed(path, **{f"f{i}/{k}": v for i, P in enumerate(nets) for k, v in P.items()})
+    with atomic_output_path(path) as temporary:    # replaced whole: a cut-off write never leaves a model to read
+        np.savez_compressed(temporary, **{f"f{i}/{k}": v for i, P in enumerate(nets) for k, v in P.items()})
 
 
 # --- the network's gradients (the forward pass mirrors analyzer.beat.general.critic) ---------------

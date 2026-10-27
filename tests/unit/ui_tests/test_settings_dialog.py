@@ -375,16 +375,11 @@ class MidiPageTests(unittest.TestCase):
         self.learn("deck1.track_start", (0xB0, 0x21, 127), (0xB0, 0x21, 0))     # a CC button: 127, then 0
         self.assertEqual(self.d._midi_map["deck1.track_start"], ["B021"])
 
-    # BUG: the messages after the first of one report are dropped while a CC waits, so the LSB sent with its MSB
-    # never makes the fader 14-bit
-    @unittest.expectedFailure
     def test_a_14_bit_fader_learned_from_one_report(self):
         self.native()
         self.learn("mixer.ch1.volume", (0xB0, 0x13, 64), (0xB0, 0x33, 10), batched=True)
         self.assertEqual(self.d._midi_map["mixer.ch1.volume"], [midi.Message(0xB0, 0x13, hires=True).text()])
 
-    # BUG: as above, a CC button's 127 and 0 in one report is learned as a knob's step back
-    @unittest.expectedFailure
     def test_a_cc_button_learned_from_one_report(self):
         self.native()
         self.learn("deck1.track_start", (0xB0, 0x21, 127), (0xB0, 0x21, 0), batched=True)
