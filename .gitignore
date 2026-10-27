@@ -71,7 +71,6 @@ tests/ground_truth/audio.json
 #   native_mixer_engine-full-2026-10/   the native mixer checks of the engine before its diet (tag engine-full-2026-10)
 research/
 annotator/
-benchmark/
 
 # Local maintenance notes, and their site (mkdocs serve)
 docs/internal/
