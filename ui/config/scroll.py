@@ -1,6 +1,16 @@
 from PySide6 import QtGui
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QFrame, QScrollArea, QWidget
+from PySide6.QtWidgets import QFrame, QScrollArea, QVBoxLayout, QWidget
+
+
+def groups_page(*groups: QWidget) -> QScrollArea:
+    """A page of groups, top to bottom, scrolling (a settings page's sub-page)."""
+    widget = QWidget()
+    lay = QVBoxLayout(widget)
+    for group in groups:
+        lay.addWidget(group)
+    lay.addStretch(1)
+    return scroll_page(widget)
 
 
 def scroll_page(page: QWidget) -> QScrollArea:

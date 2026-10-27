@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-28 01:48+0900\n"
+"POT-Creation-Date: 2026-10-28 01:56+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ja_JP\n"
@@ -566,7 +566,7 @@ msgstr "オープンソース"
 msgid "About"
 msgstr "情報"
 
-#: app/window.py:270 core/controls/midi.py:55 ui/config/playback.py:339
+#: app/window.py:270 core/controls/midi.py:55 ui/config/playback.py:329
 msgid "Mixer"
 msgstr "ミキサー"
 
@@ -1542,7 +1542,7 @@ msgid "Processing Waveform"
 msgstr "波形を処理中"
 
 #: core/workers/analysis_texts.py:15 ui/config/pipeline_map.py:32
-#: ui/config/view.py:135
+#: ui/config/view.py:137 ui/config/view.py:176
 msgid "Waveform"
 msgstr "波形"
 
@@ -1992,7 +1992,8 @@ msgstr "相対または絶対の .json パス"
 msgid "Folder for features cached while reoptimizing, so later runs are faster."
 msgstr "再最適化中に特徴量をキャッシュするフォルダー。次回以降の実行が速くなります。"
 
-#: ui/config/analysis.py:47 ui/config/analysis.py:163
+#: ui/config/analysis.py:47 ui/config/analysis.py:163 ui/config/library.py:160
+#: ui/config/view.py:174
 msgid "General"
 msgstr "一般"
 
@@ -2104,7 +2105,8 @@ msgstr "最小 BPM"
 
 #: ui/config/analysis.py:139 ui/config/analysis.py:177
 #: ui/config/analysis.py:200 ui/config/dialogs/optimization.py:204
-#: ui/config/library.py:152 ui/config/playback.py:107 ui/config/view.py:167
+#: ui/config/library.py:153 ui/config/library.py:163 ui/config/playback.py:107
+#: ui/config/view.py:169
 msgid "Advanced"
 msgstr "詳細設定"
 
@@ -3440,30 +3442,30 @@ msgid ""
 "ago, from {sender})."
 msgstr "{address} で受信中。ロードされていてアクティブなデッキはありません(最後のメッセージは {age} 秒前、{sender} から)。"
 
-#: ui/config/library.py:32
+#: ui/config/library.py:33
 msgid "Add Folder…"
 msgstr "フォルダーを追加…"
 
-#: ui/config/library.py:33 ui/library/actions.py:98
+#: ui/config/library.py:34 ui/library/actions.py:98
 #: ui/library/tabs/tieup_editor.py:368
 msgid "Remove"
 msgstr "削除"
 
-#: ui/config/library.py:35
+#: ui/config/library.py:36
 msgid ""
 "When this list is empty, the operating system's default Music folder is "
 "used."
 msgstr "この一覧が空の場合は、OS の標準のミュージックフォルダーを使います。"
 
-#: ui/config/library.py:38
+#: ui/config/library.py:39
 msgid "Write log to file"
 msgstr "ログをファイルに書き込む"
 
-#: ui/config/library.py:40
+#: ui/config/library.py:41
 msgid "Sync with Rekordbox XML"
 msgstr "Rekordbox XML と同期"
 
-#: ui/config/library.py:48
+#: ui/config/library.py:49
 msgid ""
 "<p>Rekordbox has no tempo ramps: a ramp is written as steps of steady "
 "tempo. Smaller makes the steps finer.</p>"
@@ -3471,11 +3473,11 @@ msgstr ""
 "<p>Rekordbox "
 "にはテンポのランプがないため、ランプは一定テンポのステップに分けて書き出されます。小さいほどステップが細かくなります。</p>"
 
-#: ui/config/library.py:51 ui/library/tabs/export.py:117
+#: ui/config/library.py:52 ui/library/tabs/export.py:117
 msgid "Tie-ups after the comment"
 msgstr "コメントの後にタイアップを付ける"
 
-#: ui/config/library.py:53
+#: ui/config/library.py:54
 msgid ""
 "<p>Each track's comment in the XML with its song's tie-ups after it, as "
 "[Title OP; Other ED]; the library's comment stays as it is.</p>"
@@ -3483,67 +3485,67 @@ msgstr ""
 "<p>XML の各トラックのコメントの後に、曲のタイアップを [タイトル OP; 別作品 ED] "
 "の形で付けます。ライブラリのコメントはそのままです。</p>"
 
-#: ui/config/library.py:55 ui/config/library.py:108
+#: ui/config/library.py:56 ui/config/library.py:109
 msgid "Sync Now"
 msgstr "今すぐ同期"
 
-#: ui/config/library.py:56
+#: ui/config/library.py:57
 msgid "Logging settings apply on next app launch."
 msgstr "ログの設定は次回のアプリ起動時に適用されます。"
 
-#: ui/config/library.py:57
+#: ui/config/library.py:58
 msgid "Use Sync Now to rebuild the whole XML explicitly."
 msgstr "XML 全体を明示的に作り直すには「今すぐ同期」を使ってください。"
 
 # | msgid "" "Folder holding library.db and the per-track feature files
 # | (.npz).\n" "Relative paths are resolved from the app folder."
-#: ui/config/library.py:61
+#: ui/config/library.py:62
 msgid "Folder holding library.db and the per-track feature files (.npz)."
 msgstr "library.db とトラックごとの特徴量ファイル (.npz) を置くフォルダー。"
 
-#: ui/config/library.py:64
+#: ui/config/library.py:65
 msgid "Root folders shown under Local Folders in the library browser."
 msgstr "ライブラリブラウザーの「ローカルフォルダー」の下に表示されるルートフォルダー。"
 
-#: ui/config/library.py:66
+#: ui/config/library.py:67
 msgid "Add a local music root folder."
 msgstr "ローカルの音楽のルートフォルダーを追加します。"
 
-#: ui/config/library.py:67
+#: ui/config/library.py:68
 msgid "Remove the selected root folders."
 msgstr "選択したルートフォルダーを削除します。"
 
-#: ui/config/library.py:68
+#: ui/config/library.py:69
 msgid "Write console output to a log file."
 msgstr "コンソールの出力をログファイルに書き込みます。"
 
-#: ui/config/library.py:69
+#: ui/config/library.py:70
 msgid "Log file written when 'Write log to file' is on."
 msgstr "「ログをファイルに書き込む」がオンのときに書き込むログファイル。"
 
-#: ui/config/library.py:71
+#: ui/config/library.py:72
 msgid ""
 "Keep a Rekordbox XML file updated with the library's beat grids, keys and"
 " cues."
 msgstr "ライブラリのビートグリッド、キー、キューを Rekordbox XML ファイルに反映し続けます。"
 
-#: ui/config/library.py:74
+#: ui/config/library.py:75
 msgid "Rekordbox XML file to write. Import it in Rekordbox to use the analysis."
 msgstr "書き込む Rekordbox XML ファイル。Rekordbox でインポートすると解析を利用できます。"
 
-#: ui/config/library.py:77
+#: ui/config/library.py:78
 msgid "Save these settings and rebuild the whole XML from the library now."
 msgstr "この設定を保存し、ライブラリから XML 全体を今すぐ作り直します。"
 
-#: ui/config/library.py:82
+#: ui/config/library.py:83
 msgid "Library Path"
 msgstr "ライブラリのパス"
 
-#: ui/config/library.py:93
+#: ui/config/library.py:94
 msgid "Local Music Folders"
 msgstr "ローカルの音楽フォルダー"
 
-#: ui/config/library.py:94
+#: ui/config/library.py:95
 msgid "Add a tie-up to the track's versions too"
 msgstr "タイアップを追加したら他のバージョンにも追加"
 
@@ -3551,17 +3553,17 @@ msgstr "タイアップを追加したら他のバージョンにも追加"
 # | (Settings > " "Library)."
 # | msgid_plural "" "A tie-up added here is added to its {n} other versions
 # too
-#: ui/config/library.py:96
+#: ui/config/library.py:97
 msgid ""
 "<p>A tie-up added in the Edit tab is added to the track's other versions "
 "as well.</p>"
 msgstr "<p>編集タブで追加したタイアップを、このトラックの他のバージョンにも追加します。</p>"
 
-#: ui/config/library.py:98
+#: ui/config/library.py:99
 msgid "Look up a new track's tie-ups on Wikipedia"
 msgstr "新しいトラックのタイアップをWikipediaで探す"
 
-#: ui/config/library.py:100
+#: ui/config/library.py:101
 msgid ""
 "<p>After a new track's analysis, its tie-ups are looked up on Japanese "
 "Wikipedia and Wikidata and the ones found for certain are added. Its "
@@ -3570,11 +3572,11 @@ msgstr ""
 "<p>新しいトラックの解析後、日本語版Wikipediaと "
 "Wikidataでタイアップを探し、確実なものを追加します。その際トラックのタイトルとアーティストが送信されます。</p>"
 
-#: ui/config/library.py:105
+#: ui/config/library.py:106
 msgid "Update the library database when the editor saves"
 msgstr "エディターでの保存時にライブラリデータベースも更新"
 
-#: ui/config/library.py:107
+#: ui/config/library.py:108
 msgid ""
 "<p>The editor's save also writes the track's BPM, key and search tables "
 "into the library database.</p>"
@@ -3586,7 +3588,7 @@ msgstr "<p>エディターで保存するとき、トラックの BPM、キー�
 # | them). " "Titles, artists, ratings and comments are not touched.</p>"
 # | them), a BPM " "or key typed in the Edit Track tab replaced too. Titles,
 # | artists, ratings" " and comments are not touched.</p>"
-#: ui/config/library.py:110
+#: ui/config/library.py:111
 msgid ""
 "<p>Every track's BPM, key and search tables in the library database made "
 "again from its stored analysis. A BPM or key typed in the Edit Track tab "
@@ -3597,11 +3599,11 @@ msgstr ""
 "BPM とキーも置き換わります。タイトル、アーティスト、レーティング、コメントは変更しません。</p>"
 
 # | msgid "Library Path"
-#: ui/config/library.py:113
+#: ui/config/library.py:114
 msgid "Library Database"
 msgstr "ライブラリデータベース"
 
-#: ui/config/library.py:119
+#: ui/config/library.py:120
 msgid "Include the feature caches"
 msgstr "特徴量キャッシュを含める"
 
@@ -3610,13 +3612,13 @@ msgstr "特徴量キャッシュを含める"
 # | " "training data, made again from the library when missing, so a backup is
 # "
 # | "smaller without them.</p>"
-#: ui/config/library.py:121
+#: ui/config/library.py:122
 msgid ""
 "<p>A backup also packs the analyses' feature caches (Reoptimize's "
 "training data). Without them a backup is smaller.</p>"
 msgstr "<p>バックアップに解析の特徴量キャッシュ (再最適化の学習データ) も含めます。含めなければバックアップは小さくなります。</p>"
 
-#: ui/config/library.py:123
+#: ui/config/library.py:124
 msgid "Back Up Library…"
 msgstr "ライブラリのバックアップ…"
 
@@ -3625,7 +3627,7 @@ msgstr "ライブラリのバックアップ…"
 # | indexes, the " "settings, your shortcuts, MIDI mapping and retrained
 # models.
 # | The music " "files themselves are not packed.</p>"
-#: ui/config/library.py:125
+#: ui/config/library.py:126
 msgid ""
 "<p>The library packed into one file: its database, every track's stored "
 "analysis, the thumbnails, the search indexes, the settings, your "
@@ -3636,7 +3638,7 @@ msgstr ""
 "つのファイルにまとめます。データベース、全トラックの保存された解析、サムネイル、検索インデックス、設定、ショートカット、MIDI "
 "マッピング、再学習したモデルが入ります。音楽ファイルそのものは含めません。</p>"
 
-#: ui/config/library.py:128
+#: ui/config/library.py:129
 msgid "Restore Library…"
 msgstr "ライブラリの復元…"
 
@@ -3644,7 +3646,7 @@ msgstr "ライブラリの復元…"
 # or
 # | " "another; its music folders joined to this device's, then Mixlyzer "
 # | "restarts on it. The library in use now is kept as it is.</p>"
-#: ui/config/library.py:130
+#: ui/config/library.py:131
 msgid ""
 "<p>A backup unpacked into a new library folder, then Mixlyzer restarts on"
 " it. The library in use now is kept as it is.</p>"
@@ -3652,32 +3654,38 @@ msgstr ""
 "<p>バックアップを新しいライブラリフォルダーに展開し、Mixlyzer "
 "はそのライブラリで再起動します。今使っているライブラリはそのまま残ります。</p>"
 
-#: ui/config/library.py:138 ui/windows/library_backup.py:146
+#: ui/config/library.py:139 ui/windows/library_backup.py:146
 msgid "Backup"
 msgstr "バックアップ"
 
-#: ui/config/library.py:143
+#: ui/config/library.py:144 ui/config/library.py:162
 msgid "Rekordbox XML"
 msgstr "Rekordbox XML"
 
-#: ui/config/library.py:146
+#: ui/config/library.py:147
 msgid "XML Path"
 msgstr "XML のパス"
 
-#: ui/config/library.py:147
+#: ui/config/library.py:148
 msgid "Tempo ramp tolerance"
 msgstr "テンポのランプの許容誤差"
 
-#: ui/config/library.py:155
+#: ui/config/library.py:156
 msgid "Log Path"
 msgstr "ログのパス"
 
-#: ui/config/library.py:185
+# | msgid "Library Path"
+# | msgid "Library Database"
+#: ui/config/library.py:161
+msgid "Database"
+msgstr "データベース"
+
+#: ui/config/library.py:188
 msgid "Add Local Music Folder"
 msgstr "ローカルの音楽フォルダーを追加"
 
 # | msgid "Library Path"
-#: ui/config/dialogs/library_sync.py:17 ui/config/library.py:248
+#: ui/config/dialogs/library_sync.py:17 ui/config/library.py:251
 msgid "Sync Library Database"
 msgstr "ライブラリデータベースの同期"
 
@@ -3685,7 +3693,7 @@ msgstr "ライブラリデータベースの同期"
 # | database made " "again from its stored analysis (as the editor's save
 # writes
 # | them). " "Titles, artists, ratings and comments are not touched.</p>"
-#: ui/config/library.py:249
+#: ui/config/library.py:252
 msgid ""
 "Every track's BPM, key and search tables in the library database will be "
 "made again from its stored analysis. A BPM or key typed in the Edit Track"
@@ -3698,20 +3706,20 @@ msgstr ""
 "\n"
 "今すぐ同期しますか？"
 
-#: ui/config/library.py:294
+#: ui/config/library.py:297
 msgid "Enable Sync with Rekordbox XML first."
 msgstr "先に「Rekordbox XML と同期」を有効にしてください。"
 
-#: ui/config/dialogs/rekordbox.py:15 ui/config/library.py:294
-#: ui/config/library.py:299
+#: ui/config/dialogs/rekordbox.py:15 ui/config/library.py:297
+#: ui/config/library.py:302
 msgid "Sync Rekordbox XML"
 msgstr "Rekordbox XML の同期"
 
-#: ui/config/library.py:299
+#: ui/config/library.py:302
 msgid "Rekordbox XML Path is empty."
 msgstr "Rekordbox XML のパスが空です。"
 
-#: ui/config/library.py:340
+#: ui/config/library.py:343
 msgid "Rekordbox XML worker started"
 msgstr "Rekordbox XML ワーカーを開始しました"
 
@@ -4182,7 +4190,7 @@ msgstr "クロックのドリフト"
 msgid "Opening the output device..."
 msgstr "出力デバイスを開いています..."
 
-#: ui/config/output_group.py:393 ui/config/playback.py:518
+#: ui/config/output_group.py:393 ui/config/playback.py:508
 msgid ""
 "The output device could not be opened (another app may hold it in "
 "exclusive mode); it is tried again every second."
@@ -4199,7 +4207,7 @@ msgstr "{ppm} ppm（この分リサンプルして追従）"
 msgid "Output thread: {output}"
 msgstr "出力スレッド: {output}"
 
-#: ui/config/output_group.py:409 ui/config/playback.py:536
+#: ui/config/output_group.py:409 ui/config/playback.py:526
 #, python-brace-format
 msgid "Late output wake-ups: {count} (longest gap {gap} ms)"
 msgstr "出力スレッドの起床遅れ: {count} 回 (最長間隔 {gap} ms)"
@@ -4214,7 +4222,7 @@ msgstr "再生デバイス: {device}、{rate} kHz"
 msgid "Its device's stream is shared with another output, at that output's rate."
 msgstr "このデバイスのストリームをほかの出力と共有しているため、その出力のサンプルレートで再生します。"
 
-#: ui/config/pipeline_map.py:22 ui/config/view.py:177
+#: ui/config/pipeline_map.py:22 ui/config/view.py:180
 msgid "View"
 msgstr "表示"
 
@@ -4249,7 +4257,7 @@ msgstr "デコード、HPSS"
 msgid "overview levels"
 msgstr "全体波形のレベル"
 
-#: ui/config/pipeline_map.py:32 ui/config/playback.py:343
+#: ui/config/pipeline_map.py:32 ui/config/playback.py:333
 msgid "Audio"
 msgstr "オーディオ"
 
@@ -4319,7 +4327,7 @@ msgid "Native first"
 msgstr "Native 優先"
 
 # | msgid "Path"
-#: ui/config/playback.py:47 ui/config/playback.py:430
+#: ui/config/playback.py:47 ui/config/playback.py:420
 msgid "Python"
 msgstr "Python"
 
@@ -4406,7 +4414,7 @@ msgstr ""
 "レイテンシー重視のアクティビティとして両方をオフにします (アイドル時のスリープはそのまま)。すぐに適用されます。</p>"
 
 # | msgid "Audio engine"
-#: ui/config/playback.py:89 ui/config/playback.py:335
+#: ui/config/playback.py:89 ui/config/playback.py:325
 msgid "Engine"
 msgstr "エンジン"
 
@@ -4487,7 +4495,7 @@ msgid ""
 "answers sooner.</p>"
 msgstr "<p>Python エンジンが出力デバイスの手前に溜めておくオーディオです。小さいほど早く反応します。</p>"
 
-#: ui/config/playback.py:175 ui/config/playback.py:336
+#: ui/config/playback.py:175 ui/config/playback.py:326
 msgid "Main output"
 msgstr "メイン出力"
 
@@ -4617,7 +4625,7 @@ msgstr "その他の拍のクリックの音量。"
 msgid "Pitch shift of the click on the other beats."
 msgstr "その他の拍のクリックのピッチシフト。"
 
-#: ui/config/playback.py:286 ui/config/playback.py:340
+#: ui/config/playback.py:286 ui/config/playback.py:330
 msgid "Metronome"
 msgstr "メトロノーム"
 
@@ -4650,49 +4658,49 @@ msgid "Beat pitch (semitones)"
 msgstr "拍のピッチ (半音)"
 
 # | msgid "Overview"
-#: ui/config/playback.py:334
+#: ui/config/playback.py:324
 msgctxt "settings page"
 msgid "Overview"
 msgstr "概要"
 
 # | msgid "Headphones: level"
-#: ui/config/playback.py:337
+#: ui/config/playback.py:327
 msgid "Headphones"
 msgstr "ヘッドホン"
 
 # | msgid "About"
-#: ui/config/playback.py:338
+#: ui/config/playback.py:328
 msgid "Booth"
 msgstr "ブース"
 
 # | msgid "Starting"
-#: ui/config/playback.py:362
+#: ui/config/playback.py:352
 msgid "Restarting..."
 msgstr "再起動中..."
 
 # | msgid "Start"
-#: ui/config/playback.py:367
+#: ui/config/playback.py:357
 msgid "Restarted."
 msgstr "再起動しました。"
 
-#: ui/config/playback.py:368
+#: ui/config/playback.py:358
 msgid "The engine did not start; it is tried again every 2 seconds."
 msgstr "エンジンが起動しませんでした。2 秒ごとに再試行します。"
 
-#: ui/config/playback.py:428
+#: ui/config/playback.py:418
 msgid "Buffer size, Python engine"
 msgstr "バッファサイズ、Python エンジン"
 
-#: ui/config/playback.py:429
+#: ui/config/playback.py:419
 msgid "Buffer size, native engine"
 msgstr "バッファサイズ、Native エンジン"
 
 # | msgid "Active"
-#: ui/config/playback.py:430
+#: ui/config/playback.py:420
 msgid "Native"
 msgstr "Native"
 
-#: ui/config/playback.py:432
+#: ui/config/playback.py:422
 #, python-brace-format
 msgid ""
 "<p>Native: the audio engine in a process of its own (no dropouts when the"
@@ -4705,29 +4713,29 @@ msgstr ""
 "エンジンを使います。Python: Python エンジンだけを使います。次回の起動から適用されます。</p><p>現在の再生: "
 "{engine}。</p>"
 
-#: ui/config/playback.py:438
+#: ui/config/playback.py:428
 msgid "<p>The native engine on Linux and macOS is experimental.</p>"
 msgstr "<p>Linux と macOS のネイティブエンジンは実験的な機能です。</p>"
 
-#: ui/config/playback.py:539
+#: ui/config/playback.py:529
 #, python-brace-format
 msgid "Engine thread: {engine}   Output thread: {output}"
 msgstr "エンジンスレッド: {engine}   出力スレッド: {output}"
 
-#: ui/config/playback.py:543
+#: ui/config/playback.py:533
 msgid "Power throttling could be turned off only in part."
 msgstr "電力スロットリングは一部しかオフにできませんでした。"
 
-#: ui/config/playback.py:545
+#: ui/config/playback.py:535
 msgid "Power throttling could not be turned off."
 msgstr "電力スロットリングをオフにできませんでした。"
 
-#: ui/config/playback.py:550
+#: ui/config/playback.py:540
 #, python-brace-format
 msgid "Response measured: play {play} ms   pause {pause} ms   seek {seek} ms"
 msgstr "実測の応答: 再生 {play} ms   一時停止 {pause} ms   シーク {seek} ms"
 
-#: ui/config/playback.py:553
+#: ui/config/playback.py:543
 #, python-brace-format, python-format
 msgid ""
 "EMA {ema} / {capacity} ms   1% low {low} ms   lowest {lowest} ms "
@@ -5002,36 +5010,36 @@ msgstr ""
 "\n"
 "それでも使いますか?"
 
-#: ui/config/view.py:40
+#: ui/config/view.py:42
 #, python-brace-format
 msgid "System ({language})"
 msgstr "システム ({language})"
 
-#: ui/config/view.py:43
+#: ui/config/view.py:45
 msgid "The language of the app's texts. Applied at the next start."
 msgstr "アプリのテキストの言語。次回の起動時から適用されます。"
 
-#: ui/config/view.py:45
+#: ui/config/view.py:47
 msgid "Display waveform"
 msgstr "波形を表示"
 
-#: ui/config/view.py:46
+#: ui/config/view.py:48
 msgid "Display beatgrid"
 msgstr "ビートグリッドを表示"
 
-#: ui/config/view.py:47
+#: ui/config/view.py:49
 msgid "Display keystrip"
 msgstr "キーストリップを表示"
 
-#: ui/config/view.py:48
+#: ui/config/view.py:50
 msgid "Display JumpCUE"
 msgstr "JumpCUE を表示"
 
-#: ui/config/view.py:49
+#: ui/config/view.py:51
 msgid "Display phrase overlay"
 msgstr "フレーズのオーバーレイを表示"
 
-#: ui/config/view.py:54
+#: ui/config/view.py:56
 msgid ""
 "RGB: the waveform colored by its low / mid / high mix.\n"
 "3Band: the low (blue), mid (amber) and high (white) bands drawn as layers."
@@ -5039,7 +5047,7 @@ msgstr ""
 "RGB: 低域 / 中域 / 高域の比率で波形に色を付けます。\n"
 "3Band: 低域 (青)、中域 (アンバー)、高域 (白) の帯域を重ねて描きます。"
 
-#: ui/config/view.py:62
+#: ui/config/view.py:64
 #, python-brace-format
 msgid ""
 "Time resolution of the main view waveform bars when the view is up to "
@@ -5049,7 +5057,7 @@ msgstr ""
 "表示幅が {seconds} 秒以下のときのメインビュー波形のバーの時間分解能。\n"
 "小さいほど細かくなります。"
 
-#: ui/config/view.py:65
+#: ui/config/view.py:67
 #, python-brace-format
 msgid ""
 "Time resolution of the main view waveform bars when the view is wider "
@@ -5059,49 +5067,49 @@ msgstr ""
 "表示幅が {seconds} 秒を超えるときのメインビュー波形のバーの時間分解能。\n"
 "小さいほど細かくなります。"
 
-#: ui/config/view.py:73
+#: ui/config/view.py:75
 msgid ""
 "Order of the main view waveform's band filters. Higher separates the "
 "bands more sharply."
 msgstr "メインビュー波形の帯域フィルターの次数。高いほど帯域をはっきり分けます。"
 
-#: ui/config/view.py:76
+#: ui/config/view.py:78
 msgid "Use output volume as peak meter input"
 msgstr "出力音量をピークメーターの入力に使う"
 
-#: ui/config/view.py:78
+#: ui/config/view.py:80
 msgid "Reduce FPS when occluded"
 msgstr "隠れているときは FPS を下げる"
 
-#: ui/config/view.py:84
+#: ui/config/view.py:86
 msgid "Waiting for FPS..."
 msgstr "FPS を待機中..."
 
-#: ui/config/view.py:86
+#: ui/config/view.py:88
 msgid "Measured from actual pyqtgraph plot repaint intervals."
 msgstr "pyqtgraph のプロットが実際に再描画された間隔から測定します。"
 
-#: ui/config/view.py:88
+#: ui/config/view.py:90
 msgid "Show the detailed waveform view."
 msgstr "詳細な波形ビューを表示します。"
 
-#: ui/config/view.py:89
+#: ui/config/view.py:91
 msgid "Show the beat grid view."
 msgstr "ビートグリッドのビューを表示します。"
 
-#: ui/config/view.py:90
+#: ui/config/view.py:92
 msgid "Show the key strip (detected key over time)."
 msgstr "キーストリップ (時間ごとに検出されたキー) を表示します。"
 
-#: ui/config/view.py:91
+#: ui/config/view.py:93
 msgid "Show the JumpCUE view (detected repeat jump points)."
 msgstr "JumpCUE のビュー (検出された反復のジャンプポイント) を表示します。"
 
-#: ui/config/view.py:92
+#: ui/config/view.py:94
 msgid "Overlay the detected phrases on the views."
 msgstr "検出されたフレーズをビューに重ねて表示します。"
 
-#: ui/config/view.py:94
+#: ui/config/view.py:96
 msgid ""
 "Checked: the peak meter follows the volume slider (what you hear).\n"
 "Unchecked: the peak meter shows the level after Trim only."
@@ -5109,7 +5117,7 @@ msgstr ""
 "オン: ピークメーターは音量スライダーに従います (聞こえる音)。\n"
 "オフ: ピークメーターはトリムだけを通したレベルを表示します。"
 
-#: ui/config/view.py:98
+#: ui/config/view.py:100
 msgid ""
 "Lower the redraw rate while the window is hidden behind other windows\n"
 "or minimized, to save CPU."
@@ -5117,143 +5125,143 @@ msgstr ""
 "ウィンドウが他のウィンドウに隠れているか最小化されている間は、\n"
 "再描画の頻度を下げて CPU を節約します。"
 
-#: ui/config/view.py:101
+#: ui/config/view.py:103
 msgid "Target redraw rate of the views."
 msgstr "ビューの再描画の目標頻度。"
 
-#: ui/config/view.py:103
+#: ui/config/view.py:105
 msgid "Image drawn as the spinning record when a track has no album art."
 msgstr "トラックにアートワークがないときに回転するレコードとして描く画像。"
 
-#: ui/config/view.py:106 ui/config/view.py:108
+#: ui/config/view.py:108 ui/config/view.py:110
 #: ui/library/tabs/tieup_editor.py:140 ui/library/tabs/tieup_editor.py:143
 #: ui/windows/tieup_works.py:77 ui/windows/tieup_works.py:80
 msgid "Language"
 msgstr "言語"
 
-#: ui/config/view.py:110
+#: ui/config/view.py:112 ui/config/view.py:175
 msgid "Display"
 msgstr "表示"
 
-#: ui/config/view.py:117
+#: ui/config/view.py:119
 msgid "Waveform style"
 msgstr "波形のスタイル"
 
-#: ui/config/view.py:129
+#: ui/config/view.py:131
 msgid "lo"
 msgstr "下限"
 
-#: ui/config/view.py:130
+#: ui/config/view.py:132
 msgid "hi"
 msgstr "上限"
 
-#: ui/config/view.py:137
+#: ui/config/view.py:139
 msgid "Low / mid / high bands of the waveforms' colors."
 msgstr "波形の色の低域 / 中域 / 高域の帯域。"
 
-#: ui/config/view.py:141
+#: ui/config/view.py:143
 msgid ""
 "<p>The master output's spectrum as it plays. Drag a band's edges to set "
 "it.</p>"
 msgstr "<p>再生中のマスター出力のスペクトラムです。帯域の両端をドラッグして設定します。</p>"
 
-#: ui/config/view.py:144
+#: ui/config/view.py:146
 msgid "Frame, short view (ms)"
 msgstr "フレーム、短い表示 (ms)"
 
-#: ui/config/view.py:145
+#: ui/config/view.py:147
 msgid "Frame, long view (ms)"
 msgstr "フレーム、長い表示 (ms)"
 
-#: ui/config/view.py:146
+#: ui/config/view.py:148
 msgid "Filter order"
 msgstr "フィルターの次数"
 
-#: ui/config/view.py:148
+#: ui/config/view.py:150
 msgid ""
 "<p>The loaded track at the playhead, drawn with these settings. What is "
 "already drawn keeps the settings it was drawn with.</p>"
 msgstr "<p>ロードした曲の再生位置をこの設定で描きます。描画済みの部分は描いたときの設定のままです。</p>"
 
-#: ui/config/view.py:152
+#: ui/config/view.py:154
 msgid "Low"
 msgstr "低域"
 
-#: ui/config/view.py:152
+#: ui/config/view.py:154
 msgid "Frequency range (Hz) drawn as the low band of the waveform."
 msgstr "波形の低域として描く周波数範囲 (Hz)。"
 
-#: ui/config/view.py:153
+#: ui/config/view.py:155
 msgid "Lower edge of the low band (Hz)."
 msgstr "低域の下限 (Hz)。"
 
-#: ui/config/view.py:153
+#: ui/config/view.py:155
 msgid "Upper edge of the low band (Hz)."
 msgstr "低域の上限 (Hz)。"
 
-#: ui/config/view.py:155
+#: ui/config/view.py:157
 msgid "Mid"
 msgstr "中域"
 
-#: ui/config/view.py:155
+#: ui/config/view.py:157
 msgid "Frequency range (Hz) drawn as the mid band of the waveform."
 msgstr "波形の中域として描く周波数範囲 (Hz)。"
 
-#: ui/config/view.py:156
+#: ui/config/view.py:158
 msgid "Lower edge of the mid band (Hz)."
 msgstr "中域の下限 (Hz)。"
 
-#: ui/config/view.py:156
+#: ui/config/view.py:158
 msgid "Upper edge of the mid band (Hz)."
 msgstr "中域の上限 (Hz)。"
 
-#: ui/config/view.py:158
+#: ui/config/view.py:160
 msgid "High"
 msgstr "高域"
 
-#: ui/config/view.py:158
+#: ui/config/view.py:160
 msgid "Frequency range (Hz) drawn as the high band of the waveform."
 msgstr "波形の高域として描く周波数範囲 (Hz)。"
 
-#: ui/config/view.py:159
+#: ui/config/view.py:161
 msgid "Lower edge of the high band (Hz)."
 msgstr "高域の下限 (Hz)。"
 
-#: ui/config/view.py:159
+#: ui/config/view.py:161
 msgid "Upper edge of the high band (Hz)."
 msgstr "高域の上限 (Hz)。"
 
-#: ui/config/view.py:161
+#: ui/config/view.py:163
 msgid "Performance"
 msgstr "パフォーマンス"
 
-#: ui/config/view.py:165
+#: ui/config/view.py:167
 msgid "Actual FPS"
 msgstr "実際の FPS"
 
-#: ui/config/view.py:169
+#: ui/config/view.py:171
 msgid "Record image path"
 msgstr "レコード画像のパス"
 
-#: ui/config/view.py:202
+#: ui/config/view.py:177 ui/config/view.py:205
 msgid "Phrase labels"
 msgstr "フレーズラベル"
 
-#: ui/config/view.py:205 ui/library/tabs/tieup_editor.py:143
+#: ui/config/view.py:208 ui/library/tabs/tieup_editor.py:143
 #: ui/windows/tieup_works.py:80
 msgid "Alias"
 msgstr "別名"
 
-#: ui/config/view.py:206
+#: ui/config/view.py:209
 msgid "Overview"
 msgstr "全体波形"
 
-#: ui/config/view.py:212
+#: ui/config/view.py:215
 #, python-brace-format
 msgid "Shown in place of {label} (empty: {label})"
 msgstr "{label} の代わりに表示 (空欄: {label})"
 
-#: ui/config/view.py:217
+#: ui/config/view.py:220
 #, python-brace-format
 msgid ""
 "{label} in the overview, numbered when it occurs more than once\n"
@@ -5263,11 +5271,11 @@ msgstr ""
 "(空欄: 名前の最初の文字)"
 
 # | msgid "Available with the native audio engine only."
-#: ui/config/view.py:279
+#: ui/config/view.py:282
 msgid "The spectrum needs the native audio engine."
 msgstr "スペクトラムは Native オーディオエンジンでのみ表示されます。"
 
-#: ui/config/wave_bands.py:204
+#: ui/config/wave_bands.py:205
 msgid "Load a track to preview the waveform."
 msgstr "曲をロードすると波形のプレビューが表示されます。"
 
@@ -7163,7 +7171,7 @@ msgstr "トラックが読み込まれていません"
 msgid "Playback"
 msgstr "再生"
 
-#: ui/config/library.py:80 ui/config/library.py:172 ui/shortcuts.py:32
+#: ui/config/library.py:81 ui/config/library.py:175 ui/shortcuts.py:32
 msgid "Library"
 msgstr "ライブラリ"
 

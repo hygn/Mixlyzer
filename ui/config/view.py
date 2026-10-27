@@ -3,6 +3,7 @@ from typing import Callable, Optional
 
 from PySide6.QtWidgets import (
     QCheckBox,
+    QButtonGroup,
     QComboBox,
     QDoubleSpinBox,
     QFormLayout,
@@ -11,8 +12,11 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QRadioButton,
     QSlider,
     QSpinBox,
+    QTabWidget,
+    QVBoxLayout,
     QWidget,
 )
 
@@ -23,17 +27,18 @@ from system.i18n import LANGUAGES, system_language, tr
 from views.timeline import SHORT_WINDOW_MAX_SEC
 from views.render.wave import wave_detail_band_ref
 from views.waveform import _WaveStyle
-from ui.config.scroll import scroll_page
-from ui.config.wave_bands import BandSpectrum, WavePreview
+from ui.config.scroll import groups_page
+from ui.config.wave_bands import F_MAX, F_MIN, BandSpectrum, WavePreview
 
 # the preview spans the main view's width its frame is for: up to SHORT_WINDOW_MAX_SEC, or a wider one
 PREVIEW_LONG_SEC = 16.0
+WAVEFORM_STYLES = (("rgb", "RGB"), ("3band", "3Band"))   # viewconfig.waveform_style, as named
 SPECTRUM_POLL_MS = 33
 
 
 def build_view_tab(dialog) -> None:
+    """Settings > View: its pages (General, Display, Waveform, Phrase labels)."""
     dialog.tab_view = QWidget()
-    form = QFormLayout(dialog.tab_view)
 
     # each language named in itself; "" follows the operating system's
     dialog.cmb_language = QComboBox()
@@ -47,10 +52,20 @@ def build_view_tab(dialog) -> None:
     dialog.cb_keystrip = QCheckBox(tr("Display keystrip"))
     dialog.cb_JumpCUE = QCheckBox(tr("Display JumpCUE"))
     dialog.cb_phrase = QCheckBox(tr("Display phrase overlay"))
-    dialog.cmb_waveform_style = QComboBox()
-    dialog.cmb_waveform_style.addItem("RGB", "rgb")
-    dialog.cmb_waveform_style.addItem("3Band", "3band")
-    dialog.cmb_waveform_style.setToolTip(tr(
+    # the waveform style: one radio button each, in a row (the value its button's: WAVEFORM_STYLES)
+    dialog.waveform_style_box = QWidget()
+    style_row = QHBoxLayout(dialog.waveform_style_box)
+    style_row.setContentsMargins(0, 0, 0, 0)
+    dialog.waveform_style_group = QButtonGroup(dialog.waveform_style_box)
+    dialog.rb_waveform_style = {}
+    for value, name in WAVEFORM_STYLES:
+        button = QRadioButton(name)
+        dialog.rb_waveform_style[value] = button
+        dialog.waveform_style_group.addButton(button)
+        style_row.addWidget(button)
+    style_row.addStretch(1)
+    dialog.rb_waveform_style["rgb"].setChecked(True)
+    dialog.waveform_style_box.setToolTip(tr(
         "RGB: the waveform colored by its low / mid / high mix.\n"
         "3Band: the low (blue), mid (amber) and high (white) bands drawn as layers."
     ))
@@ -114,7 +129,6 @@ def build_view_tab(dialog) -> None:
     f_display.addRow(dialog.cb_keystrip)
     f_display.addRow(dialog.cb_JumpCUE)
     f_display.addRow(dialog.cb_phrase)
-    f_display.addRow(tr("Waveform style"), dialog.cmb_waveform_style)
     f_display.addRow(dialog.cb_use_output_volume_as_peak_meter_input)
 
     # the waveforms' low / mid / high ranges: the overview and the preview redraw from the stored bands at once
@@ -125,18 +139,19 @@ def build_view_tab(dialog) -> None:
         lo.setToolTip(lo_tip)
         hi.setToolTip(hi_tip)
         for sp in (lo, hi):
-            sp.setDecimals(3); sp.setRange(0.0, 1e6); sp.setSingleStep(1.0); sp.setMinimumWidth(100)
+            sp.setDecimals(3); sp.setRange(F_MIN, F_MAX); sp.setSingleStep(1.0); sp.setMinimumWidth(100)
         h.addWidget(QLabel(tr("lo"))); h.addWidget(lo)
         h.addWidget(QLabel(tr("hi"))); h.addWidget(hi)
         parent_form.addRow(label, box)
         return lo, hi
-    # the waveform, top to bottom: the spectrum under the bands' sliders, the main view's frames and filter order (a
-    # slider beside each field), the preview drawn with them, the bands' edges typed
+    # the waveform, top to bottom: its style, the spectrum under the bands' sliders, the main view's frames and filter
+    # order (a slider beside each field), the preview drawn with them, the bands' edges typed
     grp_wave_bands = QGroupBox(tr("Waveform"))
     grp_wave_bands.setToolTip(tr(
         "Low / mid / high bands of the waveforms' colors."
     ))
     f_wave_bands = QFormLayout(grp_wave_bands)
+    f_wave_bands.addRow(tr("Waveform style"), dialog.waveform_style_box)
     dialog.band_spectrum = BandSpectrum()
     dialog.band_spectrum.setToolTip(tr("<p>The master output's spectrum as it plays. Drag a band's edges to set "
                                        "it.</p>"))
@@ -168,13 +183,14 @@ def build_view_tab(dialog) -> None:
     f_advanced = QFormLayout(grp_advanced)
     f_advanced.addRow(tr("Record image path"), dialog.ed_record_img_path)
 
-    form.addRow(grp_language)
-    form.addRow(grp_display)
-    form.addRow(grp_wave_bands)
-    form.addRow(_build_phrase_label_names(dialog))
-    form.addRow(grp_performance)
-    form.addRow(grp_advanced)
-    dialog.tabs.addTab(scroll_page(dialog.tab_view), tr("View"))
+    dialog.view_tabs = QTabWidget(dialog.tab_view)
+    dialog.view_tabs.addTab(groups_page(grp_language, grp_performance, grp_advanced), tr("General"))
+    dialog.view_tabs.addTab(groups_page(grp_display), tr("Display"))
+    dialog.view_tabs.addTab(groups_page(grp_wave_bands), tr("Waveform"))
+    dialog.view_tabs.addTab(groups_page(_build_phrase_label_names(dialog)), tr("Phrase labels"))
+    root = QVBoxLayout(dialog.tab_view)
+    root.addWidget(dialog.view_tabs)
+    dialog.tabs.addTab(dialog.tab_view, tr("View"))
 
 
 def _with_slider(spin, scale: int) -> QWidget:
@@ -228,6 +244,12 @@ class ViewSettingsMixin:
     def _set_language(self, language: str) -> None:
         self.cmb_language.setCurrentIndex(max(0, self.cmb_language.findData(language)))
 
+    def _set_waveform_style(self, style: str) -> None:
+        self.rb_waveform_style.get(style, self.rb_waveform_style["rgb"]).setChecked(True)
+
+    def _get_waveform_style(self) -> str:
+        return next((value for value, button in self.rb_waveform_style.items() if button.isChecked()), "rgb")
+
     def _get_language(self) -> str:
         return str(self.cmb_language.currentData() or "")
 
@@ -263,8 +285,8 @@ class ViewSettingsMixin:
         for band, (lo, hi) in enumerate(self._band_spins()):
             for spin in (lo, hi):
                 spin.valueChanged.connect(self._bands_typed)
-        self.cmb_waveform_style.currentIndexChanged.connect(
-            lambda _i: self.band_spectrum.set_style(str(self.cmb_waveform_style.currentData())))
+        self.waveform_style_group.buttonToggled.connect(
+            lambda _button, on: on and self.band_spectrum.set_style(self._get_waveform_style()))
         self.sp_mainview_wave_frame_ms_short.valueChanged.connect(lambda _v: self._preview_frame(False))
         self.sp_mainview_wave_frame_ms_long.valueChanged.connect(lambda _v: self._preview_frame(True))
 
@@ -306,7 +328,7 @@ class ViewSettingsMixin:
             bands=tuple((float(lo.value()), float(hi.value())) for lo, hi in self._band_spins()),
             filter_order=int(self.sp_mainview_wave_filter_order.value()),
             frame_ms=float(spin.value()),
-            waveform_style=str(self.cmb_waveform_style.currentData() or "rgb"),
+            waveform_style=self._get_waveform_style(),
             band_ref=wave_detail_band_ref(wave),
         )
         return style, PREVIEW_LONG_SEC if self._preview_long else float(SHORT_WINDOW_MAX_SEC)
@@ -320,7 +342,7 @@ class ViewSettingsMixin:
         """In sight: the engine makes the spectrum and the preview draws; out of it, neither."""
         if shown:
             self._bands_typed()
-            self.band_spectrum.set_style(str(self.cmb_waveform_style.currentData()))
+            self.band_spectrum.set_style(self._get_waveform_style())
             self.wave_preview.start()
         else:
             self.wave_preview.stop()

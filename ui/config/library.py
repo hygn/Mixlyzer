@@ -12,17 +12,18 @@ from PySide6.QtWidgets import (
     QListWidget,
     QMessageBox,
     QPushButton,
+    QTabWidget,
     QWidget,
 )
 
 from ui.config.dialogs import LibrarySyncProgressDialog, RekordboxSyncProgressDialog
-from ui.config.scroll import scroll_page
+from ui.config.scroll import groups_page
 from system.i18n import tr
 
 
 def build_library_tab(dialog) -> None:
+    """Settings > Library: its pages (General, Database, Rekordbox XML, Advanced)."""
     dialog.tab_lib = QWidget()
-    form = QFormLayout(dialog.tab_lib)
     dialog.ed_libpath = QtWidgets.QLineEdit()
     dialog.list_local_music_directories = QListWidget()
     dialog.list_local_music_directories.setSelectionMode(
@@ -155,11 +156,13 @@ def build_library_tab(dialog) -> None:
     f_advanced.addRow(tr("Log Path"), dialog.ed_logpath)
     f_advanced.addRow(dialog.lbl_log_note)
 
-    form.addRow(grp_library)
-    form.addRow(grp_database)
-    form.addRow(grp_backup)
-    form.addRow(grp_rekordbox)
-    form.addRow(grp_advanced)
+    dialog.library_tabs = QTabWidget(dialog.tab_lib)
+    dialog.library_tabs.addTab(groups_page(grp_library), tr("General"))
+    dialog.library_tabs.addTab(groups_page(grp_database, grp_backup), tr("Database"))
+    dialog.library_tabs.addTab(groups_page(grp_rekordbox), tr("Rekordbox XML"))
+    dialog.library_tabs.addTab(groups_page(grp_advanced), tr("Advanced"))
+    root = QtWidgets.QVBoxLayout(dialog.tab_lib)
+    root.addWidget(dialog.library_tabs)
 
     dialog.btn_rekordbox_sync_now.clicked.connect(dialog._sync_rekordbox_now)
     dialog.btn_library_sync_now.clicked.connect(dialog._sync_library_now)
@@ -169,7 +172,7 @@ def build_library_tab(dialog) -> None:
     dialog.btn_remove_local_music_directory.clicked.connect(
         dialog._remove_local_music_directories
     )
-    dialog.tabs.addTab(scroll_page(dialog.tab_lib), tr("Library"))
+    dialog.tabs.addTab(dialog.tab_lib, tr("Library"))
 
 
 class LibrarySettingsMixin:

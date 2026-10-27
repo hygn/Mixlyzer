@@ -18,7 +18,8 @@ from ui.theme import current_theme
 from views.render.wave import THREE_BAND_HIGH, THREE_BAND_LOW, THREE_BAND_MID
 from views.waveform import _WaveStyle, column_hop, render_columns
 
-F_MIN, F_MAX = spectrum_edges()[0], spectrum_edges()[-1]
+# the bands' edges and the spectrum shown, 20 Hz - 20 kHz (the engine's bins above it are not drawn)
+F_MIN, F_MAX = 20.0, 20000.0
 # the spectrum as shown: each bin's power (its density times its width: dB re full scale, a full-scale sine about
 # -3 dB in its bin), from DB_BOTTOM to DB_TOP
 DB_TOP, DB_BOTTOM = 0.0, -60.0
@@ -29,9 +30,35 @@ BAND_COLORS = {"rgb": ((235, 70, 70), (80, 210, 90), (80, 130, 255)),
                "3band": (THREE_BAND_LOW, THREE_BAND_MID, THREE_BAND_HIGH)}
 
 
+class _InsideAxis(pg.AxisItem):
+    """An axis whose labels at its ends are moved in to fit (the 20k at the right edge). pyqtgraph leaves out a
+    label its bounding rect does not hold: the rect is widened by EDGE_PX each side for that, and the labels moved
+    in after."""
+
+    EDGE_PX = 40
+
+    def boundingRect(self):
+        return super().boundingRect().adjusted(-self.EDGE_PX, 0, self.EDGE_PX, 0)
+
+    def generateDrawSpecs(self, p):
+        specs = super().generateDrawSpecs(p)
+        if specs is None:
+            return None
+        axis, ticks, texts = specs
+        right = float(self.width())
+        moved = []
+        for rect, flags, text in texts:
+            if rect.right() > right:
+                rect = rect.translated(right - rect.right(), 0)
+            if rect.left() < 0:
+                rect = rect.translated(-rect.left(), 0)
+            moved.append((rect, flags, text))
+        return axis, ticks, moved
+
+
 def _still_plot(height: int) -> pg.PlotWidget:
-    """A plot that only shows: no pan, zoom, menu or buttons."""
-    plot = pg.PlotWidget(background=current_theme().base)
+    """A plot that only shows: no pan, zoom, menu or buttons; its bottom axis's labels kept inside it."""
+    plot = pg.PlotWidget(background=current_theme().base, axisItems={"bottom": _InsideAxis("bottom")})
     plot.setMouseEnabled(x=False, y=False)
     plot.setMenuEnabled(False)
     plot.hideButtons()
@@ -66,11 +93,13 @@ class BandSpectrum(QtWidgets.QWidget):
             (50, "50"), (100, "100"), (200, "200"), (500, "500"), (1000, "1k"), (2000, "2k"), (5000, "5k"),
             (10000, "10k"), (20000, "20k"))]])
         item.showGrid(x=True, y=False, alpha=0.25)
-        item.setXRange(math.log10(F_MIN), math.log10(F_MAX), padding=0)
+        # a hair wider than the bands' range: pyqtgraph leaves out a tick on the range's very edge (the 20k)
+        item.setXRange(math.log10(F_MIN), math.log10(F_MAX * 1.0005), padding=0)
         item.setYRange(DB_BOTTOM, DB_TOP, padding=0)
         edges = np.asarray(spectrum_edges())
         self._centres = np.sqrt(edges[:-1] * edges[1:])
         self._width_db = 10.0 * np.log10(np.diff(edges))     # a bin's density (per Hz) to its power
+        self._shown = self._centres <= F_MAX                  # the bins drawn
         fill = QtGui.QColor(theme.text)
         fill.setAlpha(40)
         self._curve = pg.PlotDataItem(pen=pg.mkPen(theme.text, width=1.2), fillLevel=DB_BOTTOM, brush=fill)
@@ -136,7 +165,7 @@ class BandSpectrum(QtWidgets.QWidget):
             frame = np.asarray(frame, dtype=np.float64) + self._width_db
             self._db = frame if self._db is None else np.maximum(frame, self._db - DB_FALL_PER_FRAME)
         if len(frames):
-            self._curve.setData(self._centres, np.clip(self._db, DB_BOTTOM, DB_TOP))
+            self._curve.setData(self._centres[self._shown], np.clip(self._db[self._shown], DB_BOTTOM, DB_TOP))
 
     def clear(self) -> None:
         self._db = None

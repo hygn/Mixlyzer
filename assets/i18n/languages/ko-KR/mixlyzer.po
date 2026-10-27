@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-28 01:48+0900\n"
+"POT-Creation-Date: 2026-10-28 01:56+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ko_KR\n"
@@ -564,7 +564,7 @@ msgstr "오픈 소스"
 msgid "About"
 msgstr "정보"
 
-#: app/window.py:270 core/controls/midi.py:55 ui/config/playback.py:339
+#: app/window.py:270 core/controls/midi.py:55 ui/config/playback.py:329
 msgid "Mixer"
 msgstr "믹서"
 
@@ -1542,7 +1542,7 @@ msgid "Processing Waveform"
 msgstr "파형 처리 중"
 
 #: core/workers/analysis_texts.py:15 ui/config/pipeline_map.py:32
-#: ui/config/view.py:135
+#: ui/config/view.py:137 ui/config/view.py:176
 msgid "Waveform"
 msgstr "파형"
 
@@ -1994,7 +1994,8 @@ msgstr "상대 또는 절대 .json 경로"
 msgid "Folder for features cached while reoptimizing, so later runs are faster."
 msgstr "재최적화하는 동안 특징을 캐시해 두는 폴더. 다음 실행이 빨라집니다."
 
-#: ui/config/analysis.py:47 ui/config/analysis.py:163
+#: ui/config/analysis.py:47 ui/config/analysis.py:163 ui/config/library.py:160
+#: ui/config/view.py:174
 msgid "General"
 msgstr "일반"
 
@@ -2106,7 +2107,8 @@ msgstr "BPM 최소"
 
 #: ui/config/analysis.py:139 ui/config/analysis.py:177
 #: ui/config/analysis.py:200 ui/config/dialogs/optimization.py:204
-#: ui/config/library.py:152 ui/config/playback.py:107 ui/config/view.py:167
+#: ui/config/library.py:153 ui/config/library.py:163 ui/config/playback.py:107
+#: ui/config/view.py:169
 msgid "Advanced"
 msgstr "고급"
 
@@ -3433,40 +3435,40 @@ msgid ""
 "ago, from {sender})."
 msgstr "{address}에서 받는 중; 로드되어 있고 활성인 덱이 없음 (마지막 메시지 {age}초 전, {sender})."
 
-#: ui/config/library.py:32
+#: ui/config/library.py:33
 msgid "Add Folder…"
 msgstr "폴더 추가…"
 
-#: ui/config/library.py:33 ui/library/actions.py:98
+#: ui/config/library.py:34 ui/library/actions.py:98
 #: ui/library/tabs/tieup_editor.py:368
 msgid "Remove"
 msgstr "제거"
 
-#: ui/config/library.py:35
+#: ui/config/library.py:36
 msgid ""
 "When this list is empty, the operating system's default Music folder is "
 "used."
 msgstr "이 목록이 비어 있으면 운영체제의 기본 음악 폴더를 씁니다."
 
-#: ui/config/library.py:38
+#: ui/config/library.py:39
 msgid "Write log to file"
 msgstr "로그를 파일에 쓰기"
 
-#: ui/config/library.py:40
+#: ui/config/library.py:41
 msgid "Sync with Rekordbox XML"
 msgstr "Rekordbox XML과 동기화"
 
-#: ui/config/library.py:48
+#: ui/config/library.py:49
 msgid ""
 "<p>Rekordbox has no tempo ramps: a ramp is written as steps of steady "
 "tempo. Smaller makes the steps finer.</p>"
 msgstr "<p>Rekordbox에는 템포 램프가 없어 램프를 일정한 템포의 단계로 나누어 씁니다. 작을수록 단계가 잘게 나뉩니다.</p>"
 
-#: ui/config/library.py:51 ui/library/tabs/export.py:117
+#: ui/config/library.py:52 ui/library/tabs/export.py:117
 msgid "Tie-ups after the comment"
 msgstr "코멘트 뒤에 타이업 붙이기"
 
-#: ui/config/library.py:53
+#: ui/config/library.py:54
 msgid ""
 "<p>Each track's comment in the XML with its song's tie-ups after it, as "
 "[Title OP; Other ED]; the library's comment stays as it is.</p>"
@@ -3474,67 +3476,67 @@ msgstr ""
 "<p>XML의 각 트랙 코멘트 뒤에 곡의 타이업을 [제목 OP; 다른 작품 ED] 형식으로 붙입니다. 라이브러리의 코멘트는 그대로 "
 "둡니다.</p>"
 
-#: ui/config/library.py:55 ui/config/library.py:108
+#: ui/config/library.py:56 ui/config/library.py:109
 msgid "Sync Now"
 msgstr "지금 동기화"
 
-#: ui/config/library.py:56
+#: ui/config/library.py:57
 msgid "Logging settings apply on next app launch."
 msgstr "로그 설정은 다음에 앱을 실행할 때 적용됩니다."
 
-#: ui/config/library.py:57
+#: ui/config/library.py:58
 msgid "Use Sync Now to rebuild the whole XML explicitly."
 msgstr "XML 전체를 직접 다시 만들려면 지금 동기화를 누르세요."
 
 # | msgid "" "Folder holding library.db and the per-track feature files
 # | (.npz).\n" "Relative paths are resolved from the app folder."
-#: ui/config/library.py:61
+#: ui/config/library.py:62
 msgid "Folder holding library.db and the per-track feature files (.npz)."
 msgstr "library.db와 트랙별 특징 파일(.npz)을 두는 폴더."
 
-#: ui/config/library.py:64
+#: ui/config/library.py:65
 msgid "Root folders shown under Local Folders in the library browser."
 msgstr "라이브러리 브라우저의 로컬 폴더 아래에 보이는 최상위 폴더."
 
-#: ui/config/library.py:66
+#: ui/config/library.py:67
 msgid "Add a local music root folder."
 msgstr "로컬 음악 최상위 폴더를 추가합니다."
 
-#: ui/config/library.py:67
+#: ui/config/library.py:68
 msgid "Remove the selected root folders."
 msgstr "선택한 최상위 폴더를 제거합니다."
 
-#: ui/config/library.py:68
+#: ui/config/library.py:69
 msgid "Write console output to a log file."
 msgstr "콘솔 출력을 로그 파일에 씁니다."
 
-#: ui/config/library.py:69
+#: ui/config/library.py:70
 msgid "Log file written when 'Write log to file' is on."
 msgstr "'로그를 파일에 쓰기'가 켜져 있을 때 쓰는 로그 파일."
 
-#: ui/config/library.py:71
+#: ui/config/library.py:72
 msgid ""
 "Keep a Rekordbox XML file updated with the library's beat grids, keys and"
 " cues."
 msgstr "라이브러리의 비트그리드, 키, 큐를 Rekordbox XML 파일에 계속 반영합니다."
 
-#: ui/config/library.py:74
+#: ui/config/library.py:75
 msgid "Rekordbox XML file to write. Import it in Rekordbox to use the analysis."
 msgstr "쓸 Rekordbox XML 파일. Rekordbox에서 가져오면 분석을 쓸 수 있습니다."
 
-#: ui/config/library.py:77
+#: ui/config/library.py:78
 msgid "Save these settings and rebuild the whole XML from the library now."
 msgstr "이 설정을 저장하고 지금 라이브러리로 XML 전체를 다시 만듭니다."
 
-#: ui/config/library.py:82
+#: ui/config/library.py:83
 msgid "Library Path"
 msgstr "라이브러리 경로"
 
-#: ui/config/library.py:93
+#: ui/config/library.py:94
 msgid "Local Music Folders"
 msgstr "로컬 음악 폴더"
 
-#: ui/config/library.py:94
+#: ui/config/library.py:95
 msgid "Add a tie-up to the track's versions too"
 msgstr "타이업을 추가하면 다른 버전에도 추가"
 
@@ -3542,17 +3544,17 @@ msgstr "타이업을 추가하면 다른 버전에도 추가"
 # | (Settings > " "Library)."
 # | msgid_plural "" "A tie-up added here is added to its {n} other versions
 # too
-#: ui/config/library.py:96
+#: ui/config/library.py:97
 msgid ""
 "<p>A tie-up added in the Edit tab is added to the track's other versions "
 "as well.</p>"
 msgstr "<p>편집 탭에서 추가한 타이업을 이 트랙의 다른 버전에도 추가합니다.</p>"
 
-#: ui/config/library.py:98
+#: ui/config/library.py:99
 msgid "Look up a new track's tie-ups on Wikipedia"
 msgstr "새 트랙의 타이업을 위키백과에서 찾기"
 
-#: ui/config/library.py:100
+#: ui/config/library.py:101
 msgid ""
 "<p>After a new track's analysis, its tie-ups are looked up on Japanese "
 "Wikipedia and Wikidata and the ones found for certain are added. Its "
@@ -3561,11 +3563,11 @@ msgstr ""
 "<p>새 트랙을 분석한 뒤 일본어 위키백과와 Wikidata에서 타이업을 찾아 확실한 것을 추가합니다. 이때 트랙의 제목과 "
 "아티스트가 전송됩니다.</p>"
 
-#: ui/config/library.py:105
+#: ui/config/library.py:106
 msgid "Update the library database when the editor saves"
 msgstr "편집기에서 저장할 때 라이브러리 데이터베이스도 갱신"
 
-#: ui/config/library.py:107
+#: ui/config/library.py:108
 msgid ""
 "<p>The editor's save also writes the track's BPM, key and search tables "
 "into the library database.</p>"
@@ -3577,7 +3579,7 @@ msgstr "<p>편집기에서 저장할 때 트랙의 BPM, 키, 검색용 표를 �
 # | them). " "Titles, artists, ratings and comments are not touched.</p>"
 # | them), a BPM " "or key typed in the Edit Track tab replaced too. Titles,
 # | artists, ratings" " and comments are not touched.</p>"
-#: ui/config/library.py:110
+#: ui/config/library.py:111
 msgid ""
 "<p>Every track's BPM, key and search tables in the library database made "
 "again from its stored analysis. A BPM or key typed in the Edit Track tab "
@@ -3588,11 +3590,11 @@ msgstr ""
 "입력한 BPM과 키도 바뀝니다. 제목, 아티스트, 별점, 코멘트는 건드리지 않습니다.</p>"
 
 # | msgid "Library Path"
-#: ui/config/library.py:113
+#: ui/config/library.py:114
 msgid "Library Database"
 msgstr "라이브러리 데이터베이스"
 
-#: ui/config/library.py:119
+#: ui/config/library.py:120
 msgid "Include the feature caches"
 msgstr "특징 캐시 포함"
 
@@ -3601,13 +3603,13 @@ msgstr "특징 캐시 포함"
 # | " "training data, made again from the library when missing, so a backup is
 # "
 # | "smaller without them.</p>"
-#: ui/config/library.py:121
+#: ui/config/library.py:122
 msgid ""
 "<p>A backup also packs the analyses' feature caches (Reoptimize's "
 "training data). Without them a backup is smaller.</p>"
 msgstr "<p>백업에 분석의 특징 캐시(재최적화의 학습 데이터)도 담습니다. 빼면 백업이 작아집니다.</p>"
 
-#: ui/config/library.py:123
+#: ui/config/library.py:124
 msgid "Back Up Library…"
 msgstr "라이브러리 백업…"
 
@@ -3616,7 +3618,7 @@ msgstr "라이브러리 백업…"
 # | indexes, the " "settings, your shortcuts, MIDI mapping and retrained
 # models.
 # | The music " "files themselves are not packed.</p>"
-#: ui/config/library.py:125
+#: ui/config/library.py:126
 msgid ""
 "<p>The library packed into one file: its database, every track's stored "
 "analysis, the thumbnails, the search indexes, the settings, your "
@@ -3626,7 +3628,7 @@ msgstr ""
 "<p>라이브러리를 파일 하나에 담습니다. 데이터베이스, 모든 트랙의 저장된 분석, 썸네일, 검색 색인, 설정, 단축키, MIDI "
 "매핑, 재학습한 모델이 들어갑니다. 음악 파일 자체는 담지 않습니다.</p>"
 
-#: ui/config/library.py:128
+#: ui/config/library.py:129
 msgid "Restore Library…"
 msgstr "라이브러리 복원…"
 
@@ -3634,38 +3636,44 @@ msgstr "라이브러리 복원…"
 # or
 # | " "another; its music folders joined to this device's, then Mixlyzer "
 # | "restarts on it. The library in use now is kept as it is.</p>"
-#: ui/config/library.py:130
+#: ui/config/library.py:131
 msgid ""
 "<p>A backup unpacked into a new library folder, then Mixlyzer restarts on"
 " it. The library in use now is kept as it is.</p>"
 msgstr "<p>백업을 새 라이브러리 폴더에 풀고 Mixlyzer가 그 라이브러리로 재시작합니다. 지금 쓰는 라이브러리는 그대로 둡니다.</p>"
 
-#: ui/config/library.py:138 ui/windows/library_backup.py:146
+#: ui/config/library.py:139 ui/windows/library_backup.py:146
 msgid "Backup"
 msgstr "백업"
 
-#: ui/config/library.py:143
+#: ui/config/library.py:144 ui/config/library.py:162
 msgid "Rekordbox XML"
 msgstr "Rekordbox XML"
 
-#: ui/config/library.py:146
+#: ui/config/library.py:147
 msgid "XML Path"
 msgstr "XML 경로"
 
-#: ui/config/library.py:147
+#: ui/config/library.py:148
 msgid "Tempo ramp tolerance"
 msgstr "템포 램프 허용 오차"
 
-#: ui/config/library.py:155
+#: ui/config/library.py:156
 msgid "Log Path"
 msgstr "로그 경로"
 
-#: ui/config/library.py:185
+# | msgid "Library Path"
+# | msgid "Library Database"
+#: ui/config/library.py:161
+msgid "Database"
+msgstr "데이터베이스"
+
+#: ui/config/library.py:188
 msgid "Add Local Music Folder"
 msgstr "로컬 음악 폴더 추가"
 
 # | msgid "Library Path"
-#: ui/config/dialogs/library_sync.py:17 ui/config/library.py:248
+#: ui/config/dialogs/library_sync.py:17 ui/config/library.py:251
 msgid "Sync Library Database"
 msgstr "라이브러리 데이터베이스 동기화"
 
@@ -3673,7 +3681,7 @@ msgstr "라이브러리 데이터베이스 동기화"
 # | database made " "again from its stored analysis (as the editor's save
 # writes
 # | them). " "Titles, artists, ratings and comments are not touched.</p>"
-#: ui/config/library.py:249
+#: ui/config/library.py:252
 msgid ""
 "Every track's BPM, key and search tables in the library database will be "
 "made again from its stored analysis. A BPM or key typed in the Edit Track"
@@ -3686,20 +3694,20 @@ msgstr ""
 "\n"
 "지금 동기화할까요?"
 
-#: ui/config/library.py:294
+#: ui/config/library.py:297
 msgid "Enable Sync with Rekordbox XML first."
 msgstr "먼저 'Rekordbox XML과 동기화'를 켜세요."
 
-#: ui/config/dialogs/rekordbox.py:15 ui/config/library.py:294
-#: ui/config/library.py:299
+#: ui/config/dialogs/rekordbox.py:15 ui/config/library.py:297
+#: ui/config/library.py:302
 msgid "Sync Rekordbox XML"
 msgstr "Rekordbox XML 동기화"
 
-#: ui/config/library.py:299
+#: ui/config/library.py:302
 msgid "Rekordbox XML Path is empty."
 msgstr "Rekordbox XML 경로가 비어 있습니다."
 
-#: ui/config/library.py:340
+#: ui/config/library.py:343
 msgid "Rekordbox XML worker started"
 msgstr "Rekordbox XML 작업 시작됨"
 
@@ -4167,7 +4175,7 @@ msgstr "클록 드리프트"
 msgid "Opening the output device..."
 msgstr "출력 장치를 여는 중..."
 
-#: ui/config/output_group.py:393 ui/config/playback.py:518
+#: ui/config/output_group.py:393 ui/config/playback.py:508
 msgid ""
 "The output device could not be opened (another app may hold it in "
 "exclusive mode); it is tried again every second."
@@ -4184,7 +4192,7 @@ msgstr "{ppm} ppm (이만큼 리샘플해 따라감)"
 msgid "Output thread: {output}"
 msgstr "출력 스레드: {output}"
 
-#: ui/config/output_group.py:409 ui/config/playback.py:536
+#: ui/config/output_group.py:409 ui/config/playback.py:526
 #, python-brace-format
 msgid "Late output wake-ups: {count} (longest gap {gap} ms)"
 msgstr "출력 스레드 늦은 깨어남: {count}회 (최장 간격 {gap} ms)"
@@ -4199,7 +4207,7 @@ msgstr "재생 장치: {device}, {rate} kHz"
 msgid "Its device's stream is shared with another output, at that output's rate."
 msgstr "이 장치의 스트림을 다른 출력과 함께 쓰므로 그 출력의 샘플레이트로 재생됩니다."
 
-#: ui/config/pipeline_map.py:22 ui/config/view.py:177
+#: ui/config/pipeline_map.py:22 ui/config/view.py:180
 msgid "View"
 msgstr "보기"
 
@@ -4234,7 +4242,7 @@ msgstr "디코딩, HPSS"
 msgid "overview levels"
 msgstr "전체 파형 레벨"
 
-#: ui/config/pipeline_map.py:32 ui/config/playback.py:343
+#: ui/config/pipeline_map.py:32 ui/config/playback.py:333
 msgid "Audio"
 msgstr "오디오"
 
@@ -4304,7 +4312,7 @@ msgid "Native first"
 msgstr "Native 우선"
 
 # | msgid "Path"
-#: ui/config/playback.py:47 ui/config/playback.py:430
+#: ui/config/playback.py:47 ui/config/playback.py:420
 msgid "Python"
 msgstr "Python"
 
@@ -4390,7 +4398,7 @@ msgstr ""
 "표시해 둘 다 끕니다(유휴 시 잠자기는 그대로). 바로 적용됩니다.</p>"
 
 # | msgid "Audio engine"
-#: ui/config/playback.py:89 ui/config/playback.py:335
+#: ui/config/playback.py:89 ui/config/playback.py:325
 msgid "Engine"
 msgstr "엔진"
 
@@ -4473,7 +4481,7 @@ msgid ""
 "answers sooner.</p>"
 msgstr "<p>Python 엔진이 출력 장치 앞에 쌓아 두는 오디오입니다. 작을수록 반응이 빠릅니다.</p>"
 
-#: ui/config/playback.py:175 ui/config/playback.py:336
+#: ui/config/playback.py:175 ui/config/playback.py:326
 msgid "Main output"
 msgstr "메인 출력"
 
@@ -4603,7 +4611,7 @@ msgstr "나머지 박의 클릭 볼륨."
 msgid "Pitch shift of the click on the other beats."
 msgstr "나머지 박 클릭의 피치 이동."
 
-#: ui/config/playback.py:286 ui/config/playback.py:340
+#: ui/config/playback.py:286 ui/config/playback.py:330
 msgid "Metronome"
 msgstr "메트로놈"
 
@@ -4636,49 +4644,49 @@ msgid "Beat pitch (semitones)"
 msgstr "박 피치 (반음)"
 
 # | msgid "Overview"
-#: ui/config/playback.py:334
+#: ui/config/playback.py:324
 msgctxt "settings page"
 msgid "Overview"
 msgstr "개요"
 
 # | msgid "Headphones: level"
-#: ui/config/playback.py:337
+#: ui/config/playback.py:327
 msgid "Headphones"
 msgstr "헤드폰"
 
 # | msgid "About"
-#: ui/config/playback.py:338
+#: ui/config/playback.py:328
 msgid "Booth"
 msgstr "부스"
 
 # | msgid "Starting"
-#: ui/config/playback.py:362
+#: ui/config/playback.py:352
 msgid "Restarting..."
 msgstr "재시작 중..."
 
 # | msgid "Start"
-#: ui/config/playback.py:367
+#: ui/config/playback.py:357
 msgid "Restarted."
 msgstr "재시작했습니다."
 
-#: ui/config/playback.py:368
+#: ui/config/playback.py:358
 msgid "The engine did not start; it is tried again every 2 seconds."
 msgstr "엔진이 시작되지 않았습니다. 2초마다 다시 시도합니다."
 
-#: ui/config/playback.py:428
+#: ui/config/playback.py:418
 msgid "Buffer size, Python engine"
 msgstr "버퍼 크기, Python 엔진"
 
-#: ui/config/playback.py:429
+#: ui/config/playback.py:419
 msgid "Buffer size, native engine"
 msgstr "버퍼 크기, Native 엔진"
 
 # | msgid "Active"
-#: ui/config/playback.py:430
+#: ui/config/playback.py:420
 msgid "Native"
 msgstr "Native"
 
-#: ui/config/playback.py:432
+#: ui/config/playback.py:422
 #, python-brace-format
 msgid ""
 "<p>Native: the audio engine in a process of its own (no dropouts when the"
@@ -4690,29 +4698,29 @@ msgstr ""
 "빌드되어 있지 않거나 시작할 수 없으면 Python 엔진을 씁니다. Python: Python 엔진만 씁니다. 다음 시작부터 "
 "적용됩니다.</p><p>지금 재생 중: {engine}.</p>"
 
-#: ui/config/playback.py:438
+#: ui/config/playback.py:428
 msgid "<p>The native engine on Linux and macOS is experimental.</p>"
 msgstr "<p>Linux와 macOS의 네이티브 엔진은 실험적 기능입니다.</p>"
 
-#: ui/config/playback.py:539
+#: ui/config/playback.py:529
 #, python-brace-format
 msgid "Engine thread: {engine}   Output thread: {output}"
 msgstr "엔진 스레드: {engine}   출력 스레드: {output}"
 
-#: ui/config/playback.py:543
+#: ui/config/playback.py:533
 msgid "Power throttling could be turned off only in part."
 msgstr "전원 제한을 일부만 끌 수 있었습니다."
 
-#: ui/config/playback.py:545
+#: ui/config/playback.py:535
 msgid "Power throttling could not be turned off."
 msgstr "전원 제한을 끌 수 없었습니다."
 
-#: ui/config/playback.py:550
+#: ui/config/playback.py:540
 #, python-brace-format
 msgid "Response measured: play {play} ms   pause {pause} ms   seek {seek} ms"
 msgstr "실측 응답: 재생 {play} ms   일시정지 {pause} ms   탐색 {seek} ms"
 
-#: ui/config/playback.py:553
+#: ui/config/playback.py:543
 #, python-brace-format, python-format
 msgid ""
 "EMA {ema} / {capacity} ms   1% low {low} ms   lowest {lowest} ms "
@@ -4991,36 +4999,36 @@ msgstr ""
 "\n"
 "그래도 쓸까요?"
 
-#: ui/config/view.py:40
+#: ui/config/view.py:42
 #, python-brace-format
 msgid "System ({language})"
 msgstr "시스템 ({language})"
 
-#: ui/config/view.py:43
+#: ui/config/view.py:45
 msgid "The language of the app's texts. Applied at the next start."
 msgstr "앱 텍스트의 언어. 다음 실행부터 적용됩니다."
 
-#: ui/config/view.py:45
+#: ui/config/view.py:47
 msgid "Display waveform"
 msgstr "파형 표시"
 
-#: ui/config/view.py:46
+#: ui/config/view.py:48
 msgid "Display beatgrid"
 msgstr "비트그리드 표시"
 
-#: ui/config/view.py:47
+#: ui/config/view.py:49
 msgid "Display keystrip"
 msgstr "키 스트립 표시"
 
-#: ui/config/view.py:48
+#: ui/config/view.py:50
 msgid "Display JumpCUE"
 msgstr "JumpCUE 표시"
 
-#: ui/config/view.py:49
+#: ui/config/view.py:51
 msgid "Display phrase overlay"
 msgstr "프레이즈 오버레이 표시"
 
-#: ui/config/view.py:54
+#: ui/config/view.py:56
 msgid ""
 "RGB: the waveform colored by its low / mid / high mix.\n"
 "3Band: the low (blue), mid (amber) and high (white) bands drawn as layers."
@@ -5028,7 +5036,7 @@ msgstr ""
 "RGB: 저역 / 중역 / 고역의 비율로 파형에 색을 입힙니다.\n"
 "3Band: 저역(파랑), 중역(호박색), 고역(흰색) 대역을 층으로 그립니다."
 
-#: ui/config/view.py:62
+#: ui/config/view.py:64
 #, python-brace-format
 msgid ""
 "Time resolution of the main view waveform bars when the view is up to "
@@ -5038,7 +5046,7 @@ msgstr ""
 "뷰 폭이 {seconds}초 이하일 때 메인 뷰 파형 막대의 시간 해상도.\n"
 "작을수록 자세합니다."
 
-#: ui/config/view.py:65
+#: ui/config/view.py:67
 #, python-brace-format
 msgid ""
 "Time resolution of the main view waveform bars when the view is wider "
@@ -5048,49 +5056,49 @@ msgstr ""
 "뷰 폭이 {seconds}초보다 넓을 때 메인 뷰 파형 막대의 시간 해상도.\n"
 "작을수록 자세합니다."
 
-#: ui/config/view.py:73
+#: ui/config/view.py:75
 msgid ""
 "Order of the main view waveform's band filters. Higher separates the "
 "bands more sharply."
 msgstr "메인 뷰 파형의 대역 필터 차수. 높을수록 대역을 더 날카롭게 나눕니다."
 
-#: ui/config/view.py:76
+#: ui/config/view.py:78
 msgid "Use output volume as peak meter input"
 msgstr "출력 볼륨을 피크 미터 입력으로 사용"
 
-#: ui/config/view.py:78
+#: ui/config/view.py:80
 msgid "Reduce FPS when occluded"
 msgstr "가려졌을 때 FPS 낮추기"
 
-#: ui/config/view.py:84
+#: ui/config/view.py:86
 msgid "Waiting for FPS..."
 msgstr "FPS 기다리는 중..."
 
-#: ui/config/view.py:86
+#: ui/config/view.py:88
 msgid "Measured from actual pyqtgraph plot repaint intervals."
 msgstr "pyqtgraph 플롯이 실제로 다시 그려진 간격으로 잽니다."
 
-#: ui/config/view.py:88
+#: ui/config/view.py:90
 msgid "Show the detailed waveform view."
 msgstr "자세한 파형 뷰를 표시합니다."
 
-#: ui/config/view.py:89
+#: ui/config/view.py:91
 msgid "Show the beat grid view."
 msgstr "비트그리드 뷰를 표시합니다."
 
-#: ui/config/view.py:90
+#: ui/config/view.py:92
 msgid "Show the key strip (detected key over time)."
 msgstr "키 스트립(시간에 따른 검출된 키)을 표시합니다."
 
-#: ui/config/view.py:91
+#: ui/config/view.py:93
 msgid "Show the JumpCUE view (detected repeat jump points)."
 msgstr "JumpCUE 뷰(검출된 반복 점프 지점)를 표시합니다."
 
-#: ui/config/view.py:92
+#: ui/config/view.py:94
 msgid "Overlay the detected phrases on the views."
 msgstr "검출된 프레이즈를 뷰 위에 겹쳐 표시합니다."
 
-#: ui/config/view.py:94
+#: ui/config/view.py:96
 msgid ""
 "Checked: the peak meter follows the volume slider (what you hear).\n"
 "Unchecked: the peak meter shows the level after Trim only."
@@ -5098,7 +5106,7 @@ msgstr ""
 "켜짐: 피크 미터가 볼륨 슬라이더를 따릅니다(들리는 소리).\n"
 "꺼짐: 피크 미터가 트림만 거친 레벨을 보여 줍니다."
 
-#: ui/config/view.py:98
+#: ui/config/view.py:100
 msgid ""
 "Lower the redraw rate while the window is hidden behind other windows\n"
 "or minimized, to save CPU."
@@ -5106,143 +5114,143 @@ msgstr ""
 "창이 다른 창 뒤에 가려지거나 최소화되어 있는 동안\n"
 "다시 그리는 빈도를 낮춰 CPU를 아낍니다."
 
-#: ui/config/view.py:101
+#: ui/config/view.py:103
 msgid "Target redraw rate of the views."
 msgstr "뷰를 다시 그리는 목표 빈도."
 
-#: ui/config/view.py:103
+#: ui/config/view.py:105
 msgid "Image drawn as the spinning record when a track has no album art."
 msgstr "트랙에 앨범 아트가 없을 때 도는 레코드로 그릴 이미지."
 
-#: ui/config/view.py:106 ui/config/view.py:108
+#: ui/config/view.py:108 ui/config/view.py:110
 #: ui/library/tabs/tieup_editor.py:140 ui/library/tabs/tieup_editor.py:143
 #: ui/windows/tieup_works.py:77 ui/windows/tieup_works.py:80
 msgid "Language"
 msgstr "언어"
 
-#: ui/config/view.py:110
+#: ui/config/view.py:112 ui/config/view.py:175
 msgid "Display"
 msgstr "표시"
 
-#: ui/config/view.py:117
+#: ui/config/view.py:119
 msgid "Waveform style"
 msgstr "파형 스타일"
 
-#: ui/config/view.py:129
+#: ui/config/view.py:131
 msgid "lo"
 msgstr "하한"
 
-#: ui/config/view.py:130
+#: ui/config/view.py:132
 msgid "hi"
 msgstr "상한"
 
-#: ui/config/view.py:137
+#: ui/config/view.py:139
 msgid "Low / mid / high bands of the waveforms' colors."
 msgstr "파형 색의 저역 / 중역 / 고역 대역."
 
-#: ui/config/view.py:141
+#: ui/config/view.py:143
 msgid ""
 "<p>The master output's spectrum as it plays. Drag a band's edges to set "
 "it.</p>"
 msgstr "<p>재생 중인 마스터 출력의 스펙트럼입니다. 대역의 양 끝을 끌어서 설정합니다.</p>"
 
-#: ui/config/view.py:144
+#: ui/config/view.py:146
 msgid "Frame, short view (ms)"
 msgstr "프레임, 짧은 뷰 (ms)"
 
-#: ui/config/view.py:145
+#: ui/config/view.py:147
 msgid "Frame, long view (ms)"
 msgstr "프레임, 긴 뷰 (ms)"
 
-#: ui/config/view.py:146
+#: ui/config/view.py:148
 msgid "Filter order"
 msgstr "필터 차수"
 
-#: ui/config/view.py:148
+#: ui/config/view.py:150
 msgid ""
 "<p>The loaded track at the playhead, drawn with these settings. What is "
 "already drawn keeps the settings it was drawn with.</p>"
 msgstr "<p>로드된 곡의 재생 위치를 이 설정으로 그립니다. 이미 그려진 부분은 그때의 설정을 유지합니다.</p>"
 
-#: ui/config/view.py:152
+#: ui/config/view.py:154
 msgid "Low"
 msgstr "저역"
 
-#: ui/config/view.py:152
+#: ui/config/view.py:154
 msgid "Frequency range (Hz) drawn as the low band of the waveform."
 msgstr "파형의 저역 대역으로 그릴 주파수 범위(Hz)."
 
-#: ui/config/view.py:153
+#: ui/config/view.py:155
 msgid "Lower edge of the low band (Hz)."
 msgstr "저역 대역의 하한 (Hz)."
 
-#: ui/config/view.py:153
+#: ui/config/view.py:155
 msgid "Upper edge of the low band (Hz)."
 msgstr "저역 대역의 상한 (Hz)."
 
-#: ui/config/view.py:155
+#: ui/config/view.py:157
 msgid "Mid"
 msgstr "중역"
 
-#: ui/config/view.py:155
+#: ui/config/view.py:157
 msgid "Frequency range (Hz) drawn as the mid band of the waveform."
 msgstr "파형의 중역 대역으로 그릴 주파수 범위(Hz)."
 
-#: ui/config/view.py:156
+#: ui/config/view.py:158
 msgid "Lower edge of the mid band (Hz)."
 msgstr "중역 대역의 하한 (Hz)."
 
-#: ui/config/view.py:156
+#: ui/config/view.py:158
 msgid "Upper edge of the mid band (Hz)."
 msgstr "중역 대역의 상한 (Hz)."
 
-#: ui/config/view.py:158
+#: ui/config/view.py:160
 msgid "High"
 msgstr "고역"
 
-#: ui/config/view.py:158
+#: ui/config/view.py:160
 msgid "Frequency range (Hz) drawn as the high band of the waveform."
 msgstr "파형의 고역 대역으로 그릴 주파수 범위(Hz)."
 
-#: ui/config/view.py:159
+#: ui/config/view.py:161
 msgid "Lower edge of the high band (Hz)."
 msgstr "고역 대역의 하한 (Hz)."
 
-#: ui/config/view.py:159
+#: ui/config/view.py:161
 msgid "Upper edge of the high band (Hz)."
 msgstr "고역 대역의 상한 (Hz)."
 
-#: ui/config/view.py:161
+#: ui/config/view.py:163
 msgid "Performance"
 msgstr "성능"
 
-#: ui/config/view.py:165
+#: ui/config/view.py:167
 msgid "Actual FPS"
 msgstr "실제 FPS"
 
-#: ui/config/view.py:169
+#: ui/config/view.py:171
 msgid "Record image path"
 msgstr "레코드 이미지 경로"
 
-#: ui/config/view.py:202
+#: ui/config/view.py:177 ui/config/view.py:205
 msgid "Phrase labels"
 msgstr "프레이즈 라벨"
 
-#: ui/config/view.py:205 ui/library/tabs/tieup_editor.py:143
+#: ui/config/view.py:208 ui/library/tabs/tieup_editor.py:143
 #: ui/windows/tieup_works.py:80
 msgid "Alias"
 msgstr "별칭"
 
-#: ui/config/view.py:206
+#: ui/config/view.py:209
 msgid "Overview"
 msgstr "전체 파형"
 
-#: ui/config/view.py:212
+#: ui/config/view.py:215
 #, python-brace-format
 msgid "Shown in place of {label} (empty: {label})"
 msgstr "{label} 대신 표시 (비우면: {label})"
 
-#: ui/config/view.py:217
+#: ui/config/view.py:220
 #, python-brace-format
 msgid ""
 "{label} in the overview, numbered when it occurs more than once\n"
@@ -5252,11 +5260,11 @@ msgstr ""
 "(비우면: 이름의 첫 글자)"
 
 # | msgid "Available with the native audio engine only."
-#: ui/config/view.py:279
+#: ui/config/view.py:282
 msgid "The spectrum needs the native audio engine."
 msgstr "스펙트럼은 Native 오디오 엔진에서만 표시됩니다."
 
-#: ui/config/wave_bands.py:204
+#: ui/config/wave_bands.py:205
 msgid "Load a track to preview the waveform."
 msgstr "곡을 로드하면 파형 미리보기가 표시됩니다."
 
@@ -7154,7 +7162,7 @@ msgstr "불러온 트랙 없음"
 msgid "Playback"
 msgstr "재생"
 
-#: ui/config/library.py:80 ui/config/library.py:172 ui/shortcuts.py:32
+#: ui/config/library.py:81 ui/config/library.py:175 ui/shortcuts.py:32
 msgid "Library"
 msgstr "라이브러리"
 

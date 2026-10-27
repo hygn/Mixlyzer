@@ -82,6 +82,10 @@ class SettingsDialogTests(unittest.TestCase):
                          ["View", "Audio", "Search", "Library", "Analysis", "Shortcuts", "MIDI", "External Sync"])
         self.assertEqual([self.d.audio_tabs.tabText(i) for i in range(self.d.audio_tabs.count())],
                          ["Overview", "Engine", "Main output", "Headphones", "Booth", "Mixer", "Metronome"])
+        self.assertEqual([self.d.view_tabs.tabText(i) for i in range(self.d.view_tabs.count())],
+                         ["General", "Display", "Waveform", "Phrase labels"])
+        self.assertEqual([self.d.library_tabs.tabText(i) for i in range(self.d.library_tabs.count())],
+                         ["General", "Database", "Rekordbox XML", "Advanced"])
 
     def test_defaults_read_back_as_they_are(self):
         cfg = default_cfg()
@@ -124,7 +128,7 @@ class SettingsDialogTests(unittest.TestCase):
         self.d.sp_bpm_min.setValue(90)
         self.d.cb_key_dynamic.setChecked(False)
         self.d.sp_fps.setValue(45)
-        self.d.cmb_waveform_style.setCurrentIndex(self.d.cmb_waveform_style.findData("3band"))
+        self.d.rb_waveform_style["3band"].setChecked(True)
         self.d.sp_booth_level.setValue(-12.0)
         self.d.sp_external_sync_port.setValue(5000)
         self.d.cue_rule_boxes["verse"][0].setChecked(True)
@@ -471,6 +475,9 @@ class WaveformBandsTests(unittest.TestCase):
     def test_the_spectrum_asked_for_only_while_shown(self):
         self.d.show()
         self.d.tabs.setCurrentIndex(0)
+        drain(50)
+        self.assertEqual(self.switched, [])     # View's first page: not the waveform's
+        self.d.view_tabs.setCurrentIndex(2)
         drain(50)
         self.assertEqual(self.switched[-1:], [True])
         self.d.tabs.setCurrentIndex(1)   # another page

@@ -196,7 +196,7 @@ class SettingsDialog(
         self.sp_fps.setValue(int(v.fps))
         self.ed_record_img_path.setText(v.record_img_path)
         self._set_phrase_label_names(v.phrase_labels)
-        self.cmb_waveform_style.setCurrentIndex(self.cmb_waveform_style.findData(v.waveform_style))
+        self._set_waveform_style(v.waveform_style)
         self._set_band(self.sp_env_lo_lo,  self.sp_env_lo_hi,  v.env_lo)
         self._set_band(self.sp_env_mid_lo, self.sp_env_mid_hi, v.env_mid)
         self._set_band(self.sp_env_hi_lo,  self.sp_env_hi_hi,  v.env_hi)
@@ -339,7 +339,7 @@ class SettingsDialog(
                 display_keystrip=bool(self.cb_keystrip.isChecked()),
                 display_JumpCUE=bool(self.cb_JumpCUE.isChecked()),
                 display_phrase=bool(self.cb_phrase.isChecked()),
-                waveform_style=str(self.cmb_waveform_style.currentData()),
+                waveform_style=self._get_waveform_style(),
                 env_lo=(float(self.sp_env_lo_lo.value()), float(self.sp_env_lo_hi.value())),
                 env_mid=(float(self.sp_env_mid_lo.value()), float(self.sp_env_mid_hi.value())),
                 env_hi=(float(self.sp_env_hi_lo.value()), float(self.sp_env_hi_hi.value())),

@@ -34,7 +34,7 @@ from ui.config.output_group import (
     output_mode_tip,
 )
 from ui.config.audio_overview import AudioOverview
-from ui.config.scroll import scroll_page
+from ui.config.scroll import groups_page, scroll_page
 from system import os_support
 from system.i18n import tr, tr_ctx
 
@@ -308,16 +308,6 @@ def _metronome_group(dialog) -> QGroupBox:
     return grp_metronome
 
 
-def _page(*groups) -> QWidget:
-    """A page of groups, top to bottom, scrolling."""
-    widget = QWidget()
-    lay = QVBoxLayout(widget)
-    for group in groups:
-        lay.addWidget(group)
-    lay.addStretch(1)
-    return scroll_page(widget)
-
-
 def build_playback_tab(dialog) -> None:
     """Settings > Audio: its pages (Overview, Engine, Main output, Headphones, Booth, Mixer, Metronome)."""
     dialog.tab_playback = QWidget()
@@ -332,12 +322,12 @@ def build_playback_tab(dialog) -> None:
     dialog.audio_overview = AudioOverview()
     dialog.audio_tabs = QTabWidget(dialog.tab_playback)
     dialog.audio_tabs.addTab(scroll_page(dialog.audio_overview), tr_ctx("settings page", "Overview"))
-    dialog.audio_tabs.addTab(_page(grp_engine), tr("Engine"))
-    dialog.audio_tabs.addTab(_page(grp_main, grp_master), tr("Main output"))
-    dialog.audio_tabs.addTab(_page(dialog.grp_output_headphones, grp_hp_mix), tr("Headphones"))
-    dialog.audio_tabs.addTab(_page(dialog.grp_output_booth, grp_booth_mix), tr("Booth"))
-    dialog.audio_tabs.addTab(_page(grp_mixer), tr("Mixer"))
-    dialog.audio_tabs.addTab(_page(grp_metronome), tr("Metronome"))
+    dialog.audio_tabs.addTab(groups_page(grp_engine), tr("Engine"))
+    dialog.audio_tabs.addTab(groups_page(grp_main, grp_master), tr("Main output"))
+    dialog.audio_tabs.addTab(groups_page(dialog.grp_output_headphones, grp_hp_mix), tr("Headphones"))
+    dialog.audio_tabs.addTab(groups_page(dialog.grp_output_booth, grp_booth_mix), tr("Booth"))
+    dialog.audio_tabs.addTab(groups_page(grp_mixer), tr("Mixer"))
+    dialog.audio_tabs.addTab(groups_page(grp_metronome), tr("Metronome"))
     root = QVBoxLayout(dialog.tab_playback)
     root.addWidget(dialog.audio_tabs)
     dialog.tabs.addTab(dialog.tab_playback, tr("Audio"))
