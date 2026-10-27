@@ -518,12 +518,13 @@ def _kept_metadata(properties: dict, track: Optional[TrackRow]) -> dict:
 
 def store_analysis(lib, payload: dict) -> dict:
     """An analysis's results stored (the analysis process never opens the library: its last item carries ``store``):
-    the track's row (one in the library keeps the user's metadata; a new track given its uid), its tag sources and segment
-    tables, its stored analysis (``arrays``, the NPZ) and thumbnail, Search by Music's entry, the Variants' fingerprint
-    (queried against the library's), and a new track's versions' tie-ups. Returns the payload with its properties'
-    uid, ``analysis`` (the StoredAnalysis of the arrays stored, made from them in memory; None when they do not
-    read), ``new_track`` and ``tieups`` (taken
-    from its versions)."""
+    the track's row (one in the library keeps the user's metadata; a new track given its uid), its tag sources, its
+    rows made from the marks (``store["index"]``, segments.track_index: written as the editor's save and the sync
+    write them) and its stored analysis (``arrays``, the NPZ), in one transaction (the NPZ last); then its thumbnail,
+    Search by Music's entry, the Variants' fingerprint (queried against the library's), and a new track's versions'
+    tie-ups. Returns the payload with its properties' uid, ``analysis`` (the StoredAnalysis of the arrays stored,
+    made from them in memory; None when they do not read), ``new_track`` and ``tieups`` (taken from its
+    versions)."""
     payload = dict(payload)
     stored = payload.pop("store")
     arrays = payload.pop("arrays")
@@ -533,15 +534,13 @@ def store_analysis(lib, payload: dict) -> dict:
     properties = _kept_metadata(properties, known)
     if known is not None and known.uid:
         properties["uid"] = known.uid
-    uid = db.upsert_meta(properties)
-    properties["uid"] = uid
-    if properties.get("tag_sources"):
-        db.set_tag_sources(uid, properties["tag_sources"])
-    db.replace_bpm_segments(uid, stored["bpm_segments"])
-    db.replace_key_segments(uid, stored["key_segments"])
-    db.replace_phrase_index(uid, stored["phrase_sections"])
-    db.conn.commit()
-    lib.features.save(uid, dict(arrays))
+    with db.tx():
+        uid = db.upsert_meta(properties)
+        properties["uid"] = uid
+        if properties.get("tag_sources"):
+            db.set_tag_sources(uid, properties["tag_sources"])
+        db.write_track_index(uid, stored["index"])
+        lib.features.save(uid, dict(arrays))
     # the analysis as a library track's is read (StoredAnalysis), from the arrays just stored: no second read of the
     # file; one that does not read leaves the deck without it, never the rest of the store undone
     try:

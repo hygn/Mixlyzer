@@ -65,10 +65,10 @@ def analyze_for_library(path: str, cfg: config,
         "tag_sources": sources,
     }
     # stored by the library's owner: the track's row merged with the library's (a track in it keeps the user's
-    # metadata), its uid given there; the cover as the file holds it (its thumbnail)
+    # metadata), its uid given there, and its rows made from the marks (``index``); the cover as the file holds it
+    # (its thumbnail)
     return {"arrays": arrays_of(result), "properties": properties, "update_db": True,
-            "store": {"bpm_segments": index.bpm_rows, "key_segments": index.key_rows,
-                      "phrase_sections": index.phrase_rows, "music_entry": result.music_index,
+            "store": {"index": index, "music_entry": result.music_index,
                       "variants": result.variants, "cover": cover_data(path)}}
 
 

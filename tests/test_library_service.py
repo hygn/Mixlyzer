@@ -244,8 +244,9 @@ class LibraryServiceTests(unittest.TestCase):
         self.settle()
         tags = {"path": "h.wav", "title": "tag title", "artist": "tag artist", "album": "tag album", "rating": 0,
                 "comment": "tag comment", "added_ts": 99, "bpm": 128.0, "key": 21, "duration_sec": 4.0}
+        from core.library.segments import TrackIndex
         payload = {"properties": tags, "arrays": {"beats_time_sec": np.arange(8) * 0.5},
-                   "store": {"bpm_segments": [], "key_segments": [], "phrase_sections": [], "music_entry": None,
+                   "store": {"index": TrackIndex(128.0, 21, [], [], []), "music_entry": None,
                              "variants": None, "cover": None}}
         stored = []
         self.library.write(jobs.store_analysis, payload, done=stored.append)

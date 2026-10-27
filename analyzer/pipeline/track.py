@@ -21,7 +21,6 @@ from analyzer.jumpcue.autocue import autocue_jump_pair
 from analyzer.jumpcue.jump_point_model import jump_point_beat_features
 from analyzer.key.chord_key import analyze_keys as analyze_chord_keys
 from analyzer.music.beat_geometry import downbeat_times
-from analyzer.music.key_rows import main_key
 from analyzer.music.marks import CuePoint, Phrase
 from analyzer.phrase import detect_phrase_segments
 from analyzer.phrase.cue_points import autocue_time_sec, phrase_cue_points
@@ -46,8 +45,8 @@ class TrackAnalysis:
     phrases: list[Phrase]                  # as detected ([]: none)
     cue_points: list[CuePoint]             # by the phrases' rules (and AutoCUE's)
     jump_pairs: list[dict]                 # the JumpCUE pairs (AutoCUE's last, with AutoCUE on JumpCUEs)
-    key_segments: np.ndarray               # [n, 4] (pitch class, mode, start, end)
-    main_key: int | None                   # the static analysis's key (key_rows.main_key; pitch class + 12 * minor)
+    key_segments: np.ndarray               # [n, 4] (pitch class, mode, start, end); the track's key is the app's,
+                                           # made from them and the phrases (analyzer.music.key_rows.main_key)
     music_index: IndexEntry | None         # Search by Music's entry (None: not asked, or it failed)
     variants: list[Any] | None             # the Variants' fingerprints (search.variants.track_fingerprints; None: failed)
 
@@ -286,7 +285,6 @@ def analyze_track(path: str, settings: AnalysisSettings, progress: Progress = No
         cue_points=cue_points,
         jump_pairs=jump_pairs,
         key_segments=key_segments,
-        main_key=main_key(key_segments, phrase_segments, float(duration_sec)),
         music_index=music_entry,
         variants=fingerprints,
     )
