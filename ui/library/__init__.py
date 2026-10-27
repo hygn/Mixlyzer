@@ -9,6 +9,8 @@ Music, the playlists, the track panel and the tracks' actions, a module each.
     music        Search by Music in the search bar
     playlists    the playlists
     track_panel  the track panel's tabs
+    tabs/        the tabs themselves: Edit Track, Search Index, Tie-ups, Export Track
+    music_search Search by Music's bar (the microphone, the listener) and the seek after a load
     actions      the tracks' actions and the selection they act on
 """
 from ui.library.widget import LibraryWidget

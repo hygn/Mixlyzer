@@ -22,7 +22,7 @@ from core.marks.phrases import (
 )
 from core.track.reanalysis import PHRASE, ReanalysisRequest
 from system.i18n import tr, tr_mark
-from ui.live_label import LiveLabel
+from ui.widgets.live_label import LiveLabel
 
 # boundary nudges follow the step: icon -> (tooltip by one beat, by one bar), translated where shown
 PHRASE_STEP_TOOLS = {

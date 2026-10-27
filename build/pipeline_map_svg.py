@@ -1,7 +1,7 @@
 """Draws the analysis pipeline map of Settings > Analysis > Global (ui/config/pipeline_map.py):
 assets/images/analysis_pipeline.svg and analysis_pipeline.json (its size, each analysis' rectangle, and the words
 drawn over the picture in the UI's language: the SVG holds no words). In the look of the audio overview's diagram
-(ui/model_canvas.py): the dark theme's base with a dotted grid, rounded blocks with a thin border of their colour and
+(ui/widgets/model_canvas.py): the dark theme's base with a dotted grid, rounded blocks with a thin border of their colour and
 a faint glow, port marks, each analysis' icon and its number (the order it runs in), lines in the colour of what they
 carry, routed at right angles with branch dots. Run after the pipeline changes:
 

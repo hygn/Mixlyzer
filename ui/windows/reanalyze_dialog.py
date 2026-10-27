@@ -7,7 +7,7 @@ from PySide6 import QtWidgets
 
 from core.settings.config import analysisconfig
 from system.i18n import tr, tr_n
-from ui.elided_label import ElidedLabel
+from ui.widgets.elided_label import ElidedLabel
 
 class ReanalyzeDialog(QtWidgets.QDialog):
     def __init__(self, analysis: analysisconfig, titles: list[str], parent: QtWidgets.QWidget | None = None):

@@ -32,13 +32,13 @@ from audioengine.volume import slider_percent_to_linear, trim_dbfs_to_linear, tr
 from core.marks.phrases import set_phrase_label_names
 
 from ui.pane import MainPane
-from ui.deck_controls import block, fill, row_title
-from ui.deck_switches import DeckSwitches, MasterLevels
-from ui.midi_toggle import MidiToggle
+from ui.deck.deck_controls import block, fill, row_title
+from ui.deck.deck_switches import DeckSwitches, MasterLevels
+from ui.deck.midi_toggle import MidiToggle
 from ui.config.window import SettingsDialog
-from ui.workers import WorkersDialog
-from ui.oss_support import SupportDialog
-from ui.about_dialog import AboutDialog
+from ui.windows.workers import WorkersDialog
+from ui.windows.oss_support import SupportDialog
+from ui.windows.about_dialog import AboutDialog
 from ui.shortcuts import ShortcutManager
 
 # a knob's steps acted on from one message at most (a fast turn)

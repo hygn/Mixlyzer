@@ -7,8 +7,8 @@ import os
 from system import os_support
 from core.library import jobs
 from core.settings.config import load_cfg
-from ui.tieup_works import WorksWindow
-from ui.reanalyze_dialog import ReanalyzeDialog
+from ui.windows.tieup_works import WorksWindow
+from ui.windows.reanalyze_dialog import ReanalyzeDialog
 from ui.edit_panel.flash import flash
 from system.i18n import tr, tr_n
 

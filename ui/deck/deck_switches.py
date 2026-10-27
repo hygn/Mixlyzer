@@ -6,7 +6,7 @@ rise at the top), Sound Color FX (the effect, the channel's COLOR knob, PARAMETE
 (sig_jog_mode_requested, sig_mixer_requested, sig_knob_requested, sig_channel_cue_requested); what is lit and where a
 knob points is what the deck reports (DeckReport: its lamps' VINYL bit, channel_cue, color, the mixer's values), so
 a controller's switch or knob shows too. The native engine's (the Python engine has none of them): disabled
-there. The controls' looks: ui/deck_controls.py."""
+there. The controls' looks: ui/deck/deck_controls.py."""
 from __future__ import annotations
 
 import math
@@ -16,8 +16,8 @@ from PySide6 import QtCore, QtGui, QtWidgets
 from audioengine import controls
 from core.workflows.event_bus import EventBus
 from system.i18n import tr
-from ui.deck_controls import KNOB, Lamp, Segment, block, blocks_row, label, segments
-from ui.knob import Knob
+from ui.deck.deck_controls import KNOB, Lamp, Segment, block, blocks_row, label, segments
+from ui.widgets.knob import Knob
 from ui.theme import current_theme
 
 GLYPH_W, GLYPH_H = 26, 14

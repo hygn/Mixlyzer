@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (
 from core.playback.external_sync import SAMPLES_ADDRESS, TIME_ADDRESS
 from system.i18n import tr
 from ui.config.scroll import scroll_page
-from ui.live_label import LiveLabel
+from ui.widgets.live_label import LiveLabel
 
 STATUS_INTERVAL_MS = 500
 

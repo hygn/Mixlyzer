@@ -26,7 +26,7 @@ from system.i18n import tr
 from core.library import jobs
 from analyzer.search.music.listening import Listening
 from analyzer.search.music.search import SearchResult, search_audio
-from ui.elided_label import ElidedLabel
+from ui.widgets.elided_label import ElidedLabel
 from ui.theme import current_theme
 
 SEEK_WAIT_SEC = 20.0          # a result loaded onto the deck: seeked once its audio is ready, if within this

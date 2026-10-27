@@ -5,7 +5,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PySide6 import QtCore, QtWidgets  # noqa: E402
 
-from ui.live_label import LiveLabel  # noqa: E402
+from ui.widgets.live_label import LiveLabel  # noqa: E402
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 

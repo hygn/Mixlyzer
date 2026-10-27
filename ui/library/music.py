@@ -8,7 +8,7 @@ from PySide6 import QtWidgets
 from PySide6.QtMultimedia import QMediaDevices
 
 from system.i18n import tr
-from ui.music_search import DeckSeekAfterLoad, MusicListener, MusicSearchBar, close_icon, mic_icon
+from ui.library.music_search import DeckSeekAfterLoad, MusicListener, MusicSearchBar, close_icon, mic_icon
 from ui.theme import current_theme
 from ui.library.common import Track, _mmss
 
@@ -18,7 +18,7 @@ class MusicMixin:
 
     def _build_music(self):
         """Search by Music's microphone, its bar and its listener."""
-        # Search by Music (ui.music_search): the microphone left of the search field; on, the field becomes the
+        # Search by Music (ui.library.music_search): the microphone left of the search field; on, the field becomes the
         # microphone's waveform and the library shows the songs heard, best first, until it is turned off; the close
         # button beside it is the plain library again
         self._mic_icon, self._mic_icon_on = mic_icon(), mic_icon(current_theme().on_accent)   # on: on the accent

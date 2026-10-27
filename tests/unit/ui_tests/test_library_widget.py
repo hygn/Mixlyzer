@@ -35,7 +35,7 @@ from core.workflows.event_bus import EventBus
 from ui.library import widget as widget_module
 from ui.library.common import _PLAYLIST_TRACKS_MIME, _SOURCE_KIND_ROLE, _SOURCE_VALUE_ROLE
 from ui.library.widget import LibraryWidget
-from ui.reanalyze_dialog import ReanalyzeDialog
+from ui.windows.reanalyze_dialog import ReanalyzeDialog
 from ui.theme import current_theme
 
 _ISOLATION = None

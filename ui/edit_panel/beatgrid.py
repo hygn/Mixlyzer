@@ -17,7 +17,7 @@ from ui.theme import current_theme
 from ui.edit_panel.styles import BUTTON_STYLESHEET, WARNING_BUTTON_STYLESHEET
 from core.track.reanalysis import BEAT, ReanalysisRequest
 from system.i18n import tr, tr_mark
-from ui.live_label import LiveLabel
+from ui.widgets.live_label import LiveLabel
 
 # time signatures with their own button; the rest are under Custom
 TS_PRESETS = (3, 4, 5, 7)

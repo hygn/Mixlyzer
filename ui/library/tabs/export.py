@@ -19,7 +19,7 @@ from core.tags.writer import TEXT_FIELDS, TagWriteError, tag_format, write_tags
 from core.track.model import DataModel
 from third_party.rekordbox import sanitize_filename
 from ui.config.scroll import scroll_page
-from ui.elided_label import ElidedLabel
+from ui.widgets.elided_label import ElidedLabel
 from analyzer.music.marks import JumpCue, JumpCueGroup
 from ui.render.jumprender import jump_renderer
 from analyzer.music.key_names import idx_to_labels

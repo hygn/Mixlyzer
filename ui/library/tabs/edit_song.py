@@ -74,7 +74,7 @@ class RatingStars(QWidget):
 
 class EditTrackPanel(QWidget):
     """The library panel's Edit tab: a track's metadata (TrackRow). Its readings and audio fingerprints are the
-    Search Index tab's (ui.track_search_index), its tie-ups the Tie-ups tab's (ui.tieup_editor.TieupPanel).
+    Search Index tab's (ui.library.tabs.track_search_index), its tie-ups the Tie-ups tab's (ui.library.tabs.tieup_editor.TieupPanel).
 
     - Only mutable metadata is editable (title, artist, album, bpm, key, rating, comment)
       and the file path (a moved or renamed file; the uid keeps the track's analysis).

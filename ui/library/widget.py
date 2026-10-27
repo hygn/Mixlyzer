@@ -10,7 +10,7 @@ from core.library.service import LibraryService
 from core.workflows.event_bus import EventBus
 from core.settings.config import config
 from core.track.model import DataModel
-from ui.tieup_works import WorksWindow
+from ui.windows.tieup_works import WorksWindow
 from ui.theme import current_theme
 from system.i18n import tr, tr_mark
 from ui.library.actions import ActionsMixin

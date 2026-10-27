@@ -77,7 +77,7 @@ class _AudioWorker(QtCore.QObject):
     engine_restarted = QtCore.Signal(bool)   # restart_engine: the new engine started
     _decoded = QtCore.Signal(int, object, str)  # token, pcm or None, error message
 
-    PEAK_FLOOR_DBFS = -45.0   # below the meter's lowest segment (ui.track_info_panel.VerticalPeakMeter: -42 dBFS)
+    PEAK_FLOOR_DBFS = -45.0   # below the meter's lowest segment (ui.deck.track_info_panel.VerticalPeakMeter: -42 dBFS)
     # the output buffer's observations reported this often (they add up in between): a
     # monitor, not worth a report every frame
     BUFFER_REPORT_SEC = 0.25

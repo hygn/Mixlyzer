@@ -37,7 +37,7 @@ def isolated() -> contextlib.ExitStack:
     import ui.edit_panel.phrase
     import ui.library.actions
     import ui.library.music
-    import ui.music_search
+    import ui.library.music_search
 
     stack = contextlib.ExitStack()
     folder = stack.enter_context(tempfile.TemporaryDirectory())
@@ -46,8 +46,8 @@ def isolated() -> contextlib.ExitStack:
     stack.callback(os.chdir, cwd)
     for patcher in (
         mock.patch.object(ui.library.music, "QMediaDevices", NoAudioInputs),
-        mock.patch.object(ui.music_search, "QMediaDevices", NoAudioInputs),
-        mock.patch.object(ui.music_search, "save_deck", lambda _cfg: None),
+        mock.patch.object(ui.library.music_search, "QMediaDevices", NoAudioInputs),
+        mock.patch.object(ui.library.music_search, "save_deck", lambda _cfg: None),
         mock.patch.object(ui.library.actions, "load_cfg", default_cfg),
         mock.patch.object(ui.edit_panel.phrase, "load_cfg", default_cfg),
         mock.patch.object(shortcuts, "USER_FILE", os.path.join(folder, "shortcuts.json")),

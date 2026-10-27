@@ -17,8 +17,8 @@ from ui.render.semitone import speed_to_semitone
 from core.marks.phrases import number_phrase_labels, phrase_color
 from core.workflows.event_bus import EventBus
 from core.settings.config import config
-from ui.mainplotvbx import ScratchViewBox
-from ui.track_info_panel import TrackInfoPanel
+from ui.deck.mainplotvbx import ScratchViewBox
+from ui.deck.track_info_panel import TrackInfoPanel
 from ui.edit_panel import EditPanel
 from audioengine.volume import slider_percent_to_linear, trim_dbfs_to_linear
 from system.resource_paths import resource_path

@@ -11,7 +11,7 @@ from core.settings.config import config
 from analyzer.music.key_names import ALPHANUMERIC_LABELS, CLASSICAL_LABELS
 from system.i18n import tr
 from system.resource_paths import setting_path
-from ui.knob import Knob
+from ui.widgets.knob import Knob
 
 
 _VALUE = "#f0f3f6"   # current values, title

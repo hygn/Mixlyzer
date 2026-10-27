@@ -21,11 +21,11 @@ from core.library import jobs
 from core.library.service import LibraryService
 from core.workflows.tieup_web import TieupWebLookup
 from ui.config.scroll import scroll_page
-from ui.language_picker import LanguageCombo
+from ui.widgets.language_picker import LanguageCombo
 
 MATCHES_SHOWN = 30
 FIND_PAUSE_MS = 120     # the works looked for once typing pauses this long
-LANG = "lang"   # a column of ll-RR language tags (ui.language_picker: any locale, found by typing)
+LANG = "lang"   # a column of ll-RR language tags (ui.widgets.language_picker: any locale, found by typing)
 
 
 class _TextTable(QTableWidget):

@@ -31,7 +31,7 @@ pub const LAMP_COLOR: u8 = 45;
 pub const LAMP_VINYL: u8 = 52; // the jog in VINYL mode (deck.rs lights; LAMP_COLOR's seven before it)
 // a knob's steps acted on from one message at most (a fast turn)
 const RELATIVE_STEPS_MAX: u32 = 16;
-// the level meter: ui/track_info_panel.py VerticalPeakMeter's scale (its 0 dB, its segments from -30 dB, 3 dB each,
+// the level meter: ui/deck/track_info_panel.py VerticalPeakMeter's scale (its 0 dB, its segments from -30 dB, 3 dB each,
 // the top at 0 dBFS) and fall; sent at most this often
 const METER_REFERENCE_DBFS: f64 = -12.0;
 const METER_SEGMENTS: u32 = 15;

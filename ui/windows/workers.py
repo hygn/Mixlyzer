@@ -9,7 +9,7 @@ from PySide6.QtWidgets import (
 from core.workflows.event_bus import EventBus
 from system.i18n import tr, tr_mark
 from core.workflows.taskmanager import ANALYSIS, TIEUP_LOOKUP
-from ui.elided_label import ElidedLabel
+from ui.widgets.elided_label import ElidedLabel
 
 
 class WorkersDialog(QDialog):

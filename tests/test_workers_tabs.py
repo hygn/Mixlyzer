@@ -13,7 +13,7 @@ from core.tieups import web as tieup_web
 from core.workflows.event_bus import EventBus
 from core.workflows.taskmanager import ANALYSIS, TIEUP_LOOKUP, taskmanager
 from core.workflows.tieup_web import TieupWebLookup
-from ui.workers import WorkersDialog
+from ui.windows.workers import WorkersDialog
 
 APP = QApplication.instance() or QApplication([])
 

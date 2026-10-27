@@ -13,7 +13,7 @@ from analyzer.music.key_names import ALPHANUMERIC_LABELS
 from core.marks.phrases import assigned_phrases
 from core.track.reanalysis import KEY_DYNAMIC, KEY_STATIC, ReanalysisRequest
 from system.i18n import tr, tr_mark
-from ui.live_label import LiveLabel
+from ui.widgets.live_label import LiveLabel
 
 
 # the tools that follow the key scope: icon -> (tooltip with the whole track, with the current segment),

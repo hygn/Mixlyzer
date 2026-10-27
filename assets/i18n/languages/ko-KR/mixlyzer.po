@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-27 16:17+0900\n"
+"POT-Creation-Date: 2026-10-27 16:38+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ko_KR\n"
@@ -536,14 +536,15 @@ msgstr "설정"
 msgid "Dialogs, workflows and metronome"
 msgstr "대화상자, 워크플로, 메트로놈"
 
-#: app/window.py:221 ui/workers.py:28
+#: app/window.py:221 ui/windows/workers.py:28
 msgid "Workers"
 msgstr "작업"
 
 # | msgid "Tie-ups"
-#: app/window.py:222 ui/shortcuts.py:155 ui/tieup_works.py:33
-#: ui/tieup_works.py:206 ui/tieup_works.py:261 ui/tieup_works.py:266
-#: ui/tieup_works.py:275 ui/tieup_works.py:338
+#: app/window.py:222 ui/shortcuts.py:155 ui/windows/tieup_works.py:33
+#: ui/windows/tieup_works.py:206 ui/windows/tieup_works.py:261
+#: ui/windows/tieup_works.py:266 ui/windows/tieup_works.py:275
+#: ui/windows/tieup_works.py:338
 msgid "Tie-up Works"
 msgstr "타이업 작품"
 
@@ -1154,7 +1155,8 @@ msgstr "이 파일은 이미 라이브러리에 \"{track}\"(으)로 있습니다
 msgid "Playlist name cannot be empty"
 msgstr "플레이리스트 이름은 비워 둘 수 없습니다"
 
-#: core/library/tieups.py:176 ui/tieup_editor.py:291 ui/tieup_works.py:267
+#: core/library/tieups.py:176 ui/library/tabs/tieup_editor.py:291
+#: ui/windows/tieup_works.py:267
 #, python-brace-format
 msgid "A language is written as ko-KR (language-REGION): {code}"
 msgstr "언어는 ko-KR(언어-지역) 형식으로 씁니다: {code}"
@@ -1198,7 +1200,7 @@ msgstr "표준 중국어"
 msgid "Taiwan Mandarin"
 msgstr "대만 중국어"
 
-#: core/search/reading.py:59 ui/language_picker.py:19
+#: core/search/reading.py:59 ui/widgets/language_picker.py:19
 msgid "Japanese"
 msgstr "일본어"
 
@@ -1222,7 +1224,7 @@ msgstr "표기 그대로"
 msgid "set by the user"
 msgstr "사용자 지정"
 
-#: core/search/reading.py:61 ui/language_picker.py:19
+#: core/search/reading.py:61 ui/widgets/language_picker.py:19
 msgid "Korean"
 msgstr "한국어"
 
@@ -1257,7 +1259,7 @@ msgid "The written tags did not read back as written; the file is unchanged."
 msgstr "쓴 태그가 쓴 그대로 다시 읽히지 않았습니다. 파일은 바뀌지 않았습니다."
 
 #: core/tags/writer.py:205 core/tags/writer.py:286 core/tags/writer.py:1371
-#: ui/export.py:191
+#: ui/library/tabs/export.py:191
 msgid "Tags cannot be written to this file's format."
 msgstr "이 파일 형식에는 태그를 쓸 수 없습니다."
 
@@ -1486,7 +1488,7 @@ msgstr "키 분석 중"
 
 #: core/workers/analysis_texts.py:19 ui/config/analysis.py:267
 #: ui/config/pipeline_map.py:26 ui/config/pipeline_map.py:34
-#: ui/edit_song.py:128
+#: ui/library/tabs/edit_song.py:128
 msgid "Key"
 msgstr "키"
 
@@ -1495,7 +1497,7 @@ msgid "Indexing for Search by Music"
 msgstr "음악으로 검색 색인 중"
 
 #: core/workers/analysis_texts.py:20 ui/config/search.py:133
-#: ui/track_search_index.py:96
+#: ui/library/tabs/track_search_index.py:96
 msgid "Search by Music"
 msgstr "음악으로 검색"
 
@@ -1894,23 +1896,6 @@ msgstr "구간 재분석 끝남"
 msgid "Segment reanalysis failed: {error}"
 msgstr "구간 재분석 실패: {error}"
 
-#: ui/about_dialog.py:179
-msgid "About Mixlyzer"
-msgstr "Mixlyzer 정보"
-
-#: ui/about_dialog.py:184
-msgid ""
-"Mixlyzer\n"
-"\n"
-"Interactive beatgrid, key, and JumpCUE analysis and editing toolkit.\n"
-"Distributed under the GNU Lesser General Public License v3.0. See below "
-"for the full license text."
-msgstr ""
-"Mixlyzer\n"
-"\n"
-"비트그리드, 키, JumpCUE를 분석하고 편집하는 인터랙티브 도구입니다.\n"
-"GNU Lesser General Public License v3.0으로 배포됩니다. 라이선스 전문은 아래를 보세요."
-
 #: ui/config/analysis.py:40
 msgid "relative or absolute .npz path"
 msgstr "상대 또는 절대 .npz 경로"
@@ -1945,6 +1930,48 @@ msgstr "동시에 분석할 트랙 수"
 #: ui/config/analysis.py:58
 msgid "Analysis order and dependencies"
 msgstr "분석 순서와 의존 관계"
+
+#: ui/config/analysis.py:72 ui/windows/reanalyze_dialog.py:32
+msgid ""
+"The beat tracker reads every tempo in the octave from here (BPM min .. 2 "
+"x BPM min);\n"
+"a song outside it is read at half or double tempo."
+msgstr ""
+"비트 트래커는 모든 템포를 여기서부터 한 옥타브 안(BPM 최소 .. 2 x BPM 최소)으로 읽습니다.\n"
+"이 범위 밖의 곡은 절반이나 두 배 템포로 읽힙니다."
+
+#: ui/config/analysis.py:77 ui/config/window.py:238
+#: ui/windows/reanalyze_dialog.py:38 ui/windows/reanalyze_dialog.py:81
+#, python-brace-format
+msgid "Reads {low} - {high} BPM"
+msgstr "{low} - {high} BPM으로 읽음"
+
+#: ui/config/analysis.py:79 ui/config/analysis.py:162
+#: ui/windows/reanalyze_dialog.py:39 ui/windows/reanalyze_dialog.py:50
+msgid "Dynamic Analysis"
+msgstr "다이내믹 분석"
+
+#: ui/config/analysis.py:81 ui/windows/reanalyze_dialog.py:41
+msgid ""
+"Checked: tempo changes within a track (sections, ramps).\n"
+"Unchecked: one steady BPM for the whole track."
+msgstr ""
+"켜짐: 트랙 안의 템포 변화(구간, 램프)를 찾습니다.\n"
+"꺼짐: 트랙 전체를 하나의 일정한 BPM으로 봅니다."
+
+#: ui/config/analysis.py:84 ui/windows/reanalyze_dialog.py:44
+msgid "Dynamic Downbeat"
+msgstr "다이내믹 다운비트"
+
+#: ui/config/analysis.py:86 ui/windows/reanalyze_dialog.py:46
+msgid ""
+"Checked: odd bars and meter changes within a track.\n"
+"Unchecked: one bar length and downbeat phase for the whole track.\n"
+"Always on with Dynamic Analysis."
+msgstr ""
+"켜짐: 트랙 안의 홀수 마디와 박자 변화를 찾습니다.\n"
+"꺼짐: 트랙 전체에 하나의 마디 길이와 다운비트 위상을 씁니다.\n"
+"다이내믹 분석에서는 항상 켜집니다."
 
 #: ui/config/analysis.py:103
 msgid ""
@@ -1986,6 +2013,10 @@ msgstr "비트 모델 재최적화..."
 msgid "Retrain the beat analysis's models on your library's beat grids."
 msgstr "라이브러리의 비트그리드로 비트 분석 모델을 재학습합니다."
 
+#: ui/config/analysis.py:137 ui/windows/reanalyze_dialog.py:91
+msgid "BPM min"
+msgstr "BPM 최소"
+
 #: ui/config/analysis.py:142 ui/config/analysis.py:183
 #: ui/config/analysis.py:206 ui/config/dialogs/optimization.py:204
 #: ui/config/library.py:118 ui/config/playback.py:108 ui/config/view.py:150
@@ -2019,6 +2050,16 @@ msgstr "디코더 비용 (JSON)"
 #: ui/config/analysis.py:150
 msgid "Beat feature cache"
 msgstr "비트 특징 캐시"
+
+#: ui/config/analysis.py:164 ui/windows/reanalyze_dialog.py:52
+msgid ""
+"Key changes within a track. Off: one key for the whole track -- the key "
+"the dynamic analysis finds in the intro, outro and interludes (where "
+"tracks are mixed), or the key it finds most when a track has none. "
+"Applies to the analysis and the editor's whole-track key reanalysis."
+msgstr ""
+"트랙 안의 키 변화를 찾습니다. 끄면 트랙 전체에 키 하나를 씁니다. 다이내믹 분석이 인트로, 아웃트로, 인터루드(트랙을 믹스하는 "
+"곳)에서 찾은 키, 그런 곳이 없으면 가장 많이 찾은 키입니다. 분석과 편집기의 트랙 전체 키 재분석에 적용됩니다."
 
 #: ui/config/analysis.py:175
 msgid ""
@@ -2066,6 +2107,34 @@ msgstr "파라미터 (NPZ)"
 msgid "Feature cache"
 msgstr "특징 캐시"
 
+#: ui/config/analysis.py:220 ui/windows/reanalyze_dialog.py:57
+msgid "CUE point"
+msgstr "CUE 포인트"
+
+#: ui/config/analysis.py:222 ui/config/dialogs/optimization.py:220
+#: ui/config/dialogs/optimization.py:344 ui/config/output_group.py:226
+#: ui/config/playback.py:70 ui/windows/reanalyze_dialog.py:59
+msgid "Off"
+msgstr "끔"
+
+#: ui/config/analysis.py:224 ui/windows/reanalyze_dialog.py:61
+msgid ""
+"What the analysis puts at the automatic start position:\n"
+"the lead-in end, an early first downbeat, or 0:00.\n"
+"CUE point: a CUE point (memory cue).\n"
+"JumpCUE: a JumpCUE (hot cue) of its own.\n"
+"Off: nothing."
+msgstr ""
+"분석이 자동 시작 위치에 무엇을 둘지 정합니다:\n"
+"리드인 끝, 이른 첫 다운비트, 또는 0:00.\n"
+"CUE 포인트: CUE 포인트(메모리 큐).\n"
+"JumpCUE: 별도의 JumpCUE(핫 큐).\n"
+"끔: 아무것도 두지 않습니다."
+
+#: ui/config/analysis.py:232 ui/windows/reanalyze_dialog.py:98
+msgid "Automatic start"
+msgstr "자동 시작"
+
 #: ui/config/analysis.py:236 ui/config/analysis.py:744
 #: ui/config/analysis.py:789 ui/config/analysis.py:800
 msgid "Reoptimize JumpCUE Parameter"
@@ -2096,10 +2165,19 @@ msgstr "파라미터 (JSON)"
 msgid "Global"
 msgstr "전역"
 
+#: ui/config/analysis.py:266 ui/config/pipeline_map.py:22
+#: ui/windows/reanalyze_dialog.py:89
+msgid "Beat"
+msgstr "비트"
+
 #: ui/config/analysis.py:269 ui/config/pipeline_map.py:24
 #: ui/config/pipeline_map.py:25
 msgid "CUE"
 msgstr "CUE"
+
+#: ui/config/analysis.py:282 ui/windows/workers.py:24
+msgid "Analysis"
+msgstr "분석"
 
 #: ui/config/analysis.py:289
 msgid "CUE points (set by the analysis from the phrases)"
@@ -2613,6 +2691,12 @@ msgstr "D1 {rate} kHz: {device}"
 #, python-brace-format
 msgid "D2 {rate} kHz: {device}"
 msgstr "D2 {rate} kHz: {device}"
+
+# | msgid "Default"
+#: ui/config/audio_overview.py:388 ui/config/audio_overview.py:429
+#: ui/config/output_group.py:95 ui/library/music_search.py:209
+msgid "System default"
+msgstr "시스템 기본값"
 
 # | msgid "Waiting for playback..."
 #: ui/config/audio_overview.py:390 ui/config/audio_overview.py:430
@@ -3243,6 +3327,10 @@ msgstr "{address}에서 받는 중; 로드되어 있고 활성인 덱이 없음 
 msgid "Add Folder…"
 msgstr "폴더 추가…"
 
+#: ui/config/library.py:33 ui/library/tabs/tieup_editor.py:373
+msgid "Remove"
+msgstr "제거"
+
 #: ui/config/library.py:35
 msgid ""
 "When this list is empty, the operating system's default Music folder is "
@@ -3265,6 +3353,10 @@ msgid ""
 msgstr ""
 "<p>Rekordbox에는 템포 램프가 없어 램프를 일정한 템포의 단계로 나누어 씁니다. 한 단계는 비트가 Mixlyzer의 "
 "비트에서 이 밀리초 안에 드는 만큼 박자를 묶으며, 최소 한 박자입니다 (0: 박자마다 한 단계).</p>"
+
+#: ui/config/library.py:52 ui/library/tabs/export.py:118
+msgid "Tie-ups after the comment"
+msgstr "코멘트 뒤에 타이업 붙이기"
 
 #: ui/config/library.py:54
 msgid ""
@@ -3533,6 +3625,12 @@ msgstr ""
 #: ui/config/midi.py:196 ui/config/output_group.py:82
 msgid "None"
 msgstr "없음"
+
+#: ui/config/midi.py:201 ui/config/output_group.py:99
+#: ui/library/music_search.py:211
+#, python-brace-format
+msgid "{name} (not connected)"
+msgstr "{name} (연결되지 않음)"
 
 #: ui/config/midi.py:207
 msgid "Open."
@@ -4925,6 +5023,12 @@ msgstr "뷰를 다시 그리는 목표 빈도."
 msgid "Image drawn as the spinning record when a track has no album art."
 msgstr "트랙에 앨범 아트가 없을 때 도는 레코드로 그릴 이미지."
 
+#: ui/config/view.py:95 ui/config/view.py:97
+#: ui/library/tabs/tieup_editor.py:140 ui/library/tabs/tieup_editor.py:144
+#: ui/windows/tieup_works.py:77 ui/windows/tieup_works.py:81
+msgid "Language"
+msgstr "언어"
+
 #: ui/config/view.py:99
 msgid "Display"
 msgstr "표시"
@@ -5034,6 +5138,11 @@ msgstr "레코드 이미지 경로"
 msgid "Phrase labels"
 msgstr "프레이즈 라벨"
 
+#: ui/config/view.py:170 ui/library/tabs/tieup_editor.py:144
+#: ui/windows/tieup_works.py:81
+msgid "Alias"
+msgstr "별칭"
+
 #: ui/config/view.py:171
 msgid "Overview"
 msgstr "전체 파형"
@@ -5064,39 +5173,39 @@ msgstr "적용하지 않은 변경은 저장하지 않고 닫습니다."
 msgid "Save the settings and keep the window open."
 msgstr "설정을 저장하고 창은 열어 둡니다."
 
-#: ui/deck_switches.py:64
+#: ui/deck/deck_switches.py:64
 msgid "JOG MODE VINYL: touching the jog wheel's top holds the record (scratch)."
 msgstr "JOG MODE VINYL: 조그 휠 윗면을 터치하면 레코드를 잡습니다(스크래치)."
 
-#: ui/deck_switches.py:65
+#: ui/deck/deck_switches.py:65
 msgid "JOG MODE CDJ: the jog wheel bends the tempo only, its top's touch ignored."
 msgstr "JOG MODE CDJ: 조그 휠은 템포 벤드만 하고, 윗면 터치는 무시합니다."
 
-#: ui/deck_switches.py:70
+#: ui/deck/deck_switches.py:70
 msgid "EQ CURVE ISO: an isolator, each band from a kill to +6 dB."
 msgstr "EQ CURVE ISO: 아이솔레이터. 각 대역을 완전히 끄는 것부터 +6 dB까지."
 
-#: ui/deck_switches.py:71
+#: ui/deck/deck_switches.py:71
 msgid "EQ CURVE EQ: an equalizer, each band from -26 dB to +6 dB."
 msgstr "EQ CURVE EQ: 이퀄라이저. 각 대역을 -26 dB부터 +6 dB까지."
 
-#: ui/deck_switches.py:76
+#: ui/deck/deck_switches.py:76
 msgid "CH FADER curve: the app's (slow at first, full at the top)."
 msgstr "CH FADER 커브: 앱 기본(처음엔 천천히, 끝에서 최대)."
 
-#: ui/deck_switches.py:77
+#: ui/deck/deck_switches.py:77
 msgid "CH FADER curve: steep (up fast)."
 msgstr "CH FADER 커브: 가파름(빠르게 올라감)."
 
-#: ui/deck_switches.py:78
+#: ui/deck/deck_switches.py:78
 msgid "CH FADER curve: slow (most of the rise at the top)."
 msgstr "CH FADER 커브: 완만함(대부분 위쪽에서 올라감)."
 
-#: ui/deck_switches.py:93
+#: ui/deck/deck_switches.py:93
 msgid "Sound Color FX: the effect the COLOR knob turns on (OFF: none)."
 msgstr "Sound Color FX: COLOR 노브로 거는 이펙트(OFF: 없음)."
 
-#: ui/deck_switches.py:96
+#: ui/deck/deck_switches.py:96
 msgid ""
 "COLOR: the effect on the deck's channel, its two flavours left and right "
 "of the middle (off). Double-click: off."
@@ -5105,7 +5214,7 @@ msgstr "COLOR: 덱 채널에 거는 이펙트. 가운데(꺼짐)의 왼쪽과 �
 # | msgid "" "PARAMETER: the effect's quantity (SPACE / DUB ECHO: feedback,
 # | SWEEP: the " "centre frequency, NOISE: its volume, CRUSH: how crushed,
 # | FILTER: " "resonance)."
-#: ui/deck_switches.py:100
+#: ui/deck/deck_switches.py:100
 msgid ""
 "PARAMETER: the effect's quantity (SPACE / DUB ECHO: feedback, SWEEP: the "
 "centre frequency, NOISE: its volume, CRUSH: how crushed, FILTER: "
@@ -5116,7 +5225,7 @@ msgstr ""
 
 # | msgid "" "A press turns it on or off: the channel's sound before its fader
 # | in the " "headphones. Lit while on."
-#: ui/deck_switches.py:107
+#: ui/deck/deck_switches.py:107
 msgid "Headphones CUE: the deck's channel, before its fader, in the headphones."
 msgstr "헤드폰 CUE: 덱의 채널을 페이더 앞에서 헤드폰으로 보냅니다."
 
@@ -5136,7 +5245,7 @@ msgstr "헤드폰 CUE: 덱의 채널을 페이더 앞에서 헤드폰으로 보�
 # the
 # | " "headphones and the master level: the native audio engine's only
 # | (Settings" " > Audio > Engine)."
-#: ui/deck_switches.py:142
+#: ui/deck/deck_switches.py:142
 msgid ""
 "The jog wheel's mode, the EQ, the fader curve, Sound Color FX, the "
 "headphones and the master level: the native audio engine's only (Settings"
@@ -5145,23 +5254,94 @@ msgstr ""
 "조그 휠 모드, EQ, 페이더 커브, Sound Color FX, 헤드폰, 마스터 레벨: Native 오디오 엔진에서만 "
 "동작합니다(설정 > 오디오 > 엔진)."
 
-#: ui/deck_switches.py:178 ui/deck_switches.py:199
+#: ui/deck/deck_switches.py:178 ui/deck/deck_switches.py:199
 msgid "Master level"
 msgstr "마스터 레벨"
 
 # | msgid "Headphones: level"
-#: ui/deck_switches.py:179 ui/deck_switches.py:200
+#: ui/deck/deck_switches.py:179 ui/deck/deck_switches.py:200
 msgid "Headphones level"
 msgstr "헤드폰 레벨"
 
-#: ui/deck_switches.py:190
+#: ui/deck/deck_switches.py:190
 msgid "-inf dB"
 msgstr "-inf dB"
 
-#: ui/deck_switches.py:191
+#: ui/deck/deck_switches.py:191
 #, python-brace-format
 msgid "{name}: {level} (double-click: 0 dB)"
 msgstr "{name}: {level} (더블클릭: 0 dB)"
+
+#: ui/deck/midi_toggle.py:50
+msgid "MIDI input off: the controller is not read. Click: on."
+msgstr "MIDI 입력 꺼짐: 컨트롤러를 읽지 않습니다. 클릭: 켜기."
+
+#: ui/deck/midi_toggle.py:53
+msgid "MIDI input on, no port picked (Settings > MIDI)."
+msgstr "MIDI 입력 켜짐, 포트가 선택되지 않았습니다(설정 > MIDI)."
+
+#: ui/deck/midi_toggle.py:56
+#, python-brace-format
+msgid "MIDI input on: {port}. Click: off."
+msgstr "MIDI 입력 켜짐: {port}. 클릭: 끄기."
+
+# | msgid "Could not be opened (in use by another program, or disconnected)."
+#: ui/deck/midi_toggle.py:59
+#, python-brace-format
+msgid ""
+"MIDI input on, {port} could not be opened (in use by another program, or "
+"disconnected). Click: off."
+msgstr "MIDI 입력 켜짐, {port}을(를) 열 수 없습니다(다른 프로그램이 사용 중이거나 연결이 끊김). 클릭: 끄기."
+
+#: ui/deck/midi_toggle.py:63
+#, python-brace-format
+msgid ""
+"MIDI input on, {port} closed (External Sync follows another deck). Click:"
+" off."
+msgstr "MIDI 입력 켜짐, {port} 닫힘(외부 동기화가 다른 덱을 따라가는 중). 클릭: 끄기."
+
+#: ui/deck/track_info_panel.py:166
+msgid ""
+"Channel level (before the fader), as a DJM-A9's: -30 to +12 dB; 0 dB is "
+"-12 dBFS, +12 dB the full scale (clipping)."
+msgstr ""
+"채널 레벨(페이더 전), DJM-A9과 같은 눈금: -30 ~ +12 dB. 0 dB는 -12 dBFS, +12 dB는 "
+"풀스케일(클리핑)입니다."
+
+#: ui/deck/track_info_panel.py:364
+msgid "Unload track"
+msgstr "트랙 내리기"
+
+# | msgid "" "TRIM: the level before the volume fader, -24 to +9 dB (0 dB in
+# the
+# | " "middle), kept as Settings > Playback > Trim. Double-click: 0 dB."
+#: ui/deck/track_info_panel.py:771
+msgid ""
+"TRIM: the level before the volume fader, -24 to +9 dB (0 dB in the "
+"middle), kept as Settings > Audio > Mixer > Trim. Double-click: 0 dB."
+msgstr ""
+"TRIM: 볼륨 페이더 앞의 레벨, -24 ~ +9 dB(가운데 0 dB). 설정 > 오디오 > 믹서 > 트림으로 저장됩니다. "
+"더블클릭: 0 dB."
+
+#: ui/deck/track_info_panel.py:776
+#, python-brace-format
+msgid ""
+"EQ {band}: the isolator's band, from a kill to +6 dB (0 dB in the "
+"middle). Double-click: 0 dB."
+msgstr "EQ {band}: 아이솔레이터 밴드, 차단부터 +6 dB까지(가운데 0 dB). 더블클릭: 0 dB."
+
+# | msgid "" "EQ {band}: the native audio engine's mixer only (Settings >
+# | Playback > " "Audio engine)."
+#: ui/deck/track_info_panel.py:778
+#, python-brace-format
+msgid ""
+"EQ {band}: the native audio engine's mixer only (Settings > Audio > "
+"Engine)."
+msgstr "EQ {band}: Native 오디오 엔진의 믹서에서만 동작합니다(설정 > 오디오 > 엔진)."
+
+#: ui/deck/track_info_panel.py:789 ui/windows/workers.py:213
+msgid "No Art"
+msgstr "아트 없음"
 
 #: ui/edit_panel/beat_counter.py:19
 msgid "Hold to count beats passing under the playhead"
@@ -5632,6 +5812,11 @@ msgstr ""
 "편집 내용을 저장할 수 없습니다:\n"
 "{error}"
 
+# | msgid "Shared"
+#: ui/edit_panel/panel.py:589 ui/windows/tieup_works.py:90
+msgid "Save"
+msgstr "저장"
+
 #: ui/edit_panel/panel.py:622
 msgid ""
 "<p>Editing is locked: pages switch, but nothing is edited or saved. Click"
@@ -5752,502 +5937,6 @@ msgstr "-- | 구간 -- | +0박 | 남음: 00:00.00"
 msgid "{label} | Seg {index} | +{beats} beats | Left: {left}"
 msgstr "{label} | 구간 {index} | +{beats}박 | 남음: {left}"
 
-#: ui/edit_song.py:46
-#, python-brace-format
-msgid "{count} star (click it again to clear the rating)"
-msgid_plural "{count} stars (click the last one again to clear the rating)"
-msgstr[0] "별 {count}개 (마지막 별을 다시 누르면 평점을 지웁니다)"
-
-#: ui/edit_song.py:102
-msgid "Editable Fields"
-msgstr "편집할 수 있는 항목"
-
-#: ui/edit_song.py:116
-msgid ""
-"The track's audio file. Set it when the file was moved or renamed;\n"
-"the analysis, playlists and CUEs stay with the track."
-msgstr ""
-"트랙의 오디오 파일. 파일을 옮기거나 이름을 바꿨을 때 지정하세요.\n"
-"분석, 플레이리스트, CUE는 트랙에 그대로 남습니다."
-
-#: ui/edit_song.py:118 ui/export.py:60
-msgid "Browse..."
-msgstr "찾아보기..."
-
-#: ui/edit_song.py:123 ui/library/widget.py:38
-msgid "Path"
-msgstr "경로"
-
-#: ui/edit_song.py:124 ui/export.py:78 ui/export.py:105 ui/library/widget.py:35
-#: ui/tieup_editor.py:140 ui/tieup_works.py:77 ui/track_search_index.py:53
-msgid "Title"
-msgstr "제목"
-
-#: ui/edit_song.py:125 ui/export.py:79 ui/export.py:106 ui/library/widget.py:35
-#: ui/track_search_index.py:53
-msgid "Artist"
-msgstr "아티스트"
-
-#: ui/edit_song.py:126 ui/export.py:107 ui/library/widget.py:36
-#: ui/track_search_index.py:53
-msgid "Album"
-msgstr "앨범"
-
-#: ui/edit_song.py:129 ui/library/widget.py:37
-msgid "Rating"
-msgstr "평점"
-
-#: ui/edit_song.py:130 ui/export.py:108 ui/library/widget.py:38
-msgid "Comment"
-msgstr "코멘트"
-
-#: ui/edit_song.py:133
-msgid "Read-only Fields"
-msgstr "읽기 전용 항목"
-
-#: ui/edit_song.py:142
-msgid "Duration (sec)"
-msgstr "길이 (초)"
-
-#: ui/edit_song.py:143
-msgid "Added (epoch)"
-msgstr "추가 시각 (epoch)"
-
-#: ui/edit_song.py:144
-msgid "File mtime"
-msgstr "파일 수정 시각"
-
-#: ui/edit_song.py:145
-msgid "File size (bytes)"
-msgstr "파일 크기 (바이트)"
-
-#: ui/edit_song.py:240
-msgid "Track File"
-msgstr "트랙 파일"
-
-#: ui/edit_song.py:248
-#, python-brace-format
-msgid ""
-"The file does not exist:\n"
-"{path}"
-msgstr ""
-"파일이 없습니다:\n"
-"{path}"
-
-#: ui/edit_song.py:248 ui/edit_song.py:266 ui/library/actions.py:47
-#: ui/library/track_panel.py:43 ui/shortcuts.py:142
-msgid "Edit Track"
-msgstr "트랙 편집"
-
-#: ui/export.py:73
-msgid "No JumpCUE directions"
-msgstr "JumpCUE 방향 없음"
-
-#: ui/export.py:80
-msgid "Source"
-msgstr "원본"
-
-#: ui/export.py:82
-msgid "Prerender JumpCUE Audio"
-msgstr "JumpCUE 오디오 미리 렌더링"
-
-#: ui/export.py:83
-msgid "Write WAV files with JumpCUE skips baked in."
-msgstr "JumpCUE 건너뛰기를 반영한 WAV 파일을 씁니다."
-
-#: ui/export.py:85
-msgid "Destination Folder"
-msgstr "대상 폴더"
-
-#: ui/export.py:87
-msgid "Export"
-msgstr "내보내기"
-
-#: ui/export.py:96
-msgid "File Tags"
-msgstr "파일 태그"
-
-#: ui/export.py:98
-msgid ""
-"<p>Write the library's values into the audio file's own tags: only the "
-"fields checked change; the file's other tags, its artwork and its audio "
-"stay as they are. FLAC, MP3, AAC, WAV, AIFF and MP4 / M4A files.</p>"
-msgstr ""
-"<p>라이브러리의 값을 오디오 파일 자체의 태그에 씁니다. 체크한 항목만 바뀌고, 파일의 다른 태그와 아트워크, 오디오는 그대로 "
-"둡니다. FLAC, MP3, AAC, WAV, AIFF, MP4 / M4A 파일에 쓸 수 있습니다.</p>"
-
-#: ui/export.py:109
-msgid "MP4 / M4A files hold a whole BPM only."
-msgstr "MP4 / M4A 파일에는 정수 BPM만 들어갑니다."
-
-#: ui/export.py:110
-msgid "Written as a musical key (Am, F#)."
-msgstr "일반 조성 표기(Am, F#)로 씁니다."
-
-#: ui/config/library.py:52 ui/export.py:118
-msgid "Tie-ups after the comment"
-msgstr "코멘트 뒤에 타이업 붙이기"
-
-#: ui/export.py:120
-msgid ""
-"<p>The comment written with the song's tie-ups after it, as [Title OP; "
-"Other ED]; the library's comment stays as it is.</p>"
-msgstr "<p>코멘트 뒤에 곡의 타이업을 [제목 OP; 다른 작품 ED] 형식으로 붙여서 씁니다. 라이브러리의 코멘트는 그대로 둡니다.</p>"
-
-#: ui/export.py:127 ui/export.py:212 ui/export.py:273
-msgid "Write Tags"
-msgstr "태그 쓰기"
-
-#: ui/export.py:128
-msgid "Write the checked fields' stored values into the file's tags."
-msgstr "체크한 항목의 저장된 값을 파일 태그에 씁니다."
-
-#: ui/export.py:171
-msgid "Source file not found at the specified path."
-msgstr "지정한 경로에 원본 파일이 없습니다."
-
-#: ui/export.py:174
-msgid "Source path is invalid."
-msgstr "원본 경로가 잘못되었습니다."
-
-#: ui/export.py:207
-msgid "Check the fields to write."
-msgstr "쓸 항목을 체크하세요."
-
-#: ui/export.py:213
-msgid ""
-"The Edit tab has changes to this track that are not applied: the stored "
-"values are written.\n"
-"Write the tags anyway?"
-msgstr ""
-"편집 탭에 이 트랙의 적용하지 않은 변경이 있습니다. 저장된 값이 쓰입니다.\n"
-"그래도 태그를 쓸까요?"
-
-#: ui/export.py:221
-msgid "Writing the tags..."
-msgstr "태그를 쓰는 중..."
-
-#: ui/export.py:229
-msgid "The track is no longer in the library."
-msgstr "이 트랙은 더 이상 라이브러리에 없습니다."
-
-#: ui/export.py:265
-#, python-brace-format
-msgid "The file could not be written: {error}"
-msgstr "파일을 쓸 수 없습니다: {error}"
-
-#: ui/export.py:271
-msgid "The tags were written to the file."
-msgstr "파일에 태그를 썼습니다."
-
-#: ui/export.py:301
-msgid "Select Destination Folder"
-msgstr "대상 폴더 선택"
-
-#: ui/export.py:309
-msgid "No track is selected."
-msgstr "선택한 트랙이 없습니다."
-
-#: ui/export.py:309 ui/export.py:314 ui/export.py:320 ui/export.py:332
-#: ui/export.py:342 ui/export.py:454 ui/export.py:465 ui/library/actions.py:51
-#: ui/library/track_panel.py:46 ui/shortcuts.py:157
-msgid "Export Track"
-msgstr "트랙 내보내기"
-
-#: ui/export.py:314
-msgid "Please select a destination folder."
-msgstr "대상 폴더를 선택하세요."
-
-#: ui/export.py:320
-#, python-brace-format
-msgid ""
-"Cannot create destination folder:\n"
-"{error}"
-msgstr ""
-"대상 폴더를 만들 수 없습니다:\n"
-"{error}"
-
-#: ui/export.py:333
-msgid "Select a JumpCUE direction to render."
-msgstr "렌더링할 JumpCUE 방향을 고르세요."
-
-#: ui/export.py:342
-#, python-brace-format
-msgid ""
-"Export completed:\n"
-"{files}"
-msgstr ""
-"내보내기 완료:\n"
-"{files}"
-
-# | msgid "Phrase reanalysis completed"
-#: ui/export.py:371
-msgid "The track's analysis could not be read."
-msgstr "트랙의 분석을 읽을 수 없습니다."
-
-#: ui/export.py:455
-#, python-brace-format
-msgid ""
-"'{name}' already exists.\n"
-"Overwrite?"
-msgstr ""
-"'{name}'이(가) 이미 있습니다.\n"
-"덮어쓸까요?"
-
-#: ui/export.py:465
-#, python-brace-format
-msgid ""
-"Failed to write JumpCUE audio:\n"
-"{error}"
-msgstr ""
-"JumpCUE 오디오를 쓰지 못했습니다:\n"
-"{error}"
-
-# | msgid "Audio engine"
-# | msgid "Engine"
-#: ui/language_picker.py:19
-msgid "English"
-msgstr "영어"
-
-# | msgid "Cantonese"
-# | msgid "Channels"
-#: ui/language_picker.py:19
-msgid "Chinese"
-msgstr "중국어"
-
-# | msgid "Refresh"
-# | msgid "References"
-#: ui/language_picker.py:20
-msgid "French"
-msgstr "프랑스어"
-
-#: ui/language_picker.py:20
-msgid "German"
-msgstr "독일어"
-
-#: ui/language_picker.py:20
-msgid "Spanish"
-msgstr "스페인어"
-
-# | msgid "Alias"
-#: ui/language_picker.py:20
-msgid "Italian"
-msgstr "이탈리아어"
-
-#: ui/language_picker.py:21
-msgid "Portuguese"
-msgstr "포르투갈어"
-
-#: ui/language_picker.py:21
-msgid "Russian"
-msgstr "러시아어"
-
-# | msgid "Training"
-#: ui/language_picker.py:21
-msgid "Ukrainian"
-msgstr "우크라이나어"
-
-#: ui/language_picker.py:21
-msgid "Polish"
-msgstr "폴란드어"
-
-#: ui/language_picker.py:22
-msgid "Dutch"
-msgstr "네덜란드어"
-
-#: ui/language_picker.py:22
-msgid "Swedish"
-msgstr "스웨덴어"
-
-# | msgid "Korean"
-#: ui/language_picker.py:22
-msgid "Norwegian"
-msgstr "노르웨이어"
-
-#: ui/language_picker.py:22
-msgid "Danish"
-msgstr "덴마크어"
-
-# | msgid "Finished"
-#: ui/language_picker.py:23
-msgid "Finnish"
-msgstr "핀란드어"
-
-#: ui/language_picker.py:23
-msgid "Czech"
-msgstr "체코어"
-
-#: ui/language_picker.py:23
-msgid "Slovak"
-msgstr "슬로바키아어"
-
-#: ui/language_picker.py:23
-msgid "Hungarian"
-msgstr "헝가리어"
-
-# | msgid "Training"
-#: ui/language_picker.py:24
-msgid "Romanian"
-msgstr "루마니아어"
-
-#: ui/language_picker.py:24
-msgid "Bulgarian"
-msgstr "불가리아어"
-
-#: ui/language_picker.py:24
-msgid "Greek"
-msgstr "그리스어"
-
-# | msgid "Track File"
-# | msgid "Tracks"
-#: ui/language_picker.py:24
-msgid "Turkish"
-msgstr "튀르키예어"
-
-#: ui/language_picker.py:25
-msgid "Arabic"
-msgstr "아랍어"
-
-#: ui/language_picker.py:25
-msgid "Hebrew"
-msgstr "히브리어"
-
-#: ui/language_picker.py:25
-msgid "Persian"
-msgstr "페르시아어"
-
-# | msgid "Mid"
-# | msgid "MIDI"
-#: ui/language_picker.py:25
-msgid "Hindi"
-msgstr "힌디어"
-
-# | msgid "Audio engine"
-# | msgid "Engine"
-#: ui/language_picker.py:26
-msgid "Bengali"
-msgstr "벵골어"
-
-# | msgid "Default"
-# | msgid "Detail"
-#: ui/language_picker.py:26
-msgid "Tamil"
-msgstr "타밀어"
-
-# | msgid "hi"
-#: ui/language_picker.py:26
-msgid "Thai"
-msgstr "태국어"
-
-# | msgid "Sino-Vietnamese"
-#: ui/language_picker.py:26
-msgid "Vietnamese"
-msgstr "베트남어"
-
-# | msgid "Index Now"
-# | msgid "Indexing…"
-#: ui/language_picker.py:27
-msgid "Indonesian"
-msgstr "인도네시아어"
-
-# | msgid "Alias"
-#: ui/language_picker.py:27
-msgid "Malay"
-msgstr "말레이어"
-
-# | msgid "Tempo"
-# | msgid "Theme"
-#: ui/language_picker.py:27
-msgid "Khmer"
-msgstr "크메르어"
-
-# | msgid "lo"
-#: ui/language_picker.py:27
-msgid "Lao"
-msgstr "라오어"
-
-# | msgid "CUE"
-# | msgid "Use"
-#: ui/language_picker.py:28
-msgid "Burmese"
-msgstr "미얀마어"
-
-# | msgid "MONO SPLIT"
-#: ui/language_picker.py:28
-msgid "Mongolian"
-msgstr "몽골어"
-
-# | msgid "Rating"
-#: ui/language_picker.py:28
-msgid "Croatian"
-msgstr "크로아티아어"
-
-# | msgid "Headphones: CUE / MASTER"
-# | msgid "CUE / MASTER"
-# | msgid "Master"
-# | msgid "master in"
-#: ui/language_picker.py:28
-msgid "Serbian"
-msgstr "세르비아어"
-
-# | msgid "Open."
-# | msgid "Opening..."
-# | msgid "opening..."
-# | msgid "Opening"
-#: ui/language_picker.py:29
-msgid "Slovenian"
-msgstr "슬로베니아어"
-
-#: ui/language_picker.py:29
-msgid "Lithuanian"
-msgstr "리투아니아어"
-
-# | msgid "Saving"
-#: ui/language_picker.py:29
-msgid "Latvian"
-msgstr "라트비아어"
-
-#: ui/language_picker.py:29
-msgid "Estonian"
-msgstr "에스토니아어"
-
-#: ui/language_picker.py:30
-msgid "Catalan"
-msgstr "카탈루냐어"
-
-#: ui/language_picker.py:30
-msgid "Basque"
-msgstr "바스크어"
-
-# | msgid "Alias"
-#: ui/language_picker.py:30
-msgid "Galician"
-msgstr "갈리시아어"
-
-#: ui/language_picker.py:30
-msgid "Icelandic"
-msgstr "아이슬란드어"
-
-# | msgid "Finished"
-#: ui/language_picker.py:31
-msgid "Irish"
-msgstr "아일랜드어"
-
-#: ui/language_picker.py:31
-msgid "Welsh"
-msgstr "웨일스어"
-
-# | msgid "Rating"
-#: ui/language_picker.py:31
-msgid "Latin"
-msgstr "라틴어"
-
-#: ui/language_picker.py:106
-msgid ""
-"Type a language's name in any language, or its tag (language-REGION: ko-"
-"KR)."
-msgstr "아무 언어로나 언어 이름을 입력하거나 태그(언어-지역: ko-KR)를 입력하세요."
-
 #: ui/library/actions.py:49
 msgid "Analyze Track"
 msgstr "트랙 분석"
@@ -6305,6 +5994,55 @@ msgstr "{start} - {end}에서 일치, 녹음된 소리로 찾음 (일치 {n}개)
 #, python-brace-format
 msgid "Matched at {start} - {end}, by the melody"
 msgstr "{start} - {end}에서 일치, 멜로디로 찾음"
+
+#: ui/library/music_search.py:180
+msgid "The microphone Search by Music listens to: click its name to pick another."
+msgstr "음악으로 검색이 듣는 마이크입니다. 이름을 누르면 다른 마이크를 고를 수 있습니다."
+
+# | msgid "No microphone found."
+#: ui/library/music_search.py:199
+msgid "no microphone"
+msgstr "마이크 없음"
+
+# | msgid "Listening aid: tonic chord"
+# | msgid "Listening on {device} …"
+#: ui/library/music_search.py:202
+#, python-brace-format
+msgid "Listening on {device}"
+msgstr "{device}에서 듣는 중"
+
+# | msgid "No microphone found."
+#: ui/library/music_search.py:202
+#, python-brace-format
+msgid "Microphone: {device}"
+msgstr "마이크: {device}"
+
+# | msgid "The file could not be written: {error}"
+# | msgid "The file could not be read: {error}"
+#: ui/library/music_search.py:302
+#, python-brace-format
+msgid "The index could not be read: {error}"
+msgstr "색인을 읽지 못했습니다: {error}"
+
+#: ui/library/music_search.py:310
+msgid ""
+"No track is indexed for Search by Music yet: Settings > Search > Index "
+"Now (new tracks are indexed when analyzed)."
+msgstr "아직 음악으로 검색용으로 색인된 트랙이 없습니다: 설정 > 검색 > 지금 색인 (새 트랙은 분석할 때 색인됩니다)."
+
+#: ui/library/music_search.py:349
+msgid "No microphone found."
+msgstr "마이크를 찾지 못했습니다."
+
+# | msgid "Reading the analysis failed: {error}"
+#: ui/library/music_search.py:433
+#, python-brace-format
+msgid "The search failed: {error}"
+msgstr "검색에 실패했습니다: {error}"
+
+#: ui/library/music_search.py:441
+msgid "Nothing found yet: hum or whistle for 8 seconds or more, or play the song."
+msgstr "아직 찾은 곡이 없습니다: 8초 이상 흥얼거리거나 휘파람을 불거나, 곡을 트세요."
 
 #: ui/library/playlists.py:15 ui/library/playlists.py:30
 msgid "Name"
@@ -6457,6 +6195,11 @@ msgstr "최소 구간"
 msgid "Library (All)"
 msgstr "라이브러리 (전체)"
 
+# | msgid "Alias"
+#: ui/library/sources.py:256 ui/library/tabs/track_search_index.py:95
+msgid "Variants"
+msgstr "다른 버전"
+
 #: ui/library/sources.py:259
 msgid ""
 "<p>The library's tracks that are versions of one song: the same audio, "
@@ -6546,6 +6289,520 @@ msgstr "아래로 이동"
 msgid "Refresh Folders"
 msgstr "폴더 새로 고침"
 
+#: ui/library/tabs/edit_song.py:46
+#, python-brace-format
+msgid "{count} star (click it again to clear the rating)"
+msgid_plural "{count} stars (click the last one again to clear the rating)"
+msgstr[0] "별 {count}개 (마지막 별을 다시 누르면 평점을 지웁니다)"
+
+#: ui/library/tabs/edit_song.py:102
+msgid "Editable Fields"
+msgstr "편집할 수 있는 항목"
+
+#: ui/library/tabs/edit_song.py:116
+msgid ""
+"The track's audio file. Set it when the file was moved or renamed;\n"
+"the analysis, playlists and CUEs stay with the track."
+msgstr ""
+"트랙의 오디오 파일. 파일을 옮기거나 이름을 바꿨을 때 지정하세요.\n"
+"분석, 플레이리스트, CUE는 트랙에 그대로 남습니다."
+
+#: ui/library/tabs/edit_song.py:118 ui/library/tabs/export.py:60
+msgid "Browse..."
+msgstr "찾아보기..."
+
+#: ui/library/tabs/edit_song.py:133
+msgid "Read-only Fields"
+msgstr "읽기 전용 항목"
+
+#: ui/library/tabs/edit_song.py:142
+msgid "Duration (sec)"
+msgstr "길이 (초)"
+
+#: ui/library/tabs/edit_song.py:143
+msgid "Added (epoch)"
+msgstr "추가 시각 (epoch)"
+
+#: ui/library/tabs/edit_song.py:144
+msgid "File mtime"
+msgstr "파일 수정 시각"
+
+#: ui/library/tabs/edit_song.py:145
+msgid "File size (bytes)"
+msgstr "파일 크기 (바이트)"
+
+#: ui/library/tabs/edit_song.py:240
+msgid "Track File"
+msgstr "트랙 파일"
+
+#: ui/library/tabs/edit_song.py:248
+#, python-brace-format
+msgid ""
+"The file does not exist:\n"
+"{path}"
+msgstr ""
+"파일이 없습니다:\n"
+"{path}"
+
+#: ui/library/tabs/export.py:73
+msgid "No JumpCUE directions"
+msgstr "JumpCUE 방향 없음"
+
+#: ui/library/tabs/export.py:80
+msgid "Source"
+msgstr "원본"
+
+#: ui/library/tabs/export.py:82
+msgid "Prerender JumpCUE Audio"
+msgstr "JumpCUE 오디오 미리 렌더링"
+
+#: ui/library/tabs/export.py:83
+msgid "Write WAV files with JumpCUE skips baked in."
+msgstr "JumpCUE 건너뛰기를 반영한 WAV 파일을 씁니다."
+
+#: ui/library/tabs/export.py:85
+msgid "Destination Folder"
+msgstr "대상 폴더"
+
+#: ui/library/tabs/export.py:87
+msgid "Export"
+msgstr "내보내기"
+
+#: ui/library/tabs/export.py:96
+msgid "File Tags"
+msgstr "파일 태그"
+
+#: ui/library/tabs/export.py:98
+msgid ""
+"<p>Write the library's values into the audio file's own tags: only the "
+"fields checked change; the file's other tags, its artwork and its audio "
+"stay as they are. FLAC, MP3, AAC, WAV, AIFF and MP4 / M4A files.</p>"
+msgstr ""
+"<p>라이브러리의 값을 오디오 파일 자체의 태그에 씁니다. 체크한 항목만 바뀌고, 파일의 다른 태그와 아트워크, 오디오는 그대로 "
+"둡니다. FLAC, MP3, AAC, WAV, AIFF, MP4 / M4A 파일에 쓸 수 있습니다.</p>"
+
+#: ui/library/tabs/export.py:109
+msgid "MP4 / M4A files hold a whole BPM only."
+msgstr "MP4 / M4A 파일에는 정수 BPM만 들어갑니다."
+
+#: ui/library/tabs/export.py:110
+msgid "Written as a musical key (Am, F#)."
+msgstr "일반 조성 표기(Am, F#)로 씁니다."
+
+#: ui/library/tabs/export.py:120
+msgid ""
+"<p>The comment written with the song's tie-ups after it, as [Title OP; "
+"Other ED]; the library's comment stays as it is.</p>"
+msgstr "<p>코멘트 뒤에 곡의 타이업을 [제목 OP; 다른 작품 ED] 형식으로 붙여서 씁니다. 라이브러리의 코멘트는 그대로 둡니다.</p>"
+
+#: ui/library/tabs/export.py:127 ui/library/tabs/export.py:212
+#: ui/library/tabs/export.py:273
+msgid "Write Tags"
+msgstr "태그 쓰기"
+
+#: ui/library/tabs/export.py:128
+msgid "Write the checked fields' stored values into the file's tags."
+msgstr "체크한 항목의 저장된 값을 파일 태그에 씁니다."
+
+#: ui/library/tabs/export.py:171
+msgid "Source file not found at the specified path."
+msgstr "지정한 경로에 원본 파일이 없습니다."
+
+#: ui/library/tabs/export.py:174
+msgid "Source path is invalid."
+msgstr "원본 경로가 잘못되었습니다."
+
+#: ui/library/tabs/export.py:207
+msgid "Check the fields to write."
+msgstr "쓸 항목을 체크하세요."
+
+#: ui/library/tabs/export.py:213
+msgid ""
+"The Edit tab has changes to this track that are not applied: the stored "
+"values are written.\n"
+"Write the tags anyway?"
+msgstr ""
+"편집 탭에 이 트랙의 적용하지 않은 변경이 있습니다. 저장된 값이 쓰입니다.\n"
+"그래도 태그를 쓸까요?"
+
+#: ui/library/tabs/export.py:221
+msgid "Writing the tags..."
+msgstr "태그를 쓰는 중..."
+
+#: ui/library/tabs/export.py:229
+msgid "The track is no longer in the library."
+msgstr "이 트랙은 더 이상 라이브러리에 없습니다."
+
+#: ui/library/tabs/export.py:265
+#, python-brace-format
+msgid "The file could not be written: {error}"
+msgstr "파일을 쓸 수 없습니다: {error}"
+
+#: ui/library/tabs/export.py:271
+msgid "The tags were written to the file."
+msgstr "파일에 태그를 썼습니다."
+
+#: ui/library/tabs/export.py:301
+msgid "Select Destination Folder"
+msgstr "대상 폴더 선택"
+
+#: ui/library/tabs/export.py:309
+msgid "No track is selected."
+msgstr "선택한 트랙이 없습니다."
+
+#: ui/library/tabs/export.py:314
+msgid "Please select a destination folder."
+msgstr "대상 폴더를 선택하세요."
+
+#: ui/library/tabs/export.py:320
+#, python-brace-format
+msgid ""
+"Cannot create destination folder:\n"
+"{error}"
+msgstr ""
+"대상 폴더를 만들 수 없습니다:\n"
+"{error}"
+
+#: ui/library/tabs/export.py:333
+msgid "Select a JumpCUE direction to render."
+msgstr "렌더링할 JumpCUE 방향을 고르세요."
+
+#: ui/library/tabs/export.py:342
+#, python-brace-format
+msgid ""
+"Export completed:\n"
+"{files}"
+msgstr ""
+"내보내기 완료:\n"
+"{files}"
+
+# | msgid "Phrase reanalysis completed"
+#: ui/library/tabs/export.py:371
+msgid "The track's analysis could not be read."
+msgstr "트랙의 분석을 읽을 수 없습니다."
+
+#: ui/library/tabs/export.py:455
+#, python-brace-format
+msgid ""
+"'{name}' already exists.\n"
+"Overwrite?"
+msgstr ""
+"'{name}'이(가) 이미 있습니다.\n"
+"덮어쓸까요?"
+
+#: ui/library/tabs/export.py:465
+#, python-brace-format
+msgid ""
+"Failed to write JumpCUE audio:\n"
+"{error}"
+msgstr ""
+"JumpCUE 오디오를 쓰지 못했습니다:\n"
+"{error}"
+
+#: ui/library/tabs/tieup_editor.py:132
+msgid "Type a title in any language or script"
+msgstr "아무 언어·문자로 제목을 입력하세요"
+
+#: ui/library/tabs/tieup_editor.py:133
+msgid ""
+"<p>Finds the works already entered by any of their titles, also by how "
+"they read (あのね by anone or 아노네). Pick one to use it, or New work.</p>"
+msgstr ""
+"<p>이미 입력한 작품을 어느 제목으로든, 읽는 소리로도 찾습니다(あのね를 anone나 아노네로). 찾은 작품을 고르거나 새 작품을"
+" 고르세요.</p>"
+
+# | msgid "" "<p>The work's titles in any languages (ja, ko, en, zh-Hans,
+# | ja-Latn ...);" " the first one is shown in the library and the
+# comment.</p>"
+# | msgid "" "<p>The work's official titles in any languages (ja, ko, en,
+# | zh-Hans, ja-" "Latn ...). The library and the comment show the first title
+# | in the " "interface's language, else the first of all.</p>"
+#: ui/library/tabs/tieup_editor.py:141 ui/windows/tieup_works.py:78
+msgid ""
+"<p>The work's official titles, each with its language as language-REGION "
+"(ja-JP, ko-KR, en-US). The library and the comment show the first title "
+"in the interface's language, else the first of all.</p>"
+msgstr ""
+"<p>작품의 정식 제목입니다. 언어는 언어-지역 형식(ja-JP, ko-KR, en-US)으로 씁니다. 라이브러리와 코멘트에는 "
+"인터페이스 언어의 첫 제목이, 없으면 맨 첫 제목이 나옵니다.</p>"
+
+#: ui/library/tabs/tieup_editor.py:144 ui/windows/tieup_works.py:81
+msgid "Type"
+msgstr "종류"
+
+#: ui/library/tabs/tieup_editor.py:146 ui/windows/tieup_works.py:83
+msgid ""
+"<p>Other names the work is found by, never shown: a name it is commonly "
+"called by (a romanization), an abbreviation, or a search hint (a "
+"misspelling, a typing slip). The search finds the work by them, also by "
+"how they read.</p>"
+msgstr ""
+"<p>화면에는 나오지 않고 검색에만 쓰이는 다른 이름: 흔히 부르는 이름(로마자 표기), 약칭, 검색 힌트(오자, 오타). 검색은 "
+"이 이름들과 그 발음으로도 작품을 찾습니다.</p>"
+
+# | msgid "Level"
+#: ui/library/tabs/tieup_editor.py:149 ui/windows/tieup_works.py:86
+msgid "Label"
+msgstr "이름"
+
+#: ui/library/tabs/tieup_editor.py:149 ui/windows/tieup_works.py:86
+msgid "URL"
+msgstr "URL"
+
+#: ui/library/tabs/tieup_editor.py:157
+msgid "Which one, when the work has several (OP2: 2)."
+msgstr "작품에 여러 개가 있을 때 몇 번째인지(OP2면 2)."
+
+# | msgid "Season 2, episodes 1-12"
+#: ui/library/tabs/tieup_editor.py:159
+msgid "Season 2, episodes 1-12; TV size"
+msgstr "2기 1~12화; TV 사이즈"
+
+#: ui/library/tabs/tieup_editor.py:160
+msgid ""
+"Where and how it is used: the episodes, the version of the song (a TV "
+"size, a character's version)."
+msgstr "어디에 어떻게 쓰였는지: 사용 화수, 곡의 버전(TV 사이즈, 캐릭터 버전)."
+
+# | msgid "Workers"
+#: ui/library/tabs/tieup_editor.py:163 ui/library/tabs/tieup_editor.py:361
+#: ui/windows/tieup_works.py:52
+msgid "Work"
+msgstr "작품"
+
+# | msgid "Finished"
+#: ui/library/tabs/tieup_editor.py:165
+msgid "Find"
+msgstr "찾기"
+
+#: ui/library/tabs/tieup_editor.py:167 ui/windows/tieup_works.py:52
+#: ui/windows/tieup_works.py:100
+msgid "Category"
+msgstr "분류"
+
+# | msgid "Title"
+#: ui/library/tabs/tieup_editor.py:168 ui/windows/tieup_works.py:101
+msgid "Titles"
+msgstr "제목"
+
+# | msgid "Alias"
+#: ui/library/tabs/tieup_editor.py:169 ui/windows/tieup_works.py:102
+msgid "Aliases"
+msgstr "별칭"
+
+# | msgid "Refresh"
+#: ui/library/tabs/tieup_editor.py:170 ui/windows/tieup_works.py:103
+msgid "References"
+msgstr "참고 링크"
+
+# | msgid "CUE"
+#: ui/library/tabs/tieup_editor.py:175
+msgid "Use"
+msgstr "용도"
+
+#: ui/library/tabs/tieup_editor.py:181
+msgid "No."
+msgstr "번호"
+
+#: ui/library/tabs/tieup_editor.py:183 ui/library/tabs/tieup_editor.py:361
+msgid "Role"
+msgstr "역할"
+
+# | msgid "Default"
+#: ui/library/tabs/tieup_editor.py:184 ui/library/tabs/tieup_editor.py:361
+msgid "Detail"
+msgstr "세부 사항"
+
+#: ui/library/tabs/tieup_editor.py:234
+#, python-brace-format
+msgid "New work: “{title}”"
+msgstr "새 작품: “{title}”"
+
+#: ui/library/tabs/tieup_editor.py:234
+msgid "New work"
+msgstr "새 작품"
+
+# | msgid "Changes to the work apply to every song using it ({n})."
+#: ui/library/tabs/tieup_editor.py:271
+#, python-brace-format
+msgid "Changes to the work apply to the {n} track using it."
+msgid_plural "Changes to the work apply to the {n} tracks using it."
+msgstr[0] "작품을 고치면 이 작품을 쓰는 트랙 {n}개에 모두 적용됩니다."
+
+#: ui/library/tabs/tieup_editor.py:284 ui/windows/tieup_works.py:261
+msgid "Give the work a title."
+msgstr "작품 제목을 입력하세요."
+
+# | msgid "Tie-ups after the comment"
+#: ui/library/tabs/tieup_editor.py:311 ui/library/tabs/tieup_editor.py:482
+#: ui/library/tabs/tieup_editor.py:489
+msgid "Tie-ups on the Web"
+msgstr "웹의 타이업"
+
+# | msgid "Redo Changes"
+#: ui/library/tabs/tieup_editor.py:321
+#, python-brace-format
+msgid "Read on {page}"
+msgstr "출처: {page}"
+
+#: ui/library/tabs/tieup_editor.py:323
+msgid ""
+"From Japanese Wikipedia and Wikidata. A checked one is added with the "
+"work's names in other languages and its page as a reference."
+msgstr "일본어 위키백과와 Wikidata에서 찾았습니다. 체크한 타이업을 다른 언어 작품명과 작품 문서 링크와 함께 추가합니다."
+
+#: ui/library/tabs/tieup_editor.py:348
+msgid ""
+"<p>The works this track is used in: an anime's opening, a game's title "
+"screen, a character song.</p>"
+msgstr "<p>이 트랙이 쓰인 작품입니다: 애니메이션 오프닝, 게임 타이틀 화면, 캐릭터송 등.</p>"
+
+# | msgid "Added"
+#: ui/library/tabs/tieup_editor.py:371
+msgid "Add…"
+msgstr "추가…"
+
+# | msgid "Edit Track"
+# | msgid "Editor"
+#: ui/library/tabs/tieup_editor.py:372
+msgid "Edit…"
+msgstr "편집…"
+
+#: ui/library/tabs/tieup_editor.py:374 ui/library/tabs/tieup_editor.py:476
+msgid "Find on the Web"
+msgstr "웹에서 찾기"
+
+#: ui/library/tabs/tieup_editor.py:375
+msgid ""
+"<p>Look the track up on Japanese Wikipedia and Wikidata (its title and "
+"artist are sent there) and pick the tie-ups to add.</p>"
+msgstr "<p>일본어 위키백과와 Wikidata에서 이 트랙을 찾아(제목과 아티스트가 전송됨) 추가할 타이업을 고릅니다.</p>"
+
+#: ui/library/tabs/tieup_editor.py:421
+#, python-brace-format
+msgid ""
+"A tie-up added here is added to its {n} other version too (Settings > "
+"Library)."
+msgid_plural ""
+"A tie-up added here is added to its {n} other versions too (Settings > "
+"Library)."
+msgstr[0] "여기서 추가한 타이업은 이 트랙의 다른 버전 {n}개에도 추가됩니다(설정 > 라이브러리)."
+
+# | msgid "Shared with {n} other version of this song."
+# | msgid_plural "Shared with {n} other versions of this song."
+#: ui/library/tabs/tieup_editor.py:424
+#, python-brace-format
+msgid "{n} other version of this track (Variants)."
+msgid_plural "{n} other versions of this track (Variants)."
+msgstr[0] "이 트랙의 다른 버전 {n}개(Variants)."
+
+#: ui/library/tabs/tieup_editor.py:471
+msgid "Looking up…"
+msgstr "찾는 중…"
+
+# | msgid "Reading the analysis failed: {error}"
+# | msgid "The search failed: {error}"
+#: ui/library/tabs/tieup_editor.py:482
+#, python-brace-format
+msgid ""
+"The lookup failed:\n"
+"{error}"
+msgstr ""
+"찾지 못했습니다:\n"
+"{error}"
+
+#: ui/library/tabs/tieup_editor.py:489
+msgid "Wikipedia has no tie-up for this track."
+msgstr "위키백과에 이 트랙의 타이업이 없습니다."
+
+#: ui/library/tabs/track_search_index.py:50
+msgid "Readings"
+msgstr "발음"
+
+#: ui/library/tabs/track_search_index.py:60
+msgid ""
+"<p>How the title, artist and album read in Latin letters: the search "
+"finds the track by them in any script (あのね by anone or 아노네). Dim: read "
+"from the text in Settings > Search's languages. Type in a cell to add a "
+"reading of yours; empty a cell (Delete) or type over it to remove its "
+"reading for good, and type it again to bring it back.</p>"
+msgstr ""
+"<p>제목, 아티스트, 앨범을 라틴 문자로 읽은 발음입니다. 검색은 어떤 문자로 입력해도 이 발음으로 트랙을 찾습니다(あのね를 "
+"anone이나 아노네로). 흐린 글자: 설정 > 검색의 언어로 텍스트에서 읽은 것. 칸에 입력하면 내 발음을 추가하고, 칸을 "
+"비우거나(Delete) 덮어쓰면 그 발음을 영구히 지우며, 다시 입력하면 되살립니다.</p>"
+
+#: ui/library/tabs/track_search_index.py:73
+msgid ""
+"Read from the stored title, artist and album: a change in the Edit tab is"
+" read once it is applied."
+msgstr "저장된 제목, 아티스트, 앨범에서 읽은 발음입니다. 편집 탭에서 바꾼 내용은 적용한 뒤에 반영됩니다."
+
+# | msgid "Audio engine"
+#: ui/library/tabs/track_search_index.py:83
+msgid "Audio Fingerprints"
+msgstr "오디오 핑거프린트"
+
+#: ui/library/tabs/track_search_index.py:89
+msgid ""
+"<p>The track's Variants fingerprint and its Search by Music index made "
+"again: the track is taken out of both indexes, then Index Now indexes it "
+"(its audio decoded, a few seconds). For a track found as another's "
+"version by mistake, or missing from Search by Music.</p>"
+msgstr ""
+"<p>이 트랙의 다른 버전 핑거프린트와 음악으로 검색 색인을 다시 만듭니다. 두 색인에서 트랙을 뺀 뒤 지금 색인이 다시 "
+"색인합니다(오디오를 디코딩하므로 몇 초 걸립니다). 다른 곡의 버전으로 잘못 잡히거나 음악으로 검색에 나오지 않는 트랙에 "
+"씁니다.</p>"
+
+#: ui/library/tabs/track_search_index.py:265
+msgid "Rebuilt."
+msgstr "다시 만들었습니다."
+
+#: ui/library/tabs/track_search_index.py:266
+msgid "Not rebuilt: Index Now could not index the track."
+msgstr "다시 만들지 못했습니다: 지금 색인이 이 트랙을 색인하지 못했습니다."
+
+#: ui/library/tabs/track_search_index.py:270
+msgid "Fingerprinted"
+msgstr "핑거프린트 있음"
+
+# | msgid "Not Loaded"
+#: ui/library/tabs/track_search_index.py:270
+#: ui/library/tabs/track_search_index.py:271
+msgid "Not indexed"
+msgstr "색인 안 됨"
+
+# | msgid "Index Now"
+#: ui/library/tabs/track_search_index.py:271
+msgid "Indexed"
+msgstr "색인됨"
+
+#: ui/library/tabs/track_search_index.py:279
+msgid "The audio file is not there: the fingerprints cannot be made again."
+msgstr "오디오 파일이 없어서 핑거프린트를 다시 만들 수 없습니다."
+
+#: ui/library/tabs/track_search_index.py:283
+msgid "Taking the track out of the indexes…"
+msgstr "색인에서 트랙을 빼는 중…"
+
+#: ui/library/tabs/track_search_index.py:290
+#: ui/library/tabs/track_search_index.py:315
+#, python-brace-format
+msgid "Not rebuilt: {error}"
+msgstr "다시 만들지 못했습니다: {error}"
+
+# | msgid "Index Now"
+#: ui/library/tabs/track_search_index.py:293
+msgid "Indexing…"
+msgstr "색인 중…"
+
+# | msgid "Loading Track"
+# | msgid "Indexing {n} track"
+# | msgid_plural "Indexing {n} tracks"
+#: ui/library/tabs/track_search_index.py:300
+#, python-brace-format
+msgid "Indexing… {percent}%"
+msgstr "색인 중… {percent}%"
+
 #: ui/library/track_panel.py:48
 msgid "The selected track; click the open tab to fold the panel"
 msgstr "선택한 트랙. 열린 탭을 누르면 패널을 접습니다"
@@ -6559,13 +6816,49 @@ msgstr "\"{title}\"의 변경 내용을 적용할까요? (아니요: 버립니�
 msgid "All"
 msgstr "전체"
 
+#: ui/library/tabs/edit_song.py:124 ui/library/tabs/export.py:78
+#: ui/library/tabs/export.py:105 ui/library/tabs/tieup_editor.py:140
+#: ui/library/tabs/track_search_index.py:53 ui/library/widget.py:35
+#: ui/windows/tieup_works.py:77
+msgid "Title"
+msgstr "제목"
+
+#: ui/library/tabs/edit_song.py:125 ui/library/tabs/export.py:79
+#: ui/library/tabs/export.py:106 ui/library/tabs/track_search_index.py:53
+#: ui/library/widget.py:35
+msgid "Artist"
+msgstr "아티스트"
+
 #: ui/library/widget.py:36
 msgid "Duration"
 msgstr "길이"
 
+#: ui/library/tabs/edit_song.py:126 ui/library/tabs/export.py:107
+#: ui/library/tabs/track_search_index.py:53 ui/library/widget.py:36
+msgid "Album"
+msgstr "앨범"
+
+#: ui/library/tabs/tieup_editor.py:123 ui/library/tabs/tieup_editor.py:284
+#: ui/library/tabs/tieup_editor.py:290 ui/library/widget.py:36
+msgid "Tie-up"
+msgstr "타이업"
+
+#: ui/library/tabs/edit_song.py:129 ui/library/widget.py:37
+msgid "Rating"
+msgstr "평점"
+
 #: ui/library/widget.py:38
 msgid "Added"
 msgstr "추가일"
+
+#: ui/library/tabs/edit_song.py:123 ui/library/widget.py:38
+msgid "Path"
+msgstr "경로"
+
+#: ui/library/tabs/edit_song.py:130 ui/library/tabs/export.py:108
+#: ui/library/widget.py:38
+msgid "Comment"
+msgstr "코멘트"
 
 #: ui/library/widget.py:376
 msgid "Track loading is disabled while External Sync is enabled."
@@ -6574,118 +6867,6 @@ msgstr "외부 동기화가 켜져 있는 동안에는 트랙을 불러올 수 �
 #: ui/library/widget.py:460
 msgid "The loaded track is not in the list shown."
 msgstr "로드한 트랙이 지금 보이는 목록에 없습니다."
-
-#: ui/midi_toggle.py:50
-msgid "MIDI input off: the controller is not read. Click: on."
-msgstr "MIDI 입력 꺼짐: 컨트롤러를 읽지 않습니다. 클릭: 켜기."
-
-#: ui/midi_toggle.py:53
-msgid "MIDI input on, no port picked (Settings > MIDI)."
-msgstr "MIDI 입력 켜짐, 포트가 선택되지 않았습니다(설정 > MIDI)."
-
-#: ui/midi_toggle.py:56
-#, python-brace-format
-msgid "MIDI input on: {port}. Click: off."
-msgstr "MIDI 입력 켜짐: {port}. 클릭: 끄기."
-
-# | msgid "Could not be opened (in use by another program, or disconnected)."
-#: ui/midi_toggle.py:59
-#, python-brace-format
-msgid ""
-"MIDI input on, {port} could not be opened (in use by another program, or "
-"disconnected). Click: off."
-msgstr "MIDI 입력 켜짐, {port}을(를) 열 수 없습니다(다른 프로그램이 사용 중이거나 연결이 끊김). 클릭: 끄기."
-
-#: ui/midi_toggle.py:63
-#, python-brace-format
-msgid ""
-"MIDI input on, {port} closed (External Sync follows another deck). Click:"
-" off."
-msgstr "MIDI 입력 켜짐, {port} 닫힘(외부 동기화가 다른 덱을 따라가는 중). 클릭: 끄기."
-
-#: ui/music_search.py:180
-msgid "The microphone Search by Music listens to: click its name to pick another."
-msgstr "음악으로 검색이 듣는 마이크입니다. 이름을 누르면 다른 마이크를 고를 수 있습니다."
-
-# | msgid "No microphone found."
-#: ui/music_search.py:199
-msgid "no microphone"
-msgstr "마이크 없음"
-
-# | msgid "Listening aid: tonic chord"
-# | msgid "Listening on {device} …"
-#: ui/music_search.py:202
-#, python-brace-format
-msgid "Listening on {device}"
-msgstr "{device}에서 듣는 중"
-
-# | msgid "No microphone found."
-#: ui/music_search.py:202
-#, python-brace-format
-msgid "Microphone: {device}"
-msgstr "마이크: {device}"
-
-# | msgid "Default"
-#: ui/config/audio_overview.py:388 ui/config/audio_overview.py:429
-#: ui/config/output_group.py:95 ui/music_search.py:209
-msgid "System default"
-msgstr "시스템 기본값"
-
-#: ui/config/midi.py:201 ui/config/output_group.py:99 ui/music_search.py:211
-#, python-brace-format
-msgid "{name} (not connected)"
-msgstr "{name} (연결되지 않음)"
-
-# | msgid "The file could not be written: {error}"
-# | msgid "The file could not be read: {error}"
-#: ui/music_search.py:302
-#, python-brace-format
-msgid "The index could not be read: {error}"
-msgstr "색인을 읽지 못했습니다: {error}"
-
-#: ui/music_search.py:310
-msgid ""
-"No track is indexed for Search by Music yet: Settings > Search > Index "
-"Now (new tracks are indexed when analyzed)."
-msgstr "아직 음악으로 검색용으로 색인된 트랙이 없습니다: 설정 > 검색 > 지금 색인 (새 트랙은 분석할 때 색인됩니다)."
-
-#: ui/music_search.py:349
-msgid "No microphone found."
-msgstr "마이크를 찾지 못했습니다."
-
-# | msgid "Reading the analysis failed: {error}"
-#: ui/music_search.py:433
-#, python-brace-format
-msgid "The search failed: {error}"
-msgstr "검색에 실패했습니다: {error}"
-
-#: ui/music_search.py:441
-msgid "Nothing found yet: hum or whistle for 8 seconds or more, or play the song."
-msgstr "아직 찾은 곡이 없습니다: 8초 이상 흥얼거리거나 휘파람을 불거나, 곡을 트세요."
-
-#: ui/oss_support.py:12
-msgid "Support Python & Open Source"
-msgstr "Python과 오픈 소스 후원"
-
-#: ui/oss_support.py:20
-msgid ""
-"This app is built on the shoulders of open-source projects.\n"
-"If you'd like to support the ecosystem, here are some ways."
-msgstr ""
-"이 앱은 오픈 소스 프로젝트들 위에 만들어졌습니다.\n"
-"이 생태계를 후원하고 싶다면 이런 방법이 있습니다."
-
-#: ui/oss_support.py:27
-msgid "Donate to Python (PSF)"
-msgstr "Python 후원 (PSF)"
-
-#: ui/oss_support.py:29
-msgid "Donate to Scientific Python (NumFOCUS)"
-msgstr "과학용 Python 후원 (NumFOCUS)"
-
-#: ui/oss_support.py:51
-msgid "Open Link"
-msgstr "링크 열기"
 
 # | msgid "Unload track"
 #: ui/pane.py:140
@@ -6731,122 +6912,6 @@ msgstr "외부 동기화가 켜져 있는 동안에는 재생할 수 없습니�
 #: ui/pane.py:842
 msgid "Not Loaded"
 msgstr "불러온 트랙 없음"
-
-#: ui/library/actions.py:49 ui/reanalyze_dialog.py:16 ui/shortcuts.py:165
-msgid "Reanalyze Track"
-msgstr "트랙 재분석"
-
-# | msgid "Export Track"
-# | msgid "Next track"
-#: ui/reanalyze_dialog.py:20
-#, python-brace-format
-msgid "{count} track"
-msgid_plural "{count} tracks"
-msgstr[0] "트랙 {count}개"
-
-# | msgid "" "A full analysis of the selected tracks: their stored analysis
-# and
-# | edits " "are replaced."
-# | msgid "Its stored analysis and edits are replaced."
-# | msgid_plural "Their stored analysis and edits are replaced."
-#: ui/reanalyze_dialog.py:24
-msgid "Its stored analysis and edits are replaced; this cannot be undone."
-msgid_plural "Their stored analysis and edits are replaced; this cannot be undone."
-msgstr[0] "저장된 분석과 편집 내용이 변경되며 이는 되돌릴 수 없습니다."
-
-#: ui/config/analysis.py:72 ui/reanalyze_dialog.py:32
-msgid ""
-"The beat tracker reads every tempo in the octave from here (BPM min .. 2 "
-"x BPM min);\n"
-"a song outside it is read at half or double tempo."
-msgstr ""
-"비트 트래커는 모든 템포를 여기서부터 한 옥타브 안(BPM 최소 .. 2 x BPM 최소)으로 읽습니다.\n"
-"이 범위 밖의 곡은 절반이나 두 배 템포로 읽힙니다."
-
-#: ui/config/analysis.py:77 ui/config/window.py:238 ui/reanalyze_dialog.py:38
-#: ui/reanalyze_dialog.py:81
-#, python-brace-format
-msgid "Reads {low} - {high} BPM"
-msgstr "{low} - {high} BPM으로 읽음"
-
-#: ui/config/analysis.py:79 ui/config/analysis.py:162 ui/reanalyze_dialog.py:39
-#: ui/reanalyze_dialog.py:50
-msgid "Dynamic Analysis"
-msgstr "다이내믹 분석"
-
-#: ui/config/analysis.py:81 ui/reanalyze_dialog.py:41
-msgid ""
-"Checked: tempo changes within a track (sections, ramps).\n"
-"Unchecked: one steady BPM for the whole track."
-msgstr ""
-"켜짐: 트랙 안의 템포 변화(구간, 램프)를 찾습니다.\n"
-"꺼짐: 트랙 전체를 하나의 일정한 BPM으로 봅니다."
-
-#: ui/config/analysis.py:84 ui/reanalyze_dialog.py:44
-msgid "Dynamic Downbeat"
-msgstr "다이내믹 다운비트"
-
-#: ui/config/analysis.py:86 ui/reanalyze_dialog.py:46
-msgid ""
-"Checked: odd bars and meter changes within a track.\n"
-"Unchecked: one bar length and downbeat phase for the whole track.\n"
-"Always on with Dynamic Analysis."
-msgstr ""
-"켜짐: 트랙 안의 홀수 마디와 박자 변화를 찾습니다.\n"
-"꺼짐: 트랙 전체에 하나의 마디 길이와 다운비트 위상을 씁니다.\n"
-"다이내믹 분석에서는 항상 켜집니다."
-
-#: ui/config/analysis.py:164 ui/reanalyze_dialog.py:52
-msgid ""
-"Key changes within a track. Off: one key for the whole track -- the key "
-"the dynamic analysis finds in the intro, outro and interludes (where "
-"tracks are mixed), or the key it finds most when a track has none. "
-"Applies to the analysis and the editor's whole-track key reanalysis."
-msgstr ""
-"트랙 안의 키 변화를 찾습니다. 끄면 트랙 전체에 키 하나를 씁니다. 다이내믹 분석이 인트로, 아웃트로, 인터루드(트랙을 믹스하는 "
-"곳)에서 찾은 키, 그런 곳이 없으면 가장 많이 찾은 키입니다. 분석과 편집기의 트랙 전체 키 재분석에 적용됩니다."
-
-#: ui/config/analysis.py:220 ui/reanalyze_dialog.py:57
-msgid "CUE point"
-msgstr "CUE 포인트"
-
-#: ui/config/analysis.py:222 ui/config/dialogs/optimization.py:220
-#: ui/config/dialogs/optimization.py:344 ui/config/output_group.py:226
-#: ui/config/playback.py:70 ui/reanalyze_dialog.py:59
-msgid "Off"
-msgstr "끔"
-
-#: ui/config/analysis.py:224 ui/reanalyze_dialog.py:61
-msgid ""
-"What the analysis puts at the automatic start position:\n"
-"the lead-in end, an early first downbeat, or 0:00.\n"
-"CUE point: a CUE point (memory cue).\n"
-"JumpCUE: a JumpCUE (hot cue) of its own.\n"
-"Off: nothing."
-msgstr ""
-"분석이 자동 시작 위치에 무엇을 둘지 정합니다:\n"
-"리드인 끝, 이른 첫 다운비트, 또는 0:00.\n"
-"CUE 포인트: CUE 포인트(메모리 큐).\n"
-"JumpCUE: 별도의 JumpCUE(핫 큐).\n"
-"끔: 아무것도 두지 않습니다."
-
-#: ui/config/analysis.py:266 ui/config/pipeline_map.py:22
-#: ui/reanalyze_dialog.py:89
-msgid "Beat"
-msgstr "비트"
-
-#: ui/config/analysis.py:137 ui/reanalyze_dialog.py:91
-msgid "BPM min"
-msgstr "BPM 최소"
-
-#: ui/config/analysis.py:232 ui/reanalyze_dialog.py:98
-msgid "Automatic start"
-msgstr "자동 시작"
-
-# | msgid "Key reanalyze"
-#: ui/reanalyze_dialog.py:101
-msgid "Reanalyze"
-msgstr "재분석"
 
 #: ui/shortcuts.py:29
 msgid "Playback"
@@ -7165,6 +7230,12 @@ msgstr ""
 msgid "Select the loaded track"
 msgstr "로드한 트랙 선택"
 
+#: ui/library/actions.py:47 ui/library/tabs/edit_song.py:248
+#: ui/library/tabs/edit_song.py:266 ui/library/track_panel.py:43
+#: ui/shortcuts.py:142
+msgid "Edit Track"
+msgstr "트랙 편집"
+
 #: ui/shortcuts.py:143
 msgid ""
 "The track panel's Edit tab with the selected track, its first field "
@@ -7185,7 +7256,7 @@ msgid ""
 "and audio fingerprints."
 msgstr "선택한 트랙을 트랙 패널의 검색 색인 탭에서 엽니다: 발음과 오디오 핑거프린트."
 
-#: ui/shortcuts.py:147 ui/track_search_index.py:87
+#: ui/library/tabs/track_search_index.py:87 ui/shortcuts.py:147
 msgid "Rebuild Audio Fingerprints"
 msgstr "오디오 핑거프린트 다시 만들기"
 
@@ -7195,7 +7266,8 @@ msgid ""
 "again (Index Now indexes it)."
 msgstr "선택한 트랙의 다른 버전 핑거프린트와 음악으로 검색 색인을 다시 만듭니다(지금 색인이 색인합니다)."
 
-#: ui/library/track_panel.py:45 ui/shortcuts.py:150 ui/tieup_editor.py:347
+#: ui/library/tabs/tieup_editor.py:347 ui/library/track_panel.py:45
+#: ui/shortcuts.py:150
 msgid "Tie-ups"
 msgstr "타이업"
 
@@ -7219,6 +7291,14 @@ msgstr "선택한 트랙을 일본어 위키백과와 위키데이터에서 찾�
 #: ui/shortcuts.py:156
 msgid "The works window: every work the tie-ups name, edited, merged or deleted."
 msgstr "작품 창: 타이업에 쓰인 모든 작품을 편집하거나 합치거나 삭제합니다."
+
+#: ui/library/actions.py:51 ui/library/tabs/export.py:309
+#: ui/library/tabs/export.py:314 ui/library/tabs/export.py:320
+#: ui/library/tabs/export.py:332 ui/library/tabs/export.py:342
+#: ui/library/tabs/export.py:454 ui/library/tabs/export.py:465
+#: ui/library/track_panel.py:46 ui/shortcuts.py:157
+msgid "Export Track"
+msgstr "트랙 내보내기"
 
 #: ui/shortcuts.py:158
 msgid "The track panel's Export tab with the selected track, focused."
@@ -7250,6 +7330,11 @@ msgstr "파일 관리자에서 보기"
 #: ui/library/sources.py:556 ui/shortcuts.py:164
 msgid "New Playlist"
 msgstr "새 플레이리스트"
+
+#: ui/library/actions.py:49 ui/shortcuts.py:165
+#: ui/windows/reanalyze_dialog.py:16
+msgid "Reanalyze Track"
+msgstr "트랙 재분석"
 
 #: ui/shortcuts.py:166
 msgid ""
@@ -7623,262 +7708,335 @@ msgstr "이 컴퓨터의 다른 프로그램이 {keys}를 가져가서 이 단�
 msgid "{keys} is used by more than one action (Settings > Shortcuts)."
 msgstr "{keys}가 여러 동작에 지정되어 있습니다 (설정 > 단축키)."
 
-#: ui/library/widget.py:36 ui/tieup_editor.py:123 ui/tieup_editor.py:284
-#: ui/tieup_editor.py:290
-msgid "Tie-up"
-msgstr "타이업"
+# | msgid "Audio engine"
+# | msgid "Engine"
+#: ui/widgets/language_picker.py:19
+msgid "English"
+msgstr "영어"
 
-#: ui/tieup_editor.py:132
-msgid "Type a title in any language or script"
-msgstr "아무 언어·문자로 제목을 입력하세요"
-
-#: ui/tieup_editor.py:133
-msgid ""
-"<p>Finds the works already entered by any of their titles, also by how "
-"they read (あのね by anone or 아노네). Pick one to use it, or New work.</p>"
-msgstr ""
-"<p>이미 입력한 작품을 어느 제목으로든, 읽는 소리로도 찾습니다(あのね를 anone나 아노네로). 찾은 작품을 고르거나 새 작품을"
-" 고르세요.</p>"
-
-#: ui/config/view.py:95 ui/config/view.py:97 ui/tieup_editor.py:140
-#: ui/tieup_editor.py:144 ui/tieup_works.py:77 ui/tieup_works.py:81
-msgid "Language"
-msgstr "언어"
-
-# | msgid "" "<p>The work's titles in any languages (ja, ko, en, zh-Hans,
-# | ja-Latn ...);" " the first one is shown in the library and the
-# comment.</p>"
-# | msgid "" "<p>The work's official titles in any languages (ja, ko, en,
-# | zh-Hans, ja-" "Latn ...). The library and the comment show the first title
-# | in the " "interface's language, else the first of all.</p>"
-#: ui/tieup_editor.py:141 ui/tieup_works.py:78
-msgid ""
-"<p>The work's official titles, each with its language as language-REGION "
-"(ja-JP, ko-KR, en-US). The library and the comment show the first title "
-"in the interface's language, else the first of all.</p>"
-msgstr ""
-"<p>작품의 정식 제목입니다. 언어는 언어-지역 형식(ja-JP, ko-KR, en-US)으로 씁니다. 라이브러리와 코멘트에는 "
-"인터페이스 언어의 첫 제목이, 없으면 맨 첫 제목이 나옵니다.</p>"
-
-#: ui/tieup_editor.py:144 ui/tieup_works.py:81
-msgid "Type"
-msgstr "종류"
-
-#: ui/config/view.py:170 ui/tieup_editor.py:144 ui/tieup_works.py:81
-msgid "Alias"
-msgstr "별칭"
-
-#: ui/tieup_editor.py:146 ui/tieup_works.py:83
-msgid ""
-"<p>Other names the work is found by, never shown: a name it is commonly "
-"called by (a romanization), an abbreviation, or a search hint (a "
-"misspelling, a typing slip). The search finds the work by them, also by "
-"how they read.</p>"
-msgstr ""
-"<p>화면에는 나오지 않고 검색에만 쓰이는 다른 이름: 흔히 부르는 이름(로마자 표기), 약칭, 검색 힌트(오자, 오타). 검색은 "
-"이 이름들과 그 발음으로도 작품을 찾습니다.</p>"
-
-# | msgid "Level"
-#: ui/tieup_editor.py:149 ui/tieup_works.py:86
-msgid "Label"
-msgstr "이름"
-
-#: ui/tieup_editor.py:149 ui/tieup_works.py:86
-msgid "URL"
-msgstr "URL"
-
-#: ui/tieup_editor.py:157
-msgid "Which one, when the work has several (OP2: 2)."
-msgstr "작품에 여러 개가 있을 때 몇 번째인지(OP2면 2)."
-
-# | msgid "Season 2, episodes 1-12"
-#: ui/tieup_editor.py:159
-msgid "Season 2, episodes 1-12; TV size"
-msgstr "2기 1~12화; TV 사이즈"
-
-#: ui/tieup_editor.py:160
-msgid ""
-"Where and how it is used: the episodes, the version of the song (a TV "
-"size, a character's version)."
-msgstr "어디에 어떻게 쓰였는지: 사용 화수, 곡의 버전(TV 사이즈, 캐릭터 버전)."
-
-# | msgid "Workers"
-#: ui/tieup_editor.py:163 ui/tieup_editor.py:361 ui/tieup_works.py:52
-msgid "Work"
-msgstr "작품"
-
-# | msgid "Finished"
-#: ui/tieup_editor.py:165
-msgid "Find"
-msgstr "찾기"
-
-#: ui/tieup_editor.py:167 ui/tieup_works.py:52 ui/tieup_works.py:100
-msgid "Category"
-msgstr "분류"
-
-# | msgid "Title"
-#: ui/tieup_editor.py:168 ui/tieup_works.py:101
-msgid "Titles"
-msgstr "제목"
-
-# | msgid "Alias"
-#: ui/tieup_editor.py:169 ui/tieup_works.py:102
-msgid "Aliases"
-msgstr "별칭"
+# | msgid "Cantonese"
+# | msgid "Channels"
+#: ui/widgets/language_picker.py:19
+msgid "Chinese"
+msgstr "중국어"
 
 # | msgid "Refresh"
-#: ui/tieup_editor.py:170 ui/tieup_works.py:103
-msgid "References"
-msgstr "참고 링크"
+# | msgid "References"
+#: ui/widgets/language_picker.py:20
+msgid "French"
+msgstr "프랑스어"
 
-# | msgid "CUE"
-#: ui/tieup_editor.py:175
-msgid "Use"
-msgstr "용도"
+#: ui/widgets/language_picker.py:20
+msgid "German"
+msgstr "독일어"
 
-#: ui/tieup_editor.py:181
-msgid "No."
-msgstr "번호"
+#: ui/widgets/language_picker.py:20
+msgid "Spanish"
+msgstr "스페인어"
 
-#: ui/tieup_editor.py:183 ui/tieup_editor.py:361
-msgid "Role"
-msgstr "역할"
+# | msgid "Alias"
+#: ui/widgets/language_picker.py:20
+msgid "Italian"
+msgstr "이탈리아어"
+
+#: ui/widgets/language_picker.py:21
+msgid "Portuguese"
+msgstr "포르투갈어"
+
+#: ui/widgets/language_picker.py:21
+msgid "Russian"
+msgstr "러시아어"
+
+# | msgid "Training"
+#: ui/widgets/language_picker.py:21
+msgid "Ukrainian"
+msgstr "우크라이나어"
+
+#: ui/widgets/language_picker.py:21
+msgid "Polish"
+msgstr "폴란드어"
+
+#: ui/widgets/language_picker.py:22
+msgid "Dutch"
+msgstr "네덜란드어"
+
+#: ui/widgets/language_picker.py:22
+msgid "Swedish"
+msgstr "스웨덴어"
+
+# | msgid "Korean"
+#: ui/widgets/language_picker.py:22
+msgid "Norwegian"
+msgstr "노르웨이어"
+
+#: ui/widgets/language_picker.py:22
+msgid "Danish"
+msgstr "덴마크어"
+
+# | msgid "Finished"
+#: ui/widgets/language_picker.py:23
+msgid "Finnish"
+msgstr "핀란드어"
+
+#: ui/widgets/language_picker.py:23
+msgid "Czech"
+msgstr "체코어"
+
+#: ui/widgets/language_picker.py:23
+msgid "Slovak"
+msgstr "슬로바키아어"
+
+#: ui/widgets/language_picker.py:23
+msgid "Hungarian"
+msgstr "헝가리어"
+
+# | msgid "Training"
+#: ui/widgets/language_picker.py:24
+msgid "Romanian"
+msgstr "루마니아어"
+
+#: ui/widgets/language_picker.py:24
+msgid "Bulgarian"
+msgstr "불가리아어"
+
+#: ui/widgets/language_picker.py:24
+msgid "Greek"
+msgstr "그리스어"
+
+# | msgid "Track File"
+# | msgid "Tracks"
+#: ui/widgets/language_picker.py:24
+msgid "Turkish"
+msgstr "튀르키예어"
+
+#: ui/widgets/language_picker.py:25
+msgid "Arabic"
+msgstr "아랍어"
+
+#: ui/widgets/language_picker.py:25
+msgid "Hebrew"
+msgstr "히브리어"
+
+#: ui/widgets/language_picker.py:25
+msgid "Persian"
+msgstr "페르시아어"
+
+# | msgid "Mid"
+# | msgid "MIDI"
+#: ui/widgets/language_picker.py:25
+msgid "Hindi"
+msgstr "힌디어"
+
+# | msgid "Audio engine"
+# | msgid "Engine"
+#: ui/widgets/language_picker.py:26
+msgid "Bengali"
+msgstr "벵골어"
 
 # | msgid "Default"
-#: ui/tieup_editor.py:184 ui/tieup_editor.py:361
-msgid "Detail"
-msgstr "세부 사항"
+# | msgid "Detail"
+#: ui/widgets/language_picker.py:26
+msgid "Tamil"
+msgstr "타밀어"
 
-#: ui/tieup_editor.py:234
-#, python-brace-format
-msgid "New work: “{title}”"
-msgstr "새 작품: “{title}”"
+# | msgid "hi"
+#: ui/widgets/language_picker.py:26
+msgid "Thai"
+msgstr "태국어"
 
-#: ui/tieup_editor.py:234
-msgid "New work"
-msgstr "새 작품"
+# | msgid "Sino-Vietnamese"
+#: ui/widgets/language_picker.py:26
+msgid "Vietnamese"
+msgstr "베트남어"
 
-# | msgid "Changes to the work apply to every song using it ({n})."
-#: ui/tieup_editor.py:271
-#, python-brace-format
-msgid "Changes to the work apply to the {n} track using it."
-msgid_plural "Changes to the work apply to the {n} tracks using it."
-msgstr[0] "작품을 고치면 이 작품을 쓰는 트랙 {n}개에 모두 적용됩니다."
+# | msgid "Index Now"
+# | msgid "Indexing…"
+#: ui/widgets/language_picker.py:27
+msgid "Indonesian"
+msgstr "인도네시아어"
 
-#: ui/tieup_editor.py:284 ui/tieup_works.py:261
-msgid "Give the work a title."
-msgstr "작품 제목을 입력하세요."
+# | msgid "Alias"
+#: ui/widgets/language_picker.py:27
+msgid "Malay"
+msgstr "말레이어"
 
-# | msgid "Tie-ups after the comment"
-#: ui/tieup_editor.py:311 ui/tieup_editor.py:482 ui/tieup_editor.py:489
-msgid "Tie-ups on the Web"
-msgstr "웹의 타이업"
+# | msgid "Tempo"
+# | msgid "Theme"
+#: ui/widgets/language_picker.py:27
+msgid "Khmer"
+msgstr "크메르어"
 
-# | msgid "Redo Changes"
-#: ui/tieup_editor.py:321
-#, python-brace-format
-msgid "Read on {page}"
-msgstr "출처: {page}"
+# | msgid "lo"
+#: ui/widgets/language_picker.py:27
+msgid "Lao"
+msgstr "라오어"
 
-#: ui/tieup_editor.py:323
+# | msgid "CUE"
+# | msgid "Use"
+#: ui/widgets/language_picker.py:28
+msgid "Burmese"
+msgstr "미얀마어"
+
+# | msgid "MONO SPLIT"
+#: ui/widgets/language_picker.py:28
+msgid "Mongolian"
+msgstr "몽골어"
+
+# | msgid "Rating"
+#: ui/widgets/language_picker.py:28
+msgid "Croatian"
+msgstr "크로아티아어"
+
+# | msgid "Headphones: CUE / MASTER"
+# | msgid "CUE / MASTER"
+# | msgid "Master"
+# | msgid "master in"
+#: ui/widgets/language_picker.py:28
+msgid "Serbian"
+msgstr "세르비아어"
+
+# | msgid "Open."
+# | msgid "Opening..."
+# | msgid "opening..."
+# | msgid "Opening"
+#: ui/widgets/language_picker.py:29
+msgid "Slovenian"
+msgstr "슬로베니아어"
+
+#: ui/widgets/language_picker.py:29
+msgid "Lithuanian"
+msgstr "리투아니아어"
+
+# | msgid "Saving"
+#: ui/widgets/language_picker.py:29
+msgid "Latvian"
+msgstr "라트비아어"
+
+#: ui/widgets/language_picker.py:29
+msgid "Estonian"
+msgstr "에스토니아어"
+
+#: ui/widgets/language_picker.py:30
+msgid "Catalan"
+msgstr "카탈루냐어"
+
+#: ui/widgets/language_picker.py:30
+msgid "Basque"
+msgstr "바스크어"
+
+# | msgid "Alias"
+#: ui/widgets/language_picker.py:30
+msgid "Galician"
+msgstr "갈리시아어"
+
+#: ui/widgets/language_picker.py:30
+msgid "Icelandic"
+msgstr "아이슬란드어"
+
+# | msgid "Finished"
+#: ui/widgets/language_picker.py:31
+msgid "Irish"
+msgstr "아일랜드어"
+
+#: ui/widgets/language_picker.py:31
+msgid "Welsh"
+msgstr "웨일스어"
+
+# | msgid "Rating"
+#: ui/widgets/language_picker.py:31
+msgid "Latin"
+msgstr "라틴어"
+
+#: ui/widgets/language_picker.py:106
 msgid ""
-"From Japanese Wikipedia and Wikidata. A checked one is added with the "
-"work's names in other languages and its page as a reference."
-msgstr "일본어 위키백과와 Wikidata에서 찾았습니다. 체크한 타이업을 다른 언어 작품명과 작품 문서 링크와 함께 추가합니다."
+"Type a language's name in any language, or its tag (language-REGION: ko-"
+"KR)."
+msgstr "아무 언어로나 언어 이름을 입력하거나 태그(언어-지역: ko-KR)를 입력하세요."
 
-#: ui/tieup_editor.py:348
+#: ui/windows/about_dialog.py:179
+msgid "About Mixlyzer"
+msgstr "Mixlyzer 정보"
+
+#: ui/windows/about_dialog.py:184
 msgid ""
-"<p>The works this track is used in: an anime's opening, a game's title "
-"screen, a character song.</p>"
-msgstr "<p>이 트랙이 쓰인 작품입니다: 애니메이션 오프닝, 게임 타이틀 화면, 캐릭터송 등.</p>"
-
-# | msgid "Added"
-#: ui/tieup_editor.py:371
-msgid "Add…"
-msgstr "추가…"
-
-# | msgid "Edit Track"
-# | msgid "Editor"
-#: ui/tieup_editor.py:372
-msgid "Edit…"
-msgstr "편집…"
-
-#: ui/config/library.py:33 ui/tieup_editor.py:373
-msgid "Remove"
-msgstr "제거"
-
-#: ui/tieup_editor.py:374 ui/tieup_editor.py:476
-msgid "Find on the Web"
-msgstr "웹에서 찾기"
-
-#: ui/tieup_editor.py:375
-msgid ""
-"<p>Look the track up on Japanese Wikipedia and Wikidata (its title and "
-"artist are sent there) and pick the tie-ups to add.</p>"
-msgstr "<p>일본어 위키백과와 Wikidata에서 이 트랙을 찾아(제목과 아티스트가 전송됨) 추가할 타이업을 고릅니다.</p>"
-
-#: ui/tieup_editor.py:421
-#, python-brace-format
-msgid ""
-"A tie-up added here is added to its {n} other version too (Settings > "
-"Library)."
-msgid_plural ""
-"A tie-up added here is added to its {n} other versions too (Settings > "
-"Library)."
-msgstr[0] "여기서 추가한 타이업은 이 트랙의 다른 버전 {n}개에도 추가됩니다(설정 > 라이브러리)."
-
-# | msgid "Shared with {n} other version of this song."
-# | msgid_plural "Shared with {n} other versions of this song."
-#: ui/tieup_editor.py:424
-#, python-brace-format
-msgid "{n} other version of this track (Variants)."
-msgid_plural "{n} other versions of this track (Variants)."
-msgstr[0] "이 트랙의 다른 버전 {n}개(Variants)."
-
-#: ui/tieup_editor.py:471
-msgid "Looking up…"
-msgstr "찾는 중…"
-
-# | msgid "Reading the analysis failed: {error}"
-# | msgid "The search failed: {error}"
-#: ui/tieup_editor.py:482
-#, python-brace-format
-msgid ""
-"The lookup failed:\n"
-"{error}"
+"Mixlyzer\n"
+"\n"
+"Interactive beatgrid, key, and JumpCUE analysis and editing toolkit.\n"
+"Distributed under the GNU Lesser General Public License v3.0. See below "
+"for the full license text."
 msgstr ""
-"찾지 못했습니다:\n"
-"{error}"
+"Mixlyzer\n"
+"\n"
+"비트그리드, 키, JumpCUE를 분석하고 편집하는 인터랙티브 도구입니다.\n"
+"GNU Lesser General Public License v3.0으로 배포됩니다. 라이선스 전문은 아래를 보세요."
 
-#: ui/tieup_editor.py:489
-msgid "Wikipedia has no tie-up for this track."
-msgstr "위키백과에 이 트랙의 타이업이 없습니다."
+#: ui/windows/oss_support.py:12
+msgid "Support Python & Open Source"
+msgstr "Python과 오픈 소스 후원"
 
-#: ui/tieup_works.py:45
+#: ui/windows/oss_support.py:20
+msgid ""
+"This app is built on the shoulders of open-source projects.\n"
+"If you'd like to support the ecosystem, here are some ways."
+msgstr ""
+"이 앱은 오픈 소스 프로젝트들 위에 만들어졌습니다.\n"
+"이 생태계를 후원하고 싶다면 이런 방법이 있습니다."
+
+#: ui/windows/oss_support.py:27
+msgid "Donate to Python (PSF)"
+msgstr "Python 후원 (PSF)"
+
+#: ui/windows/oss_support.py:29
+msgid "Donate to Scientific Python (NumFOCUS)"
+msgstr "과학용 Python 후원 (NumFOCUS)"
+
+#: ui/windows/oss_support.py:51
+msgid "Open Link"
+msgstr "링크 열기"
+
+# | msgid "Export Track"
+# | msgid "Next track"
+#: ui/windows/reanalyze_dialog.py:20
+#, python-brace-format
+msgid "{count} track"
+msgid_plural "{count} tracks"
+msgstr[0] "트랙 {count}개"
+
+# | msgid "" "A full analysis of the selected tracks: their stored analysis
+# and
+# | edits " "are replaced."
+# | msgid "Its stored analysis and edits are replaced."
+# | msgid_plural "Their stored analysis and edits are replaced."
+#: ui/windows/reanalyze_dialog.py:24
+msgid "Its stored analysis and edits are replaced; this cannot be undone."
+msgid_plural "Their stored analysis and edits are replaced; this cannot be undone."
+msgstr[0] "저장된 분석과 편집 내용이 변경되며 이는 되돌릴 수 없습니다."
+
+# | msgid "Key reanalyze"
+#: ui/windows/reanalyze_dialog.py:101
+msgid "Reanalyze"
+msgstr "재분석"
+
+#: ui/windows/tieup_works.py:45
 msgid "Find a work by any of its names"
 msgstr "작품의 아무 이름으로나 찾기"
 
 # | msgid "Category"
-#: ui/tieup_works.py:48
+#: ui/windows/tieup_works.py:48
 msgid "All categories"
 msgstr "모든 분류"
 
 # | msgid "Track File"
-#: ui/tieup_works.py:52 ui/tieup_works.py:104
+#: ui/windows/tieup_works.py:52 ui/windows/tieup_works.py:104
 msgid "Tracks"
 msgstr "트랙"
 
-#: ui/tieup_works.py:89
+#: ui/windows/tieup_works.py:89
 msgid "The tracks with a tie-up to this work: a change to the work is theirs."
 msgstr "이 작품의 타이업이 있는 트랙: 작품을 바꾸면 이 트랙들에 모두 적용됩니다."
 
-# | msgid "Shared"
-#: ui/edit_panel/panel.py:589 ui/tieup_works.py:90
-msgid "Save"
-msgstr "저장"
-
 # | msgid "Redo Changes"
-#: ui/tieup_works.py:91
+#: ui/windows/tieup_works.py:91
 msgid "Discard Changes"
 msgstr "변경 취소"
 
@@ -7886,11 +8044,12 @@ msgstr "변경 취소"
 # | msgid "CUE / MASTER"
 # | msgid "Master"
 # | msgid "master in"
-#: ui/tieup_works.py:92 ui/tieup_works.py:287 ui/tieup_works.py:305
+#: ui/windows/tieup_works.py:92 ui/windows/tieup_works.py:287
+#: ui/windows/tieup_works.py:305
 msgid "Merge Into…"
 msgstr "다른 작품에 합치기…"
 
-#: ui/tieup_works.py:93
+#: ui/windows/tieup_works.py:93
 msgid ""
 "<p>The same work entered twice: this one's names and references are added"
 " to the one picked, its tracks' tie-ups moved there, and this one "
@@ -7900,33 +8059,33 @@ msgstr ""
 "작품을 삭제합니다.</p>"
 
 # | msgid "New work"
-#: ui/tieup_works.py:95 ui/tieup_works.py:321
+#: ui/windows/tieup_works.py:95 ui/windows/tieup_works.py:321
 msgid "Delete Work"
 msgstr "작품 삭제"
 
-#: ui/tieup_works.py:96
+#: ui/windows/tieup_works.py:96
 msgid "The work deleted with every track's tie-up to it."
 msgstr "작품을 삭제합니다. 모든 트랙에서 이 작품의 타이업도 삭제됩니다."
 
 # | msgid "New work"
-#: ui/tieup_works.py:187
+#: ui/windows/tieup_works.py:187
 #, python-brace-format
 msgid "{n} work"
 msgid_plural "{n} works"
 msgstr[0] "작품 {n}개"
 
 # | msgid "Apply the changes to \"{title}\"? (No: they are dropped)"
-#: ui/tieup_works.py:207 ui/tieup_works.py:339
+#: ui/windows/tieup_works.py:207 ui/windows/tieup_works.py:339
 #, python-brace-format
 msgid "Save the changes to \"{title}\"? (No: they are dropped)"
 msgstr "\"{title}\"의 변경 사항을 저장할까요? (아니요: 버립니다)"
 
-#: ui/tieup_works.py:297
+#: ui/windows/tieup_works.py:297
 #, python-brace-format
 msgid "Merge \"{title}\" into:"
 msgstr "\"{title}\"을(를) 합칠 작품:"
 
-#: ui/tieup_works.py:306
+#: ui/windows/tieup_works.py:306
 #, python-brace-format
 msgid ""
 "Merge \"{title}\" into \"{into}\"? Its {n} track's tie-up moves there and"
@@ -7938,162 +8097,24 @@ msgstr[0] ""
 "\"{title}\"을(를) \"{into}\"에 합칠까요? 트랙 {n}개의 타이업이 그쪽으로 옮겨지고 \"{title}\"은(는)"
 " 삭제됩니다."
 
-#: ui/tieup_works.py:322
+#: ui/windows/tieup_works.py:322
 #, python-brace-format
 msgid "Delete \"{title}\"? Its tie-up on {n} track is deleted too."
 msgid_plural "Delete \"{title}\"? Its tie-ups on {n} tracks are deleted too."
 msgstr[0] "\"{title}\"을(를) 삭제할까요? 트랙 {n}개에 있는 이 작품의 타이업도 삭제됩니다."
 
-#: ui/track_info_panel.py:166
-msgid ""
-"Channel level (before the fader), as a DJM-A9's: -30 to +12 dB; 0 dB is "
-"-12 dBFS, +12 dB the full scale (clipping)."
-msgstr ""
-"채널 레벨(페이더 전), DJM-A9과 같은 눈금: -30 ~ +12 dB. 0 dB는 -12 dBFS, +12 dB는 "
-"풀스케일(클리핑)입니다."
-
-#: ui/track_info_panel.py:364
-msgid "Unload track"
-msgstr "트랙 내리기"
-
-# | msgid "" "TRIM: the level before the volume fader, -24 to +9 dB (0 dB in
-# the
-# | " "middle), kept as Settings > Playback > Trim. Double-click: 0 dB."
-#: ui/track_info_panel.py:771
-msgid ""
-"TRIM: the level before the volume fader, -24 to +9 dB (0 dB in the "
-"middle), kept as Settings > Audio > Mixer > Trim. Double-click: 0 dB."
-msgstr ""
-"TRIM: 볼륨 페이더 앞의 레벨, -24 ~ +9 dB(가운데 0 dB). 설정 > 오디오 > 믹서 > 트림으로 저장됩니다. "
-"더블클릭: 0 dB."
-
-#: ui/track_info_panel.py:776
-#, python-brace-format
-msgid ""
-"EQ {band}: the isolator's band, from a kill to +6 dB (0 dB in the "
-"middle). Double-click: 0 dB."
-msgstr "EQ {band}: 아이솔레이터 밴드, 차단부터 +6 dB까지(가운데 0 dB). 더블클릭: 0 dB."
-
-# | msgid "" "EQ {band}: the native audio engine's mixer only (Settings >
-# | Playback > " "Audio engine)."
-#: ui/track_info_panel.py:778
-#, python-brace-format
-msgid ""
-"EQ {band}: the native audio engine's mixer only (Settings > Audio > "
-"Engine)."
-msgstr "EQ {band}: Native 오디오 엔진의 믹서에서만 동작합니다(설정 > 오디오 > 엔진)."
-
-#: ui/track_info_panel.py:789 ui/workers.py:213
-msgid "No Art"
-msgstr "아트 없음"
-
-#: ui/track_search_index.py:50
-msgid "Readings"
-msgstr "발음"
-
-#: ui/track_search_index.py:60
-msgid ""
-"<p>How the title, artist and album read in Latin letters: the search "
-"finds the track by them in any script (あのね by anone or 아노네). Dim: read "
-"from the text in Settings > Search's languages. Type in a cell to add a "
-"reading of yours; empty a cell (Delete) or type over it to remove its "
-"reading for good, and type it again to bring it back.</p>"
-msgstr ""
-"<p>제목, 아티스트, 앨범을 라틴 문자로 읽은 발음입니다. 검색은 어떤 문자로 입력해도 이 발음으로 트랙을 찾습니다(あのね를 "
-"anone이나 아노네로). 흐린 글자: 설정 > 검색의 언어로 텍스트에서 읽은 것. 칸에 입력하면 내 발음을 추가하고, 칸을 "
-"비우거나(Delete) 덮어쓰면 그 발음을 영구히 지우며, 다시 입력하면 되살립니다.</p>"
-
-#: ui/track_search_index.py:73
-msgid ""
-"Read from the stored title, artist and album: a change in the Edit tab is"
-" read once it is applied."
-msgstr "저장된 제목, 아티스트, 앨범에서 읽은 발음입니다. 편집 탭에서 바꾼 내용은 적용한 뒤에 반영됩니다."
-
-# | msgid "Audio engine"
-#: ui/track_search_index.py:83
-msgid "Audio Fingerprints"
-msgstr "오디오 핑거프린트"
-
-#: ui/track_search_index.py:89
-msgid ""
-"<p>The track's Variants fingerprint and its Search by Music index made "
-"again: the track is taken out of both indexes, then Index Now indexes it "
-"(its audio decoded, a few seconds). For a track found as another's "
-"version by mistake, or missing from Search by Music.</p>"
-msgstr ""
-"<p>이 트랙의 다른 버전 핑거프린트와 음악으로 검색 색인을 다시 만듭니다. 두 색인에서 트랙을 뺀 뒤 지금 색인이 다시 "
-"색인합니다(오디오를 디코딩하므로 몇 초 걸립니다). 다른 곡의 버전으로 잘못 잡히거나 음악으로 검색에 나오지 않는 트랙에 "
-"씁니다.</p>"
-
-# | msgid "Alias"
-#: ui/library/sources.py:256 ui/track_search_index.py:95
-msgid "Variants"
-msgstr "다른 버전"
-
-#: ui/track_search_index.py:265
-msgid "Rebuilt."
-msgstr "다시 만들었습니다."
-
-#: ui/track_search_index.py:266
-msgid "Not rebuilt: Index Now could not index the track."
-msgstr "다시 만들지 못했습니다: 지금 색인이 이 트랙을 색인하지 못했습니다."
-
-#: ui/track_search_index.py:270
-msgid "Fingerprinted"
-msgstr "핑거프린트 있음"
-
-# | msgid "Not Loaded"
-#: ui/track_search_index.py:270 ui/track_search_index.py:271
-msgid "Not indexed"
-msgstr "색인 안 됨"
-
-# | msgid "Index Now"
-#: ui/track_search_index.py:271
-msgid "Indexed"
-msgstr "색인됨"
-
-#: ui/track_search_index.py:279
-msgid "The audio file is not there: the fingerprints cannot be made again."
-msgstr "오디오 파일이 없어서 핑거프린트를 다시 만들 수 없습니다."
-
-#: ui/track_search_index.py:283
-msgid "Taking the track out of the indexes…"
-msgstr "색인에서 트랙을 빼는 중…"
-
-#: ui/track_search_index.py:290 ui/track_search_index.py:315
-#, python-brace-format
-msgid "Not rebuilt: {error}"
-msgstr "다시 만들지 못했습니다: {error}"
-
-# | msgid "Index Now"
-#: ui/track_search_index.py:293
-msgid "Indexing…"
-msgstr "색인 중…"
-
-# | msgid "Loading Track"
-# | msgid "Indexing {n} track"
-# | msgid_plural "Indexing {n} tracks"
-#: ui/track_search_index.py:300
-#, python-brace-format
-msgid "Indexing… {percent}%"
-msgstr "색인 중… {percent}%"
-
 # | msgid "Tie-ups"
 # | msgid "Tie-up Works"
-#: ui/workers.py:24
+#: ui/windows/workers.py:24
 msgid "Tie-up Lookup"
 msgstr "타이업 조사"
 
-#: ui/config/analysis.py:282 ui/workers.py:24
-msgid "Analysis"
-msgstr "분석"
-
-#: ui/workers.py:56
+#: ui/windows/workers.py:56
 #, python-brace-format
 msgid "{name} ({n})"
 msgstr "{name} ({n})"
 
-#: ui/workers.py:151
+#: ui/windows/workers.py:151
 #, python-brace-format
 msgid "Task {id}"
 msgstr "작업 {id}"

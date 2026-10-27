@@ -3,10 +3,10 @@ the selection."""
 from __future__ import annotations
 
 from PySide6 import QtCore, QtGui, QtWidgets
-from ui.edit_song import EditTrackPanel
-from ui.export import ExportTrackPanel
-from ui.tieup_editor import TieupPanel
-from ui.track_search_index import SearchIndexPanel
+from ui.library.tabs.edit_song import EditTrackPanel
+from ui.library.tabs.export import ExportTrackPanel
+from ui.library.tabs.tieup_editor import TieupPanel
+from ui.library.tabs.track_search_index import SearchIndexPanel
 from ui.theme import current_theme
 from system.i18n import tr
 

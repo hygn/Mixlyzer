@@ -12,9 +12,9 @@ from audioengine.controls import NATIVE_BUFFER_MS_RANGE, NATIVE_EXCLUSIVE_RATES
 from system import os_support
 from core.settings.config import outputconfig
 from system.i18n import tr, tr_mark
-from ui.buffer_histogram import BufferHistogram
-from ui.live_label import LiveLabel
-from ui.track_info_panel import HorizontalBufferMeter
+from ui.widgets.buffer_histogram import BufferHistogram
+from ui.widgets.live_label import LiveLabel
+from ui.deck.track_info_panel import HorizontalBufferMeter
 
 # the native engine's threads as it got them (client.THREAD_STATES), shown under the meter
 THREAD_STATE_NAMES = {

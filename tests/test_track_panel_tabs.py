@@ -18,9 +18,9 @@ from core.library import tieups
 from core.library.db import LibraryDB
 from core.library.records import TrackRow
 from core.library.service import LibraryService
-from ui.tieup_editor import TieupPanel
-from ui.tieup_works import WorksWindow
-from ui.track_search_index import SearchIndexPanel
+from ui.library.tabs.tieup_editor import TieupPanel
+from ui.windows.tieup_works import WorksWindow
+from ui.library.tabs.track_search_index import SearchIndexPanel
 
 APP = QApplication.instance() or QApplication([])
 
