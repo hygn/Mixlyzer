@@ -176,6 +176,7 @@ class SettingsDialog(
         self.cb_tieup_to_versions.setChecked(bool(cfg.libconfig.tieup_to_versions))
         self.cb_tieup_web_search.setChecked(bool(cfg.libconfig.tieup_web_search))
         self.cb_sync_stored_analysis.setChecked(bool(cfg.libconfig.sync_stored_analysis))
+        self.cb_backup_feature_cache.setChecked(bool(cfg.libconfig.backup_feature_cache))
 
         # search
         self._set_search_config(cfg.searchconfig)
@@ -329,6 +330,7 @@ class SettingsDialog(
                 tieup_to_versions=bool(self.cb_tieup_to_versions.isChecked()),
                 tieup_web_search=bool(self.cb_tieup_web_search.isChecked()),
                 sync_stored_analysis=bool(self.cb_sync_stored_analysis.isChecked()),
+                backup_feature_cache=bool(self.cb_backup_feature_cache.isChecked()),
             ),
             viewconfig=viewconfig(
                 language=self._get_language(),

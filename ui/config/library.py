@@ -122,6 +122,31 @@ def build_library_tab(dialog) -> None:
     f_database.addRow(dialog.cb_sync_stored_analysis)
     f_database.addRow("", dialog.btn_library_sync_now)
 
+    # the library packed into one file and restored from one (core.workflows.library_backup)
+    dialog.cb_backup_feature_cache = QCheckBox(tr("Include the feature caches"))
+    dialog.cb_backup_feature_cache.setToolTip(tr(
+        "<p>A backup also packs the analyses' feature caches: Reoptimize's training data, made again from the "
+        "library when missing, so a backup is smaller without them.</p>"))
+    dialog.btn_backup_library = QPushButton(tr("Back Up Library…"))
+    dialog.btn_backup_library.setToolTip(tr(
+        "<p>The library packed into one file, picked each time: its database, every track's stored analysis, the "
+        "thumbnails, the search indexes, the settings, your shortcuts, MIDI mapping and retrained models. The music "
+        "files themselves are not packed.</p>"))
+    dialog.btn_restore_library = QPushButton(tr("Restore Library…"))
+    dialog.btn_restore_library.setToolTip(tr(
+        "<p>A backup unpacked into a new library folder, on this device or another; its music folders joined to "
+        "this device's, then Mixlyzer restarts on it. The library in use now is kept as it is.</p>"))
+    backup_buttons = QWidget()
+    backup_row = QtWidgets.QHBoxLayout(backup_buttons)
+    backup_row.setContentsMargins(0, 0, 0, 0)
+    backup_row.addWidget(dialog.btn_backup_library)
+    backup_row.addWidget(dialog.btn_restore_library)
+    backup_row.addStretch(1)
+    grp_backup = QGroupBox(tr("Backup"))
+    f_backup = QFormLayout(grp_backup)
+    f_backup.addRow(dialog.cb_backup_feature_cache)
+    f_backup.addRow(backup_buttons)
+
     grp_rekordbox = QGroupBox(tr("Rekordbox XML"))
     f_rekordbox = QFormLayout(grp_rekordbox)
     f_rekordbox.addRow(dialog.cb_rekordbox_sync)
@@ -139,11 +164,14 @@ def build_library_tab(dialog) -> None:
 
     form.addRow(grp_library)
     form.addRow(grp_database)
+    form.addRow(grp_backup)
     form.addRow(grp_rekordbox)
     form.addRow(grp_advanced)
 
     dialog.btn_rekordbox_sync_now.clicked.connect(dialog._sync_rekordbox_now)
     dialog.btn_library_sync_now.clicked.connect(dialog._sync_library_now)
+    dialog.btn_backup_library.clicked.connect(dialog._backup_library)
+    dialog.btn_restore_library.clicked.connect(dialog._restore_library)
     dialog.btn_add_local_music_directory.clicked.connect(dialog._browse_local_music_directory)
     dialog.btn_remove_local_music_directory.clicked.connect(
         dialog._remove_local_music_directories
@@ -206,6 +234,8 @@ class LibrarySettingsMixin:
         self._library_sync_dialog: LibrarySyncProgressDialog | None = None
         if bus is None:
             self.btn_library_sync_now.setEnabled(False)
+            self.btn_backup_library.setEnabled(False)
+            self.btn_restore_library.setEnabled(False)
             return
         bus.sig_library_sync_progress.connect(self._on_library_sync_progress)
         bus.sig_library_sync_finished.connect(self._on_library_sync_finished)
@@ -235,6 +265,15 @@ class LibrarySettingsMixin:
         self._library_sync_dialog.show()
         self.btn_library_sync_now.setEnabled(False)
         self._bus.sig_library_sync_requested.emit()
+
+    def _backup_library(self) -> None:
+        """Back Up Library…: the window asks where and writes it (the checkbox as it is now, saved or not)."""
+        if self._bus is not None:
+            self._bus.sig_library_backup_requested.emit(bool(self.cb_backup_feature_cache.isChecked()))
+
+    def _restore_library(self) -> None:
+        if self._bus is not None:
+            self._bus.sig_library_restore_requested.emit()
 
     @QtCore.Slot(int, int)
     def _on_library_sync_progress(self, done: int, total: int) -> None:

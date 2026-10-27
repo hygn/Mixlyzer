@@ -2,6 +2,8 @@
 
 from PySide6 import QtCore, QtGui, QtWidgets
 import copy
+import sys
+import time
 
 from app.audio_report import print_audio_setup
 from app.print_hook import install_print_hook, log_environment_info
@@ -25,6 +27,8 @@ from core.playback.external_sync import ExternalSyncController
 from core.workflows.rekordbox_sync import RekordboxXmlSync
 from core.workflows.reading_refresh import LibraryReadingRefresh
 from core.workflows.library_sync import LibraryIndexSync
+from core.workflows.library_backup import LibraryBackup, package_suffix
+from ui.windows.library_backup import BackupDialog, RestoreDialog, reason_text
 from core.workflows.music_index import LibraryMusicIndex
 from core.workflows.tieup_web import TieupWebLookup
 from .metronome import MetronomeController
@@ -47,11 +51,11 @@ from ui.shortcuts import ShortcutManager
 MIDI_STEPS_MAX = 16
 
 from core.workflows.segment_reanalysis import SegmentReanalysisWorkflow
-from core.settings.config import config, search_settings
+from core.settings.config import config, restored_settings, search_settings
 from core.settings.store import SettingsStore
 from analyzer.music.beat_geometry import downbeat_beat_indices
 from system.i18n import tr, tr_n
-from system.resource_paths import resource_path
+from system.resource_paths import app_folder, resource_path
 
 class AppWindow(QtWidgets.QMainWindow):
     _sig_metronome_set_beats = QtCore.Signal(object, object, float)
@@ -202,6 +206,10 @@ class AppWindow(QtWidgets.QMainWindow):
         self.library_sync.progress.connect(self.bus.sig_library_sync_progress)
         self.library_sync.finished.connect(self.bus.sig_library_sync_finished)
         self.library_sync.failed.connect(self.bus.sig_library_sync_failed)
+        # the library packed into one file and restored from one (Settings > Library's Backup)
+        self.library_backup = LibraryBackup(self.library, parent=self)
+        self.bus.sig_library_backup_requested.connect(self._backup_library)
+        self.bus.sig_library_restore_requested.connect(self._restore_library)
         # (the new readings written by the library's owner, which shows them to the search)
         self.reading_refresh = LibraryReadingRefresh(cfg_getter=lambda: self.cfg, library=self.library, parent=self)
         self.reading_refresh.started.connect(self.bus.sig_reading_refresh_started)
@@ -754,6 +762,72 @@ class AppWindow(QtWidgets.QMainWindow):
             message,
         )
 
+    # ---- the library's backup (core.workflows.library_backup) ----
+    def _backup_library(self, feature_cache: bool) -> None:
+        """Back Up Library…: where asked each time, the package written by the library's owner meanwhile shown."""
+        parent = self.cfgwin if self.cfgwin.isVisible() else self
+        name = f"Mixlyzer-library-{time.strftime('%Y%m%d-%H%M')}{package_suffix()}"
+        path, _filter = QtWidgets.QFileDialog.getSaveFileName(
+            parent, tr("Back Up Library"), os.path.join(os.path.expanduser("~"), name),
+            tr("Mixlyzer library backup (*{suffix})").format(suffix=package_suffix()))
+        if not path:
+            return
+        if not path.lower().endswith(package_suffix()):
+            path += package_suffix()
+        BackupDialog(self.library_backup, path, feature_cache, parent).open()
+
+    def _restore_library(self) -> None:
+        """Restore Library…: a backup picked, read and checked, then the restore's window."""
+        parent = self.cfgwin if self.cfgwin.isVisible() else self
+        if self.model.unsaved:
+            QtWidgets.QMessageBox.warning(parent, tr("Restore Library"), tr(
+                "The editor has edits not saved. Save or undo them first: Mixlyzer restarts after a restore."))
+            return
+        path, _filter = QtWidgets.QFileDialog.getOpenFileName(
+            parent, tr("Restore Library"), os.path.expanduser("~"),
+            tr("Mixlyzer library backup (*{suffix})").format(suffix=package_suffix()))
+        if not path:
+            return
+
+        def opened(info) -> None:
+            dialog = RestoreDialog(self.library_backup, info, self.cfg.libconfig.libpath, parent)
+            dialog.finished_restore.connect(self._on_library_restored)
+            dialog.open()
+
+        def refused(exc) -> None:
+            QtWidgets.QMessageBox.warning(parent, tr("Restore Library"), reason_text(exc))
+        self.library_backup.read(path, opened, refused)
+
+    def _on_library_restored(self, result) -> None:
+        """A backup unpacked: the settings made the package's on this device (config.restored_settings), saved, and
+        the app started again on the new library."""
+        new = restored_settings(self.cfg, result.settings, result.deck, libpath=result.unpacked.folder,
+                                local_music_directories=result.music_folders,
+                                rekordbox_xml_path=result.rekordbox_xml_path)
+        self.settings.save(new)
+        unpacked = result.unpacked
+        text = tr_n("Restored {n} track into:\n{folder}", "Restored {n} tracks into:\n{folder}",
+                    unpacked.tracks).format(n=f"{unpacked.tracks:,}", folder=unpacked.folder)
+        if unpacked.moved:
+            text += "\n\n" + tr_n("{n} track's file path was joined to this device's folders.",
+                                  "{n} tracks' file paths were joined to this device's folders.",
+                                  unpacked.moved).format(n=f"{unpacked.moved:,}")
+        if unpacked.clashes:
+            text += "\n" + tr_n("{n} path was left as it was: another track already had the new one.",
+                                "{n} paths were left as they were: other tracks already had the new ones.",
+                                unpacked.clashes).format(n=f"{unpacked.clashes:,}")
+        if unpacked.without_analysis:
+            text += "\n" + tr_n("{n} track had no stored analysis in the backup.",
+                                "{n} tracks had no stored analysis in the backup.",
+                                unpacked.without_analysis).format(n=f"{unpacked.without_analysis:,}")
+        if result.kept_aside:
+            text += "\n\n" + tr("Files replaced by the backup's were kept beside them:") + "\n" + \
+                "\n".join(result.kept_aside)
+        text += "\n\n" + tr("Mixlyzer now restarts to open the restored library.")
+        QtWidgets.QMessageBox.information(self.cfgwin if self.cfgwin.isVisible() else self,
+                                          tr("Restore Library"), text)
+        restart_app()
+
     def _on_settings_save(self, _config: config):
         prev_cfg = self.cfg.to_dict()
         prev_deck = self.cfg.deck_dict()
@@ -1020,3 +1094,11 @@ class AppWindow(QtWidgets.QMainWindow):
             if address:
                 self.statusBar().showMessage(
                     tr("External Sync enabled: OSC on {address}. Local play/load is locked.").format(address=address))
+
+
+def restart_app() -> None:
+    """The app started again as a new process (from its folder, as it was started: the build's exe, else the
+    module) and this one quit: a restored library is opened through the start's checks."""
+    args = [] if getattr(sys, "frozen", False) else ["-m", "app.main"]
+    QtCore.QProcess.startDetached(sys.executable, args, str(app_folder()))
+    QtWidgets.QApplication.quit()

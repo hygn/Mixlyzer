@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-27 21:28+0900\n"
+"POT-Creation-Date: 2026-10-27 21:57+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ja_JP\n"
@@ -530,43 +530,43 @@ msgstr "ライブラリを読み込み中"
 msgid "Building the window"
 msgstr "ウィンドウを作成中"
 
-#: app/window.py:73
+#: app/window.py:77
 msgid "Core objects and playback"
 msgstr "コアオブジェクトと再生"
 
-#: app/window.py:95
+#: app/window.py:99
 msgid "Main view, editor and library"
 msgstr "メインビュー、エディター、ライブラリ"
 
-#: app/window.py:101 app/window.py:238 ui/config/window.py:66
+#: app/window.py:105 app/window.py:246 ui/config/window.py:66
 msgid "Settings"
 msgstr "環境設定"
 
-#: app/window.py:103
+#: app/window.py:107
 msgid "Dialogs, workflows and metronome"
 msgstr "ダイアログ、ワークフロー、メトロノーム"
 
-#: app/window.py:239 ui/windows/workers.py:28
+#: app/window.py:247 ui/windows/workers.py:28
 msgid "Workers"
 msgstr "タスク"
 
 # | msgid "Tie-ups"
-#: app/window.py:240 ui/shortcuts.py:155 ui/windows/tieup_works.py:33
+#: app/window.py:248 ui/shortcuts.py:155 ui/windows/tieup_works.py:33
 #: ui/windows/tieup_works.py:206 ui/windows/tieup_works.py:261
 #: ui/windows/tieup_works.py:266 ui/windows/tieup_works.py:275
 #: ui/windows/tieup_works.py:338
 msgid "Tie-up Works"
 msgstr "タイアップ作品"
 
-#: app/window.py:241
+#: app/window.py:249
 msgid "Open Source"
 msgstr "オープンソース"
 
-#: app/window.py:242
+#: app/window.py:250
 msgid "About"
 msgstr "情報"
 
-#: app/window.py:259 core/controls/midi.py:55 ui/config/playback.py:356
+#: app/window.py:267 core/controls/midi.py:55 ui/config/playback.py:356
 msgid "Mixer"
 msgstr "ミキサー"
 
@@ -574,53 +574,53 @@ msgstr "ミキサー"
 # | Playback > " "Audio engine)."
 # Audio
 # | > " "Engine)."
-#: app/window.py:435
+#: app/window.py:443
 msgid "MIDI needs the native audio engine (Settings > Audio > Engine)."
 msgstr "MIDI は Native オーディオエンジンでのみ動作します（設定 > オーディオ > エンジン）。"
 
 # | msgid "MIDI input"
-#: app/window.py:442
+#: app/window.py:450
 msgid "MIDI input on."
 msgstr "MIDI 入力オン。"
 
 # | msgid "MIDI input"
-#: app/window.py:442
+#: app/window.py:450
 msgid "MIDI input off."
 msgstr "MIDI 入力オフ。"
 
-#: app/window.py:491
+#: app/window.py:499
 msgid "The Python audio engine plays: there is no native engine to restart."
 msgstr "Python オーディオエンジンで再生中です。再起動するネイティブエンジンがありません。"
 
 # | msgid "Starting the reading worker"
-#: app/window.py:493
+#: app/window.py:501
 msgid "Restarting the audio engine..."
 msgstr "オーディオエンジンを再起動中..."
 
 # | msgid "Audio engine"
-#: app/window.py:497
+#: app/window.py:505
 msgid "Audio engine restarted."
 msgstr "オーディオエンジンを再起動しました。"
 
-#: app/window.py:498
+#: app/window.py:506
 msgid "The audio engine did not start; it is tried again every 2 seconds."
 msgstr "オーディオエンジンが起動しませんでした。2 秒ごとに再試行します。"
 
-#: app/window.py:548 app/window.py:613
+#: app/window.py:556 app/window.py:621
 msgid "External Sync is enabled. Local track loading is disabled."
 msgstr "外部同期が有効です。ローカルでのトラックの読み込みは無効になります。"
 
-#: app/window.py:561 app/window.py:616
+#: app/window.py:569 app/window.py:624
 msgid "Segment reanalysis canceled (track changed)"
 msgstr "区間の再解析をキャンセルしました (トラックが変わりました)"
 
 # | msgid "Phrase reanalysis completed"
-#: app/window.py:597
+#: app/window.py:605
 #, python-brace-format
 msgid "The track's analysis could not be read: {file}"
 msgstr "トラックの解析を読み込めませんでした: {file}"
 
-#: app/window.py:601
+#: app/window.py:609
 #, python-brace-format
 msgid ""
 "{n} JumpCUE past slot Z is not shown ({file}); it stays stored until the "
@@ -630,15 +630,15 @@ msgid_plural ""
 "the JumpCUEs are edited."
 msgstr[0] "スロットZを超えるJumpCUE {n}個は表示されません（{file}）。JumpCUEを編集するまでは保存されたまま残ります。"
 
-#: app/window.py:619
+#: app/window.py:627
 msgid "Track unloaded."
 msgstr "トラックをアンロードしました。"
 
-#: app/window.py:629
+#: app/window.py:637
 msgid "Track File Not Found"
 msgstr "トラックファイルが見つかりません"
 
-#: app/window.py:633
+#: app/window.py:641
 #, python-brace-format
 msgid ""
 "Cannot load \"{name}\": its file is missing.\n"
@@ -651,51 +651,109 @@ msgstr ""
 "\n"
 "ファイルの新しい場所を指定しますか?"
 
-#: app/window.py:640
+#: app/window.py:648
 #, python-brace-format
 msgid "Locate {name}"
 msgstr "{name} の場所を指定"
 
-#: app/window.py:664 app/window.py:680
+#: app/window.py:672 app/window.py:688
 msgid "Analysis saved to library."
 msgstr "解析をライブラリに保存しました。"
 
-#: app/window.py:669
+#: app/window.py:677
 msgid "Finished"
 msgstr "完了"
 
-#: app/window.py:692
+#: app/window.py:700
 msgid "Waiting to be looked up on Wikipedia"
 msgstr "Wikipediaでの調査待ち"
 
-#: app/window.py:698
+#: app/window.py:706
 msgid "Looking up on Wikipedia and Wikidata…"
 msgstr "WikipediaとWikidataで調べています…"
 
 # | msgid "Reading the analysis failed: {error}"
 # | msgid "The search failed: {error}"
 # | msgid "" "The lookup failed:\n" "{error}"
-#: app/window.py:703
+#: app/window.py:711
 msgid "The lookup failed."
 msgstr "調査できませんでした。"
 
-#: app/window.py:739
+#: app/window.py:747
 #, python-brace-format
 msgid "External Sync loading: {file}"
 msgstr "外部同期で読み込み中: {file}"
 
-#: app/window.py:739
+#: app/window.py:747
 #, python-brace-format
 msgid "External Sync analyzing: {file}"
 msgstr "外部同期で解析中: {file}"
 
 # | msgid "Memory Sync Disabled"
-#: app/window.py:753
+#: app/window.py:761
 msgid "External Sync Disabled"
 msgstr "外部同期を無効にしました"
 
+#: app/window.py:771 ui/windows/library_backup.py:53
+msgid "Back Up Library"
+msgstr "ライブラリのバックアップ"
+
+#: app/window.py:772 app/window.py:788
+#, python-brace-format
+msgid "Mixlyzer library backup (*{suffix})"
+msgstr "Mixlyzer ライブラリのバックアップ (*{suffix})"
+
+#: app/window.py:783 app/window.py:787 app/window.py:798 app/window.py:828
+#: ui/windows/library_backup.py:129 ui/windows/library_backup.py:292
+msgid "Restore Library"
+msgstr "ライブラリの復元"
+
+#: app/window.py:784
+msgid ""
+"The editor has edits not saved. Save or undo them first: Mixlyzer "
+"restarts after a restore."
+msgstr "エディターに保存していない編集があります。先に保存するか元に戻してください。復元すると Mixlyzer は再起動します。"
+
+#: app/window.py:809
+#, python-brace-format
+msgid ""
+"Restored {n} track into:\n"
+"{folder}"
+msgid_plural ""
+"Restored {n} tracks into:\n"
+"{folder}"
+msgstr[0] ""
+"{n} トラックを次のフォルダーに復元しました:\n"
+"{folder}"
+
+#: app/window.py:812
+#, python-brace-format
+msgid "{n} track's file path was joined to this device's folders."
+msgid_plural "{n} tracks' file paths were joined to this device's folders."
+msgstr[0] "{n} トラックのファイルのパスをこのデバイスのフォルダーにつなぎました。"
+
+#: app/window.py:816
+#, python-brace-format
+msgid "{n} path was left as it was: another track already had the new one."
+msgid_plural "{n} paths were left as they were: other tracks already had the new ones."
+msgstr[0] "{n} 件のパスはそのままにしました: 新しいパスはすでに別のトラックのものです。"
+
+#: app/window.py:820
+#, python-brace-format
+msgid "{n} track had no stored analysis in the backup."
+msgid_plural "{n} tracks had no stored analysis in the backup."
+msgstr[0] "{n} トラックはバックアップに保存された解析がありませんでした。"
+
+#: app/window.py:824
+msgid "Files replaced by the backup's were kept beside them:"
+msgstr "バックアップのファイルに置き換えたファイルは、隣に残してあります:"
+
+#: app/window.py:826
+msgid "Mixlyzer now restarts to open the restored library."
+msgstr "復元したライブラリを開くため、Mixlyzer を再起動します。"
+
 # | msgid "External Sync enabled via {target}. Local play/load is locked."
-#: app/window.py:1022
+#: app/window.py:1096
 #, python-brace-format
 msgid "External Sync enabled: OSC on {address}. Local play/load is locked."
 msgstr "外部同期が有効です: OSC {address}。ローカルでの再生/読み込みはロックされます。"
@@ -1949,7 +2007,7 @@ msgstr ""
 "ビートトラッカーはすべてのテンポをここから 1 オクターブの範囲 (最小 BPM .. 2 x 最小 BPM) で読み取ります。\n"
 "範囲外の曲は半分または 2 倍のテンポで読み取られます。"
 
-#: ui/config/analysis.py:79 ui/config/window.py:239
+#: ui/config/analysis.py:79 ui/config/window.py:240
 #: ui/windows/reanalyze_dialog.py:38 ui/windows/reanalyze_dialog.py:81
 #, python-brace-format
 msgid "Reads {low} - {high} BPM"
@@ -2028,7 +2086,7 @@ msgstr "最小 BPM"
 
 #: ui/config/analysis.py:144 ui/config/analysis.py:185
 #: ui/config/analysis.py:208 ui/config/dialogs/optimization.py:204
-#: ui/config/library.py:134 ui/config/playback.py:108 ui/config/view.py:150
+#: ui/config/library.py:159 ui/config/playback.py:108 ui/config/view.py:150
 msgid "Advanced"
 msgstr "詳細設定"
 
@@ -2885,7 +2943,7 @@ msgstr "保存された解析を読み込み中"
 
 #: ui/config/dialogs/library_sync.py:25 ui/config/dialogs/music_index.py:24
 #: ui/config/dialogs/optimization.py:42 ui/config/dialogs/readings.py:24
-#: ui/config/dialogs/rekordbox.py:23
+#: ui/config/dialogs/rekordbox.py:23 ui/windows/library_backup.py:63
 msgid "Close"
 msgstr "閉じる"
 
@@ -3545,28 +3603,72 @@ msgstr ""
 msgid "Library Database"
 msgstr "ライブラリデータベース"
 
-#: ui/config/library.py:125
+#: ui/config/library.py:126
+msgid "Include the feature caches"
+msgstr "特徴量キャッシュを含める"
+
+#: ui/config/library.py:128
+msgid ""
+"<p>A backup also packs the analyses' feature caches: Reoptimize's "
+"training data, made again from the library when missing, so a backup is "
+"smaller without them.</p>"
+msgstr "<p>バックアップに解析の特徴量キャッシュも含めます。再最適化の学習データで、ない場合はライブラリから作り直すため、含めなければバックアップは小さくなります。</p>"
+
+#: ui/config/library.py:130
+msgid "Back Up Library…"
+msgstr "ライブラリのバックアップ…"
+
+#: ui/config/library.py:132
+msgid ""
+"<p>The library packed into one file, picked each time: its database, "
+"every track's stored analysis, the thumbnails, the search indexes, the "
+"settings, your shortcuts, MIDI mapping and retrained models. The music "
+"files themselves are not packed.</p>"
+msgstr ""
+"<p>ライブラリを 1 "
+"つのファイルにまとめます。保存先は毎回選びます。データベース、全トラックの保存された解析、サムネイル、検索インデックス、設定、ショートカット、MIDI"
+" マッピング、再学習したモデルが入ります。音楽ファイルそのものは含めません。</p>"
+
+#: ui/config/library.py:135
+msgid "Restore Library…"
+msgstr "ライブラリの復元…"
+
+#: ui/config/library.py:137
+msgid ""
+"<p>A backup unpacked into a new library folder, on this device or "
+"another; its music folders joined to this device's, then Mixlyzer "
+"restarts on it. The library in use now is kept as it is.</p>"
+msgstr ""
+"<p>バックアップを新しいライブラリフォルダーに展開します "
+"(このデバイスでも別のデバイスでも)。バックアップの音楽フォルダーをこのデバイスのフォルダーにつないでから、Mixlyzer "
+"はそのライブラリで再起動します。今使っているライブラリはそのまま残ります。</p>"
+
+#: ui/config/library.py:145 ui/windows/library_backup.py:142
+msgid "Backup"
+msgstr "バックアップ"
+
+#: ui/config/library.py:150
 msgid "Rekordbox XML"
 msgstr "Rekordbox XML"
 
-#: ui/config/library.py:128
+#: ui/config/library.py:153
 msgid "XML Path"
 msgstr "XML のパス"
 
-#: ui/config/library.py:129
+#: ui/config/library.py:154
 msgid "Tempo ramp tolerance"
 msgstr "テンポのランプの許容誤差"
 
-#: ui/config/library.py:137
+#: ui/config/library.py:162
 msgid "Log Path"
 msgstr "ログのパス"
 
-#: ui/config/library.py:164
+#: ui/config/library.py:192
 msgid "Add Local Music Folder"
 msgstr "ローカルの音楽フォルダーを追加"
 
 # | msgid "Library Path"
-#: ui/config/dialogs/library_sync.py:17 ui/config/library.py:225
+#: ui/config/dialogs/library_sync.py:17 ui/config/library.py:255
 msgid "Sync Library Database"
 msgstr "ライブラリデータベースの同期"
 
@@ -3574,7 +3676,7 @@ msgstr "ライブラリデータベースの同期"
 # | database made " "again from its stored analysis (as the editor's save
 # writes
 # | them). " "Titles, artists, ratings and comments are not touched.</p>"
-#: ui/config/library.py:226
+#: ui/config/library.py:256
 msgid ""
 "Every track's BPM, key and search tables in the library database will be "
 "made again from its stored analysis. A BPM or key typed in the Edit Track"
@@ -3587,20 +3689,20 @@ msgstr ""
 "\n"
 "今すぐ同期しますか？"
 
-#: ui/config/library.py:262
+#: ui/config/library.py:301
 msgid "Enable Sync with Rekordbox XML first."
 msgstr "先に「Rekordbox XML と同期」を有効にしてください。"
 
-#: ui/config/dialogs/rekordbox.py:15 ui/config/library.py:262
-#: ui/config/library.py:267
+#: ui/config/dialogs/rekordbox.py:15 ui/config/library.py:301
+#: ui/config/library.py:306
 msgid "Sync Rekordbox XML"
 msgstr "Rekordbox XML の同期"
 
-#: ui/config/library.py:267
+#: ui/config/library.py:306
 msgid "Rekordbox XML Path is empty."
 msgstr "Rekordbox XML のパスが空です。"
 
-#: ui/config/library.py:308
+#: ui/config/library.py:347
 msgid "Rekordbox XML worker started"
 msgstr "Rekordbox XML ワーカーを開始しました"
 
@@ -3663,6 +3765,7 @@ msgid ""
 msgstr "その後コントローラーの操作部を動かすか押すと、そのメッセージが選択した操作に追加されます。"
 
 #: ui/config/midi.py:114 ui/library/search.py:273
+#: ui/windows/library_backup.py:201
 msgid "Clear"
 msgstr "クリア"
 
@@ -7034,7 +7137,7 @@ msgstr "トラックが読み込まれていません"
 msgid "Playback"
 msgstr "再生"
 
-#: ui/config/library.py:82 ui/config/library.py:151 ui/shortcuts.py:32
+#: ui/config/library.py:82 ui/config/library.py:179 ui/shortcuts.py:32
 msgid "Library"
 msgstr "ライブラリ"
 
@@ -8085,6 +8188,197 @@ msgstr ""
 "ビートグリッド、キー、JumpCUE を解析・編集するインタラクティブなツールです。\n"
 "GNU Lesser General Public License v3.0 で配布されています。ライセンスの全文は以下をご覧ください。"
 
+#: ui/windows/library_backup.py:22
+msgid "This file is not a Mixlyzer library backup."
+msgstr "このファイルは Mixlyzer ライブラリのバックアップではありません。"
+
+#: ui/windows/library_backup.py:24
+msgid "The backup is damaged: its files do not match its list of contents."
+msgstr "バックアップが壊れています: ファイルが内容の一覧と一致しません。"
+
+#: ui/windows/library_backup.py:26
+msgid ""
+"The backup was made by a later version of Mixlyzer. Update Mixlyzer to "
+"restore it."
+msgstr "新しいバージョンの Mixlyzer で作られたバックアップです。復元するには Mixlyzer をアップデートしてください。"
+
+#: ui/windows/library_backup.py:28
+#, python-brace-format
+msgid ""
+"The backup's library is of another version than this Mixlyzer's "
+"({versions}), so it cannot be restored."
+msgstr "バックアップのライブラリはこの Mixlyzer と別のバージョン ({versions}) のため、復元できません。"
+
+#: ui/windows/library_backup.py:31
+msgid "The backup holds files no Mixlyzer backup has, so it was not restored."
+msgstr "Mixlyzer のバックアップにはないファイルが含まれているため、復元しませんでした。"
+
+#: ui/windows/library_backup.py:33
+msgid "A database in the backup is damaged or holds code, so it was not restored."
+msgstr "バックアップのデータベースが壊れているかコードを含んでいるため、復元しませんでした。"
+
+#: ui/windows/library_backup.py:35
+msgid "The new library folder must be a new folder or an empty one."
+msgstr "新しいライブラリフォルダーは、新しいフォルダーか空のフォルダーにしてください。"
+
+#: ui/windows/library_backup.py:37
+msgid "Cancelled."
+msgstr "キャンセルしました。"
+
+#: ui/windows/library_backup.py:56
+msgid "Packing the library into:"
+msgstr "ライブラリを次のファイルにまとめています:"
+
+#: ui/windows/library_backup.py:61 ui/windows/library_backup.py:216
+msgid "Cancel"
+msgstr "キャンセル"
+
+#: ui/windows/library_backup.py:107
+#, python-brace-format
+msgid "Backed up {n} track ({size}) to:"
+msgid_plural "Backed up {n} tracks ({size}) to:"
+msgstr[0] "{n} トラック ({size}) を次のファイルにバックアップしました:"
+
+#: ui/windows/library_backup.py:115
+msgid "The backup was cancelled; no file was left."
+msgstr "バックアップをキャンセルしました。ファイルは残っていません。"
+
+#: ui/windows/library_backup.py:117
+#, python-brace-format
+msgid ""
+"The library could not be backed up:\n"
+"{error}"
+msgstr ""
+"ライブラリをバックアップできませんでした:\n"
+"{error}"
+
+#: ui/windows/library_backup.py:144
+msgid "File"
+msgstr "ファイル"
+
+#: ui/windows/library_backup.py:145
+msgid "Made"
+msgstr "作成日時"
+
+#: ui/windows/library_backup.py:146
+msgid "On"
+msgstr "作成した OS"
+
+# | msgid "Track File"
+#: ui/windows/library_backup.py:147 ui/windows/library_backup.py:177
+#: ui/windows/tieup_works.py:52 ui/windows/tieup_works.py:104
+msgid "Tracks"
+msgstr "トラック"
+
+#: ui/windows/library_backup.py:148
+msgid "Size"
+msgstr "サイズ"
+
+#: ui/windows/library_backup.py:149
+msgid "Feature caches"
+msgstr "特徴量キャッシュ"
+
+#: ui/windows/library_backup.py:150
+msgid "Included"
+msgstr "含む"
+
+#: ui/windows/library_backup.py:150
+msgid "Not included"
+msgstr "含まない"
+
+#: ui/windows/library_backup.py:152 ui/windows/library_backup.py:347
+msgid "New Library Folder"
+msgstr "新しいライブラリフォルダー"
+
+#: ui/windows/library_backup.py:156
+msgid "Browse…"
+msgstr "参照…"
+
+#: ui/windows/library_backup.py:162
+msgid ""
+"The backup's library is unpacked into this new folder and Mixlyzer "
+"restarts on it. The library in use now stays as it is in its folder. Your"
+" shortcuts, MIDI mapping and retrained models are replaced by the "
+"backup's; the ones here are kept beside them. Audio and file paths stay "
+"this device's settings."
+msgstr ""
+"バックアップのライブラリをこの新しいフォルダーに展開し、Mixlyzer "
+"はそのライブラリで再起動します。今使っているライブラリは元のフォルダーにそのまま残ります。ショートカット、MIDI "
+"マッピング、再学習したモデルはバックアップのものに置き換わり、このデバイスのものは隣に残します。オーディオとファイルのパスはこのデバイスの設定のままです。"
+
+#: ui/windows/library_backup.py:168
+msgid "Music Folders"
+msgstr "音楽フォルダー"
+
+#: ui/windows/library_backup.py:171
+msgid ""
+"Where each folder of the backup's music files is on this device. No file "
+"is moved or looked for: a folder left empty keeps its tracks' paths as "
+"they were, and Mixlyzer asks for a track's file when it is not found."
+msgstr ""
+"バックアップの音楽ファイルの各フォルダーが、このデバイスではどこにあるかを指定します。ファイルを移動したり探したりはしません。空のままのフォルダーのトラックはパスがそのまま残り、ファイルが見つからないトラックは開くときに"
+" Mixlyzer がファイルの場所を尋ねます。"
+
+#: ui/windows/library_backup.py:177
+msgid "In the Backup"
+msgstr "バックアップのフォルダー"
+
+#: ui/windows/library_backup.py:177
+msgid "On This Device"
+msgstr "このデバイスのフォルダー"
+
+#: ui/windows/library_backup.py:177
+msgid "Found"
+msgstr "見つかったファイル"
+
+#: ui/windows/library_backup.py:199
+msgid "Choose Folder…"
+msgstr "フォルダーを選択…"
+
+#: ui/windows/library_backup.py:213
+msgid "Restore"
+msgstr "復元"
+
+#: ui/windows/library_backup.py:243
+msgid "Choose the Folder on This Device"
+msgstr "このデバイスのフォルダーを選択"
+
+#: ui/windows/library_backup.py:273
+msgid "Not joined"
+msgstr "未指定"
+
+#: ui/windows/library_backup.py:274
+msgid "Its tracks keep their paths as they were."
+msgstr "このフォルダーのトラックはパスがそのまま残ります。"
+
+#: ui/windows/library_backup.py:276
+#, python-brace-format
+msgid "{n} found"
+msgstr "{n} 件あり"
+
+#: ui/windows/library_backup.py:278
+#, python-brace-format
+msgid "{n} of another size"
+msgstr "{n} 件サイズ違い"
+
+#: ui/windows/library_backup.py:280
+#, python-brace-format
+msgid "{n} missing"
+msgstr "{n} 件なし"
+
+#: ui/windows/library_backup.py:300
+msgid "Unpacking the library…"
+msgstr "ライブラリを展開しています…"
+
+#: ui/windows/library_backup.py:340
+#, python-brace-format
+msgid ""
+"The library could not be restored:\n"
+"{error}"
+msgstr ""
+"ライブラリを復元できませんでした:\n"
+"{error}"
+
 #: ui/windows/oss_support.py:12
 msgid "Support Python & Open Source"
 msgstr "Python とオープンソースを支援"
@@ -8140,11 +8434,6 @@ msgstr "作品をいずれかの名前で探す"
 #: ui/windows/tieup_works.py:48
 msgid "All categories"
 msgstr "すべてのカテゴリー"
-
-# | msgid "Track File"
-#: ui/windows/tieup_works.py:52 ui/windows/tieup_works.py:104
-msgid "Tracks"
-msgstr "トラック"
 
 #: ui/windows/tieup_works.py:89
 msgid "The tracks with a tie-up to this work: a change to the work is theirs."

@@ -661,6 +661,39 @@ def lookup(api: Wikimedia, title: str, artist: str = "", cache_path: str = CACHE
         con.close()
 
 
+def copy_cache(target: str, cache_path: str = CACHE_NAME) -> None:
+    """A consistent copy of the answers kept, written to ``target`` (a library package's: SQLite's backup API, while
+    a lookup may write); nothing written where there are none."""
+    if not os.path.isfile(cache_path):
+        return
+    src = sqlite3.connect(f"file:{os.path.abspath(cache_path)}?mode=ro", uri=True, timeout=30)
+    dst = sqlite3.connect(target)
+    try:
+        src.backup(dst)
+    finally:
+        dst.close()
+        src.close()
+
+
+def restore_cache(source: str, cache_path: str = CACHE_NAME) -> None:
+    """The answers kept replaced by those of ``source`` (a library package's copy): its table's rows read (nothing
+    else of a file that may come from elsewhere) and written in one transaction, a lookup meanwhile waiting."""
+    src = sqlite3.connect(f"file:{os.path.abspath(source)}?mode=ro", uri=True)
+    try:
+        src.execute("PRAGMA trusted_schema=OFF")
+        rows = src.execute("SELECT query_key, fetched_at, result_json FROM web_query").fetchall()
+    finally:
+        src.close()
+    con = _cache(cache_path)
+    try:
+        with con:
+            con.execute("DELETE FROM web_query")
+            con.executemany("INSERT OR REPLACE INTO web_query VALUES (?, ?, ?)",
+                            [(str(k), float(t or 0.0), str(j)) for k, t, j in rows])
+    finally:
+        con.close()
+
+
 # (what is found goes into the library through its owner: core.library.jobs.add_found_tieups)
 
 def sure_of(api: Wikimedia, song: tuple[str, str, str], cache_path: str = CACHE_NAME) -> Optional[Candidate]:

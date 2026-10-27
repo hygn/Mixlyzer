@@ -22,7 +22,7 @@ from typing import Optional
 
 from PySide6 import QtCore, QtGui
 
-from core.library import music_index, thumbnails, tieups, variants
+from core.library import music_index, package, thumbnails, tieups, variants
 from core.library.records import READING_FIELDS, IndexTrack, TrackRow
 from core.library.segments import track_index
 from core.library.service import PLAYLISTS, READINGS, TIEUPS, TRACKS, VARIANTS, changes
@@ -427,7 +427,7 @@ def prune_fingerprints(lib) -> None:
 
 # ---- the stores beside library.db checked against its tracks (at the start) ----
 
-ORPHANED_ANALYSES = "orphaned_analyses"   # where a stored analysis of no library track is moved (kept, never read)
+ORPHANED_ANALYSES = package.ORPHANED     # where a stored analysis of no library track is moved (kept, never read)
 
 
 @dataclass(frozen=True)
@@ -493,6 +493,15 @@ def open_music_search(lib):
     connection lent to the search's thread (it reads them every few seconds: on the owner's thread they would hold
     its other jobs)."""
     return music_index.open_search(music_index.path_for(lib.path))
+
+
+# ---- the library package: a backup, a move to another device (core.library.package) ----
+
+def export_package(lib, plan: package.ExportPlan, progress=None, cancelled=None) -> package.ExportResult:
+    """The library packed into ``plan.dest`` with what the plan adds (the settings, the user's files, the caches).
+    Asked as a read: no other job runs while it is written, so library.db and the stored analyses are of one moment.
+    ``progress(share)`` and ``cancelled()`` are called on the owner's thread."""
+    return package.export(lib, plan, progress, cancelled)
 
 
 # ---- the thumbnails (the stored analyses' jobs are core.analysis_library.jobs') ----

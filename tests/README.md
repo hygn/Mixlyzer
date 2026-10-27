@@ -28,6 +28,8 @@ These are the app's tests, each on a library or files of its own. They cover:
 
 - the layer boundaries and the library's one owner, read from the source;
 - the stored analysis, the track model, and the editor's save;
+- the library's backup package: packed and restored whole, its music folders joined on another device, and every
+  package refused that the app does not make;
 - tags, readings, tie-ups, and Variants;
 - External Sync's OSC;
 - the waveform's renderer;

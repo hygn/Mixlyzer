@@ -1,3 +1,4 @@
+import copy
 from dataclasses import asdict, dataclass, fields, is_dataclass
 from datetime import datetime
 import json
@@ -30,6 +31,9 @@ class libconfig:
     # The editor's save writes the track's rows in library.db too (its BPM, key and segment tables, made from the marks
     # saved: core.library.segments.track_index); off, only its stored analysis (library.db brought up to it by Sync Now).
     sync_stored_analysis: bool
+    # A library backup (core.library.package) packs the analyses' feature caches too (Reoptimize's training data,
+    # made again from the library when missing).
+    backup_feature_cache: bool
 
 
 @dataclass
@@ -406,6 +410,7 @@ def default_cfg():
         tieup_to_versions=True,
         tieup_web_search=False,
         sync_stored_analysis=True,
+        backup_feature_cache=False,
     )
     acfg = analysisconfig(
         bpm_min=100,
@@ -566,16 +571,42 @@ def _keep_unreadable_config(error: Exception, name: str) -> None:
     print(f"[Config] {name} could not be read ({error}): kept as {kept}, its settings reset to the defaults")
 
 
-def load_cfg() -> config:
-    def _merge_defaults(default_dict: dict, loaded_dict: dict) -> dict:
-        merged = dict(default_dict)
-        for key, val in loaded_dict.items():
-            if isinstance(val, dict) and isinstance(merged.get(key), dict):
-                merged[key] = _merge_defaults(merged[key], val)
-            else:
-                merged[key] = val
-        return merged
+def _merge_defaults(default_dict: dict, loaded_dict: dict) -> dict:
+    merged = dict(default_dict)
+    for key, val in loaded_dict.items():
+        if isinstance(val, dict) and isinstance(merged.get(key), dict):
+            merged[key] = _merge_defaults(merged[key], val)
+        else:
+            merged[key] = val
+    return merged
 
+
+def restored_settings(current: config, payload: dict, deck: dict, *, libpath: str,
+                      local_music_directories: list[str], rekordbox_xml_path: str) -> config:
+    """A library package's settings (config.json's and deck.json's content) on this device: the package's, but for
+    what describes this device, kept as it is here: the audio (playbackconfig), the microphone, External Sync, and
+    every file path (the log, the models, the feature caches, the metronome's sound, the record's image: a package
+    never names where a file is written). The library is ``libpath``; the music folders and the Rekordbox XML are
+    the restore's (joined to this device's folders by the user)."""
+    defaults = default_cfg()
+    new = config.from_dict(_merge_defaults(defaults.to_dict(), _normalize_config_payload(payload)),
+                           _merge_defaults(defaults.deck_dict(), deck if isinstance(deck, dict) else {}))
+    new.playbackconfig = copy.deepcopy(current.playbackconfig)
+    new.externalsyncconfig = copy.deepcopy(current.externalsyncconfig)
+    for f in fields(analysisconfig):
+        if f.name.endswith("_path"):
+            setattr(new.analysisconfig, f.name, getattr(current.analysisconfig, f.name))
+    new.viewconfig.record_img_path = current.viewconfig.record_img_path
+    new.deckconfig.metronome_wav_path = current.deckconfig.metronome_wav_path
+    new.deckconfig.music_input_device = current.deckconfig.music_input_device
+    new.libconfig.libpath = libpath
+    new.libconfig.logpath = current.libconfig.logpath
+    new.libconfig.local_music_directories = list(local_music_directories)
+    new.libconfig.rekordbox_xml_path = rekordbox_xml_path
+    return new
+
+
+def load_cfg() -> config:
     def _ensure_library_dir(cfg: config) -> None:
         lib_path = Path(cfg.libconfig.libpath)
         if not lib_path.exists():
