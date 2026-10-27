@@ -131,68 +131,7 @@ class SupportDialog(QtWidgets.QDialog):
             ("SQLite", "https://sqlite.org/consortium.html"),
         ]
 
-        # Optionally, filter to only those importable in the current env.
-        filtered = []
-        detect = {
-            "PySide6 / Shiboken6": "PySide6",
-            "PyYAML": "yaml",
-            "librosa": "librosa",
-            "audioread": "audioread",
-            "audioop-lts": "audioop",
-            "decorator": "decorator",
-            "joblib": "joblib",
-            "lazy_loader": "lazy_loader",
-            "packaging": "packaging",
-            "msgpack": "msgpack",
-            "numba": "numba",
-            "llvmlite": "llvmlite",
-            "numpy": "numpy",
-            "pooch": "pooch",
-            "platformdirs": "platformdirs",
-            "requests": "requests",
-            "certifi": "certifi",
-            "charset-normalizer": "charset_normalizer",
-            "idna": "idna",
-            "urllib3": "urllib3",
-            "scikit-learn": "sklearn",
-            "threadpoolctl": "threadpoolctl",
-            "scipy": "scipy",
-            "soundfile": "soundfile",
-            "cffi": "cffi",
-            "pycparser": "pycparser",
-            "soxr": "soxr",
-            "typing_extensions": "typing_extensions",
-            "contourpy": "contourpy",
-            "cycler": "cycler",
-            "fonttools": "fontTools",
-            "kiwisolver": "kiwisolver",
-            "pillow": "PIL",
-            "pyparsing": "pyparsing",
-            "python-dateutil": "dateutil",
-            "six": "six",
-            "matplotlib": "matplotlib",
-            "imageio": "imageio",
-            "tifffile": "tifffile",
-            "networkx": "networkx",
-            "scikit-image": "skimage",
-            "pyqtgraph": "pyqtgraph",
-            "tqdm": "tqdm",
-            "colorama": "colorama",
-            "SudachiPy": "sudachipy",
-            "SudachiDict (UniDic, NEologd)": "sudachidict_core",
-            "anyascii": "anyascii",
-            "pypinyin": "pypinyin",
-            "PyCantonese (rime-cantonese, HKCanCor)": "pycantonese",
-            "RapidFuzz": "rapidfuzz",
-        }
-        for name, url in candidates:
-            mod = detect.get(name)
-            try:
-                __import__(mod)
-                filtered.append((name, url))
-            except Exception:
-                # If import fails, still include as it may be optional at runtime
-                filtered.append((name, url))
+        filtered = list(candidates)    # listed as they are: none is imported to be listed
         # Add detected open-source BLAS backend if present (exclude MKL/Accelerate/Unknown)
         blas = self._detect_blas_backend()
         if blas is not None:

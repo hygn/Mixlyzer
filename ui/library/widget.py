@@ -1,7 +1,7 @@
 """LibraryWidget: the library's table, its sources and search, built from its parts (the mixins beside it)."""
 from __future__ import annotations
 
-from typing import List, Optional
+from typing import TYPE_CHECKING, List, Optional
 from PySide6 import QtCore, QtGui, QtWidgets
 import os
 from core.library import jobs
@@ -10,7 +10,6 @@ from core.library.service import LibraryService
 from core.workflows.event_bus import EventBus
 from core.settings.config import config
 from core.track.model import DataModel
-from ui.windows.tieup_works import WorksWindow
 from ui.theme import current_theme
 from system.i18n import tr, tr_mark
 from ui.library.actions import ActionsMixin
@@ -22,6 +21,9 @@ from ui.library.search import SearchMixin
 from ui.library.sources import SourcesMixin
 from ui.library.table import FastDelegate, _TrackTable
 from ui.library.track_panel import TrackPanelMixin
+
+if TYPE_CHECKING:   # the window imports the tie-up editor's parts (ui.library.tabs): imported where it opens
+    from ui.windows.tieup_works import WorksWindow
 
 
 class LibraryWidget(SourcesMixin, SearchMixin, MusicMixin, PlaylistsMixin, TrackPanelMixin, ActionsMixin,

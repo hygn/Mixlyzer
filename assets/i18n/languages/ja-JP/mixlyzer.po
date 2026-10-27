@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-27 19:38+0900\n"
+"POT-Creation-Date: 2026-10-27 21:09+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ja_JP\n"
@@ -489,76 +489,84 @@ msgstr "タイムストレッチ"
 msgid "ffmpeg: a short silent decode"
 msgstr "ffmpeg: 短い無音のデコード"
 
-#: app/startup.py:275
+#: app/startup.py:269
+msgid "Language names for the tie-ups' language pickers"
+msgstr "タイアップの言語選択リストの言語名"
+
+#: app/startup.py:281
 msgid "library.db: readings"
 msgstr "library.db: 読み"
 
-#: app/startup.py:285
+#: app/startup.py:291
 #, python-brace-format
 msgid "Search keys: {tracks} tracks, {done} / {total} readings"
 msgstr "検索キー: トラック {tracks} 件、読み {done} / {total}"
 
-#: app/startup.py:306
+#: app/startup.py:312
 msgid "Loading libraries"
 msgstr "ライブラリモジュールを読み込み中"
 
-#: app/startup.py:307
+#: app/startup.py:313
 msgid "Compiling audio kernels (JIT)"
 msgstr "オーディオカーネルをコンパイル中 (JIT)"
 
-#: app/startup.py:308
+#: app/startup.py:314
 msgid "Starting FFmpeg"
 msgstr "FFmpeg を起動中"
 
-#: app/startup.py:309
+#: app/startup.py:315
 msgid "Loading search readers"
 msgstr "検索用の読み変換を読み込み中"
 
-#: app/startup.py:310
+#: app/startup.py:316
+msgid "Measuring language names"
+msgstr "言語名を計測中"
+
+#: app/startup.py:317
 msgid "Loading the library"
 msgstr "ライブラリを読み込み中"
 
-#: app/startup.py:311
+#: app/startup.py:318
 msgid "Building the window"
 msgstr "ウィンドウを作成中"
 
-#: app/window.py:72
+#: app/window.py:73
 msgid "Core objects and playback"
 msgstr "コアオブジェクトと再生"
 
-#: app/window.py:94
+#: app/window.py:95
 msgid "Main view, editor and library"
 msgstr "メインビュー、エディター、ライブラリ"
 
-#: app/window.py:100 app/window.py:234 ui/config/window.py:66
+#: app/window.py:101 app/window.py:238 ui/config/window.py:66
 msgid "Settings"
 msgstr "環境設定"
 
-#: app/window.py:102
+#: app/window.py:103
 msgid "Dialogs, workflows and metronome"
 msgstr "ダイアログ、ワークフロー、メトロノーム"
 
-#: app/window.py:235 ui/windows/workers.py:28
+#: app/window.py:239 ui/windows/workers.py:28
 msgid "Workers"
 msgstr "タスク"
 
 # | msgid "Tie-ups"
-#: app/window.py:236 ui/shortcuts.py:155 ui/windows/tieup_works.py:33
+#: app/window.py:240 ui/shortcuts.py:155 ui/windows/tieup_works.py:33
 #: ui/windows/tieup_works.py:206 ui/windows/tieup_works.py:261
 #: ui/windows/tieup_works.py:266 ui/windows/tieup_works.py:275
 #: ui/windows/tieup_works.py:338
 msgid "Tie-up Works"
 msgstr "タイアップ作品"
 
-#: app/window.py:237
+#: app/window.py:241
 msgid "Open Source"
 msgstr "オープンソース"
 
-#: app/window.py:238
+#: app/window.py:242
 msgid "About"
 msgstr "情報"
 
-#: app/window.py:255 core/controls/midi.py:55 ui/config/playback.py:356
+#: app/window.py:259 core/controls/midi.py:55 ui/config/playback.py:356
 msgid "Mixer"
 msgstr "ミキサー"
 
@@ -566,53 +574,53 @@ msgstr "ミキサー"
 # | Playback > " "Audio engine)."
 # Audio
 # | > " "Engine)."
-#: app/window.py:431
+#: app/window.py:435
 msgid "MIDI needs the native audio engine (Settings > Audio > Engine)."
 msgstr "MIDI は Native オーディオエンジンでのみ動作します（設定 > オーディオ > エンジン）。"
 
 # | msgid "MIDI input"
-#: app/window.py:438
+#: app/window.py:442
 msgid "MIDI input on."
 msgstr "MIDI 入力オン。"
 
 # | msgid "MIDI input"
-#: app/window.py:438
+#: app/window.py:442
 msgid "MIDI input off."
 msgstr "MIDI 入力オフ。"
 
-#: app/window.py:487
+#: app/window.py:491
 msgid "The Python audio engine plays: there is no native engine to restart."
 msgstr "Python オーディオエンジンで再生中です。再起動するネイティブエンジンがありません。"
 
 # | msgid "Starting the reading worker"
-#: app/window.py:489
+#: app/window.py:493
 msgid "Restarting the audio engine..."
 msgstr "オーディオエンジンを再起動中..."
 
 # | msgid "Audio engine"
-#: app/window.py:493
+#: app/window.py:497
 msgid "Audio engine restarted."
 msgstr "オーディオエンジンを再起動しました。"
 
-#: app/window.py:494
+#: app/window.py:498
 msgid "The audio engine did not start; it is tried again every 2 seconds."
 msgstr "オーディオエンジンが起動しませんでした。2 秒ごとに再試行します。"
 
-#: app/window.py:544 app/window.py:609
+#: app/window.py:548 app/window.py:613
 msgid "External Sync is enabled. Local track loading is disabled."
 msgstr "外部同期が有効です。ローカルでのトラックの読み込みは無効になります。"
 
-#: app/window.py:557 app/window.py:612
+#: app/window.py:561 app/window.py:616
 msgid "Segment reanalysis canceled (track changed)"
 msgstr "区間の再解析をキャンセルしました (トラックが変わりました)"
 
 # | msgid "Phrase reanalysis completed"
-#: app/window.py:593
+#: app/window.py:597
 #, python-brace-format
 msgid "The track's analysis could not be read: {file}"
 msgstr "トラックの解析を読み込めませんでした: {file}"
 
-#: app/window.py:597
+#: app/window.py:601
 #, python-brace-format
 msgid ""
 "{n} JumpCUE past slot Z is not shown ({file}); it stays stored until the "
@@ -622,15 +630,15 @@ msgid_plural ""
 "the JumpCUEs are edited."
 msgstr[0] "スロットZを超えるJumpCUE {n}個は表示されません（{file}）。JumpCUEを編集するまでは保存されたまま残ります。"
 
-#: app/window.py:615
+#: app/window.py:619
 msgid "Track unloaded."
 msgstr "トラックをアンロードしました。"
 
-#: app/window.py:625
+#: app/window.py:629
 msgid "Track File Not Found"
 msgstr "トラックファイルが見つかりません"
 
-#: app/window.py:629
+#: app/window.py:633
 #, python-brace-format
 msgid ""
 "Cannot load \"{name}\": its file is missing.\n"
@@ -643,51 +651,51 @@ msgstr ""
 "\n"
 "ファイルの新しい場所を指定しますか?"
 
-#: app/window.py:636
+#: app/window.py:640
 #, python-brace-format
 msgid "Locate {name}"
 msgstr "{name} の場所を指定"
 
-#: app/window.py:660 app/window.py:676
+#: app/window.py:664 app/window.py:680
 msgid "Analysis saved to library."
 msgstr "解析をライブラリに保存しました。"
 
-#: app/window.py:665
+#: app/window.py:669
 msgid "Finished"
 msgstr "完了"
 
-#: app/window.py:688
+#: app/window.py:692
 msgid "Waiting to be looked up on Wikipedia"
 msgstr "Wikipediaでの調査待ち"
 
-#: app/window.py:694
+#: app/window.py:698
 msgid "Looking up on Wikipedia and Wikidata…"
 msgstr "WikipediaとWikidataで調べています…"
 
 # | msgid "Reading the analysis failed: {error}"
 # | msgid "The search failed: {error}"
 # | msgid "" "The lookup failed:\n" "{error}"
-#: app/window.py:699
+#: app/window.py:703
 msgid "The lookup failed."
 msgstr "調査できませんでした。"
 
-#: app/window.py:735
+#: app/window.py:739
 #, python-brace-format
 msgid "External Sync loading: {file}"
 msgstr "外部同期で読み込み中: {file}"
 
-#: app/window.py:735
+#: app/window.py:739
 #, python-brace-format
 msgid "External Sync analyzing: {file}"
 msgstr "外部同期で解析中: {file}"
 
 # | msgid "Memory Sync Disabled"
-#: app/window.py:749
+#: app/window.py:753
 msgid "External Sync Disabled"
 msgstr "外部同期を無効にしました"
 
 # | msgid "External Sync enabled via {target}. Local play/load is locked."
-#: app/window.py:1018
+#: app/window.py:1022
 #, python-brace-format
 msgid "External Sync enabled: OSC on {address}. Local play/load is locked."
 msgstr "外部同期が有効です: OSC {address}。ローカルでの再生/読み込みはロックされます。"
@@ -710,7 +718,7 @@ msgstr "デッキ"
 msgid "JumpCUE pads"
 msgstr "JumpCUE パッド"
 
-#: core/controls/midi.py:50 ui/config/pipeline_map.py:33
+#: core/controls/midi.py:50 ui/config/pipeline_map.py:34
 #: ui/edit_panel/cue_slots.py:233
 msgid "CUE points"
 msgstr "CUEポイント"
@@ -1463,7 +1471,7 @@ msgstr "HPSS を処理中"
 msgid "Processing Waveform"
 msgstr "波形を処理中"
 
-#: core/workers/analysis_texts.py:15 ui/config/pipeline_map.py:31
+#: core/workers/analysis_texts.py:15 ui/config/pipeline_map.py:32
 msgid "Waveform"
 msgstr "波形"
 
@@ -1476,7 +1484,7 @@ msgid "Phrase Boundary Analyzing"
 msgstr "フレーズ境界を解析中"
 
 #: core/workers/analysis_texts.py:17 ui/config/analysis.py:270
-#: ui/config/pipeline_map.py:23 ui/config/pipeline_map.py:32
+#: ui/config/pipeline_map.py:24 ui/config/pipeline_map.py:33
 #: ui/edit_panel/panel.py:59 ui/library/search.py:268 ui/library/search.py:328
 #: ui/shortcuts.py:37
 msgid "Phrase"
@@ -1491,7 +1499,7 @@ msgid "Analyzing Keys"
 msgstr "キーを解析中"
 
 #: core/workers/analysis_texts.py:19 ui/config/analysis.py:269
-#: ui/config/pipeline_map.py:26 ui/config/pipeline_map.py:34
+#: ui/config/pipeline_map.py:27 ui/config/pipeline_map.py:35
 #: ui/library/tabs/edit_song.py:128
 msgid "Key"
 msgstr "キー"
@@ -2165,13 +2173,13 @@ msgstr "パラメーター (JSON)"
 msgid "Global"
 msgstr "全体"
 
-#: ui/config/analysis.py:268 ui/config/pipeline_map.py:22
+#: ui/config/analysis.py:268 ui/config/pipeline_map.py:23
 #: ui/windows/reanalyze_dialog.py:89
 msgid "Beat"
 msgstr "ビート"
 
-#: ui/config/analysis.py:271 ui/config/pipeline_map.py:24
-#: ui/config/pipeline_map.py:25
+#: ui/config/analysis.py:271 ui/config/pipeline_map.py:25
+#: ui/config/pipeline_map.py:26
 msgid "CUE"
 msgstr "CUE"
 
@@ -3374,7 +3382,7 @@ msgstr "{address} で受信中。ロードされていてアクティブなデ�
 msgid "Add Folder…"
 msgstr "フォルダーを追加…"
 
-#: ui/config/library.py:33 ui/library/actions.py:88
+#: ui/config/library.py:33 ui/library/actions.py:87
 #: ui/library/tabs/tieup_editor.py:373
 msgid "Remove"
 msgstr "削除"
@@ -4138,80 +4146,80 @@ msgstr "再生デバイス: {device}、{rate} kHz"
 msgid "Its device's stream is shared with another output, at that output's rate."
 msgstr "このデバイスのストリームをほかの出力と共有しているため、その出力のサンプルレートで再生します。"
 
-#: ui/config/pipeline_map.py:21 ui/config/view.py:161
+#: ui/config/pipeline_map.py:22 ui/config/view.py:161
 msgid "View"
 msgstr "表示"
 
 # | msgid "file"
 # | msgid "File"
-#: ui/config/pipeline_map.py:30
+#: ui/config/pipeline_map.py:31
 msgid "file"
 msgstr "ファイル"
 
 # | msgid "Audio"
-#: ui/config/pipeline_map.py:30
+#: ui/config/pipeline_map.py:31
 msgid "audio"
 msgstr "オーディオ"
 
 # | msgid "Beatgrid"
-#: ui/config/pipeline_map.py:30
+#: ui/config/pipeline_map.py:31
 msgid "beat grid"
 msgstr "ビートグリッド"
 
 # | msgid "Phrase"
-#: ui/config/pipeline_map.py:30
+#: ui/config/pipeline_map.py:31
 msgid "phrases"
 msgstr "フレーズ"
 
 # | msgid "Decoder costs"
-#: ui/config/pipeline_map.py:31
+#: ui/config/pipeline_map.py:32
 msgid "decoded, HPSS"
 msgstr "デコード、HPSS"
 
 # | msgid "Overview"
-#: ui/config/pipeline_map.py:31
+#: ui/config/pipeline_map.py:32
 msgid "overview levels"
 msgstr "全体波形のレベル"
 
-#: ui/config/pipeline_map.py:31 ui/config/playback.py:360
+#: ui/config/pipeline_map.py:32 ui/config/playback.py:360
 msgid "Audio"
 msgstr "オーディオ"
 
 # | msgid "Beatgrid"
-#: ui/config/pipeline_map.py:32
+#: ui/config/pipeline_map.py:33
 msgid "Beat grid"
 msgstr "ビートグリッド"
 
 # | msgid "beats, tempo, bars"
 # | msgid "beats · bars · tempo rows"
-#: ui/config/pipeline_map.py:32
+#: ui/config/pipeline_map.py:33
 msgid "beats, tempo, bars"
 msgstr "拍、テンポ、小節"
 
 # | msgid "sections + labels"
 # | msgid "boundaries + labels"
-#: ui/config/pipeline_map.py:32
+#: ui/config/pipeline_map.py:33
 msgid "sections + labels"
 msgstr "区間 + ラベル"
 
 # | msgid "Phrase labels"
-#: ui/config/pipeline_map.py:33
+#: ui/config/pipeline_map.py:34
 msgid "by phrase label"
 msgstr "フレーズラベルごと"
 
 # | msgid "JumpCUE Updated"
 # | msgid "JumpCUE pads"
-#: ui/config/pipeline_map.py:33
+#: ui/config/pipeline_map.py:34
 msgid "JumpCUE"
 msgstr "JumpCUE"
 
-#: ui/config/pipeline_map.py:33
+#: ui/config/pipeline_map.py:34
 msgid "jump points"
 msgstr "ジャンプポイント"
 
 # | msgid "key sections"
 # | msgid "sections"
-#: ui/config/pipeline_map.py:34
+#: ui/config/pipeline_map.py:35
 msgid "key sections"
 msgstr "キー区間"
 
@@ -4223,7 +4231,7 @@ msgstr "キー区間"
 # | msgid "" "Numbers: the order the analyses run in. A line: what an analysis
 # | reads, " "coloured by its rate. Click an analysis to open its settings."
 # | builds " "on. Click an analysis to open its settings."
-#: ui/config/pipeline_map.py:46
+#: ui/config/pipeline_map.py:82
 msgid ""
 "Numbers: the order the analyses run in. A wire: the analysis at the arrow"
 " needs that result. Every analysis also reads the decoded audio (22050 "
@@ -4234,7 +4242,7 @@ msgstr ""
 
 # | msgid "{name}: open the {tab} settings"
 # | msgid "Open the {tab} settings"
-#: ui/config/pipeline_map.py:136
+#: ui/config/pipeline_map.py:164
 #, python-brace-format
 msgid "{name}: open the {tab} settings"
 msgstr "{name}: {tab} の設定を開く"
@@ -6039,15 +6047,15 @@ msgstr "-- | 区間 -- | +0 拍 | 残り: 00:00.00"
 msgid "{label} | Seg {index} | +{beats} beats | Left: {left}"
 msgstr "{label} | 区間 {index} | +{beats} 拍 | 残り: {left}"
 
-#: ui/library/actions.py:49
+#: ui/library/actions.py:48
 msgid "Analyze Track"
 msgstr "トラックを解析"
 
-#: ui/library/actions.py:55
+#: ui/library/actions.py:54
 msgid "Add to Playlist"
 msgstr "プレイリストに追加"
 
-#: ui/library/actions.py:89
+#: ui/library/actions.py:88
 msgid ""
 "The deck's track cannot be removed while External Sync follows it.\n"
 "Turn External Sync off, or select other tracks."
@@ -6055,7 +6063,7 @@ msgstr ""
 "External Sync が追従しているデッキのトラックは削除できません。\n"
 "External Sync をオフにするか、ほかのトラックを選択してください。"
 
-#: ui/library/actions.py:110
+#: ui/library/actions.py:109
 #, python-brace-format
 msgid ""
 "Remove \"{title}\" from the library?\n"
@@ -6064,7 +6072,7 @@ msgstr ""
 "「{title}」をライブラリから削除しますか?\n"
 "解析と編集の内容は削除されます。オーディオファイルはそのまま残ります。"
 
-#: ui/library/actions.py:113
+#: ui/library/actions.py:112
 #, python-brace-format
 msgid ""
 "Remove {count} track from the library?\n"
@@ -6920,59 +6928,59 @@ msgstr "選択したトラック。開いているタブをクリックすると
 msgid "Apply the changes to \"{title}\"? (No: they are dropped)"
 msgstr "「{title}」の変更を適用しますか? (いいえ: 破棄します)"
 
-#: ui/library/widget.py:35
+#: ui/library/widget.py:37
 msgid "All"
 msgstr "すべて"
 
 #: ui/library/tabs/edit_song.py:124 ui/library/tabs/export.py:78
 #: ui/library/tabs/export.py:105 ui/library/tabs/tieup_editor.py:140
-#: ui/library/tabs/track_search_index.py:53 ui/library/widget.py:35
+#: ui/library/tabs/track_search_index.py:53 ui/library/widget.py:37
 #: ui/windows/tieup_works.py:77
 msgid "Title"
 msgstr "タイトル"
 
 #: ui/library/tabs/edit_song.py:125 ui/library/tabs/export.py:79
 #: ui/library/tabs/export.py:106 ui/library/tabs/track_search_index.py:53
-#: ui/library/widget.py:35
+#: ui/library/widget.py:37
 msgid "Artist"
 msgstr "アーティスト"
 
-#: ui/library/widget.py:36
+#: ui/library/widget.py:38
 msgid "Duration"
 msgstr "時間"
 
 #: ui/library/tabs/edit_song.py:126 ui/library/tabs/export.py:107
-#: ui/library/tabs/track_search_index.py:53 ui/library/widget.py:36
+#: ui/library/tabs/track_search_index.py:53 ui/library/widget.py:38
 msgid "Album"
 msgstr "アルバム"
 
 #: ui/library/tabs/tieup_editor.py:123 ui/library/tabs/tieup_editor.py:284
-#: ui/library/tabs/tieup_editor.py:290 ui/library/widget.py:36
+#: ui/library/tabs/tieup_editor.py:290 ui/library/widget.py:38
 msgid "Tie-up"
 msgstr "タイアップ"
 
-#: ui/library/tabs/edit_song.py:129 ui/library/widget.py:37
+#: ui/library/tabs/edit_song.py:129 ui/library/widget.py:39
 msgid "Rating"
 msgstr "レーティング"
 
-#: ui/library/widget.py:38
+#: ui/library/widget.py:40
 msgid "Added"
 msgstr "追加日"
 
-#: ui/library/tabs/edit_song.py:123 ui/library/widget.py:38
+#: ui/library/tabs/edit_song.py:123 ui/library/widget.py:40
 msgid "Path"
 msgstr "パス"
 
 #: ui/library/tabs/edit_song.py:130 ui/library/tabs/export.py:108
-#: ui/library/widget.py:38
+#: ui/library/widget.py:40
 msgid "Comment"
 msgstr "コメント"
 
-#: ui/library/widget.py:376
+#: ui/library/widget.py:378
 msgid "Track loading is disabled while External Sync is enabled."
 msgstr "外部同期が有効な間はトラックを読み込めません。"
 
-#: ui/library/widget.py:460
+#: ui/library/widget.py:462
 msgid "The loaded track is not in the list shown."
 msgstr "ロードしたトラックは表示中のリストにありません。"
 
@@ -7009,7 +7017,7 @@ msgstr "テンポをリセット (100%)"
 msgid "Master tempo: time stretch keeps the pitch"
 msgstr "マスターテンポ: タイムストレッチでピッチを保ちます"
 
-#: ui/config/external_sync.py:105 ui/library/widget.py:375 ui/pane.py:528
+#: ui/config/external_sync.py:105 ui/library/widget.py:377 ui/pane.py:528
 msgid "External Sync"
 msgstr "外部同期"
 
@@ -7336,7 +7344,7 @@ msgstr ""
 msgid "Select the loaded track"
 msgstr "ロードしたトラックを選択"
 
-#: ui/library/actions.py:47 ui/library/tabs/edit_song.py:248
+#: ui/library/actions.py:46 ui/library/tabs/edit_song.py:248
 #: ui/library/tabs/edit_song.py:266 ui/library/track_panel.py:43
 #: ui/shortcuts.py:142
 msgid "Edit Track"
@@ -7398,7 +7406,7 @@ msgstr "選択したトラックを日本語版WikipediaとWikidataで調べ、�
 msgid "The works window: every work the tie-ups name, edited, merged or deleted."
 msgstr "作品ウィンドウ：タイアップで使われているすべての作品を編集、統合、削除します。"
 
-#: ui/library/actions.py:51 ui/library/tabs/export.py:309
+#: ui/library/actions.py:50 ui/library/tabs/export.py:309
 #: ui/library/tabs/export.py:314 ui/library/tabs/export.py:320
 #: ui/library/tabs/export.py:332 ui/library/tabs/export.py:342
 #: ui/library/tabs/export.py:454 ui/library/tabs/export.py:465
@@ -7420,15 +7428,15 @@ msgid ""
 "the fields checked in the track panel's Export tab."
 msgstr "選択したトラックの保存済みの値をオーディオファイルのタグに書き込みます。トラックパネルのエクスポートタブでチェックした項目だけを書き込みます。"
 
-#: ui/library/actions.py:44 ui/shortcuts.py:162
+#: ui/library/actions.py:43 ui/shortcuts.py:162
 msgid "Show in Explorer"
 msgstr "エクスプローラーで表示"
 
-#: ui/library/actions.py:45 ui/shortcuts.py:163
+#: ui/library/actions.py:44 ui/shortcuts.py:163
 msgid "Show in Finder"
 msgstr "Finder で表示"
 
-#: ui/library/actions.py:45 ui/shortcuts.py:163
+#: ui/library/actions.py:44 ui/shortcuts.py:163
 msgid "Show in File Manager"
 msgstr "ファイルマネージャーで表示"
 
@@ -7437,7 +7445,7 @@ msgstr "ファイルマネージャーで表示"
 msgid "New Playlist"
 msgstr "新規プレイリスト"
 
-#: ui/library/actions.py:49 ui/shortcuts.py:165
+#: ui/library/actions.py:48 ui/shortcuts.py:165
 #: ui/windows/reanalyze_dialog.py:16
 msgid "Reanalyze Track"
 msgstr "トラックを再解析"
@@ -7448,11 +7456,11 @@ msgid ""
 "are replaced."
 msgstr "選択したトラックの全体の解析: 保存された解析と編集が置き換わります。"
 
-#: ui/library/actions.py:46 ui/library/actions.py:118 ui/shortcuts.py:167
+#: ui/library/actions.py:45 ui/library/actions.py:117 ui/shortcuts.py:167
 msgid "Remove from Library"
 msgstr "ライブラリから削除"
 
-#: ui/library/actions.py:54 ui/shortcuts.py:168
+#: ui/library/actions.py:53 ui/shortcuts.py:168
 msgid "Remove from Playlist"
 msgstr "プレイリストから削除"
 
@@ -8053,7 +8061,7 @@ msgstr "ウェールズ語"
 msgid "Latin"
 msgstr "ラテン語"
 
-#: ui/widgets/language_picker.py:106
+#: ui/widgets/language_picker.py:118
 msgid ""
 "Type a language's name in any language, or its tag (language-REGION: ko-"
 "KR)."

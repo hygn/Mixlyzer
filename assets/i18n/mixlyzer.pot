@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-27 19:38+0900\n"
+"POT-Creation-Date: 2026-10-27 21:09+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -469,120 +469,128 @@ msgstr ""
 msgid "ffmpeg: a short silent decode"
 msgstr ""
 
-#: app/startup.py:275
+#: app/startup.py:269
+msgid "Language names for the tie-ups' language pickers"
+msgstr ""
+
+#: app/startup.py:281
 msgid "library.db: readings"
 msgstr ""
 
-#: app/startup.py:285
+#: app/startup.py:291
 #, python-brace-format
 msgid "Search keys: {tracks} tracks, {done} / {total} readings"
 msgstr ""
 
-#: app/startup.py:306
+#: app/startup.py:312
 msgid "Loading libraries"
 msgstr ""
 
-#: app/startup.py:307
+#: app/startup.py:313
 msgid "Compiling audio kernels (JIT)"
 msgstr ""
 
-#: app/startup.py:308
+#: app/startup.py:314
 msgid "Starting FFmpeg"
 msgstr ""
 
-#: app/startup.py:309
+#: app/startup.py:315
 msgid "Loading search readers"
 msgstr ""
 
-#: app/startup.py:310
+#: app/startup.py:316
+msgid "Measuring language names"
+msgstr ""
+
+#: app/startup.py:317
 msgid "Loading the library"
 msgstr ""
 
-#: app/startup.py:311
+#: app/startup.py:318
 msgid "Building the window"
 msgstr ""
 
-#: app/window.py:72
+#: app/window.py:73
 msgid "Core objects and playback"
 msgstr ""
 
-#: app/window.py:94
+#: app/window.py:95
 msgid "Main view, editor and library"
 msgstr ""
 
-#: app/window.py:100 app/window.py:234 ui/config/window.py:66
+#: app/window.py:101 app/window.py:238 ui/config/window.py:66
 msgid "Settings"
 msgstr ""
 
-#: app/window.py:102
+#: app/window.py:103
 msgid "Dialogs, workflows and metronome"
 msgstr ""
 
-#: app/window.py:235 ui/windows/workers.py:28
+#: app/window.py:239 ui/windows/workers.py:28
 msgid "Workers"
 msgstr ""
 
-#: app/window.py:236 ui/shortcuts.py:155 ui/windows/tieup_works.py:33
+#: app/window.py:240 ui/shortcuts.py:155 ui/windows/tieup_works.py:33
 #: ui/windows/tieup_works.py:206 ui/windows/tieup_works.py:261
 #: ui/windows/tieup_works.py:266 ui/windows/tieup_works.py:275
 #: ui/windows/tieup_works.py:338
 msgid "Tie-up Works"
 msgstr ""
 
-#: app/window.py:237
+#: app/window.py:241
 msgid "Open Source"
 msgstr ""
 
-#: app/window.py:238
+#: app/window.py:242
 msgid "About"
 msgstr ""
 
-#: app/window.py:255 core/controls/midi.py:55 ui/config/playback.py:356
+#: app/window.py:259 core/controls/midi.py:55 ui/config/playback.py:356
 msgid "Mixer"
 msgstr ""
 
-#: app/window.py:431
+#: app/window.py:435
 msgid "MIDI needs the native audio engine (Settings > Audio > Engine)."
 msgstr ""
 
-#: app/window.py:438
+#: app/window.py:442
 msgid "MIDI input on."
 msgstr ""
 
-#: app/window.py:438
+#: app/window.py:442
 msgid "MIDI input off."
 msgstr ""
 
-#: app/window.py:487
+#: app/window.py:491
 msgid "The Python audio engine plays: there is no native engine to restart."
 msgstr ""
 
-#: app/window.py:489
+#: app/window.py:493
 msgid "Restarting the audio engine..."
 msgstr ""
 
-#: app/window.py:493
+#: app/window.py:497
 msgid "Audio engine restarted."
 msgstr ""
 
-#: app/window.py:494
+#: app/window.py:498
 msgid "The audio engine did not start; it is tried again every 2 seconds."
 msgstr ""
 
-#: app/window.py:544 app/window.py:609
+#: app/window.py:548 app/window.py:613
 msgid "External Sync is enabled. Local track loading is disabled."
 msgstr ""
 
-#: app/window.py:557 app/window.py:612
+#: app/window.py:561 app/window.py:616
 msgid "Segment reanalysis canceled (track changed)"
 msgstr ""
 
-#: app/window.py:593
+#: app/window.py:597
 #, python-brace-format
 msgid "The track's analysis could not be read: {file}"
 msgstr ""
 
-#: app/window.py:597
+#: app/window.py:601
 #, python-brace-format
 msgid ""
 "{n} JumpCUE past slot Z is not shown ({file}); it stays stored until the "
@@ -593,15 +601,15 @@ msgid_plural ""
 msgstr[0] ""
 msgstr[1] ""
 
-#: app/window.py:615
+#: app/window.py:619
 msgid "Track unloaded."
 msgstr ""
 
-#: app/window.py:625
+#: app/window.py:629
 msgid "Track File Not Found"
 msgstr ""
 
-#: app/window.py:629
+#: app/window.py:633
 #, python-brace-format
 msgid ""
 "Cannot load \"{name}\": its file is missing.\n"
@@ -610,46 +618,46 @@ msgid ""
 "Set the file's new location?"
 msgstr ""
 
-#: app/window.py:636
+#: app/window.py:640
 #, python-brace-format
 msgid "Locate {name}"
 msgstr ""
 
-#: app/window.py:660 app/window.py:676
+#: app/window.py:664 app/window.py:680
 msgid "Analysis saved to library."
 msgstr ""
 
-#: app/window.py:665
+#: app/window.py:669
 msgid "Finished"
 msgstr ""
 
-#: app/window.py:688
+#: app/window.py:692
 msgid "Waiting to be looked up on Wikipedia"
 msgstr ""
 
-#: app/window.py:694
+#: app/window.py:698
 msgid "Looking up on Wikipedia and Wikidata…"
 msgstr ""
 
-#: app/window.py:699
+#: app/window.py:703
 msgid "The lookup failed."
 msgstr ""
 
-#: app/window.py:735
+#: app/window.py:739
 #, python-brace-format
 msgid "External Sync loading: {file}"
 msgstr ""
 
-#: app/window.py:735
+#: app/window.py:739
 #, python-brace-format
 msgid "External Sync analyzing: {file}"
 msgstr ""
 
-#: app/window.py:749
+#: app/window.py:753
 msgid "External Sync Disabled"
 msgstr ""
 
-#: app/window.py:1018
+#: app/window.py:1022
 #, python-brace-format
 msgid "External Sync enabled: OSC on {address}. Local play/load is locked."
 msgstr ""
@@ -671,7 +679,7 @@ msgstr ""
 msgid "JumpCUE pads"
 msgstr ""
 
-#: core/controls/midi.py:50 ui/config/pipeline_map.py:33
+#: core/controls/midi.py:50 ui/config/pipeline_map.py:34
 #: ui/edit_panel/cue_slots.py:233
 msgid "CUE points"
 msgstr ""
@@ -1328,7 +1336,7 @@ msgstr ""
 msgid "Processing Waveform"
 msgstr ""
 
-#: core/workers/analysis_texts.py:15 ui/config/pipeline_map.py:31
+#: core/workers/analysis_texts.py:15 ui/config/pipeline_map.py:32
 msgid "Waveform"
 msgstr ""
 
@@ -1341,7 +1349,7 @@ msgid "Phrase Boundary Analyzing"
 msgstr ""
 
 #: core/workers/analysis_texts.py:17 ui/config/analysis.py:270
-#: ui/config/pipeline_map.py:23 ui/config/pipeline_map.py:32
+#: ui/config/pipeline_map.py:24 ui/config/pipeline_map.py:33
 #: ui/edit_panel/panel.py:59 ui/library/search.py:268 ui/library/search.py:328
 #: ui/shortcuts.py:37
 msgid "Phrase"
@@ -1356,7 +1364,7 @@ msgid "Analyzing Keys"
 msgstr ""
 
 #: core/workers/analysis_texts.py:19 ui/config/analysis.py:269
-#: ui/config/pipeline_map.py:26 ui/config/pipeline_map.py:34
+#: ui/config/pipeline_map.py:27 ui/config/pipeline_map.py:35
 #: ui/library/tabs/edit_song.py:128
 msgid "Key"
 msgstr ""
@@ -2002,13 +2010,13 @@ msgstr ""
 msgid "Global"
 msgstr ""
 
-#: ui/config/analysis.py:268 ui/config/pipeline_map.py:22
+#: ui/config/analysis.py:268 ui/config/pipeline_map.py:23
 #: ui/windows/reanalyze_dialog.py:89
 msgid "Beat"
 msgstr ""
 
-#: ui/config/analysis.py:271 ui/config/pipeline_map.py:24
-#: ui/config/pipeline_map.py:25
+#: ui/config/analysis.py:271 ui/config/pipeline_map.py:25
+#: ui/config/pipeline_map.py:26
 msgid "CUE"
 msgstr ""
 
@@ -3072,7 +3080,7 @@ msgstr ""
 msgid "Add Folder…"
 msgstr ""
 
-#: ui/config/library.py:33 ui/library/actions.py:88
+#: ui/config/library.py:33 ui/library/actions.py:87
 #: ui/library/tabs/tieup_editor.py:373
 msgid "Remove"
 msgstr ""
@@ -3681,74 +3689,74 @@ msgstr ""
 msgid "Its device's stream is shared with another output, at that output's rate."
 msgstr ""
 
-#: ui/config/pipeline_map.py:21 ui/config/view.py:161
+#: ui/config/pipeline_map.py:22 ui/config/view.py:161
 msgid "View"
 msgstr ""
 
-#: ui/config/pipeline_map.py:30
+#: ui/config/pipeline_map.py:31
 msgid "file"
 msgstr ""
 
-#: ui/config/pipeline_map.py:30
+#: ui/config/pipeline_map.py:31
 msgid "audio"
 msgstr ""
 
-#: ui/config/pipeline_map.py:30
+#: ui/config/pipeline_map.py:31
 msgid "beat grid"
 msgstr ""
 
-#: ui/config/pipeline_map.py:30
+#: ui/config/pipeline_map.py:31
 msgid "phrases"
 msgstr ""
 
-#: ui/config/pipeline_map.py:31
+#: ui/config/pipeline_map.py:32
 msgid "decoded, HPSS"
 msgstr ""
 
-#: ui/config/pipeline_map.py:31
+#: ui/config/pipeline_map.py:32
 msgid "overview levels"
 msgstr ""
 
-#: ui/config/pipeline_map.py:31 ui/config/playback.py:360
+#: ui/config/pipeline_map.py:32 ui/config/playback.py:360
 msgid "Audio"
 msgstr ""
 
-#: ui/config/pipeline_map.py:32
+#: ui/config/pipeline_map.py:33
 msgid "Beat grid"
 msgstr ""
 
-#: ui/config/pipeline_map.py:32
+#: ui/config/pipeline_map.py:33
 msgid "beats, tempo, bars"
 msgstr ""
 
-#: ui/config/pipeline_map.py:32
+#: ui/config/pipeline_map.py:33
 msgid "sections + labels"
 msgstr ""
 
-#: ui/config/pipeline_map.py:33
+#: ui/config/pipeline_map.py:34
 msgid "by phrase label"
 msgstr ""
 
-#: ui/config/pipeline_map.py:33
+#: ui/config/pipeline_map.py:34
 msgid "JumpCUE"
 msgstr ""
 
-#: ui/config/pipeline_map.py:33
+#: ui/config/pipeline_map.py:34
 msgid "jump points"
 msgstr ""
 
-#: ui/config/pipeline_map.py:34
+#: ui/config/pipeline_map.py:35
 msgid "key sections"
 msgstr ""
 
-#: ui/config/pipeline_map.py:46
+#: ui/config/pipeline_map.py:82
 msgid ""
 "Numbers: the order the analyses run in. A wire: the analysis at the arrow"
 " needs that result. Every analysis also reads the decoded audio (22050 "
 "Hz, HPSS). Click an analysis to open its settings."
 msgstr ""
 
-#: ui/config/pipeline_map.py:136
+#: ui/config/pipeline_map.py:164
 #, python-brace-format
 msgid "{name}: open the {tab} settings"
 msgstr ""
@@ -5329,28 +5337,28 @@ msgstr ""
 msgid "{label} | Seg {index} | +{beats} beats | Left: {left}"
 msgstr ""
 
-#: ui/library/actions.py:49
+#: ui/library/actions.py:48
 msgid "Analyze Track"
 msgstr ""
 
-#: ui/library/actions.py:55
+#: ui/library/actions.py:54
 msgid "Add to Playlist"
 msgstr ""
 
-#: ui/library/actions.py:89
+#: ui/library/actions.py:88
 msgid ""
 "The deck's track cannot be removed while External Sync follows it.\n"
 "Turn External Sync off, or select other tracks."
 msgstr ""
 
-#: ui/library/actions.py:110
+#: ui/library/actions.py:109
 #, python-brace-format
 msgid ""
 "Remove \"{title}\" from the library?\n"
 "Its analysis and edits are deleted; the audio file stays."
 msgstr ""
 
-#: ui/library/actions.py:113
+#: ui/library/actions.py:112
 #, python-brace-format
 msgid ""
 "Remove {count} track from the library?\n"
@@ -6110,59 +6118,59 @@ msgstr ""
 msgid "Apply the changes to \"{title}\"? (No: they are dropped)"
 msgstr ""
 
-#: ui/library/widget.py:35
+#: ui/library/widget.py:37
 msgid "All"
 msgstr ""
 
 #: ui/library/tabs/edit_song.py:124 ui/library/tabs/export.py:78
 #: ui/library/tabs/export.py:105 ui/library/tabs/tieup_editor.py:140
-#: ui/library/tabs/track_search_index.py:53 ui/library/widget.py:35
+#: ui/library/tabs/track_search_index.py:53 ui/library/widget.py:37
 #: ui/windows/tieup_works.py:77
 msgid "Title"
 msgstr ""
 
 #: ui/library/tabs/edit_song.py:125 ui/library/tabs/export.py:79
 #: ui/library/tabs/export.py:106 ui/library/tabs/track_search_index.py:53
-#: ui/library/widget.py:35
+#: ui/library/widget.py:37
 msgid "Artist"
 msgstr ""
 
-#: ui/library/widget.py:36
+#: ui/library/widget.py:38
 msgid "Duration"
 msgstr ""
 
 #: ui/library/tabs/edit_song.py:126 ui/library/tabs/export.py:107
-#: ui/library/tabs/track_search_index.py:53 ui/library/widget.py:36
+#: ui/library/tabs/track_search_index.py:53 ui/library/widget.py:38
 msgid "Album"
 msgstr ""
 
 #: ui/library/tabs/tieup_editor.py:123 ui/library/tabs/tieup_editor.py:284
-#: ui/library/tabs/tieup_editor.py:290 ui/library/widget.py:36
+#: ui/library/tabs/tieup_editor.py:290 ui/library/widget.py:38
 msgid "Tie-up"
 msgstr ""
 
-#: ui/library/tabs/edit_song.py:129 ui/library/widget.py:37
+#: ui/library/tabs/edit_song.py:129 ui/library/widget.py:39
 msgid "Rating"
 msgstr ""
 
-#: ui/library/widget.py:38
+#: ui/library/widget.py:40
 msgid "Added"
 msgstr ""
 
-#: ui/library/tabs/edit_song.py:123 ui/library/widget.py:38
+#: ui/library/tabs/edit_song.py:123 ui/library/widget.py:40
 msgid "Path"
 msgstr ""
 
 #: ui/library/tabs/edit_song.py:130 ui/library/tabs/export.py:108
-#: ui/library/widget.py:38
+#: ui/library/widget.py:40
 msgid "Comment"
 msgstr ""
 
-#: ui/library/widget.py:376
+#: ui/library/widget.py:378
 msgid "Track loading is disabled while External Sync is enabled."
 msgstr ""
 
-#: ui/library/widget.py:460
+#: ui/library/widget.py:462
 msgid "The loaded track is not in the list shown."
 msgstr ""
 
@@ -6195,7 +6203,7 @@ msgstr ""
 msgid "Master tempo: time stretch keeps the pitch"
 msgstr ""
 
-#: ui/config/external_sync.py:105 ui/library/widget.py:375 ui/pane.py:528
+#: ui/config/external_sync.py:105 ui/library/widget.py:377 ui/pane.py:528
 msgid "External Sync"
 msgstr ""
 
@@ -6476,7 +6484,7 @@ msgstr ""
 msgid "Select the loaded track"
 msgstr ""
 
-#: ui/library/actions.py:47 ui/library/tabs/edit_song.py:248
+#: ui/library/actions.py:46 ui/library/tabs/edit_song.py:248
 #: ui/library/tabs/edit_song.py:266 ui/library/track_panel.py:43
 #: ui/shortcuts.py:142
 msgid "Edit Track"
@@ -6531,7 +6539,7 @@ msgstr ""
 msgid "The works window: every work the tie-ups name, edited, merged or deleted."
 msgstr ""
 
-#: ui/library/actions.py:51 ui/library/tabs/export.py:309
+#: ui/library/actions.py:50 ui/library/tabs/export.py:309
 #: ui/library/tabs/export.py:314 ui/library/tabs/export.py:320
 #: ui/library/tabs/export.py:332 ui/library/tabs/export.py:342
 #: ui/library/tabs/export.py:454 ui/library/tabs/export.py:465
@@ -6553,15 +6561,15 @@ msgid ""
 "the fields checked in the track panel's Export tab."
 msgstr ""
 
-#: ui/library/actions.py:44 ui/shortcuts.py:162
+#: ui/library/actions.py:43 ui/shortcuts.py:162
 msgid "Show in Explorer"
 msgstr ""
 
-#: ui/library/actions.py:45 ui/shortcuts.py:163
+#: ui/library/actions.py:44 ui/shortcuts.py:163
 msgid "Show in Finder"
 msgstr ""
 
-#: ui/library/actions.py:45 ui/shortcuts.py:163
+#: ui/library/actions.py:44 ui/shortcuts.py:163
 msgid "Show in File Manager"
 msgstr ""
 
@@ -6570,7 +6578,7 @@ msgstr ""
 msgid "New Playlist"
 msgstr ""
 
-#: ui/library/actions.py:49 ui/shortcuts.py:165
+#: ui/library/actions.py:48 ui/shortcuts.py:165
 #: ui/windows/reanalyze_dialog.py:16
 msgid "Reanalyze Track"
 msgstr ""
@@ -6581,11 +6589,11 @@ msgid ""
 "are replaced."
 msgstr ""
 
-#: ui/library/actions.py:46 ui/library/actions.py:118 ui/shortcuts.py:167
+#: ui/library/actions.py:45 ui/library/actions.py:117 ui/shortcuts.py:167
 msgid "Remove from Library"
 msgstr ""
 
-#: ui/library/actions.py:54 ui/shortcuts.py:168
+#: ui/library/actions.py:53 ui/shortcuts.py:168
 msgid "Remove from Playlist"
 msgstr ""
 
@@ -7078,7 +7086,7 @@ msgstr ""
 msgid "Latin"
 msgstr ""
 
-#: ui/widgets/language_picker.py:106
+#: ui/widgets/language_picker.py:118
 msgid ""
 "Type a language's name in any language, or its tag (language-REGION: ko-"
 "KR)."

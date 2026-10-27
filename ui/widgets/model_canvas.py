@@ -12,6 +12,7 @@ import math
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from ui.theme import current_theme
+from ui.widgets.background_paint import BackgroundPaint
 
 FONT_MAIN, FONT_SUB, FONT_NAME, FONT_LABEL = 8.4, 7.6, 7.8, 7.0
 # the domains' colours, as Simulink colours sample times (kept clear of the states' green / yellow / red)
@@ -72,6 +73,9 @@ class ModelCanvas(QtWidgets.QWidget):
         self.setMinimumWidth(640)
         self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
         self.setFixedHeight(int(940 * self.H / self.W))
+        # painted off the GUI thread (ui.widgets.background_paint): ~20 ms a model, four a second while shown
+        self._paint = BackgroundPaint(self, self._draw)
+        self._paint_font = QtGui.QFont(self.font())     # the widget's font as the paint thread's helpers use it
 
     def sizeHint(self) -> QtCore.QSize:
         return QtCore.QSize(940, int(940 * self.H / self.W))
@@ -81,24 +85,38 @@ class ModelCanvas(QtWidgets.QWidget):
         if height != self.height():
             self.setFixedHeight(height)
         super().resizeEvent(event)
+        self._repaint()
+
+    def showEvent(self, event) -> None:
+        super().showEvent(event)
+        self._repaint()
 
     def set_model(self, m: dict) -> None:
         self._m = m
-        self.update()
+        self._repaint()
 
-    @property
-    def scale(self) -> float:
-        return self.width() / self.W
+    def _repaint(self) -> None:
+        """The model painted again on the paint thread, where it is shown (its theme's colours and the widget's
+        font taken here, on the GUI thread)."""
+        if not self._m or not self.isVisible():
+            return
+        use_theme()
+        self._paint.request((self._m, QtGui.QFont(self.font())))
 
     def paintEvent(self, _event) -> None:
-        m = self._m
-        if not m:
-            return
         p = QtGui.QPainter(self)
+        if not self._paint.draw_on(p, QtCore.QRectF(self.rect())):
+            p.fillRect(self.rect(), PAL.canvas)          # until the first picture is painted
+        p.end()
+
+    def _draw(self, p: QtGui.QPainter, size: QtCore.QSizeF, state) -> None:
+        """The picture (on the paint thread): ``state`` the model and the widget's font; the model's coordinates
+        scaled to ``size``'s width. Reads nothing of the widget."""
+        m, self._paint_font = state
         p.setRenderHint(QtGui.QPainter.Antialiasing)
         p.setRenderHint(QtGui.QPainter.TextAntialiasing)
-        use_theme()
-        p.scale(self.scale, self.scale)
+        scale = size.width() / self.W
+        p.scale(scale, scale)
         frame = QtGui.QPainterPath()
         frame.addRoundedRect(QtCore.QRectF(0.5, 0.5, self.W - 1, self.H - 1), 10, 10)
         p.setClipPath(frame)
@@ -113,14 +131,14 @@ class ModelCanvas(QtWidgets.QWidget):
         p.drawPath(frame)
         self.paint_model(p, m)
         self._status(p, m)
-        p.end()
 
     def paint_model(self, p: QtGui.QPainter, m: dict) -> None:
+        """The model (on the paint thread: the helpers below and the module's constants only, never the widget)."""
         raise NotImplementedError
 
     # drawing helpers (the model's coordinates)
     def _font(self, size: float, bold: bool = False, italic: bool = False) -> QtGui.QFont:
-        f = QtGui.QFont(self.font())
+        f = QtGui.QFont(self._paint_font)
         f.setPointSizeF(size)
         f.setBold(bold)
         f.setItalic(italic)

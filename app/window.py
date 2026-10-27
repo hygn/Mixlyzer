@@ -40,6 +40,7 @@ from ui.config.window import SettingsDialog
 from ui.windows.workers import WorkersDialog
 from ui.windows.oss_support import SupportDialog
 from ui.windows.about_dialog import AboutDialog
+from ui.widgets.polish import polish_ahead
 from ui.shortcuts import ShortcutManager
 
 # a knob's steps acted on from one message at most (a fast turn)
@@ -104,6 +105,9 @@ class AppWindow(QtWidgets.QMainWindow):
         self.workers.set_bus(self.bus)
         self.support_dlg = SupportDialog(self)
         self.about_dialog = AboutDialog(self)
+        # their style and layout now, at the start: a first show doing it held the main view's frames
+        for window in (self.cfgwin, self.workers, self.support_dlg, self.about_dialog):
+            polish_ahead(window)
 
         self._build_menus()
         self._connect_transport()

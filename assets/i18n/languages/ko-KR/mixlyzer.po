@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-27 19:38+0900\n"
+"POT-Creation-Date: 2026-10-27 21:09+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ko_KR\n"
@@ -487,76 +487,84 @@ msgstr "타임 스트레치"
 msgid "ffmpeg: a short silent decode"
 msgstr "ffmpeg: 짧은 무음 디코딩"
 
-#: app/startup.py:275
+#: app/startup.py:269
+msgid "Language names for the tie-ups' language pickers"
+msgstr "타이업 언어 선택 목록의 언어 이름"
+
+#: app/startup.py:281
 msgid "library.db: readings"
 msgstr "library.db: 발음"
 
-#: app/startup.py:285
+#: app/startup.py:291
 #, python-brace-format
 msgid "Search keys: {tracks} tracks, {done} / {total} readings"
 msgstr "검색 키: 트랙 {tracks}개, 발음 {done} / {total}"
 
-#: app/startup.py:306
+#: app/startup.py:312
 msgid "Loading libraries"
 msgstr "라이브러리 모듈 불러오는 중"
 
-#: app/startup.py:307
+#: app/startup.py:313
 msgid "Compiling audio kernels (JIT)"
 msgstr "오디오 커널 컴파일 중 (JIT)"
 
-#: app/startup.py:308
+#: app/startup.py:314
 msgid "Starting FFmpeg"
 msgstr "FFmpeg 시작 중"
 
-#: app/startup.py:309
+#: app/startup.py:315
 msgid "Loading search readers"
 msgstr "검색용 발음 변환기 불러오는 중"
 
-#: app/startup.py:310
+#: app/startup.py:316
+msgid "Measuring language names"
+msgstr "언어 이름 측정 중"
+
+#: app/startup.py:317
 msgid "Loading the library"
 msgstr "라이브러리 불러오는 중"
 
-#: app/startup.py:311
+#: app/startup.py:318
 msgid "Building the window"
 msgstr "창 만드는 중"
 
-#: app/window.py:72
+#: app/window.py:73
 msgid "Core objects and playback"
 msgstr "핵심 객체와 재생"
 
-#: app/window.py:94
+#: app/window.py:95
 msgid "Main view, editor and library"
 msgstr "메인 뷰, 편집기, 라이브러리"
 
-#: app/window.py:100 app/window.py:234 ui/config/window.py:66
+#: app/window.py:101 app/window.py:238 ui/config/window.py:66
 msgid "Settings"
 msgstr "설정"
 
-#: app/window.py:102
+#: app/window.py:103
 msgid "Dialogs, workflows and metronome"
 msgstr "대화상자, 워크플로, 메트로놈"
 
-#: app/window.py:235 ui/windows/workers.py:28
+#: app/window.py:239 ui/windows/workers.py:28
 msgid "Workers"
 msgstr "작업"
 
 # | msgid "Tie-ups"
-#: app/window.py:236 ui/shortcuts.py:155 ui/windows/tieup_works.py:33
+#: app/window.py:240 ui/shortcuts.py:155 ui/windows/tieup_works.py:33
 #: ui/windows/tieup_works.py:206 ui/windows/tieup_works.py:261
 #: ui/windows/tieup_works.py:266 ui/windows/tieup_works.py:275
 #: ui/windows/tieup_works.py:338
 msgid "Tie-up Works"
 msgstr "타이업 작품"
 
-#: app/window.py:237
+#: app/window.py:241
 msgid "Open Source"
 msgstr "오픈 소스"
 
-#: app/window.py:238
+#: app/window.py:242
 msgid "About"
 msgstr "정보"
 
-#: app/window.py:255 core/controls/midi.py:55 ui/config/playback.py:356
+#: app/window.py:259 core/controls/midi.py:55 ui/config/playback.py:356
 msgid "Mixer"
 msgstr "믹서"
 
@@ -564,53 +572,53 @@ msgstr "믹서"
 # | Playback > " "Audio engine)."
 # Audio
 # | > " "Engine)."
-#: app/window.py:431
+#: app/window.py:435
 msgid "MIDI needs the native audio engine (Settings > Audio > Engine)."
 msgstr "MIDI는 Native 오디오 엔진에서만 동작합니다(설정 > 오디오 > 엔진)."
 
 # | msgid "MIDI input"
-#: app/window.py:438
+#: app/window.py:442
 msgid "MIDI input on."
 msgstr "MIDI 입력 켬."
 
 # | msgid "MIDI input"
-#: app/window.py:438
+#: app/window.py:442
 msgid "MIDI input off."
 msgstr "MIDI 입력 끔."
 
-#: app/window.py:487
+#: app/window.py:491
 msgid "The Python audio engine plays: there is no native engine to restart."
 msgstr "Python 오디오 엔진으로 재생 중입니다. 재시작할 네이티브 엔진이 없습니다."
 
 # | msgid "Starting the reading worker"
-#: app/window.py:489
+#: app/window.py:493
 msgid "Restarting the audio engine..."
 msgstr "오디오 엔진 재시작 중..."
 
 # | msgid "Audio engine"
-#: app/window.py:493
+#: app/window.py:497
 msgid "Audio engine restarted."
 msgstr "오디오 엔진을 재시작했습니다."
 
-#: app/window.py:494
+#: app/window.py:498
 msgid "The audio engine did not start; it is tried again every 2 seconds."
 msgstr "오디오 엔진이 시작되지 않았습니다. 2초마다 다시 시도합니다."
 
-#: app/window.py:544 app/window.py:609
+#: app/window.py:548 app/window.py:613
 msgid "External Sync is enabled. Local track loading is disabled."
 msgstr "외부 동기화가 켜져 있습니다. 로컬 트랙 불러오기가 비활성화됩니다."
 
-#: app/window.py:557 app/window.py:612
+#: app/window.py:561 app/window.py:616
 msgid "Segment reanalysis canceled (track changed)"
 msgstr "구간 재분석 취소됨 (트랙이 바뀜)"
 
 # | msgid "Phrase reanalysis completed"
-#: app/window.py:593
+#: app/window.py:597
 #, python-brace-format
 msgid "The track's analysis could not be read: {file}"
 msgstr "트랙의 분석을 읽을 수 없습니다: {file}"
 
-#: app/window.py:597
+#: app/window.py:601
 #, python-brace-format
 msgid ""
 "{n} JumpCUE past slot Z is not shown ({file}); it stays stored until the "
@@ -620,15 +628,15 @@ msgid_plural ""
 "the JumpCUEs are edited."
 msgstr[0] "슬롯 Z를 넘는 JumpCUE {n}개는 표시되지 않습니다({file}). JumpCUE를 편집하기 전까지는 저장된 그대로 남습니다."
 
-#: app/window.py:615
+#: app/window.py:619
 msgid "Track unloaded."
 msgstr "트랙을 내렸습니다."
 
-#: app/window.py:625
+#: app/window.py:629
 msgid "Track File Not Found"
 msgstr "트랙 파일을 찾을 수 없음"
 
-#: app/window.py:629
+#: app/window.py:633
 #, python-brace-format
 msgid ""
 "Cannot load \"{name}\": its file is missing.\n"
@@ -641,51 +649,51 @@ msgstr ""
 "\n"
 "파일의 새 위치를 지정할까요?"
 
-#: app/window.py:636
+#: app/window.py:640
 #, python-brace-format
 msgid "Locate {name}"
 msgstr "{name} 찾기"
 
-#: app/window.py:660 app/window.py:676
+#: app/window.py:664 app/window.py:680
 msgid "Analysis saved to library."
 msgstr "분석을 라이브러리에 저장했습니다."
 
-#: app/window.py:665
+#: app/window.py:669
 msgid "Finished"
 msgstr "완료"
 
-#: app/window.py:688
+#: app/window.py:692
 msgid "Waiting to be looked up on Wikipedia"
 msgstr "위키백과 조사 대기 중"
 
-#: app/window.py:694
+#: app/window.py:698
 msgid "Looking up on Wikipedia and Wikidata…"
 msgstr "위키백과와 위키데이터에서 찾는 중…"
 
 # | msgid "Reading the analysis failed: {error}"
 # | msgid "The search failed: {error}"
 # | msgid "" "The lookup failed:\n" "{error}"
-#: app/window.py:699
+#: app/window.py:703
 msgid "The lookup failed."
 msgstr "조사하지 못했습니다."
 
-#: app/window.py:735
+#: app/window.py:739
 #, python-brace-format
 msgid "External Sync loading: {file}"
 msgstr "외부 동기화 불러오는 중: {file}"
 
-#: app/window.py:735
+#: app/window.py:739
 #, python-brace-format
 msgid "External Sync analyzing: {file}"
 msgstr "외부 동기화 분석 중: {file}"
 
 # | msgid "Memory Sync Disabled"
-#: app/window.py:749
+#: app/window.py:753
 msgid "External Sync Disabled"
 msgstr "외부 동기화 비활성화됨"
 
 # | msgid "External Sync enabled via {target}. Local play/load is locked."
-#: app/window.py:1018
+#: app/window.py:1022
 #, python-brace-format
 msgid "External Sync enabled: OSC on {address}. Local play/load is locked."
 msgstr "외부 동기화 사용: OSC {address}. 로컬 재생/불러오기가 잠깁니다."
@@ -708,7 +716,7 @@ msgstr "덱"
 msgid "JumpCUE pads"
 msgstr "JumpCUE 패드"
 
-#: core/controls/midi.py:50 ui/config/pipeline_map.py:33
+#: core/controls/midi.py:50 ui/config/pipeline_map.py:34
 #: ui/edit_panel/cue_slots.py:233
 msgid "CUE points"
 msgstr "CUE 포인트"
@@ -1459,7 +1467,7 @@ msgstr "HPSS 처리 중"
 msgid "Processing Waveform"
 msgstr "파형 처리 중"
 
-#: core/workers/analysis_texts.py:15 ui/config/pipeline_map.py:31
+#: core/workers/analysis_texts.py:15 ui/config/pipeline_map.py:32
 msgid "Waveform"
 msgstr "파형"
 
@@ -1472,7 +1480,7 @@ msgid "Phrase Boundary Analyzing"
 msgstr "프레이즈 경계 분석 중"
 
 #: core/workers/analysis_texts.py:17 ui/config/analysis.py:270
-#: ui/config/pipeline_map.py:23 ui/config/pipeline_map.py:32
+#: ui/config/pipeline_map.py:24 ui/config/pipeline_map.py:33
 #: ui/edit_panel/panel.py:59 ui/library/search.py:268 ui/library/search.py:328
 #: ui/shortcuts.py:37
 msgid "Phrase"
@@ -1487,7 +1495,7 @@ msgid "Analyzing Keys"
 msgstr "키 분석 중"
 
 #: core/workers/analysis_texts.py:19 ui/config/analysis.py:269
-#: ui/config/pipeline_map.py:26 ui/config/pipeline_map.py:34
+#: ui/config/pipeline_map.py:27 ui/config/pipeline_map.py:35
 #: ui/library/tabs/edit_song.py:128
 msgid "Key"
 msgstr "키"
@@ -2165,13 +2173,13 @@ msgstr "파라미터 (JSON)"
 msgid "Global"
 msgstr "전역"
 
-#: ui/config/analysis.py:268 ui/config/pipeline_map.py:22
+#: ui/config/analysis.py:268 ui/config/pipeline_map.py:23
 #: ui/windows/reanalyze_dialog.py:89
 msgid "Beat"
 msgstr "비트"
 
-#: ui/config/analysis.py:271 ui/config/pipeline_map.py:24
-#: ui/config/pipeline_map.py:25
+#: ui/config/analysis.py:271 ui/config/pipeline_map.py:25
+#: ui/config/pipeline_map.py:26
 msgid "CUE"
 msgstr "CUE"
 
@@ -3365,7 +3373,7 @@ msgstr "{address}에서 받는 중; 로드되어 있고 활성인 덱이 없음 
 msgid "Add Folder…"
 msgstr "폴더 추가…"
 
-#: ui/config/library.py:33 ui/library/actions.py:88
+#: ui/config/library.py:33 ui/library/actions.py:87
 #: ui/library/tabs/tieup_editor.py:373
 msgid "Remove"
 msgstr "제거"
@@ -4127,80 +4135,80 @@ msgstr "재생 장치: {device}, {rate} kHz"
 msgid "Its device's stream is shared with another output, at that output's rate."
 msgstr "이 장치의 스트림을 다른 출력과 함께 쓰므로 그 출력의 샘플레이트로 재생됩니다."
 
-#: ui/config/pipeline_map.py:21 ui/config/view.py:161
+#: ui/config/pipeline_map.py:22 ui/config/view.py:161
 msgid "View"
 msgstr "보기"
 
 # | msgid "file"
 # | msgid "File"
-#: ui/config/pipeline_map.py:30
+#: ui/config/pipeline_map.py:31
 msgid "file"
 msgstr "파일"
 
 # | msgid "Audio"
-#: ui/config/pipeline_map.py:30
+#: ui/config/pipeline_map.py:31
 msgid "audio"
 msgstr "오디오"
 
 # | msgid "Beatgrid"
-#: ui/config/pipeline_map.py:30
+#: ui/config/pipeline_map.py:31
 msgid "beat grid"
 msgstr "비트그리드"
 
 # | msgid "Phrase"
-#: ui/config/pipeline_map.py:30
+#: ui/config/pipeline_map.py:31
 msgid "phrases"
 msgstr "프레이즈"
 
 # | msgid "Decoder costs"
-#: ui/config/pipeline_map.py:31
+#: ui/config/pipeline_map.py:32
 msgid "decoded, HPSS"
 msgstr "디코딩, HPSS"
 
 # | msgid "Overview"
-#: ui/config/pipeline_map.py:31
+#: ui/config/pipeline_map.py:32
 msgid "overview levels"
 msgstr "전체 파형 레벨"
 
-#: ui/config/pipeline_map.py:31 ui/config/playback.py:360
+#: ui/config/pipeline_map.py:32 ui/config/playback.py:360
 msgid "Audio"
 msgstr "오디오"
 
 # | msgid "Beatgrid"
-#: ui/config/pipeline_map.py:32
+#: ui/config/pipeline_map.py:33
 msgid "Beat grid"
 msgstr "비트그리드"
 
 # | msgid "beats, tempo, bars"
 # | msgid "beats · bars · tempo rows"
-#: ui/config/pipeline_map.py:32
+#: ui/config/pipeline_map.py:33
 msgid "beats, tempo, bars"
 msgstr "비트, 템포, 마디"
 
 # | msgid "sections + labels"
 # | msgid "boundaries + labels"
-#: ui/config/pipeline_map.py:32
+#: ui/config/pipeline_map.py:33
 msgid "sections + labels"
 msgstr "구간 + 라벨"
 
 # | msgid "Phrase labels"
-#: ui/config/pipeline_map.py:33
+#: ui/config/pipeline_map.py:34
 msgid "by phrase label"
 msgstr "프레이즈 라벨별"
 
 # | msgid "JumpCUE Updated"
 # | msgid "JumpCUE pads"
-#: ui/config/pipeline_map.py:33
+#: ui/config/pipeline_map.py:34
 msgid "JumpCUE"
 msgstr "JumpCUE"
 
-#: ui/config/pipeline_map.py:33
+#: ui/config/pipeline_map.py:34
 msgid "jump points"
 msgstr "점프 지점"
 
 # | msgid "key sections"
 # | msgid "sections"
-#: ui/config/pipeline_map.py:34
+#: ui/config/pipeline_map.py:35
 msgid "key sections"
 msgstr "키 구간"
 
@@ -4212,7 +4220,7 @@ msgstr "키 구간"
 # | msgid "" "Numbers: the order the analyses run in. A line: what an analysis
 # | reads, " "coloured by its rate. Click an analysis to open its settings."
 # | builds " "on. Click an analysis to open its settings."
-#: ui/config/pipeline_map.py:46
+#: ui/config/pipeline_map.py:82
 msgid ""
 "Numbers: the order the analyses run in. A wire: the analysis at the arrow"
 " needs that result. Every analysis also reads the decoded audio (22050 "
@@ -4223,7 +4231,7 @@ msgstr ""
 
 # | msgid "{name}: open the {tab} settings"
 # | msgid "Open the {tab} settings"
-#: ui/config/pipeline_map.py:136
+#: ui/config/pipeline_map.py:164
 #, python-brace-format
 msgid "{name}: open the {tab} settings"
 msgstr "{name}: {tab} 설정 열기"
@@ -6031,15 +6039,15 @@ msgstr "-- | 구간 -- | +0박 | 남음: 00:00.00"
 msgid "{label} | Seg {index} | +{beats} beats | Left: {left}"
 msgstr "{label} | 구간 {index} | +{beats}박 | 남음: {left}"
 
-#: ui/library/actions.py:49
+#: ui/library/actions.py:48
 msgid "Analyze Track"
 msgstr "트랙 분석"
 
-#: ui/library/actions.py:55
+#: ui/library/actions.py:54
 msgid "Add to Playlist"
 msgstr "플레이리스트에 추가"
 
-#: ui/library/actions.py:89
+#: ui/library/actions.py:88
 msgid ""
 "The deck's track cannot be removed while External Sync follows it.\n"
 "Turn External Sync off, or select other tracks."
@@ -6047,7 +6055,7 @@ msgstr ""
 "External Sync가 따라가는 덱의 트랙은 제거할 수 없습니다.\n"
 "External Sync를 끄거나 다른 트랙을 선택하세요."
 
-#: ui/library/actions.py:110
+#: ui/library/actions.py:109
 #, python-brace-format
 msgid ""
 "Remove \"{title}\" from the library?\n"
@@ -6056,7 +6064,7 @@ msgstr ""
 "\"{title}\"을(를) 라이브러리에서 제거할까요?\n"
 "분석과 편집 내용이 삭제됩니다. 오디오 파일은 그대로 남습니다."
 
-#: ui/library/actions.py:113
+#: ui/library/actions.py:112
 #, python-brace-format
 msgid ""
 "Remove {count} track from the library?\n"
@@ -6914,59 +6922,59 @@ msgstr "선택한 트랙. 열린 탭을 누르면 패널을 접습니다"
 msgid "Apply the changes to \"{title}\"? (No: they are dropped)"
 msgstr "\"{title}\"의 변경 내용을 적용할까요? (아니요: 버립니다)"
 
-#: ui/library/widget.py:35
+#: ui/library/widget.py:37
 msgid "All"
 msgstr "전체"
 
 #: ui/library/tabs/edit_song.py:124 ui/library/tabs/export.py:78
 #: ui/library/tabs/export.py:105 ui/library/tabs/tieup_editor.py:140
-#: ui/library/tabs/track_search_index.py:53 ui/library/widget.py:35
+#: ui/library/tabs/track_search_index.py:53 ui/library/widget.py:37
 #: ui/windows/tieup_works.py:77
 msgid "Title"
 msgstr "제목"
 
 #: ui/library/tabs/edit_song.py:125 ui/library/tabs/export.py:79
 #: ui/library/tabs/export.py:106 ui/library/tabs/track_search_index.py:53
-#: ui/library/widget.py:35
+#: ui/library/widget.py:37
 msgid "Artist"
 msgstr "아티스트"
 
-#: ui/library/widget.py:36
+#: ui/library/widget.py:38
 msgid "Duration"
 msgstr "길이"
 
 #: ui/library/tabs/edit_song.py:126 ui/library/tabs/export.py:107
-#: ui/library/tabs/track_search_index.py:53 ui/library/widget.py:36
+#: ui/library/tabs/track_search_index.py:53 ui/library/widget.py:38
 msgid "Album"
 msgstr "앨범"
 
 #: ui/library/tabs/tieup_editor.py:123 ui/library/tabs/tieup_editor.py:284
-#: ui/library/tabs/tieup_editor.py:290 ui/library/widget.py:36
+#: ui/library/tabs/tieup_editor.py:290 ui/library/widget.py:38
 msgid "Tie-up"
 msgstr "타이업"
 
-#: ui/library/tabs/edit_song.py:129 ui/library/widget.py:37
+#: ui/library/tabs/edit_song.py:129 ui/library/widget.py:39
 msgid "Rating"
 msgstr "평점"
 
-#: ui/library/widget.py:38
+#: ui/library/widget.py:40
 msgid "Added"
 msgstr "추가일"
 
-#: ui/library/tabs/edit_song.py:123 ui/library/widget.py:38
+#: ui/library/tabs/edit_song.py:123 ui/library/widget.py:40
 msgid "Path"
 msgstr "경로"
 
 #: ui/library/tabs/edit_song.py:130 ui/library/tabs/export.py:108
-#: ui/library/widget.py:38
+#: ui/library/widget.py:40
 msgid "Comment"
 msgstr "코멘트"
 
-#: ui/library/widget.py:376
+#: ui/library/widget.py:378
 msgid "Track loading is disabled while External Sync is enabled."
 msgstr "외부 동기화가 켜져 있는 동안에는 트랙을 불러올 수 없습니다."
 
-#: ui/library/widget.py:460
+#: ui/library/widget.py:462
 msgid "The loaded track is not in the list shown."
 msgstr "로드한 트랙이 지금 보이는 목록에 없습니다."
 
@@ -7003,7 +7011,7 @@ msgstr "템포 초기화 (100%)"
 msgid "Master tempo: time stretch keeps the pitch"
 msgstr "마스터 템포: 타임 스트레치로 피치를 유지합니다"
 
-#: ui/config/external_sync.py:105 ui/library/widget.py:375 ui/pane.py:528
+#: ui/config/external_sync.py:105 ui/library/widget.py:377 ui/pane.py:528
 msgid "External Sync"
 msgstr "외부 동기화"
 
@@ -7332,7 +7340,7 @@ msgstr ""
 msgid "Select the loaded track"
 msgstr "로드한 트랙 선택"
 
-#: ui/library/actions.py:47 ui/library/tabs/edit_song.py:248
+#: ui/library/actions.py:46 ui/library/tabs/edit_song.py:248
 #: ui/library/tabs/edit_song.py:266 ui/library/track_panel.py:43
 #: ui/shortcuts.py:142
 msgid "Edit Track"
@@ -7394,7 +7402,7 @@ msgstr "선택한 트랙을 일본어 위키백과와 위키데이터에서 찾�
 msgid "The works window: every work the tie-ups name, edited, merged or deleted."
 msgstr "작품 창: 타이업에 쓰인 모든 작품을 편집하거나 합치거나 삭제합니다."
 
-#: ui/library/actions.py:51 ui/library/tabs/export.py:309
+#: ui/library/actions.py:50 ui/library/tabs/export.py:309
 #: ui/library/tabs/export.py:314 ui/library/tabs/export.py:320
 #: ui/library/tabs/export.py:332 ui/library/tabs/export.py:342
 #: ui/library/tabs/export.py:454 ui/library/tabs/export.py:465
@@ -7416,15 +7424,15 @@ msgid ""
 "the fields checked in the track panel's Export tab."
 msgstr "선택한 트랙의 저장된 값을 오디오 파일 태그에 씁니다. 트랙 패널의 내보내기 탭에서 체크한 항목만 씁니다."
 
-#: ui/library/actions.py:44 ui/shortcuts.py:162
+#: ui/library/actions.py:43 ui/shortcuts.py:162
 msgid "Show in Explorer"
 msgstr "탐색기에서 보기"
 
-#: ui/library/actions.py:45 ui/shortcuts.py:163
+#: ui/library/actions.py:44 ui/shortcuts.py:163
 msgid "Show in Finder"
 msgstr "Finder에서 보기"
 
-#: ui/library/actions.py:45 ui/shortcuts.py:163
+#: ui/library/actions.py:44 ui/shortcuts.py:163
 msgid "Show in File Manager"
 msgstr "파일 관리자에서 보기"
 
@@ -7433,7 +7441,7 @@ msgstr "파일 관리자에서 보기"
 msgid "New Playlist"
 msgstr "새 플레이리스트"
 
-#: ui/library/actions.py:49 ui/shortcuts.py:165
+#: ui/library/actions.py:48 ui/shortcuts.py:165
 #: ui/windows/reanalyze_dialog.py:16
 msgid "Reanalyze Track"
 msgstr "트랙 재분석"
@@ -7444,11 +7452,11 @@ msgid ""
 "are replaced."
 msgstr "선택한 트랙의 전체 분석: 저장된 분석과 편집이 바뀝니다."
 
-#: ui/library/actions.py:46 ui/library/actions.py:118 ui/shortcuts.py:167
+#: ui/library/actions.py:45 ui/library/actions.py:117 ui/shortcuts.py:167
 msgid "Remove from Library"
 msgstr "라이브러리에서 제거"
 
-#: ui/library/actions.py:54 ui/shortcuts.py:168
+#: ui/library/actions.py:53 ui/shortcuts.py:168
 msgid "Remove from Playlist"
 msgstr "플레이리스트에서 제거"
 
@@ -8049,7 +8057,7 @@ msgstr "웨일스어"
 msgid "Latin"
 msgstr "라틴어"
 
-#: ui/widgets/language_picker.py:106
+#: ui/widgets/language_picker.py:118
 msgid ""
 "Type a language's name in any language, or its tag (language-REGION: ko-"
 "KR)."

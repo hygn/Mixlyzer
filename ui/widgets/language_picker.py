@@ -88,6 +88,15 @@ def _list_width(font_key: str, metrics) -> int:
     return _WIDTHS[font_key]
 
 
+def warm_up() -> None:
+    """The locales, their shared list and the width their labels need in a picker's font, made before the window
+    opens (app.startup): the first picker's list otherwise measured them as it opened (~0.2 s, the GUI held)."""
+    probe = LanguageCombo()
+    probe.ensurePolished()      # its font as the style sheet makes it, the one a shown picker measures with
+    _list_width(probe.font().key(), probe.fontMetrics())
+    probe.deleteLater()
+
+
 class LanguageCombo(QComboBox):
     """The language picker (the module). Its typed search (a completer and its popup) is made when it first takes
     the focus: a table makes a picker a row, and most are never typed into."""
@@ -97,6 +106,9 @@ class LanguageCombo(QComboBox):
         self.setEditable(True)
         self.setInsertPolicy(QComboBox.NoInsert)
         self.setMaxVisibleItems(15)
+        # every label is one line: its list measures none of them (an editable combo's list measured all several
+        # hundred, in a dozen scripts, as it was shown: ~20 ms a picker, ~0.6 s the first, the GUI held)
+        self.view().setUniformItemSizes(True)
         self.setModel(_model())
         # closed it is as narrow as a tag (the label starts with it); its lists open as wide as the labels
         self.setSizeAdjustPolicy(QComboBox.AdjustToMinimumContentsLengthWithIcon)

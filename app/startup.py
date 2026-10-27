@@ -264,6 +264,12 @@ def _load_readers(progress: Progress) -> None:
     reading.warm_up(progress)
 
 
+def _warm_language_names(progress: Progress) -> None:
+    from ui.widgets import language_picker
+    progress(0.0, tr("Language names for the tie-ups' language pickers"))
+    language_picker.warm_up()
+
+
 def _open_library(libpath: str, held: dict) -> Callable[[Progress], None]:
     def run(progress: Progress) -> None:
         """The library's owner started (core.library.service: its thread reads the library), then every stored
@@ -307,6 +313,7 @@ def startup_tasks(cfg) -> list[StartupTask]:
         StartupTask(tr("Compiling audio kernels (JIT)"), 0.4, _compile_audio_kernels),
         StartupTask(tr("Starting FFmpeg"), 0.1, _warm_ffmpeg),
         StartupTask(tr("Loading search readers"), 1.5, _load_readers),
+        StartupTask(tr("Measuring language names"), 0.6, _warm_language_names),
         StartupTask(tr("Loading the library"), 0.1, _open_library(cfg.libconfig.libpath, held)),
         StartupTask(tr("Building the window"), 2.3, _build_window(held, cfg), pump_events=False),
     ]

@@ -7,7 +7,6 @@ import os
 from system import os_support
 from core.library import jobs
 from core.settings import store as settings_store
-from ui.windows.tieup_works import WorksWindow
 from ui.windows.reanalyze_dialog import ReanalyzeDialog
 from ui.edit_panel.flash import flash
 from system.i18n import tr, tr_n
@@ -174,5 +173,8 @@ class ActionsMixin:
     def open_works(self) -> None:
         """The tie-ups' works window (non-modal; one)."""
         if self._works_window is None:
+            # imported here: it imports the tie-up editor's parts (ui.library.tabs), so ui.library at its top
+            # would be a cycle
+            from ui.windows.tieup_works import WorksWindow
             self._works_window = WorksWindow(self.bus, lambda: self.cfg, self.library, self.window())
         self._works_window.show_works()
