@@ -16,6 +16,8 @@ from typing import Any, Mapping, Optional
 import numpy as np
 
 from analyzer.audio.wave_overview import WaveOverview
+from analyzer.beat.general.tracker import dominant_tempo
+from analyzer.music.key_rows import main_key
 from analyzer.music.marks import CuePoint, JumpCueGroup, Phrase
 from analyzer.training.library_tracks import Annotation
 from core.analysis_library.cue_points import build_cue_points_np, extract_cue_points
@@ -132,6 +134,14 @@ class TrackEdits:
         if self.jump_cues is not None:
             check_slot_letters([group for group in self.jump_cues if group.cues])
 
+    def main_tempo(self) -> float:
+        """The track's tempo as the analysis gives it, of the rows as edited (the library's BPM, the NPZ's)."""
+        return dominant_tempo(self.tempo_segments)
+
+    def main_key(self) -> Optional[int]:
+        """The track's key as the analysis gives it, of the keys and beats as edited (the library's key)."""
+        return main_key(self.key_segments, self.beats)
+
 
 def _replace_block(arrays: dict, name: str, block: dict) -> None:
     """Replace a stored block (flattened as ``name.<field>``) as a whole, so no field of the previous block is left
@@ -142,9 +152,10 @@ def _replace_block(arrays: dict, name: str, block: dict) -> None:
 
 
 def apply_edits(arrays: dict, edits: TrackEdits) -> None:
-    """``edits`` into a track's stored arrays (in place)."""
+    """``edits`` into a track's stored arrays (in place); the main tempo made from the rows as edited."""
     arrays[BEATS] = np.array(edits.beats, dtype=float)
     arrays[TEMPO_ROWS] = np.array(edits.tempo_segments, dtype=float)
+    arrays[TEMPO] = edits.main_tempo()
     arrays[KEYS] = np.array(edits.key_segments, dtype=float)
     if edits.key_segments_auto is not None:
         arrays[KEYS_AUTO] = np.array(edits.key_segments_auto, dtype=float)

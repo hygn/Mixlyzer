@@ -100,6 +100,24 @@ class SettingsDialogTests(unittest.TestCase):
         deck = self.d.get_config().deckconfig
         self.assertEqual(deck, replace(cfg.deckconfig, metronome_offset_msec=-20.0))
 
+    def test_a_controllers_cue_mix_is_not_undone(self):
+        """The headphones' CUE / MASTER mix a controller moved after the dialog was made: kept by OK, shown when the
+        dialog opens; one changed here wins."""
+        cfg = edited_cfg()
+        self.d.set_config(cfg)
+        cfg.deckconfig.headphones_cue_mix = 80                        # a controller, as AppWindow._keep_switches
+        self.assertEqual(self.d.get_config().deckconfig.headphones_cue_mix, 80)
+        self.d.show()
+        drain()
+        self.assertEqual(self.d.grp_output_headphones.sp_cue_mix.value(), 80)
+        self.d.grp_output_headphones.sp_cue_mix.setValue(10)          # changed here
+        cfg.deckconfig.headphones_cue_mix = 60                        # and by the controller since
+        self.assertEqual(self.d.get_config().deckconfig.headphones_cue_mix, 10)
+        self.d.hide()
+        self.d.show()
+        drain()
+        self.assertEqual(self.d.grp_output_headphones.sp_cue_mix.value(), 10)   # the change here not dropped
+
     def test_a_change_applied_reaches_the_config(self):
         self.d.set_config(default_cfg())
         self.d.sp_bpm_min.setValue(90)

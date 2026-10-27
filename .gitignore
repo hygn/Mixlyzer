@@ -8,12 +8,10 @@ __pycache__/
 *.egg
 *.log
 *.npz
-!assets/weights/phrase_analyzer.npz
-!assets/weights/default_refine_onset_hgb.npz
-!assets/weights/default_beat_tcn.npz
-!assets/weights/default_beat_critic.npz
-!assets/weights/default_downbeat_ctx_hgb.npz
-!assets/weights/default_key_chord_cnn.npz
+# the learned models: the shipped ones (default_*) only; a user's retrained file beside them (the same name without
+# default_, npz or json) stays local
+assets/weights/*
+!assets/weights/default_*
 *.zip
 
 # Virtual envs
@@ -50,6 +48,7 @@ featurecache/
 backups/
 debug/
 ffmpeg.exe
+/ffmpeg
 config.json
 deck.json
 assets/shortcuts/shortcuts.json
@@ -74,5 +73,6 @@ interchange/
 # Local maintenance notes, and their site (mkdocs serve)
 docs/internal/
 mkdocs.yml
+mkdocs.publish.yml
 # the web lookups' answers (core.tieup_web)
 cache/

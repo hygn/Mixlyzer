@@ -101,6 +101,7 @@ class SettingsDialog(
         self.resize(self.DIALOG_WIDTH, 860)
 
         self._current_cfg = None
+        self._cue_mix_shown = None   # the headphones' CUE / MASTER mix as last shown (_show_cue_mix)
         self._library = None      # the library's owner (set_library)
         self._initialize_library_settings(bus)
         self._initialize_search_settings(bus)
@@ -223,7 +224,7 @@ class SettingsDialog(
         self._load_output_devices(p.output_device)
         self.grp_output_headphones.set_config(p.output_headphones)
         self.grp_output_headphones.cb_master_mix.setChecked(bool(p.headphones_master_mix))
-        self.grp_output_headphones.sp_cue_mix.setValue(int(deck.headphones_cue_mix))
+        self._show_cue_mix(int(deck.headphones_cue_mix))
         self.grp_output_headphones.sp_cue_mix.setEnabled(bool(p.headphones_master_mix))
         self.grp_output_booth.set_config(p.output_booth)
         self._set_audio_mix_config(p)
@@ -391,8 +392,16 @@ class SettingsDialog(
         deck.metronome_beat_volume_percent = int(self.sp_click_beat_volume.value())
         deck.metronome_beat_pitch_semitones = float(self.sp_click_beat_pitch.value())
         deck.metronome_ducking = bool(self.cb_metronome_ducking.isChecked())
-        deck.headphones_cue_mix = int(self.grp_output_headphones.sp_cue_mix.value())
+        # the CUE / MASTER mix a controller also moves: written only when changed here, else the one kept stays
+        cue_mix = int(self.grp_output_headphones.sp_cue_mix.value())
+        if cue_mix != self._cue_mix_shown:
+            deck.headphones_cue_mix = cue_mix
         return deck
+
+    def _show_cue_mix(self, value: int) -> None:
+        """The headphones' CUE / MASTER mix as kept (deck.json: this dialog's and a controller's)."""
+        self._cue_mix_shown = int(value)
+        self.grp_output_headphones.sp_cue_mix.setValue(int(value))
 
     # Buttons
     def _on_apply(self):
@@ -422,4 +431,6 @@ class SettingsDialog(
         self._load_output_routes(str(self.cb_output_main.currentData() or "1-2"))
         self._load_shortcut_settings()  # the edits not kept are dropped
         self._load_midi_settings()
+        if int(self.grp_output_headphones.sp_cue_mix.value()) == self._cue_mix_shown:   # not changed here
+            self._show_cue_mix(int(self._kept_deck().headphones_cue_mix))       # a controller's since
         self._refresh_overview()

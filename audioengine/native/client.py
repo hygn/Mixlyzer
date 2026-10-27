@@ -760,11 +760,15 @@ class NativeFeeder(QtCore.QObject):
         return changed
 
     def _replay(self) -> None:
-        """A new engine: the settings, the deck as it was reported, its marks at this engine's rate."""
+        """A new engine: the settings, the deck as it was reported (deck 1's: the mixer's settings too, the GUI's and
+        a controller's alike), its marks at this engine's rate."""
         for op, payload in self._settings.values():
             self._send_raw(op, payload)
         r = self._report
         if r is not None:
+            if not self.deck_index:
+                for key, value in enumerate(r.mix):
+                    self._engine.send(OP_SET_MIXER, struct.pack("<Id", key, float(value)))
             self._send_raw(OP_SET_TEMPO_RANGE, struct.pack("<I", r.tempo_range))
             self._send_raw(OP_SET_TEMPO, struct.pack("<d", r.factor))
             self._send_raw(OP_SET_VOLUME, struct.pack("<d", r.volume))

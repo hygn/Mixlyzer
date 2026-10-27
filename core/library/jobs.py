@@ -79,12 +79,13 @@ def remove_tracks(lib, uids: list[str]) -> None:
 
 
 def save_edits(lib, uid: str, edits: TrackEdits) -> str:
-    """The editor's save: ``edits`` into the track's stored analysis (each mark's block replaced whole), its segment
-    tables in library.db written from them. Returns the uid. Unmarked (the snapshot read whole, sig_lib_updated
+    """The editor's save: ``edits`` into the track's stored analysis (each mark's block replaced whole), its BPM, key
+    and segment tables in library.db written from them (the Export tab's tags read the BPM and key). Returns the uid. Unmarked (the snapshot read whole, sig_lib_updated
     sent): the library's phrase / transition filters read those tables and run again on it."""
     stored = lib.features.load(uid)
     apply_edits(stored, edits)
     lib.features.save(uid, stored)
+    lib.db.set_tempo_key(uid, edits.main_tempo(), edits.main_key())
     bpm_rows = build_bpm_segments(stored.get("tempo_segments"))
     key_rows = build_key_segments(stored.get("key_segments"))
     phrase_rows = assigned_phrases(extract_phrase_segments(stored))

@@ -4,6 +4,26 @@ from __future__ import annotations
 import numpy as np
 
 
+def main_key(key_segments, beats) -> int | None:
+    """The track's key as the analysis gives it: the key (pitch class + 12 * minor) of the most beats, the lowest of
+    a tie; None without keys or beats. A beat on a boundary is the later row's, the track's end the last row's."""
+    rows = np.asarray(key_segments, dtype=float)
+    t = np.asarray(beats, dtype=float).ravel()
+    if rows.ndim != 2 or rows.shape[0] == 0 or rows.shape[1] < 4 or t.size == 0:
+        return None
+    rows = rows[np.isfinite(rows[:, :4]).all(axis=1)]
+    rows = rows[np.argsort(rows[:, 2], kind="stable")]
+    if rows.shape[0] == 0:
+        return None
+    at = np.searchsorted(rows[:, 2], t, side="right") - 1
+    inside = (at >= 0) & ((t < rows[np.maximum(at, 0), 3]) | ((at == rows.shape[0] - 1) & (t <= rows[-1, 3])))
+    if not inside.any():
+        return None
+    row = rows[at[inside]]
+    values, counts = np.unique(row[:, 0].astype(int) + 12 * (row[:, 1] == 1), return_counts=True)
+    return int(values[np.argmax(counts)])
+
+
 def update_key_segments_with_selection(
     key_segments,
     selection: tuple[float, float, float, float],

@@ -952,7 +952,12 @@ class LibraryDB:
         cur = self.conn.execute(q, params)
         return [_track_row_from_db_row(row) for row in cur.fetchall()]
 
-    # Utilities 
+    def set_tempo_key(self, uid: str, bpm: float, key: Optional[int]) -> None:
+        """The track's BPM and key (the editor's save: made from its marks as edited)."""
+        self.conn.execute("UPDATE tracks SET bpm=?, key=? WHERE uid=?;", (float(bpm), key, _canonical_uuid4(uid)))
+        self.conn.commit()
+
+    # Utilities
     def touch_file_stats(self, path: str):
         """Refresh file mtime/size (for change detection)."""
         try:

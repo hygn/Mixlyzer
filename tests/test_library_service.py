@@ -99,7 +99,8 @@ class LibraryServiceTests(unittest.TestCase):
         saved, errors = [], []
         tempo = np.asarray([[0, 4, 128, 0, 4, 128]], float)
         group = JumpCueGroup((JumpCue("A", "A", 1.5, 1.5, 1.5), JumpCue("B", "B", 3.0, 3.0, 3.0)), 2)
-        edits = TrackEdits(beats=np.arange(8) * 0.5, tempo_segments=tempo, key_segments=np.empty((0, 4)),
+        keys = np.asarray([[0, 0, 0, 1], [9, 1, 1, 4]], float)   # C for 2 beats, then A minor for 6
+        edits = TrackEdits(beats=np.arange(8) * 0.5, tempo_segments=tempo, key_segments=keys,
                            phrases=(), jump_cues=(group,), cue_points=())
         self.library.write(jobs.save_edits, row.uid, edits, done=saved.append, failed=errors.append)
         with self.assertRaises(ValueError):                       # a letter not a slot's: refused before the save
@@ -118,6 +119,10 @@ class LibraryServiceTests(unittest.TestCase):
         self.assertEqual(list(got["analysis"].jump_cues), [group])
         self.assertNotIn("jump_cues_np.stale", got["arrays"])     # the block replaced whole
         self.assertEqual(got["bpm"], [128.0])                     # its segment table written from it
+        # the track's BPM and key (what the Export tab writes to the file's tags) made from the marks as edited
+        track = self.library.snapshot.track(row.uid)
+        self.assertEqual((track.bpm, track.key), (128.0, 21))
+        self.assertEqual(float(got["arrays"]["tempo_global"]), 128.0)
 
     def test_another_thread_calls_and_waits(self):
         row = _row("b.wav")
