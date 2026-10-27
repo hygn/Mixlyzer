@@ -139,8 +139,9 @@ class TrackEdits:
         return dominant_tempo(self.tempo_segments)
 
     def main_key(self) -> Optional[int]:
-        """The track's key as the analysis gives it, of the keys and beats as edited (the library's key)."""
-        return main_key(self.key_segments, self.beats)
+        """The track's key as the static key analysis gives it, of the keys and phrases as edited (the library's
+        key)."""
+        return main_key(self.key_segments, self.phrases)
 
 
 def _replace_block(arrays: dict, name: str, block: dict) -> None:

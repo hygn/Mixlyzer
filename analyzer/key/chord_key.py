@@ -22,6 +22,8 @@ from pathlib import Path
 
 import numpy as np
 
+from analyzer.music.key_rows import main_key
+
 
 SR = 22050
 HOP = 512
@@ -267,29 +269,12 @@ def key_evidence(y_harm: np.ndarray, sr: int, beats: np.ndarray, downbeats, phra
     return model, grid, model.key_loglik(model.chords(x), grid.pos)
 
 
-# The phrases where tracks are mixed: the static analysis's key is the dynamic analysis's key there.
-MIX_LABELS = ("INTRO", "OUTRO", "INTERLUDE")
-
-
 def static_key(segments: np.ndarray, phrases, duration: float) -> tuple[int, int]:
-    """One key for the whole track from the dynamic analysis's key sections: the key that holds the most time in
-    the intro, outro and interlude phrases; without them, the key that holds the most time. -> (pc, mode)"""
-    spans = []
-    for p in phrases or ():
-        label = str(p.label).upper()
-        if label in MIX_LABELS:
-            spans.append((float(p.start), float(p.end)))
-    if not spans:
-        spans = [(0.0, float(duration))]
-    held: dict[tuple[int, int], float] = {}
-    for pc, mode, t0, t1 in np.asarray(segments, float):
-        overlap = sum(max(0.0, min(t1, b) - max(t0, a)) for a, b in spans)
-        key = (int(pc), int(mode))
-        held[key] = held.get(key, 0.0) + overlap
-    if not any(v > 0 for v in held.values()):
-        for pc, mode, t0, t1 in np.asarray(segments, float):
-            held[(int(pc), int(mode))] = held.get((int(pc), int(mode)), 0.0) + (t1 - t0)
-    return max(held, key=held.get)
+    """One key for the whole track from the dynamic analysis's key sections: the track's key
+    (analyzer.music.key_rows.main_key, the one rule: the key held most in the intro, outro and interlude phrases,
+    else in the track). -> (pc, mode)"""
+    key = main_key(segments, phrases, duration)
+    return key % 12, key // 12
 
 
 def track_keys(model: ChordKeyModel, grid: BeatGrid, L: np.ndarray, duration: float, dynamic: bool = True,

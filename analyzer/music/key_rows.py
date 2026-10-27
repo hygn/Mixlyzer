@@ -4,24 +4,35 @@ from __future__ import annotations
 import numpy as np
 
 
-def main_key(key_segments, beats) -> int | None:
-    """The track's key as the analysis gives it: the key (pitch class + 12 * minor) of the most beats, the lowest of
-    a tie; None without keys or beats. A beat on a boundary is the later row's, the track's end the last row's."""
+# The phrases where tracks are mixed: the track's key is the key held there.
+MIX_LABELS = ("INTRO", "OUTRO", "INTERLUDE")
+
+
+def main_key(key_segments, phrases=(), duration: float | None = None) -> int | None:
+    """The track's key (pitch class + 12 * minor), the one the static key analysis gives (analyzer.key.chord_key: it
+    reads the dynamic analysis's rows so): the key that holds the most time in the intro, outro and interlude
+    phrases (``phrases``: analyzer.music.marks.Phrase); without them, the key that holds the most time in the track
+    (0 .. ``duration``, None: to the rows' end). A tie: the key that comes first. None without rows."""
     rows = np.asarray(key_segments, dtype=float)
-    t = np.asarray(beats, dtype=float).ravel()
-    if rows.ndim != 2 or rows.shape[0] == 0 or rows.shape[1] < 4 or t.size == 0:
+    if rows.ndim != 2 or rows.shape[0] == 0 or rows.shape[1] < 4:
         return None
     rows = rows[np.isfinite(rows[:, :4]).all(axis=1)]
     rows = rows[np.argsort(rows[:, 2], kind="stable")]
     if rows.shape[0] == 0:
         return None
-    at = np.searchsorted(rows[:, 2], t, side="right") - 1
-    inside = (at >= 0) & ((t < rows[np.maximum(at, 0), 3]) | ((at == rows.shape[0] - 1) & (t <= rows[-1, 3])))
-    if not inside.any():
-        return None
-    row = rows[at[inside]]
-    values, counts = np.unique(row[:, 0].astype(int) + 12 * (row[:, 1] == 1), return_counts=True)
-    return int(values[np.argmax(counts)])
+    spans = [(float(p.start), float(p.end)) for p in phrases or () if str(p.label).upper() in MIX_LABELS]
+    if not spans:
+        spans = [(0.0, float(rows[:, 3].max() if duration is None else duration))]
+    held: dict[int, float] = {}
+    for pc, mode, t0, t1 in rows[:, :4]:
+        overlap = sum(max(0.0, min(t1, b) - max(t0, a)) for a, b in spans)
+        key = int(pc) + 12 * int(mode)
+        held[key] = held.get(key, 0.0) + overlap
+    if not any(v > 0 for v in held.values()):
+        for pc, mode, t0, t1 in rows[:, :4]:
+            key = int(pc) + 12 * int(mode)
+            held[key] = held.get(key, 0.0) + (t1 - t0)
+    return max(held, key=held.get)
 
 
 def update_key_segments_with_selection(
