@@ -12,7 +12,7 @@ from xml.etree import ElementTree as ET
 
 import numpy as np
 
-from core.library.records import TrackRow
+from core.library.records import FOLDER_NODE, PlaylistTree, TrackRow
 from analyzer.music.key_names import idx_to_labels
 from core.analysis_library.stored import StoredAnalysis
 from analyzer.music.tempo_rows import is_ramp_row, ramp_beat_times, segment_end_bpm
@@ -252,6 +252,34 @@ class RekordboxXmlDocument:
         self.collection.extend(nodes)
         self._update_entry_count()
         self._reindex()
+
+    def set_playlists(self, tree: PlaylistTree) -> None:
+        """The document's PLAYLISTS made the library's: its folders (``NODE Type="0"``) and playlists
+        (``Type="1"``) nested and ordered as they are, under rekordbox's ROOT; each entry its track's Location in
+        COLLECTION (``KeyType="1"``: rekordbox finds a track by its file), an entry whose track COLLECTION lacks left
+        out. The PLAYLISTS read before (an earlier sync's) are replaced whole."""
+        locations = {key: str(track.attrib.get("Location", "")) for key, track in self.existing.items()}
+        children = tree.children()
+
+        def add(parent: ET.Element, folder_uid: Optional[str]) -> None:
+            for kind, row in children.get(folder_uid, ()):
+                if kind == FOLDER_NODE:
+                    node = ET.SubElement(parent, "NODE", Type="0", Name=row.name, Count="0")
+                    add(node, row.uid)
+                    node.set("Count", str(len(node)))
+                    continue
+                keys = [locations.get(uid, "") for _position, uid in tree.entries.get(row.uid, ())]
+                keys = [key for key in keys if key]
+                node = ET.SubElement(parent, "NODE", Name=row.name, Type="1", KeyType="1", Entries=str(len(keys)))
+                for key in keys:
+                    ET.SubElement(node, "TRACK", Key=key)
+
+        for old in self.root.findall("PLAYLISTS"):
+            self.root.remove(old)
+        playlists = ET.SubElement(self.root, "PLAYLISTS")
+        root = ET.SubElement(playlists, "NODE", Type="0", Name="ROOT", Count="0")
+        add(root, None)
+        root.set("Count", str(len(root)))
 
     @property
     def entry_count(self) -> int:

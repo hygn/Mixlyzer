@@ -382,6 +382,41 @@ class LibraryWidgetTests(unittest.TestCase):
         self.assertEqual(self.w._source_kind, "library")
         self.assertEqual(len(self.column(TITLE)), 3)
 
+    def test_folders_nest_playlists_and_move_them(self):
+        with mock.patch.object(QInputDialog, "getText", return_value=("Events", True)):
+            self.w._create_folder()
+        self.settle()
+        events = self.library.snapshot.folders[0].uid
+        self.assertEqual((self.w._source_kind, self.w._source_value), ("playlist_folder", events))
+        self.assertEqual(self.w._shown_folder(), events)
+        with mock.patch.object(QInputDialog, "getText", return_value=("Peak", True)):
+            self.w.shortcut_handlers()["library.new_playlist"]()       # into the folder shown
+        self.settle()
+        peak = next(p for p in self.library.snapshot.playlists if p.name == "Peak")
+        self.assertEqual(peak.folder_uid, events)
+        item = self.source("playlist", peak.uid)
+        self.assertEqual(item.parent().data(0, _SOURCE_VALUE_ROLE), events)
+        top = self._new_playlist("Top")
+        self.assertIsNone(self.w._shown_folder())
+        # dropped into the folder before Peak, then the folder closed stays closed when the tree is made again
+        self.w._drop_playlist_node(("playlist", top), events, ("playlist", peak.uid))
+        self.settle()
+        folder_item = self.source("playlist_folder", events)
+        self.assertEqual([folder_item.child(i).text(0) for i in range(folder_item.childCount())], ["Top", "Peak"])
+        folder_item.setExpanded(False)
+        self.w._rebuild_source_tree()
+        self.assertFalse(self.source("playlist_folder", events).isExpanded())
+        # deleted with what is in it when agreed (No by default)
+        with mock.patch.object(QMessageBox, "question", return_value=QMessageBox.No):
+            self.w._delete_folder(self.source("playlist_folder", events))
+        self.settle()
+        self.assertEqual(len(self.library.snapshot.playlists), 2)
+        with mock.patch.object(QMessageBox, "question", return_value=QMessageBox.Yes):
+            self.w._delete_folder(self.source("playlist_folder", events))
+        self.settle()
+        self.assertEqual((self.library.snapshot.playlists, self.library.snapshot.folders), ((), ()))
+        self.assertEqual(self.w._source_kind, "library")
+
     def test_an_empty_name_makes_no_playlist(self):
         with mock.patch.object(QInputDialog, "getText", return_value=("  ", True)):
             self.w._create_playlist()

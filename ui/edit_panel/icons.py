@@ -1,4 +1,5 @@
-"""Edit panel icons: transparent PNGs in assets/icons (beatgrid_<name>.png)."""
+"""Edit panel icons: transparent PNGs in assets/icons (beatgrid_<name>.png), and the library's playlist folders' in
+the same glyphs' grammar (library_folder*.png)."""
 from __future__ import annotations
 
 from functools import lru_cache
@@ -123,3 +124,9 @@ def badged_icon(name: str, badge: str) -> QtGui.QIcon:
     _draw_badge(p, badge, src.width())
     p.end()
     return _with_disabled(QtGui.QPixmap.fromImage(out))
+
+
+def folder_icon(opened: bool) -> QtGui.QIcon:
+    """A playlist folder in the library's sources panel: closed (library_folder.png) or open
+    (library_folder_open.png)."""
+    return icon("library_folder_open" if opened else "library_folder")

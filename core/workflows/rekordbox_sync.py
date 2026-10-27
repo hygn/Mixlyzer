@@ -13,6 +13,15 @@ from core.workers.rekordbox_sync import (
 )
 
 
+PLAYLISTS_SYNC_DELAY_MS = 1000
+
+
+def _playlist_parts(snapshot) -> tuple | None:
+    if snapshot is None:
+        return None
+    return (snapshot.playlists, snapshot.folders, snapshot.entries)
+
+
 class RekordboxXmlSync(QtCore.QObject):
     """Queue Rekordbox sync requests and own each worker thread."""
 
@@ -30,6 +39,33 @@ class RekordboxXmlSync(QtCore.QObject):
         self._active_request: RekordboxSyncRequest | None = None
         self._thread: QtCore.QThread | None = None
         self._worker: RekordboxSyncWorker | None = None
+        # the playlists written again once they rest after a change (a drag, a rename, tracks added or removed)
+        self._playlists_seen = _playlist_parts(getattr(library, "snapshot", None))
+        self._playlists_timer = QtCore.QTimer(self)
+        self._playlists_timer.setSingleShot(True)
+        self._playlists_timer.setInterval(PLAYLISTS_SYNC_DELAY_MS)
+        self._playlists_timer.timeout.connect(self.sync_playlists_requested)
+        updated = getattr(library, "updated", None)
+        if updated is not None:
+            updated.connect(self._on_library_updated)
+
+    @QtCore.Slot(object)
+    def _on_library_updated(self, snapshot) -> None:
+        """The library's snapshot read again: the playlists' parts are new objects only where they were read again
+        (a write that changed them), so a change is told by identity."""
+        seen = _playlist_parts(snapshot)
+        if self._playlists_seen is not None and any(a is not b for a, b in zip(seen, self._playlists_seen)):
+            self._playlists_timer.start()
+        self._playlists_seen = seen
+
+    @QtCore.Slot()
+    def sync_playlists_requested(self) -> None:
+        """The XML's playlists written again (a whole sync waiting writes them too)."""
+        if any(r.mode in ("playlists", "library") for r in self._queue):
+            return
+        request = self._request_from_config(mode="playlists")
+        if request is not None:
+            self._enqueue(request)
 
     @QtCore.Slot(object)
     def sync_requested(self, payload: object) -> None:

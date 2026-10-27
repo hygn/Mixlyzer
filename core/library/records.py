@@ -3,7 +3,7 @@ readings' rule. Plain data, no storage (core.library.db reads and writes them)."
 from __future__ import annotations
 
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 from uuid import uuid4
 
@@ -108,11 +108,45 @@ class IndexTrack:
     variants: bool       # the variants' fingerprint to make (from the stored analysis)
 
 
+PLAYLIST_NODE, FOLDER_NODE = "playlist", "folder"     # the playlists' tree's two kinds of node
+
+
 @dataclass
 class PlaylistRow:
     uid: str
     name: str
-    sort_index: int
+    sort_index: int                     # its place among its folder's children
+    folder_uid: Optional[str] = None    # the folder it is in (None: the top)
+
+
+@dataclass
+class PlaylistFolderRow:
+    uid: str
+    name: str
+    parent_uid: Optional[str] = None    # the folder it is in (None: the top)
+    sort_index: int = 0                 # its place among its folder's children
+
+
+@dataclass(frozen=True)
+class PlaylistTree:
+    """The playlists as a whole (core.library.jobs.playlist_tree): the folders, the playlists, each one's entries."""
+    folders: tuple = ()          # PlaylistFolderRow
+    playlists: tuple = ()        # PlaylistRow
+    entries: dict = field(default_factory=dict)   # playlist uid -> ((position, track uid), ...)
+
+    def children(self) -> dict:
+        return playlist_children(self.folders, self.playlists)
+
+
+def playlist_children(folders: Iterable[PlaylistFolderRow], playlists: Iterable[PlaylistRow]) -> dict:
+    """The playlists' tree: a folder's uid (None: the top) -> its children in order, each (kind, row)."""
+    out: dict = {}
+    nodes = [(f.parent_uid, f.sort_index, 0, f.name.casefold(), FOLDER_NODE, f) for f in folders]
+    nodes += [(p.folder_uid, p.sort_index, 1, p.name.casefold(), PLAYLIST_NODE, p) for p in playlists]
+    for parent, *_order, kind, row in sorted(nodes, key=lambda n: (n[1], n[2], n[3])):
+        out.setdefault(parent, []).append((kind, row))
+    return out
+
 
 @dataclass
 class BpmSegmentRow:

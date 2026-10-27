@@ -72,7 +72,7 @@ class UidKeyedLibraryTests(unittest.TestCase):
     def test_playlists_by_uid(self):
         first = self.db.create_playlist("One")
         second = self.db.create_playlist("Two")
-        self.assertTrue(self.db.move_playlist_before(second.uid, first.uid))
+        self.assertTrue(self.db.move_playlist_node("playlist", second.uid, None, ("playlist", first.uid)))
         self.assertEqual([p.uid for p in self.db.list_playlists()], [second.uid, first.uid])
         self.db.rename_playlist(first.uid, "First")
         self.db.delete_playlist(second.uid)

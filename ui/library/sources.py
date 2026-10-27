@@ -7,7 +7,9 @@ from pathlib import Path
 from typing import List, Optional
 from PySide6 import QtCore, QtGui, QtWidgets
 import os
+from core.library.records import FOLDER_NODE, PLAYLIST_NODE
 from core.search import reading
+from ui.edit_panel.icons import folder_icon
 from ui.theme import current_theme
 from analyzer.search import variants as variant_fp
 from core.search import variants as variant_relations
@@ -16,9 +18,29 @@ from ui.library.common import (Track, _DIRECTORY_LOADED_ROLE, _PLAYLIST_MIME, _S
     _SOURCE_VALUE_ROLE, row_to_track)
 
 
+# a source's kind in the tree -> its node's kind in the playlists' tree (core.library.records)
+_NODE_OF = {"playlist": PLAYLIST_NODE, "playlist_folder": FOLDER_NODE}
+
+
+def _folder_of(item: Optional[QtWidgets.QTreeWidgetItem]) -> Optional[str]:
+    """The playlist folder an item is in (None: the top)."""
+    parent = item.parent() if item is not None else None
+    if parent is not None and parent.data(0, _SOURCE_KIND_ROLE) == "playlist_folder":
+        return str(parent.data(0, _SOURCE_VALUE_ROLE))
+    return None
+
+
+def _node_of(item: Optional[QtWidgets.QTreeWidgetItem]) -> Optional[tuple[str, str]]:
+    """(kind, uid) of a playlist or folder item, else None."""
+    kind = _NODE_OF.get(item.data(0, _SOURCE_KIND_ROLE)) if item is not None else None
+    return (kind, str(item.data(0, _SOURCE_VALUE_ROLE))) if kind else None
+
+
 class _LibrarySourceTree(QtWidgets.QTreeWidget):
     playlistFilesDropped = QtCore.Signal(str, object)
-    playlistOrderDropped = QtCore.Signal(str, object)
+    # a playlist or folder dropped: (kind, uid), the folder it goes into (None: the top), the child it goes before
+    # ((kind, uid); None: at the folder's end)
+    playlistNodeDropped = QtCore.Signal(object, object, object)
     focusLeft = QtCore.Signal()
 
     def __init__(self, parent=None):
@@ -52,16 +74,10 @@ class _LibrarySourceTree(QtWidgets.QTreeWidget):
 
     def mimeData(self, items):
         data = QtCore.QMimeData()
-        playlists = [
-            item for item in items
-            if item.data(0, _SOURCE_KIND_ROLE) == "playlist"
-        ]
-        if len(playlists) == 1:
-            playlist_uid = str(playlists[0].data(0, _SOURCE_VALUE_ROLE))
-            data.setData(
-                _PLAYLIST_MIME,
-                QtCore.QByteArray(playlist_uid.encode("ascii")),
-            )
+        nodes = [node for node in map(_node_of, items) if node is not None]
+        if len(nodes) == 1:
+            kind, uid = nodes[0]
+            data.setData(_PLAYLIST_MIME, QtCore.QByteArray(f"{kind}:{uid}".encode("ascii")))
         return data
 
     def startDrag(self, supported_actions):
@@ -74,34 +90,44 @@ class _LibrarySourceTree(QtWidgets.QTreeWidget):
         drag.setMimeData(data)
         drag.exec(QtCore.Qt.MoveAction, QtCore.Qt.MoveAction)
 
-    def _playlist_insertion_at(
-        self, pos: QtCore.QPoint
-    ) -> tuple[bool, Optional[str], Optional[int]]:
+    def _playlist_insertion_at(self, pos: QtCore.QPoint, moving: tuple[str, str]):
+        """Where a playlist or folder dropped at ``pos`` goes: (valid, folder, before, line y, folder rect). Over a
+        playlist: before it (its upper half) or after it; over a folder: before it (its top quarter), after it (its
+        bottom quarter) or into it at its end; over Playlists: at the top's end. A folder never into itself or a folder
+        inside it."""
         item = self.itemAt(pos)
         kind = item.data(0, _SOURCE_KIND_ROLE) if item is not None else ""
-        if kind == "playlist":
-            rect = self.visualItemRect(item)
-            if pos.y() < rect.center().y():
-                return True, str(item.data(0, _SOURCE_VALUE_ROLE)), rect.top()
-            parent = item.parent()
-            next_index = parent.indexOfChild(item) + 1 if parent is not None else -1
-            next_item = (
-                parent.child(next_index)
-                if parent is not None and next_index < parent.childCount()
-                else None
-            )
-            before_uid = (
-                str(next_item.data(0, _SOURCE_VALUE_ROLE))
-                if next_item is not None else None
-            )
-            return True, before_uid, rect.bottom() + 1
         if kind == "playlists":
-            if item.childCount():
-                y = self.visualItemRect(item.child(item.childCount() - 1)).bottom() + 1
-            else:
-                y = self.visualItemRect(item).bottom() + 1
-            return True, None, y
-        return False, None, None
+            last = item.child(item.childCount() - 1) if item.childCount() else item
+            return True, None, None, self.visualItemRect(last).bottom() + 1, None
+        node = _node_of(item)
+        if node is None:
+            return False, None, None, None, None
+        if moving[0] == FOLDER_NODE:          # not into the folder itself or one inside it
+            up = item
+            while up is not None:
+                if _node_of(up) == moving:
+                    return False, None, None, None, None
+                up = up.parent()
+        rect = self.visualItemRect(item)
+        y = pos.y() - rect.top()
+        folder = _folder_of(item)
+        if kind == "playlist_folder" and rect.height() // 4 <= y < rect.height() - rect.height() // 4:
+            return True, node[1], None, None, rect
+        if y < rect.height() // 2:
+            return True, folder, node, rect.top(), None
+        parent = item.parent()
+        following = parent.child(parent.indexOfChild(item) + 1) if parent is not None else None
+        return True, folder, _node_of(following), rect.bottom() + 1, None
+
+    @staticmethod
+    def _moving(event) -> Optional[tuple[str, str]]:
+        """The playlist or folder a drag from this tree carries."""
+        try:
+            kind, _sep, uid = bytes(event.mimeData().data(_PLAYLIST_MIME)).decode("ascii").partition(":")
+        except UnicodeDecodeError:
+            return None
+        return (kind, uid) if kind in (PLAYLIST_NODE, FOLDER_NODE) and uid else None
 
     def _set_drop_visual(
         self,
@@ -149,12 +175,11 @@ class _LibrarySourceTree(QtWidgets.QTreeWidget):
             event.ignore()
 
     def dragMoveEvent(self, event):
-        if event.source() is self and event.mimeData().hasFormat(_PLAYLIST_MIME):
-            valid, _before_uid, line_y = self._playlist_insertion_at(
-                event.position().toPoint()
-            )
+        moving = self._moving(event) if event.source() is self else None
+        if moving is not None:
+            valid, _folder, _before, line_y, into = self._playlist_insertion_at(event.position().toPoint(), moving)
             if valid:
-                self._set_drop_visual(line_y=line_y)
+                self._set_drop_visual(line_y=line_y, target_rect=into)
                 event.setDropAction(QtCore.Qt.MoveAction)
                 event.accept()
             else:
@@ -173,21 +198,14 @@ class _LibrarySourceTree(QtWidgets.QTreeWidget):
         event.accept()
 
     def dropEvent(self, event):
-        if event.source() is self and event.mimeData().hasFormat(_PLAYLIST_MIME):
-            try:
-                moved_uid = bytes(event.mimeData().data(_PLAYLIST_MIME)).decode("ascii")
-            except UnicodeDecodeError:
-                event.ignore()
-                return
-            valid, before_uid, _line_y = self._playlist_insertion_at(
-                event.position().toPoint()
-            )
-            if not valid:
-                self._set_drop_visual()
-                event.ignore()
-                return
+        moving = self._moving(event) if event.source() is self else None
+        if moving is not None:
+            valid, folder, before, _line_y, _into = self._playlist_insertion_at(event.position().toPoint(), moving)
             self._set_drop_visual()
-            self.playlistOrderDropped.emit(moved_uid, before_uid)
+            if not valid:
+                event.ignore()
+                return
+            self.playlistNodeDropped.emit(moving, folder, before)
             event.setDropAction(QtCore.Qt.MoveAction)
             event.accept()
             return
@@ -207,6 +225,7 @@ class SourcesMixin:
 
     def _build_sources(self):
         """The sources panel's tree."""
+        self._closed_folders: set[str] = set()     # the playlist folders the user closed (this run)
         self.source_tree = _LibrarySourceTree()
         self.source_tree.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
 
@@ -214,10 +233,11 @@ class SourcesMixin:
         """The sources panel's signals."""
         self.source_tree.currentItemChanged.connect(self._on_source_changed)
         self.source_tree.itemExpanded.connect(self._on_source_expanded)
+        self.source_tree.itemCollapsed.connect(self._on_source_collapsed)
         self.source_tree.customContextMenuRequested.connect(self._on_source_context_menu)
         self.source_tree.focusLeft.connect(self._mark_shown_source)
         self.source_tree.playlistFilesDropped.connect(self._add_paths_to_playlist)
-        self.source_tree.playlistOrderDropped.connect(self._drop_playlist_order)
+        self.source_tree.playlistNodeDropped.connect(self._drop_playlist_node)
 
     def _local_music_roots(self) -> list[str]:
         configured = [
@@ -269,13 +289,24 @@ class SourcesMixin:
         playlists_item = QtWidgets.QTreeWidgetItem([tr("Playlists")])
         playlists_item.setData(0, _SOURCE_KIND_ROLE, "playlists")
         tree.addTopLevelItem(playlists_item)
-        playlists = self.library.snapshot.playlists
-        self._shown_playlists = tuple((p.uid, p.name) for p in playlists)
-        for playlist in playlists:
-            item = QtWidgets.QTreeWidgetItem([playlist.name])
-            item.setData(0, _SOURCE_KIND_ROLE, "playlist")
-            item.setData(0, _SOURCE_VALUE_ROLE, playlist.uid)
-            playlists_item.addChild(item)
+        self._shown_playlists = self._playlists_shape()
+        children = self.library.snapshot.playlist_children()
+
+        def add(parent: QtWidgets.QTreeWidgetItem, folder_uid) -> None:
+            """A folder's children in their order, its folders open unless the user closed them."""
+            for node, row in children.get(folder_uid, ()):
+                item = QtWidgets.QTreeWidgetItem([row.name])
+                item.setData(0, _SOURCE_VALUE_ROLE, row.uid)
+                parent.addChild(item)
+                if node == FOLDER_NODE:
+                    item.setData(0, _SOURCE_KIND_ROLE, "playlist_folder")
+                    add(item, row.uid)
+                    opened = row.uid not in self._closed_folders
+                    item.setExpanded(opened)
+                    item.setIcon(0, folder_icon(opened and item.childCount() > 0))
+                else:
+                    item.setData(0, _SOURCE_KIND_ROLE, "playlist")
+        add(playlists_item, None)
         playlists_item.setExpanded(True)
 
         local_item = QtWidgets.QTreeWidgetItem([tr("Local Folders")])
@@ -308,6 +339,12 @@ class SourcesMixin:
         self._source_kind = str(selected.data(0, _SOURCE_KIND_ROLE) or "library")
         self._source_value = selected.data(0, _SOURCE_VALUE_ROLE)
 
+    def _playlists_shape(self) -> tuple:
+        """The playlists' tree as the sources panel shows it (a change rebuilds it)."""
+        snap = self.library.snapshot
+        return (tuple((p.uid, p.name, p.folder_uid, p.sort_index) for p in snap.playlists),
+                tuple((f.uid, f.name, f.parent_uid, f.sort_index) for f in snap.folders))
+
     def _populate_directory_children(self, item: QtWidgets.QTreeWidgetItem) -> None:
         if item.data(0, _SOURCE_KIND_ROLE) != "directory":
             return
@@ -334,7 +371,15 @@ class SourcesMixin:
         item.setData(0, _DIRECTORY_LOADED_ROLE, True)
 
     def _on_source_expanded(self, item: QtWidgets.QTreeWidgetItem) -> None:
+        if item.data(0, _SOURCE_KIND_ROLE) == "playlist_folder":
+            self._closed_folders.discard(str(item.data(0, _SOURCE_VALUE_ROLE)))
+            item.setIcon(0, folder_icon(item.childCount() > 0))
         self._populate_directory_children(item)
+
+    def _on_source_collapsed(self, item: QtWidgets.QTreeWidgetItem) -> None:
+        if item.data(0, _SOURCE_KIND_ROLE) == "playlist_folder":
+            self._closed_folders.add(str(item.data(0, _SOURCE_VALUE_ROLE)))
+            item.setIcon(0, folder_icon(False))
 
     def _on_source_changed(self, current, _previous=None) -> None:
         if current is None or self.source_tree.keyboard_move:
@@ -552,14 +597,17 @@ class SourcesMixin:
         kind = item.data(0, _SOURCE_KIND_ROLE) if item is not None else ""
         menu = QtWidgets.QMenu(self)
         actions = {}
-        if kind in ("playlists", "playlist"):
+        # a new playlist or folder goes into the folder clicked, or beside the playlist clicked
+        folder = str(item.data(0, _SOURCE_VALUE_ROLE)) if kind == "playlist_folder" else _folder_of(item)
+        if kind in ("playlists", "playlist", "playlist_folder"):
             actions["new"] = menu.addAction(tr("New Playlist"))
-        if kind == "playlist":
+            actions["new_folder"] = menu.addAction(tr("New Folder"))
+        if kind in ("playlist", "playlist_folder"):
             menu.addSeparator()
             actions["rename"] = menu.addAction(tr("Rename"))
             actions["up"] = menu.addAction(tr("Move Up"))
             actions["down"] = menu.addAction(tr("Move Down"))
-            actions["delete"] = menu.addAction(tr("Delete Playlist"))
+            actions["delete"] = menu.addAction(tr("Delete Playlist") if kind == "playlist" else tr("Delete Folder"))
         elif kind in ("directory", "local_folders"):
             actions["refresh"] = menu.addAction(tr("Refresh Folders"))
         if menu.isEmpty():
@@ -568,11 +616,19 @@ class SourcesMixin:
         if chosen is None:
             return
         if chosen == actions.get("new"):
-            self._create_playlist()
+            self._create_playlist(folder)
+        elif chosen == actions.get("new_folder"):
+            self._create_folder(folder)
         elif chosen == actions.get("rename"):
-            self._rename_playlist(item)
+            if kind == "playlist":
+                self._rename_playlist(item)
+            else:
+                self._rename_folder(item)
         elif chosen == actions.get("delete"):
-            self._delete_playlist(item)
+            if kind == "playlist":
+                self._delete_playlist(item)
+            else:
+                self._delete_folder(item)
         elif chosen == actions.get("up"):
             self._move_playlist(item, -1)
         elif chosen == actions.get("down"):

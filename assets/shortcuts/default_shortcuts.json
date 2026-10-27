@@ -201,6 +201,9 @@
   "library.new_playlist": [
     "Ctrl+N"
   ],
+  "library.new_playlist_folder": [
+    "Ctrl+Alt+N"
+  ],
   "library.reanalyze": [
     "Ctrl+Shift+A"
   ],

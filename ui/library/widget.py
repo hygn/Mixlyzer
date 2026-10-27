@@ -265,7 +265,7 @@ class LibraryWidget(SourcesMixin, SearchMixin, MusicMixin, PlaylistsMixin, Track
                 resolved.setdefault(playlist_uid, []).append(track.uid)
         if resolved:     # files analyzed for a playlist: into it now (the library updated again once written)
             self.library.write(jobs.add_to_playlists, resolved)
-        if tuple((p.uid, p.name) for p in self.library.snapshot.playlists) != self._shown_playlists:
+        if self._playlists_shape() != self._shown_playlists:
             self._rebuild_source_tree()      # another library, or playlists changed elsewhere
         self._refresh_current_source()
     def set_config(self, cfg: config) -> None:
@@ -421,7 +421,8 @@ class LibraryWidget(SourcesMixin, SearchMixin, MusicMixin, PlaylistsMixin, Track
             "library.export_track": self._export_selected,
             "library.write_tags": self._write_tags_selected,
             "library.reveal": self._reveal_selected,
-            "library.new_playlist": self._create_playlist,
+            "library.new_playlist": lambda: self._create_playlist(self._shown_folder()),
+            "library.new_playlist_folder": lambda: self._create_folder(self._shown_folder()),
             "library.reanalyze": self._reanalyze_selected,
             "library.remove_from_library": self._on_remove_selected,
             "library.remove_from_playlist": self._remove_selected_from_playlist,

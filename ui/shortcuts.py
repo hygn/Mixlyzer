@@ -161,7 +161,11 @@ ACTIONS: tuple[Action, ...] = (
                        "in the track panel's Export tab.")),
     Action("library.reveal", LIBRARY, tr_mark("Show in Explorer") if os_support.IS_WINDOWS else
            tr_mark("Show in Finder") if os_support.IS_MACOS else tr_mark("Show in File Manager")),
-    Action("library.new_playlist", LIBRARY, tr_mark("New Playlist")),
+    Action("library.new_playlist", LIBRARY, tr_mark("New Playlist"),
+           tip=tr_mark("A new playlist in the folder shown (or the shown playlist's folder), else at the top.")),
+    Action("library.new_playlist_folder", LIBRARY, tr_mark("New Playlist Folder"),
+           tip=tr_mark("A new playlist folder in the folder shown (or the shown playlist's folder), else at the "
+                       "top.")),
     Action("library.reanalyze", LIBRARY, tr_mark("Reanalyze Track"),
            tip=tr_mark("A full analysis of the selected tracks: their stored analysis and edits are replaced.")),
     Action("library.remove_from_library", LIBRARY, tr_mark("Remove from Library")),

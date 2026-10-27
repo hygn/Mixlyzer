@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-27 21:57+0900\n"
+"POT-Creation-Date: 2026-10-27 22:12+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ko_KR\n"
@@ -1209,18 +1209,22 @@ msgstr "헤드폰: 레벨"
 msgid "Master: level"
 msgstr "마스터: 레벨"
 
-#: core/library/db.py:484
+#: core/library/db.py:504
 msgid "The path cannot be empty."
 msgstr "경로는 비워 둘 수 없습니다."
 
-#: core/library/db.py:487
+#: core/library/db.py:507
 #, python-brace-format
 msgid "This file is already in the library as \"{track}\"."
 msgstr "이 파일은 이미 라이브러리에 \"{track}\"(으)로 있습니다."
 
-#: core/library/db.py:508 core/library/db.py:529
+#: core/library/db.py:529 core/library/db.py:692
 msgid "Playlist name cannot be empty"
 msgstr "플레이리스트 이름은 비워 둘 수 없습니다"
+
+#: core/library/db.py:563 core/library/db.py:575
+msgid "Folder name cannot be empty"
+msgstr "폴더 이름은 비워 둘 수 없습니다"
 
 #: core/library/tieups.py:176 ui/library/tabs/tieup_editor.py:291
 #: ui/windows/tieup_works.py:267
@@ -1659,38 +1663,38 @@ msgstr "{name} 최적화가 결과를 {jobs}개 중 {results}개만 돌려주었
 msgid "The reading refresh process exited unexpectedly ({code})."
 msgstr "발음 갱신 프로세스가 예기치 않게 종료되었습니다 ({code})."
 
-#: core/workers/rekordbox_sync.py:101
+#: core/workers/rekordbox_sync.py:101 core/workers/rekordbox_sync.py:116
 msgid "Loading Mixlyzer library"
 msgstr "Mixlyzer 라이브러리 불러오는 중"
 
-#: core/workers/rekordbox_sync.py:111 core/workers/rekordbox_sync.py:140
-#: core/workers/rekordbox_sync.py:154
+#: core/workers/rekordbox_sync.py:118 core/workers/rekordbox_sync.py:124
+#: core/workers/rekordbox_sync.py:153 core/workers/rekordbox_sync.py:167
 msgid "Loading Rekordbox XML"
 msgstr "Rekordbox XML 불러오는 중"
 
-#: core/workers/rekordbox_sync.py:132
+#: core/workers/rekordbox_sync.py:145
 #, python-brace-format
 msgid "Syncing tracks {done}/{total}"
 msgstr "트랙 동기화 중 {done}/{total}"
 
-#: core/workers/rekordbox_sync.py:148
+#: core/workers/rekordbox_sync.py:161
 #, python-brace-format
 msgid "Syncing changed tracks {done}/{total}"
 msgstr "바뀐 트랙 동기화 중 {done}/{total}"
 
-#: core/workers/rekordbox_sync.py:164
+#: core/workers/rekordbox_sync.py:177
 msgid "Building Rekordbox track entry"
 msgstr "Rekordbox 트랙 항목 만드는 중"
 
-#: core/workers/rekordbox_sync.py:181
+#: core/workers/rekordbox_sync.py:196
 msgid "Formatting Rekordbox XML"
 msgstr "Rekordbox XML 서식 맞추는 중"
 
-#: core/workers/rekordbox_sync.py:183
+#: core/workers/rekordbox_sync.py:198
 msgid "Writing Rekordbox XML"
 msgstr "Rekordbox XML 쓰는 중"
 
-#: core/workers/rekordbox_sync.py:185
+#: core/workers/rekordbox_sync.py:200
 msgid "Rekordbox XML sync complete"
 msgstr "Rekordbox XML 동기화 완료"
 
@@ -6258,25 +6262,48 @@ msgstr "검색에 실패했습니다: {error}"
 msgid "Nothing found yet: hum or whistle for 8 seconds or more, or play the song."
 msgstr "아직 찾은 곡이 없습니다: 8초 이상 흥얼거리거나 휘파람을 불거나, 곡을 트세요."
 
-#: ui/library/playlists.py:15 ui/library/playlists.py:30
+#: ui/library/playlists.py:18 ui/library/playlists.py:27
+#: ui/library/playlists.py:55 ui/library/playlists.py:64
 msgid "Name"
 msgstr "이름"
 
-#: ui/library/playlists.py:30 ui/library/playlists.py:35
+#: ui/library/playlists.py:27 ui/library/playlists.py:32
+#: ui/library/sources.py:601
+msgid "New Folder"
+msgstr "새 폴더"
+
+#: ui/library/playlists.py:55 ui/library/playlists.py:60
 msgid "Rename Playlist"
 msgstr "플레이리스트 이름 바꾸기"
 
-#: ui/library/playlists.py:40 ui/library/sources.py:562
+#: ui/library/playlists.py:64 ui/library/playlists.py:69
+msgid "Rename Folder"
+msgstr "폴더 이름 바꾸기"
+
+#: ui/library/playlists.py:74 ui/library/sources.py:607
 msgid "Delete Playlist"
 msgstr "플레이리스트 삭제"
 
-#: ui/library/playlists.py:41
+#: ui/library/playlists.py:75
 #, python-brace-format
 msgid ""
 "Delete playlist \"{name}\"?\n"
 "Tracks remain in the Library."
 msgstr ""
 "플레이리스트 \"{name}\"을(를) 삭제할까요?\n"
+"트랙은 라이브러리에 남습니다."
+
+#: ui/library/playlists.py:84 ui/library/sources.py:607
+msgid "Delete Folder"
+msgstr "폴더 삭제"
+
+#: ui/library/playlists.py:85
+#, python-brace-format
+msgid ""
+"Delete folder \"{name}\" with every playlist and folder in it?\n"
+"Tracks remain in the Library."
+msgstr ""
+"\"{name}\" 폴더를 그 안의 모든 플레이리스트와 폴더와 함께 삭제할까요?\n"
 "트랙은 라이브러리에 남습니다."
 
 #: ui/library/search.py:163
@@ -6405,16 +6432,16 @@ msgstr "켜 둔 각 전환의 양쪽 최소 길이"
 msgid "Min seg"
 msgstr "최소 구간"
 
-#: ui/library/sources.py:252
+#: ui/library/sources.py:271
 msgid "Library (All)"
 msgstr "라이브러리 (전체)"
 
 # | msgid "Alias"
-#: ui/library/sources.py:256 ui/library/tabs/track_search_index.py:95
+#: ui/library/sources.py:275 ui/library/tabs/track_search_index.py:95
 msgid "Variants"
 msgstr "다른 버전"
 
-#: ui/library/sources.py:259
+#: ui/library/sources.py:278
 msgid ""
 "<p>The library's tracks that are versions of one song: the same audio, "
 "another vocal, the instrumental, an edit (a TV size). # is the song; a "
@@ -6424,82 +6451,82 @@ msgstr ""
 "각 행의 툴팁에서 다른 버전과 무엇이 다른지 볼 수 있습니다.</p>"
 
 # | msgid "Unload track"
-#: ui/library/sources.py:262
+#: ui/library/sources.py:281
 msgid "Loaded Track"
 msgstr "로드한 곡"
 
-#: ui/library/sources.py:264
+#: ui/library/sources.py:283
 msgid ""
 "<p>The versions of the track loaded on the deck, following each track "
 "loaded.</p>"
 msgstr "<p>덱에 로드한 곡의 다른 버전을 보여 줍니다. 곡을 로드할 때마다 바뀝니다.</p>"
 
-#: ui/library/sources.py:269
+#: ui/library/sources.py:288
 msgid "Playlists"
 msgstr "플레이리스트"
 
-#: ui/library/sources.py:281
+#: ui/library/sources.py:311
 msgid "Local Folders"
 msgstr "로컬 폴더"
 
 # | msgid "Headphones: level"
 # | msgid "Headphones mix"
-#: ui/library/sources.py:499
+#: ui/library/sources.py:541
 msgid "the same mix"
 msgstr "같은 믹스"
 
-#: ui/library/sources.py:501
+#: ui/library/sources.py:543
 #, python-brace-format
 msgid "{relation}, a shorter edit"
 msgstr "{relation} (짧게 편집한 버전)"
 
-#: ui/library/sources.py:503
+#: ui/library/sources.py:545
 #, python-brace-format
 msgid "{relation}, a longer version"
 msgstr "{relation} (더 긴 버전)"
 
-#: ui/library/sources.py:505
+#: ui/library/sources.py:547
 #, python-brace-format
 msgid "{relation}, some sections differ"
 msgstr "{relation} (일부 구간이 다름)"
 
 # | msgid "{relation}, a shorter edit"
-#: ui/library/sources.py:508
+#: ui/library/sources.py:550
 msgid "a shorter edit"
 msgstr "짧게 편집한 버전"
 
 # | msgid "{relation}, a longer version"
-#: ui/library/sources.py:510
+#: ui/library/sources.py:552
 msgid "a longer version"
 msgstr "더 긴 버전"
 
 # | msgid "{relation}, some sections differ"
-#: ui/library/sources.py:512
+#: ui/library/sources.py:554
 msgid "some sections differ"
 msgstr "일부 구간이 다름"
 
-#: ui/library/sources.py:529
+#: ui/library/sources.py:571
 #, python-brace-format
 msgid "{title}: {relation}"
 msgstr "{title}: {relation}"
 
-#: ui/library/sources.py:531
+#: ui/library/sources.py:573
 msgid "Variants of this track:"
 msgstr "이 곡의 다른 버전:"
 
-#: ui/library/sources.py:559
+#: ui/library/sources.py:604
 msgid "Rename"
 msgstr "이름 바꾸기"
 
-#: ui/library/sources.py:560
+#: ui/library/sources.py:605
 msgid "Move Up"
 msgstr "위로 이동"
 
-#: ui/library/sources.py:561
+#: ui/library/sources.py:606
 msgid "Move Down"
 msgstr "아래로 이동"
 
-#: ui/library/sources.py:564
+#: ui/library/sources.py:609
 msgid "Refresh Folders"
 msgstr "폴더 새로 고침"
 
@@ -7078,7 +7105,7 @@ msgstr "코멘트"
 msgid "Track loading is disabled while External Sync is enabled."
 msgstr "외부 동기화가 켜져 있는 동안에는 트랙을 불러올 수 없습니다."
 
-#: ui/library/widget.py:462
+#: ui/library/widget.py:463
 msgid "The loaded track is not in the list shown."
 msgstr "로드한 트랙이 지금 보이는 목록에 없습니다."
 
@@ -7540,298 +7567,314 @@ msgstr "Finder에서 보기"
 msgid "Show in File Manager"
 msgstr "파일 관리자에서 보기"
 
-#: ui/library/playlists.py:15 ui/library/playlists.py:19
-#: ui/library/sources.py:556 ui/shortcuts.py:164
+#: ui/library/playlists.py:18 ui/library/playlists.py:23
+#: ui/library/sources.py:600 ui/shortcuts.py:164
 msgid "New Playlist"
 msgstr "새 플레이리스트"
 
-#: ui/library/actions.py:48 ui/shortcuts.py:165
+#: ui/shortcuts.py:165
+msgid ""
+"A new playlist in the folder shown (or the shown playlist's folder), else"
+" at the top."
+msgstr "표시 중인 폴더(또는 표시 중인 플레이리스트가 든 폴더)에 새 플레이리스트를 만듭니다. 둘 다 아니면 맨 위 단계에 만듭니다."
+
+#: ui/shortcuts.py:166
+msgid "New Playlist Folder"
+msgstr "새 플레이리스트 폴더"
+
+#: ui/shortcuts.py:167
+msgid ""
+"A new playlist folder in the folder shown (or the shown playlist's "
+"folder), else at the top."
+msgstr "표시 중인 폴더(또는 표시 중인 플레이리스트가 든 폴더)에 새 플레이리스트 폴더를 만듭니다. 둘 다 아니면 맨 위 단계에 만듭니다."
+
+#: ui/library/actions.py:48 ui/shortcuts.py:169
 #: ui/windows/reanalyze_dialog.py:16
 msgid "Reanalyze Track"
 msgstr "트랙 재분석"
 
-#: ui/shortcuts.py:166
+#: ui/shortcuts.py:170
 msgid ""
 "A full analysis of the selected tracks: their stored analysis and edits "
 "are replaced."
 msgstr "선택한 트랙의 전체 분석: 저장된 분석과 편집이 바뀝니다."
 
-#: ui/library/actions.py:45 ui/library/actions.py:117 ui/shortcuts.py:167
+#: ui/library/actions.py:45 ui/library/actions.py:117 ui/shortcuts.py:171
 msgid "Remove from Library"
 msgstr "라이브러리에서 제거"
 
-#: ui/library/actions.py:53 ui/shortcuts.py:168
+#: ui/library/actions.py:53 ui/shortcuts.py:172
 msgid "Remove from Playlist"
 msgstr "플레이리스트에서 제거"
 
 # | msgid "Metronome on / off"
-#: ui/shortcuts.py:170
+#: ui/shortcuts.py:174
 msgid "Edit lock on / off"
 msgstr "편집 잠금 켜기 / 끄기"
 
 # | msgid "Page {page} of {pages}"
-#: ui/shortcuts.py:171
+#: ui/shortcuts.py:175
 #, python-brace-format
 msgid "Show the {page} page"
 msgstr "{page} 페이지 보기"
 
 # | msgid "Set the current segment to {meter}"
 # | msgid "Edit scope: the current segment"
-#: ui/shortcuts.py:172
+#: ui/shortcuts.py:176
 msgid "It becomes the current page."
 msgstr "그 페이지가 현재 페이지가 됩니다."
 
-#: ui/edit_panel/panel.py:219 ui/shortcuts.py:174
+#: ui/edit_panel/panel.py:219 ui/shortcuts.py:178
 msgid "Undo Changes"
 msgstr "변경 실행 취소"
 
-#: ui/edit_panel/panel.py:223 ui/shortcuts.py:175
+#: ui/edit_panel/panel.py:223 ui/shortcuts.py:179
 msgid "Redo Changes"
 msgstr "변경 다시 실행"
 
-#: ui/edit_panel/panel.py:227 ui/shortcuts.py:176
+#: ui/edit_panel/panel.py:227 ui/shortcuts.py:180
 msgid "Save Edits"
 msgstr "편집 저장"
 
 # | msgid "One beat earlier"
-#: ui/shortcuts.py:179
+#: ui/shortcuts.py:183
 msgid "Start earlier"
 msgstr "시작 앞당기기"
 
-#: ui/shortcuts.py:180 ui/shortcuts.py:182
+#: ui/shortcuts.py:184 ui/shortcuts.py:186
 msgid ""
 "Key, Phrase: the current segment's start, by a beat or a bar (the "
 "boundary step)."
 msgstr "Key, Phrase: 현재 구간의 시작을 한 박이나 한 마디씩 (경계 단위)."
 
 # | msgid "One beat later"
-#: ui/shortcuts.py:181
+#: ui/shortcuts.py:185
 msgid "Start later"
 msgstr "시작 늦추기"
 
 # | msgid "One beat earlier"
-#: ui/shortcuts.py:183
+#: ui/shortcuts.py:187
 msgid "End earlier"
 msgstr "끝 앞당기기"
 
-#: ui/shortcuts.py:184 ui/shortcuts.py:186
+#: ui/shortcuts.py:188 ui/shortcuts.py:190
 msgid ""
 "Key, Phrase: the current segment's end, by a beat or a bar (the boundary "
 "step)."
 msgstr "Key, Phrase: 현재 구간의 끝을 한 박이나 한 마디씩 (경계 단위)."
 
 # | msgid "One beat later"
-#: ui/shortcuts.py:185
+#: ui/shortcuts.py:189
 msgid "End later"
 msgstr "끝 늦추기"
 
 # | msgid "Split the current segment at the playhead"
-#: ui/shortcuts.py:187
+#: ui/shortcuts.py:191
 msgid "Split at the playhead"
 msgstr "플레이헤드에서 나누기"
 
 # | msgid "Set the current segment to {meter}"
 # | msgid "Key scope: the current segment"
-#: ui/shortcuts.py:188
+#: ui/shortcuts.py:192
 msgid "Beatgrid, Key, Phrase: the current segment."
 msgstr "비트그리드, Key, 프레이즈: 현재 구간."
 
 # | msgid "" "Merge the previous key segment into the current one (keeps the
 # | current " "key)"
 # | msgid "Merge the previous segment into the current one"
-#: ui/shortcuts.py:189
+#: ui/shortcuts.py:193
 msgid "Merge the previous segment"
 msgstr "이전 구간 합치기"
 
 # | msgid "" "Merge the previous key segment into the current one (keeps the
 # | current " "key)"
 # | msgid "Merge the previous segment into the current one"
-#: ui/shortcuts.py:190
+#: ui/shortcuts.py:194
 msgid "Beatgrid, Key, Phrase: the previous segment into the current one."
 msgstr "비트그리드, Key, 프레이즈: 이전 구간을 현재 구간에."
 
 # | msgid "Merge the next key segment into the current one (keeps the current
 # | key)"
 # | msgid "Merge the next segment into the current one"
-#: ui/shortcuts.py:191
+#: ui/shortcuts.py:195
 msgid "Merge the next segment"
 msgstr "다음 구간 합치기"
 
 # | msgid "Merge the next key segment into the current one (keeps the current
 # | key)"
 # | msgid "Merge the next segment into the current one"
-#: ui/shortcuts.py:192
+#: ui/shortcuts.py:196
 msgid "Beatgrid, Key, Phrase: the next segment into the current one."
 msgstr "비트그리드, Key, 프레이즈: 다음 구간을 현재 구간에."
 
 # | msgid "Reanalyze the current key segment's key from the audio"
-#: ui/shortcuts.py:193
+#: ui/shortcuts.py:197
 msgid "Reanalyze the current segment"
 msgstr "현재 구간 재분석"
 
 # | msgid "Beatgrid"
-#: ui/shortcuts.py:194 ui/shortcuts.py:197 ui/shortcuts.py:199
+#: ui/shortcuts.py:198 ui/shortcuts.py:201 ui/shortcuts.py:203
 msgid "Beatgrid, Key."
 msgstr "비트그리드, Key."
 
 # | msgid "Reanalyze Track"
-#: ui/shortcuts.py:195
+#: ui/shortcuts.py:199
 msgid "Reanalyze the whole track"
 msgstr "트랙 전체 재분석"
 
-#: ui/shortcuts.py:196
+#: ui/shortcuts.py:200
 msgid "Key, Phrase; on the CUE page, the JumpCUEs."
 msgstr "Key, 프레이즈. CUE 페이지에서는 JumpCUE."
 
 # | msgid "Key scope: the whole track"
-#: ui/shortcuts.py:197
+#: ui/shortcuts.py:201
 msgid "Edit scope: the whole track"
 msgstr "편집 범위: 트랙 전체"
 
 # | msgid "Set the current segment to {meter}"
-#: ui/shortcuts.py:198
+#: ui/shortcuts.py:202
 msgid "Edit scope: the current segment"
 msgstr "편집 범위: 현재 구간"
 
 # | msgid "Boundaries move by one beat"
-#: ui/shortcuts.py:200
+#: ui/shortcuts.py:204
 msgid "Boundary step: one beat"
 msgstr "경계 단위: 한 박"
 
 # | msgid "Phrase"
-#: ui/shortcuts.py:200 ui/shortcuts.py:201
+#: ui/shortcuts.py:204 ui/shortcuts.py:205
 msgid "Key, Phrase."
 msgstr "Key, 프레이즈."
 
 # | msgid "Boundaries move by one beat"
 # | msgid "Boundaries move by one bar"
-#: ui/shortcuts.py:201
+#: ui/shortcuts.py:205
 msgid "Boundary step: one bar"
 msgstr "경계 단위: 한 마디"
 
 # | msgid "Shift the current segment half a beat earlier"
-#: ui/shortcuts.py:203
+#: ui/shortcuts.py:207
 msgid "Shift half a beat earlier"
 msgstr "반 박 앞당기기"
 
 # | msgid "Shift the current segment 10 ms earlier"
-#: ui/shortcuts.py:204
+#: ui/shortcuts.py:208
 msgid "Shift 10 ms earlier"
 msgstr "10 ms 앞당기기"
 
 # | msgid "Shift the current segment 1 ms earlier"
-#: ui/shortcuts.py:205
+#: ui/shortcuts.py:209
 msgid "Shift 1 ms earlier"
 msgstr "1 ms 앞당기기"
 
 # | msgid "Shift the current segment 1 ms later"
-#: ui/shortcuts.py:206
+#: ui/shortcuts.py:210
 msgid "Shift 1 ms later"
 msgstr "1 ms 늦추기"
 
 # | msgid "Shift the current segment 10 ms later"
-#: ui/shortcuts.py:207
+#: ui/shortcuts.py:211
 msgid "Shift 10 ms later"
 msgstr "10 ms 늦추기"
 
 # | msgid "Shift the current segment half a beat later"
-#: ui/shortcuts.py:208
+#: ui/shortcuts.py:212
 msgid "Shift half a beat later"
 msgstr "반 박 늦추기"
 
 # | msgid "Error"
-#: ui/shortcuts.py:209
+#: ui/shortcuts.py:213
 msgid "ZERO"
 msgstr "ZERO"
 
-#: ui/edit_panel/beatgrid.py:76 ui/shortcuts.py:209
+#: ui/edit_panel/beatgrid.py:76 ui/shortcuts.py:213
 msgid "Clear the reference BPM and the tap history"
 msgstr "기준 BPM과 탭 기록을 지웁니다"
 
-#: ui/shortcuts.py:210
+#: ui/shortcuts.py:214
 msgid "TAP"
 msgstr "TAP"
 
-#: ui/edit_panel/beatgrid.py:82 ui/shortcuts.py:210
+#: ui/edit_panel/beatgrid.py:82 ui/shortcuts.py:214
 msgid "Tap the beat to set the reference BPM"
 msgstr "박에 맞춰 탭해 기준 BPM을 정합니다"
 
 # | msgid "Tap to set reference BPM"
 # | msgid "TAP: the reference BPM"
-#: ui/shortcuts.py:211
+#: ui/shortcuts.py:215
 msgid "Assign the reference BPM"
 msgstr "기준 BPM 지정"
 
-#: ui/edit_panel/beatgrid.py:101 ui/shortcuts.py:212
+#: ui/edit_panel/beatgrid.py:101 ui/shortcuts.py:216
 msgid "Assign the reference BPM to the current segment (downbeat at its start)"
 msgstr "기준 BPM을 현재 구간에 지정합니다 (다운비트는 구간 시작)"
 
 # | msgid "Clear the reference BPM and the tap history"
 # | msgid "The reference BPM as the starting tempo (ramp)"
-#: ui/shortcuts.py:213
+#: ui/shortcuts.py:217
 msgid "Ramp: the starting tempo"
 msgstr "램프: 시작 템포"
 
-#: ui/edit_panel/beatgrid.py:102 ui/shortcuts.py:214
+#: ui/edit_panel/beatgrid.py:102 ui/shortcuts.py:218
 msgid ""
 "Make the reference BPM the current segment's starting tempo (a ramp to "
 "its end tempo; its first beat stays)"
 msgstr "기준 BPM을 현재 구간의 시작 템포로 합니다 (끝 템포까지 이어지는 램프, 첫 박은 유지)"
 
-#: ui/shortcuts.py:216
+#: ui/shortcuts.py:220
 msgid "Ramp: the ending tempo"
 msgstr "램프: 끝 템포"
 
-#: ui/edit_panel/beatgrid.py:103 ui/shortcuts.py:217
+#: ui/edit_panel/beatgrid.py:103 ui/shortcuts.py:221
 msgid ""
 "Make the reference BPM the current segment's ending tempo (a ramp from "
 "its start tempo; its first beat stays)"
 msgstr "기준 BPM을 현재 구간의 끝 템포로 합니다 (시작 템포에서 이어지는 램프, 첫 박은 유지)"
 
 # | msgid "Hold to count beats passing under the playhead"
-#: ui/shortcuts.py:219
+#: ui/shortcuts.py:223
 msgid "Downbeat at the playhead"
 msgstr "플레이헤드에 다운비트"
 
-#: ui/edit_panel/beatgrid.py:110 ui/shortcuts.py:220
+#: ui/edit_panel/beatgrid.py:110 ui/shortcuts.py:224
 msgid "Make the beat nearest the playhead the current segment's downbeat"
 msgstr "플레이헤드에 가장 가까운 박을 현재 구간의 다운비트로 합니다"
 
-#: ui/shortcuts.py:221
+#: ui/shortcuts.py:225
 msgid "BPM x1/2"
 msgstr "BPM x1/2"
 
 # | msgid "BPM min"
-#: ui/shortcuts.py:222
+#: ui/shortcuts.py:226
 msgid "BPM x2"
 msgstr "BPM x2"
 
-#: ui/shortcuts.py:223
+#: ui/shortcuts.py:227
 #, python-brace-format
 msgid "Time signature {meter}"
 msgstr "박자 {meter}"
 
 # | msgid "Edit the key"
-#: ui/shortcuts.py:226
+#: ui/shortcuts.py:230
 msgid "Pick the key"
 msgstr "키 선택"
 
 # | msgid "Pick the key (Camelot wheel)"
-#: ui/edit_panel/key.py:95 ui/edit_panel/key_picker.py:82 ui/shortcuts.py:226
+#: ui/edit_panel/key.py:95 ui/edit_panel/key_picker.py:82 ui/shortcuts.py:230
 msgid "Pick the key (Alphanumeric wheel)"
 msgstr "키 선택 (Alphanumeric 휠)"
 
 # | msgid "Move Down"
-#: ui/shortcuts.py:227
+#: ui/shortcuts.py:231
 msgid "A semitone down"
 msgstr "반음 내림"
 
 # | msgid "Move Up"
-#: ui/shortcuts.py:228
+#: ui/shortcuts.py:232
 msgid "A semitone up"
 msgstr "반음 올림"
 
-#: ui/shortcuts.py:229
+#: ui/shortcuts.py:233
 msgid "Circle of fifths -1"
 msgstr "5도권 -1"
 
@@ -7840,84 +7883,84 @@ msgstr "5도권 -1"
 # | msgid "One step down the circle of fifths (Alphanumeric -1): every
 # segment's
 # | key"
-#: ui/shortcuts.py:230
+#: ui/shortcuts.py:234
 msgid "One step down the circle of fifths (Alphanumeric -1)"
 msgstr "5도권에서 한 칸 내림 (Alphanumeric -1)"
 
-#: ui/shortcuts.py:231
+#: ui/shortcuts.py:235
 msgid "Circle of fifths +1"
 msgstr "5도권 +1"
 
 # | msgid "One step up the circle of fifths (Camelot +1): every segment's key"
 # | msgid "One step up the circle of fifths (Alphanumeric +1): every segment's
 # | key"
-#: ui/shortcuts.py:232
+#: ui/shortcuts.py:236
 msgid "One step up the circle of fifths (Alphanumeric +1)"
 msgstr "5도권에서 한 칸 올림 (Alphanumeric +1)"
 
 # | msgid "Relative major / minor (C <-> Am): every segment's key"
 # | msgid "Relative major / minor (C <-> Am)"
-#: ui/shortcuts.py:233
+#: ui/shortcuts.py:237
 msgid "Relative major / minor"
 msgstr "나란한조 장조 / 단조"
 
 # | msgid "Relative major / minor (C <-> Am): every segment's key"
-#: ui/shortcuts.py:233
+#: ui/shortcuts.py:237
 msgid "Relative major / minor (C <-> Am)"
 msgstr "나란한조 장조 / 단조 (C <-> Am)"
 
-#: ui/shortcuts.py:234
+#: ui/shortcuts.py:238
 msgid "Merge the same keys"
 msgstr "같은 키 합치기"
 
-#: ui/edit_panel/key.py:80 ui/shortcuts.py:235
+#: ui/edit_panel/key.py:80 ui/shortcuts.py:239
 msgid "Merge every run of neighboring segments with the same key"
 msgstr "키가 같은 이웃 구간들을 모두 하나로 합칩니다"
 
-#: ui/shortcuts.py:236
+#: ui/shortcuts.py:240
 msgid "Listening aid: root"
 msgstr "듣기 보조: 근음"
 
-#: ui/shortcuts.py:237
+#: ui/shortcuts.py:241
 msgid "Listening aid: root and fifth"
 msgstr "듣기 보조: 근음과 5음"
 
-#: ui/shortcuts.py:238
+#: ui/shortcuts.py:242
 msgid "Listening aid: tonic chord"
 msgstr "듣기 보조: 으뜸화음"
 
 # | msgid "CUE points (set by the analysis from the phrases)"
 # | msgid "CUE points from the phrases (CUE rules)"
-#: ui/shortcuts.py:240
+#: ui/shortcuts.py:244
 msgid "CUE points from the phrases"
 msgstr "프레이즈로 CUE 포인트 만들기"
 
 # | msgid "" "Replace the CUE points with the ones the CUE rules give the
 # | current " "phrases\n" "(Settings > Analysis > CUE, as the full analysis
 # | makes them)"
-#: ui/shortcuts.py:241
+#: ui/shortcuts.py:245
 msgid ""
 "Replace the CUE points with the ones the CUE rules give the current "
 "phrases"
 msgstr "CUE 포인트를 현재 프레이즈에 CUE 규칙을 적용한 결과로 바꿉니다"
 
-#: ui/edit_panel/phrase.py:77 ui/shortcuts.py:242
+#: ui/edit_panel/phrase.py:77 ui/shortcuts.py:246
 msgid "Unassign the current phrase (UNASSIGNED)"
 msgstr "현재 프레이즈의 라벨을 해제합니다 (UNASSIGNED)"
 
-#: ui/edit_panel/phrase.py:162 ui/shortcuts.py:243
+#: ui/edit_panel/phrase.py:162 ui/shortcuts.py:247
 #, python-brace-format
 msgid "Label the current phrase {label}"
 msgstr "현재 프레이즈를 {label}(으)로 지정"
 
-#: ui/shortcuts.py:302
+#: ui/shortcuts.py:306
 #, python-brace-format
 msgid ""
 "Another program on this computer takes {keys}: these shortcuts do not "
 "work (Settings > Shortcuts)."
 msgstr "이 컴퓨터의 다른 프로그램이 {keys}를 가져가서 이 단축키는 동작하지 않습니다 (설정 > 단축키)."
 
-#: ui/shortcuts.py:348
+#: ui/shortcuts.py:352
 #, python-brace-format
 msgid "{keys} is used by more than one action (Settings > Shortcuts)."
 msgstr "{keys}가 여러 동작에 지정되어 있습니다 (설정 > 단축키)."

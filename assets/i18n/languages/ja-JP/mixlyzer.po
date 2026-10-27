@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-27 21:57+0900\n"
+"POT-Creation-Date: 2026-10-27 22:12+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ja_JP\n"
@@ -1213,18 +1213,22 @@ msgstr "ヘッドホン: レベル"
 msgid "Master: level"
 msgstr "マスター: レベル"
 
-#: core/library/db.py:484
+#: core/library/db.py:504
 msgid "The path cannot be empty."
 msgstr "パスを空にすることはできません。"
 
-#: core/library/db.py:487
+#: core/library/db.py:507
 #, python-brace-format
 msgid "This file is already in the library as \"{track}\"."
 msgstr "このファイルはすでにライブラリに「{track}」として登録されています。"
 
-#: core/library/db.py:508 core/library/db.py:529
+#: core/library/db.py:529 core/library/db.py:692
 msgid "Playlist name cannot be empty"
 msgstr "プレイリスト名を空にすることはできません"
+
+#: core/library/db.py:563 core/library/db.py:575
+msgid "Folder name cannot be empty"
+msgstr "フォルダー名を空にすることはできません"
 
 #: core/library/tieups.py:176 ui/library/tabs/tieup_editor.py:291
 #: ui/windows/tieup_works.py:267
@@ -1663,38 +1667,38 @@ msgstr "{name} の最適化は {jobs} 件中 {results} 件の結果しか返し�
 msgid "The reading refresh process exited unexpectedly ({code})."
 msgstr "読みの更新プロセスが予期せず終了しました ({code})。"
 
-#: core/workers/rekordbox_sync.py:101
+#: core/workers/rekordbox_sync.py:101 core/workers/rekordbox_sync.py:116
 msgid "Loading Mixlyzer library"
 msgstr "Mixlyzer のライブラリを読み込み中"
 
-#: core/workers/rekordbox_sync.py:111 core/workers/rekordbox_sync.py:140
-#: core/workers/rekordbox_sync.py:154
+#: core/workers/rekordbox_sync.py:118 core/workers/rekordbox_sync.py:124
+#: core/workers/rekordbox_sync.py:153 core/workers/rekordbox_sync.py:167
 msgid "Loading Rekordbox XML"
 msgstr "Rekordbox XML を読み込み中"
 
-#: core/workers/rekordbox_sync.py:132
+#: core/workers/rekordbox_sync.py:145
 #, python-brace-format
 msgid "Syncing tracks {done}/{total}"
 msgstr "トラックを同期中 {done}/{total}"
 
-#: core/workers/rekordbox_sync.py:148
+#: core/workers/rekordbox_sync.py:161
 #, python-brace-format
 msgid "Syncing changed tracks {done}/{total}"
 msgstr "変更されたトラックを同期中 {done}/{total}"
 
-#: core/workers/rekordbox_sync.py:164
+#: core/workers/rekordbox_sync.py:177
 msgid "Building Rekordbox track entry"
 msgstr "Rekordbox のトラック項目を作成中"
 
-#: core/workers/rekordbox_sync.py:181
+#: core/workers/rekordbox_sync.py:196
 msgid "Formatting Rekordbox XML"
 msgstr "Rekordbox XML を整形中"
 
-#: core/workers/rekordbox_sync.py:183
+#: core/workers/rekordbox_sync.py:198
 msgid "Writing Rekordbox XML"
 msgstr "Rekordbox XML を書き込み中"
 
-#: core/workers/rekordbox_sync.py:185
+#: core/workers/rekordbox_sync.py:200
 msgid "Rekordbox XML sync complete"
 msgstr "Rekordbox XML の同期が完了しました"
 
@@ -6268,25 +6272,48 @@ msgstr "検索に失敗しました: {error}"
 msgid "Nothing found yet: hum or whistle for 8 seconds or more, or play the song."
 msgstr "まだ見つかりません: 8 秒以上ハミングか口笛をするか、曲を再生してください。"
 
-#: ui/library/playlists.py:15 ui/library/playlists.py:30
+#: ui/library/playlists.py:18 ui/library/playlists.py:27
+#: ui/library/playlists.py:55 ui/library/playlists.py:64
 msgid "Name"
 msgstr "名前"
 
-#: ui/library/playlists.py:30 ui/library/playlists.py:35
+#: ui/library/playlists.py:27 ui/library/playlists.py:32
+#: ui/library/sources.py:601
+msgid "New Folder"
+msgstr "新規フォルダー"
+
+#: ui/library/playlists.py:55 ui/library/playlists.py:60
 msgid "Rename Playlist"
 msgstr "プレイリスト名を変更"
 
-#: ui/library/playlists.py:40 ui/library/sources.py:562
+#: ui/library/playlists.py:64 ui/library/playlists.py:69
+msgid "Rename Folder"
+msgstr "フォルダー名を変更"
+
+#: ui/library/playlists.py:74 ui/library/sources.py:607
 msgid "Delete Playlist"
 msgstr "プレイリストを削除"
 
-#: ui/library/playlists.py:41
+#: ui/library/playlists.py:75
 #, python-brace-format
 msgid ""
 "Delete playlist \"{name}\"?\n"
 "Tracks remain in the Library."
 msgstr ""
 "プレイリスト「{name}」を削除しますか?\n"
+"トラックはライブラリに残ります。"
+
+#: ui/library/playlists.py:84 ui/library/sources.py:607
+msgid "Delete Folder"
+msgstr "フォルダーを削除"
+
+#: ui/library/playlists.py:85
+#, python-brace-format
+msgid ""
+"Delete folder \"{name}\" with every playlist and folder in it?\n"
+"Tracks remain in the Library."
+msgstr ""
+"フォルダー「{name}」を、中のすべてのプレイリストとフォルダーとともに削除しますか？\n"
 "トラックはライブラリに残ります。"
 
 #: ui/library/search.py:163
@@ -6415,16 +6442,16 @@ msgstr "有効な各変化の前後それぞれの最小の長さ"
 msgid "Min seg"
 msgstr "最小区間"
 
-#: ui/library/sources.py:252
+#: ui/library/sources.py:271
 msgid "Library (All)"
 msgstr "ライブラリ (すべて)"
 
 # | msgid "Alias"
-#: ui/library/sources.py:256 ui/library/tabs/track_search_index.py:95
+#: ui/library/sources.py:275 ui/library/tabs/track_search_index.py:95
 msgid "Variants"
 msgstr "バージョン違い"
 
-#: ui/library/sources.py:259
+#: ui/library/sources.py:278
 msgid ""
 "<p>The library's tracks that are versions of one song: the same audio, "
 "another vocal, the instrumental, an edit (a TV size). # is the song; a "
@@ -6434,82 +6461,82 @@ msgstr ""
 "は曲の番号で、各行のツールチップに他のバージョンとの違いが表示されます。</p>"
 
 # | msgid "Unload track"
-#: ui/library/sources.py:262
+#: ui/library/sources.py:281
 msgid "Loaded Track"
 msgstr "ロード中の曲"
 
-#: ui/library/sources.py:264
+#: ui/library/sources.py:283
 msgid ""
 "<p>The versions of the track loaded on the deck, following each track "
 "loaded.</p>"
 msgstr "<p>デッキにロードした曲のバージョン違いを表示します。曲をロードするたびに切り替わります。</p>"
 
-#: ui/library/sources.py:269
+#: ui/library/sources.py:288
 msgid "Playlists"
 msgstr "プレイリスト"
 
-#: ui/library/sources.py:281
+#: ui/library/sources.py:311
 msgid "Local Folders"
 msgstr "ローカルフォルダー"
 
 # | msgid "Headphones: level"
 # | msgid "Headphones mix"
-#: ui/library/sources.py:499
+#: ui/library/sources.py:541
 msgid "the same mix"
 msgstr "同じミックス"
 
-#: ui/library/sources.py:501
+#: ui/library/sources.py:543
 #, python-brace-format
 msgid "{relation}, a shorter edit"
 msgstr "{relation}(短縮版)"
 
-#: ui/library/sources.py:503
+#: ui/library/sources.py:545
 #, python-brace-format
 msgid "{relation}, a longer version"
 msgstr "{relation}(長いバージョン)"
 
-#: ui/library/sources.py:505
+#: ui/library/sources.py:547
 #, python-brace-format
 msgid "{relation}, some sections differ"
 msgstr "{relation}(一部のセクションが異なる)"
 
 # | msgid "{relation}, a shorter edit"
-#: ui/library/sources.py:508
+#: ui/library/sources.py:550
 msgid "a shorter edit"
 msgstr "短縮版"
 
 # | msgid "{relation}, a longer version"
-#: ui/library/sources.py:510
+#: ui/library/sources.py:552
 msgid "a longer version"
 msgstr "長いバージョン"
 
 # | msgid "{relation}, some sections differ"
-#: ui/library/sources.py:512
+#: ui/library/sources.py:554
 msgid "some sections differ"
 msgstr "一部のセクションが異なる"
 
-#: ui/library/sources.py:529
+#: ui/library/sources.py:571
 #, python-brace-format
 msgid "{title}: {relation}"
 msgstr "{title}: {relation}"
 
-#: ui/library/sources.py:531
+#: ui/library/sources.py:573
 msgid "Variants of this track:"
 msgstr "この曲のバージョン違い:"
 
-#: ui/library/sources.py:559
+#: ui/library/sources.py:604
 msgid "Rename"
 msgstr "名前を変更"
 
-#: ui/library/sources.py:560
+#: ui/library/sources.py:605
 msgid "Move Up"
 msgstr "上へ移動"
 
-#: ui/library/sources.py:561
+#: ui/library/sources.py:606
 msgid "Move Down"
 msgstr "下へ移動"
 
-#: ui/library/sources.py:564
+#: ui/library/sources.py:609
 msgid "Refresh Folders"
 msgstr "フォルダーを更新"
 
@@ -7084,7 +7111,7 @@ msgstr "コメント"
 msgid "Track loading is disabled while External Sync is enabled."
 msgstr "外部同期が有効な間はトラックを読み込めません。"
 
-#: ui/library/widget.py:462
+#: ui/library/widget.py:463
 msgid "The loaded track is not in the list shown."
 msgstr "ロードしたトラックは表示中のリストにありません。"
 
@@ -7544,298 +7571,314 @@ msgstr "Finder で表示"
 msgid "Show in File Manager"
 msgstr "ファイルマネージャーで表示"
 
-#: ui/library/playlists.py:15 ui/library/playlists.py:19
-#: ui/library/sources.py:556 ui/shortcuts.py:164
+#: ui/library/playlists.py:18 ui/library/playlists.py:23
+#: ui/library/sources.py:600 ui/shortcuts.py:164
 msgid "New Playlist"
 msgstr "新規プレイリスト"
 
-#: ui/library/actions.py:48 ui/shortcuts.py:165
+#: ui/shortcuts.py:165
+msgid ""
+"A new playlist in the folder shown (or the shown playlist's folder), else"
+" at the top."
+msgstr "表示中のフォルダー (または表示中のプレイリストのフォルダー) に新規プレイリストを作ります。どちらでもなければ最上位に作ります。"
+
+#: ui/shortcuts.py:166
+msgid "New Playlist Folder"
+msgstr "新規プレイリストフォルダー"
+
+#: ui/shortcuts.py:167
+msgid ""
+"A new playlist folder in the folder shown (or the shown playlist's "
+"folder), else at the top."
+msgstr "表示中のフォルダー (または表示中のプレイリストのフォルダー) に新規プレイリストフォルダーを作ります。どちらでもなければ最上位に作ります。"
+
+#: ui/library/actions.py:48 ui/shortcuts.py:169
 #: ui/windows/reanalyze_dialog.py:16
 msgid "Reanalyze Track"
 msgstr "トラックを再解析"
 
-#: ui/shortcuts.py:166
+#: ui/shortcuts.py:170
 msgid ""
 "A full analysis of the selected tracks: their stored analysis and edits "
 "are replaced."
 msgstr "選択したトラックの全体の解析: 保存された解析と編集が置き換わります。"
 
-#: ui/library/actions.py:45 ui/library/actions.py:117 ui/shortcuts.py:167
+#: ui/library/actions.py:45 ui/library/actions.py:117 ui/shortcuts.py:171
 msgid "Remove from Library"
 msgstr "ライブラリから削除"
 
-#: ui/library/actions.py:53 ui/shortcuts.py:168
+#: ui/library/actions.py:53 ui/shortcuts.py:172
 msgid "Remove from Playlist"
 msgstr "プレイリストから削除"
 
 # | msgid "Metronome on / off"
-#: ui/shortcuts.py:170
+#: ui/shortcuts.py:174
 msgid "Edit lock on / off"
 msgstr "編集ロックのオン / オフ"
 
 # | msgid "Page {page} of {pages}"
-#: ui/shortcuts.py:171
+#: ui/shortcuts.py:175
 #, python-brace-format
 msgid "Show the {page} page"
 msgstr "{page} ページを表示"
 
 # | msgid "Set the current segment to {meter}"
 # | msgid "Edit scope: the current segment"
-#: ui/shortcuts.py:172
+#: ui/shortcuts.py:176
 msgid "It becomes the current page."
 msgstr "そのページが現在のページになります。"
 
-#: ui/edit_panel/panel.py:219 ui/shortcuts.py:174
+#: ui/edit_panel/panel.py:219 ui/shortcuts.py:178
 msgid "Undo Changes"
 msgstr "変更を元に戻す"
 
-#: ui/edit_panel/panel.py:223 ui/shortcuts.py:175
+#: ui/edit_panel/panel.py:223 ui/shortcuts.py:179
 msgid "Redo Changes"
 msgstr "変更をやり直す"
 
-#: ui/edit_panel/panel.py:227 ui/shortcuts.py:176
+#: ui/edit_panel/panel.py:227 ui/shortcuts.py:180
 msgid "Save Edits"
 msgstr "編集を保存"
 
 # | msgid "One beat earlier"
-#: ui/shortcuts.py:179
+#: ui/shortcuts.py:183
 msgid "Start earlier"
 msgstr "開始を早める"
 
-#: ui/shortcuts.py:180 ui/shortcuts.py:182
+#: ui/shortcuts.py:184 ui/shortcuts.py:186
 msgid ""
 "Key, Phrase: the current segment's start, by a beat or a bar (the "
 "boundary step)."
 msgstr "Key、Phrase: 現在の区間の開始を 1 拍または 1 小節ずつ (境界の単位)。"
 
 # | msgid "One beat later"
-#: ui/shortcuts.py:181
+#: ui/shortcuts.py:185
 msgid "Start later"
 msgstr "開始を遅らせる"
 
 # | msgid "One beat earlier"
-#: ui/shortcuts.py:183
+#: ui/shortcuts.py:187
 msgid "End earlier"
 msgstr "終了を早める"
 
-#: ui/shortcuts.py:184 ui/shortcuts.py:186
+#: ui/shortcuts.py:188 ui/shortcuts.py:190
 msgid ""
 "Key, Phrase: the current segment's end, by a beat or a bar (the boundary "
 "step)."
 msgstr "Key、Phrase: 現在の区間の終了を 1 拍または 1 小節ずつ (境界の単位)。"
 
 # | msgid "One beat later"
-#: ui/shortcuts.py:185
+#: ui/shortcuts.py:189
 msgid "End later"
 msgstr "終了を遅らせる"
 
 # | msgid "Split the current segment at the playhead"
-#: ui/shortcuts.py:187
+#: ui/shortcuts.py:191
 msgid "Split at the playhead"
 msgstr "再生位置で分割"
 
 # | msgid "Set the current segment to {meter}"
 # | msgid "Key scope: the current segment"
-#: ui/shortcuts.py:188
+#: ui/shortcuts.py:192
 msgid "Beatgrid, Key, Phrase: the current segment."
 msgstr "ビートグリッド、Key、フレーズ: 現在の区間。"
 
 # | msgid "" "Merge the previous key segment into the current one (keeps the
 # | current " "key)"
 # | msgid "Merge the previous segment into the current one"
-#: ui/shortcuts.py:189
+#: ui/shortcuts.py:193
 msgid "Merge the previous segment"
 msgstr "前の区間を結合"
 
 # | msgid "" "Merge the previous key segment into the current one (keeps the
 # | current " "key)"
 # | msgid "Merge the previous segment into the current one"
-#: ui/shortcuts.py:190
+#: ui/shortcuts.py:194
 msgid "Beatgrid, Key, Phrase: the previous segment into the current one."
 msgstr "ビートグリッド、Key、フレーズ: 前の区間を現在の区間に。"
 
 # | msgid "Merge the next key segment into the current one (keeps the current
 # | key)"
 # | msgid "Merge the next segment into the current one"
-#: ui/shortcuts.py:191
+#: ui/shortcuts.py:195
 msgid "Merge the next segment"
 msgstr "次の区間を結合"
 
 # | msgid "Merge the next key segment into the current one (keeps the current
 # | key)"
 # | msgid "Merge the next segment into the current one"
-#: ui/shortcuts.py:192
+#: ui/shortcuts.py:196
 msgid "Beatgrid, Key, Phrase: the next segment into the current one."
 msgstr "ビートグリッド、Key、フレーズ: 次の区間を現在の区間に。"
 
 # | msgid "Reanalyze the current key segment's key from the audio"
-#: ui/shortcuts.py:193
+#: ui/shortcuts.py:197
 msgid "Reanalyze the current segment"
 msgstr "現在の区間を再解析"
 
 # | msgid "Beatgrid"
-#: ui/shortcuts.py:194 ui/shortcuts.py:197 ui/shortcuts.py:199
+#: ui/shortcuts.py:198 ui/shortcuts.py:201 ui/shortcuts.py:203
 msgid "Beatgrid, Key."
 msgstr "ビートグリッド、Key。"
 
 # | msgid "Reanalyze Track"
-#: ui/shortcuts.py:195
+#: ui/shortcuts.py:199
 msgid "Reanalyze the whole track"
 msgstr "トラック全体を再解析"
 
-#: ui/shortcuts.py:196
+#: ui/shortcuts.py:200
 msgid "Key, Phrase; on the CUE page, the JumpCUEs."
 msgstr "Key、フレーズ。CUE ページでは JumpCUE。"
 
 # | msgid "Key scope: the whole track"
-#: ui/shortcuts.py:197
+#: ui/shortcuts.py:201
 msgid "Edit scope: the whole track"
 msgstr "編集範囲: トラック全体"
 
 # | msgid "Set the current segment to {meter}"
-#: ui/shortcuts.py:198
+#: ui/shortcuts.py:202
 msgid "Edit scope: the current segment"
 msgstr "編集範囲: 現在の区間"
 
 # | msgid "Boundaries move by one beat"
-#: ui/shortcuts.py:200
+#: ui/shortcuts.py:204
 msgid "Boundary step: one beat"
 msgstr "境界の単位: 1 拍"
 
 # | msgid "Phrase"
-#: ui/shortcuts.py:200 ui/shortcuts.py:201
+#: ui/shortcuts.py:204 ui/shortcuts.py:205
 msgid "Key, Phrase."
 msgstr "Key、フレーズ。"
 
 # | msgid "Boundaries move by one beat"
 # | msgid "Boundaries move by one bar"
-#: ui/shortcuts.py:201
+#: ui/shortcuts.py:205
 msgid "Boundary step: one bar"
 msgstr "境界の単位: 1 小節"
 
 # | msgid "Shift the current segment half a beat earlier"
-#: ui/shortcuts.py:203
+#: ui/shortcuts.py:207
 msgid "Shift half a beat earlier"
 msgstr "半拍早める"
 
 # | msgid "Shift the current segment 10 ms earlier"
-#: ui/shortcuts.py:204
+#: ui/shortcuts.py:208
 msgid "Shift 10 ms earlier"
 msgstr "10 ms 早める"
 
 # | msgid "Shift the current segment 1 ms earlier"
-#: ui/shortcuts.py:205
+#: ui/shortcuts.py:209
 msgid "Shift 1 ms earlier"
 msgstr "1 ms 早める"
 
 # | msgid "Shift the current segment 1 ms later"
-#: ui/shortcuts.py:206
+#: ui/shortcuts.py:210
 msgid "Shift 1 ms later"
 msgstr "1 ms 遅らせる"
 
 # | msgid "Shift the current segment 10 ms later"
-#: ui/shortcuts.py:207
+#: ui/shortcuts.py:211
 msgid "Shift 10 ms later"
 msgstr "10 ms 遅らせる"
 
 # | msgid "Shift the current segment half a beat later"
-#: ui/shortcuts.py:208
+#: ui/shortcuts.py:212
 msgid "Shift half a beat later"
 msgstr "半拍遅らせる"
 
 # | msgid "Error"
-#: ui/shortcuts.py:209
+#: ui/shortcuts.py:213
 msgid "ZERO"
 msgstr "ZERO"
 
-#: ui/edit_panel/beatgrid.py:76 ui/shortcuts.py:209
+#: ui/edit_panel/beatgrid.py:76 ui/shortcuts.py:213
 msgid "Clear the reference BPM and the tap history"
 msgstr "基準 BPM とタップの履歴を消去します"
 
-#: ui/shortcuts.py:210
+#: ui/shortcuts.py:214
 msgid "TAP"
 msgstr "TAP"
 
-#: ui/edit_panel/beatgrid.py:82 ui/shortcuts.py:210
+#: ui/edit_panel/beatgrid.py:82 ui/shortcuts.py:214
 msgid "Tap the beat to set the reference BPM"
 msgstr "拍に合わせてタップし、基準 BPM を設定します"
 
 # | msgid "Tap to set reference BPM"
 # | msgid "TAP: the reference BPM"
-#: ui/shortcuts.py:211
+#: ui/shortcuts.py:215
 msgid "Assign the reference BPM"
 msgstr "基準 BPM を割り当て"
 
-#: ui/edit_panel/beatgrid.py:101 ui/shortcuts.py:212
+#: ui/edit_panel/beatgrid.py:101 ui/shortcuts.py:216
 msgid "Assign the reference BPM to the current segment (downbeat at its start)"
 msgstr "基準 BPM を現在の区間に割り当てます (ダウンビートは区間の先頭)"
 
 # | msgid "Clear the reference BPM and the tap history"
 # | msgid "The reference BPM as the starting tempo (ramp)"
-#: ui/shortcuts.py:213
+#: ui/shortcuts.py:217
 msgid "Ramp: the starting tempo"
 msgstr "ランプ: 開始テンポ"
 
-#: ui/edit_panel/beatgrid.py:102 ui/shortcuts.py:214
+#: ui/edit_panel/beatgrid.py:102 ui/shortcuts.py:218
 msgid ""
 "Make the reference BPM the current segment's starting tempo (a ramp to "
 "its end tempo; its first beat stays)"
 msgstr "基準 BPM を現在の区間の開始テンポにします (終了テンポへのランプ。最初の拍はそのまま)"
 
-#: ui/shortcuts.py:216
+#: ui/shortcuts.py:220
 msgid "Ramp: the ending tempo"
 msgstr "ランプ: 終了テンポ"
 
-#: ui/edit_panel/beatgrid.py:103 ui/shortcuts.py:217
+#: ui/edit_panel/beatgrid.py:103 ui/shortcuts.py:221
 msgid ""
 "Make the reference BPM the current segment's ending tempo (a ramp from "
 "its start tempo; its first beat stays)"
 msgstr "基準 BPM を現在の区間の終了テンポにします (開始テンポからのランプ。最初の拍はそのまま)"
 
 # | msgid "Hold to count beats passing under the playhead"
-#: ui/shortcuts.py:219
+#: ui/shortcuts.py:223
 msgid "Downbeat at the playhead"
 msgstr "再生位置にダウンビート"
 
-#: ui/edit_panel/beatgrid.py:110 ui/shortcuts.py:220
+#: ui/edit_panel/beatgrid.py:110 ui/shortcuts.py:224
 msgid "Make the beat nearest the playhead the current segment's downbeat"
 msgstr "再生位置に最も近い拍を現在の区間のダウンビートにします"
 
-#: ui/shortcuts.py:221
+#: ui/shortcuts.py:225
 msgid "BPM x1/2"
 msgstr "BPM x1/2"
 
 # | msgid "BPM min"
-#: ui/shortcuts.py:222
+#: ui/shortcuts.py:226
 msgid "BPM x2"
 msgstr "BPM x2"
 
-#: ui/shortcuts.py:223
+#: ui/shortcuts.py:227
 #, python-brace-format
 msgid "Time signature {meter}"
 msgstr "拍子 {meter}"
 
 # | msgid "Edit the key"
-#: ui/shortcuts.py:226
+#: ui/shortcuts.py:230
 msgid "Pick the key"
 msgstr "キーを選択"
 
 # | msgid "Pick the key (Camelot wheel)"
-#: ui/edit_panel/key.py:95 ui/edit_panel/key_picker.py:82 ui/shortcuts.py:226
+#: ui/edit_panel/key.py:95 ui/edit_panel/key_picker.py:82 ui/shortcuts.py:230
 msgid "Pick the key (Alphanumeric wheel)"
 msgstr "キーを選択 (Alphanumeric ホイール)"
 
 # | msgid "Move Down"
-#: ui/shortcuts.py:227
+#: ui/shortcuts.py:231
 msgid "A semitone down"
 msgstr "半音下げる"
 
 # | msgid "Move Up"
-#: ui/shortcuts.py:228
+#: ui/shortcuts.py:232
 msgid "A semitone up"
 msgstr "半音上げる"
 
-#: ui/shortcuts.py:229
+#: ui/shortcuts.py:233
 msgid "Circle of fifths -1"
 msgstr "五度圏 -1"
 
@@ -7844,84 +7887,84 @@ msgstr "五度圏 -1"
 # | msgid "One step down the circle of fifths (Alphanumeric -1): every
 # segment's
 # | key"
-#: ui/shortcuts.py:230
+#: ui/shortcuts.py:234
 msgid "One step down the circle of fifths (Alphanumeric -1)"
 msgstr "五度圏で 1 つ下げる (Alphanumeric -1)"
 
-#: ui/shortcuts.py:231
+#: ui/shortcuts.py:235
 msgid "Circle of fifths +1"
 msgstr "五度圏 +1"
 
 # | msgid "One step up the circle of fifths (Camelot +1): every segment's key"
 # | msgid "One step up the circle of fifths (Alphanumeric +1): every segment's
 # | key"
-#: ui/shortcuts.py:232
+#: ui/shortcuts.py:236
 msgid "One step up the circle of fifths (Alphanumeric +1)"
 msgstr "五度圏で 1 つ上げる (Alphanumeric +1)"
 
 # | msgid "Relative major / minor (C <-> Am): every segment's key"
 # | msgid "Relative major / minor (C <-> Am)"
-#: ui/shortcuts.py:233
+#: ui/shortcuts.py:237
 msgid "Relative major / minor"
 msgstr "平行調の長調 / 短調"
 
 # | msgid "Relative major / minor (C <-> Am): every segment's key"
-#: ui/shortcuts.py:233
+#: ui/shortcuts.py:237
 msgid "Relative major / minor (C <-> Am)"
 msgstr "平行調の長調 / 短調 (C <-> Am)"
 
-#: ui/shortcuts.py:234
+#: ui/shortcuts.py:238
 msgid "Merge the same keys"
 msgstr "同じキーを結合"
 
-#: ui/edit_panel/key.py:80 ui/shortcuts.py:235
+#: ui/edit_panel/key.py:80 ui/shortcuts.py:239
 msgid "Merge every run of neighboring segments with the same key"
 msgstr "キーが同じ隣り合う区間をすべて 1 つに結合します"
 
-#: ui/shortcuts.py:236
+#: ui/shortcuts.py:240
 msgid "Listening aid: root"
 msgstr "試聴の補助: 根音"
 
-#: ui/shortcuts.py:237
+#: ui/shortcuts.py:241
 msgid "Listening aid: root and fifth"
 msgstr "試聴の補助: 根音と 5 度"
 
-#: ui/shortcuts.py:238
+#: ui/shortcuts.py:242
 msgid "Listening aid: tonic chord"
 msgstr "試聴の補助: 主和音"
 
 # | msgid "CUE points (set by the analysis from the phrases)"
 # | msgid "CUE points from the phrases (CUE rules)"
-#: ui/shortcuts.py:240
+#: ui/shortcuts.py:244
 msgid "CUE points from the phrases"
 msgstr "フレーズから CUEポイントを作成"
 
 # | msgid "" "Replace the CUE points with the ones the CUE rules give the
 # | current " "phrases\n" "(Settings > Analysis > CUE, as the full analysis
 # | makes them)"
-#: ui/shortcuts.py:241
+#: ui/shortcuts.py:245
 msgid ""
 "Replace the CUE points with the ones the CUE rules give the current "
 "phrases"
 msgstr "CUEポイントを、現在のフレーズに CUE のルールを適用した結果で置き換えます"
 
-#: ui/edit_panel/phrase.py:77 ui/shortcuts.py:242
+#: ui/edit_panel/phrase.py:77 ui/shortcuts.py:246
 msgid "Unassign the current phrase (UNASSIGNED)"
 msgstr "現在のフレーズのラベルを解除します (UNASSIGNED)"
 
-#: ui/edit_panel/phrase.py:162 ui/shortcuts.py:243
+#: ui/edit_panel/phrase.py:162 ui/shortcuts.py:247
 #, python-brace-format
 msgid "Label the current phrase {label}"
 msgstr "現在のフレーズを {label} にする"
 
-#: ui/shortcuts.py:302
+#: ui/shortcuts.py:306
 #, python-brace-format
 msgid ""
 "Another program on this computer takes {keys}: these shortcuts do not "
 "work (Settings > Shortcuts)."
 msgstr "このコンピューターのほかのプログラムが {keys} を使っているため、これらのショートカットは動作しません (環境設定 > ショートカット)。"
 
-#: ui/shortcuts.py:348
+#: ui/shortcuts.py:352
 #, python-brace-format
 msgid "{keys} is used by more than one action (Settings > Shortcuts)."
 msgstr "{keys} は複数の操作に割り当てられています (環境設定 > ショートカット)。"

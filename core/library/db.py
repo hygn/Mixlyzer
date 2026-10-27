@@ -12,8 +12,8 @@ from uuid import uuid4
 from core.search import reading
 from core.library import tieups
 from core.library.records import (
-    READING_FIELDS, USER_SOURCE, BpmSegmentRow, KeySegmentRow, LinearTransitionRow, PhraseIndexRow, PlaylistRow,
-    TrackRow, field_readings,
+    FOLDER_NODE, PLAYLIST_NODE, READING_FIELDS, USER_SOURCE, BpmSegmentRow, KeySegmentRow, LinearTransitionRow,
+    PhraseIndexRow, PlaylistFolderRow, PlaylistRow, TrackRow, field_readings,
 )
 from system.ids import canonical_uuid4 as _canonical_uuid4, canonical_uuid4_or_none as _canonical_uuid4_or_none
 from core.library.segments import harmonic_compatible_keys
@@ -107,6 +107,23 @@ class LibraryDB:
             PRIMARY KEY (playlist_uid, position),
             FOREIGN KEY (playlist_uid) REFERENCES playlists(uid) ON DELETE CASCADE,
             FOREIGN KEY (track_uid) REFERENCES tracks(uid) ON DELETE CASCADE
+        );
+        """)
+        # the playlists' folders, a tree: a folder in a folder (parent_uid; NULL at the top), a playlist in a folder
+        # (playlist_folder_items; none: at the top). A folder's children, its folders and playlists, are in one
+        # order: their sort_index (a playlist's playlists.sort_index), numbered within the folder.
+        self._conn.execute("""
+        CREATE TABLE IF NOT EXISTS playlist_folders (
+            uid        TEXT PRIMARY KEY,
+            name       TEXT NOT NULL,
+            parent_uid TEXT REFERENCES playlist_folders(uid) ON DELETE CASCADE,
+            sort_index INTEGER NOT NULL DEFAULT 0
+        );
+        """)
+        self._conn.execute("""
+        CREATE TABLE IF NOT EXISTS playlist_folder_items (
+            playlist_uid TEXT PRIMARY KEY REFERENCES playlists(uid) ON DELETE CASCADE,
+            folder_uid   TEXT NOT NULL REFERENCES playlist_folders(uid) ON DELETE CASCADE
         );
         """)
         # The romanized readings (core.search.reading) of each track's title / artist / album: the
@@ -208,6 +225,9 @@ class LibraryDB:
         self._conn.execute("CREATE INDEX IF NOT EXISTS idx_tps_label_key ON track_phrase_sections(phrase_label, key_value, phrase_duration_sec);")
         self._conn.execute("CREATE INDEX IF NOT EXISTS idx_playlists_sort ON playlists(sort_index);")
         self._conn.execute("CREATE INDEX IF NOT EXISTS idx_playlist_tracks_track ON playlist_tracks(track_uid);")
+        self._conn.execute("CREATE INDEX IF NOT EXISTS idx_playlist_folders_parent ON playlist_folders(parent_uid);")
+        self._conn.execute("CREATE INDEX IF NOT EXISTS idx_playlist_folder_items_folder "
+                           "ON playlist_folder_items(folder_uid);")
         self._conn.commit()
         # the songs' tie-ups (core.tieups.domain): works, their names, tie-ups, references, a track's song
         tieups.create_schema(self._conn)
@@ -502,26 +522,169 @@ class LibraryDB:
     # Playlists. Both playlists and their entries carry explicit indexes so the
     # user's order is stable and independent of the library table's sorting. An
     # entry is addressed by its position: a track may be in a playlist more than once.
-    def create_playlist(self, name: str) -> PlaylistRow:
+    def create_playlist(self, name: str, folder_uid: Optional[str] = None) -> PlaylistRow:
+        """A playlist at the end of ``folder_uid`` (None: the top)."""
         name = str(name or "").strip()
         if not name:
             raise ValueError(tr("Playlist name cannot be empty"))
+        folder = self._folder_or_top(folder_uid)
         playlist_uid = str(uuid4())
         with self.tx():
-            next_index = int(self.conn.execute(
-                "SELECT COALESCE(MAX(sort_index), -1) + 1 FROM playlists;"
-            ).fetchone()[0])
+            next_index = len(self._children(folder))
             self.conn.execute(
                 "INSERT INTO playlists(uid, name, sort_index) VALUES(?, ?, ?);",
                 (playlist_uid, name, next_index),
             )
-        return PlaylistRow(playlist_uid, name, next_index)
+            if folder is not None:
+                self.conn.execute("INSERT INTO playlist_folder_items(playlist_uid, folder_uid) VALUES(?, ?);",
+                                  (playlist_uid, folder))
+        return PlaylistRow(playlist_uid, name, next_index, folder)
 
     def list_playlists(self) -> List[PlaylistRow]:
+        """Every playlist with its folder (its sort_index its place there)."""
         cur = self.conn.execute(
-            "SELECT uid, name, sort_index FROM playlists ORDER BY sort_index, name COLLATE NOCASE;"
+            "SELECT p.uid, p.name, p.sort_index, f.folder_uid FROM playlists p "
+            "LEFT JOIN playlist_folder_items f ON f.playlist_uid = p.uid "
+            "ORDER BY p.sort_index, p.name COLLATE NOCASE;"
         )
         return [PlaylistRow(**dict(row)) for row in cur.fetchall()]
+
+    # ---- the playlists' folders ----
+    def list_playlist_folders(self) -> List[PlaylistFolderRow]:
+        cur = self.conn.execute(
+            "SELECT uid, name, parent_uid, sort_index FROM playlist_folders ORDER BY sort_index, name COLLATE NOCASE;"
+        )
+        return [PlaylistFolderRow(**dict(row)) for row in cur.fetchall()]
+
+    def create_playlist_folder(self, name: str, parent_uid: Optional[str] = None) -> PlaylistFolderRow:
+        """A folder at the end of ``parent_uid`` (None: the top)."""
+        name = str(name or "").strip()
+        if not name:
+            raise ValueError(tr("Folder name cannot be empty"))
+        parent = self._folder_or_top(parent_uid)
+        folder_uid = str(uuid4())
+        with self.tx():
+            next_index = len(self._children(parent))
+            self.conn.execute("INSERT INTO playlist_folders(uid, name, parent_uid, sort_index) VALUES(?, ?, ?, ?);",
+                              (folder_uid, name, parent, next_index))
+        return PlaylistFolderRow(folder_uid, name, parent, next_index)
+
+    def rename_playlist_folder(self, folder_uid: str, name: str) -> None:
+        name = str(name or "").strip()
+        if not name:
+            raise ValueError(tr("Folder name cannot be empty"))
+        with self.tx():
+            self.conn.execute("UPDATE playlist_folders SET name=? WHERE uid=?;", (name, _canonical_uuid4(folder_uid)))
+
+    def delete_playlist_folder(self, folder_uid: str) -> None:
+        """The folder deleted with everything in it: its folders and their playlists (the tracks stay in the
+        library); its siblings close up."""
+        folder_uid = _canonical_uuid4(folder_uid)
+        parent = self._parent_of(FOLDER_NODE, folder_uid)
+        inside = self._subtree(folder_uid)
+        with self.tx():
+            marks = ",".join("?" * len(inside))
+            self.conn.execute(f"DELETE FROM playlists WHERE uid IN (SELECT playlist_uid FROM playlist_folder_items "
+                              f"WHERE folder_uid IN ({marks}));", tuple(inside))
+            self.conn.execute("DELETE FROM playlist_folders WHERE uid=?;", (folder_uid,))
+            self._write_children(self._children(parent))
+
+    def move_playlist_node(self, kind: str, uid: str, folder_uid: Optional[str],
+                           before: Optional[tuple[str, str]] = None) -> bool:
+        """A playlist or folder (``kind``: PLAYLIST_NODE / FOLDER_NODE) moved into ``folder_uid`` (None: the top),
+        before its child ``before`` ((kind, uid); None or not there: at its end). A folder never goes into itself or
+        a folder inside it. False when nothing moved."""
+        if kind not in (PLAYLIST_NODE, FOLDER_NODE):
+            raise ValueError(f"not a playlist node: {kind}")
+        uid = _canonical_uuid4(uid)
+        folder = self._folder_or_top(folder_uid)
+        if kind == FOLDER_NODE and folder is not None and folder in self._subtree(uid):
+            return False
+        old_parent = self._parent_of(kind, uid)
+        old_children = self._children(old_parent)
+        if (kind, uid) not in old_children:
+            return False
+        children = [child for child in self._children(folder) if child != (kind, uid)]
+        before = (before[0], _canonical_uuid4(before[1])) if before else None
+        children.insert(children.index(before) if before in children else len(children), (kind, uid))
+        if old_parent == folder and children == old_children:
+            return False
+        with self.tx():
+            if kind == FOLDER_NODE:
+                self.conn.execute("UPDATE playlist_folders SET parent_uid=? WHERE uid=?;", (folder, uid))
+            else:
+                self.conn.execute("DELETE FROM playlist_folder_items WHERE playlist_uid=?;", (uid,))
+                if folder is not None:
+                    self.conn.execute("INSERT INTO playlist_folder_items(playlist_uid, folder_uid) VALUES(?, ?);",
+                                      (uid, folder))
+            self._write_children(children)
+            if old_parent != folder:
+                self._write_children(self._children(old_parent))
+        return True
+
+    def move_playlist_node_by(self, kind: str, uid: str, offset: int) -> bool:
+        """A playlist or folder moved ``offset`` places among its folder's children."""
+        uid = _canonical_uuid4(uid)
+        parent = self._parent_of(kind, uid)
+        children = self._children(parent)
+        if (kind, uid) not in children:
+            return False
+        old = children.index((kind, uid))
+        new = max(0, min(len(children) - 1, old + int(offset)))
+        if new == old:
+            return False
+        children.insert(new, children.pop(old))
+        with self.tx():
+            self._write_children(children)
+        return True
+
+    def _folder_or_top(self, folder_uid: Optional[str]) -> Optional[str]:
+        """A folder's uid in its one spelling (it must exist), or None for the top."""
+        if folder_uid is None or str(folder_uid) == "":
+            return None
+        folder = _canonical_uuid4(folder_uid)
+        if self.conn.execute("SELECT 1 FROM playlist_folders WHERE uid=?;", (folder,)).fetchone() is None:
+            raise ValueError(f"no playlist folder {folder}")
+        return folder
+
+    def _parent_of(self, kind: str, uid: str) -> Optional[str]:
+        if kind == FOLDER_NODE:
+            row = self.conn.execute("SELECT parent_uid FROM playlist_folders WHERE uid=?;", (uid,)).fetchone()
+        else:
+            row = self.conn.execute("SELECT folder_uid FROM playlist_folder_items WHERE playlist_uid=?;",
+                                    (uid,)).fetchone()
+        return row[0] if row is not None else None
+
+    def _subtree(self, folder_uid: str) -> set[str]:
+        """The folder and every folder inside it."""
+        rows = self.conn.execute(
+            "WITH RECURSIVE inside(uid) AS (SELECT ? UNION "
+            "SELECT f.uid FROM playlist_folders f JOIN inside ON f.parent_uid = inside.uid) SELECT uid FROM inside;",
+            (folder_uid,)).fetchall()
+        return {row[0] for row in rows}
+
+    def _children(self, folder_uid: Optional[str]) -> List[Tuple[str, str]]:
+        """A folder's children in their order, (kind, uid): its folders and playlists (None: the top's)."""
+        if folder_uid is None:
+            folders = self.conn.execute(
+                "SELECT uid, sort_index, name FROM playlist_folders WHERE parent_uid IS NULL;").fetchall()
+            playlists = self.conn.execute(
+                "SELECT p.uid, p.sort_index, p.name FROM playlists p LEFT JOIN playlist_folder_items f "
+                "ON f.playlist_uid = p.uid WHERE f.folder_uid IS NULL;").fetchall()
+        else:
+            folders = self.conn.execute(
+                "SELECT uid, sort_index, name FROM playlist_folders WHERE parent_uid=?;", (folder_uid,)).fetchall()
+            playlists = self.conn.execute(
+                "SELECT p.uid, p.sort_index, p.name FROM playlists p JOIN playlist_folder_items f "
+                "ON f.playlist_uid = p.uid WHERE f.folder_uid=?;", (folder_uid,)).fetchall()
+        nodes = [(int(r[1]), 0, str(r[2]).casefold(), FOLDER_NODE, str(r[0])) for r in folders]
+        nodes += [(int(r[1]), 1, str(r[2]).casefold(), PLAYLIST_NODE, str(r[0])) for r in playlists]
+        return [(kind, uid) for *_order, kind, uid in sorted(nodes)]
+
+    def _write_children(self, children: List[Tuple[str, str]]) -> None:
+        for sort_index, (kind, uid) in enumerate(children):
+            table = "playlist_folders" if kind == FOLDER_NODE else "playlists"
+            self.conn.execute(f"UPDATE {table} SET sort_index=? WHERE uid=?;", (sort_index, uid))
 
     def rename_playlist(self, playlist_uid: str, name: str) -> None:
         name = str(name or "").strip()
@@ -533,51 +696,12 @@ class LibraryDB:
             )
 
     def delete_playlist(self, playlist_uid: str) -> None:
-        with self.tx():
-            self.conn.execute("DELETE FROM playlists WHERE uid=?;", (_canonical_uuid4(playlist_uid),))
-            self._compact_playlist_indexes()
-
-    def move_playlist(self, playlist_uid: str, offset: int) -> None:
-        uids = [row.uid for row in self.list_playlists()]
-        try:
-            old_index = uids.index(_canonical_uuid4(playlist_uid))
-        except ValueError:
-            return
-        new_index = max(0, min(len(uids) - 1, old_index + int(offset)))
-        if new_index == old_index:
-            return
-        moved = uids.pop(old_index)
-        uids.insert(new_index, moved)
-        with self.tx():
-            self._write_playlist_order(uids)
-
-    def move_playlist_before(
-        self, playlist_uid: str, before_playlist_uid: Optional[str]
-    ) -> bool:
-        """Move a playlist before another playlist, or to the end for ``None``."""
+        """The playlist deleted (the tracks stay in the library); its folder's other children close up."""
         playlist_uid = _canonical_uuid4(playlist_uid)
-        before_uid = None if before_playlist_uid is None else _canonical_uuid4(before_playlist_uid)
-        uids = [row.uid for row in self.list_playlists()]
-        if playlist_uid not in uids or before_uid == playlist_uid:
-            return False
-        old_uids = list(uids)
-        uids.remove(playlist_uid)
-        insert_at = uids.index(before_uid) if before_uid in uids else len(uids)
-        uids.insert(insert_at, playlist_uid)
-        if uids == old_uids:
-            return False
+        parent = self._parent_of(PLAYLIST_NODE, playlist_uid)
         with self.tx():
-            self._write_playlist_order(uids)
-        return True
-
-    def _write_playlist_order(self, uids: List[str]) -> None:
-        for sort_index, playlist_uid in enumerate(uids):
-            self.conn.execute(
-                "UPDATE playlists SET sort_index=? WHERE uid=?;", (sort_index, playlist_uid)
-            )
-
-    def _compact_playlist_indexes(self) -> None:
-        self._write_playlist_order([row.uid for row in self.list_playlists()])
+            self.conn.execute("DELETE FROM playlists WHERE uid=?;", (playlist_uid,))
+            self._write_children(self._children(parent))
 
     def _playlist_entries(self, playlist_uid: str) -> List[Tuple[int, str]]:
         """(position, track uid) of each entry, in order."""

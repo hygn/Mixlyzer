@@ -32,7 +32,7 @@ from PySide6 import QtCore
 from core.library import tieups, variants
 from core.library.db import LibraryDB
 from core.analysis_library.store import FeatureNPZStore
-from core.library.records import PlaylistRow, TrackRow
+from core.library.records import PlaylistFolderRow, PlaylistRow, TrackRow, playlist_children
 
 READ, WRITE = "read", "write"
 
@@ -73,6 +73,7 @@ class LibrarySnapshot:
     readings: dict = field(default_factory=dict)           # uid -> field -> readings (LibraryDB.all_readings)
     tieups: dict = field(default_factory=dict)             # uid -> core.tieups.domain.TrackTieups
     playlists: tuple[PlaylistRow, ...] = ()
+    folders: tuple[PlaylistFolderRow, ...] = ()            # the playlists' folders
     entries: dict = field(default_factory=dict)            # playlist uid -> ((position, track uid), ...)
     variant_pairs: tuple = ()                              # core.search.variants.Pair
     by_uid: dict = field(default_factory=dict)
@@ -93,7 +94,8 @@ class LibrarySnapshot:
         if TIEUPS in parts:
             kept.update(tieups=tieups.track_texts(db.conn))
         if PLAYLISTS in parts:
-            kept.update(playlists=tuple(db.list_playlists()), entries=db.playlist_entries())
+            kept.update(playlists=tuple(db.list_playlists()), folders=tuple(db.list_playlist_folders()),
+                        entries=db.playlist_entries())
         if VARIANTS in parts:
             # the library's tracks' relations only (an index entry a removal left behind joins no one)
             known = kept.get("by_uid", old.by_uid)
@@ -127,6 +129,10 @@ class LibrarySnapshot:
             except (OSError, ValueError):
                 continue
         return None
+
+    def playlist_children(self) -> dict:
+        """The playlists' tree: a folder's uid (None: the top) -> its children in order, each (kind, row)."""
+        return playlist_children(self.folders, self.playlists)
 
     def playlist_tracks(self, playlist_uid: str) -> list[tuple[int, TrackRow]]:
         return [(pos, self.by_uid[uid]) for pos, uid in self.entries.get(playlist_uid, ()) if uid in self.by_uid]

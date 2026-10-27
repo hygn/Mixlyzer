@@ -23,7 +23,7 @@ from typing import Optional
 from PySide6 import QtCore, QtGui
 
 from core.library import music_index, package, thumbnails, tieups, variants
-from core.library.records import READING_FIELDS, IndexTrack, TrackRow
+from core.library.records import READING_FIELDS, IndexTrack, PlaylistTree, TrackRow
 from core.library.segments import track_index
 from core.library.service import PLAYLISTS, READINGS, TIEUPS, TRACKS, VARIANTS, changes
 from core.tieups.domain import Catalog, TieUp, Work
@@ -211,8 +211,9 @@ def apply_work_readings(lib, read: dict) -> None:
 # ---- playlists ----
 
 @changes(PLAYLISTS)
-def create_playlist(lib, name: str):
-    return lib.db.create_playlist(name)
+def create_playlist(lib, name: str, folder_uid: Optional[str] = None):
+    """A playlist at the end of a folder (None: the top)."""
+    return lib.db.create_playlist(name, folder_uid)
 
 
 @changes(PLAYLISTS)
@@ -226,13 +227,39 @@ def delete_playlist(lib, playlist_uid: str) -> None:
 
 
 @changes(PLAYLISTS)
-def move_playlist(lib, playlist_uid: str, offset: int) -> None:
-    lib.db.move_playlist(playlist_uid, offset)
+def create_playlist_folder(lib, name: str, parent_uid: Optional[str] = None):
+    """A folder at the end of a folder (None: the top)."""
+    return lib.db.create_playlist_folder(name, parent_uid)
 
 
 @changes(PLAYLISTS)
-def move_playlist_before(lib, playlist_uid: str, before_uid) -> bool:
-    return lib.db.move_playlist_before(playlist_uid, before_uid)
+def rename_playlist_folder(lib, folder_uid: str, name: str) -> None:
+    lib.db.rename_playlist_folder(folder_uid, name)
+
+
+@changes(PLAYLISTS)
+def delete_playlist_folder(lib, folder_uid: str) -> None:
+    """The folder deleted with its folders and playlists (the tracks stay in the library)."""
+    lib.db.delete_playlist_folder(folder_uid)
+
+
+@changes(PLAYLISTS)
+def move_playlist_node(lib, kind: str, uid: str, folder_uid: Optional[str], before=None) -> bool:
+    """A playlist or folder (records.PLAYLIST_NODE / FOLDER_NODE) moved into a folder (None: the top), before its child
+    ``before`` ((kind, uid); None: at its end); False when nothing moved (a folder into itself is not)."""
+    return lib.db.move_playlist_node(kind, uid, folder_uid, before)
+
+
+@changes(PLAYLISTS)
+def move_playlist_node_by(lib, kind: str, uid: str, offset: int) -> bool:
+    """A playlist or folder moved ``offset`` places among its folder's children."""
+    return lib.db.move_playlist_node_by(kind, uid, offset)
+
+
+def playlist_tree(lib) -> PlaylistTree:
+    """The playlists' folders, the playlists and their entries (the Rekordbox XML's PLAYLISTS)."""
+    return PlaylistTree(tuple(lib.db.list_playlist_folders()), tuple(lib.db.list_playlists()),
+                        lib.db.playlist_entries())
 
 
 @changes(PLAYLISTS)

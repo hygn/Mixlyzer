@@ -105,7 +105,20 @@ class _RekordboxSyncEngine:
             return self._sync_incremental([self._with_tieups(row) for row in self.request.rows])
         if self.request.mode == "track":
             return self._sync_track(self.request.uid)
+        if self.request.mode == "playlists":
+            return self._sync_playlists()
         raise ValueError(f"Unsupported Rekordbox sync mode: {self.request.mode}")
+
+    def _sync_playlists(self) -> RekordboxSyncResult:
+        """The playlists alone written again (they changed): the tracks as the XML has them. An XML not made yet is
+        made whole."""
+        if not self.request.xml_path.exists():
+            self.progress(1, tr("Loading Mixlyzer library"))
+            return self._sync_library([self._with_tieups(row) for row in self._load_library_rows()])
+        self.progress(4, tr("Loading Rekordbox XML"))
+        document = RekordboxXmlDocument.load(self.request.xml_path, force_new=False)
+        self._write(document)
+        return RekordboxSyncResult(self.request.xml_path, 0, 0, document.entry_count)
 
     def _sync_library(self, rows: list[TrackRow]) -> RekordboxSyncResult:
         self.progress(4, tr("Loading Rekordbox XML"))
@@ -178,6 +191,8 @@ class _RekordboxSyncEngine:
         )
 
     def _write(self, document: RekordboxXmlDocument) -> None:
+        """The document written, its PLAYLISTS the library's as they are now (every sync writes them: cheap)."""
+        document.set_playlists(self.library.call(jobs.playlist_tree))
         self.progress(92, tr("Formatting Rekordbox XML"))
         xml_text = document.to_xml()
         self.progress(97, tr("Writing Rekordbox XML"))
