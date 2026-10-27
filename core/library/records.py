@@ -106,6 +106,8 @@ class IndexTrack:
     mtime: float
     music: bool          # Search by Music's index to make (from the audio)
     variants: bool       # the variants' fingerprint to make (from the stored analysis)
+    # the stored beats the mix candidates' features are read on (from the audio); None: none to make
+    mix_beats: Any = field(default=None, compare=False)
 
 
 PLAYLIST_NODE, FOLDER_NODE = "playlist", "folder"     # the playlists' tree's two kinds of node

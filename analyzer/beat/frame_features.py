@@ -78,6 +78,65 @@ def _positive_flux(log_spec: np.ndarray) -> np.ndarray:
     return np.maximum(np.diff(log_spec, axis=1, prepend=log_spec[:, :1]), 0.0)
 
 
+def mix_cqt(audio: np.ndarray, sample_rate: int, hop_length: int) -> tuple[np.ndarray, np.ndarray]:
+    """The magnitude CQTs the chroma (C1 + 7 octaves) and the bass chroma (its first three octaves) are made from."""
+    # chroma_cqt estimates the tuning of ``audio`` on every call; estimate it once.
+    tuning = librosa.estimate_tuning(y=audio, sr=sample_rate, bins_per_octave=CHROMA_BINS_PER_OCTAVE)
+    # The CQTs librosa.feature.chroma_cqt computes: C1 + 7 octaves, and the bass register C1 + 3 octaves.
+    full = np.abs(librosa.cqt(
+        audio, sr=sample_rate, hop_length=hop_length, n_bins=7 * CHROMA_BINS_PER_OCTAVE,
+        bins_per_octave=CHROMA_BINS_PER_OCTAVE, tuning=tuning,
+    ))
+    # The bass CQT uses the first three octaves of the same C1-rooted
+    # seven-octave transform.  Reusing the view removes one complete CQT
+    # per track while preserving its frequencies and frame grid.  Librosa's
+    # multirate implementation can introduce tiny rounding differences
+    # compared with requesting those three octaves separately.
+    bass = full[: 3 * CHROMA_BINS_PER_OCTAVE]
+    return full, bass
+
+
+def chroma_of_cqt(full_cqt: np.ndarray) -> np.ndarray:
+    """[12, T] sharp CQT chroma (not CENS, which over-smooths chord-change timing) of ``mix_cqt``'s full CQT."""
+    return librosa.feature.chroma_cqt(C=full_cqt, n_chroma=12, bins_per_octave=CHROMA_BINS_PER_OCTAVE)
+
+
+def chroma_and_percussive_bands(
+    audio: np.ndarray,
+    percussive: np.ndarray,
+    sample_rate: int,
+    *,
+    hop_length: int = FRAME_HOP_LENGTH,
+    n_fft: int = FRAME_N_FFT,
+    n_mels: int = FRAME_N_MELS,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """(frame_times, chroma, percussive_bands) as ``extract_frame_features`` makes them, the rest not computed: a
+    track analyzed before a reader of these two existed (the mix candidates' Index Now)."""
+    audio = np.ascontiguousarray(audio, dtype=np.float32).reshape(-1)
+    percussive = np.asarray(percussive, dtype=np.float32).reshape(-1)
+    percussive_power = np.square(np.abs(stft(
+        y=percussive, n_fft=n_fft, hop_length=hop_length, window="hann", center=True, pad_mode="reflect",
+    )).astype(np.float32), dtype=np.float32)
+    n_frames = percussive_power.shape[1]
+    frame_times = frames_to_time(np.arange(n_frames), sr=sample_rate, hop_length=hop_length).astype(np.float64)
+    full_cqt, _bass = mix_cqt(audio, sample_rate, hop_length)
+    return (frame_times, _fit_length(chroma_of_cqt(full_cqt), n_frames),
+            _fit_length(percussive_band_flux(percussive_power, sample_rate, n_mels), n_frames))
+
+
+def percussive_band_flux(percussive_power: np.ndarray, sample_rate: int, n_mels: int) -> np.ndarray:
+    """[3, T] the percussive part's positive log-mel flux in PERCUSSIVE_BAND_EDGES_HZ (kick / snare-body / hats)."""
+    percussive_mel = power_to_db(
+        librosa.feature.melspectrogram(S=percussive_power, sr=sample_rate, n_mels=n_mels, fmin=30.0),
+        ref=np.max, top_db=100.0,
+    )
+    percussive_flux = _positive_flux(percussive_mel)
+    mel_hz = mel_frequencies(n_mels=n_mels, fmin=30.0, fmax=sample_rate / 2.0)
+    return np.stack(
+        [percussive_flux[(mel_hz >= lo) & (mel_hz < hi)].mean(axis=0) for lo, hi in PERCUSSIVE_BAND_EDGES_HZ]
+    )
+
+
 def extract_frame_features(
     audio: np.ndarray,
     sample_rate: int,
@@ -118,22 +177,6 @@ def extract_frame_features(
     # The workers do no BLAS matrix products: concurrent BLAS calls would change
     # the float rounding from run to run, so the chroma filterbanks run on this
     # thread after the join.
-    def mix_cqt() -> tuple[np.ndarray, np.ndarray]:
-        # chroma_cqt estimates the tuning of ``audio`` on every call; estimate it once.
-        tuning = librosa.estimate_tuning(y=audio, sr=sample_rate, bins_per_octave=CHROMA_BINS_PER_OCTAVE)
-        # The CQTs librosa.feature.chroma_cqt computes: C1 + 7 octaves, and the bass register C1 + 3 octaves.
-        full = np.abs(librosa.cqt(
-            audio, sr=sample_rate, hop_length=hop_length, n_bins=7 * CHROMA_BINS_PER_OCTAVE,
-            bins_per_octave=CHROMA_BINS_PER_OCTAVE, tuning=tuning,
-        ))
-        # The bass CQT uses the first three octaves of the same C1-rooted
-        # seven-octave transform.  Reusing the view removes one complete CQT
-        # per track while preserving its frequencies and frame grid.  Librosa's
-        # multirate implementation can introduce tiny rounding differences
-        # compared with requesting those three octaves separately.
-        bass = full[: 3 * CHROMA_BINS_PER_OCTAVE]
-        return full, bass
-
     def melody() -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         melody_cqt = np.abs(librosa.cqt(
             harmonic, sr=sample_rate, hop_length=hop_length,
@@ -146,7 +189,7 @@ def extract_frame_features(
         return melody_cqt, melody_onset, melody_pitch, melody_contour
 
     pool = ThreadPoolExecutor(max_workers=2)
-    mix_cqt_job = pool.submit(mix_cqt)
+    mix_cqt_job = pool.submit(mix_cqt, audio, sample_rate, hop_length)
     melody_job = pool.submit(melody)
 
     mel_power = librosa.feature.melspectrogram(
@@ -184,15 +227,7 @@ def extract_frame_features(
     # HPSS parts: drum flux per band, harmonic (note / chord) onsets, drum share.
     percussive_power = np.square(spectrum(percussive), dtype=np.float32)
     harmonic_power = np.square(spectrum(harmonic), dtype=np.float32)
-    percussive_mel = power_to_db(
-        librosa.feature.melspectrogram(S=percussive_power, sr=sample_rate, n_mels=n_mels, fmin=30.0),
-        ref=np.max, top_db=100.0,
-    )
-    percussive_flux = _positive_flux(percussive_mel)
-    mel_hz = mel_frequencies(n_mels=n_mels, fmin=30.0, fmax=sample_rate / 2.0)
-    percussive_bands = np.stack(
-        [percussive_flux[(mel_hz >= lo) & (mel_hz < hi)].mean(axis=0) for lo, hi in PERCUSSIVE_BAND_EDGES_HZ]
-    )
+    percussive_bands = percussive_band_flux(percussive_power, sample_rate, n_mels)
     percussive_total = percussive_power.sum(axis=0)
     percussive_share = percussive_total / np.maximum(percussive_total + harmonic_power.sum(axis=0), 1e-10)
 
@@ -209,8 +244,7 @@ def extract_frame_features(
     with pool:
         full_cqt, bass_cqt = mix_cqt_job.result()
         melody_cqt, melody_onset, melody_pitch, melody_contour = melody_job.result()
-    # Sharp CQT chroma (not CENS, which over-smooths chord-change timing).
-    chroma = librosa.feature.chroma_cqt(C=full_cqt, n_chroma=12, bins_per_octave=CHROMA_BINS_PER_OCTAVE)
+    chroma = chroma_of_cqt(full_cqt)
     bass_chroma = librosa.feature.chroma_cqt(
         C=bass_cqt, n_chroma=12, fmin=BASS_CHROMA_FMIN_HZ, bins_per_octave=CHROMA_BINS_PER_OCTAVE,
     )

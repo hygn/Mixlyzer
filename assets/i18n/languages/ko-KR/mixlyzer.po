@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-27 23:19+0900\n"
+"POT-Creation-Date: 2026-10-28 01:09+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ko_KR\n"
@@ -397,11 +397,11 @@ msgstr "특징 캐시 {done}/{total}"
 msgid "feature cache is not current"
 msgstr "특징 캐시가 최신이 아닙니다"
 
-#: app/main.py:52
+#: app/main.py:54
 msgid "Unsupported Operating System"
 msgstr "지원하지 않는 운영체제"
 
-#: app/main.py:53
+#: app/main.py:55
 #, python-brace-format
 msgid ""
 "Mixlyzer supports Windows, Linux and macOS; this system ({system}) is not"
@@ -411,11 +411,11 @@ msgstr ""
 "Mixlyzer는 Windows, Linux, macOS를 지원합니다. 이 시스템({system})은 그중 하나가 아닙니다.\n"
 "제대로 동작하지 않을 수 있습니다."
 
-#: app/main.py:59
+#: app/main.py:61
 msgid "Administrator Execution Blocked"
 msgstr "관리자 권한 실행 차단됨"
 
-#: app/main.py:60
+#: app/main.py:62
 msgid ""
 "Mixlyzer cannot run with administrator privileges.\n"
 "Close it and launch again as a normal user."
@@ -423,11 +423,11 @@ msgstr ""
 "Mixlyzer는 관리자 권한으로 실행할 수 없습니다.\n"
 "종료한 뒤 일반 사용자로 다시 실행하세요."
 
-#: app/main.py:71
+#: app/main.py:73
 msgid "Settings Reset"
 msgstr "설정 초기화"
 
-#: app/main.py:72
+#: app/main.py:74
 #, python-brace-format
 msgid ""
 "{name} could not be read, so its settings are back to their defaults.\n"
@@ -443,11 +443,11 @@ msgstr ""
 "\n"
 "설정을 되살리려면 Mixlyzer를 닫은 상태에서 그 파일을 고쳐 {name} 자리에 두세요."
 
-#: app/main.py:87
+#: app/main.py:89
 msgid "Incompatible Library Version"
 msgstr "호환되지 않는 라이브러리 버전"
 
-#: app/main.py:88
+#: app/main.py:90
 #, python-brace-format
 msgid ""
 "This library cannot be opened by the current app version.\n"
@@ -1202,8 +1202,6 @@ msgstr "헤드폰: CUE / MASTER"
 # | msgid "" "The CUE'd channels against the master in the headphones (with
 # the
 # | master " "mixed in: Settings > Playback > Headphones output)."
-# | msgid "" "The CUE'd channels against the master in the headphones (with
-# the
 # | master " "mixed in: Settings > Audio > Headphones)."
 #: core/controls/midi.py:188
 msgid "The CUE'd channels against the master in the headphones."
@@ -1656,7 +1654,7 @@ msgid "tempo segments are required for JumpCUE reanalysis"
 msgstr "JumpCUE 재분석에는 템포 구간이 필요합니다"
 
 # | msgid "The reading refresh process exited unexpectedly ({code})."
-#: core/workers/music_index.py:90
+#: core/workers/music_index.py:106
 #, python-brace-format
 msgid "The music search index process exited unexpectedly ({code})."
 msgstr "음악 검색 색인 프로세스가 예기치 않게 종료되었습니다 ({code})."
@@ -1859,10 +1857,13 @@ msgstr "분석 결과를 저장할 수 없습니다: {error}"
 
 # | msgid "Reading the library: {done} / {total} tracks"
 # | msgid "Indexing for Search by Music: {done} / {total} tracks"
-#: core/workflows/music_index.py:129
+# | msgid "Indexing for Search by Music and Variants: {done} / {total} tracks"
+#: core/workflows/music_index.py:150
 #, python-brace-format
-msgid "Indexing for Search by Music and Variants: {done} / {total} tracks"
-msgstr "음악으로 검색·다른 버전 색인 중: {done} / {total} 트랙"
+msgid ""
+"Indexing for Search by Music, Variants and Mix Candidates: {done} / "
+"{total} tracks"
+msgstr "음악으로 검색·다른 버전·믹스 후보 색인 중: {done} / {total} 트랙"
 
 #: core/workflows/optimizer.py:52
 #, python-brace-format
@@ -2977,9 +2978,10 @@ msgstr ""
 "{error}"
 
 # | msgid "Index for Search by Music"
+# | msgid "Index for Search by Music and Variants"
 #: ui/config/dialogs/music_index.py:17
-msgid "Index for Search by Music and Variants"
-msgstr "음악으로 검색·다른 버전 색인"
+msgid "Index for Search by Music, Variants and Mix Candidates"
+msgstr "음악으로 검색·다른 버전·믹스 후보 색인"
 
 # | msgid "Starting the reading worker"
 #: ui/config/dialogs/music_index.py:20
@@ -3018,13 +3020,14 @@ msgstr[0] "파일 {n}개를 읽지 못했습니다:"
 
 # | msgid "frame feature cache build failed: {error}"
 # | msgid "" "Indexing for Search by Music failed:\n" "{error}"
+# | msgid "" "Indexing for Search by Music and Variants failed:\n" "{error}"
 #: ui/config/dialogs/music_index.py:55
 #, python-brace-format
 msgid ""
-"Indexing for Search by Music and Variants failed:\n"
+"Indexing for Search by Music, Variants and Mix Candidates failed:\n"
 "{error}"
 msgstr ""
-"음악으로 검색·다른 버전 색인에 실패했습니다:\n"
+"음악으로 검색·다른 버전·믹스 후보 색인에 실패했습니다:\n"
 "{error}"
 
 #: ui/config/dialogs/optimization.py:34
@@ -3571,8 +3574,6 @@ msgstr "<p>편집기에서 저장할 때 트랙의 BPM, 키, 검색용 표를 �
 # | database made " "again from its stored analysis (as the editor's save
 # writes
 # | them). " "Titles, artists, ratings and comments are not touched.</p>"
-# | database made " "again from its stored analysis (as the editor's save
-# writes
 # | them), a BPM " "or key typed in the Edit Track tab replaced too. Titles,
 # | artists, ratings" " and comments are not touched.</p>"
 #: ui/config/library.py:110
@@ -3786,8 +3787,6 @@ msgstr "rekordbox CSV 가져오기..."
 # and
 # | the " "like: its deck 1 controls and mixer channel 1's fader replace the
 # | mapping" " (kept with OK / Apply)."
-# | msgid "" "A MIDI mapping exported from rekordbox (CSV), for the DDJ-400
-# and
 # | the " "like: its deck 1 controls, mixer channel 1 and the browser replace
 # | the " "mapping (kept with OK / Apply)."
 #: ui/config/midi.py:119
@@ -4284,8 +4283,6 @@ msgstr "키 구간"
 # | msgid "" "Numbers: the order the analyses run in. A line: what an analysis
 # | reads, " "coloured by its rate. Click an analysis to open its settings."
 # | builds " "on. Click an analysis to open its settings."
-# | the arrow" " needs that result. Every analysis also reads the decoded
-# audio
 #: ui/config/pipeline_map.py:82
 msgid ""
 "Numbers: the order the analyses run in. A wire: the analysis at the arrow"
@@ -4915,14 +4912,18 @@ msgstr "지금 색인"
 # | leave" " the index. The Variants are found from the stored analysis,
 # without
 # | " "reading the audio.</p>"
+# | msgid "" "<p>Index the library's tracks not indexed yet for Search by
+# Music
+# | or the " "Variants, in the background. Tracks gone from the library leave
+# | the " "index.</p>"
 #: ui/config/search.py:152
 msgid ""
-"<p>Index the library's tracks not indexed yet for Search by Music or the "
-"Variants, in the background. Tracks gone from the library leave the "
-"index.</p>"
+"<p>Index the library's tracks not indexed yet for Search by Music, the "
+"Variants or the Mix Candidates, in the background. Tracks gone from the "
+"library leave the index.</p>"
 msgstr ""
-"<p>음악으로 검색이나 다른 버전 찾기용 색인이 아직 없는 트랙을 백그라운드에서 색인합니다. 라이브러리에서 빠진 트랙은 색인에서도 "
-"빠집니다.</p>"
+"<p>음악으로 검색, 다른 버전 찾기, 믹스 후보용 색인이 아직 없는 트랙을 백그라운드에서 색인합니다. 라이브러리에서 빠진 트랙은 "
+"색인에서도 빠집니다.</p>"
 
 #: ui/config/search.py:258
 #, python-brace-format
@@ -5368,8 +5369,6 @@ msgstr "트랙 내리기"
 # | msgid "" "TRIM: the level before the volume fader, -24 to +9 dB (0 dB in
 # the
 # | " "middle), kept as Settings > Playback > Trim. Double-click: 0 dB."
-# | msgid "" "TRIM: the level before the volume fader, -24 to +9 dB (0 dB in
-# the
 # | " "middle), kept as Settings > Audio > Mixer > Trim. Double-click: 0 dB."
 #: ui/deck/track_info_panel.py:770
 msgid "TRIM: the level before the volume fader, -24 to +9 dB. Double-click: 0 dB."
@@ -6026,6 +6025,143 @@ msgstr[0] ""
 "트랙 {count}개를 라이브러리에서 제거할까요?\n"
 "분석과 편집 내용이 삭제됩니다. 오디오 파일은 그대로 남습니다."
 
+# | msgid "AND: require every search condition (click to switch)"
+#: ui/library/mix.py:26
+msgid "AND: every criterion turned on (click to switch)"
+msgstr "AND: 켠 조건을 모두 만족 (클릭하면 전환)"
+
+# | msgid "OR: accept any search condition (click to switch)"
+#: ui/library/mix.py:27
+msgid "OR: any criterion turned on (click to switch)"
+msgstr "OR: 켠 조건 중 하나라도 만족 (클릭하면 전환)"
+
+# | msgid "Next page"
+# | msgid "Next"
+#: ui/library/mix.py:34
+msgctxt "mix candidates"
+msgid "Next"
+msgstr "다음 곡"
+
+# | msgid "Previous page"
+# | msgid "Previous"
+#: ui/library/mix.py:34
+msgctxt "mix candidates"
+msgid "Previous"
+msgstr "이전 곡"
+
+#: ui/library/mix.py:41
+msgid ""
+"<p>Next: tracks to blend in from the loaded one's interlude or outro, at "
+"their start (click to switch).</p>"
+msgstr "<p>다음 곡: 로드된 곡의 인터루드나 아웃트로에서 도입부를 섞어 들어올 곡 (클릭하면 전환).</p>"
+
+#: ui/library/mix.py:43
+msgid ""
+"<p>Previous: tracks whose interlude or outro blends into the loaded one's"
+" start (click to switch).</p>"
+msgstr "<p>이전 곡: 인터루드나 아웃트로가 로드된 곡의 도입부로 섞여 들어가는 곡 (클릭하면 전환).</p>"
+
+#: ui/library/mix.py:56
+msgid ""
+"<p>The two tracks' BPM within this range where they meet, or one at half "
+"/ double the other.</p>"
+msgstr "<p>두 곡이 만나는 지점의 BPM 차이가 이 범위 안. 한쪽이 다른 쪽의 절반·두 배여도 됩니다.</p>"
+
+# | msgid "Tempo Analyzing"
+# | msgid "Tempo range"
+#: ui/library/mix.py:59
+msgid "BPM range"
+msgstr "BPM 범위"
+
+#: ui/library/mix.py:61
+msgid ""
+"<p>The two tracks' keys where they meet the same, relative or ±1 on the "
+"Alphanumeric wheel.</p>"
+msgstr "<p>두 곡이 만나는 지점의 키가 같거나, 나란한조이거나, Alphanumeric 휠에서 ±1.</p>"
+
+#: ui/library/mix.py:65
+msgid ""
+"<p>Phrases on both tracks line up and the bars sound alike where they "
+"would be blended: energy, rhythm and harmony.</p>"
+msgstr "<p>두 곡의 프레이즈가 맞물리고, 섞이는 마디의 소리가 비슷함: 에너지, 리듬, 화성.</p>"
+
+# | msgid "Found"
+#: ui/library/mix.py:65 ui/library/mix.py:185
+msgid "Sound"
+msgstr "사운드"
+
+# | msgid "Mixer"
+#: ui/library/mix.py:72
+msgid "Mix"
+msgstr "믹스"
+
+#: ui/library/mix.py:170
+#, python-brace-format
+msgid ""
+"Blend: this track {a_from} - {a_to}, the loaded track from {b_from}, "
+"{bars} bars"
+msgstr "블렌드: 이 곡 {a_from} - {a_to}, 로드된 곡 {b_from}부터, {bars}마디"
+
+#: ui/library/mix.py:173
+#, python-brace-format
+msgid ""
+"Blend: the loaded track {a_from} - {a_to}, this track from {b_from}, "
+"{bars} bars"
+msgstr "블렌드: 로드된 곡 {a_from} - {a_to}, 이 곡 {b_from}부터, {bars}마디"
+
+#: ui/library/mix.py:176
+msgid "No blend lines up on both tracks' phrases"
+msgstr "두 곡의 프레이즈가 맞물리는 블렌드가 없음"
+
+#: ui/library/mix.py:178
+#, python-brace-format
+msgid "BPM {a:.1f} → {b:.1f} ({offset:+.1f} %)"
+msgstr "BPM {a:.1f} → {b:.1f} ({offset:+.1f} %)"
+
+# | msgid "Merge the same keys"
+#: ui/library/mix.py:180
+msgid "the same key"
+msgstr "같은 키"
+
+#: ui/library/mix.py:180
+msgid "the relative key"
+msgstr "나란한조"
+
+# | msgid "Pick the key (Camelot wheel)"
+# | msgid "Pick the key (Alphanumeric wheel)"
+#: ui/library/mix.py:181
+msgid "±1 on the Alphanumeric wheel"
+msgstr "Alphanumeric 휠에서 ±1"
+
+# | msgid "About"
+# | msgid "Booth"
+# | msgid "Booth EQ"
+# | msgid "Other"
+#: ui/library/mix.py:182
+msgid "another key"
+msgstr "다른 키"
+
+#: ui/library/mix.py:183
+#, python-brace-format
+msgid "Key {a} → {b}"
+msgstr "Key {a} → {b}"
+
+# | msgid "{title}: {relation}"
+#: ui/library/mix.py:184
+#, python-brace-format
+msgid "{key}: {relation}"
+msgstr "{key}: {relation}"
+
+#: ui/library/mix.py:186
+#, python-brace-format
+msgid "Meets: {criteria}"
+msgstr "만족: {criteria}"
+
+# | msgid "Metronome critic"
+#: ui/library/mix.py:186
+msgid "Meets no criterion"
+msgstr "만족하는 조건 없음"
+
 #: ui/library/music.py:31
 msgid "<p>Search by Music: the library finds the songs the microphone hears.</p>"
 msgstr "<p>음악으로 검색: 마이크로 들은 곡을 라이브러리에서 찾습니다.</p>"
@@ -6103,7 +6239,7 @@ msgid "Name"
 msgstr "이름"
 
 #: ui/library/playlists.py:27 ui/library/playlists.py:32
-#: ui/library/sources.py:610
+#: ui/library/sources.py:624
 msgid "New Folder"
 msgstr "새 폴더"
 
@@ -6115,7 +6251,7 @@ msgstr "플레이리스트 이름 바꾸기"
 msgid "Rename Folder"
 msgstr "폴더 이름 바꾸기"
 
-#: ui/library/playlists.py:74 ui/library/sources.py:616
+#: ui/library/playlists.py:74 ui/library/sources.py:630
 msgid "Delete Playlist"
 msgstr "플레이리스트 삭제"
 
@@ -6128,7 +6264,7 @@ msgstr ""
 "플레이리스트 \"{name}\"을(를) 삭제할까요?\n"
 "트랙은 라이브러리에 남습니다."
 
-#: ui/library/playlists.py:84 ui/library/sources.py:616
+#: ui/library/playlists.py:84 ui/library/sources.py:630
 msgid "Delete Folder"
 msgstr "폴더 삭제"
 
@@ -6141,7 +6277,7 @@ msgstr ""
 "\"{name}\" 폴더를 그 안의 모든 플레이리스트와 폴더와 함께 삭제할까요?\n"
 "트랙은 라이브러리에 남습니다."
 
-#: ui/library/playlists.py:114 ui/library/sources.py:295
+#: ui/library/playlists.py:114 ui/library/sources.py:302
 msgid "Playlists"
 msgstr "플레이리스트"
 
@@ -6272,92 +6408,102 @@ msgstr "켜 둔 각 전환의 양쪽 최소 길이"
 msgid "Min seg"
 msgstr "최소 구간"
 
-#: ui/library/sources.py:280
+#: ui/library/sources.py:282
 msgid "Library (All)"
 msgstr "라이브러리 (전체)"
 
 # | msgid "Alias"
-#: ui/library/sources.py:284 ui/library/tabs/track_search_index.py:87
+#: ui/library/sources.py:286 ui/library/tabs/track_search_index.py:87
 msgid "Variants"
 msgstr "다른 버전"
 
-#: ui/library/sources.py:287
+#: ui/library/sources.py:289
 msgid "<p>The library's tracks that are versions of one song. # is the song.</p>"
 msgstr "<p>같은 곡의 여러 버전을 모아 보여 줍니다. #은 곡 번호입니다.</p>"
 
 # | msgid "Unload track"
-#: ui/library/sources.py:289
+#: ui/library/sources.py:291
 msgid "Loaded Track"
 msgstr "로드한 곡"
 
 # | msgid "" "<p>The versions of the track loaded on the deck, following each
 # | track " "loaded.</p>"
-#: ui/library/sources.py:291
+#: ui/library/sources.py:293
 msgid "<p>The versions of the track loaded on the deck.</p>"
 msgstr "<p>덱에 로드한 곡의 다른 버전을 보여 줍니다.</p>"
 
-#: ui/library/sources.py:318
+#: ui/library/sources.py:297
+msgid "Mix Candidates"
+msgstr "믹스 후보"
+
+#: ui/library/sources.py:299
+msgid ""
+"<p>Tracks to play after or before the loaded one, the best blend "
+"first.</p>"
+msgstr "<p>로드된 곡의 앞이나 뒤에 틀 곡. 가장 잘 섞이는 곡이 먼저 나옵니다.</p>"
+
+#: ui/library/sources.py:325
 msgid "Local Folders"
 msgstr "로컬 폴더"
 
 # | msgid "Headphones: level"
 # | msgid "Headphones mix"
-#: ui/library/sources.py:550
+#: ui/library/sources.py:564
 msgid "the same mix"
 msgstr "같은 믹스"
 
-#: ui/library/sources.py:552
+#: ui/library/sources.py:566
 #, python-brace-format
 msgid "{relation}, a shorter edit"
 msgstr "{relation} (짧게 편집한 버전)"
 
-#: ui/library/sources.py:554
+#: ui/library/sources.py:568
 #, python-brace-format
 msgid "{relation}, a longer version"
 msgstr "{relation} (더 긴 버전)"
 
-#: ui/library/sources.py:556
+#: ui/library/sources.py:570
 #, python-brace-format
 msgid "{relation}, some sections differ"
 msgstr "{relation} (일부 구간이 다름)"
 
 # | msgid "{relation}, a shorter edit"
-#: ui/library/sources.py:559
+#: ui/library/sources.py:573
 msgid "a shorter edit"
 msgstr "짧게 편집한 버전"
 
 # | msgid "{relation}, a longer version"
-#: ui/library/sources.py:561
+#: ui/library/sources.py:575
 msgid "a longer version"
 msgstr "더 긴 버전"
 
 # | msgid "{relation}, some sections differ"
-#: ui/library/sources.py:563
+#: ui/library/sources.py:577
 msgid "some sections differ"
 msgstr "일부 구간이 다름"
 
-#: ui/library/sources.py:580
+#: ui/library/sources.py:594
 #, python-brace-format
 msgid "{title}: {relation}"
 msgstr "{title}: {relation}"
 
-#: ui/library/sources.py:582
+#: ui/library/sources.py:596
 msgid "Variants of this track:"
 msgstr "이 곡의 다른 버전:"
 
-#: ui/library/sources.py:613
+#: ui/library/sources.py:627
 msgid "Rename"
 msgstr "이름 바꾸기"
 
-#: ui/library/sources.py:614
+#: ui/library/sources.py:628
 msgid "Move Up"
 msgstr "위로 이동"
 
-#: ui/library/sources.py:615
+#: ui/library/sources.py:629
 msgid "Move Down"
 msgstr "아래로 이동"
 
-#: ui/library/sources.py:618
+#: ui/library/sources.py:632
 msgid "Refresh Folders"
 msgstr "폴더 새로 고침"
 
@@ -6887,59 +7033,59 @@ msgstr "선택한 트랙. 열린 탭을 누르면 패널을 접습니다"
 msgid "Apply the changes to \"{title}\"? (No: they are dropped)"
 msgstr "\"{title}\"의 변경 내용을 적용할까요? (아니요: 버립니다)"
 
-#: ui/library/widget.py:37
+#: ui/library/widget.py:38
 msgid "All"
 msgstr "전체"
 
 #: ui/library/tabs/edit_song.py:124 ui/library/tabs/export.py:78
 #: ui/library/tabs/export.py:104 ui/library/tabs/tieup_editor.py:140
-#: ui/library/tabs/track_search_index.py:53 ui/library/widget.py:37
+#: ui/library/tabs/track_search_index.py:53 ui/library/widget.py:38
 #: ui/windows/tieup_works.py:77
 msgid "Title"
 msgstr "제목"
 
 #: ui/library/tabs/edit_song.py:125 ui/library/tabs/export.py:79
 #: ui/library/tabs/export.py:105 ui/library/tabs/track_search_index.py:53
-#: ui/library/widget.py:37
+#: ui/library/widget.py:38
 msgid "Artist"
 msgstr "아티스트"
 
-#: ui/library/widget.py:38
+#: ui/library/widget.py:39
 msgid "Duration"
 msgstr "길이"
 
 #: ui/library/tabs/edit_song.py:126 ui/library/tabs/export.py:106
-#: ui/library/tabs/track_search_index.py:53 ui/library/widget.py:38
+#: ui/library/tabs/track_search_index.py:53 ui/library/widget.py:39
 msgid "Album"
 msgstr "앨범"
 
 #: ui/library/tabs/tieup_editor.py:123 ui/library/tabs/tieup_editor.py:281
-#: ui/library/tabs/tieup_editor.py:287 ui/library/widget.py:38
+#: ui/library/tabs/tieup_editor.py:287 ui/library/widget.py:39
 msgid "Tie-up"
 msgstr "타이업"
 
-#: ui/library/tabs/edit_song.py:129 ui/library/widget.py:39
+#: ui/library/tabs/edit_song.py:129 ui/library/widget.py:40
 msgid "Rating"
 msgstr "평점"
 
-#: ui/library/widget.py:40
+#: ui/library/widget.py:41
 msgid "Added"
 msgstr "추가일"
 
-#: ui/library/tabs/edit_song.py:123 ui/library/widget.py:40
+#: ui/library/tabs/edit_song.py:123 ui/library/widget.py:41
 msgid "Path"
 msgstr "경로"
 
 #: ui/library/tabs/edit_song.py:130 ui/library/tabs/export.py:107
-#: ui/library/widget.py:40
+#: ui/library/widget.py:41
 msgid "Comment"
 msgstr "코멘트"
 
-#: ui/library/widget.py:378
+#: ui/library/widget.py:383
 msgid "Track loading is disabled while External Sync is enabled."
 msgstr "외부 동기화가 켜져 있는 동안에는 트랙을 불러올 수 없습니다."
 
-#: ui/library/widget.py:463
+#: ui/library/widget.py:468
 msgid "The loaded track is not in the list shown."
 msgstr "로드한 트랙이 지금 보이는 목록에 없습니다."
 
@@ -6978,7 +7124,7 @@ msgstr "템포 초기화 (100%)"
 msgid "Master tempo: time stretch keeps the pitch"
 msgstr "마스터 템포: 타임 스트레치로 피치를 유지합니다"
 
-#: ui/config/external_sync.py:105 ui/library/widget.py:377 ui/pane.py:528
+#: ui/config/external_sync.py:105 ui/library/widget.py:382 ui/pane.py:528
 msgid "External Sync"
 msgstr "외부 동기화"
 
@@ -7412,7 +7558,7 @@ msgid "Show in File Manager"
 msgstr "파일 관리자에서 보기"
 
 #: ui/library/playlists.py:18 ui/library/playlists.py:23
-#: ui/library/sources.py:609 ui/shortcuts.py:155
+#: ui/library/sources.py:623 ui/shortcuts.py:155
 msgid "New Playlist"
 msgstr "새 플레이리스트"
 

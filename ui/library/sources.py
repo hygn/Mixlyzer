@@ -1,4 +1,5 @@
-"""The sources panel's part: the library, Variants, playlists and folders listed, the one shown read."""
+"""The sources panel's part: the library, Variants, Mix Candidates, playlists and folders listed, the one shown
+read."""
 from __future__ import annotations
 
 import copy
@@ -16,6 +17,7 @@ from core.search import variants as variant_relations
 from system.i18n import tr
 from ui.library.common import (Track, _DIRECTORY_LOADED_ROLE, _PLAYLIST_MIME, _SOURCE_KIND_ROLE,
     _SOURCE_VALUE_ROLE, row_to_track)
+from ui.library.mix import MIX_SOURCE
 
 
 # a source's kind in the tree -> its node's kind in the playlists' tree (core.library.records)
@@ -292,6 +294,11 @@ class SourcesMixin:
         variants_item.addChild(loaded_item)
         variants_item.setExpanded(True)
 
+        mix_item = QtWidgets.QTreeWidgetItem([tr("Mix Candidates")])
+        mix_item.setData(0, _SOURCE_KIND_ROLE, MIX_SOURCE)
+        mix_item.setToolTip(0, tr("<p>Tracks to play after or before the loaded one, the best blend first.</p>"))
+        tree.addTopLevelItem(mix_item)
+
         playlists_item = QtWidgets.QTreeWidgetItem([tr("Playlists")])
         playlists_item.setData(0, _SOURCE_KIND_ROLE, "playlists")
         tree.addTopLevelItem(playlists_item)
@@ -398,6 +405,7 @@ class SourcesMixin:
 
     def _refresh_current_source(self, *, reset_sort: bool = False) -> None:
         self.table.setPlaylistReorderEnabled(self._source_kind == "playlist" and not self._music_mode)
+        self._sync_mix_bar()
         if self._music_mode:
             tracks = self._music_tracks()
             default_column = "#"
@@ -418,6 +426,10 @@ class SourcesMixin:
             default_order = QtCore.Qt.SortOrder.AscendingOrder
         elif self._source_kind in ("variants", "variants_loaded"):
             tracks = self._variant_tracks(self._loaded_uid or "" if self._source_kind == "variants_loaded" else None)
+            default_column = "#"
+            default_order = QtCore.Qt.SortOrder.AscendingOrder
+        elif self._source_kind == MIX_SOURCE:
+            tracks = self._mix_tracks()
             default_column = "#"
             default_order = QtCore.Qt.SortOrder.AscendingOrder
         elif self._source_kind == "directory":
@@ -448,6 +460,8 @@ class SourcesMixin:
             self._music_tooltips()
         elif self._source_kind in ("variants", "variants_loaded"):
             self._variant_marks()
+        elif self._source_kind == MIX_SOURCE:
+            self._mix_marks()
         self._apply_filter()
         self.table.setUpdatesEnabled(True)
 

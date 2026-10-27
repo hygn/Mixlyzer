@@ -11,4 +11,7 @@
   `{libpath}/variants.db` (core.library.variants), the relations as the app uses them core.search.variants. The
   research behind it (566 tracks of version sets, 1351 tracks queried against each other: no different song called
   a version) is `research/benchmark/fingerprint_research` (not committed).
+- mixability.py: the Mix Candidates' bars, where one track's end and another's start sound alike enough to blend
+  (energy, rhythm and harmony per bar; the blend lined up on both tracks' phrases). Its store is
+  `{libpath}/mixability.db` (core.library.mixability), the candidates as the app ranks them core.search.mixability.
 """

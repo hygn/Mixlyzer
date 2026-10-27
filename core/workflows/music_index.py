@@ -26,8 +26,9 @@ class MusicIndexSummary:
 
 
 class LibraryMusicIndex(QtCore.QObject):
-    """Index Now (Settings > Search > Search by Music): the library tracks not in the music search's index, or
-    without a Variants fingerprint of the current method (analyzed before they existed, or before the method
+    """Index Now (Settings > Search > Search by Music): the library tracks not in the music search's index, without
+    the mix candidates' beats' features on their stored beats, or without a Variants fingerprint of the current
+    method (analyzed before they existed, or before the method
     changed), indexed; the tracks gone from the library dropped; once done, the fingerprints of earlier methods the
     current one has replaced removed. One run at a time. The audio is read in up to MAX_PROCESSES processes (a
     quarter of the cores), each its share of the tracks; everything else, and every write, is the library's owner's
@@ -73,16 +74,17 @@ class LibraryMusicIndex(QtCore.QObject):
     def _start(self, plan: jobs.IndexPlan) -> None:
         self._planning = False
         todo = list(plan.todo)
-        music = [t for t in todo if t.music]
-        n = max(1, min(MAX_PROCESSES, (os.cpu_count() or 4) // 4, len(music))) if music else 0
+        audio = [t for t in todo if t.music or t.mix_beats is not None]
+        n = max(1, min(MAX_PROCESSES, (os.cpu_count() or 4) // 4, len(audio))) if audio else 0
         run = MusicIndexRun(len(todo), n)
         self._run, self._ended, self._indexed, self._failed, self._errors = run, 0, 0, [], []
         self._tracks = {t.uid: t for t in todo}
-        self._handed = set()        # the tracks whose entry a process handed back
-        self._pending = {t.uid: {p for p, on in (("music", t.music), ("variants", t.variants)) if on} for t in todo}
-        self._dropped = len(set(plan.drop) | set(plan.drop_variants))
+        self._handed = set()        # (uid, part): what a process handed back
+        self._pending = {t.uid: {p for p, on in (("music", t.music), ("variants", t.variants),
+                                                 ("mix", t.mix_beats is not None)) if on} for t in todo}
+        self._dropped = len(set(plan.drop) | set(plan.drop_variants) | set(plan.drop_mix))
         self.started.emit(run)
-        if plan.drop or plan.drop_variants:
+        if plan.drop or plan.drop_variants or plan.drop_mix:
             self._library.write(jobs.drop_gone, plan)
         # the variants' fingerprints: from the stored analyses, by the library's owner, a track a job
         for t in todo:
@@ -90,11 +92,13 @@ class LibraryMusicIndex(QtCore.QObject):
                 self._library.write(jobs.fingerprint, t.uid,
                                     done=lambda _r, uid=t.uid: self._part_done(uid, "variants", True),
                                     failed=lambda _exc, uid=t.uid: self._part_done(uid, "variants", False))
-        # Search by Music's: the audio read in the processes, each entry stored by the owner as it comes
+        # Search by Music's and the mix candidates' beats' features: the audio read in the processes, each stored by
+        # the owner as it comes
         self._workers = []
         for k in range(n):
-            worker = MusicIndexWorker(MusicIndexRequest(tuple(music[k::n])), parent=self)
+            worker = MusicIndexWorker(MusicIndexRequest(tuple(audio[k::n])), parent=self)
             worker.entry.connect(self._on_entry)
+            worker.mix.connect(self._on_mix)
             worker.finished.connect(self._on_worker_ended)
             worker.failed.connect(self._on_worker_failed)
             self._workers.append(worker)
@@ -106,12 +110,29 @@ class LibraryMusicIndex(QtCore.QObject):
         track = self._tracks.get(uid)
         if track is None or self._run is None:
             return
-        self._handed.add(uid)
+        self._handed.add((uid, "music"))
         if entry is None:       # its audio could not be read
             self._part_done(uid, "music", False)
             return
         self._library.write(jobs.store_music_entry, track, entry, done=lambda _r: self._part_done(uid, "music", True),
                             failed=lambda _exc: self._part_done(uid, "music", False))
+
+    @QtCore.Slot(str, object)
+    def _on_mix(self, uid: str, features) -> None:
+        track = self._tracks.get(uid)
+        if track is None or self._run is None:
+            return
+        self._handed.add((uid, "mix"))
+        if features is None:    # its audio could not be read
+            self._part_done(uid, "mix", False)
+            return
+
+        def failed(exc: Exception) -> None:
+            print(f"[Mix candidates] not indexed: {exc}")
+            self._part_done(uid, "mix", False)
+
+        self._library.write(jobs.store_mix_features, uid, track.mix_beats, features,
+                            done=lambda _r: self._part_done(uid, "mix", True), failed=failed)
 
     def _part_done(self, uid: str, part: str, ok: bool, check: bool = True) -> None:
         parts = self._pending.get(uid)
@@ -126,7 +147,8 @@ class LibraryMusicIndex(QtCore.QObject):
             self._indexed += track.path not in self._failed
             done, total = self._run.total - len(self._pending), self._run.total
             self.progress.emit(self._run, 100 * done // total if total else 100,
-                               tr("Indexing for Search by Music and Variants: {done} / {total} tracks").format(
+                               tr("Indexing for Search by Music, Variants and Mix Candidates: {done} / {total} "
+                                  "tracks").format(
                                    done=done, total=total))
         if check:
             self._maybe_finish()
@@ -148,8 +170,10 @@ class LibraryMusicIndex(QtCore.QObject):
             return
         if self._errors:
             # a process failed: its tracks not handed back are not indexed
-            for uid in [u for u, parts in self._pending.items() if "music" in parts and u not in self._handed]:
-                self._part_done(uid, "music", False, check=False)
+            for uid, parts in list(self._pending.items()):
+                for part in ("music", "mix"):
+                    if part in parts and (uid, part) not in self._handed:
+                        self._part_done(uid, part, False, check=False)
         if self._pending:
             return      # the owner's jobs still running: done as they come
         for worker in self._workers:
@@ -165,6 +189,8 @@ class LibraryMusicIndex(QtCore.QObject):
             print(f"[Variants] earlier methods not removed: {exc}")
             self.finished.emit(run, summary)
 
-        # every track done: the fingerprints of earlier methods removed by the library's owner; finished told after
-        # it (the library's Variants read again by then)
+        # every track done: the mix candidates' bars of an earlier method made again (no audio), the fingerprints of
+        # earlier methods removed by the library's owner; finished told after it (the library's Variants read again
+        # by then)
+        self._library.write(jobs.stale_mix_bars_again)
         self._library.write(jobs.prune_fingerprints, done=lambda _r: self.finished.emit(run, summary), failed=failed)

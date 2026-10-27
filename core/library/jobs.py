@@ -22,11 +22,14 @@ from typing import Optional
 
 from PySide6 import QtCore, QtGui
 
-from core.library import music_index, package, thumbnails, tieups, variants
+from core.library import mixability, music_index, package, thumbnails, tieups, variants
 from core.library.records import READING_FIELDS, IndexTrack, PlaylistTree, TrackRow
 from core.library.segments import track_index
 from core.library.service import PLAYLISTS, READINGS, TIEUPS, TRACKS, VARIANTS, changes
+from core.search import mixability as mix_search
+from core.search.variants import groups as variant_groups
 from core.tieups.domain import Catalog, TieUp, Work
+from analyzer.search import mixability as mix_fp
 from analyzer.search import variants as variant_fp
 from core.analysis_library import jobs as analysis_jobs
 from core.analysis_library.stored import StoredAnalysis, TrackEdits, apply_edits, index_marks
@@ -89,6 +92,12 @@ def save_edits(lib, uid: str, edits: TrackEdits, sync: bool = True) -> str:
         if sync:
             lib.db.write_track_index(uid, track_index(*index_marks(stored)))
         lib.features.save(uid, stored)
+    # the mix candidates' bars follow the downbeats as edited (the beats' features read again only where the beats
+    # changed: Index Now); a failure leaves the bars as they were, never the save undone
+    try:
+        mix_bars_again(lib, uid, StoredAnalysis.from_arrays(stored))
+    except Exception as exc:
+        print(f"[Mix candidates] bars not made again: {exc}")
     return uid
 
 
@@ -350,7 +359,7 @@ def comment_suffixes(lib) -> dict[str, str]:
     return tieups.comment_suffixes(lib.db.conn)
 
 
-# ---- the indexes beside the library: the Variants' and Search by Music's ----
+# ---- the indexes beside the library: the Variants', Search by Music's and the mix candidates' ----
 
 def index_state(lib, uid: str) -> tuple[bool, bool]:
     """Whether the track is in the Variants' index (its current method) and in Search by Music's."""
@@ -359,12 +368,16 @@ def index_state(lib, uid: str) -> tuple[bool, bool]:
 
 
 @changes(VARIANTS)
-def drop_from_indexes(lib, uids: list[str], *, music: bool = True, fingerprints: bool = True) -> None:
-    """Tracks out of Search by Music's index and the Variants' (their fingerprints and relations)."""
+def drop_from_indexes(lib, uids: list[str], *, music: bool = True, fingerprints: bool = True,
+                      mix: bool = True) -> None:
+    """Tracks out of Search by Music's index, the Variants' (their fingerprints and relations) and the mix
+    candidates'."""
     for on, path, open_writer, drop in ((music, music_index.path_for(lib.path), music_index.open_writer,
                                          music_index.drop),
                                         (fingerprints, variants.path_for(lib.path), variants.open_writer,
-                                         variants.drop)):
+                                         variants.drop),
+                                        (mix, mixability.path_for(lib.path), mixability.open_writer,
+                                         mixability.drop)):
         if not on or not uids or not os.path.isfile(path):
             continue
         con = open_writer(path)
@@ -377,10 +390,10 @@ def drop_from_indexes(lib, uids: list[str], *, music: bool = True, fingerprints:
 
 
 def index_status(lib) -> tuple[int, int]:
-    """(library tracks indexed for Search by Music and the variants, library tracks)."""
+    """(library tracks indexed for Search by Music, the variants and the mix candidates, library tracks)."""
     uids = {row.uid for row in lib.db.list_all()}
     indexed = music_index.indexed_uids(music_index.path_for(lib.path)) & \
-        variants.indexed_uids(variants.path_for(lib.path))
+        variants.indexed_uids(variants.path_for(lib.path)) & set(mixability.feature_beats(mixability.path_for(lib.path)))
     return len(uids & indexed), len(uids)
 
 
@@ -390,31 +403,121 @@ class IndexPlan:
     todo: tuple          # IndexTrack
     drop: tuple          # uids gone from the library: out of Search by Music's index
     drop_variants: tuple  # and out of the variants'
+    drop_mix: tuple = ()  # and out of the mix candidates'
 
 
 def index_plan(lib) -> IndexPlan:
-    """The library tracks to index (their audio there for Search by Music; their stored analyses for the variants)
-    and the ones gone to drop."""
-    search_db, variants_db = music_index.path_for(lib.path), variants.path_for(lib.path)
+    """The library tracks to index (their audio there for Search by Music and the mix candidates' beats' features,
+    those given the beats they are read on; their stored analyses for the variants) and the ones gone to drop."""
+    search_db, variants_db, mix_db = (music_index.path_for(lib.path), variants.path_for(lib.path),
+                                      mixability.path_for(lib.path))
     rows = lib.db.list_all(order_by="added_ts ASC")
     have, have_variants = music_index.indexed_uids(search_db), variants.indexed_uids(variants_db)
+    have_mix = mixability.feature_beats(mix_db)
     uids = {row.uid for row in rows}
     todo = []
     for row in rows:
-        music = row.uid not in have and bool(row.path) and os.path.isfile(row.path)
-        fp = row.uid not in have_variants and os.path.isfile(lib.features.path(row.uid))
-        if music or fp:
+        audio = bool(row.path) and os.path.isfile(row.path)
+        analysed = os.path.isfile(lib.features.path(row.uid))
+        music = row.uid not in have and audio
+        fp = row.uid not in have_variants and analysed
+        beats = None
+        if audio and analysed:
+            try:
+                stored_beats = analysis_jobs.mix_source(lib, row.uid).beats
+            except Exception as exc:
+                print(f"[Mix candidates] a stored analysis not read: {exc!r}")
+                stored_beats = None
+            if stored_beats is not None and stored_beats.size > 2 and not (
+                    row.uid in have_mix and mixability.same_beats(have_mix[row.uid], stored_beats)):
+                beats = stored_beats
+        if music or fp or beats is not None:
             todo.append(IndexTrack(row.uid, row.path, int(row.file_size or 0), float(row.file_mtime or 0.0),
-                                   music, fp))
+                                   music, fp, beats))
     return IndexPlan(tuple(todo), tuple(sorted(have - uids)),
-                     tuple(sorted(variants.indexed_uids(variants_db, any_method=True) - uids)))
+                     tuple(sorted(variants.indexed_uids(variants_db, any_method=True) - uids)),
+                     tuple(sorted(mixability.stored_uids(mix_db) - uids)))
 
 
 @changes(VARIANTS)
 def drop_gone(lib, plan: IndexPlan) -> None:
     """The tracks an Index Now plan found gone from the library dropped from each index."""
-    drop_from_indexes(lib, list(plan.drop), fingerprints=False)
-    drop_from_indexes(lib, list(plan.drop_variants), music=False)
+    drop_from_indexes(lib, list(plan.drop), fingerprints=False, mix=False)
+    drop_from_indexes(lib, list(plan.drop_variants), music=False, mix=False)
+    drop_from_indexes(lib, list(plan.drop_mix), music=False, fingerprints=False)
+
+
+def _put_mix(lib, uid: str, beat_times, features: mix_fp.BeatFeatures, stored: StoredAnalysis) -> None:
+    """A track's beats' features and the bars made of them with its stored analysis, into the mix candidates'
+    index."""
+    if stored.wave is None:
+        raise ValueError(f"no stored overview for the mix candidates' bars: {uid}")
+    bars = mix_fp.bars(stored.beats, stored.tempo_segments, stored.wave, stored.duration_sec, features)
+    con = mixability.open_writer(mixability.path_for(lib.path))
+    try:
+        with con:
+            mixability.put(con, uid, beat_times, features, bars)
+    finally:
+        con.close()
+
+
+@changes()
+def store_mix_features(lib, uid: str, beat_times, features: mix_fp.BeatFeatures) -> None:
+    """A track's beats' features (read from its audio in a worker process, on ``beat_times``) and its bars into the
+    mix candidates' index. ValueError when its stored beats are no longer those (edited meanwhile)."""
+    stored = analysis_jobs.mix_source(lib, uid)
+    if not mixability.same_beats(beat_times, stored.beats):
+        raise ValueError(f"the beats changed while their features were read: {uid}")
+    _put_mix(lib, uid, beat_times, features, stored)
+
+
+def mix_bars_again(lib, uid: str, stored: StoredAnalysis) -> bool:
+    """A track's bars made again from its stored features and analysis (its downbeats or overview as they are now),
+    when its beats are still those the features were read on. Whether they were."""
+    con = mixability.open_writer(mixability.path_for(lib.path))
+    try:
+        kept = mixability.features_of(con, uid)
+        if kept is None or not mixability.same_beats(kept[0], stored.beats) or stored.wave is None:
+            return False
+        bars = mix_fp.bars(stored.beats, stored.tempo_segments, stored.wave, stored.duration_sec, kept[1])
+        with con:
+            mixability.put_bars(con, uid, bars)
+        return True
+    finally:
+        con.close()
+
+
+@changes()
+def stale_mix_bars_again(lib) -> int:
+    """Index Now done: the bars of an earlier method made again from the features kept (no audio). How many."""
+    done = 0
+    for uid in mixability.stale_bars(mixability.path_for(lib.path)):
+        try:
+            done += mix_bars_again(lib, uid, analysis_jobs.mix_source(lib, uid))
+        except Exception as exc:
+            print(f"[Mix candidates] bars not made again: {exc}")
+    return done
+
+
+def mix_candidates(lib, uid: str, options: mix_search.MixOptions) -> list[mix_search.Candidate]:
+    """The loaded track's mix candidates (core.search.mixability): every library track but it, its versions (the
+    Variants) and the instrumentals (by their titles), by ``options``; best first."""
+    rows = lib.db.list_all()
+    marks = lib.db.mix_marks()
+
+    def track_marks(row: TrackRow) -> mix_search.TrackMarks:
+        phrases, tempo, keys = marks.get(row.uid, ([], [], []))
+        return mix_search.TrackMarks(row.uid, row.title or "", tuple(mix_fp.Unit(*p) for p in phrases),
+                                     tuple(tempo), tuple(keys))
+
+    by_uid = {row.uid: row for row in rows}
+    if uid not in by_uid:
+        return []
+    uids = set(by_uid)
+    pairs = [p for p in variants.pairs(variants.path_for(lib.path)) if p.a in uids and p.b in uids]
+    excluded = {u for g in variant_groups(pairs, uids) if uid in g for u in g}
+    return mix_search.candidates(track_marks(by_uid[uid]), [track_marks(r) for r in rows],
+                                 mixability.all_bars(mixability.path_for(lib.path)), excluded, options)
 
 
 @changes()
@@ -466,9 +569,10 @@ class StoreCheck:
     thumbnails: int = 0
     analyses: int = 0        # stored analyses moved into ORPHANED_ANALYSES
     skipped: bool = False    # library.db holds no track but the stores do: nothing touched
+    mix: int = 0             # the mix candidates' index
 
     def total(self) -> int:
-        return self.rows + self.music + self.variants + self.thumbnails + self.analyses
+        return self.rows + self.music + self.variants + self.mix + self.thumbnails + self.analyses
 
 
 @changes(PLAYLISTS, READINGS, TIEUPS, VARIANTS)
@@ -482,15 +586,17 @@ def check_stores(lib) -> StoreCheck:
     music = music_index.stored_uids(music_db) - uids
     fingerprinted = (variants.indexed_uids(variants_db, any_method=True)
                      | {u for p in variants.pairs(variants_db) for u in (p.a, p.b)}) - uids
+    mixed = mixability.stored_uids(mixability.path_for(lib.path)) - uids
     thumbs = thumbnails.thumbnail_uids(lib.path) - uids
     analyses = lib.features.uids() - uids
-    if not uids and (music or fingerprinted or thumbs or analyses):
+    if not uids and (music or fingerprinted or mixed or thumbs or analyses):
         print(f"[Library] library.db holds no track, but {len(analyses)} stored analyses and "
-              f"{len(music | fingerprinted | thumbs)} index entries or thumbnails do: left as they are")
+              f"{len(music | fingerprinted | mixed | thumbs)} index entries or thumbnails do: left as they are")
         return StoreCheck(skipped=True)
     rows = lib.db.drop_orphan_rows()
-    drop_from_indexes(lib, sorted(music), fingerprints=False)
-    drop_from_indexes(lib, sorted(fingerprinted), music=False)
+    drop_from_indexes(lib, sorted(music), fingerprints=False, mix=False)
+    drop_from_indexes(lib, sorted(fingerprinted), music=False, mix=False)
+    drop_from_indexes(lib, sorted(mixed), music=False, fingerprints=False)
     dropped = 0
     for uid in thumbs:
         try:        # a file another program holds (Explorer, an antivirus): left for the next start
@@ -505,11 +611,12 @@ def check_stores(lib) -> StoreCheck:
             moved += 1
         except OSError as exc:
             print(f"[Library] a stored analysis of no track left in place: {exc}")
-    found = StoreCheck(rows, len(music), len(fingerprinted), dropped, moved)
+    found = StoreCheck(rows, len(music), len(fingerprinted), dropped, moved, mix=len(mixed))
     if found.total():
         print(f"[Library] left over by tracks no longer in the library: {rows} rows, {len(music)} Search by Music "
-              f"entries, {len(fingerprinted)} Variants fingerprints, {dropped} thumbnails dropped; {moved} stored "
-              f"analyses moved to {os.path.join(lib.path, ORPHANED_ANALYSES)}")
+              f"entries, {len(fingerprinted)} Variants fingerprints, {len(mixed)} mix candidates' entries, "
+              f"{dropped} thumbnails dropped; {moved} stored analyses moved to "
+              f"{os.path.join(lib.path, ORPHANED_ANALYSES)}")
     else:
         print(f"[Library] the stores agree with library.db ({len(uids)} tracks)")
     return found
@@ -606,6 +713,14 @@ def store_analysis(lib, payload: dict) -> dict:
                 print(f"[Variants] {found} found")
         except Exception as exc:
             print(f"[Variants] not indexed: {exc}")
+    # the mix candidates' beats' features (the analysis's) and their bars; a failure leaves the track out of the
+    # candidates until Index Now, never the analysis undone
+    if stored.get("mix") is not None:
+        try:
+            analysis = payload["analysis"] or StoredAnalysis.from_arrays(arrays)
+            _put_mix(lib, uid, analysis.beats, stored["mix"], analysis)
+        except Exception as exc:
+            print(f"[Mix candidates] not indexed: {exc}")
     # a new track (not in the library before this analysis) takes its versions' tie-ups; a failure leaves it without,
     # never the analysis undone
     payload["new_track"] = known is None

@@ -1,6 +1,7 @@
 """The full analysis of a track, every stage in order: the audio decoded once (stereo, its mono mix) -> HPSS -> the
 overview waveform (its own 48 kHz decode) -> the frame features and the beat tracker -> phrases and their CUE points
--> JumpCUEs -> keys -> Search by Music's index entry -> the Variants' fingerprints -> TrackAnalysis.
+-> JumpCUEs -> keys -> Search by Music's index entry -> the Variants' fingerprints -> the mix candidates' beats'
+features -> TrackAnalysis.
 
 It reads the audio only: where the results are stored, and in what form, is the caller's."""
 
@@ -27,7 +28,8 @@ from analyzer.phrase.cue_points import autocue_time_sec, phrase_cue_points
 from analyzer.pipeline import stages
 from analyzer.pipeline.stages import Progress, report
 from analyzer.runtime import prime_physical_core_count
-from analyzer.search import variants
+from analyzer.search import mixability, variants
+from analyzer.search.mixability import BeatFeatures
 from analyzer.search.music.index import IndexEntry, index_audio
 from analyzer.settings import ANALYSIS_SAMPLE_RATE, AnalysisSettings
 
@@ -49,6 +51,7 @@ class TrackAnalysis:
                                            # made from them and the phrases (analyzer.music.key_rows.main_key)
     music_index: IndexEntry | None         # Search by Music's entry (None: not asked, or it failed)
     variants: list[Any] | None             # the Variants' fingerprints (search.variants.track_fingerprints; None: failed)
+    mix_features: BeatFeatures | None = None   # the mix candidates' beats' features on ``beats`` (None: failed)
 
 
 def analyze_track(path: str, settings: AnalysisSettings, progress: Progress = None) -> TrackAnalysis:
@@ -272,6 +275,14 @@ def analyze_track(path: str, settings: AnalysisSettings, progress: Progress = No
     except Exception as exc:
         print(f"[Variants] not fingerprinted: {exc}")
         fingerprints = None
+    # the mix candidates' beats' features (the frame features' chroma and percussive bands pooled into the beats,
+    # ~20 ms); a failure leaves the track out of the candidates, never the analysis undone
+    try:
+        mix_features = mixability.beat_features(
+            beats_out, frame_features.frame_times, frame_features.chroma, frame_features.percussive_bands)
+    except Exception as exc:
+        print(f"[Mix candidates] beats' features not made: {exc}")
+        mix_features = None
 
     print("[Analyzer] Analysis Finished")
     return TrackAnalysis(
@@ -287,4 +298,5 @@ def analyze_track(path: str, settings: AnalysisSettings, progress: Progress = No
         key_segments=key_segments,
         music_index=music_entry,
         variants=fingerprints,
+        mix_features=mix_features,
     )

@@ -288,11 +288,58 @@ class LibraryServiceTests(unittest.TestCase):
         self.settle()
         self.assertEqual(self.library.snapshot.track(stored[1]["properties"]["uid"]).title, "tag title")
 
+    def test_the_mix_candidates_index_follows_index_now_the_editor_and_a_removal(self):
+        """Index Now's plan gives a track's stored beats to read its features on, stored with its bars (refused when
+        the beats changed meanwhile); the editor's save makes the bars follow the downbeats; a removal drops it."""
+        import numpy as np
+        from analyzer.search import mixability as mx
+        from core.analysis_library.stored import TrackEdits
+        from core.library import mixability
+        audio = os.path.join(self.lib, "m.wav")
+        open(audio, "wb").close()
+        row = _row(audio)
+        beats = np.arange(65) * 0.5                        # 16 bars at 120
+        tempo = np.asarray([[0.0, 32.0, 120.0, 0.0, 4.0, 120.0]])
+        rng = np.random.default_rng(0)
+        self.library.write(jobs.save_track, row, False)
+        self.library.write(lambda lib: lib.features.save(row.uid, {
+            "beats_time_sec": beats, "tempo_segments": tempo, "duration_sec": 32.0,
+            "wave_minmax_np": np.zeros((0, 2), np.int8), "wave_minmax_ref": np.ones(1, np.float32),
+            "wave_bands_np": rng.integers(40, 250, size=(512, 12)).astype(np.uint8),
+            "wave_bands_ref": np.ones(12, np.float32), "wave_detail_band_ref": np.zeros(3, np.float32)}))
+        plans = []
+        self.library.read(jobs.index_plan, done=plans.append)
+        self.settle()
+        todo = {t.uid: t for t in plans[0].todo}
+        self.assertTrue(np.array_equal(todo[row.uid].mix_beats, beats))
+        features = mx.BeatFeatures(rng.random((64, 12)).astype(np.float32),
+                                   rng.random((64, 3, mx.POSITIONS)).astype(np.float32))
+        errors = []
+        self.library.write(jobs.store_mix_features, row.uid, beats + 0.25, features, failed=errors.append)
+        self.library.write(jobs.store_mix_features, row.uid, beats, features, failed=errors.append)
+        self.library.read(jobs.index_plan, done=plans.append)
+        self.settle()
+        self.assertEqual(len(errors), 1)                    # the other beats refused
+        bars = mixability.all_bars(mixability.path_for(self.lib))[row.uid]
+        self.assertEqual((bars.size, float(bars.start[0])), (16, 0.0))
+        self.assertIsNone({t.uid: t for t in plans[1].todo}[row.uid].mix_beats)   # indexed: nothing to read
+        # the editor moves the downbeat a beat on: the bars follow, the features kept
+        moved = tempo.copy()
+        moved[0, 3] = 0.5
+        self.library.write(jobs.save_edits, row.uid, TrackEdits(beats=beats, tempo_segments=moved,
+                                                                key_segments=np.zeros((0, 4)), phrases=(),
+                                                                jump_cues=None, cue_points=()))
+        self.settle()
+        self.assertAlmostEqual(float(mixability.all_bars(mixability.path_for(self.lib))[row.uid].start[0]), 0.5)
+        self.library.write(jobs.remove_tracks, [row.uid])
+        self.settle()
+        self.assertEqual(mixability.stored_uids(mixability.path_for(self.lib)), set())
+
     def test_the_start_drops_what_tracks_gone_left_behind(self):
         """check_stores: every store beside library.db made to agree with its tracks; a stored analysis set aside, not
         deleted; a library.db without tracks touches nothing."""
         import numpy as np
-        from core.library import music_index, thumbnails, variants
+        from core.library import mixability, music_index, thumbnails, variants
         kept, gone = _row("k.wav"), str(uuid4())
         self.library.write(jobs.save_track, kept, False)
         self.library.write(jobs.create_playlist, "P", done=lambda p: self.library.write(
@@ -318,11 +365,16 @@ class LibraryServiceTests(unittest.TestCase):
                 con.execute("INSERT INTO variant_song(uid, method, frames) VALUES(?, 1, 0)", (gone,))
                 con.execute("INSERT INTO variant_pair(a, b, method, kind) VALUES(?, ?, 1, 'same')", (kept.uid, gone))
             con.close()
+            con = mixability.open_writer(mixability.path_for(lib.path))
+            with con:
+                con.execute("INSERT INTO mix_track(uid, features) VALUES(?, 'old')", (gone,))
+            con.close()
         self.library.write(leftovers)
         found = []
         self.library.write(jobs.check_stores, done=found.append)
         self.settle()
-        self.assertEqual(found, [jobs.StoreCheck(rows=2, music=1, variants=1, thumbnails=1, analyses=1)])
+        self.assertEqual(found, [jobs.StoreCheck(rows=2, music=1, variants=1, thumbnails=1, analyses=1, mix=1)])
+        self.assertEqual(mixability.stored_uids(mixability.path_for(self.lib)), set())
         lib = self.lib
         self.assertEqual(thumbnails.thumbnail_uids(lib), {kept.uid})
         self.assertEqual(music_index.stored_uids(music_index.path_for(lib)), set())

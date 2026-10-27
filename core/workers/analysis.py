@@ -33,7 +33,7 @@ def analyze_for_library(path: str, cfg: config,
                         progress: Optional[Callable[[str, str, float], None]] = None) -> Dict[str, Any]:
     """The track analyzed, as the library's owner stores it (core.library.jobs.store_analysis): its stored analysis
     (``arrays``: core.analysis_library.stored), its row's properties and ``store`` (the index rows, Search by Music's
-    entry, the Variants' fingerprints, the cover as the file holds it).
+    entry, the Variants' fingerprints, the mix candidates' beats' features, the cover as the file holds it).
     ``progress(status, task, fraction)``: each stage in words (the status line's, "" for none; the task's)."""
     def report(status: str, task: str, fraction: float) -> None:
         if progress is not None:
@@ -69,7 +69,7 @@ def analyze_for_library(path: str, cfg: config,
     # (its thumbnail)
     return {"arrays": arrays_of(result), "properties": properties, "update_db": True,
             "store": {"index": index, "music_entry": result.music_index,
-                      "variants": result.variants, "cover": cover_data(path)}}
+                      "variants": result.variants, "mix": result.mix_features, "cover": cover_data(path)}}
 
 
 def _analysis_process_entry(

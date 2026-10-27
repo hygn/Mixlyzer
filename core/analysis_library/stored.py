@@ -169,6 +169,8 @@ ANNOTATION_KEYS = (BEATS, SAMPLE_RATE, DURATION, TEMPO_ROWS, KEYS, KEYS_AUTO)
 ANNOTATION_BLOCKS = (PHRASES + ".", JUMP_CUES + ".", JUMP_CUES_AUTO + ".")
 # what the Variants' fingerprint reads (analyzer.search.variants): the beats, the length and the overview
 FINGERPRINT_KEYS = (BEATS, DURATION, *WAVE, WAVE_DETAIL_REF)
+# what the mix candidates' bars read (analyzer.search.mixability.bars): those and the tempo rows (the downbeats)
+MIX_KEYS = (*FINGERPRINT_KEYS, TEMPO_ROWS)
 # what library.db's rows of a track are made from (core.library.segments.track_index): the tempo and key rows and the
 # phrases
 INDEX_KEYS = (DURATION, TEMPO_ROWS, KEYS)

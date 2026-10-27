@@ -239,6 +239,9 @@ def separator() -> QtWidgets.QFrame:
     return line
 
 
+SEARCH_MIN_WIDTH = 220     # the search field's least width
+
+
 class SearchMixin:
     """This module's part of LibraryWidget (mixed into it)."""
 
@@ -348,7 +351,7 @@ class SearchMixin:
         primary = QtWidgets.QHBoxLayout()
         primary.setContentsMargins(0, 0, 0, 0)
         primary.setSpacing(4)
-        self.e_search.setMinimumWidth(220)
+        self.e_search.setMinimumWidth(SEARCH_MIN_WIDTH)
         primary.addWidget(self.btn_mic)
         primary.addWidget(self.btn_music_close)
         primary.addWidget(self.e_search, 1)

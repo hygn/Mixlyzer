@@ -149,8 +149,8 @@ def build_search_tab(dialog) -> None:
     f_music.addRow(dialog.lbl_music_index_status)
     dialog.btn_music_index_now = QPushButton(tr("Index Now"))
     dialog.btn_music_index_now.setToolTip(
-        tr("<p>Index the library's tracks not indexed yet for Search by Music or the Variants, in the background. "
-           "Tracks gone from the library leave the index.</p>"))
+        tr("<p>Index the library's tracks not indexed yet for Search by Music, the Variants or the Mix Candidates, "
+           "in the background. Tracks gone from the library leave the index.</p>"))
     f_music.addRow("", dialog.btn_music_index_now)
 
     form.addRow(grp_db)

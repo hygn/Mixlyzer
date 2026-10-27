@@ -943,6 +943,29 @@ class LibraryDB:
         )
         return [BpmSegmentRow(**dict(row)) for row in cur.fetchall()]
 
+    def mix_marks(self) -> dict[str, tuple[list, list, list]]:
+        """Every track's marks the mix candidates read (core.search.mixability): uid -> (its phrases (start, end,
+        label), its tempo rows (start, end, bpm, bpm_end), its key rows (start, end, key)), each in order."""
+        out: dict[str, tuple[list, list, list]] = {}
+
+        def rows(uid: str) -> tuple[list, list, list]:
+            return out.setdefault(uid, ([], [], []))
+
+        for uid, start, end, label in self.conn.execute(
+                """SELECT track_uid, MIN(phrase_start_sec), MAX(phrase_end_sec), phrase_label
+                   FROM track_phrase_sections GROUP BY track_uid, phrase_seq_index
+                   ORDER BY track_uid, phrase_seq_index;"""):
+            rows(uid)[0].append((float(start), float(end), str(label)))
+        for uid, start, end, bpm, bpm_end in self.conn.execute(
+                """SELECT track_uid, start_sec, end_sec, bpm, bpm_end FROM track_bpm_segments
+                   WHERE bpm IS NOT NULL ORDER BY track_uid, seq_index;"""):
+            rows(uid)[1].append((float(start), float(end), float(bpm), float(bpm_end) if bpm_end is not None else 0.0))
+        for uid, start, end, key in self.conn.execute(
+                """SELECT track_uid, start_sec, end_sec, key_value FROM track_key_segments
+                   WHERE key_value IS NOT NULL ORDER BY track_uid, seq_index;"""):
+            rows(uid)[2].append((float(start), float(end), int(key)))
+        return out
+
     def search_phrase_sections(
         self,
         phrase_label: str,

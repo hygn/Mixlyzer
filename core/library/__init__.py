@@ -12,6 +12,7 @@ asks the owner. Where to look:
     tieups.py       library.db: the tie-up tables (what a tie-up is: core.tieups.domain)
     variants.py     variants.db: the Variants' fingerprints and relations (what they are: analyzer.search.variants, core.search.variants)
     music_index.py  music_search.db: Search by Music's index (the search itself: analyzer.search.music)
+    mixability.py   mixability.db: the Mix Candidates' beats' features and bars (what they are: analyzer.search.mixability, core.search.mixability)
     thumbnails.py   thumbs/{uid}.jpg
 
   beside it, the same owner's: core.analysis_library, the tracks' stored analyses ({uid}.npz; its jobs.py the

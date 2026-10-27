@@ -496,6 +496,43 @@ class LibraryWidgetTests(unittest.TestCase):
         self.model.load(StoredAnalysis.from_arrays({"duration_sec": 240.0}), {"uid": self.uids[2]}, 240.0)
         self.assertEqual(self.column(TITLE), [])
 
+    def test_mix_candidates_of_the_loaded_track_by_the_criteria_under_the_search(self):
+        db = LibraryDB(os.path.join(self.lib, "library.db"))
+        db.connect()
+        for uid, bpm in ((self.uids[0], 128.0), (self.uids[2], 125.0)):
+            db.replace_bpm_segments(uid, [BpmSegmentRow(uid, 0, 0.0, 200.0, 200.0, bpm)])
+        db.conn.commit()
+        db.close()
+        self.library.refresh()
+        self.settle()
+        self.w.source_tree.setCurrentItem(self.source("mix_candidates"))
+        self.assertFalse(self.w.mix_bar.isHidden())
+        self.assertEqual(self.column(TITLE), [])             # no track loaded
+
+        def answered() -> None:
+            self.settle()
+            APP.processEvents()
+
+        # loaded: あのね at 128. No track has bars: the sound criterion is met by none (AND: no candidate)
+        self.model.load(StoredAnalysis.from_arrays({"duration_sec": 200.0}), {"uid": self.uids[0]}, 200.0)
+        answered()
+        self.assertEqual(self.column(TITLE), [])
+        self.w.mix_toggle.setChecked(True)                  # OR: both start at 125, within +-8 % of 128
+        answered()
+        self.assertEqual(sorted(self.column(TITLE)), ["Hello World", "Third Song"])
+        self.assertFalse(self.cfg.deckconfig.mix_match_all)
+        self.assertIn("128.0", self.w.table.item(0, TITLE).toolTip())
+        self.w.sp_mix_tempo.setValue(1.0)                   # 125 is 2.3 % off
+        answered()
+        self.assertEqual(self.column(TITLE), [])
+        self.assertEqual(self.cfg.deckconfig.mix_tempo_range, 1.0)
+        for chip in (self.w.cb_mix_bpm, self.w.cb_mix_audio):  # no criterion: every other track
+            chip.setChecked(False)
+        answered()
+        self.assertEqual(sorted(self.column(TITLE)), ["Hello World", "Third Song"])
+        self.w.source_tree.setCurrentItem(self.source("library"))
+        self.assertTrue(self.w.mix_bar.isHidden())
+
     def test_search_by_music_results_ranked_and_loaded_at_their_place(self):
         self.search("hello")
         self.w._enter_music_mode()

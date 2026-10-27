@@ -15,6 +15,7 @@ from system.i18n import tr, tr_mark
 from ui.library.actions import ActionsMixin
 from ui.library.common import (INCREMENTAL_ROWS_MAX, LIBRARY_UPDATE_DELAY_MS, Track, 
     _ANALYZED_ROLE, _SORT_ROLE, _SortItem, row_to_track)
+from ui.library.mix import MIX_SOURCE, MixMixin
 from ui.library.music import MusicMixin
 from ui.library.playlists import PlaylistsMixin
 from ui.library.search import SearchMixin
@@ -26,7 +27,7 @@ if TYPE_CHECKING:   # the window imports the tie-up editor's parts (ui.library.t
     from ui.windows.tieup_works import WorksWindow
 
 
-class LibraryWidget(SourcesMixin, SearchMixin, MusicMixin, PlaylistsMixin, TrackPanelMixin, ActionsMixin,
+class LibraryWidget(SourcesMixin, SearchMixin, MusicMixin, MixMixin, PlaylistsMixin, TrackPanelMixin, ActionsMixin,
                     QtWidgets.QWidget):
     ART_HEADER = ""  # the album art column (the top of the art)
     ART_WIDTH = 56
@@ -108,6 +109,7 @@ class LibraryWidget(SourcesMixin, SearchMixin, MusicMixin, PlaylistsMixin, Track
         self._build_sources()
         self._build_music()
         primary = self._build_search()
+        primary.addWidget(self._build_mix())     # the Mix Candidates' criteria, at the row's end while shown
         self._build_table()
 
         content = QtWidgets.QWidget()
@@ -256,6 +258,7 @@ class LibraryWidget(SourcesMixin, SearchMixin, MusicMixin, PlaylistsMixin, Track
             return
         self._library_tracks = self._tracks(data)
         self._structured_found = None      # the phrase / transition searches asked again
+        self._mix_forget()                 # and the mix candidates
         resolved: dict[str, list[str]] = {}
         for track in self._library_tracks:
             playlist_uids = self._pending_playlist_paths.pop(
@@ -340,9 +343,10 @@ class LibraryWidget(SourcesMixin, SearchMixin, MusicMixin, PlaylistsMixin, Track
         properties = self.model.properties if self.model is not None else {}
         uid = properties.get("uid") if isinstance(properties, dict) else None
         loaded = str(uid or "").strip() or None
-        if loaded != self._loaded_uid and self._source_kind == "variants_loaded" and not self._music_mode:
+        if (loaded != self._loaded_uid and self._source_kind in ("variants_loaded", MIX_SOURCE)
+                and not self._music_mode):
             self._loaded_uid = loaded
-            self._refresh_current_source(reset_sort=True)   # the new track's versions
+            self._refresh_current_source(reset_sort=True)   # the new track's versions, or candidates
         self._loaded_uid = loaded
         self._mark_loaded_track()
     def _mark_loaded_track(self) -> None:

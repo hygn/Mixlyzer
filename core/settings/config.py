@@ -138,6 +138,15 @@ class deckconfig:
     # Search by Music's microphone, by its name as the system lists it ("": the system's default input), picked in
     # the library's search bar
     music_input_device: str
+    # the Mix Candidates' criteria (core.search.mixability.MixOptions), set at the end of the library's search
+    # bar: the tracks to play before the loaded one or after it; B's BPM within mix_tempo_range % of A's, its key
+    # compatible, its sound alike; all those on, or any
+    mix_previous: bool
+    mix_bpm: bool
+    mix_key: bool
+    mix_audio: bool
+    mix_match_all: bool
+    mix_tempo_range: float
 
 
 @dataclass
@@ -477,6 +486,12 @@ def default_cfg():
         color_type=5,    # FILTER (client.COLOR_TYPES), as the engine starts
         color_param=0.5,
         music_input_device="",
+        mix_previous=False,
+        mix_bpm=True,
+        mix_key=False,      # keys are a blend's colour, not a gate: the candidates are ranked by how they sound
+        mix_audio=True,
+        mix_match_all=True,
+        mix_tempo_range=8.0,
     )
     pcfg = playbackconfig(
         default_volume_percent=100,

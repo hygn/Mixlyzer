@@ -17,7 +17,7 @@ from typing import Optional
 
 from analyzer.training.library_tracks import Annotation
 from core.analysis_library.stored import ANNOTATION_BLOCKS, ANNOTATION_KEYS, FINGERPRINT_KEYS, INDEX_BLOCKS, \
-    INDEX_KEYS, StoredAnalysis, annotation_of, index_marks
+    INDEX_KEYS, MIX_KEYS, StoredAnalysis, annotation_of, index_marks
 
 
 def analysis(lib, uid: str) -> Optional[StoredAnalysis]:
@@ -32,6 +32,15 @@ def fingerprint_source(lib, uid: str) -> StoredAnalysis:
     """What the Variants' fingerprint reads of a track's stored analysis: its beats, length and overview (the rest
     is not decompressed). Raises what the read raised; FileNotFoundError when the track has none stored."""
     arrays = lib.features.load_keys(uid, FINGERPRINT_KEYS)
+    if arrays is None:
+        raise FileNotFoundError(lib.features.path(uid))
+    return StoredAnalysis.from_arrays(arrays)
+
+
+def mix_source(lib, uid: str) -> StoredAnalysis:
+    """What the mix candidates' bars read of a track's stored analysis: its beats, tempo rows, length and overview.
+    Raises what the read raised; FileNotFoundError when the track has none stored."""
+    arrays = lib.features.load_keys(uid, MIX_KEYS)
     if arrays is None:
         raise FileNotFoundError(lib.features.path(uid))
     return StoredAnalysis.from_arrays(arrays)
