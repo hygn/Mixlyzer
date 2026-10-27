@@ -1060,21 +1060,26 @@ class AppWindow(QtWidgets.QMainWindow):
         self.player.set_exclusive_rate(int(pcfg.native_exclusive_rate))
         self.player.set_process(pcfg.native_priority, bool(pcfg.native_power_throttling))
 
+    # The deck's MT and the editor's metronome buttons: what playing changes, applied alone and kept in deck.json a
+    # second after (settings.deck_changed), not a whole settings save (that filled the settings window again and
+    # pushed the click's sound again: the GUI and the audio worker held a moment, the waveform jerked)
     def _on_timestretch_toggle(self, enabled: bool) -> None:
-        """The deck's MT button (the time stretch's one place), kept in deck.json."""
+        """The deck's MT button (the time stretch's one place)."""
         if bool(self.cfg.deckconfig.use_timestretch) == bool(enabled):
             return
-        new_cfg = copy.deepcopy(self.cfg)
-        new_cfg.deckconfig.use_timestretch = bool(enabled)
-        self._on_settings_save(new_cfg)
+        self.cfg.deckconfig.use_timestretch = bool(enabled)
+        self.settings.deck_changed()
+        self._apply_timestretch(bool(enabled))
+        self.pane.apply_playback_config(self.cfg)
 
     def _on_metronome_toggle(self, enabled: bool) -> None:
-        """The editor's metronome button (the metronome's on / off's one place), kept in deck.json."""
+        """The editor's metronome button (the metronome's on / off's one place)."""
         if bool(self.cfg.deckconfig.enable_metronome) == bool(enabled):
             return
-        new_cfg = copy.deepcopy(self.cfg)
-        new_cfg.deckconfig.enable_metronome = bool(enabled)
-        self._on_settings_save(new_cfg)
+        self.cfg.deckconfig.enable_metronome = bool(enabled)
+        self.settings.deck_changed()
+        QtCore.QMetaObject.invokeMethod(self.metro, "start" if enabled else "stop", QtCore.Qt.QueuedConnection)
+        self.pane.apply_playback_config(self.cfg)
 
     def _apply_timestretch(self, enabled: bool) -> None:
         if enabled and not self.player.native:

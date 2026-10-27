@@ -40,6 +40,15 @@ impl Timeline {
         }
     }
 
+    /// Playback starting at output frame ``out_end``: every frame before it (a pause's flushed audio, the silence
+    /// after it) is heard as the deck standing at ``in_start``, where it starts. The frame heard is a reckoning that
+    /// trails the new audio by the device's latency: read through the flushed audio's segments it showed the
+    /// position played before the pause.
+    pub fn hold_until(&mut self, out_end: u64, in_start: f64) {
+        self.segments.clear();
+        self.append(0, out_end, in_start, 0.0);
+    }
+
     /// Drops the segments that finished playing, keeping the one being heard.
     pub fn prune(&mut self, heard: f64) {
         while self.segments.len() > 1 && self.segments[1].out_start as f64 <= heard {

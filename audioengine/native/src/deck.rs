@@ -1042,6 +1042,25 @@ mod tests {
     }
 
     #[test]
+    fn play_after_cue_shows_the_cue_point_not_where_it_played() {
+        let mut r = Rig::new(10.0, true, &[], &[]);
+        r.seek(1.0);
+        r.tap(act::CUE); // the cue point at 1.0
+        r.tap(act::PLAY_PAUSE);
+        r.pump(100); // ~2.0
+        r.tap(act::CUE); // back to the cue point, stopped
+        r.pump(2);
+        assert!(!r.playing() && near(r.at(), 1.0));
+        r.tap(act::PLAY_PAUSE);
+        for _ in 0..5 {
+            // before the new audio is heard: still at the cue point (the flushed audio's ~2 s never shown)
+            let (frame, _speed) = r.s.engine.display_frame(clock::now());
+            assert!(r.at() >= 1.0 - 1e-6 && r.at() < 1.1 && frame / SEC < 1.1, "{} {}", r.at(), frame / SEC);
+            r.pump(1);
+        }
+    }
+
+    #[test]
     fn seeks_faster_than_the_ring_drains_never_overrun_it() {
         let mut r = Rig::new(20.0, true, &[], &[]);
         r.tap(act::PLAY_PAUSE);

@@ -431,6 +431,7 @@ impl Engine {
             return false;
         }
         self.take_start_standby();
+        self.timeline.hold_until(self.ring.written(), self.pos);
         self.playing = true;
         self.monitor.observe(None, 0.0);
         self.probe = Some((self.ring.written(), self.command_at, 0));
