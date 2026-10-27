@@ -15,7 +15,7 @@ To run every suite at once (the gated ones skip):
 
 Some of the `tests/test_*.py` tests skip when something optional is missing:
 
-- the native engine (`build/audio_engine.py`): `test_native_engine.py`
+- the native engine (`build/audio_engine.py`): `test_native_engine.py`, `test_native_mixer.py`
 - FFmpeg: `test_tag_writer.py`'s MP4 cases
 - Babel (`uv sync --group dev`): `test_i18n.py`'s catalog check
 
@@ -30,7 +30,10 @@ These are the app's tests, each on a library or files of its own. They cover:
 - the stored analysis, the track model, and the editor's save;
 - tags, readings, tie-ups, and Variants;
 - External Sync's OSC;
-- the waveform's renderer, and the native engine against the Python one.
+- the waveform's renderer;
+- the native engine: its scratch path against the Python one's, its time stretch, its playback and malformed
+  commands, and its mixer by the PCM it renders (the channel strip, each Sound Color FX and its place, the master,
+  the booth, the headphones).
 
 ## `unit/`
 

@@ -634,3 +634,341 @@ impl Slot {
         Slot { engine, deck }
     }
 }
+
+/// The deck's rules (CUE / PLAY, CALL, steps, JumpCUE, the tempo range, the lamps) on a track of its own, its ring
+/// read by the main device's callback as a device would (no device opened).
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::bridge::Bridge;
+    use crate::device::{Bus, CallbackState, Port};
+    use crate::mixer::MixParams;
+    use crate::shm::Pcm;
+
+    const RATE: u32 = 48000;
+    const SEC: f64 = RATE as f64;
+    const BEAT: f64 = 0.5 * SEC; // 120 BPM, a downbeat every 4 beats
+    const BLINK_ON: f64 = 0.1; // a lamp's blink lit at this clock time, dark half a second on
+    const BLINK_OFF: f64 = 0.6;
+
+    struct Rig {
+        s: Slot,
+        ring: Arc<Ring>,
+        cb: CallbackState,
+        out: Vec<f32>,
+    }
+
+    impl Rig {
+        /// A deck with a ``seconds``-long track (none: 0), its beats, ``cues`` (s) its CUE points, ``jumps`` (s)
+        /// JumpCUE A, B, ...
+        fn new(seconds: f64, beats: bool, cues: &[f64], jumps: &[f64]) -> Rig {
+            let port = Arc::new(Port::default());
+            let params = Arc::new(MixParams::new(2));
+            let ring = Arc::new(Ring::new(RATE as u64 * 5 / 2, 4, SEC, port));
+            ring.attach_bus(Bus { params: params.clone(), bridges: std::array::from_fn(|_| Arc::new(Bridge::new(RATE as u64, SEC))) });
+            let mut s = Slot::new(RATE, 2, ring.clone(), params.strip.clone());
+            if seconds > 0.0 {
+                let n = (seconds * SEC) as usize;
+                let pcm: Vec<f32> = (0..2 * n).map(|i| 0.1 * ((i / 2) as f32 * 0.05).sin()).collect();
+                s.engine.set_track(Some(Pcm::owned(pcm, 2)), 1);
+            }
+            s.deck.new_track();
+            let beats: Vec<f64> = if beats { (0..).map(|k| k as f64 * BEAT).take_while(|&b| b < seconds * SEC).collect() } else { vec![] };
+            let mut payload = (beats.len() as u32).to_le_bytes().to_vec();
+            beats.iter().for_each(|b| payload.extend(b.to_le_bytes()));
+            (0..beats.len()).for_each(|k| payload.push((k % 4 == 0) as u8));
+            payload.extend((cues.len() as u32).to_le_bytes());
+            cues.iter().for_each(|c| payload.extend((c * SEC).to_le_bytes()));
+            for k in 0..26 {
+                payload.extend(jumps.get(k).map(|j| j * SEC).unwrap_or(f64::NAN).to_le_bytes());
+            }
+            s.deck.set_marks(&payload);
+            Rig { s, ring, cb: CallbackState::new(2, SEC), out: vec![0.0; 480 * 2] }
+        }
+
+        fn press(&mut self, code: u32) {
+            self.s.deck.action(&mut self.s.engine, code, true);
+        }
+
+        fn release(&mut self, code: u32) {
+            self.s.deck.action(&mut self.s.engine, code, false);
+        }
+
+        fn tap(&mut self, code: u32) {
+            self.press(code);
+            self.release(code);
+        }
+
+        fn seek(&mut self, sec: f64) {
+            self.s.engine.seek(sec * SEC);
+        }
+
+        /// ``blocks`` of 10 ms read by the device's callback, the engine and the deck ticking between.
+        fn pump(&mut self, blocks: usize) {
+            for _ in 0..blocks {
+                self.s.engine.tick();
+                self.ring.fill(&mut self.out, &mut self.cb, 0.0);
+                self.s.deck.tick(&mut self.s.engine);
+            }
+        }
+
+        fn at(&self) -> f64 {
+            self.s.engine.playhead_frame() / SEC
+        }
+
+        fn cue(&self) -> f64 {
+            self.s.deck.cue / SEC
+        }
+
+        fn playing(&self) -> bool {
+            self.s.engine.playing
+        }
+
+        /// (PLAY lit, CUE lit) at clock time ``now``.
+        fn lamps(&self, now: f64) -> (bool, bool) {
+            let l = self.s.deck.lamps(&self.s.engine, now);
+            (l & 1 != 0, l & 2 != 0)
+        }
+    }
+
+    fn near(a: f64, b: f64) -> bool {
+        (a - b).abs() < 1e-6
+    }
+
+    #[test]
+    fn no_track_cue_and_play_do_nothing() {
+        let mut r = Rig::new(0.0, false, &[], &[]);
+        r.press(act::CUE);
+        r.release(act::CUE);
+        r.tap(act::PLAY_PAUSE);
+        assert!(!r.playing());
+        assert_eq!(r.s.deck.lamps(&r.s.engine, BLINK_ON), 4, "only the jog's VINYL lit");
+        assert!(r.s.deck.cue_frame(&r.s.engine).is_nan());
+    }
+
+    #[test]
+    fn cue_stopped_off_the_cue_point_sets_it_on_the_nearest_beat() {
+        let mut r = Rig::new(10.0, true, &[], &[]);
+        r.seek(1.6);
+        r.press(act::CUE);
+        assert!(!r.playing());
+        assert!(near(r.cue(), 1.5) && near(r.at(), 1.5), "cue {} playhead {}", r.cue(), r.at());
+        r.release(act::CUE); // let go: nothing more
+        assert!(!r.playing() && near(r.at(), 1.5));
+        // without beats the cue point is where the playhead stands; past the last beat, the track's end is nearer
+        let mut r = Rig::new(10.0, false, &[], &[]);
+        r.seek(1.6);
+        r.tap(act::CUE);
+        assert!(near(r.cue(), 1.6));
+        let mut r = Rig::new(10.0, true, &[], &[]);
+        r.seek(9.9);
+        r.tap(act::CUE);
+        assert!(near(r.cue(), 10.0));
+    }
+
+    #[test]
+    fn cue_held_on_the_cue_point_previews_and_goes_back() {
+        let mut r = Rig::new(10.0, true, &[], &[]);
+        r.seek(2.0);
+        r.tap(act::CUE); // the cue point at 2 s
+        r.press(act::CUE);
+        assert!(r.playing() && r.s.deck.previewing);
+        r.pump(30);
+        assert!(r.at() > 2.1, "previewing plays on: {}", r.at());
+        r.press(act::CUE); // a second press while held (the GUI's and a controller's): ignored
+        assert!(r.playing());
+        r.release(act::CUE);
+        assert!(!r.playing() && !r.s.deck.previewing);
+        assert!(near(r.at(), 2.0));
+    }
+
+    #[test]
+    fn play_while_cue_is_held_plays_on() {
+        let mut r = Rig::new(10.0, true, &[], &[]);
+        r.press(act::CUE); // on the cue point (the start): previewing
+        r.tap(act::PLAY_PAUSE);
+        assert!(r.s.deck.latched);
+        r.tap(act::PLAY_PAUSE); // again: no change
+        assert!(r.playing() && r.s.deck.latched);
+        r.release(act::CUE);
+        assert!(r.playing() && !r.s.deck.previewing, "latched: plays on");
+    }
+
+    #[test]
+    fn cue_while_playing_goes_back_to_it_and_stops() {
+        let mut r = Rig::new(10.0, true, &[], &[]);
+        r.seek(1.0);
+        r.tap(act::CUE);
+        r.tap(act::PLAY_PAUSE);
+        r.pump(50);
+        assert!(r.at() > 1.3);
+        r.press(act::CUE);
+        assert!(!r.playing() && near(r.at(), 1.0));
+        r.release(act::CUE);
+        assert!(!r.playing() && near(r.at(), 1.0));
+    }
+
+    #[test]
+    fn play_pause_stop_and_track_start() {
+        let mut r = Rig::new(10.0, true, &[], &[]);
+        r.seek(3.0);
+        r.tap(act::CUE); // the cue point at 3 s
+        r.tap(act::PLAY_PAUSE);
+        assert!(r.playing());
+        r.pump(50);
+        r.tap(act::PLAY_PAUSE);
+        let paused = r.at();
+        assert!(!r.playing() && paused > 3.2, "paused where it was heard: {paused}");
+        r.tap(act::PLAY_PAUSE);
+        r.pump(10);
+        r.tap(act::TRACK_START);
+        assert!(r.playing(), "back to the start, playing on");
+        r.tap(act::STOP);
+        assert!(!r.playing() && near(r.at(), 0.0) && near(r.cue(), 3.0), "stopped at the start, the cue point kept");
+    }
+
+    #[test]
+    fn call_moves_the_playhead_and_the_cue_point_while_stopped() {
+        let mut r = Rig::new(10.0, true, &[2.0, 4.0], &[]);
+        r.tap(act::CALL_NEXT);
+        assert!(near(r.at(), 2.0) && near(r.cue(), 2.0));
+        r.tap(act::CALL_NEXT);
+        assert!(near(r.at(), 4.0) && near(r.cue(), 4.0));
+        r.tap(act::CALL_NEXT); // none after: stays
+        assert!(near(r.at(), 4.0));
+        r.tap(act::CALL_PREVIOUS);
+        assert!(near(r.at(), 2.0) && near(r.cue(), 2.0));
+        r.s.deck.call_at(&mut r.s.engine, 20.0 * SEC); // past the end: the end
+        assert!(near(r.cue(), 10.0));
+        r.tap(act::CALL_PREVIOUS);
+        r.tap(act::PLAY_PAUSE);
+        assert!(r.playing());
+        r.tap(act::CALL_NEXT); // playing: ignored
+        r.s.deck.call_at(&mut r.s.engine, 2.0 * SEC);
+        assert!(near(r.cue(), 4.0));
+    }
+
+    #[test]
+    fn beat_and_bar_steps_while_stopped() {
+        let mut r = Rig::new(10.0, true, &[], &[]);
+        r.seek(1.2);
+        r.tap(act::BEAT_FORWARD);
+        assert!(near(r.at(), 1.5));
+        r.tap(act::BEAT_BACK);
+        assert!(near(r.at(), 1.0));
+        r.tap(act::BAR_FORWARD);
+        assert!(near(r.at(), 2.0));
+        r.tap(act::BAR_BACK);
+        assert!(near(r.at(), 0.0));
+        r.tap(act::BAR_BACK); // none before: stays
+        assert!(near(r.at(), 0.0));
+    }
+
+    #[test]
+    fn lamps_follow_the_state() {
+        let mut r = Rig::new(10.0, true, &[], &[]);
+        // stopped on the cue point: PLAY blinks, CUE lit
+        assert_eq!((r.lamps(BLINK_ON), r.lamps(BLINK_OFF)), ((true, true), (false, true)));
+        // stopped off it: both blink
+        r.seek(1.2);
+        assert_eq!((r.lamps(BLINK_ON), r.lamps(BLINK_OFF)), ((true, true), (false, false)));
+        // playing: both lit
+        r.tap(act::PLAY_PAUSE);
+        assert_eq!((r.lamps(BLINK_ON), r.lamps(BLINK_OFF)), ((true, true), (true, true)));
+        r.tap(act::STOP);
+        r.press(act::CUE); // previewing: both lit
+        assert_eq!(r.lamps(BLINK_OFF), (true, true));
+    }
+
+    #[test]
+    fn cue_at_the_tracks_end_does_not_preview() {
+        let mut r = Rig::new(10.0, true, &[], &[]);
+        r.seek(10.0);
+        r.tap(act::CUE); // the cue point at the end
+        r.press(act::CUE);
+        assert!(!r.playing() && !r.s.deck.previewing);
+    }
+
+    #[test]
+    fn a_new_track_clears_the_cue_point_and_the_preview() {
+        let mut r = Rig::new(10.0, true, &[2.0], &[3.0]);
+        r.seek(2.0);
+        r.tap(act::CUE);
+        r.press(act::CUE);
+        r.s.deck.new_track();
+        assert!(!r.s.deck.previewing && near(r.cue(), 0.0));
+        assert!(!r.s.deck.jumpcue_set(0) && r.s.deck.cue_points.is_empty());
+    }
+
+    #[test]
+    fn the_track_end_plays_on() {
+        let mut r = Rig::new(1.0, true, &[], &[]);
+        r.seek(0.8);
+        r.tap(act::PLAY_PAUSE);
+        r.pump(60);
+        assert!(r.playing(), "silence after the end, still playing");
+        assert_eq!(r.s.engine.finished_count, 1);
+        r.seek(0.2); // moved back: plays again
+        r.pump(10);
+        assert!(r.playing() && r.at() > 0.2 && r.at() < 0.5, "{}", r.at());
+    }
+
+    #[test]
+    fn jumpcue_stopped_moves_the_playhead() {
+        let mut r = Rig::new(10.0, true, &[], &[6.0]);
+        r.seek(1.0);
+        r.tap(act::CUE);
+        r.tap(act::JUMP_A);
+        assert!(near(r.at(), 6.0) && near(r.cue(), 1.0), "the cue point kept");
+        r.tap(act::JUMP_A + 1); // B not set: nothing
+        assert!(near(r.at(), 6.0));
+    }
+
+    #[test]
+    fn jumpcue_playing_is_armed_on_the_next_beats_and_jumps() {
+        let mut r = Rig::new(10.0, true, &[], &[6.0]);
+        r.tap(act::PLAY_PAUSE);
+        r.tap(act::JUMP_A);
+        assert!(r.s.engine.jump_armed().is_some_and(|d| near(d, 6.0 * SEC)));
+        let lit = r.s.deck.lights(&r.s.engine, BLINK_OFF);
+        assert_eq!(lit & 1, 0, "the armed pad blinks");
+        r.tap(act::JUMP_A); // pressed again: kept as it is
+        assert!(r.s.deck.armed.is_some());
+        r.pump(80); // past the first beat (0.5 s) and its fade
+        assert_eq!(r.s.engine.jumped_count, 1);
+        assert!(r.s.deck.armed.is_none() && r.s.deck.landing.is_some());
+        assert!(r.at() > 6.0 && r.at() < 6.5, "landed: {}", r.at());
+    }
+
+    #[test]
+    fn jumpcue_armed_is_dropped_when_playback_stops() {
+        let mut r = Rig::new(10.0, true, &[], &[6.0]);
+        r.tap(act::PLAY_PAUSE);
+        r.tap(act::JUMP_A);
+        r.tap(act::PLAY_PAUSE);
+        r.pump(1);
+        assert!(r.s.deck.armed.is_none() && r.s.engine.jump_armed().is_none());
+    }
+
+    #[test]
+    fn tempo_range_keeps_the_tempo_inside() {
+        let mut r = Rig::new(10.0, true, &[], &[]);
+        r.s.deck.set_tempo_range(&mut r.s.engine, 16);
+        r.s.deck.set_tempo(&mut r.s.engine, 1.12);
+        assert!(near(r.s.engine.factor(), 1.12));
+        r.s.deck.set_tempo_range(&mut r.s.engine, 10);
+        assert!(near(r.s.engine.factor(), 1.10));
+        r.tap(act::TEMPO_RANGE); // 10 -> 16 (kept)
+        assert_eq!(r.s.deck.tempo_range, 16);
+        r.tap(act::TEMPO_RANGE); // -> WIDE
+        r.s.deck.set_tempo(&mut r.s.engine, 0.0);
+        assert!(near(r.s.engine.factor(), 0.0), "WIDE: down to 0");
+        r.tap(act::TEMPO_RANGE); // -> 6
+        assert_eq!(r.s.deck.tempo_range, 6);
+        assert!(near(r.s.engine.factor(), 0.94));
+        r.s.deck.set_tempo(&mut r.s.engine, f64::NAN);
+        assert!(near(r.s.engine.factor(), 1.0));
+        r.s.deck.set_tempo_range(&mut r.s.engine, 7); // not a range: WIDE
+        assert_eq!(r.s.deck.tempo_range, 100);
+    }
+}

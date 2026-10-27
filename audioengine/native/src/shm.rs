@@ -86,9 +86,16 @@ impl Drop for Shm {
 
 /// A track's PCM: [frames, channels] float32, interleaved (NumPy's C order), read only.
 pub struct Pcm {
-    shm: Shm,
+    shm: Backing,
     pub frames: usize,
     pub channels: usize,
+}
+
+/// Where a PCM's samples are: the GUI's shared block (the tests': their own).
+enum Backing {
+    Shared(Shm),
+    #[cfg(test)]
+    Owned(Vec<f32>),
 }
 
 impl Pcm {
@@ -98,10 +105,22 @@ impl Pcm {
             .and_then(|n| n.checked_mul(4))
             .ok_or_else(|| format!("PCM {name}: {frames} frames of {channels} channels do not fit in memory"))?;
         let shm = Shm::open(name, bytes, false)?;
-        Ok(Pcm { shm, frames, channels })
+        Ok(Pcm { shm: Backing::Shared(shm), frames, channels })
+    }
+
+    /// A PCM of the test's own (interleaved).
+    #[cfg(test)]
+    pub fn owned(data: Vec<f32>, channels: usize) -> Pcm {
+        Pcm { frames: data.len() / channels, channels, shm: Backing::Owned(data) }
     }
 
     pub fn data(&self) -> &[f32] {
-        unsafe { std::slice::from_raw_parts(self.shm.ptr() as *const f32, self.frames * self.channels) }
+        match &self.shm {
+            Backing::Shared(shm) => unsafe {
+                std::slice::from_raw_parts(shm.ptr() as *const f32, self.frames * self.channels)
+            },
+            #[cfg(test)]
+            Backing::Owned(v) => v,
+        }
     }
 }
