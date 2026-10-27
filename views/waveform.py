@@ -384,6 +384,7 @@ class WaveformView(ViewPlugin):
         self._preview_source = None
         self._playhead_chunk: int | None = None  # the chunk the playhead was last seen in
         self._scrubbing = False                   # the playhead dragged (its moves are no jumps)
+        self._jumps = 0                           # the frames in a row it jumped in (2 on: a search, rendered where it stops)
         self._show_clock = 0  # counts the scene passes: the order chunks were last shown in
 
         # Dedicated render worker thread
@@ -409,6 +410,8 @@ class WaveformView(ViewPlugin):
         self.bus.sig_scrub_begin.connect(self._on_scrub_begin)
         self.bus.sig_scrub_update.connect(self._on_scrub_update)
         self.bus.sig_scrub_end.connect(self._on_scrub_end)
+        self.bus.sig_scratch_begin.connect(self._on_scratch_begin)     # the main plot dragged: as the overview's
+        self.bus.sig_scratch_end.connect(self._on_scrub_end)
         self.bus.sig_window_changed.connect(self.update_window)
         self.model.sig_loaded.connect(self.update_features)
         self.model.sig_audio_changed.connect(self._on_model_updated)
@@ -511,14 +514,20 @@ class WaveformView(ViewPlugin):
     def _follow_playhead(self) -> None:
         """When the playhead enters another chunk: the worker renders nearest it first, and the far chunks
         are dropped. Jumped there (past the next chunk, not scrubbing: a seek, a CALL, a JumpCUE, a beat jump,
-        External Sync's), playback goes on from there: rendered as a scrub let go (_resume_at)."""
+        External Sync's), playback goes on from there: rendered as a scrub let go (_resume_at). Jumping again the
+        next frame, the playhead travels (a controller's jog search: no drag the view is told of), followed as a
+        scrub and rendered from where it stops."""
         center = self._current_chunk()
-        if center == self._playhead_chunk:
-            return
-        if self._playhead_chunk is not None and abs(center - self._playhead_chunk) > 1 and not self._scrubbing:
+        jumped = (self._playhead_chunk is not None and abs(center - self._playhead_chunk) > 1
+                  and not self._scrubbing)
+        travelled = self._jumps >= 2
+        self._jumps = self._jumps + 1 if jumped else 0
+        if self._jumps == 1 or (travelled and not jumped):     # a jump, or the end of a travel
             self._resume_at(float(self.tl.current_time))
             if self._playhead_chunk == center:
                 return      # else no audio to render yet: followed as below
+        if center == self._playhead_chunk:
+            return
         self._playhead_chunk = center
         self._sig_playhead.emit(center)
         self._evict_far_chunks(center)
@@ -678,6 +687,10 @@ class WaveformView(ViewPlugin):
 
     def _on_scrub_begin(self) -> None:
         self._scrubbing = True
+        self._jumps = 0
+
+    def _on_scratch_begin(self, _sec_per_px: float) -> None:
+        self._on_scrub_begin()
 
     def _on_scrub_update(self, _t: float) -> None:
         self._evaluate_render_targets()

@@ -199,6 +199,33 @@ class EvictionTests(unittest.TestCase):
             self.bus.sig_scrub_end.emit(40.0)
         self.assertEqual(resumed, [150, 40])
 
+    def test_a_drag_or_a_travel_of_the_playhead_resumes_where_it_stops(self):
+        """The main plot dragged is a scrub as the overview's; the playhead jumping frame after frame (a controller's
+        jog search) is rendered once where it stops, not at every frame."""
+        self.model.predecoded_pcm, self.model.predecoded_rate = np.zeros((300 * 100, 1), np.float32), 100
+        resumed = []
+        self.view._sig_resume.connect(lambda _specs, chunk: resumed.append(chunk))
+
+        def at(t):
+            self.tl.current_time = t
+            with mock.patch.object(waveform._WaveStyle, "from_config", return_value=STYLE):
+                self.view._follow_playhead()
+        at(10.2)
+        self.bus.sig_scratch_begin.emit(0.01)
+        for t in (20.0, 35.0, 50.0):    # flicked: seconds a frame
+            at(t)
+        self.assertEqual(resumed, [])
+        with mock.patch.object(waveform._WaveStyle, "from_config", return_value=STYLE):
+            self.bus.sig_scratch_end.emit(50.0)
+        self.assertEqual(resumed, [50])
+        for t in (60.0, 70.0, 80.0, 90.0):   # searched
+            at(t)
+        self.assertEqual(resumed, [50, 60])     # its first jump, as a seek's
+        at(90.4)                                # stopped there
+        self.assertEqual(resumed, [50, 60, 90])
+        at(91.1)
+        self.assertEqual(resumed, [50, 60, 90])
+
 
 # The app's exit: the views held by the window's pane, freed when main()'s frame unwinds after app.exec()
 # (the window, its pane and their list of views with it), the render thread still running unless stopped.
