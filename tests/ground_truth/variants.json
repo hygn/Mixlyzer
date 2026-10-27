@@ -1,0 +1,54 @@
+{
+ "note": "Versions of a few songs for the Variants test (test_variants.py). Each file is named by its title, artist and release so the same release can be bought; durations are the copies the test was set with (OTOTOY, mora). Another store's copy may start a little earlier or later and be mastered otherwise: see tests/README.md.",
+ "songs": [
+  {
+   "song": "yumeji-labyrinth",
+   "about": "TV anime 'Urara Meirochou' opening",
+   "release": "夢路らびりんす (single)",
+   "versions": [
+    {"id": "yumeji-labyrinth", "role": "original", "title": "夢路らびりんす", "artist": "らびりんず", "duration_sec": 243.03},
+    {"id": "yumeji-labyrinth-chiya", "role": "vocal", "title": "夢路らびりんす～千矢Version～", "artist": "千矢(CV.原田彩楓)", "duration_sec": 242.23},
+    {"id": "yumeji-labyrinth-kon", "role": "vocal", "title": "夢路らびりんす～紺Version～", "artist": "紺(CV.本渡 楓)", "duration_sec": 242.42},
+    {"id": "yumeji-labyrinth-koume", "role": "vocal", "title": "夢路らびりんす～小梅Version～", "artist": "小梅(CV.久保ユリカ)", "duration_sec": 242.32},
+    {"id": "yumeji-labyrinth-nono", "role": "vocal", "title": "夢路らびりんす～ノノVersion～", "artist": "ノノ(CV.佳村はるか)", "duration_sec": 243.25},
+    {"id": "yumeji-labyrinth-instrumental", "role": "instrumental", "title": "夢路らびりんす (Instrumental)", "artist": "らびりんず", "duration_sec": 242.32},
+    {"id": "yumeji-labyrinth-2", "role": "purchase", "of": "yumeji-labyrinth", "title": "夢路らびりんす", "artist": "らびりんず", "duration_sec": 242.97, "about": "another purchase of the original (another product, ALAC)"},
+    {"id": "yumeji-labyrinth-instrumental-2", "role": "purchase", "of": "yumeji-labyrinth-instrumental", "title": "夢路らびりんす (Instrumental)", "artist": "らびりんず", "duration_sec": 242.32, "about": "another purchase of the instrumental (another product, ALAC)"}
+   ]
+  },
+  {
+   "song": "aiden-teitei-meltdown",
+   "about": "TV anime 'Oniichan wa Oshimai!' opening",
+   "release": "アイデン貞貞メルトダウン (single); アイデン貞貞メルトダウン (まひろ&みはりver.) (single)",
+   "versions": [
+    {"id": "aiden-teitei-meltdown", "role": "original", "title": "アイデン貞貞メルトダウン", "artist": "えなこ feat. P丸様。", "duration_sec": 243.88},
+    {"id": "aiden-teitei-meltdown-tv", "role": "tv_size", "title": "アイデン貞貞メルトダウン(TV size)", "artist": "えなこ feat. P丸様。", "duration_sec": 92.03},
+    {"id": "aiden-teitei-meltdown-enako", "role": "part", "title": "アイデン貞貞メルトダウン(えなこパートver.)", "artist": "えなこ feat. P丸様。", "duration_sec": 243.88},
+    {"id": "aiden-teitei-meltdown-pmaru", "role": "part", "title": "アイデン貞貞メルトダウン(P丸様。パートver.)", "artist": "えなこ feat. P丸様。", "duration_sec": 243.89},
+    {"id": "aiden-teitei-meltdown-instrumental", "role": "instrumental", "title": "アイデン貞貞メルトダウン(Instrumental)", "artist": "えなこ feat. P丸様。", "duration_sec": 243.23},
+    {"id": "aiden-teitei-meltdown-mahiro-mihari", "role": "vocal", "title": "アイデン貞貞メルトダウン (まひろ&みはりver.)", "artist": "緒山まひろ(CV:高野麻里佳) & 緒山みはり(CV:石原夏織)", "duration_sec": 243.23}
+   ]
+  },
+  {
+   "song": "himegoto-crisisters",
+   "about": "TV anime 'Oniichan wa Oshimai!' ending",
+   "release": "ひめごと*クライシスターズ (single)",
+   "versions": [
+    {"id": "himegoto-crisisters", "role": "original", "title": "ひめごと*クライシスターズ", "artist": "ONIMAI SISTERS", "duration_sec": 214.25},
+    {"id": "himegoto-crisisters-tv", "role": "tv_size", "title": "ひめごと*クライシスターズ(TV size ver.)", "artist": "ONIMAI SISTERS", "duration_sec": 92.24},
+    {"id": "himegoto-crisisters-mahiro", "role": "vocal", "title": "ひめごと*クライシスターズ(まひろver.)", "artist": "ONIMAI SISTERS", "duration_sec": 214.25},
+    {"id": "himegoto-crisisters-mihari", "role": "vocal", "title": "ひめごと*クライシスターズ(みはりver.)", "artist": "ONIMAI SISTERS", "duration_sec": 214.25},
+    {"id": "himegoto-crisisters-kaede", "role": "vocal", "title": "ひめごと*クライシスターズ(かえでver.)", "artist": "ONIMAI SISTERS", "duration_sec": 214.27},
+    {"id": "himegoto-crisisters-momiji", "role": "vocal", "title": "ひめごと*クライシスターズ(もみじver.)", "artist": "ONIMAI SISTERS", "duration_sec": 214.25},
+    {"id": "himegoto-crisisters-instrumental", "role": "instrumental", "title": "ひめごと*クライシスターズ(Instrumental)", "artist": "ONIMAI SISTERS", "duration_sec": 214.60}
+   ]
+  }
+ ],
+ "needs_improvement": [
+  {"pair": ["aiden-teitei-meltdown-tv", "aiden-teitei-meltdown"], "check": "kind", "now": "vocal", "since": "2026-10-27", "about": "the TV size read as another vocal of the original, not the same mix (full 0.922 < 0.98); the full-length vocal versions read as instrumentals beside it: its vocal stands out more"},
+  {"pair": ["himegoto-crisisters-instrumental", "himegoto-crisisters-tv"], "check": "related", "now": null, "since": "2026-10-27", "about": "not related directly (the group is joined through the other versions)"}
+ ],
+ "others": [
+  {"id": "uraraka-biyori-quartet", "title": "うららか日和の四重奏", "artist": "らびりんず", "release": "夢路らびりんす (single)", "duration_sec": 257.74, "about": "another song on the same single: a version of none"}
+ ]
+}
