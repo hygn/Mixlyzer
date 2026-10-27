@@ -13,7 +13,7 @@ A cascade over all songs (SEARCH_STAGES: frame size, songs kept, lanes), coarse 
 first, every third next, then the thirds around the key; the songs split over threads,
 without the interpreter lock (a search runs beside the GUI).
 
-Measured (benchmark/qbh_research, synthetic queries): 10,000 songs about 0.5 s a query; hummed / whistled / played
+Measured (research/benchmark/qbh_research, synthetic queries): 10,000 songs about 0.5 s a query; hummed / whistled / played
 vocal lines top-10 0.87 / 0.77 / 0.91.
 """
 from __future__ import annotations

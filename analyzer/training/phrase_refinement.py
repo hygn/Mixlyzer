@@ -6,7 +6,7 @@ inference, i.e. come from models that never saw the track, so every training
 track's pass-1 outputs and learned similarity are produced out of fold (inner
 track-level K-fold) before the pass-2 models are fit.
 
-Benchmark (benchmark/phrase_boundary, 241 library tracks, 5-fold CV): F1 of
+Benchmark (research/benchmark/phrase_boundary, 241 library tracks, 5-fold CV): F1 of
 the label-change boundaries 0.744 -> 0.778, beat label accuracy 0.876 -> 0.901,
 all-boundary F1 unchanged.
 """

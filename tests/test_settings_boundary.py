@@ -9,7 +9,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-# the app's code (benchmark/, experiments/ and interchange/ are research; debug/ the user's own scripts)
+# the app's code (research/ is the algorithm research, local only; debug/ generated artifacts)
 SCANNED = ("app", "core", "ui", "views", "system", "analyzer", "third_party", "audioengine", "migration", "build")
 VENDORED = ("audioengine/native/third_party/", "audioengine/native/target/")
 FILE_FUNCTIONS = {"load_cfg", "save_cfg", "save_deck"}

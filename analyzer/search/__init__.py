@@ -10,5 +10,5 @@
   fingerprint, its index rows and queries, the verification and the relation it reads. Its store is
   `{libpath}/variants.db` (core.library.variants), the relations as the app uses them core.search.variants. The
   research behind it (566 tracks of version sets, 1351 tracks queried against each other: no different song called
-  a version) is `benchmark/fingerprint_research` (not committed).
+  a version) is `research/benchmark/fingerprint_research` (not committed).
 """

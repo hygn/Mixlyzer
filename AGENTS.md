@@ -42,6 +42,7 @@ Only this file is loaded by itself. Each part's details are in an AGENTS.md besi
 - `assets/`: icons, fonts, sounds; `i18n/`: the UI's languages and their catalogs (`system.i18n`); `shortcuts/`: the keyboard shortcuts (`core.controls.shortcuts`).
 - `library/`: user library data directory created/used at runtime. Treat as user data.
 - `debug/`: generated debug artifacts; do not assume they are source assets.
+- `research/` (git-ignored, this computer only): the algorithm research, never the app's code: `benchmark/` (the benchmarks, their datasets and every experiment's scripts and results: `fingerprint_research`, `qbh_research`, `phrase_boundary`, ...), `experiments/` (prototypes: `mix_mode`, `inhouse_cqt`, `rekordbox_dragdrop`), `interchange/` (the DJ software interchange research, run from the repository's root as `python -m research.interchange.tools.<tool>`), `debug_vis/` (the analyses' debug visualizations), `madb_works/`, `native_mixer_engine-full-2026-10/` (the native mixer checks of the engine before its diet, beside the tag `engine-full-2026-10`). Its results name library tracks: nothing of it goes public.
 
 ## Change Guidelines
 - Keep heavy DSP, file IO, and long-running work off the GUI thread.

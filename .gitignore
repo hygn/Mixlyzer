@@ -58,17 +58,12 @@ assets/midi/midi.json
 # audio places are the runner's own
 tests/native_mixer/
 tests/ground_truth/audio.json
-madb_works/
 
-# dataset file (will be splitted into separate repo.)
+# Algorithm research, local only (research/: the benchmarks and their datasets, experiments, the DJ software
+# interchange research, the debug visualizations, the MADB works comparison)
+research/
 annotator/
 benchmark/
-
-# Local DSP prototypes (not production source)
-experiments
-
-# DJ software interchange research (local only)
-interchange/
 
 # Local maintenance notes, and their site (mkdocs serve)
 docs/internal/

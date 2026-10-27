@@ -6,7 +6,7 @@ starts are examples: a track has a lead-in when its first annotated segment is
 LEAD_IN. The presence threshold is the one that gets the most tracks exactly
 right (presence and end) in a track-level K-fold over these features.
 
-Benchmark (benchmark/phrase_boundary/LEADIN_EXPERIMENT.md, 241 library tracks,
+Benchmark (research/benchmark/phrase_boundary/LEADIN_EXPERIMENT.md, 241 library tracks,
 10x 5-fold CV): presence AP 0.999, exact end 0.91 of the lead-ins, 0.90 of the
 tracks exactly right.
 """

@@ -10,7 +10,7 @@ there is a lead-in and nowhere else.
 
 Features come from the per-beat ``feature_z`` rows, the pass-1 boundary
 probability without the edge mask and the pass-1 boundaries, which the
-optimizer has for every training track (benchmark/phrase_boundary/LEADIN_EXPERIMENT.md).
+optimizer has for every training track (research/benchmark/phrase_boundary/LEADIN_EXPERIMENT.md).
 """
 
 from __future__ import annotations
