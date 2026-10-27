@@ -290,6 +290,21 @@ class LibraryWidgetTests(unittest.TestCase):
         self.assertEqual(self.column(TITLE), ["Third Song", "あのね"])
         self.assertEqual(synced, [self.uids[1]])
 
+    def test_removing_the_decks_track_unloads_it(self):
+        unloaded = []
+        self.bus.sig_unload_track_requested.connect(lambda: unloaded.append(True))
+        self.w._loaded_uid = self.uids[0]                 # the deck holds the first track
+        self.w._select_row(self.row_of(self.uids[1]))
+        with mock.patch.object(QMessageBox, "question", return_value=QMessageBox.Yes):
+            self.w._on_remove_selected()
+        self.apply_update()
+        self.assertEqual(unloaded, [])                    # another track removed: the deck keeps its own
+        self.w._select_row(self.row_of(self.uids[0]))
+        with mock.patch.object(QMessageBox, "question", return_value=QMessageBox.Yes):
+            self.w._on_remove_selected()
+        self.apply_update()
+        self.assertEqual(unloaded, [True])
+
     def test_removing_several_says_how_many(self):
         self.w.table.selectAll()
         with mock.patch.object(QMessageBox, "question", return_value=QMessageBox.No) as asked:

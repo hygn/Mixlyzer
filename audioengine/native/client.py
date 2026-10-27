@@ -702,7 +702,7 @@ class NativeFeeder(QtCore.QObject):
             self.send(OP_SET_TEMPO_RANGE, struct.pack("<I", r.tempo_range))
             self.send(OP_SET_TEMPO, struct.pack("<d", r.factor))
             self.send(OP_SET_VOLUME, struct.pack("<d", r.volume))
-            for which, position in enumerate(r.knobs):
+            for which, position in enumerate((*r.knobs, r.color)):     # TRIM, EQ LOW, MID, HIGH, COLOR
                 self.send(OP_SET_MIXER_KNOB, struct.pack("<Id", which, position))
             self.send(OP_SET_CHANNEL_CUE, struct.pack("<I", int(r.channel_cue)))
         self._send_marks()

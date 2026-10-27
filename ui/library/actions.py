@@ -86,6 +86,8 @@ class ActionsMixin:
         def removed(_r) -> None:
             for uid in uids:
                 self.bus.sig_rekordbox_sync_track_requested.emit(uid)
+            if self._loaded_uid in uids:    # the deck's track left the library: off the deck (nowhere to save it)
+                self.bus.sig_unload_track_requested.emit()
 
         # the tracks, their features and thumbnails, and their place in the indexes made from them
         self.library.write(jobs.remove_tracks, list(uids), done=removed)

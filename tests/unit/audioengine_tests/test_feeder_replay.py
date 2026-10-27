@@ -67,6 +67,18 @@ class ReplayTests(unittest.TestCase):
         feeder._replay()
         self.assertEqual(self._mixer_sent(engine), {})
 
+    def test_the_channels_knobs_as_reported_color_too(self):
+        engine = _Engine()
+        feeder = client.NativeFeeder(engine)
+        report = _report([0.0] * len(controls.MIX_KEYS))
+        report.knobs, report.color = (0.6, 0.1, 0.5, 0.9), 0.2       # COLOR turned (a controller's or the GUI's)
+        feeder._report = report
+        engine.calls.clear()
+        feeder._replay()
+        knobs = {struct.unpack("<Id", p)[0]: struct.unpack("<Id", p)[1]
+                 for op, p in engine.calls if op == client.OP_SET_MIXER_KNOB}
+        self.assertEqual(knobs, {0: 0.6, 1: 0.1, 2: 0.5, 3: 0.9, 4: 0.2})
+
     def test_the_channel_cue_as_reported(self):
         engine = _Engine()
         feeder = client.NativeFeeder(engine)
