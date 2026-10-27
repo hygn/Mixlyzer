@@ -63,11 +63,13 @@ class LibraryDB:
         self.han_run = int(han_run)
         self._conn: Optional[sqlite3.Connection] = None
         self._tx_depth = 0
+        self._index_queries: Optional[List[str]] = None     # track_index_rows' queries
 
     def connect(self):
         # used on the thread that opened it alone (the owner's): SQLite refuses it on another
         self._conn = sqlite3.connect(self.db_path)
         self._conn.row_factory = sqlite3.Row
+        self._index_queries = None
         self._apply_pragmas()
     
         # Create tracks table if missing
@@ -1039,13 +1041,16 @@ class LibraryDB:
         """The track's rows write_track_index writes, as stored, their row ids left out (compared before and after a
         sync)."""
         uid = _canonical_uuid4(uid)
+        if self._index_queries is None:     # the tables' columns, read once a connection (the schema stays)
+            self._index_queries = []
+            for table, order in (("track_bpm_segments", "seq_index"), ("track_key_segments", "seq_index"),
+                                 ("track_phrase_sections", "phrase_seq_index, section_index")):
+                columns = ", ".join(col[1] for col in self.conn.execute(f"PRAGMA table_info({table});")
+                                    if col[1] != "id")
+                self._index_queries.append(f"SELECT {columns} FROM {table} WHERE track_uid=? ORDER BY {order};")
         head = self.conn.execute("SELECT bpm, key FROM tracks WHERE uid=?;", (uid,)).fetchone()
-        tables = []
-        for table, order in (("track_bpm_segments", "seq_index"), ("track_key_segments", "seq_index"),
-                             ("track_phrase_sections", "phrase_seq_index, section_index")):
-            columns = ", ".join(col[1] for col in self.conn.execute(f"PRAGMA table_info({table});") if col[1] != "id")
-            tables.append(tuple(tuple(row) for row in self.conn.execute(
-                f"SELECT {columns} FROM {table} WHERE track_uid=? ORDER BY {order};", (uid,)).fetchall()))
+        tables = [tuple(tuple(row) for row in self.conn.execute(query, (uid,)).fetchall())
+                  for query in self._index_queries]
         return (tuple(head) if head is not None else None, *tables)
 
     # Utilities

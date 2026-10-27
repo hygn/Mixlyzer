@@ -201,6 +201,33 @@ class LibraryServiceTests(unittest.TestCase):
         self.assertEqual((self.library.snapshot.track(stale.uid).bpm, self.library.snapshot.track(stale.uid).key),
                          (140.0, 2))
 
+    def test_a_sync_that_fails_shows_what_it_synced(self):
+        """A batch's library.db write failing ends the run; the snapshot is read once, so the tracks synced before it
+        are shown."""
+        from unittest import mock
+        from core.workflows.library_sync import LibraryIndexSync
+        self.library.write(jobs.save_track, _row("w.wav"), False)
+        self.settle()
+
+        from core.library.service import changes
+
+        @changes()                  # as sync_index: no snapshot read of its own
+        def locked(_lib, _uids):
+            raise OSError("database is locked")
+        failed, updates = [], len(self.updates)
+        sync = LibraryIndexSync(self.library)
+        sync.failed.connect(failed.append)
+        with mock.patch.object(jobs, "sync_index", locked):
+            sync.sync_requested()
+            for _ in range(10):
+                if failed:
+                    break
+                self.library.wait()
+        self.settle()
+        self.assertEqual(failed, ["database is locked"])
+        self.assertEqual(len(self.updates), updates + 1)
+        self.assertFalse(sync.running)
+
     def test_an_editors_save_that_fails_leaves_library_db_as_it_was(self):
         """One transaction: a failure of its last library.db write or of the NPZ saved after it rolls back the BPM, key
         and segment tables written before it, and the NPZ is left as it was."""

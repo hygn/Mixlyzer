@@ -59,5 +59,11 @@ class LibraryIndexSync(QtCore.QObject):
         self.finished.emit(done)
 
     def _failed(self, exc: Exception) -> None:
-        self._pending = None
-        self.failed.emit(str(exc))
+        """A batch failed (library.db not written: a full disk, a file locked): the run ends; the tracks synced before
+        it (each committed as it went, the failed batch's first ones too) shown, the snapshot read once."""
+        message = str(exc)
+
+        def end(*_args) -> None:
+            self._pending = None
+            self.failed.emit(message)
+        self._library.write(jobs.index_synced, done=end, failed=end)

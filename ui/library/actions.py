@@ -80,7 +80,16 @@ class ActionsMixin:
 
     def _on_remove_selected(self):
         uids = self._selected_uids()
-        if not uids or not self._confirm_remove(uids):
+        if not uids:
+            return
+        if self._loaded_uid in uids and settings_store.current().externalsyncconfig.enabled:
+            # External Sync follows the deck (its controls locked): its track is not removed, nothing is
+            QtWidgets.QMessageBox.information(
+                self, tr("Remove"),
+                tr("The deck's track cannot be removed while External Sync follows it.\n"
+                   "Turn External Sync off, or select other tracks."))
+            return
+        if not self._confirm_remove(uids):
             return
 
         def removed(_r) -> None:

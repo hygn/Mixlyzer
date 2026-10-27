@@ -305,6 +305,28 @@ class LibraryWidgetTests(unittest.TestCase):
         self.apply_update()
         self.assertEqual(unloaded, [True])
 
+    def test_external_sync_keeps_the_decks_track(self):
+        """External Sync on: the deck's track is not removed (nothing of the selection is), others are."""
+        from core.settings import config as settings_config
+        from core.settings import store as settings_store
+        cfg = settings_config.default_cfg()
+        cfg.externalsyncconfig.enabled = True
+        self.w._loaded_uid = self.uids[0]
+        with mock.patch.object(settings_store, "current", return_value=cfg):
+            self.w.table.selectAll()
+            with mock.patch.object(QMessageBox, "information") as told, \
+                    mock.patch.object(QMessageBox, "question", return_value=QMessageBox.Yes) as asked:
+                self.w._on_remove_selected()
+            self.apply_update()
+            self.assertEqual((told.call_count, asked.call_count, len(self.library.snapshot.tracks)), (1, 0, 3))
+            self.w.table.clearSelection()
+            self.w._select_row(self.row_of(self.uids[1]))
+            with mock.patch.object(QMessageBox, "question", return_value=QMessageBox.Yes):
+                self.w._on_remove_selected()
+            self.apply_update()
+        self.assertIsNone(self.library.snapshot.track(self.uids[1]))
+        self.assertIsNotNone(self.library.snapshot.track(self.uids[0]))
+
     def test_removing_several_says_how_many(self):
         self.w.table.selectAll()
         with mock.patch.object(QMessageBox, "question", return_value=QMessageBox.No) as asked:

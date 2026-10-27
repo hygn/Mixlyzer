@@ -21,7 +21,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from core.settings.config import cuepointconfig, cuepointrule
+from core.settings.config import cuepointconfig, cuepointrule, default_cfg
 from system.i18n import tr, tr_n
 from system.resource_paths import project_root
 from core.workflows.optimizer import OptimizerWorkflow
@@ -47,7 +47,9 @@ def _global_page(dialog) -> QWidget:
     grp_global = QGroupBox(tr("General"))
     f_global_general = QFormLayout(grp_global)
     dialog.sp_max_parallel_analyses = QSpinBox()
-    dialog.sp_max_parallel_analyses.setRange(1, max(1, os.cpu_count() or 1))
+    # up to the logical cores, never below the default (a smaller computer keeps it unless the user lowers it)
+    dialog.sp_max_parallel_analyses.setRange(
+        1, max(os.cpu_count() or 1, default_cfg().analysisconfig.max_parallel_analyses))
     dialog.sp_max_parallel_analyses.setToolTip(tr(
         "How many tracks are analyzed at once: each analysis is a process of its own with several threads. "
         "The others wait their turn, the track loaded onto the deck first. The editor's reanalyses (a segment, "
