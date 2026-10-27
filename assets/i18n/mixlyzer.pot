@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-28 02:24+0900\n"
+"POT-Creation-Date: 2026-10-28 02:50+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -545,7 +545,7 @@ msgstr ""
 msgid "About"
 msgstr ""
 
-#: app/window.py:269 core/controls/midi.py:55 ui/config/playback.py:329
+#: app/window.py:269 core/controls/midi.py:55 ui/config/playback.py:328
 msgid "Mixer"
 msgstr ""
 
@@ -1920,7 +1920,7 @@ msgstr ""
 
 #: ui/config/analysis.py:139 ui/config/analysis.py:177
 #: ui/config/analysis.py:200 ui/config/dialogs/optimization.py:204
-#: ui/config/library.py:153 ui/config/library.py:163 ui/config/playback.py:107
+#: ui/config/library.py:153 ui/config/library.py:163 ui/config/playback.py:108
 #: ui/config/view.py:182
 msgid "Advanced"
 msgstr ""
@@ -2005,8 +2005,8 @@ msgid "CUE point"
 msgstr ""
 
 #: ui/config/analysis.py:216 ui/config/dialogs/optimization.py:220
-#: ui/config/dialogs/optimization.py:344 ui/config/output_group.py:226
-#: ui/config/playback.py:70 ui/windows/reanalyze_dialog.py:57
+#: ui/config/dialogs/optimization.py:344 ui/config/output_group.py:270
+#: ui/config/playback.py:71 ui/windows/reanalyze_dialog.py:57
 msgid "Off"
 msgstr ""
 
@@ -2476,193 +2476,206 @@ msgstr ""
 msgid "Fader"
 msgstr ""
 
-#: ui/config/audio_overview.py:209 ui/config/playback.py:189
+#: ui/config/audio_overview.py:209 ui/config/playback.py:188
 msgid "Master"
 msgstr ""
 
-#: ui/config/audio_overview.py:212
-msgid "Soft Clip"
-msgstr ""
-
-#: ui/config/audio_overview.py:239 ui/config/output_group.py:288
+#: ui/config/audio_overview.py:231 ui/config/output_group.py:333
 msgid "CUE / MASTER"
 msgstr ""
 
-#: ui/config/audio_overview.py:242 ui/config/audio_overview.py:255
-#: ui/config/playback.py:225
+#: ui/config/audio_overview.py:234 ui/config/audio_overview.py:250
+#: ui/config/playback.py:224
 msgid "Level"
 msgstr ""
 
-#: ui/config/audio_overview.py:251
+#: ui/config/audio_overview.py:246
 msgid "Booth EQ"
 msgstr ""
 
-#: ui/config/audio_overview.py:282
+#: ui/config/audio_overview.py:260
+msgid "Hard Clip"
+msgstr ""
+
+#: ui/config/audio_overview.py:260
+msgid "Soft Clip"
+msgstr ""
+
+#: ui/config/audio_overview.py:260 ui/config/output_group.py:220
+msgid "Limiter"
+msgstr ""
+
+#: ui/config/audio_overview.py:280
+#, python-brace-format
+msgid "{ms:g} ms"
+msgstr ""
+
+#: ui/config/audio_overview.py:306
 msgid "Rate Transition"
 msgstr ""
 
-#: ui/config/audio_overview.py:333
+#: ui/config/audio_overview.py:359
 msgid "pitch kept"
 msgstr ""
 
-#: ui/config/audio_overview.py:333
+#: ui/config/audio_overview.py:359
 msgid "varispeed"
 msgstr ""
 
-#: ui/config/audio_overview.py:368
+#: ui/config/audio_overview.py:394
 msgid "master in"
 msgstr ""
 
-#: ui/config/audio_overview.py:368
+#: ui/config/audio_overview.py:394
 msgid "CUE only"
 msgstr ""
 
-#: ui/config/audio_overview.py:378
+#: ui/config/audio_overview.py:404
 #, python-brace-format
 msgid "D1 {rate} kHz: {device}"
 msgstr ""
 
-#: ui/config/audio_overview.py:382
+#: ui/config/audio_overview.py:408
 #, python-brace-format
 msgid "D2 {rate} kHz: {device}"
 msgstr ""
 
-#: ui/config/audio_overview.py:388 ui/config/audio_overview.py:429
-#: ui/config/output_group.py:95 ui/library/music_search.py:209
+#: ui/config/audio_overview.py:414 ui/config/audio_overview.py:455
+#: ui/config/output_group.py:96 ui/library/music_search.py:209
 msgid "System default"
 msgstr ""
 
-#: ui/config/audio_overview.py:390 ui/config/audio_overview.py:430
-#: ui/config/audio_overview.py:488
+#: ui/config/audio_overview.py:416 ui/config/audio_overview.py:456
+#: ui/config/audio_overview.py:514
 msgid "waiting for playback"
 msgstr ""
 
-#: ui/config/audio_overview.py:394 ui/config/audio_overview.py:437
+#: ui/config/audio_overview.py:420 ui/config/audio_overview.py:463
 msgid "not opened: retried every second"
 msgstr ""
 
-#: ui/config/audio_overview.py:400 ui/config/audio_overview.py:440
-#: ui/config/output_group.py:65 ui/config/output_group.py:239
-#: ui/config/playback.py:140
+#: ui/config/audio_overview.py:426 ui/config/audio_overview.py:466
+#: ui/config/output_group.py:66 ui/config/output_group.py:283
+#: ui/config/playback.py:139
 msgid "Shared"
 msgstr ""
 
-#: ui/config/audio_overview.py:400 ui/config/audio_overview.py:440
-#: ui/config/output_group.py:65 ui/config/output_group.py:240
-#: ui/config/playback.py:141
+#: ui/config/audio_overview.py:426 ui/config/audio_overview.py:466
+#: ui/config/output_group.py:66 ui/config/output_group.py:284
+#: ui/config/playback.py:140
 msgid "Exclusive"
 msgstr ""
 
-#: ui/config/audio_overview.py:402
+#: ui/config/audio_overview.py:428
 #, python-brace-format
 msgid "{rate} kHz · {channels} ch · {period} ms"
 msgstr ""
 
-#: ui/config/audio_overview.py:405 ui/config/audio_overview.py:448
+#: ui/config/audio_overview.py:431 ui/config/audio_overview.py:474
 #, python-brace-format
 msgid "buffer {buffer} + device {device} ms"
 msgstr ""
 
-#: ui/config/audio_overview.py:407
+#: ui/config/audio_overview.py:433
 #, python-brace-format
 msgid "{rate} kHz · {channels} ch"
 msgstr ""
 
-#: ui/config/audio_overview.py:412 ui/config/audio_overview.py:459
+#: ui/config/audio_overview.py:438 ui/config/audio_overview.py:485
 #, python-brace-format
 msgid "{ema} / {cap} ms · 1% {low} · drop {drop}"
 msgstr ""
 
-#: ui/config/audio_overview.py:422
+#: ui/config/audio_overview.py:448
 msgid "not routed"
 msgstr ""
 
-#: ui/config/audio_overview.py:423
+#: ui/config/audio_overview.py:449
 msgid "off"
 msgstr ""
 
-#: ui/config/audio_overview.py:426
+#: ui/config/audio_overview.py:452
 #, python-brace-format
 msgid "channels {pair} of the master's device"
 msgstr ""
 
-#: ui/config/audio_overview.py:427
+#: ui/config/audio_overview.py:453
 msgid "the master's buffer"
 msgstr ""
 
-#: ui/config/audio_overview.py:427
+#: ui/config/audio_overview.py:453
 #, python-brace-format
 msgid "ch {pair}"
 msgstr ""
 
-#: ui/config/audio_overview.py:434
+#: ui/config/audio_overview.py:460
 msgid "opening..."
-msgstr ""
-
-#: ui/config/audio_overview.py:445
-#, python-brace-format
-msgid "{rate} kHz · ch {pair} · {period} ms"
-msgstr ""
-
-#: ui/config/audio_overview.py:451
-#, python-brace-format
-msgid "{rate} kHz · ch {pair}"
-msgstr ""
-
-#: ui/config/audio_overview.py:469
-msgid "Native engine"
-msgstr ""
-
-#: ui/config/audio_overview.py:469
-msgid "Python engine"
 msgstr ""
 
 #: ui/config/audio_overview.py:471
 #, python-brace-format
+msgid "{rate} kHz · ch {pair} · {period} ms"
+msgstr ""
+
+#: ui/config/audio_overview.py:477
+#, python-brace-format
+msgid "{rate} kHz · ch {pair}"
+msgstr ""
+
+#: ui/config/audio_overview.py:495
+msgid "Native engine"
+msgstr ""
+
+#: ui/config/audio_overview.py:495
+msgid "Python engine"
+msgstr ""
+
+#: ui/config/audio_overview.py:497
+#, python-brace-format
 msgid "engine thread {state}"
 msgstr ""
 
-#: ui/config/audio_overview.py:473
+#: ui/config/audio_overview.py:499
 #, python-brace-format
 msgid "output thread {state}"
 msgstr ""
 
-#: ui/config/audio_overview.py:475
+#: ui/config/audio_overview.py:501
 msgid "power throttling off"
 msgstr ""
 
-#: ui/config/audio_overview.py:475
+#: ui/config/audio_overview.py:501
 msgid "power throttling left to the system"
 msgstr ""
 
-#: ui/config/audio_overview.py:476
+#: ui/config/audio_overview.py:502
 msgid "power throttling off in part"
 msgstr ""
 
-#: ui/config/audio_overview.py:477
+#: ui/config/audio_overview.py:503
 msgid "power throttling not turned off"
 msgstr ""
 
-#: ui/config/audio_overview.py:480
+#: ui/config/audio_overview.py:506
 #, python-brace-format
 msgid "response play {play} / pause {pause} / seek {seek} ms"
 msgstr ""
 
-#: ui/config/audio_overview.py:484
+#: ui/config/audio_overview.py:510
 msgid "MIDI: no input"
 msgstr ""
 
-#: ui/config/audio_overview.py:485
+#: ui/config/audio_overview.py:511
 #, python-brace-format
 msgid "MIDI: {port} (open)"
 msgstr ""
 
-#: ui/config/audio_overview.py:485
+#: ui/config/audio_overview.py:511
 #, python-brace-format
 msgid "MIDI: {port} (could not be opened)"
 msgstr ""
 
-#: ui/config/audio_overview.py:486
+#: ui/config/audio_overview.py:512
 #, python-brace-format
 msgid "MIDI: {port} (closed)"
 msgstr ""
@@ -3441,11 +3454,11 @@ msgid ""
 "Engine); the Python engine (the compatibility mode) has no MIDI."
 msgstr ""
 
-#: ui/config/midi.py:195 ui/config/output_group.py:82
+#: ui/config/midi.py:195 ui/config/output_group.py:83
 msgid "None"
 msgstr ""
 
-#: ui/config/midi.py:200 ui/config/output_group.py:99
+#: ui/config/midi.py:200 ui/config/output_group.py:100
 #: ui/library/music_search.py:211
 #, python-brace-format
 msgid "{name} (not connected)"
@@ -3497,35 +3510,35 @@ msgstr ""
 msgid "Move or press a control ..."
 msgstr ""
 
-#: ui/config/output_group.py:21
+#: ui/config/output_group.py:22
 msgid "the audio API's own"
 msgstr ""
 
-#: ui/config/output_group.py:22
+#: ui/config/output_group.py:23
 msgid "normal"
 msgstr ""
 
-#: ui/config/output_group.py:23
+#: ui/config/output_group.py:24
 msgid "raised"
 msgstr ""
 
-#: ui/config/output_group.py:24
+#: ui/config/output_group.py:25
 msgid "raised through rtkit"
 msgstr ""
 
-#: ui/config/output_group.py:25
+#: ui/config/output_group.py:26
 msgid "real-time"
 msgstr ""
 
-#: ui/config/output_group.py:26
+#: ui/config/output_group.py:27
 msgid "real-time through rtkit"
 msgstr ""
 
-#: ui/config/output_group.py:27
+#: ui/config/output_group.py:28
 msgid "not permitted to raise"
 msgstr ""
 
-#: ui/config/output_group.py:45
+#: ui/config/output_group.py:46
 msgid ""
 "<p>The audio API the native engine plays through. WASAPI: its own, with a"
 " low-latency shared stream or exclusive mode. WASAPI (cpal): the usual "
@@ -3533,7 +3546,7 @@ msgid ""
 "JACK (Linux): through the JACK or PipeWire server.</p>"
 msgstr ""
 
-#: ui/config/output_group.py:53
+#: ui/config/output_group.py:54
 msgid ""
 "<p>Shared: with other apps, at the smallest period the driver allows. "
 "Exclusive: the device to Mixlyzer alone, the shortest latency; other apps"
@@ -3541,24 +3554,24 @@ msgid ""
 " the usual shared stream.</p>"
 msgstr ""
 
-#: ui/config/output_group.py:66
+#: ui/config/output_group.py:67
 #, python-brace-format
 msgid ""
 "Opened as {api}, {mode} (the output asked for could not be opened on this"
 " device)"
 msgstr ""
 
-#: ui/config/output_group.py:84
+#: ui/config/output_group.py:85
 #, python-brace-format
 msgid "Channels {pair}"
 msgstr ""
 
-#: ui/config/output_group.py:86
+#: ui/config/output_group.py:87
 #, python-brace-format
 msgid "Channels {pair} (not on this device)"
 msgstr ""
 
-#: ui/config/output_group.py:116
+#: ui/config/output_group.py:117
 #, python-brace-format, python-format
 msgid ""
 "<p>The time the output buffer spent at each level over the last {seconds}"
@@ -3566,37 +3579,37 @@ msgid ""
 "yellow: the 1% low.</p>"
 msgstr ""
 
-#: ui/config/output_group.py:119
+#: ui/config/output_group.py:120
 msgid "Average audio queued in the output buffer."
 msgstr ""
 
-#: ui/config/output_group.py:120
+#: ui/config/output_group.py:121
 #, python-format
 msgid "Buffer level the output stayed above 99% of the time in the recent window."
 msgstr ""
 
-#: ui/config/output_group.py:121 ui/config/output_group.py:385
+#: ui/config/output_group.py:122 ui/config/output_group.py:433
 msgid "Waiting for playback..."
 msgstr ""
 
-#: ui/config/output_group.py:122
+#: ui/config/output_group.py:123
 msgid "Audio queued in the output device buffer while playing, 0 ms = dropout."
 msgstr ""
 
-#: ui/config/output_group.py:129
+#: ui/config/output_group.py:130
 msgid "Output buffer"
 msgstr ""
 
-#: ui/config/output_group.py:130
+#: ui/config/output_group.py:131
 #, python-brace-format, python-format
 msgid "1% low ({seconds} s)"
 msgstr ""
 
-#: ui/config/output_group.py:131
+#: ui/config/output_group.py:132
 msgid "Histogram"
 msgstr ""
 
-#: ui/config/output_group.py:204
+#: ui/config/output_group.py:205
 #, python-brace-format, python-format
 msgid ""
 "EMA {ema} / {capacity} µs   1% low {low} µs   lowest {lowest} µs "
@@ -3604,15 +3617,48 @@ msgid ""
 "Dropout since opened {dropout} ms   Device latency {device} ms"
 msgstr ""
 
-#: ui/config/output_group.py:227
+#: ui/config/output_group.py:220
+msgid "Hard clip"
+msgstr ""
+
+#: ui/config/output_group.py:220
+msgid "Soft clip (tanh)"
+msgstr ""
+
+#: ui/config/output_group.py:225
+#, python-brace-format
+msgid "+{ms:g} ms latency"
+msgstr ""
+
+#: ui/config/output_group.py:226
+msgid ""
+"<p>The limiter looks this far ahead: this output is heard that much "
+"later. On the master the playhead counts it.</p>"
+msgstr ""
+
+#: ui/config/output_group.py:231
+#, python-brace-format
+msgid ""
+"<p>What keeps this output at 0 dBFS at most, so the system's mixer never "
+"has to limit it on its way to the device.</p><p>Hard clip: nothing "
+"changes under 0 dBFS; an over is cut flat (heard as distortion). Soft "
+"clip (tanh): an over is rounded off above -1.9 dBFS; the top 2 dB are a "
+"little compressed. Limiter: the level is brought down smoothly just "
+"before an over and back up over 100 ms; nothing changes under 0 dBFS; the"
+" output is heard {ms:g} ms later (its look ahead).</p><p>The Python "
+"engine plays the master alone, and the soft clip in place of the "
+"limiter.</p>"
+msgstr ""
+
+#: ui/config/output_group.py:271
 msgid "Channels of the main output's device"
 msgstr ""
 
-#: ui/config/output_group.py:228
+#: ui/config/output_group.py:272
 msgid "A device of its own"
 msgstr ""
 
-#: ui/config/output_group.py:230
+#: ui/config/output_group.py:274
 msgid ""
 "<p>Channels of the main output's device: a controller's or an interface's"
 " other output, played with the master. A device of its own: another "
@@ -3620,123 +3666,127 @@ msgid ""
 "clocks' drift, a few hundred ppm at most).</p>"
 msgstr ""
 
-#: ui/config/output_group.py:234
+#: ui/config/output_group.py:278
 msgid "<p>The device this output plays on.</p>"
 msgstr ""
 
-#: ui/config/output_group.py:243
+#: ui/config/output_group.py:287
 msgid "<p>The device's channels this output plays on.</p>"
 msgstr ""
 
-#: ui/config/output_group.py:245 ui/config/playback.py:144
+#: ui/config/output_group.py:289 ui/config/playback.py:143
 msgid "The device's"
 msgstr ""
 
-#: ui/config/output_group.py:249
+#: ui/config/output_group.py:293
 msgid ""
 "<p>The sample rate this output's device runs at. The main output's sound "
 "is converted to it.</p>"
 msgstr ""
 
-#: ui/config/output_group.py:255
+#: ui/config/output_group.py:299
 msgid ""
 "<p>The audio kept ahead of this output's device. Smaller is heard "
 "sooner.</p>"
 msgstr ""
 
-#: ui/config/output_group.py:259
+#: ui/config/output_group.py:303
 msgid ""
 "<p>This device's clock against the main output's: how much faster (+) or "
 "slower (-) it runs, in parts per million.</p>"
 msgstr ""
 
-#: ui/config/output_group.py:262
+#: ui/config/output_group.py:306
 msgid "Mix the master in"
 msgstr ""
 
-#: ui/config/output_group.py:264
+#: ui/config/output_group.py:308
 msgid ""
 "<p>The master mixed into the headphones with the CUE. Off for a "
 "controller that mixes the master into its headphones itself.</p>"
 msgstr ""
 
-#: ui/config/output_group.py:270
+#: ui/config/output_group.py:314
 msgid ""
 "<p>The master's share in the headphones: 0 % the CUE alone, 100 % the "
 "master alone.</p>"
 msgstr ""
 
-#: ui/config/output_group.py:273
+#: ui/config/output_group.py:318
 msgid "The native engine's: applied when it plays."
 msgstr ""
 
-#: ui/config/output_group.py:279
+#: ui/config/output_group.py:324
 msgid "Output"
 msgstr ""
 
-#: ui/config/output_group.py:280 ui/config/playback.py:177
+#: ui/config/output_group.py:325 ui/config/playback.py:176
 msgid "Output device"
 msgstr ""
 
-#: ui/config/output_group.py:281 ui/config/playback.py:180
+#: ui/config/output_group.py:326 ui/config/playback.py:179
 msgid "Audio API"
 msgstr ""
 
-#: ui/config/output_group.py:282 ui/config/playback.py:180
+#: ui/config/output_group.py:327 ui/config/playback.py:179
 msgid "Output mode"
 msgstr ""
 
-#: ui/config/output_group.py:283
+#: ui/config/output_group.py:328
 msgid "Sample rate"
 msgstr ""
 
-#: ui/config/output_group.py:284 ui/config/playback.py:182
+#: ui/config/output_group.py:329 ui/config/playback.py:181
 msgid "Channels"
 msgstr ""
 
-#: ui/config/output_group.py:285 ui/config/playback.py:186
+#: ui/config/output_group.py:330 ui/config/playback.py:185
 msgid "Buffer size"
 msgstr ""
 
-#: ui/config/output_group.py:287
+#: ui/config/output_group.py:332
 msgid "Master in the headphones"
 msgstr ""
 
-#: ui/config/output_group.py:293
+#: ui/config/output_group.py:334 ui/config/playback.py:190
+msgid "Output limiting"
+msgstr ""
+
+#: ui/config/output_group.py:339
 msgid "Clock drift"
 msgstr ""
 
-#: ui/config/output_group.py:389
+#: ui/config/output_group.py:437
 msgid "Opening the output device..."
 msgstr ""
 
-#: ui/config/output_group.py:393 ui/config/playback.py:508
+#: ui/config/output_group.py:441 ui/config/playback.py:508
 msgid ""
 "The output device could not be opened (another app may hold it in "
 "exclusive mode); it is tried again every second."
 msgstr ""
 
-#: ui/config/output_group.py:397
+#: ui/config/output_group.py:445
 #, python-brace-format
 msgid "{ppm} ppm (resampled to follow it)"
 msgstr ""
 
-#: ui/config/output_group.py:406
+#: ui/config/output_group.py:454
 #, python-brace-format
 msgid "Output thread: {output}"
 msgstr ""
 
-#: ui/config/output_group.py:409 ui/config/playback.py:526
+#: ui/config/output_group.py:457 ui/config/playback.py:526
 #, python-brace-format
 msgid "Late output wake-ups: {count} (longest gap {gap} ms)"
 msgstr ""
 
-#: ui/config/output_group.py:412
+#: ui/config/output_group.py:460
 #, python-brace-format
 msgid "Playing on {device} at {rate} kHz"
 msgstr ""
 
-#: ui/config/output_group.py:422
+#: ui/config/output_group.py:470
 msgid "Its device's stream is shared with another output, at that output's rate."
 msgstr ""
 
@@ -3768,7 +3818,7 @@ msgstr ""
 msgid "overview levels"
 msgstr ""
 
-#: ui/config/pipeline_map.py:32 ui/config/playback.py:333
+#: ui/config/pipeline_map.py:32 ui/config/playback.py:332
 msgid "Audio"
 msgstr ""
 
@@ -3811,37 +3861,37 @@ msgstr ""
 msgid "{name}: open the {tab} settings"
 msgstr ""
 
-#: ui/config/playback.py:46
+#: ui/config/playback.py:47
 msgid "Native first"
 msgstr ""
 
-#: ui/config/playback.py:47 ui/config/playback.py:420
+#: ui/config/playback.py:48 ui/config/playback.py:420
 msgid "Python"
-msgstr ""
-
-#: ui/config/playback.py:50
-msgctxt "process priority"
-msgid "Normal"
 msgstr ""
 
 #: ui/config/playback.py:51
 msgctxt "process priority"
-msgid "Above normal"
+msgid "Normal"
 msgstr ""
 
 #: ui/config/playback.py:52
 msgctxt "process priority"
+msgid "Above normal"
+msgstr ""
+
+#: ui/config/playback.py:53
+msgctxt "process priority"
 msgid "High"
 msgstr ""
 
-#: ui/config/playback.py:55
+#: ui/config/playback.py:56
 msgid ""
 "<p>The priority class of the native engine's process. High: its threads "
 "run ahead of the analysis and other apps, so it wakes on time when the "
 "computer is busy (fewer dropouts at small buffers). Applied at once.</p>"
 msgstr ""
 
-#: ui/config/playback.py:60
+#: ui/config/playback.py:61
 msgid ""
 "<p>The priority of the native engine's threads (its own and the ALSA "
 "output's; JACK's is the server's). High: real-time, else nice -10; Above "
@@ -3850,18 +3900,18 @@ msgid ""
 "the meter.</p>"
 msgstr ""
 
-#: ui/config/playback.py:66
+#: ui/config/playback.py:67
 msgid ""
 "<p>The priority of the native engine's thread. High: real-time (a time "
 "constraint, as CoreAudio's own output thread); Above normal: QoS user-"
 "interactive; Normal: QoS default. Applied at once.</p>"
 msgstr ""
 
-#: ui/config/playback.py:71
+#: ui/config/playback.py:72
 msgid "The system's choice"
 msgstr ""
 
-#: ui/config/playback.py:74
+#: ui/config/playback.py:75
 msgid ""
 "<p>Whether Windows may power-throttle the native engine's process "
 "(EcoQoS: efficiency cores, lower clocks, coarser timers) to save power. "
@@ -3869,252 +3919,244 @@ msgid ""
 "Applied at once.</p>"
 msgstr ""
 
-#: ui/config/playback.py:79
+#: ui/config/playback.py:80
 msgid ""
 "<p>Whether Linux may save power on the native engine's threads. Off: a 1 "
 "ns timer slack, and uclamp keeping the CPU clock up while they run (Linux"
 " 5.3 and later, with the schedutil governor). Applied at once.</p>"
 msgstr ""
 
-#: ui/config/playback.py:84
+#: ui/config/playback.py:85
 msgid ""
 "<p>Whether macOS may save power on the native engine (App Nap, timer "
 "coalescing). Off: a latency-critical activity keeps both off (the "
 "computer may still sleep when idle). Applied at once.</p>"
 msgstr ""
 
-#: ui/config/playback.py:89 ui/config/playback.py:325
+#: ui/config/playback.py:90 ui/config/playback.py:324
 msgid "Engine"
 msgstr ""
 
-#: ui/config/playback.py:91
+#: ui/config/playback.py:92
 msgid "Audio engine"
 msgstr ""
 
-#: ui/config/playback.py:92
+#: ui/config/playback.py:93
 msgid "Process priority"
 msgstr ""
 
-#: ui/config/playback.py:92
+#: ui/config/playback.py:93
 msgid "Thread priority"
 msgstr ""
 
-#: ui/config/playback.py:94
+#: ui/config/playback.py:95
 msgid "Power throttling"
 msgstr ""
 
-#: ui/config/playback.py:96
+#: ui/config/playback.py:97
 msgid "Restart Audio Engine"
 msgstr ""
 
-#: ui/config/playback.py:98
+#: ui/config/playback.py:99
 msgid ""
 "<p>Stops the native audio engine and starts it again on the same outputs."
 " For when playback goes wrong.</p>"
 msgstr ""
 
-#: ui/config/playback.py:112
+#: ui/config/playback.py:113
 msgid "Show or hide the settings of the audio engine not playing."
 msgstr ""
 
-#: ui/config/playback.py:126
-msgid "Soft clip output (tanh)"
-msgstr ""
-
-#: ui/config/playback.py:128
-msgid "Output above -1.9 dBFS is rounded off instead of hard clipping"
-msgstr ""
-
-#: ui/config/playback.py:135
+#: ui/config/playback.py:134
 msgid "<p>The device the player plays on.</p>"
 msgstr ""
 
-#: ui/config/playback.py:148
+#: ui/config/playback.py:147
 msgid ""
 "<p>The sample rate the device runs at in exclusive mode. Applied from the"
 " next track loaded.</p>"
 msgstr ""
 
-#: ui/config/playback.py:154
+#: ui/config/playback.py:153
 msgid "<p>The device's channels the master plays on.</p>"
 msgstr ""
 
-#: ui/config/playback.py:158
+#: ui/config/playback.py:157
 msgid ""
 "<p>The native engine's audio queued ahead of the output device. Smaller "
 "answers sooner.</p>"
 msgstr ""
 
-#: ui/config/playback.py:162
+#: ui/config/playback.py:161
 msgid ""
 "<p>The Python engine's audio queued ahead of the output device. Smaller "
 "answers sooner.</p>"
 msgstr ""
 
-#: ui/config/playback.py:175 ui/config/playback.py:326
+#: ui/config/playback.py:174 ui/config/playback.py:325
 msgid "Main output"
 msgstr ""
 
-#: ui/config/playback.py:181
+#: ui/config/playback.py:180
 msgid "Sample rate (exclusive)"
 msgstr ""
 
-#: ui/config/playback.py:200
+#: ui/config/playback.py:199
 msgid "Volume slider position at startup."
 msgstr ""
 
-#: ui/config/playback.py:202
+#: ui/config/playback.py:201
 msgid "Channel"
 msgstr ""
 
-#: ui/config/playback.py:204
+#: ui/config/playback.py:203
 msgid "Default volume (%)"
 msgstr ""
 
-#: ui/config/playback.py:220
+#: ui/config/playback.py:219
 #, python-brace-format
 msgid "<p>The booth output's level against the master ({low} dB: silent).</p>"
 msgstr ""
 
-#: ui/config/playback.py:221
+#: ui/config/playback.py:220
 msgid "<p>The booth's high shelf (-12 to +6 dB).</p>"
 msgstr ""
 
-#: ui/config/playback.py:222
+#: ui/config/playback.py:221
 msgid "<p>The booth's low shelf (-12 to +6 dB).</p>"
 msgstr ""
 
-#: ui/config/playback.py:223
+#: ui/config/playback.py:222
 msgid "Booth level and EQ"
 msgstr ""
 
-#: ui/config/playback.py:226
+#: ui/config/playback.py:225
 msgid "EQ HI"
 msgstr ""
 
-#: ui/config/playback.py:227
+#: ui/config/playback.py:226
 msgid "EQ LOW"
 msgstr ""
 
-#: ui/config/playback.py:228
+#: ui/config/playback.py:227
 msgid "MONO SPLIT"
 msgstr ""
 
-#: ui/config/playback.py:230
+#: ui/config/playback.py:229
 msgid ""
 "<p>The headphones in mono, split: the CUE in the left ear, the master in "
 "the right.</p>"
 msgstr ""
 
-#: ui/config/playback.py:231
+#: ui/config/playback.py:230
 msgid "Headphones mix"
 msgstr ""
 
-#: ui/config/playback.py:240
+#: ui/config/playback.py:239
 msgid "Headphones output"
 msgstr ""
 
-#: ui/config/playback.py:241
+#: ui/config/playback.py:240
 msgid ""
 "<p>The headphones (a controller's or an interface's second output): the "
 "deck's channel while its CUE is on, before its fader, mixed with the "
 "master (a controller's CUE / MASTER knob).</p>"
 msgstr ""
 
-#: ui/config/playback.py:245
+#: ui/config/playback.py:244
 msgid "Booth output"
 msgstr ""
 
-#: ui/config/playback.py:245
+#: ui/config/playback.py:244
 msgid "<p>The booth monitors: the master again.</p>"
 msgstr ""
 
-#: ui/config/playback.py:257
+#: ui/config/playback.py:256
 msgid "Shift metronome clicks relative to the beat (positive = earlier)"
 msgstr ""
 
-#: ui/config/playback.py:272
+#: ui/config/playback.py:271
 msgid "Duck music under metronome clicks"
 msgstr ""
 
-#: ui/config/playback.py:275
+#: ui/config/playback.py:274
 msgid "Lowers the music by up to 6 dB, following each click"
 msgstr ""
 
-#: ui/config/playback.py:278
+#: ui/config/playback.py:277
 msgid "WAV file used as the metronome click."
 msgstr ""
 
-#: ui/config/playback.py:279
+#: ui/config/playback.py:278
 msgid "Click volume on the first beat of each bar."
 msgstr ""
 
-#: ui/config/playback.py:281
+#: ui/config/playback.py:280
 msgid "Pitch shift of the click on the first beat of each bar."
 msgstr ""
 
-#: ui/config/playback.py:283
+#: ui/config/playback.py:282
 msgid "Click volume on the other beats."
 msgstr ""
 
-#: ui/config/playback.py:284
+#: ui/config/playback.py:283
 msgid "Pitch shift of the click on the other beats."
 msgstr ""
 
-#: ui/config/playback.py:286 ui/config/playback.py:330
+#: ui/config/playback.py:285 ui/config/playback.py:329
 msgid "Metronome"
 msgstr ""
 
-#: ui/config/playback.py:288
+#: ui/config/playback.py:287
 msgid "On / off: the editor's metronome button."
 msgstr ""
 
-#: ui/config/playback.py:294
+#: ui/config/playback.py:293
 msgid "WAV path"
 msgstr ""
 
-#: ui/config/playback.py:295
+#: ui/config/playback.py:294
 msgid "Offset (ms)"
 msgstr ""
 
-#: ui/config/playback.py:297
+#: ui/config/playback.py:296
 msgid "Downbeat volume (%)"
 msgstr ""
 
-#: ui/config/playback.py:300
+#: ui/config/playback.py:299
 msgid "Downbeat pitch (semitones)"
 msgstr ""
 
-#: ui/config/playback.py:302
+#: ui/config/playback.py:301
 msgid "Beat volume (%)"
 msgstr ""
 
-#: ui/config/playback.py:304
+#: ui/config/playback.py:303
 msgid "Beat pitch (semitones)"
 msgstr ""
 
-#: ui/config/playback.py:324
+#: ui/config/playback.py:323
 msgctxt "settings page"
 msgid "Overview"
 msgstr ""
 
-#: ui/config/playback.py:327
+#: ui/config/playback.py:326
 msgid "Headphones"
 msgstr ""
 
-#: ui/config/playback.py:328
+#: ui/config/playback.py:327
 msgid "Booth"
 msgstr ""
 
-#: ui/config/playback.py:352
+#: ui/config/playback.py:351
 msgid "Restarting..."
 msgstr ""
 
-#: ui/config/playback.py:357
+#: ui/config/playback.py:356
 msgid "Restarted."
 msgstr ""
 
-#: ui/config/playback.py:358
+#: ui/config/playback.py:357
 msgid "The engine did not start; it is tried again every 2 seconds."
 msgstr ""
 
@@ -6323,11 +6365,11 @@ msgstr ""
 msgid "Comment"
 msgstr ""
 
-#: ui/library/widget.py:381
+#: ui/library/widget.py:384
 msgid "Track loading is disabled while External Sync is enabled."
 msgstr ""
 
-#: ui/library/widget.py:466
+#: ui/library/widget.py:469
 msgid "The loaded track is not in the list shown."
 msgstr ""
 
@@ -6358,7 +6400,7 @@ msgstr ""
 msgid "Master tempo: time stretch keeps the pitch"
 msgstr ""
 
-#: ui/config/external_sync.py:105 ui/library/widget.py:380 ui/pane.py:528
+#: ui/config/external_sync.py:105 ui/library/widget.py:383 ui/pane.py:528
 msgid "External Sync"
 msgstr ""
 

@@ -47,12 +47,12 @@ def edited_cfg():
                              env_mid=(300.0, 1800.0), fps=30, reduce_fps_when_occluded=False,
                              phrase_labels=replace(names, chorus=replace(names.chorus, alias="Hook", abbrev="H")))
     cfg.playbackconfig = replace(
-        cfg.playbackconfig, default_volume_percent=70, soft_clip=False, audio_engine="python", native_buffer_ms=12,
+        cfg.playbackconfig, default_volume_percent=70, output_clip="limiter", audio_engine="python", native_buffer_ms=12,
         python_buffer_ms=120, output_device="Speakers (test)", native_exclusive=True, native_exclusive_rate=48000,
         native_priority="above_normal", native_power_throttling=True, midi_input="Controller (test)",
         midi_jog_ticks=1024, headphones_master_mix=False, booth_level=level_db_to_knob(-6.0),
         booth_eq_hi=booth_eq_db_to_knob(3.0), booth_eq_low=booth_eq_db_to_knob(-4.5), headphones_split=True,
-        output_headphones=outputconfig("device", "Phones (test)", "1-2", "wasapi", True, 30, 44100))
+        output_headphones=outputconfig("device", "Phones (test)", "1-2", "wasapi", True, 30, 44100, "hard"))
     cfg.externalsyncconfig = replace(cfg.externalsyncconfig, enabled=True, osc_host="0.0.0.0", osc_port=40000)
     cfg.cuepointconfig = replace(cfg.cuepointconfig, chorus=cuepointrule(True, True, True))
     cfg.searchconfig = replace(cfg.searchconfig, db_languages=["ja", "zh"], han_runs=False, query_languages=["ko-hanja"],
@@ -202,9 +202,10 @@ class AudioOverviewTests(unittest.TestCase):
         self.view = AudioOverview()
         self.view.resize(900, 700)
         self.ctx = {"native": True, "timestretch": True, "main_device": "Speakers (test)", "api_names": {},
-                    "routes": {"headphones": outputconfig("device", "Phones (test)", "1-2", "wasapi", True, 20, 0),
+                    "routes": {"headphones": outputconfig("device", "Phones (test)", "1-2", "wasapi", True, 20, 0, "tanh"),
                                "booth": default_cfg().playbackconfig.output_booth},
-                    "midi": ("", 0), "mix": {}, "deck": {"playing": True, "factor": 1.02}, "soft_clip": True}
+                    "midi": ("", 0), "mix": {}, "deck": {"playing": True, "factor": 1.02},
+                    "clip": {"master": "limiter", "headphones": "tanh", "booth": "hard"}}
 
     def tearDown(self):
         self.view.deleteLater()

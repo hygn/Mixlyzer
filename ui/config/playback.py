@@ -24,6 +24,7 @@ from ui.config.output_group import (
     THREAD_STATE_NAMES,
     AuxOutputGroup,
     BufferMonitor,
+    ClipChoice,
     add_native_api_items,
     api_names,
     load_channel_pairs,
@@ -122,11 +123,9 @@ def _engine_group(dialog) -> QGroupBox:
 
 
 def _main_output_groups(dialog) -> tuple[QGroupBox, QGroupBox]:
-    """Main output: the device, the native engine's way to it, the master's channels, each engine's buffer and the monitor; the master's soft clip."""
-    dialog.cb_soft_clip = QCheckBox(tr("Soft clip output (tanh)"))
-    dialog.cb_soft_clip.setToolTip(
-        tr("Output above -1.9 dBFS is rounded off instead of hard clipping")
-    )
+    """Main output: the device, the native engine's way to it, the master's channels, each engine's buffer and the
+    monitor; the master's last stage."""
+    dialog.clip_master = ClipChoice()
 
     # the main output: its device, the native engine's way to it (the audio APIs this system has, WASAPI's mode
     # and exclusive rate), the master's channels, each engine's buffer (ms): the one playing with the rest, the
@@ -188,7 +187,7 @@ def _main_output_groups(dialog) -> tuple[QGroupBox, QGroupBox]:
 
     grp_master = QGroupBox(tr("Master"))
     f_master = QFormLayout(grp_master)
-    f_master.addRow(dialog.cb_soft_clip)
+    f_master.addRow(tr("Output limiting"), dialog.clip_master)
     return grp_main, grp_master
 
 
@@ -385,7 +384,8 @@ class PlaybackSettingsMixin:
             "midi": (self._midi_input(), self._midi_state),
             "mix": self._deck_mix,
             "deck": getattr(self, "_deck_info", {}),
-            "soft_clip": self.cb_soft_clip.isChecked(),
+            "clip": {"master": self.clip_master.value(), "headphones": self.grp_output_headphones.clip.value(),
+                     "booth": self.grp_output_booth.clip.value()},
         }
 
     def _refresh_overview(self) -> None:

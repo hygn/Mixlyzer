@@ -141,7 +141,7 @@ class PCMFeeder(QtCore.QObject):
         self._halted = False
         self._last_step = 1.0
         self._music_gain = 1.0
-        self._soft_clip = False
+        self._clip = "hard"   # until told: music at 0 dBFS or under as it is
         self._jump_start: Optional[float] = None
         self._jump_dest: Optional[float] = None
         self._jump_once = False
@@ -334,9 +334,10 @@ class PCMFeeder(QtCore.QObject):
     def set_music_gain(self, gain: float) -> None:
         self._music_gain = float(max(0.0, gain))
 
-    def set_soft_clip(self, enabled: bool) -> None:
-        """tanh soft clip of the mixed output (music + clicks) above SOFT_CLIP_KNEE."""
-        self._soft_clip = bool(enabled)
+    def set_clip(self, master: str, headphones: str = "tanh", booth: str = "tanh") -> None:
+        """The output's last stage (controls.CLIPS; this engine plays the master alone): a hard clip, else tanh
+        above SOFT_CLIP_KNEE (this engine has no limiter: tanh in its place)."""
+        self._clip = "hard" if master == "hard" else "tanh"
 
     def set_scrubbing(self, scrubbing: bool) -> None:
         """Clicks only sound during normal playback, so they are muted while scrubbing."""
@@ -676,7 +677,9 @@ class PCMFeeder(QtCore.QObject):
                 self.clicks.queue(in_start, step, n)
         out = self.clicks.mix(out)
         out = self.tones.mix(out, self._tone_pitch_ratio())
-        if self._soft_clip:
+        if self._clip == "hard":
+            out = np.clip(out, -1.0, 1.0)
+        else:
             out = soft_clip(out, self.SOFT_CLIP_KNEE)
         self._timeline.append(out, in_start, step, peak_dbfs)
 

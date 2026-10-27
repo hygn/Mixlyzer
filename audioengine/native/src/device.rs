@@ -27,7 +27,7 @@ use cpal::{FromSample, SizedSample};
 
 use crate::bridge::{Bridge, BridgeReader, Sink};
 use crate::clock;
-use crate::mixer::{Mixer, NO_CHANNEL, Wanted};
+use crate::mixer::{Mixer, NO_CHANNEL, OUT_MASTER, Wanted};
 
 /// An open device's side of things: what its output thread reports and is told. The main device's ring has one;
 /// each bridge has its own.
@@ -315,10 +315,12 @@ impl Ring {
             }
             done += n;
         }
+        // a bridge follows the device (an output's limiter delay is in its samples, as a device's latency would be)
         for b in bridges.iter().flatten() {
             b.wrote(frames as u64, latency);
         }
-        self.report(start_read, taken, missing, now, latency);
+        // the master's limiter delay is heard on top of the device's latency: the deck's frames come out that late
+        self.report(start_read, taken, missing, now, latency + state.mixer.delays(&mix)[OUT_MASTER]);
         if taken > 0 {
             if let Some(t) = self.port.engine_thread.get() {
                 t.unpark();

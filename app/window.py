@@ -1022,7 +1022,7 @@ class AppWindow(QtWidgets.QMainWindow):
         self._apply_effective_refresh_fps(target_fps, force=force)
 
     def _apply_click_settings(self, cfg: config) -> None:
-        """The metronome's clicks (volumes / pitches, ducking), the output's soft clip and routing, and the deck as
+        """The metronome's clicks (volumes / pitches, ducking), each output's last stage and routing, and the deck as
         deck.json keeps it (trim, switches, levels, the effects picked)."""
         pcfg, deck = cfg.playbackconfig, cfg.deckconfig
         QtCore.QMetaObject.invokeMethod(
@@ -1038,7 +1038,7 @@ class AppWindow(QtWidgets.QMainWindow):
             self.metro, "set_ducking", QtCore.Qt.QueuedConnection,
             QtCore.Q_ARG(bool, bool(deck.metronome_ducking)),
         )
-        self.player.set_soft_clip(bool(pcfg.soft_clip))
+        self.player.set_clip(pcfg.output_clip, pcfg.output_headphones.clip, pcfg.output_booth.clip)
         self.player.set_volume_trim(float(deck.volume_trim_dbfs))
         # the switches as last left
         eq = EQ_MODES.index(deck.mixer_eq) if deck.mixer_eq in EQ_MODES else 0

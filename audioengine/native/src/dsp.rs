@@ -1,5 +1,5 @@
-//! Small DSP pieces of the player (audioengine/python/dsp.py): fades, the soft clip, the varispeed reader, the
-//! scratch reader and the platter under the hand.
+//! Small DSP pieces of the player (audioengine/python/dsp.py): fades, the outputs' clips and limiter, the varispeed
+//! reader, the scratch reader and the platter under the hand.
 
 /// Multiplies interleaved ``out`` by a linear ramp over ``fade`` frames (0 -> 1 when rising), held after.
 pub fn fade(out: &mut [f32], ch: usize, fade: usize, rising: bool) {
@@ -25,6 +25,119 @@ pub fn soft_clip(out: &mut [f32], knee: f32) {
         let a = v.abs();
         if a > knee {
             *v = v.signum() * (knee + span * ((a - knee) / span).tanh());
+        }
+    }
+}
+
+/// Every sample held to the ceiling 1.0 (0 dBFS).
+pub fn hard_clip(out: &mut [f32]) {
+    for v in out.iter_mut() {
+        *v = v.clamp(-1.0, 1.0);
+    }
+}
+
+/// A lookahead limiter on a stereo bus, the two sides at one gain (the image kept): no sample above the ceiling
+/// 1.0, the music below it untouched. The gain each frame needs (1, or the ceiling over the frame's peak) is held at
+/// its least over the lookahead window, released from there exponentially, and averaged over the window: the gain
+/// is down by the time a peak comes out, reached over the window as a smooth ramp, never above what any frame in
+/// the window needs (each value averaged is at most that frame's need). The frames come out ``delay()`` late (the
+/// window less one): the lookahead is a delay.
+///
+/// LOOKAHEAD_SEC 1 ms: a ramp of a 1 kHz period (a sudden gain step distorts a transient, a hard clip's way), as
+/// short as that allows: the delay is heard on every frame. RELEASE_SEC 100 ms: slower than a bass note's period
+/// (40 Hz: 25 ms, a gain following each cycle would distort it), faster than a beat (343 ms at 175 BPM), so the
+/// level is back between kicks.
+pub struct Limiter {
+    window: usize,
+    line: Vec<f32>, // the last delay() frames (stereo)
+    line_at: usize,
+    // the window's needed gains as a queue kept ascending (its front the least): (frame, gain), a ring
+    queue: Vec<(u64, f32)>,
+    q_head: usize,
+    q_len: usize,
+    frame: u64,
+    env: f32,
+    release: f32,
+    avg: Vec<f32>, // the released gains of the window, a ring
+    avg_at: usize,
+    sum: f64,
+}
+
+impl Limiter {
+    pub const LOOKAHEAD_SEC: f64 = 0.001;
+    pub const RELEASE_SEC: f64 = 0.1;
+
+    pub fn new(rate: f64) -> Limiter {
+        let window = ((Self::LOOKAHEAD_SEC * rate).round() as usize).max(2);
+        let mut l = Limiter {
+            window,
+            line: vec![0.0; (window - 1) * 2],
+            line_at: 0,
+            queue: vec![(0, 1.0); window],
+            q_head: 0,
+            q_len: 0,
+            frame: 0,
+            env: 1.0,
+            release: (-1.0 / (Self::RELEASE_SEC * rate)).exp() as f32,
+            avg: vec![1.0; window],
+            avg_at: 0,
+            sum: window as f64,
+        };
+        l.reset();
+        l
+    }
+
+    /// Silence in the delay, the gain at 1.
+    pub fn reset(&mut self) {
+        self.line.iter_mut().for_each(|v| *v = 0.0);
+        self.line_at = 0;
+        self.q_head = 0;
+        self.q_len = 0;
+        self.frame = 0;
+        self.env = 1.0;
+        self.avg.iter_mut().for_each(|v| *v = 1.0);
+        self.avg_at = 0;
+        self.sum = self.window as f64;
+    }
+
+    /// The frames the output comes late.
+    pub fn delay(&self) -> usize {
+        self.window - 1
+    }
+
+    /// ``bus`` (stereo, interleaved) limited in place, ``delay()`` frames late.
+    pub fn process(&mut self, bus: &mut [f32]) {
+        let (w, cap) = (self.window as u64, self.queue.len());
+        for f in bus.chunks_exact_mut(2) {
+            let (l, r) = (f[0], f[1]);
+            let peak = l.abs().max(r.abs());
+            let need = if peak > 1.0 { 1.0 / peak } else { 1.0 };
+            // the window's least need: the ones not less than this one leave the back, the ones out of the
+            // window the front
+            while self.q_len > 0 && self.queue[(self.q_head + self.q_len - 1) % cap].1 >= need {
+                self.q_len -= 1;
+            }
+            self.queue[(self.q_head + self.q_len) % cap] = (self.frame, need);
+            self.q_len += 1;
+            while self.queue[self.q_head].0 + w <= self.frame {
+                self.q_head = (self.q_head + 1) % cap;
+                self.q_len -= 1;
+            }
+            let held = self.queue[self.q_head].1;
+            self.env = if held < self.env { held } else { held + self.release * (self.env - held) };
+            self.sum += (self.env - self.avg[self.avg_at]) as f64;
+            self.avg[self.avg_at] = self.env;
+            self.avg_at = (self.avg_at + 1) % self.window;
+            let gain = ((self.sum / w as f64) as f32).min(1.0);
+            let at = self.line_at * 2;
+            let (dl, dr) = (self.line[at], self.line[at + 1]);
+            self.line[at] = l;
+            self.line[at + 1] = r;
+            self.line_at = (self.line_at + 1) % (self.window - 1);
+            // the average's rounding never lets a sample over
+            f[0] = (dl * gain).clamp(-1.0, 1.0);
+            f[1] = (dr * gain).clamp(-1.0, 1.0);
+            self.frame += 1;
         }
     }
 }
@@ -420,6 +533,57 @@ impl Platter {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn stereo_sine(f: f64, amp: f64, rate: f64, n: usize) -> Vec<f32> {
+        (0..n).flat_map(|i| {
+            let v = (amp * (2.0 * std::f64::consts::PI * f * i as f64 / rate).sin()) as f32;
+            [v, 0.5 * v]
+        }).collect()
+    }
+
+    #[test]
+    fn the_limiter_passes_music_under_the_ceiling_as_it_is_only_late() {
+        let rate = 48000.0;
+        let mut lim = Limiter::new(rate);
+        let d = lim.delay();
+        assert_eq!(d, 47); // 1 ms less a frame
+        let x = stereo_sine(440.0, 0.9, rate, 4800);
+        let mut y = x.clone();
+        lim.process(&mut y);
+        assert!(y[..2 * d].iter().all(|&v| v == 0.0));
+        assert_eq!(&y[2 * d..], &x[..x.len() - 2 * d]);
+    }
+
+    #[test]
+    fn the_limiter_holds_overs_to_the_ceiling_smoothly_and_recovers() {
+        let rate = 48000.0;
+        let mut lim = Limiter::new(rate);
+        let d = lim.delay();
+        // 0.5 s at 0.5, a 200 ms burst at 2.0 (+6 dB over), 1 s at 0.5 again, in blocks as a callback gives them
+        let n = |s: f64| (s * rate) as usize;
+        let mut x = stereo_sine(100.0, 0.5, rate, n(0.5));
+        x.extend(stereo_sine(100.0, 2.0, rate, n(0.2)));
+        x.extend(stereo_sine(100.0, 0.5, rate, n(1.0)));
+        let mut y = x.clone();
+        for block in y.chunks_mut(2 * 256) {
+            lim.process(block);
+        }
+        assert!(y.iter().all(|v| v.abs() <= 1.0));
+        // the burst's peaks come out near the ceiling (not pumped far under it), the right side at half the left's
+        let burst = &y[2 * (n(0.5) + d)..2 * (n(0.7) + d)];
+        let top = burst.iter().step_by(2).fold(0f32, |m, v| m.max(v.abs()));
+        assert!(top > 0.95, "{top}");
+        // the gain changes smoothly: no sample's ratio to the input jumps between neighbours by more than 1/window
+        let gains: Vec<f32> = (n(0.5)..n(0.9)).filter_map(|k| {
+            let (xi, yi) = (x[2 * k], y[2 * (k + d)]);
+            (xi.abs() > 0.2).then(|| yi / xi)
+        }).collect();
+        let step = gains.windows(2).map(|g| (g[1] - g[0]).abs()).fold(0f32, f32::max);
+        assert!(step < 0.6 / (d + 1) as f32 + 1e-3, "{step}");
+        // 1 s after the burst (10 release times): back to the music as it is
+        let k = n(1.65);
+        assert!((y[2 * (k + d)] - x[2 * k]).abs() < 1e-3);
+    }
 
     #[test]
     fn a_still_record_is_silent_and_a_moving_one_at_its_level() {

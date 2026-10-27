@@ -5,7 +5,9 @@
 //! tap), after the fader; Sound Color FX (colorfx.rs: the effect the mixer picks, the channel's COLOR knob) in its
 //! effect's place (ColorType::slot). Then the master (its level, its meter), the booth (its level and HI / LOW EQ,
 //! -12 .. +6 dB), the headphones (the CUE'd channel before the fader, the master by their CUE / MASTER mix when it is
-//! mixed in, or MONO SPLIT: the CUE left, the master right; their level), soft clipping. The player (engine.rs)
+//! mixed in, or MONO SPLIT: the CUE left, the master right; their level), each output's last stage (Clip: a hard
+//! clip, a tanh soft clip or a lookahead limiter, each output its own; the booth and the headphones take the master
+//! before the master's). The player (engine.rs)
 //! renders the deck's music before all of it, so a fader or a knob is heard after the device's latency alone, not
 //! the engine's buffer. The strip at its neutral settings (trim 0 dB, every EQ band 0 dB, COLOR off, the fader at
 //! the top) leaves the samples as they are, bit for bit, and so does the master at 0 dB.
@@ -23,6 +25,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU8, AtomicU32, AtomicU64, Ordering};
 
 use crate::colorfx::{ColorFx, ColorType, Slot};
+use crate::dsp::Limiter;
 use crate::filters::{Biquad4, Coeffs};
 use crate::fxkit::Smooth;
 use crate::ipc::mix;
@@ -438,14 +441,50 @@ pub const NO_CHANNEL: u8 = 0xFF;
 /// The routes: main L / R, headphones L / R, booth L / R.
 pub const ROUTES: usize = 6;
 
+/// An output's last stage, keeping it at 0 dBFS at most (op::SET_CLIP), so the system never limits it on its way to
+/// the device (Windows' shared mode mixes in float and limits what is over).
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Clip {
+    /// Each sample held to 1.0: nothing changed under it, an over cut flat (heard as distortion).
+    Hard,
+    /// tanh above SOFT_CLIP_KNEE (-1.9 dBFS) to 1.0: an over rounded off, the top 2 dB a little compressed.
+    Tanh,
+    /// dsp::Limiter: the gain brought down over 1 ms ahead of an over, nothing changed under 0 dBFS; the output
+    /// Limiter::LOOKAHEAD_SEC late.
+    Limiter,
+}
+
+impl Clip {
+    pub fn from_code(code: u32) -> Clip {
+        match code {
+            1 => Clip::Tanh,
+            2 => Clip::Limiter,
+            _ => Clip::Hard,
+        }
+    }
+
+    fn code(self) -> u8 {
+        match self {
+            Clip::Hard => 0,
+            Clip::Tanh => 1,
+            Clip::Limiter => 2,
+        }
+    }
+}
+
+/// The outputs, as Clip's and the limiters' order.
+pub const OUT_MASTER: usize = 0;
+pub const OUT_HEADPHONES: usize = 1;
+pub const OUT_BOOTH: usize = 2;
+
 /// The mixer's settings, changed from the engine thread and read once per callback: the channel's strip
-/// (StripParams), the mixer's own (ipc::mix keys, f64 each), soft clipping, where each bus goes on the main device
-/// (ROUTES: a pair of its channels, NO_CHANNEL: not there); and its meters and the master's spectrum tap, which the
-/// callback writes.
+/// (StripParams), the mixer's own (ipc::mix keys, f64 each), each output's last stage (Clip), where each bus goes on
+/// the main device (ROUTES: a pair of its channels, NO_CHANNEL: not there); and its meters and the master's spectrum
+/// tap, which the callback writes.
 pub struct MixParams {
     pub strip: Arc<StripParams>,
     values: [AtomicU64; mix::KEYS],
-    soft_clip: AtomicBool,
+    clip: [AtomicU8; 3],
     routes: [AtomicU8; ROUTES],
     meters: [AtomicU32; mix::METER_COUNT], // f32 bits: peaks (linear) since taken
     pub tap: Tap,                           // the master after its level (spectrum.rs), while the GUI asks
@@ -464,7 +503,7 @@ pub struct Mix {
     pub color_type: ColorType,
     pub color_param: f64,
     pub hp_split: bool, // the headphones' MONO SPLIT
-    pub soft_clip: bool,
+    pub clip: [Clip; 3], // the master's, the headphones', the booth's
     pub routes: [u8; ROUTES],
 }
 
@@ -473,7 +512,7 @@ impl MixParams {
         let p = MixParams {
             strip: Arc::new(StripParams::new()),
             values: std::array::from_fn(|k| AtomicU64::new(mix::DEFAULTS[k].to_bits())),
-            soft_clip: AtomicBool::new(false),
+            clip: std::array::from_fn(|_| AtomicU8::new(Clip::Hard.code())), // until told: music at 0 dBFS or under as it is
             routes: std::array::from_fn(|_| AtomicU8::new(NO_CHANNEL)),
             meters: std::array::from_fn(|_| AtomicU32::new(0)),
             tap: Tap::default(),
@@ -522,8 +561,11 @@ impl MixParams {
         self.set(mix::HP_MASTER, on as u8 as f64);
     }
 
-    pub fn set_soft_clip(&self, on: bool) {
-        self.soft_clip.store(on, Ordering::Relaxed);
+    /// The master's, the headphones' and the booth's last stage.
+    pub fn set_clip(&self, clip: [Clip; 3]) {
+        for (a, c) in self.clip.iter().zip(clip) {
+            a.store(c.code(), Ordering::Relaxed);
+        }
     }
 
     /// main L / R, headphones L / R, booth L / R (NO_CHANNEL: not routed); a shorter list leaves the rest as they
@@ -558,7 +600,7 @@ impl MixParams {
             color_type: ColorType::from_code(self.get(mix::COLOR_TYPE) as u8),
             color_param: self.get(mix::COLOR_PARAM),
             hp_split: self.get(mix::HP_SPLIT) != 0.0,
-            soft_clip: self.soft_clip.load(Ordering::Relaxed),
+            clip: std::array::from_fn(|k| Clip::from_code(self.clip[k].load(Ordering::Relaxed) as u32)),
             routes: std::array::from_fn(|k| self.routes[k].load(Ordering::Relaxed)),
         }
     }
@@ -587,6 +629,11 @@ pub struct Mixer {
     pub booth: Vec<f32>,      // stereo
     booth_eq: [Biquad4; 2],
     booth_set: [f64; 2],
+    limiters: [Limiter; 3], // each output's (OUT_*)
+    clip_was: [Clip; 3],
+    /// The outputs' last stages run (the engine always; the offline mixer, --mix-file, only when asked: it
+    /// measures the mixer before them).
+    pub last_stages: bool,
 }
 
 impl Mixer {
@@ -606,6 +653,9 @@ impl Mixer {
             booth: stereo(),
             booth_eq: [Biquad4::default(); 2],
             booth_set: [f64::NAN; 2],
+            limiters: std::array::from_fn(|_| Limiter::new(rate)),
+            clip_was: [Clip::Hard; 3],
+            last_stages: true,
         }
     }
 
@@ -670,8 +720,8 @@ impl Mixer {
                 self.booth_eq.iter_mut().for_each(Biquad4::reset);
             }
             params.meter(mix::METER_BOOTH, peak_abs(booth));
-            if m.soft_clip {
-                crate::dsp::soft_clip(booth, SOFT_CLIP_KNEE);
+            if self.last_stages {
+                last_stage(booth, m.clip[OUT_BOOTH], &mut self.limiters[OUT_BOOTH], &mut self.clip_was[OUT_BOOTH]);
             }
         }
         // the master's level
@@ -705,14 +755,43 @@ impl Mixer {
             if level != 1.0 {
                 vk::scale_in(hp, level);
             }
-            if m.soft_clip {
-                crate::dsp::soft_clip(hp, SOFT_CLIP_KNEE);
+            if self.last_stages {
+                last_stage(hp, m.clip[OUT_HEADPHONES], &mut self.limiters[OUT_HEADPHONES],
+                           &mut self.clip_was[OUT_HEADPHONES]);
             }
         }
-        if m.soft_clip {
-            crate::dsp::soft_clip(&mut self.master[..s2], SOFT_CLIP_KNEE);
+        if self.last_stages {
+            last_stage(&mut self.master[..s2], m.clip[OUT_MASTER], &mut self.limiters[OUT_MASTER],
+                       &mut self.clip_was[OUT_MASTER]);
         }
     }
+
+    /// How late each output comes out of its last stage (s): a limiter's lookahead, else 0. The master's, the
+    /// headphones', the booth's.
+    pub fn delays(&self, m: &Mix) -> [f64; 3] {
+        std::array::from_fn(|k| {
+            if self.last_stages && m.clip[k] == Clip::Limiter {
+                self.limiters[k].delay() as f64 / self.rate
+            } else {
+                0.0
+            }
+        })
+    }
+}
+
+/// An output's last stage (``was``: the one it had, a limiter starting afresh when it comes on).
+fn last_stage(bus: &mut [f32], clip: Clip, limiter: &mut Limiter, was: &mut Clip) {
+    match clip {
+        Clip::Hard => crate::dsp::hard_clip(bus),
+        Clip::Tanh => crate::dsp::soft_clip(bus, SOFT_CLIP_KNEE),
+        Clip::Limiter => {
+            if *was != Clip::Limiter {
+                limiter.reset();
+            }
+            limiter.process(bus);
+        }
+    }
+    *was = clip;
 }
 
 /// tanh soft clipping above this level (-1.9 dBFS) up to 0 dBFS.
@@ -890,5 +969,33 @@ mod tests {
         assert_eq!(params.get(mix::COLOR_TYPE), (ColorType::COUNT - 1) as f64);
         params.step(mix::HP_SPLIT, 1);
         assert_eq!(params.get(mix::HP_SPLIT), 1.0);
+    }
+
+    #[test]
+    fn each_output_has_its_own_last_stage_after_the_master() {
+        // the music 6 dB over: the master limited, the headphones (the master mixed in) soft clipped, the booth
+        // (the master before its level) hard clipped, each from the master before any of them
+        let x: Vec<f32> = sine(100.0, 48000.0, 9600, 2).iter().map(|v| 2.0 * v).collect();
+        let lane: Vec<f32> = x.chunks_exact(2).flat_map(|f| [f[0], f[1], 0.0, 0.0]).collect();
+        let params = MixParams::new(2);
+        params.set(mix::HP_MIX, 1.0); // the master alone in the headphones
+        params.set_clip([Clip::Limiter, Clip::Tanh, Clip::Hard]);
+        let m = params.read();
+        let mut mixer = Mixer::new(48000.0, 2, 9600);
+        mixer.process(Some(&lane), 9600, &m, &params, Wanted { headphones: true, booth: true });
+        let s2 = 9600 * 2;
+        for bus in [&mixer.master[..s2], &mixer.headphones[..s2], &mixer.booth[..s2]] {
+            assert!(bus.iter().all(|v| v.abs() <= 1.0));
+        }
+        assert!(mixer.booth[..s2].iter().filter(|v| v.abs() == 1.0).count() > 1000); // cut flat
+        assert!(mixer.headphones[..s2].iter().all(|v| v.abs() < 1.0)); // rounded under the ceiling
+        // the limiter: late by its lookahead (silence first), the shape kept (a gain, no flat tops)
+        let d = mixer.delays(&m);
+        assert_eq!((d[OUT_MASTER] * 48000.0).round(), 47.0);
+        assert_eq!(&d[1..], &[0.0, 0.0]);
+        assert!(mixer.master[..2 * 47].iter().all(|&v| v == 0.0));
+        let left: Vec<f32> = mixer.master[..s2].iter().step_by(2).copied().collect();
+        let flat = left.windows(2).filter(|w| w[0].abs() > 0.99 && w[0] == w[1]).count();
+        assert!(flat < 10, "{flat}");
     }
 }

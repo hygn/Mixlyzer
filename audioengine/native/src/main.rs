@@ -52,7 +52,7 @@ use controller::Controller;
 use deck::Slot;
 use device::{BRIDGED_BUSES, Port, Source};
 use ipc::{Control, Reader, op, st};
-use mixer::MixParams;
+use mixer::{Clip, MixParams};
 use outputs::{AuxOutputs, AuxWanted};
 
 fn arg(args: &[String], name: &str) -> Option<String> {
@@ -264,7 +264,10 @@ fn main() {
                 }
                 op::SET_METER_GAIN => controller.set_meter_gain(Reader::new(&cmd.payload).f64().unwrap_or(1.0)),
                 op::SET_TIMESTRETCH => slot.engine.set_timestretch(Reader::new(&cmd.payload).u32().unwrap_or(0) != 0),
-                op::SET_SOFT_CLIP => params.set_soft_clip(Reader::new(&cmd.payload).u32().unwrap_or(0) != 0),
+                op::SET_CLIP => {
+                    let mut r = Reader::new(&cmd.payload);
+                    params.set_clip(std::array::from_fn(|_| Clip::from_code(r.u32().unwrap_or(0))));
+                }
                 op::SET_HEADPHONES => {
                     let mut r = Reader::new(&cmd.payload);
                     params.set_master_cue(r.u32().unwrap_or(1) != 0);
@@ -362,8 +365,9 @@ fn main() {
 /// name=value,...] (ipc::mix::NAMES) [--knob trim|low|mid|high|color|fader=value,...] [--bpm B] (the deck's tempo:
 /// DUB ECHO's time) [--cue] (the channel's headphones CUE) [--bus master|hp|booth|all] (the output written; all:
 /// every bus made, the master written) [--stop-at S] (the deck stopped then, its lane giving nothing, and its fader
-/// down: an effect's tail after the fader rings on) [--tail S] (silence after the input) [--block N]. Prints the
-/// blocks' time.
+/// down: an effect's tail after the fader rings on) [--tail S] (silence after the input) [--block N] [--clip
+/// master,hp,booth] (the outputs' last stages, hard / tanh / limiter each; without it none: the mixer before them).
+/// Prints the blocks' time.
 fn mix_file(args: &[String], input: &str) {
     let get = |n: &str, d: &str| arg(args, n).unwrap_or_else(|| d.to_string());
     let rate: u32 = get("--rate", "48000").parse().unwrap();
@@ -404,6 +408,19 @@ fn mix_file(args: &[String], input: &str) {
     let all = bus == "all";
     let wanted = mixer::Wanted { headphones: all || bus == "hp", booth: all || bus == "booth" };
     let mut mixer = mixer::Mixer::new(rate as f64, 2, block);
+    // the outputs' last stages (--clip master,hp,booth: hard / tanh / limiter each), else none: the mixer measured
+    match arg(args, "--clip") {
+        Some(list) => {
+            let mut kinds = list.split(',').map(|k| match k {
+                "hard" => Clip::Hard,
+                "tanh" => Clip::Tanh,
+                "limiter" => Clip::Limiter,
+                _ => panic!("--clip: no stage {k}"),
+            });
+            params.set_clip(std::array::from_fn(|_| kinds.next().unwrap_or(Clip::Hard)));
+        }
+        None => mixer.last_stages = false,
+    }
     let frames = pcm.len() / 2;
     let mut lane = vec![0f32; block * 4];
     let mut out: Vec<f32> = Vec::with_capacity(pcm.len());

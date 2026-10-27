@@ -201,33 +201,25 @@ class SimulinkCanvas(ModelCanvas):
         # the strip's output: the ㄹ turn, from line 1's right end down the right edge, back left, down to line 2
         self._line(p, [(strip.right(), y), (W - 6, y), (W - 6, main_lane), (26, main_lane), (26, ROW_M),
                        (40, ROW_M)], c1)
-        # line 2: the master: the channels summed, its level, soft clip, its device
+        # line 2: the master: the channels summed, its level, its last stage, its device
         y = ROW_M
         sx = 50.0
         self._sum(p, QtCore.QPointF(sx, y), 10, c1)
         mg = QtCore.QRectF(92, y - 21, 50, 42)
         self._gain(p, mg, tr("Master"), m["master_text"], c1)
         self._line(p, [(sx + 10, y), (mg.left(), y)], c1)
-        clip = QtCore.QRectF(162, y - 19, 46, 38)
-        self._block(p, clip, tr("Soft Clip"), [], c1, live=m["soft_clip"])
-        p.setPen(QtGui.QPen(c1 if m["soft_clip"] else PAL.commented, 1.0))
-        curve = QtGui.QPainterPath()
-        for k in range(21):
-            x = -1.0 + k / 10.0
-            px = clip.left() + 7 + (x + 1) / 2 * (clip.width() - 14)
-            py = clip.center().y() - math.tanh(2.2 * x) / math.tanh(2.2) * (clip.height() / 2 - 6)
-            curve.moveTo(px, py) if k == 0 else curve.lineTo(px, py)
-        p.setBrush(QtCore.Qt.NoBrush)
-        p.drawPath(curve)
+        clip = QtCore.QRectF(172, y - 19, 46, 38)
+        self._last_stage(p, clip, m["clip"]["master"], c1)
         self._line(p, [(mg.right(), y), (clip.left(), y)], c1)
         main = m["main"]
-        branch_x = 228.0
+        branch_x = 157.0
         wr = self._writer(p, y, main, c1)
         self._line(p, [(clip.right(), y), (wr.left(), y)], c1)
         self._text(p, QtCore.QRectF(wr.left(), y - 44, wr.width(), 12), main.get("signal", ""), FONT_LABEL,
                    italic=True, color=c1, elide=False)
         self._scope(p, wr, main, c1)
-        # the master's feed to the headphones and the booth: down from a branch after the soft clip, left, down
+        # the master's feed to the headphones and the booth (each with a last stage of its own): down from a branch
+        # before the master's, left, down
         # the left side (into the CUE / MASTER mix's lower input, on to the booth); the CUE crosses it with a hop
         feed_y, feed_x = ROW_M + 54, 40.0
         feed_live = (live and hp["master_in"]) or blive
@@ -244,7 +236,10 @@ class SimulinkCanvas(ModelCanvas):
         split = QtCore.QRectF(244, y - 19, 66, 38)
         self._block(p, split, "MONO SPLIT", [hp["split_text"]], c1, live=live and hp["split"], bold_first=False)
         self._line(p, [(hg.right(), y), (split.left(), y)], c1, live=live)
-        self._bridge(p, hp, split, c1, y)
+        hclip = QtCore.QRectF(330, y - 19, 46, 38)
+        self._last_stage(p, hclip, m["clip"]["headphones"], c1, live=live)
+        self._line(p, [(split.right(), y), (hclip.left(), y)], c1, live=live)
+        self._bridge(p, hp, hclip, c1, y)
         # line 4: the booth
         y = ROW_B
         beq = QtCore.QRectF(60, y - 25, 92, 50)
@@ -254,7 +249,36 @@ class SimulinkCanvas(ModelCanvas):
         bg = QtCore.QRectF(174, y - 21, 50, 42)
         self._gain(p, bg, tr("Level"), bo["level_text"], c1, live=blive)
         self._line(p, [(beq.right(), y), (bg.left(), y)], c1, live=blive)
-        self._bridge(p, bo, bg, c1, y)
+        bclip = QtCore.QRectF(244, y - 19, 46, 38)
+        self._last_stage(p, bclip, m["clip"]["booth"], c1, live=blive)
+        self._line(p, [(bg.right(), y), (bclip.left(), y)], c1, live=blive)
+        self._bridge(p, bo, bclip, c1, y)
+
+    def _last_stage(self, p, rect, kind, c1, live=True):
+        """An output's last stage (audioengine.controls.CLIPS) as a block with its transfer curve: flat above the
+        ceiling (a hard clip), tanh (the soft clip), or the line under it with its lookahead (the limiter)."""
+        name = {"hard": tr("Hard Clip"), "limiter": tr("Limiter")}.get(kind, tr("Soft Clip"))
+        self._block(p, rect, name, [], c1, live=live)
+        p.setPen(QtGui.QPen(c1 if live else PAL.commented, 1.0))
+        curve = QtGui.QPainterPath()
+        half = rect.height() / 2 - 6
+        for k in range(21):
+            x = -1.0 + k / 10.0
+            px = rect.left() + 7 + (x + 1) / 2 * (rect.width() - 14)
+            if kind == "hard":
+                v = max(-1.0, min(1.0, 1.6 * x))
+            elif kind == "limiter":
+                v = 0.85 * x
+            else:
+                v = math.tanh(2.2 * x) / math.tanh(2.2)
+            py = rect.center().y() - v * half
+            curve.moveTo(px, py) if k == 0 else curve.lineTo(px, py)
+        p.setBrush(QtCore.Qt.NoBrush)
+        p.drawPath(curve)
+        if kind == "limiter":
+            self._text(p, QtCore.QRectF(rect.left(), rect.bottom() - 13, rect.width() - 4, 11),
+                       tr("{ms:g} ms").format(ms=controls.LIMITER_DELAY_SEC * 1000.0), 7.0,
+                       color=PAL.dim if live else PAL.commented)
 
     def _bridge(self, p, out, before, c1, row):
         """From ``before``'s output: a Rate Transition into the other clock domain (a device of its own), or the
@@ -294,7 +318,7 @@ class SimulinkCanvas(ModelCanvas):
 class AudioOverview(QtWidgets.QWidget):
     """The page: the model on its canvas. ``update_view(stats, capacity_ms, ctx)`` with the player's buffer stats
     (the engine client's take_buffer_stats' dict; None: none yet) and what the settings know (``ctx``: native, timestretch,
-    main_device, api_names, routes, midi, mix, deck, soft_clip)."""
+    main_device, api_names, routes, midi, mix, deck, clip: each output's last stage)."""
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
@@ -324,7 +348,9 @@ class AudioOverview(QtWidgets.QWidget):
         native = bool(ctx.get("native"))
         mix = ctx.get("mix") or {}
         deck = ctx.get("deck") or {}
-        m = {"native": native, "timestretch": bool(ctx.get("timestretch")), "soft_clip": bool(ctx.get("soft_clip"))}
+        clip = ctx.get("clip") or {}
+        m = {"native": native, "timestretch": bool(ctx.get("timestretch")),
+             "clip": {bus: clip.get(bus, "tanh") for bus in ("master", "headphones", "booth")}}
         factor = float(deck.get("factor", 1.0))
         playing = bool(deck.get("playing", False))
         m["deck_lines"] = [("▶ " if playing else "■ ") + f"x{factor:.3f}",

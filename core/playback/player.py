@@ -88,7 +88,7 @@ class _AudioWorker(QtCore.QObject):
         "scratch_begin", "scratch_update", "scratch_end",
         "deck_action", "set_tempo", "set_volume", "set_volume_trim", "set_marks",
         "jump_to", "call_at", "set_peak_meter_gain",
-        "set_refresh_fps", "set_timestretch", "set_soft_clip", "set_buffer_ms", "set_output_device",
+        "set_refresh_fps", "set_timestretch", "set_clip", "set_buffer_ms", "set_output_device",
         "set_output_mode", "set_exclusive_rate", "set_process",
         "tone_hold", "midi_open", "midi_map", "midi_options", "set_midi_learn", "set_routing", "set_headphones",
         "set_knob", "set_mixer", "set_channel_cue", "restart_engine", "set_spectrum",
@@ -412,8 +412,8 @@ class _AudioWorker(QtCore.QObject):
     def set_timestretch(self, enabled: bool) -> None:
         self.feeder.set_timestretch(bool(enabled))
 
-    def set_soft_clip(self, enabled: bool) -> None:
-        self.feeder.set_soft_clip(bool(enabled))
+    def set_clip(self, master: str, headphones: str, booth: str) -> None:
+        self.feeder.set_clip(master, headphones, booth)
 
     def set_buffer_ms(self, ms: float) -> None:
         self._buffer_ms = float(ms)
@@ -815,9 +815,9 @@ class PlayerController(QtCore.QObject):
         """Pitch-preserving time stretch instead of varispeed for tempo changes."""
         self._send("set_timestretch", bool(enabled))
 
-    def set_soft_clip(self, enabled: bool) -> None:
-        """tanh soft clip of the output (music + metronome clicks)."""
-        self._send("set_soft_clip", bool(enabled))
+    def set_clip(self, master: str, headphones: str, booth: str) -> None:
+        """Each output's last stage, keeping it at 0 dBFS at most (audioengine.controls.CLIPS)."""
+        self._send("set_clip", str(master), str(headphones), str(booth))
 
     def set_buffer_ms(self, native_ms: float, python_ms: float) -> None:
         """The output buffer (ms) of each engine: the one that plays takes its own."""

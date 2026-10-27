@@ -97,6 +97,7 @@ class outputconfig:
     exclusive: bool  # route "device": WASAPI's exclusive mode
     buffer_ms: int  # route "device": the audio kept ahead of its device
     rate: int  # route "device": its device's rate (0 = its mix format's; the bus is converted to it)
+    clip: Literal["tanh", "hard", "limiter"]  # its last stage, as playbackconfig.output_clip is the master's
 
 
 @dataclass
@@ -152,7 +153,9 @@ class deckconfig:
 @dataclass
 class playbackconfig:
     default_volume_percent: int
-    soft_clip: bool  # tanh soft clip of the output above SOFT_CLIP_KNEE
+    # the master's last stage, keeping it at 0 dBFS at most (the native engine's mixer::Clip; the headphones' and
+    # the booth's are their outputconfig's): a hard clip, a tanh soft clip, or a limiter (1 ms late: its lookahead)
+    output_clip: Literal["tanh", "hard", "limiter"]
     # the audio engine: "native" (audioengine/native; the Python one where it is not built or does not start)
     # or "python" (audioengine/python only); applied at the next start
     audio_engine: Literal["native", "python"]
@@ -495,7 +498,7 @@ def default_cfg():
     )
     pcfg = playbackconfig(
         default_volume_percent=100,
-        soft_clip=True,
+        output_clip="tanh",
         audio_engine="native",
         native_buffer_ms=20,
         python_buffer_ms=80,
@@ -509,9 +512,9 @@ def default_cfg():
         midi_jog_ticks=720,
         output_main="1-2",
         output_headphones=outputconfig(route="off", device="", channels="3-4", audio_api="wasapi", exclusive=False,
-                                       buffer_ms=20, rate=0),
+                                       buffer_ms=20, rate=0, clip="tanh"),
         output_booth=outputconfig(route="off", device="", channels="1-2", audio_api="wasapi", exclusive=False,
-                                  buffer_ms=20, rate=0),
+                                  buffer_ms=20, rate=0, clip="tanh"),
         headphones_master_mix=True,
         booth_level=0.8,
         booth_eq_hi=0.5,

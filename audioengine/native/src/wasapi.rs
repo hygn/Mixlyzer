@@ -16,7 +16,8 @@ use windows::Win32::Devices::Properties;
 use windows::Win32::Foundation::{HANDLE, PROPERTYKEY, WAIT_OBJECT_0};
 use windows::Win32::Media::Audio::{
     AUDCLNT_E_BUFFER_SIZE_NOT_ALIGNED, AUDCLNT_SHAREMODE_EXCLUSIVE, AUDCLNT_STREAMFLAGS_EVENTCALLBACK,
-    DEVICE_STATE_ACTIVE, IAudioClient, IAudioClient3, IAudioRenderClient, IMMDevice, IMMDeviceEnumerator,
+    AUDCLNT_STREAMOPTIONS_RAW, AudioCategory_Media, AudioClientProperties, DEVICE_STATE_ACTIVE, IAudioClient,
+    IAudioClient3, IAudioRenderClient, IAudioSessionControl, IAudioSessionControl2, IMMDevice, IMMDeviceEnumerator,
     MMDeviceEnumerator, WAVE_FORMAT_PCM, WAVEFORMATEX, WAVEFORMATEXTENSIBLE, WAVEFORMATEXTENSIBLE_0, eConsole,
     eRender,
 };
@@ -525,9 +526,21 @@ unsafe fn open_exclusive(device: &IMMDevice, rate: u32, channels: usize, level: 
 
 /// The low-latency shared stream (IAudioClient3), at the mix format: only when that is the session's format; its
 /// period the smallest the engine allows of PERIOD_FRAMES_MIN at least (a multiple of its fundamental period).
-unsafe fn open_shared(device: &IMMDevice, rate: u32, channels: usize) -> Result<Opened, String> {
+/// ``raw``: the stream asked for raw (AUDCLNT_STREAMOPTIONS_RAW): the system's processing of the device's other
+/// streams (its enhancements: Loudness Equalization, a bass boost, a vendor's effects) left out, the engine's audio
+/// as it is but for the system volume; refused by a device without raw processing.
+unsafe fn open_shared(device: &IMMDevice, rate: u32, channels: usize, raw: bool) -> Result<Opened, String> {
     unsafe {
         let client: IAudioClient3 = device.Activate(CLSCTX_ALL, None).map_err(|e| e.to_string())?;
+        if raw {
+            let props = AudioClientProperties {
+                cbSize: std::mem::size_of::<AudioClientProperties>() as u32,
+                bIsOffload: false.into(),
+                eCategory: AudioCategory_Media,
+                Options: AUDCLNT_STREAMOPTIONS_RAW,
+            };
+            client.SetClientProperties(&props).map_err(|e| format!("raw stream refused: {e}"))?;
+        }
         let mix = client.GetMixFormat().map_err(|e| e.to_string())?;
         let result = (|| {
             let (mix_rate, mix_channels) = ({ (*mix).nSamplesPerSec }, { (*mix).nChannels });
@@ -552,6 +565,20 @@ unsafe fn open_shared(device: &IMMDevice, rate: u32, channels: usize) -> Result<
         })();
         CoTaskMemFree(Some(mix as *const _));
         result
+    }
+}
+
+/// The stream's session kept at its level when another app starts a call (Windows lowers the others' by default:
+/// Settings > Sound > Communications); a refusal only logged.
+unsafe fn keep_from_ducking(client: &IAudioClient, device_name: &str) {
+    unsafe {
+        let kept = (|| {
+            let session: IAudioSessionControl = client.GetService()?;
+            windows::core::Interface::cast::<IAudioSessionControl2>(&session)?.SetDuckingPreference(true)
+        })();
+        if let Err(e) = kept {
+            log_line!("{device_name}: the session's ducking opt-out refused: {e}");
+        }
     }
 }
 
@@ -600,8 +627,16 @@ fn render_thread(
                     other => other?,
                 }
             } else {
-                open_shared(&device, rate, channels)?
+                match open_shared(&device, rate, channels, true) {
+                    Err(e) => {
+                        log_line!("{device_name}: raw shared stream not opened ({e}): with the system's \
+                                   processing");
+                        open_shared(&device, rate, channels, false)?
+                    }
+                    raw => raw?,
+                }
             };
+            keep_from_ducking(&o.client, &device_name);
             Ok::<_, String>((o, device_name))
         })();
         let (o, device_name) = match opened {

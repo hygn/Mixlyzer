@@ -43,7 +43,7 @@ from audioengine.controls import LEVEL_UNITY, MIX_KEY, MIX_KEYS, DeckReport
 from audioengine.volume import trim_db_to_knob
 
 MAGIC = int.from_bytes(b"MXAUDIC1", "little")
-VERSION = 8
+VERSION = 9
 STATE_OFFSET = 64
 RING_OFFSET = 172032
 RING_HEADER = 64
@@ -65,7 +65,7 @@ _DECK_AT = 256 + 8 * 4096
 # commands (ipc.rs op)
 OP_PAD, OP_LOAD, OP_UNLOAD, OP_PLAY, OP_PAUSE, OP_STOP, OP_SEEK = 0, 1, 2, 3, 4, 5, 6
 OP_SCRUB, OP_SCRATCH, OP_SCRATCH_TO, OP_ARM_JUMP, OP_DISARM_JUMP = 7, 8, 9, 10, 11
-OP_SET_MODE, OP_SET_FACTOR, OP_SET_TIMESTRETCH, OP_SET_SOFT_CLIP, OP_SET_BUFFER_MS = 12, 13, 14, 15, 16
+OP_SET_MODE, OP_SET_FACTOR, OP_SET_TIMESTRETCH, OP_SET_CLIP, OP_SET_BUFFER_MS = 12, 13, 14, 15, 16
 OP_TONE_HOLD = 17
 OP_CLICK_SAMPLE, OP_CLICK_PITCHES, OP_CLICK_BEATS, OP_CLICK_ENABLED = 19, 20, 21, 22
 OP_CLICK_OFFSET, OP_CLICK_DUCKING, OP_CLICK_CLEAR, OP_SHUTDOWN, OP_WAKE = 23, 24, 25, 26, 27
@@ -673,8 +673,10 @@ class NativeFeeder(QtCore.QObject):
         lo, hi = self.BUFFER_MS_RANGE
         self.setting(OP_SET_BUFFER_MS, struct.pack("<d", float(min(hi, max(lo, ms)))))
 
-    def set_soft_clip(self, enabled: bool) -> None:
-        self.setting(OP_SET_SOFT_CLIP, struct.pack("<I", int(bool(enabled))))
+    def set_clip(self, master: str, headphones: str, booth: str) -> None:
+        """Each output's last stage (controls.CLIPS; one not known: tanh)."""
+        codes = [controls.CLIPS.index(c) if c in controls.CLIPS else 1 for c in (master, headphones, booth)]
+        self.setting(OP_SET_CLIP, struct.pack("<3I", *codes))
 
     def set_output_device(self, name: str) -> None:
         """Play on the output device ``name`` ("" the system's default) from now (what is queued plays on)."""

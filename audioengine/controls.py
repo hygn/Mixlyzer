@@ -76,6 +76,10 @@ LAMP_VINYL = 52   # the jog in VINYL mode
 # the mixer's EQ (mix eq_mode) and channel fader curves (fader_curve), by their settings' names
 EQ_MODES = ("isolator", "eq")
 FADER_CURVES = ("default", "steep", "slow")
+# an output's last stage, keeping it at 0 dBFS at most (src/mixer.rs Clip, its code the place here): a hard clip,
+# a tanh soft clip above -1.9 dBFS, a limiter that comes out LIMITER_DELAY_SEC late (its lookahead: dsp.rs Limiter)
+CLIPS = ("hard", "tanh", "limiter")
+LIMITER_DELAY_SEC = 0.001
 ACT_GUI = 0x1000   # the GUI's own actions from here (core.controls.midi: their numbering), passed on to it
 # the tempo fader's ranges (+-%; 100: WIDE, 0 - 200 %)
 TEMPO_RANGES = (6, 10, 16, 100)

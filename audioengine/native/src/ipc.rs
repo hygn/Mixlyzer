@@ -23,7 +23,7 @@
 use std::sync::atomic::{AtomicU64, Ordering, fence};
 
 pub const MAGIC: u64 = u64::from_le_bytes(*b"MXAUDIC1");
-pub const VERSION: u32 = 8;
+pub const VERSION: u32 = 9;
 pub const STATE_OFFSET: usize = 64;
 pub const RING_OFFSET: usize = 172032;
 pub const RING_HEADER: usize = 64;
@@ -237,7 +237,7 @@ pub mod op {
     pub const SET_MODE: u32 = 12; // u32 1 speed / 0 none
     pub const SET_FACTOR: u32 = 13; // f64
     pub const SET_TIMESTRETCH: u32 = 14; // u32
-    pub const SET_SOFT_CLIP: u32 = 15; // u32
+    pub const SET_CLIP: u32 = 15; // u32 x 3: each output's last stage (mixer::Clip), the master's, the headphones', the booth's
     pub const SET_BUFFER_MS: u32 = 16; // f64
     pub const TONE_HOLD: u32 = 17; // u32 n, i32[n]
     // 18: none (the deck's volume is its mixer channel's fader: op::SET_VOLUME)

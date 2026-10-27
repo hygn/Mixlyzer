@@ -6,9 +6,10 @@ import time
 
 import numpy as np
 
-from PySide6.QtWidgets import QCheckBox, QComboBox, QFormLayout, QGroupBox, QLabel, QSpinBox
+from PySide6.QtWidgets import (QButtonGroup, QCheckBox, QComboBox, QFormLayout, QGroupBox, QHBoxLayout, QLabel,
+    QRadioButton, QSpinBox, QWidget)
 
-from audioengine.controls import NATIVE_BUFFER_MS_RANGE, NATIVE_EXCLUSIVE_RATES
+from audioengine.controls import LIMITER_DELAY_SEC, NATIVE_BUFFER_MS_RANGE, NATIVE_EXCLUSIVE_RATES
 from system import os_support
 from core.settings.config import outputconfig
 from system.i18n import tr, tr_mark
@@ -206,6 +207,49 @@ def native_buffer_text(values: dict, capacity_ms: float, lowest_ms: float, devic
     ).format(device=f"{device_ms:.1f}", **us)
 
 
+class ClipChoice(QWidget):
+    """An output's last stage (audioengine.controls.CLIPS) as one line of radio buttons, the limiter's delay said
+    beside them while it is picked."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        row = QHBoxLayout(self)
+        row.setContentsMargins(0, 0, 0, 0)
+        self._group = QButtonGroup(self)
+        self._buttons: dict[str, QRadioButton] = {}
+        for value, name in (("hard", tr("Hard clip")), ("tanh", tr("Soft clip (tanh)")), ("limiter", tr("Limiter"))):
+            button = QRadioButton(name)
+            self._group.addButton(button)
+            self._buttons[value] = button
+            row.addWidget(button)
+        self.lbl_delay = QLabel(tr("+{ms:g} ms latency").format(ms=LIMITER_DELAY_SEC * 1000.0))
+        self.lbl_delay.setToolTip(tr("<p>The limiter looks this far ahead: this output is heard that much later. "
+                                     "On the master the playhead counts it.</p>"))
+        row.addWidget(self.lbl_delay)
+        row.addStretch(1)
+        tip = tr(
+            "<p>What keeps this output at 0 dBFS at most, so the system's mixer never has to limit it on its way to "
+            "the device.</p><p>Hard clip: nothing changes under 0 dBFS; an over is cut flat (heard as distortion). "
+            "Soft clip (tanh): an over is rounded off above -1.9 dBFS; the top 2 dB are a little compressed. "
+            "Limiter: the level is brought down smoothly just before an over and back up over 100 ms; nothing "
+            "changes under 0 dBFS; the output is heard {ms:g} ms later (its look ahead).</p>"
+            "<p>The Python engine plays the master alone, and the soft clip in place of the limiter.</p>").format(
+            ms=LIMITER_DELAY_SEC * 1000.0)
+        for w in (self, *self._buttons.values()):
+            w.setToolTip(tip)
+        self._group.buttonToggled.connect(self._follow)
+        self.set_value("tanh")
+
+    def set_value(self, value: str) -> None:
+        self._buttons.get(value, self._buttons["tanh"]).setChecked(True)
+
+    def value(self) -> str:
+        return next((v for v, b in self._buttons.items() if b.isChecked()), "tanh")
+
+    def _follow(self, *_args) -> None:
+        self.lbl_delay.setVisible(self.value() == "limiter")
+
+
 class AuxOutputGroup(QGroupBox):
     """A bus of the native engine's beyond the master (the headphones, the booth): where it plays (off, channels
     of the main output's device, or a device of its own: its device, audio API, mode, channels and buffer), and,
@@ -269,6 +313,7 @@ class AuxOutputGroup(QGroupBox):
         self.sp_cue_mix.setToolTip(tr(
             "<p>The master's share in the headphones: 0 % the CUE alone, 100 % the master alone.</p>"))
         self.cb_master_mix.toggled.connect(self.sp_cue_mix.setEnabled)
+        self.clip = ClipChoice()
         self._cue_options = cue_options
         self.lbl_note = QLabel(tr("The native engine's: applied when it plays."))
         self.lbl_note.setWordWrap(True)
@@ -286,6 +331,7 @@ class AuxOutputGroup(QGroupBox):
         if cue_options:
             rows += [("master_mix", tr("Master in the headphones"), self.cb_master_mix),
                      ("cue_mix", tr("CUE / MASTER"), self.sp_cue_mix)]
+        rows.append(("clip", tr("Output limiting"), self.clip))
         for key, text, widget in rows:
             label = QLabel(text)
             form.addRow(label, widget)
@@ -310,6 +356,7 @@ class AuxOutputGroup(QGroupBox):
         self.cb_mode.setCurrentIndex(1 if o.exclusive else 0)
         self.cb_rate.setCurrentIndex(max(0, self.cb_rate.findData(int(o.rate))))
         self.sp_buffer.setValue(int(o.buffer_ms) or 20)
+        self.clip.set_value(o.clip)
         self._follow_route()
 
     def get_config(self) -> outputconfig:
@@ -321,6 +368,7 @@ class AuxOutputGroup(QGroupBox):
             exclusive=bool(self.cb_mode.currentData()),
             buffer_ms=int(self.sp_buffer.value()),
             rate=int(self.cb_rate.currentData() or 0),
+            clip=self.clip.value(),
         )
 
     def set_native(self, native: bool) -> None:
@@ -343,7 +391,7 @@ class AuxOutputGroup(QGroupBox):
         route = self.cb_route.currentData()
         own = route == "device"
         for key, (label, widget) in self._rows.items():
-            shown = (key == "route" or (key in ("channels", "master_mix", "cue_mix") and route != "off")
+            shown = (key == "route" or (key in ("channels", "master_mix", "cue_mix", "clip") and route != "off")
                      or (own and key != "route"))
             if key == "mode" and not os_support.IS_WINDOWS:
                 shown = False

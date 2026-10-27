@@ -213,7 +213,7 @@ class SettingsDialog(
         self.sp_click_beat_volume.setValue(int(deck.metronome_beat_volume_percent))
         self.sp_click_beat_pitch.setValue(float(deck.metronome_beat_pitch_semitones))
         self.cb_metronome_ducking.setChecked(bool(deck.metronome_ducking))
-        self.cb_soft_clip.setChecked(bool(p.soft_clip))
+        self.clip_master.set_value(p.output_clip)
         self.cb_audio_engine.setCurrentIndex(max(0, self.cb_audio_engine.findData(p.audio_engine)))
         self.sp_native_buffer_ms.setValue(int(p.native_buffer_ms))
         self.sp_python_buffer_ms.setValue(int(p.python_buffer_ms))
@@ -356,7 +356,7 @@ class SettingsDialog(
             ),
             playbackconfig=playbackconfig(
                 default_volume_percent=int(self.sp_default_volume_percent.value()),
-                soft_clip=bool(self.cb_soft_clip.isChecked()),
+                output_clip=self.clip_master.value(),
                 audio_engine=str(self.cb_audio_engine.currentData() or "native"),
                 native_buffer_ms=int(self.sp_native_buffer_ms.value()),
                 python_buffer_ms=int(self.sp_python_buffer_ms.value()),

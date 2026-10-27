@@ -62,8 +62,8 @@ def audio_setup_lines(cfg, native: bool) -> list[str]:
         _bus("booth", pcfg.output_booth),
         f"process: priority {_PRIORITIES.get(pcfg.native_priority, pcfg.native_priority)}, power throttling "
         + ("the system's choice" if pcfg.native_power_throttling else "off"),
-        f"mixer: {eq}, channel fader curve {deck.fader_curve}, trim {deck.volume_trim_dbfs:+.1f} dB, soft clip "
-        + ("on" if pcfg.soft_clip else "off"),
+        f"mixer: {eq}, channel fader curve {deck.fader_curve}, trim {deck.volume_trim_dbfs:+.1f} dB; last stages: "
+        f"master {pcfg.output_clip}, headphones {pcfg.output_headphones.clip}, booth {pcfg.output_booth.clip}",
         "MIDI: " + (f'"{pcfg.midi_input}"' if pcfg.midi_input else "no input")
         + ("" if deck.midi_enabled else " (switched off)")
         + f", {mapped} messages mapped, jog {pcfg.midi_jog_ticks} ticks a turn in {deck.jog_mode.upper()} mode",

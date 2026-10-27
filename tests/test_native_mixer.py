@@ -23,9 +23,10 @@ COLOR = {name: k for k, name in enumerate(controls.COLOR_TYPES)}
 TMP = tempfile.mkdtemp(prefix="mixer-test-")
 
 
-def render(x, sets=None, knobs=None, bpm=BPM, tail=0.0, bus="master", cue=False, block=512, stop_at=-1.0):
+def render(x, sets=None, knobs=None, bpm=BPM, tail=0.0, bus="master", cue=False, block=512, stop_at=-1.0, clip=None):
     """x: (n, 2) float32 -> the mixer's output (m, 2): ``bus`` master, hp (the headphones) or booth; ``cue`` the
-    channel's headphones CUE; the deck stopped (its fader down) at ``stop_at`` s."""
+    channel's headphones CUE; the deck stopped (its fader down) at ``stop_at`` s; ``clip``: the outputs' last stages
+    (master, headphones, booth: controls.CLIPS), else none (the mixer before them)."""
     src = os.path.join(TMP, "in.f32")
     np.ascontiguousarray(x, dtype="<f4").tofile(src)
     out = os.path.join(TMP, "out.f32")
@@ -37,6 +38,8 @@ def render(x, sets=None, knobs=None, bpm=BPM, tail=0.0, bus="master", cue=False,
         args += ["--knob", ",".join(f"{k}={v}" for k, v in knobs.items())]
     if cue:
         args += ["--cue"]
+    if clip:
+        args += ["--clip", ",".join(clip)]
     subprocess.run(args, check=True, capture_output=True)
     return np.fromfile(out, dtype="<f4").reshape(-1, 2)
 
@@ -313,6 +316,44 @@ class Buses(unittest.TestCase):
         y = render(st, cue=True, bus="hp", knobs={"fader": 0.0}, sets={"hp_split": 1, "hp_mix": 0.5})
         np.testing.assert_allclose(y[:, 0], st.mean(axis=1), atol=1e-6)
         self.assertEqual(rms(y[1024:, 1]), 0)
+
+
+class LastStages(unittest.TestCase):
+    """Each output's last stage on music pushed over 0 dBFS (TRIM at the top, +9 dB), each output its own."""
+    LOUD = {"trim": 1.0}
+
+    def test_each_stage_keeps_its_output_at_0_dbfs(self):
+        x = music(4)
+        raw = render(x, knobs=self.LOUD)                       # the mixer before its last stage
+        self.assertGreater(np.abs(raw).max(), 1.5)
+        d = round(controls.LIMITER_DELAY_SEC * SR) - 1         # the limiter's delay in frames
+        stages = ("limiter", "tanh", "hard")
+        for bus, kind in zip(("master", "hp", "booth"), stages):
+            with self.subTest(bus=bus, kind=kind):
+                y = render(x, knobs=self.LOUD, bus=bus, sets={"hp_mix": 1.0}, clip=stages)
+                self.assertLessEqual(np.abs(y).max(), 1.0)
+                ref = render(x, knobs=self.LOUD, bus=bus, sets={"hp_mix": 1.0})
+                if kind == "hard":
+                    np.testing.assert_array_equal(y, np.clip(ref, -1.0, 1.0))
+                elif kind == "tanh":
+                    under = np.abs(ref) <= 0.8
+                    np.testing.assert_array_equal(y[under], ref[under])
+                    self.assertLess(np.abs(y).max(), 1.0)
+                else:
+                    # a gain on the music d frames late: no sample flat at the ceiling, the shape kept
+                    late = ref[: len(ref) - d]
+                    g = y[d:, 0][np.abs(late[:, 0]) > 0.3] / late[:, 0][np.abs(late[:, 0]) > 0.3]
+                    self.assertGreater(g.min(), 0.0)
+                    self.assertLessEqual(g.max(), 1.0 + 1e-6)
+                    self.assertLess(int(np.sum(np.diff(y[d:, 0]) == 0) - np.sum(np.diff(late[:, 0]) == 0)), 10)
+
+    def test_the_limiter_leaves_music_under_0_dbfs_as_it_is_late(self):
+        x = music(2)
+        self.assertLess(np.abs(x).max(), 1.0)
+        d = round(controls.LIMITER_DELAY_SEC * SR) - 1
+        y = render(x, clip=("limiter", "limiter", "limiter"))
+        np.testing.assert_array_equal(y[:d], 0.0)
+        np.testing.assert_array_equal(y[d:], x[: len(x) - d])
 
 
 if __name__ == "__main__":
