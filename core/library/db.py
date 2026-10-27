@@ -62,6 +62,7 @@ class LibraryDB:
         self.reading_languages = list(reading_languages) if reading_languages is not None else None
         self.han_run = int(han_run)
         self._conn: Optional[sqlite3.Connection] = None
+        self._tx_depth = 0
 
     def connect(self):
         # used on the thread that opened it alone (the owner's): SQLite refuses it on another
@@ -231,12 +232,32 @@ class LibraryDB:
 
     @contextmanager
     def tx(self):
+        """One transaction: committed at its end, rolled back on an exception. Nested (a job's writes in one, each
+        method's own inside it), an inner one is a savepoint: only the outermost commits, so the job's writes go in
+        together or not at all."""
+        depth = self._tx_depth
+        self._tx_depth += 1
+        savepoint = f"tx{depth}"
         try:
-            yield
-            self.conn.commit()
-        except Exception:
-            self.conn.rollback()
-            raise
+            if depth:
+                self.conn.execute(f"SAVEPOINT {savepoint};")
+            elif not self.conn.in_transaction:
+                self.conn.execute("BEGIN;")      # a savepoint inside commits nothing (one outside a BEGIN would)
+            try:
+                yield
+            except BaseException:
+                if depth:
+                    self.conn.execute(f"ROLLBACK TO {savepoint};")
+                    self.conn.execute(f"RELEASE {savepoint};")
+                else:
+                    self.conn.rollback()
+                raise
+            if depth:
+                self.conn.execute(f"RELEASE {savepoint};")
+            else:
+                self.conn.commit()
+        finally:
+            self._tx_depth -= 1
 
     # UPSERT / CRUD
     def upsert(self, row: TrackRow):
@@ -974,9 +995,9 @@ class LibraryDB:
         return [_track_row_from_db_row(row) for row in cur.fetchall()]
 
     def set_tempo_key(self, uid: str, bpm: float, key: Optional[int]) -> None:
-        """The track's BPM and key (the editor's save: made from its marks as edited)."""
+        """The track's BPM and key (the editor's save: made from its marks as edited); committed with the job's other
+        writes, by the owner."""
         self.conn.execute("UPDATE tracks SET bpm=?, key=? WHERE uid=?;", (float(bpm), key, _canonical_uuid4(uid)))
-        self.conn.commit()
 
     # Utilities
     def touch_file_stats(self, path: str):

@@ -131,6 +131,39 @@ class LibraryServiceTests(unittest.TestCase):
         self.assertEqual((track.bpm, track.key), (128.0, 21))
         self.assertEqual(float(got["arrays"]["tempo_global"]), 128.0)
 
+    def test_an_editors_save_that_fails_leaves_library_db_as_it_was(self):
+        """One transaction: a failure of its last library.db write or of the NPZ saved after it rolls back the BPM, key
+        and segment tables written before it, and the NPZ is left as it was."""
+        import numpy as np
+        from unittest import mock
+        from core.analysis_library.store import FeatureNPZStore
+        from core.analysis_library.stored import TrackEdits
+        from core.library.db import LibraryDB
+        row = _row("i.wav")
+        row.bpm, row.key = 120.0, 0
+        self.library.write(jobs.save_track, row, False)
+        self.library.write(lambda lib: lib.features.save(row.uid, {
+            "beats_time_sec": np.arange(8) * 0.5, "tempo_segments": np.asarray([[0, 4, 120, 0, 4, 120]], float)}))
+        self.settle()
+        edits = TrackEdits(beats=np.arange(8) * 0.5, tempo_segments=np.asarray([[0, 4, 128, 0, 4, 128]], float),
+                           key_segments=np.asarray([[9, 1, 0, 4]], float), phrases=(), jump_cues=(), cue_points=())
+        for target, name in ((LibraryDB, "replace_phrase_index"), (FeatureNPZStore, "save")):
+            with self.subTest(failing=name):
+                errors, got = [], {}
+                with mock.patch.object(target, name, side_effect=OSError("disk full")):
+                    self.library.write(jobs.save_edits, row.uid, edits, failed=errors.append)
+                    self.settle()
+                self.library.read(lambda lib: lib.db.conn.execute(
+                    "SELECT COUNT(*) FROM track_bpm_segments WHERE track_uid=?", (row.uid,)).fetchone()[0],
+                    done=lambda n: got.update(segments=n))
+                self.library.read(lambda lib: lib.features.load(row.uid), done=lambda a: got.update(arrays=a))
+                self.settle()
+                self.assertEqual(len(errors), 1)
+                track = self.library.snapshot.track(row.uid)
+                self.assertEqual((track.bpm, track.key), (120.0, 0))
+                self.assertEqual(got["segments"], 0)
+                self.assertEqual(got["arrays"]["tempo_segments"][0][2], 120)
+
     def test_an_analysis_of_a_track_in_the_library_keeps_the_users_metadata(self):
         """A library track analyzed again (its stored analysis did not read, or a reanalysis): the metadata the user
         edited stays over the file's tags; its uid and added time too."""
@@ -173,8 +206,8 @@ class LibraryServiceTests(unittest.TestCase):
             for uid in (kept.uid, gone):
                 lib.features.save(uid, {"beats_time_sec": np.arange(4) * 0.5})
                 thumbnails.save_thumbnail(lib.path, uid, _image())
+            lib.db.conn.execute("PRAGMA foreign_keys=OFF;")    # outside a transaction: inside one it does nothing
             with lib.db.tx():       # rows of a track removed before every table followed it
-                lib.db.conn.execute("PRAGMA foreign_keys=OFF;")
                 lib.db.conn.execute("INSERT INTO track_tag_sources(track_uid, field, slot, source) VALUES(?, 'title', 0, '');", (gone,))
                 lib.db.conn.execute("INSERT INTO playlist_tracks(playlist_uid, position, track_uid) VALUES(?, 1, ?);", (playlist, gone))
             lib.db.conn.execute("PRAGMA foreign_keys=ON;")

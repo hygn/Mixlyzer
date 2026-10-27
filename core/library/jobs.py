@@ -80,18 +80,21 @@ def remove_tracks(lib, uids: list[str]) -> None:
 
 def save_edits(lib, uid: str, edits: TrackEdits) -> str:
     """The editor's save: ``edits`` into the track's stored analysis (each mark's block replaced whole), its BPM, key
-    and segment tables in library.db written from them (the Export tab's tags read the BPM and key). Returns the uid. Unmarked (the snapshot read whole, sig_lib_updated
-    sent): the library's phrase / transition filters read those tables and run again on it."""
+    and segment tables in library.db written from them (the Export tab's tags read the BPM and key). Returns the uid.
+    Unmarked (the snapshot read whole, sig_lib_updated sent): the library's phrase / transition filters read those
+    tables and run again on it. One transaction, the NPZ saved last inside it: a failure anywhere rolls library.db
+    back whole, so it never holds half an edit."""
     stored = lib.features.load(uid)
     apply_edits(stored, edits)
-    lib.features.save(uid, stored)
-    lib.db.set_tempo_key(uid, edits.main_tempo(), edits.main_key())
-    bpm_rows = build_bpm_segments(stored.get("tempo_segments"))
-    key_rows = build_key_segments(stored.get("key_segments"))
-    phrase_rows = assigned_phrases(extract_phrase_segments(stored))
-    lib.db.replace_bpm_segments(uid, bpm_rows)
-    lib.db.replace_key_segments(uid, key_rows)
-    lib.db.replace_phrase_index(uid, build_phrase_index_rows(phrase_rows, bpm_rows, key_rows))
+    with lib.db.tx():
+        lib.db.set_tempo_key(uid, edits.main_tempo(), edits.main_key())
+        bpm_rows = build_bpm_segments(stored.get("tempo_segments"))
+        key_rows = build_key_segments(stored.get("key_segments"))
+        phrase_rows = assigned_phrases(extract_phrase_segments(stored))
+        lib.db.replace_bpm_segments(uid, bpm_rows)
+        lib.db.replace_key_segments(uid, key_rows)
+        lib.db.replace_phrase_index(uid, build_phrase_index_rows(phrase_rows, bpm_rows, key_rows))
+        lib.features.save(uid, stored)
     return uid
 
 
