@@ -14,7 +14,7 @@ from analyzer.audio.hpss import hpss_audio
 from analyzer.beat.learned_onset import ONSET_CHANNEL_NAMES, onset_channels
 from analyzer.audio.decoder import decode_to_memmap
 from analyzer.training import SkippedOptimizationTrack, library_tracks, skipped_track
-from analyzer.files import atomic_output_path
+from analyzer.files import atomic_save_npz
 from analyzer.training.text import msg
 
 
@@ -135,18 +135,16 @@ def _build_track_cache(
         frames = extract_frame_features(
             audio, sample_rate, percussive, harmonic, hop_length=int(hop_length)
         )
-        with atomic_output_path(cache_path) as temporary:
-            np.savez_compressed(
-                temporary,
-                cache_format=np.asarray(ONSET_FEATURE_CACHE_FORMAT),
-                frame_times=frames.frame_times.astype(np.float64),
-                channels=onset_channels(frames),
-                channel_names=np.asarray(ONSET_CHANNEL_NAMES, dtype="U64"),
-                use_hpss=np.bool_(use_hpss),
-                frame_hop_length=np.int64(hop_length),
-                sample_rate=np.int64(sample_rate),
-                audio_mtime_ns=np.int64(Path(track["audio_path"]).stat().st_mtime_ns),
-            )
+        atomic_save_npz(cache_path, dict(
+            cache_format=np.asarray(ONSET_FEATURE_CACHE_FORMAT),
+            frame_times=frames.frame_times.astype(np.float64),
+            channels=onset_channels(frames),
+            channel_names=np.asarray(ONSET_CHANNEL_NAMES, dtype="U64"),
+            use_hpss=np.bool_(use_hpss),
+            frame_hop_length=np.int64(hop_length),
+            sample_rate=np.int64(sample_rate),
+            audio_mtime_ns=np.int64(Path(track["audio_path"]).stat().st_mtime_ns),
+        ))
 
     if threadpool_limits is None:
         build()

@@ -31,7 +31,7 @@ from analyzer.phrase.structural_features import (
 from analyzer.phrase import lead_in as _lead_in
 from analyzer.phrase import refinement as _refine
 from analyzer.phrase.refinement import REFINEMENT_VERSION
-from analyzer.files import atomic_output_path
+from analyzer.files import atomic_save_npz
 
 
 EPS = 1e-9
@@ -312,13 +312,14 @@ def export_two_stage_npz_artifact(artifact: dict[str, object], output_path: str 
     if out.suffix.lower() != ".npz":
         raise ValueError(f"Phrase artifact output must end with .npz: {out}")
     out.parent.mkdir(parents=True, exist_ok=True)
+    def check(temp_path: Path) -> None:
+        # Validate the complete current artifact before replacing a working
+        # model. This also catches truncated ZIP members and schema drift.
+        load_two_stage_model.cache_clear()
+        load_two_stage_model(str(temp_path))
+
     try:
-        with atomic_output_path(out) as temp_path:
-            np.savez_compressed(temp_path, **payload)
-            # Validate the complete current artifact before replacing a working
-            # model. This also catches truncated ZIP members and schema drift.
-            load_two_stage_model.cache_clear()
-            load_two_stage_model(str(temp_path))
+        atomic_save_npz(out, payload, check=check)
     finally:
         load_two_stage_model.cache_clear()
 

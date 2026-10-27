@@ -171,7 +171,7 @@ def refine_onset_activation(frames: FrameFeatures, path: str | Path) -> np.ndarr
 
 def export_refine_onset_model(classifier, output_path: str | Path, frame_hop_length: int, training: dict | None = None) -> None:
     from analyzer.phrase.phrase_analyzer import _hgb_to_npz_payload
-    from analyzer.files import atomic_output_path
+    from analyzer.files import atomic_save_npz
 
     payload: dict[str, np.ndarray] = {
         "format": np.asarray(REFINE_ONSET_FORMAT),
@@ -182,10 +182,11 @@ def export_refine_onset_model(classifier, output_path: str | Path, frame_hop_len
     _hgb_to_npz_payload("onset", classifier, payload)
     out = Path(output_path)
     out.parent.mkdir(parents=True, exist_ok=True)
+    def check(temporary: Path) -> None:
+        load_refine_onset_model.cache_clear()
+        load_refine_onset_model(str(temporary))
+
     try:
-        with atomic_output_path(out) as temporary:
-            np.savez_compressed(temporary, **payload)
-            load_refine_onset_model.cache_clear()
-            load_refine_onset_model(str(temporary))
+        atomic_save_npz(out, payload, check=check)
     finally:
         load_refine_onset_model.cache_clear()

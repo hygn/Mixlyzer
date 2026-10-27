@@ -36,7 +36,7 @@ from analyzer.training import model_start as MS
 from analyzer.training.beat_tcn_optimizer import _rate
 from analyzer.training.onset_training import _auto_cache_workers, _list_beat_tracks
 from analyzer.training.refine_onset_optimizer import _group_key
-from analyzer.files import atomic_output_path
+from analyzer.files import atomic_save_npz
 from analyzer.training.text import msg
 
 ProgressCallback = Callable[[int, str], None]
@@ -173,10 +173,9 @@ def build_key_frames(track: dict[str, object], cache_dir_text: str) -> str:
                                     dtype=np.float32)
         y_harm = hpss_audio_with_spectra(samp, CK.SR)[0]
         frames = CK.frame_chroma(y_harm, CK.SR)
-    with atomic_output_path(path) as temporary:
-        np.savez_compressed(temporary, cache_format=np.asarray(KEY_FRAME_CACHE_FORMAT),
-                            audio_mtime_ns=np.int64(Path(track["audio_path"]).stat().st_mtime_ns),
-                            frames=frames.astype(np.float16))
+    atomic_save_npz(path, dict(cache_format=np.asarray(KEY_FRAME_CACHE_FORMAT),
+                               audio_mtime_ns=np.int64(Path(track["audio_path"]).stat().st_mtime_ns),
+                               frames=frames.astype(np.float16)))
     return str(track["uid"])
 
 
@@ -470,8 +469,7 @@ def evaluate(arrays: dict, songs: list[Song], idx) -> tuple[float, float]:
 
 def _save(path: Path, arrays: dict) -> None:
     Path(path).parent.mkdir(parents=True, exist_ok=True)
-    with atomic_output_path(Path(path)) as temporary:
-        np.savez(temporary, **{k: np.asarray(v) for k, v in arrays.items()})
+    atomic_save_npz(path, {k: np.asarray(v) for k, v in arrays.items()}, compressed=False)
 
 
 def optimize_key_model(

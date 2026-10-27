@@ -14,7 +14,7 @@ from analyzer.beat.frame_features import FrameFeatures
 from analyzer.runtime import spawn_pool
 from analyzer.training import SkippedOptimizationTrack, optimizer_track_name, skipped_track
 from analyzer.training.onset_training import _auto_cache_workers, _list_beat_tracks
-from analyzer.files import atomic_output_path
+from analyzer.files import atomic_save_npz
 from analyzer.training.text import msg
 
 ProgressCallback = Callable[[int, str], None]
@@ -89,13 +89,11 @@ def build_frames(track: dict[str, object], cache_dir_text: str) -> str:
             values[field.name] = np.asarray(v)
         else:
             values[field.name] = np.asarray(v, dtype=np.float16)
-    with atomic_output_path(path) as temporary:
-        np.savez_compressed(
-            temporary,
-            cache_format=np.asarray(BEAT_FRAME_CACHE_FORMAT),
-            audio_mtime_ns=np.int64(Path(track["audio_path"]).stat().st_mtime_ns),
-            **values,
-        )
+    atomic_save_npz(path, dict(
+        cache_format=np.asarray(BEAT_FRAME_CACHE_FORMAT),
+        audio_mtime_ns=np.int64(Path(track["audio_path"]).stat().st_mtime_ns),
+        **values,
+    ))
     return str(track["uid"])
 
 

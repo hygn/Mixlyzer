@@ -34,7 +34,7 @@ from analyzer.phrase.model_features import (
     feature_z_from_acoustic,
     segment_feature_matrix,
 )
-from analyzer.files import atomic_output_path
+from analyzer.files import atomic_save_npz
 from analyzer.training.library_tracks import Annotation
 from analyzer.training.text import msg
 
@@ -291,18 +291,16 @@ def _current_beat_features(
     beat_times = np.asarray(grid.beat_times_sec, dtype=np.float64)
     # Replace atomically so cancelling the optimizer cannot leave a truncated
     # cache that every later run has to rediscover and rebuild.
-    with atomic_output_path(cache_path) as temporary:
-        np.savez_compressed(
-            temporary,
-            cache_format=np.asarray(BEAT_FEATURE_CACHE_FORMAT),
-            beat_times_sec=beat_times,
-            beat_edges_sec=np.asarray(grid.beat_edges_sec, dtype=np.float64),
-            feature_z=feature_z,
-            feature_names=feature_names,
-            feature_config=_feature_config_signature(config),
-            res_type=np.asarray(config.res_type),
-            audio_mtime_ns=np.int64(audio_path.stat().st_mtime_ns),
-        )
+    atomic_save_npz(cache_path, dict(
+        cache_format=np.asarray(BEAT_FEATURE_CACHE_FORMAT),
+        beat_times_sec=beat_times,
+        beat_edges_sec=np.asarray(grid.beat_edges_sec, dtype=np.float64),
+        feature_z=feature_z,
+        feature_names=feature_names,
+        feature_config=_feature_config_signature(config),
+        res_type=np.asarray(config.res_type),
+        audio_mtime_ns=np.int64(audio_path.stat().st_mtime_ns),
+    ))
     return {
         "beat_times_sec": beat_times,
         "feature_z": np.asarray(feature_z, dtype=np.float64),

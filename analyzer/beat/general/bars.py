@@ -136,13 +136,12 @@ def load_ctx_model(path: str):
 def export_ctx_model(classifier, path, training: dict | None = None) -> None:
     """Write a fitted HistGradientBoostingClassifier as the runtime's NumPy artifact."""
     import json
-    from analyzer.files import atomic_output_path
+    from analyzer.files import atomic_save_npz
     from analyzer.phrase.phrase_analyzer import _hgb_to_npz_payload
     payload = {'format': np.asarray(CTX_FORMAT),
                'training_json': np.asarray(json.dumps(training or {}, ensure_ascii=False, sort_keys=True))}
     _hgb_to_npz_payload('downbeat_ctx', classifier, payload)
-    with atomic_output_path(path) as temporary:    # replaced whole: a cut-off write never leaves a model to read
-        np.savez_compressed(temporary, **payload)
+    atomic_save_npz(path, payload)    # replaced whole: a cut-off write never leaves a model to read
 
 
 def bars_viterbi(pd, cost=CB, cheap=None, cost_at_start=0.0):

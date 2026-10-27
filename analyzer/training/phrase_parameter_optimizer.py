@@ -39,7 +39,7 @@ from analyzer.phrase.structural_features import (
     STRUCTURE_FEATURE_VERSION,
     multi_view_structure_features,
 )
-from analyzer.files import atomic_output_path
+from analyzer.files import atomic_save_npy, atomic_save_npz
 from analyzer.training.text import Concat, Text, TrainingError, msg
 
 
@@ -285,8 +285,7 @@ def _repeat_cache_is_current(path: Path, beat_cache_path: Path, n_beats: int) ->
 
 
 def _write_npy_atomic(path: Path, values: np.ndarray) -> None:
-    with atomic_output_path(path) as temporary:
-        np.save(temporary, values, allow_pickle=False)
+    atomic_save_npy(path, values)
 
 
 def _build_track_caches(
@@ -329,8 +328,7 @@ def _build_track_caches(
             np.asarray(feat["feature_z"], dtype=np.float64),
             np.asarray(feat["grid"].downbeat_mask, dtype=bool),
         )
-        with atomic_output_path(_repeat_cache_path(cache_dir, uid)) as temporary:
-            np.savez(temporary, **repeats)
+        atomic_save_npz(_repeat_cache_path(cache_dir, uid), repeats, compressed=False)
         return uid, beat_was_current
 
     if threadpool_limits is None:

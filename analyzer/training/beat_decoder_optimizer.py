@@ -24,7 +24,7 @@ import numpy as np
 from sklearn.model_selection import GroupKFold
 
 from analyzer.beat.general import tracker as TR
-from analyzer.files import atomic_output_path
+from analyzer.files import atomic_save_npz
 from analyzer.runtime import spawn_pool
 from analyzer.training import SkippedOptimizationTrack, optimizer_track_name, skipped_track
 from analyzer.training.beat_frames import cache_path, ensure_frames, list_grid_tracks, read_frames
@@ -176,11 +176,10 @@ def optimize_beat_decoder(
     full = np.stack([tables[str(t["uid"])] for t in kept])                  # [songs, S, H, O, beats/bars] seconds
     wrong = full.sum(-1)
     if request.table_path:
-        with atomic_output_path(request.table_path) as temporary:
-            np.savez_compressed(temporary, uids=np.asarray([str(t["uid"]) for t in kept]),
-                                tables=np.stack([tables[str(t["uid"])] for t in kept]),
-                                section=np.asarray(grid[0]), half_reset=np.asarray(grid[1]),
-                                odd_bar=np.asarray(grid[2]))
+        atomic_save_npz(request.table_path, dict(uids=np.asarray([str(t["uid"]) for t in kept]),
+                                                 tables=np.stack([tables[str(t["uid"])] for t in kept]),
+                                                 section=np.asarray(grid[0]), half_reset=np.asarray(grid[1]),
+                                                 odd_bar=np.asarray(grid[2])))
     now = (grid[0].index(float(current.section)), grid[1].index(float(current.half_reset)),
            grid[2].index(float(current.odd_bar)))
 
