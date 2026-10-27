@@ -59,8 +59,16 @@ assets/midi/midi.json
 tests/native_mixer/
 tests/ground_truth/audio.json
 
-# Algorithm research, local only (research/: the benchmarks and their datasets, experiments, the DJ software
-# interchange research, the debug visualizations, the MADB works comparison)
+# Algorithm research, this computer only, never the app's code; its results name library tracks, so nothing of it
+# goes public. research/
+#   benchmark/        the benchmarks, their datasets and every experiment's scripts and results
+#                     (fingerprint_research, qbh_research, phrase_boundary, ...)
+#   experiments/      prototypes (mix_mode, inhouse_cqt, rekordbox_dragdrop)
+#   interchange/      the DJ software interchange research; run from the repository's root:
+#                     python -m research.interchange.tools.<tool>
+#   debug_vis/        the analyses' debug visualizations
+#   madb_works/       the MADB works comparison
+#   native_mixer_engine-full-2026-10/   the native mixer checks of the engine before its diet (tag engine-full-2026-10)
 research/
 annotator/
 benchmark/
