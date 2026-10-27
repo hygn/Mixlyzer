@@ -214,7 +214,6 @@ class ExternalSyncController(QtCore.QObject):
         self.bus.sig_playback_status.connect(self._on_playback_status_changed)
         self.model.sig_loaded.connect(self._on_features_loaded)
         self.bus.sig_lib_updated.connect(self._on_library_updated)
-        self.model.sig_properties_changed.connect(self.publish_state)
         app = QtCore.QCoreApplication.instance()
         if app is not None:
             app.aboutToQuit.connect(self.close)   # the port let go with the app
@@ -237,7 +236,6 @@ class ExternalSyncController(QtCore.QObject):
         if listen_changed:
             self._close_receiver()
         self._apply_polling_state()
-        self.publish_state()
 
     def set_poll_fps(self, fps: int) -> None:
         fps = max(1, min(240, int(fps)))
@@ -294,12 +292,10 @@ class ExternalSyncController(QtCore.QObject):
     @QtCore.Slot(float)
     def _on_time_changed(self, sec: float) -> None:
         self._time_sec = max(0.0, float(sec))
-        self.publish_state()
 
     @QtCore.Slot(bool)
     def _on_playback_status_changed(self, is_playing: bool) -> None:
         self._is_playing = bool(is_playing)
-        self.publish_state()
 
     @QtCore.Slot()
     def _on_features_loaded(self) -> None:
@@ -312,7 +308,6 @@ class ExternalSyncController(QtCore.QObject):
             self._analysis_request_raw_path = None
         self._missing_path_logged = None
         QtCore.QTimer.singleShot(0, self._drive_pending_external)
-        self.publish_state()
 
     @QtCore.Slot(object)
     def _on_library_updated(self, _data) -> None:
@@ -326,11 +321,6 @@ class ExternalSyncController(QtCore.QObject):
             self._analysis_request_inflight = None
             self._analysis_request_raw_path = None
         QtCore.QTimer.singleShot(0, self._drive_pending_external)
-        self.publish_state()
-
-    @QtCore.Slot()
-    def publish_state(self) -> None:
-        self.bus.sig_external_sync_state.emit(self.snapshot())
 
     def _apply_polling_state(self) -> None:
         if not self._cfg.enabled:
@@ -583,7 +573,6 @@ class ExternalSyncController(QtCore.QObject):
         self._cfg.enabled = False
         self._close_receiver()
         self._apply_polling_state()
-        self.publish_state()
         self.bus.sig_external_sync_enabled.emit(False)
         self._log(message)
         if self._failure_callback is not None:

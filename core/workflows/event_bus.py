@@ -10,7 +10,6 @@ class EventBus(QtCore.QObject):
     sig_playback_status = QtCore.Signal(bool)
     sig_transport_enabled = QtCore.Signal(bool)
     sig_external_sync_enabled = QtCore.Signal(bool)
-    sig_external_sync_state = QtCore.Signal(object)
     sig_peak_meter_gain_changed = QtCore.Signal(float)
     sig_output_peak_dbfs = QtCore.Signal(float)
     # Output buffer: queued ms now, time-continuous observations since the last report
@@ -18,9 +17,6 @@ class EventBus(QtCore.QObject):
     sig_output_buffer = QtCore.Signal(float, object, float)
     # the deck's tempo as the player reports it (1: 100 %); notification of a change
     sig_tempo_factor_changed = QtCore.Signal(float)
-    sig_stop_requested = QtCore.Signal(bool)
-    sig_play_requested = QtCore.Signal(bool)
-    sig_pause_requested = QtCore.Signal(bool)
     sig_scrub_begin  = QtCore.Signal()
     sig_scrub_update = QtCore.Signal(float)  # sec
     sig_scrub_end    = QtCore.Signal(float)  # sec
@@ -96,7 +92,6 @@ class EventBus(QtCore.QObject):
     # DeckReport: playing, factor, volume, cue s, jump_dest s, lamps, tempo_range, midi_state), which the GUI shows
     sig_deck_action = QtCore.Signal(int, bool)   # client.DECK_ACTIONS code, pressed (True) / let go
     sig_tempo_requested = QtCore.Signal(float)   # the tempo fader moved: factor
-    sig_tempo_range_requested = QtCore.Signal(int)   # +-% (100: WIDE)
     sig_volume_requested = QtCore.Signal(float)   # the volume fader moved: 0 .. 1
     # the player's channel knob turned: 0 TRIM, 1 EQ LOW, 2 MID, 3 HIGH; its position 0 .. 1 (the middle 0 dB)
     sig_knob_requested = QtCore.Signal(int, float)

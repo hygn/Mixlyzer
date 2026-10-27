@@ -83,10 +83,10 @@ class _AudioWorker(QtCore.QObject):
     BUFFER_REPORT_SEC = 0.25
 
     _COMMANDS = frozenset({
-        "load", "unload", "play", "pause", "stop", "seek",
+        "load", "unload", "pause", "stop", "seek",
         "scrub_begin", "scrub_update", "scrub_end",
         "scratch_begin", "scratch_update", "scratch_end",
-        "deck_action", "set_tempo", "set_tempo_range", "set_volume", "set_volume_trim", "set_marks",
+        "deck_action", "set_tempo", "set_volume", "set_volume_trim", "set_marks",
         "jump_to", "call_at", "set_peak_meter_gain",
         "set_refresh_fps", "set_timestretch", "set_soft_clip", "set_buffer_ms", "set_output_device",
         "set_output_mode", "set_exclusive_rate", "set_process",
@@ -94,7 +94,7 @@ class _AudioWorker(QtCore.QObject):
         "set_knob", "set_mixer", "set_channel_cue", "restart_engine",
     })
     _WAIT_FOR_TRACK = frozenset({
-        "play", "pause", "stop", "seek",
+        "pause", "stop", "seek",
         "scrub_begin", "scrub_update", "scrub_end",
         "scratch_begin", "scratch_update", "scratch_end",
         "deck_action", "jump_to", "call_at",
@@ -279,11 +279,6 @@ class _AudioWorker(QtCore.QObject):
 
     # Transport: requests; whether it plays and where comes back in the deck's report and the playhead
     @QtCore.Slot()
-    def play(self) -> None:
-        if self._path and self._track_ready:
-            self.feeder.play()
-
-    @QtCore.Slot()
     def pause(self) -> None:
         self.feeder.pause()
 
@@ -303,9 +298,6 @@ class _AudioWorker(QtCore.QObject):
 
     def set_tempo(self, factor: float) -> None:
         self.deck.set_tempo(float(factor))
-
-    def set_tempo_range(self, percent: int) -> None:
-        self.deck.set_tempo_range(int(percent))
 
     def set_volume(self, position: float) -> None:
         self.deck.set_volume(float(position))
@@ -670,7 +662,6 @@ class PlayerController(QtCore.QObject):
         # the deck's requests (what it then is: sig_deck_state)
         bus.sig_deck_action.connect(lambda code, pressed: self._send_local("deck_action", int(code), bool(pressed)))
         bus.sig_tempo_requested.connect(lambda f: self._send("set_tempo", float(f)))
-        bus.sig_tempo_range_requested.connect(lambda r: self._send("set_tempo_range", int(r)))
         bus.sig_volume_requested.connect(lambda v: self._send("set_volume", float(v)))
         bus.sig_knob_requested.connect(lambda which, v: self._send("set_knob", int(which), float(v)))
         bus.sig_mixer_requested.connect(lambda key, v: self._send("set_mixer", str(key), float(v)))
@@ -757,14 +748,6 @@ class PlayerController(QtCore.QObject):
         """The metronome click mixer. Only touch it from the audio thread."""
         feeder = self._audio_worker.feeder
         return feeder.clicks if feeder is not None else None
-
-    def play(self) -> None:
-        if not self._path:
-            return
-        if self._external_sync_enabled:
-            self.bus.sig_playback_status.emit(False)
-            return
-        self._send("play")
 
     def pause(self) -> None:
         if self._external_sync_enabled:

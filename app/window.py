@@ -233,9 +233,6 @@ class AppWindow(QtWidgets.QMainWindow):
 
     def _connect_transport(self) -> None:
         """The deck's transport requests to the player."""
-        self.bus.sig_stop_requested.connect(self.player.stop)
-        self.bus.sig_pause_requested.connect(self.player.pause)
-        self.bus.sig_play_requested.connect(self.player.play)
         self.bus.sig_timestretch_toggle_requested.connect(self._on_timestretch_toggle)
         self.bus.sig_metronome_toggle_requested.connect(self._on_metronome_toggle)
 
