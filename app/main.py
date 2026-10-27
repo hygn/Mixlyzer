@@ -2,11 +2,11 @@ import gc
 import os
 import sys
 from pathlib import Path
-from PySide6 import QtWidgets
+from PySide6 import QtGui, QtWidgets
 from system import i18n
 from system import os_support
 from core.settings.config import load_cfg, ui_language, unreadable_settings
-from system.resource_paths import app_folder
+from system.resource_paths import app_folder, resource_path
 from system.i18n import tr
 from core.library.version import (
     ensure_current_version_file,
@@ -41,6 +41,8 @@ def main():
     # Python's 5, so a small output buffer is fed in time (measured: a 20 ms buffer ran dry under GUI work).
     sys.setswitchinterval(0.001)
     app = QtWidgets.QApplication(sys.argv)
+    # every window's icon (the splash, the main window, the dialogs and windows of their own)
+    app.setWindowIcon(QtGui.QIcon(str(resource_path("assets/images/mixlyzer.png"))))
     # the language before any UI is made (or imported: the startup imports the rest)
     i18n.install(ui_language())
     i18n.install_qt(app)

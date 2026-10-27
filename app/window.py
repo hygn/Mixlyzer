@@ -55,7 +55,7 @@ from core.settings.config import config, restored_settings, search_settings
 from core.settings.store import SettingsStore
 from analyzer.music.beat_geometry import downbeat_beat_indices
 from system.i18n import tr, tr_n
-from system.resource_paths import app_folder, resource_path
+from system.resource_paths import app_folder
 
 class AppWindow(QtWidgets.QMainWindow):
     _sig_metronome_set_beats = QtCore.Signal(object, object, float)
@@ -78,7 +78,6 @@ class AppWindow(QtWidgets.QMainWindow):
         os_support.prepare_app_process("org.hygn.mixylzer")
         self.setWindowTitle("Mixlyzer")
         self.setAcceptDrops(True)
-        self.setWindowIcon(QtGui.QIcon(str(resource_path("assets/images/mixlyzer.png"))))
 
         self.settings = settings
         set_phrase_label_names(self.cfg.viewconfig.phrase_labels.by_label())

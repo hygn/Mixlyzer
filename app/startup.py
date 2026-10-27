@@ -67,7 +67,6 @@ class StartupSplash(QtWidgets.QWidget):
             f"QProgressBar::chunk {{ border-radius: 2px; background: {theme.accent}; }}\n"
             f"QProgressBar#overall::chunk {{ background: {theme.success}; }}")
         self.setWindowTitle("Mixlyzer")
-        self.setWindowIcon(QtGui.QIcon(str(resource_path("assets/images/mixlyzer.png"))))
 
         icon = QtWidgets.QLabel()
         icon.setPixmap(QtGui.QPixmap(str(resource_path("assets/images/mixlyzer.png"))).scaled(
