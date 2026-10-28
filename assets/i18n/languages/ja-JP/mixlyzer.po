@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-28 02:50+0900\n"
+"POT-Creation-Date: 2026-10-28 11:38+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ja_JP\n"
@@ -574,53 +574,53 @@ msgstr "ミキサー"
 # | Playback > " "Audio engine)."
 # Audio
 # | > " "Engine)."
-#: app/window.py:445
+#: app/window.py:447
 msgid "MIDI needs the native audio engine (Settings > Audio > Engine)."
 msgstr "MIDI は Native オーディオエンジンでのみ動作します（設定 > オーディオ > エンジン）。"
 
 # | msgid "MIDI input"
-#: app/window.py:452
+#: app/window.py:454
 msgid "MIDI input on."
 msgstr "MIDI 入力オン。"
 
 # | msgid "MIDI input"
-#: app/window.py:452
+#: app/window.py:454
 msgid "MIDI input off."
 msgstr "MIDI 入力オフ。"
 
-#: app/window.py:504
+#: app/window.py:506
 msgid "The Python audio engine plays: there is no native engine to restart."
 msgstr "Python オーディオエンジンで再生中です。再起動するネイティブエンジンがありません。"
 
 # | msgid "Starting the reading worker"
-#: app/window.py:506
+#: app/window.py:508
 msgid "Restarting the audio engine..."
 msgstr "オーディオエンジンを再起動中..."
 
 # | msgid "Audio engine"
-#: app/window.py:510
+#: app/window.py:512
 msgid "Audio engine restarted."
 msgstr "オーディオエンジンを再起動しました。"
 
-#: app/window.py:511
+#: app/window.py:513
 msgid "The audio engine did not start; it is tried again every 2 seconds."
 msgstr "オーディオエンジンが起動しませんでした。2 秒ごとに再試行します。"
 
-#: app/window.py:561 app/window.py:626
+#: app/window.py:563 app/window.py:628
 msgid "External Sync is enabled. Local track loading is disabled."
 msgstr "外部同期が有効です。ローカルでのトラックの読み込みは無効になります。"
 
-#: app/window.py:574 app/window.py:629
+#: app/window.py:576 app/window.py:631
 msgid "Segment reanalysis canceled (track changed)"
 msgstr "区間の再解析をキャンセルしました (トラックが変わりました)"
 
 # | msgid "Phrase reanalysis completed"
-#: app/window.py:610
+#: app/window.py:612
 #, python-brace-format
 msgid "The track's analysis could not be read: {file}"
 msgstr "トラックの解析を読み込めませんでした: {file}"
 
-#: app/window.py:614
+#: app/window.py:616
 #, python-brace-format
 msgid ""
 "{n} JumpCUE past slot Z is not shown ({file}); it stays stored until the "
@@ -630,15 +630,15 @@ msgid_plural ""
 "the JumpCUEs are edited."
 msgstr[0] "スロットZを超えるJumpCUE {n}個は表示されません（{file}）。JumpCUEを編集するまでは保存されたまま残ります。"
 
-#: app/window.py:632
+#: app/window.py:634
 msgid "Track unloaded."
 msgstr "トラックをアンロードしました。"
 
-#: app/window.py:642
+#: app/window.py:644
 msgid "Track File Not Found"
 msgstr "トラックファイルが見つかりません"
 
-#: app/window.py:646
+#: app/window.py:648
 #, python-brace-format
 msgid ""
 "Cannot load \"{name}\": its file is missing.\n"
@@ -651,71 +651,71 @@ msgstr ""
 "\n"
 "ファイルの新しい場所を指定しますか?"
 
-#: app/window.py:653
+#: app/window.py:655
 #, python-brace-format
 msgid "Locate {name}"
 msgstr "{name} の場所を指定"
 
-#: app/window.py:677 app/window.py:693
+#: app/window.py:679 app/window.py:695
 msgid "Analysis saved to library."
 msgstr "解析をライブラリに保存しました。"
 
-#: app/window.py:682
+#: app/window.py:684
 msgid "Finished"
 msgstr "完了"
 
-#: app/window.py:705
+#: app/window.py:707
 msgid "Waiting to be looked up on Wikipedia"
 msgstr "Wikipediaでの調査待ち"
 
-#: app/window.py:711
+#: app/window.py:713
 msgid "Looking up on Wikipedia and Wikidata…"
 msgstr "WikipediaとWikidataで調べています…"
 
 # | msgid "Reading the analysis failed: {error}"
 # | msgid "The search failed: {error}"
 # | msgid "" "The lookup failed:\n" "{error}"
-#: app/window.py:716
+#: app/window.py:718
 msgid "The lookup failed."
 msgstr "調査できませんでした。"
 
-#: app/window.py:752
+#: app/window.py:754
 #, python-brace-format
 msgid "External Sync loading: {file}"
 msgstr "外部同期で読み込み中: {file}"
 
-#: app/window.py:752
+#: app/window.py:754
 #, python-brace-format
 msgid "External Sync analyzing: {file}"
 msgstr "外部同期で解析中: {file}"
 
 # | msgid "Memory Sync Disabled"
-#: app/window.py:766
+#: app/window.py:768
 msgid "External Sync Disabled"
 msgstr "外部同期を無効にしました"
 
-#: app/window.py:776 ui/windows/library_backup.py:53
+#: app/window.py:778 ui/windows/library_backup.py:53
 msgid "Back Up Library"
 msgstr "ライブラリのバックアップ"
 
-#: app/window.py:777 app/window.py:793
+#: app/window.py:779 app/window.py:795
 #, python-brace-format
 msgid "Mixlyzer library backup (*{suffix})"
 msgstr "Mixlyzer ライブラリのバックアップ (*{suffix})"
 
-#: app/window.py:787
+#: app/window.py:789
 msgid ""
 "The editor has edits not saved. Save or undo them first: Mixlyzer "
 "restarts after a restore."
 msgstr "エディターに保存していない編集があります。先に保存するか元に戻してください。復元すると Mixlyzer は再起動します。"
 
-#: app/window.py:789 app/window.py:792 app/window.py:799 app/window.py:806
-#: app/window.py:849 ui/windows/library_backup.py:133
+#: app/window.py:791 app/window.py:794 app/window.py:801 app/window.py:808
+#: app/window.py:851 ui/windows/library_backup.py:133
 #: ui/windows/library_backup.py:295
 msgid "Restore Library"
 msgstr "ライブラリの復元"
 
-#: app/window.py:830
+#: app/window.py:832
 #, python-brace-format
 msgid ""
 "Restored {n} track into:\n"
@@ -727,34 +727,34 @@ msgstr[0] ""
 "{n} トラックを次のフォルダーに復元しました:\n"
 "{folder}"
 
-#: app/window.py:833
+#: app/window.py:835
 #, python-brace-format
 msgid "{n} track's file path was joined to this device's folders."
 msgid_plural "{n} tracks' file paths were joined to this device's folders."
 msgstr[0] "{n} トラックのファイルのパスをこのデバイスのフォルダーにつなぎました。"
 
-#: app/window.py:837
+#: app/window.py:839
 #, python-brace-format
 msgid "{n} path was left as it was: another track already had the new one."
 msgid_plural "{n} paths were left as they were: other tracks already had the new ones."
 msgstr[0] "{n} 件のパスはそのままにしました: 新しいパスはすでに別のトラックのものです。"
 
-#: app/window.py:841
+#: app/window.py:843
 #, python-brace-format
 msgid "{n} track had no stored analysis in the backup."
 msgid_plural "{n} tracks had no stored analysis in the backup."
 msgstr[0] "{n} トラックはバックアップに保存された解析がありませんでした。"
 
-#: app/window.py:845
+#: app/window.py:847
 msgid "Files replaced by the backup's were kept beside them:"
 msgstr "バックアップのファイルに置き換えたファイルは、隣に残してあります:"
 
-#: app/window.py:847
+#: app/window.py:849
 msgid "Mixlyzer now restarts to open the restored library."
 msgstr "復元したライブラリを開くため、Mixlyzer を再起動します。"
 
 # | msgid "External Sync enabled via {target}. Local play/load is locked."
-#: app/window.py:1122
+#: app/window.py:1124
 #, python-brace-format
 msgid "External Sync enabled: OSC on {address}. Local play/load is locked."
 msgstr "外部同期が有効です: OSC {address}。ローカルでの再生/読み込みはロックされます。"
@@ -5435,23 +5435,27 @@ msgstr "MIDI 入力オン、{port} は閉じています（外部同期がほか
 
 # | msgid "" "The channel's level before its EQ and fader: -24 to +9 dB, the
 # | middle 0 " "dB."
-#: ui/deck/track_info_panel.py:166
+#: ui/deck/track_info_panel.py:182
 msgid "Channel level (before the fader): -30 to +12 dB."
 msgstr "チャンネルレベル（フェーダー前）: -30 ～ +12 dB。"
 
-#: ui/deck/track_info_panel.py:363
+#: ui/deck/track_info_panel.py:379
 msgid "Unload track"
 msgstr "トラックをアンロード"
+
+#: ui/deck/track_info_panel.py:583
+msgid "Click: elapsed / total, −remaining / total, elapsed / −remaining in turn."
+msgstr "クリック：経過時間 / 全体時間、−残り時間 / 全体時間、経過時間 / −残り時間の順に切り替わります。"
 
 # | msgid "" "TRIM: the level before the volume fader, -24 to +9 dB (0 dB in
 # the
 # | " "middle), kept as Settings > Playback > Trim. Double-click: 0 dB."
 # | " "middle), kept as Settings > Audio > Mixer > Trim. Double-click: 0 dB."
-#: ui/deck/track_info_panel.py:770
+#: ui/deck/track_info_panel.py:841
 msgid "TRIM: the level before the volume fader, -24 to +9 dB. Double-click: 0 dB."
 msgstr "TRIM: ボリュームフェーダーの前のレベル、-24 〜 +9 dB。ダブルクリック: 0 dB。"
 
-#: ui/deck/track_info_panel.py:774
+#: ui/deck/track_info_panel.py:845
 #, python-brace-format
 msgid ""
 "EQ {band}: the isolator's band, from a kill to +6 dB (0 dB in the "
@@ -5460,14 +5464,14 @@ msgstr "EQ {band}: アイソレーターのバンド、カットから +6 dB ま
 
 # | msgid "" "EQ {band}: the native audio engine's mixer only (Settings >
 # | Playback > " "Audio engine)."
-#: ui/deck/track_info_panel.py:776
+#: ui/deck/track_info_panel.py:847
 #, python-brace-format
 msgid ""
 "EQ {band}: the native audio engine's mixer only (Settings > Audio > "
 "Engine)."
 msgstr "EQ {band}: Native オーディオエンジンのミキサーでのみ動作します（設定 > オーディオ > エンジン）。"
 
-#: ui/deck/track_info_panel.py:787 ui/windows/workers.py:213
+#: ui/deck/track_info_panel.py:858 ui/windows/workers.py:213
 msgid "No Art"
 msgstr "アートワークなし"
 
@@ -6174,17 +6178,13 @@ msgstr "ミックス"
 
 #: ui/library/mix.py:173
 #, python-brace-format
-msgid ""
-"Blend: this track {a_from} - {a_to}, the loaded track from {b_from}, "
-"{bars} bars"
-msgstr "ブレンド: この曲 {a_from} - {a_to}、ロードした曲 {b_from} から、{bars} 小節"
+msgid "This track {a_from} - {a_to}, the loaded track from {b_from}, {bars} bars"
+msgstr "この曲 {a_from} - {a_to}、ロードした曲 {b_from} から、{bars} 小節"
 
 #: ui/library/mix.py:176
 #, python-brace-format
-msgid ""
-"Blend: the loaded track {a_from} - {a_to}, this track from {b_from}, "
-"{bars} bars"
-msgstr "ブレンド: ロードした曲 {a_from} - {a_to}、この曲 {b_from} から、{bars} 小節"
+msgid "The loaded track {a_from} - {a_to}, this track from {b_from}, {bars} bars"
+msgstr "ロードした曲 {a_from} - {a_to}、この曲 {b_from} から、{bars} 小節"
 
 #: ui/library/mix.py:179
 msgid "No blend lines up on both tracks' phrases"
@@ -7201,18 +7201,18 @@ msgid "The loaded track is not in the list shown."
 msgstr "ロードしたトラックは表示中のリストにありません。"
 
 # | msgid "Unload track"
-#: ui/pane.py:140
+#: ui/pane.py:141
 msgid "Load to Deck"
 msgstr "デッキにロード"
 
 # | msgid "Tempo range: ±6% / ±10% / ±16% / WIDE (0%-200%); click for the
 # next"
-#: ui/pane.py:350
+#: ui/pane.py:353
 msgid "Tempo range: ±6% / ±10% / ±16% / WIDE; click for the next"
 msgstr "テンポ範囲: ±6% / ±10% / ±16% / WIDE。クリックで次の範囲"
 
 # | msgid "Tempo (0%-200%, 0 stops)"
-#: ui/pane.py:370
+#: ui/pane.py:373
 #, python-format
 msgid "Tempo (WIDE: 0%-200%, 0 stops)"
 msgstr "テンポ（WIDE: 0%-200%、0 で停止）"
@@ -7221,29 +7221,29 @@ msgstr "テンポ（WIDE: 0%-200%、0 で停止）"
 # held
 # | on the" " cue point, plays until let go (PLAY while held: plays on);
 # | playing, back" " to the cue point and stop"
-#: ui/pane.py:434
+#: ui/pane.py:437
 msgid ""
 "CUE: stopped, sets the cue point here / held on the cue point, plays "
 "until let go; playing, back to the cue point and stop"
 msgstr "CUE: 停止中はここにキューポイントを設定 / キューポイントで押している間は再生。再生中はキューポイントに戻って停止"
 
-#: ui/pane.py:438 ui/shortcuts.py:88
+#: ui/pane.py:441 ui/shortcuts.py:88
 msgid "Tempo reset (100%)"
 msgstr "テンポをリセット (100%)"
 
-#: ui/pane.py:440
+#: ui/pane.py:443
 msgid "Master tempo: time stretch keeps the pitch"
 msgstr "マスターテンポ: タイムストレッチでピッチを保ちます"
 
-#: ui/config/external_sync.py:105 ui/library/widget.py:383 ui/pane.py:528
+#: ui/config/external_sync.py:105 ui/library/widget.py:383 ui/pane.py:531
 msgid "External Sync"
 msgstr "外部同期"
 
-#: ui/pane.py:529
+#: ui/pane.py:532
 msgid "Playback is disabled while External Sync is enabled."
 msgstr "外部同期が有効な間は再生できません。"
 
-#: ui/pane.py:842
+#: ui/pane.py:845
 msgid "Not Loaded"
 msgstr "トラックが読み込まれていません"
 

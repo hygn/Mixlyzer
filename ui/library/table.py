@@ -221,8 +221,9 @@ class _TrackTable(QtWidgets.QTableWidget):
 
     @staticmethod
     def _external_files(event) -> bool:
-        """Files dragged from outside the library (its own rows carry their files too: those not taken)."""
-        return event.mimeData().hasUrls() and not isinstance(event.source(), QtWidgets.QAbstractItemView)
+        """Files dragged from another program (the app's own drags carry their files too: the library's rows, the
+        loaded track out of the track info; those not taken)."""
+        return event.mimeData().hasUrls() and event.source() is None
 
     def dragLeaveEvent(self, event):
         self._set_drop_line(None)

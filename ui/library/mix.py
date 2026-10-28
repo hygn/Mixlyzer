@@ -170,10 +170,10 @@ def _mix_lines(c: mixability.Candidate, previous: bool) -> list[str]:
     """The tooltip's lines of a candidate (``previous``: it is played before the loaded track, else after)."""
     lines = []
     if c.bars and previous:
-        lines.append(tr("Blend: this track {a_from} - {a_to}, the loaded track from {b_from}, {bars} bars").format(
+        lines.append(tr("This track {a_from} - {a_to}, the loaded track from {b_from}, {bars} bars").format(
             a_from=_mmss(c.a_from), a_to=_mmss(c.a_to), b_from=_mmss(c.b_from), bars=c.bars))
     elif c.bars:
-        lines.append(tr("Blend: the loaded track {a_from} - {a_to}, this track from {b_from}, {bars} bars").format(
+        lines.append(tr("The loaded track {a_from} - {a_to}, this track from {b_from}, {bars} bars").format(
             a_from=_mmss(c.a_from), a_to=_mmss(c.a_to), b_from=_mmss(c.b_from), bars=c.bars))
     else:
         lines.append(tr("No blend lines up on both tracks' phrases"))

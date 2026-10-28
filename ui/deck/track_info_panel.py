@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import html
 import math
+import os
 from typing import Optional
 
 from PySide6 import QtWidgets, QtGui, QtCore
@@ -58,6 +59,21 @@ def _clock(sec: float) -> str:
     s = int(sec - 60 * m)
     cs = int((sec - 60 * m - s) * 100)
     return f"{m:02d}:{s:02d}.{cs:02d}"
+
+
+# the time row's forms, a click on it going to the next (deckconfig.time_display): elapsed / total, -remaining /
+# total, elapsed / -remaining
+TIME_DISPLAYS = ("elapsed", "remaining", "elapsed_remaining")
+
+
+def _time_texts(mode: str, current_sec: float, duration_sec: float) -> tuple[str, str]:
+    """The time row's two cells; a remaining time with the minus sign U+2212 (as wide as the digits)."""
+    remaining = "−" + _clock(max(0.0, float(duration_sec) - float(current_sec)))
+    if mode == "remaining":
+        return remaining, "/ " + _clock(duration_sec)
+    if mode == "elapsed_remaining":
+        return _clock(current_sec), "/ " + remaining
+    return _clock(current_sec), "/ " + _clock(duration_sec)
 
 
 class MarqueeLabel(QtWidgets.QLabel):
@@ -416,6 +432,8 @@ class TrackInfoPanel(QtWidgets.QWidget):
 
     # the player's channel knob turned by the hand: (0 TRIM, 1 EQ LOW, 2 MID, 3 HIGH; its position 0 .. 1)
     knob_moved = QtCore.Signal(int, float)
+    # the time row clicked: its new form (TIME_DISPLAYS)
+    time_display_changed = QtCore.Signal(str)
 
     HEADER_H = 120
     # record diameter: the header minus the MT / RST row above and the beat bars below
@@ -431,10 +449,16 @@ class TrackInfoPanel(QtWidgets.QWidget):
         self._record_base_dpr = 1.0
         self._current_time = 0.0
         self._last_album_art: Optional[QtGui.QImage] = None
+        self._file = ""   # the loaded track's file, dragged out of the album art and the info (set_file)
+        self._press: Optional[QtCore.QPoint] = None
+        self._time_display = TIME_DISPLAYS[0]
+        self._time = (0.0, 0.0)
 
         self._init_ui()
         self._set_placeholder_cover()
         self._load_record_pixmap(None)
+        for widget in (self.cover_label, self.info_area, *self._time_cells):
+            widget.installEventFilter(self)
 
     def _init_ui(self):
         layout = QtWidgets.QHBoxLayout(self)
@@ -551,10 +575,12 @@ class TrackInfoPanel(QtWidgets.QWidget):
         ]
         self._bpm_cells = [_cell(w, color, lead=lead) for w, color, lead in columns]
         self._key_cells = [_cell(w, color, lead=lead) for w, color, lead in columns]
-        self._time_cells = [_cell(["88:88.88"], _VALUE), _cell(["/ 88:88.88"], _DIM)]
+        self._time_cells = [_cell(["88:88.88", "−88:88.88"], _VALUE), _cell(["/ 88:88.88", "/ −88:88.88"], _DIM)]
         for cell in self._time_cells:
             # plain text (drawn the same): a rich-text label builds a new text document per change, every frame here
             cell.setTextFormat(QtCore.Qt.PlainText)
+            cell.setCursor(QtCore.Qt.PointingHandCursor)
+            cell.setToolTip(tr("Click: elapsed / total, −remaining / total, elapsed / −remaining in turn."))
         # current phrase, last on the time row (its width never moves anything):
         # a squircle in the phrase colour, then the label in white
         self._phrase_swatch = QtWidgets.QLabel()
@@ -692,8 +718,14 @@ class TrackInfoPanel(QtWidgets.QWidget):
         self.beat_dots.set_beat(beat_in_bar, meter)
 
     def set_time(self, current_sec: float, duration_sec: float):
-        self._time_cells[0].setText(_clock(current_sec))
-        self._time_cells[1].setText("/ " + _clock(duration_sec))
+        self._time = (float(current_sec), float(duration_sec))
+        for cell, text in zip(self._time_cells, _time_texts(self._time_display, *self._time)):
+            cell.setText(text)
+
+    def set_time_display(self, mode: str) -> None:
+        """The time row's form (TIME_DISPLAYS; another: elapsed / total)."""
+        self._time_display = mode if mode in TIME_DISPLAYS else TIME_DISPLAYS[0]
+        self.set_time(*self._time)
 
     def update_album_art(self, album_art: Optional[QtGui.QImage]):
         self._last_album_art = album_art
@@ -714,6 +746,45 @@ class TrackInfoPanel(QtWidgets.QWidget):
     def set_track_loaded(self, loaded: bool) -> None:
         """The unload button is there only while a track is loaded."""
         self.unload_button.setVisible(bool(loaded))
+
+    def set_file(self, path: str) -> None:
+        """The loaded track's file ("" none): the album art and the info drag it out as a file from a folder
+        would be (into rekordbox, a folder, another program)."""
+        self._file = str(path or "")
+
+    def eventFilter(self, watched, event) -> bool:
+        if (watched in self._time_cells and event.type() == QtCore.QEvent.MouseButtonRelease
+                and event.button() == QtCore.Qt.LeftButton and self._press is not None):
+            # a click (no drag started: the info area's press still held); the info area then takes the release
+            mode = TIME_DISPLAYS[(TIME_DISPLAYS.index(self._time_display) + 1) % len(TIME_DISPLAYS)]
+            self.set_time_display(mode)
+            self.time_display_changed.emit(mode)
+        elif watched in (self.cover_label, self.info_area):
+            kind = event.type()
+            if kind == QtCore.QEvent.MouseButtonPress and event.button() == QtCore.Qt.LeftButton:
+                self._press = event.position().toPoint()
+            elif kind == QtCore.QEvent.MouseButtonRelease:
+                self._press = None
+            elif (kind == QtCore.QEvent.MouseMove and self._press is not None
+                  and event.buttons() & QtCore.Qt.LeftButton
+                  and (event.position().toPoint() - self._press).manhattanLength()
+                  >= QtWidgets.QApplication.startDragDistance()):
+                self._press = None
+                self._drag_file()
+                return True
+        return super().eventFilter(watched, event)
+
+    def _drag_file(self) -> None:
+        if not self._file or not os.path.isfile(self._file):
+            return
+        data = QtCore.QMimeData()
+        data.setUrls([QtCore.QUrl.fromLocalFile(self._file)])
+        drag = QtGui.QDrag(self)
+        drag.setMimeData(data)
+        cover = self.cover_label.pixmap()
+        if cover is not None and not cover.isNull():
+            drag.setPixmap(cover.scaled(64, 64, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation))
+        drag.exec(QtCore.Qt.CopyAction, QtCore.Qt.CopyAction)
 
     def update_record_pix(self, time_sec: float):
         self._current_time = time_sec

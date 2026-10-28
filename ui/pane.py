@@ -17,6 +17,7 @@ from ui.render.semitone import speed_to_semitone
 from core.marks.phrases import number_phrase_labels, phrase_color
 from core.workflows.event_bus import EventBus
 from core.settings.config import config
+from core.settings import store as settings_store
 from ui.deck.mainplotvbx import ScratchViewBox
 from ui.deck.track_info_panel import TrackInfoPanel
 from ui.edit_panel import EditPanel
@@ -264,6 +265,8 @@ class MainPane(QtWidgets.QWidget):
         self.track_info.unload_button.clicked.connect(self.bus.sig_unload_track_requested.emit)
         # its channel's TRIM / EQ knobs: requests (the player's report moves them: _on_deck_state)
         self.track_info.knob_moved.connect(self.bus.sig_knob_requested.emit)
+        self.track_info.set_time_display(self.cfg.deckconfig.time_display)
+        self.track_info.time_display_changed.connect(self._keep_time_display)
         top_row.addWidget(self.track_info, 1, QtCore.Qt.AlignVCenter)
 
         # the edit panel sits in the track info header, between the info and the deck
@@ -843,7 +846,14 @@ class MainPane(QtWidgets.QWidget):
         artist_text = p.get("artist") or "" if isinstance(p, dict) else ""
         self.track_info.set_title(title_text.strip())
         self.track_info.set_artist(artist_text.strip())
-        self.track_info.set_track_loaded(float(self.model.duration_sec or 0.0) > 0.0)
+        loaded = float(self.model.duration_sec or 0.0) > 0.0
+        self.track_info.set_track_loaded(loaded)
+        self.track_info.set_file(str(p.get("path") or "") if loaded and isinstance(p, dict) else "")
+
+    def _keep_time_display(self, mode: str) -> None:
+        """The time row's form clicked to: kept in deck.json."""
+        self.cfg.deckconfig.time_display = mode
+        settings_store.deck_changed()
 
     def _on_albumart(self):
         self.track_info.update_album_art(getattr(self.model, "album_art", None))

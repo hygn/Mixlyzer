@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-28 02:50+0900\n"
+"POT-Creation-Date: 2026-10-28 11:38+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -549,48 +549,48 @@ msgstr ""
 msgid "Mixer"
 msgstr ""
 
-#: app/window.py:445
+#: app/window.py:447
 msgid "MIDI needs the native audio engine (Settings > Audio > Engine)."
 msgstr ""
 
-#: app/window.py:452
+#: app/window.py:454
 msgid "MIDI input on."
 msgstr ""
 
-#: app/window.py:452
+#: app/window.py:454
 msgid "MIDI input off."
 msgstr ""
 
-#: app/window.py:504
+#: app/window.py:506
 msgid "The Python audio engine plays: there is no native engine to restart."
 msgstr ""
 
-#: app/window.py:506
+#: app/window.py:508
 msgid "Restarting the audio engine..."
 msgstr ""
 
-#: app/window.py:510
+#: app/window.py:512
 msgid "Audio engine restarted."
 msgstr ""
 
-#: app/window.py:511
+#: app/window.py:513
 msgid "The audio engine did not start; it is tried again every 2 seconds."
 msgstr ""
 
-#: app/window.py:561 app/window.py:626
+#: app/window.py:563 app/window.py:628
 msgid "External Sync is enabled. Local track loading is disabled."
 msgstr ""
 
-#: app/window.py:574 app/window.py:629
+#: app/window.py:576 app/window.py:631
 msgid "Segment reanalysis canceled (track changed)"
 msgstr ""
 
-#: app/window.py:610
+#: app/window.py:612
 #, python-brace-format
 msgid "The track's analysis could not be read: {file}"
 msgstr ""
 
-#: app/window.py:614
+#: app/window.py:616
 #, python-brace-format
 msgid ""
 "{n} JumpCUE past slot Z is not shown ({file}); it stays stored until the "
@@ -601,15 +601,15 @@ msgid_plural ""
 msgstr[0] ""
 msgstr[1] ""
 
-#: app/window.py:632
+#: app/window.py:634
 msgid "Track unloaded."
 msgstr ""
 
-#: app/window.py:642
+#: app/window.py:644
 msgid "Track File Not Found"
 msgstr ""
 
-#: app/window.py:646
+#: app/window.py:648
 #, python-brace-format
 msgid ""
 "Cannot load \"{name}\": its file is missing.\n"
@@ -618,67 +618,67 @@ msgid ""
 "Set the file's new location?"
 msgstr ""
 
-#: app/window.py:653
+#: app/window.py:655
 #, python-brace-format
 msgid "Locate {name}"
 msgstr ""
 
-#: app/window.py:677 app/window.py:693
+#: app/window.py:679 app/window.py:695
 msgid "Analysis saved to library."
 msgstr ""
 
-#: app/window.py:682
+#: app/window.py:684
 msgid "Finished"
 msgstr ""
 
-#: app/window.py:705
+#: app/window.py:707
 msgid "Waiting to be looked up on Wikipedia"
 msgstr ""
 
-#: app/window.py:711
+#: app/window.py:713
 msgid "Looking up on Wikipedia and Wikidata…"
 msgstr ""
 
-#: app/window.py:716
+#: app/window.py:718
 msgid "The lookup failed."
 msgstr ""
 
-#: app/window.py:752
+#: app/window.py:754
 #, python-brace-format
 msgid "External Sync loading: {file}"
 msgstr ""
 
-#: app/window.py:752
+#: app/window.py:754
 #, python-brace-format
 msgid "External Sync analyzing: {file}"
 msgstr ""
 
-#: app/window.py:766
+#: app/window.py:768
 msgid "External Sync Disabled"
 msgstr ""
 
-#: app/window.py:776 ui/windows/library_backup.py:53
+#: app/window.py:778 ui/windows/library_backup.py:53
 msgid "Back Up Library"
 msgstr ""
 
-#: app/window.py:777 app/window.py:793
+#: app/window.py:779 app/window.py:795
 #, python-brace-format
 msgid "Mixlyzer library backup (*{suffix})"
 msgstr ""
 
-#: app/window.py:787
+#: app/window.py:789
 msgid ""
 "The editor has edits not saved. Save or undo them first: Mixlyzer "
 "restarts after a restore."
 msgstr ""
 
-#: app/window.py:789 app/window.py:792 app/window.py:799 app/window.py:806
-#: app/window.py:849 ui/windows/library_backup.py:133
+#: app/window.py:791 app/window.py:794 app/window.py:801 app/window.py:808
+#: app/window.py:851 ui/windows/library_backup.py:133
 #: ui/windows/library_backup.py:295
 msgid "Restore Library"
 msgstr ""
 
-#: app/window.py:830
+#: app/window.py:832
 #, python-brace-format
 msgid ""
 "Restored {n} track into:\n"
@@ -689,36 +689,36 @@ msgid_plural ""
 msgstr[0] ""
 msgstr[1] ""
 
-#: app/window.py:833
+#: app/window.py:835
 #, python-brace-format
 msgid "{n} track's file path was joined to this device's folders."
 msgid_plural "{n} tracks' file paths were joined to this device's folders."
 msgstr[0] ""
 msgstr[1] ""
 
-#: app/window.py:837
+#: app/window.py:839
 #, python-brace-format
 msgid "{n} path was left as it was: another track already had the new one."
 msgid_plural "{n} paths were left as they were: other tracks already had the new ones."
 msgstr[0] ""
 msgstr[1] ""
 
-#: app/window.py:841
+#: app/window.py:843
 #, python-brace-format
 msgid "{n} track had no stored analysis in the backup."
 msgid_plural "{n} tracks had no stored analysis in the backup."
 msgstr[0] ""
 msgstr[1] ""
 
-#: app/window.py:845
+#: app/window.py:847
 msgid "Files replaced by the backup's were kept beside them:"
 msgstr ""
 
-#: app/window.py:847
+#: app/window.py:849
 msgid "Mixlyzer now restarts to open the restored library."
 msgstr ""
 
-#: app/window.py:1122
+#: app/window.py:1124
 #, python-brace-format
 msgid "External Sync enabled: OSC on {address}. Local play/load is locked."
 msgstr ""
@@ -4790,33 +4790,37 @@ msgid ""
 " off."
 msgstr ""
 
-#: ui/deck/track_info_panel.py:166
+#: ui/deck/track_info_panel.py:182
 msgid "Channel level (before the fader): -30 to +12 dB."
 msgstr ""
 
-#: ui/deck/track_info_panel.py:363
+#: ui/deck/track_info_panel.py:379
 msgid "Unload track"
 msgstr ""
 
-#: ui/deck/track_info_panel.py:770
+#: ui/deck/track_info_panel.py:583
+msgid "Click: elapsed / total, −remaining / total, elapsed / −remaining in turn."
+msgstr ""
+
+#: ui/deck/track_info_panel.py:841
 msgid "TRIM: the level before the volume fader, -24 to +9 dB. Double-click: 0 dB."
 msgstr ""
 
-#: ui/deck/track_info_panel.py:774
+#: ui/deck/track_info_panel.py:845
 #, python-brace-format
 msgid ""
 "EQ {band}: the isolator's band, from a kill to +6 dB (0 dB in the "
 "middle). Double-click: 0 dB."
 msgstr ""
 
-#: ui/deck/track_info_panel.py:776
+#: ui/deck/track_info_panel.py:847
 #, python-brace-format
 msgid ""
 "EQ {band}: the native audio engine's mixer only (Settings > Audio > "
 "Engine)."
 msgstr ""
 
-#: ui/deck/track_info_panel.py:787 ui/windows/workers.py:213
+#: ui/deck/track_info_panel.py:858 ui/windows/workers.py:213
 msgid "No Art"
 msgstr ""
 
@@ -5478,16 +5482,12 @@ msgstr ""
 
 #: ui/library/mix.py:173
 #, python-brace-format
-msgid ""
-"Blend: this track {a_from} - {a_to}, the loaded track from {b_from}, "
-"{bars} bars"
+msgid "This track {a_from} - {a_to}, the loaded track from {b_from}, {bars} bars"
 msgstr ""
 
 #: ui/library/mix.py:176
 #, python-brace-format
-msgid ""
-"Blend: the loaded track {a_from} - {a_to}, this track from {b_from}, "
-"{bars} bars"
+msgid "The loaded track {a_from} - {a_to}, this track from {b_from}, {bars} bars"
 msgstr ""
 
 #: ui/library/mix.py:179
@@ -6373,42 +6373,42 @@ msgstr ""
 msgid "The loaded track is not in the list shown."
 msgstr ""
 
-#: ui/pane.py:140
+#: ui/pane.py:141
 msgid "Load to Deck"
 msgstr ""
 
-#: ui/pane.py:350
+#: ui/pane.py:353
 msgid "Tempo range: ±6% / ±10% / ±16% / WIDE; click for the next"
 msgstr ""
 
-#: ui/pane.py:370
+#: ui/pane.py:373
 #, python-format
 msgid "Tempo (WIDE: 0%-200%, 0 stops)"
 msgstr ""
 
-#: ui/pane.py:434
+#: ui/pane.py:437
 msgid ""
 "CUE: stopped, sets the cue point here / held on the cue point, plays "
 "until let go; playing, back to the cue point and stop"
 msgstr ""
 
-#: ui/pane.py:438 ui/shortcuts.py:88
+#: ui/pane.py:441 ui/shortcuts.py:88
 msgid "Tempo reset (100%)"
 msgstr ""
 
-#: ui/pane.py:440
+#: ui/pane.py:443
 msgid "Master tempo: time stretch keeps the pitch"
 msgstr ""
 
-#: ui/config/external_sync.py:105 ui/library/widget.py:383 ui/pane.py:528
+#: ui/config/external_sync.py:105 ui/library/widget.py:383 ui/pane.py:531
 msgid "External Sync"
 msgstr ""
 
-#: ui/pane.py:529
+#: ui/pane.py:532
 msgid "Playback is disabled while External Sync is enabled."
 msgstr ""
 
-#: ui/pane.py:842
+#: ui/pane.py:845
 msgid "Not Loaded"
 msgstr ""
 

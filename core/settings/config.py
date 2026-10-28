@@ -127,6 +127,8 @@ class deckconfig:
     mixer_eq: str
     fader_curve: str
     jog_mode: str
+    # the track info's time, switched by a click on it: elapsed / total, -remaining / total, elapsed / -remaining
+    time_display: Literal["elapsed", "remaining", "elapsed_remaining"]
     # the levels, knob positions 0 .. 1 (0.8 = 0 dB, client.LEVEL_UNITY): the master's and the headphones'; the
     # headphones' CUE / MASTER mix (%: 0 CUE .. 100 MASTER)
     master_level: float
@@ -483,6 +485,7 @@ def default_cfg():
         mixer_eq="isolator",
         fader_curve="default",
         jog_mode="vinyl",
+        time_display="elapsed",
         master_level=0.8,
         headphones_level=0.8,
         headphones_cue_mix=50,
