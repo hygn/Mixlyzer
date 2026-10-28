@@ -332,6 +332,21 @@ def _japanese_tokenizer():
         return _tokenizer
 
 
+# a name's variant characters (異体字) as the standard one they are written as where a font or an encoding lacks
+# them (髙橋 / 高橋, 山﨑 / 山崎, 𠮷田 / 吉田): one name, so one key (name_key) either way, and read as the standard
+# one by the Han readers, and in Japanese where the dictionary does not know the word as written (種﨑 it does). Old forms
+# that are characters of their own in names (澤, 櫻, 濱) are not here; NFKC already folds the compatibility ones (隆).
+_VARIANTS = str.maketrans({
+    "髙": "高", "﨑": "崎", "嵜": "崎", "𠮷": "吉", "德": "徳", "瀨": "瀬", "栁": "柳", "槗": "橋",
+    "邉": "邊", "冨": "富", "濵": "濱", "曻": "昇",
+})
+
+
+def fold_variants(text: str) -> str:
+    """``text`` with its variant characters as the standard ones (_VARIANTS)."""
+    return str(text or "").translate(_VARIANTS)
+
+
 def _is_kana(ch: str) -> bool:
     code = ord(ch)
     return 0x3041 <= code <= 0x30FF or 0x31F0 <= code <= 0x31FF
@@ -339,7 +354,8 @@ def _is_kana(ch: str) -> bool:
 
 def _is_kanji(ch: str) -> bool:
     code = ord(ch)
-    return 0x4E00 <= code <= 0x9FFF or 0x3400 <= code <= 0x4DBF or 0xF900 <= code <= 0xFAFF or ch in "々〆ヶ"
+    return (0x4E00 <= code <= 0x9FFF or 0x3400 <= code <= 0x4DBF or 0xF900 <= code <= 0xFAFF
+            or 0x20000 <= code <= 0x3134F or ch in "々〆ヶ")     # 0x20000: the extensions beyond the BMP (𠮷)
 
 
 def _is_hangul(ch: str) -> bool:
@@ -355,11 +371,19 @@ def _script(ch: str) -> str:
     return "other"
 
 
+def _japanese_tokens(text: str) -> list[tuple[str, str, str]]:
+    with _tokenizer_lock:   # a tokenizer is not for several threads at once
+        return [(m.surface(), m.reading_form(), m.part_of_speech()[0]) for m in _japanese_tokenizer().tokenize(text)]
+
+
 def _read_japanese(text: str) -> str:
     words = []
-    with _tokenizer_lock:   # a tokenizer is not for several threads at once
-        tokens = [(m.surface(), m.reading_form(), m.part_of_speech()[0])
-                  for m in _japanese_tokenizer().tokenize(text)]
+    tokens = _japanese_tokens(text)
+    # a variant character the dictionary does not know in its word (髙橋) read as its standard one; a word it knows
+    # with it (種﨑) kept as written
+    if any(not (reading and all(_is_kana(c) for c in reading)) and fold_variants(surface) != surface
+           for surface, reading, _pos in tokens):
+        tokens = _japanese_tokens(fold_variants(text))
     for surface, reading, pos in tokens:
         if pos == "助詞" and surface in _PARTICLES:
             words.append(_PARTICLES[surface])
@@ -526,7 +550,7 @@ def _read_japanese_korean_hanja(run: str, han_run: int) -> str:
     for m in _han_run(han_run).finditer(run):
         if m.start() > pos:
             out.append(_read_japanese(run[pos:m.start()]))
-        out.append(_read_korean_hanja(m.group(0)))
+        out.append(_read_korean_hanja(fold_variants(m.group(0))))
         pos = m.end()
     if pos < len(run):
         out.append(_read_japanese(run[pos:]))
@@ -576,13 +600,13 @@ def _romanize(text: str, *, han: str, foreign_spelling: bool, han_run: int = 0) 
         elif script == "ja" and (han == "ja" or any(_is_kana(c) for c in run)):
             parts.append(_read_japanese(run))
         elif script == "ja" and han == "yue":
-            parts.append(_read_cantonese(run))
+            parts.append(_read_cantonese(fold_variants(run)))
         elif script == "ja" and han == "ko-hanja":
-            parts.append(_read_korean_hanja(run))
+            parts.append(_read_korean_hanja(fold_variants(run)))
         elif script == "ja" and han == "vi":
-            parts.append(_read_vietnamese(run))
+            parts.append(_read_vietnamese(fold_variants(run)))
         elif script == "ja":
-            parts.append(_read_mandarin(run, taiwan=han == "zh-tw"))
+            parts.append(_read_mandarin(fold_variants(run), taiwan=han == "zh-tw"))
         elif script == "ko":
             parts.append(korean_to_roman(run, foreign_spelling=foreign_spelling))
         else:

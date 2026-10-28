@@ -76,6 +76,19 @@ class ReadingTests(unittest.TestCase):
         self.assertTrue(found("카가미네 린", "鏡音リン"))
         self.assertFalse(found("hatsune", "鏡音リン"))
 
+    def test_variant_characters_read_as_the_standard_ones(self):
+        from core.tieups.domain import name_key
+        self.assertEqual(reading.read("髙橋ミナミ"), reading.read("高橋ミナミ"))
+        self.assertTrue(found("takahashi", "髙橋ミナミ"))
+        self.assertTrue(found("yamazaki", "山﨑はるか"))
+        self.assertIn("tanezaki", reading.read("種﨑敦美"))   # a word the dictionary knows as written: kept
+        self.assertEqual(reading.read("𠮷田"), "yoshida")     # beyond the BMP: Han too
+        for variant, standard in [("髙橋ミナミ", "高橋ミナミ"), ("山﨑はるか", "山崎はるか"), ("𠮷田", "吉田"),
+                                  ("渡邉", "渡邊")]:
+            with self.subTest(variant=variant):
+                self.assertEqual(name_key(variant), name_key(standard))
+        self.assertNotEqual(name_key("澤"), name_key("沢"))     # an old form, a character of its own in names
+
     def test_not_found(self):
         self.assertFalse(found("sakura", "あのね"))
         self.assertFalse(found("ka", "東京"))   # a coarse key under three letters matches nothing

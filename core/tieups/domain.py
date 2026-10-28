@@ -157,9 +157,11 @@ def describe(entries: Iterable[tuple]) -> TrackTieups:
 
 
 def name_key(name: str) -> str:
-    """A name as two works' names are compared: NFKC, case folded, its letters and digits in their own script
-    (さくひん・ざ・わーく！ and さくひん・ざ・わーく! alike; two Han spellings read alike never: no reading involved)."""
-    return "".join(ch for ch in unicodedata.normalize("NFKC", str(name or "")).casefold() if ch.isalnum())
+    """A name as two works' names are compared: NFKC, variant characters as their standard ones (髙 / 高:
+    reading.fold_variants), case folded, its letters and digits in their own script (さくひん・ざ・わーく！ and
+    さくひん・ざ・わーく! alike; two Han spellings read alike never: no reading involved)."""
+    text = reading.fold_variants(unicodedata.normalize("NFKC", str(name or "")))
+    return "".join(ch for ch in text.casefold() if ch.isalnum())
 
 
 def is_identity_url(url: str) -> bool:
