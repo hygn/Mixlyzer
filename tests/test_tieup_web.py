@@ -104,6 +104,15 @@ class TieupWebTests(unittest.TestCase):
         self.assertEqual(tw.artist_names("あおい(CV.井口裕香)/ひなた(CV.阿澄佳奈)"),
                          ["井口裕香", "阿澄佳奈", "あおい", "ひなた"])
         self.assertEqual(tw.artist_names("Aqu3ra & 月見ヤチヨ(cv.早見沙織)"), ["Aqu3ra", "早見沙織", "月見ヤチヨ"])
+        # a parenthesis without "CV": the voice actor or the members after the name before it
+        self.assertEqual(tw.artist_names("シャロ(内田真礼)"), ["シャロ", "内田真礼"])
+        self.assertEqual(tw.artist_names("ゆいかおり(小倉唯&石原夏織)"), ["ゆいかおり", "小倉唯", "石原夏織"])
+        self.assertEqual(tw.artist_names("レンチンメリケンサック (Mono. + Rostel)"),
+                         ["レンチンメリケンサック", "Mono.", "Rostel"])
+        self.assertEqual(tw.artist_names("部(沼倉･赤崎)"), ["沼倉", "赤崎"])
+        self.assertEqual(tw.artist_names("コーロ(シャミ子・リリス)/CV:小原好美・鬼頭明里"),
+                         ["コーロ", "小原好美", "鬼頭明里", "シャミ子", "リリス"])
+        self.assertEqual(tw.artist_names("Artist (Club remix)"), ["Artist"])      # a version note, no name
 
     def test_the_song_found_in_a_page_as_the_search_finds_a_title(self):
         lines = ["「シュガーソング・ビターステップ」はテレビアニメ「[[作品]]」オープニングテーマ。", "関係ない行。"]

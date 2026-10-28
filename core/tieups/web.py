@@ -50,7 +50,7 @@ MIN_INTERVAL_SEC = 1.0  # between two requests
 TIMEOUT_SEC = 10.0
 CACHE_DAYS = 30
 CACHE_NAME = os.path.join("cache", "tieup_web.db")
-RULES = 3               # how pages are read and a tie-up picked: raise it when they change (the answers kept asked again)
+RULES = 4              # how pages are read and a tie-up picked: raise it when they change (the answers kept asked again)
 # Wikidata's language codes -> ll-RR tags (others are not taken)
 WIKIDATA_LANGS = {"ja": "ja-JP", "ko": "ko-KR", "en": "en-US", "zh-cn": "zh-CN", "zh-hans": "zh-CN", "zh": "zh-CN",
                   "zh-tw": "zh-TW", "zh-hant": "zh-TW", "zh-hk": "zh-HK"}
@@ -187,10 +187,14 @@ _NOTE_WORDS = (r"(?<![A-Za-z])(?:TV|instrumental|inst|off\s*vocal|karaoke|short|
 _VERSION_NOTE = re.compile(rf"\s*[\(（\[【][^)）\]】]*?(?:{_NOTE_WORDS})[^)）\]】]*[\)）\]】]\s*$", re.IGNORECASE)
 _FEAT = re.compile(r"(?:\s+|\s*[\(（]\s*)(?:feat\.|ft\.|feat\s|featuring\s)\s*(?P<who>[^)）]+)[\)）]?\s*$",
                    re.IGNORECASE)
-_ARTIST_SPLIT = re.compile(r"\s+from\s+|\s*(?:feat\.?|ft\.|featuring|&|＆|×|/|／|,|、|・)\s*", re.IGNORECASE)
+_ARTIST_SPLIT = re.compile(r"\s+from\s+|\s+\+\s+|\s*(?:feat\.?|ft\.|featuring|&|＆|×|/|／|,|、|・|･)\s*", re.IGNORECASE)
 # a character's credit: "キャラA(CV.声優A)", "キャラB(CV:声優B)", "キャラC(cv.声優C)"
 _VOICE = re.compile(r"(?P<who>[^\s(（\[【\]】&＆/／,、・]*)\s*[\(（]\s*(?:CV|C\.V\.|声)\s*[.:：．・]?\s*(?P<cast>[^)）]+)[\)）]",
                     re.IGNORECASE)
+# a name's parenthesis without "CV": its voice actor or its members, "シャロ(内田真礼)", "ゆいかおり(小倉唯&石原夏織)"
+_MEMBERS = re.compile(r"[\(（](?P<who>[^)）]+)[\)）]")
+# the voice actors after the characters, "Unit(キャラA・キャラB)/CV:声優A・声優B": the mark left out
+_CV_MARK = re.compile(r"^(?:CV|C\.V\.)\s*[.:：．]?\s*|^声\s*[:：]\s*", re.IGNORECASE)
 
 
 def song_title(title: str) -> tuple[str, list[str]]:
@@ -211,15 +215,20 @@ def song_title(title: str) -> tuple[str, list[str]]:
 def artist_names(artist: str, featured: list[str] = ()) -> list[str]:
     """The names an artist field holds ("A from B", "A feat. B", "A & B"), with the title's featured artists: an
     article may credit any of them. A character's credit, "Unit[キャラA(CV.声優A)&…]", gives the unit, then the
-    voice actors (their pages list the songs they sang), then the characters."""
+    voice actors (their pages list the songs they sang), then the characters. A parenthesis without "CV" gives its
+    names after the one before it: "シャロ(内田真礼)" its voice actor, "ゆいかおり(小倉唯&石原夏織)" its members."""
     names, cast, characters = [], [], []
     for part in [artist, *featured]:
         for m in _VOICE.finditer(part or ""):
             cast += _ARTIST_SPLIT.split(m.group("cast"))
             characters.append(m.group("who"))
-        rest = re.sub(r"[\[\]【】]", " / ", _VOICE.sub(" / ", part or ""))
+        rest = _VOICE.sub(" / ", part or "")
+        for m in _MEMBERS.finditer(rest):
+            if not re.search(_NOTE_WORDS, m.group("who"), re.IGNORECASE):
+                cast += _ARTIST_SPLIT.split(m.group("who"))
+        rest = re.sub(r"[\[\]【】]", " / ", _MEMBERS.sub(" / ", rest))
         names += _ARTIST_SPLIT.split(rest)
-    names = [n.strip() for n in names + cast + characters if n and n.strip()]
+    names = [_CV_MARK.sub("", n.strip()) for n in names + cast + characters if n and n.strip()]
     return [n for n in dict.fromkeys(names) if len(reading.fine_key(n)) >= 3]
 
 
