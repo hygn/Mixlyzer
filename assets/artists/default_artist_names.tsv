@@ -1,0 +1,61 @@
+# Artist names kept whole by the artist field's parser (core.tieups.web.artist_names): a name with a separator
+# in it (&, ×, /, ",", 、, a middle dot the rules split) or shorter than 3 letters. One name a line, a note after a tab
+# (here the Wikidata item it was checked against); lines starting with # are comments. Matched whole, ignoring case.
+# Your own names go in artist_names.tsv beside this file (the same format), which the app reads after this one.
+(K)NoW NAME	wikidata Q28416714
+(K)NoWNAME	wikidata Q28416714
+(K)NoW_NAME	wikidata Q28416714
+8P	wikidata Q135236554
+Athena & Robikerottsu	wikidata Q843412
+A・chi-a・chi	wikidata Q9181971
+CROSS×KEY	wikidata Q120335721
+Can/goo	wikidata Q11194289
+DD	wikidata Q11195632
+Daisy×Daisy	wikidata Q6125597
+GANG×ROCK	wikidata Q85865323
+Gothic×Luck	wikidata Q65228561
+Hello, Happy World!	wikidata Q114797456
+I, My, Me, Mine	wikidata Q17190783
+IBERIs&	
+Irene & Erika	wikidata Q11282464
+King&Rogueone	wikidata Q109596660
+MYTH & ROID	wikidata Q24175566
+MYTH&ROID	wikidata Q24175566
+N's	wikidata Q11234139
+Oranges & Lemons	wikidata Q11237965
+Oranges&Lemons	wikidata Q11237965
+R.o.r/s	wikidata Q10852259
+Run Girls, Run!	wikidata Q48759431
+RunGirls,Run!	wikidata Q48759431
+Secret × Heroine Phantomirage!	wikidata Q61982539
+Swing, Sing	wikidata Q130297373
+Swing,sing	wikidata Q130297373
+The S・h・e	wikidata Q11250882
+TheS・h・e	wikidata Q11250882
+W's	wikidata Q11253132
+Wake Up, Girls!	wikidata Q17989090
+WakeUp,Girls!	wikidata Q17989090
+YURiCa/花たん	wikidata Q97031429
+Μ's	wikidata Q18510141
+≠ME	wikidata Q61864501
+すーぱーぞうさんず&Rice5	wikidata Q11269945
+ひみつ×戦士 ファントミラージュ!	wikidata Q61982539
+アイリーン&エリカ	wikidata Q11282464
+アテナ&ロビケロッツ	wikidata Q843412
+アフィリア・サーガ・イースト	wikidata Q2826118
+アース・スター ドリーム	wikidata Q20038345
+ゲーマーズ・ガーディアン・フェアリーズ	wikidata Q11301691
+ザ・ブレッスン・フォー	wikidata Q11306716
+チームドラゴン from AKB48	wikidata Q11071959
+ハロー、ハッピーワールド!	wikidata Q114797456
+ピーター・ヴァン・ガーム	wikidata Q6073503
+ベーテ・有理・黒崎	wikidata Q11337294
+マジック&メイデン	wikidata Q24871406
+マーク・大喜多	wikidata Q11341716
+ミステリー・ガールズ・プロジェクト	wikidata Q55526698
+レ・ミィ×コトナ	wikidata Q60986793
+ワンツー・どん	wikidata Q11351578
+島田紳助&バスガス爆発楽団	wikidata Q11476969
+細谷佳正・増田俊樹の全力男子	wikidata Q11606120
+비밀×전사 팬터미라지!	wikidata Q61982539
+아테나&로비케로츠	wikidata Q843412

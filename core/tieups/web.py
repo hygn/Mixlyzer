@@ -27,6 +27,7 @@ for CACHE_DAYS (cache/tieup_web.db), so a song is not asked for twice.
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
+from functools import lru_cache
 import json
 import os
 import re
@@ -38,6 +39,7 @@ import urllib.request
 from typing import Callable, Optional
 
 from core.search import reading, titles
+from system.resource_paths import resource_path
 
 from core.tieups import domain as tieup
 
@@ -50,7 +52,7 @@ MIN_INTERVAL_SEC = 1.0  # between two requests
 TIMEOUT_SEC = 10.0
 CACHE_DAYS = 30
 CACHE_NAME = os.path.join("cache", "tieup_web.db")
-RULES = 8            # how pages are read and a tie-up picked: raise it when they change (the answers kept asked again)
+RULES = 9           # how pages are read and a tie-up picked: raise it when they change (the answers kept asked again)
 # Wikidata's language codes -> ll-RR tags (others are not taken)
 WIKIDATA_LANGS = {"ja": "ja-JP", "ko": "ko-KR", "en": "en-US", "zh-cn": "zh-CN", "zh-hans": "zh-CN", "zh": "zh-CN",
                   "zh-tw": "zh-TW", "zh-hant": "zh-TW", "zh-hk": "zh-HK"}
@@ -212,12 +214,27 @@ _TIEUP_NOTE = re.compile(rf"\s*[\(（][^)）]*?(?:{_TIEUP_WORDS})[^)）]*[\)）]
 _TRANSLATION = re.compile(r"\s*[\(（][^)）]*[가-힣][^)）]*[\)）]\s*$")
 _FEAT = re.compile(r"(?:\s+|\s*[\(（]\s*)(?:feat\.|ft\.|feat\s|featuring\s)\s*(?P<who>[^)）]+)[\)）]?\s*$",
                    re.IGNORECASE)
-_ARTIST_SPLIT = re.compile(r"\s+from\s+|\s+meets\s+|\s+\+\s+|\s*(?:feat\.?|ft\.|featuring|&|＆|×|/|／|,|、|・|･)\s*",
+_ARTIST_SPLIT = re.compile(r"\s+from\s+|\s+meets\s+|\s+\+\s+|\s*(?:featuring|feat\.?|ft\.|&|＆|×|/|／|,|、)\s*",
                            re.IGNORECASE)
+# a middle dot is a name's own between two katakana words, a foreign or a character's full name ("リリー・ベイカー",
+# "アフィリア・サーガ"), or more with a "the" ("アフター・ザ・レイン"), and between single letters ("M・A・O"); else it
+# lists names ("シャミ子・桃・リリス・ミカン")
+_DOT = re.compile(r"\s*[・･]\s*")
+_KATAKANA_WORD = re.compile(r"[ァ-ヺー]+")
+_LETTER = re.compile(r"[^\W\d_]")
+# an "&" between two single letters and a "/" between numbers are a name's own: "M&M", "22/7"
+_INSIDE_NAME = re.compile(r"(?<![^\W_])[^\W_][&＆][^\W_](?![^\W_])|(?<![^\W_])\d+[/／]\d+(?![^\W_])")
+# a part kept whole while the others split: its place in the text (private use characters, in no artist field)
+_SAVED = re.compile("(\\d+)")
+# the names artist_names keeps whole, with a separator in them ("Wake Up, Girls!") or under 3 letters ("μ's"): the
+# shipped list and the user's beside it (core.controls.shortcuts' convention), one name a line, a note after a tab,
+# "#" a comment
+NAMES_FILE = "assets/artists/default_artist_names.tsv"
+USER_NAMES_FILE = "assets/artists/artist_names.tsv"
 # a credit after a bracketed name: "SawanoHiroyuki[nZk]:Aimer" (not every colon: "Re:vale" is one name)
 _COLON_CREDIT = re.compile(r"(?<=[\]】)）])\s*[:：]\s*")
 # a character's credit: "キャラA(CV.声優A)", "キャラB(CV:声優B)", "キャラC(cv.声優C)"
-_VOICE = re.compile(r"(?P<who>[^\s(（\[【\]】&＆/／,、・]*)\s*[\(（]\s*(?:CV|C\.V\.|声)\s*[.:：．・]?\s*(?P<cast>[^)）]+)[\)）]",
+_VOICE = re.compile(r"(?P<who>[^\s(（\[【\]】&＆/／,、]*)\s*[\(（]\s*(?:CV|C\.V\.|声)\s*[.:：．・]?\s*(?P<cast>[^)）]+)[\)）]",
                     re.IGNORECASE)
 # a name's parenthesis without "CV": its voice actor or its members, "シャロ(内田真礼)", "ゆいかおり(小倉唯&石原夏織)"
 _MEMBERS = re.compile(r"[\(（](?P<who>[^)）]+)[\)）]")
@@ -255,20 +272,65 @@ def artist_names(artist: str, featured: list[str] = ()) -> list[str]:
     article may credit any of them. A character's credit, "Unit[キャラA(CV.声優A)&…]", gives the unit, then the
     voice actors (their pages list the songs they sang), then the characters. A parenthesis without "CV" gives its
     names after the one before it: "シャロ(内田真礼)" its voice actor, "ゆいかおり(小倉唯&石原夏織)" its members."""
-    names, cast, characters = [], [], []
+    names, cast, characters, saved = [], [], [], []
     for part in [artist, *featured]:
-        part = _COLON_CREDIT.sub(" / ", part or "")
+        part = _COLON_CREDIT.sub(" / ", _keep_names(part or "", saved))
         for m in _VOICE.finditer(part):
-            cast += _ARTIST_SPLIT.split(m.group("cast"))
-            characters.append(m.group("who"))
+            cast += _split(m.group("cast"))
+            characters += _split(m.group("who"))
         rest = _VOICE.sub(" / ", part)
         for m in _MEMBERS.finditer(rest):
             if not re.search(_NOTE_WORDS, m.group("who"), re.IGNORECASE):
-                cast += _ARTIST_SPLIT.split(m.group("who"))
+                cast += _split(m.group("who"))
         rest = re.sub(r"[\[\]【】]", " / ", _MEMBERS.sub(" / ", rest))
-        names += _ARTIST_SPLIT.split(rest)
-    names = [_CV_MARK.sub("", n.strip()) for n in names + cast + characters if n and n.strip()]
-    return [n for n in dict.fromkeys(names) if len(reading.fine_key(n)) >= 3]
+        names += _split(rest)
+    names = [_CV_MARK.sub("", _SAVED.sub(lambda m: saved[int(m.group(1))], n).strip())
+             for n in names + cast + characters if n and n.strip()]
+    short = {k.casefold() for k in kept_names()}
+    return [n for n in dict.fromkeys(names) if len(reading.fine_key(n)) >= 3 or n.casefold() in short]
+
+
+@lru_cache(maxsize=1)
+def kept_names() -> tuple[str, ...]:
+    """The names kept whole (NAMES_FILE, then USER_NAMES_FILE), the longest first."""
+    names: dict[str, None] = {}
+    for path in (NAMES_FILE, USER_NAMES_FILE):
+        try:
+            text = resource_path(path).read_text(encoding="utf-8")
+        except OSError:
+            continue
+        for line in text.splitlines():
+            name = line.split("\t", 1)[0].strip()
+            if name and not name.startswith("#"):
+                names.setdefault(name)
+    return tuple(sorted(names, key=len, reverse=True))
+
+
+def _keep_names(text: str, saved: list[str]) -> str:
+    """``text`` with each kept name holding a separator, and each separator inside a name ("M&M", "22/7"), saved
+    (``saved``) and put as its place (_SAVED): no split reaches them. A kept name as a whole word only."""
+    def save(m: re.Match) -> str:
+        saved.append(m.group(0))
+        return f"{len(saved) - 1}"
+
+    for name in kept_names():
+        if _ARTIST_SPLIT.search(name) or _DOT.search(name) or _COLON_CREDIT.search(name) or "(" in name:
+            text = re.sub(rf"(?<![^\W_]){re.escape(name)}(?![^\W_])", save, text, flags=re.IGNORECASE)
+    return _INSIDE_NAME.sub(save, text)
+
+
+def _split(text: str) -> list[str]:
+    """``text``'s names at the separators; a middle dot splits only a list (_DOT)."""
+    out = []
+    for part in _ARTIST_SPLIT.split(text):
+        words = _DOT.split(part)
+        katakana = all(_KATAKANA_WORD.fullmatch(w) for w in words)
+        if len(words) == 1 or (katakana and (len(words) == 2 or "ザ" in words[1:-1])) or \
+                all(len(w) == 1 and _LETTER.fullmatch(w) for w in words):
+            out.append(part)
+        else:
+            out += words
+    return out
 
 
 def _role_in(label: str) -> Optional[tuple[str, int]]:

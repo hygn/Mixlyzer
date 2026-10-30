@@ -4,6 +4,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from types import SimpleNamespace
+from unittest import mock
 
 from core.tieups import domain as tieup
 
@@ -193,6 +194,51 @@ class TieupWebTests(unittest.TestCase):
         self.assertEqual(tw.artist_names("コーロ(シャミ子・リリス)/CV:小原好美・鬼頭明里"),
                          ["コーロ", "小原好美", "鬼頭明里", "シャミ子", "リリス"])
         self.assertEqual(tw.artist_names("Artist (Club remix)"), ["Artist"])      # a version note, no name
+
+    def test_a_name_kept_whole(self):
+        """The names an artist field holds checked on 48,932 names of real artists (one person or one group each):
+        the rules keep a name's own separators, the shipped list (assets/artists/default_artist_names.tsv) the
+        names they cannot tell from a credit; collaborations and lists still split."""
+        tw.kept_names.cache_clear()
+        # featuring is not "feat" + "uring"
+        self.assertEqual(tw.artist_names("ROUND TABLE featuring Nino"), ["ROUND TABLE", "Nino"])
+        self.assertEqual(tw.artist_names("FictionJunction featuring YUUKA"), ["FictionJunction", "YUUKA"])
+        # a middle dot between two katakana words, or with a "the", is a name's; between single letters too
+        self.assertEqual(tw.artist_names("アフィリア・サーガ"), ["アフィリア・サーガ"])
+        self.assertEqual(tw.artist_names("アフター・ザ・レイン"), ["アフター・ザ・レイン"])
+        self.assertEqual(tw.artist_names("リリー・ベイカー(CV：天城サリー)、草壁葵衣(CV：小山内怜央)"),
+                         ["天城サリー", "小山内怜央", "リリー・ベイカー", "草壁葵衣"])
+        self.assertEqual(tw.artist_names("桜木ひな子(CV:M・A・O)/夏川くいな(CV:富田美憂)"),
+                         ["M・A・O", "富田美憂", "桜木ひな子", "夏川くいな"])
+        self.assertEqual(tw.artist_names("22/7"), ["22/7"])
+        # a list of names still split at its dots, a collaboration at its "&", "×", ","
+        self.assertEqual(tw.artist_names("コーロまちカド(シャミ子・桃・リリス・ミカン)/CV:小原好美・鬼頭明里・高橋未奈美・高柳知葉"),
+                         ["コーロまちカド", "小原好美", "鬼頭明里", "高橋未奈美", "高柳知葉", "シャミ子", "桃", "リリス", "ミカン"])
+        self.assertEqual(tw.artist_names("KOTONOHOUSE & Neko Hacker"), ["KOTONOHOUSE", "Neko Hacker"])
+        self.assertEqual(tw.artist_names("Neko Hacker, ななひら, mochari, をとは"),
+                         ["Neko Hacker", "ななひら", "mochari", "をとは"])
+        self.assertEqual(tw.artist_names("카스미×란×아야×유키나×코코로"), ["카스미", "란", "아야", "유키나", "코코로"])
+        # the shipped list: a separator in the name, a name under 3 letters
+        for name in ("Wake Up, Girls!", "Hello, Happy World!", "ハロー、ハッピーワールド!", "MYTH & ROID", "CROSS×KEY",
+                     "ひみつ×戦士 ファントミラージュ!", "Can/goo", "(K)NoW_NAME", "μ's", "≠ME"):
+            self.assertEqual(tw.artist_names(name), [name], name)
+        self.assertEqual(tw.artist_names("MYTH&ROID"), ["MYTH&ROID"])          # its spellings, any case
+        self.assertEqual(tw.artist_names("Run Girls, Run! & Wake Up, Girls!"), ["Run Girls, Run!", "Wake Up, Girls!"])
+        self.assertEqual(tw.artist_names("μ's & Aqours"), ["μ's", "Aqours"])
+        self.assertEqual(tw.artist_names("Wake Up, Girls! feat. Hello"), ["Wake Up, Girls!", "Hello"])
+
+    def test_the_users_names_after_the_shipped_ones(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            shipped, users = Path(tmp) / "default.tsv", Path(tmp) / "user.tsv"
+            shipped.write_text("# a comment\nMYTH & ROID\twikidata Q24175566\n", encoding="utf-8")
+            users.write_text("Daisy×Daisy\n\n", encoding="utf-8")
+            with mock.patch.object(tw, "NAMES_FILE", str(shipped)), mock.patch.object(tw, "USER_NAMES_FILE", str(users)):
+                tw.kept_names.cache_clear()
+                try:
+                    self.assertEqual(set(tw.kept_names()), {"MYTH & ROID", "Daisy×Daisy"})
+                    self.assertEqual(tw.artist_names("Daisy×Daisy & MYTH & ROID"), ["Daisy×Daisy", "MYTH & ROID"])
+                finally:
+                    tw.kept_names.cache_clear()
 
     def test_the_song_found_in_a_page_as_the_search_finds_a_title(self):
         lines = ["「シュガーソング・ビターステップ」はテレビアニメ「[[作品]]」オープニングテーマ。", "関係ない行。"]

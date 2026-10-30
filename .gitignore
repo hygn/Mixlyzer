@@ -53,6 +53,7 @@ config.json
 deck.json
 assets/shortcuts/shortcuts.json
 assets/midi/midi.json
+assets/artists/artist_names.tsv
 *.xml
 # tests (tests/README.md): the native mixer's checks on the user's tracks and devices stay local; the ground truth's
 # audio places are the runner's own

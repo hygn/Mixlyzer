@@ -55,6 +55,8 @@ a = Analysis(
     + shipped('assets/i18n', lambda name: name in ('languages.json', 'mixlyzer.po'))
     + shipped('assets/shortcuts', lambda name: name == 'default_shortcuts.json')
     + shipped('assets/midi', lambda name: name == 'default_midi.json')
+    # the artist names kept whole (core.tieups.web), not the user's list beside them
+    + shipped('assets/artists', lambda name: name.startswith('default_'))
     # the native audio engine and its VOLK (build/audio_engine.py), as built: copied, not analysed or packed
     + shipped('audioengine/native/bin')
     + ffmpeg()
