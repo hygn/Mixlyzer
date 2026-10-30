@@ -31,6 +31,8 @@ Three layers:
                        lateralization (신라 silla), aspiration (좋다 jota), palatalization (같이 gachi).
      other             Latin letters and digits kept as written, other scripts by anyascii
                        (Москва Moskva).
+   A reading is a proxy of how the text sounds: its symbols are left out (Re:ゼロ Re zero, † read
+   + by anyascii, 、。!), an apostrophe inside a word joins it (Don't Dont).
 2. Normalization (``normalize``): romaji into a search form where spellings of one sound
    agree: shi = si, tsu = tu = 츠 (cheu), long vowels and doubled letters collapsed (toukyou =
    tokyo, kitto = kito), voicing ignored (k g / s z j ch ts / t d / h f b p v: Korean spells
@@ -137,8 +139,12 @@ def kana_to_romaji(text: str) -> str:
             syl, i = ch, i + 1
         if double_next and syl[:1].isalpha() and syl[0] not in _VOWELS:
             syl = ("t" + syl) if syl.startswith("ch") else (syl[0] + syl)
+        elif double_next:
+            out.append("xtu")        # っ before a vowel or a symbol: no consonant to double
         double_next = False
         out.append(syl)
+    if double_next:
+        out.append("xtu")            # っ at the end (せーのっ, ハイっ): kept, as wapuro's small tsu
     return "".join(out)
 
 
@@ -617,7 +623,13 @@ def _romanize(text: str, *, han: str, foreign_spelling: bool, han_run: int = 0) 
         if out and part and not out[-1].isspace() and not part[0].isspace():
             out += " "
         out += part
-    return re.sub(r"\s+", " ", out).strip()
+    # a reading is how the text sounds: its symbols left out († read + by anyascii, 、。 , ., Re: zero, 1/6), an
+    # apostrophe inside a word joining it (Don't dont)
+    return _NOT_SOUND.sub(" ", _APOSTROPHE.sub("", out)).strip()
+
+
+_APOSTROPHE = re.compile(r"(?<=[A-Za-z])['’](?=[A-Za-z])")
+_NOT_SOUND = re.compile(r"[^A-Za-z0-9]+")
 
 
 def han_languages(selection: Iterable[str] | None = None) -> list[str]:
@@ -721,6 +733,389 @@ def query_keys(query: str, languages: Iterable[str] | None = None, *, hangul_kor
                                                     hangul_foreign=hangul_foreign, keyboard=False,
                                                     han_run=han_run) if pair not in out]
     return out
+
+
+# ---- initials (초성): a Korean's search by each syllable's first consonant ----
+# A query of consonant jamo alone (ㄷㅅㅁㄴ: a 2-set keyboard's mistyped query has its vowels too) is matched against
+# each text's initials: its Hangul's, its Han characters' Korean Hanja reading's (where a text of Han is read so), its
+# Japanese reading's as Korean spells Japanese (senbon sakura 센본사쿠라 ㅅㅂㅅㅋㄹ). A plain consonant, its aspirated
+# and its tense one are one (Korean spells Japanese k as ㄱ or ㅋ: 가 / 카); つ is ㅅ or ㅈ (쓰 / 츠).
+_CONSONANT_JAMO = frozenset("ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ")
+_FOLD_INITIAL = str.maketrans("ㄲㅋㄸㅌㅃㅍㅆㅉㅊ", "ㄱㄱㄷㄷㅂㅂㅅㅈㅈ")
+_TSU = "ㆆ"    # つ: matched by ㅅ and ㅈ (an obsolete jamo nobody types)
+_BREAK = "|"   # between parts no query runs across (Hangul and Latin, two Japanese readings' halves)
+INITIALS_MIN = 2   # a single consonant would match nearly every track
+# a Japanese reading's syllables (wapuro romaji, kana_to_romaji): ん before a consonant, っ (a doubled consonant), an
+# onset and its vowel
+_JA_SYLLABLE = re.compile(r"(?P<small>xtu)|(?P<moraic>n)(?![aeiouy])|(?P<double>[bcdfghjkmprstvwz])(?=(?P=double))|t(?=ch)|"
+                          r"(?P<onset>ky|gy|kw|gw|sh|ch|ts|ny|hy|by|py|my|ry|ty|dy|fy|vy|[kgsztdnhbpmyrwfjv])?"
+                          r"(?P<vowel>[aeiou])|(?P<lone>[bcdfghjkmpqrstvwxz])|(?P<other>[^a-z ])|(?P<space> )")
+# a consonant with no vowel after it (a Latin name's: ClariS's c and s) is its own syllable, as Japanese and Korean
+# take a foreign word in: u after it (o after t, d: ク, ス, ト), Korean ㅡ (크, 스, 트)
+_LONE_VOWEL = {"t": "o", "d": "o"}
+_JA_ONSET = {"k": "ㄱ", "g": "ㄱ", "ky": "ㄱ", "gy": "ㄱ", "kw": "ㄱ", "gw": "ㄱ", "s": "ㅅ", "sh": "ㅅ", "z": "ㅈ",
+             "j": "ㅈ", "ch": "ㅈ", "ts": _TSU, "t": "ㄷ", "ty": "ㄷ", "d": "ㄷ", "dy": "ㄷ", "n": "ㄴ", "ny": "ㄴ",
+             "h": "ㅎ", "hy": "ㅎ", "f": "ㅎ", "fy": "ㅎ", "b": "ㅂ", "by": "ㅂ", "v": "ㅂ", "vy": "ㅂ", "p": "ㅂ",
+             "py": "ㅂ", "m": "ㅁ", "my": "ㅁ", "y": "ㅇ", "r": "ㄹ", "ry": "ㄹ", "w": "ㅇ"}
+# a long vowel, which Korean leaves out (とうきょう 도쿄, テーゼ 테제); ちいかわ 치이카와 keeps it: both are kept
+_JA_LONG = frozenset({("o", "u"), ("u", "u"), ("o", "o"), ("a", "a"), ("e", "e"), ("i", "i")})
+
+
+_KOREAN_OR_HAN = re.compile(r"[가-힣㐀-䶿一-鿿豈-﫿]")
+_INITIALS_RUNS = re.compile(r"[가-힣]+|[㐀-䶿一-鿿豈-﫿]+|\s+|[^가-힣㐀-䶿一-鿿豈-﫿\s]+")
+
+
+def _joined(parts: list[str]) -> str:
+    return re.sub(rf"\{_BREAK}+", _BREAK, "".join(parts)).strip(_BREAK)
+
+
+@lru_cache(maxsize=1 << 18)
+def text_initials(text: str) -> str:
+    """The initials of a text's Hangul and of its Han characters' Korean Hanja reading (all of them in a text
+    without kana, else its runs of HAN_RUN_MIN or more, as ``readings`` reads them); other letters break it."""
+    text = unicodedata.normalize("NFKC", str(text or ""))
+    if not _KOREAN_OR_HAN.search(text):
+        return ""
+    kana = any(_is_kana(c) for c in text)
+    table = _unihan_table("unihan_korean")
+    least = HAN_RUN_MIN if kana else 1
+    parts: list[str] = []
+    for run in _INITIALS_RUNS.findall(text):
+        if "가" <= run[0] <= "힣":
+            parts.append("".join(_INITIALS[(ord(c) - 0xAC00) // 588] for c in run))
+        elif _is_kanji(run[0]) and len(run) >= least:
+            # the characters the table reads, as words (a character it lacks breaks them)
+            for word in "".join(c if c in table else "\n" for c in fold_variants(run)).split("\n"):
+                if word:
+                    parts.append("".join(_INITIALS[(ord(s) - 0xAC00) // 588] for s in _sino_korean_word(word, table)))
+                parts.append(_BREAK)
+        elif not run.isspace():
+            parts.append(_BREAK)
+    return _joined(parts).translate(_FOLD_INITIAL)
+
+
+@lru_cache(maxsize=1 << 18)
+def japanese_initials(romaji: str) -> tuple[str, ...]:
+    """The initials of a Japanese reading (wapuro romaji) as Korean spells it: its long vowels left out, and kept
+    (one when they agree)."""
+    short, full = [], []
+    previous = ""
+    for m in _JA_SYLLABLE.finditer(str(romaji or "").lower()):
+        if m.group("vowel"):
+            onset = m.group("onset")
+            initial = _JA_ONSET[onset] if onset else "ㅇ"
+            full.append(initial)
+            if onset or (previous, m.group("vowel")) not in _JA_LONG:
+                short.append(initial)
+            previous = m.group("vowel")
+        elif m.group("other"):
+            short.append(_BREAK)
+            full.append(_BREAK)
+            previous = ""
+        elif m.group("space"):
+            previous = ""     # a word's first vowel is no long vowel
+    return tuple(dict.fromkeys(k for k in (_joined(short), _joined(full)) if k))
+
+
+def initials_keys(text: str, japanese: Iterable[str] = ()) -> tuple[str, ...]:
+    """A field's initials (text_initials), with its Japanese readings' (japanese_initials), each once."""
+    keys = [text_initials(text)] + [k for r in japanese for k in japanese_initials(r)]
+    return tuple(dict.fromkeys(k for k in keys if len(k.replace(_BREAK, "")) >= INITIALS_MIN))
+
+
+def is_initials_query(query: str) -> bool:
+    """A query of consonant jamo alone (spaces aside), INITIALS_MIN or more."""
+    letters = re.sub(r"\s+", "", str(query or ""))
+    return len(letters) >= INITIALS_MIN and all(c in _CONSONANT_JAMO for c in letters)
+
+
+INITIALS_KEYS_MIN = 3   # typed without 한/영: fewer would match English words' letters too often (sa ㄴㅁ)
+
+
+def keys_to_initials(text: str) -> str | None:
+    """Letters typed on the 2-set keyboard in English mode for an initials query (etas ㄷㅅㅁㄴ): every letter a
+    consonant's key, INITIALS_KEYS_MIN or more (spaces aside); a word in capitals read as Caps Lock (no Shift).
+    None otherwise. An English word can be one too (draft ㅇㄱㅁㄹㅅ): its tracks are found besides, not instead."""
+    letters = re.sub(r"\s+", "", str(text or ""))
+    if len(letters) < INITIALS_KEYS_MIN or not (letters.isascii() and letters.isalpha()):
+        return None
+    keys = letters.lower() if letters.upper() == letters else letters
+    jamo = "".join(_DUBEOLSIK.get(c, _DUBEOLSIK.get(c.lower(), "")) for c in keys)
+    return jamo if len(jamo) == len(keys) and all(c in _CONSONANT_JAMO for c in jamo) else None
+
+
+def initials_pattern(query: str) -> re.Pattern:
+    """The pattern of an initials query (is_initials_query) searched in initials keys (ㅅ and ㅈ also take つ)."""
+    out = []
+    for c in re.sub(r"\s+", "", query).translate(_FOLD_INITIAL):
+        out.append(f"[{c}{_TSU}]" if c in "ㅅㅈ" else re.escape(c))
+    return re.compile("".join(out))
+
+
+# ---- sort by reading (Settings > Search, Sort Names): ABC, 가나다, 五十音 ----
+# A field's sort key (sort_key), every script in one order by sound: ABC its first reading's romaji; 가나다 its
+# Hangul, a Japanese text by its Japanese reading as Korean spells it (Han without one by its Korean Hanja reading),
+# any other by its reading so spelled; 五十音 its Japanese reading, else its reading's syllables read as romaji. Digits
+# (no reading) first, symbols left out.
+NAME_SORTS = ("text", "abc", "hangul", "gojuon")
+
+# a Japanese syllable (onset, vowel) -> its kana as (row, vowel) pairs in 50音 order (rows: あかさたなはまやらわ, ん
+# last; voiced ones in their plain row): きゃ き + や, ふぁ ふ + あ
+_GOJUON_ROW = {"": 0, "k": 1, "g": 1, "kw": 1, "gw": 1, "s": 2, "sh": 2, "z": 2, "j": 2, "t": 3, "ch": 3, "ts": 3,
+               "d": 3, "ty": 3, "dy": 3, "n": 4, "ny": 4, "h": 5, "f": 5, "fy": 5, "b": 5, "p": 5, "v": 0, "vy": 0,
+               "m": 6, "y": 7, "r": 8, "w": 9, "ky": 1, "gy": 1, "hy": 5, "by": 5, "py": 5, "my": 6, "ry": 8}
+_GOJUON_VOICED = {"g": 1, "gw": 1, "gy": 1, "z": 1, "j": 1, "d": 1, "dy": 1, "b": 1, "by": 1, "v": 1, "vy": 1,
+                  "p": 2, "py": 2}
+# (row, vowel) -> its plain kana, which Unicode orders as 50音 does (row 10: ん); the y and w rows' missing ones as
+# the one before them, so the order holds
+_GOJUON_KANA = "あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもややゆゆよらりるれろわわわわをん"
+_V = "aiueo"
+
+
+def _kana_of(onset: str, vowel: str) -> list[tuple[int, int]]:
+    row, v = _GOJUON_ROW[onset], _V.index(vowel)
+    if onset in ("ky", "gy", "ny", "hy", "by", "py", "my", "ry", "fy", "vy"):    # き + ゃ
+        return [(row, 1), (7, v)]
+    if onset in ("sh", "ch", "j"):                 # し ち じ, + ゃ ゅ ょ / ぇ
+        return [(row, 1)] + ([] if vowel == "i" else [(0, 3)] if vowel == "e" else [(7, v)])
+    if onset == "ts":                              # つ, + ぁ ぃ ぇ ぉ
+        return [(3, 2)] + ([] if vowel == "u" else [(0, v)])
+    if onset in ("f", "kw", "gw") and vowel != "u" or onset == "v" and vowel != "u":   # ふぁ くぁ ゔぁ
+        return [(row if onset != "v" else 0, 2), (0, v)]
+    if onset in ("ty", "dy"):                      # てゅ
+        return [(3, 3), (7, v)]
+    if onset in ("t", "d") and vowel in "iu":      # てぃ とぅ (ち つ are ch ts)
+        return [(3, 3 if vowel == "i" else 4), (0, v)]
+    if onset == "w" and vowel in "iue":            # うぃ うぇ
+        return [(0, 2), (0, v)]
+    if onset == "y" and vowel in "ie":             # いぇ
+        return [(0, 1), (0, v)]
+    if onset in ("s", "z") and vowel == "i":       # すぃ
+        return [(2, 2), (0, 1)]
+    return [(row, v)]
+
+
+@lru_cache(maxsize=1 << 18)
+def gojuon_key(romaji: str) -> str:
+    """A Japanese reading (wapuro romaji) as a key sorting in 50音 order: its kana without their voiced marks, full
+    size (っ as つ, ゃ as や, a long vowel as its vowel: ー's place), then after a space the voiced marks breaking ties
+    (0 none, 1 ゛, 2 ゜: か before が): senbon sakura "せんほんさくら 0010000"."""
+    kana, marks = [], []
+    for m in _JA_SYLLABLE.finditer(str(romaji or "").lower()):
+        if m.group("vowel") or m.group("lone"):
+            if m.group("vowel"):
+                onset, vowel = m.group("onset") or "", m.group("vowel")
+            else:
+                onset = m.group("lone")
+                vowel = _LONE_VOWEL.get(onset, "u")
+            for row, v in _kana_of(onset if onset in _GOJUON_ROW else "k", vowel):
+                kana.append(_GOJUON_KANA[row * 5 + v])
+            marks.append(str(_GOJUON_VOICED.get(onset, 0)))
+        elif m.group("moraic"):
+            kana.append("ん")
+        elif m.group("double") or m.group("small") or m.group(0) == "t":
+            kana.append("つ")
+        elif m.group("other") and m.group("other").isalnum():     # a digit; a symbol left out
+            kana.append(m.group("other"))
+    return "".join(kana) + " " + "".join(marks)
+
+
+# a Japanese syllable's Hangul as Korean fans spell Japanese: か た ち aspirated wherever they are (君 키미, 恋 코이,
+# not the loanword rule's word-initial 기미 / 고이); つ 츠 (初音 하츠네, not 쓰); ん and っ the syllable before's ㄴ / ㅅ;
+# long vowels left out
+_KO_ONSET = {"k": "ㅋ", "g": "ㄱ", "s": "ㅅ", "z": "ㅈ", "j": "ㅈ", "t": "ㅌ", "d": "ㄷ", "ch": "ㅊ", "ts": "ㅊ",
+             "n": "ㄴ", "h": "ㅎ", "f": "ㅎ", "b": "ㅂ", "v": "ㅂ", "p": "ㅍ", "m": "ㅁ", "r": "ㄹ", "y": "ㅇ",
+             "w": "ㅇ", "": "ㅇ", "sh": "ㅅ", "ky": "ㅋ", "gy": "ㄱ", "ny": "ㄴ", "hy": "ㅎ", "by": "ㅂ", "py": "ㅍ",
+             "my": "ㅁ", "ry": "ㄹ", "ty": "ㅌ", "dy": "ㄷ", "kw": "ㅋ", "gw": "ㄱ", "fy": "ㅎ", "vy": "ㅂ"}
+_KO_VOWEL = {"a": "ㅏ", "i": "ㅣ", "u": "ㅜ", "e": "ㅔ", "o": "ㅗ"}
+_KO_Y_VOWEL = {"a": "ㅑ", "i": "ㅣ", "u": "ㅠ", "e": "ㅖ", "o": "ㅛ"}
+_KO_W_VOWEL = {"a": "ㅘ", "i": "ㅟ", "u": "ㅜ", "e": "ㅞ", "o": "ㅗ"}    # わ 와, を 오, うぃ 위
+_JAMO_INITIAL = {j: k for k, j in enumerate(_INITIALS)}
+_JAMO_MEDIAL = {j: k for k, j in enumerate("ㅏㅐㅑㅒㅓㅔㅕㅖㅗㅘㅙㅚㅛㅜㅝㅞㅟㅠㅡㅢㅣ")}
+
+
+# a place's name keeps the loanword rule's spelling Korean knows it by (東京 도쿄, 京都 교토, 松山 마쓰야마): its first
+# syllable's か た ち plain, its つ 쓰
+_KO_PLACE_INITIAL = {"k": "ㄱ", "ky": "ㄱ", "kw": "ㄱ", "t": "ㄷ", "ty": "ㄷ", "ch": "ㅈ"}
+
+
+def place_names(text: str) -> frozenset[str]:
+    """The words of a Japanese text that are places' names (Sudachi: 固有名詞 地名), as its reading writes them
+    (kana_to_romaji: toukyou)."""
+    if not any(_is_kanji(c) or _is_kana(c) for c in str(text or "")):
+        return frozenset()
+    with _tokenizer_lock:
+        morphemes = [(m.reading_form(), m.part_of_speech()) for m in _japanese_tokenizer().tokenize(str(text))]
+    return frozenset(kana_to_romaji(reading) for reading, pos in morphemes if pos[1:3] == ("固有名詞", "地名"))
+
+
+@lru_cache(maxsize=1 << 18)
+def japanese_to_hangul(romaji: str, places: frozenset = frozenset()) -> str:
+    """A Japanese reading (wapuro romaji) in Hangul as Korean fans spell Japanese: senbon sakura 센본 사쿠라, kimi
+    키미 (the 가나다순 key of a Japanese text); its words in ``places`` (place_names) as the loanword rule spells
+    them: toukyou 도쿄."""
+    out: list[list[int]] = []     # syllables as [initial, medial, final]
+    text: list = []
+    previous = ""
+    romaji = str(romaji or "").lower()
+    place_spans = [w.span() for w in re.finditer(r"\S+", romaji) if w.group() in places]
+    for m in _JA_SYLLABLE.finditer(romaji):
+        if m.group("vowel"):
+            onset, vowel = m.group("onset") or "", m.group("vowel")
+            if not onset and (previous, vowel) in _JA_LONG:
+                previous = vowel
+                continue
+            initial = _KO_ONSET[onset]
+            if any(start <= m.start() < end for start, end in place_spans):
+                initial = "ㅆ" if onset == "ts" else initial
+                if any(start == m.start() for start, _end in place_spans):
+                    initial = _KO_PLACE_INITIAL.get(onset, initial)
+            if onset in ("ky", "gy", "ny", "hy", "by", "py", "my", "ry", "ty", "dy", "fy", "vy", "y", "sh"):
+                medial = _KO_Y_VOWEL[vowel]
+            elif onset in ("kw", "gw", "w"):
+                medial = _KO_W_VOWEL[vowel]
+            elif vowel == "u" and onset in ("s", "z", "ts"):
+                medial = "ㅡ"       # す 스, ず 즈, つ 츠
+            else:
+                medial = _KO_VOWEL[vowel]
+            syllable = [_JAMO_INITIAL[initial], _JAMO_MEDIAL[medial], 0]
+            out.append(syllable)
+            text.append(syllable)
+            previous = vowel
+        elif m.group("lone"):       # 크, 스, 트
+            initial = _KO_ONSET.get(m.group("lone"), "ㅋ")
+            syllable = [_JAMO_INITIAL[initial], _JAMO_MEDIAL["ㅡ"], 0]
+            out.append(syllable)
+            text.append(syllable)
+            previous = ""
+        elif m.group("moraic") or m.group("double") or m.group("small") or m.group(0) == "t":
+            if out and out[-1][2] == 0:
+                out[-1][2] = 4 if m.group("moraic") else 19      # ㄴ / ㅅ
+        elif m.group("space"):
+            text.append(" ")
+            previous = ""
+        elif m.group("other"):
+            text.append(m.group("other"))
+            previous = ""
+    return "".join(c if isinstance(c, str) else chr(0xAC00 + c[0] * 588 + c[1] * 28 + c[2]) for c in text)
+
+
+def _korean_hanja_hangul(text: str) -> str:
+    """Han characters as their Korean Hanja reading's Hangul, words as ``_read_korean_hanja`` spells them; other
+    characters kept."""
+    table = _unihan_table("unihan_korean")
+    out, word = [], ""
+    for ch in fold_variants(text) + "\x00":
+        if ch in table:
+            word += ch
+            continue
+        if word:
+            out.append(_sino_korean_word(word, table))
+            word = ""
+        out.append(ch)
+    return "".join(out)[:-1]
+
+
+def _first_script(text: str) -> str:
+    for c in text:
+        if c.isalpha():
+            if "가" <= c <= "힣" or "ㄱ" <= c <= "ㆎ":
+                return "ko"
+            if _is_kana(c) or _is_kanji(c):
+                return "ja"
+            return "latin" if "LATIN" in unicodedata.name(c, "") else "other"
+        if c.isdigit():
+            return "digit"
+    return "none"
+
+
+# a reading not in wapuro romaji (a Latin name's letters, Revised Romanization) read as romaji the way Japanese
+# takes a foreign word in, by its spelling: ClariS kurarisu (クラリス), Fly furai... its consonants with no vowel
+# after them their own syllables (_LONE_VOWEL)
+_LATIN_STEPS = [(re.compile(pattern), repl) for pattern, repl in (
+    (r"ph", "f"), (r"th", "s"), (r"ck", "k"), (r"qu", "kw"), (r"q", "k"), (r"x", "ks"), (r"c(?=[eiy])", "s"),
+    (r"c", "k"), (r"l", "r"), (r"y(?![aeiou])", "i"),
+    (r"([bdfghjmnrsvwz])\1+", r"\1"))]     # a doubled letter one (Girl's rl, Summit's mm), but tt pp kk: ッ
+# a word in capitals of two letters at most is spelled (DJ ディージェー, TV, R アール): the letters' names in Japanese
+_LETTER_NAMES = dict(zip("ABCDEFGHIJKLMNOPQRSTUVWXYZ", (
+    "ee", "bii", "shii", "dii", "ii", "efu", "jii", "eichi", "ai", "jee", "kee", "eru", "emu", "enu", "oo", "pii",
+    "kyuu", "aaru", "esu", "tii", "yuu", "bui", "daburyuu", "ekkusu", "wai", "zetto")))
+_WORDS = {"the": "za"}
+# a word in wapuro romaji (a Japanese reading's): its syllables alone
+_WAPURO_WORD = re.compile(r"(?:xtu|n(?![aeiouy])|(?P<d>[bcdfghjkmprstvwz])(?=(?P=d))|t(?=ch)|"
+                          r"(?:ky|gy|kw|gw|sh|ch|ts|ny|hy|by|py|my|ry|ty|dy|fy|vy|[kgsztdnhbpmyrwfjv])?[aeiou])+")
+
+
+def _latin_as_romaji(text: str) -> str:
+    s = anyascii(str(text or "")).lower()
+    for pattern, repl in _LATIN_STEPS:
+        s = pattern.sub(repl, s)
+    return s
+
+
+def _as_romaji(reading: str) -> str:
+    """A reading as romaji word by word: a word of wapuro syllables as it is (a Japanese reading's), a short word in
+    capitals spelled, another word read by its spelling (_latin_as_romaji: Remix remiksu, Cafe kafe)."""
+    words = []
+    for word in anyascii(str(reading or "")).split():
+        if word.islower() and _WAPURO_WORD.fullmatch(word):
+            words.append(word)
+        elif word.isascii() and word.isalpha() and word.isupper() and len(word) <= 2:
+            words.append("".join(_LETTER_NAMES[c] for c in word))
+        else:
+            words.append(_WORDS.get(word.lower()) or _latin_as_romaji(word))
+    return " ".join(words)
+
+
+def _hangul_with_latin(text: str) -> str:
+    """Hangul text with its Latin words spelled in Hangul as Korean spells their reading (그녀도 여친 Season 2 ...
+    시손 2), the 가나다 key of a Korean name."""
+    return re.sub(r"[A-Za-z]+", lambda m: japanese_to_hangul(_as_romaji(m.group(0))), text)
+
+
+def _sortable(text: str) -> str:
+    """Letters and digits alone, case folded: symbols and spaces sort nowhere (†吸tie Ladies† by 吸tie...)."""
+    return "".join(c for c in text.casefold() if c.isalnum())
+
+
+@lru_cache(maxsize=1 << 18)
+def _sort_key(text: str, first: str, japanese: str, order: str) -> str:
+    text = unicodedata.normalize("NFKC", text).strip()
+    if order == "abc":
+        return _sortable(first or text)
+    # one order by sound, whatever the script: a Latin or Hangul name by its reading's syllables too (Aimer among
+    # the あ, by its letters as romaji); digits, which have no reading here, first
+    if order == "gojuon":
+        return gojuon_key(_as_romaji(japanese or first or text))
+    script = _first_script(text)
+    if script == "ko":
+        return _sortable(_hangul_with_latin(text))
+    if script == "ja" and not japanese:
+        return _sortable(_korean_hanja_hangul(text))
+    return _sortable(japanese_to_hangul(_as_romaji(japanese or first or text),
+                                        place_names(text) if japanese else frozenset()))
+
+
+def sort_key(text: str, readings: Iterable[str], japanese: Iterable[str], order: str) -> str | None:
+    """A field's key sorting it by its reading in ``order`` (NAME_SORTS: abc, hangul, gojuon; module notes above);
+    ``readings`` its readings, ``japanese`` its Japanese ones (the first of each used). None for "text" (the text's
+    own order)."""
+    if order not in ("abc", "hangul", "gojuon"):
+        return None
+    return _sort_key(str(text or ""), next(iter(readings), ""), next(iter(japanese), ""), order)
+
+
+# a field's stored keys (library.db track_name_keys): made when its readings are written, again when NAME_KEYS_RULES
+# changes (raise it with any change to how initials_keys or sort_key make them)
+NAME_KEYS_RULES = 5
+JAPANESE_SOURCES = ("ja", "user")    # the readings read as Japanese for the keys: Japanese's, and the user's own
+
+
+def name_keys(text: str, first: str, japanese: list[str]) -> tuple[tuple[str, ...], dict[str, str]]:
+    """A name's 초성 keys and its sort keys in each order of NAME_SORTS but "text": ``first`` its first reading,
+    ``japanese`` its Japanese ones (a field's: JAPANESE_SOURCES')."""
+    return (initials_keys(text, japanese),
+            {order: sort_key(text, [first] if first else [], japanese, order) for order in NAME_SORTS[1:]})
 
 
 # ---- matching ----

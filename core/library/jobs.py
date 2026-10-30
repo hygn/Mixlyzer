@@ -189,6 +189,16 @@ def set_user_readings(lib, uid: str, edits: dict) -> Optional[TrackRow]:
     return lib.db.get_by_uid(uid)
 
 
+@changes(READINGS, TIEUPS)
+def rebuild_name_keys(lib) -> int:
+    """Every title / artist / album's and tie-up name's 초성 and sort keys made again from its text and readings
+    (Settings > Search's Rebuild Sort Index). The names made."""
+    made = lib.db.refresh_name_keys(rebuild=True)
+    with lib.db.tx():
+        made += tieups.refresh_name_keys(lib.db.conn, rebuild=True)
+    return made
+
+
 def reading_texts(lib) -> tuple[list[str], list[str]]:
     """Re-read Library's input: (the tracks' uids, every text read for the search: their titles, artists and albums
     and the tie-up works' names, each once)."""

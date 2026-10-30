@@ -11,11 +11,11 @@ loaded track, its versions (the Variants) and the instrumentals (a title saying 
 relation misreads quiet vocals)."""
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 
 from analyzer.music.key_names import ALPHANUMERIC_LABELS
 from analyzer.search import mixability as mx
+from core.search import titles
 
 # a blend's score (analyzer.search.mixability.best_overlap) at most this: alike enough for the sound criterion (the
 # median of random pairs of a 420-track library: more alike than half of them)
@@ -25,7 +25,6 @@ AUDIO_PASS = 1.08
 # at the median of ~150 within +-8 %, 46th by the sound alone)
 TEMPO_RANK_UNIT = 8.0
 TEMPO_RATIOS = (1.0, 2.0, 0.5)    # B at its tempo, or read at double / half of it (a grid an octave apart)
-INSTRUMENTAL = re.compile(r"instrumental|off[\s_-]?vocal|karaoke|\binst\b|オフボーカル|カラオケ|インスト", re.I)
 
 
 @dataclass(frozen=True)
@@ -128,7 +127,7 @@ def entry_time(units) -> float:
 
 
 def is_instrumental(title: str) -> bool:
-    return bool(INSTRUMENTAL.search(title or ""))
+    return bool(titles.INSTRUMENTAL.search(title or ""))
 
 
 def candidates(loaded: TrackMarks, tracks: list[TrackMarks], bars: dict, excluded: set[str],

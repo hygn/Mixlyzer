@@ -1,6 +1,7 @@
 from PySide6 import QtCore
 from PySide6.QtWidgets import (
     QCheckBox,
+    QComboBox,
     QDoubleSpinBox,
     QFormLayout,
     QGridLayout,
@@ -87,11 +88,31 @@ def build_search_tab(dialog) -> None:
     dialog.db_language_boxes["ko-hanja"].toggled.connect(sync_han_runs)
     dialog.cb_han_runs.toggled.connect(sync_han_runs)
     dialog._sync_han_runs = sync_han_runs
+    dialog.cmb_name_sort = QComboBox()
+    for label, value in ((tr("As written"), "text"), (tr("By reading: ABC"), "abc"),
+                         (tr("By reading: 가나다"), "hangul"), (tr("By reading: 五十音"), "gojuon")):
+        dialog.cmb_name_sort.addItem(label, value)
+    dialog.cmb_name_sort.setToolTip(
+        tr("<p>How the library's Title, Artist and Album columns sort. By reading, every script in one order by "
+           "sound: ABC by the first reading's letters; 가나다 with a Japanese title as Korean spells its reading "
+           "(千本桜 센본사쿠라); 五十音 by the Japanese reading. A Latin name is read by its spelling (ClariS among "
+           "the く), digits come first.</p>"))
+    f_db.addRow(tr("Sort Names"), dialog.cmb_name_sort)
     dialog.btn_reread_library = QPushButton(tr("Re-read Library"))
     dialog.btn_reread_library.setToolTip(
         tr("<p>Save these settings and read every track's title, artist and album again, in the "
            "background. Readings set in Edit Track are kept.</p>"))
-    f_db.addRow("", dialog.btn_reread_library)
+    dialog.btn_rebuild_sort_index = QPushButton(tr("Rebuild Sort Index"))
+    dialog.btn_rebuild_sort_index.setToolTip(
+        tr("<p>Make every title's, artist's, album's and tie-up's sort and 초성 keys again from its text and its "
+           "readings as stored, in the background. The readings are not read again (Re-read Library does).</p>"))
+    buttons = QWidget()
+    row = QHBoxLayout(buttons)
+    row.setContentsMargins(0, 0, 0, 0)
+    row.addWidget(dialog.btn_reread_library)
+    row.addWidget(dialog.btn_rebuild_sort_index)
+    row.addStretch(1)
+    f_db.addRow("", buttons)
 
     # the query
     grp_query = QGroupBox(tr("Search Query"))
@@ -121,6 +142,22 @@ def build_search_tab(dialog) -> None:
     hangul_grid.addWidget(dialog.cb_query_keyboard_layout, 0, 2)
     _keep_one_checked([dialog.cb_query_hangul_korean, dialog.cb_query_hangul_foreign])
     f_query.addRow(tr("Hangul"), hangul_box)
+    # 초성: the initials of each syllable
+    initials_box = QWidget()
+    initials_row = QHBoxLayout(initials_box)
+    initials_row.setContentsMargins(0, 0, 0, 0)
+    dialog.cb_query_initials = QCheckBox(tr("초성 search"))
+    dialog.cb_query_initials.setToolTip(
+        tr("<p>A query of consonants alone finds a name by each syllable's first consonant: ㄷㅅㅁㄴ finds 다시 만난 "
+           "세계, ㅅㅂㅅㅋㄹ finds 千本桜 (센본사쿠라 as Korean spells its reading).</p>"))
+    dialog.cb_query_initials_keys = QCheckBox(tr("초성 search typed without 한/영"))
+    dialog.cb_query_initials_keys.setToolTip(
+        tr("<p>Three or more consonants' keys typed on the 2-set keyboard in English mode are a 초성 search too: "
+           "etas as ㄷㅅㅁㄴ. An English word may be one, so its tracks are found besides the others.</p>"))
+    initials_row.addWidget(dialog.cb_query_initials)
+    initials_row.addWidget(dialog.cb_query_initials_keys)
+    initials_row.addStretch(1)
+    f_query.addRow(tr("Initials"), initials_box)
 
     # Search by Music (analyzer.search.music)
     grp_music = QGroupBox(tr("Search by Music"))
@@ -157,6 +194,8 @@ def build_search_tab(dialog) -> None:
     form.addRow(grp_query)
     form.addRow(grp_music)
     dialog.btn_reread_library.clicked.connect(dialog._reread_library_now)
+    dialog.btn_rebuild_sort_index.clicked.connect(
+        lambda: dialog._bus.sig_name_keys_rebuild_requested.emit() if dialog._bus is not None else None)
     dialog.btn_music_index_now.clicked.connect(dialog._music_index_now)
     dialog.tabs.addTab(scroll_page(dialog.tab_search), tr("Search"))
 
@@ -174,6 +213,9 @@ class SearchSettingsMixin:
                              key=lambda pair: not pair[1]):
             cb.setChecked(on)
         self.cb_query_keyboard_layout.setChecked(bool(s.query_keyboard_layout))
+        self.cb_query_initials.setChecked(bool(s.query_initials))
+        self.cb_query_initials_keys.setChecked(bool(s.query_initials_keys))
+        self.cmb_name_sort.setCurrentIndex(max(0, self.cmb_name_sort.findData(s.name_sort)))
         self.cb_han_runs.setChecked(bool(s.han_runs))
         self.sp_han_run_min.setValue(max(reading.HAN_RUN_LEAST, int(s.han_run_min)))
         self._sync_han_runs()
@@ -191,6 +233,9 @@ class SearchSettingsMixin:
             query_hangul_korean=bool(self.cb_query_hangul_korean.isChecked()),
             query_hangul_foreign=bool(self.cb_query_hangul_foreign.isChecked()),
             query_keyboard_layout=bool(self.cb_query_keyboard_layout.isChecked()),
+            query_initials=bool(self.cb_query_initials.isChecked()),
+            query_initials_keys=bool(self.cb_query_initials_keys.isChecked()),
+            name_sort=str(self.cmb_name_sort.currentData() or "text"),
             music_index=bool(self.cb_music_index.isChecked()),
             music_listen_window=float(self.sp_music_window.value()),
             music_listen_interval=float(self.sp_music_interval.value()),

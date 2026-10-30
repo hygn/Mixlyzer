@@ -30,6 +30,10 @@ _ORDERABLE_COLUMNS = frozenset({
 })
 
 
+# a field with readings -> its tracks column (interpolated into SQL: never another text)
+_READING_COLUMN = {"title": "title", "artist": "artist", "album": "album"}
+
+
 def _safe_order_by(order_by: str, default: str = "added_ts DESC") -> str:
     """Validate an ORDER BY clause against a column whitelist.
 
@@ -148,6 +152,23 @@ class LibraryDB:
             field     TEXT NOT NULL,
             reading   TEXT NOT NULL,
             PRIMARY KEY (track_uid, field, reading),
+            FOREIGN KEY (track_uid) REFERENCES tracks(uid) ON DELETE CASCADE
+        );
+        """)
+        # Each title / artist / album's search and sort keys made from its text and readings
+        # (core.search.reading.name_keys): its 초성 keys (one a line) and its sort keys in each order of
+        # Settings > Search's Sort Names; written with its readings, again when ``rules``
+        # (reading.NAME_KEYS_RULES) is not the current one (refresh_name_keys, the library opened).
+        self._conn.execute("""
+        CREATE TABLE IF NOT EXISTS track_name_keys (
+            track_uid TEXT NOT NULL,
+            field     TEXT NOT NULL,
+            rules     INTEGER NOT NULL,
+            initials  TEXT NOT NULL,
+            abc       TEXT NOT NULL,
+            hangul    TEXT NOT NULL,
+            gojuon    TEXT NOT NULL,
+            PRIMARY KEY (track_uid, field),
             FOREIGN KEY (track_uid) REFERENCES tracks(uid) ON DELETE CASCADE
         );
         """)
@@ -340,11 +361,59 @@ class LibraryDB:
             self._write_readings(uid, field, field_readings(user, automatic, removed[field]))
 
     def _write_readings(self, uid: str, field: str, readings: list) -> None:
+        readings = readings[:reading.READING_SLOTS]
         self.conn.execute("DELETE FROM track_readings WHERE track_uid=? AND field=?;", (uid, field))
         self.conn.executemany(
             "INSERT INTO track_readings(track_uid, field, slot, reading, source) VALUES(?, ?, ?, ?, ?);",
-            ((uid, field, slot, text, source) for slot, (text, source) in enumerate(readings[:reading.READING_SLOTS])),
+            ((uid, field, slot, text, source) for slot, (text, source) in enumerate(readings)),
         )
+        row = self.conn.execute(f"SELECT {_READING_COLUMN[field]} FROM tracks WHERE uid=?;", (uid,)).fetchone()
+        self._write_name_keys(uid, field, (row[0] if row is not None else "") or "", readings)
+
+    def _write_name_keys(self, uid: str, field: str, text: str, readings: list) -> None:
+        """A field's 초성 keys and sort keys (core.search.reading.name_keys) from its text and readings."""
+        initials, sort = reading.name_keys(text, readings[0][0] if readings else "",
+                                           [r for r, source in readings if source in reading.JAPANESE_SOURCES])
+        self.conn.execute(
+            "INSERT OR REPLACE INTO track_name_keys(track_uid, field, rules, initials, abc, hangul, gojuon) "
+            "VALUES(?, ?, ?, ?, ?, ?, ?);",
+            (uid, field, reading.NAME_KEYS_RULES, "\n".join(initials), sort["abc"], sort["hangul"], sort["gojuon"]))
+
+    def refresh_name_keys(self, rebuild: bool = False) -> int:
+        """The fields whose keys are missing or were made by other rules (reading.NAME_KEYS_RULES) given them again
+        (the library opened: a library of an earlier version, the rules changed); ``rebuild``: every field's
+        (Settings > Search's Rebuild Sort Index). Returns the fields made."""
+        if rebuild:
+            with self.tx():
+                self.conn.execute("DELETE FROM track_name_keys;")
+        stale = self.conn.execute(
+            "SELECT t.uid, f.field FROM tracks t CROSS JOIN (SELECT 'title' AS field UNION ALL SELECT 'artist' "
+            "UNION ALL SELECT 'album') f LEFT JOIN track_name_keys k ON k.track_uid = t.uid AND k.field = f.field "
+            "WHERE k.rules IS NULL OR k.rules != ?;", (reading.NAME_KEYS_RULES,)).fetchall()
+        if not stale:
+            return 0
+        texts = {uid: (title, artist, album) for uid, title, artist, album in
+                 self.conn.execute("SELECT uid, title, artist, album FROM tracks;")}
+        with self.tx():
+            for uid, field in stale:
+                readings = self.conn.execute(
+                    "SELECT reading, source FROM track_readings WHERE track_uid=? AND field=? ORDER BY slot;",
+                    (uid, field)).fetchall()
+                self._write_name_keys(uid, field, texts[uid][READING_FIELDS.index(field)] or "", readings)
+        return len(stale)
+
+    def name_keys(self, order: str) -> Tuple[Dict[str, Dict[str, tuple]], Dict[str, Dict[str, str]]]:
+        """Every track's 초성 keys (uid -> field -> keys) and its sort keys in ``order`` (uid -> field -> key; none
+        for "text" or another)."""
+        column = order if order in ("abc", "hangul", "gojuon") else None
+        initials: Dict[str, Dict[str, tuple]] = {}
+        sort: Dict[str, Dict[str, str]] = {}
+        for uid, field, keys, key in self.conn.execute(
+                f"SELECT track_uid, field, initials, {column or 'NULL'} FROM track_name_keys;"):
+            initials.setdefault(uid, {})[field] = tuple(keys.split("\n")) if keys else ()
+            if column is not None:
+                sort.setdefault(uid, {})[field] = key
+        return initials, sort
 
     def readings(self, uid: str) -> Dict[str, List[Tuple[str, str]]]:
         """The track's readings by field: (reading, source) in slot order."""

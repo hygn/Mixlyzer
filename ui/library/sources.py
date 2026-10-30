@@ -436,7 +436,8 @@ class SourcesMixin:
             snap = self.library.snapshot
             tracks = []
             for position, row in snap.playlist_tracks(str(self._source_value)):
-                track = row_to_track(row, snap.readings.get(row.uid), snap.tieups.get(row.uid))
+                track = row_to_track(row, snap.readings.get(row.uid), snap.tieups.get(row.uid),
+                                     snap.initials.get(row.uid), snap.sort_keys.get(row.uid))
                 track.playlist_index = position
                 track._disp_playlist_index = str(position + 1)
                 tracks.append(track)
@@ -508,15 +509,17 @@ class SourcesMixin:
             if known is not None:
                 result.append(known)
             else:
+                found = reading.readings(Path(path).stem, self.cfg.searchconfig.db_languages,
+                                         han_run=self.cfg.searchconfig.han_run())
                 result.append(Track(
                     track_id=path,
                     title=Path(path).stem,
                     artist="",
                     path=path,
                     analyzed=False,
-                    reading_keys={"title": [reading.keys(r) for r, _src in reading.readings(
-                        Path(path).stem, self.cfg.searchconfig.db_languages,
-                        han_run=self.cfg.searchconfig.han_run())]},
+                    reading_keys={"title": [reading.keys(r) for r, _src in found]},
+                    initials={"title": reading.initials_keys(Path(path).stem,
+                                                             [r for r, src in found if src == "ja"])},
                 ))
         return result
 

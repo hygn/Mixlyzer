@@ -9,6 +9,10 @@ Tables (made by LibraryDB.connect):
                                                      shown in that language) and names never shown (synonym, short,
                                                      search_hint); every name's language an ll-RR tag (ko-KR, ja-JP:
                                                      ISO 639-1 + ISO 3166-1 alpha-2); their readings (core.search.reading)
+  tieup_name_keys (work_id, name, rules, initials, abc, hangul, gojuon)
+                                                     each name's 초성 keys and sort keys (core.search.reading.name_keys,
+                                                     as the tracks' track_name_keys): made with its readings, again
+                                                     when ``rules`` is not reading.NAME_KEYS_RULES (refresh_name_keys)
   tieup_url   (work_id, url, label, rank)            the work's web references
   tieup       (track_uid, work_id, role, seq, detail, rank)
                                                      the track used in the work: its role and number (OP2), one row
@@ -18,6 +22,7 @@ caller's transaction (the owner commits a job's).
 """
 from __future__ import annotations
 
+from dataclasses import replace
 import sqlite3
 from typing import Iterable, Optional
 import uuid
@@ -62,7 +67,23 @@ CREATE TABLE IF NOT EXISTS tieup (
     PRIMARY KEY (track_uid, work_id, role, seq)
 );
 CREATE INDEX IF NOT EXISTS idx_tieup_work ON tieup(work_id);
+CREATE TABLE IF NOT EXISTS tieup_name_keys (
+    work_id  TEXT NOT NULL,
+    name     TEXT NOT NULL,
+    rules    INTEGER NOT NULL,
+    initials TEXT NOT NULL,
+    abc      TEXT NOT NULL,
+    hangul   TEXT NOT NULL,
+    gojuon   TEXT NOT NULL,
+    PRIMARY KEY (work_id, name),
+    FOREIGN KEY (work_id, name) REFERENCES tieup_name(work_id, name) {_FK}
+);
 """
+
+
+# the Tie-up column sorted by reading: by the title in the order's language (Work.title: else the language's in any
+# region, else its first title)
+SORT_TITLE_LANGS = {"gojuon": "ja-JP", "hangul": "ko-KR", "abc": "en-US"}
 
 
 def create_schema(con: sqlite3.Connection) -> None:
@@ -136,15 +157,27 @@ def track_tieups(con: sqlite3.Connection, uid: str) -> list[TieUp]:
 
 
 def track_texts(con: sqlite3.Connection) -> dict[str, TrackTieups]:
-    """Every tagged track's tie-ups as the library shows and searches them (core.tieups.domain.describe)."""
+    """Every tagged track's tie-ups as the library shows and searches them (core.tieups.domain.describe), with their
+    names' stored keys: every name's 초성 keys, the sort keys of the title shown first."""
     names = _names(con)
     works = {i: _work(i, c, names.get(i, []), []) for i, c in con.execute("SELECT id, category FROM tieup_work;")}
+    keys = {(w, n): (tuple(k.split("\n")) if k else (), {"abc": a, "hangul": h, "gojuon": g})
+            for w, n, k, a, h, g in con.execute(
+                "SELECT work_id, name, initials, abc, hangul, gojuon FROM tieup_name_keys;")}
     by_track: dict[str, list[tuple]] = {}
     for uid, work_id, role, seq, detail in con.execute(
             "SELECT track_uid, work_id, role, seq, detail FROM tieup ORDER BY track_uid, rank;"):
         readings = [r for *_n, text in names.get(work_id, []) for r in text.split("\n") if r]
         by_track.setdefault(uid, []).append((works.get(work_id) or Work(work_id), role, int(seq), detail, readings))
-    return {uid: describe(entries) for uid, entries in by_track.items()}
+    out = {}
+    for uid, entries in by_track.items():
+        initials = [k for w, *_e in entries for n in w.names() for k in keys.get((w.id, n), ((), {}))[0]]
+        first = entries[0][0]
+        # each order by the first work's title in its language, whatever the UI's (五十音 its Japanese title)
+        sort_keys = {order: keys.get((first.id, first.title(lang)), ((), {}))[1].get(order, "")
+                     for order, lang in SORT_TITLE_LANGS.items()}
+        out[uid] = replace(describe(entries), initials=tuple(dict.fromkeys(initials)), sort_keys=sort_keys)
+    return out
 
 
 def comment_suffixes(con: sqlite3.Connection) -> dict[str, str]:
@@ -183,6 +216,30 @@ def add_names(con: sqlite3.Connection, work_id: str, titles: Iterable[tuple[str,
     con.executemany("INSERT OR IGNORE INTO tieup_url(work_id, url, label, rank) VALUES(?, ?, ?, "
                     "(SELECT COALESCE(MAX(rank) + 1, 0) FROM tieup_url WHERE work_id=?));",
                     ((work_id, url.strip(), label.strip(), work_id) for label, url in urls if url.strip()))
+    refresh_name_keys(con, work_id)
+
+
+def refresh_name_keys(con: sqlite3.Connection, work_id: Optional[str] = None, rebuild: bool = False) -> int:
+    """The names (the work's, else every work's) whose keys are missing or were made by other rules given them
+    (reading.name_keys: the first stored reading, the Japanese one read anew); ``rebuild``: every name's. Returns
+    the names made."""
+    if rebuild:
+        con.execute("DELETE FROM tieup_name_keys;")
+    where, args = ("AND n.work_id = ?", (reading.NAME_KEYS_RULES, work_id)) if work_id else ("", (
+        reading.NAME_KEYS_RULES,))
+    stale = con.execute(
+        "SELECT n.work_id, n.name, n.readings FROM tieup_name n LEFT JOIN tieup_name_keys k "
+        f"ON k.work_id = n.work_id AND k.name = n.name WHERE (k.rules IS NULL OR k.rules != ?) {where};",
+        args).fetchall()
+    for wid, name, stored in stale:
+        first = next((r for r in stored.split("\n") if r), "")
+        japanese = [r for r, source in reading.readings(name, ["ja"], han_run=0) if source == "ja"]
+        initials, sort = reading.name_keys(name, first, japanese)
+        con.execute("INSERT OR REPLACE INTO tieup_name_keys(work_id, name, rules, initials, abc, hangul, gojuon) "
+                    "VALUES(?, ?, ?, ?, ?, ?, ?);",
+                    (wid, name, reading.NAME_KEYS_RULES, "\n".join(initials), sort["abc"], sort["hangul"],
+                     sort["gojuon"]))
+    return len(stale)
 
 
 def save_work(con: sqlite3.Connection, w: Work, languages: Optional[list[str]] = None,
@@ -301,6 +358,7 @@ def refresh_work_readings(con: sqlite3.Connection, languages: Optional[list[str]
 
     con.executemany("UPDATE tieup_name SET readings=? WHERE work_id=? AND name=?;",
                     [(readings(n), w, n) for w, n in con.execute("SELECT work_id, name FROM tieup_name;").fetchall()])
+    refresh_name_keys(con, rebuild=True)      # made again from the readings now
 
 
 def match_new_track(con: sqlite3.Connection, uid: str, pairs) -> int:

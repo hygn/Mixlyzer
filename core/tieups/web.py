@@ -37,7 +37,7 @@ import urllib.parse
 import urllib.request
 from typing import Callable, Optional
 
-from core.search import reading
+from core.search import reading, titles
 
 from core.tieups import domain as tieup
 
@@ -50,7 +50,7 @@ MIN_INTERVAL_SEC = 1.0  # between two requests
 TIMEOUT_SEC = 10.0
 CACHE_DAYS = 30
 CACHE_NAME = os.path.join("cache", "tieup_web.db")
-RULES = 5             # how pages are read and a tie-up picked: raise it when they change (the answers kept asked again)
+RULES = 7            # how pages are read and a tie-up picked: raise it when they change (the answers kept asked again)
 # Wikidata's language codes -> ll-RR tags (others are not taken)
 WIKIDATA_LANGS = {"ja": "ja-JP", "ko": "ko-KR", "en": "en-US", "zh-cn": "zh-CN", "zh-hans": "zh-CN", "zh": "zh-CN",
                   "zh-tw": "zh-TW", "zh-hant": "zh-TW", "zh-hk": "zh-HK"}
@@ -74,6 +74,14 @@ _WORK_CATEGORY = re.compile(r"^(?:アニメ作品|漫画作品) |^\d{4}年の(?:
                             r"の(?:アニメ|漫画|映画)作品$|^メディアミックス作品$|ライトノベル")
 _NOT_WORK_CATEGORY = re.compile(r"存命人物|\d{4}年生$|没年|音楽グループ|アルバム|シングル|アーティスト|ディスコグラフィ|"
                                 r"歌手$|楽曲$|ユニット$")
+# a franchise's own category by its categories (アイドルマスター's: アイドルを題材とした作品, メディアミックス作品)
+_FRANCHISE_PARENT = re.compile(r"^メディアミックス作品$|を題材とした作品$")
+# a virtual idol's categories, and the ones a franchise's category also holds pages of that are no project's: its
+# concerts and events, its companies, its characters (a game's virtual idol: リッジレーサー's 永瀬麗子, ナムコキャラクター),
+# its lists. Checked on the members of Category:バーチャルアイドル and Category:アイドルマスター (2026-10-30): of 85,
+# the projects taken are vα-liv and アイカツアカデミー! (and works their own categories make works)
+_VIRTUAL_IDOL = re.compile(r"^バーチャルアイドル$|^バーチャルYouTuber$")
+_NOT_PROJECT = re.compile(r"コンサート|ライブ|イベント|ツアー|公演|フェスティバル|企業|会社|登場人物|キャラクター|一覧")
 # its categories' words -> the work's category (the first found; a manga's or a novel's songs are its anime's)
 CATEGORY_WORDS = (("アニメ", "anime"), ("ゲーム", "game"), ("映画", "movie"), ("ドラマ", "drama"), ("漫画", "anime"),
                   ("小説", "anime"), ("ライトノベル", "anime"), ("メディアミックス", "media_mix"))
@@ -181,13 +189,18 @@ def _role(word: str) -> str:
     return next(r for w, r in ROLE_WORDS if w == word)
 
 
-# a version note at the title's end: "(TV size)", "(Instrumental)", "(Club remix)", "(ふたりば～じょん)"
-_NOTE_WORDS = (r"(?<![A-Za-z])(?:TV|instrumental|inst|off\s*vocal|karaoke|short|full|size|ver|version|remix|mix|edit|"
-               r"arrange|cover)(?![A-Za-z])|テレビ|オフボーカル|カラオケ|バージョン|ば[ー～〜~]じょん")
-_VERSION_NOTE = re.compile(rf"\s*[\(（\[【][^)）\]】]*?(?:{_NOTE_WORDS})[^)）\]】]*[\)）\]】]\s*$", re.IGNORECASE)
+# a version note at the title's end (core.search.titles' words): "(TV size)", "(Instrumental)", "(Club remix)",
+# "(ふたりば～じょん)", "[MR]", "(伴奏)", or between dashes or wave dashes: "-TV size-", "～TV size～"
+_NOTE_WORDS = titles.NOTE_WORDS
+_VERSION_NOTE = re.compile(rf"\s*[\(（\[【][^)）\]】]*?(?:{_NOTE_WORDS})[^)）\]】]*[\)）\]】]\s*$|"
+                           rf"(?:\s+[-‐－]|\s*[～〜~])[^-‐－～〜~]*?(?:{_NOTE_WORDS})[^-‐－～〜~]*[-‐－～〜~]\s*$",
+                           re.IGNORECASE)
 _FEAT = re.compile(r"(?:\s+|\s*[\(（]\s*)(?:feat\.|ft\.|feat\s|featuring\s)\s*(?P<who>[^)）]+)[\)）]?\s*$",
                    re.IGNORECASE)
-_ARTIST_SPLIT = re.compile(r"\s+from\s+|\s+\+\s+|\s*(?:feat\.?|ft\.|featuring|&|＆|×|/|／|,|、|・|･)\s*", re.IGNORECASE)
+_ARTIST_SPLIT = re.compile(r"\s+from\s+|\s+meets\s+|\s+\+\s+|\s*(?:feat\.?|ft\.|featuring|&|＆|×|/|／|,|、|・|･)\s*",
+                           re.IGNORECASE)
+# a credit after a bracketed name: "SawanoHiroyuki[nZk]:Aimer" (not every colon: "Re:vale" is one name)
+_COLON_CREDIT = re.compile(r"(?<=[\]】)）])\s*[:：]\s*")
 # a character's credit: "キャラA(CV.声優A)", "キャラB(CV:声優B)", "キャラC(cv.声優C)"
 _VOICE = re.compile(r"(?P<who>[^\s(（\[【\]】&＆/／,、・]*)\s*[\(（]\s*(?:CV|C\.V\.|声)\s*[.:：．・]?\s*(?P<cast>[^)）]+)[\)）]",
                     re.IGNORECASE)
@@ -219,10 +232,11 @@ def artist_names(artist: str, featured: list[str] = ()) -> list[str]:
     names after the one before it: "シャロ(内田真礼)" its voice actor, "ゆいかおり(小倉唯&石原夏織)" its members."""
     names, cast, characters = [], [], []
     for part in [artist, *featured]:
-        for m in _VOICE.finditer(part or ""):
+        part = _COLON_CREDIT.sub(" / ", part or "")
+        for m in _VOICE.finditer(part):
             cast += _ARTIST_SPLIT.split(m.group("cast"))
             characters.append(m.group("who"))
-        rest = _VOICE.sub(" / ", part or "")
+        rest = _VOICE.sub(" / ", part)
         for m in _MEMBERS.finditer(rest):
             if not re.search(_NOTE_WORDS, m.group("who"), re.IGNORECASE):
                 cast += _ARTIST_SPLIT.split(m.group("who"))
@@ -407,10 +421,18 @@ def page_category(api, page: str) -> Optional[str]:
         return None
     title = re.sub(r"\s*\([^)]*\)$", "", info.get("title", page))
     works = [c for c in cats if _WORK_CATEGORY.search(c)]
-    franchise = title in cats and not any(_NOT_WORK_CATEGORY.search(c) for c in cats)
+    not_work = any(_NOT_WORK_CATEGORY.search(c) for c in cats)
+    franchise = title in cats and not not_work
     idols = any("アイドルを題材とした" in c for c in cats + parents)
     fictional_idols = (any(re.search(r"架空の(?:音楽グループ|アイドル)", c) for c in cats)
                        and (idols or "アイドル" in title or any("アイドル" in c for c in cats + parents)))
+    # a franchise's virtual idols (vα-liv in アイドルマスター): a project of the franchise, as its fictional idol group
+    # is; not a page the franchise's category also holds for its concerts, companies, characters (_NOT_PROJECT), nor
+    # a virtual idol of no franchise (a performer)
+    sub_project = (not not_work and not any(_NOT_PROJECT.search(c) for c in cats)
+                   and any(_FRANCHISE_PARENT.search(p) or _WORK_CATEGORY.search(p) for p in parents)
+                   and (any(_VIRTUAL_IDOL.search(c) for c in cats) or "架空の芸能人" in parents))
+    fictional_idols = fictional_idols or sub_project
     if not works and not franchise and not fictional_idols:
         return None
     if idols or fictional_idols:

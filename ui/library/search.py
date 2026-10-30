@@ -442,10 +442,16 @@ class SearchMixin:
             cols = self.HEADERS if col == "All" else [col]
             read_fields = [READ_COLUMNS[name] for name in cols if name in READ_COLUMNS]
             s = self.cfg.searchconfig
+            # consonant jamo alone (ㄷㅅㅁㄴ): a 초성 search (off: read as the other queries are)
+            initials = bool(s.query_initials) and reading.is_initials_query(text)
+            # typed without 한/영 (etas ㄷㅅㅁㄴ): its 초성 search's tracks besides the others
+            typed = reading.keys_to_initials(self.e_search.text().strip()) \
+                if read_fields and not initials and s.query_initials_keys else None
             # as typed (not lower-cased): Shift picks the 2-set keyboard's double consonants
             query = reading.query_keys(self.e_search.text().strip(), s.query_languages,
                                        hangul_korean=s.query_hangul_korean, hangul_foreign=s.query_hangul_foreign,
-                                       keyboard=s.query_keyboard_layout, han_run=s.han_run()) if read_fields else []
+                                       keyboard=s.query_keyboard_layout, han_run=s.han_run()) \
+                if read_fields and not initials else []
             for t in self._all_tracks:
                 for name in cols:
                     attr = field_map.get(name)
@@ -455,7 +461,12 @@ class SearchMixin:
                     if val and text in str(val).lower():
                         text_paths.add(t.path)
                         break
-            if read_fields:
+            if read_fields and (initials or typed):
+                # consonant jamo alone: a Korean's 초성 search, on the initials of each field
+                pattern = reading.initials_pattern(text if initials else typed)
+                text_paths.update(t.path for t in self._all_tracks
+                                  if any(pattern.search(k) for f in read_fields for k in t.initials.get(f, ())))
+            if read_fields and not initials:
                 # by sound: the query read like the readings, normalized, exactly or nearly
                 entries = [(t.path, k) for t in self._all_tracks for f in read_fields
                            for k in t.reading_keys.get(f, [])]

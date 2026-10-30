@@ -43,8 +43,9 @@ class ReadingTests(unittest.TestCase):
         self.assertEqual(reading.read("사랑해"), "saranghae")
         self.assertEqual(reading.read("잇쇼"), "itsyo")
         self.assertEqual(reading.read("Москва"), "Moskva")
-        # Latin inside Japanese kept as written (not read as a word); は read wa
-        self.assertTrue(reading.read("U.N.オーエンは彼女なのか？").startswith("U.N. ooen wa kanojo"))
+        # Latin inside Japanese kept as written (not read as a word), its symbols left out; は read wa
+        self.assertTrue(reading.read("U.N.オーエンは彼女なのか？").startswith("U N ooen wa kanojo"))
+        self.assertEqual(reading.read("†吸tie Ladies†"), "kyuu tie Ladies")        # † is no sound (anyascii: +)
         # hanzi the dictionary does not know: pinyin
         self.assertEqual(reading.fine_key(reading.read("洛天依")), "luotianyi")
 
@@ -183,20 +184,21 @@ class ReadingDatabaseTests(unittest.TestCase):
                 self.assertEqual(got["title"], [("ano ne", "ja")])
                 self.assertEqual([src for _r, src in got["artist"]][:3], ["ja", "zh", "yue"])
                 # added by the user: kept first when the title changes; the automatic ones follow the text
-                db.set_user_readings(uid, "title", ["anone desu", "anone"])
-                self.assertEqual(db.readings(uid)["title"], [("anone desu", "user"), ("anone", "user"), ("ano ne", "ja")])
+                db.set_user_readings(uid, "title", ["anone desu", "a no ne"])
+                self.assertEqual(db.readings(uid)["title"], [("anone desu", "user"), ("a no ne", "user"), ("ano ne", "ja")])
                 db.upsert(TrackRow(uid=uid, path="a.wav", title="アノネ!", artist="東京"))
                 got = db.readings(uid)
-                self.assertEqual(got["title"], [("anone desu", "user"), ("anone", "user"), ("anone !", "ja")])
+                # its "!" left out (a reading is how the text sounds)
+                self.assertEqual(got["title"], [("anone desu", "user"), ("a no ne", "user"), ("anone", "ja")])
                 self.assertEqual(got["artist"], [("toukyou", "ja"), ("dong jing", "zh"), ("dung ging", "yue"),
                                                  ("donggyeong", "ko-hanja"), ("dong kinh", "vi")])
-                self.assertEqual(db.all_readings()[uid]["title"], ["anone desu", "anone", "anone !"])
+                self.assertEqual(db.all_readings()[uid]["title"], ["anone desu", "a no ne", "anone"])
                 # an automatic reading the user also typed: once, as the user's
                 db.set_user_readings(uid, "artist", ["dong jing"])
                 self.assertEqual(db.readings(uid)["artist"][:3], [("dong jing", "user"), ("toukyou", "ja"), ("dung ging", "yue")])
                 # removed: only the automatic ones
                 db.set_user_readings(uid, "title", None)
-                self.assertEqual(db.readings(uid)["title"], [("anone !", "ja")])
+                self.assertEqual(db.readings(uid)["title"], [("anone", "ja")])
                 # gone with the track
                 db.delete_tracks([uid])
                 self.assertEqual(db.all_readings(), {})
@@ -257,8 +259,8 @@ class ReadingLanguageTests(unittest.TestCase):
 
     def test_japanese_text_han_runs_in_korean_hanja(self):
         title = "Re:ゼロから始める異世界生活"
-        self.assertEqual(reading.readings(title), [("Re: zero kara hajimeru isekai seikatsu", "ja"),
-                                                   ("Re: zero kara hajimeru isegyesaenghwal", "ko-hanja")])
+        self.assertEqual(reading.readings(title), [("Re zero kara hajimeru isekai seikatsu", "ja"),
+                                                   ("Re zero kara hajimeru isegyesaenghwal", "ko-hanja")])
         self.assertTrue(found("이세계생활", title))
         self.assertTrue(found("사회부적합자", "ハイ!社会不適合者"))
         self.assertEqual([s for _r, s in reading.readings("夜に駆ける", han_run=2)], ["ja"])     # no run of 2
@@ -332,6 +334,114 @@ class ReadingLanguageTests(unittest.TestCase):
                 self.assertEqual(db.readings(uid)["artist"], [("tokyo", "user"), ("donggyeong", "ko-hanja")])
             finally:
                 db.close()
+
+
+def initials_found(query: str, text: str) -> bool:
+    """Whether the 초성 search finds ``text`` by ``query`` (its Japanese reading as the library stores it)."""
+    japanese = [r for r, src in reading.readings(text, ["ja"]) if src == "ja"]
+    pattern = reading.initials_pattern(query)
+    return any(pattern.search(k) for k in reading.initials_keys(text, japanese))
+
+
+class InitialsTests(unittest.TestCase):
+    def test_a_query_of_consonants_alone(self):
+        self.assertTrue(reading.is_initials_query("ㄷㅅㅁㄴ"))
+        self.assertTrue(reading.is_initials_query("ㄷㅅ ㅁㄴ"))
+        self.assertFalse(reading.is_initials_query("ㄷ"))            # one would match nearly everything
+        self.assertFalse(reading.is_initials_query("ㄷㅏ"))           # a vowel: a mistyped query, read as one
+
+    def test_typed_without_the_korean_english_key(self):
+        self.assertEqual(reading.keys_to_initials("etastr"), "ㄷㅅㅁㄴㅅㄱ")    # 다시 만난 세계
+        self.assertEqual(reading.keys_to_initials("etas tr"), "ㄷㅅㅁㄴㅅㄱ")
+        self.assertEqual(reading.keys_to_initials("ETAS"), "ㄷㅅㅁㄴ")           # Caps Lock: no Shift
+        self.assertEqual(reading.keys_to_initials("Rt"), None)                  # fewer than 3
+        self.assertIsNone(reading.keys_to_initials("Butter-Fly"))               # a vowel's key, a hyphen
+        self.assertIsNone(reading.keys_to_initials("ㄷㅅㅁ"))
+
+    def test_hangul_hanja_and_a_japanese_reading(self):
+        self.assertTrue(initials_found("ㄷㅅㅁㄴㅅㄱ", "다시 만난 세계"))
+        self.assertTrue(initials_found("ㅁㄴㅅㄱ", "다시 만난 세계"))        # inside it
+        self.assertTrue(initials_found("ㅊㅂㅇ", "千本桜"))                  # Korean Hanja: 천본앵
+        self.assertTrue(initials_found("ㅅㅂㅅㅋㄹ", "千本桜"))              # Japanese: 센본사쿠라
+        self.assertTrue(initials_found("ㄷㅋ", "東京"))                      # 도쿄, the long vowels left out
+        self.assertTrue(initials_found("ㅇㅅㄱㅅㅎ", "Re:ゼロから始める異世界生活"))   # its Han run: 이세계생활
+        # a plain, aspirated or tense consonant alike, つ as ㅅ or ㅈ (쓰 / 츠)
+        self.assertTrue(initials_found("ㄱㅁㄴㅅㄹㄴㅇㅁㄴㄱㅌㄹ", "君の知らない物語"))
+        self.assertTrue(initials_found("ㅅㄱㅁ", "月見"))
+        self.assertTrue(initials_found("ㅊㅋㅁ", "月見"))
+        self.assertFalse(initials_found("ㄷㅅㅁㄴㅅㄱ", "Butter-Fly"))
+
+
+class NameSortTests(unittest.TestCase):
+    TITLES = ["残酷な天使のテーゼ", "愛にできることはまだあるかい", "かえるのうた", "学園天国", "君の知らない物語",
+              "キャッツ・アイ", "千本桜", "私は、わたしの事が好き。", "Butter-Fly", "다시 만난 세계", "1/6の夢旅人"]
+
+    def order(self, order: str) -> list[str]:
+        def key(title: str) -> str:
+            japanese = [r for r, src in reading.readings(title, ["ja"]) if src == "ja"]
+            return reading.sort_key(title, japanese, japanese, order)
+        return sorted(self.TITLES, key=key)
+
+    def test_gojuon(self):
+        # one order by sound: digits first; か before が (かえる, がくえん), き + み before き + ゃ; 다시 (dasi) among
+        # the た, Butter-Fly (ブッテル) among the は
+        self.assertEqual(self.order("gojuon"), ["1/6の夢旅人", "愛にできることはまだあるかい", "かえるのうた", "学園天国",
+                                                 "君の知らない物語", "キャッツ・アイ", "残酷な天使のテーゼ", "千本桜",
+                                                 "다시 만난 세계", "Butter-Fly", "私は、わたしの事が好き。"])
+
+    def test_hangul(self):
+        # 가쿠엔, 다시, 붓테르, 센본, 아이, 와타쿠시, 잔코쿠, 카에루, 캿츠, 키미: か き aspirated wherever they are
+        self.assertEqual(self.order("hangul"), ["1/6の夢旅人", "学園天国", "다시 만난 세계", "Butter-Fly", "千本桜",
+                                                 "愛にできることはまだあるかい", "私は、わたしの事が好き。",
+                                                 "残酷な天使のテーゼ", "かえるのうた", "キャッツ・アイ", "君の知らない物語"])
+
+    @staticmethod
+    def keys(text: str) -> dict:
+        found = reading.readings(text)
+        japanese = [r for r, src in reading.readings(text, ["ja"], han_run=0) if src == "ja"]
+        return reading.name_keys(text, found[0][0] if found else "", japanese)[1]
+
+    def test_the_librarys_names(self):
+        # a small っ at the end kept (wapuro's xtu): つ in 五十音, the syllable before's ㅅ in 가나다
+        self.assertTrue(reading.read("せーのっ!").endswith("xtu"))
+        self.assertTrue(self.keys("せーのっ!")["gojuon"].startswith("せのつ "))
+        self.assertTrue(self.keys("恋愛したいっ！")["hangul"].endswith("잇"))
+        # English inside a Japanese reading by its spelling: Remix, Café Mix (x: くす)
+        self.assertIn("きしはとれみくす", self.keys("100%ちゅ～学生 (Kijibato remix)")["gojuon"])
+        self.assertIn("かふえみくす", self.keys("続く話 Café Mix")["gojuon"])
+        # a short word in capitals spelled (DJ ディージェー), the ザ; a doubled letter one (Girl, Summit)
+        self.assertIn("ていいしええ", self.keys("せーのっ! (DJ UTO Remix)")["gojuon"])
+        self.assertTrue(self.keys("The Demon Girl Next Door")["gojuon"].startswith("さてもんきるねくすと"))
+        self.assertIn("すみと", self.keys("ヤマノススメ Next Summit")["gojuon"])
+        self.assertTrue(self.keys("Encouragement of Climb: Next Summit")["gojuon"].startswith("えんこうらけめんと"))
+        # a Korean name's Latin words in Hangul for 가나다
+        self.assertEqual(self.keys("그녀도 여친 Season 2")["hangul"], "그녀도여친세아손2")
+        self.assertEqual(self.keys("외톨이 THE ROCK!")["hangul"], "외톨이자로크")
+
+    def test_latin_names_by_their_spelling(self):
+        # a Latin name among the kana by its letters read as Japanese takes a foreign word in
+        self.assertEqual(reading.gojuon_key("kurarisu"), reading.sort_key("ClariS", ["ClariS"], [], "gojuon"))
+        self.assertEqual(reading.sort_key("LiSA", ["LiSA"], [], "hangul"), "리사")
+
+    def test_abc_and_as_written(self):
+        self.assertEqual(self.order("abc")[:4], ["1/6の夢旅人", "愛にできることはまだあるかい", "Butter-Fly", "学園天国"])
+        self.assertIsNone(reading.sort_key("千本桜", ["senbon sakura"], ["senbon sakura"], "text"))
+
+    def test_japanese_as_korean_fans_spell_it(self):
+        # か た ち aspirated wherever they are, つ 츠: as fans write them, not the loanword rule (기미, 고이, 쓰)
+        self.assertEqual(reading.japanese_to_hangul("senbon sakura"), "센본 사쿠라")
+        self.assertEqual(reading.japanese_to_hangul("kimi ga shinu made koi o shitai"), "키미 가 시누 마데 코이 오 시타이")
+        self.assertEqual(reading.japanese_to_hangul("hatsune miku"), "하츠네 미쿠")
+        self.assertEqual(reading.japanese_to_hangul("tsukimi"), "츠키미")
+        self.assertEqual(reading.japanese_to_hangul("watashi"), "와타시")
+
+    def test_places_as_the_loanword_rule_spells_them(self):
+        # a place's name (Sudachi: 固有名詞 地名) as Korean knows it; the words beside it as fans write them
+        self.assertEqual(reading.place_names("東京ラブストーリー"), {"toukyou"})
+        self.assertEqual(NameSortTests.keys("東京ラブストーリー")["hangul"], "도쿄라부스토리")
+        self.assertEqual(NameSortTests.keys("京都慕情")["hangul"], "교토보조")
+        self.assertEqual(NameSortTests.keys("初音ミク")["hangul"], "하츠네미쿠")        # a person's: not a place
+        self.assertEqual(reading.japanese_to_hangul("matsuyama", frozenset({"matsuyama"})), "마쓰야마")
 
 
 if __name__ == "__main__":

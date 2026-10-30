@@ -33,6 +33,7 @@ from core.library import tieups, variants
 from core.library.db import LibraryDB
 from core.analysis_library.store import FeatureNPZStore
 from core.library.records import PlaylistFolderRow, PlaylistRow, TrackRow, playlist_children
+from core.search import reading
 
 READ, WRITE = "read", "write"
 
@@ -58,12 +59,23 @@ def _changed_by(job) -> frozenset:
     return getattr(job, "changes", PARTS) if job is not None else PARTS
 
 
+def _with_tieups(stored: dict, track_tieups: dict, key, none) -> dict:
+    """uid -> field -> the fields' keys as stored (LibraryDB.name_keys), the tie-up column's beside them (``key``
+    of its TrackTieups: its names' stored keys, core.library.tieups.track_texts; ``none`` a track without one's)."""
+    out = {uid: dict(keys) for uid, keys in stored.items()}
+    for uid, keys in out.items():
+        tu = track_tieups.get(uid)
+        keys["tieup"] = key(tu) if tu is not None else none
+    return out
+
+
 @dataclass
 class Library:
     """A job's library, on the owner's thread: its connection, its folder, its feature store."""
     db: LibraryDB
     path: str
     features: FeatureNPZStore
+    name_sort: str = "text"     # the search settings' name_sort: the snapshot's sort keys
 
 
 @dataclass(frozen=True)
@@ -72,6 +84,13 @@ class LibrarySnapshot:
     tracks: tuple[TrackRow, ...] = ()
     readings: dict = field(default_factory=dict)           # uid -> field -> readings (LibraryDB.all_readings)
     tieups: dict = field(default_factory=dict)             # uid -> core.tieups.domain.TrackTieups
+    # uid -> field -> the 초성 search's keys (core.search.reading.initials_keys): title, artist, album as stored
+    # (library.db track_name_keys), tie-up
+    initials: dict = field(default_factory=dict)
+    # uid -> field -> the key sorting it by its reading (core.search.reading.sort_key), in name_sort's order, as
+    # stored (empty: "text", as written)
+    sort_keys: dict = field(default_factory=dict)
+    name_sort: str = "text"
     playlists: tuple[PlaylistRow, ...] = ()
     folders: tuple[PlaylistFolderRow, ...] = ()            # the playlists' folders
     entries: dict = field(default_factory=dict)            # playlist uid -> ((position, track uid), ...)
@@ -93,6 +112,15 @@ class LibrarySnapshot:
             kept.update(readings=db.all_readings())
         if TIEUPS in parts:
             kept.update(tieups=tieups.track_texts(db.conn))
+        if parts & {TRACKS, READINGS, TIEUPS} or lib.name_sort != old.name_sort:
+            initials, sort_keys = db.name_keys(lib.name_sort)      # stored with the readings (track_name_keys)
+            track_tieups = kept.get("tieups", old.tieups)
+            # a track without tie-ups: no initials, sorted first ("")
+            kept.update(initials=_with_tieups(initials, track_tieups, lambda tu: tu.initials, ()),
+                        sort_keys=_with_tieups(sort_keys, track_tieups,
+                                               lambda tu: tu.sort_keys.get(lib.name_sort, ""), "")
+                        if lib.name_sort in reading.NAME_SORTS[1:] else {},
+                        name_sort=lib.name_sort)
         if PLAYLISTS in parts:
             kept.update(playlists=tuple(db.list_playlists()), folders=tuple(db.list_playlist_folders()),
                         entries=db.playlist_entries())
@@ -209,6 +237,11 @@ class LibraryService(QtCore.QObject):
         """The snapshot read again."""
         self._put(WRITE, None, (), done, None)
 
+    def take_settings(self) -> None:
+        """The search settings taken now (not with the next job): a new name_sort's sort keys made, the snapshot
+        sent again."""
+        self._put(READ, None, (), None, None)
+
     def set_libpath(self, libpath: str) -> None:
         """Another library folder: the jobs from now on are its, the snapshot read from it."""
         if str(libpath) != self._libpath:
@@ -229,7 +262,7 @@ class LibraryService(QtCore.QObject):
 
     def _put(self, kind: str, job, args: tuple, done, failed, reply=None) -> None:
         s = self._settings() if self._settings is not None else None
-        reading = (list(s.db_languages), int(s.han_run())) if s is not None else None
+        reading = (list(s.db_languages), int(s.han_run()), str(s.name_sort)) if s is not None else None
         self._jobs.put((kind, job, args, done, failed, reading, self._libpath, reply))
 
     def _on_gui(self, fn: Callable[[], None]) -> None:
@@ -283,11 +316,19 @@ class LibraryService(QtCore.QObject):
                         lib = None
                     db = LibraryDB(os.path.join(libpath, "library.db"))
                     db.connect()
+                    made = db.refresh_name_keys()     # the search and sort keys missing or of other rules
+                    made += tieups.refresh_name_keys(db.conn)
+                    db.conn.commit()
+                    if made:
+                        print(f"[Library] search and sort keys made for {made} fields")
                     lib = Library(db, libpath, FeatureNPZStore(base_dir=libpath, compressed=True))
                     last, dirty = None, True
                     changed.update(PARTS)
                 if reading is not None:
-                    lib.db.reading_languages, lib.db.han_run = reading
+                    lib.db.reading_languages, lib.db.han_run, name_sort = reading
+                    if name_sort != lib.name_sort:      # the snapshot's sort keys made again
+                        lib.name_sort, dirty = name_sort, True
+                        changed.add(READINGS)
                 result = job(lib, *args) if job is not None else None
                 if lib.db.conn.in_transaction:
                     lib.db.conn.commit()

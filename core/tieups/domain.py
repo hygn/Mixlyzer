@@ -138,6 +138,10 @@ class TrackTieups:
     text: str                    # every name and role, for the plain text search
     readings: tuple[str, ...]    # the works' readings, for the search by sound
     works: tuple[str, ...] = ()  # the works' ids, for the tracks of the same work
+    # the works' names' 초성 keys, and the sort keys of the title shown first by order (reading.name_keys: stored with
+    # the names, core.library.tieups.track_texts)
+    initials: tuple[str, ...] = ()
+    sort_keys: dict = field(default_factory=dict, compare=False)
 
 
 def describe(entries: Iterable[tuple]) -> TrackTieups:

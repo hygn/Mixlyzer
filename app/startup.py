@@ -269,16 +269,17 @@ def _warm_language_names(progress: Progress) -> None:
     language_picker.warm_up()
 
 
-def _open_library(libpath: str, held: dict) -> Callable[[Progress], None]:
+def _open_library(libpath: str, held: dict, search=None) -> Callable[[Progress], None]:
     def run(progress: Progress) -> None:
         """The library's owner started (core.library.service: its thread reads the library), then every stored
         reading's search keys into reading.keys' cache, so the library opens and searches without building them.
-        The window takes the owner (``held``)."""
+        The window takes the owner (``held``). ``search``: the search settings (the snapshot's names sorted in their
+        name_sort from the start)."""
         from core.search import reading
         from core.library.service import LibraryService
         from core.library import jobs
         progress(0.0, tr("library.db: readings"))
-        library = LibraryService(libpath)
+        library = LibraryService(libpath, settings=(lambda: search) if search is not None else None)
         library.write(jobs.check_stores)    # the stores beside library.db made to agree with it, first
         library.refresh()
         library.wait()
@@ -313,7 +314,7 @@ def startup_tasks(cfg) -> list[StartupTask]:
         StartupTask(tr("Starting FFmpeg"), 0.1, _warm_ffmpeg),
         StartupTask(tr("Loading search readers"), 1.5, _load_readers),
         StartupTask(tr("Measuring language names"), 0.6, _warm_language_names),
-        StartupTask(tr("Loading the library"), 0.1, _open_library(cfg.libconfig.libpath, held)),
+        StartupTask(tr("Loading the library"), 0.1, _open_library(cfg.libconfig.libpath, held, cfg.searchconfig)),
         StartupTask(tr("Building the window"), 2.3, _build_window(held, cfg), pump_events=False),
     ]
     from audioengine.native.client import available

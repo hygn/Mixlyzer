@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-28 11:38+0900\n"
+"POT-Creation-Date: 2026-10-30 18:41+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ko_KR\n"
@@ -491,40 +491,40 @@ msgstr "ffmpeg: 짧은 무음 디코딩"
 msgid "Language names for the tie-ups' language pickers"
 msgstr "타이업 언어 선택 목록의 언어 이름"
 
-#: app/startup.py:280
+#: app/startup.py:281
 msgid "library.db: readings"
 msgstr "library.db: 발음"
 
-#: app/startup.py:290
+#: app/startup.py:291
 #, python-brace-format
 msgid "Search keys: {tracks} tracks, {done} / {total} readings"
 msgstr "검색 키: 트랙 {tracks}개, 발음 {done} / {total}"
 
-#: app/startup.py:311
+#: app/startup.py:312
 msgid "Loading libraries"
 msgstr "라이브러리 모듈 불러오는 중"
 
-#: app/startup.py:312
+#: app/startup.py:313
 msgid "Compiling audio kernels (JIT)"
 msgstr "오디오 커널 컴파일 중 (JIT)"
 
-#: app/startup.py:313
+#: app/startup.py:314
 msgid "Starting FFmpeg"
 msgstr "FFmpeg 시작 중"
 
-#: app/startup.py:314
+#: app/startup.py:315
 msgid "Loading search readers"
 msgstr "검색용 발음 변환기 불러오는 중"
 
-#: app/startup.py:315
+#: app/startup.py:316
 msgid "Measuring language names"
 msgstr "언어 이름 측정 중"
 
-#: app/startup.py:316
+#: app/startup.py:317
 msgid "Loading the library"
 msgstr "라이브러리 불러오는 중"
 
-#: app/startup.py:317
+#: app/startup.py:318
 msgid "Building the window"
 msgstr "창 만드는 중"
 
@@ -536,7 +536,7 @@ msgstr "핵심 객체와 재생"
 msgid "Main view, editor and library"
 msgstr "메인 뷰, 편집기, 라이브러리"
 
-#: app/window.py:104 app/window.py:248 ui/config/window.py:66
+#: app/window.py:104 app/window.py:249 ui/config/window.py:66
 msgid "Settings"
 msgstr "설정"
 
@@ -544,27 +544,27 @@ msgstr "설정"
 msgid "Dialogs, workflows and metronome"
 msgstr "대화상자, 워크플로, 메트로놈"
 
-#: app/window.py:249 ui/windows/workers.py:28
+#: app/window.py:250 ui/windows/workers.py:28
 msgid "Workers"
 msgstr "작업"
 
 # | msgid "Tie-ups"
-#: app/window.py:250 ui/shortcuts.py:147 ui/windows/tieup_works.py:33
+#: app/window.py:251 ui/shortcuts.py:147 ui/windows/tieup_works.py:33
 #: ui/windows/tieup_works.py:204 ui/windows/tieup_works.py:259
 #: ui/windows/tieup_works.py:264 ui/windows/tieup_works.py:273
 #: ui/windows/tieup_works.py:336
 msgid "Tie-up Works"
 msgstr "타이업 작품"
 
-#: app/window.py:251
+#: app/window.py:252
 msgid "Open Source"
 msgstr "오픈 소스"
 
-#: app/window.py:252
+#: app/window.py:253
 msgid "About"
 msgstr "정보"
 
-#: app/window.py:269 core/controls/midi.py:55 ui/config/playback.py:328
+#: app/window.py:270 core/controls/midi.py:55 ui/config/playback.py:328
 msgid "Mixer"
 msgstr "믹서"
 
@@ -572,53 +572,53 @@ msgstr "믹서"
 # | Playback > " "Audio engine)."
 # Audio
 # | > " "Engine)."
-#: app/window.py:447
+#: app/window.py:449
 msgid "MIDI needs the native audio engine (Settings > Audio > Engine)."
 msgstr "MIDI는 Native 오디오 엔진에서만 동작합니다(설정 > 오디오 > 엔진)."
 
 # | msgid "MIDI input"
-#: app/window.py:454
+#: app/window.py:456
 msgid "MIDI input on."
 msgstr "MIDI 입력 켬."
 
 # | msgid "MIDI input"
-#: app/window.py:454
+#: app/window.py:456
 msgid "MIDI input off."
 msgstr "MIDI 입력 끔."
 
-#: app/window.py:506
+#: app/window.py:508
 msgid "The Python audio engine plays: there is no native engine to restart."
 msgstr "Python 오디오 엔진으로 재생 중입니다. 재시작할 네이티브 엔진이 없습니다."
 
 # | msgid "Starting the reading worker"
-#: app/window.py:508
+#: app/window.py:510
 msgid "Restarting the audio engine..."
 msgstr "오디오 엔진 재시작 중..."
 
 # | msgid "Audio engine"
-#: app/window.py:512
+#: app/window.py:514
 msgid "Audio engine restarted."
 msgstr "오디오 엔진을 재시작했습니다."
 
-#: app/window.py:513
+#: app/window.py:515
 msgid "The audio engine did not start; it is tried again every 2 seconds."
 msgstr "오디오 엔진이 시작되지 않았습니다. 2초마다 다시 시도합니다."
 
-#: app/window.py:563 app/window.py:628
+#: app/window.py:565 app/window.py:630
 msgid "External Sync is enabled. Local track loading is disabled."
 msgstr "외부 동기화가 켜져 있습니다. 로컬 트랙 불러오기가 비활성화됩니다."
 
-#: app/window.py:576 app/window.py:631
+#: app/window.py:578 app/window.py:633
 msgid "Segment reanalysis canceled (track changed)"
 msgstr "구간 재분석 취소됨 (트랙이 바뀜)"
 
 # | msgid "Phrase reanalysis completed"
-#: app/window.py:612
+#: app/window.py:614
 #, python-brace-format
 msgid "The track's analysis could not be read: {file}"
 msgstr "트랙의 분석을 읽을 수 없습니다: {file}"
 
-#: app/window.py:616
+#: app/window.py:618
 #, python-brace-format
 msgid ""
 "{n} JumpCUE past slot Z is not shown ({file}); it stays stored until the "
@@ -628,15 +628,15 @@ msgid_plural ""
 "the JumpCUEs are edited."
 msgstr[0] "슬롯 Z를 넘는 JumpCUE {n}개는 표시되지 않습니다({file}). JumpCUE를 편집하기 전까지는 저장된 그대로 남습니다."
 
-#: app/window.py:634
+#: app/window.py:636
 msgid "Track unloaded."
 msgstr "트랙을 내렸습니다."
 
-#: app/window.py:644
+#: app/window.py:646
 msgid "Track File Not Found"
 msgstr "트랙 파일을 찾을 수 없음"
 
-#: app/window.py:648
+#: app/window.py:650
 #, python-brace-format
 msgid ""
 "Cannot load \"{name}\": its file is missing.\n"
@@ -649,71 +649,80 @@ msgstr ""
 "\n"
 "파일의 새 위치를 지정할까요?"
 
-#: app/window.py:655
+#: app/window.py:657
 #, python-brace-format
 msgid "Locate {name}"
 msgstr "{name} 찾기"
 
-#: app/window.py:679 app/window.py:695
+#: app/window.py:681 app/window.py:697
 msgid "Analysis saved to library."
 msgstr "분석을 라이브러리에 저장했습니다."
 
-#: app/window.py:684
+#: app/window.py:686
 msgid "Finished"
 msgstr "완료"
 
-#: app/window.py:707
+#: app/window.py:709
 msgid "Waiting to be looked up on Wikipedia"
 msgstr "위키백과 조사 대기 중"
 
-#: app/window.py:713
+#: app/window.py:715
 msgid "Looking up on Wikipedia and Wikidata…"
 msgstr "위키백과와 위키데이터에서 찾는 중…"
 
 # | msgid "Reading the analysis failed: {error}"
 # | msgid "The search failed: {error}"
 # | msgid "" "The lookup failed:\n" "{error}"
-#: app/window.py:718
+#: app/window.py:720
 msgid "The lookup failed."
 msgstr "조사하지 못했습니다."
 
-#: app/window.py:754
+#: app/window.py:756
 #, python-brace-format
 msgid "External Sync loading: {file}"
 msgstr "외부 동기화 불러오는 중: {file}"
 
-#: app/window.py:754
+#: app/window.py:756
 #, python-brace-format
 msgid "External Sync analyzing: {file}"
 msgstr "외부 동기화 분석 중: {file}"
 
 # | msgid "Memory Sync Disabled"
-#: app/window.py:768
+#: app/window.py:770
 msgid "External Sync Disabled"
 msgstr "외부 동기화 비활성화됨"
 
-#: app/window.py:778 ui/windows/library_backup.py:53
+#: app/window.py:777
+msgid "Rebuilding the sort index..."
+msgstr "정렬 색인 다시 만드는 중..."
+
+#: app/window.py:779
+#, python-brace-format
+msgid "Sort index rebuilt: {count} names."
+msgstr "정렬 색인을 다시 만들었습니다: 이름 {count}개."
+
+#: app/window.py:787 ui/windows/library_backup.py:53
 msgid "Back Up Library"
 msgstr "라이브러리 백업"
 
-#: app/window.py:779 app/window.py:795
+#: app/window.py:788 app/window.py:804
 #, python-brace-format
 msgid "Mixlyzer library backup (*{suffix})"
 msgstr "Mixlyzer 라이브러리 백업 (*{suffix})"
 
-#: app/window.py:789
+#: app/window.py:798
 msgid ""
 "The editor has edits not saved. Save or undo them first: Mixlyzer "
 "restarts after a restore."
 msgstr "편집기에 저장하지 않은 편집이 있습니다. 먼저 저장하거나 되돌리세요. 복원하면 Mixlyzer가 재시작됩니다."
 
-#: app/window.py:791 app/window.py:794 app/window.py:801 app/window.py:808
-#: app/window.py:851 ui/windows/library_backup.py:133
+#: app/window.py:800 app/window.py:803 app/window.py:810 app/window.py:817
+#: app/window.py:860 ui/windows/library_backup.py:133
 #: ui/windows/library_backup.py:295
 msgid "Restore Library"
 msgstr "라이브러리 복원"
 
-#: app/window.py:832
+#: app/window.py:841
 #, python-brace-format
 msgid ""
 "Restored {n} track into:\n"
@@ -725,34 +734,34 @@ msgstr[0] ""
 "트랙 {n}개를 다음 폴더에 복원했습니다:\n"
 "{folder}"
 
-#: app/window.py:835
+#: app/window.py:844
 #, python-brace-format
 msgid "{n} track's file path was joined to this device's folders."
 msgid_plural "{n} tracks' file paths were joined to this device's folders."
 msgstr[0] "트랙 {n}개의 파일 경로를 이 기기의 폴더로 이었습니다."
 
-#: app/window.py:839
+#: app/window.py:848
 #, python-brace-format
 msgid "{n} path was left as it was: another track already had the new one."
 msgid_plural "{n} paths were left as they were: other tracks already had the new ones."
 msgstr[0] "경로 {n}개는 그대로 두었습니다. 다른 트랙이 이미 새 경로를 쓰고 있습니다."
 
-#: app/window.py:843
+#: app/window.py:852
 #, python-brace-format
 msgid "{n} track had no stored analysis in the backup."
 msgid_plural "{n} tracks had no stored analysis in the backup."
 msgstr[0] "트랙 {n}개는 백업에 저장된 분석이 없었습니다."
 
-#: app/window.py:847
+#: app/window.py:856
 msgid "Files replaced by the backup's were kept beside them:"
 msgstr "백업의 파일로 바뀐 파일은 옆에 남겨 두었습니다:"
 
-#: app/window.py:849
+#: app/window.py:858
 msgid "Mixlyzer now restarts to open the restored library."
 msgstr "복원한 라이브러리를 열기 위해 Mixlyzer를 재시작합니다."
 
 # | msgid "External Sync enabled via {target}. Local play/load is locked."
-#: app/window.py:1124
+#: app/window.py:1135
 #, python-brace-format
 msgid "External Sync enabled: OSC on {address}. Local play/load is locked."
 msgstr "외부 동기화 사용: OSC {address}. 로컬 재생/불러오기가 잠깁니다."
@@ -1215,29 +1224,29 @@ msgstr "헤드폰: 레벨"
 msgid "Master: level"
 msgstr "마스터: 레벨"
 
-#: core/library/db.py:505
+#: core/library/db.py:574
 msgid "The path cannot be empty."
 msgstr "경로는 비워 둘 수 없습니다."
 
-#: core/library/db.py:508
+#: core/library/db.py:577
 #, python-brace-format
 msgid "This file is already in the library as \"{track}\"."
 msgstr "이 파일은 이미 라이브러리에 \"{track}\"(으)로 있습니다."
 
-#: core/library/db.py:530 core/library/db.py:706
+#: core/library/db.py:599 core/library/db.py:775
 msgid "Playlist name cannot be empty"
 msgstr "플레이리스트 이름은 비워 둘 수 없습니다"
 
-#: core/library/db.py:565 core/library/db.py:577
+#: core/library/db.py:634 core/library/db.py:646
 msgid "Folder name cannot be empty"
 msgstr "폴더 이름은 비워 둘 수 없습니다"
 
-#: core/library/db.py:653
+#: core/library/db.py:722
 #, python-brace-format
 msgid "A playlist named \"{name}\" is already in this folder."
 msgstr "이 폴더에 이미 \"{name}\" 플레이리스트가 있습니다."
 
-#: core/library/tieups.py:176 ui/library/tabs/tieup_editor.py:288
+#: core/library/tieups.py:209 ui/library/tabs/tieup_editor.py:288
 #: ui/windows/tieup_works.py:265
 #, python-brace-format
 msgid "A language is written as ko-KR (language-REGION): {code}"
@@ -1274,59 +1283,59 @@ msgstr "외부 동기화가 라이브러리에 없는 트랙을 무시했습니�
 msgid "External Sync analyzing external track before load: {path}"
 msgstr "외부 동기화: 불러오기 전에 외부 트랙을 분석하는 중: {path}"
 
-#: core/search/reading.py:59
+#: core/search/reading.py:61
 msgid "Mandarin"
 msgstr "표준 중국어"
 
-#: core/search/reading.py:59
+#: core/search/reading.py:61
 msgid "Taiwan Mandarin"
 msgstr "대만 중국어"
 
-#: core/search/reading.py:59 ui/widgets/language_picker.py:19
+#: core/search/reading.py:61 ui/widgets/language_picker.py:19
 msgid "Japanese"
 msgstr "일본어"
 
-#: core/search/reading.py:60
+#: core/search/reading.py:62
 msgid "Cantonese"
 msgstr "광둥어"
 
-#: core/search/reading.py:60
+#: core/search/reading.py:62
 msgid "Korean Hanja"
 msgstr "한국 한자음"
 
-#: core/search/reading.py:60
+#: core/search/reading.py:62
 msgid "Sino-Vietnamese"
 msgstr "베트남 한자음"
 
-#: core/search/reading.py:61
+#: core/search/reading.py:63
 msgid "as written"
 msgstr "표기 그대로"
 
-#: core/search/reading.py:61
+#: core/search/reading.py:63
 msgid "set by the user"
 msgstr "사용자 지정"
 
-#: core/search/reading.py:61 ui/widgets/language_picker.py:19
+#: core/search/reading.py:63 ui/widgets/language_picker.py:19
 msgid "Korean"
 msgstr "한국어"
 
-#: core/search/reading.py:546
+#: core/search/reading.py:576
 msgid "Japanese (SudachiDict)"
 msgstr "일본어 (SudachiDict)"
 
-#: core/search/reading.py:547
+#: core/search/reading.py:577
 msgid "Mandarin (pypinyin)"
 msgstr "표준 중국어 (pypinyin)"
 
-#: core/search/reading.py:548
+#: core/search/reading.py:578
 msgid "Cantonese (pycantonese)"
 msgstr "광둥어 (pycantonese)"
 
-#: core/search/reading.py:549
+#: core/search/reading.py:579
 msgid "Korean Hanja (Unihan)"
 msgstr "한국 한자음 (Unihan)"
 
-#: core/search/reading.py:550
+#: core/search/reading.py:580
 msgid "Sino-Vietnamese (Unihan)"
 msgstr "베트남 한자음 (Unihan)"
 
@@ -1579,7 +1588,7 @@ msgstr "키"
 msgid "Indexing for Search by Music"
 msgstr "음악으로 검색 색인 중"
 
-#: core/workers/analysis_texts.py:20 ui/config/search.py:126
+#: core/workers/analysis_texts.py:20 ui/config/search.py:163
 #: ui/library/tabs/track_search_index.py:88
 msgid "Search by Music"
 msgstr "음악으로 검색"
@@ -4774,53 +4783,53 @@ msgstr ""
 "EMA {ema} / {capacity} ms   하위 1% {low} ms   최저 {lowest} ms ({seconds}초)\n"
 "연 뒤 드롭아웃 {dropout} ms"
 
-#: ui/config/search.py:22
+#: ui/config/search.py:23
 msgid "Japanese, by word (SudachiDict): 東京 toukyou."
 msgstr "일본어, 단어 단위 (SudachiDict): 東京 toukyou."
 
-#: ui/config/search.py:23
+#: ui/config/search.py:24
 msgid "Mandarin pinyin, tones dropped: 東京 dong jing."
 msgstr "표준 중국어 병음, 성조 생략: 東京 dong jing."
 
-#: ui/config/search.py:24
+#: ui/config/search.py:25
 msgid "Cantonese Jyutping, tones dropped: 東京 dung ging."
 msgstr "광둥어 월병(Jyutping), 성조 생략: 東京 dung ging."
 
-#: ui/config/search.py:25
+#: ui/config/search.py:26
 msgid "Korean Hanja reading (Unihan), spelled as a word: 東京 donggyeong."
 msgstr "한국 한자음 (Unihan), 한 단어로 표기: 東京 donggyeong."
 
-#: ui/config/search.py:26
+#: ui/config/search.py:27
 msgid "Sino-Vietnamese reading (Unihan), diacritics dropped: 東京 dong kinh."
 msgstr "베트남 한자음 (Unihan), 성조 부호 생략: 東京 dong kinh."
 
-#: ui/config/search.py:27
+#: ui/config/search.py:28
 msgid "Taiwan's Mandarin, kept only where it differs from Mandarin: 乾杯 gan bei."
 msgstr "대만 중국어, 표준 중국어와 다를 때만 저장: 乾杯 gan bei."
 
-#: ui/config/search.py:60
+#: ui/config/search.py:61
 msgid "Library Readings"
 msgstr "라이브러리 발음"
 
 # | msgid "" "<p>The languages a title, artist or album of Han characters
 # | without kana " "is read in and stored for the search, one reading each. A
 # | change reads " "the library again when saved.</p>"
-#: ui/config/search.py:64
+#: ui/config/search.py:65
 msgid ""
 "<p>The languages a title, artist or album of Han characters without kana "
 "is read in for the search. A change reads the library again when "
 "saved.</p>"
 msgstr "<p>가나 없이 한자로 된 제목, 아티스트, 앨범을 검색용으로 읽을 언어입니다. 바꾸면 저장할 때 라이브러리를 다시 읽습니다.</p>"
 
-#: ui/config/search.py:66 ui/config/search.py:103
+#: ui/config/search.py:67 ui/config/search.py:124
 msgid "Han Characters"
 msgstr "한자"
 
-#: ui/config/search.py:71
+#: ui/config/search.py:72
 msgid "Han runs in Korean Hanja, from"
 msgstr "한자열을 한국 한자음으로, 최소"
 
-#: ui/config/search.py:74
+#: ui/config/search.py:75
 msgid " characters"
 msgstr "자"
 
@@ -4833,7 +4842,7 @@ msgstr "자"
 # | "isegyesaenghwal; shorter runs there are mostly words read with the kana:
 # "
 # | "君, 始める). Needs Korean Hanja checked.</p>"
-#: ui/config/search.py:76
+#: ui/config/search.py:77
 msgid ""
 "<p>Han characters mixed with other characters are found by their Korean "
 "Hanja reading too. Beside Latin letters or Hangul all of them are read "
@@ -4843,15 +4852,52 @@ msgstr ""
 "<p>다른 문자와 섞인 한자도 한국 한자음으로 찾을 수 있게 합니다. 라틴 문자나 한글 옆에서는 한자 전체를, 가나 옆에서는 이만큼"
 " 이상 이어진 한자만 한국 한자음으로 읽고 나머지는 일본어로 둡니다.</p>"
 
-#: ui/config/search.py:82
+#: ui/config/search.py:83
 msgid "Mixed Text"
 msgstr "섞인 텍스트"
 
-#: ui/config/dialogs/readings.py:17 ui/config/search.py:90
+# | msgid "as written"
+#: ui/config/search.py:92
+msgid "As written"
+msgstr "표기 그대로"
+
+# | msgid "Library Readings"
+#: ui/config/search.py:92
+msgid "By reading: ABC"
+msgstr "발음 기준: ABC"
+
+# | msgid "Library Readings"
+#: ui/config/search.py:93
+msgid "By reading: 가나다"
+msgstr "발음 기준: 가나다"
+
+# | msgid "Library Readings"
+#: ui/config/search.py:93
+msgid "By reading: 五十音"
+msgstr "발음 기준: 오십음도"
+
+#: ui/config/search.py:96
+msgid ""
+"<p>How the library's Title, Artist and Album columns sort. By reading, "
+"every script in one order by sound: ABC by the first reading's letters; "
+"가나다 with a Japanese title as Korean spells its reading (千本桜 센본사쿠라); 五十音 "
+"by the Japanese reading. A Latin name is read by its spelling (ClariS "
+"among the く), digits come first.</p>"
+msgstr ""
+"<p>라이브러리의 제목·아티스트·앨범 열을 정렬하는 방식입니다. 발음 기준은 문자 종류와 관계없이 발음 하나의 순서로 정렬합니다: "
+"ABC는 첫 번째 독음의 알파벳순, 가나다는 일본어 제목을 독음의 한국식 표기로(千本桜 센본사쿠라), 오십음도는 일본어 독음으로. "
+"라틴 문자 이름은 철자로 읽고(ClariS는 く 자리), 숫자는 맨 앞에 옵니다.</p>"
+
+# | msgid "Sino-Vietnamese"
+#: ui/config/search.py:100
+msgid "Sort Names"
+msgstr "이름 정렬"
+
+#: ui/config/dialogs/readings.py:17 ui/config/search.py:101
 msgid "Re-read Library"
 msgstr "라이브러리 다시 읽기"
 
-#: ui/config/search.py:92
+#: ui/config/search.py:103
 msgid ""
 "<p>Save these settings and read every track's title, artist and album "
 "again, in the background. Readings set in Edit Track are kept.</p>"
@@ -4859,31 +4905,42 @@ msgstr ""
 "<p>이 설정을 저장하고 모든 트랙의 제목, 아티스트, 앨범을 백그라운드에서 다시 읽습니다. 트랙 편집에서 설정한 발음은 "
 "유지됩니다.</p>"
 
-#: ui/config/search.py:97
+#: ui/config/search.py:105
+msgid "Rebuild Sort Index"
+msgstr "정렬 색인 다시 만들기"
+
+#: ui/config/search.py:107
+msgid ""
+"<p>Make every title's, artist's, album's and tie-up's sort and 초성 keys "
+"again from its text and its readings as stored, in the background. The "
+"readings are not read again (Re-read Library does).</p>"
+msgstr "<p>모든 제목·아티스트·앨범·타이업의 정렬 키와 초성 키를 저장된 텍스트와 독음으로 백그라운드에서 다시 만듭니다. 독음은 다시 읽지 않습니다(라이브러리 다시 읽기가 합니다).</p>"
+
+#: ui/config/search.py:118
 msgid "Search Query"
 msgstr "검색어"
 
-#: ui/config/search.py:101
+#: ui/config/search.py:122
 msgid ""
 "<p>The languages Han characters in a query are read in: a track is found "
 "when any of them matches any of its readings.</p>"
 msgstr "<p>검색어의 한자를 읽을 언어입니다. 이 중 하나라도 트랙의 발음 중 하나와 맞으면 트랙을 찾습니다.</p>"
 
-#: ui/config/search.py:107
+#: ui/config/search.py:128
 msgid "As Korean"
 msgstr "한국어로"
 
-#: ui/config/search.py:109
+#: ui/config/search.py:130
 msgid ""
 "<p>Hangul read in Revised Romanization: 사회 finds a Korean title and 社会 by"
 " its Korean Hanja reading.</p>"
 msgstr "<p>한글을 국어의 로마자 표기법으로 읽습니다: 사회로 한국어 제목을, 한국 한자음으로 社会를 찾습니다.</p>"
 
-#: ui/config/search.py:111
+#: ui/config/search.py:132
 msgid "As a foreign word"
 msgstr "외래어 표기로"
 
-#: ui/config/search.py:113
+#: ui/config/search.py:134
 msgid ""
 "<p>Hangul read as Korean spells a foreign word (ㅓ o, ㅡ u, ㅐ e): 도쿄 finds "
 "東京, 아노네 finds あのね.</p>"
@@ -4891,14 +4948,14 @@ msgstr ""
 "<p>한글을 한국어가 외래어를 적는 방식으로 읽습니다 (ㅓ o, ㅡ u, ㅐ e): 도쿄로 東京을, 아노네로 あのね를 "
 "찾습니다.</p>"
 
-#: ui/config/search.py:115
+#: ui/config/search.py:136
 msgid "Typed without 한/영"
 msgstr "한/영 전환 없이 입력"
 
 # | msgid "" "<p>A query typed on the 2-set (Dubeolsik) keyboard in the wrong
 # | input " "mode is also read as meant: tkghl as 사회 (whole syllables, two or
 # | more), " "무ㅐㅜㄷ as anone.</p>"
-#: ui/config/search.py:117
+#: ui/config/search.py:138
 msgid ""
 "<p>A query typed on the 2-set (Dubeolsik) keyboard in the wrong input "
 "mode is also read as meant: tkghl as 사회, 무ㅐㅜㄷ as anone.</p>"
@@ -4906,11 +4963,41 @@ msgstr ""
 "<p>두벌식 자판에서 입력 모드를 잘못 둔 채 입력한 검색어도 의도한 대로 읽습니다: tkghl을 사회로, 무ㅐㅜㄷ를 "
 "anone으로.</p>"
 
-#: ui/config/search.py:123
+#: ui/config/search.py:144
 msgid "Hangul"
 msgstr "한글"
 
-#: ui/config/search.py:128
+#: ui/config/search.py:149
+msgid "초성 search"
+msgstr "초성 검색"
+
+#: ui/config/search.py:151
+msgid ""
+"<p>A query of consonants alone finds a name by each syllable's first "
+"consonant: ㄷㅅㅁㄴ finds 다시 만난 세계, ㅅㅂㅅㅋㄹ finds 千本桜 (센본사쿠라 as Korean spells "
+"its reading).</p>"
+msgstr ""
+"<p>자음만 입력하면 각 음절의 첫 자음으로 이름을 찾습니다: ㄷㅅㅁㄴ은 다시 만난 세계를, ㅅㅂㅅㅋㄹ은 千本桜(독음의 한국식 표기"
+" 센본사쿠라)를 찾습니다.</p>"
+
+#: ui/config/search.py:153
+msgid "초성 search typed without 한/영"
+msgstr "초성 검색 (한/영 전환 없이 입력)"
+
+#: ui/config/search.py:155
+msgid ""
+"<p>Three or more consonants' keys typed on the 2-set keyboard in English "
+"mode are a 초성 search too: etas as ㄷㅅㅁㄴ. An English word may be one, so "
+"its tracks are found besides the others.</p>"
+msgstr ""
+"<p>두벌식 자판의 영문 모드로 자음 자리 키를 세 개 이상 입력해도 초성 검색이 됩니다: etas는 ㄷㅅㅁㄴ. 영어 단어도 이렇게"
+" 될 수 있어서, 그 결과는 다른 결과에 더해집니다.</p>"
+
+#: ui/config/search.py:160
+msgid "Initials"
+msgstr "초성"
+
+#: ui/config/search.py:165
 msgid "Index tracks when analyzing"
 msgstr "분석할 때 트랙 색인"
 
@@ -4918,17 +5005,17 @@ msgstr "분석할 때 트랙 색인"
 # | melody " "(the lead and the top line) and fingerprints of its sound, about
 # 6
 # | " "seconds more a track.</p>"
-#: ui/config/search.py:130
+#: ui/config/search.py:167
 msgid ""
 "<p>The analysis also indexes each track for Search by Music, about 6 "
 "seconds more a track.</p>"
 msgstr "<p>분석할 때 각 트랙을 음악으로 검색용으로도 색인합니다. 트랙당 약 6초가 더 걸립니다.</p>"
 
-#: ui/config/search.py:135 ui/config/search.py:144
+#: ui/config/search.py:172 ui/config/search.py:181
 msgid " s"
 msgstr " 초"
 
-#: ui/config/search.py:137
+#: ui/config/search.py:174
 msgid ""
 "<p>While listening, the search looks at this many seconds of what was "
 "heard last. A melody is found best from 8 to 15 seconds of it.</p>"
@@ -4936,20 +5023,20 @@ msgstr "<p>듣는 동안 가장 최근에 들린 소리를 이 길이만큼 검�
 
 # | msgid "Split the current segment at the playhead"
 # | msgid "Split at the playhead"
-#: ui/config/search.py:139
+#: ui/config/search.py:176
 msgid "Listen to the last"
 msgstr "검색할 길이"
 
-#: ui/config/search.py:145
+#: ui/config/search.py:182
 msgid "<p>While listening, a search is made this often.</p>"
 msgstr "<p>듣는 동안 이 간격마다 검색합니다.</p>"
 
 # | msgid "Search Query"
-#: ui/config/search.py:146
+#: ui/config/search.py:183
 msgid "Search every"
 msgstr "검색 간격"
 
-#: ui/config/search.py:150
+#: ui/config/search.py:187
 msgid "Index Now"
 msgstr "지금 색인"
 
@@ -4969,7 +5056,7 @@ msgstr "지금 색인"
 # Music
 # | or the " "Variants, in the background. Tracks gone from the library leave
 # | the " "index.</p>"
-#: ui/config/search.py:152
+#: ui/config/search.py:189
 msgid ""
 "<p>Index the library's tracks not indexed yet for Search by Music, the "
 "Variants or the Mix Candidates, in the background. Tracks gone from the "
@@ -4978,7 +5065,7 @@ msgstr ""
 "<p>음악으로 검색, 다른 버전 찾기, 믹스 후보용 색인이 아직 없는 트랙을 백그라운드에서 색인합니다. 라이브러리에서 빠진 트랙은 "
 "색인에서도 빠집니다.</p>"
 
-#: ui/config/search.py:258
+#: ui/config/search.py:303
 #, python-brace-format
 msgid "{indexed} of {total} library tracks are indexed."
 msgstr "라이브러리 트랙 {total}개 중 {indexed}개가 색인되어 있습니다."
@@ -6305,7 +6392,7 @@ msgid "Name"
 msgstr "이름"
 
 #: ui/library/playlists.py:27 ui/library/playlists.py:32
-#: ui/library/sources.py:662
+#: ui/library/sources.py:665
 msgid "New Folder"
 msgstr "새 폴더"
 
@@ -6317,7 +6404,7 @@ msgstr "플레이리스트 이름 바꾸기"
 msgid "Rename Folder"
 msgstr "폴더 이름 바꾸기"
 
-#: ui/library/playlists.py:74 ui/library/sources.py:668
+#: ui/library/playlists.py:74 ui/library/sources.py:671
 msgid "Delete Playlist"
 msgstr "플레이리스트 삭제"
 
@@ -6330,7 +6417,7 @@ msgstr ""
 "플레이리스트 \"{name}\"을(를) 삭제할까요?\n"
 "트랙은 라이브러리에 남습니다."
 
-#: ui/library/playlists.py:84 ui/library/sources.py:668
+#: ui/library/playlists.py:84 ui/library/sources.py:671
 msgid "Delete Folder"
 msgstr "폴더 삭제"
 
@@ -6550,62 +6637,62 @@ msgstr "로컬 폴더"
 
 # | msgid "Headphones: level"
 # | msgid "Headphones mix"
-#: ui/library/sources.py:602
+#: ui/library/sources.py:605
 msgid "the same mix"
 msgstr "같은 믹스"
 
-#: ui/library/sources.py:604
+#: ui/library/sources.py:607
 #, python-brace-format
 msgid "{relation}, a shorter edit"
 msgstr "{relation} (짧게 편집한 버전)"
 
-#: ui/library/sources.py:606
+#: ui/library/sources.py:609
 #, python-brace-format
 msgid "{relation}, a longer version"
 msgstr "{relation} (더 긴 버전)"
 
-#: ui/library/sources.py:608
+#: ui/library/sources.py:611
 #, python-brace-format
 msgid "{relation}, some sections differ"
 msgstr "{relation} (일부 구간이 다름)"
 
 # | msgid "{relation}, a shorter edit"
-#: ui/library/sources.py:611
+#: ui/library/sources.py:614
 msgid "a shorter edit"
 msgstr "짧게 편집한 버전"
 
 # | msgid "{relation}, a longer version"
-#: ui/library/sources.py:613
+#: ui/library/sources.py:616
 msgid "a longer version"
 msgstr "더 긴 버전"
 
 # | msgid "{relation}, some sections differ"
-#: ui/library/sources.py:615
+#: ui/library/sources.py:618
 msgid "some sections differ"
 msgstr "일부 구간이 다름"
 
-#: ui/library/sources.py:632
+#: ui/library/sources.py:635
 #, python-brace-format
 msgid "{title}: {relation}"
 msgstr "{title}: {relation}"
 
-#: ui/library/sources.py:634
+#: ui/library/sources.py:637
 msgid "Variants of this track:"
 msgstr "이 곡의 다른 버전:"
 
-#: ui/library/sources.py:665
+#: ui/library/sources.py:668
 msgid "Rename"
 msgstr "이름 바꾸기"
 
-#: ui/library/sources.py:666
+#: ui/library/sources.py:669
 msgid "Move Up"
 msgstr "위로 이동"
 
-#: ui/library/sources.py:667
+#: ui/library/sources.py:670
 msgid "Move Down"
 msgstr "아래로 이동"
 
-#: ui/library/sources.py:670
+#: ui/library/sources.py:673
 msgid "Refresh Folders"
 msgstr "폴더 새로 고침"
 
@@ -7183,11 +7270,11 @@ msgstr "경로"
 msgid "Comment"
 msgstr "코멘트"
 
-#: ui/library/widget.py:384
+#: ui/library/widget.py:389
 msgid "Track loading is disabled while External Sync is enabled."
 msgstr "외부 동기화가 켜져 있는 동안에는 트랙을 불러올 수 없습니다."
 
-#: ui/library/widget.py:469
+#: ui/library/widget.py:474
 msgid "The loaded track is not in the list shown."
 msgstr "로드한 트랙이 지금 보이는 목록에 없습니다."
 
@@ -7226,7 +7313,7 @@ msgstr "템포 초기화 (100%)"
 msgid "Master tempo: time stretch keeps the pitch"
 msgstr "마스터 템포: 타임 스트레치로 피치를 유지합니다"
 
-#: ui/config/external_sync.py:105 ui/library/widget.py:383 ui/pane.py:531
+#: ui/config/external_sync.py:105 ui/library/widget.py:388 ui/pane.py:531
 msgid "External Sync"
 msgstr "외부 동기화"
 
@@ -7528,7 +7615,7 @@ msgstr ""
 "라이브러리 옆 패널로 갔다가 돌아옵니다. 위 / 아래로 둘러보고, 왼쪽 / 오른쪽으로 폴더를 닫고 / 열고, 로드 키로 강조된 것을"
 " 띄웁니다."
 
-#: ui/config/search.py:161 ui/shortcuts.py:130
+#: ui/config/search.py:200 ui/shortcuts.py:130
 msgid "Search"
 msgstr "검색"
 
@@ -7661,7 +7748,7 @@ msgid "Show in File Manager"
 msgstr "파일 관리자에서 보기"
 
 #: ui/library/playlists.py:18 ui/library/playlists.py:23
-#: ui/library/sources.py:661 ui/shortcuts.py:155
+#: ui/library/sources.py:664 ui/shortcuts.py:155
 msgid "New Playlist"
 msgstr "새 플레이리스트"
 

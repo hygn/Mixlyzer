@@ -286,6 +286,13 @@ class searchconfig:
     query_hangul_foreign: bool   # ... as Korean spells a foreign word (도쿄 tokyo: Japanese / English titles)
     # a query typed on the 2-set keyboard without the 한/영 key also read as what was meant (tkghl 사회, 무ㅐㅜㄷ anone)
     query_keyboard_layout: bool
+    # a query of consonants alone (ㄷㅅㅁㄴ) a 초성 search on each name's initials; and their keys typed without the
+    # 한/영 key (etas), its tracks found besides the others
+    query_initials: bool
+    query_initials_keys: bool
+    # the library's names (title, artist, album) sorted as written, or by their readings (core.search.reading
+    # sort_key): ABC, 가나다 (a Japanese title as Korean spells it), 五十音 (by its Japanese reading)
+    name_sort: Literal["text", "abc", "hangul", "gojuon"]
     # Search by Music (analyzer.search.music): the analysis indexes each track it analyzes (about 6 s more a track);
     # listening, the last music_listen_window seconds are searched every music_listen_interval seconds
     music_index: bool
@@ -541,6 +548,9 @@ def default_cfg():
         query_hangul_korean=True,
         query_hangul_foreign=True,
         query_keyboard_layout=True,
+        query_initials=True,
+        query_initials_keys=True,
+        name_sort="text",
         music_index=True,
         music_listen_window=10.0,
         music_listen_interval=2.0,

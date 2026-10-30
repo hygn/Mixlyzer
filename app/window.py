@@ -150,6 +150,7 @@ class AppWindow(QtWidgets.QMainWindow):
         self.library = library
         self.library.setParent(self)
         self.library.attach(bus=self.bus, settings=lambda: self.cfg.searchconfig)
+        self.library.take_settings()    # the names' sort order (one started here has the default's)
         app = QtWidgets.QApplication.instance()
         if app is not None:     # its last jobs run, its connection closed
             app.aboutToQuit.connect(self.library.close)
@@ -339,6 +340,7 @@ class AppWindow(QtWidgets.QMainWindow):
         self.bus.sig_rekordbox_sync_requested.connect(self.rekordbox_sync.sync_requested)
         self.bus.sig_rekordbox_sync_track_requested.connect(self.rekordbox_sync.sync_track_requested)
         self.bus.sig_reading_refresh_requested.connect(self.reading_refresh.refresh_requested)
+        self.bus.sig_name_keys_rebuild_requested.connect(self._rebuild_name_keys)
         self.bus.sig_music_index_requested.connect(self.music_index.index_requested)
         self.bus.sig_reanalyze_requested.connect(self.reanalyze_file)
 
@@ -769,6 +771,13 @@ class AppWindow(QtWidgets.QMainWindow):
             message,
         )
 
+    def _rebuild_name_keys(self) -> None:
+        """Settings > Search's Rebuild Sort Index: every name's 초성 and sort keys made again on the library's owner,
+        the library shown again with them."""
+        self.statusBar().showMessage(tr("Rebuilding the sort index..."))
+        self.library.write(jobs.rebuild_name_keys, done=lambda made: self.statusBar().showMessage(
+            tr("Sort index rebuilt: {count} names.").format(count=f"{made:,}"), 5000))
+
     # ---- the library's backup (core.workflows.library_backup) ----
     def _backup_library(self, feature_cache: bool) -> None:
         """Back Up Library…: where asked each time, the package written by the library's owner meanwhile shown."""
@@ -886,6 +895,8 @@ class AppWindow(QtWidgets.QMainWindow):
             self.pane.lib.set_search_config(_config)
         if prev_search.stored_readings() != _config.searchconfig.stored_readings():
             self.bus.sig_reading_refresh_requested.emit(None)
+        if prev_search.name_sort != _config.searchconfig.name_sort:
+            self.library.take_settings()     # the names sorted in the new order (the snapshot's sort keys)
         prev_vcfg = prev_cfg.get("viewconfig", {})
         new_vcfg = _config.to_dict()["viewconfig"]
         prev_pcfg = prev_cfg.get("playbackconfig", {})

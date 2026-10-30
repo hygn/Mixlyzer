@@ -207,7 +207,8 @@ class LibraryWidget(SourcesMixin, SearchMixin, MusicMixin, MixMixin, PlaylistsMi
     def _tracks(self, rows) -> List[Track]:
         """Library rows as Tracks, with their readings and tie-ups for the search (the library's snapshot)."""
         snap = self.library.snapshot
-        return [row_to_track(row, snap.readings.get(row.uid), snap.tieups.get(row.uid)) if isinstance(row, TrackRow)
+        return [row_to_track(row, snap.readings.get(row.uid), snap.tieups.get(row.uid), snap.initials.get(row.uid),
+                             snap.sort_keys.get(row.uid)) if isinstance(row, TrackRow)
                 else row for row in rows]
     @staticmethod
     def _file_identity(path: object) -> str:
@@ -318,6 +319,8 @@ class LibraryWidget(SourcesMixin, SearchMixin, MusicMixin, MixMixin, PlaylistsMi
         art_col = self.HEADERS.index(self.ART_HEADER)
         index_col = self.HEADERS.index("#")
         key_col = self.HEADERS.index("Key")
+        name_cols = {self.HEADERS.index(h): f for h, f in (("Title", "title"), ("Artist", "artist"), ("Album", "album"),
+                                                           ("Tie-up", "tieup"))}
         sort_col = self.table.horizontalHeader().sortIndicatorSection() if self.table.isSortingEnabled() else -1
         brush = None
         if self._loaded_uid is not None and t.uid == self._loaded_uid:
@@ -334,6 +337,8 @@ class LibraryWidget(SourcesMixin, SearchMixin, MusicMixin, MixMixin, PlaylistsMi
                 item.setData(_SORT_ROLE, int(t.playlist_index or 0))
             elif c == key_col:  # in the Alphanumeric order (as text, 10A came before 2A)
                 item.setData(_SORT_ROLE, key_order(t.key))
+            elif c in name_cols and t.sort_keys.get(name_cols[c]) is not None:   # by reading (Sort Names)
+                item.setData(_SORT_ROLE, t.sort_keys[name_cols[c]])
             item.setData(_ANALYZED_ROLE, bool(t.analyzed))
             if brush is not None:
                 item.setForeground(brush)

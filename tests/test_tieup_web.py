@@ -89,15 +89,30 @@ class TieupWebTests(unittest.TestCase):
         self.assertEqual(tw.song_title("Defeat the Beast"), ("Defeat the Beast", []))   # not a feat.
         songs, artists, searches = tw.queries("恋の歌 〜Ver.2〜 feat.Singer", "MARUMOCHI from HoneyWorks",
                                               "TVアニメ「X」OP")
-        self.assertEqual(songs, ["恋の歌 〜Ver.2〜", "恋の歌 〜Ver.2〜 feat.Singer", "恋の歌"])
+        self.assertEqual(songs, ["恋の歌", "恋の歌 〜Ver.2〜 feat.Singer"])     # a version note between wave dashes
         self.assertEqual(artists, ["MARUMOCHI", "HoneyWorks", "Singer"])
-        self.assertEqual(searches, ['"恋の歌 〜Ver.2〜"', '"恋の歌 〜Ver.2〜 feat.Singer"', '"恋の歌 〜Ver.2〜" MARUMOCHI',
-                                    '"恋の歌 〜Ver.2〜" HoneyWorks', '"TVアニメ「X」OP"'])
+        self.assertEqual(searches, ['"恋の歌"', '"恋の歌 〜Ver.2〜 feat.Singer"', '"恋の歌" MARUMOCHI',
+                                    '"恋の歌" HoneyWorks', '"TVアニメ「X」OP"'])
         # version notes in any place of the parenthesis, a title's own parenthesis kept
         self.assertEqual(tw.song_title("よしなしOKI☆DOKI(さくひまば～じょん)")[0], "よしなしOKI☆DOKI")
         self.assertEqual(tw.song_title("100%ちゅ～学生 (Kijibato remix)")[0], "100%ちゅ～学生")
         self.assertEqual(tw.song_title("Love Song (Forever)")[0], "Love Song (Forever)")
         self.assertNotIn("Song (Hoge", tw.queries("Song (Hoge～Fuga)")[0])     # not cut inside it
+        # between dashes or wave dashes; Korean and Chinese notes
+        self.assertEqual(tw.song_title("紅蓮華 -TV size-")[0], "紅蓮華")
+        self.assertEqual(tw.song_title("残酷な天使のテーゼ～TV size～")[0], "残酷な天使のテーゼ")
+        self.assertEqual(tw.song_title("Butter-Fly -instrumental-")[0], "Butter-Fly")
+        self.assertEqual(tw.song_title("めざせポケモンマスター -20th Anniversary-")[0],
+                         "めざせポケモンマスター -20th Anniversary-")      # a subtitle, no version's word
+        self.assertEqual(tw.song_title("Butter-Fly - Live")[0], "Butter-Fly - Live")
+        for title, song in (("君の知らない物語 (TV 사이즈)", "君の知らない物語"), ("다시 만난 세계 (MR)", "다시 만난 세계"),
+                            ("다시 만난 세계 [반주]", "다시 만난 세계"), ("孤勇者 (伴奏)", "孤勇者"),
+                            ("孤勇者 (纯音乐)", "孤勇者"), ("紅蓮華 (TV版)", "紅蓮華")):
+            self.assertEqual(tw.song_title(title)[0], song, title)
+        # "A meets B", a credit after a bracketed name; a colon inside a name kept
+        self.assertEqual(tw.artist_names("HoneyWorks meets TrySail"), ["HoneyWorks", "TrySail"])
+        self.assertEqual(tw.artist_names("SawanoHiroyuki[nZk]:Aimer"), ["SawanoHiroyuki", "nZk", "Aimer"])
+        self.assertEqual(tw.artist_names("Re:vale"), ["Re:vale"])
         # a character's credit: the unit, the voice actors, the characters
         self.assertEqual(tw.artist_names("さくひま*ひまさく[大室櫻子(CV:加藤英美里)&古谷向日葵(CV:三森すずこ)]"),
                          ["さくひま*ひまさく", "加藤英美里", "三森すずこ", "大室櫻子", "古谷向日葵"])
@@ -187,11 +202,24 @@ class TieupWebTests(unittest.TestCase):
                  "蓮ノ空女学院スクールアイドルクラブ": ["8人組の音楽グループ", "声優ユニット", "架空の音楽グループ",
                                                     "蓮ノ空女学院スクールアイドルクラブ"],
                  "結束バンド": ["4人組の音楽グループ", "架空の音楽グループ", "結束バンド"],
+                 # a franchise's virtual idols: its project; its concert, a game's virtual idol character and a
+                 # virtual idol of no franchise are not (their categories as Wikipedia has them)
+                 "Vα-liv": ["アイドルマスター", "バーチャルYouTuber", "バーチャルYouTuber関連の組織", "バーチャルアイドル"],
+                 "アイカツアカデミー!": ["アイカツ!", "バーチャルYouTuber", "バーチャルアイドル"],
+                 "THE IDOLM@STER M@STERS OF IDOL WORLD!!": ["アイドルマスター"],
+                 "永瀬麗子": ["ナムコキャラクター", "バーチャルアイドル", "リッジレーサー"],
+                 "キズナアイ": ["Upd8のバーチャルYouTuber", "エレクトロニック・ミュージックの歌手", "キズナアイ",
+                           "バーチャルYouTuber"],
                  # their categories' categories
                  "Category:アイドルマスター": ["アイドルを題材とした作品", "メディアミックス作品"],
                  "Category:蓮ノ空女学院スクールアイドルクラブ": ["ラブライブ!のユニット"],
                  "Category:結束バンド": ["ぼっち・ざ・ろっく!"],
-                 "Category:声優を題材とした作品": ["声優"]}
+                 "Category:声優を題材とした作品": ["声優"],
+                 "Category:バーチャルアイドル": ["アイドル", "架空の芸能人"],
+                 "Category:アイカツ!": ["アイドルを題材としたコンピュータゲーム", "メディアミックス作品"],
+                 "Category:リッジレーサー": ["カーレースゲーム", "ナムコのゲームソフト"],
+                 "Category:ナムコキャラクター": ["コンピュータゲームメーカー別の登場人物", "ナムコ"],
+                 "Category:バーチャルYouTuber": ["アバター", "キャラクター", "ジャンル別のYouTuber"]}
 
         def fetch(_url, params):
             return {"query": {"pages": [{"title": t, "categories": [{"title": f"Category:{c}"} for c in pages.get(t, [])]}
@@ -200,12 +228,15 @@ class TieupWebTests(unittest.TestCase):
         api = tw.Wikimedia(fetch)
         pages["CUE!"].append("声優を題材とした作品")
         works = ("CUE!", "ゆるゆり", "アイドルマスター", "世界最強の魔女", "井口裕香", "結束バンド (アルバム)", "坂上忍",
-                 "ClariS", "Re:ステージ!", "蓮ノ空女学院スクールアイドルクラブ", "結束バンド")
+                 "ClariS", "Re:ステージ!", "蓮ノ空女学院スクールアイドルクラブ", "結束バンド", "Vα-liv",
+                 "アイカツアカデミー!", "THE IDOLM@STER M@STERS OF IDOL WORLD!!", "永瀬麗子", "キズナアイ")
         got = {p: tw.page_category(api, p) for p in works}
         self.assertEqual(got, {"CUE!": "anime", "ゆるゆり": "anime", "アイドルマスター": "idol_2d",
                                "世界最強の魔女": "anime", "井口裕香": None, "結束バンド (アルバム)": None,
                                "坂上忍": None, "ClariS": None, "Re:ステージ!": "idol_2d",
-                               "蓮ノ空女学院スクールアイドルクラブ": "idol_2d", "結束バンド": None})
+                               "蓮ノ空女学院スクールアイドルクラブ": "idol_2d", "結束バンド": None, "Vα-liv": "idol_2d",
+                               "アイカツアカデミー!": "idol_2d", "THE IDOLM@STER M@STERS OF IDOL WORLD!!": None,
+                               "永瀬麗子": None, "キズナアイ": None})
 
     def test_pages_agreeing_on_the_work_only(self):
         """Two pages naming one work under different roles: the work is sure, its role not specified; a singer's page

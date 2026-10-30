@@ -190,6 +190,112 @@ class LibraryWidgetTests(unittest.TestCase):
         self.search("아노네")
         self.assertEqual(self.column(TITLE), ["あのね"])
 
+    def retitle(self, songs: list[tuple[str, str]]) -> None:
+        """The tracks' titles and artists replaced, in their order."""
+        db = LibraryDB(os.path.join(self.lib, "library.db"))
+        db.connect()
+        for uid, (title, artist) in zip(self.uids, songs):
+            db.upsert(replace(db.get_by_uid(uid), title=title, artist=artist))
+        db.conn.commit()
+        db.close()
+        self.library.refresh()
+        self.apply_update()
+
+    def test_initials_search(self):
+        self.retitle([("千本桜", "黒うさP"), ("다시 만난 세계", "소녀시대"), ("Butter-Fly", "和田光司")])
+        self.search("ㄷㅅㅁㄴ")
+        self.assertEqual(self.column(TITLE), ["다시 만난 세계"])
+        self.search("ㅅㅂㅅㅋㄹ")                                    # 千本桜 as Korean spells its reading
+        self.assertEqual(self.column(TITLE), ["千本桜"])
+        self.search("ㅅㄴㅅㄷ", "Title")                            # 소녀시대: the artist, not the title
+        self.assertEqual(self.column(TITLE), [])
+        self.search("ㅅㄴㅅㄷ", "Artist")
+        self.assertEqual(self.column(TITLE), ["다시 만난 세계"])
+        self.search("etas")                                            # ㄷㅅㅁㄴ typed without 한/영
+        self.assertEqual(self.column(TITLE), ["다시 만난 세계"])
+        self.cfg.searchconfig.query_initials_keys = False
+        self.search("etas")
+        self.assertEqual(self.column(TITLE), [])
+        self.cfg.searchconfig.query_initials = False                 # read as the other queries are
+        self.search("ㄷㅅㅁㄴ")
+        self.assertEqual(self.column(TITLE), [])
+
+    def test_names_sorted_as_written_or_by_reading(self):
+        # by reading every script in one order: Butter-Fly read by its letters (붓테르, ブッテル), 다시 by its
+        # reading in 五十音 (だし)
+        self.retitle([("千本桜", "黒うさP"), ("다시 만난 세계", "소녀시대"), ("Butter-Fly", "和田光司")])
+        for order, titles in (("text", ["Butter-Fly", "千本桜", "다시 만난 세계"]),
+                              ("hangul", ["다시 만난 세계", "Butter-Fly", "千本桜"]),     # 다시, 붓테르, 센본사쿠라
+                              ("gojuon", ["千本桜", "다시 만난 세계", "Butter-Fly"]),     # せ, だ, ぶ
+                              ("abc", ["Butter-Fly", "다시 만난 세계", "千本桜"])):      # dasi, senbon
+            self.cfg.searchconfig.name_sort = order
+            self.library.take_settings()
+            self.apply_update()
+            self.w.table.sortItems(TITLE, QtCore.Qt.AscendingOrder)
+            self.assertEqual(self.column(TITLE), titles, order)
+
+    def test_tieups_sorted_by_the_orders_language_and_found_by_reading(self):
+        works = {  # track -> its work's titles: Japanese, Korean, English
+            0: [("ja-JP", "ご注文はうさぎですか？"), ("ko-KR", "주문은 토끼입니까?"), ("en-US", "Is the Order a Rabbit?")],
+            1: [("ja-JP", "ヤマノススメ"), ("ko-KR", "야마노스스메"), ("en-US", "Encouragement of Climb")],
+            2: [("ja-JP", "ゆるゆり"), ("ko-KR", "유루유리"), ("en-US", "YuruYuri")],
+        }
+        for k, titles in works.items():
+            self.library.write(jobs.save_tieup, self.uids[k], TieUp(Work("", titles=titles), "opening", 1))
+        self.apply_update()
+        tieup_col = LibraryWidget.HEADERS.index("Tie-up")
+        gochiusa, yamanosusume, yuruyuri = "あのね", "Hello World", "Third Song"      # the tracks' titles
+        # each order by its language's title, whatever the UI's (here English: the column shows those)
+        for order, titles in (("gojuon", [gochiusa, yamanosusume, yuruyuri]),     # ご, ヤ, ゆ
+                              ("hangul", [yamanosusume, yuruyuri, gochiusa]),     # 야, 유, 주
+                              ("abc", [yamanosusume, gochiusa, yuruyuri])):       # Encouragement, Is, YuruYuri
+            self.cfg.searchconfig.name_sort = order
+            self.library.take_settings()
+            self.apply_update()
+            self.w.table.sortItems(tieup_col, QtCore.Qt.AscendingOrder)
+            self.assertEqual(self.column(TITLE), titles, order)
+        self.search("ㄱㅈㅁㅇㅇㅅㄱ", "Tie-up")     # ご注文はうさぎ as Korean spells its reading (고주몬와우사기)
+        self.assertEqual(self.column(TITLE), [gochiusa])
+
+    def test_sort_index_rebuilt(self):
+        db = LibraryDB(os.path.join(self.lib, "library.db"))
+        db.connect()
+        try:
+            db.conn.execute("UPDATE track_name_keys SET hangul = 'x';")
+            db.conn.commit()
+        finally:
+            db.close()
+        made = []
+        self.library.write(jobs.rebuild_name_keys, done=made.append)
+        self.settle()
+        self.assertEqual(made, [9])                    # 3 tracks' title, artist, album
+        db = LibraryDB(os.path.join(self.lib, "library.db"))
+        db.connect()
+        try:
+            self.assertNotIn("x", {k for keys in db.name_keys("hangul")[1].values() for k in keys.values()})
+        finally:
+            db.close()
+
+    def test_name_keys_stored_and_made_again_for_other_rules(self):
+        self.retitle([("千本桜", "黒うさP"), ("다시 만난 세계", "소녀시대"), ("Butter-Fly", "和田光司")])
+        db = LibraryDB(os.path.join(self.lib, "library.db"))
+        db.connect()
+        try:
+            initials, sort = db.name_keys("hangul")
+            self.assertIn("ㄷㅅㅁㄴㅅㄱ", initials[self.uids[1]]["title"])
+            self.assertEqual(sort[self.uids[0]]["title"], "센본사쿠라")
+            # keys of other rules (an earlier version's) or none: made again
+            db.conn.execute("UPDATE track_name_keys SET rules = -1, hangul = '' WHERE track_uid = ?;", (self.uids[0],))
+            db.conn.execute("DELETE FROM track_name_keys WHERE track_uid = ?;", (self.uids[1],))
+            db.conn.commit()
+            self.assertEqual(db.refresh_name_keys(), 6)
+            self.assertEqual(db.refresh_name_keys(), 0)
+            initials, sort = db.name_keys("hangul")
+            self.assertEqual(sort[self.uids[0]]["title"], "센본사쿠라")
+            self.assertIn("ㄷㅅㅁㄴㅅㄱ", initials[self.uids[1]]["title"])
+        finally:
+            db.close()
+
     def test_clear_removes_every_condition(self):
         self.search("hello")
         self.w.cb_transition_bpm.setChecked(True)

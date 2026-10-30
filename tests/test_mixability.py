@@ -128,6 +128,13 @@ class CandidateTests(unittest.TestCase):
         self.assertNotIn("t1", got)
         self.assertNotIn("inst", got)
 
+    def test_an_instrumental_by_its_title(self):
+        for title in ("紅蓮華 (Instrumental)", "Butter-Fly -instrumental-", "ハレ晴レユカイ (Off Vocal)",
+                      "다시 만난 세계 (MR)", "다시 만난 세계 [반주]", "孤勇者 (伴奏)", "孤勇者 (纯音乐)"):
+            self.assertTrue(ms.is_instrumental(title), title)
+        for title in ("MR.TAXI", "Mr.Children", "紅蓮華 (TV size)"):    # "MR." a name, not an MR
+            self.assertFalse(ms.is_instrumental(title), title)
+
     def test_the_blends_found_come_first(self):
         found = ms.candidates(self.a, self.tracks, self.bars, set(), ms.MixOptions(bpm=False, key=False,
                                                                                     audio=False))

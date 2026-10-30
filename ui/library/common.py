@@ -57,6 +57,10 @@ class Track:
     analyzed: bool = True
     # search keys of the title / artist / album readings (core.search.reading): field -> one per reading
     reading_keys: dict = field(default_factory=dict)
+    # the 초성 search's keys (the library's snapshot: LibrarySnapshot.initials): field -> keys
+    initials: dict = field(default_factory=dict)
+    # title / artist / album -> the key sorting it by its reading (LibrarySnapshot.sort_keys; none: as written)
+    sort_keys: dict = field(default_factory=dict)
     _disp_playlist_index: str = field(init=False, default="")
 
     _disp_bpm: str = field(init=False, default="--")
@@ -99,9 +103,11 @@ def key_order(key: Optional[int]) -> int:
 
 
 def row_to_track(row: TrackRow, readings: Optional[dict] = None,
-                 tieups: Optional[tieup.TrackTieups] = None) -> Track:
+                 tieups: Optional[tieup.TrackTieups] = None, initials: Optional[dict] = None,
+                 sort_keys: Optional[dict] = None) -> Track:
     """``readings``: the track's readings by field (LibraryDB.all_readings), for the search; ``tieups``: its
-    song's tie-ups (tieup.track_texts)."""
+    song's tie-ups (tieup.track_texts); ``initials``: its 초성 search's keys (LibrarySnapshot.initials);
+    ``sort_keys``: its names' keys sorting them by their readings (LibrarySnapshot.sort_keys)."""
     added_qt = QtCore.QDateTime.fromSecsSinceEpoch(int(row.added_ts)) if row.added_ts else None
     keys = {f: [reading.keys(r) for r in (readings or {}).get(f, [])] for f in READ_FIELDS if f != "tieup"}
     keys["tieup"] = [reading.keys(r) for r in tieups.readings] if tieups is not None else []
@@ -110,7 +116,7 @@ def row_to_track(row: TrackRow, readings: Optional[dict] = None,
         album=row.album or "", bpm=row.bpm, key=row.key, duration_sec=row.duration,
         rating=int(row.rating or 0), added=added_qt, path=row.path, comment=row.comment or "",
         tieup=tieups.shown if tieups is not None else "", tieup_text=tieups.text if tieups is not None else "",
-        uid=row.uid or "", reading_keys=keys,
+        uid=row.uid or "", reading_keys=keys, initials=initials or {}, sort_keys=sort_keys or {},
     )
 
 
