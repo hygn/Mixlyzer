@@ -34,7 +34,7 @@ from __future__ import annotations
 import base64
 import re
 import struct
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Optional
 
 import numpy as np
@@ -63,6 +63,7 @@ class HotCue:
     time_sec: float
     color: tuple[int, int, int]     # one of CUE_COLORS
     name: str
+    kept: bool = False              # one of the file's kept (hot_cues' keep), not made of the marks
 
 
 # --- Serato's time ---------------------------------------------------------------------------------------------
@@ -236,7 +237,8 @@ def hot_cues(groups: list[JumpCueGroup], cue_points: list = (), source: str = "j
     """The hot cues (8 slots) and what Serato loses of the marks. ``source``: the JumpCUEs (``groups``: A-H in their
     slots, "jumpcues"), the CUE points (``cue_points``: CuePoint, in time order from the first slot, "cue_points"),
     or both (the CUE points in the slots the JumpCUEs leave, "both"). ``keep``: the ``existing`` Markers2's hot cues
-    kept in the slots still free (they are in Serato's time already); the cues written in Serato's time (``offset``:
+    kept in the slots still free (they are in Serato's time already; ``kept`` set: the file's own and those an
+    earlier write put there alike, so a mark removed since stays); the cues written in Serato's time (``offset``:
     time_offset's). Losses: "slots" (a JumpCUE past H), "cue_points" (the CUE points not written), "full" (CUE
     points with no slot left)."""
     source = source if source in HOT_CUE_SOURCES else "jumpcues"
@@ -268,8 +270,13 @@ def hot_cues(groups: list[JumpCueGroup], cue_points: list = (), source: str = "j
     if keep:
         for old in parse_cues(existing):
             if 0 <= old.slot < SLOTS and old.slot not in cues:
-                cues[old.slot] = old
+                cues[old.slot] = replace(old, kept=True)
     return [cues[s] for s in sorted(cues)], losses
+
+
+def _ms(seconds: float) -> int:
+    """A hot cue's position as Markers2 holds it (ms)."""
+    return int(round(seconds * 1000.0))
 
 
 def _entry(name: str, data: bytes) -> bytes:
@@ -308,7 +315,7 @@ def build_markers2(cues: list[HotCue], existing: bytes = b"", bpm_lock: bool = T
     for name, data in [(n, d) for n, d in kept if n == "COLOR"]:
         body += _entry(name, data)
     for c in cues:
-        data = (b"\x00" + bytes([c.slot]) + struct.pack(">I", int(round(c.time_sec * 1000.0))) + b"\x00"
+        data = (b"\x00" + bytes([c.slot]) + struct.pack(">I", _ms(c.time_sec)) + b"\x00"
                 + bytes(c.color) + b"\x00\x00" + _name(c.name) + b"\x00")
         body += _entry("CUE", data)
     for name, data in [(n, d) for n, d in kept if n != "COLOR"]:

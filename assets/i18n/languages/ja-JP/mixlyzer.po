@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-31 00:32+0900\n"
+"POT-Creation-Date: 2026-10-31 00:50+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ja_JP\n"
@@ -1389,7 +1389,7 @@ msgid "The written tags did not read back as written; the file is unchanged."
 msgstr "書き込んだタグが書いたとおりに読み戻せませんでした。ファイルは変更されていません。"
 
 #: core/tags/writer.py:250 core/tags/writer.py:283 core/tags/writer.py:363
-#: core/tags/writer.py:1496 ui/library/tabs/sync.py:261
+#: core/tags/writer.py:1496 ui/library/tabs/sync.py:259
 msgid "Tags cannot be written to this file's format."
 msgstr "このファイル形式にはタグを書き込めません。"
 
@@ -2052,7 +2052,7 @@ msgstr "相対または絶対の .json パス"
 msgid "Folder for features cached while reoptimizing, so later runs are faster."
 msgstr "再最適化中に特徴量をキャッシュするフォルダー。次回以降の実行が速くなります。"
 
-#: ui/config/analysis.py:47 ui/config/analysis.py:163 ui/config/library.py:206
+#: ui/config/analysis.py:47 ui/config/analysis.py:163 ui/config/library.py:207
 #: ui/config/view.py:187
 msgid "General"
 msgstr "一般"
@@ -2165,7 +2165,7 @@ msgstr "最小 BPM"
 
 #: ui/config/analysis.py:139 ui/config/analysis.py:177
 #: ui/config/analysis.py:200 ui/config/dialogs/optimization.py:204
-#: ui/config/library.py:199 ui/config/library.py:210 ui/config/playback.py:108
+#: ui/config/library.py:200 ui/config/library.py:211 ui/config/playback.py:108
 #: ui/config/view.py:182
 msgid "Advanced"
 msgstr "詳細設定"
@@ -3546,7 +3546,7 @@ msgstr ""
 "<p>Rekordbox "
 "にはテンポのランプがないため、ランプは一定テンポのステップに分けて書き出されます。小さいほどステップが細かくなります。</p>"
 
-#: ui/config/library.py:64 ui/library/tabs/sync.py:97
+#: ui/config/library.py:64 ui/library/tabs/sync.py:96
 msgid "Tie-ups after the comment"
 msgstr "コメントの後にタイアップを付ける"
 
@@ -3759,8 +3759,8 @@ msgstr ""
 msgid "Backup"
 msgstr "バックアップ"
 
-#: ui/config/library.py:165 ui/config/library.py:208
-#: ui/library/tabs/sync.py:132
+#: ui/config/library.py:165 ui/config/library.py:209
+#: ui/library/tabs/sync.py:131
 msgid "Rekordbox XML"
 msgstr "Rekordbox XML"
 
@@ -3783,7 +3783,7 @@ msgid "Tie-up Language"
 msgstr "タイアップの言語"
 
 # | msgid "Min seg"
-#: ui/config/library.py:179 ui/config/library.py:209
+#: ui/config/library.py:179 ui/config/library.py:210
 msgid "Serato"
 msgstr "Serato"
 
@@ -3815,42 +3815,43 @@ msgstr "ファイルの Serato ホットキューを残りのスロットに残�
 
 #: ui/config/library.py:191
 msgid ""
-"<p>Hot cues set in Serato stay in the slots the written ones leave; off, "
-"every hot cue is replaced.</p>"
+"<p>Hot cues set in Serato stay in the slots the written ones leave, and "
+"so do those written before (a JumpCUE removed since stays in Serato); "
+"off, every hot cue is replaced.</p>"
 msgstr ""
-"<p>Serato "
-"で設定したホットキューは、書き込むホットキューが空けたスロットに残ります。オフにすると、すべてのホットキューを置き換えます。</p>"
+"<p>Serato で設定したホットキューは、書き込むホットキューが空けたスロットに残り、以前に書き込んだホットキューも残ります（その後削除した "
+"JumpCUE は Serato に残ったまま）。オフにすると、すべてのホットキューを置き換えます。</p>"
 
-#: ui/config/library.py:192
+#: ui/config/library.py:193
 msgid "Lock the beatgrid"
 msgstr "ビートグリッドをロック"
 
-#: ui/config/library.py:194
+#: ui/config/library.py:195
 msgid ""
 "<p>Serato's BPM lock: its analysis then leaves the written beatgrid as it"
 " is.</p>"
 msgstr "<p>Serato の BPM ロック: Serato の解析は書き込んだビートグリッドをそのままにします。</p>"
 
-#: ui/config/library.py:195
+#: ui/config/library.py:196
 msgid "Hot Cues"
 msgstr "ホットキュー"
 
-#: ui/config/library.py:202
+#: ui/config/library.py:203
 msgid "Log Path"
 msgstr "ログのパス"
 
 # | msgid "Library Path"
 # | msgid "Library Database"
-#: ui/config/library.py:207
+#: ui/config/library.py:208
 msgid "Database"
 msgstr "データベース"
 
-#: ui/config/library.py:235
+#: ui/config/library.py:236
 msgid "Add Local Music Folder"
 msgstr "ローカルの音楽フォルダーを追加"
 
 # | msgid "Library Path"
-#: ui/config/dialogs/library_sync.py:17 ui/config/library.py:298
+#: ui/config/dialogs/library_sync.py:17 ui/config/library.py:299
 msgid "Sync Library Database"
 msgstr "ライブラリデータベースの同期"
 
@@ -3858,7 +3859,7 @@ msgstr "ライブラリデータベースの同期"
 # | database made " "again from its stored analysis (as the editor's save
 # writes
 # | them). " "Titles, artists, ratings and comments are not touched.</p>"
-#: ui/config/library.py:299
+#: ui/config/library.py:300
 msgid ""
 "Every track's BPM, key and search tables in the library database will be "
 "made again from its stored analysis. A BPM or key typed in the Edit Track"
@@ -3871,20 +3872,20 @@ msgstr ""
 "\n"
 "今すぐ同期しますか？"
 
-#: ui/config/library.py:344
+#: ui/config/library.py:345
 msgid "Enable Sync with Rekordbox XML first."
 msgstr "先に「Rekordbox XML と同期」を有効にしてください。"
 
-#: ui/config/dialogs/rekordbox.py:15 ui/config/library.py:344
-#: ui/config/library.py:349
+#: ui/config/dialogs/rekordbox.py:15 ui/config/library.py:345
+#: ui/config/library.py:350
 msgid "Sync Rekordbox XML"
 msgstr "Rekordbox XML の同期"
 
-#: ui/config/library.py:349
+#: ui/config/library.py:350
 msgid "Rekordbox XML Path is empty."
 msgstr "Rekordbox XML のパスが空です。"
 
-#: ui/config/library.py:391
+#: ui/config/library.py:392
 msgid "Rekordbox XML worker started"
 msgstr "Rekordbox XML ワーカーを開始しました"
 
@@ -4020,7 +4021,7 @@ msgstr ""
 
 # | msgid "none"
 #: ui/config/midi.py:195 ui/config/output_group.py:83
-#: ui/library/tabs/sync.py:664
+#: ui/library/tabs/sync.py:676
 msgid "None"
 msgstr "なし"
 
@@ -6912,7 +6913,7 @@ msgstr ""
 msgid "No JumpCUE directions"
 msgstr "JumpCUE の方向がありません"
 
-#: ui/library/tabs/export.py:71 ui/library/tabs/sync.py:72
+#: ui/library/tabs/export.py:71 ui/library/tabs/sync.py:71
 msgid "Source"
 msgstr "ソース"
 
@@ -6997,8 +6998,8 @@ msgstr "トラックの解析を読み込めませんでした。"
 msgid "The track has no beatgrid to write."
 msgstr "このトラックには書き出すビートグリッドがありません。"
 
-#: ui/library/tabs/export.py:219 ui/library/tabs/sync.py:464
-#: ui/library/tabs/sync.py:526 ui/windows/diagnostics_dialog.py:59
+#: ui/library/tabs/export.py:219 ui/library/tabs/sync.py:467
+#: ui/library/tabs/sync.py:529 ui/windows/diagnostics_dialog.py:59
 #, python-brace-format
 msgid "The file could not be written: {error}"
 msgstr "ファイルに書き込めません: {error}"
@@ -7025,7 +7026,7 @@ msgstr ""
 "JumpCUE のオーディオを書き込めませんでした:\n"
 "{error}"
 
-#: ui/library/tabs/sync.py:74
+#: ui/library/tabs/sync.py:73
 msgid "File Tags"
 msgstr "ファイルのタグ"
 
@@ -7034,32 +7035,32 @@ msgstr "ファイルのタグ"
 # | the " "fields checked change; the file's other tags, its artwork and its
 # | audio " "stay as they are. FLAC, MP3, AAC, WAV, AIFF and MP4 / M4A
 # | files.</p>"
-#: ui/library/tabs/sync.py:76
+#: ui/library/tabs/sync.py:75
 msgid ""
 "<p>Write the library's values into the audio file's own tags: only the "
 "fields checked change; the file's other tags, its artwork and its audio "
 "stay as they are.</p>"
 msgstr "<p>ライブラリの値をオーディオファイル自体のタグに書き込みます。チェックした項目だけが変わり、ファイルのほかのタグ、アートワーク、オーディオはそのままです。</p>"
 
-#: ui/library/tabs/sync.py:87
+#: ui/library/tabs/sync.py:86
 msgid "MP4 / M4A files hold a whole BPM only."
 msgstr "MP4 / M4A ファイルには整数の BPM しか入りません。"
 
-#: ui/library/tabs/sync.py:88
+#: ui/library/tabs/sync.py:87
 msgid "Written as a musical key (Am, F#)."
 msgstr "一般的なキー表記 (Am、F#) で書き込みます。"
 
-#: ui/library/tabs/sync.py:99
+#: ui/library/tabs/sync.py:98
 msgid ""
 "<p>The comment written with the song's tie-ups after it, as [Title OP; "
 "Other ED]; the library's comment stays as it is.</p>"
 msgstr "<p>コメントの後に曲のタイアップを [タイトル OP; 別作品 ED] の形で付けて書き込みます。ライブラリのコメントはそのままです。</p>"
 
-#: ui/library/tabs/sync.py:104
+#: ui/library/tabs/sync.py:103
 msgid "Serato beatgrid and hot cues"
 msgstr "Serato のビートグリッドとホットキュー"
 
-#: ui/library/tabs/sync.py:106
+#: ui/library/tabs/sync.py:105
 msgid ""
 "<p>Serato DJ's beatgrid and hot cues, in the file's tags where Serato "
 "reads them: the grid from the first downbeat (a ramp a marker a beat), "
@@ -7071,37 +7072,37 @@ msgstr ""
 "グリッドは最初のダウンビートから（ランプは 1 拍ごとにマーカー）、ホットキューは環境設定 > ライブラリ > Serato に従って "
 "JumpCUE、CUE ポイント、またはその両方から作ります。ファイルの Serato のループとトラックカラーはそのままです。</p>"
 
-#: ui/library/tabs/sync.py:110
+#: ui/library/tabs/sync.py:109
 msgid "Serato beatgrid"
 msgstr "Serato のビートグリッド"
 
-#: ui/library/tabs/sync.py:110
+#: ui/library/tabs/sync.py:109
 msgid "Serato hot cues"
 msgstr "Serato のホットキュー"
 
-#: ui/library/tabs/sync.py:111 ui/library/tabs/sync.py:562
+#: ui/library/tabs/sync.py:110 ui/library/tabs/sync.py:565
 msgid "Serato's old cue data"
 msgstr "Serato の旧キューデータ"
 
-#: ui/library/tabs/sync.py:112
+#: ui/library/tabs/sync.py:111
 msgid "Serato's tempo map"
 msgstr "Serato のテンポマップ"
 
-#: ui/library/tabs/sync.py:115 ui/library/tabs/sync.py:298
-#: ui/library/tabs/sync.py:478 ui/library/tabs/sync.py:607
-#: ui/library/tabs/sync.py:683
+#: ui/library/tabs/sync.py:114 ui/library/tabs/sync.py:297
+#: ui/library/tabs/sync.py:481 ui/library/tabs/sync.py:619
+#: ui/library/tabs/sync.py:695
 msgid "Write Tags"
 msgstr "タグを書き込む"
 
-#: ui/library/tabs/sync.py:116
+#: ui/library/tabs/sync.py:115
 msgid "Write the checked fields' stored values into the file's tags."
 msgstr "チェックした項目の保存済みの値をファイルのタグに書き込みます。"
 
-#: ui/library/tabs/sync.py:118
+#: ui/library/tabs/sync.py:117
 msgid "Restore from Backup..."
 msgstr "バックアップから復元..."
 
-#: ui/library/tabs/sync.py:120
+#: ui/library/tabs/sync.py:119
 msgid ""
 "<p>Put the track's file back as a backup made before writing its tags "
 "holds it: a tag backup (.mxtags) or a copy of the whole file.</p>"
@@ -7109,7 +7110,7 @@ msgstr ""
 "<p>トラックのファイルを、タグを書き込む前に作ったバックアップの状態に戻します: "
 "タグのバックアップ（.mxtags）またはファイル全体のコピー。</p>"
 
-#: ui/library/tabs/sync.py:134
+#: ui/library/tabs/sync.py:133
 msgid ""
 "<p>The track written into the Rekordbox XML again, as saving an edit "
 "does: its beatgrid, CUE points, JumpCUEs and values as stored now. The "
@@ -7118,21 +7119,21 @@ msgstr ""
 "<p>編集を保存したときと同じように、このトラックを Rekordbox XML に書き直します: 現在保存されているビートグリッド、CUE "
 "ポイント、JumpCUE と値。XML のファイルとオプションは環境設定 > ライブラリにあります。</p>"
 
-#: ui/library/tabs/sync.py:138 ui/library/tabs/sync.py:218
+#: ui/library/tabs/sync.py:137 ui/library/tabs/sync.py:216
 msgid "Sync to Rekordbox XML"
 msgstr "Rekordbox XML に同期"
 
-#: ui/library/tabs/sync.py:139
+#: ui/library/tabs/sync.py:138
 msgid "Write this track into the Rekordbox XML again."
 msgstr "このトラックを Rekordbox XML に書き直します。"
 
-#: ui/library/tabs/sync.py:195
+#: ui/library/tabs/sync.py:193
 msgid ""
 "Sync with Rekordbox XML is off, or has no file: Settings > Library > "
 "Rekordbox XML."
 msgstr "Rekordbox XML との同期がオフか、ファイルが指定されていません: 環境設定 > ライブラリ > Rekordbox XML。"
 
-#: ui/library/tabs/sync.py:219
+#: ui/library/tabs/sync.py:217
 msgid ""
 "The Edit tab has changes to this track that are not applied: the stored "
 "values are written.\n"
@@ -7141,16 +7142,16 @@ msgstr ""
 "編集タブにこのトラックの未適用の変更があります。保存済みの値が書き込まれます。\n"
 "それでも同期しますか?"
 
-#: ui/library/tabs/sync.py:225
+#: ui/library/tabs/sync.py:223
 msgid "Writing the track into the Rekordbox XML..."
 msgstr "トラックを Rekordbox XML に書き込み中..."
 
-#: ui/library/tabs/sync.py:239
+#: ui/library/tabs/sync.py:237
 #, python-brace-format
 msgid "Written into {path}."
 msgstr "{path} に書き込みました。"
 
-#: ui/library/tabs/sync.py:245
+#: ui/library/tabs/sync.py:243
 #, python-brace-format
 msgid "The Rekordbox XML could not be written: {error}"
 msgstr "Rekordbox XML を書き込めませんでした: {error}"
@@ -7159,7 +7160,7 @@ msgstr "Rekordbox XML を書き込めませんでした: {error}"
 msgid "Check the fields to write."
 msgstr "書き込む項目をチェックしてください。"
 
-#: ui/library/tabs/sync.py:299
+#: ui/library/tabs/sync.py:298
 msgid ""
 "The Edit tab has changes to this track that are not applied: the stored "
 "values are written.\n"
@@ -7168,40 +7169,40 @@ msgstr ""
 "編集タブにこのトラックの未適用の変更があります。保存済みの値が書き込まれます。\n"
 "それでもタグを書き込みますか?"
 
-#: ui/library/tabs/sync.py:307
+#: ui/library/tabs/sync.py:306
 msgid "Reading the file's tags..."
 msgstr "ファイルのタグを読み込み中..."
 
-#: ui/library/tabs/sync.py:328
+#: ui/library/tabs/sync.py:326
 msgid "The track is no longer in the library."
 msgstr "このトラックはもうライブラリにありません。"
 
-#: ui/library/tabs/sync.py:414
+#: ui/library/tabs/sync.py:415
 #, python-brace-format
 msgid ""
 "Also written to {place}, the field DJ software (rekordbox ...) reads. It "
 "holds now: {value}"
 msgstr "{place} にも書き込みます。DJ ソフトウェア（rekordbox など）が読む項目です。現在の値: {value}"
 
-#: ui/library/tabs/sync.py:415 ui/library/tabs/sync.py:645
+#: ui/library/tabs/sync.py:416 ui/library/tabs/sync.py:657
 msgid "(empty)"
 msgstr "（空）"
 
-#: ui/library/tabs/sync.py:417
+#: ui/library/tabs/sync.py:418
 msgid ""
 "Serato reads this before the hot cues written here: it is emptied (its "
 "loops and names are in the hot cues' tag too)."
 msgstr "Serato はここに書くホットキューより先にこれを読みます。そのため空にします（ループと名前はホットキューのタグにもあります）。"
 
-#: ui/library/tabs/sync.py:423
+#: ui/library/tabs/sync.py:424
 msgid "The file's tags already hold these values."
 msgstr "ファイルのタグはすでにこの値です。"
 
-#: ui/library/tabs/sync.py:432
+#: ui/library/tabs/sync.py:435
 msgid "Writing the tags..."
 msgstr "タグを書き込み中..."
 
-#: ui/library/tabs/sync.py:461
+#: ui/library/tabs/sync.py:464
 msgid ""
 "Another program has the file open (a DJ program with the track loaded?): "
 "the tags were not written. Close it there, then write again."
@@ -7209,7 +7210,7 @@ msgstr ""
 "ほかのプログラムがファイルを開いています（トラックを読み込んだ DJ "
 "ソフト？）。タグは書き込まれていません。そちらで閉じてから、もう一度書き込んでください。"
 
-#: ui/library/tabs/sync.py:473
+#: ui/library/tabs/sync.py:476
 #, python-brace-format
 msgid ""
 "The tags were written to the file.\n"
@@ -7218,105 +7219,116 @@ msgstr ""
 "ファイルにタグを書き込みました。\n"
 "バックアップ: {path}"
 
-#: ui/library/tabs/sync.py:474
+#: ui/library/tabs/sync.py:477
 msgid "The tags were written to the file."
 msgstr "ファイルにタグを書き込みました。"
 
-#: ui/library/tabs/sync.py:490 ui/library/tabs/sync.py:497
-#: ui/library/tabs/sync.py:503 ui/library/tabs/sync.py:534
+#: ui/library/tabs/sync.py:493 ui/library/tabs/sync.py:500
+#: ui/library/tabs/sync.py:506 ui/library/tabs/sync.py:537
 msgid "Restore from Backup"
 msgstr "バックアップから復元"
 
-#: ui/library/tabs/sync.py:491
+#: ui/library/tabs/sync.py:494
 msgid "Tag backups (*.mxtags);;All files (*)"
 msgstr "タグのバックアップ (*.mxtags);;すべてのファイル (*)"
 
-#: ui/library/tabs/sync.py:499
+#: ui/library/tabs/sync.py:502
 #, python-brace-format
 msgid "Put '{file}' back as the backup '{backup}' holds it?"
 msgstr "「{file}」をバックアップ「{backup}」の状態に戻しますか？"
 
-#: ui/library/tabs/sync.py:502
+#: ui/library/tabs/sync.py:505
 #, python-brace-format
 msgid "The backup was made of '{name}'."
 msgstr "このバックアップは「{name}」から作成されました。"
 
-#: ui/library/tabs/sync.py:511
+#: ui/library/tabs/sync.py:514
 msgid "Putting the file back..."
 msgstr "ファイルを戻しています..."
 
-#: ui/library/tabs/sync.py:523
+#: ui/library/tabs/sync.py:526
 msgid ""
 "Another program has the file open (a DJ program with the track loaded?): "
 "it was not put back. Close it there, then restore again."
 msgstr "ほかのプログラムがファイルを開いています（トラックを読み込んだ DJ ソフト？）。元に戻していません。そちらで閉じてから、もう一度復元してください。"
 
-#: ui/library/tabs/sync.py:532
+#: ui/library/tabs/sync.py:535
 msgid "The file was put back as the backup holds it."
 msgstr "ファイルをバックアップの状態に戻しました。"
 
-#: ui/library/tabs/sync.py:546 ui/library/tabs/sync.py:558
+#: ui/library/tabs/sync.py:549 ui/library/tabs/sync.py:561
 msgid "(not read)"
 msgstr "（読み込めません）"
 
-#: ui/library/tabs/sync.py:547
+#: ui/library/tabs/sync.py:550
 #, python-brace-format
 msgid "{count} grid marker from {start}, {bpm} BPM at the end"
 msgid_plural "{count} grid markers from {start}, {bpm} BPM at the end"
 msgstr[0] "グリッドマーカー {count} 個、{start} から、最後は {bpm} BPM"
 
-#: ui/library/tabs/sync.py:553
+#: ui/library/tabs/sync.py:556
 msgid "no hot cues"
 msgstr "ホットキューなし"
 
-#: ui/library/tabs/sync.py:554
+#: ui/library/tabs/sync.py:557
 msgid "BPM locked"
 msgstr "BPM ロック"
 
-#: ui/library/tabs/sync.py:559
+#: ui/library/tabs/sync.py:562
 #, python-brace-format
 msgid "{count} tempo segment from {start}, {bpm} BPM at the end"
 msgid_plural "{count} tempo segments from {start}, {bpm} BPM at the end"
 msgstr[0] "テンポ区間 {count} 個、{start} から、最後は {bpm} BPM"
 
-#: ui/library/tabs/sync.py:573
+#: ui/library/tabs/sync.py:576
 msgid ""
 "Serato counts 4-beat bars from the first downbeat: the bars of another "
 "length here (a 3-beat bar, 7/4) are not kept."
 msgstr "Serato は最初のダウンビートから 4 拍の小節で数えます。長さの違う小節（3 拍の小節、7/4）は保持されません。"
 
-#: ui/library/tabs/sync.py:577
+#: ui/library/tabs/sync.py:580
 msgid "Serato has 8 hot cues: the JumpCUEs past H are left out."
 msgstr "Serato のホットキューは 8 つです。H より後の JumpCUE は省かれます。"
 
-#: ui/library/tabs/sync.py:579
+#: ui/library/tabs/sync.py:582
 msgid ""
 "Serato has no memory cues: the CUE points are left out (Settings > "
 "Library > Serato can make them hot cues)."
 msgstr "Serato にはメモリーキューがないため、CUE ポイントは省かれます（環境設定 > ライブラリ > Serato でホットキューにできます）。"
 
-#: ui/library/tabs/sync.py:582
+#: ui/library/tabs/sync.py:585
 msgid "Serato has 8 hot cues: the CUE points with no slot left are left out."
 msgstr "Serato のホットキューは 8 つです。空きスロットのない CUE ポイントは省かれます。"
 
-#: ui/library/tabs/sync.py:609
+#: ui/library/tabs/sync.py:593
+#, python-brace-format
+msgid ""
+"The file's hot cues {slots} stay: Settings > Library > Serato keeps the "
+"file's hot cues in the slots left, those written here before too (a "
+"JumpCUE removed since). Turn that off to replace them all."
+msgstr ""
+"ファイルのホットキュー {slots} は残ります: 環境設定 > ライブラリ > Serato "
+"が空いたスロットにファイルのホットキューを残し、以前ここで書き込んだもの（その後削除した "
+"JumpCUE）も残します。すべて置き換えるにはそのオプションをオフにしてください。"
+
+#: ui/library/tabs/sync.py:621
 #, python-brace-format
 msgid "These tags of '{file}' change:"
 msgstr "「{file}」の次のタグが変わります:"
 
-#: ui/library/tabs/sync.py:641
+#: ui/library/tabs/sync.py:653
 msgid "Write the value here (unchecked: this place stays as it is)."
 msgstr "この項目に値を書き込みます（オフにすると、この項目はそのままです）。"
 
-#: ui/library/tabs/sync.py:660
+#: ui/library/tabs/sync.py:672
 msgid "Backup before writing"
 msgstr "書き込み前のバックアップ"
 
-#: ui/library/tabs/sync.py:665
+#: ui/library/tabs/sync.py:677
 msgid "The tags only"
 msgstr "タグのみ"
 
-#: ui/library/tabs/sync.py:666
+#: ui/library/tabs/sync.py:678
 msgid ""
 "The bytes the write replaces (a few KB, more with a cover picture): the "
 "file is put back exactly, as long as its audio stays as it is."
@@ -7325,15 +7337,15 @@ msgstr "書き込みで置き換わる部分のバイト（数 KB、カバー画
 # | msgid "Reading the analysis failed: {error}"
 # | msgid "The search failed: {error}"
 # | msgid "" "The lookup failed:\n" "{error}"
-#: ui/library/tabs/sync.py:668
+#: ui/library/tabs/sync.py:680
 msgid "The whole file"
 msgstr "ファイル全体"
 
-#: ui/library/tabs/sync.py:668
+#: ui/library/tabs/sync.py:680
 msgid "A copy of the whole file, as large as it is."
 msgstr "ファイル全体のコピー（ファイルと同じサイズ）。"
 
-#: ui/library/tabs/sync.py:676
+#: ui/library/tabs/sync.py:688
 #, python-brace-format
 msgid "Kept in {folder}; Restore from Backup puts one back."
 msgstr "{folder} に保存されます。「バックアップから復元」で元に戻せます。"
@@ -7680,14 +7692,14 @@ msgid "All"
 msgstr "すべて"
 
 #: ui/library/tabs/edit_song.py:124 ui/library/tabs/export.py:69
-#: ui/library/tabs/sync.py:70 ui/library/tabs/sync.py:83
+#: ui/library/tabs/sync.py:69 ui/library/tabs/sync.py:82
 #: ui/library/tabs/tieup_editor.py:140 ui/library/tabs/track_search_index.py:53
 #: ui/library/widget.py:39 ui/windows/tieup_works.py:77
 msgid "Title"
 msgstr "タイトル"
 
 #: ui/library/tabs/edit_song.py:125 ui/library/tabs/export.py:70
-#: ui/library/tabs/sync.py:71 ui/library/tabs/sync.py:84
+#: ui/library/tabs/sync.py:70 ui/library/tabs/sync.py:83
 #: ui/library/tabs/track_search_index.py:53 ui/library/widget.py:39
 msgid "Artist"
 msgstr "アーティスト"
@@ -7696,7 +7708,7 @@ msgstr "アーティスト"
 msgid "Duration"
 msgstr "時間"
 
-#: ui/library/tabs/edit_song.py:126 ui/library/tabs/sync.py:85
+#: ui/library/tabs/edit_song.py:126 ui/library/tabs/sync.py:84
 #: ui/library/tabs/track_search_index.py:53 ui/library/widget.py:40
 msgid "Album"
 msgstr "アルバム"
@@ -7718,7 +7730,7 @@ msgstr "追加日"
 msgid "Path"
 msgstr "パス"
 
-#: ui/library/tabs/edit_song.py:130 ui/library/tabs/sync.py:86
+#: ui/library/tabs/edit_song.py:130 ui/library/tabs/sync.py:85
 #: ui/library/widget.py:42
 msgid "Comment"
 msgstr "コメント"
@@ -7782,7 +7794,7 @@ msgstr "トラックが読み込まれていません"
 msgid "Playback"
 msgstr "再生"
 
-#: ui/config/library.py:93 ui/config/library.py:222 ui/library/sources.py:287
+#: ui/config/library.py:93 ui/config/library.py:223 ui/library/sources.py:287
 #: ui/shortcuts.py:32
 msgid "Library"
 msgstr "ライブラリ"

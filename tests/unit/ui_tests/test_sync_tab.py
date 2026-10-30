@@ -247,6 +247,30 @@ class WriteTagsTests(unittest.TestCase):
                          [(0, "A"), (1, "B"), (2, "Intro"), (3, "Drop")])
         self.assertFalse(serato.bpm_locked(raw))
 
+    def test_an_edited_analysis_read_again_and_kept_hot_cues_said(self):
+        # A-D written; then D removed in the editor (the stored analysis changed): read again, not the first one's;
+        # with the file's hot cues kept, the D written before stays, which the note says
+        cue = lambda label, point: JumpCue(label, "", point, point, point)   # noqa: E731
+        beats = 0.5 * np.arange(64)
+        stored = lambda labels: StoredAnalysis(   # noqa: E731
+            duration_sec=32.0, beats=beats, tempo_segments=np.array([[0.0, 32.0, 120, 0.0, 4, 120]]),
+            jump_cues=(JumpCueGroup(tuple(cue(x, 2.0 + 4 * i) for i, x in enumerate(labels)), 0),))
+        for box in self.panel.tag_fields.values():
+            box.setChecked(False)
+        self.panel.cb_serato.setChecked(True)
+        self.panel._library.analysis = stored("ABCD")
+        self.write()
+        self.panel._library.analysis = stored("ABC")
+        lib = mock.Mock(serato_hot_cues="jumpcues", serato_keep_cues=True, serato_bpm_lock=True)
+        with mock.patch.object(sync_tab.settings_store, "current", return_value=mock.Mock(libconfig=lib)):
+            self.write()
+        self.assertIn("The file's hot cues D stay", self.panel.tag_note.text())
+        lib.serato_keep_cues = False
+        with mock.patch.object(sync_tab.settings_store, "current", return_value=mock.Mock(libconfig=lib)):
+            self.write()
+        raw = read_tags(self.file)["serato_markers"].encode("latin-1")
+        self.assertEqual([c.slot for c in serato.parse_cues(raw)], [0, 1, 2])
+
     def test_a_file_held_by_another_program_then_written(self):
         # Windows refuses to replace a file another program holds (Serato with the track loaded): said; the next
         # write's note back in the text's colour

@@ -61,7 +61,6 @@ class SyncTrackPanel(QtWidgets.QWidget):
         self._sig_restored.connect(self._on_restored)
         self._track: Optional[TrackRow] = None
         self._source: Optional[Path] = None
-        self._analysis: Optional[StoredAnalysis] = None        # the track's stored analysis (None: not read yet)
 
         self.lbl_title = ElidedLabel("-")
         self.lbl_artist = ElidedLabel("-")
@@ -114,7 +113,7 @@ class SyncTrackPanel(QtWidgets.QWidget):
         self.tag_note.setWordWrap(True)
         self.btn_write_tags = QtWidgets.QPushButton(tr("Write Tags"))
         self.btn_write_tags.setToolTip(tr("Write the checked fields' stored values into the file's tags."))
-        self.btn_write_tags.clicked.connect(self.write_tags)
+        self.btn_write_tags.clicked.connect(lambda: self.write_tags())
         self.btn_restore_tags = QtWidgets.QPushButton(tr("Restore from Backup..."))
         self.btn_restore_tags.setToolTip(tr(
             "<p>Put the track's file back as a backup made before writing its tags holds it: a tag backup "
@@ -164,7 +163,6 @@ class SyncTrackPanel(QtWidgets.QWidget):
 
     def set_track(self, track: TrackRow) -> None:
         self._track = track
-        self._analysis = None
         self.lbl_title.setText(track.title or "-")
         self.lbl_artist.setText(track.artist or "-")
         self._source = track_source(track, self._model)
@@ -266,9 +264,11 @@ class SyncTrackPanel(QtWidgets.QWidget):
         theme = current_theme()
         self.tag_note.setStyleSheet(f"color: {theme.danger if error else theme.text};")
 
-    def write_tags(self) -> None:
+    def write_tags(self, analysis: Optional[StoredAnalysis] = None) -> None:
         """The checked fields' stored values (read from the library now) written into the track's file, in a
-        thread; the result shown under the fields."""
+        thread; the result shown under the fields. Serato's marks: the deck's when it holds the track, else the
+        stored analysis read now (``analysis``: the one just read for this write; never one kept from an earlier
+        write, which an edit saved since would make stale)."""
         if self._track is None or not self._track.uid or self._tags_writing is not None:
             return
         if self._tag_format() is None:
@@ -280,16 +280,15 @@ class SyncTrackPanel(QtWidgets.QWidget):
             self._set_tag_note(tr("Check the fields to write."), error=True)
             return
         uid = self._track.uid
-        marks = self._serato_marks() if with_serato else None
+        marks = self._serato_marks(analysis) if with_serato else None
         if with_serato and marks is None:      # the stored analysis still to read: asked again when it comes
-            def came(analysis) -> None:
+            def came(read) -> None:
                 if self._track is None or self._track.uid != uid:
                     return
-                if analysis is None:
+                if read is None:
                     self._set_tag_note(tr("The track's analysis could not be read."), error=True)
                     return
-                self._analysis = analysis
-                self.write_tags()
+                self.write_tags(read)
 
             self._library.read(analysis_jobs.analysis, uid, done=came)
             return
@@ -311,13 +310,12 @@ class SyncTrackPanel(QtWidgets.QWidget):
         self._library.read(jobs.tag_values, uid, with_tieups, lang,
                            done=lambda found: self._write_stored(uid, fields, *found, marks=marks))
 
-    def _serato_marks(self) -> Optional[tuple]:
-        """What Serato's tags are made of (the beats, the tempo rows, the JumpCUE groups, the CUE points' count): the
-        deck's marks when it holds the track (as edited), else the stored ones; None: not read yet."""
+    def _serato_marks(self, a: Optional[StoredAnalysis]) -> Optional[tuple]:
+        """What Serato's tags are made of (the beats, the tempo rows, the JumpCUE groups, the CUE points): the deck's
+        marks when it holds the track (as edited), else ``a``'s (the stored analysis); None: ``a`` still to read."""
         if self._model_holds_track():
             m = self._model
             return m.beats, m.tempo_segments, list(m.jump_cues), list(m.cue_points)
-        a = self._analysis
         return None if a is None else (a.beats, a.tempo_segments, list(a.jump_cues), list(a.cue_points))
 
     def _write_stored(self, uid: str, fields: list, row: Optional[TrackRow], suffix: str,
@@ -367,9 +365,9 @@ class SyncTrackPanel(QtWidgets.QWidget):
     def _serato_values(file_path: str, marks: tuple, values: dict, lib=None) -> list[str]:
         """Serato's fields put in ``values`` from ``marks`` (the beats, the tempo rows, the JumpCUE groups, the CUE
         points) as ``lib`` (the libconfig: its serato_ options; None: the defaults) says, in Serato's time of the
-        file (third_party.serato.time_offset): the beatgrid, the hot cues
-        over the file's own Markers2 (its loops and colour kept), its old Markers_ emptied when it has one; returns
-        what Serato loses (third_party.serato's losses)."""
+        file (third_party.serato.time_offset): the beatgrid, the hot cues over the file's own Markers2 (its loops
+        and colour kept; its hot cues in the slots left kept as the options say: "kept" among the losses then),
+        its old Markers_ emptied when it has one; returns what Serato loses (third_party.serato's losses)."""
         beats, rows, groups, cue_points = marks
         source = getattr(lib, "serato_hot_cues", "jumpcues")
         keep, bpm_lock = getattr(lib, "serato_keep_cues", True), getattr(lib, "serato_bpm_lock", True)
@@ -383,6 +381,9 @@ class SyncTrackPanel(QtWidgets.QWidget):
             values["serato_tempo_map"] = serato.build_tempo_map(markers)
         cues, cue_losses = serato.hot_cues(groups, cue_points, source, existing, keep, offset)
         values["serato_markers"] = serato.build_markers2(cues, existing, bpm_lock)
+        kept = [c for c in cues if c.kept]
+        if kept:
+            cue_losses = cue_losses + ["kept:" + "".join("ABCDEFGH"[c.slot] for c in kept)]
         if now.get("serato_markers_old"):
             values["serato_markers_old"] = ""
         return losses + cue_losses
@@ -420,7 +421,9 @@ class SyncTrackPanel(QtWidgets.QWidget):
         if not changes:
             self._tags_writing = None
             self._update_tag_controls()
-            self._set_tag_note(tr("The file's tags already hold these values."))
+            notes = [tr("The file's tags already hold these values.")]
+            notes += [_kept_note(loss[len("kept:"):]) for loss in losses if loss.startswith("kept:")]
+            self._set_tag_note("\n".join(notes))
             return
         dialog = TagWriteDialog(Path(file_path).name, changes, type(self)._backup, self)
         if dialog.exec() != QtWidgets.QDialog.Accepted:
@@ -580,7 +583,16 @@ def _serato_losses(field: str, losses: list[str]) -> list[str]:
                           "make them hot cues)."))
         if "full" in losses:
             out.append(tr("Serato has 8 hot cues: the CUE points with no slot left are left out."))
+        out += [_kept_note(loss[len("kept:"):]) for loss in losses if loss.startswith("kept:")]
     return out
+
+
+def _kept_note(slots: str) -> str:
+    """The hot cues the file holds kept in the slots the marks leave (``slots``: their letters), said: those
+    written before by Mixlyzer among them."""
+    return tr("The file's hot cues {slots} stay: Settings > Library > Serato keeps the file's hot cues in the slots "
+              "left, those written here before too (a JumpCUE removed since). Turn that off to replace them all."
+              ).format(slots=", ".join(slots))
 
 
 def breakable_path(path: str) -> str:

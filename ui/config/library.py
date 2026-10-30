@@ -188,7 +188,8 @@ def build_library_tab(dialog) -> None:
         "written there become hot cues.</p>"))
     dialog.cb_serato_keep_cues = QCheckBox(tr("Keep the file's Serato hot cues in the slots left"))
     dialog.cb_serato_keep_cues.setToolTip(tr(
-        "<p>Hot cues set in Serato stay in the slots the written ones leave; off, every hot cue is replaced.</p>"))
+        "<p>Hot cues set in Serato stay in the slots the written ones leave, and so do those written before (a "
+        "JumpCUE removed since stays in Serato); off, every hot cue is replaced.</p>"))
     dialog.cb_serato_bpm_lock = QCheckBox(tr("Lock the beatgrid"))
     dialog.cb_serato_bpm_lock.setToolTip(tr(
         "<p>Serato's BPM lock: its analysis then leaves the written beatgrid as it is.</p>"))
