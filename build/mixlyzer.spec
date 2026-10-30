@@ -33,6 +33,8 @@ a = Analysis(
                                         and name != 'mixlyzer_large.png')
     + shipped('assets/fonts') + shipped('assets/sound')
     + shipped('assets/styles') + shipped('assets/readings')
+    # the third-party notices Help > About shows (build/notices.py)
+    + shipped('assets/notices')
     # the UI's languages (system.i18n): the list and each one's catalog
     + shipped('assets/i18n', lambda name: name in ('languages.json', 'mixlyzer.po'))
     + shipped('assets/shortcuts', lambda name: name == 'default_shortcuts.json')
@@ -44,7 +46,9 @@ a = Analysis(
     + collect_data_files('sudachidict_core')
     + collect_data_files('anyascii')
     + collect_data_files('pypinyin')
-    + collect_data_files('pycantonese'),
+    # pycantonese's data the readings read (HKCanCor, rime-cantonese), not its other corpora (CantoMap: GPL-3.0,
+    # Common Voice: MPL-2.0, CTCPC), which nothing reads: the notices name what is shipped
+    + collect_data_files('pycantonese', excludes=['data/cantomap', 'data/common_voice', 'data/ctcpc']),
     # Sudachi imports its dictionary package by name (dict="core")
     hiddenimports=['sudachidict_core'],
     hookspath=[],

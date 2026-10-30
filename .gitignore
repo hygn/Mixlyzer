@@ -36,6 +36,7 @@ build/*
 !build/translations.py
 !build/audio_engine.py
 !build/pipeline_map_svg.py
+!build/notices.py
 
 # Native audio engine: its build (build/audio_engine.py) and the VOLK it builds
 audioengine/native/bin/

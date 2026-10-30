@@ -17,7 +17,6 @@ dependencies = [
     "scipy>=1.16.3",
     "soundfile>=0.13.1",
     "tqdm>=4.67.1",
-    "pip-licenses>=5.5.0",
     "sudachipy>=0.7.0",
     "sudachidict-core>=20261015",
     "anyascii>=0.3.3",
@@ -29,6 +28,7 @@ dependencies = [
 [dependency-groups]
 dev = [
     "babel>=2.18.0",
+    "pip-licenses>=5.5.0",
 ]
 # build/audio_engine.py: VOLK's build (cmake, ninja; mako for its generated sources) and the engine's link to it
 native = [

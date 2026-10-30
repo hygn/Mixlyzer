@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-30 19:35+0900\n"
+"POT-Creation-Date: 2026-10-30 20:01+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ja_JP\n"
@@ -8435,22 +8435,38 @@ msgid ""
 "KR)."
 msgstr "言語名をどの言語でも入力するか、タグ（言語-地域：ko-KR）を入力してください。"
 
-#: ui/windows/about_dialog.py:179
+#: ui/windows/about_dialog.py:185
 msgid "About Mixlyzer"
 msgstr "Mixlyzer について"
 
-#: ui/windows/about_dialog.py:184
+#: ui/windows/about_dialog.py:194
 msgid ""
 "Mixlyzer\n"
 "\n"
-"Interactive beatgrid, key, and JumpCUE analysis and editing toolkit.\n"
+"An interactive tool for DJs: music analysis, metadata editing, library "
+"management and search.\n"
 "Distributed under the GNU Lesser General Public License v3.0. See below "
 "for the full license text."
-msgstr ""
-"Mixlyzer\n"
-"\n"
-"ビートグリッド、キー、JumpCUE を解析・編集するインタラクティブなツールです。\n"
-"GNU Lesser General Public License v3.0 で配布されています。ライセンスの全文は以下をご覧ください。"
+msgstr "Mixlyzer\n\nDJ のための音楽解析、メタデータ編集、ライブラリー管理、検索のインタラクティブなツールです。\nGNU Lesser General Public License v3.0 で配布されています。ライセンスの全文は下をご覧ください。"
+
+#: ui/windows/about_dialog.py:209
+msgid ""
+"The third-party software, fonts and data Mixlyzer carries, each under its"
+" own license, with the texts their licenses ask to go with them."
+msgstr "Mixlyzer に含まれるサードパーティのソフトウェア、フォント、データです。それぞれ独自のライセンスに従い、ライセンスが添付を求める文書を併せて載せています。"
+
+#: ui/windows/about_dialog.py:214
+msgid "Find (Enter: next)"
+msgstr "検索 (Enter: 次へ)"
+
+#: ui/windows/about_dialog.py:221
+msgid "Third-party Licenses"
+msgstr "サードパーティのライセンス"
+
+#: ui/windows/about_dialog.py:238
+#, python-brace-format
+msgid "The notices file is missing ({path}); build/notices.py makes it."
+msgstr "告知ファイルがありません（{path}）。build/notices.py で作成します。"
 
 #: ui/windows/library_backup.py:22
 msgid "This file is not a Mixlyzer library backup."

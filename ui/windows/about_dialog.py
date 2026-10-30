@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from PySide6 import QtCore, QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
 from system.i18n import tr
+from system.resource_paths import resource_path
 
 
 LGPL3_TEXT = """
@@ -173,28 +174,77 @@ Library.
 """
 
 
+NOTICES = "assets/notices/THIRD_PARTY_NOTICES.txt"     # build/notices.py
+
+
 class AboutDialog(QtWidgets.QDialog):
+    """Mixlyzer's licence, and the third-party works it carries with theirs (NOTICES: read when that tab opens)."""
+
     def __init__(self, parent: QtWidgets.QWidget | None = None):
         super().__init__(parent)
         self.setWindowTitle(tr("About Mixlyzer"))
-        self.resize(720, 560)
+        self.resize(760, 600)
         layout = QtWidgets.QVBoxLayout(self)
+        self.tabs = QtWidgets.QTabWidget()
+        layout.addWidget(self.tabs, 1)
 
+        own = QtWidgets.QWidget()
+        own_layout = QtWidgets.QVBoxLayout(own)
         about_label = QtWidgets.QLabel(
-            tr("Mixlyzer\n\nInteractive beatgrid, key, and JumpCUE analysis and editing toolkit.\n"
-               "Distributed under the GNU Lesser General Public License v3.0. "
+            tr("Mixlyzer\n\nAn interactive tool for DJs: music analysis, metadata editing, library management and "
+               "search.\nDistributed under the GNU Lesser General Public License v3.0. "
                "See below for the full license text.")
         )
         about_label.setWordWrap(True)
         about_label.setAlignment(QtCore.Qt.AlignCenter)
-        layout.addWidget(about_label)
-
-        text_box = QtWidgets.QTextEdit()
+        own_layout.addWidget(about_label)
+        text_box = QtWidgets.QPlainTextEdit()
         text_box.setReadOnly(True)
         text_box.setPlainText(LGPL3_TEXT)
-        layout.addWidget(text_box, 1)
+        own_layout.addWidget(text_box, 1)
+        self.tabs.addTab(own, "Mixlyzer")
+
+        others = QtWidgets.QWidget()
+        others_layout = QtWidgets.QVBoxLayout(others)
+        intro = QtWidgets.QLabel(tr("The third-party software, fonts and data Mixlyzer carries, each under its own "
+                                    "license, with the texts their licenses ask to go with them."))
+        intro.setWordWrap(True)
+        others_layout.addWidget(intro)
+        self.find_edit = QtWidgets.QLineEdit()
+        self.find_edit.setPlaceholderText(tr("Find (Enter: next)"))
+        self.find_edit.returnPressed.connect(self._find_next)
+        others_layout.addWidget(self.find_edit)
+        self.notices_box = QtWidgets.QPlainTextEdit()
+        self.notices_box.setReadOnly(True)
+        self.notices_box.setLineWrapMode(QtWidgets.QPlainTextEdit.NoWrap)
+        others_layout.addWidget(self.notices_box, 1)
+        self.tabs.addTab(others, tr("Third-party Licenses"))
+        self.tabs.currentChanged.connect(self._load_notices)
+        self._notices_loaded = False
 
         buttons = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Close)
         buttons.rejected.connect(self.reject)
         buttons.accepted.connect(self.accept)
         layout.addWidget(buttons)
+
+    def _load_notices(self, _index: int = 0) -> None:
+        """The notices read the first time their tab is shown (~850 KB)."""
+        if self._notices_loaded or self.tabs.currentIndex() != 1:
+            return
+        self._notices_loaded = True
+        try:
+            text = resource_path(NOTICES).read_text(encoding="utf-8")
+        except OSError:
+            text = tr("The notices file is missing ({path}); build/notices.py makes it.").format(path=NOTICES)
+        self.notices_box.setPlainText(text)
+
+    def _find_next(self) -> None:
+        """The next match of the find field (from the top again past the last)."""
+        needle = self.find_edit.text()
+        if not needle:
+            return
+        if not self.notices_box.find(needle):
+            cursor = self.notices_box.textCursor()
+            cursor.movePosition(QtGui.QTextCursor.Start)
+            self.notices_box.setTextCursor(cursor)
+            self.notices_box.find(needle)
