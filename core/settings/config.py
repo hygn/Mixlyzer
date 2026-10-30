@@ -40,6 +40,9 @@ class libconfig:
     # A library backup (core.library.package) packs the analyses' feature caches too (Reoptimize's training data,
     # made again from the library when missing).
     backup_feature_cache: bool
+    # The library folder (system.os_support.path_key) whose warning of a sync client's folder the user turned off
+    # ("": none; another folder warned again).
+    cloud_sync_warning_off: str = ""
 
 
 @dataclass
@@ -441,6 +444,7 @@ def default_cfg():
         export_tieup_language="",
         sync_stored_analysis=True,
         backup_feature_cache=False,
+        cloud_sync_warning_off="",
     )
     acfg = analysisconfig(
         bpm_min=100,

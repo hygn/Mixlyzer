@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-30 22:49+0900\n"
+"POT-Creation-Date: 2026-10-30 22:59+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ja_JP\n"
@@ -538,7 +538,7 @@ msgstr "コアオブジェクトと再生"
 msgid "Main view, editor and library"
 msgstr "メインビュー、エディター、ライブラリ"
 
-#: app/window.py:110 app/window.py:257 ui/config/window.py:66
+#: app/window.py:110 app/window.py:283 ui/config/window.py:66
 msgid "Settings"
 msgstr "環境設定"
 
@@ -546,31 +546,52 @@ msgstr "環境設定"
 msgid "Dialogs, workflows and metronome"
 msgstr "ダイアログ、ワークフロー、メトロノーム"
 
-#: app/window.py:258 ui/windows/workers.py:28
+#: app/window.py:158
+msgid "Library in a Synced Folder"
+msgstr "同期フォルダー内のライブラリ"
+
+#: app/window.py:159
+#, python-brace-format
+msgid ""
+"The library is in a folder {service} syncs:\n"
+"{path}\n"
+"\n"
+"A sync while Mixlyzer writes the library can damage its database "
+"(library.db), and a track kept online only is downloaded each time it is "
+"opened. Keep the library in a folder that is not synced (Settings > "
+"Library > Backup makes a copy you can restore elsewhere), or pause the "
+"sync while Mixlyzer runs."
+msgstr "ライブラリが {service} の同期するフォルダーにあります:\n{path}\n\nMixlyzer がライブラリに書き込んでいる最中に同期されると、データベース（library.db）が壊れることがあります。また、オンラインのみのトラックは開くたびにダウンロードされます。ライブラリは同期しないフォルダーに置くか（環境設定 > ライブラリ > バックアップでコピーを作り、別の場所に復元できます）、Mixlyzer の使用中は同期を一時停止してください。"
+
+#: app/window.py:165
+msgid "Don't show this again for this folder"
+msgstr "このフォルダーについて今後表示しない"
+
+#: app/window.py:284 ui/windows/workers.py:28
 msgid "Workers"
 msgstr "タスク"
 
 # | msgid "Tie-ups"
-#: app/window.py:259 ui/shortcuts.py:147 ui/windows/tieup_works.py:33
+#: app/window.py:285 ui/shortcuts.py:147 ui/windows/tieup_works.py:33
 #: ui/windows/tieup_works.py:204 ui/windows/tieup_works.py:259
 #: ui/windows/tieup_works.py:264 ui/windows/tieup_works.py:273
 #: ui/windows/tieup_works.py:336
 msgid "Tie-up Works"
 msgstr "タイアップ作品"
 
-#: app/window.py:260
+#: app/window.py:286
 msgid "Open Source"
 msgstr "オープンソース"
 
-#: app/window.py:261 ui/windows/diagnostics_dialog.py:21
+#: app/window.py:287 ui/windows/diagnostics_dialog.py:21
 msgid "Diagnostics"
 msgstr "診断情報"
 
-#: app/window.py:262
+#: app/window.py:288
 msgid "About"
 msgstr "情報"
 
-#: app/window.py:279 core/controls/midi.py:55 ui/config/playback.py:328
+#: app/window.py:305 core/controls/midi.py:55 ui/config/playback.py:328
 msgid "Mixer"
 msgstr "ミキサー"
 
@@ -578,53 +599,53 @@ msgstr "ミキサー"
 # | Playback > " "Audio engine)."
 # Audio
 # | > " "Engine)."
-#: app/window.py:458
+#: app/window.py:484
 msgid "MIDI needs the native audio engine (Settings > Audio > Engine)."
 msgstr "MIDI は Native オーディオエンジンでのみ動作します（設定 > オーディオ > エンジン）。"
 
 # | msgid "MIDI input"
-#: app/window.py:465
+#: app/window.py:491
 msgid "MIDI input on."
 msgstr "MIDI 入力オン。"
 
 # | msgid "MIDI input"
-#: app/window.py:465
+#: app/window.py:491
 msgid "MIDI input off."
 msgstr "MIDI 入力オフ。"
 
-#: app/window.py:517
+#: app/window.py:543
 msgid "The Python audio engine plays: there is no native engine to restart."
 msgstr "Python オーディオエンジンで再生中です。再起動するネイティブエンジンがありません。"
 
 # | msgid "Starting the reading worker"
-#: app/window.py:519
+#: app/window.py:545
 msgid "Restarting the audio engine..."
 msgstr "オーディオエンジンを再起動中..."
 
 # | msgid "Audio engine"
-#: app/window.py:523
+#: app/window.py:549
 msgid "Audio engine restarted."
 msgstr "オーディオエンジンを再起動しました。"
 
-#: app/window.py:524
+#: app/window.py:550
 msgid "The audio engine did not start; it is tried again every 2 seconds."
 msgstr "オーディオエンジンが起動しませんでした。2 秒ごとに再試行します。"
 
-#: app/window.py:574 app/window.py:639
+#: app/window.py:600 app/window.py:665
 msgid "External Sync is enabled. Local track loading is disabled."
 msgstr "外部同期が有効です。ローカルでのトラックの読み込みは無効になります。"
 
-#: app/window.py:587 app/window.py:642
+#: app/window.py:613 app/window.py:668
 msgid "Segment reanalysis canceled (track changed)"
 msgstr "区間の再解析をキャンセルしました (トラックが変わりました)"
 
 # | msgid "Phrase reanalysis completed"
-#: app/window.py:623
+#: app/window.py:649
 #, python-brace-format
 msgid "The track's analysis could not be read: {file}"
 msgstr "トラックの解析を読み込めませんでした: {file}"
 
-#: app/window.py:627
+#: app/window.py:653
 #, python-brace-format
 msgid ""
 "{n} JumpCUE past slot Z is not shown ({file}); it stays stored until the "
@@ -634,15 +655,15 @@ msgid_plural ""
 "the JumpCUEs are edited."
 msgstr[0] "スロットZを超えるJumpCUE {n}個は表示されません（{file}）。JumpCUEを編集するまでは保存されたまま残ります。"
 
-#: app/window.py:645
+#: app/window.py:671
 msgid "Track unloaded."
 msgstr "トラックをアンロードしました。"
 
-#: app/window.py:655
+#: app/window.py:681
 msgid "Track File Not Found"
 msgstr "トラックファイルが見つかりません"
 
-#: app/window.py:659
+#: app/window.py:685
 #, python-brace-format
 msgid ""
 "Cannot load \"{name}\": its file is missing.\n"
@@ -655,80 +676,80 @@ msgstr ""
 "\n"
 "ファイルの新しい場所を指定しますか?"
 
-#: app/window.py:666
+#: app/window.py:692
 #, python-brace-format
 msgid "Locate {name}"
 msgstr "{name} の場所を指定"
 
-#: app/window.py:690 app/window.py:706
+#: app/window.py:716 app/window.py:732
 msgid "Analysis saved to library."
 msgstr "解析をライブラリに保存しました。"
 
-#: app/window.py:695
+#: app/window.py:721
 msgid "Finished"
 msgstr "完了"
 
-#: app/window.py:718
+#: app/window.py:744
 msgid "Waiting to be looked up on Wikipedia"
 msgstr "Wikipediaでの調査待ち"
 
-#: app/window.py:724
+#: app/window.py:750
 msgid "Looking up on Wikipedia and Wikidata…"
 msgstr "WikipediaとWikidataで調べています…"
 
 # | msgid "Reading the analysis failed: {error}"
 # | msgid "The search failed: {error}"
 # | msgid "" "The lookup failed:\n" "{error}"
-#: app/window.py:729
+#: app/window.py:755
 msgid "The lookup failed."
 msgstr "調査できませんでした。"
 
-#: app/window.py:765
+#: app/window.py:791
 #, python-brace-format
 msgid "External Sync loading: {file}"
 msgstr "外部同期で読み込み中: {file}"
 
-#: app/window.py:765
+#: app/window.py:791
 #, python-brace-format
 msgid "External Sync analyzing: {file}"
 msgstr "外部同期で解析中: {file}"
 
 # | msgid "Memory Sync Disabled"
-#: app/window.py:779
+#: app/window.py:805
 msgid "External Sync Disabled"
 msgstr "外部同期を無効にしました"
 
-#: app/window.py:786
+#: app/window.py:812
 msgid "Rebuilding the sort index..."
 msgstr "並び替えインデックスを作り直しています..."
 
-#: app/window.py:788
+#: app/window.py:814
 #, python-brace-format
 msgid "Sort index rebuilt: {count} names."
 msgstr "並び替えインデックスを作り直しました: 名前 {count} 件。"
 
-#: app/window.py:796 ui/windows/library_backup.py:53
+#: app/window.py:822 ui/windows/library_backup.py:53
 msgid "Back Up Library"
 msgstr "ライブラリのバックアップ"
 
-#: app/window.py:797 app/window.py:813
+#: app/window.py:823 app/window.py:839
 #, python-brace-format
 msgid "Mixlyzer library backup (*{suffix})"
 msgstr "Mixlyzer ライブラリのバックアップ (*{suffix})"
 
-#: app/window.py:807
+#: app/window.py:833
 msgid ""
 "The editor has edits not saved. Save or undo them first: Mixlyzer "
 "restarts after a restore."
 msgstr "エディターに保存していない編集があります。先に保存するか元に戻してください。復元すると Mixlyzer は再起動します。"
 
-#: app/window.py:809 app/window.py:812 app/window.py:819 app/window.py:826
-#: app/window.py:869 ui/windows/library_backup.py:133
+#: app/window.py:835 app/window.py:838 app/window.py:845 app/window.py:852
+#: app/window.py:895 ui/windows/library_backup.py:133
 #: ui/windows/library_backup.py:295
 msgid "Restore Library"
 msgstr "ライブラリの復元"
 
-#: app/window.py:850
+#: app/window.py:876
 #, python-brace-format
 msgid ""
 "Restored {n} track into:\n"
@@ -740,34 +761,34 @@ msgstr[0] ""
 "{n} トラックを次のフォルダーに復元しました:\n"
 "{folder}"
 
-#: app/window.py:853
+#: app/window.py:879
 #, python-brace-format
 msgid "{n} track's file path was joined to this device's folders."
 msgid_plural "{n} tracks' file paths were joined to this device's folders."
 msgstr[0] "{n} トラックのファイルのパスをこのデバイスのフォルダーにつなぎました。"
 
-#: app/window.py:857
+#: app/window.py:883
 #, python-brace-format
 msgid "{n} path was left as it was: another track already had the new one."
 msgid_plural "{n} paths were left as they were: other tracks already had the new ones."
 msgstr[0] "{n} 件のパスはそのままにしました: 新しいパスはすでに別のトラックのものです。"
 
-#: app/window.py:861
+#: app/window.py:887
 #, python-brace-format
 msgid "{n} track had no stored analysis in the backup."
 msgid_plural "{n} tracks had no stored analysis in the backup."
 msgstr[0] "{n} トラックはバックアップに保存された解析がありませんでした。"
 
-#: app/window.py:865
+#: app/window.py:891
 msgid "Files replaced by the backup's were kept beside them:"
 msgstr "バックアップのファイルに置き換えたファイルは、隣に残してあります:"
 
-#: app/window.py:867
+#: app/window.py:893
 msgid "Mixlyzer now restarts to open the restored library."
 msgstr "復元したライブラリを開くため、Mixlyzer を再起動します。"
 
 # | msgid "External Sync enabled via {target}. Local play/load is locked."
-#: app/window.py:1153
+#: app/window.py:1179
 #, python-brace-format
 msgid "External Sync enabled: OSC on {address}. Local play/load is locked."
 msgstr "外部同期が有効です: OSC {address}。ローカルでの再生/読み込みはロックされます。"
@@ -1822,62 +1843,67 @@ msgid ""
 " paths are off: {path}"
 msgstr "Windows で開くにはパスが長すぎます（{count} 文字）。Windows の長いパスのサポートがオフです: {path}"
 
-#: core/workflows/analysis.py:114
+#: core/workflows/analysis.py:105
+#, python-brace-format
+msgid "{file} is kept online only: it is downloaded before it is read."
+msgstr "{file} はオンラインのみのファイルです。ダウンロードしてから読み込みます。"
+
+#: core/workflows/analysis.py:117
 #, python-brace-format
 msgid "File not found: {path}"
 msgstr "ファイルが見つかりません: {path}"
 
-#: core/workflows/analysis.py:127
+#: core/workflows/analysis.py:130
 #, python-brace-format
 msgid "Analysis already in progress: {file}"
 msgstr "すでに解析中です: {file}"
 
 # | msgid "Reading the library"
-#: core/workflows/analysis.py:130
+#: core/workflows/analysis.py:133
 #, python-brace-format
 msgid "Already in the library: {file}"
 msgstr "すでにライブラリにあります: {file}"
 
-#: core/workflows/analysis.py:138
+#: core/workflows/analysis.py:141
 msgid "Loading Track"
 msgstr "トラックを読み込み中"
 
 # | msgid "Loading the library"
-#: core/workflows/analysis.py:149
+#: core/workflows/analysis.py:152
 #, python-brace-format
 msgid "Loaded from the library: {file}"
 msgstr "ライブラリから読み込みました: {file}"
 
-#: core/workflows/analysis.py:177
+#: core/workflows/analysis.py:180
 msgid "Waiting for a free analysis slot"
 msgstr "解析の順番待ち"
 
 # | msgid "Analyzing: {file}"
-#: core/workflows/analysis.py:178
+#: core/workflows/analysis.py:181
 #, python-brace-format
 msgid "Waiting to analyze: {file}"
 msgstr "解析待ち: {file}"
 
-#: core/workflows/analysis.py:204
+#: core/workflows/analysis.py:207
 #, python-brace-format
 msgid "Analyzing: {file}"
 msgstr "解析中: {file}"
 
-#: core/workflows/analysis.py:251
+#: core/workflows/analysis.py:254
 #, python-brace-format
 msgid "Error ({file})"
 msgstr "エラー ({file})"
 
-#: core/workflows/analysis.py:251
+#: core/workflows/analysis.py:254
 msgid "Error"
 msgstr "エラー"
 
-#: core/workflows/analysis.py:262
+#: core/workflows/analysis.py:265
 msgid "Saving Result"
 msgstr "結果を保存中"
 
 # | msgid "The file could not be written: {error}"
-#: core/workflows/analysis.py:265
+#: core/workflows/analysis.py:268
 #, python-brace-format
 msgid "The analysis could not be stored: {error}"
 msgstr "解析結果を保存できませんでした: {error}"
@@ -3934,7 +3960,7 @@ msgstr ""
 
 # | msgid "none"
 #: ui/config/midi.py:195 ui/config/output_group.py:83
-#: ui/library/tabs/export.py:773
+#: ui/library/tabs/export.py:779
 msgid "None"
 msgstr "なし"
 
@@ -6894,8 +6920,8 @@ msgid ""
 msgstr "<p>コメントの後に曲のタイアップを [タイトル OP; 別作品 ED] の形で付けて書き込みます。ライブラリのコメントはそのままです。</p>"
 
 #: ui/library/tabs/export.py:157 ui/library/tabs/export.py:252
-#: ui/library/tabs/export.py:385 ui/library/tabs/export.py:716
-#: ui/library/tabs/export.py:791
+#: ui/library/tabs/export.py:385 ui/library/tabs/export.py:722
+#: ui/library/tabs/export.py:798
 msgid "Write Tags"
 msgstr "タグを書き込む"
 
@@ -6951,7 +6977,7 @@ msgid ""
 "holds now: {value}"
 msgstr "{place} にも書き込みます。DJ ソフトウェア（rekordbox など）が読む項目です。現在の値: {value}"
 
-#: ui/library/tabs/export.py:328 ui/library/tabs/export.py:754
+#: ui/library/tabs/export.py:328 ui/library/tabs/export.py:760
 msgid "(empty)"
 msgstr "（空）"
 
@@ -7070,24 +7096,24 @@ msgstr ""
 "JumpCUE のオーディオを書き込めませんでした:\n"
 "{error}"
 
-#: ui/library/tabs/export.py:718
+#: ui/library/tabs/export.py:724
 #, python-brace-format
 msgid "These tags of '{file}' change:"
 msgstr "「{file}」の次のタグが変わります:"
 
-#: ui/library/tabs/export.py:750
+#: ui/library/tabs/export.py:756
 msgid "Write the value here (unchecked: this place stays as it is)."
 msgstr "この項目に値を書き込みます（オフにすると、この項目はそのままです）。"
 
-#: ui/library/tabs/export.py:769
+#: ui/library/tabs/export.py:775
 msgid "Backup before writing"
 msgstr "書き込み前のバックアップ"
 
-#: ui/library/tabs/export.py:774
+#: ui/library/tabs/export.py:780
 msgid "The tags only"
 msgstr "タグのみ"
 
-#: ui/library/tabs/export.py:775
+#: ui/library/tabs/export.py:781
 msgid ""
 "The bytes the write replaces (a few KB, more with a cover picture): the "
 "file is put back exactly, as long as its audio stays as it is."
@@ -7096,15 +7122,15 @@ msgstr "書き込みで置き換わる部分のバイト（数 KB、カバー画
 # | msgid "Reading the analysis failed: {error}"
 # | msgid "The search failed: {error}"
 # | msgid "" "The lookup failed:\n" "{error}"
-#: ui/library/tabs/export.py:777
+#: ui/library/tabs/export.py:783
 msgid "The whole file"
 msgstr "ファイル全体"
 
-#: ui/library/tabs/export.py:777
+#: ui/library/tabs/export.py:783
 msgid "A copy of the whole file, as large as it is."
 msgstr "ファイル全体のコピー（ファイルと同じサイズ）。"
 
-#: ui/library/tabs/export.py:785
+#: ui/library/tabs/export.py:791
 #, python-brace-format
 msgid "Kept in {folder}; Restore from Backup puts one back."
 msgstr "{folder} に保存されます。「バックアップから復元」で元に戻せます。"

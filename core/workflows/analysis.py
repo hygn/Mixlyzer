@@ -20,7 +20,7 @@ from dataclasses import replace
 from core.settings.store import current
 from core.workers.analysis import AnalysisWorker
 from system.i18n import tr
-from system.os_support import path_key, path_too_long
+from system.os_support import online_only, path_key, path_too_long
 
 
 # the library's and a request's listener: the result (its StoredAnalysis ``analysis``, properties) of its track
@@ -101,6 +101,9 @@ class AnalysisWorkflow(QtCore.QObject):
             self._show_status(tr("The path is too long for Windows ({count} characters) while Windows' long paths "
                                  "are off: {path}").format(count=len(os.path.abspath(path)), path=path))
             return
+        if online_only(path):    # a sync client's placeholder: read anyway, said (its download takes a while)
+            self._show_status(tr("{file} is kept online only: it is downloaded before it is read.").format(
+                file=os.path.basename(path)))
         cfg = self._cfg_loader()
         if analysis:
             cfg = replace(cfg, analysisconfig=replace(cfg.analysisconfig, **analysis))

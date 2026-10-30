@@ -143,7 +143,33 @@ class AppWindow(QtWidgets.QMainWindow):
         self._start_metronome()
         self._apply_external_sync_mode(self.cfg.externalsyncconfig)
         self._apply_visibility_refresh_setting(force=True)
+        QtCore.QTimer.singleShot(0, self.warn_cloud_sync)     # once the window is shown
         step(1.0, "")
+
+    def warn_cloud_sync(self) -> None:
+        """The library in a sync client's folder (system.os_support.cloud_sync_folder: OneDrive, Dropbox, iCloud
+        Drive, Google Drive ...) said at each start, until the user turns it off for that folder
+        (libconfig.cloud_sync_warning_off)."""
+        libpath = self.cfg.libconfig.libpath
+        service = os_support.cloud_sync_folder(libpath)
+        if not service or self.cfg.libconfig.cloud_sync_warning_off == path_key(libpath):
+            return
+        box = QtWidgets.QMessageBox(
+            QtWidgets.QMessageBox.Warning, tr("Library in a Synced Folder"),
+            tr("The library is in a folder {service} syncs:\n{path}\n\n"
+               "A sync while Mixlyzer writes the library can damage its database (library.db), and a track kept "
+               "online only is downloaded each time it is opened. Keep the library in a folder that is not synced "
+               "(Settings > Library > Backup makes a copy you can restore elsewhere), or pause the sync while "
+               "Mixlyzer runs.").format(service=service, path=os.path.abspath(libpath)),
+            QtWidgets.QMessageBox.Ok, self)
+        again = QtWidgets.QCheckBox(tr("Don't show this again for this folder"))
+        box.setCheckBox(again)
+        box.exec()
+        if again.isChecked():
+            new_cfg = copy.deepcopy(self.cfg)
+            new_cfg.libconfig.cloud_sync_warning_off = path_key(libpath)
+            self.settings.save(new_cfg)
+            self.cfgwin.set_config(new_cfg)
 
     def _start_library(self, library: LibraryService | None) -> None:
         """The library's one owner: the startup's (its snapshot read already), else started here."""

@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-30 22:49+0900\n"
+"POT-Creation-Date: 2026-10-30 22:59+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -518,7 +518,7 @@ msgstr ""
 msgid "Main view, editor and library"
 msgstr ""
 
-#: app/window.py:110 app/window.py:257 ui/config/window.py:66
+#: app/window.py:110 app/window.py:283 ui/config/window.py:66
 msgid "Settings"
 msgstr ""
 
@@ -526,75 +526,96 @@ msgstr ""
 msgid "Dialogs, workflows and metronome"
 msgstr ""
 
-#: app/window.py:258 ui/windows/workers.py:28
+#: app/window.py:158
+msgid "Library in a Synced Folder"
+msgstr ""
+
+#: app/window.py:159
+#, python-brace-format
+msgid ""
+"The library is in a folder {service} syncs:\n"
+"{path}\n"
+"\n"
+"A sync while Mixlyzer writes the library can damage its database "
+"(library.db), and a track kept online only is downloaded each time it is "
+"opened. Keep the library in a folder that is not synced (Settings > "
+"Library > Backup makes a copy you can restore elsewhere), or pause the "
+"sync while Mixlyzer runs."
+msgstr ""
+
+#: app/window.py:165
+msgid "Don't show this again for this folder"
+msgstr ""
+
+#: app/window.py:284 ui/windows/workers.py:28
 msgid "Workers"
 msgstr ""
 
-#: app/window.py:259 ui/shortcuts.py:147 ui/windows/tieup_works.py:33
+#: app/window.py:285 ui/shortcuts.py:147 ui/windows/tieup_works.py:33
 #: ui/windows/tieup_works.py:204 ui/windows/tieup_works.py:259
 #: ui/windows/tieup_works.py:264 ui/windows/tieup_works.py:273
 #: ui/windows/tieup_works.py:336
 msgid "Tie-up Works"
 msgstr ""
 
-#: app/window.py:260
+#: app/window.py:286
 msgid "Open Source"
 msgstr ""
 
-#: app/window.py:261 ui/windows/diagnostics_dialog.py:21
+#: app/window.py:287 ui/windows/diagnostics_dialog.py:21
 msgid "Diagnostics"
 msgstr ""
 
-#: app/window.py:262
+#: app/window.py:288
 msgid "About"
 msgstr ""
 
-#: app/window.py:279 core/controls/midi.py:55 ui/config/playback.py:328
+#: app/window.py:305 core/controls/midi.py:55 ui/config/playback.py:328
 msgid "Mixer"
 msgstr ""
 
-#: app/window.py:458
+#: app/window.py:484
 msgid "MIDI needs the native audio engine (Settings > Audio > Engine)."
 msgstr ""
 
-#: app/window.py:465
+#: app/window.py:491
 msgid "MIDI input on."
 msgstr ""
 
-#: app/window.py:465
+#: app/window.py:491
 msgid "MIDI input off."
 msgstr ""
 
-#: app/window.py:517
+#: app/window.py:543
 msgid "The Python audio engine plays: there is no native engine to restart."
 msgstr ""
 
-#: app/window.py:519
+#: app/window.py:545
 msgid "Restarting the audio engine..."
 msgstr ""
 
-#: app/window.py:523
+#: app/window.py:549
 msgid "Audio engine restarted."
 msgstr ""
 
-#: app/window.py:524
+#: app/window.py:550
 msgid "The audio engine did not start; it is tried again every 2 seconds."
 msgstr ""
 
-#: app/window.py:574 app/window.py:639
+#: app/window.py:600 app/window.py:665
 msgid "External Sync is enabled. Local track loading is disabled."
 msgstr ""
 
-#: app/window.py:587 app/window.py:642
+#: app/window.py:613 app/window.py:668
 msgid "Segment reanalysis canceled (track changed)"
 msgstr ""
 
-#: app/window.py:623
+#: app/window.py:649
 #, python-brace-format
 msgid "The track's analysis could not be read: {file}"
 msgstr ""
 
-#: app/window.py:627
+#: app/window.py:653
 #, python-brace-format
 msgid ""
 "{n} JumpCUE past slot Z is not shown ({file}); it stays stored until the "
@@ -605,15 +626,15 @@ msgid_plural ""
 msgstr[0] ""
 msgstr[1] ""
 
-#: app/window.py:645
+#: app/window.py:671
 msgid "Track unloaded."
 msgstr ""
 
-#: app/window.py:655
+#: app/window.py:681
 msgid "Track File Not Found"
 msgstr ""
 
-#: app/window.py:659
+#: app/window.py:685
 #, python-brace-format
 msgid ""
 "Cannot load \"{name}\": its file is missing.\n"
@@ -622,76 +643,76 @@ msgid ""
 "Set the file's new location?"
 msgstr ""
 
-#: app/window.py:666
+#: app/window.py:692
 #, python-brace-format
 msgid "Locate {name}"
 msgstr ""
 
-#: app/window.py:690 app/window.py:706
+#: app/window.py:716 app/window.py:732
 msgid "Analysis saved to library."
 msgstr ""
 
-#: app/window.py:695
+#: app/window.py:721
 msgid "Finished"
 msgstr ""
 
-#: app/window.py:718
+#: app/window.py:744
 msgid "Waiting to be looked up on Wikipedia"
 msgstr ""
 
-#: app/window.py:724
+#: app/window.py:750
 msgid "Looking up on Wikipedia and Wikidata…"
 msgstr ""
 
-#: app/window.py:729
+#: app/window.py:755
 msgid "The lookup failed."
 msgstr ""
 
-#: app/window.py:765
+#: app/window.py:791
 #, python-brace-format
 msgid "External Sync loading: {file}"
 msgstr ""
 
-#: app/window.py:765
+#: app/window.py:791
 #, python-brace-format
 msgid "External Sync analyzing: {file}"
 msgstr ""
 
-#: app/window.py:779
+#: app/window.py:805
 msgid "External Sync Disabled"
 msgstr ""
 
-#: app/window.py:786
+#: app/window.py:812
 msgid "Rebuilding the sort index..."
 msgstr ""
 
-#: app/window.py:788
+#: app/window.py:814
 #, python-brace-format
 msgid "Sort index rebuilt: {count} names."
 msgstr ""
 
-#: app/window.py:796 ui/windows/library_backup.py:53
+#: app/window.py:822 ui/windows/library_backup.py:53
 msgid "Back Up Library"
 msgstr ""
 
-#: app/window.py:797 app/window.py:813
+#: app/window.py:823 app/window.py:839
 #, python-brace-format
 msgid "Mixlyzer library backup (*{suffix})"
 msgstr ""
 
-#: app/window.py:807
+#: app/window.py:833
 msgid ""
 "The editor has edits not saved. Save or undo them first: Mixlyzer "
 "restarts after a restore."
 msgstr ""
 
-#: app/window.py:809 app/window.py:812 app/window.py:819 app/window.py:826
-#: app/window.py:869 ui/windows/library_backup.py:133
+#: app/window.py:835 app/window.py:838 app/window.py:845 app/window.py:852
+#: app/window.py:895 ui/windows/library_backup.py:133
 #: ui/windows/library_backup.py:295
 msgid "Restore Library"
 msgstr ""
 
-#: app/window.py:850
+#: app/window.py:876
 #, python-brace-format
 msgid ""
 "Restored {n} track into:\n"
@@ -702,36 +723,36 @@ msgid_plural ""
 msgstr[0] ""
 msgstr[1] ""
 
-#: app/window.py:853
+#: app/window.py:879
 #, python-brace-format
 msgid "{n} track's file path was joined to this device's folders."
 msgid_plural "{n} tracks' file paths were joined to this device's folders."
 msgstr[0] ""
 msgstr[1] ""
 
-#: app/window.py:857
+#: app/window.py:883
 #, python-brace-format
 msgid "{n} path was left as it was: another track already had the new one."
 msgid_plural "{n} paths were left as they were: other tracks already had the new ones."
 msgstr[0] ""
 msgstr[1] ""
 
-#: app/window.py:861
+#: app/window.py:887
 #, python-brace-format
 msgid "{n} track had no stored analysis in the backup."
 msgid_plural "{n} tracks had no stored analysis in the backup."
 msgstr[0] ""
 msgstr[1] ""
 
-#: app/window.py:865
+#: app/window.py:891
 msgid "Files replaced by the backup's were kept beside them:"
 msgstr ""
 
-#: app/window.py:867
+#: app/window.py:893
 msgid "Mixlyzer now restarts to open the restored library."
 msgstr ""
 
-#: app/window.py:1153
+#: app/window.py:1179
 #, python-brace-format
 msgid "External Sync enabled: OSC on {address}. Local play/load is locked."
 msgstr ""
@@ -1669,58 +1690,63 @@ msgid ""
 " paths are off: {path}"
 msgstr ""
 
-#: core/workflows/analysis.py:114
+#: core/workflows/analysis.py:105
+#, python-brace-format
+msgid "{file} is kept online only: it is downloaded before it is read."
+msgstr ""
+
+#: core/workflows/analysis.py:117
 #, python-brace-format
 msgid "File not found: {path}"
 msgstr ""
 
-#: core/workflows/analysis.py:127
+#: core/workflows/analysis.py:130
 #, python-brace-format
 msgid "Analysis already in progress: {file}"
 msgstr ""
 
-#: core/workflows/analysis.py:130
+#: core/workflows/analysis.py:133
 #, python-brace-format
 msgid "Already in the library: {file}"
 msgstr ""
 
-#: core/workflows/analysis.py:138
+#: core/workflows/analysis.py:141
 msgid "Loading Track"
 msgstr ""
 
-#: core/workflows/analysis.py:149
+#: core/workflows/analysis.py:152
 #, python-brace-format
 msgid "Loaded from the library: {file}"
 msgstr ""
 
-#: core/workflows/analysis.py:177
+#: core/workflows/analysis.py:180
 msgid "Waiting for a free analysis slot"
 msgstr ""
 
-#: core/workflows/analysis.py:178
+#: core/workflows/analysis.py:181
 #, python-brace-format
 msgid "Waiting to analyze: {file}"
 msgstr ""
 
-#: core/workflows/analysis.py:204
+#: core/workflows/analysis.py:207
 #, python-brace-format
 msgid "Analyzing: {file}"
 msgstr ""
 
-#: core/workflows/analysis.py:251
+#: core/workflows/analysis.py:254
 #, python-brace-format
 msgid "Error ({file})"
 msgstr ""
 
-#: core/workflows/analysis.py:251
+#: core/workflows/analysis.py:254
 msgid "Error"
 msgstr ""
 
-#: core/workflows/analysis.py:262
+#: core/workflows/analysis.py:265
 msgid "Saving Result"
 msgstr ""
 
-#: core/workflows/analysis.py:265
+#: core/workflows/analysis.py:268
 #, python-brace-format
 msgid "The analysis could not be stored: {error}"
 msgstr ""
@@ -3521,7 +3547,7 @@ msgid ""
 msgstr ""
 
 #: ui/config/midi.py:195 ui/config/output_group.py:83
-#: ui/library/tabs/export.py:773
+#: ui/library/tabs/export.py:779
 msgid "None"
 msgstr ""
 
@@ -6122,8 +6148,8 @@ msgid ""
 msgstr ""
 
 #: ui/library/tabs/export.py:157 ui/library/tabs/export.py:252
-#: ui/library/tabs/export.py:385 ui/library/tabs/export.py:716
-#: ui/library/tabs/export.py:791
+#: ui/library/tabs/export.py:385 ui/library/tabs/export.py:722
+#: ui/library/tabs/export.py:798
 msgid "Write Tags"
 msgstr ""
 
@@ -6175,7 +6201,7 @@ msgid ""
 "holds now: {value}"
 msgstr ""
 
-#: ui/library/tabs/export.py:328 ui/library/tabs/export.py:754
+#: ui/library/tabs/export.py:328 ui/library/tabs/export.py:760
 msgid "(empty)"
 msgstr ""
 
@@ -6283,38 +6309,38 @@ msgid ""
 "{error}"
 msgstr ""
 
-#: ui/library/tabs/export.py:718
+#: ui/library/tabs/export.py:724
 #, python-brace-format
 msgid "These tags of '{file}' change:"
 msgstr ""
 
-#: ui/library/tabs/export.py:750
+#: ui/library/tabs/export.py:756
 msgid "Write the value here (unchecked: this place stays as it is)."
 msgstr ""
 
-#: ui/library/tabs/export.py:769
+#: ui/library/tabs/export.py:775
 msgid "Backup before writing"
 msgstr ""
 
-#: ui/library/tabs/export.py:774
+#: ui/library/tabs/export.py:780
 msgid "The tags only"
 msgstr ""
 
-#: ui/library/tabs/export.py:775
+#: ui/library/tabs/export.py:781
 msgid ""
 "The bytes the write replaces (a few KB, more with a cover picture): the "
 "file is put back exactly, as long as its audio stays as it is."
 msgstr ""
 
-#: ui/library/tabs/export.py:777
+#: ui/library/tabs/export.py:783
 msgid "The whole file"
 msgstr ""
 
-#: ui/library/tabs/export.py:777
+#: ui/library/tabs/export.py:783
 msgid "A copy of the whole file, as large as it is."
 msgstr ""
 
-#: ui/library/tabs/export.py:785
+#: ui/library/tabs/export.py:791
 #, python-brace-format
 msgid "Kept in {folder}; Restore from Backup puts one back."
 msgstr ""
