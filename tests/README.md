@@ -16,7 +16,9 @@ To run every suite at once (the gated ones skip):
 Some of the `tests/test_*.py` tests skip when something optional is missing:
 
 - the native engine (`build/audio_engine.py`): `test_native_engine.py`, `test_native_mixer.py`
-- FFmpeg: `test_tag_writer.py`'s MP4 cases
+- an FFmpeg that encodes (`ffmpeg_fixtures.py`: AAC, MP3, PNG and lavfi's sources; `MIXLYZER_TEST_FFMPEG`, else
+  one on `PATH`; the app's own, `build/ffmpeg.py`'s, only decodes) to make test files: `test_tag_writer.py`'s and
+  `test_tag_backup.py`'s MP4 cases, `test_decoder_paths.py`
 - Babel (`uv sync --group dev`): `test_i18n.py`'s catalog check
 
 The mixer's checks on the user's tracks and the engine live on the user's devices (`native_mixer/`) stay local:

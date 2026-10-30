@@ -13,7 +13,8 @@ import soundfile as sf
 
 from core.tags import backup
 from core.tags import writer as tw
-from test_tag_writer import AUDIO, FFMPEG, MP3_FRAMES, VALUES, id3_frame, mp3
+from ffmpeg_fixtures import MAKER
+from test_tag_writer import AUDIO, MP3_FRAMES, VALUES, id3_frame, mp3
 
 
 class TagBackupTests(unittest.TestCase):
@@ -62,11 +63,11 @@ class TagBackupTests(unittest.TestCase):
         saved = self.write_and_restore(path)
         self.assertLess(saved.stat().st_size, len(MP3_FRAMES))
 
-    @unittest.skipUnless(FFMPEG, "FFmpeg makes the MP4 files")
+    @unittest.skipUnless(MAKER, "an FFmpeg makes the MP4 files")
     def test_mp4_moov_first_and_last(self):
         for flags in ([], ["-movflags", "+faststart"]):
             path = self.dir / ("fast.m4a" if flags else "end.m4a")
-            subprocess.run([str(FFMPEG), "-v", "error", "-y", "-f", "lavfi", "-i", "sine=d=2", "-c:a", "aac",
+            subprocess.run([str(MAKER), "-v", "error", "-y", "-f", "lavfi", "-i", "sine=d=2", "-c:a", "aac",
                             *flags, "-metadata", "title=old", str(path)], check=True)
             with self.subTest(path.name):
                 self.write_and_restore(path, {**VALUES, "comment": "y" * 20_000})

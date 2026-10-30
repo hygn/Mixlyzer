@@ -10,10 +10,9 @@ import unittest
 from pathlib import Path
 
 from analyzer.audio import decoder
+from ffmpeg_fixtures import APP_FFMPEG, MAKER
 from system import os_support
 
-ROOT = Path(__file__).resolve().parent.parent
-FFMPEG = next((p for p in (ROOT / "ffmpeg.exe", ROOT / "ffmpeg") if p.is_file()), None) or shutil.which("ffmpeg")
 TITLE = "ロキ"
 
 
@@ -24,14 +23,14 @@ class DecoderInputTests(unittest.TestCase):
         self.assertEqual(args[3], "file:" + os.path.abspath("pipe:1.mp3"))
 
 
-@unittest.skipUnless(FFMPEG, "FFmpeg makes the test file and reads it")
+@unittest.skipUnless(APP_FFMPEG and MAKER, "an FFmpeg makes the test file (ffmpeg_fixtures), the app's reads it")
 class DecoderPathTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.dir = Path(tempfile.mkdtemp())
         cover = cls.dir / "cover.png"
         cls.source = cls.dir / "source.mp3"
-        run = lambda *args: subprocess.run([str(FFMPEG), "-v", "error", *args], check=True,  # noqa: E731
+        run = lambda *args: subprocess.run([str(MAKER), "-v", "error", *args], check=True,  # noqa: E731
                                            **os_support.hidden_subprocess_kwargs())
         run("-f", "lavfi", "-i", "color=c=red:s=32x32", "-frames:v", "1", str(cover))
         run("-f", "lavfi", "-i", "sine=f=440:d=1", "-i", str(cover), "-map", "0", "-map", "1", "-c:a", "libmp3lame",

@@ -22,8 +22,9 @@ def shipped(folder, keep=lambda name: True):
 
 
 def ffmpeg():
-    """The repository root's FFmpeg into _internal (analyzer/audio/decoder.py looks there): an LGPL build (one built
-    with --enable-gpl or --enable-nonfree is refused), the one the notices name (build/notices.py)."""
+    """The repository root's FFmpeg into _internal (analyzer/audio/decoder.py looks there): FFmpeg's own code under
+    the LGPL (build/ffmpeg.py; one built with --enable-gpl or --enable-nonfree, or with another project's library, is
+    refused), the one the notices name (build/notices.py)."""
     sys.path.insert(0, SPECPATH)
     import notices
     if not notices.FFMPEG.is_file():

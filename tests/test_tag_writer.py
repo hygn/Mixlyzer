@@ -15,8 +15,8 @@ from core.library.db import LibraryDB, TrackRow
 AUDIO = (0.3 * np.sin(np.linspace(0, 200 * np.pi, 22050))).astype(np.float32)
 VALUES = {"title": "テスト ☆ 제목", "artist": "Ａｒｔｉｓｔ", "album": "Album", "comment": "c1\nc2", "bpm": 174.5,
           "key": "F#m"}
-ROOT = Path(__file__).resolve().parents[1]   # the app's own FFmpeg beside it (as the decoder looks), else PATH's
-FFMPEG = next((p for p in (ROOT / "ffmpeg.exe", ROOT / "ffmpeg") if p.is_file()), None) or shutil.which("ffmpeg")
+# the app's own FFmpeg reads (as the decoder does), another makes the MP4 files (ffmpeg_fixtures)
+from ffmpeg_fixtures import APP_FFMPEG, MAKER  # noqa: E402
 
 
 def ss(n: int) -> bytes:
@@ -160,15 +160,15 @@ class TagWriterTests(unittest.TestCase):
         self.assertIsNone(tw.tag_format(self.dir / "a.ogg"))
         self.assertIsNone(tw.tag_format(self.dir / "v22.mp3"))
 
-    @unittest.skipUnless(FFMPEG, "FFmpeg makes the MP4 files")
+    @unittest.skipUnless(APP_FFMPEG and MAKER, "an FFmpeg makes the MP4 files, the app's reads them")
     def test_mp4_moov_first_and_last(self):
         def ff_audio(p: Path) -> bytes:
-            return subprocess.run([str(FFMPEG), "-v", "error", "-i", str(p), "-f", "f32le", "-"],
+            return subprocess.run([str(APP_FFMPEG), "-v", "error", "-i", str(p), "-f", "f32le", "-"],
                                   capture_output=True, check=True).stdout
 
         for flags in ([], ["-movflags", "+faststart"]):
             path = self.dir / ("fast.m4a" if flags else "end.m4a")
-            subprocess.run([str(FFMPEG), "-v", "error", "-y", "-f", "lavfi", "-i", "sine=d=2", "-c:a", "aac",
+            subprocess.run([str(MAKER), "-v", "error", "-y", "-f", "lavfi", "-i", "sine=d=2", "-c:a", "aac",
                             *flags, "-metadata", "title=old", str(path)], check=True)
             with self.subTest(path.name):
                 self.roundtrip(path, ff_audio)
@@ -177,12 +177,12 @@ class TagWriterTests(unittest.TestCase):
                 self.assertEqual(ff_audio(path), ff_audio(path))
 
 
-    @unittest.skipUnless(FFMPEG, "FFmpeg makes the MP4 file")
+    @unittest.skipUnless(MAKER, "an FFmpeg makes the MP4 file")
     def test_the_formats_own_place_written_too(self):
         # a store's M4A (mora's): ©cmt blank, the comment in desc / dscp. The library reads desc and the write
         # goes back there, and to ©cmt, the one rekordbox reads
         path = self.dir / "store.m4a"
-        subprocess.run([str(FFMPEG), "-v", "error", "-y", "-f", "lavfi", "-i", "sine=d=1", "-c:a", "aac",
+        subprocess.run([str(MAKER), "-v", "error", "-y", "-f", "lavfi", "-i", "sine=d=1", "-c:a", "aac",
                         str(path)], check=True)
         tw.write_tags(path, {"comment": "JASRAC / ASOBINOTES"}, {"comment": ["mp4:desc", "mp4:dscp"]})
         tw.write_tags(path, {"comment": " "}, {"comment": ["mp4:©cmt"]})
@@ -226,8 +226,8 @@ class SeratoTagTests(unittest.TestCase):
             out.append(self.dir / name)
         (self.dir / "a.mp3").write_bytes(mp3(id3_frame(b"TIT2", b"\x00old") + bytes(32)))
         out.append(self.dir / "a.mp3")
-        if FFMPEG:
-            subprocess.run([str(FFMPEG), "-v", "error", "-y", "-f", "lavfi", "-i", "sine=d=1", "-c:a", "aac",
+        if MAKER:
+            subprocess.run([str(MAKER), "-v", "error", "-y", "-f", "lavfi", "-i", "sine=d=1", "-c:a", "aac",
                             str(self.dir / "a.m4a")], check=True)
             out.append(self.dir / "a.m4a")
         return out
@@ -262,7 +262,7 @@ class SeratoTagTests(unittest.TestCase):
                                ["serato_beatgrid"]] for path in self.files()}
         self.assertEqual(names[".mp3"], ["GEOB:Serato BeatGrid"])
         self.assertEqual(names[".flac"], ["SERATO_BEATGRID"])
-        if FFMPEG:
+        if MAKER:
             self.assertEqual(names[".m4a"], ["----:com.serato.dj:beatgrid"])
 
 

@@ -35,6 +35,7 @@ build/*
 !build/*.spec
 !build/translations.py
 !build/audio_engine.py
+!build/ffmpeg.py
 !build/pipeline_map_svg.py
 !build/notices.py
 

@@ -50,12 +50,16 @@ class NoticesTests(unittest.TestCase):
 
 
 class FFmpegBuildTests(unittest.TestCase):
-    """An FFmpeg is shipped only as an LGPL build (build/notices.py's ffmpeg_build, which the spec runs too)."""
+    """An FFmpeg is shipped only as FFmpeg's own code under the LGPL (build/notices.py's ffmpeg_build, which the spec
+    runs too): no GPL or nonfree build, no library of another project linked into it."""
+
+    OWN = ("--disable-everything", "--disable-autodetect", "--extra-version=mixlyzer", "--enable-decoder=aac",
+           "--enable-demuxer=mov", "--enable-filter=aresample")
 
     def version_text(self, *options: str) -> str:
-        return ("ffmpeg version n7.1.3-19-gdac2a1116d-20251221 Copyright (c) 2000-2025 the FFmpeg developers\n"
-                "built with gcc 15.2.0\n"
-                f"configuration: --prefix=/ffbuild/prefix {' '.join(options)}\n"
+        return ("ffmpeg version n7.1.3-19-gdac2a1116d-mixlyzer Copyright (c) 2000-2025 the FFmpeg developers\n"
+                "built with clang version 21.1.2\n"
+                f"configuration: {' '.join(options)}\n"
                 "libavutil      59. 39.100 / 59. 39.100\n")
 
     def setUp(self):
@@ -66,17 +70,24 @@ class FFmpegBuildTests(unittest.TestCase):
     def tearDown(self):
         sys.path.remove(str(ROOT / "build"))
 
-    def test_an_lgpl_build_is_read(self):
-        version, compiler, options = self.notices.ffmpeg_build(
-            self.version_text("--enable-version3", "--enable-libopus"))
-        self.assertEqual(version, "n7.1.3-19-gdac2a1116d-20251221")
-        self.assertEqual(compiler, "gcc 15.2.0")
-        self.assertIn("--enable-libopus", options)
+    def test_its_own_build_is_read(self):
+        version, compiler, options = self.notices.ffmpeg_build(self.version_text(*self.OWN, "--enable-small"))
+        self.assertEqual(version, "n7.1.3-19-gdac2a1116d-mixlyzer")
+        self.assertEqual(compiler, "clang version 21.1.2")
+        self.assertIn("--enable-decoder=aac", options)
 
     def test_a_gpl_or_nonfree_build_is_refused(self):
         for option in ("--enable-gpl", "--enable-nonfree"):
             with self.assertRaises(SystemExit, msg=option):
-                self.notices.ffmpeg_build(self.version_text("--enable-version3", option))
+                self.notices.ffmpeg_build(self.version_text(*self.OWN, option))
+
+    def test_another_projects_library_is_refused(self):
+        # an "LGPL" build may link a GPL library inside another (BtbN's chromaprint, built on FFTW)
+        for option in ("--enable-chromaprint", "--enable-libopus", "--enable-zlib", "--enable-schannel"):
+            with self.assertRaises(SystemExit, msg=option):
+                self.notices.ffmpeg_build(self.version_text(*self.OWN, option))
+        with self.assertRaises(SystemExit):     # the libraries it would find by itself
+            self.notices.ffmpeg_build(self.version_text("--disable-everything", "--enable-decoder=aac"))
 
     def test_the_notices_name_the_root_ffmpeg(self):
         if not self.notices.FFMPEG.is_file():

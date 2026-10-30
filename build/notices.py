@@ -7,8 +7,9 @@ with it. Run it again when a dependency changes (as build/translations.py when t
 Three parts, each in a fixed order so a run without changes writes the same file:
   1. what is bundled beside the packages: the Python runtime, Qt (in PySide6), libsndfile (in soundfile), the native
      engine's VOLK with cpu_features, its Rust standard library and its toolchain's runtime (llvm-mingw), FFmpeg
-     (the repository root's, an LGPL build: one built with --enable-gpl or --enable-nonfree is refused; its version,
-     source, build recipe and configuration from its -version), the fonts, the Unicode data the readings tables come
+     (the repository root's, FFmpeg's own code under the LGPL, build/ffmpeg.py's: one built with --enable-gpl or
+     --enable-nonfree, or with a library of another project, is refused; its version, source, build recipe and
+     configuration from its -version), the fonts, the Unicode data the readings tables come
      from, the Cantonese data pycantonese reads (the spec ships only those);
   2. the Python packages the app runs on (uv export, no development groups), by pip-licenses with their licence and
      notice files;
@@ -37,8 +38,16 @@ OUT = ROOT / "assets" / "notices" / "THIRD_PARTY_NOTICES.txt"
 # build only
 FFMPEG = ROOT / ("ffmpeg.exe" if os_support.IS_WINDOWS else "ffmpeg")
 FFMPEG_REFUSED = ("--enable-gpl", "--enable-nonfree")
-# configure options that enable no library of their own (a licence, the threads, the compiler, the system's TLS)
-FFMPEG_NOT_LIBRARIES = {"version3", "pthreads", "cuda-llvm", "schannel"}
+# FFmpeg's own code alone: no library of another project linked into it (an "LGPL" build that links one may carry a
+# GPL library inside another: BtbN's links chromaprint built on FFTW, GPL-2.0), so its configuration must turn off
+# the libraries found by themselves and enable none (an --enable-<name> without "=" is a library, but these: the
+# build's own switches)
+FFMPEG_REQUIRED = "--disable-autodetect"
+FFMPEG_SWITCHES = {"cross-compile", "static", "shared", "pic", "lto", "small", "w32threads", "pthreads", "optimizations",
+                   "stripping", "asm", "x86asm", "inline-asm", "runtime-cpudetect", "avcodec", "avformat", "avfilter",
+                   "avdevice", "avutil", "swresample", "ffmpeg"}
+# the recipe of the app's own build (build/ffmpeg.py), known by its --extra-version
+FFMPEG_OWN_BUILD = ("--extra-version=mixlyzer", "https://github.com/hygn/Mixlyzer/blob/main/build/ffmpeg.py")
 ENGINE = ROOT / "audioengine" / "native"
 TOOLCHAIN = "stable-x86_64-pc-windows-gnullvm"
 TARGETS = ("x86_64-pc-windows-gnullvm", "x86_64-unknown-linux-gnu", "aarch64-apple-darwin", "x86_64-apple-darwin")
@@ -78,7 +87,8 @@ def llvm_mingw() -> Path | None:
 
 def ffmpeg_build(version_text: str) -> tuple[str, str, list[str]]:
     """An FFmpeg's version, compiler and configure options from its ``-version`` output; refused (SystemExit) when
-    it was built with --enable-gpl or --enable-nonfree: the package ships an LGPL build only."""
+    it was built with --enable-gpl or --enable-nonfree, or with any library of another project (FFMPEG_REQUIRED,
+    FFMPEG_SWITCHES): the package ships FFmpeg's own code alone, under the LGPL."""
     lines = version_text.splitlines()
     version = lines[0].split()[2]                        # ffmpeg version <version> Copyright ...
     compiler = next((l[len("built with "):] for l in lines if l.startswith("built with ")), "")
@@ -86,6 +96,11 @@ def ffmpeg_build(version_text: str) -> tuple[str, str, list[str]]:
     refused = [o for o in options if o in FFMPEG_REFUSED]
     if refused:
         sys.exit(f"FFmpeg {version} is built with {' '.join(refused)}: the package ships an LGPL build only")
+    libraries = [o for o in options if o.startswith("--enable-") and "=" not in o
+                 and o[len("--enable-"):] not in FFMPEG_SWITCHES and o != "--enable-version3"]
+    if libraries or FFMPEG_REQUIRED not in options:
+        sys.exit(f"FFmpeg {version} links other projects' libraries ({' '.join(libraries) or 'autodetected'}): the "
+                 f"package ships FFmpeg's own code alone (build/ffmpeg.py)")
     return version, compiler, options
 
 
@@ -95,31 +110,28 @@ def ffmpeg_version_text(path: Path = FFMPEG) -> str:
 
 def ffmpeg_entry() -> tuple[str, str, str, list[Path]] | None:
     """The FFmpeg at the repository's root as a part 1 entry (None when there is none): its source the commit its
-    version names, its recipe the build's (BtbN's FFmpeg-Builds, known by its prefix; else FFMPEG_RECIPE), the
-    libraries its configuration enables named."""
+    version names, its recipe the build's (the app's own, build/ffmpeg.py, known by its --extra-version; else
+    FFMPEG_RECIPE)."""
     if not FFMPEG.is_file():
         print(f"no {FFMPEG.name} at the repository's root: FFmpeg's notice left out", file=sys.stderr)
         return None
     version, compiler, options = ffmpeg_build(ffmpeg_version_text())
     commit = re.search(r"-g([0-9a-f]{7,40})", version)
     source = (f"https://github.com/FFmpeg/FFmpeg/commit/{commit.group(1)}" if commit
-              else f"https://github.com/FFmpeg/FFmpeg/tree/{version}")
+              else f"https://github.com/FFmpeg/FFmpeg/tree/{version.split('-')[0]}")
     recipe = os.environ.get("FFMPEG_RECIPE")
-    if not recipe and "--prefix=/ffbuild/prefix" in options:
-        recipe = "https://github.com/BtbN/FFmpeg-Builds"
+    if not recipe and FFMPEG_OWN_BUILD[0] in options:
+        recipe = FFMPEG_OWN_BUILD[1]
     if not recipe:
         sys.exit(f"{FFMPEG.name}: its build's recipe is not known: name it in FFMPEG_RECIPE (a URL)")
     v3 = "--enable-version3" in options
     licence = "LGPL-3.0-or-later" if v3 else "LGPL-2.1-or-later"
     text = ("the GNU LGPL v3 given with VOLK above, and the GNU GPL v3 it supplements at this part's end" if v3
             else "the GNU LGPL v2.1 given with libsndfile above")
-    libraries = sorted({o[len("--enable-"):] for o in options if o.startswith("--enable-")} - FFMPEG_NOT_LIBRARIES)
     note = (f"The audio decoder ({FFMPEG.name} beside the program): a program of its own the app runs, which can "
-            f"be replaced by the user. Built without --enable-gpl and --enable-nonfree; its licence's text: {text}. "
-            f"Its source: {source}; its build's recipe: {recipe}"
-            + (f" (compiled with {compiler})" if compiler else "") + ".\n"
-            f"Linked into it, each under its own licence (their sources and licences: the build's recipe): "
-            f"{', '.join(libraries)}.\n"
+            f"be replaced by the user. FFmpeg's own code alone, no library of another project linked into it, built "
+            f"without --enable-gpl and --enable-nonfree; its licence's text: {text}. Its source: {source}; its "
+            f"build's recipe: {recipe}" + (f" (compiled with {compiler})" if compiler else "") + ".\n"
             f"Its configuration: {' '.join(options)}")
     return f"FFmpeg {version}", licence, note, []
 
@@ -174,7 +186,8 @@ def bundled() -> str:
     toolchain = llvm_mingw()
     if toolchain is not None:
         entries.append(("LLVM and mingw-w64 runtimes (llvm-mingw)", "Apache-2.0 WITH LLVM-exception, and others",
-                        "The Windows native engine's runtime, from its toolchain.", [toolchain / "LICENSE.TXT"]))
+                        "The Windows native engine's and FFmpeg's runtime, from their toolchain.",
+                        [toolchain / "LICENSE.TXT"]))
     else:
         print("llvm-mingw not found: its runtime's notice left out", file=sys.stderr)
     out = [section("1. Bundled with the program")]
