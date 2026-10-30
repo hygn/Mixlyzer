@@ -150,6 +150,8 @@ ACTIONS: tuple[Action, ...] = (
            tip=tr_mark("The track panel's Export tab with the selected track.")),
     Action("library.write_tags", LIBRARY, tr_mark("Write Tags to File"),
            tip=tr_mark("The selected track's stored values written into its audio file's tags.")),
+    Action("library.export_tempo_map", LIBRARY, tr_mark("Export DAW Tempo Map"),
+           tip=tr_mark("The selected track's beatgrid written as a MIDI file into the Export tab's folder.")),
     Action("library.reveal", LIBRARY, tr_mark("Show in Explorer") if os_support.IS_WINDOWS else
            tr_mark("Show in Finder") if os_support.IS_MACOS else tr_mark("Show in File Manager")),
     Action("library.new_playlist", LIBRARY, tr_mark("New Playlist"),

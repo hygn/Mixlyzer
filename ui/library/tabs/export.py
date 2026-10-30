@@ -11,13 +11,16 @@ import soundfile as sf
 from core.tieups import domain as tieup
 from system import os_support
 from system.os_support import path_key
+from system.atomic_io import atomic_output_path
 from core.analysis_library import jobs as analysis_jobs
+from core.analysis_library.stored import StoredAnalysis
 from core.library import jobs
 from core.library.records import TrackRow
 from core.library.service import LibraryService
 from analyzer.audio.decoder import decode_to_memmap, get_samplerate
 from core.tags.writer import TEXT_FIELDS, TagWriteError, tag_format, write_tags
 from core.track.model import DataModel
+from third_party.midi_tempo_map import TempoMapError, midi_tempo_map
 from third_party.rekordbox import sanitize_filename
 from ui.config.scroll import scroll_page
 from ui.widgets.elided_label import ElidedLabel
@@ -30,7 +33,8 @@ from system.i18n import tr
 
 class ExportTrackPanel(QtWidgets.QWidget):
     """The library panel's Export tab: a track's audio rendered with a JumpCUE jump baked in (WAV), one direction
-    of one JumpCUE pair (prefers the in-memory DataModel for the loaded track, else the track's NPZ); and the
+    of one JumpCUE pair (prefers the in-memory DataModel for the loaded track, else the track's NPZ); its beatgrid
+    as a DAW's tempo map (a MIDI file: third_party.midi_tempo_map, the marks taken the same way); and the
     track's stored values written into its audio file's tags (``core.tags.writer``: the fields checked,
     the file's other tags and its audio kept)."""
 
@@ -54,6 +58,7 @@ class ExportTrackPanel(QtWidgets.QWidget):
         self._track: Optional[TrackRow] = None
         self._source: Optional[Path] = None
         self._jump_cues: Optional[list[JumpCueGroup]] = None   # the track's JumpCUE groups (None: not read yet)
+        self._analysis: Optional[StoredAnalysis] = None        # the track's stored analysis (None: not read yet)
         self._jump_pairs: list[tuple] = []     # (JumpCue, JumpCue): every two cues of a group
 
         self.lbl_title = ElidedLabel("-")
@@ -82,11 +87,11 @@ class ExportTrackPanel(QtWidgets.QWidget):
         track_form.addRow(tr("Title"), self.lbl_title)
         track_form.addRow(tr("Artist"), self.lbl_artist)
         track_form.addRow(tr("Source"), self.lbl_source)
+        track_form.addRow(tr("Destination Folder"), dest_layout)
 
         jump = QtWidgets.QGroupBox(tr("Prerender JumpCUE Audio"))
         jump.setToolTip(tr("Write WAV files with JumpCUE skips baked in."))
         form = QtWidgets.QFormLayout()
-        form.addRow(tr("Destination Folder"), dest_layout)
         form.addRow("JumpCUE", self.cmb_jump_pair)
         self.btn_export = QtWidgets.QPushButton(tr("Export"))
         self.btn_export.clicked.connect(self._on_export)
@@ -96,6 +101,17 @@ class ExportTrackPanel(QtWidgets.QWidget):
         jump_layout = QtWidgets.QVBoxLayout(jump)
         jump_layout.addLayout(form)
         jump_layout.addLayout(btns)
+
+        tempo_map = QtWidgets.QGroupBox(tr("DAW Tempo Map"))
+        tempo_map.setToolTip(tr(
+            "<p>A MIDI file of the track's beatgrid for a DAW: its tempo (ramps too), bars and key changes. Put the "
+            "audio at the project's start and import the file's tempo map there.</p>"))
+        self.btn_tempo_map = QtWidgets.QPushButton(tr("Export MIDI"))
+        self.btn_tempo_map.clicked.connect(self.export_tempo_map)
+        tempo_btns = QtWidgets.QHBoxLayout()
+        tempo_btns.addStretch(1)
+        tempo_btns.addWidget(self.btn_tempo_map)
+        QtWidgets.QVBoxLayout(tempo_map).addLayout(tempo_btns)
 
         tags = QtWidgets.QGroupBox(tr("File Tags"))
         tags.setToolTip(tr(
@@ -143,6 +159,7 @@ class ExportTrackPanel(QtWidgets.QWidget):
         layout = QtWidgets.QVBoxLayout(body)
         layout.addLayout(track_form)
         layout.addWidget(jump)
+        layout.addWidget(tempo_map)
         layout.addWidget(tags)
         layout.addWidget(self.status_label)
         layout.addStretch(1)
@@ -156,6 +173,7 @@ class ExportTrackPanel(QtWidgets.QWidget):
     def set_track(self, track: TrackRow) -> None:
         self._track = track
         self._jump_cues = None
+        self._analysis = None
         self._jump_pairs = []
         self.cmb_jump_pair.clear()
         self.cmb_jump_pair.setEnabled(False)
@@ -309,20 +327,84 @@ class ExportTrackPanel(QtWidgets.QWidget):
         if directory:
             self.dest_edit.setText(directory)
 
-    def _on_export(self) -> None:
+    def _destination(self) -> Optional[Path]:
+        """The destination folder (made if need be), or None (said)."""
         if self._track is None:
             QtWidgets.QMessageBox.warning(self, tr("Export Track"), tr("No track is selected."))
-            return
-
+            return None
         dest_text = self.dest_edit.text().strip()
         if not dest_text:
             QtWidgets.QMessageBox.warning(self, tr("Export Track"), tr("Please select a destination folder."))
-            return
+            return None
         dest_dir = Path(dest_text).expanduser()
         try:
             dest_dir.mkdir(parents=True, exist_ok=True)
         except OSError as exc:
             QtWidgets.QMessageBox.critical(self, tr("Export Track"), tr("Cannot create destination folder:\n{error}").format(error=exc))
+            return None
+        return dest_dir
+
+    def _overwrite(self, path: Path) -> bool:
+        """``path`` may be written: it does not exist, or the user said to overwrite it."""
+        if not path.exists():
+            return True
+        reply = QtWidgets.QMessageBox.question(
+            self,
+            tr("Export Track"),
+            tr("'{name}' already exists.\nOverwrite?").format(name=path.name),
+            QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,
+        )
+        return reply == QtWidgets.QMessageBox.StandardButton.Yes
+
+    def export_tempo_map(self) -> None:
+        """The track's beatgrid as a MIDI file (third_party.midi_tempo_map): the deck's marks when it holds the
+        track (as edited), else the stored ones."""
+        dest_dir = self._destination()
+        if dest_dir is None:
+            return
+        if self._model_holds_track():
+            m = self._model
+            marks = (m.beats, m.tempo_segments, m.key_segments, m.duration_sec)
+        elif self._analysis is not None:
+            a = self._analysis
+            marks = (a.beats, a.tempo_segments, a.key_segments, a.duration_sec)
+        else:        # its stored analysis still being read (set_track asked for it): written when it comes
+            uid = self._track.uid
+
+            def came(analysis) -> None:
+                if self._track is None or self._track.uid != uid:
+                    return
+                if analysis is None:
+                    QtWidgets.QMessageBox.warning(self, tr("Export Track"),
+                                                  tr("The track's analysis could not be read."))
+                    return
+                self._analysis = analysis
+                self.export_tempo_map()
+
+            self._library.read(analysis_jobs.analysis, uid, done=came)
+            return
+        title = self._track.title or (self._source.stem if self._source else "")
+        try:
+            data = midi_tempo_map(*marks[:3], title=title, duration_sec=float(marks[3] or 0.0))
+        except TempoMapError:
+            QtWidgets.QMessageBox.warning(self, tr("Export Track"), tr("The track has no beatgrid to write."))
+            return
+        out_path = dest_dir / f"{sanitize_filename(title or 'track')}_tempo_map.mid"
+        if not self._overwrite(out_path):
+            return
+        try:
+            with atomic_output_path(out_path) as temporary:
+                temporary.write_bytes(data)
+        except OSError as exc:
+            QtWidgets.QMessageBox.critical(
+                self, tr("Export Track"), tr("The file could not be written: {error}").format(error=exc))
+            return
+        QtWidgets.QMessageBox.information(self, tr("Export Track"), tr("Export completed:\n{files}").format(
+            files=str(out_path)))
+
+    def _on_export(self) -> None:
+        dest_dir = self._destination()
+        if dest_dir is None:
             return
 
         if self._load_jump_cues() is None:
@@ -354,13 +436,17 @@ class ExportTrackPanel(QtWidgets.QWidget):
         if self._track is None or not self._track.uid:
             return None
         # Prefer in-memory model data when it matches the requested track.
-        if self._model is not None:
-            props = getattr(self._model, "properties", {}) or {}
-            model_path = props.get("path")
-            if model_path and self._track.path and path_key(model_path) == path_key(self._track.path):
-                self._jump_cues = list(self._model.jump_cues)
-                return self._jump_cues
+        if self._model_holds_track():
+            self._jump_cues = list(self._model.jump_cues)
+            return self._jump_cues
         return None
+
+    def _model_holds_track(self) -> bool:
+        """The deck holds this track (its marks as edited are the model's)."""
+        if self._model is None or self._track is None:
+            return False
+        model_path = (getattr(self._model, "properties", {}) or {}).get("path")
+        return bool(model_path and self._track.path and path_key(model_path) == path_key(self._track.path))
 
     def _read_jump_cues(self) -> None:
         """The track's stored analysis asked of the library's owner (not the deck's track); the JumpCUE pairs
@@ -375,6 +461,7 @@ class ExportTrackPanel(QtWidgets.QWidget):
             if analysis is None:
                 self.status_label.setText(tr("The track's analysis could not be read."))
                 return
+            self._analysis = analysis
             self._jump_cues = list(analysis.jump_cues)
             self._populate_jump_pairs()
 
@@ -453,15 +540,8 @@ class ExportTrackPanel(QtWidgets.QWidget):
             safe_label = sanitize_filename(f"{src_label}_to_{dst_label}")
             filename = f"{title_base}_jump_{safe_label}.wav"
             out_path = dest_dir / filename
-            if out_path.exists():
-                reply = QtWidgets.QMessageBox.question(
-                    self,
-                    tr("Export Track"),
-                    tr("'{name}' already exists.\nOverwrite?").format(name=out_path.name),
-                    QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,
-                )
-                if reply != QtWidgets.QMessageBox.StandardButton.Yes:
-                    continue
+            if not self._overwrite(out_path):
+                continue
 
             try:
                 sf.write(out_path, rendered_pcm, sr)

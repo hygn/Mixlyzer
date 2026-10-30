@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-30 20:34+0900\n"
+"POT-Creation-Date: 2026-10-30 20:59+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ko_KR\n"
@@ -1354,7 +1354,7 @@ msgid "The written tags did not read back as written; the file is unchanged."
 msgstr "쓴 태그가 쓴 그대로 다시 읽히지 않았습니다. 파일은 바뀌지 않았습니다."
 
 #: core/tags/writer.py:205 core/tags/writer.py:286 core/tags/writer.py:1371
-#: ui/library/tabs/export.py:194
+#: ui/library/tabs/export.py:212
 msgid "Tags cannot be written to this file's format."
 msgstr "이 파일 형식에는 태그를 쓸 수 없습니다."
 
@@ -3497,7 +3497,7 @@ msgid ""
 "tempo. Smaller makes the steps finer.</p>"
 msgstr "<p>Rekordbox에는 템포 램프가 없어 램프를 일정한 템포의 단계로 나누어 씁니다. 작을수록 단계가 잘게 나뉩니다.</p>"
 
-#: ui/config/library.py:64 ui/library/tabs/export.py:121
+#: ui/config/library.py:64 ui/library/tabs/export.py:137
 msgid "Tie-ups after the comment"
 msgstr "코멘트 뒤에 타이업 붙이기"
 
@@ -6765,7 +6765,7 @@ msgstr ""
 "트랙의 오디오 파일. 파일을 옮기거나 이름을 바꿨을 때 지정하세요.\n"
 "분석, 플레이리스트, CUE는 트랙에 그대로 남습니다."
 
-#: ui/library/tabs/edit_song.py:118 ui/library/tabs/export.py:64
+#: ui/library/tabs/edit_song.py:118 ui/library/tabs/export.py:69
 msgid "Browse..."
 msgstr "찾아보기..."
 
@@ -6802,31 +6802,46 @@ msgstr ""
 "파일이 없습니다:\n"
 "{path}"
 
-#: ui/library/tabs/export.py:77
+#: ui/library/tabs/export.py:82
 msgid "No JumpCUE directions"
 msgstr "JumpCUE 방향 없음"
 
-#: ui/library/tabs/export.py:84
+#: ui/library/tabs/export.py:89
 msgid "Source"
 msgstr "원본"
 
-#: ui/library/tabs/export.py:86
-msgid "Prerender JumpCUE Audio"
-msgstr "JumpCUE 오디오 미리 렌더링"
-
-#: ui/library/tabs/export.py:87
-msgid "Write WAV files with JumpCUE skips baked in."
-msgstr "JumpCUE 건너뛰기를 반영한 WAV 파일을 씁니다."
-
-#: ui/library/tabs/export.py:89
+#: ui/library/tabs/export.py:90
 msgid "Destination Folder"
 msgstr "대상 폴더"
 
-#: ui/library/tabs/export.py:91
+#: ui/library/tabs/export.py:92
+msgid "Prerender JumpCUE Audio"
+msgstr "JumpCUE 오디오 미리 렌더링"
+
+#: ui/library/tabs/export.py:93
+msgid "Write WAV files with JumpCUE skips baked in."
+msgstr "JumpCUE 건너뛰기를 반영한 WAV 파일을 씁니다."
+
+#: ui/library/tabs/export.py:96
 msgid "Export"
 msgstr "내보내기"
 
-#: ui/library/tabs/export.py:100
+#: ui/library/tabs/export.py:105
+msgid "DAW Tempo Map"
+msgstr "DAW 템포 맵"
+
+#: ui/library/tabs/export.py:107
+msgid ""
+"<p>A MIDI file of the track's beatgrid for a DAW: its tempo (ramps too), "
+"bars and key changes. Put the audio at the project's start and import the"
+" file's tempo map there.</p>"
+msgstr "<p>트랙의 비트그리드를 DAW용 MIDI 파일로 씁니다: 템포(램프 포함), 마디, 전조. 오디오를 프로젝트 맨 앞에 놓고 그 자리에 이 파일의 템포 맵을 가져오세요.</p>"
+
+#: ui/library/tabs/export.py:109
+msgid "Export MIDI"
+msgstr "MIDI 내보내기"
+
+#: ui/library/tabs/export.py:116
 msgid "File Tags"
 msgstr "파일 태그"
 
@@ -6835,7 +6850,7 @@ msgstr "파일 태그"
 # | the " "fields checked change; the file's other tags, its artwork and its
 # | audio " "stay as they are. FLAC, MP3, AAC, WAV, AIFF and MP4 / M4A
 # | files.</p>"
-#: ui/library/tabs/export.py:102
+#: ui/library/tabs/export.py:118
 msgid ""
 "<p>Write the library's values into the audio file's own tags: only the "
 "fields checked change; the file's other tags, its artwork and its audio "
@@ -6844,42 +6859,42 @@ msgstr ""
 "<p>라이브러리의 값을 오디오 파일 자체의 태그에 씁니다. 체크한 항목만 바뀌고, 파일의 다른 태그와 아트워크, 오디오는 그대로 "
 "둡니다.</p>"
 
-#: ui/library/tabs/export.py:112
+#: ui/library/tabs/export.py:128
 msgid "MP4 / M4A files hold a whole BPM only."
 msgstr "MP4 / M4A 파일에는 정수 BPM만 들어갑니다."
 
-#: ui/library/tabs/export.py:113
+#: ui/library/tabs/export.py:129
 msgid "Written as a musical key (Am, F#)."
 msgstr "일반 조성 표기(Am, F#)로 씁니다."
 
-#: ui/library/tabs/export.py:123
+#: ui/library/tabs/export.py:139
 msgid ""
 "<p>The comment written with the song's tie-ups after it, as [Title OP; "
 "Other ED]; the library's comment stays as it is.</p>"
 msgstr "<p>코멘트 뒤에 곡의 타이업을 [제목 OP; 다른 작품 ED] 형식으로 붙여서 씁니다. 라이브러리의 코멘트는 그대로 둡니다.</p>"
 
-#: ui/library/tabs/export.py:130 ui/library/tabs/export.py:215
-#: ui/library/tabs/export.py:278
+#: ui/library/tabs/export.py:146 ui/library/tabs/export.py:233
+#: ui/library/tabs/export.py:296
 msgid "Write Tags"
 msgstr "태그 쓰기"
 
-#: ui/library/tabs/export.py:131
+#: ui/library/tabs/export.py:147
 msgid "Write the checked fields' stored values into the file's tags."
 msgstr "체크한 항목의 저장된 값을 파일 태그에 씁니다."
 
-#: ui/library/tabs/export.py:174
+#: ui/library/tabs/export.py:192
 msgid "Source file not found at the specified path."
 msgstr "지정한 경로에 원본 파일이 없습니다."
 
-#: ui/library/tabs/export.py:177
+#: ui/library/tabs/export.py:195
 msgid "Source path is invalid."
 msgstr "원본 경로가 잘못되었습니다."
 
-#: ui/library/tabs/export.py:210
+#: ui/library/tabs/export.py:228
 msgid "Check the fields to write."
 msgstr "쓸 항목을 체크하세요."
 
-#: ui/library/tabs/export.py:216
+#: ui/library/tabs/export.py:234
 msgid ""
 "The Edit tab has changes to this track that are not applied: the stored "
 "values are written.\n"
@@ -6888,36 +6903,37 @@ msgstr ""
 "편집 탭에 이 트랙의 적용하지 않은 변경이 있습니다. 저장된 값이 쓰입니다.\n"
 "그래도 태그를 쓸까요?"
 
-#: ui/library/tabs/export.py:224
+#: ui/library/tabs/export.py:242
 msgid "Writing the tags..."
 msgstr "태그를 쓰는 중..."
 
-#: ui/library/tabs/export.py:234
+#: ui/library/tabs/export.py:252
 msgid "The track is no longer in the library."
 msgstr "이 트랙은 더 이상 라이브러리에 없습니다."
 
-#: ui/library/tabs/export.py:270 ui/windows/diagnostics_dialog.py:59
+#: ui/library/tabs/export.py:288 ui/library/tabs/export.py:400
+#: ui/windows/diagnostics_dialog.py:59
 #, python-brace-format
 msgid "The file could not be written: {error}"
 msgstr "파일을 쓸 수 없습니다: {error}"
 
-#: ui/library/tabs/export.py:276
+#: ui/library/tabs/export.py:294
 msgid "The tags were written to the file."
 msgstr "파일에 태그를 썼습니다."
 
-#: ui/library/tabs/export.py:306
+#: ui/library/tabs/export.py:324
 msgid "Select Destination Folder"
 msgstr "대상 폴더 선택"
 
-#: ui/library/tabs/export.py:314
+#: ui/library/tabs/export.py:333
 msgid "No track is selected."
 msgstr "선택한 트랙이 없습니다."
 
-#: ui/library/tabs/export.py:319
+#: ui/library/tabs/export.py:337
 msgid "Please select a destination folder."
 msgstr "대상 폴더를 선택하세요."
 
-#: ui/library/tabs/export.py:325
+#: ui/library/tabs/export.py:343
 #, python-brace-format
 msgid ""
 "Cannot create destination folder:\n"
@@ -6926,25 +6942,7 @@ msgstr ""
 "대상 폴더를 만들 수 없습니다:\n"
 "{error}"
 
-#: ui/library/tabs/export.py:338
-msgid "Select a JumpCUE direction to render."
-msgstr "렌더링할 JumpCUE 방향을 고르세요."
-
-#: ui/library/tabs/export.py:347
-#, python-brace-format
-msgid ""
-"Export completed:\n"
-"{files}"
-msgstr ""
-"내보내기 완료:\n"
-"{files}"
-
-# | msgid "Phrase reanalysis completed"
-#: ui/library/tabs/export.py:376
-msgid "The track's analysis could not be read."
-msgstr "트랙의 분석을 읽을 수 없습니다."
-
-#: ui/library/tabs/export.py:460
+#: ui/library/tabs/export.py:354
 #, python-brace-format
 msgid ""
 "'{name}' already exists.\n"
@@ -6953,7 +6951,29 @@ msgstr ""
 "'{name}'이(가) 이미 있습니다.\n"
 "덮어쓸까요?"
 
-#: ui/library/tabs/export.py:470
+# | msgid "Phrase reanalysis completed"
+#: ui/library/tabs/export.py:379 ui/library/tabs/export.py:462
+msgid "The track's analysis could not be read."
+msgstr "트랙의 분석을 읽을 수 없습니다."
+
+#: ui/library/tabs/export.py:390
+msgid "The track has no beatgrid to write."
+msgstr "이 트랙에는 쓸 비트그리드가 없습니다."
+
+#: ui/library/tabs/export.py:402 ui/library/tabs/export.py:429
+#, python-brace-format
+msgid ""
+"Export completed:\n"
+"{files}"
+msgstr ""
+"내보내기 완료:\n"
+"{files}"
+
+#: ui/library/tabs/export.py:420
+msgid "Select a JumpCUE direction to render."
+msgstr "렌더링할 JumpCUE 방향을 고르세요."
+
+#: ui/library/tabs/export.py:550
 #, python-brace-format
 msgid ""
 "Failed to write JumpCUE audio:\n"
@@ -7277,15 +7297,15 @@ msgstr "\"{title}\"의 변경 내용을 적용할까요? (아니요: 버립니�
 msgid "All"
 msgstr "전체"
 
-#: ui/library/tabs/edit_song.py:124 ui/library/tabs/export.py:82
-#: ui/library/tabs/export.py:108 ui/library/tabs/tieup_editor.py:140
+#: ui/library/tabs/edit_song.py:124 ui/library/tabs/export.py:87
+#: ui/library/tabs/export.py:124 ui/library/tabs/tieup_editor.py:140
 #: ui/library/tabs/track_search_index.py:53 ui/library/widget.py:39
 #: ui/windows/tieup_works.py:77
 msgid "Title"
 msgstr "제목"
 
-#: ui/library/tabs/edit_song.py:125 ui/library/tabs/export.py:83
-#: ui/library/tabs/export.py:109 ui/library/tabs/track_search_index.py:53
+#: ui/library/tabs/edit_song.py:125 ui/library/tabs/export.py:88
+#: ui/library/tabs/export.py:125 ui/library/tabs/track_search_index.py:53
 #: ui/library/widget.py:39
 msgid "Artist"
 msgstr "아티스트"
@@ -7294,7 +7314,7 @@ msgstr "아티스트"
 msgid "Duration"
 msgstr "길이"
 
-#: ui/library/tabs/edit_song.py:126 ui/library/tabs/export.py:110
+#: ui/library/tabs/edit_song.py:126 ui/library/tabs/export.py:126
 #: ui/library/tabs/track_search_index.py:53 ui/library/widget.py:40
 msgid "Album"
 msgstr "앨범"
@@ -7316,7 +7336,7 @@ msgstr "추가일"
 msgid "Path"
 msgstr "경로"
 
-#: ui/library/tabs/edit_song.py:130 ui/library/tabs/export.py:111
+#: ui/library/tabs/edit_song.py:130 ui/library/tabs/export.py:127
 #: ui/library/widget.py:42
 msgid "Comment"
 msgstr "코멘트"
@@ -7325,7 +7345,7 @@ msgstr "코멘트"
 msgid "Track loading is disabled while External Sync is enabled."
 msgstr "외부 동기화가 켜져 있는 동안에는 트랙을 불러올 수 없습니다."
 
-#: ui/library/widget.py:475
+#: ui/library/widget.py:476
 msgid "The loaded track is not in the list shown."
 msgstr "로드한 트랙이 지금 보이는 목록에 없습니다."
 
@@ -7763,10 +7783,12 @@ msgstr "선택한 트랙을 일본어 위키백과와 위키데이터에서 찾�
 msgid "The works window: every work the tie-ups name, edited, merged or deleted."
 msgstr "작품 창: 타이업에 쓰인 모든 작품을 편집하거나 합치거나 삭제합니다."
 
-#: ui/library/actions.py:52 ui/library/tabs/export.py:314
-#: ui/library/tabs/export.py:319 ui/library/tabs/export.py:325
-#: ui/library/tabs/export.py:337 ui/library/tabs/export.py:347
-#: ui/library/tabs/export.py:459 ui/library/tabs/export.py:470
+#: ui/library/actions.py:52 ui/library/tabs/export.py:333
+#: ui/library/tabs/export.py:337 ui/library/tabs/export.py:343
+#: ui/library/tabs/export.py:353 ui/library/tabs/export.py:378
+#: ui/library/tabs/export.py:390 ui/library/tabs/export.py:400
+#: ui/library/tabs/export.py:402 ui/library/tabs/export.py:419
+#: ui/library/tabs/export.py:429 ui/library/tabs/export.py:550
 #: ui/library/track_panel.py:47 ui/shortcuts.py:149
 msgid "Export Track"
 msgstr "트랙 내보내기"
@@ -7786,326 +7808,336 @@ msgstr "파일에 태그 쓰기"
 msgid "The selected track's stored values written into its audio file's tags."
 msgstr "선택한 트랙의 저장된 값을 오디오 파일 태그에 씁니다."
 
-#: ui/library/actions.py:45 ui/shortcuts.py:153
+#: ui/shortcuts.py:153
+msgid "Export DAW Tempo Map"
+msgstr "DAW 템포 맵 내보내기"
+
+#: ui/shortcuts.py:154
+msgid ""
+"The selected track's beatgrid written as a MIDI file into the Export "
+"tab's folder."
+msgstr "선택한 트랙의 비트그리드를 트랙 내보내기 탭의 폴더에 MIDI 파일로 씁니다."
+
+#: ui/library/actions.py:45 ui/shortcuts.py:155
 msgid "Show in Explorer"
 msgstr "탐색기에서 보기"
 
-#: ui/library/actions.py:46 ui/shortcuts.py:154
+#: ui/library/actions.py:46 ui/shortcuts.py:156
 msgid "Show in Finder"
 msgstr "Finder에서 보기"
 
-#: ui/library/actions.py:46 ui/shortcuts.py:154
+#: ui/library/actions.py:46 ui/shortcuts.py:156
 msgid "Show in File Manager"
 msgstr "파일 관리자에서 보기"
 
 #: ui/library/playlists.py:18 ui/library/playlists.py:23
-#: ui/library/sources.py:664 ui/shortcuts.py:155
+#: ui/library/sources.py:664 ui/shortcuts.py:157
 msgid "New Playlist"
 msgstr "새 플레이리스트"
 
 # | msgid "New Playlist Folder"
-#: ui/shortcuts.py:156
+#: ui/shortcuts.py:158
 msgid "A new playlist in the folder shown."
 msgstr "표시 중인 폴더에 새 플레이리스트를 만듭니다."
 
-#: ui/shortcuts.py:157
+#: ui/shortcuts.py:159
 msgid "New Playlist Folder"
 msgstr "새 플레이리스트 폴더"
 
 # | msgid "" "A new playlist folder in the folder shown (or the shown
 # playlist's
 # | " "folder), else at the top."
-#: ui/shortcuts.py:158
+#: ui/shortcuts.py:160
 msgid "A new playlist folder in the folder shown."
 msgstr "표시 중인 폴더에 새 플레이리스트 폴더를 만듭니다."
 
-#: ui/library/actions.py:50 ui/shortcuts.py:159
+#: ui/library/actions.py:50 ui/shortcuts.py:161
 #: ui/windows/reanalyze_dialog.py:16
 msgid "Reanalyze Track"
 msgstr "트랙 재분석"
 
-#: ui/shortcuts.py:160
+#: ui/shortcuts.py:162
 msgid ""
 "A full analysis of the selected tracks: their stored analysis and edits "
 "are replaced."
 msgstr "선택한 트랙의 전체 분석: 저장된 분석과 편집이 바뀝니다."
 
-#: ui/library/actions.py:47 ui/library/actions.py:128 ui/shortcuts.py:161
+#: ui/library/actions.py:47 ui/library/actions.py:128 ui/shortcuts.py:163
 msgid "Remove from Library"
 msgstr "라이브러리에서 제거"
 
-#: ui/library/actions.py:55 ui/shortcuts.py:162
+#: ui/library/actions.py:55 ui/shortcuts.py:164
 msgid "Remove from Playlist"
 msgstr "플레이리스트에서 제거"
 
 # | msgid "Metronome on / off"
-#: ui/shortcuts.py:164
+#: ui/shortcuts.py:166
 msgid "Edit lock on / off"
 msgstr "편집 잠금 켜기 / 끄기"
 
 # | msgid "Page {page} of {pages}"
-#: ui/shortcuts.py:165
+#: ui/shortcuts.py:167
 #, python-brace-format
 msgid "Show the {page} page"
 msgstr "{page} 페이지 보기"
 
 # | msgid "Set the current segment to {meter}"
 # | msgid "Edit scope: the current segment"
-#: ui/shortcuts.py:166
+#: ui/shortcuts.py:168
 msgid "It becomes the current page."
 msgstr "그 페이지가 현재 페이지가 됩니다."
 
-#: ui/edit_panel/panel.py:219 ui/shortcuts.py:168
+#: ui/edit_panel/panel.py:219 ui/shortcuts.py:170
 msgid "Undo Changes"
 msgstr "변경 실행 취소"
 
-#: ui/edit_panel/panel.py:223 ui/shortcuts.py:169
+#: ui/edit_panel/panel.py:223 ui/shortcuts.py:171
 msgid "Redo Changes"
 msgstr "변경 다시 실행"
 
-#: ui/edit_panel/panel.py:227 ui/shortcuts.py:170
+#: ui/edit_panel/panel.py:227 ui/shortcuts.py:172
 msgid "Save Edits"
 msgstr "편집 저장"
 
 # | msgid "One beat earlier"
-#: ui/shortcuts.py:173
+#: ui/shortcuts.py:175
 msgid "Start earlier"
 msgstr "시작 앞당기기"
 
-#: ui/shortcuts.py:174 ui/shortcuts.py:176
+#: ui/shortcuts.py:176 ui/shortcuts.py:178
 msgid ""
 "Key, Phrase: the current segment's start, by a beat or a bar (the "
 "boundary step)."
 msgstr "Key, Phrase: 현재 구간의 시작을 한 박이나 한 마디씩 (경계 단위)."
 
 # | msgid "One beat later"
-#: ui/shortcuts.py:175
+#: ui/shortcuts.py:177
 msgid "Start later"
 msgstr "시작 늦추기"
 
 # | msgid "One beat earlier"
-#: ui/shortcuts.py:177
+#: ui/shortcuts.py:179
 msgid "End earlier"
 msgstr "끝 앞당기기"
 
-#: ui/shortcuts.py:178 ui/shortcuts.py:180
+#: ui/shortcuts.py:180 ui/shortcuts.py:182
 msgid ""
 "Key, Phrase: the current segment's end, by a beat or a bar (the boundary "
 "step)."
 msgstr "Key, Phrase: 현재 구간의 끝을 한 박이나 한 마디씩 (경계 단위)."
 
 # | msgid "One beat later"
-#: ui/shortcuts.py:179
+#: ui/shortcuts.py:181
 msgid "End later"
 msgstr "끝 늦추기"
 
 # | msgid "Split the current segment at the playhead"
-#: ui/shortcuts.py:181
+#: ui/shortcuts.py:183
 msgid "Split at the playhead"
 msgstr "플레이헤드에서 나누기"
 
 # | msgid "Set the current segment to {meter}"
 # | msgid "Key scope: the current segment"
-#: ui/shortcuts.py:182
+#: ui/shortcuts.py:184
 msgid "Beatgrid, Key, Phrase: the current segment."
 msgstr "비트그리드, Key, 프레이즈: 현재 구간."
 
 # | msgid "" "Merge the previous key segment into the current one (keeps the
 # | current " "key)"
 # | msgid "Merge the previous segment into the current one"
-#: ui/shortcuts.py:183
+#: ui/shortcuts.py:185
 msgid "Merge the previous segment"
 msgstr "이전 구간 합치기"
 
 # | msgid "" "Merge the previous key segment into the current one (keeps the
 # | current " "key)"
 # | msgid "Merge the previous segment into the current one"
-#: ui/shortcuts.py:184
+#: ui/shortcuts.py:186
 msgid "Beatgrid, Key, Phrase: the previous segment into the current one."
 msgstr "비트그리드, Key, 프레이즈: 이전 구간을 현재 구간에."
 
 # | msgid "Merge the next key segment into the current one (keeps the current
 # | key)"
 # | msgid "Merge the next segment into the current one"
-#: ui/shortcuts.py:185
+#: ui/shortcuts.py:187
 msgid "Merge the next segment"
 msgstr "다음 구간 합치기"
 
 # | msgid "Merge the next key segment into the current one (keeps the current
 # | key)"
 # | msgid "Merge the next segment into the current one"
-#: ui/shortcuts.py:186
+#: ui/shortcuts.py:188
 msgid "Beatgrid, Key, Phrase: the next segment into the current one."
 msgstr "비트그리드, Key, 프레이즈: 다음 구간을 현재 구간에."
 
 # | msgid "Reanalyze the current key segment's key from the audio"
-#: ui/shortcuts.py:187
+#: ui/shortcuts.py:189
 msgid "Reanalyze the current segment"
 msgstr "현재 구간 재분석"
 
 # | msgid "Beatgrid"
-#: ui/shortcuts.py:188 ui/shortcuts.py:191 ui/shortcuts.py:193
+#: ui/shortcuts.py:190 ui/shortcuts.py:193 ui/shortcuts.py:195
 msgid "Beatgrid, Key."
 msgstr "비트그리드, Key."
 
 # | msgid "Reanalyze Track"
-#: ui/shortcuts.py:189
+#: ui/shortcuts.py:191
 msgid "Reanalyze the whole track"
 msgstr "트랙 전체 재분석"
 
-#: ui/shortcuts.py:190
+#: ui/shortcuts.py:192
 msgid "Key, Phrase; on the CUE page, the JumpCUEs."
 msgstr "Key, 프레이즈. CUE 페이지에서는 JumpCUE."
 
 # | msgid "Key scope: the whole track"
-#: ui/shortcuts.py:191
+#: ui/shortcuts.py:193
 msgid "Edit scope: the whole track"
 msgstr "편집 범위: 트랙 전체"
 
 # | msgid "Set the current segment to {meter}"
-#: ui/shortcuts.py:192
+#: ui/shortcuts.py:194
 msgid "Edit scope: the current segment"
 msgstr "편집 범위: 현재 구간"
 
 # | msgid "Boundaries move by one beat"
-#: ui/shortcuts.py:194
+#: ui/shortcuts.py:196
 msgid "Boundary step: one beat"
 msgstr "경계 단위: 한 박"
 
 # | msgid "Phrase"
-#: ui/shortcuts.py:194 ui/shortcuts.py:195
+#: ui/shortcuts.py:196 ui/shortcuts.py:197
 msgid "Key, Phrase."
 msgstr "Key, 프레이즈."
 
 # | msgid "Boundaries move by one beat"
 # | msgid "Boundaries move by one bar"
-#: ui/shortcuts.py:195
+#: ui/shortcuts.py:197
 msgid "Boundary step: one bar"
 msgstr "경계 단위: 한 마디"
 
 # | msgid "Shift the current segment half a beat earlier"
-#: ui/shortcuts.py:197
+#: ui/shortcuts.py:199
 msgid "Shift half a beat earlier"
 msgstr "반 박 앞당기기"
 
 # | msgid "Shift the current segment 10 ms earlier"
-#: ui/shortcuts.py:198
+#: ui/shortcuts.py:200
 msgid "Shift 10 ms earlier"
 msgstr "10 ms 앞당기기"
 
 # | msgid "Shift the current segment 1 ms earlier"
-#: ui/shortcuts.py:199
+#: ui/shortcuts.py:201
 msgid "Shift 1 ms earlier"
 msgstr "1 ms 앞당기기"
 
 # | msgid "Shift the current segment 1 ms later"
-#: ui/shortcuts.py:200
+#: ui/shortcuts.py:202
 msgid "Shift 1 ms later"
 msgstr "1 ms 늦추기"
 
 # | msgid "Shift the current segment 10 ms later"
-#: ui/shortcuts.py:201
+#: ui/shortcuts.py:203
 msgid "Shift 10 ms later"
 msgstr "10 ms 늦추기"
 
 # | msgid "Shift the current segment half a beat later"
-#: ui/shortcuts.py:202
+#: ui/shortcuts.py:204
 msgid "Shift half a beat later"
 msgstr "반 박 늦추기"
 
 # | msgid "Error"
-#: ui/shortcuts.py:203
+#: ui/shortcuts.py:205
 msgid "ZERO"
 msgstr "ZERO"
 
-#: ui/edit_panel/beatgrid.py:76 ui/shortcuts.py:203
+#: ui/edit_panel/beatgrid.py:76 ui/shortcuts.py:205
 msgid "Clear the reference BPM and the tap history"
 msgstr "기준 BPM과 탭 기록을 지웁니다"
 
-#: ui/shortcuts.py:204
+#: ui/shortcuts.py:206
 msgid "TAP"
 msgstr "TAP"
 
-#: ui/edit_panel/beatgrid.py:82 ui/shortcuts.py:204
+#: ui/edit_panel/beatgrid.py:82 ui/shortcuts.py:206
 msgid "Tap the beat to set the reference BPM"
 msgstr "박에 맞춰 탭해 기준 BPM을 정합니다"
 
 # | msgid "Tap to set reference BPM"
 # | msgid "TAP: the reference BPM"
-#: ui/shortcuts.py:205
+#: ui/shortcuts.py:207
 msgid "Assign the reference BPM"
 msgstr "기준 BPM 지정"
 
-#: ui/edit_panel/beatgrid.py:101 ui/shortcuts.py:206
+#: ui/edit_panel/beatgrid.py:101 ui/shortcuts.py:208
 msgid "Assign the reference BPM to the current segment (downbeat at its start)"
 msgstr "기준 BPM을 현재 구간에 지정합니다 (다운비트는 구간 시작)"
 
 # | msgid "Clear the reference BPM and the tap history"
 # | msgid "The reference BPM as the starting tempo (ramp)"
-#: ui/shortcuts.py:207
+#: ui/shortcuts.py:209
 msgid "Ramp: the starting tempo"
 msgstr "램프: 시작 템포"
 
-#: ui/edit_panel/beatgrid.py:102 ui/shortcuts.py:208
+#: ui/edit_panel/beatgrid.py:102 ui/shortcuts.py:210
 msgid ""
 "Make the reference BPM the current segment's starting tempo (a ramp to "
 "its end tempo; its first beat stays)"
 msgstr "기준 BPM을 현재 구간의 시작 템포로 합니다 (끝 템포까지 이어지는 램프, 첫 박은 유지)"
 
-#: ui/shortcuts.py:210
+#: ui/shortcuts.py:212
 msgid "Ramp: the ending tempo"
 msgstr "램프: 끝 템포"
 
-#: ui/edit_panel/beatgrid.py:103 ui/shortcuts.py:211
+#: ui/edit_panel/beatgrid.py:103 ui/shortcuts.py:213
 msgid ""
 "Make the reference BPM the current segment's ending tempo (a ramp from "
 "its start tempo; its first beat stays)"
 msgstr "기준 BPM을 현재 구간의 끝 템포로 합니다 (시작 템포에서 이어지는 램프, 첫 박은 유지)"
 
 # | msgid "Hold to count beats passing under the playhead"
-#: ui/shortcuts.py:213
+#: ui/shortcuts.py:215
 msgid "Downbeat at the playhead"
 msgstr "플레이헤드에 다운비트"
 
-#: ui/edit_panel/beatgrid.py:110 ui/shortcuts.py:214
+#: ui/edit_panel/beatgrid.py:110 ui/shortcuts.py:216
 msgid "Make the beat nearest the playhead the current segment's downbeat"
 msgstr "플레이헤드에 가장 가까운 박을 현재 구간의 다운비트로 합니다"
 
-#: ui/shortcuts.py:215
+#: ui/shortcuts.py:217
 msgid "BPM x1/2"
 msgstr "BPM x1/2"
 
 # | msgid "BPM min"
-#: ui/shortcuts.py:216
+#: ui/shortcuts.py:218
 msgid "BPM x2"
 msgstr "BPM x2"
 
-#: ui/shortcuts.py:217
+#: ui/shortcuts.py:219
 #, python-brace-format
 msgid "Time signature {meter}"
 msgstr "박자 {meter}"
 
 # | msgid "Edit the key"
-#: ui/shortcuts.py:220
+#: ui/shortcuts.py:222
 msgid "Pick the key"
 msgstr "키 선택"
 
 # | msgid "Pick the key (Camelot wheel)"
-#: ui/edit_panel/key.py:95 ui/edit_panel/key_picker.py:82 ui/shortcuts.py:220
+#: ui/edit_panel/key.py:95 ui/edit_panel/key_picker.py:82 ui/shortcuts.py:222
 msgid "Pick the key (Alphanumeric wheel)"
 msgstr "키 선택 (Alphanumeric 휠)"
 
 # | msgid "Move Down"
-#: ui/shortcuts.py:221
+#: ui/shortcuts.py:223
 msgid "A semitone down"
 msgstr "반음 내림"
 
 # | msgid "Move Up"
-#: ui/shortcuts.py:222
+#: ui/shortcuts.py:224
 msgid "A semitone up"
 msgstr "반음 올림"
 
-#: ui/shortcuts.py:223
+#: ui/shortcuts.py:225
 msgid "Circle of fifths -1"
 msgstr "5도권 -1"
 
@@ -8114,84 +8146,84 @@ msgstr "5도권 -1"
 # | msgid "One step down the circle of fifths (Alphanumeric -1): every
 # segment's
 # | key"
-#: ui/shortcuts.py:224
+#: ui/shortcuts.py:226
 msgid "One step down the circle of fifths (Alphanumeric -1)"
 msgstr "5도권에서 한 칸 내림 (Alphanumeric -1)"
 
-#: ui/shortcuts.py:225
+#: ui/shortcuts.py:227
 msgid "Circle of fifths +1"
 msgstr "5도권 +1"
 
 # | msgid "One step up the circle of fifths (Camelot +1): every segment's key"
 # | msgid "One step up the circle of fifths (Alphanumeric +1): every segment's
 # | key"
-#: ui/shortcuts.py:226
+#: ui/shortcuts.py:228
 msgid "One step up the circle of fifths (Alphanumeric +1)"
 msgstr "5도권에서 한 칸 올림 (Alphanumeric +1)"
 
 # | msgid "Relative major / minor (C <-> Am): every segment's key"
 # | msgid "Relative major / minor (C <-> Am)"
-#: ui/shortcuts.py:227
+#: ui/shortcuts.py:229
 msgid "Relative major / minor"
 msgstr "나란한조 장조 / 단조"
 
 # | msgid "Relative major / minor (C <-> Am): every segment's key"
-#: ui/shortcuts.py:227
+#: ui/shortcuts.py:229
 msgid "Relative major / minor (C <-> Am)"
 msgstr "나란한조 장조 / 단조 (C <-> Am)"
 
-#: ui/shortcuts.py:228
+#: ui/shortcuts.py:230
 msgid "Merge the same keys"
 msgstr "같은 키 합치기"
 
-#: ui/edit_panel/key.py:80 ui/shortcuts.py:229
+#: ui/edit_panel/key.py:80 ui/shortcuts.py:231
 msgid "Merge every run of neighboring segments with the same key"
 msgstr "키가 같은 이웃 구간들을 모두 하나로 합칩니다"
 
-#: ui/shortcuts.py:230
+#: ui/shortcuts.py:232
 msgid "Listening aid: root"
 msgstr "듣기 보조: 근음"
 
-#: ui/shortcuts.py:231
+#: ui/shortcuts.py:233
 msgid "Listening aid: root and fifth"
 msgstr "듣기 보조: 근음과 5음"
 
-#: ui/shortcuts.py:232
+#: ui/shortcuts.py:234
 msgid "Listening aid: tonic chord"
 msgstr "듣기 보조: 으뜸화음"
 
 # | msgid "CUE points (set by the analysis from the phrases)"
 # | msgid "CUE points from the phrases (CUE rules)"
-#: ui/shortcuts.py:234
+#: ui/shortcuts.py:236
 msgid "CUE points from the phrases"
 msgstr "프레이즈로 CUE 포인트 만들기"
 
 # | msgid "" "Replace the CUE points with the ones the CUE rules give the
 # | current " "phrases\n" "(Settings > Analysis > CUE, as the full analysis
 # | makes them)"
-#: ui/shortcuts.py:235
+#: ui/shortcuts.py:237
 msgid ""
 "Replace the CUE points with the ones the CUE rules give the current "
 "phrases"
 msgstr "CUE 포인트를 현재 프레이즈에 CUE 규칙을 적용한 결과로 바꿉니다"
 
-#: ui/edit_panel/phrase.py:77 ui/shortcuts.py:236
+#: ui/edit_panel/phrase.py:77 ui/shortcuts.py:238
 msgid "Unassign the current phrase (UNASSIGNED)"
 msgstr "현재 프레이즈의 라벨을 해제합니다 (UNASSIGNED)"
 
-#: ui/edit_panel/phrase.py:162 ui/shortcuts.py:237
+#: ui/edit_panel/phrase.py:162 ui/shortcuts.py:239
 #, python-brace-format
 msgid "Label the current phrase {label}"
 msgstr "현재 프레이즈를 {label}(으)로 지정"
 
-#: ui/shortcuts.py:296
+#: ui/shortcuts.py:298
 #, python-brace-format
 msgid ""
 "Another program on this computer takes {keys}: these shortcuts do not "
 "work (Settings > Shortcuts)."
 msgstr "이 컴퓨터의 다른 프로그램이 {keys}를 가져가서 이 단축키는 동작하지 않습니다 (설정 > 단축키)."
 
-#: ui/shortcuts.py:342
+#: ui/shortcuts.py:344
 #, python-brace-format
 msgid "{keys} is used by more than one action (Settings > Shortcuts)."
 msgstr "{keys}가 여러 동작에 지정되어 있습니다 (설정 > 단축키)."

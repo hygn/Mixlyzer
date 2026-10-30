@@ -432,6 +432,7 @@ class LibraryWidget(SourcesMixin, SearchMixin, MusicMixin, MixMixin, PlaylistsMi
             "library.tieup_works": self.open_works,
             "library.export_track": self._export_selected,
             "library.write_tags": self._write_tags_selected,
+            "library.export_tempo_map": self._export_tempo_map_selected,
             "library.reveal": self._reveal_selected,
             "library.new_playlist": lambda: self._create_playlist(self._shown_folder()),
             "library.new_playlist_folder": lambda: self._create_folder(self._shown_folder()),

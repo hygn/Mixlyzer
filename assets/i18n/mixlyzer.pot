@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-30 20:34+0900\n"
+"POT-Creation-Date: 2026-10-30 20:59+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -1227,7 +1227,7 @@ msgid "The written tags did not read back as written; the file is unchanged."
 msgstr ""
 
 #: core/tags/writer.py:205 core/tags/writer.py:286 core/tags/writer.py:1371
-#: ui/library/tabs/export.py:194
+#: ui/library/tabs/export.py:212
 msgid "Tags cannot be written to this file's format."
 msgstr ""
 
@@ -3173,7 +3173,7 @@ msgid ""
 "tempo. Smaller makes the steps finer.</p>"
 msgstr ""
 
-#: ui/config/library.py:64 ui/library/tabs/export.py:121
+#: ui/config/library.py:64 ui/library/tabs/export.py:137
 msgid "Tie-ups after the comment"
 msgstr ""
 
@@ -6013,7 +6013,7 @@ msgid ""
 "the analysis, playlists and CUEs stay with the track."
 msgstr ""
 
-#: ui/library/tabs/edit_song.py:118 ui/library/tabs/export.py:64
+#: ui/library/tabs/edit_song.py:118 ui/library/tabs/export.py:69
 msgid "Browse..."
 msgstr ""
 
@@ -6048,142 +6048,162 @@ msgid ""
 "{path}"
 msgstr ""
 
-#: ui/library/tabs/export.py:77
+#: ui/library/tabs/export.py:82
 msgid "No JumpCUE directions"
 msgstr ""
 
-#: ui/library/tabs/export.py:84
+#: ui/library/tabs/export.py:89
 msgid "Source"
 msgstr ""
 
-#: ui/library/tabs/export.py:86
-msgid "Prerender JumpCUE Audio"
-msgstr ""
-
-#: ui/library/tabs/export.py:87
-msgid "Write WAV files with JumpCUE skips baked in."
-msgstr ""
-
-#: ui/library/tabs/export.py:89
+#: ui/library/tabs/export.py:90
 msgid "Destination Folder"
 msgstr ""
 
-#: ui/library/tabs/export.py:91
+#: ui/library/tabs/export.py:92
+msgid "Prerender JumpCUE Audio"
+msgstr ""
+
+#: ui/library/tabs/export.py:93
+msgid "Write WAV files with JumpCUE skips baked in."
+msgstr ""
+
+#: ui/library/tabs/export.py:96
 msgid "Export"
 msgstr ""
 
-#: ui/library/tabs/export.py:100
+#: ui/library/tabs/export.py:105
+msgid "DAW Tempo Map"
+msgstr ""
+
+#: ui/library/tabs/export.py:107
+msgid ""
+"<p>A MIDI file of the track's beatgrid for a DAW: its tempo (ramps too), "
+"bars and key changes. Put the audio at the project's start and import the"
+" file's tempo map there.</p>"
+msgstr ""
+
+#: ui/library/tabs/export.py:109
+msgid "Export MIDI"
+msgstr ""
+
+#: ui/library/tabs/export.py:116
 msgid "File Tags"
 msgstr ""
 
-#: ui/library/tabs/export.py:102
+#: ui/library/tabs/export.py:118
 msgid ""
 "<p>Write the library's values into the audio file's own tags: only the "
 "fields checked change; the file's other tags, its artwork and its audio "
 "stay as they are.</p>"
 msgstr ""
 
-#: ui/library/tabs/export.py:112
+#: ui/library/tabs/export.py:128
 msgid "MP4 / M4A files hold a whole BPM only."
 msgstr ""
 
-#: ui/library/tabs/export.py:113
+#: ui/library/tabs/export.py:129
 msgid "Written as a musical key (Am, F#)."
 msgstr ""
 
-#: ui/library/tabs/export.py:123
+#: ui/library/tabs/export.py:139
 msgid ""
 "<p>The comment written with the song's tie-ups after it, as [Title OP; "
 "Other ED]; the library's comment stays as it is.</p>"
 msgstr ""
 
-#: ui/library/tabs/export.py:130 ui/library/tabs/export.py:215
-#: ui/library/tabs/export.py:278
+#: ui/library/tabs/export.py:146 ui/library/tabs/export.py:233
+#: ui/library/tabs/export.py:296
 msgid "Write Tags"
 msgstr ""
 
-#: ui/library/tabs/export.py:131
+#: ui/library/tabs/export.py:147
 msgid "Write the checked fields' stored values into the file's tags."
 msgstr ""
 
-#: ui/library/tabs/export.py:174
+#: ui/library/tabs/export.py:192
 msgid "Source file not found at the specified path."
 msgstr ""
 
-#: ui/library/tabs/export.py:177
+#: ui/library/tabs/export.py:195
 msgid "Source path is invalid."
 msgstr ""
 
-#: ui/library/tabs/export.py:210
+#: ui/library/tabs/export.py:228
 msgid "Check the fields to write."
 msgstr ""
 
-#: ui/library/tabs/export.py:216
+#: ui/library/tabs/export.py:234
 msgid ""
 "The Edit tab has changes to this track that are not applied: the stored "
 "values are written.\n"
 "Write the tags anyway?"
 msgstr ""
 
-#: ui/library/tabs/export.py:224
+#: ui/library/tabs/export.py:242
 msgid "Writing the tags..."
 msgstr ""
 
-#: ui/library/tabs/export.py:234
+#: ui/library/tabs/export.py:252
 msgid "The track is no longer in the library."
 msgstr ""
 
-#: ui/library/tabs/export.py:270 ui/windows/diagnostics_dialog.py:59
+#: ui/library/tabs/export.py:288 ui/library/tabs/export.py:400
+#: ui/windows/diagnostics_dialog.py:59
 #, python-brace-format
 msgid "The file could not be written: {error}"
 msgstr ""
 
-#: ui/library/tabs/export.py:276
+#: ui/library/tabs/export.py:294
 msgid "The tags were written to the file."
 msgstr ""
 
-#: ui/library/tabs/export.py:306
+#: ui/library/tabs/export.py:324
 msgid "Select Destination Folder"
 msgstr ""
 
-#: ui/library/tabs/export.py:314
+#: ui/library/tabs/export.py:333
 msgid "No track is selected."
 msgstr ""
 
-#: ui/library/tabs/export.py:319
+#: ui/library/tabs/export.py:337
 msgid "Please select a destination folder."
 msgstr ""
 
-#: ui/library/tabs/export.py:325
+#: ui/library/tabs/export.py:343
 #, python-brace-format
 msgid ""
 "Cannot create destination folder:\n"
 "{error}"
 msgstr ""
 
-#: ui/library/tabs/export.py:338
-msgid "Select a JumpCUE direction to render."
-msgstr ""
-
-#: ui/library/tabs/export.py:347
-#, python-brace-format
-msgid ""
-"Export completed:\n"
-"{files}"
-msgstr ""
-
-#: ui/library/tabs/export.py:376
-msgid "The track's analysis could not be read."
-msgstr ""
-
-#: ui/library/tabs/export.py:460
+#: ui/library/tabs/export.py:354
 #, python-brace-format
 msgid ""
 "'{name}' already exists.\n"
 "Overwrite?"
 msgstr ""
 
-#: ui/library/tabs/export.py:470
+#: ui/library/tabs/export.py:379 ui/library/tabs/export.py:462
+msgid "The track's analysis could not be read."
+msgstr ""
+
+#: ui/library/tabs/export.py:390
+msgid "The track has no beatgrid to write."
+msgstr ""
+
+#: ui/library/tabs/export.py:402 ui/library/tabs/export.py:429
+#, python-brace-format
+msgid ""
+"Export completed:\n"
+"{files}"
+msgstr ""
+
+#: ui/library/tabs/export.py:420
+msgid "Select a JumpCUE direction to render."
+msgstr ""
+
+#: ui/library/tabs/export.py:550
 #, python-brace-format
 msgid ""
 "Failed to write JumpCUE audio:\n"
@@ -6445,15 +6465,15 @@ msgstr ""
 msgid "All"
 msgstr ""
 
-#: ui/library/tabs/edit_song.py:124 ui/library/tabs/export.py:82
-#: ui/library/tabs/export.py:108 ui/library/tabs/tieup_editor.py:140
+#: ui/library/tabs/edit_song.py:124 ui/library/tabs/export.py:87
+#: ui/library/tabs/export.py:124 ui/library/tabs/tieup_editor.py:140
 #: ui/library/tabs/track_search_index.py:53 ui/library/widget.py:39
 #: ui/windows/tieup_works.py:77
 msgid "Title"
 msgstr ""
 
-#: ui/library/tabs/edit_song.py:125 ui/library/tabs/export.py:83
-#: ui/library/tabs/export.py:109 ui/library/tabs/track_search_index.py:53
+#: ui/library/tabs/edit_song.py:125 ui/library/tabs/export.py:88
+#: ui/library/tabs/export.py:125 ui/library/tabs/track_search_index.py:53
 #: ui/library/widget.py:39
 msgid "Artist"
 msgstr ""
@@ -6462,7 +6482,7 @@ msgstr ""
 msgid "Duration"
 msgstr ""
 
-#: ui/library/tabs/edit_song.py:126 ui/library/tabs/export.py:110
+#: ui/library/tabs/edit_song.py:126 ui/library/tabs/export.py:126
 #: ui/library/tabs/track_search_index.py:53 ui/library/widget.py:40
 msgid "Album"
 msgstr ""
@@ -6484,7 +6504,7 @@ msgstr ""
 msgid "Path"
 msgstr ""
 
-#: ui/library/tabs/edit_song.py:130 ui/library/tabs/export.py:111
+#: ui/library/tabs/edit_song.py:130 ui/library/tabs/export.py:127
 #: ui/library/widget.py:42
 msgid "Comment"
 msgstr ""
@@ -6493,7 +6513,7 @@ msgstr ""
 msgid "Track loading is disabled while External Sync is enabled."
 msgstr ""
 
-#: ui/library/widget.py:475
+#: ui/library/widget.py:476
 msgid "The loaded track is not in the list shown."
 msgstr ""
 
@@ -6842,10 +6862,12 @@ msgstr ""
 msgid "The works window: every work the tie-ups name, edited, merged or deleted."
 msgstr ""
 
-#: ui/library/actions.py:52 ui/library/tabs/export.py:314
-#: ui/library/tabs/export.py:319 ui/library/tabs/export.py:325
-#: ui/library/tabs/export.py:337 ui/library/tabs/export.py:347
-#: ui/library/tabs/export.py:459 ui/library/tabs/export.py:470
+#: ui/library/actions.py:52 ui/library/tabs/export.py:333
+#: ui/library/tabs/export.py:337 ui/library/tabs/export.py:343
+#: ui/library/tabs/export.py:353 ui/library/tabs/export.py:378
+#: ui/library/tabs/export.py:390 ui/library/tabs/export.py:400
+#: ui/library/tabs/export.py:402 ui/library/tabs/export.py:419
+#: ui/library/tabs/export.py:429 ui/library/tabs/export.py:550
 #: ui/library/track_panel.py:47 ui/shortcuts.py:149
 msgid "Export Track"
 msgstr ""
@@ -6862,343 +6884,353 @@ msgstr ""
 msgid "The selected track's stored values written into its audio file's tags."
 msgstr ""
 
-#: ui/library/actions.py:45 ui/shortcuts.py:153
+#: ui/shortcuts.py:153
+msgid "Export DAW Tempo Map"
+msgstr ""
+
+#: ui/shortcuts.py:154
+msgid ""
+"The selected track's beatgrid written as a MIDI file into the Export "
+"tab's folder."
+msgstr ""
+
+#: ui/library/actions.py:45 ui/shortcuts.py:155
 msgid "Show in Explorer"
 msgstr ""
 
-#: ui/library/actions.py:46 ui/shortcuts.py:154
+#: ui/library/actions.py:46 ui/shortcuts.py:156
 msgid "Show in Finder"
 msgstr ""
 
-#: ui/library/actions.py:46 ui/shortcuts.py:154
+#: ui/library/actions.py:46 ui/shortcuts.py:156
 msgid "Show in File Manager"
 msgstr ""
 
 #: ui/library/playlists.py:18 ui/library/playlists.py:23
-#: ui/library/sources.py:664 ui/shortcuts.py:155
+#: ui/library/sources.py:664 ui/shortcuts.py:157
 msgid "New Playlist"
 msgstr ""
 
-#: ui/shortcuts.py:156
+#: ui/shortcuts.py:158
 msgid "A new playlist in the folder shown."
 msgstr ""
 
-#: ui/shortcuts.py:157
+#: ui/shortcuts.py:159
 msgid "New Playlist Folder"
 msgstr ""
 
-#: ui/shortcuts.py:158
+#: ui/shortcuts.py:160
 msgid "A new playlist folder in the folder shown."
 msgstr ""
 
-#: ui/library/actions.py:50 ui/shortcuts.py:159
+#: ui/library/actions.py:50 ui/shortcuts.py:161
 #: ui/windows/reanalyze_dialog.py:16
 msgid "Reanalyze Track"
 msgstr ""
 
-#: ui/shortcuts.py:160
+#: ui/shortcuts.py:162
 msgid ""
 "A full analysis of the selected tracks: their stored analysis and edits "
 "are replaced."
 msgstr ""
 
-#: ui/library/actions.py:47 ui/library/actions.py:128 ui/shortcuts.py:161
+#: ui/library/actions.py:47 ui/library/actions.py:128 ui/shortcuts.py:163
 msgid "Remove from Library"
 msgstr ""
 
-#: ui/library/actions.py:55 ui/shortcuts.py:162
+#: ui/library/actions.py:55 ui/shortcuts.py:164
 msgid "Remove from Playlist"
 msgstr ""
 
-#: ui/shortcuts.py:164
+#: ui/shortcuts.py:166
 msgid "Edit lock on / off"
 msgstr ""
 
-#: ui/shortcuts.py:165
+#: ui/shortcuts.py:167
 #, python-brace-format
 msgid "Show the {page} page"
 msgstr ""
 
-#: ui/shortcuts.py:166
+#: ui/shortcuts.py:168
 msgid "It becomes the current page."
 msgstr ""
 
-#: ui/edit_panel/panel.py:219 ui/shortcuts.py:168
+#: ui/edit_panel/panel.py:219 ui/shortcuts.py:170
 msgid "Undo Changes"
 msgstr ""
 
-#: ui/edit_panel/panel.py:223 ui/shortcuts.py:169
+#: ui/edit_panel/panel.py:223 ui/shortcuts.py:171
 msgid "Redo Changes"
 msgstr ""
 
-#: ui/edit_panel/panel.py:227 ui/shortcuts.py:170
+#: ui/edit_panel/panel.py:227 ui/shortcuts.py:172
 msgid "Save Edits"
 msgstr ""
 
-#: ui/shortcuts.py:173
+#: ui/shortcuts.py:175
 msgid "Start earlier"
 msgstr ""
 
-#: ui/shortcuts.py:174 ui/shortcuts.py:176
+#: ui/shortcuts.py:176 ui/shortcuts.py:178
 msgid ""
 "Key, Phrase: the current segment's start, by a beat or a bar (the "
 "boundary step)."
 msgstr ""
 
-#: ui/shortcuts.py:175
+#: ui/shortcuts.py:177
 msgid "Start later"
 msgstr ""
 
-#: ui/shortcuts.py:177
+#: ui/shortcuts.py:179
 msgid "End earlier"
 msgstr ""
 
-#: ui/shortcuts.py:178 ui/shortcuts.py:180
+#: ui/shortcuts.py:180 ui/shortcuts.py:182
 msgid ""
 "Key, Phrase: the current segment's end, by a beat or a bar (the boundary "
 "step)."
 msgstr ""
 
-#: ui/shortcuts.py:179
+#: ui/shortcuts.py:181
 msgid "End later"
 msgstr ""
 
-#: ui/shortcuts.py:181
+#: ui/shortcuts.py:183
 msgid "Split at the playhead"
 msgstr ""
 
-#: ui/shortcuts.py:182
+#: ui/shortcuts.py:184
 msgid "Beatgrid, Key, Phrase: the current segment."
 msgstr ""
 
-#: ui/shortcuts.py:183
+#: ui/shortcuts.py:185
 msgid "Merge the previous segment"
 msgstr ""
 
-#: ui/shortcuts.py:184
+#: ui/shortcuts.py:186
 msgid "Beatgrid, Key, Phrase: the previous segment into the current one."
 msgstr ""
 
-#: ui/shortcuts.py:185
+#: ui/shortcuts.py:187
 msgid "Merge the next segment"
 msgstr ""
 
-#: ui/shortcuts.py:186
+#: ui/shortcuts.py:188
 msgid "Beatgrid, Key, Phrase: the next segment into the current one."
 msgstr ""
 
-#: ui/shortcuts.py:187
+#: ui/shortcuts.py:189
 msgid "Reanalyze the current segment"
 msgstr ""
 
-#: ui/shortcuts.py:188 ui/shortcuts.py:191 ui/shortcuts.py:193
+#: ui/shortcuts.py:190 ui/shortcuts.py:193 ui/shortcuts.py:195
 msgid "Beatgrid, Key."
 msgstr ""
 
-#: ui/shortcuts.py:189
+#: ui/shortcuts.py:191
 msgid "Reanalyze the whole track"
 msgstr ""
 
-#: ui/shortcuts.py:190
+#: ui/shortcuts.py:192
 msgid "Key, Phrase; on the CUE page, the JumpCUEs."
 msgstr ""
 
-#: ui/shortcuts.py:191
+#: ui/shortcuts.py:193
 msgid "Edit scope: the whole track"
 msgstr ""
 
-#: ui/shortcuts.py:192
+#: ui/shortcuts.py:194
 msgid "Edit scope: the current segment"
 msgstr ""
 
-#: ui/shortcuts.py:194
+#: ui/shortcuts.py:196
 msgid "Boundary step: one beat"
 msgstr ""
 
-#: ui/shortcuts.py:194 ui/shortcuts.py:195
+#: ui/shortcuts.py:196 ui/shortcuts.py:197
 msgid "Key, Phrase."
 msgstr ""
 
-#: ui/shortcuts.py:195
+#: ui/shortcuts.py:197
 msgid "Boundary step: one bar"
 msgstr ""
 
-#: ui/shortcuts.py:197
+#: ui/shortcuts.py:199
 msgid "Shift half a beat earlier"
 msgstr ""
 
-#: ui/shortcuts.py:198
+#: ui/shortcuts.py:200
 msgid "Shift 10 ms earlier"
 msgstr ""
 
-#: ui/shortcuts.py:199
+#: ui/shortcuts.py:201
 msgid "Shift 1 ms earlier"
 msgstr ""
 
-#: ui/shortcuts.py:200
+#: ui/shortcuts.py:202
 msgid "Shift 1 ms later"
 msgstr ""
 
-#: ui/shortcuts.py:201
+#: ui/shortcuts.py:203
 msgid "Shift 10 ms later"
 msgstr ""
 
-#: ui/shortcuts.py:202
+#: ui/shortcuts.py:204
 msgid "Shift half a beat later"
 msgstr ""
 
-#: ui/shortcuts.py:203
+#: ui/shortcuts.py:205
 msgid "ZERO"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:76 ui/shortcuts.py:203
+#: ui/edit_panel/beatgrid.py:76 ui/shortcuts.py:205
 msgid "Clear the reference BPM and the tap history"
 msgstr ""
 
-#: ui/shortcuts.py:204
+#: ui/shortcuts.py:206
 msgid "TAP"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:82 ui/shortcuts.py:204
+#: ui/edit_panel/beatgrid.py:82 ui/shortcuts.py:206
 msgid "Tap the beat to set the reference BPM"
 msgstr ""
 
-#: ui/shortcuts.py:205
+#: ui/shortcuts.py:207
 msgid "Assign the reference BPM"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:101 ui/shortcuts.py:206
+#: ui/edit_panel/beatgrid.py:101 ui/shortcuts.py:208
 msgid "Assign the reference BPM to the current segment (downbeat at its start)"
 msgstr ""
 
-#: ui/shortcuts.py:207
+#: ui/shortcuts.py:209
 msgid "Ramp: the starting tempo"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:102 ui/shortcuts.py:208
+#: ui/edit_panel/beatgrid.py:102 ui/shortcuts.py:210
 msgid ""
 "Make the reference BPM the current segment's starting tempo (a ramp to "
 "its end tempo; its first beat stays)"
 msgstr ""
 
-#: ui/shortcuts.py:210
+#: ui/shortcuts.py:212
 msgid "Ramp: the ending tempo"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:103 ui/shortcuts.py:211
+#: ui/edit_panel/beatgrid.py:103 ui/shortcuts.py:213
 msgid ""
 "Make the reference BPM the current segment's ending tempo (a ramp from "
 "its start tempo; its first beat stays)"
 msgstr ""
 
-#: ui/shortcuts.py:213
+#: ui/shortcuts.py:215
 msgid "Downbeat at the playhead"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:110 ui/shortcuts.py:214
+#: ui/edit_panel/beatgrid.py:110 ui/shortcuts.py:216
 msgid "Make the beat nearest the playhead the current segment's downbeat"
 msgstr ""
 
-#: ui/shortcuts.py:215
+#: ui/shortcuts.py:217
 msgid "BPM x1/2"
 msgstr ""
 
-#: ui/shortcuts.py:216
+#: ui/shortcuts.py:218
 msgid "BPM x2"
 msgstr ""
 
-#: ui/shortcuts.py:217
+#: ui/shortcuts.py:219
 #, python-brace-format
 msgid "Time signature {meter}"
 msgstr ""
 
-#: ui/shortcuts.py:220
+#: ui/shortcuts.py:222
 msgid "Pick the key"
 msgstr ""
 
-#: ui/edit_panel/key.py:95 ui/edit_panel/key_picker.py:82 ui/shortcuts.py:220
+#: ui/edit_panel/key.py:95 ui/edit_panel/key_picker.py:82 ui/shortcuts.py:222
 msgid "Pick the key (Alphanumeric wheel)"
 msgstr ""
 
-#: ui/shortcuts.py:221
+#: ui/shortcuts.py:223
 msgid "A semitone down"
 msgstr ""
 
-#: ui/shortcuts.py:222
+#: ui/shortcuts.py:224
 msgid "A semitone up"
 msgstr ""
 
-#: ui/shortcuts.py:223
+#: ui/shortcuts.py:225
 msgid "Circle of fifths -1"
 msgstr ""
 
-#: ui/shortcuts.py:224
+#: ui/shortcuts.py:226
 msgid "One step down the circle of fifths (Alphanumeric -1)"
 msgstr ""
 
-#: ui/shortcuts.py:225
+#: ui/shortcuts.py:227
 msgid "Circle of fifths +1"
 msgstr ""
 
-#: ui/shortcuts.py:226
+#: ui/shortcuts.py:228
 msgid "One step up the circle of fifths (Alphanumeric +1)"
 msgstr ""
 
-#: ui/shortcuts.py:227
+#: ui/shortcuts.py:229
 msgid "Relative major / minor"
 msgstr ""
 
-#: ui/shortcuts.py:227
+#: ui/shortcuts.py:229
 msgid "Relative major / minor (C <-> Am)"
 msgstr ""
 
-#: ui/shortcuts.py:228
+#: ui/shortcuts.py:230
 msgid "Merge the same keys"
 msgstr ""
 
-#: ui/edit_panel/key.py:80 ui/shortcuts.py:229
+#: ui/edit_panel/key.py:80 ui/shortcuts.py:231
 msgid "Merge every run of neighboring segments with the same key"
 msgstr ""
 
-#: ui/shortcuts.py:230
+#: ui/shortcuts.py:232
 msgid "Listening aid: root"
 msgstr ""
 
-#: ui/shortcuts.py:231
+#: ui/shortcuts.py:233
 msgid "Listening aid: root and fifth"
 msgstr ""
 
-#: ui/shortcuts.py:232
+#: ui/shortcuts.py:234
 msgid "Listening aid: tonic chord"
 msgstr ""
 
-#: ui/shortcuts.py:234
+#: ui/shortcuts.py:236
 msgid "CUE points from the phrases"
 msgstr ""
 
-#: ui/shortcuts.py:235
+#: ui/shortcuts.py:237
 msgid ""
 "Replace the CUE points with the ones the CUE rules give the current "
 "phrases"
 msgstr ""
 
-#: ui/edit_panel/phrase.py:77 ui/shortcuts.py:236
+#: ui/edit_panel/phrase.py:77 ui/shortcuts.py:238
 msgid "Unassign the current phrase (UNASSIGNED)"
 msgstr ""
 
-#: ui/edit_panel/phrase.py:162 ui/shortcuts.py:237
+#: ui/edit_panel/phrase.py:162 ui/shortcuts.py:239
 #, python-brace-format
 msgid "Label the current phrase {label}"
 msgstr ""
 
-#: ui/shortcuts.py:296
+#: ui/shortcuts.py:298
 #, python-brace-format
 msgid ""
 "Another program on this computer takes {keys}: these shortcuts do not "
 "work (Settings > Shortcuts)."
 msgstr ""
 
-#: ui/shortcuts.py:342
+#: ui/shortcuts.py:344
 #, python-brace-format
 msgid "{keys} is used by more than one action (Settings > Shortcuts)."
 msgstr ""

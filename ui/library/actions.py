@@ -147,6 +147,13 @@ class ActionsMixin:
             flash(self.export_panel.btn_write_tags)
             self.export_panel.write_tags()
 
+    def _export_tempo_map_selected(self):
+        """The Export tab with the selected track, its beatgrid written as a DAW's tempo map."""
+        if self._selected_uids():
+            self.open_track_panel(self.EXPORT_TAB, focus=False)
+            flash(self.export_panel.btn_tempo_map)
+            self.export_panel.export_tempo_map()
+
     # Reanalyze
     def _reanalyze_selected(self):
         """The selected tracks analyzed again: the analyzed ones once the reanalysis dialog is accepted, with

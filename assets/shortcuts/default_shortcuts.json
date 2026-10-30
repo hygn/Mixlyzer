@@ -195,6 +195,9 @@
   "library.write_tags": [
     "Ctrl+Shift+T"
   ],
+  "library.export_tempo_map": [
+    "Shift+X"
+  ],
   "library.reveal": [
     "Alt+E"
   ],
