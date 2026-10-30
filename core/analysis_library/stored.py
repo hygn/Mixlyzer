@@ -6,6 +6,8 @@ blocks; the rest of the app reads the fields.
     arrays_of(result)                     an analysis's results (analyzer.pipeline.track.TrackAnalysis) as stored
     TrackEdits / apply_edits(arrays, e)   the editor's save, the blocks it replaces
     annotation_of(arrays)                 Reoptimize's annotation of a track (analyzer.training.library_tracks)
+    Schema / SCHEMA / schema_of / migratable   the format's version every file carries (stable, dev), written by
+                                               arrays_of and apply_edits
 """
 from __future__ import annotations
 
@@ -32,6 +34,56 @@ KEYS, KEYS_AUTO = "key_segments", "key_segments_auto"
 WAVE = ("wave_minmax_np", "wave_minmax_ref", "wave_bands_np", "wave_bands_ref")
 WAVE_DETAIL_REF = "wave_detail_band_ref"
 PHRASES, CUE_POINTS, JUMP_CUES, JUMP_CUES_AUTO = "phrase_segments_np", "cue_points_np", "jump_cues_np", "jump_cues_auto_np"
+SCHEMA_STABLE_KEY, SCHEMA_DEV_KEY = "schema_stable", "schema_dev"
+
+
+@dataclass(frozen=True, order=True)
+class Schema:
+    """The stored format's version, two numbers every {uid}.npz carries (ordered: (stable, dev)).
+
+    ``stable``: the released format it is, or, while ``dev`` > 0, the last released one it builds on (0: v0.1.0's,
+    whose files carry no version). A release's format is migrated to every later release's.
+    ``dev``: 0 for a release's format (production); 1 and up for the formats of its development since, each format
+    change a step. Such a format is migrated only where a migration for it is written (DEV_MIGRATIONS): the
+    development's formats are not kept up with otherwise."""
+    stable: int
+    dev: int
+
+    @property
+    def production(self) -> bool:
+        return self.dev == 0
+
+
+# the format this app writes: v0.1.0's (stable 0) and one step of development since; a release makes it (n + 1, 0)
+SCHEMA = Schema(0, 1)
+# the development formats a migration is written for (none: the development's formats are not kept up with)
+DEV_MIGRATIONS: frozenset[Schema] = frozenset()
+
+
+def schema_of(arrays: Mapping) -> Optional[Schema]:
+    """The format a stored analysis's arrays are in; None when they carry no version (written before versions were:
+    v0.1.0's, or this development's before the fields)."""
+    stable, dev = arrays.get(SCHEMA_STABLE_KEY), arrays.get(SCHEMA_DEV_KEY)
+    if stable is None or dev is None:
+        return None
+    return Schema(int(np.asarray(stable).item()), int(np.asarray(dev).item()))
+
+
+def migratable(schema: Schema) -> bool:
+    """Whether a stored analysis in ``schema`` can be brought to SCHEMA: its own format, a release's that is not
+    newer, or a development format a migration is written for (DEV_MIGRATIONS); never a newer one (an earlier app's
+    can't read what a later one wrote)."""
+    if schema == SCHEMA:
+        return True
+    if schema > SCHEMA:
+        return False
+    return schema.production or schema in DEV_MIGRATIONS
+
+
+def _stamp(arrays: dict) -> None:
+    """The arrays marked as written in SCHEMA."""
+    arrays[SCHEMA_STABLE_KEY] = np.int32(SCHEMA.stable)
+    arrays[SCHEMA_DEV_KEY] = np.int32(SCHEMA.dev)
 
 
 def _scalar(value: Any, default: Optional[float] = 0.0) -> Optional[float]:
@@ -69,6 +121,7 @@ class StoredAnalysis:
     jump_cues: tuple[JumpCueGroup, ...] = ()           # the user's, their letters as stored
     jump_cues_auto: Optional[tuple[JumpCueGroup, ...]] = None   # the automatic result (None: not kept)
     wave: Optional[WaveOverview] = None
+    schema: Optional[Schema] = None                    # the format it was stored in (None: unversioned)
 
     @classmethod
     def from_arrays(cls, arrays: Optional[Mapping]) -> "StoredAnalysis":
@@ -92,6 +145,7 @@ class StoredAnalysis:
             jump_cues=tuple(extract_jump_cue_groups(a, JUMP_CUES)),
             jump_cues_auto=tuple(extract_jump_cue_groups(a, JUMP_CUES_AUTO)) if _has_block(a, JUMP_CUES_AUTO) else None,
             wave=wave,
+            schema=schema_of(a),
         )
 
 
@@ -101,6 +155,8 @@ def arrays_of(result) -> dict[str, Any]:
     wave = result.wave_overview
     jump_cues = build_jump_cues_np(result.jump_pairs, canonicalize_labels=True, merge_coincident=True)
     return {
+        SCHEMA_STABLE_KEY: np.int32(SCHEMA.stable),
+        SCHEMA_DEV_KEY: np.int32(SCHEMA.dev),
         **dict(zip(WAVE, (wave.minmax, wave.minmax_ref, wave.bands, wave.bands_ref))),
         WAVE_DETAIL_REF: wave.detail_band_ref,
         DURATION: result.duration_sec,
@@ -148,7 +204,14 @@ def _replace_block(arrays: dict, name: str, block: dict) -> None:
 
 
 def apply_edits(arrays: dict, edits: TrackEdits) -> None:
-    """``edits`` into a track's stored arrays (in place); the main tempo made from the rows as edited."""
+    """``edits`` into a track's stored arrays (in place); the main tempo made from the rows as edited; the arrays then
+    in SCHEMA. ValueError (nothing changed) when they are in a newer format than SCHEMA: this app would write its
+    own over a later one's."""
+    schema = schema_of(arrays)
+    if schema is not None and schema > SCHEMA:
+        raise ValueError(f"the stored analysis is in a newer format ({schema.stable}.{schema.dev}) than this "
+                         f"Mixlyzer's ({SCHEMA.stable}.{SCHEMA.dev})")
+    _stamp(arrays)
     arrays[BEATS] = np.array(edits.beats, dtype=float)
     arrays[TEMPO_ROWS] = np.array(edits.tempo_segments, dtype=float)
     arrays[TEMPO] = edits.main_tempo()
