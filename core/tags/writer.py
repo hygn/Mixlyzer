@@ -172,7 +172,8 @@ def targets(fmt: str, fields, sources: Optional[dict] = None, found: Optional[Sp
             ) -> dict[str, tuple[str, ...]]:
     """Where each field is written in a file of ``fmt`` holding ``found`` (``fields``: names, or field -> text,
     "" an emptied one): its sources the format has, else the field's copies the file has (none: the reader's
-    first place; WAV: INFO and the ID3 chunk); an emptied field: its sources and its copies holding a value (a
+    first place; WAV: INFO and the ID3 chunk), and the format's own place for it (LEVELS' first: what DJ software
+    reads, whatever the reader took); an emptied field: its sources and its copies holding a value (a
     fallback field only as its source; a blank placeholder stays). A place that cannot hold any value sends it to
     its ID3v2 field."""
     found = found or {}
@@ -192,6 +193,10 @@ def targets(fmt: str, fields, sources: Optional[dict] = None, found: Optional[Sp
                 chosen = [s for s in copies if s in found] or [levels[0][0]]
                 if fmt == "wav" and not any(s in found for s in copies) and len(levels) > 1:
                     chosen.append(levels[1][0])
+            # the format's own place too, the one DJ software reads (rekordbox an M4A's ©cmt only: a store's file
+            # with a blank ©cmt and the comment in desc showed none), unless FLAC's PERFORMER steers the artist
+            if not (fmt == "flac" and field == "artist" and "vorbis:PERFORMER" in (*found, *sourced)):
+                chosen = [LEVELS[fmt][field][0][0]] + chosen
         chosen += [_REDIRECT[s] for s in chosen if s in _REDIRECT]
         out[field] = tuple(s for s in dict.fromkeys(chosen) if not s.startswith("id3v1:"))
     return out
@@ -220,6 +225,33 @@ def read_tags(path) -> dict[str, str]:
         value = next((found[s][0] for s in SPELLINGS[fmt][field] if found.get(s)), None)
         if value is not None:
             out[field] = value
+    return out
+
+
+PlannedPlace = tuple[str, str, list[str], list[str], str]
+
+
+def planned_writes(path, values: dict, sources: Optional[dict] = None) -> dict[str, list[PlannedPlace]]:
+    """Where ``write_tags`` would write each of ``values`` (with ``sources``) and what each place holds: field ->
+    [(the place, as ``write_tags``' ``places`` take it: "mp4:©cmt"; its name in the format: "©cmt", "desc", "COMM",
+    "TXXX:comment"; its values now; its values after; "source" where the field was read from / "own" the format's
+    own place, written too: what DJ software reads / "copy")]. A field whose places all hold their values after
+    already is as written. TagWriteError as ``write_tags``."""
+    path = Path(path)
+    fmt = tag_format(path)
+    if fmt is None:
+        raise TagWriteError(tr("Tags cannot be written to this file's format."))
+    texts = _texts(values)
+    try:
+        found = _READERS[fmt](path)
+    except (struct.error, IndexError, ValueError, UnicodeError, OverflowError) as exc:
+        raise _damaged() from exc
+    out = {}
+    for field, places in targets(fmt, texts, sources, found).items():
+        own = _REDIRECT.get(LEVELS[fmt][field][0][0], LEVELS[fmt][field][0][0])
+        sourced = set((sources or {}).get(field, ()))
+        out[field] = [(s, s.split(":", 1)[1], list(found.get(s, [])), _written(fmt, s, texts[field]),
+                       "source" if s in sourced else "own" if s == own else "copy") for s in places]
     return out
 
 
@@ -272,11 +304,16 @@ def tag_sources(path, read: dict[str, str]) -> dict[str, list[str]]:
 
 # --- writing ------------------------------------------------------------------------------------------------
 
-def write_tags(path, values: dict, sources: Optional[dict] = None) -> dict[str, tuple[str, ...]]:
+def write_tags(path, values: dict, sources: Optional[dict] = None,
+               about_to_write: Optional[Callable[[Path, list[Segment]], None]] = None,
+               places: Optional[dict] = None) -> dict[str, tuple[str, ...]]:
     """``values`` (FIELDS -> text, the BPM a number; "" / None removes the tag) written into the file's tags,
-    where ``sources`` (field -> spellings, ``tag_sources``) say, else where the reader takes each first; returns
-    where each was written. TagWriteError when the file cannot take them or what was written does not read back;
-    the file is then as it was."""
+    where ``sources`` (field -> spellings, ``tag_sources``) say, else where the reader takes each first (``targets``),
+    or exactly at ``places`` (field -> spellings, as ``planned_writes`` names them: a field without any is not
+    written); returns where each was written. TagWriteError when the file cannot take them or what was written does
+    not read back; the file is then as it was. ``about_to_write(path, segments)`` is called with the file to come
+    (``Segment``s of the file as it is) before anything is written (core.tags.backup's tag block backup): raising,
+    nothing is."""
     path = Path(path)
     texts = _texts(values)
     if not texts:
@@ -284,11 +321,19 @@ def write_tags(path, values: dict, sources: Optional[dict] = None) -> dict[str, 
     fmt = tag_format(path)
     if fmt is None:
         raise TagWriteError(tr("Tags cannot be written to this file's format."))
+    if places is not None:   # the field's own places (ID3v1 never written, as targets has it)
+        chosen = {f: tuple(s for s in dict.fromkeys(places.get(f, ())) if s in SPELLINGS[fmt][f]
+                           and not s.startswith("id3v1:")) for f in texts}
+        texts = {f: t for f, t in texts.items() if chosen[f]}
+        if not texts:
+            return {}
     try:
         before = _READERS[fmt](path)
-        where = targets(fmt, texts, sources, before)
-        where = {field: places for field, places in where.items() if places}
+        where = targets(fmt, texts, sources, before) if places is None else {f: chosen[f] for f in texts}
+        where = {field: spellings for field, spellings in where.items() if spellings}
         segments, extra_check = _PLANS[fmt](path, texts, where)
+        if about_to_write is not None:
+            about_to_write(path, segments)
 
         def check(p: Path) -> None:
             _check_spellings(fmt, before, _READERS[fmt](p), where, texts)

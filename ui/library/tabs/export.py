@@ -6,19 +6,21 @@ from typing import Callable, Optional
 from urllib.parse import unquote, urlparse
 
 import numpy as np
-from PySide6 import QtCore, QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
 import soundfile as sf
 from core.tieups import domain as tieup
 from system import os_support
 from system.os_support import path_key
 from system.atomic_io import atomic_output_path
+from system.resource_paths import resource_path
 from core.analysis_library import jobs as analysis_jobs
 from core.analysis_library.stored import StoredAnalysis
 from core.library import jobs
 from core.library.records import TrackRow
 from core.library.service import LibraryService
 from analyzer.audio.decoder import decode_to_memmap, get_samplerate
-from core.tags.writer import TEXT_FIELDS, TagWriteError, tag_format, write_tags
+from core.tags import backup as tag_backup
+from core.tags.writer import TEXT_FIELDS, TagWriteError, bpm_text, planned_writes, tag_format, write_tags
 from core.track.model import DataModel
 from third_party.midi_tempo_map import TempoMapError, midi_tempo_map
 from third_party.rekordbox import sanitize_filename
@@ -36,9 +38,14 @@ class ExportTrackPanel(QtWidgets.QWidget):
     of one JumpCUE pair (prefers the in-memory DataModel for the loaded track, else the track's NPZ); its beatgrid
     as a DAW's tempo map (a MIDI file: third_party.midi_tempo_map, the marks taken the same way); and the
     track's stored values written into its audio file's tags (``core.tags.writer``: the fields checked,
-    the file's other tags and its audio kept)."""
+    the file's other tags and its audio kept), after a confirmation showing each change (``TagWriteDialog``) with
+    the backup it asks for made first (core.tags.backup: none, the tag block, the whole file); a backup put back
+    (Restore from Backup)."""
 
-    _sig_tags_done = QtCore.Signal(str, str)   # the track's uid, the error ("": written)
+    _sig_tags_read = QtCore.Signal(str, object, object)   # the track's uid, the planned writes (None: unread), the write
+    _sig_tags_done = QtCore.Signal(str, str, str)   # the track's uid, the error ("": written), the backup made ("")
+    _sig_restored = QtCore.Signal(str, str)          # the track's uid, the error ("": put back)
+    _backup = "tags"     # the backup the last confirmation asked for (the session's: the next one's choice)
 
     def __init__(self, library: LibraryService, parent: Optional[QtWidgets.QWidget] = None, *,
                  model: Optional[DataModel] = None, bus=None,
@@ -54,7 +61,9 @@ class ExportTrackPanel(QtWidgets.QWidget):
         self._bus = bus
         self._unapplied_edits = unapplied_edits
         self._tags_writing: Optional[str] = None   # the uid whose tags are being written
+        self._sig_tags_read.connect(self._confirm_tags)
         self._sig_tags_done.connect(self._on_tags_done)
+        self._sig_restored.connect(self._on_restored)
         self._track: Optional[TrackRow] = None
         self._source: Optional[Path] = None
         self._jump_cues: Optional[list[JumpCueGroup]] = None   # the track's JumpCUE groups (None: not read yet)
@@ -119,6 +128,7 @@ class ExportTrackPanel(QtWidgets.QWidget):
             "file's other tags, its artwork and its audio stay as they are.</p>"
         ))
         self.tag_fields: dict[str, QtWidgets.QCheckBox] = {}
+        self._field_names: dict[str, str] = {}
         grid = QtWidgets.QGridLayout()
         for i, (field, label, checked, tip) in enumerate((
             ("title", tr("Title"), True, ""),
@@ -134,6 +144,7 @@ class ExportTrackPanel(QtWidgets.QWidget):
                 box.setToolTip(tip)
             grid.addWidget(box, i // 2, i % 2)
             self.tag_fields[field] = box
+            self._field_names[field] = label
         self.cb_comment_tieups = QtWidgets.QCheckBox(tr("Tie-ups after the comment"))
         self.cb_comment_tieups.setToolTip(tr(
             "<p>The comment written with the song's tie-ups after it, as [Title OP; Other ED]; the library's "
@@ -146,7 +157,13 @@ class ExportTrackPanel(QtWidgets.QWidget):
         self.btn_write_tags = QtWidgets.QPushButton(tr("Write Tags"))
         self.btn_write_tags.setToolTip(tr("Write the checked fields' stored values into the file's tags."))
         self.btn_write_tags.clicked.connect(self.write_tags)
+        self.btn_restore_tags = QtWidgets.QPushButton(tr("Restore from Backup..."))
+        self.btn_restore_tags.setToolTip(tr(
+            "<p>Put the track's file back as a backup made before writing its tags holds it: a tag backup "
+            "(.mxtags) or a copy of the whole file.</p>"))
+        self.btn_restore_tags.clicked.connect(self.restore_tags)
         tag_btns = QtWidgets.QHBoxLayout()
+        tag_btns.addWidget(self.btn_restore_tags)
         tag_btns.addStretch(1)
         tag_btns.addWidget(self.btn_write_tags)
         tags_layout = QtWidgets.QVBoxLayout(tags)
@@ -208,6 +225,8 @@ class ExportTrackPanel(QtWidgets.QWidget):
             box.setEnabled(fmt is not None)
         self.cb_comment_tieups.setEnabled(fmt is not None and self.tag_fields["comment"].isChecked())
         self.btn_write_tags.setEnabled(fmt is not None and self._tags_writing is None)
+        self.btn_restore_tags.setEnabled(self._source is not None and self._source.is_file()
+                                         and self._tags_writing is None)
         if self._source is not None and self._source.is_file() and fmt is None:
             self._set_tag_note(tr("Tags cannot be written to this file's format."))
 
@@ -238,9 +257,10 @@ class ExportTrackPanel(QtWidgets.QWidget):
                 return
         with_tieups = self.cb_comment_tieups.isChecked()
         self._tags_writing = uid
-        self.btn_write_tags.setEnabled(False)
-        self._set_tag_note(tr("Writing the tags..."))
-        # the stored values read by the library's owner, then written into the file on a thread of its own
+        self._update_tag_controls()
+        self._set_tag_note(tr("Reading the file's tags..."))
+        # the stored values read by the library's owner, the file's tags on a thread of its own, the changes
+        # confirmed, then written there
         lang = self._tieup_language() if self._tieup_language is not None else ""
         self._library.read(jobs.tag_values, uid, with_tieups, lang,
                            done=lambda found: self._write_stored(uid, fields, *found))
@@ -260,43 +280,165 @@ class ExportTrackPanel(QtWidgets.QWidget):
             "key": idx_to_labels(row.key)[1] if row.key is not None else "",
         }
         values = {field: stored[field] for field in fields}
-        threading.Thread(target=self._write_tags_job, args=(uid, str(self._source), row.path, values),
-                         daemon=True).start()
+        write = (str(self._source), row.path, values)
+        threading.Thread(target=self._read_tags_job, args=(uid, write), daemon=True).start()
 
-    def _write_tags_job(self, uid: str, file_path: str, stored_path: str, values: dict) -> None:
-        """A worker thread (no widgets here): the tags written where the analysis read the fields from (their
-        sources in the library; a track without them, as one added before they were kept or given another
-        file: found now as the analysis would read the file, and kept), the file's new size and time stored. The
-        library's part asked of its owner (LibraryService.call)."""
+    def _read_tags_job(self, uid: str, write: tuple) -> None:
+        """A worker thread: where the tags go and what those places hold now (``planned_writes``, None: the file
+        not read), for the confirmation. The fields' sources are the library's (where the analysis read them); a
+        track without them (one added before they were kept, or given another file) has them found now as the
+        analysis would read the file, kept with the write. The library's part asked of its owner
+        (LibraryService.call)."""
         from core.tags.reader import extract_tags, read_tag_sources
-        library = self._library
+        file_path, stored_path, values = write
+        sources, kept = {}, {}
         try:
-            sources = library.call(jobs.tag_sources, uid)
+            sources = self._library.call(jobs.tag_sources, uid)
             missing = [f for f in TEXT_FIELDS if f in values and f not in sources]
             if missing:
                 found = read_tag_sources(file_path, *extract_tags(file_path))
                 if found:
                     kept = {f: found[f] for f in missing}
-                    library.call(jobs.set_tag_sources, uid, kept, write=True)
-                    sources.update(kept)
-            write_tags(file_path, values, sources)
+                    sources = {**sources, **kept}
+            plan = planned_writes(file_path, values, sources)
+        except (TagWriteError, OSError):
+            plan = None
+        self._sig_tags_read.emit(uid, plan, (file_path, stored_path, values, sources, kept))
+
+    def _confirm_tags(self, uid: str, plan: Optional[dict], write: tuple) -> None:
+        """The changes shown (``plan``: core.tags.writer.planned_writes, None: the file not read), the backup asked
+        for; written when confirmed. A field changes where a place it is written to does not hold it yet; each
+        place shown with its value (two or more: each by its name), and a warning where the format's own place is
+        written beside the one the library read (a store's M4A with a blank ©cmt and its comment in desc).
+        Each place is checked to be written (unchecked: left as it is). Nothing changing: said, not written."""
+        file_path, stored_path, values, sources, kept = write
+        changes = []
+        for field, value in values.items():
+            new = bpm_text(value) if field == "bpm" else str(value or "")
+            places = (plan or {}).get(field)
+            if plan is not None and all(now == after for _s, _name, now, after, _kind in places or ()):
+                continue
+            olds = ([(spelling, name, " / ".join(v.strip() for v in now if v.strip()))
+                     for spelling, name, now, _after, _kind in places] if places else [("", "", "?")])
+            warning = ""
+            own = next((p for p in places or () if p[4] == "own"), None)
+            if own is not None and any(p[4] == "source" for p in places) and own[2] != own[3]:
+                there = " / ".join(v.strip() for v in own[2] if v.strip())
+                warning = tr("Also written to {place}, the field DJ software (rekordbox ...) reads. It holds "
+                             "now: {value}").format(place=own[1], value=there or tr("(empty)"))
+            changes.append((field, self._field_names.get(field, field), olds, new, warning))
+        if not changes:
+            self._tags_writing = None
+            self._update_tag_controls()
+            self._set_tag_note(tr("The file's tags already hold these values."))
+            return
+        dialog = TagWriteDialog(Path(file_path).name, changes, type(self)._backup, self)
+        if dialog.exec() != QtWidgets.QDialog.Accepted:
+            self._tags_writing = None
+            self._update_tag_controls()
+            self._set_tag_note("")
+            return
+        type(self)._backup = dialog.backup()
+        self._set_tag_note(tr("Writing the tags..."))
+        places = dialog.places() if plan is not None else None
+        threading.Thread(target=self._write_tags_job,
+                         args=(uid, file_path, stored_path, values, sources, kept, dialog.backup(), places),
+                         daemon=True).start()
+
+    def _write_tags_job(self, uid: str, file_path: str, stored_path: str, values: dict, sources: dict,
+                        kept: dict, backup: str, places: Optional[dict] = None) -> None:
+        """A worker thread (no widgets here): the backup asked for made (``backup``: "" none, "tags" the tag block
+        just before the write, "file" the whole file), then the tags written as the confirmation showed
+        (``sources``: where the analysis read the fields; ``kept`` those found now, stored with the write;
+        ``places``: the places checked there, None: where ``write_tags`` puts them), the file's new size and time
+        stored. A write that fails leaves no backup behind. The library's part asked of its owner
+        (LibraryService.call)."""
+        library = self._library
+        made: list[Path] = []
+        try:
+            if kept:
+                library.call(jobs.set_tag_sources, uid, kept, write=True)
+            if backup == "file":
+                made.append(tag_backup.backup_copy(file_path))
+            about = (lambda p, segments: made.append(tag_backup.tag_block_backup(p, segments))) \
+                if backup == "tags" else None
+            write_tags(file_path, values, sources, about_to_write=about, places=places)
             library.call(jobs.touch_file_stats, stored_path, write=True)
             error = ""
         except TagWriteError as exc:
             error = str(exc)
         except OSError as exc:
             error = tr("The file could not be written: {error}").format(error=exc.strerror or exc)
-        self._sig_tags_done.emit(uid, error)
+        if error:
+            for path in made:
+                path.unlink(missing_ok=True)
+        self._sig_tags_done.emit(uid, error, str(made[0]) if made and not error else "")
 
-    def _on_tags_done(self, uid: str, error: str) -> None:
+    def _on_tags_done(self, uid: str, error: str, backup: str) -> None:
         self._tags_writing = None
         if self._track is not None and self._track.uid == uid:
-            self._set_tag_note(error or tr("The tags were written to the file."), error=bool(error))
+            note = error or (tr("The tags were written to the file.\nIts backup: {path}").format(
+                path=breakable_path(backup)) if backup else tr("The tags were written to the file."))
+            self._set_tag_note(note, error=bool(error))
+            self.tag_note.setToolTip(backup if backup and not error else "")
         elif error:
             QtWidgets.QMessageBox.warning(self, tr("Write Tags"), error)
         self._update_tag_controls()
         if not error and self._bus is not None:
             self._bus.sig_rekordbox_sync_track_requested.emit(uid)   # the file's size in the XML
+
+    def restore_tags(self) -> None:
+        """A backup chosen (core.tags.backup's folder) and the track's file put back as it holds it, after a
+        confirmation, on a thread of its own."""
+        if self._track is None or self._source is None or not self._source.is_file() or self._tags_writing:
+            return
+        start = tag_backup.folder()
+        path, _ = QtWidgets.QFileDialog.getOpenFileName(
+            self, tr("Restore from Backup"), str(start if start.is_dir() else self._source.parent),
+            tr("Tag backups (*.mxtags);;All files (*)"))
+        if not path:
+            return
+        try:
+            name = tag_backup.backed_up_name(path)
+        except (tag_backup.BackupError, OSError) as exc:
+            QtWidgets.QMessageBox.warning(self, tr("Restore from Backup"), str(exc))
+            return
+        question = tr("Put '{file}' back as the backup '{backup}' holds it?").format(
+            file=self._source.name, backup=Path(path).name)
+        if name and name != self._source.name:
+            question += "\n" + tr("The backup was made of '{name}'.").format(name=name)
+        answer = QtWidgets.QMessageBox.question(self, tr("Restore from Backup"), question,
+                                                QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+                                                QtWidgets.QMessageBox.No)
+        if answer != QtWidgets.QMessageBox.Yes:
+            return
+        uid = self._track.uid
+        self._tags_writing = uid
+        self._update_tag_controls()
+        self._set_tag_note(tr("Putting the file back..."))
+        threading.Thread(target=self._restore_job, args=(uid, path, str(self._source), self._track.path),
+                         daemon=True).start()
+
+    def _restore_job(self, uid: str, backup: str, file_path: str, stored_path: str) -> None:
+        try:
+            tag_backup.restore(backup, file_path)
+            self._library.call(jobs.touch_file_stats, stored_path, write=True)
+            error = ""
+        except tag_backup.BackupError as exc:
+            error = str(exc)
+        except OSError as exc:
+            error = tr("The file could not be written: {error}").format(error=exc.strerror or exc)
+        self._sig_restored.emit(uid, error)
+
+    def _on_restored(self, uid: str, error: str) -> None:
+        self._tags_writing = None
+        if self._track is not None and self._track.uid == uid:
+            self._set_tag_note(error or tr("The file was put back as the backup holds it."), error=bool(error))
+        elif error:
+            QtWidgets.QMessageBox.warning(self, tr("Restore from Backup"), error)
+        self._update_tag_controls()
+        if not error and self._bus is not None:
+            self._bus.sig_rekordbox_sync_track_requested.emit(uid)
 
     def _resolve_path(self, raw: str | None) -> Optional[Path]:
         if not raw:
@@ -554,3 +696,122 @@ class ExportTrackPanel(QtWidgets.QWidget):
             exports.append((f"JumpCUE {src_label}->{dst_label}", out_path))
 
         return exports if exports else None
+
+
+def breakable_path(path: str) -> str:
+    """A path a word-wrapped label can break after each separator (a zero-width space there: a path has no space
+    of its own, so a long one would widen its window)."""
+    return path.replace("\\", "\\​").replace("/", "/​")
+
+
+class TagWriteDialog(QtWidgets.QDialog):
+    """Write Tags' confirmation: each field that changes, its places in the file, each checked to be written (by
+    its name, with its value now), above the value written with an arrow between ("?" when the file could not be
+    read; whole, wrapped), a warning where the format's own place is written beside the library's, and the backup
+    made first (none, the tag block, the whole file). Nothing checked: no write."""
+
+    BACKUPS = ("", "tags", "file")
+
+    def __init__(self, file_name: str, changes: list[tuple[str, str, list[tuple[str, str, str]], str, str]],
+                 backup: str, parent: Optional[QtWidgets.QWidget] = None) -> None:
+        """``changes``: (the field, its name shown, the places written: (the place as write_tags takes it, its name,
+        its value now; "" place: not known), the value written, a warning: "" none)."""
+        super().__init__(parent)
+        self.changes = changes
+        self._place_boxes: list[tuple[str, str, QtWidgets.QCheckBox]] = []   # (field, place, its box)
+        self.setWindowTitle(tr("Write Tags"))
+        layout = QtWidgets.QVBoxLayout(self)
+        intro = QtWidgets.QLabel(tr("These tags of '{file}' change:").format(file=file_name))
+        intro.setWordWrap(True)
+        layout.addWidget(intro)
+        theme = current_theme()
+        arrow = QtGui.QPixmap(str(resource_path("assets/icons/arrow_down.png")))
+        changes_body = QtWidgets.QWidget()
+        stack = QtWidgets.QVBoxLayout(changes_body)
+        stack.setContentsMargins(0, 0, 4, 0)
+        for field, name, old, new, warning in changes:
+            title = QtWidgets.QLabel(name)
+            font = title.font()
+            font.setBold(True)
+            title.setFont(font)
+            stack.addWidget(title)
+            if warning:
+                note = QtWidgets.QLabel(warning)
+                note.setWordWrap(True)
+                note.setTextFormat(QtCore.Qt.PlainText)
+                note.setStyleSheet(f"color: {theme.warning};")
+                stack.addWidget(note)
+            # the places written, each checked by its name; the arrow; the value written
+            boxes = [(place, place_name, text) for place, place_name, text in old] + [("", "", None), ("", "", new)]
+            for place, place_name, text in boxes:
+                if text is None:
+                    mark = QtWidgets.QLabel()
+                    mark.setPixmap(arrow.scaled(20, 20, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation))
+                    mark.setAlignment(QtCore.Qt.AlignHCenter)
+                    stack.addWidget(mark)
+                    continue
+                if place:
+                    check = QtWidgets.QCheckBox(place_name)
+                    check.setChecked(True)
+                    check.setToolTip(tr("Write the value here (unchecked: this place stays as it is)."))
+                    check.toggled.connect(self._update_write)
+                    stack.addWidget(check)
+                    self._place_boxes.append((field, place, check))
+                value = QtWidgets.QLabel(text if text else tr("(empty)"))
+                value.setWordWrap(True)
+                value.setTextFormat(QtCore.Qt.PlainText)
+                value.setTextInteractionFlags(QtCore.Qt.TextSelectableByMouse)
+                value.setStyleSheet(f"QLabel {{ background: {theme.base}; border: 1px solid {theme.border}; "
+                                    f"border-radius: 4px; padding: 6px; color: {theme.text if text else theme.text_dim}; }}")
+                stack.addWidget(value)
+            stack.addSpacing(10)
+        stack.addStretch(1)
+        scroll = QtWidgets.QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QtWidgets.QFrame.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        scroll.setWidget(changes_body)
+        layout.addWidget(scroll, 1)
+        box = QtWidgets.QGroupBox(tr("Backup before writing"))
+        row = QtWidgets.QVBoxLayout(box)
+        self._choices = {}
+        for kind, text, tip in (
+            ("", tr("None"), ""),
+            ("tags", tr("The tags only"),
+             tr("The bytes the write replaces (a few KB, more with a cover picture): the file is put back exactly, "
+                "as long as its audio stays as it is.")),
+            ("file", tr("The whole file"), tr("A copy of the whole file, as large as it is."))):
+            radio = QtWidgets.QRadioButton(text)
+            radio.setToolTip(tip)
+            radio.setChecked(kind == backup)
+            row.addWidget(radio)
+            self._choices[kind] = radio
+        if not any(r.isChecked() for r in self._choices.values()):
+            self._choices["tags"].setChecked(True)
+        where = QtWidgets.QLabel(tr("Kept in {folder}; Restore from Backup puts one back.").format(
+            folder=breakable_path(str(tag_backup.folder()))))
+        where.setWordWrap(True)
+        where.setToolTip(str(tag_backup.folder()))
+        row.addWidget(where)
+        layout.addWidget(box)
+        buttons = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Cancel)
+        self._write = buttons.addButton(tr("Write Tags"), QtWidgets.QDialogButtonBox.AcceptRole)
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+        self.resize(600, 680)
+
+    def _update_write(self) -> None:
+        self._write.setEnabled(not self._place_boxes or any(box.isChecked() for _f, _p, box in self._place_boxes))
+
+    def places(self) -> dict[str, list[str]]:
+        """The places checked, by field (a field with none: not written)."""
+        out: dict[str, list[str]] = {}
+        for field, place, box in self._place_boxes:
+            if box.isChecked():
+                out.setdefault(field, []).append(place)
+        return out
+
+    def backup(self) -> str:
+        """The backup asked for: "" none, "tags" the tag block, "file" the whole file."""
+        return next(kind for kind, radio in self._choices.items() if radio.isChecked())

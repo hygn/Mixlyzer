@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-30 20:59+0900\n"
+"POT-Creation-Date: 2026-10-30 22:49+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -1216,6 +1216,14 @@ msgstr ""
 msgid "Sino-Vietnamese (Unihan)"
 msgstr ""
 
+#: core/tags/backup.py:115 core/tags/backup.py:118 core/tags/backup.py:122
+msgid "This is not a tag backup of Mixlyzer's."
+msgstr ""
+
+#: core/tags/backup.py:147 core/tags/backup.py:155 core/tags/backup.py:162
+msgid "The file has changed since this backup was made: it is not put back."
+msgstr ""
+
 #: core/tags/writer.py:97
 msgid ""
 "The file's tags are damaged or of a kind not written here; the file is "
@@ -1226,28 +1234,28 @@ msgstr ""
 msgid "The written tags did not read back as written; the file is unchanged."
 msgstr ""
 
-#: core/tags/writer.py:205 core/tags/writer.py:286 core/tags/writer.py:1371
-#: ui/library/tabs/export.py:212
+#: core/tags/writer.py:210 core/tags/writer.py:243 core/tags/writer.py:323
+#: core/tags/writer.py:1416 ui/library/tabs/export.py:231
 msgid "Tags cannot be written to this file's format."
 msgstr ""
 
-#: core/tags/writer.py:391
+#: core/tags/writer.py:436
 msgid "The file changed while its tags were written; it is unchanged."
 msgstr ""
 
-#: core/tags/writer.py:486 core/tags/writer.py:528
+#: core/tags/writer.py:531 core/tags/writer.py:573
 msgid "The tags are too long for the file."
 msgstr ""
 
-#: core/tags/writer.py:1211
+#: core/tags/writer.py:1256
 msgid "The file's chunk offsets cannot take the longer tags; it is unchanged."
 msgstr ""
 
-#: core/tags/writer.py:1238
+#: core/tags/writer.py:1283
 msgid "Fragmented MP4 files are not written."
 msgstr ""
 
-#: core/tags/writer.py:1257
+#: core/tags/writer.py:1302
 msgid "MP4 files with QuickTime keys metadata are not written."
 msgstr ""
 
@@ -3173,7 +3181,7 @@ msgid ""
 "tempo. Smaller makes the steps finer.</p>"
 msgstr ""
 
-#: ui/config/library.py:64 ui/library/tabs/export.py:137
+#: ui/config/library.py:64 ui/library/tabs/export.py:148
 msgid "Tie-ups after the comment"
 msgstr ""
 
@@ -3513,6 +3521,7 @@ msgid ""
 msgstr ""
 
 #: ui/config/midi.py:195 ui/config/output_group.py:83
+#: ui/library/tabs/export.py:773
 msgid "None"
 msgstr ""
 
@@ -6013,7 +6022,7 @@ msgid ""
 "the analysis, playlists and CUEs stay with the track."
 msgstr ""
 
-#: ui/library/tabs/edit_song.py:118 ui/library/tabs/export.py:69
+#: ui/library/tabs/edit_song.py:118 ui/library/tabs/export.py:78
 msgid "Browse..."
 msgstr ""
 
@@ -6048,166 +6057,266 @@ msgid ""
 "{path}"
 msgstr ""
 
-#: ui/library/tabs/export.py:82
+#: ui/library/tabs/export.py:91
 msgid "No JumpCUE directions"
 msgstr ""
 
-#: ui/library/tabs/export.py:89
+#: ui/library/tabs/export.py:98
 msgid "Source"
 msgstr ""
 
-#: ui/library/tabs/export.py:90
+#: ui/library/tabs/export.py:99
 msgid "Destination Folder"
 msgstr ""
 
-#: ui/library/tabs/export.py:92
+#: ui/library/tabs/export.py:101
 msgid "Prerender JumpCUE Audio"
 msgstr ""
 
-#: ui/library/tabs/export.py:93
+#: ui/library/tabs/export.py:102
 msgid "Write WAV files with JumpCUE skips baked in."
 msgstr ""
 
-#: ui/library/tabs/export.py:96
+#: ui/library/tabs/export.py:105
 msgid "Export"
 msgstr ""
 
-#: ui/library/tabs/export.py:105
+#: ui/library/tabs/export.py:114
 msgid "DAW Tempo Map"
 msgstr ""
 
-#: ui/library/tabs/export.py:107
+#: ui/library/tabs/export.py:116
 msgid ""
 "<p>A MIDI file of the track's beatgrid for a DAW: its tempo (ramps too), "
 "bars and key changes. Put the audio at the project's start and import the"
 " file's tempo map there.</p>"
 msgstr ""
 
-#: ui/library/tabs/export.py:109
+#: ui/library/tabs/export.py:118
 msgid "Export MIDI"
 msgstr ""
 
-#: ui/library/tabs/export.py:116
+#: ui/library/tabs/export.py:125
 msgid "File Tags"
 msgstr ""
 
-#: ui/library/tabs/export.py:118
+#: ui/library/tabs/export.py:127
 msgid ""
 "<p>Write the library's values into the audio file's own tags: only the "
 "fields checked change; the file's other tags, its artwork and its audio "
 "stay as they are.</p>"
 msgstr ""
 
-#: ui/library/tabs/export.py:128
+#: ui/library/tabs/export.py:138
 msgid "MP4 / M4A files hold a whole BPM only."
 msgstr ""
 
-#: ui/library/tabs/export.py:129
+#: ui/library/tabs/export.py:139
 msgid "Written as a musical key (Am, F#)."
 msgstr ""
 
-#: ui/library/tabs/export.py:139
+#: ui/library/tabs/export.py:150
 msgid ""
 "<p>The comment written with the song's tie-ups after it, as [Title OP; "
 "Other ED]; the library's comment stays as it is.</p>"
 msgstr ""
 
-#: ui/library/tabs/export.py:146 ui/library/tabs/export.py:233
-#: ui/library/tabs/export.py:296
+#: ui/library/tabs/export.py:157 ui/library/tabs/export.py:252
+#: ui/library/tabs/export.py:385 ui/library/tabs/export.py:716
+#: ui/library/tabs/export.py:791
 msgid "Write Tags"
 msgstr ""
 
-#: ui/library/tabs/export.py:147
+#: ui/library/tabs/export.py:158
 msgid "Write the checked fields' stored values into the file's tags."
 msgstr ""
 
-#: ui/library/tabs/export.py:192
+#: ui/library/tabs/export.py:160
+msgid "Restore from Backup..."
+msgstr ""
+
+#: ui/library/tabs/export.py:162
+msgid ""
+"<p>Put the track's file back as a backup made before writing its tags "
+"holds it: a tag backup (.mxtags) or a copy of the whole file.</p>"
+msgstr ""
+
+#: ui/library/tabs/export.py:209
 msgid "Source file not found at the specified path."
 msgstr ""
 
-#: ui/library/tabs/export.py:195
+#: ui/library/tabs/export.py:212
 msgid "Source path is invalid."
 msgstr ""
 
-#: ui/library/tabs/export.py:228
+#: ui/library/tabs/export.py:247
 msgid "Check the fields to write."
 msgstr ""
 
-#: ui/library/tabs/export.py:234
+#: ui/library/tabs/export.py:253
 msgid ""
 "The Edit tab has changes to this track that are not applied: the stored "
 "values are written.\n"
 "Write the tags anyway?"
 msgstr ""
 
-#: ui/library/tabs/export.py:242
-msgid "Writing the tags..."
+#: ui/library/tabs/export.py:261
+msgid "Reading the file's tags..."
 msgstr ""
 
-#: ui/library/tabs/export.py:252
+#: ui/library/tabs/export.py:272
 msgid "The track is no longer in the library."
 msgstr ""
 
-#: ui/library/tabs/export.py:288 ui/library/tabs/export.py:400
-#: ui/windows/diagnostics_dialog.py:59
+#: ui/library/tabs/export.py:327
+#, python-brace-format
+msgid ""
+"Also written to {place}, the field DJ software (rekordbox ...) reads. It "
+"holds now: {value}"
+msgstr ""
+
+#: ui/library/tabs/export.py:328 ui/library/tabs/export.py:754
+msgid "(empty)"
+msgstr ""
+
+#: ui/library/tabs/export.py:333
+msgid "The file's tags already hold these values."
+msgstr ""
+
+#: ui/library/tabs/export.py:342
+msgid "Writing the tags..."
+msgstr ""
+
+#: ui/library/tabs/export.py:371 ui/library/tabs/export.py:430
+#: ui/library/tabs/export.py:542 ui/windows/diagnostics_dialog.py:59
 #, python-brace-format
 msgid "The file could not be written: {error}"
 msgstr ""
 
-#: ui/library/tabs/export.py:294
+#: ui/library/tabs/export.py:380
+#, python-brace-format
+msgid ""
+"The tags were written to the file.\n"
+"Its backup: {path}"
+msgstr ""
+
+#: ui/library/tabs/export.py:381
 msgid "The tags were written to the file."
 msgstr ""
 
-#: ui/library/tabs/export.py:324
+#: ui/library/tabs/export.py:397 ui/library/tabs/export.py:404
+#: ui/library/tabs/export.py:410 ui/library/tabs/export.py:438
+msgid "Restore from Backup"
+msgstr ""
+
+#: ui/library/tabs/export.py:398
+msgid "Tag backups (*.mxtags);;All files (*)"
+msgstr ""
+
+#: ui/library/tabs/export.py:406
+#, python-brace-format
+msgid "Put '{file}' back as the backup '{backup}' holds it?"
+msgstr ""
+
+#: ui/library/tabs/export.py:409
+#, python-brace-format
+msgid "The backup was made of '{name}'."
+msgstr ""
+
+#: ui/library/tabs/export.py:418
+msgid "Putting the file back..."
+msgstr ""
+
+#: ui/library/tabs/export.py:436
+msgid "The file was put back as the backup holds it."
+msgstr ""
+
+#: ui/library/tabs/export.py:466
 msgid "Select Destination Folder"
 msgstr ""
 
-#: ui/library/tabs/export.py:333
+#: ui/library/tabs/export.py:475
 msgid "No track is selected."
 msgstr ""
 
-#: ui/library/tabs/export.py:337
+#: ui/library/tabs/export.py:479
 msgid "Please select a destination folder."
 msgstr ""
 
-#: ui/library/tabs/export.py:343
+#: ui/library/tabs/export.py:485
 #, python-brace-format
 msgid ""
 "Cannot create destination folder:\n"
 "{error}"
 msgstr ""
 
-#: ui/library/tabs/export.py:354
+#: ui/library/tabs/export.py:496
 #, python-brace-format
 msgid ""
 "'{name}' already exists.\n"
 "Overwrite?"
 msgstr ""
 
-#: ui/library/tabs/export.py:379 ui/library/tabs/export.py:462
+#: ui/library/tabs/export.py:521 ui/library/tabs/export.py:604
 msgid "The track's analysis could not be read."
 msgstr ""
 
-#: ui/library/tabs/export.py:390
+#: ui/library/tabs/export.py:532
 msgid "The track has no beatgrid to write."
 msgstr ""
 
-#: ui/library/tabs/export.py:402 ui/library/tabs/export.py:429
+#: ui/library/tabs/export.py:544 ui/library/tabs/export.py:571
 #, python-brace-format
 msgid ""
 "Export completed:\n"
 "{files}"
 msgstr ""
 
-#: ui/library/tabs/export.py:420
+#: ui/library/tabs/export.py:562
 msgid "Select a JumpCUE direction to render."
 msgstr ""
 
-#: ui/library/tabs/export.py:550
+#: ui/library/tabs/export.py:692
 #, python-brace-format
 msgid ""
 "Failed to write JumpCUE audio:\n"
 "{error}"
+msgstr ""
+
+#: ui/library/tabs/export.py:718
+#, python-brace-format
+msgid "These tags of '{file}' change:"
+msgstr ""
+
+#: ui/library/tabs/export.py:750
+msgid "Write the value here (unchecked: this place stays as it is)."
+msgstr ""
+
+#: ui/library/tabs/export.py:769
+msgid "Backup before writing"
+msgstr ""
+
+#: ui/library/tabs/export.py:774
+msgid "The tags only"
+msgstr ""
+
+#: ui/library/tabs/export.py:775
+msgid ""
+"The bytes the write replaces (a few KB, more with a cover picture): the "
+"file is put back exactly, as long as its audio stays as it is."
+msgstr ""
+
+#: ui/library/tabs/export.py:777
+msgid "The whole file"
+msgstr ""
+
+#: ui/library/tabs/export.py:777
+msgid "A copy of the whole file, as large as it is."
+msgstr ""
+
+#: ui/library/tabs/export.py:785
+#, python-brace-format
+msgid "Kept in {folder}; Restore from Backup puts one back."
 msgstr ""
 
 #: ui/library/tabs/tieup_editor.py:132
@@ -6465,15 +6574,15 @@ msgstr ""
 msgid "All"
 msgstr ""
 
-#: ui/library/tabs/edit_song.py:124 ui/library/tabs/export.py:87
-#: ui/library/tabs/export.py:124 ui/library/tabs/tieup_editor.py:140
+#: ui/library/tabs/edit_song.py:124 ui/library/tabs/export.py:96
+#: ui/library/tabs/export.py:134 ui/library/tabs/tieup_editor.py:140
 #: ui/library/tabs/track_search_index.py:53 ui/library/widget.py:39
 #: ui/windows/tieup_works.py:77
 msgid "Title"
 msgstr ""
 
-#: ui/library/tabs/edit_song.py:125 ui/library/tabs/export.py:88
-#: ui/library/tabs/export.py:125 ui/library/tabs/track_search_index.py:53
+#: ui/library/tabs/edit_song.py:125 ui/library/tabs/export.py:97
+#: ui/library/tabs/export.py:135 ui/library/tabs/track_search_index.py:53
 #: ui/library/widget.py:39
 msgid "Artist"
 msgstr ""
@@ -6482,7 +6591,7 @@ msgstr ""
 msgid "Duration"
 msgstr ""
 
-#: ui/library/tabs/edit_song.py:126 ui/library/tabs/export.py:126
+#: ui/library/tabs/edit_song.py:126 ui/library/tabs/export.py:136
 #: ui/library/tabs/track_search_index.py:53 ui/library/widget.py:40
 msgid "Album"
 msgstr ""
@@ -6504,7 +6613,7 @@ msgstr ""
 msgid "Path"
 msgstr ""
 
-#: ui/library/tabs/edit_song.py:130 ui/library/tabs/export.py:127
+#: ui/library/tabs/edit_song.py:130 ui/library/tabs/export.py:137
 #: ui/library/widget.py:42
 msgid "Comment"
 msgstr ""
@@ -6862,12 +6971,12 @@ msgstr ""
 msgid "The works window: every work the tie-ups name, edited, merged or deleted."
 msgstr ""
 
-#: ui/library/actions.py:52 ui/library/tabs/export.py:333
-#: ui/library/tabs/export.py:337 ui/library/tabs/export.py:343
-#: ui/library/tabs/export.py:353 ui/library/tabs/export.py:378
-#: ui/library/tabs/export.py:390 ui/library/tabs/export.py:400
-#: ui/library/tabs/export.py:402 ui/library/tabs/export.py:419
-#: ui/library/tabs/export.py:429 ui/library/tabs/export.py:550
+#: ui/library/actions.py:52 ui/library/tabs/export.py:475
+#: ui/library/tabs/export.py:479 ui/library/tabs/export.py:485
+#: ui/library/tabs/export.py:495 ui/library/tabs/export.py:520
+#: ui/library/tabs/export.py:532 ui/library/tabs/export.py:542
+#: ui/library/tabs/export.py:544 ui/library/tabs/export.py:561
+#: ui/library/tabs/export.py:571 ui/library/tabs/export.py:692
 #: ui/library/track_panel.py:47 ui/shortcuts.py:149
 msgid "Export Track"
 msgstr ""

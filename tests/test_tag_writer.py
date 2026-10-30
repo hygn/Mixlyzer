@@ -113,7 +113,7 @@ class TagWriterTests(unittest.TestCase):
         tw.write_tags(path, {"comment": "c"})   # no source: the comment's copies the file has (FFmpeg's TXXX)
         found = tw.read_spellings(path)
         self.assertEqual(found["id3:TXXX:comment"], ["c"])
-        self.assertNotIn("id3:COMM", found)
+        self.assertEqual(found["id3:COMM"], ["c"])   # and ID3's own comment, which DJ software reads
         self.roundtrip(path, lambda p: p.read_bytes()[-len(MP3_FRAMES):])
         found = tw.read_spellings(path)
         self.assertNotIn("id3:TXXX:comment", found)   # emptied with its copies
@@ -174,6 +174,37 @@ class TagWriterTests(unittest.TestCase):
                 tw.write_tags(path, {"comment": "y" * 20_000})   # moov grows: the offsets follow
                 self.assertEqual(tw.read_tags(path)["comment"], "y" * 20_000)
                 self.assertEqual(ff_audio(path), ff_audio(path))
+
+
+    @unittest.skipUnless(FFMPEG, "FFmpeg makes the MP4 file")
+    def test_the_formats_own_place_written_too(self):
+        # a store's M4A (mora's): ©cmt blank, the comment in desc / dscp. The library reads desc and the write
+        # goes back there, and to ©cmt, the one rekordbox reads
+        path = self.dir / "store.m4a"
+        subprocess.run([str(FFMPEG), "-v", "error", "-y", "-f", "lavfi", "-i", "sine=d=1", "-c:a", "aac",
+                        str(path)], check=True)
+        tw.write_tags(path, {"comment": "JASRAC / ASOBINOTES"}, {"comment": ["mp4:desc", "mp4:dscp"]})
+        tw.write_tags(path, {"comment": " "}, {"comment": ["mp4:©cmt"]})
+        self.assertEqual(tw.read_fields(path)["comment"], "JASRAC / ASOBINOTES")
+        sources = tw.tag_sources(path, {"title": "", "artist": "", "album": "", "comment": "JASRAC / ASOBINOTES"})
+        self.assertEqual(sources["comment"], ["mp4:desc", "mp4:dscp"])
+        new = "JASRAC / ASOBINOTES [ヴヴヴ OP]"
+        self.assertEqual(tw.planned_writes(path, {"comment": new}, sources)["comment"],
+                         [("mp4:©cmt", "©cmt", [" "], [new], "own"),
+                          ("mp4:desc", "desc", ["JASRAC / ASOBINOTES"], [new], "source"),
+                          ("mp4:dscp", "dscp", ["JASRAC / ASOBINOTES"], [new], "source")])
+        # the places chosen only (the confirmation's checks): desc, ©cmt left as it is
+        tw.write_tags(path, {"comment": new, "title": "ヴヴヴ"}, sources, places={"comment": ["mp4:desc"]})
+        found = tw.read_spellings(path)
+        self.assertEqual((found["mp4:desc"], found["mp4:dscp"], found["mp4:©cmt"]),
+                         ([new], ["JASRAC / ASOBINOTES"], [" "]))
+        self.assertNotIn("mp4:©nam", found)                                     # a field without a place: not written
+        tw.write_tags(path, {"comment": new}, sources)
+        self.assertTrue(all(now == after for _s, _n, now, after, _k
+                            in tw.planned_writes(path, {"comment": new}, sources)["comment"]))
+        found = tw.read_spellings(path)
+        for place in ("mp4:©cmt", "mp4:desc", "mp4:dscp"):
+            self.assertEqual(found[place], [new], place)
 
 
 def apic(ptype: int, image: bytes) -> bytes:
