@@ -20,6 +20,7 @@ from core.tieups.domain import TITLE_LANGUAGES
 from ui.config.dialogs import LibrarySyncProgressDialog, RekordboxSyncProgressDialog
 from ui.config.scroll import groups_page
 from system.i18n import tr
+from system.os_support import path_key
 
 
 def _tieup_language_combo(first: str) -> QtWidgets.QComboBox:
@@ -213,9 +214,9 @@ class LibrarySettingsMixin:
             self, tr("Add Local Music Folder"), os.path.expanduser(initial)
         )
         if directory:
-            identity = os.path.normcase(os.path.realpath(os.path.abspath(directory)))
+            identity = path_key(os.path.realpath(os.path.abspath(directory)))
             existing = {
-                os.path.normcase(os.path.realpath(os.path.abspath(
+                path_key(os.path.realpath(os.path.abspath(
                     self.list_local_music_directories.item(row).text()
                 )))
                 for row in range(self.list_local_music_directories.count())

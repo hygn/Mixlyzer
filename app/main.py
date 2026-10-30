@@ -15,6 +15,7 @@ from core.library.version import (
 )
 from migration import library_migration
 from app.startup import StartupSplash, center_on_screen, one_blas_thread, run_startup, startup_tasks
+from app import diagnostics
 from app.startup_console import ConsoleLines
 from ui.theme import apply_theme
 from ui.fonts import load_fonts_and_set_global
@@ -34,6 +35,8 @@ def main():
     # (a shortcut's "Start in", a terminal): another folder's config.json, or a program in it named as one the
     # app runs, is never taken
     os.chdir(app_folder())
+    # what the session prints, its last lines kept for the diagnostics (Diagnostics window)
+    diagnostics.CONSOLE.install()
     # what the start prints (the app's and the audio engine's lines), shown on the splash too
     console = ConsoleLines()
     console.install()

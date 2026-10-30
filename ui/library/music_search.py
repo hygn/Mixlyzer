@@ -23,6 +23,7 @@ from PySide6.QtMultimedia import QAudioFormat, QAudioSource, QMediaDevices
 from core.settings import store as settings_store
 from core.workflows.event_bus import EventBus
 from system.i18n import tr
+from system.os_support import path_key
 from core.library import jobs
 from analyzer.search.music.listening import Listening
 from analyzer.search.music.search import SearchResult, search_audio
@@ -460,7 +461,7 @@ class DeckSeekAfterLoad(QtCore.QObject):
 
     @staticmethod
     def _same(a: str, b: str) -> bool:
-        return bool(a and b) and os.path.normcase(os.path.normpath(a)) == os.path.normcase(os.path.normpath(b))
+        return bool(a and b) and path_key(a) == path_key(b)
 
     def load(self, path: str, at: float) -> None:
         if self._same(self._held(), path):

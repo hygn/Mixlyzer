@@ -20,6 +20,7 @@ from dataclasses import replace
 from core.settings.store import current
 from core.workers.analysis import AnalysisWorker
 from system.i18n import tr
+from system.os_support import path_key, path_too_long
 
 
 # the library's and a request's listener: the result (its StoredAnalysis ``analysis``, properties) of its track
@@ -95,6 +96,11 @@ class AnalysisWorkflow(QtCore.QObject):
 
     def _start(self, path: str, *, force_analyze: bool, analysis: dict | None = None,
                listener: ResultCallback | None = None) -> None:
+        if path_too_long(path):
+            # Python, soundfile and the tags would fail on it one by one: said once, before anything opens it
+            self._show_status(tr("The path is too long for Windows ({count} characters) while Windows' long paths "
+                                 "are off: {path}").format(count=len(os.path.abspath(path)), path=path))
+            return
         cfg = self._cfg_loader()
         if analysis:
             cfg = replace(cfg, analysisconfig=replace(cfg.analysisconfig, **analysis))
@@ -220,10 +226,10 @@ class AnalysisWorkflow(QtCore.QObject):
         worker.start()
 
     def _find_inflight_task(self, path: str) -> int | None:
-        normalized = os.path.normcase(os.path.normpath(path))
+        normalized = path_key(path)
         for taskid, context in self._contexts.items():
             context_path = str(context.get("path") or "").strip()
-            if context_path and os.path.normcase(os.path.normpath(context_path)) == normalized:
+            if context_path and path_key(context_path) == normalized:
                 return taskid
         return None
 

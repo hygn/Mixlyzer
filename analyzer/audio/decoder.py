@@ -23,6 +23,14 @@ _ffmpeg_warmed = False
 _BUNDLED_FFMPEG = Path(__file__).resolve().parents[2] / ("ffmpeg.exe" if IS_WINDOWS else "ffmpeg")
 
 
+def _input(path: str) -> list[str]:
+    """FFmpeg's input options for the local file ``path``: opened by its file protocol alone, so a name FFmpeg
+    would take for another protocol's URL (``pipe:1.mp3``, ``http:...``, ``concat:...`` on Linux and macOS) is still
+    the file, and a playlist inside it (HLS, a concat list) opens no URL; absolute, so a name starting with ``-`` is
+    no option. FFmpeg opens a long Windows path itself (its extended prefix)."""
+    return ["-protocol_whitelist", "file", "-i", "file:" + os.path.abspath(path)]
+
+
 @lru_cache(maxsize=1)
 def _ffmpeg_command() -> str:
     """FFmpeg by its full path: the app's, else the first on PATH (absolute entries only: a bare name or a
@@ -96,8 +104,7 @@ def decode_to_memmap(path: str, sr: int, ch: int) -> np.ndarray:
         "-nostats",
         "-v",
         "error",
-        "-i",
-        path,
+        *_input(path),
         "-vn",
         "-sn",
         "-map",
@@ -181,7 +188,7 @@ def read_metadata(path: str) -> dict[str, str]:
     value. {} when FFmpeg cannot read the file."""
     out: dict[str, str] = {}
     for source in ("0", "0:s:a:0"):
-        args = [_ffmpeg_command(), "-hide_banner", "-nostats", "-v", "error", "-i", path,
+        args = [_ffmpeg_command(), "-hide_banner", "-nostats", "-v", "error", *_input(path),
                 "-map_metadata", source, "-f", "ffmetadata", "pipe:1"]
         try:
             proc = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, check=False,
@@ -198,7 +205,7 @@ def read_metadata(path: str) -> dict[str, str]:
 def read_cover(path: str) -> bytes | None:
     """The file's cover picture as stored (its first picture stream: ID3 APIC, FLAC PICTURE, MP4 covr, ...), as
     FFmpeg reads it; None when it has none or it is over COVER_MAX_BYTES."""
-    args = [_ffmpeg_command(), "-hide_banner", "-nostats", "-v", "error", "-i", path,
+    args = [_ffmpeg_command(), "-hide_banner", "-nostats", "-v", "error", *_input(path),
             "-map", "0:v:0", "-c", "copy", "-frames:v", "1", "-f", "image2pipe", "pipe:1"]
     try:   # one packet copied: no more than the file holds
         proc = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, check=False, timeout=30,
@@ -253,8 +260,7 @@ def _probe_audio_stream(path: str) -> tuple[int, float]:
     args = [
         _ffmpeg_command(),
         "-hide_banner",
-        "-i",
-        path,
+        *_input(path),
     ]
     popen_kwargs = hidden_subprocess_kwargs()
     try:

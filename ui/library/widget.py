@@ -12,6 +12,7 @@ from core.settings.config import config
 from core.track.model import DataModel
 from ui.theme import current_theme
 from system.i18n import tr, tr_mark
+from system.os_support import path_key
 from ui.library.actions import ActionsMixin
 from ui.library.common import (INCREMENTAL_ROWS_MAX, LIBRARY_UPDATE_DELAY_MS, Track, 
     _ANALYZED_ROLE, _SORT_ROLE, _SortItem, key_order, row_to_track)
@@ -213,7 +214,7 @@ class LibraryWidget(SourcesMixin, SearchMixin, MusicMixin, MixMixin, PlaylistsMi
     @staticmethod
     def _file_identity(path: object) -> str:
         text = os.path.expanduser(os.path.expandvars(str(path or "")))
-        return os.path.normcase(os.path.realpath(os.path.abspath(text)))
+        return path_key(os.path.realpath(os.path.abspath(text)))
     def _update_library_rows(self, tracks: List[Track]) -> bool:
         """The library shown, a few of its tracks added, changed or removed: their rows changed in
         place (each moved to its sorted place as it is set); False (nothing done) for more than

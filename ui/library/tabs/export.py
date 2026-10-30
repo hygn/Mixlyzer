@@ -10,6 +10,7 @@ from PySide6 import QtCore, QtWidgets
 import soundfile as sf
 from core.tieups import domain as tieup
 from system import os_support
+from system.os_support import path_key
 from core.analysis_library import jobs as analysis_jobs
 from core.library import jobs
 from core.library.records import TrackRow
@@ -356,7 +357,7 @@ class ExportTrackPanel(QtWidgets.QWidget):
         if self._model is not None:
             props = getattr(self._model, "properties", {}) or {}
             model_path = props.get("path")
-            if model_path and self._track.path and os.path.normcase(os.path.abspath(model_path)) == os.path.normcase(os.path.abspath(self._track.path)):
+            if model_path and self._track.path and path_key(model_path) == path_key(self._track.path):
                 self._jump_cues = list(self._model.jump_cues)
                 return self._jump_cues
         return None

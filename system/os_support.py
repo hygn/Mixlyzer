@@ -12,6 +12,10 @@ Where the Windows API is used, the other systems have a fallback:
 - the scratch cursor poller (audioengine.python.cursor_poller): Win32 cursor + waitable timer / the GUI's mouse events
 - the physical core count for sklearn (analyzer.runtime): GetLogicalProcessorInformationEx / loky's own
 - a key another program holds as a global hotkey (Settings > Shortcuts): RegisterHotKey refused / not checked
+- paths of MAX_PATH (260) characters or more: refused while Windows' long paths are off (RtlAreLongPathsEnabled) /
+  no limit elsewhere
+
+A path compared with another is compared by its path_key: one spelling of the file however each is written.
 """
 
 from __future__ import annotations
@@ -19,6 +23,8 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
+import unicodedata
+from functools import lru_cache
 
 WINDOWS, LINUX, MACOS, OTHER = "windows", "linux", "macos", "other"
 SUPPORTED = (WINDOWS, LINUX, MACOS)
@@ -165,6 +171,39 @@ def hotkey_taken(key: str) -> bool:
         user32.UnregisterHotKey(None, _HOTKEY_PROBE_ID)
         return False
     return ctypes.get_last_error() == 1409   # ERROR_HOTKEY_ALREADY_REGISTERED
+
+
+WINDOWS_MAX_PATH = 260     # MAX_PATH: a path this long or longer opens only with long paths on
+
+
+def path_key(path: str | os.PathLike) -> str:
+    """The path spelled one way for comparing it with another: absolute, its separators and dots normalized, its
+    case folded on Windows (os.path.normcase), its Unicode composed (NFC) on macOS, whose file systems take a name's
+    decomposed and composed forms as the same name (HFS+ and Finder give NFD: a Japanese name's dakuten, a Korean
+    one's syllables); not on Windows and Linux, where they are two names. Links are not followed."""
+    key = os.path.normcase(os.path.abspath(os.fspath(path)))
+    return unicodedata.normalize("NFC", key) if IS_MACOS else key
+
+
+@lru_cache(maxsize=1)
+def long_paths_enabled() -> bool:
+    """This process opens paths of WINDOWS_MAX_PATH characters or more: on Windows when LongPathsEnabled is set (the
+    program declares itself long path aware: Python's and the package's PyInstaller program do), checked by
+    RtlAreLongPathsEnabled; always elsewhere."""
+    if not IS_WINDOWS:
+        return True
+    try:
+        import ctypes
+        check = ctypes.windll.ntdll.RtlAreLongPathsEnabled
+        check.restype = ctypes.c_ubyte      # BOOLEAN
+        return bool(check())
+    except Exception:
+        return False
+
+
+def path_too_long(path: str | os.PathLike) -> bool:
+    """``path`` cannot be opened here: WINDOWS_MAX_PATH characters or more on Windows with long paths off."""
+    return IS_WINDOWS and len(os.path.abspath(os.fspath(path))) >= WINDOWS_MAX_PATH and not long_paths_enabled()
 
 
 def reveal_file(path: str) -> None:

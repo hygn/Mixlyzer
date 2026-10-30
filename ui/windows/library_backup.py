@@ -290,7 +290,7 @@ class RestoreDialog(QtWidgets.QDialog):
         if not folder:
             return
         target = os.path.abspath(folder)
-        if os.path.normcase(target) == os.path.normcase(os.path.abspath(self._libpath)) or (
+        if os_support.path_key(target) == os_support.path_key(self._libpath) or (
                 os.path.exists(target) and (not os.path.isdir(target) or os.listdir(target))):
             QtWidgets.QMessageBox.warning(self, tr("Restore Library"), reason_text(
                 PackageError(PackageError.DESTINATION)))

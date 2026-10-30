@@ -5,6 +5,7 @@ import copy
 import sys
 import time
 
+from app import diagnostics
 from app.audio_report import print_audio_setup
 from app.print_hook import install_print_hook, log_environment_info
 from audioengine.controls import (
@@ -13,6 +14,7 @@ from audioengine.controls import (
 from core.controls import midi
 from core.controls import shortcuts
 from system import os_support
+from system.os_support import path_key
 from core.workflows.event_bus import EventBus
 from core.track.model import DataModel
 from views.timeline import TimelineCoordinator
@@ -45,6 +47,7 @@ from ui.config.window import SettingsDialog
 from ui.windows.workers import WorkersDialog
 from ui.windows.oss_support import SupportDialog
 from ui.windows.about_dialog import AboutDialog
+from ui.windows.diagnostics_dialog import DiagnosticsDialog
 from ui.widgets.polish import polish_ahead
 from ui.shortcuts import ShortcutManager
 
@@ -88,6 +91,8 @@ class AppWindow(QtWidgets.QMainWindow):
 
         # Core objects
         self.bus = EventBus()
+        self.buffers = diagnostics.BufferRecord()      # each output's buffer since the start, for the diagnostics
+        self.bus.sig_output_buffer.connect(self.buffers.add)
         self._start_library(library)
         self.model = DataModel()
         self.tl = TimelineCoordinator(self.bus)
@@ -109,8 +114,10 @@ class AppWindow(QtWidgets.QMainWindow):
         self.workers.set_bus(self.bus)
         self.support_dlg = SupportDialog(self)
         self.about_dialog = AboutDialog(self)
+        self.diagnostics_dlg = DiagnosticsDialog(
+            lambda: diagnostics.report(self.cfg, self.player, self.buffers), self)
         # their style and layout now, at the start: a first show doing it held the main view's frames
-        for window in (self.cfgwin, self.workers, self.support_dlg, self.about_dialog):
+        for window in (self.cfgwin, self.workers, self.support_dlg, self.about_dialog, self.diagnostics_dlg):
             polish_ahead(window)
 
         self._build_menus()
@@ -251,6 +258,7 @@ class AppWindow(QtWidgets.QMainWindow):
         a_workers = QtGui.QAction(tr("Workers"), self); a_workers.triggered.connect(self.open_workers)
         a_works = QtGui.QAction(tr("Tie-up Works"), self); a_works.triggered.connect(lambda: self.pane.lib.open_works())
         a_support_tb = QtGui.QAction(tr("Open Source"), self); a_support_tb.triggered.connect(self._open_support)
+        a_diagnostics = QtGui.QAction(tr("Diagnostics"), self); a_diagnostics.triggered.connect(self._open_diagnostics)
         a_about = QtGui.QAction(tr("About"), self); a_about.triggered.connect(self._open_about)
         menus = self.menuBar()
         menus.setNativeMenuBar(False)
@@ -258,7 +266,7 @@ class AppWindow(QtWidgets.QMainWindow):
         font.setPointSize(9)
         menus.setFont(font)
         menus.setStyleSheet("QMenuBar { padding: 0; } QMenuBar::item { padding: 2px 10px; }")
-        for action in (a_cfg, a_works, a_workers, a_support_tb, a_about):
+        for action in (a_cfg, a_works, a_workers, a_support_tb, a_diagnostics, a_about):
             menus.addAction(action)
 
     def _connect_transport(self) -> None:
@@ -594,7 +602,7 @@ class AppWindow(QtWidgets.QMainWindow):
         """The deck's track is the file ``path``."""
         if not path or not self._deck_path:
             return False
-        return os.path.normcase(os.path.normpath(path)) == os.path.normcase(os.path.normpath(self._deck_path))
+        return path_key(path) == path_key(self._deck_path)
 
     def _on_deck_analysis(self, result: dict) -> None:
         """A track's analysis (stored or new) for the deck: applied when the deck still holds that track."""
@@ -963,6 +971,11 @@ class AppWindow(QtWidgets.QMainWindow):
         self.support_dlg.show()
         self.support_dlg.raise_()
         self.support_dlg.activateWindow()
+
+    def _open_diagnostics(self):
+        self.diagnostics_dlg.show()
+        self.diagnostics_dlg.raise_()
+        self.diagnostics_dlg.activateWindow()
 
     def _open_about(self):
         self.about_dialog.show()
