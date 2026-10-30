@@ -82,7 +82,7 @@ def remove_tracks(lib, uids: list[str]) -> None:
 def save_edits(lib, uid: str, edits: TrackEdits, sync: bool = True) -> str:
     """The editor's save: ``edits`` into the track's stored analysis (each mark's block replaced whole) and, with
     ``sync`` (Settings > Library, libconfig.sync_stored_analysis), the track's rows in library.db made from them
-    (track_index: the BPM and key the library shows and the Export tab's tags take, the tables the phrase /
+    (track_index: the BPM and key the library shows and the Sync tab's tags take, the tables the phrase /
     transition filters read; without, library.db is left for Sync Now, sync_index). Returns the uid. Unmarked (the
     snapshot read whole, sig_lib_updated sent): the filters run again on it. One transaction, the NPZ saved last
     inside it: a failure anywhere rolls library.db back whole, so it never holds half an edit."""
@@ -158,7 +158,7 @@ def touch_file_stats(lib, path: str) -> None:
 
 
 def tag_values(lib, uid: str, with_tieups: bool, lang: str = "") -> tuple[Optional[TrackRow], str]:
-    """What the Export tab writes into the file's tags: the track's row, and its tie-ups' comment suffix ("" without
+    """What the Sync tab writes into the file's tags: the track's row, and its tie-ups' comment suffix ("" without
     ``with_tieups``; the titles in ``lang``, "": the Tie-up Titles setting's)."""
     from core.tieups.domain import comment_suffix
     row = lib.db.get_by_uid(uid)

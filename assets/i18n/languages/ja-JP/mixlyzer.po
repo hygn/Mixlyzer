@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-31 00:21+0900\n"
+"POT-Creation-Date: 2026-10-31 00:32+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ja_JP\n"
@@ -1389,7 +1389,7 @@ msgid "The written tags did not read back as written; the file is unchanged."
 msgstr "書き込んだタグが書いたとおりに読み戻せませんでした。ファイルは変更されていません。"
 
 #: core/tags/writer.py:250 core/tags/writer.py:283 core/tags/writer.py:363
-#: core/tags/writer.py:1496 ui/library/tabs/export.py:243
+#: core/tags/writer.py:1496 ui/library/tabs/sync.py:261
 msgid "Tags cannot be written to this file's format."
 msgstr "このファイル形式にはタグを書き込めません。"
 
@@ -3546,7 +3546,7 @@ msgstr ""
 "<p>Rekordbox "
 "にはテンポのランプがないため、ランプは一定テンポのステップに分けて書き出されます。小さいほどステップが細かくなります。</p>"
 
-#: ui/config/library.py:64 ui/library/tabs/export.py:151
+#: ui/config/library.py:64 ui/library/tabs/sync.py:97
 msgid "Tie-ups after the comment"
 msgstr "コメントの後にタイアップを付ける"
 
@@ -3665,9 +3665,9 @@ msgstr "タイアップのタイトルの言語と同じ"
 
 #: ui/config/library.py:123
 msgid ""
-"<p>The language of the tie-ups the Export tab writes after a file's "
+"<p>The language of the tie-ups the Sync tab writes after a file's "
 "comment.</p>"
-msgstr "<p>Export タブがファイルのコメントの後に付けるタイアップの言語です。</p>"
+msgstr "<p>同期タブがファイルのコメントの後に付けるタイアップの言語です。</p>"
 
 #: ui/config/library.py:124
 msgid "Exported Tie-ups"
@@ -3760,6 +3760,7 @@ msgid "Backup"
 msgstr "バックアップ"
 
 #: ui/config/library.py:165 ui/config/library.py:208
+#: ui/library/tabs/sync.py:132
 msgid "Rekordbox XML"
 msgstr "Rekordbox XML"
 
@@ -3802,10 +3803,10 @@ msgstr "JumpCUE、残りのスロットに CUE ポイント"
 
 #: ui/config/library.py:187
 msgid ""
-"<p>What the Export tab's Write Tags makes Serato's 8 hot cues of. Serato "
+"<p>What the Sync tab's Write Tags makes Serato's 8 hot cues of. Serato "
 "has no memory cues: CUE points written there become hot cues.</p>"
 msgstr ""
-"<p>エクスポートタブのタグ書き込みが、Serato の 8 つのホットキューを何で埋めるかを決めます。Serato "
+"<p>同期タブのタグ書き込みが、Serato の 8 つのホットキューを何で埋めるかを決めます。Serato "
 "にはメモリーキューがないため、ここに書く CUE ポイントはホットキューになります。</p>"
 
 #: ui/config/library.py:189
@@ -4019,7 +4020,7 @@ msgstr ""
 
 # | msgid "none"
 #: ui/config/midi.py:195 ui/config/output_group.py:83
-#: ui/library/tabs/export.py:903
+#: ui/library/tabs/sync.py:664
 msgid "None"
 msgstr "なし"
 
@@ -6870,7 +6871,7 @@ msgstr ""
 "トラックのオーディオファイル。ファイルを移動したり名前を変更したりしたときに指定してください。\n"
 "解析、プレイリスト、CUE はトラックに残ります。"
 
-#: ui/library/tabs/edit_song.py:118 ui/library/tabs/export.py:81
+#: ui/library/tabs/edit_song.py:118 ui/library/tabs/export.py:51
 msgid "Browse..."
 msgstr "参照..."
 
@@ -6907,35 +6908,35 @@ msgstr ""
 "ファイルがありません:\n"
 "{path}"
 
-#: ui/library/tabs/export.py:94
+#: ui/library/tabs/export.py:64
 msgid "No JumpCUE directions"
 msgstr "JumpCUE の方向がありません"
 
-#: ui/library/tabs/export.py:101
+#: ui/library/tabs/export.py:71 ui/library/tabs/sync.py:72
 msgid "Source"
 msgstr "ソース"
 
-#: ui/library/tabs/export.py:102
+#: ui/library/tabs/export.py:72
 msgid "Destination Folder"
 msgstr "保存先フォルダー"
 
-#: ui/library/tabs/export.py:104
+#: ui/library/tabs/export.py:74
 msgid "Prerender JumpCUE Audio"
 msgstr "JumpCUE のオーディオを事前レンダリング"
 
-#: ui/library/tabs/export.py:105
+#: ui/library/tabs/export.py:75
 msgid "Write WAV files with JumpCUE skips baked in."
 msgstr "JumpCUE のスキップを反映した WAV ファイルを書き出します。"
 
-#: ui/library/tabs/export.py:108
+#: ui/library/tabs/export.py:78
 msgid "Export"
 msgstr "エクスポート"
 
-#: ui/library/tabs/export.py:117
+#: ui/library/tabs/export.py:87
 msgid "DAW Tempo Map"
 msgstr "DAW テンポマップ"
 
-#: ui/library/tabs/export.py:119
+#: ui/library/tabs/export.py:89
 msgid ""
 "<p>A MIDI file of the track's beatgrid for a DAW: its tempo (ramps too), "
 "bars and key changes. Put the audio at the project's start and import the"
@@ -6944,11 +6945,87 @@ msgstr ""
 "<p>トラックのビートグリッドを DAW 用の MIDI ファイルに書き出します: "
 "テンポ（ランプを含む）、小節、転調。オーディオをプロジェクトの先頭に置き、その位置にこのファイルのテンポマップを読み込んでください。</p>"
 
-#: ui/library/tabs/export.py:121
+#: ui/library/tabs/export.py:91
 msgid "Export MIDI"
 msgstr "MIDI を書き出し"
 
-#: ui/library/tabs/export.py:128
+#: ui/library/tabs/export.py:132
+msgid "Source file not found at the specified path."
+msgstr "指定したパスにソースファイルがありません。"
+
+#: ui/library/tabs/export.py:135
+msgid "Source path is invalid."
+msgstr "ソースのパスが無効です。"
+
+#: ui/library/tabs/export.py:143
+msgid "Select Destination Folder"
+msgstr "保存先フォルダーを選択"
+
+#: ui/library/tabs/export.py:152
+msgid "No track is selected."
+msgstr "トラックが選択されていません。"
+
+#: ui/library/tabs/export.py:156
+msgid "Please select a destination folder."
+msgstr "保存先フォルダーを選択してください。"
+
+#: ui/library/tabs/export.py:162
+#, python-brace-format
+msgid ""
+"Cannot create destination folder:\n"
+"{error}"
+msgstr ""
+"保存先フォルダーを作成できません:\n"
+"{error}"
+
+#: ui/library/tabs/export.py:173
+#, python-brace-format
+msgid ""
+"'{name}' already exists.\n"
+"Overwrite?"
+msgstr ""
+"「{name}」はすでに存在します。\n"
+"上書きしますか?"
+
+# | msgid "Phrase reanalysis completed"
+#: ui/library/tabs/export.py:198 ui/library/tabs/export.py:277
+#: ui/library/tabs/sync.py:289
+msgid "The track's analysis could not be read."
+msgstr "トラックの解析を読み込めませんでした。"
+
+#: ui/library/tabs/export.py:209
+msgid "The track has no beatgrid to write."
+msgstr "このトラックには書き出すビートグリッドがありません。"
+
+#: ui/library/tabs/export.py:219 ui/library/tabs/sync.py:464
+#: ui/library/tabs/sync.py:526 ui/windows/diagnostics_dialog.py:59
+#, python-brace-format
+msgid "The file could not be written: {error}"
+msgstr "ファイルに書き込めません: {error}"
+
+#: ui/library/tabs/export.py:221 ui/library/tabs/export.py:248
+#, python-brace-format
+msgid ""
+"Export completed:\n"
+"{files}"
+msgstr ""
+"エクスポートが完了しました:\n"
+"{files}"
+
+#: ui/library/tabs/export.py:239
+msgid "Select a JumpCUE direction to render."
+msgstr "レンダリングする JumpCUE の方向を選んでください。"
+
+#: ui/library/tabs/export.py:365
+#, python-brace-format
+msgid ""
+"Failed to write JumpCUE audio:\n"
+"{error}"
+msgstr ""
+"JumpCUE のオーディオを書き込めませんでした:\n"
+"{error}"
+
+#: ui/library/tabs/sync.py:74
 msgid "File Tags"
 msgstr "ファイルのタグ"
 
@@ -6957,32 +7034,32 @@ msgstr "ファイルのタグ"
 # | the " "fields checked change; the file's other tags, its artwork and its
 # | audio " "stay as they are. FLAC, MP3, AAC, WAV, AIFF and MP4 / M4A
 # | files.</p>"
-#: ui/library/tabs/export.py:130
+#: ui/library/tabs/sync.py:76
 msgid ""
 "<p>Write the library's values into the audio file's own tags: only the "
 "fields checked change; the file's other tags, its artwork and its audio "
 "stay as they are.</p>"
 msgstr "<p>ライブラリの値をオーディオファイル自体のタグに書き込みます。チェックした項目だけが変わり、ファイルのほかのタグ、アートワーク、オーディオはそのままです。</p>"
 
-#: ui/library/tabs/export.py:141
+#: ui/library/tabs/sync.py:87
 msgid "MP4 / M4A files hold a whole BPM only."
 msgstr "MP4 / M4A ファイルには整数の BPM しか入りません。"
 
-#: ui/library/tabs/export.py:142
+#: ui/library/tabs/sync.py:88
 msgid "Written as a musical key (Am, F#)."
 msgstr "一般的なキー表記 (Am、F#) で書き込みます。"
 
-#: ui/library/tabs/export.py:153
+#: ui/library/tabs/sync.py:99
 msgid ""
 "<p>The comment written with the song's tie-ups after it, as [Title OP; "
 "Other ED]; the library's comment stays as it is.</p>"
 msgstr "<p>コメントの後に曲のタイアップを [タイトル OP; 別作品 ED] の形で付けて書き込みます。ライブラリのコメントはそのままです。</p>"
 
-#: ui/library/tabs/export.py:158
+#: ui/library/tabs/sync.py:104
 msgid "Serato beatgrid and hot cues"
 msgstr "Serato のビートグリッドとホットキュー"
 
-#: ui/library/tabs/export.py:160
+#: ui/library/tabs/sync.py:106
 msgid ""
 "<p>Serato DJ's beatgrid and hot cues, in the file's tags where Serato "
 "reads them: the grid from the first downbeat (a ramp a marker a beat), "
@@ -6994,37 +7071,37 @@ msgstr ""
 "グリッドは最初のダウンビートから（ランプは 1 拍ごとにマーカー）、ホットキューは環境設定 > ライブラリ > Serato に従って "
 "JumpCUE、CUE ポイント、またはその両方から作ります。ファイルの Serato のループとトラックカラーはそのままです。</p>"
 
-#: ui/library/tabs/export.py:164
+#: ui/library/tabs/sync.py:110
 msgid "Serato beatgrid"
 msgstr "Serato のビートグリッド"
 
-#: ui/library/tabs/export.py:164
+#: ui/library/tabs/sync.py:110
 msgid "Serato hot cues"
 msgstr "Serato のホットキュー"
 
-#: ui/library/tabs/export.py:165 ui/library/tabs/export.py:801
+#: ui/library/tabs/sync.py:111 ui/library/tabs/sync.py:562
 msgid "Serato's old cue data"
 msgstr "Serato の旧キューデータ"
 
-#: ui/library/tabs/export.py:166
+#: ui/library/tabs/sync.py:112
 msgid "Serato's tempo map"
 msgstr "Serato のテンポマップ"
 
-#: ui/library/tabs/export.py:169 ui/library/tabs/export.py:280
-#: ui/library/tabs/export.py:460 ui/library/tabs/export.py:846
-#: ui/library/tabs/export.py:922
+#: ui/library/tabs/sync.py:115 ui/library/tabs/sync.py:298
+#: ui/library/tabs/sync.py:478 ui/library/tabs/sync.py:607
+#: ui/library/tabs/sync.py:683
 msgid "Write Tags"
 msgstr "タグを書き込む"
 
-#: ui/library/tabs/export.py:170
+#: ui/library/tabs/sync.py:116
 msgid "Write the checked fields' stored values into the file's tags."
 msgstr "チェックした項目の保存済みの値をファイルのタグに書き込みます。"
 
-#: ui/library/tabs/export.py:172
+#: ui/library/tabs/sync.py:118
 msgid "Restore from Backup..."
 msgstr "バックアップから復元..."
 
-#: ui/library/tabs/export.py:174
+#: ui/library/tabs/sync.py:120
 msgid ""
 "<p>Put the track's file back as a backup made before writing its tags "
 "holds it: a tag backup (.mxtags) or a copy of the whole file.</p>"
@@ -7032,25 +7109,57 @@ msgstr ""
 "<p>トラックのファイルを、タグを書き込む前に作ったバックアップの状態に戻します: "
 "タグのバックアップ（.mxtags）またはファイル全体のコピー。</p>"
 
-#: ui/library/tabs/export.py:221
-msgid "Source file not found at the specified path."
-msgstr "指定したパスにソースファイルがありません。"
+#: ui/library/tabs/sync.py:134
+msgid ""
+"<p>The track written into the Rekordbox XML again, as saving an edit "
+"does: its beatgrid, CUE points, JumpCUEs and values as stored now. The "
+"XML's file and its options are in Settings > Library.</p>"
+msgstr ""
+"<p>編集を保存したときと同じように、このトラックを Rekordbox XML に書き直します: 現在保存されているビートグリッド、CUE "
+"ポイント、JumpCUE と値。XML のファイルとオプションは環境設定 > ライブラリにあります。</p>"
 
-#: ui/library/tabs/export.py:224
-msgid "Source path is invalid."
-msgstr "ソースのパスが無効です。"
+#: ui/library/tabs/sync.py:138 ui/library/tabs/sync.py:218
+msgid "Sync to Rekordbox XML"
+msgstr "Rekordbox XML に同期"
 
-#: ui/library/tabs/export.py:262
+#: ui/library/tabs/sync.py:139
+msgid "Write this track into the Rekordbox XML again."
+msgstr "このトラックを Rekordbox XML に書き直します。"
+
+#: ui/library/tabs/sync.py:195
+msgid ""
+"Sync with Rekordbox XML is off, or has no file: Settings > Library > "
+"Rekordbox XML."
+msgstr "Rekordbox XML との同期がオフか、ファイルが指定されていません: 環境設定 > ライブラリ > Rekordbox XML。"
+
+#: ui/library/tabs/sync.py:219
+msgid ""
+"The Edit tab has changes to this track that are not applied: the stored "
+"values are written.\n"
+"Sync anyway?"
+msgstr ""
+"編集タブにこのトラックの未適用の変更があります。保存済みの値が書き込まれます。\n"
+"それでも同期しますか?"
+
+#: ui/library/tabs/sync.py:225
+msgid "Writing the track into the Rekordbox XML..."
+msgstr "トラックを Rekordbox XML に書き込み中..."
+
+#: ui/library/tabs/sync.py:239
+#, python-brace-format
+msgid "Written into {path}."
+msgstr "{path} に書き込みました。"
+
+#: ui/library/tabs/sync.py:245
+#, python-brace-format
+msgid "The Rekordbox XML could not be written: {error}"
+msgstr "Rekordbox XML を書き込めませんでした: {error}"
+
+#: ui/library/tabs/sync.py:280
 msgid "Check the fields to write."
 msgstr "書き込む項目をチェックしてください。"
 
-# | msgid "Phrase reanalysis completed"
-#: ui/library/tabs/export.py:271 ui/library/tabs/export.py:599
-#: ui/library/tabs/export.py:682
-msgid "The track's analysis could not be read."
-msgstr "トラックの解析を読み込めませんでした。"
-
-#: ui/library/tabs/export.py:281
+#: ui/library/tabs/sync.py:299
 msgid ""
 "The Edit tab has changes to this track that are not applied: the stored "
 "values are written.\n"
@@ -7059,40 +7168,40 @@ msgstr ""
 "編集タブにこのトラックの未適用の変更があります。保存済みの値が書き込まれます。\n"
 "それでもタグを書き込みますか?"
 
-#: ui/library/tabs/export.py:289
+#: ui/library/tabs/sync.py:307
 msgid "Reading the file's tags..."
 msgstr "ファイルのタグを読み込み中..."
 
-#: ui/library/tabs/export.py:310
+#: ui/library/tabs/sync.py:328
 msgid "The track is no longer in the library."
 msgstr "このトラックはもうライブラリにありません。"
 
-#: ui/library/tabs/export.py:396
+#: ui/library/tabs/sync.py:414
 #, python-brace-format
 msgid ""
 "Also written to {place}, the field DJ software (rekordbox ...) reads. It "
 "holds now: {value}"
 msgstr "{place} にも書き込みます。DJ ソフトウェア（rekordbox など）が読む項目です。現在の値: {value}"
 
-#: ui/library/tabs/export.py:397 ui/library/tabs/export.py:884
+#: ui/library/tabs/sync.py:415 ui/library/tabs/sync.py:645
 msgid "(empty)"
 msgstr "（空）"
 
-#: ui/library/tabs/export.py:399
+#: ui/library/tabs/sync.py:417
 msgid ""
 "Serato reads this before the hot cues written here: it is emptied (its "
 "loops and names are in the hot cues' tag too)."
 msgstr "Serato はここに書くホットキューより先にこれを読みます。そのため空にします（ループと名前はホットキューのタグにもあります）。"
 
-#: ui/library/tabs/export.py:405
+#: ui/library/tabs/sync.py:423
 msgid "The file's tags already hold these values."
 msgstr "ファイルのタグはすでにこの値です。"
 
-#: ui/library/tabs/export.py:414
+#: ui/library/tabs/sync.py:432
 msgid "Writing the tags..."
 msgstr "タグを書き込み中..."
 
-#: ui/library/tabs/export.py:443
+#: ui/library/tabs/sync.py:461
 msgid ""
 "Another program has the file open (a DJ program with the track loaded?): "
 "the tags were not written. Close it there, then write again."
@@ -7100,13 +7209,7 @@ msgstr ""
 "ほかのプログラムがファイルを開いています（トラックを読み込んだ DJ "
 "ソフト？）。タグは書き込まれていません。そちらで閉じてから、もう一度書き込んでください。"
 
-#: ui/library/tabs/export.py:446 ui/library/tabs/export.py:508
-#: ui/library/tabs/export.py:620 ui/windows/diagnostics_dialog.py:59
-#, python-brace-format
-msgid "The file could not be written: {error}"
-msgstr "ファイルに書き込めません: {error}"
-
-#: ui/library/tabs/export.py:455
+#: ui/library/tabs/sync.py:473
 #, python-brace-format
 msgid ""
 "The tags were written to the file.\n"
@@ -7115,161 +7218,105 @@ msgstr ""
 "ファイルにタグを書き込みました。\n"
 "バックアップ: {path}"
 
-#: ui/library/tabs/export.py:456
+#: ui/library/tabs/sync.py:474
 msgid "The tags were written to the file."
 msgstr "ファイルにタグを書き込みました。"
 
-#: ui/library/tabs/export.py:472 ui/library/tabs/export.py:479
-#: ui/library/tabs/export.py:485 ui/library/tabs/export.py:516
+#: ui/library/tabs/sync.py:490 ui/library/tabs/sync.py:497
+#: ui/library/tabs/sync.py:503 ui/library/tabs/sync.py:534
 msgid "Restore from Backup"
 msgstr "バックアップから復元"
 
-#: ui/library/tabs/export.py:473
+#: ui/library/tabs/sync.py:491
 msgid "Tag backups (*.mxtags);;All files (*)"
 msgstr "タグのバックアップ (*.mxtags);;すべてのファイル (*)"
 
-#: ui/library/tabs/export.py:481
+#: ui/library/tabs/sync.py:499
 #, python-brace-format
 msgid "Put '{file}' back as the backup '{backup}' holds it?"
 msgstr "「{file}」をバックアップ「{backup}」の状態に戻しますか？"
 
-#: ui/library/tabs/export.py:484
+#: ui/library/tabs/sync.py:502
 #, python-brace-format
 msgid "The backup was made of '{name}'."
 msgstr "このバックアップは「{name}」から作成されました。"
 
-#: ui/library/tabs/export.py:493
+#: ui/library/tabs/sync.py:511
 msgid "Putting the file back..."
 msgstr "ファイルを戻しています..."
 
-#: ui/library/tabs/export.py:505
+#: ui/library/tabs/sync.py:523
 msgid ""
 "Another program has the file open (a DJ program with the track loaded?): "
 "it was not put back. Close it there, then restore again."
 msgstr "ほかのプログラムがファイルを開いています（トラックを読み込んだ DJ ソフト？）。元に戻していません。そちらで閉じてから、もう一度復元してください。"
 
-#: ui/library/tabs/export.py:514
+#: ui/library/tabs/sync.py:532
 msgid "The file was put back as the backup holds it."
 msgstr "ファイルをバックアップの状態に戻しました。"
 
-#: ui/library/tabs/export.py:544
-msgid "Select Destination Folder"
-msgstr "保存先フォルダーを選択"
-
-#: ui/library/tabs/export.py:553
-msgid "No track is selected."
-msgstr "トラックが選択されていません。"
-
-#: ui/library/tabs/export.py:557
-msgid "Please select a destination folder."
-msgstr "保存先フォルダーを選択してください。"
-
-#: ui/library/tabs/export.py:563
-#, python-brace-format
-msgid ""
-"Cannot create destination folder:\n"
-"{error}"
-msgstr ""
-"保存先フォルダーを作成できません:\n"
-"{error}"
-
-#: ui/library/tabs/export.py:574
-#, python-brace-format
-msgid ""
-"'{name}' already exists.\n"
-"Overwrite?"
-msgstr ""
-"「{name}」はすでに存在します。\n"
-"上書きしますか?"
-
-#: ui/library/tabs/export.py:610
-msgid "The track has no beatgrid to write."
-msgstr "このトラックには書き出すビートグリッドがありません。"
-
-#: ui/library/tabs/export.py:622 ui/library/tabs/export.py:649
-#, python-brace-format
-msgid ""
-"Export completed:\n"
-"{files}"
-msgstr ""
-"エクスポートが完了しました:\n"
-"{files}"
-
-#: ui/library/tabs/export.py:640
-msgid "Select a JumpCUE direction to render."
-msgstr "レンダリングする JumpCUE の方向を選んでください。"
-
-#: ui/library/tabs/export.py:770
-#, python-brace-format
-msgid ""
-"Failed to write JumpCUE audio:\n"
-"{error}"
-msgstr ""
-"JumpCUE のオーディオを書き込めませんでした:\n"
-"{error}"
-
-#: ui/library/tabs/export.py:785 ui/library/tabs/export.py:797
+#: ui/library/tabs/sync.py:546 ui/library/tabs/sync.py:558
 msgid "(not read)"
 msgstr "（読み込めません）"
 
-#: ui/library/tabs/export.py:786
+#: ui/library/tabs/sync.py:547
 #, python-brace-format
 msgid "{count} grid marker from {start}, {bpm} BPM at the end"
 msgid_plural "{count} grid markers from {start}, {bpm} BPM at the end"
 msgstr[0] "グリッドマーカー {count} 個、{start} から、最後は {bpm} BPM"
 
-#: ui/library/tabs/export.py:792
+#: ui/library/tabs/sync.py:553
 msgid "no hot cues"
 msgstr "ホットキューなし"
 
-#: ui/library/tabs/export.py:793
+#: ui/library/tabs/sync.py:554
 msgid "BPM locked"
 msgstr "BPM ロック"
 
-#: ui/library/tabs/export.py:798
+#: ui/library/tabs/sync.py:559
 #, python-brace-format
 msgid "{count} tempo segment from {start}, {bpm} BPM at the end"
 msgid_plural "{count} tempo segments from {start}, {bpm} BPM at the end"
 msgstr[0] "テンポ区間 {count} 個、{start} から、最後は {bpm} BPM"
 
-#: ui/library/tabs/export.py:812
+#: ui/library/tabs/sync.py:573
 msgid ""
 "Serato counts 4-beat bars from the first downbeat: the bars of another "
 "length here (a 3-beat bar, 7/4) are not kept."
 msgstr "Serato は最初のダウンビートから 4 拍の小節で数えます。長さの違う小節（3 拍の小節、7/4）は保持されません。"
 
-#: ui/library/tabs/export.py:816
+#: ui/library/tabs/sync.py:577
 msgid "Serato has 8 hot cues: the JumpCUEs past H are left out."
 msgstr "Serato のホットキューは 8 つです。H より後の JumpCUE は省かれます。"
 
-#: ui/library/tabs/export.py:818
+#: ui/library/tabs/sync.py:579
 msgid ""
 "Serato has no memory cues: the CUE points are left out (Settings > "
 "Library > Serato can make them hot cues)."
 msgstr "Serato にはメモリーキューがないため、CUE ポイントは省かれます（環境設定 > ライブラリ > Serato でホットキューにできます）。"
 
-#: ui/library/tabs/export.py:821
+#: ui/library/tabs/sync.py:582
 msgid "Serato has 8 hot cues: the CUE points with no slot left are left out."
 msgstr "Serato のホットキューは 8 つです。空きスロットのない CUE ポイントは省かれます。"
 
-#: ui/library/tabs/export.py:848
+#: ui/library/tabs/sync.py:609
 #, python-brace-format
 msgid "These tags of '{file}' change:"
 msgstr "「{file}」の次のタグが変わります:"
 
-#: ui/library/tabs/export.py:880
+#: ui/library/tabs/sync.py:641
 msgid "Write the value here (unchecked: this place stays as it is)."
 msgstr "この項目に値を書き込みます（オフにすると、この項目はそのままです）。"
 
-#: ui/library/tabs/export.py:899
+#: ui/library/tabs/sync.py:660
 msgid "Backup before writing"
 msgstr "書き込み前のバックアップ"
 
-#: ui/library/tabs/export.py:904
+#: ui/library/tabs/sync.py:665
 msgid "The tags only"
 msgstr "タグのみ"
 
-#: ui/library/tabs/export.py:905
+#: ui/library/tabs/sync.py:666
 msgid ""
 "The bytes the write replaces (a few KB, more with a cover picture): the "
 "file is put back exactly, as long as its audio stays as it is."
@@ -7278,15 +7325,15 @@ msgstr "書き込みで置き換わる部分のバイト（数 KB、カバー画
 # | msgid "Reading the analysis failed: {error}"
 # | msgid "The search failed: {error}"
 # | msgid "" "The lookup failed:\n" "{error}"
-#: ui/library/tabs/export.py:907
+#: ui/library/tabs/sync.py:668
 msgid "The whole file"
 msgstr "ファイル全体"
 
-#: ui/library/tabs/export.py:907
+#: ui/library/tabs/sync.py:668
 msgid "A copy of the whole file, as large as it is."
 msgstr "ファイル全体のコピー（ファイルと同じサイズ）。"
 
-#: ui/library/tabs/export.py:915
+#: ui/library/tabs/sync.py:676
 #, python-brace-format
 msgid "Kept in {folder}; Restore from Backup puts one back."
 msgstr "{folder} に保存されます。「バックアップから復元」で元に戻せます。"
@@ -7593,32 +7640,37 @@ msgstr "インデックス作成中… {percent}%"
 
 # | msgid "Edit Track"
 # | msgid "Editor"
-#: ui/library/track_panel.py:44
+#: ui/library/track_panel.py:46
 msgctxt "track panel tab"
 msgid "Edit"
 msgstr "編集"
 
 # | msgid "Index Now"
-#: ui/library/track_panel.py:45
+#: ui/library/track_panel.py:47
 msgctxt "track panel tab"
 msgid "Index"
 msgstr "索引"
 
-#: ui/library/track_panel.py:46
+#: ui/library/track_panel.py:48
 msgctxt "track panel tab"
 msgid "Tie-ups"
 msgstr "タイアップ"
 
-#: ui/library/track_panel.py:47
+#: ui/library/track_panel.py:49
 msgctxt "track panel tab"
 msgid "Export"
 msgstr "エクスポート"
 
-#: ui/library/track_panel.py:49
+#: ui/library/track_panel.py:50
+msgctxt "track panel tab"
+msgid "Sync"
+msgstr "同期"
+
+#: ui/library/track_panel.py:52
 msgid "The selected track; click the open tab to fold the panel"
 msgstr "選択したトラック。開いているタブをクリックするとパネルを畳みます"
 
-#: ui/library/track_panel.py:121
+#: ui/library/track_panel.py:125
 #, python-brace-format
 msgid "Apply the changes to \"{title}\"? (No: they are dropped)"
 msgstr "「{title}」の変更を適用しますか? (いいえ: 破棄します)"
@@ -7627,16 +7679,16 @@ msgstr "「{title}」の変更を適用しますか? (いいえ: 破棄します
 msgid "All"
 msgstr "すべて"
 
-#: ui/library/tabs/edit_song.py:124 ui/library/tabs/export.py:99
-#: ui/library/tabs/export.py:137 ui/library/tabs/tieup_editor.py:140
-#: ui/library/tabs/track_search_index.py:53 ui/library/widget.py:39
-#: ui/windows/tieup_works.py:77
+#: ui/library/tabs/edit_song.py:124 ui/library/tabs/export.py:69
+#: ui/library/tabs/sync.py:70 ui/library/tabs/sync.py:83
+#: ui/library/tabs/tieup_editor.py:140 ui/library/tabs/track_search_index.py:53
+#: ui/library/widget.py:39 ui/windows/tieup_works.py:77
 msgid "Title"
 msgstr "タイトル"
 
-#: ui/library/tabs/edit_song.py:125 ui/library/tabs/export.py:100
-#: ui/library/tabs/export.py:138 ui/library/tabs/track_search_index.py:53
-#: ui/library/widget.py:39
+#: ui/library/tabs/edit_song.py:125 ui/library/tabs/export.py:70
+#: ui/library/tabs/sync.py:71 ui/library/tabs/sync.py:84
+#: ui/library/tabs/track_search_index.py:53 ui/library/widget.py:39
 msgid "Artist"
 msgstr "アーティスト"
 
@@ -7644,7 +7696,7 @@ msgstr "アーティスト"
 msgid "Duration"
 msgstr "時間"
 
-#: ui/library/tabs/edit_song.py:126 ui/library/tabs/export.py:139
+#: ui/library/tabs/edit_song.py:126 ui/library/tabs/sync.py:85
 #: ui/library/tabs/track_search_index.py:53 ui/library/widget.py:40
 msgid "Album"
 msgstr "アルバム"
@@ -7666,7 +7718,7 @@ msgstr "追加日"
 msgid "Path"
 msgstr "パス"
 
-#: ui/library/tabs/edit_song.py:130 ui/library/tabs/export.py:140
+#: ui/library/tabs/edit_song.py:130 ui/library/tabs/sync.py:86
 #: ui/library/widget.py:42
 msgid "Comment"
 msgstr "コメント"
@@ -7675,7 +7727,7 @@ msgstr "コメント"
 msgid "Track loading is disabled while External Sync is enabled."
 msgstr "外部同期が有効な間はトラックを読み込めません。"
 
-#: ui/library/widget.py:476
+#: ui/library/widget.py:478
 msgid "The loaded track is not in the list shown."
 msgstr "ロードしたトラックは表示中のリストにありません。"
 
@@ -8109,12 +8161,12 @@ msgstr "選択したトラックを日本語版WikipediaとWikidataで調べ、�
 msgid "The works window: every work the tie-ups name, edited, merged or deleted."
 msgstr "作品ウィンドウ：タイアップで使われているすべての作品を編集、統合、削除します。"
 
-#: ui/library/actions.py:52 ui/library/tabs/export.py:553
-#: ui/library/tabs/export.py:557 ui/library/tabs/export.py:563
-#: ui/library/tabs/export.py:573 ui/library/tabs/export.py:598
-#: ui/library/tabs/export.py:610 ui/library/tabs/export.py:620
-#: ui/library/tabs/export.py:622 ui/library/tabs/export.py:639
-#: ui/library/tabs/export.py:649 ui/library/tabs/export.py:770
+#: ui/library/actions.py:52 ui/library/tabs/export.py:152
+#: ui/library/tabs/export.py:156 ui/library/tabs/export.py:162
+#: ui/library/tabs/export.py:172 ui/library/tabs/export.py:197
+#: ui/library/tabs/export.py:209 ui/library/tabs/export.py:219
+#: ui/library/tabs/export.py:221 ui/library/tabs/export.py:238
+#: ui/library/tabs/export.py:248 ui/library/tabs/export.py:365
 #: ui/shortcuts.py:149
 msgid "Export Track"
 msgstr "トラックのエクスポート"
@@ -8125,345 +8177,363 @@ msgid "The track panel's Export tab with the selected track."
 msgstr "選択したトラックでトラックパネルのエクスポートタブを開きます。"
 
 #: ui/shortcuts.py:151
+msgid "Sync Track"
+msgstr "トラックの同期"
+
+#: ui/shortcuts.py:152
+msgid "The track panel's Sync tab with the selected track."
+msgstr "選択したトラックでトラックパネルの同期タブを開きます。"
+
+#: ui/shortcuts.py:153
 msgid "Write Tags to File"
 msgstr "ファイルにタグを書き込む"
 
 # | msgid "" "The selected track's stored values written into its audio file's
 # | tags: " "the fields checked in the track panel's Export tab."
-#: ui/shortcuts.py:152
+#: ui/shortcuts.py:154
 msgid "The selected track's stored values written into its audio file's tags."
 msgstr "選択したトラックの保存済みの値をオーディオファイルのタグに書き込みます。"
 
-#: ui/shortcuts.py:153
+#: ui/shortcuts.py:155
+msgid "Sync Track to Rekordbox XML"
+msgstr "トラックを Rekordbox XML に同期"
+
+#: ui/shortcuts.py:156
+msgid ""
+"The selected track written into the Rekordbox XML again, as saving an "
+"edit does."
+msgstr "編集を保存したときと同じように、選択したトラックを Rekordbox XML に書き直します。"
+
+#: ui/shortcuts.py:157
 msgid "Export DAW Tempo Map"
 msgstr "DAW テンポマップを書き出し"
 
-#: ui/shortcuts.py:154
+#: ui/shortcuts.py:158
 msgid ""
 "The selected track's beatgrid written as a MIDI file into the Export "
 "tab's folder."
 msgstr "選択したトラックのビートグリッドを、「トラックのエクスポート」タブのフォルダーに MIDI ファイルとして書き出します。"
 
-#: ui/library/actions.py:45 ui/shortcuts.py:155
+#: ui/library/actions.py:45 ui/shortcuts.py:159
 msgid "Show in Explorer"
 msgstr "エクスプローラーで表示"
 
-#: ui/library/actions.py:46 ui/shortcuts.py:156
+#: ui/library/actions.py:46 ui/shortcuts.py:160
 msgid "Show in Finder"
 msgstr "Finder で表示"
 
-#: ui/library/actions.py:46 ui/shortcuts.py:156
+#: ui/library/actions.py:46 ui/shortcuts.py:160
 msgid "Show in File Manager"
 msgstr "ファイルマネージャーで表示"
 
 #: ui/library/playlists.py:18 ui/library/playlists.py:23
-#: ui/library/sources.py:664 ui/shortcuts.py:157
+#: ui/library/sources.py:664 ui/shortcuts.py:161
 msgid "New Playlist"
 msgstr "新規プレイリスト"
 
 # | msgid "New Playlist Folder"
-#: ui/shortcuts.py:158
+#: ui/shortcuts.py:162
 msgid "A new playlist in the folder shown."
 msgstr "表示中のフォルダーに新規プレイリストを作ります。"
 
-#: ui/shortcuts.py:159
+#: ui/shortcuts.py:163
 msgid "New Playlist Folder"
 msgstr "新規プレイリストフォルダー"
 
 # | msgid "" "A new playlist folder in the folder shown (or the shown
 # playlist's
 # | " "folder), else at the top."
-#: ui/shortcuts.py:160
+#: ui/shortcuts.py:164
 msgid "A new playlist folder in the folder shown."
 msgstr "表示中のフォルダーに新規プレイリストフォルダーを作ります。"
 
-#: ui/library/actions.py:50 ui/shortcuts.py:161
+#: ui/library/actions.py:50 ui/shortcuts.py:165
 #: ui/windows/reanalyze_dialog.py:16
 msgid "Reanalyze Track"
 msgstr "トラックを再解析"
 
-#: ui/shortcuts.py:162
+#: ui/shortcuts.py:166
 msgid ""
 "A full analysis of the selected tracks: their stored analysis and edits "
 "are replaced."
 msgstr "選択したトラックの全体の解析: 保存された解析と編集が置き換わります。"
 
-#: ui/library/actions.py:47 ui/library/actions.py:128 ui/shortcuts.py:163
+#: ui/library/actions.py:47 ui/library/actions.py:128 ui/shortcuts.py:167
 msgid "Remove from Library"
 msgstr "ライブラリから削除"
 
-#: ui/library/actions.py:55 ui/shortcuts.py:164
+#: ui/library/actions.py:55 ui/shortcuts.py:168
 msgid "Remove from Playlist"
 msgstr "プレイリストから削除"
 
 # | msgid "Metronome on / off"
-#: ui/shortcuts.py:166
+#: ui/shortcuts.py:170
 msgid "Edit lock on / off"
 msgstr "編集ロックのオン / オフ"
 
 # | msgid "Page {page} of {pages}"
-#: ui/shortcuts.py:167
+#: ui/shortcuts.py:171
 #, python-brace-format
 msgid "Show the {page} page"
 msgstr "{page} ページを表示"
 
 # | msgid "Set the current segment to {meter}"
 # | msgid "Edit scope: the current segment"
-#: ui/shortcuts.py:168
+#: ui/shortcuts.py:172
 msgid "It becomes the current page."
 msgstr "そのページが現在のページになります。"
 
-#: ui/edit_panel/panel.py:219 ui/shortcuts.py:170
+#: ui/edit_panel/panel.py:219 ui/shortcuts.py:174
 msgid "Undo Changes"
 msgstr "変更を元に戻す"
 
-#: ui/edit_panel/panel.py:223 ui/shortcuts.py:171
+#: ui/edit_panel/panel.py:223 ui/shortcuts.py:175
 msgid "Redo Changes"
 msgstr "変更をやり直す"
 
-#: ui/edit_panel/panel.py:227 ui/shortcuts.py:172
+#: ui/edit_panel/panel.py:227 ui/shortcuts.py:176
 msgid "Save Edits"
 msgstr "編集を保存"
 
 # | msgid "One beat earlier"
-#: ui/shortcuts.py:175
+#: ui/shortcuts.py:179
 msgid "Start earlier"
 msgstr "開始を早める"
 
-#: ui/shortcuts.py:176 ui/shortcuts.py:178
+#: ui/shortcuts.py:180 ui/shortcuts.py:182
 msgid ""
 "Key, Phrase: the current segment's start, by a beat or a bar (the "
 "boundary step)."
 msgstr "Key、Phrase: 現在の区間の開始を 1 拍または 1 小節ずつ (境界の単位)。"
 
 # | msgid "One beat later"
-#: ui/shortcuts.py:177
+#: ui/shortcuts.py:181
 msgid "Start later"
 msgstr "開始を遅らせる"
 
 # | msgid "One beat earlier"
-#: ui/shortcuts.py:179
+#: ui/shortcuts.py:183
 msgid "End earlier"
 msgstr "終了を早める"
 
-#: ui/shortcuts.py:180 ui/shortcuts.py:182
+#: ui/shortcuts.py:184 ui/shortcuts.py:186
 msgid ""
 "Key, Phrase: the current segment's end, by a beat or a bar (the boundary "
 "step)."
 msgstr "Key、Phrase: 現在の区間の終了を 1 拍または 1 小節ずつ (境界の単位)。"
 
 # | msgid "One beat later"
-#: ui/shortcuts.py:181
+#: ui/shortcuts.py:185
 msgid "End later"
 msgstr "終了を遅らせる"
 
 # | msgid "Split the current segment at the playhead"
-#: ui/shortcuts.py:183
+#: ui/shortcuts.py:187
 msgid "Split at the playhead"
 msgstr "再生位置で分割"
 
 # | msgid "Set the current segment to {meter}"
 # | msgid "Key scope: the current segment"
-#: ui/shortcuts.py:184
+#: ui/shortcuts.py:188
 msgid "Beatgrid, Key, Phrase: the current segment."
 msgstr "ビートグリッド、Key、フレーズ: 現在の区間。"
 
 # | msgid "" "Merge the previous key segment into the current one (keeps the
 # | current " "key)"
 # | msgid "Merge the previous segment into the current one"
-#: ui/shortcuts.py:185
+#: ui/shortcuts.py:189
 msgid "Merge the previous segment"
 msgstr "前の区間を結合"
 
 # | msgid "" "Merge the previous key segment into the current one (keeps the
 # | current " "key)"
 # | msgid "Merge the previous segment into the current one"
-#: ui/shortcuts.py:186
+#: ui/shortcuts.py:190
 msgid "Beatgrid, Key, Phrase: the previous segment into the current one."
 msgstr "ビートグリッド、Key、フレーズ: 前の区間を現在の区間に。"
 
 # | msgid "Merge the next key segment into the current one (keeps the current
 # | key)"
 # | msgid "Merge the next segment into the current one"
-#: ui/shortcuts.py:187
+#: ui/shortcuts.py:191
 msgid "Merge the next segment"
 msgstr "次の区間を結合"
 
 # | msgid "Merge the next key segment into the current one (keeps the current
 # | key)"
 # | msgid "Merge the next segment into the current one"
-#: ui/shortcuts.py:188
+#: ui/shortcuts.py:192
 msgid "Beatgrid, Key, Phrase: the next segment into the current one."
 msgstr "ビートグリッド、Key、フレーズ: 次の区間を現在の区間に。"
 
 # | msgid "Reanalyze the current key segment's key from the audio"
-#: ui/shortcuts.py:189
+#: ui/shortcuts.py:193
 msgid "Reanalyze the current segment"
 msgstr "現在の区間を再解析"
 
 # | msgid "Beatgrid"
-#: ui/shortcuts.py:190 ui/shortcuts.py:193 ui/shortcuts.py:195
+#: ui/shortcuts.py:194 ui/shortcuts.py:197 ui/shortcuts.py:199
 msgid "Beatgrid, Key."
 msgstr "ビートグリッド、Key。"
 
 # | msgid "Reanalyze Track"
-#: ui/shortcuts.py:191
+#: ui/shortcuts.py:195
 msgid "Reanalyze the whole track"
 msgstr "トラック全体を再解析"
 
-#: ui/shortcuts.py:192
+#: ui/shortcuts.py:196
 msgid "Key, Phrase; on the CUE page, the JumpCUEs."
 msgstr "Key、フレーズ。CUE ページでは JumpCUE。"
 
 # | msgid "Key scope: the whole track"
-#: ui/shortcuts.py:193
+#: ui/shortcuts.py:197
 msgid "Edit scope: the whole track"
 msgstr "編集範囲: トラック全体"
 
 # | msgid "Set the current segment to {meter}"
-#: ui/shortcuts.py:194
+#: ui/shortcuts.py:198
 msgid "Edit scope: the current segment"
 msgstr "編集範囲: 現在の区間"
 
 # | msgid "Boundaries move by one beat"
-#: ui/shortcuts.py:196
+#: ui/shortcuts.py:200
 msgid "Boundary step: one beat"
 msgstr "境界の単位: 1 拍"
 
 # | msgid "Phrase"
-#: ui/shortcuts.py:196 ui/shortcuts.py:197
+#: ui/shortcuts.py:200 ui/shortcuts.py:201
 msgid "Key, Phrase."
 msgstr "Key、フレーズ。"
 
 # | msgid "Boundaries move by one beat"
 # | msgid "Boundaries move by one bar"
-#: ui/shortcuts.py:197
+#: ui/shortcuts.py:201
 msgid "Boundary step: one bar"
 msgstr "境界の単位: 1 小節"
 
 # | msgid "Shift the current segment half a beat earlier"
-#: ui/shortcuts.py:199
+#: ui/shortcuts.py:203
 msgid "Shift half a beat earlier"
 msgstr "半拍早める"
 
 # | msgid "Shift the current segment 10 ms earlier"
-#: ui/shortcuts.py:200
+#: ui/shortcuts.py:204
 msgid "Shift 10 ms earlier"
 msgstr "10 ms 早める"
 
 # | msgid "Shift the current segment 1 ms earlier"
-#: ui/shortcuts.py:201
+#: ui/shortcuts.py:205
 msgid "Shift 1 ms earlier"
 msgstr "1 ms 早める"
 
 # | msgid "Shift the current segment 1 ms later"
-#: ui/shortcuts.py:202
+#: ui/shortcuts.py:206
 msgid "Shift 1 ms later"
 msgstr "1 ms 遅らせる"
 
 # | msgid "Shift the current segment 10 ms later"
-#: ui/shortcuts.py:203
+#: ui/shortcuts.py:207
 msgid "Shift 10 ms later"
 msgstr "10 ms 遅らせる"
 
 # | msgid "Shift the current segment half a beat later"
-#: ui/shortcuts.py:204
+#: ui/shortcuts.py:208
 msgid "Shift half a beat later"
 msgstr "半拍遅らせる"
 
 # | msgid "Error"
-#: ui/shortcuts.py:205
+#: ui/shortcuts.py:209
 msgid "ZERO"
 msgstr "ZERO"
 
-#: ui/edit_panel/beatgrid.py:76 ui/shortcuts.py:205
+#: ui/edit_panel/beatgrid.py:76 ui/shortcuts.py:209
 msgid "Clear the reference BPM and the tap history"
 msgstr "基準 BPM とタップの履歴を消去します"
 
-#: ui/shortcuts.py:206
+#: ui/shortcuts.py:210
 msgid "TAP"
 msgstr "TAP"
 
-#: ui/edit_panel/beatgrid.py:82 ui/shortcuts.py:206
+#: ui/edit_panel/beatgrid.py:82 ui/shortcuts.py:210
 msgid "Tap the beat to set the reference BPM"
 msgstr "拍に合わせてタップし、基準 BPM を設定します"
 
 # | msgid "Tap to set reference BPM"
 # | msgid "TAP: the reference BPM"
-#: ui/shortcuts.py:207
+#: ui/shortcuts.py:211
 msgid "Assign the reference BPM"
 msgstr "基準 BPM を割り当て"
 
-#: ui/edit_panel/beatgrid.py:101 ui/shortcuts.py:208
+#: ui/edit_panel/beatgrid.py:101 ui/shortcuts.py:212
 msgid "Assign the reference BPM to the current segment (downbeat at its start)"
 msgstr "基準 BPM を現在の区間に割り当てます (ダウンビートは区間の先頭)"
 
 # | msgid "Clear the reference BPM and the tap history"
 # | msgid "The reference BPM as the starting tempo (ramp)"
-#: ui/shortcuts.py:209
+#: ui/shortcuts.py:213
 msgid "Ramp: the starting tempo"
 msgstr "ランプ: 開始テンポ"
 
-#: ui/edit_panel/beatgrid.py:102 ui/shortcuts.py:210
+#: ui/edit_panel/beatgrid.py:102 ui/shortcuts.py:214
 msgid ""
 "Make the reference BPM the current segment's starting tempo (a ramp to "
 "its end tempo; its first beat stays)"
 msgstr "基準 BPM を現在の区間の開始テンポにします (終了テンポへのランプ。最初の拍はそのまま)"
 
-#: ui/shortcuts.py:212
+#: ui/shortcuts.py:216
 msgid "Ramp: the ending tempo"
 msgstr "ランプ: 終了テンポ"
 
-#: ui/edit_panel/beatgrid.py:103 ui/shortcuts.py:213
+#: ui/edit_panel/beatgrid.py:103 ui/shortcuts.py:217
 msgid ""
 "Make the reference BPM the current segment's ending tempo (a ramp from "
 "its start tempo; its first beat stays)"
 msgstr "基準 BPM を現在の区間の終了テンポにします (開始テンポからのランプ。最初の拍はそのまま)"
 
 # | msgid "Hold to count beats passing under the playhead"
-#: ui/shortcuts.py:215
+#: ui/shortcuts.py:219
 msgid "Downbeat at the playhead"
 msgstr "再生位置にダウンビート"
 
-#: ui/edit_panel/beatgrid.py:110 ui/shortcuts.py:216
+#: ui/edit_panel/beatgrid.py:110 ui/shortcuts.py:220
 msgid "Make the beat nearest the playhead the current segment's downbeat"
 msgstr "再生位置に最も近い拍を現在の区間のダウンビートにします"
 
-#: ui/shortcuts.py:217
+#: ui/shortcuts.py:221
 msgid "BPM x1/2"
 msgstr "BPM x1/2"
 
 # | msgid "BPM min"
-#: ui/shortcuts.py:218
+#: ui/shortcuts.py:222
 msgid "BPM x2"
 msgstr "BPM x2"
 
-#: ui/shortcuts.py:219
+#: ui/shortcuts.py:223
 #, python-brace-format
 msgid "Time signature {meter}"
 msgstr "拍子 {meter}"
 
 # | msgid "Edit the key"
-#: ui/shortcuts.py:222
+#: ui/shortcuts.py:226
 msgid "Pick the key"
 msgstr "キーを選択"
 
 # | msgid "Pick the key (Camelot wheel)"
-#: ui/edit_panel/key.py:95 ui/edit_panel/key_picker.py:82 ui/shortcuts.py:222
+#: ui/edit_panel/key.py:95 ui/edit_panel/key_picker.py:82 ui/shortcuts.py:226
 msgid "Pick the key (Alphanumeric wheel)"
 msgstr "キーを選択 (Alphanumeric ホイール)"
 
 # | msgid "Move Down"
-#: ui/shortcuts.py:223
+#: ui/shortcuts.py:227
 msgid "A semitone down"
 msgstr "半音下げる"
 
 # | msgid "Move Up"
-#: ui/shortcuts.py:224
+#: ui/shortcuts.py:228
 msgid "A semitone up"
 msgstr "半音上げる"
 
-#: ui/shortcuts.py:225
+#: ui/shortcuts.py:229
 msgid "Circle of fifths -1"
 msgstr "五度圏 -1"
 
@@ -8472,84 +8542,84 @@ msgstr "五度圏 -1"
 # | msgid "One step down the circle of fifths (Alphanumeric -1): every
 # segment's
 # | key"
-#: ui/shortcuts.py:226
+#: ui/shortcuts.py:230
 msgid "One step down the circle of fifths (Alphanumeric -1)"
 msgstr "五度圏で 1 つ下げる (Alphanumeric -1)"
 
-#: ui/shortcuts.py:227
+#: ui/shortcuts.py:231
 msgid "Circle of fifths +1"
 msgstr "五度圏 +1"
 
 # | msgid "One step up the circle of fifths (Camelot +1): every segment's key"
 # | msgid "One step up the circle of fifths (Alphanumeric +1): every segment's
 # | key"
-#: ui/shortcuts.py:228
+#: ui/shortcuts.py:232
 msgid "One step up the circle of fifths (Alphanumeric +1)"
 msgstr "五度圏で 1 つ上げる (Alphanumeric +1)"
 
 # | msgid "Relative major / minor (C <-> Am): every segment's key"
 # | msgid "Relative major / minor (C <-> Am)"
-#: ui/shortcuts.py:229
+#: ui/shortcuts.py:233
 msgid "Relative major / minor"
 msgstr "平行調の長調 / 短調"
 
 # | msgid "Relative major / minor (C <-> Am): every segment's key"
-#: ui/shortcuts.py:229
+#: ui/shortcuts.py:233
 msgid "Relative major / minor (C <-> Am)"
 msgstr "平行調の長調 / 短調 (C <-> Am)"
 
-#: ui/shortcuts.py:230
+#: ui/shortcuts.py:234
 msgid "Merge the same keys"
 msgstr "同じキーを結合"
 
-#: ui/edit_panel/key.py:80 ui/shortcuts.py:231
+#: ui/edit_panel/key.py:80 ui/shortcuts.py:235
 msgid "Merge every run of neighboring segments with the same key"
 msgstr "キーが同じ隣り合う区間をすべて 1 つに結合します"
 
-#: ui/shortcuts.py:232
+#: ui/shortcuts.py:236
 msgid "Listening aid: root"
 msgstr "試聴の補助: 根音"
 
-#: ui/shortcuts.py:233
+#: ui/shortcuts.py:237
 msgid "Listening aid: root and fifth"
 msgstr "試聴の補助: 根音と 5 度"
 
-#: ui/shortcuts.py:234
+#: ui/shortcuts.py:238
 msgid "Listening aid: tonic chord"
 msgstr "試聴の補助: 主和音"
 
 # | msgid "CUE points (set by the analysis from the phrases)"
 # | msgid "CUE points from the phrases (CUE rules)"
-#: ui/shortcuts.py:236
+#: ui/shortcuts.py:240
 msgid "CUE points from the phrases"
 msgstr "フレーズから CUEポイントを作成"
 
 # | msgid "" "Replace the CUE points with the ones the CUE rules give the
 # | current " "phrases\n" "(Settings > Analysis > CUE, as the full analysis
 # | makes them)"
-#: ui/shortcuts.py:237
+#: ui/shortcuts.py:241
 msgid ""
 "Replace the CUE points with the ones the CUE rules give the current "
 "phrases"
 msgstr "CUEポイントを、現在のフレーズに CUE のルールを適用した結果で置き換えます"
 
-#: ui/edit_panel/phrase.py:77 ui/shortcuts.py:238
+#: ui/edit_panel/phrase.py:77 ui/shortcuts.py:242
 msgid "Unassign the current phrase (UNASSIGNED)"
 msgstr "現在のフレーズのラベルを解除します (UNASSIGNED)"
 
-#: ui/edit_panel/phrase.py:162 ui/shortcuts.py:239
+#: ui/edit_panel/phrase.py:162 ui/shortcuts.py:243
 #, python-brace-format
 msgid "Label the current phrase {label}"
 msgstr "現在のフレーズを {label} にする"
 
-#: ui/shortcuts.py:298
+#: ui/shortcuts.py:302
 #, python-brace-format
 msgid ""
 "Another program on this computer takes {keys}: these shortcuts do not "
 "work (Settings > Shortcuts)."
 msgstr "このコンピューターのほかのプログラムが {keys} を使っているため、これらのショートカットは動作しません (環境設定 > ショートカット)。"
 
-#: ui/shortcuts.py:344
+#: ui/shortcuts.py:348
 #, python-brace-format
 msgid "{keys} is used by more than one action (Settings > Shortcuts)."
 msgstr "{keys} は複数の操作に割り当てられています (環境設定 > ショートカット)。"

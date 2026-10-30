@@ -1,10 +1,11 @@
-"""The track panel's part: its tabs (Edit Track, Search Index, Tie-ups, Export Track), folded and unfolded, following
-the selection."""
+"""The track panel's part: its tabs (Edit, Index, Tie-ups, Export, Sync), folded and unfolded, following the
+selection."""
 from __future__ import annotations
 
 from PySide6 import QtCore, QtGui, QtWidgets
 from ui.library.tabs.edit_song import EditTrackPanel
 from ui.library.tabs.export import ExportTrackPanel
+from ui.library.tabs.sync import SyncTrackPanel
 from ui.library.tabs.tieup_editor import TieupPanel
 from ui.library.tabs.track_search_index import SearchIndexPanel
 from ui.theme import current_theme
@@ -21,12 +22,13 @@ class TrackPanelMixin:
         self.tieup_panel = TieupPanel(bus=self.bus, library=self.library,
                                       settings=lambda: self.cfg.searchconfig,
                                       to_versions=lambda: bool(self.cfg.libconfig.tieup_to_versions))
-        self.export_panel = ExportTrackPanel(
+        self.export_panel = ExportTrackPanel(self.library, model=self.model)
+        self.sync_panel = SyncTrackPanel(
             self.library, model=self.model, bus=self.bus,
             tieup_language=lambda: self.cfg.libconfig.export_tieup_language,
             unapplied_edits=lambda uid: self.edit_panel.track_uid() == uid and self.edit_panel.has_changes())
         self.panel_stack = QtWidgets.QStackedWidget()
-        for panel in (self.edit_panel, self.index_panel, self.tieup_panel, self.export_panel):   # the tabs' order
+        for panel in (self.edit_panel, self.index_panel, self.tieup_panel, self.export_panel, self.sync_panel):
             self.panel_stack.addWidget(panel)
         self.panel_stack.setMinimumWidth(self.TRACK_PANEL_MIN_WIDTH)
         self.panel_stack.hide()
@@ -45,6 +47,7 @@ class TrackPanelMixin:
         self.panel_tabs.addTab(tr_ctx("track panel tab", "Index"))
         self.panel_tabs.addTab(tr_ctx("track panel tab", "Tie-ups"))
         self.panel_tabs.addTab(tr_ctx("track panel tab", "Export"))
+        self.panel_tabs.addTab(tr_ctx("track panel tab", "Sync"))
         for i in range(self.panel_tabs.count()):
             self.panel_tabs.setTabToolTip(i, tr("The selected track; click the open tab to fold the panel"))
         self.panel_tabs.tabBarClicked.connect(self._on_panel_tab_clicked)
@@ -95,7 +98,8 @@ class TrackPanelMixin:
         self._show_selection_in_panel(reload=True)
         if focus:
             target = {self.EDIT_TAB: self.edit_panel.ed_title, self.INDEX_TAB: self.index_panel.tbl_readings,
-                      self.TIEUPS_TAB: self.tieup_panel.box.table}.get(index, self.export_panel.cmb_jump_pair)
+                      self.TIEUPS_TAB: self.tieup_panel.box.table, self.SYNC_TAB: self.sync_panel.btn_write_tags,
+                      }.get(index, self.export_panel.cmb_jump_pair)
             if not target.isEnabled():
                 target = self.export_panel.dest_edit if index == self.EXPORT_TAB else self.table
             target.setFocus(QtCore.Qt.OtherFocusReason)

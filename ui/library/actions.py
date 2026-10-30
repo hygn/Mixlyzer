@@ -141,11 +141,19 @@ class ActionsMixin:
             self.open_track_panel(self.EXPORT_TAB)
 
     def _write_tags_selected(self):
-        """The Export tab with the selected track, its checked fields written into the file's tags."""
+        """The Sync tab with the selected track, its checked fields written into the file's tags."""
         if self._selected_uids():
-            self.open_track_panel(self.EXPORT_TAB, focus=False)
-            flash(self.export_panel.btn_write_tags)
-            self.export_panel.write_tags()
+            self.open_track_panel(self.SYNC_TAB, focus=False)
+            flash(self.sync_panel.btn_write_tags)
+            self.sync_panel.write_tags()
+
+    def _rekordbox_sync_selected(self):
+        """The Sync tab with the selected track, written into the Rekordbox XML again."""
+        if self._selected_uids():
+            self.open_track_panel(self.SYNC_TAB, focus=False)
+            if self.sync_panel.btn_rekordbox_sync.isEnabled():
+                flash(self.sync_panel.btn_rekordbox_sync)
+                self.sync_panel.sync_rekordbox()
 
     def _export_tempo_map_selected(self):
         """The Export tab with the selected track, its beatgrid written as a DAW's tempo map."""

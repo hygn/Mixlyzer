@@ -148,8 +148,12 @@ ACTIONS: tuple[Action, ...] = (
            tip=tr_mark("The works window: every work the tie-ups name, edited, merged or deleted.")),
     Action("library.export_track", LIBRARY, tr_mark("Export Track"),
            tip=tr_mark("The track panel's Export tab with the selected track.")),
+    Action("library.sync_track", LIBRARY, tr_mark("Sync Track"),
+           tip=tr_mark("The track panel's Sync tab with the selected track.")),
     Action("library.write_tags", LIBRARY, tr_mark("Write Tags to File"),
            tip=tr_mark("The selected track's stored values written into its audio file's tags.")),
+    Action("library.rekordbox_sync_track", LIBRARY, tr_mark("Sync Track to Rekordbox XML"),
+           tip=tr_mark("The selected track written into the Rekordbox XML again, as saving an edit does.")),
     Action("library.export_tempo_map", LIBRARY, tr_mark("Export DAW Tempo Map"),
            tip=tr_mark("The selected track's beatgrid written as a MIDI file into the Export tab's folder.")),
     Action("library.reveal", LIBRARY, tr_mark("Show in Explorer") if os_support.IS_WINDOWS else

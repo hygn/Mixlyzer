@@ -1,4 +1,4 @@
-"""The backups made before a file's tags are written (the Export tab's Write Tags, as its confirmation says), in the
+"""The backups made before a file's tags are written (the Sync tab's Write Tags, as its confirmation says), in the
 app folder's ``backups/tags/<date>/`` (gitignored), named after the file with the time, and put back by ``restore``:
 
 - the tag block (``tag_block_backup``, "<name> <HHMMSS>.mxtags"): the bytes of the file the write replaces, the rest

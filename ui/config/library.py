@@ -120,7 +120,7 @@ def build_library_tab(dialog) -> None:
     f_library.addRow(tr("Tie-up Titles"), dialog.cmb_tieup_language)
     dialog.cmb_export_tieup_language = _tieup_language_combo(tr("As the tie-up titles"))
     dialog.cmb_export_tieup_language.setToolTip(tr(
-        "<p>The language of the tie-ups the Export tab writes after a file's comment.</p>"))
+        "<p>The language of the tie-ups the Sync tab writes after a file's comment.</p>"))
     f_library.addRow(tr("Exported Tie-ups"), dialog.cmb_export_tieup_language)
 
     # library.db and the stored analyses ({uid}.npz) kept in agreement (core.library.jobs.save_edits / sync_index)
@@ -184,7 +184,7 @@ def build_library_tab(dialog) -> None:
                         ("both", tr("JumpCUEs, then CUE points in the slots left"))):
         dialog.cmb_serato_hot_cues.addItem(text, value)
     dialog.cmb_serato_hot_cues.setToolTip(tr(
-        "<p>What the Export tab's Write Tags makes Serato's 8 hot cues of. Serato has no memory cues: CUE points "
+        "<p>What the Sync tab's Write Tags makes Serato's 8 hot cues of. Serato has no memory cues: CUE points "
         "written there become hot cues.</p>"))
     dialog.cb_serato_keep_cues = QCheckBox(tr("Keep the file's Serato hot cues in the slots left"))
     dialog.cb_serato_keep_cues.setToolTip(tr(

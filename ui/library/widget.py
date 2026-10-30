@@ -405,12 +405,12 @@ class LibraryWidget(SourcesMixin, SearchMixin, MusicMixin, MixMixin, PlaylistsMi
             self.bus.sig_request_load_track.emit(path)
     def _on_external_sync_enabled(self, enabled: bool) -> None:
         self._external_sync_enabled = bool(enabled)
-    # The track panel: Edit / Export tabs on a thin vertical tab bar right of the track list, under the search (as
+    # The track panel: Edit / Index / Tie-ups / Export / Sync tabs on a thin vertical tab bar right of the track list, under the search (as
     # tall as the list). Clicking the open tab folds it to the tab bar; another tab unfolds it. Unfolded, it shows
     # the selected track (the first analyzed one), following the selection once it rests for PANEL_FOLLOW_MS (keys
     # held down do not load every track passed); a tab's changes not applied (Edit, Search Index) are asked about
     # first.
-    EDIT_TAB, INDEX_TAB, TIEUPS_TAB, EXPORT_TAB = 0, 1, 2, 3
+    EDIT_TAB, INDEX_TAB, TIEUPS_TAB, EXPORT_TAB, SYNC_TAB = 0, 1, 2, 3, 4
     TRACK_PANEL_WIDTH = 380
     TRACK_PANEL_MIN_WIDTH = 300
     PANEL_FOLLOW_MS = 120
@@ -431,7 +431,9 @@ class LibraryWidget(SourcesMixin, SearchMixin, MusicMixin, MixMixin, PlaylistsMi
             "library.find_tieups_on_web": self._find_tieups_selected,
             "library.tieup_works": self.open_works,
             "library.export_track": self._export_selected,
+            "library.sync_track": lambda: self._open_tab_selected(self.SYNC_TAB),
             "library.write_tags": self._write_tags_selected,
+            "library.rekordbox_sync_track": self._rekordbox_sync_selected,
             "library.export_tempo_map": self._export_tempo_map_selected,
             "library.reveal": self._reveal_selected,
             "library.new_playlist": lambda: self._create_playlist(self._shown_folder()),

@@ -31,7 +31,7 @@ class libconfig:
     # artist there).
     tieup_web_search: bool
     # The language the tie-ups' works are shown in (core.tieups.domain.TITLE_LANGUAGES; "": the UI's), and the one
-    # the Export tab writes them in after a file's comment ("": tieup_language's).
+    # the Sync tab writes them in after a file's comment ("": tieup_language's).
     tieup_language: str
     export_tieup_language: str
     # The editor's save writes the track's rows in library.db too (its BPM, key and segment tables, made from the marks
@@ -43,7 +43,7 @@ class libconfig:
     # The library folder (system.os_support.path_key) whose warning of a sync client's folder the user turned off
     # ("": none; another folder warned again).
     cloud_sync_warning_off: str = ""
-    # Serato's tags (the Export tab's Write Tags, third_party.serato): its hot cues made of the JumpCUEs (A-H in their
+    # Serato's tags (the Sync tab's Write Tags, third_party.serato): its hot cues made of the JumpCUEs (A-H in their
     # slots: "jumpcues"), the CUE points (in time order: "cue_points") or both (the CUE points in the slots the
     # JumpCUEs leave: "both"); the file's own Serato hot cues kept in the slots left (else all replaced); the
     # beatgrid locked (BPMLOCK: Serato's analysis leaves it).

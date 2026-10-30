@@ -1,4 +1,4 @@
-"""The Export tab's Write Tags (ui.library.tabs.export): each change confirmed first (the file's value and the one
+"""The Sync tab (ui.library.tabs.sync): Write Tags, each change confirmed first (the file's value and the one
 written), nothing written when cancelled, the backup asked for made before the write and put back by Restore from
 Backup, no confirmation when the file already holds the values. A real file in a temporary folder; the backups in
 another (never the app folder's)."""
@@ -25,8 +25,8 @@ from third_party import serato
 from core.tags import backup as tag_backup
 from core.tags import writer as tw
 from core.tags.writer import read_tags
-from ui.library.tabs import export as export_tab
-from ui.library.tabs.export import ExportTrackPanel
+from ui.library.tabs import sync as sync_tab
+from ui.library.tabs.sync import SyncTrackPanel
 from ui.theme import current_theme
 
 _ISOLATION = None
@@ -75,14 +75,14 @@ class WriteTagsTests(unittest.TestCase):
         self.addCleanup(shutil.rmtree, self.dir, ignore_errors=True)
         self.addCleanup(shutil.rmtree, self.app, ignore_errors=True)
         for patcher in (mock.patch.object(tag_backup, "app_folder", return_value=self.app),
-                        mock.patch.object(ExportTrackPanel, "_backup", "tags")):
+                        mock.patch.object(SyncTrackPanel, "_backup", "tags")):
             patcher.start()
             self.addCleanup(patcher.stop)
         self.file = self.dir / "ヴヴヴ.flac"
         sf.write(self.file, (0.1 * np.sin(np.arange(22050) / 10)).astype(np.float32), 22050, format="FLAC")
         self.original = self.file.read_bytes()
         row = TrackRow(uid=UID, path=str(self.file), title="ヴヴヴ", artist="vα-liv", album="", comment="")
-        self.panel = ExportTrackPanel(_Library(row))
+        self.panel = SyncTrackPanel(_Library(row))
         self.panel.set_track(row)
         for field, box in self.panel.tag_fields.items():
             box.setChecked(field in ("title", "artist"))
@@ -97,7 +97,7 @@ class WriteTagsTests(unittest.TestCase):
                 if box.text() in uncheck:
                     box.setChecked(False)
             return QtWidgets.QDialog.Accepted if accept else QtWidgets.QDialog.Rejected
-        return mock.patch.object(export_tab.TagWriteDialog, "exec", exec_)
+        return mock.patch.object(sync_tab.TagWriteDialog, "exec", exec_)
 
     def write(self, accept: bool = True, backup: str = "tags", uncheck: tuple = ()) -> None:
         with self.dialog(accept, backup, uncheck):
@@ -131,7 +131,7 @@ class WriteTagsTests(unittest.TestCase):
         self.write(backup="file")
         (saved,) = list((self.app / "backups" / "tags").rglob("*.flac"))
         self.assertEqual(saved.read_bytes(), self.original)
-        self.assertEqual(ExportTrackPanel._backup, "file")     # the next confirmation's choice
+        self.assertEqual(SyncTrackPanel._backup, "file")     # the next confirmation's choice
 
     def test_cancelled_nothing_written(self):
         self.write(accept=False)
@@ -240,7 +240,7 @@ class WriteTagsTests(unittest.TestCase):
             box.setChecked(False)
         self.panel.cb_serato.setChecked(True)
         lib = mock.Mock(serato_hot_cues="both", serato_keep_cues=False, serato_bpm_lock=False)
-        with mock.patch.object(export_tab.settings_store, "current", return_value=mock.Mock(libconfig=lib)):
+        with mock.patch.object(sync_tab.settings_store, "current", return_value=mock.Mock(libconfig=lib)):
             self.write()
         raw = read_tags(self.file)["serato_markers"].encode("latin-1")
         self.assertEqual([(c.slot, c.name) for c in serato.parse_cues(raw)],
@@ -250,7 +250,7 @@ class WriteTagsTests(unittest.TestCase):
     def test_a_file_held_by_another_program_then_written(self):
         # Windows refuses to replace a file another program holds (Serato with the track loaded): said; the next
         # write's note back in the text's colour
-        with mock.patch.object(export_tab, "write_tags", side_effect=PermissionError(13, "Access is denied")):
+        with mock.patch.object(sync_tab, "write_tags", side_effect=PermissionError(13, "Access is denied")):
             self.write(backup="")
         self.assertIn("Another program has the file open", self.panel.tag_note.text())
         self.assertIn(current_theme().danger, self.panel.tag_note.styleSheet())
@@ -268,6 +268,52 @@ class WriteTagsTests(unittest.TestCase):
         self.assertEqual(self.shown, [])
         self.assertEqual(self.file.read_bytes(), written)
         self.assertEqual(self.panel.tag_note.text(), "The file's tags already hold these values.")
+
+
+class RekordboxSyncTests(unittest.TestCase):
+    """Sync to Rekordbox XML: the request an edit's save sends, its outcome shown; off without the setting."""
+
+    def setUp(self):
+        from core.workflows.event_bus import EventBus
+        self.bus = EventBus()
+        self.asked = []
+        self.bus.sig_rekordbox_sync_track_requested.connect(self.asked.append)
+        self.lib = mock.Mock(rekordbox_sync_enabled=True, rekordbox_xml_path="rekordbox.xml")
+        patcher = mock.patch.object(sync_tab.settings_store, "current", return_value=mock.Mock(libconfig=self.lib))
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        self.row = TrackRow(uid=UID, path="ヴヴヴ.flac", title="ヴヴヴ")
+        self.panel = SyncTrackPanel(_Library(self.row), bus=self.bus)
+        self.panel.set_track(self.row)
+
+    def request(self, uid=UID):
+        return mock.Mock(mode="track", uid=uid, xml_path=Path("rekordbox.xml"))
+
+    def test_the_tracks_request_and_its_outcome(self):
+        self.assertTrue(self.panel.btn_rekordbox_sync.isEnabled())
+        self.panel.sync_rekordbox()
+        self.assertEqual(self.asked, [UID])
+        self.bus.sig_rekordbox_sync_finished.emit(self.request(), mock.Mock(output_path=Path("rekordbox.xml")))
+        self.assertTrue(self.panel.rekordbox_note.text().startswith("Written into rekordbox"))
+        # a sync the tab did not ask for (an edit saved) shown nowhere here
+        self.bus.sig_rekordbox_sync_failed.emit(self.request(), "disk full")
+        self.assertNotIn("disk full", self.panel.rekordbox_note.text())
+        self.panel.sync_rekordbox()
+        self.bus.sig_rekordbox_sync_failed.emit(self.request(), "disk full")
+        self.assertIn("disk full", self.panel.rekordbox_note.text())
+        self.assertIn(current_theme().danger, self.panel.rekordbox_note.styleSheet())
+
+    def test_off_without_the_setting(self):
+        self.lib.rekordbox_sync_enabled = False
+        self.panel.set_track(self.row)
+        self.assertFalse(self.panel.btn_rekordbox_sync.isEnabled())
+        self.assertIn("Settings > Library > Rekordbox XML", self.panel.rekordbox_note.text())
+        self.panel.sync_rekordbox()
+        self.assertEqual(self.asked, [])
+        self.lib.rekordbox_sync_enabled = True
+        self.panel.set_track(self.row)
+        self.assertTrue(self.panel.btn_rekordbox_sync.isEnabled())
+        self.assertEqual(self.panel.rekordbox_note.text(), "")
 
 
 if __name__ == "__main__":

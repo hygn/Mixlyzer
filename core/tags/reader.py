@@ -1,5 +1,5 @@
 """A track file's tags as the library reads them: title / artist / album / comment (and where the file holds each, so
-the Export tab writes them back there), and its cover picture. This app's own reader for the formats it knows
+the Sync tab writes them back there), and its cover picture. This app's own reader for the formats it knows
 (core.tags.writer), FFmpeg's for the others (analyzer.audio.decoder)."""
 import os
 import struct

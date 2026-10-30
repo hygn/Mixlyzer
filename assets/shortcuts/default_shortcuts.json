@@ -192,8 +192,14 @@
   "library.export_track": [
     "X"
   ],
+  "library.sync_track": [
+    "Y"
+  ],
   "library.write_tags": [
     "Ctrl+Shift+T"
+  ],
+  "library.rekordbox_sync_track": [
+    "Shift+Y"
   ],
   "library.export_tempo_map": [
     "Shift+X"
