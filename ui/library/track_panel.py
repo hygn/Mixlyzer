@@ -23,6 +23,7 @@ class TrackPanelMixin:
                                       to_versions=lambda: bool(self.cfg.libconfig.tieup_to_versions))
         self.export_panel = ExportTrackPanel(
             self.library, model=self.model, bus=self.bus,
+            tieup_language=lambda: self.cfg.libconfig.export_tieup_language,
             unapplied_edits=lambda uid: self.edit_panel.track_uid() == uid and self.edit_panel.has_changes())
         self.panel_stack = QtWidgets.QStackedWidget()
         for panel in (self.edit_panel, self.index_panel, self.tieup_panel, self.export_panel):   # the tabs' order

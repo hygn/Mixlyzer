@@ -18,6 +18,24 @@ from core.search import reading
 from system import i18n
 from system.i18n import tr, tr_mark
 
+# the languages a work's title can be shown in (Settings > Library: libconfig.tieup_language; "": the UI's), each by
+# its name in itself
+TITLE_LANGUAGES = (("ja-JP", "日本語"), ("ko-KR", "한국어"), ("en-US", "English"), ("zh-CN", "中文（简体）"),
+                   ("zh-TW", "中文（繁體）"))
+_display_language = ""
+
+
+def set_display_language(tag: str) -> None:
+    """The language works' titles are shown in (a TITLE_LANGUAGES tag; "": the UI's). Set at the start and when the
+    setting changes; the library's tie-up texts are read again after (they are made in it)."""
+    global _display_language
+    _display_language = tag if tag in dict(TITLE_LANGUAGES) else ""
+
+
+def display_language() -> str:
+    return _display_language or i18n.language()
+
+
 # (code, name): stored as the code, shown translated
 CATEGORIES = (
     ("anime", tr_mark("Anime")),
@@ -88,9 +106,9 @@ class Work:
     urls: list[tuple[str, str]] = field(default_factory=list)            # (label, url)
 
     def title(self, lang: Optional[str] = None) -> str:
-        """The title shown in ``lang`` (default: the UI's): that language and region's first title, else the
-        language's in any region, else the first title."""
-        want = i18n.language() if lang is None else lang
+        """The title shown in ``lang`` (default: display_language()): that language and region's first title, else
+        the language's in any region, else the first title."""
+        want = display_language() if lang is None else lang
         for match in (lambda code: code == want, lambda code: code.split("-")[0] == want.split("-")[0]):
             for code, text in self.titles:
                 if match(code):
@@ -113,9 +131,10 @@ class TieUp:
         """What makes it one tie-up of a track: its work, role and number."""
         return self.work.id, self.role, int(self.seq)
 
-    def short(self) -> str:
-        """The work's title and the role, as the library shows it: "Title OP2"."""
-        return f"{self.work.title()} {_short(self.role, self.seq)}".strip()
+    def short(self, lang: Optional[str] = None) -> str:
+        """The work's title (in ``lang``; default: display_language()) and the role, as the library shows it:
+        "Title OP2"."""
+        return f"{self.work.title(lang)} {_short(self.role, self.seq)}".strip()
 
 
 def _short(role: str, seq: int) -> str:
@@ -178,8 +197,10 @@ def name_readings(text: str, languages: Optional[list[str]], han_run: int) -> st
     return "\n".join(r for r, _source in reading.readings(text, languages, han_run=han_run))
 
 
-def comment_suffix(tieups: Iterable[TieUp]) -> str:
-    shown = [t.short() for t in tieups]
+def comment_suffix(tieups: Iterable[TieUp], lang: str = "") -> str:
+    """"[Title OP; Other ED]": the works' titles in ``lang`` (a TITLE_LANGUAGES tag; "": display_language(), the
+    Tie-up Titles setting's)."""
+    shown = [t.short(lang if lang in dict(TITLE_LANGUAGES) else None) for t in tieups]
     return f"[{'; '.join(shown)}]" if shown else ""
 
 

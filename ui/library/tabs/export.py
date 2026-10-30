@@ -37,11 +37,14 @@ class ExportTrackPanel(QtWidgets.QWidget):
 
     def __init__(self, library: LibraryService, parent: Optional[QtWidgets.QWidget] = None, *,
                  model: Optional[DataModel] = None, bus=None,
-                 unapplied_edits: Optional[Callable[[str], bool]] = None) -> None:
+                 unapplied_edits: Optional[Callable[[str], bool]] = None,
+                 tieup_language: Optional[Callable[[], str]] = None) -> None:
         """``library``: the library's owner (core.library.service: the stored values, the analysis);
-        ``unapplied_edits(uid)``: whether the Edit tab has changes to that track not applied yet."""
+        ``unapplied_edits(uid)``: whether the Edit tab has changes to that track not applied yet;
+        ``tieup_language()``: the language of the tie-ups written after the comment (Settings > Library)."""
         super().__init__(parent)
         self._library = library
+        self._tieup_language = tieup_language
         self._model: Optional[DataModel] = model
         self._bus = bus
         self._unapplied_edits = unapplied_edits
@@ -219,7 +222,9 @@ class ExportTrackPanel(QtWidgets.QWidget):
         self.btn_write_tags.setEnabled(False)
         self._set_tag_note(tr("Writing the tags..."))
         # the stored values read by the library's owner, then written into the file on a thread of its own
-        self._library.read(jobs.tag_values, uid, with_tieups, done=lambda found: self._write_stored(uid, fields, *found))
+        lang = self._tieup_language() if self._tieup_language is not None else ""
+        self._library.read(jobs.tag_values, uid, with_tieups, lang,
+                           done=lambda found: self._write_stored(uid, fields, *found))
 
     def _write_stored(self, uid: str, fields: list, row: Optional[TrackRow], suffix: str) -> None:
         if row is None:

@@ -30,8 +30,8 @@ import uuid
 from core.search import reading
 from system.i18n import tr
 from core.tieups.domain import (
-    IDENTITY_URLS, OFFICIAL, UNSPECIFIED, Catalog, TieUp, TrackTieups, Work, describe, is_identity_url, is_lang,
-    name_key, name_readings, versions_of,
+    IDENTITY_URLS, OFFICIAL, UNSPECIFIED, Catalog, TieUp, TrackTieups, Work, comment_suffix, describe,
+    is_identity_url, is_lang, name_key, name_readings, versions_of,
 )
 
 _FK = "ON UPDATE CASCADE ON DELETE CASCADE"
@@ -180,9 +180,15 @@ def track_texts(con: sqlite3.Connection) -> dict[str, TrackTieups]:
     return out
 
 
-def comment_suffixes(con: sqlite3.Connection) -> dict[str, str]:
-    """Every tagged track's comment suffix: "[Title OP; Other ED]"."""
-    return {uid: f"[{t.shown}]" for uid, t in track_texts(con).items()}
+def comment_suffixes(con: sqlite3.Connection, lang: str = "") -> dict[str, str]:
+    """Every tagged track's comment suffix: "[Title OP; Other ED]", the titles in ``lang`` (domain.comment_suffix)."""
+    names = _names(con)
+    works = {i: _work(i, c, names.get(i, []), []) for i, c in con.execute("SELECT id, category FROM tieup_work;")}
+    by_track: dict[str, list[TieUp]] = {}
+    for uid, work_id, role, seq, detail in con.execute(
+            "SELECT track_uid, work_id, role, seq, detail FROM tieup ORDER BY track_uid, rank;"):
+        by_track.setdefault(uid, []).append(TieUp(works.get(work_id) or Work(work_id), role, int(seq), detail))
+    return {uid: comment_suffix(t, lang) for uid, t in by_track.items()}
 
 
 def work_tracks(con: sqlite3.Connection, work_id: str) -> list[str]:

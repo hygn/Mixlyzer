@@ -73,6 +73,71 @@ class TieupWebTests(unittest.TestCase):
         album = {(w, r) for w, _p, r, _s, _d, _c in tw.mentions(ALBUM_PAGE, "青い鳥", whole=False)}
         self.assertEqual(album, {("別の作品", "ending")})
 
+    def test_no_tie_up_where_the_page_states_none(self):
+        # 粛聖!! ロリ神レクイエム☆ (an original song) as its page has it: a chart's TOP100 has no OP, an アニメーション no
+        # アニメ, its covers' section is the covers' (a game's character's cover, in the game)
+        page = ("同曲のミュージック・ビデオ自体も日本国外で認知度を高めているが、メンフィス・カルトの楽曲「9mm」の"
+                "リズムに合わせて踊るように編集された9歳のしぐれういの二次創作動画も話題となった。公式SNSアカウントで、"
+                "同曲のミュージック・ビデオに収録されている踊る9歳のしぐれういのアニメーションと「9mm」を組み合わせた"
+                "動画を投稿。\n"
+                "|scope=row |[[TBSテレビ|TBS]]の『[[COUNT DOWN TV]]』 - 今週のTOP100\n"
+                "| style=\"text-align:center\"|27\n"
+                "== カバー ==\n"
+                "* 筆島しぐれ（[[吉岡麻耶]]） - 音楽ゲーム「[[ワールドダイスター 夢のステラリウム]]」に収録"
+                "（2024年6月29日追加）。\n"
+                "== 脚注 ==\n")
+        self.assertEqual(tw.mentions(page, "粛聖!! ロリ神レクイエム☆", whole=True), [])
+
+    def test_a_singles_other_songs_tie_ups_are_theirs(self):
+        # S・M・L☆'s own page: its coupling song ミライボタン's tie-up (a game's ending) is not its own
+        page = ("「S・M・L☆」（エス・エム・エル）は、アフィリア・サーガの楽曲。\n"
+                "== 概要 ==\n"
+                "TVアニメ『俺の脳内選択肢が、学園ラブコメを全力で邪魔している』のOPで使用された楽曲。\n"
+                "== 収録曲 ==\n"
+                "=== DVD付盤 ===\n"
+                "# S・M・L☆ [4:50]\n"
+                "#: 作詞 - 桃井はるこ / 作曲 - 濱田幹浩 / 編曲 - MACARONI☆\n"
+                "#: テレビアニメ「俺の脳内選択肢が、学園ラブコメを全力で邪魔している」オープニングテーマ\n"
+                "# ミライボタン [3:44]\n"
+                "#: 作詞 - 林達也 / 作曲 - 濱田幹浩 / 編曲 - 河合英嗣\n"
+                "#: PS Vita用ソフト「超次次元ゲイム ネプテューヌRe;Birth1」エンディングテーマ\n"
+                "# S・M・L☆(off Vocal)\n"
+                "# ミライボタン(off Vocal)\n")
+        got = {(w, r) for w, _p, r, _s, _d, _c in tw.mentions(page, "S・M・L☆", whole=True)}
+        self.assertEqual(got, {("俺の脳内選択肢が、学園ラブコメを全力で邪魔している", "opening")})
+        # a double A-side single's section in Poppin'Party's discography: the tie-up is 「最高！」's, not 二重の虹's
+        section = ("=== 二重の虹（ダブル レインボウ）/最高（さあ行こう）！ ===\n"
+                   "10thシングル。2018年7月11日に発売された。\n"
+                   "表題曲のひとつである「最高！」はテレビアニメ『フューチャーカード 神バディファイト』オープニングテーマに"
+                   "起用されており、メンバーの西本りみが同番組の主人公・末門友牙の弟である末門晴役で出演している。\n")
+        got = {(w, r) for w, _p, r, _s, _d, _c in tw.mentions(section, "二重の虹(ダブル レインボウ)", whole=False,
+                                                                page="Poppin'Partyのディスコグラフィ")}
+        # the page's own work listed, no role (the search then drops it: Poppin'Party's page is a group's)
+        self.assertEqual(got, {("Poppin'Party", "unspecified")})
+
+    @unittest.expectedFailure
+    def test_a_franchise_pages_anime_section(self):
+        # Re:ステージ!'s page lists 憧れFuture Sign under its TV anime's theme songs: the work is the anime
+        # (Re:ステージ! ドリームデイズ♪, named in the section's first line), not the franchise its page is
+        page = ("== テレビアニメ ==\n"
+                "2019年7月より9月まで『Re:ステージ！ ドリームデイズ♪』（リステージ ドリームデイズ）のタイトルで、"
+                "TOKYO MXほかにて放送された。\n"
+                "=== 主題歌 ===\n"
+                "; エンディングテーマ\n"
+                ":; 「憧れFuture Sign」（第1話 - 第7話、第9話 - 第11話）\n"
+                ":: 作詞 - やしきん / 作曲・編曲 - 伊藤翼 / 歌 - KiRaRe\n")
+        works = {w for w, *_rest in tw.mentions(page, "憧れFuture Sign", whole=False, page="Re:ステージ!")}
+        self.assertEqual(works, {"Re:ステージ！ ドリームデイズ♪"})
+
+    def test_a_titles_own_words_on_its_tie_up(self):
+        # left out of the names searched; the work they name is the sure one (幼女社長R, not 幼女社長)
+        self.assertEqual(tw.song_title("オ・ヒ・メ・サ・マ！(アニメ幼女社長R EDテーマ)")[0], "オ・ヒ・メ・サ・マ！")
+        self.assertEqual(tw.title_note("オ・ヒ・メ・サ・マ！(アニメ幼女社長R EDテーマ)"), "(アニメ幼女社長R EDテーマ)")
+        self.assertEqual(tw.song_title("ふゆびより (포근한 겨울날) - TV애니메이션 『유루캠프』 ED테마")[0], "ふゆびより")
+        # a Korean translation after the title is left out; a Korean title's own parenthesis kept
+        self.assertEqual(tw.song_title("ツナグ、ソラモヨウ (이어진 하늘 모양)")[0], "ツナグ、ソラモヨウ")
+        self.assertEqual(tw.song_title("다시 만난 세계 (소녀시대)")[0], "다시 만난 세계 (소녀시대)")
+
     def test_the_own_page_naming_its_work_without_a_role(self):
         page = ("『Yes! BanG_Dream!』は、Poppin'Partyのデビューシングルである。\n"
                 "このユニットは、ブシロードのメディアミックスプロジェクト『[[BanG_Dream!]]』にて誕生しており、…\n")

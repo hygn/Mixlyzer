@@ -29,6 +29,7 @@ class RekordboxSyncRequest:
     mode: str
     ramp_tolerance_ms: float = 0.0
     comment_tieups: bool = False     # each track's comment with its song's tie-ups after it (core.tieups.domain)
+    tieup_language: str = ""         # their titles' language ("": the Tie-up Titles setting's)
     full_rebuild: bool = False
     rows: tuple[TrackRow, ...] = ()
     uid: str = ""
@@ -91,7 +92,7 @@ class _RekordboxSyncEngine:
         if not self.request.comment_tieups:
             return row
         if self._suffixes is None:
-            self._suffixes = self.library.call(jobs.comment_suffixes)
+            self._suffixes = self.library.call(jobs.comment_suffixes, self.request.tieup_language)
         suffix = self._suffixes.get(str(row.uid or ""), "")
         return replace(row, comment=tieup.with_suffix(row.comment or "", suffix)) if suffix else row
 

@@ -157,12 +157,12 @@ def touch_file_stats(lib, path: str) -> None:
     lib.db.touch_file_stats(path)
 
 
-def tag_values(lib, uid: str, with_tieups: bool) -> tuple[Optional[TrackRow], str]:
+def tag_values(lib, uid: str, with_tieups: bool, lang: str = "") -> tuple[Optional[TrackRow], str]:
     """What the Export tab writes into the file's tags: the track's row, and its tie-ups' comment suffix ("" without
-    ``with_tieups``)."""
+    ``with_tieups``; the titles in ``lang``, "": the Tie-up Titles setting's)."""
     from core.tieups.domain import comment_suffix
     row = lib.db.get_by_uid(uid)
-    return row, comment_suffix(tieups.track_tieups(lib.db.conn, uid)) if with_tieups and row is not None else ""
+    return row, comment_suffix(tieups.track_tieups(lib.db.conn, uid), lang) if with_tieups and row is not None else ""
 
 
 def song_of(lib, uid: str, untagged: bool = False) -> Optional[tuple[str, str, str]]:
@@ -365,8 +365,9 @@ def delete_work(lib, work_id: str) -> list[str]:
     return tieups.delete_work(lib.db.conn, work_id)
 
 
-def comment_suffixes(lib) -> dict[str, str]:
-    return tieups.comment_suffixes(lib.db.conn)
+def comment_suffixes(lib, lang: str = "") -> dict[str, str]:
+    """Every tagged track's comment suffix, the titles in ``lang`` ("": the Tie-up Titles setting's)."""
+    return tieups.comment_suffixes(lib.db.conn, lang)
 
 
 # ---- the indexes beside the library: the Variants', Search by Music's and the mix candidates' ----

@@ -20,6 +20,7 @@ from core.playback.player import PlayerController
 from core.analysis_library.stored import StoredAnalysis
 from core.library import jobs
 from core.library.service import LibraryService
+from core.tieups import domain as tieup_domain
 from core.tags.reader import extract_tags
 from core.workflows.analysis import AnalysisWorkflow
 from core.workflows.taskmanager import TIEUP_LOOKUP, taskmanager
@@ -880,7 +881,7 @@ class AppWindow(QtWidgets.QMainWindow):
         rekordbox_cfg_changed = any(
             prev_lcfg.get(k) != new_lcfg.get(k)
             for k in ("rekordbox_sync_enabled", "rekordbox_xml_path", "rekordbox_ramp_tolerance_ms",
-                      "rekordbox_comment_tieups")
+                      "rekordbox_comment_tieups", "rekordbox_tieup_language")
         )
         if (
             rekordbox_cfg_changed
@@ -888,6 +889,10 @@ class AppWindow(QtWidgets.QMainWindow):
             and _config.libconfig.rekordbox_xml_path.strip()
         ):
             self.bus.sig_rekordbox_sync_requested.emit(True)
+        # the tie-ups' works shown in another language: the library's tie-up texts made again
+        if prev_cfg.get("libconfig", {}).get("tieup_language", "") != _config.libconfig.tieup_language:
+            tieup_domain.set_display_language(_config.libconfig.tieup_language)
+            self.library.refresh()
         # search: the query's settings at once; the stored readings' (languages, Japanese text's Han
         # runs): the library read again
         prev_search = search_settings(prev_cfg.get("searchconfig"))

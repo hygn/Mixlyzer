@@ -16,9 +16,20 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from core.tieups.domain import TITLE_LANGUAGES
 from ui.config.dialogs import LibrarySyncProgressDialog, RekordboxSyncProgressDialog
 from ui.config.scroll import groups_page
 from system.i18n import tr
+
+
+def _tieup_language_combo(first: str) -> QtWidgets.QComboBox:
+    """A choice of the language works' titles are written in: ``first`` (its value "") and TITLE_LANGUAGES, each by
+    its name in itself."""
+    combo = QtWidgets.QComboBox()
+    combo.addItem(first, "")
+    for tag, name in TITLE_LANGUAGES:
+        combo.addItem(name, tag)
+    return combo
 
 
 def build_library_tab(dialog) -> None:
@@ -101,6 +112,15 @@ def build_library_tab(dialog) -> None:
         "<p>After a new track's analysis, its tie-ups are looked up on Japanese Wikipedia and Wikidata and the ones "
         "found for certain are added. Its title and artist are sent there.</p>"))
     f_library.addRow(dialog.cb_tieup_web_search)
+    dialog.cmb_tieup_language = _tieup_language_combo(tr("The interface's language"))
+    dialog.cmb_tieup_language.setToolTip(tr(
+        "<p>The language a tie-up's work is shown in: its title in that language where the work has one, else "
+        "another of its titles.</p>"))
+    f_library.addRow(tr("Tie-up Titles"), dialog.cmb_tieup_language)
+    dialog.cmb_export_tieup_language = _tieup_language_combo(tr("As the tie-up titles"))
+    dialog.cmb_export_tieup_language.setToolTip(tr(
+        "<p>The language of the tie-ups the Export tab writes after a file's comment.</p>"))
+    f_library.addRow(tr("Exported Tie-ups"), dialog.cmb_export_tieup_language)
 
     # library.db and the stored analyses ({uid}.npz) kept in agreement (core.library.jobs.save_edits / sync_index)
     dialog.cb_sync_stored_analysis = QCheckBox(tr("Update the library database when the editor saves"))
@@ -147,6 +167,11 @@ def build_library_tab(dialog) -> None:
     f_rekordbox.addRow(tr("XML Path"), dialog.ed_rekordbox_xml_path)
     f_rekordbox.addRow(tr("Tempo ramp tolerance"), dialog.sp_rekordbox_ramp_tolerance_ms)
     f_rekordbox.addRow(dialog.cb_rekordbox_comment_tieups)
+    dialog.cmb_rekordbox_tieup_language = _tieup_language_combo(tr("As the tie-up titles"))
+    dialog.cmb_rekordbox_tieup_language.setToolTip(tr(
+        "<p>The language of the tie-ups written after each track's comment in the XML.</p>"))
+    dialog.cb_rekordbox_comment_tieups.toggled.connect(dialog.cmb_rekordbox_tieup_language.setEnabled)
+    f_rekordbox.addRow(tr("Tie-up Language"), dialog.cmb_rekordbox_tieup_language)
     f_rekordbox.addRow("", dialog.btn_rekordbox_sync_now)
     f_rekordbox.addRow(dialog.lbl_rekordbox_note)
 
@@ -313,6 +338,7 @@ class LibrarySettingsMixin:
             != float(cfg.libconfig.rekordbox_ramp_tolerance_ms)
             or bool(previous_libcfg.rekordbox_comment_tieups)
             != bool(cfg.libconfig.rekordbox_comment_tieups)
+            or previous_libcfg.rekordbox_tieup_language != cfg.libconfig.rekordbox_tieup_language
         )
         if self._rekordbox_sync_dialog is not None:
             self._rekordbox_sync_dialog.deleteLater()

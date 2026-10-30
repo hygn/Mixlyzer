@@ -112,6 +112,7 @@ class RekordboxXmlSync(QtCore.QObject):
             mode=mode,
             ramp_tolerance_ms=float(libcfg.rekordbox_ramp_tolerance_ms),
             comment_tieups=bool(getattr(libcfg, "rekordbox_comment_tieups", False)),
+            tieup_language=str(getattr(libcfg, "rekordbox_tieup_language", "") or ""),
             **kwargs,
         )
 

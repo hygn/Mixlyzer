@@ -62,6 +62,18 @@ class TieupTests(unittest.TestCase):
         self.assertEqual(w.title("ko-KR"), "日本")         # none: the first
         self.assertEqual(w.title("zh-CN"), "臺")
 
+    def test_titles_shown_in_the_language_set(self):
+        w = tieup.Work("", "anime", [("ja-JP", "ご注文はうさぎですか？"), ("ko-KR", "주문은 토끼입니까?"),
+                                     ("en-US", "Is the Order a Rabbit?")])
+        try:
+            tieup.set_display_language("ko-KR")       # Settings > Library's Tie-up Titles, whatever the UI's
+            self.assertEqual(w.title(), "주문은 토끼입니까?")
+            self.assertEqual(tieup.describe([(w, "opening", 1, "", [])]).shown, "주문은 토끼입니까? OP1")
+            tieup.set_display_language("xx-XX")       # not one of TITLE_LANGUAGES: the UI's
+            self.assertEqual(tieup.display_language(), tieup.i18n.language())
+        finally:
+            tieup.set_display_language("")
+
     def test_languages_are_language_region(self):
         self.assertTrue(tieup.is_lang("ko-KR"))
         for bad in ("ja", "ja-Latn", "zh-Hans", "", "KO-kr", "ko_KR"):
@@ -82,6 +94,18 @@ class TieupTests(unittest.TestCase):
         self.assertEqual(tieup.with_suffix(tieup.with_suffix("c", suffix), suffix), "c " + suffix)
         self.assertEqual(tieup.with_suffix("", suffix), suffix)
         self.assertEqual(tieup.with_suffix("c", ""), "c")
+
+    def test_comment_suffix_in_a_language_of_its_own(self):
+        # the XML's and the Export tab's comments in their languages (Settings > Library), whatever the shown one's
+        self._add(self.uids[0])
+        try:
+            tieup.set_display_language("ko-KR")
+            self.assertEqual(tieups.comment_suffixes(self.db.conn)[self.uids[0]], "[봇치 더 록! OP]")
+            self.assertEqual(tieups.comment_suffixes(self.db.conn, "ja-JP")[self.uids[0]], "[ぼっち・ざ・ろっく！ OP]")
+            self.assertEqual(tieup.comment_suffix(tieups.track_tieups(self.db.conn, self.uids[0]), "en-US"),
+                             "[Bocchi the Rock! OP]")
+        finally:
+            tieup.set_display_language("")
 
     def test_edit_by_its_old_key_and_remove(self):
         t = self._add(self.uids[0], seq=1)

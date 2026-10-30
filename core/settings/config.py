@@ -23,11 +23,17 @@ class libconfig:
     rekordbox_ramp_tolerance_ms: float
     # The track's tie-ups (core.tieups.domain) after each track's comment in the XML: [Title OP; Other ED].
     rekordbox_comment_tieups: bool
+    # Their works' titles in this language (core.tieups.domain.TITLE_LANGUAGES; "": tieup_language's).
+    rekordbox_tieup_language: str
     # A tie-up added in the Edit tab added to the track's versions (its Variants) too.
     tieup_to_versions: bool
     # A new track its versions gave no tie-up looked up on Wikipedia / Wikidata (core.tieups.web; sends its title and
     # artist there).
     tieup_web_search: bool
+    # The language the tie-ups' works are shown in (core.tieups.domain.TITLE_LANGUAGES; "": the UI's), and the one
+    # the Export tab writes them in after a file's comment ("": tieup_language's).
+    tieup_language: str
+    export_tieup_language: str
     # The editor's save writes the track's rows in library.db too (its BPM, key and segment tables, made from the marks
     # saved: core.library.segments.track_index); off, only its stored analysis (library.db brought up to it by Sync Now).
     sync_stored_analysis: bool
@@ -428,8 +434,11 @@ def default_cfg():
         rekordbox_xml_path="./rekordbox.xml",
         rekordbox_ramp_tolerance_ms=1.0,
         rekordbox_comment_tieups=False,
+        rekordbox_tieup_language="",
         tieup_to_versions=True,
         tieup_web_search=False,
+        tieup_language="",
+        export_tieup_language="",
         sync_stored_analysis=True,
         backup_feature_cache=False,
     )

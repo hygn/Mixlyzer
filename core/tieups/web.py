@@ -50,7 +50,7 @@ MIN_INTERVAL_SEC = 1.0  # between two requests
 TIMEOUT_SEC = 10.0
 CACHE_DAYS = 30
 CACHE_NAME = os.path.join("cache", "tieup_web.db")
-RULES = 7            # how pages are read and a tie-up picked: raise it when they change (the answers kept asked again)
+RULES = 8            # how pages are read and a tie-up picked: raise it when they change (the answers kept asked again)
 # Wikidata's language codes -> ll-RR tags (others are not taken)
 WIKIDATA_LANGS = {"ja": "ja-JP", "ko": "ko-KR", "en": "en-US", "zh-cn": "zh-CN", "zh-hans": "zh-CN", "zh": "zh-CN",
                   "zh-tw": "zh-TW", "zh-hant": "zh-TW", "zh-hk": "zh-HK"}
@@ -93,8 +93,18 @@ MEDIUM_WORDS = (
     ("ゲーム", "game"), ("アプリ", "game"), ("ドラマ", "drama"), ("CM", "commercial"),
     ("メディアミックス", "media_mix"), ("プロジェクト", "media_mix"),
 )
-_ROLE_RE = "|".join(re.escape(w) for w, _r in ROLE_WORDS)
-_MEDIUM_RE = "|".join(re.escape(w) for w, _c in MEDIUM_WORDS)
+
+
+def _word(w: str) -> str:
+    """A role's or a medium's word as a whole word: Latin letters not inside a Latin word (TOP100 has no OP, a
+    CMS no CM), kana not the start of a longer katakana word (アニメーション is no アニメ)."""
+    if w.isascii():
+        return rf"(?<![A-Za-z]){re.escape(w)}(?![A-Za-z])"
+    return rf"{re.escape(w)}(?![ァ-ヺー])" if re.search(r"[ァ-ヺー]$", w) else re.escape(w)
+
+
+_ROLE_RE = "|".join(_word(w) for w, _r in ROLE_WORDS)
+_MEDIUM_RE = "|".join(_word(w) for w, _c in MEDIUM_WORDS)
 # a tie-up as written: (medium …)「work」 … role(number)
 _MENTION = re.compile(rf"(?:(?P<medium>{_MEDIUM_RE})[^「『。\n]{{0,8}})?[「『](?P<work>[^」』\n]{{1,80}})[」』]"
                       rf"[^。\n「『]{{0,12}}?(?P<role>{_ROLE_RE})(?P<seq>[0-9０-９]?)")
@@ -195,6 +205,11 @@ _NOTE_WORDS = titles.NOTE_WORDS
 _VERSION_NOTE = re.compile(rf"\s*[\(（\[【][^)）\]】]*?(?:{_NOTE_WORDS})[^)）\]】]*[\)）\]】]\s*$|"
                            rf"(?:\s+[-‐－]|\s*[～〜~])[^-‐－～〜~]*?(?:{_NOTE_WORDS})[^-‐－～〜~]*[-‐－～〜~]\s*$",
                            re.IGNORECASE)
+# a title's own words on its tie-up at its end: "(アニメ幼女社長R EDテーマ)", " - TV애니메이션 『유루캠프』 ED테마"
+_TIEUP_WORDS = r"テーマ|主題歌|挿入歌|(?<![A-Za-z])(?:OP|ED)(?![A-Za-z])|오프닝|엔딩|테마|삽입곡|주제가"
+_TIEUP_NOTE = re.compile(rf"\s*[\(（][^)）]*?(?:{_TIEUP_WORDS})[^)）]*[\)）]\s*$|\s+-\s+[^-]*?(?:{_TIEUP_WORDS})[^-]*$")
+# its Korean translation in a parenthesis at its end, after a title in another script: "ツナグ、ソラモヨウ (이어진 하늘 모양)"
+_TRANSLATION = re.compile(r"\s*[\(（][^)）]*[가-힣][^)）]*[\)）]\s*$")
 _FEAT = re.compile(r"(?:\s+|\s*[\(（]\s*)(?:feat\.|ft\.|feat\s|featuring\s)\s*(?P<who>[^)）]+)[\)）]?\s*$",
                    re.IGNORECASE)
 _ARTIST_SPLIT = re.compile(r"\s+from\s+|\s+meets\s+|\s+\+\s+|\s*(?:feat\.?|ft\.|featuring|&|＆|×|/|／|,|、|・|･)\s*",
@@ -210,6 +225,12 @@ _MEMBERS = re.compile(r"[\(（](?P<who>[^)）]+)[\)）]")
 _CV_MARK = re.compile(r"^(?:CV|C\.V\.)\s*[.:：．]?\s*|^声\s*[:：]\s*", re.IGNORECASE)
 
 
+def title_note(title: str) -> str:
+    """The words on its tie-up a title ends with ("(アニメ幼女社長R EDテーマ)"), "" for none."""
+    m = _TIEUP_NOTE.search(_VERSION_NOTE.sub("", title.strip()))
+    return m.group(0) if m else ""
+
+
 def song_title(title: str) -> tuple[str, list[str]]:
     """The song's name as an article writes it, and the artists the title credits: a version note at its end
     ("(TV size)", "(Instrumental)") and a "feat. …" left out (that artist kept)."""
@@ -218,6 +239,10 @@ def song_title(title: str) -> tuple[str, list[str]]:
     while previous != title:
         previous = title
         title = _VERSION_NOTE.sub("", title)
+        title = _TIEUP_NOTE.sub("", title)
+        m = _TRANSLATION.search(title)
+        if m and not re.search(r"[가-힣]", title[:m.start()]):
+            title = title[:m.start()]
         m = _FEAT.search(title)
         if m and m.start() > 0:
             featured.append(m.group("who").strip())
@@ -306,16 +331,18 @@ def _entry(lines: list[str], i: int) -> list[str]:
     return out
 
 
-def _listed_role(lines: list[str], i: int, entry: list[str]) -> Optional[tuple[str, int]]:
+def _listed_role(lines: list[str], i: int, entry: list[str], song: str = "") -> Optional[tuple[str, int]]:
     """The role a work's page lists the song under: before the song on its line, else in the lines describing it
-    (": …のオープニングテーマ。"; not a work inside the work's), else in the heading or label above it."""
+    (": …のオープニングテーマ。"; not a work inside the work's, nor another song's: 「最高！」は…), else in the heading
+    or label above it."""
     line = lines[i]
     before = line[:line.find("「")] if "「" in line else ""
     label = _role_in(before) if before.strip() else None
     for after in entry[1:]:
         if label is not None:
             break
-        if not _FICTION.search(after):
+        role_at = re.search(_ROLE_RE, after)
+        if not _FICTION.search(after) and not (song and role_at and _other_songs_mention(after, role_at.start(), song)):
             label = _role_in(after)
     for back in range(i - 1, max(-1, i - 7), -1):
         if label is not None:
@@ -324,6 +351,54 @@ def _listed_role(lines: list[str], i: int, entry: list[str]) -> Optional[tuple[s
         if prev.startswith(("=", ";")) and "「" not in prev:
             label = _role_in(prev)
     return label
+
+
+_HEADING = re.compile(r"^(=+)\s*(.*?)\s*\1\s*$")
+
+
+def _other_songs_mention(window: str, at: int, song: str) -> bool:
+    """A tie-up stated of another song: its sentence names a song before it that is not ``song`` (a double A-side's
+    「最高！」は…『作品』オープニングテーマ, read where 二重の虹 is named)."""
+    start = window.rfind("。", 0, at) + 1
+    before = window[start:at]
+    m = re.search(r"[「『]([^」』\n]{1,80})[」』]\s*(?:は|が|も)", before)
+    return m is not None and not (found_in(song, [m.group(1)]) or found_in(m.group(1), [song]))
+
+
+def _without_other_tracks(lines: list[str], song: str) -> list[str]:
+    """A song's own page without its other tracks' items in its track lists (# ミライボタン, #: …エンディングテーマ):
+    a single's coupling song's tie-up is its own."""
+    out, skip = [], None        # skip: the mark of the other track's item being skipped
+    for line in lines:
+        mark = _mark(line)
+        if skip is not None:
+            if mark.startswith(skip) and len(mark) > len(skip):
+                continue        # its description
+            skip = None
+        if mark.endswith("#"):
+            title = re.sub(r"\s*\[[\d:]+\]\s*$", "", line.strip()[len(mark):]).strip()
+            if title and not (found_in(song, [title]) or found_in(title, [song])):
+                skip = mark
+                continue
+        out.append(line)
+    return out
+
+
+def _without_covers(lines: list[str]) -> list[str]:
+    """A song's own page without its covers' section (== カバー ==): a work there is the cover's (カバー by a game's
+    character, in the game), not the song's."""
+    out, skip = [], 0          # skip: the level of the covers' heading being skipped (0: none)
+    for line in lines:
+        m = _HEADING.match(line.strip())
+        if m:
+            level = len(m.group(1))
+            if skip and level <= skip:
+                skip = 0
+            if not skip and "カバー" in m.group(2):
+                skip = level
+        if not skip:
+            out.append(line)
+    return out
 
 
 def mentions(wikitext: str, song: str, whole: bool, page: str = "") -> list[tuple[str, str, str, int, str, str]]:
@@ -336,7 +411,8 @@ def mentions(wikitext: str, song: str, whole: bool, page: str = "") -> list[tupl
     text, pages = _plain(wikitext)
     lines = text.split("\n")
     key = reading.fine_key(song)
-    entries = [(-1, lines)] if whole else [(i, _entry(lines, i)) for i in found_in(song, lines)] if key else []
+    entries = [(-1, _without_other_tracks(_without_covers(lines), song))] if whole else \
+        [(i, _entry(lines, i)) for i in found_in(song, lines)] if key else []
     found: dict[tuple, tuple] = {}
     work = listed_work(page) if page and not whole else ""
     work_page = page if work == re.sub(r"\s*\([^)]*\)$", "", page) else work
@@ -348,6 +424,8 @@ def mentions(wikitext: str, song: str, whole: bool, page: str = "") -> list[tupl
             if not name or reading.fine_key(name) == key or (found_in(song, [name]) and found_in(name, [song])):
                 continue                                          # the song itself, quoted
             if _FICTION.search(window[max(0, m.start("work") - 8):m.start("work")]):
+                continue
+            if _other_songs_mention(window, m.start(), song):
                 continue
             seq = int(m.group("seq").translate(str.maketrans("０１２３４５６７８９", "0123456789")) or 0)
             role = _role(m.group("role"))
@@ -364,7 +442,7 @@ def mentions(wikitext: str, song: str, whole: bool, page: str = "") -> list[tupl
             found[(name, tieup.UNSPECIFIED, 0)] = (name, pages.get(name, name), tieup.UNSPECIFIED, 0, "",
                                                    _category(m.group("medium")))
         if work and not stated:      # listed here without a work named: this page's work
-            role, seq = _listed_role(lines, i, entry) or (tieup.UNSPECIFIED, 0)
+            role, seq = _listed_role(lines, i, entry, song) or (tieup.UNSPECIFIED, 0)
             found.setdefault((work, role, seq), (work, work_page, role, seq, "", "other"))
     return list(found.values())
 
@@ -403,6 +481,14 @@ def _categories(api, titles: list[str]) -> tuple[list[dict], list[str]]:
                   clshow="!hidden", redirects="1")
     pages = out.get("query", {}).get("pages") or []
     return pages, [c.get("title", "").split(":", 1)[-1] for p in pages for c in p.get("categories", [])]
+
+
+def _not_a_work(api, page: str) -> bool:
+    """A page that is a person's, a group's or a record's by its categories (_NOT_WORK_CATEGORY)."""
+    try:
+        return any(_NOT_WORK_CATEGORY.search(c) for c in _categories(api, [page])[1])
+    except Exception:
+        return False
 
 
 def page_category(api, page: str) -> Optional[str]:
@@ -513,11 +599,22 @@ def search(api: Wikimedia, title: str, artist: str = "", album: str = "") -> lis
             c.work.category = read.category(api, page) or "other"
     works = read.works_pages(api)
     sure = _sure(read, works) if own else _agreed(read, works)
+    # the title's own words on its tie-up ("(アニメ幼女社長R EDテーマ)") name the work: the found work they name (the
+    # longest name: 幼女社長R, not 幼女社長) is the sure one
+    note = reading.fine_key(title_note(title))
+    named_in_title = sorted(((max(len(reading.fine_key(t)) for _l, t in c.work.titles), k) for k, c in read.found.items()
+                             if c.work.titles and k[0] in works
+                             and any(len(reading.fine_key(t)) >= 2 and reading.fine_key(t) in note
+                                     for _l, t in c.work.titles)), reverse=True) if note else []
+    if named_in_title:
+        sure = named_in_title[0][1]
     if sure is not None:
         read.found[sure].sure = True
-    # a work with a role found is not suggested again without one
+    # a work with a role found is not suggested again without one; nor a page a person's, a group's or a record's
+    # (a song quoted by its title: メンフィス・カルトの「9mm」, its page a band's)
     named = {k[0] for k in read.found if k[1] != tieup.UNSPECIFIED}
-    out = [c for k, c in read.found.items() if c.sure or k[1] != tieup.UNSPECIFIED or k[0] not in named]
+    out = [c for k, c in read.found.items() if (c.sure or k[1] != tieup.UNSPECIFIED or k[0] not in named)
+           and (c.sure or not _not_a_work(api, read.work_pages[k]))]
     return sorted(out, key=lambda c: (not c.sure, -c.mentions))
 
 

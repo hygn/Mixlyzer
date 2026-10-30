@@ -6,6 +6,7 @@ from PySide6 import QtGui, QtWidgets
 from system import i18n
 from system import os_support
 from core.settings.config import load_cfg, ui_language, unreadable_settings
+from core.tieups import domain as tieup_domain
 from system.resource_paths import app_folder, resource_path
 from system.i18n import tr
 from core.library.version import (
@@ -69,6 +70,7 @@ def main():
     splash.show()
     app.processEvents()
     cfg = load_cfg()
+    tieup_domain.set_display_language(cfg.libconfig.tieup_language)     # before the library's tie-up texts are made
     for name, kept in unreadable_settings():
         QtWidgets.QMessageBox.warning(
             None,

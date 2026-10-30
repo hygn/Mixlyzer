@@ -116,7 +116,17 @@ class LanguageCombo(QComboBox):
         self.setCompleter(None)
         self._searchable = False
         self.setToolTip(tr("Type a language's name in any language, or its tag (language-REGION: ko-KR)."))
+        # its label shown from its start, the tag (an editable combo shows a set text's end: "...nese (Japan)")
+        self.currentIndexChanged.connect(self._show_start)
         self.set_tag(tag or tieup.LANGUAGES[0])
+
+    def _show_start(self, *_args) -> None:
+        if not self.hasFocus():
+            self.lineEdit().setCursorPosition(0)
+
+    def focusOutEvent(self, event) -> None:
+        super().focusOutEvent(event)
+        self._show_start()
 
     def _wide(self) -> int:
         return _list_width(self.font().key(), self.fontMetrics())
@@ -143,6 +153,7 @@ class LanguageCombo(QComboBox):
             self.setCurrentIndex(i)
         else:
             self.setEditText(tag)       # a tag Qt has no locale for, kept as written
+        self._show_start()
 
     def tag(self) -> str:
         return tag_of(self.currentText())
