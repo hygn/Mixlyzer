@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-31 00:18+0900\n"
+"POT-Creation-Date: 2026-10-31 00:21+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ja_JP\n"
@@ -7591,6 +7591,29 @@ msgstr "インデックス作成中…"
 msgid "Indexing… {percent}%"
 msgstr "インデックス作成中… {percent}%"
 
+# | msgid "Edit Track"
+# | msgid "Editor"
+#: ui/library/track_panel.py:44
+msgctxt "track panel tab"
+msgid "Edit"
+msgstr "編集"
+
+# | msgid "Index Now"
+#: ui/library/track_panel.py:45
+msgctxt "track panel tab"
+msgid "Index"
+msgstr "索引"
+
+#: ui/library/track_panel.py:46
+msgctxt "track panel tab"
+msgid "Tie-ups"
+msgstr "タイアップ"
+
+#: ui/library/track_panel.py:47
+msgctxt "track panel tab"
+msgid "Export"
+msgstr "エクスポート"
+
 #: ui/library/track_panel.py:49
 msgid "The selected track; click the open tab to fold the panel"
 msgstr "選択したトラック。開いているタブをクリックするとパネルを畳みます"
@@ -8027,8 +8050,7 @@ msgid "Select the loaded track"
 msgstr "ロードしたトラックを選択"
 
 #: ui/library/actions.py:48 ui/library/tabs/edit_song.py:248
-#: ui/library/tabs/edit_song.py:266 ui/library/track_panel.py:44
-#: ui/shortcuts.py:136
+#: ui/library/tabs/edit_song.py:266 ui/shortcuts.py:136
 msgid "Edit Track"
 msgstr "トラックの編集"
 
@@ -8040,7 +8062,7 @@ msgstr "選択したトラックでトラックパネルの編集タブを開き
 
 # | msgid "Search"
 # | msgid "Search hint"
-#: ui/library/track_panel.py:45 ui/shortcuts.py:138
+#: ui/shortcuts.py:138
 msgid "Search Index"
 msgstr "検索インデックス"
 
@@ -8062,8 +8084,7 @@ msgid ""
 "again."
 msgstr "選択したトラックのバージョン違いのフィンガープリントと音楽で検索のインデックスを作り直します。"
 
-#: ui/library/tabs/tieup_editor.py:343 ui/library/track_panel.py:46
-#: ui/shortcuts.py:142
+#: ui/library/tabs/tieup_editor.py:343 ui/shortcuts.py:142
 msgid "Tie-ups"
 msgstr "タイアップ"
 
@@ -8094,7 +8115,7 @@ msgstr "作品ウィンドウ：タイアップで使われているすべての
 #: ui/library/tabs/export.py:610 ui/library/tabs/export.py:620
 #: ui/library/tabs/export.py:622 ui/library/tabs/export.py:639
 #: ui/library/tabs/export.py:649 ui/library/tabs/export.py:770
-#: ui/library/track_panel.py:47 ui/shortcuts.py:149
+#: ui/shortcuts.py:149
 msgid "Export Track"
 msgstr "トラックのエクスポート"
 

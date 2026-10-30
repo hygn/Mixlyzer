@@ -8,7 +8,7 @@ from ui.library.tabs.export import ExportTrackPanel
 from ui.library.tabs.tieup_editor import TieupPanel
 from ui.library.tabs.track_search_index import SearchIndexPanel
 from ui.theme import current_theme
-from system.i18n import tr
+from system.i18n import tr, tr_ctx
 
 
 class TrackPanelMixin:
@@ -41,10 +41,10 @@ class TrackPanelMixin:
         self.panel_tabs.setStyleSheet(
             "QTabBar::tab { padding: 10px 2px; border: none; border-left: 2px solid transparent; }"
             f"QTabBar::tab:selected {{ border-left-color: {theme.accent}; }}")
-        self.panel_tabs.addTab(tr("Edit Track"))
-        self.panel_tabs.addTab(tr("Search Index"))
-        self.panel_tabs.addTab(tr("Tie-ups"))
-        self.panel_tabs.addTab(tr("Export Track"))
+        self.panel_tabs.addTab(tr_ctx("track panel tab", "Edit"))
+        self.panel_tabs.addTab(tr_ctx("track panel tab", "Index"))
+        self.panel_tabs.addTab(tr_ctx("track panel tab", "Tie-ups"))
+        self.panel_tabs.addTab(tr_ctx("track panel tab", "Export"))
         for i in range(self.panel_tabs.count()):
             self.panel_tabs.setTabToolTip(i, tr("The selected track; click the open tab to fold the panel"))
         self.panel_tabs.tabBarClicked.connect(self._on_panel_tab_clicked)
