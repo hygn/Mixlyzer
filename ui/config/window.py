@@ -36,7 +36,9 @@ from ui.config.external_sync import (
     ExternalSyncSettingsMixin,
     build_external_sync_tab,
 )
-from ui.config.library import LibrarySettingsMixin, build_library_tab
+from third_party import rekordbox_phrases
+from ui.config.library import (LibrarySettingsMixin, build_library_tab, phrase_choices, phrase_mood,
+                               set_phrase_choices)
 from ui.config.midi import MidiSettingsMixin, build_midi_tab
 from ui.config.playback import PlaybackSettingsMixin, build_playback_tab
 from ui.config.search import SearchSettingsMixin, build_search_tab
@@ -185,6 +187,12 @@ class SettingsDialog(
         self.cmb_serato_hot_cues.setCurrentIndex(max(0, self.cmb_serato_hot_cues.findData(cfg.libconfig.serato_hot_cues)))
         self.cb_serato_keep_cues.setChecked(bool(cfg.libconfig.serato_keep_cues))
         self.cb_serato_bpm_lock.setChecked(bool(cfg.libconfig.serato_bpm_lock))
+        self.cmb_rekordbox_phrase_mood.blockSignals(True)
+        self.cmb_rekordbox_phrase_mood.setCurrentIndex(
+            max(0, self.cmb_rekordbox_phrase_mood.findData(getattr(cfg.libconfig, "rekordbox_phrase_mood", "mid"))))
+        self.cmb_rekordbox_phrase_mood.blockSignals(False)
+        mood = phrase_mood(self)
+        set_phrase_choices(self, rekordbox_phrases.phrase_map(mood, getattr(cfg.libconfig, "rekordbox_phrase_map", "")))
 
         # search
         self._set_search_config(cfg.searchconfig)
@@ -348,6 +356,8 @@ class SettingsDialog(
                 serato_hot_cues=str(self.cmb_serato_hot_cues.currentData() or "jumpcues"),
                 serato_keep_cues=bool(self.cb_serato_keep_cues.isChecked()),
                 serato_bpm_lock=bool(self.cb_serato_bpm_lock.isChecked()),
+                rekordbox_phrase_mood=str(self.cmb_rekordbox_phrase_mood.currentData() or "mid"),
+                rekordbox_phrase_map=rekordbox_phrases.map_text(phrase_choices(self), phrase_mood(self)),
             ),
             viewconfig=viewconfig(
                 language=self._get_language(),

@@ -121,10 +121,18 @@ class WriteTagsTests(unittest.TestCase):
         self.assertTrue(note.replace("​", "").endswith(f"\nIts backup: {saved}"))     # on a line of its own
         self.assertIn(f"\\​{saved.name}", note)                                    # breakable at its separators
         self.assertEqual(self.panel.tag_note.toolTip(), str(saved))
-        with mock.patch.object(QtWidgets.QFileDialog, "getOpenFileName", return_value=(str(saved), "")), \
+        listed = []
+
+        def choose(_parent, _title, _label, names, *_rest):     # the file's backups, newest first: the first
+            listed.extend(names)
+            return names[0], True
+
+        with mock.patch.object(QtWidgets.QInputDialog, "getItem", choose), \
                 mock.patch.object(QtWidgets.QMessageBox, "question", return_value=QtWidgets.QMessageBox.Yes):
             self.panel.restore_tags()
             wait_until(lambda: self.panel._tags_writing is None)
+        self.assertEqual(len(listed), 1)
+        self.assertTrue(listed[0].endswith(" · The tags only"))
         self.assertEqual(self.file.read_bytes(), self.original)
 
     def test_a_whole_file_backup(self):
@@ -132,6 +140,16 @@ class WriteTagsTests(unittest.TestCase):
         (saved,) = list((self.app / "backups" / "tags").rglob("*.flac"))
         self.assertEqual(saved.read_bytes(), self.original)
         self.assertEqual(SyncTrackPanel._backup, "file")     # the next confirmation's choice
+        # the file's backups only: another file's copy beside it not listed
+        (saved.parent / "ヴヴヴヴ 120000.flac").write_bytes(b"another file's")
+        self.assertEqual(tag_backup.backups_of(self.file), [saved])
+        with mock.patch.object(QtWidgets.QInputDialog, "getItem",
+                               side_effect=lambda *a: (a[3][0], True) if a[3][0].endswith("The whole file") else
+                               (None, False)), \
+                mock.patch.object(QtWidgets.QMessageBox, "question", return_value=QtWidgets.QMessageBox.Yes):
+            self.panel.restore_tags()
+            wait_until(lambda: self.panel._tags_writing is None)
+        self.assertEqual(self.file.read_bytes(), self.original)
 
     def test_cancelled_nothing_written(self):
         self.write(accept=False)
@@ -327,11 +345,90 @@ class RekordboxSyncTests(unittest.TestCase):
         self.assertIn("disk full", self.panel.rekordbox_note.text())
         self.assertIn(current_theme().danger, self.panel.rekordbox_note.styleSheet())
 
+    def test_xml_and_phrases_synced_by_one_button(self):
+        # rekordbox's side patched (no library opened): both checked, one press: the XML asked at once, the stored
+        # phrases planned in the settings' mood, previewed, written when accepted
+        from analyzer.music.marks import Phrase
+        from third_party import rekordbox_phrases
+        self.lib.rekordbox_phrase_mood, self.lib.rekordbox_phrase_map = "high", "VERSE=down"
+        with tempfile.TemporaryDirectory() as folder:
+            audio = Path(folder) / "ヴヴヴ.flac"
+            audio.write_bytes(b"")
+            self.row = TrackRow(uid=UID, path=str(audio), title="ヴヴヴ")
+            self.panel.set_track(self.row)
+            self.assertTrue(self.panel.cb_rekordbox_xml.isChecked())
+            self.assertFalse(self.panel.cb_rekordbox_phrases.isChecked())       # the XML only at the start
+            self.panel.cb_rekordbox_phrases.setChecked(True)
+            self.panel._library.analysis = StoredAnalysis(phrases=(Phrase(0.0, 8.0, "INTRO"),
+                                                                   Phrase(8.0, 40.0, "VERSE")))
+            plan = mock.Mock(now=[("Intro", 0.0)], after=[("Intro", 0.0), ("Down", 8.0)], now_end=40.0,
+                             after_end=40.0, length=40.0, losses=["continued:SILENCE"], off_grid=0.2)
+            asked, shown = [], []
+
+            def preview(dialog):
+                shown.append(dialog)
+                return QtWidgets.QDialog.Accepted
+
+            with mock.patch.object(rekordbox_phrases, "plan",
+                                   side_effect=lambda p, ph, mood, mapping: asked.append((ph, mood, mapping)) or plan), \
+                    mock.patch.object(rekordbox_phrases, "write", return_value=Path(folder) / "backup.EXT") as write, \
+                    mock.patch.object(sync_tab.PhraseWriteDialog, "exec", preview):
+                self.panel.btn_rekordbox_sync.click()
+                wait_until(lambda: self.panel._phrases_writing is None)
+            self.assertEqual(self.asked, [UID])                                   # the XML
+            phrases, mood, mapping = asked[0]
+            self.assertEqual([p.label for p in phrases], ["INTRO", "VERSE"])
+            self.assertEqual((mood, mapping["VERSE"]), (rekordbox_phrases.MOOD_HIGH, "down"))
+            (dialog,) = shown
+            self.assertEqual(len(dialog.findChildren(sync_tab.PhraseStrip)), 2)  # rekordbox's now, then written
+            texts = " ".join(label.text() for label in dialog.findChildren(QtWidgets.QLabel))
+            self.assertIn("200 ms off rekordbox's beats", texts)                 # its grid is not the track's
+            self.assertIn("SILENCE goes on with the phrase before it", texts)
+            write.assert_called_once_with(plan, "ext")                            # the backup asked for
+            self.assertIn("written into rekordbox", self.panel.phrase_note.text())
+            # refused (rekordbox running): said in red, nothing written
+            with mock.patch.object(rekordbox_phrases, "plan",
+                                   side_effect=rekordbox_phrases.RekordboxError("rekordbox is running")):
+                self.panel.write_phrases()
+                wait_until(lambda: self.panel._phrases_writing is None)
+            self.assertEqual(self.panel.phrase_note.text(), "rekordbox is running")
+            self.assertIn(current_theme().danger, self.panel.phrase_note.styleSheet())
+
+    def test_rekordbox_restored_from_a_chosen_backup(self):
+        # rekordbox's side patched: the track's backups listed by when they were made, the one chosen put back
+        from third_party import rekordbox_phrases
+        with tempfile.TemporaryDirectory() as folder:
+            audio = Path(folder) / "ヴヴヴ.flac"
+            audio.write_bytes(b"")
+            self.panel.set_track(TrackRow(uid=UID, path=str(audio), title="ヴヴヴ"))
+            day = Path(folder) / "20261031"
+            (day / "97db3 012715").mkdir(parents=True)
+            ext = day / "97db3 013000 ANLZ0000.EXT"
+            ext.write_bytes(b"PMAI")
+            listed, put = [], []
+
+            def choose(_parent, _title, _label, names, *_rest):
+                listed.extend(names)
+                return names[1], True
+
+            with mock.patch.object(rekordbox_phrases, "analysis_folder", return_value=Path(folder) / "97db3"), \
+                    mock.patch.object(rekordbox_phrases, "backups_of", return_value=[ext, day / "97db3 012715"]), \
+                    mock.patch.object(rekordbox_phrases, "restore",
+                                      side_effect=lambda b, f: put.append(b) or ["ANLZ0000.DAT", "ANLZ0000.EXT"]), \
+                    mock.patch.object(QtWidgets.QInputDialog, "getItem", choose), \
+                    mock.patch.object(QtWidgets.QMessageBox, "question", return_value=QtWidgets.QMessageBox.Yes):
+                self.panel.btn_rekordbox_restore.click()
+                wait_until(lambda: self.panel._phrases_writing is None)
+            self.assertEqual(listed[0].split(" · ")[0], "2026-10-31 01:30:00")
+            self.assertEqual(put, [day / "97db3 012715"])
+            self.assertIn("ANLZ0000.DAT, ANLZ0000.EXT", self.panel.phrase_note.text())
+
     def test_off_without_the_setting(self):
         self.lib.rekordbox_sync_enabled = False
         self.panel.set_track(self.row)
         self.assertFalse(self.panel.btn_rekordbox_sync.isEnabled())
-        self.assertIn("Settings > Library > Rekordbox XML", self.panel.rekordbox_note.text())
+        self.assertIn("Settings > Library > Rekordbox", self.panel.rekordbox_note.text())
+        self.assertFalse(self.panel.cb_rekordbox_xml.isEnabled())
         self.panel.sync_rekordbox()
         self.assertEqual(self.asked, [])
         self.lib.rekordbox_sync_enabled = True

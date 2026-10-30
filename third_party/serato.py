@@ -13,8 +13,10 @@ ID3 GEOB frame's data; FLAC's and MP4's base64 of them). Laid out after the comm
   the data's length u32 BE, the data), and a NUL, padded with NULs to MARKERS2_MIN bytes. CUE: 00, its index (0-7),
   its position (ms u32), 00, its colour (RGB), 00 00, its name (NAME_MAX bytes), NUL. BPMLOCK: 1 (Serato keeps the
   grid: no reanalysis changes it). The file's other entries (saved loops, the track's colour, Flips) are kept as
-  they are; its hot cues are replaced. The old Markers_ (its first 5 cues and 9 loops, no names), which Serato reads
-  before Markers2, is emptied with it (core.tags.writer's serato_markers_old).
+  they are; its hot cues are replaced. The old Markers_ (the first 5 hot cues and 9 loops, no names), which older
+  Serato versions read and newer ones read before Markers2, is written with the same hot cues A-E as Serato writes
+  it (build_markers_old: MP4's layout checked byte for byte against Serato's own, ID3's after serato-tags and
+  Mixxx); a FLAC's is emptied (Serato keeps none there).
 - Tempo Map (newer Serato versions write it when they analyze a track, and read it before the BeatGrid; its layout
   found from the ones Serato wrote: a track with 15 tempo segments, single-segment ones): 02 00, 00 01, the time of
   beat 0 (f64 s), the segments' count (u32), each segment its first beat in TICKS (u64), its BPM (f64), 0.25 (f64:
@@ -348,3 +350,77 @@ def parse_cues(payload: bytes) -> list[HotCue]:
 
 def bpm_locked(payload: bytes) -> bool:
     return any(n == "BPMLOCK" and d[:1] == b"\x01" for n, d in _entries(payload))
+
+
+# --- Markers_ (the old hot cues) -------------------------------------------------------------------------------
+# What older Serato versions (and the programs that read Serato's tags after them) read: 02 05, the entries' count
+# (u32, 14), OLD_CUES hot cue entries then OLD_LOOPS loop entries, the track's colour. An MP4 entry (19 bytes, as
+# Serato DJ wrote it into M4A files: a build of its Markers2 hot cues is byte for byte the Markers_ it wrote beside
+# them): its start (ms u32, FF FF FF FF unset), its end (the same), 00, FF FF FF FF, its colour (00 RR GG BB), its
+# type (1 a hot cue, 0 an empty hot cue slot, 3 a loop slot), 00 (not locked); the track's colour 00 RR GG BB. An
+# ID3 entry (22 bytes, after serato-tags and Mixxx's SeratoMarkers): 00 / 7F (a start / none), the start (_serato32),
+# the same for the end, 00 7F 7F 7F 7F 7F, its colour (_serato32), its type, 00; the track's colour _serato32.
+OLD_CUES, OLD_LOOPS = 5, 9
+_OLD_SIZE = {"mp4": 19, "id3": 22}
+
+
+def _serato32(value: int) -> bytes:
+    """A 24-bit value in Serato's 7-bit bytes (4 bytes, each 7 bits)."""
+    return bytes([(value >> 21) & 0x7F, (value >> 14) & 0x7F, (value >> 7) & 0x7F, value & 0x7F])
+
+
+def _from_serato32(data: bytes) -> int:
+    return ((data[0] & 0x7F) << 21) | ((data[1] & 0x7F) << 14) | ((data[2] & 0x7F) << 7) | (data[3] & 0x7F)
+
+
+def _old_entry(kind: str, start: Optional[int], color: tuple[int, int, int], entry_type: int) -> bytes:
+    rgb = (color[0] << 16) | (color[1] << 8) | color[2]
+    if kind == "mp4":
+        position = struct.pack(">I", start) if start is not None else b"\xff" * 4
+        return position + b"\xff" * 4 + b"\x00" + b"\xff" * 4 + struct.pack(">I", rgb) + bytes([entry_type, 0])
+    position = (b"\x00" + _serato32(start)) if start is not None else b"\x7f" * 5
+    return position + b"\x7f" * 5 + b"\x00" + b"\x7f" * 5 + _serato32(rgb) + bytes([entry_type, 0])
+
+
+def build_markers_old(cues: list[HotCue], kind: str, existing: bytes = b"", markers2: bytes = b"") -> bytes:
+    """A Markers_ payload (``kind``: "mp4" or "id3", the format's layout) of ``cues``' in slots A-E; the
+    ``existing`` Markers_'s loops kept (else empty loop slots); the track's colour the Markers2's COLOR (else
+    white)."""
+    size = _OLD_SIZE[kind]
+    by_slot = {c.slot: c for c in cues if 0 <= c.slot < OLD_CUES}
+    out = b"\x02\x05" + struct.pack(">I", OLD_CUES + OLD_LOOPS)
+    for slot in range(OLD_CUES):
+        cue = by_slot.get(slot)
+        out += (_old_entry(kind, _ms(cue.time_sec), cue.color, 1) if cue is not None
+                else _old_entry(kind, None, (0, 0, 0), 0))
+    loops = []
+    if len(existing) >= 6 + size * (OLD_CUES + OLD_LOOPS) and existing[:2] == b"\x02\x05":
+        at = 6 + size * OLD_CUES
+        loops = [existing[at + size * i:at + size * (i + 1)] for i in range(OLD_LOOPS)]
+    for i in range(OLD_LOOPS):
+        out += loops[i] if i < len(loops) else _old_entry(kind, None, (0, 0, 0), 3)
+    color = next((tuple(d[1:4]) for n, d in _entries(markers2) if n == "COLOR" and len(d) >= 4), (0xFF, 0xFF, 0xFF))
+    rgb = (color[0] << 16) | (color[1] << 8) | color[2]
+    return out + (struct.pack(">I", rgb) if kind == "mp4" else _serato32(rgb))
+
+
+def parse_markers_old(payload: bytes, kind: Optional[str] = None) -> list[HotCue]:
+    """The hot cues of a Markers_ payload (``kind``'s layout, None: the one its length is; [] for one not read)."""
+    if kind is None and len(payload) >= 6:
+        count = struct.unpack(">I", payload[2:6])[0]
+        kind = next((k for k, size in _OLD_SIZE.items() if len(payload) == 6 + size * count + 4), None)
+    size = _OLD_SIZE.get(kind or "", 0)
+    if not size or len(payload) < 6 or payload[:2] != b"\x02\x05":
+        return []
+    count = min(struct.unpack(">I", payload[2:6])[0], OLD_CUES, (len(payload) - 6) // size)
+    out = []
+    for slot in range(count):
+        e = payload[6 + size * slot:6 + size * (slot + 1)]
+        if kind == "mp4":
+            start, rgb, entry_type = struct.unpack(">I", e[:4])[0], struct.unpack(">I", e[13:17])[0], e[17]
+            set_ = start != 0xFFFFFFFF
+        else:
+            set_, start, rgb, entry_type = e[0] == 0, _from_serato32(e[1:5]), _from_serato32(e[16:20]), e[20]
+        if set_ and entry_type == 1:
+            out.append(HotCue(slot, start / 1000.0, ((rgb >> 16) & 0xFF, (rgb >> 8) & 0xFF, rgb & 0xFF), ""))
+    return out

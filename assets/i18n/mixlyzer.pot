@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-31 00:50+0900\n"
+"POT-Creation-Date: 2026-10-31 01:50+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -518,7 +518,7 @@ msgstr ""
 msgid "Main view, editor and library"
 msgstr ""
 
-#: app/window.py:110 app/window.py:283 ui/config/window.py:66
+#: app/window.py:110 app/window.py:283 ui/config/window.py:68
 msgid "Settings"
 msgstr ""
 
@@ -1237,11 +1237,11 @@ msgstr ""
 msgid "Sino-Vietnamese (Unihan)"
 msgstr ""
 
-#: core/tags/backup.py:115 core/tags/backup.py:118 core/tags/backup.py:122
+#: core/tags/backup.py:116 core/tags/backup.py:119 core/tags/backup.py:123
 msgid "This is not a tag backup of Mixlyzer's."
 msgstr ""
 
-#: core/tags/backup.py:147 core/tags/backup.py:155 core/tags/backup.py:162
+#: core/tags/backup.py:174 core/tags/backup.py:182 core/tags/backup.py:189
 msgid "The file has changed since this backup was made: it is not put back."
 msgstr ""
 
@@ -1256,7 +1256,7 @@ msgid "The written tags did not read back as written; the file is unchanged."
 msgstr ""
 
 #: core/tags/writer.py:250 core/tags/writer.py:283 core/tags/writer.py:363
-#: core/tags/writer.py:1496 ui/library/tabs/sync.py:259
+#: core/tags/writer.py:1496 ui/library/tabs/sync.py:470
 msgid "Tags cannot be written to this file's format."
 msgstr ""
 
@@ -1874,6 +1874,57 @@ msgstr ""
 msgid "Segment reanalysis failed: {error}"
 msgstr ""
 
+#: third_party/rekordbox_phrases.py:125
+msgid "rekordbox's analysis file is not one it writes."
+msgstr ""
+
+#: third_party/rekordbox_phrases.py:130
+msgid "rekordbox's analysis file is damaged."
+msgstr ""
+
+#: third_party/rekordbox_phrases.py:235
+#, python-brace-format
+msgid "rekordbox's library could not be opened: {error}"
+msgstr ""
+
+#: third_party/rekordbox_phrases.py:241
+msgid "The track is not in rekordbox's collection."
+msgstr ""
+
+#: third_party/rekordbox_phrases.py:243
+msgid "rekordbox has not analyzed the track."
+msgstr ""
+
+#: third_party/rekordbox_phrases.py:249
+msgid ""
+"rekordbox's analysis files of the track are missing; analyze it in "
+"rekordbox."
+msgstr ""
+
+#: third_party/rekordbox_phrases.py:258 third_party/rekordbox_phrases.py:333
+msgid "rekordbox is running: close it, then write again."
+msgstr ""
+
+#: third_party/rekordbox_phrases.py:262
+msgid "rekordbox's analysis of the track has no beatgrid."
+msgstr ""
+
+#: third_party/rekordbox_phrases.py:268
+msgid "The track has no phrases to write."
+msgstr ""
+
+#: third_party/rekordbox_phrases.py:315
+msgid "rekordbox is running: close it, then restore again."
+msgstr ""
+
+#: third_party/rekordbox_phrases.py:318
+msgid "The backup holds no rekordbox analysis file."
+msgstr ""
+
+#: third_party/rekordbox_phrases.py:335
+msgid "rekordbox's analysis file changed since it was read; write again."
+msgstr ""
+
 #: ui/config/analysis.py:40
 msgid "relative or absolute .npz path"
 msgstr ""
@@ -1886,7 +1937,7 @@ msgstr ""
 msgid "Folder for features cached while reoptimizing, so later runs are faster."
 msgstr ""
 
-#: ui/config/analysis.py:47 ui/config/analysis.py:163 ui/config/library.py:207
+#: ui/config/analysis.py:47 ui/config/analysis.py:163 ui/config/library.py:258
 #: ui/config/view.py:187
 msgid "General"
 msgstr ""
@@ -1909,7 +1960,7 @@ msgid ""
 "a song outside it is read at half or double tempo."
 msgstr ""
 
-#: ui/config/analysis.py:75 ui/config/window.py:248
+#: ui/config/analysis.py:75 ui/config/window.py:256
 #: ui/windows/reanalyze_dialog.py:38 ui/windows/reanalyze_dialog.py:76
 #, python-brace-format
 msgid "Reads {low} - {high} BPM"
@@ -1974,7 +2025,7 @@ msgstr ""
 
 #: ui/config/analysis.py:139 ui/config/analysis.py:177
 #: ui/config/analysis.py:200 ui/config/dialogs/optimization.py:204
-#: ui/config/library.py:200 ui/config/library.py:211 ui/config/playback.py:108
+#: ui/config/library.py:251 ui/config/library.py:267 ui/config/playback.py:108
 #: ui/config/view.py:182
 msgid "Advanced"
 msgstr ""
@@ -2734,6 +2785,69 @@ msgstr ""
 msgid "MIDI: {port} (closed)"
 msgstr ""
 
+#: ui/config/backups.py:21
+msgid "File tags"
+msgstr ""
+
+#: ui/config/backups.py:60 ui/config/backups.py:64
+#, python-brace-format
+msgid "Not a backup of Mixlyzer's: {path}"
+msgstr ""
+
+#: ui/config/backups.py:81
+msgid "Backups Before Writing"
+msgstr ""
+
+#: ui/config/backups.py:83
+msgid ""
+"<p>The copies made before the Sync tab writes a file's tags or "
+"rekordbox's analysis (as its confirmation asks). Restore from Backup "
+"there puts one back; delete those you no longer need here.</p>"
+msgstr ""
+
+#: ui/config/backups.py:89
+msgid "Kind"
+msgstr ""
+
+#: ui/config/backups.py:89 ui/config/library.py:192
+#: ui/windows/library_backup.py:146
+msgid "Backup"
+msgstr ""
+
+#: ui/config/backups.py:89 ui/windows/library_backup.py:149
+msgid "Made"
+msgstr ""
+
+#: ui/config/backups.py:89 ui/windows/library_backup.py:152
+msgid "Size"
+msgstr ""
+
+#: ui/config/backups.py:92
+msgid "Delete Selected..."
+msgstr ""
+
+#: ui/config/backups.py:93
+msgid "Open Folder"
+msgstr ""
+
+#: ui/config/backups.py:114
+#, python-brace-format
+msgid "{count} backup, {size} in all"
+msgid_plural "{count} backups, {size} in all"
+msgstr[0] ""
+msgstr[1] ""
+
+#: ui/config/backups.py:123 ui/config/backups.py:137
+msgid "Delete Backups"
+msgstr ""
+
+#: ui/config/backups.py:124
+#, python-brace-format
+msgid "Delete {count} backup? It cannot be put back after this."
+msgid_plural "Delete {count} backups? They cannot be put back after this."
+msgstr[0] ""
+msgstr[1] ""
+
 #: ui/config/dialogs/library_sync.py:21
 msgid "Reading the stored analyses"
 msgstr ""
@@ -3178,163 +3292,172 @@ msgid ""
 "ago, from {sender})."
 msgstr ""
 
-#: ui/config/library.py:45
+#: ui/config/library.py:51
+#, python-brace-format
+msgid "{verses}, the next one each run of verses"
+msgstr ""
+
+#: ui/config/library.py:53
+msgid "Go on with the phrase before"
+msgstr ""
+
+#: ui/config/library.py:77
 msgid "Add Folder…"
 msgstr ""
 
-#: ui/config/library.py:46 ui/library/actions.py:98
+#: ui/config/library.py:78 ui/library/actions.py:98
 #: ui/library/tabs/tieup_editor.py:368
 msgid "Remove"
 msgstr ""
 
-#: ui/config/library.py:48
+#: ui/config/library.py:80
 msgid ""
 "When this list is empty, the operating system's default Music folder is "
 "used."
 msgstr ""
 
-#: ui/config/library.py:51
+#: ui/config/library.py:83
 msgid "Write log to file"
 msgstr ""
 
-#: ui/config/library.py:53
+#: ui/config/library.py:85
 msgid "Sync with Rekordbox XML"
 msgstr ""
 
-#: ui/config/library.py:61
+#: ui/config/library.py:93
 msgid ""
 "<p>Rekordbox has no tempo ramps: a ramp is written as steps of steady "
 "tempo. Smaller makes the steps finer.</p>"
 msgstr ""
 
-#: ui/config/library.py:64 ui/library/tabs/sync.py:96
+#: ui/config/library.py:96 ui/library/tabs/sync.py:108
 msgid "Tie-ups after the comment"
 msgstr ""
 
-#: ui/config/library.py:66
+#: ui/config/library.py:98
 msgid ""
 "<p>Each track's comment in the XML with its song's tie-ups after it, as "
 "[Title OP; Other ED]; the library's comment stays as it is.</p>"
 msgstr ""
 
-#: ui/config/library.py:68 ui/config/library.py:130
+#: ui/config/library.py:100 ui/config/library.py:162
 msgid "Sync Now"
 msgstr ""
 
-#: ui/config/library.py:69
+#: ui/config/library.py:101
 msgid "Logging settings apply on next app launch."
 msgstr ""
 
-#: ui/config/library.py:70
+#: ui/config/library.py:102
 msgid "Use Sync Now to rebuild the whole XML explicitly."
 msgstr ""
 
-#: ui/config/library.py:74
+#: ui/config/library.py:106
 msgid "Folder holding library.db and the per-track feature files (.npz)."
 msgstr ""
 
-#: ui/config/library.py:77
+#: ui/config/library.py:109
 msgid "Root folders shown under Local Folders in the library browser."
 msgstr ""
 
-#: ui/config/library.py:79
+#: ui/config/library.py:111
 msgid "Add a local music root folder."
 msgstr ""
 
-#: ui/config/library.py:80
+#: ui/config/library.py:112
 msgid "Remove the selected root folders."
 msgstr ""
 
-#: ui/config/library.py:81
+#: ui/config/library.py:113
 msgid "Write console output to a log file."
 msgstr ""
 
-#: ui/config/library.py:82
+#: ui/config/library.py:114
 msgid "Log file written when 'Write log to file' is on."
 msgstr ""
 
-#: ui/config/library.py:84
+#: ui/config/library.py:116
 msgid ""
 "Keep a Rekordbox XML file updated with the library's beat grids, keys and"
 " cues."
 msgstr ""
 
-#: ui/config/library.py:87
+#: ui/config/library.py:119
 msgid "Rekordbox XML file to write. Import it in Rekordbox to use the analysis."
 msgstr ""
 
-#: ui/config/library.py:90
+#: ui/config/library.py:122
 msgid "Save these settings and rebuild the whole XML from the library now."
 msgstr ""
 
-#: ui/config/library.py:95
+#: ui/config/library.py:127
 msgid "Library Path"
 msgstr ""
 
-#: ui/config/library.py:106
+#: ui/config/library.py:138
 msgid "Local Music Folders"
 msgstr ""
 
-#: ui/config/library.py:107
+#: ui/config/library.py:139
 msgid "Add a tie-up to the track's versions too"
 msgstr ""
 
-#: ui/config/library.py:109
+#: ui/config/library.py:141
 msgid ""
 "<p>A tie-up added in the Edit tab is added to the track's other versions "
 "as well.</p>"
 msgstr ""
 
-#: ui/config/library.py:111
+#: ui/config/library.py:143
 msgid "Look up a new track's tie-ups on Wikipedia"
 msgstr ""
 
-#: ui/config/library.py:113
+#: ui/config/library.py:145
 msgid ""
 "<p>After a new track's analysis, its tie-ups are looked up on Japanese "
 "Wikipedia and Wikidata and the ones found for certain are added. Its "
 "title and artist are sent there.</p>"
 msgstr ""
 
-#: ui/config/library.py:116
+#: ui/config/library.py:148
 msgid "The interface's language"
 msgstr ""
 
-#: ui/config/library.py:118
+#: ui/config/library.py:150
 msgid ""
 "<p>The language a tie-up's work is shown in: its title in that language "
 "where the work has one, else another of its titles.</p>"
 msgstr ""
 
-#: ui/config/library.py:120
+#: ui/config/library.py:152
 msgid "Tie-up Titles"
 msgstr ""
 
-#: ui/config/library.py:121 ui/config/library.py:171
+#: ui/config/library.py:153 ui/config/library.py:203
 msgid "As the tie-up titles"
 msgstr ""
 
-#: ui/config/library.py:123
+#: ui/config/library.py:155
 msgid ""
 "<p>The language of the tie-ups the Sync tab writes after a file's "
 "comment.</p>"
 msgstr ""
 
-#: ui/config/library.py:124
+#: ui/config/library.py:156
 msgid "Exported Tie-ups"
 msgstr ""
 
-#: ui/config/library.py:127
+#: ui/config/library.py:159
 msgid "Update the library database when the editor saves"
 msgstr ""
 
-#: ui/config/library.py:129
+#: ui/config/library.py:161
 msgid ""
 "<p>The editor's save also writes the track's BPM, key and search tables "
 "into the library database.</p>"
 msgstr ""
 
-#: ui/config/library.py:132
+#: ui/config/library.py:164
 msgid ""
 "<p>Every track's BPM, key and search tables in the library database made "
 "again from its stored analysis. A BPM or key typed in the Edit Track tab "
@@ -3342,25 +3465,25 @@ msgid ""
 "touched.</p>"
 msgstr ""
 
-#: ui/config/library.py:135
+#: ui/config/library.py:167
 msgid "Library Database"
 msgstr ""
 
-#: ui/config/library.py:141
+#: ui/config/library.py:173
 msgid "Include the feature caches"
 msgstr ""
 
-#: ui/config/library.py:143
+#: ui/config/library.py:175
 msgid ""
 "<p>A backup also packs the analyses' feature caches (Reoptimize's "
 "training data). Without them a backup is smaller.</p>"
 msgstr ""
 
-#: ui/config/library.py:145
+#: ui/config/library.py:177
 msgid "Back Up Library…"
 msgstr ""
 
-#: ui/config/library.py:147
+#: ui/config/library.py:179
 msgid ""
 "<p>The library packed into one file: its database, every track's stored "
 "analysis, the thumbnails, the search indexes, the settings, your "
@@ -3368,107 +3491,133 @@ msgid ""
 "are not packed.</p>"
 msgstr ""
 
-#: ui/config/library.py:150
+#: ui/config/library.py:182
 msgid "Restore Library…"
 msgstr ""
 
-#: ui/config/library.py:152
+#: ui/config/library.py:184
 msgid ""
 "<p>A backup unpacked into a new library folder, then Mixlyzer restarts on"
 " it. The library in use now is kept as it is.</p>"
 msgstr ""
 
-#: ui/config/library.py:160 ui/windows/library_backup.py:146
-msgid "Backup"
-msgstr ""
-
-#: ui/config/library.py:165 ui/config/library.py:209
-#: ui/library/tabs/sync.py:131
+#: ui/config/library.py:197
 msgid "Rekordbox XML"
 msgstr ""
 
-#: ui/config/library.py:168
+#: ui/config/library.py:200
 msgid "XML Path"
 msgstr ""
 
-#: ui/config/library.py:169
+#: ui/config/library.py:201
 msgid "Tempo ramp tolerance"
 msgstr ""
 
-#: ui/config/library.py:173
+#: ui/config/library.py:205
 msgid ""
 "<p>The language of the tie-ups written after each track's comment in the "
 "XML.</p>"
 msgstr ""
 
-#: ui/config/library.py:175
+#: ui/config/library.py:207
 msgid "Tie-up Language"
 msgstr ""
 
-#: ui/config/library.py:179 ui/config/library.py:210
+#: ui/config/library.py:211
+msgid "Rekordbox Phrases"
+msgstr ""
+
+#: ui/config/library.py:213
+msgid ""
+"<p>How the Sync tab writes the phrases into rekordbox's analysis: "
+"rekordbox's mood, and the phrase each label becomes. rekordbox's phrases "
+"have fixed names per mood.</p>"
+msgstr ""
+
+#: ui/config/library.py:217
+msgid "High (Intro, Up, Down, Chorus, Outro)"
+msgstr ""
+
+#: ui/config/library.py:218
+msgid "Mid (Intro, Verse 1-6, Bridge, Chorus, Outro)"
+msgstr ""
+
+#: ui/config/library.py:219
+msgid "Low (Intro, Verse 1-2, Bridge, Chorus, Outro)"
+msgstr ""
+
+#: ui/config/library.py:221
+msgid "Mood"
+msgstr ""
+
+#: ui/config/library.py:230 ui/config/library.py:266
 msgid "Serato"
 msgstr ""
 
-#: ui/config/library.py:182
+#: ui/config/library.py:233
 msgid "JumpCUEs (A-H in their slots)"
 msgstr ""
 
-#: ui/config/library.py:183
+#: ui/config/library.py:234
 msgid "CUE points (in time order)"
 msgstr ""
 
-#: ui/config/library.py:184
+#: ui/config/library.py:235
 msgid "JumpCUEs, then CUE points in the slots left"
 msgstr ""
 
-#: ui/config/library.py:187
+#: ui/config/library.py:238
 msgid ""
 "<p>What the Sync tab's Write Tags makes Serato's 8 hot cues of. Serato "
 "has no memory cues: CUE points written there become hot cues.</p>"
 msgstr ""
 
-#: ui/config/library.py:189
+#: ui/config/library.py:240
 msgid "Keep the file's Serato hot cues in the slots left"
 msgstr ""
 
-#: ui/config/library.py:191
+#: ui/config/library.py:242
 msgid ""
 "<p>Hot cues set in Serato stay in the slots the written ones leave, and "
 "so do those written before (a JumpCUE removed since stays in Serato); "
 "off, every hot cue is replaced.</p>"
 msgstr ""
 
-#: ui/config/library.py:193
+#: ui/config/library.py:244
 msgid "Lock the beatgrid"
 msgstr ""
 
-#: ui/config/library.py:195
+#: ui/config/library.py:246
 msgid ""
 "<p>Serato's BPM lock: its analysis then leaves the written beatgrid as it"
 " is.</p>"
 msgstr ""
 
-#: ui/config/library.py:196
+#: ui/config/library.py:247
 msgid "Hot Cues"
 msgstr ""
 
-#: ui/config/library.py:203
+#: ui/config/library.py:254
 msgid "Log Path"
 msgstr ""
 
-#: ui/config/library.py:208
+#: ui/config/library.py:259
 msgid "Database"
 msgstr ""
 
-#: ui/config/library.py:236
+#: ui/config/library.py:261
+msgid "Backups"
+msgstr ""
+
+#: ui/config/library.py:292
 msgid "Add Local Music Folder"
 msgstr ""
 
-#: ui/config/dialogs/library_sync.py:17 ui/config/library.py:299
+#: ui/config/dialogs/library_sync.py:17 ui/config/library.py:355
 msgid "Sync Library Database"
 msgstr ""
 
-#: ui/config/library.py:300
+#: ui/config/library.py:356
 msgid ""
 "Every track's BPM, key and search tables in the library database will be "
 "made again from its stored analysis. A BPM or key typed in the Edit Track"
@@ -3477,20 +3626,20 @@ msgid ""
 "Sync now?"
 msgstr ""
 
-#: ui/config/library.py:345
+#: ui/config/library.py:401
 msgid "Enable Sync with Rekordbox XML first."
 msgstr ""
 
-#: ui/config/dialogs/rekordbox.py:15 ui/config/library.py:345
-#: ui/config/library.py:350
+#: ui/config/dialogs/rekordbox.py:15 ui/config/library.py:401
+#: ui/config/library.py:406
 msgid "Sync Rekordbox XML"
 msgstr ""
 
-#: ui/config/library.py:350
+#: ui/config/library.py:406
 msgid "Rekordbox XML Path is empty."
 msgstr ""
 
-#: ui/config/library.py:392
+#: ui/config/library.py:448
 msgid "Rekordbox XML worker started"
 msgstr ""
 
@@ -3595,7 +3744,7 @@ msgid ""
 msgstr ""
 
 #: ui/config/midi.py:195 ui/config/output_group.py:83
-#: ui/library/tabs/sync.py:676
+#: ui/library/tabs/sync.py:952 ui/library/tabs/sync.py:1069
 msgid "None"
 msgstr ""
 
@@ -4891,15 +5040,15 @@ msgstr ""
 msgid "Load a track to preview the waveform."
 msgstr ""
 
-#: ui/config/window.py:86
+#: ui/config/window.py:88
 msgid "Save the settings and close."
 msgstr ""
 
-#: ui/config/window.py:88
+#: ui/config/window.py:90
 msgid "Close without saving unapplied changes."
 msgstr ""
 
-#: ui/config/window.py:91
+#: ui/config/window.py:93
 msgid "Save the settings and keep the window open."
 msgstr ""
 
@@ -6135,7 +6284,7 @@ msgstr ""
 msgid "No JumpCUE directions"
 msgstr ""
 
-#: ui/library/tabs/export.py:71 ui/library/tabs/sync.py:71
+#: ui/library/tabs/export.py:71 ui/library/tabs/sync.py:83
 msgid "Source"
 msgstr ""
 
@@ -6205,7 +6354,7 @@ msgid ""
 msgstr ""
 
 #: ui/library/tabs/export.py:198 ui/library/tabs/export.py:277
-#: ui/library/tabs/sync.py:289
+#: ui/library/tabs/sync.py:317 ui/library/tabs/sync.py:500
 msgid "The track's analysis could not be read."
 msgstr ""
 
@@ -6213,8 +6362,8 @@ msgstr ""
 msgid "The track has no beatgrid to write."
 msgstr ""
 
-#: ui/library/tabs/export.py:219 ui/library/tabs/sync.py:467
-#: ui/library/tabs/sync.py:529 ui/windows/diagnostics_dialog.py:59
+#: ui/library/tabs/export.py:219 ui/library/tabs/sync.py:686
+#: ui/library/tabs/sync.py:749 ui/windows/diagnostics_dialog.py:59
 #, python-brace-format
 msgid "The file could not be written: {error}"
 msgstr ""
@@ -6237,36 +6386,36 @@ msgid ""
 "{error}"
 msgstr ""
 
-#: ui/library/tabs/sync.py:73
+#: ui/library/tabs/sync.py:85
 msgid "File Tags"
 msgstr ""
 
-#: ui/library/tabs/sync.py:75
+#: ui/library/tabs/sync.py:87
 msgid ""
 "<p>Write the library's values into the audio file's own tags: only the "
 "fields checked change; the file's other tags, its artwork and its audio "
 "stay as they are.</p>"
 msgstr ""
 
-#: ui/library/tabs/sync.py:86
+#: ui/library/tabs/sync.py:98
 msgid "MP4 / M4A files hold a whole BPM only."
 msgstr ""
 
-#: ui/library/tabs/sync.py:87
+#: ui/library/tabs/sync.py:99
 msgid "Written as a musical key (Am, F#)."
 msgstr ""
 
-#: ui/library/tabs/sync.py:98
+#: ui/library/tabs/sync.py:110
 msgid ""
 "<p>The comment written with the song's tie-ups after it, as [Title OP; "
 "Other ED]; the library's comment stays as it is.</p>"
 msgstr ""
 
-#: ui/library/tabs/sync.py:103
+#: ui/library/tabs/sync.py:115
 msgid "Serato beatgrid and hot cues"
 msgstr ""
 
-#: ui/library/tabs/sync.py:105
+#: ui/library/tabs/sync.py:117
 msgid ""
 "<p>Serato DJ's beatgrid and hot cues, in the file's tags where Serato "
 "reads them: the grid from the first downbeat (a ramp a marker a beat), "
@@ -6275,225 +6424,382 @@ msgid ""
 "kept.</p>"
 msgstr ""
 
-#: ui/library/tabs/sync.py:109
+#: ui/library/tabs/sync.py:121
 msgid "Serato beatgrid"
 msgstr ""
 
-#: ui/library/tabs/sync.py:109
+#: ui/library/tabs/sync.py:121
 msgid "Serato hot cues"
 msgstr ""
 
-#: ui/library/tabs/sync.py:110 ui/library/tabs/sync.py:565
-msgid "Serato's old cue data"
+#: ui/library/tabs/sync.py:122
+msgid "Serato's old hot cues (A-E)"
 msgstr ""
 
-#: ui/library/tabs/sync.py:111
+#: ui/library/tabs/sync.py:123
 msgid "Serato's tempo map"
 msgstr ""
 
-#: ui/library/tabs/sync.py:114 ui/library/tabs/sync.py:297
-#: ui/library/tabs/sync.py:481 ui/library/tabs/sync.py:619
-#: ui/library/tabs/sync.py:695
+#: ui/library/tabs/sync.py:126 ui/library/tabs/sync.py:508
+#: ui/library/tabs/sync.py:700 ui/library/tabs/sync.py:1012
+#: ui/library/tabs/sync.py:1088
 msgid "Write Tags"
 msgstr ""
 
-#: ui/library/tabs/sync.py:115
+#: ui/library/tabs/sync.py:127
 msgid "Write the checked fields' stored values into the file's tags."
 msgstr ""
 
-#: ui/library/tabs/sync.py:117
+#: ui/library/tabs/sync.py:129 ui/library/tabs/sync.py:170
 msgid "Restore from Backup..."
 msgstr ""
 
-#: ui/library/tabs/sync.py:119
+#: ui/library/tabs/sync.py:131
 msgid ""
 "<p>Put the track's file back as a backup made before writing its tags "
 "holds it: a tag backup (.mxtags) or a copy of the whole file.</p>"
 msgstr ""
 
-#: ui/library/tabs/sync.py:133
+#: ui/library/tabs/sync.py:148
 msgid ""
 "<p>The track written into the Rekordbox XML again, as saving an edit "
 "does: its beatgrid, CUE points, JumpCUEs and values as stored now. The "
 "XML's file and its options are in Settings > Library.</p>"
 msgstr ""
 
-#: ui/library/tabs/sync.py:137 ui/library/tabs/sync.py:216
+#: ui/library/tabs/sync.py:150
+msgid "Phrases"
+msgstr ""
+
+#: ui/library/tabs/sync.py:152
+msgid ""
+"<p>The track's phrases written into rekordbox's own analysis of it (the "
+"XML has no phrases), on the beatgrid rekordbox holds: import the XML's "
+"beatgrid first. rekordbox must be closed; a preview shows what is "
+"written, and its analysis file is copied first. The phrases' mood and "
+"names: Settings > Library > Rekordbox.</p>"
+msgstr ""
+
+#: ui/library/tabs/sync.py:161
+msgid "Sync"
+msgstr ""
+
+#: ui/library/tabs/sync.py:162
+msgid "Sync what is checked: the XML at once, the phrases after a preview."
+msgstr ""
+
+#: ui/library/tabs/sync.py:172
+msgid ""
+"<p>Put the track's rekordbox analysis back as a backup made before "
+"writing its phrases holds it (the track's backups, newest first). "
+"rekordbox must be closed.</p>"
+msgstr ""
+
+#: ui/library/tabs/sync.py:235
+msgid ""
+"Sync with Rekordbox XML is off, or has no file: Settings > Library > "
+"Rekordbox."
+msgstr ""
+
+#: ui/library/tabs/sync.py:265
 msgid "Sync to Rekordbox XML"
 msgstr ""
 
-#: ui/library/tabs/sync.py:138
-msgid "Write this track into the Rekordbox XML again."
-msgstr ""
-
-#: ui/library/tabs/sync.py:193
-msgid ""
-"Sync with Rekordbox XML is off, or has no file: Settings > Library > "
-"Rekordbox XML."
-msgstr ""
-
-#: ui/library/tabs/sync.py:217
+#: ui/library/tabs/sync.py:266
 msgid ""
 "The Edit tab has changes to this track that are not applied: the stored "
 "values are written.\n"
 "Sync anyway?"
 msgstr ""
 
-#: ui/library/tabs/sync.py:223
+#: ui/library/tabs/sync.py:272
 msgid "Writing the track into the Rekordbox XML..."
 msgstr ""
 
-#: ui/library/tabs/sync.py:237
+#: ui/library/tabs/sync.py:286
 #, python-brace-format
 msgid "Written into {path}."
 msgstr ""
 
-#: ui/library/tabs/sync.py:243
+#: ui/library/tabs/sync.py:292
 #, python-brace-format
 msgid "The Rekordbox XML could not be written: {error}"
 msgstr ""
 
-#: ui/library/tabs/sync.py:280
+#: ui/library/tabs/sync.py:332 ui/library/tabs/sync.py:396
+msgid "Reading rekordbox's analysis of the track..."
+msgstr ""
+
+#: ui/library/tabs/sync.py:342
+#, python-brace-format
+msgid "rekordbox's analysis file could not be read: {error}"
+msgstr ""
+
+#: ui/library/tabs/sync.py:353
+#, python-brace-format
+msgid ""
+"The phrases are {ms} ms off rekordbox's beats at most: its beatgrid is "
+"not the track's. Import the XML's beatgrid in rekordbox first, then write"
+" the phrases again."
+msgstr ""
+
+#: ui/library/tabs/sync.py:365
+msgid "Writing the phrases..."
+msgstr ""
+
+#: ui/library/tabs/sync.py:375 ui/library/tabs/sync.py:443
+#, python-brace-format
+msgid "rekordbox's analysis file could not be written: {error}"
+msgstr ""
+
+#: ui/library/tabs/sync.py:382
+#, python-brace-format
+msgid ""
+"The phrases were written into rekordbox's analysis.\n"
+"Its backup: {path}"
+msgstr ""
+
+#: ui/library/tabs/sync.py:383
+msgid "The phrases were written into rekordbox's analysis."
+msgstr ""
+
+#: ui/library/tabs/sync.py:386 ui/library/tabs/sync.py:916
+msgid "Write Phrases to rekordbox"
+msgstr ""
+
+#: ui/library/tabs/sync.py:419
+msgid "There is no backup of the track's rekordbox analysis."
+msgstr ""
+
+#: ui/library/tabs/sync.py:422 ui/library/tabs/sync.py:429
+#: ui/library/tabs/sync.py:455 ui/library/tabs/sync.py:713
+#: ui/library/tabs/sync.py:719 ui/library/tabs/sync.py:726
+#: ui/library/tabs/sync.py:757
+msgid "Restore from Backup"
+msgstr ""
+
+#: ui/library/tabs/sync.py:423 ui/library/tabs/sync.py:719
+msgid "The backup to put back:"
+msgstr ""
+
+#: ui/library/tabs/sync.py:430
+#, python-brace-format
+msgid "Put the track's rekordbox analysis back as the backup of {when} holds it?"
+msgstr ""
+
+#: ui/library/tabs/sync.py:435
+msgid "Putting the files back..."
+msgstr ""
+
+#: ui/library/tabs/sync.py:451
+#, python-brace-format
+msgid "Put back as the backup holds it: {files}"
+msgstr ""
+
+#: ui/library/tabs/sync.py:491
 msgid "Check the fields to write."
 msgstr ""
 
-#: ui/library/tabs/sync.py:298
+#: ui/library/tabs/sync.py:509
 msgid ""
 "The Edit tab has changes to this track that are not applied: the stored "
 "values are written.\n"
 "Write the tags anyway?"
 msgstr ""
 
-#: ui/library/tabs/sync.py:306
+#: ui/library/tabs/sync.py:517
 msgid "Reading the file's tags..."
 msgstr ""
 
-#: ui/library/tabs/sync.py:326
+#: ui/library/tabs/sync.py:537
 msgid "The track is no longer in the library."
 msgstr ""
 
-#: ui/library/tabs/sync.py:415
+#: ui/library/tabs/sync.py:631
 #, python-brace-format
 msgid ""
 "Also written to {place}, the field DJ software (rekordbox ...) reads. It "
 "holds now: {value}"
 msgstr ""
 
-#: ui/library/tabs/sync.py:416 ui/library/tabs/sync.py:657
+#: ui/library/tabs/sync.py:632 ui/library/tabs/sync.py:1050
 msgid "(empty)"
 msgstr ""
 
-#: ui/library/tabs/sync.py:418
+#: ui/library/tabs/sync.py:634
 msgid ""
 "Serato reads this before the hot cues written here: it is emptied (its "
 "loops and names are in the hot cues' tag too)."
 msgstr ""
 
-#: ui/library/tabs/sync.py:424
+#: ui/library/tabs/sync.py:637
+msgid ""
+"Older Serato versions read the hot cues from here: the first five (A-E), "
+"without names; the file's old loops kept."
+msgstr ""
+
+#: ui/library/tabs/sync.py:643
 msgid "The file's tags already hold these values."
 msgstr ""
 
-#: ui/library/tabs/sync.py:435
+#: ui/library/tabs/sync.py:654
 msgid "Writing the tags..."
 msgstr ""
 
-#: ui/library/tabs/sync.py:464
+#: ui/library/tabs/sync.py:683
 msgid ""
 "Another program has the file open (a DJ program with the track loaded?): "
 "the tags were not written. Close it there, then write again."
 msgstr ""
 
-#: ui/library/tabs/sync.py:476
+#: ui/library/tabs/sync.py:695
 #, python-brace-format
 msgid ""
 "The tags were written to the file.\n"
 "Its backup: {path}"
 msgstr ""
 
-#: ui/library/tabs/sync.py:477
+#: ui/library/tabs/sync.py:696
 msgid "The tags were written to the file."
 msgstr ""
 
-#: ui/library/tabs/sync.py:493 ui/library/tabs/sync.py:500
-#: ui/library/tabs/sync.py:506 ui/library/tabs/sync.py:537
-msgid "Restore from Backup"
+#: ui/library/tabs/sync.py:716
+msgid "There is no backup of this file's tags."
 msgstr ""
 
-#: ui/library/tabs/sync.py:494
-msgid "Tag backups (*.mxtags);;All files (*)"
-msgstr ""
-
-#: ui/library/tabs/sync.py:502
+#: ui/library/tabs/sync.py:724
 #, python-brace-format
-msgid "Put '{file}' back as the backup '{backup}' holds it?"
+msgid "Put '{file}' back as the backup of {when} holds it?"
 msgstr ""
 
-#: ui/library/tabs/sync.py:505
-#, python-brace-format
-msgid "The backup was made of '{name}'."
-msgstr ""
-
-#: ui/library/tabs/sync.py:514
+#: ui/library/tabs/sync.py:734
 msgid "Putting the file back..."
 msgstr ""
 
-#: ui/library/tabs/sync.py:526
+#: ui/library/tabs/sync.py:746
 msgid ""
 "Another program has the file open (a DJ program with the track loaded?): "
 "it was not put back. Close it there, then restore again."
 msgstr ""
 
-#: ui/library/tabs/sync.py:535
+#: ui/library/tabs/sync.py:755
 msgid "The file was put back as the backup holds it."
 msgstr ""
 
-#: ui/library/tabs/sync.py:549 ui/library/tabs/sync.py:561
+#: ui/library/tabs/sync.py:769 ui/library/tabs/sync.py:781
 msgid "(not read)"
 msgstr ""
 
-#: ui/library/tabs/sync.py:550
+#: ui/library/tabs/sync.py:770
 #, python-brace-format
 msgid "{count} grid marker from {start}, {bpm} BPM at the end"
 msgid_plural "{count} grid markers from {start}, {bpm} BPM at the end"
 msgstr[0] ""
 msgstr[1] ""
 
-#: ui/library/tabs/sync.py:556
+#: ui/library/tabs/sync.py:776 ui/library/tabs/sync.py:787
 msgid "no hot cues"
 msgstr ""
 
-#: ui/library/tabs/sync.py:557
+#: ui/library/tabs/sync.py:777
 msgid "BPM locked"
 msgstr ""
 
-#: ui/library/tabs/sync.py:562
+#: ui/library/tabs/sync.py:782
 #, python-brace-format
 msgid "{count} tempo segment from {start}, {bpm} BPM at the end"
 msgid_plural "{count} tempo segments from {start}, {bpm} BPM at the end"
 msgstr[0] ""
 msgstr[1] ""
 
-#: ui/library/tabs/sync.py:576
+#: ui/library/tabs/sync.py:799
 msgid ""
 "Serato counts 4-beat bars from the first downbeat: the bars of another "
 "length here (a 3-beat bar, 7/4) are not kept."
 msgstr ""
 
-#: ui/library/tabs/sync.py:580
+#: ui/library/tabs/sync.py:803
 msgid "Serato has 8 hot cues: the JumpCUEs past H are left out."
 msgstr ""
 
-#: ui/library/tabs/sync.py:582
+#: ui/library/tabs/sync.py:805
 msgid ""
 "Serato has no memory cues: the CUE points are left out (Settings > "
 "Library > Serato can make them hot cues)."
 msgstr ""
 
-#: ui/library/tabs/sync.py:585
+#: ui/library/tabs/sync.py:808
 msgid "Serato has 8 hot cues: the CUE points with no slot left are left out."
 msgstr ""
 
-#: ui/library/tabs/sync.py:593
+#: ui/library/tabs/sync.py:824 ui/library/tabs/sync.py:953
+msgid "The analysis file (.EXT)"
+msgstr ""
+
+#: ui/library/tabs/sync.py:824 ui/library/tabs/sync.py:954
+msgid "The track's analysis folder"
+msgstr ""
+
+#: ui/library/tabs/sync.py:831 ui/library/tabs/sync.py:1070
+msgid "The tags only"
+msgstr ""
+
+#: ui/library/tabs/sync.py:831 ui/library/tabs/sync.py:1073
+msgid "The whole file"
+msgstr ""
+
+#: ui/library/tabs/sync.py:842
+#, python-brace-format
+msgid ""
+"{label} goes on with the phrase before it (Settings > Library > "
+"Rekordbox)."
+msgstr ""
+
+#: ui/library/tabs/sync.py:844
+msgid ""
+"The mood has no more verses: the verse runs past its last verse are its "
+"last verse."
+msgstr ""
+
+#: ui/library/tabs/sync.py:890 ui/library/tabs/sync.py:941
+msgid "(none)"
+msgstr ""
+
+#: ui/library/tabs/sync.py:921
+#, python-brace-format
+msgid "rekordbox's phrases of '{file}' change:"
+msgstr ""
+
+#: ui/library/tabs/sync.py:925
+msgid "rekordbox now"
+msgstr ""
+
+#: ui/library/tabs/sync.py:926
+msgid "Written"
+msgstr ""
+
+#: ui/library/tabs/sync.py:948 ui/library/tabs/sync.py:1065
+msgid "Backup before writing"
+msgstr ""
+
+#: ui/library/tabs/sync.py:953
+msgid "The one file the phrases are written into."
+msgstr ""
+
+#: ui/library/tabs/sync.py:955
+msgid "All of rekordbox's analysis files of the track (.DAT, .EXT, .2EX, .3EX)."
+msgstr ""
+
+#: ui/library/tabs/sync.py:964
+#, python-brace-format
+msgid "Kept in {folder}; copy it back to undo the write."
+msgstr ""
+
+#: ui/library/tabs/sync.py:972
+msgid "Write Phrases"
+msgstr ""
+
+#: ui/library/tabs/sync.py:986
 #, python-brace-format
 msgid ""
 "The file's hot cues {slots} stay: Settings > Library > Serato keeps the "
@@ -6501,38 +6807,26 @@ msgid ""
 "JumpCUE removed since). Turn that off to replace them all."
 msgstr ""
 
-#: ui/library/tabs/sync.py:621
+#: ui/library/tabs/sync.py:1014
 #, python-brace-format
 msgid "These tags of '{file}' change:"
 msgstr ""
 
-#: ui/library/tabs/sync.py:653
+#: ui/library/tabs/sync.py:1046
 msgid "Write the value here (unchecked: this place stays as it is)."
 msgstr ""
 
-#: ui/library/tabs/sync.py:672
-msgid "Backup before writing"
-msgstr ""
-
-#: ui/library/tabs/sync.py:677
-msgid "The tags only"
-msgstr ""
-
-#: ui/library/tabs/sync.py:678
+#: ui/library/tabs/sync.py:1071
 msgid ""
 "The bytes the write replaces (a few KB, more with a cover picture): the "
 "file is put back exactly, as long as its audio stays as it is."
 msgstr ""
 
-#: ui/library/tabs/sync.py:680
-msgid "The whole file"
-msgstr ""
-
-#: ui/library/tabs/sync.py:680
+#: ui/library/tabs/sync.py:1073
 msgid "A copy of the whole file, as large as it is."
 msgstr ""
 
-#: ui/library/tabs/sync.py:688
+#: ui/library/tabs/sync.py:1081
 #, python-brace-format
 msgid "Kept in {folder}; Restore from Backup puts one back."
 msgstr ""
@@ -6818,14 +7112,14 @@ msgid "All"
 msgstr ""
 
 #: ui/library/tabs/edit_song.py:124 ui/library/tabs/export.py:69
-#: ui/library/tabs/sync.py:69 ui/library/tabs/sync.py:82
+#: ui/library/tabs/sync.py:81 ui/library/tabs/sync.py:94
 #: ui/library/tabs/tieup_editor.py:140 ui/library/tabs/track_search_index.py:53
 #: ui/library/widget.py:39 ui/windows/tieup_works.py:77
 msgid "Title"
 msgstr ""
 
 #: ui/library/tabs/edit_song.py:125 ui/library/tabs/export.py:70
-#: ui/library/tabs/sync.py:70 ui/library/tabs/sync.py:83
+#: ui/library/tabs/sync.py:82 ui/library/tabs/sync.py:95
 #: ui/library/tabs/track_search_index.py:53 ui/library/widget.py:39
 msgid "Artist"
 msgstr ""
@@ -6834,7 +7128,7 @@ msgstr ""
 msgid "Duration"
 msgstr ""
 
-#: ui/library/tabs/edit_song.py:126 ui/library/tabs/sync.py:84
+#: ui/library/tabs/edit_song.py:126 ui/library/tabs/sync.py:96
 #: ui/library/tabs/track_search_index.py:53 ui/library/widget.py:40
 msgid "Album"
 msgstr ""
@@ -6856,7 +7150,7 @@ msgstr ""
 msgid "Path"
 msgstr ""
 
-#: ui/library/tabs/edit_song.py:130 ui/library/tabs/sync.py:85
+#: ui/library/tabs/edit_song.py:130 ui/library/tabs/sync.py:97
 #: ui/library/widget.py:42
 msgid "Comment"
 msgstr ""
@@ -6912,7 +7206,7 @@ msgstr ""
 msgid "Playback"
 msgstr ""
 
-#: ui/config/library.py:93 ui/config/library.py:223 ui/library/sources.py:287
+#: ui/config/library.py:125 ui/config/library.py:279 ui/library/sources.py:287
 #: ui/shortcuts.py:32
 msgid "Library"
 msgstr ""
@@ -7923,10 +8217,6 @@ msgstr ""
 msgid "File"
 msgstr ""
 
-#: ui/windows/library_backup.py:149
-msgid "Made"
-msgstr ""
-
 #: ui/windows/library_backup.py:150
 msgid "On"
 msgstr ""
@@ -7934,10 +8224,6 @@ msgstr ""
 #: ui/windows/library_backup.py:151 ui/windows/library_backup.py:180
 #: ui/windows/tieup_works.py:52 ui/windows/tieup_works.py:102
 msgid "Tracks"
-msgstr ""
-
-#: ui/windows/library_backup.py:152
-msgid "Size"
 msgstr ""
 
 #: ui/windows/library_backup.py:153

@@ -148,11 +148,12 @@ class ActionsMixin:
             self.sync_panel.write_tags()
 
     def _rekordbox_sync_selected(self):
-        """The Sync tab with the selected track, written into the Rekordbox XML again."""
+        """The Sync tab with the selected track, written into the Rekordbox XML again (the XML only, whatever is
+        checked there: rekordbox's phrases are written from the tab's button alone)."""
         if self._selected_uids():
             self.open_track_panel(self.SYNC_TAB, focus=False)
-            if self.sync_panel.btn_rekordbox_sync.isEnabled():
-                flash(self.sync_panel.btn_rekordbox_sync)
+            if self.sync_panel._xml_ready():
+                flash(self.sync_panel.cb_rekordbox_xml)
                 self.sync_panel.sync_rekordbox()
 
     def _export_tempo_map_selected(self):

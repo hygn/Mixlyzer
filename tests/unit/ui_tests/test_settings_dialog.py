@@ -43,6 +43,7 @@ def edited_cfg():
                             write_log=True, rekordbox_sync_enabled=False, rekordbox_ramp_tolerance_ms=2.5,
                             rekordbox_comment_tieups=True, tieup_to_versions=False, tieup_web_search=True,
                             serato_hot_cues="both", serato_keep_cues=False, serato_bpm_lock=False,
+                            rekordbox_phrase_mood="high", rekordbox_phrase_map="VERSE=down,SILENCE=outro",
                             cloud_sync_warning_off="d:\\onedrive\\library")      # not edited here: kept
     names = cfg.viewconfig.phrase_labels
     cfg.viewconfig = replace(cfg.viewconfig, language="ja-JP", display_keystrip=False, waveform_style="3band",
@@ -87,7 +88,7 @@ class SettingsDialogTests(unittest.TestCase):
         self.assertEqual([self.d.view_tabs.tabText(i) for i in range(self.d.view_tabs.count())],
                          ["General", "Display", "Waveform", "Phrase labels"])
         self.assertEqual([self.d.library_tabs.tabText(i) for i in range(self.d.library_tabs.count())],
-                         ["General", "Database", "Rekordbox XML", "Serato", "Advanced"])
+                         ["General", "Database", "Backups", "Rekordbox", "Serato", "Advanced"])
 
     def test_defaults_read_back_as_they_are(self):
         cfg = default_cfg()

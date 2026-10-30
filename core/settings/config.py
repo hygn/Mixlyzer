@@ -50,6 +50,11 @@ class libconfig:
     serato_hot_cues: str = "jumpcues"
     serato_keep_cues: bool = True
     serato_bpm_lock: bool = True
+    # rekordbox's phrases (the Sync tab, third_party.rekordbox_phrases): the mood they are written in ("high",
+    # "mid", "low") and each label's phrase there ("LABEL=choice,...": rekordbox_phrases.map_text; "" or a label
+    # left out: the mood's default)
+    rekordbox_phrase_mood: str = "mid"
+    rekordbox_phrase_map: str = ""
 
 
 @dataclass
@@ -455,6 +460,8 @@ def default_cfg():
         serato_hot_cues="jumpcues",
         serato_keep_cues=True,
         serato_bpm_lock=True,
+        rekordbox_phrase_mood="mid",
+        rekordbox_phrase_map="",
     )
     acfg = analysisconfig(
         bpm_min=100,

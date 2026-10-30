@@ -112,6 +112,41 @@ class TimeTests(unittest.TestCase):
         self.assertAlmostEqual(cues[0].time_sec, 12.55)
 
 
+class OldMarkerTests(unittest.TestCase):
+    def test_the_mp4_layout_as_serato_writes_it(self):
+        # a Markers_ Serato DJ wrote into an M4A beside its Markers2 (hot cues A 1:08.703 and B 3:20.703, green):
+        # made again from those cues byte for byte
+        cue = "ff" * 8 + "00" + "ff" * 4
+        empty, loop = cue + "00000000" + "0000", cue + "00000000" + "0300"
+        serato_s = bytes.fromhex(
+            "0205" + "0000000e" + "00010c5f" + "ff" * 4 + "00" + "ff" * 4 + "0044cc00" + "0100"
+            + "00030fff" + "ff" * 4 + "00" + "ff" * 4 + "0044cc00" + "0100"
+            + empty * 3 + loop * 9 + "00ffffff")
+        cues = [serato.HotCue(0, 68.703, (0x44, 0xCC, 0x00), "A"), serato.HotCue(1, 200.703, (0x44, 0xCC, 0x00), ""),
+                serato.HotCue(6, 210.0, (0x44, 0xCC, 0x00), "G")]          # past E: not in Markers_
+        self.assertEqual(serato.build_markers_old(cues, "mp4"), serato_s)
+        back = serato.parse_markers_old(serato_s)
+        self.assertEqual([(c.slot, round(c.time_sec * 1000), c.color) for c in back],
+                         [(0, 68703, (0x44, 0xCC, 0x00)), (1, 200703, (0x44, 0xCC, 0x00))])
+
+    def test_the_id3_layout_and_the_files_loops_kept(self):
+        cues = [serato.HotCue(0, 3.33, (0x44, 0xCC, 0x00), ""), serato.HotCue(4, 174.261, (0x00, 0x88, 0xCC), "")]
+        payload = serato.build_markers_old(cues, "id3")
+        self.assertEqual(len(payload), 6 + 22 * 14 + 4)
+        self.assertEqual(payload[6:12], b"\x00\x00\x00\x1a\x02\x7f")         # set, 3330 in 7-bit bytes
+        self.assertEqual(payload[-4:], b"\x07\x7f\x7f\x7f")                  # white
+        self.assertEqual([(c.slot, round(c.time_sec * 1000), c.color) for c in serato.parse_markers_old(payload)],
+                         [(0, 3330, (0x44, 0xCC, 0x00)), (4, 174261, (0x00, 0x88, 0xCC))])
+        # a loop the file's Markers_ has, kept; the track's colour Markers2's
+        loop = b"\x00" + bytes(4) + b"\x00" + bytes([0, 0, 0x3E, 0x08]) + b"\x00" + b"\x7f" * 5 + bytes(4) + b"\x03\x00"
+        existing = payload[:6 + 22 * 5] + loop + payload[6 + 22 * 6:]
+        markers2 = serato.build_markers2([], b"\x01\x01" + base64.b64encode(
+            b"\x01\x01COLOR\x00" + struct.pack(">I", 4) + b"\x00\x99\xff\x99" + b"\x00").rstrip(b"="))
+        rebuilt = serato.build_markers_old(cues[:1], "id3", existing, markers2)
+        self.assertEqual(rebuilt[6 + 22 * 5:6 + 22 * 6], loop)
+        self.assertEqual(serato._from_serato32(rebuilt[-4:]), 0x99FF99)
+
+
 class CueTests(unittest.TestCase):
     def groups(self):
         cue = lambda label, point, comment="": JumpCue(label, comment, point, point, point)   # noqa: E731

@@ -1,10 +1,11 @@
 """The track panel's Sync tab: the track's analysis and stored values taken to other programs, in place: its audio
-file's tags (Write Tags, Restore from Backup) and the Rekordbox XML's entry for it."""
+file's tags (Write Tags, Restore from Backup), the Rekordbox XML's entry for it and rekordbox's phrases."""
 from __future__ import annotations
 import threading
 from pathlib import Path
 from typing import Callable, Optional
 
+import numpy as np
 from PySide6 import QtCore, QtGui, QtWidgets
 from core.tieups import domain as tieup
 from system.resource_paths import resource_path
@@ -19,7 +20,7 @@ from core.tags import backup as tag_backup
 from core.tags.writer import (SERATO, TEXT_FIELDS, TagWriteError, bpm_text, planned_writes, read_tags, tag_format,
                               write_tags)
 from core.track.model import DataModel
-from third_party import serato
+from third_party import rekordbox_phrases, serato
 from ui.config.scroll import scroll_page
 from ui.library.tabs.export import model_holds, track_source
 from ui.widgets.elided_label import ElidedLabel
@@ -39,7 +40,12 @@ class SyncTrackPanel(QtWidgets.QWidget):
     _sig_tags_read = QtCore.Signal(str, object, object)   # the track's uid, the planned writes (None: unread), the write
     _sig_tags_done = QtCore.Signal(str, str, str)   # the track's uid, the error ("": written), the backup made ("")
     _sig_restored = QtCore.Signal(str, str)          # the track's uid, the error ("": put back)
+    _sig_phrases_planned = QtCore.Signal(str, object, str)   # the track's uid, the plan (None: not made), the error
+    _sig_phrases_written = QtCore.Signal(str, str, str)      # the track's uid, the backup made, the error ("": written)
+    _sig_rb_backups = QtCore.Signal(str, object, object, str)   # the uid, its analysis folder, its backups, the error
+    _sig_rb_restored = QtCore.Signal(str, object, str)          # the uid, the names put back, the error ("": put back)
     _backup = "tags"     # the backup the last confirmation asked for (the session's: the next one's choice)
+    _phrase_backup = "ext"   # the same for rekordbox's phrases (rekordbox_phrases.BACKUP_KINDS)
 
     def __init__(self, library: LibraryService, parent: Optional[QtWidgets.QWidget] = None, *,
                  model: Optional[DataModel] = None, bus=None,
@@ -59,6 +65,12 @@ class SyncTrackPanel(QtWidgets.QWidget):
         self._sig_tags_read.connect(self._confirm_tags)
         self._sig_tags_done.connect(self._on_tags_done)
         self._sig_restored.connect(self._on_restored)
+        self._sig_phrases_planned.connect(self._confirm_phrases)
+        self._sig_phrases_written.connect(self._on_phrases_written)
+        self._sig_rb_backups.connect(self._choose_rekordbox_backup)
+        self._sig_rb_restored.connect(self._on_rekordbox_restored)
+        self._phrases_writing: Optional[str] = None   # the uid whose rekordbox phrases are being written
+        self._phrase_wave = (None, 0.0)                # the overview waveform the preview shows, and its length (s)
         self._track: Optional[TrackRow] = None
         self._source: Optional[Path] = None
 
@@ -107,7 +119,7 @@ class SyncTrackPanel(QtWidgets.QWidget):
             "Settings > Library > Serato says. The file's Serato loops and track colour are kept.</p>"))
         grid.addWidget(self.cb_serato, (len(self.tag_fields) + 1) // 2 + 1, 0, 1, 2)
         self._field_names.update({"serato_beatgrid": tr("Serato beatgrid"), "serato_markers": tr("Serato hot cues"),
-                                  "serato_markers_old": tr("Serato's old cue data"),
+                                  "serato_markers_old": tr("Serato's old hot cues (A-E)"),
                                   "serato_tempo_map": tr("Serato's tempo map")})
         self.tag_note = QtWidgets.QLabel("")
         self.tag_note.setWordWrap(True)
@@ -119,30 +131,50 @@ class SyncTrackPanel(QtWidgets.QWidget):
             "<p>Put the track's file back as a backup made before writing its tags holds it: a tag backup "
             "(.mxtags) or a copy of the whole file.</p>"))
         self.btn_restore_tags.clicked.connect(self.restore_tags)
-        tag_btns = QtWidgets.QHBoxLayout()
-        tag_btns.addWidget(self.btn_restore_tags)
-        tag_btns.addStretch(1)
+        # one above the other, the panel's width each (side by side they widened a narrow panel)
+        tag_btns = QtWidgets.QVBoxLayout()
         tag_btns.addWidget(self.btn_write_tags)
+        tag_btns.addWidget(self.btn_restore_tags)
         tags_layout = QtWidgets.QVBoxLayout(tags)
         tags_layout.addLayout(grid)
         tags_layout.addWidget(self.tag_note)
         tags_layout.addLayout(tag_btns)
 
-        rekordbox = QtWidgets.QGroupBox(tr("Rekordbox XML"))
-        rekordbox.setToolTip(tr(
+        # what is synced checked (not kept: each track starts with the XML only), then one button
+        rekordbox = QtWidgets.QGroupBox("Rekordbox")
+        self.cb_rekordbox_xml = QtWidgets.QCheckBox("Rekordbox XML")
+        self.cb_rekordbox_xml.setChecked(True)
+        self.cb_rekordbox_xml.setToolTip(tr(
             "<p>The track written into the Rekordbox XML again, as saving an edit does: its beatgrid, CUE points, "
             "JumpCUEs and values as stored now. The XML's file and its options are in Settings > Library.</p>"))
+        self.cb_rekordbox_phrases = QtWidgets.QCheckBox(tr("Phrases"))
+        self.cb_rekordbox_phrases.setToolTip(tr(
+            "<p>The track's phrases written into rekordbox's own analysis of it (the XML has no phrases), on the "
+            "beatgrid rekordbox holds: import the XML's beatgrid first. rekordbox must be closed; a preview shows "
+            "what is written, and its analysis file is copied first. The phrases' mood and names: Settings > "
+            "Library > Rekordbox.</p>"))
         self.rekordbox_note = QtWidgets.QLabel("")
         self.rekordbox_note.setWordWrap(True)
-        self.btn_rekordbox_sync = QtWidgets.QPushButton(tr("Sync to Rekordbox XML"))
-        self.btn_rekordbox_sync.setToolTip(tr("Write this track into the Rekordbox XML again."))
-        self.btn_rekordbox_sync.clicked.connect(self.sync_rekordbox)
-        rekordbox_btns = QtWidgets.QHBoxLayout()
-        rekordbox_btns.addStretch(1)
-        rekordbox_btns.addWidget(self.btn_rekordbox_sync)
+        self.phrase_note = QtWidgets.QLabel("")
+        self.phrase_note.setWordWrap(True)
+        self.phrase_note.hide()
+        self.btn_rekordbox_sync = QtWidgets.QPushButton(tr("Sync"))
+        self.btn_rekordbox_sync.setToolTip(tr("Sync what is checked: the XML at once, the phrases after a preview."))
+        self.btn_rekordbox_sync.clicked.connect(self.sync_to_rekordbox)
+        for box in (self.cb_rekordbox_xml, self.cb_rekordbox_phrases):
+            box.toggled.connect(lambda _on: self._update_rekordbox_controls())
         rekordbox_layout = QtWidgets.QVBoxLayout(rekordbox)
+        rekordbox_layout.addWidget(self.cb_rekordbox_xml)
+        rekordbox_layout.addWidget(self.cb_rekordbox_phrases)
+        rekordbox_layout.addWidget(self.btn_rekordbox_sync)
+        self.btn_rekordbox_restore = QtWidgets.QPushButton(tr("Restore from Backup..."))
+        self.btn_rekordbox_restore.setToolTip(tr(
+            "<p>Put the track's rekordbox analysis back as a backup made before writing its phrases holds it (the "
+            "track's backups, newest first). rekordbox must be closed.</p>"))
+        self.btn_rekordbox_restore.clicked.connect(self.restore_rekordbox)
+        rekordbox_layout.addWidget(self.btn_rekordbox_restore)
         rekordbox_layout.addWidget(self.rekordbox_note)
-        rekordbox_layout.addLayout(rekordbox_btns)
+        rekordbox_layout.addWidget(self.phrase_note)
         if bus is not None:
             bus.sig_rekordbox_sync_finished.connect(self._on_rekordbox_finished)
             bus.sig_rekordbox_sync_failed.connect(self._on_rekordbox_failed)
@@ -171,6 +203,8 @@ class SyncTrackPanel(QtWidgets.QWidget):
         self._update_tag_controls()
         self._set_rekordbox_note("")
         self._update_rekordbox_controls()
+        self._set_phrase_note("")
+        self._update_rekordbox_controls()
 
     def showEvent(self, event: QtGui.QShowEvent) -> None:
         super().showEvent(event)
@@ -186,15 +220,30 @@ class SyncTrackPanel(QtWidgets.QWidget):
         return bool(getattr(lib, "rekordbox_sync_enabled", False)
                     and str(getattr(lib, "rekordbox_xml_path", "") or "").strip())
 
+    def _xml_ready(self) -> bool:
+        """The XML can be synced for this track (the setting on, with a file)."""
+        return self._rekordbox_ready() and self._track is not None and bool(self._track.uid) and self._bus is not None
+
     def _update_rekordbox_controls(self) -> None:
         ready = self._rekordbox_ready()
-        self.btn_rekordbox_sync.setEnabled(ready and self._track is not None and bool(self._track.uid)
-                                           and self._bus is not None)
-        off = tr("Sync with Rekordbox XML is off, or has no file: Settings > Library > Rekordbox XML.")
+        self.cb_rekordbox_xml.setEnabled(ready)
+        phrases = (self.cb_rekordbox_phrases.isChecked() and self._source is not None and self._source.is_file()
+                   and self._phrases_writing is None)
+        self.btn_rekordbox_sync.setEnabled((self.cb_rekordbox_xml.isChecked() and self._xml_ready()) or phrases)
+        self.btn_rekordbox_restore.setEnabled(self._source is not None and self._source.is_file()
+                                              and self._phrases_writing is None)
+        off = tr("Sync with Rekordbox XML is off, or has no file: Settings > Library > Rekordbox.")
         if not ready:
             self._set_rekordbox_note(off)
         elif self.rekordbox_note.text() == off:
             self._set_rekordbox_note("")
+
+    def sync_to_rekordbox(self) -> None:
+        """What is checked synced: the XML (sync_rekordbox) and the phrases (write_phrases: after its preview)."""
+        if self.cb_rekordbox_xml.isChecked() and self._xml_ready():
+            self.sync_rekordbox()
+        if self.cb_rekordbox_phrases.isChecked():
+            self.write_phrases()
 
     def _set_rekordbox_note(self, text: str, *, error: bool = False) -> None:
         self.rekordbox_note.setText(text)
@@ -242,6 +291,168 @@ class SyncTrackPanel(QtWidgets.QWidget):
         if uid is not None and self._track is not None and self._track.uid == uid:
             self._set_rekordbox_note(tr("The Rekordbox XML could not be written: {error}").format(error=message),
                                      error=True)
+
+    # rekordbox's phrases (third_party.rekordbox_phrases): one track, from this button only
+    def _set_phrase_note(self, text: str, *, error: bool = False) -> None:
+        self.phrase_note.setText(text)
+        theme = current_theme()
+        self.phrase_note.setStyleSheet(f"color: {theme.danger if error else theme.text};")
+        self.phrase_note.setVisible(bool(text))
+
+    def write_phrases(self, analysis: Optional[StoredAnalysis] = None) -> None:
+        """The track's phrases (the deck's when it holds the track, else the stored ones, read now) written into
+        rekordbox's analysis of it, in the mood and names Settings > Library > Rekordbox says: what changes read on
+        a thread, previewed (PhraseWriteDialog: over the track's overview waveform), then written there."""
+        if self._track is None or not self._track.uid or self._source is None or self._phrases_writing:
+            return
+        uid = self._track.uid
+        if self._model_holds_track():
+            phrases, wave = list(self._model.phrases), self._model.analysis.wave
+            duration = float(self._model.analysis.duration_sec or 0.0)
+        elif analysis is None:
+            def came(read) -> None:
+                if self._track is None or self._track.uid != uid:
+                    return
+                if read is None:
+                    self._set_phrase_note(tr("The track's analysis could not be read."), error=True)
+                    return
+                self.write_phrases(read)
+
+            self._library.read(analysis_jobs.analysis, uid, done=came)
+            return
+        else:
+            phrases, wave, duration = list(analysis.phrases), analysis.wave, float(analysis.duration_sec or 0.0)
+        lib = settings_store.current().libconfig
+        mood = rekordbox_phrases.MOODS.get(str(getattr(lib, "rekordbox_phrase_mood", "mid")),
+                                           rekordbox_phrases.MOOD_MID)
+        mapping = rekordbox_phrases.phrase_map(mood, str(getattr(lib, "rekordbox_phrase_map", "")))
+        self._phrases_writing = uid
+        self._phrase_wave = (wave, duration)
+        self._update_rekordbox_controls()
+        self._set_phrase_note(tr("Reading rekordbox's analysis of the track..."))
+        threading.Thread(target=self._plan_phrases_job, args=(uid, str(self._source), phrases, mood, mapping),
+                         daemon=True).start()
+
+    def _plan_phrases_job(self, uid: str, path: str, phrases: list, mood: int, mapping: dict) -> None:
+        try:
+            self._sig_phrases_planned.emit(uid, rekordbox_phrases.plan(path, phrases, mood, mapping), "")
+        except rekordbox_phrases.RekordboxError as exc:
+            self._sig_phrases_planned.emit(uid, None, str(exc))
+        except OSError as exc:
+            self._sig_phrases_planned.emit(uid, None, tr("rekordbox's analysis file could not be read: {error}").format(
+                error=exc.strerror or exc))
+
+    def _confirm_phrases(self, uid: str, plan, error: str) -> None:
+        if error or plan is None:
+            self._phrases_writing = None
+            self._update_rekordbox_controls()
+            self._set_phrase_note(error, error=True)
+            return
+        notes = [_phrase_loss(loss) for loss in plan.losses]
+        if plan.off_grid > OFF_GRID_SEC:
+            notes.insert(0, tr("The phrases are {ms} ms off rekordbox's beats at most: its beatgrid is not the "
+                               "track's. Import the XML's beatgrid in rekordbox first, then write the phrases again."
+                               ).format(ms=int(round(plan.off_grid * 1000))))
+        wave, duration = getattr(self, "_phrase_wave", (None, 0.0))
+        dialog = PhraseWriteDialog(self._source.name if self._source else "", plan, wave, duration, notes,
+                                   type(self)._phrase_backup, self)
+        if dialog.exec() != QtWidgets.QDialog.Accepted:
+            self._phrases_writing = None
+            self._update_rekordbox_controls()
+            self._set_phrase_note("")
+            return
+        type(self)._phrase_backup = dialog.backup()
+        self._set_phrase_note(tr("Writing the phrases..."))
+        threading.Thread(target=self._write_phrases_job, args=(uid, plan, dialog.backup()), daemon=True).start()
+
+    def _write_phrases_job(self, uid: str, plan, backup: str = "ext") -> None:
+        try:
+            made = rekordbox_phrases.write(plan, backup)
+            self._sig_phrases_written.emit(uid, str(made) if made is not None else "", "")
+        except rekordbox_phrases.RekordboxError as exc:
+            self._sig_phrases_written.emit(uid, "", str(exc))
+        except OSError as exc:
+            self._sig_phrases_written.emit(uid, "", tr("rekordbox's analysis file could not be written: {error}").format(
+                error=exc.strerror or exc))
+
+    def _on_phrases_written(self, uid: str, backup: str, error: str) -> None:
+        self._phrases_writing = None
+        self._update_rekordbox_controls()
+        if self._track is not None and self._track.uid == uid:
+            note = error or (tr("The phrases were written into rekordbox's analysis.\nIts backup: {path}").format(
+                path=breakable_path(backup)) if backup else tr("The phrases were written into rekordbox's analysis."))
+            self._set_phrase_note(note, error=bool(error))
+        elif error:
+            QtWidgets.QMessageBox.warning(self, tr("Write Phrases to rekordbox"), error)
+
+    def restore_rekordbox(self) -> None:
+        """One of the track's rekordbox backups (third_party.rekordbox_phrases.backups_of) chosen and put back after a
+        confirmation; its analysis folder found and the files written on threads of their own."""
+        if self._track is None or self._source is None or self._phrases_writing:
+            return
+        uid, path = self._track.uid, str(self._source)
+        self._phrases_writing = uid
+        self._update_rekordbox_controls()
+        self._set_phrase_note(tr("Reading rekordbox's analysis of the track..."))
+
+        def find() -> None:
+            try:
+                folder = rekordbox_phrases.analysis_folder(path)
+                self._sig_rb_backups.emit(uid, folder, rekordbox_phrases.backups_of(folder), "")
+            except rekordbox_phrases.RekordboxError as exc:
+                self._sig_rb_backups.emit(uid, None, [], str(exc))
+            except OSError as exc:
+                self._sig_rb_backups.emit(uid, None, [], str(exc.strerror or exc))
+
+        threading.Thread(target=find, daemon=True).start()
+
+    def _choose_rekordbox_backup(self, uid: str, folder, backups: list, error: str) -> None:
+        def done(note: str = "", failed: bool = False) -> None:
+            self._phrases_writing = None
+            self._update_rekordbox_controls()
+            self._set_phrase_note(note, error=failed)
+
+        if error or folder is None:
+            done(error, True)
+            return
+        if not backups:
+            done(tr("There is no backup of the track's rekordbox analysis."))
+            return
+        names = [_rekordbox_backup_name(b) for b in backups]
+        chosen, ok = QtWidgets.QInputDialog.getItem(self, tr("Restore from Backup"),
+                                                    tr("The backup to put back:"), names, 0, False)
+        if not ok:
+            done()
+            return
+        backup = backups[names.index(chosen)]
+        answer = QtWidgets.QMessageBox.question(
+            self, tr("Restore from Backup"),
+            tr("Put the track's rekordbox analysis back as the backup of {when} holds it?").format(when=chosen),
+            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No, QtWidgets.QMessageBox.No)
+        if answer != QtWidgets.QMessageBox.Yes:
+            done()
+            return
+        self._set_phrase_note(tr("Putting the files back..."))
+
+        def put() -> None:
+            try:
+                self._sig_rb_restored.emit(uid, rekordbox_phrases.restore(backup, folder), "")
+            except rekordbox_phrases.RekordboxError as exc:
+                self._sig_rb_restored.emit(uid, [], str(exc))
+            except OSError as exc:
+                self._sig_rb_restored.emit(uid, [], tr("rekordbox's analysis file could not be written: {error}")
+                                           .format(error=exc.strerror or exc))
+
+        threading.Thread(target=put, daemon=True).start()
+
+    def _on_rekordbox_restored(self, uid: str, names: list, error: str) -> None:
+        self._phrases_writing = None
+        self._update_rekordbox_controls()
+        note = error or tr("Put back as the backup holds it: {files}").format(files=", ".join(names))
+        if self._track is not None and self._track.uid == uid:
+            self._set_phrase_note(note, error=bool(error))
+        elif error:
+            QtWidgets.QMessageBox.warning(self, tr("Restore from Backup"), error)
 
     # File tags
     def _tag_format(self) -> Optional[str]:
@@ -367,7 +578,8 @@ class SyncTrackPanel(QtWidgets.QWidget):
         points) as ``lib`` (the libconfig: its serato_ options; None: the defaults) says, in Serato's time of the
         file (third_party.serato.time_offset): the beatgrid, the hot cues over the file's own Markers2 (its loops
         and colour kept; its hot cues in the slots left kept as the options say: "kept" among the losses then),
-        its old Markers_ emptied when it has one; returns what Serato loses (third_party.serato's losses)."""
+        the old Markers_ of the same hot cues A-E (its loops kept; a FLAC's emptied when it has one); returns what
+        Serato loses (third_party.serato's losses)."""
         beats, rows, groups, cue_points = marks
         source = getattr(lib, "serato_hot_cues", "jumpcues")
         keep, bpm_lock = getattr(lib, "serato_keep_cues", True), getattr(lib, "serato_bpm_lock", True)
@@ -384,7 +596,11 @@ class SyncTrackPanel(QtWidgets.QWidget):
         kept = [c for c in cues if c.kept]
         if kept:
             cue_losses = cue_losses + ["kept:" + "".join("ABCDEFGH"[c.slot] for c in kept)]
-        if now.get("serato_markers_old"):
+        old = now.get("serato_markers_old", "").encode("latin-1")
+        kind = {"mp4": "mp4", "id3": "id3", "wav": "id3", "aiff": "id3"}.get(tag_format(file_path) or "")
+        if kind is not None:    # the old hot cues (A-E) older Serato versions read: as Serato writes them
+            values["serato_markers_old"] = serato.build_markers_old(cues, kind, old, values["serato_markers"])
+        elif old:               # FLAC: Serato keeps no Markers_ there; one found is emptied (read before Markers2)
             values["serato_markers_old"] = ""
         return losses + cue_losses
 
@@ -414,9 +630,12 @@ class SyncTrackPanel(QtWidgets.QWidget):
                 there = " / ".join(v.strip() for v in own[2] if v.strip())
                 warning = tr("Also written to {place}, the field DJ software (rekordbox ...) reads. It holds "
                              "now: {value}").format(place=own[1], value=there or tr("(empty)"))
-            if field == "serato_markers_old":
+            if field == "serato_markers_old" and not new:
                 warning = tr("Serato reads this before the hot cues written here: it is emptied (its loops and "
                              "names are in the hot cues' tag too).")
+            elif field == "serato_markers_old":
+                warning = tr("Older Serato versions read the hot cues from here: the first five (A-E), without "
+                             "names; the file's old loops kept.")
             changes.append((field, self._field_names.get(field, field), olds, new, warning))
         if not changes:
             self._tags_writing = None
@@ -484,25 +703,26 @@ class SyncTrackPanel(QtWidgets.QWidget):
             self._bus.sig_rekordbox_sync_track_requested.emit(uid)   # the file's size in the XML
 
     def restore_tags(self) -> None:
-        """A backup chosen (core.tags.backup's folder) and the track's file put back as it holds it, after a
-        confirmation, on a thread of its own."""
+        """One of the file's backups (core.tags.backup.backups_of: the track's file's, newest first) chosen, and the
+        file put back as it holds it after a confirmation, on a thread of its own."""
         if self._track is None or self._source is None or not self._source.is_file() or self._tags_writing:
             return
-        start = tag_backup.folder()
-        path, _ = QtWidgets.QFileDialog.getOpenFileName(
-            self, tr("Restore from Backup"), str(start if start.is_dir() else self._source.parent),
-            tr("Tag backups (*.mxtags);;All files (*)"))
-        if not path:
-            return
         try:
-            name = tag_backup.backed_up_name(path)
-        except (tag_backup.BackupError, OSError) as exc:
-            QtWidgets.QMessageBox.warning(self, tr("Restore from Backup"), str(exc))
+            backups = tag_backup.backups_of(self._source)
+        except OSError as exc:
+            QtWidgets.QMessageBox.warning(self, tr("Restore from Backup"), str(exc.strerror or exc))
             return
-        question = tr("Put '{file}' back as the backup '{backup}' holds it?").format(
-            file=self._source.name, backup=Path(path).name)
-        if name and name != self._source.name:
-            question += "\n" + tr("The backup was made of '{name}'.").format(name=name)
+        if not backups:
+            self._set_tag_note(tr("There is no backup of this file's tags."))
+            return
+        names = [_tag_backup_name(b) for b in backups]
+        chosen, ok = QtWidgets.QInputDialog.getItem(self, tr("Restore from Backup"), tr("The backup to put back:"),
+                                                    names, 0, False)
+        if not ok:
+            return
+        path = str(backups[names.index(chosen)])
+        question = tr("Put '{file}' back as the backup of {when} holds it?").format(file=self._source.name,
+                                                                                    when=chosen)
         answer = QtWidgets.QMessageBox.question(self, tr("Restore from Backup"), question,
                                                 QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
                                                 QtWidgets.QMessageBox.No)
@@ -562,7 +782,10 @@ def _serato_shown(field: str, text: str) -> str:
         return tr_n("{count} tempo segment from {start}, {bpm} BPM at the end",
                     "{count} tempo segments from {start}, {bpm} BPM at the end", len(segments)).format(
             count=len(segments), start=_mmss(anchor), bpm=f"{segments[-1][1]:.2f}")
-    return tr("Serato's old cue data") if text else ""
+    if field == "serato_markers_old" and raw:
+        cues = serato.parse_markers_old(raw)
+        return "; ".join(f"{'ABCDE'[c.slot]} {_mmss(c.time_sec)}" for c in cues) or tr("no hot cues")
+    return ""
 
 
 def _mmss(seconds: float) -> str:
@@ -585,6 +808,176 @@ def _serato_losses(field: str, losses: list[str]) -> list[str]:
             out.append(tr("Serato has 8 hot cues: the CUE points with no slot left are left out."))
         out += [_kept_note(loss[len("kept:"):]) for loss in losses if loss.startswith("kept:")]
     return out
+
+
+def _made_when(day: str, stamp: str) -> str:
+    """A backup's day folder (YYYYMMDD) and time (HHMMSS) as a date and time ("" when they are not those)."""
+    if len(day) == 8 and len(stamp) >= 6 and (day + stamp[:6]).isdigit():
+        return f"{day[:4]}-{day[4:6]}-{day[6:8]} {stamp[:2]}:{stamp[2:4]}:{stamp[4:6]}"
+    return ""
+
+
+def _rekordbox_backup_name(backup: Path) -> str:
+    """A rekordbox backup (rekordbox_phrases.backups_of's) as the restore lists it: when it was made, and what it is."""
+    parts = backup.name.split(" ")
+    when = _made_when(backup.parent.name, parts[1] if len(parts) > 1 else "") or backup.name
+    what = tr("The track's analysis folder") if backup.is_dir() else tr("The analysis file (.EXT)")
+    return f"{when} · {what}"
+
+
+def _tag_backup_name(backup: Path) -> str:
+    """A tag backup (core.tags.backup.backups_of's) as the restore lists it: when it was made, and what it holds."""
+    when = _made_when(backup.parent.name, backup.name.rsplit(" ", 1)[-1]) or backup.name
+    what = tr("The tags only") if backup.suffix.lower() == tag_backup.SUFFIX else tr("The whole file")
+    return f"{when} · {what}"
+
+
+OFF_GRID_SEC = 0.06     # a phrase this far from rekordbox's beat: its beatgrid is not the track's (a decoder's offset
+                        # is ~0.02-0.05 s)
+
+
+def _phrase_loss(loss: str) -> str:
+    """What rekordbox's phrases cannot hold (third_party.rekordbox_phrases' losses), said."""
+    if loss.startswith("continued:"):
+        return tr("{label} goes on with the phrase before it (Settings > Library > Rekordbox).").format(
+            label=loss[len("continued:"):])
+    return tr("The mood has no more verses: the verse runs past its last verse are its last verse.")
+
+
+class PhraseStrip(QtWidgets.QWidget):
+    """A track's overview waveform (``wave``: an RGB image, columns over ``duration`` s) with phrases under it: each
+    (name, start s) to the next one's start, the last to ``end`` (s), coloured as the phrase labels are."""
+
+    WAVE_HEIGHT, BAR_HEIGHT = 56, 24
+    _COLORS = {"Intro": "INTRO", "Verse": "VERSE", "Up": "VERSE", "Down": "BRIDGE", "Bridge": "BRIDGE",
+               "Chorus": "CHORUS", "Outro": "OUTRO"}
+
+    def __init__(self, wave: Optional[QtGui.QImage], duration: float, phrases: list[tuple[str, float]], end: float,
+                 parent: Optional[QtWidgets.QWidget] = None) -> None:
+        super().__init__(parent)
+        self._wave, self._duration, self._phrases, self._end = wave, max(float(duration), 1e-6), phrases, end
+        self.setMinimumHeight(self.WAVE_HEIGHT + self.BAR_HEIGHT + 2)
+        self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+
+    def _color(self, name: str) -> QtGui.QColor:
+        from core.marks.phrases import phrase_color
+        label = next((label for prefix, label in self._COLORS.items() if name.startswith(prefix)), "OUTRO")
+        return QtGui.QColor(*phrase_color(label))
+
+    def paintEvent(self, _event) -> None:
+        theme = current_theme()
+        painter = QtGui.QPainter(self)
+        width = self.width()
+        wave_rect = QtCore.QRect(0, 0, width, self.WAVE_HEIGHT)
+        painter.fillRect(wave_rect, QtGui.QColor(theme.base))
+        if self._wave is not None:
+            painter.drawImage(wave_rect, self._wave)
+        bar_top = self.WAVE_HEIGHT + 2
+        painter.fillRect(QtCore.QRect(0, bar_top, width, self.BAR_HEIGHT), QtGui.QColor(theme.base))
+        x = lambda t: int(round(width * min(max(t, 0.0), self._duration) / self._duration))   # noqa: E731
+        ends = [start for _name, start in self._phrases[1:]] + [self._end]
+        for (name, start), stop in zip(self._phrases, ends):
+            rect = QtCore.QRect(x(start), bar_top, max(1, x(stop) - x(start)), self.BAR_HEIGHT)
+            painter.fillRect(rect, self._color(name))
+            painter.setPen(QtGui.QColor(theme.base))
+            painter.drawLine(rect.topLeft(), rect.bottomLeft())
+            text = painter.fontMetrics().elidedText(name, QtCore.Qt.ElideRight, rect.width() - 4)
+            painter.setPen(QtGui.QColor("#ffffff"))
+            painter.drawText(rect.adjusted(3, 0, -1, 0), QtCore.Qt.AlignVCenter | QtCore.Qt.AlignLeft, text)
+        if not self._phrases:           # rekordbox has none (no phrase analysis yet)
+            painter.setPen(QtGui.QColor(theme.text_dim))
+            painter.drawText(QtCore.QRect(6, bar_top, width - 12, self.BAR_HEIGHT),
+                             QtCore.Qt.AlignVCenter | QtCore.Qt.AlignLeft, tr("(none)"))
+        painter.end()
+
+
+def _wave_image(wave, duration: float) -> Optional[QtGui.QImage]:
+    """The overview waveform as the overview draws it (Settings > View's style and bands), as an image."""
+    if wave is None or duration <= 0:
+        return None
+    from views.render.wave import band_ranges, render_wave_overview
+    view = settings_store.current().viewconfig
+    columns = render_wave_overview(wave, band_ranges(view), view.waveform_style, PhraseStrip.WAVE_HEIGHT,
+                                   duration_sec=duration, columns=1200)
+    pixels = np.ascontiguousarray(columns.transpose(1, 0, 2)[::-1])     # rows top down, bars rising from the bottom
+    image = QtGui.QImage(pixels.data, pixels.shape[1], pixels.shape[0], pixels.strides[0], QtGui.QImage.Format_RGB888)
+    return image.copy()
+
+
+class PhraseWriteDialog(QtWidgets.QDialog):
+    """Write Phrases to rekordbox's preview: the waveform with rekordbox's phrases now, an arrow, the waveform with
+    the phrases written (third_party.rekordbox_phrases.PhrasePlan), the notes (what rekordbox cannot hold, a
+    beatgrid that is not the track's) and the backup made first (none, the .EXT, the track's analysis folder);
+    written when accepted."""
+
+    def __init__(self, file_name: str, plan, wave, duration: float, notes: list[str], backup: str = "ext",
+                 parent: Optional[QtWidgets.QWidget] = None) -> None:
+        super().__init__(parent)
+        self.setWindowTitle(tr("Write Phrases to rekordbox"))
+        theme = current_theme()
+        image = _wave_image(wave, duration)
+        span = duration if image is not None else plan.length
+        layout = QtWidgets.QVBoxLayout(self)
+        intro = QtWidgets.QLabel(tr("rekordbox's phrases of '{file}' change:").format(file=file_name))
+        intro.setWordWrap(True)
+        layout.addWidget(intro)
+        arrow = QtGui.QPixmap(str(resource_path("assets/icons/arrow_down.png")))
+        for title, rows, end in ((tr("rekordbox now"), plan.now, plan.now_end), (None, None, None),
+                                 (tr("Written"), plan.after, plan.after_end)):
+            if title is None:
+                mark = QtWidgets.QLabel()
+                mark.setPixmap(arrow.scaled(20, 20, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation))
+                mark.setAlignment(QtCore.Qt.AlignHCenter)
+                layout.addWidget(mark)
+                continue
+            heading = QtWidgets.QLabel(title)
+            font = heading.font()
+            font.setBold(True)
+            heading.setFont(font)
+            layout.addWidget(heading)
+            strip = PhraseStrip(image, span, rows, end)
+            # each phrase with its start, as a list (the strip's names are cut where a phrase is short)
+            strip.setToolTip("<p>" + ", ".join(f"{name} {_mmss(t)[:-2]}" for name, t in rows) + "</p>"
+                             if rows else tr("(none)"))
+            layout.addWidget(strip)
+        for text in notes:
+            note = QtWidgets.QLabel(text)
+            note.setWordWrap(True)
+            note.setStyleSheet(f"color: {theme.warning};")
+            layout.addWidget(note)
+        box = QtWidgets.QGroupBox(tr("Backup before writing"))
+        column = QtWidgets.QVBoxLayout(box)
+        self._choices: dict[str, QtWidgets.QRadioButton] = {}
+        for kind, text, tip in (
+            ("", tr("None"), ""),
+            ("ext", tr("The analysis file (.EXT)"), tr("The one file the phrases are written into.")),
+            ("folder", tr("The track's analysis folder"),
+             tr("All of rekordbox's analysis files of the track (.DAT, .EXT, .2EX, .3EX)."))):
+            radio = QtWidgets.QRadioButton(text)
+            radio.setToolTip(tip)
+            radio.setChecked(kind == backup)
+            column.addWidget(radio)
+            self._choices[kind] = radio
+        if not any(r.isChecked() for r in self._choices.values()):
+            self._choices["ext"].setChecked(True)
+        folder = rekordbox_phrases.backup_folder()
+        where = QtWidgets.QLabel(tr("Kept in {folder}; copy it back to undo the write.").format(
+            folder=breakable_path(str(folder))))
+        where.setWordWrap(True)
+        where.setToolTip(str(folder))
+        column.addWidget(where)
+        layout.addWidget(box)
+        layout.addStretch(1)
+        buttons = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Cancel)
+        buttons.addButton(tr("Write Phrases"), QtWidgets.QDialogButtonBox.AcceptRole)
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+        self.resize(760, 520)
+
+    def backup(self) -> str:
+        """The backup asked for (rekordbox_phrases.BACKUP_KINDS)."""
+        return next(kind for kind, radio in self._choices.items() if radio.isChecked())
 
 
 def _kept_note(slots: str) -> str:

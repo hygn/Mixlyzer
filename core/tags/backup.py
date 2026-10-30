@@ -14,6 +14,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import shutil
 import struct
 import tempfile
@@ -127,6 +128,32 @@ def backed_up_name(backup: str | Path) -> str:
     """The file name a tag block backup was made of ("" for a whole file's copy: its own name)."""
     backup = Path(backup)
     return _read_tag_block(backup)[0].get("name", "") if backup.suffix.lower() == SUFFIX else ""
+
+
+def backups_of(path: str | Path) -> list[Path]:
+    """The backups made of the file ``path`` names, newest first: its tag block backups (by the name they hold) and
+    its whole copies ("<stem> <HHMMSS>[-n]<ext>" in a day's folder); links and backups not read left out."""
+    source = Path(path)
+    root = folder()
+    if not root.is_dir():
+        return []
+    copy = re.compile(re.escape(source.stem) + r" \d{6}(-\d+)?" + re.escape(source.suffix) + r"$", re.IGNORECASE)
+    found = []
+    for day in root.iterdir():
+        if not day.is_dir() or day.is_symlink():
+            continue
+        for entry in day.iterdir():
+            if entry.is_symlink() or not entry.is_file() or not entry.name.startswith(source.stem + " "):
+                continue
+            if entry.suffix.lower() == SUFFIX:
+                try:
+                    if backed_up_name(entry) == source.name:
+                        found.append(entry)
+                except (BackupError, OSError):
+                    continue
+            elif copy.match(entry.name):
+                found.append(entry)
+    return sorted(found, key=lambda entry: (entry.parent.name, entry.name.rsplit(" ", 1)[-1]), reverse=True)
 
 
 def restore(backup: str | Path, path: str | Path) -> None:

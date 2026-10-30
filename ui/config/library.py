@@ -17,10 +17,42 @@ from PySide6.QtWidgets import (
 )
 
 from core.tieups.domain import TITLE_LANGUAGES
+from third_party import rekordbox_phrases
+from ui.config.backups import build_backups_group
 from ui.config.dialogs import LibrarySyncProgressDialog, RekordboxSyncProgressDialog
 from ui.config.scroll import groups_page
 from system.i18n import tr
 from system.os_support import path_key
+
+
+def phrase_mood(dialog) -> int:
+    return rekordbox_phrases.MOODS.get(str(dialog.cmb_rekordbox_phrase_mood.currentData() or "mid"),
+                                       rekordbox_phrases.MOOD_MID)
+
+
+def phrase_choices(dialog) -> dict[str, str]:
+    """Each label's phrase as the combo boxes hold it (a combo not filled yet left out)."""
+    return {label: str(combo.currentData() or "") for label, combo in dialog.rekordbox_phrase_combos.items()
+            if combo.count()}
+
+
+def set_phrase_choices(dialog, choices: dict[str, str]) -> None:
+    """The label combo boxes filled with the mood's phrases, each set to ``choices``' where the mood has it, else the
+    mood's default (rekordbox_phrases.phrase_map)."""
+    mood = phrase_mood(dialog)
+    mapping = rekordbox_phrases.phrase_map(mood, rekordbox_phrases.map_text(
+        {**rekordbox_phrases.DEFAULT_MAP[mood], **choices}))
+    for label, combo in dialog.rekordbox_phrase_combos.items():
+        combo.blockSignals(True)
+        combo.clear()
+        for choice in rekordbox_phrases.CHOICES[mood]:
+            name = rekordbox_phrases.choice_name(mood, choice)
+            if choice == rekordbox_phrases.BY_RUN:
+                name = tr("{verses}, the next one each run of verses").format(verses=name)
+            combo.addItem(name, choice)
+        combo.addItem(tr("Go on with the phrase before"), "")
+        combo.setCurrentIndex(max(0, combo.findData(mapping[label])))
+        combo.blockSignals(False)
 
 
 def _tieup_language_combo(first: str) -> QtWidgets.QComboBox:
@@ -176,6 +208,25 @@ def build_library_tab(dialog) -> None:
     f_rekordbox.addRow("", dialog.btn_rekordbox_sync_now)
     f_rekordbox.addRow(dialog.lbl_rekordbox_note)
 
+    grp_phrases = QGroupBox(tr("Rekordbox Phrases"))
+    grp_phrases.setToolTip(tr(
+        "<p>How the Sync tab writes the phrases into rekordbox's analysis: rekordbox's mood, and the phrase each "
+        "label becomes. rekordbox's phrases have fixed names per mood.</p>"))
+    f_phrases = QFormLayout(grp_phrases)
+    dialog.cmb_rekordbox_phrase_mood = QtWidgets.QComboBox()
+    for value, text in (("high", tr("High (Intro, Up, Down, Chorus, Outro)")),
+                        ("mid", tr("Mid (Intro, Verse 1-6, Bridge, Chorus, Outro)")),
+                        ("low", tr("Low (Intro, Verse 1-2, Bridge, Chorus, Outro)"))):
+        dialog.cmb_rekordbox_phrase_mood.addItem(text, value)
+    f_phrases.addRow(tr("Mood"), dialog.cmb_rekordbox_phrase_mood)
+    dialog.rekordbox_phrase_combos = {}
+    for label in rekordbox_phrases.LABELS:
+        combo = QtWidgets.QComboBox()
+        dialog.rekordbox_phrase_combos[label] = combo
+        f_phrases.addRow(label, combo)      # stored data: the labels as they are
+    dialog.cmb_rekordbox_phrase_mood.currentIndexChanged.connect(
+        lambda _i: set_phrase_choices(dialog, phrase_choices(dialog)))
+
     grp_serato = QGroupBox(tr("Serato"))
     f_serato = QFormLayout(grp_serato)
     dialog.cmb_serato_hot_cues = QtWidgets.QComboBox()
@@ -206,7 +257,12 @@ def build_library_tab(dialog) -> None:
     dialog.library_tabs = QTabWidget(dialog.tab_lib)
     dialog.library_tabs.addTab(groups_page(grp_library), tr("General"))
     dialog.library_tabs.addTab(groups_page(grp_database, grp_backup), tr("Database"))
-    dialog.library_tabs.addTab(groups_page(grp_rekordbox), tr("Rekordbox XML"))
+    backups_page = groups_page(build_backups_group(dialog))
+    dialog.library_tabs.addTab(backups_page, tr("Backups"))
+    # read when shown (the files change while the dialog is closed)
+    dialog.library_tabs.currentChanged.connect(
+        lambda i: dialog.refresh_file_backups() if dialog.library_tabs.widget(i) is backups_page else None)
+    dialog.library_tabs.addTab(groups_page(grp_rekordbox, grp_phrases), "Rekordbox")
     dialog.library_tabs.addTab(groups_page(grp_serato), tr("Serato"))
     dialog.library_tabs.addTab(groups_page(grp_advanced), tr("Advanced"))
     root = QtWidgets.QVBoxLayout(dialog.tab_lib)
