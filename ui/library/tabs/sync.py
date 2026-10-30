@@ -44,8 +44,6 @@ class SyncTrackPanel(QtWidgets.QWidget):
     _sig_phrases_written = QtCore.Signal(str, str, str)      # the track's uid, the backup made, the error ("": written)
     _sig_rb_backups = QtCore.Signal(str, object, object, str)   # the uid, its analysis folder, its backups, the error
     _sig_rb_restored = QtCore.Signal(str, object, str)          # the uid, the names put back, the error ("": put back)
-    _backup = "tags"     # the backup the last confirmation asked for (the session's: the next one's choice)
-    _phrase_backup = "ext"   # the same for rekordbox's phrases (rekordbox_phrases.BACKUP_KINDS)
 
     def __init__(self, library: LibraryService, parent: Optional[QtWidgets.QWidget] = None, *,
                  model: Optional[DataModel] = None, bus=None,
@@ -140,7 +138,7 @@ class SyncTrackPanel(QtWidgets.QWidget):
         tags_layout.addWidget(self.tag_note)
         tags_layout.addLayout(tag_btns)
 
-        # what is synced checked (not kept: each track starts with the XML only), then one button
+        # what is synced checked (kept in deck.json as last checked), then one button
         rekordbox = QtWidgets.QGroupBox("Rekordbox")
         self.cb_rekordbox_xml = QtWidgets.QCheckBox("Rekordbox XML")
         self.cb_rekordbox_xml.setChecked(True)
@@ -189,6 +187,35 @@ class SyncTrackPanel(QtWidgets.QWidget):
         root = QtWidgets.QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
         root.addWidget(scroll_page(body), 1)
+        self._show_choices()
+        for box in (*self.tag_fields.values(), self.cb_comment_tieups, self.cb_serato, self.cb_rekordbox_xml,
+                    self.cb_rekordbox_phrases):
+            box.toggled.connect(lambda _on: self._keep_choices())
+
+    # what is checked and the backups asked for, as last made (deck.json: deckconfig's sync_ / _backup values)
+    def _show_choices(self) -> None:
+        deck = settings_store.current().deckconfig
+        checked = set(getattr(deck, "sync_tag_fields", ()) or ())
+        for field, box in self.tag_fields.items():
+            box.setChecked(field in checked)
+        self.cb_comment_tieups.setChecked("comment_tieups" in checked)
+        self.cb_serato.setChecked("serato" in checked)
+        self.cb_rekordbox_xml.setChecked(bool(getattr(deck, "sync_rekordbox_xml", True)))
+        self.cb_rekordbox_phrases.setChecked(bool(getattr(deck, "sync_rekordbox_phrases", False)))
+
+    def _keep_choices(self) -> None:
+        deck = settings_store.current().deckconfig
+        deck.sync_tag_fields = ([f for f, box in self.tag_fields.items() if box.isChecked()]
+                                + ["comment_tieups"] * self.cb_comment_tieups.isChecked()
+                                + ["serato"] * self.cb_serato.isChecked())
+        deck.sync_rekordbox_xml = self.cb_rekordbox_xml.isChecked()
+        deck.sync_rekordbox_phrases = self.cb_rekordbox_phrases.isChecked()
+        settings_store.deck_changed()
+
+    @staticmethod
+    def _keep_backup(name: str, kind: str) -> None:
+        setattr(settings_store.current().deckconfig, name, kind)
+        settings_store.deck_changed()
 
     def track_uid(self) -> Optional[str]:
         return self._track.uid if self._track is not None else None
@@ -355,13 +382,13 @@ class SyncTrackPanel(QtWidgets.QWidget):
                                ).format(ms=int(round(plan.off_grid * 1000))))
         wave, duration = getattr(self, "_phrase_wave", (None, 0.0))
         dialog = PhraseWriteDialog(self._source.name if self._source else "", plan, wave, duration, notes,
-                                   type(self)._phrase_backup, self)
+                                   str(getattr(settings_store.current().deckconfig, "phrase_backup", "ext")), self)
         if dialog.exec() != QtWidgets.QDialog.Accepted:
             self._phrases_writing = None
             self._update_rekordbox_controls()
             self._set_phrase_note("")
             return
-        type(self)._phrase_backup = dialog.backup()
+        self._keep_backup("phrase_backup", dialog.backup())
         self._set_phrase_note(tr("Writing the phrases..."))
         threading.Thread(target=self._write_phrases_job, args=(uid, plan, dialog.backup()), daemon=True).start()
 
@@ -644,13 +671,14 @@ class SyncTrackPanel(QtWidgets.QWidget):
             notes += [_kept_note(loss[len("kept:"):]) for loss in losses if loss.startswith("kept:")]
             self._set_tag_note("\n".join(notes))
             return
-        dialog = TagWriteDialog(Path(file_path).name, changes, type(self)._backup, self)
+        dialog = TagWriteDialog(Path(file_path).name, changes,
+                                str(getattr(settings_store.current().deckconfig, "tag_backup", "tags")), self)
         if dialog.exec() != QtWidgets.QDialog.Accepted:
             self._tags_writing = None
             self._update_tag_controls()
             self._set_tag_note("")
             return
-        type(self)._backup = dialog.backup()
+        self._keep_backup("tag_backup", dialog.backup())
         self._set_tag_note(tr("Writing the tags..."))
         places = dialog.places() if plan is not None else None
         threading.Thread(target=self._write_tags_job,

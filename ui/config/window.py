@@ -223,7 +223,6 @@ class SettingsDialog(
         p, deck = cfg.playbackconfig, cfg.deckconfig
         self.ed_metronome_wav_path.setText(deck.metronome_wav_path)
         self.sp_metronome_offset_msec.setValue(float(deck.metronome_offset_msec))
-        self.sp_default_volume_percent.setValue(int(p.default_volume_percent))
         self.sp_click_down_volume.setValue(int(deck.metronome_downbeat_volume_percent))
         self.sp_click_down_pitch.setValue(float(deck.metronome_downbeat_pitch_semitones))
         self.sp_click_beat_volume.setValue(int(deck.metronome_beat_volume_percent))
@@ -382,7 +381,6 @@ class SettingsDialog(
                 phrase_labels=self._get_phrase_label_names(),
             ),
             playbackconfig=playbackconfig(
-                default_volume_percent=int(self.sp_default_volume_percent.value()),
                 output_clip=self.clip_master.value(),
                 audio_engine=str(self.cb_audio_engine.currentData() or "native"),
                 native_buffer_ms=int(self.sp_native_buffer_ms.value()),

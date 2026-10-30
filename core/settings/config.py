@@ -171,11 +171,20 @@ class deckconfig:
     mix_audio: bool
     mix_match_all: bool
     mix_tempo_range: float
+    # the channel fader where it was last (0 .. 1: its position, the trim and its curve after it)
+    volume_position: float
+    # the Sync tab's choices as last made: Write Tags' fields checked (core.tags.writer's, "comment_tieups" the
+    # tie-ups after the comment, "serato" Serato's tags), its backup ("" none, "tags", "file"); Rekordbox's XML and
+    # phrases checked, the phrases' backup (third_party.rekordbox_phrases.BACKUP_KINDS)
+    sync_tag_fields: list[str]
+    tag_backup: str
+    sync_rekordbox_xml: bool
+    sync_rekordbox_phrases: bool
+    phrase_backup: str
 
 
 @dataclass
 class playbackconfig:
-    default_volume_percent: int
     # the master's last stage, keeping it at 0 dBFS at most (the native engine's mixer::Clip; the headphones' and
     # the booth's are their outputconfig's): a hard clip, a tanh soft clip, or a limiter (1 ms late: its lookahead)
     output_clip: Literal["tanh", "hard", "limiter"]
@@ -535,9 +544,14 @@ def default_cfg():
         mix_audio=True,
         mix_match_all=True,
         mix_tempo_range=8.0,
+        volume_position=1.0,
+        sync_tag_fields=["title", "artist", "album", "comment"],
+        tag_backup="tags",
+        sync_rekordbox_xml=True,
+        sync_rekordbox_phrases=False,
+        phrase_backup="ext",
     )
     pcfg = playbackconfig(
-        default_volume_percent=100,
         output_clip="tanh",
         audio_engine="native",
         native_buffer_ms=20,

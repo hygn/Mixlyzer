@@ -191,19 +191,6 @@ def _main_output_groups(dialog) -> tuple[QGroupBox, QGroupBox]:
     return grp_main, grp_master
 
 
-def _mixer_group(dialog) -> QGroupBox:
-    """Mixer: the volume at the start (the channel's other controls are the main screen's)."""
-    dialog.sp_default_volume_percent = QSpinBox()
-    dialog.sp_default_volume_percent.setRange(0, 100)
-    dialog.sp_default_volume_percent.setSingleStep(1)
-    dialog.sp_default_volume_percent.setToolTip(tr("Volume slider position at startup."))
-
-    grp_mixer = QGroupBox(tr("Channel"))
-    f_mixer = QFormLayout(grp_mixer)
-    f_mixer.addRow(tr("Default volume (%)"), dialog.sp_default_volume_percent)
-    return grp_mixer
-
-
 def _booth_and_headphones_mix_groups(dialog) -> tuple[QGroupBox, QGroupBox]:
     """The booth's level and EQ (a DJ mixer's BOOTH knobs: set for the room), the headphones' MONO SPLIT."""
     def db_spin(low: float, high: float, tip: str) -> QDoubleSpinBox:
@@ -308,11 +295,10 @@ def _metronome_group(dialog) -> QGroupBox:
 
 
 def build_playback_tab(dialog) -> None:
-    """Settings > Audio: its pages (Overview, Engine, Main output, Headphones, Booth, Mixer, Metronome)."""
+    """Settings > Audio: its pages (Overview, Engine, Main output, Headphones, Booth, Metronome)."""
     dialog.tab_playback = QWidget()
     grp_main, grp_master = _main_output_groups(dialog)
     grp_engine = _engine_group(dialog)     # its Advanced holds the other engine's buffer slot (made above)
-    grp_mixer = _mixer_group(dialog)
     grp_booth_mix, grp_hp_mix = _booth_and_headphones_mix_groups(dialog)
     _aux_output_groups(dialog)
     dialog.set_audio_engine(native=False, devices=None)
@@ -325,7 +311,6 @@ def build_playback_tab(dialog) -> None:
     dialog.audio_tabs.addTab(groups_page(grp_main, grp_master), tr("Main output"))
     dialog.audio_tabs.addTab(groups_page(dialog.grp_output_headphones, grp_hp_mix), tr("Headphones"))
     dialog.audio_tabs.addTab(groups_page(dialog.grp_output_booth, grp_booth_mix), tr("Booth"))
-    dialog.audio_tabs.addTab(groups_page(grp_mixer), tr("Mixer"))
     dialog.audio_tabs.addTab(groups_page(grp_metronome), tr("Metronome"))
     root = QVBoxLayout(dialog.tab_playback)
     root.addWidget(dialog.audio_tabs)

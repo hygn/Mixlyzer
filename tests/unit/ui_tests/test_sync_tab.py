@@ -21,6 +21,7 @@ from core.analysis_library import jobs as analysis_jobs
 from core.analysis_library.stored import StoredAnalysis
 from core.library import jobs
 from core.library.records import TrackRow
+from core.settings.config import default_cfg
 from third_party import serato
 from core.tags import backup as tag_backup
 from core.tags import writer as tw
@@ -74,8 +75,9 @@ class WriteTagsTests(unittest.TestCase):
         self.app = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, self.dir, ignore_errors=True)
         self.addCleanup(shutil.rmtree, self.app, ignore_errors=True)
+        self.cfg = default_cfg()      # the settings the tab reads and keeps its choices in (no deck.json written)
         for patcher in (mock.patch.object(tag_backup, "app_folder", return_value=self.app),
-                        mock.patch.object(SyncTrackPanel, "_backup", "tags")):
+                        mock.patch.object(sync_tab.settings_store, "current", return_value=self.cfg)):
             patcher.start()
             self.addCleanup(patcher.stop)
         self.file = self.dir / "ヴヴヴ.flac"
@@ -139,7 +141,7 @@ class WriteTagsTests(unittest.TestCase):
         self.write(backup="file")
         (saved,) = list((self.app / "backups" / "tags").rglob("*.flac"))
         self.assertEqual(saved.read_bytes(), self.original)
-        self.assertEqual(SyncTrackPanel._backup, "file")     # the next confirmation's choice
+        self.assertEqual(self.cfg.deckconfig.tag_backup, "file")     # the next confirmation's choice, kept
         # the file's backups only: another file's copy beside it not listed
         (saved.parent / "ヴヴヴヴ 120000.flac").write_bytes(b"another file's")
         self.assertEqual(tag_backup.backups_of(self.file), [saved])
@@ -321,7 +323,9 @@ class RekordboxSyncTests(unittest.TestCase):
         self.asked = []
         self.bus.sig_rekordbox_sync_track_requested.connect(self.asked.append)
         self.lib = mock.Mock(rekordbox_sync_enabled=True, rekordbox_xml_path="rekordbox.xml")
-        patcher = mock.patch.object(sync_tab.settings_store, "current", return_value=mock.Mock(libconfig=self.lib))
+        self.cfg = default_cfg()
+        patcher = mock.patch.object(sync_tab.settings_store, "current",
+                                    return_value=mock.Mock(libconfig=self.lib, deckconfig=self.cfg.deckconfig))
         patcher.start()
         self.addCleanup(patcher.stop)
         self.row = TrackRow(uid=UID, path="ヴヴヴ.flac", title="ヴヴヴ")
@@ -422,6 +426,23 @@ class RekordboxSyncTests(unittest.TestCase):
             self.assertEqual(listed[0].split(" · ")[0], "2026-10-31 01:30:00")
             self.assertEqual(put, [day / "97db3 012715"])
             self.assertIn("ANLZ0000.DAT, ANLZ0000.EXT", self.panel.phrase_note.text())
+
+    def test_the_choices_kept_for_the_next_track_and_start(self):
+        # checked and unchecked: kept in deckconfig (deck.json), a tab made again shows them
+        self.panel.cb_rekordbox_phrases.setChecked(True)
+        self.panel.cb_rekordbox_xml.setChecked(False)
+        self.panel.tag_fields["album"].setChecked(False)
+        self.panel.tag_fields["bpm"].setChecked(True)
+        self.panel.cb_serato.setChecked(True)
+        deck = self.cfg.deckconfig
+        self.assertEqual((deck.sync_rekordbox_xml, deck.sync_rekordbox_phrases), (False, True))
+        self.assertEqual(deck.sync_tag_fields, ["title", "artist", "comment", "bpm", "serato"])
+        again = SyncTrackPanel(_Library(self.row), bus=self.bus)
+        self.assertTrue(again.cb_rekordbox_phrases.isChecked())
+        self.assertFalse(again.cb_rekordbox_xml.isChecked())
+        self.assertEqual([f for f, box in again.tag_fields.items() if box.isChecked()], ["title", "artist", "comment",
+                                                                                         "bpm"])
+        self.assertTrue(again.cb_serato.isChecked())
 
     def test_off_without_the_setting(self):
         self.lib.rekordbox_sync_enabled = False

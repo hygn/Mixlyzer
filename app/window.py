@@ -194,7 +194,7 @@ class AppWindow(QtWidgets.QMainWindow):
         self.player = PlayerController(
             self.bus,
             model=self.model,
-            volume_position=max(0, min(100, int(self.cfg.playbackconfig.default_volume_percent or 100))) / 100.0,
+            volume_position=max(0.0, min(1.0, float(self.cfg.deckconfig.volume_position))),
             volume_trim_dbfs=float(self.cfg.deckconfig.volume_trim_dbfs),
             tempo_range=int(self.cfg.deckconfig.tempo_range),
             default_peak_meter_gain_linear=self._default_peak_meter_gain_linear_from_cfg(
@@ -359,6 +359,7 @@ class AppWindow(QtWidgets.QMainWindow):
         self.bus.sig_midi_changed.connect(self._apply_midi)
         self.bus.sig_deck_state.connect(self._keep_tempo_range)
         self.bus.sig_deck_state.connect(self._keep_trim)
+        self.bus.sig_deck_state.connect(self._keep_volume)
         self.bus.sig_deck_state.connect(self._keep_switches)
         # what the deck keeps (deck.json: the trim, the tempo range, the switches, the levels, the effects picked) is
         # written by the settings' owner a second after it last changed (settings.deck_changed)
@@ -557,6 +558,15 @@ class AppWindow(QtWidgets.QMainWindow):
             return
         self.cfg.deckconfig.volume_trim_dbfs = trim
         self.pane.apply_playback_config(self.cfg)
+        self.settings.deck_changed()
+
+    def _keep_volume(self, report) -> None:
+        """The channel fader where the deck has it (its slider, a controller), kept in deck.json for the next start (a
+        second after it last moved)."""
+        volume = round(float(report.volume), 3)
+        if abs(volume - float(self.cfg.deckconfig.volume_position)) < 0.0005:
+            return
+        self.cfg.deckconfig.volume_position = volume
         self.settings.deck_changed()
 
     def _keep_switches(self, report) -> None:
@@ -1148,8 +1158,8 @@ class AppWindow(QtWidgets.QMainWindow):
         self.player.set_timestretch(enabled)
     def _default_volume_linear_from_cfg(self, cfg: config) -> float:
         trim_dbfs = float(cfg.deckconfig.volume_trim_dbfs)
-        default_percent = int(cfg.playbackconfig.default_volume_percent or 100)
-        return slider_percent_to_linear(default_percent, trim_dbfs)
+        percent = int(round(100.0 * max(0.0, min(1.0, float(cfg.deckconfig.volume_position)))))
+        return slider_percent_to_linear(percent, trim_dbfs)
 
     def _default_peak_meter_gain_linear_from_cfg(self, cfg: config) -> float:
         trim_dbfs = float(cfg.deckconfig.volume_trim_dbfs)

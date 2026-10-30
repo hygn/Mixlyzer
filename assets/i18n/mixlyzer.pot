@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-31 01:50+0900\n"
+"POT-Creation-Date: 2026-10-31 01:57+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -570,52 +570,52 @@ msgstr ""
 msgid "About"
 msgstr ""
 
-#: app/window.py:305 core/controls/midi.py:55 ui/config/playback.py:328
+#: app/window.py:305 core/controls/midi.py:55
 msgid "Mixer"
 msgstr ""
 
-#: app/window.py:484
+#: app/window.py:485
 msgid "MIDI needs the native audio engine (Settings > Audio > Engine)."
 msgstr ""
 
-#: app/window.py:491
+#: app/window.py:492
 msgid "MIDI input on."
 msgstr ""
 
-#: app/window.py:491
+#: app/window.py:492
 msgid "MIDI input off."
 msgstr ""
 
-#: app/window.py:543
+#: app/window.py:544
 msgid "The Python audio engine plays: there is no native engine to restart."
 msgstr ""
 
-#: app/window.py:545
+#: app/window.py:546
 msgid "Restarting the audio engine..."
 msgstr ""
 
-#: app/window.py:549
+#: app/window.py:550
 msgid "Audio engine restarted."
 msgstr ""
 
-#: app/window.py:550
+#: app/window.py:551
 msgid "The audio engine did not start; it is tried again every 2 seconds."
 msgstr ""
 
-#: app/window.py:600 app/window.py:665
+#: app/window.py:610 app/window.py:675
 msgid "External Sync is enabled. Local track loading is disabled."
 msgstr ""
 
-#: app/window.py:613 app/window.py:668
+#: app/window.py:623 app/window.py:678
 msgid "Segment reanalysis canceled (track changed)"
 msgstr ""
 
-#: app/window.py:649
+#: app/window.py:659
 #, python-brace-format
 msgid "The track's analysis could not be read: {file}"
 msgstr ""
 
-#: app/window.py:653
+#: app/window.py:663
 #, python-brace-format
 msgid ""
 "{n} JumpCUE past slot Z is not shown ({file}); it stays stored until the "
@@ -626,15 +626,15 @@ msgid_plural ""
 msgstr[0] ""
 msgstr[1] ""
 
-#: app/window.py:671
+#: app/window.py:681
 msgid "Track unloaded."
 msgstr ""
 
-#: app/window.py:681
+#: app/window.py:691
 msgid "Track File Not Found"
 msgstr ""
 
-#: app/window.py:685
+#: app/window.py:695
 #, python-brace-format
 msgid ""
 "Cannot load \"{name}\": its file is missing.\n"
@@ -643,76 +643,76 @@ msgid ""
 "Set the file's new location?"
 msgstr ""
 
-#: app/window.py:692
+#: app/window.py:702
 #, python-brace-format
 msgid "Locate {name}"
 msgstr ""
 
-#: app/window.py:716 app/window.py:732
+#: app/window.py:726 app/window.py:742
 msgid "Analysis saved to library."
 msgstr ""
 
-#: app/window.py:721
+#: app/window.py:731
 msgid "Finished"
 msgstr ""
 
-#: app/window.py:744
+#: app/window.py:754
 msgid "Waiting to be looked up on Wikipedia"
 msgstr ""
 
-#: app/window.py:750
+#: app/window.py:760
 msgid "Looking up on Wikipedia and Wikidata…"
 msgstr ""
 
-#: app/window.py:755
+#: app/window.py:765
 msgid "The lookup failed."
 msgstr ""
 
-#: app/window.py:791
+#: app/window.py:801
 #, python-brace-format
 msgid "External Sync loading: {file}"
 msgstr ""
 
-#: app/window.py:791
+#: app/window.py:801
 #, python-brace-format
 msgid "External Sync analyzing: {file}"
 msgstr ""
 
-#: app/window.py:805
+#: app/window.py:815
 msgid "External Sync Disabled"
 msgstr ""
 
-#: app/window.py:812
+#: app/window.py:822
 msgid "Rebuilding the sort index..."
 msgstr ""
 
-#: app/window.py:814
+#: app/window.py:824
 #, python-brace-format
 msgid "Sort index rebuilt: {count} names."
 msgstr ""
 
-#: app/window.py:822 ui/windows/library_backup.py:53
+#: app/window.py:832 ui/windows/library_backup.py:53
 msgid "Back Up Library"
 msgstr ""
 
-#: app/window.py:823 app/window.py:839
+#: app/window.py:833 app/window.py:849
 #, python-brace-format
 msgid "Mixlyzer library backup (*{suffix})"
 msgstr ""
 
-#: app/window.py:833
+#: app/window.py:843
 msgid ""
 "The editor has edits not saved. Save or undo them first: Mixlyzer "
 "restarts after a restore."
 msgstr ""
 
-#: app/window.py:835 app/window.py:838 app/window.py:845 app/window.py:852
-#: app/window.py:895 ui/windows/library_backup.py:133
+#: app/window.py:845 app/window.py:848 app/window.py:855 app/window.py:862
+#: app/window.py:905 ui/windows/library_backup.py:133
 #: ui/windows/library_backup.py:295
 msgid "Restore Library"
 msgstr ""
 
-#: app/window.py:876
+#: app/window.py:886
 #, python-brace-format
 msgid ""
 "Restored {n} track into:\n"
@@ -723,36 +723,36 @@ msgid_plural ""
 msgstr[0] ""
 msgstr[1] ""
 
-#: app/window.py:879
+#: app/window.py:889
 #, python-brace-format
 msgid "{n} track's file path was joined to this device's folders."
 msgid_plural "{n} tracks' file paths were joined to this device's folders."
 msgstr[0] ""
 msgstr[1] ""
 
-#: app/window.py:883
+#: app/window.py:893
 #, python-brace-format
 msgid "{n} path was left as it was: another track already had the new one."
 msgid_plural "{n} paths were left as they were: other tracks already had the new ones."
 msgstr[0] ""
 msgstr[1] ""
 
-#: app/window.py:887
+#: app/window.py:897
 #, python-brace-format
 msgid "{n} track had no stored analysis in the backup."
 msgid_plural "{n} tracks had no stored analysis in the backup."
 msgstr[0] ""
 msgstr[1] ""
 
-#: app/window.py:891
+#: app/window.py:901
 msgid "Files replaced by the backup's were kept beside them:"
 msgstr ""
 
-#: app/window.py:893
+#: app/window.py:903
 msgid "Mixlyzer now restarts to open the restored library."
 msgstr ""
 
-#: app/window.py:1179
+#: app/window.py:1189
 #, python-brace-format
 msgid "External Sync enabled: OSC on {address}. Local play/load is locked."
 msgstr ""
@@ -1256,7 +1256,7 @@ msgid "The written tags did not read back as written; the file is unchanged."
 msgstr ""
 
 #: core/tags/writer.py:250 core/tags/writer.py:283 core/tags/writer.py:363
-#: core/tags/writer.py:1496 ui/library/tabs/sync.py:470
+#: core/tags/writer.py:1496 ui/library/tabs/sync.py:497
 msgid "Tags cannot be written to this file's format."
 msgstr ""
 
@@ -1960,7 +1960,7 @@ msgid ""
 "a song outside it is read at half or double tempo."
 msgstr ""
 
-#: ui/config/analysis.py:75 ui/config/window.py:256
+#: ui/config/analysis.py:75 ui/config/window.py:255
 #: ui/windows/reanalyze_dialog.py:38 ui/windows/reanalyze_dialog.py:76
 #, python-brace-format
 msgid "Reads {low} - {high} BPM"
@@ -2590,7 +2590,7 @@ msgid "CUE / MASTER"
 msgstr ""
 
 #: ui/config/audio_overview.py:234 ui/config/audio_overview.py:250
-#: ui/config/playback.py:224
+#: ui/config/playback.py:211
 msgid "Level"
 msgstr ""
 
@@ -3330,7 +3330,7 @@ msgid ""
 "tempo. Smaller makes the steps finer.</p>"
 msgstr ""
 
-#: ui/config/library.py:96 ui/library/tabs/sync.py:108
+#: ui/config/library.py:96 ui/library/tabs/sync.py:106
 msgid "Tie-ups after the comment"
 msgstr ""
 
@@ -3744,7 +3744,7 @@ msgid ""
 msgstr ""
 
 #: ui/config/midi.py:195 ui/config/output_group.py:83
-#: ui/library/tabs/sync.py:952 ui/library/tabs/sync.py:1069
+#: ui/library/tabs/sync.py:980 ui/library/tabs/sync.py:1097
 msgid "None"
 msgstr ""
 
@@ -4050,7 +4050,7 @@ msgstr ""
 msgid "Opening the output device..."
 msgstr ""
 
-#: ui/config/output_group.py:441 ui/config/playback.py:508
+#: ui/config/output_group.py:441 ui/config/playback.py:493
 msgid ""
 "The output device could not be opened (another app may hold it in "
 "exclusive mode); it is tried again every second."
@@ -4066,7 +4066,7 @@ msgstr ""
 msgid "Output thread: {output}"
 msgstr ""
 
-#: ui/config/output_group.py:457 ui/config/playback.py:526
+#: ui/config/output_group.py:457 ui/config/playback.py:511
 #, python-brace-format
 msgid "Late output wake-ups: {count} (longest gap {gap} ms)"
 msgstr ""
@@ -4108,7 +4108,7 @@ msgstr ""
 msgid "overview levels"
 msgstr ""
 
-#: ui/config/pipeline_map.py:32 ui/config/playback.py:332
+#: ui/config/pipeline_map.py:32 ui/config/playback.py:317
 msgid "Audio"
 msgstr ""
 
@@ -4155,7 +4155,7 @@ msgstr ""
 msgid "Native first"
 msgstr ""
 
-#: ui/config/playback.py:48 ui/config/playback.py:420
+#: ui/config/playback.py:48 ui/config/playback.py:405
 msgid "Python"
 msgstr ""
 
@@ -4223,7 +4223,7 @@ msgid ""
 "computer may still sleep when idle). Applied at once.</p>"
 msgstr ""
 
-#: ui/config/playback.py:90 ui/config/playback.py:324
+#: ui/config/playback.py:90 ui/config/playback.py:310
 msgid "Engine"
 msgstr ""
 
@@ -4283,7 +4283,7 @@ msgid ""
 "answers sooner.</p>"
 msgstr ""
 
-#: ui/config/playback.py:174 ui/config/playback.py:325
+#: ui/config/playback.py:174 ui/config/playback.py:311
 msgid "Main output"
 msgstr ""
 
@@ -4291,178 +4291,166 @@ msgstr ""
 msgid "Sample rate (exclusive)"
 msgstr ""
 
-#: ui/config/playback.py:199
-msgid "Volume slider position at startup."
-msgstr ""
-
-#: ui/config/playback.py:201
-msgid "Channel"
-msgstr ""
-
-#: ui/config/playback.py:203
-msgid "Default volume (%)"
-msgstr ""
-
-#: ui/config/playback.py:219
+#: ui/config/playback.py:206
 #, python-brace-format
 msgid "<p>The booth output's level against the master ({low} dB: silent).</p>"
 msgstr ""
 
-#: ui/config/playback.py:220
+#: ui/config/playback.py:207
 msgid "<p>The booth's high shelf (-12 to +6 dB).</p>"
 msgstr ""
 
-#: ui/config/playback.py:221
+#: ui/config/playback.py:208
 msgid "<p>The booth's low shelf (-12 to +6 dB).</p>"
 msgstr ""
 
-#: ui/config/playback.py:222
+#: ui/config/playback.py:209
 msgid "Booth level and EQ"
 msgstr ""
 
-#: ui/config/playback.py:225
+#: ui/config/playback.py:212
 msgid "EQ HI"
 msgstr ""
 
-#: ui/config/playback.py:226
+#: ui/config/playback.py:213
 msgid "EQ LOW"
 msgstr ""
 
-#: ui/config/playback.py:227
+#: ui/config/playback.py:214
 msgid "MONO SPLIT"
 msgstr ""
 
-#: ui/config/playback.py:229
+#: ui/config/playback.py:216
 msgid ""
 "<p>The headphones in mono, split: the CUE in the left ear, the master in "
 "the right.</p>"
 msgstr ""
 
-#: ui/config/playback.py:230
+#: ui/config/playback.py:217
 msgid "Headphones mix"
 msgstr ""
 
-#: ui/config/playback.py:239
+#: ui/config/playback.py:226
 msgid "Headphones output"
 msgstr ""
 
-#: ui/config/playback.py:240
+#: ui/config/playback.py:227
 msgid ""
 "<p>The headphones (a controller's or an interface's second output): the "
 "deck's channel while its CUE is on, before its fader, mixed with the "
 "master (a controller's CUE / MASTER knob).</p>"
 msgstr ""
 
-#: ui/config/playback.py:244
+#: ui/config/playback.py:231
 msgid "Booth output"
 msgstr ""
 
-#: ui/config/playback.py:244
+#: ui/config/playback.py:231
 msgid "<p>The booth monitors: the master again.</p>"
 msgstr ""
 
-#: ui/config/playback.py:256
+#: ui/config/playback.py:243
 msgid "Shift metronome clicks relative to the beat (positive = earlier)"
 msgstr ""
 
-#: ui/config/playback.py:271
+#: ui/config/playback.py:258
 msgid "Duck music under metronome clicks"
 msgstr ""
 
-#: ui/config/playback.py:274
+#: ui/config/playback.py:261
 msgid "Lowers the music by up to 6 dB, following each click"
 msgstr ""
 
-#: ui/config/playback.py:277
+#: ui/config/playback.py:264
 msgid "WAV file used as the metronome click."
 msgstr ""
 
-#: ui/config/playback.py:278
+#: ui/config/playback.py:265
 msgid "Click volume on the first beat of each bar."
 msgstr ""
 
-#: ui/config/playback.py:280
+#: ui/config/playback.py:267
 msgid "Pitch shift of the click on the first beat of each bar."
 msgstr ""
 
-#: ui/config/playback.py:282
+#: ui/config/playback.py:269
 msgid "Click volume on the other beats."
 msgstr ""
 
-#: ui/config/playback.py:283
+#: ui/config/playback.py:270
 msgid "Pitch shift of the click on the other beats."
 msgstr ""
 
-#: ui/config/playback.py:285 ui/config/playback.py:329
+#: ui/config/playback.py:272 ui/config/playback.py:314
 msgid "Metronome"
 msgstr ""
 
-#: ui/config/playback.py:287
+#: ui/config/playback.py:274
 msgid "On / off: the editor's metronome button."
 msgstr ""
 
-#: ui/config/playback.py:293
+#: ui/config/playback.py:280
 msgid "WAV path"
 msgstr ""
 
-#: ui/config/playback.py:294
+#: ui/config/playback.py:281
 msgid "Offset (ms)"
 msgstr ""
 
-#: ui/config/playback.py:296
+#: ui/config/playback.py:283
 msgid "Downbeat volume (%)"
 msgstr ""
 
-#: ui/config/playback.py:299
+#: ui/config/playback.py:286
 msgid "Downbeat pitch (semitones)"
 msgstr ""
 
-#: ui/config/playback.py:301
+#: ui/config/playback.py:288
 msgid "Beat volume (%)"
 msgstr ""
 
-#: ui/config/playback.py:303
+#: ui/config/playback.py:290
 msgid "Beat pitch (semitones)"
 msgstr ""
 
-#: ui/config/playback.py:323
+#: ui/config/playback.py:309
 msgctxt "settings page"
 msgid "Overview"
 msgstr ""
 
-#: ui/config/playback.py:326
+#: ui/config/playback.py:312
 msgid "Headphones"
 msgstr ""
 
-#: ui/config/playback.py:327
+#: ui/config/playback.py:313
 msgid "Booth"
 msgstr ""
 
-#: ui/config/playback.py:351
+#: ui/config/playback.py:336
 msgid "Restarting..."
 msgstr ""
 
-#: ui/config/playback.py:356
+#: ui/config/playback.py:341
 msgid "Restarted."
 msgstr ""
 
-#: ui/config/playback.py:357
+#: ui/config/playback.py:342
 msgid "The engine did not start; it is tried again every 2 seconds."
 msgstr ""
 
-#: ui/config/playback.py:418
+#: ui/config/playback.py:403
 msgid "Buffer size, Python engine"
 msgstr ""
 
-#: ui/config/playback.py:419
+#: ui/config/playback.py:404
 msgid "Buffer size, native engine"
 msgstr ""
 
-#: ui/config/playback.py:420
+#: ui/config/playback.py:405
 msgid "Native"
 msgstr ""
 
-#: ui/config/playback.py:422
+#: ui/config/playback.py:407
 #, python-brace-format
 msgid ""
 "<p>Native: the audio engine in a process of its own (no dropouts when the"
@@ -4471,29 +4459,29 @@ msgid ""
 "next start.</p><p>Playing now: {engine}.</p>"
 msgstr ""
 
-#: ui/config/playback.py:428
+#: ui/config/playback.py:413
 msgid "<p>The native engine on Linux and macOS is experimental.</p>"
 msgstr ""
 
-#: ui/config/playback.py:529
+#: ui/config/playback.py:514
 #, python-brace-format
 msgid "Engine thread: {engine}   Output thread: {output}"
 msgstr ""
 
-#: ui/config/playback.py:533
+#: ui/config/playback.py:518
 msgid "Power throttling could be turned off only in part."
 msgstr ""
 
-#: ui/config/playback.py:535
+#: ui/config/playback.py:520
 msgid "Power throttling could not be turned off."
 msgstr ""
 
-#: ui/config/playback.py:540
+#: ui/config/playback.py:525
 #, python-brace-format
 msgid "Response measured: play {play} ms   pause {pause} ms   seek {seek} ms"
 msgstr ""
 
-#: ui/config/playback.py:543
+#: ui/config/playback.py:528
 #, python-brace-format, python-format
 msgid ""
 "EMA {ema} / {capacity} ms   1% low {low} ms   lowest {lowest} ms "
@@ -6284,7 +6272,7 @@ msgstr ""
 msgid "No JumpCUE directions"
 msgstr ""
 
-#: ui/library/tabs/export.py:71 ui/library/tabs/sync.py:83
+#: ui/library/tabs/export.py:71 ui/library/tabs/sync.py:81
 msgid "Source"
 msgstr ""
 
@@ -6354,7 +6342,7 @@ msgid ""
 msgstr ""
 
 #: ui/library/tabs/export.py:198 ui/library/tabs/export.py:277
-#: ui/library/tabs/sync.py:317 ui/library/tabs/sync.py:500
+#: ui/library/tabs/sync.py:344 ui/library/tabs/sync.py:527
 msgid "The track's analysis could not be read."
 msgstr ""
 
@@ -6362,8 +6350,8 @@ msgstr ""
 msgid "The track has no beatgrid to write."
 msgstr ""
 
-#: ui/library/tabs/export.py:219 ui/library/tabs/sync.py:686
-#: ui/library/tabs/sync.py:749 ui/windows/diagnostics_dialog.py:59
+#: ui/library/tabs/export.py:219 ui/library/tabs/sync.py:714
+#: ui/library/tabs/sync.py:777 ui/windows/diagnostics_dialog.py:59
 #, python-brace-format
 msgid "The file could not be written: {error}"
 msgstr ""
@@ -6386,36 +6374,36 @@ msgid ""
 "{error}"
 msgstr ""
 
-#: ui/library/tabs/sync.py:85
+#: ui/library/tabs/sync.py:83
 msgid "File Tags"
 msgstr ""
 
-#: ui/library/tabs/sync.py:87
+#: ui/library/tabs/sync.py:85
 msgid ""
 "<p>Write the library's values into the audio file's own tags: only the "
 "fields checked change; the file's other tags, its artwork and its audio "
 "stay as they are.</p>"
 msgstr ""
 
-#: ui/library/tabs/sync.py:98
+#: ui/library/tabs/sync.py:96
 msgid "MP4 / M4A files hold a whole BPM only."
 msgstr ""
 
-#: ui/library/tabs/sync.py:99
+#: ui/library/tabs/sync.py:97
 msgid "Written as a musical key (Am, F#)."
 msgstr ""
 
-#: ui/library/tabs/sync.py:110
+#: ui/library/tabs/sync.py:108
 msgid ""
 "<p>The comment written with the song's tie-ups after it, as [Title OP; "
 "Other ED]; the library's comment stays as it is.</p>"
 msgstr ""
 
-#: ui/library/tabs/sync.py:115
+#: ui/library/tabs/sync.py:113
 msgid "Serato beatgrid and hot cues"
 msgstr ""
 
-#: ui/library/tabs/sync.py:117
+#: ui/library/tabs/sync.py:115
 msgid ""
 "<p>Serato DJ's beatgrid and hot cues, in the file's tags where Serato "
 "reads them: the grid from the first downbeat (a ramp a marker a beat), "
@@ -6424,54 +6412,54 @@ msgid ""
 "kept.</p>"
 msgstr ""
 
-#: ui/library/tabs/sync.py:121
+#: ui/library/tabs/sync.py:119
 msgid "Serato beatgrid"
 msgstr ""
 
-#: ui/library/tabs/sync.py:121
+#: ui/library/tabs/sync.py:119
 msgid "Serato hot cues"
 msgstr ""
 
-#: ui/library/tabs/sync.py:122
+#: ui/library/tabs/sync.py:120
 msgid "Serato's old hot cues (A-E)"
 msgstr ""
 
-#: ui/library/tabs/sync.py:123
+#: ui/library/tabs/sync.py:121
 msgid "Serato's tempo map"
 msgstr ""
 
-#: ui/library/tabs/sync.py:126 ui/library/tabs/sync.py:508
-#: ui/library/tabs/sync.py:700 ui/library/tabs/sync.py:1012
-#: ui/library/tabs/sync.py:1088
+#: ui/library/tabs/sync.py:124 ui/library/tabs/sync.py:535
+#: ui/library/tabs/sync.py:728 ui/library/tabs/sync.py:1040
+#: ui/library/tabs/sync.py:1116
 msgid "Write Tags"
 msgstr ""
 
-#: ui/library/tabs/sync.py:127
+#: ui/library/tabs/sync.py:125
 msgid "Write the checked fields' stored values into the file's tags."
 msgstr ""
 
-#: ui/library/tabs/sync.py:129 ui/library/tabs/sync.py:170
+#: ui/library/tabs/sync.py:127 ui/library/tabs/sync.py:168
 msgid "Restore from Backup..."
 msgstr ""
 
-#: ui/library/tabs/sync.py:131
+#: ui/library/tabs/sync.py:129
 msgid ""
 "<p>Put the track's file back as a backup made before writing its tags "
 "holds it: a tag backup (.mxtags) or a copy of the whole file.</p>"
 msgstr ""
 
-#: ui/library/tabs/sync.py:148
+#: ui/library/tabs/sync.py:146
 msgid ""
 "<p>The track written into the Rekordbox XML again, as saving an edit "
 "does: its beatgrid, CUE points, JumpCUEs and values as stored now. The "
 "XML's file and its options are in Settings > Library.</p>"
 msgstr ""
 
-#: ui/library/tabs/sync.py:150
+#: ui/library/tabs/sync.py:148
 msgid "Phrases"
 msgstr ""
 
-#: ui/library/tabs/sync.py:152
+#: ui/library/tabs/sync.py:150
 msgid ""
 "<p>The track's phrases written into rekordbox's own analysis of it (the "
 "XML has no phrases), on the beatgrid rekordbox holds: import the XML's "
@@ -6480,62 +6468,62 @@ msgid ""
 "names: Settings > Library > Rekordbox.</p>"
 msgstr ""
 
-#: ui/library/tabs/sync.py:161
+#: ui/library/tabs/sync.py:159
 msgid "Sync"
 msgstr ""
 
-#: ui/library/tabs/sync.py:162
+#: ui/library/tabs/sync.py:160
 msgid "Sync what is checked: the XML at once, the phrases after a preview."
 msgstr ""
 
-#: ui/library/tabs/sync.py:172
+#: ui/library/tabs/sync.py:170
 msgid ""
 "<p>Put the track's rekordbox analysis back as a backup made before "
 "writing its phrases holds it (the track's backups, newest first). "
 "rekordbox must be closed.</p>"
 msgstr ""
 
-#: ui/library/tabs/sync.py:235
+#: ui/library/tabs/sync.py:262
 msgid ""
 "Sync with Rekordbox XML is off, or has no file: Settings > Library > "
 "Rekordbox."
 msgstr ""
 
-#: ui/library/tabs/sync.py:265
+#: ui/library/tabs/sync.py:292
 msgid "Sync to Rekordbox XML"
 msgstr ""
 
-#: ui/library/tabs/sync.py:266
+#: ui/library/tabs/sync.py:293
 msgid ""
 "The Edit tab has changes to this track that are not applied: the stored "
 "values are written.\n"
 "Sync anyway?"
 msgstr ""
 
-#: ui/library/tabs/sync.py:272
+#: ui/library/tabs/sync.py:299
 msgid "Writing the track into the Rekordbox XML..."
 msgstr ""
 
-#: ui/library/tabs/sync.py:286
+#: ui/library/tabs/sync.py:313
 #, python-brace-format
 msgid "Written into {path}."
 msgstr ""
 
-#: ui/library/tabs/sync.py:292
+#: ui/library/tabs/sync.py:319
 #, python-brace-format
 msgid "The Rekordbox XML could not be written: {error}"
 msgstr ""
 
-#: ui/library/tabs/sync.py:332 ui/library/tabs/sync.py:396
+#: ui/library/tabs/sync.py:359 ui/library/tabs/sync.py:423
 msgid "Reading rekordbox's analysis of the track..."
 msgstr ""
 
-#: ui/library/tabs/sync.py:342
+#: ui/library/tabs/sync.py:369
 #, python-brace-format
 msgid "rekordbox's analysis file could not be read: {error}"
 msgstr ""
 
-#: ui/library/tabs/sync.py:353
+#: ui/library/tabs/sync.py:380
 #, python-brace-format
 msgid ""
 "The phrases are {ms} ms off rekordbox's beats at most: its beatgrid is "
@@ -6543,263 +6531,263 @@ msgid ""
 " the phrases again."
 msgstr ""
 
-#: ui/library/tabs/sync.py:365
+#: ui/library/tabs/sync.py:392
 msgid "Writing the phrases..."
 msgstr ""
 
-#: ui/library/tabs/sync.py:375 ui/library/tabs/sync.py:443
+#: ui/library/tabs/sync.py:402 ui/library/tabs/sync.py:470
 #, python-brace-format
 msgid "rekordbox's analysis file could not be written: {error}"
 msgstr ""
 
-#: ui/library/tabs/sync.py:382
+#: ui/library/tabs/sync.py:409
 #, python-brace-format
 msgid ""
 "The phrases were written into rekordbox's analysis.\n"
 "Its backup: {path}"
 msgstr ""
 
-#: ui/library/tabs/sync.py:383
+#: ui/library/tabs/sync.py:410
 msgid "The phrases were written into rekordbox's analysis."
 msgstr ""
 
-#: ui/library/tabs/sync.py:386 ui/library/tabs/sync.py:916
+#: ui/library/tabs/sync.py:413 ui/library/tabs/sync.py:944
 msgid "Write Phrases to rekordbox"
 msgstr ""
 
-#: ui/library/tabs/sync.py:419
+#: ui/library/tabs/sync.py:446
 msgid "There is no backup of the track's rekordbox analysis."
 msgstr ""
 
-#: ui/library/tabs/sync.py:422 ui/library/tabs/sync.py:429
-#: ui/library/tabs/sync.py:455 ui/library/tabs/sync.py:713
-#: ui/library/tabs/sync.py:719 ui/library/tabs/sync.py:726
-#: ui/library/tabs/sync.py:757
+#: ui/library/tabs/sync.py:449 ui/library/tabs/sync.py:456
+#: ui/library/tabs/sync.py:482 ui/library/tabs/sync.py:741
+#: ui/library/tabs/sync.py:747 ui/library/tabs/sync.py:754
+#: ui/library/tabs/sync.py:785
 msgid "Restore from Backup"
 msgstr ""
 
-#: ui/library/tabs/sync.py:423 ui/library/tabs/sync.py:719
+#: ui/library/tabs/sync.py:450 ui/library/tabs/sync.py:747
 msgid "The backup to put back:"
 msgstr ""
 
-#: ui/library/tabs/sync.py:430
+#: ui/library/tabs/sync.py:457
 #, python-brace-format
 msgid "Put the track's rekordbox analysis back as the backup of {when} holds it?"
 msgstr ""
 
-#: ui/library/tabs/sync.py:435
+#: ui/library/tabs/sync.py:462
 msgid "Putting the files back..."
 msgstr ""
 
-#: ui/library/tabs/sync.py:451
+#: ui/library/tabs/sync.py:478
 #, python-brace-format
 msgid "Put back as the backup holds it: {files}"
 msgstr ""
 
-#: ui/library/tabs/sync.py:491
+#: ui/library/tabs/sync.py:518
 msgid "Check the fields to write."
 msgstr ""
 
-#: ui/library/tabs/sync.py:509
+#: ui/library/tabs/sync.py:536
 msgid ""
 "The Edit tab has changes to this track that are not applied: the stored "
 "values are written.\n"
 "Write the tags anyway?"
 msgstr ""
 
-#: ui/library/tabs/sync.py:517
+#: ui/library/tabs/sync.py:544
 msgid "Reading the file's tags..."
 msgstr ""
 
-#: ui/library/tabs/sync.py:537
+#: ui/library/tabs/sync.py:564
 msgid "The track is no longer in the library."
 msgstr ""
 
-#: ui/library/tabs/sync.py:631
+#: ui/library/tabs/sync.py:658
 #, python-brace-format
 msgid ""
 "Also written to {place}, the field DJ software (rekordbox ...) reads. It "
 "holds now: {value}"
 msgstr ""
 
-#: ui/library/tabs/sync.py:632 ui/library/tabs/sync.py:1050
+#: ui/library/tabs/sync.py:659 ui/library/tabs/sync.py:1078
 msgid "(empty)"
 msgstr ""
 
-#: ui/library/tabs/sync.py:634
+#: ui/library/tabs/sync.py:661
 msgid ""
 "Serato reads this before the hot cues written here: it is emptied (its "
 "loops and names are in the hot cues' tag too)."
 msgstr ""
 
-#: ui/library/tabs/sync.py:637
+#: ui/library/tabs/sync.py:664
 msgid ""
 "Older Serato versions read the hot cues from here: the first five (A-E), "
 "without names; the file's old loops kept."
 msgstr ""
 
-#: ui/library/tabs/sync.py:643
+#: ui/library/tabs/sync.py:670
 msgid "The file's tags already hold these values."
 msgstr ""
 
-#: ui/library/tabs/sync.py:654
+#: ui/library/tabs/sync.py:682
 msgid "Writing the tags..."
 msgstr ""
 
-#: ui/library/tabs/sync.py:683
+#: ui/library/tabs/sync.py:711
 msgid ""
 "Another program has the file open (a DJ program with the track loaded?): "
 "the tags were not written. Close it there, then write again."
 msgstr ""
 
-#: ui/library/tabs/sync.py:695
+#: ui/library/tabs/sync.py:723
 #, python-brace-format
 msgid ""
 "The tags were written to the file.\n"
 "Its backup: {path}"
 msgstr ""
 
-#: ui/library/tabs/sync.py:696
+#: ui/library/tabs/sync.py:724
 msgid "The tags were written to the file."
 msgstr ""
 
-#: ui/library/tabs/sync.py:716
+#: ui/library/tabs/sync.py:744
 msgid "There is no backup of this file's tags."
 msgstr ""
 
-#: ui/library/tabs/sync.py:724
+#: ui/library/tabs/sync.py:752
 #, python-brace-format
 msgid "Put '{file}' back as the backup of {when} holds it?"
 msgstr ""
 
-#: ui/library/tabs/sync.py:734
+#: ui/library/tabs/sync.py:762
 msgid "Putting the file back..."
 msgstr ""
 
-#: ui/library/tabs/sync.py:746
+#: ui/library/tabs/sync.py:774
 msgid ""
 "Another program has the file open (a DJ program with the track loaded?): "
 "it was not put back. Close it there, then restore again."
 msgstr ""
 
-#: ui/library/tabs/sync.py:755
+#: ui/library/tabs/sync.py:783
 msgid "The file was put back as the backup holds it."
 msgstr ""
 
-#: ui/library/tabs/sync.py:769 ui/library/tabs/sync.py:781
+#: ui/library/tabs/sync.py:797 ui/library/tabs/sync.py:809
 msgid "(not read)"
 msgstr ""
 
-#: ui/library/tabs/sync.py:770
+#: ui/library/tabs/sync.py:798
 #, python-brace-format
 msgid "{count} grid marker from {start}, {bpm} BPM at the end"
 msgid_plural "{count} grid markers from {start}, {bpm} BPM at the end"
 msgstr[0] ""
 msgstr[1] ""
 
-#: ui/library/tabs/sync.py:776 ui/library/tabs/sync.py:787
+#: ui/library/tabs/sync.py:804 ui/library/tabs/sync.py:815
 msgid "no hot cues"
 msgstr ""
 
-#: ui/library/tabs/sync.py:777
+#: ui/library/tabs/sync.py:805
 msgid "BPM locked"
 msgstr ""
 
-#: ui/library/tabs/sync.py:782
+#: ui/library/tabs/sync.py:810
 #, python-brace-format
 msgid "{count} tempo segment from {start}, {bpm} BPM at the end"
 msgid_plural "{count} tempo segments from {start}, {bpm} BPM at the end"
 msgstr[0] ""
 msgstr[1] ""
 
-#: ui/library/tabs/sync.py:799
+#: ui/library/tabs/sync.py:827
 msgid ""
 "Serato counts 4-beat bars from the first downbeat: the bars of another "
 "length here (a 3-beat bar, 7/4) are not kept."
 msgstr ""
 
-#: ui/library/tabs/sync.py:803
+#: ui/library/tabs/sync.py:831
 msgid "Serato has 8 hot cues: the JumpCUEs past H are left out."
 msgstr ""
 
-#: ui/library/tabs/sync.py:805
+#: ui/library/tabs/sync.py:833
 msgid ""
 "Serato has no memory cues: the CUE points are left out (Settings > "
 "Library > Serato can make them hot cues)."
 msgstr ""
 
-#: ui/library/tabs/sync.py:808
+#: ui/library/tabs/sync.py:836
 msgid "Serato has 8 hot cues: the CUE points with no slot left are left out."
 msgstr ""
 
-#: ui/library/tabs/sync.py:824 ui/library/tabs/sync.py:953
+#: ui/library/tabs/sync.py:852 ui/library/tabs/sync.py:981
 msgid "The analysis file (.EXT)"
 msgstr ""
 
-#: ui/library/tabs/sync.py:824 ui/library/tabs/sync.py:954
+#: ui/library/tabs/sync.py:852 ui/library/tabs/sync.py:982
 msgid "The track's analysis folder"
 msgstr ""
 
-#: ui/library/tabs/sync.py:831 ui/library/tabs/sync.py:1070
+#: ui/library/tabs/sync.py:859 ui/library/tabs/sync.py:1098
 msgid "The tags only"
 msgstr ""
 
-#: ui/library/tabs/sync.py:831 ui/library/tabs/sync.py:1073
+#: ui/library/tabs/sync.py:859 ui/library/tabs/sync.py:1101
 msgid "The whole file"
 msgstr ""
 
-#: ui/library/tabs/sync.py:842
+#: ui/library/tabs/sync.py:870
 #, python-brace-format
 msgid ""
 "{label} goes on with the phrase before it (Settings > Library > "
 "Rekordbox)."
 msgstr ""
 
-#: ui/library/tabs/sync.py:844
+#: ui/library/tabs/sync.py:872
 msgid ""
 "The mood has no more verses: the verse runs past its last verse are its "
 "last verse."
 msgstr ""
 
-#: ui/library/tabs/sync.py:890 ui/library/tabs/sync.py:941
+#: ui/library/tabs/sync.py:918 ui/library/tabs/sync.py:969
 msgid "(none)"
 msgstr ""
 
-#: ui/library/tabs/sync.py:921
+#: ui/library/tabs/sync.py:949
 #, python-brace-format
 msgid "rekordbox's phrases of '{file}' change:"
 msgstr ""
 
-#: ui/library/tabs/sync.py:925
+#: ui/library/tabs/sync.py:953
 msgid "rekordbox now"
 msgstr ""
 
-#: ui/library/tabs/sync.py:926
+#: ui/library/tabs/sync.py:954
 msgid "Written"
 msgstr ""
 
-#: ui/library/tabs/sync.py:948 ui/library/tabs/sync.py:1065
+#: ui/library/tabs/sync.py:976 ui/library/tabs/sync.py:1093
 msgid "Backup before writing"
 msgstr ""
 
-#: ui/library/tabs/sync.py:953
+#: ui/library/tabs/sync.py:981
 msgid "The one file the phrases are written into."
 msgstr ""
 
-#: ui/library/tabs/sync.py:955
+#: ui/library/tabs/sync.py:983
 msgid "All of rekordbox's analysis files of the track (.DAT, .EXT, .2EX, .3EX)."
 msgstr ""
 
-#: ui/library/tabs/sync.py:964
+#: ui/library/tabs/sync.py:992
 #, python-brace-format
 msgid "Kept in {folder}; copy it back to undo the write."
 msgstr ""
 
-#: ui/library/tabs/sync.py:972
+#: ui/library/tabs/sync.py:1000
 msgid "Write Phrases"
 msgstr ""
 
-#: ui/library/tabs/sync.py:986
+#: ui/library/tabs/sync.py:1014
 #, python-brace-format
 msgid ""
 "The file's hot cues {slots} stay: Settings > Library > Serato keeps the "
@@ -6807,26 +6795,26 @@ msgid ""
 "JumpCUE removed since). Turn that off to replace them all."
 msgstr ""
 
-#: ui/library/tabs/sync.py:1014
+#: ui/library/tabs/sync.py:1042
 #, python-brace-format
 msgid "These tags of '{file}' change:"
 msgstr ""
 
-#: ui/library/tabs/sync.py:1046
+#: ui/library/tabs/sync.py:1074
 msgid "Write the value here (unchecked: this place stays as it is)."
 msgstr ""
 
-#: ui/library/tabs/sync.py:1071
+#: ui/library/tabs/sync.py:1099
 msgid ""
 "The bytes the write replaces (a few KB, more with a cover picture): the "
 "file is put back exactly, as long as its audio stays as it is."
 msgstr ""
 
-#: ui/library/tabs/sync.py:1073
+#: ui/library/tabs/sync.py:1101
 msgid "A copy of the whole file, as large as it is."
 msgstr ""
 
-#: ui/library/tabs/sync.py:1081
+#: ui/library/tabs/sync.py:1109
 #, python-brace-format
 msgid "Kept in {folder}; Restore from Backup puts one back."
 msgstr ""
@@ -7112,14 +7100,14 @@ msgid "All"
 msgstr ""
 
 #: ui/library/tabs/edit_song.py:124 ui/library/tabs/export.py:69
-#: ui/library/tabs/sync.py:81 ui/library/tabs/sync.py:94
+#: ui/library/tabs/sync.py:79 ui/library/tabs/sync.py:92
 #: ui/library/tabs/tieup_editor.py:140 ui/library/tabs/track_search_index.py:53
 #: ui/library/widget.py:39 ui/windows/tieup_works.py:77
 msgid "Title"
 msgstr ""
 
 #: ui/library/tabs/edit_song.py:125 ui/library/tabs/export.py:70
-#: ui/library/tabs/sync.py:82 ui/library/tabs/sync.py:95
+#: ui/library/tabs/sync.py:80 ui/library/tabs/sync.py:93
 #: ui/library/tabs/track_search_index.py:53 ui/library/widget.py:39
 msgid "Artist"
 msgstr ""
@@ -7128,7 +7116,7 @@ msgstr ""
 msgid "Duration"
 msgstr ""
 
-#: ui/library/tabs/edit_song.py:126 ui/library/tabs/sync.py:96
+#: ui/library/tabs/edit_song.py:126 ui/library/tabs/sync.py:94
 #: ui/library/tabs/track_search_index.py:53 ui/library/widget.py:40
 msgid "Album"
 msgstr ""
@@ -7150,7 +7138,7 @@ msgstr ""
 msgid "Path"
 msgstr ""
 
-#: ui/library/tabs/edit_song.py:130 ui/library/tabs/sync.py:97
+#: ui/library/tabs/edit_song.py:130 ui/library/tabs/sync.py:95
 #: ui/library/widget.py:42
 msgid "Comment"
 msgstr ""
@@ -7167,38 +7155,38 @@ msgstr ""
 msgid "Load to Deck"
 msgstr ""
 
-#: ui/pane.py:353
+#: ui/pane.py:346
 msgid "Tempo range: ±6% / ±10% / ±16% / WIDE; click for the next"
 msgstr ""
 
-#: ui/pane.py:373
+#: ui/pane.py:366
 #, python-format
 msgid "Tempo (WIDE: 0%-200%, 0 stops)"
 msgstr ""
 
-#: ui/pane.py:437
+#: ui/pane.py:430
 msgid ""
 "CUE: stopped, sets the cue point here / held on the cue point, plays "
 "until let go; playing, back to the cue point and stop"
 msgstr ""
 
-#: ui/pane.py:441 ui/shortcuts.py:88
+#: ui/pane.py:434 ui/shortcuts.py:88
 msgid "Tempo reset (100%)"
 msgstr ""
 
-#: ui/pane.py:443
+#: ui/pane.py:436
 msgid "Master tempo: time stretch keeps the pitch"
 msgstr ""
 
-#: ui/config/external_sync.py:105 ui/library/widget.py:389 ui/pane.py:531
+#: ui/config/external_sync.py:105 ui/library/widget.py:389 ui/pane.py:524
 msgid "External Sync"
 msgstr ""
 
-#: ui/pane.py:532
+#: ui/pane.py:525
 msgid "Playback is disabled while External Sync is enabled."
 msgstr ""
 
-#: ui/pane.py:845
+#: ui/pane.py:838
 msgid "Not Loaded"
 msgstr ""
 

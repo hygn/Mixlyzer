@@ -292,16 +292,9 @@ class MainPane(QtWidgets.QWidget):
         volume_v = QtWidgets.QVBoxLayout(volume_box)
         volume_v.setContentsMargins(0, 0, 0, 0)
         volume_v.setSpacing(2)
-        playback_cfg = getattr(self.cfg, "playbackconfig", None)
-        default_volume_slider = int(
-            max(
-                0,
-                min(
-                    100,
-                    int(getattr(playback_cfg, "default_volume_percent", 100) or 100),
-                ),
-            )
-        )
+        # the fader where it was last (deck.json)
+        deck_cfg = getattr(self.cfg, "deckconfig", None)
+        default_volume_slider = int(round(100.0 * max(0.0, min(1.0, float(getattr(deck_cfg, "volume_position", 1.0))))))
 
         self.vol_slider = _OneStepWheelSlider(QtCore.Qt.Vertical)
         self.vol_slider.setRange(0, 100)

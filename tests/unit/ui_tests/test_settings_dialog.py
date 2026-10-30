@@ -50,7 +50,7 @@ def edited_cfg():
                              env_mid=(300.0, 1800.0), fps=30, reduce_fps_when_occluded=False,
                              phrase_labels=replace(names, chorus=replace(names.chorus, alias="Hook", abbrev="H")))
     cfg.playbackconfig = replace(
-        cfg.playbackconfig, default_volume_percent=70, output_clip="limiter", audio_engine="python", native_buffer_ms=12,
+        cfg.playbackconfig, output_clip="limiter", audio_engine="python", native_buffer_ms=12,
         python_buffer_ms=120, output_device="Speakers (test)", native_exclusive=True, native_exclusive_rate=48000,
         native_priority="above_normal", native_power_throttling=True, midi_input="Controller (test)",
         midi_jog_ticks=1024, headphones_master_mix=False, booth_level=level_db_to_knob(-6.0),
@@ -84,7 +84,7 @@ class SettingsDialogTests(unittest.TestCase):
         self.assertEqual([self.d.tabs.tabText(i) for i in range(self.d.tabs.count())],
                          ["View", "Audio", "Search", "Library", "Analysis", "Shortcuts", "MIDI", "External Sync"])
         self.assertEqual([self.d.audio_tabs.tabText(i) for i in range(self.d.audio_tabs.count())],
-                         ["Overview", "Engine", "Main output", "Headphones", "Booth", "Mixer", "Metronome"])
+                         ["Overview", "Engine", "Main output", "Headphones", "Booth", "Metronome"])
         self.assertEqual([self.d.view_tabs.tabText(i) for i in range(self.d.view_tabs.count())],
                          ["General", "Display", "Waveform", "Phrase labels"])
         self.assertEqual([self.d.library_tabs.tabText(i) for i in range(self.d.library_tabs.count())],
