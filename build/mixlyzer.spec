@@ -1,5 +1,6 @@
 # -*- mode: python ; coding: utf-8 -*-
 import os
+import sys
 from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 
 app_name = 'Mixlyzer'
@@ -18,6 +19,21 @@ def shipped(folder, keep=lambda name: True):
             if keep(name):
                 out.append((os.path.join(root, name), os.path.relpath(root, REPO)))
     return out
+
+
+def ffmpeg():
+    """The repository root's FFmpeg into _internal (analyzer/audio/decoder.py looks there): an LGPL build (one built
+    with --enable-gpl or --enable-nonfree is refused), the one the notices name (build/notices.py)."""
+    sys.path.insert(0, SPECPATH)
+    import notices
+    if not notices.FFMPEG.is_file():
+        print(f"no {notices.FFMPEG.name} at the repository's root: the package leaves FFmpeg out (the decoder then "
+              "takes the one on PATH)")
+        return []
+    version, _compiler, _options = notices.ffmpeg_build(notices.ffmpeg_version_text())
+    if f"--- FFmpeg {version}\n" not in notices.OUT.read_text(encoding='utf-8'):
+        raise SystemExit(f"the notices do not name FFmpeg {version}: run build/notices.py again")
+    return [(str(notices.FFMPEG), '.')]
 
 
 a = Analysis(
@@ -41,6 +57,7 @@ a = Analysis(
     + shipped('assets/midi', lambda name: name == 'default_midi.json')
     # the native audio engine and its VOLK (build/audio_engine.py), as built: copied, not analysed or packed
     + shipped('audioengine/native/bin')
+    + ffmpeg()
     # the title readings (core.search.reading): the readers' dictionaries and tables
     + collect_data_files('sudachipy')
     + collect_data_files('sudachidict_core')
@@ -61,10 +78,6 @@ a = Analysis(
 # Include assets/ recursively
 #from PyInstaller.building.datastruct import Tree
 #a.datas += Tree('assets', prefix='assets')
-
-# Optionally include ffmpeg.exe if present
-#if os.path.exists('../ffmpeg.exe'):
-#    a.datas.append(('../ffmpeg.exe', '.'))
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 

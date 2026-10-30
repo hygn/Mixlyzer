@@ -6,8 +6,10 @@ with it. Run it again when a dependency changes (as build/translations.py when t
 
 Three parts, each in a fixed order so a run without changes writes the same file:
   1. what is bundled beside the packages: the Python runtime, Qt (in PySide6), libsndfile (in soundfile), the native
-     engine's VOLK with cpu_features, its Rust standard library and its toolchain's runtime (llvm-mingw), the fonts,
-     the Unicode data the readings tables come from, the Cantonese data pycantonese reads (the spec ships only those);
+     engine's VOLK with cpu_features, its Rust standard library and its toolchain's runtime (llvm-mingw), FFmpeg
+     (the repository root's, an LGPL build: one built with --enable-gpl or --enable-nonfree is refused; its version,
+     source, build recipe and configuration from its -version), the fonts, the Unicode data the readings tables come
+     from, the Cantonese data pycantonese reads (the spec ships only those);
   2. the Python packages the app runs on (uv export, no development groups), by pip-licenses with their licence and
      notice files;
   3. the native engine's Rust crates on Windows, Linux and macOS (cargo metadata of each, offline: the crates as
@@ -20,13 +22,23 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+from system import os_support  # noqa: E402
+
 OUT = ROOT / "assets" / "notices" / "THIRD_PARTY_NOTICES.txt"
+# the FFmpeg the package carries (the spec bundles it into _internal, where analyzer/audio/decoder.py looks): an LGPL
+# build only
+FFMPEG = ROOT / ("ffmpeg.exe" if os_support.IS_WINDOWS else "ffmpeg")
+FFMPEG_REFUSED = ("--enable-gpl", "--enable-nonfree")
+# configure options that enable no library of their own (a licence, the threads, the compiler, the system's TLS)
+FFMPEG_NOT_LIBRARIES = {"version3", "pthreads", "cuda-llvm", "schannel"}
 ENGINE = ROOT / "audioengine" / "native"
 TOOLCHAIN = "stable-x86_64-pc-windows-gnullvm"
 TARGETS = ("x86_64-pc-windows-gnullvm", "x86_64-unknown-linux-gnu", "aarch64-apple-darwin", "x86_64-apple-darwin")
@@ -64,6 +76,54 @@ def llvm_mingw() -> Path | None:
     return Path(found).parent.parent if found else None
 
 
+def ffmpeg_build(version_text: str) -> tuple[str, str, list[str]]:
+    """An FFmpeg's version, compiler and configure options from its ``-version`` output; refused (SystemExit) when
+    it was built with --enable-gpl or --enable-nonfree: the package ships an LGPL build only."""
+    lines = version_text.splitlines()
+    version = lines[0].split()[2]                        # ffmpeg version <version> Copyright ...
+    compiler = next((l[len("built with "):] for l in lines if l.startswith("built with ")), "")
+    options = next(l for l in lines if l.startswith("configuration:")).split()[1:]
+    refused = [o for o in options if o in FFMPEG_REFUSED]
+    if refused:
+        sys.exit(f"FFmpeg {version} is built with {' '.join(refused)}: the package ships an LGPL build only")
+    return version, compiler, options
+
+
+def ffmpeg_version_text(path: Path = FFMPEG) -> str:
+    return run([str(path), "-hide_banner", "-version"])
+
+
+def ffmpeg_entry() -> tuple[str, str, str, list[Path]] | None:
+    """The FFmpeg at the repository's root as a part 1 entry (None when there is none): its source the commit its
+    version names, its recipe the build's (BtbN's FFmpeg-Builds, known by its prefix; else FFMPEG_RECIPE), the
+    libraries its configuration enables named."""
+    if not FFMPEG.is_file():
+        print(f"no {FFMPEG.name} at the repository's root: FFmpeg's notice left out", file=sys.stderr)
+        return None
+    version, compiler, options = ffmpeg_build(ffmpeg_version_text())
+    commit = re.search(r"-g([0-9a-f]{7,40})", version)
+    source = (f"https://github.com/FFmpeg/FFmpeg/commit/{commit.group(1)}" if commit
+              else f"https://github.com/FFmpeg/FFmpeg/tree/{version}")
+    recipe = os.environ.get("FFMPEG_RECIPE")
+    if not recipe and "--prefix=/ffbuild/prefix" in options:
+        recipe = "https://github.com/BtbN/FFmpeg-Builds"
+    if not recipe:
+        sys.exit(f"{FFMPEG.name}: its build's recipe is not known: name it in FFMPEG_RECIPE (a URL)")
+    v3 = "--enable-version3" in options
+    licence = "LGPL-3.0-or-later" if v3 else "LGPL-2.1-or-later"
+    text = ("the GNU LGPL v3 given with VOLK above, and the GNU GPL v3 it supplements at this part's end" if v3
+            else "the GNU LGPL v2.1 given with libsndfile above")
+    libraries = sorted({o[len("--enable-"):] for o in options if o.startswith("--enable-")} - FFMPEG_NOT_LIBRARIES)
+    note = (f"The audio decoder ({FFMPEG.name} beside the program): a program of its own the app runs, which can "
+            f"be replaced by the user. Built without --enable-gpl and --enable-nonfree; its licence's text: {text}. "
+            f"Its source: {source}; its build's recipe: {recipe}"
+            + (f" (compiled with {compiler})" if compiler else "") + ".\n"
+            f"Linked into it, each under its own licence (their sources and licences: the build's recipe): "
+            f"{', '.join(libraries)}.\n"
+            f"Its configuration: {' '.join(options)}")
+    return f"FFmpeg {version}", licence, note, []
+
+
 def bundled() -> str:
     """Part 1: what the package carries beside its Python packages and crates."""
     import PySide6
@@ -90,6 +150,11 @@ def bundled() -> str:
         ("cpu_features", "Apache-2.0", "In VOLK.", [volk / "cpu_features" / "LICENSE"]),
         ("The Rust standard library", "MIT OR Apache-2.0", "In the native audio engine.",
          [rust_licenses() / "MIT.txt", rust_licenses() / "Apache-2.0.txt"]),
+    ]
+    ffmpeg = ffmpeg_entry()
+    if ffmpeg is not None:
+        entries.append(ffmpeg)
+    entries += [
         ("Noto Sans, Noto Sans JP, Noto Sans KR, Noto Sans SC, Noto Sans TC", "OFL-1.1",
          "The interface's fonts (assets/fonts).", [ROOT / "assets" / "fonts" / "OFL.txt"]),
         ("Unicode Character Database (Unihan)", "Unicode-3.0",
@@ -102,8 +167,9 @@ def bundled() -> str:
         ("rime-cantonese", "CC BY 4.0", "Data in pycantonese, read for Cantonese readings. "
          "https://github.com/rime/rime-cantonese", [site / "pycantonese" / "data" / "rime_cantonese" / "LICENSE.txt"]),
     ]
+    lgpl3 = "Qt, PySide6, Shiboken6, VOLK" + (", FFmpeg" if ffmpeg is not None and "LGPL-3" in ffmpeg[1] else "")
     entries.append(("The GNU General Public License v3", "GPL-3.0",
-                    "The licence the GNU LGPL v3 (Qt, PySide6, Shiboken6, VOLK; and Mixlyzer itself) supplements.",
+                    f"The licence the GNU LGPL v3 ({lgpl3}; and Mixlyzer itself) supplements.",
                     [rust_licenses() / "GPL-3.0-or-later.txt"]))
     toolchain = llvm_mingw()
     if toolchain is not None:

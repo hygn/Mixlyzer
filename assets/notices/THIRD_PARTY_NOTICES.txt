@@ -1458,6 +1458,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 
+--- FFmpeg n7.1.3-19-gdac2a1116d-20251221
+Licence: LGPL-3.0-or-later
+The audio decoder (ffmpeg.exe beside the program): a program of its own the app runs, which can be replaced by the user. Built without --enable-gpl and --enable-nonfree; its licence's text: the GNU LGPL v3 given with VOLK above, and the GNU GPL v3 it supplements at this part's end. Its source: https://github.com/FFmpeg/FFmpeg/commit/dac2a1116d; its build's recipe: https://github.com/BtbN/FFmpeg-Builds (compiled with gcc 15.2.0 (crosstool-NG 1.28.0.1_403899e)).
+Linked into it, each under its own licence (their sources and licences: the build's recipe): amf, chromaprint, ffnvcodec, fontconfig, gmp, iconv, libaom, libaribb24, libaribcaption, libass, libbluray, libdav1d, libfreetype, libfribidi, libgme, libharfbuzz, libjxl, libkvazaar, libmp3lame, libopencore-amrnb, libopencore-amrwb, libopenh264, libopenjpeg, libopenmpt, libopus, libplacebo, librav1e, librist, libshaderc, libsnappy, libsoxr, libsrt, libssh, libsvtav1, libtheora, libtwolame, libuavs3d, libvmaf, libvorbis, libvpl, libvpx, libvvenc, libwebp, libxml2, libzimg, libzmq, libzvbi, lv2, lzma, openal, opencl, sdl2, vaapi, vulkan, zlib.
+Its configuration: --prefix=/ffbuild/prefix --pkg-config-flags=--static --pkg-config=pkg-config --cross-prefix=x86_64-w64-mingw32- --arch=x86_64 --target-os=mingw32 --enable-version3 --disable-debug --disable-w32threads --enable-pthreads --enable-iconv --enable-zlib --enable-libxml2 --enable-libvmaf --enable-fontconfig --enable-libharfbuzz --enable-libfreetype --enable-libfribidi --enable-vulkan --enable-libshaderc --enable-libvorbis --disable-libxcb --disable-xlib --disable-libpulse --enable-gmp --enable-lzma --disable-liblcevc-dec --enable-opencl --enable-amf --enable-libaom --enable-libaribb24 --disable-avisynth --enable-chromaprint --enable-libdav1d --disable-libdavs2 --disable-libdvdread --disable-libdvdnav --disable-libfdk-aac --enable-ffnvcodec --enable-cuda-llvm --disable-frei0r --enable-libgme --enable-libkvazaar --enable-libaribcaption --enable-libass --enable-libbluray --enable-libjxl --enable-libmp3lame --enable-libopus --enable-libplacebo --enable-librist --enable-libssh --enable-libtheora --enable-libvpx --enable-libwebp --enable-libzmq --enable-lv2 --enable-libvpl --enable-openal --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-libopenh264 --enable-libopenjpeg --enable-libopenmpt --enable-librav1e --disable-librubberband --enable-schannel --enable-sdl2 --enable-libsnappy --enable-libsoxr --enable-libsrt --enable-libsvtav1 --enable-libtwolame --enable-libuavs3d --disable-libdrm --enable-vaapi --disable-libvidstab --enable-libvvenc --disable-libx264 --disable-libx265 --disable-libxavs2 --disable-libxvid --enable-libzimg --enable-libzvbi --extra-cflags=-DLIBTWOLAME_STATIC --extra-cxxflags= --extra-libs=-lgomp --extra-ldflags=-pthread --extra-ldexeflags= --cc=x86_64-w64-mingw32-gcc --cxx=x86_64-w64-mingw32-g++ --ar=x86_64-w64-mingw32-gcc-ar --ranlib=x86_64-w64-mingw32-gcc-ranlib --nm=x86_64-w64-mingw32-gcc-nm --extra-version=20251221
+
 --- Noto Sans, Noto Sans JP, Noto Sans KR, Noto Sans SC, Noto Sans TC
 Licence: OFL-1.1
 The interface's fonts (assets/fonts).
@@ -2266,7 +2272,7 @@ Creative Commons may be contacted at creativecommons.org.
 
 --- The GNU General Public License v3
 Licence: GPL-3.0
-The licence the GNU LGPL v3 (Qt, PySide6, Shiboken6, VOLK; and Mixlyzer itself) supplements.
+The licence the GNU LGPL v3 (Qt, PySide6, Shiboken6, VOLK, FFmpeg; and Mixlyzer itself) supplements.
 
 GNU GENERAL PUBLIC LICENSE
 
