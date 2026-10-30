@@ -1,4 +1,5 @@
 import shutil
+import struct
 import subprocess
 import tempfile
 import unittest
@@ -205,6 +206,64 @@ class TagWriterTests(unittest.TestCase):
         found = tw.read_spellings(path)
         for place in ("mp4:©cmt", "mp4:desc", "mp4:dscp"):
             self.assertEqual(found[place], [new], place)
+
+
+class SeratoTagTests(unittest.TestCase):
+    """Serato's beatgrid and hot cues in each format (an ID3 GEOB frame in MP3, WAV and AIFF; base64 after its
+    header in FLAC's comment and MP4's freeform item), read back as written; the old Markers_ emptied; the other
+    tags and the audio as they were."""
+    BEATGRID = b"\x01\x00\x00\x00\x00\x01" + struct.pack(">ff", 0.7148, 174.0) + b"\x00"
+    MARKERS = b"\x01\x01" + b"AQFCUE\nAAA" + b"\x00" * 460
+
+    def setUp(self):
+        self.dir = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.dir, ignore_errors=True)
+
+    def files(self) -> list[Path]:
+        out = []
+        for name, fmt in (("a.flac", "FLAC"), ("a.wav", "WAV"), ("a.aiff", "AIFF")):
+            sf.write(self.dir / name, AUDIO, 22050, format=fmt)
+            out.append(self.dir / name)
+        (self.dir / "a.mp3").write_bytes(mp3(id3_frame(b"TIT2", b"\x00old") + bytes(32)))
+        out.append(self.dir / "a.mp3")
+        if FFMPEG:
+            subprocess.run([str(FFMPEG), "-v", "error", "-y", "-f", "lavfi", "-i", "sine=d=1", "-c:a", "aac",
+                            str(self.dir / "a.m4a")], check=True)
+            out.append(self.dir / "a.m4a")
+        return out
+
+    def test_each_format(self):
+        for path in self.files():
+            with self.subTest(path.suffix):
+                tw.write_tags(path, {"title": "ヴヴヴ"})
+                before = tw.read_tags(path)
+                tw.write_tags(path, {"serato_beatgrid": self.BEATGRID, "serato_markers": self.MARKERS})
+                got = tw.read_tags(path)
+                self.assertEqual(got["serato_beatgrid"].encode("latin-1"), self.BEATGRID)
+                self.assertEqual(got["serato_markers"].encode("latin-1"), self.MARKERS)
+                self.assertEqual(got["title"], before["title"])
+                # the old Markers_ written (as another program would), then emptied with the new ones
+                tw.write_tags(path, {"serato_markers_old": b"\x02\x05" + bytes(10)})
+                self.assertIn("serato_markers_old", tw.read_tags(path))
+                tw.write_tags(path, {"serato_markers_old": ""})
+                got = tw.read_tags(path)
+                self.assertNotIn("serato_markers_old", got)
+                self.assertEqual(got["serato_markers"].encode("latin-1"), self.MARKERS)
+                # Serato's own Tempo Map (as its analysis writes it), emptied with a beatgrid written
+                tw.write_tags(path, {"serato_tempo_map": b"\x02\x00\x00\x01" + bytes(45)})
+                self.assertIn("serato_tempo_map", tw.read_tags(path))
+                tw.write_tags(path, {"serato_beatgrid": self.BEATGRID, "serato_tempo_map": ""})
+                got = tw.read_tags(path)
+                self.assertNotIn("serato_tempo_map", got)
+                self.assertEqual(got["serato_beatgrid"].encode("latin-1"), self.BEATGRID)
+
+    def test_the_places(self):
+        names = {path.suffix: [p[1] for p in tw.planned_writes(path, {"serato_beatgrid": self.BEATGRID})
+                               ["serato_beatgrid"]] for path in self.files()}
+        self.assertEqual(names[".mp3"], ["GEOB:Serato BeatGrid"])
+        self.assertEqual(names[".flac"], ["SERATO_BEATGRID"])
+        if FFMPEG:
+            self.assertEqual(names[".m4a"], ["----:com.serato.dj:beatgrid"])
 
 
 def apic(ptype: int, image: bytes) -> bytes:

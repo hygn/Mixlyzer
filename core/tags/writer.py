@@ -33,6 +33,7 @@ every other one is as it was, else the file is left as it was."""
 
 from __future__ import annotations
 
+import base64
 import math
 import os
 import shutil
@@ -44,8 +45,15 @@ from typing import Callable, Optional, Union
 
 from system.i18n import tr
 
-FIELDS = ("title", "artist", "album", "comment", "bpm", "key")
+FIELDS = ("title", "artist", "album", "comment", "bpm", "key", "serato_beatgrid", "serato_markers",
+          "serato_markers_old", "serato_tempo_map")
 TEXT_FIELDS = ("title", "artist", "album", "comment")   # the ones the analysis reads from the tags
+# Serato DJ's analysis (third_party.serato's payloads): a field's value is its payload's bytes as Latin-1 text; an
+# ID3 GEOB frame holds them as they are, FLAC's comment and MP4's freeform item base64 of them after their header.
+# The old Markers_ (Serato reads it before Markers2) is only emptied, so Serato takes the hot cues of Markers2; the
+# Tempo Map (newer Serato versions read it before the BeatGrid) is written with the BeatGrid
+SERATO = {"serato_beatgrid": "Serato BeatGrid", "serato_markers": "Serato Markers2",
+          "serato_markers_old": "Serato Markers_", "serato_tempo_map": "Serato Tempo Map"}
 PADDING = 2048          # room left for later edits when a file is written anew
 _COPY_BLOCK = 1 << 20
 
@@ -70,6 +78,35 @@ LEVELS: dict[str, dict[str, tuple[tuple[str, ...], ...]]] = {
             "album": (("mp4:\u00a9alb", "mp4:albm"),), "comment": (("mp4:\u00a9cmt",), ("mp4:desc", "mp4:dscp")),
             "bpm": (("mp4:tmpo",),), "key": (("mp4:initialkey",),)},
 }
+_SERATO_PLACES = {
+    "flac": {"serato_beatgrid": "vorbis:SERATO_BEATGRID", "serato_markers": "vorbis:SERATO_MARKERS_V2",
+             "serato_markers_old": "vorbis:SERATO_MARKERS", "serato_tempo_map": "vorbis:SERATO_TEMPO_MAP"},
+    "id3": {f: f"id3:GEOB:{desc}" for f, desc in SERATO.items()},
+    "mp4": {"serato_beatgrid": "mp4:----:com.serato.dj:beatgrid", "serato_markers": "mp4:----:com.serato.dj:markersv2",
+            "serato_markers_old": "mp4:----:com.serato.dj:markers", "serato_tempo_map": "mp4:----:com.serato.dj:tempomap"},
+}
+for _fmt in LEVELS:
+    for _field, _place in _SERATO_PLACES.get(_fmt, _SERATO_PLACES["id3"]).items():
+        LEVELS[_fmt][_field] = ((_place,),)
+_SERATO_MEAN = "com.serato.dj"
+_SERATO_BY_PLACE = {place: field for places in _SERATO_PLACES.values() for field, place in places.items()}
+
+
+def _serato_wrapped(field: str, text: str) -> str:
+    """A Serato payload (Latin-1 text) as FLAC's comment and MP4's freeform item hold it: base64 of its GEOB
+    header and its bytes."""
+    head = b"application/octet-stream\x00\x00" + SERATO[field].encode("ascii") + b"\x00"
+    return base64.b64encode(head + text.encode("latin-1")).decode("ascii")
+
+
+def _serato_unwrapped(field: str, text: str) -> Optional[str]:
+    """The payload (Latin-1 text) of a FLAC comment's or an MP4 item's base64 (None: not one of Serato's)."""
+    try:
+        raw = base64.b64decode("".join(text.split()) + "=" * (-len("".join(text.split())) % 4))
+    except ValueError:
+        return None
+    head = b"application/octet-stream\x00\x00" + SERATO[field].encode("ascii") + b"\x00"
+    return raw[len(head):].decode("latin-1") if raw.startswith(head) else None
 # another field the reader takes for an empty one: written (and emptied) only when it was the value's source
 _FALLBACKS = {"vorbis:ALBUMARTIST", "vorbis:DESCRIPTION", "id3:TPE2", "mp4:aART", "mp4:desc", "mp4:dscp"}
 # MediaInfo takes FLAC's PERFORMER for the performer when the file has one (even blank: its ARTIST then is the
@@ -117,6 +154,9 @@ def _texts(values: dict) -> dict[str, str]:
     for field, value in values.items():
         if field not in FIELDS:
             raise ValueError(f"unknown tag field: {field}")
+        if field in SERATO:      # a payload: its bytes as they are (NULs among them)
+            out[field] = value.decode("latin-1") if isinstance(value, bytes) else str(value or "")
+            continue
         text = bpm_text(value) if field == "bpm" else ("" if value is None else str(value))
         out[field] = text.replace("\x00", "")
     return out
@@ -525,7 +565,8 @@ def _plan_flac(path: Path, texts: dict[str, str], where: dict):
     entries = [e for e in entries if _vorbis_key(e) not in drop]
     for field in FIELDS:
         if texts.get(field):
-            entries += [f"{key}={texts[field]}".encode("utf-8") for key in keys.get(field, ())]
+            text = _serato_wrapped(field, texts[field]) if field in SERATO else texts[field]
+            entries += [f"{key}={text}".encode("utf-8") for key in keys.get(field, ())]
     comment[1] = _vorbis_build(vendor, entries)
     if len(comment[1]) >= 1 << 24:
         raise TagWriteError(tr("The tags are too long for the file."))
@@ -557,7 +598,12 @@ def _read_flac(path: Path) -> Spellings:
                 for entry in _vorbis_parse(f.read(length))[1]:
                     spelling = "vorbis:" + _vorbis_key(entry)
                     if spelling in known and b"=" in entry:
-                        out.setdefault(spelling, []).append(entry.split(b"=", 1)[1].decode("utf-8", "replace"))
+                        value = entry.split(b"=", 1)[1].decode("utf-8", "replace")
+                        if spelling in _SERATO_BY_PLACE:
+                            value = _serato_unwrapped(_SERATO_BY_PLACE[spelling], value)
+                            if value is None:
+                                continue
+                        out.setdefault(spelling, []).append(value)
                 break
     return out
 
@@ -718,7 +764,25 @@ def _id3_spelling(fid: bytes, flags: bytes, data: bytes, major: int) -> Optional
     if fid == b"TXXX":
         pair = _id3_pair(_id3_frame_data(flags, data, major), lang=False)
         return ("id3:TXXX:comment", pair[1]) if pair is not None and pair[0].lower() == "comment" else None
+    if fid == b"GEOB":
+        found = _geob(_id3_frame_data(flags, data, major))
+        return ("id3:GEOB:" + found[0], found[1]) if found is not None and found[0] in SERATO.values() else None
     return None
+
+
+def _geob(content: Optional[bytes]) -> Optional[tuple[str, str]]:
+    """(description, its data as Latin-1 text) of a GEOB frame's content (encoding, MIME type, file name,
+    description, data); None: not readable."""
+    if not content or content[0] > 3:
+        return None
+    enc = content[0]
+    _mime, rest = _id3_split(content[1:], 0)
+    _name, rest = _id3_split(rest, enc)
+    desc, data = _id3_split(rest, enc)
+    try:
+        return _id3_decode(desc, enc), data.decode("latin-1")
+    except (UnicodeError, TagWriteError):
+        return None
 
 
 def _id3_tag_spellings(tag: bytes, out: Spellings) -> None:
@@ -771,6 +835,9 @@ def _id3_rebuild(tag: Optional[bytes], places: dict[str, list[str]], texts: dict
             elif name == "TXXX:comment":
                 enc, raw = _id3_strings(txxx_desc, text, major)
                 out += _id3_frame(b"TXXX", bytes([enc]) + raw, major)
+            elif name.startswith("GEOB:"):    # as Serato writes it: Latin-1, its MIME type, no file name
+                out += _id3_frame(b"GEOB", b"\x00application/octet-stream\x00\x00" + name[5:].encode("latin-1")
+                                  + b"\x00" + text.encode("latin-1"), major)
             else:
                 enc, raw = _id3_strings(text, None, major)
                 out += _id3_frame(name.encode(), bytes([enc]) + raw, major)
@@ -1095,6 +1162,11 @@ def _ilst_spelling(kind: bytes, item: bytes) -> Optional[str]:
         return "mp4:tmpo"
     if _is_key_item(kind, item):
         return "mp4:initialkey"
+    if kind == b"----":
+        mean, name = _freeform_name(item)
+        spelling = f"mp4:----:{mean}:{name}"
+        if mean == _SERATO_MEAN and spelling in _SERATO_BY_PLACE:
+            return spelling
     name = next((n for n, k in _ILST_TEXT.items() if k == kind), None)
     return "mp4:" + name if name is not None else None
 
@@ -1126,6 +1198,10 @@ def _ilst_rebuild(ilst: Optional[bytes], places: dict[str, list[str]], texts: di
                 kept.append(_box(b"----", _box(b"mean", bytes(4) + _KEY_MEAN.encode())
                                  + _box(b"name", bytes(4) + _KEY_NAME.encode())
                                  + _data_atom(1, text.encode("utf-8"))))
+            elif "mp4:" + name in _SERATO_BY_PLACE:
+                kept.append(_box(b"----", _box(b"mean", bytes(4) + _SERATO_MEAN.encode())
+                                 + _box(b"name", bytes(4) + name.rsplit(":", 1)[1].encode())
+                                 + _data_atom(1, _serato_wrapped(field, text).encode("ascii"))))
     return _box(b"ilst", b"".join(kept) + tail)
 
 
@@ -1343,6 +1419,10 @@ def _read_mp4(path: Path) -> Spellings:
             value = _item_data(item) if spelling is not None else None
             if value is not None:
                 text = str(int.from_bytes(value, "big")) if spelling == "mp4:tmpo" else value.decode("utf-8", "replace")
+                if spelling in _SERATO_BY_PLACE:
+                    text = _serato_unwrapped(_SERATO_BY_PLACE[spelling], text)
+                    if text is None:
+                        continue
                 out.setdefault(spelling, []).append(text)
     udta = _child(moov, b"udta")
     if udta is not None:

@@ -16,13 +16,18 @@ from unit.ui_tests.qt_env import APP, isolated
 
 from PySide6 import QtWidgets
 
+from analyzer.music.marks import CuePoint, JumpCue, JumpCueGroup
+from core.analysis_library import jobs as analysis_jobs
+from core.analysis_library.stored import StoredAnalysis
 from core.library import jobs
 from core.library.records import TrackRow
+from third_party import serato
 from core.tags import backup as tag_backup
 from core.tags import writer as tw
 from core.tags.writer import read_tags
 from ui.library.tabs import export as export_tab
 from ui.library.tabs.export import ExportTrackPanel
+from ui.theme import current_theme
 
 _ISOLATION = None
 UID = "0f8fad5b-d9cb-469f-a165-70867728950e"
@@ -51,10 +56,13 @@ def tearDownModule():
 class _Library:
     def __init__(self, row: TrackRow):
         self.row = row
+        self.analysis = None     # the stored analysis answered (None: none read)
 
     def read(self, job, *args, done):
         if job is jobs.tag_values:
             done((self.row, ""))
+        elif job is analysis_jobs.analysis and self.analysis is not None:
+            done(self.analysis)
 
     def call(self, job, *args, **kwargs):
         return {} if job is jobs.tag_sources else None
@@ -182,6 +190,75 @@ class WriteTagsTests(unittest.TestCase):
         dialog.findChildren(QtWidgets.QCheckBox)[0].setChecked(True)
         self.assertTrue(accept.isEnabled())
         wait_until(lambda: self.panel._tags_writing is None)
+
+    def test_serato_beatgrid_and_hot_cues(self):
+        cue = lambda label, point, comment="": JumpCue(label, comment, point, point, point)   # noqa: E731
+        period = 60 / 174
+        beats = 0.37 + period * np.arange(64)
+        self.panel._library.analysis = StoredAnalysis(
+            duration_sec=23.0, beats=beats, tempo_segments=np.array([[0.37, beats[-1], 174, 0.37 + period, 3, 174]]),
+            jump_cues=(JumpCueGroup((cue("A", 2.5, "サビ"), cue("B", 10.0), cue("I", 12.0)), 0),))
+        for box in self.panel.tag_fields.values():
+            box.setChecked(False)
+        self.panel.cb_serato.setChecked(True)
+        self.write()
+        (dialog,) = self.shown
+        changes = {field: (olds, new, warning) for field, _name, olds, new, warning in dialog.changes}
+        self.assertEqual(set(changes), {"serato_beatgrid", "serato_tempo_map", "serato_markers"})
+        self.assertEqual(changes["serato_beatgrid"][1], "1 grid marker from 0:00.715, 174.00 BPM at the end")
+        self.assertEqual(changes["serato_tempo_map"][1], "1 tempo segment from 0:00.715, 174.00 BPM at the end")
+        self.assertEqual(changes["serato_markers"][1], "A 0:02.500 サビ; B 0:10.000 B · BPM locked")
+        self.assertIn("past H", changes["serato_markers"][2])                     # the JumpCUE I left out
+        self.assertIn("4-beat bars", changes["serato_beatgrid"][2])               # 3/4 bars
+        got = read_tags(self.file)
+        markers = serato.parse_beatgrid(got["serato_beatgrid"].encode("latin-1"))
+        self.assertAlmostEqual(markers[0][0], 0.37 + period, places=4)
+        self.assertEqual([(c.slot, c.name) for c in serato.parse_cues(got["serato_markers"].encode("latin-1"))],
+                         [(0, "サビ"), (1, "B")])
+        self.shown.clear()
+        self.write()                                                              # written: nothing to confirm
+        self.assertEqual(self.shown, [])
+        # Serato analyzed it since (its own Tempo Map, read before the beatgrid: 15 segments at half the tempo):
+        # ours written over it
+        own = serato.build_tempo_map([(0.19, 52.0), (24.5, 76.0), (60.0, 102.6)])
+        tw.write_tags(self.file, {"serato_tempo_map": own})
+        self.write()
+        (olds, new, _warning), = [(o, n, w) for f, _name, o, n, w in self.shown[0].changes if f == "serato_tempo_map"]
+        self.assertEqual(olds[0][2], "3 tempo segments from 0:00.190, 102.60 BPM at the end")
+        anchor, segments = serato.parse_tempo_map(read_tags(self.file)["serato_tempo_map"].encode("latin-1"))
+        self.assertAlmostEqual(anchor, 0.37 + period, places=6)
+        self.assertEqual(len(segments), 1)
+
+    def test_serato_options(self):
+        cue = lambda label, point: JumpCue(label, "", point, point, point)   # noqa: E731
+        beats = 0.5 * np.arange(64)
+        self.panel._library.analysis = StoredAnalysis(
+            duration_sec=32.0, beats=beats, tempo_segments=np.array([[0.0, 32.0, 120, 0.0, 4, 120]]),
+            jump_cues=(JumpCueGroup((cue("A", 2.0), cue("B", 8.0)), 0),),
+            cue_points=(CuePoint(4.0, "Intro"), CuePoint(16.0, "Drop")))
+        for box in self.panel.tag_fields.values():
+            box.setChecked(False)
+        self.panel.cb_serato.setChecked(True)
+        lib = mock.Mock(serato_hot_cues="both", serato_keep_cues=False, serato_bpm_lock=False)
+        with mock.patch.object(export_tab.settings_store, "current", return_value=mock.Mock(libconfig=lib)):
+            self.write()
+        raw = read_tags(self.file)["serato_markers"].encode("latin-1")
+        self.assertEqual([(c.slot, c.name) for c in serato.parse_cues(raw)],
+                         [(0, "A"), (1, "B"), (2, "Intro"), (3, "Drop")])
+        self.assertFalse(serato.bpm_locked(raw))
+
+    def test_a_file_held_by_another_program_then_written(self):
+        # Windows refuses to replace a file another program holds (Serato with the track loaded): said; the next
+        # write's note back in the text's colour
+        with mock.patch.object(export_tab, "write_tags", side_effect=PermissionError(13, "Access is denied")):
+            self.write(backup="")
+        self.assertIn("Another program has the file open", self.panel.tag_note.text())
+        self.assertIn(current_theme().danger, self.panel.tag_note.styleSheet())
+        self.assertEqual(self.file.read_bytes(), self.original)
+        self.write(backup="")
+        self.assertEqual(self.panel.tag_note.text(), "The tags were written to the file.")
+        self.assertIn(current_theme().text, self.panel.tag_note.styleSheet())
+        self.assertNotIn(current_theme().danger, self.panel.tag_note.styleSheet())
 
     def test_nothing_changing_no_confirmation(self):
         self.write(backup="")

@@ -43,6 +43,13 @@ class libconfig:
     # The library folder (system.os_support.path_key) whose warning of a sync client's folder the user turned off
     # ("": none; another folder warned again).
     cloud_sync_warning_off: str = ""
+    # Serato's tags (the Export tab's Write Tags, third_party.serato): its hot cues made of the JumpCUEs (A-H in their
+    # slots: "jumpcues"), the CUE points (in time order: "cue_points") or both (the CUE points in the slots the
+    # JumpCUEs leave: "both"); the file's own Serato hot cues kept in the slots left (else all replaced); the
+    # beatgrid locked (BPMLOCK: Serato's analysis leaves it).
+    serato_hot_cues: str = "jumpcues"
+    serato_keep_cues: bool = True
+    serato_bpm_lock: bool = True
 
 
 @dataclass
@@ -445,6 +452,9 @@ def default_cfg():
         sync_stored_analysis=True,
         backup_feature_cache=False,
         cloud_sync_warning_off="",
+        serato_hot_cues="jumpcues",
+        serato_keep_cues=True,
+        serato_bpm_lock=True,
     )
     acfg = analysisconfig(
         bpm_min=100,

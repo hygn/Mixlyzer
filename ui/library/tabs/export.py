@@ -19,10 +19,13 @@ from core.library import jobs
 from core.library.records import TrackRow
 from core.library.service import LibraryService
 from analyzer.audio.decoder import decode_to_memmap, get_samplerate
+from core.settings import store as settings_store
 from core.tags import backup as tag_backup
-from core.tags.writer import TEXT_FIELDS, TagWriteError, bpm_text, planned_writes, tag_format, write_tags
+from core.tags.writer import (SERATO, TEXT_FIELDS, TagWriteError, bpm_text, planned_writes, read_tags, tag_format,
+                              write_tags)
 from core.track.model import DataModel
 from third_party.midi_tempo_map import TempoMapError, midi_tempo_map
+from third_party import serato
 from third_party.rekordbox import sanitize_filename
 from ui.config.scroll import scroll_page
 from ui.widgets.elided_label import ElidedLabel
@@ -30,7 +33,7 @@ from analyzer.music.marks import JumpCue, JumpCueGroup
 from ui.render.jumprender import jump_renderer
 from analyzer.music.key_names import idx_to_labels
 from ui.theme import current_theme
-from system.i18n import tr
+from system.i18n import tr, tr_n
 
 
 class ExportTrackPanel(QtWidgets.QWidget):
@@ -152,6 +155,15 @@ class ExportTrackPanel(QtWidgets.QWidget):
         self.cb_comment_tieups.setEnabled(False)
         self.tag_fields["comment"].toggled.connect(lambda _on: self._update_tag_controls())
         grid.addWidget(self.cb_comment_tieups, (len(self.tag_fields) + 1) // 2, 0, 1, 2)
+        self.cb_serato = QtWidgets.QCheckBox(tr("Serato beatgrid and hot cues"))
+        self.cb_serato.setToolTip(tr(
+            "<p>Serato DJ's beatgrid and hot cues, in the file's tags where Serato reads them: the grid from the "
+            "first downbeat (a ramp a marker a beat), the hot cues made of the JumpCUEs, the CUE points or both, as "
+            "Settings > Library > Serato says. The file's Serato loops and track colour are kept.</p>"))
+        grid.addWidget(self.cb_serato, (len(self.tag_fields) + 1) // 2 + 1, 0, 1, 2)
+        self._field_names.update({"serato_beatgrid": tr("Serato beatgrid"), "serato_markers": tr("Serato hot cues"),
+                                  "serato_markers_old": tr("Serato's old cue data"),
+                                  "serato_tempo_map": tr("Serato's tempo map")})
         self.tag_note = QtWidgets.QLabel("")
         self.tag_note.setWordWrap(True)
         self.btn_write_tags = QtWidgets.QPushButton(tr("Write Tags"))
@@ -221,7 +233,7 @@ class ExportTrackPanel(QtWidgets.QWidget):
 
     def _update_tag_controls(self) -> None:
         fmt = self._tag_format()
-        for box in self.tag_fields.values():
+        for box in (*self.tag_fields.values(), self.cb_serato):
             box.setEnabled(fmt is not None)
         self.cb_comment_tieups.setEnabled(fmt is not None and self.tag_fields["comment"].isChecked())
         self.btn_write_tags.setEnabled(fmt is not None and self._tags_writing is None)
@@ -232,7 +244,9 @@ class ExportTrackPanel(QtWidgets.QWidget):
 
     def _set_tag_note(self, text: str, *, error: bool = False) -> None:
         self.tag_note.setText(text)
-        self.tag_note.setStyleSheet(f"color: {current_theme().danger};" if error else "")
+        # the colour set either way (a style sheet emptied after the error's kept its red)
+        theme = current_theme()
+        self.tag_note.setStyleSheet(f"color: {theme.danger if error else theme.text};")
 
     def write_tags(self) -> None:
         """The checked fields' stored values (read from the library now) written into the track's file, in a
@@ -243,10 +257,24 @@ class ExportTrackPanel(QtWidgets.QWidget):
             self._update_tag_controls()
             return
         fields = [field for field, box in self.tag_fields.items() if box.isChecked()]
-        if not fields:
+        with_serato = self.cb_serato.isChecked()
+        if not fields and not with_serato:
             self._set_tag_note(tr("Check the fields to write."), error=True)
             return
         uid = self._track.uid
+        marks = self._serato_marks() if with_serato else None
+        if with_serato and marks is None:      # the stored analysis still to read: asked again when it comes
+            def came(analysis) -> None:
+                if self._track is None or self._track.uid != uid:
+                    return
+                if analysis is None:
+                    self._set_tag_note(tr("The track's analysis could not be read."), error=True)
+                    return
+                self._analysis = analysis
+                self.write_tags()
+
+            self._library.read(analysis_jobs.analysis, uid, done=came)
+            return
         if self._unapplied_edits is not None and self._unapplied_edits(uid):
             answer = QtWidgets.QMessageBox.question(
                 self, tr("Write Tags"),
@@ -263,9 +291,19 @@ class ExportTrackPanel(QtWidgets.QWidget):
         # confirmed, then written there
         lang = self._tieup_language() if self._tieup_language is not None else ""
         self._library.read(jobs.tag_values, uid, with_tieups, lang,
-                           done=lambda found: self._write_stored(uid, fields, *found))
+                           done=lambda found: self._write_stored(uid, fields, *found, marks=marks))
 
-    def _write_stored(self, uid: str, fields: list, row: Optional[TrackRow], suffix: str) -> None:
+    def _serato_marks(self) -> Optional[tuple]:
+        """What Serato's tags are made of (the beats, the tempo rows, the JumpCUE groups, the CUE points' count): the
+        deck's marks when it holds the track (as edited), else the stored ones; None: not read yet."""
+        if self._model_holds_track():
+            m = self._model
+            return m.beats, m.tempo_segments, list(m.jump_cues), list(m.cue_points)
+        a = self._analysis
+        return None if a is None else (a.beats, a.tempo_segments, list(a.jump_cues), list(a.cue_points))
+
+    def _write_stored(self, uid: str, fields: list, row: Optional[TrackRow], suffix: str,
+                      marks: Optional[tuple] = None) -> None:
         if row is None:
             self._tags_writing = None
             self._update_tag_controls()
@@ -280,7 +318,7 @@ class ExportTrackPanel(QtWidgets.QWidget):
             "key": idx_to_labels(row.key)[1] if row.key is not None else "",
         }
         values = {field: stored[field] for field in fields}
-        write = (str(self._source), row.path, values)
+        write = (str(self._source), row.path, values, marks, settings_store.current().libconfig)
         threading.Thread(target=self._read_tags_job, args=(uid, write), daemon=True).start()
 
     def _read_tags_job(self, uid: str, write: tuple) -> None:
@@ -290,8 +328,8 @@ class ExportTrackPanel(QtWidgets.QWidget):
         analysis would read the file, kept with the write. The library's part asked of its owner
         (LibraryService.call)."""
         from core.tags.reader import extract_tags, read_tag_sources
-        file_path, stored_path, values = write
-        sources, kept = {}, {}
+        file_path, stored_path, values, marks, lib = write
+        sources, kept, losses = {}, {}, []
         try:
             sources = self._library.call(jobs.tag_sources, uid)
             missing = [f for f in TEXT_FIELDS if f in values and f not in sources]
@@ -300,10 +338,36 @@ class ExportTrackPanel(QtWidgets.QWidget):
                 if found:
                     kept = {f: found[f] for f in missing}
                     sources = {**sources, **kept}
+            if marks is not None:
+                losses = self._serato_values(file_path, marks, values, lib)
             plan = planned_writes(file_path, values, sources)
         except (TagWriteError, OSError):
             plan = None
-        self._sig_tags_read.emit(uid, plan, (file_path, stored_path, values, sources, kept))
+        self._sig_tags_read.emit(uid, plan, (file_path, stored_path, values, sources, kept, losses))
+
+    @staticmethod
+    def _serato_values(file_path: str, marks: tuple, values: dict, lib=None) -> list[str]:
+        """Serato's fields put in ``values`` from ``marks`` (the beats, the tempo rows, the JumpCUE groups, the CUE
+        points) as ``lib`` (the libconfig: its serato_ options; None: the defaults) says, in Serato's time of the
+        file (third_party.serato.time_offset): the beatgrid, the hot cues
+        over the file's own Markers2 (its loops and colour kept), its old Markers_ emptied when it has one; returns
+        what Serato loses (third_party.serato's losses)."""
+        beats, rows, groups, cue_points = marks
+        source = getattr(lib, "serato_hot_cues", "jumpcues")
+        keep, bpm_lock = getattr(lib, "serato_keep_cues", True), getattr(lib, "serato_bpm_lock", True)
+        now = read_tags(file_path)
+        existing = now.get("serato_markers", "").encode("latin-1")
+        offset = serato.time_offset(file_path, get_samplerate(file_path))
+        markers, losses = serato.grid_markers(beats, rows)
+        markers = serato.shifted(markers, offset)
+        if markers:     # the grid both ways: the Tempo Map newer Serato versions read first, the BeatGrid
+            values["serato_beatgrid"] = serato.build_beatgrid(markers)
+            values["serato_tempo_map"] = serato.build_tempo_map(markers)
+        cues, cue_losses = serato.hot_cues(groups, cue_points, source, existing, keep, offset)
+        values["serato_markers"] = serato.build_markers2(cues, existing, bpm_lock)
+        if now.get("serato_markers_old"):
+            values["serato_markers_old"] = ""
+        return losses + cue_losses
 
     def _confirm_tags(self, uid: str, plan: Optional[dict], write: tuple) -> None:
         """The changes shown (``plan``: core.tags.writer.planned_writes, None: the file not read), the backup asked
@@ -311,21 +375,29 @@ class ExportTrackPanel(QtWidgets.QWidget):
         place shown with its value (two or more: each by its name), and a warning where the format's own place is
         written beside the one the library read (a store's M4A with a blank ©cmt and its comment in desc).
         Each place is checked to be written (unchecked: left as it is). Nothing changing: said, not written."""
-        file_path, stored_path, values, sources, kept = write
+        file_path, stored_path, values, sources, kept, losses = write
         changes = []
         for field, value in values.items():
             new = bpm_text(value) if field == "bpm" else str(value or "")
             places = (plan or {}).get(field)
             if plan is not None and all(now == after for _s, _name, now, after, _kind in places or ()):
                 continue
-            olds = ([(spelling, name, " / ".join(v.strip() for v in now if v.strip()))
-                     for spelling, name, now, _after, _kind in places] if places else [("", "", "?")])
-            warning = ""
+            shown = (lambda vs: " / ".join(v.strip() for v in vs if v.strip())) if field not in SERATO else \
+                (lambda vs: " / ".join(_serato_shown(field, v) for v in vs))
+            olds = ([(spelling, name, shown(now)) for spelling, name, now, _after, _kind in places]
+                    if places else [("", "", "?")])
+            if field in SERATO:
+                raw = value.decode("latin-1") if isinstance(value, bytes) else str(value or "")
+                new = _serato_shown(field, raw) if raw else ""
+            warning = "\n".join(_serato_losses(field, losses))
             own = next((p for p in places or () if p[4] == "own"), None)
             if own is not None and any(p[4] == "source" for p in places) and own[2] != own[3]:
                 there = " / ".join(v.strip() for v in own[2] if v.strip())
                 warning = tr("Also written to {place}, the field DJ software (rekordbox ...) reads. It holds "
                              "now: {value}").format(place=own[1], value=there or tr("(empty)"))
+            if field == "serato_markers_old":
+                warning = tr("Serato reads this before the hot cues written here: it is emptied (its loops and "
+                             "names are in the hot cues' tag too).")
             changes.append((field, self._field_names.get(field, field), olds, new, warning))
         if not changes:
             self._tags_writing = None
@@ -367,6 +439,9 @@ class ExportTrackPanel(QtWidgets.QWidget):
             error = ""
         except TagWriteError as exc:
             error = str(exc)
+        except PermissionError:
+            error = tr("Another program has the file open (a DJ program with the track loaded?): the tags were not "
+                       "written. Close it there, then write again.")
         except OSError as exc:
             error = tr("The file could not be written: {error}").format(error=exc.strerror or exc)
         if error:
@@ -426,6 +501,9 @@ class ExportTrackPanel(QtWidgets.QWidget):
             error = ""
         except tag_backup.BackupError as exc:
             error = str(exc)
+        except PermissionError:
+            error = tr("Another program has the file open (a DJ program with the track loaded?): it was not put "
+                       "back. Close it there, then restore again.")
         except OSError as exc:
             error = tr("The file could not be written: {error}").format(error=exc.strerror or exc)
         self._sig_restored.emit(uid, error)
@@ -696,6 +774,52 @@ class ExportTrackPanel(QtWidgets.QWidget):
             exports.append((f"JumpCUE {src_label}->{dst_label}", out_path))
 
         return exports if exports else None
+
+
+def _serato_shown(field: str, text: str) -> str:
+    """A Serato field's value (its payload as Latin-1 text) as the confirmation shows it."""
+    raw = text.encode("latin-1", "replace")
+    if field == "serato_beatgrid":
+        markers = serato.parse_beatgrid(raw)
+        if not markers:
+            return tr("(not read)")
+        return tr_n("{count} grid marker from {start}, {bpm} BPM at the end",
+                    "{count} grid markers from {start}, {bpm} BPM at the end", len(markers)).format(
+            count=len(markers), start=_mmss(markers[0][0]), bpm=f"{markers[-1][1]:.2f}")
+    if field == "serato_markers":
+        cues = serato.parse_cues(raw)
+        text = "; ".join(f"{'ABCDEFGH'[c.slot] if c.slot < 8 else c.slot + 1} {_mmss(c.time_sec)} {c.name}".strip()
+                         for c in cues) or tr("no hot cues")
+        return text + (" · " + tr("BPM locked") if serato.bpm_locked(raw) else "")
+    if field == "serato_tempo_map":
+        anchor, segments = serato.parse_tempo_map(raw)
+        if not segments:
+            return tr("(not read)")
+        return tr_n("{count} tempo segment from {start}, {bpm} BPM at the end",
+                    "{count} tempo segments from {start}, {bpm} BPM at the end", len(segments)).format(
+            count=len(segments), start=_mmss(anchor), bpm=f"{segments[-1][1]:.2f}")
+    return tr("Serato's old cue data") if text else ""
+
+
+def _mmss(seconds: float) -> str:
+    return f"{int(seconds // 60)}:{seconds % 60:06.3f}"
+
+
+def _serato_losses(field: str, losses: list[str]) -> list[str]:
+    """What Serato cannot hold of the field's marks (third_party.serato's losses), said."""
+    out = []
+    if field == "serato_beatgrid" and "bars" in losses:
+        out.append(tr("Serato counts 4-beat bars from the first downbeat: the bars of another length here (a 3-beat "
+                      "bar, 7/4) are not kept."))
+    if field == "serato_markers":
+        if "slots" in losses:
+            out.append(tr("Serato has 8 hot cues: the JumpCUEs past H are left out."))
+        if "cue_points" in losses:
+            out.append(tr("Serato has no memory cues: the CUE points are left out (Settings > Library > Serato can "
+                          "make them hot cues)."))
+        if "full" in losses:
+            out.append(tr("Serato has 8 hot cues: the CUE points with no slot left are left out."))
+    return out
 
 
 def breakable_path(path: str) -> str:

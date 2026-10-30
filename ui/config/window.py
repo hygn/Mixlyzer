@@ -182,6 +182,9 @@ class SettingsDialog(
         self.cmb_rekordbox_tieup_language.setEnabled(bool(cfg.libconfig.rekordbox_comment_tieups))
         self.cb_sync_stored_analysis.setChecked(bool(cfg.libconfig.sync_stored_analysis))
         self.cb_backup_feature_cache.setChecked(bool(cfg.libconfig.backup_feature_cache))
+        self.cmb_serato_hot_cues.setCurrentIndex(max(0, self.cmb_serato_hot_cues.findData(cfg.libconfig.serato_hot_cues)))
+        self.cb_serato_keep_cues.setChecked(bool(cfg.libconfig.serato_keep_cues))
+        self.cb_serato_bpm_lock.setChecked(bool(cfg.libconfig.serato_bpm_lock))
 
         # search
         self._set_search_config(cfg.searchconfig)
@@ -339,6 +342,12 @@ class SettingsDialog(
                 rekordbox_tieup_language=str(self.cmb_rekordbox_tieup_language.currentData() or ""),
                 sync_stored_analysis=bool(self.cb_sync_stored_analysis.isChecked()),
                 backup_feature_cache=bool(self.cb_backup_feature_cache.isChecked()),
+                # edited where it is asked (the start's warning), kept as it is here
+                cloud_sync_warning_off=getattr(getattr(self._current_cfg, "libconfig", None),
+                                               "cloud_sync_warning_off", ""),
+                serato_hot_cues=str(self.cmb_serato_hot_cues.currentData() or "jumpcues"),
+                serato_keep_cues=bool(self.cb_serato_keep_cues.isChecked()),
+                serato_bpm_lock=bool(self.cb_serato_bpm_lock.isChecked()),
             ),
             viewconfig=viewconfig(
                 language=self._get_language(),

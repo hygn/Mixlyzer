@@ -176,6 +176,26 @@ def build_library_tab(dialog) -> None:
     f_rekordbox.addRow("", dialog.btn_rekordbox_sync_now)
     f_rekordbox.addRow(dialog.lbl_rekordbox_note)
 
+    grp_serato = QGroupBox(tr("Serato"))
+    f_serato = QFormLayout(grp_serato)
+    dialog.cmb_serato_hot_cues = QtWidgets.QComboBox()
+    for value, text in (("jumpcues", tr("JumpCUEs (A-H in their slots)")),
+                        ("cue_points", tr("CUE points (in time order)")),
+                        ("both", tr("JumpCUEs, then CUE points in the slots left"))):
+        dialog.cmb_serato_hot_cues.addItem(text, value)
+    dialog.cmb_serato_hot_cues.setToolTip(tr(
+        "<p>What the Export tab's Write Tags makes Serato's 8 hot cues of. Serato has no memory cues: CUE points "
+        "written there become hot cues.</p>"))
+    dialog.cb_serato_keep_cues = QCheckBox(tr("Keep the file's Serato hot cues in the slots left"))
+    dialog.cb_serato_keep_cues.setToolTip(tr(
+        "<p>Hot cues set in Serato stay in the slots the written ones leave; off, every hot cue is replaced.</p>"))
+    dialog.cb_serato_bpm_lock = QCheckBox(tr("Lock the beatgrid"))
+    dialog.cb_serato_bpm_lock.setToolTip(tr(
+        "<p>Serato's BPM lock: its analysis then leaves the written beatgrid as it is.</p>"))
+    f_serato.addRow(tr("Hot Cues"), dialog.cmb_serato_hot_cues)
+    f_serato.addRow(dialog.cb_serato_keep_cues)
+    f_serato.addRow(dialog.cb_serato_bpm_lock)
+
     grp_advanced = QGroupBox(tr("Advanced"))
     f_advanced = QFormLayout(grp_advanced)
     f_advanced.addRow(dialog.cb_write_log)
@@ -186,6 +206,7 @@ def build_library_tab(dialog) -> None:
     dialog.library_tabs.addTab(groups_page(grp_library), tr("General"))
     dialog.library_tabs.addTab(groups_page(grp_database, grp_backup), tr("Database"))
     dialog.library_tabs.addTab(groups_page(grp_rekordbox), tr("Rekordbox XML"))
+    dialog.library_tabs.addTab(groups_page(grp_serato), tr("Serato"))
     dialog.library_tabs.addTab(groups_page(grp_advanced), tr("Advanced"))
     root = QtWidgets.QVBoxLayout(dialog.tab_lib)
     root.addWidget(dialog.library_tabs)

@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-30 22:59+0900\n"
+"POT-Creation-Date: 2026-10-31 00:18+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ko_KR\n"
@@ -559,7 +559,13 @@ msgid ""
 "opened. Keep the library in a folder that is not synced (Settings > "
 "Library > Backup makes a copy you can restore elsewhere), or pause the "
 "sync while Mixlyzer runs."
-msgstr "라이브러리가 {service}에서 동기화하는 폴더 안에 있습니다:\n{path}\n\nMixlyzer가 라이브러리를 쓰는 도중 동기화되면 데이터베이스(library.db)가 손상될 수 있고, 온라인 전용으로 둔 트랙은 열 때마다 내려받습니다. 라이브러리는 동기화하지 않는 폴더에 두거나(설정 > 라이브러리 > 백업으로 사본을 만들어 다른 곳에 복원할 수 있습니다), Mixlyzer를 쓰는 동안 동기화를 일시 중지하세요."
+msgstr ""
+"라이브러리가 {service}에서 동기화하는 폴더 안에 있습니다:\n"
+"{path}\n"
+"\n"
+"Mixlyzer가 라이브러리를 쓰는 도중 동기화되면 데이터베이스(library.db)가 손상될 수 있고, 온라인 전용으로 둔 트랙은"
+" 열 때마다 내려받습니다. 라이브러리는 동기화하지 않는 폴더에 두거나(설정 > 라이브러리 > 백업으로 사본을 만들어 다른 곳에 "
+"복원할 수 있습니다), Mixlyzer를 쓰는 동안 동기화를 일시 중지하세요."
 
 #: app/window.py:165
 msgid "Don't show this again for this folder"
@@ -1372,38 +1378,38 @@ msgstr "Mixlyzer의 태그 백업이 아닙니다."
 msgid "The file has changed since this backup was made: it is not put back."
 msgstr "이 백업을 만든 뒤 파일이 바뀌었습니다. 되돌리지 않습니다."
 
-#: core/tags/writer.py:97
+#: core/tags/writer.py:134
 msgid ""
 "The file's tags are damaged or of a kind not written here; the file is "
 "unchanged."
 msgstr "파일의 태그가 손상되었거나 여기서 쓰지 않는 종류입니다. 파일은 바뀌지 않았습니다."
 
-#: core/tags/writer.py:101
+#: core/tags/writer.py:138
 msgid "The written tags did not read back as written; the file is unchanged."
 msgstr "쓴 태그가 쓴 그대로 다시 읽히지 않았습니다. 파일은 바뀌지 않았습니다."
 
-#: core/tags/writer.py:210 core/tags/writer.py:243 core/tags/writer.py:323
-#: core/tags/writer.py:1416 ui/library/tabs/export.py:231
+#: core/tags/writer.py:250 core/tags/writer.py:283 core/tags/writer.py:363
+#: core/tags/writer.py:1496 ui/library/tabs/export.py:243
 msgid "Tags cannot be written to this file's format."
 msgstr "이 파일 형식에는 태그를 쓸 수 없습니다."
 
-#: core/tags/writer.py:436
+#: core/tags/writer.py:476
 msgid "The file changed while its tags were written; it is unchanged."
 msgstr "태그를 쓰는 동안 파일이 바뀌었습니다. 파일은 바뀌지 않았습니다."
 
-#: core/tags/writer.py:531 core/tags/writer.py:573
+#: core/tags/writer.py:572 core/tags/writer.py:619
 msgid "The tags are too long for the file."
 msgstr "이 파일에 담기에는 태그가 너무 깁니다."
 
-#: core/tags/writer.py:1256
+#: core/tags/writer.py:1332
 msgid "The file's chunk offsets cannot take the longer tags; it is unchanged."
 msgstr "파일의 청크 오프셋이 더 길어진 태그를 담을 수 없습니다. 파일은 바뀌지 않았습니다."
 
-#: core/tags/writer.py:1283
+#: core/tags/writer.py:1359
 msgid "Fragmented MP4 files are not written."
 msgstr "조각난(Fragmented) MP4 파일에는 쓰지 않습니다."
 
-#: core/tags/writer.py:1302
+#: core/tags/writer.py:1378
 msgid "MP4 files with QuickTime keys metadata are not written."
 msgstr "QuickTime keys 메타데이터가 있는 MP4 파일에는 쓰지 않습니다."
 
@@ -2048,7 +2054,7 @@ msgstr "상대 또는 절대 .json 경로"
 msgid "Folder for features cached while reoptimizing, so later runs are faster."
 msgstr "재최적화하는 동안 특징을 캐시해 두는 폴더. 다음 실행이 빨라집니다."
 
-#: ui/config/analysis.py:47 ui/config/analysis.py:163 ui/config/library.py:186
+#: ui/config/analysis.py:47 ui/config/analysis.py:163 ui/config/library.py:206
 #: ui/config/view.py:187
 msgid "General"
 msgstr "일반"
@@ -2077,7 +2083,7 @@ msgstr ""
 "비트 트래커는 이 값부터 그 두 배까지의 템포로 읽습니다.\n"
 "이 범위 밖의 곡은 절반이나 두 배 템포로 읽힙니다."
 
-#: ui/config/analysis.py:75 ui/config/window.py:245
+#: ui/config/analysis.py:75 ui/config/window.py:248
 #: ui/windows/reanalyze_dialog.py:38 ui/windows/reanalyze_dialog.py:76
 #, python-brace-format
 msgid "Reads {low} - {high} BPM"
@@ -2161,7 +2167,7 @@ msgstr "BPM 최소"
 
 #: ui/config/analysis.py:139 ui/config/analysis.py:177
 #: ui/config/analysis.py:200 ui/config/dialogs/optimization.py:204
-#: ui/config/library.py:179 ui/config/library.py:189 ui/config/playback.py:108
+#: ui/config/library.py:199 ui/config/library.py:210 ui/config/playback.py:108
 #: ui/config/view.py:182
 msgid "Advanced"
 msgstr "고급"
@@ -3531,7 +3537,7 @@ msgid ""
 "tempo. Smaller makes the steps finer.</p>"
 msgstr "<p>Rekordbox에는 템포 램프가 없어 램프를 일정한 템포의 단계로 나누어 씁니다. 작을수록 단계가 잘게 나뉩니다.</p>"
 
-#: ui/config/library.py:64 ui/library/tabs/export.py:148
+#: ui/config/library.py:64 ui/library/tabs/export.py:151
 msgid "Tie-ups after the comment"
 msgstr "코멘트 뒤에 타이업 붙이기"
 
@@ -3741,7 +3747,7 @@ msgstr "<p>백업을 새 라이브러리 폴더에 풀고 Mixlyzer가 그 라이
 msgid "Backup"
 msgstr "백업"
 
-#: ui/config/library.py:165 ui/config/library.py:188
+#: ui/config/library.py:165 ui/config/library.py:208
 msgid "Rekordbox XML"
 msgstr "Rekordbox XML"
 
@@ -3763,22 +3769,73 @@ msgstr "<p>XML에서 각 트랙의 코멘트 뒤에 붙이는 타이업의 언�
 msgid "Tie-up Language"
 msgstr "타이업 언어"
 
+# | msgid "Min seg"
+#: ui/config/library.py:179 ui/config/library.py:209
+msgid "Serato"
+msgstr "Serato"
+
 #: ui/config/library.py:182
+msgid "JumpCUEs (A-H in their slots)"
+msgstr "JumpCUE (A-H를 같은 슬롯에)"
+
+# | msgid "CUE points (set by the analysis from the phrases)"
+# | msgid "CUE points from the phrases (CUE rules)"
+#: ui/config/library.py:183
+msgid "CUE points (in time order)"
+msgstr "CUE 포인트 (시간 순)"
+
+#: ui/config/library.py:184
+msgid "JumpCUEs, then CUE points in the slots left"
+msgstr "JumpCUE, 남은 슬롯에 CUE 포인트"
+
+#: ui/config/library.py:187
+msgid ""
+"<p>What the Export tab's Write Tags makes Serato's 8 hot cues of. Serato "
+"has no memory cues: CUE points written there become hot cues.</p>"
+msgstr ""
+"<p>내보내기 탭의 태그 쓰기가 Serato의 핫큐 8개를 무엇으로 채울지 정합니다. Serato에는 메모리 큐가 없어서, 여기 "
+"쓰는 CUE 포인트는 핫큐가 됩니다.</p>"
+
+#: ui/config/library.py:189
+msgid "Keep the file's Serato hot cues in the slots left"
+msgstr "파일의 Serato 핫큐를 남은 슬롯에 유지"
+
+#: ui/config/library.py:191
+msgid ""
+"<p>Hot cues set in Serato stay in the slots the written ones leave; off, "
+"every hot cue is replaced.</p>"
+msgstr "<p>Serato에서 찍은 핫큐는 쓰는 핫큐가 비워 둔 슬롯에 남습니다. 끄면 핫큐를 모두 바꿉니다.</p>"
+
+#: ui/config/library.py:192
+msgid "Lock the beatgrid"
+msgstr "비트그리드 잠금"
+
+#: ui/config/library.py:194
+msgid ""
+"<p>Serato's BPM lock: its analysis then leaves the written beatgrid as it"
+" is.</p>"
+msgstr "<p>Serato의 BPM 잠금: Serato가 분석해도 쓴 비트그리드를 그대로 둡니다.</p>"
+
+#: ui/config/library.py:195
+msgid "Hot Cues"
+msgstr "핫큐"
+
+#: ui/config/library.py:202
 msgid "Log Path"
 msgstr "로그 경로"
 
 # | msgid "Library Path"
 # | msgid "Library Database"
-#: ui/config/library.py:187
+#: ui/config/library.py:207
 msgid "Database"
 msgstr "데이터베이스"
 
-#: ui/config/library.py:214
+#: ui/config/library.py:235
 msgid "Add Local Music Folder"
 msgstr "로컬 음악 폴더 추가"
 
 # | msgid "Library Path"
-#: ui/config/dialogs/library_sync.py:17 ui/config/library.py:277
+#: ui/config/dialogs/library_sync.py:17 ui/config/library.py:298
 msgid "Sync Library Database"
 msgstr "라이브러리 데이터베이스 동기화"
 
@@ -3786,7 +3843,7 @@ msgstr "라이브러리 데이터베이스 동기화"
 # | database made " "again from its stored analysis (as the editor's save
 # writes
 # | them). " "Titles, artists, ratings and comments are not touched.</p>"
-#: ui/config/library.py:278
+#: ui/config/library.py:299
 msgid ""
 "Every track's BPM, key and search tables in the library database will be "
 "made again from its stored analysis. A BPM or key typed in the Edit Track"
@@ -3799,20 +3856,20 @@ msgstr ""
 "\n"
 "지금 동기화할까요?"
 
-#: ui/config/library.py:323
+#: ui/config/library.py:344
 msgid "Enable Sync with Rekordbox XML first."
 msgstr "먼저 'Rekordbox XML과 동기화'를 켜세요."
 
-#: ui/config/dialogs/rekordbox.py:15 ui/config/library.py:323
-#: ui/config/library.py:328
+#: ui/config/dialogs/rekordbox.py:15 ui/config/library.py:344
+#: ui/config/library.py:349
 msgid "Sync Rekordbox XML"
 msgstr "Rekordbox XML 동기화"
 
-#: ui/config/library.py:328
+#: ui/config/library.py:349
 msgid "Rekordbox XML Path is empty."
 msgstr "Rekordbox XML 경로가 비어 있습니다."
 
-#: ui/config/library.py:370
+#: ui/config/library.py:391
 msgid "Rekordbox XML worker started"
 msgstr "Rekordbox XML 작업 시작됨"
 
@@ -3946,7 +4003,7 @@ msgstr ""
 
 # | msgid "none"
 #: ui/config/midi.py:195 ui/config/output_group.py:83
-#: ui/library/tabs/export.py:779
+#: ui/library/tabs/export.py:903
 msgid "None"
 msgstr "없음"
 
@@ -6800,7 +6857,7 @@ msgstr ""
 "트랙의 오디오 파일. 파일을 옮기거나 이름을 바꿨을 때 지정하세요.\n"
 "분석, 플레이리스트, CUE는 트랙에 그대로 남습니다."
 
-#: ui/library/tabs/edit_song.py:118 ui/library/tabs/export.py:78
+#: ui/library/tabs/edit_song.py:118 ui/library/tabs/export.py:81
 msgid "Browse..."
 msgstr "찾아보기..."
 
@@ -6837,35 +6894,35 @@ msgstr ""
 "파일이 없습니다:\n"
 "{path}"
 
-#: ui/library/tabs/export.py:91
+#: ui/library/tabs/export.py:94
 msgid "No JumpCUE directions"
 msgstr "JumpCUE 방향 없음"
 
-#: ui/library/tabs/export.py:98
+#: ui/library/tabs/export.py:101
 msgid "Source"
 msgstr "원본"
 
-#: ui/library/tabs/export.py:99
+#: ui/library/tabs/export.py:102
 msgid "Destination Folder"
 msgstr "대상 폴더"
 
-#: ui/library/tabs/export.py:101
+#: ui/library/tabs/export.py:104
 msgid "Prerender JumpCUE Audio"
 msgstr "JumpCUE 오디오 미리 렌더링"
 
-#: ui/library/tabs/export.py:102
+#: ui/library/tabs/export.py:105
 msgid "Write WAV files with JumpCUE skips baked in."
 msgstr "JumpCUE 건너뛰기를 반영한 WAV 파일을 씁니다."
 
-#: ui/library/tabs/export.py:105
+#: ui/library/tabs/export.py:108
 msgid "Export"
 msgstr "내보내기"
 
-#: ui/library/tabs/export.py:114
+#: ui/library/tabs/export.py:117
 msgid "DAW Tempo Map"
 msgstr "DAW 템포 맵"
 
-#: ui/library/tabs/export.py:116
+#: ui/library/tabs/export.py:119
 msgid ""
 "<p>A MIDI file of the track's beatgrid for a DAW: its tempo (ramps too), "
 "bars and key changes. Put the audio at the project's start and import the"
@@ -6874,11 +6931,11 @@ msgstr ""
 "<p>트랙의 비트그리드를 DAW용 MIDI 파일로 씁니다: 템포(램프 포함), 마디, 전조. 오디오를 프로젝트 맨 앞에 놓고 그 "
 "자리에 이 파일의 템포 맵을 가져오세요.</p>"
 
-#: ui/library/tabs/export.py:118
+#: ui/library/tabs/export.py:121
 msgid "Export MIDI"
 msgstr "MIDI 내보내기"
 
-#: ui/library/tabs/export.py:125
+#: ui/library/tabs/export.py:128
 msgid "File Tags"
 msgstr "파일 태그"
 
@@ -6887,7 +6944,7 @@ msgstr "파일 태그"
 # | the " "fields checked change; the file's other tags, its artwork and its
 # | audio " "stay as they are. FLAC, MP3, AAC, WAV, AIFF and MP4 / M4A
 # | files.</p>"
-#: ui/library/tabs/export.py:127
+#: ui/library/tabs/export.py:130
 msgid ""
 "<p>Write the library's values into the audio file's own tags: only the "
 "fields checked change; the file's other tags, its artwork and its audio "
@@ -6896,53 +6953,91 @@ msgstr ""
 "<p>라이브러리의 값을 오디오 파일 자체의 태그에 씁니다. 체크한 항목만 바뀌고, 파일의 다른 태그와 아트워크, 오디오는 그대로 "
 "둡니다.</p>"
 
-#: ui/library/tabs/export.py:138
+#: ui/library/tabs/export.py:141
 msgid "MP4 / M4A files hold a whole BPM only."
 msgstr "MP4 / M4A 파일에는 정수 BPM만 들어갑니다."
 
-#: ui/library/tabs/export.py:139
+#: ui/library/tabs/export.py:142
 msgid "Written as a musical key (Am, F#)."
 msgstr "일반 조성 표기(Am, F#)로 씁니다."
 
-#: ui/library/tabs/export.py:150
+#: ui/library/tabs/export.py:153
 msgid ""
 "<p>The comment written with the song's tie-ups after it, as [Title OP; "
 "Other ED]; the library's comment stays as it is.</p>"
 msgstr "<p>코멘트 뒤에 곡의 타이업을 [제목 OP; 다른 작품 ED] 형식으로 붙여서 씁니다. 라이브러리의 코멘트는 그대로 둡니다.</p>"
 
-#: ui/library/tabs/export.py:157 ui/library/tabs/export.py:252
-#: ui/library/tabs/export.py:385 ui/library/tabs/export.py:722
-#: ui/library/tabs/export.py:798
+#: ui/library/tabs/export.py:158
+msgid "Serato beatgrid and hot cues"
+msgstr "Serato 비트그리드와 핫큐"
+
+#: ui/library/tabs/export.py:160
+msgid ""
+"<p>Serato DJ's beatgrid and hot cues, in the file's tags where Serato "
+"reads them: the grid from the first downbeat (a ramp a marker a beat), "
+"the hot cues made of the JumpCUEs, the CUE points or both, as Settings > "
+"Library > Serato says. The file's Serato loops and track colour are "
+"kept.</p>"
+msgstr ""
+"<p>Serato DJ의 비트그리드와 핫큐를 Serato가 읽는 파일 태그에 씁니다: 그리드는 첫 다운비트부터(램프는 박마다 "
+"마커), 핫큐는 설정 > 라이브러리 > Serato에 따라 JumpCUE, CUE 포인트 또는 둘 다로 만듭니다. 파일의 "
+"Serato 루프와 트랙 색은 그대로 둡니다.</p>"
+
+#: ui/library/tabs/export.py:164
+msgid "Serato beatgrid"
+msgstr "Serato 비트그리드"
+
+#: ui/library/tabs/export.py:164
+msgid "Serato hot cues"
+msgstr "Serato 핫큐"
+
+#: ui/library/tabs/export.py:165 ui/library/tabs/export.py:801
+msgid "Serato's old cue data"
+msgstr "Serato 구형 큐 데이터"
+
+#: ui/library/tabs/export.py:166
+msgid "Serato's tempo map"
+msgstr "Serato 템포 맵"
+
+#: ui/library/tabs/export.py:169 ui/library/tabs/export.py:280
+#: ui/library/tabs/export.py:460 ui/library/tabs/export.py:846
+#: ui/library/tabs/export.py:922
 msgid "Write Tags"
 msgstr "태그 쓰기"
 
-#: ui/library/tabs/export.py:158
+#: ui/library/tabs/export.py:170
 msgid "Write the checked fields' stored values into the file's tags."
 msgstr "체크한 항목의 저장된 값을 파일 태그에 씁니다."
 
-#: ui/library/tabs/export.py:160
+#: ui/library/tabs/export.py:172
 msgid "Restore from Backup..."
 msgstr "백업에서 복원..."
 
-#: ui/library/tabs/export.py:162
+#: ui/library/tabs/export.py:174
 msgid ""
 "<p>Put the track's file back as a backup made before writing its tags "
 "holds it: a tag backup (.mxtags) or a copy of the whole file.</p>"
 msgstr "<p>트랙의 파일을 태그를 쓰기 전에 만든 백업대로 되돌립니다: 태그 백업(.mxtags) 또는 파일 전체 사본.</p>"
 
-#: ui/library/tabs/export.py:209
+#: ui/library/tabs/export.py:221
 msgid "Source file not found at the specified path."
 msgstr "지정한 경로에 원본 파일이 없습니다."
 
-#: ui/library/tabs/export.py:212
+#: ui/library/tabs/export.py:224
 msgid "Source path is invalid."
 msgstr "원본 경로가 잘못되었습니다."
 
-#: ui/library/tabs/export.py:247
+#: ui/library/tabs/export.py:262
 msgid "Check the fields to write."
 msgstr "쓸 항목을 체크하세요."
 
-#: ui/library/tabs/export.py:253
+# | msgid "Phrase reanalysis completed"
+#: ui/library/tabs/export.py:271 ui/library/tabs/export.py:599
+#: ui/library/tabs/export.py:682
+msgid "The track's analysis could not be read."
+msgstr "트랙의 분석을 읽을 수 없습니다."
+
+#: ui/library/tabs/export.py:281
 msgid ""
 "The Edit tab has changes to this track that are not applied: the stored "
 "values are written.\n"
@@ -6951,40 +7046,52 @@ msgstr ""
 "편집 탭에 이 트랙의 적용하지 않은 변경이 있습니다. 저장된 값이 쓰입니다.\n"
 "그래도 태그를 쓸까요?"
 
-#: ui/library/tabs/export.py:261
+#: ui/library/tabs/export.py:289
 msgid "Reading the file's tags..."
 msgstr "파일의 태그를 읽는 중..."
 
-#: ui/library/tabs/export.py:272
+#: ui/library/tabs/export.py:310
 msgid "The track is no longer in the library."
 msgstr "이 트랙은 더 이상 라이브러리에 없습니다."
 
-#: ui/library/tabs/export.py:327
+#: ui/library/tabs/export.py:396
 #, python-brace-format
 msgid ""
 "Also written to {place}, the field DJ software (rekordbox ...) reads. It "
 "holds now: {value}"
 msgstr "{place}에도 씁니다. DJ 소프트웨어(rekordbox 등)가 읽는 칸입니다. 지금 값: {value}"
 
-#: ui/library/tabs/export.py:328 ui/library/tabs/export.py:760
+#: ui/library/tabs/export.py:397 ui/library/tabs/export.py:884
 msgid "(empty)"
 msgstr "(비어 있음)"
 
-#: ui/library/tabs/export.py:333
+#: ui/library/tabs/export.py:399
+msgid ""
+"Serato reads this before the hot cues written here: it is emptied (its "
+"loops and names are in the hot cues' tag too)."
+msgstr "Serato는 여기 쓰는 핫큐보다 이것을 먼저 읽습니다. 그래서 비웁니다(루프와 이름은 핫큐 태그에도 있습니다)."
+
+#: ui/library/tabs/export.py:405
 msgid "The file's tags already hold these values."
 msgstr "파일의 태그가 이미 이 값입니다."
 
-#: ui/library/tabs/export.py:342
+#: ui/library/tabs/export.py:414
 msgid "Writing the tags..."
 msgstr "태그를 쓰는 중..."
 
-#: ui/library/tabs/export.py:371 ui/library/tabs/export.py:430
-#: ui/library/tabs/export.py:542 ui/windows/diagnostics_dialog.py:59
+#: ui/library/tabs/export.py:443
+msgid ""
+"Another program has the file open (a DJ program with the track loaded?): "
+"the tags were not written. Close it there, then write again."
+msgstr "다른 프로그램이 파일을 열고 있습니다(곡을 올려 둔 DJ 프로그램?). 태그를 쓰지 않았습니다. 그쪽에서 닫은 뒤 다시 쓰세요."
+
+#: ui/library/tabs/export.py:446 ui/library/tabs/export.py:508
+#: ui/library/tabs/export.py:620 ui/windows/diagnostics_dialog.py:59
 #, python-brace-format
 msgid "The file could not be written: {error}"
 msgstr "파일을 쓸 수 없습니다: {error}"
 
-#: ui/library/tabs/export.py:380
+#: ui/library/tabs/export.py:455
 #, python-brace-format
 msgid ""
 "The tags were written to the file.\n"
@@ -6993,50 +7100,56 @@ msgstr ""
 "파일에 태그를 썼습니다.\n"
 "백업: {path}"
 
-#: ui/library/tabs/export.py:381
+#: ui/library/tabs/export.py:456
 msgid "The tags were written to the file."
 msgstr "파일에 태그를 썼습니다."
 
-#: ui/library/tabs/export.py:397 ui/library/tabs/export.py:404
-#: ui/library/tabs/export.py:410 ui/library/tabs/export.py:438
+#: ui/library/tabs/export.py:472 ui/library/tabs/export.py:479
+#: ui/library/tabs/export.py:485 ui/library/tabs/export.py:516
 msgid "Restore from Backup"
 msgstr "백업에서 복원"
 
-#: ui/library/tabs/export.py:398
+#: ui/library/tabs/export.py:473
 msgid "Tag backups (*.mxtags);;All files (*)"
 msgstr "태그 백업 (*.mxtags);;모든 파일 (*)"
 
-#: ui/library/tabs/export.py:406
+#: ui/library/tabs/export.py:481
 #, python-brace-format
 msgid "Put '{file}' back as the backup '{backup}' holds it?"
 msgstr "'{file}'을(를) 백업 '{backup}'의 상태로 되돌릴까요?"
 
-#: ui/library/tabs/export.py:409
+#: ui/library/tabs/export.py:484
 #, python-brace-format
 msgid "The backup was made of '{name}'."
 msgstr "이 백업은 '{name}'에서 만들어졌습니다."
 
-#: ui/library/tabs/export.py:418
+#: ui/library/tabs/export.py:493
 msgid "Putting the file back..."
 msgstr "파일을 되돌리는 중..."
 
-#: ui/library/tabs/export.py:436
+#: ui/library/tabs/export.py:505
+msgid ""
+"Another program has the file open (a DJ program with the track loaded?): "
+"it was not put back. Close it there, then restore again."
+msgstr "다른 프로그램이 파일을 열고 있습니다(곡을 올려 둔 DJ 프로그램?). 되돌리지 않았습니다. 그쪽에서 닫은 뒤 다시 복원하세요."
+
+#: ui/library/tabs/export.py:514
 msgid "The file was put back as the backup holds it."
 msgstr "파일을 백업의 상태로 되돌렸습니다."
 
-#: ui/library/tabs/export.py:466
+#: ui/library/tabs/export.py:544
 msgid "Select Destination Folder"
 msgstr "대상 폴더 선택"
 
-#: ui/library/tabs/export.py:475
+#: ui/library/tabs/export.py:553
 msgid "No track is selected."
 msgstr "선택한 트랙이 없습니다."
 
-#: ui/library/tabs/export.py:479
+#: ui/library/tabs/export.py:557
 msgid "Please select a destination folder."
 msgstr "대상 폴더를 선택하세요."
 
-#: ui/library/tabs/export.py:485
+#: ui/library/tabs/export.py:563
 #, python-brace-format
 msgid ""
 "Cannot create destination folder:\n"
@@ -7045,7 +7158,7 @@ msgstr ""
 "대상 폴더를 만들 수 없습니다:\n"
 "{error}"
 
-#: ui/library/tabs/export.py:496
+#: ui/library/tabs/export.py:574
 #, python-brace-format
 msgid ""
 "'{name}' already exists.\n"
@@ -7054,16 +7167,11 @@ msgstr ""
 "'{name}'이(가) 이미 있습니다.\n"
 "덮어쓸까요?"
 
-# | msgid "Phrase reanalysis completed"
-#: ui/library/tabs/export.py:521 ui/library/tabs/export.py:604
-msgid "The track's analysis could not be read."
-msgstr "트랙의 분석을 읽을 수 없습니다."
-
-#: ui/library/tabs/export.py:532
+#: ui/library/tabs/export.py:610
 msgid "The track has no beatgrid to write."
 msgstr "이 트랙에는 쓸 비트그리드가 없습니다."
 
-#: ui/library/tabs/export.py:544 ui/library/tabs/export.py:571
+#: ui/library/tabs/export.py:622 ui/library/tabs/export.py:649
 #, python-brace-format
 msgid ""
 "Export completed:\n"
@@ -7072,11 +7180,11 @@ msgstr ""
 "내보내기 완료:\n"
 "{files}"
 
-#: ui/library/tabs/export.py:562
+#: ui/library/tabs/export.py:640
 msgid "Select a JumpCUE direction to render."
 msgstr "렌더링할 JumpCUE 방향을 고르세요."
 
-#: ui/library/tabs/export.py:692
+#: ui/library/tabs/export.py:770
 #, python-brace-format
 msgid ""
 "Failed to write JumpCUE audio:\n"
@@ -7085,24 +7193,68 @@ msgstr ""
 "JumpCUE 오디오를 쓰지 못했습니다:\n"
 "{error}"
 
-#: ui/library/tabs/export.py:724
+#: ui/library/tabs/export.py:785 ui/library/tabs/export.py:797
+msgid "(not read)"
+msgstr "(읽지 못함)"
+
+#: ui/library/tabs/export.py:786
+#, python-brace-format
+msgid "{count} grid marker from {start}, {bpm} BPM at the end"
+msgid_plural "{count} grid markers from {start}, {bpm} BPM at the end"
+msgstr[0] "그리드 마커 {count}개, {start}부터, 끝 {bpm} BPM"
+
+#: ui/library/tabs/export.py:792
+msgid "no hot cues"
+msgstr "핫큐 없음"
+
+#: ui/library/tabs/export.py:793
+msgid "BPM locked"
+msgstr "BPM 잠금"
+
+#: ui/library/tabs/export.py:798
+#, python-brace-format
+msgid "{count} tempo segment from {start}, {bpm} BPM at the end"
+msgid_plural "{count} tempo segments from {start}, {bpm} BPM at the end"
+msgstr[0] "템포 구간 {count}개, {start}부터, 끝 {bpm} BPM"
+
+#: ui/library/tabs/export.py:812
+msgid ""
+"Serato counts 4-beat bars from the first downbeat: the bars of another "
+"length here (a 3-beat bar, 7/4) are not kept."
+msgstr "Serato는 첫 다운비트부터 4박 마디로 셉니다. 길이가 다른 마디(3박 마디, 7/4)는 유지되지 않습니다."
+
+#: ui/library/tabs/export.py:816
+msgid "Serato has 8 hot cues: the JumpCUEs past H are left out."
+msgstr "Serato의 핫큐는 8개입니다. H 다음의 JumpCUE는 빠집니다."
+
+#: ui/library/tabs/export.py:818
+msgid ""
+"Serato has no memory cues: the CUE points are left out (Settings > "
+"Library > Serato can make them hot cues)."
+msgstr "Serato에는 메모리 큐가 없어서 CUE 포인트는 빠집니다(설정 > 라이브러리 > Serato에서 핫큐로 바꿀 수 있습니다)."
+
+#: ui/library/tabs/export.py:821
+msgid "Serato has 8 hot cues: the CUE points with no slot left are left out."
+msgstr "Serato의 핫큐는 8개입니다. 남은 슬롯이 없는 CUE 포인트는 빠집니다."
+
+#: ui/library/tabs/export.py:848
 #, python-brace-format
 msgid "These tags of '{file}' change:"
 msgstr "'{file}'의 다음 태그가 바뀝니다:"
 
-#: ui/library/tabs/export.py:756
+#: ui/library/tabs/export.py:880
 msgid "Write the value here (unchecked: this place stays as it is)."
 msgstr "이 칸에 값을 씁니다 (해제하면 이 칸은 그대로 둡니다)."
 
-#: ui/library/tabs/export.py:775
+#: ui/library/tabs/export.py:899
 msgid "Backup before writing"
 msgstr "쓰기 전 백업"
 
-#: ui/library/tabs/export.py:780
+#: ui/library/tabs/export.py:904
 msgid "The tags only"
 msgstr "태그만"
 
-#: ui/library/tabs/export.py:781
+#: ui/library/tabs/export.py:905
 msgid ""
 "The bytes the write replaces (a few KB, more with a cover picture): the "
 "file is put back exactly, as long as its audio stays as it is."
@@ -7111,15 +7263,15 @@ msgstr "쓰기로 바뀌는 부분의 바이트(수 KB, 커버 이미지가 있�
 # | msgid "Reading the analysis failed: {error}"
 # | msgid "The search failed: {error}"
 # | msgid "" "The lookup failed:\n" "{error}"
-#: ui/library/tabs/export.py:783
+#: ui/library/tabs/export.py:907
 msgid "The whole file"
 msgstr "파일 전체"
 
-#: ui/library/tabs/export.py:783
+#: ui/library/tabs/export.py:907
 msgid "A copy of the whole file, as large as it is."
 msgstr "파일 전체의 사본(파일 크기만큼 차지)."
 
-#: ui/library/tabs/export.py:791
+#: ui/library/tabs/export.py:915
 #, python-brace-format
 msgid "Kept in {folder}; Restore from Backup puts one back."
 msgstr "{folder}에 보관됩니다. 백업에서 복원으로 되돌릴 수 있습니다."
@@ -7439,15 +7591,15 @@ msgstr "\"{title}\"의 변경 내용을 적용할까요? (아니요: 버립니�
 msgid "All"
 msgstr "전체"
 
-#: ui/library/tabs/edit_song.py:124 ui/library/tabs/export.py:96
-#: ui/library/tabs/export.py:134 ui/library/tabs/tieup_editor.py:140
+#: ui/library/tabs/edit_song.py:124 ui/library/tabs/export.py:99
+#: ui/library/tabs/export.py:137 ui/library/tabs/tieup_editor.py:140
 #: ui/library/tabs/track_search_index.py:53 ui/library/widget.py:39
 #: ui/windows/tieup_works.py:77
 msgid "Title"
 msgstr "제목"
 
-#: ui/library/tabs/edit_song.py:125 ui/library/tabs/export.py:97
-#: ui/library/tabs/export.py:135 ui/library/tabs/track_search_index.py:53
+#: ui/library/tabs/edit_song.py:125 ui/library/tabs/export.py:100
+#: ui/library/tabs/export.py:138 ui/library/tabs/track_search_index.py:53
 #: ui/library/widget.py:39
 msgid "Artist"
 msgstr "아티스트"
@@ -7456,7 +7608,7 @@ msgstr "아티스트"
 msgid "Duration"
 msgstr "길이"
 
-#: ui/library/tabs/edit_song.py:126 ui/library/tabs/export.py:136
+#: ui/library/tabs/edit_song.py:126 ui/library/tabs/export.py:139
 #: ui/library/tabs/track_search_index.py:53 ui/library/widget.py:40
 msgid "Album"
 msgstr "앨범"
@@ -7478,7 +7630,7 @@ msgstr "추가일"
 msgid "Path"
 msgstr "경로"
 
-#: ui/library/tabs/edit_song.py:130 ui/library/tabs/export.py:137
+#: ui/library/tabs/edit_song.py:130 ui/library/tabs/export.py:140
 #: ui/library/widget.py:42
 msgid "Comment"
 msgstr "코멘트"
@@ -7542,7 +7694,7 @@ msgstr "불러온 트랙 없음"
 msgid "Playback"
 msgstr "재생"
 
-#: ui/config/library.py:93 ui/config/library.py:201 ui/library/sources.py:287
+#: ui/config/library.py:93 ui/config/library.py:222 ui/library/sources.py:287
 #: ui/shortcuts.py:32
 msgid "Library"
 msgstr "라이브러리"
@@ -7925,12 +8077,12 @@ msgstr "선택한 트랙을 일본어 위키백과와 위키데이터에서 찾�
 msgid "The works window: every work the tie-ups name, edited, merged or deleted."
 msgstr "작품 창: 타이업에 쓰인 모든 작품을 편집하거나 합치거나 삭제합니다."
 
-#: ui/library/actions.py:52 ui/library/tabs/export.py:475
-#: ui/library/tabs/export.py:479 ui/library/tabs/export.py:485
-#: ui/library/tabs/export.py:495 ui/library/tabs/export.py:520
-#: ui/library/tabs/export.py:532 ui/library/tabs/export.py:542
-#: ui/library/tabs/export.py:544 ui/library/tabs/export.py:561
-#: ui/library/tabs/export.py:571 ui/library/tabs/export.py:692
+#: ui/library/actions.py:52 ui/library/tabs/export.py:553
+#: ui/library/tabs/export.py:557 ui/library/tabs/export.py:563
+#: ui/library/tabs/export.py:573 ui/library/tabs/export.py:598
+#: ui/library/tabs/export.py:610 ui/library/tabs/export.py:620
+#: ui/library/tabs/export.py:622 ui/library/tabs/export.py:639
+#: ui/library/tabs/export.py:649 ui/library/tabs/export.py:770
 #: ui/library/track_panel.py:47 ui/shortcuts.py:149
 msgid "Export Track"
 msgstr "트랙 내보내기"
