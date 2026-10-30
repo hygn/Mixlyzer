@@ -206,8 +206,7 @@ class AboutDialog(QtWidgets.QDialog):
 
         others = QtWidgets.QWidget()
         others_layout = QtWidgets.QVBoxLayout(others)
-        intro = QtWidgets.QLabel(tr("The third-party software, fonts and data Mixlyzer carries, each under its own "
-                                    "license, with the texts their licenses ask to go with them."))
+        intro = QtWidgets.QLabel(tr("The third-party software, fonts and data Mixlyzer carries."))
         intro.setWordWrap(True)
         others_layout.addWidget(intro)
         self.find_edit = QtWidgets.QLineEdit()

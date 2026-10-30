@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-30 20:01+0900\n"
+"POT-Creation-Date: 2026-10-30 20:07+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -7409,20 +7409,18 @@ msgid ""
 msgstr ""
 
 #: ui/windows/about_dialog.py:209
-msgid ""
-"The third-party software, fonts and data Mixlyzer carries, each under its"
-" own license, with the texts their licenses ask to go with them."
+msgid "The third-party software, fonts and data Mixlyzer carries."
 msgstr ""
 
-#: ui/windows/about_dialog.py:214
+#: ui/windows/about_dialog.py:213
 msgid "Find (Enter: next)"
 msgstr ""
 
-#: ui/windows/about_dialog.py:221
+#: ui/windows/about_dialog.py:220
 msgid "Third-party Licenses"
 msgstr ""
 
-#: ui/windows/about_dialog.py:238
+#: ui/windows/about_dialog.py:237
 #, python-brace-format
 msgid "The notices file is missing ({path}); build/notices.py makes it."
 msgstr ""

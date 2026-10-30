@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-30 20:01+0900\n"
+"POT-Creation-Date: 2026-10-30 20:07+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ko_KR\n"
@@ -8442,23 +8442,25 @@ msgid ""
 "management and search.\n"
 "Distributed under the GNU Lesser General Public License v3.0. See below "
 "for the full license text."
-msgstr "Mixlyzer\n\nDJ를 위한 음악 분석, 메타데이터 편집, 라이브러리 관리, 검색 인터랙티브 도구입니다.\nGNU Lesser General Public License v3.0으로 배포됩니다. 라이선스 전문은 아래를 보세요."
+msgstr ""
+"Mixlyzer\n"
+"\n"
+"DJ를 위한 음악 분석, 메타데이터 편집, 라이브러리 관리, 검색 인터랙티브 도구입니다.\n"
+"GNU Lesser General Public License v3.0으로 배포됩니다. 라이선스 전문은 아래를 보세요."
 
 #: ui/windows/about_dialog.py:209
-msgid ""
-"The third-party software, fonts and data Mixlyzer carries, each under its"
-" own license, with the texts their licenses ask to go with them."
-msgstr "Mixlyzer에 포함된 제3자 소프트웨어, 글꼴, 데이터입니다. 각각 자체 라이선스를 따르며, 라이선스가 함께 제공하도록 요구하는 문서를 함께 싣습니다."
+msgid "The third-party software, fonts and data Mixlyzer carries."
+msgstr "Mixlyzer에 포함된 제3자 소프트웨어, 글꼴, 데이터입니다."
 
-#: ui/windows/about_dialog.py:214
+#: ui/windows/about_dialog.py:213
 msgid "Find (Enter: next)"
 msgstr "찾기 (Enter: 다음)"
 
-#: ui/windows/about_dialog.py:221
+#: ui/windows/about_dialog.py:220
 msgid "Third-party Licenses"
 msgstr "제3자 라이선스"
 
-#: ui/windows/about_dialog.py:238
+#: ui/windows/about_dialog.py:237
 #, python-brace-format
 msgid "The notices file is missing ({path}); build/notices.py makes it."
 msgstr "고지 파일이 없습니다({path}). build/notices.py로 만듭니다."
