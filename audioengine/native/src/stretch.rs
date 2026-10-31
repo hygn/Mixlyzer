@@ -1,8 +1,8 @@
-//! Streaming, percussion-aware, pitch-preserving time scaling: audioengine/python/timestretch.py's
-//! StreamingTimeStretcher (its docs hold the design), with the FFTs on realfft / rustfft and the vector work
-//! on VOLK. ``factor`` is input frames per output frame. The phase vocoder runs on the low band alone, the high
-//! band by WSOLA on its frames (see ``Light``); the event detector, the window lengths, the time map and the
-//! stream's handovers are the Python one's.
+//! Streaming, percussion-aware, pitch-preserving time scaling, grown from audioengine/python/timestretch.py's
+//! StreamingTimeStretcher (its event detector, RTPGHI with identity phase locking, the time map and the stream's
+//! handovers are that one's), with the FFTs on realfft / rustfft and the vector work on VOLK. ``factor`` is input
+//! frames per output frame. Two phase vocoders on the same frames and time map, split in the spectrum (see
+//! ``Light``), and each attack made the source's by the spectrum (``restore_attack``).
 
 use std::collections::{HashMap, VecDeque};
 use std::f64::consts::PI;
@@ -12,7 +12,7 @@ use std::sync::Arc;
 use num_complex::Complex32;
 use realfft::{ComplexToReal, RealFftPlanner, RealToComplex};
 
-use crate::split::{dot, BandSplit};
+use crate::split::BandSplit;
 use crate::vk;
 
 const EPS: f64 = 1e-12;
@@ -21,7 +21,16 @@ const TWO_PI: f64 = 2.0 * PI;
 #[inline(always)]
 fn wrap(v: f64) -> f64 {
     const INV_TWO_PI: f64 = 1.0 / TWO_PI;
-    v - TWO_PI * (v * INV_TWO_PI).round_ties_even()
+    v - TWO_PI * round_even(v * INV_TWO_PI)
+}
+
+/// ``x.round_ties_even()`` (a zero's sign aside) without a library call: x86-64 without SSE4.1 has no rounding
+/// instruction, and ``rint`` was called per bin (RTPGHI, the phase locking, the detector). Under 2^51, the addition
+/// of 1.5 * 2^52 rounds x to an integer itself (the f64's step is 1 there, ties to even).
+#[inline(always)]
+fn round_even(x: f64) -> f64 {
+    const MAGIC: f64 = 6_755_399_441_055_744.0;
+    if x.abs() < 2_251_799_813_685_248.0 { (x + MAGIC) - MAGIC } else { x.round_ties_even() }
 }
 
 fn periodic_hann(n: usize) -> Vec<f32> {
@@ -51,16 +60,52 @@ fn interp(x: f64, xs: &[f64], ys: &[f64]) -> f64 {
     ys[j - 1] + (x - x0) / (x1 - x0) * (ys[j] - ys[j - 1])
 }
 
+/// ln x within about 0.06, from the float's bits (Schraudolph): a threshold's background needs no more.
+#[inline(always)]
+fn fast_ln(x: f32) -> f32 {
+    (x.to_bits() as f32 - 1_064_866_805.0) * 8.262_958e-8
+}
+
+/// A spectrum's partials (``power``: a frame's power per bin): each bin within ``lobe`` of a peak, from bin ``from``
+/// on, ``ratio`` times over the background of the bins within ``reach`` either side, marked in ``partial`` (the
+/// others left as they are). The background is a noise's median power: the bins' geometric mean over 0.81, from
+/// running sums of the log power (``logsum``), compared in logs: O(bins), where a median per peak was the band's
+/// dearest work.
+fn mark_partials(power: &[f64], from: usize, ratio: f64, reach: usize, lobe: usize, logsum: &mut Vec<f64>,
+                 partial: &mut [bool]) {
+    let bins = power.len();
+    logsum.clear();
+    logsum.push(0.0);
+    let mut sum = 0f64;
+    for &p in power {
+        sum += fast_ln(p as f32 + 1e-30) as f64;
+        logsum.push(sum);
+    }
+    let over = (ratio * 1.23).ln();
+    for m in from.max(1)..bins - 1 {
+        let p = power[m];
+        if !(p >= power[m - 1] && p >= power[m + 1]) {
+            continue;
+        }
+        let (a, b) = (m.saturating_sub(reach), (m + reach + 1).min(bins));
+        let background = (logsum[b] - logsum[a]) / (b - a) as f64;
+        if logsum[m + 1] - logsum[m] > over + background {
+            let (a, b) = (m.saturating_sub(lobe), (m + lobe + 1).min(bins));
+            partial[a..b].iter_mut().for_each(|t| *t = true);
+        }
+    }
+}
+
 #[derive(Clone, Copy)]
 pub struct Config {
+    /// the event detector's window (the Python stretcher's)
     pub window_ms: f64,
     pub synthesis_hop_ms: f64,
+    /// the zero padding of the detector's and the low band's FFTs, and of the upper band's: none there (its bins a
+    /// third fewer, a fifth of the work less, chosen by listening; a chord's partials' contrast kept, its noise's
+    /// level kept by ``NoiseBins::UNRELATED`` measured again)
     pub frequency_oversampling: f64,
-    pub minimum_window_ratio: f64,
-    pub squeeze_strength: f64,
-    pub squeeze_gamma: f64,
-    pub kick_profile_stretch: f64,
-    pub window_quantum: i64,
+    pub upper_oversampling: f64,
     pub detector_magnitude_floor: f64,
     pub mpd_lower: f64,
     pub mpd_upper: f64,
@@ -70,14 +115,53 @@ pub struct Config {
     pub kick_low_hz: f64,
     pub phase_lock_strength: f64,
     pub stereo_coherence: bool,
+    /// the bins RTPGHI integrates: over this of the frame's loudest (-60 dB); those under it, masked by the louder
+    /// ones, keep their analysis phase (-120 dB integrated bins nobody hears)
     pub rtpghi_tolerance: f64,
     pub dry_transient_threshold: f64,
     pub dry_transient_full_strength: f64,
-    pub dry_transient_pre_ms: f64,
-    pub dry_transient_post_ms: f64,
-    pub kick_transient_pre_ms: f64,
-    pub kick_transient_post_ms: f64,
-    pub attack_filter_pad_ms: f64,
+    /// the low band's vocoder's window: a held note's partials resolved (a shorter one rang: a noise vocoded on a
+    /// coarser grid is a sum of steadier sinusoids), its smear before an attack gated. With the crossover at 1.5 kHz,
+    /// 80 ms (1 kHz and 110 ms before, chosen by listening): a vibrato's partials move with their frequency, their
+    /// smear in the window with its length, so the higher crossover takes the shorter window
+    pub low_window_ms: f64,
+    /// the upper band's: from ``mid_hz`` up, a window of ``mid_window_hops`` synthesis hops (every frame). Above a
+    /// voice's resolved harmonics (about its eighth) the ear hears the pitch in the waveform's period, not in the
+    /// partials, so the time structure matters there: and a vibrato or a glide moves its partials by tens of Hz
+    /// within a long window, the bins' phases then at odds (a level beating at twice the vibrato's rate: the "LFO"
+    /// of a slowed voice). Short, its noise's bins are made noise again (``noise_*``)
+    pub mid_hz: f64,
+    pub mid_window_hops: usize,
+    /// the crossover's width: each bin is one vocoder's, so no tone is the sum of two unrelated phases; the
+    /// crossover moved each frame to the spectrum's valley nearest it, within ``crossover_range_hz`` of ``mid_hz``,
+    /// by ``crossover_slew_hz`` a frame at most (``valley``)
+    pub crossover_width_hz: f64,
+    pub crossover_range_hz: f64,
+    pub crossover_slew_hz: f64,
+    /// the upper band's noise: a bin within ``noise_lobe_hz`` of a peak ``noise_peak_db`` over the background (a
+    /// noise's median power) of the bins within ``noise_median_hz`` is a partial's (a voice's harmonics, between
+    /// them nothing: far over it, a vibrato's smeared ones too); so is one within ``partial_lobe_hz`` of a peak
+    /// ``partial_peak_db`` over it in the event detector's spectrum (its window two of the band's: the partials of a
+    /// chord, too close for the band's short window, resolved there; from ``partial_from_hz``, below the
+    /// crossover's range). The others are noise's, their synthesis phase turned at random each frame, by up to a
+    /// whole turn from half speed down (the
+    /// slower, the longer a bin's phase advance holds its noise still as a sinusoid: a metallic ring), none at unity,
+    /// their level kept (a turned frame overlap-adds partly unrelated). A partial turned as noise is heard blurred: a
+    /// chord's notes lost their pitch slowed down
+    pub noise_peak_db: f64,
+    pub noise_median_hz: f64,
+    pub noise_lobe_hz: f64,
+    pub partial_peak_db: f64,
+    pub partial_lobe_hz: f64,
+    pub partial_from_hz: f64,
+    /// the attack's spectra: their window, how long after the attack its frames reach, how wide in Hz a bin's
+    /// power is averaged when compared (a noise's single bins are as random as its phase), the bass left alone, and
+    /// above ``attack_whole_hz`` the attack added whole whatever the event (a cymbal's, a hat's)
+    pub attack_window_ms: f64,
+    pub attack_after_ms: f64,
+    pub attack_smoothing_hz: f64,
+    pub attack_bass_hz: f64,
+    pub attack_whole_hz: f64,
 }
 
 impl Default for Config {
@@ -86,11 +170,7 @@ impl Default for Config {
             window_ms: 93.0,
             synthesis_hop_ms: 10.67,
             frequency_oversampling: 1.5,
-            minimum_window_ratio: 0.70,
-            squeeze_strength: 1.50,
-            squeeze_gamma: 1.50,
-            kick_profile_stretch: 2.0,
-            window_quantum: 16,
+            upper_oversampling: 1.0,
             detector_magnitude_floor: 0.01,
             mpd_lower: 0.50,
             mpd_upper: 0.75,
@@ -100,85 +180,28 @@ impl Default for Config {
             kick_low_hz: 180.0,
             phase_lock_strength: 1.0,
             stereo_coherence: true,
-            rtpghi_tolerance: 1e-6,
+            rtpghi_tolerance: 1e-3,
             dry_transient_threshold: 0.40,
             dry_transient_full_strength: 0.68,
-            dry_transient_pre_ms: 4.0,
-            dry_transient_post_ms: 24.0,
-            kick_transient_pre_ms: 10.0,
-            kick_transient_post_ms: 24.0,
-            attack_filter_pad_ms: 10.0,
+            low_window_ms: 80.0,
+            mid_hz: 1500.0,
+            mid_window_hops: 4,
+            crossover_width_hz: 100.0,
+            crossover_range_hz: 300.0,
+            crossover_slew_hz: 50.0,
+            noise_peak_db: 18.0,
+            noise_median_hz: 180.0,
+            noise_lobe_hz: 45.0,
+            partial_peak_db: 8.0,
+            partial_lobe_hz: 50.0,
+            partial_from_hz: 1100.0,
+            attack_window_ms: 20.0,
+            attack_after_ms: 20.0,
+            attack_smoothing_hz: 150.0,
+            attack_bass_hz: 200.0,
+            attack_whole_hz: 6500.0,
         }
     }
-}
-
-// --- the 4th-order Butterworth highpass, run forward and backward (scipy's butter + sosfiltfilt) ---
-
-type Sos = [[f64; 6]; 2];
-
-/// Two biquads of a 4th-order Butterworth highpass at ``hz`` (the bilinear transform, prewarped).
-fn butter_highpass4(hz: f64, fs: f64) -> Sos {
-    let w0 = TWO_PI * hz / fs;
-    let (s, c) = w0.sin_cos();
-    let mut sos = [[0.0; 6]; 2];
-    for (k, q) in [1.0 / (2.0 * (PI / 8.0).cos()), 1.0 / (2.0 * (3.0 * PI / 8.0).cos())].iter().enumerate() {
-        let alpha = s / (2.0 * q);
-        let a0 = 1.0 + alpha;
-        sos[k] = [(1.0 + c) / 2.0 / a0, -(1.0 + c) / a0, (1.0 + c) / 2.0 / a0, 1.0, -2.0 * c / a0, (1.0 - alpha) / a0];
-    }
-    sos
-}
-
-/// lfilter_zi of one section: the state of a unit step's steady state.
-fn section_zi(s: &[f64; 6]) -> [f64; 2] {
-    let (b0, b1, b2, a1, a2) = (s[0], s[1], s[2], s[4], s[5]);
-    // [[1 + a1, -1], [a2, 1]] zi = [b1 - a1 b0, b2 - a2 b0]
-    let (r0, r1) = (b1 - a1 * b0, b2 - a2 * b0);
-    let det = (1.0 + a1) + a2;
-    let z0 = (r0 + r1) / det;
-    let z1 = r1 - a2 * z0;
-    [z0, z1]
-}
-
-fn sosfilt(sos: &Sos, x: &mut [f64], zi: &[[f64; 2]; 2], scale: f64) {
-    for (k, s) in sos.iter().enumerate() {
-        let (mut z0, mut z1) = (zi[k][0] * scale, zi[k][1] * scale);
-        for v in x.iter_mut() {
-            let xin = *v;
-            let y = s[0] * xin + z0;
-            z0 = s[1] * xin - s[4] * y + z1;
-            z1 = s[2] * xin - s[5] * y;
-            *v = y;
-        }
-    }
-}
-
-/// scipy.signal.sosfiltfilt (odd extension of 3 * (2 * sections + 1) frames) of one channel.
-fn sosfiltfilt(sos: &Sos, x: &[f64]) -> Vec<f64> {
-    let pad = 15usize;
-    let n = x.len();
-    let mut zi = [[0.0; 2]; 2];
-    let mut scale = 1.0;
-    for (k, s) in sos.iter().enumerate() {
-        let z = section_zi(s);
-        zi[k] = [z[0] * scale, z[1] * scale];
-        scale *= (s[0] + s[1] + s[2]) / (s[3] + s[4] + s[5]);
-    }
-    let mut ext = Vec::with_capacity(n + 2 * pad);
-    for i in (1..=pad).rev() {
-        ext.push(2.0 * x[0] - x[i]);
-    }
-    ext.extend_from_slice(x);
-    for i in 0..pad {
-        ext.push(2.0 * x[n - 1] - x[n - 2 - i]);
-    }
-    let x0 = ext[0];
-    sosfilt(sos, &mut ext, &zi, x0);
-    ext.reverse();
-    let y0 = ext[0];
-    sosfilt(sos, &mut ext, &zi, y0);
-    ext.reverse();
-    ext[pad..pad + n].to_vec()
 }
 
 // --- the percussive-event detector (SELEBI), on a fixed input grid: frame j centred on j * hop ---
@@ -220,9 +243,21 @@ struct Detector {
     scratch: Vec<Complex32>,
     mag: Vec<f32>,
     ph: Vec<f32>,
+    // per frame (oldest first), its partials (``Config::partial_peak_db``), which the upper band's frames read
+    // (``partials_at``): the detector runs ahead of them
+    partials: VecDeque<(i64, Vec<bool>)>,
+    partial_ratio: f64,
+    partial_reach: usize,
+    partial_lobe: usize,
+    partial_from: usize,
+    power: Vec<f64>,
+    logsum: Vec<f64>,
 }
 
 impl Detector {
+    /// The frames of partials kept: 1.7 s of the source at 48 kHz, past the detector's lead on the vocoder's frames.
+    const PARTIAL_FRAMES: usize = 160;
+
     fn new(rate: f64, window: usize, hop: i64, n_fft: usize, cfg: &Config, planner: &mut RealFftPlanner<f32>) -> Self {
         let bins = n_fft / 2 + 1;
         let ramp = (0..bins)
@@ -236,6 +271,7 @@ impl Detector {
         let wide_bin = bins.min((kick_bin + 1).max((wide_hz * n_fft as f64 / rate).round_ties_even() as usize));
         let fft = planner.plan_fft_forward(n_fft);
         let scratch = fft.make_scratch_vec();
+        let bin_hz = rate / n_fft as f64;
         let mut d = Detector {
             hop,
             window,
@@ -266,10 +302,23 @@ impl Detector {
             scratch,
             mag: vec![0.0; bins],
             ph: vec![0.0; bins],
+            partials: VecDeque::with_capacity(Self::PARTIAL_FRAMES),
+            partial_ratio: 10f64.powf(cfg.partial_peak_db / 10.0),
+            partial_reach: 1.max((cfg.noise_median_hz / bin_hz).round() as usize),
+            partial_lobe: (cfg.partial_lobe_hz / bin_hz).round() as usize,
+            partial_from: (cfg.partial_from_hz / bin_hz) as usize,
+            power: vec![0.0; bins],
+            logsum: Vec::with_capacity(bins + 1),
             fft,
         };
         d.start(0);
         d
+    }
+
+    /// The partials of the frame nearest at or before ``j`` (none before the stream's first).
+    fn partials_at(&self, j: i64) -> Option<&[bool]> {
+        let k = self.partials.partition_point(|f| f.0 <= j);
+        (k > 0).then(|| self.partials[k - 1].1.as_slice())
     }
 
     fn start(&mut self, first: i64) {
@@ -282,6 +331,7 @@ impl Detector {
         self.previous_phase = None;
         self.level = 0.0;
         self.events.clear();
+        self.partials.clear();
     }
 
     /// The raw frames ``ensure(frame)`` reads, at most ``budget`` of them now; true once all are there.
@@ -324,6 +374,19 @@ impl Detector {
         vk::cmul_in(&mut self.spectrum, &self.ramp);
         vk::magnitude(&mut self.mag, &self.spectrum);
         vk::phase(&mut self.ph, &self.spectrum);
+        // the frame's partials, in the oldest frame's vector once all are kept
+        let mut mask = if self.partials.len() >= Self::PARTIAL_FRAMES {
+            self.partials.pop_front().map(|f| f.1).unwrap_or_default()
+        } else {
+            vec![false; self.bins]
+        };
+        mask.iter_mut().for_each(|t| *t = false);
+        for (p, m) in self.power.iter_mut().zip(self.mag.iter()) {
+            *p = (*m as f64) * (*m as f64);
+        }
+        mark_partials(&self.power, self.partial_from, self.partial_ratio, self.partial_reach, self.partial_lobe,
+                      &mut self.logsum, &mut mask);
+        self.partials.push_back((j, mask));
 
         let bins = self.bins;
         let peak = self.mag.iter().fold(0f32, |m, &v| m.max(v)) as f64;
@@ -483,7 +546,8 @@ fn lock_and_wrap(
 /// frame or in frequency from a neighbour), then identity phase locking around the joint peaks. The order is kept
 /// by a bucket queue in place of the Python one's heap and sorted seeds: magnitudes ordered to 1/8 octave (0.75
 /// dB; the f32's exponent and three mantissa bits), each push and pop O(1). Bins within one bucket go in last-in
-/// first-out order: the order of integration is RTPGHI's heuristic, not its result's definition.
+/// first-out order: the order of integration is RTPGHI's heuristic, not its result's definition. With ``only``, those
+/// bins alone are integrated (the others keep their analysis phases).
 #[allow(clippy::too_many_arguments)]
 fn rtpghi_frame(
     out: &mut [f64],
@@ -499,6 +563,7 @@ fn rtpghi_frame(
     n_fft: usize,
     tolerance: f64,
     lock_strength: f64,
+    only: Option<&[bool]>,
     work: &mut PhaseWork,
 ) {
     const SHIFT: u32 = 20;
@@ -529,7 +594,7 @@ fn rtpghi_frame(
     let mut queued = 0usize;
     // the seeds: a bin's integration in time, keyed by its previous magnitude (item 2m)
     for m in 0..bins {
-        if joint[m] as f64 > floor {
+        if joint[m] as f64 > floor && only.is_none_or(|o| o[m]) {
             remaining[m] = true;
             remaining_count += 1;
             let k = key(previous_joint[m]);
@@ -685,15 +750,7 @@ struct PhaseWork {
     peaks: Vec<usize>,
 }
 
-/// An attack's reach in the output around its destination (before, after).
-#[derive(Clone, Copy)]
-struct Attack {
-    pre: i64,
-    post: i64,
-}
-
-/// The analysis and synthesis windows for one low-rate window length ``wl``: the analysis at the low rate, the
-/// synthesis the same window at the full rate (``d * wl``).
+/// The analysis and synthesis windows for one low-rate window length ``wl`` (both at the low rate).
 struct LightWindow {
     analysis: Vec<f32>,
     center_ramp: Vec<Complex32>,
@@ -702,18 +759,365 @@ struct LightWindow {
     synthesis_sq: Vec<f32>,
 }
 
-/// The band split's part of the stretcher (a full-band vocoder's work at about 40 %): the phase vocoder on the low
-/// band only (below 7 - 8 kHz, decimated by ``d``: a third of the bins, the RTPGHI's queue with them, a bucket
-/// queue: ``rtpghi_frame``), synthesised at the full rate from the low band's bins (a zero-padded
-/// inverse FFT: the band-limited interpolation itself); the high band (the residual: the bands sum to the
-/// source, split.rs) by WSOLA on the vocoder's own frames: each frame's input and output centres are the
-/// vocoder's, so both bands follow one time map. WSOLA looks within 5 ms for the segment continuing the
-/// previous one (the high band's partials, a synth's or a voice's harmonics, align only over their
-/// fundamental's period: within 0.5 ms they warbled), its splices' level kept whatever their correlation.
-/// The attack is the source's own: at each event (its onset found in the source, ``onset``, and carried to
-/// its destination on the time map) the high band, and the vocoder's band above 200 Hz where the event is strong
-/// (a dry or a kick attack), are crossfaded to the source's (``restore_light``), so every band's attack lands at
-/// the same time and none is overlap-added; the bass below keeps its own phase.
+/// The STFT ``restore_attack`` works in (a periodic Hann, a quarter overlap) and its buffers.
+struct AttackSpectra {
+    n: usize,
+    hop: usize,
+    window: Vec<f32>,
+    fft: Arc<dyn RealToComplex<f32>>,
+    ifft: Arc<dyn ComplexToReal<f32>>,
+    scratch: Vec<Complex32>,
+    input: Vec<f32>,
+    out: Vec<f32>,
+    x: Vec<Vec<Complex32>>, // [ch][bins]
+    y: Vec<Complex32>,
+}
+
+impl AttackSpectra {
+    fn new(ch: usize, n: usize, planner: &mut RealFftPlanner<f32>) -> AttackSpectra {
+        let fft = planner.plan_fft_forward(n);
+        let ifft = planner.plan_fft_inverse(n);
+        let bins = n / 2 + 1;
+        let scratch = vec![Complex32::new(0.0, 0.0); fft.get_scratch_len().max(ifft.get_scratch_len())];
+        AttackSpectra {
+            n,
+            hop: n / 4,
+            window: periodic_hann(n),
+            fft,
+            ifft,
+            scratch,
+            input: vec![0.0; n],
+            out: vec![0.0; n],
+            x: vec![vec![Complex32::new(0.0, 0.0); bins]; ch],
+            y: vec![Complex32::new(0.0, 0.0); bins],
+        }
+    }
+}
+
+/// The upper band's phase vocoder: the source at the full rate, on the low band's frames (their centres: one time
+/// map), a periodic Hann of four of its hops (analysis and synthesis: the overlap sums to 1.5), only its band's bins
+/// (``gain``), RTPGHI and the stereo rotation as the low band's; its noise's bins turned at random (``NoiseBins``).
+struct UpperVocoder {
+    window: Vec<f32>,
+    n_fft: usize,
+    bins: usize,
+    fft: Arc<dyn RealToComplex<f32>>,
+    ifft: Arc<dyn ComplexToReal<f32>>,
+    fft_scratch: Vec<Complex32>,
+    ifft_scratch: Vec<Complex32>,
+    input: Vec<f32>,
+    spec: Vec<Complex32>,
+    output: Vec<f32>,
+    center_ramp: Vec<Complex32>,
+    inverse_ramp: Vec<Complex32>,
+    coeff: Vec<Complex32>,
+    analysis_phase: Vec<f64>,
+    synthesis_phase: Vec<f64>,
+    previous_analysis_phase: Vec<f64>,
+    previous_synthesis_phase: Vec<f64>,
+    magnitude: Vec<f32>,
+    joint: Vec<f32>,
+    previous_joint: Vec<f32>,
+    phase32: Vec<f32>,
+    phase_work: PhaseWork,
+    coherent_work: CoherentWork,
+    previous_center: Option<i64>,
+    frames: Vec<f32>,    // [ch, window]: the last frame's synthesis, windowed and scaled
+    frames_in: Vec<f32>, // [ch, window]: the frame's input
+    gain: Vec<f32>,      // per bin: its share of the crossover
+    noise: NoiseBins,
+}
+
+/// The noise's bins of the upper band (``Config::noise_peak_db``): what tells them from a partial's, and the frame's
+/// work.
+struct NoiseBins {
+    peak_ratio: f64,          // a partial's peak over its neighbourhood's background
+    reach: usize,             // the neighbourhood, either side
+    lobe: usize,              // a partial's bins, either side of its peak
+    to_detector: Vec<usize>,  // per bin: the event detector's bin at its frequency
+    rng: u64,                 // xorshift64
+    level: Vec<f32>,          // per bin: 1, or a noise's bin's level kept
+    power: Vec<f64>,
+    partial: Vec<bool>,
+    logsum: Vec<f64>,
+}
+
+impl NoiseBins {
+    /// The share of a frame's level a fully turned (random) bin keeps overlap-added with its neighbours, measured on
+    /// pink noise: four hops of a periodic Hann, not zero-padded (a turned spectrum spreads past the window, cut by
+    /// it; 0.19 at 1.5 times zero padding).
+    const UNRELATED: f64 = 0.26;
+
+    /// A frame's partials (``joint``: its joint magnitude): those of the event detector's frame (``detected``) and
+    /// those this frame's own spectrum shows.
+    fn classify(&mut self, joint: &[f32], detected: Option<&[bool]>) {
+        for (p, j) in self.power.iter_mut().zip(joint.iter()) {
+            *p = (*j as f64) * (*j as f64);
+        }
+        match detected {
+            Some(d) => {
+                for (t, &k) in self.partial.iter_mut().zip(self.to_detector.iter()) {
+                    *t = d[k];
+                }
+            }
+            None => self.partial.iter_mut().for_each(|t| *t = false),
+        }
+        mark_partials(&self.power, 0, self.peak_ratio, self.reach, self.lobe, &mut self.logsum, &mut self.partial);
+    }
+
+    /// The noise's bins of a frame (``joint``: its joint magnitude) turned by up to ``jitter`` of a turn at random,
+    /// every channel alike (the stereo image kept), and their level kept: a turn of up to j turns keeps sinc(j) of
+    /// a bin's relation to the next frame (rho), and the level is 1 / sqrt(rho^2 + (1 - rho^2) UNRELATED). The
+    /// partials are ``classify``'s.
+    fn turn(&mut self, synthesis_phase: &mut [f64], ch: usize, jitter: f64) {
+        let bins = self.partial.len();
+        let rho = (PI * jitter).sin() / (PI * jitter);
+        let level = (1.0 / (rho * rho + (1.0 - rho * rho) * Self::UNRELATED).sqrt()) as f32;
+        self.level.iter_mut().for_each(|g| *g = 1.0);
+        for m in 0..bins {
+            if self.partial[m] {
+                continue;
+            }
+            self.rng ^= self.rng << 13;
+            self.rng ^= self.rng >> 7;
+            self.rng ^= self.rng << 17;
+            let u = (self.rng >> 11) as f64 / (1u64 << 53) as f64;
+            let turn = jitter * (u - 0.5) * TWO_PI;
+            for c in 0..ch {
+                synthesis_phase[c * bins + m] = wrap(synthesis_phase[c * bins + m] + turn);
+            }
+            self.level[m] = level;
+        }
+    }
+}
+
+/// A crossover between two vocoders, per bin of an ``n_fft`` grid at ``rate``: 0 below ``hz - width / 2``,
+/// 1 above ``hz + width / 2``, sin^2 between (``high``; else its complement).
+fn crossover_gain(n_fft: usize, rate: f64, hz: f64, width: f64, high: bool) -> Vec<f32> {
+    (0..n_fft / 2 + 1).map(|k| crossover_at(k as f64 * rate / n_fft as f64, hz, width, high)).collect()
+}
+
+fn crossover_at(f: f64, hz: f64, width: f64, high: bool) -> f32 {
+    let t = ((f - (hz - 0.5 * width)) / width).clamp(0.0, 1.0);
+    let g = (0.5 * PI * t).sin().powi(2);
+    (if high { g } else { 1.0 - g }) as f32
+}
+
+/// ``gain`` (``crossover_gain``'s, its bins ``bin_hz`` apart) moved from ``from_hz`` to ``to_hz``: only the bins
+/// either ramp covers set again.
+fn move_crossover(gain: &mut [f32], bin_hz: f64, from_hz: f64, to_hz: f64, width: f64, high: bool) {
+    let a = ((from_hz.min(to_hz) - 0.5 * width) / bin_hz).floor().max(0.0) as usize;
+    let b = (((from_hz.max(to_hz) + 0.5 * width) / bin_hz).ceil() as usize + 1).min(gain.len());
+    for (k, g) in gain.iter_mut().enumerate().take(b).skip(a) {
+        *g = crossover_at(k as f64 * bin_hz, to_hz, width, high);
+    }
+}
+
+/// The crossover's frequency this frame: from ``hz`` (the last frame's), downhill on
+/// ``joint`` (the low band's joint magnitude, bins ``bin_hz`` apart, summed over 3 bins) by ``slew_hz`` at most, to
+/// the valley nearest it, inside ``default_hz`` +- ``range_hz``. A voice's partial gliding across a fixed crossover
+/// was the sum of two vocoders' unrelated phases, its level beating (a vibrato's harmonic there trembled at -50 %);
+/// between the partials a valley is moved through by none.
+fn valley(joint: &[f32], bin_hz: f64, hz: f64, default_hz: f64, range_hz: f64, slew_hz: f64) -> f64 {
+    let lo = (((default_hz - range_hz) / bin_hz).ceil() as usize).max(2);
+    let hi = (((default_hz + range_hz) / bin_hz).floor() as usize).min(joint.len().saturating_sub(3));
+    if hi <= lo {
+        return default_hz;
+    }
+    let level = |m: usize| joint[m - 1] + joint[m] + joint[m + 1];
+    let mut k = ((hz / bin_hz).round() as usize).clamp(lo, hi);
+    for _ in 0..(slew_hz / bin_hz).round() as usize {
+        let (down, here, up) = (level(k - 1), level(k), level(k + 1));
+        if down < here && down <= up && k > lo {
+            k -= 1;
+        } else if up < here && k < hi {
+            k += 1;
+        } else {
+            break;
+        }
+    }
+    k as f64 * bin_hz
+}
+
+impl UpperVocoder {
+    /// The band from ``Config::mid_hz`` up, a window of ``length``; the event detector's bins ``detector_bin_hz``
+    /// wide.
+    fn new(ch: usize, length: usize, rate: f64, cfg: &Config, detector_bin_hz: f64,
+           planner: &mut RealFftPlanner<f32>) -> UpperVocoder {
+        let oversampling = cfg.upper_oversampling;
+        let n_fft = fast_even_length((length as f64 * oversampling).ceil() as usize);
+        let bins = n_fft / 2 + 1;
+        let zc = Complex32::new(0.0, 0.0);
+        let fft = planner.plan_fft_forward(n_fft);
+        let ifft = planner.plan_fft_inverse(n_fft);
+        let half = (length / 2) as f64;
+        let ramp = |sign: f64| -> Vec<Complex32> {
+            (0..bins)
+                .map(|k| {
+                    let a = TWO_PI * k as f64 / n_fft as f64 * half;
+                    Complex32::new(a.cos() as f32, (sign * a.sin()) as f32)
+                })
+                .collect()
+        };
+        let gain = crossover_gain(n_fft, rate, cfg.mid_hz, cfg.crossover_width_hz, true);
+        let bin_hz = rate / n_fft as f64;
+        let noise = NoiseBins {
+            peak_ratio: 10f64.powf(cfg.noise_peak_db / 10.0),
+            reach: 1.max((cfg.noise_median_hz / bin_hz).round() as usize),
+            lobe: (cfg.noise_lobe_hz / bin_hz).round() as usize,
+            to_detector: (0..bins).map(|m| (m as f64 * bin_hz / detector_bin_hz).round() as usize).collect(),
+            rng: 0x9E37_79B9_7F4A_7C15,
+            level: vec![1.0; bins],
+            power: vec![0.0; bins],
+            partial: vec![false; bins],
+            logsum: Vec::with_capacity(bins + 1),
+        };
+        UpperVocoder {
+            window: periodic_hann(length),
+            n_fft,
+            bins,
+            fft_scratch: fft.make_scratch_vec(),
+            ifft_scratch: ifft.make_scratch_vec(),
+            fft,
+            ifft,
+            input: vec![0.0; n_fft],
+            spec: vec![zc; bins],
+            output: vec![0.0; n_fft],
+            center_ramp: ramp(1.0),
+            inverse_ramp: ramp(-1.0),
+            coeff: vec![zc; ch * bins],
+            analysis_phase: vec![0.0; ch * bins],
+            synthesis_phase: vec![0.0; ch * bins],
+            previous_analysis_phase: vec![0.0; ch * bins],
+            previous_synthesis_phase: vec![0.0; ch * bins],
+            magnitude: vec![0.0; ch * bins],
+            joint: vec![0.0; bins],
+            previous_joint: vec![0.0; bins],
+            phase32: vec![0.0; bins],
+            phase_work: PhaseWork::default(),
+            coherent_work: CoherentWork::default(),
+            previous_center: None,
+            frames: vec![0.0; ch * length],
+            frames_in: vec![0.0; ch * length],
+            gain,
+            noise,
+        }
+    }
+
+    /// The frame about input ``center`` of the source, synthesised for an output hop of ``synthesis_hop`` into
+    /// ``frames``; its noise's bins turned by up to ``jitter`` of a turn, the event detector's partials (``detected``)
+    /// kept.
+    #[allow(clippy::too_many_arguments)]
+    fn frame(&mut self, source: &[f32], ch: usize, center: i64, synthesis_hop: i64, tolerance: f64,
+             lock_strength: f64, stereo: bool, jitter: f64, detected: Option<&[bool]>) {
+        let wl = self.window.len();
+        let bins = self.bins;
+        let left = center - (wl / 2) as i64;
+        let frames = (source.len() / ch) as i64;
+        for k in 0..wl {
+            let i = left + k as i64;
+            for c in 0..ch {
+                self.frames_in[c * wl + k] = if i >= 0 && i < frames { source[i as usize * ch + c] } else { 0.0 };
+            }
+        }
+        for c in 0..ch {
+            vk::mul(&mut self.input[..wl], &self.frames_in[c * wl..(c + 1) * wl], &self.window);
+            self.input[wl..].iter_mut().for_each(|v| *v = 0.0);
+            self.fft.process_with_scratch(&mut self.input, &mut self.spec, &mut self.fft_scratch).ok();
+            vk::cmul_in(&mut self.spec, &self.center_ramp);
+            for (v, g) in self.spec.iter_mut().zip(self.gain.iter()) {
+                *v *= *g;
+            }
+            self.coeff[c * bins..(c + 1) * bins].copy_from_slice(&self.spec);
+            vk::magnitude(&mut self.magnitude[c * bins..(c + 1) * bins], &self.spec);
+            vk::phase(&mut self.phase32, &self.spec);
+            for m in 0..bins {
+                self.analysis_phase[c * bins + m] = self.phase32[m] as f64;
+            }
+        }
+        for m in 0..bins {
+            let mut p = 0f64;
+            for c in 0..ch {
+                let v = self.magnitude[c * bins + m] as f64;
+                p += v * v;
+            }
+            self.joint[m] = p.sqrt() as f32;
+        }
+        if let Some(previous) = self.previous_center {
+            if jitter > 0.0 {
+                self.noise.classify(&self.joint, detected);
+            }
+            // turned a whole turn at random, the noise's phases are random whatever RTPGHI gives them (the phase
+            // locking sets every other bin's from its peak's): only the partials' integrated
+            let only = (jitter >= 1.0).then_some(self.noise.partial.as_slice());
+            rtpghi_frame(
+                &mut self.synthesis_phase,
+                &self.analysis_phase,
+                &self.joint,
+                &self.previous_analysis_phase,
+                &self.previous_synthesis_phase,
+                &self.previous_joint,
+                ch,
+                bins,
+                1.max(center - previous),
+                synthesis_hop,
+                self.n_fft,
+                tolerance,
+                lock_strength,
+                only,
+                &mut self.phase_work,
+            );
+            if jitter > 0.0 {
+                self.noise.turn(&mut self.synthesis_phase, ch, jitter);
+            }
+            if stereo && ch > 1 {
+                coherent_synthesis(&mut self.synthesis_phase, &self.analysis_phase, &self.magnitude, &mut self.coeff, ch,
+                                   bins, &mut self.coherent_work);
+            } else {
+                for i in 0..ch * bins {
+                    let (s, c) = self.synthesis_phase[i].sin_cos();
+                    let mag = self.magnitude[i] as f64;
+                    self.coeff[i] = Complex32::new((mag * c) as f32, (mag * s) as f32);
+                }
+            }
+            if jitter > 0.0 {
+                for c in 0..ch {
+                    for (v, g) in self.coeff[c * bins..(c + 1) * bins].iter_mut().zip(self.noise.level.iter()) {
+                        *v *= *g;
+                    }
+                }
+            }
+        } else {
+            self.synthesis_phase.copy_from_slice(&self.analysis_phase);
+        }
+        // the inverse unscaled (1 / n_fft) and the Hann^2 overlap (3/8 of the window over the hop)
+        let scale = 1.0 / (self.n_fft as f32 * 0.375 * wl as f32 / synthesis_hop as f32);
+        for c in 0..ch {
+            self.spec.copy_from_slice(&self.coeff[c * bins..(c + 1) * bins]);
+            vk::cmul_in(&mut self.spec, &self.inverse_ramp);
+            self.spec[0].im = 0.0;
+            self.spec[bins - 1].im = 0.0;
+            self.ifft.process_with_scratch(&mut self.spec, &mut self.output, &mut self.ifft_scratch).ok();
+            let frame = &mut self.frames[c * wl..(c + 1) * wl];
+            vk::mul(frame, &self.output[..wl], &self.window);
+            frame.iter_mut().for_each(|v| *v *= scale);
+        }
+        std::mem::swap(&mut self.previous_analysis_phase, &mut self.analysis_phase);
+        std::mem::swap(&mut self.previous_synthesis_phase, &mut self.synthesis_phase);
+        self.previous_joint.copy_from_slice(&self.joint);
+        self.previous_center = Some(center);
+    }
+}
+
+/// The two vocoders, each bin one's (the crossover 100 Hz wide, each frame at a spectral valley within 300 Hz of
+/// 1.5 kHz: ``valley``), on the same frames: one time map. The low band's below it (``Config::mid_hz``), on the
+/// source decimated by ``d`` (split.rs: 8 at 48 kHz, its RTPGHI's queue a bucket queue: ``rtpghi_frame``), a long window (a voice's resolved harmonics, the bass), synthesised at its own rate
+/// (its bins above the crossover dropped: ``low_gain``) and brought to the full rate by the split's lowpass where no
+/// later frame reaches (``upsample_low``). The upper band's (``UpperVocoder``) on the source itself, a short window
+/// every frame (a voice's unresolved harmonics: the period's shape, a vibrato followed), its noise's bins turned at
+/// random as the stretch slows. A third vocoder above 6.5 kHz with a window three times as long, every third frame,
+/// kept the air a little noisier, at a quarter more of the work. The windows' smear before an attack is gated, bin by
+/// bin, and the attack is the source's (``restore_attack``).
 struct Light {
     split: BandSplit,
     rate: f64,
@@ -728,21 +1132,18 @@ struct Light {
     synth_out: Vec<f32>,
     windows: HashMap<usize, Rc<LightWindow>>,
     previous_center: Option<i64>,
-    // WSOLA: segments of two hops (a periodic Hann: at one hop apart they sum to 1), placed within
-    // ``tolerance`` of the vocoder's input centre where they best continue the previous one
-    segment_window: Vec<f32>,
-    tolerance: i64,
-    previous_start: Option<i64>,
-    energy: Vec<f64>,
-    // the candidates' cross-correlation with the continuation, by FFT (a length of at least 2 tolerance + 2 hops)
-    xc_fft: Arc<dyn RealToComplex<f32>>,
-    xc_ifft: Arc<dyn ComplexToReal<f32>>,
-    xc_in: Vec<f32>,
-    xc_spec: Vec<Complex32>,
-    xc_ref: Vec<Complex32>,
-    xc_sum: Vec<Complex32>,
-    xc_out: Vec<f32>,
-    xc_scratch: Vec<Complex32>,
+    low_gain: Vec<f32>, // per bin of the low band's: its share of the crossover
+    upper: UpperVocoder,
+    attack: AttackSpectra,
+    // the low band overlap-added at its rate (from ``low_base``), and how far it is brought to the full rate
+    ola_low: Vec<f32>, // [len, ch]
+    weight_low: Vec<f32>,
+    low_base: i64,
+    up_done: i64,
+    lows: Vec<Vec<f32>>, // per channel: the normalised low samples an interpolation reads
+    cross_hz: f64,       // the crossover this frame (``valley``), and where a new stream starts it
+    cross_default_hz: f64,
+    cross_width_hz: f64,
 }
 
 /// The smallest even length of the factors 2, 3 and 5 from ``n`` up (a fast size for rustfft).
@@ -765,19 +1166,20 @@ fn fast_even_length(n: usize) -> usize {
 pub struct Stretcher {
     ch: usize,
     cfg: Config,
-    max_window: usize,
+    low_window: usize, // the low band's vocoder's window (full-rate samples)
+    reach: usize,      // the longest window of either band's
     hop: i64,
     n_fft: usize,
     bins: usize,
-    min_window: usize,
     detector: Detector,
     event_reach: i64,
     handover_timeout: i64,
-    dry: Attack,
-    kick: Attack,
-    filter_pad: i64,
     envelope_window: usize,
+    // an attack's restoration reaches this far after its destination (and, before it, the vocoders' smear and the
+    // spectra's whole window): the output is finalized the two ahead of its reading
+    attack_after: i64,
     attack_ahead: i64,
+    attack_lead: i64,
 
     source_token: Option<(usize, usize)>,
     factor: Option<f64>,
@@ -810,7 +1212,6 @@ pub struct Stretcher {
     warming: bool,
 
     // per-frame work
-    frame_buf: Vec<f32>,
     coeff: Vec<Complex32>,       // [ch, bins]
     analysis_phase: Vec<f64>,    // [ch, bins]
     synthesis_phase: Vec<f64>,   // [ch, bins]
@@ -820,7 +1221,7 @@ pub struct Stretcher {
     phase_work: PhaseWork,
     coherent_work: CoherentWork,
     light: Option<Box<Light>>, // always there: taken out while a frame works on it beside the rest
-    ola_high: Vec<f32>,        // [len, ch]: the high band
+    ola_upper: Vec<f32>,       // [len, ch]: the upper band
 }
 
 impl Stretcher {
@@ -836,89 +1237,85 @@ impl Stretcher {
     const WARM_EXTRA_FRAMES: i64 = 1;
     const WARM_DETECTOR_FRAMES: usize = 8;
 
-    /// The stretcher at ``sample_rate``, 44.1 kHz or more (ipc::MIN_RATE: the engine plays at no less, and below
-    /// 28 kHz no band is left to split).
+    /// The stretcher at ``sample_rate``, 44.1 kHz or more (ipc::MIN_RATE: the engine plays at no less).
     pub fn new(channels: usize, sample_rate: u32) -> Stretcher {
         let cfg = Config::default();
         let rate = sample_rate as f64;
-        let split = BandSplit::new(channels, sample_rate).expect("the time stretch at 44.1 kHz or more");
+        // the low band decimated to keep the crossover and its transition (and a margin) in its passband
+        let split = BandSplit::new(channels, sample_rate, cfg.mid_hz + cfg.crossover_width_hz + 50.0)
+            .expect("the time stretch at 44.1 kHz or more");
         let d = split.d;
         // the detector's grid and the window lengths as the Python stretcher's at this rate
         let requested = 128.max((rate * cfg.window_ms / 1000.0).round_ties_even() as usize);
         let full_window = requested + (requested & 1);
         let full_hop = 1.max((rate * cfg.synthesis_hop_ms / 1000.0).round_ties_even() as i64);
         let detector_fft = ((full_window as f64 * cfg.frequency_oversampling).ceil() as usize).next_power_of_two();
-        let min_window = 16.max((cfg.minimum_window_ratio * full_window as f64).ceil() as usize);
         let mut planner = RealFftPlanner::<f32>::new();
         let detector = Detector::new(rate, full_window, full_hop, detector_fft, &cfg, &mut planner);
         let event_reach = (full_window as f64 / (2.0 * full_hop as f64)).ceil() as i64;
         let handover_timeout = 1.max((rate * Self::HANDOVER_TIMEOUT_SEC / full_hop as f64).round_ties_even() as i64);
         let ms = |v: f64| 1.max((v * rate / 1000.0).round_ties_even() as i64);
-        let dry = Attack { pre: ms(cfg.dry_transient_pre_ms), post: ms(cfg.dry_transient_post_ms) };
-        let kick = Attack { pre: ms(cfg.kick_transient_pre_ms), post: ms(cfg.kick_transient_post_ms) };
-        let filter_pad = ms(cfg.attack_filter_pad_ms);
         let envelope_window = 3.max(ms(1.0) as usize);
-        let attack_ahead = dry.pre.max(kick.pre) + dry.post.max(kick.post) + filter_pad + 1;
-        // the vocoder at the low band's rate (1 / d), its hop a whole number of low-rate samples
+        // the gate and the attack's crossfade end this far before the attack's onset
+        let attack_lead = ms(1.0);
+        // the vocoders' frames: the low band's rate (1 / d), its hop a whole number of low-rate samples
         let hop_low = 1.max((full_hop as f64 / d as f64).round_ties_even() as i64);
         let hop = d as i64 * hop_low;
-        let wl_max = Self::low_length(d, full_window);
-        let max_window = full_window.max(d * wl_max);
-        let n_fft = fast_even_length((wl_max as f64 * cfg.frequency_oversampling).ceil() as usize);
-        let n_fft_full = d * n_fft;
+        let wl_low = Self::low_length(d, (rate * cfg.low_window_ms / 1000.0).round() as usize);
+        let low_window = d * wl_low;
+        let upper_window = cfg.mid_window_hops * hop as usize;
+        let reach = low_window.max(upper_window);
+        let n_fft = fast_even_length((wl_low as f64 * cfg.frequency_oversampling).ceil() as usize);
         let bins = n_fft / 2 + 1;
         let zc = Complex32::new(0.0, 0.0);
         let fft = planner.plan_fft_forward(n_fft);
-        let ifft = planner.plan_fft_inverse(n_fft_full);
-        let segment = 2 * hop as usize;
-        let tolerance = 1.max((rate * Self::WSOLA_TOLERANCE_MS / 1000.0).round_ties_even() as i64);
-        let xc_n = fast_even_length(2 * tolerance as usize + 2 * hop as usize);
-        let xc_fft = planner.plan_fft_forward(xc_n);
-        let xc_ifft = planner.plan_fft_inverse(xc_n);
-        let xc_scratch = vec![zc; xc_fft.get_scratch_len().max(xc_ifft.get_scratch_len())];
+        let ifft = planner.plan_fft_inverse(n_fft);
+        let attack_n = ((rate * cfg.attack_window_ms / 1000.0) as usize).next_power_of_two();
+        let attack_half = (attack_n / 2) as i64;
+        let attack_before = (reach / 2) as i64 + 2 * attack_half;
+        let attack_after = ms(cfg.attack_after_ms) + attack_half + 1;
+        let attack_ahead = attack_before + attack_after;
         let light = Light {
             hop_low,
             fft_scratch: fft.make_scratch_vec(),
             ifft_scratch: ifft.make_scratch_vec(),
             fft_in: vec![0.0; n_fft],
             fft_out: vec![zc; bins],
-            synth_spec: vec![zc; n_fft_full / 2 + 1],
-            synth_out: vec![0.0; n_fft_full],
+            synth_spec: vec![zc; bins],
+            synth_out: vec![0.0; n_fft],
             fft,
             ifft,
             windows: HashMap::new(),
             previous_center: None,
-            segment_window: periodic_hann(segment),
-            tolerance,
             rate,
-            previous_start: None,
-            energy: Vec::new(),
-            xc_in: vec![0.0; xc_n],
-            xc_spec: vec![zc; xc_n / 2 + 1],
-            xc_ref: vec![zc; xc_n / 2 + 1],
-            xc_sum: vec![zc; xc_n / 2 + 1],
-            xc_out: vec![0.0; xc_n],
-            xc_scratch,
-            xc_fft,
-            xc_ifft,
             split,
+            low_gain: crossover_gain(n_fft, rate / d as f64, cfg.mid_hz, cfg.crossover_width_hz, false),
+            upper: UpperVocoder::new(channels, upper_window, rate, &cfg, rate / detector_fft as f64, &mut planner),
+            attack: AttackSpectra::new(channels, attack_n, &mut planner),
+            ola_low: Vec::new(),
+            weight_low: Vec::new(),
+            low_base: 0,
+            up_done: 0,
+            lows: Vec::new(),
+            cross_hz: cfg.mid_hz,
+            cross_default_hz: cfg.mid_hz,
+            cross_width_hz: cfg.crossover_width_hz,
         };
         let mut s = Stretcher {
             ch: channels,
             cfg,
-            max_window,
+            low_window,
+            reach,
             hop,
             n_fft,
             bins,
-            min_window,
             detector,
             event_reach,
             handover_timeout,
-            dry,
-            kick,
-            filter_pad,
             envelope_window,
+            attack_after,
             attack_ahead,
+            attack_lead,
             source_token: None,
             factor: None,
             expected_pos: None,
@@ -945,7 +1342,6 @@ impl Stretcher {
             anchor_in: 0.0,
             anchor_out: 0,
             warming: false,
-            frame_buf: vec![0.0; detector_fft],
             coeff: vec![zc; channels * bins],
             analysis_phase: vec![0.0; channels * bins],
             synthesis_phase: vec![0.0; channels * bins],
@@ -955,15 +1351,11 @@ impl Stretcher {
             phase_work: PhaseWork::default(),
             coherent_work: CoherentWork::default(),
             light: Some(Box::new(light)),
-            ola_high: vec![],
+            ola_upper: vec![],
         };
         s.reset();
         s
     }
-
-    const WSOLA_TOLERANCE_MS: f64 = 5.0;
-    /// The attack: the vocoder's band crossfaded to the source's above this.
-    const ATTACK_LOW_CUTOFF_HZ: f64 = 200.0;
 
     /// A full-rate window length's low-rate one (even).
     fn low_length(d: usize, length: usize) -> usize {
@@ -991,11 +1383,9 @@ impl Stretcher {
         self.ola.clear();
         self.weight.clear();
         self.correction.clear();
-        self.ola_high.clear();
+        self.ola_upper.clear();
         if let Some(light) = &mut self.light {
-            light.previous_center = None;
-            light.previous_start = None;
-            light.split.reset();
+            light.restart();
         }
         self.frame_map.clear();
         self.pending_events.clear();
@@ -1191,7 +1581,7 @@ impl Stretcher {
         self.unity_frames = 0;
         self.handover_at = None;
         self.gain_target = 1.0;
-        let pre_roll = ((self.max_window / 2) as f64 / self.hop as f64).ceil() as i64;
+        let pre_roll = ((self.reach / 2) as f64 / self.hop as f64).ceil() as i64;
         self.next_synthesis_center = -pre_roll * self.hop;
         self.next_analysis_center = pos + factor * self.next_synthesis_center as f64;
         self.anchor_in = pos;
@@ -1206,15 +1596,13 @@ impl Stretcher {
         self.output_read = 0;
         self.finalized_until = 0;
         self.ola_base = 0;
-        let initial = self.max_window + 2 * self.hop as usize + self.attack_ahead as usize;
+        let initial = self.reach + 2 * self.hop as usize + self.attack_ahead as usize;
         self.ola = vec![0.0; initial * self.ch];
         self.weight = vec![0.0; initial];
         self.correction = vec![0.0; initial * self.ch];
+        self.ola_upper = vec![0.0; initial * self.ch];
         if let Some(light) = &mut self.light {
-            self.ola_high = vec![0.0; initial * self.ch];
-            light.previous_center = None;
-            light.previous_start = None;
-            light.split.reset();
+            light.restart();
         }
     }
 
@@ -1222,7 +1610,12 @@ impl Stretcher {
         let factor = self.factor.unwrap_or(1.0);
         let input_center = (self.next_analysis_center + 0.5).floor() as i64;
         let output_center = self.next_synthesis_center;
-        let (window_length, lock_strength) = self.frame_window(source, input_center);
+        // the events confirmed ahead of the frame (``queue_events``, the attacks); both vocoders' windows fixed: a
+        // window shortened about each event (the Python stretcher's SELEBI) moved held notes by 1 - 2 dB at every hit
+        let dh = self.detector.hop;
+        let center_frame = (input_center as f64 / dh as f64).round_ties_even() as i64;
+        self.detector.ensure(source, self.ch, center_frame + self.event_reach + 1);
+        let (window_length, lock_strength) = (self.low_window, self.cfg.phase_lock_strength);
         let mut light = self.light.take().expect("the stretcher's bands");
         // the vocoder's frame at the low band's rate
         let d = light.split.d as i64;
@@ -1269,6 +1662,7 @@ impl Stretcher {
                 self.n_fft,
                 self.cfg.rtpghi_tolerance,
                 lock_strength,
+                None,
                 &mut self.phase_work,
             );
             if self.cfg.stereo_coherence && ch > 1 {
@@ -1307,9 +1701,16 @@ impl Stretcher {
                 self.handover_at = Some(output_center.max(self.output_read));
             }
         }
+        // the crossover at the valley nearest it, both bands' gains with it
+        let low_bin_hz = light.rate / d as f64 / self.n_fft as f64;
+        let cfg = &self.cfg;
+        let cross = valley(&self.joint, low_bin_hz, light.cross_hz, cfg.mid_hz, cfg.crossover_range_hz,
+                           cfg.crossover_slew_hz);
+        light.set_crossover(cross, low_bin_hz);
         self.overlap_add_light(&mut light, output_center, window_length);
-        self.wsola_frame(&mut light, source, input_center, output_center);
-        self.light = Some(light);
+        // the upper band's noise turned by up to a turn per octave slowed (a whole one from half speed down)
+        let jitter = (1.0 / factor).log2().clamp(0.0, 1.0);
+        self.vocode_upper(&mut light.upper, source, input_center, output_center, lock_strength, jitter);
         if self.frame_map.len() == 512 {
             self.frame_map.pop_front();
         }
@@ -1324,57 +1725,17 @@ impl Stretcher {
         let mapped = self.anchor_in + factor * (self.next_synthesis_center - self.anchor_out) as f64;
         let limit = Self::CATCHUP_RATIO * factor * self.hop as f64;
         self.next_analysis_center = nominal + (mapped - nominal).clamp(-limit, limit);
-        self.finalized_until = self.finalized_until.max(self.next_synthesis_center - (self.max_window / 2) as i64);
-    }
-
-    /// SELEBI window length at ``input_center`` and the identity-lock strength.
-    fn frame_window(&mut self, source: &[f32], input_center: i64) -> (usize, f64) {
-        let dh = self.detector.hop;
-        let center_frame = (input_center as f64 / dh as f64).round_ties_even() as i64;
-        self.detector.ensure(source, self.ch, center_frame + self.event_reach + 1);
-        let mut window = self.max_window;
-        let factor = self.factor.unwrap_or(1.0);
-        let alpha = 1.0 / factor;
-        let mut strength = self.cfg.phase_lock_strength;
-        if alpha <= 1.0 + Self::UNITY_EPS {
-            return (window, strength);
-        }
-        let cfg = &self.cfg;
-        let max_reduction = 1.0 - cfg.minimum_window_ratio;
-        let kick_profile = 1.0 - 1.0 / cfg.kick_profile_stretch;
-        let ramp_offset = self.max_window as f64 - 2.0 * dh as f64 * self.event_reach as f64;
-        let mut shortest = window as f64;
-        for frame in center_frame - self.event_reach - 1..center_frame + self.event_reach + 2 {
-            let Some(event) = self.detector.events.get(&frame) else { continue };
-            let compression = max_reduction.min(
-                (cfg.squeeze_strength * event.strength.powf(cfg.squeeze_gamma) * (1.0 - 1.0 / alpha))
-                    .max(event.kick * event.kick * kick_profile),
-            );
-            let target = (self.max_window as f64 * (1.0 - compression)).floor();
-            let target = target.clamp(self.min_window as f64, self.max_window as f64);
-            let distance = (input_center - frame * dh).abs() as f64;
-            shortest = shortest.min(target.max(2.0 * distance + ramp_offset));
-        }
-        if shortest < window as f64 {
-            let q = cfg.window_quantum as f64;
-            let mut w = ((shortest / q).round_ties_even() * q) as usize;
-            w = w.clamp(self.min_window, self.max_window);
-            w += w & 1;
-            window = w;
-        }
-        let reduction_span = self.max_window as f64 * (1.0 - 1.0 / alpha);
-        if reduction_span > 0.5 {
-            let percussiveness = ((self.max_window - window) as f64 / reduction_span).clamp(0.0, 1.0);
-            strength *= 1.0 - percussiveness;
-        }
-        (window, strength)
+        // finished where no later frame reaches, nor the low band's interpolation from a sample still to be finished
+        let margin = light.split.half + 2 * light.split.d as i64;
+        self.finalized_until = self.finalized_until.max(self.next_synthesis_center - (self.reach / 2) as i64 - margin);
+        self.upsample_low(&mut light, self.finalized_until);
+        self.light = Some(light);
     }
 
     fn light_window(&self, light: &mut Light, wl: usize) -> Rc<LightWindow> {
         if let Some(w) = light.windows.get(&wl) {
             return w.clone();
         }
-        let d = light.split.d;
         let half = (wl / 2) as f64;
         let (mut center_ramp, mut inverse_ramp) = (Vec::with_capacity(self.bins), Vec::with_capacity(self.bins));
         for k in 0..self.bins {
@@ -1382,7 +1743,7 @@ impl Stretcher {
             center_ramp.push(Complex32::new(a.cos() as f32, a.sin() as f32));
             inverse_ramp.push(Complex32::new(a.cos() as f32, -a.sin() as f32));
         }
-        let synthesis = periodic_hann(d * wl);
+        let synthesis = periodic_hann(wl);
         let synthesis_sq = synthesis.iter().map(|w| w * w).collect();
         let w = Rc::new(LightWindow { analysis: periodic_hann(wl), center_ramp, inverse_ramp, synthesis, synthesis_sq });
         light.windows.insert(wl, w.clone());
@@ -1404,136 +1765,99 @@ impl Stretcher {
         }
     }
 
-    /// The low band's synthesis frame at the full rate: its bins zero-padded to the full rate's inverse FFT,
-    /// the full-rate window, overlap-added as ``overlap_add`` does.
+    /// The low band's synthesis frame (``center`` at the full rate) at the low rate, overlap-added into the low
+    /// band's buffer; ``upsample_low`` brings what is finished to the full rate.
     fn overlap_add_light(&mut self, light: &mut Light, center: i64, wl: usize) {
         let wd = self.light_window(light, wl);
         let ch = self.ch;
-        let length = light.split.d * wl;
-        let mut left = center - (length / 2) as i64;
-        let right = left + length as i64;
+        let center = center.div_euclid(light.split.d as i64);
+        let mut left = center - (wl / 2) as i64;
+        let right = left + wl as i64;
         let mut src_start = 0usize;
-        if left < self.ola_base {
-            src_start = (self.ola_base - left) as usize;
-            left = self.ola_base;
+        if left < light.low_base {
+            src_start = (light.low_base - left) as usize;
+            left = light.low_base;
         }
-        if right <= left || src_start >= length {
+        if right <= left || src_start >= wl {
             return;
         }
-        self.ensure_capacity(right);
-        let start = (left - self.ola_base) as usize;
-        let stop = (right - self.ola_base) as usize;
-        let span = stop - start;
-        // the low band's spectrum was taken at 1 / d of the rate: 1 / n_fft (not the full rate's) keeps its level
+        let need = (right - light.low_base) as usize;
+        if light.weight_low.len() < need {
+            light.weight_low.resize(need + 1024, 0.0);
+            light.ola_low.resize((need + 1024) * ch, 0.0);
+        }
+        let start = (left - light.low_base) as usize;
+        let span = (right - left) as usize;
         let scale = 1.0 / self.n_fft as f32;
         let bins = self.bins;
         for c in 0..ch {
             let spec = &mut light.synth_spec;
-            spec[..bins].copy_from_slice(&self.coeff[c * bins..(c + 1) * bins]);
-            vk::cmul_in(&mut spec[..bins], &wd.inverse_ramp);
+            spec.copy_from_slice(&self.coeff[c * bins..(c + 1) * bins]);
+            // the bins above the crossover are the upper band's
+            for (v, g) in spec.iter_mut().zip(light.low_gain.iter()) {
+                *v *= *g;
+            }
+            vk::cmul_in(spec, &wd.inverse_ramp);
             spec[0].im = 0.0;
             spec[bins - 1] = Complex32::new(0.0, 0.0); // the low rate's Nyquist bin: the band stops below it
-            spec[bins..].iter_mut().for_each(|v| *v = Complex32::new(0.0, 0.0));
             light.ifft.process_with_scratch(spec, &mut light.synth_out, &mut light.ifft_scratch).ok();
-            let frame = &mut self.frame_buf[..span];
-            vk::mul(frame, &light.synth_out[src_start..src_start + span], &wd.synthesis[src_start..src_start + span]);
             for k in 0..span {
-                self.ola[(start + k) * ch + c] += frame[k] * scale;
+                let j = src_start + k;
+                light.ola_low[(start + k) * ch + c] += light.synth_out[j] * wd.synthesis[j] * scale;
             }
         }
-        vk::add_in(&mut self.weight[start..stop], &wd.synthesis_sq[src_start..src_start + span]);
+        vk::add_in(&mut light.weight_low[start..start + span], &wd.synthesis_sq[src_start..src_start + span]);
     }
 
-    /// The high band's segment for one vocoder frame: two hops of the source's high band from within
-    /// ``tolerance`` of the frame's input start, where it best continues the previous segment, overlap-added at
-    /// the frame's output start.
-    fn wsola_frame(&mut self, light: &mut Light, source: &[f32], input_center: i64, output_center: i64) {
-        let ch = self.ch;
-        let hop = self.hop;
-        let segment = 2 * hop;
-        let tol = light.tolerance;
-        let nominal = input_center - hop;
-        let mut start = nominal;
-        // the splice's correlation: the previous segment's second half and this one's first
-        let mut correlation = 1f32;
-        if let Some(previous) = light.previous_start {
-            // compared over the overlap: this segment's first half against the previous one's continuation
-            let natural = previous + hop;
-            let search = (natural - nominal).abs() <= 4 * hop;
-            let (a, b) = if search { (nominal - tol, nominal + tol + hop) } else { (nominal, nominal + hop) };
-            light.split.ensure_high(source, a.min(natural), b.max(natural + hop));
-            // each candidate's energy from running sums
-            let span = (b - a) as usize;
-            let energy = &mut light.energy;
-            energy.clear();
-            energy.resize(span + 1, 0.0);
-            for c in 0..ch {
-                let x = light.split.high(c, a, b);
-                let mut acc = 0f64;
-                for k in 0..span {
-                    acc += (x[k] * x[k]) as f64;
-                    energy[k + 1] += acc;
-                }
-            }
-            let hop_u = hop as usize;
-            let energy_at = |at: i64| -> f32 {
-                let k = (at - a) as usize;
-                (light.energy[k + hop_u] - light.energy[k]).max(0.0) as f32
-            };
-            let cross = |at: i64| -> f32 {
-                let mut num = 0f32;
-                for c in 0..ch {
-                    num += dot(light.split.high(c, at, at + hop), light.split.high(c, natural, natural + hop));
-                }
-                num
-            };
-            let mut num = cross(nominal);
-            let mut best = num / (energy_at(nominal) + 1e-12).sqrt();
-            if search {
-                // every candidate's correlation at once: sum over channels of X conj(Y), one inverse FFT
-                let n = light.xc_in.len();
-                light.xc_sum.iter_mut().for_each(|v| *v = Complex32::new(0.0, 0.0));
-                for c in 0..ch {
-                    light.xc_in[..span].copy_from_slice(light.split.high(c, a, b));
-                    light.xc_in[span..].iter_mut().for_each(|v| *v = 0.0);
-                    light.xc_fft.process_with_scratch(&mut light.xc_in, &mut light.xc_spec, &mut light.xc_scratch).ok();
-                    light.xc_in[..hop_u].copy_from_slice(light.split.high(c, natural, natural + hop));
-                    light.xc_in[hop_u..].iter_mut().for_each(|v| *v = 0.0);
-                    light.xc_fft.process_with_scratch(&mut light.xc_in, &mut light.xc_ref, &mut light.xc_scratch).ok();
-                    for (sum, (x, y)) in light.xc_sum.iter_mut().zip(light.xc_spec.iter().zip(light.xc_ref.iter())) {
-                        *sum += x * y.conj();
-                    }
-                }
-                light.xc_sum[0].im = 0.0;
-                let last = light.xc_sum.len() - 1;
-                light.xc_sum[last].im = 0.0;
-                light.xc_ifft.process_with_scratch(&mut light.xc_sum, &mut light.xc_out, &mut light.xc_scratch).ok();
-                let scale = 1.0 / n as f32;
-                for k in 0..=(2 * tol) as usize {
-                    let at = a + k as i64;
-                    if at == nominal {
-                        continue;
-                    }
-                    let c = light.xc_out[k] * scale;
-                    let score = c / (energy_at(at) + 1e-12).sqrt();
-                    if score > best {
-                        best = score;
-                        num = c;
-                        start = at;
-                    }
-                }
-            }
-            let mut e0 = 0f32;
-            for c in 0..ch {
-                let x0 = light.split.high(c, natural, natural + hop);
-                e0 += dot(x0, x0);
-            }
-            let e1 = energy_at(start);
-            correlation = if e0 > 0.0 && e1 > 0.0 { (num / (e0 * e1).sqrt()).clamp(0.0, 1.0) } else { 1.0 };
+    /// The low band's finished part, ``[light.up_done, until)``, interpolated to the full rate into ``ola`` (its
+    /// weight 1): the split's lowpass, polyphase, over the low band normalised by its overlap.
+    fn upsample_low(&mut self, light: &mut Light, until: i64) {
+        if until <= light.up_done {
+            return;
         }
-        light.previous_start = Some(start);
-        let mut left = output_center - hop;
-        let right = left + segment;
+        let ch = self.ch;
+        self.ensure_capacity(until);
+        let from = light.up_done.max(self.ola_base);
+        let d = light.split.d as i64;
+        // the low samples the range reads
+        let k0 = (from + light.split.half).div_euclid(d) - light.split.taps_per_phase as i64 + 1;
+        let k1 = (until - 1 + light.split.half).div_euclid(d) + 1;
+        let lows = &mut light.lows;
+        lows.resize_with(ch, Vec::new);
+        for l in lows.iter_mut() {
+            l.clear();
+        }
+        for k in k0..k1 {
+            let i = k - light.low_base;
+            let w = if i >= 0 && (i as usize) < light.weight_low.len() { light.weight_low[i as usize] } else { 0.0 };
+            for (c, l) in lows.iter_mut().enumerate() {
+                l.push(if w > 1e-10 { light.ola_low[i as usize * ch + c] / w } else { 0.0 });
+            }
+        }
+        for t in from..until {
+            let i = (t - self.ola_base) as usize;
+            for c in 0..ch {
+                self.ola[i * ch + c] = light.split.upsample(&lows[c], k0, t);
+            }
+            self.weight[i] = 1.0;
+        }
+        light.up_done = until;
+    }
+
+    /// The upper band's frame about this frame's centres, overlap-added at its output centre.
+    #[allow(clippy::too_many_arguments)]
+    fn vocode_upper(&mut self, v: &mut UpperVocoder, source: &[f32], input_center: i64, output_center: i64, lock: f64,
+                    jitter: f64) {
+        let ch = self.ch;
+        let synthesis_hop = self.hop;
+        let wl = v.window.len() as i64;
+        let cfg = &self.cfg;
+        // the event detector's partials at the frame's centre
+        let detected = self.detector.partials_at((input_center as f64 / self.detector.hop as f64).round() as i64);
+        v.frame(source, ch, input_center, synthesis_hop, cfg.rtpghi_tolerance, lock, cfg.stereo_coherence, jitter,
+                detected);
+        let mut left = output_center - wl / 2;
+        let right = left + wl;
         let mut offset = 0i64;
         if left < self.ola_base {
             offset = self.ola_base - left;
@@ -1543,167 +1867,12 @@ impl Stretcher {
             return;
         }
         self.ensure_capacity(right);
-        light.split.ensure_high(source, start + offset, start + segment);
         let base = (left - self.ola_base) as usize;
         let n = (right - left) as usize;
-        let window = &light.segment_window[offset as usize..];
         for c in 0..ch {
-            let x = light.split.high(c, start + offset, start + segment);
+            let frame = &v.frames[c * wl as usize + offset as usize..(c + 1) * wl as usize];
             for k in 0..n {
-                self.ola_high[(base + k) * ch + c] += window[k] * x[k];
-            }
-        }
-        // the crossfade's level kept whatever the splice's correlation r: the two halves' sum divided by
-        // sqrt(a^2 + b^2 + 2 r a b) (a + b = 1): Hann's own at r = 1, an equal-power crossfade at r = 0
-        if correlation < 1.0 {
-            let r = correlation as f64;
-            for k in 0..(hop - offset).max(0) as usize {
-                let a = window[k] as f64;
-                let b = 1.0 - a;
-                let g = (1.0 / (a * a + b * b + 2.0 * r * a * b).sqrt()) as f32;
-                for c in 0..ch {
-                    self.ola_high[(base + k) * ch + c] *= g;
-                }
-            }
-        }
-    }
-
-    /// The attack, one band of it (``low``: the vocoder's, else WSOLA's): the output crossfaded to
-    /// the source's own band, its onset at the event's destination on the time map, so the attack is the
-    /// source's and never overlap-added. The crossfades adapt to what they join: the rise (1 ms) ends before
-    /// the attack by as much as WSOLA may have placed a copy of it early (the stretch's drift over a hop plus
-    /// its tolerance); the plateau ends where the attack has decayed by 9 dB and the source and the stretched
-    /// output agree best (their correlation r over 4 ms, 6 - 30 ms after the onset); the fall lasts 2 ms when
-    /// they agree (r = 1) to 8 ms when they do not (r = 0), and both crossfades keep the level whatever r
-    /// (the sum divided by sqrt(s^2 + (1 - s)^2 + 2 r s (1 - s))).
-    fn restore_light(&mut self, light: &mut Light, source: &[f32], at: i64, destination: i64, low: bool) {
-        let ch = self.ch;
-        let ms = |v: f64| 1.max((v * light.rate / 1000.0).round_ties_even() as i64);
-        let factor = self.factor.unwrap_or(1.0);
-        let drift = ((1.0 - factor).abs() * self.hop as f64).ceil() as i64 + light.tolerance;
-        let rise = ms(1.0);
-        let first = destination - drift - rise - ms(1.0);
-        let (post_min, post_max) = (ms(6.0), ms(30.0));
-        let fall_max = ms(8.0);
-        let end = (destination + post_max + fall_max).min(self.finalized_until);
-        let lo = first.max(self.output_read).max(self.ola_base);
-        if end <= lo.max(destination + post_min) {
-            return;
-        }
-        // the vocoder's band is crossfaded above a cutoff only: the bass below keeps its own phase (the
-        // source's and the stretched one's phases are unrelated there, and a crossfade of the two cancels)
-        let head = if low { ms(10.0) } else { 0 };
-        let first = first - head;
-        let len = (end - first) as usize;
-        // the source's band (x) and the output's (y) over [first, end), per channel
-        let x_first = at - (destination - first);
-        light.split.ensure_high(source, x_first, x_first + len as i64);
-        let frames = (source.len() / ch) as i64;
-        let mut x = vec![vec![0f32; len]; ch];
-        let mut y = vec![vec![0f32; len]; ch];
-        for c in 0..ch {
-            let high = light.split.high(c, x_first, x_first + len as i64);
-            for k in 0..len {
-                x[c][k] = if low {
-                    let i = x_first + k as i64;
-                    let v = if i >= 0 && i < frames { source[i as usize * ch + c] } else { 0.0 };
-                    v - high[k]
-                } else {
-                    high[k]
-                };
-            }
-        }
-        for k in 0..len {
-            let t = first + k as i64;
-            if t < self.ola_base {
-                continue;
-            }
-            let i = (t - self.ola_base) as usize;
-            let w = self.weight[i];
-            for c in 0..ch {
-                y[c][k] = if low {
-                    (if w > 1e-10 { self.ola[i * ch + c] / w } else { 0.0 }) + self.correction[i * ch + c]
-                } else {
-                    self.ola_high[i * ch + c]
-                };
-            }
-        }
-        if low {
-            let sos = butter_highpass4(Self::ATTACK_LOW_CUTOFF_HZ, light.rate);
-            for c in 0..ch {
-                let xf: Vec<f64> = x[c].iter().map(|&v| v as f64).collect();
-                let yf: Vec<f64> = y[c].iter().map(|&v| v as f64).collect();
-                x[c] = sosfiltfilt(&sos, &xf).iter().map(|&v| v as f32).collect();
-                y[c] = sosfiltfilt(&sos, &yf).iter().map(|&v| v as f32).collect();
-            }
-        }
-        let correlation = |a: usize, b: usize| -> f64 {
-            let (mut xy, mut xx, mut yy) = (0f64, 0f64, 0f64);
-            for c in 0..ch {
-                xy += dot(&x[c][a..b], &y[c][a..b]) as f64;
-                xx += dot(&x[c][a..b], &x[c][a..b]) as f64;
-                yy += dot(&y[c][a..b], &y[c][a..b]) as f64;
-            }
-            if xx > 0.0 && yy > 0.0 { (xy / (xx * yy).sqrt()).clamp(0.0, 1.0) } else { 1.0 }
-        };
-        // the attack's envelope (1 ms power) and its peak over the first 10 ms
-        let w = ms(1.0) as usize;
-        let power: Vec<f64> = (0..len).map(|k| (0..ch).map(|c| (x[c][k] * x[c][k]) as f64).sum::<f64>()).collect();
-        let mut envelope = vec![0f64; len];
-        let mut acc = 0.0;
-        for k in 0..len {
-            acc += power[k];
-            if k >= w {
-                acc -= power[k - w];
-            }
-            envelope[k] = acc.max(0.0);
-        }
-        let d = (destination - first) as usize;
-        let peak = envelope[d..(d + ms(10.0) as usize).min(len)].iter().cloned().fold(0.0, f64::max);
-        let decayed = peak * 10f64.powf(-0.9);
-        // the plateau's end: the decayed position of best agreement (else the quietest)
-        let window = ms(4.0) as usize;
-        let (mut best, mut fall_at, mut quietest) = (-1.0f64, usize::MAX, (f64::MAX, d + post_min as usize));
-        let mut k = d + post_min as usize;
-        while k <= d + post_max as usize && k + fall_max as usize <= len {
-            let e = envelope[k];
-            if e < quietest.0 {
-                quietest = (e, k);
-            }
-            if e <= decayed {
-                let r = correlation(k, (k + window).min(len));
-                if r > best {
-                    best = r;
-                    fall_at = k;
-                }
-            }
-            k += ms(0.25) as usize;
-        }
-        if fall_at == usize::MAX {
-            fall_at = quietest.1.min(len.saturating_sub(fall_max as usize));
-            best = correlation(fall_at, (fall_at + window).min(len));
-        }
-        let fall = ms(2.0 + 6.0 * (1.0 - best)) as usize;
-        let (h, rise) = (head as usize, rise as usize);
-        let rise_r = correlation(h, h + rise);
-        let stop = (fall_at + fall).min(len);
-        for k in ((lo - first) as usize).max(h)..stop {
-            let (s, r) = if k < h + rise {
-                ((0.5 * PI * (k - h) as f64 / rise as f64).sin().powi(2), rise_r)
-            } else if k >= fall_at {
-                ((0.5 * PI * (stop - k) as f64 / fall as f64).sin().powi(2), best)
-            } else {
-                (1.0, 1.0)
-            };
-            let norm = (s * s + (1.0 - s) * (1.0 - s) + 2.0 * r * s * (1.0 - s)).sqrt();
-            let i = ((first + k as i64) - self.ola_base) as usize;
-            for c in 0..ch {
-                let out = ((s * x[c][k] as f64 + (1.0 - s) * y[c][k] as f64) / norm) as f32;
-                if low {
-                    self.correction[i * ch + c] += out - y[c][k];
-                } else {
-                    self.ola_high[i * ch + c] = out;
-                }
+                self.ola_upper[(base + k) * ch + c] += frame[k];
             }
         }
     }
@@ -1713,12 +1882,12 @@ impl Stretcher {
         if required <= self.weight.len() {
             return;
         }
-        let growth = (required - self.weight.len()).max(self.max_window).max(4096);
+        let growth = (required - self.weight.len()).max(self.reach).max(4096);
         let len = self.weight.len() + growth;
         self.weight.resize(len, 0.0);
         self.ola.resize(len * self.ch, 0.0);
         self.correction.resize(len * self.ch, 0.0);
-        self.ola_high.resize(len * self.ch, 0.0);
+        self.ola_upper.resize(len * self.ch, 0.0);
     }
 
     fn read_output(&mut self, count: usize) -> Vec<f32> {
@@ -1730,7 +1899,7 @@ impl Stretcher {
             for c in 0..ch {
                 let i = (start + k) * ch + c;
                 let v = if w > 1e-10 { self.ola[i] / w } else { 0.0 };
-                out[k * ch + c] = v + self.ola_high[i] + self.correction[i];
+                out[k * ch + c] = v + self.ola_upper[i] + self.correction[i];
             }
         }
         self.output_read += count as i64;
@@ -1738,7 +1907,8 @@ impl Stretcher {
     }
 
     fn compact_output(&mut self) {
-        let keep = self.dry.pre.max(self.kick.pre) + self.filter_pad;
+        // the attacks' frames read the output from the frame being read on (``restore_attack``)
+        let keep = self.attack_lead;
         let consumed = self.output_read - keep - self.ola_base;
         if consumed < Self::COMPACT_AFTER {
             return;
@@ -1747,8 +1917,19 @@ impl Stretcher {
         self.weight.drain(..c);
         self.ola.drain(..c * self.ch);
         self.correction.drain(..c * self.ch);
-        self.ola_high.drain(..c * self.ch);
+        self.ola_upper.drain(..c * self.ch);
         self.ola_base += consumed;
+        // the low band's, up to what the interpolation still reads
+        if let Some(light) = &mut self.light {
+            let d = light.split.d as i64;
+            let keep_from = (light.up_done + light.split.half).div_euclid(d) - light.split.taps_per_phase as i64 - 2;
+            let drop = (keep_from - light.low_base).clamp(0, light.weight_low.len() as i64) as usize;
+            if drop > 0 {
+                light.weight_low.drain(..drop);
+                light.ola_low.drain(..drop * self.ch);
+                light.low_base += drop as i64;
+            }
+        }
     }
 
     fn read_direct(&self, source: &[f32], pos: f64, count: usize) -> Vec<f32> {
@@ -1830,24 +2011,253 @@ impl Stretcher {
         at
     }
 
+    /// The attack, by the spectrum: STFT frames (``AttackSpectra``) of the output about the attack's destination,
+    /// beside the source's.
+    /// - From the attack (the frames over its onset) on, the source's energy the output lacks, bin by bin, is added:
+    ///   the source's frame about its attack (at its own speed, its onset at the destination) times
+    ///   sqrt(1 - |Y|^2 / |X|^2) (none where the output is as loud). A held note's bins are as loud in both: they
+    ///   keep their stretched phase (a crossfade to the source's waveform, unrelated, cancelled them at every hit:
+    ///   the held notes trembled at the beat's rate); the hit's own energy is the source's, sharp, on the time map.
+    /// - Before it, over the vocoders' smear (half the longer window), each bin louder than the source's there is
+    ///   brought down to it: the source's frame where that music is (the time map), at its own speed, both frames
+    ///   cut 1 ms before the attack (a frame over the attack still gates what precedes it, to the millisecond), the
+    ///   cut kept before it in time too (a bin's gain spreads over its frame). A gate over the whole band ducked the
+    ///   held notes with the smear.
+    /// - The bins' powers compared averaged over ``Config::attack_smoothing_hz``: a noise's single bins are as
+    ///   random as its phase, and compared one by one, half a room's or a reverb's bins were cut before each hit.
+    /// - Below the bass cutoff nothing (the bass keeps its phase); below ``Config::attack_whole_hz`` the added attack by
+    ///   ``amount_low`` (how sure the event is a dry or a kick attack: a sung syllable keeps its stretched voice),
+    ///   above it whole. The gains of all the frames are taken before any is added.
+    fn restore_attack(&mut self, light: &mut Light, source: &[f32], at: i64, destination: i64, amount_low: f64) {
+        let ch = self.ch;
+        let rate = light.rate;
+        let factor = self.factor.unwrap_or(1.0);
+        let cfg = self.cfg;
+        let sr = &mut light.attack;
+        let (n, hop) = (sr.n, sr.hop);
+        let bins = n / 2 + 1;
+        let half = (n / 2) as i64;
+        let ms = |v: f64| 1.max((v * rate / 1000.0).round_ties_even() as i64);
+        let ramp = |f: f64, at: f64, width: f64| ((f - (at - 0.5 * width)) / width).clamp(0.0, 1.0);
+        let bass: Vec<f32> = (0..bins).map(|k| ramp(k as f64 * rate / n as f64, cfg.attack_bass_hz, 100.0) as f32).collect();
+        let band: Vec<f32> = (0..bins)
+            .map(|k| {
+                let high = ramp(k as f64 * rate / n as f64, cfg.attack_whole_hz, cfg.crossover_width_hz);
+                bass[k] * (amount_low + (1.0 - amount_low) * high) as f32
+            })
+            .collect();
+        let spread = (cfg.attack_smoothing_hz / (rate / n as f64)).round() as usize;
+        let smooth = |v: &[f32]| -> Vec<f32> {
+            (0..v.len())
+                .map(|m| {
+                    let (a, b) = (m.saturating_sub(spread), (m + spread + 1).min(v.len()));
+                    v[a..b].iter().sum::<f32>() / (b - a) as f32
+                })
+                .collect()
+        };
+        let fade = ms(2.0);
+        // 1 up to ``fade`` before ``edge``, a sin^2 fade to 0 at it
+        let before = |t: i64, edge: i64| -> f32 {
+            if t >= edge {
+                0.0
+            } else if t + fade <= edge {
+                1.0
+            } else {
+                (0.5 * std::f32::consts::PI * (edge - t) as f32 / fade as f32).sin().powi(2)
+            }
+        };
+        let boundary = destination - self.attack_lead;
+        let src_boundary = at - self.attack_lead;
+        let add_from = destination - half - ms(1.0);
+        let lo = self.output_read.max(self.ola_base);
+        let frames_src = (source.len() / ch) as i64;
+        let src = |i: i64, k: usize| if i >= 0 && i < frames_src { source[i as usize * ch + k] } else { 0.0 };
+        // per frame: its left edge, the attack's gains and the source's spectra, the cut's gains and the output's
+        let mut frames: Vec<(i64, Vec<f32>, Vec<Vec<Complex32>>, Vec<f32>, Vec<Vec<Complex32>>)> = Vec::new();
+        let mut c = (destination - (self.reach / 2) as i64 - half).min(add_from);
+        while c <= destination + ms(cfg.attack_after_ms) {
+            let left = c - half;
+            c += hop as i64;
+            if left < lo || left + n as i64 > self.finalized_until {
+                continue;
+            }
+            let (mut py, mut px) = (vec![0f32; bins], vec![0f32; bins]);
+            let (mut py_pre, mut px_pre) = (vec![0f32; bins], vec![0f32; bins]);
+            let (mut xs, mut ys_pre) = (Vec::with_capacity(ch), Vec::with_capacity(ch));
+            let keep = (boundary - left).clamp(0, n as i64) as usize;
+            for k in 0..ch {
+                let output = |t: i64| -> f32 {
+                    let i = (t - self.ola_base) as usize;
+                    let w = self.weight[i];
+                    let low = if w > 1e-10 { self.ola[i * ch + k] / w } else { 0.0 };
+                    low + self.ola_upper[i * ch + k] + self.correction[i * ch + k]
+                };
+                // the output, and the source about its attack at its own speed
+                for (j, v) in sr.input.iter_mut().enumerate() {
+                    *v = output(left + j as i64) * sr.window[j];
+                }
+                sr.fft.process_with_scratch(&mut sr.input, &mut sr.y, &mut sr.scratch).ok();
+                for (j, v) in sr.input.iter_mut().enumerate() {
+                    *v = src(at + left + j as i64 - destination, k) * sr.window[j];
+                }
+                sr.fft.process_with_scratch(&mut sr.input, &mut sr.x[k], &mut sr.scratch).ok();
+                for m in 0..bins {
+                    py[m] += sr.y[m].norm_sqr();
+                    px[m] += sr.x[k][m].norm_sqr();
+                }
+                xs.push(sr.x[k].clone());
+                if keep == 0 {
+                    continue;
+                }
+                // before the attack: the output's frame cut there, the source's where that music is, cut where its
+                // attack begins, each by its window's energy (the two kept spans differ)
+                let mut ey = 0f32;
+                for (j, v) in sr.input.iter_mut().enumerate() {
+                    let t = left + j as i64;
+                    let a = if keep == n { 1.0 } else { before(t, boundary) } * sr.window[j];
+                    ey += a * a;
+                    *v = a * output(t);
+                }
+                let mut yp = vec![Complex32::new(0.0, 0.0); bins];
+                sr.fft.process_with_scratch(&mut sr.input, &mut yp, &mut sr.scratch).ok();
+                let mapped = at - ((destination - (left + half)) as f64 * factor).round() as i64;
+                let mut ex = 0f32;
+                for (j, v) in sr.input.iter_mut().enumerate() {
+                    let i = mapped + j as i64 - half;
+                    let a = before(i, src_boundary) * sr.window[j];
+                    ex += a * a;
+                    *v = a * src(i, k);
+                }
+                let mut xp = vec![Complex32::new(0.0, 0.0); bins];
+                sr.fft.process_with_scratch(&mut sr.input, &mut xp, &mut sr.scratch).ok();
+                if ey > 0.0 && ex > 0.0 {
+                    for m in 0..bins {
+                        py_pre[m] += yp[m].norm_sqr() / ey;
+                        px_pre[m] += xp[m].norm_sqr() / ex;
+                    }
+                }
+                ys_pre.push(yp);
+            }
+            let (py, px, py_pre, px_pre) = (smooth(&py), smooth(&px), smooth(&py_pre), smooth(&px_pre));
+            let adds = left + half >= add_from;
+            let g: Vec<f32> = (0..bins)
+                .map(|m| if adds && px[m] > 0.0 { (1.0 - py[m] / px[m]).max(0.0).sqrt() * band[m] } else { 0.0 })
+                .collect();
+            let cut: Vec<f32> = (0..bins)
+                .map(|m| {
+                    if keep > 0 && py_pre[m] > px_pre[m] {
+                        ((px_pre[m] / py_pre[m]).sqrt() - 1.0) * bass[m]
+                    } else {
+                        0.0
+                    }
+                })
+                .collect();
+            frames.push((left, g, xs, cut, ys_pre));
+        }
+        let Some(first) = frames.first().map(|f| f.0) else { return };
+        let last = frames.last().unwrap().0 + n as i64;
+        let mut added = vec![0f32; (last - first) as usize * ch];
+        // the inverse unscaled (1 / n), Hann^2 at a quarter overlap sums to 1.5
+        let scale = 1.0 / (n as f32 * 1.5);
+        let mut spec = vec![Complex32::new(0.0, 0.0); bins];
+        for (left, g, xs, cut, ys_pre) in &frames {
+            let base = (left - first) as usize;
+            for k in 0..ch {
+                for m in 0..bins {
+                    spec[m] = xs[k][m] * g[m];
+                }
+                spec[0].im = 0.0;
+                spec[bins - 1].im = 0.0;
+                sr.ifft.process_with_scratch(&mut spec, &mut sr.out, &mut sr.scratch).ok();
+                for j in 0..n {
+                    added[(base + j) * ch + k] += sr.out[j] * sr.window[j] * scale;
+                }
+                if ys_pre.is_empty() || cut.iter().all(|v| *v == 0.0) {
+                    continue;
+                }
+                for m in 0..bins {
+                    spec[m] = ys_pre[k][m] * cut[m];
+                }
+                spec[0].im = 0.0;
+                spec[bins - 1].im = 0.0;
+                sr.ifft.process_with_scratch(&mut spec, &mut sr.out, &mut sr.scratch).ok();
+                for j in 0..n {
+                    added[(base + j) * ch + k] += sr.out[j] * sr.window[j] * scale * before(left + j as i64, boundary);
+                }
+            }
+        }
+        let start = (first - self.ola_base) as usize;
+        for (j, v) in added.chunks(ch).enumerate() {
+            for k in 0..ch {
+                self.correction[(start + j) * ch + k] += v[k];
+            }
+        }
+    }
+
     fn apply_due_events(&mut self, source: &[f32]) {
         while let Some(&(destination, at, event)) = self.pending_events.front() {
-            if destination + self.attack_ahead - self.dry.pre.max(self.kick.pre) > self.finalized_until {
+            if destination + self.attack_after > self.finalized_until {
                 return;
             }
             self.pending_events.pop_front();
             let cfg = self.cfg;
-            let center = at;
             let span = cfg.dry_transient_full_strength - cfg.dry_transient_threshold;
             let dry = ((event.strength - cfg.dry_transient_threshold) / span).clamp(0.0, 1.0);
             let kick = ((event.kick - Self::KICK_CONFIDENCE_FROM) / Self::KICK_CONFIDENCE_SPAN).clamp(0.0, 1.0);
             let mut light = self.light.take().expect("the stretcher's bands");
-            // the high band's attack at every event; the vocoder's where it is a dry or a kick attack
-            self.restore_light(&mut light, source, center, destination, false);
-            if dry > 0.0 || kick > 0.0 {
-                self.restore_light(&mut light, source, center, destination, true);
-            }
+            self.restore_attack(&mut light, source, at, destination, dry.max(kick));
             self.light = Some(light);
+        }
+    }
+}
+
+impl Light {
+    /// A new stream: nothing of the last one's frames kept.
+    fn restart(&mut self) {
+        self.previous_center = None;
+        self.upper.previous_center = None;
+        self.split.reset();
+        self.ola_low.clear();
+        self.weight_low.clear();
+        self.low_base = 0;
+        self.up_done = 0;
+        let low_bin_hz = self.rate / self.split.d as f64 / (2 * (self.low_gain.len() - 1)) as f64;
+        self.set_crossover(self.cross_default_hz, low_bin_hz);
+    }
+
+    /// The crossover at ``hz``: the low band's gain (its bins ``low_bin_hz`` apart) and the upper band's moved.
+    fn set_crossover(&mut self, hz: f64, low_bin_hz: f64) {
+        if hz == self.cross_hz {
+            return;
+        }
+        let w = self.cross_width_hz;
+        move_crossover(&mut self.low_gain, low_bin_hz, self.cross_hz, hz, w, false);
+        let upper_bin_hz = self.rate / self.upper.n_fft as f64;
+        move_crossover(&mut self.upper.gain, upper_bin_hz, self.cross_hz, hz, w, true);
+        self.cross_hz = hz;
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn round_even_is_round_ties_even() {
+        let mut x = 0x2545_F491_4F6C_DD1Du64;
+        let mut values = vec![0.0, -0.0, 0.5, 1.5, 2.5, -0.5, -1.5, -2.5, 1e-300, 2.0f64.powi(51) - 0.5, 2.0f64.powi(51),
+                              2.0f64.powi(51) + 0.5, -(2.0f64.powi(52) - 0.5), 1e300, f64::INFINITY];
+        for _ in 0..100_000 {
+            x ^= x << 13;
+            x ^= x >> 7;
+            x ^= x << 17;
+            let u = (x >> 11) as f64 / (1u64 << 53) as f64;
+            values.push((u - 0.5) * 2.0f64.powi((x % 60) as i32));
+        }
+        // equal (a zero's sign may differ: -0.4 gives +0, which ``wrap`` subtracts alike)
+        for v in values {
+            assert_eq!(round_even(v), v.round_ties_even(), "{v}");
         }
     }
 }

@@ -80,8 +80,9 @@ class NativeMatchesPython(unittest.TestCase):
 
 @unittest.skipIf(EXE is None, "the native engine is not built (build/audio_engine.py)")
 class NativeStretch(unittest.TestCase):
-    """The time stretch the engine plays (--stretch-file): the low band's vocoder and the high band's
-    WSOLA keep the source's level, and every band's attack lands where the time map puts it, together."""
+    """The time stretch the engine plays (--stretch-file): the two vocoders keep the source's level, every band's
+    attack lands where the time map puts it, together, with nothing of it ahead; held notes and quiet textures are
+    left alone at the hits; slowed down, a vibrato stays steady and a noise stays noise."""
 
     def setUp(self):
         self.dir = tempfile.mkdtemp()
@@ -131,8 +132,161 @@ class NativeStretch(unittest.TestCase):
                     seg = env[c - int(0.03 * RATE):c + int(0.03 * RATE)]
                     at.append((int(np.argmax(seg > 0.5 * seg.max())) - int(0.03 * RATE)) / RATE * 1000)
                 found[name] = np.array(at)
-                self.assertLess(abs(np.mean(found[name])), 0.6, (factor, name, found[name]))
-            self.assertLess(np.max(np.abs(found["high"] - found["low"])), 1.5, factor)
+                # within a millisecond: its first one the vocoder's own rise and the source's added
+                self.assertLess(abs(np.mean(found[name])), 1.0, (factor, name, found[name]))
+            # the bands' attacks together: on average within 0.5 ms, each within 2 (a burst's half-level jitters)
+            together = found["high"] - found["low"]
+            self.assertLess(abs(np.mean(together)), 0.5, (factor, together))
+            self.assertLess(np.max(np.abs(together)), 2.0, (factor, together))
+
+    def test_nothing_of_an_attack_ahead_of_it_slowed_down(self):
+        """Slowed far down, nothing of an attack is heard ahead of it: the vocoders' long windows smear it back
+        (gated, bin by bin); before, the high band's WSOLA put a copy as loud as the attack up to 14 ms early at
+        -50 % (a flam, a click before every syllable of a voice). And the attack lands on the time map."""
+        from scipy.signal import butter, sosfiltfilt
+        pcm, onsets = self._bursts()
+        # (the band, the most heard ahead of the attack, how late its half-level point at most and on average: the low
+        # band's attack is the source's added on the vocoder's own rise, so its peak, and its half, comes a little later;
+        # the highs' most is 3 ms ahead, where the upper band's short window gathers its smear and the gate's 21 ms
+        # frames cut it a little less: -26 to -35 dB, -31 dB the median, inside the attack's backward masking; with a
+        # 128 ms window above 6.5 kHz it was -35 to -41 dB there, and more of it 5 - 40 ms ahead in real music; 1 - 5 kHz
+        # the half-level point jitters with the burst's noise, -1 to +4 ms with the upper band not zero-padded, on
+        # average as late)
+        bands = {"high": (butter(4, 9000, "highpass", fs=RATE, output="sos"), -25.0, 2.0, 1.0),
+                 "low": (butter(4, [1000, 5000], "bandpass", fs=RATE, output="sos"), -15.0, 4.5, 1.5)}
+        for factor in (0.5, 0.67):
+            y = self._render(pcm, factor)
+            for name, (sos, most, late, late_mean) in bands.items():
+                env = np.convolve(np.abs(sosfiltfilt(sos, y.mean(axis=1).astype(np.float64))), np.ones(10) / 10, "same")
+                ats = []
+                for i in onsets[1:-1]:
+                    c = int(round(i / factor))
+                    attack = env[c - int(0.003 * RATE):c + int(0.03 * RATE)].max()
+                    before = env[c - int(0.025 * RATE):c - int(0.003 * RATE)].max()
+                    self.assertLess(20 * np.log10(before / attack), most, (factor, name, i))
+                    seg = env[c - int(0.03 * RATE):c + int(0.03 * RATE)]
+                    ats.append((int(np.argmax(seg > 0.5 * seg.max())) - int(0.03 * RATE)) / RATE * 1000)
+                # (a noise burst's half-level crossing jitters from one to the next)
+                self.assertLess(np.max(np.abs(ats)), late, (factor, name, ats))
+                self.assertLess(abs(np.mean(ats)), late_mean, (factor, name, ats))
+
+    @staticmethod
+    def _hits(x: np.ndarray, seconds: float, per_second: float) -> np.ndarray:
+        """Drums apart from the 300 Hz - 7 kHz the tests listen to (a 50 Hz kick on every other hit, a hi-hat above
+        8 kHz on each) added to ``x``; the hits' times (s)."""
+        from scipy.signal import butter, sosfiltfilt
+        rng = np.random.default_rng(7)
+        m = int(0.15 * RATE)
+        k = np.arange(m) / RATE
+        kick = 0.6 * np.sin(2 * np.pi * 50 * k) * np.exp(-k / 0.05)
+        hat = sosfiltfilt(butter(8, 8000, "highpass", fs=RATE, output="sos"), rng.standard_normal(m)) * np.exp(-k / 0.01) * 0.3
+        hits = np.arange(0.3, seconds - 0.3, 1 / per_second)
+        for i, at in enumerate(hits):
+            a = int(at * RATE)
+            x[a:a + m] += (hat + (kick if i % 2 == 0 else 0))[:, None]
+        return hits
+
+    def test_held_notes_steady_under_hits(self):
+        """A held note under drums stays steady (its harmonics demodulated: their level's movement at 4 - 10 Hz,
+        the hits' rate, below -8 dB of it): crossfading to the source's waveform at each hit, or a window shortened
+        there, cancelled the note's partials 10 - 25 dB at every hit, heard as a tremolo at the beat's rate."""
+        from scipy.signal import butter, sosfiltfilt
+        seconds, f0 = 8.0, 233.08
+        t = np.arange(int(seconds * RATE)) / RATE
+        rng = np.random.default_rng(1)
+        note = sum(0.08 / h * np.sin(2 * np.pi * f0 * h * t + rng.uniform(0, 6.28)) for h in range(1, 17))
+        x = np.stack([note, note * 0.95], axis=1)
+        self._hits(x, seconds, 4.0)
+        lp = butter(4, 40, "lowpass", fs=RATE, output="sos")
+        for factor in (0.5, 0.8):
+            y = self._render(x.astype(np.float32), factor).mean(axis=1).astype(np.float64)
+            tt = np.arange(len(y)) / RATE
+            keep = slice(int(0.5 * RATE), len(y) - int(0.5 * RATE))
+            depth = []
+            for h in range(1, 17):
+                amp = np.abs(sosfiltfilt(lp, y * np.exp(-2j * np.pi * f0 * h * tt)))[keep][::RATE // 200]
+                a = amp / amp.mean() - 1
+                p = np.abs(np.fft.rfft(a * np.hanning(len(a)))) ** 2 / len(a)
+                f = np.fft.rfftfreq(len(a), 1 / 200)
+                depth.append(p[(f >= 4) & (f < 10)].sum())
+            self.assertLess(10 * np.log10(np.mean(depth)), -8.0, factor)
+
+    def test_vibrato_steady_slowed_down(self):
+        """A sung note's vibrato (40 cents at 5.5 Hz) slowed down keeps its harmonics' level (demodulated along the
+        vibrato itself: their movement at 4 - 10 Hz below -5 dB of it): a window long against the vibrato saw a
+        harmonic sweep across its bins, their phases at odds, the level beating at twice the vibrato's rate (the
+        "LFO" of a slowed voice, worst at -70 %)."""
+        from scipy.signal import butter, sosfiltfilt
+        seconds, f0, cents, rate = 8.0, 233.08, 40.0, 5.5
+        lp = butter(4, 40, "lowpass", fs=RATE, output="sos")
+
+        def phase(t, speed):
+            f = f0 * 2 ** (cents * np.sin(2 * np.pi * rate * speed * t) / 1200)
+            return 2 * np.pi * np.cumsum(f) / RATE
+
+        t = np.arange(int(seconds * RATE)) / RATE
+        rng = np.random.default_rng(1)
+        ph = phase(t, 1.0)
+        note = sum(0.08 / h * np.sin(h * ph + rng.uniform(0, 6.28)) for h in range(1, 17))
+        x = np.stack([note, note * 0.95], axis=1).astype(np.float32)
+        for factor in (0.5, 0.3):
+            y = self._render(x, factor).mean(axis=1).astype(np.float64)
+            ph_out = phase(np.arange(len(y)) / RATE, factor)
+            keep = slice(int(0.5 * RATE), len(y) - int(0.5 * RATE))
+            depth = []
+            for h in range(1, 17):
+                amp = np.abs(sosfiltfilt(lp, y * np.exp(-1j * h * ph_out)))[keep][::RATE // 200]
+                a = amp / amp.mean() - 1
+                p = np.abs(np.fft.rfft(a * np.hanning(len(a)))) ** 2 / len(a)
+                f = np.fft.rfftfreq(len(a), 1 / 200)
+                depth.append(p[(f >= 4) & (f < 10)].sum())
+            self.assertLess(10 * np.log10(np.mean(depth)), -5.0, factor)
+
+    def test_noise_stays_noise_slowed_down(self):
+        """A noise slowed down stays noise (its spectral flatness, 1.5 - 6 kHz, at least 0.75 of the source's): a
+        vocoder's bins each held at its phase advance turn a noise into steady sinusoids on the window's grid, a
+        metallic ring, the more so the slower and the shorter the window (the upper band's noise is turned at random)."""
+        rng = np.random.default_rng(3)
+        n = int(8 * RATE)
+        f = np.fft.rfftfreq(n, 1 / RATE)
+        pink = np.fft.irfft(np.fft.rfft(rng.standard_normal((n, 2)), axis=0) / np.sqrt(np.maximum(f, 20))[:, None], n,
+                            axis=0)
+        pink = (pink * 0.1 / np.sqrt(np.mean(pink ** 2))).astype(np.float32)
+
+        def flatness(x):
+            m = x.mean(axis=1).astype(np.float64)
+            k = (len(m) - 2048) // 1024
+            idx = np.arange(2048)[None, :] + 1024 * np.arange(k)[:, None]
+            p = np.abs(np.fft.rfft(m[idx] * np.hanning(2048), axis=1)) ** 2
+            band = p[:, (np.fft.rfftfreq(2048, 1 / RATE) >= 1500) & (np.fft.rfftfreq(2048, 1 / RATE) < 6000)] + 1e-20
+            return np.mean(np.exp(np.mean(np.log(band), axis=1)) / np.mean(band, axis=1))
+
+        for factor in (0.7, 0.5, 0.3):
+            self.assertGreater(flatness(self._render(pink, factor)) / flatness(pink), 0.75, factor)
+
+    def test_quiet_texture_kept_around_hits(self):
+        """A quiet texture (a noise at -36 dBFS: a room, a reverb's tail) keeps its level about the hits (300 -
+        6000 Hz, where only it is, within 1.5 dB of its level between them from 100 ms before each to 10 ms before
+        it): bins compared one by one, a noise's random half was cut before every hit."""
+        from scipy.signal import butter, sosfiltfilt
+        seconds = 8.0
+        rng = np.random.default_rng(3)
+        n = int(seconds * RATE)
+        f = np.fft.rfftfreq(n, 1 / RATE)
+        pink = np.fft.irfft(np.fft.rfft(rng.standard_normal((n, 2)), axis=0) / np.sqrt(np.maximum(f, 20))[:, None], n,
+                            axis=0)
+        pink *= 10 ** (-36 / 20) / np.sqrt(np.mean(pink ** 2))
+        hits = self._hits(pink, seconds, 4.0)
+        band = butter(6, [300, 6000], "bandpass", fs=RATE, output="sos")
+        factor = 0.5
+        e = sosfiltfilt(band, self._render(pink.astype(np.float32), factor).mean(axis=1).astype(np.float64)) ** 2
+        e = np.convolve(e, np.ones(int(0.005 * RATE)) / int(0.005 * RATE), "same")
+        rows = []
+        for at in hits[2:-2]:
+            d = int(at / factor * RATE)
+            ref = np.mean(e[d - int(0.2 * RATE):d - int(0.12 * RATE)])
+            rows.append([10 * np.log10(e[d - int(s / 1000 * RATE)] / ref) for s in range(10, 101, 5)])
+        self.assertGreater(np.min(np.mean(rows, axis=0)), -1.5, np.mean(rows, axis=0))
 
 
 @unittest.skipIf(EXE is None, "the native engine is not built (build/audio_engine.py)")

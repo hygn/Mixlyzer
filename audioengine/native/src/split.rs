@@ -1,17 +1,14 @@
-//! The band split of the time stretch (stretch.rs, ``Stretcher``): the source's low band
-//! decimated by ``d`` (a Kaiser-windowed lowpass, -90 dB from the low rate's Nyquist frequency down, its passband
-//! to seven eighths of it: 7 kHz at 48 kHz; the transition, where both bands carry a tone and their stretched
-//! parts add with unrelated phases, kept narrow) and the high band the residual, the source less the low band
-//! interpolated back (the same filter, polyphase), so the two always sum to the source. Both are computed where
-//! they are read, around the stream's position, into caches of a few windows: nothing is kept per track.
+//! The time stretch's low band (stretch.rs, ``Stretcher``): the source decimated by ``d`` for the low band's
+//! vocoder (a Kaiser-windowed lowpass, -90 dB from the low rate's Nyquist frequency down, its passband up to the
+//! vocoders' crossover, its width and a margin: 1.65 kHz, 8 at 44.1 / 48 kHz), and the vocoder's synthesis at the
+//! low rate brought back to the full rate by the same lowpass (``upsample``). Computed where it is read, around the
+//! stream's position, into a cache of a few windows: nothing is kept per track.
 
 use std::f64::consts::PI;
 
 const ATTENUATION_DB: f64 = 90.0;
-/// The low band's rate is about this or more: 44.1 / 48 kHz split by 3, 88.2 / 96 kHz by 6.
-const LOW_RATE_MIN: f64 = 14_000.0;
-/// The passband's edge, of the low rate's Nyquist frequency.
-const PASS: f64 = 0.875;
+/// The passband's edge at most this of the low rate's Nyquist frequency (the transition the rest).
+const PASS_MAX: f64 = 0.6;
 
 /// sum a[i] * b[i], eight lanes (vectorised by the compiler; a float sum is not reordered on its own).
 #[inline]
@@ -105,25 +102,26 @@ impl Run {
 pub struct BandSplit {
     pub d: usize,
     ch: usize,
-    half: i64,
+    pub half: i64,
     fir: Vec<f32>,
     /// the interpolation's phases, each in reading order (oldest low sample first), times ``d``
     phases: Vec<Vec<f32>>,
-    taps_per_phase: usize,
+    pub taps_per_phase: usize,
     low: Run,
-    high: Run,
     scratch: Vec<f32>,
 }
 
 impl BandSplit {
-    /// None where the rate leaves nothing to split (a low band under 2x decimation).
-    pub fn new(ch: usize, rate: u32) -> Option<BandSplit> {
-        let d = (rate as f64 / LOW_RATE_MIN).floor() as usize;
+    /// The low band up to ``pass_hz``: decimated by the most that keeps it in ``PASS_MAX`` of the low Nyquist
+    /// frequency (the transition from it, cut -90 dB by a Kaiser lowpass). None where the rate leaves nothing to
+    /// decimate.
+    pub fn new(ch: usize, rate: u32, pass_hz: f64) -> Option<BandSplit> {
+        let d = (rate as f64 * PASS_MAX / (2.0 * pass_hz)).floor() as usize;
         if d < 2 {
             return None;
         }
         let nyquist_low = 0.5 / d as f64; // of the full rate
-        let pass = PASS * nyquist_low;
+        let pass = pass_hz / rate as f64;
         let h = kaiser_lowpass(0.5 * (pass + nyquist_low), nyquist_low - pass);
         let len = h.len();
         let taps_per_phase = len.div_ceil(d);
@@ -146,14 +144,34 @@ impl BandSplit {
             phases,
             taps_per_phase,
             low: Run::new(ch),
-            high: Run::new(ch),
             scratch: Vec::new(),
         })
     }
 
+    /// Full-rate sample ``n`` of a low-rate signal (``low``: its samples from ``low_base`` on), interpolated by the
+    /// same lowpass (polyphase). The low samples read: from (n + half) div d - taps + 1, ``taps_per_phase`` of them.
+    pub fn upsample(&self, low: &[f32], low_base: i64, n: i64) -> f32 {
+        let d = self.d as i64;
+        let t = self.taps_per_phase as i64;
+        let k_max = (n + self.half).div_euclid(d);
+        let r = (n + self.half).rem_euclid(d) as usize;
+        let s = k_max - t + 1 - low_base;
+        if s < 0 || s + t > low.len() as i64 {
+            // partly outside the run: the missing samples are silence
+            let mut acc = 0f32;
+            for i in 0..t {
+                let k = s + i;
+                if k >= 0 && k < low.len() as i64 {
+                    acc += self.phases[r][i as usize] * low[k as usize];
+                }
+            }
+            return acc;
+        }
+        dot(&self.phases[r], &low[s as usize..(s + t) as usize])
+    }
+
     pub fn reset(&mut self) {
         self.low = Run::new(self.ch);
-        self.high = Run::new(self.ch);
     }
 
     /// One channel of the source, ``[a, b)`` (zeros outside it), into ``out``.
@@ -191,38 +209,6 @@ impl BandSplit {
         &self.low.data[c][s..s + (b - a) as usize]
     }
 
-    /// The high band's samples ``[a, b)`` (full rate) computed; ``high(c, a, b)`` reads them.
-    pub fn ensure_high(&mut self, source: &[f32], a: i64, b: i64) {
-        let from = self.high.keep_from(a, b, 8192);
-        if from >= b {
-            return;
-        }
-        let d = self.d as i64;
-        let t = self.taps_per_phase as i64;
-        // the low samples the interpolation reads: k_max(n) = (n + half) div d, back t - 1 of them
-        let k_lo = (from + self.half).div_euclid(d) - t + 1;
-        let k_hi = (b - 1 + self.half).div_euclid(d) + 1;
-        self.ensure_low(source, k_lo, k_hi);
-        let frames = (source.len() / self.ch) as i64;
-        for c in 0..self.ch {
-            let s0 = (k_lo - self.low.base) as usize;
-            let low = &self.low.data[c][s0..s0 + (k_hi - k_lo) as usize];
-            let out = &mut self.high.data[c];
-            for n in from..b {
-                let k_max = (n + self.half).div_euclid(d);
-                let r = (n + self.half).rem_euclid(d) as usize;
-                let s = (k_max - t + 1 - k_lo) as usize;
-                let up = dot(&self.phases[r], &low[s..s + t as usize]);
-                let x = if n >= 0 && n < frames { source[n as usize * self.ch + c] } else { 0.0 };
-                out.push(x - up);
-            }
-        }
-    }
-
-    pub fn high(&self, c: usize, a: i64, b: i64) -> &[f32] {
-        let s = (a - self.high.base) as usize;
-        &self.high.data[c][s..s + (b - a) as usize]
-    }
 }
 
 #[cfg(test)]
@@ -230,28 +216,42 @@ mod tests {
     use super::*;
 
     #[test]
-    fn bands_sum_to_the_source_and_split_where_they_should() {
+    fn the_low_band_keeps_its_passband_and_drops_the_rest() {
         let rate = 48_000u32;
-        let mut split = BandSplit::new(2, rate).unwrap();
-        assert_eq!(split.d, 3);
+        let mut split = BandSplit::new(2, rate, 1100.0).unwrap();
+        assert_eq!(split.d, 13);
         let n = 48_000usize;
-        let tone = |hz: f64, i: usize| (2.0 * PI * hz * i as f64 / rate as f64).sin() as f32;
-        // left: 1 kHz + 12 kHz, right: 4 kHz
-        let source: Vec<f32> = (0..n).flat_map(|i| [tone(1000.0, i) + tone(12_000.0, i), tone(4000.0, i)]).collect();
-        let (a, b) = (10_000i64, 20_000i64);
-        split.ensure_high(&source, a, b);
-        // the low band interpolated: the source less the high band
-        let high_l = split.high(0, a, b).to_vec();
-        let high_r = split.high(1, a, b).to_vec();
-        // left: the high band is the 12 kHz tone alone (1 kHz kept by the low band); right: nothing (4 kHz)
-        let mut err_left = 0f64;
-        let mut leak_right = 0f64;
-        for (k, i) in (a..b).enumerate() {
-            let i = i as usize;
-            err_left = err_left.max((high_l[k] - tone(12_000.0, i)).abs() as f64);
-            leak_right = leak_right.max(high_r[k].abs() as f64);
+        let tone = |hz: f64, i: f64| (2.0 * PI * hz * i / rate as f64).sin() as f32;
+        // left: 1 kHz + 3 kHz (past the low rate's Nyquist frequency, 1.85 kHz), right: 400 Hz
+        let source: Vec<f32> =
+            (0..n).flat_map(|i| [tone(1000.0, i as f64) + tone(3000.0, i as f64), tone(400.0, i as f64)]).collect();
+        let (a, b) = (1_000i64, 2_500i64);
+        split.ensure_low(&source, a, b);
+        // low sample k is the source at k * d, band-limited: the 1 kHz and the 400 Hz tones there, the 3 kHz gone
+        let (mut err_left, mut err_right) = (0f64, 0f64);
+        for (j, k) in (a..b).enumerate() {
+            let t = (k * 13) as f64;
+            err_left = err_left.max((split.low(0, a, b)[j] - tone(1000.0, t)).abs() as f64);
+            err_right = err_right.max((split.low(1, a, b)[j] - tone(400.0, t)).abs() as f64);
         }
-        assert!(err_left < 1e-3, "the high band off the 12 kHz tone by {err_left}");
-        assert!(leak_right < 1e-3, "4 kHz leaks {leak_right} into the high band");
+        assert!(err_left < 1e-3, "the low band off the 1 kHz tone by {err_left} (the 3 kHz left in?)");
+        assert!(err_right < 1e-3, "the low band off the 400 Hz tone by {err_right}");
+    }
+
+    #[test]
+    fn the_low_band_comes_back_to_the_full_rate() {
+        let rate = 48_000u32;
+        let mut split = BandSplit::new(1, rate, 1100.0).unwrap();
+        let tone = |hz: f64, i: f64| (2.0 * PI * hz * i / rate as f64).sin() as f32;
+        let source: Vec<f32> = (0..48_000).map(|i| tone(1000.0, i as f64) + tone(250.0, i as f64)).collect();
+        let (a, b) = (500i64, 3_000i64);
+        split.ensure_low(&source, a, b);
+        let low = split.low(0, a, b).to_vec();
+        // inside the run, away from its ends: the source itself at every full-rate sample
+        let mut err = 0f64;
+        for t in (a * 13 + 2_000)..(b * 13 - 2_000) {
+            err = err.max((split.upsample(&low, a, t) - source[t as usize]).abs() as f64);
+        }
+        assert!(err < 2e-3, "the interpolated low band off the source by {err}");
     }
 }
