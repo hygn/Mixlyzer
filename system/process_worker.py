@@ -11,6 +11,8 @@ from typing import Any, Callable
 
 from PySide6 import QtCore
 
+GRACEFUL_END_SEC = 30.0     # a process that said it is done, given this long to end by itself before it is terminated
+
 
 def install_parent_watchdog() -> None:
     """Exit a child promptly when its owning application process disappears."""
@@ -99,7 +101,7 @@ class SpawnProcessWorker(QtCore.QObject):
             self._start_failed = failed
             abandoned = self._abandoned
         if abandoned:
-            _end_process(process, queue, started=not failed)
+            _end_process(process, queue, started=not failed, wait=0.0)
 
     def stop(self) -> None:
         self._timer.stop()
@@ -110,10 +112,10 @@ class SpawnProcessWorker(QtCore.QObject):
                 self._process = None
                 self._queue = None
                 return
-        if self._process is not None and self._process.is_alive():
-            self._process.terminate()
-            self._process.join(timeout=1.0)
-        self._cleanup()
+        process, queue = self._process, self._queue
+        self._process = self._queue = None
+        if process is not None:
+            _release(process, queue, started=not self._start_failed, wait=0.0)
 
     def _poll_queue(self) -> None:
         if self._queue is None:
@@ -140,23 +142,20 @@ class SpawnProcessWorker(QtCore.QObject):
             self._finalize_process(graceful=False)
 
     def _finalize_process(self, *, graceful: bool) -> None:
+        """The process done (``graceful``: it said so) or gone. One that said it is done is left to end by itself
+        on a thread of its own (terminated if it has not in GRACEFUL_END_SEC): waited for here, a process still
+        ending when the CPU is full (a batch analysis) held the GUI and was closed while it ran (a ValueError)."""
         self._timer.stop()
-        process = self._process
+        process, queue = self._process, self._queue
+        self._process = self._queue = None
+        started = process is not None and not self._start_failed
         exitcode = None
-        if process is not None and not self._start_failed:
-            process.join(timeout=1.0)
+        if started and not graceful:
+            process.join(timeout=1.0)       # gone already: at once
             exitcode = process.exitcode
-        self._cleanup()
+        if process is not None:
+            _release(process, queue, started=started, wait=GRACEFUL_END_SEC if graceful else 0.0)
         self._process_exited(graceful=graceful, exitcode=exitcode)
-
-    def _cleanup(self) -> None:
-        if self._queue is not None:
-            self._queue.close()
-            self._queue.join_thread()
-            self._queue = None
-        if self._process is not None:
-            self._process.close()
-            self._process = None
 
     def _handle_process_message(self, message: dict[str, Any]) -> None:
         raise NotImplementedError
@@ -172,9 +171,10 @@ class SpawnProcessWorker(QtCore.QObject):
             pass
 
 
-def _end_process(process: mp.Process, queue: Any, *, started: bool) -> None:
-    """Terminate and release a process stop() gave up while it was starting."""
+def _end_process(process: mp.Process, queue: Any, *, started: bool, wait: float) -> None:
+    """A process released: given ``wait`` seconds to end by itself, then terminated, then closed with its queue."""
     if started:
+        process.join(timeout=wait)
         if process.is_alive():
             process.terminate()
         process.join(timeout=1.0)
@@ -182,5 +182,15 @@ def _end_process(process: mp.Process, queue: Any, *, started: bool) -> None:
         process.close()
     except ValueError:
         pass  # still running after terminate: left to the OS
-    queue.close()
-    queue.join_thread()
+    if queue is not None:
+        queue.close()
+        queue.join_thread()
+
+
+def _release(process: mp.Process, queue: Any, *, started: bool, wait: float) -> None:
+    """``_end_process`` on a thread of its own (never the GUI's waiting); in place while Python ends (no thread)."""
+    try:
+        threading.Thread(target=_end_process, args=(process, queue), kwargs={"started": started, "wait": wait},
+                         name=f"{process.name}-end", daemon=True).start()
+    except RuntimeError:
+        _end_process(process, queue, started=started, wait=0.0)

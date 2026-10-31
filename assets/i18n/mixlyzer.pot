@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-31 23:55+0900\n"
+"POT-Creation-Date: 2026-11-01 02:34+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -394,11 +394,11 @@ msgstr ""
 msgid "feature cache is not current"
 msgstr ""
 
-#: app/main.py:61
+#: app/main.py:66
 msgid "Unsupported Operating System"
 msgstr ""
 
-#: app/main.py:62
+#: app/main.py:67
 #, python-brace-format
 msgid ""
 "Mixlyzer supports Windows, Linux and macOS; this system ({system}) is not"
@@ -406,21 +406,21 @@ msgid ""
 "It may not work correctly."
 msgstr ""
 
-#: app/main.py:68
+#: app/main.py:73
 msgid "Administrator Execution Blocked"
 msgstr ""
 
-#: app/main.py:69
+#: app/main.py:74
 msgid ""
 "Mixlyzer cannot run with administrator privileges.\n"
 "Close it and launch again as a normal user."
 msgstr ""
 
-#: app/main.py:81
+#: app/main.py:86
 msgid "Settings Reset"
 msgstr ""
 
-#: app/main.py:82
+#: app/main.py:87
 #, python-brace-format
 msgid ""
 "{name} could not be read, so its settings are back to their defaults.\n"
@@ -431,11 +431,11 @@ msgid ""
 "while Mixlyzer is closed."
 msgstr ""
 
-#: app/main.py:97
+#: app/main.py:102
 msgid "Incompatible Library Version"
 msgstr ""
 
-#: app/main.py:98
+#: app/main.py:103
 #, python-brace-format
 msgid ""
 "This library cannot be opened by the current app version.\n"
@@ -1982,7 +1982,7 @@ msgstr ""
 msgid "Folder for features cached while reoptimizing, so later runs are faster."
 msgstr ""
 
-#: ui/config/analysis.py:47 ui/config/analysis.py:163 ui/config/library.py:258
+#: ui/config/analysis.py:47 ui/config/analysis.py:163 ui/config/library.py:269
 #: ui/config/view.py:198
 msgid "General"
 msgstr ""
@@ -2070,7 +2070,7 @@ msgstr ""
 
 #: ui/config/analysis.py:139 ui/config/analysis.py:177
 #: ui/config/analysis.py:200 ui/config/dialogs/optimization.py:204
-#: ui/config/library.py:251 ui/config/library.py:267 ui/config/playback.py:108
+#: ui/config/library.py:262 ui/config/library.py:278 ui/config/playback.py:108
 #: ui/config/view.py:193
 msgid "Advanced"
 msgstr ""
@@ -2854,7 +2854,7 @@ msgstr ""
 msgid "Kind"
 msgstr ""
 
-#: ui/config/backups.py:89 ui/config/library.py:192
+#: ui/config/backups.py:89 ui/config/library.py:203
 #: ui/windows/library_backup.py:146
 msgid "Backup"
 msgstr ""
@@ -3337,172 +3337,183 @@ msgid ""
 "ago, from {sender})."
 msgstr ""
 
-#: ui/config/library.py:51
+#: ui/config/library.py:53
 #, python-brace-format
 msgid "{verses}, the next one each run of verses"
 msgstr ""
 
-#: ui/config/library.py:53
+#: ui/config/library.py:55
 msgid "Go on with the phrase before"
 msgstr ""
 
-#: ui/config/library.py:77
+#: ui/config/library.py:79
 msgid "Add Folder…"
 msgstr ""
 
-#: ui/config/library.py:78 ui/library/actions.py:98
+#: ui/config/library.py:80 ui/library/actions.py:98
 #: ui/library/tabs/tieup_editor.py:368
 msgid "Remove"
 msgstr ""
 
-#: ui/config/library.py:80
+#: ui/config/library.py:82
 msgid ""
 "When this list is empty, the operating system's default Music folder is "
 "used."
 msgstr ""
 
-#: ui/config/library.py:83
+#: ui/config/library.py:85
 msgid "Write log to file"
 msgstr ""
 
-#: ui/config/library.py:85
+#: ui/config/library.py:87
 msgid "Sync with Rekordbox XML"
 msgstr ""
 
-#: ui/config/library.py:93
+#: ui/config/library.py:95
 msgid ""
 "<p>Rekordbox has no tempo ramps: a ramp is written as steps of steady "
 "tempo. Smaller makes the steps finer.</p>"
 msgstr ""
 
-#: ui/config/library.py:96 ui/library/tabs/sync.py:106
+#: ui/config/library.py:98 ui/library/tabs/sync.py:106
 msgid "Tie-ups after the comment"
 msgstr ""
 
-#: ui/config/library.py:98
+#: ui/config/library.py:100
 msgid ""
 "<p>Each track's comment in the XML with its song's tie-ups after it, as "
 "[Title OP; Other ED]; the library's comment stays as it is.</p>"
 msgstr ""
 
-#: ui/config/library.py:100 ui/config/library.py:162
+#: ui/config/library.py:102 ui/config/library.py:173
 msgid "Sync Now"
 msgstr ""
 
-#: ui/config/library.py:101
+#: ui/config/library.py:103
 msgid "Logging settings apply on next app launch."
 msgstr ""
 
-#: ui/config/library.py:102
+#: ui/config/library.py:104
 msgid "Use Sync Now to rebuild the whole XML explicitly."
 msgstr ""
 
-#: ui/config/library.py:106
+#: ui/config/library.py:108
 msgid "Folder holding library.db and the per-track feature files (.npz)."
 msgstr ""
 
-#: ui/config/library.py:109
+#: ui/config/library.py:111
 msgid "Root folders shown under Local Folders in the library browser."
 msgstr ""
 
-#: ui/config/library.py:111
+#: ui/config/library.py:113
 msgid "Add a local music root folder."
 msgstr ""
 
-#: ui/config/library.py:112
+#: ui/config/library.py:114
 msgid "Remove the selected root folders."
 msgstr ""
 
-#: ui/config/library.py:113
+#: ui/config/library.py:115
 msgid "Write console output to a log file."
 msgstr ""
 
-#: ui/config/library.py:114
+#: ui/config/library.py:116
 msgid "Log file written when 'Write log to file' is on."
 msgstr ""
 
-#: ui/config/library.py:116
+#: ui/config/library.py:118
 msgid ""
 "Keep a Rekordbox XML file updated with the library's beat grids, keys and"
 " cues."
 msgstr ""
 
-#: ui/config/library.py:119
+#: ui/config/library.py:121
 msgid "Rekordbox XML file to write. Import it in Rekordbox to use the analysis."
 msgstr ""
 
-#: ui/config/library.py:122
+#: ui/config/library.py:124
 msgid "Save these settings and rebuild the whole XML from the library now."
 msgstr ""
 
-#: ui/config/library.py:127
+#: ui/config/library.py:129
 msgid "Library Path"
 msgstr ""
 
-#: ui/config/library.py:138
+#: ui/config/library.py:140
 msgid "Local Music Folders"
 msgstr ""
 
-#: ui/config/library.py:139
+#: ui/config/library.py:141
 msgid "Add a tie-up to the track's versions too"
 msgstr ""
 
-#: ui/config/library.py:141
+#: ui/config/library.py:143
 msgid ""
 "<p>A tie-up added in the Edit tab is added to the track's other versions "
 "as well.</p>"
 msgstr ""
 
-#: ui/config/library.py:143
+#: ui/config/library.py:145
 msgid "Look up a new track's tie-ups on Wikipedia"
 msgstr ""
 
-#: ui/config/library.py:145
+#: ui/config/library.py:147
 msgid ""
 "<p>After a new track's analysis, its tie-ups are looked up on Japanese "
 "Wikipedia and Wikidata and the ones found for certain are added. Its "
 "title and artist are sent there.</p>"
 msgstr ""
 
-#: ui/config/library.py:148
+#: ui/config/library.py:150
+msgid "Clear Web Lookup Cache"
+msgstr ""
+
+#: ui/config/library.py:152
+msgid ""
+"<p>The answers Wikipedia and Wikidata gave, kept for 30 days, deleted: "
+"each track is looked up again the next time. The tie-ups already added "
+"stay.</p>"
+msgstr ""
+
+#: ui/config/library.py:159
 msgid "The interface's language"
 msgstr ""
 
-#: ui/config/library.py:150
+#: ui/config/library.py:161
 msgid ""
 "<p>The language a tie-up's work is shown in: its title in that language "
 "where the work has one, else another of its titles.</p>"
 msgstr ""
 
-#: ui/config/library.py:152
+#: ui/config/library.py:163
 msgid "Tie-up Titles"
 msgstr ""
 
-#: ui/config/library.py:153 ui/config/library.py:203
+#: ui/config/library.py:164 ui/config/library.py:214
 msgid "As the tie-up titles"
 msgstr ""
 
-#: ui/config/library.py:155
+#: ui/config/library.py:166
 msgid ""
 "<p>The language of the tie-ups the Sync tab writes after a file's "
 "comment.</p>"
 msgstr ""
 
-#: ui/config/library.py:156
+#: ui/config/library.py:167
 msgid "Exported Tie-ups"
 msgstr ""
 
-#: ui/config/library.py:159
+#: ui/config/library.py:170
 msgid "Update the library database when the editor saves"
 msgstr ""
 
-#: ui/config/library.py:161
+#: ui/config/library.py:172
 msgid ""
 "<p>The editor's save also writes the track's BPM, key and search tables "
 "into the library database.</p>"
 msgstr ""
 
-#: ui/config/library.py:164
+#: ui/config/library.py:175
 msgid ""
 "<p>Every track's BPM, key and search tables in the library database made "
 "again from its stored analysis. A BPM or key typed in the Edit Track tab "
@@ -3510,25 +3521,25 @@ msgid ""
 "touched.</p>"
 msgstr ""
 
-#: ui/config/library.py:167
+#: ui/config/library.py:178
 msgid "Library Database"
 msgstr ""
 
-#: ui/config/library.py:173
+#: ui/config/library.py:184
 msgid "Include the feature caches"
 msgstr ""
 
-#: ui/config/library.py:175
+#: ui/config/library.py:186
 msgid ""
 "<p>A backup also packs the analyses' feature caches (Reoptimize's "
 "training data). Without them a backup is smaller.</p>"
 msgstr ""
 
-#: ui/config/library.py:177
+#: ui/config/library.py:188
 msgid "Back Up Library…"
 msgstr ""
 
-#: ui/config/library.py:179
+#: ui/config/library.py:190
 msgid ""
 "<p>The library packed into one file: its database, every track's stored "
 "analysis, the thumbnails, the search indexes, the settings, your "
@@ -3536,133 +3547,145 @@ msgid ""
 "are not packed.</p>"
 msgstr ""
 
-#: ui/config/library.py:182
+#: ui/config/library.py:193
 msgid "Restore Library…"
 msgstr ""
 
-#: ui/config/library.py:184
+#: ui/config/library.py:195
 msgid ""
 "<p>A backup unpacked into a new library folder, then Mixlyzer restarts on"
 " it. The library in use now is kept as it is.</p>"
 msgstr ""
 
-#: ui/config/library.py:197
+#: ui/config/library.py:208
 msgid "Rekordbox XML"
 msgstr ""
 
-#: ui/config/library.py:200
+#: ui/config/library.py:211
 msgid "XML Path"
 msgstr ""
 
-#: ui/config/library.py:201
+#: ui/config/library.py:212
 msgid "Tempo ramp tolerance"
 msgstr ""
 
-#: ui/config/library.py:205
+#: ui/config/library.py:216
 msgid ""
 "<p>The language of the tie-ups written after each track's comment in the "
 "XML.</p>"
 msgstr ""
 
-#: ui/config/library.py:207
+#: ui/config/library.py:218
 msgid "Tie-up Language"
 msgstr ""
 
-#: ui/config/library.py:211
+#: ui/config/library.py:222
 msgid "Rekordbox Phrases"
 msgstr ""
 
-#: ui/config/library.py:213
+#: ui/config/library.py:224
 msgid ""
 "<p>How the Sync tab writes the phrases into rekordbox's analysis: "
 "rekordbox's mood, and the phrase each label becomes. rekordbox's phrases "
 "have fixed names per mood.</p>"
 msgstr ""
 
-#: ui/config/library.py:217
+#: ui/config/library.py:228
 msgid "High (Intro, Up, Down, Chorus, Outro)"
 msgstr ""
 
-#: ui/config/library.py:218
+#: ui/config/library.py:229
 msgid "Mid (Intro, Verse 1-6, Bridge, Chorus, Outro)"
 msgstr ""
 
-#: ui/config/library.py:219
+#: ui/config/library.py:230
 msgid "Low (Intro, Verse 1-2, Bridge, Chorus, Outro)"
 msgstr ""
 
-#: ui/config/library.py:221
+#: ui/config/library.py:232
 msgid "Mood"
 msgstr ""
 
-#: ui/config/library.py:230 ui/config/library.py:266
+#: ui/config/library.py:241 ui/config/library.py:277
 msgid "Serato"
 msgstr ""
 
-#: ui/config/library.py:233
+#: ui/config/library.py:244
 msgid "JumpCUEs (A-H in their slots)"
 msgstr ""
 
-#: ui/config/library.py:234
+#: ui/config/library.py:245
 msgid "CUE points (in time order)"
 msgstr ""
 
-#: ui/config/library.py:235
+#: ui/config/library.py:246
 msgid "JumpCUEs, then CUE points in the slots left"
 msgstr ""
 
-#: ui/config/library.py:238
+#: ui/config/library.py:249
 msgid ""
 "<p>What the Sync tab's Write Tags makes Serato's 8 hot cues of. Serato "
 "has no memory cues: CUE points written there become hot cues.</p>"
 msgstr ""
 
-#: ui/config/library.py:240
+#: ui/config/library.py:251
 msgid "Keep the file's Serato hot cues in the slots left"
 msgstr ""
 
-#: ui/config/library.py:242
+#: ui/config/library.py:253
 msgid ""
 "<p>Hot cues set in Serato stay in the slots the written ones leave, and "
 "so do those written before (a JumpCUE removed since stays in Serato); "
 "off, every hot cue is replaced.</p>"
 msgstr ""
 
-#: ui/config/library.py:244
+#: ui/config/library.py:255
 msgid "Lock the beatgrid"
 msgstr ""
 
-#: ui/config/library.py:246
+#: ui/config/library.py:257
 msgid ""
 "<p>Serato's BPM lock: its analysis then leaves the written beatgrid as it"
 " is.</p>"
 msgstr ""
 
-#: ui/config/library.py:247
+#: ui/config/library.py:258
 msgid "Hot Cues"
 msgstr ""
 
-#: ui/config/library.py:254
+#: ui/config/library.py:265
 msgid "Log Path"
 msgstr ""
 
-#: ui/config/library.py:259
+#: ui/config/library.py:270
 msgid "Database"
 msgstr ""
 
-#: ui/config/library.py:261
+#: ui/config/library.py:272
 msgid "Backups"
 msgstr ""
 
-#: ui/config/library.py:292
+#: ui/config/library.py:320
+#, python-brace-format
+msgid "The cache could not be cleared: {error}"
+msgstr ""
+
+#: ui/config/library.py:321
+#, python-brace-format
+msgid "{count} answer deleted."
+msgid_plural "{count} answers deleted."
+msgstr[0] ""
+msgstr[1] ""
+
+#: ui/config/library.py:332
 msgid "Add Local Music Folder"
 msgstr ""
 
-#: ui/config/dialogs/library_sync.py:17 ui/config/library.py:355
+#: ui/config/dialogs/library_sync.py:17 ui/config/library.py:395
 msgid "Sync Library Database"
 msgstr ""
 
-#: ui/config/library.py:356
+#: ui/config/library.py:396
 msgid ""
 "Every track's BPM, key and search tables in the library database will be "
 "made again from its stored analysis. A BPM or key typed in the Edit Track"
@@ -3671,20 +3694,20 @@ msgid ""
 "Sync now?"
 msgstr ""
 
-#: ui/config/library.py:401
+#: ui/config/library.py:441
 msgid "Enable Sync with Rekordbox XML first."
 msgstr ""
 
-#: ui/config/dialogs/rekordbox.py:15 ui/config/library.py:401
-#: ui/config/library.py:406
+#: ui/config/dialogs/rekordbox.py:15 ui/config/library.py:441
+#: ui/config/library.py:446
 msgid "Sync Rekordbox XML"
 msgstr ""
 
-#: ui/config/library.py:406
+#: ui/config/library.py:446
 msgid "Rekordbox XML Path is empty."
 msgstr ""
 
-#: ui/config/library.py:448
+#: ui/config/library.py:488
 msgid "Rekordbox XML worker started"
 msgstr ""
 
@@ -7362,7 +7385,7 @@ msgstr ""
 msgid "Playback"
 msgstr ""
 
-#: ui/config/library.py:125 ui/config/library.py:279 ui/library/sources.py:287
+#: ui/config/library.py:127 ui/config/library.py:293 ui/library/sources.py:287
 #: ui/shortcuts.py:33
 msgid "Library"
 msgstr ""

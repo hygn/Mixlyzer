@@ -1,3 +1,4 @@
+import io
 import tempfile
 import unittest
 from pathlib import Path
@@ -135,6 +136,11 @@ class TieupWebTests(unittest.TestCase):
         self.assertEqual(tw.song_title("オ・ヒ・メ・サ・マ！(アニメ幼女社長R EDテーマ)")[0], "オ・ヒ・メ・サ・マ！")
         self.assertEqual(tw.title_note("オ・ヒ・メ・サ・マ！(アニメ幼女社長R EDテーマ)"), "(アニメ幼女社長R EDテーマ)")
         self.assertEqual(tw.song_title("ふゆびより (포근한 겨울날) - TV애니메이션 『유루캠프』 ED테마")[0], "ふゆびより")
+        # the work a cover album names the song's origin by
+        self.assertEqual(tw.song_title("侵略ノススメ☆ (from 侵略!イカ娘)")[0], "侵略ノススメ☆")
+        self.assertEqual(tw.title_note("侵略ノススメ☆ (from 侵略!イカ娘)"), " (from 侵略!イカ娘)")
+        self.assertEqual(tw.song_title("ハレ晴レユカイ（『涼宮ハルヒの憂鬱』より）")[0], "ハレ晴レユカイ")
+        self.assertEqual(tw.song_title("Message from Earth")[0], "Message from Earth")     # no note
         # a Korean translation after the title is left out; a Korean title's own parenthesis kept
         self.assertEqual(tw.song_title("ツナグ、ソラモヨウ (이어진 하늘 모양)")[0], "ツナグ、ソラモヨウ")
         self.assertEqual(tw.song_title("다시 만난 세계 (소녀시대)")[0], "다시 만난 세계 (소녀시대)")
@@ -440,30 +446,119 @@ class TieupWebTests(unittest.TestCase):
     def test_a_maxlag_refusal_asked_again(self):
         fake, refused = Fake(), {"n": 0}
 
-        def fetch(url, params):     # Wikidata lagging for its first two answers (its query service counted in)
-            if params.get("action") == "wbgetentities" and refused["n"] < tw.MAXLAG_TRIES - 1:
+        def fetch(url, params):     # Wikipedia lagging for its first two answers of the song's page
+            if params.get("action") == "parse" and refused["n"] < tw.MAXLAG_TRIES - 1:
                 refused["n"] += 1
-                return {"error": {"code": "maxlag", "info": "Waiting for wdqs: 6 seconds lagged", "lag": 6}}
+                return {"error": {"code": "maxlag", "info": "Waiting for a database server: 6 seconds lagged",
+                                  "lag": 6}}
             return fake(url, params)
 
         found = tw.search(tw.Wikimedia(fetch), "青い鳥", "結束バンド")
         self.assertEqual(refused["n"], tw.MAXLAG_TRIES - 1)
-        self.assertEqual(found[0].work.title("ko-KR"), "봇치 더 록!")      # the work's names in other languages
+        self.assertEqual((found[0].work.title("ja-JP"), found[0].role), ("ぼっち・ざ・ろっく!", "opening"))
 
     def test_still_refused_the_lookup_fails_and_nothing_is_kept(self):
         fake = Fake()
 
         def fetch(url, params):
-            if params.get("action") == "wbgetentities":
-                return {"error": {"code": "maxlag", "info": "Waiting for wdqs: 9 seconds lagged", "lag": 9}}
+            if params.get("action") == "parse":
+                return {"error": {"code": "maxlag", "info": "Waiting for a database server: 9 seconds lagged",
+                                  "lag": 9}}
             return fake(url, params)
 
         with tempfile.TemporaryDirectory() as tmp:
             cache = str(Path(tmp) / "cache.db")
-            with self.assertRaises(tw.Busy):     # not the work kept without its names for CACHE_DAYS
+            with self.assertRaises(tw.Busy):     # not an answer without the song's page kept for CACHE_DAYS
                 tw.lookup(tw.Wikimedia(fetch), "青い鳥", "結束バンド", cache)
             self.assertEqual(tw.lookup(tw.Wikimedia(Fake()), "青い鳥", "結束バンド", cache)[0].work.title("ko-KR"),
                              "봇치 더 록!")    # asked again, not answered from the cache
+
+    def test_maxlag_asked_of_wikipedia_not_of_wikidata(self):
+        # Wikidata's counts its query service's lag in, which a read does not add to (often over 5 s for long)
+        urls = []
+
+        class Answer:
+            def __enter__(self):
+                return io.BytesIO(b"{}")
+
+            def __exit__(self, *_exc):
+                return False
+
+        def urlopen(req, timeout):
+            urls.append(req.full_url)
+            return Answer()
+
+        with mock.patch.object(tw.urllib.request, "urlopen", urlopen):
+            api = tw.Wikimedia()
+            api._http(tw.WIKIPEDIA, {"action": "query"})
+            api._http(tw.WIKIDATA, {"action": "wbgetentities"})
+        self.assertIn("maxlag=5", urls[0])
+        self.assertNotIn("maxlag", urls[1])
+
+    def test_a_release_code_left_out(self):
+        self.assertEqual(tw.song_title("M@STERPIECE [ORT]")[0], "M@STERPIECE")
+        self.assertEqual(tw.song_title("Song [ex]")[0], "Song [ex]")     # capitals only
+
+    def test_a_topic_in_a_category_of_its_own_name_is_no_franchise(self):
+        # 人口 is in Category:人口 as BanG Dream! is in Category:BanG Dream!: only the franchise's category is a work's
+        above = {"Category:人口": ["人口統計学", "個体群"], "Category:BanG Dream!": ["メディアミックス作品"]}
+
+        def fetch(_url, params):
+            titles = params["titles"]
+            if titles.startswith("Category:"):
+                cats = [c for t in titles.split("|") for c in above.get(t, [])]
+            else:
+                cats = [titles]
+            return {"query": {"pages": [{"title": titles.split("|")[0], "categories": [
+                {"title": f"Category:{c}"} for c in cats]}]}}
+
+        api = tw.Wikimedia(fetch)
+        self.assertIsNone(tw.page_category(api, "人口"))
+        self.assertEqual(tw.page_category(api, "BanG Dream!"), "media_mix")
+
+    def test_a_full_width_title_read_as_the_page_it_names(self):
+        def fetch(_url, params):     # the page's title has a half-width !
+            return {"query": {"pages": [{"title": params["titles"], "missing": "！" in params["titles"]}]}}
+
+        api = tw.Wikimedia(fetch)
+        self.assertEqual(tw._title_of(api, "輝きの向こう側へ！"), "輝きの向こう側へ!")
+        self.assertEqual(tw._title_of(api, "侵略!イカ娘"), "侵略!イカ娘")
+
+    def test_the_work_an_ost_album_names(self):
+        self.assertEqual(tw.album_work("나와 호랑이님 Original Sound Track Special Edition"), "나와 호랑이님")
+        self.assertEqual(tw.album_work("TVアニメ『ぼっち・ざ・ろっく!』オリジナル・サウンドトラック"), "ぼっち・ざ・ろっく!")
+        self.assertEqual(tw.album_work("鬼滅の刃 O.S.T."), "鬼滅の刃")
+        self.assertEqual(tw.album_work("Neko Hacker IV: Mirai Post"), "")     # OST a word of its own
+        self.assertEqual(tw.album_work("結束バンド"), "")
+
+    def test_a_korean_work_from_its_ost_album_where_no_page_names_the_song(self):
+        # a Korean light novel's OST: neither Wikipedia names the song; Japanese Wikipedia has no page of the work,
+        # the Korean one's categories make it a work, its Wikidata item gives its names
+        def fetch(url, params):
+            korean = url == tw.WIKIPEDIA_KO
+            if params.get("list") == "search":
+                return {"query": {"search": []}}
+            if params.get("prop") == "categories":
+                cats = ["2010년 소설", "대한민국의 라이트 노벨"] if korean else None
+                return {"query": {"pages": [{"title": params["titles"], "categories": [
+                    {"title": f"분류:{c}"} for c in cats]} if cats else {"title": params["titles"], "missing": True}]}}
+            if params.get("prop") == "pageprops":
+                item = "Q12589593" if korean and params["titles"] == "나와 호랑이님" else None
+                return {"query": {"pages": [{"pageprops": {"wikibase_item": item} if item else {},
+                                             "missing": item is None and "ppprop" in params}]}}
+            if params.get("action") == "wbgetentities":
+                return {"entities": {"Q12589593": {"labels": {"ko": {"value": "나와 호랑이님"},
+                                                              "en": {"value": "Me and the tiger"}}, "claims": {}}}}
+            return {}
+
+        found = tw.search(tw.Wikimedia(fetch), "호랑풍류가", "나래", "나와 호랑이님 Original Sound Track Special Edition")
+        self.assertEqual(len(found), 1)
+        self.assertTrue(found[0].sure)
+        self.assertEqual((found[0].work.title("ko-KR"), found[0].work.title("en-US"), found[0].role),
+                         ("나와 호랑이님", "Me and the tiger", tieup.UNSPECIFIED))
+        self.assertEqual(found[0].source, "https://ko.wikipedia.org/wiki/%EB%82%98%EC%99%80_%ED%98%B8%EB%9E%91%EC%9D%B4%EB%8B%98")
+        # an album not an OST's, or naming no work found: nothing
+        self.assertEqual(tw.search(tw.Wikimedia(fetch), "호랑풍류가", "나래", "나래 1st Album"), [])
 
 
 if __name__ == "__main__":

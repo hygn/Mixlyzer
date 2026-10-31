@@ -21,8 +21,10 @@ Wikidata: CC0):
      checks) is, of the works whose pages are works', the one the song's own page names most, or the one the
      searches' pages name most (the searches go on until two agree): a tag a little wrong now and then is better
      than none. Its role the one named most, else none. The others are suggestions the Edit tab shows.
-Requests go one at a time, at most one a second, with the User-Agent Wikimedia asks for and maxlag (a refusal asked
-again after the wait it names; still refused, the lookup fails: Busy); answers are kept for CACHE_DAYS
+  5. Where no page says anything of the song, the work its OST album names (album_work), by its Japanese Wikipedia
+     page, else its Korean one (a Korean work: 나와 호랑이님): sure, the role not specified.
+Requests go one at a time, at most one a second, with the User-Agent Wikimedia asks for and, to Wikipedia, maxlag (a
+refusal asked again after the wait it names; still refused, the lookup fails: Busy); answers are kept for CACHE_DAYS
 (cache/tieup_web.db), so a song is not asked for twice.
 """
 from __future__ import annotations
@@ -35,6 +37,7 @@ import re
 import sqlite3
 import threading
 import time
+import unicodedata
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -47,17 +50,18 @@ from core.tieups import domain as tieup
 
 USER_AGENT = "Mixlyzer (https://github.com/hygn/Mixlyzer) tie-up lookup"
 WIKIPEDIA = "https://ja.wikipedia.org/w/api.php"
+WIKIPEDIA_KO = "https://ko.wikipedia.org/w/api.php"     # an OST album's Korean work only (_album_work)
 WIKIDATA = "https://www.wikidata.org/w/api.php"
 PAGES_READ = 3          # each search's first pages read
 PAGES_MAX = 8           # pages read at most for a song
 MIN_INTERVAL_SEC = 1.0  # between two requests
 TIMEOUT_SEC = 10.0
-MAXLAG_SEC = 5          # asked of every request: Wikimedia refuses it while its servers lag more (maxlag)
+MAXLAG_SEC = 5          # asked of Wikipedia's requests: refused while its servers lag more (maxlag)
 MAXLAG_TRIES = 3        # a refused request asked again after the wait it names, then the lookup fails
 MAXLAG_WAIT_SEC = (5.0, 30.0)   # the wait between, at least and at most
 CACHE_DAYS = 30
 CACHE_NAME = os.path.join("cache", "tieup_web.db")
-RULES = 9           # how pages are read and a tie-up picked: raise it when they change (the answers kept asked again)
+RULES = 12          # how pages are read and a tie-up picked: raise it when they change (the answers kept asked again)
 # Wikidata's language codes -> ll-RR tags (others are not taken)
 WIKIDATA_LANGS = {"ja": "ja-JP", "ko": "ko-KR", "en": "en-US", "zh-cn": "zh-CN", "zh-hans": "zh-CN", "zh": "zh-CN",
                   "zh-tw": "zh-TW", "zh-hant": "zh-TW", "zh-hk": "zh-HK"}
@@ -92,6 +96,17 @@ _NOT_PROJECT = re.compile(r"コンサート|ライブ|イベント|ツアー|公
 # its categories' words -> the work's category (the first found; a manga's or a novel's songs are its anime's)
 CATEGORY_WORDS = (("アニメ", "anime"), ("ゲーム", "game"), ("映画", "movie"), ("ドラマ", "drama"), ("漫画", "anime"),
                   ("小説", "anime"), ("ライトノベル", "anime"), ("メディアミックス", "media_mix"))
+# a Korean Wikipedia page's categories as the Japanese ones above (an OST album's Korean work: _album_work)
+_KO_WORK_CATEGORY = re.compile(r"^\d{4}년\s*(?:텔레비전 애니메이션|애니메이션|만화|웹툰|소설|비디오 게임|게임|영화|"
+                               r"텔레비전 드라마|드라마)$|라이트 노벨$|웹툰$|비디오 게임$|모바일 게임$|"
+                               r"(?:애니메이션|만화) 작품$")
+_KO_NOT_WORK_CATEGORY = re.compile(r"살아있는 사람|\d{4}년 출생|\d{4}년 사망|음악 그룹|음반|싱글|가수$|노래$|음악가$")
+KO_CATEGORY_WORDS = (("애니메이션", "anime"), ("게임", "game"), ("영화", "movie"), ("드라마", "drama"), ("만화", "anime"),
+                     ("웹툰", "anime"), ("소설", "anime"), ("라이트 노벨", "anime"))
+# an OST album's word for its soundtrack: the work named before it (album_work); OST a word of its own (not Post)
+_OST = re.compile(r"(?<![A-Za-z])O\.?S\.?T\.?(?![A-Za-z])|Original\s+Sound\s*Tracks?|Original\s+Soundtracks?|"
+                  r"(?<![A-Za-z])Soundtracks?(?![A-Za-z])|(?:オリジナル[・･]?)?サウンドトラック|サントラ|"
+                  r"(?:오리지널\s*)?사운드\s*트랙", re.IGNORECASE)
 # a work's discography page: the work's own page title before it
 _LISTING = re.compile(r"(.+?)の(?:ディスコグラフィ|楽曲一覧|楽曲|音楽作品|キャラクターソング(?:一覧)?|主題歌(?:一覧)?)\Z")
 # the medium before a work -> its category
@@ -147,9 +162,9 @@ class Candidate:
 
 
 class Busy(RuntimeError):
-    """Wikimedia still refused a request after MAXLAG_TRIES (maxlag: Wikidata counts its query service's lag in,
-    often over MAXLAG_SEC): the lookup fails, so nothing is kept and the song is asked for again another time (a
-    request's answer taken as empty, its work kept without its names in other languages for CACHE_DAYS)."""
+    """Wikimedia still refused a request after MAXLAG_TRIES (maxlag): the lookup fails, so nothing is kept and the
+    song is asked for again another time (a request's answer taken as empty, a work kept without its names in other
+    languages for CACHE_DAYS)."""
 
 
 def _maxlag(answer) -> Optional[dict]:
@@ -167,7 +182,10 @@ class Wikimedia:
         self._last = 0.0
 
     def _http(self, url: str, params: dict) -> dict:
-        query = urllib.parse.urlencode({**params, "format": "json", "formatversion": "2", "maxlag": str(MAXLAG_SEC)})
+        # maxlag asked of Wikipedia only: Wikidata's counts its query service's lag in (what an edit costs there, not
+        # a read), often over MAXLAG_SEC for long: every lookup failed while it lasted
+        lag = {} if url == WIKIDATA else {"maxlag": str(MAXLAG_SEC)}
+        query = urllib.parse.urlencode({**params, "format": "json", "formatversion": "2", **lag})
         req = urllib.request.Request(f"{url}?{query}", headers={"User-Agent": USER_AGENT})
         try:
             with urllib.request.urlopen(req, timeout=TIMEOUT_SEC) as resp:
@@ -239,14 +257,19 @@ def _role(word: str) -> str:
 
 
 # a version note at the title's end (core.search.titles' words): "(TV size)", "(Instrumental)", "(Club remix)",
-# "(ふたりば～じょん)", "[MR]", "(伴奏)", or between dashes or wave dashes: "-TV size-", "～TV size～"
+# "(ふたりば～じょん)", "[MR]", "(伴奏)", or between dashes or wave dashes: "-TV size-", "～TV size～"; a release's code in
+# square brackets, capitals only: "M@STERPIECE [ORT]"
 _NOTE_WORDS = titles.NOTE_WORDS
 _VERSION_NOTE = re.compile(rf"\s*[\(（\[【][^)）\]】]*?(?:{_NOTE_WORDS})[^)）\]】]*[\)）\]】]\s*$|"
-                           rf"(?:\s+[-‐－]|\s*[～〜~])[^-‐－～〜~]*?(?:{_NOTE_WORDS})[^-‐－～〜~]*[-‐－～〜~]\s*$",
+                           rf"(?:\s+[-‐－]|\s*[～〜~])[^-‐－～〜~]*?(?:{_NOTE_WORDS})[^-‐－～〜~]*[-‐－～〜~]\s*$|"
+                           r"\s+\[(?-i:[A-Z0-9]{2,6})\]\s*$",
                            re.IGNORECASE)
-# a title's own words on its tie-up at its end: "(アニメ幼女社長R EDテーマ)", " - TV애니메이션 『유루캠프』 ED테마"
+# a title's own words on its tie-up at its end: "(アニメ幼女社長R EDテーマ)", " - TV애니메이션 『유루캠프』 ED테마", and
+# the work a cover album names a song's origin by, "(from 侵略!イカ娘)", "(『作品』より)"
 _TIEUP_WORDS = r"テーマ|主題歌|挿入歌|(?<![A-Za-z])(?:OP|ED)(?![A-Za-z])|오프닝|엔딩|테마|삽입곡|주제가"
-_TIEUP_NOTE = re.compile(rf"\s*[\(（][^)）]*?(?:{_TIEUP_WORDS})[^)）]*[\)）]\s*$|\s+-\s+[^-]*?(?:{_TIEUP_WORDS})[^-]*$")
+_TIEUP_NOTE = re.compile(rf"\s*[\(（][^)）]*?(?:{_TIEUP_WORDS})[^)）]*[\)）]\s*$|\s+-\s+[^-]*?(?:{_TIEUP_WORDS})[^-]*$|"
+                         r"\s*[\(（\[【]\s*(?i:from)\s+[^)）\]】]+[\)）\]】]\s*$|"
+                         r"\s*[\(（\[【][^)）\]】]*[「『][^」』]+[」』]\s*より\s*[\)）\]】]\s*$")
 # its Korean translation in a parenthesis at its end, after a title in another script: "ツナグ、ソラモヨウ (이어진 하늘 모양)"
 _TRANSLATION = re.compile(r"\s*[\(（][^)）]*[가-힣][^)）]*[\)）]\s*$")
 _FEAT = re.compile(r"(?:\s+|\s*[\(（]\s*)(?:feat\.|ft\.|feat\s|featuring\s)\s*(?P<who>[^)）]+)[\)）]?\s*$",
@@ -560,10 +583,11 @@ class _Memo:
         return self._answers[key]
 
 
-def _entity(api, page: str) -> tuple[Optional[str], dict]:
-    """A Japanese Wikipedia page's Wikidata item and its labels, aliases and claims; (None, {}) where it has none."""
+def _entity(api, page: str, wiki: str = WIKIPEDIA) -> tuple[Optional[str], dict]:
+    """A Wikipedia page's (Japanese, or ``wiki``'s) Wikidata item and its labels, aliases and claims; (None, {})
+    where it has none."""
     try:
-        info = api.get(WIKIPEDIA, action="query", prop="pageprops", titles=page, redirects="1")
+        info = api.get(wiki, action="query", prop="pageprops", titles=page, redirects="1")
         item = (info.get("query", {}).get("pages") or [{}])[0].get("pageprops", {}).get("wikibase_item")
         if not item:
             return None, {}
@@ -576,9 +600,9 @@ def _entity(api, page: str) -> tuple[Optional[str], dict]:
         return None, {}
 
 
-def _categories(api, titles: list[str]) -> tuple[list[dict], list[str]]:
+def _categories(api, titles: list[str], wiki: str = WIKIPEDIA) -> tuple[list[dict], list[str]]:
     """The pages (titles, at most 50) as the API gives them, and the categories they are in (no hidden ones)."""
-    out = api.get(WIKIPEDIA, action="query", prop="categories", titles="|".join(titles), cllimit="max",
+    out = api.get(wiki, action="query", prop="categories", titles="|".join(titles), cllimit="max",
                   clshow="!hidden", redirects="1")
     pages = out.get("query", {}).get("pages") or []
     return pages, [c.get("title", "").split(":", 1)[-1] for p in pages for c in p.get("categories", [])]
@@ -592,6 +616,33 @@ def _not_a_work(api, page: str) -> bool:
         raise
     except Exception:
         return False
+
+
+def _title_of(api, page: str) -> str:
+    """A work's page as Wikipedia titles it: a 『title』 written with full-width letters where the page's title has
+    them half-width (『THE IDOLM@STER MOVIE 輝きの向こう側へ！』, the page …へ!) is the NFKC spelling where the one
+    written has no page."""
+    nfkc = unicodedata.normalize("NFKC", page)
+    if nfkc == page:
+        return page
+    try:
+        pages = api.get(WIKIPEDIA, action="query", titles=page, redirects="1").get("query", {}).get("pages") or [{}]
+    except Busy:
+        raise
+    except Exception:
+        return page
+    return nfkc if pages[0].get("missing") else page
+
+
+def _franchise_category(api, title: str) -> bool:
+    """Category:``title`` is a franchise's: a category above it is a work's (_FRANCHISE_PARENT, _WORK_CATEGORY)."""
+    try:
+        above = _categories(api, [f"Category:{title}"])[1]
+    except Busy:
+        raise
+    except Exception:
+        return False
+    return any(_FRANCHISE_PARENT.search(c) or _WORK_CATEGORY.search(c) for c in above)
 
 
 def page_category(api, page: str) -> Optional[str]:
@@ -613,7 +664,10 @@ def page_category(api, page: str) -> Optional[str]:
     title = re.sub(r"\s*\([^)]*\)$", "", info.get("title", page))
     works = [c for c in cats if _WORK_CATEGORY.search(c)]
     not_work = any(_NOT_WORK_CATEGORY.search(c) for c in cats)
-    franchise = title in cats and not not_work
+    # a page in a category of its own name is a franchise's only where that category is a work's (メディアミックス
+    # 作品, …を題材とした作品, a work category above it): most pages of a topic have one (人口 in Category:人口, a
+    # language's), and a song's short title found in them (A・I) made them works
+    franchise = title in cats and not not_work and (bool(works) or _franchise_category(api, title))
     idols = any("アイドルを題材とした" in c for c in cats + parents)
     fictional_idols = (any(re.search(r"架空の(?:音楽グループ|アイドル)", c) for c in cats)
                        and (idols or "アイドル" in title or any("アイドル" in c for c in cats + parents)))
@@ -639,13 +693,13 @@ def _work_class(entity: dict) -> Optional[str]:
     return next((WIKIDATA_CLASSES[q] for q in classes if q in WIKIDATA_CLASSES), None)
 
 
-def _work_names(api, page: str, category: str) -> tieup.Work:
-    """The work of a Japanese Wikipedia page: its Wikidata item's labels and aliases as titles and other names (the
-    page's title first, in Japanese), the page as its reference."""
+def _work_names(api, page: str, category: str, wiki: str = WIKIPEDIA, lang: str = "ja-JP") -> tieup.Work:
+    """The work of a Wikipedia page (Japanese, or ``wiki``'s in ``lang``): its Wikidata item's labels and aliases as
+    titles and other names (the page's title first, in its language), the page as its reference."""
     page = page.replace("_", " ")       # a link's spelling: Wikipedia's titles have spaces (Work_Name! -> Work Name!)
-    w = tieup.Work("", category, [("ja-JP", re.sub(r"\s*\([^)]*\)$", "", page))], [],
-                   [("Wikipedia", "https://ja.wikipedia.org/wiki/" + urllib.parse.quote(page.replace(" ", "_")))])
-    item, entity = _entity(api, page)
+    w = tieup.Work("", category, [(lang, re.sub(r"\s*\([^)]*\)$", "", page))], [],
+                   [("Wikipedia", wiki.replace("/w/api.php", "/wiki/") + urllib.parse.quote(page.replace(" ", "_")))])
+    item, entity = _entity(api, page, wiki)
     if not item:
         return w
     if w.category == "other":
@@ -664,6 +718,48 @@ def _work_names(api, page: str, category: str) -> tieup.Work:
                 seen.add(reading.fine_key(alias["value"]))
     w.urls.append(("Wikidata", f"https://www.wikidata.org/wiki/{item}"))
     return w
+
+
+def album_work(album: str) -> str:
+    """The work an OST album names ("나와 호랑이님 Original Sound Track", "TVアニメ『X』オリジナルサウンドトラック": the
+    quoted name before the soundtrack's word, else all before it), "" for another album."""
+    m = _OST.search(album)
+    if not m:
+        return ""
+    before = album[:m.start()]
+    quoted = re.findall(r"[『「《〈]([^』」》〉]+)[』」》〉]", before)
+    return (quoted[-1] if quoted else before).strip(" -‐－:：(（[【")
+
+
+def _ko_page_category(api, page: str) -> Optional[str]:
+    """The category of the work a Korean Wikipedia page is, by its categories (_KO_WORK_CATEGORY: 2010년 소설,
+    대한민국의 라이트 노벨, …), or None: not a work's page (a person's, a group's, a record's, or no page)."""
+    try:
+        pages, cats = _categories(api, [page], WIKIPEDIA_KO)
+    except Busy:
+        raise
+    except Exception:
+        return None
+    info = pages[0] if pages else {}
+    if not info or info.get("missing") or "invalid" in info or any(_KO_NOT_WORK_CATEGORY.search(c) for c in cats):
+        return None
+    words = " ".join(c for c in cats if _KO_WORK_CATEGORY.search(c))
+    return next((c for w, c in KO_CATEGORY_WORDS if w in words), "other") if words else None
+
+
+def _album_work(api, album: str) -> Optional[Candidate]:
+    """The work an OST album names, where no page said anything of the song: its Japanese Wikipedia page where that
+    is a work's, else its Korean one (a Korean work, Japanese Wikipedia has none of: 나와 호랑이님); the role not
+    specified, sure (the album says it)."""
+    name = album_work(album)
+    if len(reading.fine_key(name)) < 2:
+        return None
+    for wiki, lang, category_of in ((WIKIPEDIA, "ja-JP", page_category), (WIKIPEDIA_KO, "ko-KR", _ko_page_category)):
+        category = category_of(api, name)
+        if category is not None:
+            work = _work_names(api, name, category, wiki, lang)
+            return Candidate(work, tieup.UNSPECIFIED, source=work.urls[0][1], sure=True)
+    return None
 
 
 def search(api: Wikimedia, title: str, artist: str = "", album: str = "") -> list[Candidate]:
@@ -697,6 +793,10 @@ def search(api: Wikimedia, title: str, artist: str = "", album: str = "") -> lis
                 read.page(api, hit["title"], songs, artists)
         if _agreed(read, read.works_pages(api), make=False, agreed=True) is not None or len(read.read) >= PAGES_MAX:
             break
+    if not read.works_pages(api):   # no work's page says anything of the song: the work its OST album names, if any
+        found = _album_work(api, album)
+        if found is not None or not read.found:
+            return [found] if found is not None else []
     for key, c in read.found.items():     # a 2D idol, else the medium the mention named, else Wikidata's class,
         page = read.work_pages[key]       # else the page's categories
         c.work = _work_names(api, page, c.work.category)
@@ -711,8 +811,15 @@ def search(api: Wikimedia, title: str, artist: str = "", album: str = "") -> lis
                              if c.work.titles and k[0] in works
                              and any(len(reading.fine_key(t)) >= 2 and reading.fine_key(t) in note
                                      for _l, t in c.work.titles)), reverse=True) if note else []
+    # else the work its OST album names, found too ("TVアニメ『X』オリジナルサウンドトラック"), its role where one is
+    named_by_album = reading.fine_key(album_work(album))
+    by_album = sorted((k[1] == tieup.UNSPECIFIED, -c.mentions, k) for k, c in read.found.items()
+                      if named_by_album and k[0] in works
+                      and any(reading.fine_key(t) == named_by_album for _l, t in c.work.titles))
     if named_in_title:
         sure = named_in_title[0][1]
+    elif by_album:
+        sure = by_album[0][2]
     if sure is not None:
         read.found[sure].sure = True
     # a work with a role found is not suggested again without one; nor a page a person's, a group's or a record's
@@ -843,6 +950,8 @@ class _Reading:
                     category = self.category(api, work_page)
                     if category is None:
                         continue
+                else:
+                    work_page = _title_of(api, work_page)
                 # a work is its page: the names linking one page, and the page listing the song itself, are one
                 key = (reading.fine_key(re.sub(r"\s*\([^)]*\)$", "", work_page)), role, seq)
                 if key not in self.found:
@@ -890,6 +999,21 @@ def lookup(api: Wikimedia, title: str, artist: str = "", cache_path: str = CACHE
         with con:
             con.execute("INSERT OR REPLACE INTO web_query VALUES (?, ?, ?)", (key, time.time(), _to_json(found)))
         return found
+    finally:
+        con.close()
+
+
+def clear_cache(cache_path: str = CACHE_NAME) -> int:
+    """Every answer kept deleted, so each song is asked of Wikimedia again (Settings > Library's Clear Web Lookup
+    Cache); how many there were. A lookup writing meanwhile is waited for."""
+    if not os.path.isfile(cache_path):
+        return 0
+    con = _cache(cache_path)
+    try:
+        with con:
+            count = con.execute("DELETE FROM web_query").rowcount
+        con.execute("VACUUM")
+        return max(0, count)
     finally:
         con.close()
 

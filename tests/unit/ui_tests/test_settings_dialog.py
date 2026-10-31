@@ -4,6 +4,7 @@ action has taken only once agreed, Revert, Revert All, saved as the user's chang
 on the Python engine; Learn; the actions it does not show kept)."""
 import json
 import os
+import time
 import unittest
 from dataclasses import replace
 from unittest import mock
@@ -190,6 +191,23 @@ class SettingsDialogTests(unittest.TestCase):
         self.assertEqual([self.d.cb_output_device.itemData(i) for i in range(self.d.cb_output_device.count())],
                          ["", "Out A", "Out B"])
         self.assertEqual(self.d.get_config().playbackconfig.output_device, "Out B")
+
+    def test_the_web_lookup_cache_cleared_on_a_thread(self):
+        # (the current folder is the test's own: its cache/tieup_web.db, not the user's)
+        from core.tieups import web as tieup_web
+        con = tieup_web._cache(tieup_web.CACHE_NAME)
+        with con:
+            con.executemany("INSERT INTO web_query VALUES (?, ?, ?)", [("a", 0.0, "[]"), ("b", 0.0, "[]")])
+        con.close()
+        self.d.btn_clear_tieup_cache.click()
+        self.assertFalse(self.d.btn_clear_tieup_cache.isEnabled())         # while it runs
+        deadline = time.monotonic() + 20.0
+        while not self.d.btn_clear_tieup_cache.isEnabled() and time.monotonic() < deadline:
+            drain(10)
+            time.sleep(0.01)
+        self.assertTrue(self.d.btn_clear_tieup_cache.isEnabled())
+        self.assertEqual(self.d.lbl_tieup_cache.text(), "2 answers deleted.")
+        self.assertEqual(tieup_web.clear_cache(), 0)
 
 
 class AudioOverviewTests(unittest.TestCase):

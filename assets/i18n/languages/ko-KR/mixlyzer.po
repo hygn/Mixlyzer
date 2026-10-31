@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-31 23:55+0900\n"
+"POT-Creation-Date: 2026-11-01 02:34+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ko_KR\n"
@@ -397,11 +397,11 @@ msgstr "특징 캐시 {done}/{total}"
 msgid "feature cache is not current"
 msgstr "특징 캐시가 최신이 아닙니다"
 
-#: app/main.py:61
+#: app/main.py:66
 msgid "Unsupported Operating System"
 msgstr "지원하지 않는 운영체제"
 
-#: app/main.py:62
+#: app/main.py:67
 #, python-brace-format
 msgid ""
 "Mixlyzer supports Windows, Linux and macOS; this system ({system}) is not"
@@ -411,11 +411,11 @@ msgstr ""
 "Mixlyzer는 Windows, Linux, macOS를 지원합니다. 이 시스템({system})은 그중 하나가 아닙니다.\n"
 "제대로 동작하지 않을 수 있습니다."
 
-#: app/main.py:68
+#: app/main.py:73
 msgid "Administrator Execution Blocked"
 msgstr "관리자 권한 실행 차단됨"
 
-#: app/main.py:69
+#: app/main.py:74
 msgid ""
 "Mixlyzer cannot run with administrator privileges.\n"
 "Close it and launch again as a normal user."
@@ -423,11 +423,11 @@ msgstr ""
 "Mixlyzer는 관리자 권한으로 실행할 수 없습니다.\n"
 "종료한 뒤 일반 사용자로 다시 실행하세요."
 
-#: app/main.py:81
+#: app/main.py:86
 msgid "Settings Reset"
 msgstr "설정 초기화"
 
-#: app/main.py:82
+#: app/main.py:87
 #, python-brace-format
 msgid ""
 "{name} could not be read, so its settings are back to their defaults.\n"
@@ -443,11 +443,11 @@ msgstr ""
 "\n"
 "설정을 되살리려면 Mixlyzer를 닫은 상태에서 그 파일을 고쳐 {name} 자리에 두세요."
 
-#: app/main.py:97
+#: app/main.py:102
 msgid "Incompatible Library Version"
 msgstr "호환되지 않는 라이브러리 버전"
 
-#: app/main.py:98
+#: app/main.py:103
 #, python-brace-format
 msgid ""
 "This library cannot be opened by the current app version.\n"
@@ -2157,7 +2157,7 @@ msgstr "상대 또는 절대 .json 경로"
 msgid "Folder for features cached while reoptimizing, so later runs are faster."
 msgstr "재최적화하는 동안 특징을 캐시해 두는 폴더. 다음 실행이 빨라집니다."
 
-#: ui/config/analysis.py:47 ui/config/analysis.py:163 ui/config/library.py:258
+#: ui/config/analysis.py:47 ui/config/analysis.py:163 ui/config/library.py:269
 #: ui/config/view.py:198
 msgid "General"
 msgstr "일반"
@@ -2270,7 +2270,7 @@ msgstr "BPM 최소"
 
 #: ui/config/analysis.py:139 ui/config/analysis.py:177
 #: ui/config/analysis.py:200 ui/config/dialogs/optimization.py:204
-#: ui/config/library.py:251 ui/config/library.py:267 ui/config/playback.py:108
+#: ui/config/library.py:262 ui/config/library.py:278 ui/config/playback.py:108
 #: ui/config/view.py:193
 msgid "Advanced"
 msgstr "고급"
@@ -3139,7 +3139,7 @@ msgstr ""
 msgid "Kind"
 msgstr "종류"
 
-#: ui/config/backups.py:89 ui/config/library.py:192
+#: ui/config/backups.py:89 ui/config/library.py:203
 #: ui/windows/library_backup.py:146
 msgid "Backup"
 msgstr "백업"
@@ -3674,49 +3674,49 @@ msgid ""
 "ago, from {sender})."
 msgstr "{address}에서 받는 중; 로드되어 있고 활성인 덱이 없음 (마지막 메시지 {age}초 전, {sender})."
 
-#: ui/config/library.py:51
+#: ui/config/library.py:53
 #, python-brace-format
 msgid "{verses}, the next one each run of verses"
 msgstr "{verses}, 버스 묶음마다 다음 번호"
 
-#: ui/config/library.py:53
+#: ui/config/library.py:55
 msgid "Go on with the phrase before"
 msgstr "앞 프레이즈에 이어 붙임"
 
-#: ui/config/library.py:77
+#: ui/config/library.py:79
 msgid "Add Folder…"
 msgstr "폴더 추가…"
 
-#: ui/config/library.py:78 ui/library/actions.py:98
+#: ui/config/library.py:80 ui/library/actions.py:98
 #: ui/library/tabs/tieup_editor.py:368
 msgid "Remove"
 msgstr "제거"
 
-#: ui/config/library.py:80
+#: ui/config/library.py:82
 msgid ""
 "When this list is empty, the operating system's default Music folder is "
 "used."
 msgstr "이 목록이 비어 있으면 운영체제의 기본 음악 폴더를 씁니다."
 
-#: ui/config/library.py:83
+#: ui/config/library.py:85
 msgid "Write log to file"
 msgstr "로그를 파일에 쓰기"
 
-#: ui/config/library.py:85
+#: ui/config/library.py:87
 msgid "Sync with Rekordbox XML"
 msgstr "Rekordbox XML과 동기화"
 
-#: ui/config/library.py:93
+#: ui/config/library.py:95
 msgid ""
 "<p>Rekordbox has no tempo ramps: a ramp is written as steps of steady "
 "tempo. Smaller makes the steps finer.</p>"
 msgstr "<p>Rekordbox에는 템포 램프가 없어 램프를 일정한 템포의 단계로 나누어 씁니다. 작을수록 단계가 잘게 나뉩니다.</p>"
 
-#: ui/config/library.py:96 ui/library/tabs/sync.py:106
+#: ui/config/library.py:98 ui/library/tabs/sync.py:106
 msgid "Tie-ups after the comment"
 msgstr "코멘트 뒤에 타이업 붙이기"
 
-#: ui/config/library.py:98
+#: ui/config/library.py:100
 msgid ""
 "<p>Each track's comment in the XML with its song's tie-ups after it, as "
 "[Title OP; Other ED]; the library's comment stays as it is.</p>"
@@ -3724,67 +3724,67 @@ msgstr ""
 "<p>XML의 각 트랙 코멘트 뒤에 곡의 타이업을 [제목 OP; 다른 작품 ED] 형식으로 붙입니다. 라이브러리의 코멘트는 그대로 "
 "둡니다.</p>"
 
-#: ui/config/library.py:100 ui/config/library.py:162
+#: ui/config/library.py:102 ui/config/library.py:173
 msgid "Sync Now"
 msgstr "지금 동기화"
 
-#: ui/config/library.py:101
+#: ui/config/library.py:103
 msgid "Logging settings apply on next app launch."
 msgstr "로그 설정은 다음에 앱을 실행할 때 적용됩니다."
 
-#: ui/config/library.py:102
+#: ui/config/library.py:104
 msgid "Use Sync Now to rebuild the whole XML explicitly."
 msgstr "XML 전체를 직접 다시 만들려면 지금 동기화를 누르세요."
 
 # | msgid "" "Folder holding library.db and the per-track feature files
 # | (.npz).\n" "Relative paths are resolved from the app folder."
-#: ui/config/library.py:106
+#: ui/config/library.py:108
 msgid "Folder holding library.db and the per-track feature files (.npz)."
 msgstr "library.db와 트랙별 특징 파일(.npz)을 두는 폴더."
 
-#: ui/config/library.py:109
+#: ui/config/library.py:111
 msgid "Root folders shown under Local Folders in the library browser."
 msgstr "라이브러리 브라우저의 로컬 폴더 아래에 보이는 최상위 폴더."
 
-#: ui/config/library.py:111
+#: ui/config/library.py:113
 msgid "Add a local music root folder."
 msgstr "로컬 음악 최상위 폴더를 추가합니다."
 
-#: ui/config/library.py:112
+#: ui/config/library.py:114
 msgid "Remove the selected root folders."
 msgstr "선택한 최상위 폴더를 제거합니다."
 
-#: ui/config/library.py:113
+#: ui/config/library.py:115
 msgid "Write console output to a log file."
 msgstr "콘솔 출력을 로그 파일에 씁니다."
 
-#: ui/config/library.py:114
+#: ui/config/library.py:116
 msgid "Log file written when 'Write log to file' is on."
 msgstr "'로그를 파일에 쓰기'가 켜져 있을 때 쓰는 로그 파일."
 
-#: ui/config/library.py:116
+#: ui/config/library.py:118
 msgid ""
 "Keep a Rekordbox XML file updated with the library's beat grids, keys and"
 " cues."
 msgstr "라이브러리의 비트그리드, 키, 큐를 Rekordbox XML 파일에 계속 반영합니다."
 
-#: ui/config/library.py:119
+#: ui/config/library.py:121
 msgid "Rekordbox XML file to write. Import it in Rekordbox to use the analysis."
 msgstr "쓸 Rekordbox XML 파일. Rekordbox에서 가져오면 분석을 쓸 수 있습니다."
 
-#: ui/config/library.py:122
+#: ui/config/library.py:124
 msgid "Save these settings and rebuild the whole XML from the library now."
 msgstr "이 설정을 저장하고 지금 라이브러리로 XML 전체를 다시 만듭니다."
 
-#: ui/config/library.py:127
+#: ui/config/library.py:129
 msgid "Library Path"
 msgstr "라이브러리 경로"
 
-#: ui/config/library.py:138
+#: ui/config/library.py:140
 msgid "Local Music Folders"
 msgstr "로컬 음악 폴더"
 
-#: ui/config/library.py:139
+#: ui/config/library.py:141
 msgid "Add a tie-up to the track's versions too"
 msgstr "타이업을 추가하면 다른 버전에도 추가"
 
@@ -3792,17 +3792,17 @@ msgstr "타이업을 추가하면 다른 버전에도 추가"
 # | (Settings > " "Library)."
 # | msgid_plural "" "A tie-up added here is added to its {n} other versions
 # too
-#: ui/config/library.py:141
+#: ui/config/library.py:143
 msgid ""
 "<p>A tie-up added in the Edit tab is added to the track's other versions "
 "as well.</p>"
 msgstr "<p>편집 탭에서 추가한 타이업을 이 트랙의 다른 버전에도 추가합니다.</p>"
 
-#: ui/config/library.py:143
+#: ui/config/library.py:145
 msgid "Look up a new track's tie-ups on Wikipedia"
 msgstr "새 트랙의 타이업을 위키백과에서 찾기"
 
-#: ui/config/library.py:145
+#: ui/config/library.py:147
 msgid ""
 "<p>After a new track's analysis, its tie-ups are looked up on Japanese "
 "Wikipedia and Wikidata and the ones found for certain are added. Its "
@@ -3811,39 +3811,52 @@ msgstr ""
 "<p>새 트랙을 분석한 뒤 일본어 위키백과와 Wikidata에서 타이업을 찾아 확실한 것을 추가합니다. 이때 트랙의 제목과 "
 "아티스트가 전송됩니다.</p>"
 
-#: ui/config/library.py:148
+#: ui/config/library.py:150
+msgid "Clear Web Lookup Cache"
+msgstr "웹 조회 캐시 삭제"
+
+#: ui/config/library.py:152
+msgid ""
+"<p>The answers Wikipedia and Wikidata gave, kept for 30 days, deleted: "
+"each track is looked up again the next time. The tie-ups already added "
+"stay.</p>"
+msgstr ""
+"<p>30일 동안 보관하는 위키백과와 Wikidata의 응답을 삭제합니다. 다음 조회 때 각 트랙을 다시 찾습니다. 이미 추가된 "
+"타이업은 그대로 둡니다.</p>"
+
+#: ui/config/library.py:159
 msgid "The interface's language"
 msgstr "인터페이스 언어"
 
-#: ui/config/library.py:150
+#: ui/config/library.py:161
 msgid ""
 "<p>The language a tie-up's work is shown in: its title in that language "
 "where the work has one, else another of its titles.</p>"
 msgstr "<p>타이업 작품을 보여 줄 언어입니다. 작품에 그 언어의 제목이 있으면 그것을, 없으면 다른 제목을 보여 줍니다.</p>"
 
-#: ui/config/library.py:152
+#: ui/config/library.py:163
 msgid "Tie-up Titles"
 msgstr "타이업 제목 언어"
 
-#: ui/config/library.py:153 ui/config/library.py:203
+#: ui/config/library.py:164 ui/config/library.py:214
 msgid "As the tie-up titles"
 msgstr "타이업 제목 언어와 같게"
 
-#: ui/config/library.py:155
+#: ui/config/library.py:166
 msgid ""
 "<p>The language of the tie-ups the Sync tab writes after a file's "
 "comment.</p>"
 msgstr "<p>동기화 탭이 파일 코멘트 뒤에 붙이는 타이업의 언어입니다.</p>"
 
-#: ui/config/library.py:156
+#: ui/config/library.py:167
 msgid "Exported Tie-ups"
 msgstr "내보내는 타이업 언어"
 
-#: ui/config/library.py:159
+#: ui/config/library.py:170
 msgid "Update the library database when the editor saves"
 msgstr "편집기에서 저장할 때 라이브러리 데이터베이스도 갱신"
 
-#: ui/config/library.py:161
+#: ui/config/library.py:172
 msgid ""
 "<p>The editor's save also writes the track's BPM, key and search tables "
 "into the library database.</p>"
@@ -3855,7 +3868,7 @@ msgstr "<p>편집기에서 저장할 때 트랙의 BPM, 키, 검색용 표를 �
 # | them). " "Titles, artists, ratings and comments are not touched.</p>"
 # | them), a BPM " "or key typed in the Edit Track tab replaced too. Titles,
 # | artists, ratings" " and comments are not touched.</p>"
-#: ui/config/library.py:164
+#: ui/config/library.py:175
 msgid ""
 "<p>Every track's BPM, key and search tables in the library database made "
 "again from its stored analysis. A BPM or key typed in the Edit Track tab "
@@ -3866,11 +3879,11 @@ msgstr ""
 "입력한 BPM과 키도 바뀝니다. 제목, 아티스트, 별점, 코멘트는 건드리지 않습니다.</p>"
 
 # | msgid "Library Path"
-#: ui/config/library.py:167
+#: ui/config/library.py:178
 msgid "Library Database"
 msgstr "라이브러리 데이터베이스"
 
-#: ui/config/library.py:173
+#: ui/config/library.py:184
 msgid "Include the feature caches"
 msgstr "특징 캐시 포함"
 
@@ -3879,13 +3892,13 @@ msgstr "특징 캐시 포함"
 # | " "training data, made again from the library when missing, so a backup is
 # "
 # | "smaller without them.</p>"
-#: ui/config/library.py:175
+#: ui/config/library.py:186
 msgid ""
 "<p>A backup also packs the analyses' feature caches (Reoptimize's "
 "training data). Without them a backup is smaller.</p>"
 msgstr "<p>백업에 분석의 특징 캐시(재최적화의 학습 데이터)도 담습니다. 빼면 백업이 작아집니다.</p>"
 
-#: ui/config/library.py:177
+#: ui/config/library.py:188
 msgid "Back Up Library…"
 msgstr "라이브러리 백업…"
 
@@ -3894,7 +3907,7 @@ msgstr "라이브러리 백업…"
 # | indexes, the " "settings, your shortcuts, MIDI mapping and retrained
 # models.
 # | The music " "files themselves are not packed.</p>"
-#: ui/config/library.py:179
+#: ui/config/library.py:190
 msgid ""
 "<p>The library packed into one file: its database, every track's stored "
 "analysis, the thumbnails, the search indexes, the settings, your "
@@ -3904,7 +3917,7 @@ msgstr ""
 "<p>라이브러리를 파일 하나에 담습니다. 데이터베이스, 모든 트랙의 저장된 분석, 썸네일, 검색 색인, 설정, 단축키, MIDI "
 "매핑, 재학습한 모델이 들어갑니다. 음악 파일 자체는 담지 않습니다.</p>"
 
-#: ui/config/library.py:182
+#: ui/config/library.py:193
 msgid "Restore Library…"
 msgstr "라이브러리 복원…"
 
@@ -3912,39 +3925,39 @@ msgstr "라이브러리 복원…"
 # or
 # | " "another; its music folders joined to this device's, then Mixlyzer "
 # | "restarts on it. The library in use now is kept as it is.</p>"
-#: ui/config/library.py:184
+#: ui/config/library.py:195
 msgid ""
 "<p>A backup unpacked into a new library folder, then Mixlyzer restarts on"
 " it. The library in use now is kept as it is.</p>"
 msgstr "<p>백업을 새 라이브러리 폴더에 풀고 Mixlyzer가 그 라이브러리로 재시작합니다. 지금 쓰는 라이브러리는 그대로 둡니다.</p>"
 
-#: ui/config/library.py:197
+#: ui/config/library.py:208
 msgid "Rekordbox XML"
 msgstr "Rekordbox XML"
 
-#: ui/config/library.py:200
+#: ui/config/library.py:211
 msgid "XML Path"
 msgstr "XML 경로"
 
-#: ui/config/library.py:201
+#: ui/config/library.py:212
 msgid "Tempo ramp tolerance"
 msgstr "템포 램프 허용 오차"
 
-#: ui/config/library.py:205
+#: ui/config/library.py:216
 msgid ""
 "<p>The language of the tie-ups written after each track's comment in the "
 "XML.</p>"
 msgstr "<p>XML에서 각 트랙의 코멘트 뒤에 붙이는 타이업의 언어입니다.</p>"
 
-#: ui/config/library.py:207
+#: ui/config/library.py:218
 msgid "Tie-up Language"
 msgstr "타이업 언어"
 
-#: ui/config/library.py:211
+#: ui/config/library.py:222
 msgid "Rekordbox Phrases"
 msgstr "Rekordbox 프레이즈"
 
-#: ui/config/library.py:213
+#: ui/config/library.py:224
 msgid ""
 "<p>How the Sync tab writes the phrases into rekordbox's analysis: "
 "rekordbox's mood, and the phrase each label becomes. rekordbox's phrases "
@@ -3953,42 +3966,42 @@ msgstr ""
 "<p>동기화 탭이 rekordbox 분석에 프레이즈를 쓰는 방식: rekordbox의 mood와 각 라벨이 될 프레이즈. "
 "rekordbox의 프레이즈 이름은 mood마다 정해져 있습니다.</p>"
 
-#: ui/config/library.py:217
+#: ui/config/library.py:228
 msgid "High (Intro, Up, Down, Chorus, Outro)"
 msgstr "High (Intro, Up, Down, Chorus, Outro)"
 
-#: ui/config/library.py:218
+#: ui/config/library.py:229
 msgid "Mid (Intro, Verse 1-6, Bridge, Chorus, Outro)"
 msgstr "Mid (Intro, Verse 1-6, Bridge, Chorus, Outro)"
 
-#: ui/config/library.py:219
+#: ui/config/library.py:230
 msgid "Low (Intro, Verse 1-2, Bridge, Chorus, Outro)"
 msgstr "Low (Intro, Verse 1-2, Bridge, Chorus, Outro)"
 
-#: ui/config/library.py:221
+#: ui/config/library.py:232
 msgid "Mood"
 msgstr "Mood"
 
 # | msgid "Min seg"
-#: ui/config/library.py:230 ui/config/library.py:266
+#: ui/config/library.py:241 ui/config/library.py:277
 msgid "Serato"
 msgstr "Serato"
 
-#: ui/config/library.py:233
+#: ui/config/library.py:244
 msgid "JumpCUEs (A-H in their slots)"
 msgstr "JumpCUE (A-H를 같은 슬롯에)"
 
 # | msgid "CUE points (set by the analysis from the phrases)"
 # | msgid "CUE points from the phrases (CUE rules)"
-#: ui/config/library.py:234
+#: ui/config/library.py:245
 msgid "CUE points (in time order)"
 msgstr "CUE 포인트 (시간 순)"
 
-#: ui/config/library.py:235
+#: ui/config/library.py:246
 msgid "JumpCUEs, then CUE points in the slots left"
 msgstr "JumpCUE, 남은 슬롯에 CUE 포인트"
 
-#: ui/config/library.py:238
+#: ui/config/library.py:249
 msgid ""
 "<p>What the Sync tab's Write Tags makes Serato's 8 hot cues of. Serato "
 "has no memory cues: CUE points written there become hot cues.</p>"
@@ -3996,11 +4009,11 @@ msgstr ""
 "<p>동기화 탭의 태그 쓰기가 Serato의 핫큐 8개를 무엇으로 채울지 정합니다. Serato에는 메모리 큐가 없어서, 여기 쓰는"
 " CUE 포인트는 핫큐가 됩니다.</p>"
 
-#: ui/config/library.py:240
+#: ui/config/library.py:251
 msgid "Keep the file's Serato hot cues in the slots left"
 msgstr "파일의 Serato 핫큐를 남은 슬롯에 유지"
 
-#: ui/config/library.py:242
+#: ui/config/library.py:253
 msgid ""
 "<p>Hot cues set in Serato stay in the slots the written ones leave, and "
 "so do those written before (a JumpCUE removed since stays in Serato); "
@@ -4009,40 +4022,52 @@ msgstr ""
 "<p>Serato에서 찍은 핫큐는 쓰는 핫큐가 비워 둔 슬롯에 남고, 전에 쓴 핫큐도 남습니다(그 뒤 지운 JumpCUE는 "
 "Serato에 그대로 있음). 끄면 핫큐를 모두 바꿉니다.</p>"
 
-#: ui/config/library.py:244
+#: ui/config/library.py:255
 msgid "Lock the beatgrid"
 msgstr "비트그리드 잠금"
 
-#: ui/config/library.py:246
+#: ui/config/library.py:257
 msgid ""
 "<p>Serato's BPM lock: its analysis then leaves the written beatgrid as it"
 " is.</p>"
 msgstr "<p>Serato의 BPM 잠금: Serato가 분석해도 쓴 비트그리드를 그대로 둡니다.</p>"
 
-#: ui/config/library.py:247
+#: ui/config/library.py:258
 msgid "Hot Cues"
 msgstr "핫큐"
 
-#: ui/config/library.py:254
+#: ui/config/library.py:265
 msgid "Log Path"
 msgstr "로그 경로"
 
 # | msgid "Library Path"
 # | msgid "Library Database"
-#: ui/config/library.py:259
+#: ui/config/library.py:270
 msgid "Database"
 msgstr "데이터베이스"
 
-#: ui/config/library.py:261
+#: ui/config/library.py:272
 msgid "Backups"
 msgstr "백업"
 
-#: ui/config/library.py:292
+# | msgid "The file could not be written: {error}"
+#: ui/config/library.py:320
+#, python-brace-format
+msgid "The cache could not be cleared: {error}"
+msgstr "캐시를 삭제할 수 없습니다: {error}"
+
+#: ui/config/library.py:321
+#, python-brace-format
+msgid "{count} answer deleted."
+msgid_plural "{count} answers deleted."
+msgstr[0] "응답 {count}개를 삭제했습니다."
+
+#: ui/config/library.py:332
 msgid "Add Local Music Folder"
 msgstr "로컬 음악 폴더 추가"
 
 # | msgid "Library Path"
-#: ui/config/dialogs/library_sync.py:17 ui/config/library.py:355
+#: ui/config/dialogs/library_sync.py:17 ui/config/library.py:395
 msgid "Sync Library Database"
 msgstr "라이브러리 데이터베이스 동기화"
 
@@ -4050,7 +4075,7 @@ msgstr "라이브러리 데이터베이스 동기화"
 # | database made " "again from its stored analysis (as the editor's save
 # writes
 # | them). " "Titles, artists, ratings and comments are not touched.</p>"
-#: ui/config/library.py:356
+#: ui/config/library.py:396
 msgid ""
 "Every track's BPM, key and search tables in the library database will be "
 "made again from its stored analysis. A BPM or key typed in the Edit Track"
@@ -4063,20 +4088,20 @@ msgstr ""
 "\n"
 "지금 동기화할까요?"
 
-#: ui/config/library.py:401
+#: ui/config/library.py:441
 msgid "Enable Sync with Rekordbox XML first."
 msgstr "먼저 'Rekordbox XML과 동기화'를 켜세요."
 
-#: ui/config/dialogs/rekordbox.py:15 ui/config/library.py:401
-#: ui/config/library.py:406
+#: ui/config/dialogs/rekordbox.py:15 ui/config/library.py:441
+#: ui/config/library.py:446
 msgid "Sync Rekordbox XML"
 msgstr "Rekordbox XML 동기화"
 
-#: ui/config/library.py:406
+#: ui/config/library.py:446
 msgid "Rekordbox XML Path is empty."
 msgstr "Rekordbox XML 경로가 비어 있습니다."
 
-#: ui/config/library.py:448
+#: ui/config/library.py:488
 msgid "Rekordbox XML worker started"
 msgstr "Rekordbox XML 작업 시작됨"
 
@@ -8289,7 +8314,7 @@ msgstr "불러온 트랙 없음"
 msgid "Playback"
 msgstr "재생"
 
-#: ui/config/library.py:125 ui/config/library.py:279 ui/library/sources.py:287
+#: ui/config/library.py:127 ui/config/library.py:293 ui/library/sources.py:287
 #: ui/shortcuts.py:33
 msgid "Library"
 msgstr "라이브러리"

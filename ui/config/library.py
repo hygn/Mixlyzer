@@ -1,4 +1,5 @@
 import os
+import threading
 
 from PySide6 import QtCore, QtWidgets
 from PySide6.QtWidgets import (
@@ -16,12 +17,13 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from core.tieups import web as tieup_web
 from core.tieups.domain import TITLE_LANGUAGES
 from third_party import rekordbox_phrases
 from ui.config.backups import build_backups_group
 from ui.config.dialogs import LibrarySyncProgressDialog, RekordboxSyncProgressDialog
 from ui.config.scroll import groups_page
-from system.i18n import tr
+from system.i18n import tr, tr_n
 from system.os_support import path_key
 
 
@@ -145,6 +147,15 @@ def build_library_tab(dialog) -> None:
         "<p>After a new track's analysis, its tie-ups are looked up on Japanese Wikipedia and Wikidata and the ones "
         "found for certain are added. Its title and artist are sent there.</p>"))
     f_library.addRow(dialog.cb_tieup_web_search)
+    dialog.btn_clear_tieup_cache = QPushButton(tr("Clear Web Lookup Cache"))
+    dialog.btn_clear_tieup_cache.setToolTip(tr(
+        "<p>The answers Wikipedia and Wikidata gave, kept for 30 days, deleted: each track is looked up again the "
+        "next time. The tie-ups already added stay.</p>"))
+    dialog.lbl_tieup_cache = QLabel()
+    cache_row = QtWidgets.QHBoxLayout()
+    cache_row.addWidget(dialog.btn_clear_tieup_cache)
+    cache_row.addWidget(dialog.lbl_tieup_cache, 1)
+    f_library.addRow("", cache_row)
     dialog.cmb_tieup_language = _tieup_language_combo(tr("The interface's language"))
     dialog.cmb_tieup_language.setToolTip(tr(
         "<p>The language a tie-up's work is shown in: its title in that language where the work has one, else "
@@ -270,6 +281,9 @@ def build_library_tab(dialog) -> None:
 
     dialog.btn_rekordbox_sync_now.clicked.connect(dialog._sync_rekordbox_now)
     dialog.btn_library_sync_now.clicked.connect(dialog._sync_library_now)
+    dialog._tieup_cache_cleared = _Cleared(dialog)
+    dialog._tieup_cache_cleared.done.connect(dialog._on_tieup_cache_cleared)
+    dialog.btn_clear_tieup_cache.clicked.connect(dialog._clear_tieup_cache)
     dialog.btn_backup_library.clicked.connect(dialog._backup_library)
     dialog.btn_restore_library.clicked.connect(dialog._restore_library)
     dialog.btn_add_local_music_directory.clicked.connect(dialog._browse_local_music_directory)
@@ -279,7 +293,33 @@ def build_library_tab(dialog) -> None:
     dialog.tabs.addTab(dialog.tab_lib, tr("Library"))
 
 
+class _Cleared(QtCore.QObject):
+    """The web lookup's cache cleared on a thread of its own: how many answers, or the error."""
+    done = QtCore.Signal(int, str)
+
+
 class LibrarySettingsMixin:
+    def _clear_tieup_cache(self) -> None:
+        """Clear Web Lookup Cache: the answers kept deleted on a thread (a lookup may be writing the file)."""
+        self.btn_clear_tieup_cache.setEnabled(False)
+        self.lbl_tieup_cache.setText("")
+        signal = self._tieup_cache_cleared.done
+
+        def clear() -> None:
+            try:
+                signal.emit(tieup_web.clear_cache(), "")
+            except Exception as exc:
+                signal.emit(0, str(exc))
+
+        threading.Thread(target=clear, name="TieupCacheClear", daemon=True).start()
+
+    @QtCore.Slot(int, str)
+    def _on_tieup_cache_cleared(self, count: int, error: str) -> None:
+        self.btn_clear_tieup_cache.setEnabled(True)
+        self.lbl_tieup_cache.setText(
+            tr("The cache could not be cleared: {error}").format(error=error) if error
+            else tr_n("{count} answer deleted.", "{count} answers deleted.", count).format(count=count))
+
     def _browse_local_music_directory(self) -> None:
         current = self.list_local_music_directories.currentItem()
         if current is not None:
