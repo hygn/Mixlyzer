@@ -629,6 +629,9 @@ class WaveformView(ViewPlugin):
             item.setAutoDownsample(True)
         item.setOpts(interpolation="bilinear")
         item.setZValue(0)
+        # drawn once at the screen's pixels and moved after (the group moves by whole device pixels, left_edge):
+        # its image scaled each frame was the main view's largest paint cost
+        item.setCacheMode(QtWidgets.QGraphicsItem.DeviceCoordinateCache)
         item.setParentItem(self._group)
         return item
 

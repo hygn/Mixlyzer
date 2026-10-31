@@ -58,15 +58,10 @@ class DeckCueView(ViewPlugin):
         cue = float(report.cue)
         if cue != self._cue and not (math.isnan(cue) and math.isnan(self._cue)):
             self._cue = cue
+            # at its track time; each frame only moves it (_reposition), off the view it is culled as any item
+            self._marker.setData(*(([cue], [PHRASE_LANE[1]]) if math.isfinite(cue) else ([], [])))
             self._reposition()
 
     def _reposition(self, *_args) -> None:
-        if self.plot is None or not math.isfinite(self._cue):
-            self._marker.setData([], [])
-            return
-        window = max(0.1, float(self.tl.window_sec))
-        start = -self.tl.left_edge()
-        if not (start - 0.05 * window <= self._cue <= start + 1.05 * window):
-            self._marker.setData([], [])
-            return
-        self._marker.setData([self.tl.left_edge() + self._cue], [PHRASE_LANE[1]])
+        if self.plot is not None:
+            self._marker.setPos(self.tl.left_edge(), 0.0)

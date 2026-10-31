@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-31 22:20+0900\n"
+"POT-Creation-Date: 2026-10-31 23:11+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ko_KR\n"
@@ -1642,7 +1642,7 @@ msgid "Processing Waveform"
 msgstr "파형 처리 중"
 
 #: core/workers/analysis_texts.py:15 ui/config/pipeline_map.py:32
-#: ui/config/view.py:158 ui/config/view.py:199
+#: ui/config/view.py:159 ui/config/view.py:200
 msgid "Waveform"
 msgstr "파형"
 
@@ -2158,7 +2158,7 @@ msgid "Folder for features cached while reoptimizing, so later runs are faster."
 msgstr "재최적화하는 동안 특징을 캐시해 두는 폴더. 다음 실행이 빨라집니다."
 
 #: ui/config/analysis.py:47 ui/config/analysis.py:163 ui/config/library.py:258
-#: ui/config/view.py:197
+#: ui/config/view.py:198
 msgid "General"
 msgstr "일반"
 
@@ -2271,7 +2271,7 @@ msgstr "BPM 최소"
 #: ui/config/analysis.py:139 ui/config/analysis.py:177
 #: ui/config/analysis.py:200 ui/config/dialogs/optimization.py:204
 #: ui/config/library.py:251 ui/config/library.py:267 ui/config/playback.py:108
-#: ui/config/view.py:192
+#: ui/config/view.py:193
 msgid "Advanced"
 msgstr "고급"
 
@@ -4619,7 +4619,7 @@ msgstr "재생 장치: {device}, {rate} kHz"
 msgid "Its device's stream is shared with another output, at that output's rate."
 msgstr "이 장치의 스트림을 다른 출력과 함께 쓰므로 그 출력의 샘플레이트로 재생됩니다."
 
-#: ui/config/pipeline_map.py:22 ui/config/view.py:203
+#: ui/config/pipeline_map.py:22 ui/config/view.py:204
 msgid "View"
 msgstr "보기"
 
@@ -5560,30 +5560,35 @@ msgid "Waiting for FPS..."
 msgstr "FPS 기다리는 중..."
 
 #: ui/config/view.py:106
-msgid "Measured from actual pyqtgraph plot repaint intervals."
-msgstr "pyqtgraph 플롯이 실제로 다시 그려진 간격으로 잽니다."
+msgid ""
+"<p>Measured from the main view's repaint intervals. The view moves by "
+"whole pixels and is redrawn only when it moves, so a long view (fewer "
+"pixels a second than the FPS) reads lower without losing frames.</p>"
+msgstr ""
+"<p>메인 뷰를 다시 그린 간격으로 잽니다. 뷰는 픽셀 단위로 움직이고 움직일 때만 다시 그려지므로, 긴 창(초당 움직이는 픽셀이 "
+"FPS보다 적을 때)에서는 프레임을 잃지 않아도 더 낮게 나옵니다.</p>"
 
-#: ui/config/view.py:108
+#: ui/config/view.py:109
 msgid "Show the detailed waveform view."
 msgstr "자세한 파형 뷰를 표시합니다."
 
-#: ui/config/view.py:109
+#: ui/config/view.py:110
 msgid "Show the beat grid view."
 msgstr "비트그리드 뷰를 표시합니다."
 
-#: ui/config/view.py:110
+#: ui/config/view.py:111
 msgid "Show the key strip (detected key over time)."
 msgstr "키 스트립(시간에 따른 검출된 키)을 표시합니다."
 
-#: ui/config/view.py:111
+#: ui/config/view.py:112
 msgid "Show the JumpCUE view (detected repeat jump points)."
 msgstr "JumpCUE 뷰(검출된 반복 점프 지점)를 표시합니다."
 
-#: ui/config/view.py:112
+#: ui/config/view.py:113
 msgid "Overlay the detected phrases on the views."
 msgstr "검출된 프레이즈를 뷰 위에 겹쳐 표시합니다."
 
-#: ui/config/view.py:114
+#: ui/config/view.py:115
 msgid ""
 "<p>The overview's and the main view's BPM and keys as heard: the tempo "
 "changed by the fader, the key moved by the key shift (and by the tempo "
@@ -5592,7 +5597,7 @@ msgstr ""
 "<p>오버뷰와 메인 뷰의 BPM과 키를 들리는 대로 보여 줍니다. 페이더로 바꾼 템포, 키 시프트(MT가 꺼져 있으면 템포)로 "
 "옮겨진 키입니다. 끄면 트랙의 원래 값을 보여 줍니다.</p>"
 
-#: ui/config/view.py:117
+#: ui/config/view.py:118
 msgid ""
 "Checked: the peak meter follows the volume slider (what you hear).\n"
 "Unchecked: the peak meter shows the level after Trim only."
@@ -5600,7 +5605,7 @@ msgstr ""
 "켜짐: 피크 미터가 볼륨 슬라이더를 따릅니다(들리는 소리).\n"
 "꺼짐: 피크 미터가 트림만 거친 레벨을 보여 줍니다."
 
-#: ui/config/view.py:121
+#: ui/config/view.py:122
 msgid ""
 "Lower the redraw rate while the window is hidden behind other windows\n"
 "or minimized, to save CPU."
@@ -5608,148 +5613,148 @@ msgstr ""
 "창이 다른 창 뒤에 가려지거나 최소화되어 있는 동안\n"
 "다시 그리는 빈도를 낮춰 CPU를 아낍니다."
 
-#: ui/config/view.py:124
+#: ui/config/view.py:125
 msgid "Target redraw rate of the views."
 msgstr "뷰를 다시 그리는 목표 빈도."
 
-#: ui/config/view.py:126
+#: ui/config/view.py:127
 msgid "Image drawn as the spinning record when a track has no album art."
 msgstr "트랙에 앨범 아트가 없을 때 도는 레코드로 그릴 이미지."
 
-#: ui/config/view.py:129 ui/config/view.py:131
+#: ui/config/view.py:130 ui/config/view.py:132
 #: ui/library/tabs/tieup_editor.py:140 ui/library/tabs/tieup_editor.py:143
 #: ui/windows/tieup_works.py:77 ui/windows/tieup_works.py:80
 msgid "Language"
 msgstr "언어"
 
-#: ui/config/view.py:133 ui/config/view.py:198
+#: ui/config/view.py:134 ui/config/view.py:199
 msgid "Display"
 msgstr "표시"
 
-#: ui/config/view.py:152
+#: ui/config/view.py:153
 msgid "lo"
 msgstr "하한"
 
-#: ui/config/view.py:153
+#: ui/config/view.py:154
 msgid "hi"
 msgstr "상한"
 
-#: ui/config/view.py:160
+#: ui/config/view.py:161
 msgid "Low / mid / high bands of the waveforms' colors."
 msgstr "파형 색의 저역 / 중역 / 고역 대역."
 
-#: ui/config/view.py:163
+#: ui/config/view.py:164
 msgid "Waveform style"
 msgstr "파형 스타일"
 
-#: ui/config/view.py:165
+#: ui/config/view.py:166
 msgid ""
 "<p>The master output's spectrum as it plays. Drag a band's edges to set "
 "it.</p>"
 msgstr "<p>재생 중인 마스터 출력의 스펙트럼입니다. 대역의 양 끝을 끌어서 설정합니다.</p>"
 
 # | msgid "Frame, long view (ms)"
-#: ui/config/view.py:168
+#: ui/config/view.py:169
 msgid "Frame, close view (ms)"
 msgstr "프레임, 확대 뷰 (ms)"
 
-#: ui/config/view.py:169
+#: ui/config/view.py:170
 msgid "Frame, short view (ms)"
 msgstr "프레임, 짧은 뷰 (ms)"
 
-#: ui/config/view.py:170
+#: ui/config/view.py:171
 msgid "Frame, long view (ms)"
 msgstr "프레임, 긴 뷰 (ms)"
 
-#: ui/config/view.py:171
+#: ui/config/view.py:172
 msgid "Filter order"
 msgstr "필터 차수"
 
-#: ui/config/view.py:173
+#: ui/config/view.py:174
 msgid ""
 "<p>The loaded track at the playhead, drawn with these settings. What is "
 "already drawn keeps the settings it was drawn with.</p>"
 msgstr "<p>로드된 곡의 재생 위치를 이 설정으로 그립니다. 이미 그려진 부분은 그때의 설정을 유지합니다.</p>"
 
-#: ui/config/view.py:177
+#: ui/config/view.py:178
 msgid "Low"
 msgstr "저역"
 
-#: ui/config/view.py:177
+#: ui/config/view.py:178
 msgid "Frequency range (Hz) drawn as the low band of the waveform."
 msgstr "파형의 저역 대역으로 그릴 주파수 범위(Hz)."
 
-#: ui/config/view.py:178
+#: ui/config/view.py:179
 msgid "Lower edge of the low band (Hz)."
 msgstr "저역 대역의 하한 (Hz)."
 
-#: ui/config/view.py:178
+#: ui/config/view.py:179
 msgid "Upper edge of the low band (Hz)."
 msgstr "저역 대역의 상한 (Hz)."
 
-#: ui/config/view.py:180
+#: ui/config/view.py:181
 msgid "Mid"
 msgstr "중역"
 
-#: ui/config/view.py:180
+#: ui/config/view.py:181
 msgid "Frequency range (Hz) drawn as the mid band of the waveform."
 msgstr "파형의 중역 대역으로 그릴 주파수 범위(Hz)."
 
-#: ui/config/view.py:181
+#: ui/config/view.py:182
 msgid "Lower edge of the mid band (Hz)."
 msgstr "중역 대역의 하한 (Hz)."
 
-#: ui/config/view.py:181
+#: ui/config/view.py:182
 msgid "Upper edge of the mid band (Hz)."
 msgstr "중역 대역의 상한 (Hz)."
 
-#: ui/config/view.py:183
+#: ui/config/view.py:184
 msgid "High"
 msgstr "고역"
 
-#: ui/config/view.py:183
+#: ui/config/view.py:184
 msgid "Frequency range (Hz) drawn as the high band of the waveform."
 msgstr "파형의 고역 대역으로 그릴 주파수 범위(Hz)."
 
-#: ui/config/view.py:184
+#: ui/config/view.py:185
 msgid "Lower edge of the high band (Hz)."
 msgstr "고역 대역의 하한 (Hz)."
 
-#: ui/config/view.py:184
+#: ui/config/view.py:185
 msgid "Upper edge of the high band (Hz)."
 msgstr "고역 대역의 상한 (Hz)."
 
-#: ui/config/view.py:186
+#: ui/config/view.py:187
 msgid "Performance"
 msgstr "성능"
 
-#: ui/config/view.py:190
+#: ui/config/view.py:191
 msgid "Actual FPS"
 msgstr "실제 FPS"
 
-#: ui/config/view.py:194
+#: ui/config/view.py:195
 msgid "Record image path"
 msgstr "레코드 이미지 경로"
 
-#: ui/config/view.py:200 ui/config/view.py:228
+#: ui/config/view.py:201 ui/config/view.py:229
 msgid "Phrase labels"
 msgstr "프레이즈 라벨"
 
-#: ui/config/view.py:231 ui/library/tabs/tieup_editor.py:143
+#: ui/config/view.py:232 ui/library/tabs/tieup_editor.py:143
 #: ui/windows/tieup_works.py:80
 msgid "Alias"
 msgstr "별칭"
 
-#: ui/config/view.py:232
+#: ui/config/view.py:233
 msgid "Overview"
 msgstr "전체 파형"
 
-#: ui/config/view.py:238
+#: ui/config/view.py:239
 #, python-brace-format
 msgid "Shown in place of {label} (empty: {label})"
 msgstr "{label} 대신 표시 (비우면: {label})"
 
-#: ui/config/view.py:243
+#: ui/config/view.py:244
 #, python-brace-format
 msgid ""
 "{label} in the overview, numbered when it occurs more than once\n"
@@ -5759,7 +5764,7 @@ msgstr ""
 "(비우면: 이름의 첫 글자)"
 
 # | msgid "Available with the native audio engine only."
-#: ui/config/view.py:312
+#: ui/config/view.py:313
 msgid "The spectrum needs the native audio engine."
 msgstr "스펙트럼은 Native 오디오 엔진에서만 표시됩니다."
 
@@ -6036,7 +6041,7 @@ msgstr "현재 구간을 {meter}로 설정합니다"
 msgid "Set the current segment to another time signature (1/4 - 8/4)"
 msgstr "현재 구간을 다른 박자로 설정합니다 (1/4 - 8/4)"
 
-#: ui/edit_panel/beatgrid.py:151 ui/edit_panel/beatgrid.py:267
+#: ui/edit_panel/beatgrid.py:151 ui/edit_panel/beatgrid.py:269
 msgid "Seg -- | Elapsed: 00:00.00 | Left: 00:00.00"
 msgstr "구간 -- | 경과: 00:00.00 | 남음: 00:00.00"
 
@@ -6048,28 +6053,28 @@ msgstr "현재 구간의 비트그리드를 오디오에서 재분석합니다"
 msgid "Reanalyze the current segment's beatgrid at the reference BPM"
 msgstr "현재 구간의 비트그리드를 기준 BPM으로 재분석합니다"
 
-#: ui/edit_panel/beatgrid.py:269
+#: ui/edit_panel/beatgrid.py:271
 #, python-brace-format
 msgid "Seg {index} | Elapsed: {elapsed} | Left: {left}"
 msgstr "구간 {index} | 경과: {elapsed} | 남음: {left}"
 
-#: ui/edit_panel/beatgrid.py:506
+#: ui/edit_panel/beatgrid.py:508
 msgid ""
 "Tap to set reference BPM (WARNING! Tempo factor is not 1. RefBPM Will be "
 "scaled accordingly)"
 msgstr "탭해서 기준 BPM 설정 (주의! 템포 배율이 1이 아닙니다. 기준 BPM이 그에 맞게 환산됩니다)"
 
-#: ui/edit_panel/beatgrid.py:507
+#: ui/edit_panel/beatgrid.py:509
 msgid ""
 "Reference BPM for Analysis and BPM Assigning (WARNING! Tempo factor is "
 "not 1. RefBPM Will be scaled accordingly)"
 msgstr "분석과 BPM 지정에 쓰는 기준 BPM (주의! 템포 배율이 1이 아닙니다. 기준 BPM이 그에 맞게 환산됩니다)"
 
-#: ui/edit_panel/beatgrid.py:511
+#: ui/edit_panel/beatgrid.py:513
 msgid "Tap to set reference BPM"
 msgstr "탭해서 기준 BPM 설정"
 
-#: ui/edit_panel/beatgrid.py:512
+#: ui/edit_panel/beatgrid.py:514
 msgid "Reference BPM for Analysis and BPM Assigning"
 msgstr "분석과 BPM 지정에 쓰는 기준 BPM"
 
@@ -6175,7 +6180,7 @@ msgstr "빈 슬롯 {letter}로 옮기기 (이 큐와 이후 큐가 한 슬롯씩
 msgid "Two JumpCUEs cannot share a point."
 msgstr "두 JumpCUE가 같은 지점을 가질 수 없습니다."
 
-#: ui/edit_panel/jumpcue.py:222 ui/edit_panel/panel.py:579
+#: ui/edit_panel/jumpcue.py:222 ui/edit_panel/panel.py:580
 msgid "Invalid JumpCUE Label"
 msgstr "잘못된 JumpCUE 라벨"
 
@@ -6363,7 +6368,7 @@ msgstr "트랙 전체에 키 하나를 고릅니다: 그 키로 된 한 구간�
 msgid "Pick the current segment's key (Alphanumeric wheel)"
 msgstr "현재 구간의 키 선택 (Alphanumeric 휠)"
 
-#: ui/edit_panel/key.py:267
+#: ui/edit_panel/key.py:268
 #, python-brace-format
 msgid "{key} | Seg {index} | Elapsed: {elapsed} | Left: {left}"
 msgstr "{key} | 구간 {index} | 경과: {elapsed} | 남음: {left}"
@@ -6385,7 +6390,7 @@ msgid "Edit the JumpCUEs and CUE points"
 msgstr "JumpCUE와 CUE 포인트 편집"
 
 # | msgid "The file could not be written: {error}"
-#: ui/edit_panel/panel.py:594
+#: ui/edit_panel/panel.py:595
 #, python-brace-format
 msgid ""
 "The edits could not be saved:\n"
@@ -6395,17 +6400,17 @@ msgstr ""
 "{error}"
 
 # | msgid "Shared"
-#: ui/edit_panel/panel.py:594 ui/windows/tieup_works.py:88
+#: ui/edit_panel/panel.py:595 ui/windows/tieup_works.py:88
 msgid "Save"
 msgstr "저장"
 
-#: ui/edit_panel/panel.py:627
+#: ui/edit_panel/panel.py:628
 msgid ""
 "<p>Editing is locked: pages switch, but nothing is edited or saved. Click"
 " to unlock.</p>"
 msgstr "<p>편집이 잠겨 있습니다: 페이지는 바뀌지만 편집이나 저장은 되지 않습니다. 클릭하면 잠금이 풀립니다.</p>"
 
-#: ui/edit_panel/panel.py:629
+#: ui/edit_panel/panel.py:630
 msgid ""
 "<p>Editing is unlocked: the shown pages' graphics are emphasized. Click "
 "to lock: no edits, no saving (on at every start).</p>"
@@ -6413,37 +6418,37 @@ msgstr ""
 "<p>편집이 풀려 있습니다: 보이는 페이지의 그래픽이 강조됩니다. 클릭하면 잠급니다: 편집과 저장이 막힙니다 (시작할 때마다 "
 "잠김).</p>"
 
-#: ui/edit_panel/panel.py:748
+#: ui/edit_panel/panel.py:749
 #, python-brace-format
 msgid "This shortcut does nothing on the {page} page."
 msgstr "이 단축키는 {page} 페이지에서는 아무것도 하지 않습니다."
 
-#: ui/edit_panel/panel.py:756
+#: ui/edit_panel/panel.py:757
 msgid "Editing is locked."
 msgstr "편집이 잠겨 있습니다."
 
 # | msgid "Segment reanalysis finished"
-#: ui/edit_panel/panel.py:758
+#: ui/edit_panel/panel.py:759
 msgid "Editing waits for the segment reanalysis to finish."
 msgstr "구간 재분석이 끝날 때까지 편집할 수 없습니다."
 
 # | msgid "Delete JumpCUE {letter}"
-#: ui/edit_panel/panel.py:791 ui/edit_panel/panel.py:804
+#: ui/edit_panel/panel.py:792 ui/edit_panel/panel.py:805
 #, python-brace-format
 msgid "JumpCUE {letter} is not set."
 msgstr "JumpCUE {letter}가 설정되어 있지 않습니다."
 
-#: ui/edit_panel/panel.py:800
+#: ui/edit_panel/panel.py:801
 #, python-brace-format
 msgid "JumpCUE {letter} is already set."
 msgstr "JumpCUE {letter}가 이미 설정되어 있습니다."
 
-#: ui/edit_panel/panel.py:820
+#: ui/edit_panel/panel.py:821
 msgid "CALL works while stopped."
 msgstr "CALL은 정지 중에만 동작합니다."
 
 # | msgid "Split the current segment at the playhead"
-#: ui/edit_panel/panel.py:836
+#: ui/edit_panel/panel.py:837
 msgid "No CUE point at the playhead."
 msgstr "플레이헤드에 CUE 포인트가 없습니다."
 
@@ -6514,7 +6519,7 @@ msgstr ""
 msgid "-- | Seg -- | +0 beats | Left: 00:00.00"
 msgstr "-- | 구간 -- | +0박 | 남음: 00:00.00"
 
-#: ui/edit_panel/phrase.py:222
+#: ui/edit_panel/phrase.py:228
 #, python-brace-format
 msgid "{label} | Seg {index} | +{beats} beats | Left: {left}"
 msgstr "{label} | 구간 {index} | +{beats}박 | 남음: {left}"

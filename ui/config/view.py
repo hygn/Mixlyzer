@@ -103,7 +103,8 @@ def build_view_tab(dialog) -> None:
     dialog.ed_record_img_path = QLineEdit()
     dialog.lbl_fps = QLabel(tr("Waiting for FPS..."))
     dialog.lbl_fps.setToolTip(tr(
-        "Measured from actual pyqtgraph plot repaint intervals."
+        "<p>Measured from the main view's repaint intervals. The view moves by whole pixels and is redrawn only "
+        "when it moves, so a long view (fewer pixels a second than the FPS) reads lower without losing frames.</p>"
     ))
     dialog.cb_waveform.setToolTip(tr("Show the detailed waveform view."))
     dialog.cb_beatgrid.setToolTip(tr("Show the beat grid view."))

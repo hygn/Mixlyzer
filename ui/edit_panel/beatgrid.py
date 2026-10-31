@@ -263,7 +263,9 @@ class BeatgridEditMixin:
             s = int(sec - 60 * m)
             cs = int((sec - 60 * m - s) * 100)
             return f"{m:02d}:{s:02d}.{cs:02d}"
-        if idx is None:
+        if not self.beatgrid_status.isVisibleTo(self):
+            pass        # a page not shown: its line made when it is (_show_group)
+        elif idx is None:
             self.beatgrid_status.setText(tr("Seg -- | Elapsed: 00:00.00 | Left: 00:00.00"))
         else:
             self.beatgrid_status.setText(tr("Seg {index} | Elapsed: {elapsed} | Left: {left}").format(

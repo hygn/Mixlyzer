@@ -264,8 +264,9 @@ class KeyEditMixin:
             return f"{m:02d}:{s:05.2f}"
 
         key = self._key_of(idx)
-        self.key_status.setText(tr("{key} | Seg {index} | Elapsed: {elapsed} | Left: {left}").format(
-            key=key_segment_label(key), index=idx + 1, elapsed=fmt(t - start), left=fmt(end - t)))
+        if self.key_status.isVisibleTo(self):    # a page not shown: its line made when it is (_show_group)
+            self.key_status.setText(tr("{key} | Seg {index} | Elapsed: {elapsed} | Left: {left}").format(
+                key=key_segment_label(key), index=idx + 1, elapsed=fmt(t - start), left=fmt(end - t)))
         if idx != self._key_cur:
             self._key_cur = idx
             self._show_picker_key(key)

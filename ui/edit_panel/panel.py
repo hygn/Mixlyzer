@@ -490,6 +490,7 @@ class EditPanel(
             btn.setChecked(True)
         self._set_context(self._context if self._context in group else group[0])
         self._emit_edit_focus()
+        self.update_time(self._current_time)   # the pages shown now: their status lines (made only while shown)
 
     def _set_context(self, index: int) -> None:
         """Make page ``index`` (shown) the current page."""

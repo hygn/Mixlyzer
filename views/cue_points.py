@@ -63,29 +63,15 @@ class CUEPointView(ViewPlugin):
         self._reposition()
 
     def _load_points(self) -> None:
+        """The markers at their track times (each frame only moves them: _reposition; off the view they are
+        culled as any item)."""
         points = self.model.cue_points
         self._times = [float(point.time_sec) for point in points]
         colors = [get_cue_point_color(int(point.color_idx or 0)) for point in points]
         self._brushes = [pg.mkBrush(*c, 240) for c in colors]
         self._pens = [pg.mkPen(c, width=1.2) for c in colors]
+        self._markers.setData(self._times, [0.985] * len(self._times), brush=self._brushes, pen=self._pens)
 
     def _reposition(self, *_args) -> None:
-        if self.plot is None or not self._times:
-            self._markers.setData([], [])
-            return
-        left = self.tl.left_edge()
-        # Visible window in track-time, with a small pad to avoid edge popping.
-        window = max(0.1, float(self.tl.window_sec))
-        visible_start = -self.tl.left_edge()
-        visible_end = visible_start + window
-        pad = window * 0.05
-        visible_start -= pad
-        visible_end += pad
-        y = 0.985
-        shown = [i for i, time_sec in enumerate(self._times) if visible_start <= time_sec <= visible_end]
-        xs = [left + self._times[i] for i in shown]
-        self._markers.setData(
-            xs, [y] * len(xs),
-            brush=[self._brushes[i] for i in shown],
-            pen=[self._pens[i] for i in shown],
-        )
+        if self.plot is not None:
+            self._markers.setPos(self.tl.left_edge(), 0.0)

@@ -215,13 +215,19 @@ class PhraseEditMixin:
             self.phrase_status.setText(tr("-- | Seg -- | +0 beats | Left: 00:00.00"))
             self._refresh_phrase_label_buttons(None)
             return
-        row = self._phrase_segments[idx]
+        phrases = self._phrase_segments
+        row = phrases[idx]
         left = max(0.0, float(row.end) - t)
         m = int(left // 60)
-        name = number_phrase_labels(self._phrase_segments)[idx]
-        self.phrase_status.setText(tr("{label} | Seg {index} | +{beats} beats | Left: {left}").format(
-            label=name, index=idx + 1, beats=self._phrase_beats_elapsed(t, float(row.start)),
-            left=f"{m:02d}:{left - 60 * m:05.2f}"))
+        # the numbered names made again only when the phrases change (the model replaces its list at each edit),
+        # not each frame
+        if getattr(self, "_phrase_names_of", None) is not phrases:
+            self._phrase_names_of, self._phrase_names = phrases, number_phrase_labels(phrases)
+        name = self._phrase_names[idx]
+        if self.phrase_status.isVisibleTo(self):     # a page not shown: its line made when it is (_show_group)
+            self.phrase_status.setText(tr("{label} | Seg {index} | +{beats} beats | Left: {left}").format(
+                label=name, index=idx + 1, beats=self._phrase_beats_elapsed(t, float(row.start)),
+                left=f"{m:02d}:{left - 60 * m:05.2f}"))
         if idx != self._phrase_cur:
             self._phrase_cur = idx
             self._refresh_phrase_label_buttons(row.label)
