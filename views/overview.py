@@ -8,9 +8,11 @@ from core.marks.phrases import (
     phrase_strip_segments,
 )
 from views.render.color import key_label_text_color
-from views.render.keystrip import key_segment_label, key_segment_rows, key_strip_segments
+from views.render.keystrip import (
+    key_segment_label, key_segment_rows, key_strip_segments, scaled_tempo_segments, transposed,
+)
 from views.render.wave import band_ranges, render_wave_overview
-from views.base import EDIT_PAGES, edit_emphasis, emphasis_opacity, emphasis_size, emphasis_width
+from views.base import EDIT_PAGES, edit_emphasis, emphasis_opacity, emphasis_size, emphasis_width, shown_played
 from views.segment_strip import SegmentStrip
 from core.settings.store import current as current_settings
 from analyzer.music.tempo_rows import segment_end_bpm
@@ -233,6 +235,14 @@ class OverviewWidget(QtWidgets.QWidget):
         # the edit pages' emphasis (views.base: edit focus)
         self._emphasis = {page: "normal" for page in EDIT_PAGES}
         self.bus.sig_edit_focus_changed.connect(self.apply_edit_focus)
+        # the track as heard (bus.sig_played_changed): its BPM and keys shown so where Settings > View says
+        self._played = (1.0, 0)
+        self.bus.sig_played_changed.connect(self._on_played)
+
+    def _on_played(self, speed: float, semitones: int) -> None:
+        self._played = (float(speed), int(semitones))
+        self.update_key_strip()
+        self._render_tempo_strips(self._tempo_segments)
 
     def apply_edit_focus(self, focus) -> None:
         states = {page: edit_emphasis(page, focus) for page in EDIT_PAGES}
@@ -329,7 +339,8 @@ class OverviewWidget(QtWidgets.QWidget):
 
     def update_key_strip(self) -> None:
         """Draw the key strip from the current key segments (rendered just in time)."""
-        key_segments = self.model.key_segments if self.duration > 0 else None
+        key_segments = (transposed(self.model.key_segments, shown_played(self._played)[1])
+                        if self.duration > 0 else None)
         self.img_key.set_segments(key_strip_segments(key_segments), self._key_bottom, self.KEY_H)
         self._key_rows = key_segment_rows(key_segments)
         edges = [t for _idx, start, end in self._key_rows for t in (start, end)]
@@ -456,7 +467,7 @@ class OverviewWidget(QtWidgets.QWidget):
 
     def _render_tempo_strips(self, tempo_segments) -> None:
         self._clear_tempo_strip_items()
-        arr = self._normalize_tempo_segments(tempo_segments)
+        arr = self._normalize_tempo_segments(scaled_tempo_segments(tempo_segments, shown_played(self._played)[0]))
         self.bpm_strip_bg.setRect(
             QtCore.QRectF(0.0, self._segment_bottom, self.duration, self.SEGMENT_H + self.BPM_H)
         )

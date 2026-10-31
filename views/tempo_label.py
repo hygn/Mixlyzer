@@ -4,7 +4,8 @@ import numpy as np
 import pyqtgraph as pg
 
 from analyzer.music.tempo_rows import bpm_at, segment_end_bpm
-from .base import ViewPlugin, emphasis_opacity, register_view
+from views.render.keystrip import scaled_tempo_segments
+from .base import ViewPlugin, emphasis_opacity, register_view, shown_played
 from .phrase import _sticky_label_left
 from .playhead import _outlined_text_item
 
@@ -112,6 +113,12 @@ class TempoLabelView(ViewPlugin):
         self.bus.sig_center_changed.connect(self._reposition)
         self.model.sig_loaded.connect(self._rebuild)
         self.model.sig_beatgrid_changed.connect(self._rebuild)
+        self._played = (1.0, 0)   # the track as heard (bus.sig_played_changed): shown so where View says
+        self.bus.sig_played_changed.connect(self._on_played)
+
+    def _on_played(self, speed: float, semitones: int) -> None:
+        self._played = (float(speed), int(semitones))
+        self._rebuild()
 
     def attach(self, plot: pg.PlotItem):
         self.plot = plot
@@ -137,7 +144,8 @@ class TempoLabelView(ViewPlugin):
     def _rebuild(self, *_args) -> None:
         if self.plot is None:
             return
-        self._rows = snap_to_beats(tempo_rows(self.model.tempo_segments), self.model.beats)
+        segments = scaled_tempo_segments(self.model.tempo_segments, shown_played(self._played)[0])
+        self._rows = snap_to_beats(tempo_rows(segments), self.model.beats)
         while len(self._labels) < len(self._rows):
             label = _outlined_text_item(TEXT_COLOR, anchor=(0.0, 0.0))
             label.setZValue(Z_VALUE)

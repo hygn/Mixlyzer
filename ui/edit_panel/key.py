@@ -7,6 +7,8 @@ from analyzer.music.beat_geometry import downbeat_beat_indices
 from ui.edit_panel.blocks import mode_column, rule_cell
 from ui.edit_panel.icons import badged_icon, badged_icon_beside, icon
 from ui.edit_panel.key_picker import ALPHANUMERIC_INDEX, KeyPickerPopup
+from ui.edit_panel.styles import WARNING_BUTTON_STYLESHEET
+from ui.theme import current_theme
 from views.render.color import key_cmap_color, key_label_text_color
 from views.render.keystrip import key_segment_label
 from analyzer.music.key_names import ALPHANUMERIC_LABELS
@@ -171,6 +173,7 @@ class KeyEditMixin:
         }
         self._key_scope_group.buttonToggled.connect(self._refresh_key_mode_tools)
         self._key_step_group.buttonToggled.connect(self._refresh_key_mode_tools)
+        self._key_heard_moved = False    # the key heard is not the track's (sig_played_changed)
         self._refresh_key_mode_tools()
 
         self.key_start_back.clicked.connect(lambda: self._nudge_key_boundary("start", -1))
@@ -200,18 +203,33 @@ class KeyEditMixin:
         """The key changes show what they apply to (the scope), the boundary nudges how far
         they move (the step): in the icon's badge and the tooltip."""
         whole = self.key_scope_all.isChecked()
+        # the key heard moved from the track's (the key shift, the tempo with MT off): the key changes lit in the
+        # warning colour, as TAP is while the tempo is changed; what they change is the track's own keys
+        moved = self._key_heard_moved
+        warning = (" " + tr("(WARNING! The key heard is not the track's: the keys changed here are the track's "
+                            "own.)")) if moved else ""
         for name, btn in self._key_scoped_tools.items():
             make = badged_icon_beside if name in KEY_BADGE_BESIDE else badged_icon
-            btn.setIcon(make(name, "scope_all" if whole else "scope_segment"))
-            btn.setToolTip(tr(KEY_SCOPED_TOOLS[name][0 if whole else 1]))
-        self.key_pick.setToolTip(
+            btn.setIcon(make(name, "scope_all" if whole else "scope_segment", moved))
+            btn.setToolTip(tr(KEY_SCOPED_TOOLS[name][0 if whole else 1]) + warning)
+        for btn in self._key_scoped_tools.values():
+            btn.setStyleSheet(WARNING_BUTTON_STYLESHEET if moved else "")
+        self._show_picker_key(getattr(self, "_picker_key", None))
+        self.key_pick.setToolTip((
             tr("Pick one key for the whole track: it becomes one segment in that key (Alphanumeric wheel)") if whole
-            else tr("Pick the current segment's key (Alphanumeric wheel)"))
+            else tr("Pick the current segment's key (Alphanumeric wheel)")) + warning)
         by_bar = self.key_step_bar.isChecked()
         for btn, name in ((self.key_start_back, "key_start_back"), (self.key_start_fwd, "key_start_fwd"),
                           (self.key_end_back, "key_end_back"), (self.key_end_fwd, "key_end_fwd")):
             btn.setIcon(badged_icon(name, "step_bar" if by_bar else "step_beat"))
             btn.setToolTip(tr(KEY_STEP_TOOLS[name][1 if by_bar else 0]))
+
+    def _on_played_key(self, _speed: float, semitones: int) -> None:
+        """The track as heard (bus.sig_played_changed): the key changes lit while its key is not the track's."""
+        moved = int(semitones) % 12 != 0
+        if moved != self._key_heard_moved:
+            self._key_heard_moved = moved
+            self._refresh_key_mode_tools()
 
     # ---- the current key segment ----
 
@@ -258,18 +276,22 @@ class KeyEditMixin:
         return int(pitch) % 12 + (12 if np.isfinite(mode) and int(mode) == 1 else 0)
 
     def _show_picker_key(self, key: int | None) -> None:
-        """The key button shows the key under the playhead, in that key's colour."""
+        """The key button shows the key under the playhead, in that key's colour (the track's own key; framed in
+        the warning colour while the key heard is not it)."""
         btn = self.key_pick
+        self._picker_key = key
+        moved = getattr(self, "_key_heard_moved", False)
         if key is None:
             btn.setText("--")
-            btn.setStyleSheet("")
+            btn.setStyleSheet(WARNING_BUTTON_STYLESHEET if moved else "")
             return
         btn.setText(key_segment_label(key))
         bg = "rgb({}, {}, {})".format(*key_cmap_color(key))
         fg = "rgb({}, {}, {})".format(*key_label_text_color(key))
+        frame = current_theme().warning if moved else bg
         btn.setStyleSheet(
-            f"QToolButton {{ background-color: {bg}; color: {fg}; border-color: {bg}; font-weight: bold; }}"
-            f"QToolButton:hover {{ border-color: {fg}; }}"
+            f"QToolButton {{ background-color: {bg}; color: {fg}; border: 2px solid {frame}; font-weight: bold; }}"
+            f"QToolButton:hover {{ border-color: {fg if not moved else frame}; }}"
         )
 
     def _open_key_picker(self) -> None:

@@ -1,8 +1,8 @@
 from PySide6 import QtGui, QtWidgets
 import pyqtgraph as pg
 from views.render.color import key_label_text_color
-from views.render.keystrip import key_segment_label, key_segment_rows, key_strip_segments
-from .base import KEY_LANE, ViewPlugin, emphasis_opacity, emphasis_width, register_view
+from views.render.keystrip import key_segment_label, key_segment_rows, key_strip_segments, transposed
+from .base import KEY_LANE, ViewPlugin, emphasis_opacity, emphasis_width, register_view, shown_played
 from .phrase import _sticky_label_left, _vertical_lines_path
 from .segment_strip import SegmentStrip
 
@@ -35,6 +35,12 @@ class KeyStripView(ViewPlugin):
         self.bus.sig_center_changed.connect(self.update_window)
         self.model.sig_loaded.connect(self.update_features)
         self.model.sig_keys_changed.connect(self._on_key_segments_updated)
+        self._played = (1.0, 0)   # the track as heard (bus.sig_played_changed): shown so where View says
+        self.bus.sig_played_changed.connect(self._on_played)
+
+    def _on_played(self, speed: float, semitones: int) -> None:
+        self._played = (float(speed), int(semitones))
+        self._render()
 
     def attach(self, plot: pg.PlotItem):
         self.plot = plot
@@ -77,7 +83,7 @@ class KeyStripView(ViewPlugin):
 
     def _render(self) -> None:
         """Draw the strip, boundaries and labels from the loaded track's key segments (rendered just in time)."""
-        keys = self.model.key_segments
+        keys = transposed(self.model.key_segments, shown_played(self._played)[1])
         segments = key_strip_segments(keys) if self.duration > 0 else []
         self._strip = segments or None
         self._rows = key_segment_rows(keys) if segments else []

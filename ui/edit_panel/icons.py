@@ -77,9 +77,10 @@ def _draw_badge(p: QtGui.QPainter, badge: str, width: int) -> None:
 
 
 @lru_cache(maxsize=None)
-def badged_icon_beside(name: str, badge: str) -> QtGui.QIcon:
+def badged_icon_beside(name: str, badge: str, inverted: bool = False) -> QtGui.QIcon:
     """``name``'s square icon with ``badge`` beside it (a 2:1 icon, shown at 38 x 19): for a glyph
-    that fills its icon's height and would have to shrink to take the badge under it."""
+    that fills its icon's height and would have to shrink to take the badge under it; ``inverted``
+    as icon()'s."""
     src = QtGui.QImage(str(resource_path(f"assets/icons/{name}.png")))
     if src.isNull():
         return QtGui.QIcon()
@@ -91,13 +92,22 @@ def badged_icon_beside(name: str, badge: str) -> QtGui.QIcon:
     p.translate(src.width() + 2, (src.height() - _BADGE_H) / 2 - _BADGE_TOP)
     _draw_badge(p, badge, src.width())
     p.end()
-    return _with_disabled(QtGui.QPixmap.fromImage(out))
+    return _with_disabled(_inverted(out, inverted))
+
+
+def _inverted(img: QtGui.QImage, inverted: bool) -> QtGui.QPixmap:
+    """``img`` as a pixmap, its colours inverted (alpha kept) where ``inverted``: dark on a lit button."""
+    if inverted:
+        img = img.convertToFormat(QtGui.QImage.Format_ARGB32)
+        img.invertPixels(QtGui.QImage.InvertRgb)
+    return QtGui.QPixmap.fromImage(img)
 
 
 @lru_cache(maxsize=None)
-def badged_icon(name: str, badge: str) -> QtGui.QIcon:
+def badged_icon(name: str, badge: str, inverted: bool = False) -> QtGui.QIcon:
     """``name``'s icon with ``badge`` (one of BADGES) under its glyph: the glyph is moved up
-    into its top margin, scaled down only when it is too tall to fit above the badge."""
+    into its top margin, scaled down only when it is too tall to fit above the badge; ``inverted``
+    as icon()'s."""
     src = QtGui.QImage(str(resource_path(f"assets/icons/{name}.png")))
     if src.isNull():
         return QtGui.QIcon()
@@ -106,7 +116,7 @@ def badged_icon(name: str, badge: str) -> QtGui.QIcon:
     ink = alpha[:, 3:src.width() * 4:4] > 8
     rows, cols = np.flatnonzero(ink.any(axis=1)), np.flatnonzero(ink.any(axis=0))
     if not rows.size:
-        return icon(name)
+        return icon(name, inverted)
     box = QtCore.QRect(int(cols[0]), int(rows[0]), int(cols[-1] - cols[0] + 1), int(rows[-1] - rows[0] + 1))
     out = QtGui.QImage(src.size(), QtGui.QImage.Format_ARGB32)
     out.fill(QtCore.Qt.transparent)
@@ -123,7 +133,7 @@ def badged_icon(name: str, badge: str) -> QtGui.QIcon:
         p.drawImage(target, src, QtCore.QRectF(box))
     _draw_badge(p, badge, src.width())
     p.end()
-    return _with_disabled(QtGui.QPixmap.fromImage(out))
+    return _with_disabled(_inverted(out, inverted))
 
 
 def folder_icon(opened: bool) -> QtGui.QIcon:

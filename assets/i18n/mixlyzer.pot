@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-31 21:26+0900\n"
+"POT-Creation-Date: 2026-10-31 21:52+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -752,7 +752,7 @@ msgstr ""
 msgid "Mixlyzer now restarts to open the restored library."
 msgstr ""
 
-#: app/window.py:1190
+#: app/window.py:1192
 #, python-brace-format
 msgid "External Sync enabled: OSC on {address}. Local play/load is locked."
 msgstr ""
@@ -1479,7 +1479,7 @@ msgid "Processing Waveform"
 msgstr ""
 
 #: core/workers/analysis_texts.py:15 ui/config/pipeline_map.py:32
-#: ui/config/view.py:149 ui/config/view.py:189
+#: ui/config/view.py:154 ui/config/view.py:194
 msgid "Waveform"
 msgstr ""
 
@@ -1983,7 +1983,7 @@ msgid "Folder for features cached while reoptimizing, so later runs are faster."
 msgstr ""
 
 #: ui/config/analysis.py:47 ui/config/analysis.py:163 ui/config/library.py:258
-#: ui/config/view.py:187
+#: ui/config/view.py:192
 msgid "General"
 msgstr ""
 
@@ -2005,7 +2005,7 @@ msgid ""
 "a song outside it is read at half or double tempo."
 msgstr ""
 
-#: ui/config/analysis.py:75 ui/config/window.py:255
+#: ui/config/analysis.py:75 ui/config/window.py:256
 #: ui/windows/reanalyze_dialog.py:38 ui/windows/reanalyze_dialog.py:76
 #, python-brace-format
 msgid "Reads {low} - {high} BPM"
@@ -2071,7 +2071,7 @@ msgstr ""
 #: ui/config/analysis.py:139 ui/config/analysis.py:177
 #: ui/config/analysis.py:200 ui/config/dialogs/optimization.py:204
 #: ui/config/library.py:251 ui/config/library.py:267 ui/config/playback.py:108
-#: ui/config/view.py:182
+#: ui/config/view.py:187
 msgid "Advanced"
 msgstr ""
 
@@ -4125,7 +4125,7 @@ msgstr ""
 msgid "Its device's stream is shared with another output, at that output's rate."
 msgstr ""
 
-#: ui/config/pipeline_map.py:22 ui/config/view.py:193
+#: ui/config/pipeline_map.py:22 ui/config/view.py:198
 msgid "View"
 msgstr ""
 
@@ -4846,13 +4846,17 @@ msgstr ""
 msgid "Display phrase overlay"
 msgstr ""
 
-#: ui/config/view.py:69
+#: ui/config/view.py:55
+msgid "Show the tempo and key as played"
+msgstr ""
+
+#: ui/config/view.py:70
 msgid ""
 "RGB: the waveform colored by its low / mid / high mix.\n"
 "3Band: the low (blue), mid (amber) and high (white) bands drawn as layers."
 msgstr ""
 
-#: ui/config/view.py:77
+#: ui/config/view.py:78
 #, python-brace-format
 msgid ""
 "Time resolution of the main view waveform bars when the view is up to "
@@ -4860,7 +4864,7 @@ msgid ""
 "Smaller is more detailed."
 msgstr ""
 
-#: ui/config/view.py:80
+#: ui/config/view.py:81
 #, python-brace-format
 msgid ""
 "Time resolution of the main view waveform bars when the view is wider "
@@ -4868,204 +4872,211 @@ msgid ""
 "Smaller is more detailed."
 msgstr ""
 
-#: ui/config/view.py:88
+#: ui/config/view.py:89
 msgid ""
 "Order of the main view waveform's band filters. Higher separates the "
 "bands more sharply."
 msgstr ""
 
-#: ui/config/view.py:91
+#: ui/config/view.py:92
 msgid "Use output volume as peak meter input"
 msgstr ""
 
-#: ui/config/view.py:93
+#: ui/config/view.py:94
 msgid "Reduce FPS when occluded"
 msgstr ""
 
-#: ui/config/view.py:99
+#: ui/config/view.py:100
 msgid "Waiting for FPS..."
 msgstr ""
 
-#: ui/config/view.py:101
+#: ui/config/view.py:102
 msgid "Measured from actual pyqtgraph plot repaint intervals."
 msgstr ""
 
-#: ui/config/view.py:103
+#: ui/config/view.py:104
 msgid "Show the detailed waveform view."
 msgstr ""
 
-#: ui/config/view.py:104
+#: ui/config/view.py:105
 msgid "Show the beat grid view."
 msgstr ""
 
-#: ui/config/view.py:105
+#: ui/config/view.py:106
 msgid "Show the key strip (detected key over time)."
 msgstr ""
 
-#: ui/config/view.py:106
+#: ui/config/view.py:107
 msgid "Show the JumpCUE view (detected repeat jump points)."
 msgstr ""
 
-#: ui/config/view.py:107
+#: ui/config/view.py:108
 msgid "Overlay the detected phrases on the views."
 msgstr ""
 
-#: ui/config/view.py:109
+#: ui/config/view.py:110
+msgid ""
+"<p>The overview's and the main view's BPM and keys as heard: the tempo "
+"changed by the fader, the key moved by the key shift (and by the tempo "
+"with MT off). Off: the track's own.</p>"
+msgstr ""
+
+#: ui/config/view.py:113
 msgid ""
 "Checked: the peak meter follows the volume slider (what you hear).\n"
 "Unchecked: the peak meter shows the level after Trim only."
 msgstr ""
 
-#: ui/config/view.py:113
+#: ui/config/view.py:117
 msgid ""
 "Lower the redraw rate while the window is hidden behind other windows\n"
 "or minimized, to save CPU."
 msgstr ""
 
-#: ui/config/view.py:116
+#: ui/config/view.py:120
 msgid "Target redraw rate of the views."
 msgstr ""
 
-#: ui/config/view.py:118
+#: ui/config/view.py:122
 msgid "Image drawn as the spinning record when a track has no album art."
 msgstr ""
 
-#: ui/config/view.py:121 ui/config/view.py:123
+#: ui/config/view.py:125 ui/config/view.py:127
 #: ui/library/tabs/tieup_editor.py:140 ui/library/tabs/tieup_editor.py:143
 #: ui/windows/tieup_works.py:77 ui/windows/tieup_works.py:80
 msgid "Language"
 msgstr ""
 
-#: ui/config/view.py:125 ui/config/view.py:188
+#: ui/config/view.py:129 ui/config/view.py:193
 msgid "Display"
 msgstr ""
 
-#: ui/config/view.py:143
+#: ui/config/view.py:148
 msgid "lo"
 msgstr ""
 
-#: ui/config/view.py:144
+#: ui/config/view.py:149
 msgid "hi"
 msgstr ""
 
-#: ui/config/view.py:151
+#: ui/config/view.py:156
 msgid "Low / mid / high bands of the waveforms' colors."
 msgstr ""
 
-#: ui/config/view.py:154
+#: ui/config/view.py:159
 msgid "Waveform style"
 msgstr ""
 
-#: ui/config/view.py:156
+#: ui/config/view.py:161
 msgid ""
 "<p>The master output's spectrum as it plays. Drag a band's edges to set "
 "it.</p>"
 msgstr ""
 
-#: ui/config/view.py:159
+#: ui/config/view.py:164
 msgid "Frame, short view (ms)"
 msgstr ""
 
-#: ui/config/view.py:160
+#: ui/config/view.py:165
 msgid "Frame, long view (ms)"
 msgstr ""
 
-#: ui/config/view.py:161
+#: ui/config/view.py:166
 msgid "Filter order"
 msgstr ""
 
-#: ui/config/view.py:163
+#: ui/config/view.py:168
 msgid ""
 "<p>The loaded track at the playhead, drawn with these settings. What is "
 "already drawn keeps the settings it was drawn with.</p>"
 msgstr ""
 
-#: ui/config/view.py:167
+#: ui/config/view.py:172
 msgid "Low"
 msgstr ""
 
-#: ui/config/view.py:167
+#: ui/config/view.py:172
 msgid "Frequency range (Hz) drawn as the low band of the waveform."
 msgstr ""
 
-#: ui/config/view.py:168
+#: ui/config/view.py:173
 msgid "Lower edge of the low band (Hz)."
 msgstr ""
 
-#: ui/config/view.py:168
+#: ui/config/view.py:173
 msgid "Upper edge of the low band (Hz)."
 msgstr ""
 
-#: ui/config/view.py:170
+#: ui/config/view.py:175
 msgid "Mid"
 msgstr ""
 
-#: ui/config/view.py:170
+#: ui/config/view.py:175
 msgid "Frequency range (Hz) drawn as the mid band of the waveform."
 msgstr ""
 
-#: ui/config/view.py:171
+#: ui/config/view.py:176
 msgid "Lower edge of the mid band (Hz)."
 msgstr ""
 
-#: ui/config/view.py:171
+#: ui/config/view.py:176
 msgid "Upper edge of the mid band (Hz)."
 msgstr ""
 
-#: ui/config/view.py:173
+#: ui/config/view.py:178
 msgid "High"
 msgstr ""
 
-#: ui/config/view.py:173
+#: ui/config/view.py:178
 msgid "Frequency range (Hz) drawn as the high band of the waveform."
 msgstr ""
 
-#: ui/config/view.py:174
+#: ui/config/view.py:179
 msgid "Lower edge of the high band (Hz)."
 msgstr ""
 
-#: ui/config/view.py:174
+#: ui/config/view.py:179
 msgid "Upper edge of the high band (Hz)."
 msgstr ""
 
-#: ui/config/view.py:176
+#: ui/config/view.py:181
 msgid "Performance"
 msgstr ""
 
-#: ui/config/view.py:180
+#: ui/config/view.py:185
 msgid "Actual FPS"
 msgstr ""
 
-#: ui/config/view.py:184
+#: ui/config/view.py:189
 msgid "Record image path"
 msgstr ""
 
-#: ui/config/view.py:190 ui/config/view.py:218
+#: ui/config/view.py:195 ui/config/view.py:223
 msgid "Phrase labels"
 msgstr ""
 
-#: ui/config/view.py:221 ui/library/tabs/tieup_editor.py:143
+#: ui/config/view.py:226 ui/library/tabs/tieup_editor.py:143
 #: ui/windows/tieup_works.py:80
 msgid "Alias"
 msgstr ""
 
-#: ui/config/view.py:222
+#: ui/config/view.py:227
 msgid "Overview"
 msgstr ""
 
-#: ui/config/view.py:228
+#: ui/config/view.py:233
 #, python-brace-format
 msgid "Shown in place of {label} (empty: {label})"
 msgstr ""
 
-#: ui/config/view.py:233
+#: ui/config/view.py:238
 #, python-brace-format
 msgid ""
 "{label} in the overview, numbered when it occurs more than once\n"
 "(empty: the first letter of its name)"
 msgstr ""
 
-#: ui/config/view.py:301
+#: ui/config/view.py:306
 msgid "The spectrum needs the native audio engine."
 msgstr ""
 
@@ -5469,147 +5480,147 @@ msgstr ""
 msgid "Two JumpCUEs cannot share a point."
 msgstr ""
 
-#: ui/edit_panel/jumpcue.py:222 ui/edit_panel/panel.py:577
+#: ui/edit_panel/jumpcue.py:222 ui/edit_panel/panel.py:578
 msgid "Invalid JumpCUE Label"
 msgstr ""
 
-#: ui/edit_panel/key.py:22
+#: ui/edit_panel/key.py:24
 msgid "A semitone down: every segment's key"
 msgstr ""
 
-#: ui/edit_panel/key.py:23
+#: ui/edit_panel/key.py:25
 msgid "A semitone down: the current segment's key"
 msgstr ""
 
-#: ui/edit_panel/key.py:24
+#: ui/edit_panel/key.py:26
 msgid "A semitone up: every segment's key"
 msgstr ""
 
-#: ui/edit_panel/key.py:25
+#: ui/edit_panel/key.py:27
 msgid "A semitone up: the current segment's key"
 msgstr ""
 
-#: ui/edit_panel/key.py:26
+#: ui/edit_panel/key.py:28
 msgid "One step down the circle of fifths (Alphanumeric -1): every segment's key"
 msgstr ""
 
-#: ui/edit_panel/key.py:27
+#: ui/edit_panel/key.py:29
 msgid ""
 "One step down the circle of fifths (Alphanumeric -1): the current "
 "segment's key"
 msgstr ""
 
-#: ui/edit_panel/key.py:28
+#: ui/edit_panel/key.py:30
 msgid "One step up the circle of fifths (Alphanumeric +1): every segment's key"
 msgstr ""
 
-#: ui/edit_panel/key.py:29
+#: ui/edit_panel/key.py:31
 msgid ""
 "One step up the circle of fifths (Alphanumeric +1): the current segment's"
 " key"
 msgstr ""
 
-#: ui/edit_panel/key.py:30
+#: ui/edit_panel/key.py:32
 msgid "Relative major / minor (C <-> Am): every segment's key"
 msgstr ""
 
-#: ui/edit_panel/key.py:31
+#: ui/edit_panel/key.py:33
 msgid "Relative major / minor (C <-> Am): the current segment's key"
 msgstr ""
 
-#: ui/edit_panel/key.py:37
-msgid "Move the current key segment's start one beat earlier"
-msgstr ""
-
-#: ui/edit_panel/key.py:38
-msgid ""
-"Move the current key segment's start one bar (to the neighboring "
-"downbeat) earlier"
-msgstr ""
-
 #: ui/edit_panel/key.py:39
-msgid "Move the current key segment's start one beat later"
+msgid "Move the current key segment's start one beat earlier"
 msgstr ""
 
 #: ui/edit_panel/key.py:40
 msgid ""
 "Move the current key segment's start one bar (to the neighboring "
-"downbeat) later"
+"downbeat) earlier"
 msgstr ""
 
 #: ui/edit_panel/key.py:41
-msgid "Move the current key segment's end one beat earlier"
+msgid "Move the current key segment's start one beat later"
 msgstr ""
 
 #: ui/edit_panel/key.py:42
 msgid ""
-"Move the current key segment's end one bar (to the neighboring downbeat) "
-"earlier"
+"Move the current key segment's start one bar (to the neighboring "
+"downbeat) later"
 msgstr ""
 
 #: ui/edit_panel/key.py:43
-msgid "Move the current key segment's end one beat later"
+msgid "Move the current key segment's end one beat earlier"
 msgstr ""
 
 #: ui/edit_panel/key.py:44
 msgid ""
 "Move the current key segment's end one bar (to the neighboring downbeat) "
+"earlier"
+msgstr ""
+
+#: ui/edit_panel/key.py:45
+msgid "Move the current key segment's end one beat later"
+msgstr ""
+
+#: ui/edit_panel/key.py:46
+msgid ""
+"Move the current key segment's end one bar (to the neighboring downbeat) "
 "later"
 msgstr ""
 
-#: ui/edit_panel/key.py:68 ui/edit_panel/phrase.py:65
+#: ui/edit_panel/key.py:70 ui/edit_panel/phrase.py:65
 msgid "Boundaries move by one beat"
 msgstr ""
 
-#: ui/edit_panel/key.py:69 ui/edit_panel/phrase.py:66
+#: ui/edit_panel/key.py:71 ui/edit_panel/phrase.py:66
 msgid "Boundaries move by one bar (to the neighboring downbeat)"
 msgstr ""
 
-#: ui/edit_panel/key.py:77
+#: ui/edit_panel/key.py:79
 msgid "Split the current key segment at the beat nearest the playhead"
 msgstr ""
 
-#: ui/edit_panel/key.py:78
+#: ui/edit_panel/key.py:80
 msgid ""
 "Merge the previous key segment into the current one (keeps the current "
 "key)"
 msgstr ""
 
-#: ui/edit_panel/key.py:79
+#: ui/edit_panel/key.py:81
 msgid "Merge the next key segment into the current one (keeps the current key)"
 msgstr ""
 
-#: ui/edit_panel/key.py:81
+#: ui/edit_panel/key.py:83
 msgid "Reanalyze the current key segment's key from the audio"
 msgstr ""
 
-#: ui/edit_panel/key.py:82
+#: ui/edit_panel/key.py:84
 msgid "Reanalyze the keys of the whole track (dynamic)"
 msgstr ""
 
-#: ui/edit_panel/key.py:85
+#: ui/edit_panel/key.py:87
 msgid "Key changes (pick, semitone, fifth, relative) apply to the whole track"
 msgstr ""
 
-#: ui/edit_panel/key.py:86
+#: ui/edit_panel/key.py:88
 msgid "Key changes (pick, semitone, fifth, relative) apply to the current segment"
 msgstr ""
 
-#: ui/edit_panel/key.py:110
+#: ui/edit_panel/key.py:112
 msgid ""
 "Root: hold the current key's root (and its octave) under the music.\n"
 "The plainest check of the tonic: it should feel like the note the music "
 "rests on."
 msgstr ""
 
-#: ui/edit_panel/key.py:116
+#: ui/edit_panel/key.py:118
 msgid ""
 "Root and fifth: hold the current key's root and fifth under the music.\n"
 "In the right key it sounds at home all the way through; a lasting clash\n"
 "means a wrong tonic (try semitone / fifth steps) or a key change."
 msgstr ""
 
-#: ui/edit_panel/key.py:123
+#: ui/edit_panel/key.py:125
 msgid ""
 "Tonic chord: hold the current key's major / minor triad under the music.\n"
 "Tests the third: if the drone fits but the chord clashes, try the other "
@@ -5618,21 +5629,27 @@ msgid ""
 "relative key."
 msgstr ""
 
-#: ui/edit_panel/key.py:129 ui/edit_panel/key.py:236
+#: ui/edit_panel/key.py:131 ui/edit_panel/key.py:254
 msgid "-- | Seg -- | Elapsed: 00:00.00 | Left: 00:00.00"
 msgstr ""
 
-#: ui/edit_panel/key.py:208
+#: ui/edit_panel/key.py:209
+msgid ""
+"(WARNING! The key heard is not the track's: the keys changed here are the"
+" track's own.)"
+msgstr ""
+
+#: ui/edit_panel/key.py:219
 msgid ""
 "Pick one key for the whole track: it becomes one segment in that key "
 "(Alphanumeric wheel)"
 msgstr ""
 
-#: ui/edit_panel/key.py:209
+#: ui/edit_panel/key.py:220
 msgid "Pick the current segment's key (Alphanumeric wheel)"
 msgstr ""
 
-#: ui/edit_panel/key.py:249
+#: ui/edit_panel/key.py:267
 #, python-brace-format
 msgid "{key} | Seg {index} | Elapsed: {elapsed} | Left: {left}"
 msgstr ""
@@ -5653,57 +5670,57 @@ msgstr ""
 msgid "Edit the JumpCUEs and CUE points"
 msgstr ""
 
-#: ui/edit_panel/panel.py:592
+#: ui/edit_panel/panel.py:593
 #, python-brace-format
 msgid ""
 "The edits could not be saved:\n"
 "{error}"
 msgstr ""
 
-#: ui/edit_panel/panel.py:592 ui/windows/tieup_works.py:88
+#: ui/edit_panel/panel.py:593 ui/windows/tieup_works.py:88
 msgid "Save"
 msgstr ""
 
-#: ui/edit_panel/panel.py:625
+#: ui/edit_panel/panel.py:626
 msgid ""
 "<p>Editing is locked: pages switch, but nothing is edited or saved. Click"
 " to unlock.</p>"
 msgstr ""
 
-#: ui/edit_panel/panel.py:627
+#: ui/edit_panel/panel.py:628
 msgid ""
 "<p>Editing is unlocked: the shown pages' graphics are emphasized. Click "
 "to lock: no edits, no saving (on at every start).</p>"
 msgstr ""
 
-#: ui/edit_panel/panel.py:738
+#: ui/edit_panel/panel.py:739
 #, python-brace-format
 msgid "This shortcut does nothing on the {page} page."
 msgstr ""
 
-#: ui/edit_panel/panel.py:746
+#: ui/edit_panel/panel.py:747
 msgid "Editing is locked."
 msgstr ""
 
-#: ui/edit_panel/panel.py:748
+#: ui/edit_panel/panel.py:749
 msgid "Editing waits for the segment reanalysis to finish."
 msgstr ""
 
-#: ui/edit_panel/panel.py:781 ui/edit_panel/panel.py:794
+#: ui/edit_panel/panel.py:782 ui/edit_panel/panel.py:795
 #, python-brace-format
 msgid "JumpCUE {letter} is not set."
 msgstr ""
 
-#: ui/edit_panel/panel.py:790
+#: ui/edit_panel/panel.py:791
 #, python-brace-format
 msgid "JumpCUE {letter} is already set."
 msgstr ""
 
-#: ui/edit_panel/panel.py:810
+#: ui/edit_panel/panel.py:811
 msgid "CALL works while stopped."
 msgstr ""
 
-#: ui/edit_panel/panel.py:826
+#: ui/edit_panel/panel.py:827
 msgid "No CUE point at the playhead."
 msgstr ""
 
@@ -7274,55 +7291,55 @@ msgstr ""
 msgid "Load to Deck"
 msgstr ""
 
-#: ui/pane.py:353
+#: ui/pane.py:354
 msgid "Tempo range: ±6% / ±10% / ±16% / WIDE; click for the next"
 msgstr ""
 
-#: ui/pane.py:373
+#: ui/pane.py:374
 #, python-format
 msgid "Tempo (WIDE: 0%-200%, 0 stops)"
 msgstr ""
 
-#: ui/pane.py:423
+#: ui/pane.py:427
 msgid "Key a semitone up (the tempo kept)"
 msgstr ""
 
-#: ui/pane.py:425
+#: ui/pane.py:429
 #, python-brace-format
 msgid "Key shift in semitones (±{max}); click: the track's own key"
 msgstr ""
 
-#: ui/pane.py:427
+#: ui/pane.py:431
 msgid "Key a semitone down (the tempo kept)"
 msgstr ""
 
-#: ui/pane.py:489
+#: ui/pane.py:499
 msgid ""
 "CUE: stopped, sets the cue point here / held on the cue point, plays "
 "until let go; playing, back to the cue point and stop"
 msgstr ""
 
-#: ui/pane.py:493 ui/shortcuts.py:89
+#: ui/pane.py:503 ui/shortcuts.py:89
 msgid "Tempo reset (100%)"
 msgstr ""
 
-#: ui/pane.py:495
+#: ui/pane.py:505
 msgid "Master tempo: time stretch keeps the pitch"
 msgstr ""
 
-#: ui/pane.py:523
+#: ui/pane.py:533
 msgid "Key shift needs the native audio engine."
 msgstr ""
 
-#: ui/config/external_sync.py:105 ui/library/widget.py:389 ui/pane.py:596
+#: ui/config/external_sync.py:105 ui/library/widget.py:389 ui/pane.py:620
 msgid "External Sync"
 msgstr ""
 
-#: ui/pane.py:597
+#: ui/pane.py:621
 msgid "Playback is disabled while External Sync is enabled."
 msgstr ""
 
-#: ui/pane.py:926
+#: ui/pane.py:952
 msgid "Not Loaded"
 msgstr ""
 
@@ -7785,15 +7802,15 @@ msgstr ""
 msgid "It becomes the current page."
 msgstr ""
 
-#: ui/edit_panel/panel.py:219 ui/shortcuts.py:186
+#: ui/edit_panel/panel.py:220 ui/shortcuts.py:186
 msgid "Undo Changes"
 msgstr ""
 
-#: ui/edit_panel/panel.py:223 ui/shortcuts.py:187
+#: ui/edit_panel/panel.py:224 ui/shortcuts.py:187
 msgid "Redo Changes"
 msgstr ""
 
-#: ui/edit_panel/panel.py:227 ui/shortcuts.py:188
+#: ui/edit_panel/panel.py:228 ui/shortcuts.py:188
 msgid "Save Edits"
 msgstr ""
 
@@ -7978,7 +7995,7 @@ msgstr ""
 msgid "Pick the key"
 msgstr ""
 
-#: ui/edit_panel/key.py:95 ui/edit_panel/key_picker.py:82 ui/shortcuts.py:238
+#: ui/edit_panel/key.py:97 ui/edit_panel/key_picker.py:82 ui/shortcuts.py:238
 msgid "Pick the key (Alphanumeric wheel)"
 msgstr ""
 
@@ -8018,7 +8035,7 @@ msgstr ""
 msgid "Merge the same keys"
 msgstr ""
 
-#: ui/edit_panel/key.py:80 ui/shortcuts.py:247
+#: ui/edit_panel/key.py:82 ui/shortcuts.py:247
 msgid "Merge every run of neighboring segments with the same key"
 msgstr ""
 

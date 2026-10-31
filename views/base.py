@@ -19,6 +19,17 @@ FOCUS_SCALE = 2.0    # line width of an emphasized visualization, x its usual
 FOCUS_MARKER = 1.3   # marker size of an emphasized visualization, x its usual
 
 
+def shown_played(played: tuple[float, int]) -> tuple[float, int]:
+    """The tempo factor and key shift (semitones) the views show the track at: as heard (``played``, the bus's
+    sig_played_changed) when Settings > View says so (viewconfig.played_tempo_key), else the track's own."""
+    from core.settings.store import current
+    try:
+        on = bool(current().viewconfig.played_tempo_key)
+    except Exception:
+        on = False
+    return played if on else (1.0, 0)
+
+
 def edit_emphasis(page, focus) -> str:
     """``page``'s emphasis under ``focus`` (the pages shown while unlocked): "normal" (no
     focus), "focus" (shown) or "dim"."""

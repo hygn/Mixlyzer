@@ -176,6 +176,7 @@ class MainPane(QtWidgets.QWidget):
         self._volume_position: Optional[float] = None   # none reported yet: the first report is shown, whatever it is
         self._cue_lit = False
         self._key_shift = 0     # semitones, as the deck reports it
+        self._played: Optional[tuple[float, int]] = None   # the track as heard, as last sent (sig_played_changed)
 
         # Plot container
         self.gl = _TrackedGraphicsLayoutWidget(self.bus, show=True)
@@ -557,6 +558,20 @@ class MainPane(QtWidgets.QWidget):
         # last, so the playhead is drawn over everything (it also has the top z value)
         self.add_view("PlayHead")
         self.p.setYRange(0, 1.0, padding=0.05)
+        self.send_played(force=True)   # the new views take the track as heard
+
+    def send_played(self, force: bool = False) -> None:
+        """The track as heard to the views and the editor (sig_played_changed): the tempo factor, and the key moved
+        by the key shift and, MT off, by the tempo's rounded semitones; sent when it changes (``force``: again, the
+        views made anew or Settings > View changed)."""
+        speed = float(self._tempo_factor)
+        semitones = self._key_shift
+        if not self._timestretch_enabled() and speed > 0.0:
+            semitones += int(speed_to_semitone(speed)[1])
+        played = (speed if speed > 0.0 else 1.0, int(semitones))
+        if force or played != self._played:
+            self._played = played
+            self.bus.sig_played_changed.emit(*played)
 
     def clear_views(self) -> None:
         """Detach and forget all currently attached view plugins."""
@@ -636,6 +651,7 @@ class MainPane(QtWidgets.QWidget):
             self.btn_tempo_range.setText(_range_text(tempo_range))
             self._update_bpm_display()
             self._on_time(self.current_time)   # the key follows the tempo (varispeed)
+            self.send_played()
         if report.volume != self._volume_position:
             self._volume_position = float(report.volume)
             if not self.vol_slider.isSliderDown():
@@ -652,6 +668,7 @@ class MainPane(QtWidgets.QWidget):
             self.btn_key.setChecked(bool(shift))      # lit while shifted
             self.btn_key.blockSignals(False)
             self._on_time(self.current_time)          # the key shown moves with it
+            self.send_played()
         lit = bool(report.lamps & 2)
         if lit != self._cue_lit:
             self._cue_lit = lit
@@ -1036,6 +1053,7 @@ class MainPane(QtWidgets.QWidget):
         self.cfg = cfg
         self._apply_volume_report()   # the trim changes the peak meter's gain
         self._on_time(self.current_time)  # key display depends on use_timestretch
+        self.send_played()
         self.btn_mt.blockSignals(True)
         self.btn_mt.setChecked(self._timestretch_enabled())
         self.btn_mt.blockSignals(False)

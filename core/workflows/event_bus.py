@@ -17,6 +17,10 @@ class EventBus(QtCore.QObject):
     sig_output_buffer = QtCore.Signal(float, object, float)
     # the deck's tempo as the player reports it (1: 100 %); notification of a change
     sig_tempo_factor_changed = QtCore.Signal(float)
+    # the track as it is heard (ui.pane.MainPane): its tempo times this, its key moved by these semitones (the key
+    # shift, and with MT off the tempo's own rounded); sent at each change and again when the views are made anew or
+    # Settings > View changes (viewconfig.played_tempo_key: the views show the track so, else as it is)
+    sig_played_changed = QtCore.Signal(float, int)
     sig_scrub_begin  = QtCore.Signal()
     sig_scrub_update = QtCore.Signal(float)  # sec
     sig_scrub_end    = QtCore.Signal(float)  # sec

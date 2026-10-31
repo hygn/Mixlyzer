@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-31 21:26+0900\n"
+"POT-Creation-Date: 2026-10-31 21:52+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ja_JP\n"
@@ -794,7 +794,7 @@ msgid "Mixlyzer now restarts to open the restored library."
 msgstr "復元したライブラリを開くため、Mixlyzer を再起動します。"
 
 # | msgid "External Sync enabled via {target}. Local play/load is locked."
-#: app/window.py:1190
+#: app/window.py:1192
 #, python-brace-format
 msgid "External Sync enabled: OSC on {address}. Local play/load is locked."
 msgstr "外部同期が有効です: OSC {address}。ローカルでの再生/読み込みはロックされます。"
@@ -1642,7 +1642,7 @@ msgid "Processing Waveform"
 msgstr "波形を処理中"
 
 #: core/workers/analysis_texts.py:15 ui/config/pipeline_map.py:32
-#: ui/config/view.py:149 ui/config/view.py:189
+#: ui/config/view.py:154 ui/config/view.py:194
 msgid "Waveform"
 msgstr "波形"
 
@@ -2156,7 +2156,7 @@ msgid "Folder for features cached while reoptimizing, so later runs are faster."
 msgstr "再最適化中に特徴量をキャッシュするフォルダー。次回以降の実行が速くなります。"
 
 #: ui/config/analysis.py:47 ui/config/analysis.py:163 ui/config/library.py:258
-#: ui/config/view.py:187
+#: ui/config/view.py:192
 msgid "General"
 msgstr "一般"
 
@@ -2184,7 +2184,7 @@ msgstr ""
 "ビートトラッカーはこの値からその 2 倍までのテンポで読み取ります。\n"
 "範囲外の曲は半分または 2 倍のテンポで読み取られます。"
 
-#: ui/config/analysis.py:75 ui/config/window.py:255
+#: ui/config/analysis.py:75 ui/config/window.py:256
 #: ui/windows/reanalyze_dialog.py:38 ui/windows/reanalyze_dialog.py:76
 #, python-brace-format
 msgid "Reads {low} - {high} BPM"
@@ -2269,7 +2269,7 @@ msgstr "最小 BPM"
 #: ui/config/analysis.py:139 ui/config/analysis.py:177
 #: ui/config/analysis.py:200 ui/config/dialogs/optimization.py:204
 #: ui/config/library.py:251 ui/config/library.py:267 ui/config/playback.py:108
-#: ui/config/view.py:182
+#: ui/config/view.py:187
 msgid "Advanced"
 msgstr "詳細設定"
 
@@ -4634,7 +4634,7 @@ msgstr "再生デバイス: {device}、{rate} kHz"
 msgid "Its device's stream is shared with another output, at that output's rate."
 msgstr "このデバイスのストリームをほかの出力と共有しているため、その出力のサンプルレートで再生します。"
 
-#: ui/config/pipeline_map.py:22 ui/config/view.py:193
+#: ui/config/pipeline_map.py:22 ui/config/view.py:198
 msgid "View"
 msgstr "表示"
 
@@ -5504,7 +5504,13 @@ msgstr "JumpCUE を表示"
 msgid "Display phrase overlay"
 msgstr "フレーズのオーバーレイを表示"
 
-#: ui/config/view.py:69
+# | msgid "Page {page} of {pages}"
+# | msgid "Show the {page} page"
+#: ui/config/view.py:55
+msgid "Show the tempo and key as played"
+msgstr "再生中のテンポとキーで表示"
+
+#: ui/config/view.py:70
 msgid ""
 "RGB: the waveform colored by its low / mid / high mix.\n"
 "3Band: the low (blue), mid (amber) and high (white) bands drawn as layers."
@@ -5512,7 +5518,7 @@ msgstr ""
 "RGB: 低域 / 中域 / 高域の比率で波形に色を付けます。\n"
 "3Band: 低域 (青)、中域 (アンバー)、高域 (白) の帯域を重ねて描きます。"
 
-#: ui/config/view.py:77
+#: ui/config/view.py:78
 #, python-brace-format
 msgid ""
 "Time resolution of the main view waveform bars when the view is up to "
@@ -5522,7 +5528,7 @@ msgstr ""
 "表示幅が {seconds} 秒以下のときのメインビュー波形のバーの時間分解能。\n"
 "小さいほど細かくなります。"
 
-#: ui/config/view.py:80
+#: ui/config/view.py:81
 #, python-brace-format
 msgid ""
 "Time resolution of the main view waveform bars when the view is wider "
@@ -5532,49 +5538,58 @@ msgstr ""
 "表示幅が {seconds} 秒を超えるときのメインビュー波形のバーの時間分解能。\n"
 "小さいほど細かくなります。"
 
-#: ui/config/view.py:88
+#: ui/config/view.py:89
 msgid ""
 "Order of the main view waveform's band filters. Higher separates the "
 "bands more sharply."
 msgstr "メインビュー波形の帯域フィルターの次数。高いほど帯域をはっきり分けます。"
 
-#: ui/config/view.py:91
+#: ui/config/view.py:92
 msgid "Use output volume as peak meter input"
 msgstr "出力音量をピークメーターの入力に使う"
 
-#: ui/config/view.py:93
+#: ui/config/view.py:94
 msgid "Reduce FPS when occluded"
 msgstr "隠れているときは FPS を下げる"
 
-#: ui/config/view.py:99
+#: ui/config/view.py:100
 msgid "Waiting for FPS..."
 msgstr "FPS を待機中..."
 
-#: ui/config/view.py:101
+#: ui/config/view.py:102
 msgid "Measured from actual pyqtgraph plot repaint intervals."
 msgstr "pyqtgraph のプロットが実際に再描画された間隔から測定します。"
 
-#: ui/config/view.py:103
+#: ui/config/view.py:104
 msgid "Show the detailed waveform view."
 msgstr "詳細な波形ビューを表示します。"
 
-#: ui/config/view.py:104
+#: ui/config/view.py:105
 msgid "Show the beat grid view."
 msgstr "ビートグリッドのビューを表示します。"
 
-#: ui/config/view.py:105
+#: ui/config/view.py:106
 msgid "Show the key strip (detected key over time)."
 msgstr "キーストリップ (時間ごとに検出されたキー) を表示します。"
 
-#: ui/config/view.py:106
+#: ui/config/view.py:107
 msgid "Show the JumpCUE view (detected repeat jump points)."
 msgstr "JumpCUE のビュー (検出された反復のジャンプポイント) を表示します。"
 
-#: ui/config/view.py:107
+#: ui/config/view.py:108
 msgid "Overlay the detected phrases on the views."
 msgstr "検出されたフレーズをビューに重ねて表示します。"
 
-#: ui/config/view.py:109
+#: ui/config/view.py:110
+msgid ""
+"<p>The overview's and the main view's BPM and keys as heard: the tempo "
+"changed by the fader, the key moved by the key shift (and by the tempo "
+"with MT off). Off: the track's own.</p>"
+msgstr ""
+"<p>オーバービューとメインビューの BPM とキーを聞こえるとおりに表示します。フェーダーで変えたテンポ、キーシフト（MT "
+"がオフならテンポ）で移ったキーです。オフにするとトラック本来の値を表示します。</p>"
+
+#: ui/config/view.py:113
 msgid ""
 "Checked: the peak meter follows the volume slider (what you hear).\n"
 "Unchecked: the peak meter shows the level after Trim only."
@@ -5582,7 +5597,7 @@ msgstr ""
 "オン: ピークメーターは音量スライダーに従います (聞こえる音)。\n"
 "オフ: ピークメーターはトリムだけを通したレベルを表示します。"
 
-#: ui/config/view.py:113
+#: ui/config/view.py:117
 msgid ""
 "Lower the redraw rate while the window is hidden behind other windows\n"
 "or minimized, to save CPU."
@@ -5590,143 +5605,143 @@ msgstr ""
 "ウィンドウが他のウィンドウに隠れているか最小化されている間は、\n"
 "再描画の頻度を下げて CPU を節約します。"
 
-#: ui/config/view.py:116
+#: ui/config/view.py:120
 msgid "Target redraw rate of the views."
 msgstr "ビューの再描画の目標頻度。"
 
-#: ui/config/view.py:118
+#: ui/config/view.py:122
 msgid "Image drawn as the spinning record when a track has no album art."
 msgstr "トラックにアートワークがないときに回転するレコードとして描く画像。"
 
-#: ui/config/view.py:121 ui/config/view.py:123
+#: ui/config/view.py:125 ui/config/view.py:127
 #: ui/library/tabs/tieup_editor.py:140 ui/library/tabs/tieup_editor.py:143
 #: ui/windows/tieup_works.py:77 ui/windows/tieup_works.py:80
 msgid "Language"
 msgstr "言語"
 
-#: ui/config/view.py:125 ui/config/view.py:188
+#: ui/config/view.py:129 ui/config/view.py:193
 msgid "Display"
 msgstr "表示"
 
-#: ui/config/view.py:143
+#: ui/config/view.py:148
 msgid "lo"
 msgstr "下限"
 
-#: ui/config/view.py:144
+#: ui/config/view.py:149
 msgid "hi"
 msgstr "上限"
 
-#: ui/config/view.py:151
+#: ui/config/view.py:156
 msgid "Low / mid / high bands of the waveforms' colors."
 msgstr "波形の色の低域 / 中域 / 高域の帯域。"
 
-#: ui/config/view.py:154
+#: ui/config/view.py:159
 msgid "Waveform style"
 msgstr "波形のスタイル"
 
-#: ui/config/view.py:156
+#: ui/config/view.py:161
 msgid ""
 "<p>The master output's spectrum as it plays. Drag a band's edges to set "
 "it.</p>"
 msgstr "<p>再生中のマスター出力のスペクトラムです。帯域の両端をドラッグして設定します。</p>"
 
-#: ui/config/view.py:159
+#: ui/config/view.py:164
 msgid "Frame, short view (ms)"
 msgstr "フレーム、短い表示 (ms)"
 
-#: ui/config/view.py:160
+#: ui/config/view.py:165
 msgid "Frame, long view (ms)"
 msgstr "フレーム、長い表示 (ms)"
 
-#: ui/config/view.py:161
+#: ui/config/view.py:166
 msgid "Filter order"
 msgstr "フィルターの次数"
 
-#: ui/config/view.py:163
+#: ui/config/view.py:168
 msgid ""
 "<p>The loaded track at the playhead, drawn with these settings. What is "
 "already drawn keeps the settings it was drawn with.</p>"
 msgstr "<p>ロードした曲の再生位置をこの設定で描きます。描画済みの部分は描いたときの設定のままです。</p>"
 
-#: ui/config/view.py:167
+#: ui/config/view.py:172
 msgid "Low"
 msgstr "低域"
 
-#: ui/config/view.py:167
+#: ui/config/view.py:172
 msgid "Frequency range (Hz) drawn as the low band of the waveform."
 msgstr "波形の低域として描く周波数範囲 (Hz)。"
 
-#: ui/config/view.py:168
+#: ui/config/view.py:173
 msgid "Lower edge of the low band (Hz)."
 msgstr "低域の下限 (Hz)。"
 
-#: ui/config/view.py:168
+#: ui/config/view.py:173
 msgid "Upper edge of the low band (Hz)."
 msgstr "低域の上限 (Hz)。"
 
-#: ui/config/view.py:170
+#: ui/config/view.py:175
 msgid "Mid"
 msgstr "中域"
 
-#: ui/config/view.py:170
+#: ui/config/view.py:175
 msgid "Frequency range (Hz) drawn as the mid band of the waveform."
 msgstr "波形の中域として描く周波数範囲 (Hz)。"
 
-#: ui/config/view.py:171
+#: ui/config/view.py:176
 msgid "Lower edge of the mid band (Hz)."
 msgstr "中域の下限 (Hz)。"
 
-#: ui/config/view.py:171
+#: ui/config/view.py:176
 msgid "Upper edge of the mid band (Hz)."
 msgstr "中域の上限 (Hz)。"
 
-#: ui/config/view.py:173
+#: ui/config/view.py:178
 msgid "High"
 msgstr "高域"
 
-#: ui/config/view.py:173
+#: ui/config/view.py:178
 msgid "Frequency range (Hz) drawn as the high band of the waveform."
 msgstr "波形の高域として描く周波数範囲 (Hz)。"
 
-#: ui/config/view.py:174
+#: ui/config/view.py:179
 msgid "Lower edge of the high band (Hz)."
 msgstr "高域の下限 (Hz)。"
 
-#: ui/config/view.py:174
+#: ui/config/view.py:179
 msgid "Upper edge of the high band (Hz)."
 msgstr "高域の上限 (Hz)。"
 
-#: ui/config/view.py:176
+#: ui/config/view.py:181
 msgid "Performance"
 msgstr "パフォーマンス"
 
-#: ui/config/view.py:180
+#: ui/config/view.py:185
 msgid "Actual FPS"
 msgstr "実際の FPS"
 
-#: ui/config/view.py:184
+#: ui/config/view.py:189
 msgid "Record image path"
 msgstr "レコード画像のパス"
 
-#: ui/config/view.py:190 ui/config/view.py:218
+#: ui/config/view.py:195 ui/config/view.py:223
 msgid "Phrase labels"
 msgstr "フレーズラベル"
 
-#: ui/config/view.py:221 ui/library/tabs/tieup_editor.py:143
+#: ui/config/view.py:226 ui/library/tabs/tieup_editor.py:143
 #: ui/windows/tieup_works.py:80
 msgid "Alias"
 msgstr "別名"
 
-#: ui/config/view.py:222
+#: ui/config/view.py:227
 msgid "Overview"
 msgstr "全体波形"
 
-#: ui/config/view.py:228
+#: ui/config/view.py:233
 #, python-brace-format
 msgid "Shown in place of {label} (empty: {label})"
 msgstr "{label} の代わりに表示 (空欄: {label})"
 
-#: ui/config/view.py:233
+#: ui/config/view.py:238
 #, python-brace-format
 msgid ""
 "{label} in the overview, numbered when it occurs more than once\n"
@@ -5736,7 +5751,7 @@ msgstr ""
 "(空欄: 名前の最初の文字)"
 
 # | msgid "Available with the native audio engine only."
-#: ui/config/view.py:301
+#: ui/config/view.py:306
 msgid "The spectrum needs the native audio engine."
 msgstr "スペクトラムは Native オーディオエンジンでのみ表示されます。"
 
@@ -6152,141 +6167,141 @@ msgstr "空いているスロット {letter} へ移動 (このキューと以降
 msgid "Two JumpCUEs cannot share a point."
 msgstr "2 つの JumpCUE が同じポイントを共有することはできません。"
 
-#: ui/edit_panel/jumpcue.py:222 ui/edit_panel/panel.py:577
+#: ui/edit_panel/jumpcue.py:222 ui/edit_panel/panel.py:578
 msgid "Invalid JumpCUE Label"
 msgstr "無効な JumpCUE ラベル"
 
-#: ui/edit_panel/key.py:22
+#: ui/edit_panel/key.py:24
 msgid "A semitone down: every segment's key"
 msgstr "半音下げる: すべての区間のキー"
 
-#: ui/edit_panel/key.py:23
+#: ui/edit_panel/key.py:25
 msgid "A semitone down: the current segment's key"
 msgstr "半音下げる: 現在の区間のキー"
 
-#: ui/edit_panel/key.py:24
+#: ui/edit_panel/key.py:26
 msgid "A semitone up: every segment's key"
 msgstr "半音上げる: すべての区間のキー"
 
-#: ui/edit_panel/key.py:25
+#: ui/edit_panel/key.py:27
 msgid "A semitone up: the current segment's key"
 msgstr "半音上げる: 現在の区間のキー"
 
 # | msgid "One step down the circle of fifths (Camelot -1): every segment's
 # key"
-#: ui/edit_panel/key.py:26
+#: ui/edit_panel/key.py:28
 msgid "One step down the circle of fifths (Alphanumeric -1): every segment's key"
 msgstr "五度圏で 1 つ下げる (Alphanumeric -1): すべての区間のキー"
 
 # | msgid "One step down the circle of fifths (Camelot -1): the current
 # | segment's key"
-#: ui/edit_panel/key.py:27
+#: ui/edit_panel/key.py:29
 msgid ""
 "One step down the circle of fifths (Alphanumeric -1): the current "
 "segment's key"
 msgstr "五度圏で 1 つ下げる (Alphanumeric -1): 現在の区間のキー"
 
 # | msgid "One step up the circle of fifths (Camelot +1): every segment's key"
-#: ui/edit_panel/key.py:28
+#: ui/edit_panel/key.py:30
 msgid "One step up the circle of fifths (Alphanumeric +1): every segment's key"
 msgstr "五度圏で 1 つ上げる (Alphanumeric +1): すべての区間のキー"
 
 # | msgid "One step up the circle of fifths (Camelot +1): the current
 # segment's
 # | key"
-#: ui/edit_panel/key.py:29
+#: ui/edit_panel/key.py:31
 msgid ""
 "One step up the circle of fifths (Alphanumeric +1): the current segment's"
 " key"
 msgstr "五度圏で 1 つ上げる (Alphanumeric +1): 現在の区間のキー"
 
-#: ui/edit_panel/key.py:30
+#: ui/edit_panel/key.py:32
 msgid "Relative major / minor (C <-> Am): every segment's key"
 msgstr "平行調の長調 / 短調 (C <-> Am): すべての区間のキー"
 
-#: ui/edit_panel/key.py:31
+#: ui/edit_panel/key.py:33
 msgid "Relative major / minor (C <-> Am): the current segment's key"
 msgstr "平行調の長調 / 短調 (C <-> Am): 現在の区間のキー"
 
-#: ui/edit_panel/key.py:37
+#: ui/edit_panel/key.py:39
 msgid "Move the current key segment's start one beat earlier"
 msgstr "現在のキー区間の開始を 1 拍早めます"
 
-#: ui/edit_panel/key.py:38
+#: ui/edit_panel/key.py:40
 msgid ""
 "Move the current key segment's start one bar (to the neighboring "
 "downbeat) earlier"
 msgstr "現在のキー区間の開始を 1 小節 (隣のダウンビートまで) 早めます"
 
-#: ui/edit_panel/key.py:39
+#: ui/edit_panel/key.py:41
 msgid "Move the current key segment's start one beat later"
 msgstr "現在のキー区間の開始を 1 拍遅らせます"
 
-#: ui/edit_panel/key.py:40
+#: ui/edit_panel/key.py:42
 msgid ""
 "Move the current key segment's start one bar (to the neighboring "
 "downbeat) later"
 msgstr "現在のキー区間の開始を 1 小節 (隣のダウンビートまで) 遅らせます"
 
-#: ui/edit_panel/key.py:41
+#: ui/edit_panel/key.py:43
 msgid "Move the current key segment's end one beat earlier"
 msgstr "現在のキー区間の終了を 1 拍早めます"
 
-#: ui/edit_panel/key.py:42
+#: ui/edit_panel/key.py:44
 msgid ""
 "Move the current key segment's end one bar (to the neighboring downbeat) "
 "earlier"
 msgstr "現在のキー区間の終了を 1 小節 (隣のダウンビートまで) 早めます"
 
-#: ui/edit_panel/key.py:43
+#: ui/edit_panel/key.py:45
 msgid "Move the current key segment's end one beat later"
 msgstr "現在のキー区間の終了を 1 拍遅らせます"
 
-#: ui/edit_panel/key.py:44
+#: ui/edit_panel/key.py:46
 msgid ""
 "Move the current key segment's end one bar (to the neighboring downbeat) "
 "later"
 msgstr "現在のキー区間の終了を 1 小節 (隣のダウンビートまで) 遅らせます"
 
-#: ui/edit_panel/key.py:68 ui/edit_panel/phrase.py:65
+#: ui/edit_panel/key.py:70 ui/edit_panel/phrase.py:65
 msgid "Boundaries move by one beat"
 msgstr "境界を 1 拍ずつ移動します"
 
-#: ui/edit_panel/key.py:69 ui/edit_panel/phrase.py:66
+#: ui/edit_panel/key.py:71 ui/edit_panel/phrase.py:66
 msgid "Boundaries move by one bar (to the neighboring downbeat)"
 msgstr "境界を 1 小節ずつ (隣のダウンビートまで) 移動します"
 
-#: ui/edit_panel/key.py:77
+#: ui/edit_panel/key.py:79
 msgid "Split the current key segment at the beat nearest the playhead"
 msgstr "現在のキー区間を再生位置に最も近い拍で分割します"
 
-#: ui/edit_panel/key.py:78
+#: ui/edit_panel/key.py:80
 msgid ""
 "Merge the previous key segment into the current one (keeps the current "
 "key)"
 msgstr "前のキー区間を現在の区間に結合します (現在のキーを維持)"
 
-#: ui/edit_panel/key.py:79
+#: ui/edit_panel/key.py:81
 msgid "Merge the next key segment into the current one (keeps the current key)"
 msgstr "次のキー区間を現在の区間に結合します (現在のキーを維持)"
 
-#: ui/edit_panel/key.py:81
+#: ui/edit_panel/key.py:83
 msgid "Reanalyze the current key segment's key from the audio"
 msgstr "現在のキー区間のキーをオーディオから再解析します"
 
-#: ui/edit_panel/key.py:82
+#: ui/edit_panel/key.py:84
 msgid "Reanalyze the keys of the whole track (dynamic)"
 msgstr "トラック全体のキーを再解析します (ダイナミック)"
 
-#: ui/edit_panel/key.py:85
+#: ui/edit_panel/key.py:87
 msgid "Key changes (pick, semitone, fifth, relative) apply to the whole track"
 msgstr "キーの変更 (選択、半音、5 度、平行調) をトラック全体に適用します"
 
-#: ui/edit_panel/key.py:86
+#: ui/edit_panel/key.py:88
 msgid "Key changes (pick, semitone, fifth, relative) apply to the current segment"
 msgstr "キーの変更 (選択、半音、5 度、平行調) を現在の区間に適用します"
 
-#: ui/edit_panel/key.py:110
+#: ui/edit_panel/key.py:112
 msgid ""
 "Root: hold the current key's root (and its octave) under the music.\n"
 "The plainest check of the tonic: it should feel like the note the music "
@@ -6295,7 +6310,7 @@ msgstr ""
 "根音: 現在のキーの根音 (とそのオクターブ) を音楽の下で鳴らし続けます。\n"
 "主音を確かめる最も素朴な方法で、音楽が落ち着く音のように感じられるはずです。"
 
-#: ui/edit_panel/key.py:116
+#: ui/edit_panel/key.py:118
 msgid ""
 "Root and fifth: hold the current key's root and fifth under the music.\n"
 "In the right key it sounds at home all the way through; a lasting clash\n"
@@ -6305,7 +6320,7 @@ msgstr ""
 "正しいキーなら最後まで自然に聞こえます。ぶつかり続ける場合は\n"
 "主音の誤り (半音 / 5 度の移動を試す) か、キーの変化です。"
 
-#: ui/edit_panel/key.py:123
+#: ui/edit_panel/key.py:125
 msgid ""
 "Tonic chord: hold the current key's major / minor triad under the music.\n"
 "Tests the third: if the drone fits but the chord clashes, try the other "
@@ -6317,24 +6332,30 @@ msgstr ""
 "第 3 音を確かめます: ドローンは合うのに和音がぶつかる場合は同じ根音の別の旋法を、\n"
 "メロディーが別の音へ解決し続ける場合は平行調を試してください。"
 
-#: ui/edit_panel/key.py:129 ui/edit_panel/key.py:236
+#: ui/edit_panel/key.py:131 ui/edit_panel/key.py:254
 msgid "-- | Seg -- | Elapsed: 00:00.00 | Left: 00:00.00"
 msgstr "-- | 区間 -- | 経過: 00:00.00 | 残り: 00:00.00"
 
+#: ui/edit_panel/key.py:209
+msgid ""
+"(WARNING! The key heard is not the track's: the keys changed here are the"
+" track's own.)"
+msgstr "（警告！今聞こえているキーはトラック本来のキーではありません。ここで変えるのはトラック本来のキーです。）"
+
 # | msgid "" "Pick one key for the whole track: it becomes one segment in that
 # | key " "(Camelot wheel)"
-#: ui/edit_panel/key.py:208
+#: ui/edit_panel/key.py:219
 msgid ""
 "Pick one key for the whole track: it becomes one segment in that key "
 "(Alphanumeric wheel)"
 msgstr "トラック全体のキーを 1 つ選びます: そのキーの 1 区間になります (Alphanumeric ホイール)"
 
 # | msgid "Pick the current segment's key (Camelot wheel)"
-#: ui/edit_panel/key.py:209
+#: ui/edit_panel/key.py:220
 msgid "Pick the current segment's key (Alphanumeric wheel)"
 msgstr "現在の区間のキーを選択 (Alphanumeric ホイール)"
 
-#: ui/edit_panel/key.py:249
+#: ui/edit_panel/key.py:267
 #, python-brace-format
 msgid "{key} | Seg {index} | Elapsed: {elapsed} | Left: {left}"
 msgstr "{key} | 区間 {index} | 経過: {elapsed} | 残り: {left}"
@@ -6356,7 +6377,7 @@ msgid "Edit the JumpCUEs and CUE points"
 msgstr "JumpCUE と CUEポイントを編集"
 
 # | msgid "The file could not be written: {error}"
-#: ui/edit_panel/panel.py:592
+#: ui/edit_panel/panel.py:593
 #, python-brace-format
 msgid ""
 "The edits could not be saved:\n"
@@ -6366,17 +6387,17 @@ msgstr ""
 "{error}"
 
 # | msgid "Shared"
-#: ui/edit_panel/panel.py:592 ui/windows/tieup_works.py:88
+#: ui/edit_panel/panel.py:593 ui/windows/tieup_works.py:88
 msgid "Save"
 msgstr "保存"
 
-#: ui/edit_panel/panel.py:625
+#: ui/edit_panel/panel.py:626
 msgid ""
 "<p>Editing is locked: pages switch, but nothing is edited or saved. Click"
 " to unlock.</p>"
 msgstr "<p>編集はロックされています: ページは切り替わりますが、編集も保存もされません。クリックするとロックを解除します。</p>"
 
-#: ui/edit_panel/panel.py:627
+#: ui/edit_panel/panel.py:628
 msgid ""
 "<p>Editing is unlocked: the shown pages' graphics are emphasized. Click "
 "to lock: no edits, no saving (on at every start).</p>"
@@ -6384,37 +6405,37 @@ msgstr ""
 "<p>編集のロックは解除されています: 表示中のページのグラフィックが強調されます。クリックするとロックします: 編集も保存もできなくなります "
 "(起動のたびにロック)。</p>"
 
-#: ui/edit_panel/panel.py:738
+#: ui/edit_panel/panel.py:739
 #, python-brace-format
 msgid "This shortcut does nothing on the {page} page."
 msgstr "このショートカットは {page} ページでは何もしません。"
 
-#: ui/edit_panel/panel.py:746
+#: ui/edit_panel/panel.py:747
 msgid "Editing is locked."
 msgstr "編集はロックされています。"
 
 # | msgid "Segment reanalysis finished"
-#: ui/edit_panel/panel.py:748
+#: ui/edit_panel/panel.py:749
 msgid "Editing waits for the segment reanalysis to finish."
 msgstr "区間の再解析が終わるまで編集できません。"
 
 # | msgid "Delete JumpCUE {letter}"
-#: ui/edit_panel/panel.py:781 ui/edit_panel/panel.py:794
+#: ui/edit_panel/panel.py:782 ui/edit_panel/panel.py:795
 #, python-brace-format
 msgid "JumpCUE {letter} is not set."
 msgstr "JumpCUE {letter} は設定されていません。"
 
-#: ui/edit_panel/panel.py:790
+#: ui/edit_panel/panel.py:791
 #, python-brace-format
 msgid "JumpCUE {letter} is already set."
 msgstr "JumpCUE {letter} はすでに設定されています。"
 
-#: ui/edit_panel/panel.py:810
+#: ui/edit_panel/panel.py:811
 msgid "CALL works while stopped."
 msgstr "CALL は停止中にだけ動作します。"
 
 # | msgid "Split the current segment at the playhead"
-#: ui/edit_panel/panel.py:826
+#: ui/edit_panel/panel.py:827
 msgid "No CUE point at the playhead."
 msgstr "再生位置に CUEポイントがありません。"
 
@@ -8196,28 +8217,28 @@ msgstr "デッキにロード"
 
 # | msgid "Tempo range: ±6% / ±10% / ±16% / WIDE (0%-200%); click for the
 # next"
-#: ui/pane.py:353
+#: ui/pane.py:354
 msgid "Tempo range: ±6% / ±10% / ±16% / WIDE; click for the next"
 msgstr "テンポ範囲: ±6% / ±10% / ±16% / WIDE。クリックで次の範囲"
 
 # | msgid "Tempo (0%-200%, 0 stops)"
-#: ui/pane.py:373
+#: ui/pane.py:374
 #, python-format
 msgid "Tempo (WIDE: 0%-200%, 0 stops)"
 msgstr "テンポ（WIDE: 0%-200%、0 で停止）"
 
 # | msgid "A semitone up: the current segment's key"
-#: ui/pane.py:423
+#: ui/pane.py:427
 msgid "Key a semitone up (the tempo kept)"
 msgstr "キーを半音上げる（テンポはそのまま）"
 
-#: ui/pane.py:425
+#: ui/pane.py:429
 #, python-brace-format
 msgid "Key shift in semitones (±{max}); click: the track's own key"
 msgstr "半音単位のキーシフト（±{max}）。クリックでトラックの元のキーに戻します。"
 
 # | msgid "A semitone down: the current segment's key"
-#: ui/pane.py:427
+#: ui/pane.py:431
 msgid "Key a semitone down (the tempo kept)"
 msgstr "キーを半音下げる（テンポはそのまま）"
 
@@ -8225,35 +8246,35 @@ msgstr "キーを半音下げる（テンポはそのまま）"
 # held
 # | on the" " cue point, plays until let go (PLAY while held: plays on);
 # | playing, back" " to the cue point and stop"
-#: ui/pane.py:489
+#: ui/pane.py:499
 msgid ""
 "CUE: stopped, sets the cue point here / held on the cue point, plays "
 "until let go; playing, back to the cue point and stop"
 msgstr "CUE: 停止中はここにキューポイントを設定 / キューポイントで押している間は再生。再生中はキューポイントに戻って停止"
 
-#: ui/pane.py:493 ui/shortcuts.py:89
+#: ui/pane.py:503 ui/shortcuts.py:89
 msgid "Tempo reset (100%)"
 msgstr "テンポをリセット (100%)"
 
-#: ui/pane.py:495
+#: ui/pane.py:505
 msgid "Master tempo: time stretch keeps the pitch"
 msgstr "マスターテンポ: タイムストレッチでピッチを保ちます"
 
 # | msgid "Available with the native audio engine only."
 # | msgid "The spectrum needs the native audio engine."
-#: ui/pane.py:523
+#: ui/pane.py:533
 msgid "Key shift needs the native audio engine."
 msgstr "キーシフトには Native オーディオエンジンが必要です。"
 
-#: ui/config/external_sync.py:105 ui/library/widget.py:389 ui/pane.py:596
+#: ui/config/external_sync.py:105 ui/library/widget.py:389 ui/pane.py:620
 msgid "External Sync"
 msgstr "外部同期"
 
-#: ui/pane.py:597
+#: ui/pane.py:621
 msgid "Playback is disabled while External Sync is enabled."
 msgstr "外部同期が有効な間は再生できません。"
 
-#: ui/pane.py:926
+#: ui/pane.py:952
 msgid "Not Loaded"
 msgstr "トラックが読み込まれていません"
 
@@ -8811,15 +8832,15 @@ msgstr "{page} ページを表示"
 msgid "It becomes the current page."
 msgstr "そのページが現在のページになります。"
 
-#: ui/edit_panel/panel.py:219 ui/shortcuts.py:186
+#: ui/edit_panel/panel.py:220 ui/shortcuts.py:186
 msgid "Undo Changes"
 msgstr "変更を元に戻す"
 
-#: ui/edit_panel/panel.py:223 ui/shortcuts.py:187
+#: ui/edit_panel/panel.py:224 ui/shortcuts.py:187
 msgid "Redo Changes"
 msgstr "変更をやり直す"
 
-#: ui/edit_panel/panel.py:227 ui/shortcuts.py:188
+#: ui/edit_panel/panel.py:228 ui/shortcuts.py:188
 msgid "Save Edits"
 msgstr "編集を保存"
 
@@ -9047,7 +9068,7 @@ msgid "Pick the key"
 msgstr "キーを選択"
 
 # | msgid "Pick the key (Camelot wheel)"
-#: ui/edit_panel/key.py:95 ui/edit_panel/key_picker.py:82 ui/shortcuts.py:238
+#: ui/edit_panel/key.py:97 ui/edit_panel/key_picker.py:82 ui/shortcuts.py:238
 msgid "Pick the key (Alphanumeric wheel)"
 msgstr "キーを選択 (Alphanumeric ホイール)"
 
@@ -9100,7 +9121,7 @@ msgstr "平行調の長調 / 短調 (C <-> Am)"
 msgid "Merge the same keys"
 msgstr "同じキーを結合"
 
-#: ui/edit_panel/key.py:80 ui/shortcuts.py:247
+#: ui/edit_panel/key.py:82 ui/shortcuts.py:247
 msgid "Merge every run of neighboring segments with the same key"
 msgstr "キーが同じ隣り合う区間をすべて 1 つに結合します"
 

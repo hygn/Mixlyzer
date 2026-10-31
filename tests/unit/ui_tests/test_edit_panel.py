@@ -301,6 +301,22 @@ class KeyTests(EditPanelCase):
         self.assertEqual(self.keys(), [(5.0, 0.0, 0.0, 64.0)])
         self.assertNotEqual(self.panel.key_pick.text(), "--")       # the picker shows the key under the playhead
 
+    def test_key_changes_lit_while_the_key_heard_is_not_the_tracks(self):
+        from ui.edit_panel.styles import WARNING_BUTTON_STYLESHEET
+        tools = (self.panel.key_flat, self.panel.key_sharp, self.panel.key_fifth_down, self.panel.key_fifth_up,
+                 self.panel.key_relative)
+        self.at(10.0)
+        self.assertTrue(all(t.styleSheet() == "" for t in tools))
+        self.bus.sig_played_changed.emit(1.0, 2)        # the key shifted by 2 semitones
+        self.assertTrue(all(t.styleSheet() == WARNING_BUTTON_STYLESHEET for t in tools))
+        self.assertIn("WARNING", self.panel.key_sharp.toolTip())
+        self.assertNotEqual(self.panel.key_pick.text(), "--")          # its key's colour kept, framed
+        self.h["key.sharp"]()                          # still the track's own keys that change
+        self.assertEqual(self.keys()[0][:2], (1.0, 0.0))
+        self.bus.sig_played_changed.emit(1.06, 12)      # an octave: the same key
+        self.assertTrue(all(t.styleSheet() == "" for t in tools))
+        self.assertNotIn("WARNING", self.panel.key_sharp.toolTip())
+
     def test_split_merge_and_merge_same(self):
         self.at(40.3)
         self.h["editor.split"]()

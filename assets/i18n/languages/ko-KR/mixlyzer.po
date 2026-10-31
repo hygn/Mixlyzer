@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-31 21:26+0900\n"
+"POT-Creation-Date: 2026-10-31 21:52+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ko_KR\n"
@@ -792,7 +792,7 @@ msgid "Mixlyzer now restarts to open the restored library."
 msgstr "복원한 라이브러리를 열기 위해 Mixlyzer를 재시작합니다."
 
 # | msgid "External Sync enabled via {target}. Local play/load is locked."
-#: app/window.py:1190
+#: app/window.py:1192
 #, python-brace-format
 msgid "External Sync enabled: OSC on {address}. Local play/load is locked."
 msgstr "외부 동기화 사용: OSC {address}. 로컬 재생/불러오기가 잠깁니다."
@@ -1642,7 +1642,7 @@ msgid "Processing Waveform"
 msgstr "파형 처리 중"
 
 #: core/workers/analysis_texts.py:15 ui/config/pipeline_map.py:32
-#: ui/config/view.py:149 ui/config/view.py:189
+#: ui/config/view.py:154 ui/config/view.py:194
 msgid "Waveform"
 msgstr "파형"
 
@@ -2158,7 +2158,7 @@ msgid "Folder for features cached while reoptimizing, so later runs are faster."
 msgstr "재최적화하는 동안 특징을 캐시해 두는 폴더. 다음 실행이 빨라집니다."
 
 #: ui/config/analysis.py:47 ui/config/analysis.py:163 ui/config/library.py:258
-#: ui/config/view.py:187
+#: ui/config/view.py:192
 msgid "General"
 msgstr "일반"
 
@@ -2186,7 +2186,7 @@ msgstr ""
 "비트 트래커는 이 값부터 그 두 배까지의 템포로 읽습니다.\n"
 "이 범위 밖의 곡은 절반이나 두 배 템포로 읽힙니다."
 
-#: ui/config/analysis.py:75 ui/config/window.py:255
+#: ui/config/analysis.py:75 ui/config/window.py:256
 #: ui/windows/reanalyze_dialog.py:38 ui/windows/reanalyze_dialog.py:76
 #, python-brace-format
 msgid "Reads {low} - {high} BPM"
@@ -2271,7 +2271,7 @@ msgstr "BPM 최소"
 #: ui/config/analysis.py:139 ui/config/analysis.py:177
 #: ui/config/analysis.py:200 ui/config/dialogs/optimization.py:204
 #: ui/config/library.py:251 ui/config/library.py:267 ui/config/playback.py:108
-#: ui/config/view.py:182
+#: ui/config/view.py:187
 msgid "Advanced"
 msgstr "고급"
 
@@ -4619,7 +4619,7 @@ msgstr "재생 장치: {device}, {rate} kHz"
 msgid "Its device's stream is shared with another output, at that output's rate."
 msgstr "이 장치의 스트림을 다른 출력과 함께 쓰므로 그 출력의 샘플레이트로 재생됩니다."
 
-#: ui/config/pipeline_map.py:22 ui/config/view.py:193
+#: ui/config/pipeline_map.py:22 ui/config/view.py:198
 msgid "View"
 msgstr "보기"
 
@@ -5495,7 +5495,13 @@ msgstr "JumpCUE 표시"
 msgid "Display phrase overlay"
 msgstr "프레이즈 오버레이 표시"
 
-#: ui/config/view.py:69
+# | msgid "Page {page} of {pages}"
+# | msgid "Show the {page} page"
+#: ui/config/view.py:55
+msgid "Show the tempo and key as played"
+msgstr "재생 중인 템포와 키로 표시"
+
+#: ui/config/view.py:70
 msgid ""
 "RGB: the waveform colored by its low / mid / high mix.\n"
 "3Band: the low (blue), mid (amber) and high (white) bands drawn as layers."
@@ -5503,7 +5509,7 @@ msgstr ""
 "RGB: 저역 / 중역 / 고역의 비율로 파형에 색을 입힙니다.\n"
 "3Band: 저역(파랑), 중역(호박색), 고역(흰색) 대역을 층으로 그립니다."
 
-#: ui/config/view.py:77
+#: ui/config/view.py:78
 #, python-brace-format
 msgid ""
 "Time resolution of the main view waveform bars when the view is up to "
@@ -5513,7 +5519,7 @@ msgstr ""
 "뷰 폭이 {seconds}초 이하일 때 메인 뷰 파형 막대의 시간 해상도.\n"
 "작을수록 자세합니다."
 
-#: ui/config/view.py:80
+#: ui/config/view.py:81
 #, python-brace-format
 msgid ""
 "Time resolution of the main view waveform bars when the view is wider "
@@ -5523,49 +5529,58 @@ msgstr ""
 "뷰 폭이 {seconds}초보다 넓을 때 메인 뷰 파형 막대의 시간 해상도.\n"
 "작을수록 자세합니다."
 
-#: ui/config/view.py:88
+#: ui/config/view.py:89
 msgid ""
 "Order of the main view waveform's band filters. Higher separates the "
 "bands more sharply."
 msgstr "메인 뷰 파형의 대역 필터 차수. 높을수록 대역을 더 날카롭게 나눕니다."
 
-#: ui/config/view.py:91
+#: ui/config/view.py:92
 msgid "Use output volume as peak meter input"
 msgstr "출력 볼륨을 피크 미터 입력으로 사용"
 
-#: ui/config/view.py:93
+#: ui/config/view.py:94
 msgid "Reduce FPS when occluded"
 msgstr "가려졌을 때 FPS 낮추기"
 
-#: ui/config/view.py:99
+#: ui/config/view.py:100
 msgid "Waiting for FPS..."
 msgstr "FPS 기다리는 중..."
 
-#: ui/config/view.py:101
+#: ui/config/view.py:102
 msgid "Measured from actual pyqtgraph plot repaint intervals."
 msgstr "pyqtgraph 플롯이 실제로 다시 그려진 간격으로 잽니다."
 
-#: ui/config/view.py:103
+#: ui/config/view.py:104
 msgid "Show the detailed waveform view."
 msgstr "자세한 파형 뷰를 표시합니다."
 
-#: ui/config/view.py:104
+#: ui/config/view.py:105
 msgid "Show the beat grid view."
 msgstr "비트그리드 뷰를 표시합니다."
 
-#: ui/config/view.py:105
+#: ui/config/view.py:106
 msgid "Show the key strip (detected key over time)."
 msgstr "키 스트립(시간에 따른 검출된 키)을 표시합니다."
 
-#: ui/config/view.py:106
+#: ui/config/view.py:107
 msgid "Show the JumpCUE view (detected repeat jump points)."
 msgstr "JumpCUE 뷰(검출된 반복 점프 지점)를 표시합니다."
 
-#: ui/config/view.py:107
+#: ui/config/view.py:108
 msgid "Overlay the detected phrases on the views."
 msgstr "검출된 프레이즈를 뷰 위에 겹쳐 표시합니다."
 
-#: ui/config/view.py:109
+#: ui/config/view.py:110
+msgid ""
+"<p>The overview's and the main view's BPM and keys as heard: the tempo "
+"changed by the fader, the key moved by the key shift (and by the tempo "
+"with MT off). Off: the track's own.</p>"
+msgstr ""
+"<p>오버뷰와 메인 뷰의 BPM과 키를 들리는 대로 보여 줍니다. 페이더로 바꾼 템포, 키 시프트(MT가 꺼져 있으면 템포)로 "
+"옮겨진 키입니다. 끄면 트랙의 원래 값을 보여 줍니다.</p>"
+
+#: ui/config/view.py:113
 msgid ""
 "Checked: the peak meter follows the volume slider (what you hear).\n"
 "Unchecked: the peak meter shows the level after Trim only."
@@ -5573,7 +5588,7 @@ msgstr ""
 "켜짐: 피크 미터가 볼륨 슬라이더를 따릅니다(들리는 소리).\n"
 "꺼짐: 피크 미터가 트림만 거친 레벨을 보여 줍니다."
 
-#: ui/config/view.py:113
+#: ui/config/view.py:117
 msgid ""
 "Lower the redraw rate while the window is hidden behind other windows\n"
 "or minimized, to save CPU."
@@ -5581,143 +5596,143 @@ msgstr ""
 "창이 다른 창 뒤에 가려지거나 최소화되어 있는 동안\n"
 "다시 그리는 빈도를 낮춰 CPU를 아낍니다."
 
-#: ui/config/view.py:116
+#: ui/config/view.py:120
 msgid "Target redraw rate of the views."
 msgstr "뷰를 다시 그리는 목표 빈도."
 
-#: ui/config/view.py:118
+#: ui/config/view.py:122
 msgid "Image drawn as the spinning record when a track has no album art."
 msgstr "트랙에 앨범 아트가 없을 때 도는 레코드로 그릴 이미지."
 
-#: ui/config/view.py:121 ui/config/view.py:123
+#: ui/config/view.py:125 ui/config/view.py:127
 #: ui/library/tabs/tieup_editor.py:140 ui/library/tabs/tieup_editor.py:143
 #: ui/windows/tieup_works.py:77 ui/windows/tieup_works.py:80
 msgid "Language"
 msgstr "언어"
 
-#: ui/config/view.py:125 ui/config/view.py:188
+#: ui/config/view.py:129 ui/config/view.py:193
 msgid "Display"
 msgstr "표시"
 
-#: ui/config/view.py:143
+#: ui/config/view.py:148
 msgid "lo"
 msgstr "하한"
 
-#: ui/config/view.py:144
+#: ui/config/view.py:149
 msgid "hi"
 msgstr "상한"
 
-#: ui/config/view.py:151
+#: ui/config/view.py:156
 msgid "Low / mid / high bands of the waveforms' colors."
 msgstr "파형 색의 저역 / 중역 / 고역 대역."
 
-#: ui/config/view.py:154
+#: ui/config/view.py:159
 msgid "Waveform style"
 msgstr "파형 스타일"
 
-#: ui/config/view.py:156
+#: ui/config/view.py:161
 msgid ""
 "<p>The master output's spectrum as it plays. Drag a band's edges to set "
 "it.</p>"
 msgstr "<p>재생 중인 마스터 출력의 스펙트럼입니다. 대역의 양 끝을 끌어서 설정합니다.</p>"
 
-#: ui/config/view.py:159
+#: ui/config/view.py:164
 msgid "Frame, short view (ms)"
 msgstr "프레임, 짧은 뷰 (ms)"
 
-#: ui/config/view.py:160
+#: ui/config/view.py:165
 msgid "Frame, long view (ms)"
 msgstr "프레임, 긴 뷰 (ms)"
 
-#: ui/config/view.py:161
+#: ui/config/view.py:166
 msgid "Filter order"
 msgstr "필터 차수"
 
-#: ui/config/view.py:163
+#: ui/config/view.py:168
 msgid ""
 "<p>The loaded track at the playhead, drawn with these settings. What is "
 "already drawn keeps the settings it was drawn with.</p>"
 msgstr "<p>로드된 곡의 재생 위치를 이 설정으로 그립니다. 이미 그려진 부분은 그때의 설정을 유지합니다.</p>"
 
-#: ui/config/view.py:167
+#: ui/config/view.py:172
 msgid "Low"
 msgstr "저역"
 
-#: ui/config/view.py:167
+#: ui/config/view.py:172
 msgid "Frequency range (Hz) drawn as the low band of the waveform."
 msgstr "파형의 저역 대역으로 그릴 주파수 범위(Hz)."
 
-#: ui/config/view.py:168
+#: ui/config/view.py:173
 msgid "Lower edge of the low band (Hz)."
 msgstr "저역 대역의 하한 (Hz)."
 
-#: ui/config/view.py:168
+#: ui/config/view.py:173
 msgid "Upper edge of the low band (Hz)."
 msgstr "저역 대역의 상한 (Hz)."
 
-#: ui/config/view.py:170
+#: ui/config/view.py:175
 msgid "Mid"
 msgstr "중역"
 
-#: ui/config/view.py:170
+#: ui/config/view.py:175
 msgid "Frequency range (Hz) drawn as the mid band of the waveform."
 msgstr "파형의 중역 대역으로 그릴 주파수 범위(Hz)."
 
-#: ui/config/view.py:171
+#: ui/config/view.py:176
 msgid "Lower edge of the mid band (Hz)."
 msgstr "중역 대역의 하한 (Hz)."
 
-#: ui/config/view.py:171
+#: ui/config/view.py:176
 msgid "Upper edge of the mid band (Hz)."
 msgstr "중역 대역의 상한 (Hz)."
 
-#: ui/config/view.py:173
+#: ui/config/view.py:178
 msgid "High"
 msgstr "고역"
 
-#: ui/config/view.py:173
+#: ui/config/view.py:178
 msgid "Frequency range (Hz) drawn as the high band of the waveform."
 msgstr "파형의 고역 대역으로 그릴 주파수 범위(Hz)."
 
-#: ui/config/view.py:174
+#: ui/config/view.py:179
 msgid "Lower edge of the high band (Hz)."
 msgstr "고역 대역의 하한 (Hz)."
 
-#: ui/config/view.py:174
+#: ui/config/view.py:179
 msgid "Upper edge of the high band (Hz)."
 msgstr "고역 대역의 상한 (Hz)."
 
-#: ui/config/view.py:176
+#: ui/config/view.py:181
 msgid "Performance"
 msgstr "성능"
 
-#: ui/config/view.py:180
+#: ui/config/view.py:185
 msgid "Actual FPS"
 msgstr "실제 FPS"
 
-#: ui/config/view.py:184
+#: ui/config/view.py:189
 msgid "Record image path"
 msgstr "레코드 이미지 경로"
 
-#: ui/config/view.py:190 ui/config/view.py:218
+#: ui/config/view.py:195 ui/config/view.py:223
 msgid "Phrase labels"
 msgstr "프레이즈 라벨"
 
-#: ui/config/view.py:221 ui/library/tabs/tieup_editor.py:143
+#: ui/config/view.py:226 ui/library/tabs/tieup_editor.py:143
 #: ui/windows/tieup_works.py:80
 msgid "Alias"
 msgstr "별칭"
 
-#: ui/config/view.py:222
+#: ui/config/view.py:227
 msgid "Overview"
 msgstr "전체 파형"
 
-#: ui/config/view.py:228
+#: ui/config/view.py:233
 #, python-brace-format
 msgid "Shown in place of {label} (empty: {label})"
 msgstr "{label} 대신 표시 (비우면: {label})"
 
-#: ui/config/view.py:233
+#: ui/config/view.py:238
 #, python-brace-format
 msgid ""
 "{label} in the overview, numbered when it occurs more than once\n"
@@ -5727,7 +5742,7 @@ msgstr ""
 "(비우면: 이름의 첫 글자)"
 
 # | msgid "Available with the native audio engine only."
-#: ui/config/view.py:301
+#: ui/config/view.py:306
 msgid "The spectrum needs the native audio engine."
 msgstr "스펙트럼은 Native 오디오 엔진에서만 표시됩니다."
 
@@ -6143,141 +6158,141 @@ msgstr "빈 슬롯 {letter}로 옮기기 (이 큐와 이후 큐가 한 슬롯씩
 msgid "Two JumpCUEs cannot share a point."
 msgstr "두 JumpCUE가 같은 지점을 가질 수 없습니다."
 
-#: ui/edit_panel/jumpcue.py:222 ui/edit_panel/panel.py:577
+#: ui/edit_panel/jumpcue.py:222 ui/edit_panel/panel.py:578
 msgid "Invalid JumpCUE Label"
 msgstr "잘못된 JumpCUE 라벨"
 
-#: ui/edit_panel/key.py:22
+#: ui/edit_panel/key.py:24
 msgid "A semitone down: every segment's key"
 msgstr "반음 내림: 모든 구간의 키"
 
-#: ui/edit_panel/key.py:23
+#: ui/edit_panel/key.py:25
 msgid "A semitone down: the current segment's key"
 msgstr "반음 내림: 현재 구간의 키"
 
-#: ui/edit_panel/key.py:24
+#: ui/edit_panel/key.py:26
 msgid "A semitone up: every segment's key"
 msgstr "반음 올림: 모든 구간의 키"
 
-#: ui/edit_panel/key.py:25
+#: ui/edit_panel/key.py:27
 msgid "A semitone up: the current segment's key"
 msgstr "반음 올림: 현재 구간의 키"
 
 # | msgid "One step down the circle of fifths (Camelot -1): every segment's
 # key"
-#: ui/edit_panel/key.py:26
+#: ui/edit_panel/key.py:28
 msgid "One step down the circle of fifths (Alphanumeric -1): every segment's key"
 msgstr "5도권에서 한 칸 내림 (Alphanumeric -1): 모든 구간의 키"
 
 # | msgid "One step down the circle of fifths (Camelot -1): the current
 # | segment's key"
-#: ui/edit_panel/key.py:27
+#: ui/edit_panel/key.py:29
 msgid ""
 "One step down the circle of fifths (Alphanumeric -1): the current "
 "segment's key"
 msgstr "5도권에서 한 칸 내림 (Alphanumeric -1): 현재 구간의 키"
 
 # | msgid "One step up the circle of fifths (Camelot +1): every segment's key"
-#: ui/edit_panel/key.py:28
+#: ui/edit_panel/key.py:30
 msgid "One step up the circle of fifths (Alphanumeric +1): every segment's key"
 msgstr "5도권에서 한 칸 올림 (Alphanumeric +1): 모든 구간의 키"
 
 # | msgid "One step up the circle of fifths (Camelot +1): the current
 # segment's
 # | key"
-#: ui/edit_panel/key.py:29
+#: ui/edit_panel/key.py:31
 msgid ""
 "One step up the circle of fifths (Alphanumeric +1): the current segment's"
 " key"
 msgstr "5도권에서 한 칸 올림 (Alphanumeric +1): 현재 구간의 키"
 
-#: ui/edit_panel/key.py:30
+#: ui/edit_panel/key.py:32
 msgid "Relative major / minor (C <-> Am): every segment's key"
 msgstr "나란한조 장조 / 단조 (C <-> Am): 모든 구간의 키"
 
-#: ui/edit_panel/key.py:31
+#: ui/edit_panel/key.py:33
 msgid "Relative major / minor (C <-> Am): the current segment's key"
 msgstr "나란한조 장조 / 단조 (C <-> Am): 현재 구간의 키"
 
-#: ui/edit_panel/key.py:37
+#: ui/edit_panel/key.py:39
 msgid "Move the current key segment's start one beat earlier"
 msgstr "현재 키 구간의 시작을 한 박 앞당깁니다"
 
-#: ui/edit_panel/key.py:38
+#: ui/edit_panel/key.py:40
 msgid ""
 "Move the current key segment's start one bar (to the neighboring "
 "downbeat) earlier"
 msgstr "현재 키 구간의 시작을 한 마디(이웃한 다운비트까지) 앞당깁니다"
 
-#: ui/edit_panel/key.py:39
+#: ui/edit_panel/key.py:41
 msgid "Move the current key segment's start one beat later"
 msgstr "현재 키 구간의 시작을 한 박 늦춥니다"
 
-#: ui/edit_panel/key.py:40
+#: ui/edit_panel/key.py:42
 msgid ""
 "Move the current key segment's start one bar (to the neighboring "
 "downbeat) later"
 msgstr "현재 키 구간의 시작을 한 마디(이웃한 다운비트까지) 늦춥니다"
 
-#: ui/edit_panel/key.py:41
+#: ui/edit_panel/key.py:43
 msgid "Move the current key segment's end one beat earlier"
 msgstr "현재 키 구간의 끝을 한 박 앞당깁니다"
 
-#: ui/edit_panel/key.py:42
+#: ui/edit_panel/key.py:44
 msgid ""
 "Move the current key segment's end one bar (to the neighboring downbeat) "
 "earlier"
 msgstr "현재 키 구간의 끝을 한 마디(이웃한 다운비트까지) 앞당깁니다"
 
-#: ui/edit_panel/key.py:43
+#: ui/edit_panel/key.py:45
 msgid "Move the current key segment's end one beat later"
 msgstr "현재 키 구간의 끝을 한 박 늦춥니다"
 
-#: ui/edit_panel/key.py:44
+#: ui/edit_panel/key.py:46
 msgid ""
 "Move the current key segment's end one bar (to the neighboring downbeat) "
 "later"
 msgstr "현재 키 구간의 끝을 한 마디(이웃한 다운비트까지) 늦춥니다"
 
-#: ui/edit_panel/key.py:68 ui/edit_panel/phrase.py:65
+#: ui/edit_panel/key.py:70 ui/edit_panel/phrase.py:65
 msgid "Boundaries move by one beat"
 msgstr "경계를 한 박씩 옮깁니다"
 
-#: ui/edit_panel/key.py:69 ui/edit_panel/phrase.py:66
+#: ui/edit_panel/key.py:71 ui/edit_panel/phrase.py:66
 msgid "Boundaries move by one bar (to the neighboring downbeat)"
 msgstr "경계를 한 마디씩(이웃한 다운비트까지) 옮깁니다"
 
-#: ui/edit_panel/key.py:77
+#: ui/edit_panel/key.py:79
 msgid "Split the current key segment at the beat nearest the playhead"
 msgstr "현재 키 구간을 플레이헤드에 가장 가까운 박에서 나눕니다"
 
-#: ui/edit_panel/key.py:78
+#: ui/edit_panel/key.py:80
 msgid ""
 "Merge the previous key segment into the current one (keeps the current "
 "key)"
 msgstr "이전 키 구간을 현재 구간에 합칩니다 (현재 키 유지)"
 
-#: ui/edit_panel/key.py:79
+#: ui/edit_panel/key.py:81
 msgid "Merge the next key segment into the current one (keeps the current key)"
 msgstr "다음 키 구간을 현재 구간에 합칩니다 (현재 키 유지)"
 
-#: ui/edit_panel/key.py:81
+#: ui/edit_panel/key.py:83
 msgid "Reanalyze the current key segment's key from the audio"
 msgstr "현재 키 구간의 키를 오디오에서 재분석합니다"
 
-#: ui/edit_panel/key.py:82
+#: ui/edit_panel/key.py:84
 msgid "Reanalyze the keys of the whole track (dynamic)"
 msgstr "트랙 전체의 키를 재분석합니다 (다이내믹)"
 
-#: ui/edit_panel/key.py:85
+#: ui/edit_panel/key.py:87
 msgid "Key changes (pick, semitone, fifth, relative) apply to the whole track"
 msgstr "키 변경(선택, 반음, 5도, 나란한조)을 트랙 전체에 적용합니다"
 
-#: ui/edit_panel/key.py:86
+#: ui/edit_panel/key.py:88
 msgid "Key changes (pick, semitone, fifth, relative) apply to the current segment"
 msgstr "키 변경(선택, 반음, 5도, 나란한조)을 현재 구간에 적용합니다"
 
-#: ui/edit_panel/key.py:110
+#: ui/edit_panel/key.py:112
 msgid ""
 "Root: hold the current key's root (and its octave) under the music.\n"
 "The plainest check of the tonic: it should feel like the note the music "
@@ -6286,7 +6301,7 @@ msgstr ""
 "근음: 현재 키의 근음(과 그 옥타브)을 음악 아래에 지속합니다.\n"
 "으뜸음을 가장 단순하게 확인하는 방법으로, 음악이 머무는 음처럼 느껴져야 합니다."
 
-#: ui/edit_panel/key.py:116
+#: ui/edit_panel/key.py:118
 msgid ""
 "Root and fifth: hold the current key's root and fifth under the music.\n"
 "In the right key it sounds at home all the way through; a lasting clash\n"
@@ -6296,7 +6311,7 @@ msgstr ""
 "맞는 키라면 처음부터 끝까지 자연스럽게 들립니다. 계속 부딪히면\n"
 "으뜸음이 틀렸거나(반음 / 5도 이동을 시도) 키가 바뀐 것입니다."
 
-#: ui/edit_panel/key.py:123
+#: ui/edit_panel/key.py:125
 msgid ""
 "Tonic chord: hold the current key's major / minor triad under the music.\n"
 "Tests the third: if the drone fits but the chord clashes, try the other "
@@ -6308,24 +6323,30 @@ msgstr ""
 "3음을 확인합니다: 드론은 맞는데 화음이 부딪히면 같은 근음의 다른 조성을,\n"
 "멜로디가 계속 다른 곳으로 해결되면 나란한조를 시도하세요."
 
-#: ui/edit_panel/key.py:129 ui/edit_panel/key.py:236
+#: ui/edit_panel/key.py:131 ui/edit_panel/key.py:254
 msgid "-- | Seg -- | Elapsed: 00:00.00 | Left: 00:00.00"
 msgstr "-- | 구간 -- | 경과: 00:00.00 | 남음: 00:00.00"
 
+#: ui/edit_panel/key.py:209
+msgid ""
+"(WARNING! The key heard is not the track's: the keys changed here are the"
+" track's own.)"
+msgstr "(경고! 지금 들리는 키는 트랙의 원래 키가 아닙니다. 여기서 바꾸는 키는 트랙의 원래 키입니다.)"
+
 # | msgid "" "Pick one key for the whole track: it becomes one segment in that
 # | key " "(Camelot wheel)"
-#: ui/edit_panel/key.py:208
+#: ui/edit_panel/key.py:219
 msgid ""
 "Pick one key for the whole track: it becomes one segment in that key "
 "(Alphanumeric wheel)"
 msgstr "트랙 전체에 키 하나를 고릅니다: 그 키로 된 한 구간이 됩니다 (Alphanumeric 휠)"
 
 # | msgid "Pick the current segment's key (Camelot wheel)"
-#: ui/edit_panel/key.py:209
+#: ui/edit_panel/key.py:220
 msgid "Pick the current segment's key (Alphanumeric wheel)"
 msgstr "현재 구간의 키 선택 (Alphanumeric 휠)"
 
-#: ui/edit_panel/key.py:249
+#: ui/edit_panel/key.py:267
 #, python-brace-format
 msgid "{key} | Seg {index} | Elapsed: {elapsed} | Left: {left}"
 msgstr "{key} | 구간 {index} | 경과: {elapsed} | 남음: {left}"
@@ -6347,7 +6368,7 @@ msgid "Edit the JumpCUEs and CUE points"
 msgstr "JumpCUE와 CUE 포인트 편집"
 
 # | msgid "The file could not be written: {error}"
-#: ui/edit_panel/panel.py:592
+#: ui/edit_panel/panel.py:593
 #, python-brace-format
 msgid ""
 "The edits could not be saved:\n"
@@ -6357,17 +6378,17 @@ msgstr ""
 "{error}"
 
 # | msgid "Shared"
-#: ui/edit_panel/panel.py:592 ui/windows/tieup_works.py:88
+#: ui/edit_panel/panel.py:593 ui/windows/tieup_works.py:88
 msgid "Save"
 msgstr "저장"
 
-#: ui/edit_panel/panel.py:625
+#: ui/edit_panel/panel.py:626
 msgid ""
 "<p>Editing is locked: pages switch, but nothing is edited or saved. Click"
 " to unlock.</p>"
 msgstr "<p>편집이 잠겨 있습니다: 페이지는 바뀌지만 편집이나 저장은 되지 않습니다. 클릭하면 잠금이 풀립니다.</p>"
 
-#: ui/edit_panel/panel.py:627
+#: ui/edit_panel/panel.py:628
 msgid ""
 "<p>Editing is unlocked: the shown pages' graphics are emphasized. Click "
 "to lock: no edits, no saving (on at every start).</p>"
@@ -6375,37 +6396,37 @@ msgstr ""
 "<p>편집이 풀려 있습니다: 보이는 페이지의 그래픽이 강조됩니다. 클릭하면 잠급니다: 편집과 저장이 막힙니다 (시작할 때마다 "
 "잠김).</p>"
 
-#: ui/edit_panel/panel.py:738
+#: ui/edit_panel/panel.py:739
 #, python-brace-format
 msgid "This shortcut does nothing on the {page} page."
 msgstr "이 단축키는 {page} 페이지에서는 아무것도 하지 않습니다."
 
-#: ui/edit_panel/panel.py:746
+#: ui/edit_panel/panel.py:747
 msgid "Editing is locked."
 msgstr "편집이 잠겨 있습니다."
 
 # | msgid "Segment reanalysis finished"
-#: ui/edit_panel/panel.py:748
+#: ui/edit_panel/panel.py:749
 msgid "Editing waits for the segment reanalysis to finish."
 msgstr "구간 재분석이 끝날 때까지 편집할 수 없습니다."
 
 # | msgid "Delete JumpCUE {letter}"
-#: ui/edit_panel/panel.py:781 ui/edit_panel/panel.py:794
+#: ui/edit_panel/panel.py:782 ui/edit_panel/panel.py:795
 #, python-brace-format
 msgid "JumpCUE {letter} is not set."
 msgstr "JumpCUE {letter}가 설정되어 있지 않습니다."
 
-#: ui/edit_panel/panel.py:790
+#: ui/edit_panel/panel.py:791
 #, python-brace-format
 msgid "JumpCUE {letter} is already set."
 msgstr "JumpCUE {letter}가 이미 설정되어 있습니다."
 
-#: ui/edit_panel/panel.py:810
+#: ui/edit_panel/panel.py:811
 msgid "CALL works while stopped."
 msgstr "CALL은 정지 중에만 동작합니다."
 
 # | msgid "Split the current segment at the playhead"
-#: ui/edit_panel/panel.py:826
+#: ui/edit_panel/panel.py:827
 msgid "No CUE point at the playhead."
 msgstr "플레이헤드에 CUE 포인트가 없습니다."
 
@@ -8181,28 +8202,28 @@ msgstr "덱에 로드"
 
 # | msgid "Tempo range: ±6% / ±10% / ±16% / WIDE (0%-200%); click for the
 # next"
-#: ui/pane.py:353
+#: ui/pane.py:354
 msgid "Tempo range: ±6% / ±10% / ±16% / WIDE; click for the next"
 msgstr "템포 범위: ±6% / ±10% / ±16% / WIDE. 누를 때마다 다음 범위"
 
 # | msgid "Tempo (0%-200%, 0 stops)"
-#: ui/pane.py:373
+#: ui/pane.py:374
 #, python-format
 msgid "Tempo (WIDE: 0%-200%, 0 stops)"
 msgstr "템포 (WIDE: 0%-200%, 0이면 정지)"
 
 # | msgid "A semitone up: the current segment's key"
-#: ui/pane.py:423
+#: ui/pane.py:427
 msgid "Key a semitone up (the tempo kept)"
 msgstr "키 반음 올림(템포는 그대로)"
 
-#: ui/pane.py:425
+#: ui/pane.py:429
 #, python-brace-format
 msgid "Key shift in semitones (±{max}); click: the track's own key"
 msgstr "반음 단위 키 시프트(±{max}). 누르면 트랙의 원래 키로 돌아갑니다."
 
 # | msgid "A semitone down: the current segment's key"
-#: ui/pane.py:427
+#: ui/pane.py:431
 msgid "Key a semitone down (the tempo kept)"
 msgstr "키 반음 내림(템포는 그대로)"
 
@@ -8210,35 +8231,35 @@ msgstr "키 반음 내림(템포는 그대로)"
 # held
 # | on the" " cue point, plays until let go (PLAY while held: plays on);
 # | playing, back" " to the cue point and stop"
-#: ui/pane.py:489
+#: ui/pane.py:499
 msgid ""
 "CUE: stopped, sets the cue point here / held on the cue point, plays "
 "until let go; playing, back to the cue point and stop"
 msgstr "CUE: 정지 중이면 여기에 큐 포인트를 설정 / 큐 포인트에서 누르고 있으면 뗄 때까지 재생. 재생 중이면 큐 포인트로 돌아가 정지"
 
-#: ui/pane.py:493 ui/shortcuts.py:89
+#: ui/pane.py:503 ui/shortcuts.py:89
 msgid "Tempo reset (100%)"
 msgstr "템포 초기화 (100%)"
 
-#: ui/pane.py:495
+#: ui/pane.py:505
 msgid "Master tempo: time stretch keeps the pitch"
 msgstr "마스터 템포: 타임 스트레치로 피치를 유지합니다"
 
 # | msgid "Available with the native audio engine only."
 # | msgid "The spectrum needs the native audio engine."
-#: ui/pane.py:523
+#: ui/pane.py:533
 msgid "Key shift needs the native audio engine."
 msgstr "키 시프트에는 Native 오디오 엔진이 필요합니다."
 
-#: ui/config/external_sync.py:105 ui/library/widget.py:389 ui/pane.py:596
+#: ui/config/external_sync.py:105 ui/library/widget.py:389 ui/pane.py:620
 msgid "External Sync"
 msgstr "외부 동기화"
 
-#: ui/pane.py:597
+#: ui/pane.py:621
 msgid "Playback is disabled while External Sync is enabled."
 msgstr "외부 동기화가 켜져 있는 동안에는 재생할 수 없습니다."
 
-#: ui/pane.py:926
+#: ui/pane.py:952
 msgid "Not Loaded"
 msgstr "불러온 트랙 없음"
 
@@ -8798,15 +8819,15 @@ msgstr "{page} 페이지 보기"
 msgid "It becomes the current page."
 msgstr "그 페이지가 현재 페이지가 됩니다."
 
-#: ui/edit_panel/panel.py:219 ui/shortcuts.py:186
+#: ui/edit_panel/panel.py:220 ui/shortcuts.py:186
 msgid "Undo Changes"
 msgstr "변경 실행 취소"
 
-#: ui/edit_panel/panel.py:223 ui/shortcuts.py:187
+#: ui/edit_panel/panel.py:224 ui/shortcuts.py:187
 msgid "Redo Changes"
 msgstr "변경 다시 실행"
 
-#: ui/edit_panel/panel.py:227 ui/shortcuts.py:188
+#: ui/edit_panel/panel.py:228 ui/shortcuts.py:188
 msgid "Save Edits"
 msgstr "편집 저장"
 
@@ -9034,7 +9055,7 @@ msgid "Pick the key"
 msgstr "키 선택"
 
 # | msgid "Pick the key (Camelot wheel)"
-#: ui/edit_panel/key.py:95 ui/edit_panel/key_picker.py:82 ui/shortcuts.py:238
+#: ui/edit_panel/key.py:97 ui/edit_panel/key_picker.py:82 ui/shortcuts.py:238
 msgid "Pick the key (Alphanumeric wheel)"
 msgstr "키 선택 (Alphanumeric 휠)"
 
@@ -9087,7 +9108,7 @@ msgstr "나란한조 장조 / 단조 (C <-> Am)"
 msgid "Merge the same keys"
 msgstr "같은 키 합치기"
 
-#: ui/edit_panel/key.py:80 ui/shortcuts.py:247
+#: ui/edit_panel/key.py:82 ui/shortcuts.py:247
 msgid "Merge every run of neighboring segments with the same key"
 msgstr "키가 같은 이웃 구간들을 모두 하나로 합칩니다"
 

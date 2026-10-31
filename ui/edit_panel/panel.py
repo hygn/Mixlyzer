@@ -117,6 +117,7 @@ class EditPanel(
         self._marks_timer.timeout.connect(self._send_deck_marks)
         self._marks_timer.start()
         self.bus.sig_tempo_factor_changed.connect(self._on_playback_tempo_changed)
+        self.bus.sig_played_changed.connect(self._on_played_key)
         self.bus.sig_playback_status.connect(self._on_playback_status)
         self._set_locked(self.btn_lock.isChecked())
 

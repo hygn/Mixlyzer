@@ -3,6 +3,37 @@ import numpy as np
 from views.render.color import key_cmap_color
 
 
+def transposed(key_segments, semitones: int):
+    """Key rows [pitch, mode, start, end] with every key moved by ``semitones`` (its mode kept): the keys as heard."""
+    if not semitones:
+        return key_segments
+    try:
+        arr = np.array(key_segments, dtype=float, copy=True)
+    except Exception:
+        return key_segments
+    if arr.ndim != 2 or arr.shape[1] < 4:
+        return key_segments
+    arr[:, 0] = np.mod(arr[:, 0] + semitones, 12)
+    return arr
+
+
+def scaled_tempo_segments(tempo_segments, speed: float):
+    """Tempo rows [start, end, bpm, inizio, ts, bpm_end] with their tempos times ``speed`` (the times as they are):
+    the tempos as heard."""
+    if speed == 1.0 or not speed > 0:
+        return tempo_segments
+    try:
+        arr = np.array(tempo_segments, dtype=float, copy=True)
+    except Exception:
+        return tempo_segments
+    if arr.ndim != 2 or arr.shape[1] < 3:
+        return tempo_segments
+    arr[:, 2] *= speed
+    if arr.shape[1] > 5:
+        arr[:, 5] *= speed
+    return arr
+
+
 def key_strip_segments(key_segments) -> list[tuple[float, float, tuple[int, int, int]]]:
     """(start, end, colour) of each key segment, for a SegmentStrip."""
     return [(start, end, key_cmap_color(idx)) for idx, start, end in key_segment_rows(key_segments)]
