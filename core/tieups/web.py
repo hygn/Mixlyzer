@@ -21,8 +21,9 @@ Wikidata: CC0):
      checks) is, of the works whose pages are works', the one the song's own page names most, or the one the
      searches' pages name most (the searches go on until two agree): a tag a little wrong now and then is better
      than none. Its role the one named most, else none. The others are suggestions the Edit tab shows.
-Requests go one at a time, at most one a second, with the User-Agent Wikimedia asks for and maxlag; answers are kept
-for CACHE_DAYS (cache/tieup_web.db), so a song is not asked for twice.
+Requests go one at a time, at most one a second, with the User-Agent Wikimedia asks for and maxlag (a refusal asked
+again after the wait it names; still refused, the lookup fails: Busy); answers are kept for CACHE_DAYS
+(cache/tieup_web.db), so a song is not asked for twice.
 """
 from __future__ import annotations
 
@@ -34,6 +35,7 @@ import re
 import sqlite3
 import threading
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from typing import Callable, Optional
@@ -50,6 +52,9 @@ PAGES_READ = 3          # each search's first pages read
 PAGES_MAX = 8           # pages read at most for a song
 MIN_INTERVAL_SEC = 1.0  # between two requests
 TIMEOUT_SEC = 10.0
+MAXLAG_SEC = 5          # asked of every request: Wikimedia refuses it while its servers lag more (maxlag)
+MAXLAG_TRIES = 3        # a refused request asked again after the wait it names, then the lookup fails
+MAXLAG_WAIT_SEC = (5.0, 30.0)   # the wait between, at least and at most
 CACHE_DAYS = 30
 CACHE_NAME = os.path.join("cache", "tieup_web.db")
 RULES = 9           # how pages are read and a tie-up picked: raise it when they change (the answers kept asked again)
@@ -141,6 +146,17 @@ class Candidate:
         return tieup.TieUp(self.work, self.role, self.seq, self.detail)
 
 
+class Busy(RuntimeError):
+    """Wikimedia still refused a request after MAXLAG_TRIES (maxlag: Wikidata counts its query service's lag in,
+    often over MAXLAG_SEC): the lookup fails, so nothing is kept and the song is asked for again another time (a
+    request's answer taken as empty, its work kept without its names in other languages for CACHE_DAYS)."""
+
+
+def _maxlag(answer) -> Optional[dict]:
+    error = answer.get("error") if isinstance(answer, dict) else None
+    return error if isinstance(error, dict) and error.get("code") == "maxlag" else None
+
+
 class Wikimedia:
     """Wikipedia and Wikidata over HTTP: one request at a time, MIN_INTERVAL_SEC apart; ``fetch`` (url, params) ->
     JSON stands in for the network in tests."""
@@ -151,20 +167,41 @@ class Wikimedia:
         self._last = 0.0
 
     def _http(self, url: str, params: dict) -> dict:
-        query = urllib.parse.urlencode({**params, "format": "json", "formatversion": "2", "maxlag": "5"})
+        query = urllib.parse.urlencode({**params, "format": "json", "formatversion": "2", "maxlag": str(MAXLAG_SEC)})
         req = urllib.request.Request(f"{url}?{query}", headers={"User-Agent": USER_AGENT})
-        with urllib.request.urlopen(req, timeout=TIMEOUT_SEC) as resp:
-            return json.load(resp)
+        try:
+            with urllib.request.urlopen(req, timeout=TIMEOUT_SEC) as resp:
+                return json.load(resp)
+        except urllib.error.HTTPError as exc:     # a maxlag refusal may come as a 503 with its JSON
+            try:
+                answer = json.load(exc)
+            except ValueError:
+                raise exc from None
+            if not _maxlag(answer):
+                raise
+            answer["error"]["retry_after"] = exc.headers.get("Retry-After")
+            return answer
 
     def get(self, url: str, **params) -> dict:
         with self._lock:
-            wait = self._last + MIN_INTERVAL_SEC - time.monotonic()
-            if wait > 0 and self._fetch is self._http:
-                time.sleep(wait)
-            try:
-                return self._fetch(url, params)
-            finally:
-                self._last = time.monotonic()
+            for attempt in range(MAXLAG_TRIES):
+                wait = self._last + MIN_INTERVAL_SEC - time.monotonic()
+                if wait > 0 and self._fetch is self._http:
+                    time.sleep(wait)
+                try:
+                    answer = self._fetch(url, params)
+                finally:
+                    self._last = time.monotonic()
+                lag = _maxlag(answer)
+                if lag is None:
+                    return answer
+                if attempt + 1 < MAXLAG_TRIES and self._fetch is self._http:
+                    try:
+                        named = float(lag.get("retry_after") or lag.get("lag") or 0)
+                    except (TypeError, ValueError):
+                        named = 0.0
+                    time.sleep(min(max(named, MAXLAG_WAIT_SEC[0]), MAXLAG_WAIT_SEC[1]))
+            raise Busy(f"Wikimedia lags ({lag.get('info', 'maxlag')}): asked again another time")
 
 
 _SHARED: Optional[Wikimedia] = None
@@ -533,6 +570,8 @@ def _entity(api, page: str) -> tuple[Optional[str], dict]:
         data = api.get(WIKIDATA, action="wbgetentities", ids=item, props="labels|aliases|claims",
                        languages="|".join(WIKIDATA_LANGS))
         return item, data.get("entities", {}).get(item, {})
+    except Busy:
+        raise           # the lookup fails: not kept without the work's names
     except Exception:
         return None, {}
 
@@ -549,6 +588,8 @@ def _not_a_work(api, page: str) -> bool:
     """A page that is a person's, a group's or a record's by its categories (_NOT_WORK_CATEGORY)."""
     try:
         return any(_NOT_WORK_CATEGORY.search(c) for c in _categories(api, [page])[1])
+    except Busy:
+        raise
     except Exception:
         return False
 
@@ -565,6 +606,8 @@ def page_category(api, page: str) -> Optional[str]:
         if not info or info.get("missing") or "invalid" in info:
             return None
         parents = _categories(api, [f"Category:{c}" for c in cats[:50]])[1] if cats else []
+    except Busy:
+        raise
     except Exception:
         return None
     title = re.sub(r"\s*\([^)]*\)$", "", info.get("title", page))

@@ -437,6 +437,34 @@ class TieupWebTests(unittest.TestCase):
             self.assertEqual(got[0].work.title("ja-JP"), "ぼっち・ざ・ろっく！")   # the library's own kept first
             db.close()
 
+    def test_a_maxlag_refusal_asked_again(self):
+        fake, refused = Fake(), {"n": 0}
+
+        def fetch(url, params):     # Wikidata lagging for its first two answers (its query service counted in)
+            if params.get("action") == "wbgetentities" and refused["n"] < tw.MAXLAG_TRIES - 1:
+                refused["n"] += 1
+                return {"error": {"code": "maxlag", "info": "Waiting for wdqs: 6 seconds lagged", "lag": 6}}
+            return fake(url, params)
+
+        found = tw.search(tw.Wikimedia(fetch), "青い鳥", "結束バンド")
+        self.assertEqual(refused["n"], tw.MAXLAG_TRIES - 1)
+        self.assertEqual(found[0].work.title("ko-KR"), "봇치 더 록!")      # the work's names in other languages
+
+    def test_still_refused_the_lookup_fails_and_nothing_is_kept(self):
+        fake = Fake()
+
+        def fetch(url, params):
+            if params.get("action") == "wbgetentities":
+                return {"error": {"code": "maxlag", "info": "Waiting for wdqs: 9 seconds lagged", "lag": 9}}
+            return fake(url, params)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            cache = str(Path(tmp) / "cache.db")
+            with self.assertRaises(tw.Busy):     # not the work kept without its names for CACHE_DAYS
+                tw.lookup(tw.Wikimedia(fetch), "青い鳥", "結束バンド", cache)
+            self.assertEqual(tw.lookup(tw.Wikimedia(Fake()), "青い鳥", "結束バンド", cache)[0].work.title("ko-KR"),
+                             "봇치 더 록!")    # asked again, not answered from the cache
+
 
 if __name__ == "__main__":
     unittest.main()

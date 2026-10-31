@@ -2,7 +2,9 @@
 off the user's files and devices while a test module runs: the current folder a temporary one (a relative path the
 app writes lands there), the settings `default_cfg()` (no settings' owner installed: nothing written), the user's shortcut and MIDI files temporary ones, no
 audio input listed, no key reported as held by another program."""
+import atexit
 import contextlib
+import gc
 import os
 import tempfile
 from unittest import mock
@@ -19,6 +21,18 @@ APP = QApplication.instance() or QApplication([])
 from pyqtgraph.util.garbage_collector import GarbageCollector  # noqa: E402
 
 COLLECTOR = GarbageCollector(interval=1.0)
+
+
+@atexit.register    # registered after PySide's own, so run before it
+def _close_windows() -> None:
+    """The windows the tests left (a panel each test made) closed and deleted on this thread before Python ends:
+    PySide's own end deletes what is left all at once, and a tree of widgets went with an exception out of shiboken
+    (an abort, the tests all passed)."""
+    for widget in APP.topLevelWidgets():
+        widget.close()
+        widget.deleteLater()
+    APP.sendPostedEvents(None, QtCore.QEvent.DeferredDelete)
+    gc.collect()
 
 
 class NoAudioInputs(QtCore.QObject):
