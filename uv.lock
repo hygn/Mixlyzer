@@ -906,7 +906,6 @@ dependencies = [
     { name = "anyascii" },
     { name = "librosa" },
     { name = "matplotlib" },
-    { name = "pycantonese" },
     { name = "pyinstaller" },
     { name = "pypinyin" },
     { name = "pyqtgraph" },
@@ -928,7 +927,9 @@ dependencies = [
 [package.dev-dependencies]
 dev = [
     { name = "babel" },
+    { name = "fonttools" },
     { name = "pip-licenses" },
+    { name = "pycantonese" },
 ]
 docs = [
     { name = "furo" },
@@ -952,7 +953,6 @@ requires-dist = [
     { name = "anyascii", specifier = ">=0.3.3" },
     { name = "librosa", specifier = ">=0.11.0" },
     { name = "matplotlib", specifier = ">=3.10.7" },
-    { name = "pycantonese", specifier = ">=5.0.0" },
     { name = "pyinstaller", specifier = ">=6.16.0" },
     { name = "pypinyin", specifier = ">=0.55.0" },
     { name = "pyqtgraph", specifier = ">=0.13.7" },
@@ -974,7 +974,9 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "babel", specifier = ">=2.18.0" },
+    { name = "fonttools", specifier = ">=4.60.1" },
     { name = "pip-licenses", specifier = ">=5.5.0" },
+    { name = "pycantonese", specifier = ">=5.0.0" },
 ]
 docs = [
     { name = "furo", specifier = ">=2025.12.19" },

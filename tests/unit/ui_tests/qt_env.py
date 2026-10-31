@@ -14,6 +14,11 @@ from PySide6.QtMultimedia import QAudioDevice
 from PySide6.QtWidgets import QApplication
 
 APP = QApplication.instance() or QApplication([])
+# the garbage collector on this (the GUI) thread only, as app.main runs it: run automatically on a worker's thread
+# (the library's owner, a decode) it destroyed a widget left in a cycle there, its timers firing later at it
+from pyqtgraph.util.garbage_collector import GarbageCollector  # noqa: E402
+
+COLLECTOR = GarbageCollector(interval=1.0)
 
 
 class NoAudioInputs(QtCore.QObject):
@@ -58,3 +63,4 @@ def drain(ms: int = 0) -> None:
     """Posted events and zero-delay timers run."""
     APP.processEvents(QtCore.QEventLoop.AllEvents, ms)
     APP.sendPostedEvents()
+    COLLECTOR.check()

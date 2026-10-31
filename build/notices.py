@@ -9,8 +9,8 @@ Three parts, each in a fixed order so a run without changes writes the same file
      engine's VOLK with cpu_features, its Rust standard library and its toolchain's runtime (llvm-mingw), FFmpeg
      (the repository root's, FFmpeg's own code under the LGPL, build/ffmpeg.py's: one built with --enable-gpl or
      --enable-nonfree, or with a library of another project, is refused; its version, source, build recipe and
-     configuration from its -version), the fonts, the Unicode data the readings tables come
-     from, the Cantonese data pycantonese reads (the spec ships only those);
+     configuration from its -version), the fonts, the data the readings tables come from (Unihan, the CMU
+     Pronouncing Dictionary, HKCanCor and rime-cantonese: build/cantonese.py);
   2. the Python packages the app runs on (uv export, no development groups), by pip-licenses with their licence and
      notice files;
   3. the native engine's Rust crates on Windows, Linux and macOS (cargo metadata of each, offline: the crates as
@@ -176,11 +176,12 @@ def bundled() -> str:
          "English words' pronunciations (assets/readings/cmudict.tsv is made from it), read for English titles' "
          "readings. https://github.com/cmusphinx/cmudict", [ROOT / "assets" / "readings" / "CMUDICT-LICENSE.txt"]),
         ("Hong Kong Cantonese Corpus (HKCanCor)", "CC BY 4.0",
-         "Data in pycantonese, read for Cantonese readings. Luke, Kang-Kwong and May L.Y. Wong. 2015. The Hong Kong "
-         "Cantonese Corpus: Design and Uses. Journal of Chinese Linguistics.",
-         [site / "pycantonese" / "data" / "hkcancor" / "LICENSE.txt"]),
-        ("rime-cantonese", "CC BY 4.0", "Data in pycantonese, read for Cantonese readings. "
-         "https://github.com/rime/rime-cantonese", [site / "pycantonese" / "data" / "rime_cantonese" / "LICENSE.txt"]),
+         "Cantonese readings (assets/readings/cantonese_*.tsv are made from it, as pycantonese reads it). Luke, "
+         "Kang-Kwong and May L.Y. Wong. 2015. The Hong Kong Cantonese Corpus: Design and Uses. Journal of Chinese "
+         "Linguistics.", [ROOT / "assets" / "readings" / "HKCANCOR-LICENSE.txt"]),
+        ("rime-cantonese", "CC BY 4.0", "Cantonese readings (assets/readings/cantonese_*.tsv are made from it, as "
+         "pycantonese reads it). https://github.com/rime/rime-cantonese",
+         [ROOT / "assets" / "readings" / "RIME-CANTONESE-LICENSE.txt"]),
     ]
     lgpl3 = "Qt, PySide6, Shiboken6, VOLK" + (", FFmpeg" if ffmpeg is not None and "LGPL-3" in ffmpeg[1] else "")
     entries.append(("The GNU General Public License v3", "GPL-3.0",

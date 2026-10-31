@@ -22,7 +22,6 @@ dependencies = [
     "anyascii>=0.3.3",
     "rapidfuzz>=3.14.6",
     "pypinyin>=0.55.0",
-    "pycantonese>=5.0.0",
     "pyrekordbox>=0.5.0",
     "sqlcipher3-wheels>=0.5.7",
 ]
@@ -30,7 +29,9 @@ dependencies = [
 [dependency-groups]
 dev = [
     "babel>=2.18.0",
+    "fonttools>=4.60.1",
     "pip-licenses>=5.5.0",
+    "pycantonese>=5.0.0",   # build/cantonese.py: its tables written out (assets/readings/cantonese_*.tsv)
 ]
 # build/docs.py: the developer documentation (Sphinx, MyST Markdown; sphinx-intl its translations' catalogs)
 docs = [

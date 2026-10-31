@@ -1,3 +1,4 @@
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -152,12 +153,13 @@ class ChineseReadingTests(unittest.TestCase):
         self.assertEqual(yue("千本桜"), "cin bun jing")
         self.assertEqual(yue("学生"), "hok saang")   # the word found in its variants (生 alone: sang)
 
-    def test_cantonese_by_the_longest_words_without_the_segmenter(self):
-        from pycantonese.word_segmentation.segmenter import _get_default_segmenter
+    def test_cantonese_by_the_longest_words_without_pycantonese(self):
         self.assertEqual(reading._cantonese_split("香港人講廣東話"), ["香港人", "講", "廣東話"])
         self.assertEqual(reading._read_cantonese("銀行"), "ngan hong")   # 行 by its word (alone: hang)
         self.assertEqual(reading._read_cantonese("行人"), "hang jan")
-        self.assertEqual(_get_default_segmenter.cache_info().currsize, 0)   # its model (160 MB) never loaded
+        self.assertEqual(reading._read_cantonese("香港人講廣東話。"), "hoeng gong jan gong gwong dung waa .")
+        # its tables written out (build/cantonese.py): neither its corpus (180 MB) nor its segmenter (160 MB) loaded
+        self.assertNotIn("pycantonese", sys.modules)
 
     def test_found_by_chinese_readings(self):
         for query, title in [("qianbenying", "千本桜"), ("cin bun jing", "千本桜"), ("senbonzakura", "千本桜"),

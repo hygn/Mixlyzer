@@ -38,6 +38,8 @@ build/*
 !build/ffmpeg.py
 !build/pipeline_map_svg.py
 !build/notices.py
+!build/fonts.py
+!build/cantonese.py
 
 # Native audio engine: its build (build/audio_engine.py) and the VOLK it builds
 audioengine/native/bin/

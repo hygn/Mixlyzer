@@ -45,6 +45,11 @@ def main():
     # Python's 5, so a small output buffer is fed in time (measured: a 20 ms buffer ran dry under GUI work).
     sys.setswitchinterval(0.001)
     app = QtWidgets.QApplication(sys.argv)
+    # Python's garbage collector run on the GUI thread only, on a timer (its thresholds as they were): run
+    # automatically it ran on whichever thread allocated, and a Qt object in a cycle it freed there (a widget, a
+    # timer) was destroyed off the GUI thread, its timers left behind to fire at a deleted object (a crash)
+    from pyqtgraph.util.garbage_collector import GarbageCollector
+    collector = GarbageCollector(interval=1.0)  # noqa: F841  (kept by main's frame while the app runs)
     # every window's icon (the splash, the main window, the dialogs and windows of their own)
     app.setWindowIcon(QtGui.QIcon(str(resource_path("assets/images/mixlyzer.png"))))
     # the language before any UI is made (or imported: the startup imports the rest)

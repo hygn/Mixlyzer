@@ -312,7 +312,7 @@ def startup_tasks(cfg) -> list[StartupTask]:
         StartupTask(tr("Loading libraries"), 3.0, _import_libraries),
         StartupTask(tr("Compiling audio kernels (JIT)"), 0.4, _compile_audio_kernels),
         StartupTask(tr("Starting FFmpeg"), 0.1, _warm_ffmpeg),
-        StartupTask(tr("Loading search readers"), 1.5, _load_readers),
+        StartupTask(tr("Loading search readers"), 0.45, _load_readers),
         StartupTask(tr("Measuring language names"), 0.6, _warm_language_names),
         StartupTask(tr("Loading the library"), 0.1, _open_library(cfg.libconfig.libpath, held, cfg.searchconfig)),
         StartupTask(tr("Building the window"), 2.3, _build_window(held, cfg), pump_events=False),

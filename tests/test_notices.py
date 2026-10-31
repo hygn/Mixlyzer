@@ -40,11 +40,15 @@ class NoticesTests(unittest.TestCase):
             if crate in crates:
                 self.assertIn(crate, entries(), crate)
 
-    def test_the_spec_ships_them_and_not_the_unread_corpora(self):
+    def test_the_spec_ships_them_and_no_cantonese_corpus(self):
         spec = (ROOT / "build" / "mixlyzer.spec").read_text(encoding="utf-8")
         self.assertIn("shipped('assets/notices')", spec)
-        for corpus in ("cantomap", "common_voice", "ctcpc"):
-            self.assertIn(f"data/{corpus}", spec)
+        # the Cantonese readings are the tables written out (build/cantonese.py) with their data's licences; none of
+        # pycantonese's corpora (CantoMap: GPL-3.0) is shipped
+        self.assertNotIn("pycantonese", spec)
+        for name in ("cantonese_words.tsv", "cantonese_chars.tsv", "HKCANCOR-LICENSE.txt",
+                     "RIME-CANTONESE-LICENSE.txt"):
+            self.assertTrue((ROOT / "assets" / "readings" / name).is_file(), name)
         # FFmpeg checked by the notices' own build before it is shipped
         self.assertIn("+ ffmpeg()", spec)
         self.assertIn("notices.ffmpeg_build(", spec)

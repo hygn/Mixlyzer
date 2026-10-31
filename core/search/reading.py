@@ -13,10 +13,11 @@ Three layers:
      Mandarin          pypinyin (by word: 重庆 chong qing), tones dropped, ü as u.
      Taiwan Mandarin   the Mandarin reading with Taiwan's where Unihan's kMandarin differs
                        (assets/readings/unihan_taiwan_mandarin.tsv: 乾 gan, 万 mo).
-     Cantonese         pycantonese (rime-cantonese, HKCanCor) Jyutping by word, tones dropped; a form
-                       it lacks (会, 学: Japanese new / simplified) read as its Unihan variant
+     Cantonese         pycantonese's tables (rime-cantonese, HKCanCor; assets/readings/cantonese_*.tsv,
+                       build/cantonese.py) Jyutping by word, tones dropped; a form they lack (会, 学:
+                       Japanese new / simplified) read as its Unihan variant
                        (assets/readings/unihan_cantonese_variants.tsv: 會, 學); the words are the
-                       longest of its word table from the left (not its segmenter model: 160 MB).
+                       longest of the word table from the left (not its segmenter model: 160 MB).
      Korean Hanja      Unihan kHangul (assets/readings/unihan_korean.tsv; the standard reading),
                        spelled as a word: the initial sound law on its first syllable (李 이, 女 여,
                        樂 낙), 렬 / 률 as 열 / 율 after a vowel or ㄴ (比率 비율), 不 as 부 before
@@ -406,7 +407,6 @@ def _read_japanese(text: str) -> str:
 
 # ---- Chinese ----
 
-_chinese_lock = threading.Lock()
 _taiwan: dict[str, tuple[str, str]] | None = None
 
 
@@ -447,23 +447,20 @@ _cantonese_table: tuple[dict, int] | None = None
 
 
 def _cantonese_words() -> tuple[dict, int]:
-    """pycantonese's word table (the one its characters_to_jyutping reads: rime-cantonese and HKCanCor's words)
-    and its longest word. It is built from the HKCanCor corpus, which pycantonese keeps after (about 90 MB):
-    let go, nothing reads it again."""
+    """The word table pycantonese's characters_to_jyutping reads (rime-cantonese's and HKCanCor's words, written
+    out by build/cantonese.py: pycantonese builds it by parsing the corpus, a second and about 180 MB) and its
+    longest word."""
     global _cantonese_table
     if _cantonese_table is None:
-        import pycantonese.corpus
-        from pycantonese.jyutping.characters import _get_words_characters_to_jyutping
-        words, _characters = _get_words_characters_to_jyutping()
-        pycantonese.corpus.hkcancor.cache_clear()
+        words = _readings_table("cantonese_words")
         _cantonese_table = (words, max(map(len, words)))
     return _cantonese_table
 
 
 def _cantonese_split(text: str) -> list[str]:
-    """``text`` cut into the longest words of pycantonese's word table from the left (a character alone where
-    none starts). Its segmenter model reads the same words in a text of Han only (the library's titles, artists
-    and albums alike) and takes 160 MB of memory."""
+    """``text`` cut into the longest words of the word table from the left (a character alone where none starts).
+    pycantonese's segmenter model reads the same words in a text of Han only (the library's titles, artists and
+    albums alike) and takes 160 MB of memory."""
     words, longest = _cantonese_words()
     out, i = [], 0
     while i < len(text):
@@ -473,26 +470,34 @@ def _cantonese_split(text: str) -> list[str]:
     return out
 
 
-def _read_cantonese(text: str) -> str:
-    import pycantonese
+def _jyutping(word: str) -> str | None:
+    """A word's Jyutping as pycantonese's characters_to_jyutping reads it: the word's own, else each character's,
+    None where a character has none."""
+    words, _longest = _cantonese_words()
+    if word in words:
+        return words[word]
+    chars = _readings_table("cantonese_chars")
+    parts = [chars.get(c) for c in word]
+    return None if None in parts else " ".join(parts)
 
+
+def _read_cantonese(text: str) -> str:
     def spelled(chars: str, reading: str | None) -> str:
         return re.sub(r"\d", "", reading) if reading else " ".join(anyascii(c).lower() for c in chars)
 
     # forms pycantonese lacks (会, 学: Japanese new / simplified) as their Unihan variants, before the words are
     # cut, so a word written with them is found (学生 as 學生, hok saang)
-    variants = _unihan_table("unihan_cantonese_variants")
+    variants = _readings_table("unihan_cantonese_variants")
     text = "".join(variants.get(c, c) for c in text)
-    with _chinese_lock:   # the first call builds the tables
-        pairs = pycantonese.characters_to_jyutping(_cantonese_split(text))
-    return " ".join(x for x in (spelled(chars, reading) for chars, reading in pairs) if x.strip())
+    words = _cantonese_split(text)
+    return " ".join(x for x in (spelled(word, _jyutping(word)) for word in words) if x.strip())
 
 
 _tables: dict[str, dict[str, str]] = {}
 
 
-def _unihan_table(name: str) -> dict[str, str]:
-    """Han character -> reading, from assets/readings/<name>.tsv (Unihan)."""
+def _readings_table(name: str) -> dict[str, str]:
+    """Han character (or word) -> reading, from assets/readings/<name>.tsv (Unihan's, the Cantonese ones)."""
     if name not in _tables:
         from system.resource_paths import resource_path
         text = resource_path(f"assets/readings/{name}.tsv").read_text(encoding="utf-8")
@@ -524,7 +529,7 @@ def _sino_korean_word(chars: str, table: dict[str, str]) -> str:
 
 
 def _read_korean_hanja(text: str) -> str:
-    table = _unihan_table("unihan_korean")
+    table = _readings_table("unihan_korean")
     out, word = [], ""
     for ch in text:
         if ch in table:
@@ -568,7 +573,7 @@ def _read_japanese_korean_hanja(run: str, han_run: int) -> str:
 
 
 def _read_vietnamese(text: str) -> str:
-    table = _unihan_table("unihan_vietnamese")
+    table = _readings_table("unihan_vietnamese")
     return " ".join(anyascii(table[ch]).lower() if ch in table else _read_mandarin(ch, taiwan=False)
                     for ch in text if ch.strip())
 
@@ -721,14 +726,14 @@ def _english(text: str, spelling: str) -> str:
 
 
 def warm_up(progress: Callable[[float, str], None] | None = None) -> None:
-    """Load the readers (Sudachi, pypinyin, pycantonese, the Unihan tables: about 1.5 s; the app does
+    """Load the readers (Sudachi, pypinyin, the Cantonese and Unihan tables: about 0.45 s; the app does
     it while starting), so the first reading or search does not wait; ``progress(fraction done,
     reader)`` before each (by its usual share of the time)."""
-    steps = [(tr("Japanese (SudachiDict)"), 0.04, _japanese_tokenizer),
-             (tr("Mandarin (pypinyin)"), 0.1, lambda: _read_mandarin("中", taiwan=True)),
-             (tr("Cantonese (pycantonese)"), 0.82, lambda: _read_cantonese("中")),
-             (tr("Korean Hanja (Unihan)"), 0.02, lambda: _unihan_table("unihan_korean")),
-             (tr("Sino-Vietnamese (Unihan)"), 0.02, lambda: _unihan_table("unihan_vietnamese"))]
+    steps = [(tr("Japanese (SudachiDict)"), 0.18, _japanese_tokenizer),
+             (tr("Mandarin (pypinyin)"), 0.56, lambda: _read_mandarin("中", taiwan=True)),
+             (tr("Cantonese (rime-cantonese, HKCanCor)"), 0.24, lambda: _read_cantonese("中")),
+             (tr("Korean Hanja (Unihan)"), 0.01, lambda: _readings_table("unihan_korean")),
+             (tr("Sino-Vietnamese (Unihan)"), 0.01, lambda: _readings_table("unihan_vietnamese"))]
     done = 0.0
     for name, share, load in steps:
         if progress is not None:
@@ -939,7 +944,7 @@ def text_initials(text: str) -> str:
     if not _KOREAN_OR_HAN.search(text):
         return ""
     kana = any(_is_kana(c) for c in text)
-    table = _unihan_table("unihan_korean")
+    table = _readings_table("unihan_korean")
     least = HAN_RUN_MIN if kana else 1
     parts: list[str] = []
     for run in _INITIALS_RUNS.findall(text):
@@ -1165,7 +1170,7 @@ def japanese_to_hangul(romaji: str, places: frozenset = frozenset()) -> str:
 def _korean_hanja_hangul(text: str) -> str:
     """Han characters as their Korean Hanja reading's Hangul, words as ``_read_korean_hanja`` spells them; other
     characters kept."""
-    table = _unihan_table("unihan_korean")
+    table = _readings_table("unihan_korean")
     out, word = [], ""
     for ch in fold_variants(text) + "\x00":
         if ch in table:

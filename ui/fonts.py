@@ -23,7 +23,8 @@ def font_rank(name: str, language: str) -> int:
 
 def load_fonts_and_set_global(app: QtWidgets.QApplication):
     qt_messages.install()     # the font fallback's notes among the notes left out
-    # 1) Register bundled fonts (all font files under the given directory), in the chain's order
+    # 1) Register bundled fonts (all font files under the given directory), in the chain's order; static ones at the
+    # weights drawn (build/fonts.py: a variable font on DirectWrite takes a copy of itself per named instance)
     font_dir = resource_path("assets/fonts")   # with the app's resources (a PyInstaller build: _internal)
     exts = {".ttf", ".otf", ".ttc", ".otc"}
     families = []

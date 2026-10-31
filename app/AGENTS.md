@@ -15,6 +15,7 @@ The details of `app/`: the start, the splash and the window's wiring. The root `
 - On startup the app:
   - makes the app folder the current folder (`system.resource_paths.app_folder`: the package folder in a build, else the project root), whatever folder it was started from: `config.json`, the library and the caches are always the app's, and no program or `config.json` of another folder is taken,
   - sets the UI language (`config.json`'s `viewconfig.language`, only read),
+  - runs Python's garbage collector on the GUI thread only (pyqtgraph's `GarbageCollector`: automatic collection off, a 1 s timer collecting by the same thresholds; the tests' `qt_env` too): run automatically it ran on whichever thread allocated (the library's owner, a decode), and a Qt object in a cycle freed there was destroyed off the GUI thread, its timers left to fire at it (an access violation),
   - shows the startup splash (`app.startup`),
   - loads `config.json` and `deck.json` (warning for each that could not be read and was kept aside),
   - ensures the library directory exists,
