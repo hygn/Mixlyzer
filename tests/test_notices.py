@@ -27,7 +27,8 @@ class NoticesTests(unittest.TestCase):
     def test_the_bundled_works_and_their_texts(self):
         text = NOTICES.read_text(encoding="utf-8")
         for name in ("Python", "Qt", "libsndfile", "VOLK", "cpu_features", "The Rust standard library", "Noto Sans",
-                     "Unicode Character Database", "Hong Kong Cantonese Corpus", "rime-cantonese",
+                     "Unicode Character Database", "CMU Pronouncing Dictionary", "Hong Kong Cantonese Corpus",
+                     "rime-cantonese",
                      "The GNU General Public License v3"):
             self.assertIn(f"--- {name}", text, name)
         self.assertIn("GNU LESSER GENERAL PUBLIC LICENSE", text)

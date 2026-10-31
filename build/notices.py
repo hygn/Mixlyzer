@@ -172,6 +172,9 @@ def bundled() -> str:
         ("Unicode Character Database (Unihan)", "Unicode-3.0",
          "The readings tables (assets/readings) are made from it.",
          [ROOT / "assets" / "readings" / "UNICODE-LICENSE.txt"]),
+        ("CMU Pronouncing Dictionary", "BSD-2-Clause",
+         "English words' pronunciations (assets/readings/cmudict.tsv is made from it), read for English titles' "
+         "readings. https://github.com/cmusphinx/cmudict", [ROOT / "assets" / "readings" / "CMUDICT-LICENSE.txt"]),
         ("Hong Kong Cantonese Corpus (HKCanCor)", "CC BY 4.0",
          "Data in pycantonese, read for Cantonese readings. Luke, Kang-Kwong and May L.Y. Wong. 2015. The Hong Kong "
          "Cantonese Corpus: Design and Uses. Journal of Chinese Linguistics.",

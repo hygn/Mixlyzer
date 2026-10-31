@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-31 01:57+0900\n"
+"POT-Creation-Date: 2026-10-31 20:34+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -1181,59 +1181,67 @@ msgstr ""
 msgid "External Sync analyzing external track before load: {path}"
 msgstr ""
 
-#: core/search/reading.py:61
+#: core/search/reading.py:64
 msgid "Mandarin"
 msgstr ""
 
-#: core/search/reading.py:61
+#: core/search/reading.py:64
 msgid "Taiwan Mandarin"
 msgstr ""
 
-#: core/search/reading.py:61 ui/widgets/language_picker.py:19
+#: core/search/reading.py:64 ui/widgets/language_picker.py:19
 msgid "Japanese"
 msgstr ""
 
-#: core/search/reading.py:62
+#: core/search/reading.py:65
 msgid "Cantonese"
 msgstr ""
 
-#: core/search/reading.py:62
+#: core/search/reading.py:65
 msgid "Korean Hanja"
 msgstr ""
 
-#: core/search/reading.py:62
+#: core/search/reading.py:65
 msgid "Sino-Vietnamese"
 msgstr ""
 
-#: core/search/reading.py:63
+#: core/search/reading.py:66
 msgid "as written"
 msgstr ""
 
-#: core/search/reading.py:63
+#: core/search/reading.py:66
 msgid "set by the user"
 msgstr ""
 
-#: core/search/reading.py:63 ui/widgets/language_picker.py:19
+#: core/search/reading.py:66 ui/widgets/language_picker.py:19
 msgid "Korean"
 msgstr ""
 
-#: core/search/reading.py:576
+#: core/search/reading.py:67
+msgid "English as Japanese spells it"
+msgstr ""
+
+#: core/search/reading.py:67
+msgid "English as Korean spells it"
+msgstr ""
+
+#: core/search/reading.py:727
 msgid "Japanese (SudachiDict)"
 msgstr ""
 
-#: core/search/reading.py:577
+#: core/search/reading.py:728
 msgid "Mandarin (pypinyin)"
 msgstr ""
 
-#: core/search/reading.py:578
+#: core/search/reading.py:729
 msgid "Cantonese (pycantonese)"
 msgstr ""
 
-#: core/search/reading.py:579
+#: core/search/reading.py:730
 msgid "Korean Hanja (Unihan)"
 msgstr ""
 
-#: core/search/reading.py:580
+#: core/search/reading.py:731
 msgid "Sino-Vietnamese (Unihan)"
 msgstr ""
 

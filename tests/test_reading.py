@@ -96,6 +96,46 @@ class ReadingTests(unittest.TestCase):
         self.assertFalse(found("사회부적합자", "ZAQ"))   # a short reading is not looked for in the query
 
 
+class EnglishReadingTests(unittest.TestCase):
+    """A Latin title found by its katakana or Hangul: its English words spelled from their sounds (CMUdict)."""
+
+    def test_spelled_as_each_language_spells_a_loanword(self):
+        table = reading._english_table()
+        for word, japanese, hangul in [
+            ("brave", "bureibu", "브레이브"), ("shine", "shain", "샤인"), ("dream", "doriimu", "드림"),
+            ("heart", "haato", "하트"), ("love", "rabu", "러브"), ("girl", "gaaru", "걸"), ("star", "sutaa", "스타"),
+            ("music", "myuuziku", "뮤직"), ("queen", "kuiin", "퀸"), ("street", "sutoriito", "스트리트"),
+            ("cat", "kyato", "캣"), ("fly", "furai", "플라이"), ("world", "waarudo", "월드"), ("song", "soongu", "송"),
+        ]:
+            with self.subTest(word=word):
+                phones = table[word].split()
+                self.assertEqual(reading.english_japanese(phones), japanese)
+                self.assertEqual(reading.english_hangul(phones), hangul)
+
+    def test_readings_after_the_first(self):
+        self.assertEqual(reading.readings("Brave Shine"), [
+            ("Brave Shine", "text"), ("bureibu shain", "en-ja"), ("bureibu syain", "en-ko")])
+        self.assertEqual(reading.readings("恋のMagic")[0], ("koi no Magic", "ja"))
+        self.assertIn(("koi no majiku", "en-ja"), reading.readings("恋のMagic"))
+        self.assertEqual(reading.readings("あのね"), [("ano ne", "ja")])                # no English: none added
+        # an apostrophe inside a word; abbreviations and words not in the dictionary as written
+        self.assertIn(("doonto sei reizii", "en-ja"), reading.readings("Don't say lazy"))
+        self.assertEqual(reading.readings("CV Mixlyzer"), [("CV Mixlyzer", "text")])
+
+    def test_found_by_katakana_and_hangul(self):
+        for query, title in [
+            ("ブレイブシャイン", "Brave Shine"), ("브레이브 샤인", "Brave Shine"), ("샤인", "Brave Shine"),
+            ("ドリーム", "Dream"), ("드림", "Dream"), ("ラブ", "Love"), ("러브", "Love"), ("ハート", "Heart"),
+            ("하트", "Heart"), ("ミュージック", "Music"), ("뮤직", "Music"), ("キャット", "Cat"), ("캣", "Cat"),
+            ("ドントセイレイジー", "Don't say lazy"), ("돈트 세이 레이지", "Don't say lazy"),
+            ("メロディー", "Melody"), ("멜로디", "Melody"), ("ワールド", "World"), ("월드", "World"),
+        ]:
+            with self.subTest(query=query, title=title):
+                self.assertTrue(found(query, title))
+        self.assertFalse(found("드림", "Brave Shine"))
+        self.assertFalse(found("シーブイ", "CV Mixlyzer"))      # letters are not spelled by their names
+
+
 class ChineseReadingTests(unittest.TestCase):
     def test_han_without_kana_reads_in_each_language(self):
         found_readings = dict((src, r) for r, src in reading.readings("乾杯"))
@@ -259,14 +299,15 @@ class ReadingLanguageTests(unittest.TestCase):
 
     def test_japanese_text_han_runs_in_korean_hanja(self):
         title = "Re:ゼロから始める異世界生活"
-        self.assertEqual(reading.readings(title), [("Re zero kara hajimeru isekai seikatsu", "ja"),
-                                                   ("Re zero kara hajimeru isegyesaenghwal", "ko-hanja")])
+        self.assertEqual(reading.readings(title)[:2], [("Re zero kara hajimeru isekai seikatsu", "ja"),
+                                                       ("Re zero kara hajimeru isegyesaenghwal", "ko-hanja")])
         self.assertTrue(found("이세계생활", title))
         self.assertTrue(found("사회부적합자", "ハイ!社会不適合者"))
         self.assertEqual([s for _r, s in reading.readings("夜に駆ける", han_run=2)], ["ja"])     # no run of 2
         self.assertEqual([s for _r, s in reading.readings("不思議なクスリ", han_run=4)], ["ja"])  # 3 < 4
-        self.assertEqual([s for _r, s in reading.readings(title, han_run=0)], ["ja"])            # off
-        self.assertEqual([s for _r, s in reading.readings(title, ["ja", "zh"])], ["ja"])           # no Korean Hanja
+        # (its Re read as English too, after them)
+        self.assertEqual([s for _r, s in reading.readings(title, han_run=0)], ["ja", "en-ja"])             # off
+        self.assertEqual([s for _r, s in reading.readings(title, ["ja", "zh"])], ["ja", "en-ja"])  # no Korean Hanja
         # 々 repeats a Japanese word, not a Han character to read
         self.assertEqual(reading.readings("時々不思議だね", han_run=2)[1], ("tokidoki bulsaui da ne", "ko-hanja"))
         # the settings: off is 0; a config.json without the fields takes the defaults

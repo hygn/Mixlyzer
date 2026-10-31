@@ -31,6 +31,9 @@ Three layers:
                        lateralization (신라 silla), aspiration (좋다 jota), palatalization (같이 gachi).
      other             Latin letters and digits kept as written, other scripts by anyascii
                        (Москва Moskva).
+     English           a text's English words spelled from their sounds (CMU Pronouncing Dictionary)
+                       as Japanese and as Korean spell a loanword (Brave bureibu, 브레이브), two more
+                       readings after the others: a Latin title found by its katakana or Hangul.
    A reading is a proxy of how the text sounds: its symbols are left out (Re:ゼロ Re zero, † read
    + by anyascii, 、。!), an apostrophe inside a word joins it (Don't Dont).
 2. Normalization (``normalize``): romaji into a search form where spellings of one sound
@@ -60,7 +63,8 @@ READING_SLOTS = 7  # readings stored per text (language readings and the user's 
 # a reading's source -> its name (translated where shown)
 SOURCES = {"ja": tr_mark("Japanese"), "zh": tr_mark("Mandarin"), "zh-tw": tr_mark("Taiwan Mandarin"),
            "yue": tr_mark("Cantonese"), "ko-hanja": tr_mark("Korean Hanja"), "vi": tr_mark("Sino-Vietnamese"),
-           "ko": tr_mark("Korean"), "text": tr_mark("as written"), "user": tr_mark("set by the user")}
+           "ko": tr_mark("Korean"), "text": tr_mark("as written"), "user": tr_mark("set by the user"),
+           "en-ja": tr_mark("English as Japanese spells it"), "en-ko": tr_mark("English as Korean spells it")}
 # the readings of Han without kana, in slot order (Taiwan Mandarin only where it differs from Mandarin)
 HAN_LANGUAGES = ("ja", "zh", "yue", "ko-hanja", "vi", "zh-tw")
 EXACT_MIN = 3     # a shorter normalized query would match nearly every track
@@ -569,6 +573,153 @@ def _read_vietnamese(text: str) -> str:
                     for ch in text if ch.strip())
 
 
+# ---- English: a Latin title found by its katakana or Hangul (Brave Shine by ブレイブシャイン, 브레이브 샤인) ----
+# Each English word of the CMU Pronouncing Dictionary (assets/readings/cmudict.tsv) spelled from its sounds as each
+# language spells a loanword; a word not in it, a letter alone and two capitals (CV, DJ, TV: abbreviations) are left
+# as written. Japanese: a consonant without a vowel after it takes one of its own (u; o after t / d, i after ch / j),
+# r after a vowel lengthens it (star スター), k / g before the vowel of cat palatal (キャ). Korean, read as a query's
+# Hangul is with Korean's spelling of foreign words (ㅓ o, ㅡ u: in Revised Romanization its many 브 / 트 / 스 made
+# short queries' eu / eo found in most English titles): p / t / k after a short vowel close its syllable (cat 캣),
+# another consonant without a vowel takes ㅡ (brave 브레이브; ch j sh ㅣ), l closes the syllable before it too (fly
+# 플라이), r after a vowel is silent (heart 하트). Letters are not spelled by their names (the CV of every character
+# song's credit, siibii, was found by short queries' isi).
+_EN_VOWELS = frozenset("AA AE AH AO AW AY EH ER EY IH IY OW OY UH UW".split())
+_EN_WORD = re.compile(r"[A-Za-z]+(?:['’][A-Za-z]+)*")
+
+_JA_VOWEL = {"AA": "a", "AE": "a", "AH": "a", "AO": "oo", "AW": "au", "AY": "ai", "EH": "e", "ER": "aa", "EY": "ei",
+             "IH": "i", "IY": "ii", "OW": "oo", "OY": "oi", "UH": "u", "UW": "uu"}
+_JA_R_VOWEL = {"AA": "aa", "AO": "oo", "EH": "ea", "IH": "ia", "UH": "ua", "AY": "aia"}   # vowel + r: star, care
+_JA_CONSONANT = {"B": "b", "CH": "ch", "D": "d", "DH": "z", "F": "f", "G": "g", "HH": "h", "JH": "j", "K": "k",
+                 "L": "r", "M": "m", "N": "n", "NG": "n", "P": "p", "R": "r", "S": "s", "SH": "sh", "T": "t",
+                 "TH": "s", "V": "b", "W": "w", "Y": "y", "Z": "z", "ZH": "j"}
+_JA_LONE = {"T": "to", "D": "do", "CH": "chi", "JH": "ji", "SH": "shu", "ZH": "ju", "N": "n", "NG": "ngu"}
+
+_KO_EN_VOWEL = {"AA": "ㅏ", "AE": "ㅐ", "AH": "ㅓ", "AO": "ㅗ", "AW": "ㅏㅜ", "AY": "ㅏㅣ", "EH": "ㅔ", "ER": "ㅓ",
+                "EY": "ㅔㅣ", "IH": "ㅣ", "IY": "ㅣ", "OW": "ㅗ", "OY": "ㅗㅣ", "UH": "ㅜ", "UW": "ㅜ"}
+_KO_EN_SHORT = frozenset(("AA", "AE", "AH", "EH", "IH", "UH"))    # p t k after them close the syllable
+_KO_EN_CONSONANT = {"B": "ㅂ", "CH": "ㅊ", "D": "ㄷ", "DH": "ㄷ", "F": "ㅍ", "G": "ㄱ", "HH": "ㅎ", "JH": "ㅈ", "K": "ㅋ",
+                    "L": "ㄹ", "M": "ㅁ", "N": "ㄴ", "P": "ㅍ", "R": "ㄹ", "S": "ㅅ", "SH": "ㅅ", "T": "ㅌ", "TH": "ㅅ",
+                    "V": "ㅂ", "W": "ㅇ", "Y": "ㅇ", "Z": "ㅈ", "ZH": "ㅈ"}
+_KO_EN_FINAL = {"M": "ㅁ", "N": "ㄴ", "NG": "ㅇ", "L": "ㄹ"}
+_KO_EN_STOP = {"P": "ㅂ", "T": "ㅅ", "K": "ㄱ"}
+_KO_Y_MEDIAL = {"ㅏ": "ㅑ", "ㅐ": "ㅒ", "ㅓ": "ㅕ", "ㅔ": "ㅖ", "ㅗ": "ㅛ", "ㅜ": "ㅠ", "ㅣ": "ㅣ"}
+_KO_W_MEDIAL = {"ㅏ": "ㅘ", "ㅐ": "ㅙ", "ㅓ": "ㅝ", "ㅔ": "ㅞ", "ㅗ": "ㅝ", "ㅜ": "ㅜ", "ㅣ": "ㅟ"}
+_KO_MEDIAL_JAMO = "ㅏㅐㅑㅒㅓㅔㅕㅖㅗㅘㅙㅚㅛㅜㅝㅞㅟㅠㅡㅢㅣ"
+
+
+def _english_table() -> dict[str, str]:
+    """English word (lower case, its apostrophe ') -> its phones (ARPAbet, no stress), from assets/readings/cmudict.tsv."""
+    if "cmudict" not in _tables:
+        from system.resource_paths import resource_path
+        text = resource_path("assets/readings/cmudict.tsv").read_text(encoding="utf-8")
+        _tables["cmudict"] = dict(line.split("\t", 1) for line in text.splitlines() if line and not line.startswith("#"))
+    return _tables["cmudict"]
+
+
+def _r_colored(phones: list[str], i: int) -> bool:
+    """Whether the vowel at ``i`` is followed by an r that no vowel follows (star, heart)."""
+    return i + 1 < len(phones) and phones[i + 1] == "R" and (i + 2 == len(phones) or phones[i + 2] not in _EN_VOWELS)
+
+
+def _onset(phones: list[str], i: int) -> tuple[str, int]:
+    """The glide (Y, W: music, queen) after the consonant at ``i`` before a vowel, and the vowel's index (-1: none)."""
+    j = i + 1
+    if phones[i] not in ("W", "Y") and j + 1 < len(phones) and phones[j] in ("W", "Y") and phones[j + 1] in _EN_VOWELS:
+        return phones[j], j + 1
+    return "", (j if j < len(phones) and phones[j] in _EN_VOWELS else -1)
+
+
+def english_japanese(phones: list[str]) -> str:
+    """An English word's phones as Japanese spells it, in wapuro romaji (brave bureibu, music myuujiku)."""
+    out, i = [], 0
+    while i < len(phones):
+        p = phones[i]
+        if p in _EN_VOWELS:
+            colored = _r_colored(phones, i) and p in _JA_R_VOWEL
+            out.append(_JA_R_VOWEL[p] if colored else _JA_VOWEL[p])
+            i += 2 if colored else 1
+            continue
+        glide, v = _onset(phones, i)
+        if v >= 0:
+            vowel = _JA_R_VOWEL[phones[v]] if _r_colored(phones, v) and phones[v] in _JA_R_VOWEL else _JA_VOWEL[phones[v]]
+            onset = _JA_CONSONANT[p] + {"Y": "y", "W": "u"}.get(glide, "")
+            if p == "W" and vowel[0] != "a":
+                onset = "u"                                      # ウィ ウェ ウォ
+            elif p == "Y" and vowel[0] in "ie":
+                onset = "i" if vowel[0] == "e" else ""           # イェ, イー
+            elif p in ("K", "G") and phones[v] == "AE" and not glide:
+                onset += "y"                                     # cat キャ
+            out.append(onset + vowel)
+            i = v + (2 if _r_colored(phones, v) and phones[v] in _JA_R_VOWEL else 1)
+            continue
+        after = phones[i + 1] if i + 1 < len(phones) else ""
+        if (p == "M" and after in ("B", "P")) or (p == "NG" and after in ("G", "K")):
+            out.append("n")
+        elif p != "R":                                           # r without a vowel: the vowel's length
+            out.append(_JA_LONE.get(p, _JA_CONSONANT[p] + "u"))
+        i += 1
+    return "".join(out)
+
+
+def english_hangul(phones: list[str]) -> str:
+    """An English word's phones as Korean spells it, in Hangul (brave 브레이브, cat 캣, fly 플라이)."""
+    syl: list[list[str]] = []      # [initial, medial, final]
+    short = False                  # the last syllable's vowel short (a p t k after it closes it)
+
+    def vowel(initial: str, glide: str, v: int) -> int:
+        nonlocal short
+        medials = _KO_EN_VOWEL[phones[v]]
+        first = medials[0]
+        if glide == "Y" or initial == "SH":
+            first = _KO_Y_MEDIAL[first]
+        elif glide == "W":
+            first = _KO_W_MEDIAL[first]
+        syl.append([_KO_EN_CONSONANT[initial] if initial else "ㅇ", first, ""])
+        syl.extend(["ㅇ", m, ""] for m in medials[1:])                           # a diphthong's second part
+        colored = _r_colored(phones, v)
+        short = phones[v] in _KO_EN_SHORT and len(medials) == 1 and not colored
+        return v + (2 if colored else 1)
+
+    i = 0
+    while i < len(phones):
+        p = phones[i]
+        if p in _EN_VOWELS:
+            i = vowel("", "", i)
+            continue
+        glide, v = _onset(phones, i)
+        if v >= 0:
+            if p == "L" and syl and not syl[-1][2]:
+                syl[-1][2] = "ㄹ"                                                # l closes the syllable before it
+            i = vowel(p, glide if p not in ("W", "Y") else p, v)
+            continue
+        after = phones[i + 1] if i + 1 < len(phones) else ""
+        if p in _KO_EN_FINAL and syl and not syl[-1][2]:
+            syl[-1][2] = _KO_EN_FINAL[p]
+        elif p in _KO_EN_STOP and syl and not syl[-1][2] and short and after not in ("L", "R", "M", "N", "Y", "W"):
+            syl[-1][2] = _KO_EN_STOP[p]
+        elif p not in ("R", "W", "Y", "NG"):
+            syl.append([_KO_EN_CONSONANT[p], "ㅣ" if p in ("CH", "JH", "ZH", "SH") else "ㅡ", ""])
+        short = False
+        i += 1
+    return "".join(chr(0xAC00 + (_INITIALS.index(a) * 21 + _KO_MEDIAL_JAMO.index(b)) * 28 + _FINALS.index(c))
+                   for a, b, c in syl)
+
+
+def _english(text: str, spelling: str) -> str:
+    """Latin text with its English words spelled as ``spelling`` ("ja" or "ko") spells them, in romaji."""
+    table = _english_table()
+
+    def word(m: re.Match) -> str:
+        w = m.group(0)
+        phones = table.get(w.lower().replace("’", "'"))
+        if not phones or (len(w) <= 2 and w.isupper() and w != "I") or (len(w) == 1 and w != "I"):
+            return w
+        if spelling == "ja":
+            return english_japanese(phones.split())
+        return korean_to_roman(english_hangul(phones.split()), foreign_spelling=True)
+    return _EN_WORD.sub(word, text)
+
+
 def warm_up(progress: Callable[[float, str], None] | None = None) -> None:
     """Load the readers (Sudachi, pypinyin, pycantonese, the Unihan tables: about 1.5 s; the app does
     it while starting), so the first reading or search does not wait; ``progress(fraction done,
@@ -586,10 +737,11 @@ def warm_up(progress: Callable[[float, str], None] | None = None) -> None:
         done += share
 
 
-def _romanize(text: str, *, han: str, foreign_spelling: bool, han_run: int = 0) -> str:
+def _romanize(text: str, *, han: str, foreign_spelling: bool, han_run: int = 0, english: str = "") -> str:
     """``text`` in romaji, its Han characters read in ``han`` (one of HAN_LANGUAGES): kana with them
     reads them in Japanese -- in Korean Hanja, a text with kana has its runs of ``han_run`` or
-    more Han characters read so and the rest in Japanese."""
+    more Han characters read so and the rest in Japanese; ``english`` ("ja", "ko"): its English
+    words as that language spells them."""
     text = unicodedata.normalize("NFKC", str(text or ""))
     japanese = any(_is_kana(c) for c in text)
     runs: list[list[str]] = []
@@ -615,6 +767,8 @@ def _romanize(text: str, *, han: str, foreign_spelling: bool, han_run: int = 0) 
             parts.append(_read_mandarin(fold_variants(run), taiwan=han == "zh-tw"))
         elif script == "ko":
             parts.append(korean_to_roman(run, foreign_spelling=foreign_spelling))
+        elif english:
+            parts.append(_english(anyascii(run), english))
         else:
             parts.append(anyascii(run))
     # runs of different scripts meet without a space: keep the words apart
@@ -657,13 +811,21 @@ def readings(text: str, languages: Iterable[str] | None = None, *,
     """Layer 1: the readings of ``text`` as (reading, source) -- source a SOURCES key -- each once,
     at most READING_SLOTS; none for an empty text. Han without kana is read in ``languages``
     (the stored languages of the search settings; all by default); beside kana, its runs of
-    ``han_run`` or more Han characters in Korean Hanja too (0: not)."""
+    ``han_run`` or more Han characters in Korean Hanja too (0: not). A text with English words is read
+    with them as Japanese and as Korean spell them too (its first reading so), after the others."""
     out: list[tuple[str, str]] = []
     for lang in _languages(text, languages, han_run):
         reading = _romanize(text, han=lang if lang in HAN_LANGUAGES else "ja", foreign_spelling=False,
                             han_run=han_run)
         if reading and reading not in [r for r, _src in out]:
             out.append((reading, lang))
+    if out and re.search(r"[A-Za-z]", unicodedata.normalize("NFKC", str(text or ""))):
+        lang = out[0][1]
+        for spelling in ("ja", "ko"):
+            reading = _romanize(text, han=lang if lang in HAN_LANGUAGES else "ja", foreign_spelling=False,
+                                han_run=han_run, english=spelling)
+            if reading and reading not in [r for r, _src in out]:
+                out.append((reading, f"en-{spelling}"))
     return out[:READING_SLOTS]
 
 

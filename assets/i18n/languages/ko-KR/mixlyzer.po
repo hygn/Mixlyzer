@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-31 01:57+0900\n"
+"POT-Creation-Date: 2026-10-31 20:34+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ko_KR\n"
@@ -1314,59 +1314,67 @@ msgstr "외부 동기화가 라이브러리에 없는 트랙을 무시했습니�
 msgid "External Sync analyzing external track before load: {path}"
 msgstr "외부 동기화: 불러오기 전에 외부 트랙을 분석하는 중: {path}"
 
-#: core/search/reading.py:61
+#: core/search/reading.py:64
 msgid "Mandarin"
 msgstr "표준 중국어"
 
-#: core/search/reading.py:61
+#: core/search/reading.py:64
 msgid "Taiwan Mandarin"
 msgstr "대만 중국어"
 
-#: core/search/reading.py:61 ui/widgets/language_picker.py:19
+#: core/search/reading.py:64 ui/widgets/language_picker.py:19
 msgid "Japanese"
 msgstr "일본어"
 
-#: core/search/reading.py:62
+#: core/search/reading.py:65
 msgid "Cantonese"
 msgstr "광둥어"
 
-#: core/search/reading.py:62
+#: core/search/reading.py:65
 msgid "Korean Hanja"
 msgstr "한국 한자음"
 
-#: core/search/reading.py:62
+#: core/search/reading.py:65
 msgid "Sino-Vietnamese"
 msgstr "베트남 한자음"
 
-#: core/search/reading.py:63
+#: core/search/reading.py:66
 msgid "as written"
 msgstr "표기 그대로"
 
-#: core/search/reading.py:63
+#: core/search/reading.py:66
 msgid "set by the user"
 msgstr "사용자 지정"
 
-#: core/search/reading.py:63 ui/widgets/language_picker.py:19
+#: core/search/reading.py:66 ui/widgets/language_picker.py:19
 msgid "Korean"
 msgstr "한국어"
 
-#: core/search/reading.py:576
+#: core/search/reading.py:67
+msgid "English as Japanese spells it"
+msgstr "영어(일본식 표기)"
+
+#: core/search/reading.py:67
+msgid "English as Korean spells it"
+msgstr "영어(한국식 표기)"
+
+#: core/search/reading.py:727
 msgid "Japanese (SudachiDict)"
 msgstr "일본어 (SudachiDict)"
 
-#: core/search/reading.py:577
+#: core/search/reading.py:728
 msgid "Mandarin (pypinyin)"
 msgstr "표준 중국어 (pypinyin)"
 
-#: core/search/reading.py:578
+#: core/search/reading.py:729
 msgid "Cantonese (pycantonese)"
 msgstr "광둥어 (pycantonese)"
 
-#: core/search/reading.py:579
+#: core/search/reading.py:730
 msgid "Korean Hanja (Unihan)"
 msgstr "한국 한자음 (Unihan)"
 
-#: core/search/reading.py:580
+#: core/search/reading.py:731
 msgid "Sino-Vietnamese (Unihan)"
 msgstr "베트남 한자음 (Unihan)"
 
