@@ -77,6 +77,8 @@ annotator/
 
 # Local maintenance notes, and their site (mkdocs serve)
 docs/internal/
+# The developer docs (Sphinx + MyST, built by build/docs.py), kept local until they are published
+docs/developer/
 mkdocs.yml
 mkdocs.publish.yml
 # the web lookups' answers (core.tieup_web)
