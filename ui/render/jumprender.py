@@ -4,7 +4,7 @@ import numpy as np
 
 
 def jump_renderer(samp: np.ndarray, sr: int, st_s: float, ed_s: float, crossfade_sample: int) -> tuple[np.ndarray, int]:
-    "Prerender JumpCUE audio samples (mono). Handles both forward and backward jumps."
+    "A JumpCUE's jump baked into audio samples (mono): forward or backward, crossfaded over crossfade_sample."
     st_samp = int(max(0.0, st_s) * sr)
     ed_samp = int(max(0.0, ed_s) * sr)
     n_samp = int(samp.shape[0])

@@ -544,6 +544,13 @@ def native_engine_built() -> bool:
     return native_client.available()
 
 
+def stretch_offline(pcm: np.ndarray, rate: int, speed: float) -> np.ndarray:
+    """``pcm`` ([frames, channels] float32) time-stretched to ``speed`` times as fast by the native engine, as the
+    deck plays it (a render, off the GUI thread: it takes seconds); RuntimeError where the engine is not built or
+    fails."""
+    return native_client.stretch_offline(pcm, rate, speed)
+
+
 def channel_pair(text: str) -> tuple[int, int] | None:
     """A setting's channel pair ("3-4", 1-based) as the engine's (2, 3); "" or malformed: None."""
     try:

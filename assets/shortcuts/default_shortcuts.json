@@ -204,6 +204,9 @@
   "library.export_tempo_map": [
     "Shift+X"
   ],
+  "library.render_audio": [
+    "Alt+X"
+  ],
   "library.reveal": [
     "Alt+E"
   ],

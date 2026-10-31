@@ -129,6 +129,21 @@ class TempoMapTests(unittest.TestCase):
         self.assertEqual(signatures, [(0, (0, 1)), (24 * PPQ, (0, 0)), (40 * PPQ, (6, 0))])
         self.assertEqual(markers, [(0, "Am (8A)"), (24 * PPQ, "C (8B)"), (40 * PPQ, "F# (2B)")])
 
+    def test_at_another_speed(self):
+        # the audio played 1.25 times as fast (time-stretched): every time / 1.25, every tempo x 1.25, the bars and the
+        # keys on the same beats, the track ending after the faster audio
+        beats = 0.25 + 0.5 * np.arange(64)
+        rows = [row(0.25, 32.25, 120, 0.25)]
+        keys = [[9, 1, 0.0, 12.25], [0, 0, 12.25, 32.25]]
+        plain, fast = (read(midi_tempo_map(beats, rows, keys, duration_sec=40.0, speed=s)) for s in (1.0, 1.25))
+        self.assertTrue(np.allclose(beat_seconds(fast, 64), beat_seconds(plain, 64) / 1.25, atol=TOLERANCE_SEC))
+        for kind in (0x58, 0x59, 0x06):
+            self.assertEqual([(t, d) for t, k, d in fast["events"] if k == kind],
+                             [(t, d) for t, k, d in plain["events"] if k == kind])
+        tempos = [60e6 / int.from_bytes(d, "big") for _t, k, d in fast["events"] if k == 0x51]
+        self.assertAlmostEqual(tempos[-1], 150.0, places=2)
+        self.assertEqual(fast["events"][-1][0], plain["events"][-1][0])    # 40 s at 120, 32 s at 150: one beat count
+
     def test_no_beatgrid(self):
         for beats in ([], [1.0], [np.nan, 2.0]):
             with self.assertRaises(TempoMapError):

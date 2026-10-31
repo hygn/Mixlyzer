@@ -459,7 +459,8 @@ fn mix_file(args: &[String], input: &str) {
     std::fs::write(get("--out", "out.f32"), bytes).expect("write output");
 }
 
-/// Offline: the time stretch of a raw float32 file (interleaved), for the tests' checks of its level and attacks.
+/// Offline: the time stretch of a raw float32 file (interleaved): the Export tab's render time-stretched
+/// (`client.stretch_offline`), the tests' checks of its level and attacks.
 /// --stretch-file IN --out OUT --channels C --rate R --factor F [--block N]
 fn stretch_file(args: &[String], input: &str) {
     let get = |n: &str, d: &str| arg(args, n).unwrap_or_else(|| d.to_string());

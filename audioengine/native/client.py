@@ -132,6 +132,31 @@ def available() -> bool:
     return executable() is not None
 
 
+def stretch_offline(pcm: np.ndarray, rate: int, speed: float) -> np.ndarray:
+    """``pcm`` ([frames, channels] float32) played ``speed`` times as fast by the engine's time stretch, as the deck
+    plays it (its offline render, --stretch-file, in a process of its own; the files in a temporary folder); the
+    stretched frames. RuntimeError where the engine is not built, the rate is below the engine's 44.1 kHz or it
+    fails."""
+    import tempfile
+    exe = executable()
+    if exe is None:
+        raise RuntimeError("the native audio engine is not built")
+    pcm = np.ascontiguousarray(pcm, dtype="<f4")
+    channels = int(pcm.shape[1])
+    with tempfile.TemporaryDirectory(prefix="mixlyzer-stretch-") as folder:
+        source, out = Path(folder) / "in.f32", Path(folder) / "out.f32"
+        pcm.tofile(source)
+        done = subprocess.run(
+            [str(exe), "--stretch-file", str(source), "--out", str(out), "--channels", str(channels),
+             "--rate", str(int(rate)), "--factor", repr(float(speed))],
+            stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, cwd=str(exe.parent),
+            **os_support.hidden_subprocess_kwargs())
+        if done.returncode != 0 or not out.is_file():
+            lines = done.stderr.decode("utf-8", "replace").strip().splitlines()
+            raise RuntimeError(lines[-1] if lines else f"the engine's render ended with {done.returncode}")
+        return np.fromfile(out, dtype="<f4").reshape(-1, channels)
+
+
 class EngineState:
     """One consistent reading of the engine's state."""
 

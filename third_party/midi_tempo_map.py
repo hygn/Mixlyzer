@@ -124,11 +124,19 @@ def key_events(key_segments, points: np.ndarray) -> list[tuple[int, int]]:
     return events
 
 
-def midi_tempo_map(beats, tempo_segments, key_segments, title: str = "", duration_sec: float = 0.0) -> bytes:
+def midi_tempo_map(beats, tempo_segments, key_segments, title: str = "", duration_sec: float = 0.0,
+                   speed: float = 1.0) -> bytes:
     """The Standard MIDI File of a track's beats, tempo rows ([start, end, bpm, inizio, ts_num, bpm_end]) and key
     rows ([pitch, minor, start, end]); ``duration_sec`` (0: unknown) ends its track after the audio's end.
-    TempoMapError without a beatgrid."""
-    points, grid_first = beat_points(beats)
+    ``speed``: the audio played that many times as fast (time-stretched, the Export tab's rendering): every time
+    divided by it, every tempo multiplied (the bars, counted in beats, as they are). TempoMapError without a
+    beatgrid."""
+    if not speed > 0:
+        raise ValueError("speed must be positive")
+    points, grid_first = beat_points(np.asarray(beats, dtype=float) / speed)
+    if np.size(key_segments):
+        key_segments = np.asarray(key_segments, dtype=float).reshape(-1, 4) * (1.0, 1.0, 1.0 / speed, 1.0 / speed)
+    duration_sec = float(duration_sec) / speed
     events: list[tuple[int, bytes]] = []
     if title:
         events.append((0, _meta(0x03, title.encode("utf-8"))))

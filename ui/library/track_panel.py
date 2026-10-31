@@ -99,7 +99,7 @@ class TrackPanelMixin:
         if focus:
             target = {self.EDIT_TAB: self.edit_panel.ed_title, self.INDEX_TAB: self.index_panel.tbl_readings,
                       self.TIEUPS_TAB: self.tieup_panel.box.table, self.SYNC_TAB: self.sync_panel.btn_write_tags,
-                      }.get(index, self.export_panel.cmb_jump_pair)
+                      }.get(index, self.export_panel.spn_tempo)
             if not target.isEnabled():
                 target = self.export_panel.dest_edit if index == self.EXPORT_TAB else self.table
             target.setFocus(QtCore.Qt.OtherFocusReason)
