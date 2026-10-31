@@ -28,6 +28,7 @@ mod engine;
 mod filters;
 mod fxkit;
 mod ipc;
+mod keyshift;
 mod midi;
 mod mixer;
 mod mixers;
@@ -802,6 +803,7 @@ fn publish(ctl: &Control, slot: &mut Slot, controller: &Controller, cmd_done: u6
         ctl.put_f64(st::KNOBS + 8 * j, *v);
     }
     ctl.put_f64(st::COLOR, deck.color_knob());
+    ctl.put_u32(st::KEY_SHIFT, e.key_shift() as u32);
     aux.publish(ctl);
     // every setting of the mixer's, and its meters since the last publish
     for k in 0..ipc::mix::KEYS {

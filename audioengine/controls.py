@@ -67,6 +67,11 @@ ACT_COLOR_KNOB = 47
 ACT_MASTER_LEVEL, ACT_BOOTH_LEVEL, ACT_BOOTH_EQ_HI, ACT_BOOTH_EQ_LOW, ACT_COLOR_PARAM = 51, 52, 53, 54, 55
 ACT_COLOR_SELECT = 56   # + k: Sound Color FX k picked (COLOR_TYPES)
 ACT_HEADPHONES_SPLIT = 94
+# the key shift (the native engine's, keyshift.rs): a semitone down / up, back to 0; ACT_KEY_SET + KEY_SHIFT_MAX + k
+# sets it to k (-KEY_SHIFT_MAX .. KEY_SHIFT_MAX semitones)
+ACT_KEY_DOWN, ACT_KEY_UP, ACT_KEY_RESET = 80, 81, 82
+ACT_KEY_SET = 96
+KEY_SHIFT_MAX = 6
 # a binding's lamp (src/deck.rs): the controller's light at its message; 1 - 26 the JumpCUE A - Z (lit while set)
 LAMP_PLAY, LAMP_CUE = 32, 33
 LAMP_CHANNEL_CUE = 34   # the mixer channel's headphones CUE: lit while it is on
@@ -118,19 +123,21 @@ class DeckReport:
     destination) in seconds, NaN for none; ``lamps`` bit 0 PLAY lit, bit 1 CUE lit (blinking: as they are now);
     ``midi_state`` 0 closed, 1 open, 2 the port did not open; its mixer channel: ``knobs`` (TRIM, EQ LOW, MID,
     HIGH: 0 .. 1, the middle 0 dB), ``channel_cue`` (its headphones CUE), ``peak`` (its meter, dBFS), ``color`` (its
-    COLOR knob); ``mix``, the mixer's settings (MIX_KEYS' order; empty: none, the Python engine)."""
+    COLOR knob); ``mix``, the mixer's settings (MIX_KEYS' order; empty: none, the Python engine); ``key_shift``, the
+    key shifted (semitones; the Python engine: none)."""
 
     __slots__ = ("playing", "factor", "volume", "cue", "jump_dest", "lamps", "tempo_range", "midi_state", "knobs",
-                 "channel_cue", "peak", "color", "mix")
+                 "channel_cue", "peak", "color", "mix", "key_shift")
 
     def __init__(self, playing: bool, factor: float, volume: float, cue: float, jump_dest: float, lamps: int,
                  tempo_range: int, midi_state: int, knobs: tuple = (0.5, 0.5, 0.5, 0.5), channel_cue: bool = False,
-                 peak: float = -45.0, color: float = 0.5, mix: tuple = ()) -> None:
+                 peak: float = -45.0, color: float = 0.5, mix: tuple = (), key_shift: int = 0) -> None:
         self.playing, self.factor, self.volume = bool(playing), float(factor), float(volume)
         self.cue, self.jump_dest, self.lamps = float(cue), float(jump_dest), int(lamps)
         self.tempo_range, self.midi_state = int(tempo_range), int(midi_state)
         self.knobs, self.channel_cue = tuple(float(k) for k in knobs), bool(channel_cue)
         self.peak, self.color, self.mix = float(peak), float(color), tuple(float(v) for v in mix)
+        self.key_shift = int(key_shift)
 
     @property
     def vinyl(self) -> bool:
@@ -145,4 +152,4 @@ class DeckReport:
     def key(self) -> tuple:
         """What a change of shows (the peak aside: the meters read it at their own pace)."""
         return (self.playing, self.factor, self.volume, self.cue, self.jump_dest, self.lamps, self.tempo_range,
-                self.midi_state, self.knobs, self.channel_cue, self.color, self.mix)
+                self.midi_state, self.knobs, self.channel_cue, self.color, self.mix, self.key_shift)

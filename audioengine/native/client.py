@@ -43,7 +43,7 @@ from audioengine.controls import LEVEL_UNITY, MIX_KEY, MIX_KEYS, DeckReport
 from audioengine.volume import trim_db_to_knob
 
 MAGIC = int.from_bytes(b"MXAUDIC1", "little")
-VERSION = 9
+VERSION = 10
 STATE_OFFSET = 64
 RING_OFFSET = 172032
 RING_HEADER = 64
@@ -58,8 +58,9 @@ SEND_TIMEOUT_SEC = 0.5
 _STATE = struct.Struct("<Q IIIIII Q ddddddd QQQ dd Q II d d I 4x d ddd dd I 4x Q d II")
 _HIST = 256
 # the deck's state after the histogram (ipc.rs st::DECK): factor, volume, cue, jump dest, lamps, tempo range,
-# MIDI state, the output's channels; its mixer channel's: headphones CUE, TRIM / EQ LOW, MID, HIGH knobs, COLOR knob
-_DECK = struct.Struct("<dddd IIII I 4x dddd d")
+# MIDI state, the output's channels; its mixer channel's: headphones CUE, TRIM / EQ LOW, MID, HIGH knobs, COLOR knob;
+# the key shift (semitones)
+_DECK = struct.Struct("<dddd IIII I 4x dddd d i")
 _DECK_AT = 256 + 8 * 4096
 
 # commands (ipc.rs op)
@@ -166,7 +167,7 @@ class EngineState:
                  "latency_ms", "output_mode", "period_ms", "response_play", "response_pause", "response_seek",
                  "hist_bucket_ms", "lowest_ms", "output_open", "device_late", "max_gap_ms", "threads", "power",
                  "factor", "volume", "cue", "jump_dest", "lamps", "tempo_range", "midi_state", "out_channels",
-                 "channel_cue", "knobs", "color")
+                 "channel_cue", "knobs", "color", "key_shift")
 
     def __init__(self, values: tuple, deck: tuple) -> None:
         (_seq, self.ready, self.rate, self.channels, self.playing, self.track_gen, self.at_end, self.cmd_done,
@@ -179,6 +180,7 @@ class EngineState:
          self.out_channels, self.channel_cue) = deck[:9]
         self.knobs = tuple(deck[9:13])   # TRIM, EQ LOW, MID, HIGH
         self.color = deck[13]
+        self.key_shift = deck[14]
 
 
 def _relay_console(stream) -> None:
@@ -955,7 +957,7 @@ class NativeFeeder(QtCore.QObject):
             self._report = DeckReport(st.playing, st.factor, st.volume, st.cue / max(1, self.rate),
                                       st.jump_dest / max(1, self.rate), st.lamps, st.tempo_range, st.midi_state,
                                       st.knobs, bool(st.channel_cue), st.peak, st.color,
-                                      mixer[0] if mixer is not None else ())
+                                      mixer[0] if mixer is not None else (), st.key_shift)
         if self._unlink_gen and st.track_gen >= self._unlink_gen and self._pcm is not None:
             _unlink(self._pcm.shm_name)   # opened by the engine: the name is no longer needed
             self._unlink_gen = 0
@@ -1008,6 +1010,10 @@ class NativeFeeder(QtCore.QObject):
         if self._pcm is not None:
             pcm, self._pcm = self._pcm, None
             self.set_track(pcm)
+            # the key shift as it was (a load sets it to 0: sent after it)
+            r = self._report
+            if r is not None and r.key_shift:
+                self.deck_action(controls.ACT_KEY_SET + controls.KEY_SHIFT_MAX + r.key_shift)
 
     def playhead_frame(self) -> float:
         return float(self._state.playhead) if self._state is not None else 0.0

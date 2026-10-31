@@ -20,7 +20,7 @@ use crate::mixer::StripParams;
 use crate::mixers::{Clicks, Tones};
 use crate::monitor::Monitor;
 use crate::shm::Pcm;
-use crate::stretch::Stretcher;
+use crate::keyshift::{self, Pitched};
 use crate::timeline::Timeline;
 
 #[derive(Clone, Copy, PartialEq)]
@@ -50,8 +50,9 @@ pub struct Engine {
     platter: Platter,
     scratch_gain: SpeedGain, // the record's level by its speed (a still record is silent)
 
-    stretch: Option<Box<Stretcher>>, // the speed renderer when the time stretch is on (else varispeed)
-    standby: Option<Box<Stretcher>>,
+    // the speed renderer when the time stretch is on or the key shifted (else varispeed), its pitch moved by the key
+    stretch: Option<Box<Pitched>>,
+    standby: Option<Box<Pitched>>,
     standby_for: Option<(Standby, f64)>,
     pending_seek: Option<f64>,
     // a seek while playing (not deferred): crossfaded in by the next block rendered, so the seeks between two
@@ -76,6 +77,8 @@ pub struct Engine {
     mode_speed: bool,
     factor: f64,
     bend: f64, // a jog wheel's pitch bend (deck.rs): the speed times 1 + bend
+    master_tempo: bool, // the time stretch on (MT): the pitch kept whatever the tempo
+    key_shift: i32,     // semitones (keyshift::KEY_SHIFT_MAX either way): the pitch moved, the tempo kept
     halted: bool,
     last_step: f64,
     jump_start: Option<f64>,
@@ -159,6 +162,8 @@ impl Engine {
             mode_speed: true,
             factor: 1.0,
             bend: 0.0,
+            master_tempo: false,
+            key_shift: 0,
             halted: false,
             last_step: 1.0,
             jump_start: None,
@@ -208,20 +213,51 @@ impl Engine {
         if let Some(s) = self.stretch.as_mut() {
             s.reset();
         }
+        self.set_key_shift(0); // each track from its own key
     }
 
     pub fn set_mode_speed(&mut self, speed: bool) {
         self.mode_speed = speed;
     }
 
+    /// The time stretch (MT) on or off.
     pub fn set_timestretch(&mut self, on: bool) {
-        if on == self.stretch.is_some() {
+        self.master_tempo = on;
+        self.keep_stretcher();
+    }
+
+    /// The key shifted by ``semitones`` (within KEY_SHIFT_MAX either way): the pitch moved by the time stretch,
+    /// the tempo as it is; MT off, the pitch the tempo's moved by it.
+    pub fn set_key_shift(&mut self, semitones: i32) {
+        self.key_shift = semitones.clamp(-keyshift::KEY_SHIFT_MAX, keyshift::KEY_SHIFT_MAX);
+        self.keep_stretcher();
+    }
+
+    pub fn key_shift(&self) -> i32 {
+        self.key_shift
+    }
+
+    /// The stretchers there while the time stretch is on or the key shifted (varispeed else).
+    fn keep_stretcher(&mut self) {
+        let wanted = self.master_tempo || self.key_shift != 0;
+        if wanted == self.stretch.is_some() {
             return;
         }
         let rate = self.rate as u32;
-        self.stretch = if on { Some(Box::new(Stretcher::new(self.ch, rate))) } else { None };
-        self.standby = if on { Some(Box::new(Stretcher::new(self.ch, rate))) } else { None };
+        self.stretch = if wanted { Some(Box::new(Pitched::new(self.ch, rate))) } else { None };
+        self.standby = if wanted { Some(Box::new(Pitched::new(self.ch, rate))) } else { None };
         self.cancel_standby();
+    }
+
+    /// The pitch ratio played at ``step`` (input frames per output frame): the key's, times the speed's with MT off.
+    fn pitch_at(&self, step: f64) -> f64 {
+        let key = keyshift::key_ratio(self.key_shift);
+        if self.master_tempo || !(step > 0.0) { key } else { key * step }
+    }
+
+    /// Whether ``step`` is played through the stretcher's stream (off unity in tempo or in pitch).
+    fn off_unity(&self, step: f64) -> bool {
+        (step - 1.0).abs() > 1e-8 || (self.pitch_at(step) - 1.0).abs() > 1e-8
     }
 
     pub fn set_buffer_ms(&mut self, ms: f64) {
@@ -302,7 +338,7 @@ impl Engine {
         }
         let tempo = self.tempo();
         if released && self.stretch.is_some() && self.playing && !self.scratching && self.pcm.is_some()
-            && tempo > 0.0 && (tempo - 1.0).abs() > 1e-8 && self.pos < self.len as f64
+            && tempo > 0.0 && self.off_unity(tempo) && self.pos < self.len as f64
         {
             self.cancel_standby();
             let target = self.pos + Self::RESUME_LEAD_SEC * self.rate;
@@ -559,7 +595,7 @@ impl Engine {
             && !self.scrubbing
             && self.pcm.is_some()
             && step > 0.0
-            && (step - 1.0).abs() > 1e-8
+            && self.off_unity(step)
     }
 
     fn prepare_standby(&mut self, kind: Standby, target: f64) {
@@ -570,7 +606,9 @@ impl Engine {
     fn prepare_standby_at(&mut self, kind: Standby, target: f64, step: f64) {
         let target = target.clamp(0.0, self.len as f64);
         if self.standby_for != Some((kind, target)) {
+            let pitch = self.pitch_at(step);
             if let (Some(sb), Some(pcm)) = (self.standby.as_mut(), self.pcm.as_ref()) {
+                sb.set_pitch(pitch);
                 sb.prepare(pcm.data(), target, step);
             }
             self.standby_for = Some((kind, target));
@@ -608,7 +646,7 @@ impl Engine {
     fn keep_start_standby(&mut self) {
         let step = self.step();
         let wanted = self.standby.is_some() && !self.playing && !self.scratching && !self.scrubbing
-            && self.pcm.is_some() && self.pos < self.len as f64 && step > 0.0 && (step - 1.0).abs() > 1e-8;
+            && self.pcm.is_some() && self.pos < self.len as f64 && step > 0.0 && self.off_unity(step);
         let starting = matches!(self.standby_for, Some((Standby::Start, _)));
         if !wanted {
             if starting {
@@ -759,8 +797,11 @@ impl Engine {
             return (vec![0.0; n_out * self.ch], 0.0, pos);
         }
         let t0 = clock::now();
+        // the original's pitch while scrubbing (its unity), else the key's (and the speed's with MT off)
+        let pitch = if self.scrubbing || self.resume_at.is_some() { 1.0 } else { self.pitch_at(step) };
         let (out, after) = match self.stretch.as_mut() {
             Some(s) => {
+                s.set_pitch(pitch);
                 let out = s.render(pcm.data(), pos, step, n_out);
                 (out, s.expected_input_position())
             }
@@ -806,8 +847,10 @@ impl Engine {
         self.ring.push(&lane);
     }
 
+    /// The reference tones' pitch: the music's (the key's, and the speed's with MT off).
     fn tone_pitch_ratio(&self) -> f64 {
-        if self.mode_speed && self.stretch.is_none() && self.factor > 0.0 { self.factor } else { 1.0 }
+        let speed = if self.mode_speed && !self.master_tempo && self.factor > 0.0 { self.factor } else { 1.0 };
+        keyshift::key_ratio(self.key_shift) * speed
     }
 
     fn append_silence(&mut self, n: usize) {

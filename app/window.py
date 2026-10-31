@@ -104,6 +104,7 @@ class AppWindow(QtWidgets.QMainWindow):
         step(0.03, tr("Main view, editor and library"))
         self.pane = MainPane(self.bus, self.model, self.tl, self.cfg, self.library)
         self.pane.track_info.set_eq_available(self.player.native)   # the Python engine has no mixer
+        self.pane.set_key_shift_available(self.player.native)        # nor a key shift
         self.setCentralWidget(self.pane)
         self.pane.install_default()
 

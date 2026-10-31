@@ -207,6 +207,51 @@
   "library.render_audio": [
     "Alt+X"
   ],
+  "playback.key_down": [
+    "Shift+-"
+  ],
+  "playback.key_up": [
+    "Shift+="
+  ],
+  "playback.key_reset": [
+    "Shift+0"
+  ],
+  "playback.key_set.+1": [
+    "Alt+Shift+1"
+  ],
+  "playback.key_set.+2": [
+    "Alt+Shift+2"
+  ],
+  "playback.key_set.+3": [
+    "Alt+Shift+3"
+  ],
+  "playback.key_set.+4": [
+    "Alt+Shift+4"
+  ],
+  "playback.key_set.+5": [
+    "Alt+Shift+5"
+  ],
+  "playback.key_set.+6": [
+    "Alt+Shift+6"
+  ],
+  "playback.key_set.-1": [
+    "Alt+Shift+A"
+  ],
+  "playback.key_set.-2": [
+    "Alt+Shift+S"
+  ],
+  "playback.key_set.-3": [
+    "Alt+Shift+D"
+  ],
+  "playback.key_set.-4": [
+    "Alt+Shift+F"
+  ],
+  "playback.key_set.-5": [
+    "Alt+Shift+G"
+  ],
+  "playback.key_set.-6": [
+    "Alt+Shift+H"
+  ],
   "library.reveal": [
     "Alt+E"
   ],

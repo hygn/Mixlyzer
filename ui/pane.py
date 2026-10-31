@@ -47,6 +47,11 @@ def _range_text(tempo_range: int) -> str:
     return "WIDE" if tempo_range >= 100 else f"±{tempo_range}%"
 
 
+def _key_shift_text(semitones: int) -> str:
+    """The key shift as its button shows it: KEY over ±0, +2, −3 (U+2212 minus, as wide as "+")."""
+    return "KEY\n" + ("±0" if not semitones else f"{semitones:+d}".replace("-", "−"))
+
+
 _transport_icons: dict[str, QtGui.QIcon] = {}
 
 
@@ -170,6 +175,7 @@ class MainPane(QtWidgets.QWidget):
         self._tempo_range = int(cfg.deckconfig.tempo_range or 100)
         self._volume_position: Optional[float] = None   # none reported yet: the first report is shown, whatever it is
         self._cue_lit = False
+        self._key_shift = 0     # semitones, as the deck reports it
 
         # Plot container
         self.gl = _TrackedGraphicsLayoutWidget(self.bus, show=True)
@@ -280,6 +286,7 @@ class MainPane(QtWidgets.QWidget):
         tempo_box = self._build_tempo_column()
         top_row.addWidget(volume_box, 0, QtCore.Qt.AlignVCenter)
         top_row.addWidget(tempo_box, 0, QtCore.Qt.AlignVCenter)
+        top_row.addWidget(self._build_key_column(), 0, QtCore.Qt.AlignVCenter)
 
         self._build_transport_buttons()
 
@@ -376,6 +383,67 @@ class MainPane(QtWidgets.QWidget):
             lambda value: self.bus.sig_tempo_requested.emit(1.0 + value * TEMPO_STEP[self._tempo_range] / 100.0))
         return tempo_box
 
+    def _build_key_column(self) -> QtWidgets.QWidget:
+        """The Key column right of the tempo fader: KEY + / the shift (lit while shifted, a click back to the track's
+        own key) / KEY −, one above another; requests, the shift the deck reports shown."""
+        key_box = QtWidgets.QWidget()
+        key_v = QtWidgets.QVBoxLayout(key_box)
+        # the column's height, as the Volume column's: its head at the top; under it a small + and a small − with
+        # the shift between them (KEY over its value, a button), down to the bottom (level with the readings under
+        # the faders)
+        key_v.setContentsMargins(0, 0, 0, 0)
+        key_v.setSpacing(2)
+
+        self.l_key_shift = QtWidgets.QLabel("Key")
+        f = self.l_key_shift.font()
+        f.setPointSize(9)
+        f.setBold(True)
+        self.l_key_shift.setFont(f)
+        self.l_key_shift.setAlignment(QtCore.Qt.AlignHCenter)
+
+        # thin: as wide as the widest reading (−6) and its head
+        fm = QtGui.QFontMetrics(f)
+        width = max(fm.horizontalAdvance(line) for line in (*_key_shift_text(-deck.KEY_SHIFT_MAX).split("\n"), "Key")) + 6
+        small_h = fm.height() + 2       # the + / − buttons
+        style = ("QToolButton { border: 1px solid #4a4a4a; background: #181818; border-radius: 3px; color: #e6e6e6;"
+                 " padding: 0px; }\n"
+                 "QToolButton:hover  { background: #222; }\n"
+                 "QToolButton:pressed{ background: #0c0c0c; }\n"
+                 "QToolButton:checked { background: #1f6fd1; border-color: #3d8bf0; color: #fff; }\n"
+                 "QToolButton:disabled { color: #555; border-color: #333; }\n")
+
+        def button(text: str, tip: str, checkable: bool = False) -> QtWidgets.QToolButton:
+            btn = QtWidgets.QToolButton()
+            btn.setText(text)
+            btn.setFont(f)
+            btn.setFixedWidth(width)
+            btn.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Expanding)
+            btn.setCheckable(checkable)
+            btn.setStyleSheet(style)
+            btn.setToolTip(tip)
+            return btn
+
+        self.btn_key_up = button("+", tr("Key a semitone up (the tempo kept)"))
+        # the shift: as wide as its widest reading (−6), so the column never shifts
+        self.btn_key = button(_key_shift_text(0), tr("Key shift in semitones (±{max}); click: the track's own key")
+                              .format(max=deck.KEY_SHIFT_MAX), checkable=True)
+        self.btn_key_down = button("−", tr("Key a semitone down (the tempo kept)"))
+        for btn in (self.btn_key_up, self.btn_key_down):
+            btn.setFixedHeight(small_h)
+        self.btn_key.setFixedHeight(2 * fm.height() + 8)      # its two lines
+        key_v.addWidget(self.l_key_shift, 0, QtCore.Qt.AlignHCenter)
+        key_v.addStretch(1)                                     # the room left above the buttons
+        for k, btn in enumerate((self.btn_key_up, self.btn_key, self.btn_key_down)):
+            if k:
+                key_v.addSpacing(5)                             # the buttons apart
+            key_v.addWidget(btn, 0, QtCore.Qt.AlignHCenter)
+
+        _match_track_info_height(key_box)
+        self.btn_key_down.clicked.connect(lambda: self._deck_action(deck.ACT_KEY_DOWN))
+        self.btn_key_up.clicked.connect(lambda: self._deck_action(deck.ACT_KEY_UP))
+        self.btn_key.clicked.connect(self._on_click_key)
+        return key_box
+
     def _build_transport_buttons(self) -> None:
         """The deck's buttons, after a DJ deck: square MT (time stretch) / RST (tempo reset) in a row above the record, round stop / CUE / play left of it; wired."""
         ROUND_D = int(TrackInfoPanel.HEADER_H / 3.5)
@@ -449,6 +517,19 @@ class MainPane(QtWidgets.QWidget):
         self.btn_cue.pressed.connect(lambda: self._cue(True))
         self.btn_cue.released.connect(lambda: self._cue(False))
 
+    def _on_click_key(self) -> None:
+        """The key's value clicked: back to the track's own key (shown as the deck then reports it)."""
+        self.btn_key.blockSignals(True)
+        self.btn_key.setChecked(self._key_shift != 0)
+        self.btn_key.blockSignals(False)
+        self._deck_action(deck.ACT_KEY_RESET)
+
+    def set_key_shift_available(self, available: bool) -> None:
+        """The key shift is the native engine's: off (with a note) on the Python engine."""
+        for btn in (self.btn_key_down, self.btn_key, self.btn_key_up):
+            btn.setEnabled(available)
+        if not available:
+            self.btn_key.setToolTip(tr("Key shift needs the native audio engine."))
 
     # View management
     def install_default(self) -> None:
@@ -563,6 +644,14 @@ class MainPane(QtWidgets.QWidget):
                 self.vol_slider.blockSignals(False)
             self._apply_volume_report()
         self.track_info.set_knobs(report.knobs)
+        shift = int(getattr(report, "key_shift", 0))
+        if shift != self._key_shift:
+            self._key_shift = shift
+            self.btn_key.setText(_key_shift_text(shift))
+            self.btn_key.blockSignals(True)
+            self.btn_key.setChecked(bool(shift))      # lit while shifted
+            self.btn_key.blockSignals(False)
+            self._on_time(self.current_time)          # the key shown moves with it
         lit = bool(report.lamps & 2)
         if lit != self._cue_lit:
             self._cue_lit = lit
@@ -589,6 +678,12 @@ class MainPane(QtWidgets.QWidget):
             "playback.tempo_reset": self._on_click_tempo_reset,
             "playback.tempo_range": lambda: self._deck_action(deck.ACT_TEMPO_RANGE),
             "playback.master_tempo": self.btn_mt.toggle,
+            # the key shift (the native engine's: its buttons off on the Python engine, the keys too)
+            **{action: (lambda code=code: self._deck_action(code) if self.btn_key.isEnabled() else None)
+               for action, code in (("playback.key_down", deck.ACT_KEY_DOWN), ("playback.key_up", deck.ACT_KEY_UP),
+                                    ("playback.key_reset", deck.ACT_KEY_RESET),
+                                    *((f"playback.key_set.{s:+d}", deck.ACT_KEY_SET + deck.KEY_SHIFT_MAX + s)
+                                      for s in range(-deck.KEY_SHIFT_MAX, deck.KEY_SHIFT_MAX + 1) if s))},
             "playback.zoom_in": lambda: self._zoom(-1),
             "playback.zoom_out": lambda: self._zoom(1),
             "playback.unload": lambda: (self.bus.sig_unload_track_requested.emit()
@@ -671,6 +766,8 @@ class MainPane(QtWidgets.QWidget):
                 semitone, semitone_int = 0.0, 0
             else:
                 semitone, semitone_int, _ = speed_to_semitone(speed)
+            # the key shift moves it by whole semitones on top
+            semitone, semitone_int = semitone + self._key_shift, semitone_int + self._key_shift
             if active_key < 12:
                 ks_v = (active_key + semitone_int) % 12
             else:

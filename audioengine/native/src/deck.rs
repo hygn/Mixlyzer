@@ -30,6 +30,7 @@ use crate::engine::Engine;
 use crate::controller::{LAMP_CUE, LAMP_PLAY, LAMP_VINYL};
 use crate::device::Ring;
 use crate::ipc::{Reader, act};
+use crate::keyshift::KEY_SHIFT_MAX;
 use crate::mixer::{self, StripParams};
 
 const CUE_AT_SEC: f64 = 0.001; // the playhead is on the cue point this close to it
@@ -296,6 +297,12 @@ impl Deck {
                 self.set_tempo_range(e, TEMPO_RANGES[at % TEMPO_RANGES.len()]);
             }
             act::JOG_MODE => self.set_jog_vinyl(e, !self.jog_vinyl),
+            act::KEY_DOWN => e.set_key_shift(e.key_shift() - 1),
+            act::KEY_UP => e.set_key_shift(e.key_shift() + 1),
+            act::KEY_RESET => e.set_key_shift(0),
+            c if (act::KEY_SET..=act::KEY_SET + 2 * KEY_SHIFT_MAX as u32).contains(&c) => {
+                e.set_key_shift((c - act::KEY_SET) as i32 - KEY_SHIFT_MAX)
+            }
             c if (act::JUMP_A..act::JUMP_A + 8).contains(&c) => {
                 let dest = self.jumpcues[(c - act::JUMP_A) as usize];
                 if dest.is_finite() {
@@ -1002,6 +1009,33 @@ mod tests {
         assert!(near(r.s.engine.factor(), 1.0));
         r.s.deck.set_tempo_range(&mut r.s.engine, 7); // not a range: WIDE
         assert_eq!(r.s.deck.tempo_range, 100);
+    }
+
+    #[test]
+    fn key_shift_by_semitones_within_six_and_from_zero_each_track() {
+        let mut r = Rig::new(10.0, true, &[], &[]);
+        for _ in 0..8 {
+            r.tap(act::KEY_UP);
+        }
+        assert_eq!(r.s.engine.key_shift(), 6, "+6 at most");
+        r.tap(act::KEY_DOWN);
+        assert_eq!(r.s.engine.key_shift(), 5);
+        r.tap(act::KEY_SET); // -6
+        assert_eq!(r.s.engine.key_shift(), -6);
+        r.tap(act::KEY_DOWN);
+        assert_eq!(r.s.engine.key_shift(), -6, "-6 at least");
+        r.tap(act::KEY_SET + 6 + 3);
+        assert_eq!(r.s.engine.key_shift(), 3);
+        // played: the tempo kept (the input at the speed), MT off as on
+        r.tap(act::PLAY_PAUSE);
+        let before = r.at();
+        r.pump(100);
+        assert!((r.at() - before - 1.0).abs() < 0.1, "{}", r.at() - before);
+        r.tap(act::KEY_RESET);
+        assert_eq!(r.s.engine.key_shift(), 0);
+        r.tap(act::KEY_UP);
+        r.s.engine.set_track(Some(Pcm::owned(vec![0.0; 2 * 48000], 2)), 2);
+        assert_eq!(r.s.engine.key_shift(), 0, "a new track from its own key");
     }
 
     impl Rig {

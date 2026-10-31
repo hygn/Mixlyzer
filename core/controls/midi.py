@@ -50,11 +50,12 @@ JUMPCUE = tr_mark("JumpCUE pads")
 CUE_POINTS = tr_mark("CUE points")
 BEAT_JUMP = tr_mark("Beat jump")
 TEMPO = tr_mark("Tempo")
+KEY_SHIFT = tr_mark("Key shift")
 JOG = tr_mark("Jog wheel")
 BROWSER = tr_mark("Browser")
 MIXER = tr_mark("Mixer")
 EFFECTS = tr_mark("Effects")
-GROUPS = (DECK, JUMPCUE, CUE_POINTS, BEAT_JUMP, TEMPO, JOG, BROWSER, MIXER, EFFECTS)
+GROUPS = (DECK, JUMPCUE, CUE_POINTS, BEAT_JUMP, TEMPO, KEY_SHIFT, JOG, BROWSER, MIXER, EFFECTS)
 
 
 @dataclass(frozen=True)
@@ -129,6 +130,19 @@ def _deck_actions() -> list[Action]:
                           engine.ACT_BEAT_JUMP + 2 * k, args=b))
         out.append(Action(f"deck1.beatjump_forward.{beats}", BEAT_JUMP, tr_mark("Deck {deck}: BEAT JUMP ▷ {beats}"),
                           BUTTON, engine.ACT_BEAT_JUMP + 2 * k + 1, args=b))
+    # the key shift (the native engine's): a semitone down / up, back to 0, or straight to a shift
+    out += [
+        Action("deck1.key_down", KEY_SHIFT, tr_mark("Deck {deck}: KEY −"), BUTTON, engine.ACT_KEY_DOWN, args=a,
+               tip=tr_mark("The key a semitone down (the tempo kept).")),
+        Action("deck1.key_up", KEY_SHIFT, tr_mark("Deck {deck}: KEY +"), BUTTON, engine.ACT_KEY_UP, args=a,
+               tip=tr_mark("The key a semitone up (the tempo kept).")),
+        Action("deck1.key_reset", KEY_SHIFT, tr_mark("Deck {deck}: KEY RESET"), BUTTON, engine.ACT_KEY_RESET, args=a,
+               tip=tr_mark("The track's own key.")),
+    ]
+    for shift in (s for s in range(-engine.KEY_SHIFT_MAX, engine.KEY_SHIFT_MAX + 1) if s):
+        out.append(Action(f"deck1.key_set.{shift:+d}", KEY_SHIFT, tr_mark("Deck {deck}: KEY {shift}"), BUTTON,
+                          engine.ACT_KEY_SET + engine.KEY_SHIFT_MAX + shift,
+                          args={"deck": 1, "shift": f"{shift:+d}"}))
     return out
 
 

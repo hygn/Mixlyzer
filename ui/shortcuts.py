@@ -21,6 +21,7 @@ from typing import Callable, Optional
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
+from audioengine.controls import KEY_SHIFT_MAX
 from system import os_support
 from system.i18n import tr, tr_mark
 from core.marks.phrases import PHRASE_LABELS, phrase_display_name
@@ -89,6 +90,14 @@ ACTIONS: tuple[Action, ...] = (
     Action("playback.tempo_range", PLAYBACK, tr_mark("Tempo range"),
            tip=tr_mark("The tempo fader's range, the next one: ±6% / ±10% / ±16% / WIDE.")),
     Action("playback.master_tempo", PLAYBACK, tr_mark("Master tempo on / off")),
+    Action("playback.key_down", PLAYBACK, tr_mark("Key −1"), repeat=True,
+           tip=tr_mark("The key a semitone down, the tempo kept (the native audio engine's key shift).")),
+    Action("playback.key_up", PLAYBACK, tr_mark("Key +1"), repeat=True,
+           tip=tr_mark("The key a semitone up, the tempo kept (the native audio engine's key shift).")),
+    Action("playback.key_reset", PLAYBACK, tr_mark("Key reset"), tip=tr_mark("The track's own key.")),
+    *(Action(f"playback.key_set.{s:+d}", PLAYBACK, tr_mark("Key {shift}"), args={"shift": f"{s:+d}"},
+             tip=tr_mark("The key shifted by {shift} semitones at once."))
+      for s in (*range(1, KEY_SHIFT_MAX + 1), *range(-1, -KEY_SHIFT_MAX - 1, -1))),
     Action("playback.metronome", PLAYBACK, tr_mark("Metronome on / off")),
     Action("playback.zoom_in", PLAYBACK, tr_mark("Zoom in"), repeat=True),
     Action("playback.zoom_out", PLAYBACK, tr_mark("Zoom out"), repeat=True),
