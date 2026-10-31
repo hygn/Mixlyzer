@@ -782,6 +782,8 @@ class NativeFeeder(QtCore.QObject):
             for which, position in enumerate((*r.knobs, r.color)):     # TRIM, EQ LOW, MID, HIGH, COLOR
                 self.send(OP_SET_MIXER_KNOB, struct.pack("<Id", which, position))
             self.send(OP_SET_CHANNEL_CUE, struct.pack("<I", int(r.channel_cue)))
+            if r.key_shift:     # the key shift as it was
+                self.deck_action(controls.ACT_KEY_SET + controls.KEY_SHIFT_MAX + r.key_shift)
         self._send_marks()
 
     def output_devices(self, api: Optional[str] = None) -> tuple[str, list[str], dict[str, int]]:
@@ -1010,10 +1012,6 @@ class NativeFeeder(QtCore.QObject):
         if self._pcm is not None:
             pcm, self._pcm = self._pcm, None
             self.set_track(pcm)
-            # the key shift as it was (a load sets it to 0: sent after it)
-            r = self._report
-            if r is not None and r.key_shift:
-                self.deck_action(controls.ACT_KEY_SET + controls.KEY_SHIFT_MAX + r.key_shift)
 
     def playhead_frame(self) -> float:
         return float(self._state.playhead) if self._state is not None else 0.0

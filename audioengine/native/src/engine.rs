@@ -213,7 +213,7 @@ impl Engine {
         if let Some(s) = self.stretch.as_mut() {
             s.reset();
         }
-        self.set_key_shift(0); // each track from its own key
+        // the key shift kept: the next track at the same shift (the GUI keeps it in no file: 0 at each start)
     }
 
     pub fn set_mode_speed(&mut self, speed: bool) {

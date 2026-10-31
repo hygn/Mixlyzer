@@ -1012,7 +1012,7 @@ mod tests {
     }
 
     #[test]
-    fn key_shift_by_semitones_within_six_and_from_zero_each_track() {
+    fn key_shift_by_semitones_within_six_kept_for_the_next_track() {
         let mut r = Rig::new(10.0, true, &[], &[]);
         for _ in 0..8 {
             r.tap(act::KEY_UP);
@@ -1035,7 +1035,7 @@ mod tests {
         assert_eq!(r.s.engine.key_shift(), 0);
         r.tap(act::KEY_UP);
         r.s.engine.set_track(Some(Pcm::owned(vec![0.0; 2 * 48000], 2)), 2);
-        assert_eq!(r.s.engine.key_shift(), 0, "a new track from its own key");
+        assert_eq!(r.s.engine.key_shift(), 1, "the next track at the same shift");
     }
 
     impl Rig {

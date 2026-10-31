@@ -23,6 +23,7 @@ from ui.edit_panel.phrase import PhraseEditMixin
 from core.library import jobs as library_jobs
 from core.settings.store import current as current_settings
 from ui.edit_panel.styles import BUTTON_STYLESHEET, WARNING_BUTTON_STYLESHEET
+from ui.widgets import tooltips
 from ui.theme import current_theme
 from system.i18n import tr, tr_mark
 
@@ -696,6 +697,14 @@ class EditPanel(
             "editor.undo": (self.btn_undo, None), "editor.redo": (self.btn_redo, None),
             "editor.save": (self.btn_save, None),
         }
+        # each button's tooltip names its keys (ui.widgets.tooltips)
+        for action, buttons in context_tools.items():
+            for btn in buttons.values():
+                tooltips.tag(btn, action)
+        for action, (btn, _page) in tools.items():
+            tooltips.tag(btn, action)
+        tooltips.tag(self.btn_lock, "editor.lock")
+        tooltips.tag(self.btn_metronome, "playback.metronome")
         handlers = {action: (lambda buttons=buttons: self._shortcut_context(buttons))
                     for action, buttons in context_tools.items()}
         handlers.update({action: (lambda btn=btn, page=page: self._shortcut_click(btn, page))

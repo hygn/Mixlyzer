@@ -302,6 +302,11 @@ class ShortcutManager(QtCore.QObject):
         app.applicationStateChanged.connect(
             lambda state: state == QtCore.Qt.ApplicationActive or self._release())
 
+    def keys_of(self, action_id: str) -> list[QtGui.QKeySequence]:
+        """The keys action ``action_id`` has now (none: not one of the shortcuts)."""
+        sc = self._shortcuts.get(action_id)
+        return list(sc.keys()) if sc is not None else []
+
     def apply(self, keymap: dict[str, list[str]]) -> None:
         for action_id, sc in self._shortcuts.items():
             sc.setKeys([QtGui.QKeySequence(k) for k in keymap.get(action_id, [])])

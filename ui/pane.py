@@ -14,6 +14,7 @@ from views.overview import OverviewWidget
 from ui.library import LibraryWidget
 from analyzer.music.key_names import idx_to_labels
 from ui.render.semitone import speed_to_semitone
+from ui.widgets import tooltips
 from core.marks.phrases import number_phrase_labels, phrase_color
 from core.workflows.event_bus import EventBus
 from core.settings.config import config
@@ -680,6 +681,13 @@ class MainPane(QtWidgets.QWidget):
     # Keyboard shortcuts (ui.shortcuts)
     def shortcut_handlers(self) -> dict:
         """Action id -> handler of every shortcut: the deck's here, the editor's and the library's from them."""
+        # each button's tooltip names its keys (ui.widgets.tooltips)
+        for btn, action in ((self.btn_play, "playback.play_pause"), (self.btn_cue, "playback.cue"),
+                            (self.btn_stop, "playback.stop"), (self.btn_tempo_reset, "playback.tempo_reset"),
+                            (self.btn_tempo_range, "playback.tempo_range"), (self.btn_mt, "playback.master_tempo"),
+                            (self.btn_key_down, "playback.key_down"), (self.btn_key_up, "playback.key_up"),
+                            (self.btn_key, "playback.key_reset")):
+            tooltips.tag(btn, action)
         return {
             "playback.play_pause": lambda: self._on_click_play() if self.btn_play.isEnabled() else None,
             # pressed and let go (ui.shortcuts: a momentary action)

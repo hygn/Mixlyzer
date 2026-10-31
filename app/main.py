@@ -19,7 +19,7 @@ from app import diagnostics
 from app.startup_console import ConsoleLines
 from ui.theme import apply_theme
 from ui.fonts import load_fonts_and_set_global
-from ui.widgets import wheel
+from ui.widgets import tooltips, wheel
 
 # the logs carry translated texts and track titles: a console that cannot show a character escapes it instead of
 # failing (run in the worker processes too: they import this module again)
@@ -53,6 +53,7 @@ def main():
     apply_theme(app)
     load_fonts_and_set_global(app)
     wheel.install()     # the wheel scrolls the page, never an input field's value
+    tooltips.install()  # tooltips wrapped at a width, a button's shortcut after its own
     print(f"[Startup] OS: {os_support.os_name()} ({os_support.OS})")
     if not os_support.IS_SUPPORTED:
         QtWidgets.QMessageBox.warning(

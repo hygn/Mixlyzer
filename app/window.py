@@ -36,6 +36,7 @@ from core.workflows.music_index import LibraryMusicIndex
 from core.workflows.tieup_web import TieupWebLookup
 from .metronome import MetronomeController
 from ui.window_visibility import is_window_fully_hidden
+from ui.widgets import tooltips
 from audioengine.volume import slider_percent_to_linear, trim_dbfs_to_linear, trim_knob_to_db
 from core.marks.phrases import set_phrase_label_names
 
@@ -353,6 +354,7 @@ class AppWindow(QtWidgets.QMainWindow):
         self.shortcuts = ShortcutManager(self, handlers, self.statusBar().showMessage)
         self.shortcuts.apply(shortcuts.keymap())
         self.bus.sig_shortcuts_changed.connect(self.shortcuts.apply)
+        tooltips.set_shortcut_keys(self.shortcuts.keys_of)   # a button's keys after its tooltip
         # a MIDI controller (assets/midi; Settings > MIDI): the native engine does the deck's and the mixer's actions
         # itself; the others it passes on (sig_midi_events) are run here as the shortcuts they name
         self._midi_handlers = handlers
