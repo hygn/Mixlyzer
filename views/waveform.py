@@ -10,12 +10,12 @@ from scipy.ndimage import gaussian_filter1d, uniform_filter1d
 from scipy.signal import butter, sosfiltfilt
 
 from core.settings.store import current as current_settings
-from views.timeline import SHORT_WINDOW_MAX_SEC
+from views.timeline import CLOSE_WINDOW_MAX_SEC, SHORT_WINDOW_MAX_SEC, WINDOW_STEPS_SEC
 from views.render.wave import (
     RGB_DETAIL_COLOR_SMOOTH_SEC,
     RGB_DETAIL_SAT_FLOOR,
     THREE_BAND_DETAIL_RMS_SEC,
-    WAVE_CENTER_LINE_RGB,
+    WAVE_CENTER_LINE_RMS_SEC,
     add_center_line,
     band_ranges,
     frame_minmax,
@@ -37,12 +37,12 @@ RENDER_HEIGHT = 96
 RENDER_BATCH_SIZE = 4           # chunks rendered at once
 RENDER_SPAWN_INTERVAL_MS = 30   # one more started per interval (playback keeps its CPU)
 SCENE_CULL_BUFFER = 2  # extra chunks kept in scene on each side of viewport
-# Rendered chunks farther than this from the playhead are dropped (every layer),
-# to bound memory; they are rendered again when the view comes back to them.
-RENDER_KEEP_SEC = 60.0
-# Except the ones shown most recently, up to this much track time over all layers: going back to a place left
-# a moment ago (a JumpCUE, a CUE point called) shows it at once. A chunk is 70-140 KB (the long / short frame).
-RENDER_RECENT_KEEP_SEC = 60.0
+# A layer's rendered chunks farther from the playhead than this many of the widest view it draws are dropped,
+# to bound memory (the long views' 24 s: 60 s; the short ones' 9 s: 22.5 s; the close ones' 3 s: 7.5 s, a chunk
+# of their fine frame 288 KB, the long one's 72 KB); they are rendered again when the view comes back to them.
+# Except as many again of it shown most recently: going back to a place left a moment ago (a JumpCUE, a CUE point
+# called) shows it at once. A layer no view width draws any more (its frame changed) keeps only what is near.
+RENDER_KEEP_VIEWS = 2.5
 # Audio rendered on each side of a chunk and cropped away, so the band filters,
 # frame RMS and blur see the neighbouring audio: chunks join without seams.
 RENDER_CONTEXT_SEC = 0.2
@@ -65,6 +65,8 @@ class _WaveStyle:
     @staticmethod
     def frame_ms_for(view, window_sec: float) -> float:
         """Drawing frame (ms) of a main view ``window_sec`` wide."""
+        if float(window_sec) <= CLOSE_WINDOW_MAX_SEC:
+            return float(view.mainview_wave_frame_ms_close)
         short = float(window_sec) <= SHORT_WINDOW_MAX_SEC
         return float(view.mainview_wave_frame_ms_short if short else view.mainview_wave_frame_ms_long)
 
@@ -205,8 +207,15 @@ def render_columns(pcm: np.ndarray, sample_rate: int, c0: int, c1: int, style: _
         levels = (np.sqrt(np.sqrt(gaussian_filter1d(np.square(rms), sigma))) for rms in band_rms)
         colors = wave_colors(*levels, white_threshold=0.0, sat_floor=RGB_DETAIL_SAT_FLOOR).astype(np.float64)
         min_env, max_env = frame_minmax(mono, frame_hop)
-        image = wave_coverage_columns(min_env, max_env, colors, column, height, flat_color=WAVE_CENTER_LINE_RGB)
-    image = add_center_line(gaussian_filter1d(image, sigma=0.8, axis=0)[c0 - p0: c1 - p0])
+        image = wave_coverage_columns(min_env, max_env, colors, column, height)
+    # the centre line where it is quiet (each column's loudest RMS over WAVE_CENTER_LINE_RMS_SEC), not where the
+    # fine frames' waveform leaves the centre row dark
+    rms_window = max(1, int(round(WAVE_CENTER_LINE_RMS_SEC * sample_rate)))
+    level = np.sqrt(np.maximum(uniform_filter1d(np.square(mono, dtype=np.float64), size=rms_window), 0.0))[centers]
+    loudness = np.zeros(int(column[-1]) + 1 if column.size else 0)
+    np.maximum.at(loudness, column, level)
+    image = add_center_line(gaussian_filter1d(image, sigma=0.8, axis=0)[c0 - p0: c1 - p0],
+                            loudness[c0 - p0: c1 - p0])
     return np.ascontiguousarray(np.clip(image, 0.0, 255.0).astype(np.uint8))
 
 
@@ -547,24 +556,27 @@ class WaveformView(ViewPlugin):
         self._evict_far_chunks(center)
 
     def _evict_far_chunks(self, center: int) -> None:
-        """Drop the rendered chunks of every layer more than RENDER_KEEP_SEC from the playhead but the ones
-        shown most recently (RENDER_RECENT_KEEP_SEC of them over all layers), and the requests that far."""
-        keep = int(np.ceil(RENDER_KEEP_SEC / RENDER_CHUNK_SEC))
-        far = []   # (when last shown, style, chunk)
+        """Drop each layer's rendered chunks farther from the playhead than RENDER_KEEP_VIEWS of the widest view it
+        draws, but as many of them shown most recently, and the requests that far."""
+        view = current_settings().viewconfig
         forgotten = []
+        dropped = []   # (style, chunk)
         for style, layer in self._layers.items():
+            widths = [w for w in WINDOW_STEPS_SEC if _WaveStyle.frame_ms_for(view, w) == style.frame_ms]
+            keep = int(np.ceil(RENDER_KEEP_VIEWS * max(widths) / RENDER_CHUNK_SEC)) if widths else 0
+            far = []   # (when last shown, chunk)
             for i, item in enumerate(layer.items):
                 if abs(i - center) <= keep:
                     continue
                 if item is not None:
-                    far.append((layer.shown[i], style, i))
+                    far.append((layer.shown[i], i))
                 elif i in layer.submitted:
                     layer.submitted.discard(i)   # not rendered yet: not needed now
                     forgotten.append((style, i))
-        far.sort(key=lambda entry: entry[0], reverse=True)
-        recent = int(RENDER_RECENT_KEEP_SEC / RENDER_CHUNK_SEC)
-        kept = sum(1 for shown, _, _ in far[:recent] if shown > 0)   # never shown: not recently used
-        for _, style, i in far[kept:]:
+            far.sort(reverse=True)
+            kept = sum(1 for shown, _ in far[:keep] if shown > 0)   # never shown: not recently used
+            dropped += [(style, i) for _, i in far[kept:]]
+        for style, i in dropped:
             layer = self._layers[style]
             item = layer.items[i]
             if item.scene() is not None:
@@ -581,7 +593,7 @@ class WaveformView(ViewPlugin):
 
     def update_window(self, _w: float):
         if self._layer is not None:
-            # crossing between the short and long views shows the other frame's layer
+            # crossing between the close, short and long views shows the other frame's layer
             self._show_layer(_WaveStyle.from_config(self.model.analysis.wave, self.tl.window_sec))
         self._set_rect(force=True)
         self._evaluate_render_targets()  # a wider view shows chunks not rendered yet

@@ -24,7 +24,7 @@ from PySide6 import QtCore
 
 from core.settings.config import phraselabelname, phraselabelnames
 from system.i18n import LANGUAGES, system_language, tr
-from views.timeline import SHORT_WINDOW_MAX_SEC
+from views.timeline import CLOSE_WINDOW_MAX_SEC, SHORT_WINDOW_MAX_SEC
 from views.render.wave import wave_detail_band_ref
 from views.waveform import _WaveStyle
 from ui.config.scroll import groups_page
@@ -70,13 +70,17 @@ def build_view_tab(dialog) -> None:
         "RGB: the waveform colored by its low / mid / high mix.\n"
         "3Band: the low (blue), mid (amber) and high (white) bands drawn as layers."
     ))
+    dialog.sp_mainview_wave_frame_ms_close = QDoubleSpinBox()
     dialog.sp_mainview_wave_frame_ms_short = QDoubleSpinBox()
     dialog.sp_mainview_wave_frame_ms_long = QDoubleSpinBox()
-    short_max = f"{SHORT_WINDOW_MAX_SEC:g}"
+    short_max, close_max = f"{SHORT_WINDOW_MAX_SEC:g}", f"{CLOSE_WINDOW_MAX_SEC:g}"
     for spin, tooltip, minimum in (
-            (dialog.sp_mainview_wave_frame_ms_short,
+            (dialog.sp_mainview_wave_frame_ms_close,
              tr("Time resolution of the main view waveform bars when the view is up to {seconds} s wide.\n"
-                "Smaller is more detailed.").format(seconds=short_max), 0.3),
+                "Smaller is more detailed.").format(seconds=close_max), 0.1),
+            (dialog.sp_mainview_wave_frame_ms_short,
+             tr("Time resolution of the main view waveform bars when the view is wider than {close} s and up to "
+                "{seconds} s wide.\nSmaller is more detailed.").format(close=close_max, seconds=short_max), 0.3),
             (dialog.sp_mainview_wave_frame_ms_long,
              tr("Time resolution of the main view waveform bars when the view is wider than {seconds} s.\n"
                 "Smaller is more detailed.").format(seconds=short_max), 1.0)):
@@ -161,6 +165,7 @@ def build_view_tab(dialog) -> None:
     dialog.band_spectrum.setToolTip(tr("<p>The master output's spectrum as it plays. Drag a band's edges to set "
                                        "it.</p>"))
     f_wave_bands.addRow(dialog.band_spectrum)
+    f_wave_bands.addRow(tr("Frame, close view (ms)"), _with_slider(dialog.sp_mainview_wave_frame_ms_close, 10))
     f_wave_bands.addRow(tr("Frame, short view (ms)"), _with_slider(dialog.sp_mainview_wave_frame_ms_short, 10))
     f_wave_bands.addRow(tr("Frame, long view (ms)"), _with_slider(dialog.sp_mainview_wave_frame_ms_long, 10))
     f_wave_bands.addRow(tr("Filter order"), _with_slider(dialog.sp_mainview_wave_filter_order, 1))
@@ -281,7 +286,7 @@ class ViewSettingsMixin:
         self._spectrum_switch: Optional[Callable[[bool], None]] = None
         self._spectrum_frames: Optional[Callable] = None
         self._track_model = None
-        self._preview_long = False
+        self._preview_view = "short"     # the view width whose frame was edited last: "close", "short", "long"
         self._spectrum_timer = QtCore.QTimer(self)
         self._spectrum_timer.setInterval(SPECTRUM_POLL_MS)
         self._spectrum_timer.timeout.connect(self._poll_spectrum)
@@ -292,8 +297,9 @@ class ViewSettingsMixin:
                 spin.valueChanged.connect(self._bands_typed)
         self.waveform_style_group.buttonToggled.connect(
             lambda _button, on: on and self.band_spectrum.set_style(self._get_waveform_style()))
-        self.sp_mainview_wave_frame_ms_short.valueChanged.connect(lambda _v: self._preview_frame(False))
-        self.sp_mainview_wave_frame_ms_long.valueChanged.connect(lambda _v: self._preview_frame(True))
+        self.sp_mainview_wave_frame_ms_close.valueChanged.connect(lambda _v: self._preview_frame("close"))
+        self.sp_mainview_wave_frame_ms_short.valueChanged.connect(lambda _v: self._preview_frame("short"))
+        self.sp_mainview_wave_frame_ms_long.valueChanged.connect(lambda _v: self._preview_frame("long"))
 
     def set_waveform_sources(self, native: bool, spectrum_switch: Callable[[bool], None], spectrum_frames: Callable,
                              model) -> None:
@@ -321,14 +327,18 @@ class ViewSettingsMixin:
         lo.setValue(low)
         hi.setValue(high)
 
-    def _preview_frame(self, long: bool) -> None:
-        self._preview_long = long
+    def _preview_frame(self, view: str) -> None:
+        self._preview_view = view
 
     def _preview_style(self) -> tuple[_WaveStyle, float]:
         """The preview's waveform settings as edited, and the seconds it spans."""
         model = self._track_model
         wave = model.analysis.wave if model is not None else None
-        spin = self.sp_mainview_wave_frame_ms_long if self._preview_long else self.sp_mainview_wave_frame_ms_short
+        spin, seconds = {
+            "close": (self.sp_mainview_wave_frame_ms_close, float(CLOSE_WINDOW_MAX_SEC)),
+            "short": (self.sp_mainview_wave_frame_ms_short, float(SHORT_WINDOW_MAX_SEC)),
+            "long": (self.sp_mainview_wave_frame_ms_long, PREVIEW_LONG_SEC),
+        }[self._preview_view]
         style = _WaveStyle(
             bands=tuple((float(lo.value()), float(hi.value())) for lo, hi in self._band_spins()),
             filter_order=int(self.sp_mainview_wave_filter_order.value()),
@@ -336,7 +346,7 @@ class ViewSettingsMixin:
             waveform_style=self._get_waveform_style(),
             band_ref=wave_detail_band_ref(wave),
         )
-        return style, PREVIEW_LONG_SEC if self._preview_long else float(SHORT_WINDOW_MAX_SEC)
+        return style, seconds
 
     def _preview_track(self) -> None:
         model = self._track_model

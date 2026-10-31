@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-31 21:52+0900\n"
+"POT-Creation-Date: 2026-10-31 22:20+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -394,11 +394,11 @@ msgstr ""
 msgid "feature cache is not current"
 msgstr ""
 
-#: app/main.py:60
+#: app/main.py:61
 msgid "Unsupported Operating System"
 msgstr ""
 
-#: app/main.py:61
+#: app/main.py:62
 #, python-brace-format
 msgid ""
 "Mixlyzer supports Windows, Linux and macOS; this system ({system}) is not"
@@ -406,21 +406,21 @@ msgid ""
 "It may not work correctly."
 msgstr ""
 
-#: app/main.py:67
+#: app/main.py:68
 msgid "Administrator Execution Blocked"
 msgstr ""
 
-#: app/main.py:68
+#: app/main.py:69
 msgid ""
 "Mixlyzer cannot run with administrator privileges.\n"
 "Close it and launch again as a normal user."
 msgstr ""
 
-#: app/main.py:80
+#: app/main.py:81
 msgid "Settings Reset"
 msgstr ""
 
-#: app/main.py:81
+#: app/main.py:82
 #, python-brace-format
 msgid ""
 "{name} could not be read, so its settings are back to their defaults.\n"
@@ -431,11 +431,11 @@ msgid ""
 "while Mixlyzer is closed."
 msgstr ""
 
-#: app/main.py:96
+#: app/main.py:97
 msgid "Incompatible Library Version"
 msgstr ""
 
-#: app/main.py:97
+#: app/main.py:98
 #, python-brace-format
 msgid ""
 "This library cannot be opened by the current app version.\n"
@@ -510,27 +510,27 @@ msgstr ""
 msgid "Building the window"
 msgstr ""
 
-#: app/window.py:81
+#: app/window.py:82
 msgid "Core objects and playback"
 msgstr ""
 
-#: app/window.py:104
+#: app/window.py:105
 msgid "Main view, editor and library"
 msgstr ""
 
-#: app/window.py:111 app/window.py:284 ui/config/window.py:68
+#: app/window.py:112 app/window.py:285 ui/config/window.py:68
 msgid "Settings"
 msgstr ""
 
-#: app/window.py:113
+#: app/window.py:114
 msgid "Dialogs, workflows and metronome"
 msgstr ""
 
-#: app/window.py:159
+#: app/window.py:160
 msgid "Library in a Synced Folder"
 msgstr ""
 
-#: app/window.py:160
+#: app/window.py:161
 #, python-brace-format
 msgid ""
 "The library is in a folder {service} syncs:\n"
@@ -543,79 +543,79 @@ msgid ""
 "sync while Mixlyzer runs."
 msgstr ""
 
-#: app/window.py:166
+#: app/window.py:167
 msgid "Don't show this again for this folder"
 msgstr ""
 
-#: app/window.py:285 ui/windows/workers.py:28
+#: app/window.py:286 ui/windows/workers.py:28
 msgid "Workers"
 msgstr ""
 
-#: app/window.py:286 ui/shortcuts.py:156 ui/windows/tieup_works.py:33
+#: app/window.py:287 ui/shortcuts.py:156 ui/windows/tieup_works.py:33
 #: ui/windows/tieup_works.py:204 ui/windows/tieup_works.py:259
 #: ui/windows/tieup_works.py:264 ui/windows/tieup_works.py:273
 #: ui/windows/tieup_works.py:336
 msgid "Tie-up Works"
 msgstr ""
 
-#: app/window.py:287
+#: app/window.py:288
 msgid "Open Source"
 msgstr ""
 
-#: app/window.py:288 ui/windows/diagnostics_dialog.py:21
+#: app/window.py:289 ui/windows/diagnostics_dialog.py:21
 msgid "Diagnostics"
 msgstr ""
 
-#: app/window.py:289
+#: app/window.py:290
 msgid "About"
 msgstr ""
 
-#: app/window.py:306 core/controls/midi.py:56
+#: app/window.py:307 core/controls/midi.py:56
 msgid "Mixer"
 msgstr ""
 
-#: app/window.py:486
+#: app/window.py:488
 msgid "MIDI needs the native audio engine (Settings > Audio > Engine)."
 msgstr ""
 
-#: app/window.py:493
+#: app/window.py:495
 msgid "MIDI input on."
 msgstr ""
 
-#: app/window.py:493
+#: app/window.py:495
 msgid "MIDI input off."
 msgstr ""
 
-#: app/window.py:545
+#: app/window.py:547
 msgid "The Python audio engine plays: there is no native engine to restart."
 msgstr ""
 
-#: app/window.py:547
+#: app/window.py:549
 msgid "Restarting the audio engine..."
 msgstr ""
 
-#: app/window.py:551
+#: app/window.py:553
 msgid "Audio engine restarted."
 msgstr ""
 
-#: app/window.py:552
+#: app/window.py:554
 msgid "The audio engine did not start; it is tried again every 2 seconds."
 msgstr ""
 
-#: app/window.py:611 app/window.py:676
+#: app/window.py:613 app/window.py:678
 msgid "External Sync is enabled. Local track loading is disabled."
 msgstr ""
 
-#: app/window.py:624 app/window.py:679
+#: app/window.py:626 app/window.py:681
 msgid "Segment reanalysis canceled (track changed)"
 msgstr ""
 
-#: app/window.py:660
+#: app/window.py:662
 #, python-brace-format
 msgid "The track's analysis could not be read: {file}"
 msgstr ""
 
-#: app/window.py:664
+#: app/window.py:666
 #, python-brace-format
 msgid ""
 "{n} JumpCUE past slot Z is not shown ({file}); it stays stored until the "
@@ -626,15 +626,15 @@ msgid_plural ""
 msgstr[0] ""
 msgstr[1] ""
 
-#: app/window.py:682
+#: app/window.py:684
 msgid "Track unloaded."
 msgstr ""
 
-#: app/window.py:692
+#: app/window.py:694
 msgid "Track File Not Found"
 msgstr ""
 
-#: app/window.py:696
+#: app/window.py:698
 #, python-brace-format
 msgid ""
 "Cannot load \"{name}\": its file is missing.\n"
@@ -643,76 +643,76 @@ msgid ""
 "Set the file's new location?"
 msgstr ""
 
-#: app/window.py:703
+#: app/window.py:705
 #, python-brace-format
 msgid "Locate {name}"
 msgstr ""
 
-#: app/window.py:727 app/window.py:743
+#: app/window.py:729 app/window.py:745
 msgid "Analysis saved to library."
 msgstr ""
 
-#: app/window.py:732
+#: app/window.py:734
 msgid "Finished"
 msgstr ""
 
-#: app/window.py:755
+#: app/window.py:757
 msgid "Waiting to be looked up on Wikipedia"
 msgstr ""
 
-#: app/window.py:761
+#: app/window.py:763
 msgid "Looking up on Wikipedia and Wikidata…"
 msgstr ""
 
-#: app/window.py:766
+#: app/window.py:768
 msgid "The lookup failed."
 msgstr ""
 
-#: app/window.py:802
+#: app/window.py:804
 #, python-brace-format
 msgid "External Sync loading: {file}"
 msgstr ""
 
-#: app/window.py:802
+#: app/window.py:804
 #, python-brace-format
 msgid "External Sync analyzing: {file}"
 msgstr ""
 
-#: app/window.py:816
+#: app/window.py:818
 msgid "External Sync Disabled"
 msgstr ""
 
-#: app/window.py:823
+#: app/window.py:825
 msgid "Rebuilding the sort index..."
 msgstr ""
 
-#: app/window.py:825
+#: app/window.py:827
 #, python-brace-format
 msgid "Sort index rebuilt: {count} names."
 msgstr ""
 
-#: app/window.py:833 ui/windows/library_backup.py:53
+#: app/window.py:835 ui/windows/library_backup.py:53
 msgid "Back Up Library"
 msgstr ""
 
-#: app/window.py:834 app/window.py:850
+#: app/window.py:836 app/window.py:852
 #, python-brace-format
 msgid "Mixlyzer library backup (*{suffix})"
 msgstr ""
 
-#: app/window.py:844
+#: app/window.py:846
 msgid ""
 "The editor has edits not saved. Save or undo them first: Mixlyzer "
 "restarts after a restore."
 msgstr ""
 
-#: app/window.py:846 app/window.py:849 app/window.py:856 app/window.py:863
-#: app/window.py:906 ui/windows/library_backup.py:133
+#: app/window.py:848 app/window.py:851 app/window.py:858 app/window.py:865
+#: app/window.py:908 ui/windows/library_backup.py:133
 #: ui/windows/library_backup.py:295
 msgid "Restore Library"
 msgstr ""
 
-#: app/window.py:887
+#: app/window.py:889
 #, python-brace-format
 msgid ""
 "Restored {n} track into:\n"
@@ -723,36 +723,36 @@ msgid_plural ""
 msgstr[0] ""
 msgstr[1] ""
 
-#: app/window.py:890
+#: app/window.py:892
 #, python-brace-format
 msgid "{n} track's file path was joined to this device's folders."
 msgid_plural "{n} tracks' file paths were joined to this device's folders."
 msgstr[0] ""
 msgstr[1] ""
 
-#: app/window.py:894
+#: app/window.py:896
 #, python-brace-format
 msgid "{n} path was left as it was: another track already had the new one."
 msgid_plural "{n} paths were left as they were: other tracks already had the new ones."
 msgstr[0] ""
 msgstr[1] ""
 
-#: app/window.py:898
+#: app/window.py:900
 #, python-brace-format
 msgid "{n} track had no stored analysis in the backup."
 msgid_plural "{n} tracks had no stored analysis in the backup."
 msgstr[0] ""
 msgstr[1] ""
 
-#: app/window.py:902
+#: app/window.py:904
 msgid "Files replaced by the backup's were kept beside them:"
 msgstr ""
 
-#: app/window.py:904
+#: app/window.py:906
 msgid "Mixlyzer now restarts to open the restored library."
 msgstr ""
 
-#: app/window.py:1192
+#: app/window.py:1195
 #, python-brace-format
 msgid "External Sync enabled: OSC on {address}. Local play/load is locked."
 msgstr ""
@@ -1479,7 +1479,7 @@ msgid "Processing Waveform"
 msgstr ""
 
 #: core/workers/analysis_texts.py:15 ui/config/pipeline_map.py:32
-#: ui/config/view.py:154 ui/config/view.py:194
+#: ui/config/view.py:158 ui/config/view.py:199
 msgid "Waveform"
 msgstr ""
 
@@ -1493,7 +1493,7 @@ msgstr ""
 
 #: core/workers/analysis_texts.py:17 ui/config/analysis.py:256
 #: ui/config/pipeline_map.py:24 ui/config/pipeline_map.py:33
-#: ui/edit_panel/panel.py:59 ui/library/search.py:270 ui/library/search.py:330
+#: ui/edit_panel/panel.py:60 ui/library/search.py:270 ui/library/search.py:330
 #: ui/shortcuts.py:38
 msgid "Phrase"
 msgstr ""
@@ -1983,7 +1983,7 @@ msgid "Folder for features cached while reoptimizing, so later runs are faster."
 msgstr ""
 
 #: ui/config/analysis.py:47 ui/config/analysis.py:163 ui/config/library.py:258
-#: ui/config/view.py:192
+#: ui/config/view.py:197
 msgid "General"
 msgstr ""
 
@@ -2005,7 +2005,7 @@ msgid ""
 "a song outside it is read at half or double tempo."
 msgstr ""
 
-#: ui/config/analysis.py:75 ui/config/window.py:256
+#: ui/config/analysis.py:75 ui/config/window.py:257
 #: ui/windows/reanalyze_dialog.py:38 ui/windows/reanalyze_dialog.py:76
 #, python-brace-format
 msgid "Reads {low} - {high} BPM"
@@ -2071,7 +2071,7 @@ msgstr ""
 #: ui/config/analysis.py:139 ui/config/analysis.py:177
 #: ui/config/analysis.py:200 ui/config/dialogs/optimization.py:204
 #: ui/config/library.py:251 ui/config/library.py:267 ui/config/playback.py:108
-#: ui/config/view.py:187
+#: ui/config/view.py:192
 msgid "Advanced"
 msgstr ""
 
@@ -4125,7 +4125,7 @@ msgstr ""
 msgid "Its device's stream is shared with another output, at that output's rate."
 msgstr ""
 
-#: ui/config/pipeline_map.py:22 ui/config/view.py:198
+#: ui/config/pipeline_map.py:22 ui/config/view.py:203
 msgid "View"
 msgstr ""
 
@@ -4856,7 +4856,7 @@ msgid ""
 "3Band: the low (blue), mid (amber) and high (white) bands drawn as layers."
 msgstr ""
 
-#: ui/config/view.py:78
+#: ui/config/view.py:79
 #, python-brace-format
 msgid ""
 "Time resolution of the main view waveform bars when the view is up to "
@@ -4864,7 +4864,15 @@ msgid ""
 "Smaller is more detailed."
 msgstr ""
 
-#: ui/config/view.py:81
+#: ui/config/view.py:82
+#, python-brace-format
+msgid ""
+"Time resolution of the main view waveform bars when the view is wider "
+"than {close} s and up to {seconds} s wide.\n"
+"Smaller is more detailed."
+msgstr ""
+
+#: ui/config/view.py:85
 #, python-brace-format
 msgid ""
 "Time resolution of the main view waveform bars when the view is wider "
@@ -4872,211 +4880,215 @@ msgid ""
 "Smaller is more detailed."
 msgstr ""
 
-#: ui/config/view.py:89
+#: ui/config/view.py:93
 msgid ""
 "Order of the main view waveform's band filters. Higher separates the "
 "bands more sharply."
 msgstr ""
 
-#: ui/config/view.py:92
+#: ui/config/view.py:96
 msgid "Use output volume as peak meter input"
 msgstr ""
 
-#: ui/config/view.py:94
+#: ui/config/view.py:98
 msgid "Reduce FPS when occluded"
 msgstr ""
 
-#: ui/config/view.py:100
+#: ui/config/view.py:104
 msgid "Waiting for FPS..."
 msgstr ""
 
-#: ui/config/view.py:102
+#: ui/config/view.py:106
 msgid "Measured from actual pyqtgraph plot repaint intervals."
 msgstr ""
 
-#: ui/config/view.py:104
+#: ui/config/view.py:108
 msgid "Show the detailed waveform view."
 msgstr ""
 
-#: ui/config/view.py:105
+#: ui/config/view.py:109
 msgid "Show the beat grid view."
 msgstr ""
 
-#: ui/config/view.py:106
+#: ui/config/view.py:110
 msgid "Show the key strip (detected key over time)."
 msgstr ""
 
-#: ui/config/view.py:107
+#: ui/config/view.py:111
 msgid "Show the JumpCUE view (detected repeat jump points)."
 msgstr ""
 
-#: ui/config/view.py:108
+#: ui/config/view.py:112
 msgid "Overlay the detected phrases on the views."
 msgstr ""
 
-#: ui/config/view.py:110
+#: ui/config/view.py:114
 msgid ""
 "<p>The overview's and the main view's BPM and keys as heard: the tempo "
 "changed by the fader, the key moved by the key shift (and by the tempo "
 "with MT off). Off: the track's own.</p>"
 msgstr ""
 
-#: ui/config/view.py:113
+#: ui/config/view.py:117
 msgid ""
 "Checked: the peak meter follows the volume slider (what you hear).\n"
 "Unchecked: the peak meter shows the level after Trim only."
 msgstr ""
 
-#: ui/config/view.py:117
+#: ui/config/view.py:121
 msgid ""
 "Lower the redraw rate while the window is hidden behind other windows\n"
 "or minimized, to save CPU."
 msgstr ""
 
-#: ui/config/view.py:120
+#: ui/config/view.py:124
 msgid "Target redraw rate of the views."
 msgstr ""
 
-#: ui/config/view.py:122
+#: ui/config/view.py:126
 msgid "Image drawn as the spinning record when a track has no album art."
 msgstr ""
 
-#: ui/config/view.py:125 ui/config/view.py:127
+#: ui/config/view.py:129 ui/config/view.py:131
 #: ui/library/tabs/tieup_editor.py:140 ui/library/tabs/tieup_editor.py:143
 #: ui/windows/tieup_works.py:77 ui/windows/tieup_works.py:80
 msgid "Language"
 msgstr ""
 
-#: ui/config/view.py:129 ui/config/view.py:193
+#: ui/config/view.py:133 ui/config/view.py:198
 msgid "Display"
 msgstr ""
 
-#: ui/config/view.py:148
+#: ui/config/view.py:152
 msgid "lo"
 msgstr ""
 
-#: ui/config/view.py:149
+#: ui/config/view.py:153
 msgid "hi"
 msgstr ""
 
-#: ui/config/view.py:156
+#: ui/config/view.py:160
 msgid "Low / mid / high bands of the waveforms' colors."
 msgstr ""
 
-#: ui/config/view.py:159
+#: ui/config/view.py:163
 msgid "Waveform style"
 msgstr ""
 
-#: ui/config/view.py:161
+#: ui/config/view.py:165
 msgid ""
 "<p>The master output's spectrum as it plays. Drag a band's edges to set "
 "it.</p>"
 msgstr ""
 
-#: ui/config/view.py:164
+#: ui/config/view.py:168
+msgid "Frame, close view (ms)"
+msgstr ""
+
+#: ui/config/view.py:169
 msgid "Frame, short view (ms)"
 msgstr ""
 
-#: ui/config/view.py:165
+#: ui/config/view.py:170
 msgid "Frame, long view (ms)"
 msgstr ""
 
-#: ui/config/view.py:166
+#: ui/config/view.py:171
 msgid "Filter order"
 msgstr ""
 
-#: ui/config/view.py:168
+#: ui/config/view.py:173
 msgid ""
 "<p>The loaded track at the playhead, drawn with these settings. What is "
 "already drawn keeps the settings it was drawn with.</p>"
 msgstr ""
 
-#: ui/config/view.py:172
+#: ui/config/view.py:177
 msgid "Low"
 msgstr ""
 
-#: ui/config/view.py:172
+#: ui/config/view.py:177
 msgid "Frequency range (Hz) drawn as the low band of the waveform."
 msgstr ""
 
-#: ui/config/view.py:173
+#: ui/config/view.py:178
 msgid "Lower edge of the low band (Hz)."
 msgstr ""
 
-#: ui/config/view.py:173
+#: ui/config/view.py:178
 msgid "Upper edge of the low band (Hz)."
 msgstr ""
 
-#: ui/config/view.py:175
+#: ui/config/view.py:180
 msgid "Mid"
 msgstr ""
 
-#: ui/config/view.py:175
+#: ui/config/view.py:180
 msgid "Frequency range (Hz) drawn as the mid band of the waveform."
 msgstr ""
 
-#: ui/config/view.py:176
+#: ui/config/view.py:181
 msgid "Lower edge of the mid band (Hz)."
 msgstr ""
 
-#: ui/config/view.py:176
+#: ui/config/view.py:181
 msgid "Upper edge of the mid band (Hz)."
 msgstr ""
 
-#: ui/config/view.py:178
+#: ui/config/view.py:183
 msgid "High"
 msgstr ""
 
-#: ui/config/view.py:178
+#: ui/config/view.py:183
 msgid "Frequency range (Hz) drawn as the high band of the waveform."
 msgstr ""
 
-#: ui/config/view.py:179
+#: ui/config/view.py:184
 msgid "Lower edge of the high band (Hz)."
 msgstr ""
 
-#: ui/config/view.py:179
+#: ui/config/view.py:184
 msgid "Upper edge of the high band (Hz)."
 msgstr ""
 
-#: ui/config/view.py:181
+#: ui/config/view.py:186
 msgid "Performance"
 msgstr ""
 
-#: ui/config/view.py:185
+#: ui/config/view.py:190
 msgid "Actual FPS"
 msgstr ""
 
-#: ui/config/view.py:189
+#: ui/config/view.py:194
 msgid "Record image path"
 msgstr ""
 
-#: ui/config/view.py:195 ui/config/view.py:223
+#: ui/config/view.py:200 ui/config/view.py:228
 msgid "Phrase labels"
 msgstr ""
 
-#: ui/config/view.py:226 ui/library/tabs/tieup_editor.py:143
+#: ui/config/view.py:231 ui/library/tabs/tieup_editor.py:143
 #: ui/windows/tieup_works.py:80
 msgid "Alias"
 msgstr ""
 
-#: ui/config/view.py:227
+#: ui/config/view.py:232
 msgid "Overview"
 msgstr ""
 
-#: ui/config/view.py:233
+#: ui/config/view.py:238
 #, python-brace-format
 msgid "Shown in place of {label} (empty: {label})"
 msgstr ""
 
-#: ui/config/view.py:238
+#: ui/config/view.py:243
 #, python-brace-format
 msgid ""
 "{label} in the overview, numbered when it occurs more than once\n"
 "(empty: the first letter of its name)"
 msgstr ""
 
-#: ui/config/view.py:306
+#: ui/config/view.py:312
 msgid "The spectrum needs the native audio engine."
 msgstr ""
 
@@ -5480,7 +5492,7 @@ msgstr ""
 msgid "Two JumpCUEs cannot share a point."
 msgstr ""
 
-#: ui/edit_panel/jumpcue.py:222 ui/edit_panel/panel.py:578
+#: ui/edit_panel/jumpcue.py:222 ui/edit_panel/panel.py:579
 msgid "Invalid JumpCUE Label"
 msgstr ""
 
@@ -5654,73 +5666,73 @@ msgstr ""
 msgid "{key} | Seg {index} | Elapsed: {elapsed} | Left: {left}"
 msgstr ""
 
-#: ui/edit_panel/panel.py:60
+#: ui/edit_panel/panel.py:61
 msgid "Edit the beatgrid"
 msgstr ""
 
-#: ui/edit_panel/panel.py:60
+#: ui/edit_panel/panel.py:61
 msgid "Edit the key"
 msgstr ""
 
-#: ui/edit_panel/panel.py:61
+#: ui/edit_panel/panel.py:62
 msgid "Edit the phrase"
 msgstr ""
 
-#: ui/edit_panel/panel.py:61
+#: ui/edit_panel/panel.py:62
 msgid "Edit the JumpCUEs and CUE points"
 msgstr ""
 
-#: ui/edit_panel/panel.py:593
+#: ui/edit_panel/panel.py:594
 #, python-brace-format
 msgid ""
 "The edits could not be saved:\n"
 "{error}"
 msgstr ""
 
-#: ui/edit_panel/panel.py:593 ui/windows/tieup_works.py:88
+#: ui/edit_panel/panel.py:594 ui/windows/tieup_works.py:88
 msgid "Save"
 msgstr ""
 
-#: ui/edit_panel/panel.py:626
+#: ui/edit_panel/panel.py:627
 msgid ""
 "<p>Editing is locked: pages switch, but nothing is edited or saved. Click"
 " to unlock.</p>"
 msgstr ""
 
-#: ui/edit_panel/panel.py:628
+#: ui/edit_panel/panel.py:629
 msgid ""
 "<p>Editing is unlocked: the shown pages' graphics are emphasized. Click "
 "to lock: no edits, no saving (on at every start).</p>"
 msgstr ""
 
-#: ui/edit_panel/panel.py:739
+#: ui/edit_panel/panel.py:748
 #, python-brace-format
 msgid "This shortcut does nothing on the {page} page."
 msgstr ""
 
-#: ui/edit_panel/panel.py:747
+#: ui/edit_panel/panel.py:756
 msgid "Editing is locked."
 msgstr ""
 
-#: ui/edit_panel/panel.py:749
+#: ui/edit_panel/panel.py:758
 msgid "Editing waits for the segment reanalysis to finish."
 msgstr ""
 
-#: ui/edit_panel/panel.py:782 ui/edit_panel/panel.py:795
+#: ui/edit_panel/panel.py:791 ui/edit_panel/panel.py:804
 #, python-brace-format
 msgid "JumpCUE {letter} is not set."
 msgstr ""
 
-#: ui/edit_panel/panel.py:791
+#: ui/edit_panel/panel.py:800
 #, python-brace-format
 msgid "JumpCUE {letter} is already set."
 msgstr ""
 
-#: ui/edit_panel/panel.py:811
+#: ui/edit_panel/panel.py:820
 msgid "CALL works while stopped."
 msgstr ""
 
-#: ui/edit_panel/panel.py:827
+#: ui/edit_panel/panel.py:836
 msgid "No CUE point at the playhead."
 msgstr ""
 
@@ -7287,59 +7299,59 @@ msgstr ""
 msgid "The loaded track is not in the list shown."
 msgstr ""
 
-#: ui/pane.py:146
+#: ui/pane.py:147
 msgid "Load to Deck"
 msgstr ""
 
-#: ui/pane.py:354
+#: ui/pane.py:355
 msgid "Tempo range: ±6% / ±10% / ±16% / WIDE; click for the next"
 msgstr ""
 
-#: ui/pane.py:374
+#: ui/pane.py:375
 #, python-format
 msgid "Tempo (WIDE: 0%-200%, 0 stops)"
 msgstr ""
 
-#: ui/pane.py:427
+#: ui/pane.py:428
 msgid "Key a semitone up (the tempo kept)"
 msgstr ""
 
-#: ui/pane.py:429
+#: ui/pane.py:430
 #, python-brace-format
 msgid "Key shift in semitones (±{max}); click: the track's own key"
 msgstr ""
 
-#: ui/pane.py:431
+#: ui/pane.py:432
 msgid "Key a semitone down (the tempo kept)"
 msgstr ""
 
-#: ui/pane.py:499
+#: ui/pane.py:500
 msgid ""
 "CUE: stopped, sets the cue point here / held on the cue point, plays "
 "until let go; playing, back to the cue point and stop"
 msgstr ""
 
-#: ui/pane.py:503 ui/shortcuts.py:89
+#: ui/pane.py:504 ui/shortcuts.py:89
 msgid "Tempo reset (100%)"
 msgstr ""
 
-#: ui/pane.py:505
+#: ui/pane.py:506
 msgid "Master tempo: time stretch keeps the pitch"
 msgstr ""
 
-#: ui/pane.py:533
+#: ui/pane.py:534
 msgid "Key shift needs the native audio engine."
 msgstr ""
 
-#: ui/config/external_sync.py:105 ui/library/widget.py:389 ui/pane.py:620
+#: ui/config/external_sync.py:105 ui/library/widget.py:389 ui/pane.py:621
 msgid "External Sync"
 msgstr ""
 
-#: ui/pane.py:621
+#: ui/pane.py:622
 msgid "Playback is disabled while External Sync is enabled."
 msgstr ""
 
-#: ui/pane.py:952
+#: ui/pane.py:960
 msgid "Not Loaded"
 msgstr ""
 
@@ -7360,7 +7372,7 @@ msgstr ""
 msgid "Current page"
 msgstr ""
 
-#: ui/edit_panel/panel.py:59 ui/shortcuts.py:36
+#: ui/edit_panel/panel.py:60 ui/shortcuts.py:36
 msgid "Beatgrid"
 msgstr ""
 
@@ -7802,15 +7814,15 @@ msgstr ""
 msgid "It becomes the current page."
 msgstr ""
 
-#: ui/edit_panel/panel.py:220 ui/shortcuts.py:186
+#: ui/edit_panel/panel.py:221 ui/shortcuts.py:186
 msgid "Undo Changes"
 msgstr ""
 
-#: ui/edit_panel/panel.py:224 ui/shortcuts.py:187
+#: ui/edit_panel/panel.py:225 ui/shortcuts.py:187
 msgid "Redo Changes"
 msgstr ""
 
-#: ui/edit_panel/panel.py:228 ui/shortcuts.py:188
+#: ui/edit_panel/panel.py:229 ui/shortcuts.py:188
 msgid "Save Edits"
 msgstr ""
 
@@ -8070,14 +8082,14 @@ msgstr ""
 msgid "Label the current phrase {label}"
 msgstr ""
 
-#: ui/shortcuts.py:314
+#: ui/shortcuts.py:319
 #, python-brace-format
 msgid ""
 "Another program on this computer takes {keys}: these shortcuts do not "
 "work (Settings > Shortcuts)."
 msgstr ""
 
-#: ui/shortcuts.py:360
+#: ui/shortcuts.py:365
 #, python-brace-format
 msgid "{keys} is used by more than one action (Settings > Shortcuts)."
 msgstr ""

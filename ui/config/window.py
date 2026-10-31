@@ -217,6 +217,7 @@ class SettingsDialog(
         self._set_band(self.sp_env_lo_lo,  self.sp_env_lo_hi,  v.env_lo)
         self._set_band(self.sp_env_mid_lo, self.sp_env_mid_hi, v.env_mid)
         self._set_band(self.sp_env_hi_lo,  self.sp_env_hi_hi,  v.env_hi)
+        self.sp_mainview_wave_frame_ms_close.setValue(float(v.mainview_wave_frame_ms_close))
         self.sp_mainview_wave_frame_ms_short.setValue(float(v.mainview_wave_frame_ms_short))
         self.sp_mainview_wave_frame_ms_long.setValue(float(v.mainview_wave_frame_ms_long))
         self.sp_mainview_wave_filter_order.setValue(int(v.mainview_wave_filter_order))
@@ -372,6 +373,7 @@ class SettingsDialog(
                 env_mid=(float(self.sp_env_mid_lo.value()), float(self.sp_env_mid_hi.value())),
                 env_hi=(float(self.sp_env_hi_lo.value()), float(self.sp_env_hi_hi.value())),
                 mainview_wave_frame_ms_short=round(float(self.sp_mainview_wave_frame_ms_short.value()), 1),
+                mainview_wave_frame_ms_close=round(float(self.sp_mainview_wave_frame_ms_close.value()), 1),
                 mainview_wave_frame_ms_long=round(float(self.sp_mainview_wave_frame_ms_long.value()), 1),
                 mainview_wave_filter_order=int(self.sp_mainview_wave_filter_order.value()),
                 use_output_volume_as_peak_meter_input=bool(

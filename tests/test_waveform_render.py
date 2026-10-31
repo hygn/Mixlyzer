@@ -1,3 +1,4 @@
+import dataclasses
 import os
 import subprocess
 import sys
@@ -113,6 +114,28 @@ class BandFilterTests(unittest.TestCase):
                                                                output="sos"), y))
 
 
+class CenterLineTests(unittest.TestCase):
+    """The centre line by the audio's loudness: white under silence, none in loud audio even where a close view's
+    fine frames leave the centre row dark (between a wave's crests) or a frame within one pixel off the centre."""
+
+    def center_row(self, pcm, frame_ms=0.5):
+        style = dataclasses.replace(STYLE, frame_ms=frame_ms)
+        hop = waveform.FRAMES_PER_COLUMN * style.frame_hop(48000)
+        image = waveform.render_columns(pcm, 48000, 10, 10 + 48000 // hop // 2, style, height=waveform.RENDER_HEIGHT)
+        return image[:, waveform.RENDER_HEIGHT // 2, :].astype(int)
+
+    def test_none_in_loud_audio(self):
+        t = np.arange(48000) / 48000.0
+        for hz in (60.0, 110.0):
+            row = self.center_row((0.5 * np.sin(2 * np.pi * hz * t)).astype(np.float32))
+            white = (row.min(axis=1) > 200)
+            self.assertFalse(white.any(), f"{hz} Hz: {white.sum()} white pixels on the centre row")
+
+    def test_white_under_silence(self):
+        row = self.center_row(np.zeros(48000, np.float32))
+        self.assertTrue((row.min(axis=1) > 200).all())
+
+
 class EvictionTests(unittest.TestCase):
     def setUp(self):
         self.bus = EventBus()
@@ -143,7 +166,8 @@ class EvictionTests(unittest.TestCase):
         self.render(range(20, 30), shown=0)      # rendered, never shown
         self.render(range(190, 211), shown=3)    # around the playhead
         self.layer.submitted.update({40, 41})    # requested, not rendered yet
-        with mock.patch.object(waveform, "RENDER_RECENT_KEEP_SEC", 15.0):
+        # the long views' frame (2 ms): widest 24 s, so 15 chunks kept near and 15 far shown recently
+        with mock.patch.object(waveform, "RENDER_KEEP_VIEWS", 15.0 / 24.0):
             self.view._evict_far_chunks(200)
         kept = {i for i, item in enumerate(self.layer.items) if item is not None}
         self.assertTrue(set(range(190, 211)) <= kept)
@@ -152,6 +176,33 @@ class EvictionTests(unittest.TestCase):
         self.assertFalse(kept & set(range(20, 30)))                  # never shown: not recently used
         self.assertFalse(self.layer.submitted & {40, 41})
         self.assertEqual({i for _, i in self.forgotten}, (set(range(30)) - kept) | {40, 41})
+
+    def layer_of(self, style):
+        n = len(self.layer.items)
+        return self.view._layers.setdefault(
+            style, waveform._ChunkLayer(style=style, items=[None] * n, spans=[None] * n, shown=[0] * n))
+
+    def test_the_close_views_layer_kept_shorter(self):
+        # the close views' frame (0.5 ms by default): widest 3 s, 7.5 s kept near (8 chunks), as many far
+        close = dataclasses.replace(STYLE, frame_ms=0.5)
+        layer = self.layer_of(close)
+        for i in (*range(150, 251), *range(0, 20)):
+            layer.items[i] = self.view._make_chunk_item()
+            layer.shown[i] = 10 if i < 20 else 1        # 0 - 20 s shown a moment ago, the rest long ago
+        self.render(range(140, 261), shown=3)                         # the long layer: 60 s each side kept
+        self.view._evict_far_chunks(200)
+        kept = {i for i, item in enumerate(layer.items) if item is not None}
+        self.assertEqual(kept & set(range(150, 251)), set(range(192, 209)))
+        self.assertEqual(len(kept & set(range(0, 20))), 8)           # far, the most recently shown
+        self.assertTrue(all(self.layer.items[i] is not None for i in range(140, 261)))
+        # a frame no view width draws any more: only what is near the playhead
+        stale = dataclasses.replace(STYLE, frame_ms=7.0)
+        old = self.layer_of(stale)
+        for i in (198, 200, 230):
+            old.items[i] = self.view._make_chunk_item()
+            old.shown[i] = 9
+        self.view._evict_far_chunks(200)
+        self.assertEqual({i for i, item in enumerate(old.items) if item is not None}, {200})
 
     def test_shown_chunks_are_stamped(self):
         self.render(range(0, 300), shown=0)

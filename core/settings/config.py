@@ -101,6 +101,7 @@ class viewconfig:
     # views.timeline.SHORT_WINDOW_MAX_SEC wide) and of the longer ones
     mainview_wave_frame_ms_short: float
     mainview_wave_frame_ms_long: float
+    mainview_wave_frame_ms_close: float  # ... of the close views (up to views.timeline.CLOSE_WINDOW_MAX_SEC)
     mainview_wave_filter_order: int  # main view waveform: band filter order
     use_output_volume_as_peak_meter_input: bool
     fps: int
@@ -509,6 +510,7 @@ def default_cfg():
         env_hi=(1600.0, 11025.0),
         mainview_wave_frame_ms_short=1.0,
         mainview_wave_frame_ms_long=2.0,
+        mainview_wave_frame_ms_close=0.5,
         mainview_wave_filter_order=4,
         use_output_volume_as_peak_meter_input=False,
         fps=60,

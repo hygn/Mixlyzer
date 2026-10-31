@@ -56,21 +56,29 @@ THREE_BAND_DETAIL_RMS_SEC = 1.0 / 75.0
 # color changes gradually), and a lower saturation floor than the overview's.
 RGB_DETAIL_COLOR_SMOOTH_SEC = 0.05
 RGB_DETAIL_SAT_FLOOR = 0.6
-# The detail waveform's centre line: where the waveform leaves the centre row
-# dark (quiet audio), it is drawn in this colour, fading out as the waveform's
-# own pixel there brightens up to WAVE_CENTER_LINE_FADE (its brightest channel).
+# The detail waveform's centre line, in this colour, where the audio is quiet: by its loudness (the main view's
+# chunks: each column's RMS over WAVE_CENTER_LINE_RMS_SEC, full under silence and gone from WAVE_CENTER_LINE_QUIET
+# on; a fine frame's waveform leaves the centre row dark in loud audio too, between a wave's crests), else (the
+# preview, drawn from the stored overview) where the waveform leaves the centre row dark, fading out as its own
+# pixel there brightens up to WAVE_CENTER_LINE_FADE (its brightest channel).
 WAVE_CENTER_LINE_RGB = (255, 255, 255)
 WAVE_CENTER_LINE_FADE = 64.0
+WAVE_CENTER_LINE_QUIET = 0.01        # -40 dBFS
+WAVE_CENTER_LINE_RMS_SEC = 0.01
 
 
-def add_center_line(image: np.ndarray) -> np.ndarray:
-    """``image`` ``[columns, height, 3]`` (a mirrored waveform) with the centre
-    line on its centre row (the row a flat frame is drawn on); a float copy."""
+def add_center_line(image: np.ndarray, loudness: np.ndarray | None = None) -> np.ndarray:
+    """``image`` ``[columns, height, 3]`` (a mirrored waveform) with the centre line on its centre row, where
+    ``loudness`` (each column's RMS) is quiet, or without it where the row is dark; a float copy."""
     out = np.array(image, dtype=np.float64)
     if out.ndim != 3 or out.shape[1] == 0:
         return out
     row = out[:, out.shape[1] // 2, :]
-    alpha = np.clip(1.0 - row.max(axis=1) / WAVE_CENTER_LINE_FADE, 0.0, 1.0)[:, np.newaxis]
+    if loudness is not None:
+        quiet = 1.0 - np.asarray(loudness, dtype=np.float64)[: row.shape[0]] / WAVE_CENTER_LINE_QUIET
+        alpha = np.clip(quiet, 0.0, 1.0)[:, np.newaxis]
+    else:
+        alpha = np.clip(1.0 - row.max(axis=1) / WAVE_CENTER_LINE_FADE, 0.0, 1.0)[:, np.newaxis]
     row += alpha * (np.asarray(WAVE_CENTER_LINE_RGB, dtype=np.float64) - row)
     return out
 
@@ -316,12 +324,11 @@ def wave_coverage_columns(
     top = np.clip(half - (np.nan_to_num(max_env) * half).astype(int), 0, H - 1)
     bottom = np.clip(half - (np.nan_to_num(min_env) * half).astype(int), 0, H - 1)
     first, last = np.minimum(top, bottom), np.maximum(top, bottom)
-    flat = top == bottom
-    first[flat] = last[flat] = min(max(0, half), H - 1)
     if flat_color is not None:
-        # a frame too quiet to span a pixel is drawn in ``flat_color``, not its band colour
+        # a frame too quiet to span a pixel, on the centre row, is drawn in ``flat_color``, not its band colour (a
+        # frame within one pixel elsewhere, a short one near a loud wave's crest, is its own colour, where it is)
         colors = np.array(colors, dtype=np.float64)
-        colors[flat] = flat_color
+        colors[(top == bottom) & (top == min(max(0, half), H - 1))] = flat_color
 
     # +color where a bar starts, -color after it ends, cumulative sum down the rows.
     column = np.asarray(column, dtype=np.int64)

@@ -1,10 +1,12 @@
 from PySide6 import QtCore
 
 # Main view widths (s) the wheel steps through over the main view.
-WINDOW_STEPS_SEC = (3.0, 6.0, 9.0, 12.0, 24.0)
+WINDOW_STEPS_SEC = (1.0, 3.0, 6.0, 9.0, 12.0, 24.0)
 DEFAULT_WINDOW_SEC = 12.0
-# Views up to this wide are "short" (the main view waveform's short-view frame).
-SHORT_WINDOW_MAX_SEC = 6.0
+# Views up to this wide are "short" (the main view waveform's short-view frame), up to the first "close" (its
+# close-view frame, finer still).
+SHORT_WINDOW_MAX_SEC = 9.0
+CLOSE_WINDOW_MAX_SEC = 3.0
 
 
 def step_window(window_sec: float, steps: int) -> float:

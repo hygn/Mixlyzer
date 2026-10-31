@@ -965,7 +965,8 @@ class AppWindow(QtWidgets.QMainWindow):
             self._apply_visibility_refresh_setting(force=True)
         if prev_vcfg.get("played_tempo_key") != new_vcfg.get("played_tempo_key"):
             self.pane.send_played(force=True)   # the views' BPM and keys as heard, or the track's own
-        _WAVE_STYLE_KEYS = ("waveform_style", "mainview_wave_frame_ms_short", "mainview_wave_frame_ms_long",
+        _WAVE_STYLE_KEYS = ("waveform_style", "mainview_wave_frame_ms_close", "mainview_wave_frame_ms_short",
+                            "mainview_wave_frame_ms_long",
                             "mainview_wave_filter_order")
         # the waveform's low / mid / high ranges: the overview and the preview sum them from the stored bands
         bands_changed = any(
