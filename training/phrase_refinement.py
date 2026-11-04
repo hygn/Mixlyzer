@@ -232,16 +232,22 @@ def fit_two_pass(
     fit_pass_one: Callable,
     seed: int,
     progress: ProgressCallback | None = None,
+    inner_shuffle: int | None = None,
 ) -> dict:
     """Fit pass 1 and pass 2 on ``indices``; returns an artifact-shaped dict.
 
-    ``fit_pass_one(prepared, indices, targets, seed) -> (boundary_clf, label_model)``.
+    ``fit_pass_one(prepared, indices, targets, seed) -> (boundary_clf, label_model)``. ``inner_shuffle``: the seed
+    of another assignment of the tracks to the inner folds (a stack's further members), None the tracks' order.
     """
     indices = np.asarray(indices)
     say = progress or (lambda _pct, _msg: None)
     oof: dict[int, dict] = {}
     n_inner = min(INNER_FOLDS, indices.size)
-    for fold, (train_idx, test_idx) in enumerate(GroupKFold(n_splits=n_inner).split(indices, groups=indices),
+    groups = indices
+    if inner_shuffle is not None:
+        tracks, inv = np.unique(indices, return_inverse=True)
+        groups = np.random.default_rng(inner_shuffle).permutation(tracks.size)[inv]
+    for fold, (train_idx, test_idx) in enumerate(GroupKFold(n_splits=n_inner).split(indices, groups=groups),
                                                  start=1):
         say(int(round((fold - 1) * 60 / n_inner)),
             msg("Pass-1 outputs out of fold {fold}/{folds}", fold=fold, folds=n_inner))

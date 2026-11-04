@@ -27,7 +27,7 @@ from core.workers.analysis_settings import model_file
 from system.model_files import is_shipped, resolve_model, shipped_path
 from system.resource_paths import project_root
 from training import library_tracks
-from training.model_start import CURRENT, SHIPPED
+from training.model_start import CURRENT, SCRATCH, SHIPPED
 from training.text import TrainingError, render
 
 
@@ -48,14 +48,22 @@ OPTIMIZERS = {
                               "downbeat_ctx_parameter_path", BEAT_CACHE),
     "beat_tcn": Optimizer("beat_tcn_optimizer", "BeatTcnOptimizationRequest", "optimize_beat_tcn",
                           "beat_tcn_parameter_path", BEAT_CACHE),
+    "beat_critic": Optimizer("beat_critic_optimizer", "BeatCriticOptimizationRequest", "optimize_beat_critic",
+                             "beat_critic_parameter_path", BEAT_CACHE),
     "beat_decoder": Optimizer("beat_decoder_optimizer", "BeatDecoderOptimizationRequest", "optimize_beat_decoder",
                               "beat_decoder_parameter_path", BEAT_CACHE),
     "phrase": Optimizer("phrase_parameter_optimizer", "PhraseOptimizationRequest", "optimize_phrase_parameters",
                         "phrase_parameter_path", "featurecache/phrase"),
+    "phrase_stack": Optimizer("phrase_stack_optimizer", "PhraseStackOptimizationRequest", "optimize_phrase_stack",
+                              "phrase_parameter_path", "featurecache/phrase"),
+    "key_model": Optimizer("key_model_optimizer", "KeyModelOptimizationRequest", "optimize_key_model",
+                           "key_parameter_path", "featurecache/key"),
     "jumpcue": Optimizer("jumpcue_parameter_optimizer", "JumpCueOptimizationRequest", "optimize_jumpcue_parameters",
                          "jumpcue_parameter_path", "featurecache/jumpcue/train"),
 }
-BEAT_OPTIMIZERS = ("refine_onset", "downbeat_ctx", "beat_tcn", "beat_decoder")
+BEAT_OPTIMIZERS = ("refine_onset", "downbeat_ctx", "beat_tcn", "beat_critic", "beat_decoder")
+# the networks a run starts from the shipped model, the one in use or nothing (--start; the others train anew)
+START_MODELS = ("beat_critic", "key_model")
 # the analysis's model files in use a beat run is given (the training's ModelSet fields) -> their settings
 _CURRENT_MODELS = {"downbeat_ctx": "downbeat_ctx_parameter_path", "tcn": "beat_tcn_parameter_path",
                    "critic": "beat_critic_parameter_path", "decoder": "beat_decoder_parameter_path",
@@ -89,6 +97,14 @@ def prepare(name: str, values: dict) -> dict:
                              ("downbeat_ctx_path", "downbeat_ctx_parameter_path"),
                              ("refine_onset_path", "refine_onset_parameter_path")):
             values[key] = model_file(values.get(key), setting)
+    if name in START_MODELS:              # compared with the model in use; started from the shipped, it or none
+        start = values.get("start") or CURRENT
+        in_use = resolve_model(values.get("current_path") or output)
+        values["current_path"] = str(in_use)
+        values["start_path"] = None if start == SCRATCH else str(shipped_path(in_use) if start == SHIPPED else in_use)
+    if name == "beat_decoder" and values.get("start") == SCRATCH:
+        raise ValueError("the decoder's costs are refitted around the shipped ones or the ones in use "
+                         "(--start shipped or current)")
     if values.get("current_models") is not None:
         given = dict(values["current_models"])
         values["current_models"] = {key: model_file(given.get(key), setting) for key, setting in _CURRENT_MODELS.items()}
@@ -118,6 +134,8 @@ def request_values(name: str, analysis, libpath: str, args) -> dict:
             values["current_models"] = models
         if name == "refine_onset":
             values.update(frame_hop_length=int(FRAME_HOP_LENGTH), frames_cache_dir=project_path(BEAT_CACHE))
+    if name in START_MODELS:              # the model in use: the setting's file, whatever the output
+        values["current_path"] = project_path(getattr(analysis, spec.setting))
     if name == "jumpcue":
         values["phrase_parameter_path"] = project_path(analysis.phrase_parameter_path)
     for item in args.set or ():
@@ -130,7 +148,9 @@ def request_values(name: str, analysis, libpath: str, args) -> dict:
 
 
 def read_tracks(libpath: str) -> list[dict]:
-    """The library's tracks with their annotations, read by its owner (``TRAINING_BATCH`` tracks a job)."""
+    """The library's tracks with their annotations, read by its owner (``TRAINING_BATCH`` tracks a job), each with the
+    song it is a version of (``song``: its Variants group's first uid, "" for a track with no other version)."""
+    from core.library import jobs as library_jobs
     from core.library.service import LibraryService
     if not (Path(libpath) / "library.db").is_file():
         raise ValueError(f"no library at {libpath}")
@@ -138,6 +158,9 @@ def read_tracks(libpath: str) -> list[dict]:
 
     def read() -> list[dict]:
         tracks = library.call(analysis_jobs.training_tracks)
+        song = {uid: group[0] for group in library.call(library_jobs.song_versions) for uid in group}
+        for track in tracks:
+            track["song"] = song.get(track["uid"], "")
         for start in range(0, len(tracks), analysis_jobs.TRAINING_BATCH):
             batch = tracks[start:start + analysis_jobs.TRAINING_BATCH]
             read = library.call(analysis_jobs.training_annotations, [t["uid"] for t in batch])
@@ -205,8 +228,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("name", choices=sorted(OPTIMIZERS))
     parser.add_argument("--output", help="the model file written (default: the model setting's file)")
     parser.add_argument("--cache", help="the feature cache's folder (default: featurecache/<kind>)")
-    parser.add_argument("--start", choices=(SHIPPED, CURRENT),
-                        help="the decoder's costs refitted around the shipped ones or the ones in use")
+    parser.add_argument("--start", choices=(SHIPPED, CURRENT, SCRATCH),
+                        help="what a network starts from (beat_critic, key_model): the shipped model, the one in use, "
+                             "or nothing; the decoder's costs are refitted around the shipped or the current ones")
     parser.add_argument("--cv-folds", type=int, help=">= 2: a track-level cross-validation before the final fit")
     parser.add_argument("--set", action="append", metavar="FIELD=VALUE", help="another field of the request")
     parser.add_argument("--no-backup", action="store_true", help="overwrite an existing output without a copy")

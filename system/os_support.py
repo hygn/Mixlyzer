@@ -110,7 +110,11 @@ def lower_process_priority() -> None:
     try:
         if IS_WINDOWS:
             import ctypes
-            ctypes.windll.kernel32.SetPriorityClass(ctypes.windll.kernel32.GetCurrentProcess(), 0x4000)
+            from ctypes import wintypes
+            kernel32 = ctypes.WinDLL("kernel32")
+            kernel32.GetCurrentProcess.restype = wintypes.HANDLE      # the -1 pseudo-handle kept 64 bits wide
+            kernel32.SetPriorityClass.argtypes = [wintypes.HANDLE, wintypes.DWORD]
+            kernel32.SetPriorityClass(kernel32.GetCurrentProcess(), 0x4000)
         else:
             os.nice(10)
     except Exception:

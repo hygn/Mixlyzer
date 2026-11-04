@@ -180,9 +180,10 @@ def _fit_pipeline(
     settings: dict[str, object],
     seed: int,
     progress: ProgressCallback | None,
+    inner_shuffle: int | None = None,
 ) -> dict[str, object]:
     return _refinement.fit_two_pass(
-        prepared, indices, targets, settings, _fit_models, int(seed), progress
+        prepared, indices, targets, settings, _fit_models, int(seed), progress, inner_shuffle
     )
 
 
@@ -348,18 +349,26 @@ def _auto_cache_workers(requested: int | None, job_count: int) -> int:
     return min(job_count, 4, max(1, cpu_count // 2))
 
 
-def optimize_phrase_parameters(
-    request: PhraseOptimizationRequest,
-    *,
-    feature_progress: ProgressCallback | None = None,
-    optimize_progress: ProgressCallback | None = None,
-) -> PhraseOptimizationResult:
-    library_dir = Path(request.library_dir).resolve()
-    cache_dir = Path(request.cache_dir)
-    output_path = Path(request.output_path)
-    cache_dir.mkdir(parents=True, exist_ok=True)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
+@dataclass
+class PreparedPhrases:
+    """The annotated tracks' optimizer features (``prepared``), their targets, the model settings and the tracks left
+    out."""
+    prepared: list[dict[str, object]]
+    targets: list[tuple[np.ndarray, list[str]]]
+    settings: dict[str, object]
+    ignored: list[SkippedOptimizationTrack]
 
+
+def prepare_tracks(
+    library_dir: Path,
+    cache_dir: Path,
+    rebuild_cache: bool = False,
+    max_cache_workers: int | None = None,
+    feature_progress: ProgressCallback | None = None,
+) -> PreparedPhrases:
+    """The library's annotated tracks as the phrase models train on them: the feature caches made where missing (from
+    the audio, in worker processes), then each track's beat and boundary features and its target."""
+    cache_dir.mkdir(parents=True, exist_ok=True)
     ignored: list[SkippedOptimizationTrack] = []
     candidates = _phrase_backend._list_annotated_tracks(library_dir, ignored)
     tracks_src: list[dict[str, object]] = []
@@ -395,7 +404,7 @@ def optimize_phrase_parameters(
         uid = str(track["uid"])
         beat_cache_path = cache_dir / f"{uid}.npz"
         beat_current = bool(
-            not request.rebuild_cache
+            not rebuild_cache
             and _phrase_backend._beat_feature_cache_is_current(
                 track,
                 cache_dir,
@@ -425,7 +434,7 @@ def optimize_phrase_parameters(
             )
 
     cached_count = total - len(cache_jobs)
-    workers = _auto_cache_workers(request.max_cache_workers, len(cache_jobs))
+    workers = _auto_cache_workers(max_cache_workers, len(cache_jobs))
     if feature_progress is not None:
         feature_progress(
             int(round(cached_count * 75 / total)),
@@ -542,12 +551,27 @@ def optimize_phrase_parameters(
     if len(prepared) < 5:
         raise TrainingError(msg("Need at least five tracks after Phrase feature validation "
             "({valid} valid, {ignored} ignored).", valid=len(prepared), ignored=len(ignored)))
+    return PreparedPhrases(prepared, [track["optimizer_target"] for track in prepared], _model_settings(config),
+                           ignored)
+
+
+def optimize_phrase_parameters(
+    request: PhraseOptimizationRequest,
+    *,
+    feature_progress: ProgressCallback | None = None,
+    optimize_progress: ProgressCallback | None = None,
+) -> PhraseOptimizationResult:
+    library_dir = Path(request.library_dir).resolve()
+    cache_dir = Path(request.cache_dir)
+    output_path = Path(request.output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    data = prepare_tracks(library_dir, cache_dir, bool(request.rebuild_cache), request.max_cache_workers,
+                          feature_progress)
+    prepared, targets, settings, ignored = data.prepared, data.targets, data.settings, data.ignored
     feature_dim = int(np.asarray(prepared[0]["feature_z"]).shape[1])
     boundary_dim = int(np.asarray(prepared[0]["boundary_feature_z"]).shape[1])
-    targets = [track["optimizer_target"] for track in prepared]
     idx = np.arange(len(prepared), dtype=np.int32)
 
-    settings = _model_settings(config)
     cross_validated = int(request.cv_folds) >= 2
     cv_metrics = (
         _cross_validate(prepared, targets, settings, request.cv_folds, int(request.seed), optimize_progress)

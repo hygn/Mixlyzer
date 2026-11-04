@@ -67,6 +67,23 @@ class PrepareTests(unittest.TestCase):
         self.assertTrue(Path(jump["phrase_model_file"]).name.endswith("phrase_analyzer.npz"))
         self.assertTrue(Path(jump["jump_point_model_path"]).name.endswith("jumpcue_jump_point.json"))
 
+    def test_networks_start_from_the_shipped_the_model_in_use_or_nothing(self):
+        for name, file in (("key_model", "key_chord_cnn.npz"), ("beat_critic", "beat_critic.npz")):
+            with self.subTest(name=name):
+                in_use = self.dir / file
+                out = self.dir / "elsewhere" / f"trial_{file}"                 # an output that is not the setting's
+                shipped = in_use.with_name("default_" + file)
+                values = cli.prepare(name, {"output_path": str(out), "current_path": str(in_use)})
+                self.assertEqual((values["current_path"], values["start_path"]), (str(shipped), str(shipped)))
+                in_use.write_bytes(b"x")                                        # the user's own model
+                for start, expected in ((MS.CURRENT, str(in_use)), (MS.SHIPPED, str(shipped)), (MS.SCRATCH, None)):
+                    values = cli.prepare(name, {"output_path": str(out), "current_path": str(in_use), "start": start})
+                    self.assertEqual((values["current_path"], values["start_path"]), (str(in_use), expected))
+
+    def test_decoder_costs_never_from_scratch(self):
+        with self.assertRaises(ValueError):
+            cli.prepare("beat_decoder", {"output_path": str(self.dir / "beat_decoder.json"), "start": MS.SCRATCH})
+
     def test_gradient_boosted_models_are_given_no_start(self):
         for name in ("refine_onset", "downbeat_ctx", "phrase"):
             values = cli.prepare(name, {"output_path": str(self.dir / f"{name}.npz")})

@@ -516,6 +516,13 @@ def stale_mix_bars_again(lib) -> int:
     return done
 
 
+def song_versions(lib) -> list[list[str]]:
+    """The library's Variants as groups of uids (versions of one song, two tracks or more each): the training keeps a
+    song's versions on one side of a held-out split."""
+    uids = {row.uid for row in lib.db.list_all() if row.uid}
+    return variant_groups(variants.pairs(variants.path_for(lib.path)), uids)
+
+
 def mix_candidates(lib, uid: str, options: mix_search.MixOptions) -> list[mix_search.Candidate]:
     """The loaded track's mix candidates (core.search.mixability): every library track but it, its versions (the
     Variants) and the instrumentals (by their titles), by ``options``; best first."""
