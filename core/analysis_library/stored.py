@@ -5,7 +5,8 @@ blocks; the rest of the app reads the fields.
     StoredAnalysis.from_arrays(arrays)   the file's arrays as the app reads them
     arrays_of(result)                     an analysis's results (analyzer.pipeline.track.TrackAnalysis) as stored
     TrackEdits / apply_edits(arrays, e)   the editor's save, the blocks it replaces
-    annotation_of(arrays)                 Reoptimize's annotation of a track (analyzer.training.library_tracks)
+    Annotation / annotation_of(arrays)    a track's annotation as the training reads it (training/, the developers'
+                                          CLI: training.library_tracks)
     Schema / SCHEMA / schema_of / migratable   the format's version every file carries (stable, dev), written by
                                                arrays_of and apply_edits
 """
@@ -20,7 +21,6 @@ import numpy as np
 from analyzer.audio.wave_overview import WaveOverview
 from analyzer.beat.general.tracker import dominant_tempo
 from analyzer.music.marks import CuePoint, JumpCueGroup, Phrase
-from analyzer.training.library_tracks import Annotation
 from core.analysis_library.cue_points import build_cue_points_np, extract_cue_points
 from core.analysis_library.jump_cues import build_jump_cue_block, build_jump_cues_np, extract_jump_cue_groups, \
     jump_cue_point_groups
@@ -226,7 +226,7 @@ def apply_edits(arrays: dict, edits: TrackEdits) -> None:
     _replace_block(arrays, CUE_POINTS, build_cue_points_np(list(edits.cue_points)))
 
 
-# what Reoptimize reads of a track's stored arrays: the grids, keys, phrases and JumpCUEs the user annotated (a few kB
+# what the training reads of a track's stored arrays: the grids, keys, phrases and JumpCUEs the user annotated (a few kB
 # a track; the overview and the rest are not decompressed)
 ANNOTATION_KEYS = (BEATS, SAMPLE_RATE, DURATION, TEMPO_ROWS, KEYS, KEYS_AUTO)
 ANNOTATION_BLOCKS = (PHRASES + ".", JUMP_CUES + ".", JUMP_CUES_AUTO + ".")
@@ -248,6 +248,23 @@ def index_marks(arrays: Mapping) -> tuple[np.ndarray, np.ndarray, list[Phrase]]:
     def rows(key, width):
         return np.asarray(a[key], dtype=float) if key in a else np.empty((0, width))
     return rows(TEMPO_ROWS, 6), rows(KEYS, 4), assigned_phrases(extract_phrase_segments(a))
+
+
+@dataclass(frozen=True)
+class Annotation:
+    """What the training reads of a track's stored analysis: the user's annotation and the automatic results kept
+    beside it. None where the track has none stored."""
+    beats: np.ndarray | None = None
+    sample_rate: int | None = None
+    duration_sec: float | None = None
+    tempo_segments: np.ndarray | None = None       # the rows as stored
+    key_segments: np.ndarray | None = None
+    key_segments_auto: np.ndarray | None = None    # the automatic key result (the user's keys compared with it)
+    phrase_starts: np.ndarray | None = None        # the phrases as stored (UNASSIGNED stretches are gaps)
+    phrase_ends: np.ndarray | None = None
+    phrase_labels: np.ndarray | None = None
+    jump_cue_groups: list = field(default_factory=list)        # each JumpCUE group's cue points, the user's
+    jump_cue_auto_groups: list = field(default_factory=list)   # and the automatic result's
 
 
 def annotation_of(arrays: Mapping) -> Annotation:

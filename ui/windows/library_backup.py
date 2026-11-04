@@ -48,7 +48,7 @@ def size_text(size: int) -> str:
 class BackupDialog(QtWidgets.QDialog):
     """A backup as it is written: its file, its progress, Cancel; then what was written."""
 
-    def __init__(self, backup: LibraryBackup, dest: str, feature_cache: bool, parent=None) -> None:
+    def __init__(self, backup: LibraryBackup, dest: str, parent=None) -> None:
         super().__init__(parent)
         self.setWindowTitle(tr("Back Up Library"))
         self._backup = backup
@@ -76,7 +76,7 @@ class BackupDialog(QtWidgets.QDialog):
         backup.progress.connect(self._on_progress)
         backup.backed_up.connect(self._on_done)
         backup.failed.connect(self._on_failed)
-        backup.backup(dest, feature_cache)
+        backup.backup(dest)
 
     def closeEvent(self, event) -> None:
         if self._running:
@@ -150,8 +150,6 @@ class RestoreDialog(QtWidgets.QDialog):
         f_backup.addRow(tr("On"), QtWidgets.QLabel(os_support.NAMES.get(info.os, info.os)))
         f_backup.addRow(tr("Tracks"), QtWidgets.QLabel(f"{info.tracks:,}"))
         f_backup.addRow(tr("Size"), QtWidgets.QLabel(size_text(info.size)))
-        f_backup.addRow(tr("Feature caches"), QtWidgets.QLabel(
-            tr("Included") if info.feature_cache else tr("Not included")))
 
         grp_folder = QtWidgets.QGroupBox(tr("New Library Folder"))
         v_folder = QtWidgets.QVBoxLayout(grp_folder)

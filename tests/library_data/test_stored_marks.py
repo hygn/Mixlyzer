@@ -218,7 +218,7 @@ class SaveTests(unittest.TestCase):
                 annotation_of(arrays)
             except Exception as exc:
                 problems.append((uid, f"annotation_of: {type(exc).__name__}"))
-        lib.report(self, problems, "Reoptimize's annotation")
+        lib.report(self, problems, "the training's annotation")
 
 
 if __name__ == "__main__":

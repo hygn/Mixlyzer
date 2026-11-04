@@ -258,7 +258,7 @@ def build_predictor_grid(
     beat_times_sec: np.ndarray, tempo_segments: np.ndarray
 ) -> PredictorGrid:
     """Build the predictor grid from beats + tempo_segments arrays (the live analyzer's, or a track's stored ones
-    as the library's owner gives them to Reoptimize): only the predictor-permitted fields, never its phrases,
+    as the library's owner gives them to the training): only the predictor-permitted fields, never its phrases,
     keys or cues."""
     beats = _validate_beat_grid(np.asarray(beat_times_sec, dtype=np.float64))
     segments = _parse_meter_segments(np.asarray(tempo_segments, dtype=np.float64))

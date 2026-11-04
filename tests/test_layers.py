@@ -6,6 +6,8 @@
     3 views                          the plots and what they draw (views.render, the viewport timeline)
     4 ui                              the interface: the widgets, dialogs and panels, the views among them
     5 app                             the entry point and the window
+    3 training                        the developers' training (python -m training): reads the library through
+                                      core, never the interface; nothing of the app imports it
 """
 import ast
 import unittest
@@ -13,8 +15,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 LAYER = {"system": 0, "analyzer": 1, "audioengine": 1, "core": 2, "third_party": 2, "migration": 2,
-         "views": 3, "ui": 4, "app": 5}
-APART = {("analyzer", "audioengine"), ("audioengine", "analyzer")}   # same layer, never each other
+         "views": 3, "ui": 4, "app": 5, "training": 3}
+APART = {("analyzer", "audioengine"), ("audioengine", "analyzer"),   # same layer, never each other
+         ("views", "training"), ("training", "views"), ("ui", "training"), ("app", "training")}
 SKIP = ("audioengine/native/third_party",)
 
 

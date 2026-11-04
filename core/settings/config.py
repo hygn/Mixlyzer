@@ -37,9 +37,6 @@ class libconfig:
     # The editor's save writes the track's rows in library.db too (its BPM, key and segment tables, made from the marks
     # saved: core.library.segments.track_index); off, only its stored analysis (library.db brought up to it by Sync Now).
     sync_stored_analysis: bool
-    # A library backup (core.library.package) packs the analyses' feature caches too (Reoptimize's training data,
-    # made again from the library when missing).
-    backup_feature_cache: bool
     # The library folder (system.os_support.path_key) whose warning of a sync client's folder the user turned off
     # ("": none; another folder warned again).
     cloud_sync_warning_off: str = ""
@@ -246,27 +243,22 @@ class analysisconfig:
     # Dynamic downbeats of the static analysis: odd bars and meter changes (off: one bar length and
     # phase for the whole track); the dynamic analysis always has them.
     dynamic_downbeat: bool
-    # The onset model that places tempo changes (retrained by Reoptimize) and its feature cache.
+    # The learned models' files (system.model_files: a missing file is the shipped default_<name>; the training,
+    # training/, writes the user's): the onset model that places tempo changes, the beat tracker's frame TCN,
+    # metronome critic, decoder costs (JSON, refitted with the beat model they belong to) and contextual downbeat
+    # model, the phrase model, the JumpCUE jump point model.
     refine_onset_parameter_path: str
-    onset_feature_cache_path: str
-    # The beat tracker's frame TCN, metronome critic and contextual downbeat model (Reoptimize
-    # retrains them) and the frame-feature cache the beat tracker's optimizers share.
     beat_tcn_parameter_path: str
     beat_critic_parameter_path: str
-    # the decoder's costs (JSON), refitted with the beat model they belong to
     beat_decoder_parameter_path: str
     downbeat_ctx_parameter_path: str
-    beat_feature_cache_path: str
     phrase_parameter_path: str
-    phrase_feature_cache_path: str
     jumpcue_parameter_path: str
-    jumpcue_feature_cache_path: str
     # Dynamic key analysis: key changes within a track (off: one key for the whole track, the dynamic
     # analysis's key in the intro / outro / interludes).
     key_dynamic: bool
-    # The chord-aware key model (retrained by Reoptimize) and the frame chroma cache it is retrained on.
+    # The chord-aware key model.
     key_parameter_path: str
-    key_feature_cache_path: str
     # AutoCUE: what the analysis puts at the LEAD_IN end, an early first
     # downbeat, or 0:00: a CUE point, a JumpCUE of its own, or nothing.
     autocue: Literal["off", "cue_point", "jumpcue"]
@@ -467,7 +459,6 @@ def default_cfg():
         tieup_language="",
         export_tieup_language="",
         sync_stored_analysis=True,
-        backup_feature_cache=False,
         cloud_sync_warning_off="",
         serato_hot_cues="jumpcues",
         serato_keep_cues=True,
@@ -480,19 +471,14 @@ def default_cfg():
         bpm_dynamic=True,
         dynamic_downbeat=True,
         refine_onset_parameter_path="assets/weights/refine_onset_hgb.npz",
-        onset_feature_cache_path="featurecache/onset",
         beat_tcn_parameter_path="assets/weights/beat_tcn.npz",
         beat_critic_parameter_path="assets/weights/beat_critic.npz",
         beat_decoder_parameter_path="assets/weights/beat_decoder.json",
         downbeat_ctx_parameter_path="assets/weights/downbeat_ctx_hgb.npz",
-        beat_feature_cache_path="featurecache/beat",
         phrase_parameter_path="assets/weights/phrase_analyzer.npz",
-        phrase_feature_cache_path="featurecache/phrase",
         jumpcue_parameter_path="assets/weights/jumpcue_jump_point.json",
-        jumpcue_feature_cache_path="featurecache/jumpcue/train",
         key_dynamic=True,
         key_parameter_path="assets/weights/key_chord_cnn.npz",
-        key_feature_cache_path="featurecache/key",
         autocue="cue_point",
         max_parallel_analyses=4,
     )
@@ -665,7 +651,7 @@ def restored_settings(current: config, payload: dict, deck: dict, *, libpath: st
                       local_music_directories: list[str], rekordbox_xml_path: str) -> config:
     """A library package's settings (config.json's and deck.json's content) on this device: the package's, but for
     what describes this device, kept as it is here: the audio (playbackconfig), the microphone, External Sync, and
-    every file path (the log, the models, the feature caches, the metronome's sound, the record's image: a package
+    every file path (the log, the models, the metronome's sound, the record's image: a package
     never names where a file is written). The library is ``libpath``; the music folders and the Rekordbox XML are
     the restore's (joined to this device's folders by the user)."""
     defaults = default_cfg()
@@ -692,18 +678,6 @@ def load_cfg() -> config:
         if not lib_path.exists():
             lib_path.mkdir(parents=True, exist_ok=True)
 
-    def _ensure_feature_cache_dirs(cfg: config) -> None:
-        for path_text in (
-            cfg.analysisconfig.onset_feature_cache_path,
-            cfg.analysisconfig.beat_feature_cache_path,
-            cfg.analysisconfig.phrase_feature_cache_path,
-            cfg.analysisconfig.jumpcue_feature_cache_path,
-            cfg.analysisconfig.key_feature_cache_path,
-        ):
-            text = str(path_text or "").strip()
-            if text:
-                Path(text).mkdir(parents=True, exist_ok=True)
-
     defaults = default_cfg()
     loaded: dict = {}
     try:
@@ -728,7 +702,6 @@ def load_cfg() -> config:
     if _stored(DECK_FILE) != _as_json(cfg.deck_dict()):
         save_deck(cfg)
     _ensure_library_dir(cfg)
-    _ensure_feature_cache_dirs(cfg)
     return cfg
 
 

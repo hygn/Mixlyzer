@@ -12,7 +12,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 # the app's code (research/ is the algorithm research, local only; tests/ build their own libraries)
-SCANNED = ("app", "core", "ui", "views", "system", "analyzer", "third_party", "audioengine", "migration", "build")
+SCANNED = ("app", "core", "ui", "views", "system", "analyzer", "third_party", "audioengine", "migration", "build",
+           "training")
 VENDORED = ("audioengine/native/third_party/", "audioengine/native/target/")
 INSIDE = ("core.library.db", "core.library.tieups", "core.library.variants", "core.library.music_index",
           "core.library.thumbnails", "core.analysis_library.store")

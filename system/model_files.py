@@ -1,7 +1,7 @@
 """Learned model files: the shipped model is pinned as ``default_<name>`` next to the user's ``<name>``.
 
-Reoptimize writes the user's file and never the shipped one, so the shipped model is always there to start
-from again; a user's file that does not exist (yet) means the shipped model.
+The training (training/, the developers' CLI) writes the user's file and never the shipped one, so the shipped
+model is always there to start from again; a user's file that does not exist (yet) means the shipped model.
 """
 
 from __future__ import annotations

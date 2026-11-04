@@ -1,14 +1,14 @@
 """Settings > Library's Backup: the library packed into one file (core.library.package), and a package restored into
 a new library folder, on this device or another.
 
-    backup(dest, feature_cache)       a job of the library's owner writes the package: progress, backed_up / failed
+    backup(dest)                      a job of the library's owner writes the package: progress, backed_up / failed
     read(path, done, failed)          a package read and checked (a thread of its own)
     check(info, mapping, done)        how many tracks each music folder mapped finds (a thread)
     restore(info, folder, mapping)    the library unpacked into ``folder`` (new: the library in use is never
-                                      touched), the user's files and the caches put in place: restored / failed
+                                      touched), the user's files and the cache put in place: restored / failed
 
 What a package holds beside the library is named here: the settings as the store holds them, the user's shortcuts,
-MIDI mapping and retrained models, the tie-up lookups' cache, the feature caches when asked. Restored, each goes to
+MIDI mapping and retrained models, the tie-up lookups' cache. Restored, each goes to
 this device's own place for it (never where the package says): a file there already is kept beside it as
 ``<name>.before-restore-<time>``. The window then saves the settings (config.restored_settings) and starts the app
 again on the new library.
@@ -35,7 +35,6 @@ from system.model_files import has_user_model, is_shipped
 from system.resource_paths import resource_path
 
 PARAMETERS = tuple(f.name for f in fields(analysisconfig) if f.name.endswith("_parameter_path"))
-FEATURE_CACHES = tuple(f.name for f in fields(analysisconfig) if f.name.endswith("_feature_cache_path"))
 
 
 def user_files(cfg: config) -> dict[str, str]:
@@ -46,16 +45,6 @@ def user_files(cfg: config) -> dict[str, str]:
         path = str(getattr(cfg.analysisconfig, name) or "").strip()
         if path and not is_shipped(path):
             out[package.MODELS + name] = str(resource_path(path))
-    return out
-
-
-def feature_caches(cfg: config) -> dict[str, str]:
-    """The feature caches' folders by their name prefix in a package."""
-    out = {}
-    for name in FEATURE_CACHES:
-        folder = str(getattr(cfg.analysisconfig, name) or "").strip()
-        if folder:
-            out[package.FEATURE_CACHE + name] = folder
     return out
 
 
@@ -88,13 +77,12 @@ class LibraryBackup(QtCore.QObject):
         self._cancel.set()
 
     # ---- backup ----
-    def backup(self, dest: str, feature_cache: bool) -> None:
+    def backup(self, dest: str) -> None:
         cfg = current()
         plan = package.ExportPlan(
             dest=str(dest), settings=cfg.to_dict(), deck=cfg.deck_dict(),
             files={name: path for name, path in user_files(cfg).items()
                    if not name.startswith(package.MODELS) or has_user_model(path)},
-            trees={p: f for p, f in feature_caches(cfg).items() if os.path.isdir(f)} if feature_cache else {},
             copies={package.TIEUP_CACHE: web.copy_cache})
         self._cancel.clear()
         self._library.read(jobs.export_package, plan, self.progress.emit, self._cancel.is_set,
@@ -140,9 +128,6 @@ class LibraryBackup(QtCore.QObject):
                 copy = os.path.join(tmp, "tieup_web.db")
                 package.extract_file(info, package.TIEUP_CACHE, copy)
                 web.restore_cache(copy)
-        for prefix, target in feature_caches(cfg).items():
-            if info.names(prefix + "/"):
-                package.extract_tree(info, prefix, target)
         settings, deck = package.read_json(info, package.CONFIG), package.read_json(info, package.DECK)
         lib = settings.get("libconfig") if isinstance(settings.get("libconfig"), dict) else {}
         return RestoreResult(unpacked, settings, deck, _music_folders(lib.get("local_music_directories"), mapping),

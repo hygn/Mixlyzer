@@ -76,11 +76,8 @@ class _Fixture:
             db.conn.commit()
         self.shortcuts = root / "shortcuts.json"
         self.shortcuts.write_text('{"deck.play": ["Z"]}', encoding="utf-8")
-        self.cache = root / "featurecache" / "key"
-        (self.cache / "train").mkdir(parents=True)
-        (self.cache / "train" / "x.npz").write_bytes(b"cache")
 
-    def plan(self, dest: Path, *, feature_cache: bool = True) -> package.ExportPlan:
+    def plan(self, dest: Path) -> package.ExportPlan:
         cfg = default_cfg()
         cfg.playbackconfig.output_device = "Their Speakers"
         cfg.viewconfig.language = "ja-JP"
@@ -95,7 +92,6 @@ class _Fixture:
         return package.ExportPlan(
             dest=str(dest), settings=cfg.to_dict(), deck=cfg.deck_dict(),
             files={package.SHORTCUTS: str(self.shortcuts), package.MIDI: str(self.root / "no-midi.json")},
-            trees={package.FEATURE_CACHE + "key_feature_cache_path": str(self.cache)} if feature_cache else {},
             copies={package.TIEUP_CACHE: tieup_cache})
 
     def close(self) -> None:
@@ -147,7 +143,6 @@ class PackageTests(unittest.TestCase):
         self.assertEqual([p.name for p in self.tmp.iterdir() if p.name.startswith(".mxlib-")], [])
         info = package.read_package(str(self.pkg))
         self.assertEqual(info.tracks, 3)
-        self.assertTrue(info.feature_cache)
         self.assertNotIn("library/stray.txt", info.files)
         dest = self.tmp / "restored"
         result = package.unpack_library(info, str(dest), {})
@@ -162,23 +157,23 @@ class PackageTests(unittest.TestCase):
         self.assertEqual(len(list((dest / package.ORPHANED).iterdir())), 1)
         self.assertEqual((dest / "VERSION").read_text().strip(), CURRENT_LIBRARY_VERSION)
         self.assertFalse((dest / "stray.txt").exists())
-        # the settings, the user's file, the caches
+        # the settings, the user's file, the cache
         self.assertEqual(package.read_json(info, package.CONFIG)["viewconfig"]["language"], "ja-JP")
         self.assertFalse(info.has(package.MIDI))       # no file there: none packed
         target = self.tmp / "here" / "shortcuts.json"
         package.extract_file(info, package.SHORTCUTS, str(target))
         self.assertEqual(target.read_bytes(), self.fx.shortcuts.read_bytes())
-        folder = self.tmp / "here" / "cache"
-        self.assertEqual(package.extract_tree(info, package.FEATURE_CACHE + "key_feature_cache_path", str(folder)), 1)
-        self.assertEqual((folder / "train" / "x.npz").read_bytes(), b"cache")
         self.assertTrue(info.has(package.TIEUP_CACHE))
 
-    def test_feature_cache_left_out_unless_asked(self):
-        pkg = self.tmp / "small.mxlib"
-        package.export(self.fx.lib, self.fx.plan(pkg, feature_cache=False))
-        info = package.read_package(str(pkg))
-        self.assertFalse(info.feature_cache)
-        self.assertEqual(info.names(package.FEATURE_CACHE), [])
+    def test_an_earlier_packages_feature_caches_read_past(self):
+        older = self.tmp / "older.mxlib"
+        name, data = "featurecache/key_feature_cache_path/train/x.npz", b"cache"
+        _rewrite(self.pkg, older, add=[(name, data)], manifest=lambda m: m["files"].update(
+            {name: {"size": len(data), "sha256": hashlib.sha256(data).hexdigest()}}))
+        info = package.read_package(str(older))
+        dest = self.tmp / "restored"
+        self.assertEqual(package.unpack_library(info, str(dest), {}).tracks, 3)
+        self.assertEqual(sorted(p.name for p in dest.rglob("*") if "featurecache" in p.as_posix()), [])
 
     def test_music_moved_to_another_folder_is_joined(self):
         info = package.read_package(str(self.pkg))
@@ -290,12 +285,10 @@ class PackageTests(unittest.TestCase):
         _rewrite(self.pkg, changed, change={package.SHORTCUTS: bytes(b ^ 1 for b in data)})
         dest = self.tmp / "restored"
         backup = LibraryBackup(None)
-        # every place a restore writes in the test's folder (never the app's own caches)
-        caches = {package.FEATURE_CACHE + "key_feature_cache_path": str(self.tmp / "here" / "featurecache")}
+        # every place a restore writes in the test's folder (never the app's own cache)
         tieups = str(self.tmp / "here" / "tieup_web.db")
         real_restore_cache = web.restore_cache
         with mock.patch("core.workflows.library_backup.user_files", return_value={package.SHORTCUTS: str(mine)}), \
-                mock.patch("core.workflows.library_backup.feature_caches", return_value=caches), \
                 mock.patch.object(web, "restore_cache", lambda source: real_restore_cache(source, tieups)):
             with self.assertRaises(PackageError) as caught:
                 backup._restore(package.read_package(str(changed)), str(dest), {}, default_cfg())

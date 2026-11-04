@@ -1,5 +1,5 @@
 """The library package (.mxlib): the library and what goes with it (the settings, the user's shortcuts, MIDI mapping and
-retrained models, the caches) in one file, for a backup and for a move to another device: unpacked on the same device
+retrained models, the tie-up lookups' cache) in one file, for a backup and for a move to another device: unpacked on the same device
 it is a restore, on another a move (docs: core/library/AGENTS.md, Backup and moving).
 
     export      jobs.export_package(lib, plan, ...)       a job of the library's owner: library.db and the stored
@@ -8,7 +8,7 @@ it is a restore, on another a move (docs: core/library/AGENTS.md, Backup and mov
     unpack      unpack_library(info, folder, mapping)     into a new folder (never the library open), each file's
                                                           SHA-256 and the databases' schema checked, the music
                                                           files' paths rewritten under the roots the user mapped
-    the rest    read_json / extract_file / extract_tree   the settings and the user's files, by the restore
+    the rest    read_json / extract_file                  the settings and the user's files, by the restore
 
 A zip, stored (the analyses and thumbnails are compressed already), its names only the fixed ones and patterns below:
 nothing is written where a name in the package says (a package may come from elsewhere). A folder being unpacked is
@@ -52,7 +52,6 @@ SHORTCUTS = "user/shortcuts.json"
 MIDI = "user/midi.json"
 TIEUP_CACHE = "cache/tieup_web.db"
 MODELS = "user/models/"            # + an analysisconfig setting's name (*_parameter_path)
-FEATURE_CACHE = "featurecache/"    # + an analysisconfig setting's name (*_feature_cache_path) + the file's own path
 
 _UUID = r"[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"
 _FIXED = frozenset({LIBRARY_DB, "library/" + VERSION_FILENAME, MUSIC_DB, VARIANTS_DB, MIX_DB, CONFIG, DECK,
@@ -62,7 +61,8 @@ _PATTERNS = (
     re.compile(rf"library/{ORPHANED}/{_UUID}\.npz"),
     re.compile(rf"library/{thumbnails.THUMBS_DIR}/{_UUID}\.jpg"),
     re.compile(r"user/models/[a-z][a-z0-9_]{0,63}_parameter_path"),
-    # a cache's own files: each part a plain name (no "..", no drive, no separator), at most 8 deep
+    # the retraining's feature caches a package made before the app's retraining was removed may hold (each part a
+    # plain name, at most 8 deep): read past, never written or unpacked
     re.compile(r"featurecache/[a-z][a-z0-9_]{0,63}_feature_cache_path(?:/[A-Za-z0-9][A-Za-z0-9._-]{0,127}){1,8}"),
 )
 _DATABASES = (LIBRARY_DB, MUSIC_DB, VARIANTS_DB, MIX_DB)
@@ -101,13 +101,12 @@ Cancelled = Optional[Callable[[], bool]]
 class ExportPlan:
     """What goes into a package beside the library (made by the GUI from the settings, written by the library's
     owner): ``settings`` / ``deck`` config.json's and deck.json's content; ``files`` a name in the package -> a file on
-    this device; ``trees`` a name prefix (FEATURE_CACHE + a setting) -> a folder, its files under it; ``copies`` a
-    name -> a function writing a consistent copy of a database to the path it is given (the tie-up cache's)."""
+    this device; ``copies`` a name -> a function writing a consistent copy of a database to the path it is given (the
+    tie-up cache's)."""
     dest: str
     settings: dict
     deck: dict
     files: dict = field(default_factory=dict)
-    trees: dict = field(default_factory=dict)
     copies: dict = field(default_factory=dict)
 
 
@@ -157,7 +156,7 @@ def export(lib, plan: ExportPlan, progress: Progress = None, cancelled: Cancelle
             manifest = {
                 "format": FORMAT, "format_version": FORMAT_VERSION, "library_version": CURRENT_LIBRARY_VERSION,
                 "created": datetime.now(timezone.utc).isoformat(timespec="seconds"), "os": os_support.OS,
-                "tracks": len(tracks), "feature_cache": bool(plan.trees),
+                "tracks": len(tracks),
                 "paths": [[t.path, int(t.file_size or 0)] for t in tracks],
                 "files": files,
             }
@@ -224,9 +223,7 @@ def _entries(lib, plan: ExportPlan, scratch: Path, made: list[Path]) -> list[tup
     for name, path in plan.files.items():
         if os.path.isfile(path):
             entries.append((name, str(path)))
-    for prefix, folder in plan.trees.items():
-        entries += _tree_files(folder, prefix.rstrip("/") + "/")
-    bad = [name for name, _src in entries if not allowed(name)]
+    bad =[name for name, _src in entries if not allowed(name)]
     if bad:
         raise ValueError(f"names no package may hold: {bad[:5]}")
     return entries
@@ -245,22 +242,6 @@ def _named_files(folder: str, prefix: str) -> list[tuple[str, str]]:
     return out
 
 
-def _tree_files(folder: str, prefix: str) -> list[tuple[str, str]]:
-    """Every file under ``folder`` (links not followed) whose name in the package is allowed."""
-    out = []
-    root = Path(folder)
-    for base, dirs, names in os.walk(root, followlinks=False):
-        dirs[:] = sorted(d for d in dirs if not os.path.islink(os.path.join(base, d)))
-        for name in sorted(names):
-            path = Path(base) / name
-            if path.is_symlink() or not path.is_file():
-                continue
-            packed = prefix + path.relative_to(root).as_posix()
-            if allowed(packed):
-                out.append((packed, str(path)))
-    return out
-
-
 # ---- reading ----
 
 @dataclass(frozen=True)
@@ -270,7 +251,6 @@ class PackageInfo:
     created: str
     os: str
     tracks: int
-    feature_cache: bool
     size: int
     paths: tuple            # ((the track's path as stored, its file's size), ...)
     files: dict             # name -> (size, sha256)
@@ -335,7 +315,7 @@ def read_package(path: str) -> PackageInfo:
         return PackageInfo(
             path=str(path), created=str(manifest.get("created") or ""), os=str(manifest.get("os") or ""),
             tracks=tracks if isinstance(tracks, int) and tracks >= 0 else len(paths),
-            feature_cache=bool(manifest.get("feature_cache")), size=os.path.getsize(path), paths=tuple(paths),
+            size=os.path.getsize(path), paths=tuple(paths),
             files=files)
 
 
@@ -398,21 +378,6 @@ def extract_file(info: PackageInfo, name: str, target: str) -> None:
     with zipfile.ZipFile(info.path) as zf, atomic_output_path(target) as temporary:
         temporary.unlink()
         _copy_checked(zf, info, name, temporary)
-
-
-def extract_tree(info: PackageInfo, prefix: str, folder: str, cancelled: Cancelled = None) -> int:
-    """The package's files under ``prefix`` put into ``folder`` (each replaced whole, the folder's other files kept);
-    how many."""
-    prefix = prefix.rstrip("/") + "/"
-    count = 0
-    with zipfile.ZipFile(info.path) as zf:
-        for name in info.names(prefix):
-            target = Path(folder).joinpath(*name[len(prefix):].split("/"))
-            with atomic_output_path(target) as temporary:
-                temporary.unlink()
-                _copy_checked(zf, info, name, temporary, cancelled=cancelled)
-            count += 1
-    return count
 
 
 # ---- the music files' folders ----

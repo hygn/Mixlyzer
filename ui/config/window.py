@@ -183,7 +183,6 @@ class SettingsDialog(
             combo.setCurrentIndex(max(0, combo.findData(value)))
         self.cmb_rekordbox_tieup_language.setEnabled(bool(cfg.libconfig.rekordbox_comment_tieups))
         self.cb_sync_stored_analysis.setChecked(bool(cfg.libconfig.sync_stored_analysis))
-        self.cb_backup_feature_cache.setChecked(bool(cfg.libconfig.backup_feature_cache))
         self.cmb_serato_hot_cues.setCurrentIndex(max(0, self.cmb_serato_hot_cues.findData(cfg.libconfig.serato_hot_cues)))
         self.cb_serato_keep_cues.setChecked(bool(cfg.libconfig.serato_keep_cues))
         self.cb_serato_bpm_lock.setChecked(bool(cfg.libconfig.serato_bpm_lock))
@@ -262,14 +261,10 @@ class SettingsDialog(
         self.cb_dynamic_downbeat.setChecked(dynamic or self._static_dynamic_downbeat)
         self.cb_dynamic_downbeat.setEnabled(not dynamic)
         self.ed_refine_onset_parameter_path.setText(str(getattr(a, "refine_onset_parameter_path", "") or ""))
-        self.ed_onset_feature_cache_path.setText(
-            str(getattr(a, "onset_feature_cache_path", "") or "")
-        )
         self.ed_beat_tcn_parameter_path.setText(str(getattr(a, "beat_tcn_parameter_path", "") or ""))
         self.ed_beat_critic_parameter_path.setText(str(getattr(a, "beat_critic_parameter_path", "") or ""))
         self.ed_beat_decoder_parameter_path.setText(str(getattr(a, "beat_decoder_parameter_path", "") or ""))
         self.ed_downbeat_ctx_parameter_path.setText(str(getattr(a, "downbeat_ctx_parameter_path", "") or ""))
-        self.ed_beat_feature_cache_path.setText(str(getattr(a, "beat_feature_cache_path", "") or ""))
         self.ed_phrase_parameter_path.setText(
             str(
                 getattr(
@@ -280,18 +275,13 @@ class SettingsDialog(
                 or ""
             )
         )
-        self.ed_phrase_feature_cache_path.setText(
-            str(getattr(a, "phrase_feature_cache_path", "") or "")
-        )
         self.ed_jumpcue_parameter_path.setText(str(getattr(a, "jumpcue_parameter_path", "") or ""))
-        self.ed_jumpcue_feature_cache_path.setText(str(getattr(a, "jumpcue_feature_cache_path", "") or ""))
         self._set_cue_point_rules(cfg.cuepointconfig)
         self._set_autocue(a.autocue)
 
         # key
         self.cb_key_dynamic.setChecked(bool(getattr(a, "key_dynamic", True)))
         self.ed_key_parameter_path.setText(str(getattr(a, "key_parameter_path", "") or ""))
-        self.ed_key_feature_cache_path.setText(str(getattr(a, "key_feature_cache_path", "") or ""))
 
         # external sync
         x = cfg.externalsyncconfig
@@ -319,19 +309,14 @@ class SettingsDialog(
                     else getattr(self, "_static_dynamic_downbeat", True)
                 ),
                 refine_onset_parameter_path=self.ed_refine_onset_parameter_path.text().strip(),
-                onset_feature_cache_path=self.ed_onset_feature_cache_path.text().strip(),
                 beat_tcn_parameter_path=self.ed_beat_tcn_parameter_path.text().strip(),
                 beat_critic_parameter_path=self.ed_beat_critic_parameter_path.text().strip(),
                 beat_decoder_parameter_path=self.ed_beat_decoder_parameter_path.text().strip(),
                 downbeat_ctx_parameter_path=self.ed_downbeat_ctx_parameter_path.text().strip(),
-                beat_feature_cache_path=self.ed_beat_feature_cache_path.text().strip(),
                 phrase_parameter_path=self.ed_phrase_parameter_path.text().strip(),
-                phrase_feature_cache_path=self.ed_phrase_feature_cache_path.text().strip(),
                 jumpcue_parameter_path=self.ed_jumpcue_parameter_path.text().strip(),
-                jumpcue_feature_cache_path=self.ed_jumpcue_feature_cache_path.text().strip(),
                 key_dynamic=bool(self.cb_key_dynamic.isChecked()),
                 key_parameter_path=self.ed_key_parameter_path.text().strip(),
-                key_feature_cache_path=self.ed_key_feature_cache_path.text().strip(),
                 autocue=self._get_autocue(),
                 max_parallel_analyses=int(self.sp_max_parallel_analyses.value()),
             ),
@@ -350,7 +335,6 @@ class SettingsDialog(
                 export_tieup_language=str(self.cmb_export_tieup_language.currentData() or ""),
                 rekordbox_tieup_language=str(self.cmb_rekordbox_tieup_language.currentData() or ""),
                 sync_stored_analysis=bool(self.cb_sync_stored_analysis.isChecked()),
-                backup_feature_cache=bool(self.cb_backup_feature_cache.isChecked()),
                 # edited where it is asked (the start's warning), kept as it is here
                 cloud_sync_warning_off=getattr(getattr(self._current_cfg, "libconfig", None),
                                                "cloud_sync_warning_off", ""),

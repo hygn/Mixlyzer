@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 
 from core.settings import config
-from analyzer.training.jumpcue_parameter_optimizer import load_cache, save_cache
+from training.jumpcue_parameter_optimizer import load_cache, save_cache
 
 
 class UnreadableConfigTests(unittest.TestCase):

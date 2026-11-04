@@ -181,10 +181,6 @@ def build_library_tab(dialog) -> None:
     f_database.addRow("", dialog.btn_library_sync_now)
 
     # the library packed into one file and restored from one (core.workflows.library_backup)
-    dialog.cb_backup_feature_cache = QCheckBox(tr("Include the feature caches"))
-    dialog.cb_backup_feature_cache.setToolTip(tr(
-        "<p>A backup also packs the analyses' feature caches (Reoptimize's training data). Without them a backup is "
-        "smaller.</p>"))
     dialog.btn_backup_library = QPushButton(tr("Back Up Library…"))
     dialog.btn_backup_library.setToolTip(tr(
         "<p>The library packed into one file: its database, every track's stored analysis, the thumbnails, the "
@@ -202,7 +198,6 @@ def build_library_tab(dialog) -> None:
     backup_row.addStretch(1)
     grp_backup = QGroupBox(tr("Backup"))
     f_backup = QFormLayout(grp_backup)
-    f_backup.addRow(dialog.cb_backup_feature_cache)
     f_backup.addRow(backup_buttons)
 
     grp_rekordbox = QGroupBox(tr("Rekordbox XML"))
@@ -407,9 +402,9 @@ class LibrarySettingsMixin:
         self._bus.sig_library_sync_requested.emit()
 
     def _backup_library(self) -> None:
-        """Back Up Library…: the window asks where and writes it (the checkbox as it is now, saved or not)."""
+        """Back Up Library…: the window asks where and writes it."""
         if self._bus is not None:
-            self._bus.sig_library_backup_requested.emit(bool(self.cb_backup_feature_cache.isChecked()))
+            self._bus.sig_library_backup_requested.emit()
 
     def _restore_library(self) -> None:
         if self._bus is not None:

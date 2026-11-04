@@ -10,11 +10,13 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 # the app's code (research/ is the algorithm research, local only)
-SCANNED = ("app", "core", "ui", "views", "system", "analyzer", "third_party", "audioengine", "migration", "build")
+SCANNED = ("app", "core", "ui", "views", "system", "analyzer", "third_party", "audioengine", "migration", "build",
+           "training")
 VENDORED = ("audioengine/native/third_party/", "audioengine/native/target/")
 FILE_FUNCTIONS = {"load_cfg", "save_cfg", "save_deck"}
 OWNER = "core/settings/"
-ALLOWED = {"app/main.py": {"load_cfg"}}      # the start's one read, before there is a store
+ALLOWED = {"app/main.py": {"load_cfg"},       # the start's one read, before there is a store
+           "training/__main__.py": {"load_cfg"}}   # the training's command line: its one read
 
 
 def _violations() -> list[str]:

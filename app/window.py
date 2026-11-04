@@ -831,7 +831,7 @@ class AppWindow(QtWidgets.QMainWindow):
             tr("Sort index rebuilt: {count} names.").format(count=f"{made:,}"), 5000))
 
     # ---- the library's backup (core.workflows.library_backup) ----
-    def _backup_library(self, feature_cache: bool) -> None:
+    def _backup_library(self) -> None:
         """Back Up Library…: where asked each time, the package written by the library's owner meanwhile shown."""
         parent = self.cfgwin if self.cfgwin.isVisible() else self
         name = f"Mixlyzer-library-{time.strftime('%Y%m%d-%H%M')}{package_suffix()}"
@@ -842,7 +842,7 @@ class AppWindow(QtWidgets.QMainWindow):
             return
         if not path.lower().endswith(package_suffix()):
             path += package_suffix()
-        self._hold_library(BackupDialog(self.library_backup, path, feature_cache, parent))
+        self._hold_library(BackupDialog(self.library_backup, path, parent))
 
     def _restore_library(self) -> None:
         """Restore Library…: a backup picked, read and checked, then the restore's window."""

@@ -15,9 +15,8 @@ import os
 from pathlib import Path
 from typing import Optional
 
-from analyzer.training.library_tracks import Annotation
 from core.analysis_library.stored import ANNOTATION_BLOCKS, ANNOTATION_KEYS, FINGERPRINT_KEYS, INDEX_BLOCKS, \
-    INDEX_KEYS, MIX_KEYS, StoredAnalysis, annotation_of, index_marks
+    INDEX_KEYS, MIX_KEYS, Annotation, StoredAnalysis, annotation_of, index_marks
 
 
 def analysis(lib, uid: str) -> Optional[StoredAnalysis]:
@@ -62,17 +61,17 @@ def features_stamp(lib, uid: str) -> Optional[tuple[int, int]]:
     return st.st_mtime_ns, st.st_size
 
 
-# ---- Reoptimize (the models trained on the library's edits) ----
+# ---- the training (training/, the developers' CLI: the models trained on the library's edits) ----
 
-# tracks read a job (training_annotations): 3 - 14 ms a track measured, so the owner's other jobs (the GUI's) wait
-# at most about a second between two
+# tracks read a job (training_annotations): 3 - 14 ms a track measured, so another client's jobs (a running app's
+# GUI) wait at most about a second between two
 TRAINING_BATCH = 50
 
 
 def training_tracks(lib) -> list[dict]:
     """The library's tracks as the optimizers read them, in uid order: uid, title, artist, audio_path; their stored
-    annotations are read in batches after (training_annotations). Handed to their process (analyzer.training.library_tracks),
-    which reads the audio from its path and never opens the library's files."""
+    annotations are read in batches after (training_annotations). Handed to the run (training.library_tracks), which
+    reads the audio from its path and never opens the library's files."""
     return [{"uid": row.uid, "title": row.title or "", "artist": row.artist or "",
              "audio_path": Path(row.path) if row.path else Path()}
             for row in lib.db.list_all(order_by="uid ASC") if row.uid]

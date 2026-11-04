@@ -50,3 +50,17 @@ native = [
     "mako>=1.4.3",
     "pkgconf>=3.0.7",
 ]
+# training/ (python -m training): the developers' training on the standard ML stack; never the app's (the app runs
+# its models in NumPy from their exported weights)
+training = [
+    "torch>=2.11.0",
+]
+
+[tool.uv.sources]
+# PyTorch's CUDA 12.8 build where there is one (PyPI's Windows wheel is CPU only); macOS: PyPI's
+torch = [{ index = "pytorch-cu128", marker = "sys_platform == 'win32' or sys_platform == 'linux'" }]
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true

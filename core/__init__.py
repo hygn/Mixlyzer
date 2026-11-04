@@ -10,6 +10,6 @@
                       related tracks
     tieups            tie-ups: their domain and the web lookup
     tags              a track file's tags and cover, read and written
-    workers           the worker processes (analysis, reanalysis, Reoptimize, indexing)
+    workers           the worker processes (analysis, reanalysis, indexing)
     workflows         their lifecycle and queues on the GUI's side, the event bus, the task list
 """

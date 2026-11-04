@@ -16,8 +16,6 @@ Where to look:
     jumpcue/      JumpCUE detection (self-similarity, the jump point model), AutoCUE's JumpCUE
     search/       Search by Music (music/: the index entry, the query, the matching, listening) and the Variants'
                   fingerprint (variants.py); their indexes are kept by the app
-    training/     Reoptimize: the optimizers that retrain the learned models on the library's annotations (given
-                  their tracks and files; their texts marked, text.py, worded by the app)
     settings.py   what an analysis is asked for; errors.py its refusals; files.py a file written whole
     runtime.py    the process: the operating system, console programs without a window, physical cores, process pools
 """

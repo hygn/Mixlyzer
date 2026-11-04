@@ -8,7 +8,7 @@ Where to look:
     jobs.py         every operation on the stored analyses alone, by name (analysis_jobs.analysis ...); the ones
                     that write library.db too are core.library.jobs' (store_analysis, save_edits, remove_tracks)
     stored.py       StoredAnalysis, a track's stored analysis as the app reads it (its fields, never the stored
-                    keys: they are known here alone), TrackEdits (the editor's save), Reoptimize's annotations
+                    keys: they are known here alone), TrackEdits (the editor's save), the training's annotations (training/)
     and two conversions to the stored form: cue_points.as_stored (CUE points as they read back once stored),
     jump_cues.jump_cue_groups_of_pairs (the detector's JumpCUE pairs as the groups they are stored as)
 
@@ -17,7 +17,7 @@ Where to look:
                     each mark's stored block, made from and read as analyzer.music.marks' types
     store.py        FeatureNPZStore: the file format (flattened keys, NumPy values only, written atomically)
 
-A process (the analysis, Reoptimize) never opens these files: it is given what it reads and hands back what is
+A process (the analysis) or the training (training/) never opens these files: it is given what it reads and hands back what is
 stored. tests/test_library_boundary.py fails when code outside the library uses more than the surface above, and
 when this package imports core.library.
 """

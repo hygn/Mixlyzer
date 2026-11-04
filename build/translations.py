@@ -2,7 +2,7 @@
 
     uv run python build/translations.py
 
-extracts the texts of every tr / tr_n / tr_ctx / tr_mark call (system.i18n) and of the training's msg (analyzer.training.text), with the comments above them that
+extracts the texts of every tr / tr_n / tr_ctx / tr_mark call (system.i18n), with the comments above them that
 start with ``TRANSLATORS:``, into assets/i18n/mixlyzer.pot and merges it into the catalog of each language of
 assets/i18n/languages.json (assets/i18n/languages/<tag>/mixlyzer.po, made when missing; English is the source):
 a new text comes in untranslated, a changed one keeps its old translation marked fuzzy (left out by the app until
@@ -22,7 +22,7 @@ sys.path.insert(0, str(ROOT))
 from system.i18n import CATALOG_DIR, DOMAIN, LANGUAGES, SOURCE_LANGUAGE  # noqa: E402
 
 SOURCES = ["app", "system", "core", "ui", "views", "analyzer", "third_party"]
-KEYWORDS = ["tr", "tr_n:1,2", "tr_ctx:1c,2", "tr_mark", "msg"]   # msg: the training's texts (analyzer.training.text)
+KEYWORDS = ["tr", "tr_n:1,2", "tr_ctx:1c,2", "tr_mark"]
 TEMPLATE = Path("assets/i18n") / f"{DOMAIN}.pot"
 
 

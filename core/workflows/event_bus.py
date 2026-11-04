@@ -57,7 +57,7 @@ class EventBus(QtCore.QObject):
     sig_library_sync_finished = QtCore.Signal(object)          # core.library.jobs.IndexSync
     sig_library_sync_failed = QtCore.Signal(str)
     # the library packed into a file / restored from one (Settings > Library's Backup: core.workflows.library_backup)
-    sig_library_backup_requested = QtCore.Signal(bool)         # the feature caches packed too
+    sig_library_backup_requested = QtCore.Signal()
     sig_library_restore_requested = QtCore.Signal()
     # the library's names' 초성 and sort keys made again (Settings > Search's Rebuild Sort Index)
     sig_name_keys_rebuild_requested = QtCore.Signal()
