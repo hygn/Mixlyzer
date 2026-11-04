@@ -21,8 +21,8 @@ beats). Where that score, over +-METER_WINDOW beats, is above what 4/4 music rea
 percentile), the 3/4 states get the excess as evidence (METER_WEIGHT); but only where the observers' own 4-beat
 accent does not lead their 3-beat accent by METER_LEAD or more: a clear 4-beat accent with a 3-beat pattern over it
 is a cross-rhythm (hemiola, 3+3+2), which a DJ grid keeps in 4/4 (the two accents compared, not the 4-beat one
-alone: a quiet 4/4 bridge with a 6-beat riff has a weak 4-beat accent too). On the library (today's grids): bars
-missed 13.7 -> 11.9 min.
+alone: in a 3/4 stretch the observers, trained on 4/4, often keep a 4-beat accent, but their 3-beat accent is as
+strong there). On the library (today's grids): bars missed 14.0 -> 12.0 min.
 
 to_rows: the production tempo rows ([start, end, bpm, inizio = a downbeat, ts, bpm_end]) for the beats and
 downbeats, split wherever the bar length changes, so that ``analyzer.music.beat_geometry.downbeat_beat_indices``

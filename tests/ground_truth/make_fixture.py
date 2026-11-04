@@ -69,12 +69,14 @@ def main(argv=None) -> int:
             "expect": (old or {}).get("expect", {}), **ground_truth(FeatureNPZStore(str(lib)).load(uid))}
     if old and "keys" in old:
         song["keys"] = old["keys"]                                        # the human keys kept
-    songs["songs"] = [s for s in songs["songs"] if s["id"] != args.id] + [song]
+    songs["songs"] = ([song if s["id"] == args.id else s for s in songs["songs"]] if old
+                      else songs["songs"] + [song])                       # in its place (a diff shows what changed)
     SONGS.write_text(dumps(songs), encoding="utf-8")
     audio = json.loads(AUDIO.read_text(encoding="utf-8")) if AUDIO.is_file() else {}
     audio[args.id] = path
     AUDIO.write_text(json.dumps(audio, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
-    print(f"{args.id}: {len(song['beats'])} beats, {len(song['key_segments'])} keys, {len(song['phrases'])} phrases")
+    print(f"{args.id}: {len(song['beats'])} beats, {len(song['tempo_segments'])} tempo rows, "
+          f"{len(song['phrases'])} phrases")
     return 0
 
 
