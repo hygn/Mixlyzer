@@ -15,6 +15,8 @@ from analyzer.phrase.structure import (
     FeatureConfig,
     build_predictor_grid,
     extract_song_features,
+    SongFrames,
+    song_frames,
 )
 from analyzer.phrase.context_features import CONTEXT_FEATURE_VERSION
 from analyzer.phrase.model_features import (
@@ -803,6 +805,14 @@ def finish_phrase_segments(
     return bounds, labels
 
 
+def phrase_song_frames(audio: np.ndarray, sample_rate: int, *, model_path: str | Path,
+                       hpss: HpssSpectra | None = None) -> SongFrames:
+    """The frame-level features detect_two_stage_phrase_segments reads of the audio (structure.song_frames with the
+    model's feature settings), made before the beats are known (the full analysis makes them beside the beats)."""
+    settings = load_two_stage_model(str(Path(model_path).resolve()))["settings"]
+    return song_frames(None, _parse_feature_config(settings), audio_array=audio, audio_sr=int(sample_rate), hpss=hpss)
+
+
 def detect_two_stage_phrase_segments(
     audio: np.ndarray,
     sample_rate: int,
@@ -813,8 +823,10 @@ def detect_two_stage_phrase_segments(
     hpss: HpssSpectra | None = None,
     return_boundary_probability: bool = False,
     return_feature_z: bool = False,
+    frames: SongFrames | None = None,
 ):
-    """Phrase segments and optional reusable per-beat analysis outputs."""
+    """Phrase segments and optional reusable per-beat analysis outputs; ``frames``: ``phrase_song_frames`` of the
+    audio when already made."""
     artifact = load_two_stage_model(str(Path(model_path).resolve()))
     settings = artifact["settings"]
     grid = build_predictor_grid(beat_times_sec, tempo_segments)
@@ -830,6 +842,7 @@ def detect_two_stage_phrase_segments(
         audio_array=audio,
         audio_sr=int(sample_rate),
         hpss=hpss,
+        frames=frames,
     )
     feature_z = feature_z_from_acoustic(acoustic)
     boundary_feature_z = boundary_feature_matrix(

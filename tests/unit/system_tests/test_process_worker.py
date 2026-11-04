@@ -78,5 +78,71 @@ class ProcessWorkerTests(unittest.TestCase):
         self.assertFalse(alive)
 
 
+def _job(tag: str, seconds: float, queue) -> None:
+    """A resident job: says which process ran it, then done (module level: spawned)."""
+    time.sleep(seconds)
+    queue.put({"type": "result", "tag": tag, "pid": os.getpid()})
+    queue.put({"type": "done"})
+
+
+class _Job(process_worker.ResidentJobWorker):
+    def __init__(self, pool, tag: str, seconds: float = 0.0):
+        super().__init__(pool=pool, target=_job, args=(tag, seconds))
+        self.results, self.exited = [], []
+
+    def _handle_process_message(self, message) -> None:
+        if message.get("type") == "result":
+            self.results.append(message)
+
+    def _process_exited(self, *, graceful: bool, exitcode) -> None:
+        self.exited.append(graceful)
+
+
+class ResidentPoolTests(unittest.TestCase):
+    """system.process_worker.ResidentPool: one process runs job after job (no start for the next), a stopped job
+    ends its process and the next goes to a new one, an idle process ends by itself."""
+
+    def test_jobs_one_after_another_in_one_process(self):
+        pool = process_worker.ResidentPool("test-resident", idle_sec=60.0, max_jobs=10)
+        self.addCleanup(pool.shutdown)
+        first = _Job(pool, "a")
+        first.start()
+        _until(lambda: first.exited, 60.0)
+        second = _Job(pool, "b")
+        second.start()
+        _until(lambda: second.exited, 60.0)
+        self.assertEqual((first.exited, second.exited), ([True], [True]))
+        self.assertEqual(first.results[0]["pid"], second.results[0]["pid"])
+
+    def test_a_stopped_job_ends_its_process_and_the_next_gets_another(self):
+        pool = process_worker.ResidentPool("test-resident", idle_sec=60.0, max_jobs=10)
+        self.addCleanup(pool.shutdown)
+        warm = _Job(pool, "warm")
+        warm.start()
+        _until(lambda: warm.exited, 60.0)
+        long = _Job(pool, "long", 30.0)
+        long.start()
+        _until(lambda: long._resident is not None and not long._resident.starting, 10.0)
+        process = long._resident.process
+        long.stop()
+        _until(lambda: _closed(process) or not process.is_alive(), 15.0)
+        self.assertTrue(_closed(process) or not process.is_alive())
+        after = _Job(pool, "after")
+        after.start()
+        _until(lambda: after.exited, 60.0)
+        self.assertEqual(after.exited, [True])
+        self.assertNotEqual(after.results[0]["pid"], warm.results[0]["pid"])
+        self.assertEqual(long.exited, [])       # a stopped job reports nothing
+
+    def test_an_idle_process_ends_by_itself(self):
+        pool = process_worker.ResidentPool("test-resident", idle_sec=1.0, max_jobs=10)
+        self.addCleanup(pool.shutdown)
+        job = _Job(pool, "a")
+        job.start()
+        _until(lambda: job.exited, 60.0)
+        _until(lambda: not pool._residents, 20.0)
+        self.assertEqual(pool._residents, [])
+
+
 if __name__ == "__main__":
     unittest.main()

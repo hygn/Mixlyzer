@@ -147,6 +147,33 @@ class JumpCueResult:
         }
 
 
+def audio_context(
+    config: JumpCueConfig,
+    y_harm: np.ndarray,
+    sr: int,
+    beats_time: Sequence[float],
+    *,
+    y_mix: Optional[np.ndarray] = None,
+    mix_magnitude: Optional[np.ndarray] = None,
+    vocal_context: Optional[VocalContext] = None,
+) -> tuple:
+    """What ``JumpCueEngine.run`` reads of the audio and the beats alone, (self-correlation report, its matrix,
+    vocal context), so it can be made before the phrases are known (the full analysis makes it beside them)."""
+    beats = np.asarray(beats_time, dtype=float)
+    report, xmat = analyze_self_correlation(
+        y_harm=y_harm,
+        sr=sr,
+        beats_time=beats,
+        config=config.self_corr,
+    )
+    vocal = vocal_context
+    if vocal is None and (y_mix is not None or mix_magnitude is not None) and beats.size >= 2 and report.links:
+        vocal = compute_vocal_context(
+            y_mix, sr, beats, magnitude=mix_magnitude, config=config.vocal
+        )
+    return report, xmat, vocal
+
+
 class JumpCueEngine:
     """
     Build groups of mutually reachable Jump CUEs from self-correlation links.
@@ -189,12 +216,15 @@ class JumpCueEngine:
         tempo_segments: Optional[np.ndarray] = None,
         jump_point_features: Optional[JumpPointFeatures] = None,
         vocal_context: Optional[VocalContext] = None,
+        context: Optional[tuple] = None,
     ) -> JumpCueResult:
         """``y_mix`` (or its STFT magnitude with the vocal config's n_fft / hop)
         enables the vocal / lyric context of the jump points. ``tempo_segments``
         gives the downbeats that jump points prefer outside breaks.
         ``jump_point_features`` (with the vocal context) lets the learned model
-        choose the jump points."""
+        choose the jump points. ``context``: ``audio_context`` of the engine's
+        config and these arguments when already made (the audio and the beats
+        are then not read)."""
         beats = np.asarray(beats_time, dtype=float)
         if vocal_context is not None and not np.array_equal(vocal_context.beats_time, beats):
             raise ValueError("cached vocal context uses a different beat grid")
@@ -219,17 +249,10 @@ class JumpCueEngine:
                 self._bar_phase = np.where(last >= 0, np.arange(beats.size) - downbeats[np.maximum(last, 0)], -1)
             if downbeats.size >= 2:
                 self._beats_per_bar = int(max(1, round(float(np.median(np.diff(downbeats))))))
-        report, xmat = analyze_self_correlation(
-            y_harm=y_harm,
-            sr=sr,
-            beats_time=beats,
-            config=self.config.self_corr,
-        )
-        vocal = vocal_context
-        if vocal is None and (y_mix is not None or mix_magnitude is not None) and beats.size >= 2 and report.links:
-            vocal = compute_vocal_context(
-                y_mix, sr, beats, magnitude=mix_magnitude, config=self.config.vocal
-            )
+        if context is None:
+            context = audio_context(self.config, y_harm, sr, beats, y_mix=y_mix, mix_magnitude=mix_magnitude,
+                                    vocal_context=vocal_context)
+        report, xmat, vocal = context
         pairs = self._build_pairs(report, beats, xmat=xmat, vocal=vocal)
         adjacency = self._build_adjacency(pairs)
         return JumpCueResult(pairs=pairs, adjacency=adjacency, report=report, vocal=vocal)

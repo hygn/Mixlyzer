@@ -117,6 +117,27 @@ def lower_process_priority() -> None:
         pass
 
 
+def trim_memory() -> None:
+    """The calling process's resident memory handed back while it waits (a resident worker between its jobs): Windows
+    empties its working set (the pages come back from the standby list when touched: measured, the next analysis no
+    slower), Linux has glibc return its free heap (malloc_trim), macOS does nothing."""
+    try:
+        if IS_WINDOWS:
+            import ctypes
+            from ctypes import wintypes
+            kernel32 = ctypes.WinDLL("kernel32")
+            kernel32.GetCurrentProcess.restype = wintypes.HANDLE
+            kernel32.SetProcessWorkingSetSizeEx.argtypes = [wintypes.HANDLE, ctypes.c_size_t, ctypes.c_size_t,
+                                                             wintypes.DWORD]
+            kernel32.SetProcessWorkingSetSizeEx(kernel32.GetCurrentProcess(), ctypes.c_size_t(-1),
+                                                ctypes.c_size_t(-1), 0)
+        elif IS_LINUX:
+            import ctypes
+            ctypes.CDLL("libc.so.6").malloc_trim(0)
+    except Exception:
+        pass
+
+
 def hidden_subprocess_kwargs() -> dict:
     """Popen keyword arguments that keep a console program's window from opening (Windows); none elsewhere."""
     if not IS_WINDOWS:

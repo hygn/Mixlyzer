@@ -44,17 +44,24 @@ def _unit_rows(x: np.ndarray) -> np.ndarray:
     return x / (np.linalg.norm(x, axis=1, keepdims=True) + 1e-9)
 
 
-def _window_means(d: np.ndarray, w: int) -> tuple[np.ndarray, np.ndarray]:
-    """after[t] = mean d[t:t+w], before[t] = mean d[t-w:t] (truncated; nan when empty)."""
-    c = np.concatenate([[0.0], np.cumsum(d)])
-    t = np.arange(d.size)
-    hi = np.minimum(t + w, d.size)
+def _window_means(c: np.ndarray, w: int) -> tuple[np.ndarray, np.ndarray]:
+    """From c = [0, cumsum(d)] (along the last axis): after[t] = mean d[t:t+w], before[t] = mean d[t-w:t]
+    (truncated; nan when empty)."""
+    size = c.shape[-1] - 1
+    t = np.arange(size)
+    hi = np.minimum(t + w, size)
     lo = np.maximum(t - w, 0)
-    after = (c[hi] - c[t]) / np.maximum(hi - t, 1)
-    before = np.full(d.size, np.nan)
-    has = t > 0
-    before[has] = (c[t[has]] - c[lo[has]]) / (t[has] - lo[has])
+    after = (c[..., hi] - c[..., t]) / np.maximum(hi - t, 1)
+    before = np.full(c.shape[:-1] + (size,), np.nan)
+    before[..., 1:] = (c[..., t[1:]] - c[..., lo[1:]]) / (t[1:] - lo[1:])
     return after, before
+
+
+def _diagonals(M: np.ndarray, lag: int) -> tuple[np.ndarray, np.ndarray]:
+    """Views of M's diagonals M[i, i + lag] and M[i + lag, i]."""
+    n = M.shape[0]
+    flat = M.reshape(-1)
+    return flat[lag::n + 1][:n - lag], flat[lag * n::n + 1][:n - lag]
 
 
 def repetition_matrices(feature_z: np.ndarray) -> dict[int, dict[str, tuple[np.ndarray, np.ndarray]]]:
@@ -63,39 +70,42 @@ def repetition_matrices(feature_z: np.ndarray) -> dict[int, dict[str, tuple[np.n
     after[i, j]: mean similarity of the ``window`` beats starting at i and j;
     before[i, j]: the same for the beats ending there. nan within
     ``REPEAT_MIN_LAG`` of the diagonal.
+
+    Per lag the stripes' dot products and cumulative sums are made once for every window (the 12 chroma
+    rotations together: np.roll(x[lag:], s, axis=1) is np.roll(x, s, axis=1)[lag:]), with the same float
+    operations in the same order as one stripe at a time; the best rotation is an fmax, exact in any order.
     """
     x = np.asarray(feature_z, dtype=np.float64)
     n = x.shape[0]
     families = {"timbre": _unit_rows(x[:, _TIMBRE]), "rhythm": _unit_rows(x[:, _RHYTHM])}
     chroma = _unit_rows(x[:, _CHROMA])
-    out: dict[int, dict[str, tuple[np.ndarray, np.ndarray]]] = {}
+    rotations = np.stack([np.roll(chroma, s, axis=1) for s in range(12)])
+    mats = {w: {k: (np.full((n, n), np.nan, np.float32), np.full((n, n), np.nan, np.float32))
+                for k in ("timbre", "rhythm", "chroma")} for w in REPEAT_WINDOWS}
+    for lag in range(REPEAT_MIN_LAG, n):
+        m = n - lag
+        stripes = {name: np.concatenate([[0.0], np.cumsum(np.sum(f[:m] * f[lag:], axis=1))])
+                   for name, f in families.items()}
+        rotated = np.zeros((12, m + 1))
+        rotated[:, 1:] = np.cumsum(np.sum(chroma[:m][None] * rotations[:, lag:], axis=2), axis=1)
+        for w in REPEAT_WINDOWS:
+            for name in families:
+                for M, v in zip(mats[w][name], _window_means(stripes[name], w)):
+                    upper, lower = _diagonals(M, lag)
+                    upper[:] = v
+                    lower[:] = v
+            for M, v in zip(mats[w]["chroma"], _window_means(rotated, w)):
+                best = np.fmax.reduce(np.vstack([np.full((1, m), -np.inf), v]), axis=0)
+                best[np.isinf(best)] = np.nan
+                upper, lower = _diagonals(M, lag)
+                upper[:] = best
+                lower[:] = best
     for w in REPEAT_WINDOWS:
-        mats = {k: (np.full((n, n), np.nan, np.float32), np.full((n, n), np.nan, np.float32))
-                for k in ("timbre", "rhythm", "chroma")}
-        for lag in range(REPEAT_MIN_LAG, n):
-            m = n - lag
-            i = np.arange(m)
-            j = i + lag
-            for name, f in families.items():
-                for M, v in zip(mats[name], _window_means(np.sum(f[:m] * f[lag:], axis=1), w)):
-                    M[i, j] = v
-                    M[j, i] = v
-            best_after = np.full(m, -np.inf)
-            best_before = np.full(m, -np.inf)
-            for shift in range(12):
-                after, before = _window_means(np.sum(chroma[:m] * np.roll(chroma[lag:], shift, axis=1), axis=1), w)
-                best_after = np.fmax(best_after, after)
-                best_before = np.fmax(best_before, before)
-            for M, v in zip(mats["chroma"], (best_after, best_before)):
-                v[np.isinf(v)] = np.nan
-                M[i, j] = v
-                M[j, i] = v
-        mats["all"] = tuple(
-            np.mean([mats[k][s] for k in ("timbre", "rhythm", "chroma")], axis=0).astype(np.float32)
+        mats[w]["all"] = tuple(
+            np.mean([mats[w][k][s] for k in ("timbre", "rhythm", "chroma")], axis=0).astype(np.float32)
             for s in (0, 1)
         )
-        out[w] = mats
-    return out
+    return mats
 
 
 def repetition_features(mats: dict) -> np.ndarray:

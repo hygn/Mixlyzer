@@ -14,7 +14,7 @@ from analyzer.pipeline.beatgrid import reanalyze_segment
 from analyzer.pipeline.jumpcues import reanalyze_jumpcues
 from analyzer.pipeline.keys import reanalyze_full as reanalyze_keys, reanalyze_selection as reanalyze_key_selection
 from analyzer.pipeline.phrases import reanalyze_phrases
-from system.process_worker import SpawnProcessWorker, install_parent_watchdog
+from system.process_worker import ResidentJobWorker, ResidentPool, install_parent_watchdog
 from core.settings.config import config
 from core.workers.analysis_settings import analysis_settings
 from core.workers.analysis_texts import error_text, reanalysis_stage
@@ -24,8 +24,22 @@ from core.track.reanalysis import BEAT, JUMPCUE, KEY_DYNAMIC, KEY_STATIC, PHRASE
     ReanalysisResult
 
 
-class SegmentReanalysisWorker(SpawnProcessWorker):
-    """Worker that recomputes tempo or key segments in a subprocess."""
+_pool: ResidentPool | None = None
+
+
+def reanalysis_pool() -> ResidentPool:
+    """The editor's resident reanalysis process (one kept for the editor: started ahead by
+    SegmentReanalysisWorkflow; a second one only while two reanalyses run at once), ending after 30 minutes without
+    a request and replaced after 50."""
+    global _pool
+    if _pool is None:
+        _pool = ResidentPool("Mixlyzer-segment-analysis", idle_sec=1800.0, max_jobs=50,
+                             warm=("core.workers.segment_reanalysis",))
+    return _pool
+
+
+class SegmentReanalysisWorker(ResidentJobWorker):
+    """Worker that recomputes tempo or key segments in the resident reanalysis process."""
 
     finished = QtCore.Signal(object)     # ReanalysisResult
     error = QtCore.Signal(str)
@@ -41,10 +55,9 @@ class SegmentReanalysisWorker(SpawnProcessWorker):
         parent: QtCore.QObject | None = None,
     ) -> None:
         super().__init__(
+            pool=reanalysis_pool(),
             target=_segment_reanalysis_entry,
             args=(path, cfg, request, taskid),
-            daemon=True,
-            process_name=f"Mixlyzer-segment-analysis-{taskid}",
             parent=parent,
         )
         self._result_emitted = False

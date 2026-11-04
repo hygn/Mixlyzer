@@ -44,7 +44,7 @@ def _segment_rows(segments) -> np.ndarray:
 
 def refine_boundaries(
     segments,
-    activation: np.ndarray,
+    activation,
     hop_t: float,
     duration_sec: float,
     time_offset: float = 0.0,
@@ -56,12 +56,13 @@ def refine_boundaries(
     Each grid keeps its own phase; only the hand-over beat moves (within ``search_sec``).
     A candidate is scored by the activation on its beats minus the local mean activation
     per beat, so a denser grid gains nothing from beats that land on nothing.
+    ``activation``: the array, or a callable making it (``learned_onset.LazyRefineOnset``),
+    called at the first tempo change it is read for (None from it: no change moves).
     """
     rows = _segment_rows(segments)
     if rows.shape[0] < 2:
         return rows, 0
-    pooled = maximum_filter1d(np.asarray(activation, dtype=np.float64), 3)
-    read = _activation_reader(activation, hop_t, time_offset)
+    pooled = read = None
     moved = 0
     for k in range(1, rows.shape[0]):
         left, right = rows[k - 1], rows[k]
@@ -75,6 +76,12 @@ def refine_boundaries(
         hi = min(b + search_sec, float(right[1]) - 2.0 * pr)
         if hi <= lo:
             continue
+        if pooled is None:
+            values = activation() if callable(activation) else activation
+            if values is None:
+                return rows, 0
+            pooled = maximum_filter1d(np.asarray(values, dtype=np.float64), 3)
+            read = _activation_reader(values, hop_t, time_offset)
         span_lo = max(float(left[0]), lo - pl)
         span_hi = min(float(right[1]), hi + pr)
         frames = pooled[int(max((span_lo - time_offset) / hop_t, 0)):int(max((span_hi - time_offset) / hop_t, 1))]

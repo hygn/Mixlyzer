@@ -10,9 +10,9 @@ from PySide6 import QtCore
 from threadpoolctl import threadpool_limits
 
 from analyzer.audio.decoder import get_total_samples
-from analyzer.pipeline.track import analyze_track
+from analyzer.pipeline.track import LAZY_MODULES, analyze_track
 from core.tags.reader import cover_data, extract_tags, read_tag_sources
-from system.process_worker import SpawnProcessWorker, install_parent_watchdog
+from system.process_worker import ResidentJobWorker, ResidentPool, install_parent_watchdog
 from core.settings.config import config
 from core.library.segments import track_index
 from core.workers.analysis_settings import analysis_settings
@@ -107,7 +107,22 @@ def _analysis_process_entry(
         queue.put({"type": "done", "taskid": taskid})
 
 
-class AnalysisWorker(SpawnProcessWorker):
+_pool: ResidentPool | None = None
+
+
+def analysis_pool() -> ResidentPool:
+    """The resident full-analysis processes (system.process_worker.ResidentPool; made on the GUI thread at the first
+    analysis): as many as the analyses run at once (AnalysisWorkflow keeps that count), each ending after 10 minutes
+    without a track and replaced after 20 tracks; while it waits for its first, it imports what an analysis reaches
+    (librosa's modules too)."""
+    global _pool
+    if _pool is None:
+        _pool = ResidentPool("Mixlyzer-analysis", idle_sec=600.0, max_jobs=20,
+                             warm=("analyzer.pipeline.track", "core.workers.analysis", *LAZY_MODULES))
+    return _pool
+
+
+class AnalysisWorker(ResidentJobWorker):
     finished = QtCore.Signal(dict)
     error = QtCore.Signal(str)
     progress = QtCore.Signal(str, float)
@@ -121,10 +136,9 @@ class AnalysisWorker(SpawnProcessWorker):
         parent: QtCore.QObject | None = None,
     ) -> None:
         super().__init__(
+            pool=analysis_pool(),
             target=_analysis_process_entry,
             args=(path, cfg, taskid),
-            daemon=True,
-            process_name=f"Mixlyzer-analysis-{taskid}",
             parent=parent,
         )
         self._result_emitted = False

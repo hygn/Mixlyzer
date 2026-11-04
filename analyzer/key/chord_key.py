@@ -259,13 +259,14 @@ def load_model(path: str | Path) -> ChordKeyModel:
 
 
 def key_evidence(y_harm: np.ndarray, sr: int, beats: np.ndarray, downbeats, phrase_starts, duration: float,
-                 model_path: str | Path) -> tuple[ChordKeyModel, BeatGrid, np.ndarray]:
-    """(model, beat grid, per-beat key log-likelihoods [nb, 24])."""
+                 model_path: str | Path, frames: np.ndarray | None = None) -> tuple[ChordKeyModel, BeatGrid, np.ndarray]:
+    """(model, beat grid, per-beat key log-likelihoods [nb, 24]); ``frames``: ``frame_chroma(y_harm, sr)`` when
+    already made."""
     model = load_model(model_path)
     grid = beat_grid(beats, downbeats, np.asarray(phrase_starts if phrase_starts is not None else [], float), duration)
     if grid.beat_t.size < 8:
         raise ValueError("too few beats for the key analysis")
-    x = beat_inputs(y_harm, sr, grid, duration)
+    x = beat_inputs(y_harm, sr, grid, duration) if frames is None else pool_beats(frames, grid, duration)
     return model, grid, model.key_loglik(model.chords(x), grid.pos)
 
 
@@ -290,12 +291,13 @@ def track_keys(model: ChordKeyModel, grid: BeatGrid, L: np.ndarray, duration: fl
 
 def analyze_keys(y_harm: np.ndarray, sr: int, beats: np.ndarray, downbeats, phrase_starts,
                  duration: float, model_path: str | Path,
-                 dynamic: bool = True, phrases=None) -> tuple[np.ndarray, np.ndarray]:
+                 dynamic: bool = True, phrases=None, frames: np.ndarray | None = None) -> tuple[np.ndarray, np.ndarray]:
     """Key segments of a track (dynamic: key changes; static: one key, the dynamic analysis's key in the intro /
-    outro / interludes, given ``phrases`` with their labels).
+    outro / interludes, given ``phrases`` with their labels); ``frames``: ``frame_chroma(y_harm, sr)`` when already
+    made (the full analysis makes them beside the beats).
     -> (key per beat [nb] as key index pc + 12 * minor,
     key_segments [n, 4] rows (pitch class, mode 0 major / 1 minor, start s, end s) covering 0..duration)."""
-    model, grid, L = key_evidence(y_harm, sr, beats, downbeats, phrase_starts, duration, model_path)
+    model, grid, L = key_evidence(y_harm, sr, beats, downbeats, phrase_starts, duration, model_path, frames)
     return track_keys(model, grid, L, duration, dynamic, phrases)
 
 

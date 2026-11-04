@@ -397,6 +397,10 @@ class AppWindow(QtWidgets.QMainWindow):
             parent=self,
             cfg_loader=lambda: self.cfg,
         )
+        # the editor's resident reanalysis process started once the app has settled (its imports off the start),
+        # so a reanalysis pays no process start (core.workers.segment_reanalysis.reanalysis_pool)
+        from core.workers.segment_reanalysis import reanalysis_pool
+        QtCore.QTimer.singleShot(10000, reanalysis_pool().prewarm)
         self.analysis_workflow = AnalysisWorkflow(
             library=self.library,
             taskmanager=self.taskmanager,

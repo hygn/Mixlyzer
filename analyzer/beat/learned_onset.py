@@ -4,6 +4,7 @@ sources with their context. The beat tracker moves each tempo change to it (``gr
 from __future__ import annotations
 
 import json
+import threading
 from functools import lru_cache
 from pathlib import Path
 
@@ -167,6 +168,27 @@ def refine_onset_activation(frames: FrameFeatures, path: str | Path) -> np.ndarr
         raise ValueError(f"Refinement onset model expects hop {hop}, frames use {frames.hop_length}")
     inputs = stack_context(onset_channels(frames)).astype(np.float64)
     return model.predict_proba(inputs)[:, 1].astype(np.float32)
+
+
+class LazyRefineOnset:
+    """``refine_onset_activation`` (float64) made at its first call, once for every thread: the tracker reads it only
+    where a tempo changes, so a track of one tempo never makes it (about 1 s of a 4-minute track). None when it
+    cannot be made (said once): no tempo change moves."""
+
+    def __init__(self, frames: FrameFeatures, path: str | Path):
+        self._frames, self._path = frames, path
+        self._lock = threading.Lock()
+        self._done, self._activation = False, None
+
+    def __call__(self) -> np.ndarray | None:
+        with self._lock:
+            if not self._done:
+                try:
+                    self._activation = refine_onset_activation(self._frames, self._path).astype(np.float64)
+                except Exception as exc:
+                    print(f"[Tempo] boundary onset unavailable ({exc}); tempo changes stay where the decoder put them")
+                self._done, self._frames = True, None
+            return self._activation
 
 
 def export_refine_onset_model(classifier, output_path: str | Path, frame_hop_length: int, training: dict | None = None) -> None:

@@ -81,13 +81,22 @@ class FeatureConfig:
 
 @dataclass
 class AcousticFeatures:
-    """Feature matrices have shape ``(channels, beats_or_bars)``."""
+    """Feature matrices have shape ``(channels, beats)``."""
 
     beat: dict[str, np.ndarray]
-    bar: dict[str, np.ndarray]
     family_beat: dict[str, np.ndarray]
-    family_bar: dict[str, np.ndarray]
     audio_duration_sec: float
+
+
+@dataclass(frozen=True)
+class SongFrames:
+    """A song's frame-level features (``song_frames``): what ``extract_song_features`` reads of the audio alone, so
+    they can be made before the beats are known (the full analysis makes them beside the beat tracker)."""
+
+    sample_rate: int
+    duration_sec: float
+    frame_times: np.ndarray
+    frame: dict[str, np.ndarray]    # (channels, frames), or (frames,)
 
 
 
@@ -392,34 +401,6 @@ def _subdivision_profiles(
     )
 
 
-def _aggregate_beats_to_bars(
-    values: np.ndarray,
-    grid: PredictorGrid,
-    reducer: str = "mean",
-) -> np.ndarray:
-    x = np.asarray(values, dtype=np.float64)
-    if x.ndim == 1:
-        x = x[np.newaxis, :]
-    if x.shape[1] != grid.n_beats:
-        raise ValueError("Beat feature length does not match PredictorGrid.")
-    result = np.zeros((x.shape[0], grid.n_bars), dtype=np.float64)
-    for bar_idx, (start, end) in enumerate(
-        zip(grid.bar_starts_beat, grid.bar_ends_beat, strict=True)
-    ):
-        block = x[:, start:end]
-        if reducer == "mean":
-            result[:, bar_idx] = np.mean(block, axis=1)
-        elif reducer == "median":
-            result[:, bar_idx] = np.median(block, axis=1)
-        elif reducer == "sum":
-            result[:, bar_idx] = np.sum(block, axis=1)
-        elif reducer == "max":
-            result[:, bar_idx] = np.max(block, axis=1)
-        else:
-            raise ValueError(f"Unsupported reducer: {reducer}")
-    return result.astype(np.float32)
-
-
 def _band_energy(
     power: np.ndarray,
     frequencies: np.ndarray,
@@ -443,16 +424,15 @@ def _pitch_salience(harmonic_magnitude: np.ndarray, frequencies: np.ndarray) -> 
     return salience.astype(np.float32)
 
 
-def extract_song_features(
+def song_frames(
     audio_path: str | Path,
-    grid: PredictorGrid,
     config: FeatureConfig = FeatureConfig(),
     *,
     audio_array: np.ndarray | None = None,
     audio_sr: int | None = None,
     hpss: HpssSpectra | None = None,
-) -> AcousticFeatures:
-    """Extract deterministic beat- and bar-synchronous music features.
+) -> SongFrames:
+    """The frame-level features ``extract_song_features`` synchronizes to the beats.
 
     Pass ``audio_array`` (mono ``(N,)`` or stereo ``(N, 2)`` / ``(2, N)``) with
     ``audio_sr`` to feed already-loaded audio instead of reading ``audio_path``.
@@ -464,12 +444,6 @@ def extract_song_features(
         audio_path, config, audio_array=audio_array, audio_sr=audio_sr
     )
     duration_sec = mid.size / float(sr)
-    tolerance = max(1.0, 2.0 * float(np.median(np.diff(grid.beat_times_sec))))
-    if grid.beat_times_sec[-1] > duration_sec + tolerance:
-        raise ValueError(
-            f"Beat grid ends at {grid.beat_times_sec[-1]:.3f}s but audio ends "
-            f"at {duration_sec:.3f}s.  Check that both files belong to one song."
-        )
 
     reuse = (
         hpss is not None
@@ -579,6 +553,55 @@ def extract_song_features(
         np.diff(high_log, prepend=high_log[:1]), 0.0
     ).astype(np.float32)
 
+    return SongFrames(
+        sample_rate=int(sr),
+        duration_sec=float(duration_sec),
+        frame_times=frame_times,
+        frame={
+            "mel_db": mel_db, "mfcc": mfcc, "chroma": chroma, "tonnetz": tonnetz, "contrast": contrast,
+            "centroid": centroid, "bandwidth": bandwidth, "flatness": flatness, "rolloff": rolloff,
+            "rms": rms, "harmonic_rms": harmonic_rms, "percussive_rms": percussive_rms,
+            "side_rms": side_rms, "mid_rms": mid_rms,
+            "low": low, "low_mid": low_mid, "mid_band": mid_band, "high": high, "total_energy": total_energy,
+            "pitch_salience": pitch_salience,
+            "onset_full": onset_full, "onset_percussive": onset_percussive, "onset_high": onset_high,
+        },
+    )
+
+
+def extract_song_features(
+    audio_path: str | Path,
+    grid: PredictorGrid,
+    config: FeatureConfig = FeatureConfig(),
+    *,
+    audio_array: np.ndarray | None = None,
+    audio_sr: int | None = None,
+    hpss: HpssSpectra | None = None,
+    frames: SongFrames | None = None,
+) -> AcousticFeatures:
+    """Extract deterministic beat-synchronous music features.
+
+    The audio arguments as ``song_frames``'s; ``frames``: its result for this
+    audio and config when already made (the audio arguments are then unused).
+    """
+
+    if frames is None:
+        frames = song_frames(audio_path, config, audio_array=audio_array, audio_sr=audio_sr, hpss=hpss)
+    sr, duration_sec, frame_times, f = frames.sample_rate, frames.duration_sec, frames.frame_times, frames.frame
+    tolerance = max(1.0, 2.0 * float(np.median(np.diff(grid.beat_times_sec))))
+    if grid.beat_times_sec[-1] > duration_sec + tolerance:
+        raise ValueError(
+            f"Beat grid ends at {grid.beat_times_sec[-1]:.3f}s but audio ends "
+            f"at {duration_sec:.3f}s.  Check that both files belong to one song."
+        )
+    mel_db, mfcc, chroma, tonnetz, contrast = f["mel_db"], f["mfcc"], f["chroma"], f["tonnetz"], f["contrast"]
+    centroid, bandwidth, flatness, rolloff = f["centroid"], f["bandwidth"], f["flatness"], f["rolloff"]
+    rms, harmonic_rms, percussive_rms = f["rms"], f["harmonic_rms"], f["percussive_rms"]
+    side_rms, mid_rms = f["side_rms"], f["mid_rms"]
+    low, low_mid, mid_band, high, total_energy = f["low"], f["low_mid"], f["mid_band"], f["high"], f["total_energy"]
+    pitch_salience = f["pitch_salience"]
+    onset_full, onset_percussive, onset_high = f["onset_full"], f["onset_percussive"], f["onset_high"]
+
     beat_edges = grid.beat_edges_sec.copy()
     beat_edges[-1] = min(max(beat_edges[-1], grid.beat_times_sec[-1]), duration_sec)
     if beat_edges[-1] <= beat_edges[-2]:
@@ -657,13 +680,6 @@ def extract_song_features(
         "onset_high": onset_high_sync[np.newaxis, :].astype(np.float32),
     }
 
-    bar: dict[str, np.ndarray] = {}
-    sum_features = {"onset_full", "onset_percussive", "onset_high"}
-    median_features = {"mel"}
-    for name, values in beat.items():
-        reducer = "sum" if name in sum_features else "median" if name in median_features else "mean"
-        bar[name] = _aggregate_beats_to_bars(values, grid, reducer)
-
     family_beat = {
         "timbre": np.vstack(
             [beat["mel"], beat["mfcc"], beat["spectral_contrast"]]
@@ -697,45 +713,10 @@ def extract_song_features(
             ]
         ),
     }
-    family_bar = {
-        "timbre": np.vstack(
-            [bar["mel"], bar["mfcc"], bar["spectral_contrast"]]
-        ),
-        "harmony": np.vstack([bar["chroma"], bar["tonnetz"]]),
-        "rhythm": np.vstack(
-            [
-                bar["rhythm_profile"],
-                bar["onset_full"],
-                bar["onset_percussive"],
-                bar["onset_high"],
-            ]
-        ),
-        "texture": np.vstack(
-            [
-                bar["log_rms"],
-                bar["harmonic_log_rms"],
-                bar["percussive_log_rms"],
-                bar["low_log_energy"],
-                bar["low_mid_log_energy"],
-                bar["mid_log_energy"],
-                bar["high_log_energy"],
-                bar["harmonic_percussive_ratio"],
-                bar["centroid"],
-                bar["bandwidth"],
-                bar["rolloff"],
-                bar["flatness"],
-                bar["stereo_width"],
-                bar["pitch_salience"],
-                bar["vocal_proxy"],
-            ]
-        ),
-    }
 
     return AcousticFeatures(
         beat=beat,
-        bar=bar,
         family_beat=family_beat,
-        family_bar=family_bar,
         audio_duration_sec=float(duration_sec),
     )
 

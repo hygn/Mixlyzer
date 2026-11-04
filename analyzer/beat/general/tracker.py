@@ -197,7 +197,8 @@ def medoid(results: list) -> int:
 def track(frames, bpm_min: float, models: Models, refine_onset=None, parallel: bool = True,
           dynamic: bool = True, dynamic_downbeat: bool = True) -> TrackerResult:
     """frames: production FrameFeatures on the models' grid (T.SAMPLE_RATE, T.FRAME_HOP_LENGTH);
-    refine_onset: (activation, hop, t0) of the local onset model. ``dynamic`` off: one steady grid for
+    refine_onset: (activation, hop, t0) of the local onset model (the activation, or a callable making it at its first
+    read: learned_onset.LazyRefineOnset). ``dynamic`` off: one steady grid for
     the whole track; its bars are dynamic (odd bars, meter changes) only with ``dynamic_downbeat`` (a
     dynamic grid always has dynamic bars)."""
     if (int(frames.sample_rate), int(frames.hop_length)) != (T.SAMPLE_RATE, T.FRAME_HOP_LENGTH):
