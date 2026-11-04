@@ -575,6 +575,34 @@ class SaveTests(EditPanelCase):
         self.settle()
         self.assertTrue(self.model.unsaved)
 
+    def test_save_then_runs_after_the_save_only(self):
+        """save_then: what comes after (a load the user asked for) runs once the edits are stored, never before,
+        never when no save could start; a save already running keeps its own."""
+        ran = []
+        self.at(10.0)
+        self.panel.btn_bpm_double.click()
+        self.assertTrue(self.panel.save_then(lambda: ran.append("first")))
+        self.assertEqual(ran, [])                                      # not before the save is stored
+        self.assertFalse(self.panel.save_then(lambda: ran.append("second")))    # a save is running
+        self.settle()
+        self.assertEqual(ran, ["first"])
+        self.assertFalse(self.model.unsaved)
+        self.panel.btn_bpm_double.click()
+        self.bus.sig_segment_reanalyze_state.emit(False)               # editing off: no save starts
+        self.assertFalse(self.panel.save_then(lambda: ran.append("third")))
+        self.settle()
+        self.assertEqual(ran, ["first"])
+
+    def test_after_a_failed_save_nothing_runs(self):
+        ran = []
+        self.at(10.0)
+        self.panel.btn_bpm_double.click()
+        with mock.patch.object(QMessageBox, "warning"):
+            self.assertTrue(self.panel.save_then(lambda: ran.append("after")))
+            self.panel._on_save_failed(OSError("disk full"))
+        self.assertEqual(ran, [])
+        self.assertTrue(self.model.unsaved)
+
 
 if __name__ == "__main__":
     unittest.main()

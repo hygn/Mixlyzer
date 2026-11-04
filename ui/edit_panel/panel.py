@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import html
-from typing import Optional
+from typing import Callable, Optional
 
 import numpy as np
 from PySide6 import QtCore, QtGui, QtWidgets
@@ -86,6 +86,7 @@ class EditPanel(
         self._edit_focus: frozenset = frozenset()
         self._save_in_progress = False
         self._save_point: tuple = ()          # the model's save point of the save running (DataModel.save_point)
+        self._after_save: Optional[Callable[[], None]] = None   # what runs once the save running is stored (save_then)
         self.tempo_multiplier = 1
         self._playing = False
         # BeatCounter: while the Count button is held, count beats crossed by
@@ -559,16 +560,26 @@ class EditPanel(
     def _redo(self) -> None:
         self.model.redo()
 
-    def _save(self) -> None:
+    def save_then(self, after: Callable[[], None]) -> bool:
+        """Save the edits, then ``after`` once they are stored (not when the save fails: the failure is said, the
+        edits kept). False: no save could start (editing is off, a save is running, a JumpCUE label is invalid)."""
+        if not self._save():
+            return False
+        self._after_save = after
+        return True
+
+    def _save(self) -> bool:
+        """Start a save (True when one started; a save running keeps what runs after it)."""
         if self.uid is None or self._save_in_progress or not self._edit_enabled:
-            return
+            return False
         if self._library is None:
-            return
+            return False
         try:
             edits = self.model.stored_edits()
         except ValueError as exc:
             QtWidgets.QMessageBox.warning(self, tr("Invalid JumpCUE Label"), str(exc))
-            return
+            return False
+        self._after_save = None
         self._save_in_progress = True
         self.btn_save.setEnabled(False)
         # what this save stores: an edit made while it runs stays unsaved
@@ -578,9 +589,11 @@ class EditPanel(
         sync = bool(current_settings().libconfig.sync_stored_analysis)
         self._library.write(library_jobs.save_edits, self.uid, edits, sync, done=self._on_save_finished,
                             failed=self._on_save_failed)
+        return True
 
     def _on_save_failed(self, exc: Exception) -> None:
         self._save_in_progress = False
+        self._after_save = None
         self.btn_save.setEnabled(self._edit_enabled)
         QtWidgets.QMessageBox.warning(self, tr("Save"), tr("The edits could not be saved:\n{error}").format(error=exc))
 
@@ -595,6 +608,9 @@ class EditPanel(
                 self.bus.sig_rekordbox_sync_track_requested.emit(uid)
             except Exception:
                 pass
+        after, self._after_save = self._after_save, None
+        if after is not None and uid:
+            after()
 
     def _current_track_path(self) -> Optional[str]:
         if self.model is None:

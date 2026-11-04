@@ -235,11 +235,12 @@ ACTIONS: tuple[Action, ...] = (
       for n in (3, 4, 5, 7)),
 
     Action("key.pick", KEY, tr_mark("Pick the key"), tip=tr_mark("Pick the key (Alphanumeric wheel)")),
-    Action("key.flat", KEY, tr_mark("A semitone down"), repeat=True),
-    Action("key.sharp", KEY, tr_mark("A semitone up"), repeat=True),
-    Action("key.fifth_down", KEY, tr_mark("Circle of fifths -1"), repeat=True,
+    # the segment's key changed: one step a press, never repeated while held (a held key ran past the key meant)
+    Action("key.flat", KEY, tr_mark("A semitone down")),
+    Action("key.sharp", KEY, tr_mark("A semitone up")),
+    Action("key.fifth_down", KEY, tr_mark("Circle of fifths -1"),
            tip=tr_mark("One step down the circle of fifths (Alphanumeric -1)")),
-    Action("key.fifth_up", KEY, tr_mark("Circle of fifths +1"), repeat=True,
+    Action("key.fifth_up", KEY, tr_mark("Circle of fifths +1"),
            tip=tr_mark("One step up the circle of fifths (Alphanumeric +1)")),
     Action("key.relative", KEY, tr_mark("Relative major / minor"), tip=tr_mark("Relative major / minor (C <-> Am)")),
     Action("key.merge_same", KEY, tr_mark("Merge the same keys"),

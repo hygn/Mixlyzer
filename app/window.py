@@ -96,6 +96,11 @@ class AppWindow(QtWidgets.QMainWindow):
         self.bus.sig_output_buffer.connect(self.buffers.add)
         self._start_library(library)
         self.model = DataModel()
+        # edits not saved are asked about before they would be lost (_with_edits_resolved): the box is open, an
+        # External Sync load waiting for it, a quit already asked about
+        self._asking_edits = False
+        self._external_pending = None
+        self._edits_resolved_for_close = False
         self.tl = TimelineCoordinator(self.bus)
         self._start_player()
         self._start_external_sync()
@@ -610,13 +615,48 @@ class AppWindow(QtWidgets.QMainWindow):
         self.workers.raise_()
         self.workers.activateWindow()
 
+    def _with_edits_resolved(self, then, *, cancellable: bool = True) -> None:
+        """``then`` at once when the loaded track has no edits not saved; else the user picks: Save (``then`` once
+        they are stored; a save that fails keeps them and does nothing), Discard (``then`` now) or, ``cancellable``,
+        Cancel (nothing). Not cancellable (an External Sync load: the other software has changed its track), closing
+        the box saves, and a save that cannot start lets the edits go."""
+        if not self.model.unsaved:
+            then()
+            return
+        box = QtWidgets.QMessageBox(QtWidgets.QMessageBox.Warning, tr("Unsaved Edits"),
+                                    tr("The loaded track has edits not saved."), parent=self)
+        box.setInformativeText(tr("Save them, discard them, or cancel?") if cancellable else
+                               tr("Another track is being loaded. Save the edits or discard them?"))
+        buttons = QtWidgets.QMessageBox.Save | QtWidgets.QMessageBox.Discard
+        if cancellable:
+            buttons |= QtWidgets.QMessageBox.Cancel
+        box.setStandardButtons(buttons)
+        box.setDefaultButton(QtWidgets.QMessageBox.Save)
+        box.setEscapeButton(QtWidgets.QMessageBox.Cancel if cancellable else QtWidgets.QMessageBox.Save)
+        self._asking_edits = True
+        try:
+            answer = box.exec()
+        finally:
+            self._asking_edits = False
+        if answer == QtWidgets.QMessageBox.Save:
+            if self.pane.track_edit.save_then(then):
+                return
+            if cancellable:
+                self.statusBar().showMessage(tr("The edits could not be saved now: nothing was done."))
+            else:
+                self.statusBar().showMessage(tr("The edits could not be saved now: they were discarded."))
+                then()
+        elif answer == QtWidgets.QMessageBox.Discard:
+            then()
+
     def load_track(self, path: str) -> None:
         """The file onto the deck: it plays at once (decoded), its analysis comes when done (a library track's
-        stored one at once); the analysis's results alone are applied then, the playback goes on."""
+        stored one at once); the analysis's results alone are applied then, the playback goes on. Edits not saved
+        are asked about first."""
         if self._is_external_sync_active():
             self.statusBar().showMessage(tr("External Sync is enabled. Local track loading is disabled."))
             return
-        self._load(path)
+        self._with_edits_resolved(lambda: self._load(path))
 
     def _load(self, path: str) -> None:
         if not os.path.isfile(path) and self.analysis_workflow.library_track(path) is None:
@@ -677,10 +717,13 @@ class AppWindow(QtWidgets.QMainWindow):
             self.model.set_decoded_duration(duration_sec)
 
     def unload_track(self) -> None:
-        """Empty the deck: no track in the player or the views."""
+        """Empty the deck: no track in the player or the views (edits not saved asked about first)."""
         if self._is_external_sync_active():
             self.statusBar().showMessage(tr("External Sync is enabled. Local track loading is disabled."))
             return
+        self._with_edits_resolved(self._unload)
+
+    def _unload(self) -> None:
         self.player.unload()
         self.segment_reanalysis_workflow.cancel_all(tr("Segment reanalysis canceled (track changed)"))
         self._deck_path = None
@@ -688,8 +731,12 @@ class AppWindow(QtWidgets.QMainWindow):
         self.statusBar().showMessage(tr("Track unloaded."))
 
     def reanalyze_file(self, path: str, analysis: dict | None = None):
-        """``analysis``: analysis settings for this reanalysis only (the saved ones stay)."""
-        self.analysis_workflow.reanalyze(path, analysis)
+        """``analysis``: analysis settings for this reanalysis only (the saved ones stay). The deck's track: its result
+        replaces the editor's marks, so edits not saved are asked about first."""
+        if self._holds(path):
+            self._with_edits_resolved(lambda: self.analysis_workflow.reanalyze(path, analysis))
+        else:
+            self.analysis_workflow.reanalyze(path, analysis)
 
     def _on_track_file_missing(self, track, force_analyze: bool, analysis: dict | None = None,
                                listener=None) -> None:
@@ -743,9 +790,13 @@ class AppWindow(QtWidgets.QMainWindow):
         properties = dict(result["properties"])
         if result.get("update_db", False):
             self._sync_rekordbox_track(properties.get("uid"))
-        if self._holds(properties.get("path")):
-            self._apply_analysis(result)
         self.taskmanager.rmtask(result["taskid"])
+        if self._holds(properties.get("path")):
+            if self.model.unsaved:     # edited while it ran: the editor keeps the edits, the library has the result
+                self.statusBar().showMessage(tr("Analysis saved to library. The editor keeps your edits not saved: "
+                                                "load the track again to see the new analysis."))
+                return
+            self._apply_analysis(result)
         self.statusBar().showMessage(tr("Analysis saved to library."))
 
     def _on_tieups_tagged(self, uids: list) -> None:
@@ -804,11 +855,38 @@ class AppWindow(QtWidgets.QMainWindow):
         return int(row.total_samples) if row and row.total_samples is not None else None
 
     def _load_track_from_external_sync(self, path: str, time_sec: float) -> None:
-        exists_in_library = self._track_exists_in_library(path)
-        message = tr("External Sync loading: {file}") if exists_in_library else tr("External Sync analyzing: {file}")
-        self.statusBar().showMessage(message.format(file=os.path.basename(path)))
-        self._load(path)
-        self.player.seek(float(time_sec))   # replayed once the track is decoded
+        """The other software's track (edits not saved: Save or Discard, no Cancel; a load asked while the box is open
+        waits for it, the last one taken)."""
+        if self._asking_edits:
+            self._external_pending = (path, time_sec)
+            return
+        self._external_pending = (path, time_sec)
+
+        def load_latest() -> None:
+            pending, self._external_pending = self._external_pending, None
+            if pending is None:
+                return
+            latest, at = pending
+            exists_in_library = self._track_exists_in_library(latest)
+            message = tr("External Sync loading: {file}") if exists_in_library else tr("External Sync analyzing: {file}")
+            self.statusBar().showMessage(message.format(file=os.path.basename(latest)))
+            self._load(latest)
+            self.player.seek(float(at))   # replayed once the track is decoded
+
+        self._with_edits_resolved(load_latest, cancellable=False)
+
+    def closeEvent(self, event) -> None:
+        """Quitting with edits not saved asks first (Save: quit once they are stored; Cancel: stay)."""
+        if self._edits_resolved_for_close or not self.model.unsaved:
+            super().closeEvent(event)
+            return
+        event.ignore()
+
+        def close_now() -> None:
+            self._edits_resolved_for_close = True
+            self.close()
+
+        self._with_edits_resolved(close_now)
 
     def _on_external_sync_failure(self, message: str) -> None:
         new_cfg = copy.deepcopy(self.cfg)

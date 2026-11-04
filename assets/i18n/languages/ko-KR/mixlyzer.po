@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-11-04 21:43+0900\n"
+"POT-Creation-Date: 2026-11-04 22:09+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ko_KR\n"
@@ -153,23 +153,23 @@ msgstr "창 만드는 중"
 msgid "Core objects and playback"
 msgstr "핵심 객체와 재생"
 
-#: app/window.py:105
+#: app/window.py:110
 msgid "Main view, editor and library"
 msgstr "메인 뷰, 편집기, 라이브러리"
 
-#: app/window.py:112 app/window.py:285 ui/config/window.py:68
+#: app/window.py:117 app/window.py:290 ui/config/window.py:68
 msgid "Settings"
 msgstr "설정"
 
-#: app/window.py:114
+#: app/window.py:119
 msgid "Dialogs, workflows and metronome"
 msgstr "대화상자, 워크플로, 메트로놈"
 
-#: app/window.py:160
+#: app/window.py:165
 msgid "Library in a Synced Folder"
 msgstr "동기화 폴더 안의 라이브러리"
 
-#: app/window.py:161
+#: app/window.py:166
 #, python-brace-format
 msgid ""
 "The library is in a folder {service} syncs:\n"
@@ -188,35 +188,35 @@ msgstr ""
 " 열 때마다 내려받습니다. 라이브러리는 동기화하지 않는 폴더에 두거나(설정 > 라이브러리 > 백업으로 사본을 만들어 다른 곳에 "
 "복원할 수 있습니다), Mixlyzer를 쓰는 동안 동기화를 일시 중지하세요."
 
-#: app/window.py:167
+#: app/window.py:172
 msgid "Don't show this again for this folder"
 msgstr "이 폴더에 대해 다시 표시하지 않음"
 
-#: app/window.py:286 ui/windows/workers.py:28
+#: app/window.py:291 ui/windows/workers.py:28
 msgid "Workers"
 msgstr "작업"
 
 # | msgid "Tie-ups"
-#: app/window.py:287 ui/shortcuts.py:156 ui/windows/tieup_works.py:33
+#: app/window.py:292 ui/shortcuts.py:156 ui/windows/tieup_works.py:33
 #: ui/windows/tieup_works.py:204 ui/windows/tieup_works.py:259
 #: ui/windows/tieup_works.py:264 ui/windows/tieup_works.py:273
 #: ui/windows/tieup_works.py:336
 msgid "Tie-up Works"
 msgstr "타이업 작품"
 
-#: app/window.py:288
+#: app/window.py:293
 msgid "Open Source"
 msgstr "오픈 소스"
 
-#: app/window.py:289 ui/windows/diagnostics_dialog.py:21
+#: app/window.py:294 ui/windows/diagnostics_dialog.py:21
 msgid "Diagnostics"
 msgstr "진단 정보"
 
-#: app/window.py:290
+#: app/window.py:295
 msgid "About"
 msgstr "정보"
 
-#: app/window.py:307 core/controls/midi.py:56
+#: app/window.py:312 core/controls/midi.py:56
 msgid "Mixer"
 msgstr "믹서"
 
@@ -224,53 +224,83 @@ msgstr "믹서"
 # | Playback > " "Audio engine)."
 # Audio
 # | > " "Engine)."
-#: app/window.py:492
+#: app/window.py:497
 msgid "MIDI needs the native audio engine (Settings > Audio > Engine)."
 msgstr "MIDI는 Native 오디오 엔진에서만 동작합니다(설정 > 오디오 > 엔진)."
 
 # | msgid "MIDI input"
-#: app/window.py:499
+#: app/window.py:504
 msgid "MIDI input on."
 msgstr "MIDI 입력 켬."
 
 # | msgid "MIDI input"
-#: app/window.py:499
+#: app/window.py:504
 msgid "MIDI input off."
 msgstr "MIDI 입력 끔."
 
-#: app/window.py:551
+#: app/window.py:556
 msgid "The Python audio engine plays: there is no native engine to restart."
 msgstr "Python 오디오 엔진으로 재생 중입니다. 재시작할 네이티브 엔진이 없습니다."
 
 # | msgid "Starting the reading worker"
-#: app/window.py:553
+#: app/window.py:558
 msgid "Restarting the audio engine..."
 msgstr "오디오 엔진 재시작 중..."
 
 # | msgid "Audio engine"
-#: app/window.py:557
+#: app/window.py:562
 msgid "Audio engine restarted."
 msgstr "오디오 엔진을 재시작했습니다."
 
-#: app/window.py:558
+#: app/window.py:563
 msgid "The audio engine did not start; it is tried again every 2 seconds."
 msgstr "오디오 엔진이 시작되지 않았습니다. 2초마다 다시 시도합니다."
 
-#: app/window.py:617 app/window.py:682
+# | msgid "Save Edits"
+#: app/window.py:626
+msgid "Unsaved Edits"
+msgstr "저장하지 않은 편집"
+
+# | msgid "The loaded track is not in the list shown."
+#: app/window.py:627
+msgid "The loaded track has edits not saved."
+msgstr "로드된 트랙에 저장하지 않은 편집이 있습니다."
+
+#: app/window.py:628
+msgid "Save them, discard them, or cancel?"
+msgstr "저장할까요, 버릴까요, 아니면 취소할까요?"
+
+#: app/window.py:629
+msgid "Another track is being loaded. Save the edits or discard them?"
+msgstr "다른 트랙을 로드하는 중입니다. 편집을 저장할까요, 버릴까요?"
+
+# | msgid "The file could not be written: {error}"
+# | msgid "" "The edits could not be saved:\n" "{error}"
+#: app/window.py:645
+msgid "The edits could not be saved now: nothing was done."
+msgstr "지금은 편집을 저장할 수 없어 아무것도 하지 않았습니다."
+
+# | msgid "The file could not be written: {error}"
+# | msgid "" "The edits could not be saved:\n" "{error}"
+#: app/window.py:647
+msgid "The edits could not be saved now: they were discarded."
+msgstr "지금은 편집을 저장할 수 없어 편집을 버렸습니다."
+
+#: app/window.py:657 app/window.py:722
 msgid "External Sync is enabled. Local track loading is disabled."
 msgstr "외부 동기화가 켜져 있습니다. 로컬 트랙 불러오기가 비활성화됩니다."
 
-#: app/window.py:630 app/window.py:685
+#: app/window.py:670 app/window.py:728
 msgid "Segment reanalysis canceled (track changed)"
 msgstr "구간 재분석 취소됨 (트랙이 바뀜)"
 
 # | msgid "Phrase reanalysis completed"
-#: app/window.py:666
+#: app/window.py:706
 #, python-brace-format
 msgid "The track's analysis could not be read: {file}"
 msgstr "트랙의 분석을 읽을 수 없습니다: {file}"
 
-#: app/window.py:670
+#: app/window.py:710
 #, python-brace-format
 msgid ""
 "{n} JumpCUE past slot Z is not shown ({file}); it stays stored until the "
@@ -280,15 +310,15 @@ msgid_plural ""
 "the JumpCUEs are edited."
 msgstr[0] "슬롯 Z를 넘는 JumpCUE {n}개는 표시되지 않습니다({file}). JumpCUE를 편집하기 전까지는 저장된 그대로 남습니다."
 
-#: app/window.py:688
+#: app/window.py:731
 msgid "Track unloaded."
 msgstr "트랙을 내렸습니다."
 
-#: app/window.py:698
+#: app/window.py:745
 msgid "Track File Not Found"
 msgstr "트랙 파일을 찾을 수 없음"
 
-#: app/window.py:702
+#: app/window.py:749
 #, python-brace-format
 msgid ""
 "Cannot load \"{name}\": its file is missing.\n"
@@ -301,80 +331,86 @@ msgstr ""
 "\n"
 "파일의 새 위치를 지정할까요?"
 
-#: app/window.py:709
+#: app/window.py:756
 #, python-brace-format
 msgid "Locate {name}"
 msgstr "{name} 찾기"
 
-#: app/window.py:733 app/window.py:749
+#: app/window.py:780 app/window.py:800
 msgid "Analysis saved to library."
 msgstr "분석을 라이브러리에 저장했습니다."
 
-#: app/window.py:738
+#: app/window.py:785
 msgid "Finished"
 msgstr "완료"
 
-#: app/window.py:761
+#: app/window.py:796
+msgid ""
+"Analysis saved to library. The editor keeps your edits not saved: load "
+"the track again to see the new analysis."
+msgstr "분석을 라이브러리에 저장했습니다. 편집기에는 저장하지 않은 편집이 그대로 있습니다. 새 분석을 보려면 트랙을 다시 로드하세요."
+
+#: app/window.py:812
 msgid "Waiting to be looked up on Wikipedia"
 msgstr "위키백과 조사 대기 중"
 
-#: app/window.py:767
+#: app/window.py:818
 msgid "Looking up on Wikipedia and Wikidata…"
 msgstr "위키백과와 위키데이터에서 찾는 중…"
 
 # | msgid "Reading the analysis failed: {error}"
 # | msgid "The search failed: {error}"
 # | msgid "" "The lookup failed:\n" "{error}"
-#: app/window.py:772
+#: app/window.py:823
 msgid "The lookup failed."
 msgstr "조사하지 못했습니다."
 
-#: app/window.py:808
+#: app/window.py:871
 #, python-brace-format
 msgid "External Sync loading: {file}"
 msgstr "외부 동기화 불러오는 중: {file}"
 
-#: app/window.py:808
+#: app/window.py:871
 #, python-brace-format
 msgid "External Sync analyzing: {file}"
 msgstr "외부 동기화 분석 중: {file}"
 
 # | msgid "Memory Sync Disabled"
-#: app/window.py:822
+#: app/window.py:900
 msgid "External Sync Disabled"
 msgstr "외부 동기화 비활성화됨"
 
-#: app/window.py:829
+#: app/window.py:907
 msgid "Rebuilding the sort index..."
 msgstr "정렬 색인 다시 만드는 중..."
 
-#: app/window.py:831
+#: app/window.py:909
 #, python-brace-format
 msgid "Sort index rebuilt: {count} names."
 msgstr "정렬 색인을 다시 만들었습니다: 이름 {count}개."
 
-#: app/window.py:839 ui/windows/library_backup.py:53
+#: app/window.py:917 ui/windows/library_backup.py:53
 msgid "Back Up Library"
 msgstr "라이브러리 백업"
 
-#: app/window.py:840 app/window.py:856
+#: app/window.py:918 app/window.py:934
 #, python-brace-format
 msgid "Mixlyzer library backup (*{suffix})"
 msgstr "Mixlyzer 라이브러리 백업 (*{suffix})"
 
-#: app/window.py:850
+#: app/window.py:928
 msgid ""
 "The editor has edits not saved. Save or undo them first: Mixlyzer "
 "restarts after a restore."
 msgstr "편집기에 저장하지 않은 편집이 있습니다. 먼저 저장하거나 되돌리세요. 복원하면 Mixlyzer가 재시작됩니다."
 
-#: app/window.py:852 app/window.py:855 app/window.py:862 app/window.py:869
-#: app/window.py:912 ui/windows/library_backup.py:133
+#: app/window.py:930 app/window.py:933 app/window.py:940 app/window.py:947
+#: app/window.py:990 ui/windows/library_backup.py:133
 #: ui/windows/library_backup.py:293
 msgid "Restore Library"
 msgstr "라이브러리 복원"
 
-#: app/window.py:893
+#: app/window.py:971
 #, python-brace-format
 msgid ""
 "Restored {n} track into:\n"
@@ -386,34 +422,34 @@ msgstr[0] ""
 "트랙 {n}개를 다음 폴더에 복원했습니다:\n"
 "{folder}"
 
-#: app/window.py:896
+#: app/window.py:974
 #, python-brace-format
 msgid "{n} track's file path was joined to this device's folders."
 msgid_plural "{n} tracks' file paths were joined to this device's folders."
 msgstr[0] "트랙 {n}개의 파일 경로를 이 기기의 폴더로 이었습니다."
 
-#: app/window.py:900
+#: app/window.py:978
 #, python-brace-format
 msgid "{n} path was left as it was: another track already had the new one."
 msgid_plural "{n} paths were left as they were: other tracks already had the new ones."
 msgstr[0] "경로 {n}개는 그대로 두었습니다. 다른 트랙이 이미 새 경로를 쓰고 있습니다."
 
-#: app/window.py:904
+#: app/window.py:982
 #, python-brace-format
 msgid "{n} track had no stored analysis in the backup."
 msgid_plural "{n} tracks had no stored analysis in the backup."
 msgstr[0] "트랙 {n}개는 백업에 저장된 분석이 없었습니다."
 
-#: app/window.py:908
+#: app/window.py:986
 msgid "Files replaced by the backup's were kept beside them:"
 msgstr "백업의 파일로 바뀐 파일은 옆에 남겨 두었습니다:"
 
-#: app/window.py:910
+#: app/window.py:988
 msgid "Mixlyzer now restarts to open the restored library."
 msgstr "복원한 라이브러리를 열기 위해 Mixlyzer를 재시작합니다."
 
 # | msgid "External Sync enabled via {target}. Local play/load is locked."
-#: app/window.py:1199
+#: app/window.py:1277
 #, python-brace-format
 msgid "External Sync enabled: OSC on {address}. Local play/load is locked."
 msgstr "외부 동기화 사용: OSC {address}. 로컬 재생/불러오기가 잠깁니다."
@@ -5071,7 +5107,7 @@ msgstr "빈 슬롯 {letter}로 옮기기 (이 큐와 이후 큐가 한 슬롯씩
 msgid "Two JumpCUEs cannot share a point."
 msgstr "두 JumpCUE가 같은 지점을 가질 수 없습니다."
 
-#: ui/edit_panel/jumpcue.py:222 ui/edit_panel/panel.py:570
+#: ui/edit_panel/jumpcue.py:222 ui/edit_panel/panel.py:580
 msgid "Invalid JumpCUE Label"
 msgstr "잘못된 JumpCUE 라벨"
 
@@ -5281,7 +5317,7 @@ msgid "Edit the JumpCUEs and CUE points"
 msgstr "JumpCUE와 CUE 포인트 편집"
 
 # | msgid "The file could not be written: {error}"
-#: ui/edit_panel/panel.py:585
+#: ui/edit_panel/panel.py:598
 #, python-brace-format
 msgid ""
 "The edits could not be saved:\n"
@@ -5291,37 +5327,37 @@ msgstr ""
 "{error}"
 
 # | msgid "Shared"
-#: ui/edit_panel/panel.py:585 ui/windows/tieup_works.py:88
+#: ui/edit_panel/panel.py:598 ui/windows/tieup_works.py:88
 msgid "Save"
 msgstr "저장"
 
-#: ui/edit_panel/panel.py:726
+#: ui/edit_panel/panel.py:742
 #, python-brace-format
 msgid "This shortcut does nothing on the {page} page."
 msgstr "이 단축키는 {page} 페이지에서는 아무것도 하지 않습니다."
 
 # | msgid "Segment reanalysis finished"
-#: ui/edit_panel/panel.py:734
+#: ui/edit_panel/panel.py:750
 msgid "Editing waits for the segment reanalysis to finish."
 msgstr "구간 재분석이 끝날 때까지 편집할 수 없습니다."
 
 # | msgid "Delete JumpCUE {letter}"
-#: ui/edit_panel/panel.py:767 ui/edit_panel/panel.py:780
+#: ui/edit_panel/panel.py:783 ui/edit_panel/panel.py:796
 #, python-brace-format
 msgid "JumpCUE {letter} is not set."
 msgstr "JumpCUE {letter}가 설정되어 있지 않습니다."
 
-#: ui/edit_panel/panel.py:776
+#: ui/edit_panel/panel.py:792
 #, python-brace-format
 msgid "JumpCUE {letter} is already set."
 msgstr "JumpCUE {letter}가 이미 설정되어 있습니다."
 
-#: ui/edit_panel/panel.py:796
+#: ui/edit_panel/panel.py:812
 msgid "CALL works while stopped."
 msgstr "CALL은 정지 중에만 동작합니다."
 
 # | msgid "Split the current segment at the playhead"
-#: ui/edit_panel/panel.py:812
+#: ui/edit_panel/panel.py:828
 msgid "No CUE point at the playhead."
 msgstr "플레이헤드에 CUE 포인트가 없습니다."
 
@@ -7709,15 +7745,15 @@ msgstr "{page} 페이지 보기"
 msgid "It becomes the current page."
 msgstr "그 페이지가 현재 페이지가 됩니다."
 
-#: ui/edit_panel/panel.py:222 ui/shortcuts.py:185
+#: ui/edit_panel/panel.py:223 ui/shortcuts.py:185
 msgid "Undo Changes"
 msgstr "변경 실행 취소"
 
-#: ui/edit_panel/panel.py:226 ui/shortcuts.py:186
+#: ui/edit_panel/panel.py:227 ui/shortcuts.py:186
 msgid "Redo Changes"
 msgstr "변경 다시 실행"
 
-#: ui/edit_panel/panel.py:230 ui/shortcuts.py:187
+#: ui/edit_panel/panel.py:231 ui/shortcuts.py:187
 msgid "Save Edits"
 msgstr "편집 저장"
 
@@ -7950,16 +7986,16 @@ msgid "Pick the key (Alphanumeric wheel)"
 msgstr "키 선택 (Alphanumeric 휠)"
 
 # | msgid "Move Down"
-#: ui/shortcuts.py:238
+#: ui/shortcuts.py:239
 msgid "A semitone down"
 msgstr "반음 내림"
 
 # | msgid "Move Up"
-#: ui/shortcuts.py:239
+#: ui/shortcuts.py:240
 msgid "A semitone up"
 msgstr "반음 올림"
 
-#: ui/shortcuts.py:240
+#: ui/shortcuts.py:241
 msgid "Circle of fifths -1"
 msgstr "5도권 -1"
 
@@ -7968,84 +8004,84 @@ msgstr "5도권 -1"
 # | msgid "One step down the circle of fifths (Alphanumeric -1): every
 # segment's
 # | key"
-#: ui/shortcuts.py:241
+#: ui/shortcuts.py:242
 msgid "One step down the circle of fifths (Alphanumeric -1)"
 msgstr "5도권에서 한 칸 내림 (Alphanumeric -1)"
 
-#: ui/shortcuts.py:242
+#: ui/shortcuts.py:243
 msgid "Circle of fifths +1"
 msgstr "5도권 +1"
 
 # | msgid "One step up the circle of fifths (Camelot +1): every segment's key"
 # | msgid "One step up the circle of fifths (Alphanumeric +1): every segment's
 # | key"
-#: ui/shortcuts.py:243
+#: ui/shortcuts.py:244
 msgid "One step up the circle of fifths (Alphanumeric +1)"
 msgstr "5도권에서 한 칸 올림 (Alphanumeric +1)"
 
 # | msgid "Relative major / minor (C <-> Am): every segment's key"
 # | msgid "Relative major / minor (C <-> Am)"
-#: ui/shortcuts.py:244
+#: ui/shortcuts.py:245
 msgid "Relative major / minor"
 msgstr "나란한조 장조 / 단조"
 
 # | msgid "Relative major / minor (C <-> Am): every segment's key"
-#: ui/shortcuts.py:244
+#: ui/shortcuts.py:245
 msgid "Relative major / minor (C <-> Am)"
 msgstr "나란한조 장조 / 단조 (C <-> Am)"
 
-#: ui/shortcuts.py:245
+#: ui/shortcuts.py:246
 msgid "Merge the same keys"
 msgstr "같은 키 합치기"
 
-#: ui/edit_panel/key.py:82 ui/shortcuts.py:246
+#: ui/edit_panel/key.py:82 ui/shortcuts.py:247
 msgid "Merge every run of neighboring segments with the same key"
 msgstr "키가 같은 이웃 구간들을 모두 하나로 합칩니다"
 
-#: ui/shortcuts.py:247
+#: ui/shortcuts.py:248
 msgid "Listening aid: root"
 msgstr "듣기 보조: 근음"
 
-#: ui/shortcuts.py:248
+#: ui/shortcuts.py:249
 msgid "Listening aid: root and fifth"
 msgstr "듣기 보조: 근음과 5음"
 
-#: ui/shortcuts.py:249
+#: ui/shortcuts.py:250
 msgid "Listening aid: tonic chord"
 msgstr "듣기 보조: 으뜸화음"
 
 # | msgid "CUE points (set by the analysis from the phrases)"
 # | msgid "CUE points from the phrases (CUE rules)"
-#: ui/shortcuts.py:251
+#: ui/shortcuts.py:252
 msgid "CUE points from the phrases"
 msgstr "프레이즈로 CUE 포인트 만들기"
 
 # | msgid "" "Replace the CUE points with the ones the CUE rules give the
 # | current " "phrases\n" "(Settings > Analysis > CUE, as the full analysis
 # | makes them)"
-#: ui/shortcuts.py:252
+#: ui/shortcuts.py:253
 msgid ""
 "Replace the CUE points with the ones the CUE rules give the current "
 "phrases"
 msgstr "CUE 포인트를 현재 프레이즈에 CUE 규칙을 적용한 결과로 바꿉니다"
 
-#: ui/edit_panel/phrase.py:77 ui/shortcuts.py:253
+#: ui/edit_panel/phrase.py:77 ui/shortcuts.py:254
 msgid "Unassign the current phrase (UNASSIGNED)"
 msgstr "현재 프레이즈의 라벨을 해제합니다 (UNASSIGNED)"
 
-#: ui/edit_panel/phrase.py:162 ui/shortcuts.py:254
+#: ui/edit_panel/phrase.py:162 ui/shortcuts.py:255
 #, python-brace-format
 msgid "Label the current phrase {label}"
 msgstr "현재 프레이즈를 {label}(으)로 지정"
 
-#: ui/shortcuts.py:318
+#: ui/shortcuts.py:319
 #, python-brace-format
 msgid ""
 "Another program on this computer takes {keys}: these shortcuts do not "
 "work (Settings > Shortcuts)."
 msgstr "이 컴퓨터의 다른 프로그램이 {keys}를 가져가서 이 단축키는 동작하지 않습니다 (설정 > 단축키)."
 
-#: ui/shortcuts.py:364
+#: ui/shortcuts.py:365
 #, python-brace-format
 msgid "{keys} is used by more than one action (Settings > Shortcuts)."
 msgstr "{keys}가 여러 동작에 지정되어 있습니다 (설정 > 단축키)."

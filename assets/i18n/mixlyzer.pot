@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-11-04 21:43+0900\n"
+"POT-Creation-Date: 2026-11-04 22:09+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -137,23 +137,23 @@ msgstr ""
 msgid "Core objects and playback"
 msgstr ""
 
-#: app/window.py:105
+#: app/window.py:110
 msgid "Main view, editor and library"
 msgstr ""
 
-#: app/window.py:112 app/window.py:285 ui/config/window.py:68
+#: app/window.py:117 app/window.py:290 ui/config/window.py:68
 msgid "Settings"
 msgstr ""
 
-#: app/window.py:114
+#: app/window.py:119
 msgid "Dialogs, workflows and metronome"
 msgstr ""
 
-#: app/window.py:160
+#: app/window.py:165
 msgid "Library in a Synced Folder"
 msgstr ""
 
-#: app/window.py:161
+#: app/window.py:166
 #, python-brace-format
 msgid ""
 "The library is in a folder {service} syncs:\n"
@@ -166,79 +166,103 @@ msgid ""
 "sync while Mixlyzer runs."
 msgstr ""
 
-#: app/window.py:167
+#: app/window.py:172
 msgid "Don't show this again for this folder"
 msgstr ""
 
-#: app/window.py:286 ui/windows/workers.py:28
+#: app/window.py:291 ui/windows/workers.py:28
 msgid "Workers"
 msgstr ""
 
-#: app/window.py:287 ui/shortcuts.py:156 ui/windows/tieup_works.py:33
+#: app/window.py:292 ui/shortcuts.py:156 ui/windows/tieup_works.py:33
 #: ui/windows/tieup_works.py:204 ui/windows/tieup_works.py:259
 #: ui/windows/tieup_works.py:264 ui/windows/tieup_works.py:273
 #: ui/windows/tieup_works.py:336
 msgid "Tie-up Works"
 msgstr ""
 
-#: app/window.py:288
+#: app/window.py:293
 msgid "Open Source"
 msgstr ""
 
-#: app/window.py:289 ui/windows/diagnostics_dialog.py:21
+#: app/window.py:294 ui/windows/diagnostics_dialog.py:21
 msgid "Diagnostics"
 msgstr ""
 
-#: app/window.py:290
+#: app/window.py:295
 msgid "About"
 msgstr ""
 
-#: app/window.py:307 core/controls/midi.py:56
+#: app/window.py:312 core/controls/midi.py:56
 msgid "Mixer"
 msgstr ""
 
-#: app/window.py:492
+#: app/window.py:497
 msgid "MIDI needs the native audio engine (Settings > Audio > Engine)."
 msgstr ""
 
-#: app/window.py:499
+#: app/window.py:504
 msgid "MIDI input on."
 msgstr ""
 
-#: app/window.py:499
+#: app/window.py:504
 msgid "MIDI input off."
 msgstr ""
 
-#: app/window.py:551
+#: app/window.py:556
 msgid "The Python audio engine plays: there is no native engine to restart."
 msgstr ""
 
-#: app/window.py:553
+#: app/window.py:558
 msgid "Restarting the audio engine..."
 msgstr ""
 
-#: app/window.py:557
+#: app/window.py:562
 msgid "Audio engine restarted."
 msgstr ""
 
-#: app/window.py:558
+#: app/window.py:563
 msgid "The audio engine did not start; it is tried again every 2 seconds."
 msgstr ""
 
-#: app/window.py:617 app/window.py:682
+#: app/window.py:626
+msgid "Unsaved Edits"
+msgstr ""
+
+#: app/window.py:627
+msgid "The loaded track has edits not saved."
+msgstr ""
+
+#: app/window.py:628
+msgid "Save them, discard them, or cancel?"
+msgstr ""
+
+#: app/window.py:629
+msgid "Another track is being loaded. Save the edits or discard them?"
+msgstr ""
+
+#: app/window.py:645
+msgid "The edits could not be saved now: nothing was done."
+msgstr ""
+
+#: app/window.py:647
+msgid "The edits could not be saved now: they were discarded."
+msgstr ""
+
+#: app/window.py:657 app/window.py:722
 msgid "External Sync is enabled. Local track loading is disabled."
 msgstr ""
 
-#: app/window.py:630 app/window.py:685
+#: app/window.py:670 app/window.py:728
 msgid "Segment reanalysis canceled (track changed)"
 msgstr ""
 
-#: app/window.py:666
+#: app/window.py:706
 #, python-brace-format
 msgid "The track's analysis could not be read: {file}"
 msgstr ""
 
-#: app/window.py:670
+#: app/window.py:710
 #, python-brace-format
 msgid ""
 "{n} JumpCUE past slot Z is not shown ({file}); it stays stored until the "
@@ -249,15 +273,15 @@ msgid_plural ""
 msgstr[0] ""
 msgstr[1] ""
 
-#: app/window.py:688
+#: app/window.py:731
 msgid "Track unloaded."
 msgstr ""
 
-#: app/window.py:698
+#: app/window.py:745
 msgid "Track File Not Found"
 msgstr ""
 
-#: app/window.py:702
+#: app/window.py:749
 #, python-brace-format
 msgid ""
 "Cannot load \"{name}\": its file is missing.\n"
@@ -266,76 +290,82 @@ msgid ""
 "Set the file's new location?"
 msgstr ""
 
-#: app/window.py:709
+#: app/window.py:756
 #, python-brace-format
 msgid "Locate {name}"
 msgstr ""
 
-#: app/window.py:733 app/window.py:749
+#: app/window.py:780 app/window.py:800
 msgid "Analysis saved to library."
 msgstr ""
 
-#: app/window.py:738
+#: app/window.py:785
 msgid "Finished"
 msgstr ""
 
-#: app/window.py:761
+#: app/window.py:796
+msgid ""
+"Analysis saved to library. The editor keeps your edits not saved: load "
+"the track again to see the new analysis."
+msgstr ""
+
+#: app/window.py:812
 msgid "Waiting to be looked up on Wikipedia"
 msgstr ""
 
-#: app/window.py:767
+#: app/window.py:818
 msgid "Looking up on Wikipedia and Wikidata…"
 msgstr ""
 
-#: app/window.py:772
+#: app/window.py:823
 msgid "The lookup failed."
 msgstr ""
 
-#: app/window.py:808
+#: app/window.py:871
 #, python-brace-format
 msgid "External Sync loading: {file}"
 msgstr ""
 
-#: app/window.py:808
+#: app/window.py:871
 #, python-brace-format
 msgid "External Sync analyzing: {file}"
 msgstr ""
 
-#: app/window.py:822
+#: app/window.py:900
 msgid "External Sync Disabled"
 msgstr ""
 
-#: app/window.py:829
+#: app/window.py:907
 msgid "Rebuilding the sort index..."
 msgstr ""
 
-#: app/window.py:831
+#: app/window.py:909
 #, python-brace-format
 msgid "Sort index rebuilt: {count} names."
 msgstr ""
 
-#: app/window.py:839 ui/windows/library_backup.py:53
+#: app/window.py:917 ui/windows/library_backup.py:53
 msgid "Back Up Library"
 msgstr ""
 
-#: app/window.py:840 app/window.py:856
+#: app/window.py:918 app/window.py:934
 #, python-brace-format
 msgid "Mixlyzer library backup (*{suffix})"
 msgstr ""
 
-#: app/window.py:850
+#: app/window.py:928
 msgid ""
 "The editor has edits not saved. Save or undo them first: Mixlyzer "
 "restarts after a restore."
 msgstr ""
 
-#: app/window.py:852 app/window.py:855 app/window.py:862 app/window.py:869
-#: app/window.py:912 ui/windows/library_backup.py:133
+#: app/window.py:930 app/window.py:933 app/window.py:940 app/window.py:947
+#: app/window.py:990 ui/windows/library_backup.py:133
 #: ui/windows/library_backup.py:293
 msgid "Restore Library"
 msgstr ""
 
-#: app/window.py:893
+#: app/window.py:971
 #, python-brace-format
 msgid ""
 "Restored {n} track into:\n"
@@ -346,36 +376,36 @@ msgid_plural ""
 msgstr[0] ""
 msgstr[1] ""
 
-#: app/window.py:896
+#: app/window.py:974
 #, python-brace-format
 msgid "{n} track's file path was joined to this device's folders."
 msgid_plural "{n} tracks' file paths were joined to this device's folders."
 msgstr[0] ""
 msgstr[1] ""
 
-#: app/window.py:900
+#: app/window.py:978
 #, python-brace-format
 msgid "{n} path was left as it was: another track already had the new one."
 msgid_plural "{n} paths were left as they were: other tracks already had the new ones."
 msgstr[0] ""
 msgstr[1] ""
 
-#: app/window.py:904
+#: app/window.py:982
 #, python-brace-format
 msgid "{n} track had no stored analysis in the backup."
 msgid_plural "{n} tracks had no stored analysis in the backup."
 msgstr[0] ""
 msgstr[1] ""
 
-#: app/window.py:908
+#: app/window.py:986
 msgid "Files replaced by the backup's were kept beside them:"
 msgstr ""
 
-#: app/window.py:910
+#: app/window.py:988
 msgid "Mixlyzer now restarts to open the restored library."
 msgstr ""
 
-#: app/window.py:1199
+#: app/window.py:1277
 #, python-brace-format
 msgid "External Sync enabled: OSC on {address}. Local play/load is locked."
 msgstr ""
@@ -4443,7 +4473,7 @@ msgstr ""
 msgid "Two JumpCUEs cannot share a point."
 msgstr ""
 
-#: ui/edit_panel/jumpcue.py:222 ui/edit_panel/panel.py:570
+#: ui/edit_panel/jumpcue.py:222 ui/edit_panel/panel.py:580
 msgid "Invalid JumpCUE Label"
 msgstr ""
 
@@ -4633,41 +4663,41 @@ msgstr ""
 msgid "Edit the JumpCUEs and CUE points"
 msgstr ""
 
-#: ui/edit_panel/panel.py:585
+#: ui/edit_panel/panel.py:598
 #, python-brace-format
 msgid ""
 "The edits could not be saved:\n"
 "{error}"
 msgstr ""
 
-#: ui/edit_panel/panel.py:585 ui/windows/tieup_works.py:88
+#: ui/edit_panel/panel.py:598 ui/windows/tieup_works.py:88
 msgid "Save"
 msgstr ""
 
-#: ui/edit_panel/panel.py:726
+#: ui/edit_panel/panel.py:742
 #, python-brace-format
 msgid "This shortcut does nothing on the {page} page."
 msgstr ""
 
-#: ui/edit_panel/panel.py:734
+#: ui/edit_panel/panel.py:750
 msgid "Editing waits for the segment reanalysis to finish."
 msgstr ""
 
-#: ui/edit_panel/panel.py:767 ui/edit_panel/panel.py:780
+#: ui/edit_panel/panel.py:783 ui/edit_panel/panel.py:796
 #, python-brace-format
 msgid "JumpCUE {letter} is not set."
 msgstr ""
 
-#: ui/edit_panel/panel.py:776
+#: ui/edit_panel/panel.py:792
 #, python-brace-format
 msgid "JumpCUE {letter} is already set."
 msgstr ""
 
-#: ui/edit_panel/panel.py:796
+#: ui/edit_panel/panel.py:812
 msgid "CALL works while stopped."
 msgstr ""
 
-#: ui/edit_panel/panel.py:812
+#: ui/edit_panel/panel.py:828
 msgid "No CUE point at the playhead."
 msgstr ""
 
@@ -6745,15 +6775,15 @@ msgstr ""
 msgid "It becomes the current page."
 msgstr ""
 
-#: ui/edit_panel/panel.py:222 ui/shortcuts.py:185
+#: ui/edit_panel/panel.py:223 ui/shortcuts.py:185
 msgid "Undo Changes"
 msgstr ""
 
-#: ui/edit_panel/panel.py:226 ui/shortcuts.py:186
+#: ui/edit_panel/panel.py:227 ui/shortcuts.py:186
 msgid "Redo Changes"
 msgstr ""
 
-#: ui/edit_panel/panel.py:230 ui/shortcuts.py:187
+#: ui/edit_panel/panel.py:231 ui/shortcuts.py:187
 msgid "Save Edits"
 msgstr ""
 
@@ -6942,85 +6972,85 @@ msgstr ""
 msgid "Pick the key (Alphanumeric wheel)"
 msgstr ""
 
-#: ui/shortcuts.py:238
+#: ui/shortcuts.py:239
 msgid "A semitone down"
 msgstr ""
 
-#: ui/shortcuts.py:239
+#: ui/shortcuts.py:240
 msgid "A semitone up"
 msgstr ""
 
-#: ui/shortcuts.py:240
+#: ui/shortcuts.py:241
 msgid "Circle of fifths -1"
 msgstr ""
 
-#: ui/shortcuts.py:241
+#: ui/shortcuts.py:242
 msgid "One step down the circle of fifths (Alphanumeric -1)"
 msgstr ""
 
-#: ui/shortcuts.py:242
+#: ui/shortcuts.py:243
 msgid "Circle of fifths +1"
 msgstr ""
 
-#: ui/shortcuts.py:243
+#: ui/shortcuts.py:244
 msgid "One step up the circle of fifths (Alphanumeric +1)"
 msgstr ""
 
-#: ui/shortcuts.py:244
+#: ui/shortcuts.py:245
 msgid "Relative major / minor"
 msgstr ""
 
-#: ui/shortcuts.py:244
+#: ui/shortcuts.py:245
 msgid "Relative major / minor (C <-> Am)"
 msgstr ""
 
-#: ui/shortcuts.py:245
+#: ui/shortcuts.py:246
 msgid "Merge the same keys"
 msgstr ""
 
-#: ui/edit_panel/key.py:82 ui/shortcuts.py:246
+#: ui/edit_panel/key.py:82 ui/shortcuts.py:247
 msgid "Merge every run of neighboring segments with the same key"
 msgstr ""
 
-#: ui/shortcuts.py:247
+#: ui/shortcuts.py:248
 msgid "Listening aid: root"
 msgstr ""
 
-#: ui/shortcuts.py:248
+#: ui/shortcuts.py:249
 msgid "Listening aid: root and fifth"
 msgstr ""
 
-#: ui/shortcuts.py:249
+#: ui/shortcuts.py:250
 msgid "Listening aid: tonic chord"
 msgstr ""
 
-#: ui/shortcuts.py:251
+#: ui/shortcuts.py:252
 msgid "CUE points from the phrases"
 msgstr ""
 
-#: ui/shortcuts.py:252
+#: ui/shortcuts.py:253
 msgid ""
 "Replace the CUE points with the ones the CUE rules give the current "
 "phrases"
 msgstr ""
 
-#: ui/edit_panel/phrase.py:77 ui/shortcuts.py:253
+#: ui/edit_panel/phrase.py:77 ui/shortcuts.py:254
 msgid "Unassign the current phrase (UNASSIGNED)"
 msgstr ""
 
-#: ui/edit_panel/phrase.py:162 ui/shortcuts.py:254
+#: ui/edit_panel/phrase.py:162 ui/shortcuts.py:255
 #, python-brace-format
 msgid "Label the current phrase {label}"
 msgstr ""
 
-#: ui/shortcuts.py:318
+#: ui/shortcuts.py:319
 #, python-brace-format
 msgid ""
 "Another program on this computer takes {keys}: these shortcuts do not "
 "work (Settings > Shortcuts)."
 msgstr ""
 
-#: ui/shortcuts.py:364
+#: ui/shortcuts.py:365
 #, python-brace-format
 msgid "{keys} is used by more than one action (Settings > Shortcuts)."
 msgstr ""

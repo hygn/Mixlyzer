@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-11-04 21:43+0900\n"
+"POT-Creation-Date: 2026-11-04 22:09+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ja_JP\n"
@@ -153,23 +153,23 @@ msgstr "ウィンドウを作成中"
 msgid "Core objects and playback"
 msgstr "コアオブジェクトと再生"
 
-#: app/window.py:105
+#: app/window.py:110
 msgid "Main view, editor and library"
 msgstr "メインビュー、エディター、ライブラリ"
 
-#: app/window.py:112 app/window.py:285 ui/config/window.py:68
+#: app/window.py:117 app/window.py:290 ui/config/window.py:68
 msgid "Settings"
 msgstr "環境設定"
 
-#: app/window.py:114
+#: app/window.py:119
 msgid "Dialogs, workflows and metronome"
 msgstr "ダイアログ、ワークフロー、メトロノーム"
 
-#: app/window.py:160
+#: app/window.py:165
 msgid "Library in a Synced Folder"
 msgstr "同期フォルダー内のライブラリ"
 
-#: app/window.py:161
+#: app/window.py:166
 #, python-brace-format
 msgid ""
 "The library is in a folder {service} syncs:\n"
@@ -188,35 +188,35 @@ msgstr ""
 "がライブラリに書き込んでいる最中に同期されると、データベース（library.db）が壊れることがあります。また、オンラインのみのトラックは開くたびにダウンロードされます。ライブラリは同期しないフォルダーに置くか（環境設定"
 " > ライブラリ > バックアップでコピーを作り、別の場所に復元できます）、Mixlyzer の使用中は同期を一時停止してください。"
 
-#: app/window.py:167
+#: app/window.py:172
 msgid "Don't show this again for this folder"
 msgstr "このフォルダーについて今後表示しない"
 
-#: app/window.py:286 ui/windows/workers.py:28
+#: app/window.py:291 ui/windows/workers.py:28
 msgid "Workers"
 msgstr "タスク"
 
 # | msgid "Tie-ups"
-#: app/window.py:287 ui/shortcuts.py:156 ui/windows/tieup_works.py:33
+#: app/window.py:292 ui/shortcuts.py:156 ui/windows/tieup_works.py:33
 #: ui/windows/tieup_works.py:204 ui/windows/tieup_works.py:259
 #: ui/windows/tieup_works.py:264 ui/windows/tieup_works.py:273
 #: ui/windows/tieup_works.py:336
 msgid "Tie-up Works"
 msgstr "タイアップ作品"
 
-#: app/window.py:288
+#: app/window.py:293
 msgid "Open Source"
 msgstr "オープンソース"
 
-#: app/window.py:289 ui/windows/diagnostics_dialog.py:21
+#: app/window.py:294 ui/windows/diagnostics_dialog.py:21
 msgid "Diagnostics"
 msgstr "診断情報"
 
-#: app/window.py:290
+#: app/window.py:295
 msgid "About"
 msgstr "情報"
 
-#: app/window.py:307 core/controls/midi.py:56
+#: app/window.py:312 core/controls/midi.py:56
 msgid "Mixer"
 msgstr "ミキサー"
 
@@ -224,53 +224,83 @@ msgstr "ミキサー"
 # | Playback > " "Audio engine)."
 # Audio
 # | > " "Engine)."
-#: app/window.py:492
+#: app/window.py:497
 msgid "MIDI needs the native audio engine (Settings > Audio > Engine)."
 msgstr "MIDI は Native オーディオエンジンでのみ動作します（設定 > オーディオ > エンジン）。"
 
 # | msgid "MIDI input"
-#: app/window.py:499
+#: app/window.py:504
 msgid "MIDI input on."
 msgstr "MIDI 入力オン。"
 
 # | msgid "MIDI input"
-#: app/window.py:499
+#: app/window.py:504
 msgid "MIDI input off."
 msgstr "MIDI 入力オフ。"
 
-#: app/window.py:551
+#: app/window.py:556
 msgid "The Python audio engine plays: there is no native engine to restart."
 msgstr "Python オーディオエンジンで再生中です。再起動するネイティブエンジンがありません。"
 
 # | msgid "Starting the reading worker"
-#: app/window.py:553
+#: app/window.py:558
 msgid "Restarting the audio engine..."
 msgstr "オーディオエンジンを再起動中..."
 
 # | msgid "Audio engine"
-#: app/window.py:557
+#: app/window.py:562
 msgid "Audio engine restarted."
 msgstr "オーディオエンジンを再起動しました。"
 
-#: app/window.py:558
+#: app/window.py:563
 msgid "The audio engine did not start; it is tried again every 2 seconds."
 msgstr "オーディオエンジンが起動しませんでした。2 秒ごとに再試行します。"
 
-#: app/window.py:617 app/window.py:682
+# | msgid "Save Edits"
+#: app/window.py:626
+msgid "Unsaved Edits"
+msgstr "未保存の編集"
+
+# | msgid "The loaded track is not in the list shown."
+#: app/window.py:627
+msgid "The loaded track has edits not saved."
+msgstr "ロード中のトラックに未保存の編集があります。"
+
+#: app/window.py:628
+msgid "Save them, discard them, or cancel?"
+msgstr "保存しますか、破棄しますか、それともキャンセルしますか？"
+
+#: app/window.py:629
+msgid "Another track is being loaded. Save the edits or discard them?"
+msgstr "別のトラックがロードされます。編集を保存しますか、破棄しますか？"
+
+# | msgid "The file could not be written: {error}"
+# | msgid "" "The edits could not be saved:\n" "{error}"
+#: app/window.py:645
+msgid "The edits could not be saved now: nothing was done."
+msgstr "現在は編集を保存できないため、何も行いませんでした。"
+
+# | msgid "The file could not be written: {error}"
+# | msgid "" "The edits could not be saved:\n" "{error}"
+#: app/window.py:647
+msgid "The edits could not be saved now: they were discarded."
+msgstr "現在は編集を保存できないため、編集を破棄しました。"
+
+#: app/window.py:657 app/window.py:722
 msgid "External Sync is enabled. Local track loading is disabled."
 msgstr "外部同期が有効です。ローカルでのトラックの読み込みは無効になります。"
 
-#: app/window.py:630 app/window.py:685
+#: app/window.py:670 app/window.py:728
 msgid "Segment reanalysis canceled (track changed)"
 msgstr "区間の再解析をキャンセルしました (トラックが変わりました)"
 
 # | msgid "Phrase reanalysis completed"
-#: app/window.py:666
+#: app/window.py:706
 #, python-brace-format
 msgid "The track's analysis could not be read: {file}"
 msgstr "トラックの解析を読み込めませんでした: {file}"
 
-#: app/window.py:670
+#: app/window.py:710
 #, python-brace-format
 msgid ""
 "{n} JumpCUE past slot Z is not shown ({file}); it stays stored until the "
@@ -280,15 +310,15 @@ msgid_plural ""
 "the JumpCUEs are edited."
 msgstr[0] "スロットZを超えるJumpCUE {n}個は表示されません（{file}）。JumpCUEを編集するまでは保存されたまま残ります。"
 
-#: app/window.py:688
+#: app/window.py:731
 msgid "Track unloaded."
 msgstr "トラックをアンロードしました。"
 
-#: app/window.py:698
+#: app/window.py:745
 msgid "Track File Not Found"
 msgstr "トラックファイルが見つかりません"
 
-#: app/window.py:702
+#: app/window.py:749
 #, python-brace-format
 msgid ""
 "Cannot load \"{name}\": its file is missing.\n"
@@ -301,80 +331,86 @@ msgstr ""
 "\n"
 "ファイルの新しい場所を指定しますか?"
 
-#: app/window.py:709
+#: app/window.py:756
 #, python-brace-format
 msgid "Locate {name}"
 msgstr "{name} の場所を指定"
 
-#: app/window.py:733 app/window.py:749
+#: app/window.py:780 app/window.py:800
 msgid "Analysis saved to library."
 msgstr "解析をライブラリに保存しました。"
 
-#: app/window.py:738
+#: app/window.py:785
 msgid "Finished"
 msgstr "完了"
 
-#: app/window.py:761
+#: app/window.py:796
+msgid ""
+"Analysis saved to library. The editor keeps your edits not saved: load "
+"the track again to see the new analysis."
+msgstr "解析をライブラリに保存しました。エディターには未保存の編集が残っています。新しい解析を表示するには、トラックをもう一度ロードしてください。"
+
+#: app/window.py:812
 msgid "Waiting to be looked up on Wikipedia"
 msgstr "Wikipediaでの調査待ち"
 
-#: app/window.py:767
+#: app/window.py:818
 msgid "Looking up on Wikipedia and Wikidata…"
 msgstr "WikipediaとWikidataで調べています…"
 
 # | msgid "Reading the analysis failed: {error}"
 # | msgid "The search failed: {error}"
 # | msgid "" "The lookup failed:\n" "{error}"
-#: app/window.py:772
+#: app/window.py:823
 msgid "The lookup failed."
 msgstr "調査できませんでした。"
 
-#: app/window.py:808
+#: app/window.py:871
 #, python-brace-format
 msgid "External Sync loading: {file}"
 msgstr "外部同期で読み込み中: {file}"
 
-#: app/window.py:808
+#: app/window.py:871
 #, python-brace-format
 msgid "External Sync analyzing: {file}"
 msgstr "外部同期で解析中: {file}"
 
 # | msgid "Memory Sync Disabled"
-#: app/window.py:822
+#: app/window.py:900
 msgid "External Sync Disabled"
 msgstr "外部同期を無効にしました"
 
-#: app/window.py:829
+#: app/window.py:907
 msgid "Rebuilding the sort index..."
 msgstr "並び替えインデックスを作り直しています..."
 
-#: app/window.py:831
+#: app/window.py:909
 #, python-brace-format
 msgid "Sort index rebuilt: {count} names."
 msgstr "並び替えインデックスを作り直しました: 名前 {count} 件。"
 
-#: app/window.py:839 ui/windows/library_backup.py:53
+#: app/window.py:917 ui/windows/library_backup.py:53
 msgid "Back Up Library"
 msgstr "ライブラリのバックアップ"
 
-#: app/window.py:840 app/window.py:856
+#: app/window.py:918 app/window.py:934
 #, python-brace-format
 msgid "Mixlyzer library backup (*{suffix})"
 msgstr "Mixlyzer ライブラリのバックアップ (*{suffix})"
 
-#: app/window.py:850
+#: app/window.py:928
 msgid ""
 "The editor has edits not saved. Save or undo them first: Mixlyzer "
 "restarts after a restore."
 msgstr "エディターに保存していない編集があります。先に保存するか元に戻してください。復元すると Mixlyzer は再起動します。"
 
-#: app/window.py:852 app/window.py:855 app/window.py:862 app/window.py:869
-#: app/window.py:912 ui/windows/library_backup.py:133
+#: app/window.py:930 app/window.py:933 app/window.py:940 app/window.py:947
+#: app/window.py:990 ui/windows/library_backup.py:133
 #: ui/windows/library_backup.py:293
 msgid "Restore Library"
 msgstr "ライブラリの復元"
 
-#: app/window.py:893
+#: app/window.py:971
 #, python-brace-format
 msgid ""
 "Restored {n} track into:\n"
@@ -386,34 +422,34 @@ msgstr[0] ""
 "{n} トラックを次のフォルダーに復元しました:\n"
 "{folder}"
 
-#: app/window.py:896
+#: app/window.py:974
 #, python-brace-format
 msgid "{n} track's file path was joined to this device's folders."
 msgid_plural "{n} tracks' file paths were joined to this device's folders."
 msgstr[0] "{n} トラックのファイルのパスをこのデバイスのフォルダーにつなぎました。"
 
-#: app/window.py:900
+#: app/window.py:978
 #, python-brace-format
 msgid "{n} path was left as it was: another track already had the new one."
 msgid_plural "{n} paths were left as they were: other tracks already had the new ones."
 msgstr[0] "{n} 件のパスはそのままにしました: 新しいパスはすでに別のトラックのものです。"
 
-#: app/window.py:904
+#: app/window.py:982
 #, python-brace-format
 msgid "{n} track had no stored analysis in the backup."
 msgid_plural "{n} tracks had no stored analysis in the backup."
 msgstr[0] "{n} トラックはバックアップに保存された解析がありませんでした。"
 
-#: app/window.py:908
+#: app/window.py:986
 msgid "Files replaced by the backup's were kept beside them:"
 msgstr "バックアップのファイルに置き換えたファイルは、隣に残してあります:"
 
-#: app/window.py:910
+#: app/window.py:988
 msgid "Mixlyzer now restarts to open the restored library."
 msgstr "復元したライブラリを開くため、Mixlyzer を再起動します。"
 
 # | msgid "External Sync enabled via {target}. Local play/load is locked."
-#: app/window.py:1199
+#: app/window.py:1277
 #, python-brace-format
 msgid "External Sync enabled: OSC on {address}. Local play/load is locked."
 msgstr "外部同期が有効です: OSC {address}。ローカルでの再生/読み込みはロックされます。"
@@ -5071,7 +5107,7 @@ msgstr "空いているスロット {letter} へ移動 (このキューと以降
 msgid "Two JumpCUEs cannot share a point."
 msgstr "2 つの JumpCUE が同じポイントを共有することはできません。"
 
-#: ui/edit_panel/jumpcue.py:222 ui/edit_panel/panel.py:570
+#: ui/edit_panel/jumpcue.py:222 ui/edit_panel/panel.py:580
 msgid "Invalid JumpCUE Label"
 msgstr "無効な JumpCUE ラベル"
 
@@ -5281,7 +5317,7 @@ msgid "Edit the JumpCUEs and CUE points"
 msgstr "JumpCUE と CUEポイントを編集"
 
 # | msgid "The file could not be written: {error}"
-#: ui/edit_panel/panel.py:585
+#: ui/edit_panel/panel.py:598
 #, python-brace-format
 msgid ""
 "The edits could not be saved:\n"
@@ -5291,37 +5327,37 @@ msgstr ""
 "{error}"
 
 # | msgid "Shared"
-#: ui/edit_panel/panel.py:585 ui/windows/tieup_works.py:88
+#: ui/edit_panel/panel.py:598 ui/windows/tieup_works.py:88
 msgid "Save"
 msgstr "保存"
 
-#: ui/edit_panel/panel.py:726
+#: ui/edit_panel/panel.py:742
 #, python-brace-format
 msgid "This shortcut does nothing on the {page} page."
 msgstr "このショートカットは {page} ページでは何もしません。"
 
 # | msgid "Segment reanalysis finished"
-#: ui/edit_panel/panel.py:734
+#: ui/edit_panel/panel.py:750
 msgid "Editing waits for the segment reanalysis to finish."
 msgstr "区間の再解析が終わるまで編集できません。"
 
 # | msgid "Delete JumpCUE {letter}"
-#: ui/edit_panel/panel.py:767 ui/edit_panel/panel.py:780
+#: ui/edit_panel/panel.py:783 ui/edit_panel/panel.py:796
 #, python-brace-format
 msgid "JumpCUE {letter} is not set."
 msgstr "JumpCUE {letter} は設定されていません。"
 
-#: ui/edit_panel/panel.py:776
+#: ui/edit_panel/panel.py:792
 #, python-brace-format
 msgid "JumpCUE {letter} is already set."
 msgstr "JumpCUE {letter} はすでに設定されています。"
 
-#: ui/edit_panel/panel.py:796
+#: ui/edit_panel/panel.py:812
 msgid "CALL works while stopped."
 msgstr "CALL は停止中にだけ動作します。"
 
 # | msgid "Split the current segment at the playhead"
-#: ui/edit_panel/panel.py:812
+#: ui/edit_panel/panel.py:828
 msgid "No CUE point at the playhead."
 msgstr "再生位置に CUEポイントがありません。"
 
@@ -7713,15 +7749,15 @@ msgstr "{page} ページを表示"
 msgid "It becomes the current page."
 msgstr "そのページが現在のページになります。"
 
-#: ui/edit_panel/panel.py:222 ui/shortcuts.py:185
+#: ui/edit_panel/panel.py:223 ui/shortcuts.py:185
 msgid "Undo Changes"
 msgstr "変更を元に戻す"
 
-#: ui/edit_panel/panel.py:226 ui/shortcuts.py:186
+#: ui/edit_panel/panel.py:227 ui/shortcuts.py:186
 msgid "Redo Changes"
 msgstr "変更をやり直す"
 
-#: ui/edit_panel/panel.py:230 ui/shortcuts.py:187
+#: ui/edit_panel/panel.py:231 ui/shortcuts.py:187
 msgid "Save Edits"
 msgstr "編集を保存"
 
@@ -7954,16 +7990,16 @@ msgid "Pick the key (Alphanumeric wheel)"
 msgstr "キーを選択 (Alphanumeric ホイール)"
 
 # | msgid "Move Down"
-#: ui/shortcuts.py:238
+#: ui/shortcuts.py:239
 msgid "A semitone down"
 msgstr "半音下げる"
 
 # | msgid "Move Up"
-#: ui/shortcuts.py:239
+#: ui/shortcuts.py:240
 msgid "A semitone up"
 msgstr "半音上げる"
 
-#: ui/shortcuts.py:240
+#: ui/shortcuts.py:241
 msgid "Circle of fifths -1"
 msgstr "五度圏 -1"
 
@@ -7972,84 +8008,84 @@ msgstr "五度圏 -1"
 # | msgid "One step down the circle of fifths (Alphanumeric -1): every
 # segment's
 # | key"
-#: ui/shortcuts.py:241
+#: ui/shortcuts.py:242
 msgid "One step down the circle of fifths (Alphanumeric -1)"
 msgstr "五度圏で 1 つ下げる (Alphanumeric -1)"
 
-#: ui/shortcuts.py:242
+#: ui/shortcuts.py:243
 msgid "Circle of fifths +1"
 msgstr "五度圏 +1"
 
 # | msgid "One step up the circle of fifths (Camelot +1): every segment's key"
 # | msgid "One step up the circle of fifths (Alphanumeric +1): every segment's
 # | key"
-#: ui/shortcuts.py:243
+#: ui/shortcuts.py:244
 msgid "One step up the circle of fifths (Alphanumeric +1)"
 msgstr "五度圏で 1 つ上げる (Alphanumeric +1)"
 
 # | msgid "Relative major / minor (C <-> Am): every segment's key"
 # | msgid "Relative major / minor (C <-> Am)"
-#: ui/shortcuts.py:244
+#: ui/shortcuts.py:245
 msgid "Relative major / minor"
 msgstr "平行調の長調 / 短調"
 
 # | msgid "Relative major / minor (C <-> Am): every segment's key"
-#: ui/shortcuts.py:244
+#: ui/shortcuts.py:245
 msgid "Relative major / minor (C <-> Am)"
 msgstr "平行調の長調 / 短調 (C <-> Am)"
 
-#: ui/shortcuts.py:245
+#: ui/shortcuts.py:246
 msgid "Merge the same keys"
 msgstr "同じキーを結合"
 
-#: ui/edit_panel/key.py:82 ui/shortcuts.py:246
+#: ui/edit_panel/key.py:82 ui/shortcuts.py:247
 msgid "Merge every run of neighboring segments with the same key"
 msgstr "キーが同じ隣り合う区間をすべて 1 つに結合します"
 
-#: ui/shortcuts.py:247
+#: ui/shortcuts.py:248
 msgid "Listening aid: root"
 msgstr "試聴の補助: 根音"
 
-#: ui/shortcuts.py:248
+#: ui/shortcuts.py:249
 msgid "Listening aid: root and fifth"
 msgstr "試聴の補助: 根音と 5 度"
 
-#: ui/shortcuts.py:249
+#: ui/shortcuts.py:250
 msgid "Listening aid: tonic chord"
 msgstr "試聴の補助: 主和音"
 
 # | msgid "CUE points (set by the analysis from the phrases)"
 # | msgid "CUE points from the phrases (CUE rules)"
-#: ui/shortcuts.py:251
+#: ui/shortcuts.py:252
 msgid "CUE points from the phrases"
 msgstr "フレーズから CUEポイントを作成"
 
 # | msgid "" "Replace the CUE points with the ones the CUE rules give the
 # | current " "phrases\n" "(Settings > Analysis > CUE, as the full analysis
 # | makes them)"
-#: ui/shortcuts.py:252
+#: ui/shortcuts.py:253
 msgid ""
 "Replace the CUE points with the ones the CUE rules give the current "
 "phrases"
 msgstr "CUEポイントを、現在のフレーズに CUE のルールを適用した結果で置き換えます"
 
-#: ui/edit_panel/phrase.py:77 ui/shortcuts.py:253
+#: ui/edit_panel/phrase.py:77 ui/shortcuts.py:254
 msgid "Unassign the current phrase (UNASSIGNED)"
 msgstr "現在のフレーズのラベルを解除します (UNASSIGNED)"
 
-#: ui/edit_panel/phrase.py:162 ui/shortcuts.py:254
+#: ui/edit_panel/phrase.py:162 ui/shortcuts.py:255
 #, python-brace-format
 msgid "Label the current phrase {label}"
 msgstr "現在のフレーズを {label} にする"
 
-#: ui/shortcuts.py:318
+#: ui/shortcuts.py:319
 #, python-brace-format
 msgid ""
 "Another program on this computer takes {keys}: these shortcuts do not "
 "work (Settings > Shortcuts)."
 msgstr "このコンピューターのほかのプログラムが {keys} を使っているため、これらのショートカットは動作しません (環境設定 > ショートカット)。"
 
-#: ui/shortcuts.py:364
+#: ui/shortcuts.py:365
 #, python-brace-format
 msgid "{keys} is used by more than one action (Settings > Shortcuts)."
 msgstr "{keys} は複数の操作に割り当てられています (環境設定 > ショートカット)。"
