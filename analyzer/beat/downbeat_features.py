@@ -428,14 +428,29 @@ def _onset_columns(
     return [onset, onset_accent_4, onset_accent_8, onset_attack, pre_fill, onset_recurrence]
 
 
+def beat_feature_rows(
+    frames: FrameFeatures,
+    beat_times_sec: np.ndarray,
+    *,
+    beat_phase_bins: int,
+    harmonic_phase_bins: int,
+) -> tuple[np.ndarray, np.ndarray, list[np.ndarray]]:
+    """The frame features pooled per beat: (beats kept, their ends, a matrix per representation in _FEATURE_SPECS
+    order: harmonic, rhythm, bass_chroma, mfcc, tonnetz, melody, each with its phase bins). What the downbeat
+    features are made of, and what the bars' meter evidence reads (general.bars.meter_evidence)."""
+    return _extract_beat_features(frames, beat_times_sec, beat_phase_bins, harmonic_phase_bins)
+
+
 def downbeat_feature_matrix(
     frames: FrameFeatures,
     beat_times_sec: np.ndarray,
     *,
     beat_phase_bins: int,
     harmonic_phase_bins: int,
+    rows: tuple[np.ndarray, np.ndarray, list[np.ndarray]] | None = None,
 ) -> tuple[np.ndarray, np.ndarray]:
-    beats, beat_ends, rows = _extract_beat_features(
+    """``rows``: beat_feature_rows of the same beats and bins when already made."""
+    beats, beat_ends, rows = rows if rows is not None else _extract_beat_features(
         frames,
         beat_times_sec,
         beat_phase_bins,

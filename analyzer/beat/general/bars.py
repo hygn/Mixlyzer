@@ -13,6 +13,16 @@ that hear different cues -- the frame TCN's downbeat activation and the beat-lev
 bass and neighbour-beat differences). An odd bar (restart) costs CB inside a section and nothing where a
 new grid section starts (the DJ grid itself restarts there).
 
+Meter evidence: the observers, trained mostly on 4/4, barely hear a 3/4 bar's accent (on the library's 3/4
+stretches the user marked, two thirds score better as 4/4 even with restarts free). What does tell the meter is
+the period the music repeats in: beats 3, 6 and 12 apart are alike in 3/4, beats 4, 8 and 16 apart in 4/4 (the
+beat-pooled features' cosine, the 6 representations of downbeat_features averaged; AUC 0.95 on the library's
+beats). Where that score, over +-METER_WINDOW beats, is above what 4/4 music reaches (METER_BIAS, its 99.5th
+percentile), the 3/4 states get the excess as evidence (METER_WEIGHT); but only where the observers' own 4/4
+accent is weak (below METER_ACCENT): a clear 4-beat accent with a 3-beat pattern over it is a cross-rhythm
+(hemiola, 3+3+2), which a DJ grid keeps in 4/4. On the library: bars missed 17.2 -> 15.7 min, 7 tracks better and
+3 worse by more than 2 s.
+
 to_rows: the production tempo rows ([start, end, bpm, inizio = a downbeat, ts, bpm_end]) for the beats and
 downbeats, split wherever the bar length changes, so that ``analyzer.music.beat_geometry.downbeat_beat_indices``
 gives exactly these downbeats.
@@ -30,6 +40,11 @@ MIN_BEATS = 32
 START_MARGIN = 1e-3                 # a row starts this long before its first beat (float32 storage)
 MIN_SUPPORT = 0.33
 CB = 40.0
+METER_LAGS = ((3, 6, 12), (4, 8, 16))    # beats: bar multiples of 3/4, of 4/4
+METER_WINDOW = 24       # beats each side the meter is judged over (6 bars of 4)
+METER_BIAS = 0.065      # the repetition score 4/4 music reaches at its 99.5th percentile (the library's 4/4 beats)
+METER_ACCENT = 2.0      # the observers' local 4/4 accent (log-odds) from which their 4/4 bars stand
+METER_WEIGHT = 300.0    # evidence (log-odds) per unit of score above METER_BIAS
 
 
 def bar_support(p):
@@ -144,11 +159,72 @@ def export_ctx_model(classifier, path, training: dict | None = None) -> None:
     atomic_save_npz(path, payload)    # replaced whole: a cut-off write never leaves a model to read
 
 
-def bars_viterbi(pd, cost=CB, cheap=None, cost_at_start=0.0):
+def _lag_similarity(X, lags):
+    """Per beat the mean cosine of its row with the rows ``lags`` beats later (NaN where there is none)."""
+    n = X.shape[0]
+    total, count = np.zeros(n), np.zeros(n)
+    for L in lags:
+        if L < n:
+            total[:-L] += (X[:-L] * X[L:]).sum(1)
+            count[:-L] += 1
+    with np.errstate(invalid="ignore", divide="ignore"):
+        return total / count
+
+
+def _window_mean(x, window):
+    c = np.r_[0.0, np.cumsum(x)]
+    i = np.arange(x.size)
+    lo, hi = np.maximum(i - window, 0), np.minimum(i + window + 1, x.size)
+    return (c[hi] - c[lo]) / (hi - lo)
+
+
+def repetition_meter_score(rows, beats, window=METER_WINDOW):
+    """Per beat, how much more the music repeats at 3/4's bar multiples than at 4/4's (METER_LAGS), averaged over
+    +-``window`` beats; ``rows``: downbeat_features.beat_feature_rows of the beats."""
+    starts, _ends, mats = rows
+    d = np.zeros(starts.size)
+    for M in mats:
+        X = np.asarray(M, np.float64)
+        X = (X - X.mean(0)) / (X.std(0) + 1e-6)
+        X /= np.linalg.norm(X, axis=1, keepdims=True) + 1e-9
+        d += _lag_similarity(X, METER_LAGS[0]) - _lag_similarity(X, METER_LAGS[1])
+    score = _window_mean(np.nan_to_num(d / len(mats)), window)
+    return score[np.clip(np.searchsorted(starts, np.asarray(beats, float) - 1e-3), 0, starts.size - 1)]
+
+
+def accent4(pd, window=METER_WINDOW):
+    """Per beat, the observers' local 4/4 accent over +-``window`` beats: the best residue (beat mod 4)'s mean
+    downbeat log-odds minus the other beats'."""
+    lg = _logit(np.asarray(pd, float))
+    n = lg.size
+    i = np.arange(n)
+    lo, hi = np.maximum(i - window, 0), np.minimum(i + window + 1, n)
+    total = np.r_[0.0, np.cumsum(lg)]
+    best = np.full(n, -np.inf)
+    for r in range(4):
+        on = i % 4 == r
+        s_on = np.r_[0.0, np.cumsum(np.where(on, lg, 0.0))]
+        n_on = np.r_[0, np.cumsum(on)]
+        k_on, v_on = n_on[hi] - n_on[lo], s_on[hi] - s_on[lo]
+        k_off, v_off = (hi - lo) - k_on, (total[hi] - total[lo]) - v_on
+        best = np.maximum(best, v_on / np.maximum(k_on, 1) - v_off / np.maximum(k_off, 1))
+    return best
+
+
+def meter_evidence(rows, beats, pd):
+    """Per beat, the evidence for 3/4 over 4/4 the bars Viterbi adds (the module's Meter evidence)."""
+    excess = np.maximum(repetition_meter_score(rows, beats) - METER_BIAS, 0.0)
+    return np.where(accent4(pd) < METER_ACCENT, METER_WEIGHT * excess, 0.0)
+
+
+def bars_viterbi(pd, cost=CB, cheap=None, cost_at_start=0.0, meter=None):
     """Bar positions: states (meter 3 or 4, position in the bar); a bar goes on for free, a restart (odd bar,
-    meter change) costs ``cost`` (``cost_at_start`` where ``cheap``, a new grid section). True at downbeats."""
+    meter change) costs ``cost`` (``cost_at_start`` where ``cheap``, a new grid section); ``meter``: per beat the
+    evidence for 3/4 over 4/4 (meter_evidence: half to the 3/4 states, half from the 4/4 ones). True at downbeats."""
     states = [(m, q) for m in (3, 4) for q in range(m)]
     e = np.stack([_logit(pd) if q == 0 else _logit(1 - pd) for m, q in states], axis=1)
+    if meter is not None:
+        e = e + np.array([0.5 if m == 3 else -0.5 for m, _q in states])[None, :] * np.asarray(meter, float)[:, None]
     ns = len(states)
     nxt = np.array([states.index((m, (q + 1) % m)) for m, q in states])      # each state has one successor
     prev = np.empty(ns, int)
@@ -172,14 +248,24 @@ def bars_viterbi(pd, cost=CB, cheap=None, cost_at_start=0.0):
     return np.array([states[x][1] == 0 for x in st])
 
 
-def downbeat_probability(beats, down, t0, hop, frames, ctx_model):
+def beat_rows(frames, beats):
+    """The beat-pooled features (downbeat_features.beat_feature_rows, the bins the contextual model reads), None
+    for fewer than 8 beats."""
+    from analyzer.beat.downbeat_features import beat_feature_rows
+    b = np.sort(np.asarray(beats, float))
+    if b.size < 8 or frames is None:
+        return None
+    return beat_feature_rows(frames, b, beat_phase_bins=8, harmonic_phase_bins=8)
+
+
+def downbeat_probability(beats, down, t0, hop, frames, ctx_model, rows=None):
     """Per beat, the fused downbeat probability of the two observers (the TCN's downbeat activation and the
-    contextual GBM)."""
+    contextual GBM); ``rows``: beat_rows of the beats when already made."""
     from analyzer.beat.downbeat_features import downbeat_feature_matrix, robust_standardize_columns
     b = np.sort(np.asarray(beats, float))
     p = _at(down, t0, hop, b)
     if b.size >= 8 and ctx_model is not None:
-        _, F = downbeat_feature_matrix(frames, b, beat_phase_bins=8, harmonic_phase_bins=8)
+        _, F = downbeat_feature_matrix(frames, b, beat_phase_bins=8, harmonic_phase_bins=8, rows=rows)
         pg = ctx_model.predict_proba(context(robust_standardize_columns(F)))[:, 1]
         pgb = np.full(b.size, 0.25)
         n = min(b.size, pg.size)
@@ -190,13 +276,16 @@ def downbeat_probability(beats, down, t0, hop, frames, ctx_model):
 
 def downbeats(beats, rows, down, t0, hop, frames, ctx_model, restarts=True, cost=CB, p=None):
     """Downbeat times among the beats: the bars Viterbi on the fused observers (without ``restarts``,
-    one bar length and phase for the whole track: static bars). ``p``: the probabilities when known."""
+    one bar length and phase for the whole track: static bars). ``p``: the probabilities when known. The meter
+    evidence (meter_evidence) from the beats' pooled features."""
     b = np.sort(np.asarray(beats, float))
+    feats = beat_rows(frames, b)
     if p is None:
-        p = downbeat_probability(b, down, t0, hop, frames, ctx_model)
+        p = downbeat_probability(b, down, t0, hop, frames, ctx_model, rows=feats)
+    meter = meter_evidence(feats, b, p) if feats is not None else None
     if not restarts:
-        return b[bars_viterbi(p, np.inf)]
-    return b[bars_viterbi(p, cost, section_starts(b, rows), 0.0)]
+        return b[bars_viterbi(p, np.inf, meter=meter)]
+    return b[bars_viterbi(p, cost, section_starts(b, rows), 0.0, meter=meter)]
 
 
 def _neighbour_beat(row, beat_time, k):
