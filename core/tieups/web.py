@@ -61,7 +61,7 @@ MAXLAG_TRIES = 3        # a refused request asked again after the wait it names,
 MAXLAG_WAIT_SEC = (5.0, 30.0)   # the wait between, at least and at most
 CACHE_DAYS = 30
 CACHE_NAME = os.path.join("cache", "tieup_web.db")
-RULES = 12          # how pages are read and a tie-up picked: raise it when they change (the answers kept asked again)
+RULES = 13          # how pages are read and a tie-up picked: raise it when they change (the answers kept asked again)
 # Wikidata's language codes -> ll-RR tags (others are not taken)
 WIKIDATA_LANGS = {"ja": "ja-JP", "ko": "ko-KR", "en": "en-US", "zh-cn": "zh-CN", "zh-hans": "zh-CN", "zh": "zh-CN",
                   "zh-tw": "zh-TW", "zh-hant": "zh-TW", "zh-hk": "zh-HK"}
@@ -107,8 +107,11 @@ KO_CATEGORY_WORDS = (("애니메이션", "anime"), ("게임", "game"), ("영화"
 _OST = re.compile(r"(?<![A-Za-z])O\.?S\.?T\.?(?![A-Za-z])|Original\s+Sound\s*Tracks?|Original\s+Soundtracks?|"
                   r"(?<![A-Za-z])Soundtracks?(?![A-Za-z])|(?:オリジナル[・･]?)?サウンドトラック|サントラ|"
                   r"(?:오리지널\s*)?사운드\s*트랙", re.IGNORECASE)
-# a work's discography page: the work's own page title before it
-_LISTING = re.compile(r"(.+?)の(?:ディスコグラフィ|楽曲一覧|楽曲|音楽作品|キャラクターソング(?:一覧)?|主題歌(?:一覧)?)\Z")
+# a work's discography page: the work's own page title before it; or its songs' page named by the work in quotes,
+# 「けいおん!」イメージソング, TVアニメ『作品』キャラクターソング
+_LISTING = re.compile(r"(.+?)の(?:ディスコグラフィ|楽曲一覧|楽曲|音楽作品|キャラクターソング(?:一覧)?|主題歌(?:一覧)?)\Z|"
+                      r"(?:TVアニメ|テレビアニメ|アニメ|劇場版)?\s*[「『]([^」』]+)[」』]\s*(?:の)?"
+                      r"(?:イメージソング|キャラクターソング|キャラクターCD|キャラソン|劇中歌|挿入歌)")
 # the medium before a work -> its category
 MEDIUM_WORDS = (
     ("テレビアニメ", "anime"), ("TVアニメ", "anime"), ("アニメ", "anime"), ("劇場版", "movie"), ("映画", "movie"),
@@ -133,6 +136,11 @@ _MENTION = re.compile(rf"(?:(?P<medium>{_MEDIUM_RE})[^「『。\n]{{0,8}})?[「�
 # a work named by its medium alone: (medium …)「work」, with no role (○○のメディアミックスプロジェクト『作品』にて誕生):
 # read on the song's own page only (elsewhere it is any page's prose)
 _WORK_NAMED = re.compile(rf"(?P<medium>{_MEDIUM_RE})[^「『。\n]{{0,8}}[「『](?P<work>[^」』\n]{{1,80}})[」』]")
+# an album naming its work in quotes: after a medium (TVアニメ「X」…, OVA「X」…) or before its songs' words (「X」キャラクター
+# ソング…, 「X」コンプリートソングス, 「X」主題歌)
+_ALBUM_WORK = re.compile(rf"(?:{_MEDIUM_RE}|OVA|OAD)\s*[「『](?P<after_medium>[^」』]+)[」』]|"
+                         r"[「『](?P<before_songs>[^」』]+)[」』]\s*(?:キャラクターソング|キャラソン|コンプリートソングス|"
+                         r"主題歌|オープニング|エンディング|挿入歌|イメージソング)")
 # a work's Wikidata classes (P31) -> its category, where the article named no medium; a page whose item has none of
 # them is not a work (a singer, a group, an album). A manga's or a novel's songs are its anime's.
 WIKIDATA_CLASSES = {"Q63952888": "anime", "Q1107": "anime", "Q220898": "anime", "Q20650540": "anime",
@@ -270,6 +278,9 @@ _TIEUP_WORDS = r"テーマ|主題歌|挿入歌|(?<![A-Za-z])(?:OP|ED)(?![A-Za-z]
 _TIEUP_NOTE = re.compile(rf"\s*[\(（][^)）]*?(?:{_TIEUP_WORDS})[^)）]*[\)）]\s*$|\s+-\s+[^-]*?(?:{_TIEUP_WORDS})[^-]*$|"
                          r"\s*[\(（\[【]\s*(?i:from)\s+[^)）\]】]+[\)）\]】]\s*$|"
                          r"\s*[\(（\[【][^)）\]】]*[「『][^」』]+[」』]\s*より\s*[\)）\]】]\s*$")
+# a version made of another's song, whose artist field is not the song's artists: a remix, a DJ's bootleg, a cover
+_REMIX = re.compile(r"(?<![A-Za-z])(?:remix|mix|bootleg|flip|rework|refix|edit|cover|arrange)(?![A-Za-z])",
+                    re.IGNORECASE)
 # its Korean translation in a parenthesis at its end, after a title in another script: "ツナグ、ソラモヨウ (이어진 하늘 모양)"
 _TRANSLATION = re.compile(r"\s*[\(（][^)）]*[가-힣][^)）]*[\)）]\s*$")
 _FEAT = re.compile(r"(?:\s+|\s*[\(（]\s*)(?:feat\.|ft\.|feat\s|featuring\s)\s*(?P<who>[^)）]+)[\)）]?\s*$",
@@ -406,10 +417,10 @@ def _role_in(label: str) -> Optional[tuple[str, int]]:
 
 def listed_work(page: str) -> str:
     """The work a page is, where it lists a song: its title, a discography page's work (作品のディスコグラフィ:
-    作品)."""
+    作品), a songs' page's quoted work (「けいおん!」イメージソング: けいおん!)."""
     title = re.sub(r"\s*\([^)]*\)$", "", page)
     m = _LISTING.match(title)
-    return m.group(1) if m else title
+    return (m.group(1) or m.group(2)) if m else title
 
 
 def found_in(name: str, texts: list[str], similar: bool = True) -> list[int]:
@@ -533,8 +544,12 @@ def mentions(wikitext: str, song: str, whole: bool, page: str = "") -> list[tupl
     text, pages = _plain(wikitext)
     lines = text.split("\n")
     key = reading.fine_key(song)
+    at = found_in(song, lines) if key and not whole else []
+    if len(key) <= 2:       # a name of a letter or two is in any line (ハッピー's ピ for ぴ): only quoted, or alone
+        quoted = re.compile(rf"[「『\"“]\s*{re.escape(song)}\s*[」』\"”]")
+        at = [i for i in at if quoted.search(lines[i]) or reading.fine_key(lines[i].strip(" #*:;|")) == key]
     entries = [(-1, _without_other_tracks(_without_covers(lines), song))] if whole else \
-        [(i, _entry(lines, i)) for i in found_in(song, lines)] if key else []
+        [(i, _entry(lines, i)) for i in at]
     found: dict[tuple, tuple] = {}
     work = listed_work(page) if page and not whole else ""
     work_page = page if work == re.sub(r"\s*\([^)]*\)$", "", page) else work
@@ -721,11 +736,15 @@ def _work_names(api, page: str, category: str, wiki: str = WIKIPEDIA, lang: str 
 
 
 def album_work(album: str) -> str:
-    """The work an OST album names ("나와 호랑이님 Original Sound Track", "TVアニメ『X』オリジナルサウンドトラック": the
-    quoted name before the soundtrack's word, else all before it), "" for another album."""
+    """The work an album names: an OST's ("나와 호랑이님 Original Sound Track", "TVアニメ『X』オリジナルサウンドトラック":
+    the quoted name before the soundtrack's word, else all before it), or one quoted after a medium or before its songs'
+    words (TVアニメ「三ツ星カラーズ」オープニングテーマシングル, OVA「ゆゆ式」キャラクターソングアルバム,
+    「ノーゲーム・ノーライフ」コンプリートソングス); "" for another album (けいおん!はいれぞ!「Come with Me!!」セット:
+    a song's name quoted)."""
     m = _OST.search(album)
     if not m:
-        return ""
+        named = _ALBUM_WORK.search(album)
+        return (named.group("after_medium") or named.group("before_songs")).strip() if named else ""
     before = album[:m.start()]
     quoted = re.findall(r"[『「《〈]([^』」》〉]+)[』」》〉]", before)
     return (quoted[-1] if quoted else before).strip(" -‐－:：(（[【")
@@ -776,12 +795,17 @@ def search(api: Wikimedia, title: str, artist: str = "", album: str = "") -> lis
     for start in range(0, len(names), 40):     # the API takes 50 titles a request
         pages = api.get(WIKIPEDIA, action="query", titles="|".join(names[start:start + 40]), redirects="1",
                         prop="pageprops", ppprop="disambiguation").get("query", {}).get("pages", [])
+        # the song's page, or a double A-side's its name redirects to (Jumping!!/Your Voice)
         own_pages += [p["title"] for p in pages if not p.get("missing")
                       and "disambiguation" not in p.get("pageprops", {})
-                      and reading.fine_key(re.sub(r"\s*\([^)]*\)$", "", p["title"])) in keys]
+                      and any(reading.fine_key(part) in keys for part in
+                              re.split(r"\s*[/／]\s*", re.sub(r"\s*\([^)]*\)$", "", p["title"])))]
     read = _Reading()
     for page in own_pages:
-        read.page(api, page, songs)
+        # a page titled as the song alone may be something else of that name (ドッペルゲンガー, the folklore), and
+        # "曲名 (曲)" another artist's song of that name (再生 (曲), Perfume's): the song's own only where it names an
+        # artist ("曲名 (歌手の曲)" is the artist's by its title)
+        read.page(api, page, songs, named_by=None if re.search(r"の曲\)$", page) else artists)
     own = bool(read.found)
     # else the search's pages, query after query (the song's names alone, with an artist, the album), until two of
     # them agree on one work or PAGES_MAX are read
@@ -793,6 +817,12 @@ def search(api: Wikimedia, title: str, artist: str = "", album: str = "") -> lis
                 read.page(api, hit["title"], songs, artists)
         if _agreed(read, read.works_pages(api), make=False, agreed=True) is not None or len(read.read) >= PAGES_MAX:
             break
+    # a remix's, a bootleg's or a cover's artist field names its remixer or its singer, whom the original's pages do
+    # not: where none of the search's pages said anything, the ones naming no artist are read all the same
+    if not read.found and _REMIX.search(title) and not _REMIX.search(songs[0]):
+        for page in read.skipped:
+            read.read.discard(page)
+            read.page(api, page, songs, [])
     if not read.works_pages(api):   # no work's page says anything of the song: the work its OST album names, if any
         found = _album_work(api, album)
         if found is not None or not read.found:
@@ -816,10 +846,15 @@ def search(api: Wikimedia, title: str, artist: str = "", album: str = "") -> lis
     by_album = sorted((k[1] == tieup.UNSPECIFIED, -c.mentions, k) for k, c in read.found.items()
                       if named_by_album and k[0] in works
                       and any(reading.fine_key(t) == named_by_album for _l, t in c.work.titles))
+    # else the album naming a work none of the searches' pages named (TVアニメ「X」オープニングテーマシングル: a voice
+    # actor's page found by the song's name may say another work): the album's, sure, the pages' works suggestions
+    album_found = _album_work(api, album) if named_by_album and not own and not named_in_title and not by_album else None
     if named_in_title:
         sure = named_in_title[0][1]
     elif by_album:
         sure = by_album[0][2]
+    elif album_found is not None:
+        sure = None
     if sure is not None:
         read.found[sure].sure = True
     # a work with a role found is not suggested again without one; nor a page a person's, a group's or a record's
@@ -827,7 +862,7 @@ def search(api: Wikimedia, title: str, artist: str = "", album: str = "") -> lis
     named = {k[0] for k in read.found if k[1] != tieup.UNSPECIFIED}
     out = [c for k, c in read.found.items() if (c.sure or k[1] != tieup.UNSPECIFIED or k[0] not in named)
            and (c.sure or not _not_a_work(api, read.work_pages[k]))]
-    return sorted(out, key=lambda c: (not c.sure, -c.mentions))
+    return ([album_found] if album_found is not None else []) + sorted(out, key=lambda c: (not c.sure, -c.mentions))
 
 
 def queries(title: str, artist: str = "", album: str = "") -> tuple[list[str], list[str], list[str]]:
@@ -920,6 +955,7 @@ class _Reading:
         self.work_pages: dict[tuple, str] = {}
         self.stated_on: dict[tuple, set[str]] = {}
         self.read: set[str] = set()
+        self.skipped: list[str] = []                    # the searches' pages naming no artist
         self.classes: dict[str, Optional[str]] = {}     # a page -> its work's category, or None: not a work's
 
     def category(self, api, page: str) -> Optional[str]:
@@ -931,16 +967,21 @@ class _Reading:
         """The works found whose pages are works' (page_category): the ones a tag is taken from."""
         return {k[0] for k in self.found if self.category(api, self.work_pages[k]) is not None}
 
-    def page(self, api, page: str, songs: list[str], artists: Optional[list[str]] = None) -> None:
+    def page(self, api, page: str, songs: list[str], artists: Optional[list[str]] = None,
+             named_by: Optional[list[str]] = None) -> None:
         """One page read. ``artists``: a page a search found, read only where it names one of the artists (each
-        mention of the song, and a work page listing it under a role); else the song's own page, read whole."""
+        mention of the song, and a work page listing it under a role; [] read all the same); else the song's own
+        page, read whole, where it names one of ``named_by`` when given."""
         if page in self.read:
             return
         self.read.add(page)
         parsed = api.get(WIKIPEDIA, action="parse", page=page, prop="wikitext", redirects="1").get("parse", {})
         wikitext = parsed.get("wikitext", "")
         # its letters or its sounds only: one sound off is found anywhere in a whole page
-        if artists and not any(found_in(a, [wikitext], similar=False) for a in artists):
+        names = artists if artists is not None else named_by
+        if names and not any(found_in(a, [wikitext], similar=False) for a in names):
+            if artists:
+                self.skipped.append(page)
             return
         own = artists is None
         for song in songs:

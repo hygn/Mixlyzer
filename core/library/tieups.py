@@ -25,6 +25,7 @@ from __future__ import annotations
 from dataclasses import replace
 import sqlite3
 from typing import Iterable, Optional
+import unicodedata
 import uuid
 
 from core.search import reading
@@ -133,21 +134,30 @@ def catalog(con: sqlite3.Connection) -> Catalog:
     return Catalog(works, work_keys(con), uses)
 
 
+def _exact_name(name: str) -> str:
+    """A name as written, its widths and case aside (けいおん！ and けいおん! alike, けいおん!! not)."""
+    return "".join(reading.fold_variants(unicodedata.normalize("NFKC", str(name or ""))).casefold().split())
+
+
 def find_work(con: sqlite3.Connection, w: Work) -> Optional[str]:
     """The library's work that ``w`` is: the one whose references hold the same Wikidata item or Wikipedia page
-    (Wikidata's first), else the one sharing an official title or a synonym with it (name_key; abbreviations and search
-    hints never: short names collide); None where none is, or where two works are (left to the user to merge)."""
+    (Wikidata's first), else the one sharing an official title or a synonym with it as written (its widths and case
+    aside: けいおん! is not けいおん!!, the second season's), else as name_key reads it (abbreviations and search hints
+    never: short names collide); None where none is, or where two works are (left to the user to merge)."""
     urls = sorted((u for _label, u in w.urls if is_identity_url(u)), key=lambda u: not u.startswith(IDENTITY_URLS[0]))
     for url in urls:
         ids = {i for (i,) in con.execute("SELECT DISTINCT work_id FROM tieup_url WHERE url=?;", (url,))}
         if ids:
             return ids.pop() if len(ids) == 1 else None
     kinds = (OFFICIAL, "synonym")
-    keys = ({name_key(t) for _lang, t in w.titles}
-            | {name_key(a) for kind, _lang, a in w.aliases if kind in kinds}) - {""}
-    ids = {i for i, name in con.execute("SELECT work_id, name FROM tieup_name WHERE type IN (?, ?);", kinds)
-           if name_key(name) in keys}
-    return ids.pop() if len(ids) == 1 else None
+    names = con.execute("SELECT work_id, name FROM tieup_name WHERE type IN (?, ?);", kinds).fetchall()
+    ours = [t for _lang, t in w.titles] + [a for kind, _lang, a in w.aliases if kind in kinds]
+    for key_of in (_exact_name, name_key):
+        keys = {key_of(n) for n in ours} - {""}
+        ids = {i for i, name in names if key_of(name) in keys}
+        if ids:
+            return ids.pop() if len(ids) == 1 else None
+    return None
 
 
 def track_tieups(con: sqlite3.Connection, uid: str) -> list[TieUp]:
@@ -365,6 +375,22 @@ def refresh_work_readings(con: sqlite3.Connection, languages: Optional[list[str]
     con.executemany("UPDATE tieup_name SET readings=? WHERE work_id=? AND name=?;",
                     [(readings(n), w, n) for w, n in con.execute("SELECT work_id, name FROM tieup_name;").fetchall()])
     refresh_name_keys(con, rebuild=True)      # made again from the readings now
+
+
+def tag_by_album(con: sqlite3.Connection, uid: str) -> bool:
+    """A track without tie-ups given the one work its album's other tracks share, its role not specified: at least two
+    of them have tie-ups and all are to that work (a work's character song set, one of whose songs the web said
+    nothing of; an album of several works' songs gives none). Whether it was given one."""
+    row = con.execute("SELECT album FROM tracks WHERE uid=?;", (uid,)).fetchone()
+    album = (row[0] or "").strip() if row else ""
+    if not album or has_tieups(con, uid):
+        return False
+    rows = con.execute("SELECT t.track_uid, t.work_id FROM tieup t JOIN tracks k ON k.uid = t.track_uid "
+                       "WHERE k.album = ? AND k.uid != ?;", (album, uid)).fetchall()
+    works = {work_id for _track, work_id in rows}
+    if len({track for track, _w in rows}) < 2 or len(works) != 1:
+        return False
+    return _put(con, uid, TieUp(Work(works.pop()), UNSPECIFIED))
 
 
 def match_new_track(con: sqlite3.Connection, uid: str, pairs) -> int:

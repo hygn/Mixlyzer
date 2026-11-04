@@ -1,6 +1,8 @@
 """The tie-ups' web lookups (core.tieups.web) off the GUI thread: a new track left without tie-ups after its analysis
-looked up when Settings > Library says so (its sure tie-up written), and the Edit tab's "Find on the Web". One
-thread works through them in turn (Wikimedia is asked one request at a time anyway)."""
+looked up when Settings > Library says so (its sure tie-up written; none found: the work its album's other tracks
+share, core.library.tieups.tag_by_album, asked again once the lookups waiting are done, as its album's other tracks
+may be tagged after it), and the Edit tab's "Find on the Web". One thread works through them in turn (Wikimedia is
+asked one request at a time anyway)."""
 from __future__ import annotations
 
 import queue
@@ -51,11 +53,26 @@ class TieupWebLookup(QtCore.QObject):
             self._thread = threading.Thread(target=self._work, name="tieup-web", daemon=True)
             self._thread.start()
 
+    def _by_album(self, tracks: list[str]) -> list[str]:
+        """The tracks given their album's work (jobs.tag_by_album), said tagged."""
+        tagged = self._library.call(jobs.tag_by_album, tracks, write=True)
+        if tagged:
+            self.tagged.emit(tagged)
+            for uid in tagged:
+                self.done.emit(uid, "tagged")
+        return tagged
+
     def _work(self) -> None:
+        untagged: list[str] = []        # the new tracks nothing was found for: their album's work asked again
         while True:
             try:
                 kind, uid = self._jobs.get(timeout=5.0)
             except queue.Empty:
+                if untagged:
+                    try:
+                        self._by_album(untagged)
+                    except Exception as exc:
+                        print(f"[Tie-ups] album's tie-up not written: {exc}")
                 return
             if kind == "tag":
                 self.started.emit(uid)
@@ -68,7 +85,10 @@ class TieupWebLookup(QtCore.QObject):
                         self._library.call(jobs.add_found_tieups, [uid], [sure.as_tieup()], write=True)
                         self.tagged.emit([uid])
                         self.done.emit(uid, "tagged")
-                    else:
+                    elif song is not None and not self._by_album([uid]):
+                        untagged.append(uid)
+                        self.done.emit(uid, "none")
+                    elif song is None:
                         self.done.emit(uid, "none")
                 else:
                     self.found.emit(uid, tieup_web.lookup(tieup_web.shared(), *song[:2], album=song[2])

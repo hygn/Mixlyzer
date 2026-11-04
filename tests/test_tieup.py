@@ -189,6 +189,16 @@ class TieupTests(unittest.TestCase):
         # two works with the name: none taken (the user merges)
         self._add(self.uids[1], tieup.Work("", "game", [("ja-JP", "天使")]))
         self.assertIsNone(tieups.find_work(self.db.conn, tieup.Work("", "anime", [("ja-JP", "天使")])))
+        # a second season's title one mark longer: the first season's found by its name as written
+        first = tieup.Work("", "anime", [("ja-JP", "けいおん!"), ("en-US", "K-On!")])
+        second = tieup.Work("", "anime", [("ja-JP", "けいおん！！"), ("en-US", "K-On!!")])
+        self._add(self.uids[2], first)
+        self._add(self.uids[3], second)
+        found = tieup.Work("", "anime", [("ja-JP", "けいおん！"), ("en-US", "K-ON!")],
+                           urls=[("Wikidata", "https://www.wikidata.org/wiki/Q482482")])
+        self.assertEqual(tieups.find_work(self.db.conn, found), first.id)
+        self.assertEqual(tieups.find_work(self.db.conn, tieup.Work("", "anime", [("ja-JP", "けいおん!!")])), second.id)
+        self.assertIsNone(tieups.find_work(self.db.conn, tieup.Work("", "anime", [("ja-JP", "けいおん")])))  # either
 
     def test_a_work_edited_for_every_track_using_it(self):
         t = self._add(self.uids[0])

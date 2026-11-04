@@ -344,6 +344,12 @@ def add_found_tieups(lib, tracks: list[str], found: list[TieUp]) -> list[str]:
     return list(tracks)
 
 
+def tag_by_album(lib, tracks: list[str]) -> list[str]:
+    """The tracks the web found nothing for given the work their album's other tracks share
+    (core.library.tieups.tag_by_album). The tracks given one."""
+    return [uid for uid in tracks if tieups.tag_by_album(lib.db.conn, uid)]
+
+
 def work_tracks(lib, work_id: str) -> list[str]:
     return tieups.work_tracks(lib.db.conn, work_id)
 

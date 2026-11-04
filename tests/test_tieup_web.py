@@ -168,6 +168,7 @@ class TieupWebTests(unittest.TestCase):
         # version notes in any place of the parenthesis, a title's own parenthesis kept
         self.assertEqual(tw.song_title("よしなしOKI☆DOKI(さくひまば～じょん)")[0], "よしなしOKI☆DOKI")
         self.assertEqual(tw.song_title("100%ちゅ～学生 (Kijibato remix)")[0], "100%ちゅ～学生")
+        self.assertEqual(tw.song_title("FLY two BLUE (Letiamash Bootleg)")[0], "FLY two BLUE")    # a DJ's version
         self.assertEqual(tw.song_title("Love Song (Forever)")[0], "Love Song (Forever)")
         self.assertNotIn("Song (Hoge", tw.queries("Song (Hoge～Fuga)")[0])     # not cut inside it
         # between dashes or wave dashes; Korean and Chinese notes
@@ -266,6 +267,14 @@ class TieupWebTests(unittest.TestCase):
         label = "; 「星降る海」{{R|x}}\n: 月見ヤチヨ（早見沙織）による劇中歌。\n; 「別の歌」\n: 主題歌。\n"
         got = {(w, r) for w, _p, r, *_ in tw.mentions(label, "星降る海", False, "作品 (アニメ)")}
         self.assertEqual(got, {("作品", "insert")})
+        # a work's songs' page named by the work in quotes: that work
+        self.assertEqual(tw.listed_work("「けいおん!」イメージソング"), "けいおん!")
+        self.assertEqual(tw.listed_work("TVアニメ『作品』キャラクターソング"), "作品")
+        self.assertEqual(tw.listed_work("作品のディスコグラフィ"), "作品")
+        self.assertEqual(tw.listed_work("歌手"), "歌手")
+        got = {(w, p) for w, p, *_ in tw.mentions("== 田井中律 ==\n# Drumming Shining My Life\n", "Drumming Shining My Life",
+                                                  False, "「けいおん!」イメージソング")}
+        self.assertEqual(got, {("けいおん!", "けいおん!")})
 
     def test_a_work_page_listing_the_song_under_a_role(self):
         page = ("=== 主題歌 ===\n; 「影響力∞アイドル」\n: HoneyWorks によるオープニングテーマ。\n"
@@ -530,6 +539,12 @@ class TieupWebTests(unittest.TestCase):
         self.assertEqual(tw.album_work("鬼滅の刃 O.S.T."), "鬼滅の刃")
         self.assertEqual(tw.album_work("Neko Hacker IV: Mirai Post"), "")     # OST a word of its own
         self.assertEqual(tw.album_work("結束バンド"), "")
+        # a work quoted after a medium or before its songs' words; a song's name quoted is none
+        self.assertEqual(tw.album_work("TVアニメ「三ツ星カラーズ」オープニングテーマシングル『カラーズぱわーにおまかせろ！』"),
+                         "三ツ星カラーズ")
+        self.assertEqual(tw.album_work("OVA「ゆゆ式」キャラクターソングアルバム"), "ゆゆ式")
+        self.assertEqual(tw.album_work("「ノーゲーム・ノーライフ」コンプリートソングス「NO SONG NO LIFE」"), "ノーゲーム・ノーライフ")
+        self.assertEqual(tw.album_work("けいおん!はいれぞ!「Come with Me!!」セット"), "")
 
     def test_a_korean_work_from_its_ost_album_where_no_page_names_the_song(self):
         # a Korean light novel's OST: neither Wikipedia names the song; Japanese Wikipedia has no page of the work,
@@ -559,6 +574,113 @@ class TieupWebTests(unittest.TestCase):
         self.assertEqual(found[0].source, "https://ko.wikipedia.org/wiki/%EB%82%98%EC%99%80_%ED%98%B8%EB%9E%91%EC%9D%B4%EB%8B%98")
         # an album not an OST's, or naming no work found: nothing
         self.assertEqual(tw.search(tw.Wikimedia(fetch), "호랑풍류가", "나래", "나래 1st Album"), [])
+
+    @staticmethod
+    def _pages(texts: dict, hits: dict, works: dict):
+        """A fetch answering from pages' texts (``texts``), searches' hits by query (``hits``, the song's own pages
+        by the pageprops query), and the works' pages' categories (``works``)."""
+        def fetch(_url, params):
+            if params.get("list") == "search":
+                return {"query": {"search": [{"title": t} for t in hits.get(params["srsearch"], [])]}}
+            if params.get("ppprop"):
+                return {"query": {"pages": [{"title": t} if t in texts else {"title": t, "missing": True}
+                                            for t in params["titles"].split("|")]}}
+            if params.get("action") == "parse":
+                return {"parse": {"wikitext": texts.get(params["page"], "")}}
+            if params.get("prop") == "categories":
+                cats = works.get(params["titles"])
+                return {"query": {"pages": [{"title": params["titles"], "categories": [
+                    {"title": f"Category:{c}"} for c in cats]} if cats else {"title": params["titles"], "missing": True}]}}
+            if params.get("prop") == "pageprops":
+                return {"query": {"pages": [{"pageprops": {}}]}}
+            return {}
+        return fetch
+
+    def test_a_page_of_the_songs_name_that_is_not_the_songs(self):
+        # ドッペルゲンガー, the folklore, names a work of its own: not the song's page where it names no artist
+        texts = {"ドッペルゲンガー": "ドッペルゲンガーは…。テレビドラマ「[[ウルトラQ]]」主題歌にも。\n",
+                 "結束バンド": "結束バンドの楽曲。\n* 「ドッペルゲンガー」 - アニメ「[[ぼっち・ざ・ろっく!]]」オープニングテーマ\n"}
+        fetch = self._pages(texts, {'"ドッペルゲンガー" 結束バンド': ["結束バンド"]},
+                            {"ぼっち・ざ・ろっく!": ["アニメ作品 ほ"], "ウルトラQ": ["1966年のテレビドラマ"]})
+        found = tw.search(tw.Wikimedia(fetch), "ドッペルゲンガー", "結束バンド")
+        self.assertEqual([(c.work.title("ja-JP"), c.role) for c in found if c.sure], [("ぼっち・ざ・ろっく!", "opening")])
+        self.assertNotIn("ウルトラQ", [c.work.title("ja-JP") for c in found])
+        # "曲名 (曲)": another artist's song of the name (再生 (曲), Perfume's) where it names none of the artists
+        texts = {"再生 (曲)": "『再生』は、[[Perfume]]の楽曲。映画『[[屍人荘の殺人]]』主題歌。\n"}
+        fetch = self._pages(texts, {}, {"屍人荘の殺人": ["2019年の映画"]})
+        self.assertEqual(tw.search(tw.Wikimedia(fetch), "再生", "ナナツカゼ"), [])
+        self.assertEqual([c.work.title("ja-JP") for c in tw.search(tw.Wikimedia(fetch), "再生", "Perfume") if c.sure],
+                         ["屍人荘の殺人"])
+
+    def test_a_remix_read_on_pages_naming_the_original_artists(self):
+        # a DJ's bootleg's artist field is the DJ's: the original singer's page, naming no DJ, read where nothing else
+        # said anything; a song's own artist still needed where it is no remix
+        texts = {"声優A": "* 「とげとげ」 - テレビアニメ「[[作品]]」エンディングテーマ\n"}
+        fetch = self._pages(texts, {'"とげとげ"': ["声優A"]}, {"作品": ["アニメ作品 さ"]})
+        found = tw.search(tw.Wikimedia(fetch), "とげとげ (DJ Bootleg)", "DJ")
+        self.assertEqual([(c.work.title("ja-JP"), c.role, c.sure) for c in found], [("作品", "ending", True)])
+        self.assertEqual(tw.search(tw.Wikimedia(fetch), "とげとげ", "別の歌手"), [])
+
+    def test_a_name_of_a_letter_only_quoted_or_alone(self):
+        page = ("* 「ワンルームシュガーライフ」 - テレビアニメ「[[ハッピーシュガーライフ]]」オープニングテーマ\n"
+                "* 「ぴ」 - テレビアニメ「[[生徒会にも穴はある!]]」エンディングテーマ\n")
+        got = {w for w, *_ in tw.mentions(page, "ぴ", False)}
+        self.assertEqual(got, {"生徒会にも穴はある!"})      # not ハッピー's ピ
+
+    def test_a_double_a_sides_page_its_song_redirects_to(self):
+        texts = {"Jumping!!/Your Voice": "テレビアニメ『[[きんいろモザイク]]』のオープニングテーマ。\n"}
+
+        def fetch(_url, params):
+            if params.get("ppprop"):        # Jumping!! redirects to the single's page
+                return {"query": {"pages": [{"title": "Jumping!!/Your Voice"}]}}
+            if params.get("action") == "parse":
+                return {"parse": {"wikitext": texts.get(params["page"], "")}}
+            if params.get("list") == "search":
+                return {"query": {"search": []}}
+            if params.get("prop") == "categories":
+                cats = ["アニメ作品 き"] if params["titles"] == "きんいろモザイク" else None
+                return {"query": {"pages": [{"title": params["titles"], "categories": [
+                    {"title": f"Category:{c}"} for c in cats]} if cats else {"title": params["titles"], "missing": True}]}}
+            return {"query": {"pages": [{"pageprops": {}}]}}
+
+        found = tw.search(tw.Wikimedia(fetch), "Jumping!! (DJ Bootleg)", "")
+        self.assertEqual([(c.work.title("ja-JP"), c.role, c.sure) for c in found], [("きんいろモザイク", "opening", True)])
+
+    def test_the_work_an_album_names_over_a_search_pages_other_work(self):
+        # a voice actor's page found by the song's name says another work; the album names the song's
+        texts = {"声優": "声優。\n* 「上野☆ダイヤモンド」 - テレビアニメ「[[別の作品]]」エンディングテーマ\n"}
+        fetch = self._pages(texts, {'"上野☆ダイヤモンド"': ["声優"]},
+                            {"別の作品": ["アニメ作品 へ"], "三ツ星カラーズ": ["アニメ作品 み"]})
+        found = tw.search(tw.Wikimedia(fetch), "上野☆ダイヤモンド", "声優",
+                          "TVアニメ「三ツ星カラーズ」オープニングテーマシングル")
+        self.assertEqual([(c.work.title("ja-JP"), c.sure) for c in found], [("三ツ星カラーズ", True), ("別の作品", False)])
+
+    def test_a_track_given_the_work_its_album_shares(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            db = LibraryDB(str(Path(tmp) / "library.db"))
+            db.connect()
+            album = {name: str(uuid4()) for name in ("a", "b", "c", "lone")}
+            for name, uid in album.items():
+                db.upsert(TrackRow(uid=uid, path=f"{name}.wav", title=name, album="Set" if name != "lone" else "",
+                                   added_ts=1))
+            mixed = [str(uuid4()) for _ in range(4)]
+            for i, uid in enumerate(mixed):
+                db.upsert(TrackRow(uid=uid, path=f"m{i}.wav", title=f"m{i}", album="Various", added_ts=1))
+            db.conn.commit()
+            work = tieup.Work("", "anime", [("ja-JP", "作品")])
+            other = tieup.Work("", "anime", [("ja-JP", "別作品")])
+            with db.conn:
+                tieups.save_tieup(db.conn, album["a"], tieup.TieUp(work, "insert"))
+                tieups.save_tieup(db.conn, album["b"], tieup.TieUp(work, tieup.UNSPECIFIED))
+                tieups.save_tieup(db.conn, mixed[0], tieup.TieUp(work, "opening"))
+                tieups.save_tieup(db.conn, mixed[1], tieup.TieUp(other, "opening"))
+                self.assertTrue(tieups.tag_by_album(db.conn, album["c"]))         # two of its album, one work
+                self.assertFalse(tieups.tag_by_album(db.conn, album["c"]))        # it has one now
+                self.assertFalse(tieups.tag_by_album(db.conn, album["lone"]))     # no album
+                self.assertFalse(tieups.tag_by_album(db.conn, mixed[2]))          # several works' songs
+            self.assertEqual([(t.work.id, t.role) for t in tieups.track_tieups(db.conn, album["c"])],
+                             [(work.id, tieup.UNSPECIFIED)])
+            db.close()
 
 
 if __name__ == "__main__":
