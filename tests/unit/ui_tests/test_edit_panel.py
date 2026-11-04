@@ -84,9 +84,6 @@ class EditPanelCase(unittest.TestCase):
         self.panel.deleteLater()
         drain()
 
-    def unlock(self) -> None:
-        self.panel.btn_lock.setChecked(False)
-
     def at(self, t: float) -> None:
         self.panel.update_time(t)
 
@@ -103,48 +100,55 @@ class EditPanelCase(unittest.TestCase):
         return {c.label: (c.point, gi) for gi, g in enumerate(self.model.jump_cues) for c in g.cues}
 
 
-class LockTests(EditPanelCase):
-    def test_locked_at_the_start_nothing_edited(self):
+class EditingTests(EditPanelCase):
+    def test_editing_on_from_the_start(self):
         self.at(10.0)
-        self.assertTrue(self.panel.btn_lock.isChecked())
         for button in (self.panel.btn_shift_fine_fwd, self.panel.btn_bpm_double, self.panel.key_split,
                        self.panel.phrase_split, self.panel.cp_memory, self.panel.btn_save):
+            self.assertTrue(button.isEnabled())
+        self.assertIsNone(self.h["beatgrid.shift_fine_forward"]())
+        self.assertTrue(self.model.can_undo())
+
+    def test_a_running_reanalysis_turns_editing_off(self):
+        self.bus.sig_segment_reanalyze_state.emit(False)     # running
+        self.at(10.0)
+        for button in (self.panel.btn_shift_fine_fwd, self.panel.key_split, self.panel.phrase_split,
+                       self.panel.cp_memory, self.panel.btn_save):
             self.assertFalse(button.isEnabled())
-        self.assertEqual(self.h["beatgrid.shift_fine_forward"](), "Editing is locked.")
-        self.assertEqual(self.h["editor.split"](), "Editing is locked.")
-        self.assertEqual(self.h["cue.memory_delete"](), "Editing is locked.")
-        self.assertEqual(self.h["cue.set.C"](), "Editing is locked.")
+        waits = "Editing waits for the segment reanalysis to finish."
+        self.assertEqual(self.h["beatgrid.shift_fine_forward"](), waits)
+        self.assertEqual(self.h["editor.split"](), waits)
+        self.assertEqual(self.h["cue.memory_delete"](), waits)
+        self.assertEqual(self.h["cue.set.C"](), waits)
         self.panel._jc_set_or_jump(2)                   # an empty slot's SET
         self.panel._rename_cue_point(0, "Name")
         self.assertFalse(self.model.can_undo())
         self.assertTrue(self.panel.jc_slots[0].btn_action.isEnabled())       # JUMP stays usable
-
-    def test_the_lock_shortcut_and_a_running_reanalysis(self):
-        self.h["editor.lock"]()
-        self.assertFalse(self.panel.btn_lock.isChecked())
-        self.assertTrue(self.panel.btn_shift_fine_fwd.isEnabled())
-        self.bus.sig_segment_reanalyze_state.emit(False)     # running
-        self.assertEqual(self.h["beatgrid.shift_fine_forward"](),
-                         "Editing waits for the segment reanalysis to finish.")
         self.bus.sig_segment_reanalyze_state.emit(True)
-        self.at(10.0)
         self.assertIsNone(self.h["beatgrid.shift_fine_forward"]())
         self.assertTrue(self.model.can_undo())
 
-    def test_undo_redo_buttons_follow_the_history_and_the_lock(self):
-        self.unlock()
+    def test_undo_redo_buttons_follow_the_history_and_a_reanalysis(self):
         self.assertFalse(self.panel.btn_undo.isEnabled())
         self.at(10.0)
         self.panel.btn_shift_fine_fwd.click()
         self.assertTrue(self.panel.btn_undo.isEnabled())
-        self.panel.btn_lock.setChecked(True)
+        self.bus.sig_segment_reanalyze_state.emit(False)
         self.assertFalse(self.panel.btn_undo.isEnabled())
+
+    def test_no_page_emphasized(self):
+        """The edit focus is kept but off (EditPanel.EMPHASIZE_SHOWN_PAGES): no page is ever emphasized."""
+        seen = []
+        self.bus.sig_edit_focus_changed.connect(seen.append)
+        for i in range(len(self.panel.PAGES)):
+            self.panel.show_page(i)
+        self.assertEqual((seen, self.panel._edit_focus), ([], frozenset()))
+        self.assertFalse(self.panel.EMPHASIZE_SHOWN_PAGES)
 
 
 class BeatgridTests(EditPanelCase):
     def setUp(self):
         super().setUp()
-        self.unlock()
         self.at(10.0)                                 # in the first segment
         self.original = self.segments()
 
@@ -256,7 +260,6 @@ class BeatgridTests(EditPanelCase):
 class PageShortcutTests(EditPanelCase):
     def setUp(self):
         super().setUp()
-        self.unlock()
 
     def test_a_page_wide_shortcut_works_on_the_current_page(self):
         self.at(10.2)
@@ -281,7 +284,6 @@ class PageShortcutTests(EditPanelCase):
 class KeyTests(EditPanelCase):
     def setUp(self):
         super().setUp()
-        self.unlock()
         self.h["editor.page_key"]()
 
     def test_keys_changed_on_the_segment_or_the_whole_track(self):
@@ -361,7 +363,6 @@ class KeyTests(EditPanelCase):
 class PhraseTests(EditPanelCase):
     def setUp(self):
         super().setUp()
-        self.unlock()
         self.h["editor.page_phrase"]()
         self.at(20.0)                                   # in VERSE
 
@@ -398,7 +399,6 @@ class PhraseTests(EditPanelCase):
 class CueTests(EditPanelCase):
     def setUp(self):
         super().setUp()
-        self.unlock()
 
     def test_memory_on_the_nearest_beat_once(self):
         self.at(20.2)
@@ -447,7 +447,6 @@ class CueTests(EditPanelCase):
 class JumpCueTests(EditPanelCase):
     def setUp(self):
         super().setUp()
-        self.unlock()
 
     def test_set_in_an_empty_slot_in_a_colour_of_its_own(self):
         self.at(20.2)
@@ -543,7 +542,6 @@ class SaveTests(EditPanelCase):
             self.service.wait()
 
     def test_edits_saved_and_marked_saved(self):
-        self.unlock()
         self.at(10.0)
         self.panel.btn_bpm_double.click()
         self.assertTrue(self.model.unsaved)
@@ -569,11 +567,10 @@ class SaveTests(EditPanelCase):
         finally:
             db.close()
 
-    def test_locked_nothing_saved(self):
-        self.unlock()
+    def test_nothing_saved_during_a_reanalysis(self):
         self.at(10.0)
         self.panel.btn_bpm_double.click()
-        self.panel.btn_lock.setChecked(True)
+        self.bus.sig_segment_reanalyze_state.emit(False)
         self.h["editor.save"]()
         self.settle()
         self.assertTrue(self.model.unsaved)

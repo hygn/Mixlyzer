@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-11-04 18:51+0900\n"
+"POT-Creation-Date: 2026-11-04 21:43+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ja_JP\n"
@@ -1275,7 +1275,7 @@ msgstr "フレーズ境界を解析中"
 
 #: core/workers/analysis_texts.py:17 ui/config/analysis.py:203
 #: ui/config/pipeline_map.py:24 ui/config/pipeline_map.py:33
-#: ui/edit_panel/panel.py:60 ui/library/search.py:270 ui/library/search.py:330
+#: ui/edit_panel/panel.py:62 ui/library/search.py:270 ui/library/search.py:330
 #: ui/shortcuts.py:38
 msgid "Phrase"
 msgstr "フレーズ"
@@ -5071,7 +5071,7 @@ msgstr "空いているスロット {letter} へ移動 (このキューと以降
 msgid "Two JumpCUEs cannot share a point."
 msgstr "2 つの JumpCUE が同じポイントを共有することはできません。"
 
-#: ui/edit_panel/jumpcue.py:222 ui/edit_panel/panel.py:580
+#: ui/edit_panel/jumpcue.py:222 ui/edit_panel/panel.py:570
 msgid "Invalid JumpCUE Label"
 msgstr "無効な JumpCUE ラベル"
 
@@ -5264,24 +5264,24 @@ msgstr "現在の区間のキーを選択 (Alphanumeric ホイール)"
 msgid "{key} | Seg {index} | Elapsed: {elapsed} | Left: {left}"
 msgstr "{key} | 区間 {index} | 経過: {elapsed} | 残り: {left}"
 
-#: ui/edit_panel/panel.py:61
+#: ui/edit_panel/panel.py:63
 msgid "Edit the beatgrid"
 msgstr "ビートグリッドを編集"
 
-#: ui/edit_panel/panel.py:61
+#: ui/edit_panel/panel.py:63
 msgid "Edit the key"
 msgstr "キーを編集"
 
-#: ui/edit_panel/panel.py:62
+#: ui/edit_panel/panel.py:64
 msgid "Edit the phrase"
 msgstr "フレーズを編集"
 
-#: ui/edit_panel/panel.py:62
+#: ui/edit_panel/panel.py:64
 msgid "Edit the JumpCUEs and CUE points"
 msgstr "JumpCUE と CUEポイントを編集"
 
 # | msgid "The file could not be written: {error}"
-#: ui/edit_panel/panel.py:595
+#: ui/edit_panel/panel.py:585
 #, python-brace-format
 msgid ""
 "The edits could not be saved:\n"
@@ -5291,55 +5291,37 @@ msgstr ""
 "{error}"
 
 # | msgid "Shared"
-#: ui/edit_panel/panel.py:595 ui/windows/tieup_works.py:88
+#: ui/edit_panel/panel.py:585 ui/windows/tieup_works.py:88
 msgid "Save"
 msgstr "保存"
 
-#: ui/edit_panel/panel.py:628
-msgid ""
-"<p>Editing is locked: pages switch, but nothing is edited or saved. Click"
-" to unlock.</p>"
-msgstr "<p>編集はロックされています: ページは切り替わりますが、編集も保存もされません。クリックするとロックを解除します。</p>"
-
-#: ui/edit_panel/panel.py:630
-msgid ""
-"<p>Editing is unlocked: the shown pages' graphics are emphasized. Click "
-"to lock: no edits, no saving (on at every start).</p>"
-msgstr ""
-"<p>編集のロックは解除されています: 表示中のページのグラフィックが強調されます。クリックするとロックします: 編集も保存もできなくなります "
-"(起動のたびにロック)。</p>"
-
-#: ui/edit_panel/panel.py:749
+#: ui/edit_panel/panel.py:726
 #, python-brace-format
 msgid "This shortcut does nothing on the {page} page."
 msgstr "このショートカットは {page} ページでは何もしません。"
 
-#: ui/edit_panel/panel.py:757
-msgid "Editing is locked."
-msgstr "編集はロックされています。"
-
 # | msgid "Segment reanalysis finished"
-#: ui/edit_panel/panel.py:759
+#: ui/edit_panel/panel.py:734
 msgid "Editing waits for the segment reanalysis to finish."
 msgstr "区間の再解析が終わるまで編集できません。"
 
 # | msgid "Delete JumpCUE {letter}"
-#: ui/edit_panel/panel.py:792 ui/edit_panel/panel.py:805
+#: ui/edit_panel/panel.py:767 ui/edit_panel/panel.py:780
 #, python-brace-format
 msgid "JumpCUE {letter} is not set."
 msgstr "JumpCUE {letter} は設定されていません。"
 
-#: ui/edit_panel/panel.py:801
+#: ui/edit_panel/panel.py:776
 #, python-brace-format
 msgid "JumpCUE {letter} is already set."
 msgstr "JumpCUE {letter} はすでに設定されています。"
 
-#: ui/edit_panel/panel.py:821
+#: ui/edit_panel/panel.py:796
 msgid "CALL works while stopped."
 msgstr "CALL は停止中にだけ動作します。"
 
 # | msgid "Split the current segment at the playhead"
-#: ui/edit_panel/panel.py:837
+#: ui/edit_panel/panel.py:812
 msgid "No CUE point at the playhead."
 msgstr "再生位置に CUEポイントがありません。"
 
@@ -7201,7 +7183,7 @@ msgstr "エディター"
 msgid "Current page"
 msgstr "現在のページ"
 
-#: ui/edit_panel/panel.py:60 ui/shortcuts.py:36
+#: ui/edit_panel/panel.py:62 ui/shortcuts.py:36
 msgid "Beatgrid"
 msgstr "ビートグリッド"
 
@@ -7719,274 +7701,269 @@ msgstr "ライブラリから削除"
 msgid "Remove from Playlist"
 msgstr "プレイリストから削除"
 
-# | msgid "Metronome on / off"
-#: ui/shortcuts.py:182
-msgid "Edit lock on / off"
-msgstr "編集ロックのオン / オフ"
-
 # | msgid "Page {page} of {pages}"
-#: ui/shortcuts.py:183
+#: ui/shortcuts.py:182
 #, python-brace-format
 msgid "Show the {page} page"
 msgstr "{page} ページを表示"
 
 # | msgid "Set the current segment to {meter}"
 # | msgid "Edit scope: the current segment"
-#: ui/shortcuts.py:184
+#: ui/shortcuts.py:183
 msgid "It becomes the current page."
 msgstr "そのページが現在のページになります。"
 
-#: ui/edit_panel/panel.py:221 ui/shortcuts.py:186
+#: ui/edit_panel/panel.py:222 ui/shortcuts.py:185
 msgid "Undo Changes"
 msgstr "変更を元に戻す"
 
-#: ui/edit_panel/panel.py:225 ui/shortcuts.py:187
+#: ui/edit_panel/panel.py:226 ui/shortcuts.py:186
 msgid "Redo Changes"
 msgstr "変更をやり直す"
 
-#: ui/edit_panel/panel.py:229 ui/shortcuts.py:188
+#: ui/edit_panel/panel.py:230 ui/shortcuts.py:187
 msgid "Save Edits"
 msgstr "編集を保存"
 
 # | msgid "One beat earlier"
-#: ui/shortcuts.py:191
+#: ui/shortcuts.py:190
 msgid "Start earlier"
 msgstr "開始を早める"
 
-#: ui/shortcuts.py:192 ui/shortcuts.py:194
+#: ui/shortcuts.py:191 ui/shortcuts.py:193
 msgid ""
 "Key, Phrase: the current segment's start, by a beat or a bar (the "
 "boundary step)."
 msgstr "Key、Phrase: 現在の区間の開始を 1 拍または 1 小節ずつ (境界の単位)。"
 
 # | msgid "One beat later"
-#: ui/shortcuts.py:193
+#: ui/shortcuts.py:192
 msgid "Start later"
 msgstr "開始を遅らせる"
 
 # | msgid "One beat earlier"
-#: ui/shortcuts.py:195
+#: ui/shortcuts.py:194
 msgid "End earlier"
 msgstr "終了を早める"
 
-#: ui/shortcuts.py:196 ui/shortcuts.py:198
+#: ui/shortcuts.py:195 ui/shortcuts.py:197
 msgid ""
 "Key, Phrase: the current segment's end, by a beat or a bar (the boundary "
 "step)."
 msgstr "Key、Phrase: 現在の区間の終了を 1 拍または 1 小節ずつ (境界の単位)。"
 
 # | msgid "One beat later"
-#: ui/shortcuts.py:197
+#: ui/shortcuts.py:196
 msgid "End later"
 msgstr "終了を遅らせる"
 
 # | msgid "Split the current segment at the playhead"
-#: ui/shortcuts.py:199
+#: ui/shortcuts.py:198
 msgid "Split at the playhead"
 msgstr "再生位置で分割"
 
 # | msgid "Set the current segment to {meter}"
 # | msgid "Key scope: the current segment"
-#: ui/shortcuts.py:200
+#: ui/shortcuts.py:199
 msgid "Beatgrid, Key, Phrase: the current segment."
 msgstr "ビートグリッド、Key、フレーズ: 現在の区間。"
 
 # | msgid "" "Merge the previous key segment into the current one (keeps the
 # | current " "key)"
 # | msgid "Merge the previous segment into the current one"
-#: ui/shortcuts.py:201
+#: ui/shortcuts.py:200
 msgid "Merge the previous segment"
 msgstr "前の区間を結合"
 
 # | msgid "" "Merge the previous key segment into the current one (keeps the
 # | current " "key)"
 # | msgid "Merge the previous segment into the current one"
-#: ui/shortcuts.py:202
+#: ui/shortcuts.py:201
 msgid "Beatgrid, Key, Phrase: the previous segment into the current one."
 msgstr "ビートグリッド、Key、フレーズ: 前の区間を現在の区間に。"
 
 # | msgid "Merge the next key segment into the current one (keeps the current
 # | key)"
 # | msgid "Merge the next segment into the current one"
-#: ui/shortcuts.py:203
+#: ui/shortcuts.py:202
 msgid "Merge the next segment"
 msgstr "次の区間を結合"
 
 # | msgid "Merge the next key segment into the current one (keeps the current
 # | key)"
 # | msgid "Merge the next segment into the current one"
-#: ui/shortcuts.py:204
+#: ui/shortcuts.py:203
 msgid "Beatgrid, Key, Phrase: the next segment into the current one."
 msgstr "ビートグリッド、Key、フレーズ: 次の区間を現在の区間に。"
 
 # | msgid "Reanalyze the current key segment's key from the audio"
-#: ui/shortcuts.py:205
+#: ui/shortcuts.py:204
 msgid "Reanalyze the current segment"
 msgstr "現在の区間を再解析"
 
 # | msgid "Beatgrid"
-#: ui/shortcuts.py:206 ui/shortcuts.py:209 ui/shortcuts.py:211
+#: ui/shortcuts.py:205 ui/shortcuts.py:208 ui/shortcuts.py:210
 msgid "Beatgrid, Key."
 msgstr "ビートグリッド、Key。"
 
 # | msgid "Reanalyze Track"
-#: ui/shortcuts.py:207
+#: ui/shortcuts.py:206
 msgid "Reanalyze the whole track"
 msgstr "トラック全体を再解析"
 
-#: ui/shortcuts.py:208
+#: ui/shortcuts.py:207
 msgid "Key, Phrase; on the CUE page, the JumpCUEs."
 msgstr "Key、フレーズ。CUE ページでは JumpCUE。"
 
 # | msgid "Key scope: the whole track"
-#: ui/shortcuts.py:209
+#: ui/shortcuts.py:208
 msgid "Edit scope: the whole track"
 msgstr "編集範囲: トラック全体"
 
 # | msgid "Set the current segment to {meter}"
-#: ui/shortcuts.py:210
+#: ui/shortcuts.py:209
 msgid "Edit scope: the current segment"
 msgstr "編集範囲: 現在の区間"
 
 # | msgid "Boundaries move by one beat"
-#: ui/shortcuts.py:212
+#: ui/shortcuts.py:211
 msgid "Boundary step: one beat"
 msgstr "境界の単位: 1 拍"
 
 # | msgid "Phrase"
-#: ui/shortcuts.py:212 ui/shortcuts.py:213
+#: ui/shortcuts.py:211 ui/shortcuts.py:212
 msgid "Key, Phrase."
 msgstr "Key、フレーズ。"
 
 # | msgid "Boundaries move by one beat"
 # | msgid "Boundaries move by one bar"
-#: ui/shortcuts.py:213
+#: ui/shortcuts.py:212
 msgid "Boundary step: one bar"
 msgstr "境界の単位: 1 小節"
 
 # | msgid "Shift the current segment half a beat earlier"
-#: ui/shortcuts.py:215
+#: ui/shortcuts.py:214
 msgid "Shift half a beat earlier"
 msgstr "半拍早める"
 
 # | msgid "Shift the current segment 10 ms earlier"
-#: ui/shortcuts.py:216
+#: ui/shortcuts.py:215
 msgid "Shift 10 ms earlier"
 msgstr "10 ms 早める"
 
 # | msgid "Shift the current segment 1 ms earlier"
-#: ui/shortcuts.py:217
+#: ui/shortcuts.py:216
 msgid "Shift 1 ms earlier"
 msgstr "1 ms 早める"
 
 # | msgid "Shift the current segment 1 ms later"
-#: ui/shortcuts.py:218
+#: ui/shortcuts.py:217
 msgid "Shift 1 ms later"
 msgstr "1 ms 遅らせる"
 
 # | msgid "Shift the current segment 10 ms later"
-#: ui/shortcuts.py:219
+#: ui/shortcuts.py:218
 msgid "Shift 10 ms later"
 msgstr "10 ms 遅らせる"
 
 # | msgid "Shift the current segment half a beat later"
-#: ui/shortcuts.py:220
+#: ui/shortcuts.py:219
 msgid "Shift half a beat later"
 msgstr "半拍遅らせる"
 
 # | msgid "Error"
-#: ui/shortcuts.py:221
+#: ui/shortcuts.py:220
 msgid "ZERO"
 msgstr "ZERO"
 
-#: ui/edit_panel/beatgrid.py:76 ui/shortcuts.py:221
+#: ui/edit_panel/beatgrid.py:76 ui/shortcuts.py:220
 msgid "Clear the reference BPM and the tap history"
 msgstr "基準 BPM とタップの履歴を消去します"
 
-#: ui/shortcuts.py:222
+#: ui/shortcuts.py:221
 msgid "TAP"
 msgstr "TAP"
 
-#: ui/edit_panel/beatgrid.py:82 ui/shortcuts.py:222
+#: ui/edit_panel/beatgrid.py:82 ui/shortcuts.py:221
 msgid "Tap the beat to set the reference BPM"
 msgstr "拍に合わせてタップし、基準 BPM を設定します"
 
 # | msgid "Tap to set reference BPM"
 # | msgid "TAP: the reference BPM"
-#: ui/shortcuts.py:223
+#: ui/shortcuts.py:222
 msgid "Assign the reference BPM"
 msgstr "基準 BPM を割り当て"
 
-#: ui/edit_panel/beatgrid.py:101 ui/shortcuts.py:224
+#: ui/edit_panel/beatgrid.py:101 ui/shortcuts.py:223
 msgid "Assign the reference BPM to the current segment (downbeat at its start)"
 msgstr "基準 BPM を現在の区間に割り当てます (ダウンビートは区間の先頭)"
 
 # | msgid "Clear the reference BPM and the tap history"
 # | msgid "The reference BPM as the starting tempo (ramp)"
-#: ui/shortcuts.py:225
+#: ui/shortcuts.py:224
 msgid "Ramp: the starting tempo"
 msgstr "ランプ: 開始テンポ"
 
-#: ui/edit_panel/beatgrid.py:102 ui/shortcuts.py:226
+#: ui/edit_panel/beatgrid.py:102 ui/shortcuts.py:225
 msgid ""
 "Make the reference BPM the current segment's starting tempo (a ramp to "
 "its end tempo; its first beat stays)"
 msgstr "基準 BPM を現在の区間の開始テンポにします (終了テンポへのランプ。最初の拍はそのまま)"
 
-#: ui/shortcuts.py:228
+#: ui/shortcuts.py:227
 msgid "Ramp: the ending tempo"
 msgstr "ランプ: 終了テンポ"
 
-#: ui/edit_panel/beatgrid.py:103 ui/shortcuts.py:229
+#: ui/edit_panel/beatgrid.py:103 ui/shortcuts.py:228
 msgid ""
 "Make the reference BPM the current segment's ending tempo (a ramp from "
 "its start tempo; its first beat stays)"
 msgstr "基準 BPM を現在の区間の終了テンポにします (開始テンポからのランプ。最初の拍はそのまま)"
 
 # | msgid "Hold to count beats passing under the playhead"
-#: ui/shortcuts.py:231
+#: ui/shortcuts.py:230
 msgid "Downbeat at the playhead"
 msgstr "再生位置にダウンビート"
 
-#: ui/edit_panel/beatgrid.py:110 ui/shortcuts.py:232
+#: ui/edit_panel/beatgrid.py:110 ui/shortcuts.py:231
 msgid "Make the beat nearest the playhead the current segment's downbeat"
 msgstr "再生位置に最も近い拍を現在の区間のダウンビートにします"
 
-#: ui/shortcuts.py:233
+#: ui/shortcuts.py:232
 msgid "BPM x1/2"
 msgstr "BPM x1/2"
 
 # | msgid "BPM min"
-#: ui/shortcuts.py:234
+#: ui/shortcuts.py:233
 msgid "BPM x2"
 msgstr "BPM x2"
 
-#: ui/shortcuts.py:235
+#: ui/shortcuts.py:234
 #, python-brace-format
 msgid "Time signature {meter}"
 msgstr "拍子 {meter}"
 
 # | msgid "Edit the key"
-#: ui/shortcuts.py:238
+#: ui/shortcuts.py:237
 msgid "Pick the key"
 msgstr "キーを選択"
 
 # | msgid "Pick the key (Camelot wheel)"
-#: ui/edit_panel/key.py:97 ui/edit_panel/key_picker.py:82 ui/shortcuts.py:238
+#: ui/edit_panel/key.py:97 ui/edit_panel/key_picker.py:82 ui/shortcuts.py:237
 msgid "Pick the key (Alphanumeric wheel)"
 msgstr "キーを選択 (Alphanumeric ホイール)"
 
 # | msgid "Move Down"
-#: ui/shortcuts.py:239
+#: ui/shortcuts.py:238
 msgid "A semitone down"
 msgstr "半音下げる"
 
 # | msgid "Move Up"
-#: ui/shortcuts.py:240
+#: ui/shortcuts.py:239
 msgid "A semitone up"
 msgstr "半音上げる"
 
-#: ui/shortcuts.py:241
+#: ui/shortcuts.py:240
 msgid "Circle of fifths -1"
 msgstr "五度圏 -1"
 
@@ -7995,84 +7972,84 @@ msgstr "五度圏 -1"
 # | msgid "One step down the circle of fifths (Alphanumeric -1): every
 # segment's
 # | key"
-#: ui/shortcuts.py:242
+#: ui/shortcuts.py:241
 msgid "One step down the circle of fifths (Alphanumeric -1)"
 msgstr "五度圏で 1 つ下げる (Alphanumeric -1)"
 
-#: ui/shortcuts.py:243
+#: ui/shortcuts.py:242
 msgid "Circle of fifths +1"
 msgstr "五度圏 +1"
 
 # | msgid "One step up the circle of fifths (Camelot +1): every segment's key"
 # | msgid "One step up the circle of fifths (Alphanumeric +1): every segment's
 # | key"
-#: ui/shortcuts.py:244
+#: ui/shortcuts.py:243
 msgid "One step up the circle of fifths (Alphanumeric +1)"
 msgstr "五度圏で 1 つ上げる (Alphanumeric +1)"
 
 # | msgid "Relative major / minor (C <-> Am): every segment's key"
 # | msgid "Relative major / minor (C <-> Am)"
-#: ui/shortcuts.py:245
+#: ui/shortcuts.py:244
 msgid "Relative major / minor"
 msgstr "平行調の長調 / 短調"
 
 # | msgid "Relative major / minor (C <-> Am): every segment's key"
-#: ui/shortcuts.py:245
+#: ui/shortcuts.py:244
 msgid "Relative major / minor (C <-> Am)"
 msgstr "平行調の長調 / 短調 (C <-> Am)"
 
-#: ui/shortcuts.py:246
+#: ui/shortcuts.py:245
 msgid "Merge the same keys"
 msgstr "同じキーを結合"
 
-#: ui/edit_panel/key.py:82 ui/shortcuts.py:247
+#: ui/edit_panel/key.py:82 ui/shortcuts.py:246
 msgid "Merge every run of neighboring segments with the same key"
 msgstr "キーが同じ隣り合う区間をすべて 1 つに結合します"
 
-#: ui/shortcuts.py:248
+#: ui/shortcuts.py:247
 msgid "Listening aid: root"
 msgstr "試聴の補助: 根音"
 
-#: ui/shortcuts.py:249
+#: ui/shortcuts.py:248
 msgid "Listening aid: root and fifth"
 msgstr "試聴の補助: 根音と 5 度"
 
-#: ui/shortcuts.py:250
+#: ui/shortcuts.py:249
 msgid "Listening aid: tonic chord"
 msgstr "試聴の補助: 主和音"
 
 # | msgid "CUE points (set by the analysis from the phrases)"
 # | msgid "CUE points from the phrases (CUE rules)"
-#: ui/shortcuts.py:252
+#: ui/shortcuts.py:251
 msgid "CUE points from the phrases"
 msgstr "フレーズから CUEポイントを作成"
 
 # | msgid "" "Replace the CUE points with the ones the CUE rules give the
 # | current " "phrases\n" "(Settings > Analysis > CUE, as the full analysis
 # | makes them)"
-#: ui/shortcuts.py:253
+#: ui/shortcuts.py:252
 msgid ""
 "Replace the CUE points with the ones the CUE rules give the current "
 "phrases"
 msgstr "CUEポイントを、現在のフレーズに CUE のルールを適用した結果で置き換えます"
 
-#: ui/edit_panel/phrase.py:77 ui/shortcuts.py:254
+#: ui/edit_panel/phrase.py:77 ui/shortcuts.py:253
 msgid "Unassign the current phrase (UNASSIGNED)"
 msgstr "現在のフレーズのラベルを解除します (UNASSIGNED)"
 
-#: ui/edit_panel/phrase.py:162 ui/shortcuts.py:255
+#: ui/edit_panel/phrase.py:162 ui/shortcuts.py:254
 #, python-brace-format
 msgid "Label the current phrase {label}"
 msgstr "現在のフレーズを {label} にする"
 
-#: ui/shortcuts.py:319
+#: ui/shortcuts.py:318
 #, python-brace-format
 msgid ""
 "Another program on this computer takes {keys}: these shortcuts do not "
 "work (Settings > Shortcuts)."
 msgstr "このコンピューターのほかのプログラムが {keys} を使っているため、これらのショートカットは動作しません (環境設定 > ショートカット)。"
 
-#: ui/shortcuts.py:365
+#: ui/shortcuts.py:364
 #, python-brace-format
 msgid "{keys} is used by more than one action (Settings > Shortcuts)."
 msgstr "{keys} は複数の操作に割り当てられています (環境設定 > ショートカット)。"

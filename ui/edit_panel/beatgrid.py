@@ -144,7 +144,7 @@ class BeatgridEditMixin:
         )
         self._ts_current = 4
         # metronome on / off, the same setting as in the settings (saved); stays usable
-        # while editing is locked
+        # while editing is off
         self.btn_metronome = _btn("metronome", tr("Metronome on / off"), checkable=True)
         self.btn_metronome.toggled.connect(self.bus.sig_metronome_toggle_requested.emit)
 

@@ -155,7 +155,7 @@ class CueSlot(QtWidgets.QFrame):
     # ---- renaming ----
 
     def set_renamable(self, on: bool) -> None:
-        """Whether double-clicking the name edits it (off: the edit lock); a rename under
+        """Whether double-clicking the name edits it (off: editing is off); a rename under
         way is cancelled."""
         self._renamable = bool(on)
         if not self._renamable:

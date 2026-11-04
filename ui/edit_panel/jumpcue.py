@@ -43,7 +43,7 @@ class JumpCUEEditMixin:
     way to delete one)."""
 
     def _build_jumpcue_ui(self, page: CuePageWidget) -> list[QtWidgets.QWidget]:
-        """JumpCUE slots of the CUE page; returns the buttons locked while editing is."""
+        """JumpCUE slots of the CUE page; returns the buttons off while editing is."""
         self.cue_page = page
         self.jc_reanalyze = QtWidgets.QToolButton()
         self.jc_reanalyze.setIcon(icon("beatgrid_reanalyze"))
@@ -62,7 +62,7 @@ class JumpCUEEditMixin:
         # the JumpCUE armed, as the player's deck reports it (its destination, s; NaN: none)
         self._jc_armed_dest = math.nan
         self.bus.sig_deck_state.connect(self._on_deck_jump)
-        # SET (an empty slot's button) and the menu's edits follow the edit lock in
+        # SET (an empty slot's button) and the menu's edits follow editing in
         # _refresh_jumpcue_slots / _jc_group_menu; JUMP stays usable
         return [self.jc_reanalyze]
 
@@ -182,7 +182,7 @@ class JumpCUEEditMixin:
         menu.addSeparator()
         menu.addAction(tr("Delete JumpCUE {letter}").format(letter=letter), lambda: self._remove_jumpcue_member(point))
         if not getattr(self, "_edit_enabled", True):
-            # every edit in this menu follows the edit lock
+            # every edit in this menu follows editing
             for a in menu.actions():
                 a.setEnabled(False)
         menu.exec(self.jc_slots[slot].squircle.mapToGlobal(QtCore.QPoint(0, self.jc_slots[slot].squircle.height())))

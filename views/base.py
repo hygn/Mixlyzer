@@ -9,9 +9,9 @@ KEY_LANE = (0.0, 0.10)
 PHRASE_LANE = (0.10, 0.20)
 WAVEFORM_LANE = (0.20, 0.94)
 
-# Edit focus (EventBus.sig_edit_focus_changed): while the edit panel is unlocked, the
-# visualizations of the pages it shows are emphasized -- their lines drawn thicker, their
-# markers larger -- and the other pages' dimmed; locked, all are drawn as usual. Shapes and
+# Edit focus (EventBus.sig_edit_focus_changed; off: EditPanel.EMPHASIZE_SHOWN_PAGES): the
+# visualizations of the pages the edit panel shows are emphasized -- their lines drawn thicker, their
+# markers larger -- and the other pages' dimmed; without it, all are drawn as usual. Shapes and
 # colours never change. The waveform and the playhead belong to no page.
 EDIT_PAGES = ("beatgrid", "key", "phrase", "cue")
 DIM_OPACITY = 0.3
@@ -31,7 +31,7 @@ def shown_played(played: tuple[float, int]) -> tuple[float, int]:
 
 
 def edit_emphasis(page, focus) -> str:
-    """``page``'s emphasis under ``focus`` (the pages shown while unlocked): "normal" (no
+    """``page``'s emphasis under ``focus`` (the edit pages emphasized): "normal" (no
     focus), "focus" (shown) or "dim"."""
     if not focus or page is None:
         return "normal"

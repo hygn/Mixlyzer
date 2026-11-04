@@ -93,8 +93,8 @@ class EventBus(QtCore.QObject):
     sig_tone_hold = QtCore.Signal(object)      # MIDI notes held under the music (empty: off)
     # the phrase labels' names shown changed (Settings > View): the phrases are drawn again, not changed
     sig_phrase_labels_changed = QtCore.Signal()
-    # The edit pages shown while editing is unlocked (frozenset of views.base.EDIT_PAGES; empty:
-    # locked): the views emphasize those pages' visualizations and dim the others'.
+    # The edit pages emphasized (frozenset of views.base.EDIT_PAGES; empty: none, as now:
+    # EditPanel.EMPHASIZE_SHOWN_PAGES): the views emphasize those pages' visualizations and dim the others'.
     sig_edit_focus_changed = QtCore.Signal(object)
 
     # Deck MT button: playback.use_timestretch on/off (saved like the settings dialog)

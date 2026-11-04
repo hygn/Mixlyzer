@@ -139,7 +139,7 @@ class CuePointEditMixin:
         menu.addAction(tr("Delete CUE point {time}").format(time=format_cue_time(float(cue.time_sec))),
                        lambda: self._delete_memory_cue(slot))
         if not getattr(self, "_edit_enabled", True):
-            # every edit in this menu follows the edit lock, as the JumpCUE menu
+            # every edit in this menu follows editing, as the JumpCUE menu
             for a in menu.actions():
                 a.setEnabled(False)
         btn = self.cp_slots[slot].squircle

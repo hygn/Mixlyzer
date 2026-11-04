@@ -166,7 +166,7 @@ class MainPane(QtWidgets.QWidget):
         self.cfg = cfg
         self.library = library      # the library's owner (core.library.service)
         self.current_time = 0.0
-        # the edit pages emphasized (EditPanel, while unlocked), for the views created later
+        # the edit pages emphasized (EditPanel.EMPHASIZE_SHOWN_PAGES, off), for the views created later
         self._edit_focus: frozenset = frozenset()
         bus.sig_edit_focus_changed.connect(self._on_edit_focus)
         self._tempo_segments = np.empty((0, 5), dtype=float)

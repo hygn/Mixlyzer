@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-11-04 18:51+0900\n"
+"POT-Creation-Date: 2026-11-04 21:43+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -1116,7 +1116,7 @@ msgstr ""
 
 #: core/workers/analysis_texts.py:17 ui/config/analysis.py:203
 #: ui/config/pipeline_map.py:24 ui/config/pipeline_map.py:33
-#: ui/edit_panel/panel.py:60 ui/library/search.py:270 ui/library/search.py:330
+#: ui/edit_panel/panel.py:62 ui/library/search.py:270 ui/library/search.py:330
 #: ui/shortcuts.py:38
 msgid "Phrase"
 msgstr ""
@@ -4443,7 +4443,7 @@ msgstr ""
 msgid "Two JumpCUEs cannot share a point."
 msgstr ""
 
-#: ui/edit_panel/jumpcue.py:222 ui/edit_panel/panel.py:580
+#: ui/edit_panel/jumpcue.py:222 ui/edit_panel/panel.py:570
 msgid "Invalid JumpCUE Label"
 msgstr ""
 
@@ -4617,73 +4617,57 @@ msgstr ""
 msgid "{key} | Seg {index} | Elapsed: {elapsed} | Left: {left}"
 msgstr ""
 
-#: ui/edit_panel/panel.py:61
+#: ui/edit_panel/panel.py:63
 msgid "Edit the beatgrid"
 msgstr ""
 
-#: ui/edit_panel/panel.py:61
+#: ui/edit_panel/panel.py:63
 msgid "Edit the key"
 msgstr ""
 
-#: ui/edit_panel/panel.py:62
+#: ui/edit_panel/panel.py:64
 msgid "Edit the phrase"
 msgstr ""
 
-#: ui/edit_panel/panel.py:62
+#: ui/edit_panel/panel.py:64
 msgid "Edit the JumpCUEs and CUE points"
 msgstr ""
 
-#: ui/edit_panel/panel.py:595
+#: ui/edit_panel/panel.py:585
 #, python-brace-format
 msgid ""
 "The edits could not be saved:\n"
 "{error}"
 msgstr ""
 
-#: ui/edit_panel/panel.py:595 ui/windows/tieup_works.py:88
+#: ui/edit_panel/panel.py:585 ui/windows/tieup_works.py:88
 msgid "Save"
 msgstr ""
 
-#: ui/edit_panel/panel.py:628
-msgid ""
-"<p>Editing is locked: pages switch, but nothing is edited or saved. Click"
-" to unlock.</p>"
-msgstr ""
-
-#: ui/edit_panel/panel.py:630
-msgid ""
-"<p>Editing is unlocked: the shown pages' graphics are emphasized. Click "
-"to lock: no edits, no saving (on at every start).</p>"
-msgstr ""
-
-#: ui/edit_panel/panel.py:749
+#: ui/edit_panel/panel.py:726
 #, python-brace-format
 msgid "This shortcut does nothing on the {page} page."
 msgstr ""
 
-#: ui/edit_panel/panel.py:757
-msgid "Editing is locked."
-msgstr ""
-
-#: ui/edit_panel/panel.py:759
+#: ui/edit_panel/panel.py:734
 msgid "Editing waits for the segment reanalysis to finish."
 msgstr ""
 
-#: ui/edit_panel/panel.py:792 ui/edit_panel/panel.py:805
+#: ui/edit_panel/panel.py:767 ui/edit_panel/panel.py:780
 #, python-brace-format
 msgid "JumpCUE {letter} is not set."
 msgstr ""
 
-#: ui/edit_panel/panel.py:801
+#: ui/edit_panel/panel.py:776
 #, python-brace-format
 msgid "JumpCUE {letter} is already set."
 msgstr ""
 
-#: ui/edit_panel/panel.py:821
+#: ui/edit_panel/panel.py:796
 msgid "CALL works while stopped."
 msgstr ""
 
-#: ui/edit_panel/panel.py:837
+#: ui/edit_panel/panel.py:812
 msgid "No CUE point at the playhead."
 msgstr ""
 
@@ -6323,7 +6307,7 @@ msgstr ""
 msgid "Current page"
 msgstr ""
 
-#: ui/edit_panel/panel.py:60 ui/shortcuts.py:36
+#: ui/edit_panel/panel.py:62 ui/shortcuts.py:36
 msgid "Beatgrid"
 msgstr ""
 
@@ -6753,294 +6737,290 @@ msgid "Remove from Playlist"
 msgstr ""
 
 #: ui/shortcuts.py:182
-msgid "Edit lock on / off"
-msgstr ""
-
-#: ui/shortcuts.py:183
 #, python-brace-format
 msgid "Show the {page} page"
 msgstr ""
 
-#: ui/shortcuts.py:184
+#: ui/shortcuts.py:183
 msgid "It becomes the current page."
 msgstr ""
 
-#: ui/edit_panel/panel.py:221 ui/shortcuts.py:186
+#: ui/edit_panel/panel.py:222 ui/shortcuts.py:185
 msgid "Undo Changes"
 msgstr ""
 
-#: ui/edit_panel/panel.py:225 ui/shortcuts.py:187
+#: ui/edit_panel/panel.py:226 ui/shortcuts.py:186
 msgid "Redo Changes"
 msgstr ""
 
-#: ui/edit_panel/panel.py:229 ui/shortcuts.py:188
+#: ui/edit_panel/panel.py:230 ui/shortcuts.py:187
 msgid "Save Edits"
 msgstr ""
 
-#: ui/shortcuts.py:191
+#: ui/shortcuts.py:190
 msgid "Start earlier"
 msgstr ""
 
-#: ui/shortcuts.py:192 ui/shortcuts.py:194
+#: ui/shortcuts.py:191 ui/shortcuts.py:193
 msgid ""
 "Key, Phrase: the current segment's start, by a beat or a bar (the "
 "boundary step)."
 msgstr ""
 
-#: ui/shortcuts.py:193
+#: ui/shortcuts.py:192
 msgid "Start later"
 msgstr ""
 
-#: ui/shortcuts.py:195
+#: ui/shortcuts.py:194
 msgid "End earlier"
 msgstr ""
 
-#: ui/shortcuts.py:196 ui/shortcuts.py:198
+#: ui/shortcuts.py:195 ui/shortcuts.py:197
 msgid ""
 "Key, Phrase: the current segment's end, by a beat or a bar (the boundary "
 "step)."
 msgstr ""
 
-#: ui/shortcuts.py:197
+#: ui/shortcuts.py:196
 msgid "End later"
 msgstr ""
 
-#: ui/shortcuts.py:199
+#: ui/shortcuts.py:198
 msgid "Split at the playhead"
 msgstr ""
 
-#: ui/shortcuts.py:200
+#: ui/shortcuts.py:199
 msgid "Beatgrid, Key, Phrase: the current segment."
 msgstr ""
 
-#: ui/shortcuts.py:201
+#: ui/shortcuts.py:200
 msgid "Merge the previous segment"
 msgstr ""
 
-#: ui/shortcuts.py:202
+#: ui/shortcuts.py:201
 msgid "Beatgrid, Key, Phrase: the previous segment into the current one."
 msgstr ""
 
-#: ui/shortcuts.py:203
+#: ui/shortcuts.py:202
 msgid "Merge the next segment"
 msgstr ""
 
-#: ui/shortcuts.py:204
+#: ui/shortcuts.py:203
 msgid "Beatgrid, Key, Phrase: the next segment into the current one."
 msgstr ""
 
-#: ui/shortcuts.py:205
+#: ui/shortcuts.py:204
 msgid "Reanalyze the current segment"
 msgstr ""
 
-#: ui/shortcuts.py:206 ui/shortcuts.py:209 ui/shortcuts.py:211
+#: ui/shortcuts.py:205 ui/shortcuts.py:208 ui/shortcuts.py:210
 msgid "Beatgrid, Key."
 msgstr ""
 
-#: ui/shortcuts.py:207
+#: ui/shortcuts.py:206
 msgid "Reanalyze the whole track"
 msgstr ""
 
-#: ui/shortcuts.py:208
+#: ui/shortcuts.py:207
 msgid "Key, Phrase; on the CUE page, the JumpCUEs."
 msgstr ""
 
-#: ui/shortcuts.py:209
+#: ui/shortcuts.py:208
 msgid "Edit scope: the whole track"
 msgstr ""
 
-#: ui/shortcuts.py:210
+#: ui/shortcuts.py:209
 msgid "Edit scope: the current segment"
 msgstr ""
 
-#: ui/shortcuts.py:212
+#: ui/shortcuts.py:211
 msgid "Boundary step: one beat"
 msgstr ""
 
-#: ui/shortcuts.py:212 ui/shortcuts.py:213
+#: ui/shortcuts.py:211 ui/shortcuts.py:212
 msgid "Key, Phrase."
 msgstr ""
 
-#: ui/shortcuts.py:213
+#: ui/shortcuts.py:212
 msgid "Boundary step: one bar"
 msgstr ""
 
-#: ui/shortcuts.py:215
+#: ui/shortcuts.py:214
 msgid "Shift half a beat earlier"
 msgstr ""
 
-#: ui/shortcuts.py:216
+#: ui/shortcuts.py:215
 msgid "Shift 10 ms earlier"
 msgstr ""
 
-#: ui/shortcuts.py:217
+#: ui/shortcuts.py:216
 msgid "Shift 1 ms earlier"
 msgstr ""
 
-#: ui/shortcuts.py:218
+#: ui/shortcuts.py:217
 msgid "Shift 1 ms later"
 msgstr ""
 
-#: ui/shortcuts.py:219
+#: ui/shortcuts.py:218
 msgid "Shift 10 ms later"
 msgstr ""
 
-#: ui/shortcuts.py:220
+#: ui/shortcuts.py:219
 msgid "Shift half a beat later"
 msgstr ""
 
-#: ui/shortcuts.py:221
+#: ui/shortcuts.py:220
 msgid "ZERO"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:76 ui/shortcuts.py:221
+#: ui/edit_panel/beatgrid.py:76 ui/shortcuts.py:220
 msgid "Clear the reference BPM and the tap history"
 msgstr ""
 
-#: ui/shortcuts.py:222
+#: ui/shortcuts.py:221
 msgid "TAP"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:82 ui/shortcuts.py:222
+#: ui/edit_panel/beatgrid.py:82 ui/shortcuts.py:221
 msgid "Tap the beat to set the reference BPM"
 msgstr ""
 
-#: ui/shortcuts.py:223
+#: ui/shortcuts.py:222
 msgid "Assign the reference BPM"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:101 ui/shortcuts.py:224
+#: ui/edit_panel/beatgrid.py:101 ui/shortcuts.py:223
 msgid "Assign the reference BPM to the current segment (downbeat at its start)"
 msgstr ""
 
-#: ui/shortcuts.py:225
+#: ui/shortcuts.py:224
 msgid "Ramp: the starting tempo"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:102 ui/shortcuts.py:226
+#: ui/edit_panel/beatgrid.py:102 ui/shortcuts.py:225
 msgid ""
 "Make the reference BPM the current segment's starting tempo (a ramp to "
 "its end tempo; its first beat stays)"
 msgstr ""
 
-#: ui/shortcuts.py:228
+#: ui/shortcuts.py:227
 msgid "Ramp: the ending tempo"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:103 ui/shortcuts.py:229
+#: ui/edit_panel/beatgrid.py:103 ui/shortcuts.py:228
 msgid ""
 "Make the reference BPM the current segment's ending tempo (a ramp from "
 "its start tempo; its first beat stays)"
 msgstr ""
 
-#: ui/shortcuts.py:231
+#: ui/shortcuts.py:230
 msgid "Downbeat at the playhead"
 msgstr ""
 
-#: ui/edit_panel/beatgrid.py:110 ui/shortcuts.py:232
+#: ui/edit_panel/beatgrid.py:110 ui/shortcuts.py:231
 msgid "Make the beat nearest the playhead the current segment's downbeat"
 msgstr ""
 
-#: ui/shortcuts.py:233
+#: ui/shortcuts.py:232
 msgid "BPM x1/2"
 msgstr ""
 
-#: ui/shortcuts.py:234
+#: ui/shortcuts.py:233
 msgid "BPM x2"
 msgstr ""
 
-#: ui/shortcuts.py:235
+#: ui/shortcuts.py:234
 #, python-brace-format
 msgid "Time signature {meter}"
 msgstr ""
 
-#: ui/shortcuts.py:238
+#: ui/shortcuts.py:237
 msgid "Pick the key"
 msgstr ""
 
-#: ui/edit_panel/key.py:97 ui/edit_panel/key_picker.py:82 ui/shortcuts.py:238
+#: ui/edit_panel/key.py:97 ui/edit_panel/key_picker.py:82 ui/shortcuts.py:237
 msgid "Pick the key (Alphanumeric wheel)"
 msgstr ""
 
-#: ui/shortcuts.py:239
+#: ui/shortcuts.py:238
 msgid "A semitone down"
 msgstr ""
 
-#: ui/shortcuts.py:240
+#: ui/shortcuts.py:239
 msgid "A semitone up"
 msgstr ""
 
-#: ui/shortcuts.py:241
+#: ui/shortcuts.py:240
 msgid "Circle of fifths -1"
 msgstr ""
 
-#: ui/shortcuts.py:242
+#: ui/shortcuts.py:241
 msgid "One step down the circle of fifths (Alphanumeric -1)"
 msgstr ""
 
-#: ui/shortcuts.py:243
+#: ui/shortcuts.py:242
 msgid "Circle of fifths +1"
 msgstr ""
 
-#: ui/shortcuts.py:244
+#: ui/shortcuts.py:243
 msgid "One step up the circle of fifths (Alphanumeric +1)"
 msgstr ""
 
-#: ui/shortcuts.py:245
+#: ui/shortcuts.py:244
 msgid "Relative major / minor"
 msgstr ""
 
-#: ui/shortcuts.py:245
+#: ui/shortcuts.py:244
 msgid "Relative major / minor (C <-> Am)"
 msgstr ""
 
-#: ui/shortcuts.py:246
+#: ui/shortcuts.py:245
 msgid "Merge the same keys"
 msgstr ""
 
-#: ui/edit_panel/key.py:82 ui/shortcuts.py:247
+#: ui/edit_panel/key.py:82 ui/shortcuts.py:246
 msgid "Merge every run of neighboring segments with the same key"
 msgstr ""
 
-#: ui/shortcuts.py:248
+#: ui/shortcuts.py:247
 msgid "Listening aid: root"
 msgstr ""
 
-#: ui/shortcuts.py:249
+#: ui/shortcuts.py:248
 msgid "Listening aid: root and fifth"
 msgstr ""
 
-#: ui/shortcuts.py:250
+#: ui/shortcuts.py:249
 msgid "Listening aid: tonic chord"
 msgstr ""
 
-#: ui/shortcuts.py:252
+#: ui/shortcuts.py:251
 msgid "CUE points from the phrases"
 msgstr ""
 
-#: ui/shortcuts.py:253
+#: ui/shortcuts.py:252
 msgid ""
 "Replace the CUE points with the ones the CUE rules give the current "
 "phrases"
 msgstr ""
 
-#: ui/edit_panel/phrase.py:77 ui/shortcuts.py:254
+#: ui/edit_panel/phrase.py:77 ui/shortcuts.py:253
 msgid "Unassign the current phrase (UNASSIGNED)"
 msgstr ""
 
-#: ui/edit_panel/phrase.py:162 ui/shortcuts.py:255
+#: ui/edit_panel/phrase.py:162 ui/shortcuts.py:254
 #, python-brace-format
 msgid "Label the current phrase {label}"
 msgstr ""
 
-#: ui/shortcuts.py:319
+#: ui/shortcuts.py:318
 #, python-brace-format
 msgid ""
 "Another program on this computer takes {keys}: these shortcuts do not "
 "work (Settings > Shortcuts)."
 msgstr ""
 
-#: ui/shortcuts.py:365
+#: ui/shortcuts.py:364
 #, python-brace-format
 msgid "{keys} is used by more than one action (Settings > Shortcuts)."
 msgstr ""

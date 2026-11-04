@@ -50,7 +50,9 @@ class EditPanel(
     ROW_VSPACING = 2   # tight gaps between button rows (packed look)
     STATUS_H = 16      # the status line under a page (segment / phrase)
     PAGE_BTN_H = 20    # page selector row on top
-    LOCK_W = 28        # the edit lock, first in the selector row
+    # the views can emphasize the visualizations of the pages shown and dim the others' (sig_edit_focus_changed,
+    # views.base): kept, off (the user, 2026-11-04: the edit lock it went with removed)
+    EMPHASIZE_SHOWN_PAGES = False
     # Panel height: page selector + 3 button rows + the status line and their
     # gaps; it sits in the track info header (TrackInfoPanel.HEADER_H = 120)
     # between the info and the deck.
@@ -78,8 +80,7 @@ class EditPanel(
         self.prev_tap_time = None
         self.prev_tap_BPM = 0
         self._edit_enabled = True
-        # editing needs the lock open (it is on at every start) and no segment reanalysis running
-        self._locked = True
+        # editing is off while a segment reanalysis runs
         self._reanalysis_idle = True
         # the pages whose visualizations the views emphasize (sig_edit_focus_changed)
         self._edit_focus: frozenset = frozenset()
@@ -120,7 +121,7 @@ class EditPanel(
         self.bus.sig_tempo_factor_changed.connect(self._on_playback_tempo_changed)
         self.bus.sig_played_changed.connect(self._on_played_key)
         self.bus.sig_playback_status.connect(self._on_playback_status)
-        self._set_locked(self.btn_lock.isChecked())
+        self._apply_edit_enabled()
 
     # ---- the marks shown: the model's (read-only here; an edit asks the model, model.set_*) ----
     @property
@@ -230,17 +231,7 @@ class EditPanel(
         for btn in (self.btn_undo, self.btn_redo, self.btn_save):
             btn.setIconSize(QtCore.QSize(19, 19))
 
-        # the edit lock: on at every start; locked, the pages still switch but nothing is
-        # edited or saved
-        self.btn_lock = QtWidgets.QToolButton()
-        self.btn_lock.setCheckable(True)
-        self.btn_lock.setChecked(True)
-        self.btn_lock.setFixedSize(self.LOCK_W, self.PAGE_BTN_H)
-        self.btn_lock.setIconSize(QtCore.QSize(15, 15))
-        self.btn_lock.setStyleSheet("QToolButton { padding: 0; }")
-        self.btn_lock.toggled.connect(self._set_locked)
-
-        # [lock] [page selector                   ]
+        # [page selector                          ]
         # [page] [page] ...  [undo / redo / save]
         root = QtWidgets.QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
@@ -248,7 +239,6 @@ class EditPanel(
         top = QtWidgets.QHBoxLayout()
         top.setContentsMargins(0, 0, 0, 0)
         top.setSpacing(4)
-        top.addWidget(self.btn_lock)
         self._selector = QtWidgets.QHBoxLayout()
         self._selector.setContentsMargins(0, 0, 0, 0)
         self._selector.setSpacing(4)
@@ -311,16 +301,16 @@ class EditPanel(
         for top, bottom in self._mode_pairs:
             top.setFixedSize(self.BTN_WIDTH, mode_h)
             bottom.setFixedSize(self.BTN_WIDTH, block_h - self.ROW_VSPACING - mode_h)
-        # the listening aids and the metronome stay enabled while editing is locked,
+        # the listening aids and the metronome stay enabled while editing is off (a segment reanalysis),
         # but are sized like the rest
         for btn in (self.key_root, self.key_drone, self.key_chord, self.btn_metronome):
             btn.setFixedSize(self.BTN_WIDTH, self.BTN_HEIGHT)
         for btn in self._edit_buttons:
             btn.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
-        # what never changes the track stays usable while editing is locked, as the listening
+        # what never changes the track stays usable while editing is off, as the listening
         # aids and the metronome: the reference BPM (tap / type / clear) and the beat counter
-        never_locked = (self.zero_tap_cell, self.inp_refBPM, self.beat_counter_button)
-        self._edit_buttons = [b for b in self._edit_buttons if b not in never_locked]
+        always_usable = (self.zero_tap_cell, self.inp_refBPM, self.beat_counter_button)
+        self._edit_buttons = [b for b in self._edit_buttons if b not in always_usable]
         self._edit_buttons += cue_buttons
         status_font = QtGui.QFont(self.font())
         status_font.setPointSize(9)
@@ -442,8 +432,8 @@ class EditPanel(
                 btn.setCheckable(True)
                 # lit: the current page; clicked, it becomes the current page
                 btn.clicked.connect(lambda _=False, i=i: self._set_context(i))
-                # over its column: the first one shares its width with the lock
-                btn.setFixedWidth(self._page_w - (0 if k else self.LOCK_W + self._selector.spacing()))
+                # over its column
+                btn.setFixedWidth(self._page_w)
                 self._selector.addWidget(btn)
                 self._page_titles[i] = btn
             self._selector.addStretch(1)
@@ -467,7 +457,7 @@ class EditPanel(
                 self._selector.addWidget(btn)
         self._show_group(next(gi for gi, group in enumerate(groups) if first in group))
         # the new width at once in sizeHint(), not after the next layout pass (the selector
-        # sits in a nested row beside the lock)
+        # sits in a nested row)
         self.layout().activate()
 
     def _release_pages(self) -> None:
@@ -526,9 +516,9 @@ class EditPanel(
         return super().eventFilter(obj, event)
 
     def _emit_edit_focus(self) -> None:
-        """Unlocked, the views emphasize the visualizations of the pages shown (beatgrid, key,
-        phrase, CUE) and dim the others'; locked, nothing is emphasized."""
-        focus = frozenset() if self._locked else frozenset(self.PAGES[i].lower() for i in self._shown)
+        """With EMPHASIZE_SHOWN_PAGES, the views emphasize the visualizations of the pages shown (beatgrid, key,
+        phrase, CUE) and dim the others'; without, nothing is emphasized."""
+        focus = frozenset(self.PAGES[i].lower() for i in self._shown) if self.EMPHASIZE_SHOWN_PAGES else frozenset()
         if focus != self._edit_focus:
             self._edit_focus = focus
             self.bus.sig_edit_focus_changed.emit(focus)
@@ -620,27 +610,15 @@ class EditPanel(
         self._reanalysis_idle = bool(enabled)
         self._apply_edit_enabled()
 
-    def _set_locked(self, locked: bool) -> None:
-        """The edit lock (its button): locked, the pages still switch but nothing is edited or saved."""
-        self._locked = bool(locked)
-        self.btn_lock.setIcon(icon("edit_lock" if self._locked else "edit_unlock"))
-        self.btn_lock.setToolTip(
-            tr("<p>Editing is locked: pages switch, but nothing is edited or saved. Click to unlock.</p>")
-            if self._locked else
-            tr("<p>Editing is unlocked: the shown pages' graphics are emphasized. Click to lock: no edits, "
-               "no saving (on at every start).</p>"))
-        self._apply_edit_enabled()
-        self._emit_edit_focus()
-
     def _apply_edit_enabled(self) -> None:
-        state = self._reanalysis_idle and not self._locked
+        state = self._reanalysis_idle
         self._edit_enabled = state
         for btn in self._edit_buttons:
             if btn is self.btn_save and getattr(self, "_save_in_progress", False):
                 btn.setEnabled(False)
             else:
                 btn.setEnabled(state)
-        self._refresh_jumpcue_slots()  # an empty slot's SET follows the lock
+        self._refresh_jumpcue_slots()  # an empty slot's SET follows editing
         for slot in (*self.jc_slots, *self.cp_slots):
             slot.set_renamable(state)   # a cue's name is an edit too
         self._update_undo_redo_buttons()
@@ -657,7 +635,8 @@ class EditPanel(
         """Action id -> handler of the editor's shortcuts. A shortcut works a button as the mouse does: clicked
         and flashing. A page-wide one ("editor." moves, split / merge, reanalysis, ...) works the button of the
         current page (the same operation on each page having it); one of a page's own tools shows its page first (and the CUE list page holding its slot),
-        which becomes the current page. An edit while editing is locked does nothing; the status bar says why."""
+        which becomes the current page. An edit while editing is off (a segment reanalysis) does nothing; the status
+        bar says why."""
         B, K, P, C = range(len(self.PAGES))
         # the page-wide shortcuts (an operation the same on each page having it): the button each page has for it
         context_tools = {
@@ -704,14 +683,12 @@ class EditPanel(
                 tooltips.tag(btn, action)
         for action, (btn, _page) in tools.items():
             tooltips.tag(btn, action)
-        tooltips.tag(self.btn_lock, "editor.lock")
         tooltips.tag(self.btn_metronome, "playback.metronome")
         handlers = {action: (lambda buttons=buttons: self._shortcut_context(buttons))
                     for action, buttons in context_tools.items()}
         handlers.update({action: (lambda btn=btn, page=page: self._shortcut_click(btn, page))
                          for action, (btn, page) in tools.items()})
         handlers.update({
-            "editor.lock": lambda: self._shortcut_toggle(self.btn_lock),
             # the deck's metronome (also a setting): its button flashes only when shown
             "playback.metronome": lambda: self._shortcut_toggle(self.btn_metronome),
             **{f"editor.page_{name.lower()}": (lambda i=i: self._show_shortcut_page(i))
@@ -752,9 +729,7 @@ class EditPanel(
         return self._shortcut_click(button, page)
 
     def _edit_blocked(self) -> str | None:
-        """Why editing is off: the lock or a segment reanalysis (None: editing is on)."""
-        if self._locked:
-            return tr("Editing is locked.")
+        """Why editing is off: a segment reanalysis (None: editing is on)."""
         if not self._reanalysis_idle:
             return tr("Editing waits for the segment reanalysis to finish.")
         return None
@@ -770,7 +745,7 @@ class EditPanel(
         return None
 
     def _shortcut_toggle(self, button: QtWidgets.QAbstractButton) -> None:
-        """A switch that works locked too (the lock, the metronome), flashing while shown."""
+        """A switch that works while editing is off too (the metronome), flashing while shown."""
         button.toggle()
         if button.isVisible():
             flash(button)

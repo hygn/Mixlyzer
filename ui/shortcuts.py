@@ -3,15 +3,15 @@ the main window's parts do for them (``MainPane.shortcut_handlers``).
 
 The shipped keys follow rekordbox's (Performance 1 preset, deck 1) where Mixlyzer has the function, in three tiers:
 no modifier (Shift / Alt variants included) for what changes no data (playback, the playhead, the library's
-selection, the editor's pages and lock), Ctrl (Command on macOS) for what changes the data in memory (the editor's
+selection, the editor's pages), Ctrl (Command on macOS) for what changes the data in memory (the editor's
 edits, kept until saved), Ctrl+Shift for what destroys data (deleting a cue, removing tracks, a full reanalysis).
 
 Every action has its own keys. An operation more than one editor page has, the same on each (a key or phrase
 boundary earlier / later, split, merge, reanalysis, the edit modes), is one action done on the current page
 (``EditPanel._context``: the page shown, or with pages side by side the one picked or clicked last, marked in the
 selector); a page's own tool shows its page first (and the CUE list page holding its slot), which becomes the
-current page. Either way the button is worked as the mouse does and flashes; an edit while editing is locked does
-nothing. A handler returns a message for the status bar when it does nothing for a reason worth telling.
+current page. Either way the button is worked as the mouse does and flashes; an edit while editing is off (a
+segment reanalysis) does nothing. A handler returns a message for the status bar when it does nothing for a reason worth telling.
 """
 
 from __future__ import annotations
@@ -179,7 +179,6 @@ ACTIONS: tuple[Action, ...] = (
     Action("library.remove_from_library", LIBRARY, tr_mark("Remove from Library")),
     Action("library.remove_from_playlist", LIBRARY, tr_mark("Remove from Playlist")),
 
-    Action("editor.lock", EDITOR, tr_mark("Edit lock on / off")),
     *(Action(f"editor.page_{name.lower()}", EDITOR, tr_mark("Show the {page} page"), args={"page": _page(name)},
              tip=tr_mark("It becomes the current page."))
       for name in (BEATGRID, KEY, PHRASE, CUE)),
