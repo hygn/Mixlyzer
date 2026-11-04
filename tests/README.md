@@ -44,7 +44,8 @@ These are the app's tests, each on a library or files of its own. They cover:
 These tests run anywhere. They need no library, no audio, no network and no audio device.
 
 They are grouped by the app's layer: `system_tests`, `analyzer_tests`, `audioengine_tests`, `core_tests`, `ui_tests` and `training_tests` (the developers' training, `training/`). The
-folder names differ from the app's packages, so a test package never shadows an app package.
+folder names differ from the app's packages, so a test package never shadows an app package. A training test that
+needs PyTorch is skipped without the training group (`uv sync --group training`).
 
 Edge cases are covered in three ways:
 

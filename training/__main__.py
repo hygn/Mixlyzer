@@ -46,6 +46,8 @@ OPTIMIZERS = {
                               "refine_onset_parameter_path", "featurecache/onset"),
     "downbeat_ctx": Optimizer("downbeat_ctx_optimizer", "DownbeatCtxOptimizationRequest", "optimize_downbeat_ctx",
                               "downbeat_ctx_parameter_path", BEAT_CACHE),
+    "beat_tcn": Optimizer("beat_tcn_optimizer", "BeatTcnOptimizationRequest", "optimize_beat_tcn",
+                          "beat_tcn_parameter_path", BEAT_CACHE),
     "beat_decoder": Optimizer("beat_decoder_optimizer", "BeatDecoderOptimizationRequest", "optimize_beat_decoder",
                               "beat_decoder_parameter_path", BEAT_CACHE),
     "phrase": Optimizer("phrase_parameter_optimizer", "PhraseOptimizationRequest", "optimize_phrase_parameters",
@@ -53,7 +55,7 @@ OPTIMIZERS = {
     "jumpcue": Optimizer("jumpcue_parameter_optimizer", "JumpCueOptimizationRequest", "optimize_jumpcue_parameters",
                          "jumpcue_parameter_path", "featurecache/jumpcue/train"),
 }
-BEAT_OPTIMIZERS = ("refine_onset", "downbeat_ctx", "beat_decoder")
+BEAT_OPTIMIZERS = ("refine_onset", "downbeat_ctx", "beat_tcn", "beat_decoder")
 # the analysis's model files in use a beat run is given (the training's ModelSet fields) -> their settings
 _CURRENT_MODELS = {"downbeat_ctx": "downbeat_ctx_parameter_path", "tcn": "beat_tcn_parameter_path",
                    "critic": "beat_critic_parameter_path", "decoder": "beat_decoder_parameter_path",
