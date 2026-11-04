@@ -3,7 +3,8 @@ overview waveform (its own 48 kHz decode) -> the frame features and the beat tra
 -> JumpCUEs -> keys -> Search by Music's index entry -> the Variants' fingerprints -> the mix candidates' beats'
 features -> TrackAnalysis. What reads none of the steps before it but the audio, the HPSS or the beats runs beside
 them on threads of its own: the overview waveform, the keys' frame chroma (from the harmonic part alone), the phrase
-features' frame-level part, Search by Music's index entry and what JumpCUE reads of the audio and the beats; each is
+features' frame-level part, a stacked phrase model's song cues' frame-level part, Search by Music's index entry and
+what JumpCUE reads of the audio and the beats; each is
 the same function on the same input, so the results are those of the steps in order.
 
 It reads the audio only: where the results are stored, and in what form, is the caller's."""
@@ -30,7 +31,7 @@ from analyzer.music.beat_geometry import downbeat_times
 from analyzer.music.marks import CuePoint, Phrase
 from analyzer.phrase import detect_phrase_segments
 from analyzer.phrase.cue_points import autocue_time_sec, phrase_cue_points
-from analyzer.phrase.phrase_analyzer import phrase_song_frames
+from analyzer.phrase.phrase_analyzer import phrase_cue_frames, phrase_song_frames
 from analyzer.pipeline import stages
 from analyzer.pipeline.stages import Progress, report
 from analyzer.runtime import prime_physical_core_count
@@ -72,7 +73,7 @@ def analyze_track(path: str, settings: AnalysisSettings, progress: Progress = No
     for name in LAZY_MODULES:
         importlib.import_module(name)
     # the steps beside the others (the module's docstring); an error ends the analysis once they have ended
-    with ThreadPoolExecutor(max_workers=4, thread_name_prefix="analysis-side") as side:
+    with ThreadPoolExecutor(max_workers=5, thread_name_prefix="analysis-side") as side:
         return _analyze_track(path, settings, progress, side)
 
 
@@ -102,6 +103,8 @@ def _analyze_track(path: str, settings: AnalysisSettings, progress: Progress, si
     # Decode once: stereo for the structure detector, mono derived for the rest.
     samp_stereo = fast_load(path, target_sr=global_sr, stereo=True)
     samp = np.ascontiguousarray(samp_stereo.mean(axis=1), dtype=np.float32)
+    # a stacked phrase model's song cues, their frame-level part (None for a model without them), beside the rest
+    phrase_cues_job = side.submit(phrase_cue_frames, samp, int(global_sr), model_path=models.phrase)
 
     report(progress, stages.HPSS, 0.1)
     print("[Analyzer] Processing HPSS")
@@ -213,6 +216,7 @@ def _analyze_track(path: str, settings: AnalysisSettings, progress: Progress, si
                 return_boundary_probability=True,
                 return_feature_z=True,
                 frames=phrase_frames_job.result(),
+                cues=phrase_cues_job.result(),
             )
         except Exception as exc:
             import traceback

@@ -1,4 +1,9 @@
-"""Production beat-level two-stage GBM phrase detector."""
+"""Production beat-level two-stage GBM phrase detector.
+
+A model may be stacked (``stack`` in its artifact, stack.py): its GBMs an ensemble of members trained alike with other
+seeds (their probabilities averaged), reading the song's vocal cues and a DS-TCN's per-beat outputs beside the phrase
+features, its label decoding mixing in the DS-TCN and a mix-label specialist. An artifact without them runs as
+before."""
 
 from __future__ import annotations
 
@@ -6,11 +11,14 @@ import math
 import json
 from functools import lru_cache
 from pathlib import Path
-from typing import Iterable
+from typing import Callable, Iterable
 
 import numpy as np
 
 from analyzer.audio.hpss import HpssSpectra
+from analyzer.phrase import song_cues
+from analyzer.phrase import stack as _stack
+from analyzer.phrase.dstcn import LABELS as DSTCN_LABELS, DsTcn, inputs as dstcn_inputs
 from analyzer.phrase.structure import (
     FeatureConfig,
     build_predictor_grid,
@@ -47,6 +55,10 @@ OPTIONAL_REFINEMENT_MODELS = ("change", "shift")
 # Optional LEAD_IN models (analyzer/phrase/lead_in.py), stored as
 # lead_in_<name>. Artifacts without them never place a lead-in.
 LEAD_IN_MODELS = ("presence", "location")
+# A stacked model (stack.py): its members beside the first stored as m<k>.<name>, the DS-TCN as dstcn.<name>, the
+# specialist as spec_<name>; its settings ensemble_members, stack_version, stack_weights.
+STACK_VERSION = 1
+_MEMBER_KEYS = ("format", "settings_json", "label_labels", "label_transition", "label_length_mu", "label_length_sigma")
 _REQUIRED_SETTINGS = frozenset(
     {
         "sr",
@@ -253,6 +265,22 @@ class NumpyHistGradientBoostingClassifier:
         return exp / np.maximum(exp.sum(axis=1, keepdims=True), EPS)
 
 
+class MeanClassifier:
+    """An ensemble's classifiers trained alike (the same classes): their probabilities averaged; what they share
+    (their classes, the baseline's size the label count is read from) the first's."""
+
+    def __init__(self, members: list) -> None:
+        self.members = list(members)
+
+    def predict_proba(self, X: np.ndarray) -> np.ndarray:
+        return np.mean([np.asarray(m.predict_proba(X), np.float64) for m in self.members], axis=0)
+
+    def __getattr__(self, name: str):
+        if name == "members":
+            raise AttributeError(name)
+        return getattr(self.members[0], name)
+
+
 def _hgb_to_npz_payload(prefix: str, clf, payload: dict[str, np.ndarray]) -> None:
     values: list[np.ndarray] = []
     feature_idx: list[np.ndarray] = []
@@ -326,6 +354,46 @@ def export_two_stage_npz_artifact(artifact: dict[str, object], output_path: str 
         load_two_stage_model.cache_clear()
 
 
+def export_stack_artifact(member_paths: list[str | Path], specialist_path: str | Path, dstcn_path: str | Path,
+                          output_path: str | Path, weights: tuple[float, float] = (0.5, 0.25)) -> None:
+    """A stacked model (stack.py) from its parts as the training writes them: the members (phrase artifacts trained
+    alike, the first's settings kept but for the lead-in threshold, their mean), the specialist (its HGB payload,
+    ``spec_``), the DS-TCN (its weights and input statistics) and the label mix's weights."""
+    def arrays(path) -> dict[str, np.ndarray]:
+        with np.load(path, allow_pickle=False) as z:
+            return {k: np.asarray(z[k]) for k in z.files}
+
+    members = [arrays(p) for p in member_paths]
+    for m in members:
+        if "dstcn.mu" in m or "ensemble_members" in json.loads(str(m["settings_json"].item())):
+            raise ValueError("a stacked phrase model's members are plain phrase artifacts, not stacks")
+    payload = dict(members[0])
+    settings = json.loads(str(payload["settings_json"].item()))
+    member_settings = [json.loads(str(m["settings_json"].item())) for m in members]
+    for m in members[1:]:
+        if m["label_labels"].astype(str).tolist() != payload["label_labels"].astype(str).tolist():
+            raise ValueError("Phrase ensemble members differ in their labels")
+    if "lead_in_threshold" in settings:
+        settings["lead_in_threshold"] = float(np.mean([s["lead_in_threshold"] for s in member_settings]))
+    settings.update(ensemble_members=len(members), stack_version=STACK_VERSION,
+                    stack_weights=[float(weights[0]), float(weights[1])])
+    payload["settings_json"] = np.asarray(json.dumps(settings, ensure_ascii=False, sort_keys=True))
+    for k, m in enumerate(members[1:], start=1):
+        payload.update({f"m{k}.{name}": v for name, v in m.items() if name not in _MEMBER_KEYS})
+    payload.update({k: v for k, v in arrays(specialist_path).items() if k.startswith("spec_")})
+    payload.update({f"dstcn.{k}": v for k, v in arrays(dstcn_path).items()})
+    out = Path(output_path)
+
+    def check(temp_path: Path) -> None:
+        load_two_stage_model.cache_clear()
+        load_two_stage_model(str(temp_path))
+
+    try:
+        atomic_save_npz(out, payload, check=check)
+    finally:
+        load_two_stage_model.cache_clear()
+
+
 def _load_numpy_hgb(archive: np.lib.npyio.NpzFile, prefix: str) -> NumpyHistGradientBoostingClassifier:
     return NumpyHistGradientBoostingClassifier(
         baseline=np.asarray(archive[f"{prefix}_baseline"], dtype=np.float64),
@@ -361,31 +429,77 @@ def load_two_stage_model(path: str) -> dict[str, object]:
             raise ValueError(f"Unsupported Phrase boundary classes: {path}")
         if label_classes != label_labels:
             raise ValueError(f"Phrase label class order does not match the current format: {path}")
-        refinement = None
-        if "boundary2_baseline" in archive.files:
-            if int(settings.get("refinement_version", -1)) != REFINEMENT_VERSION:
-                raise ValueError(f"Unsupported Phrase refinement version: {path}")
-            if np.asarray(archive["label2_classes"]).astype(str).tolist() != label_labels:
-                raise ValueError(f"Phrase refinement label classes do not match: {path}")
-            refinement = {prefix: _load_numpy_hgb(archive, prefix) for prefix in REFINEMENT_MODELS}
-            for prefix in OPTIONAL_REFINEMENT_MODELS:
-                if f"{prefix}_baseline" in archive.files:
-                    refinement[prefix] = _load_numpy_hgb(archive, prefix)
-            if "shift" in refinement and not {"shift_offsets_beats", "shift_labels"} <= set(settings):
-                raise ValueError(f"Phrase shift model is missing its settings: {path}")
-        lead_in = None
-        if "lead_in_presence_baseline" in archive.files:
-            if int(settings.get("lead_in_version", -1)) != _lead_in.LEAD_IN_VERSION:
-                raise ValueError(f"Unsupported Phrase lead-in version: {path}")
-            if "lead_in_threshold" not in settings:
-                raise ValueError(f"Phrase lead-in models are missing their threshold: {path}")
-            lead_in = {name: _load_numpy_hgb(archive, f"lead_in_{name}") for name in LEAD_IN_MODELS}
+
+        def models(pre: str) -> dict[str, object]:
+            """One member's models (``pre``: its name prefix, "" for the first)."""
+            files = archive.files
+            refinement = None
+            if f"{pre}boundary2_baseline" in files:
+                if int(settings.get("refinement_version", -1)) != REFINEMENT_VERSION:
+                    raise ValueError(f"Unsupported Phrase refinement version: {path}")
+                if np.asarray(archive[f"{pre}label2_classes"]).astype(str).tolist() != label_labels:
+                    raise ValueError(f"Phrase refinement label classes do not match: {path}")
+                refinement = {prefix: _load_numpy_hgb(archive, pre + prefix) for prefix in REFINEMENT_MODELS}
+                for prefix in OPTIONAL_REFINEMENT_MODELS:
+                    if f"{pre}{prefix}_baseline" in files:
+                        refinement[prefix] = _load_numpy_hgb(archive, pre + prefix)
+                if "shift" in refinement and not {"shift_offsets_beats", "shift_labels"} <= set(settings):
+                    raise ValueError(f"Phrase shift model is missing its settings: {path}")
+            lead_in = None
+            if f"{pre}lead_in_presence_baseline" in files:
+                if int(settings.get("lead_in_version", -1)) != _lead_in.LEAD_IN_VERSION:
+                    raise ValueError(f"Unsupported Phrase lead-in version: {path}")
+                if "lead_in_threshold" not in settings:
+                    raise ValueError(f"Phrase lead-in models are missing their threshold: {path}")
+                lead_in = {name: _load_numpy_hgb(archive, f"{pre}lead_in_{name}") for name in LEAD_IN_MODELS}
+            if np.asarray(archive[f"{pre}label_classes"]).astype(str).tolist() != label_labels:
+                raise ValueError(f"Phrase ensemble member's label classes do not match: {path}")
+            return {"refinement": refinement, "lead_in": lead_in, "boundary_clf": _load_numpy_hgb(archive, pre + "boundary"),
+                    "label_clf": _load_numpy_hgb(archive, pre + "label")}
+
+        count = int(settings.get("ensemble_members", 1))
+        if not 1 <= count <= 16:
+            raise ValueError(f"Unsupported Phrase ensemble size: {path}")
+        sets = [models("" if k == 0 else f"m{k}.") for k in range(count)]
+        first = sets[0]
+        if count > 1:
+            for other in sets[1:]:
+                if (other["refinement"] is None) != (first["refinement"] is None) or \
+                        (other["refinement"] is not None and set(other["refinement"]) != set(first["refinement"])) or \
+                        (other["lead_in"] is None) != (first["lead_in"] is None):
+                    raise ValueError(f"Phrase ensemble members differ in their models: {path}")
+            first = {
+                "boundary_clf": MeanClassifier([s["boundary_clf"] for s in sets]),
+                "label_clf": MeanClassifier([s["label_clf"] for s in sets]),
+                "refinement": None if first["refinement"] is None else
+                {k: MeanClassifier([s["refinement"][k] for s in sets]) for k in first["refinement"]},
+                "lead_in": None if first["lead_in"] is None else
+                {k: MeanClassifier([s["lead_in"][k] for s in sets]) for k in first["lead_in"]},
+            }
+        stacked = None
+        if "dstcn.mu" in archive.files:
+            if int(settings.get("stack_version", -1)) != STACK_VERSION:
+                raise ValueError(f"Unsupported Phrase stack version: {path}")
+            if np.asarray(archive["dstcn.labels"]).astype(str).tolist() != list(DSTCN_LABELS) or \
+                    sorted(label_labels) != sorted(DSTCN_LABELS):
+                raise ValueError(f"Phrase stack labels do not match: {path}")
+            weights = settings.get("stack_weights")
+            if not (isinstance(weights, list) and len(weights) == 2 and all(isinstance(w, (int, float)) for w in weights)):
+                raise ValueError(f"Phrase stack weights are missing: {path}")
+            stacked = {
+                "dstcn": DsTcn({k[len("dstcn."):]: archive[k] for k in archive.files if k.startswith("dstcn.")}),
+                "specialist": _load_numpy_hgb(archive, "spec"),
+                "weights": (float(weights[0]), float(weights[1])),
+            }
+            if np.asarray(archive["spec_classes"]).astype(str).tolist() != ["0", "1"]:
+                raise ValueError(f"Unsupported Phrase specialist classes: {path}")
         return {
-            "refinement": refinement,
-            "lead_in": lead_in,
+            "refinement": first["refinement"],
+            "lead_in": first["lead_in"],
+            "stack": stacked,
             "settings": settings,
-            "boundary_clf": _load_numpy_hgb(archive, "boundary"),
-            "label_clf": _load_numpy_hgb(archive, "label"),
+            "boundary_clf": first["boundary_clf"],
+            "label_clf": first["label_clf"],
             "label_labels": label_labels,
             "label_transition": np.asarray(archive["label_transition"], dtype=np.float64),
             "label_length_mu": np.asarray(archive["label_length_mu"], dtype=np.float64),
@@ -739,9 +853,11 @@ def refine_phrase_segments(
     bounds: np.ndarray,
     inputs: dict[str, np.ndarray],
     lead_in: int | None = None,
+    label_mix: Callable[[np.ndarray, np.ndarray], np.ndarray] | None = None,
 ) -> tuple[np.ndarray, list[str]]:
     """Pass 2: re-predict boundaries from pass-1 outputs, then re-label the segments.
-    ``lead_in``: end beat of the lead-in (``predict_lead_in``), placed before labelling."""
+    ``lead_in``: end beat of the lead-in (``predict_lead_in``), placed before labelling; ``label_mix``: the segments'
+    label log-probabilities as the label decoding reads them (a stacked model's, stack.mix_label_logp)."""
     settings = artifact["settings"]
     models = artifact["refinement"]
     ctx = settings["label_context_beats"]
@@ -765,6 +881,8 @@ def refine_phrase_segments(
         change = models["change"].predict_proba(
             _refine.label_change_features(feature_z, bounds, ctx, beat_post, S, inputs["bars"])
         )[:, 1]
+    if label_mix is not None:
+        logp = label_mix(logp, bounds)
     labels = decode_phrase_labels(artifact, logp, bounds, change, lead_in)
     if "shift" in models:
         if settings.get("shift_phrase_grid", False):
@@ -786,23 +904,66 @@ def finish_phrase_segments(
     probability: np.ndarray,
     bounds: np.ndarray,
     inputs,
+    label_mix: Callable[[np.ndarray, np.ndarray], np.ndarray] | None = None,
 ) -> tuple[np.ndarray, list[str]]:
     """From the pass-1 boundaries: the lead-in, pass 2 (when the artifact has it) and the labels.
-    ``inputs``: the track's ``repeat_inputs``, or a callable returning them."""
+    ``inputs``: the track's ``repeat_inputs``, or a callable returning them; ``label_mix``: refine_phrase_segments'."""
     lead_in = _lead_in.predict_lead_in(artifact, feature_z, boundary_feature_z, downbeat, beat_times_sec, bounds)
     if artifact.get("refinement") is not None:
         return refine_phrase_segments(
             artifact, feature_z, boundary_feature_z, valid, downbeat, probability, bounds,
-            inputs() if callable(inputs) else inputs, lead_in,
+            inputs() if callable(inputs) else inputs, lead_in, label_mix,
         )
     bounds = _lead_in.insert_lead_in(bounds, lead_in)
-    labels = decode_phrase_labels(
-        artifact,
-        _label_logp(artifact["label_clf"], feature_z, bounds, artifact["settings"]["label_context_beats"]),
-        bounds,
-        lead_in=lead_in,
-    )
+    logp = _label_logp(artifact["label_clf"], feature_z, bounds, artifact["settings"]["label_context_beats"])
+    if label_mix is not None:
+        logp = label_mix(logp, bounds)
+    labels = decode_phrase_labels(artifact, logp, bounds, lead_in=lead_in)
     return bounds, labels
+
+
+def _cue_frames(audio: np.ndarray, sample_rate: int) -> song_cues.CueFrames:
+    if int(sample_rate) != song_cues.SAMPLE_RATE:
+        raise ValueError(f"the phrase model's song cues are made at {song_cues.SAMPLE_RATE} Hz, not {sample_rate}")
+    a = np.asarray(audio)
+    mono = np.ascontiguousarray(a.mean(axis=1), dtype=np.float32) if a.ndim == 2 else np.asarray(a, np.float32)
+    return song_cues.cue_frames(mono)
+
+
+def phrase_cue_frames(audio: np.ndarray, sample_rate: int, *, model_path: str | Path) -> song_cues.CueFrames | None:
+    """The song cues' frame-level part a stacked phrase model reads of the audio (its mono mix: the analysis's decode,
+    stereo or mono), None for a model without them: made before the beats are known (the full analysis makes it
+    beside the beats)."""
+    if load_two_stage_model(str(Path(model_path).resolve())).get("stack") is None:
+        return None
+    return _cue_frames(audio, sample_rate)
+
+
+def stack_inputs(
+    stacked: dict[str, object],
+    audio: np.ndarray,
+    sample_rate: int,
+    feature_z: np.ndarray,
+    boundary_feature_z: np.ndarray,
+    beat_times_sec: np.ndarray,
+    downbeat: np.ndarray,
+    labels: list[str],
+    cues: song_cues.CueFrames | None = None,
+) -> tuple[np.ndarray, np.ndarray, Callable[[np.ndarray, np.ndarray], np.ndarray]]:
+    """A stacked model's (beat features, boundary features, label mix) for a song: its cues (``cues``: phrase_cue_frames
+    of the audio when already made), the DS-TCN on them and the phrase features (stack.py)."""
+    frames = cues if cues is not None else _cue_frames(audio, sample_rate)
+    vocal = song_cues.vocal_cues(frames, beat_times_sec)
+    style = song_cues.style_cues(frames, beat_times_sec)
+    x = dstcn_inputs(feature_z, vocal, style)
+    tcn, tcn_boundary = stacked["dstcn"](x, downbeat)
+    beat, bound = _stack.columns(feature_z, boundary_feature_z, vocal, tcn, tcn_boundary)
+    specialist_x = np.hstack([x, _stack.riff_cues(x, downbeat)])
+
+    def mix(logp: np.ndarray, bounds: np.ndarray) -> np.ndarray:
+        return _stack.mix_label_logp(logp, bounds, list(labels), stacked["specialist"], specialist_x, tcn,
+                                     stacked["weights"])
+    return beat, bound, mix
 
 
 def phrase_song_frames(audio: np.ndarray, sample_rate: int, *, model_path: str | Path,
@@ -824,9 +985,10 @@ def detect_two_stage_phrase_segments(
     return_boundary_probability: bool = False,
     return_feature_z: bool = False,
     frames: SongFrames | None = None,
+    cues: song_cues.CueFrames | None = None,
 ):
     """Phrase segments and optional reusable per-beat analysis outputs; ``frames``: ``phrase_song_frames`` of the
-    audio when already made."""
+    audio when already made, ``cues``: ``phrase_cue_frames``'."""
     artifact = load_two_stage_model(str(Path(model_path).resolve()))
     settings = artifact["settings"]
     grid = build_predictor_grid(beat_times_sec, tempo_segments)
@@ -855,14 +1017,21 @@ def detect_two_stage_phrase_segments(
     boundary_feature_z = np.hstack([boundary_feature_z, structural])
     valid = valid_boundary_mask(feature_z.shape[0], int(settings["edge_beats"]))
     downbeat = np.asarray(grid.downbeat_mask, dtype=bool)
+    beat_times = np.asarray(grid.beat_times_sec, dtype=np.float64)
+    # a stacked model's GBMs read its columns beside the phrase features; the repetition inputs and the feature_z
+    # returned (JumpCUE's) stay the phrase features alone
+    model_z, model_bz, label_mix = feature_z, boundary_feature_z, None
+    if artifact.get("stack") is not None:
+        model_z, model_bz, label_mix = stack_inputs(artifact["stack"], audio, int(sample_rate), feature_z,
+                                                    boundary_feature_z, beat_times, downbeat, artifact["label_labels"],
+                                                    cues)
     # The returned per-beat probability stays the pass-1 one: downstream
     # analyzers (JumpCUE) are trained on it.
-    probability = _predict_boundary_probability(artifact["boundary_clf"], boundary_feature_z, valid)
+    probability = _predict_boundary_probability(artifact["boundary_clf"], model_bz, valid)
     bounds = decode_phrase_boundaries(probability, valid, downbeat, settings)
-    beat_times = np.asarray(grid.beat_times_sec, dtype=np.float64)
     bounds, labels = finish_phrase_segments(
-        artifact, feature_z, boundary_feature_z, valid, downbeat, beat_times, probability, bounds,
-        lambda: repeat_inputs(feature_z, downbeat),
+        artifact, model_z, model_bz, valid, downbeat, beat_times, probability, bounds,
+        lambda: repeat_inputs(feature_z, downbeat), label_mix,
     )
 
     duration = float(acoustic.audio_duration_sec)

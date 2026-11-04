@@ -51,6 +51,23 @@ def _median_filter_chunked(
     return futures
 
 
+def _medians(pool: ThreadPoolExecutor, magnitude: np.ndarray, kernel_size: int, chunks: int):
+    harmonic_parts = _median_filter_chunked(pool, magnitude, (1, kernel_size), axis=0, chunks=chunks)
+    percussive_parts = _median_filter_chunked(pool, magnitude, (kernel_size, 1), axis=1, chunks=chunks)
+    harmonic = np.concatenate([part.result() for part in harmonic_parts], axis=0)
+    percussive = np.concatenate([part.result() for part in percussive_parts], axis=1)
+    return harmonic, percussive
+
+
+def hpss_medians(magnitude: np.ndarray, kernel_size: int = HPSS_KERNEL_SIZE) -> tuple[np.ndarray, np.ndarray]:
+    """The harmonic (along time) and percussive (along frequency) median filters of a magnitude spectrogram
+    ``[F, T]``: librosa.decompose.hpss's (``scipy.ndimage.median_filter``, ``mode="reflect"``), the same values, in
+    parallel as hpss_masks."""
+    workers = max(2, min(HPSS_MAX_WORKERS, os.cpu_count() or 2))
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        return _medians(pool, magnitude, kernel_size, max(1, workers // 2))
+
+
 def hpss_masks(magnitude: np.ndarray, kernel_size: int = HPSS_KERNEL_SIZE) -> tuple[np.ndarray, np.ndarray]:
     """Harmonic / percussive soft masks of a magnitude spectrogram ``[F, T]``.
 
@@ -62,10 +79,7 @@ def hpss_masks(magnitude: np.ndarray, kernel_size: int = HPSS_KERNEL_SIZE) -> tu
     workers = max(2, min(HPSS_MAX_WORKERS, os.cpu_count() or 2))
     chunks = max(1, workers // 2)
     with ThreadPoolExecutor(max_workers=workers) as pool:
-        harmonic_parts = _median_filter_chunked(pool, magnitude, (1, kernel_size), axis=0, chunks=chunks)
-        percussive_parts = _median_filter_chunked(pool, magnitude, (kernel_size, 1), axis=1, chunks=chunks)
-        harmonic = np.concatenate([part.result() for part in harmonic_parts], axis=0)
-        percussive = np.concatenate([part.result() for part in percussive_parts], axis=1)
+        harmonic, percussive = _medians(pool, magnitude, kernel_size, chunks)
         # softmask is elementwise: compute it on frequency bands.
         bounds = np.linspace(0, magnitude.shape[0], chunks + 1, dtype=int)
         bands = [slice(start, stop) for start, stop in zip(bounds[:-1], bounds[1:]) if stop > start]
