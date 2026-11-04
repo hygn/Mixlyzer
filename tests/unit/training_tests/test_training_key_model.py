@@ -227,6 +227,42 @@ class AnnotationTests(unittest.TestCase):
         np.testing.assert_array_equal(listed[0]["phrase_starts"], [0.25, 8.25])
 
 
+class PositionTableTests(unittest.TestCase):
+    """position_tables on songs whose chords the CNN reads as given: the tonic inside phrases, the dominant on the
+    bars a phrase ends on."""
+
+    def song(self, key, n=48):
+        pos = np.tile(np.r_[np.zeros(4), np.full(8, 2), np.ones(4)], n // 16).astype(np.int64)  # first, inside, last
+        y = np.full(n, key, np.int64)
+        return O.Song(x=np.zeros((n, 36), np.float32), y=y, w=np.ones(n, np.float32), bar=np.arange(n) // 4, pos=pos,
+                      teach=np.zeros((n, 24), np.float32), grid=None, duration=float(n))
+
+    def chords_of(self, songs):
+        """The chords as read: the key's tonic chord, its dominant on the phrases' last bars."""
+        def chords(_model, x):
+            s = next(s for s in songs if s.x is x)
+            p = np.full((x.shape[0], 24), 1e-3)
+            tonic = s.y % 12
+            p[np.arange(x.shape[0]), tonic] = 1.0
+            last = s.pos == 1
+            p[last, tonic[last]] = 0.2
+            p[np.flatnonzero(last), (tonic[last] + 7) % 12] = 1.0
+            return np.log(p / p.sum(1, keepdims=True))
+        return chords
+
+    def test_the_last_bars_lean_to_the_dominant_in_every_key(self):
+        songs = [self.song(0), self.song(7)]                    # C major and G major: the same chords relative to them
+        arrays = CK.read_model_arrays(SHIPPED_KEY)
+        with mock.patch.object(CK.ChordKeyModel, "chords", self.chords_of(songs)):
+            tab = O.position_tables(arrays, songs, [0, 1])
+        base = np.asarray(arrays["tab"], np.float32)
+        np.testing.assert_array_equal(tab[:, 2], base[:, 2])          # the bars inside a phrase: the start's
+        np.testing.assert_array_equal(tab[1], base[1])               # minor: no keyed beat, its rows kept
+        lift = (tab[0, 1] - base[0, 2])
+        self.assertGreater(lift[7] - lift[0], 3.0)                   # the dominant up against the tonic on last bars
+        np.testing.assert_allclose(tab[0, 0], base[0, 2], atol=1e-5)  # the first bars read as the inside ones
+
+
 def track_for(beats, rows, duration, ks, phrase_starts=(0.0,)):
     return {"beats": beats, "segments": rows, "phrase_starts": np.asarray(phrase_starts, float),
             "duration": duration, "keys": ks}
@@ -372,9 +408,11 @@ class RunTests(_Library):
         arrays, shipped = CK.read_model_arrays(self.out), CK.read_model_arrays(SHIPPED_KEY)
         with np.load(self.out, allow_pickle=False) as z:
             self.assertEqual(set(z.files), set(CK.WEIGHTS + CK.SETTINGS))
-        for k in CK.SETTINGS + ("tab",):                     # the decoder settings and the chord tables kept
+        for k in CK.SETTINGS + ("tab",):                     # the decoder settings and the chord tables' kind kept
+            self.assertEqual((arrays[k].shape, arrays[k].dtype), (shipped[k].shape, shipped[k].dtype))
+        for k in CK.SETTINGS:
             np.testing.assert_array_equal(arrays[k], shipped[k])
-            self.assertEqual(arrays[k].dtype, shipped[k].dtype)
+        np.testing.assert_array_equal(arrays["tab"][:, 2], shipped["tab"][:, 2])    # the bars inside a phrase: kept
         self.assertFalse(np.array_equal(arrays["c1_w"], shipped["c1_w"]))
         model = CK.ChordKeyModel(self.out)
         self.assertTrue(np.all(np.isfinite(model.chords(np.random.default_rng(0).random((20, 36), np.float32)))))

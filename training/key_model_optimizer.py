@@ -14,7 +14,10 @@ fixed chord-in-key tables) is trained with Adam (L2 1e-4 on every weight) on ran
 step: cross-entropy of every bar's key (the sum of its beats' key evidence) plus the template-chord term; 15 epochs
 at 1e-3 with a cosine decay when it improves a model, 40 at 3e-3 warmed up over the first 30 % from scratch (the
 new weights uniform in +-1 / sqrt(fan-in)). It starts from the model in use, the shipped model or from scratch
-(training/model_start.py). The decoder settings (key-change costs) and the chord-in-key tables are kept. The songs'
+(training/model_start.py). The decoder settings (key-change costs) are kept, and the chord-in-key tables' rows for
+the bars inside a phrase; the rows for the bars a phrase starts and ends on are measured on the songs after the
+training (position_tables: on the user's keys, signature accuracy 0.929 -> 0.932, fifth errors 0.036 -> 0.032, the
+tables estimated on half the songs and scored on the other half, three splits). The songs'
 beat inputs are made once (the frame chroma cached per song, about 4 s a song a worker; pooled on the beats) and the
 crops cut on the CPU; the network runs on the GPU when there is one, in full float32 (a step about 15 ms: a training
 from scratch on 240 songs in 10 s). The weights are exported as the arrays the analyzer's NumPy inference reads,
@@ -79,6 +82,7 @@ class KeyModelOptimizationRequest:
     current_path: str | None = None  # the model in use, what the new one is compared with (the app's file)
     start_path: str | None = None    # the model the training starts from (the app's file; None: from scratch)
     device: str = ""                 # "": CUDA when there is one, else the CPU
+    position_tables: bool = True     # the tables' phrase-position rows measured on the training songs (position_tables)
 
 
 @dataclass(frozen=True)
@@ -501,6 +505,35 @@ def evaluate(arrays: dict, songs: list[Song], idx) -> tuple[float, float]:
     return (right / total, fifth / total) if total else (float("nan"), float("nan"))
 
 
+def position_tables(arrays: dict, songs: list[Song], idx) -> np.ndarray:
+    """The chord-in-key tables with the phrase position's effect measured on the songs: for each mode, the rows of the
+    bars a phrase starts and ends on are the other bars' row (the start model's) plus the log ratio of the chords' mean
+    posterior there to their mean posterior on the other bars, every keyed beat's chords taken relative to its key and
+    read by the model's own chord CNN (a phrase starts on the tonic more often, ends on the dominant). A mode without
+    keyed beats in a position keeps its rows."""
+    model = CK.ChordKeyModel(arrays=arrays)
+    total = np.zeros((2, 3, 24))
+    count = np.zeros((2, 3))
+    for i in idx:
+        s = songs[int(i)]
+        keyed = np.flatnonzero(s.w > 0)
+        if keyed.size == 0:
+            continue
+        p = np.exp(model.chords(s.x))[keyed]
+        key = s.y[keyed]
+        roots = (np.arange(12)[None, :] + (key % 12)[:, None]) % 12      # per beat: the chord each relative root is
+        rel = np.concatenate([np.take_along_axis(p[:, :12], roots, 1), np.take_along_axis(p[:, 12:], roots, 1)], 1)
+        np.add.at(total, (key // 12, s.pos[keyed]), rel)
+        np.add.at(count, (key // 12, s.pos[keyed]), 1)
+    tab = np.asarray(arrays["tab"], np.float64).copy()
+    for m in range(2):
+        if count[m].min() == 0:
+            continue
+        mean = np.log(total[m] / count[m][:, None] + 1e-6)
+        tab[m] = tab[m, 2][None, :] + mean - mean[2][None, :]
+    return tab.astype(np.float32)
+
+
 def _save(path: Path, arrays: dict) -> None:
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     atomic_save_npz(path, {k: np.asarray(v) for k, v in arrays.items()}, compressed=False,
@@ -554,6 +587,8 @@ def optimize_key_model(
         train_idx, held = next(GroupKFold(n_splits=k).split(everything, groups=groups))
         trial, seconds = train(base, songs, train_idx, epochs, lr, request.distill, request.seed, scratch, device,
                                optimize_progress, (0, 45), msg("Held-out check"))
+        if request.position_tables:
+            trial["tab"] = position_tables(trial, songs, train_idx)
         before, f_before = evaluate(reference, songs, held)
         after, f_after = evaluate(trial, songs, held)
         if after < before and not request.keep_if_worse:
@@ -568,6 +603,8 @@ def optimize_key_model(
         span = (0, 95)
     final, seconds = train(base, songs, everything, epochs, lr, request.distill, request.seed, scratch, device,
                            optimize_progress, span, msg("Training") if scratch else msg("Fine-tuning"))
+    if request.position_tables:
+        final["tab"] = position_tables(final, songs, everything)
     if not cross_validated:
         before, f_before = evaluate(reference, songs, everything)
         after, f_after = evaluate(final, songs, everything)

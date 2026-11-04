@@ -18,10 +18,11 @@ stretches the user marked, two thirds score better as 4/4 even with restarts fre
 the period the music repeats in: beats 3, 6 and 12 apart are alike in 3/4, beats 4, 8 and 16 apart in 4/4 (the
 beat-pooled features' cosine, the 6 representations of downbeat_features averaged; AUC 0.95 on the library's
 beats). Where that score, over +-METER_WINDOW beats, is above what 4/4 music reaches (METER_BIAS, its 99.5th
-percentile), the 3/4 states get the excess as evidence (METER_WEIGHT); but only where the observers' own 4/4
-accent is weak (below METER_ACCENT): a clear 4-beat accent with a 3-beat pattern over it is a cross-rhythm
-(hemiola, 3+3+2), which a DJ grid keeps in 4/4. On the library: bars missed 17.2 -> 15.7 min, 7 tracks better and
-3 worse by more than 2 s.
+percentile), the 3/4 states get the excess as evidence (METER_WEIGHT); but only where the observers' own 4-beat
+accent does not lead their 3-beat accent by METER_LEAD or more: a clear 4-beat accent with a 3-beat pattern over it
+is a cross-rhythm (hemiola, 3+3+2), which a DJ grid keeps in 4/4 (the two accents compared, not the 4-beat one
+alone: a quiet 4/4 bridge with a 6-beat riff has a weak 4-beat accent too). On the library (today's grids): bars
+missed 13.7 -> 11.9 min.
 
 to_rows: the production tempo rows ([start, end, bpm, inizio = a downbeat, ts, bpm_end]) for the beats and
 downbeats, split wherever the bar length changes, so that ``analyzer.music.beat_geometry.downbeat_beat_indices``
@@ -43,7 +44,7 @@ CB = 40.0
 METER_LAGS = ((3, 6, 12), (4, 8, 16))    # beats: bar multiples of 3/4, of 4/4
 METER_WINDOW = 24       # beats each side the meter is judged over (6 bars of 4)
 METER_BIAS = 0.065      # the repetition score 4/4 music reaches at its 99.5th percentile (the library's 4/4 beats)
-METER_ACCENT = 2.0      # the observers' local 4/4 accent (log-odds) from which their 4/4 bars stand
+METER_LEAD = 0.5        # the observers' 4-beat accent over their 3-beat one (log-odds) from which their 4/4 stands
 METER_WEIGHT = 300.0    # evidence (log-odds) per unit of score above METER_BIAS
 
 
@@ -192,17 +193,17 @@ def repetition_meter_score(rows, beats, window=METER_WINDOW):
     return score[np.clip(np.searchsorted(starts, np.asarray(beats, float) - 1e-3), 0, starts.size - 1)]
 
 
-def accent4(pd, window=METER_WINDOW):
-    """Per beat, the observers' local 4/4 accent over +-``window`` beats: the best residue (beat mod 4)'s mean
-    downbeat log-odds minus the other beats'."""
+def accent(pd, beats_per_bar, window=METER_WINDOW):
+    """Per beat, the observers' local accent of bars of ``beats_per_bar`` over +-``window`` beats: the best residue
+    (beat mod beats_per_bar)'s mean downbeat log-odds minus the other beats'."""
     lg = _logit(np.asarray(pd, float))
     n = lg.size
     i = np.arange(n)
     lo, hi = np.maximum(i - window, 0), np.minimum(i + window + 1, n)
     total = np.r_[0.0, np.cumsum(lg)]
     best = np.full(n, -np.inf)
-    for r in range(4):
-        on = i % 4 == r
+    for r in range(beats_per_bar):
+        on = i % beats_per_bar == r
         s_on = np.r_[0.0, np.cumsum(np.where(on, lg, 0.0))]
         n_on = np.r_[0, np.cumsum(on)]
         k_on, v_on = n_on[hi] - n_on[lo], s_on[hi] - s_on[lo]
@@ -214,7 +215,7 @@ def accent4(pd, window=METER_WINDOW):
 def meter_evidence(rows, beats, pd):
     """Per beat, the evidence for 3/4 over 4/4 the bars Viterbi adds (the module's Meter evidence)."""
     excess = np.maximum(repetition_meter_score(rows, beats) - METER_BIAS, 0.0)
-    return np.where(accent4(pd) < METER_ACCENT, METER_WEIGHT * excess, 0.0)
+    return np.where(accent(pd, 4) - accent(pd, 3) < METER_LEAD, METER_WEIGHT * excess, 0.0)
 
 
 def bars_viterbi(pd, cost=CB, cheap=None, cost_at_start=0.0, meter=None):
