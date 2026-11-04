@@ -25,9 +25,11 @@ ship_stack.py), the same operations in the same order:
    DS-TCN's export checked against the NumPy inference.
 
 The run writes the model trained on every song; the out-of-fold label accuracy of the DS-TCN is its held-out measure
-(the whole stack's cross-validation is the research's, cv_all.py: a day). On a CUDA GPU the DS-TCNs take minutes;
-most of the run is the GBMs on the CPU. torch is the training group's (uv sync --group training), imported when the
-DS-TCNs train."""
+(the whole stack's cross-validation is the research's, cv_all.py: a day). On a CUDA GPU the DS-TCNs take minutes
+(the song cues of 480 songs about 30 minutes on 2 workers the first time, cached after); most of the run is the GBMs
+on the CPU, and they hold every song's phrase features: about 13 GB for 480 songs, so on a 16 GB machine close the
+other programs first (else the run pages for hours). torch is the training group's (uv sync --group training),
+imported when the DS-TCNs train."""
 
 from __future__ import annotations
 
