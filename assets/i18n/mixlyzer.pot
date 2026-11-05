@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-11-04 22:09+0900\n"
+"POT-Creation-Date: 2026-11-05 17:52+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -428,7 +428,7 @@ msgid "JumpCUE pads"
 msgstr ""
 
 #: core/controls/midi.py:50 ui/config/pipeline_map.py:34
-#: ui/edit_panel/cue_slots.py:233
+#: ui/edit_panel/cue_slots.py:234
 msgid "CUE points"
 msgstr ""
 
@@ -1132,7 +1132,7 @@ msgid "Processing Waveform"
 msgstr ""
 
 #: core/workers/analysis_texts.py:15 ui/config/pipeline_map.py:32
-#: ui/config/view.py:159 ui/config/view.py:200
+#: ui/config/view.py:162 ui/config/view.py:203
 msgid "Waveform"
 msgstr ""
 
@@ -1315,23 +1315,23 @@ msgstr ""
 msgid "Phrases Updated"
 msgstr ""
 
-#: core/workflows/analysis.py:79
+#: core/workflows/analysis.py:80
 msgid "Analysis canceled"
 msgstr ""
 
-#: core/workflows/analysis.py:101
+#: core/workflows/analysis.py:102
 #, python-brace-format
 msgid ""
 "The path is too long for Windows ({count} characters) while Windows' long"
 " paths are off: {path}"
 msgstr ""
 
-#: core/workflows/analysis.py:105
+#: core/workflows/analysis.py:106
 #, python-brace-format
 msgid "{file} is kept online only: it is downloaded before it is read."
 msgstr ""
 
-#: core/workflows/analysis.py:117
+#: core/workflows/analysis.py:118
 #, python-brace-format
 msgid "File not found: {path}"
 msgstr ""
@@ -1341,48 +1341,48 @@ msgstr ""
 msgid "Analysis already in progress: {file}"
 msgstr ""
 
-#: core/workflows/analysis.py:133
-#, python-brace-format
-msgid "Already in the library: {file}"
-msgstr ""
-
-#: core/workflows/analysis.py:141
-msgid "Loading Track"
-msgstr ""
-
-#: core/workflows/analysis.py:152
-#, python-brace-format
-msgid "Loaded from the library: {file}"
-msgstr ""
-
-#: core/workflows/analysis.py:180
-msgid "Waiting for a free analysis slot"
-msgstr ""
-
-#: core/workflows/analysis.py:181
-#, python-brace-format
-msgid "Waiting to analyze: {file}"
-msgstr ""
-
-#: core/workflows/analysis.py:207
+#: core/workflows/analysis.py:134 core/workflows/analysis.py:223
 #, python-brace-format
 msgid "Analyzing: {file}"
 msgstr ""
 
-#: core/workflows/analysis.py:254
+#: core/workflows/analysis.py:137
+#, python-brace-format
+msgid "Already in the library: {file}"
+msgstr ""
+
+#: core/workflows/analysis.py:145
+msgid "Loading Track"
+msgstr ""
+
+#: core/workflows/analysis.py:161
+#, python-brace-format
+msgid "Loaded from the library: {file}"
+msgstr ""
+
+#: core/workflows/analysis.py:196
+msgid "Waiting for a free analysis slot"
+msgstr ""
+
+#: core/workflows/analysis.py:197
+#, python-brace-format
+msgid "Waiting to analyze: {file}"
+msgstr ""
+
+#: core/workflows/analysis.py:270
 #, python-brace-format
 msgid "Error ({file})"
 msgstr ""
 
-#: core/workflows/analysis.py:254
+#: core/workflows/analysis.py:270
 msgid "Error"
 msgstr ""
 
-#: core/workflows/analysis.py:265
+#: core/workflows/analysis.py:281
 msgid "Saving Result"
 msgstr ""
 
-#: core/workflows/analysis.py:268
+#: core/workflows/analysis.py:284
 #, python-brace-format
 msgid "The analysis could not be stored: {error}"
 msgstr ""
@@ -1565,7 +1565,7 @@ msgid "relative or absolute .json path"
 msgstr ""
 
 #: ui/config/analysis.py:31 ui/config/analysis.py:135 ui/config/library.py:264
-#: ui/config/view.py:198
+#: ui/config/view.py:201
 msgid "General"
 msgstr ""
 
@@ -1587,7 +1587,7 @@ msgid ""
 "a song outside it is read at half or double tempo."
 msgstr ""
 
-#: ui/config/analysis.py:59 ui/config/window.py:256
+#: ui/config/analysis.py:59 ui/config/window.py:257
 #: ui/windows/reanalyze_dialog.py:38 ui/windows/reanalyze_dialog.py:76
 #, python-brace-format
 msgid "Reads {low} - {high} BPM"
@@ -1640,7 +1640,7 @@ msgstr ""
 
 #: ui/config/analysis.py:114 ui/config/analysis.py:144
 #: ui/config/analysis.py:158 ui/config/library.py:257 ui/config/library.py:273
-#: ui/config/playback.py:108 ui/config/view.py:193
+#: ui/config/playback.py:108 ui/config/view.py:196
 msgid "Advanced"
 msgstr ""
 
@@ -3103,7 +3103,7 @@ msgstr ""
 msgid "Its device's stream is shared with another output, at that output's rate."
 msgstr ""
 
-#: ui/config/pipeline_map.py:22 ui/config/view.py:204
+#: ui/config/pipeline_map.py:22 ui/config/view.py:207
 msgid "View"
 msgstr ""
 
@@ -3828,13 +3828,17 @@ msgstr ""
 msgid "Show the tempo and key as played"
 msgstr ""
 
-#: ui/config/view.py:70
+#: ui/config/view.py:56
+msgid "Highlight changed parts"
+msgstr ""
+
+#: ui/config/view.py:71
 msgid ""
 "RGB: the waveform colored by its low / mid / high mix.\n"
 "3Band: the low (blue), mid (amber) and high (white) bands drawn as layers."
 msgstr ""
 
-#: ui/config/view.py:79
+#: ui/config/view.py:80
 #, python-brace-format
 msgid ""
 "Time resolution of the main view waveform bars when the view is up to "
@@ -3842,7 +3846,7 @@ msgid ""
 "Smaller is more detailed."
 msgstr ""
 
-#: ui/config/view.py:82
+#: ui/config/view.py:83
 #, python-brace-format
 msgid ""
 "Time resolution of the main view waveform bars when the view is wider "
@@ -3850,7 +3854,7 @@ msgid ""
 "Smaller is more detailed."
 msgstr ""
 
-#: ui/config/view.py:85
+#: ui/config/view.py:86
 #, python-brace-format
 msgid ""
 "Time resolution of the main view waveform bars when the view is wider "
@@ -3858,52 +3862,52 @@ msgid ""
 "Smaller is more detailed."
 msgstr ""
 
-#: ui/config/view.py:93
+#: ui/config/view.py:94
 msgid ""
 "Order of the main view waveform's band filters. Higher separates the "
 "bands more sharply."
 msgstr ""
 
-#: ui/config/view.py:96
+#: ui/config/view.py:97
 msgid "Use output volume as peak meter input"
 msgstr ""
 
-#: ui/config/view.py:98
+#: ui/config/view.py:99
 msgid "Reduce FPS when occluded"
 msgstr ""
 
-#: ui/config/view.py:104
+#: ui/config/view.py:105
 msgid "Waiting for FPS..."
 msgstr ""
 
-#: ui/config/view.py:106
+#: ui/config/view.py:107
 msgid ""
 "<p>Measured from the main view's repaint intervals. The view moves by "
 "whole pixels and is redrawn only when it moves, so a long view (fewer "
 "pixels a second than the FPS) reads lower without losing frames.</p>"
 msgstr ""
 
-#: ui/config/view.py:109
+#: ui/config/view.py:110
 msgid "Show the detailed waveform view."
 msgstr ""
 
-#: ui/config/view.py:110
+#: ui/config/view.py:111
 msgid "Show the beat grid view."
 msgstr ""
 
-#: ui/config/view.py:111
+#: ui/config/view.py:112
 msgid "Show the key strip (detected key over time)."
 msgstr ""
 
-#: ui/config/view.py:112
+#: ui/config/view.py:113
 msgid "Show the JumpCUE view (detected repeat jump points)."
 msgstr ""
 
-#: ui/config/view.py:113
+#: ui/config/view.py:114
 msgid "Overlay the detected phrases on the views."
 msgstr ""
 
-#: ui/config/view.py:115
+#: ui/config/view.py:116
 msgid ""
 "<p>The overview's and the main view's BPM and keys as heard: the tempo "
 "changed by the fader, the key moved by the key shift (and by the tempo "
@@ -3911,165 +3915,169 @@ msgid ""
 msgstr ""
 
 #: ui/config/view.py:118
+msgid "<p>Where the marks changed blinks.</p>"
+msgstr ""
+
+#: ui/config/view.py:120
 msgid ""
 "Checked: the peak meter follows the volume slider (what you hear).\n"
 "Unchecked: the peak meter shows the level after Trim only."
 msgstr ""
 
-#: ui/config/view.py:122
+#: ui/config/view.py:124
 msgid ""
 "Lower the redraw rate while the window is hidden behind other windows\n"
 "or minimized, to save CPU."
 msgstr ""
 
-#: ui/config/view.py:125
+#: ui/config/view.py:127
 msgid "Target redraw rate of the views."
 msgstr ""
 
-#: ui/config/view.py:127
+#: ui/config/view.py:129
 msgid "Image drawn as the spinning record when a track has no album art."
 msgstr ""
 
-#: ui/config/view.py:130 ui/config/view.py:132
+#: ui/config/view.py:132 ui/config/view.py:134
 #: ui/library/tabs/tieup_editor.py:140 ui/library/tabs/tieup_editor.py:143
 #: ui/windows/tieup_works.py:77 ui/windows/tieup_works.py:80
 msgid "Language"
 msgstr ""
 
-#: ui/config/view.py:134 ui/config/view.py:199
+#: ui/config/view.py:136 ui/config/view.py:202
 msgid "Display"
 msgstr ""
 
-#: ui/config/view.py:153
+#: ui/config/view.py:156
 msgid "lo"
 msgstr ""
 
-#: ui/config/view.py:154
+#: ui/config/view.py:157
 msgid "hi"
 msgstr ""
 
-#: ui/config/view.py:161
+#: ui/config/view.py:164
 msgid "Low / mid / high bands of the waveforms' colors."
 msgstr ""
 
-#: ui/config/view.py:164
+#: ui/config/view.py:167
 msgid "Waveform style"
 msgstr ""
 
-#: ui/config/view.py:166
+#: ui/config/view.py:169
 msgid ""
 "<p>The master output's spectrum as it plays. Drag a band's edges to set "
 "it.</p>"
 msgstr ""
 
-#: ui/config/view.py:169
+#: ui/config/view.py:172
 msgid "Frame, close view (ms)"
 msgstr ""
 
-#: ui/config/view.py:170
+#: ui/config/view.py:173
 msgid "Frame, short view (ms)"
 msgstr ""
 
-#: ui/config/view.py:171
+#: ui/config/view.py:174
 msgid "Frame, long view (ms)"
 msgstr ""
 
-#: ui/config/view.py:172
+#: ui/config/view.py:175
 msgid "Filter order"
 msgstr ""
 
-#: ui/config/view.py:174
+#: ui/config/view.py:177
 msgid ""
 "<p>The loaded track at the playhead, drawn with these settings. What is "
 "already drawn keeps the settings it was drawn with.</p>"
 msgstr ""
 
-#: ui/config/view.py:178
+#: ui/config/view.py:181
 msgid "Low"
 msgstr ""
 
-#: ui/config/view.py:178
+#: ui/config/view.py:181
 msgid "Frequency range (Hz) drawn as the low band of the waveform."
 msgstr ""
 
-#: ui/config/view.py:179
+#: ui/config/view.py:182
 msgid "Lower edge of the low band (Hz)."
 msgstr ""
 
-#: ui/config/view.py:179
+#: ui/config/view.py:182
 msgid "Upper edge of the low band (Hz)."
 msgstr ""
 
-#: ui/config/view.py:181
+#: ui/config/view.py:184
 msgid "Mid"
 msgstr ""
 
-#: ui/config/view.py:181
+#: ui/config/view.py:184
 msgid "Frequency range (Hz) drawn as the mid band of the waveform."
 msgstr ""
 
-#: ui/config/view.py:182
+#: ui/config/view.py:185
 msgid "Lower edge of the mid band (Hz)."
 msgstr ""
 
-#: ui/config/view.py:182
+#: ui/config/view.py:185
 msgid "Upper edge of the mid band (Hz)."
 msgstr ""
 
-#: ui/config/view.py:184
+#: ui/config/view.py:187
 msgid "High"
 msgstr ""
 
-#: ui/config/view.py:184
+#: ui/config/view.py:187
 msgid "Frequency range (Hz) drawn as the high band of the waveform."
 msgstr ""
 
-#: ui/config/view.py:185
+#: ui/config/view.py:188
 msgid "Lower edge of the high band (Hz)."
 msgstr ""
 
-#: ui/config/view.py:185
+#: ui/config/view.py:188
 msgid "Upper edge of the high band (Hz)."
 msgstr ""
 
-#: ui/config/view.py:187
+#: ui/config/view.py:190
 msgid "Performance"
 msgstr ""
 
-#: ui/config/view.py:191
+#: ui/config/view.py:194
 msgid "Actual FPS"
 msgstr ""
 
-#: ui/config/view.py:195
+#: ui/config/view.py:198
 msgid "Record image path"
 msgstr ""
 
-#: ui/config/view.py:201 ui/config/view.py:229
+#: ui/config/view.py:204 ui/config/view.py:232
 msgid "Phrase labels"
 msgstr ""
 
-#: ui/config/view.py:232 ui/library/tabs/tieup_editor.py:143
+#: ui/config/view.py:235 ui/library/tabs/tieup_editor.py:143
 #: ui/windows/tieup_works.py:80
 msgid "Alias"
 msgstr ""
 
-#: ui/config/view.py:233
+#: ui/config/view.py:236
 msgid "Overview"
 msgstr ""
 
-#: ui/config/view.py:239
+#: ui/config/view.py:242
 #, python-brace-format
 msgid "Shown in place of {label} (empty: {label})"
 msgstr ""
 
-#: ui/config/view.py:244
+#: ui/config/view.py:247
 #, python-brace-format
 msgid ""
 "{label} in the overview, numbered when it occurs more than once\n"
 "(empty: the first letter of its name)"
 msgstr ""
 
-#: ui/config/view.py:313
+#: ui/config/view.py:316
 msgid "The spectrum needs the native audio engine."
 msgstr ""
 
@@ -4375,19 +4383,19 @@ msgstr ""
 msgid "Double-click to rename"
 msgstr ""
 
-#: ui/edit_panel/cue_slots.py:240
+#: ui/edit_panel/cue_slots.py:244
 msgid "Previous page"
 msgstr ""
 
-#: ui/edit_panel/cue_slots.py:241
+#: ui/edit_panel/cue_slots.py:245
 msgid "Next page"
 msgstr ""
 
-#: ui/edit_panel/cue_slots.py:248
+#: ui/edit_panel/cue_slots.py:252
 msgid "Page"
 msgstr ""
 
-#: ui/edit_panel/cue_slots.py:320
+#: ui/edit_panel/cue_slots.py:327
 #, python-brace-format
 msgid "Page {page} of {pages}"
 msgstr ""
@@ -6256,11 +6264,11 @@ msgstr ""
 msgid "Comment"
 msgstr ""
 
-#: ui/library/widget.py:390
+#: ui/library/widget.py:389
 msgid "Track loading is disabled while External Sync is enabled."
 msgstr ""
 
-#: ui/library/widget.py:479
+#: ui/library/widget.py:478
 msgid "The loaded track is not in the list shown."
 msgstr ""
 
@@ -6308,15 +6316,15 @@ msgstr ""
 msgid "Key shift needs the native audio engine."
 msgstr ""
 
-#: ui/config/external_sync.py:105 ui/library/widget.py:389 ui/pane.py:621
+#: ui/config/external_sync.py:105 ui/library/widget.py:388 ui/pane.py:622
 msgid "External Sync"
 msgstr ""
 
-#: ui/pane.py:622
+#: ui/pane.py:623
 msgid "Playback is disabled while External Sync is enabled."
 msgstr ""
 
-#: ui/pane.py:960
+#: ui/pane.py:961
 msgid "Not Loaded"
 msgstr ""
 

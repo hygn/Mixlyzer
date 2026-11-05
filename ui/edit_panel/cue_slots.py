@@ -199,7 +199,7 @@ class CueSlot(QtWidgets.QFrame):
 
 
 class CuePageWidget(QtWidgets.QWidget):
-    """Side strip (JumpCUE / CUE tabs, page arrows and number, an extra tool button)
+    """Side strip (JumpCUE / CUE as two squares joined, the list's tool under them, page arrows and number)
     and a 4 x 2 slot grid per list. ``list_changed(int)``: 0 = JumpCUE, 1 = CUE."""
 
     list_changed = QtCore.Signal(int)
@@ -229,8 +229,12 @@ class CuePageWidget(QtWidgets.QWidget):
             b.setFixedSize(w, row_h)
             return b
 
-        self.tab_jump = _side_btn("cue_tab_jump", "JumpCUEs", half * 2 + 2, checkable=True)
-        self.tab_cue = _side_btn("cue_tab_memory", tr("CUE points"), half * 2 + 2, checkable=True)
+        whole = half * 2 + 2
+        self.tab_jump = _side_btn("cue_tab_jump", "JumpCUEs", whole // 2, checkable=True)
+        self.tab_cue = _side_btn("cue_tab_memory", tr("CUE points"), whole // 2, checkable=True)
+        self.tab_jump.setStyleSheet("QToolButton { border-top-right-radius: 0; border-bottom-right-radius: 0; }")
+        self.tab_cue.setStyleSheet("QToolButton { border-left: none; border-top-left-radius: 0;"
+                                   " border-bottom-left-radius: 0; }")
         self.tab_jump.setChecked(True)
         tabs = QtWidgets.QButtonGroup(self)
         tabs.setExclusive(True)
@@ -241,19 +245,22 @@ class CuePageWidget(QtWidgets.QWidget):
         self.btn_next = _side_btn("cue_page_next", tr("Next page"), half)
         self.page_label = QtWidgets.QLabel("1")
         self.page_label.setAlignment(QtCore.Qt.AlignCenter)
-        self.page_label.setFixedSize(half, row_h)
+        self.page_label.setFixedSize(whole, row_h)
         f = self.page_label.font()
         f.setPointSize(9)
         self.page_label.setFont(f)
         self.page_label.setToolTip(tr("Page"))
         self.tool_slot = QtWidgets.QStackedWidget()  # per-list tool (JumpCUE: reanalyze, CUE: MEMORY)
-        self.tool_slot.setFixedSize(half, row_h)
-        side.addWidget(self.tab_jump, 0, 0, 1, 2)
-        side.addWidget(self.tab_cue, 1, 0, 1, 2)
+        self.tool_slot.setFixedSize(whole, row_h)
+        tab_row = QtWidgets.QHBoxLayout()
+        tab_row.setSpacing(0)
+        tab_row.addWidget(self.tab_jump)
+        tab_row.addWidget(self.tab_cue)
+        side.addLayout(tab_row, 0, 0, 1, 2)
+        side.addWidget(self.tool_slot, 1, 0, 1, 2)
         side.addWidget(self.btn_prev, 2, 0)
         side.addWidget(self.btn_next, 2, 1)
-        side.addWidget(self.page_label, 3, 0)
-        side.addWidget(self.tool_slot, 3, 1)
+        side.addWidget(self.page_label, 3, 0, 1, 2)
         root.addLayout(side)
 
         self.lists = QtWidgets.QStackedWidget()

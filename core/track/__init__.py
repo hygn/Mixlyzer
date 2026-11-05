@@ -5,6 +5,8 @@
                   methods, each telling its own signal; undo / redo and the unsaved flag
     marks.py      the marks' editor form, made from the stored analysis (pure functions)
     history.py    the edit history's snapshots
+    changes.py    where a change of the marks is, per kind (pure functions): the model's last_changes, which the views
+                  blink for a moment
 
 The editor (ui.edit_panel) shows the marks and asks the model to change them; a segment reanalysis's result goes
 to the model the same way; the views read the model and follow its signals. Saving reads DataModel.stored_edits (a TrackEdits).

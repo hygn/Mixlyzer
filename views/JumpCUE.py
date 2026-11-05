@@ -10,6 +10,14 @@ from core.marks.colors import jump_cue_colors
 from .base import ViewPlugin, emphasis_opacity, emphasis_size, register_view
 
 
+def marker_font() -> QtGui.QFont:
+    """A JumpCueMarker's letter's font."""
+    font = QtGui.QFont()
+    font.setPointSizeF(9.0)
+    font.setBold(True)
+    return font
+
+
 class JumpCueMarker(QtWidgets.QGraphicsItem):
     """A JumpCUE's squircle in its colour with its letter centred (black), a thin
     dark outline and a soft shadow; drawn in screen pixels, centred on its pos."""
@@ -63,9 +71,7 @@ class JumpCUEView(ViewPlugin):
         # [point, marker, shown]. Playback only moves the markers by the view offset.
         self._entries: List[list] = []
 
-        self._font = QtGui.QFont()
-        self._font.setPointSizeF(9.0)
-        self._font.setBold(True)
+        self._font = marker_font()
 
         self.bus.sig_time_changed.connect(self._refresh)
         self.bus.sig_window_changed.connect(self._refresh)

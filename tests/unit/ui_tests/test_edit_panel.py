@@ -146,6 +146,45 @@ class EditingTests(EditPanelCase):
         self.assertFalse(self.panel.EMPHASIZE_SHOWN_PAGES)
 
 
+class CuePageTests(EditPanelCase):
+    """The side strip: two squares joined pick the list, under them the list's one tool, as wide as both."""
+
+    def test_two_squares_joined_and_the_tool_as_wide_as_both(self):
+        page = self.panel.cue_page
+        page.show()
+        APP.processEvents()
+        jump, cue = page.tab_jump.geometry(), page.tab_cue.geometry()
+        self.assertEqual(jump.width(), jump.height())
+        self.assertEqual(cue.size(), jump.size())
+        self.assertEqual(cue.left(), jump.right() + 1)                    # nothing between them
+        self.assertEqual(cue.top(), jump.top())
+        tool = page.tool_slot.geometry()
+        self.assertEqual((tool.left(), tool.width()), (jump.left(), jump.width() * 2))
+        self.assertGreater(tool.top(), jump.bottom())
+        self.assertEqual(page.tab_jump.width() * 2, page.btn_next.geometry().right() + 1 - page.btn_prev.geometry().left())
+        page.hide()
+
+    def test_a_square_shows_its_list_and_tool(self):
+        page, panel = self.panel.cue_page, self.panel
+        self.assertEqual(page.current_list, 0)
+        self.assertIs(page.tool_slot.currentWidget(), panel.jc_reanalyze)
+        page.tab_cue.click()
+        self.assertEqual(page.current_list, 1)
+        self.assertIs(page.tool_slot.currentWidget(), panel.cp_memory)
+        self.assertFalse(page.tab_jump.isChecked())
+        page.tab_jump.click()
+        self.assertEqual(page.current_list, 0)
+
+    def test_the_tool_works(self):
+        panel = self.panel
+        panel.cue_page.show_list(1)
+        self.assertTrue(panel.cue_page.tab_cue.isChecked())
+        self.at(20.2)
+        count = len(self.model.cue_points)
+        panel.cp_memory.click()
+        self.assertEqual(len(self.model.cue_points), count + 1)
+
+
 class BeatgridTests(EditPanelCase):
     def setUp(self):
         super().setUp()

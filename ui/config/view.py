@@ -53,6 +53,7 @@ def build_view_tab(dialog) -> None:
     dialog.cb_JumpCUE = QCheckBox(tr("Display JumpCUE"))
     dialog.cb_phrase = QCheckBox(tr("Display phrase overlay"))
     dialog.cb_played_tempo_key = QCheckBox(tr("Show the tempo and key as played"))
+    dialog.cb_highlight_changes = QCheckBox(tr("Highlight changed parts"))
     # the waveform style: one radio button each, in a row (the value its button's: WAVEFORM_STYLES)
     dialog.waveform_style_box = QWidget()
     style_row = QHBoxLayout(dialog.waveform_style_box)
@@ -114,6 +115,7 @@ def build_view_tab(dialog) -> None:
     dialog.cb_played_tempo_key.setToolTip(tr(
         "<p>The overview's and the main view's BPM and keys as heard: the tempo changed by the fader, the key moved "
         "by the key shift (and by the tempo with MT off). Off: the track's own.</p>"))
+    dialog.cb_highlight_changes.setToolTip(tr("<p>Where the marks changed blinks.</p>"))
     dialog.cb_use_output_volume_as_peak_meter_input.setToolTip(tr(
         "Checked: the peak meter follows the volume slider (what you hear).\n"
         "Unchecked: the peak meter shows the level after Trim only."
@@ -139,6 +141,7 @@ def build_view_tab(dialog) -> None:
     f_display.addRow(dialog.cb_JumpCUE)
     f_display.addRow(dialog.cb_phrase)
     f_display.addRow(dialog.cb_played_tempo_key)
+    f_display.addRow(dialog.cb_highlight_changes)
     f_display.addRow(dialog.cb_use_output_volume_as_peak_meter_input)
 
     # the waveforms' low / mid / high ranges: the overview and the preview redraw from the stored bands at once

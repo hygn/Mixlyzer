@@ -13,7 +13,9 @@ from views.render.keystrip import (
 )
 from views.render.wave import band_ranges, render_wave_overview
 from views.base import EDIT_PAGES, edit_emphasis, emphasis_opacity, emphasis_size, emphasis_width, shown_played
+from views.change_flash import BLINK_MS, BLINKS, HOLD_MS, Blinker, LitBands, band_rect, phrase_lit_segments
 from views.segment_strip import SegmentStrip
+from core.track.changes import BEATGRID, CUE, JUMPCUE, PHRASE
 from core.settings.store import current as current_settings
 from analyzer.music.tempo_rows import segment_end_bpm
 
@@ -22,8 +24,11 @@ from analyzer.music.tempo_rows import segment_end_bpm
 OVERVIEW_WAVE_HEIGHT = 64
 PHRASE_OPACITY = 0.5        # the phrase band over the waveform
 CUE_POINT_SIZE = 7          # px
+JUMP_CUE_SIZE = 10.0        # px
 BPM_LINE = ((245, 245, 245, 230), 1.2)    # the BPM strip's line: colour, width
 BOUNDARY = ((255, 255, 255, 220), 1.0)    # key / phrase segment boundaries
+OVERVIEW_MIN_PX = 6         # the least width of a change here (a 0.5 s move is 2 pixels of a whole track)
+BPM_LIT = (120, 120, 120)   # the BPM strip's stretch while lit (views.change_flash)
 
 
 def _screen_pixel_width() -> int:
@@ -93,6 +98,45 @@ class SeekOnlyViewBox(pg.ViewBox):
             return None
         dur = float(self._get_duration() or 0.0)
         return float(np.clip(x, 0.0, max(0.0, dur)))
+
+
+class _LitMarks:
+    """What blinks in the overview: the key strip darkened, the phrase strip at its full colour, the BPM strip filled
+    under its line and labels (black: nothing to darken), a white CUE marker, a white JumpCUE square under its letter."""
+
+    def __init__(self, plot: pg.PlotItem):
+        self.strips = LitBands()
+        self.strips.setZValue(6.5)      # over the strips; under their boundaries and labels
+        self.phrases = SegmentStrip()
+        self.phrases.setZValue(6.5)
+        self.phrases.setVisible(False)
+        self.bpm = LitBands(solid=BPM_LIT)
+        self.bpm.setZValue(4.5)         # over the BPM strip's black and the played part's shade; under its line and labels
+        self.marker = pg.ScatterPlotItem(size=CUE_POINT_SIZE + 3, pen=pg.mkPen((0, 0, 0), width=1),
+                                         brush=pg.mkBrush(255, 255, 255), pxMode=True, symbol=_down_triangle_path())
+        self.marker.setZValue(27)       # over the CUE markers, under the playhead
+        self.marker.setVisible(False)
+        self.jump_cue = pg.ScatterPlotItem(symbol="s", size=JUMP_CUE_SIZE, pen=pg.mkPen((0, 0, 0), width=1),
+                                           brush=pg.mkBrush(255, 255, 255), pxMode=True)
+        self.jump_cue.setZValue(19.5)   # over a JumpCUE's square (19), under its letter (20)
+        self.jump_cue.setVisible(False)
+        for item in (self.strips, self.phrases, self.bpm, self.marker, self.jump_cue):
+            plot.addItem(item, ignoreBounds=True)
+
+    def draw(self, strips, phrases, phrase_lane: tuple[float, float], bpm, cues, cue_y: float, jump_cues,
+             jump_y: float) -> None:
+        self.strips.set_rects(strips)
+        self.phrases.set_segments(phrases, *phrase_lane)
+        self.bpm.set_rects(bpm)
+        self.marker.setData(cues, [cue_y] * len(cues))
+        self.jump_cue.setData(jump_cues, [jump_y] * len(jump_cues))
+
+    def set_lit(self, lit: bool) -> None:
+        self.strips.set_lit(lit)
+        self.bpm.set_lit(lit)
+        self.phrases.setVisible(lit)
+        self.marker.setVisible(lit)
+        self.jump_cue.setVisible(lit)
 
 
 class OverviewWidget(QtWidgets.QWidget):
@@ -202,6 +246,12 @@ class OverviewWidget(QtWidgets.QWidget):
 
         self.line_now = pg.InfiniteLine(angle=90, pen=pg.mkPen((255,200,50), width=2)); self.p.addItem(self.line_now)
         self.line_now.setZValue(30)
+        # where the marks just changed, blinking over its stretch in its own strip (views.change_flash): all of it, where
+        # the main view shows a part or none
+        self.change_flash = _LitMarks(self.p)
+        self._change_blinker = Blinker(self, self.change_flash.set_lit, BLINK_MS, HOLD_MS)
+        self.model.sig_change_made.connect(self._on_change_made)
+        self.model.sig_loaded.connect(self._change_blinker.stop)
 
         self.duration = 0.0
         self.SEGMENT_H = 0.10
@@ -218,7 +268,7 @@ class OverviewWidget(QtWidgets.QWidget):
         self._cue_label_y = 0.95
         self._cue_block_bottom = 0.9
         self._cue_block_height = 0.1
-        self._cue_marker_size = 10.0
+        self._cue_marker_size = JUMP_CUE_SIZE
         self._cue_font = QtGui.QFont()
         self._cue_font.setPointSizeF(8.0)
         self._cue_font.setBold(True)
@@ -238,6 +288,28 @@ class OverviewWidget(QtWidgets.QWidget):
         # the track as heard (bus.sig_played_changed): its BPM and keys shown so where Settings > View says
         self._played = (1.0, 0)
         self.bus.sig_played_changed.connect(self._on_played)
+
+    def _on_change_made(self) -> None:
+        """Each change in its own strip: the keys', the phrases', the BPM strip for the beatgrid; a CUE point's or
+        JumpCUE's a marker of its own shape at each end."""
+        if not current_settings().viewconfig.highlight_changes:
+            return
+        min_width = OVERVIEW_MIN_PX * max(0.1, self.duration) / max(1, self.canvas.width())
+        strips, phrases, bpm, cues, jump_cues = [], [], [], [], []
+        for change in self.model.last_changes:
+            if change.kind == CUE:
+                cues += sorted({change.start, change.end})
+            elif change.kind == JUMPCUE:
+                jump_cues += sorted({change.start, change.end})
+            elif change.kind == BEATGRID:
+                bpm.append(band_rect(change.start, change.end, self._segment_bottom, 0.0, min_width))
+            elif change.kind == PHRASE:
+                phrases += phrase_lit_segments(self.model.phrases, change.start, change.end, min_width)
+            else:
+                strips.append(band_rect(change.start, change.end, self._key_bottom, self._key_bottom + self.KEY_H, min_width))
+        self.change_flash.draw(strips, phrases, (self._wave_bottom, self._phrase_band_h), bpm, cues, self._wave_top - 0.05,
+                               jump_cues, self._cue_label_y)
+        self._change_blinker.run(BLINKS)
 
     def _on_played(self, speed: float, semitones: int) -> None:
         self._played = (float(speed), int(semitones))

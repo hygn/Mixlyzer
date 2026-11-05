@@ -88,6 +88,7 @@ class viewconfig:
     display_phrase: bool
     # the overview's and the main view's BPM and keys as heard: the tempo changed, the key shifted (the deck's)
     played_tempo_key: bool
+    highlight_changes: bool  # where an edit, undo or reanalysis changed the marks blinks (views.change_flash)
     waveform_style: Literal["rgb", "3band"]  # RGB: colored by the band mix; 3band: rekordbox-style layers
     # low / mid / high ranges (Hz) of the waveforms' colours: the overview and the preview sum them from the stored
     # bands when drawn, the main view waveform filters its audio with them
@@ -490,6 +491,7 @@ def default_cfg():
         display_JumpCUE=True,
         display_phrase=True,
         played_tempo_key=False,
+        highlight_changes=True,
         waveform_style="rgb",
         env_lo=(20.0, 200.0),
         env_mid=(250.0, 1500.0),

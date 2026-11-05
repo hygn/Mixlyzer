@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-11-04 22:09+0900\n"
+"POT-Creation-Date: 2026-11-05 17:52+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ja_JP\n"
@@ -473,7 +473,7 @@ msgid "JumpCUE pads"
 msgstr "JumpCUE パッド"
 
 #: core/controls/midi.py:50 ui/config/pipeline_map.py:34
-#: ui/edit_panel/cue_slots.py:233
+#: ui/edit_panel/cue_slots.py:234
 msgid "CUE points"
 msgstr "CUEポイント"
 
@@ -1297,7 +1297,7 @@ msgid "Processing Waveform"
 msgstr "波形を処理中"
 
 #: core/workers/analysis_texts.py:15 ui/config/pipeline_map.py:32
-#: ui/config/view.py:159 ui/config/view.py:200
+#: ui/config/view.py:162 ui/config/view.py:203
 msgid "Waveform"
 msgstr "波形"
 
@@ -1481,23 +1481,23 @@ msgstr "JumpCUE を更新しました"
 msgid "Phrases Updated"
 msgstr "フレーズを更新しました"
 
-#: core/workflows/analysis.py:79
+#: core/workflows/analysis.py:80
 msgid "Analysis canceled"
 msgstr "解析をキャンセルしました"
 
-#: core/workflows/analysis.py:101
+#: core/workflows/analysis.py:102
 #, python-brace-format
 msgid ""
 "The path is too long for Windows ({count} characters) while Windows' long"
 " paths are off: {path}"
 msgstr "Windows で開くにはパスが長すぎます（{count} 文字）。Windows の長いパスのサポートがオフです: {path}"
 
-#: core/workflows/analysis.py:105
+#: core/workflows/analysis.py:106
 #, python-brace-format
 msgid "{file} is kept online only: it is downloaded before it is read."
 msgstr "{file} はオンラインのみのファイルです。ダウンロードしてから読み込みます。"
 
-#: core/workflows/analysis.py:117
+#: core/workflows/analysis.py:118
 #, python-brace-format
 msgid "File not found: {path}"
 msgstr "ファイルが見つかりません: {path}"
@@ -1507,52 +1507,52 @@ msgstr "ファイルが見つかりません: {path}"
 msgid "Analysis already in progress: {file}"
 msgstr "すでに解析中です: {file}"
 
-# | msgid "Reading the library"
-#: core/workflows/analysis.py:133
-#, python-brace-format
-msgid "Already in the library: {file}"
-msgstr "すでにライブラリにあります: {file}"
-
-#: core/workflows/analysis.py:141
-msgid "Loading Track"
-msgstr "トラックを読み込み中"
-
-# | msgid "Loading the library"
-#: core/workflows/analysis.py:152
-#, python-brace-format
-msgid "Loaded from the library: {file}"
-msgstr "ライブラリから読み込みました: {file}"
-
-#: core/workflows/analysis.py:180
-msgid "Waiting for a free analysis slot"
-msgstr "解析の順番待ち"
-
-# | msgid "Analyzing: {file}"
-#: core/workflows/analysis.py:181
-#, python-brace-format
-msgid "Waiting to analyze: {file}"
-msgstr "解析待ち: {file}"
-
-#: core/workflows/analysis.py:207
+#: core/workflows/analysis.py:134 core/workflows/analysis.py:223
 #, python-brace-format
 msgid "Analyzing: {file}"
 msgstr "解析中: {file}"
 
-#: core/workflows/analysis.py:254
+# | msgid "Reading the library"
+#: core/workflows/analysis.py:137
+#, python-brace-format
+msgid "Already in the library: {file}"
+msgstr "すでにライブラリにあります: {file}"
+
+#: core/workflows/analysis.py:145
+msgid "Loading Track"
+msgstr "トラックを読み込み中"
+
+# | msgid "Loading the library"
+#: core/workflows/analysis.py:161
+#, python-brace-format
+msgid "Loaded from the library: {file}"
+msgstr "ライブラリから読み込みました: {file}"
+
+#: core/workflows/analysis.py:196
+msgid "Waiting for a free analysis slot"
+msgstr "解析の順番待ち"
+
+# | msgid "Analyzing: {file}"
+#: core/workflows/analysis.py:197
+#, python-brace-format
+msgid "Waiting to analyze: {file}"
+msgstr "解析待ち: {file}"
+
+#: core/workflows/analysis.py:270
 #, python-brace-format
 msgid "Error ({file})"
 msgstr "エラー ({file})"
 
-#: core/workflows/analysis.py:254
+#: core/workflows/analysis.py:270
 msgid "Error"
 msgstr "エラー"
 
-#: core/workflows/analysis.py:265
+#: core/workflows/analysis.py:281
 msgid "Saving Result"
 msgstr "結果を保存中"
 
 # | msgid "The file could not be written: {error}"
-#: core/workflows/analysis.py:268
+#: core/workflows/analysis.py:284
 #, python-brace-format
 msgid "The analysis could not be stored: {error}"
 msgstr "解析結果を保存できませんでした: {error}"
@@ -1738,7 +1738,7 @@ msgid "relative or absolute .json path"
 msgstr "相対または絶対の .json パス"
 
 #: ui/config/analysis.py:31 ui/config/analysis.py:135 ui/config/library.py:264
-#: ui/config/view.py:198
+#: ui/config/view.py:201
 msgid "General"
 msgstr "一般"
 
@@ -1766,7 +1766,7 @@ msgstr ""
 "ビートトラッカーはこの値からその 2 倍までのテンポで読み取ります。\n"
 "範囲外の曲は半分または 2 倍のテンポで読み取られます。"
 
-#: ui/config/analysis.py:59 ui/config/window.py:256
+#: ui/config/analysis.py:59 ui/config/window.py:257
 #: ui/windows/reanalyze_dialog.py:38 ui/windows/reanalyze_dialog.py:76
 #, python-brace-format
 msgid "Reads {low} - {high} BPM"
@@ -1836,7 +1836,7 @@ msgstr "最小 BPM"
 
 #: ui/config/analysis.py:114 ui/config/analysis.py:144
 #: ui/config/analysis.py:158 ui/config/library.py:257 ui/config/library.py:273
-#: ui/config/playback.py:108 ui/config/view.py:193
+#: ui/config/playback.py:108 ui/config/view.py:196
 msgid "Advanced"
 msgstr "詳細設定"
 
@@ -3552,7 +3552,7 @@ msgstr "再生デバイス: {device}、{rate} kHz"
 msgid "Its device's stream is shared with another output, at that output's rate."
 msgstr "このデバイスのストリームをほかの出力と共有しているため、その出力のサンプルレートで再生します。"
 
-#: ui/config/pipeline_map.py:22 ui/config/view.py:204
+#: ui/config/pipeline_map.py:22 ui/config/view.py:207
 msgid "View"
 msgstr "表示"
 
@@ -4428,7 +4428,11 @@ msgstr "フレーズのオーバーレイを表示"
 msgid "Show the tempo and key as played"
 msgstr "再生中のテンポとキーで表示"
 
-#: ui/config/view.py:70
+#: ui/config/view.py:56
+msgid "Highlight changed parts"
+msgstr "変更箇所を強調"
+
+#: ui/config/view.py:71
 msgid ""
 "RGB: the waveform colored by its low / mid / high mix.\n"
 "3Band: the low (blue), mid (amber) and high (white) bands drawn as layers."
@@ -4436,7 +4440,7 @@ msgstr ""
 "RGB: 低域 / 中域 / 高域の比率で波形に色を付けます。\n"
 "3Band: 低域 (青)、中域 (アンバー)、高域 (白) の帯域を重ねて描きます。"
 
-#: ui/config/view.py:79
+#: ui/config/view.py:80
 #, python-brace-format
 msgid ""
 "Time resolution of the main view waveform bars when the view is up to "
@@ -4448,7 +4452,7 @@ msgstr ""
 
 # | msgid "" "Time resolution of the main view waveform bars when the view is
 # | wider " "than {seconds} s.\n" "Smaller is more detailed."
-#: ui/config/view.py:82
+#: ui/config/view.py:83
 #, python-brace-format
 msgid ""
 "Time resolution of the main view waveform bars when the view is wider "
@@ -4458,7 +4462,7 @@ msgstr ""
 "表示幅が {close} 秒を超え {seconds} 秒以下のときのメインビュー波形のバーの時間分解能。\n"
 "小さいほど細かくなります。"
 
-#: ui/config/view.py:85
+#: ui/config/view.py:86
 #, python-brace-format
 msgid ""
 "Time resolution of the main view waveform bars when the view is wider "
@@ -4468,25 +4472,25 @@ msgstr ""
 "表示幅が {seconds} 秒を超えるときのメインビュー波形のバーの時間分解能。\n"
 "小さいほど細かくなります。"
 
-#: ui/config/view.py:93
+#: ui/config/view.py:94
 msgid ""
 "Order of the main view waveform's band filters. Higher separates the "
 "bands more sharply."
 msgstr "メインビュー波形の帯域フィルターの次数。高いほど帯域をはっきり分けます。"
 
-#: ui/config/view.py:96
+#: ui/config/view.py:97
 msgid "Use output volume as peak meter input"
 msgstr "出力音量をピークメーターの入力に使う"
 
-#: ui/config/view.py:98
+#: ui/config/view.py:99
 msgid "Reduce FPS when occluded"
 msgstr "隠れているときは FPS を下げる"
 
-#: ui/config/view.py:104
+#: ui/config/view.py:105
 msgid "Waiting for FPS..."
 msgstr "FPS を待機中..."
 
-#: ui/config/view.py:106
+#: ui/config/view.py:107
 msgid ""
 "<p>Measured from the main view's repaint intervals. The view moves by "
 "whole pixels and is redrawn only when it moves, so a long view (fewer "
@@ -4495,27 +4499,27 @@ msgstr ""
 "<p>メインビューの再描画の間隔から測ります。ビューはピクセル単位で動き、動いたときだけ再描画されるため、長い表示幅（1 秒に動くピクセルが "
 "FPS より少ないとき）ではフレームを落としていなくても低く表示されます。</p>"
 
-#: ui/config/view.py:109
+#: ui/config/view.py:110
 msgid "Show the detailed waveform view."
 msgstr "詳細な波形ビューを表示します。"
 
-#: ui/config/view.py:110
+#: ui/config/view.py:111
 msgid "Show the beat grid view."
 msgstr "ビートグリッドのビューを表示します。"
 
-#: ui/config/view.py:111
+#: ui/config/view.py:112
 msgid "Show the key strip (detected key over time)."
 msgstr "キーストリップ (時間ごとに検出されたキー) を表示します。"
 
-#: ui/config/view.py:112
+#: ui/config/view.py:113
 msgid "Show the JumpCUE view (detected repeat jump points)."
 msgstr "JumpCUE のビュー (検出された反復のジャンプポイント) を表示します。"
 
-#: ui/config/view.py:113
+#: ui/config/view.py:114
 msgid "Overlay the detected phrases on the views."
 msgstr "検出されたフレーズをビューに重ねて表示します。"
 
-#: ui/config/view.py:115
+#: ui/config/view.py:116
 msgid ""
 "<p>The overview's and the main view's BPM and keys as heard: the tempo "
 "changed by the fader, the key moved by the key shift (and by the tempo "
@@ -4525,6 +4529,10 @@ msgstr ""
 "がオフならテンポ）で移ったキーです。オフにするとトラック本来の値を表示します。</p>"
 
 #: ui/config/view.py:118
+msgid "<p>Where the marks changed blinks.</p>"
+msgstr "<p>マークが変わった箇所が点滅します。</p>"
+
+#: ui/config/view.py:120
 msgid ""
 "Checked: the peak meter follows the volume slider (what you hear).\n"
 "Unchecked: the peak meter shows the level after Trim only."
@@ -4532,7 +4540,7 @@ msgstr ""
 "オン: ピークメーターは音量スライダーに従います (聞こえる音)。\n"
 "オフ: ピークメーターはトリムだけを通したレベルを表示します。"
 
-#: ui/config/view.py:122
+#: ui/config/view.py:124
 msgid ""
 "Lower the redraw rate while the window is hidden behind other windows\n"
 "or minimized, to save CPU."
@@ -4540,148 +4548,148 @@ msgstr ""
 "ウィンドウが他のウィンドウに隠れているか最小化されている間は、\n"
 "再描画の頻度を下げて CPU を節約します。"
 
-#: ui/config/view.py:125
+#: ui/config/view.py:127
 msgid "Target redraw rate of the views."
 msgstr "ビューの再描画の目標頻度。"
 
-#: ui/config/view.py:127
+#: ui/config/view.py:129
 msgid "Image drawn as the spinning record when a track has no album art."
 msgstr "トラックにアートワークがないときに回転するレコードとして描く画像。"
 
-#: ui/config/view.py:130 ui/config/view.py:132
+#: ui/config/view.py:132 ui/config/view.py:134
 #: ui/library/tabs/tieup_editor.py:140 ui/library/tabs/tieup_editor.py:143
 #: ui/windows/tieup_works.py:77 ui/windows/tieup_works.py:80
 msgid "Language"
 msgstr "言語"
 
-#: ui/config/view.py:134 ui/config/view.py:199
+#: ui/config/view.py:136 ui/config/view.py:202
 msgid "Display"
 msgstr "表示"
 
-#: ui/config/view.py:153
+#: ui/config/view.py:156
 msgid "lo"
 msgstr "下限"
 
-#: ui/config/view.py:154
+#: ui/config/view.py:157
 msgid "hi"
 msgstr "上限"
 
-#: ui/config/view.py:161
+#: ui/config/view.py:164
 msgid "Low / mid / high bands of the waveforms' colors."
 msgstr "波形の色の低域 / 中域 / 高域の帯域。"
 
-#: ui/config/view.py:164
+#: ui/config/view.py:167
 msgid "Waveform style"
 msgstr "波形のスタイル"
 
-#: ui/config/view.py:166
+#: ui/config/view.py:169
 msgid ""
 "<p>The master output's spectrum as it plays. Drag a band's edges to set "
 "it.</p>"
 msgstr "<p>再生中のマスター出力のスペクトラムです。帯域の両端をドラッグして設定します。</p>"
 
 # | msgid "Frame, long view (ms)"
-#: ui/config/view.py:169
+#: ui/config/view.py:172
 msgid "Frame, close view (ms)"
 msgstr "フレーム、拡大表示 (ms)"
 
-#: ui/config/view.py:170
+#: ui/config/view.py:173
 msgid "Frame, short view (ms)"
 msgstr "フレーム、短い表示 (ms)"
 
-#: ui/config/view.py:171
+#: ui/config/view.py:174
 msgid "Frame, long view (ms)"
 msgstr "フレーム、長い表示 (ms)"
 
-#: ui/config/view.py:172
+#: ui/config/view.py:175
 msgid "Filter order"
 msgstr "フィルターの次数"
 
-#: ui/config/view.py:174
+#: ui/config/view.py:177
 msgid ""
 "<p>The loaded track at the playhead, drawn with these settings. What is "
 "already drawn keeps the settings it was drawn with.</p>"
 msgstr "<p>ロードした曲の再生位置をこの設定で描きます。描画済みの部分は描いたときの設定のままです。</p>"
 
-#: ui/config/view.py:178
+#: ui/config/view.py:181
 msgid "Low"
 msgstr "低域"
 
-#: ui/config/view.py:178
+#: ui/config/view.py:181
 msgid "Frequency range (Hz) drawn as the low band of the waveform."
 msgstr "波形の低域として描く周波数範囲 (Hz)。"
 
-#: ui/config/view.py:179
+#: ui/config/view.py:182
 msgid "Lower edge of the low band (Hz)."
 msgstr "低域の下限 (Hz)。"
 
-#: ui/config/view.py:179
+#: ui/config/view.py:182
 msgid "Upper edge of the low band (Hz)."
 msgstr "低域の上限 (Hz)。"
 
-#: ui/config/view.py:181
+#: ui/config/view.py:184
 msgid "Mid"
 msgstr "中域"
 
-#: ui/config/view.py:181
+#: ui/config/view.py:184
 msgid "Frequency range (Hz) drawn as the mid band of the waveform."
 msgstr "波形の中域として描く周波数範囲 (Hz)。"
 
-#: ui/config/view.py:182
+#: ui/config/view.py:185
 msgid "Lower edge of the mid band (Hz)."
 msgstr "中域の下限 (Hz)。"
 
-#: ui/config/view.py:182
+#: ui/config/view.py:185
 msgid "Upper edge of the mid band (Hz)."
 msgstr "中域の上限 (Hz)。"
 
-#: ui/config/view.py:184
+#: ui/config/view.py:187
 msgid "High"
 msgstr "高域"
 
-#: ui/config/view.py:184
+#: ui/config/view.py:187
 msgid "Frequency range (Hz) drawn as the high band of the waveform."
 msgstr "波形の高域として描く周波数範囲 (Hz)。"
 
-#: ui/config/view.py:185
+#: ui/config/view.py:188
 msgid "Lower edge of the high band (Hz)."
 msgstr "高域の下限 (Hz)。"
 
-#: ui/config/view.py:185
+#: ui/config/view.py:188
 msgid "Upper edge of the high band (Hz)."
 msgstr "高域の上限 (Hz)。"
 
-#: ui/config/view.py:187
+#: ui/config/view.py:190
 msgid "Performance"
 msgstr "パフォーマンス"
 
-#: ui/config/view.py:191
+#: ui/config/view.py:194
 msgid "Actual FPS"
 msgstr "実際の FPS"
 
-#: ui/config/view.py:195
+#: ui/config/view.py:198
 msgid "Record image path"
 msgstr "レコード画像のパス"
 
-#: ui/config/view.py:201 ui/config/view.py:229
+#: ui/config/view.py:204 ui/config/view.py:232
 msgid "Phrase labels"
 msgstr "フレーズラベル"
 
-#: ui/config/view.py:232 ui/library/tabs/tieup_editor.py:143
+#: ui/config/view.py:235 ui/library/tabs/tieup_editor.py:143
 #: ui/windows/tieup_works.py:80
 msgid "Alias"
 msgstr "別名"
 
-#: ui/config/view.py:233
+#: ui/config/view.py:236
 msgid "Overview"
 msgstr "全体波形"
 
-#: ui/config/view.py:239
+#: ui/config/view.py:242
 #, python-brace-format
 msgid "Shown in place of {label} (empty: {label})"
 msgstr "{label} の代わりに表示 (空欄: {label})"
 
-#: ui/config/view.py:244
+#: ui/config/view.py:247
 #, python-brace-format
 msgid ""
 "{label} in the overview, numbered when it occurs more than once\n"
@@ -4691,7 +4699,7 @@ msgstr ""
 "(空欄: 名前の最初の文字)"
 
 # | msgid "Available with the native audio engine only."
-#: ui/config/view.py:313
+#: ui/config/view.py:316
 msgid "The spectrum needs the native audio engine."
 msgstr "スペクトラムは Native オーディオエンジンでのみ表示されます。"
 
@@ -5009,19 +5017,19 @@ msgstr "解析と BPM の割り当てに使う基準 BPM"
 msgid "Double-click to rename"
 msgstr "ダブルクリックで名前を変更"
 
-#: ui/edit_panel/cue_slots.py:240
+#: ui/edit_panel/cue_slots.py:244
 msgid "Previous page"
 msgstr "前のページ"
 
-#: ui/edit_panel/cue_slots.py:241
+#: ui/edit_panel/cue_slots.py:245
 msgid "Next page"
 msgstr "次のページ"
 
-#: ui/edit_panel/cue_slots.py:248
+#: ui/edit_panel/cue_slots.py:252
 msgid "Page"
 msgstr "ページ"
 
-#: ui/edit_panel/cue_slots.py:320
+#: ui/edit_panel/cue_slots.py:327
 #, python-brace-format
 msgid "Page {page} of {pages}"
 msgstr "{pages} ページ中 {page} ページ"
@@ -7124,11 +7132,11 @@ msgstr "パス"
 msgid "Comment"
 msgstr "コメント"
 
-#: ui/library/widget.py:390
+#: ui/library/widget.py:389
 msgid "Track loading is disabled while External Sync is enabled."
 msgstr "外部同期が有効な間はトラックを読み込めません。"
 
-#: ui/library/widget.py:479
+#: ui/library/widget.py:478
 msgid "The loaded track is not in the list shown."
 msgstr "ロードしたトラックは表示中のリストにありません。"
 
@@ -7188,15 +7196,15 @@ msgstr "マスターテンポ: タイムストレッチでピッチを保ちま�
 msgid "Key shift needs the native audio engine."
 msgstr "キーシフトには Native オーディオエンジンが必要です。"
 
-#: ui/config/external_sync.py:105 ui/library/widget.py:389 ui/pane.py:621
+#: ui/config/external_sync.py:105 ui/library/widget.py:388 ui/pane.py:622
 msgid "External Sync"
 msgstr "外部同期"
 
-#: ui/pane.py:622
+#: ui/pane.py:623
 msgid "Playback is disabled while External Sync is enabled."
 msgstr "外部同期が有効な間は再生できません。"
 
-#: ui/pane.py:960
+#: ui/pane.py:961
 msgid "Not Loaded"
 msgstr "トラックが読み込まれていません"
 

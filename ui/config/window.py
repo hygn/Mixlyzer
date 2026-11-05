@@ -205,6 +205,7 @@ class SettingsDialog(
         self.cb_JumpCUE.setChecked(bool(v.display_JumpCUE))
         self.cb_phrase.setChecked(bool(getattr(v, "display_phrase", True)))
         self.cb_played_tempo_key.setChecked(bool(v.played_tempo_key))
+        self.cb_highlight_changes.setChecked(bool(v.highlight_changes))
         self.cb_use_output_volume_as_peak_meter_input.setChecked(
             bool(v.use_output_volume_as_peak_meter_input)
         )
@@ -352,6 +353,7 @@ class SettingsDialog(
                 display_JumpCUE=bool(self.cb_JumpCUE.isChecked()),
                 display_phrase=bool(self.cb_phrase.isChecked()),
                 played_tempo_key=bool(self.cb_played_tempo_key.isChecked()),
+                highlight_changes=bool(self.cb_highlight_changes.isChecked()),
                 waveform_style=self._get_waveform_style(),
                 env_lo=(float(self.sp_env_lo_lo.value()), float(self.sp_env_lo_hi.value())),
                 env_mid=(float(self.sp_env_mid_lo.value()), float(self.sp_env_mid_hi.value())),

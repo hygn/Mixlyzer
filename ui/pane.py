@@ -554,6 +554,7 @@ class MainPane(QtWidgets.QWidget):
             self.add_view("PhraseView")
         self.add_view("CUEPointView")
         self.add_view("DeckCueView")   # the deck's cue point (the CUE button's): above the phrase strip
+        self.add_view("ChangeFlashView")  # where an edit, undo or reanalysis just changed the marks
         if hasattr(self, "ov") and hasattr(self.ov, "set_phrase_visible"):
             self.ov.set_phrase_visible(getattr(view_cfg, "display_phrase", True))
         # last, so the playhead is drawn over everything (it also has the top z value)

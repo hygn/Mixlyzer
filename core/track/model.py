@@ -31,6 +31,7 @@ from PySide6 import QtCore
 from PySide6.QtGui import QImage
 
 from core.track import marks
+from core.track.changes import Change, changes
 from core.track.history import History, Marks
 from analyzer.music.marks import CuePoint, JumpCueGroup, Phrase
 from core.marks.jump_cues import check_slot_letters
@@ -63,6 +64,7 @@ class DataModel(QtCore.QObject):
     sig_jump_cues_changed = QtCore.Signal()
     sig_cue_points_changed = QtCore.Signal()
     sig_edits_changed = QtCore.Signal()        # undo / redo possible, unsaved edits
+    sig_change_made = QtCore.Signal()          # an edit / undo / redo changed the marks: last_changes says where
 
     def __init__(self):
         super().__init__()
@@ -81,6 +83,7 @@ class DataModel(QtCore.QObject):
         self._saved: tuple = (self._history.current(), 0)
         self._jump_cues_loaded: list[JumpCueGroup] = self._jump_cues
         self._jump_cues_left_out = 0               # stored cues past slot Z the load left out
+        self._last_changes: tuple[Change, ...] = ()
 
     # ---- what the track is ----
     @property
@@ -111,6 +114,7 @@ class DataModel(QtCore.QObject):
             self.predecoded_rate = 0
         self._set_marks(marks.from_stored(self._analysis, self._duration_sec))
         self._history = History.starting_at(self._snapshot())
+        self._last_changes = ()
         self._auto_count = 0
         # The JumpCUEs as stored, unless the load had to letter them (letters that were not slots): lettered without
         # a loss they are unsaved (the next save stores the letters shown); with cues past slot Z left out, the
@@ -226,15 +230,22 @@ class DataModel(QtCore.QObject):
         """What a save of stored_edits() taken now stores: handed to mark_saved once it is stored."""
         return (self._history.current(), self._auto_count)
 
+    @property
+    def last_changes(self) -> tuple[Change, ...]:
+        """Where the last edit, undo or redo changed the marks (core.track.changes), per kind of marks."""
+        return self._last_changes
+
     def undo(self) -> None:
+        before = self._history.current()
         snapshot = self._history.undo()
         if snapshot is not None:
-            self._restore(snapshot)
+            self._restore(snapshot, before)
 
     def redo(self) -> None:
+        before = self._history.current()
         snapshot = self._history.redo()
         if snapshot is not None:
-            self._restore(snapshot)
+            self._restore(snapshot, before)
 
     def mark_saved(self, point: tuple) -> None:
         """The edits of ``point`` (save_point(), taken with the stored_edits() saved) are stored: shown unsaved
@@ -274,16 +285,26 @@ class DataModel(QtCore.QObject):
                      self._cue_points)
 
     def _edited(self, changed: QtCore.SignalInstance) -> None:
+        before = self._history.current()
         self._history.push(self._snapshot())
         changed.emit()
         self.sig_edits_changed.emit()
+        self._tell_changes(before)
 
-    def _restore(self, s: Marks) -> None:
+    def _restore(self, s: Marks, before: Marks) -> None:
         self._set_marks({"beats": s.beats, "tempo_segments": s.tempo_segments, "key_segments": s.key_segments,
                          "phrases": s.phrases, "jump_cues": s.jump_cues, "cue_points": s.cue_points})
         for sig in (self.sig_beatgrid_changed, self.sig_keys_changed, self.sig_jump_cues_changed,
                     self.sig_phrases_changed, self.sig_cue_points_changed, self.sig_edits_changed):
             sig.emit()
+        self._tell_changes(before)
+
+    def _tell_changes(self, before: Marks) -> None:
+        """Where the marks shown differ from ``before``, told when they do."""
+        found = tuple(changes(before, self._snapshot()))
+        if found:
+            self._last_changes = found
+            self.sig_change_made.emit()
 
     def debug_summary(self) -> str:
         """A human-readable snapshot of the model, for the console."""

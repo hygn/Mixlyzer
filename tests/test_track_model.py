@@ -187,6 +187,64 @@ class TrackModelTests(unittest.TestCase):
         self.model.undo()
         self.assertEqual(self.model.tempo_segments[:, 2].tolist(), [120.0, 120.0])
 
+    def test_where_a_change_is_told(self):
+        from core.track.changes import Change
+        m = self.model
+        told = []
+        m.sig_change_made.connect(lambda: told.append(m.last_changes))
+        m.set_key_segments(np.asarray([[0.0, 0.0, 0.0, 10.0], [0.0, 0.0, 10.0, 20.0], [9.0, 1.0, 20.0, 60.0]]))
+        self.assertEqual(told[-1], (Change("key", 0.0, 20.0),))                    # a split: all of the segment
+        m.undo()
+        self.assertEqual(told[-1], (Change("key", 0.0, 20.0),))                    # undone: all of it too
+        m.redo()
+        self.assertEqual(len(told), 3)
+        m.set_key_segments(np.array(m.key_segments))                               # nothing changed: nothing to show
+        self.assertEqual(len(told), 3)
+        m.load(_analysis(), {"uid": "u"}, 60.0)
+        self.assertEqual(m.last_changes, ())
+
+    def test_where_each_kind_changed(self):
+        from core.track.changes import changes
+        from core.track.history import Marks
+        m = self.model
+        before = Marks(m.beats, m.tempo_segments, m.key_segments, m.phrases, m.jump_cues, m.cue_points)
+        beats = np.array(m.beats)
+        beats[(beats >= 30.0)] += 0.01                                             # the second segment's beats
+        segments = np.array(m.tempo_segments)
+        segments[1, 3] += 0.01
+        phrases = [replace(r, label="CHORUS") if r.label == "VERSE" else r for r in m.phrases]
+        cues = [*m.cue_points, CuePoint(time_sec=40.0)]
+        after = Marks(beats, segments, m.key_segments, phrases, m.jump_cues, cues)
+        found = {c.kind: (c.start, c.end) for c in changes(before, after)}
+        self.assertEqual(found, {"beatgrid": (30.0, 60.0), "phrase": (8.0, 24.0), "cue": (40.0, 40.0)})
+        fewer = Marks(m.beats[:-4], m.tempo_segments, m.key_segments, m.phrases, [], m.cue_points)
+        found = {c.kind: (c.start, c.end) for c in changes(before, fewer)}
+        self.assertEqual(found["beatgrid"], (58.0, 59.5))                          # the beats taken out
+        self.assertEqual(found["jumpcue"], (8.0, 24.0))                            # the JumpCUEs deleted
+        self.assertNotIn("cue", found)                                             # the CUE points as they were
+        self.assertEqual(changes(before, before), [])
+
+    def test_a_split_a_merge_or_a_moved_boundary_all_of_its_segments(self):
+        from core.track.changes import changes
+        from core.track.history import Marks
+        m = self.model
+        rows = [Phrase(0.0, 8.0, "INTRO"), Phrase(8.0, 24.0, "VERSE"), Phrase(24.0, 60.0, "CHORUS")]
+
+        def span(a, b):
+            found = changes(Marks(m.beats, m.tempo_segments, m.key_segments, a, m.jump_cues, m.cue_points),
+                            Marks(m.beats, m.tempo_segments, m.key_segments, b, m.jump_cues, m.cue_points))
+            return found[0].kind, found[0].start, found[0].end
+
+        split = [rows[0], replace(rows[1], end=16.0), replace(rows[1], start=16.0), rows[2]]
+        self.assertEqual(span(rows, split), ("phrase", 8.0, 24.0))
+        self.assertEqual(span(split, rows), ("phrase", 8.0, 24.0))                  # the same, merged again
+        merged = [rows[0], replace(rows[1], end=60.0)]
+        self.assertEqual(span(rows, merged), ("phrase", 8.0, 60.0))                 # the neighbour's label differs too
+        moved = [replace(rows[0], end=12.0), replace(rows[1], start=12.0), rows[2]]
+        self.assertEqual(span(rows, moved), ("phrase", 0.0, 24.0))                  # both, not the one after them
+        relabelled = [rows[0], replace(rows[1], label="BRIDGE"), rows[2]]
+        self.assertEqual(span(rows, relabelled), ("phrase", 8.0, 24.0))
+
 
 if __name__ == "__main__":
     unittest.main()
