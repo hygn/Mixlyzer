@@ -9,6 +9,7 @@ from __future__ import annotations
 from PySide6 import QtCore, QtWidgets
 
 from system.i18n import tr
+from ui.deck.deck_controls import PADDING, text_room
 from ui.theme import current_theme
 
 
@@ -23,12 +24,12 @@ class MidiToggle(QtWidgets.QToolButton):
         f.setBold(True)
         self.setFont(f)
         self.setFixedHeight(20)
-        self.setMinimumWidth(44)
+        self.setMinimumWidth(text_room(self, "MIDI"))     # the row at its narrowest cuts no text
         self.setProperty("look", "off")
         theme = current_theme()
         self.setStyleSheet(
             f"QToolButton {{ border: 1px solid {theme.border}; background: {theme.raised}; color: {theme.text_dim};"
-            f" border-radius: 3px; padding: 0 6px; }}\n"
+            f" border-radius: 3px; padding: 0 {PADDING}px; }}\n"
             f"QToolButton:hover {{ background: {theme.raised_hover}; color: {theme.text}; }}\n"
             f"QToolButton[look=open] {{ background: {theme.accent}; border-color: {theme.accent};"
             f" color: {theme.on_accent}; }}\n"

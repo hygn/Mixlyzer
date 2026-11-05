@@ -170,8 +170,8 @@ class VerticalPeakMeter(QtWidgets.QWidget):
         self._target_dbfs = self.FLOOR_DBFS
         self._peak_hold_dbfs = self.FLOOR_DBFS
         self._hold_ms = 500
-        self._fall_db_per_sec = 24.0
-        self._peak_fall_db_per_sec = 36.0
+        self._fall_db_per_sec = 72.0        # a 3 dB segment in about 40 ms, the whole scale in about 0.6 s
+        self._peak_fall_db_per_sec = 108.0
         self._peak_hold_deadline = QtCore.QDeadlineTimer(self._hold_ms)
         self._anim = QtCore.QTimer(self)
         self._anim.setInterval(16)

@@ -78,7 +78,7 @@ pub struct Engine {
     factor: f64,
     bend: f64, // a jog wheel's pitch bend (deck.rs): the speed times 1 + bend
     master_tempo: bool, // the time stretch on (MT): the pitch kept whatever the tempo
-    key_shift: i32,     // semitones (keyshift::KEY_SHIFT_MAX either way): the pitch moved, the tempo kept
+    key_shift: f64,     // semitones, any fraction (keyshift::KEY_SHIFT_MAX either way): the pitch moved, the tempo kept
     halted: bool,
     last_step: f64,
     jump_start: Option<f64>,
@@ -163,7 +163,7 @@ impl Engine {
             factor: 1.0,
             bend: 0.0,
             master_tempo: false,
-            key_shift: 0,
+            key_shift: 0.0,
             halted: false,
             last_step: 1.0,
             jump_start: None,
@@ -226,20 +226,40 @@ impl Engine {
         self.keep_stretcher();
     }
 
-    /// The key shifted by ``semitones`` (within KEY_SHIFT_MAX either way): the pitch moved by the time stretch,
-    /// the tempo as it is; MT off, the pitch the tempo's moved by it.
-    pub fn set_key_shift(&mut self, semitones: i32) {
-        self.key_shift = semitones.clamp(-keyshift::KEY_SHIFT_MAX, keyshift::KEY_SHIFT_MAX);
+    /// The key shifted by ``semitones``, any fraction (within KEY_SHIFT_MAX either way): the pitch moved by the time
+    /// stretch, the tempo as it is; MT off, the pitch the tempo's moved by it. MT off while playing, the stretchers
+    /// made take over from what plays, and at 0 they read on until the deck stops: the original's phase is not the
+    /// stream's, so going from one to the other in one block clicks, each time the key passes through 0.
+    pub fn set_key_shift(&mut self, semitones: f64) {
+        if !semitones.is_finite() {
+            return;
+        }
+        let max = keyshift::KEY_SHIFT_MAX as f64;
+        self.key_shift = semitones.clamp(-max, max);
+        if self.key_shift == 0.0 && self.playing {
+            return;
+        }
+        let made = self.stretch.is_none();
         self.keep_stretcher();
+        if made && self.playing {
+            if let (Some(s), Some(pcm)) = (self.stretch.as_mut(), self.pcm.as_ref()) {
+                s.follow(pcm.data(), self.pos);
+            }
+        }
     }
 
-    pub fn key_shift(&self) -> i32 {
+    pub fn key_shift(&self) -> f64 {
         self.key_shift
+    }
+
+    #[cfg(test)]
+    pub fn has_stretcher(&self) -> bool {
+        self.stretch.is_some()
     }
 
     /// The stretchers there while the time stretch is on or the key shifted (varispeed else).
     fn keep_stretcher(&mut self) {
-        let wanted = self.master_tempo || self.key_shift != 0;
+        let wanted = self.master_tempo || self.key_shift != 0.0;
         if wanted == self.stretch.is_some() {
             return;
         }
@@ -505,6 +525,7 @@ impl Engine {
         self.ring.flush();
         self.clicks.clear_voices();
         self.pos = sought.unwrap_or(heard).clamp(0.0, self.len as f64);
+        self.keep_stretcher(); // the key back at 0 while it played (set_key_shift)
     }
 
     /// Before a flush (pause, the record grabbed): a fade's worth and more queued past the frame being read, so

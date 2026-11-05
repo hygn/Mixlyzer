@@ -95,6 +95,10 @@ ACTIONS: tuple[Action, ...] = (
     Action("playback.key_up", PLAYBACK, tr_mark("Key +1"), repeat=True,
            tip=tr_mark("The key a semitone up, the tempo kept (the native audio engine's key shift).")),
     Action("playback.key_reset", PLAYBACK, tr_mark("Key reset"), tip=tr_mark("The track's own key.")),
+    Action("playback.key_fine_down", PLAYBACK, tr_mark("Key −5 cents"), repeat=True,
+           tip=tr_mark("The key 5 cents down, the tempo kept (the native audio engine's key shift).")),
+    Action("playback.key_fine_up", PLAYBACK, tr_mark("Key +5 cents"), repeat=True,
+           tip=tr_mark("The key 5 cents up, the tempo kept (the native audio engine's key shift).")),
     *(Action(f"playback.key_set.{s:+d}", PLAYBACK, tr_mark("Key {shift}"), args={"shift": f"{s:+d}"},
              tip=tr_mark("The key shifted by {shift} semitones at once."))
       for s in (*range(1, KEY_SHIFT_MAX + 1), *range(-1, -KEY_SHIFT_MAX - 1, -1))),

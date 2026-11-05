@@ -216,6 +216,12 @@
   "playback.key_reset": [
     "Shift+0"
   ],
+  "playback.key_fine_down": [
+    "Alt+-"
+  ],
+  "playback.key_fine_up": [
+    "Alt+="
+  ],
   "playback.key_set.+1": [
     "Alt+Shift+1"
   ],

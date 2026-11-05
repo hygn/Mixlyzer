@@ -23,7 +23,7 @@
 use std::sync::atomic::{AtomicU64, Ordering, fence};
 
 pub const MAGIC: u64 = u64::from_le_bytes(*b"MXAUDIC1");
-pub const VERSION: u32 = 10;
+pub const VERSION: u32 = 11;
 pub const STATE_OFFSET: usize = 64;
 pub const RING_OFFSET: usize = 172032;
 pub const RING_HEADER: usize = 64;
@@ -142,7 +142,7 @@ pub mod st {
     pub const CHANNEL_CUE: usize = DECK + 48; // u32 its headphones CUE on
     pub const KNOBS: usize = DECK + 56; // f64 x 4: its TRIM, EQ LOW, MID, HIGH knobs (0 .. 1, the middle 0 dB)
     pub const COLOR: usize = DECK + 88; // f64 its COLOR knob (0 .. 1, 0.5 off)
-    pub const KEY_SHIFT: usize = DECK + 96; // i32 the key shift (semitones)
+    pub const KEY_SHIFT: usize = DECK + 96; // f64 the key shift (semitones, any fraction)
 }
 
 /// A bus's output on a device of its own (OUTPUTS_OFFSET + k * SIZE), its fields as the main output's above.
@@ -289,6 +289,7 @@ pub mod op {
     pub const SET_MIXER_KNOB: u32 = 52;
     pub const SET_MIXER: u32 = 53; // u32 key (mix::*), f64 value
     pub const SET_SPECTRUM: u32 = 54; // u32 the master's spectrum made (1) or not (SPECTRUM_OFFSET)
+    pub const SET_KEY_SHIFT: u32 = 55; // f64 the key shift (semitones, any fraction: the key knob)
 }
 
 /// The deck's actions (deck.rs; client.py DECK_ACTIONS): the GUI's buttons and keys and the MIDI controller's.
@@ -342,10 +343,14 @@ pub mod act {
     /// COLOR_SELECT + k: Sound Color FX k picked (colorfx::ColorType's code: 0 - 6, up to 62)
     pub const COLOR_SELECT: u32 = 56;
     pub const HEADPHONES_SPLIT: u32 = 94; // MONO SPLIT on or off
-    // the key shift (keyshift.rs): a semitone down / up, back to 0; KEY_SET + 6 + k: set to k (-6 .. 6)
+    // the key shift (keyshift.rs): a semitone down / up (its fraction kept), back to 0; a fader (a value: -6 .. 6, the
+    // middle 0); 5 cents down / up; KEY_SET + 6 + k: set to k (-6 .. 6)
     pub const KEY_DOWN: u32 = 80;
     pub const KEY_UP: u32 = 81;
     pub const KEY_RESET: u32 = 82;
+    pub const KEY_FADER: u32 = 83;
+    pub const KEY_FINE_DOWN: u32 = 84;
+    pub const KEY_FINE_UP: u32 = 85;
     pub const KEY_SET: u32 = 96;
     /// The GUI's own actions (library, editor ...) from here: passed on to it (MIDI_EVENT_GUI).
     pub const GUI: u32 = 0x1000;

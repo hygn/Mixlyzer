@@ -43,7 +43,7 @@ from audioengine.controls import LEVEL_UNITY, MIX_KEY, MIX_KEYS, DeckReport
 from audioengine.volume import trim_db_to_knob
 
 MAGIC = int.from_bytes(b"MXAUDIC1", "little")
-VERSION = 10
+VERSION = 11
 STATE_OFFSET = 64
 RING_OFFSET = 172032
 RING_HEADER = 64
@@ -59,8 +59,8 @@ _STATE = struct.Struct("<Q IIIIII Q ddddddd QQQ dd Q II d d I 4x d ddd dd I 4x Q
 _HIST = 256
 # the deck's state after the histogram (ipc.rs st::DECK): factor, volume, cue, jump dest, lamps, tempo range,
 # MIDI state, the output's channels; its mixer channel's: headphones CUE, TRIM / EQ LOW, MID, HIGH knobs, COLOR knob;
-# the key shift (semitones)
-_DECK = struct.Struct("<dddd IIII I 4x dddd d i")
+# the key shift (semitones, any fraction)
+_DECK = struct.Struct("<dddd IIII I 4x dddd d d")
 _DECK_AT = 256 + 8 * 4096
 
 # commands (ipc.rs op)
@@ -80,6 +80,7 @@ OP_SET_ROUTING, OP_SET_CHANNEL_CUE = 47, 49
 OP_SET_AUX_OUTPUT = 50   # a bus on a device of its own
 OP_SET_HEADPHONES = 51   # the master mixed into the headphones, the CUE / MASTER mix, their level
 OP_SET_MIXER_KNOB = 52   # the deck's mixer channel knob: u32 0 TRIM, 1 EQ LOW, 2 MID, 3 HIGH, 4 COLOR; f64 its position
+OP_SET_KEY_SHIFT = 55    # f64 the key shift (semitones, any fraction)
 OP_SET_MIXER = 53   # the mixer's setting: u32 key (MIX_KEYS' place), f64 value
 OP_SET_SPECTRUM = 54   # u32 the master's spectrum made (1) or not
 NO_CHANNEL = 0xFF   # a bus not routed
@@ -783,7 +784,7 @@ class NativeFeeder(QtCore.QObject):
                 self.send(OP_SET_MIXER_KNOB, struct.pack("<Id", which, position))
             self.send(OP_SET_CHANNEL_CUE, struct.pack("<I", int(r.channel_cue)))
             if r.key_shift:     # the key shift as it was
-                self.deck_action(controls.ACT_KEY_SET + controls.KEY_SHIFT_MAX + r.key_shift)
+                self.set_key_shift(r.key_shift)
         self._send_marks()
 
     def output_devices(self, api: Optional[str] = None) -> tuple[str, list[str], dict[str, int]]:
@@ -802,6 +803,12 @@ class NativeFeeder(QtCore.QObject):
 
     def set_volume(self, position: float) -> None:
         self.send(OP_SET_VOLUME, struct.pack("<d", min(1.0, max(0.0, float(position)))))
+
+    def set_key_shift(self, semitones: float) -> None:
+        """The key shifted by ``semitones``, any fraction (held to KEY_SHIFT_MAX by the deck)."""
+        s = float(semitones)
+        if math.isfinite(s):
+            self.send(OP_SET_KEY_SHIFT, struct.pack("<d", s))
 
     # its mixer channel
     def set_knob(self, which: int, position: float) -> None:

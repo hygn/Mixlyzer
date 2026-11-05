@@ -3,7 +3,8 @@
 //! moved by the ratio. ``Pitched`` is the stretcher with the same calls (render, prepare, prepare_step, the input
 //! position); at a pitch of 1 it is the stretcher itself, sample for sample, until the pitch first moves; from then
 //! on its stream goes through the reading (at 1 a plain copy where it falls on whole frames) until it starts again
-//! (a seek, a jump, a stop: a new stream), so a key shift taken back to 0 while playing does not jump.
+//! (a seek, a jump, a stop: a new stream), so a key shift taken back to 0 while playing does not jump. The ratio may
+//! change at every call: a key shift moved continuously is the same reading at the ratio of each moment.
 
 use crate::dsp::{self, ReadTables};
 use crate::stretch::Stretcher;
@@ -11,9 +12,9 @@ use crate::stretch::Stretcher;
 /// The key shift's range in semitones (the deck's KEY - / + stop there).
 pub const KEY_SHIFT_MAX: i32 = 6;
 
-/// A key shift's pitch ratio (equal temperament).
-pub fn key_ratio(semitones: i32) -> f64 {
-    2f64.powf(semitones as f64 / 12.0)
+/// A key shift's pitch ratio (equal temperament; any fraction of a semitone).
+pub fn key_ratio(semitones: f64) -> f64 {
+    2f64.powf(semitones / 12.0)
 }
 
 pub struct Pitched {
@@ -29,6 +30,7 @@ pub struct Pitched {
     next_input: f64, // the stretcher's input position after the fifo's last frame
     ended: bool,     // the stretcher gave nothing more: the source's end
     expected: Option<f64>,
+    on_time: f64,    // the input position the tempo alone would have reached since the reading began
     tables: ReadTables,
 }
 
@@ -36,6 +38,13 @@ impl Pitched {
     // frames kept around the read position: the reader's reach at the fastest reading (read_at's REACH)
     const MARGIN: usize = 36;
     const POSITION_EPS: f64 = 1e-4;
+    // The stream's first frames from unity are the original (Stretcher's warm-up, about 240 ms), and read at the ratio
+    // they run at the ratio, not the tempo: the pitch moves at once, the beat a little (+14 ms at +1, +71 ms at +6).
+    // What that put it ahead or behind is taken back after it, by a tempo at most this far off, the pitch as it is:
+    // in proportion below that, over CATCH_UP_FRAMES, so it settles on the tempo itself.
+    const CATCH_UP_MAX: f64 = 0.03;
+    const CATCH_UP_FRAMES: f64 = 4800.0;
+    const ON_TIME_FRAMES: f64 = 0.25;
 
     pub fn new(channels: usize, sample_rate: u32) -> Pitched {
         Pitched {
@@ -49,6 +58,7 @@ impl Pitched {
             next_input: 0.0,
             ended: false,
             expected: None,
+            on_time: 0.0,
             tables: ReadTables::new(),
         }
     }
@@ -56,6 +66,12 @@ impl Pitched {
     /// The pitch ratio of what is rendered from now on (1: as the stretcher plays it).
     pub fn set_pitch(&mut self, ratio: f64) {
         self.pitch = if ratio.is_finite() && ratio > 0.0 { ratio } else { 1.0 };
+    }
+
+    /// Made while the deck plays the original: the stretcher takes over from input ``pos`` as from its own unity
+    /// (Stretcher::follow), without a jump.
+    pub fn follow(&mut self, source: &[f32], pos: f64) {
+        self.stretcher.follow(source, pos);
     }
 
     pub fn expected_input_position(&self) -> Option<f64> {
@@ -85,6 +101,7 @@ impl Pitched {
         self.read = 0.0;
         self.next_input = pos;
         self.ended = false;
+        self.on_time = pos;
     }
 
     /// A stream from input ``pos`` to be read later (Stretcher::prepare).
@@ -121,7 +138,13 @@ impl Pitched {
         }
         let ch = self.ch;
         let p = self.pitch;
-        let step = factor / p; // the stretched stream's input frames per frame
+        let ahead = pos - self.on_time;
+        let catch_up = if ahead.abs() < Self::ON_TIME_FRAMES {
+            0.0
+        } else {
+            (ahead / Self::CATCH_UP_FRAMES).clamp(-Self::CATCH_UP_MAX, Self::CATCH_UP_MAX)
+        };
+        let step = factor / p * (1.0 - catch_up); // the stretched stream's input frames per frame
         let need = (self.read + max_out as f64 * p).ceil() as usize + Self::MARGIN;
         while !self.ended && self.fifo.len() / ch < need {
             let want = need - self.fifo.len() / ch;
@@ -148,6 +171,7 @@ impl Pitched {
         let out = dsp::read_at(&self.tables, &self.fifo, ch, &positions, Some(self.read - p));
         self.read += p * n as f64;
         self.expected = Some(self.input_at(self.read));
+        self.on_time += factor * n as f64;
         self.compact();
         out
     }
@@ -228,7 +252,7 @@ mod tests {
     fn a_semitone_up_at_the_same_tempo() {
         let rate = 48000.0;
         let src = tone(rate, 440.0, 6.0);
-        for (semitones, factor) in [(1, 1.0), (-3, 1.0), (2, 0.8), (-6, 1.25)] {
+        for (semitones, factor) in [(1.0, 1.0), (-3.0, 1.0), (2.0, 0.8), (-6.0, 1.25), (0.25, 1.0), (-1.37, 1.1)] {
             let mut p = Pitched::new(2, 48000);
             p.set_pitch(key_ratio(semitones));
             let (out, pos) = play(&mut p, &src, factor, 400);
@@ -268,7 +292,7 @@ mod tests {
         let mut p = Pitched::new(2, 48000);
         let mut pos = 0.0;
         for k in 0..200 {
-            p.set_pitch(if (50..120).contains(&k) { key_ratio(2) } else { 1.0 });
+            p.set_pitch(if (50..120).contains(&k) { key_ratio(2.0) } else { 1.0 });
             let r = p.render(&src, pos, 1.0, 480);
             assert_eq!(r.len(), 960, "block {k}");
             let next = p.expected_input_position().unwrap();
@@ -276,5 +300,54 @@ mod tests {
             pos = next;
         }
         assert!((pos / (200.0 * 480.0) - 1.0).abs() < 0.01, "{}", pos / (200.0 * 480.0));
+    }
+
+    #[test]
+    fn a_first_shift_from_unity_keeps_the_beat() {
+        // the stream's warm-up runs at the ratio: what that puts it ahead or behind is taken back, the pitch as asked
+        let rate = 48000.0;
+        let src = tone(rate, 440.0, 12.0);
+        for semitones in [1.0, -1.0, 6.0, -6.0, 0.05] {
+            let mut p = Pitched::new(2, 48000);
+            let mut pos = 0.0;
+            let mut out = Vec::new();
+            for k in 0..800 {
+                p.set_pitch(if k < 100 { 1.0 } else { key_ratio(semitones) });
+                let r = p.render(&src, pos, 1.0, 480);
+                assert_eq!(r.len(), 960, "{semitones}, block {k}");
+                pos = p.expected_input_position().unwrap();
+                out.extend_from_slice(&r);
+            }
+            let late = pos - 800.0 * 480.0;
+            assert!(late.abs() < 0.001 * rate, "{semitones}: {} ms off the tempo after 8 s", late / rate * 1000.0);
+            // while it is taken back (from about 240 ms after the shift), the pitch is the shift's
+            let want = 440.0 * key_ratio(semitones);
+            let got = pitch_of(&out, rate, 150 * 480, 150 * 480 + 9600, want);
+            assert!((got / want - 1.0).abs() < 0.003, "{semitones}: {got} Hz, not {want}");
+        }
+    }
+
+    #[test]
+    fn a_sweep_follows_the_ratio_at_the_tempo_kept() {
+        // a semitone up over 2 s, a little each block (10 ms): the pitch where the sweep is, the input at the tempo
+        let rate = 48000.0;
+        let src = tone(rate, 440.0, 6.0);
+        let mut p = Pitched::new(2, 48000);
+        let mut pos = 0.0;
+        let mut out = Vec::new();
+        for k in 0..300 {
+            p.set_pitch(key_ratio((k as f64 / 200.0).min(1.0)));
+            let r = p.render(&src, pos, 1.0, 480);
+            assert_eq!(r.len(), 960, "block {k}");
+            pos = p.expected_input_position().unwrap();
+            out.extend_from_slice(&r);
+        }
+        assert!((pos - 300.0 * 480.0).abs() < 0.002 * rate, "{} ms off the tempo", (pos - 300.0 * 480.0) / rate * 1000.0);
+        // halfway up, and at the top
+        for (block, semitones) in [(100usize, 0.5), (260usize, 1.0)] {
+            let want = 440.0 * key_ratio(semitones);
+            let got = pitch_of(&out, rate, block * 480 - 2400, block * 480 + 2400, want);
+            assert!((got / want - 1.0).abs() < 0.006, "block {block}: {got} Hz, not {want}");
+        }
     }
 }

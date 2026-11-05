@@ -1372,6 +1372,14 @@ impl Stretcher {
         if self.warming { 1.0 } else { factor }
     }
 
+    /// The deck has played the original up to input ``pos``: a stretcher made while it plays goes on as if it had
+    /// read it at unity, so its first render off unity warms up and crossfades in (no new stream in one tick).
+    pub fn follow(&mut self, source: &[f32], pos: f64) {
+        self.source_token = Some(self.token(source));
+        self.factor = Some(1.0);
+        self.expected_pos = Some(pos);
+    }
+
     pub fn reset(&mut self) {
         self.source_token = None;
         self.factor = None;

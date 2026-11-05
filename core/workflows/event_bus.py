@@ -107,6 +107,7 @@ class EventBus(QtCore.QObject):
     sig_deck_action = QtCore.Signal(int, bool)   # client.DECK_ACTIONS code, pressed (True) / let go
     sig_tempo_requested = QtCore.Signal(float)   # the tempo fader moved: factor
     sig_volume_requested = QtCore.Signal(float)   # the volume fader moved: 0 .. 1
+    sig_key_shift_requested = QtCore.Signal(float)   # the key knob turned: semitones, any fraction
     # the player's channel knob turned: 0 TRIM, 1 EQ LOW, 2 MID, 3 HIGH; its position 0 .. 1 (the middle 0 dB)
     sig_knob_requested = QtCore.Signal(int, float)
     # the mixer's setting asked for (the toolbar's switches, levels and Sound Color FX): client.MIX_KEYS' key, its value (the

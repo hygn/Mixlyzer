@@ -647,6 +647,7 @@ fn handle(slot: &mut Slot, op_code: u32, payload: &[u8]) {
         op::SET_TEMPO => deck.set_tempo(e, r.f64().unwrap_or(1.0)),
         op::SET_TEMPO_RANGE => deck.set_tempo_range(e, r.u32().unwrap_or(100)),
         op::SET_VOLUME => deck.set_volume(e, r.f64().unwrap_or(1.0)),
+        op::SET_KEY_SHIFT => e.set_key_shift(r.f64().unwrap_or(f64::NAN)),
         op::DECK_MARKS => deck.set_marks(payload),
         op::SET_MIXER_KNOB => {
             let which = r.u32().unwrap_or(u32::MAX);
@@ -803,7 +804,7 @@ fn publish(ctl: &Control, slot: &mut Slot, controller: &Controller, cmd_done: u6
         ctl.put_f64(st::KNOBS + 8 * j, *v);
     }
     ctl.put_f64(st::COLOR, deck.color_knob());
-    ctl.put_u32(st::KEY_SHIFT, e.key_shift() as u32);
+    ctl.put_f64(st::KEY_SHIFT, e.key_shift());
     aux.publish(ctl);
     // every setting of the mixer's, and its meters since the last publish
     for k in 0..ipc::mix::KEYS {

@@ -91,7 +91,7 @@ class _AudioWorker(QtCore.QObject):
         "set_refresh_fps", "set_timestretch", "set_clip", "set_buffer_ms", "set_output_device",
         "set_output_mode", "set_exclusive_rate", "set_process",
         "tone_hold", "midi_open", "midi_map", "midi_options", "set_midi_learn", "set_routing", "set_headphones",
-        "set_knob", "set_mixer", "set_channel_cue", "restart_engine", "set_spectrum",
+        "set_knob", "set_mixer", "set_channel_cue", "restart_engine", "set_spectrum", "set_key_shift",
     })
     _WAIT_FOR_TRACK = frozenset({
         "pause", "stop", "seek",
@@ -384,6 +384,11 @@ class _AudioWorker(QtCore.QObject):
         if isinstance(self.feeder, NativeFeeder):
             self.feeder.set_mixer(str(key), float(value))
 
+    def set_key_shift(self, semitones: float) -> None:
+        """The key shift (the native engine's; the Python engine has none)."""
+        if isinstance(self.feeder, NativeFeeder):
+            self.feeder.set_key_shift(float(semitones))
+
     def scrub_begin(self) -> None:
         self.feeder.set_scrubbing(True)
 
@@ -674,6 +679,7 @@ class PlayerController(QtCore.QObject):
         bus.sig_deck_action.connect(lambda code, pressed: self._send_local("deck_action", int(code), bool(pressed)))
         bus.sig_tempo_requested.connect(lambda f: self._send("set_tempo", float(f)))
         bus.sig_volume_requested.connect(lambda v: self._send("set_volume", float(v)))
+        bus.sig_key_shift_requested.connect(lambda s: self._send("set_key_shift", float(s)))
         bus.sig_knob_requested.connect(lambda which, v: self._send("set_knob", int(which), float(v)))
         bus.sig_mixer_requested.connect(lambda key, v: self._send("set_mixer", str(key), float(v)))
         bus.sig_jog_mode_requested.connect(self.set_jog_mode)

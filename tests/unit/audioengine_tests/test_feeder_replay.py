@@ -89,6 +89,31 @@ class ReplayTests(unittest.TestCase):
         feeder._replay()
         self.assertIn((client.OP_SET_CHANNEL_CUE, struct.pack("<I", 1)), engine.calls)
 
+    def test_the_key_shift_as_reported_its_fraction_too(self):
+        engine = _Engine()
+        feeder = client.NativeFeeder(engine)
+        report = _report([0.0] * len(controls.MIX_KEYS))
+        report.key_shift = 1.25
+        feeder._report = report
+        engine.calls.clear()
+        feeder._replay()
+        self.assertIn((client.OP_SET_KEY_SHIFT, struct.pack("<d", 1.25)), engine.calls)
+
+    def test_no_key_shift_none_sent(self):
+        engine = _Engine()
+        feeder = client.NativeFeeder(engine)
+        feeder._report = _report([0.0] * len(controls.MIX_KEYS))
+        engine.calls.clear()
+        feeder._replay()
+        self.assertFalse([op for op, _p in engine.calls if op == client.OP_SET_KEY_SHIFT])
+
+    def test_a_key_shift_not_a_number_is_not_sent(self):
+        engine = _Engine()
+        feeder = client.NativeFeeder(engine)
+        engine.calls.clear()
+        feeder.set_key_shift(float("nan"))
+        self.assertFalse([op for op, _p in engine.calls if op == client.OP_SET_KEY_SHIFT])
+
 
 if __name__ == "__main__":
     unittest.main()

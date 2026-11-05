@@ -39,6 +39,8 @@ const JUMP_LANDING_SEC: f64 = 0.5;
 const BLINK_SEC: f64 = 0.5; // a lamp blinks this long on, this long off
 // the tempo fader's ranges (+-%), as rekordbox's; WIDE: 0 - 200 % (0 stops the deck)
 pub const TEMPO_RANGES: [u32; 4] = [6, 10, 16, 100];
+/// KEY's fine steps (act::KEY_FINE_DOWN / UP), in cents.
+const KEY_FINE_CENTS: f64 = 5.0;
 // a jog wheel: a record at 33 1/3 rpm; its messages come steadier than the mouse's, so the platter follows them
 // later by less; held still this long, the record rests
 const JOG_TURN_SEC: f64 = 1.8;
@@ -297,11 +299,13 @@ impl Deck {
                 self.set_tempo_range(e, TEMPO_RANGES[at % TEMPO_RANGES.len()]);
             }
             act::JOG_MODE => self.set_jog_vinyl(e, !self.jog_vinyl),
-            act::KEY_DOWN => e.set_key_shift(e.key_shift() - 1),
-            act::KEY_UP => e.set_key_shift(e.key_shift() + 1),
-            act::KEY_RESET => e.set_key_shift(0),
+            act::KEY_DOWN => self.step_key(e, -1.0),
+            act::KEY_UP => self.step_key(e, 1.0),
+            act::KEY_RESET => e.set_key_shift(0.0),
+            act::KEY_FINE_DOWN => e.set_key_shift(((e.key_shift() * 100.0).round() - KEY_FINE_CENTS) / 100.0),
+            act::KEY_FINE_UP => e.set_key_shift(((e.key_shift() * 100.0).round() + KEY_FINE_CENTS) / 100.0),
             c if (act::KEY_SET..=act::KEY_SET + 2 * KEY_SHIFT_MAX as u32).contains(&c) => {
-                e.set_key_shift((c - act::KEY_SET) as i32 - KEY_SHIFT_MAX)
+                e.set_key_shift(((c - act::KEY_SET) as i32 - KEY_SHIFT_MAX) as f64)
             }
             c if (act::JUMP_A..act::JUMP_A + 8).contains(&c) => {
                 let dest = self.jumpcues[(c - act::JUMP_A) as usize];
@@ -310,6 +314,14 @@ impl Deck {
                 }
             }
             _ => {}
+        }
+    }
+
+    /// KEY - / +: a semitone, the fraction kept (a track tuned by ear stays in tune), where that is inside the range.
+    fn step_key(&self, e: &mut Engine, by: f64) {
+        let k = e.key_shift() + by;
+        if k.abs() <= KEY_SHIFT_MAX as f64 + 1e-9 {
+            e.set_key_shift(k);
         }
     }
 
@@ -448,6 +460,10 @@ impl Deck {
                 let half = (top + 1.0) / 2.0; // the middle: 64 (8192 with 14 bits)
                 let norm = ((value as f64 - half) / half).clamp(-1.0, 1.0);
                 self.set_tempo(e, 1.0 + norm * self.tempo_range as f64 / 100.0);
+            }
+            act::KEY_FADER => {
+                let half = (top + 1.0) / 2.0;
+                e.set_key_shift(((value as f64 - half) / half).clamp(-1.0, 1.0) * KEY_SHIFT_MAX as f64);
             }
             act::VOLUME_FADER => self.set_volume(e, value as f64 / top),
             act::TRIM => {
@@ -1017,25 +1033,148 @@ mod tests {
         for _ in 0..8 {
             r.tap(act::KEY_UP);
         }
-        assert_eq!(r.s.engine.key_shift(), 6, "+6 at most");
+        assert_eq!(r.s.engine.key_shift(), 6.0, "+6 at most");
         r.tap(act::KEY_DOWN);
-        assert_eq!(r.s.engine.key_shift(), 5);
+        assert_eq!(r.s.engine.key_shift(), 5.0);
         r.tap(act::KEY_SET); // -6
-        assert_eq!(r.s.engine.key_shift(), -6);
+        assert_eq!(r.s.engine.key_shift(), -6.0);
         r.tap(act::KEY_DOWN);
-        assert_eq!(r.s.engine.key_shift(), -6, "-6 at least");
+        assert_eq!(r.s.engine.key_shift(), -6.0, "-6 at least");
         r.tap(act::KEY_SET + 6 + 3);
-        assert_eq!(r.s.engine.key_shift(), 3);
+        assert_eq!(r.s.engine.key_shift(), 3.0);
         // played: the tempo kept (the input at the speed), MT off as on
         r.tap(act::PLAY_PAUSE);
         let before = r.at();
         r.pump(100);
         assert!((r.at() - before - 1.0).abs() < 0.1, "{}", r.at() - before);
         r.tap(act::KEY_RESET);
-        assert_eq!(r.s.engine.key_shift(), 0);
+        assert_eq!(r.s.engine.key_shift(), 0.0);
         r.tap(act::KEY_UP);
         r.s.engine.set_track(Some(Pcm::owned(vec![0.0; 2 * 48000], 2)), 2);
-        assert_eq!(r.s.engine.key_shift(), 1, "the next track at the same shift");
+        assert_eq!(r.s.engine.key_shift(), 1.0, "the next track at the same shift");
+    }
+
+    #[test]
+    fn key_shift_any_fraction_kept_by_the_semitone_steps() {
+        let mut r = Rig::new(10.0, true, &[], &[]);
+        r.s.engine.set_key_shift(1.25);
+        r.tap(act::KEY_UP);
+        assert_eq!(r.s.engine.key_shift(), 2.25, "a semitone up, the fraction kept");
+        r.tap(act::KEY_DOWN);
+        r.tap(act::KEY_DOWN);
+        assert_eq!(r.s.engine.key_shift(), 0.25);
+        r.tap(act::KEY_DOWN);
+        assert_eq!(r.s.engine.key_shift(), -0.75, "through 0");
+        r.s.engine.set_key_shift(5.5);
+        r.tap(act::KEY_UP);
+        assert_eq!(r.s.engine.key_shift(), 5.5, "a semitone more leaves the range: it stays in tune");
+        r.tap(act::KEY_SET + 6 + 2);
+        assert_eq!(r.s.engine.key_shift(), 2.0, "straight to a shift: that shift");
+        r.tap(act::KEY_FINE_UP);
+        assert_eq!(r.s.engine.key_shift(), 2.05);
+        r.tap(act::KEY_FINE_DOWN);
+        r.tap(act::KEY_FINE_DOWN);
+        assert_eq!(r.s.engine.key_shift(), 1.95);
+        r.s.engine.set_key_shift(99.0);
+        assert_eq!(r.s.engine.key_shift(), 6.0, "held to the range");
+        r.s.engine.set_key_shift(f64::NAN);
+        assert_eq!(r.s.engine.key_shift(), 6.0, "not a number: left as it is");
+        r.tap(act::KEY_RESET);
+        assert_eq!(r.s.engine.key_shift(), 0.0);
+    }
+
+    #[test]
+    fn key_fader_the_middle_the_tracks_own_key() {
+        let mut r = Rig::new(10.0, true, &[], &[]);
+        let fader = |r: &mut Rig, value: u32, top: f64| {
+            r.s.deck.midi_value(&mut r.s.engine, act::KEY_FADER, (value, top), 0, 0, clock::now());
+            r.s.engine.key_shift()
+        };
+        assert_eq!(fader(&mut r, 96, 127.0), 3.0);
+        assert_eq!(fader(&mut r, 64, 127.0), 0.0);
+        assert_eq!(fader(&mut r, 0, 127.0), -6.0);
+        assert_eq!(fader(&mut r, 8192, 16383.0), 0.0, "14 bits");
+    }
+
+    impl Rig {
+        /// ``blocks`` of 10 ms as the device heard them (the left channel), ``between`` before each.
+        fn heard(&mut self, blocks: usize, mut between: impl FnMut(usize, &mut Engine)) -> Vec<f32> {
+            let mut all = Vec::new();
+            for k in 0..blocks {
+                between(k, &mut self.s.engine);
+                self.s.engine.tick();
+                self.ring.fill(&mut self.out, &mut self.cb, 0.0);
+                self.s.deck.tick(&mut self.s.engine);
+                all.extend(self.out.chunks(2).map(|f| f[0]));
+            }
+            all
+        }
+    }
+
+    /// The largest step between two samples: the rig's track, a sine of 0.1 at 0.05 rad a sample, steps 0.005 at
+    /// most; a click steps many times that.
+    fn largest_step(x: &[f32]) -> f32 {
+        x.windows(2).map(|w| (w[1] - w[0]).abs()).fold(0f32, f32::max)
+    }
+
+    #[test]
+    fn key_moved_continuously_through_0_without_a_click() {
+        // MT off (the stretchers made and let go there) and on, at the track's tempo and off it
+        for (mt, tempo) in [(false, 1.0), (true, 1.0), (false, 1.06), (true, 1.06)] {
+            let mut r = Rig::new(20.0, false, &[], &[]);
+            r.s.engine.set_timestretch(mt);
+            r.s.engine.set_tempo(tempo);
+            r.tap(act::PLAY_PAUSE);
+            let steady = largest_step(&r.heard(100, |_, _| ())[24000..]);
+            // over a semitone either way in 1 cent to 3 cent steps a block, through 0 again and again
+            let moved = r.heard(600, |k, e| {
+                let at = k as f64 / 100.0;
+                e.set_key_shift((at * std::f64::consts::TAU / 2.0).sin() * 1.1);
+            });
+            let step = largest_step(&moved);
+            assert!(step < 1.5 * steady, "MT {mt}, tempo {tempo}: a step of {step} against {steady}");
+            let level = moved.iter().map(|v| v.abs()).fold(0f32, f32::max);
+            assert!(level < 0.125, "MT {mt}, tempo {tempo}: {level}");
+        }
+    }
+
+    #[test]
+    fn key_moves_keep_the_beat() {
+        // what is heard after a move against the deck left alone: MT off and on, a first shift from the original,
+        // and at a tempo of its own, within a millisecond
+        for (mt, tempo) in [(true, 1.0), (false, 1.0), (true, 1.06), (false, 1.06)] {
+            for semitones in [1.0, -1.0, 6.0, 0.05] {
+                let at_the_end = |shift: f64| -> f64 {
+                    let mut r = Rig::new(12.0, false, &[], &[]);
+                    r.s.engine.set_timestretch(mt);
+                    r.s.engine.set_tempo(tempo);
+                    r.tap(act::PLAY_PAUSE);
+                    r.heard(100, |_, _| ());
+                    r.s.engine.set_key_shift(shift);
+                    r.heard(600, |_, _| ());
+                    r.at()
+                };
+                let off = (at_the_end(semitones) - at_the_end(0.0)) * 1000.0;
+                assert!(off.abs() < 1.0, "MT {mt}, tempo {tempo}, {semitones}: {off} ms off");
+            }
+        }
+    }
+
+    #[test]
+    fn key_stepped_to_0_and_back_without_a_click() {
+        // the buttons' steps, a semitone at once, MT off: from the original, back to it, and from it again
+        let mut r = Rig::new(20.0, false, &[], &[]);
+        r.tap(act::PLAY_PAUSE);
+        let steady = largest_step(&r.heard(100, |_, _| ())[24000..]);
+        for code in [act::KEY_UP, act::KEY_RESET, act::KEY_UP, act::KEY_DOWN] {
+            r.tap(code);
+            let step = largest_step(&r.heard(50, |_, _| ()));
+            assert!(step < 1.5 * steady, "after {code}: a step of {step} against {steady}");
+        }
+        // the deck stopped at 0: the original again, as if the key had never moved
+        r.tap(act::PLAY_PAUSE);
+        r.tap(act::PLAY_PAUSE);
+        assert!(!r.s.engine.has_stretcher(), "MT off, the key at 0, stopped once: no stretcher left");
     }
 
     impl Rig {

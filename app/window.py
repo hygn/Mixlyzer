@@ -41,7 +41,7 @@ from audioengine.volume import slider_percent_to_linear, trim_dbfs_to_linear, tr
 from core.marks.phrases import set_phrase_label_names
 
 from ui.pane import MainPane
-from ui.deck.deck_controls import block, fill, row_title
+from ui.deck.deck_controls import ROW_SPACING, block, fill, row_title
 from ui.deck.deck_switches import DeckSwitches, MasterLevels
 from ui.deck.midi_toggle import MidiToggle
 from ui.config.window import SettingsDialog
@@ -110,7 +110,6 @@ class AppWindow(QtWidgets.QMainWindow):
         step(0.03, tr("Main view, editor and library"))
         self.pane = MainPane(self.bus, self.model, self.tl, self.cfg, self.library)
         self.pane.track_info.set_eq_available(self.player.native)   # the Python engine has no mixer
-        self.pane.set_key_shift_available(self.player.native)        # nor a key shift
         self.setCentralWidget(self.pane)
         self.pane.install_default()
 
@@ -133,7 +132,10 @@ class AppWindow(QtWidgets.QMainWindow):
         self._install_shortcuts()
         self._connect_requests()
 
-        self.resize(1600, 900)  # minimum target: FHD
+        # the smallest screen it is made for: FHD at 125 %, 1536 x 864 (tests/unit/ui_tests/test_smallest_screen.py);
+        # opened no larger than the screen, the title bar's height left for
+        room = self.screen().availableGeometry().size()
+        self.resize(min(1600, room.width()), min(900, room.height() - 40))
 
         # status
         self._deck_path: str | None = None   # the file the deck holds
@@ -328,10 +330,10 @@ class AppWindow(QtWidgets.QMainWindow):
 
         row = QtWidgets.QWidget()
         row_layout = QtWidgets.QHBoxLayout(row)
-        row_layout.setContentsMargins(6, 0, 8, 0)
-        row_layout.setSpacing(6)
+        row_layout.setContentsMargins(4, 0, 4, 0)
+        row_layout.setSpacing(ROW_SPACING)
         # CH 1: the MIDI controller's input on / off; the deck's and its channel's switches (jog mode, EQ, fader
-        # curve, Sound Color FX, the headphones CUE)
+        # curve, Sound Color FX, the key shift, the headphones CUE)
         self.midi_toggle = MidiToggle()
         self.midi_toggle.setEnabled(self.player.native)
         self.midi_toggle.toggled_by_hand.connect(self._toggle_midi)

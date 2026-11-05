@@ -10,7 +10,7 @@ from ui.theme import current_theme
 
 
 class Knob(QtWidgets.QWidget):
-    """Dragged up / down (DRAG_PX the whole range), the wheel a step, a double-click back to the middle; ``moved``
+    """Dragged up / down (``drag_px`` the whole range), the wheel a step, a double-click back to the middle; ``moved``
     while the hand turns it. Drawn as a mixer's: the travel from -135 to +135 degrees, the setting as an arc from
     the neutral setting (``neutral``, the double-click's too) and a pointer."""
 
@@ -18,10 +18,12 @@ class Knob(QtWidgets.QWidget):
     DRAG_PX = 160.0
     WHEEL_STEP = 0.02
 
-    def __init__(self, size: int = 20, parent=None, neutral: float = 0.5) -> None:
+    def __init__(self, size: int = 20, parent=None, neutral: float = 0.5, drag_px: float = DRAG_PX,
+                 wheel_step: float = WHEEL_STEP) -> None:
         super().__init__(parent)
         self._neutral = float(neutral)
         self._value = self._neutral
+        self._drag_px, self._wheel_step = float(drag_px), float(wheel_step)
         self._drag: tuple[float, float] | None = None   # (y at the press, the value then)
         self.setFixedSize(size, size)
         self.setCursor(QtCore.Qt.SizeVerCursor)
@@ -54,7 +56,7 @@ class Knob(QtWidgets.QWidget):
     def mouseMoveEvent(self, event: QtGui.QMouseEvent) -> None:
         if self._drag is not None:
             y0, v0 = self._drag
-            self._set(v0 + (y0 - event.position().y()) / self.DRAG_PX, emit=True)
+            self._set(v0 + (y0 - event.position().y()) / self._drag_px, emit=True)
 
     def mouseReleaseEvent(self, event: QtGui.QMouseEvent) -> None:
         self._drag = None
@@ -66,7 +68,7 @@ class Knob(QtWidgets.QWidget):
     def wheelEvent(self, event: QtGui.QWheelEvent) -> None:
         delta = event.angleDelta().y() or event.pixelDelta().y()
         if delta and self.isEnabled():
-            self._set(self._value + (self.WHEEL_STEP if delta > 0 else -self.WHEEL_STEP), emit=True)
+            self._set(self._value + (self._wheel_step if delta > 0 else -self._wheel_step), emit=True)
         event.accept()
 
     def paintEvent(self, event: QtGui.QPaintEvent) -> None:
