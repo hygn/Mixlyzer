@@ -736,6 +736,74 @@ class LibraryWidgetTests(unittest.TestCase):
         self.assertEqual([os.path.normcase(p) for p in analyzed], [os.path.normcase(new)])     # only a file there
         self.assertEqual(loaded, [])
 
+    def _drop(self, paths) -> QtGui.QDropEvent:
+        self._mime = QtCore.QMimeData()       # kept: the event does not own it
+        self._mime.setUrls([QtCore.QUrl.fromLocalFile(p) for p in paths])
+        return QtGui.QDropEvent(QtCore.QPointF(5, 5), QtCore.Qt.CopyAction, self._mime, QtCore.Qt.LeftButton,
+                                QtCore.Qt.NoModifier)
+
+    def _entries(self, playlist_uid: str) -> list:
+        return [uid for _p, uid in self.library.snapshot.entries.get(playlist_uid, [])]
+
+    def test_files_dropped_on_a_shown_playlist_go_into_it(self):
+        analyzed = []
+        self.bus.sig_request_analyze.connect(analyzed.append)
+        pl = self._new_playlist("Set")
+        self.w.table.dropEvent(self._drop([self.paths[1]]))       # already analyzed: added, not analyzed again
+        self.settle()
+        self.assertEqual(self._entries(pl), [self.uids[1]])
+        self.assertEqual(self.column(TITLE), ["Hello World"])
+        self.assertEqual(analyzed, [])
+        new = os.path.join(self.music, "dropped.wav")
+        open(new, "wb").close()
+        self.w.table.dropEvent(self._drop([new]))                 # new: analyzed, added once in the library
+        self.settle()
+        self.assertEqual([os.path.normcase(p) for p in analyzed], [os.path.normcase(new)])
+        self.assertEqual(self._entries(pl), [self.uids[1]])
+        uid = str(uuid4())
+        self.library.write(jobs.save_track, TrackRow(uid=uid, path=new, title="dropped", added_ts=5000), False)
+        self.apply_update()                                       # analyzed: in the library, so into the playlist
+        self.apply_update()
+        self.assertEqual(self._entries(pl), [self.uids[1], uid])
+        self.assertEqual(self.column(TITLE), ["Hello World", "dropped"])
+
+    def test_files_dropped_on_a_playlist_in_the_sources_panel_go_into_it(self):
+        analyzed = []
+        self.bus.sig_request_analyze.connect(analyzed.append)
+        pl = self._new_playlist("Set")
+        new = os.path.join(self.music, "dropped.wav")
+        open(new, "wb").close()
+        self.w.source_tree.setCurrentItem(self.source("library", None))   # the playlist not the one shown
+        with mock.patch.object(self.w.source_tree, "_playlist_at", return_value=pl):
+            self.w.source_tree.dropEvent(self._drop([self.paths[1], new]))
+        self.settle()
+        self.assertEqual(self._entries(pl), [self.uids[1]])
+        self.assertEqual([os.path.normcase(p) for p in analyzed], [os.path.normcase(new)])
+
+    def test_the_apps_own_drags_on_the_track_list(self):
+        mime = QtCore.QMimeData()
+        mime.setUrls([QtCore.QUrl.fromLocalFile(self.paths[0])])
+        drag = lambda source: SimpleNamespace(mimeData=lambda: mime, source=lambda: source)  # noqa: E731
+        track_info = QtWidgets.QWidget()
+        self.assertFalse(self.w.table._external_files(drag(track_info)))    # the whole library shown: not taken
+        self.assertTrue(self.w.table._external_files(drag(None)))           # another program's
+        self._new_playlist("Set")
+        self.assertTrue(self.w.table._external_files(drag(track_info)))     # a playlist shown: added
+        self.assertFalse(self.w.table._external_files(drag(self.w.table)))  # its own rows: moved, not added
+
+    def test_files_dropped_during_a_music_search_are_not_the_playlists(self):
+        analyzed = []
+        self.bus.sig_request_analyze.connect(analyzed.append)
+        pl = self._new_playlist("Set")
+        self.w._music_mode = True
+        new = os.path.join(self.music, "dropped.wav")
+        open(new, "wb").close()
+        self.w.table.dropEvent(self._drop([self.paths[1], new]))
+        self.w._music_mode = False
+        self.settle()
+        self.assertEqual(self._entries(pl), [])
+        self.assertEqual(len(analyzed), 2)
+
     def test_reanalyze_asks_for_this_runs_settings(self):
         asked, analyzed = [], []
         self.bus.sig_reanalyze_requested.connect(lambda path, analysis: asked.append((path, analysis)))

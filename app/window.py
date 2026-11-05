@@ -448,8 +448,8 @@ class AppWindow(QtWidgets.QMainWindow):
 
 
     # DnD: a file dropped on the deck (the area above the library) loads there, shown by its drop zone while
-    # dragged; the library's tracks take a file from elsewhere themselves (analyzed, not loaded); the loaded track
-    # dragged out of the track info is not loaded again
+    # dragged; the library's tracks take a file from elsewhere themselves (into the playlist shown, else analyzed; not
+    # loaded); the loaded track dragged out of the track info is not loaded again
     def _dropped_file(self, e) -> str | None:
         if e.source() is self.pane.track_info:
             return None

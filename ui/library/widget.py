@@ -192,8 +192,7 @@ class LibraryWidget(SourcesMixin, SearchMixin, MusicMixin, MixMixin, PlaylistsMi
         self.table.customContextMenuRequested.connect(self._on_context_menu)
         self.table.playlistRowsDropped.connect(self._drop_playlist_tracks)
 
-        # files dropped on the tracks: into the library (analyzed), not loaded (the deck's drop loads)
-        self.table.filesDropped.connect(lambda paths: [self.bus.sig_request_analyze.emit(p) for p in paths])
+        self.table.filesDropped.connect(self._files_dropped_on_tracks)
     # Data loading
     def reload_from_db(self):
         self.reload(self.library.snapshot.tracks)

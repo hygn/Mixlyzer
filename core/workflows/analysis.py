@@ -2,7 +2,8 @@
 
 A request names its listener: the deck loading the track (AppWindow.load_track: it plays the file at once and takes
 the analysis's results when they come: a library track's stored analysis at once) or none (into the library
-alone: a file dropped on the library). A file being analyzed takes another request's listener too."""
+alone: a file dropped on the library). A file being analyzed takes another request's listener too; a library track
+being reanalyzed gives a deck its stored analysis at once, the new one when it is done."""
 
 from __future__ import annotations
 
@@ -120,14 +121,17 @@ class AnalysisWorkflow(QtCore.QObject):
                 return
 
         inflight = self._find_inflight_task(path)
-        if inflight is not None:
-            # its result goes to this request's listener too
-            if listener is not None:
-                self._contexts[inflight].setdefault("listeners", []).append(listener)
-                if inflight in self._waiting:      # now the deck's: ahead of the others waiting
-                    self._waiting.remove(inflight)
-                    self._waiting.appendleft(inflight)
-            self._show_status(tr("Analysis already in progress: {file}").format(file=os.path.basename(path)))
+        # a library track being reanalyzed loads on the deck at once, with what is stored now (not an analysis asked
+        # for: read below); the deck takes the new one when it is done (reanalysis_result_callback)
+        loads_meanwhile = (inflight is not None and listener is not None and not force_analyze and track is not None
+                           and bool(track.uid) and bool(self._contexts[inflight].get("force")))
+        if inflight is not None and not loads_meanwhile:
+            if listener is None:
+                self._show_status(tr("Analysis already in progress: {file}").format(file=os.path.basename(path)))
+                return
+            # its result goes to this request's listener too (the file is on the deck meanwhile)
+            self._join(inflight, listener)
+            self._show_status(tr("Analyzing: {file}").format(file=os.path.basename(path)))
             return
         if track is not None and listener is None and not force_analyze:   # in the library: analyzed
             self._show_status(tr("Already in the library: {file}").format(file=os.path.basename(path)))
@@ -147,7 +151,12 @@ class AnalysisWorkflow(QtCore.QObject):
             # its stored analysis, read on the library thread; none readable: analyzed
             def loaded(analysis) -> None:
                 if analysis is None:
-                    self._analyze(path, cfg, taskid, thumbnail, force_analyze, listener)
+                    running = self._find_inflight_task(path)
+                    if running is None:
+                        self._analyze(path, cfg, taskid, thumbnail, force_analyze, listener)
+                    else:      # none to read: the reanalysis under way gives it
+                        self._join(running, listener)
+                        self.taskmanager.rmtask(taskid)
                     return
                 self._show_status(tr("Loaded from the library: {file}").format(file=os.path.basename(path)))
                 result = {"analysis": analysis, "properties": track.to_meta(), "update_db": False,
@@ -159,6 +168,13 @@ class AnalysisWorkflow(QtCore.QObject):
             self._library.read(analysis_jobs.analysis, track.uid, done=loaded)
             return
         self._analyze(path, cfg, taskid, thumbnail, force_analyze, listener)
+
+    def _join(self, taskid: int, listener: ResultCallback) -> None:
+        """The analysis in flight's result goes to ``listener`` too (now the deck's: ahead of the others waiting)."""
+        self._contexts[taskid].setdefault("listeners", []).append(listener)
+        if taskid in self._waiting:
+            self._waiting.remove(taskid)
+            self._waiting.appendleft(taskid)
 
     def _analyze(self, path: str, cfg, taskid: int, thumbnail, force_analyze: bool,
                  listener: ResultCallback | None) -> None:

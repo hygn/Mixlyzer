@@ -106,11 +106,11 @@ class FastDelegate(QtWidgets.QStyledItemDelegate):
 # QTableWidget-based implementation
 class _TrackTable(QtWidgets.QTableWidget):
     """Library table whose rows drag out as their audio files (dropped on the
-    deck, the window loads the track); files dropped on it from elsewhere go into the library (analyzed, not
-    loaded: filesDropped)."""
+    deck, the window loads the track); files dropped on it from elsewhere go into the playlist it shows, or into the
+    library (filesDropped: LibraryWidget._files_dropped_on_tracks)."""
 
     playlistRowsDropped = QtCore.Signal(object, object)
-    filesDropped = QtCore.Signal(object)   # paths dropped from elsewhere (a file manager): analyzed, not loaded
+    filesDropped = QtCore.Signal(object)   # paths dropped from elsewhere: a file manager, the track info onto a playlist
 
     def __init__(self, path_column: int, index_column: int, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -219,11 +219,14 @@ class _TrackTable(QtWidgets.QTableWidget):
         self._set_drop_line(None)
         event.ignore()
 
-    @staticmethod
-    def _external_files(event) -> bool:
-        """Files dragged from another program (the app's own drags carry their files too: the library's rows, the
-        loaded track out of the track info; those not taken)."""
-        return event.mimeData().hasUrls() and event.source() is None
+    def _external_files(self, event) -> bool:
+        """Files dragged from another program, or with a playlist shown from anywhere else in the app (the loaded track
+        out of the track info). The app's own drags carry their files too: into the whole library not taken (the
+        track is in it), and this table's rows are moved, not added."""
+        if not event.mimeData().hasUrls():
+            return False
+        source = event.source()
+        return source is None or (self._playlist_reorder_enabled and source is not self)
 
     def dragLeaveEvent(self, event):
         self._set_drop_line(None)

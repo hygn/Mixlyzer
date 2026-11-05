@@ -117,6 +117,73 @@ class AnalysisQueueTests(unittest.TestCase):
         self.ask("d.wav")
         self.assertEqual(_Worker.started, ["a.wav", "d.wav"])
 
+    def test_a_new_file_being_analyzed_loads_without_saying_it_is_already(self):
+        said = []
+        self.flow._status_callback = said.append
+        self.ask("a.wav")                   # into the library
+        self.ask("a.wav")                   # again: nothing new to do, said
+        self.assertEqual(said[-1], "Analysis already in progress: a.wav")
+        got = []
+        self.flow.analyze("a.wav", listener=got.append)    # onto the deck: it takes the result when done
+        self.assertEqual(said[-1], "Analyzing: a.wav")
+        self.assertEqual(_Worker.started, ["a.wav"])
+        self.flow._deliver(next(iter(self.flow._contexts)), {"properties": {"path": "a.wav"}})
+        self.assertEqual(len(got), 1)
+
+
+class LoadedWhileReanalyzedTests(unittest.TestCase):
+    """A library track being reanalyzed loads on the deck at once: its stored analysis now, the new one when done."""
+
+    def setUp(self):
+        _Worker.started = []
+        self.tasks = _Tasks()
+        self.stored = "the stored analysis"
+        self.said, self.results, self.reanalyzed = [], [], []
+        track = SimpleNamespace(uid="u", path="a.wav", to_meta=lambda: {"path": "a.wav"})
+        library = SimpleNamespace(snapshot=SimpleNamespace(find_file=lambda _p: track),
+                                  read=lambda _job, _uid, done: done(self.stored))
+        for patcher in (mock.patch.object(workflow, "AnalysisWorker", _Worker),
+                        mock.patch.object(workflow.os.path, "isfile", return_value=True)):
+            patcher.start()
+            self.addCleanup(patcher.stop)
+        cfg = SimpleNamespace(analysisconfig=SimpleNamespace(max_parallel_analyses=2))
+        self.flow = workflow.AnalysisWorkflow(
+            library=library, taskmanager=self.tasks, result_callback=self.results.append,
+            reanalysis_result_callback=self.reanalyzed.append, status_callback=self.said.append,
+            cfg_loader=lambda: cfg, albumart_provider=lambda p: None,
+            tag_extractor=lambda p: (os.path.basename(p), "", "", ""))
+        self.flow.reanalyze("a.wav")
+        self.running = next(iter(self.flow._contexts))
+        self.deck = []
+
+    def load(self):
+        self.flow.analyze("a.wav", listener=self.deck.append)
+
+    def test_the_stored_analysis_at_once_then_the_new_one(self):
+        self.load()
+        self.assertEqual([r["analysis"] for r in self.deck], [self.stored])
+        self.assertEqual(self.said[-1], "Loaded from the library: a.wav")
+        self.assertNotIn("Analysis already in progress: a.wav", self.said)
+        self.assertEqual(_Worker.started, ["a.wav"])                 # no second analysis
+        self.flow._deliver(self.running, {"analysis": "new", "properties": {"path": "a.wav"}})
+        self.assertEqual([r["analysis"] for r in self.reanalyzed], ["new"])     # to the deck by the window, if it holds it
+        self.assertEqual(len(self.deck), 1)
+        self.assertEqual(self.flow._contexts, {})
+
+    def test_none_stored_to_read_the_reanalysis_gives_it(self):
+        self.stored = None
+        self.load()
+        self.assertEqual(self.deck, [])
+        self.assertEqual(_Worker.started, ["a.wav"])                 # joined, not a second analysis
+        self.assertEqual(len(self.tasks.removed), 1)                 # its own task gone
+        self.flow._deliver(self.running, {"analysis": "new", "properties": {"path": "a.wav"}})
+        self.assertEqual([r["analysis"] for r in self.deck], ["new"])
+
+    def test_a_second_reanalysis_is_still_refused(self):
+        self.flow.reanalyze("a.wav")
+        self.assertEqual(self.said[-1], "Analysis already in progress: a.wav")
+        self.assertEqual(_Worker.started, ["a.wav"])
+
 
 if __name__ == "__main__":
     unittest.main()

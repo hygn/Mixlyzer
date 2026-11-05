@@ -150,6 +150,15 @@ class PlaylistsMixin:
             ).append(playlist_uid)
             self.bus.sig_request_analyze.emit(path)
 
+    def _files_dropped_on_tracks(self, paths) -> None:
+        """Files dropped on the track list: into the playlist it shows, as on that playlist in the sources panel; else
+        into the library (analyzed, not loaded: the deck's drop loads)."""
+        if self._source_kind == "playlist" and not self._music_mode:
+            self._add_paths_to_playlist(str(self._source_value), paths)
+            return
+        for path in paths:
+            self.bus.sig_request_analyze.emit(path)
+
     def _remove_selected_from_playlist(self) -> None:
         if self._source_kind != "playlist":
             return
