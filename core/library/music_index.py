@@ -16,15 +16,15 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from analyzer.search.music import landmarks, melody
-from analyzer.search.music.matcher import MelodyIndex
+from analyzer.search.music.constants import FRAMES, LANDMARKS_METHOD, MELODY_METHOD
 
 if TYPE_CHECKING:
     from analyzer.search.music.index import IndexEntry
+    from analyzer.search.music.matcher import MelodyIndex
 
 FILE_NAME = "music_search.db"
 WRITE_WAIT_SEC = 60.0
-METHOD = f"melody={melody.METHOD};landmarks={landmarks.METHOD}"
+METHOD = f"melody={MELODY_METHOD};landmarks={LANDMARKS_METHOD}"
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT);
 CREATE TABLE IF NOT EXISTS melody (
@@ -95,7 +95,7 @@ def stored_uids(path: str) -> set[str]:
 def put(con: sqlite3.Connection, uid: str, size: int, mtime: float, entry: "IndexEntry") -> None:
     """One song's index (replacing what it had), in the caller's transaction."""
     lines, hashes, times = entry.lines, entry.hashes, entry.times
-    k = int(lines[melody.FRAMES[0]].shape[0])
+    k = int(lines[FRAMES[0]].shape[0])
     con.execute("INSERT OR REPLACE INTO melody VALUES (?, ?, ?, ?, ?, ?, ?)",
                 (uid, int(size), float(mtime), k, *(np.ascontiguousarray(lines[f], np.uint8).tobytes()
                                                     for f in (0.4, 0.2, 0.1))))
@@ -116,6 +116,7 @@ def drop(con: sqlite3.Connection, uid: str) -> None:
 
 def melody_index(con: sqlite3.Connection) -> MelodyIndex:
     """Every song's reference lines, in memory (about 7 KB a song)."""
+    from analyzer.search.music.matcher import MelodyIndex    # numba's: loaded when a search first asks
     idx = MelodyIndex()
     for uid, k, *blobs in con.execute(f"SELECT uid, lines, {', '.join(_COLUMNS.values())} FROM melody ORDER BY uid"):
         idx.add(uid, {f: np.frombuffer(b, np.uint8).reshape(int(k), -1) for f, b in zip(_COLUMNS, blobs)})

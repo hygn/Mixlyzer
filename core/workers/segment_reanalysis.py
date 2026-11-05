@@ -10,10 +10,6 @@ from typing import Any
 import numpy as np
 from PySide6 import QtCore
 
-from analyzer.pipeline.beatgrid import reanalyze_segment
-from analyzer.pipeline.jumpcues import reanalyze_jumpcues
-from analyzer.pipeline.keys import reanalyze_full as reanalyze_keys, reanalyze_selection as reanalyze_key_selection
-from analyzer.pipeline.phrases import reanalyze_phrases
 from system.process_worker import ResidentJobWorker, ResidentPool, install_parent_watchdog
 from core.settings.config import config
 from core.workers.analysis_settings import analysis_settings
@@ -34,7 +30,8 @@ def reanalysis_pool() -> ResidentPool:
     global _pool
     if _pool is None:
         _pool = ResidentPool("Mixlyzer-segment-analysis", idle_sec=1800.0, max_jobs=50,
-                             warm=("core.workers.segment_reanalysis",))
+                             warm=("core.workers.segment_reanalysis", "analyzer.pipeline.beatgrid",
+                                   "analyzer.pipeline.jumpcues", "analyzer.pipeline.keys", "analyzer.pipeline.phrases"))
     return _pool
 
 
@@ -114,6 +111,12 @@ def _segment_reanalysis_entry(
         queue.put({"type": "result", "taskid": taskid, "payload": result})
 
     try:
+        # here: the GUI process imports this module for its worker, and the analysis's libraries stay out of it
+        from analyzer.pipeline.beatgrid import reanalyze_segment
+        from analyzer.pipeline.jumpcues import reanalyze_jumpcues
+        from analyzer.pipeline.keys import reanalyze_full as reanalyze_keys, reanalyze_selection as reanalyze_key_selection
+        from analyzer.pipeline.phrases import reanalyze_phrases
+
         settings = analysis_settings(cfg)
         kind = request.kind
         if kind in (BEAT, KEY_STATIC, KEY_DYNAMIC, JUMPCUE) and beats.size == 0:

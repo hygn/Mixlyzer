@@ -26,7 +26,7 @@ from system.i18n import tr
 from system.os_support import path_key
 from core.library import jobs
 from analyzer.search.music.listening import Listening
-from analyzer.search.music.search import SearchResult, search_audio
+from analyzer.search.music.results import SearchResult
 from ui.widgets.elided_label import ElidedLabel
 from ui.theme import current_theme
 
@@ -283,14 +283,17 @@ class MusicListener(QtCore.QObject):
 
     def _read_index(self) -> None:
         try:
+            # the search's modules (numba's kernels, the melody extractor's librosa: a second or so, the first time) on
+            # this thread: not on the library's owner's, holding its jobs, nor on the search's threads at once
+            import numba
+            from analyzer.beat import melody_contour  # noqa: F401
+            from analyzer.search.music.search import SEARCH_THREADS
             # opened and read by the library's owner (its landmarks lent to the searches); the library's tracks
             # from its snapshot
             opened = self._owner.call(jobs.open_music_search)
             con, index = opened if opened is not None else (None, None)
             library = set(self._owner.snapshot.by_uid)
             if index is not None and len(index):
-                import numba
-                from analyzer.search.music.search import SEARCH_THREADS
                 numba.set_num_threads(SEARCH_THREADS)
                 index.search(np.full(40, 60.0), top=1)          # the kernels: from numba's cache, else compiled
             self._bridge.loaded.emit((index, con, library))
@@ -419,6 +422,7 @@ class MusicListener(QtCore.QObject):
 
     def _run_search(self, y, rate, index, con, heard_at) -> None:
         try:
+            from analyzer.search.music.search import search_audio
             result = search_audio(y, rate, index, con, top=20)
             self._bridge.done.emit((result, heard_at))
         except Exception as exc:

@@ -1,13 +1,14 @@
 """The interface's fonts (assets/fonts, ui/fonts.py): static instances of Google Fonts' variable Noto Sans, Noto Sans
-JP, KR, SC and TC (OFL-1.1) at the weights the interface draws, 400 Regular, 600 SemiBold and 700 Bold. Static, not
-the variable files: Qt's font database on Windows (DirectWrite) registers each named instance of a variable font as a
-copy of the whole font, nine for each of these, about 530 MB of memory for the five; the three weights take about
-210 MB and are drawn alike. Run with the folder holding the variable fonts (fonts.google.com's downloads, or
-github.com/google/fonts' ofl/notosans*; any file names: a font is known by its family):
+JP, KR, SC and TC (OFL-1.1) at the weights the interface draws, 400 Regular and 700 Bold. Static, not the variable
+files: Qt's font database on Windows (DirectWrite) registers each named instance of a variable font as a copy of the
+whole font, nine for each of these, about 530 MB of memory for the five; and it keeps two copies of each file it
+registers, so every weight shipped costs twice its files (measured: the two weights about 115 MB). Run with the folder
+holding the variable fonts (fonts.google.com's downloads, or github.com/google/fonts' ofl/notosans*; any file names: a
+font is known by its family):
 
     uv run python build/fonts.py FOLDER
 
-which writes assets/fonts/<NotoSansJP>-<Regular|SemiBold|Bold>.ttf (each CJK font takes a minute or so)."""
+which writes assets/fonts/<NotoSansJP>-<Regular|Bold>.ttf (each CJK font takes a minute or so)."""
 from __future__ import annotations
 
 import sys
@@ -17,7 +18,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "assets" / "fonts"
 FAMILIES = ("Noto Sans", "Noto Sans JP", "Noto Sans KR", "Noto Sans SC", "Noto Sans TC")
-WEIGHTS = {400: "Regular", 600: "SemiBold", 700: "Bold"}
+WEIGHTS = {400: "Regular", 700: "Bold"}
 
 
 def family_of(path: Path) -> str | None:

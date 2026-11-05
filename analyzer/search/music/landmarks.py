@@ -17,6 +17,8 @@ import numpy as np
 from numba import njit
 from scipy.ndimage import maximum_filter
 
+from analyzer.search.music.constants import LANDMARKS_METHOD as METHOD  # noqa: F401
+
 
 class LandmarkIndex(Protocol):
     """The index's landmarks as the search reads them (the app keeps them: core.library.music_index)."""
@@ -36,7 +38,6 @@ FAN_OUT = 4                     # pairs per anchor peak
 DT_MAX = 48                     # frames (1.5 s) ahead for a pair
 DF_MAX = 96                     # bins apart at most
 FRAME_SEC = HOP / SR
-METHOD = "wang-1"
 # a DJ's tempo with the key locked, the song's tempo times this: +-8 % (the CDJs' default range) in 1 % steps (a pair
 # 1.5 s apart at most is then off by a quarter frame at most); 1 itself is the plain search
 TEMPO_FACTORS = np.array([round(1 + k / 100, 2) for k in range(-8, 9) if k])

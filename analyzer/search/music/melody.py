@@ -20,13 +20,12 @@ from __future__ import annotations
 import numpy as np
 from numba import njit
 
-SR, HOP = 22050, 256                # the analyzer's rate and hop: its melody extractor's frames
-FRAMES = (0.4, 0.2, 0.1)            # the search cascade's frame sizes (s)
+from analyzer.search.music.constants import FRAMES, HOP, MELODY_METHOD as METHOD, SR  # noqa: F401
+
 UNV = 255
 BASE, STEPS = 20.0, 3.0             # u8 = (MIDI - BASE) * STEPS: thirds of a semitone, MIDI 20 - 104.6
 LINES = 2
 TOP_OF = 3
-METHOD = "center+mixtop-2"          # stored with the index: another method re-extracts every song
 
 
 @njit(cache=True, nogil=True)

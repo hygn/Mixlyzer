@@ -10,7 +10,7 @@ from PySide6 import QtCore
 from threadpoolctl import threadpool_limits
 
 from analyzer.audio.decoder import get_total_samples
-from analyzer.pipeline.track import LAZY_MODULES, analyze_track
+from analyzer.pipeline.lazy_modules import LAZY_MODULES
 from core.tags.reader import cover_data, extract_tags, read_tag_sources
 from system.process_worker import ResidentJobWorker, ResidentPool, install_parent_watchdog
 from core.settings.config import config
@@ -41,6 +41,7 @@ def analyze_for_library(path: str, cfg: config,
 
     title, artist, album, comment = extract_tags(path)
     sources = read_tag_sources(path, title, artist, album, comment)
+    from analyzer.pipeline.track import analyze_track    # here: the GUI process imports this module for its worker
     result = analyze_track(path, analysis_settings(cfg),
                            progress=lambda stage, fraction: report(*track_stage(stage), fraction))
 

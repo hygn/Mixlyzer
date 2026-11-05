@@ -219,10 +219,12 @@ def _release_blas_threads() -> None:
         _blas_threads_set = False
 
 
-# the app's heavy imports in dependency order, with their usual time (s, measured)
+# the app's heavy imports in dependency order, with their usual time (s, measured); the analysis's own libraries
+# (numba, sklearn, librosa) are not among them: the analyses run in worker processes, Search by Music loads what it needs
+# when it starts (tests/test_gui_imports.py)
 _IMPORTS = (
-    ("numpy", 0.17), ("scipy.signal", 1.17), ("numba", 0.36), ("sklearn.metrics", 0.31), ("pyqtgraph", 0.34),
-    ("analyzer.pipeline.track", 0.36), ("core.playback.player", 0.05), ("ui.pane", 0.08), ("ui.config.window", 0.05),
+    ("numpy", 0.17), ("scipy.signal", 1.17), ("pyqtgraph", 0.34),
+    ("core.playback.player", 0.05), ("ui.pane", 0.08), ("ui.config.window", 0.05),
     ("app.window", 0.09),
 )
 

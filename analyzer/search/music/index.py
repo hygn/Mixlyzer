@@ -7,9 +7,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from analyzer.search.music import landmarks, melody
-
-SR = melody.SR
+from analyzer.search.music.constants import SR  # noqa: F401
 
 
 @dataclass(frozen=True)
@@ -23,6 +21,8 @@ def index_audio(stereo: np.ndarray, mix_harmonic: np.ndarray | None = None,
                 mix_mask: np.ndarray | None = None) -> IndexEntry:
     """The entry of a song decoded at SR ((n, 2) or (n,)); ``mix_harmonic`` and ``mix_mask``: its mono mix's HPSS
     harmonic part and harmonic mask when already made (the analysis's)."""
+    # here: an entry handed back to the app's process unpickles with this module, without the kernels
+    from analyzer.search.music import landmarks, melody
     y = np.asarray(stereo, dtype=np.float32)
     lines = melody.packed_lines(melody.reference_lines(y, mix_harmonic, mix_mask))
     hashes, times = landmarks.audio_hashes(y if y.ndim == 1 else y.mean(axis=1), SR)

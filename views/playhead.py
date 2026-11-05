@@ -39,12 +39,12 @@ class _OutlinedText(QtWidgets.QGraphicsTextItem):
 
 
 def _outlined_text_item(color, anchor=(1.0, 0.0)) -> pg.TextItem:
-    """pg.TextItem whose text is drawn outlined and slightly bold."""
+    """pg.TextItem whose text is drawn outlined and bold."""
     item = pg.TextItem("", color=color, anchor=anchor)
     plain = item.textItem
     outlined = _OutlinedText(item)
     font = QtGui.QFont(plain.font())
-    font.setWeight(QtGui.QFont.Weight.DemiBold)
+    font.setWeight(QtGui.QFont.Weight.Bold)
     outlined.setFont(font)
     outlined.setDefaultTextColor(plain.defaultTextColor())
     plain.setParentItem(None)

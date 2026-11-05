@@ -33,6 +33,7 @@ from analyzer.phrase import detect_phrase_segments
 from analyzer.phrase.cue_points import autocue_time_sec, phrase_cue_points
 from analyzer.phrase.phrase_analyzer import phrase_cue_frames, phrase_song_frames
 from analyzer.pipeline import stages
+from analyzer.pipeline.lazy_modules import LAZY_MODULES
 from analyzer.pipeline.stages import Progress, report
 from analyzer.runtime import prime_physical_core_count
 from analyzer.search import mixability, variants
@@ -42,14 +43,6 @@ from analyzer.settings import ANALYSIS_SAMPLE_RATE, AnalysisSettings
 
 # sklearn would otherwise launch powershell.exe to count cores in every analysis process.
 prime_physical_core_count()
-
-# librosa's modules the analysis reaches, which librosa imports at their first use: imported on one thread before the
-# analysis's threads start (two threads importing one package's modules at once can meet in an import deadlock), and
-# by the resident analysis processes while they wait (core.workers.analysis).
-LAZY_MODULES = (
-    "librosa.core.audio", "librosa.core.constantq", "librosa.core.pitch", "librosa.core.spectrum",
-    "librosa.feature.spectral", "librosa.feature.utils", "librosa.filters", "librosa.onset", "librosa.segment",
-)
 
 @dataclass(frozen=True)
 class TrackAnalysis:

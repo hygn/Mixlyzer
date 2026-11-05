@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import os
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass
 import numba
 import numpy as np
 
@@ -25,6 +24,7 @@ from analyzer.search.music import landmarks, melody, query
 from analyzer.search.music.landmarks import LandmarkIndex
 from analyzer.search.music.matcher import MelodyIndex
 from analyzer.search.music.melody import SR
+from analyzer.search.music.results import MusicMatch, SearchResult
 
 QUERY_PEAKS_PER_SEC = 30   # the query's landmarks, three times the index's: a crowd's calls and screams take a
 QUERY_FAN_OUT = 12         # second's strongest peaks, so a query keeping more (paired with more, the index's pairs
@@ -44,24 +44,6 @@ VOICE_LIKE = 0.6           # a single voice has a clear period most of the time 
                            # rarely does (songs: median 0.16)
 SEARCH_THREADS = max(1, min(4, (os.cpu_count() or 4) // 4))
 _POOL = ThreadPoolExecutor(max_workers=3, thread_name_prefix="MusicSearch")
-
-
-@dataclass(frozen=True)
-class MusicMatch:
-    uid: str
-    kind: str              # "recording" (landmarks) or "melody"
-    score: float           # votes for a recording; the mean frame cost (semitones, lower better) for a melody
-    start_sec: float       # where in the song the query matched
-    end_sec: float
-    transposition: float   # semitones the song is above the query (a melody's); 0 for a recording
-    places: tuple[float, ...] = ()   # every place in the song it matched about as well (a song repeats), best first
-
-
-@dataclass(frozen=True)
-class SearchResult:
-    kind: str                       # the best match's: "recording", "melody", or "none"
-    matches: tuple[MusicMatch, ...]
-    voiced_sec: float               # seconds of pitch in the query (the voice's)
 
 
 def _recording(landmark_index, y, sr, top, least, dense=True):
