@@ -8,7 +8,9 @@ is never an output, an existing output is copied to backups/ first.
 
 NAME: one of OPTIMIZERS. Run from the app's folder (config.json's settings: the library, the models in use, the
 lowest BPM): the output is the model setting's file unless --output, the feature cache featurecache/<kind> unless
---cache. --set gives any other field of the optimizer's request (a JSON value, else the text): ``--set steps=4000``.
+--cache. --set gives any other field of the optimizer's request (a JSON value, else the text): ``--set steps=4000``;
+the key model trains on a key GT file instead of the library's key annotations with ``--set key_gt=PATH``
+(training/key_model_optimizer.py).
 """
 from __future__ import annotations
 
@@ -144,7 +146,16 @@ def request_values(name: str, analysis, libpath: str, args) -> dict:
             values[key.strip()] = json.loads(text)
         except ValueError:
             values[key.strip()] = text
+    if name == "key_model" and values.get("key_gt"):     # a key GT file, from the app's folder unless absolute
+        values["key_gt"] = str(project_path(values["key_gt"]))
     return values
+
+
+def read_settings():
+    """config.json's settings: the training's command lines' one read (this one, training.key_chords), as the app's
+    start reads them."""
+    from core.settings.config import load_cfg
+    return load_cfg()
 
 
 def read_tracks(libpath: str) -> list[dict]:
@@ -236,8 +247,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--no-backup", action="store_true", help="overwrite an existing output without a copy")
     args = parser.parse_args(argv)
 
-    from core.settings.config import load_cfg
-    cfg = load_cfg()                     # the CLI's one read of the settings, as the app's start
+    cfg = read_settings()                # the CLI's one read of the settings, as the app's start
     spec = OPTIMIZERS[args.name]
     module = importlib.import_module(f"training.{spec.module}")
     request_type, optimize = getattr(module, spec.request), getattr(module, spec.optimize)

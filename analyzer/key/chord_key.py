@@ -1,19 +1,25 @@
 """Chord-aware key analysis (NumPy only).
 
 A small root-equivariant chord CNN reads every beat (bass / treble CQT chroma and STFT chroma of the harmonic part)
-as P(chord | beat) over 24 triads; the key evidence of a beat is log sum_c P(c | beat) P(c | key, phrase position),
-the chords taken relative to each of the 24 keys (P(c | key, position): the diatonic functions of a phrase's first,
-last and other bars). The chord layer was trained through the key loss only (no chord labels), on keys in the DJ /
-DAW sense: the scale (key signature, Alphanumeric number) with major / minor by the tonic chord.
+as P(chord | beat) over 12 roots x the model's chord qualities (QUALITIES: major, minor, and the dominant, major and
+minor sevenths -- a seventh tells a V7 from a I, which triads cannot); the key evidence of a beat is
+log sum_c P(c | beat) P(c | key, phrase position), the chords taken relative to each of the 24 keys (the chord-in-key
+tables: a phrase's first, last and other bars). The model file holds several members (the same network trained from
+other seeds): the evidence is their mean. The chord layer and the tables were trained through the key loss only (keys
+the only training input: training/key_model_optimizer.py), on keys in the DJ / DAW sense: the scale (key signature,
+Alphanumeric number) with major / minor by the tonic chord. The chords it reads can be listed (``beat_chords``), to
+look at and to compare with a chart (training/key_chords.py), never as labels.
 
 The keys follow the bars: a bar Viterbi over the 24 keys where a key change costs J at a phrase start and J + JX
 elsewhere (half of it between relative keys, which share the scale), plus an interval prior (a common modulation --
 a minor third, a half step up, a whole step -- costs less than a fifth, which is rare as a real modulation and the
-commonest misreading). The output signature runs are named major or minor by the song's majority mode.
+commonest misreading), the whole of it J_FIFTH times dearer for a fifth. The costs are in the evidence's units: a
+model whose evidence is weaker needs lower costs to find the same key changes (the training calibrates them). The
+output signature runs are named major or minor by the song's majority mode.
 
-Weights: ``assets/weights/key_chord_cnn.npz`` (the chord CNN, the chord-in-key tables and the decoder settings);
-a missing file means the shipped ``default_key_chord_cnn.npz`` (``system/model_files.py``). The models were trained
-on 22050 Hz HPSS harmonic audio; other rates are resampled.
+Weights: ``assets/weights/key_chord_cnn.npz`` (the members' chord CNNs and chord-in-key tables, the decoder
+settings); a missing file means the shipped ``default_key_chord_cnn.npz`` (``system/model_files.py``). The models were
+trained on 22050 Hz HPSS harmonic audio; other rates are resampled.
 """
 from __future__ import annotations
 
@@ -22,6 +28,7 @@ from pathlib import Path
 
 import numpy as np
 
+from analyzer.music.key_names import CLASSICAL_LABELS
 from analyzer.music.key_rows import main_key
 
 
@@ -29,6 +36,16 @@ SR = 22050
 HOP = 512
 _SIG_OF = np.r_[np.arange(12), (np.arange(12) + 3) % 12]       # key index (pc + 12 * minor) -> its signature (major tonic)
 _REL = _SIG_OF[:, None] == _SIG_OF[None, :]
+# the chord qualities in the order of the model's outputs (12 roots each: chord index = 12 * quality + root); a model
+# reads the first Q of them (Q = 2: the triads)
+QUALITIES = ("maj", "min", "dom7", "maj7", "min7")
+INTERVALS = {"maj": (0, 4, 7), "min": (0, 3, 7), "dom7": (0, 4, 7, 10), "maj7": (0, 4, 7, 11), "min7": (0, 3, 7, 10)}
+SUFFIX = {"maj": "", "min": "m", "dom7": "7", "maj7": "M7", "min7": "m7"}
+
+
+def chord_name(index: int) -> str:
+    """A chord index (12 * quality + root) as a chart writes it: C, C#m, G7, FM7, Am7."""
+    return CLASSICAL_LABELS[int(index) % 12] + SUFFIX[QUALITIES[int(index) // 12]]
 
 
 # ---------------------------------------------------------------- features
@@ -155,61 +172,112 @@ def _log_softmax(z: np.ndarray, axis: int = -1) -> np.ndarray:
 
 
 WEIGHTS = ("c1_w", "c1_b", "c2_w", "c2_b", "out_w", "out_b", "tab")
-SETTINGS = ("J", "JX", "J_REL", "LAM", "MINEX", "iv_cost")
+SETTINGS = ("J", "JX", "J_REL", "LAM", "J_FIFTH", "MINEX", "iv_cost")
+# signatures a fifth apart (an Alphanumeric neighbour): the change J_FIFTH makes dearer
+_FIFTH = np.isin((_SIG_OF[None, :] - _SIG_OF[:, None]) % 12, (5, 7))
+
+
+def check_model_arrays(z: dict) -> tuple[int, int]:
+    """The arrays of a model file, checked before a loop walks them (a file may come from elsewhere): every member
+    axis the same, the layers chained, the qualities 2 (the triads) to all of QUALITIES, the tables one row per mode
+    and phrase position over every chord, the decoder settings scalars and 12 interval costs, all finite.
+    -> (members, qualities)"""
+    w = {k: np.asarray(z[k]) for k in WEIGHTS + SETTINGS}
+    c1, c2, out, tab = w["c1_w"], w["c2_w"], w["out_w"], w["tab"]
+    if c1.ndim != 4 or c2.ndim != 4 or out.ndim != 4 or tab.ndim != 4:
+        raise ValueError("key model: weights must have a member axis")
+    M, Q = c1.shape[0], out.shape[1]
+    ok = (M >= 1 and 2 <= Q <= len(QUALITIES) and c1.shape[2] == 36
+          and all(w[k].shape[0] == M for k in WEIGHTS)
+          and w["c1_b"].shape == c1.shape[:2] and c2.shape[2] == c1.shape[1] and w["c2_b"].shape == c2.shape[:2]
+          and c2.shape[1] == c1.shape[1]                      # the residual connection adds the two layers
+          and out.shape[2] == c2.shape[1] and w["out_b"].shape == (M, Q)
+          and all(a.shape[3] % 2 == 1 for a in (c1, c2, out))  # odd kernels: 'same' padding
+          and tab.shape == (M, 2, 3, 12 * Q)
+          and all(np.asarray(w[k]).size == 1 for k in SETTINGS if k != "iv_cost") and w["iv_cost"].shape == (12,))
+    if not ok:
+        raise ValueError("key model: inconsistent array shapes")
+    if not all(np.all(np.isfinite(np.asarray(w[k], float))) for k in WEIGHTS + SETTINGS):
+        raise ValueError("key model: non-finite values")
+    return M, Q
 
 
 def read_model_arrays(path: str | Path) -> dict[str, np.ndarray]:
-    """Every array of a key model file."""
+    """Every array of a key model file, checked (``check_model_arrays``)."""
     with np.load(path, allow_pickle=False) as z:
-        return {k: np.asarray(z[k]) for k in WEIGHTS + SETTINGS}
+        arrays = {k: np.asarray(z[k]) for k in WEIGHTS + SETTINGS}
+    check_model_arrays(arrays)
+    return arrays
+
+
+def _member_chords(w: dict, x: np.ndarray, Q: int) -> np.ndarray:
+    """One member: [nb, 36] -> log P(chord | beat) [nb, 12 Q] (chord index 12 * quality + root)."""
+    nb = x.shape[0]
+    logits = np.zeros((nb, Q, 12), np.float32)
+    for r in range(12):
+        xr = np.concatenate([np.roll(x[:, 12 * blk:12 * (blk + 1)], -r, axis=1) for blk in range(3)], axis=1)
+        h = np.maximum(_conv1d(xr, w["c1_w"], w["c1_b"]), 0)
+        h = np.maximum(_conv1d(h, w["c2_w"], w["c2_b"]), 0) + h
+        logits[:, :, r] = _conv1d(h, w["out_w"], w["out_b"])
+    return _log_softmax(logits.reshape(nb, 12 * Q), -1)
+
+
+def _member_key_loglik(tab: np.ndarray, logpc: np.ndarray, pos: np.ndarray, Q: int) -> np.ndarray:
+    """One member: -> [nb, 24 keys]: log sum_c P(c | beat) P(c | key, phrase position)."""
+    R = _log_softmax(tab, -1)                                  # [2 modes, 3 positions, 12 Q relative chords]
+    out = np.zeros((logpc.shape[0], 24), np.float32)
+    for m in range(2):
+        Rb = R[m][pos]                                         # [nb, 12 Q]
+        for k in range(12):
+            lp = np.concatenate([np.roll(logpc[:, 12 * q:12 * (q + 1)], -k, axis=1) for q in range(Q)], axis=1)
+            z = lp + Rb
+            zm = z.max(axis=1, keepdims=True)
+            out[:, m * 12 + k] = (zm[:, 0] + np.log(np.exp(z - zm).sum(axis=1)))
+    return out
 
 
 class ChordKeyModel:
     def __init__(self, path: str | Path | None = None, arrays: dict | None = None):
         z = arrays if arrays is not None else read_model_arrays(path)
-        self.w = {k: np.asarray(z[k], np.float32) for k in WEIGHTS}
+        M, self.Q = check_model_arrays(z)
+        self.members = [{k: np.asarray(z[k][m], np.float32) for k in WEIGHTS} for m in range(M)]
         self.J = float(z["J"]); self.JX = float(z["JX"]); self.J_REL = float(z["J_REL"])
-        self.LAM = float(z["LAM"]); self.MINEX = int(z["MINEX"])
+        self.LAM = float(z["LAM"]); self.J_FIFTH = float(z["J_FIFTH"]); self.MINEX = int(z["MINEX"])
         self.iv_cost = np.asarray(z["iv_cost"], float)
 
     def chords(self, x: np.ndarray) -> np.ndarray:
-        """[nb, 36] -> log P(chord | beat) [nb, 24] (roots 0-11 major, 12-23 minor)."""
-        nb = x.shape[0]
-        logits = np.zeros((nb, 2, 12), np.float32)
-        for r in range(12):
-            xr = np.concatenate([np.roll(x[:, 12 * blk:12 * (blk + 1)], -r, axis=1) for blk in range(3)], axis=1)
-            h = np.maximum(_conv1d(xr, self.w["c1_w"], self.w["c1_b"]), 0)
-            h = np.maximum(_conv1d(h, self.w["c2_w"], self.w["c2_b"]), 0) + h
-            logits[:, :, r] = _conv1d(h, self.w["out_w"], self.w["out_b"])
-        return _log_softmax(logits.reshape(nb, 24), -1)
+        """[nb, 36] -> each member's log P(chord | beat) [members, nb, 12 Q] (chord index 12 * quality + root)."""
+        x = np.asarray(x, np.float32)
+        return np.stack([_member_chords(w, x, self.Q) for w in self.members])
 
     def key_loglik(self, logpc: np.ndarray, pos: np.ndarray) -> np.ndarray:
-        """-> [nb, 24 keys] (key index pc + 12 * minor): log sum_c P(c | beat) P(c | key, phrase position)."""
-        R = _log_softmax(self.w["tab"], -1)                   # [2 modes, 3 positions, 24 relative chords]
-        out = np.zeros((logpc.shape[0], 24), np.float32)
-        for m in range(2):
-            Rb = R[m][pos]                                     # [nb, 24]
-            for k in range(12):
-                lp = np.concatenate([np.roll(logpc[:, :12], -k, axis=1), np.roll(logpc[:, 12:], -k, axis=1)], axis=1)
-                z = lp + Rb
-                zm = z.max(axis=1, keepdims=True)
-                out[:, m * 12 + k] = (zm[:, 0] + np.log(np.exp(z - zm).sum(axis=1)))
-        return out
+        """``chords``' output -> [nb, 24 keys] (key index pc + 12 * minor): the members' mean of
+        log sum_c P(c | beat) P(c | key, phrase position)."""
+        return np.mean([_member_key_loglik(w["tab"], lp, pos, self.Q) for w, lp in zip(self.members, logpc)], axis=0)
+
+    def beat_chords(self, x: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        """The chords the model reads, to look at (never a label): the members' mean P(chord | beat) [nb, 12 Q] and
+        its likeliest chord per beat [nb] (``chord_name`` names it)."""
+        p = np.exp(self.chords(x)).mean(axis=0)
+        return p, np.argmax(p, axis=1)
 
     # ------------------------------------------------------------ decoder
     def decode(self, L: np.ndarray, grid: BeatGrid, duration: float) -> tuple[np.ndarray, np.ndarray]:
-        """Bar Viterbi -> (key_segments [n, 4] rows (pc, mode, t0, t1), key index per bar)."""
+        """Bar Viterbi -> (key_segments [n, 4] rows (pc, mode, t0, t1), key index per bar). A change costs J at a
+        phrase start, J + JX elsewhere, J_REL of that between relative keys, plus LAM x the interval's cost; a change
+        to a signature a fifth away costs J_FIFTH times all of it (the commonest misreading, rare as a modulation)."""
         bar = grid.bar
         nbar = int(bar.max()) + 1
         E = np.zeros((nbar, 24))
         for k in range(24):
             E[:, k] = np.bincount(bar, weights=L[:, k], minlength=nbar)
         cost = np.where(grid.phrase_first[:nbar], self.J, self.J + self.JX)
-        C = self.LAM * self.iv_cost[(_SIG_OF[None, :] - _SIG_OF[:, None]) % 12]
+        fifth = np.where(_FIFTH, self.J_FIFTH, 1.0)
+        C = self.LAM * self.iv_cost[(_SIG_OF[None, :] - _SIG_OF[:, None]) % 12] * fifth
         score = E[0].copy()
         back = np.zeros((nbar, 24), int)
         for i in range(1, nbar):
-            trans = score[:, None] - (np.where(_REL, self.J_REL * cost[i], cost[i]) + C)
+            trans = score[:, None] - (np.where(_REL, self.J_REL * cost[i], cost[i]) * fifth + C)
             np.fill_diagonal(trans, score)
             back[i] = np.argmax(trans, axis=0)
             score = trans[back[i], np.arange(24)] + E[i]

@@ -1,30 +1,59 @@
-"""Retrain the chord-aware key model (analyzer/key/chord_key.py) on the keys the user checked, in PyTorch.
+"""Retrain the chord-aware key model (analyzer/key/chord_key.py) on key ground truth, in PyTorch.
 
-Training songs are the library's tracks whose key annotation is the user's:
-- a track with the automatic key result kept beside it (``key_segments_auto``, written by the full analysis and a
-  whole-track key reanalysis) is used when its keys differ from it -- the user went through that track's keys;
-  a track whose keys are still the automatic result is left out (the model would learn its own output);
-- a track analyzed before the automatic result was kept is used unless its annotation has the shape of the old
-  analyzer's raw output (10+ segments, or short fragments with same-key neighbours).
-Only keys train the model: no chord labels (users cannot record them). The chord layer stays a chord layer through
-the template-chord term (KL to the fixed triad templates), as when the shipped model was trained.
+Keys are the only training input, never chords. The training songs come from one of two sources:
+- a key GT file (``key_gt``): JSON ``{"tracks": {uid: [[pitch class, mode, start s, end s], ...]}}``. Only the
+  library tracks it names are used, and only their beats inside a row (a span the GT leaves out is not taught).
+  The shipped model was trained this way, on keys read from human chord charts of the library's songs, kept
+  outside the repository.
+- else the library's tracks whose key annotation is the user's:
+  - a track with the automatic key result kept beside it (``key_segments_auto``, written by the full analysis and a
+    whole-track key reanalysis) is used when its keys differ from it -- the user went through that track's keys;
+    a track whose keys are still the automatic result is left out (the model would learn its own output);
+  - a track analyzed before the automatic result was kept is used unless its annotation has the shape of the old
+    analyzer's raw output (10+ segments, or short fragments with same-key neighbours).
+The chord layer stays a chord layer through the template-chord term (KL to each quality's fixed template: the
+triads and the dominant, major and minor sevenths, chord_key.QUALITIES).
 
-The network (the root-equivariant chord CNN: one set of weights read at each of the 12 rotations of the chroma; the
-fixed chord-in-key tables) is trained with Adam (L2 1e-4 on every weight) on random crops of 384 beats, 16 songs a
-step: cross-entropy of every bar's key (the sum of its beats' key evidence) plus the template-chord term; 15 epochs
-at 1e-3 with a cosine decay when it improves a model, 40 at 3e-3 warmed up over the first 30 % from scratch (the
-new weights uniform in +-1 / sqrt(fan-in)). It starts from the model in use, the shipped model or from scratch
-(training/model_start.py). The decoder settings (key-change costs) are kept, and the chord-in-key tables' rows for
-the bars inside a phrase; the rows for the bars a phrase starts and ends on are measured on the songs after the
-training (position_tables: on the user's keys, signature accuracy 0.929 -> 0.932, fifth errors 0.036 -> 0.032, the
-tables estimated on half the songs and scored on the other half, three splits). The songs'
-beat inputs are made once (the frame chroma cached per song, about 4 s a song a worker; pooled on the beats) and the
-crops cut on the CPU; the network runs on the GPU when there is one, in full float32 (a step about 15 ms: a training
-from scratch on 240 songs in 10 s). The weights are exported as the arrays the analyzer's NumPy inference reads,
-checked against it on a song (the chord posteriors and the key evidence) before they are used. With cross-validation
-one group of songs is held out first and the current and the retrained model -- the whole key analysis, decoder
-included -- are compared on it; only when the held-out keys are not worse is the model retrained on every song and
-written.
+The model is ``members`` networks of one shape, each trained alone from its own seed and stacked in one file; the
+analysis averages their key evidence. One alone moved with its seed: on the chart keys, fifth errors 0.70 - 1.28 %
+of the beats between seeds, the three's mean 0.70 %. A network is the root-equivariant chord CNN: one set of weights
+read at each of the 12 rotations of the chroma, ``qualities`` chord qualities a root. With it the chord-in-key
+tables are trained, a parameter like the weights. New chords need rows, and tables measured or sharpened after the
+training were worse: fifth errors 1.30 - 2.18 % against 0.96 % for one network trained this way. Each network is
+trained with Adam (L2 1e-4 on every weight, the tables' included) on random crops of 384 beats, 16 songs a step:
+the cross-entropy of every bar's key (the sum of its beats' key evidence) plus the template-chord term. From scratch
+that is 40 epochs at 3e-3, warmed up over the first 30 %, the new weights uniform in +-1 / sqrt(fan-in) and the
+tables flat. Improving a model is 15 epochs at 1e-3 with a cosine decay, member m from the start model's member m.
+The start is the model in use, the shipped model or nothing (training/model_start.py).
+
+The decoder settings come from the model in use: its key-change costs (J, JX, LAM) times ``cost_scale``, J_FIFTH
+(a fifth's change J_FIFTH times dearer) the model in use's or ``fifth_cost``. The costs are in the evidence's units,
+so a model whose evidence is weaker finds fewer key changes with the same costs. The result reports
+``evidence_ratio``, the new model's evidence against the model in use's, with no key read: each bar's evidence for
+its likeliest key above the median key's, the median over bars and songs. A cost_scale near it keeps the changes
+found as often, but the statistic moves with the training songs (2.3 - 3.0 for the same models), so the scale is
+set by hand, checked by cross-validation on the changes found.
+
+The seventh model's evidence is about 2.3 times weaker than the triad model's. With the triad model's costs it
+found 79 of 116 chart key changes, against 96. It was shipped with ``cost_scale`` 1 / 2.34 and ``fifth_cost`` 2.34:
+the other changes cheaper, a fifth's as dear as before. Measured on 116 tracks (107 songs) with keys from human
+chord charts, five folds by song, as signature accuracy / fifth errors / key changes found of 116 / spurious
+changes:
+- the triad model trained on the user's keys: 0.971 / 1.53 % / 96 / 50;
+- three members with sevenths, from scratch on the chart keys, as shipped: 0.971 / 0.76 % / 93 / 37;
+- the same with every cost scaled alike: 0.965 / 1.39 % / 93 / 42.
+With the triad model's costs left as they were, sevenths against triads only (both from scratch): fifth errors 0.96
+against 1.67 % for one network.
+
+    uv run python -m training key_model --start scratch --set key_gt=PATH --set cost_scale=0.4274 --set fifth_cost=2.34
+
+The songs' beat inputs are made once (the frame chroma cached per song, about 4 s a song a worker; pooled on the
+beats) and the crops cut on the CPU. The network runs on the GPU when there is one, in full float32 (a member from
+scratch on 116 songs in a few seconds). The weights are exported as the arrays the analyzer's NumPy inference reads,
+each member checked against it on a song (the chord posteriors and the key evidence) before they are used. With
+cross-validation one group of songs is held out first and the current and the retrained model -- the whole key
+analysis, decoder included -- are compared on it; only when the held-out keys are not worse is the model retrained
+on every song and written.
 
 torch is the training group's (uv sync --group training), imported when a training runs."""
 
@@ -33,6 +62,7 @@ from __future__ import annotations
 from concurrent.futures import as_completed
 from contextlib import contextmanager
 from dataclasses import dataclass
+import json
 import math
 from pathlib import Path
 import time
@@ -61,7 +91,7 @@ SCRATCH_EPOCHS, TUNE_EPOCHS = 40, 15
 SCRATCH_RATE, TUNE_RATE = 3e-3, 1e-3
 SCRATCH_WARMUP = 0.3
 TEMPLATE_TEMP, TEMPLATE_BASS = 0.08, 0.6
-TRAINED = ("c1_w", "c1_b", "c2_w", "c2_b", "out_w", "out_b")    # the weights trained (chord_key.WEIGHTS but tab)
+TRAINED = CK.WEIGHTS                  # every array of a member is trained, the chord-in-key tables too
 EXPORT_TOLERANCE = 1e-4       # the exported arrays' chord posteriors and key evidence against the trained net's
 
 
@@ -78,11 +108,15 @@ class KeyModelOptimizationRequest:
     keep_if_worse: bool = False
     rebuild_cache: bool = False
     max_cache_workers: int | None = None
-    seed: int = 0
+    seed: int = 0                    # the first member's seed (member m: seed + m)
+    members: int = 3                 # networks a model holds (from scratch; improving a model keeps the start's)
+    qualities: int = len(CK.QUALITIES)   # chord qualities a root (from scratch; 2: the triads)
+    key_gt: str = ""                 # a key GT file (JSON, the module's doc) instead of the library's annotations
+    cost_scale: float = 1.0          # the change costs (J, JX, LAM) the model in use's times this
+    fifth_cost: float = 0.0          # J_FIFTH; 0: the model in use's
     current_path: str | None = None  # the model in use, what the new one is compared with (the app's file)
     start_path: str | None = None    # the model the training starts from (the app's file; None: from scratch)
     device: str = ""                 # "": CUDA when there is one, else the CPU
-    position_tables: bool = True     # the tables' phrase-position rows measured on the training songs (position_tables)
 
 
 @dataclass(frozen=True)
@@ -92,6 +126,11 @@ class KeyModelOptimizationResult:
     edited_count: int                # of them: keys differ from the kept automatic result
     legacy_count: int                # of them: no automatic result kept, accepted by the annotation's shape
     epochs: int
+    gt_count: int = 0                # of them: keys from the key GT file
+    members: int = 0
+    qualities: int = 0
+    evidence_ratio: float = float("nan")    # the new model's evidence against the model in use's (a cost_scale
+                                            # near it finds key changes as often)
     accuracy_before: float = float("nan")   # share of the songs' beats whose key (signature) is right
     accuracy_after: float = float("nan")
     fifth_before: float = float("nan")      # share of beats off by a fifth (an Alphanumeric neighbour)
@@ -100,12 +139,12 @@ class KeyModelOptimizationResult:
     skipped_tracks: tuple[SkippedOptimizationTrack, ...] = ()
     cross_validated: bool = False
     saved: bool = True
-    steps: int = 0                   # of the last training
+    steps: int = 0                   # of the last training, every member's
     device: str = ""
     seconds_per_step: float = float("nan")
 
 
-# --- which annotations are the user's ---------------------------------------------------------------
+# --- which keys train it ---------------------------------------------------------------------------
 
 def _rows(ks) -> np.ndarray:
     a = np.asarray(ks, dtype=float)
@@ -130,10 +169,30 @@ def raw_looking(ks: np.ndarray) -> bool:
     return n >= 10 or (same_adj >= 2 and short >= 2) or (n >= 6 and short >= 2)
 
 
-def list_key_tracks(library_dir: Path, ignored: list[SkippedOptimizationTrack]) -> list[dict[str, object]]:
-    """The library's tracks whose keys are the user's, with what training reads (beats, bars, phrases, keys)."""
+def read_key_gt(path: str | Path) -> dict[str, np.ndarray]:
+    """A key GT file: uid -> its rows [n, 4] (pitch class 0-11, mode 0 major / 1 minor, start, end s), checked."""
+    data = json.loads(Path(path).read_text(encoding="utf-8"))
+    tracks = data.get("tracks") if isinstance(data, dict) else None
+    if not isinstance(tracks, dict):
+        raise ValueError(f"{Path(path).name}: no \"tracks\" object")
+    out = {}
+    for uid, rows in tracks.items():
+        a = _rows(rows)
+        if a.size and not (np.all(np.isfinite(a)) and np.all((a[:, 0] >= 0) & (a[:, 0] < 12) & (a[:, 0] % 1 == 0))
+                           and np.all(np.isin(a[:, 1], (0, 1))) and np.all(a[:, 3] > a[:, 2])):
+            raise ValueError(f"{Path(path).name}: track {uid}: rows must be [pitch class 0-11, mode 0/1, start, end > start]")
+        out[str(uid)] = a
+    return out
+
+
+def list_key_tracks(library_dir: Path, ignored: list[SkippedOptimizationTrack],
+                    key_gt: dict[str, np.ndarray] | None = None) -> list[dict[str, object]]:
+    """The library's tracks whose keys train the model, with what training reads (beats, bars, phrases, keys): the
+    tracks ``key_gt`` names with its keys, else the tracks whose key annotation is the user's."""
     tracks = []
     for track in _list_beat_tracks(library_dir, ignored):
+        if key_gt is not None and str(track["uid"]) not in key_gt:
+            continue
         a = track["annotation"]        # the track's annotation the library's owner gave (training.library_tracks)
         try:
             ks = _rows(a.key_segments) if a.key_segments is not None else np.zeros((0, 4))
@@ -146,10 +205,13 @@ def list_key_tracks(library_dir: Path, ignored: list[SkippedOptimizationTrack]) 
         except Exception as exc:
             ignored.append(skipped_track(track, msg("unreadable analysis: {error}", error=exc)))
             continue
-        if ks.shape[0] == 0:
+        if key_gt is not None:
+            ks = key_gt[str(track["uid"])]
+            track["kind"] = "gt"
+        elif ks.shape[0] == 0:
             ignored.append(skipped_track(track, msg("no key annotation")))
             continue
-        if auto is not None:
+        elif auto is not None:
             if _same_keys(ks, auto):
                 continue                       # still the automatic result: not a training song (no message)
             track["kind"] = "edited"
@@ -157,6 +219,9 @@ def list_key_tracks(library_dir: Path, ignored: list[SkippedOptimizationTrack]) 
             continue                           # looks like the old analyzer's raw output
         else:
             track["kind"] = "legacy"
+        if ks.shape[0] == 0:
+            ignored.append(skipped_track(track, msg("no key annotation")))
+            continue
         track.update(keys=ks, segments=segs, phrase_starts=starts, duration=duration)
         tracks.append(track)
     return tracks
@@ -232,30 +297,31 @@ class Song:
     w: np.ndarray        # [nb] 1 where the beat has a key
     bar: np.ndarray      # [nb] bar index
     pos: np.ndarray      # [nb] phrase position
-    teach: np.ndarray    # [nb, 24] template chord posteriors
+    teach: np.ndarray    # [nb, 12 Q] template chord posteriors
     grid: CK.BeatGrid
     duration: float
 
 
-def _templates() -> np.ndarray:
-    T = np.zeros((24, 12), np.float32)
-    for r in range(12):
-        T[r, [r, (r + 4) % 12, (r + 7) % 12]] = 1
-        T[12 + r, [r, (r + 3) % 12, (r + 7) % 12]] = 1
+def _templates(qualities: int) -> np.ndarray:
+    """[12 Q, 12]: each quality's chord tones on each root, unit norm (chord index 12 * quality + root)."""
+    T = np.zeros((12 * qualities, 12), np.float32)
+    for q, name in enumerate(CK.QUALITIES[:qualities]):
+        for r in range(12):
+            T[12 * q + r, [(r + i) % 12 for i in CK.INTERVALS[name]]] = 1
     return T / np.linalg.norm(T, axis=1, keepdims=True)
 
 
-def template_chords(x: np.ndarray) -> np.ndarray:
-    """The fixed triad templates' chord posteriors per beat (bass and treble CQT chroma)."""
+def template_chords(x: np.ndarray, qualities: int = len(CK.QUALITIES)) -> np.ndarray:
+    """The fixed templates' chord posteriors per beat (bass and treble CQT chroma) [nb, 12 Q]."""
     bas, tre = x[:, :12], x[:, 12:24]
-    sc = (tre / (np.linalg.norm(tre, axis=1, keepdims=True) + 1e-9)) @ _templates().T
-    sc = sc + TEMPLATE_BASS * np.c_[bas, bas] / (bas.sum(1, keepdims=True) + 1e-9)
+    sc = (tre / (np.linalg.norm(tre, axis=1, keepdims=True) + 1e-9)) @ _templates(qualities).T
+    sc = sc + TEMPLATE_BASS * np.tile(bas, (1, qualities)) / (bas.sum(1, keepdims=True) + 1e-9)
     sc = (sc - sc.max(1, keepdims=True)) / TEMPLATE_TEMP
     p = np.exp(sc)
     return (p / p.sum(1, keepdims=True)).astype(np.float32)
 
 
-def song_of(track: dict[str, object], frames: np.ndarray) -> Song | None:
+def song_of(track: dict[str, object], frames: np.ndarray, qualities: int = len(CK.QUALITIES)) -> Song | None:
     beats = np.asarray(track["beats"], float)
     segs = np.asarray(track["segments"], float)
     grid = CK.beat_grid(beats, downbeat_times(beats, segs) if segs.ndim == 2 and segs.shape[0] else None,
@@ -270,7 +336,7 @@ def song_of(track: dict[str, object], frames: np.ndarray) -> Song | None:
         sel = (grid.beat_t + 1e-3 >= t0) & (grid.beat_t + 1e-3 < t1)
         y[sel] = int(p) % 12 + 12 * (int(m) % 2)
         w[sel] = 1.0
-    return Song(x=x, y=y, w=w, bar=grid.bar, pos=grid.pos, teach=template_chords(x), grid=grid,
+    return Song(x=x, y=y, w=w, bar=grid.bar, pos=grid.pos, teach=template_chords(x, qualities), grid=grid,
                 duration=float(track["duration"]))
 
 
@@ -290,6 +356,20 @@ def _batch(songs, idx, rng):
             np.stack(ps), np.stack(ts).astype(np.float32))
 
 
+# --- the members ------------------------------------------------------------------------------------
+
+def member_of(arrays: dict, m: int) -> dict:
+    """Member ``m``'s weights (no member axis)."""
+    return {k: np.asarray(arrays[k][m]) for k in CK.WEIGHTS}
+
+
+def stacked(members: list[dict], like: dict) -> dict:
+    """The model file's arrays: the members' weights stacked, ``like``'s decoder settings."""
+    out = {k: np.stack([np.asarray(w[k], np.float32) for w in members]) for k in CK.WEIGHTS}
+    out.update({k: np.asarray(like[k]) for k in CK.SETTINGS})
+    return out
+
+
 # --- the network ------------------------------------------------------------------------------------
 
 def _rolls(blocks: int) -> np.ndarray:
@@ -298,39 +378,37 @@ def _rolls(blocks: int) -> np.ndarray:
     return np.stack([np.concatenate([12 * b + (p + r) % 12 for b in range(blocks)]) for r in range(12)])
 
 
-def network(arrays: dict):
-    """The chord CNN as a torch module holding ``arrays``' weights, its state dict chord_key's arrays (same names and
-    shapes; ``tab``, the chord-in-key tables, a buffer: kept, not trained). Computed as ChordKeyModel computes it:
-    the 12 rotations of the input's three chroma blocks through one set of weights, the root r chords' logits the
-    rotation r's, so a transposed song's chords are the song's chords transposed."""
+def network(member: dict):
+    """One member's chord CNN as a torch module holding ``member``'s weights (chord_key's arrays without the member
+    axis; the tables trained with them). Computed as ChordKeyModel computes it: the 12 rotations of the input's three
+    chroma blocks through one set of weights, the root r chords' logits the rotation r's, so a transposed song's
+    chords are the song's chords transposed."""
     import torch
     from torch import nn
     import torch.nn.functional as F
 
-    def tensor(key):
-        return torch.tensor(np.asarray(arrays[key], np.float32))
+    Q = int(np.asarray(member["out_w"]).shape[0])
 
     class ChordKeyNet(nn.Module):
         def __init__(self):
             super().__init__()
             for k in TRAINED:
-                setattr(self, k, nn.Parameter(tensor(k)))
-            self.register_buffer("tab", tensor("tab"))
+                setattr(self, k, nn.Parameter(torch.tensor(np.asarray(member[k], np.float32))))
             self.register_buffer("rot", torch.as_tensor(_rolls(3)), persistent=False)
-            self.register_buffer("roll", torch.as_tensor(_rolls(2)), persistent=False)
+            self.register_buffer("roll", torch.as_tensor(_rolls(Q)), persistent=False)
 
-        def chords(self, x):               # x [B, n, 36] -> log P(chord | beat) [B, n, 24] (0-11 major, 12-23 minor)
+        def chords(self, x):               # x [B, n, 36] -> log P(chord | beat) [B, n, 12 Q] (12 * quality + root)
             B, n, _ = x.shape
             h = x[..., self.rot].permute(2, 0, 3, 1).reshape(12 * B, 36, n)      # [12 rotations * B, 36, n]
             h = F.relu(F.conv1d(h, self.c1_w, self.c1_b, padding=self.c1_w.shape[2] // 2))
             h = F.relu(F.conv1d(h, self.c2_w, self.c2_b, padding=self.c2_w.shape[2] // 2)) + h
-            o = F.conv1d(h, self.out_w, self.out_b, padding=self.out_w.shape[2] // 2)      # [12 * B, 2, n]
-            return F.log_softmax(o.reshape(12, B, 2, n).permute(1, 3, 2, 0).reshape(B, n, 24), -1)
+            o = F.conv1d(h, self.out_w, self.out_b, padding=self.out_w.shape[2] // 2)      # [12 * B, Q, n]
+            return F.log_softmax(o.reshape(12, B, Q, n).permute(1, 3, 2, 0).reshape(B, n, 12 * Q), -1)
 
         def key_loglik(self, logpc, pos):  # -> [B, n, 24 keys]: log sum_c P(c | beat) P(c | key, phrase position)
             B, n, _ = logpc.shape
-            R = F.log_softmax(self.tab, -1)                                     # [2 modes, 3 positions, 24]
-            z = logpc[..., self.roll].unsqueeze(0) + R[:, pos].unsqueeze(3)     # [2, B, n, 12 tonics, 24 chords]
+            R = F.log_softmax(self.tab, -1)                                     # [2 modes, 3 positions, 12 Q]
+            z = logpc[..., self.roll].unsqueeze(0) + R[:, pos].unsqueeze(3)     # [2, B, n, 12 tonics, 12 Q chords]
             return torch.logsumexp(z, -1).permute(1, 2, 0, 3).reshape(B, n, 24)
 
         def forward(self, x, pos):
@@ -340,11 +418,9 @@ def network(arrays: dict):
     return ChordKeyNet()
 
 
-def export(net, arrays: dict) -> dict:
-    """The model file's arrays: ``arrays`` (the decoder settings, the tables) with the net's weights."""
-    out = {k: np.asarray(v) for k, v in arrays.items()}
-    out.update({k: v.detach().float().cpu().numpy() for k, v in net.state_dict().items()})
-    return out
+def export(net) -> dict:
+    """The member's arrays (chord_key.WEIGHTS) from the net."""
+    return {k: v.detach().float().cpu().numpy() for k, v in net.state_dict().items()}
 
 
 @contextmanager
@@ -360,9 +436,10 @@ def _float32():
         torch.backends.cudnn.allow_tf32 = tf32
 
 
-def check_export(net, P: dict, x: np.ndarray, pos: np.ndarray) -> float:
-    """The largest difference between ChordKeyModel's inference of the exported arrays and the net, on a song's beat
-    inputs ``x`` [nb, 36] and phrase positions ``pos``: of P(chord | beat) and of the key evidence."""
+def check_export(net, member: dict, like: dict, x: np.ndarray, pos: np.ndarray) -> float:
+    """The largest difference between ChordKeyModel's inference of the exported member (``like``'s decoder settings)
+    and the net, on a song's beat inputs ``x`` [nb, 36] and phrase positions ``pos``: of P(chord | beat) and of the
+    key evidence."""
     import torch
     net.eval()
     dev = net.tab.device
@@ -370,9 +447,9 @@ def check_export(net, P: dict, x: np.ndarray, pos: np.ndarray) -> float:
         logpc, L = net(torch.as_tensor(x, dtype=torch.float32, device=dev)[None],
                        torch.as_tensor(pos, dtype=torch.long, device=dev)[None])
         logpc, L = logpc[0].double().cpu().numpy(), L[0].double().cpu().numpy()
-    model = CK.ChordKeyModel(arrays=P)
+    model = CK.ChordKeyModel(arrays=stacked([member], like))
     ref = model.chords(np.asarray(x, np.float32))
-    return float(max(np.abs(np.exp(logpc) - np.exp(ref)).max(), np.abs(L - model.key_loglik(ref, pos)).max()))
+    return float(max(np.abs(np.exp(logpc) - np.exp(ref[0])).max(), np.abs(L - model.key_loglik(ref, pos)).max()))
 
 
 # --- training ---------------------------------------------------------------------------------------
@@ -405,14 +482,18 @@ def key_loss(net, batch, distill: float):
     return ce + distill * kl
 
 
-def _init_weights(like: dict, seed: int) -> dict:
-    """From scratch: weights and biases uniform in +-1 / sqrt(fan-in) (as the shipped model was started)."""
+def _init_weights(like: dict, qualities: int, seed: int) -> dict:
+    """A new member, ``like``'s layer sizes (a member) with ``qualities`` chord qualities: weights and biases uniform
+    in +-1 / sqrt(fan-in), the chord-in-key tables flat."""
     rng = np.random.default_rng(30_000 + seed)
+    shapes = {"c1_w": np.shape(like["c1_w"]), "c2_w": np.shape(like["c2_w"]),
+              "out_w": (qualities,) + tuple(np.shape(like["out_w"])[1:])}
     out = {}
-    for k in TRAINED:
-        w = like[k.replace("_b", "_w")]
-        bound = 1.0 / math.sqrt(int(np.prod(w.shape[1:])))
-        out[k] = rng.uniform(-bound, bound, like[k].shape).astype(np.float32)
+    for k, shape in shapes.items():
+        bound = 1.0 / math.sqrt(int(np.prod(shape[1:])))
+        out[k] = rng.uniform(-bound, bound, shape).astype(np.float32)
+        out[k.replace("_w", "_b")] = rng.uniform(-bound, bound, shape[0]).astype(np.float32)
+    out["tab"] = np.zeros((2, 3, 12 * qualities), np.float32)
     return out
 
 
@@ -434,16 +515,14 @@ def steps_of(songs: int, epochs: int) -> int:
     return epochs * max(1, int(math.ceil(songs / BATCH)))
 
 
-def train(arrays: dict, songs: list[Song], idx, epochs: int, lr: float, distill: float, seed: int, scratch: bool,
-          device, progress: ProgressCallback | None, span, label) -> tuple[dict, float]:
-    """One training on the songs ``idx`` from ``arrays`` (``scratch``: new weights, its shapes): (the model file's
-    arrays, checked against the NumPy inference on the first song, seconds per step). An epoch is every song once
-    in a random order, BATCH crops a step; the crops and the order are NumPy's (``seed``)."""
+def train(member: dict, like: dict, songs: list[Song], idx, epochs: int, lr: float, distill: float, seed: int,
+          scratch: bool, device, progress: ProgressCallback | None, span, label) -> tuple[dict, float]:
+    """One member's training on the songs ``idx`` from ``member``'s weights (``scratch``: warmed up): (the member's
+    arrays, checked against the NumPy inference on the first song with ``like``'s decoder settings, seconds per
+    step). An epoch is every song once in a random order, BATCH crops a step; the crops and the order are NumPy's
+    (``seed``)."""
     import torch
-    start = dict(arrays)
-    if scratch:
-        start.update(_init_weights(arrays, seed))
-    net = network(start).to(device)
+    net = network(member).to(device)
     opt = optimizer(net, lr)
     rng = np.random.default_rng(seed)
     idx = np.asarray(idx)
@@ -476,12 +555,28 @@ def train(arrays: dict, songs: list[Song], idx, epochs: int, lr: float, distill:
     if net.tab.device.type == "cuda":
         torch.cuda.synchronize(net.tab.device)
     seconds = (time.perf_counter() - began) / max(1, steps)
-    P = export(net, arrays)
+    P = export(net)
     first = songs[int(idx[0])]
-    diff = check_export(net, P, first.x, first.pos)
+    diff = check_export(net, P, like, first.x, first.pos)
     if not diff < EXPORT_TOLERANCE:
         raise RuntimeError(f"the exported key model differs from the trained one by {diff:.2g}")
     return P, seconds
+
+
+def train_model(starts: list[dict], like: dict, songs, idx, epochs, lr, distill, seed, scratch, device,
+                progress, span, label) -> tuple[dict, float]:
+    """Every member trained (member m from ``starts[m]``, seed + m), stacked into a model file's arrays."""
+    lo, hi = span
+    members, seconds = [], []
+    for m, start in enumerate(starts):
+        a = lo + (hi - lo) * m / len(starts)
+        b = lo + (hi - lo) * (m + 1) / len(starts)
+        P, s = train(start, like, songs, idx, epochs, lr, distill, seed + m, scratch, device, progress,
+                     (int(round(a)), int(round(b))), msg("{stage}, member {member}/{members}", stage=label,
+                                                         member=m + 1, members=len(starts)))
+        members.append(P)
+        seconds.append(s)
+    return stacked(members, like), float(np.mean(seconds))
 
 
 # --- the end-to-end check: the whole key analysis on the songs ------------------------------------------
@@ -505,33 +600,31 @@ def evaluate(arrays: dict, songs: list[Song], idx) -> tuple[float, float]:
     return (right / total, fifth / total) if total else (float("nan"), float("nan"))
 
 
-def position_tables(arrays: dict, songs: list[Song], idx) -> np.ndarray:
-    """The chord-in-key tables with the phrase position's effect measured on the songs: for each mode, the rows of the
-    bars a phrase starts and ends on are the other bars' row (the start model's) plus the log ratio of the chords' mean
-    posterior there to their mean posterior on the other bars, every keyed beat's chords taken relative to its key and
-    read by the model's own chord CNN (a phrase starts on the tonic more often, ends on the dominant). A mode without
-    keyed beats in a position keeps its rows."""
+COSTS = ("J", "JX", "LAM")       # the decoder's change costs, in the evidence's units
+
+
+def evidence_scale(arrays: dict, songs: list[Song], idx) -> float:
+    """How strong a model's key evidence is on the songs (no key read): the median over the songs of the median bar's
+    evidence for its likeliest key above the median key's."""
     model = CK.ChordKeyModel(arrays=arrays)
-    total = np.zeros((2, 3, 24))
-    count = np.zeros((2, 3))
+    spreads = []
     for i in idx:
         s = songs[int(i)]
-        keyed = np.flatnonzero(s.w > 0)
-        if keyed.size == 0:
-            continue
-        p = np.exp(model.chords(s.x))[keyed]
-        key = s.y[keyed]
-        roots = (np.arange(12)[None, :] + (key % 12)[:, None]) % 12      # per beat: the chord each relative root is
-        rel = np.concatenate([np.take_along_axis(p[:, :12], roots, 1), np.take_along_axis(p[:, 12:], roots, 1)], 1)
-        np.add.at(total, (key // 12, s.pos[keyed]), rel)
-        np.add.at(count, (key // 12, s.pos[keyed]), 1)
-    tab = np.asarray(arrays["tab"], np.float64).copy()
-    for m in range(2):
-        if count[m].min() == 0:
-            continue
-        mean = np.log(total[m] / count[m][:, None] + 1e-6)
-        tab[m] = tab[m, 2][None, :] + mean - mean[2][None, :]
-    return tab.astype(np.float32)
+        L = model.key_loglik(model.chords(s.x), s.pos)
+        nbar = int(s.bar.max()) + 1
+        bars = np.stack([np.bincount(s.bar, weights=L[:, k], minlength=nbar) for k in range(24)], axis=1)
+        spreads.append(float(np.median(bars.max(axis=1) - np.median(bars, axis=1))))
+    return float(np.median(spreads))
+
+
+def with_costs(arrays: dict, reference: dict, scale: float, fifth_cost: float = 0.0) -> dict:
+    """``arrays`` with the reference's change costs times ``scale`` and J_FIFTH ``fifth_cost`` (0: the reference's)."""
+    out = dict(arrays)
+    for k in COSTS:
+        out[k] = np.asarray(float(reference[k]) * scale, dtype=np.asarray(reference[k]).dtype)
+    out["J_FIFTH"] = np.asarray(float(fifth_cost) if fifth_cost > 0 else float(reference["J_FIFTH"]),
+                                dtype=np.asarray(reference["J_FIFTH"]).dtype)
+    return out
 
 
 def _save(path: Path, arrays: dict) -> None:
@@ -554,15 +647,28 @@ def optimize_key_model(
     scratch = request.start_path is None
     reference = CK.read_model_arrays(request.current_path)        # the model in use: what the new one is compared with
     base = reference if scratch else CK.read_model_arrays(request.start_path)
+    if scratch:
+        qualities = int(request.qualities)
+        if not 2 <= qualities <= len(CK.QUALITIES) or int(request.members) < 1:
+            raise ValueError(f"qualities must be 2 to {len(CK.QUALITIES)} and members at least 1")
+        like = member_of(base, 0)
+        starts = [_init_weights(like, qualities, request.seed + m) for m in range(int(request.members))]
+    else:
+        qualities = int(np.shape(base["out_w"])[1])
+        starts = [member_of(base, m) for m in range(int(np.shape(base["c1_w"])[0]))]
+    if request.fifth_cost < 0 or not request.cost_scale > 0:
+        raise ValueError("cost_scale must be positive, fifth_cost positive or 0 (the model in use's)")
+    key_gt = read_key_gt(request.key_gt) if request.key_gt else None
     ignored: list[SkippedOptimizationTrack] = []
-    tracks = list_key_tracks(library_dir, ignored)
-    MS.require_tracks(len(tracks), MS.kind_of(request.start), MS.KEY_SONGS)
+    tracks = list_key_tracks(library_dir, ignored, key_gt)
+    kind = MS.key_kind_of(request.start)
+    MS.require_tracks(len(tracks), kind, MS.KEY_SONGS)
     tracks = ensure_key_frames(tracks, cache_dir, ignored, rebuild=bool(request.rebuild_cache),
                                max_workers=request.max_cache_workers, progress=feature_progress, progress_span=(0, 90))
     songs, kept = [], []
     for done, t in enumerate(tracks, start=1):
         frames = read_key_frames(cache_path(cache_dir, str(t["uid"])), t)
-        s = song_of(t, frames) if frames is not None else None
+        s = song_of(t, frames, qualities) if frames is not None else None
         if s is None:
             ignored.append(skipped_track(t, msg("too few beats or no key features")))
             continue
@@ -572,23 +678,23 @@ def optimize_key_model(
                              msg("Beat inputs {done}/{total}", done=done, total=len(tracks)))
     if feature_progress:
         feature_progress(100, msg("{count} songs", count=len(songs)))
-    MS.require_tracks(len(songs), MS.kind_of(request.start), MS.KEY_SONGS)
+    MS.require_tracks(len(songs), kind, MS.KEY_SONGS)
     device = device_of(request.device)
     edited = sum(t["kind"] == "edited" for t in kept)
+    gt = sum(t["kind"] == "gt" for t in kept)
     epochs = int(request.epochs) or (SCRATCH_EPOCHS if scratch else TUNE_EPOCHS)
     lr = float(request.learning_rate) or (SCRATCH_RATE if scratch else TUNE_RATE)
     everything = np.arange(len(songs))
     cross_validated = int(request.cv_folds) >= 2
-    common = dict(edited_count=edited, legacy_count=len(kept) - edited, epochs=epochs, skipped_tracks=tuple(ignored),
-                  device=str(device))
+    common = dict(edited_count=edited, legacy_count=len(kept) - edited - gt, gt_count=gt, epochs=epochs,
+                  members=len(starts), qualities=qualities, skipped_tracks=tuple(ignored), device=str(device))
     if cross_validated:
-        groups = np.asarray([_group_key(t) for t in kept])
+        groups = np.asarray([str(t.get("song") or _group_key(t)) for t in kept])
         k = min(int(request.cv_folds), np.unique(groups).size)
         train_idx, held = next(GroupKFold(n_splits=k).split(everything, groups=groups))
-        trial, seconds = train(base, songs, train_idx, epochs, lr, request.distill, request.seed, scratch, device,
-                               optimize_progress, (0, 45), msg("Held-out check"))
-        if request.position_tables:
-            trial["tab"] = position_tables(trial, songs, train_idx)
+        trial, seconds = train_model(starts, reference, songs, train_idx, epochs, lr, request.distill, request.seed,
+                                     scratch, device, optimize_progress, (0, 45), msg("Held-out check"))
+        trial = with_costs(trial, reference, request.cost_scale, request.fifth_cost)
         before, f_before = evaluate(reference, songs, held)
         after, f_after = evaluate(trial, songs, held)
         if after < before and not request.keep_if_worse:
@@ -597,14 +703,15 @@ def optimize_key_model(
             return KeyModelOptimizationResult(
                 output_path=output_path, track_count=len(songs), accuracy_before=before, accuracy_after=after,
                 fifth_before=f_before, fifth_after=f_after, eval_songs=int(held.size), cross_validated=True,
-                saved=False, steps=steps_of(train_idx.size, epochs), seconds_per_step=seconds, **common)
+                saved=False, steps=len(starts) * steps_of(train_idx.size, epochs), seconds_per_step=seconds, **common)
         span = (50, 98)
     else:
         span = (0, 95)
-    final, seconds = train(base, songs, everything, epochs, lr, request.distill, request.seed, scratch, device,
-                           optimize_progress, span, msg("Training") if scratch else msg("Fine-tuning"))
-    if request.position_tables:
-        final["tab"] = position_tables(final, songs, everything)
+    final, seconds = train_model(starts, reference, songs, everything, epochs, lr, request.distill, request.seed,
+                                 scratch, device, optimize_progress, span,
+                                 msg("Training") if scratch else msg("Fine-tuning"))
+    final = with_costs(final, reference, request.cost_scale, request.fifth_cost)
+    common["evidence_ratio"] = evidence_scale(final, songs, everything) / evidence_scale(reference, songs, everything)
     if not cross_validated:
         before, f_before = evaluate(reference, songs, everything)
         after, f_after = evaluate(final, songs, everything)
@@ -615,4 +722,4 @@ def optimize_key_model(
     return KeyModelOptimizationResult(
         output_path=output_path, track_count=len(songs), accuracy_before=before, accuracy_after=after,
         fifth_before=f_before, fifth_after=f_after, eval_songs=int(np.size(held)), cross_validated=cross_validated,
-        steps=steps_of(everything.size, epochs), seconds_per_step=seconds, **common)
+        steps=len(starts) * steps_of(everything.size, epochs), seconds_per_step=seconds, **common)

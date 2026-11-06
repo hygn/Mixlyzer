@@ -15,8 +15,10 @@ from training.text import TrainingError, msg
 
 SHIPPED, CURRENT, SCRATCH = "shipped", "current", "scratch"
 SHIPPED_TRAINING_TRACKS = 340
-# (blocked below, warned below) songs with beat grids
-MIN_TRACKS = {"fine_tune": (20, 60), "scratch": (200, SHIPPED_TRAINING_TRACKS), "gbm": (50, 150), "search": (20, 60)}
+# (blocked below, warned below) songs with beat grids; the key model, about 10 k weights a member, learns from fewer
+# (the shipped one from scratch on 116 tracks with chart keys)
+MIN_TRACKS = {"fine_tune": (20, 60), "scratch": (200, SHIPPED_TRAINING_TRACKS), "gbm": (50, 150), "search": (20, 60),
+              "key_scratch": (80, 116)}
 # what the songs counted are
 BEAT_SONGS = msg("songs with beat grids")
 KEY_SONGS = msg("songs with checked key annotations")
@@ -26,12 +28,18 @@ def kind_of(start: str) -> str:
     return "scratch" if start == SCRATCH else "fine_tune"
 
 
+def key_kind_of(start: str) -> str:
+    return "key_scratch" if start == SCRATCH else "fine_tune"
+
+
 def require_tracks(count: int, kind: str, songs=BEAT_SONGS) -> None:
     blocked, _ = MIN_TRACKS[kind]
     if count < blocked:
         values = {"needed": blocked, "songs": songs, "count": count}
         raise TrainingError({
             "scratch": msg("Training from scratch needs at least {needed} {songs} (the library has {count})", **values),
+            "key_scratch": msg("Training from scratch needs at least {needed} {songs} (the library has {count})",
+                               **values),
             "fine_tune": msg("Retraining needs at least {needed} {songs} (the library has {count})", **values),
             "gbm": msg("Retraining needs at least {needed} {songs} (the library has {count})", **values),
             "search": msg("Refitting needs at least {needed} {songs} (the library has {count})", **values),

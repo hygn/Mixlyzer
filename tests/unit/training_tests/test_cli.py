@@ -129,6 +129,13 @@ class RequestTests(unittest.TestCase):
         self.assertEqual((values["start"], values["cv_folds"], values["quick"], values["table_path"]),
                          (MS.SHIPPED, 3, True, "t.csv"))
 
+    def test_a_key_gt_file_from_the_apps_folder(self):
+        values = cli.request_values("key_model", self.analysis, "library", _args(set=["key_gt=gt/keys.json"]))
+        self.assertEqual(values["key_gt"], str(cli.project_path("gt/keys.json")))
+        absolute = str(Path(tempfile.gettempdir()) / "keys.json")
+        values = cli.request_values("key_model", self.analysis, "library", _args(set=[f"key_gt={absolute}"]))
+        self.assertEqual(values["key_gt"], absolute)
+
 
 @dataclasses.dataclass(frozen=True)
 class FakeRequest:

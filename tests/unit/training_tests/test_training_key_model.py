@@ -1,11 +1,14 @@
-"""training.key_model_optimizer: the torch network against the analyzer's NumPy inference of its exported arrays (the
-chord posteriors and the key evidence), its root equivariance, the loss against the bars' key cross-entropy and the
-template-chord term computed with the analyzer's model, the optimizer's step and the learning-rate schedule, which
-annotations are the user's (edited, legacy, still automatic, raw-looking), the template chords, the training songs and
-crops, and small runs of the whole optimizer on synthetic tracks on the CPU: the model written where asked and read by
-the analyzer's own loader, the decoder settings kept, the refusals, and the held-out check that keeps worse keys from
-being written. The torch parts need the training group (skipped without it)."""
+"""training.key_model_optimizer: a member's torch network against the analyzer's NumPy inference of its exported
+arrays (the chord posteriors and the key evidence), its root equivariance, the loss against the bars' key
+cross-entropy and the template-chord term computed with the analyzer's model, the optimizer's step (the chord-in-key
+tables trained with the weights) and the learning-rate schedule, which keys train it (the user's annotations: edited,
+legacy, still automatic, raw-looking; or a key GT file), the templates of every chord quality, the training songs and
+crops, the new members' weights, and small runs of the whole optimizer on synthetic tracks on the CPU: the model
+written where asked with its members and read by the analyzer's own loader, the decoder settings kept, the refusals,
+and the held-out check that keeps worse keys from being written. The torch parts need the training group (skipped
+without it)."""
 import importlib.util
+import json
 import os
 import tempfile
 import unittest
@@ -26,6 +29,7 @@ RNG_SEED = 20261027
 SHIPPED_KEY = F.shipped("key_chord_cnn.npz")
 HAS_TORCH = importlib.util.find_spec("torch") is not None
 needs_torch = unittest.skipUnless(HAS_TORCH, "torch is the training group's (uv sync --group training)")
+Q = len(CK.QUALITIES)
 
 
 def beat_inputs(rng, n):
@@ -39,13 +43,25 @@ def transposed(a, s, blocks):
     return np.concatenate([np.roll(a[..., 12 * b:12 * (b + 1)], s, axis=-1) for b in range(blocks)], axis=-1)
 
 
-def tiny_batch(rng, B=2, n=12):
+def a_member(seed=3, qualities=Q):
+    """A new member with the shipped model's layer sizes, its weights sharper than a new model's and its tables not
+    flat (a trained member's shape)."""
+    like = O.member_of(CK.read_model_arrays(SHIPPED_KEY), 0)
+    m = O._init_weights(like, qualities, seed)
+    rng = np.random.default_rng(seed)
+    for k in ("c1_w", "c2_w", "out_w"):
+        m[k] = 4.0 * m[k]
+    m["tab"] = rng.normal(0, 1, m["tab"].shape).astype(np.float32)
+    return m
+
+
+def tiny_batch(rng, B=2, n=12, qualities=Q):
     x = np.stack([beat_inputs(rng, n) for _ in range(B)])
     y = rng.integers(0, 24, (B, n))
     w = (rng.random((B, n)) < 0.8).astype(np.float32)
     bar = np.tile(np.arange(n) // 4, (B, 1))
     pos = rng.integers(0, 3, (B, n))
-    return x, y, w, bar, pos, O.template_chords(x.reshape(-1, 36)).reshape(B, n, 24)
+    return x, y, w, bar, pos, O.template_chords(x.reshape(-1, 36), qualities).reshape(B, n, 12 * qualities)
 
 
 def numpy_loss(arrays, batch, distill):
@@ -63,7 +79,7 @@ def numpy_loss(arrays, batch, distill):
             if w[b][sel].sum() > 0:
                 target = np.bincount(y[b][sel], weights=w[b][sel], minlength=24) / w[b][sel].sum()
                 ce.append(-(target * CK._log_softmax((L[sel] * w[b][sel, None]).sum(0))).sum())
-        kl.extend((teach[b] * (np.log(teach[b] + 1e-8) - logpc)).sum(-1))
+        kl.extend((teach[b] * (np.log(teach[b] + 1e-8) - logpc[0])).sum(-1))
     return float(np.mean(ce) + distill * np.mean(kl))
 
 
@@ -73,65 +89,158 @@ class NetworkTests(unittest.TestCase):
         self.arrays = CK.read_model_arrays(SHIPPED_KEY)
         self.rng = np.random.default_rng(RNG_SEED)
 
-    def test_state_dict_and_export_are_the_model_files_arrays(self):
-        net = O.network(self.arrays)
+    def test_state_dict_and_export_are_a_members_arrays(self):
+        member = O.member_of(self.arrays, 0)
+        net = O.network(member)
         self.assertEqual(list(net.state_dict()), list(CK.WEIGHTS))
-        P = O.export(net, self.arrays)
+        P = O.export(net)
         self.assertEqual({k: (v.shape, v.dtype) for k, v in P.items()},
-                         {k: (v.shape, v.dtype) for k, v in self.arrays.items()})
+                         {k: (v.shape, np.dtype(np.float32)) for k, v in member.items()})
         for k in P:
-            np.testing.assert_array_equal(P[k], self.arrays[k])
+            np.testing.assert_array_equal(P[k], member[k])
 
-    def test_exported_arrays_are_the_analyzers_model(self):
+    def test_exported_member_is_the_analyzers_model(self):
         import torch
-        arrays = {**self.arrays, **O._init_weights(self.arrays, 3)}      # other weights than the shipped
-        net = O.network(arrays)
-        with torch.no_grad():
-            for k in O.TRAINED:
-                getattr(net, k).mul_(4.0)                                  # sharper chords than a new model's
-        P = O.export(net, arrays)
-        x, pos = beat_inputs(self.rng, 600), self.rng.integers(0, 3, 600)
-        self.assertLess(O.check_export(net, P, x, pos), 1e-5)
-        self.assertFalse(np.array_equal(P["c1_w"], arrays["c1_w"]))
-        model = CK.ChordKeyModel(arrays=P)
-        with torch.no_grad():
-            logpc, L = net(torch.as_tensor(x)[None], torch.as_tensor(pos)[None])
-        np.testing.assert_allclose(logpc[0].numpy(), model.chords(x), atol=1e-4)
-        np.testing.assert_allclose(L[0].numpy(), model.key_loglik(model.chords(x), pos), atol=1e-4)
+        for qualities in (2, Q):
+            with self.subTest(qualities=qualities):
+                member = a_member(qualities=qualities)
+                net = O.network(member)
+                P = O.export(net)
+                x, pos = beat_inputs(self.rng, 600), self.rng.integers(0, 3, 600)
+                self.assertLess(O.check_export(net, P, self.arrays, x, pos), 1e-5)
+                model = CK.ChordKeyModel(arrays=O.stacked([P], self.arrays))
+                with torch.no_grad():
+                    logpc, L = net(torch.as_tensor(x)[None], torch.as_tensor(pos)[None])
+                np.testing.assert_allclose(logpc[0].numpy(), model.chords(x)[0], atol=1e-4)
+                np.testing.assert_allclose(L[0].numpy(), model.key_loglik(model.chords(x), pos), atol=1e-4)
+
+    def test_the_models_evidence_is_its_members_mean(self):
+        members = [a_member(seed) for seed in (1, 2, 3)]
+        model = CK.ChordKeyModel(arrays=O.stacked(members, self.arrays))
+        x, pos = beat_inputs(self.rng, 50), self.rng.integers(0, 3, 50)
+        alone = [CK.ChordKeyModel(arrays=O.stacked([m], self.arrays)) for m in members]
+        np.testing.assert_allclose(model.key_loglik(model.chords(x), pos),
+                                   np.mean([a.key_loglik(a.chords(x), pos) for a in alone], axis=0), atol=1e-5)
+        p, top = model.beat_chords(x)
+        np.testing.assert_allclose(p, np.mean([np.exp(a.chords(x)[0]) for a in alone], axis=0), atol=1e-6)
+        np.testing.assert_array_equal(top, np.argmax(p, axis=1))
 
     def test_transposed_input_transposes_the_chords_and_keys(self):
         import torch
-        net = O.network(self.arrays)
+        net = O.network(a_member())
         x, pos = beat_inputs(self.rng, 80), torch.as_tensor(self.rng.integers(0, 3, 80))[None]
         with torch.no_grad():
             logpc, L = net(torch.as_tensor(x)[None], pos)
             for s in (1, 5, 11):
                 moved, moved_keys = net(torch.as_tensor(transposed(x, s, 3))[None], pos)
-                np.testing.assert_allclose(moved.numpy(), transposed(logpc.numpy(), s, 2), atol=1e-5)
+                np.testing.assert_allclose(moved.numpy(), transposed(logpc.numpy(), s, Q), atol=1e-5)
                 np.testing.assert_allclose(moved_keys.numpy(), transposed(L.numpy(), s, 2), atol=1e-5)
 
     def test_loss_is_the_bars_keys_and_the_template_term(self):
+        member = a_member()
+        arrays = O.stacked([member], self.arrays)
         batch = tiny_batch(self.rng, B=3, n=20)
-        loss = O.key_loss(O.network(self.arrays), batch, 2.0)
-        self.assertAlmostEqual(float(loss.detach()), numpy_loss(self.arrays, batch, 2.0), places=5)
-        no_template = O.key_loss(O.network(self.arrays), batch, 0.0)
-        self.assertAlmostEqual(float(no_template.detach()), numpy_loss(self.arrays, batch, 0.0), places=5)
+        loss = O.key_loss(O.network(member), batch, 2.0)
+        self.assertAlmostEqual(float(loss.detach()), numpy_loss(arrays, batch, 2.0), places=5)
+        no_template = O.key_loss(O.network(member), batch, 0.0)
+        self.assertAlmostEqual(float(no_template.detach()), numpy_loss(arrays, batch, 0.0), places=5)
 
     def test_no_keyed_beat_no_loss(self):
         x, y, w, bar, pos, teach = tiny_batch(self.rng)
-        self.assertIsNone(O.key_loss(O.network(self.arrays), (x, y, 0 * w, bar, pos, teach), 2.0))
+        self.assertIsNone(O.key_loss(O.network(a_member()), (x, y, 0 * w, bar, pos, teach), 2.0))
 
-    def test_one_step_is_adam_with_l2_on_every_weight(self):
-        net = O.network(self.arrays)
+    def test_one_step_is_adam_with_l2_on_every_weight_and_the_tables(self):
+        net = O.network(a_member())
         opt = O.optimizer(net, 1e-3)
         O.key_loss(net, tiny_batch(self.rng), 2.0).backward()
         before = {k: getattr(net, k).detach().clone().numpy() for k in O.TRAINED}
         grads = {k: getattr(net, k).grad.clone().numpy() for k in O.TRAINED}
+        self.assertIn("tab", O.TRAINED)
         opt.step()
         for k in O.TRAINED:
             g = grads[k] + O.WEIGHT_DECAY * before[k]          # the first step: m / (1 - b1) = g, v / (1 - b2) = g^2
             np.testing.assert_allclose(getattr(net, k).detach().numpy(), before[k] - 1e-3 * g / (np.abs(g) + 1e-8),
                                        atol=1e-7, err_msg=k)
+
+
+class ModelFileTests(unittest.TestCase):
+    def test_the_shipped_model_reads(self):
+        arrays = CK.read_model_arrays(SHIPPED_KEY)
+        model = CK.ChordKeyModel(arrays=arrays)
+        self.assertGreaterEqual(len(model.members), 1)
+        self.assertIn(model.Q, range(2, Q + 1))
+        x = beat_inputs(np.random.default_rng(0), 30)
+        self.assertEqual(model.chords(x).shape, (len(model.members), 30, 12 * model.Q))
+        self.assertEqual(model.key_loglik(model.chords(x), np.zeros(30, int)).shape, (30, 24))
+
+    def test_inconsistent_arrays_are_refused(self):
+        good = CK.read_model_arrays(SHIPPED_KEY)
+        bad = {"no member axis": {**good, "c1_w": good["c1_w"][0]},
+               "tables of another vocabulary": {**good, "tab": good["tab"][..., :12]},
+               "members disagree": {**good, "c2_b": good["c2_b"][:0]},
+               "too many qualities": {**good, "out_w": np.concatenate([good["out_w"]] * 4, axis=1)},
+               "a non-finite weight": {**good, "c1_b": np.full_like(good["c1_b"], np.nan)}}
+        for name, arrays in bad.items():
+            with self.subTest(name), self.assertRaises(ValueError):
+                CK.check_model_arrays(arrays)
+
+    def test_chord_names(self):
+        self.assertEqual([CK.chord_name(i) for i in (0, 12 + 9, 24 + 7, 36 + 5, 48 + 2)],
+                         ["C", "Am", "G7", "FM7", "Dm7"])
+
+    def test_a_fifths_change_costs_j_fifth_times_more(self):
+        """32 bars of 4 beats: C major's evidence, then another key's by the same margin a beat (64 in all). A change
+        costing 40 is taken; a dear J_FIFTH refuses the change to G major (a fifth) and still takes A major's (a
+        minor third's signature). (Two changes through a key between, 80 here, would be cheaper than a dear fifth's
+        when the costs are low: J_FIFTH makes the direct change dearer, not every way there.)"""
+        arrays = CK.read_model_arrays(SHIPPED_KEY)
+        nb = 128
+        grid = CK.BeatGrid(beat_t=np.arange(nb) * 0.5, bar=np.arange(nb) // 4, phrase_first=np.zeros(32, bool),
+                           pos=np.full(nb, 2))
+        for other, fifth in ((7, True), (9, False)):
+            L = np.zeros((nb, 24))
+            L[:64, 0] = 1.0
+            L[64:, other] = 1.0
+            for j_fifth in (1.0, 1000.0):
+                model = CK.ChordKeyModel(arrays={**arrays, "J": np.asarray(40.0), "JX": np.asarray(0.0),
+                                                 "LAM": np.asarray(0.1), "J_FIFTH": np.asarray(j_fifth)})
+                _, keys = model.decode(L, grid, 64.0)
+                changed = keys[-1] == other
+                with self.subTest(other=other, j_fifth=j_fifth):
+                    self.assertEqual(changed, not (fifth and j_fifth > 1.0))
+
+
+class CostTests(unittest.TestCase):
+    """The change costs as asked (the model in use's times cost_scale), J_FIFTH as asked or kept, and the evidence's
+    strength measured: a model whose evidence is twice as strong reads 2."""
+
+    def songs(self, n=3, nb=40):
+        rng = np.random.default_rng(RNG_SEED)
+        return [O.Song(x=beat_inputs(rng, nb), y=np.zeros(nb, np.int64), w=np.ones(nb, np.float32),
+                       bar=np.arange(nb) // 4, pos=np.full(nb, 2), teach=np.zeros((nb, 12 * Q), np.float32), grid=None,
+                       duration=float(nb)) for _ in range(n)]
+
+    def test_the_evidences_strength(self):
+        arrays = CK.read_model_arrays(SHIPPED_KEY)
+        songs = self.songs()
+        once = O.evidence_scale(arrays, songs, range(3))
+        real = CK.ChordKeyModel.key_loglik
+        with mock.patch.object(CK.ChordKeyModel, "key_loglik", lambda m, lp, pos: 2.0 * real(m, lp, pos)):
+            twice = O.evidence_scale(arrays, songs, range(3))
+        self.assertGreater(once, 0.0)
+        self.assertAlmostEqual(twice / once, 2.0, places=5)
+
+    def test_costs_and_j_fifth_as_asked(self):
+        reference = CK.read_model_arrays(SHIPPED_KEY)
+        out = O.with_costs(reference, reference, 1.0)
+        for k in CK.SETTINGS:
+            np.testing.assert_array_equal(out[k], reference[k])
+        out = O.with_costs(reference, reference, 0.5, fifth_cost=3.5)
+        self.assertEqual(float(out["J_FIFTH"]), 3.5)
+        for k in O.COSTS:
+            self.assertAlmostEqual(float(out[k]), 0.5 * float(reference[k]), places=5)
+        for k in set(CK.SETTINGS) - set(O.COSTS) - {"J_FIFTH"}:
+            np.testing.assert_array_equal(out[k], reference[k])
 
 
 class ScheduleTests(unittest.TestCase):
@@ -161,10 +270,14 @@ class TemplateTests(unittest.TestCase):
         x[0, [12 + n for n in notes]] = 1.0
         return x
 
-    def test_triads_named_by_their_templates(self):
-        self.assertEqual(int(np.argmax(O.template_chords(self.beat(0, (0, 4, 7))))), 0)          # C major
-        self.assertEqual(int(np.argmax(O.template_chords(self.beat(9, (9, 0, 4))))), 12 + 9)     # A minor
-        self.assertEqual(int(np.argmax(O.template_chords(self.beat(7, (7, 11, 2))))), 7)         # G major
+    def test_chords_named_by_their_templates(self):
+        cases = {(0, (0, 4, 7)): 0, (9, (9, 0, 4)): 12 + 9, (7, (7, 11, 2)): 7,             # C, Am, G
+                 (7, (7, 11, 2, 5)): 24 + 7, (5, (5, 9, 0, 4)): 36 + 5, (2, (2, 5, 9, 0)): 48 + 2}  # G7, FM7, Dm7
+        for (bass, notes), index in cases.items():
+            with self.subTest(chord=CK.chord_name(index)):
+                self.assertEqual(int(np.argmax(O.template_chords(self.beat(bass, notes))[0])), index)
+        triads = O.template_chords(self.beat(0, (0, 4, 7)), 2)
+        self.assertEqual(triads.shape, (1, 24))
         p = O.template_chords(np.random.default_rng(RNG_SEED).random((50, 36)))
         np.testing.assert_allclose(p.sum(1), 1.0, rtol=1e-5)
 
@@ -197,6 +310,21 @@ class AnnotationTests(unittest.TestCase):
         fragments = keys([0, 0, 0, 60], [0, 0, 60, 62], [0, 0, 62, 63], [5, 0, 63, 120])
         self.assertTrue(O.raw_looking(fragments))                # short fragments beside the same key
 
+    def listed(self, cases, key_gt=None):
+        with tempfile.TemporaryDirectory() as tmp:
+            given = []
+            for i, (name, values) in enumerate(cases.items()):
+                a = F.beat_annotation(duration=20.0)
+                fields = {**a.__dict__, "phrase_starts": np.array([0.25, 8.25]), **values}
+                given.append(F.given_track(Path(tmp), i, Annotation(**fields), title=name))
+            F.use_tracks(given)
+            try:
+                ignored = []
+                gt = None if key_gt is None else {given[i]["uid"]: rows for i, rows in key_gt.items()}
+                return O.list_key_tracks(Path(tmp), ignored, gt), ignored
+            finally:
+                F.library_tracks._tracks = None
+
     def test_the_users_keys_are_the_training_songs(self):
         auto = keys([0, 0, 0, 20])
         cases = {
@@ -207,18 +335,7 @@ class AnnotationTests(unittest.TestCase):
             "no_keys": dict(key_segments=None),
             "no_tempo": dict(key_segments=keys([0, 0, 0, 20]), tempo_segments=None),
         }
-        with tempfile.TemporaryDirectory() as tmp:
-            given = []
-            for i, (name, values) in enumerate(cases.items()):
-                a = F.beat_annotation(duration=20.0)
-                fields = {**a.__dict__, "phrase_starts": np.array([0.25, 8.25]), **values}
-                given.append(F.given_track(Path(tmp), i, Annotation(**fields), title=name))
-            F.use_tracks(given)
-            try:
-                ignored = []
-                listed = O.list_key_tracks(Path(tmp), ignored)
-            finally:
-                F.library_tracks._tracks = None
+        listed, ignored = self.listed(cases)
         self.assertEqual([(t["title"], t["kind"]) for t in listed], [("edited", "edited"), ("legacy", "legacy")])
         reasons = {s.title: render(s.reason) for s in ignored}
         self.assertEqual(set(reasons), {"no_keys", "no_tempo"})
@@ -226,41 +343,32 @@ class AnnotationTests(unittest.TestCase):
         self.assertIn("no tempo rows", reasons["no_tempo"])
         np.testing.assert_array_equal(listed[0]["phrase_starts"], [0.25, 8.25])
 
+    def test_a_key_gt_names_the_songs_and_their_keys(self):
+        auto = keys([0, 0, 0, 20])
+        cases = {"still_auto": dict(key_segments=auto.copy(), key_segments_auto=auto),       # in the GT: used
+                 "edited": dict(key_segments=keys([9, 1, 0, 20]), key_segments_auto=auto),  # not in it: left out
+                 "no_keys": dict(key_segments=None)}                                         # in it: used
+        gt = {0: keys([7, 0, 2.0, 12.0]), 2: keys([4, 1, 0.0, 20.0])}
+        listed, ignored = self.listed(cases, gt)
+        self.assertEqual([(t["title"], t["kind"]) for t in listed], [("still_auto", "gt"), ("no_keys", "gt")])
+        np.testing.assert_array_equal(listed[0]["keys"], gt[0])
+        self.assertEqual(ignored, [])
 
-class PositionTableTests(unittest.TestCase):
-    """position_tables on songs whose chords the CNN reads as given: the tonic inside phrases, the dominant on the
-    bars a phrase ends on."""
-
-    def song(self, key, n=48):
-        pos = np.tile(np.r_[np.zeros(4), np.full(8, 2), np.ones(4)], n // 16).astype(np.int64)  # first, inside, last
-        y = np.full(n, key, np.int64)
-        return O.Song(x=np.zeros((n, 36), np.float32), y=y, w=np.ones(n, np.float32), bar=np.arange(n) // 4, pos=pos,
-                      teach=np.zeros((n, 24), np.float32), grid=None, duration=float(n))
-
-    def chords_of(self, songs):
-        """The chords as read: the key's tonic chord, its dominant on the phrases' last bars."""
-        def chords(_model, x):
-            s = next(s for s in songs if s.x is x)
-            p = np.full((x.shape[0], 24), 1e-3)
-            tonic = s.y % 12
-            p[np.arange(x.shape[0]), tonic] = 1.0
-            last = s.pos == 1
-            p[last, tonic[last]] = 0.2
-            p[np.flatnonzero(last), (tonic[last] + 7) % 12] = 1.0
-            return np.log(p / p.sum(1, keepdims=True))
-        return chords
-
-    def test_the_last_bars_lean_to_the_dominant_in_every_key(self):
-        songs = [self.song(0), self.song(7)]                    # C major and G major: the same chords relative to them
-        arrays = CK.read_model_arrays(SHIPPED_KEY)
-        with mock.patch.object(CK.ChordKeyModel, "chords", self.chords_of(songs)):
-            tab = O.position_tables(arrays, songs, [0, 1])
-        base = np.asarray(arrays["tab"], np.float32)
-        np.testing.assert_array_equal(tab[:, 2], base[:, 2])          # the bars inside a phrase: the start's
-        np.testing.assert_array_equal(tab[1], base[1])               # minor: no keyed beat, its rows kept
-        lift = (tab[0, 1] - base[0, 2])
-        self.assertGreater(lift[7] - lift[0], 3.0)                   # the dominant up against the tonic on last bars
-        np.testing.assert_allclose(tab[0, 0], base[0, 2], atol=1e-5)  # the first bars read as the inside ones
+    def test_a_key_gt_file_read_and_checked(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "keys.json"
+            path.write_text(json.dumps({"tracks": {"u1": [[9, 1, 10.0, 20.0], [0, 0, 0.0, 10.0]], "u2": []}}),
+                            encoding="utf-8")
+            gt = O.read_key_gt(path)
+            np.testing.assert_array_equal(gt["u1"], [[0, 0, 0, 10], [9, 1, 10, 20]])
+            self.assertEqual(gt["u2"].shape, (0, 4))
+            for rows in ([[12, 0, 0, 1]], [[0, 2, 0, 1]], [[0, 0, 5, 5]], [[0.5, 0, 0, 1]]):
+                path.write_text(json.dumps({"tracks": {"u": rows}}), encoding="utf-8")
+                with self.subTest(rows=rows), self.assertRaises(ValueError):
+                    O.read_key_gt(path)
+            path.write_text(json.dumps([1, 2]), encoding="utf-8")
+            with self.assertRaises(ValueError):
+                O.read_key_gt(path)
 
 
 def track_for(beats, rows, duration, ks, phrase_starts=(0.0,)):
@@ -285,7 +393,7 @@ class SongTests(unittest.TestCase):
         np.testing.assert_array_equal(s.w, (beats < 15.0).astype(np.float32))
         self.assertTrue(np.all(s.w[rest] == 0))
         np.testing.assert_array_equal(s.bar, np.arange(beats.size) // 4)
-        self.assertEqual(s.teach.shape, (beats.size, 24))
+        self.assertEqual(s.teach.shape, (beats.size, 12 * Q))
 
     def test_too_few_beats_is_no_song(self):
         beats = np.arange(10) * 0.5
@@ -306,14 +414,18 @@ class SongTests(unittest.TestCase):
         self.assertTrue(np.all(bar[:, n:] == bar[:, n - 1:n] + 1))     # the padding is a bar of its own
         self.assertTrue(np.all(teach[:, n:] == 0))
 
-    def test_new_weights_within_their_fan_in_bounds(self):
-        arrays = CK.read_model_arrays(SHIPPED_KEY)
-        P = O._init_weights(arrays, 0)
-        self.assertEqual(set(P), set(O.TRAINED))
-        for k in O.TRAINED:
-            self.assertEqual(P[k].shape, arrays[k].shape)
-            fan_in = int(np.prod(arrays[k.replace("_b", "_w")].shape[1:]))
-            self.assertLessEqual(float(np.abs(P[k]).max()), 1 / np.sqrt(fan_in))
+    def test_new_members_within_their_fan_in_bounds_with_flat_tables(self):
+        like = O.member_of(CK.read_model_arrays(SHIPPED_KEY), 0)
+        for qualities in (2, Q):
+            P = O._init_weights(like, qualities, 0)
+            self.assertEqual(set(P), set(CK.WEIGHTS))
+            self.assertEqual(P["out_w"].shape, (qualities,) + like["out_w"].shape[1:])
+            self.assertEqual(P["tab"].shape, (2, 3, 12 * qualities))
+            self.assertFalse(np.any(P["tab"]))
+            for k in ("c1_w", "c1_b", "c2_w", "c2_b", "out_w", "out_b"):
+                fan_in = int(np.prod(P[k.replace("_b", "_w")].shape[1:]))
+                self.assertLessEqual(float(np.abs(P[k]).max()), 1 / np.sqrt(fan_in))
+        self.assertFalse(np.array_equal(O._init_weights(like, Q, 0)["c1_w"], O._init_weights(like, Q, 1)["c1_w"]))
 
 
 SMALL = 4
@@ -357,7 +469,7 @@ class _Library(unittest.TestCase):
         return O.KeyModelOptimizationRequest(**values)
 
     def small(self):
-        self.enterContext(mock.patch.dict(MS.MIN_TRACKS, {"fine_tune": (SMALL, SMALL), "scratch": (SMALL, SMALL)}))
+        self.enterContext(mock.patch.dict(MS.MIN_TRACKS, {"fine_tune": (SMALL, SMALL), "key_scratch": (SMALL, SMALL)}))
         return self.tracks(SMALL)
 
 
@@ -371,6 +483,14 @@ class RefusalTests(_Library):
                 O.optimize_key_model(self.request())
         self.assertIn("songs with checked key annotations", str(caught.exception))
         self.assertFalse(self.out.exists())
+
+    def test_from_scratch_needs_the_key_models_own_minimum(self):
+        self.assertLess(MS.MIN_TRACKS["key_scratch"][0], MS.MIN_TRACKS["scratch"][0])
+        self.tracks(MS.MIN_TRACKS["key_scratch"][0] - 1, frames=False)
+        with mock.patch.object(O, "ensure_key_frames", side_effect=AssertionError("no features for a refused run")):
+            with self.assertRaises(TrainingError) as caught:
+                O.optimize_key_model(self.request(start=MS.SCRATCH, start_path=None))
+        self.assertIn(f"at least {MS.MIN_TRACKS['key_scratch'][0]}", str(caught.exception))
 
     def test_songs_without_key_frames_count_against_the_minimum(self):
         tracks = self.small()
@@ -394,6 +514,16 @@ class RefusalTests(_Library):
         with self.assertRaises(ValueError):
             O.optimize_key_model(self.request(output_path=self.dir / "key.json"))
 
+    def test_a_vocabulary_out_of_range_is_refused(self):
+        for qualities in (1, Q + 1):
+            with self.subTest(qualities=qualities), self.assertRaises(ValueError):
+                O.optimize_key_model(self.request(start=MS.SCRATCH, start_path=None, qualities=qualities))
+
+    def test_costs_out_of_range_are_refused(self):
+        for kw in (dict(fifth_cost=-1.0), dict(cost_scale=0.0)):
+            with self.subTest(**kw), self.assertRaises(ValueError):
+                O.optimize_key_model(self.request(**kw))
+
 
 @needs_torch
 class RunTests(_Library):
@@ -402,18 +532,22 @@ class RunTests(_Library):
         progress = []
         result = O.optimize_key_model(self.request(), optimize_progress=lambda v, t: progress.append(v))
         self.assertTrue(result.saved)
-        self.assertEqual((result.track_count, result.edited_count, result.legacy_count), (SMALL, SMALL, 0))
-        self.assertEqual((result.steps, result.device), (1, "cpu"))
+        shipped = CK.read_model_arrays(SHIPPED_KEY)
+        members = shipped["c1_w"].shape[0]
+        self.assertEqual((result.track_count, result.edited_count, result.legacy_count, result.gt_count),
+                         (SMALL, SMALL, 0, 0))
+        self.assertEqual((result.steps, result.device, result.members), (members, "cpu", members))
         self.assertTrue(np.isfinite(result.seconds_per_step))
-        arrays, shipped = CK.read_model_arrays(self.out), CK.read_model_arrays(SHIPPED_KEY)
+        arrays = CK.read_model_arrays(self.out)
         with np.load(self.out, allow_pickle=False) as z:
             self.assertEqual(set(z.files), set(CK.WEIGHTS + CK.SETTINGS))
-        for k in CK.SETTINGS + ("tab",):                     # the decoder settings and the chord tables' kind kept
-            self.assertEqual((arrays[k].shape, arrays[k].dtype), (shipped[k].shape, shipped[k].dtype))
-        for k in CK.SETTINGS:
+        for k in CK.WEIGHTS + CK.SETTINGS:                   # improving a model keeps its members and vocabulary
+            self.assertEqual(arrays[k].shape, shipped[k].shape)
+        for k in CK.SETTINGS:                                # the decoder's settings kept (cost_scale 1)
             np.testing.assert_array_equal(arrays[k], shipped[k])
-        np.testing.assert_array_equal(arrays["tab"][:, 2], shipped["tab"][:, 2])    # the bars inside a phrase: kept
+        self.assertTrue(np.isfinite(result.evidence_ratio) and result.evidence_ratio > 0)
         self.assertFalse(np.array_equal(arrays["c1_w"], shipped["c1_w"]))
+        self.assertFalse(np.array_equal(arrays["tab"], shipped["tab"]))      # the tables trained too
         model = CK.ChordKeyModel(self.out)
         self.assertTrue(np.all(np.isfinite(model.chords(np.random.default_rng(0).random((20, 36), np.float32)))))
         self.assertTrue(0.0 <= result.accuracy_before <= 1.0 and 0.0 <= result.accuracy_after <= 1.0)
@@ -426,14 +560,26 @@ class RunTests(_Library):
                              optimize_progress=lambda v, t: texts.append(t))
         self.assertEqual([w for t in texts for w in F.plain_words(t)], [])
 
-    def test_from_scratch(self):
+    def test_from_scratch_members_and_vocabulary_as_asked(self):
         self.small()
-        result = O.optimize_key_model(self.request(start=MS.SCRATCH, start_path=None))
+        result = O.optimize_key_model(self.request(start=MS.SCRATCH, start_path=None, members=2, qualities=3))
         self.assertTrue(result.saved and self.out.is_file())
-        self.assertEqual(result.epochs, 1)
-        new = O._init_weights(CK.read_model_arrays(SHIPPED_KEY), 0)
+        self.assertEqual((result.epochs, result.members, result.qualities), (1, 2, 3))
         arrays = CK.read_model_arrays(self.out)
-        self.assertLess(float(np.abs(arrays["c1_w"] - new["c1_w"]).max()), 0.05)     # one step from the new weights
+        self.assertEqual(arrays["out_w"].shape[:2], (2, 3))
+        self.assertEqual(arrays["tab"].shape, (2, 2, 3, 36))
+        like = O.member_of(CK.read_model_arrays(SHIPPED_KEY), 0)
+        for m in range(2):                                   # one step from each member's own new weights
+            new = O._init_weights(like, 3, m)
+            self.assertLess(float(np.abs(arrays["c1_w"][m] - new["c1_w"]).max()), 0.05)
+
+    def test_a_key_gt_trains_on_its_keys(self):
+        tracks = self.small()
+        gt = self.dir / "keys.json"
+        gt.write_text(json.dumps({"tracks": {t["uid"]: [[5, 0, 0.0, 24.0]] for t in tracks}}), encoding="utf-8")
+        result = O.optimize_key_model(self.request(key_gt=str(gt)))
+        self.assertTrue(result.saved)
+        self.assertEqual((result.track_count, result.gt_count, result.edited_count), (SMALL, SMALL, 0))
 
     def test_worse_held_out_keys_leave_the_model_unwritten(self):
         self.small()
