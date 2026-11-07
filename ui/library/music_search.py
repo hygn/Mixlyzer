@@ -224,7 +224,7 @@ class MusicSearchBar(QtWidgets.QFrame):
 # --- listening and searching -----------------------------------------------------------------------------------------
 class _Bridge(QtCore.QObject):
     loaded = QtCore.Signal(object)     # (index, connection, uids of the library) or an error text
-    done = QtCore.Signal(object)       # (SearchResult, ms) or an error text
+    done = QtCore.Signal(object)       # (the session it was started in, (SearchResult, heard at) or an error text)
 
 
 class MusicListener(QtCore.QObject):
@@ -256,6 +256,9 @@ class MusicListener(QtCore.QObject):
         self._live_n = 0
         self.rate = 0
         self._t0 = 0.0
+        # counts the times the microphone was turned on: a search of another (still running when it was turned off
+        # and on again: the audio heard before) is not joined into this one
+        self._session = 0
         self._listening = Listening()
         self._bridge = _Bridge()
         self._bridge.loaded.connect(self._on_loaded)
@@ -373,6 +376,7 @@ class MusicListener(QtCore.QObject):
         if not self._open_source():
             return False
         self._t0 = time.monotonic()
+        self._session += 1
         self._listening = Listening(float(self._cfg_getter().searchconfig.music_listen_window))
         self._timer.start(int(float(self._cfg_getter().searchconfig.music_listen_interval) * 1000))
         if self._index is None or self._stale:
@@ -417,23 +421,25 @@ class MusicListener(QtCore.QObject):
         if float(np.sqrt(np.mean(y ** 2))) < QUIET_RMS:
             return         # nothing heard: no search
         self._searching = True
-        threading.Thread(target=self._run_search, args=(y, self.rate, self._index, self._landmarks, time.monotonic()),
+        threading.Thread(target=self._run_search,
+                         args=(y, self.rate, self._index, self._landmarks, time.monotonic(), self._session),
                          name="MusicSearch", daemon=True).start()
 
-    def _run_search(self, y, rate, index, con, heard_at) -> None:
+    def _run_search(self, y, rate, index, con, heard_at, session) -> None:
         try:
             from analyzer.search.music.search import search_audio
             result = search_audio(y, rate, index, con, top=20)
-            self._bridge.done.emit((result, heard_at))
+            self._bridge.done.emit((session, (result, heard_at)))
         except Exception as exc:
-            self._bridge.done.emit(f"{type(exc).__name__}: {exc}")
+            self._bridge.done.emit((session, f"{type(exc).__name__}: {exc}"))
 
-    def _on_done(self, res) -> None:
+    def _on_done(self, done) -> None:
+        session, res = done
         self._searching = False
         if self._stale:
             self._load_index()
-        if self._source is None:
-            return         # turned off meanwhile: no more following
+        if self._source is None or session != self._session:
+            return         # turned off meanwhile (and on again: the audio heard before): no more following
         if isinstance(res, str):
             self.status.emit(tr("The search failed: {error}").format(error=res))
             return

@@ -93,7 +93,6 @@ class MarqueeLabel(QtWidgets.QLabel):
         self._scroll_idx = 0
         self._needs_scroll = False
         self._hold_ticks = 0
-        self._pending_geometry_check = False
 
     def set_marquee_text(self, text: str):
         self._full_text = text or ""
@@ -107,17 +106,19 @@ class MarqueeLabel(QtWidgets.QLabel):
         super().resizeEvent(event)
         self._update_scroll_state()
 
+    def showEvent(self, event):
+        super().showEvent(event)
+        self._update_scroll_state()
+
     def _update_scroll_state(self, force: bool = False):
         if not self._full_text:
             self._timer.stop()
             return
         width = self.contentsRect().width()
         if width <= 0:
-            if not self._pending_geometry_check:
-                self._pending_geometry_check = True
-                QtCore.QTimer.singleShot(
-                    0, lambda: self._reset_geometry_flag_and_update()
-                )
+            # no room yet (laid out later, squeezed): checked again when it gets some (resizeEvent, showEvent), never
+            # polled (a 0 ms timer started again and again kept the GUI thread busy meanwhile)
+            self._timer.stop()
             return
         fm = self.fontMetrics()
         needs = fm.horizontalAdvance(self._full_text) > width
@@ -147,10 +148,6 @@ class MarqueeLabel(QtWidgets.QLabel):
             return
         rotated = self._buffer[self._scroll_idx :] + self._buffer[: self._scroll_idx]
         self.setText(rotated)
-
-    def _reset_geometry_flag_and_update(self):
-        self._pending_geometry_check = False
-        self._update_scroll_state()
 
     def _reset_hold(self):
         self._hold_ticks = max(0, math.ceil(self.HOLD_MS / self.STEP_MS))

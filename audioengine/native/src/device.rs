@@ -218,7 +218,11 @@ impl Ring {
         if generation != ls.flush_seen {
             ls.flush_seen = generation;
             ls.cut = self.flush_cut.load(Ordering::Relaxed);
-            ls.fade_left = self.fade;
+            // a fade going on goes on down from where it is, to the new cut (restarted, the old audio's gain would
+            // jump back up to full: a click)
+            if ls.fade_left == 0 {
+                ls.fade_left = self.fade;
+            }
         }
         let mut read = self.read.load(Ordering::Relaxed);
         let write = self.write.load(Ordering::Acquire);
@@ -640,6 +644,25 @@ mod tests {
         let two = names(&["Speakers (3- DDJ-400)", "Speakers (4- DDJ-400)"]);
         assert_eq!(pick(&two, "Speakers (4- DDJ-400)"), Some(1));
         assert_eq!(pick(&two, "Speakers (2- DDJ-400)"), None);
+    }
+
+    #[test]
+    fn a_second_flush_during_a_fade_fades_on_from_where_it_is() {
+        // a pause, a play and a pause again within the fade (10 frames at 1 kHz): the old audio's gain goes on down,
+        // never back up to full (a click)
+        let ring = Ring::new(4096, 1, 1000.0, Arc::new(Port::default()));
+        ring.push(&[1.0; 200]);
+        let mut lane = LaneState::default();
+        ring.flush();
+        let mut out = [0f32; 5];
+        ring.read_lane(&mut out, 5, &mut lane);
+        assert!(out[4] < 1.0 && out[4] > 0.0, "half the fade read: {out:?}");
+        ring.push(&[1.0; 50]);
+        ring.flush();
+        let mut rest = [0f32; 10];
+        ring.read_lane(&mut rest, 10, &mut lane);
+        assert!(rest[0] <= out[4], "the gain back up: {} after {}", rest[0], out[4]);
+        assert!(rest.windows(2).all(|w| w[1] <= w[0]), "down to silence: {rest:?}");
     }
 
     #[test]

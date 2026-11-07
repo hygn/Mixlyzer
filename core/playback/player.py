@@ -197,10 +197,15 @@ class _AudioWorker(QtCore.QObject):
         getattr(self, name)(*args)
 
     # Track loading
-    def load(self, path: str) -> None:
+    def load(self, path: str, keep_marks: bool = False) -> None:
+        """``path`` decoded and played; its marks are the ones sent after this (a library track's stored analysis
+        may come after its audio: the track before's sent to it, the deck played on their beats, CUE points and
+        JumpCUEs meanwhile), unless ``keep_marks``: the same track decoded again."""
         self.feeder.pause()
         self.feeder.set_track(None)
         self.deck.new_track()
+        if not keep_marks:
+            self._marks = None
         self._path = path
         self._track_ready = False
         self._duration_ms = 0
@@ -234,10 +239,10 @@ class _AudioWorker(QtCore.QObject):
 
     def _on_format_changed(self, at: float) -> None:
         """The native engine restarted at another format, the track unloaded: decoded again at the new format, the
-        deck back where it was once it is (the seek waits for the track)."""
+        deck back where it was once it is (the seek waits for the track), its marks as they were."""
         self.rate, self.ch = self.feeder.rate, self.feeder.ch
         if self._path:
-            self.load(self._path)
+            self.load(self._path, keep_marks=True)
             self.run_command("seek", (float(at),))
 
     def unload(self) -> None:
@@ -245,6 +250,7 @@ class _AudioWorker(QtCore.QObject):
         self.feeder.pause()
         self.feeder.set_track(None)
         self.deck.new_track()
+        self._marks = None
         self._path = None
         self._track_ready = False
         self._decode_token += 1  # drop a decode still running
@@ -268,8 +274,7 @@ class _AudioWorker(QtCore.QObject):
         except Exception as exc:
             print(f"[Player] Decode error: {exc}")
             self._deferred.clear()
-            self.transport_enabled.emit(True)
-            return
+            return      # no track: PLAY, STOP and CUE stay off (load turned them off), as they would do nothing
 
         self._track_ready = True
         self._duration_ms = int(round((pcm_array.shape[0] * 1000.0) / max(1, self.rate)))
@@ -906,7 +911,7 @@ class PlayerController(QtCore.QObject):
             self.bus.sig_playback_status.emit(False)
             self.bus.sig_transport_enabled.emit(False)
         elif self._path:
-            self._send("load", self._path)
+            self._send("load", self._path, True)   # the same track again: its marks kept
 
     @QtCore.Slot(object, int)
     def _on_track_loaded(self, pcm: object, rate: int) -> None:
