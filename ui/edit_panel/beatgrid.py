@@ -45,6 +45,10 @@ SCOPED_TOOLS = {
 
 # the TAP icon is a word: no padding, so it is not squeezed in its narrow button
 _TAP_STYLE = "QToolButton { padding: 0; }"
+# TAP: a tap within TAP_MIN_SEC of the last is none (faster than 1000 BPM: a bounce, a double click); one after a
+# pause of over TAP_RESTART_SEC starts the taps anew (else it was one very slow beat, dragging the BPM down)
+TAP_MIN_SEC = 60.0 / 1000.0
+TAP_RESTART_SEC = 2.0
 
 
 class BeatgridEditMixin:
@@ -519,18 +523,17 @@ class BeatgridEditMixin:
     
     def _tapBPM_set(self):
         now = time.perf_counter()
-        if self.prev_tap_time is None:
-            # Need at least two taps to compute BPM.
+        if self.prev_tap_time is not None and now - self.prev_tap_time < TAP_MIN_SEC:
+            return      # no tap: the last one bouncing (its time kept)
+        if self.prev_tap_time is None or now - self.prev_tap_time > TAP_RESTART_SEC:
+            # the first tap, or the first after a pause: the BPM from the next one on
             self.prev_tap_time = now
+            self.prev_tap_BPM = 0
             self.inp_refBPM.setText("0")
             return
         dT = now - self.prev_tap_time
         self.prev_tap_time = now
-        if dT <= 1e-6:
-            return
         inst_bpm = 60.0 / dT
-        if not np.isfinite(inst_bpm):
-            return
         alpha = 0.1
         if self.prev_tap_BPM <= 0:
             filtered = inst_bpm

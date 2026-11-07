@@ -5,6 +5,7 @@ import numpy as np
 import pyqtgraph as pg
 from PySide6 import QtCore
 
+from views.held_drag import HeldDrag
 from views.timeline import step_window
 
 
@@ -25,10 +26,11 @@ class NoDragNoWheelViewBox(pg.ViewBox):
         ev.ignore()
 
 
-class ScratchViewBox(NoDragNoWheelViewBox):
+class ScratchViewBox(HeldDrag, NoDragNoWheelViewBox):
     """Main view box: holding the waveform with the left button holds the deck
     (scratch), dragging moves the track under the pointer, as on rekordbox. The
-    wheel zooms the view through views.timeline.WINDOW_STEPS_SEC (up: narrower)."""
+    wheel zooms the view through views.timeline.WINDOW_STEPS_SEC (up: narrower).
+    The button lost elsewhere (a box opened, the app left) lets go where the hand last moved it (HeldDrag)."""
 
     def __init__(self, bus, get_time: Callable[[], float], get_duration: Callable[[], float],
                  can_scratch: Callable[[], bool], get_window: Callable[[], float], *args, **kwargs):
@@ -40,6 +42,15 @@ class ScratchViewBox(NoDragNoWheelViewBox):
         self._get_duration = get_duration
         self._can_scratch = can_scratch
         self._grab: tuple[float, float] | None = None  # (pointer x, track time) at the press
+        self._moved_to: float | None = None             # the track time the hand last moved it to
+        self._watch_focus()
+
+    def _held(self) -> bool:
+        return self._grab is not None
+
+    def _let_go(self) -> None:
+        self._grab = None
+        self.bus.sig_scratch_end.emit(self._moved_to if self._moved_to is not None else float(self._get_time()))
 
     def wheelEvent(self, ev, axis=None):
         # one step per notch (120); high-resolution wheels add up to a notch
@@ -62,6 +73,7 @@ class ScratchViewBox(NoDragNoWheelViewBox):
             ev.ignore()
             return
         self._grab = (x, float(self._get_time()))
+        self._moved_to = None
         self.bus.sig_scratch_begin.emit(self._sec_per_device_px(ev.scenePos()))
         ev.accept()
 
@@ -71,6 +83,7 @@ class ScratchViewBox(NoDragNoWheelViewBox):
             return
         t = self._time_at(ev.scenePos())
         if t is not None:
+            self._moved_to = t
             self.bus.sig_scratch_update.emit(t, time.perf_counter())
         ev.accept()
 

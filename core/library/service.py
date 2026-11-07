@@ -287,19 +287,27 @@ class LibraryService(QtCore.QObject):
         dirty = False                            # writes ran since the snapshot was read
         changed: set[str] = set()                # the parts they changed
         after: list[Callable[[], None]] = []     # the writes' callbacks, handed over after the snapshot
+        unread = False                           # the snapshot's last read failed (said once until one reads)
 
         def flush() -> None:
-            nonlocal dirty, changed, after, last
+            nonlocal dirty, changed, after, last, unread
             if changed and lib is not None:
                 try:
                     last = LibrarySnapshot.read(lib, frozenset(changed), last)
                     self._deliver.emit(lambda s=last: self._apply(s))
+                    changed, unread = set(), False
                 except Exception:
-                    last = None          # read whole next time
-                    print("[Library] the library could not be read:\n" + traceback.format_exc())
+                    # read whole at the next job (a read too): the GUI's snapshot is not left as it was until
+                    # another write
+                    last = None
+                    if not unread:
+                        print("[Library] the library could not be read (read again with each job):\n"
+                              + traceback.format_exc())
+                    unread = True
             for fn in after:
                 self._deliver.emit(fn)
-            dirty, changed, after = False, set(), []
+            after = []
+            dirty = bool(changed)
 
         while True:
             item = self._jobs.get()

@@ -1247,6 +1247,18 @@ mod tests {
         assert!(r.at() > 6.99 && r.at() < 7.2, "the last seek heard: {}", r.at());
     }
 
+    #[test]
+    fn a_track_unloaded_with_the_jog_held_lets_the_record_go_whole() {
+        let mut r = Rig::new(10.0, true, &[], &[]);
+        r.s.deck.midi_value(&mut r.s.engine, act::JOG_TOUCH, (127, 127.0), 0, 127, clock::now());
+        assert!(r.s.deck.jog_held());
+        assert_eq!(r.s.engine.platter_delay(), JOG_DELAY_SEC);
+        crate::handle(&mut r.s, crate::ipc::op::UNLOAD, &2u32.to_le_bytes());   // the hand still on the jog
+        assert!(!r.s.deck.jog_held());
+        // a mouse's scratch after it: its samples followed at the mouse's delay, not the jog's
+        assert_eq!(r.s.engine.platter_delay(), crate::dsp::Platter::DELAY);
+    }
+
     /// Playing off unity with the time stretch (a seek then goes through the standby stretcher, prepared over a few
     /// ticks), heard about ``from`` s in.
     fn deferring_rig(from: f64) -> Rig {

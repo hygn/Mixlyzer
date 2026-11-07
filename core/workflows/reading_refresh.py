@@ -73,14 +73,19 @@ class LibraryReadingRefresh(QtCore.QObject):
 
     @QtCore.Slot(object)
     def _job_finished(self, read: dict) -> None:
-        """The texts read: written by the library's owner, a batch of tracks a job, then the works' names."""
+        """The texts read: written by the library's owner, a batch of tracks a job, then the works' names (a batch
+        not written fails the run: its callbacks come before the last one's, in the order asked)."""
         request = self._release()
-        uids, changed = self._uids, [0]
+        uids, changed, errors = self._uids, [0], []
         for start in range(0, len(uids), BATCH_TRACKS):
             self._library.write(jobs.apply_readings, uids[start:start + BATCH_TRACKS], read,
-                                done=lambda n: changed.__setitem__(0, changed[0] + n))
+                                done=lambda n: changed.__setitem__(0, changed[0] + n),
+                                failed=lambda exc: errors.append(str(exc)))
 
         def done(_r) -> None:
+            if errors:
+                self._job_failed(errors[0], request)
+                return
             self._busy = False
             if request is not None:
                 self.finished.emit(request, ReadingRefreshResult(tracks=len(uids), changed_fields=changed[0]))

@@ -34,8 +34,9 @@ class _Pool:
         pass
 
 
-def specs(chunks):
-    return [waveform._ChunkSpec(chunk_index=i, pcm=None, sample_rate=1, style=STYLE, height=16) for i in chunks]
+def specs(chunks, generation=0):
+    return [waveform._ChunkSpec(chunk_index=i, pcm=None, sample_rate=1, style=STYLE, height=16, generation=generation)
+            for i in chunks]
 
 
 class SchedulerTests(unittest.TestCase):
@@ -101,6 +102,18 @@ class SchedulerTests(unittest.TestCase):
     def test_resuming_with_a_free_slot_uses_it(self):
         self.worker.resume(specs(range(100, 110)), 104)
         self.assertEqual((self.worker.pool.started, self.extra), ([104], []))
+
+    def test_a_job_of_the_audio_before_leaves_its_chunk_to_the_new_audio(self):
+        """A job still running when other audio comes (another track of the same style: neither analyzed yet) ends
+        unheard: its chunk neither shown nor taken as rendered, so the new audio's is rendered."""
+        shown = []
+        self.worker.chunk_ready.connect(lambda chunk, _payload: shown.append(chunk))
+        self.worker.enqueue(specs([3]), 3)
+        self.spawn(1)                                                # running
+        self.worker.new_audio(1)                                     # other audio
+        self.finish(3)                                               # the job ends: the audio before's
+        self.worker.enqueue(specs([3], generation=1), 3)
+        self.assertEqual((self.spawn(1), shown), ([3, 3], []))
 
 
 class BandFilterTests(unittest.TestCase):
@@ -223,6 +236,23 @@ class EvictionTests(unittest.TestCase):
         self.assertIn(150, chunks)                                   # the view at 150 s, its chunk with it
         self.assertFalse(self.layer.submitted & {30, 31})            # the worker drops them: asked again later
         self.assertTrue(all(self.layer.items[i] is not None for i in range(20)))   # kept: shown recently
+
+    def test_a_chunk_of_the_audio_before_is_not_drawn_over_the_new(self):
+        """Other audio of the same style (two tracks not analyzed yet): a chunk rendered from the audio before, sent
+        before the worker heard of the new, is dropped, and the new audio's is asked for."""
+        self.model.predecoded_pcm, self.model.predecoded_rate = np.zeros((300 * 100, 1), np.float32), 100
+        sent = []
+        self.view._sig_enqueue.connect(lambda specs_, _chunk: sent.extend(specs_))
+        with mock.patch.object(waveform._WaveStyle, "from_config", return_value=STYLE):
+            self.view._evaluate_render_targets()
+            before = next(s for s in sent if s.chunk_index == 0)
+            self.model.predecoded_pcm = np.ones((300 * 100, 1), np.float32)    # the next track's audio
+            self.view._on_model_updated()
+        image = np.zeros((10, waveform.RENDER_HEIGHT, 3), np.uint8)
+        self.view._on_chunk_ready(0, waveform._WaveRenderResult(
+            image=image, chunk_index=0, start_sec=0.0, end_sec=1.0, style=STYLE, generation=before.generation))
+        self.assertIsNone(self.view._layer.items[0])
+        self.assertTrue(any(s.chunk_index == 0 and s.pcm is self.model.predecoded_pcm for s in sent))
 
     def test_a_jump_of_the_playhead_resumes_there(self):
         """The playhead jumped (a seek, a CALL, a JumpCUE: past the next chunk) is played on from as a scrub let go;

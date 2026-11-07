@@ -29,5 +29,20 @@ class JumpCueOnLoadTests(unittest.TestCase):
         self.assertIsNone(feeder._jump_dest)
 
 
+class ScratchOnLoadTests(unittest.TestCase):
+    def test_a_track_loaded_while_scratching_feeds_at_the_normal_interval(self):
+        feeder = PCMFeeder(mock.Mock(), 44100, 2)
+        feeder.set_track(np.zeros((44100 * 10, 2), np.float32))
+        feeder.open()
+        try:
+            feeder.set_scratching(True)       # the record grabbed: fed every FLUSH_SCRATCH_MS
+            self.assertEqual(feeder._flush_timer.interval(), PCMFeeder.FLUSH_SCRATCH_MS)
+            feeder.set_track(np.zeros((44100 * 10, 2), np.float32))   # another track, the hand let go with it
+            self.assertFalse(feeder._scratching)
+            self.assertEqual(feeder._flush_timer.interval(), PCMFeeder.FLUSH_MS)
+        finally:
+            feeder.close()
+
+
 if __name__ == "__main__":
     unittest.main()

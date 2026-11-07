@@ -204,6 +204,9 @@ impl Engine {
         self.end_out_frame = None;
         self.sent_finished = false;
         self.scratching = false;
+        // the record let go with the track, a jog wheel's hand too (grab(false) is not sent: the deck forgets it):
+        // the mouse's scratch after it follows at its own delay
+        self.platter.delay = Platter::DELAY;
         self.poller = None;
         self.jump_start = None;
         self.jump_dest = None;
@@ -423,6 +426,11 @@ impl Engine {
 
     pub fn scratch_target(&self) -> f64 {
         self.scratch_target
+    }
+
+    #[cfg(test)]
+    pub fn platter_delay(&self) -> f64 {
+        self.platter.delay
     }
 
     pub fn scratch_to(&mut self, frame: f64, at: f64) {

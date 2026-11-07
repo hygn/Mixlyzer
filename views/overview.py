@@ -14,6 +14,7 @@ from views.render.keystrip import (
 from views.render.wave import band_ranges, render_wave_overview
 from views.base import EDIT_PAGES, edit_emphasis, emphasis_opacity, emphasis_size, emphasis_width, shown_played
 from views.change_flash import BLINK_MS, BLINKS, HOLD_MS, Blinker, LitBands, band_rect, phrase_lit_segments
+from views.held_drag import HeldDrag
 from views.segment_strip import SegmentStrip
 from core.track.changes import BEATGRID, CUE, JUMPCUE, PHRASE
 from core.settings.store import current as current_settings
@@ -47,25 +48,38 @@ def _down_triangle_path() -> QtGui.QPainterPath:
     return path
 
 
-class SeekOnlyViewBox(pg.ViewBox):
-    """Seek-only view box used for scrub interactions."""
+class SeekOnlyViewBox(HeldDrag, pg.ViewBox):
+    """Seek-only view box used for scrub interactions. The button lost elsewhere (a box opened, the app left) ends
+    the scrub where it was last read (HeldDrag)."""
     def __init__(self, bus, get_duration, get_time=lambda: 0.0, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.bus = bus              # def seek_cb(t: float) -> None
         self._get_duration = get_duration    # def get_duration() -> float
         self._get_time = get_time            # the playhead now: where a scrub with no place read ends
         self._scrub_t: float | None = None   # the scrub's last place read
+        self._scrubbing = False              # pressed, not let go
         self.setMouseEnabled(x=False, y=False)
         self.setDefaultPadding(0.0)
         if hasattr(self, 'setWheelEnabled'):
             self.setWheelEnabled(False)
+        self._watch_focus()
+
+    def _held(self) -> bool:
+        return self._scrubbing
+
+    def _let_go(self) -> None:
+        self._scrubbing = False
+        t = self._scrub_t if self._scrub_t is not None else float(self._get_time())
+        self._scrub_t = None
+        self.bus.sig_scrub_end.emit(t)
 
     def wheelEvent(self, ev):
         ev.ignore()
-    
+
     def mousePressEvent(self, ev):
         if ev.button() == QtCore.Qt.LeftButton:
             self._scrub_t = None
+            self._scrubbing = True
             self.bus.sig_scrub_begin.emit()
             t = self._map_scene_x_to_time(ev.scenePos().x())
             if t is not None:
@@ -89,6 +103,7 @@ class SeekOnlyViewBox(pg.ViewBox):
             if t is None:
                 t = self._scrub_t if self._scrub_t is not None else float(self._get_time())
             self._scrub_t = None
+            self._scrubbing = False
             self.bus.sig_scrub_end.emit(t)
         ev.accept()
 

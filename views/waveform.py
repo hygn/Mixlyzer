@@ -97,6 +97,7 @@ class _WaveRenderResult:
     start_sec: float  # time span the image covers (column-aligned)
     end_sec: float
     style: _WaveStyle  # the layer it belongs to
+    generation: int = 0  # the audio it was rendered from (WaveformView._generation)
 
 
 class _WaveRenderJob(QtCore.QRunnable):
@@ -109,6 +110,7 @@ class _WaveRenderJob(QtCore.QRunnable):
         style: _WaveStyle,
         *,
         height: int,
+        generation: int = 0,
     ) -> None:
         super().__init__()
         self.request_id = int(request_id)
@@ -117,6 +119,7 @@ class _WaveRenderJob(QtCore.QRunnable):
         self.chunk_index = max(0, int(chunk_index))
         self.style = style
         self.height = max(16, int(height))
+        self.generation = int(generation)
         self.signals = _WaveRenderSignals()
 
     def run(self) -> None:
@@ -126,7 +129,7 @@ class _WaveRenderJob(QtCore.QRunnable):
         self.signals.finished.emit(
             self.request_id,
             _WaveRenderResult(image=image, chunk_index=self.chunk_index, start_sec=start_sec, end_sec=end_sec,
-                              style=self.style),
+                              style=self.style, generation=self.generation),
         )
 
 
@@ -244,6 +247,7 @@ class _ChunkSpec:
     sample_rate: int
     style: _WaveStyle
     height: int
+    generation: int = 0  # the audio ``pcm`` is (WaveformView._generation)
 
 
 class _WaveformRenderWorker(QtCore.QObject):
@@ -266,6 +270,7 @@ class _WaveformRenderWorker(QtCore.QObject):
         self._rendered: set[tuple[_WaveStyle, int]] = set()
         self._playhead = 0  # the chunk the playhead is in
         self._request_seq = 0
+        self._generation = 0  # the audio rendered now: a job of the audio before ends unheard
         self._spawn_timer = QtCore.QTimer(self)
         self._spawn_timer.setInterval(RENDER_SPAWN_INTERVAL_MS)
         self._spawn_timer.timeout.connect(self._spawn_next)
@@ -317,6 +322,14 @@ class _WaveformRenderWorker(QtCore.QObject):
         self._spawn_timer.stop()
         self._pending.clear()
 
+    @QtCore.Slot(int)
+    def new_audio(self, generation: int) -> None:
+        """Other audio (another track, the track decoded again; the canvas made anew): everything asked for and
+        rendered is dropped, and a job still running ends unheard (its chunk is the audio before's, under a style
+        the new audio may share: two tracks not analyzed yet)."""
+        self._generation = int(generation)
+        self.cancel_all()
+
     @QtCore.Slot()
     def cancel_all(self) -> None:
         self._spawn_timer.stop()
@@ -346,6 +359,7 @@ class _WaveformRenderWorker(QtCore.QObject):
             spec.chunk_index,
             spec.style,
             height=spec.height,
+            generation=spec.generation,
         )
         job.signals.finished.connect(self._on_job_finished, QtCore.Qt.ConnectionType.QueuedConnection)
         (self.extra_pool if urgent and len(self._inflight) >= RENDER_BATCH_SIZE else self.pool).start(job)
@@ -360,6 +374,8 @@ class _WaveformRenderWorker(QtCore.QObject):
     def _on_job_finished(self, _request_id: int, payload: object) -> None:
         if not isinstance(payload, _WaveRenderResult):
             return
+        if payload.generation != self._generation:
+            return   # the audio before's: neither in flight nor rendered now (its key may be the new audio's)
         chunk_index = int(payload.chunk_index)
         self._inflight.discard((payload.style, chunk_index))
         self._rendered.add((payload.style, chunk_index))
@@ -386,7 +402,7 @@ class WaveformView(ViewPlugin):
     _sig_enqueue = QtCore.Signal(list, int)   # specs, the playhead's chunk
     _sig_resume = QtCore.Signal(list, int)    # specs, the chunk playback goes on from
     _sig_playhead = QtCore.Signal(int)
-    _sig_cancel = QtCore.Signal()
+    _sig_cancel = QtCore.Signal(int)          # the new audio's generation: everything before dropped
     _sig_drop_pending = QtCore.Signal()
     _sig_forget = QtCore.Signal(list)
 
@@ -409,6 +425,8 @@ class WaveformView(ViewPlugin):
         self._scrubbing = False                   # the playhead dragged (its moves are no jumps)
         self._jumps = 0                           # the frames in a row it jumped in (2 on: a search, rendered where it stops)
         self._show_clock = 0  # counts the scene passes: the order chunks were last shown in
+        # counts the canvases made (the audio, the track): a chunk rendered for an earlier one is dropped
+        self._generation = 0
 
         # Dedicated render worker thread
         self._worker = _WaveformRenderWorker()
@@ -420,7 +438,7 @@ class WaveformView(ViewPlugin):
         self._sig_enqueue.connect(self._worker.enqueue, QtCore.Qt.ConnectionType.QueuedConnection)
         self._sig_resume.connect(self._worker.resume, QtCore.Qt.ConnectionType.QueuedConnection)
         self._sig_playhead.connect(self._worker.set_playhead, QtCore.Qt.ConnectionType.QueuedConnection)
-        self._sig_cancel.connect(self._worker.cancel_all, QtCore.Qt.ConnectionType.QueuedConnection)
+        self._sig_cancel.connect(self._worker.new_audio, QtCore.Qt.ConnectionType.QueuedConnection)
         self._sig_drop_pending.connect(self._worker.drop_pending, QtCore.Qt.ConnectionType.QueuedConnection)
         self._sig_forget.connect(self._worker.forget, QtCore.Qt.ConnectionType.QueuedConnection)
         # The thread is the view's child: stopped before the view goes, also when the app quits without the
@@ -704,13 +722,15 @@ class WaveformView(ViewPlugin):
         if duration <= 0.0:
             self._remove_all_chunk_items()
             self._chunk_count = 0
-            self._sig_cancel.emit()
+            self._generation += 1
+            self._sig_cancel.emit(self._generation)
             return 0
         chunk_count = max(1, int(np.ceil(duration / RENDER_CHUNK_SEC)))
         if force or chunk_count != self._chunk_count or self._layer is None:
             self._remove_all_chunk_items()
             self._chunk_count = chunk_count
-            self._sig_cancel.emit()
+            self._generation += 1
+            self._sig_cancel.emit(self._generation)
             self._show_layer(_WaveStyle.from_config(self.model.analysis.wave, self.tl.window_sec))
         return self._chunk_count
 
@@ -781,6 +801,7 @@ class WaveformView(ViewPlugin):
                 sample_rate=sample_rate,
                 style=self._style,
                 height=RENDER_HEIGHT,
+                generation=self._generation,
             ))
             self._submitted_chunks.add(chunk_index)
         return specs
@@ -813,6 +834,8 @@ class WaveformView(ViewPlugin):
     def _on_chunk_ready(self, chunk_index: int, payload: object) -> None:
         if not isinstance(payload, _WaveRenderResult) or self.plot is None:
             return
+        if payload.generation != self._generation:
+            return  # rendered from the audio before (sent before the worker heard of the new): another's chunk
         layer = self._layers.get(payload.style)
         if layer is None or chunk_index < 0 or chunk_index >= len(layer.items):
             return  # a layer dropped meanwhile (new track or settings)

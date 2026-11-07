@@ -1,10 +1,14 @@
 """The library's owner (core.library.service): its jobs in order on its thread, the snapshot read after writes, other
 threads' calls, failures rolled back, the snapshot's file lookup, another library, callbacks of deleted widgets."""
+import contextlib
+import io
 import os
+import sqlite3
 import tempfile
 import threading
 import unittest
 from pathlib import Path
+from unittest import mock
 from uuid import uuid4
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
@@ -15,7 +19,7 @@ from PySide6.QtWidgets import QApplication
 from core.workflows.event_bus import EventBus
 from core.library import jobs
 from core.library.records import TrackRow
-from core.library.service import LibraryService
+from core.library.service import LibrarySnapshot, LibraryService
 
 APP = QApplication.instance() or QApplication([])
 
@@ -417,6 +421,26 @@ class LibraryServiceTests(unittest.TestCase):
             self.settle()
         self.assertEqual((found[0].thumbnails, found[0].analyses), (0, 1))
         self.assertTrue(os.path.isfile(os.path.join(self.lib, jobs.ORPHANED_ANALYSES, f"{gone}.npz")))
+
+    def test_a_snapshot_not_read_is_read_at_the_next_job(self):
+        """The snapshot's read failing after a write (a store another program holds): read again with the next job,
+        a read too, not kept as it was until another write."""
+        row = _row("s.wav")
+        real, fails = LibrarySnapshot.read, [1]
+
+        def flaky(*args, **kwargs):
+            if fails[0]:
+                fails[0] -= 1
+                raise sqlite3.OperationalError("database is locked")
+            return real(*args, **kwargs)
+        with mock.patch.object(LibrarySnapshot, "read", staticmethod(flaky)), \
+                contextlib.redirect_stdout(io.StringIO()):
+            self.library.write(jobs.save_track, row, False)
+            self.library.wait()                       # the write, its snapshot not read
+            self.assertEqual(fails, [0])
+            self.library.read(jobs.track, row.uid)    # a read only
+            self.settle()
+        self.assertEqual(self.library.snapshot.track(row.uid).title, "曲")
 
     def test_another_thread_calls_and_waits(self):
         row = _row("b.wav")

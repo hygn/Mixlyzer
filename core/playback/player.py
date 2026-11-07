@@ -672,6 +672,7 @@ class PlayerController(QtCore.QObject):
         # drag itself): each one is a seek, crossfaded, which a mouse moving at its own rate turns into a rasp
         self._scrub_pending: Optional[float] = None
         self._scrub_sent: Optional[float] = None   # the position last sent
+        self._scrub_local = False                   # a scrub begun on the local deck (External Sync off): ended there
         self._scrub_timer = QtCore.QTimer(self)
         self._scrub_timer.setSingleShot(True)
         self._scrub_timer.setInterval(self.SCRUB_INTERVAL_MS)
@@ -700,9 +701,12 @@ class PlayerController(QtCore.QObject):
         bus.sig_external_sync_enabled.connect(self._on_external_sync_enabled)
 
     def _on_scrub_begin(self) -> None:
+        """A local deck command as the scratch's: with External Sync on, the drag moves the views alone (the
+        local deck follows the other program's)."""
         self._scrub_pending = None
         self._scrub_sent = None
-        self._send("scrub_begin")
+        self._scrub_local = not self._external_sync_enabled
+        self._send_local("scrub_begin")
 
     def _on_scrub_update(self, sec: float) -> None:
         self._scrub_pending = float(sec)
@@ -713,20 +717,23 @@ class PlayerController(QtCore.QObject):
         """The newest scrub position (if any came since the last), then a pause of SCRUB_INTERVAL_MS."""
         if self._scrub_pending is None:
             return
-        self._send("scrub_update", self._scrub_pending)
+        self._send_local("scrub_update", self._scrub_pending)
         self._scrub_sent = self._scrub_pending
         self._scrub_pending = None
         self._scrub_timer.start()
 
     def _on_scrub_end(self, sec: float) -> None:
         """Let go: where, unless that is the position last sent (held still there, it plays on from it: a seek
-        back to it would start it again)."""
+        back to it would start it again). A scrub begun on the local deck is ended there, External Sync turned on
+        meanwhile or not."""
         self._scrub_timer.stop()
         self._scrub_pending = None
         last = self._scrub_sent
         if last is None or abs(float(sec) - last) > 1e-6:
-            self._send("scrub_update", float(sec))
-        self._send("scrub_end", float(sec))
+            self._send_local("scrub_update", float(sec))
+        if self._scrub_local:
+            self._scrub_local = False
+            self._send("scrub_end", float(sec))
 
     @QtCore.Slot()
     def _relay_time(self) -> None:

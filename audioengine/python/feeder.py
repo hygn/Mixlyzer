@@ -278,6 +278,7 @@ class PCMFeeder(QtCore.QObject):
         self._sent_finished = False
         self._seeked_while_paused = True
         self._scratching = False
+        self._follow_flush_interval()   # the hand let go with the track: fed at the normal interval again
         self._stop_polling()
         # the JumpCUE armed on the track before: disarmed whole (its candidate points rebuild the jump in
         # _render_block, which would fire it on this track), as the native engine's set_track does
