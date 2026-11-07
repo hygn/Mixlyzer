@@ -174,6 +174,28 @@ def audio_context(
     return report, xmat, vocal
 
 
+@dataclass
+class EngineRun:
+    """One run's state (JumpCueEngine.run): made new at its start, filled by its first steps and read by the
+    others. The engine keeps only its config and its jump point model between runs. The training's candidate
+    recorder reads it too (training.jumpcue_parameter_optimizer: ``run_state``)."""
+    # the learned model's features of the track (None: the model is not used)
+    features: Optional[JumpPointFeatures] = None
+    # beats a jump point may sit on (bar starts; None: any beat), each beat's place in its bar (None: unknown)
+    point_beats: Optional[np.ndarray] = None
+    bar_phase: Optional[np.ndarray] = None
+    beats_per_bar: int = 4
+    # the vocal context, the breaks' level fall and the depth a break must reach (dB: the track's most salient
+    # drops), the beat columns' cosine
+    vocal: Optional[VocalContext] = None
+    break_fall: Optional[np.ndarray] = None
+    break_floor: float = np.inf
+    C: Optional[np.ndarray] = None
+    score_cache: Optional[JumpContextCache] = None
+    # (early, late, length) -> (score after the jump, score before it)
+    pair_cache: Dict[Tuple[int, int, int], Tuple[np.ndarray, np.ndarray]] = field(default_factory=dict)
+
+
 class JumpCueEngine:
     """
     Build groups of mutually reachable Jump CUEs from self-correlation links.
@@ -186,24 +208,15 @@ class JumpCueEngine:
 
     def __init__(self, config: Optional[JumpCueConfig] = None) -> None:
         self.config = config or JumpCueConfig()
-        # Beats a jump point may sit on (bar starts); None = any beat.
-        self._point_beats: Optional[np.ndarray] = None
-        # Beat position within its bar (beats since the bar's downbeat); None = unknown.
-        self._bar_phase: Optional[np.ndarray] = None
-        self._beats_per_bar: int = 4
-        # Break depth a break must reach (dB), from the track's most salient drops.
-        self._break_floor: float = np.inf
-        # Breaks and the vocal context of the track (set per run).
-        self._vocal: Optional[VocalContext] = None
-        self._break_fall: Optional[np.ndarray] = None
-        self._C: Optional[np.ndarray] = None
-        # (early, late, length) -> (score after the jump, score before it)
-        self._pair_cache: Dict[Tuple[int, int, int], Tuple[np.ndarray, np.ndarray]] = {}
-        self._score_cache: Optional[JumpContextCache] = None
-        self._jump_features: Optional[JumpPointFeatures] = None
+        self._r = EngineRun()       # the run's state: a new one at each run
         self._jump_model: Optional[JumpPointModel] = (
             JumpPointModel.load(self.config.jump_point_model_path) if self.config.jump_point_model_path else None
         )
+
+    @property
+    def run_state(self) -> EngineRun:
+        """The last run's state (or the one running)."""
+        return self._r
 
     def run(
         self,
@@ -228,27 +241,18 @@ class JumpCueEngine:
         beats = np.asarray(beats_time, dtype=float)
         if vocal_context is not None and not np.array_equal(vocal_context.beats_time, beats):
             raise ValueError("cached vocal context uses a different beat grid")
-        self._jump_features = jump_point_features
-        self._score_cache = None
-        self._pair_cache = {}
-        self._vocal = None
-        self._break_fall = None
-        self._break_floor = np.inf
-        self._C = None
-        self._point_beats = None
-        self._bar_phase = None
-        self._beats_per_bar = 4
+        r = self._r = EngineRun(features=jump_point_features)
         segments = None if tempo_segments is None else np.asarray(tempo_segments, dtype=float)
         if segments is not None and segments.ndim == 2 and segments.shape[0] > 0:
             mask = np.zeros(beats.size, dtype=bool)
             mask[downbeat_beat_indices(beats, segments)] = True
-            self._point_beats = mask
+            r.point_beats = mask
             downbeats = np.flatnonzero(mask)
             if downbeats.size:
                 last = np.searchsorted(downbeats, np.arange(beats.size), side="right") - 1
-                self._bar_phase = np.where(last >= 0, np.arange(beats.size) - downbeats[np.maximum(last, 0)], -1)
+                r.bar_phase = np.where(last >= 0, np.arange(beats.size) - downbeats[np.maximum(last, 0)], -1)
             if downbeats.size >= 2:
-                self._beats_per_bar = int(max(1, round(float(np.median(np.diff(downbeats))))))
+                r.beats_per_bar = int(max(1, round(float(np.median(np.diff(downbeats))))))
         if context is None:
             context = audio_context(self.config, y_harm, sr, beats, y_mix=y_mix, mix_magnitude=mix_magnitude,
                                     vocal_context=vocal_context)
@@ -264,7 +268,8 @@ class JumpCueEngine:
         xmat: np.ndarray,
         vocal: Optional[VocalContext] = None,
     ) -> List[JumpCuePair]:
-        self._score_cache = JumpContextCache(vocal) if vocal is not None else None
+        r = self._r
+        r.score_cache = JumpContextCache(vocal) if vocal is not None else None
         if not report.links or xmat.ndim != 2 or xmat.shape[1] == 0:
             return []
 
@@ -272,14 +277,14 @@ class JumpCueEngine:
         X = xmat / (np.linalg.norm(xmat, axis=0, keepdims=True) + 1e-9)
         C = X.T @ X  # beat-column cosine
         n = C.shape[0]
-        self._vocal = vocal
-        self._break_fall = self._level_fall(vocal)
-        self._break_floor = np.inf
-        if self._break_fall is not None and self._break_fall.size > 4:
-            depth = self._score_cache.break_depth(cfg.break_ref_beats)
-            self._break_floor = float(np.quantile(depth, 1.0 - float(cfg.break_top_fraction)))
-        self._C = C
-        self._pair_cache = {}
+        r.vocal = vocal
+        r.break_fall = self._level_fall(vocal)
+        r.break_floor = np.inf
+        if r.break_fall is not None and r.break_fall.size > 4:
+            depth = r.score_cache.break_depth(cfg.break_ref_beats)
+            r.break_floor = float(np.quantile(depth, 1.0 - float(cfg.break_top_fraction)))
+        r.C = C
+        r.pair_cache = {}
         groups: List[RepeatGroup] = []
         # Groups are built without the gap to each other: merging moves their
         # points, and the gap is kept when they are placed (_place_groups).
@@ -291,7 +296,7 @@ class JumpCueEngine:
             a0 = int(round(link.a_beat[0]))
             b0 = int(round(link.b_beat[0]))
             length = int(round(link.a_beat[1])) - a0
-            if length < cfg.min_link_bars * self._beats_per_bar:
+            if length < cfg.min_link_bars * r.beats_per_bar:
                 continue
             if length <= 0 or a0 + length > n or b0 < 0 or b0 + length > n:
                 continue
@@ -313,7 +318,7 @@ class JumpCueEngine:
             return []
         groups = self._merge_groups(C, groups, vocal, beats_time)
         groups = self._place_groups(C, groups, vocal, beats_time)
-        if groups and vocal is not None and self._jump_features is not None and self._jump_model is not None:
+        if groups and vocal is not None and r.features is not None and self._jump_model is not None:
             groups = self._model_points(groups, beats_time)
         else:
             groups = self._fit_hot_cues(groups)
@@ -423,12 +428,12 @@ class JumpCueEngine:
         beats before it: the vocal / lyric context scores, or without them the
         cosine of the two beats (after) and of the two beats before (before)."""
         key = (early, late, length)
-        if key in self._pair_cache:
-            return self._pair_cache[key]
+        if key in self._r.pair_cache:
+            return self._r.pair_cache[key]
         after = np.full(length, -np.inf)
         before = np.full(length, -np.inf)
         if vocal is not None:
-            cache = self._score_cache
+            cache = self._r.score_cache
             scores = (cache.scores((late, late + length), late - early, self.config.jump_context)
                       if cache is not None and cache.ctx is vocal else
                       jump_point_scores(vocal, (late, late + length), late - early, self.config.jump_context))
@@ -443,7 +448,7 @@ class JumpCueEngine:
             after = C[early + d, late + d].astype(float)
             prev = np.maximum(d - 1, 0)
             before = C[early + prev, late + prev].astype(float)
-        self._pair_cache[key] = (after, before)
+        self._r.pair_cache[key] = (after, before)
         return after, before
 
     def _pair_curve(
@@ -690,8 +695,8 @@ class JumpCueEngine:
 
         for g in groups:
             points = [m + g.offset for m in g.starts]
-            choice = self._jump_model.choose(self._vocal, self._jump_features, points, allowed,
-                                             cache=self._score_cache)
+            choice = self._jump_model.choose(self._r.vocal, self._r.features, points, allowed,
+                                             cache=self._r.score_cache)
             if choice is None:
                 print(f"[JumpCUE] group at {float(beats_time[g.starts[0]]):.1f}s dropped: no model jump within the point limits")
                 continue
@@ -719,7 +724,7 @@ class JumpCueEngine:
     def _align_bar(self, ref: int, start: int, length: int, n: int) -> Optional[int]:
         """``start`` moved (by up to bar_align_beats) to the bar position of
         ``ref``; unchanged without bars, None when no such start fits."""
-        phase = self._bar_phase
+        phase = self._r.bar_phase
         if phase is None:
             return start
         want = phase[min(ref, phase.size - 1)]
@@ -735,8 +740,9 @@ class JumpCueEngine:
         break_ref_beats before it (dB)."""
         if vocal is None or vocal.beat_db.size == 0:
             return None
-        if self._score_cache is not None and self._score_cache.ctx is vocal:
-            return self._score_cache.level_fall(self.config.break_ref_beats)
+        cache = self._r.score_cache
+        if cache is not None and cache.ctx is vocal:
+            return cache.level_fall(self.config.break_ref_beats)
         level = np.asarray(vocal.beat_db, dtype=float)
         ref = int(max(1, self.config.break_ref_beats))
         fall = np.zeros(level.size)
@@ -749,7 +755,7 @@ class JumpCueEngine:
         the track's break depth floor in each), scoring min_group_score or more
         on the better side of the jump, with that score; None if none."""
         cfg = self.config
-        fall = self._break_fall
+        fall = self._r.break_fall
         if fall is None:
             return None
         length = curve.size
@@ -761,7 +767,7 @@ class JumpCueEngine:
         weakest = np.full(length, np.inf)
         for i in range(len(members)):
             for j in range(i + 1, len(members)):
-                after, before = self._pair_curves(C, members[i], members[j], length, self._vocal)
+                after, before = self._pair_curves(C, members[i], members[j], length, self._r.vocal)
                 weakest = np.minimum(weakest, np.maximum(after, before))
         best = None
         d = 0
@@ -777,7 +783,7 @@ class JumpCueEngine:
             if (
                 np.isfinite(curve[d])
                 and weakest[d] >= float(cfg.min_group_score)
-                and depth >= self._break_floor
+                and depth >= self._r.break_floor
             ):
                 if best is None or depth > best[0]:
                     best = (depth, d, float(weakest[d]))
@@ -790,13 +796,14 @@ class JumpCueEngine:
         otherwise the best-scoring downbeat (any beat without bars, or when no
         downbeat scores min_group_score). Returns the beat and its score."""
         cfg = self.config
-        brk = self._break_offset(self._C, curve, members) if self._C is not None else None
+        brk = self._break_offset(self._r.C, curve, members) if self._r.C is not None else None
         if brk is not None:
             return brk
         candidates = curve
-        if self._point_beats is not None:
-            idx = np.clip(np.asarray(members, dtype=int)[:, None] + np.arange(curve.size)[None, :], 0, self._point_beats.size - 1)
-            on_bar = np.where(self._point_beats[idx].all(axis=0), curve, -np.inf)
+        point_beats = self._r.point_beats
+        if point_beats is not None:
+            idx = np.clip(np.asarray(members, dtype=int)[:, None] + np.arange(curve.size)[None, :], 0, point_beats.size - 1)
+            on_bar = np.where(point_beats[idx].all(axis=0), curve, -np.inf)
             if np.max(on_bar) >= float(cfg.min_group_score):
                 candidates = on_bar
         pick = int(np.argmax(candidates))

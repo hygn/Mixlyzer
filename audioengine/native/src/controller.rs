@@ -57,13 +57,30 @@ struct Meter {
     at: f64,
 }
 
+/// The MIDI input asked for (open_midi, take_opened, close_midi), by the name asked.
+enum Input {
+    None,
+    /// being opened on a thread of its own (an open takes tens of ms: the engine thread never waits for it)
+    Opening { name: String, rx: std::sync::mpsc::Receiver<Result<Midi, String>> },
+    Open { name: String, midi: Midi },
+    /// it could not be opened (asked again, it is tried again)
+    Failed { name: String },
+}
+
+impl Input {
+    fn name(&self) -> &str {
+        match self {
+            Input::None => "",
+            Input::Opening { name, .. } | Input::Open { name, .. } | Input::Failed { name } => name,
+        }
+    }
+}
+
 pub struct Controller {
-    midi: Option<Midi>,
-    // a port being opened on a thread of its own (an open takes tens of ms: the engine thread never waits for it)
-    opening: Option<std::sync::mpsc::Receiver<Result<Midi, String>>>,
-    port: String, // the input open or being opened ("": none)
-    closing: Option<std::thread::JoinHandle<()>>, // the last input let go, until it is (an open waits for it)
-    pub midi_state: u32,
+    input: Input,
+    // the last opening or closing of a port, on its thread until it is done: the next one waits for it, so a port is
+    // never opened while it is still being opened or closed (the system refuses it: MMSYSERR_ALLOCATED)
+    port_work: Option<std::thread::JoinHandle<()>>,
     bindings: Vec<Binding>,
     lamps_sent: Option<u64>,
     meter_gain: f64,
@@ -74,11 +91,8 @@ pub struct Controller {
 impl Controller {
     pub fn new() -> Controller {
         Controller {
-            midi: None,
-            opening: None,
-            port: String::new(),
-            closing: None,
-            midi_state: 0,
+            input: Input::None,
+            port_work: None,
             bindings: vec![],
             lamps_sent: None,
             meter_gain: 1.0,
@@ -92,66 +106,80 @@ impl Controller {
     pub fn open_midi(&mut self, name: &str, wake: Option<std::thread::Thread>) {
         // the input already open or being opened: kept (asked again, it is not let go and taken anew, which the
         // system may refuse while the old port is still being closed: MMSYSERR_ALLOCATED)
-        if !name.is_empty() && name == self.port && (self.midi.is_some() || self.opening.is_some()) {
+        if !name.is_empty() && name == self.input.name() && matches!(self.input, Input::Opening { .. } | Input::Open { .. }) {
             return;
         }
         self.close_midi();
-        self.opening = None;   // one asked for before: dropped when it comes
         if name.is_empty() {
             return;
         }
         let (tx, rx) = std::sync::mpsc::channel();
-        self.port = name.to_string();
-        let name = name.to_string();
-        let closing = self.closing.take();
-        std::thread::spawn(move || {
-            if let Some(c) = closing {
-                let _ = c.join(); // the port let go first
-            }
-            let _ = tx.send(Midi::open(&name, wake));
+        let asked = name.to_string();
+        self.after_port_work(move || {
+            // given up meanwhile (its receiver dropped): the port it opened let go here, before the next work
+            let _ = tx.send(Midi::open(&asked, wake));
         });
-        self.opening = Some(rx);
+        self.input = Input::Opening { name: name.to_string(), rx };
+    }
+
+    /// ``work`` on a port on a thread of its own, once the last work is done.
+    fn after_port_work(&mut self, work: impl FnOnce() + Send + 'static) {
+        let before = self.port_work.take();
+        self.port_work = Some(std::thread::spawn(move || {
+            if let Some(b) = before {
+                let _ = b.join();
+            }
+            work()
+        }));
     }
 
     /// The input opened meanwhile, when it is.
     fn take_opened(&mut self) {
-        let Some(rx) = self.opening.as_ref() else { return };
+        let Input::Opening { rx, .. } = &self.input else { return };
         let result = match rx.try_recv() {
             Ok(r) => r,
             Err(std::sync::mpsc::TryRecvError::Empty) => return,
             Err(std::sync::mpsc::TryRecvError::Disconnected) => Err("the MIDI input's opening thread ended".into()),
         };
-        self.opening = None;
-        match result {
-            Ok(m) => {
-                log_line!("MIDI input: {}", m.name);
-                self.midi = Some(m);
-                self.midi_state = 1;
+        let name = self.input.name().to_string();
+        self.input = match result {
+            Ok(midi) => {
+                log_line!("MIDI input: {}", midi.name);
                 self.lamps_sent = None;   // its lights sent whole at the next tick
+                Input::Open { name, midi }
             }
             Err(err) => {
                 log_line!("{err}");
-                self.midi_state = 2;
+                Input::Failed { name }
             }
-        }
+        };
     }
 
+    /// The input let go (one being opened: given up).
     pub fn close_midi(&mut self) {
         self.send_lamps(0, None); // the controller's lights out
         self.send_meter(0);
         // let go on a thread of its own (closing a port takes as long as opening one); the next open waits for it
-        if let Some(m) = self.midi.take() {
-            let before = self.closing.take();
-            self.closing = Some(std::thread::spawn(move || {
-                if let Some(b) = before {
-                    let _ = b.join();
-                }
-                drop(m)
-            }));
+        if let Input::Open { midi, .. } = std::mem::replace(&mut self.input, Input::None) {
+            self.after_port_work(move || drop(midi));
         }
-        self.port.clear();
-        self.midi_state = 0;
         self.lamps_sent = None;
+    }
+
+    /// st::MIDI_STATE: 0 none (or being opened), 1 open, 2 could not be opened.
+    pub fn midi_state(&self) -> u32 {
+        match self.input {
+            Input::Open { .. } => 1,
+            Input::Failed { .. } => 2,
+            Input::None | Input::Opening { .. } => 0,
+        }
+    }
+
+    fn midi(&mut self) -> Option<&mut Midi> {
+        match &mut self.input {
+            Input::Open { midi, .. } => Some(midi),
+            _ => None,
+        }
     }
 
     pub fn set_bindings(&mut self, payload: &[u8]) {
@@ -190,7 +218,7 @@ impl Controller {
     /// The messages come since the last call: each acted on, and into the GUI's ring.
     pub fn read_midi(&mut self, slot: &mut Slot, mix: &MixParams, ctl: &Control) {
         self.take_opened();
-        let Some(midi) = self.midi.as_ref() else { return };
+        let Some(midi) = self.midi() else { return };
         for (at, msg) in midi.drain() {
             let (flags, gui_action, steps) = self.message(slot, mix, at, msg);
             ctl.put_midi_event(msg, flags, gui_action, steps);
@@ -291,7 +319,7 @@ impl Controller {
         let now = clock::now();
         let dt = (now - self.last_tick).max(0.0);
         self.last_tick = now;
-        if self.midi.is_none() {
+        if self.midi().is_none() {
             return;
         }
         let lights = slot.deck.lights(&slot.engine, now) | Self::mixer_lights(mix);
@@ -323,7 +351,7 @@ impl Controller {
     /// The bindings' lights as ``lights`` (Deck::lights and the mixer's), those that changed since ``before`` (None:
     /// all).
     fn send_lamps(&mut self, lights: u64, before: Option<u64>) {
-        let Some(midi) = self.midi.as_mut() else { return };
+        let Input::Open { midi, .. } = &mut self.input else { return };
         for b in self.bindings.iter().filter(|b| b.action < act::GUI) {
             if b.lamp == 0 || !matches!(b.status & 0xF0, 0x90 | 0xB0) {
                 continue;
@@ -338,7 +366,7 @@ impl Controller {
     }
 
     fn send_meter(&mut self, value: u8) {
-        let Some(midi) = self.midi.as_mut() else { return };
+        let Input::Open { midi, .. } = &mut self.input else { return };
         for b in self.bindings.iter().filter(|b| b.action == act::LEVEL_METER && b.status & 0xF0 == 0xB0) {
             midi.send(&[b.status, b.data1, value.min(127)]);
         }

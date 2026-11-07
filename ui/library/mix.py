@@ -13,11 +13,10 @@ from core.library import jobs
 from core.search import mixability
 from core.settings import store as settings_store
 from system.i18n import tr, tr_ctx
-from ui.library.common import Track, _mmss
+from ui.library.common import SourceKind, Track, _mmss
 from ui.library.search import SEARCH_MIN_WIDTH, _MatchToggle, compact_spin, dim_label, separator
 from views.render.keystrip import key_segment_label
 
-MIX_SOURCE = "mix_candidates"
 MIX_SEARCH_MIN_WIDTH = 120      # the search field's least while the criteria share its row
 
 
@@ -101,11 +100,11 @@ class MixMixin:
         deck.mix_match_all, deck.mix_tempo_range = options.match_all, options.tempo_range
         self.sp_mix_tempo.setEnabled(options.bpm)
         settings_store.deck_changed()
-        if self._source_kind == MIX_SOURCE:
+        if self._shown_source().kind is SourceKind.MIX:
             self._refresh_current_source()
 
     def _sync_mix_bar(self) -> None:
-        shown = self._source_kind == MIX_SOURCE and not self._music_mode
+        shown = self._shown_source().kind is SourceKind.MIX
         self.mix_bar.setVisible(shown)
         self.e_search.setMinimumWidth(MIX_SEARCH_MIN_WIDTH if shown else SEARCH_MIN_WIDTH)   # room for the card
         self.sp_mix_tempo.setEnabled(self.cb_mix_bpm.isChecked())
@@ -123,7 +122,7 @@ class MixMixin:
 
                 def done(found, request=request) -> None:
                     self._mix_found = (request, found)
-                    if self._source_kind == MIX_SOURCE and self._mix_asked == request:
+                    if self._shown_source().kind is SourceKind.MIX and self._mix_asked == request:
                         self._refresh_current_source()
 
                 self.library.read(jobs.mix_candidates, *request, done=done)

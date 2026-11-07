@@ -53,6 +53,18 @@ class libconfig:
     rekordbox_phrase_mood: str = "mid"
     rekordbox_phrase_map: str = ""
 
+    def rekordbox_xml(self) -> tuple:
+        """What the Rekordbox XML is written with (a change of any writes it again whole)."""
+        return (bool(self.rekordbox_sync_enabled), str(self.rekordbox_xml_path or "").strip(),
+                float(self.rekordbox_ramp_tolerance_ms), bool(self.rekordbox_comment_tieups),
+                str(self.rekordbox_tieup_language or ""))
+
+    def rekordbox_xml_resync(self, previous: "libconfig") -> bool:
+        """Whether a save from ``previous`` to these settings writes the XML again whole (AppWindow._on_settings_save
+        alone decides it; the settings dialog's Sync Now shows the sync the save starts)."""
+        return (previous.rekordbox_xml() != self.rekordbox_xml() and bool(self.rekordbox_sync_enabled)
+                and bool(str(self.rekordbox_xml_path or "").strip()))
+
 
 @dataclass
 class phraselabelname:

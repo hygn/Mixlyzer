@@ -744,7 +744,7 @@ fn publish(ctl: &Control, slot: &mut Slot, controller: &Controller, cmd_done: u6
     ctl.put_f64(st::JUMP_DEST, e.jump_armed().unwrap_or(f64::NAN));
     ctl.put_u32(st::LEDS, deck.lamps(e, now));
     ctl.put_u32(st::TEMPO_RANGE, deck.tempo_range);
-    ctl.put_u32(st::MIDI_STATE, controller.midi_state);
+    ctl.put_u32(st::MIDI_STATE, controller.midi_state());
     for (j, v) in deck.knobs().iter().enumerate() {
         ctl.put_f64(st::KNOBS + 8 * j, *v);
     }

@@ -4,6 +4,8 @@ its audio fingerprints (the Variants' and Search by Music's), rebuilt on demand:
 then Index Now indexes it again (core.workflows.music_index: its audio decoded in a worker process)."""
 from __future__ import annotations
 
+import dataclasses
+import enum
 import os
 from typing import Callable, Optional
 
@@ -25,6 +27,21 @@ from ui.config.scroll import scroll_page
 from ui.theme import current_theme
 
 
+class _Stage(enum.Enum):
+    DROPPING = enum.auto()      # the track being taken out of both indexes (the library's owner)
+    INDEXING = enum.auto()      # Index Now asked: the end of its run awaited (a run ending before it is not ours)
+    CHECKING = enum.auto()      # its run ended: whether the track was indexed being read
+
+
+@dataclasses.dataclass(frozen=True)
+class _Rebuild:
+    """Rebuild Audio Fingerprints of ``uid``; ``again``: Index Now asked a second time (it was running another
+    run when first asked: one at a time)."""
+    uid: str
+    stage: _Stage
+    again: bool = False
+
+
 class SearchIndexPanel(QWidget):
     """A track's readings and audio fingerprints (the module)."""
 
@@ -36,9 +53,7 @@ class SearchIndexPanel(QWidget):
         self._library = library
         self._search_settings = search_settings or (lambda: default_cfg().searchconfig)
         self._row: Optional[TrackRow] = None
-        self._rebuilding: Optional[str] = None    # the track dropped, waiting for Index Now
-        self._asked_again = False                 # Index Now asked a second time (it was running another run)
-        self._checking = False                    # Index Now done: whether the track was indexed being read
+        self._rebuild: Optional[_Rebuild] = None  # the rebuild running (None: none)
 
         body = QWidget()
         content = QVBoxLayout(body)
@@ -234,8 +249,8 @@ class SearchIndexPanel(QWidget):
         uid = self.track_uid()
         self.lbl_variants.setText("")
         self.lbl_music.setText("")
-        self.btn_rebuild.setEnabled(uid is not None and self._rebuilding is None and self._bus is not None)
-        if self._rebuilding is None:
+        self.btn_rebuild.setEnabled(uid is not None and self._rebuild is None and self._bus is not None)
+        if self._rebuild is None:
             self.lbl_rebuild.setText("")
         if uid is not None:
             self._read_state(uid)
@@ -245,17 +260,28 @@ class SearchIndexPanel(QWidget):
             self._library.read(jobs.index_state, uid, done=lambda found: self._on_state(uid, *found),
                                failed=lambda _exc: self._on_state(uid, False, False))
 
+    def _rebuild_at(self, stage: _Stage) -> Optional[_Rebuild]:
+        """The rebuild running when it is at ``stage``."""
+        return self._rebuild if self._rebuild is not None and self._rebuild.stage is stage else None
+
+    def _end_rebuild(self, note: str, *, show_state: bool = False) -> None:
+        """No rebuild running, ``note`` said (after the track's state shown again: ``show_state``, which clears
+        the line)."""
+        self._rebuild = None
+        if show_state:
+            self._show_index_state()
+        self.lbl_rebuild.setText(note)
+
     def _on_state(self, uid: str, variants: bool, music: bool) -> None:
-        if uid == self._rebuilding and self._checking:      # Index Now done: was the track indexed?
-            self._checking = False
-            if not (variants and music) and not self._asked_again:
+        checking = self._rebuild_at(_Stage.CHECKING)
+        if checking is not None and checking.uid == uid:      # Index Now done: was the track indexed?
+            if not (variants and music) and not checking.again:
                 # Index Now was running another run when asked (it takes one at a time): asked again, for this track
-                self._asked_again = True
+                self._rebuild = _Rebuild(uid, _Stage.INDEXING, again=True)
                 self._bus.sig_music_index_requested.emit(None)
                 return
-            self._rebuilding = None
-            self.lbl_rebuild.setText(tr("Rebuilt.") if variants and music
-                                     else tr("Not rebuilt: Index Now could not index the track."))
+            self._end_rebuild(tr("Rebuilt.") if variants and music
+                              else tr("Not rebuilt: Index Now could not index the track."))
             self.btn_rebuild.setEnabled(uid == self.track_uid())
         if uid != self.track_uid():
             return
@@ -265,44 +291,43 @@ class SearchIndexPanel(QWidget):
     def rebuild(self) -> None:
         """The track out of both indexes (by the library's owner), then Index Now asked for (_on_dropped)."""
         uid = self.track_uid()
-        if uid is None or self._rebuilding is not None or self._bus is None or self._library is None:
+        if uid is None or self._rebuild is not None or self._bus is None or self._library is None:
             return
         if self._row is not None and not os.path.isfile(self._row.path or ""):
             self.lbl_rebuild.setText(tr("The audio file is not there: the fingerprints cannot be made again."))
             return
-        self._rebuilding, self._asked_again = uid, False
+        self._rebuild = _Rebuild(uid, _Stage.DROPPING)
         self.btn_rebuild.setEnabled(False)
         self.lbl_rebuild.setText(tr("Taking the track out of the indexes…"))
         self._library.write(jobs.drop_from_indexes, [uid], done=lambda _r: self._on_dropped(uid, ""),
                             failed=lambda exc: self._on_dropped(uid, str(exc)))
 
     def _on_dropped(self, uid: str, error: str) -> None:
-        if error:
-            self._rebuilding = None
-            self.lbl_rebuild.setText(tr("Not rebuilt: {error}").format(error=error))
-            self._show_index_state()
+        if self._rebuild_at(_Stage.DROPPING) is None:
             return
+        if error:
+            self._end_rebuild(tr("Not rebuilt: {error}").format(error=error), show_state=True)
+            return
+        self._rebuild = _Rebuild(uid, _Stage.INDEXING)
         self.lbl_rebuild.setText(tr("Indexing…"))
         if uid == self.track_uid():
             self._show_index_state()
         self._bus.sig_music_index_requested.emit(None)
 
     def _on_index_progress(self, _run, percent: int, _text: str) -> None:
-        if self._rebuilding is not None:
+        if self._rebuild_at(_Stage.INDEXING) is not None:
             self.lbl_rebuild.setText(tr("Indexing… {percent}%").format(percent=int(percent)))
 
     def _on_index_finished(self, _run, _summary) -> None:
-        uid = self._rebuilding
-        if uid is None:
-            if self._row is not None:
+        indexing = self._rebuild_at(_Stage.INDEXING)
+        if indexing is None:      # none asked (a run ending while the track is dropped is not ours)
+            if self._row is not None and self._rebuild is None:
                 self._show_index_state()
             return
-        self._checking = True       # whether it was indexed: read by the library's owner (_on_state)
-        self._read_state(uid)
+        self._rebuild = dataclasses.replace(indexing, stage=_Stage.CHECKING)   # read by the library's owner (_on_state)
+        self._read_state(indexing.uid)
 
     def _on_index_failed(self, _run, error: str) -> None:
-        if self._rebuilding is None:
+        if self._rebuild_at(_Stage.INDEXING) is None:
             return
-        self._rebuilding = None
-        self.lbl_rebuild.setText(tr("Not rebuilt: {error}").format(error=error))
-        self._show_index_state()
+        self._end_rebuild(tr("Not rebuilt: {error}").format(error=error), show_state=True)

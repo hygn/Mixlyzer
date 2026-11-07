@@ -151,7 +151,7 @@ class ReceiverTests(unittest.TestCase):
         self.assertEqual(self.loads, [])
         self.library.add(self.track)
         self.ctl._validated_external_paths.clear()
-        self.ctl._clear_pending_external()
+        self.ctl._forget()
         self.send(osc.message(xs.TIME_ADDRESS, 1, self.track, True, True, 2.0))
         self.assertEqual(self.loads, [(self.track, 2.0)])
 

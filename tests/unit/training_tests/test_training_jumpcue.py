@@ -291,5 +291,48 @@ class RunTests(unittest.TestCase):
         self.assertFalse(self.out.exists())
 
 
+class StagedRunTests(unittest.TestCase):
+    """The staged command line (run): its stages known, a shipped model never its output, finalize picking only
+    the trials of this run (its dataset, model and label model)."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.dir = Path(self._tmp.name)
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def test_an_unknown_stage_refused_before_anything_is_read(self):
+        with self.assertRaisesRegex(ValueError, "unknown stage"):
+            O.run(self.dir / "none.npz", self.dir / "none.json", self.dir / "out.json", stage="finalise")
+
+    def test_a_shipped_model_never_written(self):
+        with self.assertRaisesRegex(ValueError, "shipped"):
+            O.run(self.dir / "none.npz", self.dir / "default_jumpcue_jump_point.json", self.dir / "out.json",
+                  stage="finalize")
+
+    def trial(self, run: str, l2: float) -> dict:
+        trial = {"run": run, "feature_set": "base", "l2": l2, "hard_weight": 1.0, "corrected_weight": 1.0,
+                 "preference_weight": 3.0, "exact_accuracy": 0.5, "track_all_groups_accuracy": 0.5,
+                 "member_f1": 0.5}
+        O.atomic_write_json(O._trial_path(self.dir, trial), trial)
+        return trial
+
+    def test_finalize_picks_only_this_runs_trials(self):
+        self.trial("old", 1.0)
+        mine = self.trial("mine", 3.0)
+        self.assertEqual(O._finished_trials(self.dir, "mine"), [mine])
+        with self.assertRaisesRegex(RuntimeError, "other runs"):
+            O._finished_trials(self.dir, "another")
+
+    def test_the_run_key_follows_the_model(self):
+        dataset, model = self.dir / "d.npz", self.dir / "m.json"
+        dataset.write_bytes(b"dataset")
+        model.write_text("{}", encoding="utf-8")
+        before = O._run_key(dataset, model, None, {})
+        model.write_text('{"weights": [1]}', encoding="utf-8")     # written by a finalize
+        self.assertNotEqual(O._run_key(dataset, model, None, {}), before)
+
+
 if __name__ == "__main__":
     unittest.main()

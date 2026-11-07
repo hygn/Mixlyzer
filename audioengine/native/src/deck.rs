@@ -1297,4 +1297,27 @@ mod tests {
         assert_eq!(r.s.engine.jumped_count, 0, "the jump from the place the seek left taken");
         assert!(r.at() > 8.0 && r.at() < 9.0, "the seek lost: heard at {}", r.at());
     }
+
+    #[test]
+    fn a_jump_reached_while_a_scrub_resumes_plays_on_at_the_tempo() {
+        // the key shifted: the original's unity is off unity too (the stretcher plays it), so the standby is wanted
+        let mut r = Rig::new(20.0, false, &[], &[]);
+        r.s.engine.set_timestretch(true);
+        r.s.engine.set_key_shift(2.0);
+        r.s.engine.set_tempo(1.06);
+        r.seek(6.0);
+        r.tap(act::PLAY_PAUSE);
+        r.pump(30);
+        r.s.engine.set_scrubbing(true);
+        r.pump(5);
+        r.s.engine.set_scrubbing(false); // the tempo's stream prepared from a little ahead, unity up to it
+        let ahead = r.at() + 0.08; // the render head reaches it before the resume point
+        r.s.engine.arm_jump(Some(ahead * SEC), 1.0 * SEC, true, vec![]); // back, before the resume point
+        r.pump(40);
+        assert_eq!(r.s.engine.jumped_count, 1);
+        let from = r.at();
+        r.pump(100);
+        let speed = r.at() - from; // a second heard
+        assert!((speed - 1.06).abs() < 0.01, "after the jump: {speed} s a second (the tempo 1.06)");
+    }
 }

@@ -192,7 +192,10 @@ class KeyEditMixin:
         self.key_fifth_down.clicked.connect(lambda: self._change_keys(lambda k: _alphanumeric_step(k, -1)))
         self.key_fifth_up.clicked.connect(lambda: self._change_keys(lambda k: _alphanumeric_step(k, 1)))
         self.key_relative.clicked.connect(lambda: self._change_keys(_relative_key))
-        for aid in (self.key_root, self.key_drone, self.key_chord):
+        # the listening aid held: one at a time, or none (_key_aid, set by _set_key_aid; the buttons show it)
+        self._key_aids = {self.key_root: _root_notes, self.key_drone: _drone_notes, self.key_chord: _tonic_chord_notes}
+        self._key_aid: QtWidgets.QToolButton | None = None
+        for aid in self._key_aids:
             aid.toggled.connect(lambda on, aid=aid: self._toggle_key_hold(aid, on))
 
         self._key_cur = -1
@@ -306,26 +309,22 @@ class KeyEditMixin:
     # ---- listening aids ----
 
     def _toggle_key_hold(self, btn: QtWidgets.QToolButton, on: bool) -> None:
-        """Root, root and fifth, and chord are one at a time (or none)."""
-        if on:
-            for other in (self.key_root, self.key_drone, self.key_chord):
-                if other is not btn:
-                    other.blockSignals(True)
-                    other.setChecked(False)
-                    other.blockSignals(False)
+        """An aid's button: it held (another let go), or none."""
+        self._set_key_aid(btn if on else (None if self._key_aid is btn else self._key_aid))
+
+    def _set_key_aid(self, aid: QtWidgets.QToolButton | None) -> None:
+        """Root, root and fifth, or chord held (None: none), the buttons showing it, its tones sent."""
+        self._key_aid = aid
+        for btn in self._key_aids:
+            btn.blockSignals(True)
+            btn.setChecked(btn is aid)
+            btn.blockSignals(False)
         idx = self._current_key_row()
         self._send_key_hold(self._key_of(idx) if idx is not None else None)
 
     def _send_key_hold(self, key: int | None) -> None:
-        if not hasattr(self, "key_drone"):
-            return
-        notes: tuple[int, ...] = ()
-        if key is not None and self.key_root.isChecked():
-            notes = _root_notes(key)
-        elif key is not None and self.key_drone.isChecked():
-            notes = _drone_notes(key)
-        elif key is not None and self.key_chord.isChecked():
-            notes = _tonic_chord_notes(key)
+        aid = getattr(self, "_key_aid", None)
+        notes: tuple[int, ...] = self._key_aids[aid](key) if aid is not None and key is not None else ()
         if notes != getattr(self, "_key_hold_sent", ()):
             self._key_hold_sent = notes
             self.bus.sig_tone_hold.emit(notes)

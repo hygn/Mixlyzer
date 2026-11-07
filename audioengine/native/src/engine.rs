@@ -23,14 +23,50 @@ use crate::shm::Pcm;
 use crate::keyshift::{self, Pitched};
 use crate::timeline::Timeline;
 
-#[derive(Clone, Copy, PartialEq)]
+/// What the standby stretcher is prepared for (a little each tick, standby_ready), one thing at a time; set by
+/// prepare_standby_at, let go by cancel_standby, taken by switch_to_standby / resume_switch / take_start_standby.
+#[derive(Clone, Copy, PartialEq, Debug)]
 enum Standby {
-    Seek,
-    Jump,
-    Resume, // a scrub let go: the tempo's stream from a point ahead (resume_at)
-    // stopped off unity: the stream from where play would start (CUE's preview, PLAY), prepared while stopped, so
-    // a start is no stream restart in one tick (~10 ms of work: CUE tapped fast ran a small buffer dry)
-    Start,
+    Idle,
+    /// a seek while playing off unity: switched to once ready (tick); ``sent_at`` the command's time (its response)
+    Seek { target: f64, sent_at: f64 },
+    /// the armed JumpCUE's destination: switched to when the render head reaches its start ready (render_block)
+    Jump { dest: f64 },
+    /// a scrub let go with the time stretch off unity: the original plays on at unity up to input frame ``at``,
+    /// where the tempo's stream prepared from there takes over (render_block). Nothing displaces it while it lasts:
+    /// a jump meanwhile is taken without the standby (it would leave the deck at unity, its key lost, past it)
+    Resume { at: f64 },
+    /// stopped off unity: the stream from where play would start (CUE's preview, PLAY), prepared while stopped at
+    /// ``step`` (the tempo moved: prepared again), so a start is no stream restart in one tick (~10 ms of work: CUE
+    /// tapped fast ran a small buffer dry)
+    Start { at: f64, step: f64 },
+}
+
+impl Standby {
+    /// The input frame its stream is prepared from (Idle: none).
+    fn target(&self) -> Option<f64> {
+        match *self {
+            Standby::Idle => None,
+            Standby::Seek { target, .. } => Some(target),
+            Standby::Jump { dest } => Some(dest),
+            Standby::Resume { at } => Some(at),
+            Standby::Start { at, .. } => Some(at),
+        }
+    }
+
+    /// The same stream (the same kind from the same frame, ``len`` the track's): not prepared again.
+    fn same_stream(&self, other: &Standby, len: f64) -> bool {
+        std::mem::discriminant(self) == std::mem::discriminant(other)
+            && self.target().map(|t| t.clamp(0.0, len)) == other.target().map(|t| t.clamp(0.0, len))
+    }
+}
+
+/// The track's end while playing: not rendered yet, rendered (the ring's frame after its last), heard (counted).
+#[derive(Clone, Copy, PartialEq, Debug)]
+enum End {
+    Ahead,
+    Rendered(u64),
+    Heard,
 }
 
 pub struct Engine {
@@ -53,16 +89,11 @@ pub struct Engine {
     // the speed renderer when the time stretch is on or the key shifted (else varispeed), its pitch moved by the key
     stretch: Option<Box<Pitched>>,
     standby: Option<Box<Pitched>>,
-    standby_for: Option<(Standby, f64)>,
-    pending_seek: Option<f64>,
+    standby_for: Standby,
     // a seek while playing (not deferred): crossfaded in by the next block rendered, so the seeks between two
     // blocks are one crossfade, the last (each appended at once, a seek a tick ran the ring over)
     seek_to: Option<f64>,
-    // a scrub let go with the time stretch off unity: the original plays on at unity up to this input frame, where
-    // the stream prepared for it (Standby::Resume) takes over
-    resume_at: Option<f64>,
     prep_cost: f64, // one prepare_step's cost (s), smoothed: the standby's work stops before it would overrun
-    start_step: f64, // the step Standby::Start was prepared at (the tempo changed while stopped: prepared again)
 
     pos: f64,
     pub playing: bool,
@@ -79,6 +110,8 @@ pub struct Engine {
     bend: f64, // a jog wheel's pitch bend (deck.rs): the speed times 1 + bend
     master_tempo: bool, // the time stretch on (MT): the pitch kept whatever the tempo
     key_shift: f64,     // semitones, any fraction (keyshift::KEY_SHIFT_MAX either way): the pitch moved, the tempo kept
+    // playing and silent (the tempo pulled to 0 and faded out, or a record let go held still): the sound comes back
+    // faded in once the deck moves again (render_block)
     halted: bool,
     last_step: f64,
     jump_start: Option<f64>,
@@ -86,8 +119,7 @@ pub struct Engine {
     jump_once: bool,
     jump_starts: Option<Vec<f64>>,
     jump_dest_base: f64,
-    end_out_frame: Option<u64>,
-    sent_finished: bool,
+    end: End,
 
     buffer_ms: f64,
     fade_frames: usize,
@@ -99,7 +131,6 @@ pub struct Engine {
     // hearing answers a play / pause / seek: (ring index, sent at, 0 play | 1 pause | 2 seek)
     pub command_at: f64,
     probe: Option<(u64, f64, usize)>,
-    pending_seek_at: f64,
     pub responses: [f64; 3],
     pub jumped_count: u64,
     pub finished_count: u64,
@@ -143,12 +174,9 @@ impl Engine {
             scratch_gain: SpeedGain::new(r),
             stretch: None,
             standby: None,
-            standby_for: None,
-            pending_seek: None,
+            standby_for: Standby::Idle,
             seek_to: None,
-            resume_at: None,
             prep_cost: 0.0005,
-            start_step: 0.0,
             pos: 0.0,
             playing: false,
             scrubbing: false,
@@ -171,8 +199,7 @@ impl Engine {
             jump_once: false,
             jump_starts: None,
             jump_dest_base: 0.0,
-            end_out_frame: None,
-            sent_finished: false,
+            end: End::Ahead,
             buffer_ms: 40.0,
             fade_frames: (rate as usize / 100).max(1), // 10 ms: start, stop, a seek's crossfade
             chunk_frames: 2048,
@@ -180,7 +207,6 @@ impl Engine {
             scratch_queue_frames: ((r * 0.02) as usize).max(1), // in the ring; the device's buffer comes after
             command_at: 0.0,
             probe: None,
-            pending_seek_at: 0.0,
             responses: [0.0; 3],
             jumped_count: 0,
             finished_count: 0,
@@ -201,8 +227,7 @@ impl Engine {
         self.track_gen = generation;
         self.pos = 0.0;
         self.seek_to = None;
-        self.end_out_frame = None;
-        self.sent_finished = false;
+        self.end = End::Ahead;
         self.scratching = false;
         // the record let go with the track, a jog wheel's hand too (grab(false) is not sent: the deck forgets it):
         // the mouse's scratch after it follows at its own delay
@@ -355,7 +380,9 @@ impl Engine {
             }
         }
         self.scrubbing = on;
-        self.resume_at = None;
+        if self.resuming() {
+            self.standby_for = Standby::Idle;
+        }
         if on {
             self.clicks.clear_voices();
         }
@@ -366,8 +393,7 @@ impl Engine {
             self.cancel_standby();
             let target = self.pos + Self::RESUME_LEAD_SEC * self.rate;
             if target < self.len as f64 {
-                self.resume_at = Some(target);
-                self.prepare_standby_at(Standby::Resume, target, tempo);
+                self.prepare_standby_at(Standby::Resume { at: target }, tempo);
             } else {
                 self.crossfade_to(self.pos);
             }
@@ -382,8 +408,11 @@ impl Engine {
         }
         if on {
             if self.playing {
-                // a seek still being prepared too: the record grabbed where it was sent (the standby let go by tick)
-                let sought = self.seek_to.take().or(self.pending_seek.take());
+                // a seek still being prepared too: the record grabbed where it was sent (its standby let go)
+                let sought = self.seek_to.take().or(self.pending_seek());
+                if self.pending_seek().is_some() {
+                    self.standby_for = Standby::Idle;
+                }
                 self.queue_for_fade();
                 let heard = self.playhead_frame();
                 self.ring.flush();
@@ -397,8 +426,7 @@ impl Engine {
             self.poll_anchor = None;
             self.platter.reset(self.pos, clock::now(), self.poll_frames_per_px);
             self.scratch_gain.reset();
-            self.end_out_frame = None;
-            self.sent_finished = false;
+            self.end = End::Ahead;
             self.clicks.clear_voices();
             return;
         }
@@ -467,7 +495,7 @@ impl Engine {
     }
 
     fn step(&self) -> f64 {
-        if self.stretch.is_some() && (self.scrubbing || self.resume_at.is_some()) {
+        if self.stretch.is_some() && (self.scrubbing || self.resuming()) {
             return 1.0;
         }
         let tempo = if self.mode_speed { self.factor } else { 1.0 };
@@ -501,8 +529,7 @@ impl Engine {
         self.monitor.observe(None, 0.0);
         self.probe = Some((self.ring.written(), self.command_at, 0));
         self.halted = self.step() <= 0.0;
-        self.sent_finished = false;
-        self.end_out_frame = None;
+        self.end = End::Ahead;
         let (mut head, step, after) = self.render(self.pos, self.fade_frames, None);
         dsp::fade(&mut head, self.ch, self.fade_frames, true);
         self.append(head, self.pos, step, None);
@@ -523,7 +550,7 @@ impl Engine {
             return;
         }
         // a seek not rendered yet (or one the standby stretcher is still preparing): the deck stops where it was sent
-        let sought = self.seek_to.take().or(self.pending_seek);
+        let sought = self.seek_to.take().or(self.pending_seek());
         self.queue_for_fade();
         let heard = self.playhead_frame();
         self.playing = false;
@@ -555,7 +582,7 @@ impl Engine {
     }
 
     pub fn seek(&mut self, frame: f64) {
-        if self.resume_at.is_some() {
+        if self.resuming() {
             self.cancel_standby();
         }
         let target = frame.clamp(0.0, self.len as f64);
@@ -567,13 +594,10 @@ impl Engine {
             self.platter.reset(self.scratch_target, clock::now(), self.poll_frames_per_px);
             return;
         }
-        self.end_out_frame = None;
-        self.sent_finished = false;
+        self.end = End::Ahead;
         self.seek_to = None;
         if self.playing && self.pcm.is_some() && self.can_defer() {
-            self.prepare_standby(Standby::Seek, target);
-            self.pending_seek = Some(target);
-            self.pending_seek_at = self.command_at;
+            self.prepare_standby(Standby::Seek { target, sent_at: self.command_at });
         } else if self.playing && self.pcm.is_some() {
             self.cancel_standby();
             self.probe = Some((self.ring.written(), self.command_at, 2));
@@ -603,8 +627,8 @@ impl Engine {
         self.jump_dest = Some(dest);
         self.jump_dest_base = dest;
         self.jump_once = once;
-        if self.can_defer() && self.pending_seek.is_none() {
-            self.prepare_standby(Standby::Jump, dest);
+        if self.can_defer() && self.pending_seek().is_none() {
+            self.prepare_standby(Standby::Jump { dest });
         }
     }
 
@@ -612,42 +636,60 @@ impl Engine {
         self.jump_start = None;
         self.jump_dest = None;
         self.jump_starts = None;
-        if matches!(self.standby_for, Some((Standby::Jump, _))) {
-            self.standby_for = None;
+        if matches!(self.standby_for, Standby::Jump { .. }) {
+            self.standby_for = Standby::Idle;
         }
     }
 
     // The standby stretcher
+    /// A seek being prepared: where it goes.
+    fn pending_seek(&self) -> Option<f64> {
+        match self.standby_for {
+            Standby::Seek { target, .. } => Some(target),
+            _ => None,
+        }
+    }
+
+    /// A scrub let go resuming the tempo: the original at unity until the stream prepared takes over.
+    fn resuming(&self) -> bool {
+        matches!(self.standby_for, Standby::Resume { .. })
+    }
+
+    /// A seek or a jump goes through the standby stretcher (prepared ahead, then crossfaded): playing off unity
+    /// with the stretcher, the hand off the record, no scrub resuming.
     fn can_defer(&self) -> bool {
         let step = self.step();
         self.standby.is_some()
             && self.playing
             && !self.scratching
             && !self.scrubbing
+            && !self.resuming()
             && self.pcm.is_some()
             && step > 0.0
             && self.off_unity(step)
     }
 
-    fn prepare_standby(&mut self, kind: Standby, target: f64) {
+    fn prepare_standby(&mut self, want: Standby) {
         let step = self.step();
-        self.prepare_standby_at(kind, target, step);
+        self.prepare_standby_at(want, step);
     }
 
-    fn prepare_standby_at(&mut self, kind: Standby, target: f64, step: f64) {
-        let target = target.clamp(0.0, self.len as f64);
-        if self.standby_for != Some((kind, target)) {
+    /// The standby stretcher prepared for ``want`` at ``step`` (its stream started again only when it is another).
+    fn prepare_standby_at(&mut self, want: Standby, step: f64) {
+        let len = self.len as f64;
+        if !self.standby_for.same_stream(&want, len) {
+            let target = want.target().unwrap_or(0.0).clamp(0.0, len);
             let pitch = self.pitch_at(step);
             if let (Some(sb), Some(pcm)) = (self.standby.as_mut(), self.pcm.as_ref()) {
                 sb.set_pitch(pitch);
                 sb.prepare(pcm.data(), target, step);
             }
-            self.standby_for = Some((kind, target));
         }
+        self.standby_for = want;
     }
 
     fn standby_ready(&mut self) -> bool {
-        if self.standby_for.is_none() {
+        if self.standby_for == Standby::Idle {
             return false;
         }
         // as much of its work as STANDBY_BUDGET_SEC allows each call (a tick): a seek is heard sooner than with a
@@ -678,19 +720,21 @@ impl Engine {
         let step = self.step();
         let wanted = self.standby.is_some() && !self.playing && !self.scratching && !self.scrubbing
             && self.pcm.is_some() && self.pos < self.len as f64 && step > 0.0 && self.off_unity(step);
-        let starting = matches!(self.standby_for, Some((Standby::Start, _)));
+        let prepared_at = match self.standby_for {
+            Standby::Start { step, .. } => Some(step),
+            _ => None,
+        };
         if !wanted {
-            if starting {
-                self.standby_for = None;
+            if prepared_at.is_some() {
+                self.standby_for = Standby::Idle;
             }
             return;
         }
-        if starting && step != self.start_step {
-            self.standby_for = None; // the tempo moved: prepared again at the new one
+        if prepared_at.is_some_and(|s| s != step) {
+            self.standby_for = Standby::Idle; // the tempo moved: prepared again at the new one
         }
-        if self.standby_for.is_none() || starting {
-            self.start_step = step;
-            self.prepare_standby_at(Standby::Start, self.pos, step);
+        if matches!(self.standby_for, Standby::Idle | Standby::Start { .. }) {
+            self.prepare_standby_at(Standby::Start { at: self.pos, step }, step);
         }
     }
 
@@ -698,22 +742,19 @@ impl Engine {
     /// few ticks), so the start renders on in sequence instead of restarting the stream.
     fn take_start_standby(&mut self) {
         let here = self.pos.clamp(0.0, self.len as f64);
-        if self.standby_for != Some((Standby::Start, here)) || self.step() != self.start_step {
-            if matches!(self.standby_for, Some((Standby::Start, _))) {
-                self.standby_for = None;
-            }
+        let Standby::Start { at, step } = self.standby_for else { return };
+        if at.clamp(0.0, self.len as f64) != here || self.step() != step {
+            self.standby_for = Standby::Idle;
             return;
         }
         let (Some(sb), Some(pcm)) = (self.standby.as_mut(), self.pcm.as_ref()) else { return };
         while !sb.prepare_step(pcm.data(), self.fade_frames) {}
         std::mem::swap(&mut self.stretch, &mut self.standby);
-        self.standby_for = None;
+        self.standby_for = Standby::Idle;
     }
 
     fn cancel_standby(&mut self) {
-        self.standby_for = None;
-        self.pending_seek = None;
-        self.resume_at = None;
+        self.standby_for = Standby::Idle;
     }
 
     /// The scrub's resume point reached (render head at ``target``): the original's tail at unity crossfaded
@@ -722,23 +763,23 @@ impl Engine {
         let n = self.fade_frames;
         let tail = self.render(self.pos, n, Some(1.0)).0;
         std::mem::swap(&mut self.stretch, &mut self.standby);
-        self.standby_for = None;
-        self.resume_at = None;
+        self.standby_for = Standby::Idle;
         let (head, step, after) = self.render(target, n, None);
         let mix = self.crossfade(head, tail);
         self.append(mix, target, step, None);
         self.pos = after;
     }
 
+    /// The seek or the jump the standby was prepared for (at ``target``) taken: the current stream's tail
+    /// crossfaded into it.
     fn switch_to_standby(&mut self, target: f64) {
-        if self.pending_seek.is_some() {
-            self.probe = Some((self.ring.written(), self.pending_seek_at, 2));
+        if let Standby::Seek { sent_at, .. } = self.standby_for {
+            self.probe = Some((self.ring.written(), sent_at, 2));
         }
         let n = self.fade_frames;
         let tail = if self.pos < self.len as f64 { self.render(self.pos, n, None).0 } else { vec![] };
         std::mem::swap(&mut self.stretch, &mut self.standby);
-        self.standby_for = None;
-        self.pending_seek = None;
+        self.standby_for = Standby::Idle;
         let (head, step, after) = self.render(target, n, None);
         let mix = self.crossfade(head, tail);
         self.append(mix, target, step, None);
@@ -829,7 +870,7 @@ impl Engine {
         }
         let t0 = clock::now();
         // the original's pitch while scrubbing (its unity), else the key's (and the speed's with MT off)
-        let pitch = if self.scrubbing || self.resume_at.is_some() { 1.0 } else { self.pitch_at(step) };
+        let pitch = if self.scrubbing || self.resuming() { 1.0 } else { self.pitch_at(step) };
         let (out, after) = match self.stretch.as_mut() {
             Some(s) => {
                 s.set_pitch(pitch);
@@ -941,7 +982,7 @@ impl Engine {
             }
         }
         self.last_step = step;
-        if let Some(target) = self.resume_at {
+        if let Standby::Resume { at: target } = self.standby_for {
             // the scrub's resume point within this block: up to it at unity, then the stream at the tempo
             if self.pos + n_out as f64 >= target {
                 let n1 = (target - self.pos).ceil().max(0.0) as usize;
@@ -950,15 +991,14 @@ impl Engine {
                     self.append(out, self.pos, out_step, None);
                     self.pos = after;
                 }
-                if matches!(self.standby_for, Some((Standby::Resume, _))) && self.standby_ready() {
+                if self.standby_ready() {
                     self.resume_switch(target); // the frame it was prepared for (the head at it, under a frame)
                 } else {
                     // not prepared in time (a busy computer): a lead further on
                     let tempo = self.tempo();
                     let next = self.pos + Self::RESUME_LEAD_SEC * self.rate;
-                    self.standby_for = None;
-                    self.resume_at = Some(next);
-                    self.prepare_standby_at(Standby::Resume, next, tempo);
+                    self.standby_for = Standby::Idle;
+                    self.prepare_standby_at(Standby::Resume { at: next }, tempo);
                 }
                 return;
             }
@@ -987,12 +1027,12 @@ impl Engine {
         let rate = self.input_step(step);
         // a seek the standby stretcher is preparing goes first: a jump from the place it leaves is not taken (its
         // standby would replace the seek's, which was then lost or switched to a stream prepared elsewhere)
-        if let (Some(js), Some(jd), None) = (self.jump_start, self.jump_dest, self.pending_seek) {
+        if let (Some(js), Some(jd), None) = (self.jump_start, self.jump_dest, self.pending_seek()) {
             if self.pos < js && js <= self.pos + rate * n_out as f64 {
                 let mut take = true;
                 let mut ready = false;
                 if deferring {
-                    self.prepare_standby(Standby::Jump, jd);
+                    self.prepare_standby(Standby::Jump { dest: jd });
                     ready = self.standby_ready();
                     let later = self.jump_starts.as_ref().is_some_and(|s| s.iter().any(|&v| v > js));
                     if !ready && later {
@@ -1030,9 +1070,9 @@ impl Engine {
         if self.pos < self.len as f64 {
             return false;
         }
-        if self.end_out_frame.is_none() {
+        if self.end == End::Ahead {
             self.pos = self.len as f64;
-            self.end_out_frame = Some(self.ring.written());
+            self.end = End::Rendered(self.ring.written());
         }
         true
     }
@@ -1062,20 +1102,22 @@ impl Engine {
 
     // The feed: once a tick
     pub fn tick(&mut self) {
-        let resuming = matches!(self.standby_for, Some((Standby::Resume, _)));
-        let starting = matches!(self.standby_for, Some((Standby::Start, _)));
-        if self.standby_for.is_some() && !starting && !self.can_defer() && !(resuming && self.playing && !self.scrubbing) {
+        let resuming = self.resuming();
+        let starting = matches!(self.standby_for, Standby::Start { .. });
+        if self.standby_for != Standby::Idle && !starting && !self.can_defer()
+            && !(resuming && self.playing && !self.scrubbing)
+        {
             self.cancel_standby(); // scrubbing, scratching, back at unity: no longer wanted
         }
-        if self.resume_at.is_some() && (!self.playing || (self.tempo() - 1.0).abs() <= 1e-8) {
+        if self.resuming() && (!self.playing || (self.tempo() - 1.0).abs() <= 1e-8) {
             self.cancel_standby(); // paused, or the tempo back at unity: nothing to resume to
         }
         self.keep_start_standby();
         // the ring first (a small buffer cannot wait), then the standby stretcher's work (a jump's, a seek's, a
         // scrub's resume, a start's: a little each tick, so it is ready when wanted), then the ring again
         self.fill();
-        if self.standby_for.is_some() && self.standby_ready() {
-            if let Some(target) = self.pending_seek {
+        if self.standby_for != Standby::Idle && self.standby_ready() {
+            if let Some(target) = self.pending_seek() {
                 self.switch_to_standby(target);
             }
         }
@@ -1095,10 +1137,10 @@ impl Engine {
             }
         }
         self.ring.sound_due.store(self.sound_due(), std::sync::atomic::Ordering::Relaxed);
-        if self.playing && !self.sent_finished {
-            if let Some(end) = self.end_out_frame {
+        if self.playing {
+            if let End::Rendered(end) = self.end {
                 if heard >= end as f64 {
-                    self.sent_finished = true;
+                    self.end = End::Heard;
                     // the track's end heard: the deck plays on (silence), so the record dragged or the playhead
                     // moved back plays again from there
                     self.finished_count += 1;

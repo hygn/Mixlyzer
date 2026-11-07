@@ -14,13 +14,13 @@ from ui.theme import current_theme
 from system.i18n import tr, tr_mark
 from system.os_support import path_key
 from ui.library.actions import ActionsMixin
-from ui.library.common import (INCREMENTAL_ROWS_MAX, LIBRARY_UPDATE_DELAY_MS, Track, 
-    _ANALYZED_ROLE, _SORT_ROLE, _SortItem, key_order, row_to_track)
+from ui.library.common import (INCREMENTAL_ROWS_MAX, LIBRARY_SOURCE, LIBRARY_UPDATE_DELAY_MS, LOADED_KINDS, Source,
+    SourceKind, Track, _ANALYZED_ROLE, _SORT_ROLE, _SortItem, key_order, row_to_track)
 from ui.library.mix import MixMixin
 from ui.library.music import MusicMixin
 from ui.library.playlists import PlaylistsMixin
 from ui.library.search import SearchMixin
-from ui.library.sources import LOADED_SOURCES, SourcesMixin
+from ui.library.sources import SourcesMixin
 from ui.library.table import FastDelegate, _TrackTable
 from ui.library.track_panel import TrackPanelMixin
 
@@ -98,8 +98,8 @@ class LibraryWidget(SourcesMixin, SearchMixin, MusicMixin, MixMixin, PlaylistsMi
         self._external_sync_enabled = bool(getattr(cfg, "externalsyncconfig", None) and cfg.externalsyncconfig.enabled)
         self._all_tracks: List[Track] = []
         self._library_tracks: List[Track] = []
-        self._source_kind = "library"
-        self._source_value = None
+        # the source chosen in the sources panel (what the table shows: _shown_source)
+        self._source: Source = LIBRARY_SOURCE
         # Variants shown: uid -> its relations (core.search.variants.Pair), uid -> its song's number
         self._variant_pairs: dict[str, list] = {}
         self._variant_song: dict[str, int] = {}
@@ -144,7 +144,7 @@ class LibraryWidget(SourcesMixin, SearchMixin, MusicMixin, MixMixin, PlaylistsMi
         self.bus.sig_music_index_finished.connect(lambda *_args: self.library.refresh())
 
         # the table's rows are this source's tracks (a library update changes them in place)
-        self._table_source: Optional[tuple] = None
+        self._table_source: Optional[Source] = None
         # the phrase / transition filters' search (on the library thread): asked, and the last answer
         self._structured_asked: Optional[tuple] = None
         self._structured_found: Optional[tuple] = None
@@ -280,7 +280,7 @@ class LibraryWidget(SourcesMixin, SearchMixin, MusicMixin, MixMixin, PlaylistsMi
         if isinstance(delegate, FastDelegate):
             delegate.clear_cache()      # another library's thumbnails
         if old_local != list(cfg.libconfig.local_music_directories):
-            self._source_kind, self._source_value = "library", None
+            self._source = LIBRARY_SOURCE
         if old_library != cfg.libconfig.libpath:
             self._pending_playlist_paths.clear()
         self._rebuild_source_tree()
@@ -351,7 +351,7 @@ class LibraryWidget(SourcesMixin, SearchMixin, MusicMixin, MixMixin, PlaylistsMi
         properties = self.model.properties if self.model is not None else {}
         uid = properties.get("uid") if isinstance(properties, dict) else None
         loaded = str(uid or "").strip() or None
-        if loaded != self._loaded_uid and self._source_kind in LOADED_SOURCES and not self._music_mode:
+        if loaded != self._loaded_uid and self._shown_source().kind in LOADED_KINDS:
             self._loaded_uid = loaded
             self._refresh_current_source(reset_sort=True)   # the new track's candidates, related tracks or versions
         self._loaded_uid = loaded
@@ -397,7 +397,8 @@ class LibraryWidget(SourcesMixin, SearchMixin, MusicMixin, MixMixin, PlaylistsMi
         if not item:
             return
         path = item.text()
-        match = next((m for m in self._music_matches if m.uid == self._row_uid(r)), None) if self._music_mode else None
+        match = (next((m for m in self._music_matches if m.uid == self._row_uid(r)), None)
+                 if self._shown_source().kind is SourceKind.MUSIC else None)
         if path and match is not None:
             self._deck_seek.load(path, max(0.0, match.start_sec - 1.0))
         elif path:

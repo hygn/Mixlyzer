@@ -2,6 +2,7 @@
 
 from PySide6 import QtCore, QtGui, QtWidgets
 import copy
+import enum
 import sys
 import time
 
@@ -55,6 +56,14 @@ from ui.shortcuts import ShortcutManager
 # a knob's steps acted on from one message at most (a fast turn)
 MIDI_STEPS_MAX = 16
 
+
+class _Edits(enum.Enum):
+    """The question about edits not saved (AppWindow._with_edits_resolved); a save it started is the editor's
+    (``EditPanel.saving``)."""
+    IDLE = enum.auto()
+    ASKING = enum.auto()        # the box is open
+    CLOSING = enum.auto()       # the quit asked about and settled: the window closes, nothing more asked
+
 from core.workflows.segment_reanalysis import SegmentReanalysisWorkflow
 from core.settings.config import config, restored_settings, search_settings
 from core.settings.store import SettingsStore
@@ -96,11 +105,10 @@ class AppWindow(QtWidgets.QMainWindow):
         self.bus.sig_output_buffer.connect(self.buffers.add)
         self._start_library(library)
         self.model = DataModel()
-        # edits not saved are asked about before they would be lost (_with_edits_resolved): the box is open, an
-        # External Sync load waiting for it, a quit already asked about
-        self._asking_edits = False
+        # edits not saved are asked about before they would be lost (_with_edits_resolved), and the External Sync
+        # load waiting for the box or for its save (the last one asked: (path, time))
+        self._edits = _Edits.IDLE
         self._external_pending = None
-        self._edits_resolved_for_close = False
         self.tl = TimelineCoordinator(self.bus)
         self._start_player()
         self._start_external_sync()
@@ -633,11 +641,11 @@ class AppWindow(QtWidgets.QMainWindow):
         box.setStandardButtons(buttons)
         box.setDefaultButton(QtWidgets.QMessageBox.Save)
         box.setEscapeButton(QtWidgets.QMessageBox.Cancel if cancellable else QtWidgets.QMessageBox.Save)
-        self._asking_edits = True
+        self._edits = _Edits.ASKING
         try:
             answer = box.exec()
         finally:
-            self._asking_edits = False
+            self._edits = _Edits.IDLE
         if cancellable and self._external_pending is not None:
             # an External Sync load came while this box asked for something else: asked for once this is settled
             QtCore.QTimer.singleShot(0, self._external_load_waiting)
@@ -869,10 +877,9 @@ class AppWindow(QtWidgets.QMainWindow):
     def _load_track_from_external_sync(self, path: str, time_sec: float) -> None:
         """The other software's track (edits not saved: Save or Discard, no Cancel; a load asked while the box is open
         waits for it, the last one taken)."""
-        if self._asking_edits:
-            self._external_pending = (path, time_sec)
-            return
         self._external_pending = (path, time_sec)
+        if self._edits is not _Edits.IDLE:
+            return
 
         def load_latest() -> None:
             pending, self._external_pending = self._external_pending, None
@@ -891,7 +898,7 @@ class AppWindow(QtWidgets.QMainWindow):
         """The External Sync load that waited (it came while a box asked about edits for something else, or its save
         failed) asked for again: once a save running is done; not while another box asks, nor once the window
         closes."""
-        if self._external_pending is None or self._asking_edits or self._edits_resolved_for_close:
+        if self._external_pending is None or self._edits is not _Edits.IDLE:
             return
         if self.pane.track_edit.saving:
             QtCore.QTimer.singleShot(100, self._external_load_waiting)
@@ -901,13 +908,13 @@ class AppWindow(QtWidgets.QMainWindow):
 
     def closeEvent(self, event) -> None:
         """Quitting with edits not saved asks first (Save: quit once they are stored; Cancel: stay)."""
-        if self._edits_resolved_for_close or not self.model.unsaved:
+        if self._edits is _Edits.CLOSING or not self.model.unsaved:
             super().closeEvent(event)
             return
         event.ignore()
 
         def close_now() -> None:
-            self._edits_resolved_for_close = True
+            self._edits = _Edits.CLOSING
             self.close()
 
         self._with_edits_resolved(close_now)
@@ -1017,6 +1024,7 @@ class AppWindow(QtWidgets.QMainWindow):
     def _on_settings_save(self, _config: config):
         prev_cfg = self.cfg.to_dict()
         prev_deck = self.cfg.deck_dict()
+        rewrite_xml = _config.libconfig.rekordbox_xml_resync(self.cfg.libconfig)
         self.settings.save(_config)
         os.makedirs(_config.libconfig.libpath or ".", exist_ok=True)
         self.library.set_libpath(_config.libconfig.libpath)
@@ -1031,16 +1039,7 @@ class AppWindow(QtWidgets.QMainWindow):
             for key in ("libpath", "local_music_directories")
         ):
             self.pane.lib.set_config(_config)
-        rekordbox_cfg_changed = any(
-            prev_lcfg.get(k) != new_lcfg.get(k)
-            for k in ("rekordbox_sync_enabled", "rekordbox_xml_path", "rekordbox_ramp_tolerance_ms",
-                      "rekordbox_comment_tieups", "rekordbox_tieup_language")
-        )
-        if (
-            rekordbox_cfg_changed
-            and _config.libconfig.rekordbox_sync_enabled
-            and _config.libconfig.rekordbox_xml_path.strip()
-        ):
+        if rewrite_xml:     # the XML's settings changed: written again whole
             self.bus.sig_rekordbox_sync_requested.emit(True)
         # the tie-ups' works shown in another language: the library's tie-up texts made again
         if prev_cfg.get("libconfig", {}).get("tieup_language", "") != _config.libconfig.tieup_language:

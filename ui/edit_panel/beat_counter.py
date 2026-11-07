@@ -69,6 +69,14 @@ class BeatCounterMixin:
     def _on_beat_counter_released(self) -> None:
         self._beat_counting = False
 
+    def _end_beat_count(self) -> None:
+        """Another track or beatgrid while Count is held: the count ends there (it counted the old beats; the
+        Bar.Beat cleared), counting again at the next press."""
+        if not self._beat_counting:
+            return
+        self._beat_counting = False
+        self.beat_counter_barbeat_display.setText("--")
+
     def _update_beat_counter(self, t: float) -> None:
         if not self._beat_counting:
             return

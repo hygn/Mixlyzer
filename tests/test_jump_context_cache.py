@@ -170,7 +170,7 @@ class JumpContextCacheTests(unittest.TestCase):
     def test_rule_scores_are_reused_by_final_model(self):
         model = model_fixture()
         engine = JumpCueEngine()
-        engine._score_cache = self.cache
+        engine.run_state.score_cache = self.cache
         C = self.ctx.beat_mel @ self.ctx.beat_mel.T
         with patch("analyzer.jumpcue.jump_point_model.jump_point_scores", wraps=jump_point_scores) as scorer:
             engine._pair_curves(C, 24, 56, 12, self.ctx)
@@ -195,21 +195,21 @@ class JumpContextCacheTests(unittest.TestCase):
 
     def test_engine_run_resets_cache_even_when_no_links_are_found(self):
         engine = JumpCueEngine()
-        engine._score_cache = self.cache
-        engine._pair_cache[(24, 56, 12)] = (np.ones(12), np.ones(12))
+        engine.run_state.score_cache = self.cache
+        engine.run_state.pair_cache[(24, 56, 12)] = (np.ones(12), np.ones(12))
         report = SelfCorrelationReport(beat_ssm=None, links=[])
         with patch("analyzer.jumpcue.JumpCUE.analyze_self_correlation",
                    return_value=(report, np.zeros((12, 128)))):
             result = engine.run(np.zeros(128), 8000, self.ctx.beats_time)
         self.assertEqual(result.pairs, [])
-        self.assertIsNone(engine._score_cache)
-        self.assertEqual(engine._pair_cache, {})
+        self.assertIsNone(engine.run_state.score_cache)
+        self.assertEqual(engine.run_state.pair_cache, {})
 
     def test_group_building_and_final_pairs_match_original(self):
         cfg = JumpCueConfig(min_point_time_sec=0, min_point_gap_sec=2)
         current, original = JumpCueEngine(cfg), OriginalEngine(cfg)
         current._jump_model, original._jump_model = model_fixture(), model_fixture(OriginalModel)
-        current._jump_features = original._jump_features = self.feats
+        current.run_state.features = original.run_state.features = self.feats
         link = SimilarLink(lag_beats=32, lag_sec=8, score=0.9, a=(12.1, 18.1), b=(4.1, 10.1),
                            a_beat=(48, 72), b_beat=(16, 40))
         report = SelfCorrelationReport(beat_ssm=None, links=[link])

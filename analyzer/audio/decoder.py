@@ -175,7 +175,7 @@ def _ffmetadata(text: str) -> dict[str, str]:
         elif at_start and ch == "[":   # a stream's or a chapter's section: the global one is over
             break
         elif ch == "=" and key is None:
-            key, buf = "".join(buf), []
+            key, buf, at_start = "".join(buf), [], False    # the value: a ; # [ in it is the value's
         else:
             buf.append(ch)
             at_start = False

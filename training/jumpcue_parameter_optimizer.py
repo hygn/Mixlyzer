@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from collections import Counter, defaultdict
 from dataclasses import dataclass
@@ -17,6 +18,7 @@ from analyzer.jumpcue.jump_point_model import (
     semantic_pair_scores,
 )
 from analyzer.files import atomic_output_path, atomic_write_json, atomic_write_text
+from system.model_files import is_shipped
 from training.text import TrainingError, msg
 
 
@@ -529,14 +531,58 @@ def _feature_set_names(base_names: list[str], feature_set: str) -> list[str]:
     return list(dict.fromkeys([*base_names, *FEATURE_SET_TERMS[feature_set]]))
 
 
+# run()'s stages: the audit alone; one trial (a feature set at an l2, hard, corrected and preference weight) or a
+# sweep of l2 kept in the state folder; finalize (the best trial kept of this run fitted and written); all of it at once
+STAGES = ("audit", "trial", "sweep", "finalize", "all")
+
+
+def _run_key(dataset: Path, model_path: Path, label_model_path: Path | None, harmony: dict) -> str:
+    """What a trial's score depends on: the dataset, the model it starts from (its features, weights, threshold),
+    the label model and the phrase caches' harmony read. A trial of another (the model since written by a
+    finalize, another dataset) is never picked."""
+    h = hashlib.sha256()
+    for path in (dataset, model_path, label_model_path):
+        h.update(b"\0")
+        if path is not None:
+            h.update(Path(path).read_bytes())
+    for uid in sorted(harmony):
+        h.update(uid.encode("utf-8"))
+        h.update(np.ascontiguousarray(harmony[uid]).tobytes())
+    return h.hexdigest()[:16]
+
+
+def _trial_path(state_dir: Path, trial: dict) -> Path:
+    return state_dir / (f"trial_{trial['run']}_{trial['feature_set']}_l2_{trial['l2']:g}"
+                        f"_hard_{trial['hard_weight']:g}_corrected_{trial['corrected_weight']:g}"
+                        f"_preference_{trial['preference_weight']:g}.json")
+
+
+def _finished_trials(state_dir: Path, run_key: str) -> list[dict]:
+    """The trials kept of this run (of another dataset, model or label model: left out)."""
+    trials = [json.loads(path.read_text(encoding="utf-8")) for path in sorted(state_dir.glob(f"trial_{run_key}_*.json"))]
+    trials = [t for t in trials if t.get("run") == run_key]
+    if not trials:
+        others = sum(1 for _ in state_dir.glob("trial_*.json"))
+        raise RuntimeError(f"no completed trials of this dataset and model in {state_dir}"
+                           + (f" ({others} of other runs left out: run the trials again)" if others else ""))
+    return trials
+
+
 def run(dataset: Path, model_path: Path, output: Path, *,
         stage: str = "all", state_dir: Path = Path("featurecache/jumpcue/training_state"),
         phrase_cache_dir: Path = Path("featurecache/phrase"),
         trial_l2: float = 1.0, trial_hard_weight: float = 1.0,
         trial_feature_set: str = "base", trial_corrected_weight: float = 1.0,
         trial_preference_weight: float = 3.0,
-        label_model_path: Path | None = None, titles: dict[str, str] | None = None) -> dict:
-    """``titles``: uid -> title for the report (the library is not opened here: without them, uids only)."""
+        label_model_path: Path | None = None, titles: dict[str, str] | None = None,
+        model_output: Path | None = None) -> dict:
+    """``titles``: uid -> title for the report (the library is not opened here: without them, uids only).
+    ``model_output``: where finalize / all write the model (None: over ``model_path``); never a shipped model."""
+    if stage not in STAGES:
+        raise ValueError(f"unknown stage {stage!r}: one of {', '.join(STAGES)}")
+    model_output = Path(model_output or model_path)
+    if stage in ("finalize", "all") and is_shipped(model_output):
+        raise ValueError(f"a shipped model is never overwritten; choose another path than {model_output.name}")
     raw = load_cache(dataset)
     raw_groups = list(raw["groups"] if isinstance(raw, dict) else raw)
     model = json.loads(model_path.read_text(encoding="utf-8"))
@@ -550,6 +596,7 @@ def run(dataset: Path, model_path: Path, output: Path, *,
     harmony_by_uid = _load_phrase_harmony(
         phrase_cache_dir, {str(group["uid"]) for group in raw_groups}
     )
+    run_key = _run_key(dataset, model_path, label_model_path, harmony_by_uid)
     groups = [_candidate_rows(g, names, threshold, harmony_by_uid) for g in raw_groups]
     current = _metrics(groups, current_weights, threshold)
     if label_model_path is None:
@@ -601,14 +648,12 @@ def run(dataset: Path, model_path: Path, output: Path, *,
         score, _ = _oof(train_groups, initial, hard_uids, trial_l2, trial_hard_weight,
                         threshold, corrected_weight=trial_corrected_weight,
                             preference_weight=trial_preference_weight)
-        trial = {"feature_set": trial_feature_set, "features": train_names,
+        trial = {"run": run_key, "feature_set": trial_feature_set, "features": train_names,
                  "feature_count": len(train_names), "l2": trial_l2,
                  "hard_weight": trial_hard_weight,
                  "corrected_weight": trial_corrected_weight,
                  "preference_weight": trial_preference_weight, **score}
-        key = (f"trial_{trial_feature_set}_l2_{trial_l2:g}_hard_{trial_hard_weight:g}"
-               f"_corrected_{trial_corrected_weight:g}.json")
-        atomic_write_json(state_dir / key, trial)
+        atomic_write_json(_trial_path(state_dir, trial), trial)
         return {"trial": trial}
 
     if stage == "sweep":
@@ -623,14 +668,12 @@ def run(dataset: Path, model_path: Path, output: Path, *,
             score, _ = _oof(train_groups, initial, hard_uids, l2, trial_hard_weight,
                             threshold, corrected_weight=trial_corrected_weight,
                             preference_weight=trial_preference_weight)
-            trial = {"feature_set": trial_feature_set, "features": train_names,
+            trial = {"run": run_key, "feature_set": trial_feature_set, "features": train_names,
                      "feature_count": len(train_names), "l2": l2,
                      "hard_weight": trial_hard_weight,
                      "corrected_weight": trial_corrected_weight,
-                 "preference_weight": trial_preference_weight, **score}
-            key = (f"trial_{trial_feature_set}_l2_{l2:g}_hard_{trial_hard_weight:g}"
-                   f"_corrected_{trial_corrected_weight:g}.json")
-            atomic_write_json(state_dir / key, trial)
+                     "preference_weight": trial_preference_weight, **score}
+            atomic_write_json(_trial_path(state_dir, trial), trial)
             swept.append(trial)
         return {"trials": swept}
 
@@ -647,16 +690,13 @@ def run(dataset: Path, model_path: Path, output: Path, *,
                 score, _ = _oof(train_groups, initial, hard_uids, l2, 1.0, threshold,
                                 corrected_weight=trial_corrected_weight,
                                 preference_weight=trial_preference_weight)
-                trials.append({"feature_set": feature_set, "features": train_names,
+                trials.append({"run": run_key, "feature_set": feature_set, "features": train_names,
                                "feature_count": len(train_names), "l2": l2,
                                "hard_weight": 1.0,
                                "corrected_weight": trial_corrected_weight,
-                 "preference_weight": trial_preference_weight, **score})
-    else:
-        trials = [json.loads(path.read_text(encoding="utf-8"))
-                  for path in sorted(state_dir.glob("trial_*.json"))]
-        if not trials:
-            raise RuntimeError(f"no completed trials in {state_dir}")
+                               "preference_weight": trial_preference_weight, **score})
+    else:   # finalize
+        trials = _finished_trials(state_dir, run_key)
 
     best = max(trials, key=lambda x: (
         x.get("acceptable_accuracy", x["exact_accuracy"]),
@@ -714,7 +754,7 @@ def run(dataset: Path, model_path: Path, output: Path, *,
     }
     atomic_write_json(output, report)
     _write_markdown_report(report, output.with_suffix(".md"))
-    atomic_write_json(model_path, output_model)
+    atomic_write_json(model_output, output_model)
     return report
 
 
@@ -850,13 +890,14 @@ def _record_candidates(audio_path: str, beats: np.ndarray, segments: np.ndarray,
     class RecordingEngine(JumpCueEngine):
         def _model_points(self, groups, beats_time):
             model = self._jump_model
-            beat_feats = model._beat_features(self._vocal, self._jump_features, self._score_cache)
+            run = self.run_state
+            beat_feats = model._beat_features(run.vocal, run.features, run.score_cache)
             self.recorded = []
             for g in groups:
                 points = np.asarray([m + g.offset for m in g.starts], dtype=int)
-                model._active_harmony = self._jump_features.harmony
+                model._active_harmony = run.features.harmony
                 try:
-                    pairs, shifts = model._shifts(self._vocal, beat_feats, points, None, self._score_cache)
+                    pairs, shifts = model._shifts(run.vocal, beat_feats, points, None, run.score_cache)
                 finally:
                     model._active_harmony = None
                 self.recorded.append({
@@ -1135,7 +1176,9 @@ def main() -> None:
     parser.add_argument("--model", type=Path, default=Path("assets/weights/jumpcue_jump_point.json"))
     parser.add_argument("--label-model", type=Path)
     parser.add_argument("--output", type=Path, default=Path("featurecache/jumpcue/training_report_current.json"))
-    parser.add_argument("--stage", choices=("audit", "trial", "sweep", "finalize", "all"), default="all")
+    parser.add_argument("--write-model", type=Path,
+                        help="where finalize / all write the model (default: over --model; never a shipped default_)")
+    parser.add_argument("--stage", choices=STAGES, default="all")
     parser.add_argument("--state-dir", type=Path, default=Path("featurecache/jumpcue/training_state"))
     parser.add_argument("--phrase-cache-dir", type=Path, default=Path("featurecache/phrase"))
     parser.add_argument("--l2", type=float, default=1.0)
@@ -1151,7 +1194,7 @@ def main() -> None:
                  trial_hard_weight=args.hard_weight, trial_feature_set=args.feature_set,
                  trial_corrected_weight=args.corrected_weight,
                  trial_preference_weight=args.preference_weight,
-                 label_model_path=args.label_model)
+                 label_model_path=args.label_model, model_output=args.write_model)
     if args.stage == "audit":
         shown = {k: report[k] for k in ("current_model", "hard_track_count", "weaknesses")}
     elif args.stage in {"trial", "sweep"}:

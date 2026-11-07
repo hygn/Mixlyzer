@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import dataclasses
 from pathlib import Path
 from typing import Callable, Iterable
 
@@ -14,6 +15,12 @@ from core.workers.rekordbox_sync import (
 
 
 PLAYLISTS_SYNC_DELAY_MS = 1000
+
+
+def _same_settings(a: RekordboxSyncRequest, b: RekordboxSyncRequest) -> bool:
+    """The same XML written the same way (whether it is rebuilt whole and its progress shown aside)."""
+    return (dataclasses.replace(a, full_rebuild=False, show_progress=False)
+            == dataclasses.replace(b, full_rebuild=False, show_progress=False))
 
 
 def _playlist_parts(snapshot) -> tuple | None:
@@ -117,6 +124,15 @@ class RekordboxXmlSync(QtCore.QObject):
         )
 
     def _enqueue(self, request: RekordboxSyncRequest) -> None:
+        """A request queued; a whole sync with a whole sync of the same settings waiting is that one (asked by a
+        settings save and by Sync Now: one XML written, its progress shown when either asks)."""
+        if request.mode == "library":
+            for i, waiting in enumerate(self._queue):
+                if waiting.mode == "library" and _same_settings(waiting, request):
+                    self._queue[i] = dataclasses.replace(
+                        waiting, full_rebuild=waiting.full_rebuild or request.full_rebuild,
+                        show_progress=waiting.show_progress or request.show_progress)
+                    return
         self._queue.append(request)
         if self._thread is None:
             self._start_next()

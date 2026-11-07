@@ -34,7 +34,8 @@ from core.tieups.domain import TieUp, Work
 from core.track.model import DataModel
 from core.workflows.event_bus import EventBus
 from ui.library import widget as widget_module
-from ui.library.common import _PLAYLIST_TRACKS_MIME, _SOURCE_KIND_ROLE, _SOURCE_VALUE_ROLE
+from ui.library.common import (LIBRARY_SOURCE, MUSIC_SOURCE, Source, SourceKind, _PLAYLIST_TRACKS_MIME,
+    _SOURCE_KIND_ROLE, _SOURCE_VALUE_ROLE)
 from ui.library.widget import LibraryWidget
 from ui.windows.reanalyze_dialog import ReanalyzeDialog
 from ui.theme import current_theme
@@ -453,7 +454,7 @@ class LibraryWidgetTests(unittest.TestCase):
 
     def test_playlist_entries_by_position(self):
         pl = self._new_playlist("Warmup")
-        self.assertEqual((self.w._source_kind, self.w._source_value), ("playlist", pl))   # shown once made
+        self.assertEqual(self.w._source, Source(SourceKind.PLAYLIST, pl))   # shown once made
         self.assertEqual(self.source("playlist", pl).text(0), "Warmup")
         self.assertEqual(self.column(TITLE), [])
         self.w._add_paths_to_playlist(pl, [self.paths[0], self.paths[1], self.paths[0]])     # the same track twice
@@ -490,7 +491,7 @@ class LibraryWidgetTests(unittest.TestCase):
             self.w._delete_playlist(self.source("playlist", b))
         self.settle()
         self.assertEqual([p.name for p in self.library.snapshot.playlists], ["Peak"])
-        self.assertEqual(self.w._source_kind, "library")
+        self.assertEqual(self.w._source, LIBRARY_SOURCE)
         self.assertEqual(len(self.column(TITLE)), 3)
 
     def test_folders_nest_playlists_and_move_them(self):
@@ -498,7 +499,7 @@ class LibraryWidgetTests(unittest.TestCase):
             self.w._create_folder()
         self.settle()
         events = self.library.snapshot.folders[0].uid
-        self.assertEqual((self.w._source_kind, self.w._source_value), ("playlist_folder", events))
+        self.assertEqual(self.w._source, Source(SourceKind.PLAYLIST_FOLDER, events))
         self.assertEqual(self.w._shown_folder(), events)
         with mock.patch.object(QInputDialog, "getText", return_value=("Peak", True)):
             self.w.shortcut_handlers()["library.new_playlist"]()       # into the folder shown
@@ -526,7 +527,7 @@ class LibraryWidgetTests(unittest.TestCase):
             self.w._delete_folder(self.source("playlist_folder", events))
         self.settle()
         self.assertEqual((self.library.snapshot.playlists, self.library.snapshot.folders), ((), ()))
-        self.assertEqual(self.w._source_kind, "library")
+        self.assertEqual(self.w._source, LIBRARY_SOURCE)
 
     def test_a_drop_under_an_open_folder_and_the_add_menu_follow_the_tree(self):
         with mock.patch.object(QInputDialog, "getText", return_value=("Events", True)):
@@ -812,6 +813,8 @@ class LibraryWidgetTests(unittest.TestCase):
         self.w._on_music_results(SimpleNamespace(matches=[            # the library's tracks: # their rank
             MusicMatch(self.uids[2], "melody", 0.2, 30.0, 40.0, 0.0),
             MusicMatch(self.uids[1], "melody", 0.1, 0.0, 5.0, 0.0)]))
+        self.assertEqual(self.w._shown_source(), MUSIC_SOURCE)
+        self.assertEqual(self.w._source, Source(SourceKind.PLAYLIST, pl))   # shown again once the search ends
         self.assertFalse(self.w._playlist_shown())
         self.w.table.selectAll()
         self.w._remove_selected_from_playlist()                       # the shortcut's handler

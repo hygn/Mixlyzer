@@ -7,6 +7,10 @@ MIDI mapping (CSV). OK / Apply keep the mapping as the user's (``core.controls.m
 
 from __future__ import annotations
 
+import dataclasses
+import enum
+from typing import Optional
+
 from PySide6 import QtCore, QtGui
 from PySide6.QtWidgets import (
     QComboBox,
@@ -32,6 +36,23 @@ _ACTION_ROLE = QtCore.Qt.UserRole
 # Learn: a fader's CC waits this long for its LSB (data 1 + 32: 14 bits); a button's CC sending 127 for its 0 (let
 # go: a button; else a knob turned counterclockwise one step)
 LEARN_WAIT_MS = 300
+
+
+class _Wait(enum.Enum):
+    """A CC heard while learning, waiting LEARN_WAIT_MS for what tells what it is."""
+    FADER_LSB = enum.auto()         # a fader's CC under 32: its LSB (data 1 + 32) makes it 14 bits
+    BUTTON_RELEASE = enum.auto()    # a CC at 127: its 0 after it is a button let go, none a knob's step back
+
+
+@dataclasses.dataclass(frozen=True)
+class _Learning:
+    """Learn on for ``action_id``: listening, or a CC waiting (``wait``: its status and data 1, ``seen`` what it
+    waits for came)."""
+    action_id: str
+    wait: Optional[_Wait] = None
+    status: int = 0
+    d1: int = 0
+    seen: bool = False
 
 
 def _labels(texts: list[str]) -> str:
@@ -142,11 +163,8 @@ class MidiSettingsMixin:
         self._midi_ports_provider = None
         self._midi_learn_setter = None
         self._midi_wanted_input = ""
-        self._midi_learning: str | None = None   # the action learning
-        # a CC waiting (LEARN_WAIT_MS): ("fader", status, data1) for its LSB, ("button", status, data1) for its 0
-        self._midi_pending: tuple[str, int, int] | None = None
-        self._midi_pending_seen = False
-        self._midi_learn_timer = QtCore.QTimer(self)
+        self._learn: _Learning | None = None    # Learn on (None: off), set by _set_learn alone
+        self._midi_learn_timer = QtCore.QTimer(self)    # a CC's wait
         self._midi_learn_timer.setSingleShot(True)
         self._midi_learn_timer.setInterval(LEARN_WAIT_MS)
         self._midi_learn_timer.timeout.connect(self._finish_pending_learn)
@@ -254,7 +272,7 @@ class MidiSettingsMixin:
         action = midi.BY_ID.get(action_id) if action_id else None
         if action is not None and action.kind == midi.METER:
             self.btn_midi_learn.setEnabled(False)   # an output: nothing comes from it to learn
-        if self._midi_learning is not None and self._midi_learning != action_id:
+        if self._learn is not None and self._learn.action_id != action_id:
             self._stop_midi_learn()
 
     def _assign_midi(self, action_id: str | None, texts: list[str]) -> None:
@@ -316,45 +334,51 @@ class MidiSettingsMixin:
     def _toggle_midi_learn(self, on: bool) -> None:
         action_id = self._selected_midi_action()
         if on and action_id is not None and self._midi_available:
-            self._midi_learning = action_id
-            self._midi_pending = None
-            self.lbl_midi_learn.setText(tr("Move or press a control ..."))
-            if self._midi_learn_setter is not None:
-                self._midi_learn_setter(True)
+            self._set_learn(_Learning(action_id))
         else:
             self._stop_midi_learn()
 
     def _stop_midi_learn(self) -> None:
-        if getattr(self, "_midi_learning", None) is None and not self.btn_midi_learn.isChecked():
+        if getattr(self, "_learn", None) is None and not self.btn_midi_learn.isChecked():
             return
-        self._midi_learning = None
-        self._midi_pending = None
-        self._midi_learn_timer.stop()
-        self.lbl_midi_learn.setText("")
+        self._set_learn(None)
+
+    def _set_learn(self, learn: _Learning | None) -> None:
+        """Learn on (listening, or a CC waiting: its timer started) or off; the button, its line and the engine's
+        report of every message follow."""
+        was = self._learn
+        self._learn = learn
+        if learn is None or learn.wait is None:
+            self._midi_learn_timer.stop()
+        elif was is None or was.wait is None:   # a wait begun (what it waits for coming keeps its time)
+            self._midi_learn_timer.start()
+        self.lbl_midi_learn.setText(tr("Move or press a control ...") if learn is not None else "")
         self.btn_midi_learn.blockSignals(True)
-        self.btn_midi_learn.setChecked(False)
+        self.btn_midi_learn.setChecked(learn is not None)
         self.btn_midi_learn.blockSignals(False)
-        if self._midi_learn_setter is not None:
-            self._midi_learn_setter(False)
+        if (was is None) != (learn is None) or learn is None:
+            if self._midi_learn_setter is not None:
+                self._midi_learn_setter(learn is not None)
 
     def _learn_kind(self) -> str:
-        action = midi.BY_ID.get(self._midi_learning or "")
+        action = midi.BY_ID.get(self._learn.action_id if self._learn is not None else "")
         return action.kind if action is not None else midi.BUTTON
 
     def _on_midi_events(self, events) -> None:
-        if self._midi_learning is None:
+        if self._learn is None:
             return
         kind = self._learn_kind()
         for status, d1, d2, _flags, _action, _steps in events:
             is_cc = status & 0xF0 == 0xB0
             steps = midi.relative_steps(d2) if is_cc else 0   # as a knob's (not bound yet: told apart by the value)
             is_note = status & 0xF0 == 0x90
-            if self._midi_pending is not None:
-                mode, p_status, p_d1 = self._midi_pending
-                if mode == "fader" and is_cc and status == p_status and d1 == p_d1 + 32:
-                    self._midi_pending_seen = True   # its LSB: 14 bits
-                elif mode == "button" and is_cc and status == p_status and d1 == p_d1 and d2 == 0:
-                    self._midi_pending_seen = True   # let go: a button
+            learn = self._learn
+            if learn.wait is not None:
+                if learn.wait is _Wait.FADER_LSB and is_cc and status == learn.status and d1 == learn.d1 + 32:
+                    self._set_learn(dataclasses.replace(learn, seen=True))   # its LSB: 14 bits
+                elif (learn.wait is _Wait.BUTTON_RELEASE and is_cc and status == learn.status and d1 == learn.d1
+                      and d2 == 0):
+                    self._set_learn(dataclasses.replace(learn, seen=True))   # let go: a button
                 continue
             if kind == midi.FADER:
                 if status & 0xF0 == 0xE0:   # a pitch bend: 14 bits of its own
@@ -362,7 +386,7 @@ class MidiSettingsMixin:
                     return
                 if is_cc:
                     if d1 < 32:
-                        self._wait_learn("fader", status, d1)
+                        self._wait_learn(_Wait.FADER_LSB, status, d1)
                         continue   # its LSB may come in this report too
                     self._learned(midi.Message(status, d1))
                     return
@@ -375,7 +399,7 @@ class MidiSettingsMixin:
             if not (is_cc or is_note) or d2 == 0:
                 continue   # a key let go: the press is what is learned
             if kind == midi.BUTTON and is_cc and d2 == 127:
-                self._wait_learn("button", status, d1)   # a button, or a knob's step back (two's complement)
+                self._wait_learn(_Wait.BUTTON_RELEASE, status, d1)   # a button, or a knob's step back (two's complement)
                 continue   # its let go may come in this report too
             if kind == midi.BUTTON and is_cc and d2 != 127 and steps:
                 # a knob turned: this action on that direction only
@@ -384,24 +408,22 @@ class MidiSettingsMixin:
             self._learned(midi.Message(status, d1))
             return
 
-    def _wait_learn(self, mode: str, status: int, d1: int) -> None:
-        self._midi_pending = (mode, status, d1)
-        self._midi_pending_seen = False
-        self._midi_learn_timer.start()
+    def _wait_learn(self, wait: _Wait, status: int, d1: int) -> None:
+        self._set_learn(_Learning(self._learn.action_id, wait, status, d1))
 
     def _finish_pending_learn(self) -> None:
-        if self._midi_pending is None:
+        learn = self._learn
+        if learn is None or learn.wait is None:
             return
-        mode, status, d1 = self._midi_pending
-        if mode == "fader":
-            self._learned(midi.Message(status, d1, hires=self._midi_pending_seen))
-        elif self._midi_pending_seen:
-            self._learned(midi.Message(status, d1))   # 127 then 0: a button
+        if learn.wait is _Wait.FADER_LSB:
+            self._learned(midi.Message(learn.status, learn.d1, hires=learn.seen))
+        elif learn.seen:
+            self._learned(midi.Message(learn.status, learn.d1))   # 127 then 0: a button
         else:
-            self._learned(midi.Message(status, d1, direction=-1))   # 127 alone: a knob's step back
+            self._learned(midi.Message(learn.status, learn.d1, direction=-1))   # 127 alone: a knob's step back
 
     def _learned(self, message: midi.Message) -> None:
-        action_id = self._midi_learning
+        action_id = self._learn.action_id if self._learn is not None else None
         self._stop_midi_learn()
         if action_id is None:
             return

@@ -17,6 +17,7 @@ resolves to one, as opening one sends the user's credentials to that host."""
 
 from __future__ import annotations
 
+import enum
 import ipaddress
 import socket
 import threading
@@ -50,6 +51,26 @@ class DeckReport:
     samples: Optional[int]       # or as samples, counted at ``rate`` (0: the file's)
     rate: int
     received_at: float           # time.monotonic()
+
+
+@dataclass(frozen=True)
+class _Wanted:
+    """The followed deck's track, not loaded here yet: as the app names it, and where the deck is in it."""
+    path: str
+    time_sec: float
+
+
+class _Ask(enum.Enum):
+    LOAD = enum.auto()          # a library track's load
+    ANALYSIS = enum.auto()      # a file not in the library: analysed, then loaded
+
+
+@dataclass(frozen=True)
+class _Asked:
+    """The request made for a wanted track, answered by its load (DataModel.sig_loaded); one at a time. Not asked
+    again for the same track (a load that never comes, its analysis failed: the deck's next track is asked for)."""
+    kind: _Ask
+    path: str
 
 
 def _flag(value) -> Optional[bool]:
@@ -192,13 +213,10 @@ class ExternalSyncController(QtCore.QObject):
         self._track_duration_callback = track_duration_callback
         self._track_total_samples_callback = track_total_samples_callback
         self._failure_callback = failure_callback
+        self._wanted: _Wanted | None = None
+        self._asked: _Asked | None = None
+        # the tracks already said in the log (said once each while they last)
         self._missing_path_logged: str | None = None
-        self._pending_external_path: str | None = None
-        self._pending_external_raw_path: str | None = None
-        self._pending_external_time_sec: float = 0.0
-        self._analysis_request_inflight: str | None = None
-        self._analysis_request_raw_path: str | None = None
-        self._load_request_inflight: str | None = None
         self._invalid_external_path_logged: str | None = None
         self._not_in_library_logged: str | None = None
         self._validated_external_paths: dict[str, str] = {}
@@ -223,13 +241,7 @@ class ExternalSyncController(QtCore.QObject):
     def set_config(self, cfg: externalsyncconfig) -> None:
         listen_changed = (cfg.osc_host, cfg.osc_port) != (self._cfg.osc_host, self._cfg.osc_port)
         self._cfg = cfg
-        self._missing_path_logged = None
-        self._pending_external_path = None
-        self._pending_external_raw_path = None
-        self._pending_external_time_sec = 0.0
-        self._analysis_request_inflight = None
-        self._analysis_request_raw_path = None
-        self._load_request_inflight = None
+        self._forget()
         self._invalid_external_path_logged = None
         self._not_in_library_logged = None
         self._validated_external_paths = {}
@@ -300,12 +312,12 @@ class ExternalSyncController(QtCore.QObject):
     @QtCore.Slot()
     def _on_features_loaded(self) -> None:
         loaded_path = self._loaded_track_path()
-        self._load_request_inflight = None
-        if loaded_path and loaded_path == self._pending_external_path:
-            self._clear_pending_external()
-        if loaded_path and loaded_path == self._analysis_request_inflight:
-            self._analysis_request_inflight = None
-            self._analysis_request_raw_path = None
+        if self._wanted is not None and loaded_path and loaded_path == self._wanted.path:
+            self._wanted = None
+        # a load answers a load asked; an analysis asked is answered by its own track's load
+        asked = self._asked
+        if asked is not None and (asked.kind is _Ask.LOAD or (loaded_path and loaded_path == asked.path)):
+            self._asked = None
         self._missing_path_logged = None
         QtCore.QTimer.singleShot(0, self._drive_pending_external)
 
@@ -313,13 +325,9 @@ class ExternalSyncController(QtCore.QObject):
     def _on_library_updated(self, _data) -> None:
         # a file may now be in the library under its own path: look it up again
         self._validated_external_paths.clear()
-        if (
-            self._analysis_request_inflight
-            and self._analysis_request_raw_path
-            and self._track_exists_in_library(self._analysis_request_raw_path)
-        ):
-            self._analysis_request_inflight = None
-            self._analysis_request_raw_path = None
+        asked = self._asked
+        if asked is not None and asked.kind is _Ask.ANALYSIS and self._track_exists_in_library(asked.path):
+            self._asked = None      # analysed: loaded as a library track
         QtCore.QTimer.singleShot(0, self._drive_pending_external)
 
     def _apply_polling_state(self) -> None:
@@ -374,11 +382,7 @@ class ExternalSyncController(QtCore.QObject):
         time_sec = max(0.0, float(external.get("time_sec") or 0.0))
 
         if not loaded or not path:
-            self._clear_pending_external()
-            self._analysis_request_inflight = None
-            self._analysis_request_raw_path = None
-            self._load_request_inflight = None
-            self._missing_path_logged = None
+            self._forget()
             self._invalid_external_path_logged = None
             return
         validated_path = self._validate_external_track_path(path)
@@ -386,88 +390,65 @@ class ExternalSyncController(QtCore.QObject):
             if self._invalid_external_path_logged != path:
                 self._invalid_external_path_logged = path
                 self._log(tr("External Sync ignored unsafe track path: {path}").format(path=path))
-            self._clear_pending_external()
-            self._analysis_request_inflight = None
-            self._analysis_request_raw_path = None
-            self._load_request_inflight = None
-            self._missing_path_logged = None
+            self._forget()
             return
         self._invalid_external_path_logged = None
-        norm_external = validated_path
         loaded_path = self._loaded_track_path()
 
-        if loaded_path and loaded_path == norm_external:
-            self._clear_pending_external()
-            self._analysis_request_inflight = None
-            self._analysis_request_raw_path = None
-            self._missing_path_logged = None
-            self._load_request_inflight = None
+        if loaded_path and loaded_path == validated_path:
+            self._forget()
             if self._seek_callback is None:
                 return
             self._seek_callback(time_sec)
             return
 
-        self._pending_external_path = norm_external
-        self._pending_external_raw_path = validated_path
-        self._pending_external_time_sec = time_sec
+        self._wanted = _Wanted(validated_path, time_sec)
         self._drive_pending_external()
 
     def _drive_pending_external(self) -> None:
-        pending_path = self._pending_external_path
-        pending_raw_path = self._pending_external_raw_path
-        if not pending_path or not pending_raw_path:
+        wanted = self._wanted
+        if wanted is None:
             return
 
         loaded_path = self._loaded_track_path()
-        if loaded_path and loaded_path == pending_path:
-            self._clear_pending_external()
-            self._analysis_request_inflight = None
-            self._analysis_request_raw_path = None
-            self._missing_path_logged = None
-            self._load_request_inflight = None
+        if loaded_path and loaded_path == wanted.path:
+            self._forget()
             return
 
-        if pending_raw_path in (self._load_request_inflight, self._analysis_request_inflight):
+        if self._asked is not None and self._asked.path == wanted.path:
             return     # asked for already: its load tells (DataModel.sig_loaded)
         # another track than the one asked for: that request is let go (a load that never reached the model, its
         # analysis failed or its file gone, held every track after it), this one asked for
-        self._load_request_inflight = None
-        self._analysis_request_inflight = None
-        self._analysis_request_raw_path = None
+        self._asked = None
 
-        if self._track_exists_in_library(pending_raw_path):
+        if self._track_exists_in_library(wanted.path):
             self._missing_path_logged = None
-            self._request_track_load(pending_raw_path, self._pending_external_time_sec)
+            self._ask(_Ask.LOAD, wanted)
             return
 
         if self._library_only:   # a sender on the network: no analysis started for it
-            if self._not_in_library_logged != pending_path:
-                self._not_in_library_logged = pending_path
+            if self._not_in_library_logged != wanted.path:
+                self._not_in_library_logged = wanted.path
                 self._log(tr("External Sync ignored a track not in the library (OSC from the network): {path}")
-                          .format(path=pending_raw_path))
+                          .format(path=wanted.path))
             return
-        if self._missing_path_logged != pending_path:
-            self._missing_path_logged = pending_path
-            self._log(tr("External Sync analyzing external track before load: {path}").format(path=pending_raw_path))
-        self._request_track_analysis(pending_raw_path, self._pending_external_time_sec)
+        if self._missing_path_logged != wanted.path:
+            self._missing_path_logged = wanted.path
+            self._log(tr("External Sync analyzing external track before load: {path}").format(path=wanted.path))
+        self._ask(_Ask.ANALYSIS, wanted)
 
-    def _request_track_analysis(self, path: str, time_sec: float) -> None:
-        if self._analysis_request_inflight == path or self._load_track_callback is None:
+    def _ask(self, kind: _Ask, wanted: _Wanted) -> None:
+        """The wanted track's load (a library track's) or its analysis asked for (the window's load does both)."""
+        if self._load_track_callback is None:
             return
-        self._analysis_request_inflight = path
-        self._analysis_request_raw_path = path
-        self._load_track_callback(path, time_sec)
+        self._asked = _Asked(kind, wanted.path)
+        self._load_track_callback(wanted.path, wanted.time_sec)
 
-    def _request_track_load(self, path: str, time_sec: float) -> None:
-        if self._load_request_inflight == path or self._load_track_callback is None:
-            return
-        self._load_request_inflight = path
-        self._load_track_callback(path, time_sec)
-
-    def _clear_pending_external(self) -> None:
-        self._pending_external_path = None
-        self._pending_external_raw_path = None
-        self._pending_external_time_sec = 0.0
+    def _forget(self) -> None:
+        """Nothing wanted, nothing asked: the deck's track is loaded here, or there is none to follow."""
+        self._wanted = None
+        self._asked = None
+        self._missing_path_logged = None
 
     def _loaded_track_path(self) -> str:
         props = self.model.properties if isinstance(self.model.properties, dict) else {}

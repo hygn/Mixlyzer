@@ -33,10 +33,13 @@ class _Worker(process_worker.SpawnProcessWorker):
         self.exited = []
 
     def _handle_process_message(self, message) -> None:
-        self.process = self._process
+        self.process = self._launch.process
 
     def _process_exited(self, *, graceful: bool, exitcode) -> None:
         self.exited.append(graceful)
+
+
+_Start = process_worker._Start
 
 
 def _closed(process) -> bool:
@@ -67,8 +70,8 @@ class ProcessWorkerTests(unittest.TestCase):
     def test_stop_ends_a_running_process(self):
         worker = _Worker(_runs, 30.0)
         worker.start()
-        _until(lambda: worker._started, 60.0)
-        process = worker._process
+        _until(lambda: worker._launch.state is _Start.UP, 60.0)
+        process = worker._launch.process
         worker.stop()
         deadline = time.monotonic() + 10.0
         while time.monotonic() < deadline:
@@ -80,6 +83,23 @@ class ProcessWorkerTests(unittest.TestCase):
                 break
             time.sleep(0.05)
         self.assertFalse(alive)
+
+    def test_started_again_after_a_run_waits_for_its_own_process(self):
+        """A run's start is its own: a worker started again once its run is over (or stopped) waits for the new
+        process, never read as gone before it has started (the last run's started flag)."""
+        worker = _Worker(_slow_to_end, 0.0)
+        worker.start()
+        _until(lambda: worker.exited, 60.0)
+        real = SpawnProcess._Popen
+
+        def slow(process_obj):      # a start slower than the first poll (a loaded machine)
+            time.sleep(0.5)
+            return real(process_obj)
+
+        with mock.patch.object(SpawnProcess, "_Popen", staticmethod(slow)):
+            worker.start()
+            _until(lambda: len(worker.exited) == 2, 60.0)
+        self.assertEqual(worker.exited, [True, True])
 
 
 def _job(tag: str, seconds: float, queue) -> None:
@@ -129,8 +149,8 @@ class ResidentPoolTests(unittest.TestCase):
         _until(lambda: warm.exited, 60.0)
         long = _Job(pool, "long", 30.0)
         long.start()
-        _until(lambda: long._resident is not None and not long._resident.starting, 10.0)
-        process = long._resident.process
+        _until(lambda: long._resident is not None and long._resident.launch.state is not _Start.STARTING, 10.0)
+        process = long._resident.launch.process
         long.stop()
         _until(lambda: _closed(process) or not process.is_alive(), 15.0)
         self.assertTrue(_closed(process) or not process.is_alive())
@@ -173,13 +193,13 @@ class ResidentPoolTests(unittest.TestCase):
         with mock.patch.object(SpawnProcess, "_Popen", staticmethod(held)):
             job.start()
             resident = job._resident
-            name = resident.process.name
+            name = resident.launch.process.name
             self.assertTrue(entered.wait(30.0))
             job.stop()
             self.assertEqual(pool._residents, [])
             time.sleep(0.3)                     # a release thread's close() done meanwhile
             gate.set()
-            _until(lambda: not resident.starting, 60.0)
+            _until(lambda: resident.launch.state is _Start.ENDED, 60.0)
         # the children multiprocessing still knows running (a Process object closed while it started reads as
         # closed, its child running all the same)
         running = lambda: [p.name for p in mp.active_children() if p.name == name]   # noqa: E731

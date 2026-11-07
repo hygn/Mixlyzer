@@ -15,31 +15,34 @@ from ui.theme import current_theme
 from analyzer.search import variants as variant_fp
 from core.search import variants as variant_relations
 from system.i18n import tr
-from ui.library.common import (Track, _DIRECTORY_LOADED_ROLE, _PLAYLIST_MIME, _SOURCE_KIND_ROLE,
-    _SOURCE_VALUE_ROLE, row_to_track)
-from ui.library.mix import MIX_SOURCE
+from ui.library.common import (MUSIC_SOURCE, RELATED_KINDS, Source, SourceKind, Track,
+    _DIRECTORY_LOADED_ROLE, _PLAYLIST_MIME, _SOURCE_VALUE_ROLE, kind_of, row_to_track, set_source, source_of)
 
 
 # a source's kind in the tree -> its node's kind in the playlists' tree (core.library.records)
-_NODE_OF = {"playlist": PLAYLIST_NODE, "playlist_folder": FOLDER_NODE}
-
-# the Related Tracks (core.search.related)
-SAME_ARTIST, SAME_ALBUM, SAME_WORK = "related_artist", "related_album", "related_work"
-# the sources made from the deck's track: shown again at each track loaded
-LOADED_SOURCES = (MIX_SOURCE, SAME_ARTIST, SAME_ALBUM, SAME_WORK, "variants_loaded")
+_NODE_OF = {SourceKind.PLAYLIST: PLAYLIST_NODE, SourceKind.PLAYLIST_FOLDER: FOLDER_NODE}
+# the table's first sort of a source: (column, order); the others by Title, A to Z
+_FIRST_SORT = {
+    SourceKind.MUSIC: ("#", QtCore.Qt.SortOrder.AscendingOrder),
+    SourceKind.LIBRARY: ("Added", QtCore.Qt.SortOrder.DescendingOrder),
+    SourceKind.PLAYLIST: ("#", QtCore.Qt.SortOrder.AscendingOrder),
+    SourceKind.VARIANTS: ("#", QtCore.Qt.SortOrder.AscendingOrder),
+    SourceKind.VARIANTS_LOADED: ("#", QtCore.Qt.SortOrder.AscendingOrder),
+    SourceKind.MIX: ("#", QtCore.Qt.SortOrder.AscendingOrder),
+}
 
 
 def _folder_of(item: Optional[QtWidgets.QTreeWidgetItem]) -> Optional[str]:
     """The playlist folder an item is in (None: the top)."""
     parent = item.parent() if item is not None else None
-    if parent is not None and parent.data(0, _SOURCE_KIND_ROLE) == "playlist_folder":
+    if kind_of(parent) is SourceKind.PLAYLIST_FOLDER:
         return str(parent.data(0, _SOURCE_VALUE_ROLE))
     return None
 
 
 def _node_of(item: Optional[QtWidgets.QTreeWidgetItem]) -> Optional[tuple[str, str]]:
     """(kind, uid) of a playlist or folder item, else None."""
-    kind = _NODE_OF.get(item.data(0, _SOURCE_KIND_ROLE)) if item is not None else None
+    kind = _NODE_OF.get(kind_of(item))
     return (kind, str(item.data(0, _SOURCE_VALUE_ROLE))) if kind else None
 
 
@@ -104,8 +107,8 @@ class _LibrarySourceTree(QtWidgets.QTreeWidget):
         else after it); over Playlists: at the top's end. The line starts at the level the drop goes into. A folder
         never into itself or a folder inside it."""
         item = self.itemAt(pos)
-        kind = item.data(0, _SOURCE_KIND_ROLE) if item is not None else ""
-        if kind == "playlists":
+        kind = kind_of(item)
+        if kind is SourceKind.PLAYLISTS:
             last = item
             while last.childCount() and last.isExpanded():   # under the last row shown (an open folder's last)
                 last = last.child(last.childCount() - 1)
@@ -123,11 +126,11 @@ class _LibrarySourceTree(QtWidgets.QTreeWidget):
         rect = self.visualItemRect(item)
         y = pos.y() - rect.top()
         folder = _folder_of(item)
-        if kind == "playlist_folder" and rect.height() // 4 <= y < rect.height() - rect.height() // 4:
+        if kind is SourceKind.PLAYLIST_FOLDER and rect.height() // 4 <= y < rect.height() - rect.height() // 4:
             return True, node[1], None, None, rect
         if y < rect.height() // 2:
             return True, folder, node, (rect.top(), rect.left()), None
-        if kind == "playlist_folder" and item.isExpanded() and item.childCount():
+        if kind is SourceKind.PLAYLIST_FOLDER and item.isExpanded() and item.childCount():
             first = item.child(0)       # the line between the folder and its first child: first in it
             return True, node[1], _node_of(first), (rect.bottom() + 1, self.visualItemRect(first).left()), None
         parent = item.parent()
@@ -176,7 +179,7 @@ class _LibrarySourceTree(QtWidgets.QTreeWidget):
 
     def _playlist_at(self, pos) -> Optional[str]:
         item = self.itemAt(pos)
-        if item is None or item.data(0, _SOURCE_KIND_ROLE) != "playlist":
+        if kind_of(item) is not SourceKind.PLAYLIST:
             return None
         return str(item.data(0, _SOURCE_VALUE_ROLE) or "") or None
 
@@ -278,47 +281,49 @@ class SourcesMixin:
             roots.append(root_path)
         return roots
 
+    def _shown_source(self) -> Source:
+        """What the table shows, which every action on its rows asks: Search by Music's results while it is on (its
+        # a rank), else the source chosen in the sources panel (``_source``, shown again once the search ends)."""
+        return MUSIC_SOURCE if self._music_mode else self._source
+
     def _rebuild_source_tree(self) -> None:
-        previous = (self._source_kind, self._source_value)
+        previous = self._source
         tree = self.source_tree
         tree.blockSignals(True)
         tree.clear()
 
-        library_item = QtWidgets.QTreeWidgetItem([tr("Library")])
-        library_item.setData(0, _SOURCE_KIND_ROLE, "library")
+        def item_of(name: str, kind: SourceKind, tip: str = "", value: Optional[str] = None):
+            item = QtWidgets.QTreeWidgetItem([name])
+            set_source(item, Source(kind, value))
+            if tip:
+                item.setToolTip(0, tip)
+            return item
+
+        library_item = item_of(tr("Library"), SourceKind.LIBRARY)
         tree.addTopLevelItem(library_item)
+        tree.addTopLevelItem(item_of(tr("Mix Candidates"), SourceKind.MIX, tr(
+            "<p>Tracks to play after or before the loaded one, the best blend first.</p>")))
 
-        mix_item = QtWidgets.QTreeWidgetItem([tr("Mix Candidates")])
-        mix_item.setData(0, _SOURCE_KIND_ROLE, MIX_SOURCE)
-        mix_item.setToolTip(0, tr("<p>Tracks to play after or before the loaded one, the best blend first.</p>"))
-        tree.addTopLevelItem(mix_item)
-
-        related_item = QtWidgets.QTreeWidgetItem([tr("Related Tracks")])
-        related_item.setData(0, _SOURCE_KIND_ROLE, "related")
-        related_item.setToolTip(0, tr("<p>The library's tracks related to the track loaded on the deck.</p>"))
+        related_item = item_of(tr("Related Tracks"), SourceKind.RELATED, tr(
+            "<p>The library's tracks related to the track loaded on the deck.</p>"))
         tree.addTopLevelItem(related_item)
         for kind, name, tip in (
-                (SAME_ARTIST, tr("Same Artist"), tr(
+                (SourceKind.SAME_ARTIST, tr("Same Artist"), tr(
                     "<p>The tracks crediting an artist the loaded track credits: in the artist field (each name of "
                     "\"A feat. B\", \"A &amp; B\", a character and its voice actor) or as featured in the title.</p>")),
-                (SAME_ALBUM, tr("Same Album"), tr("<p>The tracks of the loaded track's album (by its name).</p>")),
-                (SAME_WORK, tr("Same Tie-up Work"), tr("<p>The tracks with a tie-up to a work the loaded track's "
-                                                       "tie-ups name.</p>")),
-                ("variants_loaded", tr("Variants"), tr("<p>The versions of the track loaded on the deck.</p>"))):
-            item = QtWidgets.QTreeWidgetItem([name])
-            item.setData(0, _SOURCE_KIND_ROLE, kind)
-            item.setToolTip(0, tip)
-            related_item.addChild(item)
+                (SourceKind.SAME_ALBUM, tr("Same Album"), tr(
+                    "<p>The tracks of the loaded track's album (by its name).</p>")),
+                (SourceKind.SAME_WORK, tr("Same Tie-up Work"), tr(
+                    "<p>The tracks with a tie-up to a work the loaded track's tie-ups name.</p>")),
+                (SourceKind.VARIANTS_LOADED, tr("Variants"), tr(
+                    "<p>The versions of the track loaded on the deck.</p>"))):
+            related_item.addChild(item_of(name, kind, tip))
         related_item.setExpanded(True)
 
-        variants_item = QtWidgets.QTreeWidgetItem([tr("Tracks with Variants")])
-        variants_item.setData(0, _SOURCE_KIND_ROLE, "variants")
-        variants_item.setToolTip(0, tr(
-            "<p>The library's tracks that are versions of one song. # is the song.</p>"))
-        tree.addTopLevelItem(variants_item)
+        tree.addTopLevelItem(item_of(tr("Tracks with Variants"), SourceKind.VARIANTS, tr(
+            "<p>The library's tracks that are versions of one song. # is the song.</p>")))
 
-        playlists_item = QtWidgets.QTreeWidgetItem([tr("Playlists")])
-        playlists_item.setData(0, _SOURCE_KIND_ROLE, "playlists")
+        playlists_item = item_of(tr("Playlists"), SourceKind.PLAYLISTS)
         tree.addTopLevelItem(playlists_item)
         self._shown_playlists = self._playlists_shape()
         children = self.library.snapshot.playlist_children()
@@ -326,29 +331,22 @@ class SourcesMixin:
         def add(parent: QtWidgets.QTreeWidgetItem, folder_uid) -> None:
             """A folder's children in their order, its folders open unless the user closed them."""
             for node, row in children.get(folder_uid, ()):
-                item = QtWidgets.QTreeWidgetItem([row.name])
-                item.setData(0, _SOURCE_VALUE_ROLE, row.uid)
+                folder = node == FOLDER_NODE
+                item = item_of(row.name, SourceKind.PLAYLIST_FOLDER if folder else SourceKind.PLAYLIST,
+                               value=row.uid)
                 parent.addChild(item)
-                if node == FOLDER_NODE:
-                    item.setData(0, _SOURCE_KIND_ROLE, "playlist_folder")
+                if folder:
                     add(item, row.uid)
                     opened = row.uid not in self._closed_folders
                     item.setExpanded(opened)
                     item.setIcon(0, folder_icon(opened and item.childCount() > 0))
-                else:
-                    item.setData(0, _SOURCE_KIND_ROLE, "playlist")
         add(playlists_item, None)
         playlists_item.setExpanded(True)
 
-        local_item = QtWidgets.QTreeWidgetItem([tr("Local Folders")])
-        local_item.setData(0, _SOURCE_KIND_ROLE, "local_folders")
+        local_item = item_of(tr("Local Folders"), SourceKind.LOCAL_FOLDERS)
         tree.addTopLevelItem(local_item)
         for root_path in self._local_music_roots():
-            root_label = Path(root_path).name or root_path
-            root_item = QtWidgets.QTreeWidgetItem([root_label])
-            root_item.setToolTip(0, root_path)
-            root_item.setData(0, _SOURCE_KIND_ROLE, "directory")
-            root_item.setData(0, _SOURCE_VALUE_ROLE, root_path)
+            root_item = item_of(Path(root_path).name or root_path, SourceKind.DIRECTORY, root_path, root_path)
             local_item.addChild(root_item)
             self._populate_directory_children(root_item)
             root_item.setExpanded(False)
@@ -358,17 +356,13 @@ class SourcesMixin:
         iterator = QtWidgets.QTreeWidgetItemIterator(tree)
         while iterator.value():
             candidate = iterator.value()
-            if (
-                candidate.data(0, _SOURCE_KIND_ROLE),
-                candidate.data(0, _SOURCE_VALUE_ROLE),
-            ) == previous:
+            if source_of(candidate) == previous:
                 selected = candidate
                 break
             iterator += 1
         tree.blockSignals(False)
         tree.setCurrentItem(selected)
-        self._source_kind = str(selected.data(0, _SOURCE_KIND_ROLE) or "library")
-        self._source_value = selected.data(0, _SOURCE_VALUE_ROLE)
+        self._source = source_of(selected)
 
     def _playlists_shape(self) -> tuple:
         """The playlists' tree as the sources panel shows it (a change rebuilds it)."""
@@ -377,7 +371,7 @@ class SourcesMixin:
                 tuple((f.uid, f.name, f.parent_uid, f.sort_index) for f in snap.folders))
 
     def _populate_directory_children(self, item: QtWidgets.QTreeWidgetItem) -> None:
-        if item.data(0, _SOURCE_KIND_ROLE) != "directory":
+        if kind_of(item) is not SourceKind.DIRECTORY:
             return
         if item.data(0, _DIRECTORY_LOADED_ROLE):
             return
@@ -395,20 +389,19 @@ class SourcesMixin:
         for entry in directories:
             child = QtWidgets.QTreeWidgetItem([entry.name])
             child.setToolTip(0, entry.path)
-            child.setData(0, _SOURCE_KIND_ROLE, "directory")
-            child.setData(0, _SOURCE_VALUE_ROLE, entry.path)
+            set_source(child, Source(SourceKind.DIRECTORY, entry.path))
             child.setChildIndicatorPolicy(QtWidgets.QTreeWidgetItem.ShowIndicator)
             item.addChild(child)
         item.setData(0, _DIRECTORY_LOADED_ROLE, True)
 
     def _on_source_expanded(self, item: QtWidgets.QTreeWidgetItem) -> None:
-        if item.data(0, _SOURCE_KIND_ROLE) == "playlist_folder":
+        if kind_of(item) is SourceKind.PLAYLIST_FOLDER:
             self._closed_folders.discard(str(item.data(0, _SOURCE_VALUE_ROLE)))
             item.setIcon(0, folder_icon(item.childCount() > 0))
         self._populate_directory_children(item)
 
     def _on_source_collapsed(self, item: QtWidgets.QTreeWidgetItem) -> None:
-        if item.data(0, _SOURCE_KIND_ROLE) == "playlist_folder":
+        if kind_of(item) is SourceKind.PLAYLIST_FOLDER:
             self._closed_folders.add(str(item.data(0, _SOURCE_VALUE_ROLE)))
             item.setIcon(0, folder_icon(False))
 
@@ -417,55 +410,39 @@ class SourcesMixin:
             return
         if self._music_mode:
             self._exit_music_mode()
-        self._source_kind = str(current.data(0, _SOURCE_KIND_ROLE) or "")
-        self._source_value = current.data(0, _SOURCE_VALUE_ROLE)
+        self._source = source_of(current)
         self._refresh_current_source(reset_sort=True)
 
     def _refresh_current_source(self, *, reset_sort: bool = False) -> None:
-        self.table.setPlaylistReorderEnabled(self._playlist_shown())
+        source = self._shown_source()
+        kind = source.kind
+        self.table.setPlaylistReorderEnabled(kind is SourceKind.PLAYLIST)
         self._sync_mix_bar()
-        if self._music_mode:
+        if kind is SourceKind.MUSIC:
             tracks = self._music_tracks()
-            default_column = "#"
-            default_order = QtCore.Qt.SortOrder.AscendingOrder
-        elif self._source_kind == "library":
+        elif kind is SourceKind.LIBRARY:
             tracks = list(self._library_tracks)
-            default_column = "Added"
-            default_order = QtCore.Qt.SortOrder.DescendingOrder
-        elif self._source_kind == "playlist":
+        elif kind is SourceKind.PLAYLIST:
             snap = self.library.snapshot
             tracks = []
-            for position, row in snap.playlist_tracks(str(self._source_value)):
+            for position, row in snap.playlist_tracks(str(source.value)):
                 track = row_to_track(row, snap.readings.get(row.uid), snap.tieups.get(row.uid),
                                      snap.initials.get(row.uid), snap.sort_keys.get(row.uid))
                 track.playlist_index = position
                 track._disp_playlist_index = str(position + 1)
                 tracks.append(track)
-            default_column = "#"
-            default_order = QtCore.Qt.SortOrder.AscendingOrder
-        elif self._source_kind in ("variants", "variants_loaded"):
-            tracks = self._variant_tracks(self._loaded_uid or "" if self._source_kind == "variants_loaded" else None)
-            default_column = "#"
-            default_order = QtCore.Qt.SortOrder.AscendingOrder
-        elif self._source_kind == MIX_SOURCE:
+        elif kind in (SourceKind.VARIANTS, SourceKind.VARIANTS_LOADED):
+            tracks = self._variant_tracks(self._loaded_uid or "" if kind is SourceKind.VARIANTS_LOADED else None)
+        elif kind is SourceKind.MIX:
             tracks = self._mix_tracks()
-            default_column = "#"
-            default_order = QtCore.Qt.SortOrder.AscendingOrder
-        elif self._source_kind in (SAME_ARTIST, SAME_ALBUM, SAME_WORK):
-            tracks = self._related_tracks(self._source_kind)
-            default_column = "Title"
-            default_order = QtCore.Qt.SortOrder.AscendingOrder
-        elif self._source_kind == "directory":
-            tracks = self._scan_directory(str(self._source_value or ""))
-            default_column = "Title"
-            default_order = QtCore.Qt.SortOrder.AscendingOrder
-        else:
+        elif kind in RELATED_KINDS:
+            tracks = self._related_tracks(kind)
+        elif kind is SourceKind.DIRECTORY:
+            tracks = self._scan_directory(str(source.value or ""))
+        else:   # a heading
             tracks = []
-            default_column = "Title"
-            default_order = QtCore.Qt.SortOrder.AscendingOrder
 
-        source = ("music", None) if self._music_mode else (self._source_kind, self._source_value)
-        if (source[0] == "library" and not reset_sort and self._table_source == source
+        if (kind is SourceKind.LIBRARY and not reset_sort and self._table_source == source
                 and self._update_library_rows(tracks)):
             self._apply_filter()
             return
@@ -474,16 +451,15 @@ class SourcesMixin:
         self.table.setRowCount(0)
         self._all_tracks = tracks
         if reset_sort:
-            self.table.horizontalHeader().setSortIndicator(
-                self.HEADERS.index(default_column), default_order
-            )
+            column, order = _FIRST_SORT.get(kind, ("Title", QtCore.Qt.SortOrder.AscendingOrder))
+            self.table.horizontalHeader().setSortIndicator(self.HEADERS.index(column), order)
         self._populate_table(tracks)   # sorted by the sort indicator
         self._table_source = source
-        if self._music_mode:
+        if kind is SourceKind.MUSIC:
             self._music_tooltips()
-        elif self._source_kind in ("variants", "variants_loaded"):
+        elif kind in (SourceKind.VARIANTS, SourceKind.VARIANTS_LOADED):
             self._variant_marks()
-        elif self._source_kind == MIX_SOURCE:
+        elif kind is SourceKind.MIX:
             self._mix_marks()
         self._apply_filter()
         self.table.setUpdatesEnabled(True)
@@ -535,30 +511,28 @@ class SourcesMixin:
         """The sources panel's highlight back on the source the library shows (keys moved it elsewhere)."""
         tree = self.source_tree
         current = tree.currentItem()
-        if current is not None and (current.data(0, _SOURCE_KIND_ROLE), current.data(0, _SOURCE_VALUE_ROLE)) == (
-                self._source_kind, self._source_value):
+        if current is not None and source_of(current) == self._source:
             return
         iterator = QtWidgets.QTreeWidgetItemIterator(tree)
         while iterator.value():
             item = iterator.value()
-            if (item.data(0, _SOURCE_KIND_ROLE), item.data(0, _SOURCE_VALUE_ROLE)) == (
-                    self._source_kind, self._source_value):
+            if source_of(item) == self._source:
                 tree.blockSignals(True)
                 tree.setCurrentItem(item)
                 tree.blockSignals(False)
                 return
             iterator += 1
 
-    def _related_tracks(self, kind: str) -> List[Track]:
+    def _related_tracks(self, kind: SourceKind) -> List[Track]:
         """The library's tracks related to the deck's track by ``kind`` (core.search.related), the loaded one among
         them; none without a library track loaded or with nothing to relate by (no artist, album or tie-up)."""
         loaded = next((t for t in self._library_tracks if t.uid and t.uid == self._loaded_uid), None)
         if loaded is None:
             return []
-        if kind == SAME_ARTIST:
+        if kind is SourceKind.SAME_ARTIST:
             keys = related.artist_keys(loaded.title, loaded.artist)
             return [t for t in self._library_tracks if keys & related.artist_keys(t.title, t.artist)]
-        if kind == SAME_ALBUM:
+        if kind is SourceKind.SAME_ALBUM:
             key = related.album_key(loaded.album)
             return [t for t in self._library_tracks if key and related.album_key(t.album) == key]
         tieups = self.library.snapshot.tieups
@@ -641,35 +615,33 @@ class SourcesMixin:
                     item.setToolTip(tip)
                     item.setBackground(shades[song % 2])
 
-    def _select_source(self, kind: str, value=None) -> None:
+    def _select_source(self, source: Source) -> None:
         iterator = QtWidgets.QTreeWidgetItemIterator(self.source_tree)
         while iterator.value():
             item = iterator.value()
-            if (
-                item.data(0, _SOURCE_KIND_ROLE) == kind
-                and item.data(0, _SOURCE_VALUE_ROLE) == value
-            ):
+            if source_of(item) == source:
                 self.source_tree.setCurrentItem(item)
                 return
             iterator += 1
 
     def _on_source_context_menu(self, pos) -> None:
         item = self.source_tree.itemAt(pos)
-        kind = item.data(0, _SOURCE_KIND_ROLE) if item is not None else ""
+        kind = kind_of(item)
         menu = QtWidgets.QMenu(self)
         actions = {}
         # a new playlist or folder goes into the folder clicked, or beside the playlist clicked
-        folder = str(item.data(0, _SOURCE_VALUE_ROLE)) if kind == "playlist_folder" else _folder_of(item)
-        if kind in ("playlists", "playlist", "playlist_folder"):
+        folder = str(item.data(0, _SOURCE_VALUE_ROLE)) if kind is SourceKind.PLAYLIST_FOLDER else _folder_of(item)
+        playlist = kind is SourceKind.PLAYLIST
+        if kind in (SourceKind.PLAYLISTS, SourceKind.PLAYLIST, SourceKind.PLAYLIST_FOLDER):
             actions["new"] = menu.addAction(tr("New Playlist"))
             actions["new_folder"] = menu.addAction(tr("New Folder"))
-        if kind in ("playlist", "playlist_folder"):
+        if kind in (SourceKind.PLAYLIST, SourceKind.PLAYLIST_FOLDER):
             menu.addSeparator()
             actions["rename"] = menu.addAction(tr("Rename"))
             actions["up"] = menu.addAction(tr("Move Up"))
             actions["down"] = menu.addAction(tr("Move Down"))
-            actions["delete"] = menu.addAction(tr("Delete Playlist") if kind == "playlist" else tr("Delete Folder"))
-        elif kind in ("directory", "local_folders"):
+            actions["delete"] = menu.addAction(tr("Delete Playlist") if playlist else tr("Delete Folder"))
+        elif kind in (SourceKind.DIRECTORY, SourceKind.LOCAL_FOLDERS):
             actions["refresh"] = menu.addAction(tr("Refresh Folders"))
         if menu.isEmpty():
             return
@@ -681,12 +653,12 @@ class SourcesMixin:
         elif chosen == actions.get("new_folder"):
             self._create_folder(folder)
         elif chosen == actions.get("rename"):
-            if kind == "playlist":
+            if playlist:
                 self._rename_playlist(item)
             else:
                 self._rename_folder(item)
         elif chosen == actions.get("delete"):
-            if kind == "playlist":
+            if playlist:
                 self._delete_playlist(item)
             else:
                 self._delete_folder(item)

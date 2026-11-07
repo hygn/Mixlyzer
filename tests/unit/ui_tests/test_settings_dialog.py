@@ -369,7 +369,7 @@ class MidiPageTests(unittest.TestCase):
             self.assertFalse(w.isEnabled())
         self.assertIn("native audio engine", self.d.lbl_midi_note.text())
         self.d._toggle_midi_learn(True)
-        self.assertIsNone(self.d._midi_learning)
+        self.assertIsNone(self.d._learn)
 
     def test_learn_ends_when_the_window_closes_by_esc(self):
         self.native()
@@ -378,7 +378,7 @@ class MidiPageTests(unittest.TestCase):
         self.d.btn_midi_learn.setChecked(True)
         self.assertEqual(self.learning, [True])
         self.d.reject()                          # Esc and the close button: QDialog.reject, not the Cancel button
-        self.assertIsNone(self.d._midi_learning)
+        self.assertIsNone(self.d._learn)
         self.assertFalse(self.d.btn_midi_learn.isChecked())
         self.assertEqual(self.learning, [True, False])
 

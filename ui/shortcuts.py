@@ -267,6 +267,14 @@ _COMMAND_MODIFIERS = QtCore.Qt.ControlModifier | QtCore.Qt.AltModifier | QtCore.
 STATUS_MS = 3000
 
 
+@dataclass(frozen=True)
+class _Held:
+    """The action whose key is held: repeated by the hold timer, or ``momentary`` (its handler told when let go)."""
+    action_id: str
+    handler: Callable
+    momentary: bool = False
+
+
 class ShortcutManager(QtCore.QObject):
     """One QShortcut per action on ``window`` (keys set by ``apply``); ``handlers``: action id -> callable
     returning None or a message for ``status(message, ms)``. An action with a hold rate is repeated by a timer
@@ -278,8 +286,7 @@ class ShortcutManager(QtCore.QObject):
         super().__init__(window)
         self._status = status
         self._shortcuts: dict[str, QtGui.QShortcut] = {}
-        self._held: Optional[tuple[str, Callable[[], Optional[str]]]] = None   # (action id, handler) held
-        self._held_momentary = False
+        self._held: Optional[_Held] = None      # set by _press / _press_momentary, let go by _release alone
         self._hold_timer = QtCore.QTimer(self)
         self._hold_timer.setTimerType(QtCore.Qt.PreciseTimer)
         self._hold_timer.timeout.connect(self._hold_step)
@@ -310,6 +317,9 @@ class ShortcutManager(QtCore.QObject):
         return list(sc.keys()) if sc is not None else []
 
     def apply(self, keymap: dict[str, list[str]]) -> None:
+        # a key held let go first: its release is matched against the held action's keys, which change here (held
+        # on, it repeated until the app lost the focus)
+        self._release()
         for action_id, sc in self._shortcuts.items():
             sc.setKeys([QtGui.QKeySequence(k) for k in keymap.get(action_id, [])])
         # keys another program holds never arrive: said once they are set
@@ -329,38 +339,35 @@ class ShortcutManager(QtCore.QObject):
     def _press(self, action: Action, handler: Callable[[], Optional[str]]) -> None:
         self._release()   # a key held before (CUE) is let go first: one held at a time
         self._run(handler)
-        self._held = (action.id, handler)
+        self._held = _Held(action.id, handler)
         self._hold_timer.start(max(1, round(1000.0 / action.hold_rate)))
 
     def _press_momentary(self, action: Action, handler: Callable[[bool], Optional[str]]) -> None:
-        if self._held is not None and self._held[0] == action.id:
+        if self._held is not None and self._held.action_id == action.id:
             return   # the key's own repeat
         self._release()
         message = handler(True)
         if message:
             self._status(message, STATUS_MS)
-        self._held = (action.id, handler)
-        self._held_momentary = True
+        self._held = _Held(action.id, handler, momentary=True)
 
     def _hold_step(self) -> None:
         if self._held is None:
             self._hold_timer.stop()
             return
-        self._run(self._held[1])
+        self._run(self._held.handler)
 
     def _release(self) -> None:
-        held, momentary = self._held, self._held_momentary
-        self._held = None
-        self._held_momentary = False
+        held, self._held = self._held, None
         self._hold_timer.stop()
-        if held is not None and momentary:
-            held[1](False)
+        if held is not None and held.momentary:
+            held.handler(False)
 
     def _held_keys(self) -> set[int]:
         """The keys (without modifiers) of the held action's shortcuts."""
         if self._held is None:
             return set()
-        return {_key_value(seq[0].key()) for seq in self._shortcuts[self._held[0]].keys() if not seq.isEmpty()}
+        return {_key_value(seq[0].key()) for seq in self._shortcuts[self._held.action_id].keys() if not seq.isEmpty()}
 
     def _ambiguous(self, action: Action) -> None:
         keys = ", ".join(k.toString(QtGui.QKeySequence.NativeText) for k in self._shortcuts[action.id].keys())

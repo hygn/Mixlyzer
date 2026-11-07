@@ -225,6 +225,19 @@ class BeatgridTests(EditPanelCase):
     def test_half_beat_shift(self):
         self.h["beatgrid.shift_half_forward"]()
         self.assertAlmostEqual(self.model.tempo_segments[0, 3] % 0.5, 0.25)
+
+    def test_count_held_ends_when_the_beatgrid_changes(self):
+        self.panel.beat_counter_button.pressed.emit()          # Count held
+        self.at(12.0)
+        self.assertEqual(self.panel.beat_counter_display.text(), "4")
+        self.h["beatgrid.shift_half_forward"]()                # another grid: the count over the old beats ends
+        self.at(14.0)
+        self.assertEqual(self.panel.beat_counter_display.text(), "4")
+        self.assertEqual(self.panel.beat_counter_barbeat_display.text(), "--")
+        self.panel.beat_counter_button.released.emit()
+        self.panel.beat_counter_button.pressed.emit()          # pressed again: counted anew on this grid
+        self.at(15.0)
+        self.assertEqual(self.panel.beat_counter_display.text(), "2")
         self.assertAlmostEqual(float(np.asarray(self.model.beats)[1]), 0.75)
 
     def test_bpm_doubled_and_halved_keeps_the_downbeat(self):
@@ -389,6 +402,19 @@ class KeyTests(EditPanelCase):
         self.at(10.0)
         self.h["editor.start_earlier"]()               # the track start does not move
         self.assertEqual(self.keys()[0][2], 0.0)
+
+    def test_one_listening_aid_held_at_a_time(self):
+        held = []
+        self.bus.sig_tone_hold.connect(held.append)
+        self.at(10.0)                                   # C major
+        self.h["key.root"]()
+        self.h["key.chord"]()                           # the chord instead of the root
+        self.assertEqual((self.panel.key_root.isChecked(), self.panel.key_chord.isChecked()), (False, True))
+        self.assertEqual(held[-1], (48, 60, 64, 67))     # the root in the bass, the triad an octave up
+        self.h["key.chord"]()                           # again: none
+        self.assertFalse(any(b.isChecked() for b in (self.panel.key_root, self.panel.key_drone,
+                                                       self.panel.key_chord)))
+        self.assertEqual(held[-1], ())
 
     def test_the_whole_track_reanalysis_asked(self):
         asked = []

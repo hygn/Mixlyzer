@@ -364,8 +364,8 @@ class LibrarySettingsMixin:
 
     def _initialize_library_settings(self, bus) -> None:
         self._rekordbox_sync_dialog: RekordboxSyncProgressDialog | None = None
-        self._rekordbox_progress_request = None
-        self._accept_next_library_sync = False
+        self._rekordbox_progress_request = None   # the sync whose progress the dialog shows
+        self._accept_next_library_sync = False    # Sync Now's save being made: a whole sync starting is its
         self._library_sync_dialog: LibrarySyncProgressDialog | None = None
         if bus is None:
             self.btn_library_sync_now.setEnabled(False)
@@ -441,28 +441,20 @@ class LibrarySettingsMixin:
                 self, tr("Sync Rekordbox XML"), tr("Rekordbox XML Path is empty.")
             )
             return
-        previous_libcfg = getattr(self._current_cfg, "libconfig", None)
-        sync_config_changed = (
-            previous_libcfg is None
-            or bool(previous_libcfg.rekordbox_sync_enabled)
-            != bool(cfg.libconfig.rekordbox_sync_enabled)
-            or str(previous_libcfg.rekordbox_xml_path).strip()
-            != str(cfg.libconfig.rekordbox_xml_path).strip()
-            or float(previous_libcfg.rekordbox_ramp_tolerance_ms)
-            != float(cfg.libconfig.rekordbox_ramp_tolerance_ms)
-            or bool(previous_libcfg.rekordbox_comment_tieups)
-            != bool(cfg.libconfig.rekordbox_comment_tieups)
-            or previous_libcfg.rekordbox_tieup_language != cfg.libconfig.rekordbox_tieup_language
-        )
         if self._rekordbox_sync_dialog is not None:
             self._rekordbox_sync_dialog.deleteLater()
         self._rekordbox_sync_dialog = RekordboxSyncProgressDialog(self)
         self._rekordbox_sync_dialog.show()
         self.btn_rekordbox_sync_now.setEnabled(False)
         self._rekordbox_progress_request = None
-        self._accept_next_library_sync = sync_config_changed
-        self.saveJsonRequested.emit(cfg)
-        if not sync_config_changed:
+        # the page's settings saved first: a whole sync the save starts (the window decides:
+        # libconfig.rekordbox_xml_resync) is the one shown; else this one asked (one waiting merged with it)
+        self._accept_next_library_sync = True
+        try:
+            self.saveJsonRequested.emit(cfg)
+        finally:
+            self._accept_next_library_sync = False
+        if self._rekordbox_progress_request is None:
             self._bus.sig_rekordbox_sync_requested.emit(
                 {"full_rebuild": True, "show_progress": True}
             )
@@ -470,11 +462,11 @@ class LibrarySettingsMixin:
     @QtCore.Slot(object)
     def _on_rekordbox_sync_started(self, request) -> None:
         show_progress = bool(getattr(request, "show_progress", False))
-        accepts_saved_config_sync = (
+        started_by_the_save = (       # while Sync Now's save is being made
             self._accept_next_library_sync
             and getattr(request, "mode", "") == "library"
         )
-        if not show_progress and not accepts_saved_config_sync:
+        if not show_progress and not started_by_the_save:
             return
         self._accept_next_library_sync = False
         self._rekordbox_progress_request = request

@@ -161,6 +161,7 @@ class EditPanel(
         return value if np.isfinite(value) and value > 0.0 else 0.0
 
     def _on_track_loaded(self) -> None:
+        self._end_beat_count()
         self._cur_idx = -1
         self._zeroBPM()
         self._on_keys_changed()
@@ -170,6 +171,7 @@ class EditPanel(
         self.update_time(self._current_time)
 
     def _on_beatgrid_changed(self) -> None:
+        self._end_beat_count()
         if not 0 <= self._cur_idx < len(self._segments):
             self._cur_idx = -1
         self.update_time(self._current_time)

@@ -12,7 +12,7 @@ from unit.ui_tests.qt_env import APP  # noqa: F401  (offscreen Qt, one QApplicat
 from PySide6 import QtCore, QtWidgets
 from PySide6.QtWidgets import QMessageBox
 
-from app.window import AppWindow
+from app.window import AppWindow, _Edits
 
 
 class _Editor:
@@ -48,9 +48,8 @@ class _Window(QtWidgets.QWidget):
         super().__init__()
         self.model = mock.Mock(unsaved=unsaved)
         self.pane = mock.Mock(track_edit=_Editor(can_save))
-        self._asking_edits = False
+        self._edits = _Edits.IDLE
         self._external_pending = None
-        self._edits_resolved_for_close = False
         self.messages = []
         self.loaded = []
         self.player = mock.Mock()
@@ -150,6 +149,14 @@ class UnsavedEditsTests(unittest.TestCase):
         with answering(QMessageBox.Discard):
             drain()
         self.assertEqual(w.loaded, ["a.flac"])
+
+    def test_nothing_asked_once_the_window_closes(self):
+        w = _Window()
+        w._edits = _Edits.CLOSING                                 # the quit settled
+        with mock.patch.object(QMessageBox, "exec", side_effect=AssertionError("asked")):
+            w._load_track_from_external_sync("a.flac", 1.0)
+            drain()
+        self.assertEqual(w.loaded, [])
 
 
 def drain() -> None:

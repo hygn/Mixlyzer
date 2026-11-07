@@ -324,6 +324,8 @@ class TagReaderTests(unittest.TestCase):
                 "#another\n[STREAM]\ntitle=not global\n")
         self.assertEqual(_ffmetadata(text), {"title": f"a=b;c#d{bs}e", "comment": "line1\nline2"})
         self.assertEqual(_ffmetadata("not metadata"), {})
+        # a tag of no name: its value read as written (a ; in it no comment), the next line's tag its own
+        self.assertEqual(_ffmetadata(";FFMETADATA1\n=;x\ntitle=Song\n"), {"": ";x", "title": "Song"})
 
 
 class TagSourceStoreTests(unittest.TestCase):

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from enum import StrEnum
 from typing import Optional
 from PySide6 import QtCore, QtWidgets
 from analyzer.music.key_names import ALPHANUMERIC_LABELS
@@ -22,6 +23,61 @@ _SORT_ROLE = QtCore.Qt.UserRole + 10
 _ANALYZED_ROLE = QtCore.Qt.UserRole + 11
 _PLAYLIST_MIME = "application/x-mixlyzer-playlist"
 _PLAYLIST_TRACKS_MIME = "application/x-mixlyzer-playlist-tracks"
+
+
+class SourceKind(StrEnum):
+    """A source of the table's rows: an item of the sources panel (its value in the item's _SOURCE_KIND_ROLE), or
+    Search by Music's results (never in the panel)."""
+    LIBRARY = "library"
+    MIX = "mix_candidates"
+    RELATED = "related"                     # the Related Tracks' heading: shows nothing
+    SAME_ARTIST = "related_artist"
+    SAME_ALBUM = "related_album"
+    SAME_WORK = "related_work"
+    VARIANTS_LOADED = "variants_loaded"     # the deck's track's versions
+    VARIANTS = "variants"
+    PLAYLISTS = "playlists"                 # the Playlists' heading: shows nothing
+    PLAYLIST_FOLDER = "playlist_folder"
+    PLAYLIST = "playlist"
+    LOCAL_FOLDERS = "local_folders"         # the Local Folders' heading: shows nothing
+    DIRECTORY = "directory"
+    MUSIC = "music"
+
+
+# the Related Tracks (core.search.related)
+RELATED_KINDS = frozenset({SourceKind.SAME_ARTIST, SourceKind.SAME_ALBUM, SourceKind.SAME_WORK})
+# the sources made from the deck's track: shown again at each track loaded
+LOADED_KINDS = RELATED_KINDS | {SourceKind.MIX, SourceKind.VARIANTS_LOADED}
+
+
+@dataclass(frozen=True)
+class Source:
+    """A source and its value: a playlist's or folder's uid, a directory's path (None: the others)."""
+    kind: SourceKind
+    value: Optional[str] = None
+
+
+LIBRARY_SOURCE = Source(SourceKind.LIBRARY)
+MUSIC_SOURCE = Source(SourceKind.MUSIC)
+
+
+def kind_of(item: Optional[QtWidgets.QTreeWidgetItem]) -> Optional[SourceKind]:
+    """The source kind of a sources panel item (None: no item)."""
+    kind = item.data(0, _SOURCE_KIND_ROLE) if item is not None else None
+    return SourceKind(kind) if kind else None
+
+
+def source_of(item: QtWidgets.QTreeWidgetItem) -> Source:
+    """The source a sources panel item shows."""
+    value = item.data(0, _SOURCE_VALUE_ROLE)
+    return Source(kind_of(item) or SourceKind.LIBRARY, None if value is None else str(value))
+
+
+def set_source(item: QtWidgets.QTreeWidgetItem, source: Source) -> None:
+    """A sources panel item made to show ``source``."""
+    item.setData(0, _SOURCE_KIND_ROLE, source.kind.value)
+    if source.value is not None:
+        item.setData(0, _SOURCE_VALUE_ROLE, source.value)
 # The filters hide the rows they leave out (rows are made only when the source or the library
 # changes: about 60 ms a thousand rows); a typed query is applied once typing pauses.
 SEARCH_DEBOUNCE_MS = 120

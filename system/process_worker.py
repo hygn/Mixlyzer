@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import enum
 import multiprocessing as mp
 import os
 from queue import Empty
@@ -37,6 +38,60 @@ def install_parent_watchdog() -> None:
     threading.Thread(target=monitor, name="ParentWatchdog", daemon=True).start()
 
 
+class _Start(enum.Enum):
+    """A process's life as its ``_Launch`` holds it."""
+    STARTING = enum.auto()      # Process.start() running on the launch's thread
+    UP = enum.auto()
+    FAILED = enum.auto()        # Process.start() raised
+    LET_GO = enum.auto()        # released while it started: ended by the launch's thread once it is up
+    ENDED = enum.auto()         # released: ended
+
+
+class _Launch:
+    """One process started on a thread of its own, and its hand-over with the one who started it: on Windows
+    Process.start() returns only once the child has read all it is sent, and the child reads its arguments after
+    re-importing the app's main module (seconds of a frozen UI on the GUI thread). Released while it starts, it is
+    ended by that thread once it is up (closed at once, it ran anyway)."""
+
+    def __init__(self, process: mp.Process, queue: Any) -> None:
+        self.process, self.queue = process, queue     # ``queue`` closed with the process (None: none)
+        self._lock = threading.Lock()
+        self._state = _Start.STARTING
+        threading.Thread(target=self._start, name=f"{process.name}-start", daemon=True).start()
+
+    @property
+    def state(self) -> _Start:
+        with self._lock:
+            return self._state
+
+    def _start(self) -> None:
+        try:
+            self.process.start()
+            state = _Start.UP
+        except Exception:
+            state = _Start.FAILED
+        with self._lock:
+            let_go = self._state is _Start.LET_GO
+            self._state = _Start.ENDED if let_go else state
+        if let_go:
+            _end_process(self.process, self.queue, started=state is _Start.UP, wait=0.0)
+
+    def release(self, *, wait: float, here: bool = False) -> None:
+        """The process ended, once: still starting, by its thread once it is up; else given ``wait`` seconds to end
+        by itself, then terminated (on a thread of its own, or ``here``)."""
+        with self._lock:
+            state = self._state
+            if state in (_Start.LET_GO, _Start.ENDED):
+                return
+            self._state = _Start.LET_GO if state is _Start.STARTING else _Start.ENDED
+        if state is _Start.STARTING:
+            return
+        if here:
+            _end_process(self.process, self.queue, started=state is _Start.UP, wait=wait)
+        else:
+            _release(self.process, self.queue, started=state is _Start.UP, wait=wait)
+
+
 class SpawnProcessWorker(QtCore.QObject):
     """Spawn a process and drain its message queue from the Qt event loop."""
 
@@ -55,94 +110,50 @@ class SpawnProcessWorker(QtCore.QObject):
         self._daemon = bool(daemon)
         self._process_name = str(process_name)
         self._ctx = mp.get_context("spawn")
-        self._queue: Any | None = None
-        self._process: mp.Process | None = None
-        # Process.start() runs on a starter thread (see start); the lock guards the
-        # hand-over between it and stop()
-        self._start_lock = threading.Lock()
-        self._started = False
-        self._start_failed = False
-        self._abandoned = False
+        self._launch: _Launch | None = None     # the run's process (None: none running); a new one each start
         self._timer = QtCore.QTimer(self)
         self._timer.setInterval(50)
         self._timer.timeout.connect(self._poll_queue)
 
     @property
     def process_pid(self) -> int | None:
-        return self._process.pid if self._process is not None else None
+        return self._launch.process.pid if self._launch is not None else None
 
     def start(self) -> None:
-        if self._process is not None:
+        if self._launch is not None:
             raise RuntimeError("Worker already started.")
-        self._queue = self._ctx.Queue()
-        self._process = self._ctx.Process(
-            target=self._target,
-            args=(*self._args, self._queue),
-            name=self._process_name,
-        )
-        self._process.daemon = self._daemon
-        # On Windows Process.start() returns only once the child has read all it is
-        # sent, and the child reads its arguments after re-importing the app's main
-        # module: seconds of a frozen UI. Started off the GUI thread instead; the
-        # queue is polled once it has started.
-        threading.Thread(
-            target=self._start_process,
-            args=(self._process, self._queue),
-            name=f"{self._process_name}-start",
-            daemon=True,
-        ).start()
+        queue = self._ctx.Queue()
+        process = self._ctx.Process(target=self._target, args=(*self._args, queue), name=self._process_name)
+        process.daemon = self._daemon
+        self._launch = _Launch(process, queue)      # the queue polled once it has started
         self._timer.start()
-
-    def _start_process(self, process: mp.Process, queue: Any) -> None:
-        """Starter thread: start the process; when stop() came first, end it here."""
-        failed = False
-        try:
-            process.start()
-        except Exception:
-            failed = True
-        with self._start_lock:
-            self._started = True
-            self._start_failed = failed
-            abandoned = self._abandoned
-        if abandoned:
-            _end_process(process, queue, started=not failed, wait=0.0)
 
     def stop(self) -> None:
         self._timer.stop()
-        with self._start_lock:
-            if self._process is not None and not self._started:
-                # still starting: the starter thread ends the process once it is up
-                self._abandoned = True
-                self._process = None
-                self._queue = None
-                return
-        process, queue = self._process, self._queue
-        self._process = self._queue = None
-        if process is not None:
-            _release(process, queue, started=not self._start_failed, wait=0.0)
+        launch, self._launch = self._launch, None
+        if launch is not None:
+            launch.release(wait=0.0)
 
     def _poll_queue(self) -> None:
-        if self._queue is None:
+        launch = self._launch
+        if launch is None:
             return
-        with self._start_lock:
-            started, failed = self._started, self._start_failed
-        if not started:
+        state = launch.state
+        if state is _Start.STARTING:
             return
-        if failed:
+        if state is _Start.FAILED:
             self._finalize_process(graceful=False)
             return
-        while self._queue is not None:
+        while self._launch is launch:      # a handler may stop the worker
             try:
-                message = self._queue.get_nowait()
+                message = launch.queue.get_nowait()
             except Empty:
                 break
             self._handle_process_message(message)
             if message.get("type") == "done":
                 self._finalize_process(graceful=True)
                 return
-
-        process = self._process
-        if process is not None and not process.is_alive():
+        if self._launch is launch and not launch.process.is_alive():
             self._finalize_process(graceful=False)
 
     def _finalize_process(self, *, graceful: bool) -> None:
@@ -150,15 +161,13 @@ class SpawnProcessWorker(QtCore.QObject):
         on a thread of its own (terminated if it has not in GRACEFUL_END_SEC): waited for here, a process still
         ending when the CPU is full (a batch analysis) held the GUI and was closed while it ran (a ValueError)."""
         self._timer.stop()
-        process, queue = self._process, self._queue
-        self._process = self._queue = None
-        started = process is not None and not self._start_failed
+        launch, self._launch = self._launch, None
         exitcode = None
-        if started and not graceful:
-            process.join(timeout=1.0)       # gone already: at once
-            exitcode = process.exitcode
-        if process is not None:
-            _release(process, queue, started=started, wait=GRACEFUL_END_SEC if graceful else 0.0)
+        if launch is not None:
+            if launch.state is _Start.UP and not graceful:
+                launch.process.join(timeout=1.0)       # gone already: at once
+                exitcode = launch.process.exitcode
+            launch.release(wait=GRACEFUL_END_SEC if graceful else 0.0)
         self._process_exited(graceful=graceful, exitcode=exitcode)
 
     def _handle_process_message(self, message: dict[str, Any]) -> None:
@@ -260,14 +269,9 @@ def _resident_main(cmd_queue: Any, out_queue: Any, idle_sec: float | None, max_j
 
 
 class _Resident:
-    def __init__(self, process: mp.Process, cmd_queue: Any, out_queue: Any) -> None:
-        self.process, self.cmd_queue, self.out_queue = process, cmd_queue, out_queue
+    def __init__(self, launch: _Launch, cmd_queue: Any, out_queue: Any) -> None:
+        self.launch, self.cmd_queue, self.out_queue = launch, cmd_queue, out_queue
         self.job: ResidentJobWorker | None = None
-        # Process.start() runs on a starter thread; the lock guards its hand-over with the pool (as
-        # SpawnProcessWorker's): one dropped while it starts is ended by that thread once it is up
-        self.lock = threading.Lock()
-        self.starting = True
-        self.abandoned = False
 
 
 class ResidentPool(QtCore.QObject):
@@ -291,22 +295,7 @@ class ResidentPool(QtCore.QObject):
         process = self._ctx.Process(target=_resident_main,
                                     args=(cmd_queue, out_queue, self._idle_sec, self._max_jobs, self._warm),
                                     name=f"{self._name}-{self._count}", daemon=True)
-        resident = _Resident(process, cmd_queue, out_queue)
-
-        def start() -> None:               # Process.start() off the GUI thread (as SpawnProcessWorker.start)
-            started = True
-            try:
-                process.start()
-            except Exception:
-                started = False
-            with resident.lock:
-                if not started:
-                    resident.process = None
-                resident.starting = False
-                abandoned = resident.abandoned
-            if abandoned:                  # dropped meanwhile (its job canceled, the pool shut down)
-                _end_process(process, None, started=started, wait=0.0)
-        threading.Thread(target=start, name=f"{process.name}-start", daemon=True).start()
+        resident = _Resident(_Launch(process, None), cmd_queue, out_queue)
         self._residents.append(resident)
         self._timer.start()
         return resident
@@ -317,9 +306,10 @@ class ResidentPool(QtCore.QObject):
             self._spawn()
 
     def _usable(self, resident: _Resident) -> bool:
-        """Idle and starting or alive (``process`` read once: the starter thread sets it None on a failed start)."""
-        process = resident.process
-        return resident.job is None and process is not None and (resident.starting or process.is_alive())
+        """Idle and starting or alive."""
+        state = resident.launch.state
+        return resident.job is None and (
+            state is _Start.STARTING or (state is _Start.UP and resident.launch.process.is_alive()))
 
     def submit(self, worker: ResidentJobWorker) -> None:
         resident = next((r for r in self._residents if self._usable(r)), None) or self._spawn()
@@ -339,17 +329,12 @@ class ResidentPool(QtCore.QObject):
             return
         self._residents.remove(resident)
         resident.job = None
-        with resident.lock:
-            if resident.starting:          # its starter thread ends it once it is up (closed now, it ran anyway)
-                resident.abandoned = True
-                return
-            process = resident.process
-        if process is not None:
-            _release(process, None, started=True, wait=0.0)
+        resident.launch.release(wait=0.0)
 
     def _poll(self) -> None:
         for resident in list(self._residents):
-            if resident.starting:
+            state = resident.launch.state
+            if state is _Start.STARTING:
                 continue
             while resident in self._residents:     # a handler may stop its job: the resident dropped, its process
                 try:                               # closed by the release thread
@@ -366,12 +351,12 @@ class ResidentPool(QtCore.QObject):
                     resident.job = None
             if resident not in self._residents:
                 continue
-            process = resident.process
-            if process is None or not process.is_alive():
+            process = resident.launch.process
+            if state is not _Start.UP or not process.is_alive():      # gone, or its start failed
                 worker = resident.job
-                exitcode = process.exitcode if process is not None else None
+                exitcode = process.exitcode if state is _Start.UP else None
                 self._drop(resident)
-                if worker is not None and exitcode == 0 and not worker._heard and not worker._ended:
+                if worker is not None and exitcode == 0 and worker._state is _JobState.WAITING:
                     # it ended on its idle time as the job came: the job, never begun, goes to a new one
                     worker._resident = None
                     self.submit(worker)
@@ -390,17 +375,20 @@ class ResidentPool(QtCore.QObject):
                 resident.cmd_queue.put(None)
             except (OSError, ValueError):
                 pass
-        for resident in residents:
-            with resident.lock:
-                if resident.starting:      # ended by its starter thread once it is up (it reads the None too)
-                    resident.abandoned = True
-                    continue
-                process = resident.process
-            if process is not None:
-                _end_process(process, None, started=True, wait=2.0)
+        for resident in residents:      # one still starting is ended by its launch once up (it reads the None too)
+            resident.launch.release(wait=2.0, here=True)
 
 
 _job_ids = iter(range(1, 1 << 62))
+
+
+class _JobState(enum.Enum):
+    """A ``ResidentJobWorker``'s job."""
+    NEW = enum.auto()
+    WAITING = enum.auto()       # given to the pool, nothing heard of it yet
+    RUNNING = enum.auto()       # a message of it came: it began
+    ANSWERED = enum.auto()      # its "result" or "error" came: only its "done" is left
+    ENDED = enum.auto()         # done, its process gone, or stopped: nothing more heard
 
 
 class ResidentJobWorker(QtCore.QObject):
@@ -413,43 +401,44 @@ class ResidentJobWorker(QtCore.QObject):
         self._pool, self._target, self._args = pool, target, args
         self.job_id = next(_job_ids)
         self._resident: _Resident | None = None
-        self._ended = False
-        self._heard = False               # a message of the job came (it began)
-        self._answered = False            # its "result" or "error" came: only its "done" is left
+        self._state = _JobState.NEW
 
     @property
     def process_pid(self) -> int | None:
         resident = self._resident
-        return resident.process.pid if resident is not None and resident.process is not None else None
+        return resident.launch.process.pid if resident is not None else None
 
     def start(self) -> None:
-        if self._resident is not None or self._ended:
+        if self._state is not _JobState.NEW:
             raise RuntimeError("Worker already started.")
+        self._state = _JobState.WAITING
         self._pool.submit(self)
 
     def stop(self) -> None:
         """No more of the job heard. Before its answer the job is canceled (its process ended: a job cannot be
         interrupted); after it (stopped from the answer's handler, before the "done"), its process stays the pool's,
         busy until that "done", then taking the next job."""
-        if not self._ended:
-            self._ended = True
-            if not self._answered:
-                self._pool.cancel(self)
+        if self._state is _JobState.ENDED:
+            return
+        answered, self._state = self._state is _JobState.ANSWERED, _JobState.ENDED
+        if not answered:
+            self._pool.cancel(self)
 
     def _deliver(self, message: dict[str, Any]) -> None:
-        if self._ended:
+        if self._state is _JobState.ENDED:
             return
-        self._heard = True
         if message.get("type") in ("result", "error"):
-            self._answered = True
+            self._state = _JobState.ANSWERED
+        elif self._state is _JobState.WAITING:
+            self._state = _JobState.RUNNING
         self._handle_process_message(message)
         if message.get("type") == "done":
-            self._ended = True
+            self._state = _JobState.ENDED
             self._process_exited(graceful=True, exitcode=0)
 
     def _resident_died(self, exitcode: int | None) -> None:
-        if not self._ended:
-            self._ended = True
+        if self._state is not _JobState.ENDED:
+            self._state = _JobState.ENDED
             self._process_exited(graceful=False, exitcode=exitcode)
 
     def _handle_process_message(self, message: dict[str, Any]) -> None:
