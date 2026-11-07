@@ -65,6 +65,21 @@ class TrackModelTests(unittest.TestCase):
         self.assertEqual(len(m.jump_cues), 1)
         self.assertFalse(m.can_undo() or m.unsaved)
 
+    def test_audio_dropped_before_another_tracks_analysis(self):
+        """Another library track onto the deck (app.window AppWindow._load): the audio held dropped at once, so its
+        stored analysis, applied with the audio kept, is never drawn over the previous track's audio."""
+        m = self.model
+        m.set_predecoded_audio(np.zeros((4, 2), np.float32), 44100)
+        told = []
+        m.sig_audio_changed.connect(lambda: told.append(1))
+        m.drop_audio()
+        self.assertIsNone(m.predecoded_pcm)
+        self.assertEqual(told, [1])
+        m.drop_audio()                                   # none held: nothing told
+        self.assertEqual(told, [1])
+        m.load(_analysis(), {"uid": "v"}, 60.0, keep_audio=True)
+        self.assertIsNone(m.predecoded_pcm)
+
     def test_nothing_changes_it_but_its_methods(self):
         from dataclasses import FrozenInstanceError
         with self.assertRaises(FrozenInstanceError):

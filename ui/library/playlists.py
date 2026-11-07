@@ -150,17 +150,23 @@ class PlaylistsMixin:
             ).append(playlist_uid)
             self.bus.sig_request_analyze.emit(path)
 
+    def _playlist_shown(self) -> bool:
+        """Whether the table shows a playlist's entries, each row's # its place in it: what the playlist's actions
+        (remove, reorder, a drop into it) work on. Search by Music's results over a playlist are the library's tracks,
+        their # a rank."""
+        return self._source_kind == "playlist" and not self._music_mode
+
     def _files_dropped_on_tracks(self, paths) -> None:
         """Files dropped on the track list: into the playlist it shows, as on that playlist in the sources panel; else
         into the library (analyzed, not loaded: the deck's drop loads)."""
-        if self._source_kind == "playlist" and not self._music_mode:
+        if self._playlist_shown():
             self._add_paths_to_playlist(str(self._source_value), paths)
             return
         for path in paths:
             self.bus.sig_request_analyze.emit(path)
 
     def _remove_selected_from_playlist(self) -> None:
-        if self._source_kind != "playlist":
+        if not self._playlist_shown():
             return
         positions = [self.table._entry_position(row) for row in self._selected_rows()]
         positions = [position for position in positions if position is not None]

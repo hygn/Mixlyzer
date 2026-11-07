@@ -14,6 +14,8 @@ from PySide6 import QtCore
 from core.tieups import web as tieup_web
 from core.library import jobs
 
+IDLE_SEC = 5.0      # the lookup thread, given no job this long, asks the albums' works and ends
+
 
 class TieupWebLookup(QtCore.QObject):
     """``library``: the library's owner (core.library.service), whom the lookup thread asks for the track's title and
@@ -34,6 +36,9 @@ class TieupWebLookup(QtCore.QObject):
         self._library = library
         self._enabled = enabled
         self._jobs: queue.Queue = queue.Queue()
+        # the lookup thread: None once it has ended (or is ending with nothing left to do); the lock makes that
+        # ending and a job's put one or the other, so a job never waits for a thread that is gone
+        self._lock = threading.Lock()
         self._thread: threading.Thread | None = None
 
     def new_track(self, uid: str, title: str = "") -> None:
@@ -48,10 +53,11 @@ class TieupWebLookup(QtCore.QObject):
             self._put(("find", uid))
 
     def _put(self, job: tuple) -> None:
-        self._jobs.put(job)
-        if self._thread is None or not self._thread.is_alive():
-            self._thread = threading.Thread(target=self._work, name="tieup-web", daemon=True)
-            self._thread.start()
+        with self._lock:
+            self._jobs.put(job)
+            if self._thread is None or not self._thread.is_alive():
+                self._thread = threading.Thread(target=self._work, name="tieup-web", daemon=True)
+                self._thread.start()
 
     def _by_album(self, tracks: list[str]) -> list[str]:
         """The tracks given their album's work (jobs.tag_by_album), said tagged."""
@@ -63,17 +69,30 @@ class TieupWebLookup(QtCore.QObject):
         return tagged
 
     def _work(self) -> None:
+        try:
+            self._lookups()
+        finally:
+            with self._lock:
+                if self._thread is threading.current_thread():   # ended by an error: the next put starts another
+                    self._thread = None
+
+    def _lookups(self) -> None:
         untagged: list[str] = []        # the new tracks nothing was found for: their album's work asked again
         while True:
             try:
-                kind, uid = self._jobs.get(timeout=5.0)
+                kind, uid = self._jobs.get(timeout=IDLE_SEC)
             except queue.Empty:
                 if untagged:
                     try:
                         self._by_album(untagged)
                     except Exception as exc:
                         print(f"[Tie-ups] album's tie-up not written: {exc}")
-                return
+                    untagged = []
+                with self._lock:          # a job put while the album's were asked for: taken, not left waiting
+                    if self._jobs.empty():
+                        self._thread = None
+                        return
+                continue
             if kind == "tag":
                 self.started.emit(uid)
             try:

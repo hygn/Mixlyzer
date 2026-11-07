@@ -1246,4 +1246,44 @@ mod tests {
         r.pump(10);
         assert!(r.at() > 6.99 && r.at() < 7.2, "the last seek heard: {}", r.at());
     }
+
+    /// Playing off unity with the time stretch (a seek then goes through the standby stretcher, prepared over a few
+    /// ticks), heard about ``from`` s in.
+    fn deferring_rig(from: f64) -> Rig {
+        let mut r = Rig::new(20.0, false, &[], &[]);
+        r.s.engine.set_timestretch(true);
+        r.s.engine.set_tempo(1.06);
+        r.seek(from);
+        r.tap(act::PLAY_PAUSE);
+        r.pump(30);
+        r
+    }
+
+    #[test]
+    fn a_seek_being_prepared_then_paused_stops_where_it_was_sent() {
+        let mut r = deferring_rig(1.0);
+        r.seek(8.0);
+        r.tap(act::PLAY_PAUSE); // before the standby is ready
+        r.pump(5);
+        assert!(!r.playing() && near(r.at(), 8.0), "stopped at {}", r.at());
+    }
+
+    #[test]
+    fn a_seek_being_prepared_then_the_record_grabbed_grabs_it_there() {
+        let mut r = deferring_rig(1.0);
+        r.seek(8.0);
+        r.s.engine.grab(true, 0.0);
+        assert!(near(r.s.engine.scratch_target() / SEC, 8.0), "grabbed at {}", r.s.engine.scratch_target() / SEC);
+    }
+
+    #[test]
+    fn a_jump_reached_while_a_seek_is_prepared_leaves_the_seek_to_land() {
+        let mut r = deferring_rig(1.0);
+        let ahead = r.at() + 0.06; // the render head reaches it while the seek is being prepared
+        r.s.engine.arm_jump(Some(ahead * SEC), 15.0 * SEC, true, vec![]);
+        r.seek(8.0);
+        r.pump(40);
+        assert_eq!(r.s.engine.jumped_count, 0, "the jump from the place the seek left taken");
+        assert!(r.at() > 8.0 && r.at() < 9.0, "the seek lost: heard at {}", r.at());
+    }
 }

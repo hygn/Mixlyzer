@@ -137,6 +137,15 @@ class DataModel(QtCore.QObject):
         self.sig_audio_changed.emit()
         self.sig_properties_changed.emit()
 
+    def drop_audio(self) -> None:
+        """The decoded audio dropped: another track goes onto the deck, its analysis (applied with ``keep_audio``)
+        never drawn over this one's audio; its own comes once decoded."""
+        if self.predecoded_pcm is None:
+            return
+        self.predecoded_pcm = None
+        self.predecoded_rate = 0
+        self.sig_audio_changed.emit()
+
     def set_predecoded_audio(self, pcm: Any, sample_rate: int) -> None:
         try:
             self.predecoded_pcm = np.asarray(pcm, dtype=np.float32, order="C")

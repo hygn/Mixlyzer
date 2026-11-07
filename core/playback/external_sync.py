@@ -356,6 +356,8 @@ class ExternalSyncController(QtCore.QObject):
         followed = sorted(n for n, r in decks.items() if r.loaded and r.active and now - r.received_at < STALE_SEC)
         if not followed:
             self._following = 0
+            # no deck to follow: its track waiting is forgotten (a library update would load a track since ejected)
+            self._apply_external_deck({"loaded": False})
             return
         report = decks[followed[0]]
         self._following = report.deck
@@ -425,8 +427,13 @@ class ExternalSyncController(QtCore.QObject):
             self._load_request_inflight = None
             return
 
-        if self._load_request_inflight or self._analysis_request_inflight:
-            return
+        if pending_raw_path in (self._load_request_inflight, self._analysis_request_inflight):
+            return     # asked for already: its load tells (DataModel.sig_loaded)
+        # another track than the one asked for: that request is let go (a load that never reached the model, its
+        # analysis failed or its file gone, held every track after it), this one asked for
+        self._load_request_inflight = None
+        self._analysis_request_inflight = None
+        self._analysis_request_raw_path = None
 
         if self._track_exists_in_library(pending_raw_path):
             self._missing_path_logged = None

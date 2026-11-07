@@ -51,7 +51,7 @@ class ActionsMixin:
         )
         act_export = menu.addAction(tr("Export Track"))
         act_remove_playlist = None
-        if self._source_kind == "playlist":
+        if self._playlist_shown():
             act_remove_playlist = menu.addAction(tr("Remove from Playlist"))
         add_menu = menu.addMenu(tr("Add to Playlist"))
         playlist_actions = {}

@@ -1,8 +1,12 @@
 """A spawned worker's lifecycle (system.process_worker): a process that said it is done but is slow to end (a full CPU
 in a batch analysis) is not closed while it runs, nor waited for on the GUI thread; stop() ends a running one."""
+import multiprocessing as mp
 import os
+import threading
 import time
 import unittest
+from multiprocessing.context import SpawnProcess
+from unittest import mock
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -86,13 +90,16 @@ def _job(tag: str, seconds: float, queue) -> None:
 
 
 class _Job(process_worker.ResidentJobWorker):
-    def __init__(self, pool, tag: str, seconds: float = 0.0):
+    def __init__(self, pool, tag: str, seconds: float = 0.0, *, stop_on_result: bool = False):
         super().__init__(pool=pool, target=_job, args=(tag, seconds))
         self.results, self.exited = [], []
+        self._stop_on_result = stop_on_result
 
     def _handle_process_message(self, message) -> None:
         if message.get("type") == "result":
             self.results.append(message)
+            if self._stop_on_result:      # as the workflows do: stopped from the result's handler, before "done"
+                self.stop()
 
     def _process_exited(self, *, graceful: bool, exitcode) -> None:
         self.exited.append(graceful)
@@ -133,6 +140,52 @@ class ResidentPoolTests(unittest.TestCase):
         self.assertEqual(after.exited, [True])
         self.assertNotEqual(after.results[0]["pid"], warm.results[0]["pid"])
         self.assertEqual(long.exited, [])       # a stopped job reports nothing
+
+    def test_a_job_stopped_after_its_result_leaves_its_process_to_the_next(self):
+        pool = process_worker.ResidentPool("test-resident", idle_sec=60.0, max_jobs=10)
+        self.addCleanup(pool.shutdown)
+        first = _Job(pool, "a", stop_on_result=True)
+        first.start()
+        _until(lambda: first.results, 60.0)
+        resident = first._resident
+        _until(lambda: resident.job is None, 10.0)       # its "done" frees it
+        self.assertIn(resident, pool._residents)
+        second = _Job(pool, "b")
+        second.start()
+        _until(lambda: second.exited, 60.0)
+        self.assertEqual(second.exited, [True])
+        self.assertEqual(first.results[0]["pid"], second.results[0]["pid"])
+
+    def test_a_job_stopped_while_its_process_starts_leaves_no_process(self):
+        pool = process_worker.ResidentPool("test-resident", idle_sec=60.0, max_jobs=10)
+        self.addCleanup(pool.shutdown)
+        job = _Job(pool, "a", 5.0)
+        # stopped while Process.start() makes the child (a few ms; held here until the stop is done): the Process
+        # object past its closed check, its child not yet made
+        entered, gate = threading.Event(), threading.Event()
+        real = SpawnProcess._Popen
+
+        def held(process_obj):
+            entered.set()
+            gate.wait(30.0)
+            return real(process_obj)
+
+        with mock.patch.object(SpawnProcess, "_Popen", staticmethod(held)):
+            job.start()
+            resident = job._resident
+            name = resident.process.name
+            self.assertTrue(entered.wait(30.0))
+            job.stop()
+            self.assertEqual(pool._residents, [])
+            time.sleep(0.3)                     # a release thread's close() done meanwhile
+            gate.set()
+            _until(lambda: not resident.starting, 60.0)
+        # the children multiprocessing still knows running (a Process object closed while it started reads as
+        # closed, its child running all the same)
+        running = lambda: [p.name for p in mp.active_children() if p.name == name]   # noqa: E731
+        _until(lambda: not running(), 15.0)
+        self.assertEqual(running(), [])         # never left running the canceled job
+        self.assertEqual(job.exited, [])
 
     def test_an_idle_process_ends_by_itself(self):
         pool = process_worker.ResidentPool("test-resident", idle_sec=1.0, max_jobs=10)

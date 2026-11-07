@@ -165,7 +165,13 @@ class AnalysisWorkflow(QtCore.QObject):
                 if listener is not None:
                     listener(result)
 
-            self._library.read(analysis_jobs.analysis, track.uid, done=loaded)
+            def unread(exc: Exception) -> None:
+                # an error the reader does not take for "none readable" (a damaged NPZ: zipfile's BadZipFile): as
+                # none, so the task is not left at "Loading Track" for good and the deck still gets its analysis
+                print(f"[AnalysisWorker] the stored analysis could not be read ({os.path.basename(path)}): {exc}")
+                loaded(None)
+
+            self._library.read(analysis_jobs.analysis, track.uid, done=loaded, failed=unread)
             return
         self._analyze(path, cfg, taskid, thumbnail, force_analyze, listener)
 

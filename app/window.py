@@ -640,8 +640,13 @@ class AppWindow(QtWidgets.QMainWindow):
             answer = box.exec()
         finally:
             self._asking_edits = False
+        if cancellable and self._external_pending is not None:
+            # an External Sync load came while this box asked for something else: asked for once this is settled
+            QtCore.QTimer.singleShot(0, self._external_load_waiting)
         if answer == QtWidgets.QMessageBox.Save:
-            if self.pane.track_edit.save_then(then):
+            # an External Sync load whose save fails: asked again (Save or Discard), the edits kept meanwhile
+            failed = None if cancellable else (lambda: QtCore.QTimer.singleShot(0, self._external_load_waiting))
+            if self.pane.track_edit.save_then(then, failed):
                 return
             if cancellable:
                 self.statusBar().showMessage(tr("The edits could not be saved now: nothing was done."))
@@ -670,11 +675,16 @@ class AppWindow(QtWidgets.QMainWindow):
             self.analysis_workflow.analyze(track.path, listener=self._on_deck_analysis)
             return
         self.segment_reanalysis_workflow.cancel_all(tr("Segment reanalysis canceled (track changed)"))
+        held = self._holds(track.path if track is not None else path)
         self._deck_path = track.path if track is not None else path
         if track is None:
             # a new file: its tags meanwhile, the analysis's results when it is done
             title, artist, album, _comment = extract_tags(path)
             self.model.load(StoredAnalysis(), {"path": path, "title": title, "artist": artist, "album": album}, 0.0)
+        elif not held:
+            # another library track: its stored analysis comes before its audio is decoded, and is applied with the
+            # audio kept (the same track's): the previous track's audio dropped now, never drawn under its marks
+            self.model.drop_audio()
         self.player.stop()
         self.player.set_source(self._deck_path)
         self.analysis_workflow.analyze(self._deck_path, listener=self._on_deck_analysis)
@@ -784,6 +794,8 @@ class AppWindow(QtWidgets.QMainWindow):
                 uid = str(properties.get("uid") or "")
                 self._tieup_art[uid] = result.get("album_art")       # its task's picture (the file's cover)
                 self.tieup_web.new_track(uid, str(properties.get("title") or ""))
+                # taken by its task as it was queued (at once, in new_track); not queued (the option off): let go
+                self._tieup_art.pop(uid, None)
         self.taskmanager.updatetask(result["taskid"], tr("Finished"), 1)
         self.taskmanager.rmtask(result["taskid"])
 
@@ -876,6 +888,18 @@ class AppWindow(QtWidgets.QMainWindow):
             self.player.seek(float(at))   # replayed once the track is decoded
 
         self._with_edits_resolved(load_latest, cancellable=False)
+
+    def _external_load_waiting(self) -> None:
+        """The External Sync load that waited (it came while a box asked about edits for something else, or its save
+        failed) asked for again: once a save running is done; not while another box asks, nor once the window
+        closes."""
+        if self._external_pending is None or self._asking_edits or self._edits_resolved_for_close:
+            return
+        if self.pane.track_edit.saving:
+            QtCore.QTimer.singleShot(100, self._external_load_waiting)
+            return
+        path, at = self._external_pending
+        self._load_track_from_external_sync(path, at)
 
     def closeEvent(self, event) -> None:
         """Quitting with edits not saved asks first (Save: quit once they are stored; Cancel: stay)."""

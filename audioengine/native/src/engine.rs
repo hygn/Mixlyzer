@@ -379,7 +379,8 @@ impl Engine {
         }
         if on {
             if self.playing {
-                let sought = self.seek_to.take();
+                // a seek still being prepared too: the record grabbed where it was sent (the standby let go by tick)
+                let sought = self.seek_to.take().or(self.pending_seek.take());
                 self.queue_for_fade();
                 let heard = self.playhead_frame();
                 self.ring.flush();
@@ -513,7 +514,8 @@ impl Engine {
             self.playing = false;
             return;
         }
-        let sought = self.seek_to.take(); // a seek not rendered yet: the deck stops where it was sent
+        // a seek not rendered yet (or one the standby stretcher is still preparing): the deck stops where it was sent
+        let sought = self.seek_to.take().or(self.pending_seek);
         self.queue_for_fade();
         let heard = self.playhead_frame();
         self.playing = false;
@@ -975,7 +977,9 @@ impl Engine {
             }
         }
         let rate = self.input_step(step);
-        if let (Some(js), Some(jd)) = (self.jump_start, self.jump_dest) {
+        // a seek the standby stretcher is preparing goes first: a jump from the place it leaves is not taken (its
+        // standby would replace the seek's, which was then lost or switched to a stream prepared elsewhere)
+        if let (Some(js), Some(jd), None) = (self.jump_start, self.jump_dest, self.pending_seek) {
             if self.pos < js && js <= self.pos + rate * n_out as f64 {
                 let mut take = true;
                 let mut ready = false;

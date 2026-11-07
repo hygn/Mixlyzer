@@ -66,12 +66,18 @@ pub struct AuxOutputs {
 impl AuxOutputs {
     /// The buses at the session's ``rate``, their thread started.
     pub fn new(rate: u32) -> AuxOutputs {
+        let (tx, rx) = mpsc::channel();
+        let outputs = AuxOutputs::sending_to(rate, tx);
+        let (b, s) = (outputs.bridges.clone(), outputs.shared.clone());
+        let _ = std::thread::Builder::new().name("AuxOutputs".into()).spawn(move || worker(rx, b, s));
+        outputs
+    }
+
+    /// The buses, their commands sent to ``tx`` (the outputs' thread's).
+    fn sending_to(rate: u32, tx: mpsc::Sender<Command>) -> AuxOutputs {
         // a second of each bus: the largest buffer and the chunks around it
         let bridges: [Arc<Bridge>; BRIDGED_BUSES] = std::array::from_fn(|_| Arc::new(Bridge::new(rate as u64, rate as f64)));
         let shared: Arc<[BusState; BRIDGED_BUSES]> = Arc::new(std::array::from_fn(|_| BusState::default()));
-        let (tx, rx) = mpsc::channel();
-        let (b, s) = (bridges.clone(), shared.clone());
-        let _ = std::thread::Builder::new().name("AuxOutputs".into()).spawn(move || worker(rx, b, s));
         AuxOutputs {
             bridges,
             wanted: std::array::from_fn(|_| None),
@@ -82,18 +88,19 @@ impl AuxOutputs {
     }
 
     /// Bus ``k`` asked for: another device, mode or rate opens its stream again; another buffer or channels apply
-    /// as it plays.
+    /// as it plays. The outputs' thread is told every change: it starts the bridges from what it holds whenever it
+    /// opens a stream again (a device lost, behind, plugged in), so a change it was not told came back as it was.
     pub fn set(&mut self, k: usize, wanted: Option<AuxWanted>) {
         let Some(old) = self.wanted.get(k) else { return };
-        match (old, &wanted) {
-            (Some(a), Some(b)) if a.device() == b.device() && a.rate == b.rate => {
-                self.bridges[k].set(buffer_frames(&self.bridges[k], b), b.left, b.right);
-            }
-            (None, None) => {}
-            _ => {
-                let _ = self.tx.send(Command::Set(k, wanted.clone()));
+        if *old == wanted {
+            return;
+        }
+        if let (Some(a), Some(b)) = (old, &wanted) {
+            if a.device() == b.device() && a.rate == b.rate {
+                self.bridges[k].set(buffer_frames(&self.bridges[k], b), b.left, b.right);   // at once, as it plays
             }
         }
+        let _ = self.tx.send(Command::Set(k, wanted.clone()));
         self.wanted[k] = wanted;
     }
 
@@ -199,6 +206,14 @@ fn worker(rx: mpsc::Receiver<Command>, bridges: [Arc<Bridge>; BRIDGED_BUSES], sh
                 if k < BRIDGED_BUSES {
                     wanted[k] = w;
                     regroup(&wanted, &mut streams, &bridges, &shared);
+                    // a bus kept on its open stream (another buffer or channel pair): its bridge as asked now (the
+                    // engine thread set it already; again here, as an open just done started it from the values
+                    // before)
+                    if let Some(w) = &wanted[k] {
+                        if streams.iter().any(|s| s.output.is_some() && s.buses.contains(&k)) {
+                            bridges[k].set(buffer_frames(&bridges[k], w), w.left, w.right);
+                        }
+                    }
                 }
             }
             Err(mpsc::RecvTimeoutError::Timeout) => {}
@@ -322,5 +337,35 @@ fn open(s: &mut Stream, wanted: &[Option<AuxWanted>; BRIDGED_BUSES], bridges: &[
             }
         }
         Err(e) => fail(s, e),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn phones(left: u8, right: u8, buffer_ms: f64) -> AuxWanted {
+        AuxWanted { name: Some("Phones (test)".into()), mode: device::Mode::from_codes(1, 0), buffer_ms, left, right,
+                    rate: 0 }
+    }
+
+    fn sent(rx: &mpsc::Receiver<Command>) -> Vec<(usize, Option<AuxWanted>)> {
+        rx.try_iter().map(|Command::Set(k, w)| (k, w)).collect()
+    }
+
+    #[test]
+    fn every_change_reaches_the_outputs_thread() {
+        let (tx, rx) = mpsc::channel();
+        let mut aux = AuxOutputs::sending_to(48000, tx);
+        aux.set(0, Some(phones(2, 3, 20.0)));
+        assert!(sent(&rx) == vec![(0, Some(phones(2, 3, 20.0)))]);
+        // the same device, another channel pair and buffer: applied as it plays, and the thread told (it starts the
+        // bridge from what it holds when it opens the device again)
+        aux.set(0, Some(phones(0, 1, 40.0)));
+        assert!(sent(&rx) == vec![(0, Some(phones(0, 1, 40.0)))], "the thread kept the channels before");
+        aux.set(0, Some(phones(0, 1, 40.0))); // the same again: nothing
+        assert!(sent(&rx).is_empty());
+        aux.set(0, None);
+        assert!(sent(&rx) == vec![(0, None)]);
     }
 }

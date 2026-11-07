@@ -5,6 +5,7 @@ import numpy as np
 
 from analyzer.audio.hpss import hpss_audio
 from analyzer.audio.load import fast_load
+from analyzer.beat import melody_contour
 from analyzer.beat.frame_features import extract_frame_features
 from analyzer.errors import SEGMENT_TOO_SHORT, AnalysisError
 from analyzer.music.tempo_rows import segment_end_bpm, with_end_bpm
@@ -51,6 +52,7 @@ def reanalyze_segment(
     # the models were trained on frames of the HPSS parts
     y_harm, y_perc = hpss_audio(section)
     frames = extract_frame_features(section, sr, y_perc, y_harm, hop_length=T.FRAME_HOP_LENGTH)
+    melody_contour.forget_contours()   # kept for the full analysis's index (none here): not held until the next job
     report(progress, stages.BEAT_ACTIVATIONS, 0.40)
     paths = settings.models
     models = load_models(paths.downbeat_ctx, paths.beat_tcn, paths.beat_critic, paths.beat_decoder)

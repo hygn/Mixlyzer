@@ -207,7 +207,8 @@ def _release(process: mp.Process, queue: Any, *, started: bool, wait: float) -> 
 # job it ends, and after ``max_jobs`` jobs it is replaced (a long session's leaks never pile up). A job's target is
 # what a SpawnProcessWorker would run (a module-level callable taking its args and then a queue): it is called with a
 # queue-like sink tagging its messages with the job, and its "done" ends the job. A job stopped while it runs ends
-# its process (a fresh one takes the next job).
+# its process (a fresh one takes the next job); stopped once it has answered (a "result" or an "error": a target's
+# last message before its "done"), it is only let go: its process ends it and takes the next.
 
 class _JobSink:
     """The ``queue`` a job's target puts its messages on: they go out tagged with the job."""
@@ -262,7 +263,11 @@ class _Resident:
     def __init__(self, process: mp.Process, cmd_queue: Any, out_queue: Any) -> None:
         self.process, self.cmd_queue, self.out_queue = process, cmd_queue, out_queue
         self.job: ResidentJobWorker | None = None
+        # Process.start() runs on a starter thread; the lock guards its hand-over with the pool (as
+        # SpawnProcessWorker's): one dropped while it starts is ended by that thread once it is up
+        self.lock = threading.Lock()
         self.starting = True
+        self.abandoned = False
 
 
 class ResidentPool(QtCore.QObject):
@@ -289,11 +294,18 @@ class ResidentPool(QtCore.QObject):
         resident = _Resident(process, cmd_queue, out_queue)
 
         def start() -> None:               # Process.start() off the GUI thread (as SpawnProcessWorker.start)
+            started = True
             try:
                 process.start()
             except Exception:
-                resident.process = None
-            resident.starting = False
+                started = False
+            with resident.lock:
+                if not started:
+                    resident.process = None
+                resident.starting = False
+                abandoned = resident.abandoned
+            if abandoned:                  # dropped meanwhile (its job canceled, the pool shut down)
+                _end_process(process, None, started=started, wait=0.0)
         threading.Thread(target=start, name=f"{process.name}-start", daemon=True).start()
         self._residents.append(resident)
         self._timer.start()
@@ -304,9 +316,13 @@ class ResidentPool(QtCore.QObject):
         if not self._residents:
             self._spawn()
 
+    def _usable(self, resident: _Resident) -> bool:
+        """Idle and starting or alive (``process`` read once: the starter thread sets it None on a failed start)."""
+        process = resident.process
+        return resident.job is None and process is not None and (resident.starting or process.is_alive())
+
     def submit(self, worker: ResidentJobWorker) -> None:
-        resident = next((r for r in self._residents if r.job is None and r.process is not None
-                         and (r.starting or r.process.is_alive())), None) or self._spawn()
+        resident = next((r for r in self._residents if self._usable(r)), None) or self._spawn()
         resident.job = worker
         worker._resident = resident
         resident.cmd_queue.put((worker.job_id, worker._target, worker._args))
@@ -318,18 +334,25 @@ class ResidentPool(QtCore.QObject):
             self._drop(resident)
 
     def _drop(self, resident: _Resident) -> None:
-        if resident in self._residents:
-            self._residents.remove(resident)
+        """The resident out of the pool and its process ended (once: a second drop does nothing)."""
+        if resident not in self._residents:
+            return
+        self._residents.remove(resident)
         resident.job = None
-        if resident.process is not None:
-            _release(resident.process, None, started=not resident.starting, wait=0.0)
+        with resident.lock:
+            if resident.starting:          # its starter thread ends it once it is up (closed now, it ran anyway)
+                resident.abandoned = True
+                return
+            process = resident.process
+        if process is not None:
+            _release(process, None, started=True, wait=0.0)
 
     def _poll(self) -> None:
         for resident in list(self._residents):
             if resident.starting:
                 continue
-            while True:
-                try:
+            while resident in self._residents:     # a handler may stop its job: the resident dropped, its process
+                try:                               # closed by the release thread
                     job_id, message = resident.out_queue.get_nowait()
                 except (Empty, OSError, ValueError, EOFError):
                     break
@@ -341,6 +364,8 @@ class ResidentPool(QtCore.QObject):
                     # free for the next job at once: the process takes it from its queue once it has tidied up
                     # (waited for "__idle__", the next track of a batch started a new process each time)
                     resident.job = None
+            if resident not in self._residents:
+                continue
             process = resident.process
             if process is None or not process.is_alive():
                 worker = resident.job
@@ -366,8 +391,13 @@ class ResidentPool(QtCore.QObject):
             except (OSError, ValueError):
                 pass
         for resident in residents:
-            if resident.process is not None:
-                _end_process(resident.process, None, started=not resident.starting, wait=2.0)
+            with resident.lock:
+                if resident.starting:      # ended by its starter thread once it is up (it reads the None too)
+                    resident.abandoned = True
+                    continue
+                process = resident.process
+            if process is not None:
+                _end_process(process, None, started=True, wait=2.0)
 
 
 _job_ids = iter(range(1, 1 << 62))
@@ -385,6 +415,7 @@ class ResidentJobWorker(QtCore.QObject):
         self._resident: _Resident | None = None
         self._ended = False
         self._heard = False               # a message of the job came (it began)
+        self._answered = False            # its "result" or "error" came: only its "done" is left
 
     @property
     def process_pid(self) -> int | None:
@@ -397,14 +428,20 @@ class ResidentJobWorker(QtCore.QObject):
         self._pool.submit(self)
 
     def stop(self) -> None:
+        """No more of the job heard. Before its answer the job is canceled (its process ended: a job cannot be
+        interrupted); after it (stopped from the answer's handler, before the "done"), its process stays the pool's,
+        busy until that "done", then taking the next job."""
         if not self._ended:
             self._ended = True
-            self._pool.cancel(self)
+            if not self._answered:
+                self._pool.cancel(self)
 
     def _deliver(self, message: dict[str, Any]) -> None:
         if self._ended:
             return
         self._heard = True
+        if message.get("type") in ("result", "error"):
+            self._answered = True
         self._handle_process_message(message)
         if message.get("type") == "done":
             self._ended = True

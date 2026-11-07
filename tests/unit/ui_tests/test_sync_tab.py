@@ -3,6 +3,7 @@ written), nothing written when cancelled, the backup asked for made before the w
 Backup, no confirmation when the file already holds the values. A real file in a temporary folder; the backups in
 another (never the app folder's)."""
 import shutil
+import struct
 import tempfile
 import time
 import unittest
@@ -59,7 +60,7 @@ class _Library:
         self.row = row
         self.analysis = None     # the stored analysis answered (None: none read)
 
-    def read(self, job, *args, done):
+    def read(self, job, *args, done, failed=None):
         if job is jobs.tag_values:
             done((self.row, ""))
         elif job is analysis_jobs.analysis and self.analysis is not None:
@@ -196,6 +197,24 @@ class WriteTagsTests(unittest.TestCase):
         self.assertEqual((found["vorbis:COMMENT"], found["vorbis:DESCRIPTION"]),
                          ([" "], ["JASRAC / ASOBINOTES [ヴヴヴ OP]"]))
         self.assertNotIn("vorbis:TITLE", found)                 # its one place unchecked: the field not written
+
+    def test_an_unexpected_error_said_and_the_buttons_back(self):
+        """An error none of the tags' own (a tag the parser trips on, the library's): said under the fields, Write
+        Tags and Restore usable again; nothing written."""
+        with mock.patch.object(sync_tab, "planned_writes", side_effect=KeyError("frame")), \
+                mock.patch("traceback.print_exc"):
+            self.write()
+        self.assertEqual(self.shown, [])
+        self.assertIn("could not be read", self.panel.tag_note.text())
+        self.assertTrue(self.panel.btn_write_tags.isEnabled())
+        with mock.patch.object(sync_tab, "write_tags", side_effect=struct.error("unpack")), \
+                mock.patch("traceback.print_exc"):
+            self.write()
+        self.assertIn("could not be written", self.panel.tag_note.text())
+        self.assertTrue(self.panel.btn_write_tags.isEnabled())
+        self.assertTrue(self.panel.btn_restore_tags.isEnabled())
+        self.assertEqual(self.file.read_bytes(), self.original)
+        self.assertFalse(list((self.app / "backups").rglob("*.mxtags")))     # the write's backup taken back
 
     def test_nothing_checked_no_write(self):
         with self.dialog(True, ""):

@@ -7,6 +7,7 @@ import numpy as np
 
 from analyzer.audio.hpss import hpss_audio_with_spectra
 from analyzer.audio.load import fast_load
+from analyzer.beat import melody_contour
 from analyzer.beat.frame_features import FRAME_HOP_LENGTH, extract_frame_features
 from analyzer.errors import JUMPCUE_NEEDS_TEMPO, JUMPCUE_TOO_FEW_BEATS, AnalysisError
 from analyzer.jumpcue.JumpCUE import JumpCueConfig, JumpCueEngine
@@ -38,6 +39,9 @@ def reanalyze_jumpcues(path: str, settings: AnalysisSettings, beats_time_arr: np
     y_harm, y_perc, hpss_spectra = hpss_audio_with_spectra(audio_full, sr)
     report(progress, stages.FRAME_FEATURES, 0.25)
     frames = extract_frame_features(audio_full, sr, y_perc, y_harm, hop_length=FRAME_HOP_LENGTH)
+    # the melody contours the frame features keep for the full analysis's index (none here): let go, not held by
+    # the resident reanalysis process with the track's harmonic part until its next job
+    melody_contour.forget_contours()
     report(progress, stages.PHRASE_BOUNDARIES, 0.4)
     _segments, boundary_prob, phrase_feature_z = detect_phrase_segments(
         audio_stereo,

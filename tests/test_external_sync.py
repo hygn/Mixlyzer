@@ -155,6 +155,30 @@ class ReceiverTests(unittest.TestCase):
         self.send(osc.message(xs.TIME_ADDRESS, 1, self.track, True, True, 2.0))
         self.assertEqual(self.loads, [(self.track, 2.0)])
 
+    def test_a_load_that_never_came_holds_no_other_track(self):
+        other = str(Path(self.dir.name, "b.flac").resolve())
+        Path(other).write_bytes(b"x")
+        self.library.update({self.track, other})
+        self.send(osc.message(xs.TIME_ADDRESS, 1, self.track, True, True, 1.0))
+        self.send(osc.message(xs.TIME_ADDRESS, 1, self.track, True, True, 2.0))
+        self.assertEqual(self.loads, [(self.track, 1.0)])    # asked once (it never loads: its analysis failed)
+        self.send(osc.message(xs.TIME_ADDRESS, 1, other, True, True, 3.0))
+        self.assertEqual(self.loads, [(self.track, 1.0), (other, 3.0)])   # the next track followed all the same
+
+    def test_a_deck_gone_forgets_its_track(self):
+        self.ctl._library_only = True   # a track not in the library waits for it
+        stale, xs.STALE_SEC = xs.STALE_SEC, 0.05      # kept while the events run (the poll's timer reads it)
+        try:
+            self.send(osc.message(xs.TIME_ADDRESS, 1, self.track, True, True, 1.0))
+            time.sleep(0.1)
+            self.ctl._poll_external()                  # the deck silent: gone (ejected, the program closed)
+            self.library.add(self.track)
+            self.ctl._on_library_updated(None)
+            self.app.processEvents()
+        finally:
+            xs.STALE_SEC = stale
+        self.assertEqual(self.loads, [])               # not loaded once in the library: no deck has it
+
     def test_unsafe_path_never_loaded(self):
         self.send(osc.message(xs.TIME_ADDRESS, 1, "/\\host\\share\\a.flac", True, True, 1.0))
         self.assertEqual(self.loads, [])

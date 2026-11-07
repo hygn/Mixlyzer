@@ -441,8 +441,13 @@ class SettingsDialog(
         self.accept()
 
     def _on_cancel(self):
-        self._stop_midi_learn()
         self.reject()
+
+    def hideEvent(self, event: QtGui.QHideEvent) -> None:
+        # however the window goes (OK, Cancel, Esc, its close button): MIDI Learn left on would take the next control
+        # touched while playing
+        self._stop_midi_learn()
+        super().hideEvent(event)
 
     def showEvent(self, event: QtGui.QShowEvent) -> None:
         super().showEvent(event)

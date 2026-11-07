@@ -394,6 +394,17 @@ class MidiPageTests(unittest.TestCase):
         self.d._toggle_midi_learn(True)
         self.assertIsNone(self.d._midi_learning)
 
+    def test_learn_ends_when_the_window_closes_by_esc(self):
+        self.native()
+        self.d.show()
+        self.d.tree_midi.setCurrentItem(self.d._midi_items["deck1.play_pause"])
+        self.d.btn_midi_learn.setChecked(True)
+        self.assertEqual(self.learning, [True])
+        self.d.reject()                          # Esc and the close button: QDialog.reject, not the Cancel button
+        self.assertIsNone(self.d._midi_learning)
+        self.assertFalse(self.d.btn_midi_learn.isChecked())
+        self.assertEqual(self.learning, [True, False])
+
     def test_every_action_shown(self):
         shown = set(self.d._midi_items)
         self.assertEqual(shown, {a.id for a in midi.ACTIONS})

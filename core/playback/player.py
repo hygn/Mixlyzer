@@ -179,6 +179,7 @@ class _AudioWorker(QtCore.QObject):
         self.deck.set_tempo_range(self._tempo_range)
         if isinstance(self.feeder, NativeFeeder):
             self.feeder.set_meter_gain(self._peak_meter_gain_linear)   # a controller's level meter, from the start
+            self.feeder.format_changed.connect(self._on_format_changed)
         # at the track's end either engine plays on (silence): the record dragged or the playhead moved back plays
         # again from there
         # While playing, every transport change (seek, scrub, jump) is rendered by the feeder
@@ -231,6 +232,14 @@ class _AudioWorker(QtCore.QObject):
                 pass  # worker already destroyed (app shutting down)
 
         threading.Thread(target=decode, name="PlayerDecode", daemon=True).start()
+
+    def _on_format_changed(self, at: float) -> None:
+        """The native engine restarted at another format, the track unloaded: decoded again at the new format, the
+        deck back where it was once it is (the seek waits for the track)."""
+        self.rate, self.ch = self.feeder.rate, self.feeder.ch
+        if self._path:
+            self.load(self._path)
+            self.run_command("seek", (float(at),))
 
     def unload(self) -> None:
         """No track: silent, nothing to play."""

@@ -625,6 +625,9 @@ class NativeFeeder(QtCore.QObject):
 
     finished = QtCore.Signal()
     jumped = QtCore.Signal()
+    # a restarted engine came up at another format (rate, channels): the track, decoded at the old one, unloaded;
+    # where the deck was (seconds), for the player to decode it again at the new one and go back there
+    format_changed = QtCore.Signal(float)
 
     PEAK_FLOOR_DBFS = controls.PEAK_FLOOR_DBFS   # src/engine.rs'
     BUFFER_MS_RANGE = controls.NATIVE_BUFFER_MS_RANGE
@@ -1007,16 +1010,26 @@ class NativeFeeder(QtCore.QObject):
         engine = NativeEngine.start(self._device, self._api, self._exclusive, wanted)
         if engine is None:
             return
-        if (engine.rate, engine.channels) != (self.rate, self.ch):
-            print("[AudioEngine] the output format changed; the track stays unloaded")
-            engine.close()
-            return
+        at = self.playhead_frame() / max(1, self.rate)
+        changed = (engine.rate, engine.channels) != (self.rate, self.ch)
+        # this engine taken whatever its format (closed, the dead one stayed and was started again every
+        # RESTART_SEC for good: the device's format, or the default device, changed since)
         self._engine = engine
+        if changed:
+            print("[AudioEngine] the output format changed; the track is decoded again at it")
+            self.rate, self.ch = engine.rate, engine.channels
+            self.clicks.ch = self.ch
+            self.clicks.follow_rate(self.rate)
         self._counts = (0, 0)
         self._hist_prev = None
         self._aux_prev = [None] * len(AUX_BUSES)
         self._replay()
-        if self._pcm is not None:
+        if changed:
+            self._pcm = None
+            if self._len:
+                self._len = 0
+                self.format_changed.emit(at)
+        elif self._pcm is not None:
             pcm, self._pcm = self._pcm, None
             self.set_track(pcm)
 

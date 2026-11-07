@@ -2,6 +2,7 @@
 file's tags (Write Tags, Restore from Backup), the Rekordbox XML's entry for it and rekordbox's phrases."""
 from __future__ import annotations
 import threading
+import traceback
 from pathlib import Path
 from typing import Callable, Optional
 
@@ -368,6 +369,10 @@ class SyncTrackPanel(QtWidgets.QWidget):
         except OSError as exc:
             self._sig_phrases_planned.emit(uid, None, tr("rekordbox's analysis file could not be read: {error}").format(
                 error=exc.strerror or exc))
+        except Exception as exc:   # any other (a file it cannot parse): said, Write and Restore usable again
+            traceback.print_exc()
+            self._sig_phrases_planned.emit(uid, None, tr("rekordbox's analysis file could not be read: {error}").format(
+                error=exc))
 
     def _confirm_phrases(self, uid: str, plan, error: str) -> None:
         if error or plan is None:
@@ -401,6 +406,10 @@ class SyncTrackPanel(QtWidgets.QWidget):
         except OSError as exc:
             self._sig_phrases_written.emit(uid, "", tr("rekordbox's analysis file could not be written: {error}").format(
                 error=exc.strerror or exc))
+        except Exception as exc:
+            traceback.print_exc()
+            self._sig_phrases_written.emit(uid, "", tr("rekordbox's analysis file could not be written: {error}").format(
+                error=exc))
 
     def _on_phrases_written(self, uid: str, backup: str, error: str) -> None:
         self._phrases_writing = None
@@ -430,6 +439,10 @@ class SyncTrackPanel(QtWidgets.QWidget):
                 self._sig_rb_backups.emit(uid, None, [], str(exc))
             except OSError as exc:
                 self._sig_rb_backups.emit(uid, None, [], str(exc.strerror or exc))
+            except Exception as exc:
+                traceback.print_exc()
+                self._sig_rb_backups.emit(uid, None, [], tr("rekordbox's analysis file could not be read: {error}")
+                                          .format(error=exc))
 
         threading.Thread(target=find, daemon=True).start()
 
@@ -469,6 +482,10 @@ class SyncTrackPanel(QtWidgets.QWidget):
             except OSError as exc:
                 self._sig_rb_restored.emit(uid, [], tr("rekordbox's analysis file could not be written: {error}")
                                            .format(error=exc.strerror or exc))
+            except Exception as exc:
+                traceback.print_exc()
+                self._sig_rb_restored.emit(uid, [], tr("rekordbox's analysis file could not be written: {error}")
+                                           .format(error=exc))
 
         threading.Thread(target=put, daemon=True).start()
 
@@ -546,7 +563,8 @@ class SyncTrackPanel(QtWidgets.QWidget):
         # confirmed, then written there
         lang = self._tieup_language() if self._tieup_language is not None else ""
         self._library.read(jobs.tag_values, uid, with_tieups, lang,
-                           done=lambda found: self._write_stored(uid, fields, *found, marks=marks))
+                           done=lambda found: self._write_stored(uid, fields, *found, marks=marks),
+                           failed=lambda exc: self._on_tags_done(uid, str(exc), ""))
 
     def _serato_marks(self, a: Optional[StoredAnalysis]) -> Optional[tuple]:
         """What Serato's tags are made of (the beats, the tempo rows, the JumpCUE groups, the CUE points): the deck's
@@ -597,6 +615,10 @@ class SyncTrackPanel(QtWidgets.QWidget):
             plan = planned_writes(file_path, values, sources)
         except (TagWriteError, OSError):
             plan = None
+        except Exception as exc:   # any other (a tag it cannot parse, the library's): said, nothing written
+            traceback.print_exc()
+            self._sig_tags_done.emit(uid, tr("The file could not be read: {error}").format(error=exc), "")
+            return
         self._sig_tags_read.emit(uid, plan, (file_path, stored_path, values, sources, kept, losses))
 
     @staticmethod
@@ -712,6 +734,9 @@ class SyncTrackPanel(QtWidgets.QWidget):
                        "written. Close it there, then write again.")
         except OSError as exc:
             error = tr("The file could not be written: {error}").format(error=exc.strerror or exc)
+        except Exception as exc:
+            traceback.print_exc()
+            error = tr("The file could not be written: {error}").format(error=exc)
         if error:
             for path in made:
                 path.unlink(missing_ok=True)
@@ -775,6 +800,9 @@ class SyncTrackPanel(QtWidgets.QWidget):
                        "back. Close it there, then restore again.")
         except OSError as exc:
             error = tr("The file could not be written: {error}").format(error=exc.strerror or exc)
+        except Exception as exc:
+            traceback.print_exc()
+            error = tr("The file could not be written: {error}").format(error=exc)
         self._sig_restored.emit(uid, error)
 
     def _on_restored(self, uid: str, error: str) -> None:

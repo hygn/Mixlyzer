@@ -422,7 +422,7 @@ class SourcesMixin:
         self._refresh_current_source(reset_sort=True)
 
     def _refresh_current_source(self, *, reset_sort: bool = False) -> None:
-        self.table.setPlaylistReorderEnabled(self._source_kind == "playlist" and not self._music_mode)
+        self.table.setPlaylistReorderEnabled(self._playlist_shown())
         self._sync_mix_bar()
         if self._music_mode:
             tracks = self._music_tracks()

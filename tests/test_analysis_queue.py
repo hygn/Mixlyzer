@@ -2,6 +2,7 @@
 waiting in their order, the deck's track ahead of them; a slot freed starts the next; a cancel drops the waiting."""
 import os
 import unittest
+import zipfile
 from types import SimpleNamespace
 from unittest import mock
 
@@ -140,8 +141,10 @@ class LoadedWhileReanalyzedTests(unittest.TestCase):
         self.stored = "the stored analysis"
         self.said, self.results, self.reanalyzed = [], [], []
         track = SimpleNamespace(uid="u", path="a.wav", to_meta=lambda: {"path": "a.wav"})
+        self.read_error = None     # the read's exception (a damaged NPZ), else the stored analysis answered
         library = SimpleNamespace(snapshot=SimpleNamespace(find_file=lambda _p: track),
-                                  read=lambda _job, _uid, done: done(self.stored))
+                                  read=lambda _job, _uid, done, failed=None:
+                                  failed(self.read_error) if self.read_error is not None else done(self.stored))
         for patcher in (mock.patch.object(workflow, "AnalysisWorker", _Worker),
                         mock.patch.object(workflow.os.path, "isfile", return_value=True)):
             patcher.start()
@@ -176,6 +179,16 @@ class LoadedWhileReanalyzedTests(unittest.TestCase):
         self.assertEqual(self.deck, [])
         self.assertEqual(_Worker.started, ["a.wav"])                 # joined, not a second analysis
         self.assertEqual(len(self.tasks.removed), 1)                 # its own task gone
+        self.flow._deliver(self.running, {"analysis": "new", "properties": {"path": "a.wav"}})
+        self.assertEqual([r["analysis"] for r in self.deck], ["new"])
+
+    def test_a_stored_analysis_that_raises_is_taken_as_none(self):
+        """The read failing with what the reader does not take for "none readable" (a damaged NPZ): as none read,
+        the deck given the new analysis, its task not left at Loading Track."""
+        self.read_error = zipfile.BadZipFile("File is not a zip file")
+        with mock.patch("builtins.print"):
+            self.load()
+        self.assertEqual(len(self.tasks.removed), 1)                 # its own task gone (joined the reanalysis)
         self.flow._deliver(self.running, {"analysis": "new", "properties": {"path": "a.wav"}})
         self.assertEqual([r["analysis"] for r in self.deck], ["new"])
 

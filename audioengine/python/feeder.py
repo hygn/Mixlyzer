@@ -279,8 +279,9 @@ class PCMFeeder(QtCore.QObject):
         self._seeked_while_paused = True
         self._scratching = False
         self._stop_polling()
-        self._jump_start = None
-        self._jump_dest = None
+        # the JumpCUE armed on the track before: disarmed whole (its candidate points rebuild the jump in
+        # _render_block, which would fire it on this track), as the native engine's set_track does
+        self.disarm_jump()
         self.clicks.clear_voices()
 
     def set_mode(self, mode: str) -> None:

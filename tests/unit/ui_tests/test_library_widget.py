@@ -804,6 +804,22 @@ class LibraryWidgetTests(unittest.TestCase):
         self.assertEqual(self._entries(pl), [])
         self.assertEqual(len(analyzed), 2)
 
+    def test_music_search_over_a_playlist_removes_nothing_from_it(self):
+        pl = self._new_playlist("Set")
+        self.w._add_paths_to_playlist(pl, [self.paths[0], self.paths[1]])
+        self.settle()
+        self.w._enter_music_mode()
+        self.w._on_music_results(SimpleNamespace(matches=[            # the library's tracks: # their rank
+            MusicMatch(self.uids[2], "melody", 0.2, 30.0, 40.0, 0.0),
+            MusicMatch(self.uids[1], "melody", 0.1, 0.0, 5.0, 0.0)]))
+        self.assertFalse(self.w._playlist_shown())
+        self.w.table.selectAll()
+        self.w._remove_selected_from_playlist()                       # the shortcut's handler
+        self.settle()
+        self.assertEqual(self._entries(pl), [self.uids[0], self.uids[1]])
+        self.w._exit_music_mode()
+        self.assertTrue(self.w._playlist_shown())
+
     def test_reanalyze_asks_for_this_runs_settings(self):
         asked, analyzed = [], []
         self.bus.sig_reanalyze_requested.connect(lambda path, analysis: asked.append((path, analysis)))

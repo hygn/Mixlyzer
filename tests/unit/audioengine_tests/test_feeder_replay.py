@@ -1,6 +1,7 @@
 """NativeFeeder's replay to a restarted engine: the settings sent, the deck and the mixer as last reported."""
 import struct
 import unittest
+from unittest import mock
 
 from audioengine import controls
 from audioengine.native import client
@@ -106,6 +107,25 @@ class ReplayTests(unittest.TestCase):
         engine.calls.clear()
         feeder._replay()
         self.assertFalse([op for op, _p in engine.calls if op == client.OP_SET_KEY_SHIFT])
+
+    def test_a_restart_at_another_format_takes_the_new_engine(self):
+        """The engine restarted on a device whose format changed meanwhile: the new engine kept (not closed, the dead
+        one started again for good), the track decoded at the old rate unloaded and the player told where it was."""
+        old = _Engine()
+        feeder = client.NativeFeeder(old)
+        feeder._pcm, feeder._len = object(), 48000 * 10            # a track loaded at 48 kHz
+        feeder._state = mock.Mock(playhead=48000 * 3)               # heard at 3 s
+        new = _Engine()
+        new.rate = 44100
+        told = []
+        feeder.format_changed.connect(told.append)
+        with mock.patch.object(client.NativeEngine, "start", return_value=new):
+            feeder._restart()
+        self.assertIs(feeder._engine, new)
+        self.assertEqual((feeder.rate, feeder.ch), (44100, 2))
+        self.assertIsNone(feeder._pcm)
+        self.assertEqual(told, [3.0])
+        self.assertFalse([op for op, _p in new.calls if op == client.OP_LOAD])   # nothing at the old rate sent
 
     def test_a_key_shift_not_a_number_is_not_sent(self):
         engine = _Engine()
