@@ -68,15 +68,6 @@ class LevelKnobTests(unittest.TestCase):
         above = db > c.LEVEL_DB_MIN
         np.testing.assert_allclose([c.level_db_to_knob(d) for d in db[above]], POSITIONS[above], atol=1e-12)
 
-    def test_booth_eq(self):
-        lo, hi = c.BOOTH_EQ_DB
-        self.assertEqual((c.booth_eq_knob_to_db(0.0), c.booth_eq_knob_to_db(0.5), c.booth_eq_knob_to_db(1.0)),
-                         (lo, 0.0, hi))
-        db = np.array([c.booth_eq_knob_to_db(k) for k in POSITIONS])
-        self.assertTrue(np.all(np.diff(db) > 0))
-        np.testing.assert_allclose([c.booth_eq_db_to_knob(d) for d in db], POSITIONS, atol=1e-12)
-        self.assertEqual((c.booth_eq_db_to_knob(-99.0), c.booth_eq_db_to_knob(99.0)), (0.0, 1.0))
-
 
 class ControlTableTests(unittest.TestCase):
     def test_effects(self):

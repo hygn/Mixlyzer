@@ -214,17 +214,17 @@ class RekordboxImportTests(unittest.TestCase):
         self.assertEqual(skipped, sorted({"JogTouch+Shift", "HeadphonesMix", "Unknown", "PlayPause", "Cue"}))
 
     def test_global_and_output_columns(self):
-        mapping, _ = self.read([
+        mapping, skipped = self.read([
             "Browse,Browse,Rotary,B640,,,,,,,,,,,",
-            "HeadphonesVolume,HeadphonesVolume,KnobSlider,b60d,,,,,,,,,,,",
+            "HeadphonesVolume,HeadphonesVolume,KnobSlider,b60d,,,,,,,,,,,",   # no headphones here: left out
             "CFXParameterCH1,CFXParameterCH1,KnobSlider,B617,,,,,,,,,,,",
             "ChannelLevel,ChannelLevel,Indicator,,,,,,B002,0,,,,,",           # deck 1's output: the offset
             "PlayPause,PlayPause,Button,900B,900B,,,,,,,,,,",
             "PlayPause,PlayPause,Button,900B,900B,,,,,,,,,,",                 # the same again: once
         ])
-        self.assertEqual(mapping, {"browser.rotate": ["B640"], "mixer.headphones_level": ["B60D"],
-                                   "mixer.ch1.color": ["B617"], "mixer.ch1.level_meter": ["B002"],
-                                   "deck1.play_pause": ["900B"]})
+        self.assertEqual(mapping, {"browser.rotate": ["B640"], "mixer.ch1.color": ["B617"],
+                                   "mixer.ch1.level_meter": ["B002"], "deck1.play_pause": ["900B"]})
+        self.assertEqual(skipped, ["HeadphonesVolume"])
 
     def test_short_rows_padded(self):
         mapping, skipped = self.read(["PlayPause,PlayPause,Button,900B,900B"])

@@ -1,15 +1,11 @@
 //! The mixer, as a DJM's channel and its master section, in the main device's callback (device.rs). The deck's
 //! channel strip, as the DJM-A9's block diagram (page 93): trim, a 3-band EQ (an isolator down to a kill, or an EQ
-//! down to -26 dB: ipc::mix::EQ_MODE), the meter and the pre-fader CUE tap (the headphones), the channel fader (its
-//! curve the mixer's), with three places for the effects (colorfx::Slot): after the trim, after the EQ (before the
-//! tap), after the fader; Sound Color FX (colorfx.rs: the effect the mixer picks, the channel's COLOR knob) in its
-//! effect's place (ColorType::slot). Then the master (its level, its meter), the booth (its level and HI / LOW EQ,
-//! -12 .. +6 dB), the headphones (the CUE'd channel before the fader, the master by their CUE / MASTER mix when it is
-//! mixed in, or MONO SPLIT: the CUE left, the master right; their level), each output's last stage (Clip: a hard
-//! clip, a tanh soft clip or a lookahead limiter, each output its own; the booth and the headphones take the master
-//! before the master's). The player (engine.rs)
-//! renders the deck's music before all of it, so a fader or a knob is heard after the device's latency alone, not
-//! the engine's buffer. The strip at its neutral settings (trim 0 dB, every EQ band 0 dB, COLOR off, the fader at
+//! down to -26 dB: ipc::mix::EQ_MODE), the meter, the channel fader (its curve the mixer's), with three places for
+//! the effects (colorfx::Slot): after the trim, after the EQ, after the fader; Sound Color FX (colorfx.rs: the
+//! effect the mixer picks, the channel's COLOR knob) in its effect's place (ColorType::slot). Then the master (its
+//! level, its meter) and its last stage (Clip: a hard clip, a tanh soft clip or a lookahead limiter). The player
+//! (engine.rs) renders the deck's music before all of it, so a fader or a knob is heard after the device's latency
+//! alone, not the engine's buffer. The strip at its neutral settings (trim 0 dB, every EQ band 0 dB, COLOR off, the fader at
 //! the top) leaves the samples as they are, bit for bit, and so does the master at 0 dB.
 //!
 //! SIMD: the buses' sums and gains go through VOLK's kernels (vk.rs: the machine's widest), the filters four lanes
@@ -22,7 +18,7 @@
 //! (EQ_HIGH_HZ), a DJM's. Gains move smoothly (no zipper).
 
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, AtomicU8, AtomicU32, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicU8, AtomicU32, AtomicU64, Ordering};
 
 use crate::colorfx::{ColorFx, ColorType, Slot};
 use crate::dsp::Limiter;
@@ -41,7 +37,6 @@ pub const EQ_HIGH_HZ: f64 = 13000.0;
 const EQ_MID_Q: f64 = 0.7;
 pub const EQ_MAX_DB: f64 = 6.0; // a band's knob at the top
 pub const EQ_MIN_DB: f64 = -26.0; // its bottom (the isolator's: just above its kill)
-pub const BOOTH_EQ_MIN_DB: f64 = -12.0;
 pub const TRIM_MAX_DB: f64 = 9.0; // the trim knob's top, as a DJM's
 pub const TRIM_MIN_DB: f64 = -24.0;
 const SMOOTH_SEC: f64 = 0.01; // a gain change eased over this
@@ -61,18 +56,11 @@ pub fn fader_gain(position: f64, curve: u8) -> f64 {
     }
 }
 
-/// A level knob (master, booth, headphones) as a gain: silence at the bottom, 0 dB at mix::LEVEL_UNITY,
-/// about +4 dB at the top.
+/// The master's level knob as a gain: silence at the bottom, 0 dB at mix::LEVEL_UNITY, about +4 dB at the top.
 pub fn level_gain(knob: f64) -> f64 {
     let k = if knob.is_finite() { knob.clamp(0.0, 1.0) } else { mix::LEVEL_UNITY };
     let g = (k / mix::LEVEL_UNITY).powi(2);
     if (g - 1.0).abs() < 1e-9 { 1.0 } else { g }
-}
-
-/// The booth EQ's knob in dB: BOOTH_EQ_MIN_DB at the bottom, 0 at the middle, EQ_MAX_DB at the top.
-pub fn booth_eq_db(knob: f64) -> f64 {
-    let k = if knob.is_finite() { knob.clamp(0.0, 1.0) } else { 0.5 };
-    if k < 0.5 { BOOTH_EQ_MIN_DB * (1.0 - 2.0 * k) } else { EQ_MAX_DB * (2.0 * k - 1.0) }
 }
 
 /// An EQ knob's band level in dB (the middle 0, the top EQ_MAX_DB, the bottom EQ_MIN_DB); None: a kill (the
@@ -248,14 +236,13 @@ impl ClassicEq {
 
 /// The channel strip's settings, as the deck (deck.rs: its buttons, keys and a controller's knobs) sets them and the
 /// main device's callback reads them: trim (a gain), the EQ knobs, the COLOR knob, the channel fader's position
-/// (the deck's volume), its headphones CUE, the deck's tempo (Sound Color FX's DUB ECHO); and its meter, which the
-/// callback writes (the peak before the fader since it was last taken).
+/// (the deck's volume), the deck's tempo (Sound Color FX's DUB ECHO); and its meter, which the callback writes (the
+/// peak before the fader since it was last taken).
 pub struct StripParams {
     trim: AtomicU64,    // f64 bits, linear
     eq: [AtomicU64; 3], // f64 bits, knobs 0 .. 1: low, mid, high
     color: AtomicU64,   // f64 bits, knob 0 .. 1 (0.5 off)
     fader: AtomicU64,   // f64 bits, position 0 .. 1
-    cue: AtomicBool,
     bpm: AtomicU64,  // f64 bits (0: unknown)
     peak: AtomicU32, // f32 bits (>= 0: ordered as integers)
 }
@@ -267,7 +254,6 @@ impl StripParams {
             eq: std::array::from_fn(|_| AtomicU64::new(0.5f64.to_bits())),
             color: AtomicU64::new(0.5f64.to_bits()),
             fader: AtomicU64::new(1f64.to_bits()),
-            cue: AtomicBool::new(false),
             bpm: AtomicU64::new(0f64.to_bits()),
             peak: AtomicU32::new(0),
         }
@@ -305,19 +291,6 @@ impl StripParams {
         Self::load(&self.bpm)
     }
 
-    /// The headphones' CUE of this channel.
-    pub fn set_cue(&self, on: bool) {
-        self.cue.store(on, Ordering::Relaxed);
-    }
-
-    pub fn toggle_cue(&self) {
-        self.cue.fetch_xor(true, Ordering::Relaxed);
-    }
-
-    pub fn cue_on(&self) -> bool {
-        self.cue.load(Ordering::Relaxed)
-    }
-
     fn load(a: &AtomicU64) -> f64 {
         f64::from_bits(a.load(Ordering::Relaxed))
     }
@@ -334,8 +307,8 @@ impl StripParams {
     }
 }
 
-/// The channel strip's processing, in the main device's callback: the player's music through trim, EQ, its meter and
-/// its pre-fader tap (the headphones' CUE), then the channel fader, Sound Color FX in its place (Slot); the player's
+/// The channel strip's processing, in the main device's callback: the player's music through trim, EQ and its meter,
+/// then the channel fader, Sound Color FX in its place (Slot); the player's
 /// listening aids (the metronome, reference tones) added after it all, as they were (their level their own). At its
 /// neutral settings the music passes bit for bit.
 pub struct Strip {
@@ -436,12 +409,12 @@ fn ramp(x: &mut [f32], ch: usize, from: f32, to: f32) {
     }
 }
 
-/// No output channel (a bus not routed).
+/// No output channel (the master's side not routed).
 pub const NO_CHANNEL: u8 = 0xFF;
-/// The routes: main L / R, headphones L / R, booth L / R.
-pub const ROUTES: usize = 6;
+/// The routes: the master's L / R on the device's channels.
+pub const ROUTES: usize = 2;
 
-/// An output's last stage, keeping it at 0 dBFS at most (op::SET_CLIP), so the system never limits it on its way to
+/// The master's last stage, keeping it at 0 dBFS at most (op::SET_CLIP), so the system never limits it on its way to
 /// the device (Windows' shared mode mixes in float and limits what is over).
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Clip {
@@ -472,19 +445,14 @@ impl Clip {
     }
 }
 
-/// The outputs, as Clip's and the limiters' order.
-pub const OUT_MASTER: usize = 0;
-pub const OUT_HEADPHONES: usize = 1;
-pub const OUT_BOOTH: usize = 2;
-
 /// The mixer's settings, changed from the engine thread and read once per callback: the channel's strip
-/// (StripParams), the mixer's own (ipc::mix keys, f64 each), each output's last stage (Clip), where each bus goes on
-/// the main device (ROUTES: a pair of its channels, NO_CHANNEL: not there); and its meters and the master's spectrum
+/// (StripParams), the mixer's own (ipc::mix keys, f64 each), the master's last stage (Clip), where the master goes on
+/// the device (ROUTES: a pair of its channels, NO_CHANNEL: not there); and its meters and the master's spectrum
 /// tap, which the callback writes.
 pub struct MixParams {
     pub strip: Arc<StripParams>,
     values: [AtomicU64; mix::KEYS],
-    clip: [AtomicU8; 3],
+    clip: AtomicU8,
     routes: [AtomicU8; ROUTES],
     meters: [AtomicU32; mix::METER_COUNT], // f32 bits: peaks (linear) since taken
     pub tap: Tap,                           // the master after its level (spectrum.rs), while the GUI asks
@@ -493,17 +461,12 @@ pub struct MixParams {
 /// One reading of MixParams (the callback's).
 #[derive(Clone, Copy)]
 pub struct Mix {
-    pub cue: bool,               // the channel's headphones CUE
-    pub hp: (f32, f32, bool),    // the headphones: CUE / MASTER mix, level gain, the master mixed in
     pub master: f32,
-    pub booth: f32,
-    pub booth_eq: [f64; 2], // dB: low, high
     pub eq_mode: u8,
     pub fader_curve: u8,
     pub color_type: ColorType,
     pub color_param: f64,
-    pub hp_split: bool, // the headphones' MONO SPLIT
-    pub clip: [Clip; 3], // the master's, the headphones', the booth's
+    pub clip: Clip,
     pub routes: [u8; ROUTES],
 }
 
@@ -512,16 +475,13 @@ impl MixParams {
         let p = MixParams {
             strip: Arc::new(StripParams::new()),
             values: std::array::from_fn(|k| AtomicU64::new(mix::DEFAULTS[k].to_bits())),
-            clip: std::array::from_fn(|_| AtomicU8::new(Clip::Hard.code())), // until told: music at 0 dBFS or under as it is
+            clip: AtomicU8::new(Clip::Hard.code()), // until told: music at 0 dBFS or under as it is
             routes: std::array::from_fn(|_| AtomicU8::new(NO_CHANNEL)),
             meters: std::array::from_fn(|_| AtomicU32::new(0)),
             tap: Tap::default(),
         };
-        // the master on the device's first two channels (one: its only one), nothing else routed
-        let mut routes = [NO_CHANNEL; ROUTES];
-        routes[0] = 0;
-        routes[1] = if out_channels > 1 { 1 } else { NO_CHANNEL };
-        p.set_routes(&routes);
+        // the master on the device's first two channels (one: its only one)
+        p.set_routes(&[0, if out_channels > 1 { 1 } else { NO_CHANNEL }]);
         p
     }
 
@@ -530,7 +490,7 @@ impl MixParams {
         let Some(a) = self.values.get(key) else { return };
         let v = if value.is_finite() { value } else { mix::DEFAULTS[key] };
         let v = match key {
-            mix::EQ_MODE | mix::HP_MASTER | mix::HP_SPLIT => v.round().clamp(0.0, 1.0),
+            mix::EQ_MODE => v.round().clamp(0.0, 1.0),
             mix::FADER_CURVE => v.round().clamp(0.0, 2.0),
             mix::COLOR_TYPE => v.round().clamp(0.0, ColorType::COUNT as f64),
             _ => v.clamp(0.0, 1.0),
@@ -542,34 +502,12 @@ impl MixParams {
         self.values.get(key).map_or(0.0, |a| f64::from_bits(a.load(Ordering::Relaxed)))
     }
 
-    /// A switch flipped (MONO SPLIT ...) or a choice stepped by ``by`` (COLOR_TYPE: around).
-    pub fn step(&self, key: usize, by: i64) {
-        let hi = if key == mix::COLOR_TYPE { ColorType::COUNT as i64 - 1 } else { 1 };
-        let now = self.get(key).round() as i64;
-        self.set(key, (now + by).rem_euclid(hi + 1) as f64);
+    /// The master's last stage.
+    pub fn set_clip(&self, clip: Clip) {
+        self.clip.store(clip.code(), Ordering::Relaxed);
     }
 
-    pub fn set_cue_mix(&self, value: f64) {
-        self.set(mix::HP_MIX, value);
-    }
-
-    pub fn set_cue_level(&self, knob: f64) {
-        self.set(mix::HP_LEVEL, knob);
-    }
-
-    pub fn set_master_cue(&self, on: bool) {
-        self.set(mix::HP_MASTER, on as u8 as f64);
-    }
-
-    /// The master's, the headphones' and the booth's last stage.
-    pub fn set_clip(&self, clip: [Clip; 3]) {
-        for (a, c) in self.clip.iter().zip(clip) {
-            a.store(c.code(), Ordering::Relaxed);
-        }
-    }
-
-    /// main L / R, headphones L / R, booth L / R (NO_CHANNEL: not routed); a shorter list leaves the rest as they
-    /// are.
+    /// The master's L / R (NO_CHANNEL: not routed); a shorter list leaves the rest as it is.
     pub fn set_routes(&self, routes: &[u8]) {
         for (a, &r) in self.routes.iter().zip(routes) {
             a.store(r, Ordering::Relaxed);
@@ -589,31 +527,18 @@ impl MixParams {
 
     pub fn read(&self) -> Mix {
         Mix {
-            cue: self.strip.cue_on(),
-            hp: (self.get(mix::HP_MIX) as f32, level_gain(self.get(mix::HP_LEVEL)) as f32,
-                 self.get(mix::HP_MASTER) != 0.0),
             master: level_gain(self.get(mix::MASTER_LEVEL)) as f32,
-            booth: level_gain(self.get(mix::BOOTH_LEVEL)) as f32,
-            booth_eq: [booth_eq_db(self.get(mix::BOOTH_EQ_LOW)), booth_eq_db(self.get(mix::BOOTH_EQ_HI))],
             eq_mode: self.get(mix::EQ_MODE) as u8,
             fader_curve: self.get(mix::FADER_CURVE) as u8,
             color_type: ColorType::from_code(self.get(mix::COLOR_TYPE) as u8),
             color_param: self.get(mix::COLOR_PARAM),
-            hp_split: self.get(mix::HP_SPLIT) != 0.0,
-            clip: std::array::from_fn(|k| Clip::from_code(self.clip[k].load(Ordering::Relaxed) as u32)),
+            clip: Clip::from_code(self.clip.load(Ordering::Relaxed) as u32),
             routes: std::array::from_fn(|k| self.routes[k].load(Ordering::Relaxed)),
         }
     }
 }
 
-/// What the callback wants of the mixer: the headphones, the booth (each routed or bridged).
-#[derive(Clone, Copy, Default)]
-pub struct Wanted {
-    pub headphones: bool,
-    pub booth: bool,
-}
-
-/// The mixer, in the main device's callback. The outputs as stereo buses (a mono deck's on both sides). A lane that
+/// The mixer, in the main device's callback. The master as a stereo bus (a mono deck's on both sides). A lane that
 /// gave nothing leaves the channel out: the deck at its neutral settings comes out bit for bit as the player
 /// rendered it.
 pub struct Mixer {
@@ -623,23 +548,17 @@ pub struct Mixer {
     pfl: Vec<f32>,
     post: Vec<f32>,
     silence: Vec<f32>, // a lane's block of nothing: a stopped deck's strip run while its effect rings out
-    cue: Vec<f32>,     // stereo
-    pub master: Vec<f32>,     // stereo, a piece's frames
-    pub headphones: Vec<f32>, // stereo
-    pub booth: Vec<f32>,      // stereo
-    booth_eq: [Biquad4; 2],
-    booth_set: [f64; 2],
-    limiters: [Limiter; 3], // each output's (OUT_*)
-    clip_was: [Clip; 3],
-    /// The outputs' last stages run (the engine always; the offline mixer, --mix-file, only when asked: it
-    /// measures the mixer before them).
+    pub master: Vec<f32>, // stereo, a piece's frames
+    limiter: Limiter,
+    clip_was: Clip,
+    /// The master's last stage run (the engine always; the offline mixer, --mix-file, only when asked: it measures
+    /// the mixer before it).
     pub last_stages: bool,
 }
 
 impl Mixer {
     pub fn new(rate: f64, ch: usize, frames: usize) -> Mixer {
         let ch = ch.clamp(1, 2);
-        let stereo = || vec![0f32; frames * 2];
         Mixer {
             rate,
             strip: Strip::new(rate, 0x9E37_79B9 ^ 1),
@@ -647,14 +566,9 @@ impl Mixer {
             pfl: vec![0.0; frames * ch],
             post: vec![0.0; frames * ch],
             silence: vec![0.0; frames * 2 * ch],
-            cue: stereo(),
-            master: stereo(),
-            headphones: stereo(),
-            booth: stereo(),
-            booth_eq: [Biquad4::default(); 2],
-            booth_set: [f64::NAN; 2],
-            limiters: std::array::from_fn(|_| Limiter::new(rate)),
-            clip_was: [Clip::Hard; 3],
+            master: vec![0f32; frames * 2],
+            limiter: Limiter::new(rate),
+            clip_was: Clip::Hard,
             last_stages: true,
         }
     }
@@ -672,11 +586,10 @@ impl Mixer {
     }
 
     /// ``n`` frames (at most the mixer's): ``lane`` the deck's lane block where it gave frames; the master into
-    /// ``master`` and what ``wanted`` asks into the others.
-    pub fn process(&mut self, lane: Option<&[f32]>, n: usize, m: &Mix, params: &MixParams, wanted: Wanted) {
+    /// ``master``.
+    pub fn process(&mut self, lane: Option<&[f32]>, n: usize, m: &Mix, params: &MixParams) {
         let ch = self.ch;
         let s2 = n * 2;
-        self.cue[..s2].iter_mut().for_each(|v| *v = 0.0);
         self.master[..s2].iter_mut().for_each(|v| *v = 0.0);
         // a stopped deck (its lane gave nothing) still runs its strip on silence while its effect rings out
         let lane = match lane {
@@ -686,43 +599,7 @@ impl Mixer {
         };
         if let Some(lane) = lane {
             self.strip.process(lane, n, ch, &params.strip, m, &mut self.pfl, &mut self.post);
-            if wanted.headphones && m.cue {
-                Self::add_stereo(&mut self.cue, &self.pfl, n, ch);
-            }
             Self::add_stereo(&mut self.master, &self.post, n, ch);
-        }
-        // the booth: the master before its level, at the booth's level through its EQ
-        if wanted.booth {
-            let booth = &mut self.booth[..s2];
-            booth.copy_from_slice(&self.master[..s2]);
-            if m.booth != 1.0 {
-                vk::scale_in(booth, m.booth);
-            }
-            if m.booth_eq != [0.0; 2] {
-                for k in 0..2 {
-                    if m.booth_eq[k] != self.booth_set[k] {
-                        self.booth_set[k] = m.booth_eq[k];
-                        let c = if k == 0 { Coeffs::low_shelf(EQ_LOW_HZ, m.booth_eq[0], self.rate) } else {
-                            Coeffs::high_shelf(EQ_HIGH_HZ, m.booth_eq[1], self.rate)
-                        };
-                        self.booth_eq[k].set([c; 4]);
-                    }
-                }
-                for f in 0..n {
-                    let v = F4::new(booth[2 * f], booth[2 * f + 1], 0.0, 0.0);
-                    let v = self.booth_eq[0].run(v);
-                    let y = self.booth_eq[1].run(v).to_array();
-                    booth[2 * f] = y[0];
-                    booth[2 * f + 1] = y[1];
-                }
-            } else if self.booth_set != [0.0; 2] {
-                self.booth_set = [0.0; 2];
-                self.booth_eq.iter_mut().for_each(Biquad4::reset);
-            }
-            params.meter(mix::METER_BOOTH, peak_abs(booth));
-            if self.last_stages {
-                last_stage(booth, m.clip[OUT_BOOTH], &mut self.limiters[OUT_BOOTH], &mut self.clip_was[OUT_BOOTH]);
-            }
         }
         // the master's level
         let master = &mut self.master[..s2];
@@ -731,55 +608,18 @@ impl Mixer {
         }
         params.meter(mix::METER_MASTER, peak_abs(master));
         params.tap.push(master, n);
-        // the headphones: the CUE'd channel, the master by their mix when it is mixed in, their level
-        if wanted.headphones {
-            let (mix, level, master_in) = m.hp;
-            let mx = if master_in { mix } else { 0.0 };
-            let hp = &mut self.headphones[..s2];
-            if m.hp_split {
-                // MONO SPLIT: the CUE (mono) left, the master (mono) right, the mix their balance
-                let gc = (2.0 * (1.0 - mix)).min(1.0);
-                let gm = if master_in { (2.0 * mix).min(1.0) } else { 0.0 };
-                let (cue, master) = (&self.cue, &self.master);
-                for f in 0..n {
-                    hp[2 * f] = gc * 0.5 * (cue[2 * f] + cue[2 * f + 1]);
-                    hp[2 * f + 1] = gm * 0.5 * (master[2 * f] + master[2 * f + 1]);
-                }
-            } else {
-                hp.copy_from_slice(&self.cue[..s2]);
-                if mx != 0.0 {
-                    vk::scale_in(hp, 1.0 - mx);
-                    crate::simd::axpy(hp, &self.master[..s2], mx);
-                }
-            }
-            if level != 1.0 {
-                vk::scale_in(hp, level);
-            }
-            if self.last_stages {
-                last_stage(hp, m.clip[OUT_HEADPHONES], &mut self.limiters[OUT_HEADPHONES],
-                           &mut self.clip_was[OUT_HEADPHONES]);
-            }
-        }
         if self.last_stages {
-            last_stage(&mut self.master[..s2], m.clip[OUT_MASTER], &mut self.limiters[OUT_MASTER],
-                       &mut self.clip_was[OUT_MASTER]);
+            last_stage(master, m.clip, &mut self.limiter, &mut self.clip_was);
         }
     }
 
-    /// How late each output comes out of its last stage (s): a limiter's lookahead, else 0. The master's, the
-    /// headphones', the booth's.
-    pub fn delays(&self, m: &Mix) -> [f64; 3] {
-        std::array::from_fn(|k| {
-            if self.last_stages && m.clip[k] == Clip::Limiter {
-                self.limiters[k].delay() as f64 / self.rate
-            } else {
-                0.0
-            }
-        })
+    /// How late the master comes out of its last stage (s): a limiter's lookahead, else 0.
+    pub fn delay(&self, m: &Mix) -> f64 {
+        if self.last_stages && m.clip == Clip::Limiter { self.limiter.delay() as f64 / self.rate } else { 0.0 }
     }
 }
 
-/// An output's last stage (``was``: the one it had, a limiter starting afresh when it comes on).
+/// The master's last stage (``was``: the one it had, a limiter starting afresh when it comes on).
 fn last_stage(bus: &mut [f32], clip: Clip, limiter: &mut Limiter, was: &mut Clip) {
     match clip {
         Clip::Hard => crate::dsp::hard_clip(bus),
@@ -832,7 +672,7 @@ mod tests {
         assert_eq!(x, post);
         // through the whole mixer, the master at 0 dB
         let mut mixer = Mixer::new(48000.0, 2, 4800);
-        mixer.process(Some(&lane), 4800, &params.read(), &params, Wanted::default());
+        mixer.process(Some(&lane), 4800, &params.read(), &params);
         assert_eq!(&mixer.master[..x.len()], &x[..]);
     }
 
@@ -866,86 +706,39 @@ mod tests {
         assert!(flat.abs() < 1e-6);
     }
 
-    /// The headphones: silent with no CUE on and the master not mixed in; the CUE'd channel before its fader; the
-    /// master by the mix when it is mixed in.
-    #[test]
-    fn headphones_cue() {
-        let params = MixParams::new(2);
-        let mut mixer = Mixer::new(48000.0, 2, 64);
-        let lane: Vec<f32> = (0..64).flat_map(|_| [0.5f32, 0.5, 0.0, 0.0]).collect();
-        params.strip.set_fader(fader_inverse(0.5));
-        params.set_master_cue(false);
-        let want = Wanted { headphones: true, booth: true };
-        let run = |mixer: &mut Mixer| {
-            for _ in 0..8 {
-                mixer.process(Some(&lane), 64, &params.read(), &params, want);
-            }
-            (mixer.master[0], mixer.headphones[0])
-        };
-        let (master, hp) = run(&mut mixer);
-        assert!((master - 0.25).abs() < 1e-4 && hp == 0.0, "{master} {hp}");
-        params.strip.toggle_cue();
-        let (_, hp) = run(&mut mixer);
-        assert!((hp - 0.5).abs() < 1e-6, "pre-fader: {hp}");
-        params.set_master_cue(true);
-        params.set_cue_mix(1.0);
-        let (_, hp) = run(&mut mixer);
-        assert!((hp - 0.25).abs() < 1e-4, "the master alone: {hp}");
-    }
-
     /// The effects in their places (the A9's block diagram): NOISE before the EQ (a kill takes its noise too), DUB
-    /// ECHO after the fader (not in the CUE; its tail on with the fader down and the deck stopped).
+    /// ECHO after the fader (its tail on with the fader down and the deck stopped).
     #[test]
     fn effects_in_their_places() {
         let x = sine(440.0, 48000.0, 512, 2).iter().map(|v| 0.4 * v).collect::<Vec<f32>>();
         let lane: Vec<f32> = x.chunks_exact(2).flat_map(|f| [f[0], f[1], 0.0, 0.0]).collect();
-        let want = Wanted { headphones: true, booth: false };
-        let setup = || {
-            let params = MixParams::new(2);
-            params.strip.toggle_cue();
-            params.set(mix::HP_MASTER, 0.0); // the headphones: the CUE alone
-            params
-        };
         let run = |mixer: &mut Mixer, params: &MixParams, lane: Option<&[f32]>, blocks: usize| {
-            let (mut master, mut cue) = (0f64, 0f64);
+            let mut master = 0f64;
             for _ in 0..blocks {
-                mixer.process(lane, 512, &params.read(), params, want);
+                mixer.process(lane, 512, &params.read(), params);
                 master = rms(&mixer.master[..1024]);
-                cue = rms(&mixer.headphones[..1024]);
             }
-            (master, cue)
+            master
         };
         // NOISE, before the EQ: every band killed, nothing comes out (after it, the noise would)
-        let params = setup();
+        let params = MixParams::new(2);
         let mut mixer = Mixer::new(48000.0, 2, 512);
         params.set(mix::COLOR_TYPE, ColorType::Noise as u8 as f64);
         params.set(mix::COLOR_PARAM, 1.0);
         params.strip.set_color(1.0);
         params.strip.set_eq([0.0; 3]);
-        let (master, _) = run(&mut mixer, &params, Some(&lane), 40);
+        let master = run(&mut mixer, &params, Some(&lane), 40);
         assert!(master < 1e-3, "NOISE through a full kill: {master}");
-        // DUB ECHO, after the fader: the CUE is the music as it was; the fader down and the deck stopped, its
-        // repeats ring on
-        let params = setup();
+        // DUB ECHO, after the fader: the fader down and the deck stopped, its repeats ring on
+        let params = MixParams::new(2);
         let mut mixer = Mixer::new(48000.0, 2, 512);
         params.set(mix::COLOR_TYPE, ColorType::DubEcho as u8 as f64);
         params.set(mix::COLOR_PARAM, 0.6);
         params.strip.set_color(0.95);
         run(&mut mixer, &params, Some(&lane), 40);
-        assert_eq!(&mixer.headphones[..1024], &x[..], "the CUE holds no echo");
         params.strip.set_fader(0.0);
-        let (master, _) = run(&mut mixer, &params, None, 4);
+        let master = run(&mut mixer, &params, None, 4);
         assert!(master > 1e-3, "the echo's tail with the fader down, the deck stopped: {master}");
-    }
-
-    /// The fader position giving gain ``g`` on the default curve.
-    fn fader_inverse(g: f64) -> f64 {
-        let (mut lo, mut hi) = (0.0, 1.0);
-        for _ in 0..60 {
-            let mid = 0.5 * (lo + hi);
-            if fader_gain(mid, 0) < g { lo = mid } else { hi = mid }
-        }
-        0.5 * (lo + hi)
     }
 
     #[test]
@@ -960,41 +753,40 @@ mod tests {
     }
 
     #[test]
-    fn color_type_steps_around() {
+    fn settings_held_to_their_ranges() {
         let params = MixParams::new(2);
-        params.set(mix::COLOR_TYPE, (ColorType::COUNT - 1) as f64);
-        params.step(mix::COLOR_TYPE, 1);
-        assert_eq!(params.get(mix::COLOR_TYPE), 0.0);
-        params.step(mix::COLOR_TYPE, -1);
-        assert_eq!(params.get(mix::COLOR_TYPE), (ColorType::COUNT - 1) as f64);
-        params.step(mix::HP_SPLIT, 1);
-        assert_eq!(params.get(mix::HP_SPLIT), 1.0);
+        params.set(mix::COLOR_TYPE, 99.0);
+        assert_eq!(params.get(mix::COLOR_TYPE), ColorType::COUNT as f64);
+        params.set(mix::EQ_MODE, 0.7);
+        assert_eq!(params.get(mix::EQ_MODE), 1.0);
+        params.set(mix::MASTER_LEVEL, f64::NAN);
+        assert_eq!(params.get(mix::MASTER_LEVEL), mix::LEVEL_UNITY);
     }
 
     #[test]
-    fn each_output_has_its_own_last_stage_after_the_master() {
-        // the music 6 dB over: the master limited, the headphones (the master mixed in) soft clipped, the booth
-        // (the master before its level) hard clipped, each from the master before any of them
+    fn the_masters_last_stage() {
+        // the music 6 dB over: hard clipped (cut flat), soft clipped (rounded under the ceiling) or limited
         let x: Vec<f32> = sine(100.0, 48000.0, 9600, 2).iter().map(|v| 2.0 * v).collect();
         let lane: Vec<f32> = x.chunks_exact(2).flat_map(|f| [f[0], f[1], 0.0, 0.0]).collect();
-        let params = MixParams::new(2);
-        params.set(mix::HP_MIX, 1.0); // the master alone in the headphones
-        params.set_clip([Clip::Limiter, Clip::Tanh, Clip::Hard]);
-        let m = params.read();
-        let mut mixer = Mixer::new(48000.0, 2, 9600);
-        mixer.process(Some(&lane), 9600, &m, &params, Wanted { headphones: true, booth: true });
         let s2 = 9600 * 2;
-        for bus in [&mixer.master[..s2], &mixer.headphones[..s2], &mixer.booth[..s2]] {
-            assert!(bus.iter().all(|v| v.abs() <= 1.0));
-        }
-        assert!(mixer.booth[..s2].iter().filter(|v| v.abs() == 1.0).count() > 1000); // cut flat
-        assert!(mixer.headphones[..s2].iter().all(|v| v.abs() < 1.0)); // rounded under the ceiling
+        let run = |clip: Clip| {
+            let params = MixParams::new(2);
+            params.set_clip(clip);
+            let m = params.read();
+            let mut mixer = Mixer::new(48000.0, 2, 9600);
+            mixer.process(Some(&lane), 9600, &m, &params);
+            assert!(mixer.master[..s2].iter().all(|v| v.abs() <= 1.0), "{clip:?}");
+            (mixer.master[..s2].to_vec(), mixer.delay(&m))
+        };
+        let (hard, d) = run(Clip::Hard);
+        assert!(hard.iter().filter(|v| v.abs() == 1.0).count() > 1000 && d == 0.0);
+        let (soft, d) = run(Clip::Tanh);
+        assert!(soft.iter().all(|v| v.abs() < 1.0) && d == 0.0);
         // the limiter: late by its lookahead (silence first), the shape kept (a gain, no flat tops)
-        let d = mixer.delays(&m);
-        assert_eq!((d[OUT_MASTER] * 48000.0).round(), 47.0);
-        assert_eq!(&d[1..], &[0.0, 0.0]);
-        assert!(mixer.master[..2 * 47].iter().all(|&v| v == 0.0));
-        let left: Vec<f32> = mixer.master[..s2].iter().step_by(2).copied().collect();
+        let (limited, d) = run(Clip::Limiter);
+        assert_eq!((d * 48000.0).round(), 47.0);
+        assert!(limited[..2 * 47].iter().all(|&v| v == 0.0));
+        let left: Vec<f32> = limited.iter().step_by(2).copied().collect();
         let flat = left.windows(2).filter(|w| w[0].abs() > 0.99 && w[0] == w[1]).count();
         assert!(flat < 10, "{flat}");
     }

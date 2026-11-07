@@ -14,9 +14,8 @@ from unit.ui_tests.qt_env import APP, drain, isolated
 from PySide6 import QtGui
 from PySide6.QtWidgets import QDialogButtonBox, QMessageBox
 
-from audioengine.controls import booth_eq_db_to_knob, level_db_to_knob
 from core.controls import midi, shortcuts
-from core.settings.config import cuepointrule, default_cfg, outputconfig
+from core.settings.config import cuepointrule, default_cfg
 from core.workflows.event_bus import EventBus
 from system import os_support
 from ui.config.audio_overview import AudioOverview
@@ -54,9 +53,7 @@ def edited_cfg():
         cfg.playbackconfig, output_clip="limiter", audio_engine="python", native_buffer_ms=12,
         python_buffer_ms=120, output_device="Speakers (test)", native_exclusive=True, native_exclusive_rate=48000,
         native_priority="above_normal", native_power_throttling=True, midi_input="Controller (test)",
-        midi_jog_ticks=1024, headphones_master_mix=False, booth_level=level_db_to_knob(-6.0),
-        booth_eq_hi=booth_eq_db_to_knob(3.0), booth_eq_low=booth_eq_db_to_knob(-4.5), headphones_split=True,
-        output_headphones=outputconfig("device", "Phones (test)", "1-2", "wasapi", True, 30, 44100, "hard"))
+        midi_jog_ticks=1024)
     cfg.externalsyncconfig = replace(cfg.externalsyncconfig, enabled=True, osc_host="0.0.0.0", osc_port=40000)
     cfg.cuepointconfig = replace(cfg.cuepointconfig, chorus=cuepointrule(True, True, True))
     cfg.searchconfig = replace(cfg.searchconfig, db_languages=["ja", "zh"], han_runs=False, query_languages=["ko-hanja"],
@@ -65,7 +62,7 @@ def edited_cfg():
     cfg.deckconfig = replace(cfg.deckconfig, use_timestretch=False, enable_metronome=True, volume_trim_dbfs=-3.0,
                              tempo_range=16, jog_mode="cdj", mixer_eq="eq", master_level=0.6, color_type=2,
                              music_input_device="Mic (test)", metronome_offset_msec=12.0,
-                             metronome_beat_pitch_semitones=-2.0, headphones_cue_mix=30)
+                             metronome_beat_pitch_semitones=-2.0)
     return cfg
 
 
@@ -85,7 +82,7 @@ class SettingsDialogTests(unittest.TestCase):
         self.assertEqual([self.d.tabs.tabText(i) for i in range(self.d.tabs.count())],
                          ["View", "Audio", "Search", "Library", "Analysis", "Shortcuts", "MIDI", "External Sync"])
         self.assertEqual([self.d.audio_tabs.tabText(i) for i in range(self.d.audio_tabs.count())],
-                         ["Overview", "Engine", "Main output", "Headphones", "Booth", "Metronome"])
+                         ["Overview", "Engine", "Main output", "Metronome"])
         self.assertEqual([self.d.view_tabs.tabText(i) for i in range(self.d.view_tabs.count())],
                          ["General", "Display", "Waveform", "Phrase labels"])
         self.assertEqual([self.d.library_tabs.tabText(i) for i in range(self.d.library_tabs.count())],
@@ -109,23 +106,13 @@ class SettingsDialogTests(unittest.TestCase):
         deck = self.d.get_config().deckconfig
         self.assertEqual(deck, replace(cfg.deckconfig, metronome_offset_msec=-20.0))
 
-    def test_a_controllers_cue_mix_is_not_undone(self):
-        """The headphones' CUE / MASTER mix a controller moved after the dialog was made: kept by OK, shown when the
-        dialog opens; one changed here wins."""
+    def test_a_controllers_master_level_is_not_undone(self):
+        """The master's level a controller moved after the dialog was made (deck.json's, not edited here): kept by
+        OK."""
         cfg = edited_cfg()
         self.d.set_config(cfg)
-        cfg.deckconfig.headphones_cue_mix = 80                        # a controller, as AppWindow._keep_switches
-        self.assertEqual(self.d.get_config().deckconfig.headphones_cue_mix, 80)
-        self.d.show()
-        drain()
-        self.assertEqual(self.d.grp_output_headphones.sp_cue_mix.value(), 80)
-        self.d.grp_output_headphones.sp_cue_mix.setValue(10)          # changed here
-        cfg.deckconfig.headphones_cue_mix = 60                        # and by the controller since
-        self.assertEqual(self.d.get_config().deckconfig.headphones_cue_mix, 10)
-        self.d.hide()
-        self.d.show()
-        drain()
-        self.assertEqual(self.d.grp_output_headphones.sp_cue_mix.value(), 10)   # the change here not dropped
+        cfg.deckconfig.master_level = 0.7                             # a controller, as AppWindow._keep_switches
+        self.assertEqual(self.d.get_config().deckconfig.master_level, 0.7)
 
     def test_a_change_applied_reaches_the_config(self):
         self.d.set_config(default_cfg())
@@ -133,7 +120,7 @@ class SettingsDialogTests(unittest.TestCase):
         self.d.cb_key_dynamic.setChecked(False)
         self.d.sp_fps.setValue(45)
         self.d.rb_waveform_style["3band"].setChecked(True)
-        self.d.sp_booth_level.setValue(-12.0)
+        self.d.clip_master.set_value("hard")
         self.d.sp_external_sync_port.setValue(5000)
         self.d.cue_rule_boxes["verse"][0].setChecked(True)
         self.d.btn_box.button(QDialogButtonBox.Apply).click()
@@ -143,7 +130,7 @@ class SettingsDialogTests(unittest.TestCase):
         self.assertFalse(cfg.analysisconfig.key_dynamic)
         self.assertEqual(cfg.viewconfig.fps, 45)
         self.assertEqual(cfg.viewconfig.waveform_style, "3band")
-        self.assertAlmostEqual(cfg.playbackconfig.booth_level, level_db_to_knob(-12.0))
+        self.assertEqual(cfg.playbackconfig.output_clip, "hard")
         self.assertEqual(cfg.externalsyncconfig.osc_port, 5000)
         self.assertTrue(cfg.cuepointconfig.verse.at_start)
         self.assertEqual(self.d.lbl_bpm_range.text(), "Reads 90 - 180 BPM")
@@ -215,18 +202,13 @@ class AudioOverviewTests(unittest.TestCase):
 
     STATS = {"rate": 48000, "output_api": "wasapi", "exclusive": True, "channels": 4, "period_ms": 5.33,
              "device_ms": 6.0, "hist": [0.0, 0.0, 0.1, 0.8, 0.1], "seconds": 0.25, "mean_ms": 0.3, "bucket_ms": 0.1,
-             "late": 0, "engine_thread": "mmcss", "output_thread": "mmcss",
-             "outputs": {"headphones": {"open": True, "device": "Phones (test)", "output_api": "wasapi", "rate": 44100,
-                                        "capacity_ms": 20.0, "device_ms": 3.0, "drift_ppm": 12.5, "late": 0}}}
+             "late": 0, "engine_thread": "mmcss", "output_thread": "mmcss"}
 
     def setUp(self):
         self.view = AudioOverview()
         self.view.resize(900, 700)
         self.ctx = {"native": True, "timestretch": True, "main_device": "Speakers (test)", "api_names": {},
-                    "routes": {"headphones": outputconfig("device", "Phones (test)", "1-2", "wasapi", True, 20, 0, "tanh"),
-                               "booth": default_cfg().playbackconfig.output_booth},
-                    "midi": ("", 0), "mix": {}, "deck": {"playing": True, "factor": 1.02},
-                    "clip": {"master": "limiter", "headphones": "tanh", "booth": "hard"}}
+                    "midi": ("", 0), "mix": {}, "deck": {"playing": True, "factor": 1.02}, "clip": "limiter"}
 
     def tearDown(self):
         self.view.deleteLater()
@@ -241,17 +223,15 @@ class AudioOverviewTests(unittest.TestCase):
         m = self.drawn()
         self.assertFalse(m["native"])
         self.assertEqual(m["main"]["readout"], "waiting for playback")
-        self.assertFalse(m["headphones"]["routed"])
 
-    def test_the_outputs_on_their_clocks(self):
+    def test_the_output_on_its_clock(self):
         self.view.update_view(dict(self.STATS), 20.0, self.ctx)
         m = self.drawn()
         self.assertEqual(m["main"]["state"], "ok")
         self.assertIn("48 kHz", m["main"]["lines"][1])
-        self.assertEqual(m["headphones"]["domain"], 2)                    # another device's clock
-        self.assertEqual(m["headphones"]["drift"], "+12.5 ppm")
-        self.assertEqual(len(m["legend"]), 2)
-        self.assertIn("Phones (test)", m["legend"][1][1])
+        self.assertEqual(m["clip"], "limiter")
+        self.assertEqual(len(m["legend"]), 1)
+        self.assertIn("Speakers (test)", m["legend"][0][1])
         self.assertEqual(m["deck_lines"][1], "+2.00 %")
 
     def test_a_block_in_trouble_ringed(self):
@@ -261,9 +241,6 @@ class AudioOverviewTests(unittest.TestCase):
         self.assertEqual(self.drawn()["main"]["state"], "bad")
         self.view.update_view({"output_open": False}, 20.0, self.ctx)
         self.assertEqual(self.drawn()["main"]["state"], "bad")
-        stats = dict(self.STATS, outputs={"headphones": {"open": False}})
-        self.view.update_view(stats, 20.0, self.ctx)
-        self.assertEqual(self.drawn()["headphones"]["state"], "bad")
 
     def test_the_main_monitor_says_when_the_device_is_not_open(self):
         d = SettingsDialog(EventBus())

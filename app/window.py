@@ -310,7 +310,7 @@ class AppWindow(QtWidgets.QMainWindow):
         self.bus.sig_metronome_toggle_requested.connect(self._on_metronome_toggle)
 
     def _build_toolbar(self) -> None:
-        """One toolbar row under the menus in the signal's order: CH 1 (the controller, the deck, its channel), then MASTER (the master's and the headphones' levels)."""
+        """One toolbar row under the menus in the signal's order: CH 1 (the controller, the deck, its channel), then MASTER (the master's level)."""
         tb = self.addToolBar(tr("Mixer"))
         tb.setMovable(False)
         tb.setStyleSheet("QToolBar { padding: 0; spacing: 0; border: none; }")
@@ -333,7 +333,7 @@ class AppWindow(QtWidgets.QMainWindow):
         row_layout.setContentsMargins(4, 0, 4, 0)
         row_layout.setSpacing(ROW_SPACING)
         # CH 1: the MIDI controller's input on / off; the deck's and its channel's switches (jog mode, EQ, fader
-        # curve, Sound Color FX, the key shift, the headphones CUE)
+        # curve, Sound Color FX, the key shift)
         self.midi_toggle = MidiToggle()
         self.midi_toggle.setEnabled(self.player.native)
         self.midi_toggle.toggled_by_hand.connect(self._toggle_midi)
@@ -342,7 +342,7 @@ class AppWindow(QtWidgets.QMainWindow):
         self.deck_switches.set_available(self.player.native)
         self.bus.sig_deck_state.connect(self.deck_switches.set_report)
         toolbar_part(row_layout, "CH 1", [block("CONTROLLER", [self.midi_toggle]), self.deck_switches])
-        # MASTER: the master's and the headphones' levels
+        # MASTER: the master's level
         self.master_levels = MasterLevels(self.bus)
         self.master_levels.set_available(self.player.native)
         self.bus.sig_deck_state.connect(self.master_levels.set_report)
@@ -595,8 +595,6 @@ class AppWindow(QtWidgets.QMainWindow):
             "fader_curve": FADER_CURVES[min(2, max(0, int(v("fader_curve"))))],
             "jog_mode": "vinyl" if report.vinyl else "cdj",
             "master_level": round(v("master_level", deck.master_level), 3),
-            "headphones_level": round(v("hp_level", deck.headphones_level), 3),
-            "headphones_cue_mix": int(round(100.0 * v("hp_mix", deck.headphones_cue_mix / 100.0))),
             "color_type": int(v("color_type", deck.color_type)),
             "color_param": round(v("color_param", deck.color_param), 3),
         }
@@ -1219,7 +1217,7 @@ class AppWindow(QtWidgets.QMainWindow):
             self.metro, "set_ducking", QtCore.Qt.QueuedConnection,
             QtCore.Q_ARG(bool, bool(deck.metronome_ducking)),
         )
-        self.player.set_clip(pcfg.output_clip, pcfg.output_headphones.clip, pcfg.output_booth.clip)
+        self.player.set_clip(pcfg.output_clip)
         self.player.set_volume_trim(float(deck.volume_trim_dbfs))
         # the switches as last left
         eq = EQ_MODES.index(deck.mixer_eq) if deck.mixer_eq in EQ_MODES else 0
@@ -1227,14 +1225,10 @@ class AppWindow(QtWidgets.QMainWindow):
         self.bus.sig_mixer_requested.emit("eq_mode", float(eq))
         self.bus.sig_mixer_requested.emit("fader_curve", float(curve))
         self.player.set_jog_mode(deck.jog_mode != "cdj")
-        self.player.set_routing(pcfg.output_main, pcfg.output_headphones, pcfg.output_booth)
-        self.player.set_headphones(bool(pcfg.headphones_master_mix), int(deck.headphones_cue_mix) / 100.0,
-                                   float(deck.headphones_level))
-        # the levels, the booth's EQ and the effects picked as last left (the effects themselves off)
-        for key, value in (("master_level", deck.master_level), ("booth_level", pcfg.booth_level),
-                           ("booth_eq_hi", pcfg.booth_eq_hi), ("booth_eq_low", pcfg.booth_eq_low),
-                           ("hp_split", 1.0 if pcfg.headphones_split else 0.0),
-                           ("color_type", deck.color_type), ("color_param", deck.color_param)):
+        self.player.set_routing(pcfg.output_main)
+        # the master's level and the effect picked as last left (the effect itself off)
+        for key, value in (("master_level", deck.master_level), ("color_type", deck.color_type),
+                           ("color_param", deck.color_param)):
             self.bus.sig_mixer_requested.emit(key, float(value))
         self.player.set_buffer_ms(float(pcfg.native_buffer_ms), float(pcfg.python_buffer_ms))
         self.player.set_output_device(pcfg.output_device)

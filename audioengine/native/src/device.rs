@@ -10,13 +10,10 @@
 //! buffer, ~10 ms, still plays out).
 //!
 //! The deck's player renders into the main device's ring (its lane: [music, aids] a frame, before its mixer
-//! channel); the callback reads it, then runs the mixer (mixer.rs: the channel strip, the master, the headphones, the
-//! booth: Bus) and writes the device's channels as routed. The deck at its mixer channel's neutral settings, on the
-//! first two channels, comes out as its player rendered it. The outputs run from their opening to their end:
-//! silence while nothing plays.
-//!
-//! The headphones and the booth may go to devices of their own (bridge.rs): the main callback, the clock the deck
-//! plays to, writes those buses into a bridge each, which the other device's callback reads at its own clock.
+//! channel); the callback reads it, then runs the mixer (mixer.rs: the channel strip, the master) and writes the
+//! master to the device's channels as routed. The deck at its mixer channel's neutral settings, on the first two
+//! channels, comes out as its player rendered it. The output runs from its opening to its end: silence while
+//! nothing plays.
 
 use std::cell::UnsafeCell;
 use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
@@ -25,12 +22,10 @@ use std::sync::{Arc, OnceLock};
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{FromSample, SizedSample};
 
-use crate::bridge::{Bridge, BridgeReader, Sink};
 use crate::clock;
-use crate::mixer::{Mixer, NO_CHANNEL, OUT_MASTER, Wanted};
+use crate::mixer::{MixParams, Mixer};
 
-/// An open device's side of things: what its output thread reports and is told. The main device's ring has one;
-/// each bridge has its own.
+/// An open device's side of things: what its output thread reports and is told (the main device's ring's).
 #[derive(Default)]
 pub struct Port {
     pub sound_due: AtomicBool, // late wake-ups count only while sound is expected (the engine sets it each tick)
@@ -133,8 +128,8 @@ pub struct Ring {
     pub sound_due: AtomicBool, // underruns count only while sound is expected
     pub underruns: AtomicU64,
     pub port: Arc<Port>, // the main device's
-    // the mix (attach_bus)
-    bus: OnceLock<Bus>,
+    // the mixer's settings (attach_mixer)
+    mix: OnceLock<Arc<MixParams>>,
 }
 
 unsafe impl Sync for Ring {}
@@ -157,7 +152,7 @@ impl Ring {
             sound_due: AtomicBool::new(false),
             underruns: AtomicU64::new(0),
             port,
-            bus: OnceLock::new(),
+            mix: OnceLock::new(),
         }
     }
 
@@ -210,9 +205,9 @@ impl Ring {
         self.heard.heard(now, self.rate)
     }
 
-    /// The mix (main.rs sets it once, before the device is opened).
-    pub fn attach_bus(&self, bus: Bus) {
-        let _ = self.bus.set(bus);
+    /// The mixer's settings (main.rs sets them once, before the device is opened).
+    pub fn attach_mixer(&self, params: Arc<MixParams>) {
+        let _ = self.mix.set(params);
     }
 
     // Callback side
@@ -274,8 +269,8 @@ impl Ring {
         self.heard.report(start_read, taken, now, latency);
     }
 
-    /// The main device's callback: the deck's lane (this ring) read, mixed (mixer.rs), the buses written to the
-    /// device's channels as routed and into the bridges of those on devices of their own.
+    /// The main device's callback: the deck's lane (this ring) read, mixed (mixer.rs), the master written to the
+    /// device's channels as routed.
     pub(crate) fn fill<T: SizedSample + FromSample<f32>>(&self, out: &mut [T], state: &mut CallbackState, latency: f64) {
         #[cfg(target_os = "linux")]
         crate::sched::output_thread(&self.port);
@@ -283,17 +278,12 @@ impl Ring {
         let frames = out.len() / ch_out;
         let now = clock::now();
         self.port.max_frames.fetch_max(frames as u64, Ordering::Relaxed);
-        let Some(bus) = self.bus.get() else {
+        let Some(params) = self.mix.get() else {
             out.iter_mut().for_each(|v| *v = T::EQUILIBRIUM);
             return;
         };
-        let mix = bus.params.read();
-        let bridges: [Option<&Bridge>; BRIDGED_BUSES] = std::array::from_fn(|k| Some(&*bus.bridges[k]).filter(|b| b.active()));
+        let mix = params.read();
         let lch = self.ch; // a lane's frame: the deck's music and aids
-        let r = mix.routes;
-        let routed = |l: usize| r[l] != NO_CHANNEL || r[l + 1] != NO_CHANNEL;
-        // each bus made where it is heard: routed to the main device's channels or bridged to a device of its own
-        let wanted = Wanted { headphones: routed(2) || bridges[0].is_some(), booth: routed(4) || bridges[1].is_some() };
         // the lane's report covers the whole callback: where it started and what it took
         let start_read = self.read.load(Ordering::Relaxed);
         let (mut taken, mut missing) = (0u64, 0u64);
@@ -304,23 +294,13 @@ impl Ring {
             taken += t;
             missing += m;
             let block = (t > 0).then(|| &state.scratch[..n * lch]);
-            state.mixer.process(block, n, &mix, &bus.params, wanted);
+            state.mixer.process(block, n, &mix, params);
             let out = &mut out[done * ch_out..(done + n) * ch_out];
-            route(out, ch_out, n, &mix, &state.mixer, wanted);
-            if let Some(b) = bridges[0] {
-                b.push(&state.mixer.headphones[..n * 2]);
-            }
-            if let Some(b) = bridges[1] {
-                b.push(&state.mixer.booth[..n * 2]);
-            }
+            route(out, ch_out, n, &mix, &state.mixer);
             done += n;
         }
-        // a bridge follows the device (an output's limiter delay is in its samples, as a device's latency would be)
-        for b in bridges.iter().flatten() {
-            b.wrote(frames as u64, latency);
-        }
         // the master's limiter delay is heard on top of the device's latency: the deck's frames come out that late
-        self.report(start_read, taken, missing, now, latency + state.mixer.delays(&mix)[OUT_MASTER]);
+        self.report(start_read, taken, missing, now, latency + state.mixer.delay(&mix));
         if taken > 0 {
             if let Some(t) = self.port.engine_thread.get() {
                 t.unpark();
@@ -343,18 +323,10 @@ pub fn check_rate(rate: u32) -> Result<(), String> {
     Ok(())
 }
 const LANE_CH_MAX: usize = 2 * DECK_CH_MAX;
-/// The buses that may go to a device of their own: the headphones, the booth.
-pub const BRIDGED_BUSES: usize = 2;
 
-/// The mixer's settings, the bridges to the devices of the headphones and the booth (Ring::attach_bus).
-pub struct Bus {
-    pub params: Arc<crate::mixer::MixParams>,
-    pub bridges: [Arc<Bridge>; BRIDGED_BUSES],
-}
-
-/// The mixer's buses into ``out``'s channels as routed: the master (MAIN), the headphones (CUE), the booth (SUB).
+/// The master into ``out``'s channels as routed (the others silent).
 fn route<T: SizedSample + FromSample<f32>>(out: &mut [T], ch_out: usize, n: usize, mix: &crate::mixer::Mix,
-                                          mixer: &Mixer, wanted: Wanted) {
+                                          mixer: &Mixer) {
     let r = mix.routes;
     for f in 0..n {
         let o = &mut out[f * ch_out..(f + 1) * ch_out];
@@ -364,14 +336,6 @@ fn route<T: SizedSample + FromSample<f32>>(out: &mut [T], ch_out: usize, n: usiz
                 o[channel as usize] = T::from_sample(v);
             }
         };
-        if wanted.headphones {
-            put(r[2], mixer.headphones[2 * f]);
-            put(r[3], mixer.headphones[2 * f + 1]);
-        }
-        if wanted.booth {
-            put(r[4], mixer.booth[2 * f]);
-            put(r[5], mixer.booth[2 * f + 1]);
-        }
         put(r[0], mixer.master[2 * f]);
         put(r[1], mixer.master[2 * f + 1]);
     }
@@ -390,53 +354,16 @@ pub(crate) struct CallbackState {
     lane: LaneState,
     scratch: Vec<f32>, // the lane's frames, SCRATCH_FRAMES
     mixer: Mixer,
-    pub(crate) readers: Vec<Box<BridgeReader>>, // a Sink's: each bus's reader
-    pub(crate) mix: Vec<f32>,                   // a Sink's: its buses mixed (a piece of the callback)
 }
 
 impl CallbackState {
-    /// A device's (``channels``, ``rate``): the main one's mixer (its deck stereo, mono on a mono device), or a
-    /// sink's readers.
+    /// The device's (``channels``, ``rate``): its mixer (the deck stereo, mono on a mono device).
     pub(crate) fn new(channels: usize, rate: f64) -> CallbackState {
         CallbackState {
             channels,
             lane: LaneState::default(),
             scratch: vec![0.0; SCRATCH_FRAMES * LANE_CH_MAX],
             mixer: Mixer::new(rate, channels.clamp(1, DECK_CH_MAX), SCRATCH_FRAMES),
-            readers: crate::bridge::readers(),
-            mix: vec![0.0; SCRATCH_FRAMES * channels.max(1)],
-        }
-    }
-}
-
-/// What a device's output reads: the main ring (the deck's lane, mixed) or a sink (buses of the main mix through
-/// their bridges, followed at this device's clock).
-#[derive(Clone)]
-pub enum Source {
-    Main(Arc<Ring>),
-    Sink(Arc<Sink>),
-}
-
-impl Source {
-    pub fn port(&self) -> &Port {
-        match self {
-            Source::Main(r) => &r.port,
-            Source::Sink(s) => &s.port,
-        }
-    }
-
-    /// Its device's stream started again in place (its events had thinned out): a sink's bridges fill again from
-    /// what is written now (the surplus that piled up meanwhile dropped); the main ring goes on as it is.
-    pub fn restarted(&self) {
-        if let Source::Sink(s) = self {
-            s.restart_bridges();
-        }
-    }
-
-    pub(crate) fn fill<T: SizedSample + FromSample<f32>>(&self, out: &mut [T], state: &mut CallbackState, latency: f64) {
-        match self {
-            Source::Main(r) => r.fill(out, state, latency),
-            Source::Sink(s) => s.fill(out, state, latency),
         }
     }
 }
@@ -538,11 +465,6 @@ pub fn list(mode: Mode) -> (Option<(String, usize)>, Vec<(String, usize)>) {
     (default, devices)
 }
 
-/// A named device not there: the error's end. The master takes the system's default then (``fallback``: it plays
-/// on); an output of its own (the headphones, the booth) waits for its device, so its sound (the CUE) never goes
-/// to another one (nor holds it: an exclusive stream there would lock the master out).
-pub const NOT_PRESENT: &str = "not present";
-
 /// An endpoint's name without Windows's instance number ("Speakers (2- DDJ-400)": "Speakers (DDJ-400)"): a device
 /// plugged in again may come back under another number.
 pub fn without_instance(name: &str) -> String {
@@ -590,9 +512,8 @@ pub fn explain(e: &str) -> String {
     e.to_string()
 }
 
-/// The output device named ``name`` (None or "": the default); one not there: the default with ``fallback``, else
-/// NOT_PRESENT.
-fn find(name: Option<&str>, mode: Mode, fallback: bool) -> Result<cpal::Device, String> {
+/// The output device named ``name`` (None or "": the default); one not there: the default (the master plays on).
+fn find(name: Option<&str>, mode: Mode) -> Result<cpal::Device, String> {
     let host = host(mode);
     if let Some(wanted) = name.filter(|n| !n.is_empty()) {
         if let Ok(devices) = host.output_devices() {
@@ -602,44 +523,40 @@ fn find(name: Option<&str>, mode: Mode, fallback: bool) -> Result<cpal::Device, 
                 return Ok(devices.swap_remove(k));
             }
         }
-        if !fallback {
-            return Err(format!("{wanted}: {NOT_PRESENT}"));
-        }
     }
     host.default_output_device().ok_or_else(|| "no output device".to_string())
 }
 
 /// The preferred format of the device named ``name`` (see find): (sample rate, channels).
-pub fn default_format(name: Option<&str>, mode: Mode, fallback: bool) -> Result<(u32, usize), String> {
-    let dev = find(name, mode, fallback)?;
+pub fn default_format(name: Option<&str>, mode: Mode) -> Result<(u32, usize), String> {
+    let dev = find(name, mode)?;
     let cfg = dev.default_output_config().map_err(|e| e.to_string())?;
     Ok((cfg.sample_rate(), cfg.channels() as usize))
 }
 
 /// Opens the device named ``name`` (see find) in ``mode`` at ``rate`` / ``channels`` (the session's: the track
-/// was decoded for them) and starts it reading ``source``; a mode that cannot be opened falls back to Shared.
+/// was decoded for them) and starts it reading ``ring``; a mode that cannot be opened falls back to Shared.
 /// Returns the output and the name of the device opened; an error in words (explain).
-pub fn open(source: Source, rate: u32, channels: usize, name: Option<&str>, mode: Mode, fallback: bool)
+pub fn open(ring: Arc<Ring>, rate: u32, channels: usize, name: Option<&str>, mode: Mode)
     -> Result<(Output, String), String> {
-    open_on(source, rate, channels, name, mode, fallback).map_err(|e| explain(&e))
+    open_on(ring, rate, channels, name, mode).map_err(|e| explain(&e))
 }
 
-fn open_on(source: Source, rate: u32, channels: usize, name: Option<&str>, mode: Mode, fallback: bool)
+fn open_on(ring: Arc<Ring>, rate: u32, channels: usize, name: Option<&str>, mode: Mode)
     -> Result<(Output, String), String> {
-    source.port().reset();
+    ring.port.reset();
     #[cfg(windows)]
     if mode.api == Api::Wasapi {
-        match crate::wasapi::WasapiOutput::open(source.clone(), rate, channels, name, mode.exclusive, fallback) {
+        match crate::wasapi::WasapiOutput::open(ring.clone(), rate, channels, name, mode.exclusive) {
             Ok((w, device, period_ms)) => {
                 return Ok((Output { _backend: Backend::Wasapi(w), mode, period_ms }, device));
             }
-            Err(e) if e.ends_with(NOT_PRESENT) => return Err(e),
             Err(e) => log_line!("{} output not opened ({}); cpal's WASAPI shared stream instead", mode.label(),
                                 explain(&e)),
         }
     }
     let cpal_mode = Mode { api: if mode.api == Api::Jack { Api::Jack } else { Api::Cpal }, exclusive: false };
-    let dev = find(name, cpal_mode, fallback)?;
+    let dev = find(name, cpal_mode)?;
     let def = dev.default_output_config().map_err(|e| e.to_string())?;
     // a small device buffer where the system lets one be asked for (ALSA, CoreAudio: ~5 ms; WASAPI's shared
     // stream takes its own)
@@ -651,10 +568,10 @@ fn open_on(source: Source, rate: u32, channels: usize, name: Option<&str>, mode:
     };
     let config = cpal::StreamConfig { channels: channels as u16, sample_rate: rate, buffer_size };
     let build_any = |config: &cpal::StreamConfig| match def.sample_format() {
-        cpal::SampleFormat::F32 => build::<f32>(&dev, config, source.clone()),
-        cpal::SampleFormat::I16 => build::<i16>(&dev, config, source.clone()),
-        cpal::SampleFormat::I32 => build::<i32>(&dev, config, source.clone()),
-        cpal::SampleFormat::U16 => build::<u16>(&dev, config, source.clone()),
+        cpal::SampleFormat::F32 => build::<f32>(&dev, config, ring.clone()),
+        cpal::SampleFormat::I16 => build::<i16>(&dev, config, ring.clone()),
+        cpal::SampleFormat::I32 => build::<i32>(&dev, config, ring.clone()),
+        cpal::SampleFormat::U16 => build::<u16>(&dev, config, ring.clone()),
         other => Err(format!("unsupported sample format {other:?}")),
     };
     let stream = match build_any(&config) {
@@ -681,20 +598,20 @@ fn open_on(source: Source, rate: u32, channels: usize, name: Option<&str>, mode:
 fn build<T: SizedSample + FromSample<f32> + 'static>(
     dev: &cpal::Device,
     config: &cpal::StreamConfig,
-    source: Source,
+    ring: Arc<Ring>,
 ) -> Result<cpal::Stream, String> {
     let mut state = CallbackState::new(config.channels as usize, config.sample_rate as f64);
-    let err_source = source.clone();
+    let err_ring = ring.clone();
     dev.build_output_stream(
         *config,
         move |data: &mut [T], info: &cpal::OutputCallbackInfo| {
             let ts = info.timestamp();
             let latency = ts.playback.duration_since(ts.callback).as_secs_f64();
-            source.fill(data, &mut state, latency);
+            ring.fill(data, &mut state, latency);
         },
         move |err| {
             log_line!("device error: {err}");
-            err_source.port().failed.store(true, Ordering::Relaxed);
+            err_ring.port.failed.store(true, Ordering::Relaxed);
         },
         None,
     )

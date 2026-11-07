@@ -27,13 +27,9 @@ class _Player:
         return ["DDJ-400"]
 
 
-def _stats(seconds: float, dropout_sec: float, aux_dropout: float) -> dict:
+def _stats(seconds: float, dropout_sec: float) -> dict:
     return {"hist": [1, 2], "seconds": seconds, "mean_ms": 20.0, "dropout_sec": dropout_sec, "device_ms": 10.0,
-            "output_api": "wasapi", "exclusive": True, "late": 3, "lowest_ms": 4.5,
-            "outputs": {"headphones": {"open": True, "device": "Headphones", "capacity_ms": 40.0, "late": 0,
-                                       "observed": {"hist": [1], "seconds": seconds, "mean_ms": 30.0,
-                                                    "dropout_sec": aux_dropout}},
-                        "booth": None}}
+            "output_api": "wasapi", "exclusive": True, "late": 3, "lowest_ms": 4.5}
 
 
 class ConsoleRecordTests(unittest.TestCase):
@@ -51,14 +47,13 @@ class BufferRecordTests(unittest.TestCase):
     def test_played_time_and_dropouts_summed_state_as_last_reported(self):
         record = diagnostics.BufferRecord()
         self.assertEqual(record.lines(), ["no buffer reported yet (nothing played)"])
-        record.add(10.0, _stats(0.25, 0.0, 0.0), 40.0)
-        record.add(10.0, _stats(0.25, 0.002, 0.001), 40.0)
+        record.add(10.0, _stats(0.25, 0.0), 40.0)
+        record.add(10.0, _stats(0.25, 0.002), 40.0)
         record.add(10.0, None, 40.0)
-        master, headphones = record.outputs["master"], record.outputs["headphones"]
+        master = record.outputs["master"]
+        self.assertEqual(list(record.outputs), ["master"])
         self.assertAlmostEqual(master["played_sec"], 0.5)
         self.assertAlmostEqual(master["dropout_sec"], 0.002)
-        self.assertAlmostEqual(headphones["dropout_sec"], 0.001)
-        self.assertNotIn("booth", record.outputs)
         self.assertNotIn("hist", master["state"])
         self.assertEqual(master["state"]["late"], 3)
         self.assertIn("master: played 0.5 s, dropouts 2.0 ms, buffer 40.0 ms", record.lines())
@@ -81,7 +76,7 @@ class ReportTests(unittest.TestCase):
         record = diagnostics.ConsoleRecord()
         record.add("[AudioEngine] master: WASAPI exclusive")
         buffers = diagnostics.BufferRecord()
-        buffers.add(10.0, _stats(0.25, 0.0, 0.0), 40.0)
+        buffers.add(10.0, _stats(0.25, 0.0), 40.0)
         text = diagnostics.report(default_cfg(), _Player(), buffers, record)
         for title in ("== Mixlyzer", "== System", "== FFmpeg", "== Audio setup", "== Output devices",
                       "== MIDI inputs", "== Output buffers since the start", "== Console (last 1 lines)"):

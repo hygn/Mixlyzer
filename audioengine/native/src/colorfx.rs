@@ -31,7 +31,7 @@ pub enum ColorType {
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Slot {
     PreEq,     // after the trim, before the EQ
-    PostEq,    // after the EQ, before the CUE taps and the fader
+    PostEq,    // after the EQ, before the fader
     PostFader, // after the fader: a tail rings on with it down
 }
 

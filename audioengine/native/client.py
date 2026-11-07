@@ -8,9 +8,6 @@ PCMFeeder in the player's audio worker (the same methods), NativeClicks for its 
 mixer), NativeTones for its ToneTrack. Settings > Audio > Engine chooses it (the default); without
 its executable (not built), or if it cannot start, the player uses PCMFeeder (the Python engine).
 
-The headphones and the booth may play on devices of their own (src/bridge.rs: each fed from the main device's mix,
-followed at its own clock); each has its own buffer and buffer monitor (take_buffer_stats' "outputs").
-
 The deck (src/deck.rs) combines the requests of the GUI (its buttons, keys and faders: NativeFeeder's deck
 methods) and of a MIDI controller, which the engine reads itself (never through this process); what the GUI
 shows (playing, tempo, volume, the cue point, the lamps, the armed JumpCUE) is the deck's report (deck_report).
@@ -39,11 +36,11 @@ from PySide6 import QtCore
 from system import os_support
 from system.resource_paths import resource_path
 from audioengine import controls
-from audioengine.controls import LEVEL_UNITY, MIX_KEY, MIX_KEYS, DeckReport
+from audioengine.controls import MIX_KEY, MIX_KEYS, DeckReport
 from audioengine.volume import trim_db_to_knob
 
 MAGIC = int.from_bytes(b"MXAUDIC1", "little")
-VERSION = 11
+VERSION = 12
 STATE_OFFSET = 64
 RING_OFFSET = 172032
 RING_HEADER = 64
@@ -58,9 +55,9 @@ SEND_TIMEOUT_SEC = 0.5
 _STATE = struct.Struct("<Q IIIIII Q ddddddd QQQ dd Q II d d I 4x d ddd dd I 4x Q d II")
 _HIST = 256
 # the deck's state after the histogram (ipc.rs st::DECK): factor, volume, cue, jump dest, lamps, tempo range,
-# MIDI state, the output's channels; its mixer channel's: headphones CUE, TRIM / EQ LOW, MID, HIGH knobs, COLOR knob;
-# the key shift (semitones, any fraction)
-_DECK = struct.Struct("<dddd IIII I 4x dddd d d")
+# MIDI state, the output's channels; its mixer channel's: TRIM / EQ LOW, MID, HIGH knobs, COLOR knob; the key shift
+# (semitones, any fraction)
+_DECK = struct.Struct("<dddd IIII 8x dddd d d")
 _DECK_AT = 256 + 8 * 4096
 
 # commands (ipc.rs op)
@@ -75,29 +72,17 @@ OP_DECK_ACTION, OP_SET_TEMPO, OP_SET_VOLUME, OP_DECK_MARKS = 32, 33, 34, 36
 OP_JUMP_TO, OP_CALL_AT, OP_MIDI_OPEN, OP_MIDI_MAP, OP_MIDI_LIST, OP_MIDI_OPTIONS, OP_SET_TEMPO_RANGE = (
     37, 38, 39, 40, 41, 42, 43)
 OP_SET_METER_GAIN = 44
-# the mix: the routing, the channel's headphones CUE
-OP_SET_ROUTING, OP_SET_CHANNEL_CUE = 47, 49
-OP_SET_AUX_OUTPUT = 50   # a bus on a device of its own
-OP_SET_HEADPHONES = 51   # the master mixed into the headphones, the CUE / MASTER mix, their level
+OP_SET_ROUTING = 47   # the master's channels on the device: u8 L, u8 R
 OP_SET_MIXER_KNOB = 52   # the deck's mixer channel knob: u32 0 TRIM, 1 EQ LOW, 2 MID, 3 HIGH, 4 COLOR; f64 its position
 OP_SET_KEY_SHIFT = 55    # f64 the key shift (semitones, any fraction)
 OP_SET_MIXER = 53   # the mixer's setting: u32 key (MIX_KEYS' place), f64 value
 OP_SET_SPECTRUM = 54   # u32 the master's spectrum made (1) or not
-NO_CHANNEL = 0xFF   # a bus not routed
-# the buses that may play on a device of their own (ipc.rs OUTPUTS_OFFSET: a state block each, out::*)
-AUX_BUSES = ("headphones", "booth")
-OUTPUTS_OFFSET = 65536
+NO_CHANNEL = 0xFF   # the master's side not routed
 # the mixer's settings as it has them (ipc.rs mix: f64 each, MIX_OFFSET + 8 * key: audioengine.controls.MIX_KEYS)
 # and its meters (from METERS on)
 MIX_OFFSET = 165888
 MIX_METERS_AT = 64
-MIX_METERS = ("master", "booth")
-_OUT = struct.Struct("<II dddd QQ d II d Q dd dd II I")
-_OUT_HIST = 384
-_OUT_SIZE = _OUT_HIST + 8 * 4096
-_OUT_NAME = 128
-_OUT_RATE = 376
-AUX_STATES = {0: "off", 1: "open", 2: "failed", 3: "opening"}
+MIX_METERS = ("master",)
 # the engine's priority (ipc.rs op::SET_PROCESS; sched.rs: what each system makes of it)
 PRIORITY_CODES = {"normal": 0, "above_normal": 1, "high": 2}
 # a thread's scheduling as the engine got it (st::THREADS, sched.rs) and power throttling's (st::POWER)
@@ -168,7 +153,7 @@ class EngineState:
                  "latency_ms", "output_mode", "period_ms", "response_play", "response_pause", "response_seek",
                  "hist_bucket_ms", "lowest_ms", "output_open", "device_late", "max_gap_ms", "threads", "power",
                  "factor", "volume", "cue", "jump_dest", "lamps", "tempo_range", "midi_state", "out_channels",
-                 "channel_cue", "knobs", "color", "key_shift")
+                 "knobs", "color", "key_shift")
 
     def __init__(self, values: tuple, deck: tuple) -> None:
         (_seq, self.ready, self.rate, self.channels, self.playing, self.track_gen, self.at_end, self.cmd_done,
@@ -178,10 +163,10 @@ class EngineState:
          self.period_ms, self.response_play, self.response_pause, self.response_seek, self.hist_bucket_ms,
          self.lowest_ms, self.output_open, self.device_late, self.max_gap_ms, self.threads, self.power) = values
         (self.factor, self.volume, self.cue, self.jump_dest, self.lamps, self.tempo_range, self.midi_state,
-         self.out_channels, self.channel_cue) = deck[:9]
-        self.knobs = tuple(deck[9:13])   # TRIM, EQ LOW, MID, HIGH
-        self.color = deck[13]
-        self.key_shift = deck[14]
+         self.out_channels) = deck[:8]
+        self.knobs = tuple(deck[8:12])   # TRIM, EQ LOW, MID, HIGH
+        self.color = deck[12]
+        self.key_shift = deck[13]
 
 
 def _relay_console(stream) -> None:
@@ -347,35 +332,6 @@ class NativeEngine:
                 names.append(name)
                 channels[name] = count
         return lines[0], names, channels
-
-    def aux_states(self) -> list[Optional[dict]]:
-        """Each bus's output on a device of its own (AUX_BUSES; None: it has none): its state (out::*), with its
-        histogram."""
-        buf = self._buf
-        if buf is None:
-            return [None] * len(AUX_BUSES)
-        keys = ("state", "mode", "period_ms", "latency_ms", "queued", "capacity", "underruns", "late", "max_gap_ms",
-                "thread", "channels", "drift_ppm", "buffer_gen", "obs_seconds", "obs_level", "hist_bucket_ms",
-                "lowest_ms", "hist_len", "errors", "name_len")
-        for _ in range(1000):
-            s1 = struct.unpack_from("<Q", buf, STATE_OFFSET)[0]
-            if s1 & 1:
-                continue
-            out = []
-            for k in range(len(AUX_BUSES)):
-                at = OUTPUTS_OFFSET + k * _OUT_SIZE
-                d = dict(zip(keys, _OUT.unpack_from(buf, at)))
-                if not d["state"]:
-                    out.append(None)
-                    continue
-                n = min(int(d["name_len"]), 240)
-                d["rate"] = struct.unpack_from("<I", buf, at + _OUT_RATE)[0]
-                d["name"] = bytes(buf[at + _OUT_NAME + 4:at + _OUT_NAME + 4 + n]).decode("utf-8", "replace")
-                d["hist"] = np.frombuffer(buf, np.float64, min(int(d["hist_len"]), HIST_MAX), at + _OUT_HIST).copy()
-                out.append(d)
-            if struct.unpack_from("<Q", buf, STATE_OFFSET)[0] == s1:
-                return out
-        return [None] * len(AUX_BUSES)
 
     def midi_ports(self) -> list[str]:
         """The MIDI input ports, asked of the engine; [] if it does not answer. Any thread."""
@@ -618,7 +574,7 @@ class NativeTones:
 
 
 class NativeFeeder(QtCore.QObject):
-    """PCMFeeder's methods on the native engine: its deck, and the engine's own settings, the mixer's, the outputs'
+    """PCMFeeder's methods on the native engine: its deck, and the engine's own settings, the mixer's, the output's
     and the MIDI controller's. Lives in its player's audio worker thread; poll() (the worker's frame tick) reads the
     engine's state and reports the track's end and the jumps played. An engine that died is started again, with the
     track and the settings it had."""
@@ -651,7 +607,6 @@ class NativeFeeder(QtCore.QObject):
         self._counts = (0, 0)
         self._hist_prev: Optional[tuple[int, float, float, np.ndarray]] = None
         self._underruns_prev: Optional[int] = None
-        self._aux_prev: list[Optional[dict]] = [None] * len(AUX_BUSES)
         self._restart_at = 0.0
         self._unlink_gen = 0   # the load whose block's name is removed once the engine has it
         # the output asked for: device, API, exclusive mode and its rate (the engine is started again with them)
@@ -704,10 +659,9 @@ class NativeFeeder(QtCore.QObject):
         lo, hi = self.BUFFER_MS_RANGE
         self.setting(OP_SET_BUFFER_MS, struct.pack("<d", float(min(hi, max(lo, ms)))))
 
-    def set_clip(self, master: str, headphones: str, booth: str) -> None:
-        """Each output's last stage (controls.CLIPS; one not known: tanh)."""
-        codes = [controls.CLIPS.index(c) if c in controls.CLIPS else 1 for c in (master, headphones, booth)]
-        self.setting(OP_SET_CLIP, struct.pack("<3I", *codes))
+    def set_clip(self, master: str) -> None:
+        """The master's last stage (controls.CLIPS; one not known: tanh)."""
+        self.setting(OP_SET_CLIP, struct.pack("<I", controls.CLIPS.index(master) if master in controls.CLIPS else 1))
 
     def set_output_device(self, name: str) -> None:
         """Play on the output device ``name`` ("" the system's default) from now (what is queued plays on)."""
@@ -764,7 +718,6 @@ class NativeFeeder(QtCore.QObject):
         self._counts = (0, 0)
         self._hist_prev = None
         self._underruns_prev = None
-        self._aux_prev = [None] * len(AUX_BUSES)
         self._pcm = None
         self._replay()
         self.clicks.ch = self.ch
@@ -785,7 +738,6 @@ class NativeFeeder(QtCore.QObject):
             self.send(OP_SET_VOLUME, struct.pack("<d", r.volume))
             for which, position in enumerate((*r.knobs, r.color)):     # TRIM, EQ LOW, MID, HIGH, COLOR
                 self.send(OP_SET_MIXER_KNOB, struct.pack("<Id", which, position))
-            self.send(OP_SET_CHANNEL_CUE, struct.pack("<I", int(r.channel_cue)))
             if r.key_shift:     # the key shift as it was
                 self.set_key_shift(r.key_shift)
         self._send_marks()
@@ -823,10 +775,6 @@ class NativeFeeder(QtCore.QObject):
         """Its level before the fader (Settings > Audio > Mixer's trim): its channel's TRIM knob at ``db`` (held to
         audioengine.volume.TRIM_DB_RANGE)."""
         self.set_knob(0, trim_db_to_knob(db))
-
-    def set_channel_cue(self, on: bool) -> None:
-        """Its channel's headphones CUE."""
-        self.send(OP_SET_CHANNEL_CUE, struct.pack("<I", int(bool(on))))
 
     def set_mixer(self, key: str, value: float) -> None:
         """A setting of the mixer's (MIX_KEYS: knobs 0 .. 1, switches 0 / 1, choices their code)."""
@@ -885,34 +833,9 @@ class NativeFeeder(QtCore.QObject):
             for st, d1, flags, lamp, code in bindings)
         self.setting(OP_MIDI_MAP, payload)
 
-    def set_routing(self, main: tuple, cue: tuple, sub: tuple) -> None:
-        """Where each bus goes on the main device: (left, right) channels (0-based; NO_CHANNEL: not there) of the
-        master, the headphones (the CUE'd channel and the master, mixed as their knobs set them) and the booth (the
-        master again)."""
-        chans = [int(c) & 0xFF for pair in (main, cue, sub) for c in pair]
-        self.setting(OP_SET_ROUTING, struct.pack("<6B", *chans))
-
-    def set_aux_output(self, bus: int, device: Optional[str], api: str = "wasapi", exclusive: bool = False,
-                       buffer_ms: float = 20.0, pair: tuple = (0, 1), rate: int = 0) -> None:
-        """Bus ``bus`` (AUX_BUSES' index) on a device of its own: ``device`` (its name, "" the system's default;
-        None: none, the bus plays where set_routing puts it, if anywhere), through ``api`` (exclusive mode with
-        WASAPI), ``buffer_ms`` kept ahead of it, on its channels ``pair`` (0-based), at ``rate`` (0: the device's
-        mix format's; the bus is converted to it)."""
-        on = device is not None
-        name = (device or "").encode("utf-8")
-        lo, hi = self.BUFFER_MS_RANGE
-        payload = (struct.pack("<IIIId", int(bus), int(on), API_CODES.get(api, 1), int(bool(exclusive)),
-                               float(min(hi, max(lo, buffer_ms))))
-                   + struct.pack("<BBHI", int(pair[0]) & 0xFF, int(pair[1]) & 0xFF, 0, max(0, int(rate)))
-                   + struct.pack("<I", len(name)) + name)
-        self.setting(OP_SET_AUX_OUTPUT, payload, key=int(bus))
-
-    def set_headphones(self, master: bool, mix: float = 0.5, level: float = LEVEL_UNITY) -> None:
-        """The headphones: the CUE'd channel before its fader, and the master mixed in by ``mix`` (0 CUE .. 1
-        MASTER) with ``master`` (off: a device that mixes the master into its headphones itself, as the DDJ-400 does
-        in analog), at ``level``; a controller's CUE / MASTER and level knobs move them later."""
-        self.setting(OP_SET_HEADPHONES, struct.pack("<Idd", int(bool(master)), min(1.0, max(0.0, float(mix))),
-                                                    max(0.0, float(level))))
+    def set_routing(self, main: tuple) -> None:
+        """The master's (left, right) channels on the device (0-based; NO_CHANNEL: not there)."""
+        self.setting(OP_SET_ROUTING, struct.pack("<2B", *(int(c) & 0xFF for c in main)))
 
     def set_meter_gain(self, gain: float) -> None:
         """The controller's level meter shows the heard peak times this (the GUI peak meter's gain)."""
@@ -968,7 +891,7 @@ class NativeFeeder(QtCore.QObject):
         if st.cmd_done >= self._engine.sent:
             self._report = DeckReport(st.playing, st.factor, st.volume, st.cue / max(1, self.rate),
                                       st.jump_dest / max(1, self.rate), st.lamps, st.tempo_range, st.midi_state,
-                                      st.knobs, bool(st.channel_cue), st.peak, st.color,
+                                      st.knobs, st.peak, st.color,
                                       mixer[0] if mixer is not None else (), st.key_shift)
         if self._unlink_gen and st.track_gen >= self._unlink_gen and self._pcm is not None:
             _unlink(self._pcm.shm_name)   # opened by the engine: the name is no longer needed
@@ -1022,7 +945,6 @@ class NativeFeeder(QtCore.QObject):
             self.clicks.follow_rate(self.rate)
         self._counts = (0, 0)
         self._hist_prev = None
-        self._aux_prev = [None] * len(AUX_BUSES)
         self._replay()
         if changed:
             self._pcm = None
@@ -1088,42 +1010,4 @@ class NativeFeeder(QtCore.QObject):
                          "output_thread": THREAD_STATES.get(int(st.threads) >> 8 & 0xFF, "api")
                          if st is not None else "api",
                          "power": POWER_STATES.get(int(st.power), "left") if st is not None else "left"}
-        outputs = self._aux_stats()
-        if stats is not None:
-            stats["outputs"] = outputs
-        elif any(o is not None for o in outputs.values()):
-            stats = {"outputs": outputs}   # the outputs' state without the main output's observations
         return queued, stats, capacity
-
-    def _aux_stats(self) -> dict:
-        """Each bus's own output (AUX_BUSES' names): None where it has none, else its state and, while it plays,
-        its buffer's observations since the last call (as the main output's: "hist", "seconds", "mean_ms",
-        "dropout_sec", ...)."""
-        out = {}
-        states = self._engine.aux_states()
-        rate = max(1, self.rate)
-        for k, (bus, cur) in enumerate(zip(AUX_BUSES, states)):
-            prev, self._aux_prev[k] = self._aux_prev[k], cur
-            if cur is None:
-                out[bus] = None
-                continue
-            ms = 1000.0 / rate
-            d = {"open": cur["state"] == 1, "state": AUX_STATES.get(int(cur["state"]), "failed"),
-                 "device": cur["name"], "errors": int(cur["errors"]), "rate": int(cur["rate"]),
-                 "output_api": {v: key for key, v in API_CODES.items()}.get(int(cur["mode"]) & 0xFF, "cpal"),
-                 "exclusive": bool(int(cur["mode"]) >> 8), "device_ms": float(cur["latency_ms"]),
-                 "period_ms": float(cur["period_ms"]), "queued_ms": float(cur["queued"]) * ms,
-                 "capacity_ms": float(cur["capacity"]) * ms, "channels": int(cur["channels"]),
-                 "drift_ppm": float(cur["drift_ppm"]), "late": int(cur["late"]),
-                 "max_gap_ms": float(cur["max_gap_ms"]), "bucket_ms": float(cur["hist_bucket_ms"]),
-                 "lowest_ms": float(cur["lowest_ms"]),
-                 "output_thread": THREAD_STATES.get(int(cur["thread"]) & 0xFF, "api"), "observed": None}
-            if (prev is not None and prev["buffer_gen"] == cur["buffer_gen"]
-                    and prev["hist"].size == cur["hist"].size):
-                seconds = float(cur["obs_seconds"] - prev["obs_seconds"])
-                if seconds > 0.0:
-                    d["observed"] = {"hist": cur["hist"] - prev["hist"], "seconds": seconds,
-                                     "mean_ms": float(cur["obs_level"] - prev["obs_level"]) / seconds,
-                                     "dropout_sec": max(0, int(cur["underruns"]) - int(prev["underruns"])) / rate}
-            out[bus] = d
-        return out

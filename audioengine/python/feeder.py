@@ -336,9 +336,9 @@ class PCMFeeder(QtCore.QObject):
     def set_music_gain(self, gain: float) -> None:
         self._music_gain = float(max(0.0, gain))
 
-    def set_clip(self, master: str, headphones: str = "tanh", booth: str = "tanh") -> None:
-        """The output's last stage (controls.CLIPS; this engine plays the master alone): a hard clip, else tanh
-        above SOFT_CLIP_KNEE (this engine has no limiter: tanh in its place)."""
+    def set_clip(self, master: str) -> None:
+        """The master's last stage (controls.CLIPS): a hard clip, else tanh above SOFT_CLIP_KNEE (this engine has no
+        limiter: tanh in its place)."""
         self._clip = "hard" if master == "hard" else "tanh"
 
     def set_scrubbing(self, scrubbing: bool) -> None:

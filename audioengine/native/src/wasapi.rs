@@ -5,7 +5,7 @@
 //! playing. Exclusive: the device to this app alone, at the session's rate and channels in a format the device
 //! takes (float32, int32, int16), its smallest period, the engine's audio straight to the driver; other apps
 //! cannot play on it meanwhile. Both event driven, on a thread of their own registered with MMCSS as Pro Audio,
-//! reading what the engine gives the device (device.rs Source: the main ring, or a bridge) as cpal's callback does.
+//! reading what the engine gives the device (device.rs Ring: the main ring, mixed) as cpal's callback does.
 
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -35,7 +35,7 @@ use windows::Win32::System::Threading::{
 use windows::Win32::System::Variant::VT_LPWSTR;
 use windows::core::w;
 
-use crate::device::{CallbackState, Source};
+use crate::device::{CallbackState, Ring};
 
 /// The device period asked for is at least this many frames (5.8 ms at 44.1 kHz, as rekordbox asks the DDJ-400
 /// for): below it a driver call held up now and then (the USB Audio class driver's GetBuffer: ~0.8 ms each period, at
@@ -51,7 +51,7 @@ const PERIOD_FRAMES_MIN: f64 = 256.0;
 ///   audio each time, for good);
 /// - the frames it took over HEALTH_SEC (from HEALTH_SETTLE_SEC after a start) fell below HEALTH_MIN of its rate (its
 ///   events slower than the period without a long gap: seen on the DDJ-400 at a 10 ms period, events every 15.6 ms,
-///   the device taking 64 % of its rate, its bridge's backlog growing by seconds; a window in which the output
+///   the device taking 64 % of its rate, its output falling behind by seconds; a window in which the output
 ///   thread itself woke late is left out, the next starting at that wake-up: the stream ran dry by its lateness,
 ///   not the device's, and a polled stream kept two periods full let a 60 ms hold count as 94 %), or no event came
 ///   for EVENT_TIMEOUT_MS (the stream stopped).
@@ -274,10 +274,9 @@ pub struct WasapiOutput {
 }
 
 impl WasapiOutput {
-    /// Opens the device named ``name`` (None or "": the default; one not there: the default with ``fallback``,
-    /// else device::NOT_PRESENT), ``exclusive`` or shared, at ``rate`` / ``channels``; returns it, the device's
-    /// name and its period (ms).
-    pub fn open(source: Source, rate: u32, channels: usize, name: Option<&str>, exclusive: bool, fallback: bool)
+    /// Opens the device named ``name`` (None or "": the default; one not there: the default), ``exclusive`` or
+    /// shared, at ``rate`` / ``channels``, reading ``ring``; returns it, the device's name and its period (ms).
+    pub fn open(ring: Arc<Ring>, rate: u32, channels: usize, name: Option<&str>, exclusive: bool)
         -> Result<(WasapiOutput, String, f64), String> {
         let stop = Arc::new(AtomicBool::new(false));
         let (tx, rx) = mpsc::channel();
@@ -285,7 +284,7 @@ impl WasapiOutput {
         let s = stop.clone();
         let thread = std::thread::Builder::new()
             .name("WasapiOutput".into())
-            .spawn(move || render_thread(source, rate, channels, wanted, exclusive, fallback, s, tx))
+            .spawn(move || render_thread(ring, rate, channels, wanted, exclusive, s, tx))
             .map_err(|e| e.to_string())?;
         match rx.recv() {
             Ok(Ok((device, period_ms))) => Ok((WasapiOutput { stop, thread: Some(thread) }, device, period_ms)),
@@ -331,9 +330,9 @@ unsafe fn friendly_name(device: &IMMDevice) -> Option<String> {
     }
 }
 
-/// The endpoint named ``name`` as device::find picks it (its instance number aside when it alone matches).
-unsafe fn find_device(enumerator: &IMMDeviceEnumerator, name: Option<&str>, fallback: bool)
-    -> Result<IMMDevice, String> {
+/// The endpoint named ``name`` as device::find picks it (its instance number aside when it alone matches); one not
+/// there: the default.
+unsafe fn find_device(enumerator: &IMMDeviceEnumerator, name: Option<&str>) -> Result<IMMDevice, String> {
     unsafe {
         if let Some(wanted) = name.filter(|n| !n.is_empty()) {
             if let Ok(collection) = enumerator.EnumAudioEndpoints(eRender, DEVICE_STATE_ACTIVE) {
@@ -348,9 +347,6 @@ unsafe fn find_device(enumerator: &IMMDeviceEnumerator, name: Option<&str>, fall
                 if let Some(k) = crate::device::pick(&names, wanted) {
                     return Ok(devices.swap_remove(k).0);
                 }
-            }
-            if !fallback {
-                return Err(format!("{wanted}: {}", crate::device::NOT_PRESENT));
             }
         }
         enumerator.GetDefaultAudioEndpoint(eRender, eConsole).map_err(|e| format!("no output device: {e}"))
@@ -594,14 +590,12 @@ unsafe fn finish(client: IAudioClient, sample: Sample, period_ms: f64, evented: 
     }
 }
 
-#[allow(clippy::too_many_arguments)]
 fn render_thread(
-    source: Source,
+    ring: Arc<Ring>,
     rate: u32,
     channels: usize,
     name: Option<String>,
     exclusive: bool,
-    fallback: bool,
     stop: Arc<AtomicBool>,
     ready: mpsc::Sender<Result<(String, f64), String>>,
 ) {
@@ -609,13 +603,13 @@ fn render_thread(
         let _ = CoInitializeEx(None, COINIT_MULTITHREADED);
         let mut task = 0u32;
         let mmcss = AvSetMmThreadCharacteristicsW(w!("Pro Audio"), &mut task).is_ok();
-        let port = source.port();
+        let port = &ring.port;
         port.output_state.store(if mmcss { crate::sched::REALTIME } else { crate::sched::NORMAL },
             std::sync::atomic::Ordering::Relaxed);
         let opened = (|| {
             let enumerator: IMMDeviceEnumerator =
                 CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL).map_err(|e| e.to_string())?;
-            let device = find_device(&enumerator, name.as_deref(), fallback)?;
+            let device = find_device(&enumerator, name.as_deref())?;
             let device_name = friendly_name(&device).unwrap_or_default();
             let o = if exclusive {
                 let (level, poll) = (period_level(&device_name), poll_periods(&device_name));
@@ -774,7 +768,6 @@ fn render_thread(
                     port.failed.store(true, Ordering::Relaxed);
                     break;
                 }
-                source.restarted();
                 gap_count = 0;
                 last_wake = 0.0;
                 health = Health::new(crate::clock::now());
@@ -812,12 +805,12 @@ fn render_thread(
             let n = frames as usize * channels;
             let latency = queued as f64 / rate as f64 + latency_extra;
             match o.sample {
-                Sample::F32 => source.fill(std::slice::from_raw_parts_mut(ptr as *mut f32, n), &mut state, latency),
-                Sample::I32 => source.fill(std::slice::from_raw_parts_mut(ptr as *mut i32, n), &mut state, latency),
-                Sample::I16 => source.fill(std::slice::from_raw_parts_mut(ptr as *mut i16, n), &mut state, latency),
+                Sample::F32 => ring.fill(std::slice::from_raw_parts_mut(ptr as *mut f32, n), &mut state, latency),
+                Sample::I32 => ring.fill(std::slice::from_raw_parts_mut(ptr as *mut i32, n), &mut state, latency),
+                Sample::I16 => ring.fill(std::slice::from_raw_parts_mut(ptr as *mut i16, n), &mut state, latency),
                 Sample::I24 => {
                     let wide = &mut wide[..n];
-                    source.fill(wide, &mut state, latency);
+                    ring.fill(wide, &mut state, latency);
                     let bytes = std::slice::from_raw_parts_mut(ptr, n * 3);
                     for (k, v) in wide.iter().enumerate() {
                         bytes[3 * k..3 * k + 3].copy_from_slice(&(v >> 8).to_le_bytes()[..3]);

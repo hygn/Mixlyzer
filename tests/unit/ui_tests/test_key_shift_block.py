@@ -47,7 +47,7 @@ class PlaceTests(_Case):
         for k in range(row.count()):
             frame = row.itemAt(k).widget()
             titles.append(frame.findChildren(QtWidgets.QLabel)[0].text())
-        self.assertEqual(titles, ["JOG MODE", "EQ CURVE", "CH FADER", "COLOR FX", "KEY", "PHONES"])
+        self.assertEqual(titles, ["JOG MODE", "EQ CURVE", "CH FADER", "COLOR FX", "KEY"])
 
     def test_the_values_text_asks_for_no_layout(self):
         requests = []
@@ -109,7 +109,7 @@ class WideWindowTests(_Case):
 
     def test_each_control_about_as_wide_as_the_others(self):
         self._laid_out(2400)
-        widths = [b.width() for b in (self.s.vinyl, self.s.cdj, *self.s.eq, *self.s.fader, self.s.cue)]
+        widths = [b.width() for b in (self.s.vinyl, self.s.cdj, *self.s.eq, *self.s.fader)]
         self.assertLess(max(widths) / min(widths), 1.4, widths)
         self.assertLess(self.s.color_type.width(), 2.2 * min(widths), "the combo box no giant")
 
@@ -151,7 +151,7 @@ class WideWindowTests(_Case):
     def test_no_text_cut_however_narrow(self):
         for width in (self.s.minimumSizeHint().width(), self.s.sizeHint().width(), 1400):
             self._laid_out(width)
-            for button in (self.s.vinyl, self.s.cdj, *self.s.eq, self.s.key_down, self.s.key_up, self.s.cue):
+            for button in (self.s.vinyl, self.s.cdj, *self.s.eq, self.s.key_down, self.s.key_up):
                 self.assertGreaterEqual(button.width(), deck_controls.text_room(button, button.text()), (width, button.text()))
             self.assertGreaterEqual(self.s.key_value.width(),
                                     deck_controls.text_room(self.s.key_value, key_shift_text(0.12 - controls.KEY_SHIFT_MAX)), width)

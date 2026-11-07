@@ -128,8 +128,6 @@ ACTIONS: tuple[Action, ...] = (
            tip=tr_mark("The CUE point the playhead is on, as after CALL.")),
 
     # the toolbar's channel switches (ui.deck.deck_switches)
-    Action("mixer.headphones_cue", PLAYBACK, tr_mark("Headphones CUE on / off"),
-           tip=tr_mark("The deck's channel, before its fader, in the headphones.")),
     Action("fx.color_next", FX, tr_mark("Sound Color FX: the next effect")),
     Action("fx.color_previous", FX, tr_mark("Sound Color FX: the previous effect")),
 

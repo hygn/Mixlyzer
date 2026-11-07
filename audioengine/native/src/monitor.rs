@@ -1,6 +1,5 @@
 //! The buffer monitor (feeder.py's _observe_buffer): how long a buffer spent at each level while sound was due,
-//! for the GUI's meter and histogram. The engine's (its own buffer ahead of the main device) and each output's of
-//! a device of its own (the bridge ahead of that device: device.rs Bridge).
+//! for the GUI's meter and histogram: the engine's own buffer ahead of the main device.
 
 use crate::clock;
 

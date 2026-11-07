@@ -1,12 +1,11 @@
 """The deck's and its mixer channel's switches, the toolbar's CH 1 row, as a DJM's and a CDJ's are: the jog wheel's
 mode (VINYL: its top holds the record, CDJ: a bend only), the EQ (ISO: an isolator, a band down to a kill; EQ:
 -26 dB at the bottom), the channel fader's curve (each drawn: the app's default, steep: up fast, slow: most of the
-rise at the top), Sound Color FX (the effect, the channel's COLOR knob, PARAMETER), the key shift (a knob, continuous;
-− / its value / +, a semitone at once) and the channel's headphones CUE; ``MasterLevels`` the MASTER row's levels (the
-master, the headphones). A click or a turn sends a request (sig_jog_mode_requested, sig_mixer_requested,
-sig_knob_requested, sig_key_shift_requested, sig_deck_action, sig_channel_cue_requested); what is lit and where a
-knob points is what the deck reports (DeckReport: its lamps' VINYL bit, channel_cue, color, key_shift, the mixer's
-values), so a controller's switch or knob shows too. The native engine's (the Python engine has none of them):
+rise at the top), Sound Color FX (the effect, the channel's COLOR knob, PARAMETER) and the key shift (a knob,
+continuous; − / its value / +, a semitone at once); ``MasterLevels`` the MASTER row's level. A click or a turn sends a
+request (sig_jog_mode_requested, sig_mixer_requested, sig_knob_requested, sig_key_shift_requested, sig_deck_action);
+what is lit and where a knob points is what the deck reports (DeckReport: its lamps' VINYL bit, color, key_shift, the
+mixer's values), so a controller's switch or knob shows too. The native engine's (the Python engine has none of them):
 disabled there. The controls' looks: ui/deck/deck_controls.py."""
 from __future__ import annotations
 
@@ -17,7 +16,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 from audioengine import controls
 from core.workflows.event_bus import EventBus
 from system.i18n import tr
-from ui.deck.deck_controls import KNOB, PADDING, Lamp, Segment, block, blocks_row, label, segments, text_room
+from ui.deck.deck_controls import KNOB, PADDING, Segment, block, blocks_row, label, segments, text_room
 from ui.widgets import tooltips
 from ui.widgets.knob import Knob
 from ui.theme import current_theme
@@ -97,7 +96,6 @@ class DeckSwitches(QtWidgets.QWidget):
         super().__init__(parent)
         self.bus = bus
         self._report = None
-        self._cue_on = False
         self._key_shift = 0.0
 
         self.vinyl, self.cdj = Segment("VINYL"), Segment("CDJ")
@@ -163,10 +161,6 @@ class DeckSwitches(QtWidgets.QWidget):
         key_buttons.setProperty("controls", 1)
         key_buttons.setMaximumWidth(2 * KEY_STEP_W + self.key_value.width_with_unit + KEY_VALUE_SPARE)
 
-        # the channel's headphones CUE (the headphones' level: MasterLevels)
-        self.cue = Lamp("CUE", current_theme().warning)
-        self.cue.setToolTip(tr("Headphones CUE: the deck's channel, before its fader, in the headphones."))
-        self.cue.clicked.connect(self.toggle_cue)
         key_block = block("KEY", [self.key_knob, key_buttons])
         # its frame stops with them, so it is never left empty
         key_block.setMaximumWidth(key_block.sizeHint().width() - key_buttons.sizeHint().width() + key_buttons.maximumWidth())
@@ -176,7 +170,6 @@ class DeckSwitches(QtWidgets.QWidget):
             block("CH FADER", [segments(self.fader)]),
             block("COLOR FX", [self.color_type, 6, label("COLOR"), self.color, 6, label("PARAMETER"), self.param]),
             key_block,
-            block("PHONES", [self.cue]),
         ])
 
     def _mix(self, key: str, value) -> None:
@@ -199,18 +192,12 @@ class DeckSwitches(QtWidgets.QWidget):
         at = codes.index(now) if now in codes else 0
         self._mix("color_type", codes[(at + by) % len(codes)])
 
-    def toggle_cue(self) -> None:
-        """The headphones CUE switched (a request; lit as the deck then reports)."""
-        if self.isEnabled():
-            self.bus.sig_channel_cue_requested.emit(not self._cue_on)
-
     def shortcut_handlers(self) -> dict:
         # each button's tooltip names its keys (ui.widgets.tooltips)
         for button, action in ((self.key_down, "playback.key_down"), (self.key_up, "playback.key_up"),
                                (self.key_value, "playback.key_reset")):
             tooltips.tag(button, action)
-        return {"mixer.headphones_cue": self.toggle_cue,
-                "fx.color_next": lambda: self.step_color_type(1),
+        return {"fx.color_next": lambda: self.step_color_type(1),
                 "fx.color_previous": lambda: self.step_color_type(-1),
                 **{action: (lambda code=code: self._key_action(code))
                    for action, code in (("playback.key_down", controls.ACT_KEY_DOWN),
@@ -228,7 +215,7 @@ class DeckSwitches(QtWidgets.QWidget):
 
     def set_report(self, report) -> None:
         """The deck's report (DeckReport): the jog's mode, the mixer's EQ, Sound Color FX and fader curve, the key
-        shift, the headphones CUE."""
+        shift."""
         if not report.mix:
             return
         self._report = report
@@ -243,8 +230,6 @@ class DeckSwitches(QtWidgets.QWidget):
                 self.color_type.setCurrentIndex(k)
         self.color.set_value(report.color)
         self.param.set_value(report.mix_value("color_param", 0.5))
-        self._cue_on = bool(report.channel_cue)
-        self.cue.set_lit(self._cue_on)
         self.vinyl.set_lit(report.vinyl)
         self.cdj.set_lit(not report.vinyl)
         eq = int(report.mix_value("eq_mode"))
@@ -256,21 +241,15 @@ class DeckSwitches(QtWidgets.QWidget):
 
 
 class MasterLevels(QtWidgets.QWidget):
-    """The MASTER row's levels: the master's and the headphones' (a knob each, its middle 0 dB)."""
+    """The MASTER row's level: the master's knob, its 0 dB at controls.LEVEL_UNITY."""
 
     def __init__(self, bus: EventBus, parent=None) -> None:
         super().__init__(parent)
         self.bus = bus
-        self.master = self._level_knob(lambda v: self.bus.sig_mixer_requested.emit("master_level", v))
-        self.phones = self._level_knob(lambda v: self.bus.sig_mixer_requested.emit("hp_level", v))
-        blocks_row(self, [block("LEVEL", [label("MASTER"), self.master, 6, label("PHONES"), self.phones])])
+        self.master = Knob(KNOB, neutral=controls.LEVEL_UNITY)
+        self.master.moved.connect(lambda v: self.bus.sig_mixer_requested.emit("master_level", v))
+        blocks_row(self, [block("LEVEL", [label("MASTER"), self.master])])
         self._show_level(self.master, tr("Master level"), controls.LEVEL_UNITY)
-        self._show_level(self.phones, tr("Headphones level"), controls.LEVEL_UNITY)
-
-    def _level_knob(self, request) -> Knob:
-        knob = Knob(KNOB, neutral=controls.LEVEL_UNITY)
-        knob.moved.connect(request)
-        return knob
 
     @staticmethod
     def _show_level(knob: Knob, title: str, value: float) -> None:
@@ -285,8 +264,6 @@ class MasterLevels(QtWidgets.QWidget):
     def set_report(self, report) -> None:
         if not report.mix:
             return
-        for knob, key, title in ((self.master, "master_level", tr("Master level")),
-                                 (self.phones, "hp_level", tr("Headphones level"))):
-            value = report.mix_value(key, controls.LEVEL_UNITY)
-            if abs(value - knob.value()) > 1e-6:
-                self._show_level(knob, title, value)
+        value = report.mix_value("master_level", controls.LEVEL_UNITY)
+        if abs(value - self.master.value()) > 1e-6:
+            self._show_level(self.master, tr("Master level"), value)

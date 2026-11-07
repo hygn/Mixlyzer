@@ -3,7 +3,6 @@ from __future__ import annotations
 import math
 import threading
 import time
-from dataclasses import asdict
 from typing import Optional
 
 import numpy as np
@@ -11,7 +10,7 @@ from PySide6 import QtCore, QtMultimedia
 
 from audioengine.controls import MIDI_EVENT_GUI, MIDI_EVENT_HOTCUE_SET, SPECTRUM_BINS, DeckReport
 from audioengine.native import client as native_client
-from audioengine.native.client import NO_CHANNEL, NativeClicks, NativeEngine, NativeFeeder
+from audioengine.native.client import NativeClicks, NativeEngine, NativeFeeder
 from audioengine.python.clicks import ClickTrack
 from audioengine.python.deck import PythonDeck
 from audioengine.python.feeder import PCMFeeder
@@ -90,8 +89,8 @@ class _AudioWorker(QtCore.QObject):
         "jump_to", "call_at", "set_peak_meter_gain",
         "set_refresh_fps", "set_timestretch", "set_clip", "set_buffer_ms", "set_output_device",
         "set_output_mode", "set_exclusive_rate", "set_process",
-        "tone_hold", "midi_open", "midi_map", "midi_options", "set_midi_learn", "set_routing", "set_headphones",
-        "set_knob", "set_mixer", "set_channel_cue", "restart_engine", "set_spectrum", "set_key_shift",
+        "tone_hold", "midi_open", "midi_map", "midi_options", "set_midi_learn", "set_routing",
+        "set_knob", "set_mixer", "restart_engine", "set_spectrum", "set_key_shift",
     })
     _WAIT_FOR_TRACK = frozenset({
         "pause", "stop", "seek",
@@ -346,39 +345,16 @@ class _AudioWorker(QtCore.QObject):
         """Every message passed on (Settings > MIDI's learn), not only those bound to the GUI's actions."""
         self._midi_learn = bool(learning)
 
-    def set_routing(self, main: str, headphones: dict, booth: dict) -> None:
-        """The native engine's outputs: the master on the main device's channel pair ``main`` ("1-2"), the
-        headphones and the booth as outputconfig's fields say (off, channels of the main device, or a device of
-        their own); the Python engine plays deck 1 on its device's first two channels and has none of them."""
-        if not isinstance(self.feeder, NativeFeeder):
-            return
-        none = (NO_CHANNEL, NO_CHANNEL)
-        on_main = [channel_pair(o.get("channels", "")) or none if o.get("route") == "main_device" else none
-                   for o in (headphones, booth)]
-        self.feeder.set_routing(channel_pair(main) or (0, 1), on_main[0], on_main[1])
-        for k, o in enumerate((headphones, booth)):
-            if o.get("route") == "device":
-                self.feeder.set_aux_output(k, str(o.get("device") or ""), str(o.get("audio_api") or "wasapi"),
-                                           bool(o.get("exclusive")), float(o.get("buffer_ms") or 20),
-                                           channel_pair(o.get("channels", "")) or (0, 1), int(o.get("rate") or 0))
-            else:
-                self.feeder.set_aux_output(k, None)
+    def set_routing(self, main: str) -> None:
+        """The native engine's master on the device's channel pair ``main`` ("1-2"); the Python engine plays deck 1
+        on its device's first two channels."""
+        if isinstance(self.feeder, NativeFeeder):
+            self.feeder.set_routing(channel_pair(main) or (0, 1))
 
     def restart_engine(self) -> None:
         """The native engine started again by hand, the track and the settings as they were."""
         if isinstance(self.feeder, NativeFeeder):
             self.engine_restarted.emit(self.feeder.restart_engine())
-
-    def set_headphones(self, master: bool, mix: float, level: float) -> None:
-        """The native engine's headphones: the master mixed in (by ``mix``, 0 CUE .. 1 MASTER) or not, their level
-        (a knob's position)."""
-        if isinstance(self.feeder, NativeFeeder):
-            self.feeder.set_headphones(master, mix, level)
-
-    def set_channel_cue(self, on: bool) -> None:
-        """The deck's channel's headphones CUE (the native engine's mixer)."""
-        if isinstance(self.feeder, NativeFeeder):
-            self.feeder.set_channel_cue(bool(on))
 
     def set_knob(self, which: int, position: float) -> None:
         """The deck's channel knob: TRIM (0, the trim on either engine) or EQ LOW / MID / HIGH, COLOR (1 - 4: the
@@ -426,8 +402,8 @@ class _AudioWorker(QtCore.QObject):
     def set_timestretch(self, enabled: bool) -> None:
         self.feeder.set_timestretch(bool(enabled))
 
-    def set_clip(self, master: str, headphones: str, booth: str) -> None:
-        self.feeder.set_clip(master, headphones, booth)
+    def set_clip(self, master: str) -> None:
+        self.feeder.set_clip(master)
 
     def set_buffer_ms(self, ms: float) -> None:
         self._buffer_ms = float(ms)
@@ -693,7 +669,6 @@ class PlayerController(QtCore.QObject):
         bus.sig_knob_requested.connect(lambda which, v: self._send("set_knob", int(which), float(v)))
         bus.sig_mixer_requested.connect(lambda key, v: self._send("set_mixer", str(key), float(v)))
         bus.sig_jog_mode_requested.connect(self.set_jog_mode)
-        bus.sig_channel_cue_requested.connect(lambda on: self._send("set_channel_cue", bool(on)))
         bus.sig_engine_restart_requested.connect(lambda: self._send("restart_engine"))
         bus.sig_jump_to_requested.connect(lambda sec: self._send_local("jump_to", float(sec)))
         bus.sig_call_requested.connect(lambda sec: self._send_local("call_at", float(sec)))
@@ -844,9 +819,9 @@ class PlayerController(QtCore.QObject):
         """Pitch-preserving time stretch instead of varispeed for tempo changes."""
         self._send("set_timestretch", bool(enabled))
 
-    def set_clip(self, master: str, headphones: str, booth: str) -> None:
-        """Each output's last stage, keeping it at 0 dBFS at most (audioengine.controls.CLIPS)."""
-        self._send("set_clip", str(master), str(headphones), str(booth))
+    def set_clip(self, master: str) -> None:
+        """The master's last stage, keeping it at 0 dBFS at most (audioengine.controls.CLIPS)."""
+        self._send("set_clip", str(master))
 
     def set_buffer_ms(self, native_ms: float, python_ms: float) -> None:
         """The output buffer (ms) of each engine: the one that plays takes its own."""
@@ -872,16 +847,9 @@ class PlayerController(QtCore.QObject):
         the app's own process and has neither."""
         self._send("set_process", str(priority or "high"), bool(power_throttling))
 
-    def set_routing(self, main: str, headphones, booth) -> None:
-        """The native engine's outputs: the master on the main device's channel pair ``main`` ("1-2"), the
-        headphones and the booth (config.outputconfig: off, channels of the main device, or a device of their
-        own)."""
-        self._send("set_routing", str(main or "1-2"), asdict(headphones), asdict(booth))
-
-    def set_headphones(self, master: bool, mix: float, level: float) -> None:
-        """The native engine's headphones: the CUE'd channels, and the master mixed in by ``mix`` (0 CUE .. 1
-        MASTER) with ``master`` (off for a device that mixes it in itself), at ``level`` (a knob's position)."""
-        self._send("set_headphones", bool(master), float(mix), float(level))
+    def set_routing(self, main: str) -> None:
+        """The native engine's master on the device's channel pair ``main`` ("1-2")."""
+        self._send("set_routing", str(main or "1-2"))
 
     def set_spectrum(self, on: bool) -> None:
         """The native engine makes the master's spectrum (``on``: while it is shown) or not; the Python engine has

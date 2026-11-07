@@ -127,7 +127,7 @@ FIELD_TYPES = _comment_types(RAW)
 
 class TopLevelTests(unittest.TestCase):
     def test_offsets_and_versions(self):
-        for name in ("MAGIC", "VERSION", "STATE_OFFSET", "RING_OFFSET", "RING_HEADER", "HIST_MAX", "DEVICES_OFFSET", "OUTPUTS_OFFSET", "MIX_OFFSET", "MIDI_PORTS_OFFSET", "MIDI_EVENTS_OFFSET",
+        for name in ("MAGIC", "VERSION", "STATE_OFFSET", "RING_OFFSET", "RING_HEADER", "HIST_MAX", "DEVICES_OFFSET", "MIX_OFFSET", "MIDI_PORTS_OFFSET", "MIDI_EVENTS_OFFSET",
                      "MIDI_EVENTS"):
             with self.subTest(name=name):
                 self.assertEqual(getattr(client, name), RS[""][name])
@@ -142,7 +142,6 @@ class TopLevelTests(unittest.TestCase):
             ("midi events", top["MIDI_EVENTS_OFFSET"],
              top["MIDI_EVENTS_OFFSET"] + 16 + top["MIDI_EVENTS"] * client._MIDI_EVENT.size),
             ("devices", top["DEVICES_OFFSET"], top["DEVICES_OFFSET"] + 16 + top["DEVICES_MAX"]),
-            ("outputs", top["OUTPUTS_OFFSET"], top["OUTPUTS_OFFSET"] + len(client.AUX_BUSES) * RS["out"]["SIZE"]),
             ("mixer", top["MIX_OFFSET"], top["MIX_OFFSET"] + 8 * (mix["METERS"] + mix["METER_COUNT"])),
             ("ring", top["RING_OFFSET"], client.CONTROL_SIZE),
         ]
@@ -176,7 +175,6 @@ class StateTests(unittest.TestCase):
     def test_field_types(self):
         st = RS["st"]
         self._same_types("st", client._DECK.format, st["DECK"], lambda k: st[k] >= st["DECK"])
-        self._same_types("out", client._OUT.format, 0, lambda k: RS["out"][k] <= RS["out"]["NAME"])
 
     def test_deck_fields(self):
         st = RS["st"]
@@ -184,16 +182,6 @@ class StateTests(unittest.TestCase):
         rust = sorted(v - st["DECK"] for k, v in st.items() if v >= st["DECK"] and k != "DECK")
         rust += [st["KNOBS"] - st["DECK"] + 8 * k for k in (1, 2, 3)]           # the knobs: four fields, one name
         self.assertEqual(sorted(rust), _field_offsets(client._DECK.format))
-
-    def test_output_fields(self):
-        out, types = RS["out"], TYPES["out"]
-        rust = sorted(v for k, v in out.items() if types[k] == "usize" and v <= out["NAME"])   # NAME: its u32 length
-        self.assertEqual(rust, _field_offsets(client._OUT.format))
-        self.assertEqual((client._OUT_NAME, client._OUT_RATE, client._OUT_HIST, client._OUT_SIZE),
-                         (out["NAME"], out["RATE"], out["HIST"], out["SIZE"]))
-        self.assertLessEqual(out["NAME"] + 4 + out["NAME_MAX"], out["RATE"])                # the length, the text
-        states = {v: k for k, v in out.items() if k.startswith("STATE_") and types[k] == "u32"}
-        self.assertEqual(set(states), set(client.AUX_STATES))
 
 
 class MixerTests(unittest.TestCase):
@@ -215,9 +203,6 @@ class MixerTests(unittest.TestCase):
         defaults = dict(zip(controls.MIX_KEYS, RS["mix"]["DEFAULTS"]))
         self.assertIn(int(defaults["color_type"]), range(len(controls.COLOR_TYPES) + 1))
         self.assertEqual(defaults["master_level"], controls.LEVEL_UNITY)
-        self.assertEqual(defaults["hp_level"], controls.LEVEL_UNITY)
-        self.assertEqual(defaults["booth_level"], controls.LEVEL_UNITY)
-        self.assertEqual((defaults["booth_eq_hi"], defaults["booth_eq_low"]), (0.5, 0.5))   # the booth EQ flat
 
 
 class CodeTests(unittest.TestCase):

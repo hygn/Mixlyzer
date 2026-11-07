@@ -109,20 +109,6 @@ class viewconfig:
 
 
 @dataclass
-class outputconfig:
-    """A bus of the native engine's beyond the master (the headphones, the booth) and where it plays."""
-    # "off"; "main_device": channels of the main output's device; "device": a device of its own (its clock followed)
-    route: Literal["off", "main_device", "device"]
-    device: str  # route "device": its name as the native engine lists it ("" = the system's default)
-    channels: str  # its channel pair on its device ("3-4")
-    audio_api: Literal["wasapi", "cpal", "jack"]  # route "device": as native_audio_api
-    exclusive: bool  # route "device": WASAPI's exclusive mode
-    buffer_ms: int  # route "device": the audio kept ahead of its device
-    rate: int  # route "device": its device's rate (0 = its mix format's; the bus is converted to it)
-    clip: Literal["tanh", "hard", "limiter"]  # its last stage, as playbackconfig.output_clip is the master's
-
-
-@dataclass
 class deckconfig:
     """What playing changes, kept in deck.json (beside config.json, the settings that seldom change): saved as it
     changes (the toolbar, the deck's buttons, a controller, the editor's metronome) and applied at the start. The
@@ -151,11 +137,8 @@ class deckconfig:
     jog_mode: str
     # the track info's time, switched by a click on it: elapsed / total, -remaining / total, elapsed / -remaining
     time_display: Literal["elapsed", "remaining", "elapsed_remaining"]
-    # the levels, knob positions 0 .. 1 (0.8 = 0 dB, client.LEVEL_UNITY): the master's and the headphones'; the
-    # headphones' CUE / MASTER mix (%: 0 CUE .. 100 MASTER)
+    # the master's level, a knob position 0 .. 1 (0.8 = 0 dB, client.LEVEL_UNITY)
     master_level: float
-    headphones_level: float
-    headphones_cue_mix: int
     # Sound Color FX as picked (not whether it is on): client.COLOR_TYPES' place (COLOR_OFF none), its PARAMETER
     # (0 .. 1)
     color_type: int
@@ -186,8 +169,8 @@ class deckconfig:
 
 @dataclass
 class playbackconfig:
-    # the master's last stage, keeping it at 0 dBFS at most (the native engine's mixer::Clip; the headphones' and
-    # the booth's are their outputconfig's): a hard clip, a tanh soft clip, or a limiter (1 ms late: its lookahead)
+    # the master's last stage, keeping it at 0 dBFS at most (the native engine's mixer::Clip): a hard clip, a tanh
+    # soft clip, or a limiter (1 ms late: its lookahead)
     output_clip: Literal["tanh", "hard", "limiter"]
     # the audio engine: "native" (audioengine/native; the Python one where it is not built or does not start)
     # or "python" (audioengine/python only); applied at the next start
@@ -210,20 +193,8 @@ class playbackconfig:
     # ("": none) and its jog wheel's messages per turn (33 1/3 rpm); whether it is read: deckconfig.midi_enabled
     midi_input: str
     midi_jog_ticks: int
-    # the native engine's outputs, as a DJ mixer's: the main device's channel pair of the master ("1-2"), the
-    # headphones (the CUE'd channel and the master) and the booth (the master again)
+    # the native engine's master: its channel pair on the device ("1-2")
     output_main: str
-    output_headphones: outputconfig
-    output_booth: outputconfig
-    # the headphones: the master mixed in with the CUE'd channels (by deckconfig's CUE / MASTER mix), or not (a
-    # controller that mixes the master into its headphones itself, as the DDJ-400 does in analog)
-    headphones_master_mix: bool
-    # the booth's level, a knob position 0 .. 1 (0.8 = 0 dB, client.LEVEL_UNITY; Settings > Audio > Booth), its EQ's
-    # HI / LOW (0 .. 1, the middle flat: -12 .. +6 dB); the headphones' MONO SPLIT (the CUE left, the master right)
-    booth_level: float
-    booth_eq_hi: float
-    booth_eq_low: float
-    headphones_split: bool
 
 
 @dataclass
@@ -526,8 +497,6 @@ def default_cfg():
         jog_mode="vinyl",
         time_display="elapsed",
         master_level=0.8,
-        headphones_level=0.8,
-        headphones_cue_mix=50,
         color_type=5,    # FILTER (client.COLOR_TYPES), as the engine starts
         color_param=0.5,
         music_input_device="",
@@ -558,15 +527,6 @@ def default_cfg():
         midi_input="",
         midi_jog_ticks=720,
         output_main="1-2",
-        output_headphones=outputconfig(route="off", device="", channels="3-4", audio_api="wasapi", exclusive=False,
-                                       buffer_ms=20, rate=0, clip="tanh"),
-        output_booth=outputconfig(route="off", device="", channels="1-2", audio_api="wasapi", exclusive=False,
-                                  buffer_ms=20, rate=0, clip="tanh"),
-        headphones_master_mix=True,
-        booth_level=0.8,
-        booth_eq_hi=0.5,
-        booth_eq_low=0.5,
-        headphones_split=False,
     )
     xcfg = externalsyncconfig(enabled=False, osc_host="127.0.0.1", osc_port=39321)
     # CUE points at the start of an interlude and of the outro (not between two

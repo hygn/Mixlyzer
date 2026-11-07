@@ -25,16 +25,6 @@ def _api(api: str, exclusive: bool, rate: int | None = None) -> str:
     return text
 
 
-def _bus(name: str, out) -> str:
-    if out.route == "off":
-        return f"{name}: off"
-    if out.route == "main_device":
-        return f"{name}: channels {out.channels} of the master's device"
-    rate = f"{out.rate} Hz" if out.rate else "its device's rate"
-    return (f"{name}: {_device(out.device)} channels {out.channels}, {_api(out.audio_api, out.exclusive)}, {rate}, "
-            f"buffer {out.buffer_ms} ms (its clock followed)")
-
-
 def audio_setup_lines(cfg, native: bool) -> list[str]:
     """The lines for the settings ``cfg`` (its playbackconfig and deckconfig) with the engine that plays
     (``native``)."""
@@ -57,13 +47,10 @@ def audio_setup_lines(cfg, native: bool) -> list[str]:
         f"master: {_device(pcfg.output_device)} channels {pcfg.output_main}, "
         f"{_api(pcfg.native_audio_api, pcfg.native_exclusive, pcfg.native_exclusive_rate)}, "
         f"buffer {pcfg.native_buffer_ms} ms, {stretch}",
-        _bus("headphones", pcfg.output_headphones)
-        + (f", the master mixed in (CUE / MASTER {deck.headphones_cue_mix} %)" if pcfg.headphones_master_mix else ""),
-        _bus("booth", pcfg.output_booth),
         f"process: priority {_PRIORITIES.get(pcfg.native_priority, pcfg.native_priority)}, power throttling "
         + ("the system's choice" if pcfg.native_power_throttling else "off"),
-        f"mixer: {eq}, channel fader curve {deck.fader_curve}, trim {deck.volume_trim_dbfs:+.1f} dB; last stages: "
-        f"master {pcfg.output_clip}, headphones {pcfg.output_headphones.clip}, booth {pcfg.output_booth.clip}",
+        f"mixer: {eq}, channel fader curve {deck.fader_curve}, trim {deck.volume_trim_dbfs:+.1f} dB; last stage "
+        f"{pcfg.output_clip}",
         "MIDI: " + (f'"{pcfg.midi_input}"' if pcfg.midi_input else "no input")
         + ("" if deck.midi_enabled else " (switched off)")
         + f", {mapped} messages mapped, jog {pcfg.midi_jog_ticks} ticks a turn in {deck.jog_mode.upper()} mode",

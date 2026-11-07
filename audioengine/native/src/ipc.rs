@@ -12,9 +12,7 @@
 //! [MIDI_PORTS_OFFSET, MIDI_EVENTS_OFFSET): the MIDI input ports, written when asked (op::MIDI_LIST), as the devices.
 //! [MIDI_EVENTS_OFFSET, DEVICES_OFFSET): the MIDI messages received, a ring the engine writes (deck.rs: the GUI's
 //!   own actions bound to them, and every message for the settings' MIDI learn).
-//! [DEVICES_OFFSET, OUTPUTS_OFFSET): the output devices, written when asked (op::LIST_DEVICES).
-//! [OUTPUTS_OFFSET, MIX_OFFSET): the state of the buses on devices of their own (the headphones, the booth;
-//!   out::*), written with the state under its sequence lock.
+//! [DEVICES_OFFSET, MIX_OFFSET): the output devices, written when asked (op::LIST_DEVICES).
 //! [MIX_OFFSET, SPECTRUM_OFFSET): the mixer's settings as it has them (mix::*: f64 each by key) and its meters
 //!   (mix::METERS), written with the state under its sequence lock.
 //! [SPECTRUM_OFFSET, RING_OFFSET): the master's spectrum (spectrum.rs), a ring of frames the engine writes while
@@ -23,7 +21,7 @@
 use std::sync::atomic::{AtomicU64, Ordering, fence};
 
 pub const MAGIC: u64 = u64::from_le_bytes(*b"MXAUDIC1");
-pub const VERSION: u32 = 11;
+pub const VERSION: u32 = 12;
 pub const STATE_OFFSET: usize = 64;
 pub const RING_OFFSET: usize = 172032;
 pub const RING_HEADER: usize = 64;
@@ -35,11 +33,8 @@ pub const MIN_RATE: u32 = 44_100;
 /// the main output's device in use on the first line, the system's default as "name<TAB>channels" on the second
 /// (empty: none), then one listed device a line, "name<TAB>channels". The generation is written last.
 pub const DEVICES_OFFSET: usize = 40960;
-pub const DEVICES_MAX: usize = OUTPUTS_OFFSET - DEVICES_OFFSET - 16;
-/// The buses that may play on a device of their own (device.rs BRIDGED_BUSES: 0 the headphones, 1 the booth), each
-/// a block of out::SIZE from here.
-pub const OUTPUTS_OFFSET: usize = 65536;
-/// The mixer's settings and meters (mix::*), after the buses' blocks.
+pub const DEVICES_MAX: usize = MIX_OFFSET - DEVICES_OFFSET - 16;
+/// The mixer's settings and meters (mix::*).
 pub const MIX_OFFSET: usize = 165888;
 /// The master's spectrum (spectrum.rs): [written u64 (frames ever), pad u64] + SPECTRUM_FRAMES slots of
 /// SPECTRUM_SLOT bytes, frame k at k % SPECTRUM_FRAMES: [seq u32 (k + 1, written last), pad 12 bytes, SPECTRUM_BINS
@@ -139,46 +134,9 @@ pub mod st {
     pub const MIDI_STATE: usize = DECK + 40; // u32 0 closed, 1 open, 2 the port did not open
     pub const OUT_CHANNELS: usize = DECK + 44; // u32 the output device's channels (the deck plays stereo)
     // its mixer channel's (the meter is PEAK above)
-    pub const CHANNEL_CUE: usize = DECK + 48; // u32 its headphones CUE on
     pub const KNOBS: usize = DECK + 56; // f64 x 4: its TRIM, EQ LOW, MID, HIGH knobs (0 .. 1, the middle 0 dB)
     pub const COLOR: usize = DECK + 88; // f64 its COLOR knob (0 .. 1, 0.5 off)
     pub const KEY_SHIFT: usize = DECK + 96; // f64 the key shift (semitones, any fraction)
-}
-
-/// A bus's output on a device of its own (OUTPUTS_OFFSET + k * SIZE), its fields as the main output's above.
-pub mod out {
-    pub const STATE: usize = 0; // u32 STATE_*
-    pub const STATE_OFF: u32 = 0;
-    pub const STATE_OPEN: u32 = 1;
-    pub const STATE_FAILED: u32 = 2; // not opened: tried again each second
-    pub const STATE_OPENING: u32 = 3;
-    pub const MODE: usize = 4; // u32 as st::OUTPUT_MODE
-    pub const PERIOD_MS: usize = 8; // f64 its device's period (0: not known)
-    pub const LATENCY_MS: usize = 16; // f64 its device's latency (with the interpolator's)
-    pub const QUEUED: usize = 24; // f64 frames in its bridge, ahead of its device's latency
-    pub const CAPACITY: usize = 32; // f64 frames: the buffer it keeps
-    pub const UNDERRUNS: usize = 40; // u64 frames played as silence while sound was due
-    pub const LATE: usize = 48; // u64 its output thread's late wake-ups
-    pub const MAX_GAP_MS: usize = 56; // f64
-    pub const THREAD: usize = 64; // u32 its output thread's state (sched.rs)
-    pub const CHANNELS: usize = 68; // u32 its device's channels
-    pub const DRIFT_PPM: usize = 72; // f64 its clock against the main device's (the ratio it reads at - 1)
-    pub const BUFFER_GEN: usize = 80; // u64 as st::BUFFER_GEN
-    pub const OBS_SECONDS: usize = 88; // f64
-    pub const OBS_LEVEL: usize = 96; // f64
-    pub const HIST_BUCKET_MS: usize = 104; // f64
-    pub const LOWEST_MS: usize = 112; // f64
-    pub const HIST_LEN: usize = 120; // u32
-    pub const ERRORS: usize = 124; // u32 its device's open failures
-    pub const NAME: usize = 128; // u32 length + UTF-8: the device opened
-    pub const NAME_MAX: usize = 240;
-    pub const RATE: usize = 376; // u32 its device's rate (the bus converted to it)
-    pub const HIST: usize = 384; // f64[HIST_LEN] cumulative seconds per bucket
-    pub const SIZE: usize = HIST + 8 * super::HIST_MAX;
-    /// Field ``f`` of bus ``k``'s block, as a state field (Control::put_*).
-    pub const fn at(k: usize, f: usize) -> usize {
-        super::OUTPUTS_OFFSET - super::STATE_OFFSET + k * SIZE + f
-    }
 }
 
 /// The mixer's settings (op::SET_MIXER: u32 key, f64 value; each published at MIX_OFFSET + 8 * key) and meters.
@@ -189,33 +147,18 @@ pub mod mix {
     pub const FADER_CURVE: usize = 1; // the channel fader's: 0 smooth (the GUI's), 1 steep (up fast), 2 slow
     pub const COLOR_TYPE: usize = 2; // Sound Color FX: colorfx::ColorType's code (ColorType::COUNT: none)
     pub const COLOR_PARAM: usize = 3; // its PARAMETER knob
-    pub const HP_MIX: usize = 4; // the headphones: CUE / MASTER mix (0 CUE .. 1 MASTER)
-    pub const HP_LEVEL: usize = 5; // their level
-    pub const HP_MASTER: usize = 6; // the master mixed in (0: a device mixing it in itself)
-    pub const HP_SPLIT: usize = 7; // MONO SPLIT: the CUE left, the master right
-    pub const MASTER_LEVEL: usize = 8;
-    pub const BOOTH_LEVEL: usize = 9;
-    pub const BOOTH_EQ_HI: usize = 10;
-    pub const BOOTH_EQ_LOW: usize = 11;
-    pub const KEYS: usize = 12;
+    pub const MASTER_LEVEL: usize = 4;
+    pub const KEYS: usize = 5;
     /// The keys' names (client.py MIX_KEYS; mixlyzer-audio --mix-file's --set name=value).
-    pub const NAMES: [&str; KEYS] = [
-        "eq_mode", "fader_curve", "color_type", "color_param", "hp_mix", "hp_level", "hp_master", "hp_split",
-        "master_level", "booth_level", "booth_eq_hi", "booth_eq_low",
-    ];
+    pub const NAMES: [&str; KEYS] = ["eq_mode", "fader_curve", "color_type", "color_param", "master_level"];
     /// A level knob's position at 0 dB (mixer::level_gain).
     pub const LEVEL_UNITY: f64 = 0.8;
     /// Each key's value at the start.
-    pub const DEFAULTS: [f64; KEYS] = [
-        0.0, 0.0, 5.0, 0.5, //
-        0.5, LEVEL_UNITY, 1.0, 0.0, //
-        LEVEL_UNITY, LEVEL_UNITY, 0.5, 0.5,
-    ];
+    pub const DEFAULTS: [f64; KEYS] = [0.0, 0.0, 5.0, 0.5, LEVEL_UNITY];
     /// The meters, after the keys' values (f64 linear peaks since the last publish): MIX_OFFSET + 8 * (METERS + k).
     pub const METERS: usize = 64;
     pub const METER_MASTER: usize = 0;
-    pub const METER_BOOTH: usize = 1;
-    pub const METER_COUNT: usize = 2;
+    pub const METER_COUNT: usize = 1;
     /// Value / meter ``k``'s place, as a state field (Control::put_*).
     pub const fn at(k: usize) -> usize {
         super::MIX_OFFSET - super::STATE_OFFSET + 8 * k
@@ -238,7 +181,7 @@ pub mod op {
     pub const SET_MODE: u32 = 12; // u32 1 speed / 0 none
     pub const SET_FACTOR: u32 = 13; // f64
     pub const SET_TIMESTRETCH: u32 = 14; // u32
-    pub const SET_CLIP: u32 = 15; // u32 x 3: each output's last stage (mixer::Clip), the master's, the headphones', the booth's
+    pub const SET_CLIP: u32 = 15; // u32: the master's last stage (mixer::Clip)
     pub const SET_BUFFER_MS: u32 = 16; // f64
     pub const TONE_HOLD: u32 = 17; // u32 n, i32[n]
     // 18: none (the deck's volume is its mixer channel's fader: op::SET_VOLUME)
@@ -272,18 +215,7 @@ pub mod op {
     pub const MIDI_OPTIONS: u32 = 42; // u32 a jog wheel's messages (ticks) per turn; u32 its mode (1 VINYL, 0 CDJ)
     pub const SET_TEMPO_RANGE: u32 = 43; // u32 the tempo fader's range (+-%: 6, 10, 16, 100 WIDE)
     pub const SET_METER_GAIN: u32 = 44; // f64 linear: the level meter's input, as the GUI's peak meter
-    // u8 x 6 the device's channels: main L / R, headphones L / R, booth L / R (255: not routed); the headphones'
-    // CUE / MASTER mix and level are mix::HP_*
-    pub const SET_ROUTING: u32 = 47;
-    pub const SET_CHANNEL_CUE: u32 = 49; // u32 the mixer channel's headphones CUE on
-    // a bus on a device of its own: u32 bus (0 the headphones, 1 the booth), u32 on (0: not: SET_ROUTING's channels
-    // of the main device, if any), u32 API, u32 exclusive, f64 buffer ms, u8 left, u8 right (its device's channels),
-    // u16 pad, u32 its rate (0: the device's mix format's), the device's name (u32 len + utf8; empty: the system's
-    // default)
-    pub const SET_AUX_OUTPUT: u32 = 50;
-    // the headphones: u32 the master mixed in (0: a device mixing it in itself), f64 the CUE / MASTER mix (0 CUE ..
-    // 1 MASTER), f64 their level (linear); a controller's knobs (act::HEADPHONES_MIX / LEVEL) move them later
-    pub const SET_HEADPHONES: u32 = 51;
+    pub const SET_ROUTING: u32 = 47; // u8 x 2 the device's channels the master plays on: L, R (255: none)
     // the deck's mixer channel knob: u32 which (0 TRIM, 1 EQ LOW, 2 MID, 3 HIGH, 4 COLOR), f64 its position (0 .. 1,
     // the middle 0 dB / off)
     pub const SET_MIXER_KNOB: u32 = 52;
@@ -324,25 +256,17 @@ pub mod act {
     pub const JOG_SEARCH: u32 = 37;
     /// An output: the controller's level meter (a CC, 0 - 127 over the GUI meter's -24 - 0 dBFS).
     pub const LEVEL_METER: u32 = 38;
-    // the mixer (mixer.rs): the channel's trim and EQ bands (knobs: the middle 0 dB), its headphones CUE (a press
-    // turns it on or off), the headphones' CUE / MASTER mix and level
+    // the mixer (mixer.rs): the channel's trim and EQ bands (knobs: the middle 0 dB)
     pub const TRIM: u32 = 39;
     pub const EQ_LOW: u32 = 40;
     pub const EQ_MID: u32 = 41;
     pub const EQ_HIGH: u32 = 42;
-    pub const CHANNEL_CUE: u32 = 44;
-    pub const HEADPHONES_MIX: u32 = 45;
-    pub const HEADPHONES_LEVEL: u32 = 46;
     // DJM's: the channel's COLOR knob, the others the mixer's
     pub const COLOR_KNOB: u32 = 47;
     pub const MASTER_LEVEL: u32 = 51;
-    pub const BOOTH_LEVEL: u32 = 52;
-    pub const BOOTH_EQ_HI: u32 = 53;
-    pub const BOOTH_EQ_LOW: u32 = 54;
     pub const COLOR_PARAM: u32 = 55;
     /// COLOR_SELECT + k: Sound Color FX k picked (colorfx::ColorType's code: 0 - 6, up to 62)
     pub const COLOR_SELECT: u32 = 56;
-    pub const HEADPHONES_SPLIT: u32 = 94; // MONO SPLIT on or off
     // the key shift (keyshift.rs): a semitone down / up (its fraction kept), back to 0; a fader (a value: -6 .. 6, the
     // middle 0); 5 cents down / up; KEY_SET + 6 + k: set to k (-6 .. 6)
     pub const KEY_DOWN: u32 = 80;
@@ -560,18 +484,6 @@ impl Control {
 
     pub fn put_hist(&self, hist: &[f64]) {
         self.put_hist_at(st::HIST_LEN, st::HIST, hist);
-    }
-
-    /// A short text: [u32 length + UTF-8], at most ``max`` bytes (cut at a character's start).
-    pub fn put_str(&self, field: usize, text: &str, max: usize) {
-        let mut n = text.len().min(max);
-        while !text.is_char_boundary(n) {
-            n -= 1;
-        }
-        self.put_u32(field, n as u32);
-        unsafe {
-            std::ptr::copy_nonoverlapping(text.as_ptr(), self.base.add(STATE_OFFSET + field + 4), n);
-        }
     }
 }
 

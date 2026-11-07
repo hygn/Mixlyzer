@@ -54,12 +54,12 @@ class ConsoleRecord:
 
 CONSOLE = ConsoleRecord()
 
-# an output's state as reported, without the observations' arrays and sums (BufferRecord sums those itself)
-_NOT_STATE = {"hist", "observed", "outputs", "seconds", "mean_ms", "dropout_sec"}
+# the output's state as reported, without the observations' arrays and sums (BufferRecord sums those itself)
+_NOT_STATE = {"hist", "observed", "seconds", "mean_ms", "dropout_sec"}
 
 
 class BufferRecord:
-    """Each output's buffer since the start, from the player's buffer reports (``add``: EventBus.sig_output_buffer,
+    """The output's buffer since the start, from the player's buffer reports (``add``: EventBus.sig_output_buffer,
     every 0.25 s, on the GUI thread): the time it played and its dropouts summed, its state (device, API, period,
     latency, late wake-ups, longest gap, lowest level, threads) as last reported."""
 
@@ -67,13 +67,8 @@ class BufferRecord:
         self.outputs: dict[str, dict] = {}
 
     def add(self, _queued_ms: float, stats, capacity_ms: float) -> None:
-        if not stats:
-            return
-        if "seconds" in stats:
+        if stats and "seconds" in stats:
             self._add("master", stats, stats, capacity_ms)
-        for bus, state in (stats.get("outputs") or {}).items():
-            if state is not None:
-                self._add(bus, state, state.get("observed"), float(state.get("capacity_ms", 0.0)))
 
     def _add(self, name: str, state: dict, observed: dict | None, capacity_ms: float) -> None:
         out = self.outputs.setdefault(name, {"played_sec": 0.0, "dropout_sec": 0.0})

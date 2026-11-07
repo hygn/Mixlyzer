@@ -695,8 +695,7 @@ impl Slot {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bridge::Bridge;
-    use crate::device::{Bus, CallbackState, Port};
+    use crate::device::{CallbackState, Port};
     use crate::mixer::MixParams;
     use crate::shm::Pcm;
 
@@ -720,7 +719,7 @@ mod tests {
             let port = Arc::new(Port::default());
             let params = Arc::new(MixParams::new(2));
             let ring = Arc::new(Ring::new(RATE as u64 * 5 / 2, 4, SEC, port));
-            ring.attach_bus(Bus { params: params.clone(), bridges: std::array::from_fn(|_| Arc::new(Bridge::new(RATE as u64, SEC))) });
+            ring.attach_mixer(params.clone());
             let mut s = Slot::new(RATE, 2, ring.clone(), params.strip.clone());
             if seconds > 0.0 {
                 let n = (seconds * SEC) as usize;

@@ -55,11 +55,6 @@ impl F4 {
         unsafe { F4(_mm_loadu_ps(s.as_ptr().add(i))) }
     }
     #[inline(always)]
-    pub fn store(self, s: &mut [f32], i: usize) {
-        assert!(i + 4 <= s.len());
-        unsafe { _mm_storeu_ps(s.as_mut_ptr().add(i), self.0) }
-    }
-    #[inline(always)]
     pub fn add(self, o: F4) -> F4 {
         unsafe { F4(_mm_add_ps(self.0, o.0)) }
     }
@@ -115,11 +110,6 @@ impl F4 {
         unsafe { F4(vld1q_f32(s.as_ptr().add(i))) }
     }
     #[inline(always)]
-    pub fn store(self, s: &mut [f32], i: usize) {
-        assert!(i + 4 <= s.len());
-        unsafe { vst1q_f32(s.as_mut_ptr().add(i), self.0) }
-    }
-    #[inline(always)]
     pub fn add(self, o: F4) -> F4 {
         unsafe { F4(vaddq_f32(self.0, o.0)) }
     }
@@ -170,10 +160,6 @@ impl F4 {
     #[inline(always)]
     pub fn load(s: &[f32], i: usize) -> F4 {
         F4([s[i], s[i + 1], s[i + 2], s[i + 3]])
-    }
-    #[inline(always)]
-    pub fn store(self, s: &mut [f32], i: usize) {
-        s[i..i + 4].copy_from_slice(&self.0);
     }
     #[inline(always)]
     fn zip(self, o: F4, f: impl Fn(f32, f32) -> f32) -> F4 {
@@ -255,21 +241,6 @@ impl std::ops::Mul for F4 {
     }
 }
 
-/// out += a * s, four at a time (VOLK as built has no multiply-add kernel).
-pub fn axpy(out: &mut [f32], a: &[f32], s: f32) {
-    assert!(out.len() == a.len());
-    let k = F4::splat(s);
-    let whole = out.len() / 4 * 4;
-    let mut i = 0;
-    while i < whole {
-        F4::load(a, i).mul_add(k, F4::load(out, i)).store(out, i);
-        i += 4;
-    }
-    for j in whole..out.len() {
-        out[j] += a[j] * s;
-    }
-}
-
 /// The largest |x| of ``x``, four at a time.
 pub fn peak_abs(x: &[f32]) -> f32 {
     let mut m = F4::default();
@@ -296,11 +267,7 @@ mod tests {
         let s = F4::splat(0.25).soft_sat().to_array()[0];
         assert!((s - 0.25f32.tanh()).abs() < 1e-3, "{s}");
         assert_eq!(peak_abs(&[0.1, -0.9, 0.3, 0.2, 0.5, -0.95, 0.0]), 0.95);
-        let mut o = [1.0f32; 5];
-        axpy(&mut o, &[1.0, 2.0, 3.0, 4.0, 5.0], 0.5);
-        assert_eq!(o, [1.5, 2.0, 2.5, 3.0, 3.5]);
-        let mut buf = [0f32; 6];
-        a.store(&mut buf, 2);
+        let buf = [0f32, 0.0, 1.0, -2.0, 3.0, -4.0];
         assert_eq!(F4::load(&buf, 2).to_array(), a.to_array());
     }
 }

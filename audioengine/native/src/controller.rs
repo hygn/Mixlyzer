@@ -1,8 +1,7 @@
 //! A MIDI controller: its bindings (op::MIDI_MAP: messages to actions), its messages acted on in the engine thread
 //! as they come (never through the GUI's Python), its lights and level meter. The deck's actions go to the deck, the
-//! mixer channel's trim and EQ to its channel strip, its CUE, the headphones' mix and level, the master, the booth
-//! and Sound Color FX to the mix (MixParams); the GUI's own actions (library, editor ...) are passed on to it (ipc.rs
-//! MIDI_EVENTS).
+//! mixer channel's trim and EQ to its channel strip, the master and Sound Color FX to the mix (MixParams); the GUI's
+//! own actions (library, editor ...) are passed on to it (ipc.rs MIDI_EVENTS).
 //!
 //! A binding reads a button (a note or a CC, pressed above 0), a fader (a CC, 7 or 14 bits: MSB at data1, LSB at
 //! data1 + 32, or a pitch bend; inverted on demand), a knob (a relative CC in its encoding; bound to one direction,
@@ -24,9 +23,7 @@ use crate::mixer::MixParams;
 // a binding's lamp (ipc.rs op::MIDI_MAP): 1 - 26 the JumpCUE A - Z
 pub const LAMP_PLAY: u8 = 32;
 pub const LAMP_CUE: u8 = 33;
-pub const LAMP_CHANNEL_CUE: u8 = 34; // the mixer channel's headphones CUE: lit while it is on
-// the mixer's own, lit while on: MONO SPLIT, the Sound Color FX picked (LAMP_COLOR + its code)
-pub const LAMP_HP_SPLIT: u8 = 40;
+// the mixer's own, lit while on: the Sound Color FX picked (LAMP_COLOR + its code)
 pub const LAMP_COLOR: u8 = 45;
 pub const LAMP_VINYL: u8 = 52; // the jog in VINYL mode (deck.rs lights; LAMP_COLOR's seven before it)
 // a knob's steps acted on from one message at most (a fast turn)
@@ -240,24 +237,12 @@ impl Controller {
                 gui_steps = steps;
                 continue;
             }
-            // the mixer's: the headphones, the channel's CUE, the master, the booth, Sound Color FX
+            // the mixer's: the master, Sound Color FX
             let unit = value as f64 / top;
             let pressed = d2 > 0;
             match code {
                 act::MASTER_LEVEL => {
                     mix.set(keys::MASTER_LEVEL, unit);
-                    continue;
-                }
-                act::BOOTH_LEVEL => {
-                    mix.set(keys::BOOTH_LEVEL, unit);
-                    continue;
-                }
-                act::BOOTH_EQ_HI => {
-                    mix.set(keys::BOOTH_EQ_HI, unit);
-                    continue;
-                }
-                act::BOOTH_EQ_LOW => {
-                    mix.set(keys::BOOTH_EQ_LOW, unit);
                     continue;
                 }
                 act::COLOR_PARAM => {
@@ -270,26 +255,6 @@ impl Controller {
                         let code = (c - act::COLOR_SELECT) as f64;
                         let off = ColorType::Off as u8 as f64;
                         mix.set(keys::COLOR_TYPE, if mix.get(keys::COLOR_TYPE) == code { off } else { code });
-                    }
-                    continue;
-                }
-                act::HEADPHONES_SPLIT => {
-                    if pressed {
-                        mix.step(keys::HP_SPLIT, 1);
-                    }
-                    continue;
-                }
-                act::HEADPHONES_MIX => {
-                    mix.set_cue_mix(value as f64 / top);
-                    continue;
-                }
-                act::HEADPHONES_LEVEL => {
-                    mix.set_cue_level(value as f64 / top);
-                    continue;
-                }
-                act::CHANNEL_CUE => {
-                    if d2 > 0 {
-                        mix.strip.toggle_cue(); // as a DJM's CUE buttons: a press turns it on or off
                     }
                     continue;
                 }
@@ -329,9 +294,7 @@ impl Controller {
         if self.midi.is_none() {
             return;
         }
-        let lights = slot.deck.lights(&slot.engine, now)
-            | (mix.strip.cue_on() as u64) << LAMP_CHANNEL_CUE
-            | Self::mixer_lights(mix);
+        let lights = slot.deck.lights(&slot.engine, now) | Self::mixer_lights(mix);
         if self.lamps_sent != Some(lights) {
             let before = self.lamps_sent;
             self.send_lamps(lights, before);
@@ -354,8 +317,7 @@ impl Controller {
     /// The mixer's own lights.
     fn mixer_lights(mix: &MixParams) -> u64 {
         let color = mix.get(keys::COLOR_TYPE) as u64;
-        ((mix.get(keys::HP_SPLIT) != 0.0) as u64) << LAMP_HP_SPLIT
-            | if color < ColorType::COUNT as u64 { 1u64 << (LAMP_COLOR as u64 + color) } else { 0 }
+        if color < ColorType::COUNT as u64 { 1u64 << (LAMP_COLOR as u64 + color) } else { 0 }
     }
 
     /// The bindings' lights as ``lights`` (Deck::lights and the mixer's), those that changed since ``before`` (None:
@@ -591,9 +553,7 @@ mod tests {
     fn mixer_actions() {
         let (mut c, mut d, m) = rig(&[
             (0xB0, 0x0F, 0, act::EQ_LOW),
-            (0x90, 0x54, 0, act::CHANNEL_CUE),
-            (0xB6, 0x0C, 0, act::HEADPHONES_MIX),
-            (0x96, 0x0D, 0, act::HEADPHONES_SPLIT),
+            (0xB6, 0x08, 0, act::MASTER_LEVEL),
         ]);
         c.message(&mut d, &m, 0.0, [0xB0, 0x0F, 0]); // EQ LOW to the bottom: a kill
         let x: Vec<f32> = (0..9600).map(|i| (2.0 * std::f64::consts::PI * 50.0 * (i / 2) as f64 / 48000.0).sin() as f32).collect();
@@ -603,14 +563,7 @@ mod tests {
         crate::mixer::Strip::new(48000.0, 1).process(&lane, 4800, 2, &d.engine.strip, &m.read(), &mut pfl, &mut post);
         let rms = (post[4800..].iter().map(|v| (*v as f64).powi(2)).sum::<f64>() / 4800.0).sqrt();
         assert!(rms < 0.05, "50 Hz with the low killed: {rms}");
-        c.message(&mut d, &m, 0.0, [0x90, 0x54, 0x7F]);
-        c.message(&mut d, &m, 0.0, [0x90, 0x54, 0x00]); // let go: still on
-        assert!(m.strip.cue_on());
-        c.message(&mut d, &m, 0.0, [0x90, 0x54, 0x7F]); // pressed again: off
-        assert!(!m.strip.cue_on());
-        c.message(&mut d, &m, 0.0, [0xB6, 0x0C, 127]);
-        assert_eq!(m.read().hp.0, 1.0);
-        c.message(&mut d, &m, 0.0, [0x96, 0x0D, 0x7F]); // MONO SPLIT on
-        assert!(m.read().hp_split);
+        c.message(&mut d, &m, 0.0, [0xB6, 0x08, 0]); // the master's level to the bottom: silence
+        assert_eq!(m.read().master, 0.0);
     }
 }

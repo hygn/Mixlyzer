@@ -5,8 +5,8 @@ messages, the user's file holding only the actions changed from the shipped mapp
 The actions (``ACTIONS``) are a DJ controller's, as rekordbox / a CDJ and DJM do them, not the keyboard shortcuts:
 the deck (PLAY, CUE, SHIFT + CUE to the track's start, the tempo fader and its range, pitch bend buttons, the jog
 wheel), the JumpCUE pads (JUMP; SET on an empty slot; SHIFT: delete), the CUE points (CALL, MEMORY, DELETE), beat
-jumps (1 - 32 beats), the browser (its knob turned / pressed), the mixer (the channel's fader, trim, EQ, COLOR,
-headphones CUE and level meter; the headphones' CUE / MASTER mix and level, the master's level), Sound Color FX. The
+jumps (1 - 32 beats), the browser (its knob turned / pressed), the mixer (the channel's fader, trim, EQ, COLOR and
+level meter; the master's level), Sound Color FX. The
 native audio engine reads the controller (audioengine/native/src/deck.rs, never through the GUI's Python) and does
 the deck's and the mixer's actions itself; the others (loading, the browser, edits) are passed on to the GUI, which
 runs them as its shortcuts do. The ids name deck 1 and mixer channel 1 (the deck and its channel).
@@ -16,7 +16,7 @@ a CC, "E000" a pitch bend: data 1 not read), then its options: "H" a 14-bit CC (
 a knob's turns one way only (clockwise / counterclockwise, a step an action), "I" inverted (a fader the other way up,
 a knob the other way round), and a knob's encoding: "O" 64 + steps, "T" two's complement, "S" sign and magnitude
 (none: told apart by the values, offset or two's complement). ``import_rekordbox_csv`` reads a mapping exported from
-rekordbox (DDJ-400 and the like): deck 1's column, mixer channel 1, the browser and the headphones' knobs.
+rekordbox (DDJ-400 and the like): deck 1's column, mixer channel 1, the browser.
 """
 
 from __future__ import annotations
@@ -170,10 +170,6 @@ def _mixer_actions() -> list[Action]:
                engine.ACT_COLOR_KNOB, args=a,
                tip=tr_mark("The Sound Color FX picked, on the channel: its middle off, its two flavours left and "
                            "right.")),
-        Action("mixer.ch1.cue", MIXER, tr_mark("Channel {channel}: headphones CUE"), BUTTON, engine.ACT_CHANNEL_CUE,
-               lamp=engine.LAMP_CHANNEL_CUE, args=a,
-               tip=tr_mark("A press turns it on or off: the channel's sound before its fader in the headphones. Lit "
-                           "while on.")),
         Action("mixer.ch1.level_meter", MIXER, tr_mark("Channel {channel}: level meter (output)"), METER,
                engine.ACT_LEVEL_METER, args=a,
                tip=tr_mark("The controller's level meter shows the deck's peak meter; taken from a rekordbox "
@@ -204,9 +200,6 @@ ACTIONS: tuple[Action, ...] = (
     Action("browser.zoom", BROWSER, tr_mark("Browser: waveform zoom (SHIFT + BROWSE)"), KNOB,
            gui=("playback.zoom_in", "playback.zoom_out"), tip=tr_mark("Turned: the waveform zoomed in / out.")),
     *_mixer_actions(),
-    Action("mixer.headphones_mix", MIXER, tr_mark("Headphones: CUE / MASTER"), FADER, engine.ACT_HEADPHONES_MIX,
-           tip=tr_mark("The CUE'd channels against the master in the headphones.")),
-    Action("mixer.headphones_level", MIXER, tr_mark("Headphones: level"), FADER, engine.ACT_HEADPHONES_LEVEL),
     Action("mixer.master_level", MIXER, tr_mark("Master: level"), FADER, engine.ACT_MASTER_LEVEL),
     *_effect_actions(),
 )
@@ -386,21 +379,18 @@ _REKORDBOX = {
     "EQMid": "mixer.ch1.eq_mid",
     "EQLow": "mixer.ch1.eq_low",
     "Gain": "mixer.ch1.trim",
-    "HeadphoneCue": "mixer.ch1.cue",
     # BEAT JUMP pads, rekordbox's page 2 (the default): 1, 1, 2, 2, 4, 4, 8, 8 beats, back / forward
     **{f"PAD{2 * k + 1}_BeatJump": f"deck1.beatjump_back.{beats}" for k, beats in enumerate((1, 2, 4, 8))},
     **{f"PAD{2 * k + 2}_BeatJump": f"deck1.beatjump_forward.{beats}" for k, beats in enumerate((1, 2, 4, 8))},
     **{f"PAD{i + 1}_HotCue": f"deck1.jumpcue.{c}" for i, c in enumerate(JUMPCUE_PADS)},
     **{f"PAD{i + 1}_HotCue+Shift": f"deck1.jumpcue_delete.{c}" for i, c in enumerate(JUMPCUE_PADS)},
 }
-# the browser and the headphones: one of each (the input column)
+# the browser: one of each (the input column)
 _REKORDBOX_GLOBAL = {
     "Browse": "browser.rotate",
     "Forward": "browser.press",
     "Back": "browser.back",
     "Zoom": "browser.zoom",
-    "HeadphonesMix": "mixer.headphones_mix",
-    "HeadphonesVolume": "mixer.headphones_level",
     # its CFX knob of channel 1 (the channel's COLOR)
     "CFXParameterCH1": "mixer.ch1.color",
 }

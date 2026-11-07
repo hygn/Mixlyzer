@@ -28,7 +28,6 @@ from core.settings.config import (
     playbackconfig,
     viewconfig,
 )
-from audioengine.controls import booth_eq_db_to_knob, level_db_to_knob
 from core.workflows.event_bus import EventBus
 from system.i18n import tr
 from ui.config.analysis import AnalysisSettingsMixin, build_analysis_tab
@@ -103,7 +102,6 @@ class SettingsDialog(
         self.resize(self.DIALOG_WIDTH, 860)
 
         self._current_cfg = None
-        self._cue_mix_shown = None   # the headphones' CUE / MASTER mix as last shown (_show_cue_mix)
         self._library = None      # the library's owner (set_library)
         self._initialize_library_settings(bus)
         self._initialize_search_settings(bus)
@@ -241,12 +239,6 @@ class SettingsDialog(
         self.cb_native_power.setCurrentIndex(1 if p.native_power_throttling else 0)
         self._output_device = p.output_device
         self._load_output_devices(p.output_device)
-        self.grp_output_headphones.set_config(p.output_headphones)
-        self.grp_output_headphones.cb_master_mix.setChecked(bool(p.headphones_master_mix))
-        self._show_cue_mix(int(deck.headphones_cue_mix))
-        self.grp_output_headphones.sp_cue_mix.setEnabled(bool(p.headphones_master_mix))
-        self.grp_output_booth.set_config(p.output_booth)
-        self._set_audio_mix_config(p)
         self._load_output_routes(p.output_main)
         self._set_midi_config(p)
 
@@ -293,7 +285,7 @@ class SettingsDialog(
 
     def _kept_deck(self) -> deckconfig:
         """deck.json's settings as last kept (the main screen's, a controller's: the dialog shows only the
-        metronome's sound and the headphones' CUE / MASTER mix of them)."""
+        metronome's sound of them)."""
         kept = getattr(self._current_cfg, "deckconfig", None)
         return copy.deepcopy(kept) if kept is not None else default_cfg().deckconfig
 
@@ -384,13 +376,6 @@ class SettingsDialog(
                 midi_input=self._midi_input(),
                 midi_jog_ticks=int(self.sp_midi_jog_ticks.value()),
                 output_main=str(self.cb_output_main.currentData() or "1-2"),
-                output_headphones=self.grp_output_headphones.get_config(),
-                output_booth=self.grp_output_booth.get_config(),
-                headphones_master_mix=bool(self.grp_output_headphones.cb_master_mix.isChecked()),
-                booth_level=level_db_to_knob(self.sp_booth_level.value()),
-                booth_eq_hi=booth_eq_db_to_knob(self.sp_booth_eq_hi.value()),
-                booth_eq_low=booth_eq_db_to_knob(self.sp_booth_eq_low.value()),
-                headphones_split=bool(self.cb_headphones_split.isChecked()),
             ),
             externalsyncconfig=externalsyncconfig(
                 enabled=bool(self.cb_external_sync_enabled.isChecked()),
@@ -403,8 +388,7 @@ class SettingsDialog(
         )
 
     def _get_deck_config(self) -> deckconfig:
-        """deck.json's settings: as kept, with the ones this dialog edits (the metronome's sound, the headphones'
-        CUE / MASTER mix)."""
+        """deck.json's settings: as kept, with the ones this dialog edits (the metronome's sound)."""
         deck = self._kept_deck()
         deck.metronome_wav_path = self.ed_metronome_wav_path.text().strip()
         deck.metronome_offset_msec = float(self.sp_metronome_offset_msec.value())
@@ -413,16 +397,7 @@ class SettingsDialog(
         deck.metronome_beat_volume_percent = int(self.sp_click_beat_volume.value())
         deck.metronome_beat_pitch_semitones = float(self.sp_click_beat_pitch.value())
         deck.metronome_ducking = bool(self.cb_metronome_ducking.isChecked())
-        # the CUE / MASTER mix a controller also moves: written only when changed here, else the one kept stays
-        cue_mix = int(self.grp_output_headphones.sp_cue_mix.value())
-        if cue_mix != self._cue_mix_shown:
-            deck.headphones_cue_mix = cue_mix
         return deck
-
-    def _show_cue_mix(self, value: int) -> None:
-        """The headphones' CUE / MASTER mix as kept (deck.json: this dialog's and a controller's)."""
-        self._cue_mix_shown = int(value)
-        self.grp_output_headphones.sp_cue_mix.setValue(int(value))
 
     # Buttons
     def _on_apply(self):
@@ -457,6 +432,4 @@ class SettingsDialog(
         self._load_output_routes(str(self.cb_output_main.currentData() or "1-2"))
         self._load_shortcut_settings()  # the edits not kept are dropped
         self._load_midi_settings()
-        if int(self.grp_output_headphones.sp_cue_mix.value()) == self._cue_mix_shown:   # not changed here
-            self._show_cue_mix(int(self._kept_deck().headphones_cue_mix))       # a controller's since
         self._refresh_overview()
