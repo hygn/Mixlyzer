@@ -126,6 +126,15 @@ ACTIONS: tuple[Action, ...] = (
     *(Action(f"cue.delete.{c}", CUE, tr_mark("Delete JumpCUE {letter}"), args={"letter": c}) for c in JUMPCUE_LETTERS),
     Action("cue.memory_delete", CUE, tr_mark("Delete the CUE point at the playhead"),
            tip=tr_mark("The CUE point the playhead is on, as after CALL.")),
+    # the JumpCUE editor's tools (open on a cue: its colour square)
+    Action("cue.color_bar_earlier", CUE, tr_mark("JumpCUE editor: its color one bar earlier"), repeat=True,
+           tip=tr_mark("The JumpCUEs of the color open in the JumpCUE editor.")),
+    Action("cue.color_beat_earlier", CUE, tr_mark("JumpCUE editor: its color one beat earlier"), repeat=True,
+           tip=tr_mark("The JumpCUEs of the color open in the JumpCUE editor.")),
+    Action("cue.color_beat_later", CUE, tr_mark("JumpCUE editor: its color one beat later"), repeat=True,
+           tip=tr_mark("The JumpCUEs of the color open in the JumpCUE editor.")),
+    Action("cue.color_bar_later", CUE, tr_mark("JumpCUE editor: its color one bar later"), repeat=True,
+           tip=tr_mark("The JumpCUEs of the color open in the JumpCUE editor.")),
 
     # the toolbar's channel switches (ui.deck.deck_switches)
     Action("fx.color_next", FX, tr_mark("Sound Color FX: the next effect")),

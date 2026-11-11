@@ -14,7 +14,7 @@ from ui.shortcuts import ACTIONS
 DESTRUCTIVE = {f"cue.delete.{c}" for c in "ABCDEFGH"} | {
     "cue.memory_delete", "library.reanalyze", "library.remove_from_library", "library.remove_from_playlist",
     "library.write_tags"}
-EDITS_PREFIXES = ("beatgrid.", "key.", "phrase.", "cue.set.", "cue.memory", "editor.undo", "editor.redo",
+EDITS_PREFIXES = ("beatgrid.", "key.", "phrase.", "cue.set.", "cue.memory", "cue.color_", "editor.undo", "editor.redo",
                   "editor.save", "editor.start_", "editor.end_", "editor.split", "editor.merge_", "editor.reanalyze",
                   "library.new_playlist")
 NO_DATA_IN_EDIT_GROUPS = {"beatgrid.tap", "beatgrid.zero", "key.pick", "key.root", "key.drone", "key.chord"}

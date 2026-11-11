@@ -138,6 +138,18 @@
   "cue.memory_delete": [
     "Ctrl+Shift+R"
   ],
+  "cue.color_bar_earlier": [
+    "Ctrl+G"
+  ],
+  "cue.color_beat_earlier": [
+    "Ctrl+J"
+  ],
+  "cue.color_beat_later": [
+    "Ctrl+K"
+  ],
+  "cue.color_bar_later": [
+    "Ctrl+L"
+  ],
   "fx.color_next": [
     "'"
   ],

@@ -15,7 +15,7 @@ from unit.ui_tests.qt_env import APP, drain, isolated
 from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtWidgets import QMessageBox
 
-from analyzer.music.marks import CuePoint, Phrase
+from analyzer.music.marks import CuePoint, JumpCue, Phrase
 from analyzer.music.tempo_rows import rebuild_grid_from_segments, with_end_bpm
 from audioengine import controls as deck
 from core.analysis_library.cue_points import build_cue_points_np
@@ -538,15 +538,6 @@ class JumpCueTests(EditPanelCase):
         self.assertEqual(jumps, [40.0])
         self.assertEqual(self.h["cue.jump.E"](), "JumpCUE E is not set.")
 
-    def test_slots_inserted_and_closed(self):
-        self.panel._insert_jumpcue_slot("A")
-        self.assertEqual(sorted(self.jump_cues()), ["B", "C"])
-        self.assertEqual(self.jump_cues()["B"][0], 8.0)
-        self.assertEqual({c.label: c.comment for g in self.model.jump_cues for c in g.cues}, {"B": "B", "C": "C"})
-        self.assertFalse(self.panel._can_close_jumpcue_slot("C"))      # B is not empty
-        self.panel._shift_jumpcue_slots("B", -1)
-        self.assertEqual(self.jump_cues(), {"A": (8.0, 0), "B": (40.0, 0)})
-
     def test_a_cue_dragged_onto_another_slot(self):
         self.panel._move_jumpcue("A", "D")            # into an empty slot
         self.assertEqual(self.jump_cues(), {"D": (8.0, 0), "B": (40.0, 0)})
@@ -628,6 +619,94 @@ class JumpCueTests(EditPanelCase):
         self.assertEqual({c.label: c.comment for c in self.model.jump_cues[0].cues}["A"], "A")
         self.panel._shift_jumpcue_group(0, 1)
         self.assertEqual(self.jump_cues(), {"A": (8.5, 0), "B": (40.5, 0)})
+
+    def test_the_editor_stays_open_through_its_moves(self):
+        editor = self.panel._jc_editor
+        self.panel._jc_open_editor(0)                  # A's colour square
+        self.assertEqual(editor.letter, "A")
+        editor.btn_beat_later.click()
+        editor.btn_beat_later.click()                  # clicked again: no reopening
+        self.assertEqual(self.jump_cues(), {"A": (9.0, 0), "B": (41.0, 0)})
+        editor.btn_bar_later.click()                   # to its place in the next bar (4 beats of 0.5 s)
+        self.assertEqual(self.jump_cues(), {"A": (11.0, 0), "B": (43.0, 0)})
+        editor.btn_bar_earlier.click()
+        editor.btn_beat_earlier.click()
+        self.assertEqual(self.jump_cues(), {"A": (8.5, 0), "B": (40.5, 0)})
+        self.assertEqual(editor.letter, "A")
+        self.panel._jc_open_editor(1)                  # another cue's square: the editor turns to it
+        self.assertEqual(editor.letter, "B")
+        self.panel._jc_open_editor(1)                  # its own square clicked again: closed
+        self.assertIsNone(editor.letter)
+
+    def test_a_bar_move_in_a_shorter_bar_stops_at_its_last_beat(self):
+        # 3/4 from 16 s (beat 32) on: A on the 4th beat of its 4/4 bar goes to the 3rd of the 3/4 bar after
+        self.model.set_beatgrid(self.model.beats, with_end_bpm(np.asarray([[0.0, 16.0, 120.0, 0.0, 4.0],
+                                                                           [16.0, 64.0, 120.0, 16.0, 3.0]])))
+        self.panel._set_jumpcue_groups([([JumpCue(label="A", comment="A", start=15.5, end=15.5, point=15.5)], 0)])
+        self.panel._shift_jumpcue_group(0, 1, by_bar=True)
+        self.assertEqual(self.jump_cues(), {"A": (17.0, 0)})
+
+    def test_the_editor_follows_its_cue_into_other_slots(self):
+        editor = self.panel._jc_editor
+        self.panel._jc_open_editor(0)
+        self.panel._move_jumpcue("A", "E")             # dragged
+        self.assertEqual(editor.letter, "E")
+        self.panel._move_jumpcue("B", "E")             # another cue dragged onto it: the two swap
+        self.assertEqual(editor.letter, "B")
+        self.assertEqual(self.jump_cues()["B"][0], 8.0)
+
+    def test_the_editors_comment(self):
+        editor = self.panel._jc_editor
+        self.panel._rename_jumpcue(1, "Drop")
+        self.panel._jc_open_editor(1)                  # B, named
+        self.assertEqual(editor.comment.text(), "Drop")
+        self.panel._jc_open_editor(0)                  # A: its comment just its letter, shown empty
+        self.assertEqual(editor.comment.text(), "")
+        editor.comment.setText("Chorus")
+        editor.comment.editingFinished.emit()
+        self.assertEqual({c.label: c.comment for g in self.model.jump_cues for c in g.cues}, {"A": "Chorus", "B": "Drop"})
+        self.assertEqual(self.panel.jc_slots[0].name.text(), "Chorus")
+        changes = []
+        self.model.sig_jump_cues_changed.connect(lambda *_: changes.append(1))
+        editor.comment.editingFinished.emit()          # kept again unchanged: no edit
+        self.assertEqual(changes, [])
+        editor.comment.setText("")
+        editor.comment.editingFinished.emit()          # no comment: back to its letter
+        self.assertEqual({c.label: c.comment for g in self.model.jump_cues for c in g.cues}["A"], "A")
+        editor.comment.setText("typing")               # Esc: the comment as kept again
+        QtWidgets.QApplication.sendEvent(editor.comment, QtGui.QKeyEvent(QtCore.QEvent.KeyPress, QtCore.Qt.Key_Escape,
+                                                                         QtCore.Qt.NoModifier))
+        self.assertEqual(editor.comment.text(), "")
+        self.assertEqual({c.label: c.comment for g in self.model.jump_cues for c in g.cues}["A"], "A")
+
+    def test_the_editor_picks_the_colour_and_closes_with_its_cue_or_the_track(self):
+        editor = self.panel._jc_editor
+        self.at(20.0)
+        self.h["cue.set.C"]()
+        self.panel._jc_open_editor(2)
+        color_a = self.model.jump_cues[self.jump_cues()["A"][1]].color_idx
+        editor.color_cells[color_a].click()            # C joins A's group, the editor still open
+        self.assertEqual(len(self.model.jump_cues), 1)
+        self.assertEqual(editor.letter, "C")
+        editor.btn_delete.click()
+        self.assertEqual(sorted(self.jump_cues()), ["A", "B"])
+        self.assertIsNone(editor.letter)
+        self.panel._jc_open_editor(0)
+        self.model.load(StoredAnalysis.from_arrays(arrays()), {"uid": self.UID, "path": "track.wav"}, 64.0)
+        self.assertIsNone(editor.letter)
+
+    def test_the_editors_shortcuts_and_editing_off(self):
+        editor = self.panel._jc_editor
+        self.assertEqual(self.h["cue.color_beat_later"](),
+                         "No JumpCUE is open in the editor: click a JumpCUE's color square.")
+        self.panel._jc_open_editor(1)                  # B
+        self.assertIsNone(self.h["cue.color_bar_later"]())
+        self.assertEqual(self.jump_cues(), {"A": (10.0, 0), "B": (42.0, 0)})
+        self.bus.sig_segment_reanalyze_state.emit(False)
+        self.assertFalse(editor.btn_beat_later.isEnabled())
+        self.assertTrue(editor.btn_close.isEnabled())
+        self.assertIsNotNone(self.h["cue.color_beat_later"]())
+        self.assertEqual(self.jump_cues(), {"A": (10.0, 0), "B": (42.0, 0)})
 
     def test_the_delete_shortcut_deletes_the_slots_cue(self):
         self.assertIsNone(self.h["cue.delete.B"]())

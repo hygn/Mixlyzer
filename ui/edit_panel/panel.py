@@ -166,6 +166,7 @@ class EditPanel(
         self._zeroBPM()
         self._on_keys_changed()
         self._on_phrases_changed()
+        self._close_jc_editor()            # its cue was the track before's
         self._refresh_jumpcue_slots()
         self._refresh_cue_point_slots()
         self.update_time(self._current_time)
@@ -729,6 +730,13 @@ class EditPanel(
         for letter in "ABCDEFGH":
             for op in ("jump", "set", "delete"):
                 handlers[f"cue.{op}.{letter}"] = lambda letter=letter, op=op: self._shortcut_jumpcue(letter, op)
+        editor = self._jc_editor
+        for action, btn in (("cue.color_bar_earlier", editor.btn_bar_earlier),
+                            ("cue.color_beat_earlier", editor.btn_beat_earlier),
+                            ("cue.color_beat_later", editor.btn_beat_later),
+                            ("cue.color_bar_later", editor.btn_bar_later)):
+            tooltips.tag(btn, action)
+            handlers[action] = lambda btn=btn: self._shortcut_jc_editor(btn)
         return handlers
 
     def show_page(self, index: int) -> None:
@@ -782,6 +790,13 @@ class EditPanel(
         """The CUE page at list ``list_idx`` (0 = JumpCUE, 1 = CUE points), at ``page`` when given."""
         self._show_shortcut_page(self.PAGES.index("CUE"))
         self.cue_page.show_list(list_idx, page)
+
+    def _shortcut_jc_editor(self, button: QtWidgets.QAbstractButton) -> str | None:
+        """A JumpCUE editor's tool by its shortcut, on the cue open in it (the JumpCUE list shown)."""
+        if self._jc_editor.letter is None:
+            return tr("No JumpCUE is open in the editor: click a JumpCUE's color square.")
+        self._show_cue_list(0)
+        return self._shortcut_click(button, None)
 
     def _shortcut_jumpcue(self, letter: str, op: str) -> str | None:
         """JumpCUE ``letter``'s slot by its shortcut, shown in the JumpCUE list: "jump" (JUMP), "set" (SET on its

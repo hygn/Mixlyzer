@@ -6,9 +6,11 @@ from dataclasses import replace
 import numpy as np
 from PySide6 import QtCore, QtWidgets
 
+from analyzer.music.beat_geometry import downbeat_beat_indices
 from analyzer.music.marks import JumpCue, JumpCueGroup, cues_by_point
-from ui.edit_panel.cue_slots import CuePageWidget, color_swatch_icon, slot_letter
+from ui.edit_panel.cue_slots import SLOTS_PER_PAGE, CuePageWidget, slot_letter
 from ui.edit_panel.icons import icon
+from ui.edit_panel.jumpcue_editor import JumpCueEditor
 from ui.edit_panel.quantize import beat_quantize_grid
 from core.marks.colors import JUMPCUE_PAIR_COLORS, get_jumpcue_pair_color
 from core.marks.phrases import assigned_phrases
@@ -38,10 +40,10 @@ class JumpCUEEditMixin:
     """JumpCUE list on the CUE page: 4 x 2 slots per page (A-D, E-H, then I-P ...),
     each colour | letter | name (double-click to rename) | SET / JUMP (SET on an
     empty slot). A colour is a group (the cues of one colour jump between each
-    other): the squircle's menu picks the cue's colour, which assigns its group,
-    shifts that colour's cues by a beat, moves slots and deletes the cue (the only
-    way to delete one). A cue dragged onto another slot moves there, swapping with
-    a cue already in it."""
+    other): the squircle opens the cue's editor (JumpCueEditor, open until closed),
+    which edits the cue's comment, picks its colour (its group), moves that colour's
+    cues by a beat or a bar and deletes the cue. A cue dragged onto another slot
+    moves there, swapping with a cue already in it."""
 
     def _build_jumpcue_ui(self, page: CuePageWidget) -> list[QtWidgets.QWidget]:
         """JumpCUE slots of the CUE page; returns the buttons off while editing is."""
@@ -55,19 +57,28 @@ class JumpCUEEditMixin:
 
         self.jc_slots = page.slots[0]
         for i, slot in enumerate(self.jc_slots):
-            slot.squircle.setToolTip(tr("Color (its group), beat moves, slots, delete. Drag it onto another slot to "
-                                        "move it there."))
-            slot.squircle_clicked.connect(lambda i=i: self._jc_group_menu(i))
+            slot.squircle.setToolTip(tr("Comment, color (its group), beat and bar moves, delete. Drag it onto "
+                                        "another slot to move it there."))
+            slot.squircle_clicked.connect(lambda i=i: self._jc_open_editor(i))
             slot.action_clicked.connect(lambda i=i: self._jc_set_or_jump(i))
             slot.renamed.connect(lambda name, i=i: self._rename_jumpcue(i, name))
             slot.drag_started.connect(lambda press, i=i: self._jc_drag(i, press))
             slot.dropped.connect(lambda letter, i=i: self._jc_drop(i, letter))
         page.page_changed.connect(self._refresh_jumpcue_slots)
+        # a cue's editor, under its squircle until closed (moved into the window when opened)
+        self._jc_editor = editor = JumpCueEditor(self)
+        for ci, cell in enumerate(editor.color_cells):
+            cell.clicked.connect(lambda _=False, ci=ci: self._jc_editor_color(ci))
+        for btn, steps, by_bar in ((editor.btn_bar_earlier, -1, True), (editor.btn_beat_earlier, -1, False),
+                                   (editor.btn_beat_later, 1, False), (editor.btn_bar_later, 1, True)):
+            btn.clicked.connect(lambda _=False, steps=steps, by_bar=by_bar: self._jc_editor_move(steps, by_bar))
+        editor.comment_edited.connect(self._jc_editor_comment)
+        editor.btn_delete.clicked.connect(self._jc_editor_delete)
         # the JumpCUE armed, as the player's deck reports it (its destination, s; NaN: none)
         self._jc_armed_dest = math.nan
         self.bus.sig_deck_state.connect(self._on_deck_jump)
-        # SET (an empty slot's button) and the menu's edits follow editing in
-        # _refresh_jumpcue_slots / _jc_group_menu; JUMP stays usable
+        # SET (an empty slot's button) and the editor's edits follow editing in
+        # _refresh_jumpcue_slots / _refresh_jc_editor; JUMP stays usable
         return [self.jc_reanalyze]
 
     # ---- slots ----
@@ -119,11 +130,14 @@ class JumpCUEEditMixin:
             slot.show_cue(tuple(color), cue.label, _jumpcue_name(cue), format_cue_time(point))
             slot.name.setToolTip(tr("{time} - double-click to rename").format(time=format_cue_time(point)))
             slot.set_action_lit(armed_point is not None and abs(point - armed_point) < 1e-3)
+        self._refresh_jc_editor()
 
     def _rename_jumpcue(self, slot: int, name: str) -> None:
+        self._set_jumpcue_name(self._jc_cue_at(slot), name)
+
+    def _set_jumpcue_name(self, cue: JumpCue | None, name: str) -> None:
         """The name is the cue's comment; no name keeps the comment at its letter."""
-        cue = self._jc_cue_at(slot)
-        if cue is None or not getattr(self, "_edit_enabled", True):
+        if cue is None or name == _jumpcue_name(cue) or not getattr(self, "_edit_enabled", True):
             return
         self._set_jumpcue_groups([([replace(c, comment=name or c.label) if abs(c.point - cue.point) < 1e-3 else c
                                     for c in cues], color) for cues, color in self._jumpcue_groups()])
@@ -166,42 +180,65 @@ class JumpCUEEditMixin:
             self._jc_armed_dest = dest
             self._refresh_jumpcue_slots()
 
-    # ---- group menu ----
+    # ---- a cue's editor ----
 
-    def _jc_group_menu(self, slot: int) -> None:
+    def _jc_open_editor(self, slot: int) -> None:
+        """The slot's cue in the editor (another cue's editor turns to it), open until its close button or the
+        cue's squircle clicked again."""
         cue = self._jc_cue_at(slot)
         if cue is None:
             return
-        gidx = self._jc_group_of(cue)
-        point = float(cue.point)
-        current = int(self._jump_cue_groups[gidx].color_idx)
-        menu = QtWidgets.QMenu(self)
-        menu.addSection(tr("Color (cues of one color jump between each other)"))
-        for ci, rgb in enumerate(JUMPCUE_PAIR_COLORS):
-            members = [c.label for c, gi in self._jc_cues() if int(self._jump_cue_groups[gi].color_idx) == ci]
-            act = menu.addAction(color_swatch_icon(rgb), " ".join(members) if members else tr("(unused)"))
-            act.setCheckable(True)
-            act.setChecked(current == ci)
-            act.triggered.connect(lambda _=False, ci=ci: self._set_jumpcue_color(point, ci))
-        menu.addSection(tr("This color"))
-        menu.addAction(tr("One beat earlier"), lambda: self._shift_jumpcue_group(gidx, -1))
-        menu.addAction(tr("One beat later"), lambda: self._shift_jumpcue_group(gidx, 1))
-        menu.addSection(tr("Slots"))
-        letter = cue.label
-        act = menu.addAction(tr("Insert a slot at {letter} (this and later cues move one slot on)").format(letter=letter),
-                             lambda: self._insert_jumpcue_slot(letter))
-        act.setEnabled(self._can_insert_jumpcue_slot(letter))
-        prev = chr(ord(letter) - 1) if letter > "A" else letter
-        act = menu.addAction(tr("Move into the empty slot {letter} (this and later cues move one slot back)").format(letter=prev),
-                             lambda: self._shift_jumpcue_slots(letter, -1))
-        act.setEnabled(self._can_close_jumpcue_slot(letter))
-        menu.addSeparator()
-        menu.addAction(tr("Delete JumpCUE {letter}").format(letter=letter), lambda: self._remove_jumpcue_member(point))
-        if not getattr(self, "_edit_enabled", True):
-            # every edit in this menu follows editing
-            for a in menu.actions():
-                a.setEnabled(False)
-        menu.exec(self.jc_slots[slot].squircle.mapToGlobal(QtCore.QPoint(0, self.jc_slots[slot].squircle.height())))
+        if self._jc_editor.letter == cue.label:
+            self._jc_editor.close_editor()
+            return
+        self._jc_editor.open_for(self.jc_slots[slot].squircle, cue.label, under=self.cue_page)
+        self._refresh_jc_editor()
+
+    def _close_jc_editor(self) -> None:
+        self._jc_editor.close_editor()
+
+    def _jc_edited_cue(self) -> JumpCue | None:
+        """The cue the editor edits (None: closed)."""
+        letter = self._jc_editor.letter
+        return self._jc_cue_by_letter(letter) if letter is not None else None
+
+    def _refresh_jc_editor(self) -> None:
+        """The editor as its cue is now; closed when the cue is gone (deleted, undone, another track)."""
+        editor = self._jc_editor
+        if editor.letter is None:
+            return
+        cue = self._jc_edited_cue()
+        if cue is None:
+            editor.close_editor()
+            return
+        index = ord(cue.label) - ord("A") - self.cue_page.page_start(0)
+        if 0 <= index < SLOTS_PER_PAGE:              # under the squircle that shows it, when one does
+            editor.set_anchor(self.jc_slots[index].squircle)
+        groups = self._jump_cue_groups
+        colors = [(rgb, "".join(c.label for c, gi in self._jc_cues() if int(groups[gi].color_idx) == ci))
+                  for ci, rgb in enumerate(JUMPCUE_PAIR_COLORS)]
+        editable = bool(getattr(self, "_edit_enabled", True))
+        editor.show_cue(f"{cue.label}  {format_cue_time(cue.point)}", _jumpcue_name(cue), colors,
+                        int(groups[self._jc_group_of(cue)].color_idx), editable)
+        editor.btn_delete.setToolTip(tr("Delete JumpCUE {letter}").format(letter=cue.label))
+
+    def _jc_editor_comment(self, name: str) -> None:
+        self._set_jumpcue_name(self._jc_edited_cue(), name)
+
+    def _jc_editor_color(self, color_idx: int) -> None:
+        cue = self._jc_edited_cue()
+        if cue is not None and int(self._jump_cue_groups[self._jc_group_of(cue)].color_idx) != int(color_idx):
+            self._set_jumpcue_color(float(cue.point), color_idx)
+
+    def _jc_editor_move(self, steps: int, by_bar: bool) -> None:
+        cue = self._jc_edited_cue()
+        if cue is not None:
+            self._shift_jumpcue_group(self._jc_group_of(cue), steps, by_bar)
+
+    def _jc_editor_delete(self) -> None:
+        cue = self._jc_edited_cue()
+        if cue is not None:
+            self._remove_jumpcue_member(float(cue.point))    # the editor closes with its cue
 
     # ---- JumpCUE group edits ----
     # An edit takes the groups (_jumpcue_groups: each one's cues and colour preset), changes them and sets them on
@@ -259,58 +296,51 @@ class JumpCUEEditMixin:
             groups[target][0].append(cue)
         return groups
 
-    def _shift_jumpcue_group(self, gidx: int, beats: int) -> None:
-        """Move a group (points and passages) by ``beats`` beats."""
+    def _shift_jumpcue_group(self, gidx: int, steps: int, by_bar: bool = False) -> None:
+        """Move a group (points and passages) by ``steps`` beats, or bars: each cue to its place in the bar that many
+        bars on (a cue before a bar's downbeat stays as far before it; in a shorter bar, at most its last beat)."""
         groups = self._jumpcue_groups()
         if not 0 <= gidx < len(groups) or len(self._beatgrid) == 0:
             return
         n = beat_quantize_grid(self._beatgrid, self.duration).size
         moved = []
         for cue in groups[gidx][0]:
-            k = self._nearest_beat_index(cue.point) + int(beats)
-            if not 0 <= k < n:
+            k = self._nearest_beat_index(cue.point)
+            if by_bar:
+                to = self._bar_step(float(cue.point), int(steps))
+                if to is None:
+                    return
+                beats = self._nearest_beat_index(to) - k
+            else:
+                beats = int(steps)
+            if not 0 <= k + beats < n:
                 return
-            moved.append(replace(cue, start=self._beat_at(self._nearest_beat_index(cue.start) + int(beats)),
-                                 end=self._beat_at(self._nearest_beat_index(cue.end) + int(beats)),
-                                 point=self._beat_at(k)))
+            moved.append(replace(cue, start=self._beat_at(self._nearest_beat_index(cue.start) + beats),
+                                 end=self._beat_at(self._nearest_beat_index(cue.end) + beats),
+                                 point=self._beat_at(k + beats)))
         groups[gidx] = (moved, groups[gidx][1])
         self._set_jumpcue_groups(groups)
 
-    def _can_insert_jumpcue_slot(self, letter: str) -> bool:
-        """The cues from ``letter`` on can move one slot on: the last slot (Z) is free
-        or before ``letter``."""
-        last = slot_letter(JUMPCUE_SLOTS - 1)
-        return letter < last and not any(c.label == last for c, _gi in self._jc_cues())
-
-    def _can_close_jumpcue_slot(self, letter: str) -> bool:
-        """The slot before ``letter`` exists and is empty."""
-        if letter <= "A":
-            return False
-        prev = chr(ord(letter) - 1)
-        return not any(c.label == prev for c, _gi in self._jc_cues())
-
-    def _insert_jumpcue_slot(self, letter: str) -> None:
-        self._shift_jumpcue_slots(letter, 1)
-
-    def _shift_jumpcue_slots(self, letter: str, step: int) -> None:
-        """Move the cue in slot ``letter`` and every cue in a later slot one slot on
-        (``step`` 1, leaving ``letter`` empty) or back into the empty slot before it
-        (``step`` -1). Names that are just the letter follow it."""
-        ok = self._can_insert_jumpcue_slot(letter) if step > 0 else self._can_close_jumpcue_slot(letter)
-        if not ok:
-            return
-
-        def moved(c: JumpCue) -> JumpCue:
-            if c.label < letter:
-                return c
-            nxt = chr(ord(c.label) + (1 if step > 0 else -1))
-            return replace(c, label=nxt, comment=nxt if c.comment == c.label else c.comment)
-
-        self._set_jumpcue_groups([([moved(c) for c in cues], color) for cues, color in self._jumpcue_groups()])
+    def _bar_step(self, t: float, bars: int) -> float | None:
+        """The beat ``bars`` bars from the one nearest ``t``, at its place in its bar (None: past the grid)."""
+        beats = np.asarray(self._beatgrid, dtype=float)
+        db = downbeat_beat_indices(beats, self._segments)
+        if beats.size == 0 or db.size == 0:
+            return None
+        k = int(np.argmin(np.abs(beats - float(t))))
+        bar = max(int(np.searchsorted(db, k, side="right")) - 1, 0)
+        offset = k - int(db[bar])                  # negative before the first downbeat
+        to = bar + int(bars)
+        if not 0 <= to < db.size:
+            return None
+        if offset >= 0 and to + 1 < db.size:
+            offset = min(offset, int(db[to + 1] - db[to]) - 1)
+        j = int(db[to]) + offset
+        return float(beats[j]) if 0 <= j < beats.size else None
 
     def _move_jumpcue(self, letter: str, to: str) -> None:
         """The cue in slot ``letter`` into slot ``to`` (dragged there); a cue in ``to`` takes ``letter`` (the two
-        swap). Names that are just the letter follow it."""
+        swap). Names that are just the letter follow it, and the editor its cue."""
         if letter == to or self._jc_cue_by_letter(letter) is None or not getattr(self, "_edit_enabled", True):
             return
         swap = {letter: to, to: letter}
@@ -321,7 +351,12 @@ class JumpCUEEditMixin:
                 return c
             return replace(c, label=new, comment=new if c.comment == c.label else c.comment)
 
-        self._set_jumpcue_groups([([moved(c) for c in cues], color) for cues, color in self._jumpcue_groups()])
+        edited = self._jc_editor.letter
+        if edited in swap:
+            self._jc_editor.follow(swap[edited])
+        if not self._set_jumpcue_groups([([moved(c) for c in cues], color) for cues, color in self._jumpcue_groups()]) \
+                and edited in swap:
+            self._jc_editor.follow(edited)
 
     def _remove_jumpcue_member(self, point: float) -> None:
         self._set_jumpcue_groups([([c for c in cues if abs(c.point - point) >= 1e-3], color)
