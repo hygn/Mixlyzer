@@ -120,4 +120,5 @@ class ScratchViewBox(HeldDrag, NoDragNoWheelViewBox):
         if x is None or self._grab is None:
             return None
         x0, t0 = self._grab
-        return float(np.clip(t0 - (x - x0), 0.0, max(0.0, float(self._get_duration()))))
+        # before the track's start too, as far as the engine lets the record go (it holds the bound)
+        return float(min(t0 - (x - x0), max(0.0, float(self._get_duration()))))

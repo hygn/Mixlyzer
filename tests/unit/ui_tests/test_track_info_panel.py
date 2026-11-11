@@ -90,6 +90,10 @@ class TrackInfoDragTests(unittest.TestCase):
         QtTest.QTest.mouseClick(cell, QtCore.Qt.LeftButton, QtCore.Qt.NoModifier, QtCore.QPoint(5, 5))
         self.assertEqual(self._time_row(), ["01:05.50", "/ 03:20.00"])
         self.assertEqual(changed, ["remaining", "elapsed_remaining", "elapsed"])
+        self.panel.set_time(-1.5, 200.0)                     # before the track's start
+        self.assertEqual(self._time_row(), ["−00:01.50", "/ 03:20.00"])
+        self.panel.set_time(-0.001, 200.0)
+        self.assertEqual(self._time_row(), ["00:00.00", "/ 03:20.00"])
 
     def test_a_drag_from_the_time_switches_nothing(self):
         self.panel.set_file(self.file)

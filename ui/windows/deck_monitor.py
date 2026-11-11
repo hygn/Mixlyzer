@@ -291,9 +291,11 @@ def _label(point_size: int = 0, bold: bool = False, cls=QtWidgets.QLabel, text: 
 
 
 def deck_clock(sec: Optional[float]) -> str:
-    """A time as a CDJ / rekordbox deck shows it: 02:46.4."""
-    sec = max(0.0, float(sec or 0.0))
-    minutes, rest = divmod(sec, 60.0)
+    """A time as a CDJ / rekordbox deck shows it: 02:46.4; before the track's start −00:01.2."""
+    sec = float(sec or 0.0)
+    if sec <= -0.05:                                   # shown as 0.1 or more
+        return MINUS + deck_clock(-sec)
+    minutes, rest = divmod(max(0.0, sec), 60.0)
     return f"{int(minutes):02d}:{rest:04.1f}"
 
 
@@ -463,7 +465,8 @@ class DeckPanel(QtWidgets.QFrame):
         if sign != self._pitch_sign:                  # coloured as the track info colours a change
             self._pitch_sign = sign
             self.pitch.setStyleSheet(f"color: {INFO_UP if sign > 0 else INFO_DOWN if sign < 0 else INFO_DIM};")
-        key = key_at(views.key_rows, position) if analysed and position is not None else None
+        # before the track's start: the key it starts in
+        key = key_at(views.key_rows, max(0.0, position)) if analysed and position is not None else None
         self.key.setText(idx_to_labels(key)[0] if key is not None else "--")
         duration = (float(d.row.duration) if d.row is not None and d.row.duration
                     else float(state.track.duration_sec or 0.0))
@@ -688,7 +691,8 @@ class ConnectionBar(QtWidgets.QWidget):
                "track message when the track changes and now and then. rate is the sample rate the samples are "
                "counted at (0: the file's own); playing is the deck's play / pause. The tempo message (its BPM as it "
                "plays and the track's own) sets the waveforms' zoom, the master message the MASTER mark; both are "
-               "optional. A flag may also be sent as an integer 0 / 1."))
+               "optional. A flag may also be sent as an integer 0 / 1. A position before the track's start is "
+               "negative."))
         note.setWordWrap(True)
         for w in (about, text, note):
             lay.addWidget(w)

@@ -476,6 +476,9 @@ class CueTests(EditPanelCase):
         self.at(63.9)                                  # the track end is a snap point too
         self.h["cue.memory"]()
         self.assertEqual(self.model.cue_points[-1].time_sec, 64.0)
+        self.at(-2.0)                                  # the playhead before the track's start: at its start
+        self.h["cue.memory"]()
+        self.assertEqual(self.model.cue_points[0].time_sec, 0.0)
 
     def test_delete_the_cue_point_at_the_playhead(self):
         self.at(30.0)

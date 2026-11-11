@@ -50,8 +50,8 @@ def seconds_per_unit(state: DeckState, row: Optional[TrackRow]) -> Optional[floa
 
 
 def deck_motion(state: DeckState, row: Optional[TrackRow], now: float) -> Optional[Motion]:
-    """The deck's position and speed at ``now`` (core.deck_monitor.motion, on its positions heard), within its
-    track's length when known; None when its position is not known in seconds."""
+    """The deck's position and speed at ``now`` (core.deck_monitor.motion, on its positions heard), not past its
+    track's end when known (before its start: below 0, as sent); None when its position is not known in seconds."""
     scale = seconds_per_unit(state, row)
     if scale is None:
         return None
@@ -60,7 +60,7 @@ def deck_motion(state: DeckState, row: Optional[TrackRow], now: float) -> Option
     duration = float(row.duration) if row is not None and row.duration else 0.0
     if m is None or duration <= 0.0:
         return m
-    return Motion(min(max(m.position, 0.0), duration), m.speed if m.position < duration else 0.0)
+    return Motion(min(m.position, duration), m.speed if m.position < duration else 0.0)
 
 
 

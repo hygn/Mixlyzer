@@ -365,6 +365,16 @@ class NativePlayback(unittest.TestCase):
             time.sleep(0.2)
             self.assertEqual(engine.state().playhead, held)
             self.assertEqual(engine.state().cmd_done, engine._seq)
+            # before the track's start: the playhead stands there, plays on through the start
+            engine.send(client.OP_SEEK, struct.pack("<d", -1.0 * rate))
+            time.sleep(0.1)
+            self.assertEqual(engine.state().playhead, -1.0 * rate)
+            engine.send(client.OP_PLAY)
+            time.sleep(0.4)
+            self.assertLess(engine.state().playhead, 0.0)
+            time.sleep(1.0)
+            self.assertGreater(engine.state().playhead, 0.0)
+            engine.send(client.OP_PAUSE)
         finally:
             engine.close()
         self.assertFalse(engine.alive())

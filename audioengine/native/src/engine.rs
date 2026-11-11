@@ -154,6 +154,9 @@ impl Engine {
     const STANDBY_BUFFER_SHARE: f64 = 0.3;
     // a scrub let go resumes the tempo this far ahead (input at unity): time for its stream to be prepared
     const RESUME_LEAD_SEC: f64 = 0.08;
+    // how far before the track's start the playhead may stand (silence there): the widest main view (24 s) still
+    // shows the start beside it
+    pub const LEAD_IN_SEC: f64 = 12.0;
 
     pub fn new(rate: u32, ch: usize, ring: Arc<Ring>, strip: Arc<StripParams>) -> Engine {
         let r = rate as f64;
@@ -356,6 +359,16 @@ impl Engine {
         self.len
     }
 
+    /// ``frame`` where the playhead may stand: from LEAD_IN_SEC before the track's start (silence) to its end.
+    fn bounded(&self, frame: f64) -> f64 {
+        if self.len == 0 { 0.0 } else { frame.clamp(-Self::LEAD_IN_SEC * self.rate, self.len as f64) }
+    }
+
+    /// ``frame`` where the record under the hand may be: as bounded, before the track's last frame.
+    fn bounded_scratch(&self, frame: f64) -> f64 {
+        self.bounded(frame).min(self.len.saturating_sub(1) as f64)
+    }
+
     pub fn has_track(&self) -> bool {
         self.pcm.is_some()
     }
@@ -416,7 +429,7 @@ impl Engine {
                 self.queue_for_fade();
                 let heard = self.playhead_frame();
                 self.ring.flush();
-                self.pos = sought.unwrap_or(heard).clamp(0.0, self.len as f64);
+                self.pos = self.bounded(sought.unwrap_or(heard));
             }
             self.scratching = true;
             self.scratch_target = self.pos;
@@ -462,10 +475,10 @@ impl Engine {
     }
 
     pub fn scratch_to(&mut self, frame: f64, at: f64) {
-        if !self.scratching || self.poller.is_some() {
+        if !self.scratching || self.poller.is_some() || !frame.is_finite() {
             return;
         }
-        self.scratch_target = if self.len > 0 { frame.clamp(0.0, (self.len - 1) as f64) } else { 0.0 };
+        self.scratch_target = self.bounded_scratch(frame);
         self.platter.set_target(self.scratch_target, at, false);
     }
 
@@ -474,7 +487,7 @@ impl Engine {
         for (at, x, rest) in poller.drain() {
             let anchor = *self.poll_anchor.get_or_insert(x);
             let frame = self.grab_frame - (x - anchor) * self.poll_frames_per_px;
-            self.scratch_target = if self.len > 0 { frame.clamp(0.0, (self.len - 1) as f64) } else { 0.0 };
+            self.scratch_target = self.bounded_scratch(frame);
             self.platter.set_target(self.scratch_target, at, rest);
         }
     }
@@ -489,6 +502,11 @@ impl Engine {
             Some(p) => dsp::read_at(&self.tables, p.data(), self.ch, &positions, Some(start)),
             None => vec![0.0; n * self.ch],
         };
+        for (f, p) in positions.iter().enumerate() {
+            if *p < 0.0 {
+                out[f * self.ch..(f + 1) * self.ch].fill(0.0); // before the track's start: silence
+            }
+        }
         self.scratch_gain.apply(&mut out, self.ch, &positions, start);
         let step = (self.platter.position - start) / n.max(1) as f64;
         self.append(out, start, step, Some(true));
@@ -561,7 +579,7 @@ impl Engine {
         self.probe = Some((silent_at, self.command_at, 1));
         self.ring.flush();
         self.clicks.clear_voices();
-        self.pos = sought.unwrap_or(heard).clamp(0.0, self.len as f64);
+        self.pos = self.bounded(sought.unwrap_or(heard));
         self.keep_stretcher(); // the key back at 0 while it played (set_key_shift)
     }
 
@@ -581,14 +599,18 @@ impl Engine {
         self.seek(0.0);
     }
 
+    /// The playhead to input ``frame``: before the track's start (LEAD_IN_SEC at most) it plays silence up to it.
     pub fn seek(&mut self, frame: f64) {
+        if !frame.is_finite() {
+            return;
+        }
         if self.resuming() {
             self.cancel_standby();
         }
-        let target = frame.clamp(0.0, self.len as f64);
+        let target = self.bounded(frame);
         if self.scratching {
             // the record under the hand put there (the platter starts from it; nothing rendered past the scratch)
-            self.scratch_target = if self.len > 0 { target.min((self.len - 1) as f64) } else { 0.0 };
+            self.scratch_target = self.bounded_scratch(target);
             self.grab_frame = self.scratch_target;
             self.poll_anchor = None;
             self.platter.reset(self.scratch_target, clock::now(), self.poll_frames_per_px);
@@ -864,10 +886,26 @@ impl Engine {
     /// ``pos`` at ``step`` (the deck's speed by default); the advance is the renderer's own.
     fn render(&mut self, pos: f64, n_out: usize, step: Option<f64>) -> (Vec<f32>, f64, f64) {
         let step = step.unwrap_or_else(|| self.step());
-        let Some(pcm) = self.pcm.as_ref() else { return (vec![], step, pos) };
+        if self.pcm.is_none() {
+            return (vec![], step, pos);
+        }
         if step <= 0.0 {
             return (vec![0.0; n_out * self.ch], 0.0, pos);
         }
+        if pos < 0.0 {
+            // before the track's start: silence at the deck's speed, then the track from its first frame (the
+            // renderers never read before it: a stream prepared for a place before the start is prepared at 0)
+            let before = (-pos / step).ceil() as usize;
+            if before >= n_out {
+                return (vec![0.0; n_out * self.ch], step, (pos + step * n_out as f64).min(0.0));
+            }
+            let (music, _, after) = self.render(0.0, n_out - before, Some(step));
+            let mut out = vec![0.0; before * self.ch];
+            out.extend_from_slice(&music);
+            let n = out.len() / self.ch;
+            return (out, (after - pos) / n as f64, after);
+        }
+        let Some(pcm) = self.pcm.as_ref() else { return (vec![], step, pos) };
         let t0 = clock::now();
         // the original's pitch while scrubbing (its unity), else the key's (and the speed's with MT off)
         let pitch = if self.scrubbing || self.resuming() { 1.0 } else { self.pitch_at(step) };
@@ -931,7 +969,7 @@ impl Engine {
     }
 
     fn crossfade_to(&mut self, target: f64) {
-        let target = target.clamp(0.0, self.len as f64);
+        let target = self.bounded(target);
         let n = self.fade_frames;
         let tail = if self.pos < self.len as f64 { self.render(self.pos, n, None).0 } else { vec![] };
         let (head, step, after) = self.render(target, n, None);
@@ -948,7 +986,7 @@ impl Engine {
                 self.mark_end_if_done();
                 return;
             }
-            self.pos = target.clamp(0.0, self.len as f64); // halted (silent): played from there when it starts again
+            self.pos = self.bounded(target); // halted (silent): played from there when it starts again
         }
         if step <= 0.0 {
             if !self.halted {

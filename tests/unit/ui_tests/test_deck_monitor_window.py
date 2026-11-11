@@ -150,6 +150,7 @@ class DeckMonitorWindowTests(unittest.TestCase):
         self.assertEqual(panel.pitch.text(), "+10.00%")           # as a CDJ shows the tempo
         self.assertEqual(panel.key.text(), idx_to_labels(20)[0])
         self.assertEqual((panel.remaining.text(), panel.elapsed.text()), ("−00:34.0", "00:30.0"))
+        self.assertEqual((dm.deck_clock(-3.04), dm.deck_clock(-0.04)), ("−00:03.0", "00:00.0"))  # before the start
         self.assertTrue(panel.master.property("lit"))
         self.assertFalse(self.w.panels[1].master.isVisibleTo(self.w.panels[1]))   # no deck there: no MASTER
 

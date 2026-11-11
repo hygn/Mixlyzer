@@ -113,7 +113,7 @@ class TrackPhrases:
         now = spans[i] if 0 <= i < len(spans) and t < spans[i].end else None
         nxt = spans[i + 1] if i + 1 < len(spans) else None
         left = None
-        if nxt is not None and self.beats.size:
+        if nxt is not None and self.beats.size and t >= 0.0:     # before the track's start: no beats to count
             # the beats still to come before it, its own start counted: 0 once it has started
             left = int(np.searchsorted(self.beats, nxt.start + EPS) - np.searchsorted(self.beats, t, side="right"))
             left = max(0, left)

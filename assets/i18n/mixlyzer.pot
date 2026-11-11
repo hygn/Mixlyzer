@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-11-12 02:51+0900\n"
+"POT-Creation-Date: 2026-11-12 03:26+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -3893,37 +3893,37 @@ msgstr ""
 msgid "MIDI input on, {port} not open yet. Click: off."
 msgstr ""
 
-#: ui/deck/track_info_panel.py:179
+#: ui/deck/track_info_panel.py:183
 msgid "Channel level (before the fader): -30 to +12 dB."
 msgstr ""
 
-#: ui/deck/track_info_panel.py:376
+#: ui/deck/track_info_panel.py:380
 msgid "Unload track"
 msgstr ""
 
-#: ui/deck/track_info_panel.py:572
+#: ui/deck/track_info_panel.py:576
 msgid "Click: elapsed / total, −remaining / total, elapsed / −remaining in turn."
 msgstr ""
 
-#: ui/deck/track_info_panel.py:794
+#: ui/deck/track_info_panel.py:798
 msgid "TRIM: the level before the volume fader, -24 to +9 dB. Double-click: 0 dB."
 msgstr ""
 
-#: ui/deck/track_info_panel.py:798
+#: ui/deck/track_info_panel.py:802
 #, python-brace-format
 msgid ""
 "EQ {band}: the isolator's band, from a kill to +6 dB (0 dB in the "
 "middle). Double-click: 0 dB."
 msgstr ""
 
-#: ui/deck/track_info_panel.py:800
+#: ui/deck/track_info_panel.py:804
 #, python-brace-format
 msgid ""
 "EQ {band}: the native audio engine's mixer only (Settings > Audio > "
 "Engine)."
 msgstr ""
 
-#: ui/deck/track_info_panel.py:811 ui/windows/workers.py:213
+#: ui/deck/track_info_panel.py:815 ui/windows/workers.py:213
 msgid "No Art"
 msgstr ""
 
@@ -4151,7 +4151,7 @@ msgstr ""
 msgid "Two JumpCUEs cannot share a point."
 msgstr ""
 
-#: ui/edit_panel/jumpcue.py:275 ui/edit_panel/panel.py:588
+#: ui/edit_panel/jumpcue.py:275 ui/edit_panel/panel.py:589
 msgid "Invalid JumpCUE Label"
 msgstr ""
 
@@ -4371,45 +4371,45 @@ msgstr ""
 msgid "Edit the JumpCUEs and CUE points"
 msgstr ""
 
-#: ui/edit_panel/panel.py:606
+#: ui/edit_panel/panel.py:607
 #, python-brace-format
 msgid ""
 "The edits could not be saved:\n"
 "{error}"
 msgstr ""
 
-#: ui/edit_panel/panel.py:606 ui/windows/tieup_works.py:88
+#: ui/edit_panel/panel.py:607 ui/windows/tieup_works.py:88
 msgid "Save"
 msgstr ""
 
-#: ui/edit_panel/panel.py:757
+#: ui/edit_panel/panel.py:758
 #, python-brace-format
 msgid "This shortcut does nothing on the {page} page."
 msgstr ""
 
-#: ui/edit_panel/panel.py:765
+#: ui/edit_panel/panel.py:766
 msgid "Editing waits for the segment reanalysis to finish."
 msgstr ""
 
-#: ui/edit_panel/panel.py:792
+#: ui/edit_panel/panel.py:793
 msgid "No JumpCUE is open in the editor: click a JumpCUE's color square."
 msgstr ""
 
-#: ui/edit_panel/panel.py:805 ui/edit_panel/panel.py:818
+#: ui/edit_panel/panel.py:806 ui/edit_panel/panel.py:819
 #, python-brace-format
 msgid "JumpCUE {letter} is not set."
 msgstr ""
 
-#: ui/edit_panel/panel.py:814
+#: ui/edit_panel/panel.py:815
 #, python-brace-format
 msgid "JumpCUE {letter} is already set."
 msgstr ""
 
-#: ui/edit_panel/panel.py:834
+#: ui/edit_panel/panel.py:835
 msgid "CALL works while stopped."
 msgstr ""
 
-#: ui/edit_panel/panel.py:850
+#: ui/edit_panel/panel.py:851
 msgid "No CUE point at the playhead."
 msgstr ""
 
@@ -6163,7 +6163,7 @@ msgstr ""
 msgid "The MIDI controller read or not."
 msgstr ""
 
-#: ui/shortcuts.py:111 ui/windows/deck_monitor.py:718
+#: ui/shortcuts.py:111 ui/windows/deck_monitor.py:722
 msgid "Deck Monitor"
 msgstr ""
 
@@ -7002,89 +7002,89 @@ msgstr ""
 msgid "The notices file is missing ({path}); build/notices.py makes it."
 msgstr ""
 
-#: ui/windows/deck_monitor.py:424
+#: ui/windows/deck_monitor.py:426
 msgid "Not heard"
 msgstr ""
 
-#: ui/windows/deck_monitor.py:424
+#: ui/windows/deck_monitor.py:426
 msgid "No track"
 msgstr ""
 
-#: ui/windows/deck_monitor.py:430
+#: ui/windows/deck_monitor.py:432
 msgid "(no name)"
 msgstr ""
 
-#: ui/windows/deck_monitor.py:430
+#: ui/windows/deck_monitor.py:432
 msgid "Not in the library"
 msgstr ""
 
-#: ui/windows/deck_monitor.py:527
+#: ui/windows/deck_monitor.py:530
 msgctxt "phrase unit"
 msgid "Section"
 msgstr ""
 
-#: ui/windows/deck_monitor.py:527
+#: ui/windows/deck_monitor.py:530
 msgctxt "phrase unit"
 msgid "Label"
 msgstr ""
 
-#: ui/windows/deck_monitor.py:573
+#: ui/windows/deck_monitor.py:576
 msgid "Next in"
 msgstr ""
 
-#: ui/windows/deck_monitor.py:575 ui/windows/deck_monitor.py:597
+#: ui/windows/deck_monitor.py:578 ui/windows/deck_monitor.py:600
 #, python-brace-format
 msgid "Now · {unit}"
 msgstr ""
 
-#: ui/windows/deck_monitor.py:575 ui/windows/deck_monitor.py:598
+#: ui/windows/deck_monitor.py:578 ui/windows/deck_monitor.py:601
 #, python-brace-format
 msgid "Next · {unit}"
 msgstr ""
 
-#: ui/windows/deck_monitor.py:591
+#: ui/windows/deck_monitor.py:594
 msgid "Click: the phrases by section or by label, on every deck."
 msgstr ""
 
-#: ui/windows/deck_monitor.py:649
+#: ui/windows/deck_monitor.py:652
 msgid ""
 "The address the messages are received on. 127.0.0.1 takes them from this "
 "computer only; the address of a network interface (or 0.0.0.0, all of "
 "them) takes them from that network too."
 msgstr ""
 
-#: ui/windows/deck_monitor.py:653
+#: ui/windows/deck_monitor.py:656
 msgid "The UDP port the messages are sent to."
 msgstr ""
 
-#: ui/windows/deck_monitor.py:654
+#: ui/windows/deck_monitor.py:657
 msgid "Listen"
 msgstr ""
 
-#: ui/windows/deck_monitor.py:660
+#: ui/windows/deck_monitor.py:663
 msgid "Messages"
 msgstr ""
 
-#: ui/windows/deck_monitor.py:662
+#: ui/windows/deck_monitor.py:665
 msgid "Address"
 msgstr ""
 
-#: ui/windows/deck_monitor.py:664
+#: ui/windows/deck_monitor.py:667
 msgid "Port"
 msgstr ""
 
-#: ui/windows/deck_monitor.py:670
+#: ui/windows/deck_monitor.py:673
 msgid "Messages are taken from the network: any device on it can send them."
 msgstr ""
 
-#: ui/windows/deck_monitor.py:677
+#: ui/windows/deck_monitor.py:680
 msgid ""
 "Another DJ program's decks, received as OSC while Deck Monitor's window "
 "is open (the toolbar's DECKS › MONITOR). Mixlyzer's own deck is not "
 "touched."
 msgstr ""
 
-#: ui/windows/deck_monitor.py:685
+#: ui/windows/deck_monitor.py:688
 msgid ""
 "OSC Basic: one message per deck (1 - 4), as often as the sender reads its"
 " state; a deck not heard from for a second is shown as gone. The track is"
@@ -7095,24 +7095,24 @@ msgid ""
 "playing is the deck's play / pause. The tempo message (its BPM as it "
 "plays and the track's own) sets the waveforms' zoom, the master message "
 "the MASTER mark; both are optional. A flag may also be sent as an integer"
-" 0 / 1."
+" 0 / 1. A position before the track's start is negative."
 msgstr ""
 
-#: ui/windows/deck_monitor.py:968
+#: ui/windows/deck_monitor.py:972
 #, python-brace-format
 msgid "Deck Monitor could not listen for OSC on {host}:{port} ({error})."
 msgstr ""
 
-#: ui/windows/deck_monitor.py:976
+#: ui/windows/deck_monitor.py:980
 msgid "Not listening."
 msgstr ""
 
-#: ui/windows/deck_monitor.py:981
+#: ui/windows/deck_monitor.py:985
 #, python-brace-format
 msgid "Listening on {address}; nothing received yet."
 msgstr ""
 
-#: ui/windows/deck_monitor.py:983
+#: ui/windows/deck_monitor.py:987
 #, python-brace-format
 msgid ""
 "Listening on {address}; decks {decks} heard (last message {age} s ago, "

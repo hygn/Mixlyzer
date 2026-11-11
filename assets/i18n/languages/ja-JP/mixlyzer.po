@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-11-12 02:51+0900\n"
+"POT-Creation-Date: 2026-11-12 03:26+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ja_JP\n"
@@ -4451,15 +4451,15 @@ msgstr "MIDI 入力オン、{port} はまだ開いていません。クリック
 
 # | msgid "" "The channel's level before its EQ and fader: -24 to +9 dB, the
 # | middle 0 " "dB."
-#: ui/deck/track_info_panel.py:179
+#: ui/deck/track_info_panel.py:183
 msgid "Channel level (before the fader): -30 to +12 dB."
 msgstr "チャンネルレベル（フェーダー前）: -30 ～ +12 dB。"
 
-#: ui/deck/track_info_panel.py:376
+#: ui/deck/track_info_panel.py:380
 msgid "Unload track"
 msgstr "トラックをアンロード"
 
-#: ui/deck/track_info_panel.py:572
+#: ui/deck/track_info_panel.py:576
 msgid "Click: elapsed / total, −remaining / total, elapsed / −remaining in turn."
 msgstr "クリック：経過時間 / 全体時間、−残り時間 / 全体時間、経過時間 / −残り時間の順に切り替わります。"
 
@@ -4467,11 +4467,11 @@ msgstr "クリック：経過時間 / 全体時間、−残り時間 / 全体時
 # the
 # | " "middle), kept as Settings > Playback > Trim. Double-click: 0 dB."
 # | " "middle), kept as Settings > Audio > Mixer > Trim. Double-click: 0 dB."
-#: ui/deck/track_info_panel.py:794
+#: ui/deck/track_info_panel.py:798
 msgid "TRIM: the level before the volume fader, -24 to +9 dB. Double-click: 0 dB."
 msgstr "TRIM: ボリュームフェーダーの前のレベル、-24 〜 +9 dB。ダブルクリック: 0 dB。"
 
-#: ui/deck/track_info_panel.py:798
+#: ui/deck/track_info_panel.py:802
 #, python-brace-format
 msgid ""
 "EQ {band}: the isolator's band, from a kill to +6 dB (0 dB in the "
@@ -4480,14 +4480,14 @@ msgstr "EQ {band}: アイソレーターのバンド、カットから +6 dB ま
 
 # | msgid "" "EQ {band}: the native audio engine's mixer only (Settings >
 # | Playback > " "Audio engine)."
-#: ui/deck/track_info_panel.py:800
+#: ui/deck/track_info_panel.py:804
 #, python-brace-format
 msgid ""
 "EQ {band}: the native audio engine's mixer only (Settings > Audio > "
 "Engine)."
 msgstr "EQ {band}: Native オーディオエンジンのミキサーでのみ動作します（設定 > オーディオ > エンジン）。"
 
-#: ui/deck/track_info_panel.py:811 ui/windows/workers.py:213
+#: ui/deck/track_info_panel.py:815 ui/windows/workers.py:213
 msgid "No Art"
 msgstr "アートワークなし"
 
@@ -4721,7 +4721,7 @@ msgstr "次の拍でここへジャンプ (停止中: 再生位置をここへ�
 msgid "Two JumpCUEs cannot share a point."
 msgstr "2 つの JumpCUE が同じポイントを共有することはできません。"
 
-#: ui/edit_panel/jumpcue.py:275 ui/edit_panel/panel.py:588
+#: ui/edit_panel/jumpcue.py:275 ui/edit_panel/panel.py:589
 msgid "Invalid JumpCUE Label"
 msgstr "無効な JumpCUE ラベル"
 
@@ -4964,7 +4964,7 @@ msgid "Edit the JumpCUEs and CUE points"
 msgstr "JumpCUE と CUEポイントを編集"
 
 # | msgid "The file could not be written: {error}"
-#: ui/edit_panel/panel.py:606
+#: ui/edit_panel/panel.py:607
 #, python-brace-format
 msgid ""
 "The edits could not be saved:\n"
@@ -4974,41 +4974,41 @@ msgstr ""
 "{error}"
 
 # | msgid "Shared"
-#: ui/edit_panel/panel.py:606 ui/windows/tieup_works.py:88
+#: ui/edit_panel/panel.py:607 ui/windows/tieup_works.py:88
 msgid "Save"
 msgstr "保存"
 
-#: ui/edit_panel/panel.py:757
+#: ui/edit_panel/panel.py:758
 #, python-brace-format
 msgid "This shortcut does nothing on the {page} page."
 msgstr "このショートカットは {page} ページでは何もしません。"
 
 # | msgid "Segment reanalysis finished"
-#: ui/edit_panel/panel.py:765
+#: ui/edit_panel/panel.py:766
 msgid "Editing waits for the segment reanalysis to finish."
 msgstr "区間の再解析が終わるまで編集できません。"
 
-#: ui/edit_panel/panel.py:792
+#: ui/edit_panel/panel.py:793
 msgid "No JumpCUE is open in the editor: click a JumpCUE's color square."
 msgstr "JumpCUE 編集パネルで開いている JumpCUE がありません。JumpCUE のカラーの四角をクリックしてください。"
 
 # | msgid "Delete JumpCUE {letter}"
-#: ui/edit_panel/panel.py:805 ui/edit_panel/panel.py:818
+#: ui/edit_panel/panel.py:806 ui/edit_panel/panel.py:819
 #, python-brace-format
 msgid "JumpCUE {letter} is not set."
 msgstr "JumpCUE {letter} は設定されていません。"
 
-#: ui/edit_panel/panel.py:814
+#: ui/edit_panel/panel.py:815
 #, python-brace-format
 msgid "JumpCUE {letter} is already set."
 msgstr "JumpCUE {letter} はすでに設定されています。"
 
-#: ui/edit_panel/panel.py:834
+#: ui/edit_panel/panel.py:835
 msgid "CALL works while stopped."
 msgstr "CALL は停止中にだけ動作します。"
 
 # | msgid "Split the current segment at the playhead"
-#: ui/edit_panel/panel.py:850
+#: ui/edit_panel/panel.py:851
 msgid "No CUE point at the playhead."
 msgstr "再生位置に CUEポイントがありません。"
 
@@ -7011,7 +7011,7 @@ msgstr "MIDI 入力オン / オフ"
 msgid "The MIDI controller read or not."
 msgstr "MIDI コントローラーを読み取るかどうか。"
 
-#: ui/shortcuts.py:111 ui/windows/deck_monitor.py:718
+#: ui/shortcuts.py:111 ui/windows/deck_monitor.py:722
 msgid "Deck Monitor"
 msgstr "デッキモニター"
 
@@ -8013,47 +8013,47 @@ msgid "The notices file is missing ({path}); build/notices.py makes it."
 msgstr "告知ファイルがありません（{path}）。build/notices.py で作成します。"
 
 # | msgid "(not read)"
-#: ui/windows/deck_monitor.py:424
+#: ui/windows/deck_monitor.py:426
 msgid "Not heard"
 msgstr "受信なし"
 
 # | msgid "Unload track"
-#: ui/windows/deck_monitor.py:424
+#: ui/windows/deck_monitor.py:426
 msgid "No track"
 msgstr "トラックなし"
 
 # | msgid "(none)"
-#: ui/windows/deck_monitor.py:430
+#: ui/windows/deck_monitor.py:432
 msgid "(no name)"
 msgstr "（名前なし）"
 
 # | msgid "Loading the library"
-#: ui/windows/deck_monitor.py:430
+#: ui/windows/deck_monitor.py:432
 msgid "Not in the library"
 msgstr "ライブラリになし"
 
 # | msgid "Duration"
 # | msgid "Action"
 # | msgid "Section"
-#: ui/windows/deck_monitor.py:527
+#: ui/windows/deck_monitor.py:530
 msgctxt "phrase unit"
 msgid "Section"
 msgstr "セクション"
 
 # | msgid "Level"
 # | msgid "Label"
-#: ui/windows/deck_monitor.py:527
+#: ui/windows/deck_monitor.py:530
 msgctxt "phrase unit"
 msgid "Label"
 msgstr "ラベル"
 
 # | msgid "Next page"
 # | msgid "Next"
-#: ui/windows/deck_monitor.py:573
+#: ui/windows/deck_monitor.py:576
 msgid "Next in"
 msgstr "次まで"
 
-#: ui/windows/deck_monitor.py:575 ui/windows/deck_monitor.py:597
+#: ui/windows/deck_monitor.py:578 ui/windows/deck_monitor.py:600
 #, python-brace-format
 msgid "Now · {unit}"
 msgstr "現在 · {unit}"
@@ -8061,16 +8061,16 @@ msgstr "現在 · {unit}"
 # | msgid "Next page"
 # | msgid "Next"
 # | msgid "Next in"
-#: ui/windows/deck_monitor.py:575 ui/windows/deck_monitor.py:598
+#: ui/windows/deck_monitor.py:578 ui/windows/deck_monitor.py:601
 #, python-brace-format
 msgid "Next · {unit}"
 msgstr "次 · {unit}"
 
-#: ui/windows/deck_monitor.py:591
+#: ui/windows/deck_monitor.py:594
 msgid "Click: the phrases by section or by label, on every deck."
 msgstr "クリック: すべてのデッキのフレーズをセクション単位またはラベル単位で表示します。"
 
-#: ui/windows/deck_monitor.py:649
+#: ui/windows/deck_monitor.py:652
 msgid ""
 "The address the messages are received on. 127.0.0.1 takes them from this "
 "computer only; the address of a network interface (or 0.0.0.0, all of "
@@ -8080,36 +8080,36 @@ msgstr ""
 "はこのコンピューターからのメッセージだけを受信し、ネットワークインターフェースのアドレス(またはすべてのインターフェースを表す "
 "0.0.0.0)はそのネットワークからのメッセージも受信します。"
 
-#: ui/windows/deck_monitor.py:653
+#: ui/windows/deck_monitor.py:656
 msgid "The UDP port the messages are sent to."
 msgstr "メッセージの送信先の UDP ポートです。"
 
 # | msgid "Written"
-#: ui/windows/deck_monitor.py:654
+#: ui/windows/deck_monitor.py:657
 msgid "Listen"
 msgstr "受信"
 
-#: ui/windows/deck_monitor.py:660
+#: ui/windows/deck_monitor.py:663
 msgid "Messages"
 msgstr "メッセージ"
 
 # | msgid "Added"
-#: ui/windows/deck_monitor.py:662
+#: ui/windows/deck_monitor.py:665
 msgid "Address"
 msgstr "アドレス"
 
 # | msgid "Export"
-#: ui/windows/deck_monitor.py:664
+#: ui/windows/deck_monitor.py:667
 msgid "Port"
 msgstr "ポート"
 
-#: ui/windows/deck_monitor.py:670
+#: ui/windows/deck_monitor.py:673
 msgid "Messages are taken from the network: any device on it can send them."
 msgstr "ネットワークからメッセージを受け取ります。そのネットワーク上のどの機器からも送れます。"
 
 # | msgid "" "Another DJ program's decks, received as OSC and shown in Deck
 # | Monitor's " "window. Mixlyzer's own deck is not touched."
-#: ui/windows/deck_monitor.py:677
+#: ui/windows/deck_monitor.py:680
 msgid ""
 "Another DJ program's decks, received as OSC while Deck Monitor's window "
 "is open (the toolbar's DECKS › MONITOR). Mixlyzer's own deck is not "
@@ -8128,7 +8128,18 @@ msgstr ""
 # and
 # | then. " "rate is the sample rate the samples are counted at (0: the file's
 # | own); a" " flag may also be sent as an integer 0 / 1."
-#: ui/windows/deck_monitor.py:685
+# | reads its" " state; a deck not heard from for a second is shown as gone.
+# The
+# | the track " "message's title and artist, its duration (0: not known)
+# telling
+# | versions " "apart: send the track message when the track changes and now
+# and
+# | own); " "playing is the deck's play / pause. The tempo message (its BPM as
+# | it " "plays and the track's own) sets the waveforms' zoom, the master
+# | message " "the MASTER mark; both are optional. A flag may also be sent as
+# an
+# | integer" " 0 / 1."
+#: ui/windows/deck_monitor.py:688
 msgid ""
 "OSC Basic: one message per deck (1 - 4), as often as the sender reads its"
 " state; a deck not heard from for a second is shown as gone. The track is"
@@ -8139,30 +8150,31 @@ msgid ""
 "playing is the deck's play / pause. The tempo message (its BPM as it "
 "plays and the track's own) sets the waveforms' zoom, the master message "
 "the MASTER mark; both are optional. A flag may also be sent as an integer"
-" 0 / 1."
+" 0 / 1. A position before the track's start is negative."
 msgstr ""
 "OSC Basic: デッキ（1 - 4）ごとに 1 メッセージを、送信側が状態を読むたびに送ります。1 "
 "秒間届かないデッキは消えたものとして表示します。トラックはライブラリでパス（空でも可）により探し、なければ track "
 "メッセージのタイトルとアーティストで探し、長さ（0: 不明）でバージョンを見分けます。track "
 "メッセージはトラックが変わったときと時々送ってください。rate は samples を数えたサンプルレートです（0: "
 "ファイル自身のレート）。playing はデッキの再生 / 一時停止です。tempo メッセージ（再生中の BPM とトラック自身の "
-"BPM）は波形のズームを、master メッセージは MASTER 表示を決めます。どちらも省略できます。フラグは整数 0 / 1 でも送れます。"
+"BPM）は波形のズームを、master メッセージは MASTER 表示を決めます。どちらも省略できます。フラグは整数 0 / 1 "
+"でも送れます。曲の開始より前の位置は負の値です。"
 
 # | msgid "" "External Sync could not listen for OSC on {host}:{port}
 # ({error})
 # | and has" " been disabled."
 # | msgid "" "Deck Monitor could not listen for OSC on {host}:{port} ({error})
 # | and was " "turned off."
-#: ui/windows/deck_monitor.py:968
+#: ui/windows/deck_monitor.py:972
 #, python-brace-format
 msgid "Deck Monitor could not listen for OSC on {host}:{port} ({error})."
 msgstr "デッキモニターは {host}:{port} で OSC を受信できません（{error}）。"
 
-#: ui/windows/deck_monitor.py:976
+#: ui/windows/deck_monitor.py:980
 msgid "Not listening."
 msgstr "受信していません。"
 
-#: ui/windows/deck_monitor.py:981
+#: ui/windows/deck_monitor.py:985
 #, python-brace-format
 msgid "Listening on {address}; nothing received yet."
 msgstr "{address} で受信中。まだ何も受信していません。"
@@ -8170,7 +8182,7 @@ msgstr "{address} で受信中。まだ何も受信していません。"
 # | msgid "" "Listening on {address}; following deck {deck} (last message
 # {age}
 # | s ago, " "from {sender})."
-#: ui/windows/deck_monitor.py:983
+#: ui/windows/deck_monitor.py:987
 #, python-brace-format
 msgid ""
 "Listening on {address}; decks {decks} heard (last message {age} s ago, "

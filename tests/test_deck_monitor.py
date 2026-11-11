@@ -46,11 +46,14 @@ class MessageTests(unittest.TestCase):
         self.assertEqual((ok.deck, ok.loaded, ok.playing, ok.samples, ok.rate, ok.track.path),
                          (2, True, False, 44100, 44100, "/m/a.flac"))
         self.assertEqual(ob.state_message(ob.TIME_ADDRESS, [1, "", True, True, 3.5], 1.0).track, TrackInfo())
+        # before the track's start: below 0
+        self.assertEqual(ob.state_message(ob.TIME_ADDRESS, [1, "", True, False, -1.5], 1.0).seconds, -1.5)
+        self.assertEqual(ob.state_message(ob.SAMPLES_ADDRESS, [1, "", True, False, -4410, 44100], 1.0).samples, -4410)
         for args in ([True, "/a", True, True, 1.0],          # a bool is no deck
                      [0, "/a", True, True, 1.0],             # decks from 1
                      [5, "/a", True, True, 1.0],             # to 4
                      [1, "/a", 2, True, 1.0],                # a flag 0 / 1
-                     [1, "/a", True, True, -1.0],
+                     [1, "/a", True, True, -1e8],
                      [1, "/a", True, True, float("nan")],
                      [1, "/a", True, True]):
             with self.subTest(args):
@@ -121,6 +124,8 @@ class ReadoutTests(unittest.TestCase):
         last = TrackPhrases(self.phrases, self.beats, self.rows).at(50.0)
         self.assertEqual((last.now.label, last.next, last.left_beats), ("CHORUS", None, None))
         self.assertEqual(TrackPhrases((), None, None).at(1.0).now, None)
+        before = TrackPhrases(self.phrases, self.beats, self.rows).at(-2.0)   # before the track's start
+        self.assertEqual((before.now, before.next.name, before.left_beats), (None, "INTRO", None))   # no beats there
 
     def test_by_label_a_run_of_one_label_is_one(self):
         now = TrackPhrases(self.phrases, self.beats, self.rows).at(30.0, LABEL)
@@ -183,6 +188,7 @@ class MatchTests(unittest.TestCase):
         self.assertIsNone(deck_motion(state, None, 5.0))                            # not found: not known
         self.assertAlmostEqual(seconds_per_unit(DeckState(1, True, True, samples=1, rate=48000), None), 1 / 48000)
         self.assertEqual(deck_motion(DeckState(1, True, True, seconds=999.0), self.full, 0.0).position, 240.0)
+        self.assertEqual(deck_motion(DeckState(1, True, False, seconds=-3.0), self.full, 0.0).position, -3.0)
 
 
 def _heard(start: float, until: float, position, rate: float = 120.0):

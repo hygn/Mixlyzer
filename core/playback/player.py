@@ -302,7 +302,7 @@ class _AudioWorker(QtCore.QObject):
     def seek(self, sec: float) -> None:
         if not self._track_ready:
             return
-        self.feeder.seek(int(round(max(0.0, sec) * self.rate)))
+        self.feeder.seek(int(round(sec * self.rate)))     # the engine bounds it (before the start: native only)
 
     # The deck (src/deck.rs / PythonDeck)
     def deck_action(self, code: int, pressed: bool) -> None:

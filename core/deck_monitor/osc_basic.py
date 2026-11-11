@@ -48,11 +48,11 @@ def _flag(value) -> Optional[bool]:
     return None
 
 
-def _number(value) -> Optional[float]:
+def _number(value, lowest: float = 0.0) -> Optional[float]:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         return None
     value = float(value)
-    return value if 0.0 <= value < 1e7 else None      # also refuses NaN
+    return value if lowest <= value < 1e7 else None      # also refuses NaN
 
 
 def _text(value) -> Optional[str]:
@@ -73,7 +73,7 @@ def state_message(address: str, args: list, now: float) -> Optional[DeckState]:
         return None
     track = TrackInfo(path=path.strip())
     if address == TIME_ADDRESS:
-        seconds = _number(args[4]) if len(args) == 5 else None
+        seconds = _number(args[4], lowest=-1e7) if len(args) == 5 else None   # before the track's start: < 0
         if seconds is None:
             return None
         return DeckState(deck, loaded, playing, seconds=seconds, track=track, received_at=now)
@@ -82,7 +82,7 @@ def state_message(address: str, args: list, now: float) -> Optional[DeckState]:
     samples, rate = args[4], args[5]
     if isinstance(samples, bool) or not isinstance(samples, int) or isinstance(rate, bool) or not isinstance(rate, int):
         return None
-    if samples < 0 or not 0 <= rate <= 1_000_000:
+    if not 0 <= rate <= 1_000_000:
         return None
     return DeckState(deck, loaded, playing, samples=samples, rate=rate, track=track, received_at=now)
 

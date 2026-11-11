@@ -357,10 +357,11 @@ impl Deck {
         }
     }
 
-    /// The nearest beat or track edge (ui/edit_panel/quantize.py), the position itself without beats.
+    /// The nearest beat or track edge (ui/edit_panel/quantize.py), the position itself without beats (within the
+    /// track: a cue point is never before its start, where the playhead may stand).
     fn quantize(&self, pos: f64, len: f64) -> f64 {
         if self.beats.is_empty() {
-            return pos;
+            return pos.clamp(0.0, len);
         }
         let mut best = 0.0;
         for &p in self.beats.iter().filter(|&&b| b >= 0.0 && b <= len).chain([0.0, len].iter()) {
@@ -499,8 +500,7 @@ impl Deck {
             }
             act::JOG_SCRATCH | act::JOG_BEND if self.jog_held => {
                 let frames = ticks * JOG_TURN_SEC * self.rate / self.jog_ticks as f64;
-                let target = (e.scratch_target() + frames).clamp(0.0, e.len_frames().saturating_sub(1) as f64);
-                e.scratch_to(target, at);
+                e.scratch_to(e.scratch_target() + frames, at); // as far as the engine lets the record go
                 self.jog_last = at;
                 self.jog_rested = false;
             }
@@ -1319,5 +1319,87 @@ mod tests {
         r.pump(100);
         let speed = r.at() - from; // a second heard
         assert!((speed - 1.06).abs() < 0.01, "after the jump: {speed} s a second (the tempo 1.06)");
+    }
+
+    impl Rig {
+        /// ``blocks`` pumped, the device's output kept: the first frame above silence (s from now), if any.
+        fn sound_from(&mut self, blocks: usize) -> Option<f64> {
+            let frames = self.out.len() / 2;
+            for b in 0..blocks {
+                self.pump(1);
+                if let Some(f) = self.out.chunks(2).position(|x| x[0].abs() > 1e-6 || x[1].abs() > 1e-6) {
+                    return Some((b * frames + f) as f64 / SEC);
+                }
+            }
+            None
+        }
+    }
+
+    #[test]
+    fn before_the_start_the_playhead_plays_silence_up_to_it() {
+        let mut r = Rig::new(10.0, false, &[], &[]);
+        r.seek(-0.5);
+        assert!(near(r.at(), -0.5), "stands at {}", r.at());
+        r.tap(act::PLAY_PAUSE);
+        let sound = r.sound_from(100).expect("the track heard");
+        assert!((sound - 0.5).abs() < 0.001, "the track's first frame heard {sound} s after play, not 0.5");
+        r.pump(50);
+        assert!((r.at() - 0.5).abs() < 0.02, "played on from its start: {}", r.at());
+        r.seek(-30.0); // as far as LEAD_IN_SEC
+        r.tap(act::PLAY_PAUSE);
+        assert!(near(r.at(), -Engine::LEAD_IN_SEC), "{}", r.at());
+    }
+
+    #[test]
+    fn before_the_start_with_the_time_stretch_the_stream_starts_with_the_track() {
+        let mut r = Rig::new(10.0, false, &[], &[]);
+        r.s.engine.set_timestretch(true);
+        r.s.engine.set_tempo(1.06);
+        r.seek(-0.3);
+        r.pump(20); // stopped: the stream from the start prepared
+        r.tap(act::PLAY_PAUSE);
+        let sound = r.sound_from(100).expect("the track heard");
+        assert!((sound - 0.3 / 1.06).abs() < 0.01, "heard {sound} s after play, not {}", 0.3 / 1.06);
+        // a seek before the start while it plays (the standby's): silence, then the track again at the tempo
+        r.pump(50);
+        r.seek(-0.2);
+        let switched = (0..60).any(|_| {
+            r.pump(1);
+            r.at() < 0.0 // its stream prepared a little each tick, then switched to
+        });
+        assert!(switched, "never before the start: {}", r.at());
+        let from = r.at();
+        r.pump(100);
+        assert!((r.at() - from - 1.06).abs() < 0.02, "a second at the tempo: {} s", r.at() - from);
+    }
+
+    #[test]
+    fn a_cue_point_is_never_set_before_the_start() {
+        for beats in [false, true] {
+            let mut r = Rig::new(10.0, beats, &[], &[]);
+            r.seek(-1.0);
+            r.tap(act::CUE);
+            assert!(near(r.cue(), 0.0) && near(r.at(), 0.0), "beats {beats}: cue {} playhead {}", r.cue(), r.at());
+        }
+    }
+
+    #[test]
+    fn the_record_dragged_before_the_start_is_silent() {
+        let mut r = Rig::new(10.0, false, &[], &[]);
+        r.s.engine.grab(true, 0.0);
+        r.s.engine.scratch_to(-30.0 * SEC, clock::now());
+        assert!(near(r.s.engine.scratch_target() / SEC, -Engine::LEAD_IN_SEC));
+        r.s.engine.grab(false, 0.0);
+        r.seek(-1.0);
+        r.s.engine.grab(true, 0.0);
+        let now = clock::now();
+        for k in 1..=40 {
+            // the hand at twice the speed, back and forth, half a second before the start
+            let to = -1.0 + 0.02 * if k <= 20 { k } else { 40 - k } as f64;
+            r.s.engine.scratch_to(to * SEC, now + 0.01 * k as f64);
+            assert!(r.sound_from(1).is_none(), "heard at {to} s, before the start");
+        }
+        r.s.engine.grab(false, 0.0);
+        assert!(r.at() < 0.0, "let go before the start: {}", r.at());
     }
 }

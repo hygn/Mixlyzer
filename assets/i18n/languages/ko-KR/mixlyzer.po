@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-11-12 02:51+0900\n"
+"POT-Creation-Date: 2026-11-12 03:26+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ko_KR\n"
@@ -4452,15 +4452,15 @@ msgstr "MIDI 입력 켜짐, {port} 아직 열리지 않음. 클릭: 끄기."
 
 # | msgid "" "The channel's level before its EQ and fader: -24 to +9 dB, the
 # | middle 0 " "dB."
-#: ui/deck/track_info_panel.py:179
+#: ui/deck/track_info_panel.py:183
 msgid "Channel level (before the fader): -30 to +12 dB."
 msgstr "채널 레벨(페이더 전): -30 ~ +12 dB."
 
-#: ui/deck/track_info_panel.py:376
+#: ui/deck/track_info_panel.py:380
 msgid "Unload track"
 msgstr "트랙 내리기"
 
-#: ui/deck/track_info_panel.py:572
+#: ui/deck/track_info_panel.py:576
 msgid "Click: elapsed / total, −remaining / total, elapsed / −remaining in turn."
 msgstr "클릭: 경과 시간 / 전체 시간, −남은 시간 / 전체 시간, 경과 시간 / −남은 시간 순으로 바뀝니다."
 
@@ -4468,11 +4468,11 @@ msgstr "클릭: 경과 시간 / 전체 시간, −남은 시간 / 전체 시간,
 # the
 # | " "middle), kept as Settings > Playback > Trim. Double-click: 0 dB."
 # | " "middle), kept as Settings > Audio > Mixer > Trim. Double-click: 0 dB."
-#: ui/deck/track_info_panel.py:794
+#: ui/deck/track_info_panel.py:798
 msgid "TRIM: the level before the volume fader, -24 to +9 dB. Double-click: 0 dB."
 msgstr "TRIM: 볼륨 페이더 앞의 레벨, -24 ~ +9 dB. 더블클릭: 0 dB."
 
-#: ui/deck/track_info_panel.py:798
+#: ui/deck/track_info_panel.py:802
 #, python-brace-format
 msgid ""
 "EQ {band}: the isolator's band, from a kill to +6 dB (0 dB in the "
@@ -4481,14 +4481,14 @@ msgstr "EQ {band}: 아이솔레이터 밴드, 차단부터 +6 dB까지(가운데
 
 # | msgid "" "EQ {band}: the native audio engine's mixer only (Settings >
 # | Playback > " "Audio engine)."
-#: ui/deck/track_info_panel.py:800
+#: ui/deck/track_info_panel.py:804
 #, python-brace-format
 msgid ""
 "EQ {band}: the native audio engine's mixer only (Settings > Audio > "
 "Engine)."
 msgstr "EQ {band}: Native 오디오 엔진의 믹서에서만 동작합니다(설정 > 오디오 > 엔진)."
 
-#: ui/deck/track_info_panel.py:811 ui/windows/workers.py:213
+#: ui/deck/track_info_panel.py:815 ui/windows/workers.py:213
 msgid "No Art"
 msgstr "아트 없음"
 
@@ -4722,7 +4722,7 @@ msgstr "다음 박에서 여기로 점프 (정지 중: 플레이헤드를 여기
 msgid "Two JumpCUEs cannot share a point."
 msgstr "두 JumpCUE가 같은 지점을 가질 수 없습니다."
 
-#: ui/edit_panel/jumpcue.py:275 ui/edit_panel/panel.py:588
+#: ui/edit_panel/jumpcue.py:275 ui/edit_panel/panel.py:589
 msgid "Invalid JumpCUE Label"
 msgstr "잘못된 JumpCUE 라벨"
 
@@ -4965,7 +4965,7 @@ msgid "Edit the JumpCUEs and CUE points"
 msgstr "JumpCUE와 CUE 포인트 편집"
 
 # | msgid "The file could not be written: {error}"
-#: ui/edit_panel/panel.py:606
+#: ui/edit_panel/panel.py:607
 #, python-brace-format
 msgid ""
 "The edits could not be saved:\n"
@@ -4975,41 +4975,41 @@ msgstr ""
 "{error}"
 
 # | msgid "Shared"
-#: ui/edit_panel/panel.py:606 ui/windows/tieup_works.py:88
+#: ui/edit_panel/panel.py:607 ui/windows/tieup_works.py:88
 msgid "Save"
 msgstr "저장"
 
-#: ui/edit_panel/panel.py:757
+#: ui/edit_panel/panel.py:758
 #, python-brace-format
 msgid "This shortcut does nothing on the {page} page."
 msgstr "이 단축키는 {page} 페이지에서는 아무것도 하지 않습니다."
 
 # | msgid "Segment reanalysis finished"
-#: ui/edit_panel/panel.py:765
+#: ui/edit_panel/panel.py:766
 msgid "Editing waits for the segment reanalysis to finish."
 msgstr "구간 재분석이 끝날 때까지 편집할 수 없습니다."
 
-#: ui/edit_panel/panel.py:792
+#: ui/edit_panel/panel.py:793
 msgid "No JumpCUE is open in the editor: click a JumpCUE's color square."
 msgstr "JumpCUE 편집 창에 열린 JumpCUE가 없습니다. JumpCUE의 색 사각형을 누르세요."
 
 # | msgid "Delete JumpCUE {letter}"
-#: ui/edit_panel/panel.py:805 ui/edit_panel/panel.py:818
+#: ui/edit_panel/panel.py:806 ui/edit_panel/panel.py:819
 #, python-brace-format
 msgid "JumpCUE {letter} is not set."
 msgstr "JumpCUE {letter}가 설정되어 있지 않습니다."
 
-#: ui/edit_panel/panel.py:814
+#: ui/edit_panel/panel.py:815
 #, python-brace-format
 msgid "JumpCUE {letter} is already set."
 msgstr "JumpCUE {letter}가 이미 설정되어 있습니다."
 
-#: ui/edit_panel/panel.py:834
+#: ui/edit_panel/panel.py:835
 msgid "CALL works while stopped."
 msgstr "CALL은 정지 중에만 동작합니다."
 
 # | msgid "Split the current segment at the playhead"
-#: ui/edit_panel/panel.py:850
+#: ui/edit_panel/panel.py:851
 msgid "No CUE point at the playhead."
 msgstr "플레이헤드에 CUE 포인트가 없습니다."
 
@@ -7006,7 +7006,7 @@ msgstr "MIDI 입력 켜기 / 끄기"
 msgid "The MIDI controller read or not."
 msgstr "MIDI 컨트롤러를 읽을지 여부입니다."
 
-#: ui/shortcuts.py:111 ui/windows/deck_monitor.py:718
+#: ui/shortcuts.py:111 ui/windows/deck_monitor.py:722
 msgid "Deck Monitor"
 msgstr "덱 모니터"
 
@@ -8010,47 +8010,47 @@ msgid "The notices file is missing ({path}); build/notices.py makes it."
 msgstr "고지 파일이 없습니다({path}). build/notices.py로 만듭니다."
 
 # | msgid "(not read)"
-#: ui/windows/deck_monitor.py:424
+#: ui/windows/deck_monitor.py:426
 msgid "Not heard"
 msgstr "수신 없음"
 
 # | msgid "Unload track"
-#: ui/windows/deck_monitor.py:424
+#: ui/windows/deck_monitor.py:426
 msgid "No track"
 msgstr "곡 없음"
 
 # | msgid "(none)"
-#: ui/windows/deck_monitor.py:430
+#: ui/windows/deck_monitor.py:432
 msgid "(no name)"
 msgstr "(이름 없음)"
 
 # | msgid "Loading the library"
-#: ui/windows/deck_monitor.py:430
+#: ui/windows/deck_monitor.py:432
 msgid "Not in the library"
 msgstr "라이브러리에 없음"
 
 # | msgid "Duration"
 # | msgid "Action"
 # | msgid "Section"
-#: ui/windows/deck_monitor.py:527
+#: ui/windows/deck_monitor.py:530
 msgctxt "phrase unit"
 msgid "Section"
 msgstr "섹션"
 
 # | msgid "Level"
 # | msgid "Label"
-#: ui/windows/deck_monitor.py:527
+#: ui/windows/deck_monitor.py:530
 msgctxt "phrase unit"
 msgid "Label"
 msgstr "라벨"
 
 # | msgid "Next page"
 # | msgid "Next"
-#: ui/windows/deck_monitor.py:573
+#: ui/windows/deck_monitor.py:576
 msgid "Next in"
 msgstr "다음까지"
 
-#: ui/windows/deck_monitor.py:575 ui/windows/deck_monitor.py:597
+#: ui/windows/deck_monitor.py:578 ui/windows/deck_monitor.py:600
 #, python-brace-format
 msgid "Now · {unit}"
 msgstr "지금 · {unit}"
@@ -8058,16 +8058,16 @@ msgstr "지금 · {unit}"
 # | msgid "Next page"
 # | msgid "Next"
 # | msgid "Next in"
-#: ui/windows/deck_monitor.py:575 ui/windows/deck_monitor.py:598
+#: ui/windows/deck_monitor.py:578 ui/windows/deck_monitor.py:601
 #, python-brace-format
 msgid "Next · {unit}"
 msgstr "다음 · {unit}"
 
-#: ui/windows/deck_monitor.py:591
+#: ui/windows/deck_monitor.py:594
 msgid "Click: the phrases by section or by label, on every deck."
 msgstr "클릭: 모든 덱의 프레이즈를 섹션 단위 또는 라벨 단위로 봅니다."
 
-#: ui/windows/deck_monitor.py:649
+#: ui/windows/deck_monitor.py:652
 msgid ""
 "The address the messages are received on. 127.0.0.1 takes them from this "
 "computer only; the address of a network interface (or 0.0.0.0, all of "
@@ -8076,36 +8076,36 @@ msgstr ""
 "메시지를 받을 주소입니다. 127.0.0.1은 이 컴퓨터에서 온 메시지만 받고, 네트워크 인터페이스의 주소(또는 모든 인터페이스인 "
 "0.0.0.0)는 그 네트워크에서 온 메시지도 받습니다."
 
-#: ui/windows/deck_monitor.py:653
+#: ui/windows/deck_monitor.py:656
 msgid "The UDP port the messages are sent to."
 msgstr "메시지를 보내는 UDP 포트입니다."
 
 # | msgid "Written"
-#: ui/windows/deck_monitor.py:654
+#: ui/windows/deck_monitor.py:657
 msgid "Listen"
 msgstr "수신"
 
-#: ui/windows/deck_monitor.py:660
+#: ui/windows/deck_monitor.py:663
 msgid "Messages"
 msgstr "메시지"
 
 # | msgid "Added"
-#: ui/windows/deck_monitor.py:662
+#: ui/windows/deck_monitor.py:665
 msgid "Address"
 msgstr "주소"
 
 # | msgid "Export"
-#: ui/windows/deck_monitor.py:664
+#: ui/windows/deck_monitor.py:667
 msgid "Port"
 msgstr "포트"
 
-#: ui/windows/deck_monitor.py:670
+#: ui/windows/deck_monitor.py:673
 msgid "Messages are taken from the network: any device on it can send them."
 msgstr "네트워크에서 메시지를 받습니다. 그 네트워크의 어느 기기든 보낼 수 있습니다."
 
 # | msgid "" "Another DJ program's decks, received as OSC and shown in Deck
 # | Monitor's " "window. Mixlyzer's own deck is not touched."
-#: ui/windows/deck_monitor.py:677
+#: ui/windows/deck_monitor.py:680
 msgid ""
 "Another DJ program's decks, received as OSC while Deck Monitor's window "
 "is open (the toolbar's DECKS › MONITOR). Mixlyzer's own deck is not "
@@ -8124,7 +8124,18 @@ msgstr ""
 # and
 # | then. " "rate is the sample rate the samples are counted at (0: the file's
 # | own); a" " flag may also be sent as an integer 0 / 1."
-#: ui/windows/deck_monitor.py:685
+# | reads its" " state; a deck not heard from for a second is shown as gone.
+# The
+# | the track " "message's title and artist, its duration (0: not known)
+# telling
+# | versions " "apart: send the track message when the track changes and now
+# and
+# | own); " "playing is the deck's play / pause. The tempo message (its BPM as
+# | it " "plays and the track's own) sets the waveforms' zoom, the master
+# | message " "the MASTER mark; both are optional. A flag may also be sent as
+# an
+# | integer" " 0 / 1."
+#: ui/windows/deck_monitor.py:688
 msgid ""
 "OSC Basic: one message per deck (1 - 4), as often as the sender reads its"
 " state; a deck not heard from for a second is shown as gone. The track is"
@@ -8135,30 +8146,30 @@ msgid ""
 "playing is the deck's play / pause. The tempo message (its BPM as it "
 "plays and the track's own) sets the waveforms' zoom, the master message "
 "the MASTER mark; both are optional. A flag may also be sent as an integer"
-" 0 / 1."
+" 0 / 1. A position before the track's start is negative."
 msgstr ""
 "OSC Basic: 덱(1 - 4)마다 메시지 하나를, 송신 측이 상태를 읽을 때마다 보냅니다. 1초 동안 소식이 없는 덱은 사라진"
 " 것으로 표시합니다. 곡은 라이브러리에서 경로(비어 있어도 됨)로 찾고, 없으면 track 메시지의 제목과 아티스트로 찾으며 "
 "길이(0: 모름)로 버전을 가립니다. track 메시지는 곡이 바뀔 때와 가끔 보내세요. rate는 samples를 센 "
 "샘플레이트입니다(0: 파일 자체의 레이트). playing은 덱의 재생 / 일시정지입니다. tempo 메시지(재생 중인 BPM과 곡"
 " 자체의 BPM)는 파형의 줌을, master 메시지는 MASTER 표시를 정하며 둘 다 보내지 않아도 됩니다. 플래그는 정수 0 "
-"/ 1로 보내도 됩니다."
+"/ 1로 보내도 됩니다. 곡 시작 전의 위치는 음수입니다."
 
 # | msgid "" "External Sync could not listen for OSC on {host}:{port}
 # ({error})
 # | and has" " been disabled."
 # | msgid "" "Deck Monitor could not listen for OSC on {host}:{port} ({error})
 # | and was " "turned off."
-#: ui/windows/deck_monitor.py:968
+#: ui/windows/deck_monitor.py:972
 #, python-brace-format
 msgid "Deck Monitor could not listen for OSC on {host}:{port} ({error})."
 msgstr "덱 모니터가 {host}:{port}에서 OSC를 받을 수 없습니다({error})."
 
-#: ui/windows/deck_monitor.py:976
+#: ui/windows/deck_monitor.py:980
 msgid "Not listening."
 msgstr "받고 있지 않음."
 
-#: ui/windows/deck_monitor.py:981
+#: ui/windows/deck_monitor.py:985
 #, python-brace-format
 msgid "Listening on {address}; nothing received yet."
 msgstr "{address}에서 받는 중; 아직 받은 메시지가 없습니다."
@@ -8166,7 +8177,7 @@ msgstr "{address}에서 받는 중; 아직 받은 메시지가 없습니다."
 # | msgid "" "Listening on {address}; following deck {deck} (last message
 # {age}
 # | s ago, " "from {sender})."
-#: ui/windows/deck_monitor.py:983
+#: ui/windows/deck_monitor.py:987
 #, python-brace-format
 msgid ""
 "Listening on {address}; decks {decks} heard (last message {age} s ago, "

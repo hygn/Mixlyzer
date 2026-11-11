@@ -54,7 +54,11 @@ def _signed_color(value: float) -> str:
 
 
 def _clock(sec: float) -> str:
-    sec = max(0.0, float(sec))
+    """02:46.40; before the track's start (the playhead may stand there) −00:01.20."""
+    sec = float(sec)
+    if sec <= -0.01:                                   # shown as 0.01 or more
+        return "−" + _clock(-sec)
+    sec = max(0.0, sec)
     m = int(sec // 60)
     s = int(sec - 60 * m)
     cs = int((sec - 60 * m - s) * 100)

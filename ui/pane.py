@@ -674,7 +674,7 @@ class MainPane(QtWidgets.QWidget):
 
         self._update_bpm_display(t)
         
-        active_key = self._key_from_segments(self._key_segments, t)
+        active_key = self._key_from_segments(self._key_segments, max(0.0, t))   # before the start: the start's
         speed = self._tempo_factor
         if active_key is not None and speed <= 0.0 and not self._timestretch_enabled():
             # varispeed at tempo 0: no pitch to show (12 * log2(0) is -inf)
@@ -699,7 +699,7 @@ class MainPane(QtWidgets.QWidget):
             self.track_info.set_key(None)
 
         dur = max(self.model.duration_sec, 0.0)
-        self.track_info.set_time(float(np.clip(t, 0.0, dur)), dur)
+        self.track_info.set_time(min(float(t), dur), dur)      # before the start: below 0
         self._update_phrase_display(t)
         self._update_beat_display(t)
 

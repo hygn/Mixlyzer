@@ -528,7 +528,8 @@ class EditPanel(
             self.bus.sig_edit_focus_changed.emit(focus)
 
     def update_time(self, t: float) -> None:
-        self._current_time = float(t)
+        t = max(0.0, float(t))    # the pages edit within the track: the playhead before its start is at its start
+        self._current_time = t
         self._update_key_current()
         self._update_beat_counter(float(t))
         self._update_barbeat_display(float(t))
