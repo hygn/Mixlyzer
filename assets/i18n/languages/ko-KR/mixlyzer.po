@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-11-12 03:26+0900\n"
+"POT-Creation-Date: 2026-11-12 03:40+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ko_KR\n"
@@ -7006,7 +7006,7 @@ msgstr "MIDI 입력 켜기 / 끄기"
 msgid "The MIDI controller read or not."
 msgstr "MIDI 컨트롤러를 읽을지 여부입니다."
 
-#: ui/shortcuts.py:111 ui/windows/deck_monitor.py:722
+#: ui/shortcuts.py:111 ui/windows/deck_monitor.py:734
 msgid "Deck Monitor"
 msgstr "덱 모니터"
 
@@ -8010,47 +8010,47 @@ msgid "The notices file is missing ({path}); build/notices.py makes it."
 msgstr "고지 파일이 없습니다({path}). build/notices.py로 만듭니다."
 
 # | msgid "(not read)"
-#: ui/windows/deck_monitor.py:426
+#: ui/windows/deck_monitor.py:432
 msgid "Not heard"
 msgstr "수신 없음"
 
 # | msgid "Unload track"
-#: ui/windows/deck_monitor.py:426
+#: ui/windows/deck_monitor.py:432
 msgid "No track"
 msgstr "곡 없음"
 
 # | msgid "(none)"
-#: ui/windows/deck_monitor.py:432
+#: ui/windows/deck_monitor.py:438
 msgid "(no name)"
 msgstr "(이름 없음)"
 
 # | msgid "Loading the library"
-#: ui/windows/deck_monitor.py:432
+#: ui/windows/deck_monitor.py:438
 msgid "Not in the library"
 msgstr "라이브러리에 없음"
 
 # | msgid "Duration"
 # | msgid "Action"
 # | msgid "Section"
-#: ui/windows/deck_monitor.py:530
+#: ui/windows/deck_monitor.py:536
 msgctxt "phrase unit"
 msgid "Section"
 msgstr "섹션"
 
 # | msgid "Level"
 # | msgid "Label"
-#: ui/windows/deck_monitor.py:530
+#: ui/windows/deck_monitor.py:536
 msgctxt "phrase unit"
 msgid "Label"
 msgstr "라벨"
 
 # | msgid "Next page"
 # | msgid "Next"
-#: ui/windows/deck_monitor.py:576
+#: ui/windows/deck_monitor.py:582
 msgid "Next in"
 msgstr "다음까지"
 
-#: ui/windows/deck_monitor.py:578 ui/windows/deck_monitor.py:600
+#: ui/windows/deck_monitor.py:584 ui/windows/deck_monitor.py:606
 #, python-brace-format
 msgid "Now · {unit}"
 msgstr "지금 · {unit}"
@@ -8058,16 +8058,16 @@ msgstr "지금 · {unit}"
 # | msgid "Next page"
 # | msgid "Next"
 # | msgid "Next in"
-#: ui/windows/deck_monitor.py:578 ui/windows/deck_monitor.py:601
+#: ui/windows/deck_monitor.py:584 ui/windows/deck_monitor.py:607
 #, python-brace-format
 msgid "Next · {unit}"
 msgstr "다음 · {unit}"
 
-#: ui/windows/deck_monitor.py:594
+#: ui/windows/deck_monitor.py:600
 msgid "Click: the phrases by section or by label, on every deck."
 msgstr "클릭: 모든 덱의 프레이즈를 섹션 단위 또는 라벨 단위로 봅니다."
 
-#: ui/windows/deck_monitor.py:652
+#: ui/windows/deck_monitor.py:658
 msgid ""
 "The address the messages are received on. 127.0.0.1 takes them from this "
 "computer only; the address of a network interface (or 0.0.0.0, all of "
@@ -8076,36 +8076,36 @@ msgstr ""
 "메시지를 받을 주소입니다. 127.0.0.1은 이 컴퓨터에서 온 메시지만 받고, 네트워크 인터페이스의 주소(또는 모든 인터페이스인 "
 "0.0.0.0)는 그 네트워크에서 온 메시지도 받습니다."
 
-#: ui/windows/deck_monitor.py:656
+#: ui/windows/deck_monitor.py:662
 msgid "The UDP port the messages are sent to."
 msgstr "메시지를 보내는 UDP 포트입니다."
 
 # | msgid "Written"
-#: ui/windows/deck_monitor.py:657
+#: ui/windows/deck_monitor.py:663
 msgid "Listen"
 msgstr "수신"
 
-#: ui/windows/deck_monitor.py:663
+#: ui/windows/deck_monitor.py:669
 msgid "Messages"
 msgstr "메시지"
 
 # | msgid "Added"
-#: ui/windows/deck_monitor.py:665
+#: ui/windows/deck_monitor.py:671
 msgid "Address"
 msgstr "주소"
 
 # | msgid "Export"
-#: ui/windows/deck_monitor.py:667
+#: ui/windows/deck_monitor.py:673
 msgid "Port"
 msgstr "포트"
 
-#: ui/windows/deck_monitor.py:673
+#: ui/windows/deck_monitor.py:679
 msgid "Messages are taken from the network: any device on it can send them."
 msgstr "네트워크에서 메시지를 받습니다. 그 네트워크의 어느 기기든 보낼 수 있습니다."
 
 # | msgid "" "Another DJ program's decks, received as OSC and shown in Deck
 # | Monitor's " "window. Mixlyzer's own deck is not touched."
-#: ui/windows/deck_monitor.py:680
+#: ui/windows/deck_monitor.py:686
 msgid ""
 "Another DJ program's decks, received as OSC while Deck Monitor's window "
 "is open (the toolbar's DECKS › MONITOR). Mixlyzer's own deck is not "
@@ -8124,18 +8124,12 @@ msgstr ""
 # and
 # | then. " "rate is the sample rate the samples are counted at (0: the file's
 # | own); a" " flag may also be sent as an integer 0 / 1."
-# | reads its" " state; a deck not heard from for a second is shown as gone.
-# The
-# | the track " "message's title and artist, its duration (0: not known)
-# telling
-# | versions " "apart: send the track message when the track changes and now
-# and
 # | own); " "playing is the deck's play / pause. The tempo message (its BPM as
 # | it " "plays and the track's own) sets the waveforms' zoom, the master
 # | message " "the MASTER mark; both are optional. A flag may also be sent as
 # an
 # | integer" " 0 / 1."
-#: ui/windows/deck_monitor.py:688
+#: ui/windows/deck_monitor.py:694
 msgid ""
 "OSC Basic: one message per deck (1 - 4), as often as the sender reads its"
 " state; a deck not heard from for a second is shown as gone. The track is"
@@ -8155,21 +8149,33 @@ msgstr ""
 " 자체의 BPM)는 파형의 줌을, master 메시지는 MASTER 표시를 정하며 둘 다 보내지 않아도 됩니다. 플래그는 정수 0 "
 "/ 1로 보내도 됩니다. 곡 시작 전의 위치는 음수입니다."
 
+#: ui/windows/deck_monitor.py:704
+msgid ""
+"OSC Full adds the sender's own analysis, shown for a track the library "
+"does not hold once its duration is known: the grid message (its tempo "
+"changes: from start on at bpm, beat 1 - 4 that beat's place in its bar), "
+"the cues message (rgb 0xRRGGBB, -1: none) and the key message (8A or Am)."
+" Send them when the track changes and now and then."
+msgstr ""
+"OSC Full은 송신 측의 분석을 더하며, 라이브러리에 없는 곡에 대해 길이를 알게 되면 보여줍니다: grid 메시지(템포 변화:"
+" start부터 bpm으로, beat 1 - 4는 그 비트의 마디 안 위치), cues 메시지(rgb 0xRRGGBB, -1: "
+"없음), key 메시지(8A 또는 Am). 곡이 바뀔 때와 가끔 보내세요."
+
 # | msgid "" "External Sync could not listen for OSC on {host}:{port}
 # ({error})
 # | and has" " been disabled."
 # | msgid "" "Deck Monitor could not listen for OSC on {host}:{port} ({error})
 # | and was " "turned off."
-#: ui/windows/deck_monitor.py:972
+#: ui/windows/deck_monitor.py:1016
 #, python-brace-format
 msgid "Deck Monitor could not listen for OSC on {host}:{port} ({error})."
 msgstr "덱 모니터가 {host}:{port}에서 OSC를 받을 수 없습니다({error})."
 
-#: ui/windows/deck_monitor.py:980
+#: ui/windows/deck_monitor.py:1024
 msgid "Not listening."
 msgstr "받고 있지 않음."
 
-#: ui/windows/deck_monitor.py:985
+#: ui/windows/deck_monitor.py:1029
 #, python-brace-format
 msgid "Listening on {address}; nothing received yet."
 msgstr "{address}에서 받는 중; 아직 받은 메시지가 없습니다."
@@ -8177,7 +8183,7 @@ msgstr "{address}에서 받는 중; 아직 받은 메시지가 없습니다."
 # | msgid "" "Listening on {address}; following deck {deck} (last message
 # {age}
 # | s ago, " "from {sender})."
-#: ui/windows/deck_monitor.py:987
+#: ui/windows/deck_monitor.py:1031
 #, python-brace-format
 msgid ""
 "Listening on {address}; decks {decks} heard (last message {age} s ago, "

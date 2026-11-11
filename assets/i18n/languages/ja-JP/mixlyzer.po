@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-11-12 03:26+0900\n"
+"POT-Creation-Date: 2026-11-12 03:40+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ja_JP\n"
@@ -7011,7 +7011,7 @@ msgstr "MIDI 入力オン / オフ"
 msgid "The MIDI controller read or not."
 msgstr "MIDI コントローラーを読み取るかどうか。"
 
-#: ui/shortcuts.py:111 ui/windows/deck_monitor.py:722
+#: ui/shortcuts.py:111 ui/windows/deck_monitor.py:734
 msgid "Deck Monitor"
 msgstr "デッキモニター"
 
@@ -8013,47 +8013,47 @@ msgid "The notices file is missing ({path}); build/notices.py makes it."
 msgstr "告知ファイルがありません（{path}）。build/notices.py で作成します。"
 
 # | msgid "(not read)"
-#: ui/windows/deck_monitor.py:426
+#: ui/windows/deck_monitor.py:432
 msgid "Not heard"
 msgstr "受信なし"
 
 # | msgid "Unload track"
-#: ui/windows/deck_monitor.py:426
+#: ui/windows/deck_monitor.py:432
 msgid "No track"
 msgstr "トラックなし"
 
 # | msgid "(none)"
-#: ui/windows/deck_monitor.py:432
+#: ui/windows/deck_monitor.py:438
 msgid "(no name)"
 msgstr "（名前なし）"
 
 # | msgid "Loading the library"
-#: ui/windows/deck_monitor.py:432
+#: ui/windows/deck_monitor.py:438
 msgid "Not in the library"
 msgstr "ライブラリになし"
 
 # | msgid "Duration"
 # | msgid "Action"
 # | msgid "Section"
-#: ui/windows/deck_monitor.py:530
+#: ui/windows/deck_monitor.py:536
 msgctxt "phrase unit"
 msgid "Section"
 msgstr "セクション"
 
 # | msgid "Level"
 # | msgid "Label"
-#: ui/windows/deck_monitor.py:530
+#: ui/windows/deck_monitor.py:536
 msgctxt "phrase unit"
 msgid "Label"
 msgstr "ラベル"
 
 # | msgid "Next page"
 # | msgid "Next"
-#: ui/windows/deck_monitor.py:576
+#: ui/windows/deck_monitor.py:582
 msgid "Next in"
 msgstr "次まで"
 
-#: ui/windows/deck_monitor.py:578 ui/windows/deck_monitor.py:600
+#: ui/windows/deck_monitor.py:584 ui/windows/deck_monitor.py:606
 #, python-brace-format
 msgid "Now · {unit}"
 msgstr "現在 · {unit}"
@@ -8061,16 +8061,16 @@ msgstr "現在 · {unit}"
 # | msgid "Next page"
 # | msgid "Next"
 # | msgid "Next in"
-#: ui/windows/deck_monitor.py:578 ui/windows/deck_monitor.py:601
+#: ui/windows/deck_monitor.py:584 ui/windows/deck_monitor.py:607
 #, python-brace-format
 msgid "Next · {unit}"
 msgstr "次 · {unit}"
 
-#: ui/windows/deck_monitor.py:594
+#: ui/windows/deck_monitor.py:600
 msgid "Click: the phrases by section or by label, on every deck."
 msgstr "クリック: すべてのデッキのフレーズをセクション単位またはラベル単位で表示します。"
 
-#: ui/windows/deck_monitor.py:652
+#: ui/windows/deck_monitor.py:658
 msgid ""
 "The address the messages are received on. 127.0.0.1 takes them from this "
 "computer only; the address of a network interface (or 0.0.0.0, all of "
@@ -8080,36 +8080,36 @@ msgstr ""
 "はこのコンピューターからのメッセージだけを受信し、ネットワークインターフェースのアドレス(またはすべてのインターフェースを表す "
 "0.0.0.0)はそのネットワークからのメッセージも受信します。"
 
-#: ui/windows/deck_monitor.py:656
+#: ui/windows/deck_monitor.py:662
 msgid "The UDP port the messages are sent to."
 msgstr "メッセージの送信先の UDP ポートです。"
 
 # | msgid "Written"
-#: ui/windows/deck_monitor.py:657
+#: ui/windows/deck_monitor.py:663
 msgid "Listen"
 msgstr "受信"
 
-#: ui/windows/deck_monitor.py:663
+#: ui/windows/deck_monitor.py:669
 msgid "Messages"
 msgstr "メッセージ"
 
 # | msgid "Added"
-#: ui/windows/deck_monitor.py:665
+#: ui/windows/deck_monitor.py:671
 msgid "Address"
 msgstr "アドレス"
 
 # | msgid "Export"
-#: ui/windows/deck_monitor.py:667
+#: ui/windows/deck_monitor.py:673
 msgid "Port"
 msgstr "ポート"
 
-#: ui/windows/deck_monitor.py:673
+#: ui/windows/deck_monitor.py:679
 msgid "Messages are taken from the network: any device on it can send them."
 msgstr "ネットワークからメッセージを受け取ります。そのネットワーク上のどの機器からも送れます。"
 
 # | msgid "" "Another DJ program's decks, received as OSC and shown in Deck
 # | Monitor's " "window. Mixlyzer's own deck is not touched."
-#: ui/windows/deck_monitor.py:680
+#: ui/windows/deck_monitor.py:686
 msgid ""
 "Another DJ program's decks, received as OSC while Deck Monitor's window "
 "is open (the toolbar's DECKS › MONITOR). Mixlyzer's own deck is not "
@@ -8128,18 +8128,12 @@ msgstr ""
 # and
 # | then. " "rate is the sample rate the samples are counted at (0: the file's
 # | own); a" " flag may also be sent as an integer 0 / 1."
-# | reads its" " state; a deck not heard from for a second is shown as gone.
-# The
-# | the track " "message's title and artist, its duration (0: not known)
-# telling
-# | versions " "apart: send the track message when the track changes and now
-# and
 # | own); " "playing is the deck's play / pause. The tempo message (its BPM as
 # | it " "plays and the track's own) sets the waveforms' zoom, the master
 # | message " "the MASTER mark; both are optional. A flag may also be sent as
 # an
 # | integer" " 0 / 1."
-#: ui/windows/deck_monitor.py:688
+#: ui/windows/deck_monitor.py:694
 msgid ""
 "OSC Basic: one message per deck (1 - 4), as often as the sender reads its"
 " state; a deck not heard from for a second is shown as gone. The track is"
@@ -8160,21 +8154,33 @@ msgstr ""
 "BPM）は波形のズームを、master メッセージは MASTER 表示を決めます。どちらも省略できます。フラグは整数 0 / 1 "
 "でも送れます。曲の開始より前の位置は負の値です。"
 
+#: ui/windows/deck_monitor.py:704
+msgid ""
+"OSC Full adds the sender's own analysis, shown for a track the library "
+"does not hold once its duration is known: the grid message (its tempo "
+"changes: from start on at bpm, beat 1 - 4 that beat's place in its bar), "
+"the cues message (rgb 0xRRGGBB, -1: none) and the key message (8A or Am)."
+" Send them when the track changes and now and then."
+msgstr ""
+"OSC Full は送信側の解析を加え、ライブラリにない曲について長さが分かると表示します: grid メッセージ（テンポの変化: start "
+"から bpm で、beat 1 - 4 はその拍の小節内の位置）、cues メッセージ（rgb 0xRRGGBB、-1: なし）、key "
+"メッセージ（8A または Am）。曲が変わったときと時々送ってください。"
+
 # | msgid "" "External Sync could not listen for OSC on {host}:{port}
 # ({error})
 # | and has" " been disabled."
 # | msgid "" "Deck Monitor could not listen for OSC on {host}:{port} ({error})
 # | and was " "turned off."
-#: ui/windows/deck_monitor.py:972
+#: ui/windows/deck_monitor.py:1016
 #, python-brace-format
 msgid "Deck Monitor could not listen for OSC on {host}:{port} ({error})."
 msgstr "デッキモニターは {host}:{port} で OSC を受信できません（{error}）。"
 
-#: ui/windows/deck_monitor.py:980
+#: ui/windows/deck_monitor.py:1024
 msgid "Not listening."
 msgstr "受信していません。"
 
-#: ui/windows/deck_monitor.py:985
+#: ui/windows/deck_monitor.py:1029
 #, python-brace-format
 msgid "Listening on {address}; nothing received yet."
 msgstr "{address} で受信中。まだ何も受信していません。"
@@ -8182,7 +8188,7 @@ msgstr "{address} で受信中。まだ何も受信していません。"
 # | msgid "" "Listening on {address}; following deck {deck} (last message
 # {age}
 # | s ago, " "from {sender})."
-#: ui/windows/deck_monitor.py:987
+#: ui/windows/deck_monitor.py:1031
 #, python-brace-format
 msgid ""
 "Listening on {address}; decks {decks} heard (last message {age} s ago, "

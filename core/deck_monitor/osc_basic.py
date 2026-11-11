@@ -1,11 +1,20 @@
-"""OSC Basic: each deck's track and position, as OSC messages over UDP, one deck a message, as often as the sender
-reads them:
+"""OSC Basic and OSC Full: each deck's track and position, as OSC messages over UDP, one deck a message, as often as
+the sender reads them (OSC Basic), and the sender's own analysis of its track (OSC Full: the same receiver, three
+messages more):
 
     /mixlyzer/deck/time     i deck  s path  T|F loaded  T|F playing  d|f seconds
     /mixlyzer/deck/samples  i deck  s path  T|F loaded  T|F playing  h|i samples  i rate
     /mixlyzer/deck/track    i deck  s title  s artist  d|f duration
     /mixlyzer/deck/tempo    i deck  d|f bpm  d|f track_bpm
     /mixlyzer/deck/master   i deck  T|F master
+    /mixlyzer/deck/grid     i deck  [d|f start  d|f bpm  i beat] ...
+    /mixlyzer/deck/cues     i deck  [d|f seconds  s name  i rgb] ...
+    /mixlyzer/deck/key      i deck  s key
+
+OSC Full's grid is the track's tempo changes (rekordbox XML's TEMPO: from ``start`` on at ``bpm``, ``beat`` 1 - 4 that
+beat's place in its bar), its cues the CUE points (``rgb`` 0xRRGGBB, -1: none), its key Alphanumeric or classical
+("8A", "Am"; "": none); each replaces the last of its kind, all are dropped with the track, and they are shown for a
+track the library does not hold whose length is known (the track message's duration).
 
 ``path`` may be "" (the track is then found by the track message's title, artist and length: send it when the track
 changes and now and then, as UDP may lose it); ``rate`` is the rate the samples are counted at, 0: the file's own
@@ -29,13 +38,19 @@ from typing import Optional
 from core.deck_monitor import osc
 from core.deck_monitor.decks import MAX_DECKS, DeckState, TrackInfo
 from core.deck_monitor.motion import KEPT_SEC
+from core.deck_monitor.source_marks import MAX_BPM, MAX_CHANGES, MAX_CUES, METER, SourceCue, SourceMarks, \
+    TempoChange, parse_key
 
 TIME_ADDRESS = "/mixlyzer/deck/time"
 SAMPLES_ADDRESS = "/mixlyzer/deck/samples"
 TRACK_ADDRESS = "/mixlyzer/deck/track"
 TEMPO_ADDRESS = "/mixlyzer/deck/tempo"
 MASTER_ADDRESS = "/mixlyzer/deck/master"
-ADDRESSES = (TIME_ADDRESS, SAMPLES_ADDRESS, TRACK_ADDRESS, TEMPO_ADDRESS, MASTER_ADDRESS)
+GRID_ADDRESS = "/mixlyzer/deck/grid"
+CUES_ADDRESS = "/mixlyzer/deck/cues"
+KEY_ADDRESS = "/mixlyzer/deck/key"
+ADDRESSES = (TIME_ADDRESS, SAMPLES_ADDRESS, TRACK_ADDRESS, TEMPO_ADDRESS, MASTER_ADDRESS, GRID_ADDRESS,
+             CUES_ADDRESS, KEY_ADDRESS)
 STALE_SEC = 1.0
 MAX_TEXT_CHARS = 4096
 
@@ -115,6 +130,52 @@ def master_message(address: str, args: list) -> Optional[tuple[int, bool]]:
     return None if deck is None or master is None else (deck, master)
 
 
+def _integer(value) -> Optional[int]:
+    return value if isinstance(value, int) and not isinstance(value, bool) else None
+
+
+def grid_message(address: str, args: list) -> Optional[tuple[int, tuple[TempoChange, ...]]]:
+    """(deck, its track's tempo changes by start) a grid message carries, None otherwise."""
+    if address != GRID_ADDRESS or not args or (len(args) - 1) % 3 or (len(args) - 1) // 3 > MAX_CHANGES:
+        return None
+    deck = _deck(args[0])
+    changes = []
+    for k in range(1, len(args), 3):
+        start, bpm, beat = _number(args[k], lowest=-1e7), _number(args[k + 1]), _integer(args[k + 2])
+        if start is None or bpm is None or not 0.0 < bpm <= MAX_BPM or beat is None or not 1 <= beat <= METER:
+            return None
+        changes.append(TempoChange(start, bpm, beat))
+    if deck is None or any(b.start <= a.start for a, b in zip(changes, changes[1:])):
+        return None
+    return deck, tuple(changes)
+
+
+def cues_message(address: str, args: list) -> Optional[tuple[int, tuple[SourceCue, ...]]]:
+    """(deck, its track's CUE points by time) a cues message carries, None otherwise."""
+    if address != CUES_ADDRESS or not args or (len(args) - 1) % 3 or (len(args) - 1) // 3 > MAX_CUES:
+        return None
+    deck = _deck(args[0])
+    cues = []
+    for k in range(1, len(args), 3):
+        seconds, name, rgb = _number(args[k]), _text(args[k + 1]), _integer(args[k + 2])
+        if seconds is None or name is None or rgb is None or not -1 <= rgb <= 0xFFFFFF:
+            return None
+        color = None if rgb < 0 else ((rgb >> 16) & 0xFF, (rgb >> 8) & 0xFF, rgb & 0xFF)
+        cues.append(SourceCue(seconds, name.strip(), color))
+    return None if deck is None else (deck, tuple(sorted(cues, key=lambda c: c.seconds)))
+
+
+def key_message(address: str, args: list) -> Optional[tuple[int, Optional[int]]]:
+    """(deck, its track's key 0 ..= 23 or None) a key message carries, None otherwise (a key it cannot read too)."""
+    if address != KEY_ADDRESS or len(args) != 2:
+        return None
+    deck, text = _deck(args[0]), _text(args[1])
+    if deck is None or text is None:
+        return None
+    key = parse_key(text)
+    return None if key is None and text.strip() else (deck, key)
+
+
 def is_loopback(host: str) -> bool:
     try:
         return all(ipaddress.ip_address(info[4][0]).is_loopback
@@ -142,6 +203,7 @@ class OscBasicReceiver:
         self._heard: dict[int, deque] = {}         # each deck's positions heard in the last KEPT_SEC (its motion)
         self._tempo: dict[int, tuple[float, float]] = {}   # each deck's (BPM as it plays, the track's own)
         self._master: dict[int, bool] = {}
+        self._marks: dict[int, SourceMarks] = {}           # each deck's track's own grid, CUE points and key
         self._sender = ""
         self._refused = 0
         self._stop = threading.Event()
@@ -170,27 +232,39 @@ class OscBasicReceiver:
         names = [n for n in (track_message(a, args) for a, args in messages) if n]
         tempos = [t for t in (tempo_message(a, args) for a, args in messages) if t]
         masters = [m for m in (master_message(a, args) for a, args in messages) if m]
+        grids = [g for g in (grid_message(a, args) for a, args in messages) if g]
+        cues = [c for c in (cues_message(a, args) for a, args in messages) if c]
+        keys = [k for k in (key_message(a, args) for a, args in messages) if k]
         with self._lock:
-            if not (states or names or tempos or masters):
+            if not (states or names or tempos or masters or grids or cues or keys):
                 self._refused += 1
                 return
             for state in states:
                 old = self._states.get(state.deck)
                 if old is not None and (old.track.path != state.track.path or not state.loaded):
-                    self._names.pop(state.deck, None)    # another track (or none): the last one's names and
-                    self._heard.pop(state.deck, None)    # tempo go
+                    self._names.pop(state.deck, None)    # another track (or none): the last one's names, tempo
+                    self._heard.pop(state.deck, None)    # and marks go
                     self._tempo.pop(state.deck, None)
+                    self._marks.pop(state.deck, None)
                 heard = self._heard.setdefault(state.deck, deque())
                 heard.append((now, state.sent_position()))
                 while heard and now - heard[0][0] > KEPT_SEC:
                     heard.popleft()
                 self._states[state.deck] = state
             for deck, name in names:
+                if self._names.get(deck, name) != name:
+                    self._marks.pop(deck, None)          # another track by its names: the last one's marks go
                 self._names[deck] = name
             for deck, bpm, track_bpm in tempos:
                 self._tempo[deck] = (bpm, track_bpm)
             for deck, master in masters:
                 self._master[deck] = master
+            for deck, grid in grids:
+                self._marks[deck] = replace(self._marks.get(deck, SourceMarks()), grid=grid)
+            for deck, deck_cues in cues:
+                self._marks[deck] = replace(self._marks.get(deck, SourceMarks()), cues=deck_cues)
+            for deck, key in keys:
+                self._marks[deck] = replace(self._marks.get(deck, SourceMarks()), key=key)
             self._sender = sender
 
     def latest(self) -> tuple[dict[int, DeckState], str, int]:
@@ -199,13 +273,14 @@ class OscBasicReceiver:
         with self._lock:
             states, names, sender, refused = dict(self._states), dict(self._names), self._sender, self._refused
             heard = {deck: tuple(points) for deck, points in self._heard.items()}
-            tempos, masters = dict(self._tempo), dict(self._master)
+            tempos, masters, marks = dict(self._tempo), dict(self._master), dict(self._marks)
         decks = {}
         for deck, state in states.items():
             name = names.get(deck, TrackInfo())
             bpm, track_bpm = tempos.get(deck, (0.0, 0.0))
             decks[deck] = replace(state, track=TrackInfo(state.track.path, name.title, name.artist, name.duration_sec),
-                                  heard=heard.get(deck, ()), bpm=bpm, track_bpm=track_bpm, master=masters.get(deck))
+                                  heard=heard.get(deck, ()), bpm=bpm, track_bpm=track_bpm, master=masters.get(deck),
+                                  marks=marks.get(deck))
         return decks, sender, refused
 
     def close(self) -> None:

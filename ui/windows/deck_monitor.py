@@ -25,11 +25,14 @@ from PySide6 import QtCore, QtGui, QtWidgets
 
 from analyzer.music.key_names import idx_to_labels
 from core.analysis_library.stored import StoredAnalysis
-from core.deck_monitor.osc_basic import (MASTER_ADDRESS, SAMPLES_ADDRESS, TEMPO_ADDRESS, TIME_ADDRESS,
-                                         TRACK_ADDRESS)
+from core.deck_monitor.osc_basic import (CUES_ADDRESS, GRID_ADDRESS, KEY_ADDRESS, MASTER_ADDRESS, SAMPLES_ADDRESS,
+                                         TEMPO_ADDRESS, TIME_ADDRESS, TRACK_ADDRESS)
+from core.deck_monitor.decks import TrackInfo
 from core.deck_monitor.readout import LABEL, SECTION, UNITS, TrackPhrases, bars_beats, bpm_at, key_at
-from core.marks.phrases import PHRASE_LABELS, phrase_display_name
 from core.deck_monitor.source import DeckSource, MonitorDeck
+from core.deck_monitor.source_marks import SourceMarks, source_analysis
+from core.library.records import TrackRow
+from core.marks.phrases import PHRASE_LABELS, phrase_display_name
 from core.settings.store import SettingsStore, current as current_settings
 from core.track.model import DataModel
 from core.workflows.event_bus import EventBus
@@ -66,7 +69,10 @@ MESSAGE_FORMAT = (f"{TIME_ADDRESS}     i deck  s path  T|F loaded  T|F playing  
                   f"{SAMPLES_ADDRESS}  i deck  s path  T|F loaded  T|F playing  h|i samples  i rate\n"
                   f"{TRACK_ADDRESS}    i deck  s title  s artist  d|f duration\n"
                   f"{TEMPO_ADDRESS}    i deck  d|f bpm  d|f track_bpm\n"
-                  f"{MASTER_ADDRESS}   i deck  T|F master")
+                  f"{MASTER_ADDRESS}   i deck  T|F master\n"
+                  f"{GRID_ADDRESS}     i deck  [d|f start  d|f bpm  i beat] ...\n"
+                  f"{CUES_ADDRESS}     i deck  [d|f seconds  s name  i rgb] ...\n"
+                  f"{KEY_ADDRESS}      i deck  s key")
 MINUS = "−"          # as wide as "+"
 _STORE: Optional["ReadOnlyStore"] = None    # the settings as this process was given them (run installs it)
 
@@ -694,7 +700,13 @@ class ConnectionBar(QtWidgets.QWidget):
                "optional. A flag may also be sent as an integer 0 / 1. A position before the track's start is "
                "negative."))
         note.setWordWrap(True)
-        for w in (about, text, note):
+        full = QtWidgets.QLabel(
+            tr("OSC Full adds the sender's own analysis, shown for a track the library does not hold once its "
+               "duration is known: the grid message (its tempo changes: from start on at bpm, beat 1 - 4 that beat's "
+               "place in its bar), the cues message (rgb 0xRRGGBB, -1: none) and the key message (8A or Am). Send "
+               "them when the track changes and now and then."))
+        full.setWordWrap(True)
+        for w in (about, text, note, full):
             lay.addWidget(w)
         self.format.setVisible(False)
         self.format_button.toggled.connect(self.format.setVisible)
@@ -725,6 +737,10 @@ class DeckMonitorWindow(QtWidgets.QWidget):
         self.error = ""                 # why it does not listen (shown as the status)
         self.track_rows: tuple = ()     # the library's tracks as last given
         self.tracks: OrderedDict[str, TrackData] = OrderedDict()
+        # each deck's track the library does not hold, shown by the sender's own marks: (its track, its marks,
+        # what the views show of it)
+        self.sent: dict[int, tuple[TrackInfo, SourceMarks, TrackData, TrackRow]] = {}
+        self.sent_count = 0             # those shown so far (each one's own uid: the views load it as a new track)
         self.gen = 0                    # the library's tracks as last given (an analysis for an older one dropped)
         self.window_sec = DEFAULT_WINDOW_SEC     # the span of time a main view shows (the wheel steps it)
         self.signals = _Signals()
@@ -910,10 +926,13 @@ class DeckMonitorWindow(QtWidgets.QWidget):
             [MonitorDeck(n, None, True, None, None, 0.0) for n in range(1, DECKS + 1)]
         used = set()
         for views, panel, d in zip(self.views, self.panels, decks):
-            data = self._track(d.row) if d.shown and d.row is not None else None
-            if data is not None:
+            row = d.row
+            if d.shown and row is not None:
+                data = self._track(row)
                 used.add(data.uid)
-            views.show(data, d.row)
+            else:
+                data, row = self._sent(d) if d.shown else (None, None)
+            views.show(data, row)
             pitch = d.state.pitch if d.state is not None else None
             views.set_played(pitch or 1.0)
             views.set_window(self.window_sec * (pitch or 1.0))     # one span of time: a faster deck shows more
@@ -934,6 +953,31 @@ class DeckMonitorWindow(QtWidgets.QWidget):
             data.decoding = True
             self.decoders.start(_Decode(self.signals, data.uid, data.path))
         return data
+
+    def _sent(self, d: MonitorDeck) -> tuple[Optional[TrackData], Optional[TrackRow]]:
+        """The deck's track the library does not hold, as the sender's own grid, CUE points and key show it
+        (OSC Full, Pro DJ Link: no audio); (None, None) when it sends none or its length is not known."""
+        state = d.state
+        marks = state.marks if state is not None else None
+        kept = self.sent.get(d.deck)
+        if kept is not None and kept[1] is marks and kept[0] == state.track:
+            return kept[2], kept[3]
+        analysis = source_analysis(marks, state.track.duration_sec) if marks is not None and not marks.empty() \
+            else None
+        if analysis is None:
+            self.sent.pop(d.deck, None)
+            return None, None
+        if kept is not None and kept[0] == state.track:
+            data, row = kept[2], kept[3]             # the same track's marks again: shown on the same track
+            data.analysis = analysis
+        else:
+            self.sent_count += 1
+            uid = f"sent:{d.deck}:{self.sent_count}"
+            data = TrackData(uid, "", analysis=analysis, failed=True)      # nothing to decode
+            row = TrackRow(uid=uid, path="", title=state.track.title, artist=state.track.artist,
+                           duration=state.track.duration_sec)
+        self.sent[d.deck] = (state.track, marks, data, row)
+        return data, row
 
     def _forget(self, used: set) -> None:
         """The tracks beyond KEPT_TRACKS no deck shows let go (the oldest first)."""

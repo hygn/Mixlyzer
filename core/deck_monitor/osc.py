@@ -9,7 +9,8 @@ from __future__ import annotations
 
 import struct
 
-MAX_PACKET = 8192   # bytes: a deck's state is a few hundred
+MAX_PACKET = 65504  # bytes, a UDP datagram's most in OSC's 4-byte steps: a deck's state is a few hundred, an OSC
+                    # Full grid or cue list more
 MAX_DEPTH = 4
 _BUNDLE = b"#bundle\x00"
 

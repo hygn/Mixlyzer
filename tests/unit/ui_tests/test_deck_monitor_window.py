@@ -190,6 +190,35 @@ class DeckMonitorWindowTests(unittest.TestCase):
         line.show_phrases(None)
         self.assertEqual(widths(), before)                       # every cell as wide as its widest value
 
+    def test_a_track_not_in_the_library_shown_by_the_senders_own_marks(self):
+        from dataclasses import replace
+        from core.deck_monitor.source_marks import SourceCue, SourceMarks, TempoChange
+        marks = SourceMarks(grid=(TempoChange(0.5, 120.0, 1),), cues=(SourceCue(10.0, "Drop", (255, 40, 40)),),
+                            key=21)
+        sent = {"marks": marks, "duration": 64.0}
+
+        def decks():
+            state = DeckState(1, True, True, seconds=30.0, track=TrackInfo(title="Elsewhere", duration_sec=sent["duration"]),
+                              bpm=132.0, track_bpm=120.0, marks=sent["marks"])
+            return [MonitorDeck(1, state, False, None, 30.0, 0.0, 1.0),
+                    *(MonitorDeck(n, None, True, None, None, 0.0) for n in (2, 3, 4))]
+
+        self.source.decks = decks
+        self.w.refresh()
+        views, panel = self.w.views[0], self.w.panels[0]
+        self.assertEqual(views.model.beats.size, 128)                          # its grid (0.5 - 64 s), no audio
+                                                                                # asked for
+        self.assertEqual([c.label for c in views.model.cue_points], ["Drop"])
+        self.assertEqual((panel.bpm.text(), panel.key.text()), ("132.00", idx_to_labels(21)[0]))
+        self.assertEqual((self.asked(), self.decodes), ([], []))
+        shown = views.uid
+        sent["marks"] = replace(marks, key=0)                                  # the same track's marks again
+        self.w.refresh()
+        self.assertEqual((views.uid, panel.key.text()), (shown, idx_to_labels(0)[0]))
+        sent["duration"] = 0.0                                                 # its length not known: none
+        self.w.refresh()
+        self.assertEqual(views.model.beats.size, 0)
+
     def test_the_phrase_unit_as_kept(self):
         cfg = default_cfg()
         cfg.deckconfig.monitor_phrase_unit = "label"

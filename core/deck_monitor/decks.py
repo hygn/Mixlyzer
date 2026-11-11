@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
+
+if TYPE_CHECKING:
+    from core.deck_monitor.source_marks import SourceMarks
 
 MAX_DECKS = 4        # the decks shown (a protocol's deck numbers 1 ..= MAX_DECKS)
 
@@ -37,6 +40,7 @@ class DeckState:
     bpm: float = 0.0                       # its BPM as it plays (0: not sent)
     track_bpm: float = 0.0                 # its track's own BPM as the sender knows it (0: not sent)
     master: Optional[bool] = None          # the master deck (None: not sent)
+    marks: Optional["SourceMarks"] = None  # the sender's own grid, CUE points and key of its track (None: not sent)
 
     def sent_position(self) -> float:
         """The position as sent: seconds, or samples."""

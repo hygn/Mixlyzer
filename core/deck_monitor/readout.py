@@ -14,7 +14,7 @@ import numpy as np
 from analyzer.music.beat_geometry import downbeat_beat_indices
 from analyzer.music.marks import Phrase
 from analyzer.music.tempo_rows import bpm_at as row_bpm_at
-from core.marks.phrases import normalize_phrase_segments, number_phrase_labels, phrase_color
+from core.marks.phrases import UNASSIGNED, normalize_phrase_segments, number_phrase_labels, phrase_color
 
 EPS = 1e-3       # a beat this close to a phrase's start is on it
 
@@ -85,9 +85,11 @@ class TrackPhrases:
         self.starts = {unit: np.array([s.start for s in spans], dtype=float) for unit, spans in self.spans.items()}
 
     def _spans(self, phrases: list) -> list[PhraseSpan]:
+        """The phrases as shown, UNASSIGNED left out (where none is: no phrase now, none next)."""
         names = number_phrase_labels(phrases) if phrases else []
         return [PhraseSpan(p.label, names[k] if k < len(names) else p.label, tuple(phrase_color(p.label)),
-                           float(p.start), float(p.end), self._bars(p.start, p.end)) for k, p in enumerate(phrases)]
+                           float(p.start), float(p.end), self._bars(p.start, p.end)) for k, p in enumerate(phrases)
+                if p.label != UNASSIGNED]
 
     def _bars(self, start: float, end: float) -> int:
         """The bars starting in [start, end) (a phrase starts on a downbeat)."""

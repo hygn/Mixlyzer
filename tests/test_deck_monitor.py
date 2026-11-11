@@ -19,6 +19,8 @@ from core.deck_monitor.source import DeckSource, deck_motion, seconds_per_unit  
 from core.deck_monitor.decks import DeckState, TrackInfo  # noqa: E402
 from core.deck_monitor.match import TrackMatcher, network_path  # noqa: E402
 from core.deck_monitor.readout import LABEL, SECTION, TrackPhrases, bars_beats, bpm_at, key_at  # noqa: E402
+from core.deck_monitor.source_marks import (SourceCue, SourceMarks, TempoChange, grid_from_beats,  # noqa: E402
+                                            parse_key, source_analysis)
 from core.library.records import TrackRow  # noqa: E402
 from core.settings.config import default_cfg  # noqa: E402
 
@@ -93,6 +95,66 @@ class MessageTests(unittest.TestCase):
         self.assertIsNone(state.pitch)
         self.assertTrue(state.master)                                  # the deck's, not the track's
 
+    def test_osc_full_marks_read_strictly_kept_and_dropped_with_another_track(self):
+        self.assertEqual(ob.grid_message(ob.GRID_ADDRESS, [1, 0.25, 128.0, 1, 60.25, 130.0, 3]),
+                         (1, (TempoChange(0.25, 128.0, 1), TempoChange(60.25, 130.0, 3))))
+        for args in ([1, 0.25, 128.0], [1, 0.25, 128.0, 5], [1, 0.25, 0.0, 1], [1, 5.0, 128.0, 1, 4.0, 128.0, 1]):
+            with self.subTest(args):
+                self.assertIsNone(ob.grid_message(ob.GRID_ADDRESS, args))     # whole triples, beat 1 - 4, a
+                                                                                # tempo, starts in order
+        self.assertEqual(ob.cues_message(ob.CUES_ADDRESS, [2, 30.0, " Drop ", 0xFF0000, 1.5, "", -1]),
+                         (2, (SourceCue(1.5, "", None), SourceCue(30.0, "Drop", (255, 0, 0)))))
+        self.assertIsNone(ob.cues_message(ob.CUES_ADDRESS, [2, 30.0, "Drop", 0x1000000]))
+        self.assertEqual(ob.key_message(ob.KEY_ADDRESS, [1, "8A"]), (1, 21))
+        self.assertEqual(ob.key_message(ob.KEY_ADDRESS, [1, ""]), (1, None))
+        self.assertIsNone(ob.key_message(ob.KEY_ADDRESS, [1, "H moll"]))          # not read: refused
+        r = _Receiver()
+        r.take(osc.message(ob.TRACK_ADDRESS, 1, "Song", "Band", 200.0), "x", 1.0)
+        r.take(osc.message(ob.TIME_ADDRESS, 1, "", True, True, 5.0), "x", 1.0)
+        r.take(osc.message(ob.GRID_ADDRESS, 1, 0.25, 128.0, 1), "x", 1.1)
+        r.take(osc.message(ob.KEY_ADDRESS, 1, "Am"), "x", 1.1)
+        marks = r.latest()[0][1].marks
+        self.assertEqual((marks.grid, marks.key), ((TempoChange(0.25, 128.0, 1),), 21))
+        r.take(osc.message(ob.TRACK_ADDRESS, 1, "Song", "Band", 200.0), "x", 1.2)    # again: kept
+        self.assertIs(r.latest()[0][1].marks, marks)
+        r.take(osc.message(ob.TRACK_ADDRESS, 1, "Other", "Band", 180.0), "x", 1.3)   # another track: dropped
+        self.assertIsNone(r.latest()[0][1].marks)
+
+
+class SourceMarksTests(unittest.TestCase):
+    """core.deck_monitor.source_marks: a sender's own grid, CUE points and key as the app's analysis."""
+
+    def test_keys_by_any_name(self):
+        for text, key in (("8A", 21), ("8a", 21), ("Am", 21), ("A minor", 21), ("Amin", 21), ("C", 0), ("Db", 1),
+                          ("C#m", 13), ("F# major", 6), ("Bbm", 22), ("", None), ("H", None), ("m", None)):
+            with self.subTest(text):
+                self.assertEqual(parse_key(text), key)
+
+    def test_every_beat_read_into_tempo_changes(self):
+        # 120 BPM, rounded to the ms as a source sends it, then 125 BPM from beat 9; the first beat a 3
+        t = [round(k * 0.5, 3) for k in range(9)] + [round(4.0 + k * 0.48, 3) for k in range(1, 9)]
+        places = [(2 + k) % 4 + 1 for k in range(len(t))]
+        grid = grid_from_beats(t, places)
+        self.assertEqual(len(grid), 2)
+        self.assertAlmostEqual(grid[0].bpm, 120.0, places=6)
+        self.assertAlmostEqual(grid[0].start, 0.0, places=9)
+        self.assertEqual(grid[0].beat, 3)
+        self.assertAlmostEqual(grid[1].start, 4.0, places=6)
+        self.assertAlmostEqual(grid[1].bpm, 125.0, places=3)
+        self.assertEqual(grid[1].beat, places[8])
+        self.assertEqual(grid_from_beats([1.0], [1]), ())
+        self.assertEqual(grid_from_beats([1.0, 0.5], [1, 2]), ())                  # out of order: none
+
+    def test_the_marks_as_the_apps_analysis(self):
+        marks = SourceMarks(grid=(TempoChange(0.5, 120.0, 3),), cues=(SourceCue(10.0, "Drop", (255, 40, 40)),
+                                                                      SourceCue(99.0, "past the end")), key=21)
+        a = source_analysis(marks, 20.0)
+        self.assertEqual(a.tempo_segments.tolist(), [[0.5, 20.0, 120.0, 1.5, 4.0, 120.0]])   # its downbeat a 1
+        self.assertAlmostEqual(float(a.beats[0]), 0.5)
+        self.assertEqual(a.key_segments.tolist(), [[9.0, 1.0, 0.0, 20.0]])
+        self.assertEqual([(c.time_sec, c.label, c.color_idx) for c in a.cue_points], [(10.0, "Drop", 0)])
+        self.assertIsNone(source_analysis(marks, 0.0))                                # its length not known
+
 
 class _Receiver(ob.OscBasicReceiver):
     """The receiver's bookkeeping without its socket."""
@@ -101,7 +163,7 @@ class _Receiver(ob.OscBasicReceiver):
         import threading
         self._lock = threading.Lock()
         self._states, self._names, self._heard, self._sender, self._refused = {}, {}, {}, "", 0
-        self._tempo, self._master = {}, {}
+        self._tempo, self._master, self._marks = {}, {}, {}
 
 
 class ReadoutTests(unittest.TestCase):
@@ -126,6 +188,9 @@ class ReadoutTests(unittest.TestCase):
         self.assertEqual(TrackPhrases((), None, None).at(1.0).now, None)
         before = TrackPhrases(self.phrases, self.beats, self.rows).at(-2.0)   # before the track's start
         self.assertEqual((before.now, before.next.name, before.left_beats), (None, "INTRO", None))   # no beats there
+        from analyzer.music.marks import Phrase
+        gap = TrackPhrases([Phrase(0.0, 16.0, "UNASSIGNED"), *self.phrases[1:]], self.beats, self.rows).at(2.0)
+        self.assertEqual((gap.now, gap.next.name), (None, "VERSE1"))          # where no phrase is: none
 
     def test_by_label_a_run_of_one_label_is_one(self):
         now = TrackPhrases(self.phrases, self.beats, self.rows).at(30.0, LABEL)
