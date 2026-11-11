@@ -9,7 +9,7 @@ use std::f64::consts::PI;
 use std::rc::Rc;
 use std::sync::Arc;
 
-use num_complex::Complex32;
+use num_complex::{Complex32, Complex64};
 use realfft::{ComplexToReal, RealFftPlanner, RealToComplex};
 
 use crate::split::BandSplit;
@@ -162,6 +162,29 @@ pub struct Config {
     pub attack_smoothing_hz: f64,
     pub attack_bass_hz: f64,
     pub attack_whole_hz: f64,
+    /// the upper band's bins that hold two steady tones (``TwoTones``): on by default, off by the engine's
+    /// environment (``two_tones_enabled``); the prediction's step along the frames (ms: adjacent frames, 3 ms apart
+    /// at -70 %, are too alike to tell two tones 40 Hz apart, and any smooth bin fits), the fit's residual, the
+    /// weaker tone's share of the stronger, the least the two are apart, how far a root's modulus may be from 1 a
+    /// step (a tone neither growing nor fading), how far both tones may move a frame and for how many frames in a
+    /// row they must have held (a voice's gliding harmonic passing a bin fits two tones for a frame or two: taken,
+    /// its vibrato trembled), the bins' level under the frame's loudest, and the band's top
+    pub two_tones: bool,
+    pub two_tone_span_ms: f64,
+    pub two_tone_residual: f64,
+    pub two_tone_ratio: f64,
+    pub two_tone_apart_hz: f64,
+    pub two_tone_modulus: f64,
+    pub two_tone_drift_hz: f64,
+    pub two_tone_hold: u32,
+    pub two_tone_floor: f64,
+    pub two_tone_top_hz: f64,
+}
+
+/// The two tones a bin (``Config::two_tones``): off when the engine's environment has
+/// ``MIXLYZER_STRETCH_TWO_TONES=0`` (read when a stretcher is made: the app's, an offline render's).
+pub fn two_tones_enabled() -> bool {
+    !matches!(std::env::var("MIXLYZER_STRETCH_TWO_TONES").as_deref(), Ok("0") | Ok("off"))
 }
 
 impl Default for Config {
@@ -200,6 +223,16 @@ impl Default for Config {
             attack_smoothing_hz: 150.0,
             attack_bass_hz: 200.0,
             attack_whole_hz: 6500.0,
+            two_tones: two_tones_enabled(),
+            two_tone_span_ms: 12.0,
+            two_tone_residual: 0.05,
+            two_tone_ratio: 0.25,
+            two_tone_apart_hz: 12.0,
+            two_tone_modulus: 0.15,
+            two_tone_drift_hz: 2.0,
+            two_tone_hold: 3,
+            two_tone_floor: 0.03,
+            two_tone_top_hz: 6500.0,
         }
     }
 }
@@ -826,6 +859,323 @@ struct UpperVocoder {
     frames_in: Vec<f32>, // [ch, window]: the frame's input
     gain: Vec<f32>,      // per bin: its share of the crossover
     noise: NoiseBins,
+    two: TwoTones,
+}
+
+/// The upper band's bins that hold two steady tones. The band's window resolves partials 93 Hz apart; closer ones (a
+/// distorted chord's, on the two notes' common fundamental: 40 Hz apart) share a bin, whose one phase advance then
+/// plays their beating slowed with the music (a 41 Hz grit a 12 Hz flutter at -70 %). Along the frames such a bin is
+/// the sum of two turning phasors, a1 z1^n + a2 z2^n: found by a linear prediction of order 2 over its last frames
+/// (Prony's method; the frames ``Config::two_tone_span_ms`` apart, demodulated by the bin's own frequency at each
+/// frame's centre so the hop's rounding to a sample does not count; least squares over both channels), and each tone
+/// given its own phase advance in the synthesis, so the beat keeps its rate. Slowed down only (the frames closer
+/// than the synthesis's), from the crossover's lowest place to ``Config::two_tone_top_hz``; a bin is taken once its
+/// fit has held (``Config::two_tone_hold``), else it is the vocoder's as before.
+struct TwoTones {
+    on: bool,
+    lo: usize, // the band's bins, lo ..= hi
+    hi: usize,
+    n_fft: usize,
+    rate: f64,
+    span: f64, // the prediction's step (samples)
+    max_residual: f64,
+    min_ratio: f64,
+    apart_hz: f64,
+    max_modulus: f64,
+    drift_hz: f64,
+    hold: u32,
+    floor: f32,
+    table: Vec<Complex32>,        // e^{-j 2 pi i / n_fft}
+    history: Vec<Vec<Complex32>>, // a ring of the last frames' demodulated bins, [ch][band]; ``head`` the newest
+    head: usize,
+    // per frame of the ring and bin, summed over the channels: |u(n)|^2, u(n) u*(n - d), u(n) u*(n - 2 d), and the
+    // step d they were made with (0: none): the least squares' sums are sums of these over the equations' frames,
+    // so a frame's products are made once, not once per equation it is in
+    p0: Vec<Vec<f64>>,
+    p1: Vec<Vec<Complex64>>,
+    p2: Vec<Vec<Complex64>>,
+    steps: [usize; Self::FRAMES],
+    // per bin, over the equations: the sums of |y|^2, |x1|^2, |x2|^2, x1* y, x2* y and (x1* x2)*
+    #[allow(clippy::type_complexity)]
+    sums: (Vec<f64>, Vec<f64>, Vec<f64>, Vec<Complex64>, Vec<Complex64>, Vec<Complex64>),
+    centers: VecDeque<i64>,       // the frames' centres before this one, newest first
+    xa: Vec<Complex32>,           // this frame's analysis bins, [ch][band]
+    last_xa: Vec<Complex32>,      // the last frame's, channel 0, and its synthesis bins: a bin's rotation when taken
+    last_y: Vec<Complex32>,
+    psi: Vec<[f64; 2]>,           // per bin: each tone's rotation (its synthesis phase less its analysis phase)
+    active: Vec<bool>,
+    last_arg: Vec<[f64; 2]>,      // per bin: the roots' angles of the last frame's fit (NaN: none)
+    run: Vec<u32>,                // per bin: the frames in a row its fit held still
+}
+
+impl TwoTones {
+    /// The frames kept: the oldest read is ``rows - 1 + 2 d`` back, d up to 6.
+    const FRAMES: usize = 24;
+
+    fn new(ch: usize, bins: usize, n_fft: usize, rate: f64, cfg: &Config) -> TwoTones {
+        let zc = Complex32::new(0.0, 0.0);
+        let bin = |hz: f64| ((hz * n_fft as f64 / rate) as usize).min(bins - 1);
+        let lo = bin(cfg.mid_hz - cfg.crossover_range_hz - cfg.crossover_width_hz).max(1);
+        let hi = bin(cfg.two_tone_top_hz).max(lo);
+        let band = hi - lo + 1;
+        TwoTones {
+            on: cfg.two_tones,
+            lo,
+            hi,
+            n_fft,
+            rate,
+            span: cfg.two_tone_span_ms * rate / 1000.0,
+            max_residual: cfg.two_tone_residual,
+            min_ratio: cfg.two_tone_ratio,
+            apart_hz: cfg.two_tone_apart_hz,
+            max_modulus: cfg.two_tone_modulus,
+            drift_hz: cfg.two_tone_drift_hz,
+            hold: cfg.two_tone_hold,
+            floor: cfg.two_tone_floor as f32,
+            table: (0..n_fft)
+                .map(|i| {
+                    let a = -TWO_PI * i as f64 / n_fft as f64;
+                    Complex32::new(a.cos() as f32, a.sin() as f32)
+                })
+                .collect(),
+            history: vec![vec![zc; ch * band]; Self::FRAMES],
+            head: 0,
+            p0: vec![vec![0.0; band]; Self::FRAMES],
+            p1: vec![vec![Complex64::new(0.0, 0.0); band]; Self::FRAMES],
+            p2: vec![vec![Complex64::new(0.0, 0.0); band]; Self::FRAMES],
+            steps: [0; Self::FRAMES],
+            sums: (vec![0.0; band], vec![0.0; band], vec![0.0; band], vec![Complex64::new(0.0, 0.0); band],
+                   vec![Complex64::new(0.0, 0.0); band], vec![Complex64::new(0.0, 0.0); band]),
+            centers: VecDeque::with_capacity(Self::FRAMES + 1),
+            xa: vec![zc; ch * band],
+            last_xa: vec![zc; band],
+            last_y: vec![zc; band],
+            psi: vec![[0.0; 2]; band],
+            active: vec![false; band],
+            last_arg: vec![[f64::NAN; 2]; band],
+            run: vec![0; band],
+        }
+    }
+
+    /// A new stream: no frames before its first.
+    fn restart(&mut self) {
+        self.centers.clear();
+        self.steps = [0; Self::FRAMES];
+        self.forget();
+    }
+
+    /// No bin a fit's: each hold starts anew (its frames in a row, none before a gap counted).
+    fn forget(&mut self) {
+        self.active.iter_mut().for_each(|a| *a = false);
+        self.run.iter_mut().for_each(|r| *r = 0);
+        self.last_arg.iter_mut().for_each(|a| *a = [f64::NAN; 2]);
+    }
+
+    /// This frame's analysis bins of one channel (``spec``, the vocoder's, its crossover's gain on).
+    fn analysis(&mut self, spec: &[Complex32], c: usize) {
+        if self.on {
+            let band = self.hi - self.lo + 1;
+            self.xa[c * band..(c + 1) * band].copy_from_slice(&spec[self.lo..=self.hi]);
+        }
+    }
+
+    /// The frame (centred on ``center`` of the source) after the vocoder's: the synthesis coefficients (``coeff``,
+    /// [ch, bins]) of the bins that are two tones set again, ``phase`` (the synthesis phases the next frame goes on
+    /// from) with them. ``gain`` the crossover's, ``peak`` the frame's loudest joint magnitude.
+    #[allow(clippy::too_many_arguments)]
+    fn frame(&mut self, coeff: &mut [Complex32], phase: &mut [f64], gain: &[f32], ch: usize, bins: usize, center: i64,
+             synthesis_hop: i64, peak: f32) {
+        type C = Complex64;
+        if !self.on {
+            return;
+        }
+        let (lo, band) = (self.lo, self.hi - self.lo + 1);
+        let nf = self.n_fft as i64;
+        // the prediction's step: d frames, about the span
+        let h0 = self.centers.front().map_or(0, |&p| center - p);
+        let d = if h0 > 0 { ((self.span / h0 as f64).round() as usize).clamp(1, 6) } else { 1 };
+        let rows = d.max(2);
+        let need = rows - 1 + 2 * d; // the oldest frame read
+        // the frames evenly apart (the time map's hop, to a sample), and closer than the synthesis's
+        let even = h0 > 0
+            && h0 < synthesis_hop
+            && self.centers.len() >= need
+            && (0..need - 1).all(|i| ((self.centers[i] - self.centers[i + 1]) - h0).abs() <= 1);
+        // this frame demodulated (u = x e^{-j w_k t}) into the ring
+        self.head = (self.head + Self::FRAMES - 1) % Self::FRAMES;
+        {
+            let now = &mut self.history[self.head];
+            // the table's index, k t mod n_fft, a bin on: one addition (no division a bin)
+            let turn = center.rem_euclid(nf) as usize;
+            let mut index = ((lo as i64 * center).rem_euclid(nf)) as usize;
+            for i in 0..band {
+                let w = self.table[index];
+                for c in 0..ch {
+                    now[c * band + i] = self.xa[c * band + i] * w;
+                }
+                index += turn;
+                if index >= self.n_fft {
+                    index -= self.n_fft;
+                }
+            }
+        }
+        // this frame's products with the frames d and 2 d before it
+        let at = |f: usize| (self.head + f) % Self::FRAMES;
+        let paired = h0 > 0 && h0 < synthesis_hop && self.centers.len() >= 2 * d;
+        self.steps[self.head] = if paired { d } else { 0 };
+        if paired {
+            let (now, one, two) = (&self.history[at(0)], &self.history[at(d)], &self.history[at(2 * d)]);
+            let wide = |v: Complex32| Complex64::new(v.re as f64, v.im as f64);
+            for i in 0..band {
+                let (mut q0, mut q1, mut q2) = (0f64, Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0));
+                for c in 0..ch {
+                    let u = wide(now[c * band + i]);
+                    q0 += u.norm_sqr();
+                    q1 += u * wide(one[c * band + i]).conj();
+                    q2 += u * wide(two[c * band + i]).conj();
+                }
+                self.p0[self.head][i] = q0;
+                self.p1[self.head][i] = q1;
+                self.p2[self.head][i] = q2;
+            }
+        }
+        // every frame the equations read made with this step
+        let even = even && (0..rows + 2 * d).all(|f| self.steps[at(f)] == d);
+        if even {
+            let step = (center - self.centers[2 * d - 1]) as f64 / 2.0; // d frames (samples)
+            let ha_now = h0 as f64;
+            let hs = synthesis_hop as f64;
+            let apart = TWO_PI * self.apart_hz * step / self.rate;
+            let drift = TWO_PI * self.drift_hz * step / self.rate;
+            let floor = self.floor * peak;
+            let z0 = C::new(0.0, 0.0);
+            // the least squares' sums of every bin, a frame's products at a time (in order through each vector)
+            {
+                let (bb, a11, a22, b1, b2, a12) = &mut self.sums;
+                bb.iter_mut().chain(a11.iter_mut()).chain(a22.iter_mut()).for_each(|v| *v = 0.0);
+                b1.iter_mut().chain(b2.iter_mut()).chain(a12.iter_mut()).for_each(|v| *v = z0);
+                for r in 0..rows {
+                    let (f0, f1, f2) = ((self.head + r) % Self::FRAMES, (self.head + r + d) % Self::FRAMES,
+                                        (self.head + r + 2 * d) % Self::FRAMES);
+                    for (s, v) in bb.iter_mut().zip(&self.p0[f0]) {
+                        *s += *v;
+                    }
+                    for (s, v) in a11.iter_mut().zip(&self.p0[f1]) {
+                        *s += *v;
+                    }
+                    for (s, v) in a22.iter_mut().zip(&self.p0[f2]) {
+                        *s += *v;
+                    }
+                    for (s, v) in b1.iter_mut().zip(&self.p1[f0]) {
+                        *s += *v;
+                    }
+                    for (s, v) in b2.iter_mut().zip(&self.p2[f0]) {
+                        *s += *v;
+                    }
+                    for (s, v) in a12.iter_mut().zip(&self.p1[f1]) {
+                        *s += *v;
+                    }
+                }
+            }
+            for i in 0..band {
+                let k = lo + i;
+                let mut fitted = false;
+                let mut judged = false; // fitted at all this frame (else its hold starts anew)
+                let get =|f: usize, c: usize| -> C {
+                    let v = self.history[(self.head + f) % Self::FRAMES][c * band + i];
+                    C::new(v.re as f64, v.im as f64)
+                };
+                let e_now = self.p0[at(0)][i];
+                if gain[k] > 0.5 && e_now.sqrt() as f32 > floor {
+                    // the least squares of u(n) = p1 u(n - d) + p2 u(n - 2 d), ``rows`` equations a channel: with
+                    // y = u(n - r), x1 = u(n - r - d), x2 = u(n - r - 2 d), the sums of |x1|^2, |x2|^2, x1* x2,
+                    // x1* y, x2* y and |y|^2 over them
+                    let (a11, a12, a22) = (self.sums.1[i], self.sums.5[i].conj(), self.sums.2[i]);
+                    let (b1, b2, bb) = (self.sums.3[i], self.sums.4[i], self.sums.0[i]);
+                    let det = a11 * a22 - a12.norm_sqr();
+                    if det > 1e-9 * a11 * a22 && bb > 0.0 {
+                        judged = true;
+                        let p1 = (b1 * a22 - a12 * b2) / det;
+                        let p2 = (b2 * a11 - a12.conj() * b1) / det;
+                        // the residual, |b|^2 - p^H A^H b, before the roots: most bins end here
+                        let residual = ((bb - (p1.conj() * b1 + p2.conj() * b2).re) / bb).max(0.0);
+                        let mut still = false;
+                        let mut angles = [f64::NAN; 2];
+                        let mut roots = None;
+                        if residual < self.max_residual {
+                            let root = (p1 * p1 + p2 * 4.0).sqrt();
+                            let (mut z1, mut z2) = ((p1 + root) * 0.5, (p1 - root) * 0.5);
+                            let steady = |z: C| (z.norm() - 1.0).abs() < self.max_modulus;
+                            if steady(z1) && steady(z2) {
+                                if z1.arg() < z2.arg() {
+                                    std::mem::swap(&mut z1, &mut z2);
+                                }
+                                angles = [z1.arg(), z2.arg()];
+                                if wrap(angles[0] - angles[1]).abs() > apart {
+                                    // held still: both tones where the last frame's fit had them
+                                    still = wrap(angles[0] - self.last_arg[i][0]).abs() < drift
+                                        && wrap(angles[1] - self.last_arg[i][1]).abs() < drift;
+                                    roots = Some((z1, z2));
+                                }
+                            }
+                        }
+                        self.run[i] = if still { self.run[i] + 1 } else { 0 };
+                        self.last_arg[i] = angles;
+                        if let Some((z1, z2)) = roots.filter(|_| self.run[i] >= self.hold) {
+                            // each channel's two amplitudes at this frame, from u(n) and u(n - d)
+                            let (i1, i2) = (z1.inv(), z2.inv());
+                            let mut amps = [[z0; 2]; 2];
+                            let (mut e1, mut e2) = (0f64, 0f64);
+                            for c in 0..ch.min(2) {
+                                let (u0, u1) = (get(0, c), get(d, c));
+                                let a2 = (u1 - u0 * i1) / (i2 - i1);
+                                let a1 = u0 - a2;
+                                amps[c] = [a1, a2];
+                                e1 += a1.norm_sqr();
+                                e2 += a2.norm_sqr();
+                            }
+                            let ratio = (e1.min(e2) / e1.max(e2).max(1e-30)).sqrt();
+                            // neither tone far louder than the bin (two near roots: a difference of large numbers)
+                            if ratio > self.min_ratio && e1 + e2 < 4.0 * e_now.max(1e-30) + 4.0 * bb / (2 * ch) as f64 {
+                                if !self.active[i] {
+                                    // from the vocoder's rotation of the bin's last frame
+                                    let rot = (self.last_y[i] * self.last_xa[i].conj()).arg() as f64;
+                                    self.psi[i] = [rot; 2];
+                                }
+                                let wk = TWO_PI * k as f64 / self.n_fft as f64;
+                                for (t, z) in [z1, z2].iter().enumerate() {
+                                    let w = wk + z.arg() / step;
+                                    self.psi[i][t] = wrap(self.psi[i][t] + w * (hs - ha_now));
+                                }
+                                let back = self.table[((k as i64 * center).rem_euclid(nf)) as usize].conj();
+                                let back = C::new(back.re as f64, back.im as f64);
+                                for c in 0..ch.min(2) {
+                                    let y = (amps[c][0] * C::from_polar(1.0, self.psi[i][0])
+                                        + amps[c][1] * C::from_polar(1.0, self.psi[i][1]))
+                                        * back;
+                                    coeff[c * bins + k] = Complex32::new(y.re as f32, y.im as f32);
+                                    phase[c * bins + k] = y.arg();
+                                }
+                                fitted = true;
+                            }
+                        }
+                    }
+                }
+                if !judged {
+                    // too quiet, outside the band or no fit: the frames in a row end here
+                    self.run[i] = 0;
+                    self.last_arg[i] = [f64::NAN; 2];
+                }
+                self.active[i] = fitted;
+            }
+        } else {
+            self.forget(); // frames not evenly apart (or too few): no hold runs across them
+        }
+        self.last_xa.copy_from_slice(&self.xa[..band]);
+        self.last_y.copy_from_slice(&coeff[lo..=self.hi]);
+        self.centers.push_front(center);
+        self.centers.truncate(Self::FRAMES);
+    }
 }
 
 /// The noise's bins of the upper band (``Config::noise_peak_db``): what tells them from a partial's, and the frame's
@@ -1001,6 +1351,7 @@ impl UpperVocoder {
             frames_in: vec![0.0; ch * length],
             gain,
             noise,
+            two: TwoTones::new(ch, bins, n_fft, rate, cfg),
         }
     }
 
@@ -1029,6 +1380,7 @@ impl UpperVocoder {
                 *v *= *g;
             }
             self.coeff[c * bins..(c + 1) * bins].copy_from_slice(&self.spec);
+            self.two.analysis(&self.spec, c);
             vk::magnitude(&mut self.magnitude[c * bins..(c + 1) * bins], &self.spec);
             vk::phase(&mut self.phase32, &self.spec);
             for m in 0..bins {
@@ -1042,6 +1394,9 @@ impl UpperVocoder {
                 p += v * v;
             }
             self.joint[m] = p.sqrt() as f32;
+        }
+        if self.previous_center.is_none() {
+            self.two.restart();
         }
         if let Some(previous) = self.previous_center {
             if jitter > 0.0 {
@@ -1090,6 +1445,9 @@ impl UpperVocoder {
         } else {
             self.synthesis_phase.copy_from_slice(&self.analysis_phase);
         }
+        // the bins that are two tones, each tone at its own phase advance
+        let peak = self.joint.iter().fold(0f32, |m, &v| m.max(v));
+        self.two.frame(&mut self.coeff, &mut self.synthesis_phase, &self.gain, ch, bins, center, synthesis_hop, peak);
         // the inverse unscaled (1 / n_fft) and the Hann^2 overlap (3/8 of the window over the hop)
         let scale = 1.0 / (self.n_fft as f32 * 0.375 * wl as f32 / synthesis_hop as f32);
         for c in 0..ch {

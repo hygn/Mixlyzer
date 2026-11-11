@@ -99,12 +99,13 @@ class NativeStretch(unittest.TestCase):
             x[i:i + n] += rng.standard_normal((n, 2)) * np.exp(-np.arange(n) / (0.012 * RATE))[:, None] * 0.5
         return x.astype(np.float32), onsets
 
-    def _render(self, pcm: np.ndarray, factor: float) -> np.ndarray:
+    def _render(self, pcm: np.ndarray, factor: float, two_tones: bool = True) -> np.ndarray:
         src = os.path.join(self.dir, "st_in.f32")
         out = os.path.join(self.dir, "st_out.f32")
         np.ascontiguousarray(pcm).astype("<f4").tofile(src)
+        env = dict(os.environ, MIXLYZER_STRETCH_TWO_TONES="1" if two_tones else "0")
         subprocess.run([str(EXE), "--stretch-file", src, "--out", out, "--factor", str(factor)],
-                       check=True, capture_output=True)
+                       check=True, capture_output=True, env=env)
         return np.fromfile(out, "<f4").reshape(-1, 2)
 
     def test_level_and_attacks(self):
@@ -241,6 +242,47 @@ class NativeStretch(unittest.TestCase):
                 f = np.fft.rfftfreq(len(a), 1 / 200)
                 depth.append(p[(f >= 4) & (f < 10)].sum())
             self.assertLess(10 * np.log10(np.mean(depth)), -5.0, factor)
+
+    def test_close_partials_keep_their_beat_slowed_down(self):
+        """A distorted power chord (E2 + B2 through a hard drive: partials every 41 Hz, closer than the upper band's
+        window resolves) slowed to -70 %: with the bins that hold two steady tones given a phase advance each
+        (MIXLYZER_STRETCH_TWO_TONES, on by default), its partials stand at least 3 dB further over the floor between
+        them (1.8 - 5 kHz) than with one phase a bin, and their beat slowed with the music (the band's envelope
+        under 20 Hz: a flutter the source does not have) is at least 3 dB lower."""
+        from scipy.signal import butter, hilbert, sosfiltfilt
+        seconds, e2 = 6.0, 82.41
+        sub = e2 / 2
+        t = np.arange(int(seconds * RATE)) / RATE
+        rng = np.random.default_rng(5)
+        x = np.zeros_like(t)
+        for f0, a in ((e2, 1.0), (e2 * 1.5, 0.8), (e2 * 2, 0.6)):
+            for h in range(1, 13):
+                x += a / h * np.sin(2 * np.pi * f0 * h * t + rng.uniform(0, 2 * np.pi))
+        x = sosfiltfilt(butter(2, [90, 5200], "bandpass", fs=RATE, output="sos"), np.tanh(6.0 * x / np.abs(x).max()))
+        x = 0.2 * x / np.sqrt(np.mean(x ** 2)) * np.minimum(1, np.minimum(t, t[-1] - t) / 0.05)
+        pcm = np.stack([x, x], axis=1).astype(np.float32)
+        band = butter(6, [1800, 5000], "bandpass", fs=RATE, output="sos")
+
+        def measures(y):
+            mono = y.mean(axis=1).astype(np.float64)[RATE:-RATE]
+            m = 16384
+            k = (len(mono) - m) // (m // 2)
+            idx = np.arange(m)[None, :] + (m // 2) * np.arange(k)[:, None]
+            p = (np.abs(np.fft.rfft(mono[idx] * np.hanning(m), axis=1)) ** 2).mean(axis=0)
+            f = np.fft.rfftfreq(m, 1 / RATE)
+            ratios = []
+            for h in range(int(1800 / sub) + 1, int(5000 / sub)):
+                c = h * sub
+                ratios.append(p[(f > c - 4) & (f < c + 4)].max() / np.median(p[(f > c + 12) & (f < c + sub - 12)]))
+            env = np.abs(hilbert(sosfiltfilt(band, mono)))
+            env = env / env.mean() - 1
+            spec = np.abs(np.fft.rfft(env * np.hanning(len(env)))) ** 2
+            fe = np.fft.rfftfreq(len(env), 1 / RATE)
+            return 10 * np.log10(np.median(ratios)), 10 * np.log10(spec[(fe >= 2) & (fe < 20)].sum())
+
+        on, off = measures(self._render(pcm, 0.3)), measures(self._render(pcm, 0.3, two_tones=False))
+        self.assertGreater(on[0] - off[0], 3.0, (on, off))
+        self.assertLess(on[1] - off[1], -3.0, (on, off))
 
     def test_noise_stays_noise_slowed_down(self):
         """A noise slowed down stays noise (its spectral flatness, 1.5 - 6 kHz, at least 0.75 of the source's): a
