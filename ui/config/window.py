@@ -23,7 +23,6 @@ from core.settings.config import (
     config,
     deckconfig,
     default_cfg,
-    externalsyncconfig,
     libconfig,
     playbackconfig,
     viewconfig,
@@ -31,10 +30,6 @@ from core.settings.config import (
 from core.workflows.event_bus import EventBus
 from system.i18n import tr
 from ui.config.analysis import AnalysisSettingsMixin, build_analysis_tab
-from ui.config.external_sync import (
-    ExternalSyncSettingsMixin,
-    build_external_sync_tab,
-)
 from third_party import rekordbox_phrases
 from ui.config.library import (LibrarySettingsMixin, build_library_tab, phrase_choices, phrase_mood,
                                set_phrase_choices)
@@ -51,7 +46,6 @@ class SettingsDialog(
     ViewSettingsMixin,
     PlaybackSettingsMixin,
     AnalysisSettingsMixin,
-    ExternalSyncSettingsMixin,
     ShortcutSettingsMixin,
     MidiSettingsMixin,
     QDialog,
@@ -75,7 +69,6 @@ class SettingsDialog(
         build_analysis_tab(self)
         build_shortcuts_tab(self)
         build_midi_tab(self)
-        build_external_sync_tab(self)
         self._stabilize_layout_widths()
 
         self.btn_box = QDialogButtonBox(
@@ -277,13 +270,6 @@ class SettingsDialog(
         self.cb_key_dynamic.setChecked(bool(getattr(a, "key_dynamic", True)))
         self.ed_key_parameter_path.setText(str(getattr(a, "key_parameter_path", "") or ""))
 
-        # external sync
-        x = cfg.externalsyncconfig
-        self.cb_external_sync_enabled.setChecked(bool(x.enabled))
-        self.ed_external_sync_host.setText(str(x.osc_host or ""))
-        self.sp_external_sync_port.setValue(int(x.osc_port))
-        self._sync_external_sync_address_ui()
-
     def _kept_deck(self) -> deckconfig:
         """deck.json's settings as last kept (the main screen's, a controller's: the dialog shows only the
         metronome's sound of them)."""
@@ -378,11 +364,6 @@ class SettingsDialog(
                 midi_input=self._midi_input(),
                 midi_jog_ticks=int(self.sp_midi_jog_ticks.value()),
                 output_main=str(self.cb_output_main.currentData() or "1-2"),
-            ),
-            externalsyncconfig=externalsyncconfig(
-                enabled=bool(self.cb_external_sync_enabled.isChecked()),
-                osc_host=self._external_sync_host(),
-                osc_port=int(self.sp_external_sync_port.value()),
             ),
             cuepointconfig=self._get_cue_point_rules(),
             searchconfig=self._get_search_config(),

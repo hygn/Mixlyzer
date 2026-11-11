@@ -554,8 +554,8 @@ class WaveformView(ViewPlugin):
 
     def _follow_playhead(self) -> None:
         """When the playhead enters another chunk: the worker renders nearest it first, and the far chunks
-        are dropped. Jumped there (past the next chunk, not scrubbing: a seek, a CALL, a JumpCUE, a beat jump,
-        External Sync's), playback goes on from there: rendered as a scrub let go (_resume_at). Jumping again the
+        are dropped. Jumped there (past the next chunk, not scrubbing: a seek, a CALL, a JumpCUE, a beat jump),
+        playback goes on from there: rendered as a scrub let go (_resume_at). Jumping again the
         next frame, the playhead travels (a controller's jog search: no drag the view is told of), followed as a
         scrub and rendered from where it stops."""
         center = self._current_chunk()

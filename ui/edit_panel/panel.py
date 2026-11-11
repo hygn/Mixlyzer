@@ -87,7 +87,6 @@ class EditPanel(
         self._save_in_progress = False
         self._save_point: tuple = ()          # the model's save point of the save running (DataModel.save_point)
         self._after_save: Optional[Callable[[], None]] = None   # what runs once the save running is stored (save_then)
-        self._after_failure: Optional[Callable[[], None]] = None   # what runs when it fails (save_then's failed)
         self.tempo_multiplier = 1
         self._playing = False
         # BeatCounter: while the Count button is held, count beats crossed by
@@ -564,13 +563,12 @@ class EditPanel(
     def _redo(self) -> None:
         self.model.redo()
 
-    def save_then(self, after: Callable[[], None], failed: Optional[Callable[[], None]] = None) -> bool:
+    def save_then(self, after: Callable[[], None]) -> bool:
         """Save the edits, then ``after`` once they are stored (not when the save fails: the failure is said, the
-        edits kept, then ``failed``). False: no save could start (editing is off, a save is running, a JumpCUE label
-        is invalid)."""
+        edits kept). False: no save could start (editing is off, a save is running, a JumpCUE label is invalid)."""
         if not self._save():
             return False
-        self._after_save, self._after_failure = after, failed
+        self._after_save = after
         return True
 
     @property
@@ -589,7 +587,7 @@ class EditPanel(
         except ValueError as exc:
             QtWidgets.QMessageBox.warning(self, tr("Invalid JumpCUE Label"), str(exc))
             return False
-        self._after_save = self._after_failure = None
+        self._after_save = None
         self._save_in_progress = True
         self.btn_save.setEnabled(False)
         # what this save stores: an edit made while it runs stays unsaved
@@ -603,15 +601,12 @@ class EditPanel(
 
     def _on_save_failed(self, exc: Exception) -> None:
         self._save_in_progress = False
-        failed, self._after_save, self._after_failure = self._after_failure, None, None
+        self._after_save = None
         self.btn_save.setEnabled(self._edit_enabled)
         QtWidgets.QMessageBox.warning(self, tr("Save"), tr("The edits could not be saved:\n{error}").format(error=exc))
-        if failed is not None:
-            failed()
 
     def _on_save_finished(self, saved_uid=None) -> None:
         self._save_in_progress = False
-        self._after_failure = None
         self.btn_save.setEnabled(self._edit_enabled)
         uid = str(saved_uid or "").strip()
         if uid and uid == self.uid:      # still the loaded track: the edits of the save point are stored

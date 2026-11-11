@@ -1,4 +1,4 @@
-"""core.playback.osc: External Sync's packets come from the network, so the decoder takes a well-formed OSC 1.0
+"""core.deck_monitor.osc: Deck Monitor's packets come from the network, so the decoder takes a well-formed OSC 1.0
 packet and refuses anything else as a whole (OscError, never another exception). Boundaries of every type, every
 truncation of a valid packet and seeded random corruption."""
 import math
@@ -6,7 +6,7 @@ import random
 import struct
 import unittest
 
-from core.playback import osc
+from core.deck_monitor import osc
 
 SEED = 20261027
 

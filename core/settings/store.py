@@ -41,7 +41,7 @@ class SettingsStore(QtCore.QObject):
         return self._cfg
 
     def save(self, new: config) -> None:
-        """New settings (the settings dialog's, External Sync turned off): config.json and deck.json written at once,
+        """New settings (the settings dialog's): config.json and deck.json written at once,
         then ``changed`` sent."""
         self._deck_save.stop()
         save_cfg(new)

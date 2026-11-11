@@ -9,7 +9,6 @@ class EventBus(QtCore.QObject):
     sig_center_changed = QtCore.Signal(float)    # center_t
     sig_playback_status = QtCore.Signal(bool)
     sig_transport_enabled = QtCore.Signal(bool)
-    sig_external_sync_enabled = QtCore.Signal(bool)
     sig_peak_meter_gain_changed = QtCore.Signal(float)
     sig_output_peak_dbfs = QtCore.Signal(float)
     # Output buffer: queued ms now, time-continuous observations since the last report

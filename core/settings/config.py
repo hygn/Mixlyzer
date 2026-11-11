@@ -177,6 +177,13 @@ class deckconfig:
     sync_rekordbox_xml: bool
     sync_rekordbox_phrases: bool
     phrase_backup: str
+    # Deck Monitor (core.deck_monitor): where the decks' OSC messages are received while its window is open, set in
+    # that window: 127.0.0.1 this computer only; another address takes them from that network too
+    monitor_host: str
+    monitor_port: int
+    # the phrase now and next its decks show, by "section" (each phrase) or by "label" (a run of one label), all four
+    # alike: clicked there
+    monitor_phrase_unit: Literal["section", "label"]
 
 
 @dataclass
@@ -207,15 +214,6 @@ class playbackconfig:
     midi_jog_ticks: int
     # the native engine's master: its channel pair on the device ("1-2")
     output_main: str
-
-
-@dataclass
-class externalsyncconfig:
-    enabled: bool
-    # where the deck's OSC messages are received (core.playback.external_sync): 127.0.0.1 this computer only; another
-    # address takes them from that network too (then only library tracks are followed)
-    osc_host: str
-    osc_port: int
 
 
 @dataclass
@@ -333,7 +331,6 @@ class config:
     libconfig: libconfig
     viewconfig: viewconfig
     playbackconfig: playbackconfig
-    externalsyncconfig: externalsyncconfig
     cuepointconfig: cuepointconfig
     searchconfig: searchconfig
     deckconfig: deckconfig   # kept in deck.json, not config.json
@@ -541,6 +538,9 @@ def default_cfg():
         sync_rekordbox_xml=True,
         sync_rekordbox_phrases=False,
         phrase_backup="ext",
+        monitor_host="127.0.0.1",
+        monitor_port=39321,
+        monitor_phrase_unit="section",
     )
     pcfg = playbackconfig(
         output_clip="tanh",
@@ -557,7 +557,6 @@ def default_cfg():
         midi_jog_ticks=720,
         output_main="1-2",
     )
-    xcfg = externalsyncconfig(enabled=False, osc_host="127.0.0.1", osc_port=39321)
     # CUE points at the start of an interlude and of the outro (not between two
     # of them)
     cue_rules = {
@@ -586,7 +585,6 @@ def default_cfg():
         analysisconfig=acfg,
         viewconfig=vcfg,
         playbackconfig=pcfg,
-        externalsyncconfig=xcfg,
         cuepointconfig=cuepointconfig(**cue_rules),
         searchconfig=scfg,
         deckconfig=dcfg,
@@ -641,7 +639,7 @@ def _merge_defaults(default_dict: dict, loaded_dict: dict) -> dict:
 def restored_settings(current: config, payload: dict, deck: dict, *, libpath: str,
                       local_music_directories: list[str], rekordbox_xml_path: str) -> config:
     """A library package's settings (config.json's and deck.json's content) on this device: the package's, but for
-    what describes this device, kept as it is here: the audio (playbackconfig), the microphone, External Sync, and
+    what describes this device, kept as it is here: the audio (playbackconfig), the microphone, Deck Monitor, and
     every file path (the log, the models, the metronome's sound, the record's image: a package
     never names where a file is written). The library is ``libpath``; the music folders and the Rekordbox XML are
     the restore's (joined to this device's folders by the user)."""
@@ -649,13 +647,14 @@ def restored_settings(current: config, payload: dict, deck: dict, *, libpath: st
     new = config.from_dict(_merge_defaults(defaults.to_dict(), _normalize_config_payload(payload)),
                            _merge_defaults(defaults.deck_dict(), deck if isinstance(deck, dict) else {}))
     new.playbackconfig = copy.deepcopy(current.playbackconfig)
-    new.externalsyncconfig = copy.deepcopy(current.externalsyncconfig)
     for f in fields(analysisconfig):
         if f.name.endswith("_path"):
             setattr(new.analysisconfig, f.name, getattr(current.analysisconfig, f.name))
     new.viewconfig.record_img_path = current.viewconfig.record_img_path
     new.deckconfig.metronome_wav_path = current.deckconfig.metronome_wav_path
     new.deckconfig.music_input_device = current.deckconfig.music_input_device
+    new.deckconfig.monitor_host = current.deckconfig.monitor_host
+    new.deckconfig.monitor_port = current.deckconfig.monitor_port
     new.libconfig.libpath = libpath
     new.libconfig.logpath = current.libconfig.logpath
     new.libconfig.local_music_directories = list(local_music_directories)

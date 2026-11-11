@@ -30,7 +30,7 @@ from typing import Any, Callable, Optional
 from PySide6 import QtCore
 
 from core.library import tieups, variants
-from core.library.db import LibraryDB
+from core.library.db import LibraryDB, file_key
 from core.analysis_library.store import FeatureNPZStore
 from core.library.records import PlaylistFolderRow, PlaylistRow, TrackRow, playlist_children
 from core.search import reading
@@ -97,6 +97,15 @@ class LibrarySnapshot:
     variant_pairs: tuple = ()                              # core.search.variants.Pair
     by_uid: dict = field(default_factory=dict)
     by_path: dict = field(default_factory=dict)
+    by_key: dict = field(default_factory=dict)             # core.library.db.file_key(path) -> the track (find_file)
+
+    @staticmethod
+    def of_tracks(tracks) -> "LibrarySnapshot":
+        """A snapshot of ``tracks`` alone (their lookups by uid, path and file_key)."""
+        tracks = tuple(tracks)
+        keys = ((file_key(t.path), t) for t in tracks)
+        return LibrarySnapshot(tracks=tracks, by_uid={t.uid: t for t in tracks}, by_path={t.path: t for t in tracks},
+                               by_key={k: t for k, t in keys if k is not None})
 
     @staticmethod
     def read(lib: Library, parts: frozenset = PARTS, old: Optional["LibrarySnapshot"] = None) -> "LibrarySnapshot":
@@ -106,8 +115,8 @@ class LibrarySnapshot:
         db = lib.db
         kept: dict = {}
         if TRACKS in parts:
-            tracks = tuple(db.list_all())
-            kept.update(tracks=tracks, by_uid={t.uid: t for t in tracks}, by_path={t.path: t for t in tracks})
+            found = LibrarySnapshot.of_tracks(db.list_all())
+            kept.update(tracks=found.tracks, by_uid=found.by_uid, by_path=found.by_path, by_key=found.by_key)
         if READINGS in parts:
             kept.update(readings=db.all_readings())
         if TIEUPS in parts:
@@ -140,8 +149,9 @@ class LibrarySnapshot:
 
     def find_file(self, path: str) -> Optional[TrackRow]:
         """The track of the file ``path`` points to, however it is spelled (LibraryDB.find_file: stored under it,
-        else the stored path opening the same file)."""
-        row = self.by_path.get(path)
+        else under the same path spelled otherwise, else the stored path opening the same file)."""
+        key = file_key(path)
+        row = self.by_path.get(path) or (self.by_key.get(key) if key is not None else None)
         if row is not None:
             return row
         try:

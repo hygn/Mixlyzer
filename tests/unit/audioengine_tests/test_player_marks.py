@@ -70,7 +70,7 @@ class MarksTests(unittest.TestCase):
         self.decoded_after_load()
         self.assertEqual(self.marks_sent()[-1], A_MARKS)
         self.worker.deck.set_marks.reset_mock()
-        self.worker.run_command("load", ("a.flac", True))  # External Sync turned off: the same track loaded again
+        self.worker.run_command("load", ("a.flac", True))  # the same track loaded again
         self.decoded_after_load()
         self.assertEqual(self.marks_sent(), [A_MARKS])
 

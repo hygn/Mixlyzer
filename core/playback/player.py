@@ -567,8 +567,7 @@ def qt_output_device(name: str) -> QtMultimedia.QAudioDevice:
 class PlayerController(QtCore.QObject):
     """
     Main-thread facade of the player: forwards commands to the audio-thread worker and
-    relays its state to the event bus. External sync mode disables local playback (and the
-    MIDI controller). The deck's report reaches the bus as sig_deck_state (and the tempo, when it
+    relays its state to the event bus. The deck's report reaches the bus as sig_deck_state (and the tempo, when it
     changed, as sig_tempo_factor_changed); the GUI shows it rather than what it asked for.
     """
 
@@ -596,8 +595,7 @@ class PlayerController(QtCore.QObject):
         self.bus = bus
         self.model = model
         self._path: Optional[str] = None
-        self._external_sync_enabled = False
-        self._midi_port = ""   # the MIDI input asked for (closed while External Sync follows another deck)
+        self._midi_port = ""   # the MIDI input asked for
         self._midi_enabled = True   # the toolbar's MIDI button
         self._factor: Optional[float] = None   # the tempo last reported
 
@@ -653,7 +651,6 @@ class PlayerController(QtCore.QObject):
         # drag itself): each one is a seek, crossfaded, which a mouse moving at its own rate turns into a rasp
         self._scrub_pending: Optional[float] = None
         self._scrub_sent: Optional[float] = None   # the position last sent
-        self._scrub_local = False                   # a scrub begun on the local deck (External Sync off): ended there
         self._scrub_timer = QtCore.QTimer(self)
         self._scrub_timer.setSingleShot(True)
         self._scrub_timer.setInterval(self.SCRUB_INTERVAL_MS)
@@ -661,13 +658,13 @@ class PlayerController(QtCore.QObject):
         bus.sig_scrub_begin.connect(self._on_scrub_begin)
         bus.sig_scrub_update.connect(self._on_scrub_update)
         bus.sig_scrub_end.connect(self._on_scrub_end)
-        bus.sig_scratch_begin.connect(lambda sec_per_px: self._send_local("scratch_begin", float(sec_per_px)))
-        bus.sig_scratch_update.connect(lambda sec, at: self._send_local("scratch_update", float(sec), float(at)))
-        bus.sig_scratch_end.connect(lambda sec: self._send_local("scratch_end", float(sec)))
+        bus.sig_scratch_begin.connect(lambda sec_per_px: self._send("scratch_begin", float(sec_per_px)))
+        bus.sig_scratch_update.connect(lambda sec, at: self._send("scratch_update", float(sec), float(at)))
+        bus.sig_scratch_end.connect(lambda sec: self._send("scratch_end", float(sec)))
         bus.sig_peak_meter_gain_changed.connect(lambda v: self._send("set_peak_meter_gain", float(v)))
         bus.sig_tone_hold.connect(lambda notes: self._send("tone_hold", tuple(notes or ())))
         # the deck's requests (what it then is: sig_deck_state)
-        bus.sig_deck_action.connect(lambda code, pressed: self._send_local("deck_action", int(code), bool(pressed)))
+        bus.sig_deck_action.connect(lambda code, pressed: self._send("deck_action", int(code), bool(pressed)))
         bus.sig_tempo_requested.connect(lambda f: self._send("set_tempo", float(f)))
         bus.sig_volume_requested.connect(lambda v: self._send("set_volume", float(v)))
         bus.sig_key_shift_requested.connect(lambda s: self._send("set_key_shift", float(s)))
@@ -675,18 +672,14 @@ class PlayerController(QtCore.QObject):
         bus.sig_mixer_requested.connect(lambda key, v: self._send("set_mixer", str(key), float(v)))
         bus.sig_jog_mode_requested.connect(self.set_jog_mode)
         bus.sig_engine_restart_requested.connect(lambda: self._send("restart_engine"))
-        bus.sig_jump_to_requested.connect(lambda sec: self._send_local("jump_to", float(sec)))
-        bus.sig_call_requested.connect(lambda sec: self._send_local("call_at", float(sec)))
+        bus.sig_jump_to_requested.connect(lambda sec: self._send("jump_to", float(sec)))
+        bus.sig_call_requested.connect(lambda sec: self._send("call_at", float(sec)))
         bus.sig_deck_marks.connect(lambda marks: self._send("set_marks", marks))
-        bus.sig_external_sync_enabled.connect(self._on_external_sync_enabled)
 
     def _on_scrub_begin(self) -> None:
-        """A local deck command as the scratch's: with External Sync on, the drag moves the views alone (the
-        local deck follows the other program's)."""
         self._scrub_pending = None
         self._scrub_sent = None
-        self._scrub_local = not self._external_sync_enabled
-        self._send_local("scrub_begin")
+        self._send("scrub_begin")
 
     def _on_scrub_update(self, sec: float) -> None:
         self._scrub_pending = float(sec)
@@ -697,23 +690,20 @@ class PlayerController(QtCore.QObject):
         """The newest scrub position (if any came since the last), then a pause of SCRUB_INTERVAL_MS."""
         if self._scrub_pending is None:
             return
-        self._send_local("scrub_update", self._scrub_pending)
+        self._send("scrub_update", self._scrub_pending)
         self._scrub_sent = self._scrub_pending
         self._scrub_pending = None
         self._scrub_timer.start()
 
     def _on_scrub_end(self, sec: float) -> None:
         """Let go: where, unless that is the position last sent (held still there, it plays on from it: a seek
-        back to it would start it again). A scrub begun on the local deck is ended there, External Sync turned on
-        meanwhile or not."""
+        back to it would start it again)."""
         self._scrub_timer.stop()
         self._scrub_pending = None
         last = self._scrub_sent
         if last is None or abs(float(sec) - last) > 1e-6:
-            self._send_local("scrub_update", float(sec))
-        if self._scrub_local:
-            self._scrub_local = False
-            self._send("scrub_end", float(sec))
+            self._send("scrub_update", float(sec))
+        self._send("scrub_end", float(sec))
 
     @QtCore.Slot()
     def _relay_time(self) -> None:
@@ -740,11 +730,6 @@ class PlayerController(QtCore.QObject):
     def _send(self, name: str, *args) -> None:
         self._command.emit(name, args)
 
-    def _send_local(self, name: str, *args) -> None:
-        """A local deck command; external sync follows the external deck instead."""
-        if not self._external_sync_enabled:
-            self._send(name, *args)
-
     # Public API
     def set_source(self, path: str) -> None:
         self._path = path
@@ -763,22 +748,12 @@ class PlayerController(QtCore.QObject):
         return feeder.clicks if feeder is not None else None
 
     def pause(self) -> None:
-        if self._external_sync_enabled:
-            self.bus.sig_playback_status.emit(False)
-            return
         self._send("pause")
 
     def stop(self) -> None:
-        if self._external_sync_enabled:
-            self.bus.sig_playback_status.emit(False)
-            self.bus.sig_time_changed.emit(0.0)
-            return
         self._send("stop")
 
     def seek(self, sec: float) -> None:
-        if self._external_sync_enabled:
-            self.bus.sig_time_changed.emit(max(0.0, float(sec)))
-            return
         self._send("seek", float(sec))
 
     def set_volume_trim(self, db: float) -> None:
@@ -808,8 +783,8 @@ class PlayerController(QtCore.QObject):
             self._send("midi_open", self._midi_wanted())
 
     def _midi_wanted(self) -> str:
-        """The port to open: none while switched off or while External Sync follows another deck."""
-        return self._midi_port if self._midi_enabled and not self._external_sync_enabled else ""
+        """The port to open: none while switched off."""
+        return self._midi_port if self._midi_enabled else ""
 
     def set_midi_learn(self, learning: bool) -> None:
         """Every MIDI message to sig_midi_events (Settings > MIDI's learn), not only the GUI's actions'."""
@@ -901,22 +876,7 @@ class PlayerController(QtCore.QObject):
             self._audio_thread.quit()
             self._audio_thread.wait(2000)
 
-    @QtCore.Slot(bool)
-    def _on_external_sync_enabled(self, enabled: bool) -> None:
-        self._external_sync_enabled = bool(enabled)
-        if self.native:
-            self._send("midi_open", self._midi_wanted())
-        if self._external_sync_enabled:
-            self._send("pause")
-            self.bus.sig_playback_status.emit(False)
-            self.bus.sig_transport_enabled.emit(False)
-        elif self._path:
-            self._send("load", self._path, True)   # the same track again: its marks kept
-
     @QtCore.Slot(object, int)
     def _on_track_loaded(self, pcm: object, rate: int) -> None:
         if self.model is not None:
             self.model.set_predecoded_audio(pcm, rate)
-        if self._external_sync_enabled:
-            self.bus.sig_transport_enabled.emit(False)
-            self.bus.sig_playback_status.emit(False)

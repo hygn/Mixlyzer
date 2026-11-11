@@ -333,6 +333,7 @@ class RestoredSettingsTests(unittest.TestCase):
         here.analysisconfig.beat_tcn_parameter_path = "assets/weights/mine.npz"
         here.libconfig.logpath = "here.log"
         here.deckconfig.music_input_device = "My Mic"
+        here.deckconfig.monitor_host, here.deckconfig.monitor_port = "127.0.0.1", 40000
         theirs = default_cfg()
         theirs.playbackconfig.output_device = "Their Speakers"
         theirs.analysisconfig.beat_tcn_parameter_path = "C:/elsewhere/evil.npz"
@@ -340,12 +341,14 @@ class RestoredSettingsTests(unittest.TestCase):
         theirs.viewconfig.language = "ja-JP"
         theirs.deckconfig.tempo_range = 16
         theirs.deckconfig.music_input_device = "Their Mic"
+        theirs.deckconfig.monitor_host, theirs.deckconfig.monitor_port = "0.0.0.0", 9000    # Deck Monitor's: here's
         new = restored_settings(here, theirs.to_dict(), theirs.deck_dict(), libpath="restored",
                                 local_music_directories=["/m"], rekordbox_xml_path="x.xml")
         self.assertEqual(new.playbackconfig.output_device, "My Speakers")
         self.assertEqual(new.analysisconfig.beat_tcn_parameter_path, "assets/weights/mine.npz")
         self.assertEqual(new.libconfig.logpath, "here.log")
         self.assertEqual(new.deckconfig.music_input_device, "My Mic")
+        self.assertEqual((new.deckconfig.monitor_host, new.deckconfig.monitor_port), ("127.0.0.1", 40000))
         self.assertEqual(new.viewconfig.language, "ja-JP")
         self.assertEqual(new.deckconfig.tempo_range, 16)
         self.assertEqual((new.libconfig.libpath, new.libconfig.local_music_directories,

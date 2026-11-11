@@ -54,7 +54,7 @@ def edited_cfg():
         python_buffer_ms=120, output_device="Speakers (test)", native_exclusive=True, native_exclusive_rate=48000,
         native_priority="above_normal", native_power_throttling=True, midi_input="Controller (test)",
         midi_jog_ticks=1024)
-    cfg.externalsyncconfig = replace(cfg.externalsyncconfig, enabled=True, osc_host="0.0.0.0", osc_port=40000)
+    cfg.deckconfig = replace(cfg.deckconfig, monitor_host="0.0.0.0", monitor_port=40000)    # kept: Deck Monitor's
     cfg.cuepointconfig = replace(cfg.cuepointconfig, chorus=cuepointrule(True, True, True))
     cfg.searchconfig = replace(cfg.searchconfig, db_languages=["ja", "zh"], han_runs=False, query_languages=["ko-hanja"],
                                query_keyboard_layout=False, music_index=False, music_listen_window=8.0,
@@ -80,7 +80,7 @@ class SettingsDialogTests(unittest.TestCase):
 
     def test_pages(self):
         self.assertEqual([self.d.tabs.tabText(i) for i in range(self.d.tabs.count())],
-                         ["View", "Audio", "Search", "Library", "Analysis", "Shortcuts", "MIDI", "External Sync"])
+                         ["View", "Audio", "Search", "Library", "Analysis", "Shortcuts", "MIDI"])   # Deck Monitor's: its window
         self.assertEqual([self.d.audio_tabs.tabText(i) for i in range(self.d.audio_tabs.count())],
                          ["Overview", "Engine", "Main output", "Metronome"])
         self.assertEqual([self.d.view_tabs.tabText(i) for i in range(self.d.view_tabs.count())],
@@ -121,7 +121,6 @@ class SettingsDialogTests(unittest.TestCase):
         self.d.sp_fps.setValue(45)
         self.d.rb_waveform_style["3band"].setChecked(True)
         self.d.clip_master.set_value("hard")
-        self.d.sp_external_sync_port.setValue(5000)
         self.d.cue_rule_boxes["verse"][0].setChecked(True)
         self.d.btn_box.button(QDialogButtonBox.Apply).click()
         self.assertEqual(len(self.saved), 1)
@@ -131,7 +130,6 @@ class SettingsDialogTests(unittest.TestCase):
         self.assertEqual(cfg.viewconfig.fps, 45)
         self.assertEqual(cfg.viewconfig.waveform_style, "3band")
         self.assertEqual(cfg.playbackconfig.output_clip, "hard")
-        self.assertEqual(cfg.externalsyncconfig.osc_port, 5000)
         self.assertTrue(cfg.cuepointconfig.verse.at_start)
         self.assertEqual(self.d.lbl_bpm_range.text(), "Reads 90 - 180 BPM")
         self.assertFalse(os.path.exists(shortcuts.USER_FILE))        # the shortcuts as shipped: no user file
@@ -156,15 +154,6 @@ class SettingsDialogTests(unittest.TestCase):
         for cb in self.d.db_language_boxes.values():
             cb.setChecked(False)
         self.assertEqual(len(self.d.get_config().searchconfig.db_languages), 1)
-
-    def test_a_network_address_warned_about(self):
-        self.d.set_config(default_cfg())
-        self.assertTrue(self.d.lbl_external_sync_network.isHidden())
-        self.d.ed_external_sync_host.setText("192.168.0.5")
-        self.assertFalse(self.d.lbl_external_sync_network.isHidden())
-        self.d.ed_external_sync_host.setText("")
-        self.assertTrue(self.d.lbl_external_sync_network.isHidden())
-        self.assertEqual(self.d.get_config().externalsyncconfig.osc_host, "127.0.0.1")    # empty: this computer
 
     def test_the_python_engine_hides_the_native_engines_rows(self):
         self.d.set_config(default_cfg())

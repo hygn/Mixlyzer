@@ -210,9 +210,6 @@ class MainPane(QtWidgets.QWidget):
 
         self._is_playing = False
         self._transport_enabled = True
-        self._external_sync_enabled = bool(
-            getattr(getattr(self.cfg, "externalsyncconfig", None), "enabled", False)
-        )
         self.plugins: List[ViewPlugin] = []
 
         # Signals
@@ -231,11 +228,7 @@ class MainPane(QtWidgets.QWidget):
         self.model.sig_keys_changed.connect(self._on_key_segments_updated)
         self.model.sig_phrases_changed.connect(self._on_phrases_updated)
         self.bus.sig_phrase_labels_changed.connect(self._on_phrases_updated)
-        try:
-            self.bus.sig_transport_enabled.connect(self._on_transport_enabled)
-            self.bus.sig_external_sync_enabled.connect(self._on_external_sync_enabled)
-        except Exception:
-            pass
+        self.bus.sig_transport_enabled.connect(self._on_transport_enabled)
 
         # Default plot range
         self.p.setYRange(-0.14, 1.0, padding=0.0)
@@ -535,13 +528,6 @@ class MainPane(QtWidgets.QWidget):
         self._deck_action(deck.ACT_STOP)
 
     def _on_click_play(self):
-        if self._external_sync_enabled:
-            QtWidgets.QMessageBox.information(
-                self,
-                tr("External Sync"),
-                tr("Playback is disabled while External Sync is enabled."),
-            )
-            return
         self._deck_action(deck.ACT_PLAY_PAUSE)
 
     def _cue(self, pressed: bool) -> None:
@@ -902,10 +888,6 @@ class MainPane(QtWidgets.QWidget):
         self._transport_enabled = bool(enabled)
         self._refresh_transport_buttons()
 
-    def _on_external_sync_enabled(self, enabled: bool) -> None:
-        self._external_sync_enabled = bool(enabled)
-        self._refresh_transport_buttons()
-
     # Spare width (px) the track info keeps beyond its widest row before the edit
     # panel shows more pages side by side.
     EDIT_COLUMN_SLACK = 80
@@ -932,7 +914,7 @@ class MainPane(QtWidgets.QWidget):
         QtCore.QTimer.singleShot(0, self._fit_edit_columns)  # one step at a time
 
     def _can_use_transport(self) -> bool:
-        return self._transport_enabled and not self._external_sync_enabled
+        return self._transport_enabled
 
     def _refresh_transport_buttons(self) -> None:
         can_use_transport = self._can_use_transport()
@@ -943,9 +925,6 @@ class MainPane(QtWidgets.QWidget):
 
     def _on_reload_requested(self, cfg: config):
         self.cfg = cfg
-        self._external_sync_enabled = bool(
-            getattr(getattr(cfg, "externalsyncconfig", None), "enabled", False)
-        )
         self.track_info.set_config(cfg)
         self._install_views_from_config(cfg)
         self._refresh_transport_buttons()

@@ -1,6 +1,6 @@
 """The toolbar's MIDI button: the MIDI controller's input on or off (Settings > MIDI's port kept either way). Its
 look is the input as the native engine reports it (DeckReport.midi_state): lit while open, outlined while asked
-for but closed (no port picked, External Sync following another deck), outlined in the danger colour when the port
+for but closed (no port picked, not open yet), outlined in the danger colour when the port
 could not be opened (in use by another program, or disconnected), dim when switched off. A click is a request
 (``toggled_by_hand``); the window keeps the setting and opens or closes the port. Disabled on the Python engine (no
 MIDI)."""
@@ -61,7 +61,7 @@ class MidiToggle(QtWidgets.QToolButton):
                      "Click: off.").format(port=port)
         else:
             look = "closed"
-            tip = tr("MIDI input on, {port} closed (External Sync follows another deck). Click: off.").format(port=port)
+            tip = tr("MIDI input on, {port} not open yet. Click: off.").format(port=port)
         if self.property("look") != look:
             self.setProperty("look", look)
             self.style().unpolish(self)

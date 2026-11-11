@@ -1,4 +1,4 @@
-"""Open Sound Control 1.0 packets (opensoundcontrol.org): the messages External Sync receives.
+"""Open Sound Control 1.0 packets (opensoundcontrol.org): the messages Deck Monitor receives.
 
 Strict, as a packet comes from outside: every length is checked against the packet, a string must end in its
 NUL and padding, bundles nest at most ``MAX_DEPTH`` deep, and only the argument types read here are accepted

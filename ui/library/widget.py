@@ -95,7 +95,6 @@ class LibraryWidget(SourcesMixin, SearchMixin, MusicMixin, MixMixin, PlaylistsMi
         self.cfg = cfg
         self.library = library
         self.model = model
-        self._external_sync_enabled = bool(getattr(cfg, "externalsyncconfig", None) and cfg.externalsyncconfig.enabled)
         self._all_tracks: List[Track] = []
         self._library_tracks: List[Track] = []
         # the source chosen in the sources panel (what the table shows: _shown_source)
@@ -157,7 +156,6 @@ class LibraryWidget(SourcesMixin, SearchMixin, MusicMixin, MixMixin, PlaylistsMi
 
         # Initial load
         self.bus.sig_lib_updated.connect(self._on_library_updated)
-        self.bus.sig_external_sync_enabled.connect(self._on_external_sync_enabled)
         self._rebuild_source_tree()
         self.reload_from_db()
         self._sync_filter_ui()
@@ -382,13 +380,6 @@ class LibraryWidget(SourcesMixin, SearchMixin, MusicMixin, MixMixin, PlaylistsMi
                     cell.setData(QtCore.Qt.ForegroundRole, None)
         self._marked_uid = self._loaded_uid
     def _on_activate(self, idx: QtCore.QModelIndex):
-        if self._external_sync_enabled:
-            QtWidgets.QMessageBox.information(
-                self,
-                tr("External Sync"),
-                tr("Track loading is disabled while External Sync is enabled."),
-            )
-            return
         r = idx.row()
         if not (0 <= r < self.table.rowCount()):
             return
@@ -403,8 +394,6 @@ class LibraryWidget(SourcesMixin, SearchMixin, MusicMixin, MixMixin, PlaylistsMi
             self._deck_seek.load(path, max(0.0, match.start_sec - 1.0))
         elif path:
             self.bus.sig_request_load_track.emit(path)
-    def _on_external_sync_enabled(self, enabled: bool) -> None:
-        self._external_sync_enabled = bool(enabled)
     # The track panel: Edit / Index / Tie-ups / Export / Sync tabs on a thin vertical tab bar right of the track list, under the search (as
     # tall as the list). Clicking the open tab folds it to the tab bar; another tab unfolds it. Unfolded, it shows
     # the selected track (the first analyzed one), following the selection once it rests for PANEL_FOLLOW_MS (keys

@@ -51,6 +51,9 @@
   "playback.midi_input": [
     "Alt+Shift+M"
   ],
+  "playback.deck_monitor": [
+    "Alt+Shift+Y"
+  ],
   "playback.restart_engine": [
     "Alt+Shift+E"
   ],

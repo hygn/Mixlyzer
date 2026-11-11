@@ -20,6 +20,7 @@ from core.workflows.event_bus import EventBus
 from core.library import jobs
 from core.library.records import TrackRow
 from core.library.service import LibrarySnapshot, LibraryService
+from system import os_support
 
 APP = QApplication.instance() or QApplication([])
 
@@ -495,6 +496,15 @@ class LibraryServiceTests(unittest.TestCase):
         self.assertIsNone(snap.get(other))
         self.assertEqual(snap.find_file(other).uid, row.uid)
         self.assertIsNone(snap.find_file(str(Path(self.lib) / "none.wav")))
+        path.write_bytes(b"RIFF" + bytes(16))      # another program wrote to it (its tags): the size stored is old
+        self.assertEqual(snap.find_file(other).uid, row.uid)
+        spellings = [other] + ([str(path).replace("\\", "/").upper()] if os_support.IS_WINDOWS else [])
+        found = []
+        for p in spellings:
+            self.library.read(lambda lib, p=p: lib.db.find_file(p), done=found.append)
+        self.settle()
+        self.assertEqual([r.uid for r in found], [row.uid] * len(spellings))
+        self.assertEqual([snap.find_file(p).uid for p in spellings], [row.uid] * len(spellings))
 
     def test_another_library(self):
         self.library.write(jobs.save_track, _row("d.wav"), False)

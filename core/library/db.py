@@ -16,6 +16,7 @@ from core.library.records import (
     PhraseIndexRow, PlaylistFolderRow, PlaylistRow, TrackRow, field_readings,
 )
 from system.ids import canonical_uuid4 as _canonical_uuid4, canonical_uuid4_or_none as _canonical_uuid4_or_none
+from system.os_support import path_key as _path_key
 from core.library.segments import harmonic_compatible_keys
 from analyzer.music.key_names import idx_to_labels
 from system.i18n import tr
@@ -53,6 +54,16 @@ def _safe_order_by(order_by: str, default: str = "added_ts DESC") -> str:
 
 def _track_row_from_db_row(row: sqlite3.Row) -> TrackRow:
     return TrackRow(**dict(row))
+
+
+def file_key(path: str) -> Optional[str]:
+    """A track's path as two spellings of it compare (system.os_support.path_key: separators, case on Windows, NFC
+    on macOS); None for one that is no path. A file another program wrote to (its tags) has another size than
+    stored, so a spelling is matched by this, not by the file's size."""
+    try:
+        return _path_key(path) if path else None
+    except (TypeError, ValueError):
+        return None
 
 
 # DB Helper
@@ -534,12 +545,18 @@ class LibraryDB:
 
     def find_file(self, path: str) -> Optional[TrackRow]:
         """The row of the file ``path`` points to, however it is spelled: stored
-        under ``path`` itself, else the stored path that opens the same file
-        (another case, separators, a link, a mapped drive). None if the file is
-        not in the library or does not exist."""
+        under ``path`` itself, else under the same path spelled otherwise
+        (`file_key`: separators, case on Windows), else the stored path that
+        opens the same file (a link, a mapped drive: among the tracks of its
+        size). None if the file is not in the library or does not exist."""
         row = self.get(path)
         if row is not None:
             return row
+        key = file_key(path)
+        if key is not None:
+            for db_row in self.conn.execute("SELECT * FROM tracks;").fetchall():
+                if file_key(db_row["path"]) == key:
+                    return _track_row_from_db_row(db_row)
         try:
             st = os.stat(path)
         except (OSError, ValueError):

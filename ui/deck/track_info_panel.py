@@ -11,8 +11,8 @@ from ui.theme import current_theme
 from core.settings.config import config
 from analyzer.music.key_names import ALPHANUMERIC_LABELS, CLASSICAL_LABELS
 from system.i18n import tr
-from system.resource_paths import setting_path
 from ui.widgets.knob import Knob
+from ui.widgets.record_disc import RecordDisc
 
 
 _VALUE = "#f0f3f6"   # current values, title
@@ -439,13 +439,6 @@ class TrackInfoPanel(QtWidgets.QWidget):
     def __init__(self, cfg: Optional[config] = None, parent=None):
         super().__init__(parent)
         self.cfg = cfg
-        self._record_rotation_cache: dict[int, QtGui.QPixmap] = {}
-        self._record_last_cache_key: Optional[int] = None
-        self._record_cache_step_deg = 2  # rotate in coarse steps to limit redraw work
-        self._record_base_pix = QtGui.QPixmap()
-        self._record_base_dpr = 1.0
-        self._current_time = 0.0
-        self._last_album_art: Optional[QtGui.QImage] = None
         self._file = ""   # the loaded track's file, dragged out of the album art and the info (set_file)
         self._press: Optional[QtCore.QPoint] = None
         self._time_display = TIME_DISPLAYS[0]
@@ -453,7 +446,6 @@ class TrackInfoPanel(QtWidgets.QWidget):
 
         self._init_ui()
         self._set_placeholder_cover()
-        self._load_record_pixmap(None)
         for widget in (self.cover_label, self.info_area, *self._time_cells):
             widget.installEventFilter(self)
 
@@ -638,9 +630,8 @@ class TrackInfoPanel(QtWidgets.QWidget):
         self.record_buttons_slot.setSpacing(6)
         self.record_buttons_slot.setAlignment(QtCore.Qt.AlignHCenter)
         record_col.addLayout(self.record_buttons_slot)
-        self.record_label = QtWidgets.QLabel()
-        self.record_label.setFixedSize(self.RECORD_D, self.RECORD_D)
-        self.record_label.setAlignment(QtCore.Qt.AlignCenter)
+        self.record_label = RecordDisc(
+            self.RECORD_D, lambda: getattr(getattr(self.cfg, "viewconfig", None), "record_img_path", None))
         record_col.addWidget(self.record_label, 0, QtCore.Qt.AlignHCenter)
         self.beat_dots = BeatDots()
         record_col.addWidget(self.beat_dots, 0, QtCore.Qt.AlignHCenter)
@@ -725,7 +716,6 @@ class TrackInfoPanel(QtWidgets.QWidget):
         self.set_time(*self._time)
 
     def update_album_art(self, album_art: Optional[QtGui.QImage]):
-        self._last_album_art = album_art
         if album_art is not None and not album_art.isNull():
             target = self.cover_label.contentsRect().size()
             if not target.isValid():
@@ -738,7 +728,7 @@ class TrackInfoPanel(QtWidgets.QWidget):
             self.cover_label.setPixmap(pix)
         else:
             self._set_placeholder_cover()
-        self._load_record_pixmap(album_art)
+        self.record_label.set_album_art(album_art)
 
     def set_track_loaded(self, loaded: bool) -> None:
         """The unload button is there only while a track is loaded."""
@@ -784,45 +774,11 @@ class TrackInfoPanel(QtWidgets.QWidget):
         drag.exec(QtCore.Qt.CopyAction, QtCore.Qt.CopyAction)
 
     def update_record_pix(self, time_sec: float):
-        self._current_time = time_sec
-        base = self._record_base_pix
-        if base.isNull():
-            return
-        dpr = self.record_label.devicePixelRatioF()
-        if abs(dpr - self._record_base_dpr) > 1e-6:
-            self._load_record_pixmap(self._last_album_art)
-            base = self._record_base_pix
-            if base.isNull():
-                return
-        angle = ((time_sec * (33.3333333 / 60) * 360) % 360)
-        step = max(1, int(getattr(self, "_record_cache_step_deg", 2)))
-        cache_key = int(round(angle / step) * step) % 360
-        if cache_key == self._record_last_cache_key:
-            return
-        self._record_last_cache_key = cache_key
-        rotated = self._record_rotation_cache.get(cache_key)
-        if rotated is None:
-            logical_size = self.record_label.size()
-            pixel_w = max(1, int(round(logical_size.width() * dpr)))
-            pixel_h = max(1, int(round(logical_size.height() * dpr)))
-            rotated = QtGui.QPixmap(pixel_w, pixel_h)
-            rotated.setDevicePixelRatio(dpr)
-            rotated.fill(QtCore.Qt.transparent)
-
-            painter = QtGui.QPainter(rotated)
-            painter.setRenderHint(QtGui.QPainter.Antialiasing, True)
-            painter.setRenderHint(QtGui.QPainter.SmoothPixmapTransform, True)
-            painter.translate(logical_size.width() / 2, logical_size.height() / 2)
-            painter.rotate(cache_key)
-            painter.translate(-logical_size.width() / 2, -logical_size.height() / 2)
-            painter.drawPixmap(0, 0, base)
-            painter.end()
-            self._record_rotation_cache[cache_key] = rotated
-        self.record_label.setPixmap(rotated)
+        self.record_label.set_time(time_sec)
 
     def set_config(self, cfg: config):
         self.cfg = cfg
-        self._load_record_pixmap(self._last_album_art)
+        self.record_label.reload()
 
     def set_output_peak_dbfs(self, dbfs: float):
         self.peak_meter.set_level_dbfs(dbfs)
@@ -855,100 +811,3 @@ class TrackInfoPanel(QtWidgets.QWidget):
         painter.drawText(pix.rect(), QtCore.Qt.AlignCenter, tr("No Art"))
         painter.end()
         self.cover_label.setPixmap(pix)
-
-    def _load_record_pixmap(
-        self,
-        album_art: Optional[QtGui.QImage],
-        size: int | None = None,
-        vinyl_path: Optional[str] = None,
-    ):
-        size = size or self.RECORD_D
-        dpr = self.record_label.devicePixelRatioF() if hasattr(self, "record_label") else 1.0
-        pixel_size = max(1, int(round(size * dpr)))
-        base = QtGui.QPixmap(pixel_size, pixel_size)
-        base.setDevicePixelRatio(dpr)
-        base.fill(QtCore.Qt.transparent)
-        painter = QtGui.QPainter(base)
-        painter.setRenderHint(QtGui.QPainter.Antialiasing, True)
-
-        outer_rect = QtCore.QRectF(2, 2, size - 4, size - 4)
-
-        painter.setBrush(QtGui.QColor("#111"))
-        painter.setPen(QtGui.QPen(QtGui.QColor("#444"), 2))
-        painter.drawEllipse(outer_rect)
-
-        used_any = False
-        if album_art is not None and not album_art.isNull():
-            src_pm = QtGui.QPixmap.fromImage(album_art)
-            w, h = src_pm.width(), src_pm.height()
-            side = min(w, h)
-            x = (w - side) // 2
-            y = (h - side) // 2
-            label_margin = int(size * 0.19)
-            label_size = size - 2 * label_margin
-            square = src_pm.copy(x, y, side, side).scaled(
-                label_size,
-                label_size,
-                QtCore.Qt.KeepAspectRatio,
-                QtCore.Qt.SmoothTransformation,
-            )
-            circ = QtGui.QPixmap(label_size, label_size)
-            circ.fill(QtCore.Qt.transparent)
-            pp = QtGui.QPainter(circ)
-            pp.setRenderHint(QtGui.QPainter.Antialiasing, True)
-            path = QtGui.QPainterPath()
-            path.addEllipse(0, 0, label_size, label_size)
-            pp.setClipPath(path)
-            pp.drawPixmap(0, 0, square)
-            pp.end()
-            painter.drawPixmap(label_margin, label_margin, circ)
-            used_any = True
-
-        if not used_any:
-            cfg_path = (
-                getattr(self.cfg.viewconfig, "record_img_path", None)
-                if self.cfg is not None and getattr(self.cfg, "viewconfig", None) is not None
-                else None
-            )
-            path = vinyl_path if vinyl_path is not None else cfg_path or "assets/vinyl.png"
-            vinyl = QtGui.QPixmap(setting_path(path)) if path else QtGui.QPixmap()
-            if not vinyl.isNull():
-                vinyl = vinyl.scaled(
-                    size - 6,
-                    size - 6,
-                    QtCore.Qt.KeepAspectRatio,
-                    QtCore.Qt.SmoothTransformation,
-                )
-                vx = (size - vinyl.width()) // 2
-                vy = (size - vinyl.height()) // 2
-                painter.drawPixmap(vx, vy, vinyl)
-            else:
-                painter.setBrush(QtGui.QColor("#333"))
-                painter.setPen(QtGui.QPen(QtGui.QColor("#666"), 1))
-                painter.drawEllipse(
-                    outer_rect.adjusted(
-                        size * 0.17, size * 0.17, -size * 0.17, -size * 0.17
-                    )
-                )
-                painter.setPen(QtGui.QPen(QtGui.QColor("#555"), 1))
-                for r in range(8, (size // 2) - 8, 3):
-                    painter.drawEllipse(QtCore.QRectF(size / 2 - r, size / 2 - r, 2 * r, 2 * r))
-
-        # Rim: one even white ring (balanced, so the spinning record never looks
-        # off-centre), with the upright marker as a red stretch of the same ring
-        # at 12 o'clock, turning with the record.
-        painter.setBrush(QtCore.Qt.NoBrush)
-        painter.setPen(QtGui.QPen(QtGui.QColor("#e6e6e6"), 2.5))
-        painter.drawEllipse(outer_rect)
-        marker_pen = QtGui.QPen(QtGui.QColor("#e5484d"), 2.5)
-        marker_pen.setCapStyle(QtCore.Qt.FlatCap)
-        painter.setPen(marker_pen)
-        painter.drawArc(outer_rect, (90 - 10) * 16, 20 * 16)
-
-        painter.end()
-
-        self._record_base_pix = base
-        self._record_base_dpr = dpr
-        self._record_rotation_cache.clear()
-        self._record_last_cache_key = None
-        self.update_record_pix(self._current_time)

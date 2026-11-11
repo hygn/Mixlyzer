@@ -108,6 +108,8 @@ ACTIONS: tuple[Action, ...] = (
     Action("playback.unload", PLAYBACK, tr_mark("Unload the track")),
     Action("playback.midi_input", PLAYBACK, tr_mark("MIDI input on / off"),
            tip=tr_mark("The MIDI controller read or not.")),
+    Action("playback.deck_monitor", PLAYBACK, tr_mark("Deck Monitor"),
+           tip=tr_mark("Shows or closes the window of another DJ program's decks.")),
     Action("playback.restart_engine", PLAYBACK, tr_mark("Restart the audio engine"),
            tip=tr_mark("The native audio engine stopped and started again. For when playback goes wrong.")),
 

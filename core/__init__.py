@@ -4,7 +4,8 @@
     library           the library, its one owner and every operation on it (library.db, thumbnails, the indexes)
     analysis_library  each track's stored analysis (its NPZ) and the stored forms of its marks
     track             the deck's loaded track, its one owner (DataModel)
-    playback          the player and its engines' feeder, External Sync (OSC)
+    playback          the player and its engines' feeder
+    deck_monitor      another DJ program's decks shown beside the app (OSC), never driving it
     controls          a MIDI controller's mapping, the keyboard shortcuts' files
     search            the readings the library is searched by, the Variants' relations, the Mix Candidates, the
                       related tracks

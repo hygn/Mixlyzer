@@ -810,10 +810,10 @@ class SaveTests(EditPanelCase):
         self.at(10.0)
         self.panel.btn_bpm_double.click()
         with mock.patch.object(QMessageBox, "warning"):
-            self.assertTrue(self.panel.save_then(lambda: ran.append("after"), lambda: ran.append("failed")))
+            self.assertTrue(self.panel.save_then(lambda: ran.append("after")))
             self.assertTrue(self.panel.saving)
             self.panel._on_save_failed(OSError("disk full"))
-        self.assertEqual(ran, ["failed"])                              # told, after the failure was said
+        self.assertEqual(ran, [])
         self.assertFalse(self.panel.saving)
         self.assertTrue(self.model.unsaved)
 

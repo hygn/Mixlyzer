@@ -27,7 +27,7 @@ from core.tieups import domain as tieup_domain
 from core.tags.reader import extract_tags
 from core.workflows.analysis import AnalysisWorkflow
 from core.workflows.taskmanager import TIEUP_LOOKUP, taskmanager
-from core.playback.external_sync import ExternalSyncController
+from core.deck_monitor.controller import DeckMonitorController
 from core.workflows.rekordbox_sync import RekordboxXmlSync
 from core.workflows.reading_refresh import LibraryReadingRefresh
 from core.workflows.library_sync import LibraryIndexSync
@@ -42,11 +42,12 @@ from audioengine.volume import slider_percent_to_linear, trim_dbfs_to_linear, tr
 from core.marks.phrases import set_phrase_label_names
 
 from ui.pane import MainPane
-from ui.deck.deck_controls import ROW_SPACING, block, fill, row_title
+from ui.deck.deck_controls import ROW_SPACING, Lamp, block, fill, row_title
 from ui.deck.deck_switches import DeckSwitches, MasterLevels
 from ui.deck.midi_toggle import MidiToggle
 from ui.config.window import SettingsDialog
 from ui.windows.workers import WorkersDialog
+from ui.windows import deck_monitor as deck_monitor_window
 from ui.windows.oss_support import SupportDialog
 from ui.windows.about_dialog import AboutDialog
 from ui.windows.diagnostics_dialog import DiagnosticsDialog
@@ -105,13 +106,11 @@ class AppWindow(QtWidgets.QMainWindow):
         self.bus.sig_output_buffer.connect(self.buffers.add)
         self._start_library(library)
         self.model = DataModel()
-        # edits not saved are asked about before they would be lost (_with_edits_resolved), and the External Sync
-        # load waiting for the box or for its save (the last one asked: (path, time))
+        # edits not saved are asked about before they would be lost (_with_edits_resolved)
         self._edits = _Edits.IDLE
-        self._external_pending = None
         self.tl = TimelineCoordinator(self.bus)
         self._start_player()
-        self._start_external_sync()
+        self._start_deck_monitor()
         self._start_background_jobs()
 
         # Main UI pane
@@ -147,7 +146,6 @@ class AppWindow(QtWidgets.QMainWindow):
 
         # status
         self._deck_path: str | None = None   # the file the deck holds
-        self._external_sync_applied_enabled: bool | None = None
         self._effective_refresh_fps: int | None = None
         self._hidden_visibility_streak = 0
         self._visibility_refresh_enabled = False
@@ -158,7 +156,6 @@ class AppWindow(QtWidgets.QMainWindow):
 
         self._start_workflows()
         self._start_metronome()
-        self._apply_external_sync_mode(self.cfg.externalsyncconfig)
         self._apply_visibility_refresh_setting(force=True)
         QtCore.QTimer.singleShot(0, self.warn_cloud_sync)     # once the window is shown
         step(1.0, "")
@@ -227,22 +224,16 @@ class AppWindow(QtWidgets.QMainWindow):
         )
         self.player.set_refresh_fps(self.cfg.viewconfig.fps)
 
-    def _start_external_sync(self) -> None:
-        """External Sync: another program's deck followed (OSC)."""
-        self.external_sync = ExternalSyncController(
-            self.bus,
-            self.model,
-            self.cfg.externalsyncconfig,
-            poll_fps=self.cfg.viewconfig.fps,
-            status_callback=self.statusBar().showMessage,
-            load_track_callback=self._load_track_from_external_sync,
-            seek_callback=self.player.seek,
-            track_exists_callback=self._track_exists_in_library,
-            library_path_callback=self._library_path_of_file,
-            track_duration_callback=self._track_duration_in_library,
-            track_total_samples_callback=self._track_total_samples_in_library,
-            failure_callback=self._on_external_sync_failure,
+    def _start_deck_monitor(self) -> None:
+        """Deck Monitor: another program's decks shown in a window running in a process of its own
+        (ui.windows.deck_monitor.run), the app's own deck left alone."""
+        self.deck_monitor = DeckMonitorController(
+            target=deck_monitor_window.run,
+            settings=lambda: self.settings.current,
+            snapshot_provider=lambda: self.library.snapshot,
+            library=self.library,
         )
+        self.settings.changed.connect(self.deck_monitor.settings_changed)    # its window draws with them
 
     def _start_background_jobs(self) -> None:
         """The library's background jobs: the Rekordbox XML sync, Re-read Library, Index Now, the tie-up web lookup, their reports on the bus."""
@@ -283,7 +274,7 @@ class AppWindow(QtWidgets.QMainWindow):
         self.music_index.failed.connect(self.bus.sig_music_index_failed)
 
     def _build_settings(self) -> None:
-        """The settings dialog, given the library, the engine and External Sync."""
+        """The settings dialog, given the library, the engine and Deck Monitor."""
         self.cfgwin = SettingsDialog(bus=self.bus)
         self.cfgwin.set_library(self.library)
         # the engine that plays (its buffer shown first) and its output devices
@@ -292,7 +283,6 @@ class AppWindow(QtWidgets.QMainWindow):
         self.cfgwin.set_midi_access(self.player.native, self.player.midi_ports, self.player.set_midi_learn)
         self.cfgwin.set_waveform_sources(self.player.native, self.player.set_spectrum, self.player.spectrum_frames,
                                          self.model)
-        self.cfgwin.set_external_sync_status(self.external_sync.snapshot)
         self.cfgwin.set_config(self.cfg)
 
     def _build_menus(self) -> None:
@@ -356,6 +346,16 @@ class AppWindow(QtWidgets.QMainWindow):
         self.bus.sig_deck_state.connect(self.master_levels.set_report)
         row_layout.addSpacing(4)
         toolbar_part(row_layout, "MASTER", [self.master_levels])
+        # DECKS: Deck Monitor's window (another program's decks), lit while it is open
+        self.deck_monitor_button = Lamp("OPEN")
+        self.deck_monitor_button.setCheckable(True)
+        self.deck_monitor_button.setToolTip(tr("Deck Monitor: another DJ program's decks beside Mixlyzer's analysis"))
+        self.deck_monitor_button.clicked.connect(lambda: self.toggle_deck_monitor())
+        self.deck_monitor_button.toggled.connect(self.deck_monitor_button.set_lit)
+        self.deck_monitor.open_changed.connect(self.deck_monitor_button.setChecked)
+        tooltips.tag(self.deck_monitor_button, "playback.deck_monitor")
+        row_layout.addSpacing(4)
+        toolbar_part(row_layout, "DECKS", [block("MONITOR", [self.deck_monitor_button])])
         rows_layout.addWidget(row)
         tb.addWidget(rows)
 
@@ -364,7 +364,8 @@ class AppWindow(QtWidgets.QMainWindow):
         # keyboard shortcuts (assets/shortcuts; Settings > Shortcuts)
         handlers = {**self.pane.shortcut_handlers(), **self.deck_switches.shortcut_handlers(),
                     "playback.restart_engine": self._restart_engine,
-                    "playback.midi_input": self._toggle_midi}
+                    "playback.midi_input": self._toggle_midi,
+                    "playback.deck_monitor": self.toggle_deck_monitor}
         self.bus.sig_engine_restarted.connect(self._on_engine_restarted)
         self.shortcuts = ShortcutManager(self, handlers, self.statusBar().showMessage)
         self.shortcuts.apply(shortcuts.keymap())
@@ -623,42 +624,29 @@ class AppWindow(QtWidgets.QMainWindow):
         self.workers.raise_()
         self.workers.activateWindow()
 
-    def _with_edits_resolved(self, then, *, cancellable: bool = True) -> None:
+    def _with_edits_resolved(self, then) -> None:
         """``then`` at once when the loaded track has no edits not saved; else the user picks: Save (``then`` once
-        they are stored; a save that fails keeps them and does nothing), Discard (``then`` now) or, ``cancellable``,
-        Cancel (nothing). Not cancellable (an External Sync load: the other software has changed its track), closing
-        the box saves, and a save that cannot start lets the edits go."""
+        they are stored; a save that fails keeps them and does nothing), Discard (``then`` now) or Cancel
+        (nothing)."""
         if not self.model.unsaved:
             then()
             return
         box = QtWidgets.QMessageBox(QtWidgets.QMessageBox.Warning, tr("Unsaved Edits"),
                                     tr("The loaded track has edits not saved."), parent=self)
-        box.setInformativeText(tr("Save them, discard them, or cancel?") if cancellable else
-                               tr("Another track is being loaded. Save the edits or discard them?"))
-        buttons = QtWidgets.QMessageBox.Save | QtWidgets.QMessageBox.Discard
-        if cancellable:
-            buttons |= QtWidgets.QMessageBox.Cancel
-        box.setStandardButtons(buttons)
+        box.setInformativeText(tr("Save them, discard them, or cancel?"))
+        box.setStandardButtons(QtWidgets.QMessageBox.Save | QtWidgets.QMessageBox.Discard
+                               | QtWidgets.QMessageBox.Cancel)
         box.setDefaultButton(QtWidgets.QMessageBox.Save)
-        box.setEscapeButton(QtWidgets.QMessageBox.Cancel if cancellable else QtWidgets.QMessageBox.Save)
+        box.setEscapeButton(QtWidgets.QMessageBox.Cancel)
         self._edits = _Edits.ASKING
         try:
             answer = box.exec()
         finally:
             self._edits = _Edits.IDLE
-        if cancellable and self._external_pending is not None:
-            # an External Sync load came while this box asked for something else: asked for once this is settled
-            QtCore.QTimer.singleShot(0, self._external_load_waiting)
         if answer == QtWidgets.QMessageBox.Save:
-            # an External Sync load whose save fails: asked again (Save or Discard), the edits kept meanwhile
-            failed = None if cancellable else (lambda: QtCore.QTimer.singleShot(0, self._external_load_waiting))
-            if self.pane.track_edit.save_then(then, failed):
+            if self.pane.track_edit.save_then(then):
                 return
-            if cancellable:
-                self.statusBar().showMessage(tr("The edits could not be saved now: nothing was done."))
-            else:
-                self.statusBar().showMessage(tr("The edits could not be saved now: they were discarded."))
-                then()
+            self.statusBar().showMessage(tr("The edits could not be saved now: nothing was done."))
         elif answer == QtWidgets.QMessageBox.Discard:
             then()
 
@@ -666,9 +654,6 @@ class AppWindow(QtWidgets.QMainWindow):
         """The file onto the deck: it plays at once (decoded), its analysis comes when done (a library track's
         stored one at once); the analysis's results alone are applied then, the playback goes on. Edits not saved
         are asked about first."""
-        if self._is_external_sync_active():
-            self.statusBar().showMessage(tr("External Sync is enabled. Local track loading is disabled."))
-            return
         self._with_edits_resolved(lambda: self._load(path))
 
     def _load(self, path: str) -> None:
@@ -736,9 +721,6 @@ class AppWindow(QtWidgets.QMainWindow):
 
     def unload_track(self) -> None:
         """Empty the deck: no track in the player or the views (edits not saved asked about first)."""
-        if self._is_external_sync_active():
-            self.statusBar().showMessage(tr("External Sync is enabled. Local track loading is disabled."))
-            return
         self._with_edits_resolved(self._unload)
 
     def _unload(self) -> None:
@@ -857,58 +839,17 @@ class AppWindow(QtWidgets.QMainWindow):
         downbeats = downbeat_beat_indices(beats, self.model.tempo_segments) if beats is not None else None
         self._sig_metronome_set_beats.emit(beats, downbeats, float(self.tl.current_time))
 
-    # External Sync's questions, answered from the library's snapshot (in memory)
-    def _track_exists_in_library(self, path: str) -> bool:
-        return self.library.snapshot.get(path) is not None
-
-    def _library_path_of_file(self, path: str) -> str | None:
-        """The path the library stores the file ``path`` points to under, if it is in it."""
-        row = self.library.snapshot.find_file(path)
-        return row.path if row else None
-
-    def _track_duration_in_library(self, path: str) -> float | None:
-        row = self.library.snapshot.get(path)
-        return float(row.duration) if row and row.duration is not None else None
-
-    def _track_total_samples_in_library(self, path: str) -> int | None:
-        row = self.library.snapshot.get(path)
-        return int(row.total_samples) if row and row.total_samples is not None else None
-
-    def _load_track_from_external_sync(self, path: str, time_sec: float) -> None:
-        """The other software's track (edits not saved: Save or Discard, no Cancel; a load asked while the box is open
-        waits for it, the last one taken)."""
-        self._external_pending = (path, time_sec)
-        if self._edits is not _Edits.IDLE:
-            return
-
-        def load_latest() -> None:
-            pending, self._external_pending = self._external_pending, None
-            if pending is None:
-                return
-            latest, at = pending
-            exists_in_library = self._track_exists_in_library(latest)
-            message = tr("External Sync loading: {file}") if exists_in_library else tr("External Sync analyzing: {file}")
-            self.statusBar().showMessage(message.format(file=os.path.basename(latest)))
-            self._load(latest)
-            self.player.seek(float(at))   # replayed once the track is decoded
-
-        self._with_edits_resolved(load_latest, cancellable=False)
-
-    def _external_load_waiting(self) -> None:
-        """The External Sync load that waited (it came while a box asked about edits for something else, or its save
-        failed) asked for again: once a save running is done; not while another box asks, nor once the window
-        closes."""
-        if self._external_pending is None or self._edits is not _Edits.IDLE:
-            return
-        if self.pane.track_edit.saving:
-            QtCore.QTimer.singleShot(100, self._external_load_waiting)
-            return
-        path, at = self._external_pending
-        self._load_track_from_external_sync(path, at)
+    def toggle_deck_monitor(self) -> None:
+        """Deck Monitor's window opened (its process started), or closed when it is open; the button shows which
+        (DeckMonitorController.open_changed)."""
+        self.deck_monitor.toggle()
+        self.deck_monitor_button.setChecked(self.deck_monitor.is_open)
 
     def closeEvent(self, event) -> None:
-        """Quitting with edits not saved asks first (Save: quit once they are stored; Cancel: stay)."""
+        """Quitting with edits not saved asks first (Save: quit once they are stored; Cancel: stay). Deck Monitor's
+        window closes with the app."""
         if self._edits is _Edits.CLOSING or not self.model.unsaved:
+            self.deck_monitor.close()
             super().closeEvent(event)
             return
         event.ignore()
@@ -918,19 +859,6 @@ class AppWindow(QtWidgets.QMainWindow):
             self.close()
 
         self._with_edits_resolved(close_now)
-
-    def _on_external_sync_failure(self, message: str) -> None:
-        new_cfg = copy.deepcopy(self.cfg)
-        new_cfg.externalsyncconfig.enabled = False
-        self.settings.save(new_cfg)
-        self.cfgwin.set_config(new_cfg)
-        self.external_sync.set_config(new_cfg.externalsyncconfig)
-        self._apply_external_sync_mode(new_cfg.externalsyncconfig)
-        QtWidgets.QMessageBox.warning(
-            self,
-            tr("External Sync Disabled"),
-            message,
-        )
 
     def _rebuild_name_keys(self) -> None:
         """Settings > Search's Rebuild Sort Index: every name's 초성 and sort keys made again on the library's owner,
@@ -1029,9 +957,6 @@ class AppWindow(QtWidgets.QMainWindow):
         os.makedirs(_config.libconfig.libpath or ".", exist_ok=True)
         self.library.set_libpath(_config.libconfig.libpath)
         self.cfgwin.set_config(_config)
-        self.external_sync.set_config(_config.externalsyncconfig)
-        self.external_sync.set_poll_fps(_config.viewconfig.fps)
-        self._apply_external_sync_mode(_config.externalsyncconfig)
         prev_lcfg = prev_cfg.get("libconfig", {})
         new_lcfg = _config.to_dict().get("libconfig", {})
         if any(
@@ -1108,8 +1033,6 @@ class AppWindow(QtWidgets.QMainWindow):
             self.pane.apply_playback_config(_config)
         if layout_changed:
             self.bus.sig_reload_UI.emit(_config)
-        elif prev_cfg.get("externalsyncconfig") != _config.to_dict().get("externalsyncconfig"):
-            self.bus.sig_reload_UI.emit(_config)
         if any(prev_pcfg.get(k) != new_pcfg.get(k) for k in ("midi_input", "midi_jog_ticks")):
             self._apply_midi()
 
@@ -1128,9 +1051,6 @@ class AppWindow(QtWidgets.QMainWindow):
         self.about_dialog.show()
         self.about_dialog.raise_()
         self.about_dialog.activateWindow()
-
-    def _is_external_sync_active(self) -> bool:
-        return bool(self.cfg.externalsyncconfig.enabled)
 
     def is_fully_hidden_from_user(self) -> bool:
         return bool(is_window_fully_hidden(self))
@@ -1280,20 +1200,6 @@ class AppWindow(QtWidgets.QMainWindow):
         if use_output_volume:
             return self._default_volume_linear_from_cfg(cfg)
         return trim_dbfs_to_linear(trim_dbfs)
-
-    def _apply_external_sync_mode(self, sync_cfg) -> None:
-        enabled = bool(sync_cfg.enabled)
-        state_changed = (self._external_sync_applied_enabled is None) or (self._external_sync_applied_enabled != enabled)
-        self._external_sync_applied_enabled = enabled
-        if state_changed:
-            self.bus.sig_external_sync_enabled.emit(enabled)
-        if enabled:
-            if state_changed:
-                self.player.pause()
-            address = self.external_sync.listening_on()
-            if address:
-                self.statusBar().showMessage(
-                    tr("External Sync enabled: OSC on {address}. Local play/load is locked.").format(address=address))
 
 
 def restart_app() -> None:

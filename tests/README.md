@@ -33,7 +33,8 @@ These are the app's tests, each on a library or files of its own. They cover:
 - the library's backup package: packed and restored whole, its music folders joined on another device, and every
   package refused that the app does not make;
 - tags, readings, tie-ups, Variants, and the Mix Candidates;
-- External Sync's OSC;
+- Deck Monitor's OSC, its library matching, the decks' motion and readouts, and its window (the app's main views on
+  the decks, their zoom, where it listens);
 - the waveform's renderer;
 - the native engine: its scratch path against the Python one's, its time stretch, its playback, the master's
   spectrum and malformed commands, and its mixer by the PCM it renders (the channel strip, each Sound Color FX and
