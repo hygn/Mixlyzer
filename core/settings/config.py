@@ -230,14 +230,14 @@ class analysisconfig:
     # The learned models' files (system.model_files: a missing file is the shipped default_<name>; the training,
     # training/, writes the user's): the onset model that places tempo changes, the beat tracker's frame TCN,
     # metronome critic, decoder costs (JSON, refitted with the beat model they belong to) and contextual downbeat
-    # model, the phrase model, the JumpCUE jump point model.
+    # model, the phrase model, the JumpCUE pair models.
     refine_onset_parameter_path: str
     beat_tcn_parameter_path: str
     beat_critic_parameter_path: str
     beat_decoder_parameter_path: str
     downbeat_ctx_parameter_path: str
     phrase_parameter_path: str
-    jumpcue_parameter_path: str
+    jumpcue_pairs_parameter_path: str
     # Dynamic key analysis: key changes within a track (off: one key for the whole track, the dynamic
     # analysis's key in the intro / outro / interludes).
     key_dynamic: bool
@@ -246,6 +246,16 @@ class analysisconfig:
     # AutoCUE: what the analysis puts at the LEAD_IN end, an early first
     # downbeat, or 0:00: a CUE point, a JumpCUE of its own, or nothing.
     autocue: Literal["off", "cue_point", "jumpcue"]
+    # The automatic JumpCUE, one pair (analyzer.settings.JumpCueRules): the sections its earlier and its later point
+    # may be in and the beats around a section still in it, the score it needs, its points' least gap in beats, the
+    # beats after the first sung phrase's head kept clear, and a pair wholly on CUE points moved off them.
+    jumpcue_earlier: Literal["first_chorus", "chorus", "any"]
+    jumpcue_later: Literal["last_chorus", "chorus", "any"]
+    jumpcue_section_margin_beats: int
+    jumpcue_min_score: float
+    jumpcue_min_gap_beats: int
+    jumpcue_first_sung_beats: int
+    jumpcue_avoid_cue_points: bool
     # Full analyses run at once (each a process of its own with threads of its own); the others wait their turn,
     # the deck's track first.
     max_parallel_analyses: int
@@ -460,10 +470,17 @@ def default_cfg():
         beat_decoder_parameter_path="assets/weights/beat_decoder.json",
         downbeat_ctx_parameter_path="assets/weights/downbeat_ctx_hgb.npz",
         phrase_parameter_path="assets/weights/phrase_analyzer.npz",
-        jumpcue_parameter_path="assets/weights/jumpcue_jump_point.json",
+        jumpcue_pairs_parameter_path="assets/weights/jumpcue_pairs.npz",
         key_dynamic=True,
         key_parameter_path="assets/weights/key_chord_cnn.npz",
         autocue="cue_point",
+        jumpcue_earlier="first_chorus",
+        jumpcue_later="last_chorus",
+        jumpcue_section_margin_beats=4,
+        jumpcue_min_score=0.9,
+        jumpcue_min_gap_beats=48,
+        jumpcue_first_sung_beats=20,
+        jumpcue_avoid_cue_points=True,
         max_parallel_analyses=4,
     )
     vcfg = viewconfig(

@@ -18,8 +18,8 @@ def use(tracks) -> None:
 
 
 def tracks() -> list[dict]:
-    """(uid, title, artist, audio_path, annotation[, error]) of every library track, in uid order (``annotation``
-    None: none could be read, ``error`` why)."""
+    """(uid, title, artist, audio_path, added_ts, annotation[, error]) of every library track, in uid order
+    (``annotation`` None: none could be read, ``error`` why)."""
     if _tracks is None:
         raise RuntimeError("the library's tracks were not given to this run "
                            "(core.analysis_library.jobs.training_tracks)")

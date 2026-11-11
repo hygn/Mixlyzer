@@ -982,20 +982,16 @@ def detect_two_stage_phrase_segments(
     *,
     model_path: str | Path,
     hpss: HpssSpectra | None = None,
-    return_boundary_probability: bool = False,
-    return_feature_z: bool = False,
     frames: SongFrames | None = None,
     cues: song_cues.CueFrames | None = None,
 ):
-    """Phrase segments and optional reusable per-beat analysis outputs; ``frames``: ``phrase_song_frames`` of the
-    audio when already made, ``cues``: ``phrase_cue_frames``'."""
+    """Phrase segments; ``frames``: ``phrase_song_frames`` of the audio when already made, ``cues``:
+    ``phrase_cue_frames``'."""
     artifact = load_two_stage_model(str(Path(model_path).resolve()))
     settings = artifact["settings"]
     grid = build_predictor_grid(beat_times_sec, tempo_segments)
     if grid.n_beats < 17:
-        if return_boundary_probability and return_feature_z:
-            return [], None, None
-        return ([], None) if return_boundary_probability else []
+        return []
 
     acoustic = extract_song_features(
         None,
@@ -1018,15 +1014,13 @@ def detect_two_stage_phrase_segments(
     valid = valid_boundary_mask(feature_z.shape[0], int(settings["edge_beats"]))
     downbeat = np.asarray(grid.downbeat_mask, dtype=bool)
     beat_times = np.asarray(grid.beat_times_sec, dtype=np.float64)
-    # a stacked model's GBMs read its columns beside the phrase features; the repetition inputs and the feature_z
-    # returned (JumpCUE's) stay the phrase features alone
+    # a stacked model's GBMs read its columns beside the phrase features; the repetition inputs stay the phrase
+    # features alone
     model_z, model_bz, label_mix = feature_z, boundary_feature_z, None
     if artifact.get("stack") is not None:
         model_z, model_bz, label_mix = stack_inputs(artifact["stack"], audio, int(sample_rate), feature_z,
                                                     boundary_feature_z, beat_times, downbeat, artifact["label_labels"],
                                                     cues)
-    # The returned per-beat probability stays the pass-1 one: downstream
-    # analyzers (JumpCUE) are trained on it.
     probability = _predict_boundary_probability(artifact["boundary_clf"], model_bz, valid)
     bounds = decode_phrase_boundaries(probability, valid, downbeat, settings)
     bounds, labels = finish_phrase_segments(
@@ -1050,8 +1044,4 @@ def detect_two_stage_phrase_segments(
     if segments:
         # the first phrase takes the lead-in before the first beat
         segments[0]["start"] = 0.0
-    if return_boundary_probability and return_feature_z:
-        return segments, probability, feature_z
-    if return_boundary_probability:
-        return segments, probability
     return segments

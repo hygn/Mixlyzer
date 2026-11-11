@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-11-07 20:04+0900\n"
+"POT-Creation-Date: 2026-11-11 21:47+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -133,27 +133,27 @@ msgstr ""
 msgid "Building the window"
 msgstr ""
 
-#: app/window.py:82
+#: app/window.py:91
 msgid "Core objects and playback"
 msgstr ""
 
-#: app/window.py:110
+#: app/window.py:118
 msgid "Main view, editor and library"
 msgstr ""
 
-#: app/window.py:116 app/window.py:292 ui/config/window.py:67
+#: app/window.py:124 app/window.py:300 ui/config/window.py:67
 msgid "Settings"
 msgstr ""
 
-#: app/window.py:118
+#: app/window.py:126
 msgid "Dialogs, workflows and metronome"
 msgstr ""
 
-#: app/window.py:167
+#: app/window.py:175
 msgid "Library in a Synced Folder"
 msgstr ""
 
-#: app/window.py:168
+#: app/window.py:176
 #, python-brace-format
 msgid ""
 "The library is in a folder {service} syncs:\n"
@@ -166,103 +166,103 @@ msgid ""
 "sync while Mixlyzer runs."
 msgstr ""
 
-#: app/window.py:174
+#: app/window.py:182
 msgid "Don't show this again for this folder"
 msgstr ""
 
-#: app/window.py:293 ui/windows/workers.py:28
+#: app/window.py:301 ui/windows/workers.py:28
 msgid "Workers"
 msgstr ""
 
-#: app/window.py:294 ui/shortcuts.py:158 ui/windows/tieup_works.py:33
+#: app/window.py:302 ui/shortcuts.py:158 ui/windows/tieup_works.py:33
 #: ui/windows/tieup_works.py:204 ui/windows/tieup_works.py:259
 #: ui/windows/tieup_works.py:264 ui/windows/tieup_works.py:273
 #: ui/windows/tieup_works.py:336
 msgid "Tie-up Works"
 msgstr ""
 
-#: app/window.py:295
+#: app/window.py:303
 msgid "Open Source"
 msgstr ""
 
-#: app/window.py:296 ui/windows/diagnostics_dialog.py:21
+#: app/window.py:304 ui/windows/diagnostics_dialog.py:21
 msgid "Diagnostics"
 msgstr ""
 
-#: app/window.py:297
+#: app/window.py:305
 msgid "About"
 msgstr ""
 
-#: app/window.py:314 core/controls/midi.py:56
+#: app/window.py:322 core/controls/midi.py:56
 msgid "Mixer"
 msgstr ""
 
-#: app/window.py:499
+#: app/window.py:507
 msgid "MIDI needs the native audio engine (Settings > Audio > Engine)."
 msgstr ""
 
-#: app/window.py:506
+#: app/window.py:514
 msgid "MIDI input on."
 msgstr ""
 
-#: app/window.py:506
+#: app/window.py:514
 msgid "MIDI input off."
 msgstr ""
 
-#: app/window.py:558
+#: app/window.py:566
 msgid "The Python audio engine plays: there is no native engine to restart."
 msgstr ""
 
-#: app/window.py:560
+#: app/window.py:568
 msgid "Restarting the audio engine..."
 msgstr ""
 
-#: app/window.py:564
+#: app/window.py:572
 msgid "Audio engine restarted."
 msgstr ""
 
-#: app/window.py:565
+#: app/window.py:573
 msgid "The audio engine did not start; it is tried again every 2 seconds."
 msgstr ""
 
-#: app/window.py:626
+#: app/window.py:634
 msgid "Unsaved Edits"
 msgstr ""
 
-#: app/window.py:627
+#: app/window.py:635
 msgid "The loaded track has edits not saved."
 msgstr ""
 
-#: app/window.py:628
+#: app/window.py:636
 msgid "Save them, discard them, or cancel?"
 msgstr ""
 
-#: app/window.py:629
+#: app/window.py:637
 msgid "Another track is being loaded. Save the edits or discard them?"
 msgstr ""
 
-#: app/window.py:650
+#: app/window.py:658
 msgid "The edits could not be saved now: nothing was done."
 msgstr ""
 
-#: app/window.py:652
+#: app/window.py:660
 msgid "The edits could not be saved now: they were discarded."
 msgstr ""
 
-#: app/window.py:662 app/window.py:732
+#: app/window.py:670 app/window.py:740
 msgid "External Sync is enabled. Local track loading is disabled."
 msgstr ""
 
-#: app/window.py:675 app/window.py:738
+#: app/window.py:683 app/window.py:746
 msgid "Segment reanalysis canceled (track changed)"
 msgstr ""
 
-#: app/window.py:716
+#: app/window.py:724
 #, python-brace-format
 msgid "The track's analysis could not be read: {file}"
 msgstr ""
 
-#: app/window.py:720
+#: app/window.py:728
 #, python-brace-format
 msgid ""
 "{n} JumpCUE past slot Z is not shown ({file}); it stays stored until the "
@@ -273,15 +273,15 @@ msgid_plural ""
 msgstr[0] ""
 msgstr[1] ""
 
-#: app/window.py:741
+#: app/window.py:749
 msgid "Track unloaded."
 msgstr ""
 
-#: app/window.py:755
+#: app/window.py:763
 msgid "Track File Not Found"
 msgstr ""
 
-#: app/window.py:759
+#: app/window.py:767
 #, python-brace-format
 msgid ""
 "Cannot load \"{name}\": its file is missing.\n"
@@ -290,82 +290,82 @@ msgid ""
 "Set the file's new location?"
 msgstr ""
 
-#: app/window.py:766
+#: app/window.py:774
 #, python-brace-format
 msgid "Locate {name}"
 msgstr ""
 
-#: app/window.py:790 app/window.py:812
+#: app/window.py:798 app/window.py:820
 msgid "Analysis saved to library."
 msgstr ""
 
-#: app/window.py:797
+#: app/window.py:805
 msgid "Finished"
 msgstr ""
 
-#: app/window.py:808
+#: app/window.py:816
 msgid ""
 "Analysis saved to library. The editor keeps your edits not saved: load "
 "the track again to see the new analysis."
 msgstr ""
 
-#: app/window.py:824
+#: app/window.py:832
 msgid "Waiting to be looked up on Wikipedia"
 msgstr ""
 
-#: app/window.py:830
+#: app/window.py:838
 msgid "Looking up on Wikipedia and Wikidata…"
 msgstr ""
 
-#: app/window.py:835
+#: app/window.py:843
 msgid "The lookup failed."
 msgstr ""
 
-#: app/window.py:883
+#: app/window.py:890
 #, python-brace-format
 msgid "External Sync loading: {file}"
 msgstr ""
 
-#: app/window.py:883
+#: app/window.py:890
 #, python-brace-format
 msgid "External Sync analyzing: {file}"
 msgstr ""
 
-#: app/window.py:924
+#: app/window.py:931
 msgid "External Sync Disabled"
 msgstr ""
 
-#: app/window.py:931
+#: app/window.py:938
 msgid "Rebuilding the sort index..."
 msgstr ""
 
-#: app/window.py:933
+#: app/window.py:940
 #, python-brace-format
 msgid "Sort index rebuilt: {count} names."
 msgstr ""
 
-#: app/window.py:941 ui/windows/library_backup.py:53
+#: app/window.py:948 ui/windows/library_backup.py:53
 msgid "Back Up Library"
 msgstr ""
 
-#: app/window.py:942 app/window.py:958
+#: app/window.py:949 app/window.py:965
 #, python-brace-format
 msgid "Mixlyzer library backup (*{suffix})"
 msgstr ""
 
-#: app/window.py:952
+#: app/window.py:959
 msgid ""
 "The editor has edits not saved. Save or undo them first: Mixlyzer "
 "restarts after a restore."
 msgstr ""
 
-#: app/window.py:954 app/window.py:957 app/window.py:964 app/window.py:971
-#: app/window.py:1014 ui/windows/library_backup.py:133
+#: app/window.py:961 app/window.py:964 app/window.py:971 app/window.py:978
+#: app/window.py:1021 ui/windows/library_backup.py:133
 #: ui/windows/library_backup.py:293
 msgid "Restore Library"
 msgstr ""
 
-#: app/window.py:995
+#: app/window.py:1002
 #, python-brace-format
 msgid ""
 "Restored {n} track into:\n"
@@ -376,36 +376,36 @@ msgid_plural ""
 msgstr[0] ""
 msgstr[1] ""
 
-#: app/window.py:998
+#: app/window.py:1005
 #, python-brace-format
 msgid "{n} track's file path was joined to this device's folders."
 msgid_plural "{n} tracks' file paths were joined to this device's folders."
 msgstr[0] ""
 msgstr[1] ""
 
-#: app/window.py:1002
+#: app/window.py:1009
 #, python-brace-format
 msgid "{n} path was left as it was: another track already had the new one."
 msgid_plural "{n} paths were left as they were: other tracks already had the new ones."
 msgstr[0] ""
 msgstr[1] ""
 
-#: app/window.py:1006
+#: app/window.py:1013
 #, python-brace-format
 msgid "{n} track had no stored analysis in the backup."
 msgid_plural "{n} tracks had no stored analysis in the backup."
 msgstr[0] ""
 msgstr[1] ""
 
-#: app/window.py:1010
+#: app/window.py:1017
 msgid "Files replaced by the backup's were kept beside them:"
 msgstr ""
 
-#: app/window.py:1012
+#: app/window.py:1019
 msgid "Mixlyzer now restarts to open the restored library."
 msgstr ""
 
-#: app/window.py:1297
+#: app/window.py:1296
 #, python-brace-format
 msgid "External Sync enabled: OSC on {address}. Local play/load is locked."
 msgstr ""
@@ -428,7 +428,7 @@ msgid "JumpCUE pads"
 msgstr ""
 
 #: core/controls/midi.py:50 ui/config/pipeline_map.py:34
-#: ui/edit_panel/cue_slots.py:234
+#: ui/edit_panel/cue_slots.py:339
 msgid "CUE points"
 msgstr ""
 
@@ -848,31 +848,31 @@ msgstr ""
 msgid "A language is written as ko-KR (language-REGION): {code}"
 msgstr ""
 
-#: core/playback/external_sync.py:336
+#: core/playback/external_sync.py:344
 #, python-brace-format
 msgid ""
 "External Sync could not listen for OSC on {host}:{port} ({error}) and has"
 " been disabled."
 msgstr ""
 
-#: core/playback/external_sync.py:340
+#: core/playback/external_sync.py:348
 #, python-brace-format
 msgid "External Sync listening for OSC on {address}."
 msgstr ""
 
-#: core/playback/external_sync.py:388
+#: core/playback/external_sync.py:392
 #, python-brace-format
 msgid "External Sync ignored unsafe track path: {path}"
 msgstr ""
 
-#: core/playback/external_sync.py:446
+#: core/playback/external_sync.py:432
 #, python-brace-format
 msgid ""
 "External Sync ignored a track not in the library (OSC from the network): "
 "{path}"
 msgstr ""
 
-#: core/playback/external_sync.py:451
+#: core/playback/external_sync.py:437
 #, python-brace-format
 msgid "External Sync analyzing external track before load: {path}"
 msgstr ""
@@ -1150,7 +1150,7 @@ msgstr ""
 msgid "Phrase Boundary Analyzing"
 msgstr ""
 
-#: core/workers/analysis_texts.py:17 ui/config/analysis.py:203
+#: core/workers/analysis_texts.py:17 ui/config/analysis.py:241
 #: ui/config/pipeline_map.py:24 ui/config/pipeline_map.py:33
 #: ui/edit_panel/panel.py:62 ui/library/search.py:270 ui/library/search.py:330
 #: ui/shortcuts.py:38
@@ -1165,7 +1165,7 @@ msgstr ""
 msgid "Analyzing Keys"
 msgstr ""
 
-#: core/workers/analysis_texts.py:19 ui/config/analysis.py:202
+#: core/workers/analysis_texts.py:19 ui/config/analysis.py:240
 #: ui/config/pipeline_map.py:27 ui/config/pipeline_map.py:35
 #: ui/library/tabs/edit_song.py:128
 msgid "Key"
@@ -1176,7 +1176,7 @@ msgid "Indexing for Search by Music"
 msgstr ""
 
 #: core/workers/analysis_texts.py:20 ui/config/search.py:163
-#: ui/library/tabs/track_search_index.py:88
+#: ui/library/tabs/track_search_index.py:103
 msgid "Search by Music"
 msgstr ""
 
@@ -1243,10 +1243,6 @@ msgid "tempo segments are required for phrase reanalysis"
 msgstr ""
 
 #: core/workers/analysis_texts.py:44
-msgid "too few beats for the phrase analysis JumpCUE needs"
-msgstr ""
-
-#: core/workers/analysis_texts.py:45
 msgid "tempo segments are required for JumpCUE reanalysis"
 msgstr ""
 
@@ -1562,220 +1558,292 @@ msgstr ""
 msgid "rekordbox's analysis file changed since it was read; write again."
 msgstr ""
 
-#: ui/config/analysis.py:25
+#: ui/config/analysis.py:26
 msgid "relative or absolute .npz path"
 msgstr ""
 
-#: ui/config/analysis.py:25
+#: ui/config/analysis.py:26
 msgid "relative or absolute .json path"
 msgstr ""
 
-#: ui/config/analysis.py:31 ui/config/analysis.py:135 ui/config/library.py:264
+#: ui/config/analysis.py:32 ui/config/analysis.py:136 ui/config/library.py:264
 #: ui/config/view.py:201
 msgid "General"
 msgstr ""
 
-#: ui/config/analysis.py:37
+#: ui/config/analysis.py:38
 msgid "How many tracks are analyzed at once."
 msgstr ""
 
-#: ui/config/analysis.py:38
+#: ui/config/analysis.py:39
 msgid "Full analyses at once"
 msgstr ""
 
-#: ui/config/analysis.py:40
+#: ui/config/analysis.py:41
 msgid "Analysis order and dependencies"
 msgstr ""
 
-#: ui/config/analysis.py:54 ui/windows/reanalyze_dialog.py:32
+#: ui/config/analysis.py:55 ui/windows/reanalyze_dialog.py:32
 msgid ""
 "The beat tracker reads tempos from here to twice this;\n"
 "a song outside it is read at half or double tempo."
 msgstr ""
 
-#: ui/config/analysis.py:59 ui/config/window.py:249
+#: ui/config/analysis.py:60 ui/config/window.py:249
 #: ui/windows/reanalyze_dialog.py:38 ui/windows/reanalyze_dialog.py:76
 #, python-brace-format
 msgid "Reads {low} - {high} BPM"
 msgstr ""
 
-#: ui/config/analysis.py:61 ui/config/analysis.py:131
+#: ui/config/analysis.py:62 ui/config/analysis.py:132
 #: ui/windows/reanalyze_dialog.py:39 ui/windows/reanalyze_dialog.py:49
 msgid "Dynamic Analysis"
 msgstr ""
 
-#: ui/config/analysis.py:63 ui/windows/reanalyze_dialog.py:41
+#: ui/config/analysis.py:64 ui/windows/reanalyze_dialog.py:41
 msgid ""
 "Checked: tempo changes within a track (sections, ramps).\n"
 "Unchecked: one steady BPM for the whole track."
 msgstr ""
 
-#: ui/config/analysis.py:66 ui/windows/reanalyze_dialog.py:44
+#: ui/config/analysis.py:67 ui/windows/reanalyze_dialog.py:44
 msgid "Dynamic Downbeat"
 msgstr ""
 
-#: ui/config/analysis.py:68 ui/windows/reanalyze_dialog.py:46
+#: ui/config/analysis.py:69 ui/windows/reanalyze_dialog.py:46
 msgid ""
 "Checked: odd bars and meter changes within a track.\n"
 "Unchecked: one bar length and downbeat phase for the whole track."
 msgstr ""
 
-#: ui/config/analysis.py:84
+#: ui/config/analysis.py:85
 msgid "The model (.npz) that places the tracker's tempo changes."
 msgstr ""
 
-#: ui/config/analysis.py:89
+#: ui/config/analysis.py:90
 msgid "The model (.npz) that hears the beats and downbeats."
 msgstr ""
 
-#: ui/config/analysis.py:94
+#: ui/config/analysis.py:95
 msgid "The model (.npz) that judges 3:2 / 4:3 readings."
 msgstr ""
 
-#: ui/config/analysis.py:99
+#: ui/config/analysis.py:100
 msgid "The decoder's costs (.json)."
 msgstr ""
 
-#: ui/config/analysis.py:104
+#: ui/config/analysis.py:105
 msgid "The downbeat model (.npz) the tracker's bars read."
 msgstr ""
 
-#: ui/config/analysis.py:109 ui/windows/reanalyze_dialog.py:86
+#: ui/config/analysis.py:110 ui/windows/reanalyze_dialog.py:86
 msgid "BPM min"
 msgstr ""
 
-#: ui/config/analysis.py:114 ui/config/analysis.py:144
-#: ui/config/analysis.py:158 ui/config/library.py:257 ui/config/library.py:273
+#: ui/config/analysis.py:115 ui/config/analysis.py:145
+#: ui/config/analysis.py:159 ui/config/library.py:257 ui/config/library.py:273
 #: ui/config/playback.py:106 ui/config/view.py:196
 msgid "Advanced"
 msgstr ""
 
-#: ui/config/analysis.py:116
+#: ui/config/analysis.py:117
 msgid "Tempo-change onset (NPZ)"
 msgstr ""
 
-#: ui/config/analysis.py:117
+#: ui/config/analysis.py:118
 msgid "Beat TCN (NPZ)"
 msgstr ""
 
-#: ui/config/analysis.py:118
+#: ui/config/analysis.py:119
 msgid "Metronome critic (NPZ)"
 msgstr ""
 
-#: ui/config/analysis.py:119
+#: ui/config/analysis.py:120
 msgid "Downbeat model (NPZ)"
 msgstr ""
 
-#: ui/config/analysis.py:120
+#: ui/config/analysis.py:121
 msgid "Decoder costs (JSON)"
 msgstr ""
 
-#: ui/config/analysis.py:133 ui/windows/reanalyze_dialog.py:51
+#: ui/config/analysis.py:134 ui/windows/reanalyze_dialog.py:51
 msgid ""
 "Key changes within a track. Off: one key for the whole track, the key of "
 "its intro, outro and interludes."
 msgstr ""
 
-#: ui/config/analysis.py:142
+#: ui/config/analysis.py:143
 msgid "The key model (.npz). A missing file means the shipped model."
 msgstr ""
 
-#: ui/config/analysis.py:146
+#: ui/config/analysis.py:147
 msgid "Key model (NPZ)"
 msgstr ""
 
-#: ui/config/analysis.py:157
+#: ui/config/analysis.py:158
 msgid "Learned phrase model (.npz)."
 msgstr ""
 
-#: ui/config/analysis.py:160
+#: ui/config/analysis.py:161 ui/config/analysis.py:218
 msgid "Parameters (NPZ)"
 msgstr ""
 
-#: ui/config/analysis.py:170 ui/windows/reanalyze_dialog.py:55
+#: ui/config/analysis.py:171 ui/windows/reanalyze_dialog.py:55
 msgid "CUE point"
 msgstr ""
 
-#: ui/config/analysis.py:172 ui/config/playback.py:69
+#: ui/config/analysis.py:173 ui/config/playback.py:69
 #: ui/windows/reanalyze_dialog.py:57
 msgid "Off"
 msgstr ""
 
-#: ui/config/analysis.py:174 ui/windows/reanalyze_dialog.py:59
+#: ui/config/analysis.py:175 ui/windows/reanalyze_dialog.py:59
 msgid ""
 "The mark the analysis puts at the automatic start position (the lead-in "
 "end, the first downbeat or 0:00)."
 msgstr ""
 
-#: ui/config/analysis.py:178 ui/windows/reanalyze_dialog.py:93
+#: ui/config/analysis.py:179 ui/windows/reanalyze_dialog.py:93
 msgid "Automatic start"
 msgstr ""
 
-#: ui/config/analysis.py:181
-msgid "Learned JumpCUE jump point model (.json)."
+#: ui/config/analysis.py:180
+msgid "Automatic JumpCUE"
 msgstr ""
 
-#: ui/config/analysis.py:182
-msgid "JumpCUE Advanced"
+#: ui/config/analysis.py:183
+msgid "First CHORUS"
 msgstr ""
 
-#: ui/config/analysis.py:184
-msgid "Parameters (JSON)"
+#: ui/config/analysis.py:183 ui/config/analysis.py:187
+msgid "Any CHORUS"
+msgstr ""
+
+#: ui/config/analysis.py:183 ui/config/analysis.py:187
+msgid "Anywhere"
+msgstr ""
+
+#: ui/config/analysis.py:185
+msgid "Where the earlier point of the JumpCUE may be."
+msgstr ""
+
+#: ui/config/analysis.py:187
+msgid "Last CHORUS"
+msgstr ""
+
+#: ui/config/analysis.py:189
+msgid "Where the later point of the JumpCUE may be."
+msgstr ""
+
+#: ui/config/analysis.py:192
+msgid "A point this many beats before or after a section still counts as in it."
+msgstr ""
+
+#: ui/config/analysis.py:197
+msgid "Below this score the analysis makes no JumpCUE."
+msgstr ""
+
+#: ui/config/analysis.py:198
+msgid "Earlier point"
+msgstr ""
+
+#: ui/config/analysis.py:199
+msgid "Later point"
 msgstr ""
 
 #: ui/config/analysis.py:200
+msgid "Section margin (beats)"
+msgstr ""
+
+#: ui/config/analysis.py:201
+msgid "Minimum score"
+msgstr ""
+
+#: ui/config/analysis.py:204
+msgid "Learned JumpCUE model (.npz)."
+msgstr ""
+
+#: ui/config/analysis.py:207
+msgid "The two points are at least this many beats apart."
+msgstr ""
+
+#: ui/config/analysis.py:210
+msgid "No point within this many beats of where the singing first starts."
+msgstr ""
+
+#: ui/config/analysis.py:211
+msgid "Move a JumpCUE off CUE points"
+msgstr ""
+
+#: ui/config/analysis.py:212
+msgid "When both points sit on CUE points, the JumpCUE moves 8 beats earlier."
+msgstr ""
+
+#: ui/config/analysis.py:213
+msgid "JumpCUE Advanced"
+msgstr ""
+
+#: ui/config/analysis.py:215
+msgid "Least gap (beats)"
+msgstr ""
+
+#: ui/config/analysis.py:216
+msgid "Clear after the first singing (beats)"
+msgstr ""
+
+#: ui/config/analysis.py:219 ui/config/analysis.py:289
+msgid "Applies to tracks analyzed (or reanalyzed) from now on."
+msgstr ""
+
+#: ui/config/analysis.py:238
 msgid "Global"
 msgstr ""
 
-#: ui/config/analysis.py:201 ui/config/pipeline_map.py:23
+#: ui/config/analysis.py:239 ui/config/pipeline_map.py:23
 #: ui/windows/reanalyze_dialog.py:84
 msgid "Beat"
 msgstr ""
 
-#: ui/config/analysis.py:204 ui/config/pipeline_map.py:25
+#: ui/config/analysis.py:242 ui/config/pipeline_map.py:25
 #: ui/config/pipeline_map.py:26
 msgid "CUE"
 msgstr ""
 
-#: ui/config/analysis.py:217 ui/windows/workers.py:24
+#: ui/config/analysis.py:255 ui/windows/workers.py:24
 msgid "Analysis"
 msgstr ""
 
-#: ui/config/analysis.py:224
+#: ui/config/analysis.py:262
 msgid "CUE points (set by the analysis from the phrases)"
 msgstr ""
 
-#: ui/config/analysis.py:229
+#: ui/config/analysis.py:267
 msgid "At start"
 msgstr ""
 
-#: ui/config/analysis.py:230
+#: ui/config/analysis.py:268
 msgid "At end"
 msgstr ""
 
-#: ui/config/analysis.py:231
+#: ui/config/analysis.py:269
 msgid "Also between two of them"
 msgstr ""
 
-#: ui/config/analysis.py:233
+#: ui/config/analysis.py:271
 #, python-brace-format
 msgid "A CUE point where a {label} phrase starts"
 msgstr ""
 
-#: ui/config/analysis.py:234
+#: ui/config/analysis.py:272
 #, python-brace-format
 msgid "A CUE point where a {label} phrase ends"
 msgstr ""
 
-#: ui/config/analysis.py:236
+#: ui/config/analysis.py:274
 #, python-brace-format
 msgid ""
 "Also where two {label} phrases meet; otherwise only where a {label} "
 "phrase meets a phrase of another label"
-msgstr ""
-
-#: ui/config/analysis.py:251
-msgid "Applies to tracks analyzed (or reanalyzed) from now on."
 msgstr ""
 
 #: ui/config/audio_overview.py:78
@@ -2597,130 +2665,130 @@ msgstr ""
 msgid "Rekordbox XML Path is empty."
 msgstr ""
 
-#: ui/config/library.py:483
+#: ui/config/library.py:475
 msgid "Rekordbox XML worker started"
 msgstr ""
 
-#: ui/config/midi.py:52
+#: ui/config/midi.py:73
 msgid ""
 "The controller's MIDI input; its output of the same name lights its PLAY "
 "and CUE lamps."
 msgstr ""
 
-#: ui/config/midi.py:54 ui/windows/diagnostics_dialog.py:33
+#: ui/config/midi.py:75 ui/windows/diagnostics_dialog.py:33
 msgid "Refresh"
 msgstr ""
 
-#: ui/config/midi.py:55
+#: ui/config/midi.py:76
 msgid "List the MIDI inputs connected now."
 msgstr ""
 
-#: ui/config/midi.py:61
+#: ui/config/midi.py:82
 msgid "MIDI input"
 msgstr ""
 
-#: ui/config/midi.py:67
+#: ui/config/midi.py:88
 msgid "The jog wheel's messages in one turn. DDJ-400: 720."
 msgstr ""
 
-#: ui/config/midi.py:68
+#: ui/config/midi.py:89
 msgid "Jog wheel: messages per turn"
 msgstr ""
 
-#: ui/config/midi.py:72
+#: ui/config/midi.py:93
 msgid "Find an action or a message ..."
 msgstr ""
 
-#: ui/config/midi.py:78
+#: ui/config/midi.py:99
 msgid "MIDI"
 msgstr ""
 
-#: ui/config/midi.py:78 ui/config/shortcuts.py:58
+#: ui/config/midi.py:99 ui/config/shortcuts.py:58
 msgid "Action"
 msgstr ""
 
-#: ui/config/midi.py:78 ui/config/shortcuts.py:58
+#: ui/config/midi.py:99 ui/config/shortcuts.py:58
 msgid "Default"
 msgstr ""
 
-#: ui/config/midi.py:109
+#: ui/config/midi.py:130
 msgid "Learn"
 msgstr ""
 
-#: ui/config/midi.py:111
+#: ui/config/midi.py:132
 msgid ""
 "Then move or press a control on the controller: its message is added to "
 "the selected action."
 msgstr ""
 
-#: ui/config/midi.py:113 ui/library/search.py:275
+#: ui/config/midi.py:134 ui/library/search.py:275
 #: ui/windows/library_backup.py:202
 msgid "Clear"
 msgstr ""
 
-#: ui/config/midi.py:114
+#: ui/config/midi.py:135
 msgid "The selected action's MIDI messages removed."
 msgstr ""
 
-#: ui/config/midi.py:115 ui/config/shortcuts.py:92
+#: ui/config/midi.py:136 ui/config/shortcuts.py:92
 msgid "Revert"
 msgstr ""
 
-#: ui/config/midi.py:116
+#: ui/config/midi.py:137
 msgid "The selected action's shipped MIDI messages again."
 msgstr ""
 
-#: ui/config/midi.py:117 ui/config/midi.py:293
+#: ui/config/midi.py:138 ui/config/midi.py:311
 msgid "Import rekordbox CSV..."
 msgstr ""
 
-#: ui/config/midi.py:119
+#: ui/config/midi.py:140
 msgid ""
 "A MIDI mapping exported from rekordbox (CSV): its deck 1 controls, mixer "
 "channel 1 and the browser replace the mapping."
 msgstr ""
 
-#: ui/config/midi.py:121 ui/config/shortcuts.py:94
+#: ui/config/midi.py:142 ui/config/shortcuts.py:94
 msgid "Revert All"
 msgstr ""
 
-#: ui/config/midi.py:122
+#: ui/config/midi.py:143
 msgid "Every action's shipped MIDI messages again."
 msgstr ""
 
-#: ui/config/midi.py:174
+#: ui/config/midi.py:192
 msgid ""
 "The native audio engine reads the controller itself: its deck controls "
 "answer at once, whatever the app is doing. Deck 1's controls and mixer "
 "channel 1's fader and EQ are supported."
 msgstr ""
 
-#: ui/config/midi.py:176
+#: ui/config/midi.py:194
 msgid ""
 "A MIDI controller needs the native audio engine (Settings > Audio > "
 "Engine); the Python engine (the compatibility mode) has no MIDI."
 msgstr ""
 
-#: ui/config/midi.py:195 ui/library/tabs/sync.py:1008
+#: ui/config/midi.py:213 ui/library/tabs/sync.py:1008
 #: ui/library/tabs/sync.py:1125
 msgid "None"
 msgstr ""
 
-#: ui/config/midi.py:200 ui/config/output_group.py:95
+#: ui/config/midi.py:218 ui/config/output_group.py:95
 #: ui/library/music_search.py:212
 #, python-brace-format
 msgid "{name} (not connected)"
 msgstr ""
 
-#: ui/config/midi.py:206
+#: ui/config/midi.py:224
 msgid "Open."
 msgstr ""
 
-#: ui/config/midi.py:206
+#: ui/config/midi.py:224
 msgid "Could not be opened (in use by another program, or disconnected)."
 msgstr ""
 
-#: ui/config/midi.py:271 ui/config/shortcuts.py:220
+#: ui/config/midi.py:289 ui/config/shortcuts.py:220
 #, python-brace-format
 msgid ""
 "Already used:\n"
@@ -2729,32 +2797,32 @@ msgid ""
 "Use them here instead (taken from those actions)?"
 msgstr ""
 
-#: ui/config/midi.py:293
+#: ui/config/midi.py:311
 msgid "rekordbox MIDI mapping (*.csv)"
 msgstr ""
 
-#: ui/config/midi.py:299 ui/library/tabs/sync.py:620
+#: ui/config/midi.py:317 ui/library/tabs/sync.py:620
 #, python-brace-format
 msgid "The file could not be read: {error}"
 msgstr ""
 
-#: ui/config/midi.py:302
+#: ui/config/midi.py:320
 msgid "No deck 1 control in this file that Mixlyzer has."
 msgstr ""
 
-#: ui/config/midi.py:308
+#: ui/config/midi.py:326
 #, python-brace-format
 msgid ""
 "{count} MIDI messages for {actions} actions imported (kept with OK / "
 "Apply)."
 msgstr ""
 
-#: ui/config/midi.py:311
+#: ui/config/midi.py:329
 #, python-brace-format
 msgid "Not taken (another deck, or a function Mixlyzer has not): {names}"
 msgstr ""
 
-#: ui/config/midi.py:321
+#: ui/config/midi.py:355
 msgid "Move or press a control ..."
 msgstr ""
 
@@ -3970,37 +4038,37 @@ msgid ""
 " off."
 msgstr ""
 
-#: ui/deck/track_info_panel.py:182
+#: ui/deck/track_info_panel.py:179
 msgid "Channel level (before the fader): -30 to +12 dB."
 msgstr ""
 
-#: ui/deck/track_info_panel.py:379
+#: ui/deck/track_info_panel.py:376
 msgid "Unload track"
 msgstr ""
 
-#: ui/deck/track_info_panel.py:583
+#: ui/deck/track_info_panel.py:580
 msgid "Click: elapsed / total, −remaining / total, elapsed / −remaining in turn."
 msgstr ""
 
-#: ui/deck/track_info_panel.py:841
+#: ui/deck/track_info_panel.py:838
 msgid "TRIM: the level before the volume fader, -24 to +9 dB. Double-click: 0 dB."
 msgstr ""
 
-#: ui/deck/track_info_panel.py:845
+#: ui/deck/track_info_panel.py:842
 #, python-brace-format
 msgid ""
 "EQ {band}: the isolator's band, from a kill to +6 dB (0 dB in the "
 "middle). Double-click: 0 dB."
 msgstr ""
 
-#: ui/deck/track_info_panel.py:847
+#: ui/deck/track_info_panel.py:844
 #, python-brace-format
 msgid ""
 "EQ {band}: the native audio engine's mixer only (Settings > Audio > "
 "Engine)."
 msgstr ""
 
-#: ui/deck/track_info_panel.py:858 ui/windows/workers.py:213
+#: ui/deck/track_info_panel.py:855 ui/windows/workers.py:213
 msgid "No Art"
 msgstr ""
 
@@ -4158,23 +4226,23 @@ msgstr ""
 msgid "Reference BPM for Analysis and BPM Assigning"
 msgstr ""
 
-#: ui/edit_panel/cue_slots.py:147
+#: ui/edit_panel/cue_slots.py:240
 msgid "Double-click to rename"
 msgstr ""
 
-#: ui/edit_panel/cue_slots.py:244
+#: ui/edit_panel/cue_slots.py:349
 msgid "Previous page"
 msgstr ""
 
-#: ui/edit_panel/cue_slots.py:245
+#: ui/edit_panel/cue_slots.py:350
 msgid "Next page"
 msgstr ""
 
-#: ui/edit_panel/cue_slots.py:252
+#: ui/edit_panel/cue_slots.py:357
 msgid "Page"
 msgstr ""
 
-#: ui/edit_panel/cue_slots.py:327
+#: ui/edit_panel/cue_slots.py:464
 #, python-brace-format
 msgid "Page {page} of {pages}"
 msgstr ""
@@ -4187,7 +4255,7 @@ msgstr ""
 msgid "CUE color / delete"
 msgstr ""
 
-#: ui/edit_panel/cuepoint.py:69 ui/edit_panel/jumpcue.py:115
+#: ui/edit_panel/cuepoint.py:69 ui/edit_panel/jumpcue.py:120
 #, python-brace-format
 msgid "{time} - double-click to rename"
 msgstr ""
@@ -4206,61 +4274,63 @@ msgstr ""
 msgid "Delete CUE point {time}"
 msgstr ""
 
-#: ui/edit_panel/jumpcue.py:51
+#: ui/edit_panel/jumpcue.py:52
 msgid "Reanalyze the JumpCUEs with the current beatgrid"
 msgstr ""
 
-#: ui/edit_panel/jumpcue.py:57
-msgid "Color (its group), beat moves, slots, delete"
-msgstr ""
-
-#: ui/edit_panel/jumpcue.py:106
-msgid "SET: a JumpCUE in this slot at the nearest beat or track edge"
+#: ui/edit_panel/jumpcue.py:58
+msgid ""
+"Color (its group), beat moves, slots, delete. Drag it onto another slot "
+"to move it there."
 msgstr ""
 
 #: ui/edit_panel/jumpcue.py:111
+msgid "SET: a JumpCUE in this slot at the nearest beat or track edge"
+msgstr ""
+
+#: ui/edit_panel/jumpcue.py:116
 msgid "Jump here on the next beat (when stopped: move the playhead here)"
 msgstr ""
 
-#: ui/edit_panel/jumpcue.py:163
+#: ui/edit_panel/jumpcue.py:179
 msgid "Color (cues of one color jump between each other)"
 msgstr ""
 
-#: ui/edit_panel/jumpcue.py:166
+#: ui/edit_panel/jumpcue.py:182
 msgid "(unused)"
 msgstr ""
 
-#: ui/edit_panel/jumpcue.py:170
+#: ui/edit_panel/jumpcue.py:186
 msgid "This color"
 msgstr ""
 
-#: ui/edit_panel/jumpcue.py:171
+#: ui/edit_panel/jumpcue.py:187
 msgid "One beat earlier"
 msgstr ""
 
-#: ui/edit_panel/jumpcue.py:172
+#: ui/edit_panel/jumpcue.py:188
 msgid "One beat later"
 msgstr ""
 
-#: ui/edit_panel/jumpcue.py:173
+#: ui/edit_panel/jumpcue.py:189
 msgid "Slots"
 msgstr ""
 
-#: ui/edit_panel/jumpcue.py:175
+#: ui/edit_panel/jumpcue.py:191
 #, python-brace-format
 msgid "Insert a slot at {letter} (this and later cues move one slot on)"
 msgstr ""
 
-#: ui/edit_panel/jumpcue.py:179
+#: ui/edit_panel/jumpcue.py:195
 #, python-brace-format
 msgid "Move into the empty slot {letter} (this and later cues move one slot back)"
 msgstr ""
 
-#: ui/edit_panel/jumpcue.py:216
+#: ui/edit_panel/jumpcue.py:232
 msgid "Two JumpCUEs cannot share a point."
 msgstr ""
 
-#: ui/edit_panel/jumpcue.py:222 ui/edit_panel/panel.py:587
+#: ui/edit_panel/jumpcue.py:238 ui/edit_panel/panel.py:589
 msgid "Invalid JumpCUE Label"
 msgstr ""
 
@@ -4409,27 +4479,27 @@ msgid ""
 "relative key."
 msgstr ""
 
-#: ui/edit_panel/key.py:131 ui/edit_panel/key.py:254
+#: ui/edit_panel/key.py:131 ui/edit_panel/key.py:257
 msgid "-- | Seg -- | Elapsed: 00:00.00 | Left: 00:00.00"
 msgstr ""
 
-#: ui/edit_panel/key.py:209
+#: ui/edit_panel/key.py:212
 msgid ""
 "(WARNING! The key heard is not the track's: the keys changed here are the"
 " track's own.)"
 msgstr ""
 
-#: ui/edit_panel/key.py:219
+#: ui/edit_panel/key.py:222
 msgid ""
 "Pick one key for the whole track: it becomes one segment in that key "
 "(Alphanumeric wheel)"
 msgstr ""
 
-#: ui/edit_panel/key.py:220
+#: ui/edit_panel/key.py:223
 msgid "Pick the current segment's key (Alphanumeric wheel)"
 msgstr ""
 
-#: ui/edit_panel/key.py:268
+#: ui/edit_panel/key.py:271
 #, python-brace-format
 msgid "{key} | Seg {index} | Elapsed: {elapsed} | Left: {left}"
 msgstr ""
@@ -4450,41 +4520,41 @@ msgstr ""
 msgid "Edit the JumpCUEs and CUE points"
 msgstr ""
 
-#: ui/edit_panel/panel.py:605
+#: ui/edit_panel/panel.py:607
 #, python-brace-format
 msgid ""
 "The edits could not be saved:\n"
 "{error}"
 msgstr ""
 
-#: ui/edit_panel/panel.py:605 ui/windows/tieup_works.py:88
+#: ui/edit_panel/panel.py:607 ui/windows/tieup_works.py:88
 msgid "Save"
 msgstr ""
 
-#: ui/edit_panel/panel.py:752
+#: ui/edit_panel/panel.py:754
 #, python-brace-format
 msgid "This shortcut does nothing on the {page} page."
 msgstr ""
 
-#: ui/edit_panel/panel.py:760
+#: ui/edit_panel/panel.py:762
 msgid "Editing waits for the segment reanalysis to finish."
 msgstr ""
 
-#: ui/edit_panel/panel.py:793 ui/edit_panel/panel.py:806
+#: ui/edit_panel/panel.py:795 ui/edit_panel/panel.py:808
 #, python-brace-format
 msgid "JumpCUE {letter} is not set."
 msgstr ""
 
-#: ui/edit_panel/panel.py:802
+#: ui/edit_panel/panel.py:804
 #, python-brace-format
 msgid "JumpCUE {letter} is already set."
 msgstr ""
 
-#: ui/edit_panel/panel.py:822
+#: ui/edit_panel/panel.py:824
 msgid "CALL works while stopped."
 msgstr ""
 
-#: ui/edit_panel/panel.py:838
+#: ui/edit_panel/panel.py:840
 msgid "No CUE point at the playhead."
 msgstr ""
 
@@ -4590,117 +4660,117 @@ msgid_plural ""
 msgstr[0] ""
 msgstr[1] ""
 
-#: ui/library/mix.py:28
+#: ui/library/mix.py:27
 msgid "AND: every criterion turned on (click to switch)"
 msgstr ""
 
-#: ui/library/mix.py:29
+#: ui/library/mix.py:28
 msgid "OR: any criterion turned on (click to switch)"
 msgstr ""
 
-#: ui/library/mix.py:36
+#: ui/library/mix.py:35
 msgctxt "mix candidates"
 msgid "Next"
 msgstr ""
 
-#: ui/library/mix.py:36
+#: ui/library/mix.py:35
 msgctxt "mix candidates"
 msgid "Previous"
 msgstr ""
 
-#: ui/library/mix.py:43
+#: ui/library/mix.py:42
 msgid ""
 "<p>Next: tracks to blend in from the loaded one's interlude or outro, at "
 "their start (click to switch).</p>"
 msgstr ""
 
-#: ui/library/mix.py:45
+#: ui/library/mix.py:44
 msgid ""
 "<p>Previous: tracks whose interlude or outro blends into the loaded one's"
 " start (click to switch).</p>"
 msgstr ""
 
-#: ui/library/mix.py:59
+#: ui/library/mix.py:58
 msgid ""
 "<p>The two tracks' BPM within this range where they meet, or one at half "
 "/ double the other.</p>"
 msgstr ""
 
-#: ui/library/mix.py:62
+#: ui/library/mix.py:61
 msgid "BPM range"
 msgstr ""
 
-#: ui/library/mix.py:64
+#: ui/library/mix.py:63
 msgid ""
 "<p>The two tracks' keys where they meet the same, relative or ±1 on the "
 "Alphanumeric wheel.</p>"
 msgstr ""
 
-#: ui/library/mix.py:68
+#: ui/library/mix.py:67
 msgid ""
 "<p>Phrases on both tracks line up and the bars sound alike where they "
 "would be blended: energy, rhythm and harmony.</p>"
 msgstr ""
 
-#: ui/library/mix.py:68 ui/library/mix.py:188
+#: ui/library/mix.py:67 ui/library/mix.py:187
 msgid "Sound"
 msgstr ""
 
-#: ui/library/mix.py:77
+#: ui/library/mix.py:76
 msgid "Mix"
 msgstr ""
 
-#: ui/library/mix.py:173
+#: ui/library/mix.py:172
 #, python-brace-format
 msgid "This track {a_from} - {a_to}, the loaded track from {b_from}, {bars} bars"
 msgstr ""
 
-#: ui/library/mix.py:176
+#: ui/library/mix.py:175
 #, python-brace-format
 msgid "The loaded track {a_from} - {a_to}, this track from {b_from}, {bars} bars"
 msgstr ""
 
-#: ui/library/mix.py:179
+#: ui/library/mix.py:178
 msgid "No blend lines up on both tracks' phrases"
 msgstr ""
 
-#: ui/library/mix.py:181
+#: ui/library/mix.py:180
 #, python-brace-format
 msgid "BPM {a:.1f} → {b:.1f} ({offset:+.1f} %)"
 msgstr ""
 
-#: ui/library/mix.py:183
+#: ui/library/mix.py:182
 msgid "the same key"
 msgstr ""
 
-#: ui/library/mix.py:183
+#: ui/library/mix.py:182
 msgid "the relative key"
 msgstr ""
 
-#: ui/library/mix.py:184
+#: ui/library/mix.py:183
 msgid "±1 on the Alphanumeric wheel"
 msgstr ""
 
-#: ui/library/mix.py:185
+#: ui/library/mix.py:184
 msgid "another key"
 msgstr ""
 
-#: ui/library/mix.py:186
+#: ui/library/mix.py:185
 #, python-brace-format
 msgid "Key {a} → {b}"
 msgstr ""
 
-#: ui/library/mix.py:187
+#: ui/library/mix.py:186
 #, python-brace-format
 msgid "{key}: {relation}"
 msgstr ""
 
-#: ui/library/mix.py:189
+#: ui/library/mix.py:188
 #, python-brace-format
 msgid "Meets: {criteria}"
 msgstr ""
 
-#: ui/library/mix.py:189
+#: ui/library/mix.py:188
 msgid "Meets no criterion"
 msgstr ""
 
@@ -4740,71 +4810,71 @@ msgstr ""
 msgid "Microphone: {device}"
 msgstr ""
 
-#: ui/library/music_search.py:306
+#: ui/library/music_search.py:309
 #, python-brace-format
 msgid "The index could not be read: {error}"
 msgstr ""
 
-#: ui/library/music_search.py:314
+#: ui/library/music_search.py:317
 msgid ""
 "No track is indexed for Search by Music yet: Settings > Search > Index "
 "Now (new tracks are indexed when analyzed)."
 msgstr ""
 
-#: ui/library/music_search.py:353
+#: ui/library/music_search.py:356
 msgid "No microphone found."
 msgstr ""
 
-#: ui/library/music_search.py:438
+#: ui/library/music_search.py:444
 #, python-brace-format
 msgid "The search failed: {error}"
 msgstr ""
 
-#: ui/library/music_search.py:446
+#: ui/library/music_search.py:452
 msgid "Nothing found yet: hum or whistle for 8 seconds or more, or play the song."
 msgstr ""
 
 #: ui/library/playlists.py:18 ui/library/playlists.py:27
-#: ui/library/playlists.py:55 ui/library/playlists.py:64
+#: ui/library/playlists.py:57 ui/library/playlists.py:66
 msgid "Name"
 msgstr ""
 
 #: ui/library/playlists.py:27 ui/library/playlists.py:32
-#: ui/library/sources.py:665
+#: ui/library/sources.py:637
 msgid "New Folder"
 msgstr ""
 
-#: ui/library/playlists.py:55 ui/library/playlists.py:60
+#: ui/library/playlists.py:57 ui/library/playlists.py:62
 msgid "Rename Playlist"
 msgstr ""
 
-#: ui/library/playlists.py:64 ui/library/playlists.py:69
+#: ui/library/playlists.py:66 ui/library/playlists.py:71
 msgid "Rename Folder"
 msgstr ""
 
-#: ui/library/playlists.py:74 ui/library/sources.py:671
+#: ui/library/playlists.py:76 ui/library/sources.py:643
 msgid "Delete Playlist"
 msgstr ""
 
-#: ui/library/playlists.py:75
+#: ui/library/playlists.py:77
 #, python-brace-format
 msgid ""
 "Delete playlist \"{name}\"?\n"
 "Tracks remain in the Library."
 msgstr ""
 
-#: ui/library/playlists.py:84 ui/library/sources.py:671
+#: ui/library/playlists.py:86 ui/library/sources.py:643
 msgid "Delete Folder"
 msgstr ""
 
-#: ui/library/playlists.py:85
+#: ui/library/playlists.py:87
 #, python-brace-format
 msgid ""
 "Delete folder \"{name}\" with every playlist and folder in it?\n"
 "Tracks remain in the Library."
 msgstr ""
 
-#: ui/library/playlists.py:114 ui/library/sources.py:320
+#: ui/library/playlists.py:113 ui/library/sources.py:326
 msgid "Playlists"
 msgstr ""
 
@@ -4921,124 +4991,124 @@ msgstr ""
 msgid "Min seg"
 msgstr ""
 
-#: ui/library/sources.py:291
+#: ui/library/sources.py:304
 msgid "Mix Candidates"
 msgstr ""
 
-#: ui/library/sources.py:293
+#: ui/library/sources.py:305
 msgid ""
 "<p>Tracks to play after or before the loaded one, the best blend "
 "first.</p>"
 msgstr ""
 
-#: ui/library/sources.py:296
+#: ui/library/sources.py:307
 msgid "Related Tracks"
 msgstr ""
 
-#: ui/library/sources.py:298
+#: ui/library/sources.py:308
 msgid "<p>The library's tracks related to the track loaded on the deck.</p>"
 msgstr ""
 
-#: ui/library/sources.py:301
+#: ui/library/sources.py:311
 msgid "Same Artist"
 msgstr ""
 
-#: ui/library/sources.py:302
+#: ui/library/sources.py:312
 msgid ""
 "<p>The tracks crediting an artist the loaded track credits: in the artist"
 " field (each name of \"A feat. B\", \"A &amp; B\", a character and its "
 "voice actor) or as featured in the title.</p>"
 msgstr ""
 
-#: ui/library/sources.py:304
+#: ui/library/sources.py:314
 msgid "Same Album"
 msgstr ""
 
-#: ui/library/sources.py:304
+#: ui/library/sources.py:315
 msgid "<p>The tracks of the loaded track's album (by its name).</p>"
 msgstr ""
 
-#: ui/library/sources.py:305
+#: ui/library/sources.py:316
 msgid "Same Tie-up Work"
 msgstr ""
 
-#: ui/library/sources.py:305
+#: ui/library/sources.py:317
 msgid "<p>The tracks with a tie-up to a work the loaded track's tie-ups name.</p>"
 msgstr ""
 
-#: ui/library/sources.py:307
-msgid "<p>The versions of the track loaded on the deck.</p>"
-msgstr ""
-
-#: ui/library/sources.py:307 ui/library/tabs/track_search_index.py:87
+#: ui/library/sources.py:318 ui/library/tabs/track_search_index.py:102
 msgid "Variants"
 msgstr ""
 
-#: ui/library/sources.py:314
+#: ui/library/sources.py:319
+msgid "<p>The versions of the track loaded on the deck.</p>"
+msgstr ""
+
+#: ui/library/sources.py:323
 msgid "Tracks with Variants"
 msgstr ""
 
-#: ui/library/sources.py:317
+#: ui/library/sources.py:324
 msgid "<p>The library's tracks that are versions of one song. # is the song.</p>"
 msgstr ""
 
-#: ui/library/sources.py:343
+#: ui/library/sources.py:346
 msgid "Local Folders"
 msgstr ""
 
-#: ui/library/sources.py:605
+#: ui/library/sources.py:579
 msgid "the same mix"
 msgstr ""
 
-#: ui/library/sources.py:607
+#: ui/library/sources.py:581
 #, python-brace-format
 msgid "{relation}, a shorter edit"
 msgstr ""
 
-#: ui/library/sources.py:609
+#: ui/library/sources.py:583
 #, python-brace-format
 msgid "{relation}, a longer version"
 msgstr ""
 
-#: ui/library/sources.py:611
+#: ui/library/sources.py:585
 #, python-brace-format
 msgid "{relation}, some sections differ"
 msgstr ""
 
-#: ui/library/sources.py:614
+#: ui/library/sources.py:588
 msgid "a shorter edit"
 msgstr ""
 
-#: ui/library/sources.py:616
+#: ui/library/sources.py:590
 msgid "a longer version"
 msgstr ""
 
-#: ui/library/sources.py:618
+#: ui/library/sources.py:592
 msgid "some sections differ"
 msgstr ""
 
-#: ui/library/sources.py:635
+#: ui/library/sources.py:609
 #, python-brace-format
 msgid "{title}: {relation}"
 msgstr ""
 
-#: ui/library/sources.py:637
+#: ui/library/sources.py:611
 msgid "Variants of this track:"
 msgstr ""
 
-#: ui/library/sources.py:668
+#: ui/library/sources.py:640
 msgid "Rename"
 msgstr ""
 
-#: ui/library/sources.py:669
+#: ui/library/sources.py:641
 msgid "Move Up"
 msgstr ""
 
-#: ui/library/sources.py:670
+#: ui/library/sources.py:642
 msgid "Move Down"
 msgstr ""
 
-#: ui/library/sources.py:673
+#: ui/library/sources.py:645
 msgid "Refresh Folders"
 msgstr ""
 
@@ -5899,67 +5969,67 @@ msgstr ""
 msgid "Wikipedia has no tie-up for this track."
 msgstr ""
 
-#: ui/library/tabs/track_search_index.py:50
+#: ui/library/tabs/track_search_index.py:65
 msgid "Readings"
 msgstr ""
 
-#: ui/library/tabs/track_search_index.py:60
+#: ui/library/tabs/track_search_index.py:75
 msgid ""
 "<p>How the title, artist and album read in Latin letters: the search "
 "finds the track by them. Type in a cell to add a reading; empty it to "
 "remove one.</p>"
 msgstr ""
 
-#: ui/library/tabs/track_search_index.py:77
+#: ui/library/tabs/track_search_index.py:92
 msgid "Audio Fingerprints"
 msgstr ""
 
-#: ui/library/tabs/track_search_index.py:83
+#: ui/library/tabs/track_search_index.py:98
 msgid ""
 "<p>The track's Variants fingerprint and its Search by Music index made "
 "again.</p>"
 msgstr ""
 
-#: ui/library/tabs/track_search_index.py:257
+#: ui/library/tabs/track_search_index.py:283
 msgid "Rebuilt."
 msgstr ""
 
-#: ui/library/tabs/track_search_index.py:258
+#: ui/library/tabs/track_search_index.py:284
 msgid "Not rebuilt: Index Now could not index the track."
 msgstr ""
 
-#: ui/library/tabs/track_search_index.py:262
+#: ui/library/tabs/track_search_index.py:288
 msgid "Fingerprinted"
 msgstr ""
 
-#: ui/library/tabs/track_search_index.py:262
-#: ui/library/tabs/track_search_index.py:263
+#: ui/library/tabs/track_search_index.py:288
+#: ui/library/tabs/track_search_index.py:289
 msgid "Not indexed"
 msgstr ""
 
-#: ui/library/tabs/track_search_index.py:263
+#: ui/library/tabs/track_search_index.py:289
 msgid "Indexed"
 msgstr ""
 
-#: ui/library/tabs/track_search_index.py:271
+#: ui/library/tabs/track_search_index.py:297
 msgid "The audio file is not there: the fingerprints cannot be made again."
 msgstr ""
 
-#: ui/library/tabs/track_search_index.py:275
+#: ui/library/tabs/track_search_index.py:301
 msgid "Taking the track out of the indexes…"
 msgstr ""
 
-#: ui/library/tabs/track_search_index.py:282
-#: ui/library/tabs/track_search_index.py:307
+#: ui/library/tabs/track_search_index.py:309
+#: ui/library/tabs/track_search_index.py:333
 #, python-brace-format
 msgid "Not rebuilt: {error}"
 msgstr ""
 
-#: ui/library/tabs/track_search_index.py:285
+#: ui/library/tabs/track_search_index.py:312
 msgid "Indexing…"
 msgstr ""
 
-#: ui/library/tabs/track_search_index.py:292
+#: ui/library/tabs/track_search_index.py:319
 #, python-brace-format
 msgid "Indexing… {percent}%"
 msgstr ""
@@ -6004,14 +6074,14 @@ msgstr ""
 
 #: ui/library/tabs/edit_song.py:124 ui/library/tabs/export.py:84
 #: ui/library/tabs/sync.py:80 ui/library/tabs/sync.py:93
-#: ui/library/tabs/tieup_editor.py:140 ui/library/tabs/track_search_index.py:53
+#: ui/library/tabs/tieup_editor.py:140 ui/library/tabs/track_search_index.py:68
 #: ui/library/widget.py:39 ui/windows/tieup_works.py:77
 msgid "Title"
 msgstr ""
 
 #: ui/library/tabs/edit_song.py:125 ui/library/tabs/export.py:85
 #: ui/library/tabs/sync.py:81 ui/library/tabs/sync.py:94
-#: ui/library/tabs/track_search_index.py:53 ui/library/widget.py:39
+#: ui/library/tabs/track_search_index.py:68 ui/library/widget.py:39
 msgid "Artist"
 msgstr ""
 
@@ -6020,7 +6090,7 @@ msgid "Duration"
 msgstr ""
 
 #: ui/library/tabs/edit_song.py:126 ui/library/tabs/sync.py:95
-#: ui/library/tabs/track_search_index.py:53 ui/library/widget.py:40
+#: ui/library/tabs/track_search_index.py:68 ui/library/widget.py:40
 msgid "Album"
 msgstr ""
 
@@ -6050,7 +6120,7 @@ msgstr ""
 msgid "Track loading is disabled while External Sync is enabled."
 msgstr ""
 
-#: ui/library/widget.py:478
+#: ui/library/widget.py:479
 msgid "The loaded track is not in the list shown."
 msgstr ""
 
@@ -6097,7 +6167,7 @@ msgstr ""
 msgid "Playback"
 msgstr ""
 
-#: ui/config/library.py:127 ui/config/library.py:288 ui/library/sources.py:287
+#: ui/config/library.py:127 ui/config/library.py:288 ui/library/sources.py:302
 #: ui/shortcuts.py:33
 msgid "Library"
 msgstr ""
@@ -6317,7 +6387,7 @@ msgstr ""
 msgid "MEMORY: set a CUE point at the nearest beat or track edge"
 msgstr ""
 
-#: ui/edit_panel/jumpcue.py:183 ui/shortcuts.py:126
+#: ui/edit_panel/jumpcue.py:199 ui/shortcuts.py:126
 #, python-brace-format
 msgid "Delete JumpCUE {letter}"
 msgstr ""
@@ -6409,7 +6479,7 @@ msgstr ""
 msgid "The track panel's Search Index tab with the selected track."
 msgstr ""
 
-#: ui/library/tabs/track_search_index.py:81 ui/shortcuts.py:151
+#: ui/library/tabs/track_search_index.py:96 ui/shortcuts.py:151
 msgid "Rebuild Audio Fingerprints"
 msgstr ""
 
@@ -6514,7 +6584,7 @@ msgid "Show in File Manager"
 msgstr ""
 
 #: ui/library/playlists.py:18 ui/library/playlists.py:23
-#: ui/library/sources.py:664 ui/shortcuts.py:175
+#: ui/library/sources.py:636 ui/shortcuts.py:175
 msgid "New Playlist"
 msgstr ""
 
@@ -6558,15 +6628,15 @@ msgstr ""
 msgid "It becomes the current page."
 msgstr ""
 
-#: ui/edit_panel/panel.py:224 ui/shortcuts.py:187
+#: ui/edit_panel/panel.py:226 ui/shortcuts.py:187
 msgid "Undo Changes"
 msgstr ""
 
-#: ui/edit_panel/panel.py:228 ui/shortcuts.py:188
+#: ui/edit_panel/panel.py:230 ui/shortcuts.py:188
 msgid "Redo Changes"
 msgstr ""
 
-#: ui/edit_panel/panel.py:232 ui/shortcuts.py:189
+#: ui/edit_panel/panel.py:234 ui/shortcuts.py:189
 msgid "Save Edits"
 msgstr ""
 
@@ -6826,14 +6896,14 @@ msgstr ""
 msgid "Label the current phrase {label}"
 msgstr ""
 
-#: ui/shortcuts.py:321
+#: ui/shortcuts.py:331
 #, python-brace-format
 msgid ""
 "Another program on this computer takes {keys}: these shortcuts do not "
 "work (Settings > Shortcuts)."
 msgstr ""
 
-#: ui/shortcuts.py:367
+#: ui/shortcuts.py:374
 #, python-brace-format
 msgid "{keys} is used by more than one action (Settings > Shortcuts)."
 msgstr ""

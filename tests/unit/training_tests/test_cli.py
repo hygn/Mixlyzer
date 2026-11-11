@@ -61,11 +61,11 @@ class PrepareTests(unittest.TestCase):
         self.assertEqual(set(values["current_models"]), {"downbeat_ctx", "tcn", "critic", "decoder", "refine_onset"})
         self.assertEqual(values["current_models"]["tcn"], str(tcn))
 
-    def test_jumpcue_files(self):
-        jump = cli.prepare("jumpcue", {"output_path": str(self.dir / "jumpcue_jump_point.json")})
-        self.assertEqual(jump["current_path"], str(self.dir / "default_jumpcue_jump_point.json"))
-        self.assertTrue(Path(jump["phrase_model_file"]).name.endswith("phrase_analyzer.npz"))
-        self.assertTrue(Path(jump["jump_point_model_path"]).name.endswith("jumpcue_jump_point.json"))
+    def test_jumpcue_reads_no_phrase_model(self):
+        """The JumpCUE model reads the tracks' stored phrases: no phrase model is named for it."""
+        jump = cli.prepare("jumpcue", {"output_path": str(self.dir / "jumpcue_pairs.npz")})
+        self.assertNotIn("phrase_model_file", jump)
+        self.assertNotIn("phrase_parameter_path", jump)
 
     def test_networks_start_from_the_shipped_the_model_in_use_or_nothing(self):
         for name, file in (("key_model", "key_chord_cnn.npz"), ("beat_critic", "beat_critic.npz")):
@@ -121,6 +121,9 @@ class RequestTests(unittest.TestCase):
         decoder = cli.request_values("beat_decoder", self.analysis, "library", _args())
         self.assertNotIn("current_models", decoder)
         self.assertEqual(decoder["tcn_path"], cli.project_path(self.analysis.beat_tcn_parameter_path))
+        jump = cli.request_values("jumpcue", self.analysis, "library", _args(output="trials/x.npz"))
+        self.assertNotIn("current_path", jump)
+        self.assertNotIn("phrase_parameter_path", jump)          # the stored phrases: no phrase model read
 
     def test_the_options_and_set(self):
         values = cli.request_values("beat_decoder", self.analysis, "library", _args(

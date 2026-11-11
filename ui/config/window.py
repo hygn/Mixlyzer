@@ -268,9 +268,10 @@ class SettingsDialog(
                 or ""
             )
         )
-        self.ed_jumpcue_parameter_path.setText(str(getattr(a, "jumpcue_parameter_path", "") or ""))
+        self.ed_jumpcue_pairs_parameter_path.setText(str(getattr(a, "jumpcue_pairs_parameter_path", "") or ""))
         self._set_cue_point_rules(cfg.cuepointconfig)
         self._set_autocue(a.autocue)
+        self._set_jumpcue_rules(a)
 
         # key
         self.cb_key_dynamic.setChecked(bool(getattr(a, "key_dynamic", True)))
@@ -307,10 +308,11 @@ class SettingsDialog(
                 beat_decoder_parameter_path=self.ed_beat_decoder_parameter_path.text().strip(),
                 downbeat_ctx_parameter_path=self.ed_downbeat_ctx_parameter_path.text().strip(),
                 phrase_parameter_path=self.ed_phrase_parameter_path.text().strip(),
-                jumpcue_parameter_path=self.ed_jumpcue_parameter_path.text().strip(),
+                jumpcue_pairs_parameter_path=self.ed_jumpcue_pairs_parameter_path.text().strip(),
                 key_dynamic=bool(self.cb_key_dynamic.isChecked()),
                 key_parameter_path=self.ed_key_parameter_path.text().strip(),
                 autocue=self._get_autocue(),
+                **self._get_jumpcue_rules(),
                 max_parallel_analyses=int(self.sp_max_parallel_analyses.value()),
             ),
             libconfig=libconfig(

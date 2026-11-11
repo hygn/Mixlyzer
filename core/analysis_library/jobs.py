@@ -69,11 +69,11 @@ TRAINING_BATCH = 50
 
 
 def training_tracks(lib) -> list[dict]:
-    """The library's tracks as the optimizers read them, in uid order: uid, title, artist, audio_path; their stored
-    annotations are read in batches after (training_annotations). Handed to the run (training.library_tracks), which
-    reads the audio from its path and never opens the library's files."""
+    """The library's tracks as the optimizers read them, in uid order: uid, title, artist, audio_path, added_ts (when
+    it was added, epoch seconds); their stored annotations are read in batches after (training_annotations). Handed to
+    the run (training.library_tracks), which reads the audio from its path and never opens the library's files."""
     return [{"uid": row.uid, "title": row.title or "", "artist": row.artist or "",
-             "audio_path": Path(row.path) if row.path else Path()}
+             "audio_path": Path(row.path) if row.path else Path(), "added_ts": int(row.added_ts or 0)}
             for row in lib.db.list_all(order_by="uid ASC") if row.uid]
 
 

@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import importlib
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
@@ -23,9 +23,8 @@ from analyzer.audio.load import fast_load
 from analyzer.audio.wave_overview import WAVE_OVERVIEW_SAMPLE_RATE, WaveOverview, build_wave_overview
 from analyzer.beat import melody_contour
 from analyzer.beat.frame_features import FRAME_HOP_LENGTH, extract_frame_features
-from analyzer.jumpcue.JumpCUE import JumpCueConfig, JumpCueEngine, audio_context as jump_audio_context
+from analyzer.jumpcue.JumpCUE import audio_context as jump_audio_context, jump_cue_pairs
 from analyzer.jumpcue.autocue import autocue_jump_pair
-from analyzer.jumpcue.jump_point_model import jump_point_beat_features
 from analyzer.key.chord_key import analyze_keys as analyze_chord_keys, frame_chroma as key_frame_chroma
 from analyzer.music.beat_geometry import downbeat_times
 from analyzer.music.marks import CuePoint, Phrase
@@ -175,39 +174,24 @@ def _analyze_track(path: str, settings: AnalysisSettings, progress: Progress, si
 
     beats_time_arr = np.asarray(beats_out, dtype=float)
     # what JumpCUE reads of the audio and the beats alone, made beside the phrases (JumpCUE.audio_context)
-    jump_config = JumpCueConfig(jump_point_model_path=models.jumpcue)
-    if settings.autocue == "jumpcue":
-        # one hot cue slot stays free for the AutoCUE JumpCUE (below)
-        jump_config = replace(jump_config, hot_cue_slots=jump_config.hot_cue_slots - 1)
-    jump_mix_magnitude = (
-        hpss_spectra.magnitude
-        if hpss_spectra is not None
-        and (hpss_spectra.n_fft, hpss_spectra.hop_length) == (jump_config.vocal.n_fft, jump_config.vocal.hop)
-        else None
-    )
     jump_context_job = None
     if beats_time_arr.size >= 2:
-        jump_context_job = side.submit(jump_audio_context, jump_config, y_harm, global_sr, beats_time_arr, y_mix=samp,
-                                       mix_magnitude=jump_mix_magnitude)
+        jump_context_job = side.submit(jump_audio_context, y_harm, samp, global_sr, beats_time_arr,
+                                       spectra=hpss_spectra)
     report(progress, stages.PHRASE, 0.58)
     print("[Phrase] Analysis Initalized")
-    # The phrase boundary probability is a JumpCUE feature (below).
-    phrase_boundary_prob = None
-    phrase_feature_z = None
     phrase_segments = []
     if beats_time_arr.size >= 17 and seg_arr.shape[0] > 0:
         try:
             # Joint phrase boundary + functional-label detection -> Phrase data.
             # Reuse the already-decoded stereo audio (no second decode).
-            phrase_segments, phrase_boundary_prob, phrase_feature_z = detect_phrase_segments(
+            phrase_segments = detect_phrase_segments(
                 samp_stereo,
                 int(global_sr),
                 beats_time_arr,
                 seg_arr,
                 model_path=models.phrase,
                 hpss=hpss_spectra,
-                return_boundary_probability=True,
-                return_feature_z=True,
                 frames=phrase_frames_job.result(),
                 cues=phrase_cues_job.result(),
             )
@@ -231,30 +215,18 @@ def _analyze_track(path: str, settings: AnalysisSettings, progress: Progress, si
     )
     print("[Phrase] Analysis Finished")
 
-    # Learned JumpCUE detection needs phrase-boundary probability.  The simple
-    # AutoCUE JumpCUE does not and is still added below when detection is skipped.
+    # The learned JumpCUE on these phrases; the AutoCUE JumpCUE is added below whatever they give.
     report(progress, stages.JUMPCUE, 0.62)
     jump_pairs = []
-    if phrase_boundary_prob is None:
-        print("[JumpCUE] learned pairs skipped: no phrase boundary probability")
-    elif beats_time_arr.size >= 2:
+    if jump_context_job is not None:
         # a failure leaves the track without learned JumpCUEs (the AutoCUE one still added), never the analysis undone
         try:
-            jump_engine = JumpCueEngine(jump_config)
-            jump_result = jump_engine.run(
-                y_harm=y_harm,
-                sr=global_sr,
-                beats_time=beats_time_arr,
-                y_mix=samp,
-                tempo_segments=seg_arr,
-                mix_magnitude=jump_mix_magnitude,
-                jump_point_features=jump_point_beat_features(
-                    frame_features, beats_time_arr, seg_arr, phrase_boundary_prob,
-                    audio=samp_stereo, phrase_feature_z=phrase_feature_z,
-                ),
-                context=jump_context_job.result(),
+            jump_pairs = jump_cue_pairs(
+                jump_context_job.result(), model_path=models.jumpcue, beats_time=beats_time_arr,
+                tempo_segments=seg_arr, phrases=[(s.start, s.end, s.label) for s in phrase_segments],
+                frames=frame_features, key_frames=key_frames_job.result(), rules=settings.jumpcue_rules,
+                cue_times=[float(c.time_sec) for c in cue_points],
             )
-            jump_pairs = [pair.as_dict() for pair in jump_result.pairs]
         except Exception as exc:
             import traceback
 

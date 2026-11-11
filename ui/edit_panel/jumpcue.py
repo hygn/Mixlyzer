@@ -40,7 +40,8 @@ class JumpCUEEditMixin:
     empty slot). A colour is a group (the cues of one colour jump between each
     other): the squircle's menu picks the cue's colour, which assigns its group,
     shifts that colour's cues by a beat, moves slots and deletes the cue (the only
-    way to delete one)."""
+    way to delete one). A cue dragged onto another slot moves there, swapping with
+    a cue already in it."""
 
     def _build_jumpcue_ui(self, page: CuePageWidget) -> list[QtWidgets.QWidget]:
         """JumpCUE slots of the CUE page; returns the buttons off while editing is."""
@@ -54,10 +55,13 @@ class JumpCUEEditMixin:
 
         self.jc_slots = page.slots[0]
         for i, slot in enumerate(self.jc_slots):
-            slot.squircle.setToolTip(tr("Color (its group), beat moves, slots, delete"))
+            slot.squircle.setToolTip(tr("Color (its group), beat moves, slots, delete. Drag it onto another slot to "
+                                        "move it there."))
             slot.squircle_clicked.connect(lambda i=i: self._jc_group_menu(i))
             slot.action_clicked.connect(lambda i=i: self._jc_set_or_jump(i))
             slot.renamed.connect(lambda name, i=i: self._rename_jumpcue(i, name))
+            slot.drag_started.connect(lambda press, i=i: self._jc_drag(i, press))
+            slot.dropped.connect(lambda letter, i=i: self._jc_drop(i, letter))
         page.page_changed.connect(self._refresh_jumpcue_slots)
         # the JumpCUE armed, as the player's deck reports it (its destination, s; NaN: none)
         self._jc_armed_dest = math.nan
@@ -98,6 +102,7 @@ class JumpCUEEditMixin:
         armed_point = self._jc_armed_dest if math.isfinite(self._jc_armed_dest) else None
         editable = bool(getattr(self, "_edit_enabled", True))
         for i, slot in enumerate(self.jc_slots):
+            slot.set_drag_and_drop(editable)        # a cue dragged to another slot is an edit
             cue = self._jc_cue_at(i)
             if cue is None:
                 slot.show_cue(None)
@@ -122,6 +127,17 @@ class JumpCUEEditMixin:
             return
         self._set_jumpcue_groups([([replace(c, comment=name or c.label) if abs(c.point - cue.point) < 1e-3 else c
                                     for c in cues], color) for cues, color in self._jumpcue_groups()])
+
+    def _jc_drag(self, slot: int, press: QtCore.QPoint) -> None:
+        """A slot's cue dragged (dropped on a slot: _jc_drop)."""
+        cue = self._jc_cue_at(slot)
+        if cue is not None and getattr(self, "_edit_enabled", True):
+            self.jc_slots[slot].drag(cue.label, press)
+
+    def _jc_drop(self, slot: int, letter: str) -> None:
+        to = self._jc_slot_letter(slot)
+        if to is not None:
+            self._move_jumpcue(letter, to)
 
     def _jc_set_or_jump(self, slot: int) -> None:
         """The slot's button: SET on an empty slot (an edit), else JUMP."""
@@ -289,6 +305,21 @@ class JumpCUEEditMixin:
                 return c
             nxt = chr(ord(c.label) + (1 if step > 0 else -1))
             return replace(c, label=nxt, comment=nxt if c.comment == c.label else c.comment)
+
+        self._set_jumpcue_groups([([moved(c) for c in cues], color) for cues, color in self._jumpcue_groups()])
+
+    def _move_jumpcue(self, letter: str, to: str) -> None:
+        """The cue in slot ``letter`` into slot ``to`` (dragged there); a cue in ``to`` takes ``letter`` (the two
+        swap). Names that are just the letter follow it."""
+        if letter == to or self._jc_cue_by_letter(letter) is None or not getattr(self, "_edit_enabled", True):
+            return
+        swap = {letter: to, to: letter}
+
+        def moved(c: JumpCue) -> JumpCue:
+            new = swap.get(c.label)
+            if new is None:
+                return c
+            return replace(c, label=new, comment=new if c.comment == c.label else c.comment)
 
         self._set_jumpcue_groups([([moved(c) for c in cues], color) for cues, color in self._jumpcue_groups()])
 

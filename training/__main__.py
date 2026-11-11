@@ -10,7 +10,8 @@ NAME: one of OPTIMIZERS. Run from the app's folder (config.json's settings: the 
 lowest BPM): the output is the model setting's file unless --output, the feature cache featurecache/<kind> unless
 --cache. --set gives any other field of the optimizer's request (a JSON value, else the text): ``--set steps=4000``;
 the key model trains on a key GT file instead of the library's key annotations with ``--set key_gt=PATH``
-(training/key_model_optimizer.py).
+(training/key_model_optimizer.py); the JumpCUE model takes every group of the tracks added since one, or up to one,
+as judged with ``--set full_review_from=UID`` / ``full_review_upto=UID`` (training/jumpcue_optimizer.py).
 """
 from __future__ import annotations
 
@@ -60,8 +61,8 @@ OPTIMIZERS = {
                               "phrase_parameter_path", "featurecache/phrase"),
     "key_model": Optimizer("key_model_optimizer", "KeyModelOptimizationRequest", "optimize_key_model",
                            "key_parameter_path", "featurecache/key"),
-    "jumpcue": Optimizer("jumpcue_parameter_optimizer", "JumpCueOptimizationRequest", "optimize_jumpcue_parameters",
-                         "jumpcue_parameter_path", "featurecache/jumpcue/train"),
+    "jumpcue": Optimizer("jumpcue_optimizer", "JumpCueOptimizationRequest", "optimize_jumpcue",
+                         "jumpcue_pairs_parameter_path", "featurecache/jumpcue"),
 }
 BEAT_OPTIMIZERS = ("refine_onset", "downbeat_ctx", "beat_tcn", "beat_critic", "beat_decoder")
 # the networks a run starts from the shipped model, the one in use or nothing (--start; the others train anew)
@@ -90,9 +91,8 @@ def prepare(name: str, values: dict) -> dict:
     output = values.get("output_path")
     if output:
         check_output(output)
-    if name in ("beat_decoder", "jumpcue"):
-        values["current_path"] = str(resolve_model(output))
     if name == "beat_decoder":            # the costs refitted around the shipped ones or the ones in use
+        values["current_path"] = str(resolve_model(output))
         start = values.get("start") or CURRENT
         values["start_path"] = str(shipped_path(output) if start == SHIPPED else resolve_model(output))
         for key, setting in (("tcn_path", "beat_tcn_parameter_path"), ("critic_path", "beat_critic_parameter_path"),
@@ -110,9 +110,6 @@ def prepare(name: str, values: dict) -> dict:
     if values.get("current_models") is not None:
         given = dict(values["current_models"])
         values["current_models"] = {key: model_file(given.get(key), setting) for key, setting in _CURRENT_MODELS.items()}
-    if name == "jumpcue":
-        values["phrase_model_file"] = model_file(values.get("phrase_parameter_path"), "phrase_parameter_path")
-        values["jump_point_model_path"] = model_file(None, "jumpcue_parameter_path")
     return values
 
 
@@ -138,8 +135,6 @@ def request_values(name: str, analysis, libpath: str, args) -> dict:
             values.update(frame_hop_length=int(FRAME_HOP_LENGTH), frames_cache_dir=project_path(BEAT_CACHE))
     if name in START_MODELS:              # the model in use: the setting's file, whatever the output
         values["current_path"] = project_path(getattr(analysis, spec.setting))
-    if name == "jumpcue":
-        values["phrase_parameter_path"] = project_path(analysis.phrase_parameter_path)
     for item in args.set or ():
         key, _, text = item.partition("=")
         try:
@@ -214,6 +209,8 @@ def show(value) -> str:
         return f"{value:.4g}"
     if dataclasses.is_dataclass(value):
         return "{" + ", ".join(f"{f.name}: {show(getattr(value, f.name))}" for f in dataclasses.fields(value)) + "}"
+    if isinstance(value, dict) and all(isinstance(k, str) for k in value):      # a report's measures, each shown
+        return "{" + ", ".join(f"{k}: {show(v)}" for k, v in value.items()) + "}"
     text = repr(value)
     return text if len(text) <= 200 else text[:200] + " ..."
 

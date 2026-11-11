@@ -41,7 +41,6 @@ ERRORS = {
     errors.SELECTION_TOO_SHORT: tr_mark("selection duration too small"),
     errors.PHRASE_TOO_FEW_BEATS: tr_mark("the phrase analysis needs at least {count} beats"),
     errors.PHRASE_NEEDS_TEMPO: tr_mark("tempo segments are required for phrase reanalysis"),
-    errors.JUMPCUE_TOO_FEW_BEATS: tr_mark("too few beats for the phrase analysis JumpCUE needs"),
     errors.JUMPCUE_NEEDS_TEMPO: tr_mark("tempo segments are required for JumpCUE reanalysis"),
 }
 

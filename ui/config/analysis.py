@@ -3,6 +3,7 @@ import os
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
+    QDoubleSpinBox,
     QFormLayout,
     QGridLayout,
     QGroupBox,
@@ -164,7 +165,7 @@ def _phrase_page(dialog) -> QWidget:
 
 def _cue_page(dialog) -> QWidget:
     """CUE: AutoCUE, the CUE point rules, the JumpCUE model."""
-    _npz_hint, json_hint = _path_hints()
+    npz_hint, _json_hint = _path_hints()
     tab_cue = QWidget(); f_cue = QFormLayout(tab_cue)
     dialog.cmb_autocue = QComboBox()
     dialog.cmb_autocue.addItem(tr("CUE point"), "cue_point")
@@ -176,14 +177,51 @@ def _cue_page(dialog) -> QWidget:
     grp_autocue = QGroupBox("AutoCUE")
     f_autocue = QFormLayout(grp_autocue)
     f_autocue.addRow(tr("Automatic start"), dialog.cmb_autocue)
-    dialog.ed_jumpcue_parameter_path = QLineEdit()
-    dialog.ed_jumpcue_parameter_path.setPlaceholderText(json_hint)
-    dialog.ed_jumpcue_parameter_path.setToolTip(tr("Learned JumpCUE jump point model (.json)."))
+    grp_jumpcue = QGroupBox(tr("Automatic JumpCUE"))
+    f_jumpcue = QFormLayout(grp_jumpcue)
+    dialog.cmb_jumpcue_earlier = QComboBox()
+    for text, value in ((tr("First CHORUS"), "first_chorus"), (tr("Any CHORUS"), "chorus"), (tr("Anywhere"), "any")):
+        dialog.cmb_jumpcue_earlier.addItem(text, value)
+    dialog.cmb_jumpcue_earlier.setToolTip(tr("Where the earlier point of the JumpCUE may be."))
+    dialog.cmb_jumpcue_later = QComboBox()
+    for text, value in ((tr("Last CHORUS"), "last_chorus"), (tr("Any CHORUS"), "chorus"), (tr("Anywhere"), "any")):
+        dialog.cmb_jumpcue_later.addItem(text, value)
+    dialog.cmb_jumpcue_later.setToolTip(tr("Where the later point of the JumpCUE may be."))
+    dialog.sp_jumpcue_section_margin_beats = QSpinBox()
+    dialog.sp_jumpcue_section_margin_beats.setRange(0, 32)
+    dialog.sp_jumpcue_section_margin_beats.setToolTip(tr("A point this many beats before or after a section still counts as in it."))
+    dialog.sp_jumpcue_min_score = QDoubleSpinBox()
+    dialog.sp_jumpcue_min_score.setRange(0.0, 1.0)
+    dialog.sp_jumpcue_min_score.setSingleStep(0.05)
+    dialog.sp_jumpcue_min_score.setDecimals(2)
+    dialog.sp_jumpcue_min_score.setToolTip(tr("Below this score the analysis makes no JumpCUE."))
+    f_jumpcue.addRow(tr("Earlier point"), dialog.cmb_jumpcue_earlier)
+    f_jumpcue.addRow(tr("Later point"), dialog.cmb_jumpcue_later)
+    f_jumpcue.addRow(tr("Section margin (beats)"), dialog.sp_jumpcue_section_margin_beats)
+    f_jumpcue.addRow(tr("Minimum score"), dialog.sp_jumpcue_min_score)
+    dialog.ed_jumpcue_pairs_parameter_path = QLineEdit()
+    dialog.ed_jumpcue_pairs_parameter_path.setPlaceholderText(npz_hint)
+    dialog.ed_jumpcue_pairs_parameter_path.setToolTip(tr("Learned JumpCUE model (.npz)."))
+    dialog.sp_jumpcue_min_gap_beats = QSpinBox()
+    dialog.sp_jumpcue_min_gap_beats.setRange(8, 256)
+    dialog.sp_jumpcue_min_gap_beats.setToolTip(tr("The two points are at least this many beats apart."))
+    dialog.sp_jumpcue_first_sung_beats = QSpinBox()
+    dialog.sp_jumpcue_first_sung_beats.setRange(0, 128)
+    dialog.sp_jumpcue_first_sung_beats.setToolTip(tr("No point within this many beats of where the singing first starts."))
+    dialog.cb_jumpcue_avoid_cue_points = QCheckBox(tr("Move a JumpCUE off CUE points"))
+    dialog.cb_jumpcue_avoid_cue_points.setToolTip(tr("When both points sit on CUE points, the JumpCUE moves 8 beats earlier."))
     grp_jumpcue_advanced = QGroupBox(tr("JumpCUE Advanced"))
     f_jumpcue_advanced = QFormLayout(grp_jumpcue_advanced)
-    f_jumpcue_advanced.addRow(tr("Parameters (JSON)"), dialog.ed_jumpcue_parameter_path)
+    f_jumpcue_advanced.addRow(tr("Least gap (beats)"), dialog.sp_jumpcue_min_gap_beats)
+    f_jumpcue_advanced.addRow(tr("Clear after the first singing (beats)"), dialog.sp_jumpcue_first_sung_beats)
+    f_jumpcue_advanced.addRow(dialog.cb_jumpcue_avoid_cue_points)
+    f_jumpcue_advanced.addRow(tr("Parameters (NPZ)"), dialog.ed_jumpcue_pairs_parameter_path)
+    note = QLabel(tr("Applies to tracks analyzed (or reanalyzed) from now on."))
+    note.setEnabled(False)
+    f_jumpcue.addRow(note)
     f_cue.addRow(grp_autocue)
     f_cue.addRow(_build_cue_point_rules(dialog))
+    f_cue.addRow(grp_jumpcue)
     f_cue.addRow(grp_jumpcue_advanced)
     return tab_cue
 
@@ -260,6 +298,25 @@ class AnalysisSettingsMixin:
 
     def _get_autocue(self) -> str:
         return str(self.cmb_autocue.currentData())
+
+    def _set_jumpcue_rules(self, a) -> None:
+        self.cmb_jumpcue_earlier.setCurrentIndex(max(0, self.cmb_jumpcue_earlier.findData(a.jumpcue_earlier)))
+        self.cmb_jumpcue_later.setCurrentIndex(max(0, self.cmb_jumpcue_later.findData(a.jumpcue_later)))
+        self.sp_jumpcue_section_margin_beats.setValue(int(a.jumpcue_section_margin_beats))
+        self.sp_jumpcue_min_score.setValue(float(a.jumpcue_min_score))
+        self.sp_jumpcue_min_gap_beats.setValue(int(a.jumpcue_min_gap_beats))
+        self.sp_jumpcue_first_sung_beats.setValue(int(a.jumpcue_first_sung_beats))
+        self.cb_jumpcue_avoid_cue_points.setChecked(bool(a.jumpcue_avoid_cue_points))
+
+    def _get_jumpcue_rules(self) -> dict:
+        """The analysisconfig fields of the automatic JumpCUE's rules."""
+        return {"jumpcue_earlier": str(self.cmb_jumpcue_earlier.currentData()),
+                "jumpcue_later": str(self.cmb_jumpcue_later.currentData()),
+                "jumpcue_section_margin_beats": int(self.sp_jumpcue_section_margin_beats.value()),
+                "jumpcue_min_score": float(self.sp_jumpcue_min_score.value()),
+                "jumpcue_min_gap_beats": int(self.sp_jumpcue_min_gap_beats.value()),
+                "jumpcue_first_sung_beats": int(self.sp_jumpcue_first_sung_beats.value()),
+                "jumpcue_avoid_cue_points": bool(self.cb_jumpcue_avoid_cue_points.isChecked())}
 
     def _set_cue_point_rules(self, rules: cuepointconfig) -> None:
         for name, (start, end, same) in self.cue_rule_boxes.items():

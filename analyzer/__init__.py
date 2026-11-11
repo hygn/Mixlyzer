@@ -13,7 +13,7 @@ Where to look:
     beat/         the beat tracker (general/: the frame TCN, decoding, ramps, bars) and its frame features
     key/          the chord-aware key analyzer
     phrase/       phrases and their labels, the LEAD_IN, the CUE points' rules (cue_points.py)
-    jumpcue/      JumpCUE detection (self-similarity, the jump point model), AutoCUE's JumpCUE
+    jumpcue/      JumpCUE detection (the repeats, the vocal context, the pair model), AutoCUE's JumpCUE
     search/       Search by Music (music/: the index entry, the query, the matching, listening) and the Variants'
                   fingerprint (variants.py); their indexes are kept by the app
     settings.py   what an analysis is asked for; errors.py its refusals; files.py a file written whole

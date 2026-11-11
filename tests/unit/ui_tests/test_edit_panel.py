@@ -12,6 +12,7 @@ import numpy as np
 
 from unit.ui_tests.qt_env import APP, drain, isolated
 
+from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtWidgets import QMessageBox
 
 from analyzer.music.marks import CuePoint, Phrase
@@ -28,6 +29,7 @@ from core.library.service import LibraryService
 from core.marks.phrases import UNASSIGNED
 from core.track.model import DataModel
 from core.workflows.event_bus import EventBus
+from ui.edit_panel.cue_slots import SLOT_MIME, CueSlot
 from ui.edit_panel.panel import EditPanel
 
 _ISOLATION = None
@@ -544,6 +546,72 @@ class JumpCueTests(EditPanelCase):
         self.assertFalse(self.panel._can_close_jumpcue_slot("C"))      # B is not empty
         self.panel._shift_jumpcue_slots("B", -1)
         self.assertEqual(self.jump_cues(), {"A": (8.0, 0), "B": (40.0, 0)})
+
+    def test_a_cue_dragged_onto_another_slot(self):
+        self.panel._move_jumpcue("A", "D")            # into an empty slot
+        self.assertEqual(self.jump_cues(), {"D": (8.0, 0), "B": (40.0, 0)})
+        self.panel._rename_jumpcue(1, "Drop")          # slot B
+        self.panel._move_jumpcue("B", "D")             # onto a cue: the two swap, a name stays with its cue
+        self.assertEqual(self.jump_cues(), {"B": (8.0, 0), "D": (40.0, 0)})
+        self.assertEqual({c.label: c.comment for g in self.model.jump_cues for c in g.cues}, {"B": "B", "D": "Drop"})
+        self.model.undo()
+        self.assertEqual(self.jump_cues(), {"D": (8.0, 0), "B": (40.0, 0)})
+        self.panel._move_jumpcue("C", "A")             # no cue in C: nothing
+        self.panel._move_jumpcue("D", "D")
+        self.assertEqual(self.jump_cues(), {"D": (8.0, 0), "B": (40.0, 0)})
+
+    def test_a_drop_on_a_slot(self):
+        def drop(slot, mime_type: str, payload: bytes):
+            mime = QtCore.QMimeData()
+            mime.setData(mime_type, QtCore.QByteArray(payload))
+            slot.dropEvent(QtGui.QDropEvent(QtCore.QPointF(4, 4), QtCore.Qt.MoveAction, mime, QtCore.Qt.LeftButton,
+                                            QtCore.Qt.NoModifier))
+        drop(self.panel.jc_slots[5], "text/plain", b"A")       # not a dragged cue
+        self.assertEqual(sorted(self.jump_cues()), ["A", "B"])
+        drop(self.panel.jc_slots[5], SLOT_MIME, b"A")          # slot F
+        self.assertEqual(self.jump_cues(), {"F": (8.0, 0), "B": (40.0, 0)})
+
+    def test_a_drag_from_the_squircle_or_the_name(self):
+        def press_move(widget, at: QtCore.QPoint):
+            far = at + QtCore.QPoint(QtWidgets.QApplication.startDragDistance() + 2, 0)
+            for kind, pos, button, buttons in ((QtCore.QEvent.MouseButtonPress, at, QtCore.Qt.LeftButton,
+                                                QtCore.Qt.LeftButton),
+                                               (QtCore.QEvent.MouseMove, far, QtCore.Qt.NoButton, QtCore.Qt.LeftButton)):
+                QtWidgets.QApplication.sendEvent(widget, QtGui.QMouseEvent(
+                    kind, QtCore.QPointF(pos), QtCore.QPointF(widget.mapToGlobal(pos)), button, buttons,
+                    QtCore.Qt.NoModifier))
+        slot = self.panel.jc_slots[1]                  # B
+        menus = []
+        slot.squircle_clicked.connect(lambda: menus.append(1))
+        with mock.patch.object(CueSlot, "drag") as drag:
+            press_move(slot.squircle, QtCore.QPoint(3, 3))
+            self.assertEqual(drag.call_args.args[0], "B")
+            self.assertFalse(slot.squircle.isDown())   # dragged, not clicked: no menu
+            press_move(slot, slot.name_stack.geometry().center())   # the name leaves its press to the slot
+            self.assertEqual(drag.call_count, 2)
+            press_move(self.panel.jc_slots[4], QtCore.QPoint(40, 4))     # an empty slot: nothing to drag
+            self.assertEqual(drag.call_count, 2)
+            self.bus.sig_segment_reanalyze_state.emit(False)               # editing off: no drag
+            press_move(slot.squircle, QtCore.QPoint(3, 3))
+            self.assertEqual(drag.call_count, 2)
+            self.assertFalse(slot.acceptDrops())
+        self.assertEqual(menus, [])
+
+    def test_a_dragged_cue_held_over_a_page_arrow_turns_the_page(self):
+        self.at(20.0)
+        self.h["cue.set.H"]()                          # A..H in use: page 2 (I-P) to move to
+        page = self.panel.cue_page
+        mime = QtCore.QMimeData()
+        mime.setData(SLOT_MIME, QtCore.QByteArray(b"A"))
+        QtWidgets.QApplication.sendEvent(page.btn_next, QtGui.QDragEnterEvent(
+            QtCore.QPoint(2, 2), QtCore.Qt.MoveAction, mime, QtCore.Qt.LeftButton, QtCore.Qt.NoModifier))
+        self.assertEqual(page.pages[0], 1)
+        self.assertTrue(page._turn_timer.isActive())
+        page._turn_timer.timeout.emit()                # the last page: it stops
+        self.assertEqual(page.pages[0], 1)
+        self.assertFalse(page._turn_timer.isActive())
+        self.panel._jc_drop(2, "A")                    # slot K
+        self.assertEqual(self.jump_cues()["K"][0], 8.0)
 
     def test_a_colour_is_a_group(self):
         self.at(20.0)

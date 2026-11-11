@@ -20,7 +20,7 @@ class ModelPaths:
     downbeat_ctx: str        # the contextual downbeat GBM
     refine_onset: str        # the tempo-change onset GBM
     phrase: str              # the phrase boundary and label models
-    jumpcue: str             # the JumpCUE jump point model (JSON)
+    jumpcue: str             # the JumpCUE pair models (analyzer.jumpcue.pairs)
     key: str                 # the chord-aware key model
 
 
@@ -30,6 +30,20 @@ class CueRule:
     at_start: bool               # where it starts
     at_end: bool                 # where it ends
     same_label_boundaries: bool  # also between two phrases of the label (else only next to another label)
+
+
+@dataclass(frozen=True)
+class JumpCueRules:
+    """Where the automatic JumpCUE may put its one pair (Settings > Analysis > CUE): the sections of its earlier and
+    its later point, the value it needs, and the rules on its points. The defaults are the ones fitted on the user's
+    tracks reviewed whole."""
+    earlier: Literal["first_chorus", "chorus", "any"] = "first_chorus"
+    later: Literal["last_chorus", "chorus", "any"] = "last_chorus"
+    section_margin_beats: int = 4   # a section still holds a point this many beats before its head or past its end
+    min_score: float = 0.9          # the pair's score at least this, else no JumpCUE (a wrong pair costs more)
+    min_gap_beats: int = 48         # its two points this many beats apart at least
+    first_sung_beats: int = 20      # no point within this many beats of the first sung phrase's head
+    avoid_cue_points: bool = True   # a pair wholly on CUE points offered some beats earlier (a mix start is hard to jump)
 
 
 @dataclass(frozen=True)
@@ -44,4 +58,5 @@ class AnalysisSettings:
     # AutoCUE: what goes where the LEAD_IN ends (an early first downbeat, or 0:00): a CUE point, a JumpCUE, nothing
     autocue: Literal["off", "cue_point", "jumpcue"] = "off"
     cue_rules: Mapping[str, CueRule] = field(default_factory=dict)    # by phrase label (uppercase)
+    jumpcue_rules: JumpCueRules = field(default_factory=JumpCueRules)
     music_index: bool = False            # Search by Music's index entry made too (about 2 s of CPU a track)

@@ -4,10 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-import numpy as np
-
 from core.settings import config
-from training.jumpcue_parameter_optimizer import load_cache, save_cache
 
 
 class UnreadableConfigTests(unittest.TestCase):
@@ -40,26 +37,6 @@ class UnreadableConfigTests(unittest.TestCase):
         config.load_cfg()
         self.assertEqual(config.unreadable_settings(), [])
         self.assertTrue(Path("config.json").is_file())
-
-
-class JumpCueCacheTests(unittest.TestCase):
-    def test_round_trip_without_pickle(self):
-        record = {"key": "k", "harmony": None, "records": [{
-            "members": np.array([3, 9]), "pairs": [(0, 1)],
-            "cands": [{"d": -2, "member": {"boundary": np.array([0.5, np.nan])}, "long": {(0, 1): -1.0},
-                       "short": {(0, 1): np.float64(0.25)}, "pre": {}}]}]}
-        with tempfile.TemporaryDirectory() as tmp:
-            path = Path(tmp) / "uid.npz"
-            save_cache(path, record)
-            with np.load(path, allow_pickle=False) as archive:   # a plain NPZ: readable without pickle
-                self.assertIn("tree", archive.files)
-            back = load_cache(path)
-        cand = back["records"][0]["cands"][0]
-        self.assertEqual(back["records"][0]["pairs"], [(0, 1)])
-        self.assertEqual((cand["d"], cand["long"], cand["short"]), (-2, {(0, 1): -1.0}, {(0, 1): 0.25}))
-        np.testing.assert_array_equal(cand["member"]["boundary"], [0.5, np.nan])
-        np.testing.assert_array_equal(back["records"][0]["members"], [3, 9])
-        self.assertIsNone(back["harmony"])
 
 
 if __name__ == "__main__":

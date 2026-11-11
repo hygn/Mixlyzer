@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 
-from analyzer.settings import AnalysisSettings, CueRule, ModelPaths
+from analyzer.settings import AnalysisSettings, CueRule, JumpCueRules, ModelPaths
 from core.settings.config import config, default_cfg
 from system.model_files import resolve_model
 
@@ -31,7 +31,7 @@ def model_paths(cfg: config) -> ModelPaths:
         downbeat_ctx=model_file(a.downbeat_ctx_parameter_path, "downbeat_ctx_parameter_path"),
         refine_onset=model_file(a.refine_onset_parameter_path, "refine_onset_parameter_path"),
         phrase=model_file(a.phrase_parameter_path, "phrase_parameter_path"),
-        jumpcue=model_file(a.jumpcue_parameter_path, "jumpcue_parameter_path"),
+        jumpcue=model_file(a.jumpcue_pairs_parameter_path, "jumpcue_pairs_parameter_path"),
         key=model_file(a.key_parameter_path, "key_parameter_path"),
     )
 
@@ -53,5 +53,11 @@ def analysis_settings(cfg: config) -> AnalysisSettings:
         key_dynamic=bool(a.key_dynamic),
         autocue=a.autocue,
         cue_rules=cue_rules(cfg),
+        jumpcue_rules=JumpCueRules(earlier=a.jumpcue_earlier, later=a.jumpcue_later,
+                                   section_margin_beats=max(0, int(a.jumpcue_section_margin_beats)),
+                                   min_score=float(a.jumpcue_min_score),
+                                   min_gap_beats=int(a.jumpcue_min_gap_beats),
+                                   first_sung_beats=max(0, int(a.jumpcue_first_sung_beats)),
+                                   avoid_cue_points=bool(a.jumpcue_avoid_cue_points)),
         music_index=bool(cfg.searchconfig.music_index),
     )

@@ -1,6 +1,8 @@
 """CUE page widgets, laid out like rekordbox's cue list: a side strip (list tabs,
 pages) and 4 x 2 cue slots, each a colour squircle | name | SET / DEL | action
-(JumpCUEs: SET / JUMP in one button)."""
+(JumpCUEs: SET / JUMP in one button). A slot with drag and drop on is dragged by
+its squircle, letter or name onto another slot (the drag carries the cue's slot
+letter as SLOT_MIME); a page arrow hovered with one turns the page."""
 from __future__ import annotations
 
 from PySide6 import QtCore, QtGui, QtWidgets
@@ -12,6 +14,8 @@ from system.i18n import tr
 SLOT_ROWS = 4
 SLOT_COLS = 2
 SLOTS_PER_PAGE = SLOT_ROWS * SLOT_COLS
+SLOT_MIME = "application/x-mixlyzer-cue-slot"   # a dragged cue: its slot letter (ASCII)
+PAGE_TURN_MS = 600       # a page arrow hovered by a dragged cue turns the page this often
 
 
 def color_swatch_icon(rgb: tuple[int, int, int], size: int = 14) -> QtGui.QIcon:
@@ -48,12 +52,17 @@ class CueSlot(QtWidgets.QFrame):
     """One cue slot: colour squircle | letter | name | SET / DEL | action (JUMP / CALL).
     With ``set_in_action`` there is no SET / DEL button: the action button reads SET
     on an empty slot (``action_clicked`` either way). Double-clicking the name edits
-    it (Enter keeps it, Esc cancels): ``renamed(str)``."""
+    it (Enter keeps it, Esc cancels): ``renamed(str)``. With drag and drop on
+    (``set_drag_and_drop``) a filled slot pressed on its squircle, letter or name and
+    moved is ``drag_started(the press point)`` (the owner starts the drag: ``drag``),
+    and a cue dropped on the slot is ``dropped(its slot letter)``."""
 
     squircle_clicked = QtCore.Signal()
     set_del_clicked = QtCore.Signal()
     action_clicked = QtCore.Signal()
     renamed = QtCore.Signal(str)
+    drag_started = QtCore.Signal(QtCore.QPoint)
+    dropped = QtCore.Signal(str)
 
     def __init__(self, action_text: str, height: int, parent=None, set_in_action: bool = False):
         super().__init__(parent)
@@ -111,11 +120,95 @@ class CueSlot(QtWidgets.QFrame):
         self.squircle.clicked.connect(self.squircle_clicked)
         self.btn_set.clicked.connect(self.set_del_clicked)
         self.btn_action.clicked.connect(self.action_clicked)
-        theme = current_theme()
-        self.setStyleSheet(
-            f"QFrame#cueSlot {{ background: {theme.base}; border: 1px solid {theme.border}; border-radius: 2px; }}"
-        )
+        self._dnd = False
+        self._press: QtCore.QPoint | None = None      # where a press that may become a drag was (slot coordinates)
+        self.squircle.installEventFilter(self)        # the button takes its presses: its moves are watched here
+        self._show_drop_target(False)
         self.show_cue(None)
+
+    def _show_drop_target(self, on: bool) -> None:
+        theme = current_theme()
+        border = theme.accent if on else theme.border
+        self.setStyleSheet(
+            f"QFrame#cueSlot {{ background: {theme.base}; border: 1px solid {border}; border-radius: 2px; }}"
+        )
+
+    # ---- drag and drop ----
+
+    def set_drag_and_drop(self, on: bool) -> None:
+        """Whether a filled slot can be dragged and a cue dropped on this one."""
+        self._dnd = bool(on)
+        self.setAcceptDrops(self._dnd)
+        if not self._dnd:
+            self._press = None
+            self._show_drop_target(False)
+
+    def _draggable(self) -> bool:
+        return self._dnd and getattr(self, "_filled", False)
+
+    def _far_enough(self, pos: QtCore.QPoint) -> bool:
+        """A press moved far enough from where it was to be a drag."""
+        return self._press is not None and \
+            (pos - self._press).manhattanLength() >= QtWidgets.QApplication.startDragDistance()
+
+    def _start_drag(self) -> None:
+        press, self._press = self._press, None
+        self.drag_started.emit(press)
+
+    def drag(self, letter: str, hotspot: QtCore.QPoint) -> None:
+        """Drag the cue in slot ``letter`` (its picture under the pointer at ``hotspot``) until it is dropped."""
+        mime = QtCore.QMimeData()
+        mime.setData(SLOT_MIME, QtCore.QByteArray(letter.encode("ascii")))
+        drag = QtGui.QDrag(self)
+        drag.setMimeData(mime)
+        drag.setPixmap(self.grab())
+        drag.setHotSpot(hotspot)
+        drag.exec(QtCore.Qt.MoveAction)
+
+    def mousePressEvent(self, event) -> None:
+        # the letter and the name labels leave their presses to the slot
+        if event.button() == QtCore.Qt.LeftButton and self._draggable():
+            self._press = event.position().toPoint()
+            event.accept()
+            return
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event) -> None:
+        if event.buttons() & QtCore.Qt.LeftButton and self._far_enough(event.position().toPoint()):
+            self._start_drag()
+            return
+        super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event) -> None:
+        self._press = None
+        super().mouseReleaseEvent(event)
+
+    def _accepts(self, event) -> bool:
+        return self._dnd and event.mimeData().hasFormat(SLOT_MIME)
+
+    def dragEnterEvent(self, event) -> None:
+        if self._accepts(event):
+            event.acceptProposedAction()
+            self._show_drop_target(True)
+        else:
+            event.ignore()
+
+    def dragMoveEvent(self, event) -> None:
+        if self._accepts(event):
+            event.acceptProposedAction()
+        else:
+            event.ignore()
+
+    def dragLeaveEvent(self, event) -> None:
+        self._show_drop_target(False)
+
+    def dropEvent(self, event) -> None:
+        self._show_drop_target(False)
+        if not self._accepts(event):
+            event.ignore()
+            return
+        event.acceptProposedAction()
+        self.dropped.emit(bytes(event.mimeData().data(SLOT_MIME)).decode("ascii", "replace"))
 
     def show_cue(self, rgb: tuple[int, int, int] | None, letter: str = "", name: str = "", detail: str = "") -> None:
         """A cue (its colour, slot letter, name and a dim detail such as the time,
@@ -181,6 +274,18 @@ class CueSlot(QtWidgets.QFrame):
         self.name_stack.setCurrentWidget(self.name)
 
     def eventFilter(self, obj, event) -> bool:
+        if obj is self.squircle:
+            kind = event.type()
+            if kind == QtCore.QEvent.MouseButtonPress and event.button() == QtCore.Qt.LeftButton and self._draggable():
+                self._press = self.squircle.mapTo(self, event.position().toPoint())
+            elif kind == QtCore.QEvent.MouseMove and event.buttons() & QtCore.Qt.LeftButton \
+                    and self._far_enough(self.squircle.mapTo(self, event.position().toPoint())):
+                self.squircle.setDown(False)   # dragged, not clicked: no menu when it is let go
+                self._start_drag()
+                return True
+            elif kind == QtCore.QEvent.MouseButtonRelease:
+                self._press = None
+            return False
         if obj is self.name_edit and event.type() == QtCore.QEvent.ShortcutOverride \
                 and event.key() == QtCore.Qt.Key_Escape:
             event.accept()  # Esc cancels the rename, not the window's shortcut
@@ -285,6 +390,38 @@ class CuePageWidget(QtWidgets.QWidget):
         self.pages = [0, 0]
         self.btn_prev.clicked.connect(lambda: self._step_page(-1))
         self.btn_next.clicked.connect(lambda: self._step_page(1))
+        # a dragged cue held over a page arrow turns the page (now, then every PAGE_TURN_MS while it stays)
+        self._turn_step = 0
+        self._turn_timer = QtCore.QTimer(self)
+        self._turn_timer.setInterval(PAGE_TURN_MS)
+        self._turn_timer.timeout.connect(self._turn_page)
+        for b in (self.btn_prev, self.btn_next):
+            b.setAcceptDrops(True)
+            b.installEventFilter(self)
+
+    def eventFilter(self, obj, event) -> bool:
+        if obj in (self.btn_prev, self.btn_next):
+            kind = event.type()
+            if kind == QtCore.QEvent.DragEnter and event.mimeData().hasFormat(SLOT_MIME):
+                event.acceptProposedAction()      # to be told when it leaves; no drop here (DragMove)
+                self._turn_step = -1 if obj is self.btn_prev else 1
+                self._turn_page()
+                self._turn_timer.start()
+                return True
+            if kind == QtCore.QEvent.DragMove:
+                event.ignore()
+                return True
+            if kind in (QtCore.QEvent.DragLeave, QtCore.QEvent.Drop):
+                self._turn_timer.stop()
+                return True
+        return super().eventFilter(obj, event)
+
+    def _turn_page(self) -> None:
+        button = self.btn_prev if self._turn_step < 0 else self.btn_next
+        if button.isEnabled():
+            self._step_page(self._turn_step)
+        else:                                    # the first or the last page
+            self._turn_timer.stop()
 
     @property
     def current_list(self) -> int:
