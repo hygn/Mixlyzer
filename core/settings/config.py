@@ -177,10 +177,14 @@ class deckconfig:
     sync_rekordbox_xml: bool
     sync_rekordbox_phrases: bool
     phrase_backup: str
-    # Deck Monitor (core.deck_monitor): where the decks' OSC messages are received while its window is open, set in
-    # that window: 127.0.0.1 this computer only; another address takes them from that network too
+    # Deck Monitor (core.deck_monitor): where the decks are received while its window is open, set in that window:
+    # the protocol ("osc": OSC Basic and Full, "prodjlink"); OSC's address and port (127.0.0.1 this computer only;
+    # another address takes them from that network too); the network interface Pro DJ Link uses (its IPv4 address,
+    # "": the first)
+    monitor_protocol: Literal["osc", "prodjlink"]
     monitor_host: str
     monitor_port: int
+    monitor_interface: str
     # the phrase now and next its decks show, by "section" (each phrase) or by "label" (a run of one label), all four
     # alike: clicked there
     monitor_phrase_unit: Literal["section", "label"]
@@ -538,8 +542,10 @@ def default_cfg():
         sync_rekordbox_xml=True,
         sync_rekordbox_phrases=False,
         phrase_backup="ext",
+        monitor_protocol="osc",
         monitor_host="127.0.0.1",
         monitor_port=39321,
+        monitor_interface="",
         monitor_phrase_unit="section",
     )
     pcfg = playbackconfig(
@@ -653,8 +659,10 @@ def restored_settings(current: config, payload: dict, deck: dict, *, libpath: st
     new.viewconfig.record_img_path = current.viewconfig.record_img_path
     new.deckconfig.metronome_wav_path = current.deckconfig.metronome_wav_path
     new.deckconfig.music_input_device = current.deckconfig.music_input_device
+    new.deckconfig.monitor_protocol = current.deckconfig.monitor_protocol
     new.deckconfig.monitor_host = current.deckconfig.monitor_host
     new.deckconfig.monitor_port = current.deckconfig.monitor_port
+    new.deckconfig.monitor_interface = current.deckconfig.monitor_interface
     new.libconfig.libpath = libpath
     new.libconfig.logpath = current.libconfig.logpath
     new.libconfig.local_music_directories = list(local_music_directories)

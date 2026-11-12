@@ -14,6 +14,7 @@ from analyzer.music.key_names import idx_to_labels
 from analyzer.music.marks import Phrase
 from core.analysis_library.stored import StoredAnalysis
 from core.deck_monitor.decks import DeckState, TrackInfo
+from core.deck_monitor.receivers import PRODJLINK, Where
 from core.deck_monitor.source import MonitorDeck
 from core.library.records import TrackRow
 from core.settings.config import default_cfg
@@ -235,18 +236,26 @@ class DeckMonitorWindowTests(unittest.TestCase):
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as taken:
             taken.bind(("127.0.0.1", 0))
             busy = taken.getsockname()[1]
-            self.assertFalse(self.w.listen("127.0.0.1", busy))
+            self.assertFalse(self.w.listen(Where(host="127.0.0.1", port=busy)))
             self.assertIsNone(self.w.source)
             self.assertIn(str(busy), self.w.connection.status.text())         # said in the window
             port = _free_port()
-            self.assertTrue(self.w.listen("127.0.0.1", port))
-            self.assertEqual(self.messages.items[-1], {"type": "listening", "host": "127.0.0.1", "port": port})
-            self.assertFalse(self.w.listen("127.0.0.1", busy))
+            self.assertTrue(self.w.listen(Where(host="127.0.0.1", port=port)))
+            self.assertEqual(self.messages.items[-1], {"type": "listening", "protocol": "osc", "host": "127.0.0.1",
+                                                       "port": port, "interface": ""})
+            self.assertFalse(self.w.listen(Where(host="127.0.0.1", port=busy)))
             self.assertEqual(self.w.source.address, ("127.0.0.1", port))      # the one before kept
-        self.w.connection.set_address("192.168.0.5", port)
-        self.assertFalse(self.w.connection.network.isHidden())               # a network address: warned
-        self.w.connection.set_address("", port)
-        self.assertTrue(self.w.connection.network.isHidden())
+        bar = self.w.connection
+        bar.set_where(Where(host="192.168.0.5", port=port))
+        self.assertFalse(bar.network.isHidden())                             # a network address: warned
+        self.assertFalse(bar.host.isHidden())
+        self.assertTrue(bar.interface.isHidden())
+        bar.set_where(Where(host="", port=port))
+        self.assertTrue(bar.network.isHidden())
+        bar.set_where(Where(PRODJLINK, "127.0.0.1", port, "10.9.8.7"))
+        self.assertEqual((bar.host.isHidden(), bar.interface.isHidden(), bar.network.isHidden()), (True, False, False))
+        self.assertEqual(bar.where(), Where(PRODJLINK, "127.0.0.1", port, "10.9.8.7"))   # kept although not found
+        self.assertIn("10.9.8.7", bar.interface.currentText())
 
 
 if __name__ == "__main__":

@@ -21,6 +21,7 @@ from core.marks.colors import CUE_POINT_COLORS
 
 METER = 4                     # the senders' grids are 4/4 (rekordbox's beat numbers 1 - 4)
 MAX_CHANGES = 20000           # a grid's tempo changes at most (a beat each: a long live set)
+MAX_BEATS = 20000             # a grid's beats at most, as a source sending each one gives them
 MAX_CUES = 1000
 MAX_BPM = 999.99
 # beats in a row are one tempo while their spacing stays this close to the first's (a source rounding beats to the

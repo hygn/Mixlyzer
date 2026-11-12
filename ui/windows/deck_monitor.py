@@ -25,10 +25,9 @@ from PySide6 import QtCore, QtGui, QtWidgets
 
 from analyzer.music.key_names import idx_to_labels
 from core.analysis_library.stored import StoredAnalysis
-from core.deck_monitor.osc_basic import (CUES_ADDRESS, GRID_ADDRESS, KEY_ADDRESS, MASTER_ADDRESS, SAMPLES_ADDRESS,
-                                         TEMPO_ADDRESS, TIME_ADDRESS, TRACK_ADDRESS)
 from core.deck_monitor.decks import TrackInfo
 from core.deck_monitor.readout import LABEL, SECTION, UNITS, TrackPhrases, bars_beats, bpm_at, key_at
+from core.deck_monitor.receivers import OSC, PROTOCOL_NAMES, PRODJLINK, Where, interfaces
 from core.deck_monitor.source import DeckSource, MonitorDeck
 from core.deck_monitor.source_marks import SourceMarks, source_analysis
 from core.library.records import TrackRow
@@ -64,16 +63,8 @@ VIEWS_BY_SETTING = (("display_waveform", ("WaveformView",)), ("display_beatgrid"
                     ("display_keystrip", ("KeyStripView",)), ("display_JumpCUE", ("JumpCUEView",)),
                     ("display_phrase", ("PhraseView",)))
 ALWAYS_VIEWS = ("CUEPointView", "PlayHead")
-# the messages as a sender writes them (protocol: not translated)
-MESSAGE_FORMAT = (f"{TIME_ADDRESS}     i deck  s path  T|F loaded  T|F playing  d|f seconds\n"
-                  f"{SAMPLES_ADDRESS}  i deck  s path  T|F loaded  T|F playing  h|i samples  i rate\n"
-                  f"{TRACK_ADDRESS}    i deck  s title  s artist  d|f duration\n"
-                  f"{TEMPO_ADDRESS}    i deck  d|f bpm  d|f track_bpm\n"
-                  f"{MASTER_ADDRESS}   i deck  T|F master\n"
-                  f"{GRID_ADDRESS}     i deck  [d|f start  d|f bpm  i beat] ...\n"
-                  f"{CUES_ADDRESS}     i deck  [d|f seconds  s name  i rgb] ...\n"
-                  f"{KEY_ADDRESS}      i deck  s key")
 MINUS = "−"          # as wide as "+"
+SHOWN_PROTOCOLS = (OSC, PRODJLINK)        # the connection bar's choices, in this order
 _STORE: Optional["ReadOnlyStore"] = None    # the settings as this process was given them (run installs it)
 
 
@@ -640,10 +631,10 @@ class PhraseLine(QtWidgets.QWidget):
 
 
 class ConnectionBar(QtWidgets.QWidget):
-    """Where the decks are received (set here: ``listen(host, port)`` asked of the window), the status, the message
-    format on demand."""
+    """Where the decks are received (set here: ``listen(where)`` asked of the window: OSC at an address and port, or a
+    DJ network on the interface picked), the status."""
 
-    def __init__(self, listen: Callable[[str, int], None], parent=None) -> None:
+    def __init__(self, listen: Callable[[Where], None], parent=None) -> None:
         super().__init__(parent)
         self._listen = listen
         root = QtWidgets.QVBoxLayout(self)
@@ -651,6 +642,14 @@ class ConnectionBar(QtWidgets.QWidget):
         root.setSpacing(4)
         row = QtWidgets.QHBoxLayout()
         row.setSpacing(6)
+        self.protocol = QtWidgets.QComboBox()
+        for protocol in SHOWN_PROTOCOLS:
+            self.protocol.addItem("OSC Basic / Full" if protocol == OSC else PROTOCOL_NAMES[protocol], protocol)
+        self.protocol.setToolTip(tr("How the other program's decks come: OSC from a sender, or a DJ network."))
+        self.protocol.currentIndexChanged.connect(self._sync_protocol)
+        self.interface = QtWidgets.QComboBox()
+        self.interface.setToolTip(tr("The network the DJ equipment is on."))
+        self.interface_label = QtWidgets.QLabel(tr("Network"))
         self.host = QtWidgets.QLineEdit()
         self.host.setPlaceholderText("127.0.0.1")
         self.host.setFixedWidth(self.host.fontMetrics().horizontalAdvance("255.255.255.255") + 24)
@@ -665,64 +664,57 @@ class ConnectionBar(QtWidgets.QWidget):
         self.host.returnPressed.connect(self._apply)
         self.status = LiveLabel("")
         self.status.setSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Preferred)
-        self.format_button = QtWidgets.QToolButton()
-        self.format_button.setText(tr("Messages"))
-        self.format_button.setCheckable(True)
-        row.addWidget(QtWidgets.QLabel(tr("Address")))
-        row.addWidget(self.host)
-        row.addWidget(QtWidgets.QLabel(tr("Port")))
-        row.addWidget(self.port)
-        row.addWidget(self.apply)
+        self.host_label, self.port_label = QtWidgets.QLabel(tr("Address")), QtWidgets.QLabel(tr("Port"))
+        for w in (self.protocol, self.host_label, self.host, self.port_label, self.port, self.interface_label,
+                  self.interface, self.apply):
+            row.addWidget(w)
         row.addWidget(self.status, 1)
-        row.addWidget(self.format_button)
         root.addLayout(row)
         self.network = QtWidgets.QLabel(tr("Messages are taken from the network: any device on it can send them."))
         self.network.setStyleSheet("color: #d8a441;")
         root.addWidget(self.network)
-        self.format = QtWidgets.QWidget()
-        lay = QtWidgets.QVBoxLayout(self.format)
-        lay.setContentsMargins(0, 0, 0, 0)
-        about = QtWidgets.QLabel(
-            tr("Another DJ program's decks, received as OSC while Deck Monitor's window is open (the toolbar's DECKS › "
-               "MONITOR). Mixlyzer's own deck is not touched."))
-        about.setWordWrap(True)
-        text = QtWidgets.QLabel(MESSAGE_FORMAT)
-        text.setFont(QtGui.QFontDatabase.systemFont(QtGui.QFontDatabase.FixedFont))
-        text.setTextFormat(QtCore.Qt.PlainText)
-        text.setTextInteractionFlags(QtCore.Qt.TextSelectableByMouse)
-        note = QtWidgets.QLabel(
-            tr("OSC Basic: one message per deck (1 - 4), as often as the sender reads its state; a deck not heard from "
-               "for a second is shown as gone. The track is found in the library by its path, which may be empty, else "
-               "by the track message's title and artist, its duration (0: not known) telling versions apart: send the "
-               "track message when the track changes and now and then. rate is the sample rate the samples are "
-               "counted at (0: the file's own); playing is the deck's play / pause. The tempo message (its BPM as it "
-               "plays and the track's own) sets the waveforms' zoom, the master message the MASTER mark; both are "
-               "optional. A flag may also be sent as an integer 0 / 1. A position before the track's start is "
-               "negative."))
-        note.setWordWrap(True)
-        full = QtWidgets.QLabel(
-            tr("OSC Full adds the sender's own analysis, shown for a track the library does not hold once its "
-               "duration is known: the grid message (its tempo changes: from start on at bpm, beat 1 - 4 that beat's "
-               "place in its bar), the cues message (rgb 0xRRGGBB, -1: none) and the key message (8A or Am). Send "
-               "them when the track changes and now and then."))
-        full.setWordWrap(True)
-        for w in (about, text, note, full):
-            lay.addWidget(w)
-        self.format.setVisible(False)
-        self.format_button.toggled.connect(self.format.setVisible)
-        root.addWidget(self.format)
         self.host.textChanged.connect(self._sync_network)
 
-    def set_address(self, host: str, port: int) -> None:
-        self.host.setText(host)
-        self.port.setValue(int(port))
+    def set_where(self, where: Where) -> None:
+        """The fields as ``where`` says (the protocol, OSC's address and port, the network picked)."""
+        self.host.setText(where.host)
+        self.port.setValue(int(where.port))
+        self._fill_interfaces(where.interface)
+        index = self.protocol.findData(where.protocol)
+        self.protocol.setCurrentIndex(index if index >= 0 else 0)
+        self._sync_protocol()
+
+    def where(self) -> Where:
+        return Where(str(self.protocol.currentData() or OSC), self.host.text().strip() or "127.0.0.1",
+                     int(self.port.value()), str(self.interface.currentData() or ""))
+
+    def _fill_interfaces(self, chosen: str) -> None:
+        """The networks with an IPv4 address (the first: whichever comes first, as kept when "" is chosen); the one
+        chosen kept even when it is gone (said so)."""
+        self.interface.blockSignals(True)
+        self.interface.clear()
+        self.interface.addItem(tr("First found"), "")
+        for found in interfaces():
+            self.interface.addItem(f"{found.name} — {found.address}", found.address)
+        if chosen and self.interface.findData(chosen) < 0:
+            self.interface.addItem(tr("{address} (not found)").format(address=chosen), chosen)
+        self.interface.setCurrentIndex(max(0, self.interface.findData(chosen)))
+        self.interface.blockSignals(False)
+
+    def _sync_protocol(self, *_args) -> None:
+        osc = self.protocol.currentData() == OSC
+        for w in (self.host_label, self.host, self.port_label, self.port):
+            w.setVisible(osc)
+        for w in (self.interface_label, self.interface):
+            w.setVisible(not osc)
         self._sync_network()
 
     def _sync_network(self) -> None:
-        self.network.setVisible(not local_address(self.host.text()))
+        osc = self.protocol.currentData() == OSC
+        self.network.setVisible(not osc or not local_address(self.host.text()))
 
     def _apply(self) -> None:
-        self._listen(self.host.text().strip() or "127.0.0.1", int(self.port.value()))
+        self._listen(self.where())
 
 
 class DeckMonitorWindow(QtWidgets.QWidget):
@@ -821,33 +813,35 @@ class DeckMonitorWindow(QtWidgets.QWidget):
     # ---- where the decks are received ----
 
     def start(self) -> None:
-        """Listening where the settings say (the last address set here)."""
+        """Listening where the settings say (the last place set here)."""
         deck = self.cfg.deckconfig
-        self.connection.set_address(str(deck.monitor_host or "127.0.0.1"), int(deck.monitor_port))
-        self.listen(str(deck.monitor_host or "127.0.0.1"), int(deck.monitor_port))
+        where = Where(str(getattr(deck, "monitor_protocol", OSC) or OSC), str(deck.monitor_host or "127.0.0.1"),
+                      int(deck.monitor_port), str(getattr(deck, "monitor_interface", "") or ""))
+        self.connection.set_where(where)
+        self.listen(where)
 
-    def listen(self, host: str, port: int) -> bool:
-        """The receiver made at ``host:port`` (the app told, to keep it); one that cannot listen there: said, the one
-        before kept."""
-        if self.source is not None and self.source.listening_on() == _address(host, port):
+    def listen(self, where: Where) -> bool:
+        """The receiver ``where`` names (the app told, to keep it); one that cannot listen there: said, the one before
+        kept."""
+        if self.source is not None and self.source.where == where:
             return True
         old, self.source = self.source, None
         if old is not None:
-            old.close()                  # its port free first: the same port on another address
+            old.close()                  # its ports free first: the same port on another address
         try:
-            self.source = DeckSource(host, port, self.track_rows)
+            self.source = DeckSource(where, self.track_rows)
         except (OSError, ValueError, OverflowError) as exc:
-            self.error = cannot_listen(host, port, exc)
+            self.error = cannot_listen(where, exc)
             if old is not None:                # the one before, again
-                host_was, port_was = old.address
                 try:
-                    self.source = DeckSource(host_was, port_was, self.track_rows)
+                    self.source = DeckSource(old.where, self.track_rows)
                 except (OSError, ValueError, OverflowError):
                     self.source = None
             self._show_status()
             return False
         self.error = ""
-        self._ask({"type": "listening", "host": host, "port": int(port)})
+        self._ask({"type": "listening", "protocol": where.protocol, "host": where.host, "port": int(where.port),
+                   "interface": where.interface})
         self._show_status()
         return True
 
@@ -1008,13 +1002,13 @@ def same_marks(a: StoredAnalysis, b: StoredAnalysis) -> bool:
         return False
 
 
-def _address(host: str, port: int) -> str:
-    return f"[{host}]:{port}" if ":" in str(host) else f"{host}:{port}"
-
-
-def cannot_listen(host: str, port: int, error: Exception) -> str:
-    return tr("Deck Monitor could not listen for OSC on {host}:{port} ({error}).").format(host=host, port=port,
-                                                                                         error=error)
+def cannot_listen(where: Where, error: Exception) -> str:
+    if where.protocol == OSC:
+        return tr("Deck Monitor could not listen for OSC on {host}:{port} ({error}).").format(
+            host=where.host, port=where.port, error=error)
+    return tr("Deck Monitor could not join {protocol} on {network} ({error}).").format(
+        protocol=PROTOCOL_NAMES.get(where.protocol, where.protocol), network=where.interface or tr("the first network"),
+        error=error)
 
 
 def status_text(source: Optional[DeckSource], error: str = "") -> str:

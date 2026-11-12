@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-11-12 03:40+0900\n"
+"POT-Creation-Date: 2026-11-12 13:22+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -6163,7 +6163,7 @@ msgstr ""
 msgid "The MIDI controller read or not."
 msgstr ""
 
-#: ui/shortcuts.py:111 ui/windows/deck_monitor.py:734
+#: ui/shortcuts.py:111 ui/windows/deck_monitor.py:726
 msgid "Deck Monitor"
 msgstr ""
 
@@ -7002,126 +7002,122 @@ msgstr ""
 msgid "The notices file is missing ({path}); build/notices.py makes it."
 msgstr ""
 
-#: ui/windows/deck_monitor.py:432
+#: ui/windows/deck_monitor.py:423
 msgid "Not heard"
 msgstr ""
 
-#: ui/windows/deck_monitor.py:432
+#: ui/windows/deck_monitor.py:423
 msgid "No track"
 msgstr ""
 
-#: ui/windows/deck_monitor.py:438
+#: ui/windows/deck_monitor.py:429
 msgid "(no name)"
 msgstr ""
 
-#: ui/windows/deck_monitor.py:438
+#: ui/windows/deck_monitor.py:429
 msgid "Not in the library"
 msgstr ""
 
-#: ui/windows/deck_monitor.py:536
+#: ui/windows/deck_monitor.py:527
 msgctxt "phrase unit"
 msgid "Section"
 msgstr ""
 
-#: ui/windows/deck_monitor.py:536
+#: ui/windows/deck_monitor.py:527
 msgctxt "phrase unit"
 msgid "Label"
 msgstr ""
 
-#: ui/windows/deck_monitor.py:582
+#: ui/windows/deck_monitor.py:573
 msgid "Next in"
 msgstr ""
 
-#: ui/windows/deck_monitor.py:584 ui/windows/deck_monitor.py:606
+#: ui/windows/deck_monitor.py:575 ui/windows/deck_monitor.py:597
 #, python-brace-format
 msgid "Now · {unit}"
 msgstr ""
 
-#: ui/windows/deck_monitor.py:584 ui/windows/deck_monitor.py:607
+#: ui/windows/deck_monitor.py:575 ui/windows/deck_monitor.py:598
 #, python-brace-format
 msgid "Next · {unit}"
 msgstr ""
 
-#: ui/windows/deck_monitor.py:600
+#: ui/windows/deck_monitor.py:591
 msgid "Click: the phrases by section or by label, on every deck."
 msgstr ""
 
-#: ui/windows/deck_monitor.py:658
+#: ui/windows/deck_monitor.py:648
+msgid "How the other program's decks come: OSC from a sender, or a DJ network."
+msgstr ""
+
+#: ui/windows/deck_monitor.py:651
+msgid "The network the DJ equipment is on."
+msgstr ""
+
+#: ui/windows/deck_monitor.py:652
+msgid "Network"
+msgstr ""
+
+#: ui/windows/deck_monitor.py:657
 msgid ""
 "The address the messages are received on. 127.0.0.1 takes them from this "
 "computer only; the address of a network interface (or 0.0.0.0, all of "
 "them) takes them from that network too."
 msgstr ""
 
-#: ui/windows/deck_monitor.py:662
+#: ui/windows/deck_monitor.py:661
 msgid "The UDP port the messages are sent to."
 msgstr ""
 
-#: ui/windows/deck_monitor.py:663
+#: ui/windows/deck_monitor.py:662
 msgid "Listen"
 msgstr ""
 
-#: ui/windows/deck_monitor.py:669
-msgid "Messages"
-msgstr ""
-
-#: ui/windows/deck_monitor.py:671
+#: ui/windows/deck_monitor.py:667
 msgid "Address"
 msgstr ""
 
-#: ui/windows/deck_monitor.py:673
+#: ui/windows/deck_monitor.py:667
 msgid "Port"
 msgstr ""
 
-#: ui/windows/deck_monitor.py:679
+#: ui/windows/deck_monitor.py:673
 msgid "Messages are taken from the network: any device on it can send them."
 msgstr ""
 
-#: ui/windows/deck_monitor.py:686
-msgid ""
-"Another DJ program's decks, received as OSC while Deck Monitor's window "
-"is open (the toolbar's DECKS › MONITOR). Mixlyzer's own deck is not "
-"touched."
+#: ui/windows/deck_monitor.py:696
+msgid "First found"
 msgstr ""
 
-#: ui/windows/deck_monitor.py:694
-msgid ""
-"OSC Basic: one message per deck (1 - 4), as often as the sender reads its"
-" state; a deck not heard from for a second is shown as gone. The track is"
-" found in the library by its path, which may be empty, else by the track "
-"message's title and artist, its duration (0: not known) telling versions "
-"apart: send the track message when the track changes and now and then. "
-"rate is the sample rate the samples are counted at (0: the file's own); "
-"playing is the deck's play / pause. The tempo message (its BPM as it "
-"plays and the track's own) sets the waveforms' zoom, the master message "
-"the MASTER mark; both are optional. A flag may also be sent as an integer"
-" 0 / 1. A position before the track's start is negative."
+#: ui/windows/deck_monitor.py:700
+#, python-brace-format
+msgid "{address} (not found)"
 msgstr ""
 
-#: ui/windows/deck_monitor.py:704
-msgid ""
-"OSC Full adds the sender's own analysis, shown for a track the library "
-"does not hold once its duration is known: the grid message (its tempo "
-"changes: from start on at bpm, beat 1 - 4 that beat's place in its bar), "
-"the cues message (rgb 0xRRGGBB, -1: none) and the key message (8A or Am)."
-" Send them when the track changes and now and then."
-msgstr ""
-
-#: ui/windows/deck_monitor.py:1016
+#: ui/windows/deck_monitor.py:1007
 #, python-brace-format
 msgid "Deck Monitor could not listen for OSC on {host}:{port} ({error})."
 msgstr ""
 
-#: ui/windows/deck_monitor.py:1024
+#: ui/windows/deck_monitor.py:1009
+#, python-brace-format
+msgid "Deck Monitor could not join {protocol} on {network} ({error})."
+msgstr ""
+
+#: ui/windows/deck_monitor.py:1010
+msgid "the first network"
+msgstr ""
+
+#: ui/windows/deck_monitor.py:1018
 msgid "Not listening."
 msgstr ""
 
-#: ui/windows/deck_monitor.py:1029
+#: ui/windows/deck_monitor.py:1023
 #, python-brace-format
 msgid "Listening on {address}; nothing received yet."
 msgstr ""
 
-#: ui/windows/deck_monitor.py:1031
+#: ui/windows/deck_monitor.py:1025
 #, python-brace-format
 msgid ""
 "Listening on {address}; decks {decks} heard (last message {age} s ago, "

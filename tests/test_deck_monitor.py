@@ -15,6 +15,7 @@ from core.deck_monitor import osc  # noqa: E402
 from core.deck_monitor import osc_basic as ob  # noqa: E402
 from core.deck_monitor.controller import DeckMonitorController  # noqa: E402
 from core.deck_monitor.motion import AHEAD_SEC, motion  # noqa: E402
+from core.deck_monitor.receivers import Where  # noqa: E402
 from core.deck_monitor.source import DeckSource, deck_motion, seconds_per_unit  # noqa: E402
 from core.deck_monitor.decks import DeckState, TrackInfo  # noqa: E402
 from core.deck_monitor.match import TrackMatcher, network_path  # noqa: E402
@@ -297,7 +298,7 @@ class MotionTests(unittest.TestCase):
 class SourceTests(unittest.TestCase):
     def test_decks_received_and_matched(self):
         row = _row("a", "/m/song.flac", "Song", "Band", 240.0)
-        source = DeckSource("127.0.0.1", _free_port(), (row,))
+        source = DeckSource(Where(host="127.0.0.1", port=_free_port()), (row,))
         try:
             host, port = source.listening_on().split(":")
             with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
@@ -322,7 +323,7 @@ class SourceTests(unittest.TestCase):
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
             s.bind(("127.0.0.1", 0))
             with self.assertRaises(OSError):
-                DeckSource("127.0.0.1", s.getsockname()[1])
+                DeckSource(Where(host="127.0.0.1", port=s.getsockname()[1]))
 
 
 def echo_window(settings, commands, messages):

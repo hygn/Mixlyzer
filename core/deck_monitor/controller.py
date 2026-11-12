@@ -20,6 +20,7 @@ from PySide6 import QtCore
 
 from core.analysis_library import jobs as analysis_jobs
 from core.deck_monitor.readout import UNITS
+from core.deck_monitor.receivers import OSC, PROTOCOLS
 from core.settings import store as settings_store
 from system.process_worker import SpawnProcessWorker
 
@@ -128,7 +129,7 @@ class DeckMonitorController(QtCore.QObject):
         if kind == "analysis?":
             self._read_analysis(str(message.get("uid") or ""))
         elif kind == "listening":
-            self._keep_address(str(message.get("host") or ""), message.get("port"))
+            self._keep_where(message)
         elif kind == "phrase_unit":
             self._keep_phrase_unit(str(message.get("unit") or ""))
 
@@ -141,17 +142,22 @@ class DeckMonitorController(QtCore.QObject):
             deck.monitor_phrase_unit = unit
             settings_store.deck_changed()
 
-    def _keep_address(self, host: str, port) -> None:
-        """Where the window listens now (set there): kept in deck.json for the next time it opens."""
+    def _keep_where(self, message: dict) -> None:
+        """Where the window listens now (set there: the protocol, OSC's address and port, the network): kept in
+        deck.json for the next time it opens."""
+        protocol, host = str(message.get("protocol") or OSC), str(message.get("host") or "")
+        interface = str(message.get("interface") or "")
         try:
-            port = int(port)
+            port = int(message.get("port"))
         except (TypeError, ValueError):
             return
-        if not host or not 0 < port < 65536:
+        if protocol not in PROTOCOLS or not host or not 0 < port < 65536:
             return
         deck = self._settings().deckconfig
-        if (deck.monitor_host, deck.monitor_port) != (host, port):
-            deck.monitor_host, deck.monitor_port = host, port
+        kept = (deck.monitor_protocol, deck.monitor_host, deck.monitor_port, deck.monitor_interface)
+        if kept != (protocol, host, port, interface):
+            deck.monitor_protocol, deck.monitor_host, deck.monitor_port, deck.monitor_interface = \
+                protocol, host, port, interface
             settings_store.deck_changed()
 
     def _read_analysis(self, uid: str) -> None:

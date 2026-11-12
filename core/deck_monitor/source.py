@@ -1,5 +1,6 @@
-"""The decks as the monitor's process sees them: the OSC Basic receiver it runs, each deck's track found among the
-library's tracks the app gave it, its position in seconds now and its speed (core.deck_monitor.motion)."""
+"""The decks as the monitor's process sees them: the receiver it runs (core.deck_monitor.receivers: OSC, Pro DJ Link),
+each deck's track found among the library's tracks the app gave it, its position in seconds now and its speed
+(core.deck_monitor.motion)."""
 
 from __future__ import annotations
 
@@ -10,7 +11,8 @@ from typing import Any, Optional
 from core.deck_monitor.decks import MAX_DECKS, DeckState
 from core.deck_monitor.match import TrackMatcher
 from core.deck_monitor.motion import Motion, motion
-from core.deck_monitor.osc_basic import STALE_SEC, OscBasicReceiver
+from core.deck_monitor.osc_basic import STALE_SEC
+from core.deck_monitor.receivers import OSC, PROTOCOL_NAMES, Where, open_receiver
 from core.library.records import TrackRow
 from core.library.service import LibrarySnapshot
 
@@ -42,6 +44,8 @@ def seconds_per_unit(state: DeckState, row: Optional[TrackRow]) -> Optional[floa
     track's share of a sample; None when not known."""
     if state.seconds is not None:
         return 1.0
+    if state.samples is None:
+        return None                                    # its position not known (a Pro DJ Link player without one)
     if state.rate > 0:
         return 1.0 / state.rate
     if row is not None and row.total_samples and row.duration:
@@ -65,11 +69,12 @@ def deck_motion(state: DeckState, row: Optional[TrackRow], now: float) -> Option
 
 
 class DeckSource:
-    """The receiver listening on ``host:port`` (raises OSError when it cannot) and the decks matched against the
-    library's tracks (``set_tracks``: the app's, again when the library changed)."""
+    """The receiver ``where`` names (raises OSError, ValueError when it cannot listen there) and the decks matched
+    against the library's tracks (``set_tracks``: the app's, again when the library changed)."""
 
-    def __init__(self, host: str, port: int, tracks=()) -> None:
-        self._receiver = OscBasicReceiver(str(host or "").strip() or "127.0.0.1", int(port))
+    def __init__(self, where: Where, tracks=()) -> None:
+        self.where = where
+        self._receiver = open_receiver(where)
         self._matcher = TrackMatcher(LibrarySnapshot.of_tracks(tracks))
 
     def set_tracks(self, tracks) -> None:
@@ -77,12 +82,14 @@ class DeckSource:
 
     @property
     def address(self) -> tuple[str, int]:
-        """(host, port) it listens on."""
+        """(host, port) it listens on (Pro DJ Link: its interface's address and its own port)."""
         host, port = self._receiver.address
         return str(host), int(port)
 
     def listening_on(self) -> str:
         host, port = self.address
+        if self.where.protocol != OSC:
+            return f"{PROTOCOL_NAMES[self.where.protocol]} {host}"
         return f"[{host}]:{port}" if ":" in host else f"{host}:{port}"
 
     def decks(self) -> list[MonitorDeck]:
