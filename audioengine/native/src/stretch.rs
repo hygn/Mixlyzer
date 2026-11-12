@@ -166,7 +166,9 @@ pub struct Config {
     /// environment (``two_tones_enabled``); the prediction's step along the frames (ms: adjacent frames, 3 ms apart
     /// at -70 %, are too alike to tell two tones 40 Hz apart, and any smooth bin fits), the fit's residual, the
     /// weaker tone's share of the stronger, the least the two are apart, how far a root's modulus may be from 1 a
-    /// step (a tone neither growing nor fading), how far both tones may move a frame and for how many frames in a
+    /// step (how fast a tone may grow or fade: at 0.15 real music's own level changes stopped a quarter of the bins
+    /// that hold two tones, and each frame's amplitudes are solved anew whatever the roots say; 0.5 by blind
+    /// listening), how far both tones may move a frame and for how many frames in a
     /// row they must have held (a voice's gliding harmonic passing a bin fits two tones for a frame or two: taken,
     /// its vibrato trembled), the bins' level under the frame's loudest, and the band's top
     pub two_tones: bool,
@@ -228,7 +230,7 @@ impl Default for Config {
             two_tone_residual: 0.05,
             two_tone_ratio: 0.25,
             two_tone_apart_hz: 12.0,
-            two_tone_modulus: 0.15,
+            two_tone_modulus: 0.5,
             two_tone_drift_hz: 2.0,
             two_tone_hold: 3,
             two_tone_floor: 0.03,
@@ -878,6 +880,7 @@ struct TwoTones {
     n_fft: usize,
     rate: f64,
     span: f64, // the prediction's step (samples)
+    step_frames: usize, // and in frames, as last chosen (0: not yet)
     max_residual: f64,
     min_ratio: f64,
     apart_hz: f64,
@@ -904,7 +907,8 @@ struct TwoTones {
     last_y: Vec<Complex32>,
     psi: Vec<[f64; 2]>,           // per bin: each tone's rotation (its synthesis phase less its analysis phase)
     active: Vec<bool>,
-    last_arg: Vec<[f64; 2]>,      // per bin: the roots' angles of the last frame's fit (NaN: none)
+    last_arg: Vec<[f64; 2]>,      // per bin: the roots' angles of the last frame's fit (NaN: not found yet, or none)
+    last_fit: Vec<[Complex64; 2]>, // per bin: that fit's p1 and p2 (NaN: no fit the frame before)
     run: Vec<u32>,                // per bin: the frames in a row its fit held still
 }
 
@@ -925,6 +929,7 @@ impl TwoTones {
             n_fft,
             rate,
             span: cfg.two_tone_span_ms * rate / 1000.0,
+            step_frames: 0,
             max_residual: cfg.two_tone_residual,
             min_ratio: cfg.two_tone_ratio,
             apart_hz: cfg.two_tone_apart_hz,
@@ -953,8 +958,17 @@ impl TwoTones {
             psi: vec![[0.0; 2]; band],
             active: vec![false; band],
             last_arg: vec![[f64::NAN; 2]; band],
+            last_fit: vec![[Complex64::new(f64::NAN, f64::NAN); 2]; band],
             run: vec![0; band],
         }
+    }
+
+    /// The two roots of z^2 = p1 z + p2 (the prediction's two tones, a step of it each), the one of the greater
+    /// angle first.
+    fn roots(p1: Complex64, p2: Complex64) -> (Complex64, Complex64) {
+        let root = (p1 * p1 + p2 * 4.0).sqrt();
+        let (z1, z2) = ((p1 + root) * 0.5, (p1 - root) * 0.5);
+        if z1.arg() < z2.arg() { (z2, z1) } else { (z1, z2) }
     }
 
     /// A new stream: no frames before its first.
@@ -969,6 +983,7 @@ impl TwoTones {
         self.active.iter_mut().for_each(|a| *a = false);
         self.run.iter_mut().for_each(|r| *r = 0);
         self.last_arg.iter_mut().for_each(|a| *a = [f64::NAN; 2]);
+        self.last_fit.iter_mut().for_each(|p| *p = [Complex64::new(f64::NAN, f64::NAN); 2]);
     }
 
     /// This frame's analysis bins of one channel (``spec``, the vocoder's, its crossover's gain on).
@@ -991,9 +1006,18 @@ impl TwoTones {
         }
         let (lo, band) = (self.lo, self.hi - self.lo + 1);
         let nf = self.n_fft as i64;
-        // the prediction's step: d frames, about the span
+        // the prediction's step: d frames, about the span. Kept while the span is within 0.6 of it in frames: the
+        // hop is the time map's rounded to a sample, and where the span is a whole number and a half of them (-55 %:
+        // 2.5) the nearest whole number changed from frame to frame, so no run of frames ever shared a step and no
+        // bin was fitted at that tempo
         let h0 = self.centers.front().map_or(0, |&p| center - p);
-        let d = if h0 > 0 { ((self.span / h0 as f64).round() as usize).clamp(1, 6) } else { 1 };
+        if h0 > 0 {
+            let frames = self.span / h0 as f64;
+            if self.step_frames == 0 || (frames - self.step_frames as f64).abs() > 0.6 {
+                self.step_frames = (frames.round() as usize).clamp(1, 6);
+            }
+        }
+        let d = self.step_frames.max(1);
         let rows = d.max(2);
         let need = rows - 1 + 2 * d; // the oldest frame read
         // the frames evenly apart (the time map's hop, to a sample), and closer than the synthesis's
@@ -1103,16 +1127,18 @@ impl TwoTones {
                         let mut angles = [f64::NAN; 2];
                         let mut roots = None;
                         if residual < self.max_residual {
-                            let root = (p1 * p1 + p2 * 4.0).sqrt();
-                            let (mut z1, mut z2) = ((p1 + root) * 0.5, (p1 - root) * 0.5);
+                            let (z1, z2) = Self::roots(p1, p2);
                             let steady = |z: C| (z.norm() - 1.0).abs() < self.max_modulus;
                             if steady(z1) && steady(z2) {
-                                if z1.arg() < z2.arg() {
-                                    std::mem::swap(&mut z1, &mut z2);
-                                }
                                 angles = [z1.arg(), z2.arg()];
                                 if wrap(angles[0] - angles[1]).abs() > apart {
-                                    // held still: both tones where the last frame's fit had them
+                                    // held still: both tones where the last frame's fit had them, whatever that fit
+                                    // was worth (its roots found only now, when asked for: a fit that ended at its
+                                    // residual left none)
+                                    if self.last_arg[i][0].is_nan() {
+                                        let (l1, l2) = Self::roots(self.last_fit[i][0], self.last_fit[i][1]);
+                                        self.last_arg[i] = [l1.arg(), l2.arg()];
+                                    }
                                     still = wrap(angles[0] - self.last_arg[i][0]).abs() < drift
                                         && wrap(angles[1] - self.last_arg[i][1]).abs() < drift;
                                     roots = Some((z1, z2));
@@ -1121,6 +1147,7 @@ impl TwoTones {
                         }
                         self.run[i] = if still { self.run[i] + 1 } else { 0 };
                         self.last_arg[i] = angles;
+                        self.last_fit[i] = [p1, p2];
                         if let Some((z1, z2)) = roots.filter(|_| self.run[i] >= self.hold) {
                             // each channel's two amplitudes at this frame, from u(n) and u(n - d)
                             let (i1, i2) = (z1.inv(), z2.inv());
@@ -1165,6 +1192,7 @@ impl TwoTones {
                     // too quiet, outside the band or no fit: the frames in a row end here
                     self.run[i] = 0;
                     self.last_arg[i] = [f64::NAN; 2];
+                    self.last_fit[i] = [Complex64::new(f64::NAN, f64::NAN); 2];
                 }
                 self.active[i] = fitted;
             }
