@@ -19,7 +19,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 from app.startup_console import ConsoleLines, StartupConsole
 from ui.theme import current_theme
 from system.i18n import tr
-from system.resource_paths import resource_path
+from system.resource_paths import APP_ICON, resource_path
 
 # fraction of the task done, what it is doing ("" keeps the last)
 Progress = Callable[[float, str], None]
@@ -69,7 +69,7 @@ class StartupSplash(QtWidgets.QWidget):
         self.setWindowTitle("Mixlyzer")
 
         icon = QtWidgets.QLabel()
-        icon.setPixmap(QtGui.QPixmap(str(resource_path("assets/images/mixlyzer.png"))).scaled(
+        icon.setPixmap(QtGui.QPixmap(str(resource_path(APP_ICON))).scaled(
             48, 48, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation))
         name = QtWidgets.QLabel("Mixlyzer")
         font = name.font()

@@ -5,7 +5,8 @@ IS_MACOS), never on sys.platform / os.name / platform.system() itself.
 
 Where the Windows API is used, the other systems have a fallback:
 - elevated process (app.main refuses it): IsUserAnAdmin / effective uid 0 (root)
-- the app's taskbar identity and 1 ms timer resolution (app.window): Windows only; the others need neither
+- the app's taskbar identity (app.window, Deck Monitor's process) and 1 ms timer resolution (app.window): Windows
+  only; the others need neither
 - console windows of child programs (FFmpeg, the audio engine) kept hidden: Windows only; the others open none
 - revealing a file: Explorer, the file selected / Finder, the file selected / the folder in the file manager
 - the window's occlusion (ui.window_visibility): user32 + DWM / whether Qt has the window exposed
@@ -68,17 +69,29 @@ def is_elevated() -> bool:
     return bool(geteuid is not None and geteuid() == 0)
 
 
-def prepare_app_process(app_id: str) -> None:
+APP_ID = "org.hygn.mixylzer"        # the app's taskbar identity (as it has always been spelled: kept)
+
+
+def set_taskbar_identity(app_id: str = APP_ID) -> None:
+    """Windows: the taskbar shows this process's windows as the app's (``app_id``: one button, the app's icon), the
+    app's own and Deck Monitor's. Elsewhere nothing: the window's icon is enough."""
+    if not IS_WINDOWS:
+        return
+    import ctypes
+    try:
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(app_id)
+    except Exception:
+        pass
+
+
+def prepare_app_process(app_id: str = APP_ID) -> None:
     """Windows: the taskbar groups the app's windows under ``app_id``, and the system timer runs at 1 ms (until
     the app exits) for steady playback timing. Elsewhere nothing is needed: the timers are fine-grained already."""
     if not IS_WINDOWS:
         return
     import atexit
     import ctypes
-    try:
-        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(app_id)
-    except Exception:
-        pass
+    set_taskbar_identity(app_id)
     try:
         ctypes.windll.winmm.timeBeginPeriod(1)
         atexit.register(lambda: ctypes.windll.winmm.timeEndPeriod(1))

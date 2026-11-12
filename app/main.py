@@ -7,7 +7,7 @@ from system import i18n
 from system import os_support
 from core.settings.config import load_cfg, ui_language, unreadable_settings
 from core.tieups import domain as tieup_domain
-from system.resource_paths import app_folder, resource_path
+from system.resource_paths import APP_ICON, app_folder, resource_path
 from system.i18n import tr
 from core.library.version import (
     ensure_current_version_file,
@@ -51,7 +51,7 @@ def main():
     from pyqtgraph.util.garbage_collector import GarbageCollector
     collector = GarbageCollector(interval=1.0)  # noqa: F841  (kept by main's frame while the app runs)
     # every window's icon (the splash, the main window, the dialogs and windows of their own)
-    app.setWindowIcon(QtGui.QIcon(str(resource_path("assets/images/mixlyzer.png"))))
+    app.setWindowIcon(QtGui.QIcon(str(resource_path(APP_ICON))))
     # the language before any UI is made (or imported: the startup imports the rest)
     i18n.install(ui_language())
     i18n.install_qt(app)

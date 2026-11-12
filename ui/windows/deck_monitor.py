@@ -1030,11 +1030,14 @@ def status_text(source: Optional[DeckSource], error: str = "") -> str:
 def run(settings: dict, commands, messages) -> None:
     """The window's process (spawned by core.deck_monitor.controller): it listens, shows the decks until its window
     closes or the app says close, then says done."""
-    from system import i18n
+    from system import i18n, os_support
     from system.process_worker import install_parent_watchdog
+    from system.resource_paths import APP_ICON, resource_path
     install_parent_watchdog()
     i18n.install(str(settings.get("language") or ""))
+    os_support.set_taskbar_identity()               # the app's taskbar button, not Python's
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv[:1])
+    app.setWindowIcon(QtGui.QIcon(str(resource_path(APP_ICON))))
     from ui.fonts import load_fonts_and_set_global
     from ui.theme import apply_theme
     apply_theme(app)

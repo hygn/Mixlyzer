@@ -90,7 +90,7 @@ class AppWindow(QtWidgets.QMainWindow):
         super().__init__()
         step = progress or (lambda _fraction, _part: None)
         step(0.0, tr("Core objects and playback"))
-        os_support.prepare_app_process("org.hygn.mixylzer")
+        os_support.prepare_app_process()
         self.setWindowTitle("Mixlyzer")
         self.setAcceptDrops(True)
 

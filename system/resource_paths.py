@@ -15,6 +15,7 @@ from pathlib import Path
 # root is ``parents[1]``; in a PyInstaller 6 build that is the package's ``_internal`` folder, where the
 # bundled files are (the module's path is there), so no sys._MEIPASS handling is needed.
 _PROJECT_ROOT = Path(__file__).resolve().parents[1]
+APP_ICON = "assets/images/mixlyzer.png"     # the app's icon: every window's, the app's own and Deck Monitor's
 
 
 def project_root() -> Path:
