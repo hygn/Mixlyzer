@@ -8,6 +8,7 @@ import unittest
 
 from core.deck_monitor import prodjlink as pdl
 from core.deck_monitor.decks import DeckState
+from core.deck_monitor.source_marks import SourceCue, SourceMarks
 from core.deck_monitor.source import seconds_per_unit
 from core.library.records import TrackRow
 
@@ -27,10 +28,11 @@ def _keep_alive(device: int, address: str) -> bytes:
 
 
 def _status(device: int, source: int, rekordbox_id: int, playing: bool, master: bool, pitch: float, bpm: float,
-            beat: int, reverse: bool = False) -> bytes:
+            beat: int, reverse: bool = False, at_cue: bool = False) -> bytes:
     p = _packet(pdl.CDJ_STATUS, 0xD4, device)
     p[0x28], p[0x29], p[0x2A] = source, 3, 1
     p[0x2C:0x30] = rekordbox_id.to_bytes(4, "big")
+    p[0x7B] = 0x03 if playing else (pdl.AT_CUE if at_cue else 0x05)        # P1: playing, at the cue point, paused
     p[0x89] = (0x40 if playing else 0) | (0x20 if master else 0)
     p[0x8C:0x90] = int(pitch * pdl.PITCH_UNITY).to_bytes(4, "big")
     p[0x92:0x94] = int(round(bpm * 100)).to_bytes(2, "big")
@@ -58,6 +60,34 @@ def _grid_blob(beats: list) -> bytes:
     return bytes(20) + b"".join(struct.pack("<HHI", place, 12800, ms) + bytes(8) for place, ms in beats)
 
 
+def _ext_cue(hot: int, kind: int, ms: int, color_id: int = 0, comment: str = "", rgb=None) -> bytes:
+    """An extended cue list entry as beat-link reads one: its length first; the comment and a hot cue's colour after
+    it only when given (an entry may end before them)."""
+    raw = (comment + "\x00").encode("utf-16-le") if comment else b""
+    size = 0x52 + len(raw) if rgb else (0x4A + len(raw) if comment else 0x38)
+    e = bytearray(size)
+    e[0:4], e[4], e[6] = size.to_bytes(4, "little"), hot, kind
+    e[12:16], e[0x22] = ms.to_bytes(4, "little"), color_id
+    if comment or rgb:
+        e[0x48:0x4A] = len(raw).to_bytes(2, "little")
+        e[0x4A:0x4A + len(raw)] = raw
+    if rgb:
+        e[0x4E + len(raw)] = 0x2A                        # its colour code
+        e[0x4F + len(raw):0x52 + len(raw)] = bytes(rgb)
+    return bytes(e)
+
+
+def _legacy_cue(loop: int, cue: int, hot: int, half_frames: int) -> bytes:
+    e = bytearray(pdl.LEGACY_CUE_SIZE)
+    e[0], e[1], e[2] = loop, cue, hot
+    e[12:16] = half_frames.to_bytes(4, "little")
+    return bytes(e)
+
+
+EXT_CUES = [_ext_cue(1, 1, 30500, comment="Drop", rgb=(255, 0, 0)), _ext_cue(0, 1, 1500, color_id=2),
+            _ext_cue(0, 2, 60000, comment="Loop"), _ext_cue(2, 1, 45000), _ext_cue(0, 0, 0)]
+
+
 # ---- a fake dbserver ----
 
 def _field(value) -> bytes:
@@ -79,10 +109,13 @@ def _reply(kind: int, args: list) -> bytes:
 class FakeDbServer:
     """The query port answering with the dbserver's, and the dbserver answering one session as a player would."""
 
-    def __init__(self, title: str, artist: str, seconds: int, grid: bytes) -> None:
+    def __init__(self, title: str, artist: str, seconds: int, grid: bytes, cues=None, cue_count: int = 0,
+                 legacy: bytes = b"") -> None:
+        """``cues``: the extended cue list answered (None: refused); ``legacy``: a nexus player's (none: refused)."""
         self.query = socket.create_server(("127.0.0.1", 0))
         self.db = socket.create_server(("127.0.0.1", 0))
         self.asked = []
+        refused = _reply(0x4003, [])
         self.answers = {pdl.SETUP: [_reply(pdl.SUCCESS, [0, 2])],
                         pdl.METADATA_REQ: [_reply(pdl.SUCCESS, [0x2002, 3])],
                         pdl.RENDER_MENU: [_reply(0x4001, []),
@@ -90,7 +123,11 @@ class FakeDbServer:
                                           _reply(pdl.MENU_ITEM, [0, 9, 0, artist, 0, "", pdl.ITEM_ARTIST, 0]),
                                           _reply(pdl.MENU_ITEM, [0, seconds, 0, "", 0, "", 0x1000B, 0]),
                                           _reply(pdl.MENU_FOOTER, [])],
-                        pdl.BEAT_GRID_REQ: [_reply(0x4602, [0, 0, len(grid), grid])]}
+                        pdl.BEAT_GRID_REQ: [_reply(0x4602, [0, 0, len(grid), grid])],
+                        pdl.CUE_LIST_EXT_REQ: [_reply(pdl.CUE_LIST_EXT, [0, 0, len(cues), cues, cue_count])
+                                               if cues is not None else refused],
+                        pdl.CUE_LIST_REQ: [_reply(pdl.CUE_LIST, [0, 0, len(legacy), legacy, 0x24, 0, 0, 0])
+                                           if legacy else refused]}
         threading.Thread(target=self._serve, daemon=True).start()
 
     def _serve(self) -> None:
@@ -153,12 +190,15 @@ class ProDjLinkTests(unittest.TestCase):
             server.close()
         self.assertEqual((data.title, data.artist, data.duration), ("Song", "Band", 240.0))
         self.assertEqual(len(data.beats), 16)
-        self.assertAlmostEqual(data.grid[0].bpm, 128.0, places=1)
-        self.assertEqual(data.grid[0].beat, 1)
+        self.assertAlmostEqual(data.marks.grid[0].bpm, 128.0, places=1)
+        self.assertEqual(data.marks.grid[0].beat, 1)
+        self.assertIsNone(data.marks.cues)             # neither cue list answered: not known (not none), the rest kept
         kinds = [k for k, _ in server.asked]
-        self.assertEqual(kinds[:4], [pdl.SETUP, pdl.METADATA_REQ, pdl.RENDER_MENU, pdl.BEAT_GRID_REQ])
+        self.assertEqual(kinds[:6], [pdl.SETUP, pdl.METADATA_REQ, pdl.RENDER_MENU, pdl.BEAT_GRID_REQ,
+                                     pdl.CUE_LIST_EXT_REQ, pdl.CUE_LIST_REQ])
         self.assertEqual(server.asked[0][1], [3])                                 # posing as player 3
-        self.assertEqual(server.asked[1][1], [(3 << 24) | (1 << 16) | (3 << 8) | 1, 42])
+        self.assertEqual(server.asked[1][1], [(3 << 24) | (1 << 16) | (3 << 8) | 1, 42])   # the main menu
+        self.assertEqual(server.asked[3][1], [(3 << 24) | (8 << 16) | (3 << 8) | 1, 42])   # the data menu
 
         ref = pdl.TrackRef(1, 3, 1, 42)                              # a nexus player: no precise position
         self.r.take(_status(1, 1, 42, False, False, 1.0, 128.0, 9), "10.0.0.1", 1.0)
@@ -167,7 +207,44 @@ class ProDjLinkTests(unittest.TestCase):
         d = self.r.latest(1.0)[0][1]
         self.assertAlmostEqual(d.seconds, data.beats[8][0])          # beat 9's time, standing still
         self.assertEqual(d.track.title, "Song")
-        self.assertEqual(d.marks.grid, data.grid)
+        self.assertIs(d.marks, data.marks)                           # made once: the window sees no change
+
+    def test_its_cues_from_the_extended_list_or_a_nexus_players(self):
+        grid = _grid_blob([((k % 4) + 1, 300 + int(k * 468.75)) for k in range(16)])
+        ref = pdl.TrackRef(1, 3, 1, 42)
+        server = FakeDbServer("Song", "Band", 240, grid, cues=b"".join(EXT_CUES), cue_count=len(EXT_CUES))
+        try:
+            data = pdl.read_track("127.0.0.1", ref, posing=3, timeout=2.0, query_port=server.query.getsockname()[1])
+        finally:
+            server.close()
+        self.assertEqual(data.marks.cues, (SourceCue(1.5, "", (255, 0, 0)), SourceCue(30.5, "Drop", (255, 0, 0), 0),
+                                           SourceCue(45.0, "", None, 1), SourceCue(60.0, "Loop")))
+        self.assertEqual(server.asked[4][1], [(3 << 24) | (8 << 16) | (3 << 8) | 1, 42, 0])
+        self.assertNotIn(pdl.CUE_LIST_REQ, [k for k, _ in server.asked])    # the extended one answered
+        legacy = _legacy_cue(0, 1, 0, 150) + _legacy_cue(0, 1, 1, 4575) + _legacy_cue(0, 0, 0, 0)
+        server = FakeDbServer("Song", "Band", 240, grid, legacy=legacy)
+        try:
+            data = pdl.read_track("127.0.0.1", ref, posing=3, timeout=2.0, query_port=server.query.getsockname()[1])
+        finally:
+            server.close()
+        self.assertEqual(data.marks.cues, (SourceCue(1.0), SourceCue(30.5, slot=0)))     # 1/150 s, no names
+        server = FakeDbServer("Song", "Band", 240, grid, cues=b"", cue_count=0)
+        try:
+            data = pdl.read_track("127.0.0.1", ref, posing=3, timeout=2.0, query_port=server.query.getsockname()[1])
+        finally:
+            server.close()
+        self.assertEqual(data.marks.cues, ())                        # a list with none: known, none (not None)
+
+    def test_a_cue_list_read_strictly(self):
+        blob = b"".join(EXT_CUES)
+        self.assertEqual(len(pdl.parse_cue_list_ext(blob, 99)), 4)                # a count past its entries: ends
+        cut = b"".join(EXT_CUES[:4])[:-10]                                          # hot cue B cut off: left out
+        self.assertEqual([c.seconds for c in pdl.parse_cue_list_ext(cut, 4)], [1.5, 30.5, 60.0])
+        bad = bytearray(_ext_cue(1, 1, 1000, comment="X"))
+        bad[0x48:0x4A] = (500).to_bytes(2, "little")                              # a comment past its entry
+        self.assertEqual(pdl.parse_cue_list_ext(bytes(bad), 1), (SourceCue(1.0, "", None, 0),))
+        self.assertEqual(pdl.parse_cue_list_ext(b"\x02\x00\x00\x00" + bytes(40), 1), ())   # a length below 16
+        self.assertEqual(pdl.parse_cue_list(bytes(35)), ())
 
     def test_posing_as_a_free_player(self):
         self.assertEqual(pdl.posing_as(1, {1, 2}), 3)
@@ -213,10 +290,11 @@ class OlderPlayerPositionTests(unittest.TestCase):
     def setUp(self):
         self.r = pdl.ProDjLinkReceiver(start=False)
         self.r._tracks[pdl.TrackRef(1, 3, 1, 42)] = pdl.TrackData(
-            beats=tuple((_t(k), (k - 1) % 4 + 1) for k in range(1, 65)))
+            beats=tuple((_t(k), (k - 1) % 4 + 1) for k in range(1, 65)),
+            marks=SourceMarks(cues=(SourceCue(_t(9) + 0.1), SourceCue(_t(12) + 0.2, slot=0))))   # a memory, a hot
 
-    def status(self, at: float, beat: int, playing: bool = True, reverse: bool = False) -> None:
-        self.r.take(_status(1, 1, 42, playing, False, 1.0, 128.0, beat, reverse), "10.0.0.1", at)
+    def status(self, at: float, beat: int, playing: bool = True, reverse: bool = False, at_cue: bool = False) -> None:
+        self.r.take(_status(1, 1, 42, playing, False, 1.0, 128.0, beat, reverse, at_cue), "10.0.0.1", at)
 
     def beat(self, at: float) -> None:
         self.r.take(_beat_packet(1, 128.0), "10.0.0.1", at)
@@ -246,6 +324,15 @@ class OlderPlayerPositionTests(unittest.TestCase):
         self.status(10.4, 5, playing=False)
         self.assertAlmostEqual(self.seconds(11.0), _t(5) + 0.2)
         self.status(10.6, 9, playing=False)                  # moved while paused (the jog, CUE): that beat
+        self.assertAlmostEqual(self.seconds(11.0), _t(9))
+
+    def test_paused_at_its_cue_point_it_is_the_memory_cue_in_that_beat(self):
+        self.status(10.0, 5)
+        self.status(10.2, 9, playing=False, at_cue=True)     # CUE pressed: back to the memory cue in beat 9
+        self.assertAlmostEqual(self.seconds(11.0), _t(9) + 0.1)
+        self.status(10.4, 12, playing=False, at_cue=True)    # only a hot cue in beat 12: that beat's start
+        self.assertAlmostEqual(self.seconds(11.0), _t(12))
+        self.status(10.6, 9, playing=False)                  # paused elsewhere in beat 9: its start
         self.assertAlmostEqual(self.seconds(11.0), _t(9))
 
     def test_a_jump_goes_to_the_beat_told(self):

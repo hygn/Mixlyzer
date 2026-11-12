@@ -8,13 +8,15 @@ messages more):
     /mixlyzer/deck/tempo    i deck  d|f bpm  d|f track_bpm
     /mixlyzer/deck/master   i deck  T|F master
     /mixlyzer/deck/grid     i deck  [d|f start  d|f bpm  i beat] ...
-    /mixlyzer/deck/cues     i deck  [d|f seconds  s name  i rgb] ...
+    /mixlyzer/deck/cues     i deck  [d|f seconds  s name  i rgb  i slot] ...
     /mixlyzer/deck/key      i deck  s key
 
 OSC Full's grid is the track's tempo changes (rekordbox XML's TEMPO: from ``start`` on at ``bpm``, ``beat`` 1 - 4 that
-beat's place in its bar), its cues the CUE points (``rgb`` 0xRRGGBB, -1: none), its key Alphanumeric or classical
-("8A", "Am"; "": none); each replaces the last of its kind, all are dropped with the track, and they are shown for a
-track the library does not hold whose length is known (the track message's duration).
+beat's place in its bar), its cues the hot cues and memory cues (``rgb`` 0xRRGGBB, -1: none; ``slot`` rekordbox XML's
+Num: -1 a memory cue, 0 - 25 hot cue A - Z), its key Alphanumeric or classical ("8A", "Am"; "": none); each replaces
+the last of its kind (one sent again the same is kept as it was), all are dropped with the track. They are shown for
+a track the library does not hold whose length is known (the track message's duration), and the cues for one it holds
+where they differ from Mixlyzer's, as set (source_marks.with_sender_cues).
 
 ``path`` may be "" (the track is then found by the track message's title, artist and length: send it when the track
 changes and now and then, as UDP may lose it); ``rate`` is the rate the samples are counted at, 0: the file's own
@@ -38,8 +40,9 @@ from typing import Optional
 from core.deck_monitor import osc
 from core.deck_monitor.decks import MAX_DECKS, DeckState, TrackInfo
 from core.deck_monitor.motion import KEPT_SEC
-from core.deck_monitor.source_marks import MAX_BPM, MAX_CHANGES, MAX_CUES, METER, SourceCue, SourceMarks, \
+from core.deck_monitor.source_marks import MAX_BPM, MAX_CHANGES, MAX_CUES, MEMORY, METER, SourceCue, SourceMarks, \
     TempoChange, parse_key
+from core.marks.jump_cues import SLOT_LETTERS
 
 TIME_ADDRESS = "/mixlyzer/deck/time"
 SAMPLES_ADDRESS = "/mixlyzer/deck/samples"
@@ -151,17 +154,19 @@ def grid_message(address: str, args: list) -> Optional[tuple[int, tuple[TempoCha
 
 
 def cues_message(address: str, args: list) -> Optional[tuple[int, tuple[SourceCue, ...]]]:
-    """(deck, its track's CUE points by time) a cues message carries, None otherwise."""
-    if address != CUES_ADDRESS or not args or (len(args) - 1) % 3 or (len(args) - 1) // 3 > MAX_CUES:
+    """(deck, its track's cues by time: each one's time, name, colour and slot, rekordbox XML's Num: -1 a memory cue,
+    0 - 25 hot cue A - Z) a cues message carries, None otherwise."""
+    if address != CUES_ADDRESS or not args or (len(args) - 1) % 4 or (len(args) - 1) // 4 > MAX_CUES:
         return None
     deck = _deck(args[0])
     cues = []
-    for k in range(1, len(args), 3):
-        seconds, name, rgb = _number(args[k]), _text(args[k + 1]), _integer(args[k + 2])
-        if seconds is None or name is None or rgb is None or not -1 <= rgb <= 0xFFFFFF:
+    for k in range(1, len(args), 4):
+        seconds, name, rgb, slot = _number(args[k]), _text(args[k + 1]), _integer(args[k + 2]), _integer(args[k + 3])
+        if seconds is None or name is None or rgb is None or not -1 <= rgb <= 0xFFFFFF or slot is None \
+                or not MEMORY <= slot < len(SLOT_LETTERS):
             return None
         color = None if rgb < 0 else ((rgb >> 16) & 0xFF, (rgb >> 8) & 0xFF, rgb & 0xFF)
-        cues.append(SourceCue(seconds, name.strip(), color))
+        cues.append(SourceCue(seconds, name.strip(), color, slot))
     return None if deck is None else (deck, tuple(sorted(cues, key=lambda c: c.seconds)))
 
 
@@ -260,12 +265,20 @@ class OscBasicReceiver:
             for deck, master in masters:
                 self._master[deck] = master
             for deck, grid in grids:
-                self._marks[deck] = replace(self._marks.get(deck, SourceMarks()), grid=grid)
+                self._mark(deck, grid=grid)
             for deck, deck_cues in cues:
-                self._marks[deck] = replace(self._marks.get(deck, SourceMarks()), cues=deck_cues)
+                self._mark(deck, cues=deck_cues)
             for deck, key in keys:
-                self._marks[deck] = replace(self._marks.get(deck, SourceMarks()), key=key)
+                self._mark(deck, key=key)
             self._sender = sender
+
+    def _mark(self, deck: int, **part) -> None:
+        """A deck's marks with ``part`` replaced (under the lock); the same object kept when it is sent again the same,
+        so the monitor sees nothing new."""
+        old = self._marks.get(deck, SourceMarks())
+        new = replace(old, **part)
+        if new != old or deck not in self._marks:
+            self._marks[deck] = new
 
     def latest(self) -> tuple[dict[int, DeckState], str, int]:
         """(each deck's newest state, its track named by its path and its track message, its tempo and master flag,

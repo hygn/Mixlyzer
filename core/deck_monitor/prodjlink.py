@@ -5,21 +5,24 @@ otherwise than read here.
 Deck Monitor is a virtual CDJ of its own number (``DEVICE``, above the players' 1 - 6): its keep-alive every 1.5 s on
 port 50000 (beat-link's bytes, its name "Mixlyzer"); the players then send their status to it (port 50002: the track
 loaded, its rekordbox ID and where it is, play / pause, master, pitch, BPM, the beat number), their beats (50001) and,
-a CDJ-3000, its precise position every 30 ms (50001). A track's title, artist, length and beat grid are asked of the
-player holding it, over its dbserver (TCP: the port asked on 12523, then a setup posing as a player number not in
-use, the metadata request and its menu, the beat grid request), once per track on a thread of its own; no file is
-fetched from a player. The position is the CDJ-3000's own; an older player sends none (its status, every 200 ms,
-tells the beat number; a packet comes as each beat plays), so it is estimated in the beat grid as beat-link's
-TimeFinder does: each beat packet sets it to that beat's time, carried on at the pitch (backwards in reverse); a
-status keeps the estimate while it lies within a beat of the beat number told, else sets that beat's time (a jump: a
-hot cue, a loop, a search); paused, the estimate stays where it stopped until the beat number changes (moved by the
-jog, the CUE button: that beat's start). Without the grid it is not known. The CUE points are not read (their format
-is not read here yet), so a stop on a CUE point between beats is placed on its beat. Every packet and message comes from the network and is read strictly (lengths checked before
-each field; a message's arguments, a string's and a blob's lengths bounded)."""
+a CDJ-3000, its precise position every 30 ms (50001). A track's title, artist, length, beat grid and cues are asked of
+the player holding it, over its dbserver (TCP: the port asked on 12523, then a setup posing as a player number not in
+use, the metadata request and its menu, then on the data menu the beat grid request and the cue list: the extended
+one with names and colours, else a nexus player's), once per track on a thread of its own; no file is fetched from a
+player. The cues are its hot cues (JumpCUEs) and memory cues (CUE points; a loop: its start). The position is the
+CDJ-3000's own; an older player sends none (its status, every 200 ms, tells the beat number; a packet comes as each
+beat plays), so it is estimated in the beat grid as beat-link's TimeFinder does: each beat packet sets it to that
+beat's time, carried on at the pitch (backwards in reverse); a status keeps the estimate while it lies within a beat
+of the beat number told, else sets that beat's time (a jump: a hot cue, a loop, a search); paused, the estimate stays
+where it stopped until the beat number changes (moved by the jog: that beat's start), and paused at its cue point (the
+status's play state) it is the memory cue in the beat told where there is one. Without the grid it is not known.
+Every packet and message comes from the network and is read strictly (lengths checked before each field; a message's
+arguments, a string's and a blob's lengths bounded)."""
 
 from __future__ import annotations
 
 import bisect
+import math
 import select
 import socket
 import struct
@@ -32,7 +35,7 @@ from typing import Optional
 from core.deck_monitor.decks import MAX_DECKS, DeckState, TrackInfo
 from core.deck_monitor.motion import KEPT_SEC
 from core.deck_monitor.receivers import interface_for
-from core.deck_monitor.source_marks import MAX_BEATS, SourceMarks, grid_from_beats
+from core.deck_monitor.source_marks import MAX_BEATS, MAX_CUES, MEMORY, SourceCue, SourceMarks, grid_from_beats
 
 MAGIC = bytes.fromhex("5173707431576d4a4f4c")
 ANNOUNCE_PORT, BEAT_PORT, STATUS_PORT = 50000, 50001, 50002
@@ -48,7 +51,16 @@ DB_RETRY_SEC = 10.0
 DB_MAGIC = 0x872349AE
 SETUP_TX = 0xFFFFFFFE
 SETUP, METADATA_REQ, RENDER_MENU, BEAT_GRID_REQ, TEARDOWN = 0x0000, 0x2002, 0x3000, 0x2204, 0x0100
+CUE_LIST_REQ, CUE_LIST_EXT_REQ = 0x2104, 0x2B04
 MENU_ITEM, MENU_FOOTER, SUCCESS = 0x4101, 0x4201, 0x4000
+CUE_LIST, CUE_LIST_EXT = 0x4702, 0x4E02
+AT_CUE = 0x06                                     # a status's play state (P1): paused at the cue point
+MAIN_MENU, DATA_MENU = 1, 8                      # a request's menu: the metadata's, the track's data (grid, cues)
+LEGACY_CUE_SIZE = 36                              # a nexus player's cue list entry
+# a memory cue's colour ID in an extended cue list (beat-link's ColorItem: pink, red, orange, yellow, green, aqua,
+# blue, purple; 0: none)
+MEMORY_COLORS = {1: (255, 175, 175), 2: (255, 0, 0), 3: (255, 200, 0), 4: (255, 255, 0), 5: (0, 255, 0),
+                 6: (0, 255, 255), 7: (0, 0, 255), 8: (128, 0, 128)}
 ITEM_TITLE, ITEM_ARTIST, ITEM_DURATION = 0x04, 0x07, 0x0B
 MAX_STRING_CHARS = 1024
 MAX_BLOB = 4 * 1024 * 1024
@@ -87,12 +99,23 @@ def _carried(estimate: tuple[float, float, bool], player: "_Player", now: float)
     return max(0.0, position - moved) if player.reverse else position + moved
 
 
-def _estimated(player: "_Player", beats: tuple, beat: int, playing: bool, reverse: bool,
+def _memory_cue_in(beats: tuple, beat: int, cues: tuple) -> Optional[float]:
+    """The first memory cue (``cues``: SourceCue) in beat ``beat`` (0: before the first beat), None: none there."""
+    start = _beat_time(beats, beat)
+    end = beats[beat][0] if 0 <= beat < len(beats) else math.inf
+    return next((c.seconds for c in cues if c.slot == MEMORY and start <= c.seconds < end), None)
+
+
+def _estimated(player: "_Player", beats: tuple, beat: int, playing: bool, reverse: bool, at_cue: bool, cues: tuple,
                now: float) -> tuple[float, float, bool]:
     """The position a status tells a player without its own, as beat-link's TimeFinder reads it: the estimate carried
     on to now kept while it lies within a beat of the beat number told (paused: while that number is the same), else
-    that beat's time (playing backwards: the next beat's, where it came into the beat)."""
+    that beat's time (playing backwards: the next beat's, where it came into the beat); paused at its cue point
+    (``at_cue``), the memory cue in that beat where there is one."""
     told = _beat_time(beats, beat)
+    cue = _memory_cue_in(beats, beat, cues) if at_cue and not playing else None
+    if cue is not None:
+        return cue, now, False
     if player.estimate is None:
         return told, now, playing
     if not playing and not player.estimate[2]:
@@ -139,7 +162,7 @@ class TrackData:
     artist: str = ""
     duration: float = 0.0
     beats: tuple = ()               # (time s, place in its bar) of each beat
-    grid: tuple = ()                # its tempo changes
+    marks: Optional[SourceMarks] = None     # its grid (tempo changes) and cues, made once (the window sees no change)
 
 
 class ProDjLinkReceiver:
@@ -283,8 +306,11 @@ class ProDjLinkReceiver:
         beat = None if beat == 0xFFFFFFFF else beat           # no rekordbox-analyzed track
         beats = self._beats(player)
         if player.precise is None:
+            data = self._tracks.get(track) if track is not None else None
+            cues = (data.marks.cues or ()) if data is not None and data.marks is not None else ()
+            at_cue = packet[0x7B] == AT_CUE                   # P1: "paused at the cue point"
             player.estimate = (None if beat is None or not beats
-                               else _estimated(player, beats, beat, playing, reverse, now))
+                               else _estimated(player, beats, beat, playing, reverse, at_cue, cues, now))
         player.playing, player.reverse, player.master = playing, reverse, bool(flags & 0x20)
         player.pitch = _be(packet, 0x8C, 4) / PITCH_UNITY
         bpm = _be(packet, 0x92, 2)
@@ -350,7 +376,8 @@ class ProDjLinkReceiver:
                     track=TrackInfo("", data.title if data else "", data.artist if data else "", duration),
                     received_at=player.status_at, heard=tuple(player.heard) if position is not None else (),
                     bpm=player.bpm * player.pitch, track_bpm=player.bpm, master=player.master,
-                    marks=SourceMarks(grid=data.grid) if data is not None and data.grid else None)
+                    marks=data.marks if data is not None and data.marks is not None and not data.marks.empty()
+                    else None)
             return decks, self._sender, self._refused
 
     def close(self) -> None:
@@ -430,8 +457,8 @@ class _Stream:
 
 def read_track(address: str, ref: TrackRef, posing: int, timeout: float = DB_TIMEOUT_SEC,
                query_port: int = DB_QUERY_PORT) -> TrackData:
-    """The track's title, artist, length and beat grid, asked of the player at ``address`` (raises OSError,
-    ValueError when it cannot be read)."""
+    """The track's title, artist, length, beat grid and cues, asked of the player at ``address`` (raises OSError,
+    ValueError when it cannot be read; cues that cannot be read: not known, None, the rest kept)."""
     with socket.create_connection((address, query_port), timeout=timeout) as s:
         s.sendall(b"\x00\x00\x00\x0fRemoteDBServer\x00")
         reply = b""
@@ -449,7 +476,8 @@ def read_track(address: str, ref: TrackRef, posing: int, timeout: float = DB_TIM
         s.sendall(db_message(SETUP_TX, SETUP, [posing]))
         if stream.message()[0] != SUCCESS:
             raise ValueError("dbserver setup refused")
-        dmst = (posing << 24) | (1 << 16) | (ref.slot << 8) | ref.kind
+        dmst = (posing << 24) | (MAIN_MENU << 16) | (ref.slot << 8) | ref.kind
+        data_dmst = (posing << 24) | (DATA_MENU << 16) | (ref.slot << 8) | ref.kind
         s.sendall(db_message(1, METADATA_REQ, [dmst, ref.rekordbox_id]))
         kind, args = stream.message()
         if kind != SUCCESS or len(args) < 2 or not isinstance(args[1], int) or args[1] == 0xFFFFFFFF:
@@ -472,15 +500,80 @@ def read_track(address: str, ref: TrackRef, posing: int, timeout: float = DB_TIM
                 artist = label
             elif item == ITEM_DURATION and isinstance(args[1], int):
                 duration = float(args[1])
-        s.sendall(db_message(3, BEAT_GRID_REQ, [dmst, ref.rekordbox_id]))
+        s.sendall(db_message(3, BEAT_GRID_REQ, [data_dmst, ref.rekordbox_id]))
         kind, args = stream.message()
         beats = parse_beat_grid(args[3]) if len(args) > 3 and isinstance(args[3], bytes) else ()
+        cues = _read_cues(s, stream, data_dmst, ref.rekordbox_id)
         try:
             s.sendall(db_message(SETUP_TX, TEARDOWN, []))
         except OSError:
             pass
     times = [t for t, _ in beats]
-    return TrackData(title, artist, duration, beats, grid_from_beats(times, [p for _, p in beats]))
+    grid = grid_from_beats(times, [p for _, p in beats])
+    return TrackData(title, artist, duration, beats, SourceMarks(grid=grid, cues=cues))
+
+
+def _read_cues(s: socket.socket, stream: "_Stream", dmst: int,
+               rekordbox_id: int) -> Optional[tuple[SourceCue, ...]]:
+    """The track's hot cues and memory cues, as beat-link asks for them: the extended cue list (names, colours, hot
+    cues past C), else a nexus player's; None when neither is answered (not known: () is a list with none)."""
+    try:
+        s.sendall(db_message(4, CUE_LIST_EXT_REQ, [dmst, rekordbox_id, 0]))
+        kind, args = stream.message()
+        if kind == CUE_LIST_EXT and len(args) > 4 and isinstance(args[3], bytes) and isinstance(args[4], int):
+            return parse_cue_list_ext(args[3], args[4])
+        s.sendall(db_message(5, CUE_LIST_REQ, [dmst, rekordbox_id]))
+        kind, args = stream.message()
+        if kind == CUE_LIST and len(args) > 3 and isinstance(args[3], bytes):
+            return parse_cue_list(args[3])
+    except (OSError, ValueError, struct.error):
+        pass
+    return None
+
+
+def parse_cue_list_ext(blob: bytes, count: int) -> tuple[SourceCue, ...]:
+    """An extended cue list's hot cues and memory cues (a loop: its start), as beat-link reads it: ``count`` entries,
+    each its own length first (4 bytes, little-endian); the hot cue at 4 (1: A; 0: a memory cue), the kind at 6 (1: a
+    cue, 2: a loop), the time in ms at 12, a memory cue's colour ID at 0x22, the comment's length in bytes at 0x48
+    (2 bytes) and then the comment (UTF-16LE, its 0 last), a hot cue's colour after it (its code, then R, G, B; all 0:
+    none). An entry ending early has no comment or colour; one past the blob ends the list."""
+    cues: list[SourceCue] = []
+    at = 0
+    for _ in range(min(int(count), MAX_CUES)):
+        if at + 16 > len(blob):
+            break
+        size = int.from_bytes(blob[at:at + 4], "little")
+        if size < 16 or at + size > len(blob):
+            break
+        entry, at = blob[at:at + size], at + size
+        hot, kind = entry[4], entry[6]
+        if not hot and not kind:
+            continue
+        seconds = int.from_bytes(entry[12:16], "little") / 1000.0
+        name, comment = "", 0
+        if size > 0x49:
+            comment = int.from_bytes(entry[0x48:0x4A], "little")
+            if 2 <= comment <= size - 0x4A:
+                name = entry[0x4A:0x4A + comment - 2].decode("utf-16-le", errors="replace")
+        if hot:
+            r, g, b = (entry[i] if i < size else 0 for i in (comment + 0x4F, comment + 0x50, comment + 0x51))
+            cues.append(SourceCue(seconds, name.strip(), (r, g, b) if r or g or b else None, hot - 1))
+        else:
+            cues.append(SourceCue(seconds, name.strip(), MEMORY_COLORS.get(entry[0x22]) if size > 0x22 else None))
+    return tuple(sorted(cues, key=lambda c: c.seconds))
+
+
+def parse_cue_list(blob: bytes) -> tuple[SourceCue, ...]:
+    """A nexus player's cue list (no names, no colours): entries of 36 bytes, the cue flag at 1, the hot cue at 2 (1:
+    A; 0: a memory cue), the time in half-frames (1/150 s) at 12, little-endian."""
+    cues = []
+    for at in range(0, min(len(blob), LEGACY_CUE_SIZE * MAX_CUES) - LEGACY_CUE_SIZE + 1, LEGACY_CUE_SIZE):
+        cue, hot = blob[at + 1], blob[at + 2]
+        if not cue and not hot:
+            continue
+        seconds = int.from_bytes(blob[at + 12:at + 16], "little") / 150.0
+        cues.append(SourceCue(seconds, slot=hot - 1 if hot else MEMORY))
+    return tuple(sorted(cues, key=lambda c: c.seconds))
 
 
 def parse_beat_grid(blob: bytes) -> tuple:

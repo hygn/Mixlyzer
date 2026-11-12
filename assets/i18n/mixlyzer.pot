@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-11-12 13:22+0900\n"
+"POT-Creation-Date: 2026-11-12 17:27+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -401,7 +401,7 @@ msgid "JumpCUE pads"
 msgstr ""
 
 #: core/controls/midi.py:50 ui/config/pipeline_map.py:34
-#: ui/edit_panel/cue_slots.py:339
+#: ui/edit_panel/cue_slots.py:339 ui/windows/deck_monitor.py:680
 msgid "CUE points"
 msgstr ""
 
@@ -2872,11 +2872,11 @@ msgid "by phrase label"
 msgstr ""
 
 #: ui/config/pipeline_map.py:34
-msgid "JumpCUE"
+msgid "jump points"
 msgstr ""
 
-#: ui/config/pipeline_map.py:34
-msgid "jump points"
+#: ui/config/pipeline_map.py:34 ui/windows/deck_monitor.py:680
+msgid "JumpCUE"
 msgstr ""
 
 #: ui/config/pipeline_map.py:35
@@ -6163,7 +6163,7 @@ msgstr ""
 msgid "The MIDI controller read or not."
 msgstr ""
 
-#: ui/shortcuts.py:111 ui/windows/deck_monitor.py:726
+#: ui/shortcuts.py:111 ui/windows/deck_monitor.py:760
 msgid "Deck Monitor"
 msgstr ""
 
@@ -7046,78 +7046,96 @@ msgstr ""
 msgid "Click: the phrases by section or by label, on every deck."
 msgstr ""
 
-#: ui/windows/deck_monitor.py:648
+#: ui/windows/deck_monitor.py:650
 msgid "How the other program's decks come: OSC from a sender, or a DJ network."
 msgstr ""
 
-#: ui/windows/deck_monitor.py:651
+#: ui/windows/deck_monitor.py:653
 msgid "The network the DJ equipment is on."
 msgstr ""
 
-#: ui/windows/deck_monitor.py:652
+#: ui/windows/deck_monitor.py:654
 msgid "Network"
 msgstr ""
 
-#: ui/windows/deck_monitor.py:657
+#: ui/windows/deck_monitor.py:659
 msgid ""
 "The address the messages are received on. 127.0.0.1 takes them from this "
 "computer only; the address of a network interface (or 0.0.0.0, all of "
 "them) takes them from that network too."
 msgstr ""
 
-#: ui/windows/deck_monitor.py:661
+#: ui/windows/deck_monitor.py:663
 msgid "The UDP port the messages are sent to."
 msgstr ""
 
-#: ui/windows/deck_monitor.py:662
+#: ui/windows/deck_monitor.py:664
 msgid "Listen"
 msgstr ""
 
-#: ui/windows/deck_monitor.py:667
+#: ui/windows/deck_monitor.py:669
 msgid "Address"
 msgstr ""
 
-#: ui/windows/deck_monitor.py:667
+#: ui/windows/deck_monitor.py:669
 msgid "Port"
 msgstr ""
 
-#: ui/windows/deck_monitor.py:673
+#: ui/windows/deck_monitor.py:675
+msgid ""
+"Whose JumpCUEs a track in the library shows when one of the sender's hot "
+"cues differs from Mixlyzer's. Sender: all of the device's hot cues, as "
+"its buttons play them."
+msgstr ""
+
+#: ui/windows/deck_monitor.py:678
+msgid ""
+"Whose CUE points a track in the library shows when one of the sender's "
+"memory cues differs from Mixlyzer's. Sender: all of the device's memory "
+"cues, as its buttons play them."
+msgstr ""
+
+#: ui/windows/deck_monitor.py:684
 msgid "Messages are taken from the network: any device on it can send them."
 msgstr ""
 
-#: ui/windows/deck_monitor.py:696
+#: ui/windows/deck_monitor.py:706
+msgid "Sender"
+msgstr ""
+
+#: ui/windows/deck_monitor.py:730
 msgid "First found"
 msgstr ""
 
-#: ui/windows/deck_monitor.py:700
+#: ui/windows/deck_monitor.py:734
 #, python-brace-format
 msgid "{address} (not found)"
 msgstr ""
 
-#: ui/windows/deck_monitor.py:1007
+#: ui/windows/deck_monitor.py:1080
 #, python-brace-format
 msgid "Deck Monitor could not listen for OSC on {host}:{port} ({error})."
 msgstr ""
 
-#: ui/windows/deck_monitor.py:1009
+#: ui/windows/deck_monitor.py:1082
 #, python-brace-format
 msgid "Deck Monitor could not join {protocol} on {network} ({error})."
 msgstr ""
 
-#: ui/windows/deck_monitor.py:1010
+#: ui/windows/deck_monitor.py:1083
 msgid "the first network"
 msgstr ""
 
-#: ui/windows/deck_monitor.py:1018
+#: ui/windows/deck_monitor.py:1091
 msgid "Not listening."
 msgstr ""
 
-#: ui/windows/deck_monitor.py:1023
+#: ui/windows/deck_monitor.py:1096
 #, python-brace-format
 msgid "Listening on {address}; nothing received yet."
 msgstr ""
 
-#: ui/windows/deck_monitor.py:1025
+#: ui/windows/deck_monitor.py:1098
 #, python-brace-format
 msgid ""
 "Listening on {address}; decks {decks} heard (last message {age} s ago, "

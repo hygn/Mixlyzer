@@ -20,8 +20,11 @@ from core.deck_monitor.source import DeckSource, deck_motion, seconds_per_unit  
 from core.deck_monitor.decks import DeckState, TrackInfo  # noqa: E402
 from core.deck_monitor.match import TrackMatcher, network_path  # noqa: E402
 from core.deck_monitor.readout import LABEL, SECTION, TrackPhrases, bars_beats, bpm_at, key_at  # noqa: E402
-from core.deck_monitor.source_marks import (SourceCue, SourceMarks, TempoChange, grid_from_beats,  # noqa: E402
-                                            parse_key, source_analysis)
+from core.deck_monitor.source_marks import (MEMORY, MIXLYZER, SENDER, SourceCue, SourceMarks,  # noqa: E402
+                                            TempoChange, grid_from_beats, parse_key, source_analysis,
+                                            with_sender_cues)
+from analyzer.music.marks import CuePoint, JumpCue, JumpCueGroup  # noqa: E402
+from core.analysis_library.stored import StoredAnalysis  # noqa: E402
 from core.library.records import TrackRow  # noqa: E402
 from core.settings.config import default_cfg  # noqa: E402
 
@@ -103,9 +106,13 @@ class MessageTests(unittest.TestCase):
             with self.subTest(args):
                 self.assertIsNone(ob.grid_message(ob.GRID_ADDRESS, args))     # whole triples, beat 1 - 4, a
                                                                                 # tempo, starts in order
-        self.assertEqual(ob.cues_message(ob.CUES_ADDRESS, [2, 30.0, " Drop ", 0xFF0000, 1.5, "", -1]),
-                         (2, (SourceCue(1.5, "", None), SourceCue(30.0, "Drop", (255, 0, 0)))))
-        self.assertIsNone(ob.cues_message(ob.CUES_ADDRESS, [2, 30.0, "Drop", 0x1000000]))
+        self.assertEqual(ob.cues_message(ob.CUES_ADDRESS, [2, 30.0, " Drop ", 0xFF0000, 1, 1.5, "", -1, -1]),
+                         (2, (SourceCue(1.5, "", None, MEMORY), SourceCue(30.0, "Drop", (255, 0, 0), 1))))
+        for args in ([2, 30.0, "Drop", 0x1000000, -1], [2, 30.0, "Drop", 0xFF0000], [2, 30.0, "Drop", -1, 26],
+                     [2, 30.0, "Drop", -1, -2]):
+            with self.subTest(args):
+                self.assertIsNone(ob.cues_message(ob.CUES_ADDRESS, args))     # whole quadruples, a colour, a slot
+                                                                                # -1 or A - Z
         self.assertEqual(ob.key_message(ob.KEY_ADDRESS, [1, "8A"]), (1, 21))
         self.assertEqual(ob.key_message(ob.KEY_ADDRESS, [1, ""]), (1, None))
         self.assertIsNone(ob.key_message(ob.KEY_ADDRESS, [1, "H moll"]))          # not read: refused
@@ -117,6 +124,7 @@ class MessageTests(unittest.TestCase):
         marks = r.latest()[0][1].marks
         self.assertEqual((marks.grid, marks.key), ((TempoChange(0.25, 128.0, 1),), 21))
         r.take(osc.message(ob.TRACK_ADDRESS, 1, "Song", "Band", 200.0), "x", 1.2)    # again: kept
+        r.take(osc.message(ob.GRID_ADDRESS, 1, 0.25, 128.0, 1), "x", 1.2)              # the same grid again: kept
         self.assertIs(r.latest()[0][1].marks, marks)
         r.take(osc.message(ob.TRACK_ADDRESS, 1, "Other", "Band", 180.0), "x", 1.3)   # another track: dropped
         self.assertIsNone(r.latest()[0][1].marks)
@@ -147,14 +155,51 @@ class SourceMarksTests(unittest.TestCase):
         self.assertEqual(grid_from_beats([1.0, 0.5], [1, 2]), ())                  # out of order: none
 
     def test_the_marks_as_the_apps_analysis(self):
-        marks = SourceMarks(grid=(TempoChange(0.5, 120.0, 3),), cues=(SourceCue(10.0, "Drop", (255, 40, 40)),
-                                                                      SourceCue(99.0, "past the end")), key=21)
+        blue = (0, 153, 204)
+        marks = SourceMarks(grid=(TempoChange(0.5, 120.0, 3),),
+                            cues=(SourceCue(4.0, "Intro", blue, 0), SourceCue(10.0, "Drop", (255, 40, 40)),
+                                  SourceCue(12.0, "", (0, 150, 200), 2), SourceCue(13.0, "", None, 2),
+                                  SourceCue(99.0, "past the end")), key=21)
         a = source_analysis(marks, 20.0)
         self.assertEqual(a.tempo_segments.tolist(), [[0.5, 20.0, 120.0, 1.5, 4.0, 120.0]])   # its downbeat a 1
         self.assertAlmostEqual(float(a.beats[0]), 0.5)
         self.assertEqual(a.key_segments.tolist(), [[9.0, 1.0, 0.0, 20.0]])
         self.assertEqual([(c.time_sec, c.label, c.color_idx) for c in a.cue_points], [(10.0, "Drop", 0)])
+        # the hot cues are JumpCUEs: a group per colour (the nearest preset, blue), slot C once (its first)
+        self.assertEqual(a.jump_cues, (JumpCueGroup((JumpCue("A", "Intro", 4.0, 4.0, 4.0),
+                                                     JumpCue("C", "C", 12.0, 12.0, 12.0)), 1),))
         self.assertIsNone(source_analysis(marks, 0.0))                                # its length not known
+
+    def test_the_senders_cues_when_one_differs_as_chosen(self):
+        own = StoredAnalysis(duration_sec=100.0, cue_points=(CuePoint(10.0, "a"),),
+                             jump_cues=(JumpCueGroup((JumpCue("A", "A", 20.0, 20.0, 20.0),
+                                                      JumpCue("B", "B", 40.0, 40.0, 40.0)), 0),))
+        alike = SourceMarks(cues=(SourceCue(10.003), SourceCue(20.004, "", None, 0), SourceCue(40.0, "x", None, 1)))
+        for first in ((SENDER, SENDER), (MIXLYZER, MIXLYZER)):
+            self.assertIs(with_sender_cues(own, alike, *first), own)        # at the same places: Mixlyzer's
+        other = SourceMarks(cues=(SourceCue(10.0), SourceCue(22.0, "Hook", None, 0), SourceCue(50.0)))
+        self.assertIs(with_sender_cues(own, other, MIXLYZER, MIXLYZER), own)
+        jumps = with_sender_cues(own, other, SENDER, MIXLYZER)
+        self.assertEqual([(c.label, c.point) for g in jumps.jump_cues for c in g.cues], [("A", 22.0)])
+        self.assertIs(jumps.cue_points, own.cue_points)
+        points = with_sender_cues(own, other, MIXLYZER, SENDER)
+        self.assertEqual([p.time_sec for p in points.cue_points], [10.0, 50.0])
+        self.assertIs(points.jump_cues, own.jump_cues)
+        # one hot cue elsewhere (B), or the same places in other slots: every one of the device's, as its buttons
+        for sent in ((SourceCue(20.0, "", None, 0), SourceCue(41.0, "", None, 1)),
+                     (SourceCue(20.0, "", None, 1), SourceCue(40.0, "", None, 0))):
+            shown = with_sender_cues(own, SourceMarks(cues=sent), SENDER, SENDER)
+            self.assertEqual(sorted((c.label, c.point) for g in shown.jump_cues for c in g.cues),
+                             sorted(("AB"[c.slot], c.seconds) for c in sent))
+            self.assertEqual(shown.cue_points, ())                          # nor a memory cue: none shown
+        bare = StoredAnalysis(duration_sec=100.0)
+        self.assertEqual(len(with_sender_cues(bare, other, MIXLYZER, MIXLYZER).cue_points), 2)   # Mixlyzer's none
+        memory_only = SourceMarks(cues=(SourceCue(10.0),))
+        self.assertIs(with_sender_cues(own, memory_only, MIXLYZER, SENDER), own)
+        self.assertEqual(with_sender_cues(own, memory_only, SENDER, SENDER).jump_cues, ())  # no hot cues: none
+        self.assertEqual(with_sender_cues(own, SourceMarks(cues=()), MIXLYZER, SENDER).cue_points, ())
+        for unknown in (None, SourceMarks(key=3)):                          # no cue list given: Mixlyzer's
+            self.assertIs(with_sender_cues(own, unknown, SENDER, SENDER), own)
 
 
 class _Receiver(ob.OscBasicReceiver):

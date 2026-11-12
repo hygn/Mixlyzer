@@ -29,7 +29,7 @@ from core.deck_monitor.decks import TrackInfo
 from core.deck_monitor.readout import LABEL, SECTION, UNITS, TrackPhrases, bars_beats, bpm_at, key_at
 from core.deck_monitor.receivers import OSC, PROTOCOL_NAMES, PRODJLINK, Where, interfaces
 from core.deck_monitor.source import DeckSource, MonitorDeck
-from core.deck_monitor.source_marks import SourceMarks, source_analysis
+from core.deck_monitor.source_marks import FIRSTS, MIXLYZER, SENDER, SourceMarks, source_analysis, with_sender_cues
 from core.library.records import TrackRow
 from core.marks.phrases import PHRASE_LABELS, phrase_display_name
 from core.settings.store import SettingsStore, current as current_settings
@@ -224,15 +224,15 @@ class DeckViews(QtCore.QObject):
                 pass
         self.plugins = []
 
-    def show(self, data: Optional[TrackData], row) -> None:
-        """The deck's library track (None: none): loaded as the app loads one, its analysis and audio as they
-        come."""
+    def show(self, data: Optional[TrackData], row, analysis: Optional[StoredAnalysis] = None) -> None:
+        """The deck's library track (None: none): loaded as the app loads one, its analysis (``analysis`` in its place:
+        the same with the sender's cues) and audio as they come."""
         if data is None:
             if self.uid is not None:
                 self.uid, self.analysis, self.pcm = None, None, None
                 self.model.load(StoredAnalysis(), {}, 0.0)
             return
-        analysis = data.analysis
+        analysis = analysis if analysis is not None else data.analysis
         if data.uid != self.uid:
             self.uid, self.analysis, self.pcm = data.uid, analysis, None
             self.model.load(analysis or StoredAnalysis(), row.to_meta(), _duration(analysis, row))
@@ -632,11 +632,13 @@ class PhraseLine(QtWidgets.QWidget):
 
 class ConnectionBar(QtWidgets.QWidget):
     """Where the decks are received (set here: ``listen(where)`` asked of the window: OSC at an address and port, or a
-    DJ network on the interface picked), the status."""
+    DJ network on the interface picked), the status, and whose cues a library track's deck shows where the sender's
+    differ (``cues_first(jump_cues, cue_points)`` told of a change: source_marks.FIRSTS each)."""
 
-    def __init__(self, listen: Callable[[Where], None], parent=None) -> None:
+    def __init__(self, listen: Callable[[Where], None], cues_first: Optional[Callable[[str, str], None]] = None,
+                 parent=None) -> None:
         super().__init__(parent)
-        self._listen = listen
+        self._listen, self._cues_first = listen, cues_first
         root = QtWidgets.QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(4)
@@ -669,6 +671,15 @@ class ConnectionBar(QtWidgets.QWidget):
                   self.interface, self.apply):
             row.addWidget(w)
         row.addWidget(self.status, 1)
+        self.jump_cues_first = self._first_choice(
+            tr("Whose JumpCUEs a track in the library shows when one of the sender's hot cues differs from "
+               "Mixlyzer's. Sender: all of the device's hot cues, as its buttons play them."))
+        self.cue_points_first = self._first_choice(
+            tr("Whose CUE points a track in the library shows when one of the sender's memory cues differs from "
+               "Mixlyzer's. Sender: all of the device's memory cues, as its buttons play them."))
+        for name, choice in ((tr("JumpCUE"), self.jump_cues_first), (tr("CUE points"), self.cue_points_first)):
+            row.addWidget(QtWidgets.QLabel(name))
+            row.addWidget(choice)
         root.addLayout(row)
         self.network = QtWidgets.QLabel(tr("Messages are taken from the network: any device on it can send them."))
         self.network.setStyleSheet("color: #d8a441;")
@@ -687,6 +698,29 @@ class ConnectionBar(QtWidgets.QWidget):
     def where(self) -> Where:
         return Where(str(self.protocol.currentData() or OSC), self.host.text().strip() or "127.0.0.1",
                      int(self.port.value()), str(self.interface.currentData() or ""))
+
+    def _first_choice(self, tooltip: str) -> QtWidgets.QComboBox:
+        """Mixlyzer's or the sender's, first (source_marks._first: the sender's all of them, as the device's buttons)."""
+        choice = QtWidgets.QComboBox()
+        choice.addItem("Mixlyzer", MIXLYZER)
+        choice.addItem(tr("Sender"), SENDER)
+        choice.setToolTip(tooltip)
+        choice.currentIndexChanged.connect(self._chose_first)
+        return choice
+
+    def set_cues_first(self, jump_cues: str, cue_points: str) -> None:
+        """The choices as set (not told back)."""
+        for choice, value in ((self.jump_cues_first, jump_cues), (self.cue_points_first, cue_points)):
+            choice.blockSignals(True)
+            choice.setCurrentIndex(max(0, choice.findData(value)))
+            choice.blockSignals(False)
+
+    def cues_first(self) -> tuple[str, str]:
+        return str(self.jump_cues_first.currentData()), str(self.cue_points_first.currentData())
+
+    def _chose_first(self, *_args) -> None:
+        if self._cues_first is not None:
+            self._cues_first(*self.cues_first())
 
     def _fill_interfaces(self, chosen: str) -> None:
         """The networks with an IPv4 address (the first: whichever comes first, as kept when "" is chosen); the one
@@ -733,6 +767,10 @@ class DeckMonitorWindow(QtWidgets.QWidget):
         # what the views show of it)
         self.sent: dict[int, tuple[TrackInfo, SourceMarks, TrackData, TrackRow]] = {}
         self.sent_count = 0             # those shown so far (each one's own uid: the views load it as a new track)
+        self.cues_first = (MIXLYZER, MIXLYZER)    # whose JumpCUEs, whose CUE points first (source_marks.FIRSTS)
+        # each deck's library track as shown with the sender's cues: (its analysis, the sender's marks, cues_first),
+        # what that made (kept while they are the same: the views not loaded again)
+        self.with_cues: dict[int, tuple[tuple, StoredAnalysis]] = {}
         self.gen = 0                    # the library's tracks as last given (an analysis for an older one dropped)
         self.window_sec = DEFAULT_WINDOW_SEC     # the span of time a main view shows (the wheel steps it)
         self.signals = _Signals()
@@ -743,8 +781,9 @@ class DeckMonitorWindow(QtWidgets.QWidget):
         root = QtWidgets.QVBoxLayout(self)
         root.setContentsMargins(8, 8, 8, 8)
         root.setSpacing(6)
-        self.connection = ConnectionBar(self.listen)
+        self.connection = ConnectionBar(self.listen, self.set_cues_first)
         root.addWidget(self.connection)
+        self._take_cues_first(cfg)
         self.views = [DeckViews(self.zoom) for _ in range(DECKS)]
         lanes = QtWidgets.QFrame()
         lanes.setObjectName("deckLanes")
@@ -887,6 +926,7 @@ class DeckMonitorWindow(QtWidgets.QWidget):
         from core.marks.phrases import set_phrase_label_names
         set_phrase_label_names(cfg.viewconfig.phrase_labels.by_label())
         self.set_phrase_unit(getattr(cfg.deckconfig, "monitor_phrase_unit", self.phrase_unit))
+        self._take_cues_first(cfg)
         for views in self.views:
             views.install(cfg)                       # each view draws the loaded track again (render_initial)
 
@@ -915,6 +955,38 @@ class DeckMonitorWindow(QtWidgets.QWidget):
         self._ask({"type": "phrase_unit", "unit": self.phrase_unit})
         self.refresh()
 
+    def _take_cues_first(self, cfg) -> None:
+        """Whose cues first as the settings say (the choices shown so)."""
+        deck = cfg.deckconfig
+        jump_cues = str(getattr(deck, "monitor_jump_cues_first", MIXLYZER))
+        cue_points = str(getattr(deck, "monitor_cue_points_first", MIXLYZER))
+        self.cues_first = (jump_cues if jump_cues in FIRSTS else MIXLYZER, cue_points if cue_points in FIRSTS else MIXLYZER)
+        self.connection.set_cues_first(*self.cues_first)
+
+    def set_cues_first(self, jump_cues: str, cue_points: str) -> None:
+        """Whose JumpCUEs and CUE points a library track's deck shows where the sender's differ, as chosen in the
+        window: every deck so, the app told (kept in deck.json)."""
+        if jump_cues not in FIRSTS or cue_points not in FIRSTS or (jump_cues, cue_points) == self.cues_first:
+            return
+        self.cues_first = (jump_cues, cue_points)
+        self._ask({"type": "cues_first", "jump_cues": jump_cues, "cue_points": cue_points})
+        self.refresh()
+
+    def _with_cues(self, d: MonitorDeck, data: TrackData) -> Optional[StoredAnalysis]:
+        """A library track's analysis as its deck shows it: with the sender's cues where they differ, as chosen
+        (source_marks.with_sender_cues), made again only when its analysis, the sender's marks or the choice change."""
+        analysis = data.analysis
+        marks = d.state.marks if d.state is not None else None
+        if analysis is None or marks is None:
+            self.with_cues.pop(d.deck, None)
+            return analysis
+        kept = self.with_cues.get(d.deck)
+        if kept is not None and kept[0][0] is analysis and kept[0][1] is marks and kept[0][2] == self.cues_first:
+            return kept[1]
+        shown = with_sender_cues(analysis, marks, *self.cues_first)
+        self.with_cues[d.deck] = ((analysis, marks, self.cues_first), shown)
+        return shown
+
     def refresh(self) -> None:
         decks = self.source.decks() if self.source is not None else \
             [MonitorDeck(n, None, True, None, None, 0.0) for n in range(1, DECKS + 1)]
@@ -924,9 +996,10 @@ class DeckMonitorWindow(QtWidgets.QWidget):
             if d.shown and row is not None:
                 data = self._track(row)
                 used.add(data.uid)
+                views.show(data, row, self._with_cues(d, data))
             else:
                 data, row = self._sent(d) if d.shown else (None, None)
-            views.show(data, row)
+                views.show(data, row)
             pitch = d.state.pitch if d.state is not None else None
             views.set_played(pitch or 1.0)
             views.set_window(self.window_sec * (pitch or 1.0))     # one span of time: a faster deck shows more

@@ -8,8 +8,9 @@ Messages, each a dict with its "type":
     to the process:   settings (cfg: the app's settings, read only there; language), tracks (gen, the library's
                       tracks), analysis (uid, gen, the track's stored analysis or None), close
     from the process: listening (host, port: where it listens now, set in its window), phrase_unit (unit: the decks'
-                      phrases by section or by label, clicked there), analysis? (uid: one asked for), done (its
-                      window closed)"""
+                      phrases by section or by label, clicked there), cues_first (jump_cues, cue_points: whose cues
+                      a library track's deck shows where the sender's differ, set there), analysis? (uid: one asked
+                      for), done (its window closed)"""
 
 from __future__ import annotations
 
@@ -21,6 +22,7 @@ from PySide6 import QtCore
 from core.analysis_library import jobs as analysis_jobs
 from core.deck_monitor.readout import UNITS
 from core.deck_monitor.receivers import OSC, PROTOCOLS
+from core.deck_monitor.source_marks import FIRSTS
 from core.settings import store as settings_store
 from system.process_worker import SpawnProcessWorker
 
@@ -132,6 +134,18 @@ class DeckMonitorController(QtCore.QObject):
             self._keep_where(message)
         elif kind == "phrase_unit":
             self._keep_phrase_unit(str(message.get("unit") or ""))
+        elif kind == "cues_first":
+            self._keep_cues_first(str(message.get("jump_cues") or ""), str(message.get("cue_points") or ""))
+
+    def _keep_cues_first(self, jump_cues: str, cue_points: str) -> None:
+        """Whose JumpCUEs and CUE points a library track's deck shows where the sender's differ, as set in the window:
+        kept in deck.json."""
+        if jump_cues not in FIRSTS or cue_points not in FIRSTS:
+            return
+        deck = self._settings().deckconfig
+        if (deck.monitor_jump_cues_first, deck.monitor_cue_points_first) != (jump_cues, cue_points):
+            deck.monitor_jump_cues_first, deck.monitor_cue_points_first = jump_cues, cue_points
+            settings_store.deck_changed()
 
     def _keep_phrase_unit(self, unit: str) -> None:
         """The decks' phrases by section or by label, as clicked in the window: kept in deck.json."""

@@ -188,6 +188,11 @@ class deckconfig:
     # the phrase now and next its decks show, by "section" (each phrase) or by "label" (a run of one label), all four
     # alike: clicked there
     monitor_phrase_unit: Literal["section", "label"]
+    # a library track's JumpCUEs and CUE points when one of the sender's hot cues / memory cues differs (OSC Full, Pro
+    # DJ Link): "mixlyzer" Mixlyzer's (the sender's where it has none) or "sender" all of the sender's, as the device's
+    # buttons play them (none where it has none); set there
+    monitor_jump_cues_first: Literal["mixlyzer", "sender"]
+    monitor_cue_points_first: Literal["mixlyzer", "sender"]
 
 
 @dataclass
@@ -547,6 +552,8 @@ def default_cfg():
         monitor_port=39321,
         monitor_interface="",
         monitor_phrase_unit="section",
+        monitor_jump_cues_first="mixlyzer",
+        monitor_cue_points_first="mixlyzer",
     )
     pcfg = playbackconfig(
         output_clip="tanh",

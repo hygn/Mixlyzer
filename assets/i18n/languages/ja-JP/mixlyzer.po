@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-11-12 13:22+0900\n"
+"POT-Creation-Date: 2026-11-12 17:27+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ja_JP\n"
@@ -442,7 +442,7 @@ msgid "JumpCUE pads"
 msgstr "JumpCUE パッド"
 
 #: core/controls/midi.py:50 ui/config/pipeline_map.py:34
-#: ui/edit_panel/cue_slots.py:339
+#: ui/edit_panel/cue_slots.py:339 ui/windows/deck_monitor.py:680
 msgid "CUE points"
 msgstr "CUEポイント"
 
@@ -3276,15 +3276,15 @@ msgstr "区間 + ラベル"
 msgid "by phrase label"
 msgstr "フレーズラベルごと"
 
-# | msgid "JumpCUE Updated"
-# | msgid "JumpCUE pads"
-#: ui/config/pipeline_map.py:34
-msgid "JumpCUE"
-msgstr "JumpCUE"
-
 #: ui/config/pipeline_map.py:34
 msgid "jump points"
 msgstr "ジャンプポイント"
+
+# | msgid "JumpCUE Updated"
+# | msgid "JumpCUE pads"
+#: ui/config/pipeline_map.py:34 ui/windows/deck_monitor.py:680
+msgid "JumpCUE"
+msgstr "JumpCUE"
 
 # | msgid "key sections"
 # | msgid "sections"
@@ -7011,7 +7011,7 @@ msgstr "MIDI 入力オン / オフ"
 msgid "The MIDI controller read or not."
 msgstr "MIDI コントローラーを読み取るかどうか。"
 
-#: ui/shortcuts.py:111 ui/windows/deck_monitor.py:726
+#: ui/shortcuts.py:111 ui/windows/deck_monitor.py:760
 msgid "Deck Monitor"
 msgstr "デッキモニター"
 
@@ -8070,20 +8070,20 @@ msgstr "次 · {unit}"
 msgid "Click: the phrases by section or by label, on every deck."
 msgstr "クリック: すべてのデッキのフレーズをセクション単位またはラベル単位で表示します。"
 
-#: ui/windows/deck_monitor.py:648
+#: ui/windows/deck_monitor.py:650
 msgid "How the other program's decks come: OSC from a sender, or a DJ network."
 msgstr "他のソフトのデッキの受け取り方: 送信側からの OSC、または DJ ネットワーク。"
 
-#: ui/windows/deck_monitor.py:651
+#: ui/windows/deck_monitor.py:653
 msgid "The network the DJ equipment is on."
 msgstr "DJ 機器がつながっているネットワークです。"
 
 # | msgid "New work"
-#: ui/windows/deck_monitor.py:652
+#: ui/windows/deck_monitor.py:654
 msgid "Network"
 msgstr "ネットワーク"
 
-#: ui/windows/deck_monitor.py:657
+#: ui/windows/deck_monitor.py:659
 msgid ""
 "The address the messages are received on. 127.0.0.1 takes them from this "
 "computer only; the address of a network interface (or 0.0.0.0, all of "
@@ -8093,36 +8093,56 @@ msgstr ""
 "はこのコンピューターからのメッセージだけを受信し、ネットワークインターフェースのアドレス(またはすべてのインターフェースを表す "
 "0.0.0.0)はそのネットワークからのメッセージも受信します。"
 
-#: ui/windows/deck_monitor.py:661
+#: ui/windows/deck_monitor.py:663
 msgid "The UDP port the messages are sent to."
 msgstr "メッセージの送信先の UDP ポートです。"
 
 # | msgid "Written"
-#: ui/windows/deck_monitor.py:662
+#: ui/windows/deck_monitor.py:664
 msgid "Listen"
 msgstr "受信"
 
 # | msgid "Added"
-#: ui/windows/deck_monitor.py:667
+#: ui/windows/deck_monitor.py:669
 msgid "Address"
 msgstr "アドレス"
 
 # | msgid "Export"
-#: ui/windows/deck_monitor.py:667
+#: ui/windows/deck_monitor.py:669
 msgid "Port"
 msgstr "ポート"
 
-#: ui/windows/deck_monitor.py:673
+#: ui/windows/deck_monitor.py:675
+msgid ""
+"Whose JumpCUEs a track in the library shows when one of the sender's hot "
+"cues differs from Mixlyzer's. Sender: all of the device's hot cues, as "
+"its buttons play them."
+msgstr "送信側のホットキューが一つでも Mixlyzer と異なるとき、ライブラリにある曲にどちらの JumpCUE を表示するかを選びます。送信側: 機器のボタンと同じになるよう、機器のホットキューをすべて表示します。"
+
+#: ui/windows/deck_monitor.py:678
+msgid ""
+"Whose CUE points a track in the library shows when one of the sender's "
+"memory cues differs from Mixlyzer's. Sender: all of the device's memory "
+"cues, as its buttons play them."
+msgstr "送信側のメモリーキューが一つでも Mixlyzer と異なるとき、ライブラリにある曲にどちらの CUEポイントを表示するかを選びます。送信側: 機器のボタンと同じになるよう、機器のメモリーキューをすべて表示します。"
+
+#: ui/windows/deck_monitor.py:684
 msgid "Messages are taken from the network: any device on it can send them."
 msgstr "ネットワークからメッセージを受け取ります。そのネットワーク上のどの機器からも送れます。"
 
+# | msgid "Remove"
+# | msgid "Revert"
+#: ui/windows/deck_monitor.py:706
+msgid "Sender"
+msgstr "送信側"
+
 # | msgid "First CHORUS"
-#: ui/windows/deck_monitor.py:696
+#: ui/windows/deck_monitor.py:730
 msgid "First found"
 msgstr "最初に見つかったネットワーク"
 
 # | msgid "{name} (not connected)"
-#: ui/windows/deck_monitor.py:700
+#: ui/windows/deck_monitor.py:734
 #, python-brace-format
 msgid "{address} (not found)"
 msgstr "{address} (見つかりません)"
@@ -8132,7 +8152,7 @@ msgstr "{address} (見つかりません)"
 # | and has" " been disabled."
 # | msgid "" "Deck Monitor could not listen for OSC on {host}:{port} ({error})
 # | and was " "turned off."
-#: ui/windows/deck_monitor.py:1007
+#: ui/windows/deck_monitor.py:1080
 #, python-brace-format
 msgid "Deck Monitor could not listen for OSC on {host}:{port} ({error})."
 msgstr "デッキモニターは {host}:{port} で OSC を受信できません（{error}）。"
@@ -8143,20 +8163,20 @@ msgstr "デッキモニターは {host}:{port} で OSC を受信できません�
 # | msgid "" "Deck Monitor could not listen for OSC on {host}:{port} ({error})
 # | and was " "turned off."
 # | msgid "Deck Monitor could not listen for OSC on {host}:{port} ({error})."
-#: ui/windows/deck_monitor.py:1009
+#: ui/windows/deck_monitor.py:1082
 #, python-brace-format
 msgid "Deck Monitor could not join {protocol} on {network} ({error})."
 msgstr "デッキモニターは {network} で {protocol} に参加できません（{error}）。"
 
-#: ui/windows/deck_monitor.py:1010
+#: ui/windows/deck_monitor.py:1083
 msgid "the first network"
 msgstr "最初に見つかったネットワーク"
 
-#: ui/windows/deck_monitor.py:1018
+#: ui/windows/deck_monitor.py:1091
 msgid "Not listening."
 msgstr "受信していません。"
 
-#: ui/windows/deck_monitor.py:1023
+#: ui/windows/deck_monitor.py:1096
 #, python-brace-format
 msgid "Listening on {address}; nothing received yet."
 msgstr "{address} で受信中。まだ何も受信していません。"
@@ -8164,7 +8184,7 @@ msgstr "{address} で受信中。まだ何も受信していません。"
 # | msgid "" "Listening on {address}; following deck {deck} (last message
 # {age}
 # | s ago, " "from {sender})."
-#: ui/windows/deck_monitor.py:1025
+#: ui/windows/deck_monitor.py:1098
 #, python-brace-format
 msgid ""
 "Listening on {address}; decks {decks} heard (last message {age} s ago, "

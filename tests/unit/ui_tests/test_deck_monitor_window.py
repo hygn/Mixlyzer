@@ -32,10 +32,11 @@ ANALYSIS = StoredAnalysis(duration_sec=64.0, beats=np.arange(0.0, 64.0, 0.5),
 class _Source:
     def __init__(self):
         self.position, self.bpm, self.track_bpm, self.master = 30.0, 0.0, 0.0, None
+        self.marks = None                          # the sender's own marks of deck 1's track
 
     def decks(self):
         state = DeckState(1, True, True, seconds=self.position, track=TrackInfo(title="Song"), bpm=self.bpm,
-                          track_bpm=self.track_bpm, master=self.master)
+                          track_bpm=self.track_bpm, master=self.master, marks=self.marks)
         return [MonitorDeck(1, state, False, ROW, self.position, 0.0, 1.0),
                 *(MonitorDeck(n, None, True, None, None, 0.0) for n in (2, 3, 4))]
 
@@ -219,6 +220,40 @@ class DeckMonitorWindowTests(unittest.TestCase):
         sent["duration"] = 0.0                                                 # its length not known: none
         self.w.refresh()
         self.assertEqual(views.model.beats.size, 0)
+
+    def test_a_library_tracks_cues_as_chosen_where_the_senders_differ(self):
+        from dataclasses import replace
+        from analyzer.music.marks import CuePoint, JumpCue, JumpCueGroup
+        from core.deck_monitor.source_marks import MIXLYZER, SENDER, SourceCue, SourceMarks
+        own = replace(ANALYSIS, cue_points=(CuePoint(8.0, "Mine"),),
+                      jump_cues=(JumpCueGroup((JumpCue("A", "A", 4.0, 4.0, 4.0),), 0),))
+        self.source.marks = SourceMarks(cues=(SourceCue(12.0, "Hook", (0, 153, 204), 0), SourceCue(20.0, "Drop")))
+        self.w.refresh()
+        self.w.command({"type": "analysis", "uid": "a", "gen": 0, "analysis": own})
+        self.w.refresh()
+        model, bar = self.w.views[0].model, self.w.connection
+        self.assertIs(model.analysis, own)                                     # Mixlyzer's first, as default
+        bar.jump_cues_first.setCurrentIndex(bar.jump_cues_first.findData(SENDER))
+        self.assertEqual(self.messages.items[-1], {"type": "cues_first", "jump_cues": SENDER, "cue_points": MIXLYZER})
+        self.assertEqual([(c.label, c.comment, c.point) for g in model.jump_cues for c in g.cues], [("A", "Hook", 12.0)])
+        self.assertEqual([p.label for p in model.cue_points], ["Mine"])
+        bar.cue_points_first.setCurrentIndex(bar.cue_points_first.findData(SENDER))
+        self.assertEqual([p.time_sec for p in model.cue_points], [20.0])
+        shown = model.analysis
+        self.w.refresh()
+        self.assertIs(model.analysis, shown)                                   # the same: not loaded again
+        self.source.marks = None                                               # the sender's gone: Mixlyzer's
+        self.w.refresh()
+        self.assertIs(model.analysis, own)
+        cfg = default_cfg()
+        cfg.deckconfig.monitor_cue_points_first = SENDER
+        w = dm.DeckMonitorWindow(cfg)
+        try:
+            self.assertEqual(w.connection.cues_first(), (MIXLYZER, SENDER))   # as kept
+        finally:
+            w.shut_down()
+            w.close()
+            w.deleteLater()
 
     def test_the_phrase_unit_as_kept(self):
         cfg = default_cfg()
