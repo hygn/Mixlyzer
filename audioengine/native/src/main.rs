@@ -406,20 +406,30 @@ fn mix_file(args: &[String], input: &str) {
     std::fs::write(get("--out", "out.f32"), bytes).expect("write output");
 }
 
-/// Offline: the time stretch of a raw float32 file (interleaved): the Export tab's render time-stretched
-/// (`client.stretch_offline`), the tests' checks of its level and attacks.
-/// --stretch-file IN --out OUT --channels C --rate R --factor F [--block N]
+/// Offline: the time stretch of a raw float32 file (interleaved), its key shifted by ``--semitones`` (the deck's
+/// key shift, keyshift::Pitched: at 0 the stretcher itself, sample for sample): the Export tab's render at another
+/// tempo and / or key (`client.stretch_offline`), the tests' checks of its level and attacks.
+/// --stretch-file IN --out OUT --channels C --rate R --factor F [--semitones S] [--block N]
 fn stretch_file(args: &[String], input: &str) {
     let get = |n: &str, d: &str| arg(args, n).unwrap_or_else(|| d.to_string());
     let ch: usize = get("--channels", "2").parse().unwrap();
     let rate: u32 = get("--rate", "48000").parse().unwrap();
     device::check_rate(rate).unwrap_or_else(|e| panic!("--rate: {e}"));
     let factor: f64 = get("--factor", "1.0").parse().unwrap();
+    let semitones: f64 = get("--semitones", "0").parse().unwrap();
+    let max = keyshift::KEY_SHIFT_MAX as f64;
+    if !(semitones.abs() <= max) {
+        panic!("--semitones: {semitones} is outside ±{max}");
+    }
     let block: usize = get("--block", "480").parse().unwrap();
     let bytes = std::fs::read(input).expect("read input");
     let pcm: Vec<f32> = bytes.chunks_exact(4).map(|b| f32::from_le_bytes(b.try_into().unwrap())).collect();
     vk::warm();
-    let mut s = stretch::Stretcher::new(ch, rate);
+    let mut s = keyshift::Pitched::new(ch, rate);
+    s.set_pitch(keyshift::key_ratio(semitones));
+    if semitones != 0.0 {
+        eprintln!("key shifted {semitones:+} semitones"); // the client's sign that this build shifts the key
+    }
     let mut pos = 0.0;
     let mut out: Vec<f32> = Vec::new();
     let t0 = clock::now();

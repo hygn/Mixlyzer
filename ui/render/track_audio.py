@@ -1,7 +1,7 @@
 """A track's audio rendered for the Export tab, run off the GUI thread (it decodes the file and takes seconds): the
 whole track, with a JumpCUE's jump baked in or not (the audio up to the cue jumped from, then on from the cue
-jumped to, crossfaded over JUMP_CROSSFADE frames: ui.render.jumprender), at another tempo or not (the native
-engine's time stretch, as the deck plays it: core.playback.player.stretch_offline)."""
+jumped to, crossfaded over JUMP_CROSSFADE frames: ui.render.jumprender), at another tempo and / or key or not (the
+native engine's time stretch and key shift, as the deck plays them: core.playback.player.stretch_offline)."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -23,12 +23,14 @@ class RenderError(ValueError):
     """A render refused before its work: longer than MAX_SECONDS."""
 
 
-def render_track(path: str, jump: tuple[float, float] | None = None, speed: float = 1.0) -> tuple[np.ndarray, int]:
+def render_track(path: str, jump: tuple[float, float] | None = None, speed: float = 1.0,
+                 semitones: float = 0.0) -> tuple[np.ndarray, int]:
     """The audio of ``path`` (stereo float32, [frames, 2]) and its sample rate: ``jump`` (seconds jumped from, to)
-    baked in, played ``speed`` times as fast (1: as it is; another, at the engine's 44.1 kHz at least: the file's
-    rate below it is raised)."""
+    baked in, played ``speed`` times as fast (1: as it is) and its key shifted by ``semitones`` (0: as it is); either
+    changed, at the engine's 44.1 kHz at least (the file's rate below it is raised)."""
+    changed = speed != 1.0 or semitones != 0.0
     rate = int(get_samplerate(path) or 44100)
-    if speed != 1.0:
+    if changed:
         rate = max(rate, MIN_RATE)
     pcm = np.asarray(decode_to_memmap(path, rate, 2), dtype=np.float32)
     if pcm.ndim == 1:
@@ -40,10 +42,10 @@ def render_track(path: str, jump: tuple[float, float] | None = None, speed: floa
         start, dest = (float(np.clip(t, 0.0, last)) for t in jump)
         pcm = np.stack([jump_renderer(np.array(pcm[:, c], copy=True), rate, start, dest, JUMP_CROSSFADE)[0]
                         for c in range(pcm.shape[1])], axis=1)
-    if speed != 1.0:
+    if changed:
         if pcm.shape[0] / rate / speed > MAX_SECONDS:
             raise RenderError(f"longer than {MAX_SECONDS} s at {speed:g} times the speed")
-        pcm = stretch_offline(pcm, rate, speed)
+        pcm = stretch_offline(pcm, rate, speed, semitones)
     return np.clip(pcm, -1.0, 1.0).astype(np.float32, copy=False), rate
 
 

@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-11-12 17:27+0900\n"
+"POT-Creation-Date: 2026-11-13 12:29+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -410,7 +410,7 @@ msgid "Beat jump"
 msgstr ""
 
 #: core/controls/midi.py:52 core/workers/analysis_texts.py:16
-#: ui/library/tabs/export.py:120
+#: ui/library/tabs/export.py:131
 msgid "Tempo"
 msgstr ""
 
@@ -1111,7 +1111,7 @@ msgstr ""
 
 #: core/workers/analysis_texts.py:19 ui/config/analysis.py:240
 #: ui/config/pipeline_map.py:27 ui/config/pipeline_map.py:35
-#: ui/library/tabs/edit_song.py:128
+#: ui/library/tabs/edit_song.py:128 ui/library/tabs/export.py:163
 msgid "Key"
 msgstr ""
 
@@ -4978,7 +4978,7 @@ msgid ""
 "the analysis, playlists and CUEs stay with the track."
 msgstr ""
 
-#: ui/library/tabs/edit_song.py:118 ui/library/tabs/export.py:72
+#: ui/library/tabs/edit_song.py:118 ui/library/tabs/export.py:83
 msgid "Browse..."
 msgstr ""
 
@@ -5013,181 +5013,228 @@ msgid ""
 "{path}"
 msgstr ""
 
-#: ui/library/tabs/export.py:86 ui/library/tabs/sync.py:82
+#: ui/library/tabs/export.py:97 ui/library/tabs/sync.py:82
 msgid "Source"
 msgstr ""
 
-#: ui/library/tabs/export.py:87
+#: ui/library/tabs/export.py:98
 msgid "Destination Folder"
 msgstr ""
 
-#: ui/library/tabs/export.py:90
+#: ui/library/tabs/export.py:101
 msgid "Tempo Change"
 msgstr ""
 
-#: ui/library/tabs/export.py:91
+#: ui/library/tabs/export.py:102
 msgid ""
 "<p>The tempo the audio is rendered at and the tempo map written for: a "
 "change of ±100% at most from the track's, as the deck's tempo fader in "
 "WIDE, or the BPM aimed at.</p>"
 msgstr ""
 
-#: ui/library/tabs/export.py:121
+#: ui/library/tabs/export.py:132
 msgid "Target BPM"
 msgstr ""
 
-#: ui/library/tabs/export.py:124
+#: ui/library/tabs/export.py:136
+msgid "Key Change"
+msgstr ""
+
+#: ui/library/tabs/export.py:137
+#, python-brace-format
+msgid ""
+"<p>The key the audio is rendered in and the tempo map's keys: a shift of "
+"±{max} semitones at most from the track's, as the deck's KEY, or the key "
+"aimed at.</p>"
+msgstr ""
+
+#: ui/library/tabs/export.py:148
+msgid " semitones"
+msgstr ""
+
+#: ui/library/tabs/export.py:151
+msgid "The key aimed at, in the track's mode: shifted to it the nearest way."
+msgstr ""
+
+#: ui/library/tabs/export.py:164
+msgid "Target Key"
+msgstr ""
+
+#: ui/library/tabs/export.py:167
 msgid "Render Audio"
 msgstr ""
 
-#: ui/library/tabs/export.py:125
+#: ui/library/tabs/export.py:168
 msgid ""
 "<p>The track written as a WAV file: as it is, with a JumpCUE's jump baked"
 " in (the audio up to the cue jumped from, then on from the cue jumped "
-"to), at the tempo changed, or both.</p>"
+"to), at the tempo and / or the key changed, or all of them.</p>"
 msgstr ""
 
-#: ui/library/tabs/export.py:128
+#: ui/library/tabs/export.py:171
 msgid "No jump"
 msgstr ""
 
-#: ui/library/tabs/export.py:130
+#: ui/library/tabs/export.py:173
 msgid "The JumpCUE the audio jumps from (No jump: the whole track)."
 msgstr ""
 
-#: ui/library/tabs/export.py:131
+#: ui/library/tabs/export.py:174
 msgid "The JumpCUE the audio jumps to."
 msgstr ""
 
-#: ui/library/tabs/export.py:133 ui/library/tabs/export.py:157
+#: ui/library/tabs/export.py:176 ui/library/tabs/export.py:201
 msgid "At the changed tempo"
 msgstr ""
 
-#: ui/library/tabs/export.py:138
+#: ui/library/tabs/export.py:178 ui/library/tabs/export.py:205
+msgid "At the changed key"
+msgstr ""
+
+#: ui/library/tabs/export.py:184
 msgid "The tempo is changed by the native audio engine, which is not built."
 msgstr ""
 
-#: ui/library/tabs/export.py:140
+#: ui/library/tabs/export.py:186
+msgid "The key is changed by the native audio engine, which is not built."
+msgstr ""
+
+#: ui/library/tabs/export.py:187
 msgid "Render"
 msgstr ""
 
-#: ui/library/tabs/export.py:143
+#: ui/library/tabs/export.py:190
 msgid "Jump from"
 msgstr ""
 
-#: ui/library/tabs/export.py:144
+#: ui/library/tabs/export.py:191
 msgid "Jump to"
 msgstr ""
 
-#: ui/library/tabs/export.py:153
+#: ui/library/tabs/export.py:197
 msgid "DAW Tempo Map"
 msgstr ""
 
-#: ui/library/tabs/export.py:155
+#: ui/library/tabs/export.py:199
 msgid ""
 "<p>A MIDI file of the track's beatgrid for a DAW: its tempo (ramps too), "
 "bars and key changes. Put the audio at the project's start and import the"
 " file's tempo map there.</p>"
 msgstr ""
 
-#: ui/library/tabs/export.py:159
+#: ui/library/tabs/export.py:203
 msgid ""
 "<p>The tempo map of the audio rendered at the tempo changed; off, of the "
 "track as it is.</p>"
 msgstr ""
 
-#: ui/library/tabs/export.py:161
+#: ui/library/tabs/export.py:207
+msgid ""
+"<p>The keys of the audio rendered at the key changed (the nearest "
+"semitone); off, the track's own.</p>"
+msgstr ""
+
+#: ui/library/tabs/export.py:209
 msgid "Export MIDI"
 msgstr ""
 
-#: ui/library/tabs/export.py:227
+#: ui/library/tabs/export.py:286
 #, python-brace-format
 msgid "from {bpm} BPM"
 msgstr ""
 
-#: ui/library/tabs/export.py:228
+#: ui/library/tabs/export.py:287
 msgid "The track has no BPM."
 msgstr ""
 
-#: ui/library/tabs/export.py:265 ui/library/tabs/export.py:370
+#: ui/library/tabs/export.py:347
+#, python-brace-format
+msgid "from {key}"
+msgstr ""
+
+#: ui/library/tabs/export.py:348
+msgid "The track has no key."
+msgstr ""
+
+#: ui/library/tabs/export.py:378 ui/library/tabs/export.py:486
 msgid "Source file not found at the specified path."
 msgstr ""
 
-#: ui/library/tabs/export.py:268
+#: ui/library/tabs/export.py:381
 msgid "Source path is invalid."
 msgstr ""
 
-#: ui/library/tabs/export.py:276
+#: ui/library/tabs/export.py:389
 msgid "Select Destination Folder"
 msgstr ""
 
-#: ui/library/tabs/export.py:285
+#: ui/library/tabs/export.py:398
 msgid "No track is selected."
 msgstr ""
 
-#: ui/library/tabs/export.py:289
+#: ui/library/tabs/export.py:402
 msgid "Please select a destination folder."
 msgstr ""
 
-#: ui/library/tabs/export.py:295
+#: ui/library/tabs/export.py:408
 #, python-brace-format
 msgid ""
 "Cannot create destination folder:\n"
 "{error}"
 msgstr ""
 
-#: ui/library/tabs/export.py:306
+#: ui/library/tabs/export.py:419
 #, python-brace-format
 msgid ""
 "'{name}' already exists.\n"
 "Overwrite?"
 msgstr ""
 
-#: ui/library/tabs/export.py:331 ui/library/tabs/export.py:457
+#: ui/library/tabs/export.py:444 ui/library/tabs/export.py:575
 #: ui/library/tabs/sync.py:345 ui/library/tabs/sync.py:544
 msgid "The track's analysis could not be read."
 msgstr ""
 
-#: ui/library/tabs/export.py:354
+#: ui/library/tabs/export.py:470
 msgid "The track has no beatgrid to write."
 msgstr ""
 
-#: ui/library/tabs/export.py:356 ui/library/tabs/sync.py:736
+#: ui/library/tabs/export.py:472 ui/library/tabs/sync.py:736
 #: ui/library/tabs/sync.py:739 ui/library/tabs/sync.py:802
 #: ui/library/tabs/sync.py:805 ui/windows/diagnostics_dialog.py:59
 #, python-brace-format
 msgid "The file could not be written: {error}"
 msgstr ""
 
-#: ui/library/tabs/export.py:377
+#: ui/library/tabs/export.py:493
 msgid "Pick the JumpCUE jumped to, another than the one jumped from."
 msgstr ""
 
-#: ui/library/tabs/export.py:384
+#: ui/library/tabs/export.py:501
 #, python-brace-format
 msgid ""
 "At this tempo the audio would be longer than {minutes} minutes: not "
 "rendered."
 msgstr ""
 
-#: ui/library/tabs/export.py:393
+#: ui/library/tabs/export.py:510
 msgid "The track's own file is not written over."
 msgstr ""
 
-#: ui/library/tabs/export.py:405
+#: ui/library/tabs/export.py:523
 #, python-brace-format
 msgid "The audio could not be rendered: {error}"
 msgstr ""
 
-#: ui/library/tabs/export.py:418
+#: ui/library/tabs/export.py:536
 msgid "Rendering the audio..."
 msgstr ""
 
-#: ui/library/tabs/export.py:418
+#: ui/library/tabs/export.py:536
 msgid "Writing the tempo map..."
 msgstr ""
 
-#: ui/library/tabs/export.py:428
+#: ui/library/tabs/export.py:546
 #, python-brace-format
 msgid ""
 "Export completed:\n"
@@ -5921,14 +5968,14 @@ msgstr ""
 msgid "All"
 msgstr ""
 
-#: ui/library/tabs/edit_song.py:124 ui/library/tabs/export.py:84
+#: ui/library/tabs/edit_song.py:124 ui/library/tabs/export.py:95
 #: ui/library/tabs/sync.py:80 ui/library/tabs/sync.py:93
 #: ui/library/tabs/tieup_editor.py:140 ui/library/tabs/track_search_index.py:68
 #: ui/library/widget.py:39 ui/windows/tieup_works.py:77
 msgid "Title"
 msgstr ""
 
-#: ui/library/tabs/edit_song.py:125 ui/library/tabs/export.py:85
+#: ui/library/tabs/edit_song.py:125 ui/library/tabs/export.py:96
 #: ui/library/tabs/sync.py:81 ui/library/tabs/sync.py:94
 #: ui/library/tabs/track_search_index.py:68 ui/library/widget.py:39
 msgid "Artist"
@@ -6372,12 +6419,12 @@ msgstr ""
 msgid "The works window: every work the tie-ups name, edited, merged or deleted."
 msgstr ""
 
-#: ui/library/actions.py:52 ui/library/tabs/export.py:285
-#: ui/library/tabs/export.py:289 ui/library/tabs/export.py:295
-#: ui/library/tabs/export.py:305 ui/library/tabs/export.py:330
-#: ui/library/tabs/export.py:370 ui/library/tabs/export.py:376
-#: ui/library/tabs/export.py:383 ui/library/tabs/export.py:393
-#: ui/library/tabs/export.py:425 ui/library/tabs/export.py:427
+#: ui/library/actions.py:52 ui/library/tabs/export.py:398
+#: ui/library/tabs/export.py:402 ui/library/tabs/export.py:408
+#: ui/library/tabs/export.py:418 ui/library/tabs/export.py:443
+#: ui/library/tabs/export.py:486 ui/library/tabs/export.py:492
+#: ui/library/tabs/export.py:500 ui/library/tabs/export.py:510
+#: ui/library/tabs/export.py:543 ui/library/tabs/export.py:545
 #: ui/shortcuts.py:171
 msgid "Export Track"
 msgstr ""
@@ -6682,7 +6729,7 @@ msgstr ""
 msgid "Pick the key"
 msgstr ""
 
-#: ui/edit_panel/key.py:97 ui/edit_panel/key_picker.py:82 ui/shortcuts.py:250
+#: ui/edit_panel/key.py:97 ui/edit_panel/key_picker.py:86 ui/shortcuts.py:250
 msgid "Pick the key (Alphanumeric wheel)"
 msgstr ""
 

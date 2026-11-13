@@ -49,9 +49,12 @@ class KeyPickerPopup(QtWidgets.QFrame):
                 f"QToolButton:hover {{ border-color: {fg}; }}"
             )
 
-    def show_for(self, anchor: QtWidgets.QWidget, current: int | None) -> None:
-        """Open under ``anchor`` with ``current`` outlined."""
+    def show_for(self, anchor: QtWidgets.QWidget, current: int | None, minor: bool | None = None) -> None:
+        """Open under ``anchor`` with ``current`` outlined; ``minor`` given, only that mode's row (A minor, B
+        major)."""
         self._current = current
+        for idx, cell in self._cells.items():
+            cell.setVisible(minor is None or (idx >= 12) == minor)
         self._restyle()
         self.adjustSize()
         pos = anchor.mapToGlobal(QtCore.QPoint(0, anchor.height() + 2))
@@ -76,11 +79,16 @@ class KeyPickButton(QtWidgets.QToolButton):
     def __init__(self, key: int = 0, parent=None):
         super().__init__(parent)
         self._key = int(key) % 24
+        self._minor: bool | None = None
         self._popup = KeyPickerPopup(self)
         self._popup.picked.connect(self.setKey)
-        self.clicked.connect(lambda: self._popup.show_for(self, self._key))
+        self.clicked.connect(lambda: self._popup.show_for(self, self._key, self._minor))
         self.setToolTip(tr("Pick the key (Alphanumeric wheel)"))
         self._restyle()
+
+    def setMode(self, minor: bool | None) -> None:
+        """Only minor (A) or major (B) keys picked from now on; None: either."""
+        self._minor = minor
 
     def key(self) -> int:
         return self._key

@@ -539,11 +539,11 @@ def native_engine_built() -> bool:
     return native_client.available()
 
 
-def stretch_offline(pcm: np.ndarray, rate: int, speed: float) -> np.ndarray:
-    """``pcm`` ([frames, channels] float32) time-stretched to ``speed`` times as fast by the native engine, as the
-    deck plays it (a render, off the GUI thread: it takes seconds); RuntimeError where the engine is not built or
-    fails."""
-    return native_client.stretch_offline(pcm, rate, speed)
+def stretch_offline(pcm: np.ndarray, rate: int, speed: float, semitones: float = 0.0) -> np.ndarray:
+    """``pcm`` ([frames, channels] float32) time-stretched to ``speed`` times as fast and its key shifted by
+    ``semitones`` (the deck's ±6) by the native engine, as the deck plays it (a render, off the GUI thread: it takes
+    seconds); RuntimeError where the engine is not built or fails."""
+    return native_client.stretch_offline(pcm, rate, speed, semitones)
 
 
 def channel_pair(text: str) -> tuple[int, int] | None:

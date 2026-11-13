@@ -6,6 +6,7 @@ from typing import Optional
 from urllib.parse import unquote, urlparse
 
 from PySide6 import QtCore, QtWidgets
+from audioengine.controls import KEY_SHIFT_MAX
 from system import os_support
 from system.os_support import path_key
 from system.atomic_io import atomic_output_path
@@ -19,10 +20,12 @@ from third_party.midi_tempo_map import TempoMapError, midi_tempo_map
 from third_party.rekordbox import sanitize_filename
 from core.marks.colors import jump_cue_colors
 from ui.config.scroll import scroll_page
+from ui.edit_panel.key_picker import KeyPickButton
 from ui.widgets.elided_label import ElidedLabel
 from ui.widgets.jumpcue_picker import JumpCuePickButton
 from analyzer.music.marks import JumpCue, JumpCueGroup
 from ui.render.track_audio import MAX_SECONDS, render_track, write_wav
+from views.render.keystrip import key_segment_label
 from system.i18n import tr
 
 # the tempo change in +-% of the track's, the deck's tempo fader's WIDE range (the slider in 0.01 % steps); -100 %
@@ -32,21 +35,29 @@ CHANGE_MIN = -99.99
 
 
 class _ChangeSpinBox(QtWidgets.QDoubleSpinBox):
-    """A tempo change shown signed (+5.00 %), as the deck's fader reads."""
+    """A change shown signed (a tempo's +5.00 %, a key's +2.00), as the deck reads it."""
 
     def textFromValue(self, value: float) -> str:
         return f"{value:+.2f}"
 
 
+def _number(value: float) -> str:
+    """A file name's number: 150, 150.25, -1.5 (no trailing zeros)."""
+    return f"{value:.2f}".rstrip("0").rstrip(".")
+
+
 class ExportTrackPanel(QtWidgets.QWidget):
     """The library panel's Export tab: the track's audio rendered (WAV) as it is, with a JumpCUE's jump baked in
     (the cue jumped from and the cue jumped to picked apart, each in a picker of the cues' colours as the key's) and
-    / or at the tempo changed; its beatgrid as a DAW's tempo map (a MIDI file: third_party.midi_tempo_map), at the
-    track's tempo or the changed one. The tempo is changed by +-% (the deck's fader's WIDE range, -99.99 - +100 %) or
-    as the BPM aimed at, from the track's BPM as the library stores it; a file made at the changed tempo is named
-    with its target BPM (150BPM; its change in % where the track has no BPM). The marks are
-    the deck's (as edited) when it holds the track, else the stored ones. The rendering and the MIDI file are made
-    on a thread of their own, never the GUI's. Its file's tags are the Sync tab's (ui.library.tabs.sync)."""
+    / or at the tempo and / or the key changed; its beatgrid as a DAW's tempo map (a MIDI file:
+    third_party.midi_tempo_map), at the track's tempo and keys or the changed ones. The tempo is changed by +-% (the
+    deck's fader's WIDE range, -99.99 - +100 %) or as the BPM aimed at, from the track's BPM as the library stores
+    it; the key by semitones (the deck's KEY: ±6, any fraction) or as the key aimed at in the track's mode, from the
+    track's key as the library stores it (the nearest shift to it); both at once in one render (the native engine's
+    time stretch and key shift). A file made at a changed tempo is named with its target BPM (150BPM; its change in
+    % where the track has no BPM), at a changed key with its shift (key+2). The marks are the deck's (as edited)
+    when it holds the track, else the stored ones. The rendering and the MIDI file are made on a thread of their
+    own, never the GUI's. Its file's tags are the Sync tab's (ui.library.tabs.sync)."""
 
     _sig_written = QtCore.Signal(str, str, str)    # what was made ("audio" / "midi"), the file written, the error
 
@@ -120,11 +131,43 @@ class ExportTrackPanel(QtWidgets.QWidget):
         tempo_form.addRow(tr("Tempo"), tempo_row)
         tempo_form.addRow(tr("Target BPM"), bpm_row)
 
+        # the key change, with the tempo's or alone: the rendering's and the tempo map's keys (each says whether it
+        # takes it)
+        key = QtWidgets.QGroupBox(tr("Key Change"))
+        key.setToolTip(tr("<p>The key the audio is rendered in and the tempo map's keys: a shift of ±{max} semitones "
+                          "at most from the track's, as the deck's KEY, or the key aimed at.</p>").format(
+                              max=KEY_SHIFT_MAX))
+        self.sld_key = QtWidgets.QSlider(QtCore.Qt.Horizontal)
+        self.sld_key.setRange(-KEY_SHIFT_MAX * 100, KEY_SHIFT_MAX * 100)      # in cents
+        self.sld_key.setValue(0)
+        self.sld_key.setPageStep(100)
+        self.spn_key = _ChangeSpinBox()
+        self.spn_key.setDecimals(2)
+        self.spn_key.setRange(-float(KEY_SHIFT_MAX), float(KEY_SHIFT_MAX))
+        self.spn_key.setSingleStep(1.0)                                       # a semitone, the fraction kept
+        self.spn_key.setSuffix(tr(" semitones"))
+        self.spn_key.setValue(0.0)
+        self.btn_target_key = KeyPickButton()
+        self.btn_target_key.setToolTip(tr("The key aimed at, in the track's mode: shifted to it the nearest way."))
+        self.lbl_source_key = QtWidgets.QLabel("")
+        self.sld_key.valueChanged.connect(lambda v: self._set_key_shift(v / 100.0, self.sld_key))
+        self.spn_key.valueChanged.connect(lambda v: self._set_key_shift(v, self.spn_key))
+        self.btn_target_key.keyChanged.connect(self._on_target_key)
+        key_row = QtWidgets.QHBoxLayout()
+        key_row.addWidget(self.sld_key, 1)
+        key_row.addWidget(self.spn_key)
+        target_key_row = QtWidgets.QHBoxLayout()
+        target_key_row.addWidget(self.btn_target_key)
+        target_key_row.addWidget(self.lbl_source_key, 1)
+        key_form = QtWidgets.QFormLayout(key)
+        key_form.addRow(tr("Key"), key_row)
+        key_form.addRow(tr("Target Key"), target_key_row)
+
         # the track's audio rendered
         render = QtWidgets.QGroupBox(tr("Render Audio"))
         render.setToolTip(tr("<p>The track written as a WAV file: as it is, with a JumpCUE's jump baked in (the "
-                             "audio up to the cue jumped from, then on from the cue jumped to), at the tempo "
-                             "changed, or both.</p>"))
+                             "audio up to the cue jumped from, then on from the cue jumped to), at the tempo and / or "
+                             "the key changed, or all of them.</p>"))
         self.btn_jump_from = JumpCuePickButton(none_text=tr("No jump"))
         self.btn_jump_to = JumpCuePickButton()
         self.btn_jump_from.setToolTip(tr("The JumpCUE the audio jumps from (No jump: the whole track)."))
@@ -132,23 +175,24 @@ class ExportTrackPanel(QtWidgets.QWidget):
         self.btn_jump_from.cueChanged.connect(self._update_jump_to)
         self.chk_render_tempo = QtWidgets.QCheckBox(tr("At the changed tempo"))
         self.chk_render_tempo.setChecked(True)
-        if not native_engine_built():     # the tempo is changed by the native engine, as the deck plays it
-            self.chk_render_tempo.setChecked(False)
-            self.chk_render_tempo.setEnabled(False)
+        self.chk_render_key = QtWidgets.QCheckBox(tr("At the changed key"))
+        self.chk_render_key.setChecked(True)
+        if not native_engine_built():     # the tempo and the key are changed by the native engine, as the deck plays
+            for check in (self.chk_render_tempo, self.chk_render_key):
+                check.setChecked(False)
+                check.setEnabled(False)
             self.chk_render_tempo.setToolTip(tr("The tempo is changed by the native audio engine, which is not "
                                                 "built."))
+            self.chk_render_key.setToolTip(tr("The key is changed by the native audio engine, which is not built."))
         self.btn_render = QtWidgets.QPushButton(tr("Render"))
         self.btn_render.clicked.connect(self.render_audio)
         render_form = QtWidgets.QFormLayout()
         render_form.addRow(tr("Jump from"), self.btn_jump_from)
         render_form.addRow(tr("Jump to"), self.btn_jump_to)
-        render_btns = QtWidgets.QHBoxLayout()
-        render_btns.addWidget(self.chk_render_tempo)
-        render_btns.addStretch(1)
-        render_btns.addWidget(self.btn_render)
         render_layout = QtWidgets.QVBoxLayout(render)
         render_layout.addLayout(render_form)
-        render_layout.addLayout(render_btns)
+        render_layout.addLayout(self._checks_and_button((self.chk_render_tempo, self.chk_render_key),
+                                                        self.btn_render))
 
         tempo_map = QtWidgets.QGroupBox(tr("DAW Tempo Map"))
         tempo_map.setToolTip(tr(
@@ -158,13 +202,14 @@ class ExportTrackPanel(QtWidgets.QWidget):
         self.chk_map_tempo.setChecked(True)
         self.chk_map_tempo.setToolTip(tr("<p>The tempo map of the audio rendered at the tempo changed; off, of the "
                                          "track as it is.</p>"))
+        self.chk_map_key = QtWidgets.QCheckBox(tr("At the changed key"))
+        self.chk_map_key.setChecked(True)
+        self.chk_map_key.setToolTip(tr("<p>The keys of the audio rendered at the key changed (the nearest "
+                                       "semitone); off, the track's own.</p>"))
         self.btn_tempo_map = QtWidgets.QPushButton(tr("Export MIDI"))
         self.btn_tempo_map.clicked.connect(self.export_tempo_map)
-        tempo_btns = QtWidgets.QHBoxLayout()
-        tempo_btns.addWidget(self.chk_map_tempo)
-        tempo_btns.addStretch(1)
-        tempo_btns.addWidget(self.btn_tempo_map)
-        QtWidgets.QVBoxLayout(tempo_map).addLayout(tempo_btns)
+        QtWidgets.QVBoxLayout(tempo_map).addLayout(
+            self._checks_and_button((self.chk_map_tempo, self.chk_map_key), self.btn_tempo_map))
 
         self.lbl_progress = QtWidgets.QLabel("")
         self.lbl_progress.setWordWrap(True)
@@ -174,6 +219,7 @@ class ExportTrackPanel(QtWidgets.QWidget):
         layout = QtWidgets.QVBoxLayout(body)
         layout.addLayout(track_form)
         layout.addWidget(tempo)
+        layout.addWidget(key)
         layout.addWidget(render)
         layout.addWidget(tempo_map)
         layout.addWidget(self.lbl_progress)
@@ -183,7 +229,20 @@ class ExportTrackPanel(QtWidgets.QWidget):
         root.setContentsMargins(0, 0, 0, 0)
         root.addWidget(scroll_page(body), 1)
         self._set_tempo(0.0, None)
+        self._set_key_shift(0.0, None)
         self._populate_jump_cues()
+
+    @staticmethod
+    def _checks_and_button(checks, button: QtWidgets.QPushButton) -> QtWidgets.QHBoxLayout:
+        """A group's check boxes one under the other, its button at their right, on the last one's line."""
+        column = QtWidgets.QVBoxLayout()
+        for check in checks:
+            column.addWidget(check)
+        row = QtWidgets.QHBoxLayout()
+        row.addLayout(column)
+        row.addStretch(1)
+        row.addWidget(button, 0, QtCore.Qt.AlignBottom)
+        return row
 
     def track_uid(self) -> Optional[str]:
         return self._track.uid if self._track is not None else None
@@ -242,14 +301,68 @@ class ExportTrackPanel(QtWidgets.QWidget):
         if speed == 1.0:
             return ""
         if self._source_bpm():
-            return "_" + f"{self.spn_bpm.value():.2f}".rstrip("0").rstrip(".") + "BPM"
+            return "_" + _number(self.spn_bpm.value()) + "BPM"
         return f"_{100.0 * (speed - 1.0):+.2f}%"
+
+    # ---- the key change ----
+
+    def _source_key(self) -> Optional[int]:
+        """The track's key as the library stores it (0 - 11 major, 12 - 23 minor); None: none."""
+        key = self._track.key if self._track is not None else None
+        return int(key) if isinstance(key, int) and 0 <= key <= 23 else None
+
+    def _set_key_shift(self, shift: float, origin: Optional[QtWidgets.QWidget]) -> None:
+        """The key shifted by ``shift`` semitones from ``origin`` (the slider, the field, the target key; None: the
+        program): the other fields follow (the target key the nearest semitone's from the track's key)."""
+        if self._syncing:
+            return
+        self._syncing = True
+        try:
+            shift = min(float(KEY_SHIFT_MAX), max(-float(KEY_SHIFT_MAX), float(shift)))
+            if origin is not self.sld_key:
+                self.sld_key.setValue(int(round(shift * 100)))
+            if origin is not self.spn_key:
+                self.spn_key.setValue(shift)
+            source = self._source_key()
+            if origin is not self.btn_target_key and source is not None:
+                mode = source - source % 12
+                self.btn_target_key.setKey(mode + (source + int(round(shift))) % 12)
+        finally:
+            self._syncing = False
+
+    def _on_target_key(self, key: int) -> None:
+        """The target key picked: the shift to it the nearest way (a tritone up, or down where the shift was)."""
+        source = self._source_key()
+        if source is None or self._syncing:
+            return
+        steps = (key - source) % 12
+        if steps > 6 or (steps == 6 and self.spn_key.value() < 0):
+            steps -= 12
+        self._set_key_shift(float(steps), self.btn_target_key)
+
+    def _show_source_key(self) -> None:
+        source = self._source_key()
+        self.btn_target_key.setEnabled(source is not None)
+        self.btn_target_key.setMode(None if source is None else source >= 12)   # a shift keeps the mode
+        self.lbl_source_key.setText(tr("from {key}").format(key=key_segment_label(source)) if source is not None
+                                    else tr("The track has no key."))
+        self._set_key_shift(self.spn_key.value(), None)
+
+    def key_shift(self) -> float:
+        """The key changed, in semitones (0: as it is; any fraction, as the deck's KEY)."""
+        return float(self.spn_key.value())
+
+    @staticmethod
+    def _key_suffix(semitones: float) -> str:
+        """A file name's mark of the key changed ("" at the track's own): its shift (key+2, key-1.5)."""
+        return "" if semitones == 0.0 else "_key" + ("+" if semitones > 0 else "") + _number(semitones)
 
     def set_track(self, track: TrackRow) -> None:
         self._track = track
         self._jump_cues = None
         self._analysis = None
         self._show_source_bpm()
+        self._show_source_key()
         self.lbl_title.setText(track.title or "-")
         self.lbl_artist.setText(track.artist or "-")
 
@@ -339,15 +452,18 @@ class ExportTrackPanel(QtWidgets.QWidget):
             return
         title = self._track.title or (self._source.stem if self._source else "")
         speed = self.speed() if self.chk_map_tempo.isChecked() else 1.0
-        out_path = dest_dir / f"{sanitize_filename(title or 'track')}_tempo_map{self._tempo_suffix(speed)}.mid"
+        semitones = self.key_shift() if self.chk_map_key.isChecked() else 0.0
+        out_path = dest_dir / (f"{sanitize_filename(title or 'track')}_tempo_map{self._tempo_suffix(speed)}"
+                               f"{self._key_suffix(semitones)}.mid")
         if not self._overwrite(out_path):
             return
-        self._start("midi", self._tempo_map_job, out_path, marks, title, speed)
+        self._start("midi", self._tempo_map_job, out_path, marks, title, speed, int(round(semitones)))
 
-    def _tempo_map_job(self, out_path: Path, marks: tuple, title: str, speed: float) -> None:
+    def _tempo_map_job(self, out_path: Path, marks: tuple, title: str, speed: float, semitones: int) -> None:
         """(a thread of its own) The tempo map made and written."""
         try:
-            data = midi_tempo_map(*marks[:3], title=title, duration_sec=float(marks[3] or 0.0), speed=speed)
+            data = midi_tempo_map(*marks[:3], title=title, duration_sec=float(marks[3] or 0.0), speed=speed,
+                                  semitones=semitones)
             with atomic_output_path(out_path) as temporary:
                 temporary.write_bytes(data)
         except TempoMapError:
@@ -359,7 +475,7 @@ class ExportTrackPanel(QtWidgets.QWidget):
 
     def render_audio(self) -> None:
         """The track's audio rendered to a WAV file in the destination folder: the jump picked baked in (none: the
-        whole track), at the tempo changed when asked."""
+        whole track), at the tempo and the key changed when asked (both at once in one render)."""
         if "audio" in self._busy:
             return
         dest_dir = self._destination()
@@ -378,6 +494,7 @@ class ExportTrackPanel(QtWidgets.QWidget):
                 return
             jump = (float(jump_from.point), float(jump_to.point))
         speed = self.speed() if self.chk_render_tempo.isChecked() and self.chk_render_tempo.isEnabled() else 1.0
+        semitones = self.key_shift() if self.chk_render_key.isChecked() and self.chk_render_key.isEnabled() else 0.0
         duration = float(self._track.duration or 0.0)
         if duration / speed > MAX_SECONDS:
             QtWidgets.QMessageBox.warning(self, tr("Export Track"), tr(
@@ -387,19 +504,20 @@ class ExportTrackPanel(QtWidgets.QWidget):
         name = sanitize_filename(self._track.title or source.stem)
         if jump is not None:
             name += "_jump_" + sanitize_filename(f"{jump_from.label.strip()}_to_{jump_to.label.strip()}")
-        name += self._tempo_suffix(speed) or ("" if jump is not None else "_render")
+        name += (self._tempo_suffix(speed) + self._key_suffix(semitones)) or ("" if jump is not None else "_render")
         out_path = dest_dir / f"{name}.wav"
         if path_key(out_path) == path_key(source):     # never the track's own file
             QtWidgets.QMessageBox.warning(self, tr("Export Track"), tr("The track's own file is not written over."))
             return
         if not self._overwrite(out_path):
             return
-        self._start("audio", self._render_job, out_path, str(source), jump, speed)
+        self._start("audio", self._render_job, out_path, str(source), jump, speed, semitones)
 
-    def _render_job(self, out_path: Path, source: str, jump: Optional[tuple[float, float]], speed: float) -> None:
+    def _render_job(self, out_path: Path, source: str, jump: Optional[tuple[float, float]], speed: float,
+                    semitones: float) -> None:
         """(a thread of its own) The audio rendered and written."""
         try:
-            pcm, rate = render_track(source, jump, speed)
+            pcm, rate = render_track(source, jump, speed, semitones)
             write_wav(out_path, pcm, rate)
         except Exception as exc:          # a decode, the engine's render or the write: said, nothing left half
             self._sig_written.emit("audio", "", tr("The audio could not be rendered: {error}").format(error=exc))

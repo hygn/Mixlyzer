@@ -110,6 +110,30 @@ class ExportRenderTests(unittest.TestCase):
         pcm, _rate = self.rendered("曲_jump_A_to_B.wav")
         self.assertEqual(pcm.shape[0], 4 * RATE)
 
+    def pitch(self, pcm: np.ndarray, start: float) -> float:
+        """The strongest frequency of 0.5 s of ``pcm`` from ``start`` s."""
+        x = pcm[int(start * RATE):int((start + 0.5) * RATE), 0]
+        spectrum = np.abs(np.fft.rfft(x * np.hanning(x.size), 8 * x.size))
+        return np.argmax(spectrum) * RATE / (8 * x.size)
+
+    @unittest.skipUnless(native_engine_built(), "the native engine is not built")
+    def test_at_the_changed_key_alone_or_with_the_tempo(self):
+        self.panel.spn_tempo.setValue(0.0)
+        self.panel.spn_key.setValue(2.0)
+        pcm, _rate = self.rendered("曲_key+2.wav")                       # named by the shift
+        self.assertAlmostEqual(pcm.shape[0] / RATE, 8.0, delta=0.05)    # the tempo kept
+        self.assertAlmostEqual(self.pitch(pcm, 0.25), 440.0 * 2 ** (2 / 12), delta=1.5)
+        self.panel.spn_bpm.setValue(96.0)                               # both at once: -20 % and 3 down
+        self.panel.spn_key.setValue(-3.0)
+        pcm, _rate = self.rendered("曲_96BPM_key-3.wav")
+        self.assertAlmostEqual(pcm.shape[0] / RATE, 8.0 / 0.8, delta=0.05)
+        self.assertAlmostEqual(self.pitch(pcm, 0.25), 440.0 * 2 ** (-3 / 12), delta=1.5)
+        # the source's third second (660 Hz) at 2 / 0.8 s, three down
+        self.assertAlmostEqual(self.pitch(pcm, 2.6), 660.0 * 2 ** (-3 / 12), delta=1.5)
+        self.panel.chk_render_key.setChecked(False)                     # the track's own key, at the tempo
+        pcm, _rate = self.rendered("曲_96BPM.wav")
+        self.assertAlmostEqual(self.pitch(pcm, 0.25), 440.0, delta=1.5)
+
 
 if __name__ == "__main__":
     unittest.main()

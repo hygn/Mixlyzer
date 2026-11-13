@@ -79,10 +79,11 @@ class ExportTempoMapTests(unittest.TestCase):
         self.boxes = boxes.start()
         self.addCleanup(boxes.stop)
 
-    def panel(self, beats, bpm=None) -> tuple[ExportTrackPanel, _Library]:
+    def panel(self, beats, bpm=None, key=None) -> tuple[ExportTrackPanel, _Library]:
         library = _Library(analysis(beats))
         panel = ExportTrackPanel(library)
-        panel.set_track(TrackRow(uid=UID, path=str(Path(self.dir.name) / "ヴヴヴ.flac"), title="ヴヴヴ", bpm=bpm))
+        panel.set_track(TrackRow(uid=UID, path=str(Path(self.dir.name) / "ヴヴヴ.flac"), title="ヴヴヴ", bpm=bpm,
+                                 key=key))
         panel.dest_edit.setText(self.dir.name)
         return panel, library
 
@@ -126,6 +127,64 @@ class ExportTempoMapTests(unittest.TestCase):
         self.assertAlmostEqual(panel.spn_tempo.value(), -99.99)
         self.assertGreater(panel.speed(), 0.0)
         self.assertEqual(panel.spn_tempo.text(), "-99.99 %")
+
+    def test_the_key_shift_and_the_target_key(self):
+        panel, library = self.panel(0.5 * np.arange(64), key=21)          # A minor (8A)
+        library.answer()
+        self.assertEqual(panel.btn_target_key.key(), 21)
+        panel.spn_key.setValue(2.0)
+        self.assertEqual(panel.sld_key.value(), 200)
+        self.assertEqual(panel.btn_target_key.key(), 23)                  # B minor
+        panel.sld_key.setValue(-40)                                       # a fraction: the nearest semitone's key
+        self.assertAlmostEqual(panel.key_shift(), -0.4)
+        self.assertEqual(panel.btn_target_key.key(), 21)
+        panel.btn_target_key.setKey(16)                                   # E minor: 5 down, not 7 up
+        self.assertAlmostEqual(panel.key_shift(), -5.0)
+        panel.btn_target_key.setKey(15)                                   # D# minor, a tritone: down, as it was
+        self.assertAlmostEqual(panel.key_shift(), -6.0)
+        panel.spn_key.setValue(0.0)
+        panel.btn_target_key.setKey(15)                                   # from the track's own: up
+        self.assertAlmostEqual(panel.key_shift(), 6.0)
+        panel.sld_key.setValue(panel.sld_key.maximum())
+        self.assertAlmostEqual(panel.key_shift(), 6.0)                    # the deck's KEY: ±6
+        self.assertEqual(panel.spn_key.text(), "+6.00 semitones")
+        # the key aimed at is the track's mode's: the popup shows only the minor keys' row
+        popup = panel.btn_target_key._popup
+        popup.show_for(panel.btn_target_key, 21, True)
+        self.assertEqual({idx >= 12 for idx, cell in popup._cells.items() if cell.isVisibleTo(popup)}, {True})
+        popup.hide()
+
+    def test_a_track_without_a_key(self):
+        panel, library = self.panel(0.5 * np.arange(64))
+        library.answer()
+        self.assertFalse(panel.btn_target_key.isEnabled())
+        panel.spn_key.setValue(-2.0)                                      # shifted all the same
+        self.assertAlmostEqual(panel.key_shift(), -2.0)
+
+    def test_at_the_changed_tempo_and_key_or_the_tracks(self):
+        panel, library = self.panel(0.5 * np.arange(64), bpm=120.0, key=21)
+        library.answer()
+        panel.spn_bpm.setValue(150.0)
+        panel.spn_key.setValue(2.0)
+        panel.export_tempo_map()
+        finish(panel)
+        both = (Path(self.dir.name) / "ヴヴヴ_tempo_map_150BPM_key+2.mid").read_bytes()   # named by both changes
+        self.assertAlmostEqual(tempos(both)[0], 150.0, places=2)
+        self.assertIn("Bm (10A)".encode(), both)                          # A minor two semitones up
+        self.assertNotIn("Am (8A)".encode(), both)
+        panel.chk_map_key.setChecked(False)                               # the track's own keys
+        panel.export_tempo_map()
+        finish(panel)
+        tempo_only = (Path(self.dir.name) / "ヴヴヴ_tempo_map_150BPM.mid").read_bytes()
+        self.assertIn("Am (8A)".encode(), tempo_only)
+        panel.chk_map_key.setChecked(True)
+        panel.chk_map_tempo.setChecked(False)                             # the key alone
+        panel.spn_key.setValue(-1.5)                                      # its keys the nearest semitone's
+        panel.export_tempo_map()
+        finish(panel)
+        key_only = (Path(self.dir.name) / "ヴヴヴ_tempo_map_key-1.5.mid").read_bytes()
+        self.assertAlmostEqual(tempos(key_only)[0], 120.0, places=2)
+        self.assertIn("Gm (6A)".encode(), key_only)                      # -1.5 to -2: G minor
 
     def test_a_file_there_kept_unless_overwritten(self):
         panel, library = self.panel(0.5 * np.arange(64))

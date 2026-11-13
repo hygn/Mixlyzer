@@ -332,6 +332,30 @@ class NativeStretch(unittest.TestCase):
 
 
 @unittest.skipIf(EXE is None, "the native engine is not built (build/audio_engine.py)")
+class NativeKeyShiftOffline(unittest.TestCase):
+    """The Export tab's render with the key shifted (--stretch-file --semitones, client.stretch_offline): the pitch
+    moved by the semitones at the tempo asked, alone or with a tempo change; outside the deck's ±6 refused."""
+
+    def test_the_pitch_moved_at_the_tempo_asked(self):
+        t = np.arange(4 * RATE) / RATE
+        tone = (0.3 * np.sin(2 * np.pi * 440.0 * t)).astype(np.float32)
+        pcm = np.stack([tone, tone], axis=1)
+        for factor, semitones in ((1.0, 2.0), (0.8, -3.0), (1.25, 0.5), (2 ** (1 / 12), 1.0)):
+            y = client.stretch_offline(pcm, RATE, factor, semitones)
+            self.assertAlmostEqual(len(y) / (len(pcm) / factor), 1.0, delta=0.01, msg=(factor, semitones))
+            mid = y[len(y) // 3:len(y) // 3 + RATE, 0].astype(np.float64)
+            spectrum = np.abs(np.fft.rfft(mid * np.hanning(mid.size), 16 * mid.size))
+            found = np.argmax(spectrum) * RATE / (16 * mid.size)
+            want = 440.0 * 2 ** (semitones / 12)
+            self.assertAlmostEqual(found / want, 1.0, delta=0.003, msg=(factor, semitones, found))
+
+    def test_outside_the_decks_range_refused(self):
+        pcm = np.zeros((RATE, 2), dtype=np.float32)
+        with self.assertRaises(RuntimeError):
+            client.stretch_offline(pcm, RATE, 1.0, 6.5)
+
+
+@unittest.skipIf(EXE is None, "the native engine is not built (build/audio_engine.py)")
 class NativePlayback(unittest.TestCase):
     def test_plays_seeks_and_pauses(self):
         engine = client.NativeEngine.start()

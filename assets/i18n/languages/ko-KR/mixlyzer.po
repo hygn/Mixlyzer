@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-11-12 17:27+0900\n"
+"POT-Creation-Date: 2026-11-13 12:29+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ko_KR\n"
@@ -452,7 +452,7 @@ msgid "Beat jump"
 msgstr "비트 점프"
 
 #: core/controls/midi.py:52 core/workers/analysis_texts.py:16
-#: ui/library/tabs/export.py:120
+#: ui/library/tabs/export.py:131
 msgid "Tempo"
 msgstr "템포"
 
@@ -1272,7 +1272,7 @@ msgstr "키 분석 중"
 
 #: core/workers/analysis_texts.py:19 ui/config/analysis.py:240
 #: ui/config/pipeline_map.py:27 ui/config/pipeline_map.py:35
-#: ui/library/tabs/edit_song.py:128
+#: ui/library/tabs/edit_song.py:128 ui/library/tabs/export.py:163
 msgid "Key"
 msgstr "키"
 
@@ -5646,7 +5646,7 @@ msgstr ""
 "트랙의 오디오 파일. 파일을 옮기거나 이름을 바꿨을 때 지정하세요.\n"
 "분석, 플레이리스트, CUE는 트랙에 그대로 남습니다."
 
-#: ui/library/tabs/edit_song.py:118 ui/library/tabs/export.py:72
+#: ui/library/tabs/edit_song.py:118 ui/library/tabs/export.py:83
 msgid "Browse..."
 msgstr "찾아보기..."
 
@@ -5683,23 +5683,23 @@ msgstr ""
 "파일이 없습니다:\n"
 "{path}"
 
-#: ui/library/tabs/export.py:86 ui/library/tabs/sync.py:82
+#: ui/library/tabs/export.py:97 ui/library/tabs/sync.py:82
 msgid "Source"
 msgstr "원본"
 
-#: ui/library/tabs/export.py:87
+#: ui/library/tabs/export.py:98
 msgid "Destination Folder"
 msgstr "대상 폴더"
 
 # | msgid "Tempo Analyzing"
 # | msgid "Tempo range"
-#: ui/library/tabs/export.py:90
+#: ui/library/tabs/export.py:101
 msgid "Tempo Change"
 msgstr "템포 변경"
 
 # | msgid "" "<p>The tempo the audio is rendered at and the tempo map written
 # | for, in %" " of the track's, or as the BPM aimed at.</p>"
-#: ui/library/tabs/export.py:91
+#: ui/library/tabs/export.py:102
 msgid ""
 "<p>The tempo the audio is rendered at and the tempo map written for: a "
 "change of ±100% at most from the track's, as the deck's tempo fader in "
@@ -5708,72 +5708,128 @@ msgstr ""
 "<p>오디오를 렌더링하고 템포 맵을 쓸 템포입니다. 덱의 템포 페이더 WIDE처럼 트랙 템포에서 최대 ±100%까지 바꾸거나, 목표"
 " BPM으로 정합니다.</p>"
 
-#: ui/library/tabs/export.py:121
+#: ui/library/tabs/export.py:132
 msgid "Target BPM"
 msgstr "목표 BPM"
 
+# | msgid "Tempo Analyzing"
+# | msgid "Tempo range"
+# | msgid "Tempo Change"
+#: ui/library/tabs/export.py:136
+msgid "Key Change"
+msgstr "키 변경"
+
+# | msgid "" "<p>The tempo the audio is rendered at and the tempo map written
+# | for, in %" " of the track's, or as the BPM aimed at.</p>"
+# | for: a " "change of ±100% at most from the track's, as the deck's tempo
+# | fader in " "WIDE, or the BPM aimed at.</p>"
+#: ui/library/tabs/export.py:137
+#, python-brace-format
+msgid ""
+"<p>The key the audio is rendered in and the tempo map's keys: a shift of "
+"±{max} semitones at most from the track's, as the deck's KEY, or the key "
+"aimed at.</p>"
+msgstr ""
+"<p>오디오를 렌더링하고 템포 맵에 쓸 키입니다. 덱의 KEY처럼 트랙 키에서 최대 ±{max}반음까지 바꾸거나, 목표 키로 "
+"정합니다.</p>"
+
+# | msgid "Move Up"
+# | msgid "A semitone up"
+#: ui/library/tabs/export.py:148
+msgid " semitones"
+msgstr " 반음"
+
+#: ui/library/tabs/export.py:151
+msgid "The key aimed at, in the track's mode: shifted to it the nearest way."
+msgstr "목표 키입니다(트랙과 같은 장조·단조). 가장 가까운 쪽으로 시프트합니다."
+
+# | msgid "Target BPM"
+#: ui/library/tabs/export.py:164
+msgid "Target Key"
+msgstr "목표 키"
+
 # | msgid "Prerender JumpCUE Audio"
-#: ui/library/tabs/export.py:124
+#: ui/library/tabs/export.py:167
 msgid "Render Audio"
 msgstr "오디오 렌더링"
 
-#: ui/library/tabs/export.py:125
+# | msgid "" "<p>The track written as a WAV file: as it is, with a JumpCUE's
+# | jump baked" " in (the audio up to the cue jumped from, then on from the
+# cue
+# | jumped " "to), at the tempo changed, or both.</p>"
+#: ui/library/tabs/export.py:168
 msgid ""
 "<p>The track written as a WAV file: as it is, with a JumpCUE's jump baked"
 " in (the audio up to the cue jumped from, then on from the cue jumped "
-"to), at the tempo changed, or both.</p>"
+"to), at the tempo and / or the key changed, or all of them.</p>"
 msgstr ""
 "<p>트랙을 WAV 파일로 씁니다. 그대로, JumpCUE의 점프를 넣어서(점프 시작 큐까지 재생한 뒤 점프 대상 큐부터 이어서),"
-" 변경한 템포로, 또는 둘 다 적용해서 쓸 수 있습니다.</p>"
+" 변경한 템포나 키로(둘 다도 가능), 또는 이 모두를 적용해서 쓸 수 있습니다.</p>"
 
 # | msgid "Beat"
 # | msgid "Beat jump"
-#: ui/library/tabs/export.py:128
+#: ui/library/tabs/export.py:171
 msgid "No jump"
 msgstr "점프 없음"
 
-#: ui/library/tabs/export.py:130
+#: ui/library/tabs/export.py:173
 msgid "The JumpCUE the audio jumps from (No jump: the whole track)."
 msgstr "오디오가 점프하는 시작 JumpCUE입니다(점프 없음: 곡 전체)."
 
-#: ui/library/tabs/export.py:131
+#: ui/library/tabs/export.py:174
 msgid "The JumpCUE the audio jumps to."
 msgstr "오디오가 점프해 가는 대상 JumpCUE입니다."
 
 # | msgid "Clear the reference BPM and the tap history"
 # | msgid "The reference BPM as the starting tempo (ramp)"
 # | msgid "Ramp: the starting tempo"
-#: ui/library/tabs/export.py:133 ui/library/tabs/export.py:157
+#: ui/library/tabs/export.py:176 ui/library/tabs/export.py:201
 msgid "At the changed tempo"
 msgstr "변경한 템포로"
 
+# | msgid "Clear the reference BPM and the tap history"
+# | msgid "The reference BPM as the starting tempo (ramp)"
+# | msgid "Ramp: the starting tempo"
+# | msgid "At the changed tempo"
+#: ui/library/tabs/export.py:178 ui/library/tabs/export.py:205
+msgid "At the changed key"
+msgstr "변경한 키로"
+
 # | msgid "Available with the native audio engine only."
 # | msgid "The spectrum needs the native audio engine."
-#: ui/library/tabs/export.py:138
+#: ui/library/tabs/export.py:184
 msgid "The tempo is changed by the native audio engine, which is not built."
 msgstr "템포 변경에는 Native 오디오 엔진이 필요하지만 빌드되어 있지 않습니다."
 
+# | msgid "Available with the native audio engine only."
+# | msgid "The spectrum needs the native audio engine."
+# | msgid "The tempo is changed by the native audio engine, which is not
+# built."
+#: ui/library/tabs/export.py:186
+msgid "The key is changed by the native audio engine, which is not built."
+msgstr "키 변경에는 Native 오디오 엔진이 필요하지만 빌드되어 있지 않습니다."
+
 # | msgid "Remove"
 # | msgid "Revert"
-#: ui/library/tabs/export.py:140
+#: ui/library/tabs/export.py:187
 msgid "Render"
 msgstr "렌더링"
 
 # | msgid "jump points"
-#: ui/library/tabs/export.py:143
+#: ui/library/tabs/export.py:190
 msgid "Jump from"
 msgstr "점프 시작"
 
 # | msgid "jump points"
-#: ui/library/tabs/export.py:144
+#: ui/library/tabs/export.py:191
 msgid "Jump to"
 msgstr "점프 대상"
 
-#: ui/library/tabs/export.py:153
+#: ui/library/tabs/export.py:197
 msgid "DAW Tempo Map"
 msgstr "DAW 템포 맵"
 
-#: ui/library/tabs/export.py:155
+#: ui/library/tabs/export.py:199
 msgid ""
 "<p>A MIDI file of the track's beatgrid for a DAW: its tempo (ramps too), "
 "bars and key changes. Put the audio at the project's start and import the"
@@ -5782,47 +5838,67 @@ msgstr ""
 "<p>트랙의 비트그리드를 DAW용 MIDI 파일로 씁니다: 템포(램프 포함), 마디, 전조. 오디오를 프로젝트 맨 앞에 놓고 그 "
 "자리에 이 파일의 템포 맵을 가져오세요.</p>"
 
-#: ui/library/tabs/export.py:159
+#: ui/library/tabs/export.py:203
 msgid ""
 "<p>The tempo map of the audio rendered at the tempo changed; off, of the "
 "track as it is.</p>"
 msgstr "<p>변경한 템포로 렌더링한 오디오의 템포 맵입니다. 끄면 원래 트랙의 템포 맵입니다.</p>"
 
-#: ui/library/tabs/export.py:161
+# | msgid "" "<p>The tempo map of the audio rendered at the tempo changed;
+# off,
+# | of the " "track as it is.</p>"
+#: ui/library/tabs/export.py:207
+msgid ""
+"<p>The keys of the audio rendered at the key changed (the nearest "
+"semitone); off, the track's own.</p>"
+msgstr "<p>변경한 키로 렌더링한 오디오의 키입니다(가장 가까운 반음). 끄면 원래 트랙의 키입니다.</p>"
+
+#: ui/library/tabs/export.py:209
 msgid "Export MIDI"
 msgstr "MIDI 내보내기"
 
-#: ui/library/tabs/export.py:227
+#: ui/library/tabs/export.py:286
 #, python-brace-format
 msgid "from {bpm} BPM"
 msgstr "원래 {bpm} BPM 기준"
 
 # | msgid "The track has no phrases to write."
-#: ui/library/tabs/export.py:228
+#: ui/library/tabs/export.py:287
 msgid "The track has no BPM."
 msgstr "이 트랙에는 BPM이 없습니다."
 
-#: ui/library/tabs/export.py:265 ui/library/tabs/export.py:370
+#: ui/library/tabs/export.py:347
+#, python-brace-format
+msgid "from {key}"
+msgstr "원래 {key} 기준"
+
+# | msgid "The track has no phrases to write."
+# | msgid "The track has no BPM."
+#: ui/library/tabs/export.py:348
+msgid "The track has no key."
+msgstr "이 트랙에는 키가 없습니다."
+
+#: ui/library/tabs/export.py:378 ui/library/tabs/export.py:486
 msgid "Source file not found at the specified path."
 msgstr "지정한 경로에 원본 파일이 없습니다."
 
-#: ui/library/tabs/export.py:268
+#: ui/library/tabs/export.py:381
 msgid "Source path is invalid."
 msgstr "원본 경로가 잘못되었습니다."
 
-#: ui/library/tabs/export.py:276
+#: ui/library/tabs/export.py:389
 msgid "Select Destination Folder"
 msgstr "대상 폴더 선택"
 
-#: ui/library/tabs/export.py:285
+#: ui/library/tabs/export.py:398
 msgid "No track is selected."
 msgstr "선택한 트랙이 없습니다."
 
-#: ui/library/tabs/export.py:289
+#: ui/library/tabs/export.py:402
 msgid "Please select a destination folder."
 msgstr "대상 폴더를 선택하세요."
 
-#: ui/library/tabs/export.py:295
+#: ui/library/tabs/export.py:408
 #, python-brace-format
 msgid ""
 "Cannot create destination folder:\n"
@@ -5831,7 +5907,7 @@ msgstr ""
 "대상 폴더를 만들 수 없습니다:\n"
 "{error}"
 
-#: ui/library/tabs/export.py:306
+#: ui/library/tabs/export.py:419
 #, python-brace-format
 msgid ""
 "'{name}' already exists.\n"
@@ -5841,27 +5917,27 @@ msgstr ""
 "덮어쓸까요?"
 
 # | msgid "Phrase reanalysis completed"
-#: ui/library/tabs/export.py:331 ui/library/tabs/export.py:457
+#: ui/library/tabs/export.py:444 ui/library/tabs/export.py:575
 #: ui/library/tabs/sync.py:345 ui/library/tabs/sync.py:544
 msgid "The track's analysis could not be read."
 msgstr "트랙의 분석을 읽을 수 없습니다."
 
-#: ui/library/tabs/export.py:354
+#: ui/library/tabs/export.py:470
 msgid "The track has no beatgrid to write."
 msgstr "이 트랙에는 쓸 비트그리드가 없습니다."
 
-#: ui/library/tabs/export.py:356 ui/library/tabs/sync.py:736
+#: ui/library/tabs/export.py:472 ui/library/tabs/sync.py:736
 #: ui/library/tabs/sync.py:739 ui/library/tabs/sync.py:802
 #: ui/library/tabs/sync.py:805 ui/windows/diagnostics_dialog.py:59
 #, python-brace-format
 msgid "The file could not be written: {error}"
 msgstr "파일을 쓸 수 없습니다: {error}"
 
-#: ui/library/tabs/export.py:377
+#: ui/library/tabs/export.py:493
 msgid "Pick the JumpCUE jumped to, another than the one jumped from."
 msgstr "점프 시작과 다른 JumpCUE를 점프 대상으로 고르세요."
 
-#: ui/library/tabs/export.py:384
+#: ui/library/tabs/export.py:501
 #, python-brace-format
 msgid ""
 "At this tempo the audio would be longer than {minutes} minutes: not "
@@ -5870,29 +5946,29 @@ msgstr "이 템포에서는 오디오가 {minutes}분보다 길어져 렌더링�
 
 # | msgid "Phrase reanalysis completed"
 # | msgid "The track's analysis could not be read."
-#: ui/library/tabs/export.py:393
+#: ui/library/tabs/export.py:510
 msgid "The track's own file is not written over."
 msgstr "트랙의 원본 파일은 덮어쓰지 않습니다."
 
 # | msgid "The file could not be written: {error}"
 # | msgid "The file could not be read: {error}"
-#: ui/library/tabs/export.py:405
+#: ui/library/tabs/export.py:523
 #, python-brace-format
 msgid "The audio could not be rendered: {error}"
 msgstr "오디오를 렌더링할 수 없습니다: {error}"
 
 # | msgid "Starting the reading worker"
 # | msgid "Restarting the audio engine..."
-#: ui/library/tabs/export.py:418
+#: ui/library/tabs/export.py:536
 msgid "Rendering the audio..."
 msgstr "오디오 렌더링 중..."
 
 # | msgid "Writing the tags..."
-#: ui/library/tabs/export.py:418
+#: ui/library/tabs/export.py:536
 msgid "Writing the tempo map..."
 msgstr "템포 맵 쓰는 중..."
 
-#: ui/library/tabs/export.py:428
+#: ui/library/tabs/export.py:546
 #, python-brace-format
 msgid ""
 "Export completed:\n"
@@ -6721,14 +6797,14 @@ msgstr "\"{title}\"의 변경 내용을 적용할까요? (아니요: 버립니�
 msgid "All"
 msgstr "전체"
 
-#: ui/library/tabs/edit_song.py:124 ui/library/tabs/export.py:84
+#: ui/library/tabs/edit_song.py:124 ui/library/tabs/export.py:95
 #: ui/library/tabs/sync.py:80 ui/library/tabs/sync.py:93
 #: ui/library/tabs/tieup_editor.py:140 ui/library/tabs/track_search_index.py:68
 #: ui/library/widget.py:39 ui/windows/tieup_works.py:77
 msgid "Title"
 msgstr "제목"
 
-#: ui/library/tabs/edit_song.py:125 ui/library/tabs/export.py:85
+#: ui/library/tabs/edit_song.py:125 ui/library/tabs/export.py:96
 #: ui/library/tabs/sync.py:81 ui/library/tabs/sync.py:94
 #: ui/library/tabs/track_search_index.py:68 ui/library/widget.py:39
 msgid "Artist"
@@ -7260,12 +7336,12 @@ msgstr "선택한 트랙을 일본어 위키백과와 위키데이터에서 찾�
 msgid "The works window: every work the tie-ups name, edited, merged or deleted."
 msgstr "작품 창: 타이업에 쓰인 모든 작품을 편집하거나 합치거나 삭제합니다."
 
-#: ui/library/actions.py:52 ui/library/tabs/export.py:285
-#: ui/library/tabs/export.py:289 ui/library/tabs/export.py:295
-#: ui/library/tabs/export.py:305 ui/library/tabs/export.py:330
-#: ui/library/tabs/export.py:370 ui/library/tabs/export.py:376
-#: ui/library/tabs/export.py:383 ui/library/tabs/export.py:393
-#: ui/library/tabs/export.py:425 ui/library/tabs/export.py:427
+#: ui/library/actions.py:52 ui/library/tabs/export.py:398
+#: ui/library/tabs/export.py:402 ui/library/tabs/export.py:408
+#: ui/library/tabs/export.py:418 ui/library/tabs/export.py:443
+#: ui/library/tabs/export.py:486 ui/library/tabs/export.py:492
+#: ui/library/tabs/export.py:500 ui/library/tabs/export.py:510
+#: ui/library/tabs/export.py:543 ui/library/tabs/export.py:545
 #: ui/shortcuts.py:171
 msgid "Export Track"
 msgstr "트랙 내보내기"
@@ -7624,7 +7700,7 @@ msgid "Pick the key"
 msgstr "키 선택"
 
 # | msgid "Pick the key (Camelot wheel)"
-#: ui/edit_panel/key.py:97 ui/edit_panel/key_picker.py:82 ui/shortcuts.py:250
+#: ui/edit_panel/key.py:97 ui/edit_panel/key_picker.py:86 ui/shortcuts.py:250
 msgid "Pick the key (Alphanumeric wheel)"
 msgstr "키 선택 (Alphanumeric 휠)"
 
@@ -8113,14 +8189,18 @@ msgid ""
 "Whose JumpCUEs a track in the library shows when one of the sender's hot "
 "cues differs from Mixlyzer's. Sender: all of the device's hot cues, as "
 "its buttons play them."
-msgstr "송신 측 핫큐가 하나라도 Mixlyzer와 다를 때, 라이브러리에 있는 곡에 어느 쪽 JumpCUE를 보여 줄지 정합니다. 송신 측: 장치의 버튼과 같도록 장치의 핫큐를 모두 보여 줍니다."
+msgstr ""
+"송신 측 핫큐가 하나라도 Mixlyzer와 다를 때, 라이브러리에 있는 곡에 어느 쪽 JumpCUE를 보여 줄지 정합니다. 송신 "
+"측: 장치의 버튼과 같도록 장치의 핫큐를 모두 보여 줍니다."
 
 #: ui/windows/deck_monitor.py:678
 msgid ""
 "Whose CUE points a track in the library shows when one of the sender's "
 "memory cues differs from Mixlyzer's. Sender: all of the device's memory "
 "cues, as its buttons play them."
-msgstr "송신 측 메모리 큐가 하나라도 Mixlyzer와 다를 때, 라이브러리에 있는 곡에 어느 쪽 CUE 포인트를 보여 줄지 정합니다. 송신 측: 장치의 버튼과 같도록 장치의 메모리 큐를 모두 보여 줍니다."
+msgstr ""
+"송신 측 메모리 큐가 하나라도 Mixlyzer와 다를 때, 라이브러리에 있는 곡에 어느 쪽 CUE 포인트를 보여 줄지 정합니다. "
+"송신 측: 장치의 버튼과 같도록 장치의 메모리 큐를 모두 보여 줍니다."
 
 #: ui/windows/deck_monitor.py:684
 msgid "Messages are taken from the network: any device on it can send them."

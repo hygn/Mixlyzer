@@ -144,6 +144,21 @@ class TempoMapTests(unittest.TestCase):
         self.assertAlmostEqual(tempos[-1], 150.0, places=2)
         self.assertEqual(fast["events"][-1][0], plain["events"][-1][0])    # 40 s at 120, 32 s at 150: one beat count
 
+    def test_a_key_shift(self):
+        # the audio's key shifted (the Export tab's render): every key moved by the semitones, its mode kept; the
+        # beats, bars and tempos as they are
+        beats = 0.5 * np.arange(64)
+        rows = [row(0.0, 32.0, 120, 0.0)]
+        keys = [[9, 1, 0.0, 12.0], [0, 0, 12.0, 32.0]]
+        plain, shifted = (read(midi_tempo_map(beats, rows, keys, semitones=s)) for s in (0, -3))
+        markers = [(t, d.decode("utf-8")) for t, k, d in shifted["events"] if k == 0x06]
+        signatures = [(t, struct.unpack(">bB", d)) for t, k, d in shifted["events"] if k == 0x59]
+        self.assertEqual(markers, [(0, "F#m (11A)"), (24 * PPQ, "A (11B)")])
+        self.assertEqual(signatures, [(0, (3, 1)), (24 * PPQ, (3, 0))])
+        for kind in (0x51, 0x58):
+            self.assertEqual([(t, d) for t, k, d in shifted["events"] if k == kind],
+                             [(t, d) for t, k, d in plain["events"] if k == kind])
+
     def test_no_beatgrid(self):
         for beats in ([], [1.0], [np.nan, 2.0]):
             with self.assertRaises(TempoMapError):

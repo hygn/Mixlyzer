@@ -13,8 +13,9 @@ lines up with it.
   signatures, the bars as the editor shows them): a time signature event wherever the bar's length in beats
   changes (a bar of 3 at a junction, a 7/4 row); the beats before the first downbeat whole bars of the first bar's
   length, a shorter one first (a pickup).
-- Each key change (the key rows) a key signature event (sharps or flats, major or minor; an enharmonic key the
-  one with fewer accidentals, F# major as 6 sharps) and a marker naming it as the main screen does ("Am (8A)").
+- Each key change (the key rows, moved by the audio's key shift) a key signature event (sharps or flats, major or
+  minor; an enharmonic key the one with fewer accidentals, F# major as 6 sharps) and a marker naming it as the main
+  screen does ("Am (8A)").
 - Texts in UTF-8 (the track's name, the markers)."""
 from __future__ import annotations
 
@@ -125,17 +126,19 @@ def key_events(key_segments, points: np.ndarray) -> list[tuple[int, int]]:
 
 
 def midi_tempo_map(beats, tempo_segments, key_segments, title: str = "", duration_sec: float = 0.0,
-                   speed: float = 1.0) -> bytes:
+                   speed: float = 1.0, semitones: int = 0) -> bytes:
     """The Standard MIDI File of a track's beats, tempo rows ([start, end, bpm, inizio, ts_num, bpm_end]) and key
     rows ([pitch, minor, start, end]); ``duration_sec`` (0: unknown) ends its track after the audio's end.
     ``speed``: the audio played that many times as fast (time-stretched, the Export tab's rendering): every time
-    divided by it, every tempo multiplied (the bars, counted in beats, as they are). TempoMapError without a
-    beatgrid."""
+    divided by it, every tempo multiplied (the bars, counted in beats, as they are). ``semitones``: the audio's key
+    shifted by that many (the Export tab's rendering): every key moved by them, its mode kept. TempoMapError
+    without a beatgrid."""
     if not speed > 0:
         raise ValueError("speed must be positive")
     points, grid_first = beat_points(np.asarray(beats, dtype=float) / speed)
     if np.size(key_segments):
         key_segments = np.asarray(key_segments, dtype=float).reshape(-1, 4) * (1.0, 1.0, 1.0 / speed, 1.0 / speed)
+        key_segments[:, 0] += int(semitones)       # key_events takes the pitch class (mod 12)
     duration_sec = float(duration_sec) / speed
     events: list[tuple[int, bytes]] = []
     if title:
