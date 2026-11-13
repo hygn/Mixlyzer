@@ -1,10 +1,13 @@
 """Train the beat tracker's frame TCN (analyzer.beat.general.tcn) on the library's grids, in PyTorch.
 
-Each of the trainings the tracker's consensus runs (three seeds) is trained from scratch on the user's beats and
-downbeats with the recipe of the shipped ones: crops of 3000 frames (about 35 s) stretched by a random tempo factor
+Each of the trainings the tracker's consensus runs (three seeds) is trained on the user's beats and downbeats with
+the recipe of the shipped ones: crops of 3000 frames (about 35 s) stretched by a random tempo factor
 (0.8 - 1.25, so the model hears each song at other tempos too), binary cross-entropy on the beat and downbeat frames
 (each annotated frame 1, its neighbours 0.5; positives weighted 10 / 30, they are rare), dropout 0.1 on each block's
-activation, Adam with the rate warmed up over the first tenth and a cosine decay after, 4000 steps of 16 crops. The
+activation, Adam with the rate warmed up over the first tenth and a cosine decay after, 4000 steps of 16 crops from
+scratch, or 1500 at a quarter of the rate from a model's training of its place (``--start shipped`` / ``current``,
+the command line's default the model in use): trained from scratch, a ritardando the shipped TCN read as one ramp
+came out as two (a GT song's beats 41 ms off), fine-tuned it stays as it was. The
 songs' frames sit on the device whole (float16, about 1.5 GB for 500 songs), the crops are cut there; on a CUDA GPU
 a training takes about a minute. The weights are exported as the arrays the app's NumPy inference reads
 (tcn.save_weights), checked against it on a song before they are written.
@@ -49,6 +52,10 @@ BATCH = 16
 POS_WEIGHT = (10.0, 30.0)
 STRETCH = (0.8, 1.25)
 TRAININGS = 3
+# started from a model (--start shipped / current): each training from that model's training of its place, fewer steps
+# at a lower rate, so what it does well stays and it takes in what changed (a feature corrected, new songs)
+FINE_TUNE_STEPS = 1500
+FINE_TUNE_RATE = RATE / 4
 EXPORT_TOLERANCE = 1e-4       # the exported weights' activations against the trained net's, on a song
 
 
@@ -63,6 +70,11 @@ class BeatTcnOptimizationRequest:
     steps: int = STEPS
     learning_rate: float = RATE
     seed: int = 0                    # the first training's seed (the others follow)
+    start: str = MS.SCRATCH          # shipped | current | scratch (the command line's default: current)
+    start_path: str | None = None    # the model the trainings start from (the app's file; None: from scratch)
+    current_path: str | None = None  # the model in use (the app's file)
+    fine_tune_steps: int = FINE_TUNE_STEPS
+    fine_tune_rate: float = FINE_TUNE_RATE
     cv_folds: int = 0
     keep_if_worse: bool = False
     rebuild_cache: bool = False
@@ -255,8 +267,11 @@ def _batch(data: TrainingFrames, off, songs, mu, sd, gen):
 
 
 def train_one(data: TrainingFrames, songs, seed: int, steps: int = STEPS, rate: float = RATE,
-              mu=None, sd=None, progress: Callable[[int], None] | None = None, channels: int = CHANNELS):
-    """One training from scratch on ``songs`` (indices into ``data``): (net, mu, sd, the last 100 steps' mean loss)."""
+              mu=None, sd=None, progress: Callable[[int], None] | None = None, channels: int = CHANNELS,
+              start: dict | None = None):
+    """One training on ``songs`` (indices into ``data``), from scratch or from ``start`` (a training as
+    tcn.load_weights gives it: its weights, the input statistics made anew on these songs): (net, mu, sd, the last
+    100 steps' mean loss)."""
     import torch
     import torch.nn.functional as F
     dev = data.x.device
@@ -264,6 +279,8 @@ def train_one(data: TrainingFrames, songs, seed: int, steps: int = STEPS, rate: 
         mu, sd = input_stats(data, songs)
     torch.manual_seed(10_000 + seed)
     net = network(data.x.shape[1], channels).to(dev)
+    if start is not None:
+        net.load_state_dict({k: torch.from_numpy(np.asarray(start[k], np.float32)) for k in net.state_dict()})
     opt = torch.optim.Adam(net.parameters(), lr=rate)
     sched = torch.optim.lr_scheduler.LambdaLR(opt, lambda i: _rate(i + 1, steps, WARMUP))
     gen = torch.Generator(device=dev)
@@ -292,9 +309,10 @@ def train_one(data: TrainingFrames, songs, seed: int, steps: int = STEPS, rate: 
 
 def train_trainings(data: TrainingFrames, songs, trainings: int, first_seed: int, steps: int, rate: float,
                     progress: ProgressCallback | None, span: tuple[int, int], label,
-                    channels: int = CHANNELS) -> tuple[list[dict], float, float]:
-    """The ensemble's trainings one after another on the device: (exported trainings, seconds per training, mean
-    final loss). Each export checked against the NumPy inference on the first song."""
+                    channels: int = CHANNELS, start: list[dict] | None = None) -> tuple[list[dict], float, float]:
+    """The ensemble's trainings one after another on the device, from scratch or each from ``start``'s training of
+    its place: (exported trainings, seconds per training, mean final loss). Each export checked against the NumPy
+    inference on the first song."""
     lo, hi = span
     nets, losses, took = [], [], []
     mu, sd = input_stats(data, songs)
@@ -308,7 +326,8 @@ def train_trainings(data: TrainingFrames, songs, trainings: int, first_seed: int
                          msg("{stage}: training {k} of {n}, step {done}/{steps}", stage=label, k=k + 1, n=trainings,
                              done=step, steps=steps))
         t = time.time()
-        net, _, _, loss = train_one(data, songs, first_seed + k, steps, rate, mu, sd, step_done, channels)
+        net, _, _, loss = train_one(data, songs, first_seed + k, steps, rate, mu, sd, step_done, channels,
+                                    start[k % len(start)] if start else None)
         took.append(time.time() - t)
         P = export(net, mu, sd)
         diff = check_export(net, P, x0, data.x.device)
@@ -350,7 +369,12 @@ def optimize_beat_tcn(
     if feature_progress:
         feature_progress(100, msg("Training frames ready"))
     everything = np.arange(len(data.tracks))
-    steps, rate, n = int(request.steps), float(request.learning_rate), int(request.trainings)
+    start = T.load_weights(str(request.start_path)) if request.start_path else None
+    if start is not None:
+        steps, rate = int(request.fine_tune_steps), float(request.fine_tune_rate)
+    else:
+        steps, rate = int(request.steps), float(request.learning_rate)
+    n = int(request.trainings)
     cross_validated = int(request.cv_folds) >= 2
     grid = None
     span = (0, 98)
@@ -359,7 +383,7 @@ def optimize_beat_tcn(
         k = min(int(request.cv_folds), np.unique(groups).size)
         train, held = next(GroupKFold(n_splits=k).split(everything, groups=groups))
         trial_nets, _, _ = train_trainings(data, train, n, int(request.seed), steps, rate, optimize_progress, (0, 35),
-                                           msg("Held-out check"))
+                                           msg("Held-out check"), start=start)
         trial = output_path.with_name(output_path.stem + ".held_out_check.npz")
         T.save_weights(trial, trial_nets)
         try:
@@ -377,12 +401,12 @@ def optimize_beat_tcn(
                 cross_validated=True, grid=grid, saved=False)
         span = (50, 98)
     nets, seconds, loss = train_trainings(data, everything, n, int(request.seed), steps, rate, optimize_progress, span,
-                                          msg("Training"))
+                                          msg("Training"), start=start)
     T.save_weights(output_path, nets, {
         "source": "the library's beat grids (python -m training beat_tcn, PyTorch)", "trainings": n,
         "seeds": [int(request.seed) + k for k in range(n)], "steps": steps, "learning_rate": rate, "batch": BATCH,
         "crop_frames": CROP, "tracks": len(data.tracks), "date": date.today().isoformat(),
-        "cross_validated": cross_validated,
+        "cross_validated": cross_validated, "start": request.start if start is not None else "scratch",
     })
     if optimize_progress:
         optimize_progress(100, msg("Done"))

@@ -66,7 +66,7 @@ OPTIMIZERS = {
 }
 BEAT_OPTIMIZERS = ("refine_onset", "downbeat_ctx", "beat_tcn", "beat_critic", "beat_decoder")
 # the networks a run starts from the shipped model, the one in use or nothing (--start; the others train anew)
-START_MODELS = ("beat_critic", "key_model")
+START_MODELS = ("beat_critic", "beat_tcn", "key_model")
 # the analysis's model files in use a beat run is given (the training's ModelSet fields) -> their settings
 _CURRENT_MODELS = {"downbeat_ctx": "downbeat_ctx_parameter_path", "tcn": "beat_tcn_parameter_path",
                    "critic": "beat_critic_parameter_path", "decoder": "beat_decoder_parameter_path",

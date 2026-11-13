@@ -18,8 +18,8 @@ from scipy.ndimage import maximum_filter1d, uniform_filter1d
 POS_SEC = 0.5                 # section boundaries are decided on this grid (refined later)
 PHASES = 32                   # phases per beat in the decoder
 RATIOS = (1.0, 1.5, 2.0 / 3.0, 4.0 / 3.0, 0.75)
-J = 12.0                      # the cost of a new section (evidence units)
-HALF_RESET = 96.0             # extra cost of a same-tempo half-beat reset (8 J)
+J = 8.5                       # the cost of a new section (evidence units; the shipped decoder file's)
+HALF_RESET = 34.0             # extra cost of a same-tempo half-beat reset (4 J)
 
 
 class Octave:

@@ -13,20 +13,22 @@ from the track's mono mix at SAMPLE_RATE (the analysis's decode: no stems, no se
   loudness range, vocal-band share and share of beats with a strong kick.
 
 Their frame-level part needs no beats (cue_frames: made beside the beat tracking), the rest is per beat. As the
-research extracted them for training (research/benchmark/phrase_boundary/vocal_feats.py, style_feats.py): the same
-values, by the same operations in the same order, but for the HPSS's two median filters (both cues' HPSS read the
-same STFT magnitude): made once, by analyzer.audio.hpss's sliding median (scipy's values, ~20x faster)."""
+research extracted them for training (research/benchmark/phrase_boundary/vocal_feats.py, style_feats.py), but on the
+analysis's own HPSS (analyzer.audio.hpss: its STFT, median filters and masks, the vocal part's wider margin from the
+same medians) where the research ran librosa's STFT and HPSS again: the values differ at float32's rounding (an STFT
+bin about 3e-5 apart), not retrained for (the phrase stack's songs' outputs compared before and after)."""
 from __future__ import annotations
 
 from dataclasses import dataclass
 
 import numpy as np
 
-from analyzer.audio.hpss import hpss_medians
+from analyzer.audio.hpss import HpssSpectra
 
 SAMPLE_RATE = 22050
 HOP = 512
 N_FFT = 2048
+VOCAL_MARGIN = 2.0      # the vocal cues' harmonic part: librosa.effects.harmonic(y, margin=2.0)
 VOCAL_NAMES = ("fluct_mean", "fluct_std", "fluct_active", "vocal_var", "flatness_vocal", "vocal_share",
                "fluct_max_band", "vocal_var_slow")
 STYLE_NAMES = ("kick_on_beat", "kick_bar", "harmonic_share", "chroma_entropy", "loop4", "loop8", "loud_db",
@@ -59,22 +61,17 @@ def _runvar(x, w):
     return np.convolve(x * x, k, "same") - m * m
 
 
-def cue_frames(y: np.ndarray) -> CueFrames:
-    """The frame-level cues of the mono mix ``y`` at SAMPLE_RATE."""
+def cue_frames(spectra: HpssSpectra) -> CueFrames:
+    """The frame-level cues of a mono mix at SAMPLE_RATE from its HPSS (hpss_audio_with_spectra with ``vocal_margin``
+    VOCAL_MARGIN): its STFT's magnitude, harmonic and percussive spectra and its harmonic part of the wider margin."""
     import librosa
     sr, hop = SAMPLE_RATE, HOP
-    y = np.asarray(y, np.float32)
-    # one STFT for both: librosa.effects.harmonic's (its defaults) and style's (n_fft 2048, hop 512) are the same
-    D = librosa.stft(y)
-    S, phase = librosa.magphase(D)
-    # librosa.decompose.hpss's median filters, in its arrays' memory layout (empty_like the magnitude: the sums and
-    # products after them add in the same order)
-    medians = hpss_medians(S)
-    harm, perc = np.empty_like(S), np.empty_like(S)
-    harm[:], perc[:] = medians
-    # vocal: the harmonic part, librosa.effects.harmonic(y, margin=2.0)
-    mask = librosa.util.softmask(harm, perc * 2.0, power=2.0, split_zeros=False)
-    yh = librosa.istft((S * mask) * phase, dtype=y.dtype, n_fft=N_FFT, length=y.shape[-1])
+    if (spectra.sample_rate, spectra.n_fft, spectra.hop_length) != (SAMPLE_RATE, N_FFT, HOP):
+        raise ValueError(f"the song cues read an HPSS at {SAMPLE_RATE} Hz, n_fft {N_FFT}, hop {HOP}")
+    if spectra.vocal is None:
+        raise ValueError(f"the song cues read the HPSS's harmonic part of margin {VOCAL_MARGIN} (vocal_margin)")
+    # vocal: the harmonic part of margin VOCAL_MARGIN (librosa.effects.harmonic's)
+    yh = spectra.vocal
     C = np.log1p(30 * np.abs(librosa.cqt(yh, sr=sr, hop_length=hop, fmin=200.0, n_bins=240, bins_per_octave=60)))
     T = C.shape[1]
     # fluctogram: per band and frame the shift (bins of 20 cents) best matching the previous frame
@@ -94,7 +91,7 @@ def cue_frames(y: np.ndarray) -> CueFrames:
             best = np.where(upd, r, best)
             arg = np.where(upd, s, arg)
         flu[k, 1:] = np.abs(arg) * (best > 0.5)
-    M = np.abs(D)
+    M = spectra.magnitude
     power = M ** 2
     Sh = np.abs(librosa.stft(yh, n_fft=N_FFT, hop_length=hop)) ** 2
     f = librosa.fft_frequencies(sr=sr, n_fft=N_FFT)
@@ -108,9 +105,8 @@ def cue_frames(y: np.ndarray) -> CueFrames:
     vv_slow = np.mean([_runvar(mf[i, :n], 172) for i in range(1, 6)], 0)
     vocal = np.stack([flu[:, :n].mean(0), flu[:, :n].std(0), (flu[:, :n] > 0).mean(0), np.log(vv + 1e-6),
                       flat[:n], share[:n], flu[:, :n].max(0), np.log(vv_slow + 1e-6)], 1)
-    # style: librosa.decompose.hpss(M, margin=1.0) of the magnitude
-    H = (M * librosa.util.softmask(harm, perc * 1.0, power=2.0, split_zeros=True)) * 1
-    P = (M * librosa.util.softmask(perc, harm * 1.0, power=2.0, split_zeros=True)) * 1
+    # style: the magnitude's harmonic and percussive parts (librosa.decompose.hpss, margin 1)
+    H, P = spectra.harmonic, spectra.percussive
     Ts = M.shape[1]
     low = (f >= 30) & (f <= 150)
     kick_env = np.maximum(0, np.diff(np.log1p(100 * (P[low] ** 2).sum(0)), prepend=0))

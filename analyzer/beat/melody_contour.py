@@ -241,8 +241,8 @@ def forget_contours() -> None:
 
 def extract_melody_contour(
     harmonic: np.ndarray, sample_rate: int, hop_length: int, n_frames: int
-) -> tuple[np.ndarray, np.ndarray]:
-    """Per frame: melody pitch in MIDI semitones (NaN when unvoiced) and the id of its contour (-1)."""
+) -> np.ndarray:
+    """Per frame: the id of the melody contour owning it (-1 when unvoiced)."""
     global _kept
     frame_sec = hop_length / float(sample_rate)
     harmonic = np.asarray(harmonic, dtype=np.float32)
@@ -254,18 +254,14 @@ def extract_melody_contour(
         keep = means >= means.mean() - VOICING_NU * means.std()
         contours = [c for c, k in zip(contours, keep) if k]
     T = salience.shape[1]
-    best = np.zeros(T); f0_bin = np.full(T, -1); owner = np.full(T, -1)
+    best = np.zeros(T); owner = np.full(T, -1)
     for index, (bins, saliences, start) in enumerate(contours):
         strength = float(np.mean(saliences))
         frames = np.arange(start, min(start + len(bins), T))
         take = strength > best[frames]
         best[frames[take]] = strength
-        f0_bin[frames[take]] = np.asarray(bins)[: frames.size][take]
         owner[frames[take]] = index
-    pitch = np.where(f0_bin >= 0, 12.0 * np.log2(f0s[np.maximum(f0_bin, 0)] / 440.0) + 69.0, np.nan)
-    pitch = _fit(pitch, n_frames, np.nan)
-    owner = _fit(owner.astype(np.float64), n_frames, -1.0).astype(np.int32)
-    return pitch.astype(np.float32), owner
+    return _fit(owner.astype(np.float64), n_frames, -1.0).astype(np.int32)
 
 
 def _fit(values: np.ndarray, length: int, fill: float) -> np.ndarray:

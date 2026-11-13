@@ -55,7 +55,7 @@ from training.refine_onset_optimizer import _group_key
 from training.text import TrainingError, msg
 
 ProgressCallback = Callable[[int, str], None]
-CUE_CACHE_FORMAT = "mixlyzer_phrase_cue_cache_v1"
+CUE_CACHE_FORMAT = "mixlyzer_phrase_cue_cache_v2"     # v2: the cues on the analysis's HPSS
 OUTER_FOLDS = 5
 MEMBERS = 3
 CHANNELS = 48
@@ -107,10 +107,13 @@ def cue_cache_path(cache_dir: Path, uid: str) -> Path:
 def song_cues(audio_path: Path, beat_times: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """(vocal (beats, 8), style (beats, 14)) of the song as the analysis makes them: its decode at the cues' rate, the
     mono mix, the frame-level cues, then per beat."""
+    from analyzer.audio.hpss import hpss_audio_with_spectra
     from analyzer.audio.load import fast_load
     from analyzer.phrase import song_cues as SC
     stereo = fast_load(str(audio_path), target_sr=SC.SAMPLE_RATE, stereo=True)
-    frames = SC.cue_frames(np.ascontiguousarray(stereo.mean(axis=1), dtype=np.float32))
+    _harmonic, _percussive, spectra = hpss_audio_with_spectra(
+        np.ascontiguousarray(stereo.mean(axis=1), dtype=np.float32), SC.SAMPLE_RATE, vocal_margin=SC.VOCAL_MARGIN)
+    frames = SC.cue_frames(spectra)
     return SC.vocal_cues(frames, beat_times), SC.style_cues(frames, beat_times)
 
 

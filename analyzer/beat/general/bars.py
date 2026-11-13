@@ -40,7 +40,7 @@ from .decode import is_ramp
 MIN_BEATS = 32
 START_MARGIN = 1e-3                 # a row starts this long before its first beat (float32 storage)
 MIN_SUPPORT = 0.33
-CB = 40.0
+CB = 28.0               # an odd bar's cost (evidence units; the shipped decoder file's)
 METER_LAGS = ((3, 6, 12), (4, 8, 16))    # beats: bar multiples of 3/4, of 4/4
 METER_WINDOW = 24       # beats each side the meter is judged over (6 bars of 4)
 METER_BIAS = 0.065      # the repetition score 4/4 music reaches at its 99.5th percentile (the library's 4/4 beats)

@@ -1,11 +1,48 @@
 {
   "format": "mixlyzer.beat_decoder.v1",
   "knobs": {
-    "section": 12.0,
-    "half_reset": 96.0,
-    "odd_bar": 40.0
+    "section": 8.5,
+    "half_reset": 34.0,
+    "odd_bar": 28.0
   },
   "training": {
-    "source": "refitted with the shipped models on the library's grids: section 8.5-17, half-beat reset 24-384, odd bar 20-320; the odd-bar cost chosen in every fold of a 5-fold CV by song"
+    "date": "2026-11-13",
+    "tracks": 496,
+    "cross_validated": false,
+    "start": "shipped",
+    "quick": false,
+    "wrong_seconds_before": 2291.4,
+    "wrong_seconds_after": 2090.43,
+    "candidates": {
+      "section": [
+        8.5,
+        12.0,
+        17.0
+      ],
+      "half_reset": [
+        34.0,
+        48.0,
+        68.0,
+        96.0,
+        136.0,
+        192.0,
+        272.0
+      ],
+      "odd_bar": [
+        14.0,
+        20.0,
+        28.0,
+        40.0,
+        57.0,
+        80.0,
+        113.0
+      ]
+    },
+    "models": {
+      "beat_tcn": "default_beat_tcn.npz",
+      "critic": "default_beat_critic.npz",
+      "downbeat": "default_downbeat_ctx_hgb.npz"
+    },
+    "source": "refitted with the shipped models (melody_chroma by pitch class, 2026-11-13; the TCN and the critic fine-tuned from the earlier shipped ones) on the library's grids: every combination of the candidate costs"
   }
 }

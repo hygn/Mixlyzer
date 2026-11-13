@@ -30,6 +30,9 @@ class HpssSpectra:
     magnitude: np.ndarray   # [F, T]
     harmonic: np.ndarray    # [F, T]
     percussive: np.ndarray  # [F, T]
+    # the harmonic part's signal with a wider margin (librosa.effects.harmonic's ``margin``), when asked for
+    # (hpss_audio_with_spectra's ``vocal_margin``: the phrase model's song cues); None otherwise
+    vocal: np.ndarray | None = None
 
 
 def _median_filter_chunked(
@@ -59,15 +62,6 @@ def _medians(pool: ThreadPoolExecutor, magnitude: np.ndarray, kernel_size: int, 
     return harmonic, percussive
 
 
-def hpss_medians(magnitude: np.ndarray, kernel_size: int = HPSS_KERNEL_SIZE) -> tuple[np.ndarray, np.ndarray]:
-    """The harmonic (along time) and percussive (along frequency) median filters of a magnitude spectrogram
-    ``[F, T]``: librosa.decompose.hpss's (``scipy.ndimage.median_filter``, ``mode="reflect"``), the same values, in
-    parallel as hpss_masks."""
-    workers = max(2, min(HPSS_MAX_WORKERS, os.cpu_count() or 2))
-    with ThreadPoolExecutor(max_workers=workers) as pool:
-        return _medians(pool, magnitude, kernel_size, max(1, workers // 2))
-
-
 def hpss_masks(magnitude: np.ndarray, kernel_size: int = HPSS_KERNEL_SIZE) -> tuple[np.ndarray, np.ndarray]:
     """Harmonic / percussive soft masks of a magnitude spectrogram ``[F, T]``.
 
@@ -76,6 +70,13 @@ def hpss_masks(magnitude: np.ndarray, kernel_size: int = HPSS_KERNEL_SIZE) -> tu
     frequency bands and the frequency filter on time spans, in parallel, and
     the masks on frequency bands.
     """
+    mask_harmonic, mask_percussive, _ = _masks(magnitude, kernel_size, None)
+    return mask_harmonic, mask_percussive
+
+
+def _masks(magnitude: np.ndarray, kernel_size: int, vocal_margin: float | None):
+    """hpss_masks' two masks, and with ``vocal_margin`` the harmonic mask of that margin from the same medians
+    (librosa.effects.harmonic's: the percussive median times the margin, zeros not split), else None."""
     workers = max(2, min(HPSS_MAX_WORKERS, os.cpu_count() or 2))
     chunks = max(1, workers // 2)
     with ThreadPoolExecutor(max_workers=workers) as pool:
@@ -87,22 +88,27 @@ def hpss_masks(magnitude: np.ndarray, kernel_size: int = HPSS_KERNEL_SIZE) -> tu
             (
                 pool.submit(softmask, harmonic[band], percussive[band], power=2.0, split_zeros=True),
                 pool.submit(softmask, percussive[band], harmonic[band], power=2.0, split_zeros=True),
+                pool.submit(softmask, harmonic[band], percussive[band] * vocal_margin, power=2.0, split_zeros=False)
+                if vocal_margin is not None else None,
             )
             for band in bands
         ]
-        mask_harmonic = np.concatenate([h.result() for h, _ in mask_parts], axis=0)
-        mask_percussive = np.concatenate([p.result() for _, p in mask_parts], axis=0)
-        return mask_harmonic, mask_percussive
+        mask_harmonic = np.concatenate([h.result() for h, _, _ in mask_parts], axis=0)
+        mask_percussive = np.concatenate([p.result() for _, p, _ in mask_parts], axis=0)
+        mask_vocal = (np.concatenate([v.result() for _, _, v in mask_parts], axis=0)
+                      if vocal_margin is not None else None)
+        return mask_harmonic, mask_percussive, mask_vocal
 
 
 def hpss_audio_with_spectra(
-    y: np.ndarray, sample_rate: int, n_fft: int = HPSS_N_FFT
+    y: np.ndarray, sample_rate: int, n_fft: int = HPSS_N_FFT, *, vocal_margin: float | None = None
 ) -> tuple[np.ndarray, np.ndarray, HpssSpectra]:
-    """Harmonic and percussive signals of mono ``y`` and their spectra."""
+    """Harmonic and percussive signals of mono ``y`` and their spectra; with ``vocal_margin`` the spectra's ``vocal``
+    too (the harmonic part with that margin, from the same STFT and medians)."""
     hop_length = n_fft // 4
     spectrum = stft(y, n_fft=n_fft, hop_length=hop_length, center=True, pad_mode="constant")
     magnitude = np.abs(spectrum)
-    mask_harmonic, mask_percussive = hpss_masks(magnitude)
+    mask_harmonic, mask_percussive, mask_vocal = _masks(magnitude, HPSS_KERNEL_SIZE, vocal_margin)
     harmonic = magnitude * mask_harmonic
     percussive = magnitude * mask_percussive
 
@@ -117,10 +123,12 @@ def hpss_audio_with_spectra(
             length=y.shape[-1],
         )
 
-    with ThreadPoolExecutor(max_workers=2) as pool:
+    with ThreadPoolExecutor(max_workers=3) as pool:
         y_harmonic = pool.submit(inverse, mask_harmonic)
         y_percussive = pool.submit(inverse, mask_percussive)
-        spectra = HpssSpectra(int(sample_rate), int(n_fft), int(hop_length), magnitude, harmonic, percussive)
+        y_vocal = pool.submit(inverse, mask_vocal) if mask_vocal is not None else None
+        spectra = HpssSpectra(int(sample_rate), int(n_fft), int(hop_length), magnitude, harmonic, percussive,
+                              y_vocal.result() if y_vocal is not None else None)
         return y_harmonic.result(), y_percussive.result(), spectra
 
 

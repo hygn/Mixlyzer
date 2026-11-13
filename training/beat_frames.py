@@ -18,7 +18,7 @@ from analyzer.files import atomic_save_npz
 from training.text import msg
 
 ProgressCallback = Callable[[int, str], None]
-BEAT_FRAME_CACHE_FORMAT = "mixlyzer_beat_frame_cache_v1"
+BEAT_FRAME_CACHE_FORMAT = "mixlyzer_beat_frame_cache_v2"     # v2: melody_chroma by pitch class
 _SCALARS = ("sample_rate", "hop_length", "duration_sec")
 _EXACT = ("frame_times", "melody_contour")       # kept at full precision
 

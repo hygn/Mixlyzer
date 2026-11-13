@@ -56,7 +56,7 @@ def synthetic_frames(n_frames: int, beats: np.ndarray, seed: int) -> FrameFeatur
         rms_db=(-30 + 10 * rng.random(n_frames)).astype(np.float32), band_ratios=m(3), flatness=m(1)[0],
         librosa_onset=m(1)[0] + 2 * pulse, harmonic_onset=m(1)[0], percussive_bands=m(3) + pulse,
         percussive_share=m(1)[0], melody_chroma=m(12), melody_onset=m(1)[0],
-        melody_pitch=np.where(contour >= 0, 60.0, np.nan), melody_contour=contour,
+        melody_contour=contour,
     )
 
 

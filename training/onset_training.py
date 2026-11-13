@@ -18,7 +18,7 @@ from analyzer.files import atomic_save_npz
 from training.text import msg
 
 
-ONSET_FEATURE_CACHE_FORMAT = "mixlyzer_onset_feature_cache_v4"
+ONSET_FEATURE_CACHE_FORMAT = "mixlyzer_onset_feature_cache_v5"     # v5: melody_chroma by pitch class
 
 # Frames near an annotated beat get a Gaussian target of this width (in frames).
 TARGET_SIGMA_FRAMES = 0.75

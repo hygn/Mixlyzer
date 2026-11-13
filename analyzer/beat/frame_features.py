@@ -58,7 +58,6 @@ class FrameFeatures:
     percussive_share: np.ndarray  # [T] percussive / (percussive + harmonic) power
     melody_chroma: np.ndarray     # [12, T] chroma of the harmonic part in the melody register
     melody_onset: np.ndarray      # [T] positive log-CQT flux of the melody register (note / syllable starts)
-    melody_pitch: np.ndarray      # [T] predominant melody pitch (MIDI semitones), NaN when unvoiced
     melody_contour: np.ndarray    # [T] id of the melody contour owning the frame, -1 when unvoiced
 
     @property
@@ -177,7 +176,7 @@ def extract_frame_features(
     # The workers do no BLAS matrix products: concurrent BLAS calls would change
     # the float rounding from run to run, so the chroma filterbanks run on this
     # thread after the join.
-    def melody() -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    def melody() -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         melody_cqt = np.abs(librosa.cqt(
             harmonic, sr=sample_rate, hop_length=hop_length,
             fmin=note_to_hz(MELODY_FMIN_NOTE), n_bins=12 * MELODY_OCTAVES, bins_per_octave=12,
@@ -185,8 +184,8 @@ def extract_frame_features(
         melody_onset = _positive_flux(
             amplitude_to_db(melody_cqt, ref=np.max, top_db=80.0)
         ).mean(axis=0)
-        melody_pitch, melody_contour = extract_melody_contour(harmonic, sample_rate, hop_length, n_frames)
-        return melody_cqt, melody_onset, melody_pitch, melody_contour
+        melody_contour = extract_melody_contour(harmonic, sample_rate, hop_length, n_frames)
+        return melody_cqt, melody_onset, melody_contour
 
     pool = ThreadPoolExecutor(max_workers=2)
     mix_cqt_job = pool.submit(mix_cqt, audio, sample_rate, hop_length)
@@ -243,13 +242,16 @@ def extract_frame_features(
 
     with pool:
         full_cqt, bass_cqt = mix_cqt_job.result()
-        melody_cqt, melody_onset, melody_pitch, melody_contour = melody_job.result()
+        melody_cqt, melody_onset, melody_contour = melody_job.result()
     chroma = chroma_of_cqt(full_cqt)
     bass_chroma = librosa.feature.chroma_cqt(
         C=bass_cqt, n_chroma=12, fmin=BASS_CHROMA_FMIN_HZ, bins_per_octave=CHROMA_BINS_PER_OCTAVE,
     )
     tonnetz = librosa.feature.tonnetz(chroma=chroma, sr=sample_rate)
-    melody_chroma = librosa.feature.chroma_cqt(C=melody_cqt, n_chroma=12)
+    # the melody register's pitch classes: its CQT has a bin a semitone from MELODY_FMIN_NOTE, folded by octave
+    melody_chroma = librosa.feature.chroma_cqt(
+        C=melody_cqt, n_chroma=12, bins_per_octave=12, fmin=note_to_hz(MELODY_FMIN_NOTE),
+    )
 
     return FrameFeatures(
         sample_rate=sample_rate,
@@ -270,6 +272,5 @@ def extract_frame_features(
         percussive_share=_fit_length(percussive_share, n_frames),
         melody_chroma=_fit_length(melody_chroma, n_frames),
         melody_onset=_fit_length(melody_onset, n_frames),
-        melody_pitch=melody_pitch,
         melody_contour=melody_contour,
     )

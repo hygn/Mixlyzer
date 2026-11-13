@@ -922,21 +922,32 @@ def finish_phrase_segments(
     return bounds, labels
 
 
-def _cue_frames(audio: np.ndarray, sample_rate: int) -> song_cues.CueFrames:
+def _cue_frames(audio: np.ndarray, sample_rate: int, hpss: HpssSpectra | None = None) -> song_cues.CueFrames:
     if int(sample_rate) != song_cues.SAMPLE_RATE:
         raise ValueError(f"the phrase model's song cues are made at {song_cues.SAMPLE_RATE} Hz, not {sample_rate}")
-    a = np.asarray(audio)
-    mono = np.ascontiguousarray(a.mean(axis=1), dtype=np.float32) if a.ndim == 2 else np.asarray(a, np.float32)
-    return song_cues.cue_frames(mono)
+    if hpss is None or hpss.vocal is None:      # the analysis's HPSS of the mono mix, else made here
+        from analyzer.audio.hpss import hpss_audio_with_spectra
+        a = np.asarray(audio)
+        mono = np.ascontiguousarray(a.mean(axis=1), dtype=np.float32) if a.ndim == 2 else np.asarray(a, np.float32)
+        _harmonic, _percussive, hpss = hpss_audio_with_spectra(mono, int(sample_rate),
+                                                                vocal_margin=song_cues.VOCAL_MARGIN)
+    return song_cues.cue_frames(hpss)
 
 
-def phrase_cue_frames(audio: np.ndarray, sample_rate: int, *, model_path: str | Path) -> song_cues.CueFrames | None:
+def cue_vocal_margin(model_path: str | Path) -> float | None:
+    """The vocal margin the HPSS is asked for (hpss_audio_with_spectra) when the phrase model reads the song cues (a
+    stacked model), else None."""
+    return None if load_two_stage_model(str(Path(model_path).resolve())).get("stack") is None         else song_cues.VOCAL_MARGIN
+
+
+def phrase_cue_frames(audio: np.ndarray, sample_rate: int, *, model_path: str | Path,
+                      hpss: HpssSpectra | None = None) -> song_cues.CueFrames | None:
     """The song cues' frame-level part a stacked phrase model reads of the audio (its mono mix: the analysis's decode,
-    stereo or mono), None for a model without them: made before the beats are known (the full analysis makes it
-    beside the beats)."""
-    if load_two_stage_model(str(Path(model_path).resolve())).get("stack") is None:
+    stereo or mono; ``hpss``: its HPSS with the vocal part, cue_vocal_margin), None for a model without them: made
+    before the beats are known (the full analysis makes it beside the beats)."""
+    if cue_vocal_margin(model_path) is None:
         return None
-    return _cue_frames(audio, sample_rate)
+    return _cue_frames(audio, sample_rate, hpss)
 
 
 def stack_inputs(
@@ -949,10 +960,12 @@ def stack_inputs(
     downbeat: np.ndarray,
     labels: list[str],
     cues: song_cues.CueFrames | None = None,
+    hpss: HpssSpectra | None = None,
 ) -> tuple[np.ndarray, np.ndarray, Callable[[np.ndarray, np.ndarray], np.ndarray]]:
     """A stacked model's (beat features, boundary features, label mix) for a song: its cues (``cues``: phrase_cue_frames
-    of the audio when already made), the DS-TCN on them and the phrase features (stack.py)."""
-    frames = cues if cues is not None else _cue_frames(audio, sample_rate)
+    of the audio when already made, else from ``hpss`` when it has the vocal part), the DS-TCN on them and the phrase
+    features (stack.py)."""
+    frames = cues if cues is not None else _cue_frames(audio, sample_rate, hpss)
     vocal = song_cues.vocal_cues(frames, beat_times_sec)
     style = song_cues.style_cues(frames, beat_times_sec)
     x = dstcn_inputs(feature_z, vocal, style)
@@ -1020,7 +1033,7 @@ def detect_two_stage_phrase_segments(
     if artifact.get("stack") is not None:
         model_z, model_bz, label_mix = stack_inputs(artifact["stack"], audio, int(sample_rate), feature_z,
                                                     boundary_feature_z, beat_times, downbeat, artifact["label_labels"],
-                                                    cues)
+                                                    cues, hpss)
     probability = _predict_boundary_probability(artifact["boundary_clf"], model_bz, valid)
     bounds = decode_phrase_boundaries(probability, valid, downbeat, settings)
     bounds, labels = finish_phrase_segments(

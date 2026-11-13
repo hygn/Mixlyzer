@@ -9,6 +9,7 @@ from analyzer.audio.load import fast_load
 from analyzer.errors import PHRASE_NEEDS_TEMPO, PHRASE_TOO_FEW_BEATS, AnalysisError
 from analyzer.music.marks import Phrase
 from analyzer.phrase import detect_phrase_segments
+from analyzer.phrase.phrase_analyzer import cue_vocal_margin
 from analyzer.pipeline import stages
 from analyzer.pipeline.stages import Progress, report
 from analyzer.settings import ANALYSIS_SAMPLE_RATE, AnalysisSettings
@@ -32,7 +33,8 @@ def reanalyze_phrases(path: str, settings: AnalysisSettings, beats_time_arr: np.
     audio_stereo = fast_load(path, sr, stereo=True)
     report(progress, stages.HPSS, 0.2)
     audio_full = np.ascontiguousarray(audio_stereo.mean(axis=1), dtype=np.float32)
-    _y_harm, _y_perc, hpss_spectra = hpss_audio_with_spectra(audio_full, sr)
+    _y_harm, _y_perc, hpss_spectra = hpss_audio_with_spectra(
+        audio_full, sr, vocal_margin=cue_vocal_margin(settings.models.phrase))
     report(progress, stages.PHRASE, 0.5)
     segments = detect_phrase_segments(
         audio_stereo,

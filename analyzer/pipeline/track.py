@@ -30,7 +30,7 @@ from analyzer.music.beat_geometry import downbeat_times
 from analyzer.music.marks import CuePoint, Phrase
 from analyzer.phrase import detect_phrase_segments
 from analyzer.phrase.cue_points import autocue_time_sec, phrase_cue_points
-from analyzer.phrase.phrase_analyzer import phrase_cue_frames, phrase_song_frames
+from analyzer.phrase.phrase_analyzer import cue_vocal_margin, phrase_cue_frames, phrase_song_frames
 from analyzer.pipeline import stages
 from analyzer.pipeline.lazy_modules import LAZY_MODULES
 from analyzer.pipeline.stages import Progress, report
@@ -95,13 +95,16 @@ def _analyze_track(path: str, settings: AnalysisSettings, progress: Progress, si
     # Decode once: stereo for the structure detector, mono derived for the rest.
     samp_stereo = fast_load(path, target_sr=global_sr, stereo=True)
     samp = np.ascontiguousarray(samp_stereo.mean(axis=1), dtype=np.float32)
-    # a stacked phrase model's song cues, their frame-level part (None for a model without them), beside the rest
-    phrase_cues_job = side.submit(phrase_cue_frames, samp, int(global_sr), model_path=models.phrase)
 
     report(progress, stages.HPSS, 0.1)
     print("[Analyzer] Processing HPSS")
-    # The spectra are reused by the phrase features (same mono mix, STFT and HPSS).
-    y_harm, y_perc, hpss_spectra = hpss_audio_with_spectra(samp, int(global_sr))
+    # The spectra are reused by the phrase features and the song cues (same mono mix, STFT and HPSS; the song cues'
+    # vocal part from the same medians).
+    y_harm, y_perc, hpss_spectra = hpss_audio_with_spectra(samp, int(global_sr),
+                                                           vocal_margin=cue_vocal_margin(models.phrase))
+    # a stacked phrase model's song cues, their frame-level part (None for a model without them), beside the rest
+    phrase_cues_job = side.submit(phrase_cue_frames, samp, int(global_sr), model_path=models.phrase,
+                                  hpss=hpss_spectra)
     # the keys' frame chroma, from the harmonic part alone (the keys are found on the beats and phrases below)
     key_frames_job = side.submit(key_frame_chroma, y_harm, int(global_sr))
     # the phrase features' frame-level part, from the audio and its HPSS (synchronized to the beats below)
