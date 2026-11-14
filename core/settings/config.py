@@ -52,6 +52,10 @@ class libconfig:
     # left out: the mood's default)
     rekordbox_phrase_mood: str = "mid"
     rekordbox_phrase_map: str = ""
+    # The local API (core.local_api): other programs on this computer asking analyses over HTTP on 127.0.0.1 at this
+    # port, once paired (Settings > Library > Local Apps); this device's (a restored library keeps them as they are).
+    local_api: bool = False
+    local_api_port: int = 48700
 
     def rekordbox_xml(self) -> tuple:
         """What the Rekordbox XML is written with (a change of any writes it again whole)."""
@@ -468,6 +472,8 @@ def default_cfg():
         serato_bpm_lock=True,
         rekordbox_phrase_mood="mid",
         rekordbox_phrase_map="",
+        local_api=False,
+        local_api_port=48700,
     )
     acfg = analysisconfig(
         bpm_min=100,
@@ -657,8 +663,8 @@ def _merge_defaults(default_dict: dict, loaded_dict: dict) -> dict:
 def restored_settings(current: config, payload: dict, deck: dict, *, libpath: str,
                       local_music_directories: list[str], rekordbox_xml_path: str) -> config:
     """A library package's settings (config.json's and deck.json's content) on this device: the package's, but for
-    what describes this device, kept as it is here: the audio (playbackconfig), the microphone, Deck Monitor, and
-    every file path (the log, the models, the metronome's sound, the record's image: a package
+    what describes this device, kept as it is here: the audio (playbackconfig), the microphone, Deck Monitor, the
+    local API, and every file path (the log, the models, the metronome's sound, the record's image: a package
     never names where a file is written). The library is ``libpath``; the music folders and the Rekordbox XML are
     the restore's (joined to this device's folders by the user)."""
     defaults = default_cfg()
@@ -675,6 +681,8 @@ def restored_settings(current: config, payload: dict, deck: dict, *, libpath: st
     new.deckconfig.monitor_host = current.deckconfig.monitor_host
     new.deckconfig.monitor_port = current.deckconfig.monitor_port
     new.deckconfig.monitor_interface = current.deckconfig.monitor_interface
+    new.libconfig.local_api = current.libconfig.local_api
+    new.libconfig.local_api_port = current.libconfig.local_api_port
     new.libconfig.libpath = libpath
     new.libconfig.logpath = current.libconfig.logpath
     new.libconfig.local_music_directories = list(local_music_directories)

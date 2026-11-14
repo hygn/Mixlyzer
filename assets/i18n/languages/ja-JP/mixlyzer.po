@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-11-14 03:06+0900\n"
+"POT-Creation-Date: 2026-11-14 13:33+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ja_JP\n"
@@ -149,27 +149,27 @@ msgstr "ライブラリを読み込み中"
 msgid "Building the window"
 msgstr "ウィンドウを作成中"
 
-#: app/window.py:92
+#: app/window.py:93
 msgid "Core objects and playback"
 msgstr "コアオブジェクトと再生"
 
-#: app/window.py:117
+#: app/window.py:118
 msgid "Main view, editor and library"
 msgstr "メインビュー、エディター、ライブラリ"
 
-#: app/window.py:123 app/window.py:290 ui/config/window.py:61
+#: app/window.py:124 app/window.py:291 ui/config/window.py:63
 msgid "Settings"
 msgstr "環境設定"
 
-#: app/window.py:125
+#: app/window.py:126
 msgid "Dialogs, workflows and metronome"
 msgstr "ダイアログ、ワークフロー、メトロノーム"
 
-#: app/window.py:172
+#: app/window.py:173
 msgid "Library in a Synced Folder"
 msgstr "同期フォルダー内のライブラリ"
 
-#: app/window.py:173
+#: app/window.py:174
 #, python-brace-format
 msgid ""
 "The library is in a folder {service} syncs:\n"
@@ -188,39 +188,39 @@ msgstr ""
 "がライブラリに書き込んでいる最中に同期されると、データベース（library.db）が壊れることがあります。また、オンラインのみのトラックは開くたびにダウンロードされます。ライブラリは同期しないフォルダーに置くか（環境設定"
 " > ライブラリ > バックアップでコピーを作り、別の場所に復元できます）、Mixlyzer の使用中は同期を一時停止してください。"
 
-#: app/window.py:179
+#: app/window.py:180
 msgid "Don't show this again for this folder"
 msgstr "このフォルダーについて今後表示しない"
 
-#: app/window.py:291 ui/windows/workers.py:28
+#: app/window.py:292 ui/windows/workers.py:28
 msgid "Workers"
 msgstr "タスク"
 
 # | msgid "Tie-ups"
-#: app/window.py:292 ui/shortcuts.py:169 ui/windows/tieup_works.py:33
+#: app/window.py:293 ui/shortcuts.py:169 ui/windows/tieup_works.py:33
 #: ui/windows/tieup_works.py:204 ui/windows/tieup_works.py:259
 #: ui/windows/tieup_works.py:264 ui/windows/tieup_works.py:273
 #: ui/windows/tieup_works.py:336
 msgid "Tie-up Works"
 msgstr "タイアップ作品"
 
-#: app/window.py:293
+#: app/window.py:294
 msgid "Open Source"
 msgstr "オープンソース"
 
-#: app/window.py:294 ui/windows/diagnostics_dialog.py:21
+#: app/window.py:295 ui/windows/diagnostics_dialog.py:21
 msgid "Diagnostics"
 msgstr "診断情報"
 
-#: app/window.py:295
+#: app/window.py:296
 msgid "About"
 msgstr "情報"
 
-#: app/window.py:312 core/controls/midi.py:56
+#: app/window.py:313 core/controls/midi.py:56
 msgid "Mixer"
 msgstr "ミキサー"
 
-#: app/window.py:352
+#: app/window.py:353
 msgid "Deck Monitor: another DJ program's decks beside Mixlyzer's analysis"
 msgstr "デッキモニター: 別の DJ ソフトのデッキを Mixlyzer の解析と並べて表示"
 
@@ -228,69 +228,69 @@ msgstr "デッキモニター: 別の DJ ソフトのデッキを Mixlyzer の�
 # | Playback > " "Audio engine)."
 # Audio
 # | > " "Engine)."
-#: app/window.py:508
+#: app/window.py:518
 msgid "MIDI needs the native audio engine (Settings > Audio > Engine)."
 msgstr "MIDI は Native オーディオエンジンでのみ動作します（設定 > オーディオ > エンジン）。"
 
 # | msgid "MIDI input"
-#: app/window.py:515
+#: app/window.py:525
 msgid "MIDI input on."
 msgstr "MIDI 入力オン。"
 
 # | msgid "MIDI input"
-#: app/window.py:515
+#: app/window.py:525
 msgid "MIDI input off."
 msgstr "MIDI 入力オフ。"
 
-#: app/window.py:567
+#: app/window.py:577
 msgid "The Python audio engine plays: there is no native engine to restart."
 msgstr "Python オーディオエンジンで再生中です。再起動するネイティブエンジンがありません。"
 
 # | msgid "Starting the reading worker"
-#: app/window.py:569
+#: app/window.py:579
 msgid "Restarting the audio engine..."
 msgstr "オーディオエンジンを再起動中..."
 
 # | msgid "Audio engine"
-#: app/window.py:573
+#: app/window.py:583
 msgid "Audio engine restarted."
 msgstr "オーディオエンジンを再起動しました。"
 
-#: app/window.py:574
+#: app/window.py:584
 msgid "The audio engine did not start; it is tried again every 2 seconds."
 msgstr "オーディオエンジンが起動しませんでした。2 秒ごとに再試行します。"
 
 # | msgid "Save Edits"
-#: app/window.py:634
+#: app/window.py:644
 msgid "Unsaved Edits"
 msgstr "未保存の編集"
 
 # | msgid "The loaded track is not in the list shown."
-#: app/window.py:635
+#: app/window.py:645
 msgid "The loaded track has edits not saved."
 msgstr "ロード中のトラックに未保存の編集があります。"
 
-#: app/window.py:636
+#: app/window.py:646
 msgid "Save them, discard them, or cancel?"
 msgstr "保存しますか、破棄しますか、それともキャンセルしますか？"
 
 # | msgid "The file could not be written: {error}"
 # | msgid "" "The edits could not be saved:\n" "{error}"
-#: app/window.py:649
+#: app/window.py:659
 msgid "The edits could not be saved now: nothing was done."
 msgstr "現在は編集を保存できないため、何も行いませんでした。"
 
-#: app/window.py:668 app/window.py:728
+#: app/window.py:678 app/window.py:738
 msgid "Segment reanalysis canceled (track changed)"
 msgstr "区間の再解析をキャンセルしました (トラックが変わりました)"
 
 # | msgid "Phrase reanalysis completed"
-#: app/window.py:709
+#: app/window.py:719
 #, python-brace-format
 msgid "The track's analysis could not be read: {file}"
 msgstr "トラックの解析を読み込めませんでした: {file}"
 
-#: app/window.py:713
+#: app/window.py:723
 #, python-brace-format
 msgid ""
 "{n} JumpCUE past slot Z is not shown ({file}); it stays stored until the "
@@ -300,15 +300,15 @@ msgid_plural ""
 "the JumpCUEs are edited."
 msgstr[0] "スロットZを超えるJumpCUE {n}個は表示されません（{file}）。JumpCUEを編集するまでは保存されたまま残ります。"
 
-#: app/window.py:731
+#: app/window.py:741
 msgid "Track unloaded."
 msgstr "トラックをアンロードしました。"
 
-#: app/window.py:745
+#: app/window.py:755
 msgid "Track File Not Found"
 msgstr "トラックファイルが見つかりません"
 
-#: app/window.py:749
+#: app/window.py:759
 #, python-brace-format
 msgid ""
 "Cannot load \"{name}\": its file is missing.\n"
@@ -321,71 +321,71 @@ msgstr ""
 "\n"
 "ファイルの新しい場所を指定しますか?"
 
-#: app/window.py:756
+#: app/window.py:766
 #, python-brace-format
 msgid "Locate {name}"
 msgstr "{name} の場所を指定"
 
-#: app/window.py:780 app/window.py:802
+#: app/window.py:790 app/window.py:812
 msgid "Analysis saved to library."
 msgstr "解析をライブラリに保存しました。"
 
-#: app/window.py:787
+#: app/window.py:797
 msgid "Finished"
 msgstr "完了"
 
-#: app/window.py:798
+#: app/window.py:808
 msgid ""
 "Analysis saved to library. The editor keeps your edits not saved: load "
 "the track again to see the new analysis."
 msgstr "解析をライブラリに保存しました。エディターには未保存の編集が残っています。新しい解析を表示するには、トラックをもう一度ロードしてください。"
 
-#: app/window.py:814
+#: app/window.py:824
 msgid "Waiting to be looked up on Wikipedia"
 msgstr "Wikipediaでの調査待ち"
 
-#: app/window.py:820
+#: app/window.py:830
 msgid "Looking up on Wikipedia and Wikidata…"
 msgstr "WikipediaとWikidataで調べています…"
 
 # | msgid "Reading the analysis failed: {error}"
 # | msgid "The search failed: {error}"
 # | msgid "" "The lookup failed:\n" "{error}"
-#: app/window.py:825
+#: app/window.py:835
 msgid "The lookup failed."
 msgstr "調査できませんでした。"
 
-#: app/window.py:866
+#: app/window.py:876
 msgid "Rebuilding the sort index..."
 msgstr "並び替えインデックスを作り直しています..."
 
-#: app/window.py:868
+#: app/window.py:878
 #, python-brace-format
 msgid "Sort index rebuilt: {count} names."
 msgstr "並び替えインデックスを作り直しました: 名前 {count} 件。"
 
-#: app/window.py:876 ui/windows/library_backup.py:53
+#: app/window.py:886 ui/windows/library_backup.py:53
 msgid "Back Up Library"
 msgstr "ライブラリのバックアップ"
 
-#: app/window.py:877 app/window.py:893
+#: app/window.py:887 app/window.py:903
 #, python-brace-format
 msgid "Mixlyzer library backup (*{suffix})"
 msgstr "Mixlyzer ライブラリのバックアップ (*{suffix})"
 
-#: app/window.py:887
+#: app/window.py:897
 msgid ""
 "The editor has edits not saved. Save or undo them first: Mixlyzer "
 "restarts after a restore."
 msgstr "エディターに保存していない編集があります。先に保存するか元に戻してください。復元すると Mixlyzer は再起動します。"
 
-#: app/window.py:889 app/window.py:892 app/window.py:899 app/window.py:906
-#: app/window.py:949 ui/windows/library_backup.py:133
+#: app/window.py:899 app/window.py:902 app/window.py:909 app/window.py:916
+#: app/window.py:959 ui/windows/library_backup.py:133
 #: ui/windows/library_backup.py:293
 msgid "Restore Library"
 msgstr "ライブラリの復元"
 
-#: app/window.py:930
+#: app/window.py:940
 #, python-brace-format
 msgid ""
 "Restored {n} track into:\n"
@@ -397,29 +397,29 @@ msgstr[0] ""
 "{n} トラックを次のフォルダーに復元しました:\n"
 "{folder}"
 
-#: app/window.py:933
+#: app/window.py:943
 #, python-brace-format
 msgid "{n} track's file path was joined to this device's folders."
 msgid_plural "{n} tracks' file paths were joined to this device's folders."
 msgstr[0] "{n} トラックのファイルのパスをこのデバイスのフォルダーにつなぎました。"
 
-#: app/window.py:937
+#: app/window.py:947
 #, python-brace-format
 msgid "{n} path was left as it was: another track already had the new one."
 msgid_plural "{n} paths were left as they were: other tracks already had the new ones."
 msgstr[0] "{n} 件のパスはそのままにしました: 新しいパスはすでに別のトラックのものです。"
 
-#: app/window.py:941
+#: app/window.py:951
 #, python-brace-format
 msgid "{n} track had no stored analysis in the backup."
 msgid_plural "{n} tracks had no stored analysis in the backup."
 msgstr[0] "{n} トラックはバックアップに保存された解析がありませんでした。"
 
-#: app/window.py:945
+#: app/window.py:955
 msgid "Files replaced by the backup's were kept beside them:"
 msgstr "バックアップのファイルに置き換えたファイルは、隣に残してあります:"
 
-#: app/window.py:947
+#: app/window.py:957
 msgid "Mixlyzer now restarts to open the restored library."
 msgstr "復元したライブラリを開くため、Mixlyzer を再起動します。"
 
@@ -1421,78 +1421,79 @@ msgstr "JumpCUE を更新しました"
 msgid "Phrases Updated"
 msgstr "フレーズを更新しました"
 
-#: core/workflows/analysis.py:80
+#: core/workflows/analysis.py:135
 msgid "Analysis canceled"
 msgstr "解析をキャンセルしました"
 
-#: core/workflows/analysis.py:102
+#: core/workflows/analysis.py:157
 #, python-brace-format
 msgid ""
 "The path is too long for Windows ({count} characters) while Windows' long"
 " paths are off: {path}"
 msgstr "Windows で開くにはパスが長すぎます（{count} 文字）。Windows の長いパスのサポートがオフです: {path}"
 
-#: core/workflows/analysis.py:106
+#: core/workflows/analysis.py:161
 #, python-brace-format
 msgid "{file} is kept online only: it is downloaded before it is read."
 msgstr "{file} はオンラインのみのファイルです。ダウンロードしてから読み込みます。"
 
-#: core/workflows/analysis.py:118
+#: core/workflows/analysis.py:173
 #, python-brace-format
 msgid "File not found: {path}"
 msgstr "ファイルが見つかりません: {path}"
 
-#: core/workflows/analysis.py:130
+#: core/workflows/analysis.py:185
 #, python-brace-format
 msgid "Analysis already in progress: {file}"
 msgstr "すでに解析中です: {file}"
 
-#: core/workflows/analysis.py:134 core/workflows/analysis.py:229
+#: core/workflows/analysis.py:188 core/workflows/analysis.py:294
 #, python-brace-format
 msgid "Analyzing: {file}"
 msgstr "解析中: {file}"
 
 # | msgid "Reading the library"
-#: core/workflows/analysis.py:137
+#: core/workflows/analysis.py:191
 #, python-brace-format
 msgid "Already in the library: {file}"
 msgstr "すでにライブラリにあります: {file}"
 
-#: core/workflows/analysis.py:145
+#: core/workflows/analysis.py:199
 msgid "Loading Track"
 msgstr "トラックを読み込み中"
 
 # | msgid "Loading the library"
-#: core/workflows/analysis.py:161
+#: core/workflows/analysis.py:215
 #, python-brace-format
 msgid "Loaded from the library: {file}"
 msgstr "ライブラリから読み込みました: {file}"
 
-#: core/workflows/analysis.py:202
+#: core/workflows/analysis.py:266
 msgid "Waiting for a free analysis slot"
 msgstr "解析の順番待ち"
 
 # | msgid "Analyzing: {file}"
-#: core/workflows/analysis.py:203
+#: core/workflows/analysis.py:267
 #, python-brace-format
 msgid "Waiting to analyze: {file}"
 msgstr "解析待ち: {file}"
 
-#: core/workflows/analysis.py:276
+#: core/workflows/analysis.py:343
 #, python-brace-format
 msgid "Error ({file})"
 msgstr "エラー ({file})"
 
-#: core/workflows/analysis.py:276
+#: core/workflows/analysis.py:343 core/workflows/analysis.py:346
+#: core/workflows/analysis.py:405
 msgid "Error"
 msgstr "エラー"
 
-#: core/workflows/analysis.py:287
+#: core/workflows/analysis.py:360
 msgid "Saving Result"
 msgstr "結果を保存中"
 
 # | msgid "The file could not be written: {error}"
-#: core/workflows/analysis.py:290
+#: core/workflows/analysis.py:363
 #, python-brace-format
 msgid "The analysis could not be stored: {error}"
 msgstr "解析結果を保存できませんでした: {error}"
@@ -1677,7 +1678,7 @@ msgstr "相対または絶対の .npz パス"
 msgid "relative or absolute .json path"
 msgstr "相対または絶対の .json パス"
 
-#: ui/config/analysis.py:32 ui/config/analysis.py:136 ui/config/library.py:264
+#: ui/config/analysis.py:32 ui/config/analysis.py:136 ui/config/library.py:265
 #: ui/config/view.py:201
 msgid "General"
 msgstr "一般"
@@ -1706,7 +1707,7 @@ msgstr ""
 "ビートトラッカーはこの値からその 2 倍までのテンポで読み取ります。\n"
 "範囲外の曲は半分または 2 倍のテンポで読み取られます。"
 
-#: ui/config/analysis.py:60 ui/config/window.py:242
+#: ui/config/analysis.py:60 ui/config/window.py:248
 #: ui/windows/reanalyze_dialog.py:38 ui/windows/reanalyze_dialog.py:76
 #, python-brace-format
 msgid "Reads {low} - {high} BPM"
@@ -1775,7 +1776,7 @@ msgid "BPM min"
 msgstr "最小 BPM"
 
 #: ui/config/analysis.py:115 ui/config/analysis.py:145
-#: ui/config/analysis.py:159 ui/config/library.py:257 ui/config/library.py:273
+#: ui/config/analysis.py:159 ui/config/library.py:258 ui/config/library.py:275
 #: ui/config/playback.py:106 ui/config/view.py:196
 msgid "Advanced"
 msgstr "詳細設定"
@@ -2239,7 +2240,7 @@ msgstr ""
 msgid "Kind"
 msgstr "種類"
 
-#: ui/config/backups.py:89 ui/config/library.py:199
+#: ui/config/backups.py:89 ui/config/library.py:200
 #: ui/windows/library_backup.py:146
 msgid "Backup"
 msgstr "バックアップ"
@@ -2280,12 +2281,6 @@ msgstr[0] "バックアップ {count} 個を削除しますか? 削除すると�
 #: ui/config/dialogs/library_sync.py:21
 msgid "Reading the stored analyses"
 msgstr "保存された解析を読み込み中"
-
-#: ui/config/dialogs/library_sync.py:25 ui/config/dialogs/music_index.py:24
-#: ui/config/dialogs/readings.py:24 ui/config/dialogs/rekordbox.py:23
-#: ui/edit_panel/jumpcue_editor.py:45 ui/windows/library_backup.py:63
-msgid "Close"
-msgstr "閉じる"
 
 # | msgid "Reading the library: {done} / {total} tracks"
 #: ui/config/dialogs/library_sync.py:43
@@ -2427,38 +2422,38 @@ msgstr ""
 "Rekordbox XML の同期に失敗しました:\n"
 "{error}"
 
-#: ui/config/library.py:53
+#: ui/config/library.py:54
 #, python-brace-format
 msgid "{verses}, the next one each run of verses"
 msgstr "{verses}、ヴァースのまとまりごとに次の番号"
 
-#: ui/config/library.py:55
+#: ui/config/library.py:56
 msgid "Go on with the phrase before"
 msgstr "前のフレーズに続ける"
 
-#: ui/config/library.py:79
+#: ui/config/library.py:80
 msgid "Add Folder…"
 msgstr "フォルダーを追加…"
 
-#: ui/config/library.py:80 ui/library/tabs/tieup_editor.py:368
+#: ui/config/library.py:81 ui/library/tabs/tieup_editor.py:368
 msgid "Remove"
 msgstr "削除"
 
-#: ui/config/library.py:82
+#: ui/config/library.py:83
 msgid ""
 "When this list is empty, the operating system's default Music folder is "
 "used."
 msgstr "この一覧が空の場合は、OS の標準のミュージックフォルダーを使います。"
 
-#: ui/config/library.py:85
+#: ui/config/library.py:86
 msgid "Write log to file"
 msgstr "ログをファイルに書き込む"
 
-#: ui/config/library.py:87
+#: ui/config/library.py:88
 msgid "Sync with Rekordbox XML"
 msgstr "Rekordbox XML と同期"
 
-#: ui/config/library.py:95
+#: ui/config/library.py:96
 msgid ""
 "<p>Rekordbox has no tempo ramps: a ramp is written as steps of steady "
 "tempo. Smaller makes the steps finer.</p>"
@@ -2466,11 +2461,11 @@ msgstr ""
 "<p>Rekordbox "
 "にはテンポのランプがないため、ランプは一定テンポのステップに分けて書き出されます。小さいほどステップが細かくなります。</p>"
 
-#: ui/config/library.py:98 ui/library/tabs/sync.py:107
+#: ui/config/library.py:99 ui/library/tabs/sync.py:107
 msgid "Tie-ups after the comment"
 msgstr "コメントにタイアップを付ける"
 
-#: ui/config/library.py:100
+#: ui/config/library.py:101
 msgid ""
 "<p>Each track's comment in the XML with its song's tie-ups after it, as "
 "[Title OP; Other ED]; the library's comment stays as it is.</p>"
@@ -2478,67 +2473,67 @@ msgstr ""
 "<p>XML の各トラックのコメントの後に、曲のタイアップを [タイトル OP; 別作品 ED] "
 "の形で付けます。ライブラリのコメントはそのままです。</p>"
 
-#: ui/config/library.py:102 ui/config/library.py:173
+#: ui/config/library.py:103 ui/config/library.py:174
 msgid "Sync Now"
 msgstr "今すぐ同期"
 
-#: ui/config/library.py:103
+#: ui/config/library.py:104
 msgid "Logging settings apply on next app launch."
 msgstr "ログの設定は次回のアプリ起動時に適用されます。"
 
-#: ui/config/library.py:104
+#: ui/config/library.py:105
 msgid "Use Sync Now to rebuild the whole XML explicitly."
 msgstr "XML 全体を明示的に作り直すには「今すぐ同期」を使ってください。"
 
 # | msgid "" "Folder holding library.db and the per-track feature files
 # | (.npz).\n" "Relative paths are resolved from the app folder."
-#: ui/config/library.py:108
+#: ui/config/library.py:109
 msgid "Folder holding library.db and the per-track feature files (.npz)."
 msgstr "library.db とトラックごとの特徴量ファイル (.npz) を置くフォルダー。"
 
-#: ui/config/library.py:111
+#: ui/config/library.py:112
 msgid "Root folders shown under Local Folders in the library browser."
 msgstr "ライブラリブラウザーの「ローカルフォルダー」の下に表示されるルートフォルダー。"
 
-#: ui/config/library.py:113
+#: ui/config/library.py:114
 msgid "Add a local music root folder."
 msgstr "ローカルの音楽のルートフォルダーを追加します。"
 
-#: ui/config/library.py:114
+#: ui/config/library.py:115
 msgid "Remove the selected root folders."
 msgstr "選択したルートフォルダーを削除します。"
 
-#: ui/config/library.py:115
+#: ui/config/library.py:116
 msgid "Write console output to a log file."
 msgstr "コンソールの出力をログファイルに書き込みます。"
 
-#: ui/config/library.py:116
+#: ui/config/library.py:117
 msgid "Log file written when 'Write log to file' is on."
 msgstr "「ログをファイルに書き込む」がオンのときに書き込むログファイル。"
 
-#: ui/config/library.py:118
+#: ui/config/library.py:119
 msgid ""
 "Keep a Rekordbox XML file updated with the library's beat grids, keys and"
 " cues."
 msgstr "ライブラリのビートグリッド、キー、キューを Rekordbox XML ファイルに反映し続けます。"
 
-#: ui/config/library.py:121
+#: ui/config/library.py:122
 msgid "Rekordbox XML file to write. Import it in Rekordbox to use the analysis."
 msgstr "書き込む Rekordbox XML ファイル。Rekordbox でインポートすると解析を利用できます。"
 
-#: ui/config/library.py:124
+#: ui/config/library.py:125
 msgid "Save these settings and rebuild the whole XML from the library now."
 msgstr "この設定を保存し、ライブラリから XML 全体を今すぐ作り直します。"
 
-#: ui/config/library.py:129
+#: ui/config/library.py:130
 msgid "Library Path"
 msgstr "ライブラリのパス"
 
-#: ui/config/library.py:140
+#: ui/config/library.py:141
 msgid "Local Music Folders"
 msgstr "ローカルの音楽フォルダー"
 
-#: ui/config/library.py:141
+#: ui/config/library.py:142
 msgid "Add a tie-up to the track's versions too"
 msgstr "タイアップを追加したら他のバージョンにも追加"
 
@@ -2546,17 +2541,17 @@ msgstr "タイアップを追加したら他のバージョンにも追加"
 # | (Settings > " "Library)."
 # | msgid_plural "" "A tie-up added here is added to its {n} other versions
 # too
-#: ui/config/library.py:143
+#: ui/config/library.py:144
 msgid ""
 "<p>A tie-up added in the Edit tab is added to the track's other versions "
 "as well.</p>"
 msgstr "<p>編集タブで追加したタイアップを、このトラックの他のバージョンにも追加します。</p>"
 
-#: ui/config/library.py:145
+#: ui/config/library.py:146
 msgid "Look up a new track's tie-ups on Wikipedia"
 msgstr "新しいトラックのタイアップをWikipediaで探す"
 
-#: ui/config/library.py:147
+#: ui/config/library.py:148
 msgid ""
 "<p>After a new track's analysis, its tie-ups are looked up on Japanese "
 "Wikipedia and Wikidata and the ones found for certain are added. Its "
@@ -2565,50 +2560,50 @@ msgstr ""
 "<p>新しいトラックの解析後、日本語版Wikipediaと "
 "Wikidataでタイアップを探し、確実なものを追加します。その際トラックのタイトルとアーティストが送信されます。</p>"
 
-#: ui/config/library.py:150
+#: ui/config/library.py:151
 msgid "Clear Web Lookup Cache"
 msgstr "Web検索のキャッシュを削除"
 
-#: ui/config/library.py:152
+#: ui/config/library.py:153
 msgid ""
 "<p>The answers Wikipedia and Wikidata gave, kept for 30 days, deleted: "
 "each track is looked up again the next time. The tie-ups already added "
 "stay.</p>"
 msgstr "<p>30日間保存しているWikipediaとWikidataの応答を削除します。次の検索で各トラックをもう一度調べます。追加済みのタイアップはそのまま残ります。</p>"
 
-#: ui/config/library.py:159
+#: ui/config/library.py:160
 msgid "The interface's language"
 msgstr "インターフェースの言語"
 
-#: ui/config/library.py:161
+#: ui/config/library.py:162
 msgid ""
 "<p>The language a tie-up's work is shown in: its title in that language "
 "where the work has one, else another of its titles.</p>"
 msgstr "<p>タイアップの作品を表示する言語です。作品にその言語のタイトルがあればそれを、なければほかのタイトルを表示します。</p>"
 
-#: ui/config/library.py:163
+#: ui/config/library.py:164
 msgid "Tie-up Titles"
 msgstr "タイアップのタイトルの言語"
 
-#: ui/config/library.py:164 ui/config/library.py:209
+#: ui/config/library.py:165 ui/config/library.py:210
 msgid "As the tie-up titles"
 msgstr "タイアップのタイトルの言語と同じ"
 
-#: ui/config/library.py:166
+#: ui/config/library.py:167
 msgid ""
 "<p>The language of the tie-ups the Sync tab writes after a file's "
 "comment.</p>"
 msgstr "<p>同期タブがファイルのコメントの後に付けるタイアップの言語です。</p>"
 
-#: ui/config/library.py:167
+#: ui/config/library.py:168
 msgid "Exported Tie-ups"
 msgstr "書き出すタイアップの言語"
 
-#: ui/config/library.py:170
+#: ui/config/library.py:171
 msgid "Update the library database when the editor saves"
 msgstr "エディターでの保存時にライブラリデータベースも更新"
 
-#: ui/config/library.py:172
+#: ui/config/library.py:173
 msgid ""
 "<p>The editor's save also writes the track's BPM, key and search tables "
 "into the library database.</p>"
@@ -2620,7 +2615,7 @@ msgstr "<p>エディターで保存するとき、トラックの BPM、キー�
 # | them). " "Titles, artists, ratings and comments are not touched.</p>"
 # | them), a BPM " "or key typed in the Edit Track tab replaced too. Titles,
 # | artists, ratings" " and comments are not touched.</p>"
-#: ui/config/library.py:175
+#: ui/config/library.py:176
 msgid ""
 "<p>Every track's BPM, key and search tables in the library database made "
 "again from its stored analysis. A BPM or key typed in the Edit Track tab "
@@ -2631,11 +2626,11 @@ msgstr ""
 "BPM とキーも置き換わります。タイトル、アーティスト、レーティング、コメントは変更しません。</p>"
 
 # | msgid "Library Path"
-#: ui/config/library.py:178
+#: ui/config/library.py:179
 msgid "Library Database"
 msgstr "ライブラリデータベース"
 
-#: ui/config/library.py:184
+#: ui/config/library.py:185
 msgid "Back Up Library…"
 msgstr "ライブラリのバックアップ…"
 
@@ -2644,7 +2639,7 @@ msgstr "ライブラリのバックアップ…"
 # | indexes, the " "settings, your shortcuts, MIDI mapping and retrained
 # models.
 # | The music " "files themselves are not packed.</p>"
-#: ui/config/library.py:186
+#: ui/config/library.py:187
 msgid ""
 "<p>The library packed into one file: its database, every track's stored "
 "analysis, the thumbnails, the search indexes, the settings, your "
@@ -2655,7 +2650,7 @@ msgstr ""
 "つのファイルにまとめます。データベース、全トラックの保存された解析、サムネイル、検索インデックス、設定、ショートカット、MIDI "
 "マッピング、再学習したモデルが入ります。音楽ファイルそのものは含めません。</p>"
 
-#: ui/config/library.py:189
+#: ui/config/library.py:190
 msgid "Restore Library…"
 msgstr "ライブラリの復元…"
 
@@ -2663,7 +2658,7 @@ msgstr "ライブラリの復元…"
 # or
 # | " "another; its music folders joined to this device's, then Mixlyzer "
 # | "restarts on it. The library in use now is kept as it is.</p>"
-#: ui/config/library.py:191
+#: ui/config/library.py:192
 msgid ""
 "<p>A backup unpacked into a new library folder, then Mixlyzer restarts on"
 " it. The library in use now is kept as it is.</p>"
@@ -2671,33 +2666,33 @@ msgstr ""
 "<p>バックアップを新しいライブラリフォルダーに展開し、Mixlyzer "
 "はそのライブラリで再起動します。今使っているライブラリはそのまま残ります。</p>"
 
-#: ui/config/library.py:203
+#: ui/config/library.py:204
 msgid "Rekordbox XML"
 msgstr "Rekordbox XML"
 
-#: ui/config/library.py:206
+#: ui/config/library.py:207
 msgid "XML Path"
 msgstr "XML のパス"
 
-#: ui/config/library.py:207
+#: ui/config/library.py:208
 msgid "Tempo ramp tolerance"
 msgstr "テンポのランプの許容誤差"
 
-#: ui/config/library.py:211
+#: ui/config/library.py:212
 msgid ""
 "<p>The language of the tie-ups written after each track's comment in the "
 "XML.</p>"
 msgstr "<p>XML で各トラックのコメントの後に付けるタイアップの言語です。</p>"
 
-#: ui/config/library.py:213
+#: ui/config/library.py:214
 msgid "Tie-up Language"
 msgstr "タイアップの言語"
 
-#: ui/config/library.py:217
+#: ui/config/library.py:218
 msgid "Rekordbox Phrases"
 msgstr "Rekordbox のフレーズ"
 
-#: ui/config/library.py:219
+#: ui/config/library.py:220
 msgid ""
 "<p>How the Sync tab writes the phrases into rekordbox's analysis: "
 "rekordbox's mood, and the phrase each label becomes. rekordbox's phrases "
@@ -2706,42 +2701,42 @@ msgstr ""
 "<p>同期タブが rekordbox の解析にフレーズを書き込む方法: rekordbox のムードと、各ラベルがなるフレーズ。rekordbox"
 " のフレーズ名はムードごとに決まっています。</p>"
 
-#: ui/config/library.py:223
+#: ui/config/library.py:224
 msgid "High (Intro, Up, Down, Chorus, Outro)"
 msgstr "High (Intro, Up, Down, Chorus, Outro)"
 
-#: ui/config/library.py:224
+#: ui/config/library.py:225
 msgid "Mid (Intro, Verse 1-6, Bridge, Chorus, Outro)"
 msgstr "Mid (Intro, Verse 1-6, Bridge, Chorus, Outro)"
 
-#: ui/config/library.py:225
+#: ui/config/library.py:226
 msgid "Low (Intro, Verse 1-2, Bridge, Chorus, Outro)"
 msgstr "Low (Intro, Verse 1-2, Bridge, Chorus, Outro)"
 
-#: ui/config/library.py:227
+#: ui/config/library.py:228
 msgid "Mood"
 msgstr "ムード"
 
 # | msgid "Min seg"
-#: ui/config/library.py:236 ui/config/library.py:272
+#: ui/config/library.py:237 ui/config/library.py:273
 msgid "Serato"
 msgstr "Serato"
 
-#: ui/config/library.py:239
+#: ui/config/library.py:240
 msgid "JumpCUEs (A-H in their slots)"
 msgstr "JumpCUE（A-H をそのスロットに）"
 
 # | msgid "CUE points (set by the analysis from the phrases)"
 # | msgid "CUE points from the phrases (CUE rules)"
-#: ui/config/library.py:240
+#: ui/config/library.py:241
 msgid "CUE points (in time order)"
 msgstr "CUE ポイント（時間順）"
 
-#: ui/config/library.py:241
+#: ui/config/library.py:242
 msgid "JumpCUEs, then CUE points in the slots left"
 msgstr "JumpCUE、残りのスロットに CUE ポイント"
 
-#: ui/config/library.py:244
+#: ui/config/library.py:245
 msgid ""
 "<p>What the Sync tab's Write Tags makes Serato's 8 hot cues of. Serato "
 "has no memory cues: CUE points written there become hot cues.</p>"
@@ -2749,11 +2744,11 @@ msgstr ""
 "<p>同期タブのタグ書き込みが、Serato の 8 つのホットキューを何で埋めるかを決めます。Serato "
 "にはメモリーキューがないため、ここに書く CUE ポイントはホットキューになります。</p>"
 
-#: ui/config/library.py:246
+#: ui/config/library.py:247
 msgid "Keep the file's Serato hot cues in the slots left"
 msgstr "ファイルの Serato ホットキューを残りのスロットに残す"
 
-#: ui/config/library.py:248
+#: ui/config/library.py:249
 msgid ""
 "<p>Hot cues set in Serato stay in the slots the written ones leave, and "
 "so do those written before (a JumpCUE removed since stays in Serato); "
@@ -2762,52 +2757,57 @@ msgstr ""
 "<p>Serato で設定したホットキューは、書き込むホットキューが空けたスロットに残り、以前に書き込んだホットキューも残ります（その後削除した "
 "JumpCUE は Serato に残ったまま）。オフにすると、すべてのホットキューを置き換えます。</p>"
 
-#: ui/config/library.py:250
+#: ui/config/library.py:251
 msgid "Lock the beatgrid"
 msgstr "ビートグリッドをロック"
 
-#: ui/config/library.py:252
+#: ui/config/library.py:253
 msgid ""
 "<p>Serato's BPM lock: its analysis then leaves the written beatgrid as it"
 " is.</p>"
 msgstr "<p>Serato の BPM ロック: Serato の解析は書き込んだビートグリッドをそのままにします。</p>"
 
-#: ui/config/library.py:253
+#: ui/config/library.py:254
 msgid "Hot Cues"
 msgstr "ホットキュー"
 
-#: ui/config/library.py:260
+#: ui/config/library.py:261
 msgid "Log Path"
 msgstr "ログのパス"
 
 # | msgid "Library Path"
 # | msgid "Library Database"
-#: ui/config/library.py:265
+#: ui/config/library.py:266
 msgid "Database"
 msgstr "データベース"
 
-#: ui/config/library.py:267
+#: ui/config/library.py:268
 msgid "Backups"
 msgstr "バックアップ"
 
+# | msgid "Local Folders"
+#: ui/config/library.py:274 ui/config/local_api.py:29
+msgid "Local Apps"
+msgstr "ローカルアプリ"
+
 # | msgid "The file could not be written: {error}"
-#: ui/config/library.py:315
+#: ui/config/library.py:317
 #, python-brace-format
 msgid "The cache could not be cleared: {error}"
 msgstr "キャッシュを削除できませんでした: {error}"
 
-#: ui/config/library.py:316
+#: ui/config/library.py:318
 #, python-brace-format
 msgid "{count} answer deleted."
 msgid_plural "{count} answers deleted."
 msgstr[0] "応答を{count}件削除しました。"
 
-#: ui/config/library.py:327
+#: ui/config/library.py:329
 msgid "Add Local Music Folder"
 msgstr "ローカルの音楽フォルダーを追加"
 
 # | msgid "Library Path"
-#: ui/config/dialogs/library_sync.py:17 ui/config/library.py:390
+#: ui/config/dialogs/library_sync.py:17 ui/config/library.py:392
 msgid "Sync Library Database"
 msgstr "ライブラリデータベースの同期"
 
@@ -2815,7 +2815,7 @@ msgstr "ライブラリデータベースの同期"
 # | database made " "again from its stored analysis (as the editor's save
 # writes
 # | them). " "Titles, artists, ratings and comments are not touched.</p>"
-#: ui/config/library.py:391
+#: ui/config/library.py:393
 msgid ""
 "Every track's BPM, key and search tables in the library database will be "
 "made again from its stored analysis. A BPM or key typed in the Edit Track"
@@ -2828,22 +2828,209 @@ msgstr ""
 "\n"
 "今すぐ同期しますか？"
 
-#: ui/config/library.py:436
+#: ui/config/library.py:438
 msgid "Enable Sync with Rekordbox XML first."
 msgstr "先に「Rekordbox XML と同期」を有効にしてください。"
 
-#: ui/config/dialogs/rekordbox.py:15 ui/config/library.py:436
-#: ui/config/library.py:441
+#: ui/config/dialogs/rekordbox.py:15 ui/config/library.py:438
+#: ui/config/library.py:443
 msgid "Sync Rekordbox XML"
 msgstr "Rekordbox XML の同期"
 
-#: ui/config/library.py:441
+#: ui/config/library.py:443
 msgid "Rekordbox XML Path is empty."
 msgstr "Rekordbox XML のパスが空です。"
 
-#: ui/config/library.py:475
+#: ui/config/library.py:477
 msgid "Rekordbox XML worker started"
 msgstr "Rekordbox XML ワーカーを開始しました"
+
+# | msgid "Analyze Track"
+#: ui/config/local_api.py:14
+msgid "Analyze and read"
+msgstr "解析・読み取り"
+
+# | msgid "Unload track"
+# | msgid "Unload the track"
+# | msgid "Back to the tracks"
+# | msgid "Back to the library"
+#: ui/config/local_api.py:14
+msgid "Save to the library"
+msgstr "ライブラリに保存"
+
+# | msgid "Remove"
+# | msgid "Revert"
+#: ui/config/local_api.py:24
+msgid "Never"
+msgstr "なし"
+
+#: ui/config/local_api.py:31
+msgid "Let apps on this computer ask for analyses"
+msgstr "このコンピューターのアプリからの解析依頼を受け付ける"
+
+#: ui/config/local_api.py:33
+msgid ""
+"<p>A paired program on this computer sends a file's path over HTTP "
+"(127.0.0.1) and gets its analysis as JAMS.</p>"
+msgstr ""
+"<p>ペアリングしたこのコンピューターのプログラムが HTTP (127.0.0.1) でファイルのパスを送り、解析結果を JAMS "
+"で受け取ります。</p>"
+
+#: ui/config/local_api.py:37
+msgid "<p>The port on 127.0.0.1 the apps connect to.</p>"
+msgstr "<p>アプリが接続する 127.0.0.1 のポートです。</p>"
+
+#: ui/config/local_api.py:41
+msgid "Pair an App…"
+msgstr "アプリをペアリング…"
+
+#: ui/config/local_api.py:43
+msgid ""
+"<p>For two minutes an app may ask to pair: type the 4-digit code it "
+"shows.</p>"
+msgstr "<p>2 分間、アプリからペアリングを依頼できます。アプリに表示される 4 桁のコードを入力してください。</p>"
+
+# | msgid "TAP"
+#: ui/config/local_api.py:45
+msgid "App"
+msgstr "アプリ"
+
+# | msgid "Persian"
+#: ui/config/local_api.py:45
+msgid "Permissions"
+msgstr "権限"
+
+# | msgid "Shared"
+#: ui/config/local_api.py:45
+msgid "Paired"
+msgstr "ペアリング日時"
+
+# | msgid "Shortcuts"
+# | msgid "Last CHORUS"
+#: ui/config/local_api.py:45
+msgid "Last Used"
+msgstr "最終使用"
+
+# | msgid "Untitled"
+# | msgid "Unit"
+#: ui/config/local_api.py:51 ui/config/local_api.py:252
+msgid "Unpair"
+msgstr "ペアリング解除"
+
+#: ui/config/local_api.py:52
+msgid "<p>The selected apps' tokens stop working at once.</p>"
+msgstr "<p>選択したアプリのトークンはすぐに無効になります。</p>"
+
+#: ui/config/local_api.py:53
+msgid ""
+"The apps reach Mixlyzer while it runs. Mixlyzer takes a full path to an "
+"audio file on this computer, never a network path."
+msgstr ""
+"アプリは Mixlyzer "
+"の起動中のみ接続できます。このコンピューター上のオーディオファイルのフルパスのみ受け付け、ネットワークパスは受け付けません。"
+
+# | msgid "Export"
+#: ui/config/local_api.py:58 ui/windows/deck_monitor.py:669
+msgid "Port"
+msgstr "ポート"
+
+#: ui/config/local_api.py:82
+msgid "Pair an App"
+msgstr "アプリをペアリング"
+
+#: ui/config/local_api.py:88
+msgid "The name is the one the app gave: pair only an app you started."
+msgstr "名前はアプリ自身が名乗ったものです。自分で起動したアプリだけをペアリングしてください。"
+
+#: ui/config/local_api.py:100
+msgid "Pair"
+msgstr "ペアリング"
+
+# | msgid "CUE"
+# | msgid "Use"
+#: ui/config/local_api.py:103
+msgid "Refuse"
+msgstr "拒否"
+
+#: ui/config/dialogs/library_sync.py:25 ui/config/dialogs/music_index.py:24
+#: ui/config/dialogs/readings.py:24 ui/config/dialogs/rekordbox.py:23
+#: ui/config/local_api.py:105 ui/edit_panel/jumpcue_editor.py:45
+#: ui/windows/library_backup.py:63
+msgid "Close"
+msgstr "閉じる"
+
+#: ui/config/local_api.py:107
+msgid "Code shown in the app"
+msgstr "アプリに表示されたコード"
+
+#: ui/config/local_api.py:141
+#, python-brace-format
+msgid "Waiting for an app to ask to pair ({time} left)…"
+msgstr "アプリからのペアリング依頼を待っています… (残り {time})"
+
+#: ui/config/local_api.py:143
+#, python-brace-format
+msgid ""
+"{name} asks to pair, with these permissions: {permissions}. Type the code"
+" it shows ({time} left)."
+msgstr ""
+"{name} が次の権限でペアリングを依頼しています: {permissions}。アプリに表示されたコードを入力してください (残り "
+"{time})。"
+
+#: ui/config/local_api.py:150
+#, python-brace-format
+msgid "{name} is paired."
+msgstr "{name} をペアリングしました。"
+
+#: ui/config/local_api.py:151
+msgid "The pairing was refused."
+msgstr "ペアリングを拒否しました。"
+
+#: ui/config/local_api.py:152
+msgid "The time ran out: pair again to let an app ask."
+msgstr "時間切れです。アプリから依頼させるには、もう一度ペアリングを開いてください。"
+
+#: ui/config/local_api.py:153
+msgid "Pairing is closed."
+msgstr "ペアリングは閉じています。"
+
+#: ui/config/local_api.py:167
+#, python-brace-format
+msgid "Wrong code: {count} try left."
+msgid_plural "Wrong code: {count} tries left."
+msgstr[0] "コードが違います。残り {count} 回です。"
+
+# | msgid "Listening aid: tonic chord"
+# | msgid "Listening on {device} …"
+# | msgid "Listening on {device}"
+#: ui/config/local_api.py:206
+#, python-brace-format
+msgid "Listening on {address}."
+msgstr "{address} で待ち受けています。"
+
+# | msgid "The file could not be written: {error}"
+# | msgid "The file could not be read: {error}"
+# | msgid "The audio could not be rendered: {error}"
+#: ui/config/local_api.py:208
+#, python-brace-format
+msgid "Port {port} could not be opened: {error}"
+msgstr "ポート {port} を開けません: {error}"
+
+#: ui/config/local_api.py:210
+msgid "Off. Turn it on and apply to pair an app."
+msgstr "オフです。オンにして適用すると、アプリをペアリングできます。"
+
+# | msgid "The file could not be written: {error}"
+# | msgid "The file could not be read: {error}"
+#: ui/config/local_api.py:212
+msgid "The paired apps' file could not be read: every app pairs again."
+msgstr "ペアリングしたアプリのファイルを読み込めません。すべてのアプリをもう一度ペアリングしてください。"
+
+#: ui/config/local_api.py:253
+#, python-brace-format
+msgid "Unpair {names}? It pairs again to use Mixlyzer."
+msgid_plural "Unpair {count} apps ({names})? They pair again to use Mixlyzer."
+msgstr[0] "{names} のペアリングを解除しますか? もう一度使うにはペアリングし直す必要があります。"
 
 #: ui/config/midi.py:73
 msgid ""
@@ -4330,15 +4517,15 @@ msgstr "スペクトラムは Native オーディオエンジンでのみ表示�
 msgid "Load a track to preview the waveform."
 msgstr "曲をロードすると波形のプレビューが表示されます。"
 
-#: ui/config/window.py:80
+#: ui/config/window.py:82
 msgid "Save the settings and close."
 msgstr "設定を保存して閉じます。"
 
-#: ui/config/window.py:82
+#: ui/config/window.py:84
 msgid "Close without saving unapplied changes."
 msgstr "適用していない変更は保存せずに閉じます。"
 
-#: ui/config/window.py:85
+#: ui/config/window.py:87
 msgid "Save the settings and keep the window open."
 msgstr "設定を保存し、ウィンドウは開いたままにします。"
 
@@ -4726,7 +4913,7 @@ msgid "Invalid JumpCUE Label"
 msgstr "無効な JumpCUE ラベル"
 
 #: ui/edit_panel/jumpcue_editor.py:48 ui/library/tabs/edit_song.py:130
-#: ui/library/tabs/sync.py:96 ui/library/widget.py:42
+#: ui/library/tabs/sync.py:96 ui/library/widget.py:43
 msgid "Comment"
 msgstr "コメント"
 
@@ -5908,7 +6095,7 @@ msgid "The track has no key."
 msgstr "このトラックにはキーがありません。"
 
 #: ui/library/tabs/export.py:411 ui/library/tabs/export.py:524
-#: ui/library/tabs/export.py:569
+#: ui/library/tabs/export.py:567
 msgid "Source file not found at the specified path."
 msgstr "指定したパスにソースファイルがありません。"
 
@@ -5947,7 +6134,7 @@ msgstr ""
 "上書きしますか?"
 
 # | msgid "Phrase reanalysis completed"
-#: ui/library/tabs/export.py:471 ui/library/tabs/export.py:659
+#: ui/library/tabs/export.py:471 ui/library/tabs/export.py:657
 #: ui/library/tabs/sync.py:345 ui/library/tabs/sync.py:544
 msgid "The track's analysis could not be read."
 msgstr "トラックの解析を読み込めませんでした。"
@@ -5956,7 +6143,7 @@ msgstr "トラックの解析を読み込めませんでした。"
 msgid "The track has no beatgrid to write."
 msgstr "このトラックには書き出すビートグリッドがありません。"
 
-#: ui/library/tabs/export.py:510 ui/library/tabs/export.py:553
+#: ui/library/tabs/export.py:510 ui/library/tabs/export.py:551
 #: ui/library/tabs/sync.py:736 ui/library/tabs/sync.py:739
 #: ui/library/tabs/sync.py:802 ui/library/tabs/sync.py:805
 #: ui/windows/diagnostics_dialog.py:59
@@ -5966,21 +6153,21 @@ msgstr "ファイルに書き込めません: {error}"
 
 # | msgid "The file could not be written: {error}"
 # | msgid "The file could not be read: {error}"
-#: ui/library/tabs/export.py:546
+#: ui/library/tabs/export.py:544
 msgid "The audio file could not be read."
 msgstr "オーディオファイルを読み込めませんでした。"
 
 # | msgid "The file could not be written: {error}"
-#: ui/library/tabs/export.py:555
+#: ui/library/tabs/export.py:553
 #, python-brace-format
 msgid "The JAMS file could not be made: {error}"
 msgstr "JAMS ファイルを作成できませんでした: {error}"
 
-#: ui/library/tabs/export.py:576
+#: ui/library/tabs/export.py:574
 msgid "Pick the JumpCUE jumped to, another than the one jumped from."
 msgstr "ジャンプ元とは別の JumpCUE をジャンプ先に選んでください。"
 
-#: ui/library/tabs/export.py:584
+#: ui/library/tabs/export.py:582
 #, python-brace-format
 msgid ""
 "At this tempo the audio would be longer than {minutes} minutes: not "
@@ -5989,33 +6176,33 @@ msgstr "このテンポではオーディオが {minutes} 分を超えるため�
 
 # | msgid "Phrase reanalysis completed"
 # | msgid "The track's analysis could not be read."
-#: ui/library/tabs/export.py:593
+#: ui/library/tabs/export.py:591
 msgid "The track's own file is not written over."
 msgstr "トラックの元のファイルには上書きしません。"
 
 # | msgid "The file could not be written: {error}"
 # | msgid "The file could not be read: {error}"
-#: ui/library/tabs/export.py:606
+#: ui/library/tabs/export.py:604
 #, python-brace-format
 msgid "The audio could not be rendered: {error}"
 msgstr "オーディオをレンダリングできませんでした: {error}"
 
 # | msgid "Starting the reading worker"
 # | msgid "Restarting the audio engine..."
-#: ui/library/tabs/export.py:619
+#: ui/library/tabs/export.py:617
 msgid "Rendering the audio..."
 msgstr "オーディオをレンダリング中..."
 
 # | msgid "Writing the tags..."
-#: ui/library/tabs/export.py:619
+#: ui/library/tabs/export.py:617
 msgid "Writing the tempo map..."
 msgstr "テンポマップを書き込み中..."
 
-#: ui/library/tabs/export.py:620
+#: ui/library/tabs/export.py:618
 msgid "Writing the JAMS file..."
 msgstr "JAMS ファイルを書き込み中..."
 
-#: ui/library/tabs/export.py:630
+#: ui/library/tabs/export.py:628
 #, python-brace-format
 msgid ""
 "Export completed:\n"
@@ -6844,50 +7031,50 @@ msgstr "選択したトラック。開いているタブをクリックすると
 msgid "Apply the changes to \"{title}\"? (No: they are dropped)"
 msgstr "「{title}」の変更を適用しますか? (いいえ: 破棄します)"
 
-#: ui/library/widget.py:39
+#: ui/library/widget.py:40
 msgid "All"
 msgstr "すべて"
 
 #: ui/library/tabs/edit_song.py:124 ui/library/tabs/export.py:101
 #: ui/library/tabs/sync.py:80 ui/library/tabs/sync.py:93
 #: ui/library/tabs/tieup_editor.py:140 ui/library/tabs/track_search_index.py:68
-#: ui/library/widget.py:39 ui/windows/tieup_works.py:77
+#: ui/library/widget.py:40 ui/windows/tieup_works.py:77
 msgid "Title"
 msgstr "タイトル"
 
 #: ui/library/tabs/edit_song.py:125 ui/library/tabs/export.py:102
 #: ui/library/tabs/sync.py:81 ui/library/tabs/sync.py:94
-#: ui/library/tabs/track_search_index.py:68 ui/library/widget.py:39
+#: ui/library/tabs/track_search_index.py:68 ui/library/widget.py:40
 msgid "Artist"
 msgstr "アーティスト"
 
-#: ui/library/widget.py:40
+#: ui/library/widget.py:41
 msgid "Duration"
 msgstr "時間"
 
 #: ui/library/tabs/edit_song.py:126 ui/library/tabs/sync.py:95
-#: ui/library/tabs/track_search_index.py:68 ui/library/widget.py:40
+#: ui/library/tabs/track_search_index.py:68 ui/library/widget.py:41
 msgid "Album"
 msgstr "アルバム"
 
 #: ui/library/tabs/tieup_editor.py:123 ui/library/tabs/tieup_editor.py:281
-#: ui/library/tabs/tieup_editor.py:287 ui/library/widget.py:40
+#: ui/library/tabs/tieup_editor.py:287 ui/library/widget.py:41
 msgid "Tie-up"
 msgstr "タイアップ"
 
-#: ui/library/tabs/edit_song.py:129 ui/library/widget.py:41
+#: ui/library/tabs/edit_song.py:129 ui/library/widget.py:42
 msgid "Rating"
 msgstr "レーティング"
 
-#: ui/library/widget.py:42
+#: ui/library/widget.py:43
 msgid "Added"
 msgstr "追加日"
 
-#: ui/library/tabs/edit_song.py:123 ui/library/widget.py:42
+#: ui/library/tabs/edit_song.py:123 ui/library/widget.py:43
 msgid "Path"
 msgstr "パス"
 
-#: ui/library/widget.py:469
+#: ui/library/widget.py:467
 msgid "The loaded track is not in the list shown."
 msgstr "ロードしたトラックは表示中のリストにありません。"
 
@@ -6934,7 +7121,7 @@ msgstr "トラックが読み込まれていません"
 msgid "Playback"
 msgstr "再生"
 
-#: ui/config/library.py:127 ui/config/library.py:288 ui/library/sources.py:302
+#: ui/config/library.py:128 ui/config/library.py:290 ui/library/sources.py:302
 #: ui/shortcuts.py:33
 msgid "Library"
 msgstr "ライブラリ"
@@ -7388,10 +7575,10 @@ msgstr "作品ウィンドウ：タイアップで使われているすべての
 #: ui/library/actions.py:52 ui/library/tabs/export.py:431
 #: ui/library/tabs/export.py:435 ui/library/tabs/export.py:441
 #: ui/library/tabs/export.py:451 ui/library/tabs/export.py:471
-#: ui/library/tabs/export.py:524 ui/library/tabs/export.py:569
-#: ui/library/tabs/export.py:575 ui/library/tabs/export.py:583
-#: ui/library/tabs/export.py:593 ui/library/tabs/export.py:627
-#: ui/library/tabs/export.py:629 ui/shortcuts.py:171
+#: ui/library/tabs/export.py:524 ui/library/tabs/export.py:567
+#: ui/library/tabs/export.py:573 ui/library/tabs/export.py:581
+#: ui/library/tabs/export.py:591 ui/library/tabs/export.py:625
+#: ui/library/tabs/export.py:627 ui/shortcuts.py:171
 msgid "Export Track"
 msgstr "トラックのエクスポート"
 
@@ -8238,11 +8425,6 @@ msgstr "受信"
 #: ui/windows/deck_monitor.py:669
 msgid "Address"
 msgstr "アドレス"
-
-# | msgid "Export"
-#: ui/windows/deck_monitor.py:669
-msgid "Port"
-msgstr "ポート"
 
 #: ui/windows/deck_monitor.py:675
 msgid ""

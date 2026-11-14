@@ -19,7 +19,7 @@ from core.library.service import LibraryService
 from core.playback.player import native_engine_built
 from core.settings import store as settings_store
 from core.track.model import DataModel
-from third_party.jams import jams_document, jams_text
+from third_party.jams import jams_document, jams_text, marks_of
 from third_party.midi_tempo_map import TempoMapError, midi_tempo_map
 from third_party.rekordbox import sanitize_filename
 from core.marks.colors import jump_cue_colors
@@ -527,9 +527,7 @@ class ExportTrackPanel(QtWidgets.QWidget):
         if held is None:
             return
         track = self._track
-        marks = dict(beats=held.beats, tempo_segments=held.tempo_segments, key_segments=held.key_segments,
-                     phrases=list(held.phrases), cue_points=list(held.cue_points), jump_cues=list(held.jump_cues),
-                     duration_sec=float(held.duration_sec or track.duration or 0.0))
+        marks = marks_of(held, track.duration or 0.0)
         about = dict(title=track.title or "", artist=track.artist or "", album=track.album or "",
                      path=str(source) if self.chk_jams_path.isChecked() else None,
                      uid=track.uid if self.chk_jams_uid.isChecked() else None, total_samples=track.total_samples)

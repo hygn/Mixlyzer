@@ -33,6 +33,7 @@ from ui.config.analysis import AnalysisSettingsMixin, build_analysis_tab
 from third_party import rekordbox_phrases
 from ui.config.library import (LibrarySettingsMixin, build_library_tab, phrase_choices, phrase_mood,
                                set_phrase_choices)
+from ui.config.local_api import LocalApiSettingsMixin
 from ui.config.midi import MidiSettingsMixin, build_midi_tab
 from ui.config.playback import PlaybackSettingsMixin, build_playback_tab
 from ui.config.search import SearchSettingsMixin, build_search_tab
@@ -42,6 +43,7 @@ from ui.config.view import ViewSettingsMixin, build_view_tab
 
 class SettingsDialog(
     LibrarySettingsMixin,
+    LocalApiSettingsMixin,
     SearchSettingsMixin,
     ViewSettingsMixin,
     PlaybackSettingsMixin,
@@ -96,6 +98,9 @@ class SettingsDialog(
 
         self._current_cfg = None
         self._library = None      # the library's owner (set_library)
+        self._local_api = None    # the local API (set_local_api)
+        self._pairing_dialog = None
+        self._refresh_local_api()
         self._initialize_library_settings(bus)
         self._initialize_search_settings(bus)
         self._initialize_view_settings(bus)
@@ -177,6 +182,7 @@ class SettingsDialog(
         self.cmb_serato_hot_cues.setCurrentIndex(max(0, self.cmb_serato_hot_cues.findData(cfg.libconfig.serato_hot_cues)))
         self.cb_serato_keep_cues.setChecked(bool(cfg.libconfig.serato_keep_cues))
         self.cb_serato_bpm_lock.setChecked(bool(cfg.libconfig.serato_bpm_lock))
+        self._set_local_api_config(cfg.libconfig)
         self.cmb_rekordbox_phrase_mood.blockSignals(True)
         self.cmb_rekordbox_phrase_mood.setCurrentIndex(
             max(0, self.cmb_rekordbox_phrase_mood.findData(getattr(cfg.libconfig, "rekordbox_phrase_mood", "mid"))))
@@ -324,6 +330,7 @@ class SettingsDialog(
                 serato_bpm_lock=bool(self.cb_serato_bpm_lock.isChecked()),
                 rekordbox_phrase_mood=str(self.cmb_rekordbox_phrase_mood.currentData() or "mid"),
                 rekordbox_phrase_map=rekordbox_phrases.map_text(phrase_choices(self), phrase_mood(self)),
+                **self._get_local_api_config(),
             ),
             viewconfig=viewconfig(
                 language=self._get_language(),

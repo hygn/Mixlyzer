@@ -5,11 +5,11 @@ apart (a TV size, an extended mix) when the sender gives it."""
 from __future__ import annotations
 
 import unicodedata
-from pathlib import PureWindowsPath
 from typing import Iterable, Optional
 
 from core.deck_monitor.decks import TrackInfo
 from core.library.records import TrackRow
+from system.os_support import network_path   # noqa: F401  (a network path is never looked up)
 
 DURATION_TOLERANCE_SEC = 2.0     # a length this close (or within DURATION_TOLERANCE_SHARE) is the same version
 DURATION_TOLERANCE_SHARE = 0.01
@@ -18,14 +18,6 @@ DURATION_TOLERANCE_SHARE = 0.01
 def normalized(text: str) -> str:
     """A name as compared: NFKC, case folded, its spaces collapsed."""
     return " ".join(unicodedata.normalize("NFKC", str(text or "")).casefold().split())
-
-
-def network_path(text: str) -> bool:
-    """A path naming a file on another computer (Windows UNC in any spelling, //host): never opened (opening one
-    sends the user's credentials to that host)."""
-    if text.startswith(("\\\\", "//", "\\/", "/\\")):
-        return True
-    return PureWindowsPath(text).drive.startswith(("\\\\", "//"))
 
 
 def same_length(a: float, b: float) -> bool:

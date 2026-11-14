@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-11-14 03:06+0900\n"
+"POT-Creation-Date: 2026-11-14 13:33+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -133,27 +133,27 @@ msgstr ""
 msgid "Building the window"
 msgstr ""
 
-#: app/window.py:92
+#: app/window.py:93
 msgid "Core objects and playback"
 msgstr ""
 
-#: app/window.py:117
+#: app/window.py:118
 msgid "Main view, editor and library"
 msgstr ""
 
-#: app/window.py:123 app/window.py:290 ui/config/window.py:61
+#: app/window.py:124 app/window.py:291 ui/config/window.py:63
 msgid "Settings"
 msgstr ""
 
-#: app/window.py:125
+#: app/window.py:126
 msgid "Dialogs, workflows and metronome"
 msgstr ""
 
-#: app/window.py:172
+#: app/window.py:173
 msgid "Library in a Synced Folder"
 msgstr ""
 
-#: app/window.py:173
+#: app/window.py:174
 #, python-brace-format
 msgid ""
 "The library is in a folder {service} syncs:\n"
@@ -166,95 +166,95 @@ msgid ""
 "sync while Mixlyzer runs."
 msgstr ""
 
-#: app/window.py:179
+#: app/window.py:180
 msgid "Don't show this again for this folder"
 msgstr ""
 
-#: app/window.py:291 ui/windows/workers.py:28
+#: app/window.py:292 ui/windows/workers.py:28
 msgid "Workers"
 msgstr ""
 
-#: app/window.py:292 ui/shortcuts.py:169 ui/windows/tieup_works.py:33
+#: app/window.py:293 ui/shortcuts.py:169 ui/windows/tieup_works.py:33
 #: ui/windows/tieup_works.py:204 ui/windows/tieup_works.py:259
 #: ui/windows/tieup_works.py:264 ui/windows/tieup_works.py:273
 #: ui/windows/tieup_works.py:336
 msgid "Tie-up Works"
 msgstr ""
 
-#: app/window.py:293
+#: app/window.py:294
 msgid "Open Source"
 msgstr ""
 
-#: app/window.py:294 ui/windows/diagnostics_dialog.py:21
+#: app/window.py:295 ui/windows/diagnostics_dialog.py:21
 msgid "Diagnostics"
 msgstr ""
 
-#: app/window.py:295
+#: app/window.py:296
 msgid "About"
 msgstr ""
 
-#: app/window.py:312 core/controls/midi.py:56
+#: app/window.py:313 core/controls/midi.py:56
 msgid "Mixer"
 msgstr ""
 
-#: app/window.py:352
+#: app/window.py:353
 msgid "Deck Monitor: another DJ program's decks beside Mixlyzer's analysis"
 msgstr ""
 
-#: app/window.py:508
+#: app/window.py:518
 msgid "MIDI needs the native audio engine (Settings > Audio > Engine)."
 msgstr ""
 
-#: app/window.py:515
+#: app/window.py:525
 msgid "MIDI input on."
 msgstr ""
 
-#: app/window.py:515
+#: app/window.py:525
 msgid "MIDI input off."
 msgstr ""
 
-#: app/window.py:567
+#: app/window.py:577
 msgid "The Python audio engine plays: there is no native engine to restart."
 msgstr ""
 
-#: app/window.py:569
+#: app/window.py:579
 msgid "Restarting the audio engine..."
 msgstr ""
 
-#: app/window.py:573
+#: app/window.py:583
 msgid "Audio engine restarted."
 msgstr ""
 
-#: app/window.py:574
+#: app/window.py:584
 msgid "The audio engine did not start; it is tried again every 2 seconds."
 msgstr ""
 
-#: app/window.py:634
+#: app/window.py:644
 msgid "Unsaved Edits"
 msgstr ""
 
-#: app/window.py:635
+#: app/window.py:645
 msgid "The loaded track has edits not saved."
 msgstr ""
 
-#: app/window.py:636
+#: app/window.py:646
 msgid "Save them, discard them, or cancel?"
 msgstr ""
 
-#: app/window.py:649
+#: app/window.py:659
 msgid "The edits could not be saved now: nothing was done."
 msgstr ""
 
-#: app/window.py:668 app/window.py:728
+#: app/window.py:678 app/window.py:738
 msgid "Segment reanalysis canceled (track changed)"
 msgstr ""
 
-#: app/window.py:709
+#: app/window.py:719
 #, python-brace-format
 msgid "The track's analysis could not be read: {file}"
 msgstr ""
 
-#: app/window.py:713
+#: app/window.py:723
 #, python-brace-format
 msgid ""
 "{n} JumpCUE past slot Z is not shown ({file}); it stays stored until the "
@@ -265,15 +265,15 @@ msgid_plural ""
 msgstr[0] ""
 msgstr[1] ""
 
-#: app/window.py:731
+#: app/window.py:741
 msgid "Track unloaded."
 msgstr ""
 
-#: app/window.py:745
+#: app/window.py:755
 msgid "Track File Not Found"
 msgstr ""
 
-#: app/window.py:749
+#: app/window.py:759
 #, python-brace-format
 msgid ""
 "Cannot load \"{name}\": its file is missing.\n"
@@ -282,68 +282,68 @@ msgid ""
 "Set the file's new location?"
 msgstr ""
 
-#: app/window.py:756
+#: app/window.py:766
 #, python-brace-format
 msgid "Locate {name}"
 msgstr ""
 
-#: app/window.py:780 app/window.py:802
+#: app/window.py:790 app/window.py:812
 msgid "Analysis saved to library."
 msgstr ""
 
-#: app/window.py:787
+#: app/window.py:797
 msgid "Finished"
 msgstr ""
 
-#: app/window.py:798
+#: app/window.py:808
 msgid ""
 "Analysis saved to library. The editor keeps your edits not saved: load "
 "the track again to see the new analysis."
 msgstr ""
 
-#: app/window.py:814
+#: app/window.py:824
 msgid "Waiting to be looked up on Wikipedia"
 msgstr ""
 
-#: app/window.py:820
+#: app/window.py:830
 msgid "Looking up on Wikipedia and Wikidata…"
 msgstr ""
 
-#: app/window.py:825
+#: app/window.py:835
 msgid "The lookup failed."
 msgstr ""
 
-#: app/window.py:866
+#: app/window.py:876
 msgid "Rebuilding the sort index..."
 msgstr ""
 
-#: app/window.py:868
+#: app/window.py:878
 #, python-brace-format
 msgid "Sort index rebuilt: {count} names."
 msgstr ""
 
-#: app/window.py:876 ui/windows/library_backup.py:53
+#: app/window.py:886 ui/windows/library_backup.py:53
 msgid "Back Up Library"
 msgstr ""
 
-#: app/window.py:877 app/window.py:893
+#: app/window.py:887 app/window.py:903
 #, python-brace-format
 msgid "Mixlyzer library backup (*{suffix})"
 msgstr ""
 
-#: app/window.py:887
+#: app/window.py:897
 msgid ""
 "The editor has edits not saved. Save or undo them first: Mixlyzer "
 "restarts after a restore."
 msgstr ""
 
-#: app/window.py:889 app/window.py:892 app/window.py:899 app/window.py:906
-#: app/window.py:949 ui/windows/library_backup.py:133
+#: app/window.py:899 app/window.py:902 app/window.py:909 app/window.py:916
+#: app/window.py:959 ui/windows/library_backup.py:133
 #: ui/windows/library_backup.py:293
 msgid "Restore Library"
 msgstr ""
 
-#: app/window.py:930
+#: app/window.py:940
 #, python-brace-format
 msgid ""
 "Restored {n} track into:\n"
@@ -354,32 +354,32 @@ msgid_plural ""
 msgstr[0] ""
 msgstr[1] ""
 
-#: app/window.py:933
+#: app/window.py:943
 #, python-brace-format
 msgid "{n} track's file path was joined to this device's folders."
 msgid_plural "{n} tracks' file paths were joined to this device's folders."
 msgstr[0] ""
 msgstr[1] ""
 
-#: app/window.py:937
+#: app/window.py:947
 #, python-brace-format
 msgid "{n} path was left as it was: another track already had the new one."
 msgid_plural "{n} paths were left as they were: other tracks already had the new ones."
 msgstr[0] ""
 msgstr[1] ""
 
-#: app/window.py:941
+#: app/window.py:951
 #, python-brace-format
 msgid "{n} track had no stored analysis in the backup."
 msgid_plural "{n} tracks had no stored analysis in the backup."
 msgstr[0] ""
 msgstr[1] ""
 
-#: app/window.py:945
+#: app/window.py:955
 msgid "Files replaced by the backup's were kept beside them:"
 msgstr ""
 
-#: app/window.py:947
+#: app/window.py:957
 msgid "Mixlyzer now restarts to open the restored library."
 msgstr ""
 
@@ -1261,74 +1261,75 @@ msgstr ""
 msgid "Phrases Updated"
 msgstr ""
 
-#: core/workflows/analysis.py:80
+#: core/workflows/analysis.py:135
 msgid "Analysis canceled"
 msgstr ""
 
-#: core/workflows/analysis.py:102
+#: core/workflows/analysis.py:157
 #, python-brace-format
 msgid ""
 "The path is too long for Windows ({count} characters) while Windows' long"
 " paths are off: {path}"
 msgstr ""
 
-#: core/workflows/analysis.py:106
+#: core/workflows/analysis.py:161
 #, python-brace-format
 msgid "{file} is kept online only: it is downloaded before it is read."
 msgstr ""
 
-#: core/workflows/analysis.py:118
+#: core/workflows/analysis.py:173
 #, python-brace-format
 msgid "File not found: {path}"
 msgstr ""
 
-#: core/workflows/analysis.py:130
+#: core/workflows/analysis.py:185
 #, python-brace-format
 msgid "Analysis already in progress: {file}"
 msgstr ""
 
-#: core/workflows/analysis.py:134 core/workflows/analysis.py:229
+#: core/workflows/analysis.py:188 core/workflows/analysis.py:294
 #, python-brace-format
 msgid "Analyzing: {file}"
 msgstr ""
 
-#: core/workflows/analysis.py:137
+#: core/workflows/analysis.py:191
 #, python-brace-format
 msgid "Already in the library: {file}"
 msgstr ""
 
-#: core/workflows/analysis.py:145
+#: core/workflows/analysis.py:199
 msgid "Loading Track"
 msgstr ""
 
-#: core/workflows/analysis.py:161
+#: core/workflows/analysis.py:215
 #, python-brace-format
 msgid "Loaded from the library: {file}"
 msgstr ""
 
-#: core/workflows/analysis.py:202
+#: core/workflows/analysis.py:266
 msgid "Waiting for a free analysis slot"
 msgstr ""
 
-#: core/workflows/analysis.py:203
+#: core/workflows/analysis.py:267
 #, python-brace-format
 msgid "Waiting to analyze: {file}"
 msgstr ""
 
-#: core/workflows/analysis.py:276
+#: core/workflows/analysis.py:343
 #, python-brace-format
 msgid "Error ({file})"
 msgstr ""
 
-#: core/workflows/analysis.py:276
+#: core/workflows/analysis.py:343 core/workflows/analysis.py:346
+#: core/workflows/analysis.py:405
 msgid "Error"
 msgstr ""
 
-#: core/workflows/analysis.py:287
+#: core/workflows/analysis.py:360
 msgid "Saving Result"
 msgstr ""
 
-#: core/workflows/analysis.py:290
+#: core/workflows/analysis.py:363
 #, python-brace-format
 msgid "The analysis could not be stored: {error}"
 msgstr ""
@@ -1510,7 +1511,7 @@ msgstr ""
 msgid "relative or absolute .json path"
 msgstr ""
 
-#: ui/config/analysis.py:32 ui/config/analysis.py:136 ui/config/library.py:264
+#: ui/config/analysis.py:32 ui/config/analysis.py:136 ui/config/library.py:265
 #: ui/config/view.py:201
 msgid "General"
 msgstr ""
@@ -1533,7 +1534,7 @@ msgid ""
 "a song outside it is read at half or double tempo."
 msgstr ""
 
-#: ui/config/analysis.py:60 ui/config/window.py:242
+#: ui/config/analysis.py:60 ui/config/window.py:248
 #: ui/windows/reanalyze_dialog.py:38 ui/windows/reanalyze_dialog.py:76
 #, python-brace-format
 msgid "Reads {low} - {high} BPM"
@@ -1585,7 +1586,7 @@ msgid "BPM min"
 msgstr ""
 
 #: ui/config/analysis.py:115 ui/config/analysis.py:145
-#: ui/config/analysis.py:159 ui/config/library.py:257 ui/config/library.py:273
+#: ui/config/analysis.py:159 ui/config/library.py:258 ui/config/library.py:275
 #: ui/config/playback.py:106 ui/config/view.py:196
 msgid "Advanced"
 msgstr ""
@@ -1993,7 +1994,7 @@ msgstr ""
 msgid "Kind"
 msgstr ""
 
-#: ui/config/backups.py:89 ui/config/library.py:199
+#: ui/config/backups.py:89 ui/config/library.py:200
 #: ui/windows/library_backup.py:146
 msgid "Backup"
 msgstr ""
@@ -2034,12 +2035,6 @@ msgstr[1] ""
 
 #: ui/config/dialogs/library_sync.py:21
 msgid "Reading the stored analyses"
-msgstr ""
-
-#: ui/config/dialogs/library_sync.py:25 ui/config/dialogs/music_index.py:24
-#: ui/config/dialogs/readings.py:24 ui/config/dialogs/rekordbox.py:23
-#: ui/edit_panel/jumpcue_editor.py:45 ui/windows/library_backup.py:63
-msgid "Close"
 msgstr ""
 
 #: ui/config/dialogs/library_sync.py:43
@@ -2163,182 +2158,182 @@ msgid ""
 "{error}"
 msgstr ""
 
-#: ui/config/library.py:53
+#: ui/config/library.py:54
 #, python-brace-format
 msgid "{verses}, the next one each run of verses"
 msgstr ""
 
-#: ui/config/library.py:55
+#: ui/config/library.py:56
 msgid "Go on with the phrase before"
 msgstr ""
 
-#: ui/config/library.py:79
+#: ui/config/library.py:80
 msgid "Add Folder…"
 msgstr ""
 
-#: ui/config/library.py:80 ui/library/tabs/tieup_editor.py:368
+#: ui/config/library.py:81 ui/library/tabs/tieup_editor.py:368
 msgid "Remove"
 msgstr ""
 
-#: ui/config/library.py:82
+#: ui/config/library.py:83
 msgid ""
 "When this list is empty, the operating system's default Music folder is "
 "used."
 msgstr ""
 
-#: ui/config/library.py:85
+#: ui/config/library.py:86
 msgid "Write log to file"
 msgstr ""
 
-#: ui/config/library.py:87
+#: ui/config/library.py:88
 msgid "Sync with Rekordbox XML"
 msgstr ""
 
-#: ui/config/library.py:95
+#: ui/config/library.py:96
 msgid ""
 "<p>Rekordbox has no tempo ramps: a ramp is written as steps of steady "
 "tempo. Smaller makes the steps finer.</p>"
 msgstr ""
 
-#: ui/config/library.py:98 ui/library/tabs/sync.py:107
+#: ui/config/library.py:99 ui/library/tabs/sync.py:107
 msgid "Tie-ups after the comment"
 msgstr ""
 
-#: ui/config/library.py:100
+#: ui/config/library.py:101
 msgid ""
 "<p>Each track's comment in the XML with its song's tie-ups after it, as "
 "[Title OP; Other ED]; the library's comment stays as it is.</p>"
 msgstr ""
 
-#: ui/config/library.py:102 ui/config/library.py:173
+#: ui/config/library.py:103 ui/config/library.py:174
 msgid "Sync Now"
 msgstr ""
 
-#: ui/config/library.py:103
+#: ui/config/library.py:104
 msgid "Logging settings apply on next app launch."
 msgstr ""
 
-#: ui/config/library.py:104
+#: ui/config/library.py:105
 msgid "Use Sync Now to rebuild the whole XML explicitly."
 msgstr ""
 
-#: ui/config/library.py:108
+#: ui/config/library.py:109
 msgid "Folder holding library.db and the per-track feature files (.npz)."
 msgstr ""
 
-#: ui/config/library.py:111
+#: ui/config/library.py:112
 msgid "Root folders shown under Local Folders in the library browser."
 msgstr ""
 
-#: ui/config/library.py:113
+#: ui/config/library.py:114
 msgid "Add a local music root folder."
 msgstr ""
 
-#: ui/config/library.py:114
+#: ui/config/library.py:115
 msgid "Remove the selected root folders."
 msgstr ""
 
-#: ui/config/library.py:115
+#: ui/config/library.py:116
 msgid "Write console output to a log file."
 msgstr ""
 
-#: ui/config/library.py:116
+#: ui/config/library.py:117
 msgid "Log file written when 'Write log to file' is on."
 msgstr ""
 
-#: ui/config/library.py:118
+#: ui/config/library.py:119
 msgid ""
 "Keep a Rekordbox XML file updated with the library's beat grids, keys and"
 " cues."
 msgstr ""
 
-#: ui/config/library.py:121
+#: ui/config/library.py:122
 msgid "Rekordbox XML file to write. Import it in Rekordbox to use the analysis."
 msgstr ""
 
-#: ui/config/library.py:124
+#: ui/config/library.py:125
 msgid "Save these settings and rebuild the whole XML from the library now."
 msgstr ""
 
-#: ui/config/library.py:129
+#: ui/config/library.py:130
 msgid "Library Path"
 msgstr ""
 
-#: ui/config/library.py:140
+#: ui/config/library.py:141
 msgid "Local Music Folders"
 msgstr ""
 
-#: ui/config/library.py:141
+#: ui/config/library.py:142
 msgid "Add a tie-up to the track's versions too"
 msgstr ""
 
-#: ui/config/library.py:143
+#: ui/config/library.py:144
 msgid ""
 "<p>A tie-up added in the Edit tab is added to the track's other versions "
 "as well.</p>"
 msgstr ""
 
-#: ui/config/library.py:145
+#: ui/config/library.py:146
 msgid "Look up a new track's tie-ups on Wikipedia"
 msgstr ""
 
-#: ui/config/library.py:147
+#: ui/config/library.py:148
 msgid ""
 "<p>After a new track's analysis, its tie-ups are looked up on Japanese "
 "Wikipedia and Wikidata and the ones found for certain are added. Its "
 "title and artist are sent there.</p>"
 msgstr ""
 
-#: ui/config/library.py:150
+#: ui/config/library.py:151
 msgid "Clear Web Lookup Cache"
 msgstr ""
 
-#: ui/config/library.py:152
+#: ui/config/library.py:153
 msgid ""
 "<p>The answers Wikipedia and Wikidata gave, kept for 30 days, deleted: "
 "each track is looked up again the next time. The tie-ups already added "
 "stay.</p>"
 msgstr ""
 
-#: ui/config/library.py:159
+#: ui/config/library.py:160
 msgid "The interface's language"
 msgstr ""
 
-#: ui/config/library.py:161
+#: ui/config/library.py:162
 msgid ""
 "<p>The language a tie-up's work is shown in: its title in that language "
 "where the work has one, else another of its titles.</p>"
 msgstr ""
 
-#: ui/config/library.py:163
+#: ui/config/library.py:164
 msgid "Tie-up Titles"
 msgstr ""
 
-#: ui/config/library.py:164 ui/config/library.py:209
+#: ui/config/library.py:165 ui/config/library.py:210
 msgid "As the tie-up titles"
 msgstr ""
 
-#: ui/config/library.py:166
+#: ui/config/library.py:167
 msgid ""
 "<p>The language of the tie-ups the Sync tab writes after a file's "
 "comment.</p>"
 msgstr ""
 
-#: ui/config/library.py:167
+#: ui/config/library.py:168
 msgid "Exported Tie-ups"
 msgstr ""
 
-#: ui/config/library.py:170
+#: ui/config/library.py:171
 msgid "Update the library database when the editor saves"
 msgstr ""
 
-#: ui/config/library.py:172
+#: ui/config/library.py:173
 msgid ""
 "<p>The editor's save also writes the track's BPM, key and search tables "
 "into the library database.</p>"
 msgstr ""
 
-#: ui/config/library.py:175
+#: ui/config/library.py:176
 msgid ""
 "<p>Every track's BPM, key and search tables in the library database made "
 "again from its stored analysis. A BPM or key typed in the Edit Track tab "
@@ -2346,15 +2341,15 @@ msgid ""
 "touched.</p>"
 msgstr ""
 
-#: ui/config/library.py:178
+#: ui/config/library.py:179
 msgid "Library Database"
 msgstr ""
 
-#: ui/config/library.py:184
+#: ui/config/library.py:185
 msgid "Back Up Library…"
 msgstr ""
 
-#: ui/config/library.py:186
+#: ui/config/library.py:187
 msgid ""
 "<p>The library packed into one file: its database, every track's stored "
 "analysis, the thumbnails, the search indexes, the settings, your "
@@ -2362,145 +2357,149 @@ msgid ""
 "are not packed.</p>"
 msgstr ""
 
-#: ui/config/library.py:189
+#: ui/config/library.py:190
 msgid "Restore Library…"
 msgstr ""
 
-#: ui/config/library.py:191
+#: ui/config/library.py:192
 msgid ""
 "<p>A backup unpacked into a new library folder, then Mixlyzer restarts on"
 " it. The library in use now is kept as it is.</p>"
 msgstr ""
 
-#: ui/config/library.py:203
+#: ui/config/library.py:204
 msgid "Rekordbox XML"
 msgstr ""
 
-#: ui/config/library.py:206
+#: ui/config/library.py:207
 msgid "XML Path"
 msgstr ""
 
-#: ui/config/library.py:207
+#: ui/config/library.py:208
 msgid "Tempo ramp tolerance"
 msgstr ""
 
-#: ui/config/library.py:211
+#: ui/config/library.py:212
 msgid ""
 "<p>The language of the tie-ups written after each track's comment in the "
 "XML.</p>"
 msgstr ""
 
-#: ui/config/library.py:213
+#: ui/config/library.py:214
 msgid "Tie-up Language"
 msgstr ""
 
-#: ui/config/library.py:217
+#: ui/config/library.py:218
 msgid "Rekordbox Phrases"
 msgstr ""
 
-#: ui/config/library.py:219
+#: ui/config/library.py:220
 msgid ""
 "<p>How the Sync tab writes the phrases into rekordbox's analysis: "
 "rekordbox's mood, and the phrase each label becomes. rekordbox's phrases "
 "have fixed names per mood.</p>"
 msgstr ""
 
-#: ui/config/library.py:223
+#: ui/config/library.py:224
 msgid "High (Intro, Up, Down, Chorus, Outro)"
 msgstr ""
 
-#: ui/config/library.py:224
+#: ui/config/library.py:225
 msgid "Mid (Intro, Verse 1-6, Bridge, Chorus, Outro)"
 msgstr ""
 
-#: ui/config/library.py:225
+#: ui/config/library.py:226
 msgid "Low (Intro, Verse 1-2, Bridge, Chorus, Outro)"
 msgstr ""
 
-#: ui/config/library.py:227
+#: ui/config/library.py:228
 msgid "Mood"
 msgstr ""
 
-#: ui/config/library.py:236 ui/config/library.py:272
+#: ui/config/library.py:237 ui/config/library.py:273
 msgid "Serato"
 msgstr ""
 
-#: ui/config/library.py:239
+#: ui/config/library.py:240
 msgid "JumpCUEs (A-H in their slots)"
 msgstr ""
 
-#: ui/config/library.py:240
+#: ui/config/library.py:241
 msgid "CUE points (in time order)"
 msgstr ""
 
-#: ui/config/library.py:241
+#: ui/config/library.py:242
 msgid "JumpCUEs, then CUE points in the slots left"
 msgstr ""
 
-#: ui/config/library.py:244
+#: ui/config/library.py:245
 msgid ""
 "<p>What the Sync tab's Write Tags makes Serato's 8 hot cues of. Serato "
 "has no memory cues: CUE points written there become hot cues.</p>"
 msgstr ""
 
-#: ui/config/library.py:246
+#: ui/config/library.py:247
 msgid "Keep the file's Serato hot cues in the slots left"
 msgstr ""
 
-#: ui/config/library.py:248
+#: ui/config/library.py:249
 msgid ""
 "<p>Hot cues set in Serato stay in the slots the written ones leave, and "
 "so do those written before (a JumpCUE removed since stays in Serato); "
 "off, every hot cue is replaced.</p>"
 msgstr ""
 
-#: ui/config/library.py:250
+#: ui/config/library.py:251
 msgid "Lock the beatgrid"
 msgstr ""
 
-#: ui/config/library.py:252
+#: ui/config/library.py:253
 msgid ""
 "<p>Serato's BPM lock: its analysis then leaves the written beatgrid as it"
 " is.</p>"
 msgstr ""
 
-#: ui/config/library.py:253
+#: ui/config/library.py:254
 msgid "Hot Cues"
 msgstr ""
 
-#: ui/config/library.py:260
+#: ui/config/library.py:261
 msgid "Log Path"
 msgstr ""
 
-#: ui/config/library.py:265
+#: ui/config/library.py:266
 msgid "Database"
 msgstr ""
 
-#: ui/config/library.py:267
+#: ui/config/library.py:268
 msgid "Backups"
 msgstr ""
 
-#: ui/config/library.py:315
+#: ui/config/library.py:274 ui/config/local_api.py:29
+msgid "Local Apps"
+msgstr ""
+
+#: ui/config/library.py:317
 #, python-brace-format
 msgid "The cache could not be cleared: {error}"
 msgstr ""
 
-#: ui/config/library.py:316
+#: ui/config/library.py:318
 #, python-brace-format
 msgid "{count} answer deleted."
 msgid_plural "{count} answers deleted."
 msgstr[0] ""
 msgstr[1] ""
 
-#: ui/config/library.py:327
+#: ui/config/library.py:329
 msgid "Add Local Music Folder"
 msgstr ""
 
-#: ui/config/dialogs/library_sync.py:17 ui/config/library.py:390
+#: ui/config/dialogs/library_sync.py:17 ui/config/library.py:392
 msgid "Sync Library Database"
 msgstr ""
 
-#: ui/config/library.py:391
+#: ui/config/library.py:393
 msgid ""
 "Every track's BPM, key and search tables in the library database will be "
 "made again from its stored analysis. A BPM or key typed in the Edit Track"
@@ -2509,22 +2508,180 @@ msgid ""
 "Sync now?"
 msgstr ""
 
-#: ui/config/library.py:436
+#: ui/config/library.py:438
 msgid "Enable Sync with Rekordbox XML first."
 msgstr ""
 
-#: ui/config/dialogs/rekordbox.py:15 ui/config/library.py:436
-#: ui/config/library.py:441
+#: ui/config/dialogs/rekordbox.py:15 ui/config/library.py:438
+#: ui/config/library.py:443
 msgid "Sync Rekordbox XML"
 msgstr ""
 
-#: ui/config/library.py:441
+#: ui/config/library.py:443
 msgid "Rekordbox XML Path is empty."
 msgstr ""
 
-#: ui/config/library.py:475
+#: ui/config/library.py:477
 msgid "Rekordbox XML worker started"
 msgstr ""
+
+#: ui/config/local_api.py:14
+msgid "Analyze and read"
+msgstr ""
+
+#: ui/config/local_api.py:14
+msgid "Save to the library"
+msgstr ""
+
+#: ui/config/local_api.py:24
+msgid "Never"
+msgstr ""
+
+#: ui/config/local_api.py:31
+msgid "Let apps on this computer ask for analyses"
+msgstr ""
+
+#: ui/config/local_api.py:33
+msgid ""
+"<p>A paired program on this computer sends a file's path over HTTP "
+"(127.0.0.1) and gets its analysis as JAMS.</p>"
+msgstr ""
+
+#: ui/config/local_api.py:37
+msgid "<p>The port on 127.0.0.1 the apps connect to.</p>"
+msgstr ""
+
+#: ui/config/local_api.py:41
+msgid "Pair an App…"
+msgstr ""
+
+#: ui/config/local_api.py:43
+msgid ""
+"<p>For two minutes an app may ask to pair: type the 4-digit code it "
+"shows.</p>"
+msgstr ""
+
+#: ui/config/local_api.py:45
+msgid "App"
+msgstr ""
+
+#: ui/config/local_api.py:45
+msgid "Permissions"
+msgstr ""
+
+#: ui/config/local_api.py:45
+msgid "Paired"
+msgstr ""
+
+#: ui/config/local_api.py:45
+msgid "Last Used"
+msgstr ""
+
+#: ui/config/local_api.py:51 ui/config/local_api.py:252
+msgid "Unpair"
+msgstr ""
+
+#: ui/config/local_api.py:52
+msgid "<p>The selected apps' tokens stop working at once.</p>"
+msgstr ""
+
+#: ui/config/local_api.py:53
+msgid ""
+"The apps reach Mixlyzer while it runs. Mixlyzer takes a full path to an "
+"audio file on this computer, never a network path."
+msgstr ""
+
+#: ui/config/local_api.py:58 ui/windows/deck_monitor.py:669
+msgid "Port"
+msgstr ""
+
+#: ui/config/local_api.py:82
+msgid "Pair an App"
+msgstr ""
+
+#: ui/config/local_api.py:88
+msgid "The name is the one the app gave: pair only an app you started."
+msgstr ""
+
+#: ui/config/local_api.py:100
+msgid "Pair"
+msgstr ""
+
+#: ui/config/local_api.py:103
+msgid "Refuse"
+msgstr ""
+
+#: ui/config/dialogs/library_sync.py:25 ui/config/dialogs/music_index.py:24
+#: ui/config/dialogs/readings.py:24 ui/config/dialogs/rekordbox.py:23
+#: ui/config/local_api.py:105 ui/edit_panel/jumpcue_editor.py:45
+#: ui/windows/library_backup.py:63
+msgid "Close"
+msgstr ""
+
+#: ui/config/local_api.py:107
+msgid "Code shown in the app"
+msgstr ""
+
+#: ui/config/local_api.py:141
+#, python-brace-format
+msgid "Waiting for an app to ask to pair ({time} left)…"
+msgstr ""
+
+#: ui/config/local_api.py:143
+#, python-brace-format
+msgid ""
+"{name} asks to pair, with these permissions: {permissions}. Type the code"
+" it shows ({time} left)."
+msgstr ""
+
+#: ui/config/local_api.py:150
+#, python-brace-format
+msgid "{name} is paired."
+msgstr ""
+
+#: ui/config/local_api.py:151
+msgid "The pairing was refused."
+msgstr ""
+
+#: ui/config/local_api.py:152
+msgid "The time ran out: pair again to let an app ask."
+msgstr ""
+
+#: ui/config/local_api.py:153
+msgid "Pairing is closed."
+msgstr ""
+
+#: ui/config/local_api.py:167
+#, python-brace-format
+msgid "Wrong code: {count} try left."
+msgid_plural "Wrong code: {count} tries left."
+msgstr[0] ""
+msgstr[1] ""
+
+#: ui/config/local_api.py:206
+#, python-brace-format
+msgid "Listening on {address}."
+msgstr ""
+
+#: ui/config/local_api.py:208
+#, python-brace-format
+msgid "Port {port} could not be opened: {error}"
+msgstr ""
+
+#: ui/config/local_api.py:210
+msgid "Off. Turn it on and apply to pair an app."
+msgstr ""
+
+#: ui/config/local_api.py:212
+msgid "The paired apps' file could not be read: every app pairs again."
+msgstr ""
+
+#: ui/config/local_api.py:253
+#, python-brace-format
+msgid "Unpair {names}? It pairs again to use Mixlyzer."
+msgid_plural "Unpair {count} apps ({names})? They pair again to use Mixlyzer."
+msgstr[0] ""
+msgstr[1] ""
 
 #: ui/config/midi.py:73
 msgid ""
@@ -3778,15 +3935,15 @@ msgstr ""
 msgid "Load a track to preview the waveform."
 msgstr ""
 
-#: ui/config/window.py:80
+#: ui/config/window.py:82
 msgid "Save the settings and close."
 msgstr ""
 
-#: ui/config/window.py:82
+#: ui/config/window.py:84
 msgid "Close without saving unapplied changes."
 msgstr ""
 
-#: ui/config/window.py:85
+#: ui/config/window.py:87
 msgid "Save the settings and keep the window open."
 msgstr ""
 
@@ -4156,7 +4313,7 @@ msgid "Invalid JumpCUE Label"
 msgstr ""
 
 #: ui/edit_panel/jumpcue_editor.py:48 ui/library/tabs/edit_song.py:130
-#: ui/library/tabs/sync.py:96 ui/library/widget.py:42
+#: ui/library/tabs/sync.py:96 ui/library/widget.py:43
 msgid "Comment"
 msgstr ""
 
@@ -5182,7 +5339,7 @@ msgid "The track has no key."
 msgstr ""
 
 #: ui/library/tabs/export.py:411 ui/library/tabs/export.py:524
-#: ui/library/tabs/export.py:569
+#: ui/library/tabs/export.py:567
 msgid "Source file not found at the specified path."
 msgstr ""
 
@@ -5216,7 +5373,7 @@ msgid ""
 "Overwrite?"
 msgstr ""
 
-#: ui/library/tabs/export.py:471 ui/library/tabs/export.py:659
+#: ui/library/tabs/export.py:471 ui/library/tabs/export.py:657
 #: ui/library/tabs/sync.py:345 ui/library/tabs/sync.py:544
 msgid "The track's analysis could not be read."
 msgstr ""
@@ -5225,7 +5382,7 @@ msgstr ""
 msgid "The track has no beatgrid to write."
 msgstr ""
 
-#: ui/library/tabs/export.py:510 ui/library/tabs/export.py:553
+#: ui/library/tabs/export.py:510 ui/library/tabs/export.py:551
 #: ui/library/tabs/sync.py:736 ui/library/tabs/sync.py:739
 #: ui/library/tabs/sync.py:802 ui/library/tabs/sync.py:805
 #: ui/windows/diagnostics_dialog.py:59
@@ -5233,48 +5390,48 @@ msgstr ""
 msgid "The file could not be written: {error}"
 msgstr ""
 
-#: ui/library/tabs/export.py:546
+#: ui/library/tabs/export.py:544
 msgid "The audio file could not be read."
 msgstr ""
 
-#: ui/library/tabs/export.py:555
+#: ui/library/tabs/export.py:553
 #, python-brace-format
 msgid "The JAMS file could not be made: {error}"
 msgstr ""
 
-#: ui/library/tabs/export.py:576
+#: ui/library/tabs/export.py:574
 msgid "Pick the JumpCUE jumped to, another than the one jumped from."
 msgstr ""
 
-#: ui/library/tabs/export.py:584
+#: ui/library/tabs/export.py:582
 #, python-brace-format
 msgid ""
 "At this tempo the audio would be longer than {minutes} minutes: not "
 "rendered."
 msgstr ""
 
-#: ui/library/tabs/export.py:593
+#: ui/library/tabs/export.py:591
 msgid "The track's own file is not written over."
 msgstr ""
 
-#: ui/library/tabs/export.py:606
+#: ui/library/tabs/export.py:604
 #, python-brace-format
 msgid "The audio could not be rendered: {error}"
 msgstr ""
 
-#: ui/library/tabs/export.py:619
+#: ui/library/tabs/export.py:617
 msgid "Rendering the audio..."
 msgstr ""
 
-#: ui/library/tabs/export.py:619
+#: ui/library/tabs/export.py:617
 msgid "Writing the tempo map..."
 msgstr ""
 
-#: ui/library/tabs/export.py:620
+#: ui/library/tabs/export.py:618
 msgid "Writing the JAMS file..."
 msgstr ""
 
-#: ui/library/tabs/export.py:630
+#: ui/library/tabs/export.py:628
 #, python-brace-format
 msgid ""
 "Export completed:\n"
@@ -6004,50 +6161,50 @@ msgstr ""
 msgid "Apply the changes to \"{title}\"? (No: they are dropped)"
 msgstr ""
 
-#: ui/library/widget.py:39
+#: ui/library/widget.py:40
 msgid "All"
 msgstr ""
 
 #: ui/library/tabs/edit_song.py:124 ui/library/tabs/export.py:101
 #: ui/library/tabs/sync.py:80 ui/library/tabs/sync.py:93
 #: ui/library/tabs/tieup_editor.py:140 ui/library/tabs/track_search_index.py:68
-#: ui/library/widget.py:39 ui/windows/tieup_works.py:77
+#: ui/library/widget.py:40 ui/windows/tieup_works.py:77
 msgid "Title"
 msgstr ""
 
 #: ui/library/tabs/edit_song.py:125 ui/library/tabs/export.py:102
 #: ui/library/tabs/sync.py:81 ui/library/tabs/sync.py:94
-#: ui/library/tabs/track_search_index.py:68 ui/library/widget.py:39
+#: ui/library/tabs/track_search_index.py:68 ui/library/widget.py:40
 msgid "Artist"
 msgstr ""
 
-#: ui/library/widget.py:40
+#: ui/library/widget.py:41
 msgid "Duration"
 msgstr ""
 
 #: ui/library/tabs/edit_song.py:126 ui/library/tabs/sync.py:95
-#: ui/library/tabs/track_search_index.py:68 ui/library/widget.py:40
+#: ui/library/tabs/track_search_index.py:68 ui/library/widget.py:41
 msgid "Album"
 msgstr ""
 
 #: ui/library/tabs/tieup_editor.py:123 ui/library/tabs/tieup_editor.py:281
-#: ui/library/tabs/tieup_editor.py:287 ui/library/widget.py:40
+#: ui/library/tabs/tieup_editor.py:287 ui/library/widget.py:41
 msgid "Tie-up"
 msgstr ""
 
-#: ui/library/tabs/edit_song.py:129 ui/library/widget.py:41
+#: ui/library/tabs/edit_song.py:129 ui/library/widget.py:42
 msgid "Rating"
 msgstr ""
 
-#: ui/library/widget.py:42
+#: ui/library/widget.py:43
 msgid "Added"
 msgstr ""
 
-#: ui/library/tabs/edit_song.py:123 ui/library/widget.py:42
+#: ui/library/tabs/edit_song.py:123 ui/library/widget.py:43
 msgid "Path"
 msgstr ""
 
-#: ui/library/widget.py:469
+#: ui/library/widget.py:467
 msgid "The loaded track is not in the list shown."
 msgstr ""
 
@@ -6086,7 +6243,7 @@ msgstr ""
 msgid "Playback"
 msgstr ""
 
-#: ui/config/library.py:127 ui/config/library.py:288 ui/library/sources.py:302
+#: ui/config/library.py:128 ui/config/library.py:290 ui/library/sources.py:302
 #: ui/shortcuts.py:33
 msgid "Library"
 msgstr ""
@@ -6462,10 +6619,10 @@ msgstr ""
 #: ui/library/actions.py:52 ui/library/tabs/export.py:431
 #: ui/library/tabs/export.py:435 ui/library/tabs/export.py:441
 #: ui/library/tabs/export.py:451 ui/library/tabs/export.py:471
-#: ui/library/tabs/export.py:524 ui/library/tabs/export.py:569
-#: ui/library/tabs/export.py:575 ui/library/tabs/export.py:583
-#: ui/library/tabs/export.py:593 ui/library/tabs/export.py:627
-#: ui/library/tabs/export.py:629 ui/shortcuts.py:171
+#: ui/library/tabs/export.py:524 ui/library/tabs/export.py:567
+#: ui/library/tabs/export.py:573 ui/library/tabs/export.py:581
+#: ui/library/tabs/export.py:591 ui/library/tabs/export.py:625
+#: ui/library/tabs/export.py:627 ui/shortcuts.py:171
 msgid "Export Track"
 msgstr ""
 
@@ -7172,10 +7329,6 @@ msgstr ""
 
 #: ui/windows/deck_monitor.py:669
 msgid "Address"
-msgstr ""
-
-#: ui/windows/deck_monitor.py:669
-msgid "Port"
 msgstr ""
 
 #: ui/windows/deck_monitor.py:675

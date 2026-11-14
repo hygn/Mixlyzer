@@ -19,6 +19,12 @@ except Exception:  # pragma: no cover
     sf = None
 
 
+# the audio files the app takes (the library's drops and folders, the local API's analyses), by their extension
+AUDIO_EXTENSIONS = frozenset({
+    ".aac", ".aif", ".aiff", ".alac", ".flac", ".m4a", ".mp3",
+    ".mp4", ".ogg", ".opus", ".wav", ".wma",
+})
+
 _ffmpeg_warm_lock = threading.Lock()
 _ffmpeg_warmed = False
 # an FFmpeg in the folder holding the analyzer (the app's folder; a package's _internal), else the one on PATH

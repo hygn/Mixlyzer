@@ -22,6 +22,7 @@ from core.tieups.domain import TITLE_LANGUAGES
 from third_party import rekordbox_phrases
 from ui.config.backups import build_backups_group
 from ui.config.dialogs import LibrarySyncProgressDialog, RekordboxSyncProgressDialog
+from ui.config.local_api import build_local_apps_page
 from ui.config.scroll import groups_page
 from system.i18n import tr, tr_n
 from system.os_support import path_key
@@ -68,7 +69,7 @@ def _tieup_language_combo(first: str) -> QtWidgets.QComboBox:
 
 
 def build_library_tab(dialog) -> None:
-    """Settings > Library: its pages (General, Database, Rekordbox XML, Advanced)."""
+    """Settings > Library: its pages (General, Database, Backups, Rekordbox, Serato, Local Apps, Advanced)."""
     dialog.tab_lib = QWidget()
     dialog.ed_libpath = QtWidgets.QLineEdit()
     dialog.list_local_music_directories = QListWidget()
@@ -270,6 +271,7 @@ def build_library_tab(dialog) -> None:
         lambda i: dialog.refresh_file_backups() if dialog.library_tabs.widget(i) is backups_page else None)
     dialog.library_tabs.addTab(groups_page(grp_rekordbox, grp_phrases), "Rekordbox")
     dialog.library_tabs.addTab(groups_page(grp_serato), tr("Serato"))
+    dialog.library_tabs.addTab(groups_page(build_local_apps_page(dialog)), tr("Local Apps"))
     dialog.library_tabs.addTab(groups_page(grp_advanced), tr("Advanced"))
     root = QtWidgets.QVBoxLayout(dialog.tab_lib)
     root.addWidget(dialog.library_tabs)

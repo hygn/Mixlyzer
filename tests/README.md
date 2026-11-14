@@ -39,6 +39,9 @@ These are the app's tests, each on a library or files of its own. They cover:
   library matching, the sender's hot cues and memory cues against Mixlyzer's JumpCUEs and CUE points, the decks'
   motion and readouts, and its window (the app's main views on the decks, a track not in the library on the sender's
   own marks, a library track's cues as chosen, their zoom, where it listens);
+- the local API over HTTP on localhost (`test_local_api.py`: a port the system picks, the analysis workflow and the
+  library stood in for): pairing, the requests refused before any route, tokens and scopes, the files taken, a
+  library track's JAMS and an analysis's progress, and the example client (`examples/local_api_client.py`);
 - the waveform's renderer;
 - the native engine: its scratch path against the Python one's, its time stretch, its playback, the master's
   spectrum and malformed commands, and its mixer by the PCM it renders (the channel strip, each Sound Color FX and

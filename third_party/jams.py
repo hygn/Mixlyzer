@@ -105,6 +105,14 @@ def _annotation(namespace: str, data: list[dict], tools: str, sandbox: Optional[
     return out
 
 
+def marks_of(held, duration_sec: float = 0.0) -> dict:
+    """The marks `jams_document` takes, of what holds a track's marks (a StoredAnalysis; the deck's DataModel, as
+    edited); its length, else ``duration_sec``."""
+    return dict(beats=held.beats, tempo_segments=held.tempo_segments, key_segments=held.key_segments,
+                phrases=list(held.phrases), cue_points=list(held.cue_points), jump_cues=list(held.jump_cues),
+                duration_sec=float(held.duration_sec or duration_sec or 0.0))
+
+
 def jams_document(*, beats, tempo_segments, key_segments, phrases: Iterable[Phrase],
                   cue_points: Iterable[CuePoint], jump_cues: Iterable[JumpCueGroup], duration_sec: float,
                   title: str, artist: str, album: str, path: Optional[str], file_size: int, uid: Optional[str],

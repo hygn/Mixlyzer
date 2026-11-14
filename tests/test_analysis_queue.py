@@ -132,6 +132,94 @@ class AnalysisQueueTests(unittest.TestCase):
         self.assertEqual(len(got), 1)
 
 
+class AnalysisIdTests(unittest.TestCase):
+    """Every analysis known by its id: asked of by it (waiting, running, saving), told when it ends (its result, or
+    its error, a cancel's too); another program's (``request``) stored only when asked, or when joined by one that
+    stores; a file the library holds not analyzed for it."""
+
+    def setUp(self):
+        _Worker.started = []
+        self.tasks = _Tasks()
+        self.writes, self.results, self.ended = [], [], []
+        self.held = set()
+        library = SimpleNamespace(
+            snapshot=SimpleNamespace(find_file=lambda p: SimpleNamespace(uid="u", path=p) if p in self.held else None),
+            write=lambda job, payload, done, failed: self.writes.append((payload, done, failed)))
+        patcher = mock.patch.object(workflow, "AnalysisWorker", _Worker)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        cfg = SimpleNamespace(analysisconfig=SimpleNamespace(max_parallel_analyses=1))
+        self.flow = workflow.AnalysisWorkflow(
+            library=library, taskmanager=self.tasks, result_callback=self.results.append,
+            reanalysis_result_callback=lambda r: None, status_callback=lambda s: None, cfg_loader=lambda: cfg,
+            albumart_provider=lambda p: None, tag_extractor=lambda p: (os.path.basename(p), "", "", ""))
+        self.flow.ended.connect(lambda *args: self.ended.append(args))
+
+    def taskid(self, analysis_id):
+        return self.flow._ids[analysis_id]
+
+    @staticmethod
+    def payload(path):
+        return {"properties": {"path": path, "title": "t"}, "update_db": True, "taskid": 0,
+                "arrays": {"beats_time_sec": [0.5, 1.0]}, "store": {"index": None}}
+
+    def test_ids_and_states(self):
+        first = self.flow.analyze("a.wav")
+        second = self.flow.request("b.wav", store=False)
+        self.assertRegex(first, r"^[0-9a-f]{32}$")
+        self.assertNotEqual(first, second)
+        self.assertEqual(self.flow.analyze("a.wav"), first)                  # asked again: the same analysis
+        self.assertEqual(self.flow.state(first).state, workflow.RUNNING)
+        waiting = self.flow.state(second)
+        self.assertEqual((waiting.state, waiting.position), (workflow.WAITING, 1))
+        self.flow._on_progress(self.taskid(first), "Beats", 0.5)
+        self.assertEqual(self.flow.state(first).progress, 0.5)
+        self.flow._on_success(self.taskid(first), self.payload("a.wav"))
+        self.assertEqual(self.flow.state(first).state, workflow.SAVING)
+        payload, done, _failed = self.writes[-1]
+        done(dict(payload, analysis="stored"))
+        self.assertIsNone(self.flow.state(first))
+        self.assertEqual(self.ended[0][0], first)
+        self.assertEqual((self.ended[0][1]["analysis"], self.ended[0][2]), ("stored", ""))
+        self.assertIsNone(self.flow.state("f" * 32))
+
+    def test_another_programs_analysis_not_stored(self):
+        analysis_id = self.flow.request("a.wav", store=False)
+        self.flow._on_success(self.taskid(analysis_id), self.payload("a.wav"))
+        self.assertEqual(self.writes, [])                                   # the library never asked
+        _id, result, error = self.ended[-1]
+        self.assertEqual(error, "")
+        self.assertNotIn("uid", result["properties"])
+        self.assertEqual(list(result["analysis"].beats), [0.5, 1.0])         # as the library would read it
+        self.assertFalse(result["update_db"])
+        self.assertEqual(len(self.results), 1)                              # its task finished by the window
+
+    def test_stored_when_joined_by_one_that_stores(self):
+        analysis_id = self.flow.request("a.wav", store=False)
+        self.assertEqual(self.flow.request("a.wav", store=True), analysis_id)
+        self.flow._on_success(self.taskid(analysis_id), self.payload("a.wav"))
+        self.assertEqual(len(self.writes), 1)
+        other = self.flow.request("b.wav", store=False)
+        deck = []
+        self.assertEqual(self.flow.analyze("b.wav", listener=deck.append), other)   # loaded onto the deck
+        self.assertTrue(self.flow._contexts[self.taskid(other)]["store"])
+
+    def test_a_file_in_the_library_is_not_analyzed_for_it(self):
+        self.held.add("a.wav")
+        self.assertIsNone(self.flow.request("a.wav", store=True))
+        self.assertEqual(_Worker.started, [])
+
+    def test_errors_and_cancels_are_told(self):
+        failing = self.flow.request("a.wav", store=False)
+        waiting = self.flow.request("b.wav", store=False)
+        with mock.patch("builtins.print"):
+            self.flow._on_error(self.taskid(failing), "bad file")
+        self.assertEqual(self.ended[-1], (failing, None, "bad file"))
+        self.flow.cancel_all("stop")
+        self.assertEqual(self.ended[-1], (waiting, None, "stop"))
+        self.assertEqual(self.flow._ids, {})
+
+
 class LoadedWhileReanalyzedTests(unittest.TestCase):
     """A library track being reanalyzed loads on the deck at once: its stored analysis now, the new one when done."""
 

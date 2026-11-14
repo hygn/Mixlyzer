@@ -4,6 +4,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, List, Optional
 from PySide6 import QtCore, QtGui, QtWidgets
 import os
+from analyzer.audio.decoder import AUDIO_EXTENSIONS
 from core.library import jobs
 from core.library.records import TrackRow
 from core.library.service import LibraryService
@@ -40,10 +41,7 @@ class LibraryWidget(SourcesMixin, SearchMixin, MusicMixin, MixMixin, PlaylistsMi
                     "Album": tr_mark("Album"), "Tie-up": tr_mark("Tie-up"), "Duration": tr_mark("Duration"),
                     "Rating": tr_mark("Rating"),
                     "Added": tr_mark("Added"), "Path": tr_mark("Path"), "Comment": tr_mark("Comment")}
-    AUDIO_EXTENSIONS = frozenset({
-        ".aac", ".aif", ".aiff", ".alac", ".flac", ".m4a", ".mp3",
-        ".mp4", ".ogg", ".opus", ".wav", ".wma",
-    })
+    AUDIO_EXTENSIONS = AUDIO_EXTENSIONS
     @classmethod
     def _header_name(cls, header: str) -> str:
         """A column's name as shown: translated, BPM and Key as they are."""

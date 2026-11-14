@@ -19,7 +19,8 @@ Where the Windows API is used, the other systems have a fallback:
   the known folders (macOS ~/Library/CloudStorage, iCloud Drive, Dropbox's info.json); a file kept online only
   (online_only): its recall attributes / SF_DATALESS / not told on Linux
 
-A path compared with another is compared by its path_key: one spelling of the file however each is written.
+A path compared with another is compared by its path_key: one spelling of the file however each is written; a path
+naming another computer (network_path) is never opened.
 """
 
 from __future__ import annotations
@@ -224,6 +225,15 @@ def path_key(path: str | os.PathLike) -> str:
     one's syllables); not on Windows and Linux, where they are two names. Links are not followed."""
     key = os.path.normcase(os.path.abspath(os.fspath(path)))
     return unicodedata.normalize("NFC", key) if IS_MACOS else key
+
+
+def network_path(text: str) -> bool:
+    """A path naming a file on another computer (Windows UNC in any spelling, //host; a device path, \\\\.\\ or
+    \\\\?\\, alike): never opened (opening one sends the user's credentials to that host)."""
+    from pathlib import PureWindowsPath
+    if text.startswith(("\\\\", "//", "\\/", "/\\")):
+        return True
+    return PureWindowsPath(text).drive.startswith(("\\\\", "//"))
 
 
 @lru_cache(maxsize=1)

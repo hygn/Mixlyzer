@@ -26,6 +26,7 @@ from core.library.service import LibraryService
 from core.tieups import domain as tieup_domain
 from core.tags.reader import extract_tags
 from core.workflows.analysis import AnalysisWorkflow
+from core.local_api.service import LocalApi
 from core.workflows.taskmanager import TIEUP_LOOKUP, taskmanager
 from core.deck_monitor.controller import DeckMonitorController
 from core.workflows.rekordbox_sync import RekordboxXmlSync
@@ -429,6 +430,15 @@ class AppWindow(QtWidgets.QMainWindow):
         )
         # more analyses allowed at once: the waiting ones started at once
         self.settings.changed.connect(self.analysis_workflow.settings_changed)
+        # the local API (core.local_api): other programs' analyses over HTTP on 127.0.0.1, as Settings > Library >
+        # Local Apps says; stopped when the app quits
+        self.local_api = LocalApi(library=self.library, workflow=self.analysis_workflow, parent=self)
+        self.local_api.apply(self.cfg)
+        self.settings.changed.connect(self.local_api.settings_changed)
+        self.cfgwin.set_local_api(self.local_api)
+        app = QtWidgets.QApplication.instance()
+        if app is not None:
+            app.aboutToQuit.connect(self.local_api.shutdown)
 
     def _start_metronome(self) -> None:
         """The metronome on the audio thread, the time stretch and the Python engine's kernels."""

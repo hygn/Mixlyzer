@@ -54,6 +54,10 @@ ffmpeg.exe
 /ffmpeg
 config.json
 deck.json
+# the local API's paired apps (core.local_api.pairings) and a token the example client keeps
+pairings.json
+pairings.json.unreadable-*
+mixlyzer_token.txt
 assets/shortcuts/shortcuts.json
 assets/midi/midi.json
 assets/artists/artist_names.tsv
