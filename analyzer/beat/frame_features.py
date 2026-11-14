@@ -100,29 +100,6 @@ def chroma_of_cqt(full_cqt: np.ndarray) -> np.ndarray:
     return librosa.feature.chroma_cqt(C=full_cqt, n_chroma=12, bins_per_octave=CHROMA_BINS_PER_OCTAVE)
 
 
-def chroma_and_percussive_bands(
-    audio: np.ndarray,
-    percussive: np.ndarray,
-    sample_rate: int,
-    *,
-    hop_length: int = FRAME_HOP_LENGTH,
-    n_fft: int = FRAME_N_FFT,
-    n_mels: int = FRAME_N_MELS,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """(frame_times, chroma, percussive_bands) as ``extract_frame_features`` makes them, the rest not computed: a
-    track analyzed before a reader of these two existed (the mix candidates' Index Now)."""
-    audio = np.ascontiguousarray(audio, dtype=np.float32).reshape(-1)
-    percussive = np.asarray(percussive, dtype=np.float32).reshape(-1)
-    percussive_power = np.square(np.abs(stft(
-        y=percussive, n_fft=n_fft, hop_length=hop_length, window="hann", center=True, pad_mode="reflect",
-    )).astype(np.float32), dtype=np.float32)
-    n_frames = percussive_power.shape[1]
-    frame_times = frames_to_time(np.arange(n_frames), sr=sample_rate, hop_length=hop_length).astype(np.float64)
-    full_cqt, _bass = mix_cqt(audio, sample_rate, hop_length)
-    return (frame_times, _fit_length(chroma_of_cqt(full_cqt), n_frames),
-            _fit_length(percussive_band_flux(percussive_power, sample_rate, n_mels), n_frames))
-
-
 def percussive_band_flux(percussive_power: np.ndarray, sample_rate: int, n_mels: int) -> np.ndarray:
     """[3, T] the percussive part's positive log-mel flux in PERCUSSIVE_BAND_EDGES_HZ (kick / snare-body / hats)."""
     percussive_mel = power_to_db(

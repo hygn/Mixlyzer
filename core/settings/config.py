@@ -164,11 +164,10 @@ class deckconfig:
     music_input_device: str
     # the Mix Candidates' criteria (core.search.mixability.MixOptions), set at the end of the library's search
     # bar: the tracks to play before the loaded one or after it; B's BPM within mix_tempo_range % of A's, its key
-    # compatible, its sound alike; all those on, or any
+    # compatible; both on, or either
     mix_previous: bool
     mix_bpm: bool
     mix_key: bool
-    mix_audio: bool
     mix_match_all: bool
     mix_tempo_range: float
     # the channel fader where it was last (0 .. 1: its position, the trim and its curve after it)
@@ -546,8 +545,7 @@ def default_cfg():
         music_input_device="",
         mix_previous=False,
         mix_bpm=True,
-        mix_key=False,      # keys are a blend's colour, not a gate: the candidates are ranked by how they sound
-        mix_audio=True,
+        mix_key=False,      # keys are a blend's colour more than a gate: off until asked for
         mix_match_all=True,
         mix_tempo_range=8.0,
         volume_position=1.0,

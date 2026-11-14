@@ -29,7 +29,7 @@ from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Callable, Iterable, Optional
 
-from core.library import mixability, music_index, thumbnails, variants
+from core.library import music_index, thumbnails, variants
 from core.library.version import CURRENT_LIBRARY_VERSION, VERSION_FILENAME, write_library_version
 from system import os_support
 from system.atomic_io import atomic_output_path
@@ -45,7 +45,8 @@ ORPHANED = "orphaned_analyses"     # core.library.jobs.ORPHANED_ANALYSES
 LIBRARY_DB = "library/library.db"
 MUSIC_DB = "library/" + music_index.FILE_NAME
 VARIANTS_DB = "library/" + variants.FILE_NAME
-MIX_DB = "library/" + mixability.FILE_NAME
+# the mix candidates' sound index a package made before it was removed may hold: read past, never packed or unpacked
+RETIRED = frozenset({"library/mixability.db"})
 CONFIG = "settings/config.json"
 DECK = "settings/deck.json"
 SHORTCUTS = "user/shortcuts.json"
@@ -54,8 +55,8 @@ TIEUP_CACHE = "cache/tieup_web.db"
 MODELS = "user/models/"            # + an analysisconfig setting's name (*_parameter_path)
 
 _UUID = r"[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"
-_FIXED = frozenset({LIBRARY_DB, "library/" + VERSION_FILENAME, MUSIC_DB, VARIANTS_DB, MIX_DB, CONFIG, DECK,
-                    SHORTCUTS, MIDI, TIEUP_CACHE})
+_FIXED = frozenset({LIBRARY_DB, "library/" + VERSION_FILENAME, MUSIC_DB, VARIANTS_DB, CONFIG, DECK,
+                    SHORTCUTS, MIDI, TIEUP_CACHE}) | RETIRED
 _PATTERNS = (
     re.compile(rf"library/{_UUID}\.npz"),
     re.compile(rf"library/{ORPHANED}/{_UUID}\.npz"),
@@ -65,7 +66,7 @@ _PATTERNS = (
     # plain name, at most 8 deep): read past, never written or unpacked
     re.compile(r"featurecache/[a-z][a-z0-9_]{0,63}_feature_cache_path(?:/[A-Za-z0-9][A-Za-z0-9._-]{0,127}){1,8}"),
 )
-_DATABASES = (LIBRARY_DB, MUSIC_DB, VARIANTS_DB, MIX_DB)
+_DATABASES = (LIBRARY_DB, MUSIC_DB, VARIANTS_DB)
 
 
 def allowed(name: str) -> bool:
@@ -196,8 +197,7 @@ def _entries(lib, plan: ExportPlan, scratch: Path, made: list[Path]) -> list[tup
         entries.append((name, str(target)))
 
     backup(lib.db.conn, LIBRARY_DB)
-    for name, path in ((MUSIC_DB, music_index.path_for(lib.path)), (VARIANTS_DB, variants.path_for(lib.path)),
-                       (MIX_DB, mixability.path_for(lib.path))):
+    for name, path in ((MUSIC_DB, music_index.path_for(lib.path)), (VARIANTS_DB, variants.path_for(lib.path))):
         if os.path.isfile(path):
             src = sqlite3.connect(f"file:{Path(path).as_posix()}?mode=ro", uri=True)
             try:
@@ -495,7 +495,7 @@ def unpack_library(info: PackageInfo, folder: str, mapping: dict, progress: Prog
     if staging.exists():
         raise PackageError(PackageError.DESTINATION, str(staging))
     staging.mkdir(parents=True)
-    names = info.names("library/")
+    names = [n for n in info.names("library/") if n not in RETIRED]
     total = max(1, sum(info.files[n][0] for n in names))
     done = [0, -1]
 

@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-11-14 13:33+0900\n"
+"POT-Creation-Date: 2026-11-14 23:35+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ko_KR\n"
@@ -1352,7 +1352,7 @@ msgid "tempo segments are required for JumpCUE reanalysis"
 msgstr "JumpCUE 재분석에는 템포 구간이 필요합니다"
 
 # | msgid "The reading refresh process exited unexpectedly ({code})."
-#: core/workers/music_index.py:106
+#: core/workers/music_index.py:91
 #, python-brace-format
 msgid "The music search index process exited unexpectedly ({code})."
 msgstr "음악 검색 색인 프로세스가 예기치 않게 종료되었습니다 ({code})."
@@ -1503,12 +1503,10 @@ msgstr "분석 결과를 저장할 수 없습니다: {error}"
 # | msgid "Reading the library: {done} / {total} tracks"
 # | msgid "Indexing for Search by Music: {done} / {total} tracks"
 # | msgid "Indexing for Search by Music and Variants: {done} / {total} tracks"
-#: core/workflows/music_index.py:150
+#: core/workflows/music_index.py:129
 #, python-brace-format
-msgid ""
-"Indexing for Search by Music, Variants and Mix Candidates: {done} / "
-"{total} tracks"
-msgstr "음악으로 검색·다른 버전·믹스 후보 색인 중: {done} / {total} 트랙"
+msgid "Indexing for Search by Music and Variants: {done} / {total} tracks"
+msgstr "음악으로 검색·다른 버전 색인 중: {done} / {total} 트랙"
 
 #: core/workflows/reading_refresh.py:72
 #, python-brace-format
@@ -2316,11 +2314,9 @@ msgstr ""
 "라이브러리 데이터베이스를 동기화하지 못했습니다:\n"
 "{error}"
 
-# | msgid "Index for Search by Music"
-# | msgid "Index for Search by Music and Variants"
 #: ui/config/dialogs/music_index.py:17
-msgid "Index for Search by Music, Variants and Mix Candidates"
-msgstr "음악으로 검색·다른 버전·믹스 후보 색인"
+msgid "Index for Search by Music and Variants"
+msgstr "음악으로 검색·다른 버전 색인"
 
 # | msgid "Starting the reading worker"
 #: ui/config/dialogs/music_index.py:20
@@ -2363,10 +2359,10 @@ msgstr[0] "파일 {n}개를 읽지 못했습니다:"
 #: ui/config/dialogs/music_index.py:55
 #, python-brace-format
 msgid ""
-"Indexing for Search by Music, Variants and Mix Candidates failed:\n"
+"Indexing for Search by Music and Variants failed:\n"
 "{error}"
 msgstr ""
-"음악으로 검색·다른 버전·믹스 후보 색인에 실패했습니다:\n"
+"음악으로 검색·다른 버전 색인에 실패했습니다:\n"
 "{error}"
 
 #: ui/config/dialogs/readings.py:20 ui/config/dialogs/readings.py:36
@@ -4130,12 +4126,12 @@ msgstr "지금 색인"
 # | the " "index.</p>"
 #: ui/config/search.py:189
 msgid ""
-"<p>Index the library's tracks not indexed yet for Search by Music, the "
-"Variants or the Mix Candidates, in the background. Tracks gone from the "
-"library leave the index.</p>"
+"<p>Index the library's tracks not indexed yet for Search by Music or the "
+"Variants, in the background. Tracks gone from the library leave the "
+"index.</p>"
 msgstr ""
-"<p>음악으로 검색, 다른 버전 찾기, 믹스 후보용 색인이 아직 없는 트랙을 백그라운드에서 색인합니다. 라이브러리에서 빠진 트랙은 "
-"색인에서도 빠집니다.</p>"
+"<p>음악으로 검색, 다른 버전 찾기용 색인이 아직 없는 트랙을 백그라운드에서 색인합니다. 라이브러리에서 빠진 트랙은 색인에서도 "
+"빠집니다.</p>"
 
 #: ui/config/search.py:303
 #, python-brace-format
@@ -5353,53 +5349,38 @@ msgid ""
 "Alphanumeric wheel.</p>"
 msgstr "<p>두 곡이 만나는 지점의 키가 같거나, 나란한조이거나, Alphanumeric 휠에서 ±1.</p>"
 
-#: ui/library/mix.py:67
-msgid ""
-"<p>Phrases on both tracks line up and the bars sound alike where they "
-"would be blended: energy, rhythm and harmony.</p>"
-msgstr "<p>두 곡의 프레이즈가 맞물리고, 섞이는 마디의 소리가 비슷함: 에너지, 리듬, 화성.</p>"
-
-# | msgid "Found"
-#: ui/library/mix.py:67 ui/library/mix.py:187
-msgid "Sound"
-msgstr "사운드"
-
 # | msgid "Mixer"
-#: ui/library/mix.py:76
+#: ui/library/mix.py:72
 msgid "Mix"
 msgstr "믹스"
 
-#: ui/library/mix.py:172
+#: ui/library/mix.py:167
 #, python-brace-format
-msgid "This track {a_from} - {a_to}, the loaded track from {b_from}, {bars} bars"
-msgstr "이 곡 {a_from} - {a_to}, 로드된 곡 {b_from}부터, {bars}마디"
+msgid "This track leaves at {a_from}, the loaded track comes in at {b_from}"
+msgstr "이 곡은 {a_from}에서 빠지고, 로드된 곡이 {b_from}에서 들어옴"
 
-#: ui/library/mix.py:175
+#: ui/library/mix.py:170
 #, python-brace-format
-msgid "The loaded track {a_from} - {a_to}, this track from {b_from}, {bars} bars"
-msgstr "로드된 곡 {a_from} - {a_to}, 이 곡 {b_from}부터, {bars}마디"
+msgid "The loaded track leaves at {a_from}, this track comes in at {b_from}"
+msgstr "로드된 곡은 {a_from}에서 빠지고, 이 곡이 {b_from}에서 들어옴"
 
-#: ui/library/mix.py:178
-msgid "No blend lines up on both tracks' phrases"
-msgstr "두 곡의 프레이즈가 맞물리는 블렌드가 없음"
-
-#: ui/library/mix.py:180
+#: ui/library/mix.py:173
 #, python-brace-format
 msgid "BPM {a:.1f} → {b:.1f} ({offset:+.1f} %)"
 msgstr "BPM {a:.1f} → {b:.1f} ({offset:+.1f} %)"
 
 # | msgid "Merge the same keys"
-#: ui/library/mix.py:182
+#: ui/library/mix.py:175
 msgid "the same key"
 msgstr "같은 키"
 
-#: ui/library/mix.py:182
+#: ui/library/mix.py:175
 msgid "the relative key"
 msgstr "나란한조"
 
 # | msgid "Pick the key (Camelot wheel)"
 # | msgid "Pick the key (Alphanumeric wheel)"
-#: ui/library/mix.py:183
+#: ui/library/mix.py:176
 msgid "±1 on the Alphanumeric wheel"
 msgstr "Alphanumeric 휠에서 ±1"
 
@@ -5407,28 +5388,28 @@ msgstr "Alphanumeric 휠에서 ±1"
 # | msgid "Booth"
 # | msgid "Booth EQ"
 # | msgid "Other"
-#: ui/library/mix.py:184
+#: ui/library/mix.py:177
 msgid "another key"
 msgstr "다른 키"
 
-#: ui/library/mix.py:185
+#: ui/library/mix.py:178
 #, python-brace-format
 msgid "Key {a} → {b}"
 msgstr "Key {a} → {b}"
 
 # | msgid "{title}: {relation}"
-#: ui/library/mix.py:186
+#: ui/library/mix.py:179
 #, python-brace-format
 msgid "{key}: {relation}"
 msgstr "{key}: {relation}"
 
-#: ui/library/mix.py:188
+#: ui/library/mix.py:181
 #, python-brace-format
 msgid "Meets: {criteria}"
 msgstr "만족: {criteria}"
 
 # | msgid "Metronome critic"
-#: ui/library/mix.py:188
+#: ui/library/mix.py:181
 msgid "Meets no criterion"
 msgstr "만족하는 조건 없음"
 
@@ -5684,9 +5665,9 @@ msgstr "믹스 후보"
 
 #: ui/library/sources.py:305
 msgid ""
-"<p>Tracks to play after or before the loaded one, the best blend "
+"<p>Tracks to play after or before the loaded one, the nearest tempo "
 "first.</p>"
-msgstr "<p>로드된 곡의 앞이나 뒤에 틀 곡. 가장 잘 섞이는 곡이 먼저 나옵니다.</p>"
+msgstr "<p>로드된 곡의 앞이나 뒤에 틀 곡. 템포가 가장 가까운 곡이 먼저 나옵니다.</p>"
 
 # | msgid "Unload track"
 #: ui/library/sources.py:307

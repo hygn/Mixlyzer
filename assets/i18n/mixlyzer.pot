@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-11-14 13:33+0900\n"
+"POT-Creation-Date: 2026-11-14 23:35+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -1190,7 +1190,7 @@ msgstr ""
 msgid "tempo segments are required for JumpCUE reanalysis"
 msgstr ""
 
-#: core/workers/music_index.py:106
+#: core/workers/music_index.py:91
 #, python-brace-format
 msgid "The music search index process exited unexpectedly ({code})."
 msgstr ""
@@ -1334,11 +1334,9 @@ msgstr ""
 msgid "The analysis could not be stored: {error}"
 msgstr ""
 
-#: core/workflows/music_index.py:150
+#: core/workflows/music_index.py:129
 #, python-brace-format
-msgid ""
-"Indexing for Search by Music, Variants and Mix Candidates: {done} / "
-"{total} tracks"
+msgid "Indexing for Search by Music and Variants: {done} / {total} tracks"
 msgstr ""
 
 #: core/workflows/reading_refresh.py:72
@@ -2064,7 +2062,7 @@ msgid ""
 msgstr ""
 
 #: ui/config/dialogs/music_index.py:17
-msgid "Index for Search by Music, Variants and Mix Candidates"
+msgid "Index for Search by Music and Variants"
 msgstr ""
 
 #: ui/config/dialogs/music_index.py:20
@@ -2103,7 +2101,7 @@ msgstr[1] ""
 #: ui/config/dialogs/music_index.py:55
 #, python-brace-format
 msgid ""
-"Indexing for Search by Music, Variants and Mix Candidates failed:\n"
+"Indexing for Search by Music and Variants failed:\n"
 "{error}"
 msgstr ""
 
@@ -3579,9 +3577,9 @@ msgstr ""
 
 #: ui/config/search.py:189
 msgid ""
-"<p>Index the library's tracks not indexed yet for Search by Music, the "
-"Variants or the Mix Candidates, in the background. Tracks gone from the "
-"library leave the index.</p>"
+"<p>Index the library's tracks not indexed yet for Search by Music or the "
+"Variants, in the background. Tracks gone from the library leave the "
+"index.</p>"
 msgstr ""
 
 #: ui/config/search.py:303
@@ -4712,71 +4710,57 @@ msgid ""
 "Alphanumeric wheel.</p>"
 msgstr ""
 
-#: ui/library/mix.py:67
-msgid ""
-"<p>Phrases on both tracks line up and the bars sound alike where they "
-"would be blended: energy, rhythm and harmony.</p>"
-msgstr ""
-
-#: ui/library/mix.py:67 ui/library/mix.py:187
-msgid "Sound"
-msgstr ""
-
-#: ui/library/mix.py:76
+#: ui/library/mix.py:72
 msgid "Mix"
 msgstr ""
 
-#: ui/library/mix.py:172
+#: ui/library/mix.py:167
 #, python-brace-format
-msgid "This track {a_from} - {a_to}, the loaded track from {b_from}, {bars} bars"
+msgid "This track leaves at {a_from}, the loaded track comes in at {b_from}"
 msgstr ""
 
-#: ui/library/mix.py:175
+#: ui/library/mix.py:170
 #, python-brace-format
-msgid "The loaded track {a_from} - {a_to}, this track from {b_from}, {bars} bars"
+msgid "The loaded track leaves at {a_from}, this track comes in at {b_from}"
 msgstr ""
 
-#: ui/library/mix.py:178
-msgid "No blend lines up on both tracks' phrases"
-msgstr ""
-
-#: ui/library/mix.py:180
+#: ui/library/mix.py:173
 #, python-brace-format
 msgid "BPM {a:.1f} → {b:.1f} ({offset:+.1f} %)"
 msgstr ""
 
-#: ui/library/mix.py:182
+#: ui/library/mix.py:175
 msgid "the same key"
 msgstr ""
 
-#: ui/library/mix.py:182
+#: ui/library/mix.py:175
 msgid "the relative key"
 msgstr ""
 
-#: ui/library/mix.py:183
+#: ui/library/mix.py:176
 msgid "±1 on the Alphanumeric wheel"
 msgstr ""
 
-#: ui/library/mix.py:184
+#: ui/library/mix.py:177
 msgid "another key"
 msgstr ""
 
-#: ui/library/mix.py:185
+#: ui/library/mix.py:178
 #, python-brace-format
 msgid "Key {a} → {b}"
 msgstr ""
 
-#: ui/library/mix.py:186
+#: ui/library/mix.py:179
 #, python-brace-format
 msgid "{key}: {relation}"
 msgstr ""
 
-#: ui/library/mix.py:188
+#: ui/library/mix.py:181
 #, python-brace-format
 msgid "Meets: {criteria}"
 msgstr ""
 
-#: ui/library/mix.py:188
+#: ui/library/mix.py:181
 msgid "Meets no criterion"
 msgstr ""
 
@@ -5003,7 +4987,7 @@ msgstr ""
 
 #: ui/library/sources.py:305
 msgid ""
-"<p>Tracks to play after or before the loaded one, the best blend "
+"<p>Tracks to play after or before the loaded one, the nearest tempo "
 "first.</p>"
 msgstr ""
 

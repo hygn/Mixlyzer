@@ -63,21 +63,17 @@ class MixMixin:
             "Key", tr("<p>The two tracks' keys where they meet the same, relative or ±1 on the Alphanumeric "
                       "wheel.</p>"),
             small=True)
-        self.cb_mix_audio = self._chip(
-            tr("Sound"), tr("<p>Phrases on both tracks line up and the bars sound alike where they would be "
-                            "blended: energy, rhythm and harmony.</p>"), small=True)
         self.mix_toggle = _CriteriaToggle()
         self.cb_mix_bpm.setChecked(bool(deck.mix_bpm))
         self.cb_mix_key.setChecked(bool(deck.mix_key))
-        self.cb_mix_audio.setChecked(bool(deck.mix_audio))
         self.mix_toggle.setChecked(not bool(deck.mix_match_all))
         for switch in (self.mix_direction, self.mix_toggle, self.sp_mix_tempo):   # one line, as the chips
             switch.setFixedHeight(self.cb_mix_bpm.sizeHint().height())
         self.mix_bar = self._card(tr("Mix"), (self.mix_direction, separator(), self.cb_mix_bpm, dim_label("±"),
-                                              self.sp_mix_tempo, self.cb_mix_key, self.cb_mix_audio, self.mix_toggle))
+                                              self.sp_mix_tempo, self.cb_mix_key, self.mix_toggle))
         self.mix_bar.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
         self.mix_bar.hide()
-        for chip in (self.mix_direction, self.cb_mix_bpm, self.cb_mix_key, self.cb_mix_audio, self.mix_toggle):
+        for chip in (self.mix_direction, self.cb_mix_bpm, self.cb_mix_key, self.mix_toggle):
             chip.toggled.connect(self._mix_options_changed)
         self.sp_mix_tempo.valueChanged.connect(self._mix_options_changed)
         # the loaded track's candidates asked (loaded uid, options), and the last answer: (that request, candidates)
@@ -88,15 +84,15 @@ class MixMixin:
 
     def _mix_options(self) -> mixability.MixOptions:
         return mixability.MixOptions(self.cb_mix_bpm.isChecked(), self.cb_mix_key.isChecked(),
-                                     self.cb_mix_audio.isChecked(), self.mix_toggle.match_all(),
-                                     float(self.sp_mix_tempo.value()), self.mix_direction.previous())
+                                     self.mix_toggle.match_all(), float(self.sp_mix_tempo.value()),
+                                     self.mix_direction.previous())
 
     def _mix_options_changed(self, *_args) -> None:
         """A criterion changed: kept in deck.json, the candidates asked again."""
         options = self._mix_options()
         deck = self.cfg.deckconfig
         deck.mix_previous = options.previous
-        deck.mix_bpm, deck.mix_key, deck.mix_audio = options.bpm, options.key, options.audio
+        deck.mix_bpm, deck.mix_key = options.bpm, options.key
         deck.mix_match_all, deck.mix_tempo_range = options.match_all, options.tempo_range
         self.sp_mix_tempo.setEnabled(options.bpm)
         settings_store.deck_changed()
@@ -148,7 +144,7 @@ class MixMixin:
         self._mix_asked = None
 
     def _mix_marks(self) -> None:
-        """Each row's tooltip: where the blend goes, the BPM and the key on both sides, the criteria met."""
+        """Each row's tooltip: where the two meet, the BPM and the key on both sides, the criteria met."""
         previous = self._mix_found[0][1].previous if self._mix_found else False
         for r in range(self.table.rowCount()):
             candidate = self._mix_rows.get(self._row_uid(r))
@@ -167,15 +163,12 @@ def _key_name(key: Optional[int]) -> str:
 
 def _mix_lines(c: mixability.Candidate, previous: bool) -> list[str]:
     """The tooltip's lines of a candidate (``previous``: it is played before the loaded track, else after)."""
-    lines = []
-    if c.bars and previous:
-        lines.append(tr("This track {a_from} - {a_to}, the loaded track from {b_from}, {bars} bars").format(
-            a_from=_mmss(c.a_from), a_to=_mmss(c.a_to), b_from=_mmss(c.b_from), bars=c.bars))
-    elif c.bars:
-        lines.append(tr("The loaded track {a_from} - {a_to}, this track from {b_from}, {bars} bars").format(
-            a_from=_mmss(c.a_from), a_to=_mmss(c.a_to), b_from=_mmss(c.b_from), bars=c.bars))
+    if previous:
+        lines = [tr("This track leaves at {a_from}, the loaded track comes in at {b_from}").format(
+            a_from=_mmss(c.a_from), b_from=_mmss(c.b_from))]
     else:
-        lines.append(tr("No blend lines up on both tracks' phrases"))
+        lines = [tr("The loaded track leaves at {a_from}, this track comes in at {b_from}").format(
+            a_from=_mmss(c.a_from), b_from=_mmss(c.b_from))]
     if c.bpm_a > 0 and c.bpm_b > 0:
         lines.append(tr("BPM {a:.1f} → {b:.1f} ({offset:+.1f} %)").format(a=c.bpm_a, b=c.bpm_b,
                                                                              offset=c.tempo_pct))
@@ -184,6 +177,6 @@ def _mix_lines(c: mixability.Candidate, previous: bool) -> list[str]:
                 "other": tr("another key")}.get(mixability.key_relation(c.key_a, c.key_b), "")
     key = tr("Key {a} → {b}").format(a=_key_name(c.key_a), b=_key_name(c.key_b))
     lines.append(tr("{key}: {relation}").format(key=key, relation=relation) if relation else key)
-    met = [name for name, ok in zip(("BPM", "Key", tr("Sound")), c.passed) if ok]
+    met = [name for name, ok in zip(("BPM", "Key"), c.passed) if ok]
     lines.append(tr("Meets: {criteria}").format(criteria=", ".join(met)) if met else tr("Meets no criterion"))
     return lines

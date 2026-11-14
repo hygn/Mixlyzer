@@ -175,6 +175,16 @@ class PackageTests(unittest.TestCase):
         self.assertEqual(package.unpack_library(info, str(dest), {}).tracks, 3)
         self.assertEqual(sorted(p.name for p in dest.rglob("*") if "featurecache" in p.as_posix()), [])
 
+    def test_an_earlier_packages_mix_index_read_past(self):
+        older = self.tmp / "older.mxlib"
+        name, data = "library/mixability.db", b"not even a database"
+        _rewrite(self.pkg, older, add=[(name, data)], manifest=lambda m: m["files"].update(
+            {name: {"size": len(data), "sha256": hashlib.sha256(data).hexdigest()}}))
+        info = package.read_package(str(older))
+        dest = self.tmp / "restored"
+        self.assertEqual(package.unpack_library(info, str(dest), {}).tracks, 3)
+        self.assertFalse((dest / "mixability.db").exists())
+
     def test_music_moved_to_another_folder_is_joined(self):
         info = package.read_package(str(self.pkg))
         roots = package.path_roots(p for p, _s in info.paths)

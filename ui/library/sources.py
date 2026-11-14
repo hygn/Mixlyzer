@@ -302,7 +302,7 @@ class SourcesMixin:
         library_item = item_of(tr("Library"), SourceKind.LIBRARY)
         tree.addTopLevelItem(library_item)
         tree.addTopLevelItem(item_of(tr("Mix Candidates"), SourceKind.MIX, tr(
-            "<p>Tracks to play after or before the loaded one, the best blend first.</p>")))
+            "<p>Tracks to play after or before the loaded one, the nearest tempo first.</p>")))
 
         related_item = item_of(tr("Related Tracks"), SourceKind.RELATED, tr(
             "<p>The library's tracks related to the track loaded on the deck.</p>"))

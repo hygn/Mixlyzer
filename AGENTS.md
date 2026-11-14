@@ -21,7 +21,7 @@ Only this file is loaded by itself. Each part's details are in an AGENTS.md besi
 - `core/AGENTS.md`: the settings files and their owner, the MIDI mapping's and the keyboard shortcuts' files, the loaded track (`DataModel`), the workflows and workers, the Analysis Flow, Segment Reanalysis, tie-ups, playback and the deck's requests and reports, Deck Monitor, the local API.
 - `core/library/AGENTS.md`: the library's one owner and its jobs, the analysis library (`core/analysis_library/`), what is stored where (Data & Persistence: library.db, the NPZ, the indexes, the thumbnails), the library's backup and its move to another device (Backup and moving: the `.mxlib` package).
 - `audioengine/AGENTS.md`: the engines' shared controls, the Python engine; `audioengine/native/AGENTS.md`: the native engine (devices, WASAPI, the output, the time stretch, the deck, the mixer, MIDI, scheduling).
-- `analyzer/AGENTS.md`: the analyzer's boundary, the pipeline, beats, keys, phrases, JumpCUEs, Search by Music, Variants, Mix Candidates.
+- `analyzer/AGENTS.md`: the analyzer's boundary, the pipeline, beats, keys, phrases, JumpCUEs, Search by Music, Variants.
 - `ui/AGENTS.md`: the window's screen, the library widget, the editor, the settings dialog, the keyboard shortcuts' rules, `views/` (the plots, the waveform's rendering).
 - `tests/README.md`: the test suites, what each needs, the songs the real-song tests use.
 

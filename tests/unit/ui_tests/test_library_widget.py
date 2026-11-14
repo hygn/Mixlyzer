@@ -630,23 +630,29 @@ class LibraryWidgetTests(unittest.TestCase):
         self.assertEqual(self.column(TITLE), [])             # no track loaded
 
         def answered() -> None:
-            self.settle()
-            APP.processEvents()
+            """The owner's answer handed over and the rows made of it (an answer may take another turn of the loop)."""
+            for _ in range(3):
+                self.settle()
+                APP.processEvents()
 
-        # loaded: あのね at 128. No track has bars: the sound criterion is met by none (AND: no candidate)
+        # loaded: あのね at 128; both others start at 125, within +-8 % of it
         self.model.load(StoredAnalysis.from_arrays({"duration_sec": 200.0}), {"uid": self.uids[0]}, 200.0)
         answered()
+        self.assertEqual(sorted(self.column(TITLE)), ["Hello World", "Third Song"])
+        self.assertIn("128.0", self.w.table.item(0, TITLE).toolTip())
+        self.w.cb_mix_key.setChecked(True)                  # AND the key: no track's key known, none meets it
+        answered()
         self.assertEqual(self.column(TITLE), [])
-        self.w.mix_toggle.setChecked(True)                  # OR: both start at 125, within +-8 % of 128
+        self.w.mix_toggle.setChecked(True)                  # OR: the BPM is enough
         answered()
         self.assertEqual(sorted(self.column(TITLE)), ["Hello World", "Third Song"])
         self.assertFalse(self.cfg.deckconfig.mix_match_all)
-        self.assertIn("128.0", self.w.table.item(0, TITLE).toolTip())
+        self.assertTrue(self.cfg.deckconfig.mix_key)
         self.w.sp_mix_tempo.setValue(1.0)                   # 125 is 2.3 % off
         answered()
         self.assertEqual(self.column(TITLE), [])
         self.assertEqual(self.cfg.deckconfig.mix_tempo_range, 1.0)
-        for chip in (self.w.cb_mix_bpm, self.w.cb_mix_audio):  # no criterion: every other track
+        for chip in (self.w.cb_mix_bpm, self.w.cb_mix_key):  # no criterion: every other track
             chip.setChecked(False)
         answered()
         self.assertEqual(sorted(self.column(TITLE)), ["Hello World", "Third Song"])
