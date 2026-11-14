@@ -178,6 +178,8 @@ ACTIONS: tuple[Action, ...] = (
            tip=tr_mark("The selected track written into the Rekordbox XML again, as saving an edit does.")),
     Action("library.export_tempo_map", LIBRARY, tr_mark("Export DAW Tempo Map"),
            tip=tr_mark("The selected track's beatgrid written as a MIDI file into the Export tab's folder.")),
+    Action("library.export_jams", LIBRARY, tr_mark("Export JAMS"),
+           tip=tr_mark("The selected track's marks written as a JAMS file into the Export tab's folder.")),
     Action("library.render_audio", LIBRARY, tr_mark("Render Track Audio"),
            tip=tr_mark("The selected track's audio rendered as the Export tab is set (a JumpCUE's jump, the tempo "
                        "changed) into its folder.")),

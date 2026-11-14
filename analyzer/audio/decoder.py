@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import hashlib
 import os
 import re
 import subprocess
 import threading
+from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 
@@ -216,6 +218,72 @@ def read_cover(path: str) -> bytes | None:
     if proc.returncode != 0 or not data or len(data) > COVER_MAX_BYTES:
         return None
     return data
+
+
+@dataclass(frozen=True)
+class AudioPacketHash:
+    """A file's audio as encoded, identified: the SHA-256 of its first audio stream's packets as FFmpeg's demuxer
+    gives them, one after another (``ffmpeg -i FILE -map 0:a:0 -c copy -f data - | sha256sum``). The tags, a cover
+    and the container's other boxes are not in them: tags written leave it as it is; the audio re-encoded changes
+    it. The stream as FFmpeg names it beside it."""
+    sha256: str          # hex
+    size: int            # the bytes hashed
+    codec: str           # FFmpeg's name ("flac", "aac", "mp3")
+    sample_rate: int     # 0: not read
+    channels: str        # FFmpeg's layout ("stereo", "mono"; "": not read)
+    ffmpeg: str          # the version of the FFmpeg that read it
+
+
+PACKET_HASH_TIMEOUT_SEC = 300.0   # a local file is read in seconds; a file kept online (a sync client's) may hang
+
+
+def _stream_info(text: str) -> tuple[str, str, int, str]:
+    """(FFmpeg's version, the input's first audio stream's codec, sample rate, channel layout) of FFmpeg's log."""
+    version = re.search(r"ffmpeg version (\S+)", text)
+    head = re.split(r"\n(?:Output #|Stream mapping:)", text, maxsplit=1)[0]
+    stream = re.search(r"Stream #\d+:\d+\S*: Audio: ([^\r\n]+)", head)
+    codec, rate, layout = "", 0, ""
+    if stream:
+        fields = stream.group(1).split(", ")
+        codec = re.match(r"[^\s,]*", fields[0]).group(0)
+        for i, part in enumerate(fields):
+            hz = re.fullmatch(r"(\d+) Hz", part.strip())
+            if hz:
+                rate = int(hz.group(1))
+                layout = fields[i + 1].strip() if i + 1 < len(fields) else ""
+                break
+    return (version.group(1) if version else ""), codec, rate, layout
+
+
+def audio_packet_hash(path: str) -> AudioPacketHash | None:
+    """The file's AudioPacketHash; None when FFmpeg cannot read it (no audio stream, no FFmpeg, one without the data
+    muxer) or takes over PACKET_HASH_TIMEOUT_SEC."""
+    args = [_ffmpeg_command(), "-nostdin", "-nostats", "-v", "info", *_input(path),
+            "-map", "0:a:0", "-c", "copy", "-f", "data", "pipe:1"]
+    try:
+        proc = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, **hidden_subprocess_kwargs())
+    except OSError:
+        return None
+    log: list[bytes] = []
+    reader = threading.Thread(target=lambda: log.append(proc.stderr.read()), daemon=True)
+    reader.start()
+    watchdog = threading.Timer(PACKET_HASH_TIMEOUT_SEC, proc.kill)
+    watchdog.start()
+    digest, size = hashlib.sha256(), 0
+    try:
+        while chunk := proc.stdout.read(1 << 20):
+            digest.update(chunk)
+            size += len(chunk)
+        proc.wait()
+    finally:
+        watchdog.cancel()
+        reader.join(timeout=5.0)
+        proc.stdout.close()
+        proc.stderr.close()
+    if proc.returncode != 0 or size == 0:
+        return None
+    version, codec, rate, layout = _stream_info(b"".join(log).decode("utf-8", "replace"))
+    return AudioPacketHash(digest.hexdigest(), size, codec, rate, layout, version)
 
 
 def get_samplerate(path: str) -> int:

@@ -6,16 +6,20 @@ from typing import Optional
 from urllib.parse import unquote, urlparse
 
 from PySide6 import QtCore, QtWidgets
+from analyzer.audio.decoder import audio_packet_hash
 from audioengine.controls import KEY_SHIFT_MAX
 from system import os_support
 from system.os_support import path_key
 from system.atomic_io import atomic_output_path
+from system.version import APP_VERSION
 from core.analysis_library import jobs as analysis_jobs
 from core.analysis_library.stored import StoredAnalysis
 from core.library.records import TrackRow
 from core.library.service import LibraryService
 from core.playback.player import native_engine_built
+from core.settings import store as settings_store
 from core.track.model import DataModel
+from third_party.jams import jams_document, jams_text
 from third_party.midi_tempo_map import TempoMapError, midi_tempo_map
 from third_party.rekordbox import sanitize_filename
 from core.marks.colors import jump_cue_colors
@@ -55,11 +59,13 @@ class ExportTrackPanel(QtWidgets.QWidget):
     it; the key by semitones (the deck's KEY: ±6, any fraction) or as the key aimed at in the track's mode, from the
     track's key as the library stores it (the nearest shift to it); both at once in one render (the native engine's
     time stretch and key shift). A file made at a changed tempo is named with its target BPM (150BPM; its change in
-    % where the track has no BPM), at a changed key with its shift (key+2). The marks are the deck's (as edited)
-    when it holds the track, else the stored ones. The rendering and the MIDI file are made on a thread of their
-    own, never the GUI's. Its file's tags are the Sync tab's (ui.library.tabs.sync)."""
+    % where the track has no BPM), at a changed key with its shift (key+2). Its marks and its audio file's identity
+    as a JAMS file (third_party.jams: the track as it is, no change; its file's path and its uid each when checked).
+    The marks are the deck's (as edited) when it
+    holds the track, else the stored ones. The rendering and the files are made on a thread of their own, never the
+    GUI's. Its file's tags are the Sync tab's (ui.library.tabs.sync)."""
 
-    _sig_written = QtCore.Signal(str, str, str)    # what was made ("audio" / "midi"), the file written, the error
+    _sig_written = QtCore.Signal(str, str, str)    # what was made ("audio" / "midi" / "jams"), the file, the error
 
     def __init__(self, library: LibraryService, parent: Optional[QtWidgets.QWidget] = None, *,
                  model: Optional[DataModel] = None) -> None:
@@ -211,6 +217,27 @@ class ExportTrackPanel(QtWidgets.QWidget):
         QtWidgets.QVBoxLayout(tempo_map).addLayout(
             self._checks_and_button((self.chk_map_tempo, self.chk_map_key), self.btn_tempo_map))
 
+        jams = QtWidgets.QGroupBox("JAMS")
+        jams.setToolTip(tr("<p>The track's beats, tempo, keys, phrases and cues as a JAMS file for music analysis "
+                           "tools, naming its audio file by path and by a hash of its audio, which tags do not "
+                           "change.</p>"))
+        # what it holds as last checked (deck.json: deckconfig's export_jams_ values)
+        deck = settings_store.current().deckconfig
+        self.chk_jams_path = QtWidgets.QCheckBox(tr("Include file path"))
+        self.chk_jams_path.setChecked(bool(getattr(deck, "export_jams_path", True)))
+        self.chk_jams_path.setToolTip(tr("<p>The audio file's path written into the file; off, the file is named by "
+                                         "its audio's hash alone.</p>"))
+        self.chk_jams_uid = QtWidgets.QCheckBox(tr("Include track UID"))
+        self.chk_jams_uid.setChecked(bool(getattr(deck, "export_jams_uid", True)))
+        self.chk_jams_uid.setToolTip(tr("<p>The track's ID in this library written into the file.</p>"))
+        for box, name in ((self.chk_jams_path, "export_jams_path"), (self.chk_jams_uid, "export_jams_uid")):
+            box.toggled.connect(lambda on, name=name: self._keep_choice(name, on))
+        self.btn_jams = QtWidgets.QPushButton(tr("Export JAMS"))
+        self.btn_jams.clicked.connect(self.export_jams)
+        QtWidgets.QVBoxLayout(jams).addLayout(
+            self._checks_and_button((self.chk_jams_path, self.chk_jams_uid), self.btn_jams))
+        self._buttons = {"audio": self.btn_render, "midi": self.btn_tempo_map, "jams": self.btn_jams}
+
         self.lbl_progress = QtWidgets.QLabel("")
         self.lbl_progress.setWordWrap(True)
 
@@ -222,6 +249,7 @@ class ExportTrackPanel(QtWidgets.QWidget):
         layout.addWidget(key)
         layout.addWidget(render)
         layout.addWidget(tempo_map)
+        layout.addWidget(jams)
         layout.addWidget(self.lbl_progress)
         layout.addWidget(self.status_label)
         layout.addStretch(1)
@@ -231,6 +259,11 @@ class ExportTrackPanel(QtWidgets.QWidget):
         self._set_tempo(0.0, None)
         self._set_key_shift(0.0, None)
         self._populate_jump_cues()
+
+    @staticmethod
+    def _keep_choice(name: str, on: bool) -> None:
+        setattr(settings_store.current().deckconfig, name, bool(on))
+        settings_store.deck_changed()
 
     @staticmethod
     def _checks_and_button(checks, button: QtWidgets.QPushButton) -> QtWidgets.QHBoxLayout:
@@ -421,33 +454,38 @@ class ExportTrackPanel(QtWidgets.QWidget):
         )
         return reply == QtWidgets.QMessageBox.StandardButton.Yes
 
+    def _marks(self, then):
+        """What holds the track's marks (beats, tempo_segments, key_segments, phrases, cue_points, jump_cues,
+        duration_sec): the deck (as edited) when it holds the track, else its stored analysis; None while that is
+        read (``then()`` called when it comes)."""
+        if self._model_holds_track():
+            return self._model
+        if self._analysis is not None:
+            return self._analysis
+        uid = self._track.uid
+
+        def came(analysis) -> None:
+            if self._track is None or self._track.uid != uid:
+                return
+            if analysis is None:
+                QtWidgets.QMessageBox.warning(self, tr("Export Track"), tr("The track's analysis could not be read."))
+                return
+            self._analysis = analysis
+            then()
+
+        self._library.read(analysis_jobs.analysis, uid, done=came)
+        return None
+
     def export_tempo_map(self) -> None:
         """The track's beatgrid as a MIDI file (third_party.midi_tempo_map): the deck's marks when it holds the
         track (as edited), else the stored ones."""
         dest_dir = self._destination()
         if dest_dir is None:
             return
-        if self._model_holds_track():
-            m = self._model
-            marks = (m.beats, m.tempo_segments, m.key_segments, m.duration_sec)
-        elif self._analysis is not None:
-            a = self._analysis
-            marks = (a.beats, a.tempo_segments, a.key_segments, a.duration_sec)
-        else:        # its stored analysis still being read (set_track asked for it): written when it comes
-            uid = self._track.uid
-
-            def came(analysis) -> None:
-                if self._track is None or self._track.uid != uid:
-                    return
-                if analysis is None:
-                    QtWidgets.QMessageBox.warning(self, tr("Export Track"),
-                                                  tr("The track's analysis could not be read."))
-                    return
-                self._analysis = analysis
-                self.export_tempo_map()
-
-            self._library.read(analysis_jobs.analysis, uid, done=came)
+        held = self._marks(self.export_tempo_map)
+        if held is None:
             return
+        marks = (held.beats, held.tempo_segments, held.key_segments, held.duration_sec)
         if "midi" in self._busy:
             return
         title = self._track.title or (self._source.stem if self._source else "")
@@ -472,6 +510,51 @@ class ExportTrackPanel(QtWidgets.QWidget):
             self._sig_written.emit("midi", "", tr("The file could not be written: {error}").format(error=exc))
         else:
             self._sig_written.emit("midi", str(out_path), "")
+
+    def export_jams(self) -> None:
+        """The track's marks and its audio file's identity as a JAMS file (third_party.jams): the deck's marks when
+        it holds the track (as edited), else the stored ones."""
+        if "jams" in self._busy:
+            return
+        dest_dir = self._destination()
+        if dest_dir is None:
+            return
+        source = self._source
+        if source is None or not source.is_file():
+            QtWidgets.QMessageBox.warning(self, tr("Export Track"), tr("Source file not found at the specified path."))
+            return
+        held = self._marks(self.export_jams)
+        if held is None:
+            return
+        track = self._track
+        marks = dict(beats=held.beats, tempo_segments=held.tempo_segments, key_segments=held.key_segments,
+                     phrases=list(held.phrases), cue_points=list(held.cue_points), jump_cues=list(held.jump_cues),
+                     duration_sec=float(held.duration_sec or track.duration or 0.0))
+        about = dict(title=track.title or "", artist=track.artist or "", album=track.album or "",
+                     path=str(source) if self.chk_jams_path.isChecked() else None,
+                     uid=track.uid if self.chk_jams_uid.isChecked() else None, total_samples=track.total_samples)
+        out_path = dest_dir / f"{sanitize_filename(track.title or source.stem)}.jams"
+        if not self._overwrite(out_path):
+            return
+        self._start("jams", self._jams_job, out_path, source, marks, about)
+
+    def _jams_job(self, out_path: Path, source: Path, marks: dict, about: dict) -> None:
+        """(a thread of its own) The audio file's hash read, the JAMS file made and written."""
+        try:
+            audio = audio_packet_hash(str(source))
+            if audio is None:
+                self._sig_written.emit("jams", "", tr("The audio file could not be read."))
+                return
+            document = jams_document(**marks, **about, file_size=source.stat().st_size, audio=audio,
+                                     app_version=APP_VERSION)
+            with atomic_output_path(out_path) as temporary:
+                temporary.write_text(jams_text(document), encoding="utf-8")
+        except OSError as exc:
+            self._sig_written.emit("jams", "", tr("The file could not be written: {error}").format(error=exc))
+        except Exception as exc:          # anything else said, the button given back
+            self._sig_written.emit("jams", "", tr("The JAMS file could not be made: {error}").format(error=exc))
+        else:
+            self._sig_written.emit("jams", str(out_path), "")
 
     def render_audio(self) -> None:
         """The track's audio rendered to a WAV file in the destination folder: the jump picked baked in (none: the
@@ -527,17 +610,18 @@ class ExportTrackPanel(QtWidgets.QWidget):
     def _start(self, kind: str, job, *args) -> None:
         """``job(*args)`` on a thread of its own, its button off and the panel saying so until it is done."""
         self._busy.add(kind)
-        (self.btn_render if kind == "audio" else self.btn_tempo_map).setEnabled(False)
+        self._buttons[kind].setEnabled(False)
         self._show_progress()
         threading.Thread(target=job, args=args, daemon=True).start()
 
     def _show_progress(self) -> None:
         self.lbl_progress.setText(" ".join(text for kind, text in (
-            ("audio", tr("Rendering the audio...")), ("midi", tr("Writing the tempo map..."))) if kind in self._busy))
+            ("audio", tr("Rendering the audio...")), ("midi", tr("Writing the tempo map...")),
+            ("jams", tr("Writing the JAMS file..."))) if kind in self._busy))
 
     def _on_written(self, kind: str, path: str, error: str) -> None:
         self._busy.discard(kind)
-        (self.btn_render if kind == "audio" else self.btn_tempo_map).setEnabled(True)
+        self._buttons[kind].setEnabled(True)
         self._show_progress()
         if error:
             QtWidgets.QMessageBox.warning(self, tr("Export Track"), error)

@@ -177,6 +177,9 @@ class deckconfig:
     sync_rekordbox_xml: bool
     sync_rekordbox_phrases: bool
     phrase_backup: str
+    # the Export tab's JAMS as last checked: the audio file's path and the track's uid written into it
+    export_jams_path: bool
+    export_jams_uid: bool
     # Deck Monitor (core.deck_monitor): where the decks are received while its window is open, set in that window:
     # the protocol ("osc": OSC Basic and Full, "prodjlink"); OSC's address and port (127.0.0.1 this computer only;
     # another address takes them from that network too); the network interface Pro DJ Link uses (its IPv4 address,
@@ -547,6 +550,8 @@ def default_cfg():
         sync_rekordbox_xml=True,
         sync_rekordbox_phrases=False,
         phrase_backup="ext",
+        export_jams_path=True,
+        export_jams_uid=True,
         monitor_protocol="osc",
         monitor_host="127.0.0.1",
         monitor_port=39321,

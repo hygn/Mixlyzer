@@ -3,7 +3,8 @@ runs): FFmpeg's own code alone, under the GNU LGPL v2.1 or later, with nothing o
 (--disable-autodetect, no external library: build/notices.py refuses a build that has one), and only what the app
 asks of it (decoder.py): the audio formats the library takes (MP3, AAC / ALAC in MP4, FLAC, WAV / W64, AIFF,
 Ogg Vorbis / Opus, WMA) decoded to 32-bit float PCM at another rate or channel count, their tags as ffmetadata, a
-cover copied out as it is, and the start's warm-up (a short silence from lavfi to null).
+cover copied out as it is, the audio's packets copied out as they are (its hash, which tags do not change), and the
+start's warm-up (a short silence from lavfi to null).
 
     uv run python build/ffmpeg.py
 
@@ -47,7 +48,8 @@ DECODERS = ("aac", "alac", "flac", "mp1", "mp1float", "mp2", "mp2float", "mp3flo
             "adpcm_ima_wav", "adpcm_ms")
 PARSERS = ("aac", "flac", "mpegaudio", "opus", "vorbis", "mjpeg", "png")
 ENCODERS = ("pcm_f32le", "pcm_s16le")          # the PCM read; null's default (the warm-up)
-MUXERS = ("pcm_f32le", "ffmetadata", "image2pipe", "null")     # pcm_f32le: the format f32le
+# pcm_f32le: the format f32le; data: packets as they are (a raw muxer of PCM takes its own codec only)
+MUXERS = ("pcm_f32le", "ffmetadata", "image2pipe", "data", "null")
 FILTERS = ("aresample", "aformat", "anull", "atrim", "anullsrc")
 PROTOCOLS = ("file", "pipe")
 INDEVS = ("lavfi",)

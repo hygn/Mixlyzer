@@ -216,6 +216,9 @@
   "library.export_tempo_map": [
     "Shift+X"
   ],
+  "library.export_jams": [
+    "Alt+Shift+X"
+  ],
   "library.render_audio": [
     "Alt+X"
   ],

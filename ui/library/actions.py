@@ -156,6 +156,13 @@ class ActionsMixin:
             flash(self.export_panel.btn_tempo_map)
             self.export_panel.export_tempo_map()
 
+    def _export_jams_selected(self):
+        """The Export tab with the selected track, its marks written as a JAMS file."""
+        if self._selected_uids():
+            self.open_track_panel(self.EXPORT_TAB, focus=False)
+            flash(self.export_panel.btn_jams)
+            self.export_panel.export_jams()
+
     def _render_audio_selected(self):
         """The Export tab with the selected track, its audio rendered as the tab is set."""
         if self._selected_uids():

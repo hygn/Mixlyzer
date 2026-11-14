@@ -24,13 +24,11 @@ import struct
 import numpy as np
 
 from analyzer.music.beat_geometry import downbeat_beat_indices
-from analyzer.music.key_names import KEY_DISPLAY_LABELS
+from analyzer.music.key_names import KEY_DISPLAY_LABELS, key_accidentals
 
 PPQ = 960                    # ticks per quarter note (per beat)
 TOLERANCE_SEC = 0.0001       # how far the file's beat may be from the grid's before a new tempo event
 _MAX_TEMPO_US = 0xFFFFFF     # a tempo event's 24 bits (a beat of 16.8 s)
-# a major key's accidentals by its pitch class (C = 0): sharps positive, flats negative
-_MAJOR_ACCIDENTALS = (0, -5, 2, -3, 4, -1, 6, 1, -4, 3, -2, 5)
 # events at one tick in this order: the name, the bar, the tempo, the key, its marker
 _ORDER = {0x03: 0, 0x58: 1, 0x51: 2, 0x59: 3, 0x06: 4}
 
@@ -148,9 +146,7 @@ def midi_tempo_map(beats, tempo_segments, key_segments, title: str = "", duratio
     for tick, tempo in tempo_events(points):
         events.append((tick, _meta(0x51, tempo.to_bytes(3, "big"))))
     for tick, key in key_events(key_segments, points):
-        minor = key >= 12
-        accidentals = _MAJOR_ACCIDENTALS[(key % 12 + 3) % 12 if minor else key % 12]
-        events.append((tick, _meta(0x59, struct.pack(">bB", accidentals, int(minor)))))
+        events.append((tick, _meta(0x59, struct.pack(">bB", key_accidentals(key), int(key >= 12)))))
         events.append((tick, _meta(0x06, KEY_DISPLAY_LABELS[key].encode("utf-8"))))
     events.sort(key=lambda e: (e[0], _ORDER[e[1][1]]))
     end = max([(points.size - 1) * PPQ] + [t for t, _ in events]
