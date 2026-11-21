@@ -18,12 +18,14 @@ from views.render.wave import (
     WAVE_CENTER_LINE_RMS_SEC,
     add_center_line,
     band_ranges,
+    detail_band_ref,
+    detail_envelope,
     frame_minmax,
     paint_layers,
     render_wave_detail_preview,
+    shape_by_envelope,
     three_band_detail_layers,
     wave_colors,
-    wave_detail_band_ref,
     wave_coverage_columns,
 )
 from .base import WAVEFORM_LANE, ViewPlugin, register_view
@@ -58,8 +60,9 @@ class _WaveStyle:
     filter_order: int
     frame_ms: float                         # drawing frame length
     waveform_style: str                     # "rgb" / "3band" (viewconfig.waveform_style)
-    # The loudest band's track maximum RMS (from the stored overview): the
-    # common scale of the three-band layers.
+    # The detail waveform's scale (views.render.wave.detail_band_ref: the overview's band columns, the ranges as
+    # set): 3band the loudest band's track maximum RMS (the layers' common scale), RGB the three bands' energy summed
+    # (the heights' envelope).
     band_ref: float | None
 
     @staticmethod
@@ -74,12 +77,13 @@ class _WaveStyle:
     def from_config(cls, wave, window_sec: float) -> "_WaveStyle":
         cfg = current_settings()
         v = cfg.viewconfig
+        bands = tuple((float(low), float(high)) for low, high in (v.env_lo, v.env_mid, v.env_hi))
         return cls(
-            bands=tuple((float(low), float(high)) for low, high in (v.env_lo, v.env_mid, v.env_hi)),
+            bands=bands,
             filter_order=int(v.mainview_wave_filter_order),
             frame_ms=cls.frame_ms_for(v, window_sec),
             waveform_style=v.waveform_style,
-            band_ref=wave_detail_band_ref(wave),
+            band_ref=detail_band_ref(wave, bands, total=v.waveform_style != "3band"),
         )
 
     def frame_hop(self, sample_rate: int) -> int:
@@ -152,7 +156,8 @@ def _render_waveform_chunk(
 
     RGB: thin bars (min..max of each frame of ``style.frame_ms``) colored by the
     low / mid / high band levels (smoothed over RGB_DETAIL_COLOR_SMOOTH_SEC),
-    averaged FRAMES_PER_COLUMN to a column.
+    averaged FRAMES_PER_COLUMN to a column; their heights times the energy envelope
+    over the peaks' mean (views.render.wave.shape_by_envelope), so onsets stand out.
     3band: the band RMS (over THREE_BAND_DETAIL_RMS_SEC) of each column on the
     bands' common scale, drawn as mirrored layers (views.render.wave.three_band_detail_layers). Blurred slightly along time.
     The chunk is computed with RENDER_CONTEXT_SEC of audio on each side, on the
@@ -192,14 +197,19 @@ def render_columns(pcm: np.ndarray, sample_rate: int, c0: int, c1: int, style: _
     three_band = style.waveform_style == "3band" and bool(style.band_ref)
     window = max(1, int(round(THREE_BAND_DETAIL_RMS_SEC * sample_rate)))
     centers = np.minimum(starts + frame_hop // 2, mono.size - 1)
-    band_rms = []
+    shaped = not three_band and bool(style.band_ref)   # RGB: heights times the envelope (shape_by_envelope)
+    band_rms, energy = [], 0.0
     for low, high in style.bands:
         filtered = _band_filter(mono, sample_rate, low, min(high, nyq * 0.98), style.filter_order)
         square = np.square(filtered, dtype=np.float64)
+        if three_band or shaped:
+            windowed = np.sqrt(np.maximum(uniform_filter1d(square, size=window)[centers], 0.0))
         if three_band:
-            band_rms.append(np.sqrt(np.maximum(uniform_filter1d(square, size=window)[centers], 0.0)))
+            band_rms.append(windowed)
         else:
             band_rms.append(np.sqrt(np.add.reduceat(square, starts) / counts))
+            if shaped:
+                energy = energy + np.square(windowed)
     column = np.arange(n_frames) // FRAMES_PER_COLUMN
     if three_band:
         per_column = np.maximum(np.bincount(column), 1)
@@ -210,6 +220,9 @@ def render_columns(pcm: np.ndarray, sample_rate: int, c0: int, c1: int, style: _
         levels = (np.sqrt(np.sqrt(gaussian_filter1d(np.square(rms), sigma))) for rms in band_rms)
         colors = wave_colors(*levels, white_threshold=0.0, sat_floor=RGB_DETAIL_SAT_FLOOR).astype(np.float64)
         min_env, max_env = frame_minmax(mono, frame_hop)
+        if shaped:
+            min_env, max_env = shape_by_envelope(min_env, max_env, detail_envelope(np.sqrt(energy) / style.band_ref),
+                                                 round(THREE_BAND_DETAIL_RMS_SEC * sample_rate / frame_hop))
         image = wave_coverage_columns(min_env, max_env, colors, column, height)
     # the centre line where it is quiet (each column's loudest RMS over WAVE_CENTER_LINE_RMS_SEC), not where the
     # fine frames' waveform leaves the centre row dark

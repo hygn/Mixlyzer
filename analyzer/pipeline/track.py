@@ -67,15 +67,14 @@ def analyze_track(path: str, settings: AnalysisSettings, progress: Progress = No
         return _analyze_track(path, settings, progress, side)
 
 
-def _wave_overview(path: str, settings: AnalysisSettings) -> WaveOverview:
+def _wave_overview(path: str) -> WaveOverview:
     """The overview waveform: the min / max of each column and the power of 12 log-spaced bands (low / mid / high are
     summed from them when drawn), from a mono decode at WAVE_OVERVIEW_SAMPLE_RATE, not the analysis rate, so the
-    bands are not cut at the analysis Nyquist; and the detail waveform's three-band scale (these ranges)."""
+    bands are not cut at the analysis Nyquist."""
     print("[Waveform] Analysis Initalized")
     wave = build_wave_overview(
         fast_load(path, WAVE_OVERVIEW_SAMPLE_RATE),
         WAVE_OVERVIEW_SAMPLE_RATE,
-        tuple((float(low), float(high)) for low, high in settings.wave_bands),
         n_fft=HPSS_N_FFT,
         hop_length=HPSS_HOP_LENGTH,
     )
@@ -87,7 +86,7 @@ def _analyze_track(path: str, settings: AnalysisSettings, progress: Progress, si
     models = settings.models
     report(progress, stages.LOAD, 0.0)
     print("[Analyzer] Analysis Initalized")
-    wave_job = side.submit(_wave_overview, path, settings)
+    wave_job = side.submit(_wave_overview, path)
     global_sr = ANALYSIS_SAMPLE_RATE
     print("[Analyzer] Loading Track")
     # Decode once: stereo for the structure detector, mono derived for the rest.

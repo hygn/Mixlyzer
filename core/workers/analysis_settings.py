@@ -43,11 +43,10 @@ def cue_rules(cfg: config) -> dict[str, CueRule]:
 
 
 def analysis_settings(cfg: config) -> AnalysisSettings:
-    a, view = cfg.analysisconfig, cfg.viewconfig
+    a = cfg.analysisconfig
     return AnalysisSettings(
         models=model_paths(cfg),
         bpm_min=float(a.bpm_min),
-        wave_bands=tuple((float(low), float(high)) for low, high in (view.env_lo, view.env_mid, view.env_hi)),
         bpm_dynamic=bool(a.bpm_dynamic),
         dynamic_downbeat=bool(a.dynamic_downbeat),
         key_dynamic=bool(a.key_dynamic),

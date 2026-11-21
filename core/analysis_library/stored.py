@@ -32,7 +32,6 @@ from core.marks.phrases import assigned_phrases
 DURATION, SAMPLE_RATE, TEMPO, BEATS, TEMPO_ROWS = "duration_sec", "sr", "tempo_global", "beats_time_sec", "tempo_segments"
 KEYS, KEYS_AUTO = "key_segments", "key_segments_auto"
 WAVE = ("wave_minmax_np", "wave_minmax_ref", "wave_bands_np", "wave_bands_ref")
-WAVE_DETAIL_REF = "wave_detail_band_ref"
 PHRASES, CUE_POINTS, JUMP_CUES, JUMP_CUES_AUTO = "phrase_segments_np", "cue_points_np", "jump_cues_np", "jump_cues_auto_np"
 SCHEMA_STABLE_KEY, SCHEMA_DEV_KEY = "schema_stable", "schema_dev"
 
@@ -54,8 +53,9 @@ class Schema:
         return self.dev == 0
 
 
-# the format this app writes: v0.1.0's (stable 0) and one step of development since; a release makes it (n + 1, 0)
-SCHEMA = Schema(0, 1)
+# the format this app writes: v0.1.0's (stable 0) and two steps of development since (2: the detail waveform's
+# three-band scale, wave_detail_band_ref, no longer stored); a release makes it (n + 1, 0)
+SCHEMA = Schema(0, 2)
 # the development formats a migration is written for (none: the development's formats are not kept up with)
 DEV_MIGRATIONS: frozenset[Schema] = frozenset()
 
@@ -130,8 +130,7 @@ class StoredAnalysis:
         a = dict(arrays or {})
         wave = None
         if all(k in a for k in WAVE):
-            wave = WaveOverview(*(np.asarray(a[k]) for k in WAVE),
-                                np.asarray(a.get(WAVE_DETAIL_REF, np.zeros(0, np.float32))))
+            wave = WaveOverview(*(np.asarray(a[k]) for k in WAVE))
         return cls(
             duration_sec=_scalar(a.get(DURATION)),
             sample_rate=int(_scalar(a.get(SAMPLE_RATE))),
@@ -158,7 +157,6 @@ def arrays_of(result) -> dict[str, Any]:
         SCHEMA_STABLE_KEY: np.int32(SCHEMA.stable),
         SCHEMA_DEV_KEY: np.int32(SCHEMA.dev),
         **dict(zip(WAVE, (wave.minmax, wave.minmax_ref, wave.bands, wave.bands_ref))),
-        WAVE_DETAIL_REF: wave.detail_band_ref,
         DURATION: result.duration_sec,
         TEMPO_ROWS: result.tempo_segments,
         BEATS: result.beats,
@@ -231,7 +229,7 @@ def apply_edits(arrays: dict, edits: TrackEdits) -> None:
 ANNOTATION_KEYS = (BEATS, SAMPLE_RATE, DURATION, TEMPO_ROWS, KEYS, KEYS_AUTO)
 ANNOTATION_BLOCKS = (PHRASES + ".", JUMP_CUES + ".", JUMP_CUES_AUTO + ".")
 # what the Variants' fingerprint reads (analyzer.search.variants): the beats, the length and the overview
-FINGERPRINT_KEYS = (BEATS, DURATION, *WAVE, WAVE_DETAIL_REF)
+FINGERPRINT_KEYS = (BEATS, DURATION, *WAVE)
 # what library.db's rows of a track are made from (core.library.segments.track_index): the tempo and key rows and the
 # phrases
 INDEX_KEYS = (DURATION, TEMPO_ROWS, KEYS)

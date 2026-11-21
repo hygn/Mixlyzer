@@ -7,9 +7,8 @@ from views.render.color import oklab_to_srgb, srgb_to_oklab
 # The overview waveform is measured by the analysis (analyzer.audio.wave_overview.WaveOverview: what it holds and
 # how it is measured) and drawn here, at WAVE_OVERVIEW_RENDER_COLUMNS columns.
 WAVE_OVERVIEW_RENDER_COLUMNS = 4096
-# The detail (scrolling) waveform is drawn from the audio; it reads one number of the overview: the three-band
-# layers' common scale (WaveOverview.detail_band_ref: the low / mid / high RMS track maxima of the ranges set at
-# analysis, each the maximum of the range's RMS at 16384 column centres).
+# The detail (scrolling) waveform is drawn from the audio, its three bands on one scale: the loudest band's track
+# maximum, read from the overview's band columns with the ranges as set now (detail_band_ref).
 
 WAVEFORM_STYLES = ("rgb", "3band")
 # RGB overview colours (overview_colors), each column's own first: each band over the track's own usual level
@@ -52,10 +51,28 @@ THREE_BAND_DETAIL_WEIGHTS = (0.4, 0.3, 0.06)
 # RMS window of the scrolling three-band waveform: a CDJ frame (1/75 s), long
 # enough for the low band's periods.
 THREE_BAND_DETAIL_RMS_SEC = 1.0 / 75.0
+# The chunks' band RMS track maximum (THREE_BAND_DETAIL_RMS_SEC windows, their Butterworth band filters) over the
+# overview's loudest band column (STFT bins summed into the ranges): the two filter banks differ, so the overview's
+# maximum is converted by this (detail_band_ref). Measured on 40 library tracks with the ranges and filter order as
+# set: median 0.851, 5 - 95 % 0.755 - 0.958 (cv 7 %), hardly by the track's length (corr 0.2).
+DETAIL_BAND_REF_SCALE = 0.85
+# ... and for the three bands' energy summed (detail_band_ref ``total``): median 0.813 of 20 tracks (5 - 95 %
+# 0.754 - 0.868, cv 5 %)
+DETAIL_ENERGY_REF_SCALE = 0.81
+# The preview's envelope (the overview's band columns' energy) divided by this draws the chunks' heights
+# (render_wave_detail_preview): the envelopes alone differ by 1.48 at every quantile (12 library tracks, 10 - 90 %
+# 1.52 - 1.43); the bars as drawn (the preview's min / max columns are longer than the chunks' frames) agree at 1.35
+# (10 other tracks: the preview's median height over the chunks' 1.000, spread 0.06; the 90th percentile's 1.02).
+PREVIEW_ENVELOPE_RATIO = 1.35
 # RGB detail waveform colors: the band levels smoothed over this time (so the
 # color changes gradually), and a lower saturation floor than the overview's.
 RGB_DETAIL_COLOR_SMOOTH_SEC = 0.05
 RGB_DETAIL_SAT_FLOOR = 0.6
+# RGB detail waveform heights: a height (of the half height) past this is pressed softly towards the lane's edge
+# (tanh), never cut flat there (shape_by_envelope).
+RGB_DETAIL_KNEE = 0.75
+# RGB detail waveform heights: the envelope's slope above the middle (detail_envelope)
+RGB_DETAIL_HIT_SLOPE = 2.0
 # The detail waveform's centre line, in this colour, where the audio is quiet: by its loudness (the main view's
 # chunks: each column's RMS over WAVE_CENTER_LINE_RMS_SEC, full under silence and gone from WAVE_CENTER_LINE_QUIET
 # on; a fine frame's waveform leaves the centre row dark in loud audio too, between a wave's crests), else (the
@@ -96,6 +113,46 @@ def frame_minmax(y: np.ndarray, hop: int) -> tuple[np.ndarray, np.ndarray]:
         mins[n_full] = np.min(y[n_full * hop:])
         maxs[n_full] = np.max(y[n_full * hop:])
     return mins, maxs
+
+
+def detail_envelope(level) -> np.ndarray:
+    """Each frame's height (0..1 of the half height) from its envelope ``level`` 0..1: the three bands' energy summed
+    over its track maximum (detail_band_ref ``total``; the loudest band alone, or weighted as the 3band layers, missed
+    a hit under a band held in a dense mix, and a track loud in the highs), above the middle RGB_DETAIL_HIT_SLOPE
+    times as steep (a hit drawn higher over the level between the hits; past the lane pressed softly by
+    shape_by_envelope; smoothstep there left the hits short), below it as it is (lowered, the waveform between the
+    hits was too thin)."""
+    e = np.clip(np.asarray(level, dtype=np.float64), 0.0, 1.0)
+    return np.where(e <= 0.5, e, 0.5 + RGB_DETAIL_HIT_SLOPE * (e - 0.5))
+
+
+def _soft_top(x: np.ndarray) -> np.ndarray:
+    """Heights (of the half height, their signs kept) as they are up to RGB_DETAIL_KNEE, past it towards 1."""
+    a = np.abs(x)
+    room = 1.0 - RGB_DETAIL_KNEE
+    pressed = RGB_DETAIL_KNEE + room * np.tanh((a - RGB_DETAIL_KNEE) / room)
+    return np.copysign(np.where(a <= RGB_DETAIL_KNEE, a, pressed), x)
+
+
+def shape_by_envelope(mins: np.ndarray, maxs: np.ndarray, envelope: np.ndarray,
+                      window: int) -> tuple[np.ndarray, np.ndarray]:
+    """The RGB detail waveform's heights: each frame's min and max times its gain, its energy envelope over the mean of
+    the frames' peaks within ``window`` frames around it (the envelope's own window). The peaks' quick changes, finer
+    than that window, are kept and their level is the envelope's (a kick stands over a pad); a frame's asymmetry is
+    its own. Past RGB_DETAIL_KNEE pressed softly towards the edge."""
+    mins = np.asarray(mins, dtype=np.float64)
+    maxs = np.asarray(maxs, dtype=np.float64)
+    n = mins.size
+    if n == 0:
+        return mins, maxs
+    peak = np.maximum(np.abs(mins), np.abs(maxs))
+    half = max(1, int(window)) // 2
+    idx = np.arange(n)
+    lo, hi = np.maximum(idx - half, 0), np.minimum(idx + half + 1, n)
+    sums = np.concatenate(([0.0], np.cumsum(peak)))
+    mean = (sums[hi] - sums[lo]) / (hi - lo)
+    gain = np.asarray(envelope, dtype=np.float64) / np.maximum(mean, 1.0 / 127.0)
+    return _soft_top(mins * gain), _soft_top(maxs * gain)
 
 
 def wave_colors(lo, mid, hi, white_threshold=0.05, sat_floor=0.7) -> np.ndarray:
@@ -153,12 +210,20 @@ def _column_means(values: np.ndarray, columns: int) -> np.ndarray:
     return np.add.reduceat(values, starts, axis=0) / np.diff(np.append(starts, n)).astype(np.float64)[:, np.newaxis]
 
 
-def wave_detail_band_ref(wave: WaveOverview | None) -> float | None:
-    """The detail waveform's three-band scale: the loudest band's track maximum RMS (sample units, the ranges set
-    at analysis); None without an overview."""
-    if wave is None or np.asarray(wave.detail_band_ref).size == 0:
+def detail_band_ref(wave: WaveOverview | None, ranges, *, total: bool = False) -> float | None:
+    """The detail waveform's scale (sample units): the loudest of the low / mid / high ``ranges``' RMS over
+    THREE_BAND_DETAIL_RMS_SEC on the track (the 3band layers' common scale), or with ``total`` the loudest of the three
+    together, their energy summed (the RGB heights' envelope); the chunks' own measure (their band filters),
+    approximated from the overview's band columns (the 12 stored bands summed into the ranges as set now, so a change
+    of the ranges takes effect at once) by DETAIL_BAND_REF_SCALE (``total``: DETAIL_ENERGY_REF_SCALE); the preview's
+    scale too. None without an overview or sound."""
+    if wave is None or np.asarray(wave.bands).size == 0:
         return None
-    return float(np.max(np.asarray(wave.detail_band_ref)))
+    rms = _band_rms(wave, ranges)
+    if total:
+        rms = np.sqrt(np.sum(np.square(rms), axis=1))
+    loudest = float(rms.max()) * (DETAIL_ENERGY_REF_SCALE if total else DETAIL_BAND_REF_SCALE)
+    return loudest if loudest > 0.0 else None
 
 
 def paint_layers(layers, height: int, *, mirrored: bool = False) -> np.ndarray:
@@ -297,6 +362,12 @@ def render_wave_detail_preview(
         amp = np.sqrt(rms[band_col])
         colors = wave_colors(amp[:, 0], amp[:, 1], amp[:, 2], white_threshold=0.0,
                              sat_floor=RGB_DETAIL_SAT_FLOOR).astype(np.float64)
+        # heights times the envelope as the chunks' (shape_by_envelope), on their scale (detail_band_ref); the peaks'
+        # mean over a band column's min / max columns
+        total = np.sqrt(np.sum(np.square(rms[band_col]), axis=1)) / PREVIEW_ENVELOPE_RATIO
+        envelope = detail_envelope(total / (detail_band_ref(wave, ranges, total=True) or 1.0))
+        window = max(1, round(n / max(rms.shape[0], 1)))
+        minmax = np.stack(shape_by_envelope(minmax[:, 0], minmax[:, 1], envelope, window), axis=1)
         column = (np.arange(n, dtype=np.int64) * max(1, min(int(columns), n))) // n
         image = wave_coverage_columns(minmax[:, 0], minmax[:, 1], colors, column, height,
                                       flat_color=WAVE_CENTER_LINE_RGB)

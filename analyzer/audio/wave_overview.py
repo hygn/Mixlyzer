@@ -1,5 +1,6 @@
-"""The overview waveform's measurement: a track's overview (its min / max columns and its bands' power, the detail
-waveform's three-band scale), from the analysis's own decode at WAVE_OVERVIEW_SAMPLE_RATE, as `WaveOverview`."""
+"""The overview waveform's measurement: a track's overview (its min / max columns and its bands' power), from the
+analysis's own decode at WAVE_OVERVIEW_SAMPLE_RATE, as `WaveOverview`. The detail waveform's three-band scale is not
+stored: the main view measures it from the track's audio with the ranges as set (views/waveform.py)."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -36,7 +37,6 @@ class WaveOverview:
     minmax_ref: np.ndarray        # (1,) float32: the track's peak |sample|
     bands: np.ndarray             # (WAVE_BAND_COLUMNS, WAVE_BAND_COUNT) uint8
     bands_ref: np.ndarray         # (WAVE_BAND_COUNT,) float32: each band's track maximum
-    detail_band_ref: np.ndarray   # (3,) float32: the detail waveform's low / mid / high scale
 
     def samples(self) -> np.ndarray:
         """The min / max columns in sample units."""
@@ -52,7 +52,6 @@ class WaveOverview:
 def build_wave_overview(
     y: np.ndarray,
     sample_rate: int,
-    bands: tuple[tuple[float, float], tuple[float, float], tuple[float, float]],
     magnitude: np.ndarray | None = None,
     *,
     n_fft: int = 2048,
@@ -60,13 +59,11 @@ def build_wave_overview(
 ) -> WaveOverview:
     """The overview of mono ``y``: the min / max of WAVE_MINMAX_COLUMNS columns and the WAVE_BAND_COUNT bands'
     mean-square power in WAVE_BAND_COLUMNS columns, from the magnitude STFT ``magnitude`` (``n_fft`` /
-    ``hop_length``, centered frames; computed here when omitted); and the detail waveform's three-band scale for
-    the low / mid / high ``bands`` (Hz)."""
+    ``hop_length``, centered frames; computed here when omitted)."""
     y = np.asarray(y, dtype=np.float32).reshape(-1)
     if y.size == 0:
         return WaveOverview(np.zeros((0, 2), np.int8), np.zeros(1, np.float32),
-                            np.zeros((0, WAVE_BAND_COUNT), np.uint8), np.zeros(WAVE_BAND_COUNT, np.float32),
-                            np.zeros(3, np.float32))
+                            np.zeros((0, WAVE_BAND_COUNT), np.uint8), np.zeros(WAVE_BAND_COUNT, np.float32))
     n = max(1, min(WAVE_MINMAX_COLUMNS, y.size))
     starts = (np.arange(n, dtype=np.int64) * y.size) // n
     minmax = np.stack([np.minimum.reduceat(y, starts), np.maximum.reduceat(y, starts)], axis=1).astype(np.float64)
@@ -99,13 +96,5 @@ def build_wave_overview(
             columns[empty, band] = np.interp(centers[empty], frame_centers, frame_power[band])
     ref = columns.max(axis=0)
     levels = np.power(np.clip(columns / np.where(ref > 0.0, ref, 1.0), 0.0, 1.0), 0.25) * 255.0
-    # the detail waveform's scale, measured as before: each range's RMS at 16384 column centres, its maximum
-    n_old = max(1, min(16384, y.size))
-    old_starts = (np.arange(n_old, dtype=np.int64) * y.size) // n_old
-    old_centers = old_starts + 0.5 * np.diff(np.append(old_starts, y.size))
-    detail_ref = []
-    for low, high in bands:
-        mean_square = power[(frequencies >= low) & (frequencies < high)].sum(axis=0) * to_mean_square
-        detail_ref.append(float(np.sqrt(np.interp(old_centers, frame_centers, mean_square)).max()))
     return WaveOverview(np.rint(companded).astype(np.int8), np.asarray([peak], np.float32),
-                        np.rint(levels).astype(np.uint8), ref.astype(np.float32), np.asarray(detail_ref, np.float32))
+                        np.rint(levels).astype(np.uint8), ref.astype(np.float32))

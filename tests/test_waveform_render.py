@@ -127,6 +127,63 @@ class BandFilterTests(unittest.TestCase):
                                                                output="sos"), y))
 
 
+class EnvelopeHeightTests(unittest.TestCase):
+    """The RGB detail waveform's heights times the energy envelope over the peaks' mean (shape_by_envelope)."""
+
+    def test_an_onset_stands_over_a_steady_level(self):
+        # a loud steady wave whose envelope is low, then a hit whose envelope is high: the hit drawn higher than the
+        # steady part, though their raw peaks are alike
+        from views.render.wave import shape_by_envelope
+        peaks = np.full(200, 0.8)
+        env = np.where(np.arange(200) < 100, 0.2, 0.9)
+        mins, maxs = shape_by_envelope(-peaks, peaks, env, window=13)
+        self.assertLess(maxs[50], 0.3)
+        self.assertGreater(maxs[150], 0.7)
+        np.testing.assert_allclose(mins, -maxs)
+
+    def test_a_frame_keeps_its_shape_within_the_window(self):
+        # within the window the frames keep their own peaks' differences and each its asymmetry
+        from views.render.wave import shape_by_envelope
+        maxs = np.array([0.2, 0.6, 0.2, 0.6, 0.2])
+        mins = -0.5 * maxs
+        lo, hi = shape_by_envelope(mins, maxs, np.full(5, 0.4), window=5)
+        self.assertGreater(hi[1], hi[0])
+        np.testing.assert_allclose(lo, -0.5 * hi)
+
+    def test_heights_pressed_softly_never_past_the_edge(self):
+        from views.render.wave import RGB_DETAIL_KNEE, shape_by_envelope
+        peaks = np.full(50, 0.5)
+        _, maxs = shape_by_envelope(-peaks, peaks, np.linspace(0.1, 3.0, 50), window=1)
+        self.assertTrue((maxs < 1.0).all())
+        self.assertTrue((np.diff(maxs) > 0).all())    # pressed, never cut flat
+        _, low = shape_by_envelope(np.array([-0.5]), np.array([0.5]), np.array([0.5]), window=1)
+        self.assertAlmostEqual(float(low[0]), 0.5)    # under the knee as it is
+        self.assertLess(0.5, RGB_DETAIL_KNEE)
+
+
+class DetailScaleTests(unittest.TestCase):
+    """The detail waveform's scale from the overview and the envelope as heard."""
+
+    def test_envelope_through_smoothstep(self):
+        # below the middle as it is, above it steeper (the envelope at most 1)
+        from views.render.wave import RGB_DETAIL_HIT_SLOPE, detail_envelope
+        got = detail_envelope(np.array([0.2, 0.5, 0.8, 1.0, 1.5]))
+        top = 0.5 + RGB_DETAIL_HIT_SLOPE * 0.5
+        np.testing.assert_allclose(got, [0.2, 0.5, 0.5 + RGB_DETAIL_HIT_SLOPE * 0.3, top, top])
+
+    def test_band_ref_from_the_overview_with_the_ranges_as_set(self):
+        from analyzer.audio.wave_overview import WaveOverview
+        from views.render.wave import DETAIL_BAND_REF_SCALE, _band_rms, detail_band_ref
+        bands = np.zeros((64, 12), np.uint8)
+        bands[10, 1] = 255            # one loud low column (band 1: about 35 - 63 Hz)
+        wave = WaveOverview(np.zeros((0, 2), np.int8), np.ones(1, np.float32), bands, np.full(12, 4.0, np.float32))
+        low = ((20.0, 200.0), (200.0, 2000.0), (2000.0, 20000.0))
+        self.assertAlmostEqual(detail_band_ref(wave, low), float(_band_rms(wave, low).max()) * DETAIL_BAND_REF_SCALE)
+        # the low range moved off that band: its sound out of every range, no scale (taken at once, no reanalysis)
+        self.assertIsNone(detail_band_ref(wave, ((100.0, 200.0), (200.0, 2000.0), (2000.0, 20000.0))))
+        self.assertIsNone(detail_band_ref(None, low))
+
+
 class CenterLineTests(unittest.TestCase):
     """The centre line by the audio's loudness: white under silence, none in loud audio even where a close view's
     fine frames leave the centre row dark (between a wave's crests) or a frame within one pixel off the centre."""

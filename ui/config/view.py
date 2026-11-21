@@ -25,7 +25,7 @@ from PySide6 import QtCore
 from core.settings.config import phraselabelname, phraselabelnames
 from system.i18n import LANGUAGES, system_language, tr
 from views.timeline import CLOSE_WINDOW_MAX_SEC, SHORT_WINDOW_MAX_SEC
-from views.render.wave import wave_detail_band_ref
+from views.render.wave import detail_band_ref
 from views.waveform import _WaveStyle
 from ui.config.scroll import groups_page
 from ui.config.wave_bands import F_MAX, F_MIN, BandSpectrum, WavePreview
@@ -343,12 +343,13 @@ class ViewSettingsMixin:
             "short": (self.sp_mainview_wave_frame_ms_short, float(SHORT_WINDOW_MAX_SEC)),
             "long": (self.sp_mainview_wave_frame_ms_long, PREVIEW_LONG_SEC),
         }[self._preview_view]
+        bands = tuple((float(lo.value()), float(hi.value())) for lo, hi in self._band_spins())
         style = _WaveStyle(
-            bands=tuple((float(lo.value()), float(hi.value())) for lo, hi in self._band_spins()),
+            bands=bands,
             filter_order=int(self.sp_mainview_wave_filter_order.value()),
             frame_ms=float(spin.value()),
             waveform_style=self._get_waveform_style(),
-            band_ref=wave_detail_band_ref(wave),
+            band_ref=detail_band_ref(wave, bands, total=self._get_waveform_style() != "3band"),
         )
         return style, seconds
 

@@ -50,8 +50,6 @@ class JumpCueRules:
 class AnalysisSettings:
     models: ModelPaths
     bpm_min: float                       # every tempo is read in the octave from here (bpm_min .. 2 x bpm_min)
-    # the detail waveform's low / mid / high ranges (Hz): the overview stores their scale
-    wave_bands: tuple[tuple[float, float], ...]
     bpm_dynamic: bool = True             # tempo changes within a track (off: one steady grid)
     dynamic_downbeat: bool = True        # odd bars and meter changes of a steady grid (always with bpm_dynamic)
     key_dynamic: bool = True             # key changes within a track (off: one key)

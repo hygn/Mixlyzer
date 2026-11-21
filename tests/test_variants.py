@@ -16,8 +16,7 @@ def features(seed: int, n: int = 600, bpm: float = 150.0) -> tuple:
     duration = n * 60.0 / bpm
     columns = 2048
     bands = rng.integers(40, 250, size=(columns, 12)).astype(np.uint8)
-    wave = WaveOverview(np.zeros((0, 2), np.int8), np.ones(1, np.float32), bands, np.ones(12, np.float32),
-                        np.zeros(3, np.float32))
+    wave = WaveOverview(np.zeros((0, 2), np.int8), np.ones(1, np.float32), bands, np.ones(12, np.float32))
     return np.arange(n) * 60.0 / bpm, wave, float(duration)
 
 

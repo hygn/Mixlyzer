@@ -59,8 +59,7 @@ def features(seed: int, n: int = 600, bpm: float = 150.0) -> tuple:
     """A synthetic song's beats, overview bands and length (as the Variants' fingerprints read them)."""
     rng = np.random.default_rng(seed)
     bands = rng.integers(40, 250, size=(2048, 12)).astype(np.uint8)
-    wave = WaveOverview(np.zeros((0, 2), np.int8), np.ones(1, np.float32), bands, np.ones(12, np.float32),
-                        np.zeros(3, np.float32))
+    wave = WaveOverview(np.zeros((0, 2), np.int8), np.ones(1, np.float32), bands, np.ones(12, np.float32))
     return np.arange(n) * 60.0 / bpm, wave, n * 60.0 / bpm
 
 
