@@ -1,8 +1,9 @@
 """The full analysis of a track, every stage in order: the audio decoded once (stereo, its mono mix) -> HPSS -> the
-overview waveform (its own 48 kHz decode) -> the frame features and the beat tracker -> phrases and their CUE points
--> JumpCUEs -> keys -> Search by Music's index entry -> the Variants' fingerprints -> the mix candidates' beats'
-features -> TrackAnalysis. What reads none of the steps before it but the audio, the HPSS or the beats runs beside
-them on threads of its own: the overview waveform, the keys' frame chroma (from the harmonic part alone), the phrase
+overview waveform and the loudness and peak ReplayGain takes (their own 48 kHz stereo decode) -> the frame features
+and the beat tracker -> phrases and their CUE points -> JumpCUEs -> keys -> Search by Music's index entry -> the
+Variants' fingerprints -> TrackAnalysis. What reads none of the steps before it but the audio, the HPSS or the beats
+runs beside them on threads of its own: the overview waveform with the loudness, the keys' frame chroma (from the
+harmonic part alone), the phrase
 features' frame-level part, a stacked phrase model's song cues' frame-level part, Search by Music's index entry and
 what JumpCUE reads of the audio and the beats; each is
 the same function on the same input, so the results are those of the steps in order.
@@ -20,6 +21,7 @@ import numpy as np
 
 from analyzer.audio.hpss import HPSS_HOP_LENGTH, HPSS_N_FFT, hpss_audio_with_spectra
 from analyzer.audio.load import fast_load
+from analyzer.audio.loudness import Loudness, measure as measure_loudness
 from analyzer.audio.wave_overview import WAVE_OVERVIEW_SAMPLE_RATE, WaveOverview, build_wave_overview
 from analyzer.beat import melody_contour
 from analyzer.beat.frame_features import FRAME_HOP_LENGTH, extract_frame_features
@@ -57,6 +59,7 @@ class TrackAnalysis:
                                            # made from them and the phrases (analyzer.music.key_rows.main_key)
     music_index: IndexEntry | None         # Search by Music's entry (None: not asked, or it failed)
     variants: list[Any] | None             # the Variants' fingerprints (search.variants.track_fingerprints; None: failed)
+    loudness: Loudness | None              # ReplayGain's loudness and peak (audio.loudness; None: failed)
 
 
 def analyze_track(path: str, settings: AnalysisSettings, progress: Progress = None) -> TrackAnalysis:
@@ -67,19 +70,28 @@ def analyze_track(path: str, settings: AnalysisSettings, progress: Progress = No
         return _analyze_track(path, settings, progress, side)
 
 
-def _wave_overview(path: str) -> WaveOverview:
-    """The overview waveform: the min / max of each column and the power of 12 log-spaced bands (low / mid / high are
-    summed from them when drawn), from a mono decode at WAVE_OVERVIEW_SAMPLE_RATE, not the analysis rate, so the
-    bands are not cut at the analysis Nyquist."""
+def _wave_overview(path: str) -> tuple[WaveOverview, Loudness | None]:
+    """The overview waveform (the min / max of each column and the power of 12 log-spaced bands: low / mid / high are
+    summed from them when drawn) and the loudness and peak ReplayGain takes, from one stereo decode at
+    WAVE_OVERVIEW_SAMPLE_RATE, not the analysis rate, so the bands are not cut at the analysis Nyquist. The overview
+    reads its mono mix as FFmpeg's downmix makes it (each channel times sqrt(1/2) in float32: the mono decode it was
+    made from before, bit for bit); a loudness that fails leaves None, never the overview undone."""
     print("[Waveform] Analysis Initalized")
+    stereo = fast_load(path, WAVE_OVERVIEW_SAMPLE_RATE, stereo=True)
+    half = np.float32(np.sqrt(0.5))
     wave = build_wave_overview(
-        fast_load(path, WAVE_OVERVIEW_SAMPLE_RATE),
+        stereo[:, 0] * half + stereo[:, 1] * half,
         WAVE_OVERVIEW_SAMPLE_RATE,
         n_fft=HPSS_N_FFT,
         hop_length=HPSS_HOP_LENGTH,
     )
+    try:
+        loudness = measure_loudness(stereo, WAVE_OVERVIEW_SAMPLE_RATE)
+    except Exception as exc:
+        print(f"[Loudness] not measured: {exc}")
+        loudness = None
     print("[Waveform] Analysis Finished")
-    return wave
+    return wave, loudness
 
 
 def _analyze_track(path: str, settings: AnalysisSettings, progress: Progress, side: ThreadPoolExecutor) -> TrackAnalysis:
@@ -103,7 +115,8 @@ def _analyze_track(path: str, settings: AnalysisSettings, progress: Progress, si
     phrase_cues_job = side.submit(phrase_cue_frames, samp, int(global_sr), model_path=models.phrase,
                                   hpss=hpss_spectra)
     # the keys' frame chroma, from the harmonic part alone (the keys are found on the beats and phrases below)
-    key_frames_job = side.submit(key_frame_chroma, y_harm, int(global_sr))
+    profile = settings.profile
+    key_frames_job = side.submit(key_frame_chroma, y_harm, int(global_sr), profile.key_tuning_estimate)
     # the phrase features' frame-level part, from the audio and its HPSS (synchronized to the beats below)
     phrase_frames_job = side.submit(phrase_song_frames, samp_stereo, int(global_sr), model_path=models.phrase,
                                     hpss=hpss_spectra)
@@ -114,7 +127,7 @@ def _analyze_track(path: str, settings: AnalysisSettings, progress: Progress, si
     print("[Tempo] Analysis Initalized")
     # Frame features on the shared frame grid: the phrase features read them below.
     frame_features = extract_frame_features(
-        samp, int(global_sr), y_perc, y_harm, hop_length=FRAME_HOP_LENGTH
+        samp, int(global_sr), y_perc, y_harm, hop_length=FRAME_HOP_LENGTH, cqt_gains=profile.cqt_gains
     )
     # Search by Music's index entry, beside the beats and phrases: from the decoded stereo and the HPSS's harmonic
     # part and mask (its own STFT frames are these: no second HPSS), and the melody contours the frame features have
@@ -150,6 +163,7 @@ def _analyze_track(path: str, settings: AnalysisSettings, progress: Progress, si
         load_models(models.downbeat_ctx, models.beat_tcn, models.beat_critic, models.beat_decoder),
         refine_onset,
         dynamic=dynamic, dynamic_downbeat=dynamic or bool(settings.dynamic_downbeat),
+        trainings=profile.beat_trainings, critic=profile.metronome_critic,
     )
     seg_arr = np.asarray(tracked.segments, dtype=np.float64).copy()
     if seg_arr.size:
@@ -275,7 +289,7 @@ def _analyze_track(path: str, settings: AnalysisSettings, progress: Progress, si
         except Exception as exc:
             print(f"[Music search] indexing skipped: {exc}")
     melody_contour.forget_contours()      # the frame features' contours, kept for the index
-    wave = wave_job.result()
+    wave, loudness = wave_job.result()
 
     # the Variants' fingerprints (from the beats and the overview's bands, ~20 ms); a failure leaves the track out of
     # the Variants, never the analysis undone
@@ -284,7 +298,6 @@ def _analyze_track(path: str, settings: AnalysisSettings, progress: Progress, si
     except Exception as exc:
         print(f"[Variants] not fingerprinted: {exc}")
         fingerprints = None
-
     print("[Analyzer] Analysis Finished")
     return TrackAnalysis(
         duration_sec=duration_sec,
@@ -299,4 +312,5 @@ def _analyze_track(path: str, settings: AnalysisSettings, progress: Progress, si
         key_segments=key_segments,
         music_index=music_entry,
         variants=fingerprints,
+        loudness=loudness,
     )

@@ -47,6 +47,17 @@ class JumpCueRules:
 
 
 @dataclass(frozen=True)
+class AnalysisProfile:
+    """How much of the analysis is spent for its speed (the app's assets/analysis/profiles.json, picked in Settings >
+    Analysis > Global). The defaults are the whole analysis (Full)."""
+    beat_trainings: int = 0              # the beat TCN's trainings decoded (0: all, their consensus; 1: the first)
+    metronome_critic: bool = True        # the beat tracker's metronome critic (3:2 / 4:3 misreads)
+    key_tuning_estimate: bool = True     # the keys' STFT chroma estimates the tuning (off: 0 cents)
+    cqt_gains: str = ""                  # the frame features' CQTs approximated from STFTs with these gains
+                                         # (audio.stft_cqt; "": librosa's CQTs)
+
+
+@dataclass(frozen=True)
 class AnalysisSettings:
     models: ModelPaths
     bpm_min: float                       # every tempo is read in the octave from here (bpm_min .. 2 x bpm_min)
@@ -58,3 +69,4 @@ class AnalysisSettings:
     cue_rules: Mapping[str, CueRule] = field(default_factory=dict)    # by phrase label (uppercase)
     jumpcue_rules: JumpCueRules = field(default_factory=JumpCueRules)
     music_index: bool = False            # Search by Music's index entry made too (about 2 s of CPU a track)
+    profile: AnalysisProfile = field(default_factory=AnalysisProfile)

@@ -193,15 +193,17 @@ class _PieceSignals(QtCore.QObject):
 
 
 class _PieceJob(QtCore.QRunnable):
-    def __init__(self, pcm, rate: int, c0: int, c1: int, style: _WaveStyle, gen: int) -> None:
+    def __init__(self, pcm, rate: int, c0: int, c1: int, loudness_lufs, peak, style: _WaveStyle, gen: int) -> None:
         super().__init__()
         self.pcm, self.rate, self.c0, self.c1, self.style, self.gen = pcm, rate, c0, c1, style, gen
+        self.loudness_lufs, self.peak = loudness_lufs, peak
         self.signals = _PieceSignals()
 
     def run(self) -> None:
         hop = column_hop(self.style, self.rate)
         try:
-            image = render_columns(self.pcm, self.rate, self.c0, self.c1, self.style, height=PREVIEW_HEIGHT)
+            image = render_columns(self.pcm, self.rate, self.c0, self.c1, self.loudness_lufs, self.peak, self.style,
+                                   height=PREVIEW_HEIGHT)
         except Exception as exc:
             print(f"[Settings] waveform preview not drawn: {exc}")
             image = None
@@ -236,6 +238,7 @@ class WavePreview(QtWidgets.QWidget):
         item.addItem(self._note)
         self._pcm = None
         self._rate = 0
+        self._loudness_lufs = self._peak = None
         self._gen = 0
         self._time = 0.0
         self._pieces: list[tuple[float, float, pg.ImageItem]] = []
@@ -249,9 +252,11 @@ class WavePreview(QtWidgets.QWidget):
         self._timer.timeout.connect(self._draw_more)
         self._follow()
 
-    def set_track(self, pcm, rate: int) -> None:
-        """The loaded track's audio (None: none): what was drawn of the last goes."""
+    def set_track(self, pcm, rate: int, loudness_lufs=None, peak=None) -> None:
+        """The loaded track's audio (None: none) and its loudness and peak (the waveform's size): what was drawn of
+        the last goes."""
         self._pcm, self._rate = pcm, int(rate or 0)
+        self._loudness_lufs, self._peak = loudness_lufs, peak
         self._gen += 1
         for _start, _end, image in self._pieces:
             self._view.removeItem(image)
@@ -298,7 +303,7 @@ class WavePreview(QtWidgets.QWidget):
         if c1 <= c0:
             return
         self._busy = True
-        job = _PieceJob(self._pcm, self._rate, c0, c1, style, self._gen)
+        job = _PieceJob(self._pcm, self._rate, c0, c1, self._loudness_lufs, self._peak, style, self._gen)
         job.signals.done.connect(self._piece_done, QtCore.Qt.QueuedConnection)
         self._pool.start(job)
 

@@ -244,6 +244,7 @@ class SettingsDialog(
         # analysis
         a = cfg.analysisconfig
         self.sp_max_parallel_analyses.setValue(int(a.max_parallel_analyses))
+        self.cb_analysis_profile.setCurrentIndex(max(0, self.cb_analysis_profile.findData(a.analysis_profile)))
         self.sp_bpm_min.setValue(int(a.bpm_min))
         self.lbl_bpm_range.setText(tr("Reads {low} - {high} BPM").format(low=int(a.bpm_min), high=2 * int(a.bpm_min)))
         dynamic = bool(getattr(a, "bpm_dynamic", True))
@@ -306,6 +307,7 @@ class SettingsDialog(
                 autocue=self._get_autocue(),
                 **self._get_jumpcue_rules(),
                 max_parallel_analyses=int(self.sp_max_parallel_analyses.value()),
+                analysis_profile=self.cb_analysis_profile.currentData() or "full",
             ),
             libconfig=libconfig(
                 libpath=self.ed_libpath.text().strip(),

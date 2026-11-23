@@ -73,12 +73,14 @@ def _gated_cqt_chroma(y: np.ndarray, sr: int) -> tuple[np.ndarray, np.ndarray]:
     return out[0], out[1]
 
 
-def _stft_chroma(y: np.ndarray, sr: int) -> np.ndarray:
+def _stft_chroma(y: np.ndarray, sr: int, tuning: float | None = None) -> np.ndarray:
+    """[12, T] STFT chroma; ``tuning`` None: estimated (librosa's piptrack, most of its time), else in cents / 100."""
     import librosa
     from analyzer.audio.spectral import stft
 
     S = np.abs(stft(y, n_fft=4096, hop_length=HOP, center=True))
-    return librosa.feature.chroma_stft(S=np.square(S), sr=sr, hop_length=HOP, n_fft=4096, tuning=None).astype(np.float32)
+    return librosa.feature.chroma_stft(S=np.square(S), sr=sr, hop_length=HOP, n_fft=4096,
+                                       tuning=tuning).astype(np.float32)
 
 
 def _pool(chroma: np.ndarray, ftimes: np.ndarray, edges: np.ndarray) -> np.ndarray:
@@ -120,16 +122,17 @@ def beat_grid(beats: np.ndarray, downbeats: np.ndarray, phrase_starts: np.ndarra
     return BeatGrid(beat_t=b, bar=bar.astype(np.int64), phrase_first=first, pos=pos_bar[bar])
 
 
-def frame_chroma(y_harm: np.ndarray, sr: int) -> np.ndarray:
+def frame_chroma(y_harm: np.ndarray, sr: int, tuning_estimate: bool = True) -> np.ndarray:
     """[36, T] at 22050 Hz / hop 512: bass CQT, treble CQT and STFT chroma of the harmonic part (the frames
-    the beat inputs are pooled from; the key optimizer caches them)."""
+    the beat inputs are pooled from; the key optimizer caches them). ``tuning_estimate`` off: the STFT chroma at
+    0 cents (the analysis profiles)."""
     import librosa
 
     y = np.asarray(y_harm, np.float32)
     if int(sr) != SR:
         y = librosa.resample(y, orig_sr=int(sr), target_sr=SR).astype(np.float32)
     bass, treble = _gated_cqt_chroma(y, SR)
-    st = _stft_chroma(y, SR)
+    st = _stft_chroma(y, SR, None if tuning_estimate else 0.0)
     n = min(bass.shape[1], treble.shape[1], st.shape[1])
     return np.concatenate([bass[:, :n], treble[:, :n], st[:, :n]], axis=0)
 

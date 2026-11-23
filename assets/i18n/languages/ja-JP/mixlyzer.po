@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-11-14 23:35+0900\n"
+"POT-Creation-Date: 2026-11-23 16:39+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ja_JP\n"
@@ -1253,7 +1253,7 @@ msgstr "テンポを解析中"
 msgid "Phrase Boundary Analyzing"
 msgstr "フレーズ境界を解析中"
 
-#: core/workers/analysis_texts.py:17 ui/config/analysis.py:241
+#: core/workers/analysis_texts.py:17 ui/config/analysis.py:249
 #: ui/config/pipeline_map.py:24 ui/config/pipeline_map.py:33
 #: ui/edit_panel/panel.py:62 ui/library/search.py:270 ui/library/search.py:330
 #: ui/shortcuts.py:38
@@ -1268,7 +1268,7 @@ msgstr "JumpCUE を解析中"
 msgid "Analyzing Keys"
 msgstr "キーを解析中"
 
-#: core/workers/analysis_texts.py:19 ui/config/analysis.py:240
+#: core/workers/analysis_texts.py:19 ui/config/analysis.py:248
 #: ui/config/pipeline_map.py:27 ui/config/pipeline_map.py:35
 #: ui/library/tabs/edit_song.py:128 ui/library/tabs/export.py:169
 msgid "Key"
@@ -1676,7 +1676,7 @@ msgstr "相対または絶対の .npz パス"
 msgid "relative or absolute .json path"
 msgstr "相対または絶対の .json パス"
 
-#: ui/config/analysis.py:32 ui/config/analysis.py:136 ui/config/library.py:265
+#: ui/config/analysis.py:32 ui/config/analysis.py:144 ui/config/library.py:265
 #: ui/config/view.py:201
 msgid "General"
 msgstr "一般"
@@ -1690,14 +1690,37 @@ msgstr "同時に解析するトラックの数です。"
 msgid "Full analyses at once"
 msgstr "同時に解析するトラック数"
 
-#: ui/config/analysis.py:41
+#: ui/config/analysis.py:42
+msgid "Full"
+msgstr "フル"
+
+#: ui/config/analysis.py:42
+msgid "Balanced"
+msgstr "バランス"
+
+#: ui/config/analysis.py:42
+msgid "Fast"
+msgstr "高速"
+
+#: ui/config/analysis.py:45
+msgid ""
+"<p>How much of the analysis is spent for speed. Balanced is faster with "
+"nearly always the same results; Fast is faster still, its phrases and "
+"JumpCUEs at times a little different.</p>"
+msgstr "<p>速度のために解析をどこまで省くかを選びます。バランスはより速く、結果はほぼ常に同じです。高速はさらに速く、フレーズとJumpCUEがときどき少し異なります。</p>"
+
+#: ui/config/analysis.py:47
+msgid "Analysis profile"
+msgstr "解析プロファイル"
+
+#: ui/config/analysis.py:49
 msgid "Analysis order and dependencies"
 msgstr "解析の順序と依存関係"
 
 # | msgid "" "The beat tracker reads every tempo in the octave from here (BPM
 # | min .. 2 " "x BPM min);\n" "a song outside it is read at half or double
 # | tempo."
-#: ui/config/analysis.py:55 ui/windows/reanalyze_dialog.py:32
+#: ui/config/analysis.py:63 ui/windows/reanalyze_dialog.py:32
 msgid ""
 "The beat tracker reads tempos from here to twice this;\n"
 "a song outside it is read at half or double tempo."
@@ -1705,18 +1728,18 @@ msgstr ""
 "ビートトラッカーはこの値からその 2 倍までのテンポで読み取ります。\n"
 "範囲外の曲は半分または 2 倍のテンポで読み取られます。"
 
-#: ui/config/analysis.py:60 ui/config/window.py:248
+#: ui/config/analysis.py:68 ui/config/window.py:249
 #: ui/windows/reanalyze_dialog.py:38 ui/windows/reanalyze_dialog.py:76
 #, python-brace-format
 msgid "Reads {low} - {high} BPM"
 msgstr "{low} - {high} BPM で読み取り"
 
-#: ui/config/analysis.py:62 ui/config/analysis.py:132
+#: ui/config/analysis.py:70 ui/config/analysis.py:140
 #: ui/windows/reanalyze_dialog.py:39 ui/windows/reanalyze_dialog.py:49
 msgid "Dynamic Analysis"
 msgstr "ダイナミック解析"
 
-#: ui/config/analysis.py:64 ui/windows/reanalyze_dialog.py:41
+#: ui/config/analysis.py:72 ui/windows/reanalyze_dialog.py:41
 msgid ""
 "Checked: tempo changes within a track (sections, ramps).\n"
 "Unchecked: one steady BPM for the whole track."
@@ -1724,7 +1747,7 @@ msgstr ""
 "オン: トラック内のテンポ変化 (区間、ランプ) を検出します。\n"
 "オフ: トラック全体を一定の BPM 1 つとして扱います。"
 
-#: ui/config/analysis.py:67 ui/windows/reanalyze_dialog.py:44
+#: ui/config/analysis.py:75 ui/windows/reanalyze_dialog.py:44
 msgid "Dynamic Downbeat"
 msgstr "ダイナミックダウンビート"
 
@@ -1732,7 +1755,7 @@ msgstr "ダイナミックダウンビート"
 # "Unchecked:
 # | one bar length and downbeat phase for the whole track.\n" "Always on with
 # | Dynamic Analysis."
-#: ui/config/analysis.py:69 ui/windows/reanalyze_dialog.py:46
+#: ui/config/analysis.py:77 ui/windows/reanalyze_dialog.py:46
 msgid ""
 "Checked: odd bars and meter changes within a track.\n"
 "Unchecked: one bar length and downbeat phase for the whole track."
@@ -1742,90 +1765,90 @@ msgstr ""
 
 # | msgid "" "Gradient-boosted onset model (.npz) that places the tracker's
 # | tempo " "changes."
-#: ui/config/analysis.py:85
+#: ui/config/analysis.py:93
 msgid "The model (.npz) that places the tracker's tempo changes."
 msgstr "トラッカーのテンポ変化の位置を決めるモデル (.npz)。"
 
 # | msgid "The frame TCN (.npz, its trainings) that hears the beats and
 # | downbeats."
-#: ui/config/analysis.py:90
+#: ui/config/analysis.py:98
 msgid "The model (.npz) that hears the beats and downbeats."
 msgstr "拍とダウンビートを聞き取るモデル (.npz)。"
 
 # | msgid "" "The metronome critic (.npz, its fold models) that judges 3:2 /
 # 4:3
 # | " "readings."
-#: ui/config/analysis.py:95
+#: ui/config/analysis.py:103
 msgid "The model (.npz) that judges 3:2 / 4:3 readings."
 msgstr "3:2 / 4:3 の読み取りを判定するモデル (.npz)。"
 
 # | msgid "Decoder costs (JSON)"
-#: ui/config/analysis.py:100
+#: ui/config/analysis.py:108
 msgid "The decoder's costs (.json)."
 msgstr "デコーダーのコスト (.json)。"
 
 # | msgid "Gradient-boosted downbeat model (.npz) the tracker's bars read."
-#: ui/config/analysis.py:105
+#: ui/config/analysis.py:113
 msgid "The downbeat model (.npz) the tracker's bars read."
 msgstr "トラッカーの小節が読み取るダウンビートモデル (.npz)。"
 
-#: ui/config/analysis.py:110 ui/windows/reanalyze_dialog.py:86
+#: ui/config/analysis.py:118 ui/windows/reanalyze_dialog.py:86
 msgid "BPM min"
 msgstr "最小 BPM"
 
-#: ui/config/analysis.py:115 ui/config/analysis.py:145
-#: ui/config/analysis.py:159 ui/config/library.py:258 ui/config/library.py:275
+#: ui/config/analysis.py:123 ui/config/analysis.py:153
+#: ui/config/analysis.py:167 ui/config/library.py:258 ui/config/library.py:275
 #: ui/config/playback.py:106 ui/config/view.py:196
 msgid "Advanced"
 msgstr "詳細設定"
 
-#: ui/config/analysis.py:117
+#: ui/config/analysis.py:125
 msgid "Tempo-change onset (NPZ)"
 msgstr "テンポ変化オンセット (NPZ)"
 
-#: ui/config/analysis.py:118
+#: ui/config/analysis.py:126
 msgid "Beat TCN (NPZ)"
 msgstr "ビート TCN (NPZ)"
 
-#: ui/config/analysis.py:119
+#: ui/config/analysis.py:127
 msgid "Metronome critic (NPZ)"
 msgstr "メトロノームクリティック (NPZ)"
 
-#: ui/config/analysis.py:120
+#: ui/config/analysis.py:128
 msgid "Downbeat model (NPZ)"
 msgstr "ダウンビートモデル (NPZ)"
 
-#: ui/config/analysis.py:121
+#: ui/config/analysis.py:129
 msgid "Decoder costs (JSON)"
 msgstr "デコーダーコスト (JSON)"
 
-#: ui/config/analysis.py:134 ui/windows/reanalyze_dialog.py:51
+#: ui/config/analysis.py:142 ui/windows/reanalyze_dialog.py:51
 msgid ""
 "Key changes within a track. Off: one key for the whole track, the key of "
 "its intro, outro and interludes."
 msgstr "トラック内のキーの変化を検出します。オフ: トラック全体でキーを 1 つにします (イントロ、アウトロ、インタールードのキー)。"
 
-#: ui/config/analysis.py:143
+#: ui/config/analysis.py:151
 msgid "The key model (.npz). A missing file means the shipped model."
 msgstr "キーモデル (.npz)。ファイルがない場合は同梱モデルを使います。"
 
-#: ui/config/analysis.py:147
+#: ui/config/analysis.py:155
 msgid "Key model (NPZ)"
 msgstr "キーモデル (NPZ)"
 
-#: ui/config/analysis.py:158
+#: ui/config/analysis.py:166
 msgid "Learned phrase model (.npz)."
 msgstr "学習済みのフレーズモデル (.npz)。"
 
-#: ui/config/analysis.py:161 ui/config/analysis.py:218
+#: ui/config/analysis.py:169 ui/config/analysis.py:226
 msgid "Parameters (NPZ)"
 msgstr "パラメーター (NPZ)"
 
-#: ui/config/analysis.py:171 ui/windows/reanalyze_dialog.py:55
+#: ui/config/analysis.py:179 ui/windows/reanalyze_dialog.py:55
 msgid "CUE point"
 msgstr "CUEポイント"
 
-#: ui/config/analysis.py:173 ui/config/playback.py:69
+#: ui/config/analysis.py:181 ui/config/playback.py:69
 #: ui/windows/reanalyze_dialog.py:57
 msgid "Off"
 msgstr "オフ"
@@ -1834,26 +1857,26 @@ msgstr "オフ"
 # | lead-in end, an early first downbeat, or 0:00.\n" "CUE point: a CUE point
 # | (memory cue).\n" "JumpCUE: a JumpCUE (hot cue) of its own.\n" "Off:
 # | nothing."
-#: ui/config/analysis.py:175 ui/windows/reanalyze_dialog.py:59
+#: ui/config/analysis.py:183 ui/windows/reanalyze_dialog.py:59
 msgid ""
 "The mark the analysis puts at the automatic start position (the lead-in "
 "end, the first downbeat or 0:00)."
 msgstr "解析が自動開始位置 (リードインの終わり、最初のダウンビートまたは 0:00) に置くマークを選びます。"
 
-#: ui/config/analysis.py:179 ui/windows/reanalyze_dialog.py:93
+#: ui/config/analysis.py:187 ui/windows/reanalyze_dialog.py:93
 msgid "Automatic start"
 msgstr "自動開始"
 
 # | msgid "Analyzing JumpCUE"
-#: ui/config/analysis.py:180
+#: ui/config/analysis.py:188
 msgid "Automatic JumpCUE"
 msgstr "自動 JumpCUE"
 
-#: ui/config/analysis.py:183
+#: ui/config/analysis.py:191
 msgid "First CHORUS"
 msgstr "最初の CHORUS"
 
-#: ui/config/analysis.py:183 ui/config/analysis.py:187
+#: ui/config/analysis.py:191 ui/config/analysis.py:195
 msgid "Any CHORUS"
 msgstr "いずれかの CHORUS"
 
@@ -1862,137 +1885,137 @@ msgstr "いずれかの CHORUS"
 # | msgid "Booth EQ"
 # | msgid "Other"
 # | msgid "another key"
-#: ui/config/analysis.py:183 ui/config/analysis.py:187
+#: ui/config/analysis.py:191 ui/config/analysis.py:195
 msgid "Anywhere"
 msgstr "制限なし"
 
-#: ui/config/analysis.py:185
+#: ui/config/analysis.py:193
 msgid "Where the earlier point of the JumpCUE may be."
 msgstr "JumpCUE の前側の地点を置ける場所です。"
 
 # | msgid "Shortcuts"
-#: ui/config/analysis.py:187
+#: ui/config/analysis.py:195
 msgid "Last CHORUS"
 msgstr "最後の CHORUS"
 
 # | msgid "Split the current segment at the playhead"
 # | msgid "Delete the CUE point at the playhead"
-#: ui/config/analysis.py:189
+#: ui/config/analysis.py:197
 msgid "Where the later point of the JumpCUE may be."
 msgstr "JumpCUE の後側の地点を置ける場所です。"
 
-#: ui/config/analysis.py:192
+#: ui/config/analysis.py:200
 msgid "A point this many beats before or after a section still counts as in it."
 msgstr "区間の前後このビート数以内の地点も、その区間に含めます。"
 
-#: ui/config/analysis.py:197
+#: ui/config/analysis.py:205
 msgid "Below this score the analysis makes no JumpCUE."
 msgstr "このスコア未満では JumpCUE を作りません。"
 
 # | msgid "CUE point"
-#: ui/config/analysis.py:198
+#: ui/config/analysis.py:206
 msgid "Earlier point"
 msgstr "前側の地点"
 
 # | msgid "CUE point"
-#: ui/config/analysis.py:199
+#: ui/config/analysis.py:207
 msgid "Later point"
 msgstr "後側の地点"
 
 # | msgid "sections + labels"
 # | msgid "boundaries + labels"
-#: ui/config/analysis.py:200
+#: ui/config/analysis.py:208
 msgid "Section margin (beats)"
 msgstr "区間の余裕（ビート）"
 
 # | msgid "Min seg"
 # | msgid "Main screen"
-#: ui/config/analysis.py:201
+#: ui/config/analysis.py:209
 msgid "Minimum score"
 msgstr "最小スコア"
 
-#: ui/config/analysis.py:204
+#: ui/config/analysis.py:212
 msgid "Learned JumpCUE model (.npz)."
 msgstr "学習済みの JumpCUE モデル (.npz)。"
 
-#: ui/config/analysis.py:207
+#: ui/config/analysis.py:215
 msgid "The two points are at least this many beats apart."
 msgstr "2 つの地点を少なくともこのビート数だけ離します。"
 
-#: ui/config/analysis.py:210
+#: ui/config/analysis.py:218
 msgid "No point within this many beats of where the singing first starts."
 msgstr "歌が最初に始まってからこのビート数のあいだは地点を置きません。"
 
 # | msgid "Edit the JumpCUEs and CUE points"
-#: ui/config/analysis.py:211
+#: ui/config/analysis.py:219
 msgid "Move a JumpCUE off CUE points"
 msgstr "CUEポイント上の JumpCUE を移動"
 
-#: ui/config/analysis.py:212
+#: ui/config/analysis.py:220
 msgid "When both points sit on CUE points, the JumpCUE moves 8 beats earlier."
 msgstr "両方の地点が CUEポイント上にあるとき、JumpCUE を 8 ビート前に移します。"
 
-#: ui/config/analysis.py:213
+#: ui/config/analysis.py:221
 msgid "JumpCUE Advanced"
 msgstr "JumpCUE 詳細設定"
 
-#: ui/config/analysis.py:215
+#: ui/config/analysis.py:223
 msgid "Least gap (beats)"
 msgstr "最小間隔（ビート）"
 
-#: ui/config/analysis.py:216
+#: ui/config/analysis.py:224
 msgid "Clear after the first singing (beats)"
 msgstr "最初の歌の後に空けるビート数"
 
-#: ui/config/analysis.py:219 ui/config/analysis.py:289
+#: ui/config/analysis.py:227 ui/config/analysis.py:297
 msgid "Applies to tracks analyzed (or reanalyzed) from now on."
 msgstr "今後解析 (または再解析) するトラックに適用されます。"
 
-#: ui/config/analysis.py:238
+#: ui/config/analysis.py:246
 msgid "Global"
 msgstr "全体"
 
-#: ui/config/analysis.py:239 ui/config/pipeline_map.py:23
+#: ui/config/analysis.py:247 ui/config/pipeline_map.py:23
 #: ui/windows/reanalyze_dialog.py:84
 msgid "Beat"
 msgstr "ビート"
 
-#: ui/config/analysis.py:242 ui/config/pipeline_map.py:25
+#: ui/config/analysis.py:250 ui/config/pipeline_map.py:25
 #: ui/config/pipeline_map.py:26
 msgid "CUE"
 msgstr "CUE"
 
-#: ui/config/analysis.py:255 ui/windows/workers.py:24
+#: ui/config/analysis.py:263 ui/windows/workers.py:24
 msgid "Analysis"
 msgstr "解析"
 
-#: ui/config/analysis.py:262
+#: ui/config/analysis.py:270
 msgid "CUE points (set by the analysis from the phrases)"
 msgstr "CUEポイント (解析がフレーズから設定)"
 
-#: ui/config/analysis.py:267
+#: ui/config/analysis.py:275
 msgid "At start"
 msgstr "開始位置"
 
-#: ui/config/analysis.py:268
+#: ui/config/analysis.py:276
 msgid "At end"
 msgstr "終了位置"
 
-#: ui/config/analysis.py:269
+#: ui/config/analysis.py:277
 msgid "Also between two of them"
 msgstr "同じラベルの間にも"
 
-#: ui/config/analysis.py:271
+#: ui/config/analysis.py:279
 #, python-brace-format
 msgid "A CUE point where a {label} phrase starts"
 msgstr "{label} フレーズが始まる位置に CUEポイント"
 
-#: ui/config/analysis.py:272
+#: ui/config/analysis.py:280
 #, python-brace-format
 msgid "A CUE point where a {label} phrase ends"
 msgstr "{label} フレーズが終わる位置に CUEポイント"
 
-#: ui/config/analysis.py:274
+#: ui/config/analysis.py:282
 #, python-brace-format
 msgid ""
 "Also where two {label} phrases meet; otherwise only where a {label} "
@@ -4509,7 +4532,7 @@ msgstr ""
 msgid "The spectrum needs the native audio engine."
 msgstr "スペクトラムは Native オーディオエンジンでのみ表示されます。"
 
-#: ui/config/wave_bands.py:234
+#: ui/config/wave_bands.py:236
 msgid "Load a track to preview the waveform."
 msgstr "曲をロードすると波形のプレビューが表示されます。"
 

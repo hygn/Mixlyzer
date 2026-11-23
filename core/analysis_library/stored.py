@@ -18,6 +18,7 @@ from typing import Any, Mapping, Optional
 
 import numpy as np
 
+from analyzer.audio.loudness import replaygain_db
 from analyzer.audio.wave_overview import WaveOverview
 from analyzer.beat.general.tracker import dominant_tempo
 from analyzer.music.marks import CuePoint, JumpCueGroup, Phrase
@@ -32,6 +33,7 @@ from core.marks.phrases import assigned_phrases
 DURATION, SAMPLE_RATE, TEMPO, BEATS, TEMPO_ROWS = "duration_sec", "sr", "tempo_global", "beats_time_sec", "tempo_segments"
 KEYS, KEYS_AUTO = "key_segments", "key_segments_auto"
 WAVE = ("wave_minmax_np", "wave_minmax_ref", "wave_bands_np", "wave_bands_ref")
+LOUDNESS, PEAK = "loudness_lufs", "sample_peak"     # ReplayGain's (analyzer.audio.loudness); NaN loudness: silent
 PHRASES, CUE_POINTS, JUMP_CUES, JUMP_CUES_AUTO = "phrase_segments_np", "cue_points_np", "jump_cues_np", "jump_cues_auto_np"
 SCHEMA_STABLE_KEY, SCHEMA_DEV_KEY = "schema_stable", "schema_dev"
 
@@ -53,9 +55,10 @@ class Schema:
         return self.dev == 0
 
 
-# the format this app writes: v0.1.0's (stable 0) and two steps of development since (2: the detail waveform's
-# three-band scale, wave_detail_band_ref, no longer stored); a release makes it (n + 1, 0)
-SCHEMA = Schema(0, 2)
+# the format this app writes: v0.1.0's (stable 0) and three steps of development since (2: the detail waveform's
+# three-band scale, wave_detail_band_ref, no longer stored; 3: the loudness and peak ReplayGain takes); a release makes
+# it (n + 1, 0)
+SCHEMA = Schema(0, 3)
 # the development formats a migration is written for (none: the development's formats are not kept up with)
 DEV_MIGRATIONS: frozenset[Schema] = frozenset()
 
@@ -121,7 +124,14 @@ class StoredAnalysis:
     jump_cues: tuple[JumpCueGroup, ...] = ()           # the user's, their letters as stored
     jump_cues_auto: Optional[tuple[JumpCueGroup, ...]] = None   # the automatic result (None: not kept)
     wave: Optional[WaveOverview] = None
+    loudness_lufs: Optional[float] = None              # integrated loudness, BS.1770 (None: silent or not measured)
+    peak: Optional[float] = None                       # the sample peak, 1.0 full scale (None: not measured)
     schema: Optional[Schema] = None                    # the format it was stored in (None: unversioned)
+
+    @property
+    def replaygain_db(self) -> Optional[float]:
+        """ReplayGain 2.0's track gain (dB to its -18 LUFS reference; None: no loudness)."""
+        return replaygain_db(self.loudness_lufs)
 
     @classmethod
     def from_arrays(cls, arrays: Optional[Mapping]) -> "StoredAnalysis":
@@ -144,6 +154,8 @@ class StoredAnalysis:
             jump_cues=tuple(extract_jump_cue_groups(a, JUMP_CUES)),
             jump_cues_auto=tuple(extract_jump_cue_groups(a, JUMP_CUES_AUTO)) if _has_block(a, JUMP_CUES_AUTO) else None,
             wave=wave,
+            loudness_lufs=_scalar(a.get(LOUDNESS), None) if LOUDNESS in a and np.isfinite(_scalar(a[LOUDNESS])) else None,
+            peak=_scalar(a.get(PEAK), None) if PEAK in a else None,
             schema=schema_of(a),
         )
 
@@ -154,6 +166,7 @@ def arrays_of(result) -> dict[str, Any]:
     wave = result.wave_overview
     jump_cues = build_jump_cues_np(result.jump_pairs, canonicalize_labels=True, merge_coincident=True)
     return {
+        **loudness_arrays(result.loudness),
         SCHEMA_STABLE_KEY: np.int32(SCHEMA.stable),
         SCHEMA_DEV_KEY: np.int32(SCHEMA.dev),
         **dict(zip(WAVE, (wave.minmax, wave.minmax_ref, wave.bands, wave.bands_ref))),
@@ -169,6 +182,15 @@ def arrays_of(result) -> dict[str, Any]:
         KEYS_AUTO: np.array(result.key_segments, dtype=float, copy=True),
         SAMPLE_RATE: result.sample_rate,
     }
+
+
+def loudness_arrays(loudness) -> dict[str, Any]:
+    """The loudness and peak as stored (analyzer.audio.loudness.Loudness; None: not measured, nothing stored); a
+    silent track's loudness NaN."""
+    if loudness is None:
+        return {}
+    lufs = np.nan if loudness.lufs is None else float(loudness.lufs)
+    return {LOUDNESS: np.float64(lufs), PEAK: np.float64(loudness.peak)}
 
 
 @dataclass(frozen=True)

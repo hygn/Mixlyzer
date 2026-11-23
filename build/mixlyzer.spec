@@ -45,6 +45,8 @@ a = Analysis(
     # without default_, assets/shortcuts/shortcuts.json, assets/midi/midi.json). config.json is not bundled: the local one holds personal
     # settings, and load_cfg() writes one from default_cfg() on first launch.
     datas=shipped('assets/weights', lambda name: name.startswith('default_'))
+    # the analysis profiles and the CQT approximation's gains their faster ones read (fixed: not the user's)
+    + shipped('assets/analysis')
     # the images the app shows (not the design sources: the Photoshop file, the large render)
     + shipped('assets/icons') + shipped('assets/images', lambda name: not name.endswith('.psd')
                                         and name != 'mixlyzer_large.png')

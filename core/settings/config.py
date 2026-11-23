@@ -272,6 +272,9 @@ class analysisconfig:
     # Full analyses run at once (each a process of its own with threads of its own); the others wait their turn,
     # the deck's track first.
     max_parallel_analyses: int
+    # How much of the analysis is spent for its speed: the profiles of assets/analysis/profiles.json
+    # (core.workers.analysis_settings.analysis_profile).
+    analysis_profile: Literal["full", "balanced", "fast"] = "full"
 
 
 @dataclass
@@ -496,6 +499,7 @@ def default_cfg():
         jumpcue_first_sung_beats=20,
         jumpcue_avoid_cue_points=True,
         max_parallel_analyses=4,
+        analysis_profile="full",
     )
     vcfg = viewconfig(
         language="",

@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Mixlyzer VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-11-14 23:35+0900\n"
+"POT-Creation-Date: 2026-11-23 16:39+0900\n"
 "PO-Revision-Date: 2026-10-20 23:51+0900\n"
 "Last-Translator: Mixlyzer\n"
 "Language: ko_KR\n"
@@ -1255,7 +1255,7 @@ msgstr "템포 분석 중"
 msgid "Phrase Boundary Analyzing"
 msgstr "프레이즈 경계 분석 중"
 
-#: core/workers/analysis_texts.py:17 ui/config/analysis.py:241
+#: core/workers/analysis_texts.py:17 ui/config/analysis.py:249
 #: ui/config/pipeline_map.py:24 ui/config/pipeline_map.py:33
 #: ui/edit_panel/panel.py:62 ui/library/search.py:270 ui/library/search.py:330
 #: ui/shortcuts.py:38
@@ -1270,7 +1270,7 @@ msgstr "JumpCUE 분석 중"
 msgid "Analyzing Keys"
 msgstr "키 분석 중"
 
-#: core/workers/analysis_texts.py:19 ui/config/analysis.py:240
+#: core/workers/analysis_texts.py:19 ui/config/analysis.py:248
 #: ui/config/pipeline_map.py:27 ui/config/pipeline_map.py:35
 #: ui/library/tabs/edit_song.py:128 ui/library/tabs/export.py:169
 msgid "Key"
@@ -1678,7 +1678,7 @@ msgstr "상대 또는 절대 .npz 경로"
 msgid "relative or absolute .json path"
 msgstr "상대 또는 절대 .json 경로"
 
-#: ui/config/analysis.py:32 ui/config/analysis.py:136 ui/config/library.py:265
+#: ui/config/analysis.py:32 ui/config/analysis.py:144 ui/config/library.py:265
 #: ui/config/view.py:201
 msgid "General"
 msgstr "일반"
@@ -1692,14 +1692,39 @@ msgstr "한 번에 분석하는 트랙 수입니다."
 msgid "Full analyses at once"
 msgstr "동시에 분석할 트랙 수"
 
-#: ui/config/analysis.py:41
+#: ui/config/analysis.py:42
+msgid "Full"
+msgstr "전체"
+
+#: ui/config/analysis.py:42
+msgid "Balanced"
+msgstr "균형"
+
+#: ui/config/analysis.py:42
+msgid "Fast"
+msgstr "빠름"
+
+#: ui/config/analysis.py:45
+msgid ""
+"<p>How much of the analysis is spent for speed. Balanced is faster with "
+"nearly always the same results; Fast is faster still, its phrases and "
+"JumpCUEs at times a little different.</p>"
+msgstr ""
+"<p>속도를 위해 분석을 얼마나 줄일지 정합니다. 균형은 더 빠르고 결과는 거의 항상 같습니다. 빠름은 더 빠르지만 프레이즈와 "
+"JumpCUE가 가끔 조금 다릅니다.</p>"
+
+#: ui/config/analysis.py:47
+msgid "Analysis profile"
+msgstr "분석 프로파일"
+
+#: ui/config/analysis.py:49
 msgid "Analysis order and dependencies"
 msgstr "분석 순서와 의존 관계"
 
 # | msgid "" "The beat tracker reads every tempo in the octave from here (BPM
 # | min .. 2 " "x BPM min);\n" "a song outside it is read at half or double
 # | tempo."
-#: ui/config/analysis.py:55 ui/windows/reanalyze_dialog.py:32
+#: ui/config/analysis.py:63 ui/windows/reanalyze_dialog.py:32
 msgid ""
 "The beat tracker reads tempos from here to twice this;\n"
 "a song outside it is read at half or double tempo."
@@ -1707,18 +1732,18 @@ msgstr ""
 "비트 트래커는 이 값부터 그 두 배까지의 템포로 읽습니다.\n"
 "이 범위 밖의 곡은 절반이나 두 배 템포로 읽힙니다."
 
-#: ui/config/analysis.py:60 ui/config/window.py:248
+#: ui/config/analysis.py:68 ui/config/window.py:249
 #: ui/windows/reanalyze_dialog.py:38 ui/windows/reanalyze_dialog.py:76
 #, python-brace-format
 msgid "Reads {low} - {high} BPM"
 msgstr "{low} - {high} BPM으로 읽음"
 
-#: ui/config/analysis.py:62 ui/config/analysis.py:132
+#: ui/config/analysis.py:70 ui/config/analysis.py:140
 #: ui/windows/reanalyze_dialog.py:39 ui/windows/reanalyze_dialog.py:49
 msgid "Dynamic Analysis"
 msgstr "다이내믹 분석"
 
-#: ui/config/analysis.py:64 ui/windows/reanalyze_dialog.py:41
+#: ui/config/analysis.py:72 ui/windows/reanalyze_dialog.py:41
 msgid ""
 "Checked: tempo changes within a track (sections, ramps).\n"
 "Unchecked: one steady BPM for the whole track."
@@ -1726,7 +1751,7 @@ msgstr ""
 "켜짐: 트랙 안의 템포 변화(구간, 램프)를 찾습니다.\n"
 "꺼짐: 트랙 전체를 하나의 일정한 BPM으로 봅니다."
 
-#: ui/config/analysis.py:67 ui/windows/reanalyze_dialog.py:44
+#: ui/config/analysis.py:75 ui/windows/reanalyze_dialog.py:44
 msgid "Dynamic Downbeat"
 msgstr "다이내믹 다운비트"
 
@@ -1734,7 +1759,7 @@ msgstr "다이내믹 다운비트"
 # "Unchecked:
 # | one bar length and downbeat phase for the whole track.\n" "Always on with
 # | Dynamic Analysis."
-#: ui/config/analysis.py:69 ui/windows/reanalyze_dialog.py:46
+#: ui/config/analysis.py:77 ui/windows/reanalyze_dialog.py:46
 msgid ""
 "Checked: odd bars and meter changes within a track.\n"
 "Unchecked: one bar length and downbeat phase for the whole track."
@@ -1744,90 +1769,90 @@ msgstr ""
 
 # | msgid "" "Gradient-boosted onset model (.npz) that places the tracker's
 # | tempo " "changes."
-#: ui/config/analysis.py:85
+#: ui/config/analysis.py:93
 msgid "The model (.npz) that places the tracker's tempo changes."
 msgstr "트래커의 템포 변화 위치를 정하는 모델(.npz)."
 
 # | msgid "The frame TCN (.npz, its trainings) that hears the beats and
 # | downbeats."
-#: ui/config/analysis.py:90
+#: ui/config/analysis.py:98
 msgid "The model (.npz) that hears the beats and downbeats."
 msgstr "비트와 다운비트를 듣는 모델(.npz)."
 
 # | msgid "" "The metronome critic (.npz, its fold models) that judges 3:2 /
 # 4:3
 # | " "readings."
-#: ui/config/analysis.py:95
+#: ui/config/analysis.py:103
 msgid "The model (.npz) that judges 3:2 / 4:3 readings."
 msgstr "3:2 / 4:3 판독을 판정하는 모델(.npz)."
 
 # | msgid "Decoder costs (JSON)"
-#: ui/config/analysis.py:100
+#: ui/config/analysis.py:108
 msgid "The decoder's costs (.json)."
 msgstr "디코더의 비용(.json)."
 
 # | msgid "Gradient-boosted downbeat model (.npz) the tracker's bars read."
-#: ui/config/analysis.py:105
+#: ui/config/analysis.py:113
 msgid "The downbeat model (.npz) the tracker's bars read."
 msgstr "트래커의 마디가 읽는 다운비트 모델(.npz)."
 
-#: ui/config/analysis.py:110 ui/windows/reanalyze_dialog.py:86
+#: ui/config/analysis.py:118 ui/windows/reanalyze_dialog.py:86
 msgid "BPM min"
 msgstr "BPM 최소"
 
-#: ui/config/analysis.py:115 ui/config/analysis.py:145
-#: ui/config/analysis.py:159 ui/config/library.py:258 ui/config/library.py:275
+#: ui/config/analysis.py:123 ui/config/analysis.py:153
+#: ui/config/analysis.py:167 ui/config/library.py:258 ui/config/library.py:275
 #: ui/config/playback.py:106 ui/config/view.py:196
 msgid "Advanced"
 msgstr "고급"
 
-#: ui/config/analysis.py:117
+#: ui/config/analysis.py:125
 msgid "Tempo-change onset (NPZ)"
 msgstr "템포 변화 온셋 (NPZ)"
 
-#: ui/config/analysis.py:118
+#: ui/config/analysis.py:126
 msgid "Beat TCN (NPZ)"
 msgstr "비트 TCN (NPZ)"
 
-#: ui/config/analysis.py:119
+#: ui/config/analysis.py:127
 msgid "Metronome critic (NPZ)"
 msgstr "메트로놈 크리틱 (NPZ)"
 
-#: ui/config/analysis.py:120
+#: ui/config/analysis.py:128
 msgid "Downbeat model (NPZ)"
 msgstr "다운비트 모델 (NPZ)"
 
-#: ui/config/analysis.py:121
+#: ui/config/analysis.py:129
 msgid "Decoder costs (JSON)"
 msgstr "디코더 비용 (JSON)"
 
-#: ui/config/analysis.py:134 ui/windows/reanalyze_dialog.py:51
+#: ui/config/analysis.py:142 ui/windows/reanalyze_dialog.py:51
 msgid ""
 "Key changes within a track. Off: one key for the whole track, the key of "
 "its intro, outro and interludes."
 msgstr "트랙 안의 키 변화를 찾습니다. 끄면 트랙 전체에 키 하나를 씁니다(인트로, 아웃트로, 인터루드의 키)."
 
-#: ui/config/analysis.py:143
+#: ui/config/analysis.py:151
 msgid "The key model (.npz). A missing file means the shipped model."
 msgstr "키 모델(.npz). 파일이 없으면 기본 제공 모델을 씁니다."
 
-#: ui/config/analysis.py:147
+#: ui/config/analysis.py:155
 msgid "Key model (NPZ)"
 msgstr "키 모델 (NPZ)"
 
-#: ui/config/analysis.py:158
+#: ui/config/analysis.py:166
 msgid "Learned phrase model (.npz)."
 msgstr "학습된 프레이즈 모델(.npz)."
 
-#: ui/config/analysis.py:161 ui/config/analysis.py:218
+#: ui/config/analysis.py:169 ui/config/analysis.py:226
 msgid "Parameters (NPZ)"
 msgstr "파라미터 (NPZ)"
 
-#: ui/config/analysis.py:171 ui/windows/reanalyze_dialog.py:55
+#: ui/config/analysis.py:179 ui/windows/reanalyze_dialog.py:55
 msgid "CUE point"
 msgstr "CUE 포인트"
 
-#: ui/config/analysis.py:173 ui/config/playback.py:69
+#: ui/config/analysis.py:181 ui/config/playback.py:69
 #: ui/windows/reanalyze_dialog.py:57
 msgid "Off"
 msgstr "끔"
@@ -1836,26 +1861,26 @@ msgstr "끔"
 # | lead-in end, an early first downbeat, or 0:00.\n" "CUE point: a CUE point
 # | (memory cue).\n" "JumpCUE: a JumpCUE (hot cue) of its own.\n" "Off:
 # | nothing."
-#: ui/config/analysis.py:175 ui/windows/reanalyze_dialog.py:59
+#: ui/config/analysis.py:183 ui/windows/reanalyze_dialog.py:59
 msgid ""
 "The mark the analysis puts at the automatic start position (the lead-in "
 "end, the first downbeat or 0:00)."
 msgstr "분석이 자동 시작 위치(리드인 끝, 첫 다운비트 또는 0:00)에 둘 마크를 정합니다."
 
-#: ui/config/analysis.py:179 ui/windows/reanalyze_dialog.py:93
+#: ui/config/analysis.py:187 ui/windows/reanalyze_dialog.py:93
 msgid "Automatic start"
 msgstr "자동 시작"
 
 # | msgid "Analyzing JumpCUE"
-#: ui/config/analysis.py:180
+#: ui/config/analysis.py:188
 msgid "Automatic JumpCUE"
 msgstr "자동 JumpCUE"
 
-#: ui/config/analysis.py:183
+#: ui/config/analysis.py:191
 msgid "First CHORUS"
 msgstr "첫 CHORUS"
 
-#: ui/config/analysis.py:183 ui/config/analysis.py:187
+#: ui/config/analysis.py:191 ui/config/analysis.py:195
 msgid "Any CHORUS"
 msgstr "아무 CHORUS"
 
@@ -1864,137 +1889,137 @@ msgstr "아무 CHORUS"
 # | msgid "Booth EQ"
 # | msgid "Other"
 # | msgid "another key"
-#: ui/config/analysis.py:183 ui/config/analysis.py:187
+#: ui/config/analysis.py:191 ui/config/analysis.py:195
 msgid "Anywhere"
 msgstr "제한 없음"
 
-#: ui/config/analysis.py:185
+#: ui/config/analysis.py:193
 msgid "Where the earlier point of the JumpCUE may be."
 msgstr "JumpCUE의 앞 지점을 둘 수 있는 곳입니다."
 
 # | msgid "Shortcuts"
-#: ui/config/analysis.py:187
+#: ui/config/analysis.py:195
 msgid "Last CHORUS"
 msgstr "마지막 CHORUS"
 
 # | msgid "Split the current segment at the playhead"
 # | msgid "Delete the CUE point at the playhead"
-#: ui/config/analysis.py:189
+#: ui/config/analysis.py:197
 msgid "Where the later point of the JumpCUE may be."
 msgstr "JumpCUE의 뒤 지점을 둘 수 있는 곳입니다."
 
-#: ui/config/analysis.py:192
+#: ui/config/analysis.py:200
 msgid "A point this many beats before or after a section still counts as in it."
 msgstr "구간 앞뒤로 이 박 수 안의 지점도 그 구간으로 칩니다."
 
-#: ui/config/analysis.py:197
+#: ui/config/analysis.py:205
 msgid "Below this score the analysis makes no JumpCUE."
 msgstr "이 점수보다 낮으면 JumpCUE를 만들지 않습니다."
 
 # | msgid "CUE point"
-#: ui/config/analysis.py:198
+#: ui/config/analysis.py:206
 msgid "Earlier point"
 msgstr "앞 지점"
 
 # | msgid "CUE point"
-#: ui/config/analysis.py:199
+#: ui/config/analysis.py:207
 msgid "Later point"
 msgstr "뒤 지점"
 
 # | msgid "sections + labels"
 # | msgid "boundaries + labels"
-#: ui/config/analysis.py:200
+#: ui/config/analysis.py:208
 msgid "Section margin (beats)"
 msgstr "구간 여유(박)"
 
 # | msgid "Min seg"
 # | msgid "Main screen"
-#: ui/config/analysis.py:201
+#: ui/config/analysis.py:209
 msgid "Minimum score"
 msgstr "최소 점수"
 
-#: ui/config/analysis.py:204
+#: ui/config/analysis.py:212
 msgid "Learned JumpCUE model (.npz)."
 msgstr "학습된 JumpCUE 모델(.npz)."
 
-#: ui/config/analysis.py:207
+#: ui/config/analysis.py:215
 msgid "The two points are at least this many beats apart."
 msgstr "두 지점을 최소 이 박 수만큼 띄웁니다."
 
-#: ui/config/analysis.py:210
+#: ui/config/analysis.py:218
 msgid "No point within this many beats of where the singing first starts."
 msgstr "노래가 처음 시작된 뒤 이 박 수 안에는 지점을 두지 않습니다."
 
 # | msgid "Edit the JumpCUEs and CUE points"
-#: ui/config/analysis.py:211
+#: ui/config/analysis.py:219
 msgid "Move a JumpCUE off CUE points"
 msgstr "CUE 포인트 위의 JumpCUE 옮기기"
 
-#: ui/config/analysis.py:212
+#: ui/config/analysis.py:220
 msgid "When both points sit on CUE points, the JumpCUE moves 8 beats earlier."
 msgstr "두 지점이 모두 CUE 포인트 위에 있으면 JumpCUE를 8박 앞으로 옮깁니다."
 
-#: ui/config/analysis.py:213
+#: ui/config/analysis.py:221
 msgid "JumpCUE Advanced"
 msgstr "JumpCUE 고급"
 
-#: ui/config/analysis.py:215
+#: ui/config/analysis.py:223
 msgid "Least gap (beats)"
 msgstr "최소 간격(박)"
 
-#: ui/config/analysis.py:216
+#: ui/config/analysis.py:224
 msgid "Clear after the first singing (beats)"
 msgstr "첫 노래 뒤 비우는 박 수"
 
-#: ui/config/analysis.py:219 ui/config/analysis.py:289
+#: ui/config/analysis.py:227 ui/config/analysis.py:297
 msgid "Applies to tracks analyzed (or reanalyzed) from now on."
 msgstr "지금부터 분석(또는 재분석)하는 트랙에 적용됩니다."
 
-#: ui/config/analysis.py:238
+#: ui/config/analysis.py:246
 msgid "Global"
 msgstr "전역"
 
-#: ui/config/analysis.py:239 ui/config/pipeline_map.py:23
+#: ui/config/analysis.py:247 ui/config/pipeline_map.py:23
 #: ui/windows/reanalyze_dialog.py:84
 msgid "Beat"
 msgstr "비트"
 
-#: ui/config/analysis.py:242 ui/config/pipeline_map.py:25
+#: ui/config/analysis.py:250 ui/config/pipeline_map.py:25
 #: ui/config/pipeline_map.py:26
 msgid "CUE"
 msgstr "CUE"
 
-#: ui/config/analysis.py:255 ui/windows/workers.py:24
+#: ui/config/analysis.py:263 ui/windows/workers.py:24
 msgid "Analysis"
 msgstr "분석"
 
-#: ui/config/analysis.py:262
+#: ui/config/analysis.py:270
 msgid "CUE points (set by the analysis from the phrases)"
 msgstr "CUE 포인트 (분석이 프레이즈에서 설정)"
 
-#: ui/config/analysis.py:267
+#: ui/config/analysis.py:275
 msgid "At start"
 msgstr "시작에"
 
-#: ui/config/analysis.py:268
+#: ui/config/analysis.py:276
 msgid "At end"
 msgstr "끝에"
 
-#: ui/config/analysis.py:269
+#: ui/config/analysis.py:277
 msgid "Also between two of them"
 msgstr "같은 라벨 사이에도"
 
-#: ui/config/analysis.py:271
+#: ui/config/analysis.py:279
 #, python-brace-format
 msgid "A CUE point where a {label} phrase starts"
 msgstr "{label} 프레이즈가 시작하는 곳에 CUE 포인트"
 
-#: ui/config/analysis.py:272
+#: ui/config/analysis.py:280
 #, python-brace-format
 msgid "A CUE point where a {label} phrase ends"
 msgstr "{label} 프레이즈가 끝나는 곳에 CUE 포인트"
 
-#: ui/config/analysis.py:274
+#: ui/config/analysis.py:282
 #, python-brace-format
 msgid ""
 "Also where two {label} phrases meet; otherwise only where a {label} "
@@ -4508,7 +4533,7 @@ msgstr ""
 msgid "The spectrum needs the native audio engine."
 msgstr "스펙트럼은 Native 오디오 엔진에서만 표시됩니다."
 
-#: ui/config/wave_bands.py:234
+#: ui/config/wave_bands.py:236
 msgid "Load a track to preview the waveform."
 msgstr "곡을 로드하면 파형 미리보기가 표시됩니다."
 

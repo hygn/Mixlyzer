@@ -356,7 +356,8 @@ class ViewSettingsMixin:
     def _preview_track(self) -> None:
         model = self._track_model
         if model is not None:
-            self.wave_preview.set_track(model.predecoded_pcm, model.predecoded_rate)
+            self.wave_preview.set_track(model.predecoded_pcm, model.predecoded_rate, model.loudness_lufs,
+                                        model.peak_waveform)
 
     def _waveform_bands_shown(self, shown: bool) -> None:
         """In sight: the engine makes the spectrum and the preview draws; out of it, neither."""

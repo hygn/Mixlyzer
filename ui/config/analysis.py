@@ -37,6 +37,14 @@ def _global_page(dialog) -> QWidget:
         1, max(os.cpu_count() or 1, default_cfg().analysisconfig.max_parallel_analyses))
     dialog.sp_max_parallel_analyses.setToolTip(tr("How many tracks are analyzed at once."))
     f_global_general.addRow(tr("Full analyses at once"), dialog.sp_max_parallel_analyses)
+    # how much of the analysis is spent for its speed (assets/analysis/profiles.json)
+    dialog.cb_analysis_profile = QComboBox()
+    for value, text in (("full", tr("Full")), ("balanced", tr("Balanced")), ("fast", tr("Fast"))):
+        dialog.cb_analysis_profile.addItem(text, value)
+    dialog.cb_analysis_profile.setToolTip(tr(
+        "<p>How much of the analysis is spent for speed. Balanced is faster with nearly always the same results; "
+        "Fast is faster still, its phrases and JumpCUEs at times a little different.</p>"))
+    f_global_general.addRow(tr("Analysis profile"), dialog.cb_analysis_profile)
     # the analyses, their order and what each needs; a click opens the analysis's settings tab
     dialog.lbl_pipeline_title = QLabel(tr("Analysis order and dependencies"))
     dialog.pipeline_map = PipelineMap()

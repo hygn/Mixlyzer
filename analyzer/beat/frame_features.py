@@ -16,6 +16,7 @@ from analyzer.audio.conversion import (
     power_to_db,
 )
 from analyzer.audio.spectral import stft
+from analyzer.audio.stft_cqt import load_gains, pseudo_cqt
 
 
 # Shared frame grid. Computed once per track before beat tracking: the learned
@@ -77,8 +78,14 @@ def _positive_flux(log_spec: np.ndarray) -> np.ndarray:
     return np.maximum(np.diff(log_spec, axis=1, prepend=log_spec[:, :1]), 0.0)
 
 
-def mix_cqt(audio: np.ndarray, sample_rate: int, hop_length: int) -> tuple[np.ndarray, np.ndarray]:
-    """The magnitude CQTs the chroma (C1 + 7 octaves) and the bass chroma (its first three octaves) are made from."""
+def mix_cqt(audio: np.ndarray, sample_rate: int, hop_length: int,
+            gains: np.ndarray | None = None) -> tuple[np.ndarray, np.ndarray]:
+    """The magnitude CQTs the chroma (C1 + 7 octaves) and the bass chroma (its first three octaves) are made from;
+    with ``gains``, approximated from STFTs (analyzer.audio.stft_cqt, at tuning 0: no tuning estimated)."""
+    if gains is not None:
+        full = pseudo_cqt(audio, sample_rate, hop_length, note_to_hz("C1"), 7 * CHROMA_BINS_PER_OCTAVE,
+                          CHROMA_BINS_PER_OCTAVE, gains)
+        return full, full[: 3 * CHROMA_BINS_PER_OCTAVE]
     # chroma_cqt estimates the tuning of ``audio`` on every call; estimate it once.
     tuning = librosa.estimate_tuning(y=audio, sr=sample_rate, bins_per_octave=CHROMA_BINS_PER_OCTAVE)
     # The CQTs librosa.feature.chroma_cqt computes: C1 + 7 octaves, and the bass register C1 + 3 octaves.
@@ -122,12 +129,16 @@ def extract_frame_features(
     hop_length: int = FRAME_HOP_LENGTH,
     n_fft: int = FRAME_N_FFT,
     n_mels: int = FRAME_N_MELS,
+    cqt_gains: str = "",
 ) -> FrameFeatures:
     """Analyze mono ``audio`` once on a shared frame grid.
 
     ``percussive`` / ``harmonic`` are the HPSS parts of ``audio``; without them
-    the mix stands in for both (no HPSS).
+    the mix stands in for both (no HPSS). ``cqt_gains``: the mix's and the melody
+    register's CQTs approximated from STFTs with these gains (analyzer.audio.stft_cqt:
+    the faster analysis profiles); "" librosa's.
     """
+    gains = load_gains(cqt_gains) if cqt_gains else None
     audio = np.ascontiguousarray(audio, dtype=np.float32).reshape(-1)
     if audio.size == 0:
         raise ValueError("audio is empty")
@@ -152,12 +163,17 @@ def extract_frame_features(
     # features below are computed (FFTs and scipy filters release the GIL).
     # The workers do no BLAS matrix products: concurrent BLAS calls would change
     # the float rounding from run to run, so the chroma filterbanks run on this
-    # thread after the join.
+    # thread after the join. (The approximated CQTs' products are the exception:
+    # the analysis runs them under its one BLAS thread, each call serial.)
     def melody() -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-        melody_cqt = np.abs(librosa.cqt(
-            harmonic, sr=sample_rate, hop_length=hop_length,
-            fmin=note_to_hz(MELODY_FMIN_NOTE), n_bins=12 * MELODY_OCTAVES, bins_per_octave=12,
-        ))
+        if gains is not None:
+            melody_cqt = pseudo_cqt(harmonic, sample_rate, hop_length, note_to_hz(MELODY_FMIN_NOTE),
+                                    12 * MELODY_OCTAVES, 12, gains["melody"])
+        else:
+            melody_cqt = np.abs(librosa.cqt(
+                harmonic, sr=sample_rate, hop_length=hop_length,
+                fmin=note_to_hz(MELODY_FMIN_NOTE), n_bins=12 * MELODY_OCTAVES, bins_per_octave=12,
+            ))
         melody_onset = _positive_flux(
             amplitude_to_db(melody_cqt, ref=np.max, top_db=80.0)
         ).mean(axis=0)
@@ -165,7 +181,7 @@ def extract_frame_features(
         return melody_cqt, melody_onset, melody_contour
 
     pool = ThreadPoolExecutor(max_workers=2)
-    mix_cqt_job = pool.submit(mix_cqt, audio, sample_rate, hop_length)
+    mix_cqt_job = pool.submit(mix_cqt, audio, sample_rate, hop_length, None if gains is None else gains["mix"])
     melody_job = pool.submit(melody)
 
     mel_power = librosa.feature.melspectrogram(

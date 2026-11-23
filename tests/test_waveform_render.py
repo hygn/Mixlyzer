@@ -35,7 +35,8 @@ class _Pool:
 
 
 def specs(chunks, generation=0):
-    return [waveform._ChunkSpec(chunk_index=i, pcm=None, sample_rate=1, style=STYLE, height=16, generation=generation)
+    return [waveform._ChunkSpec(chunk_index=i, pcm=None, sample_rate=1, loudness_lufs=None, peak=None, style=STYLE,
+                                height=16, generation=generation)
             for i in chunks]
 
 
@@ -184,6 +185,18 @@ class DetailScaleTests(unittest.TestCase):
         self.assertIsNone(detail_band_ref(None, low))
 
 
+class LoudnessScaleTests(unittest.TestCase):
+    def test_size_by_loudness_with_a_floor(self):
+        # full at the reference and louder, half every 10 dB under it as heard, never under the floor; none: full
+        from views.render.wave import LOUDNESS_SCALE_FLOOR, LOUDNESS_SCALE_REF_LUFS, loudness_scale
+        self.assertEqual(loudness_scale(LOUDNESS_SCALE_REF_LUFS + 3.0), 1.0)
+        self.assertAlmostEqual(loudness_scale(LOUDNESS_SCALE_REF_LUFS - 10.0), max(0.5, LOUDNESS_SCALE_FLOOR))
+        self.assertGreater(loudness_scale(-7.0), loudness_scale(-9.0))
+        self.assertEqual(loudness_scale(-40.0), LOUDNESS_SCALE_FLOOR)
+        self.assertEqual(loudness_scale(None), 1.0)
+        self.assertEqual(loudness_scale(float("nan")), 1.0)
+
+
 class CenterLineTests(unittest.TestCase):
     """The centre line by the audio's loudness: white under silence, none in loud audio even where a close view's
     fine frames leave the centre row dark (between a wave's crests) or a frame within one pixel off the centre."""
@@ -191,7 +204,8 @@ class CenterLineTests(unittest.TestCase):
     def center_row(self, pcm, frame_ms=0.5):
         style = dataclasses.replace(STYLE, frame_ms=frame_ms)
         hop = waveform.FRAMES_PER_COLUMN * style.frame_hop(48000)
-        image = waveform.render_columns(pcm, 48000, 10, 10 + 48000 // hop // 2, style, height=waveform.RENDER_HEIGHT)
+        image = waveform.render_columns(pcm, 48000, 10, 10 + 48000 // hop // 2, None, None, style,
+                                        height=waveform.RENDER_HEIGHT)
         return image[:, waveform.RENDER_HEIGHT // 2, :].astype(int)
 
     def test_none_in_loud_audio(self):

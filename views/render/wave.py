@@ -73,6 +73,19 @@ RGB_DETAIL_SAT_FLOOR = 0.6
 RGB_DETAIL_KNEE = 0.75
 # RGB detail waveform heights: the envelope's slope above the middle (detail_envelope)
 RGB_DETAIL_HIT_SLOPE = 2.0
+# The RGB detail waveform's size by the track's loudness (loudness_scale), so tracks' volumes compare: as heard, half
+# as high every 10 dB under the reference (loudness doubles every 10 dB), the reference full (about the library's
+# loudest masters: its 5th percentile -4.9 LUFS), never under the floor.
+LOUDNESS_SCALE_REF_LUFS = -5.0
+LOUDNESS_SCALE_FLOOR = 0.5
+
+
+def loudness_scale(lufs) -> float:
+    """The RGB detail waveform's size for a track of integrated loudness ``lufs`` (None or NaN: not measured or
+    silent, full size)."""
+    if lufs is None or not np.isfinite(lufs):
+        return 1.0
+    return float(min(1.0, max(LOUDNESS_SCALE_FLOOR, 2.0 ** ((float(lufs) - LOUDNESS_SCALE_REF_LUFS) / 10.0))))
 # The detail waveform's centre line, in this colour, where the audio is quiet: by its loudness (the main view's
 # chunks: each column's RMS over WAVE_CENTER_LINE_RMS_SEC, full under silence and gone from WAVE_CENTER_LINE_QUIET
 # on; a fine frame's waveform leaves the centre row dark in loud audio too, between a wave's crests), else (the
@@ -350,10 +363,12 @@ def render_wave_detail_preview(
     height: int,
     *,
     columns: int = WAVE_OVERVIEW_RENDER_COLUMNS,
+    loudness_lufs=None,
 ) -> np.ndarray:
     """Stand-in for the main view's detail waveform until its chunks are rendered, drawn like them from the
     overview (mirrored, sample units): RGB the min / max bars colored as the chunks are (the square roots of the
-    band RMS), 3band the layers of the scrolling waveform (bands on one scale)."""
+    band RMS), sized by the track's loudness as they are (loudness_scale), 3band the layers of the scrolling
+    waveform (bands on one scale)."""
     rms = _band_rms(wave, ranges)
     if style != "3band":
         minmax = np.clip(wave.samples(), -1.0, 1.0)
@@ -368,6 +383,7 @@ def render_wave_detail_preview(
         envelope = detail_envelope(total / (detail_band_ref(wave, ranges, total=True) or 1.0))
         window = max(1, round(n / max(rms.shape[0], 1)))
         minmax = np.stack(shape_by_envelope(minmax[:, 0], minmax[:, 1], envelope, window), axis=1)
+        minmax = minmax * loudness_scale(loudness_lufs)
         column = (np.arange(n, dtype=np.int64) * max(1, min(int(columns), n))) // n
         image = wave_coverage_columns(minmax[:, 0], minmax[:, 1], colors, column, height,
                                       flat_color=WAVE_CENTER_LINE_RGB)

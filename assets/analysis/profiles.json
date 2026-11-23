@@ -1,0 +1,20 @@
+{
+  "full": {
+    "beat_trainings": 0,
+    "metronome_critic": true,
+    "key_tuning_estimate": true,
+    "approximate_cqt": false
+  },
+  "balanced": {
+    "beat_trainings": 1,
+    "metronome_critic": false,
+    "key_tuning_estimate": false,
+    "approximate_cqt": false
+  },
+  "fast": {
+    "beat_trainings": 1,
+    "metronome_critic": false,
+    "key_tuning_estimate": false,
+    "approximate_cqt": true
+  }
+}

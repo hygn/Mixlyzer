@@ -77,6 +77,8 @@ class DataModel(QtCore.QObject):
         self.album_art: Optional[QImage] = None
         self.predecoded_pcm: Any = None
         self.predecoded_rate: int = 0
+        self.loudness_lufs: Optional[float] = None     # the track's stored loudness and peak (load sets them)
+        self.peak_waveform: Optional[float] = None
         self._set_marks(marks.from_stored(self._analysis, 0.0))
         self._history = History.starting_at(self._snapshot())
         self._auto_count = 0                       # automatic results given since the load
@@ -108,6 +110,8 @@ class DataModel(QtCore.QObject):
         self._keys_auto = self._jump_cues_auto = None
         self._properties = _ReadOnly(properties or {})
         self._duration_sec = float(duration_sec or 0.0)
+        self.loudness_lufs = self._analysis.loudness_lufs
+        self.peak_waveform = self._analysis.peak
         self.album_art = album_art
         if not keep_audio:
             self.predecoded_pcm = None

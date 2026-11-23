@@ -21,6 +21,7 @@ from views.render.wave import (
     detail_band_ref,
     detail_envelope,
     frame_minmax,
+    loudness_scale,
     paint_layers,
     render_wave_detail_preview,
     shape_by_envelope,
@@ -111,6 +112,8 @@ class _WaveRenderJob(QtCore.QRunnable):
         pcm: np.ndarray,
         sample_rate: int,
         chunk_index: int,
+        loudness_lufs: float,
+        peak: float,
         style: _WaveStyle,
         *,
         height: int,
@@ -125,10 +128,12 @@ class _WaveRenderJob(QtCore.QRunnable):
         self.height = max(16, int(height))
         self.generation = int(generation)
         self.signals = _WaveRenderSignals()
+        self.loudness_lufs = loudness_lufs
+        self.peak_waveform = peak
 
     def run(self) -> None:
         image, start_sec, end_sec = _render_waveform_chunk(
-            self.pcm, self.sample_rate, self.chunk_index, self.style, height=self.height
+            self.pcm, self.sample_rate, self.chunk_index, self.loudness_lufs, self.peak_waveform, self.style, height=self.height
         )
         self.signals.finished.emit(
             self.request_id,
@@ -150,7 +155,7 @@ def _chunk_columns(chunk_index: int, sample_rate: int, n_samples: int, column_ho
 
 
 def _render_waveform_chunk(
-    pcm: np.ndarray, sample_rate: int, chunk_index: int, style: _WaveStyle, *, height: int
+    pcm: np.ndarray, sample_rate: int, chunk_index: int, loudness_lufs: float, peak: float, style: _WaveStyle, *, height: int
 ) -> tuple[np.ndarray, float, float]:
     """Waveform image ``[columns, height, 3]`` of one chunk and the time span it covers.
 
@@ -169,7 +174,7 @@ def _render_waveform_chunk(
     start_sec, end_sec = c0 * column_hop / sample_rate, c1 * column_hop / sample_rate
     if c1 <= c0:
         return np.zeros((1, height, 3), dtype=np.uint8), start_sec, max(end_sec, start_sec + 1e-3)
-    return render_columns(pcm, sample_rate, c0, c1, style, height=height), start_sec, end_sec
+    return render_columns(pcm, sample_rate, c0, c1, loudness_lufs, peak, style, height=height), start_sec, end_sec
 
 
 def column_hop(style: _WaveStyle, sample_rate: int) -> int:
@@ -177,7 +182,7 @@ def column_hop(style: _WaveStyle, sample_rate: int) -> int:
     return FRAMES_PER_COLUMN * style.frame_hop(sample_rate)
 
 
-def render_columns(pcm: np.ndarray, sample_rate: int, c0: int, c1: int, style: _WaveStyle, *,
+def render_columns(pcm: np.ndarray, sample_rate: int, c0: int, c1: int, loudness_lufs: float, peak: float, style: _WaveStyle, *,
                    height: int) -> np.ndarray:
     """Waveform image ``[c1 - c0, height, 3]`` of the track's columns ``[c0, c1)`` (column_hop's grid), drawn as
     the main view draws its chunks (_render_waveform_chunk): the settings' preview draws any span with it."""
@@ -223,6 +228,8 @@ def render_columns(pcm: np.ndarray, sample_rate: int, c0: int, c1: int, style: _
         if shaped:
             min_env, max_env = shape_by_envelope(min_env, max_env, detail_envelope(np.sqrt(energy) / style.band_ref),
                                                  round(THREE_BAND_DETAIL_RMS_SEC * sample_rate / frame_hop))
+            loudness_scale_factor = loudness_scale(loudness_lufs)
+            min_env, max_env = min_env * loudness_scale_factor, max_env * loudness_scale_factor
         image = wave_coverage_columns(min_env, max_env, colors, column, height)
     # the centre line where it is quiet (each column's loudest RMS over WAVE_CENTER_LINE_RMS_SEC), not where the
     # fine frames' waveform leaves the centre row dark
@@ -260,6 +267,8 @@ class _ChunkSpec:
     sample_rate: int
     style: _WaveStyle
     height: int
+    loudness_lufs: float
+    peak: float
     generation: int = 0  # the audio ``pcm`` is (WaveformView._generation)
 
 
@@ -370,6 +379,8 @@ class _WaveformRenderWorker(QtCore.QObject):
             spec.pcm,
             spec.sample_rate,
             spec.chunk_index,
+            spec.loudness_lufs,
+            spec.peak,
             spec.style,
             height=spec.height,
             generation=spec.generation,
@@ -699,12 +710,14 @@ class WaveformView(ViewPlugin):
             return
         cfg = current_settings()
         ranges, style = band_ranges(cfg.viewconfig), cfg.viewconfig.waveform_style
-        source = (id(wave), ranges, style)
+        lufs = self.model.loudness_lufs
+        source = (id(wave), ranges, style, lufs)
         if self._preview_source != source:
             # Until chunks are rendered, the stored overview stands in, drawn like them.
             self._preview_item.setImage(
                 # with the chunks' centre line, so the two join without a seam
-                np.clip(add_center_line(render_wave_detail_preview(wave, ranges, style, RENDER_HEIGHT))
+                np.clip(add_center_line(render_wave_detail_preview(wave, ranges, style, RENDER_HEIGHT,
+                                                                   loudness_lufs=lufs))
                         + 0.5, 0.0, 255.0).astype(np.uint8),
                 autoLevels=False,
                 levels=self._wave_levels,
@@ -769,7 +782,7 @@ class WaveformView(ViewPlugin):
             return
         if self._allocate_canvas() <= 0:
             return
-        specs = self._build_chunk_specs(pcm, sample_rate, duration)
+        specs = self._build_chunk_specs(pcm, sample_rate, duration, self.model.loudness_lufs, self.model.peak_waveform)
         if specs:
             self._sig_enqueue.emit(specs, self._current_chunk())   # the worker orders them by the playhead
 
@@ -788,9 +801,9 @@ class WaveformView(ViewPlugin):
             self._evict_far_chunks(chunk)
         # the worker forgets every request not started: asked again here (the view at t) and when shown
         self._layer.submitted = {i for i, item in enumerate(self._layer.items) if item is not None}
-        self._sig_resume.emit(self._build_chunk_specs(pcm, sample_rate, duration, at=t), chunk)
+        self._sig_resume.emit(self._build_chunk_specs(pcm, sample_rate, duration, self.model.loudness_lufs, self.model.peak_waveform, at=t), chunk)
 
-    def _build_chunk_specs(self, pcm: np.ndarray, sample_rate: int, duration: float, *,
+    def _build_chunk_specs(self, pcm: np.ndarray, sample_rate: int, duration: float, loudness_lufs: float, peak: float, *,
                            at: float | None = None) -> list:
         """Specs of the chunks in the view (the playhead at ``at`` if given, else where it is) not requested."""
         visible_start = max(0.0, -self.tl.left_edge() if at is None else at - self.tl.center_t)
@@ -814,6 +827,8 @@ class WaveformView(ViewPlugin):
                 sample_rate=sample_rate,
                 style=self._style,
                 height=RENDER_HEIGHT,
+                loudness_lufs=loudness_lufs,
+                peak=peak,
                 generation=self._generation,
             ))
             self._submitted_chunks.add(chunk_index)

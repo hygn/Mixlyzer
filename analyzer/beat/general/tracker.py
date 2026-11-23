@@ -150,7 +150,8 @@ def seed_grid(rows, beat, down, t0, hop, dur, octave, models, critic_track, refi
     if dynamic:
         rows, _ = G.ramp_fix(rows, fine)
     rows = B.bar_check(rows, down, t0, hop)
-    rows, _ = C.apply(rows, models.critic, critic_track, val, dur)
+    if critic_track is not None:      # None: the critic not asked (an analysis profile)
+        rows, _ = C.apply(rows, models.critic, critic_track, val, dur)
     rows = B.fold_into_octave(rows, octave.lo, down, t0, hop, val)
     if dynamic:
         # post-process
@@ -195,12 +196,14 @@ def medoid(results: list) -> int:
 
 
 def track(frames, bpm_min: float, models: Models, refine_onset=None, parallel: bool = True,
-          dynamic: bool = True, dynamic_downbeat: bool = True) -> TrackerResult:
+          dynamic: bool = True, dynamic_downbeat: bool = True, trainings: int = 0,
+          critic: bool = True) -> TrackerResult:
     """frames: production FrameFeatures on the models' grid (T.SAMPLE_RATE, T.FRAME_HOP_LENGTH);
     refine_onset: (activation, hop, t0) of the local onset model (the activation, or a callable making it at its first
     read: learned_onset.LazyRefineOnset). ``dynamic`` off: one steady grid for
     the whole track; its bars are dynamic (odd bars, meter changes) only with ``dynamic_downbeat`` (a
-    dynamic grid always has dynamic bars)."""
+    dynamic grid always has dynamic bars). ``trainings``: the TCN's first so many decoded (0: all, their consensus);
+    ``critic`` off: the metronome critic not asked (the analysis profiles)."""
     if (int(frames.sample_rate), int(frames.hop_length)) != (T.SAMPLE_RATE, T.FRAME_HOP_LENGTH):
         raise ValueError(f"the beat tracker reads {T.SAMPLE_RATE} Hz / hop {T.FRAME_HOP_LENGTH} frames, "
                          f"got {frames.sample_rate} Hz / hop {frames.hop_length}")
@@ -208,20 +211,21 @@ def track(frames, bpm_min: float, models: Models, refine_onset=None, parallel: b
     t0, hop = float(ft[0]), float(np.median(np.diff(ft)))
     x = T.frame_inputs(frames)
     octave = D.Octave(bpm_min)
-    critic_track = C.track_features(frames)
+    critic_track = C.track_features(frames) if critic else None
+    tcn = list(models.tcn)[:trainings] if trainings > 0 else list(models.tcn)
     def one(P):
         beat, down = T.activations(P, x)
         dur = t0 + hop * (beat.size - 1)
         return decode_seed(beat, down, t0, hop, dur, frames, octave, models, critic_track, refine_onset,
                            dynamic, dynamic_downbeat)
 
-    if parallel and len(models.tcn) > 1:
+    if parallel and len(tcn) > 1:
         # the seeds are independent; NumPy releases the GIL in its array work
         from concurrent.futures import ThreadPoolExecutor
-        with ThreadPoolExecutor(max_workers=len(models.tcn)) as pool:
-            seeds = list(pool.map(one, models.tcn))
+        with ThreadPoolExecutor(max_workers=len(tcn)) as pool:
+            seeds = list(pool.map(one, tcn))
     else:
-        seeds = [one(P) for P in models.tcn]
+        seeds = [one(P) for P in tcn]
     k = medoid(seeds)
     best = seeds[k]
     segments = B.to_rows(best.rows, best.beats, best.downbeats)
