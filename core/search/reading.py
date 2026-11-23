@@ -395,13 +395,17 @@ def _read_japanese(text: str) -> str:
     if any(not (reading and all(_is_kana(c) for c in reading)) and fold_variants(surface) != surface
            for surface, reading, _pos in tokens):
         tokens = _japanese_tokens(fold_variants(text))
+    before = ""
     for surface, reading, pos in tokens:
-        if pos == "助詞" and surface in _PARTICLES:
+        # a particle follows a word; a prefix binds to the word after it, so a particle after one is a word the
+        # dictionary does not know split in two (おはロック: お + は): read as written
+        if pos == "助詞" and surface in _PARTICLES and before != "接頭辞":
             words.append(_PARTICLES[surface])
         elif reading and all(_is_kana(c) for c in reading):
             words.append(kana_to_romaji(reading))
         else:   # unknown to the dictionary: kana by the table, the rest (hanzi: pinyin) by anyascii
             words.append("".join(kana_to_romaji(c) if _is_kana(c) else anyascii(c).lower() for c in surface))
+        before = pos
     return " ".join(w for w in words if w.strip())
 
 

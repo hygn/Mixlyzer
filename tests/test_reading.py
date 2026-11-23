@@ -46,6 +46,9 @@ class ReadingTests(unittest.TestCase):
         self.assertEqual(reading.read("Москва"), "Moskva")
         # Latin inside Japanese kept as written (not read as a word), its symbols left out; は read wa
         self.assertTrue(reading.read("U.N.オーエンは彼女なのか？").startswith("U N ooen wa kanojo"))
+        self.assertEqual(reading.read("お茶は"), "o cha wa")
+        # after a prefix は is no particle: a word the dictionary does not know, split (お + は + ロック)
+        self.assertEqual(reading.read("おはロック"), "o ha rokku")
         self.assertEqual(reading.read("†吸tie Ladies†"), "kyuu tie Ladies")        # † is no sound (anyascii: +)
         # hanzi the dictionary does not know: pinyin
         self.assertEqual(reading.fine_key(reading.read("洛天依")), "luotianyi")
@@ -60,6 +63,7 @@ class ReadingTests(unittest.TestCase):
             ("요루니카케루", "夜に駆ける"), ("판타지", "ファンタジー"), ("샤를", "シャルル"),
             ("saranghae", "사랑해"), ("luotianyi", "洛天依"), ("cafe", "Café de Paris"),
             ("bocchi", "ぼっち"), ("botchi", "ぼっち"), ("봇치", "ぼっち"),   # っち spelt cchi or tchi
+            ("오하록쿠", "おはロック"), ("oharokku", "おはロック"), ("おはろっく", "おはロック"),
         ]:
             with self.subTest(query=query, title=title):
                 self.assertTrue(found(query, title))
